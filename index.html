@@ -3,10 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Product Scout – Temukan Produk Terbaik</title>
+<title>Product Scout</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<!-- CLOUDFLARE: <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token":"YOUR_TOKEN"}'></script> -->
-<!-- FEATUREBASE: configure org and uncomment -->
+
+<!-- ─── CLOUDFLARE ANALYTICS ───────────────────────────────────────────────
+     1. Go to https://www.cloudflare.com/web-analytics/
+     2. Add your site and get a token
+     3. Uncomment the line below and replace YOUR_TOKEN
+<script defer src='https://static.cloudflareinsights.com/beacon.min.js'
+        data-cf-beacon='{"token":"YOUR_TOKEN"}'></script>
+──────────────────────────────────────────────────────────────────────────── -->
+
+<!-- ─── FEATUREBASE FEEDBACK ──────────────────────────────────────────────
+     1. Go to https://featurebase.app and create an org
+     2. Uncomment the block below and replace YOUR_ORG
+<script>
+(function(w,d,i,s){function l(){if(!d.getElementById(i)){var f=d.getElementsByTagName(s)[0],e=d.createElement(s);e.type="text/javascript",e.async=!0,e.src="https://do.featurebase.app/js/sdk.js",e.id=i,f.parentNode.insertBefore(e,f)}}if("object"==typeof w.Featurebase)l();else{w.Featurebase=function(){w.Featurebase.q.push(arguments)},w.Featurebase.q=[],l()}Featurebase("initialize_feedback_widget",{organization:"YOUR_ORG",theme:"light",placement:"right"})})(window,document,"featurebase-sdk","script");
+</script>
+──────────────────────────────────────────────────────────────────────────── -->
+
 <style>
 :root{
   --orange:#EE4D2D;--orange-light:#FFF0EC;
@@ -21,7 +36,7 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
 
-/* NAVBAR */
+/* ── NAVBAR ── */
 .navbar{background:var(--grad);height:56px;display:flex;align-items:center;padding:0 20px;gap:16px;position:sticky;top:0;z-index:200;box-shadow:0 2px 10px rgba(0,0,0,.2);}
 .nav-brand{display:flex;align-items:center;gap:8px;font-family:'Nunito',sans-serif;font-weight:900;font-size:1.25rem;color:#fff;cursor:pointer;white-space:nowrap;flex-shrink:0;text-decoration:none;}
 .nav-brand svg{width:30px;height:30px;}
@@ -31,128 +46,81 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
 .nav-right{margin-left:auto;display:flex;align-items:center;gap:16px;flex-shrink:0;}
 .nav-link{color:rgba(255,255,255,.9);font-size:.85rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:color .15s;text-decoration:none;}
 .nav-link:hover{color:#fff;}
-.lang-toggle{display:flex;background:rgba(255,255,255,.2);border-radius:20px;overflow:hidden;}
-.lang-btn{padding:4px 11px;font-size:.78rem;font-weight:700;color:rgba(255,255,255,.75);cursor:pointer;border:none;background:transparent;transition:all .2s;}
-.lang-btn.active{background:rgba(255,255,255,.9);color:var(--orange);border-radius:20px;}
 
-/* PAGES */
+/* ── PAGES ── */
 .page{display:none;}.page.active{display:block;}
 
-/* ── HOME ── */
-
-/* HERO IMAGE BANNER */
+/* ── BANNER ── */
 .hero-banner-wrap{background:#f0ebe4;padding:12px 20px;}
 .hero-banner-inner{max-width:1200px;margin:0 auto;}
 .hero-banner-img{
-  width:100%;height:220px;
-  border-radius:12px;
-  overflow:hidden;
-  background:#ddd url('YOUR_BANNER_IMAGE_URL_HERE') center/cover no-repeat;
-  display:flex;align-items:center;justify-content:center;
-  position:relative;
+  width:100%;height:220px;border-radius:12px;overflow:hidden;
+  background:#e0d8cf url('') center/cover no-repeat;
+  display:flex;align-items:center;justify-content:center;position:relative;
 }
-.hero-banner-placeholder{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:8px;color:#bbb;font-size:.85rem;text-align:center;
-  position:absolute;inset:0;
-  background:#e8e0d6;
-}
-.hero-banner-placeholder svg{opacity:.35;}
-@media(max-width:600px){.hero-banner-img{height:150px;}}
+.hero-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#aaa;font-size:.85rem;background:#e0d8cf;}
+.hero-placeholder svg{opacity:.3;}
+@media(max-width:600px){.hero-banner-img{height:140px;}}
 
-/* QUICK FILTER ICON ROW */
+/* ── QUICK FILTERS ── */
 .quick-row{background:#fff;border-bottom:1px solid #f0ebe4;}
 .quick-inner{max-width:1200px;margin:0 auto;padding:0 20px;}
-.quick-filters{display:flex;align-items:center;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.quick-filters{display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .quick-filters::-webkit-scrollbar{display:none;}
-.qf-item{
-  display:flex;flex-direction:column;align-items:center;gap:4px;
-  padding:10px 16px;cursor:pointer;
-  border-bottom:2px solid transparent;
-  transition:border-color .15s;
-  white-space:nowrap;flex-shrink:0;
-}
-.qf-item:hover{border-bottom-color:var(--orange);}
-.qf-item.active{border-bottom-color:var(--orange);}
-.qf-item.active .qf-icon{color:var(--orange);}
-.qf-item.active .qf-lbl{color:var(--orange);}
+.qf-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 18px;cursor:pointer;border-bottom:2px solid transparent;transition:border-color .15s;white-space:nowrap;flex-shrink:0;}
+.qf-item:hover,.qf-item.active{border-bottom-color:var(--orange);}
+.qf-item.active .qf-icon,.qf-item.active .qf-lbl{color:var(--orange);}
 .qf-icon{font-size:1.3rem;line-height:1;}
-.qf-lbl{font-size:.7rem;font-weight:400;color:#555;letter-spacing:.01em;}
+.qf-lbl{font-size:.7rem;font-weight:400;color:#555;}
 
-.home-wrap{background:#fff;padding-bottom:8px;}
+/* ── HOME WRAP ── */
+.home-wrap{background:#fff;padding-bottom:24px;}
 .home-section{max-width:1200px;margin:0 auto;padding:0 20px;}
-
 .sec-head{display:flex;align-items:center;justify-content:space-between;padding:16px 0 10px;}
-.sec-title{font-size:.82rem;font-weight:400;color:#333;letter-spacing:.03em;text-transform:uppercase;display:flex;align-items:center;gap:8px;}
+.sec-title{font-size:.82rem;font-weight:400;color:#333;letter-spacing:.05em;text-transform:uppercase;display:flex;align-items:center;gap:8px;}
 .sec-title::before{content:'';display:block;width:3px;height:14px;background:var(--orange);border-radius:2px;}
 .see-all{font-size:.78rem;font-weight:400;color:var(--orange);cursor:pointer;}
 
-/* CATEGORY SQUARES — Shopee style */
-.cat-grid{
-  display:grid;
-  grid-template-columns:repeat(10,1fr);
-  gap:1px;
-  background:#f0ebe4;
-  border:1px solid #f0ebe4;
-  border-radius:var(--r);
-  overflow:hidden;
-  margin-bottom:14px;
-  box-shadow:var(--sh);
-}
+/* ── CATEGORY GRID ── */
+.cat-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:1px;background:#eee;border:1px solid #eee;border-radius:var(--r);overflow:hidden;margin-bottom:14px;box-shadow:var(--sh);}
 @media(max-width:900px){.cat-grid{grid-template-columns:repeat(5,1fr);}}
 @media(max-width:480px){.cat-grid{grid-template-columns:repeat(4,1fr);}}
-.cat-item{
-  display:flex;flex-direction:column;align-items:center;gap:0;
-  background:#fff;cursor:pointer;
-  transition:background .15s;
-  text-align:center;overflow:hidden;
-}
+.cat-item{display:flex;flex-direction:column;align-items:center;background:#fff;cursor:pointer;transition:background .15s;text-align:center;overflow:hidden;}
 .cat-item:hover{background:#fff8f6;}
 .cat-item.active{background:#fff0ec;}
 .cat-item.active .cat-lbl{color:var(--orange);}
-.cat-img-wrap{
-  width:100%;aspect-ratio:1;
-  background:#f8f3ee;
-  display:flex;align-items:center;justify-content:center;
-  font-size:2rem;
-  overflow:hidden;
-  position:relative;
-}
+.cat-img-wrap{width:100%;aspect-ratio:1;background:#f8f3ee;display:flex;align-items:center;justify-content:center;overflow:hidden;}
 .cat-img-wrap img{width:100%;height:100%;object-fit:cover;}
-.cat-img-wrap .cat-emoji{font-size:2rem;}
-.cat-lbl{
-  font-size:.68rem;font-weight:400;color:#444;
-  padding:5px 4px 7px;
-  line-height:1.3;width:100%;
-}
+.cat-emoji{font-size:2rem;}
+.cat-lbl{font-size:.68rem;font-weight:400;color:#444;padding:5px 4px 7px;line-height:1.3;width:100%;}
 
-/* HOME PRODUCT GRID */
-.home-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:28px;}
+/* ── PRODUCT GRID ── */
+.home-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:24px;}
 @media(max-width:1000px){.home-grid{grid-template-columns:repeat(4,1fr);}}
 @media(max-width:640px){.home-grid{grid-template-columns:repeat(3,1fr);}}
 @media(max-width:380px){.home-grid{grid-template-columns:repeat(2,1fr);}}
 
-/* PRODUCT CARD */
+/* ── PRODUCT CARD ── */
 .product-card{background:var(--card);border-radius:var(--r);overflow:hidden;cursor:pointer;box-shadow:var(--sh);transition:transform .2s,box-shadow .2s;position:relative;}
 .product-card:hover{transform:scale(1.04);box-shadow:var(--shh);z-index:2;}
 .card-img{position:relative;width:100%;padding-top:100%;background:#f8f3ee;overflow:hidden;}
 .card-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
-.card-emoji{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:3.2rem;}
+.card-emoji{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:3rem;}
 .score-pill{position:absolute;top:7px;left:7px;background:#fff;border:2px solid var(--score-green);border-radius:6px;padding:2px 6px;font-family:'Nunito',sans-serif;font-weight:900;font-size:.78rem;color:var(--score-green);line-height:1.4;box-shadow:0 1px 4px rgba(0,0,0,.1);}
 .card-body{padding:7px 9px 9px;}
 .card-name{font-family:'Nunito',sans-serif;font-weight:800;font-size:.85rem;color:var(--td);line-height:1.3;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.card-cat{font-size:.7rem;color:var(--orange);font-weight:600;}
+.card-cat{font-size:.7rem;color:var(--orange);font-weight:500;}
 
-/* DISCOVER */
+/* ── DISCOVER ── */
 .disc-hero{background:var(--grad);padding:12px 22px 18px;}
 .disc-hero p{color:rgba(255,255,255,.9);font-size:.88rem;}
 .disc-main{max-width:1200px;margin:0 auto;padding:18px 20px 60px;}
 .toolbar{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:var(--r);padding:11px 16px;margin-bottom:14px;box-shadow:var(--sh);flex-wrap:wrap;gap:8px;}
-.toolbar-left{font-size:.85rem;color:var(--tm);font-weight:600;}
-.toolbar-left span{color:var(--orange);font-weight:800;}
-.sort-select{border:1.5px solid var(--orange);border-radius:6px;padding:4px 10px;font-size:.8rem;color:var(--orange);font-weight:700;cursor:pointer;background:#fff;outline:none;font-family:'DM Sans',sans-serif;}
+.toolbar-left{font-size:.85rem;color:var(--tm);font-weight:500;}
+.toolbar-left span{color:var(--orange);font-weight:700;}
+.sort-select{border:1.5px solid var(--orange);border-radius:6px;padding:4px 10px;font-size:.8rem;color:var(--orange);font-weight:600;cursor:pointer;background:#fff;outline:none;font-family:'DM Sans',sans-serif;}
 .pills{display:flex;gap:7px;margin-bottom:16px;flex-wrap:wrap;}
-.pill{padding:5px 13px;border-radius:20px;font-size:.78rem;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:#fff;color:var(--tm);transition:all .15s;}
+.pill{padding:5px 13px;border-radius:20px;font-size:.78rem;font-weight:500;cursor:pointer;border:1.5px solid var(--border);background:#fff;color:var(--tm);transition:all .15s;}
 .pill.active,.pill:hover{background:var(--orange);border-color:var(--orange);color:#fff;}
 .disc-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
 @media(max-width:1100px){.disc-grid{grid-template-columns:repeat(5,1fr);}}
@@ -160,7 +128,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
 @media(max-width:640px){.disc-grid{grid-template-columns:repeat(3,1fr);}}
 @media(max-width:380px){.disc-grid{grid-template-columns:repeat(2,1fr);}}
 
-/* SKELETON */
+/* ── SKELETON ── */
 .skel{animation:shimmer 1.4s infinite;background:linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%);background-size:200% 100%;}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .skel-card{background:#fff;border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);}
@@ -169,7 +137,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
 .skel-line{height:11px;margin-bottom:7px;border-radius:4px;}
 .skel-line.s{width:55%;}
 
-/* DETAIL */
+/* ── DETAIL ── */
 .det-header{background:var(--grad);padding:15px 26px 26px;color:#fff;}
 .back-btn{display:inline-flex;align-items:center;gap:5px;color:rgba(255,255,255,.85);font-size:.83rem;font-weight:600;cursor:pointer;margin-bottom:13px;transition:color .15s;}
 .back-btn:hover{color:#fff;}
@@ -179,14 +147,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
 .det-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.5rem;margin-bottom:3px;}
 .det-cat{opacity:.8;font-size:.86rem;margin-bottom:11px;}
 .det-badges{display:flex;gap:9px;flex-wrap:wrap;}
-.det-badge{background:rgba(255,255,255,.2);border-radius:8px;padding:5px 13px;font-size:.78rem;font-weight:700;}
+.det-badge{background:rgba(255,255,255,.2);border-radius:8px;padding:5px 13px;font-size:.78rem;font-weight:600;}
 .det-badge big{display:block;font-size:1rem;font-weight:900;margin-top:1px;}
 .det-body{max-width:1100px;margin:0 auto;padding:20px 20px 60px;}
 
+/* ── DETAIL CARDS ── */
 .c2{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:14px;}
 @media(max-width:560px){.c2{grid-template-columns:1fr;}}
 .ic{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--sh);}
-.ic-lbl{display:flex;align-items:center;gap:7px;font-size:.8rem;font-weight:700;color:var(--tm);margin-bottom:7px;}
+.ic-lbl{display:flex;align-items:center;gap:7px;font-size:.8rem;font-weight:600;color:var(--tm);margin-bottom:7px;}
 .ic-ico{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:.9rem;}
 .ic-ico.o{background:var(--orange-light);}.ic-ico.g{background:var(--green-light);}
 .ic-big{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.8rem;line-height:1;margin-bottom:3px;}
@@ -197,6 +166,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
 .ic-rng strong{color:var(--orange);font-weight:700;}
 .ic-rng strong.g{color:var(--green);}
 
+/* ── FINANCIAL ── */
 .fin{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--sh);margin-bottom:14px;}
 .fin-h{display:flex;align-items:center;gap:7px;font-family:'Nunito',sans-serif;font-weight:800;font-size:.92rem;margin-bottom:14px;}
 .fin-g{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
@@ -207,32 +177,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
 .fr:nth-child(odd){background:#faf7f4;}
 .fr.tot{background:#f0ebe4;font-weight:700;}
 .fr.net{background:#e8f8ee;font-weight:800;}
-.fr.net .fv{color:var(--green);}
-.fr.gross .fv{color:var(--green);}
+.fr.net .fv{color:var(--green);}.fr.gross .fv{color:var(--green);}
 .fl{color:var(--tm);}.fv{font-weight:700;}
 .fv.o{color:var(--orange);}.fv.r{color:#e74c3c;}.fv.b{color:#2980b9;}
 
-.src{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--sh);margin-bottom:14px;}
-.src-h{display:flex;align-items:center;gap:7px;font-family:'Nunito',sans-serif;font-weight:800;font-size:.92rem;margin-bottom:13px;}
-.src-g3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px;}
-@media(max-width:540px){.src-g3{grid-template-columns:1fr;}}
-.sbox{background:var(--orange-light);border-radius:8px;padding:11px;}
-.sbox-lbl{font-size:.74rem;font-weight:600;color:var(--tm);margin-bottom:4px;}
-.sbox-val{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.15rem;color:var(--orange);}
-.sbox-sub{font-size:.7rem;color:var(--tl);}
-.sbox ul{list-style:none;}
-.sbox ul li{font-size:.78rem;color:var(--tm);line-height:1.9;}
-.sbox ul li::before{content:"• ";color:var(--orange);font-weight:700;}
-.ali-strip{display:flex;align-items:center;justify-content:space-between;background:#fff8f5;border:1.5px solid #ffddd6;border-radius:8px;padding:11px 13px;margin-bottom:9px;flex-wrap:wrap;gap:9px;}
-.ali-strip p{font-size:.78rem;color:var(--tm);margin-top:2px;}
-.btn-o{background:var(--grad);color:#fff;border:none;border-radius:7px;padding:8px 16px;font-weight:800;font-size:.82rem;cursor:pointer;font-family:'Nunito',sans-serif;display:inline-flex;align-items:center;gap:5px;transition:opacity .15s;}
-.btn-o:hover{opacity:.9;}
-.pro-tip{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:10px 13px;font-size:.78rem;color:#1e40af;line-height:1.5;}
-
+/* ── SELLERS TABLE ── */
 .sel-card{background:var(--card);border-radius:var(--r);padding:16px;box-shadow:var(--sh);}
 .sel-h{display:flex;align-items:center;gap:7px;font-family:'Nunito',sans-serif;font-weight:800;font-size:.92rem;margin-bottom:13px;}
 .sel-t{width:100%;border-collapse:collapse;}
-.sel-t th{text-align:left;font-size:.7rem;font-weight:700;color:var(--tl);text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-bottom:2px solid var(--border);}
+.sel-t th{text-align:left;font-size:.7rem;font-weight:600;color:var(--tl);text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-bottom:2px solid var(--border);}
 .sel-t td{padding:10px 8px;font-size:.81rem;border-bottom:1px solid #f0ebe4;vertical-align:middle;}
 .sel-t tr:last-child td{border-bottom:none;}
 .rbg{width:27px;height:27px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.76rem;color:#fff;font-family:'Nunito',sans-serif;}
@@ -242,18 +195,30 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
 .rbn{background:var(--grad);}
 .shn{font-weight:700;}.shs{font-size:.7rem;color:var(--tl);}
 .stars{color:#F6A623;}
-.pb{padding:3px 8px;border-radius:20px;font-size:.71rem;font-weight:700;display:inline-block;}
+.pb{padding:3px 8px;border-radius:20px;font-size:.71rem;font-weight:600;display:inline-block;}
 .pe{background:var(--green-light);color:var(--green);border:1px solid #a8dfbe;}
 .pg{background:var(--amber-light);color:var(--amber);border:1px solid #fce08a;}
-.vb{background:transparent;border:1.5px solid var(--orange);color:var(--orange);border-radius:5px;padding:3px 9px;font-size:.76rem;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.vb{background:transparent;border:1.5px solid var(--orange);color:var(--orange);border-radius:5px;padding:3px 9px;font-size:.76rem;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;}
 .vb:hover{background:var(--orange);color:#fff;}
+
+/* ── LOADING OVERLAY ── */
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px;}
+.spinner{width:36px;height:36px;border:3px solid #f0ebe4;border-top-color:var(--orange);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-overlay p{font-size:.88rem;color:var(--tm);}
 
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
 </style>
 </head>
 <body>
 
-<!-- NAVBAR -->
+<!-- LOADING OVERLAY -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="spinner"></div>
+  <p>Loading products...</p>
+</div>
+
+<!-- ── NAVBAR ── -->
 <nav class="navbar">
   <a class="nav-brand" onclick="showPage('home')">
     <svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="8" fill="rgba(255,255,255,.2)"/><path d="M8 10h16M8 16h10M8 22h13" stroke="white" stroke-width="2.5" stroke-linecap="round"/><circle cx="24" cy="22" r="4" fill="#FFD700" stroke="white" stroke-width="1.5"/></svg>
@@ -264,50 +229,52 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
     <button class="nav-search-btn">🔍</button>
   </div>
   <div class="nav-right">
-    <a class="nav-link" onclick="showPage('discover')" data-i18n="nav_discover">Discover</a>
-    <a class="nav-link" onclick="openFeedback()" data-i18n="nav_feedback">Feedback</a>
-    <div class="lang-toggle">
-      <button class="lang-btn active" id="btn-en" onclick="setLang('en')">EN</button>
-      <button class="lang-btn" id="btn-id" onclick="setLang('id')">ID</button>
-    </div>
+    <a class="nav-link" onclick="showPage('discover')">Discover</a>
+    <a class="nav-link" onclick="openFeedback()">Feedback</a>
   </div>
 </nav>
 
-<!-- HOME -->
+<!-- ════════════════════════════════════
+     HOME PAGE
+════════════════════════════════════ -->
 <div class="page active" id="page-home">
 
-  <!-- IMAGE BANNER with padding around it -->
+  <!-- BANNER IMAGE
+       To set your banner: change the background-image URL in the style tag below,
+       OR update the CSS variable --banner-url in the <style> at top of file.       -->
   <div class="hero-banner-wrap">
     <div class="hero-banner-inner">
-      <div class="hero-banner-img" id="hero-banner-img">
-        <!-- Replace YOUR_BANNER_IMAGE_URL_HERE in the CSS above with your image URL -->
-        <!-- Or set it dynamically: document.getElementById('hero-banner-img').style.backgroundImage = "url('your-image.jpg')" -->
-        <div class="hero-banner-placeholder">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-          <span>Replace with your banner image</span>
+      <div class="hero-banner-img" id="hero-banner">
+        <div class="hero-placeholder">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <path d="M21 15l-5-5L5 21"/>
+          </svg>
+          <span>Add your banner image — see comment in HTML</span>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- QUICK FILTER ROW — Shopee-style icon strip -->
+  <!-- QUICK FILTER STRIP -->
   <div class="quick-row">
     <div class="quick-inner">
-      <div class="quick-filters" id="quick-filters">
-        <div class="qf-item active" onclick="quickFilter('hot')" id="qf-hot">
-          <span class="qf-icon">🔥</span><span class="qf-lbl" data-i18n="qf_hot">Hot Products</span>
+      <div class="quick-filters">
+        <div class="qf-item active" id="qf-hot" onclick="quickFilter('hot')">
+          <span class="qf-icon">🔥</span><span class="qf-lbl">Hot Products</span>
         </div>
-        <div class="qf-item" onclick="quickFilter('high_revenue')" id="qf-high_revenue">
-          <span class="qf-icon">💰</span><span class="qf-lbl" data-i18n="qf_high_rev">High Revenue</span>
+        <div class="qf-item" id="qf-high_revenue" onclick="quickFilter('high_revenue')">
+          <span class="qf-icon">💰</span><span class="qf-lbl">High Revenue</span>
         </div>
-        <div class="qf-item" onclick="quickFilter('low_revenue')" id="qf-low_revenue">
-          <span class="qf-icon">📉</span><span class="qf-lbl" data-i18n="qf_low_rev">Lowest Revenue</span>
+        <div class="qf-item" id="qf-low_revenue" onclick="quickFilter('low_revenue')">
+          <span class="qf-icon">📉</span><span class="qf-lbl">Lowest Revenue</span>
         </div>
-        <div class="qf-item" onclick="quickFilter('top_units')" id="qf-top_units">
-          <span class="qf-icon">📦</span><span class="qf-lbl" data-i18n="qf_top_units">Top Units/mo</span>
+        <div class="qf-item" id="qf-top_units" onclick="quickFilter('top_units')">
+          <span class="qf-icon">📦</span><span class="qf-lbl">Top Units/mo</span>
         </div>
-        <div class="qf-item" onclick="quickFilter('low_units')" id="qf-low_units">
-          <span class="qf-icon">🪣</span><span class="qf-lbl" data-i18n="qf_low_units">Lowest Units/mo</span>
+        <div class="qf-item" id="qf-low_units" onclick="quickFilter('low_units')">
+          <span class="qf-icon">🪣</span><span class="qf-lbl">Lowest Units/mo</span>
         </div>
       </div>
     </div>
@@ -316,34 +283,39 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
   <div class="home-wrap">
     <div class="home-section">
       <div class="sec-head">
-        <div class="sec-title" data-i18n="cat_sec">Categories</div>
-        <span class="see-all" onclick="showPage('discover')" data-i18n="see_all">See All</span>
+        <div class="sec-title">Categories</div>
+        <span class="see-all" onclick="showPage('discover')">See All</span>
       </div>
       <div class="cat-grid" id="home-cats"></div>
+
       <div class="sec-head">
-        <div class="sec-title" data-i18n="feat_sec">Featured Products</div>
-        <span class="see-all" onclick="showPage('discover')" data-i18n="see_all">See All</span>
+        <div class="sec-title">Featured Products</div>
+        <span class="see-all" onclick="showPage('discover')">See All</span>
       </div>
       <div class="home-grid" id="home-grid"></div>
     </div>
   </div>
 </div>
 
-<!-- DISCOVER -->
+<!-- ════════════════════════════════════
+     DISCOVER PAGE
+════════════════════════════════════ -->
 <div class="page" id="page-discover">
   <div class="disc-hero">
-    <p data-i18n="disc_sub">Discover high-potential products to sell with viability scores and revenue estimates</p>
+    <p>Discover high-potential products to sell — sorted by viability score</p>
   </div>
   <div class="disc-main">
     <div class="pills" id="disc-pills"></div>
     <div class="toolbar">
-      <div class="toolbar-left"><span id="product-count">0</span> <span data-i18n="pf">Products Found</span></div>
+      <div class="toolbar-left"><span id="product-count">0</span> Products Found</div>
       <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:.8rem;color:var(--tm);font-weight:600;" data-i18n="sort_by">Sort:</span>
+        <span style="font-size:.8rem;color:var(--tm);font-weight:500;">Sort:</span>
         <select class="sort-select" id="sort-select" onchange="sortProducts()">
-          <option value="score" data-i18n="ss">Viability Score</option>
-          <option value="revenue" data-i18n="sr">Potential Revenue</option>
-          <option value="units" data-i18n="su">Units Sold</option>
+          <option value="score">Viability Score</option>
+          <option value="revenue_up">Revenue (High → Low)</option>
+          <option value="revenue_down">Revenue (Low → High)</option>
+          <option value="units_down">Units (High → Low)</option>
+          <option value="units_up">Units (Low → High)</option>
         </select>
       </div>
     </div>
@@ -358,68 +330,76 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
   </div>
 </div>
 
-<!-- DETAIL -->
+<!-- ════════════════════════════════════
+     DETAIL PAGE
+════════════════════════════════════ -->
 <div class="page" id="page-detail">
   <div class="det-header">
-    <div class="back-btn" onclick="goBack()">← <span data-i18n="back">Back to Products</span></div>
+    <div class="back-btn" onclick="goBack()">← Back to Products</div>
     <div class="det-hero">
       <div class="det-img" id="d-img">📦</div>
       <div>
         <div class="det-title" id="d-name">—</div>
         <div class="det-cat" id="d-cat">—</div>
         <div class="det-badges">
-          <div class="det-badge"><span data-i18n="vs">Viability Score</span><big id="d-score">—</big></div>
-          <div class="det-badge"><span data-i18n="mu">Median Units/mo</span><big id="d-units">—</big></div>
+          <div class="det-badge">Viability Score<big id="d-score">—</big></div>
+          <div class="det-badge">New Sellers Units/mo<big id="d-units-new">—</big></div>
+          <div class="det-badge">Experienced Units/mo<big id="d-units-exp">—</big></div>
         </div>
       </div>
     </div>
   </div>
+
   <div class="det-body">
+    <!-- Revenue cards -->
     <div class="c2">
       <div class="ic">
-        <div class="ic-lbl"><div class="ic-ico o">💰</div><span data-i18n="op">Optimal Selling Price</span></div>
+        <div class="ic-lbl"><div class="ic-ico o">💰</div>Median Price</div>
         <div class="ic-big o" id="d-price">—</div>
-        <div class="ic-sub" data-i18n="rr">Recommended retail price</div>
-        <hr class="ic-div">
-        <div class="ic-rng"><span data-i18n="pr">Selling between</span><br><strong id="d-price-range">—</strong></div>
+        <div class="ic-sub">Typical selling price in this category</div>
       </div>
       <div class="ic">
-        <div class="ic-lbl"><div class="ic-ico g">📈</div><span data-i18n="prv">Potential Revenue</span></div>
-        <div class="ic-big g" id="d-rev">—</div>
-        <div class="ic-sub" data-i18n="me">Monthly for experienced sellers</div>
+        <div class="ic-lbl"><div class="ic-ico g">📈</div>Revenue Range</div>
+        <div class="ic-big g" id="d-rev-up">—</div>
+        <div class="ic-sub">Up to (experienced sellers/mo)</div>
         <hr class="ic-div">
-        <div class="ic-rng"><span data-i18n="sd">Sellers doing between</span><br><strong class="g" id="d-rev-range">—</strong></div>
+        <div class="ic-rng">Starting revenue: <strong id="d-rev-start">—</strong></div>
       </div>
     </div>
+
+    <!-- Revenue Scenarios -->
     <div class="fin">
-      <div class="fin-h">💵 <span data-i18n="fb">Financial Breakdown</span></div>
+      <div class="fin-h">📊 Revenue Scenarios</div>
       <div class="fin-g">
-        <div><div class="fin-st" data-i18n="mc">Monthly Costs</div><div id="fin-costs"></div></div>
-        <div><div class="fin-st" data-i18n="ms">Revenue Scenarios</div><div id="fin-scen"></div></div>
+        <div>
+          <div class="fin-st o">New Seller</div>
+          <div id="fin-new"></div>
+        </div>
+        <div>
+          <div class="fin-st g">Experienced Seller</div>
+          <div id="fin-exp"></div>
+        </div>
       </div>
     </div>
-    <div class="src">
-      <div class="src-h">📦 <span data-i18n="si">Sourcing Information</span></div>
-      <div class="src-g3">
-        <div class="sbox"><div class="sbox-lbl" data-i18n="rs">Recommended Suppliers</div><ul id="d-supp"></ul></div>
-        <div class="sbox"><div class="sbox-lbl" data-i18n="mo">Min. Order Qty</div><div class="sbox-val" id="d-moq">—</div><div class="sbox-sub" data-i18n="upo">units per order</div></div>
-        <div class="sbox"><div class="sbox-lbl" data-i18n="st">Shipping Time</div><div class="sbox-val" id="d-ship">—</div><div class="sbox-sub" data-i18n="de">days (estimated)</div></div>
-      </div>
-      <div class="ali-strip">
-        <div><strong data-i18n="fa">Find Suppliers on Alibaba</strong><p data-i18n="ba">Browse live listings and compare verified supplier prices</p></div>
-        <button class="btn-o" onclick="openAlibaba()"><span data-i18n="va">View on Alibaba</span> ↗</button>
-      </div>
-      <div class="pro-tip"><strong data-i18n="ptl">Pro Tip:</strong> <span data-i18n="ptt">Contact multiple suppliers to compare prices. Always request samples before large orders.</span></div>
-    </div>
+
+    <!-- Top Sellers -->
     <div class="sel-card">
-      <div class="sel-h">📊 <span data-i18n="ts">Top 10 Sellers Performance</span></div>
-      <div style="overflow-x:auto;">
+      <div class="sel-h">🏆 Top Sellers Performance</div>
+      <div id="sellers-loading" style="text-align:center;padding:24px;color:var(--tl);font-size:.85rem;">
+        <div class="spinner" style="margin:0 auto 10px;"></div>
+        Loading seller data...
+      </div>
+      <div style="overflow-x:auto;display:none;" id="sellers-table-wrap">
         <table class="sel-t">
           <thead><tr>
-            <th data-i18n="thr">Rank</th><th data-i18n="ths">Shop</th>
-            <th data-i18n="thrv">Revenue/mo</th><th data-i18n="thu">Units</th>
-            <th data-i18n="thp">Price</th><th data-i18n="thrt">Rating</th>
-            <th data-i18n="thpf">Performance</th><th data-i18n="thl">Link</th>
+            <th>Rank</th>
+            <th>Shop Name</th>
+            <th>Revenue Last Month</th>
+            <th>Units Sold</th>
+            <th>Price</th>
+            <th>Rating</th>
+            <th>Performance</th>
+            <th>Link</th>
           </tr></thead>
           <tbody id="sellers-tbody"></tbody>
         </table>
@@ -429,216 +409,401 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
 </div>
 
 <script>
-// CONFIG
-const SHEET_ID = 'YOUR_GOOGLE_SHEET_ID_HERE';
-const PROD_TAB = 'Products', SELL_TAB = 'Sellers';
+// ════════════════════════════════════════════════════════════
+//  CONFIG — SET YOUR MASTER SHEET ID HERE
+//  This is the Google Sheet with your Products master list.
+//  Get the ID from the URL:
+//  https://docs.google.com/spreadsheets/d/THIS_PART_HERE/edit
+// ════════════════════════════════════════════════════════════
+const MASTER_SHEET_ID  = 'YOUR_MASTER_SHEET_ID_HERE';
+const MASTER_TAB_NAME  = 'Sheet1'; // Change if your tab has a different name e.g. 'Products'
 
-// DEMO DATA
-const DEMO = [
-  {id:1,name_en:"Knee Support",name_id:"Pelindung Lutut",category_en:"Sports & Outdoor",category_id:"Olahraga & Outdoor",score:4.69,emoji:"🦵",image:"",median_price:60626,median_units:221,potential_revenue_new:13412745,potential_revenue_exp:24386809,optimal_price:63657,price_min:54563,price_max:69720,revenue_range_min:17070766,revenue_range_max:31702852,cost_per_unit:33344,ad_spend_pct:15,moq:100,shipping_days:"7-14",suppliers_en:"Alibaba (China)|1688.com (Domestic)|Local Wholesalers",suppliers_id:"Alibaba (China)|1688.com (Domestik)|Grosir Lokal",alibaba_search:"knee support brace"},
-  {id:2,name_en:"Sleeping Bag",name_id:"Kantong Tidur",category_en:"Sports & Outdoor",category_id:"Olahraga & Outdoor",score:4.46,emoji:"🛌",image:"",median_price:185000,median_units:143,potential_revenue_new:8500000,potential_revenue_exp:17800000,optimal_price:195000,price_min:165000,price_max:220000,revenue_range_min:12000000,revenue_range_max:25000000,cost_per_unit:95000,ad_spend_pct:15,moq:50,shipping_days:"10-18",suppliers_en:"Alibaba (China)|Outdoor Distributors",suppliers_id:"Alibaba (China)|Distributor Outdoor",alibaba_search:"sleeping bag camping"},
-  {id:3,name_en:"Gym Bag",name_id:"Tas Gym",category_en:"Sports & Outdoor",category_id:"Olahraga & Outdoor",score:4.44,emoji:"🎒",image:"",median_price:145000,median_units:198,potential_revenue_new:9500000,potential_revenue_exp:19200000,optimal_price:155000,price_min:125000,price_max:185000,revenue_range_min:13000000,revenue_range_max:28000000,cost_per_unit:72000,ad_spend_pct:15,moq:80,shipping_days:"7-14",suppliers_en:"Alibaba (China)|Sports Wholesale",suppliers_id:"Alibaba (China)|Grosir Olahraga",alibaba_search:"gym bag sport duffel"},
-  {id:4,name_en:"Outdoor Hat",name_id:"Topi Outdoor",category_en:"Fashion",category_id:"Fashion",score:4.44,emoji:"🧢",image:"",median_price:55000,median_units:312,potential_revenue_new:6800000,potential_revenue_exp:15200000,optimal_price:59000,price_min:45000,price_max:72000,revenue_range_min:9000000,revenue_range_max:20000000,cost_per_unit:18000,ad_spend_pct:15,moq:100,shipping_days:"7-14",suppliers_en:"Alibaba (China)|Garment Wholesale",suppliers_id:"Alibaba (China)|Grosir Garmen",alibaba_search:"outdoor hat UV brim"},
-  {id:5,name_en:"Baby Bib Set",name_id:"Set Celemek Bayi",category_en:"Baby & Kids",category_id:"Bayi & Anak",score:4.41,emoji:"👶",image:"",median_price:48000,median_units:425,potential_revenue_new:9500000,potential_revenue_exp:22000000,optimal_price:52000,price_min:38000,price_max:65000,revenue_range_min:14000000,revenue_range_max:30000000,cost_per_unit:14000,ad_spend_pct:15,moq:120,shipping_days:"7-14",suppliers_en:"Alibaba (China)|Baby Product Wholesale",suppliers_id:"Alibaba (China)|Grosir Produk Bayi",alibaba_search:"baby bib waterproof set"},
-  {id:6,name_en:"Phone Stand",name_id:"Stand Ponsel",category_en:"Electronics",category_id:"Elektronik",score:4.38,emoji:"📱",image:"",median_price:32000,median_units:580,potential_revenue_new:8800000,potential_revenue_exp:19500000,optimal_price:35000,price_min:25000,price_max:45000,revenue_range_min:12000000,revenue_range_max:26000000,cost_per_unit:8500,ad_spend_pct:15,moq:150,shipping_days:"7-14",suppliers_en:"Alibaba (China)|Tech Wholesale",suppliers_id:"Alibaba (China)|Grosir Teknologi",alibaba_search:"adjustable phone stand"},
-  {id:7,name_en:"Yoga Mat",name_id:"Matras Yoga",category_en:"Sports & Outdoor",category_id:"Olahraga & Outdoor",score:4.35,emoji:"🧘",image:"",median_price:125000,median_units:167,potential_revenue_new:7800000,potential_revenue_exp:16500000,optimal_price:132000,price_min:105000,price_max:160000,revenue_range_min:10000000,revenue_range_max:22000000,cost_per_unit:55000,ad_spend_pct:15,moq:75,shipping_days:"10-18",suppliers_en:"Alibaba (China)|Sports Distributor",suppliers_id:"Alibaba (China)|Distributor Olahraga",alibaba_search:"non-slip yoga mat"},
-  {id:8,name_en:"Water Bottle",name_id:"Botol Minum",category_en:"Kitchen & Home",category_id:"Dapur & Rumah",score:4.32,emoji:"🍶",image:"",median_price:78000,median_units:298,potential_revenue_new:10500000,potential_revenue_exp:24000000,optimal_price:85000,price_min:65000,price_max:105000,revenue_range_min:16000000,revenue_range_max:32000000,cost_per_unit:28000,ad_spend_pct:15,moq:100,shipping_days:"7-14",suppliers_en:"Alibaba (China)|Kitchen Distributors",suppliers_id:"Alibaba (China)|Distributor Dapur",alibaba_search:"insulated stainless water bottle"},
-  {id:9,name_en:"Resistance Bands",name_id:"Resistance Band",category_en:"Sports & Outdoor",category_id:"Olahraga & Outdoor",score:4.28,emoji:"💪",image:"",median_price:42000,median_units:390,potential_revenue_new:7200000,potential_revenue_exp:16800000,optimal_price:45000,price_min:32000,price_max:58000,revenue_range_min:11000000,revenue_range_max:22000000,cost_per_unit:11000,ad_spend_pct:15,moq:200,shipping_days:"7-14",suppliers_en:"Alibaba (China)|Fitness Wholesale",suppliers_id:"Alibaba (China)|Grosir Fitness",alibaba_search:"resistance bands workout set"},
-  {id:10,name_en:"Wireless Earbuds",name_id:"Earbuds Nirkabel",category_en:"Electronics",category_id:"Elektronik",score:4.25,emoji:"🎧",image:"",median_price:125000,median_units:312,potential_revenue_new:15600000,potential_revenue_exp:34000000,optimal_price:135000,price_min:98000,price_max:165000,revenue_range_min:22000000,revenue_range_max:45000000,cost_per_unit:48000,ad_spend_pct:15,moq:50,shipping_days:"7-14",suppliers_en:"Alibaba (China)|Audio Wholesale",suppliers_id:"Alibaba (China)|Grosir Audio",alibaba_search:"wireless TWS earbuds bluetooth"},
-  {id:11,name_en:"Skincare Set",name_id:"Set Skincare",category_en:"Beauty & Care",category_id:"Kecantikan",score:4.22,emoji:"✨",image:"",median_price:95000,median_units:445,potential_revenue_new:18500000,potential_revenue_exp:42000000,optimal_price:99000,price_min:78000,price_max:125000,revenue_range_min:28000000,revenue_range_max:56000000,cost_per_unit:32000,ad_spend_pct:15,moq:100,shipping_days:"14-21",suppliers_en:"Alibaba (China)|Korea Cosmetics Wholesale",suppliers_id:"Alibaba (China)|Grosir Kosmetik Korea",alibaba_search:"skincare set moisturizer serum"},
-  {id:12,name_en:"Backpack",name_id:"Ransel",category_en:"Fashion",category_id:"Fashion",score:4.18,emoji:"🎒",image:"",median_price:165000,median_units:267,potential_revenue_new:16000000,potential_revenue_exp:35000000,optimal_price:175000,price_min:140000,price_max:210000,revenue_range_min:22000000,revenue_range_max:46000000,cost_per_unit:72000,ad_spend_pct:15,moq:60,shipping_days:"10-18",suppliers_en:"Alibaba (China)|Bag Wholesale",suppliers_id:"Alibaba (China)|Grosir Tas",alibaba_search:"backpack school laptop casual"},
-];
-const DEMO_SEL = {1:[{rank:1,name:"Mega Sports Center",since:"3 years ago",revenue:20127832,units:332,price:65094,rating:4.7,performance:"excellent",link:"#"},{rank:2,name:"Premium Sports ID",since:"2 years ago",revenue:17399662,units:287,price:62000,rating:4.5,performance:"excellent",link:"#"},{rank:3,name:"Athletic Gear Indo",since:"3 years ago",revenue:14732118,units:243,price:63500,rating:4.8,performance:"excellent",link:"#"},{rank:4,name:"Sports Corner JKT",since:"1 year ago",revenue:12064574,units:199,price:61000,rating:4.7,performance:"good",link:"#"},{rank:5,name:"Fitness Central ID",since:"2 years ago",revenue:9397030,units:155,price:60000,rating:4.8,performance:"good",link:"#"}]};
-const CAT_ICONS = {"Sports & Outdoor":"🏃","Olahraga & Outdoor":"🏃","Fashion":"👗","Electronics":"⚡","Elektronik":"⚡","Baby & Kids":"👶","Bayi & Anak":"👶","Kitchen & Home":"🏠","Dapur & Rumah":"🏠","Beauty & Care":"💄","Kecantikan":"💄"};
+// ════════════════════════════════════════════════════════════
+//  YOUR MASTER SHEET COLUMNS (exact names from your sheet):
+//
+//  Product             → product name
+//  Google Sheet URL    → link to that product's individual seller sheet
+//  Score               → viability score
+//  Median Price        → typical price (Rp)
+//  New Sellers Units   → units/mo for new sellers
+//  Experienced Sellers Units → units/mo for experienced sellers
+//  Starting Revenue    → low end revenue estimate (Rp)
+//  Up to Revenue       → high end revenue estimate (Rp)
+//  Category            → category name
+//
+//  YOUR SELLER SHEETS — each product links to its own Google Sheet.
+//  That sheet should have these columns:
+//  Rank | Shop Name | Last Month Revenue | Units Sold | Price | Rating | Performance | Shop Link
+// ════════════════════════════════════════════════════════════
 
-// STRINGS
-let lang = 'en';
-const S = {
-  en:{nav_discover:"Discover",nav_feedback:"Feedback",hero_eye:"For Indonesian Sellers",hero_sub:"Data-driven product ideas with real revenue estimates for Shopee sellers.",hero_cta:"Explore Products →",stat_products:"Products",stat_rev:"Avg. Revenue/mo",stat_price:"Always",p1t:"🔥 Hot Products",p1s:"Top viability scores this week",p2t:"💰 High Revenue",p2s:"Products earning Rp20jt+/mo",cat_sec:"Categories",feat_sec:"Featured Products",see_all:"See All",disc_sub:"Discover high-potential products with viability scores and revenue estimates",pf:"Products Found",sort_by:"Sort:",ss:"Viability Score",sr:"Potential Revenue",su:"Units Sold",back:"Back to Products",vs:"Viability Score",mu:"Median Units/mo",op:"Optimal Selling Price",rr:"Recommended retail price",pr:"Selling between",prv:"Potential Revenue",me:"Monthly for experienced sellers",sd:"Sellers doing between",fb:"Financial Breakdown",mc:"Monthly Costs",ms:"Revenue Scenarios",cost_per_unit:"Cost per Unit",units_to_sell:"Units to Sell",product_cost:"Product Cost",ad_spend:"Ad Spend (15%)",total_costs:"Total Costs",new_sel:"New Seller (0-6 mo)",exp_sel:"Experienced (6+ mo)",gross_rev:"Gross Revenue",units_sold:"Units Sold",net_rev:"Net Revenue",profit_margin:"Profit Margin",si:"Sourcing Information",rs:"Recommended Suppliers",mo:"Min. Order Qty",upo:"units per order",st:"Shipping Time",de:"days (estimated)",fa:"Find Suppliers on Alibaba",ba:"Browse live listings and compare verified supplier prices",va:"View on Alibaba",ptl:"Pro Tip:",ptt:"Contact multiple suppliers to compare prices. Always request samples before large orders.",ts:"Top 10 Sellers Performance",thr:"Rank",ths:"Shop",thrv:"Revenue/mo",thu:"Units",thp:"Price",thrt:"Rating",thpf:"Performance",thl:"Link",visit:"Visit",excellent:"excellent",good:"good",per_mo:"/mo",cat_all:"All",qf_hot:"Hot Products",qf_high_rev:"High Revenue",qf_low_rev:"Lowest Revenue",qf_top_units:"Top Units/mo",qf_low_units:"Lowest Units/mo"},
-  id:{nav_discover:"Temukan",nav_feedback:"Masukan",hero_eye:"Untuk Penjual Indonesia",hero_sub:"Ide produk berbasis data dengan estimasi pendapatan nyata untuk penjual Shopee.",hero_cta:"Jelajahi Produk →",stat_products:"Produk",stat_rev:"Rata-rata Pendapatan/bln",stat_price:"Selalu",p1t:"🔥 Produk Panas",p1s:"Skor kelayakan teratas minggu ini",p2t:"💰 Pendapatan Tinggi",p2s:"Produk menghasilkan Rp20jt+/bln",cat_sec:"Kategori",feat_sec:"Produk Unggulan",see_all:"Lihat Semua",disc_sub:"Temukan produk berpotensi tinggi dengan skor kelayakan dan estimasi pendapatan",pf:"Produk Ditemukan",sort_by:"Urutkan:",ss:"Skor Kelayakan",sr:"Potensi Pendapatan",su:"Unit Terjual",back:"Kembali ke Produk",vs:"Skor Kelayakan",mu:"Median Unit/bln",op:"Harga Jual Optimal",rr:"Harga eceran yang disarankan",pr:"Dijual antara",prv:"Potensi Pendapatan",me:"Bulanan untuk penjual berpengalaman",sd:"Penjual menghasilkan antara",fb:"Rincian Keuangan",mc:"Biaya Bulanan",ms:"Skenario Pendapatan",cost_per_unit:"Biaya per Unit",units_to_sell:"Unit untuk Dijual",product_cost:"Biaya Produk",ad_spend:"Biaya Iklan (15%)",total_costs:"Total Biaya",new_sel:"Penjual Baru (0-6 bln)",exp_sel:"Berpengalaman (6+ bln)",gross_rev:"Pendapatan Kotor",units_sold:"Unit Terjual",net_rev:"Pendapatan Bersih",profit_margin:"Margin Keuntungan",si:"Informasi Pengadaan",rs:"Pemasok yang Disarankan",mo:"Min. Kuantitas Pemesanan",upo:"unit per pesanan",st:"Waktu Pengiriman",de:"hari (estimasi)",fa:"Temukan Pemasok di Alibaba",ba:"Jelajahi daftar langsung dan bandingkan harga pemasok terverifikasi",va:"Lihat di Alibaba",ptl:"Tips Pro:",ptt:"Hubungi beberapa pemasok untuk membandingkan harga. Selalu minta sampel sebelum pesanan besar.",ts:"Performa 10 Penjual Teratas",thr:"Peringkat",ths:"Toko",thrv:"Pendapatan/bln",thu:"Unit",thp:"Harga",thrt:"Rating",thpf:"Performa",thl:"Link",visit:"Kunjungi",excellent:"sangat baik",good:"baik",per_mo:"/bln",cat_all:"Semua",qf_hot:"Produk Panas",qf_high_rev:"Pendapatan Tinggi",qf_low_rev:"Pendapatan Rendah",qf_top_units:"Unit Terbanyak",qf_low_units:"Unit Terendah"}
-};
-const t = k => S[lang][k] || S.en[k] || k;
-
-function setLang(l) {
-  lang=l;
-  document.getElementById('btn-en').classList.toggle('active',l==='en');
-  document.getElementById('btn-id').classList.toggle('active',l==='id');
-  document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=t(el.getAttribute('data-i18n')));
-  const sel=document.getElementById('sort-select');
-  if(sel){sel.options[0].text=t('ss');sel.options[1].text=t('sr');sel.options[2].text=t('su');}
-  renderHomeCats();renderHomeGrid();renderPills();renderDiscGrid();
-  if(currentProduct)renderDetail(currentProduct);
-}
-
-// STATE
-let allProducts=[],filtered=[],activeCat='all',searchQ='',currentProduct=null,sellersData={},alibabaQ='',prevPage='home';
-
-// NAV
-function showPage(name){
-  const prev=document.querySelector('.page.active');
-  if(prev)prevPage=prev.id.replace('page-','');
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById('page-'+name).classList.add('active');
-  window.scrollTo(0,0);
-  if(name==='discover'){renderPills();renderDiscGrid();}
-  if(name==='home'){renderHomeCats();renderHomeGrid();}
-}
-function goBack(){showPage(prevPage==='detail'?'discover':prevPage);}
-
-// FORMAT
-const fmt=n=>n?'Rp'+Math.round(n).toLocaleString('id-ID'):'—';
-const fmtS=n=>{if(!n)return'—';if(n>=1e6)return'Rp'+(n/1e6).toFixed(1)+'jt';if(n>=1e3)return'Rp'+(n/1e3).toFixed(0)+'rb';return fmt(n);};
-
-// FETCH
-async function fetchSheet(tab){
-  if(SHEET_ID==='YOUR_GOOGLE_SHEET_ID_HERE')return null;
-  try{const url=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(tab)}`;const res=await fetch(url);const txt=await res.text();const json=JSON.parse(txt.substring(47).slice(0,-2));const cols=json.table.cols.map(c=>c.label);return json.table.rows.map(row=>{const o={};row.c.forEach((c,i)=>{o[cols[i]]=c?c.v:'';});return o;});}catch(e){console.warn(e);return null;}
-}
-
-async function loadData(){
-  const rows=await fetchSheet(PROD_TAB);
-  if(rows&&rows.length){
-    allProducts=rows.map((r,i)=>({id:i+1,name_en:r.name_en||r.name||'',name_id:r.name_id||r.name||'',category_en:r.category_en||r.category||'',category_id:r.category_id||r.category||'',score:parseFloat(r.score)||0,emoji:r.emoji||'📦',image:r.image||'',median_units:parseFloat(r.median_units)||0,potential_revenue_new:parseFloat(r.potential_revenue_new)||0,potential_revenue_exp:parseFloat(r.potential_revenue_exp)||0,optimal_price:parseFloat(r.optimal_price)||0,price_min:parseFloat(r.price_min)||0,price_max:parseFloat(r.price_max)||0,revenue_range_min:parseFloat(r.revenue_range_min)||0,revenue_range_max:parseFloat(r.revenue_range_max)||0,cost_per_unit:parseFloat(r.cost_per_unit)||0,ad_spend_pct:parseFloat(r.ad_spend_pct)||15,moq:r.moq||'—',shipping_days:r.shipping_days||'—',suppliers_en:r.suppliers_en||'',suppliers_id:r.suppliers_id||r.suppliers_en||'',alibaba_search:r.alibaba_search||r.name_en||''}));
-    const sr=await fetchSheet(SELL_TAB);
-    if(sr){sellersData={};sr.forEach(r=>{const pid=parseInt(r.product_id);if(!sellersData[pid])sellersData[pid]=[];sellersData[pid].push({rank:parseInt(r.rank)||sellersData[pid].length+1,name:r.shop_name||'',since:r.since||'',revenue:parseFloat(r.monthly_revenue)||0,units:parseFloat(r.units_sold)||0,price:parseFloat(r.price)||0,rating:parseFloat(r.rating)||0,performance:r.performance||'good',link:r.shop_link||'#'});});}
-  }else{allProducts=DEMO;sellersData=DEMO_SEL;}
-  filtered=[...allProducts];
-  document.getElementById('stat-count').textContent=allProducts.length+'+';
-  renderHomeCats();renderHomeGrid();renderPills();renderDiscGrid();
-}
-
-// HOME
+// Category image mapping — add/change as needed
 const CAT_IMAGES = {
-  "Sports & Outdoor":"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=120&q=70",
-  "Olahraga & Outdoor":"https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=120&q=70",
-  "Fashion":"https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=120&q=70",
-  "Electronics":"https://images.unsplash.com/photo-1498049794561-7780e7231661?w=120&q=70",
-  "Elektronik":"https://images.unsplash.com/photo-1498049794561-7780e7231661?w=120&q=70",
-  "Baby & Kids":"https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=120&q=70",
-  "Bayi & Anak":"https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=120&q=70",
-  "Kitchen & Home":"https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=120&q=70",
-  "Dapur & Rumah":"https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=120&q=70",
-  "Beauty & Care":"https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=120&q=70",
-  "Kecantikan":"https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=120&q=70",
+  'Sports & Outdoor':  'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=200&q=70',
+  'Fashion':           'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&q=70',
+  'Electronics':       'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=200&q=70',
+  'Baby & Kids':       'https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=200&q=70',
+  'Kitchen & Home':    'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&q=70',
+  'Beauty & Care':     'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=200&q=70',
+  'Health':            'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=200&q=70',
+  'Automotive':        'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=200&q=70',
+  'Food & Drink':      'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=200&q=70',
+  'Pets':              'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=200&q=70',
+};
+const CAT_EMOJI_FALLBACK = {
+  'Sports & Outdoor':'🏃','Fashion':'👗','Electronics':'⚡',
+  'Baby & Kids':'👶','Kitchen & Home':'🏠','Beauty & Care':'💄',
+  'Health':'💊','Automotive':'🚗','Food & Drink':'🍜','Pets':'🐾',
 };
 
-function renderHomeCats(){
-  const cats=[...new Set(allProducts.map(p=>lang==='id'?p.category_id:p.category_en))];
-  document.getElementById('home-cats').innerHTML=cats.map(c=>{
-    const img=CAT_IMAGES[c];
-    return `<div class="cat-item" onclick="gotoCat('${c}')">
+// ════════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════════
+let allProducts    = [];
+let filtered       = [];
+let activeCat      = 'all';
+let searchQ        = '';
+let currentProduct = null;
+let prevPage       = 'home';
+let activeQuick    = 'hot';
+
+// ════════════════════════════════════════════════════════════
+//  FETCH HELPERS
+// ════════════════════════════════════════════════════════════
+
+// Extract Sheet ID from a full Google Sheets URL
+function extractSheetId(url) {
+  if (!url) return null;
+  const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  return m ? m[1] : null;
+}
+
+// Fetch any Google Sheet tab as array of row objects
+async function fetchSheet(sheetId, tabName) {
+  if (!sheetId || sheetId.includes('YOUR_')) return null;
+  try {
+    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(tabName)}`;
+    const res  = await fetch(url);
+    const txt  = await res.text();
+    // Google wraps the JSON in a callback — strip it
+    const json = JSON.parse(txt.substring(47).slice(0, -2));
+    const cols = json.table.cols.map(c => c.label);
+    return json.table.rows
+      .filter(row => row.c && row.c.some(c => c && c.v !== null && c.v !== ''))
+      .map(row => {
+        const obj = {};
+        row.c.forEach((cell, i) => { obj[cols[i]] = cell ? cell.v : ''; });
+        return obj;
+      });
+  } catch(e) {
+    console.warn('Sheet fetch failed:', sheetId, tabName, e);
+    return null;
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  FORMAT
+// ════════════════════════════════════════════════════════════
+function fmt(n) {
+  if (!n && n !== 0) return '—';
+  return 'Rp' + Math.round(n).toLocaleString('id-ID');
+}
+function fmtShort(n) {
+  if (!n) return '—';
+  if (n >= 1e9) return 'Rp' + (n/1e9).toFixed(1) + 'M';
+  if (n >= 1e6) return 'Rp' + (n/1e6).toFixed(1) + 'jt';
+  if (n >= 1e3) return 'Rp' + (n/1e3).toFixed(0) + 'rb';
+  return fmt(n);
+}
+function fmtScore(n) {
+  if (!n) return '—';
+  return parseFloat(n).toFixed(2);
+}
+
+// ════════════════════════════════════════════════════════════
+//  LOAD DATA
+// ════════════════════════════════════════════════════════════
+async function loadData() {
+  document.getElementById('loading-overlay').style.display = 'flex';
+
+  const rows = await fetchSheet(MASTER_SHEET_ID, MASTER_TAB_NAME);
+
+  if (!rows || !rows.length) {
+    console.warn('No data loaded — check MASTER_SHEET_ID and MASTER_TAB_NAME, and make sure the sheet is publicly shared.');
+    document.getElementById('loading-overlay').style.display = 'none';
+    return;
+  }
+
+  // Map your exact column names to internal fields
+  allProducts = rows.map((r, i) => ({
+    id:              i + 1,
+    name:            r['Product']                      || '',
+    sheetUrl:        r['Google Sheet URL']             || '',
+    score:           parseFloat(r['Score'])            || 0,
+    medianPrice:     parseFloat(r['Median Price'])     || 0,
+    newUnits:        parseFloat(r['New Sellers Units'])       || 0,
+    expUnits:        parseFloat(r['Experienced Sellers Units']) || 0,
+    startRevenue:    parseFloat(r['Starting Revenue']) || 0,
+    upToRevenue:     parseFloat(r['Up to Revenue'])    || 0,
+    category:        r['Category']                     || 'Other',
+    image:           r['Image']                        || '', // optional column
+    emoji:           r['Emoji']                        || '📦', // optional column
+  })).filter(p => p.name); // skip empty rows
+
+  filtered = [...allProducts];
+  document.getElementById('loading-overlay').style.display = 'none';
+  renderHomeCats();
+  renderHomeGrid();
+  renderPills();
+  renderDiscGrid();
+}
+
+// ════════════════════════════════════════════════════════════
+//  NAVIGATION
+// ════════════════════════════════════════════════════════════
+function showPage(name) {
+  const prev = document.querySelector('.page.active');
+  if (prev) prevPage = prev.id.replace('page-', '');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  window.scrollTo(0, 0);
+  if (name === 'discover') { renderPills(); renderDiscGrid(); }
+  if (name === 'home')     { renderHomeCats(); renderHomeGrid(); }
+}
+function goBack() { showPage(prevPage === 'detail' ? 'discover' : prevPage); }
+
+// ════════════════════════════════════════════════════════════
+//  HOME — CATEGORIES
+// ════════════════════════════════════════════════════════════
+function renderHomeCats() {
+  const cats = [...new Set(allProducts.map(p => p.category))];
+  document.getElementById('home-cats').innerHTML = cats.map(c => {
+    const img = CAT_IMAGES[c];
+    const emoji = CAT_EMOJI_FALLBACK[c] || '🛍️';
+    return `
+    <div class="cat-item ${activeCat === c ? 'active' : ''}" onclick="gotoCat('${c}')">
       <div class="cat-img-wrap">
-        ${img?`<img src="${img}" alt="${c}" loading="lazy">`:`<span class="cat-emoji">${CAT_ICONS[c]||'🛍️'}</span>`}
+        ${img
+          ? `<img src="${img}" alt="${c}" loading="lazy" onerror="this.style.display='none'">`
+          : `<span class="cat-emoji">${emoji}</span>`}
       </div>
       <div class="cat-lbl">${c}</div>
     </div>`;
   }).join('');
 }
-function gotoCat(c){activeCat=c;showPage('discover');}
 
-let activeQuickFilter = 'hot';
+function gotoCat(c) { activeCat = c; showPage('discover'); }
+
+// ════════════════════════════════════════════════════════════
+//  HOME — QUICK FILTERS + PRODUCT GRID
+// ════════════════════════════════════════════════════════════
 function quickFilter(type) {
-  activeQuickFilter = type;
+  activeQuick = type;
   document.querySelectorAll('.qf-item').forEach(el => el.classList.remove('active'));
-  const el = document.getElementById('qf-'+type);
-  if(el) el.classList.add('active');
+  const el = document.getElementById('qf-' + type);
+  if (el) el.classList.add('active');
   renderHomeGrid();
 }
 
-function renderHomeGrid(){
+function renderHomeGrid() {
   let show = [...allProducts];
-  if(activeQuickFilter === 'hot')          show.sort((a,b)=>b.score-a.score);
-  else if(activeQuickFilter === 'high_revenue') show.sort((a,b)=>b.potential_revenue_exp-a.potential_revenue_exp);
-  else if(activeQuickFilter === 'low_revenue')  show.sort((a,b)=>a.potential_revenue_exp-b.potential_revenue_exp);
-  else if(activeQuickFilter === 'top_units')    show.sort((a,b)=>b.median_units-a.median_units);
-  else if(activeQuickFilter === 'low_units')    show.sort((a,b)=>a.median_units-b.median_units);
-  document.getElementById('home-grid').innerHTML=show.slice(0,12).map((p,i)=>cardHTML(p,i)).join('');
+  if      (activeQuick === 'hot')          show.sort((a,b) => b.score - a.score);
+  else if (activeQuick === 'high_revenue') show.sort((a,b) => b.upToRevenue - a.upToRevenue);
+  else if (activeQuick === 'low_revenue')  show.sort((a,b) => a.upToRevenue - b.upToRevenue);
+  else if (activeQuick === 'top_units')    show.sort((a,b) => b.expUnits - a.expUnits);
+  else if (activeQuick === 'low_units')    show.sort((a,b) => a.expUnits - b.expUnits);
+  document.getElementById('home-grid').innerHTML = show.slice(0, 12).map((p,i) => cardHTML(p, i)).join('');
 }
 
-// DISCOVER
-function renderPills(){
-  const cats=['all',...new Set(allProducts.map(p=>lang==='id'?p.category_id:p.category_en))];
-  document.getElementById('disc-pills').innerHTML=cats.map(c=>`<div class="pill ${c===activeCat?'active':''}" onclick="filterCat('${c}')">${c==='all'?t('cat_all'):c}</div>`).join('');
+// ════════════════════════════════════════════════════════════
+//  DISCOVER — FILTERS + SORT + GRID
+// ════════════════════════════════════════════════════════════
+function renderPills() {
+  const cats = ['all', ...new Set(allProducts.map(p => p.category))];
+  document.getElementById('disc-pills').innerHTML = cats.map(c =>
+    `<div class="pill ${c === activeCat ? 'active' : ''}" onclick="filterCat('${c}')">
+      ${c === 'all' ? 'All' : c}
+    </div>`
+  ).join('');
 }
-function filterCat(c){activeCat=c;applyFilters();renderPills();}
-function onSearch(q){searchQ=q.toLowerCase();applyFilters();}
-function applyFilters(){
-  filtered=allProducts.filter(p=>{
-    const name=(lang==='id'?p.name_id:p.name_en).toLowerCase();
-    const cat=lang==='id'?p.category_id:p.category_en;
-    return (activeCat==='all'||cat===activeCat)&&(!searchQ||name.includes(searchQ));
+
+function filterCat(c) { activeCat = c; applyFilters(); renderPills(); }
+
+function onSearch(q) { searchQ = q.toLowerCase(); applyFilters(); }
+
+function applyFilters() {
+  filtered = allProducts.filter(p => {
+    const nameMatch  = !searchQ || p.name.toLowerCase().includes(searchQ);
+    const catMatch   = activeCat === 'all' || p.category === activeCat;
+    return nameMatch && catMatch;
   });
   sortProducts();
 }
-function sortProducts(){
-  const v=document.getElementById('sort-select')?.value||'score';
-  filtered.sort((a,b)=>v==='score'?b.score-a.score:v==='revenue'?b.potential_revenue_exp-a.potential_revenue_exp:b.median_units-a.median_units);
+
+function sortProducts() {
+  const v = document.getElementById('sort-select')?.value || 'score';
+  filtered.sort((a, b) => {
+    if (v === 'score')        return b.score - a.score;
+    if (v === 'revenue_up')   return b.upToRevenue - a.upToRevenue;
+    if (v === 'revenue_down') return a.upToRevenue - b.upToRevenue;
+    if (v === 'units_down')   return b.expUnits - a.expUnits;
+    if (v === 'units_up')     return a.expUnits - b.expUnits;
+    return 0;
+  });
   renderDiscGrid();
 }
-function renderDiscGrid(){
-  const g=document.getElementById('disc-grid');
-  document.getElementById('product-count').textContent=filtered.length;
-  g.innerHTML=filtered.length?filtered.map((p,i)=>cardHTML(p,i)).join(''):`<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--tl)">🔍 No products found.</div>`;
+
+function renderDiscGrid() {
+  const g = document.getElementById('disc-grid');
+  document.getElementById('product-count').textContent = filtered.length;
+  g.innerHTML = filtered.length
+    ? filtered.map((p, i) => cardHTML(p, i)).join('')
+    : `<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--tl)">🔍 No products found.</div>`;
 }
 
-// CARD HTML
-function cardHTML(p,idx){
-  const name=lang==='id'?p.name_id:p.name_en;
-  const cat=lang==='id'?p.category_id:p.category_en;
-  const delay=Math.min(idx*.04,.5);
-  return `<div class="product-card" onclick="openDetail(${p.id})" style="animation:fadeUp .35s ease ${delay}s both;">
+// ════════════════════════════════════════════════════════════
+//  PRODUCT CARD
+// ════════════════════════════════════════════════════════════
+function cardHTML(p, idx) {
+  const delay = Math.min(idx * 0.04, 0.5);
+  return `
+  <div class="product-card" onclick="openDetail(${p.id})"
+       style="animation:fadeUp .35s ease ${delay}s both;">
     <div class="card-img">
-      ${p.image?`<img src="${p.image}" alt="${name}" onerror="this.style.display='none'">`:''}
-      <div class="card-emoji"${p.image?' style="display:none"':''}>${p.emoji}</div>
-      <div class="score-pill">${p.score.toFixed(2)}</div>
+      ${p.image ? `<img src="${p.image}" alt="${p.name}" onerror="this.style.display='none'">` : ''}
+      <div class="card-emoji" ${p.image ? 'style="display:none"' : ''}>${p.emoji}</div>
+      <div class="score-pill">${fmtScore(p.score)}</div>
     </div>
     <div class="card-body">
-      <div class="card-name">${name}</div>
-      <div class="card-cat">${cat}</div>
+      <div class="card-name">${p.name}</div>
+      <div class="card-cat">${p.category}</div>
     </div>
   </div>`;
 }
 
-// DETAIL
-function openDetail(id){
-  const p=allProducts.find(x=>x.id===id);if(!p)return;
-  currentProduct=p;
-  prevPage=document.querySelector('.page.active')?.id.replace('page-','')||'discover';
+// ════════════════════════════════════════════════════════════
+//  DETAIL PAGE
+// ════════════════════════════════════════════════════════════
+function openDetail(id) {
+  const p = allProducts.find(x => x.id === id);
+  if (!p) return;
+  currentProduct = p;
+  prevPage = document.querySelector('.page.active')?.id.replace('page-', '') || 'discover';
   renderDetail(p);
-  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
   document.getElementById('page-detail').classList.add('active');
-  window.scrollTo(0,0);
-}
-function renderDetail(p){
-  const name=lang==='id'?p.name_id:p.name_en;
-  const cat=lang==='id'?p.category_id:p.category_en;
-  const supp=(lang==='id'?p.suppliers_id:p.suppliers_en).split('|');
-  document.getElementById('d-name').textContent=name;
-  document.getElementById('d-cat').textContent=cat;
-  document.getElementById('d-score').textContent=p.score.toFixed(2);
-  document.getElementById('d-units').textContent=p.median_units+t('per_mo');
-  const di=document.getElementById('d-img');
-  di.innerHTML=p.image?`<img src="${p.image}" alt="${name}">`:(p.emoji||'📦');
-  document.getElementById('d-price').textContent=fmt(p.optimal_price);
-  document.getElementById('d-price-range').textContent=`${fmt(p.price_min)} – ${fmt(p.price_max)}`;
-  document.getElementById('d-rev').textContent=fmt(p.potential_revenue_exp);
-  document.getElementById('d-rev-range').textContent=`${fmt(p.revenue_range_min)} – ${fmt(p.revenue_range_max)}${t('per_mo')}`;
-  const pc=p.cost_per_unit*p.median_units,ad=pc*(p.ad_spend_pct/100),tc=pc+ad;
-  const nu=Math.round(p.median_units*.55),ng=nu*p.optimal_price,nc=p.cost_per_unit*nu+ng*.15,nn=ng-nc;
-  const eg=p.potential_revenue_exp,en2=eg-tc;
-  document.getElementById('fin-costs').innerHTML=`<div class="fr"><span class="fl">${t('cost_per_unit')}</span><span class="fv o">${fmt(p.cost_per_unit)}</span></div><div class="fr"><span class="fl">${t('units_to_sell')}</span><span class="fv o">${p.median_units} units</span></div><div class="fr"><span class="fl">${t('product_cost')}</span><span class="fv r">${fmt(pc)}</span></div><div class="fr"><span class="fl">${t('ad_spend')}</span><span class="fv r">${fmt(ad)}</span></div><div class="fr tot"><span class="fl">${t('total_costs')}</span><span class="fv">${fmt(tc)}</span></div>`;
-  document.getElementById('fin-scen').innerHTML=`<div style="margin-bottom:12px"><div class="fin-st o">${t('new_sel')}</div><div class="fr gross"><span class="fl">${t('gross_rev')}</span><span class="fv">${fmt(ng)}</span></div><div class="fr"><span class="fl">${t('units_sold')}</span><span class="fv o">${nu}</span></div><div class="fr"><span class="fl">${t('total_costs')}</span><span class="fv r">${fmt(nc)}</span></div><div class="fr net"><span class="fl">${t('net_rev')}</span><span class="fv">${fmt(nn)}</span></div><div class="fr"><span class="fl">${t('profit_margin')}</span><span class="fv b">${ng?((nn/ng)*100).toFixed(1):0}%</span></div></div><div><div class="fin-st g">${t('exp_sel')}</div><div class="fr gross"><span class="fl">${t('gross_rev')}</span><span class="fv">${fmt(eg)}</span></div><div class="fr"><span class="fl">${t('units_sold')}</span><span class="fv o">${p.median_units}</span></div><div class="fr"><span class="fl">${t('total_costs')}</span><span class="fv r">${fmt(tc)}</span></div><div class="fr net"><span class="fl">${t('net_rev')}</span><span class="fv">${fmt(en2)}</span></div><div class="fr"><span class="fl">${t('profit_margin')}</span><span class="fv b">${eg?((en2/eg)*100).toFixed(1):0}%</span></div></div>`;
-  document.getElementById('d-supp').innerHTML=supp.map(s=>`<li>${s.trim()}</li>`).join('');
-  document.getElementById('d-moq').textContent=p.moq;
-  document.getElementById('d-ship').textContent=p.shipping_days;
-  alibabaQ=p.alibaba_search;
-  const sellers=(sellersData[p.id]||[]).slice(0,10);
-  document.getElementById('sellers-tbody').innerHTML=sellers.length?sellers.map(s=>`<tr><td><div class="rbg ${s.rank===1?'rb1':s.rank===2?'rb2':s.rank===3?'rb3':'rbn'}">${s.rank}</div></td><td><div class="shn">${s.name}</div><div class="shs">${s.since}</div></td><td style="color:var(--green);font-weight:800">${fmt(s.revenue)}</td><td style="font-weight:700">${s.units}</td><td style="color:var(--orange);font-weight:700">${fmt(s.price)}</td><td><span class="stars">★</span> ${s.rating}</td><td><span class="pb ${s.performance==='excellent'?'pe':'pg'}">${t(s.performance==='excellent'?'excellent':'good')}</span></td><td><button class="vb" onclick="window.open('${s.link}','_blank')">${t('visit')} ↗</button></td></tr>`).join(''):`<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--tl)">No seller data yet.</td></tr>`;
+  window.scrollTo(0, 0);
+  loadSellerData(p); // fetch seller sheet in background
 }
 
-function openAlibaba(){window.open(`https://www.alibaba.com/trade/search?SearchText=${encodeURIComponent(alibabaQ)}`,'_blank');}
-function openFeedback(){alert('Configure Featurebase: uncomment and add your org name in the script tag at the top of the file.');}
+function renderDetail(p) {
+  document.getElementById('d-name').textContent     = p.name;
+  document.getElementById('d-cat').textContent      = p.category;
+  document.getElementById('d-score').textContent    = fmtScore(p.score);
+  document.getElementById('d-units-new').textContent = p.newUnits + '/mo';
+  document.getElementById('d-units-exp').textContent = p.expUnits + '/mo';
 
+  const di = document.getElementById('d-img');
+  di.innerHTML = p.image ? `<img src="${p.image}" alt="${p.name}">` : (p.emoji || '📦');
+
+  document.getElementById('d-price').textContent    = fmt(p.medianPrice);
+  document.getElementById('d-rev-up').textContent   = fmtShort(p.upToRevenue) + '/mo';
+  document.getElementById('d-rev-start').textContent = fmt(p.startRevenue) + '/mo';
+
+  // New seller scenario (uses newUnits)
+  const newGross  = p.newUnits * p.medianPrice;
+  const newCosts  = newGross * 0.55; // rough: ~55% costs (product + fees + ads)
+  const newNet    = newGross - newCosts;
+
+  // Experienced seller scenario (uses expUnits)
+  const expGross  = p.upToRevenue;
+  const expCosts  = expGross * 0.45;
+  const expNet    = expGross - expCosts;
+
+  document.getElementById('fin-new').innerHTML = `
+    <div class="fr gross"><span class="fl">Gross Revenue</span><span class="fv">${fmt(newGross)}</span></div>
+    <div class="fr"><span class="fl">Units Sold</span><span class="fv o">${p.newUnits}/mo</span></div>
+    <div class="fr"><span class="fl">Est. Costs</span><span class="fv r">${fmt(newCosts)}</span></div>
+    <div class="fr net"><span class="fl">Net Revenue</span><span class="fv">${fmt(newNet)}</span></div>
+    <div class="fr"><span class="fl">Profit Margin</span><span class="fv b">${newGross ? ((newNet/newGross)*100).toFixed(1) : 0}%</span></div>`;
+
+  document.getElementById('fin-exp').innerHTML = `
+    <div class="fr gross"><span class="fl">Gross Revenue</span><span class="fv">${fmt(expGross)}</span></div>
+    <div class="fr"><span class="fl">Units Sold</span><span class="fv o">${p.expUnits}/mo</span></div>
+    <div class="fr"><span class="fl">Est. Costs</span><span class="fv r">${fmt(expCosts)}</span></div>
+    <div class="fr net"><span class="fl">Net Revenue</span><span class="fv">${fmt(expNet)}</span></div>
+    <div class="fr"><span class="fl">Profit Margin</span><span class="fv b">${expGross ? ((expNet/expGross)*100).toFixed(1) : 0}%</span></div>`;
+
+  // Reset sellers section while loading
+  document.getElementById('sellers-loading').style.display = 'block';
+  document.getElementById('sellers-table-wrap').style.display = 'none';
+}
+
+// ════════════════════════════════════════════════════════════
+//  LOAD SELLER DATA from per-product Google Sheet
+// ════════════════════════════════════════════════════════════
+async function loadSellerData(p) {
+  const sheetId = extractSheetId(p.sheetUrl);
+
+  if (!sheetId) {
+    document.getElementById('sellers-loading').innerHTML =
+      '<p style="color:var(--tl);padding:20px 0;">No seller sheet linked for this product.</p>';
+    return;
+  }
+
+  // Try fetching — the seller sheet's first tab (Sheet1 or whatever it's named)
+  // We try common tab names automatically
+  let rows = null;
+  for (const tab of ['Sheet1', 'Sellers', 'Data', p.name]) {
+    rows = await fetchSheet(sheetId, tab);
+    if (rows && rows.length) break;
+  }
+
+  document.getElementById('sellers-loading').style.display = 'none';
+  document.getElementById('sellers-table-wrap').style.display = 'block';
+
+  if (!rows || !rows.length) {
+    document.getElementById('sellers-tbody').innerHTML =
+      `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--tl)">No seller data found. Make sure the sheet is publicly shared.</td></tr>`;
+    return;
+  }
+
+  // Map seller columns — handles both your exact column names and common alternatives
+  const sellers = rows.slice(0, 10).map((r, i) => ({
+    rank:        parseInt(r['Rank'] || r['rank'])                           || i + 1,
+    name:        r['Shop Name']     || r['shop_name']    || r['Store']      || '',
+    revenue:     parseFloat(r['Last Month Revenue'] || r['monthly_revenue'] || r['Revenue'] || 0),
+    units:       parseFloat(r['Units Sold']         || r['units_sold']      || r['Units']   || 0),
+    price:       parseFloat(r['Price']              || r['price']                           || 0),
+    rating:      parseFloat(r['Rating']             || r['rating']                          || 0),
+    performance: r['Performance']   || r['performance']  || '',
+    link:        r['Shop Link']     || r['shop_link']     || r['Link']      || '#',
+  }));
+
+  document.getElementById('sellers-tbody').innerHTML = sellers.map(s => {
+    const rankClass = s.rank === 1 ? 'rb1' : s.rank === 2 ? 'rb2' : s.rank === 3 ? 'rb3' : 'rbn';
+    const perfClass = s.performance.toLowerCase().includes('excellent') ? 'pe' : 'pg';
+    const perfLabel = s.performance || '—';
+    return `
+    <tr>
+      <td><div class="rbg ${rankClass}">${s.rank}</div></td>
+      <td><div class="shn">${s.name}</div></td>
+      <td style="color:var(--green);font-weight:700">${fmt(s.revenue)}</td>
+      <td style="font-weight:600">${s.units || '—'}</td>
+      <td style="color:var(--orange);font-weight:600">${fmt(s.price)}</td>
+      <td>${s.rating ? `<span class="stars">★</span> ${s.rating}` : '—'}</td>
+      <td>${perfLabel ? `<span class="pb ${perfClass}">${perfLabel}</span>` : '—'}</td>
+      <td><button class="vb" onclick="window.open('${s.link}','_blank')">Visit ↗</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function openFeedback() {
+  // Uncomment when Featurebase is configured:
+  // window.Featurebase('open_feedback_widget');
+  alert('Feedback coming soon!');
+}
+
+// ── START ──
 loadData();
 </script>
 </body>
