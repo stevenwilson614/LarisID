@@ -393,12 +393,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
         <table class="sel-t">
           <thead><tr>
             <th>Rank</th>
-            <th>Shop Name</th>
-            <th>Revenue Last Month</th>
-            <th>Units Sold</th>
+            <th>Store Name</th>
+            <th>Location</th>
+            <th>30-day Revenue</th>
+            <th>Avg Monthly Revenue</th>
+            <th>30-day Sales</th>
+            <th>Avg Monthly Sales</th>
             <th>Price</th>
             <th>Rating</th>
-            <th>Performance</th>
+            <th>Stock</th>
+            <th>Wishlist</th>
             <th>Link</th>
           </tr></thead>
           <tbody id="sellers-tbody"></tbody>
@@ -410,13 +414,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
 
 <script>
 // ════════════════════════════════════════════════════════════
-//  1zKpY_hOafVaP9ap44v9WDdS2iP4eHj7eMscTHGTvqRU
+//  CONFIG — 1zKpY_hOafVaP9ap44v9WDdS2iP4eHj7eMscTHGTvqRU
 //  This is the Google Sheet with your Products master list.
-//  Get the ID from the URL: 
+//  Get the ID from the URL:
 //  https://docs.google.com/spreadsheets/d/1zKpY_hOafVaP9ap44v9WDdS2iP4eHj7eMscTHGTvqRU/edit
 // ════════════════════════════════════════════════════════════
 const MASTER_SHEET_ID  = '1zKpY_hOafVaP9ap44v9WDdS2iP4eHj7eMscTHGTvqRU';
-const MASTER_TAB_NAME  = 'DataPinter - Produk'; // Change if your tab has a different name e.g. 'Products'
+const MASTER_TAB_NAME  = 'SheetList'; // Change if your tab has a different name e.g. 'Products'
 
 // ════════════════════════════════════════════════════════════
 //  YOUR MASTER SHEET COLUMNS (exact names from your sheet):
@@ -767,32 +771,59 @@ async function loadSellerData(p) {
     return;
   }
 
-  // Map seller columns — handles both your exact column names and common alternatives
-  const sellers = rows.slice(0, 10).map((r, i) => ({
-    rank:        parseInt(r['Rank'] || r['rank'])                           || i + 1,
-    name:        r['Shop Name']     || r['shop_name']    || r['Store']      || '',
-    revenue:     parseFloat(r['Last Month Revenue'] || r['monthly_revenue'] || r['Revenue'] || 0),
-    units:       parseFloat(r['Units Sold']         || r['units_sold']      || r['Units']   || 0),
-    price:       parseFloat(r['Price']              || r['price']                           || 0),
-    rating:      parseFloat(r['Rating']             || r['rating']                          || 0),
-    performance: r['Performance']   || r['performance']  || '',
-    link:        r['Shop Link']     || r['shop_link']     || r['Link']      || '#',
-  }));
+  // Map your exact seller sheet columns
+  const sellers = rows
+    .slice(0, 20) // grab up to 20, then sort and take top 10
+    .map((r, i) => ({
+      rank:         parseInt(r['No'])                        || i + 1,
+      name:         r['Store Name']                          || '',
+      location:     r['Location']                            || '',
+      trend:        r['Trend']                               || '',
+      brand:        r['Brand']                               || '',
+      listingDate:  r['Listing Date']                        || '',
+      origPrice:    parseFloat(r['Original Price'])          || 0,
+      price:        parseFloat(r['Price'])                   || 0,
+      revenue30:    parseFloat(r['30-day Revenue'])          || 0,
+      revenueAvg:   parseFloat(r['Average monthly revenue']) || 0,
+      revenueTotal: parseFloat(r['Total Revenue'])           || 0,
+      sales30:      parseFloat(r['30-day Sales'])            || 0,
+      salesAvg:     parseFloat(r['Average monthly sales'])   || 0,
+      salesTotal:   parseFloat(r['Total Sold'])              || 0,
+      stock:        parseFloat(r['Stock Count'])             || 0,
+      stockValue:   parseFloat(r['Stock Value'])             || 0,
+      rating:       parseFloat(r['Rating'])                  || 0,
+      reviews:      parseFloat(r['Review Count'])            || 0,
+      wishlist:     parseFloat(r['Wishlist'])                || 0,
+      comments:     parseFloat(r['Comments'])                || 0,
+      slug:         r['Slug']                                || '',
+      url:          r['URL']                                 || '#',
+      image:        r['Image']                               || '',
+      newRevenue:   parseFloat(r['New Revenue'])             || 0,
+    }))
+    .sort((a, b) => b.revenueAvg - a.revenueAvg) // rank by average monthly revenue
+    .slice(0, 10)
+    .map((s, i) => ({ ...s, rank: i + 1 }));
 
   document.getElementById('sellers-tbody').innerHTML = sellers.map(s => {
     const rankClass = s.rank === 1 ? 'rb1' : s.rank === 2 ? 'rb2' : s.rank === 3 ? 'rb3' : 'rbn';
-    const perfClass = s.performance.toLowerCase().includes('excellent') ? 'pe' : 'pg';
-    const perfLabel = s.performance || '—';
     return `
     <tr>
       <td><div class="rbg ${rankClass}">${s.rank}</div></td>
-      <td><div class="shn">${s.name}</div></td>
-      <td style="color:var(--green);font-weight:700">${fmt(s.revenue)}</td>
-      <td style="font-weight:600">${s.units || '—'}</td>
+      <td>
+        <div class="shn">${s.name}</div>
+        ${s.brand ? `<div class="shs">${s.brand}</div>` : ''}
+      </td>
+      <td style="color:var(--tl);font-size:.78rem">${s.location || '—'}</td>
+      <td style="color:var(--green);font-weight:700">${fmt(s.revenue30)}</td>
+      <td style="color:var(--green);font-weight:700">${fmt(s.revenueAvg)}</td>
+      <td style="font-weight:600">${s.sales30 || '—'}</td>
+      <td style="font-weight:600">${s.salesAvg || '—'}</td>
       <td style="color:var(--orange);font-weight:600">${fmt(s.price)}</td>
-      <td>${s.rating ? `<span class="stars">★</span> ${s.rating}` : '—'}</td>
-      <td>${perfLabel ? `<span class="pb ${perfClass}">${perfLabel}</span>` : '—'}</td>
-      <td><button class="vb" onclick="window.open('${s.link}','_blank')">Visit ↗</button></td>
+      <td>${s.rating ? `<span class="stars">★</span> ${s.rating}` : '—'}
+          ${s.reviews ? `<span style="color:var(--tl);font-size:.72rem"> (${s.reviews})</span>` : ''}</td>
+      <td style="color:var(--tl);font-size:.78rem">${s.stock ? s.stock.toLocaleString() : '—'}</td>
+      <td style="color:var(--tl);font-size:.78rem">${s.wishlist ? s.wishlist.toLocaleString() : '—'}</td>
+      <td><button class="vb" onclick="window.open('${s.url}','_blank')">Visit ↗</button></td>
     </tr>`;
   }).join('');
 }
