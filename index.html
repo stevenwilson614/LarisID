@@ -431,7 +431,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
                 <span style="color:var(--tl);font-size:.9rem">–</span>
                 <span class="det-price-hi" id="d-price-hi">—</span>
               </div>
-              <div class="det-price-note">Median price shown in bold — based on sellers doing &gt;1% of total sales</div>
+              <div class="det-price-note">Median price shown in bold</div>
             </div>
 
             <!-- revenue range -->
@@ -444,7 +444,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
                 <span style="color:var(--tl);font-size:.9rem">–</span>
                 <span class="det-rev-hi" id="d-rev-hi">—</span>
               </div>
-              <div class="det-rev-note">Median revenue shown in bold — based on sellers doing &gt;1% of total New Revenue</div>
+              <div class="det-rev-note">Median revenue shown in bold</div>
             </div>
 
             <!-- stat pills -->
@@ -466,7 +466,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
 
           <!-- store age in business -->
           <div class="det-section">
-            <div class="det-section-title">🏪 Time Stores Have Been in Business</div>
+            <div class="det-section-title">📅 Age of Product Listing</div>
             <div class="det-age-row">
               <div class="det-age-box">
                 <div class="det-age-lbl">Shortest</div>
@@ -870,8 +870,8 @@ function renderDetail(p) {
   document.getElementById('d-score2').textContent = fmtScore(p.score);
   document.getElementById('d-cat').textContent    = p.category;
   document.getElementById('d-name').textContent   = p.name;
-  document.getElementById('d-units-new').textContent = p.newUnits + '/mo';
-  document.getElementById('d-units-exp').textContent = p.expUnits + '/mo';
+  document.getElementById('d-units-new').textContent = Math.round(p.newUnits) + '/mo';
+  document.getElementById('d-units-exp').textContent = Math.round(p.expUnits) + '/mo';
 
   // Main image — show emoji or image placeholder; thumbs filled after seller data loads
   const mainImg = document.getElementById('d-main-img');
@@ -1054,22 +1054,43 @@ async function loadSellerData(p) {
     document.getElementById('d-rev-hi').textContent  = fmtShort(rHi);
   }
 
-  // Store age — parse "22 months ago", "3 years ago", "1 year ago" etc from Listing Date or Since
-  function parseAgeMonths(val) {
+  // Age of Product Listing — parse Listing Date (column G) as an actual date
+  // Output: "8 months", "1 year 4 months", "3 years", etc.
+  function parseListingDate(val) {
     if (!val) return null;
-    const s = String(val).toLowerCase();
-    const yM = s.match(/(\d+)\s*year/);
-    const mM = s.match(/(\d+)\s*month/);
+    const s = String(val).trim();
+
+    // Try direct date parse (handles "2023-06-15", "June 15 2023", "15/06/2023" etc)
+    const direct = new Date(s);
+    if (!isNaN(direct.getTime()) && direct.getFullYear() > 2000) {
+      const now = new Date();
+      const diffMs = now - direct;
+      const totalMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30.44));
+      return totalMonths > 0 ? totalMonths : 1;
+    }
+
+    // Fallback: handle "22 months ago", "3 years ago", "1 year 4 months ago"
+    const lower = s.toLowerCase();
+    const yM = lower.match(/(\d+)\s*year/);
+    const mM = lower.match(/(\d+)\s*month/);
     if (yM) return parseInt(yM[1]) * 12 + (mM ? parseInt(mM[1]) : 0);
     if (mM) return parseInt(mM[1]);
     return null;
   }
-  const ages = qualified.map(s => parseAgeMonths(s.listingDate)).filter(v => v !== null).sort((a,b)=>a-b);
-  if (ages.length >= 3) {
-    const fmtAge = m => m >= 12 ? `${(m/12).toFixed(1)} yrs` : `${m} mo`;
+
+  function fmtAge(totalMonths) {
+    if (totalMonths < 12) return `${totalMonths} month${totalMonths !== 1 ? 's' : ''}`;
+    const years  = Math.floor(totalMonths / 12);
+    const months = totalMonths % 12;
+    if (months === 0) return `${years} year${years !== 1 ? 's' : ''}`;
+    return `${years} year${years !== 1 ? 's' : ''} ${months} month${months !== 1 ? 's' : ''}`;
+  }
+
+  const ages = qualified.map(s => parseListingDate(s.listingDate)).filter(v => v !== null).sort((a,b) => a-b);
+  if (ages.length >= 1) {
     document.getElementById('d-age-min').textContent = fmtAge(ages[0]);
-    document.getElementById('d-age-max').textContent = fmtAge(ages[ages.length-1]);
-    document.getElementById('d-age-med').textContent = fmtAge(ages[Math.floor(ages.length/2)]);
+    document.getElementById('d-age-max').textContent = fmtAge(ages[ages.length - 1]);
+    document.getElementById('d-age-med').textContent = fmtAge(ages[Math.floor(ages.length / 2)]);
   }
 
   // Common features/colors — pull from Brand column and Trend column
