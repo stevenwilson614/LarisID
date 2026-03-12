@@ -45,17 +45,101 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
 /* ── PAGES ── */
 .page{display:none;}.page.active{display:block;}
 
-/* ── BANNER ── */
+/* ── BANNER — 3-panel Shopee grid ── */
 .hero-banner-wrap{background:#f0ebe4;padding:12px 20px;}
 .hero-banner-inner{max-width:1200px;margin:0 auto;}
-.hero-banner-img{
-  width:100%;height:220px;border-radius:12px;overflow:hidden;
-  background:#e0d8cf url('') center/cover no-repeat;
-  display:flex;align-items:center;justify-content:center;position:relative;
+
+.banner-grid{
+  display:grid;
+  grid-template-columns:2fr 1fr;
+  grid-template-rows:110px 110px;
+  gap:6px;
+  border-radius:12px;
+  overflow:hidden;
 }
-.hero-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#aaa;font-size:.85rem;background:#e0d8cf;}
-.hero-placeholder svg{opacity:.3;}
-@media(max-width:600px){.hero-banner-img{height:140px;}}
+@media(max-width:700px){
+  .banner-grid{grid-template-columns:1fr;grid-template-rows:auto auto auto;}
+  .banner-main{grid-row:1;}
+}
+
+/* main left panel spans both rows */
+.banner-main{
+  grid-row:1/3;
+  position:relative;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 28px;
+  min-height:220px;
+}
+.banner-main-bg{
+  position:absolute;inset:0;
+  background:linear-gradient(135deg,#F53D2D 0%,#FF6633 60%,#ff8c42 100%);
+  z-index:0;
+}
+.banner-main-deco{
+  position:absolute;right:-20px;top:-20px;
+  width:220px;height:220px;
+  background:rgba(255,255,255,.07);
+  border-radius:50%;
+  z-index:1;
+}
+.banner-main-deco::after{
+  content:'';position:absolute;
+  right:30px;bottom:-40px;
+  width:160px;height:160px;
+  background:rgba(255,255,255,.05);
+  border-radius:50%;
+}
+.banner-main-content{position:relative;z-index:2;color:#fff;}
+.banner-eyebrow{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.85;margin-bottom:6px;}
+.banner-headline{font-family:'Nunito',sans-serif;font-weight:900;font-size:1.75rem;line-height:1.15;margin-bottom:7px;}
+.banner-highlight{color:#FFD700;text-shadow:0 2px 8px rgba(0,0,0,.2);}
+.banner-sub{font-size:.8rem;opacity:.9;line-height:1.5;margin-bottom:14px;}
+.banner-cta{
+  background:#fff;color:var(--orange);
+  border:none;border-radius:6px;
+  padding:8px 20px;font-weight:800;font-size:.82rem;
+  cursor:pointer;font-family:'Nunito',sans-serif;
+  transition:transform .15s,box-shadow .15s;
+  white-space:nowrap;
+}
+.banner-cta:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.15);}
+
+/* right stat cards inside main panel */
+.banner-main-right{position:relative;z-index:2;}
+.banner-stat-stack{display:flex;flex-direction:column;gap:7px;}
+.banner-stat-card{
+  background:rgba(255,255,255,.18);
+  backdrop-filter:blur(4px);
+  border:1px solid rgba(255,255,255,.25);
+  border-radius:10px;
+  padding:8px 12px;
+  display:flex;align-items:center;gap:10px;
+  min-width:160px;
+}
+.bsc-icon{font-size:1.3rem;line-height:1;}
+.bsc-val{font-family:'Nunito',sans-serif;font-weight:900;font-size:1rem;color:#fff;line-height:1;}
+.bsc-lbl{font-size:.68rem;color:rgba(255,255,255,.8);margin-top:1px;}
+@media(max-width:580px){.banner-main-right{display:none;}}
+
+/* side panels */
+.banner-side{
+  position:relative;overflow:hidden;
+  display:flex;align-items:center;
+  padding:0 18px;cursor:pointer;
+}
+.banner-side:hover .banner-side-cta{opacity:1;transform:translateX(3px);}
+.banner-side-bg{position:absolute;inset:0;z-index:0;transition:transform .3s;}
+.banner-side:hover .banner-side-bg{transform:scale(1.03);}
+.bs-orange{background:linear-gradient(135deg,#c0392b,#EE4D2D);}
+.bs-purple{background:linear-gradient(135deg,#1a237e,#6C63FF);}
+.banner-side-content{position:relative;z-index:1;color:#fff;display:flex;align-items:center;gap:12px;width:100%;}
+.banner-side-icon{font-size:2rem;line-height:1;flex-shrink:0;}
+.banner-side-title{font-family:'Nunito',sans-serif;font-weight:900;font-size:1rem;margin-bottom:2px;}
+.banner-side-sub{font-size:.72rem;opacity:.85;line-height:1.3;}
+.banner-side-cta{margin-left:auto;font-size:.75rem;font-weight:700;opacity:.75;white-space:nowrap;transition:opacity .2s,transform .2s;flex-shrink:0;}
 
 /* ── QUICK FILTERS ── */
 .quick-row{background:#fff;border-bottom:1px solid #f0ebe4;}
@@ -257,7 +341,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
 /* ── FEEDBACK TAB ── */
 .feedback-tab{
   position:fixed;
-  right:0;
+  right:16px;
   top:50%;
   transform:translateY(-50%);
   z-index:500;
@@ -274,8 +358,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
   text-orientation:mixed;
   transform:rotate(180deg);
   padding:16px 10px;
-  border-radius:8px 0 0 8px;
-  box-shadow:-3px 0 12px rgba(0,0,0,.18);
+  border-radius:8px;
+  box-shadow:0 4px 16px rgba(0,0,0,.2);
   transition:padding .2s, box-shadow .2s;
   display:flex;
   align-items:center;
@@ -283,7 +367,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
 }
 .feedback-tab:hover .feedback-tab-inner{
   padding:20px 12px;
-  box-shadow:-4px 0 18px rgba(238,77,45,.3);
+  box-shadow:0 6px 20px rgba(238,77,45,.35);
 }
 .loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px;}
 .spinner{width:36px;height:36px;border:3px solid #f0ebe4;border-top-color:var(--orange);border-radius:50%;animation:spin .7s linear infinite;}
@@ -327,15 +411,67 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--td);}
        OR update the CSS variable --banner-url in the <style> at top of file.       -->
   <div class="hero-banner-wrap">
     <div class="hero-banner-inner">
-      <div class="hero-banner-img" id="hero-banner">
-        <div class="hero-placeholder">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <rect x="3" y="3" width="18" height="18" rx="2"/>
-            <circle cx="8.5" cy="8.5" r="1.5"/>
-            <path d="M21 15l-5-5L5 21"/>
-          </svg>
-          <span>Add your banner image — see comment in HTML</span>
+      <div class="banner-grid">
+
+        <!-- PANEL 1 — main large left panel -->
+        <div class="banner-main">
+          <div class="banner-main-bg"></div>
+          <div class="banner-main-deco"></div>
+          <div class="banner-main-content">
+            <div class="banner-eyebrow">🇮🇩 For Indonesian Shopee Sellers</div>
+            <div class="banner-headline">Temukan Produk<br><span class="banner-highlight">Terlaris</span> di Shopee</div>
+            <div class="banner-sub">Data-driven insights. Real revenue estimates.<br>100% Free.</div>
+            <button class="banner-cta" onclick="showPage('discover')">Explore Products →</button>
+          </div>
+          <div class="banner-main-right">
+            <div class="banner-stat-stack">
+              <div class="banner-stat-card">
+                <div class="bsc-icon">📦</div>
+                <div class="bsc-text">
+                  <div class="bsc-val" id="stat-count">—</div>
+                  <div class="bsc-lbl">Products Tracked</div>
+                </div>
+              </div>
+              <div class="banner-stat-card">
+                <div class="bsc-icon">💰</div>
+                <div class="bsc-text">
+                  <div class="bsc-val">Free</div>
+                  <div class="bsc-lbl">Always & Forever</div>
+                </div>
+              </div>
+              <div class="banner-stat-card">
+                <div class="bsc-icon">📈</div>
+                <div class="bsc-text">
+                  <div class="bsc-val">Live</div>
+                  <div class="bsc-lbl">Updated Monthly</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+
+        <!-- PANEL 2 — top right -->
+        <div class="banner-side banner-side-top" onclick="quickFilter('hot'); document.querySelector('.home-grid').scrollIntoView({behavior:'smooth'})">
+          <div class="banner-side-bg bs-orange"></div>
+          <div class="banner-side-content">
+            <div class="banner-side-icon">🔥</div>
+            <div class="banner-side-title">Produk Panas</div>
+            <div class="banner-side-sub">Viability score tertinggi minggu ini</div>
+            <div class="banner-side-cta">Lihat Sekarang →</div>
+          </div>
+        </div>
+
+        <!-- PANEL 3 — bottom right -->
+        <div class="banner-side banner-side-bot" onclick="quickFilter('high_revenue'); document.querySelector('.home-grid').scrollIntoView({behavior:'smooth'})">
+          <div class="banner-side-bg bs-purple"></div>
+          <div class="banner-side-content">
+            <div class="banner-side-icon">💎</div>
+            <div class="banner-side-title">Pendapatan Tinggi</div>
+            <div class="banner-side-sub">Produk menghasilkan Rp20jt+/bulan</div>
+            <div class="banner-side-cta">Temukan →</div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -751,6 +887,8 @@ async function loadData() {
 
   filtered = [...allProducts];
   document.getElementById('loading-overlay').style.display = 'none';
+  const statCount = document.getElementById('stat-count');
+  if (statCount) statCount.textContent = allProducts.length + '+';
   renderHomeCats();
   renderHomeGrid();
   renderPills();
