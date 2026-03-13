@@ -162,14 +162,14 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 .cat-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:1px;background:#eee;border:1px solid #eee;border-radius:var(--r);overflow:hidden;margin-bottom:14px;box-shadow:var(--sh);}
 @media(max-width:900px){.cat-grid{grid-template-columns:repeat(5,1fr);}}
 @media(max-width:480px){.cat-grid{grid-template-columns:repeat(4,1fr);}}
-.cat-item{display:flex;flex-direction:column;align-items:center;background:#fff;cursor:pointer;transition:background .15s;text-align:center;overflow:hidden;}
-.cat-item:hover{background:#fff8f6;}
-.cat-item.active{background:#fff0ec;}
-.cat-item.active .cat-lbl{color:var(--orange);}
-.cat-img-wrap{width:100%;aspect-ratio:1;background:#f8f3ee;display:flex;align-items:center;justify-content:center;overflow:hidden;}
-.cat-img-wrap img{width:100%;height:100%;object-fit:cover;}
-.cat-emoji{font-size:2rem;}
-.cat-lbl{font-size:.68rem;font-weight:400;color:#444;padding:5px 4px 7px;line-height:1.3;width:100%;}
+.cat-item{display:flex;flex-direction:column;align-items:center;background:#fff;cursor:pointer;transition:background .15s;text-align:center;overflow:hidden;padding:10px 6px 6px;}
+.cat-item:hover .cat-circle{background:#e8e8e8;}
+.cat-item.active .cat-circle{background:#e8e8e8;}
+.cat-item.active .cat-lbl{color:var(--orange);font-weight:600;}
+.cat-circle{width:72px;height:72px;border-radius:50%;background:#efefef;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:8px;transition:background .15s;flex-shrink:0;}
+.cat-circle img{width:80%;height:80%;object-fit:contain;}
+.cat-img-wrap{display:none;}
+.cat-lbl{font-size:.72rem;font-weight:500;color:#333;line-height:1.3;width:100%;}
 
 /* ── PRODUCT GRID ── */
 .home-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:24px;}
@@ -477,7 +477,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
   </a>
   <div class="nav-search">
     <input type="text" id="search-input" placeholder="Search products..." oninput="onSearch(this.value)">
-    <button class="nav-search-btn">🔍</button>
+    <button class="nav-search-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></button>
   </div>
   <div class="nav-right">
     <a class="nav-link" onclick="showPage('discover')">Discover</a>
@@ -511,21 +511,21 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
           <div class="banner-main-right">
             <div class="banner-stat-stack">
               <div class="banner-stat-card">
-                <div class="bsc-icon">📦</div>
+                <div class="bsc-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
                 <div class="bsc-text">
                   <div class="bsc-val" id="stat-count">—</div>
                   <div class="bsc-lbl">Products Tracked</div>
                 </div>
               </div>
               <div class="banner-stat-card">
-                <div class="bsc-icon">💰</div>
+                <div class="bsc-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M9 9h4.5a1.5 1.5 0 0 1 0 3H10a1.5 1.5 0 0 0 0 3H15"/></svg></div>
                 <div class="bsc-text">
                   <div class="bsc-val">Free</div>
                   <div class="bsc-lbl">Always & Forever</div>
                 </div>
               </div>
               <div class="banner-stat-card">
-                <div class="bsc-icon">📈</div>
+                <div class="bsc-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22,7 13.5,15.5 8.5,10.5 2,17"/><polyline points="16,7 22,7 22,13"/></svg></div>
                 <div class="bsc-text">
                   <div class="bsc-val">Live</div>
                   <div class="bsc-lbl">Updated Monthly</div>
@@ -539,7 +539,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
         <div class="banner-side banner-side-top" onclick="quickFilter('hot'); document.querySelector('.home-grid').scrollIntoView({behavior:'smooth'})">
           <div class="banner-side-bg bs-orange"></div>
           <div class="banner-side-content">
-            <div class="banner-side-icon">🔥</div>
+            <div class="banner-side-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2c0 0-5 4-5 9a5 5 0 0 0 10 0c0-5-5-9-5-9z"/><path d="M12 12c0 0-2 1.5-2 3a2 2 0 0 0 4 0c0-1.5-2-3-2-3z"/></svg></div>
             <div class="banner-side-title">Produk Panas</div>
             <div class="banner-side-sub">Viability score tertinggi minggu ini</div>
             <div class="banner-side-cta">Lihat Sekarang →</div>
@@ -550,7 +550,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
         <div class="banner-side banner-side-bot" onclick="quickFilter('high_revenue'); document.querySelector('.home-grid').scrollIntoView({behavior:'smooth'})">
           <div class="banner-side-bg bs-purple"></div>
           <div class="banner-side-content">
-            <div class="banner-side-icon">💎</div>
+            <div class="banner-side-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12,2 22,9 18,22 6,22 2,9"/></svg></div>
             <div class="banner-side-title">Pendapatan Tinggi</div>
             <div class="banner-side-sub">Produk menghasilkan Rp20jt+/bulan</div>
             <div class="banner-side-cta">Temukan →</div>
@@ -566,19 +566,19 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
     <div class="quick-inner">
       <div class="quick-filters">
         <div class="qf-item active" id="qf-hot" onclick="quickFilter('hot')">
-          <span class="qf-icon">🔥</span><span class="qf-lbl">Hot Products</span>
+          <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c0 0-5 4-5 9a5 5 0 0 0 10 0c0-5-5-9-5-9z"/></svg></span><span class="qf-lbl">Hot Products</span>
         </div>
         <div class="qf-item" id="qf-high_revenue" onclick="quickFilter('high_revenue')">
-          <span class="qf-icon">💰</span><span class="qf-lbl">High Revenue</span>
+          <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M9 9h4.5a1.5 1.5 0 0 1 0 3H10a1.5 1.5 0 0 0 0 3H15"/></svg></span><span class="qf-lbl">High Revenue</span>
         </div>
         <div class="qf-item" id="qf-low_revenue" onclick="quickFilter('low_revenue')">
-          <span class="qf-icon">📉</span><span class="qf-lbl">Lowest Revenue</span>
+          <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22,17 13.5,8.5 8.5,13.5 2,7"/><polyline points="16,17 22,17 22,11"/></svg></span><span class="qf-lbl">Lowest Revenue</span>
         </div>
         <div class="qf-item" id="qf-top_units" onclick="quickFilter('top_units')">
-          <span class="qf-icon">📦</span><span class="qf-lbl">Top Units/mo</span>
+          <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span><span class="qf-lbl">Top Units/mo</span>
         </div>
         <div class="qf-item" id="qf-low_units" onclick="quickFilter('low_units')">
-          <span class="qf-icon">🪣</span><span class="qf-lbl">Lowest Units/mo</span>
+          <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span><span class="qf-lbl">Lowest Units/mo</span>
         </div>
       </div>
     </div>
@@ -669,7 +669,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
             <!-- score explanation accordion -->
             <div class="score-exp-wrap" style="margin-bottom:14px;">
               <div class="score-exp-header" onclick="toggleScoreExp()">
-                <span class="score-exp-title">📊 Kenapa skor ini?</span>
+                <span class="score-exp-title">Kenapa skor ini?</span>
                 <div style="display:flex;align-items:center;gap:8px;">
                   <span class="score-exp-total" id="d-score-exp-total" style="background:#aaa;">—</span>
                   <span class="score-exp-toggle" id="score-exp-chevron">▼</span>
@@ -687,7 +687,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 
             <!-- selling price range -->
             <div class="det-price-block">
-              <div class="det-price-label">💰 Selling Price Range</div>
+              <div class="det-price-label">Selling Price Range</div>
               <div class="det-price-range">
                 <span class="det-price-lo" id="d-price-lo">—</span>
                 <span style="color:var(--tl);font-size:.9rem">–</span>
@@ -700,7 +700,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 
             <!-- revenue range -->
             <div class="det-rev-block">
-              <div class="det-rev-label">📈 Monthly Revenue Range</div>
+              <div class="det-rev-label">Monthly Revenue Range</div>
               <div class="det-rev-range">
                 <span class="det-rev-lo" id="d-rev-lo">—</span>
                 <span style="color:var(--tl);font-size:.9rem">–</span>
@@ -730,7 +730,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 
           <!-- store age in business -->
           <div class="det-section">
-            <div class="det-section-title">📅 Age of Product Listing</div>
+            <div class="det-section-title">Age of Product Listing</div>
             <div class="det-age-row">
               <div class="det-age-box">
                 <div class="det-age-lbl">Shortest</div>
@@ -749,15 +749,15 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 
           <!-- sourcing guide coming soon -->
           <div class="det-section">
-            <div class="det-section-title">🤖 AI Sourcing Guide</div>
+            <div class="det-section-title">AI Sourcing Guide</div>
             <div style="padding:14px 16px;background:#faf7f4;border-radius:10px;font-size:.88rem;color:var(--tl);border:1px solid #f0ebe4;">
-              ✨ Fitur akan segera hadir
+              Fitur akan segera hadir
             </div>
           </div>
 
           <!-- financial breakdown -->
           <div class="fin-breakdown">
-            <div class="det-section-title">📊 Sample Financial Breakdown</div>
+            <div class="det-section-title">Sample Financial Breakdown</div>
             <div class="fin-grid">
               <div>
                 <div class="fin-col-title o">New Seller Scenario</div>
@@ -776,7 +776,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
     <!-- TOP 15 SELLERS — full width below the 2-col -->
     <div style="max-width:1200px;margin:0 auto;padding:0 20px 14px;">
       <div class="det-sellers">
-        <div class="det-section-title">🏆 Top 15 Sellers</div>
+        <div class="det-section-title">Top 15 Sellers</div>
         <div id="sellers-loading" style="text-align:center;padding:28px;color:var(--tl);font-size:.85rem;">
           <div class="spinner" style="margin:0 auto 10px;"></div>
           Loading seller data...
@@ -832,7 +832,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
     <!-- WHAT IS THIS -->
     <div class="about-card">
       <div class="about-card-header">
-        <div class="about-card-icon">🔍</div>
+        <div class="about-card-icon"></div>
         <div>
           <div class="about-card-title">Apa itu Product Scout?</div>
           <div class="about-card-subtitle">Platform riset produk untuk penjual Shopee</div>
@@ -848,7 +848,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
     <!-- HOW WE GET DATA -->
     <div class="about-card">
       <div class="about-card-header">
-        <div class="about-card-icon blue">📊</div>
+        <div class="about-card-icon blue"></div>
         <div>
           <div class="about-card-title">Dari mana data ini berasal?</div>
           <div class="about-card-subtitle">Data nyata dari listing aktif Shopee Indonesia</div>
@@ -876,7 +876,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
         </div>
       </div>
       <div class="trust-row" style="margin-top:20px;">
-        <div class="trust-badge"><span class="trust-badge-icon">✅</span> Data dari listing publik Shopee</div>
+        <div class="trust-badge"> Data dari listing publik Shopee</div>
         <div class="trust-badge"><span class="trust-badge-icon">🔄</span> Diperbarui setiap bulan</div>
         <div class="trust-badge"><span class="trust-badge-icon">📍</span> Khusus pasar Indonesia</div>
         <div class="trust-badge"><span class="trust-badge-icon">🔢</span> Berbasis data, bukan opini</div>
@@ -886,7 +886,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
     <!-- VIABILITY SCORE -->
     <div class="about-card">
       <div class="about-card-header">
-        <div class="about-card-icon amber">⭐</div>
+        <div class="about-card-icon amber"></div>
         <div>
           <div class="about-card-title">Bagaimana Viability Score dihitung?</div>
           <div class="about-card-subtitle">Skor 0–10 yang merangkum potensi produk</div>
@@ -898,11 +898,11 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
       </div>
       <div class="score-breakdown">
         <div class="score-factor">
-          <div class="score-factor-name">💰 Potensi Pendapatan</div>
+          <div class="score-factor-name">Potensi Pendapatan</div>
           <div class="score-factor-desc">Seberapa besar pendapatan rata-rata yang dihasilkan seller aktif di kategori ini setiap bulannya.</div>
         </div>
         <div class="score-factor">
-          <div class="score-factor-name">📦 Volume Penjualan</div>
+          <div class="score-factor-name">Volume Penjualan</div>
           <div class="score-factor-desc">Jumlah unit yang terjual per bulan — produk dengan volume tinggi menandakan permintaan yang konsisten.</div>
         </div>
         <div class="score-factor">
@@ -910,15 +910,15 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
           <div class="score-factor-desc">Pasar dengan seller aktif yang moderat menandakan permintaan nyata tanpa persaingan yang terlalu ketat.</div>
         </div>
         <div class="score-factor">
-          <div class="score-factor-name">📈 Konsistensi Pendapatan</div>
+          <div class="score-factor-name">Konsistensi Pendapatan</div>
           <div class="score-factor-desc">Seberapa konsisten pendapatan antar seller — pasar yang stabil lebih dapat diprediksi untuk pemula.</div>
         </div>
         <div class="score-factor">
-          <div class="score-factor-name">🎯 Barrier to Entry</div>
+          <div class="score-factor-name">Barrier to Entry</div>
           <div class="score-factor-desc">Produk dengan harga sumber wajar dan MOQ rendah mendapat skor lebih tinggi karena lebih mudah dimulai.</div>
         </div>
         <div class="score-factor">
-          <div class="score-factor-name">📅 Tren Pasar</div>
+          <div class="score-factor-name">Tren Pasar</div>
           <div class="score-factor-desc">Produk dengan listing yang tumbuh dan seller baru yang sukses mendapat bobot lebih tinggi.</div>
         </div>
       </div>
@@ -949,7 +949,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
           <div class="free-reason-desc">Ketika lebih banyak penjual sukses, ekosistem e-commerce Indonesia tumbuh dan semua pihak diuntungkan.</div>
         </div>
         <div class="free-reason">
-          <div class="free-reason-icon">💡</div>
+          <div class="free-reason-icon"></div>
           <div class="free-reason-title">Data Harus Terbuka</div>
           <div class="free-reason-desc">Data pasar publik seharusnya bisa diakses semua orang, bukan hanya perusahaan besar yang mampu membayar.</div>
         </div>
@@ -959,7 +959,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
     <!-- TRUST / DISCLAIMER -->
     <div class="about-card">
       <div class="about-card-header">
-        <div class="about-card-icon">⚠️</div>
+        <div class="about-card-icon"></div>
         <div>
           <div class="about-card-title">Catatan Penting</div>
           <div class="about-card-subtitle">Baca sebelum menggunakan data ini</div>
@@ -1019,16 +1019,18 @@ const MASTER_TAB_NAME  = 'SheetList';
 
 // Category image mapping — add/change as needed
 const CAT_IMAGES = {
-  'Sports & Outdoor':  'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=200&q=70',
-  'Fashion':           'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&q=70',
-  'Electronics':       'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=200&q=70',
-  'Baby & Kids':       'https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=200&q=70',
-  'Kitchen & Home':    'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&q=70',
-  'Beauty & Care':     'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=200&q=70',
-  'Health':            'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=200&q=70',
-  'Automotive':        'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=200&q=70',
-  'Food & Drink':      'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=200&q=70',
-  'Pets':              'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=200&q=70',
+  'Sports & Outdoor':  'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=300&q=80&fit=crop',
+  'Fashion':           'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&q=80&fit=crop',
+  'Electronics':       'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300&q=80&fit=crop',
+  'Baby & Kids':       'https://images.unsplash.com/photo-1555252333-9f8e92e65df9?w=300&q=80&fit=crop',
+  'Mom & Baby':        'https://images.unsplash.com/photo-1555252333-9f8e92e65df9?w=300&q=80&fit=crop',
+  'Kitchen & Home':    'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&q=80&fit=crop',
+  'Beauty & Care':     'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=300&q=80&fit=crop',
+  'Health':            'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&q=80&fit=crop',
+  'Automotive':        'https://images.unsplash.com/photo-1609205807107-e8ec2120d6a5?w=300&q=80&fit=crop',
+  'Food & Drink':      'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&q=80&fit=crop',
+  'Pets':              'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=300&q=80&fit=crop',
+  'Other':             'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=300&q=80&fit=crop',
 };
 const CAT_EMOJI_FALLBACK = {
   'Sports & Outdoor':'🏃','Fashion':'👗','Electronics':'⚡',
@@ -1269,10 +1271,8 @@ function renderHomeCats() {
     const emoji = CAT_EMOJI_FALLBACK[c] || '🛍️';
     return `
     <div class="cat-item ${activeCat === c ? 'active' : ''}" onclick="gotoCat('${c}')">
-      <div class="cat-img-wrap">
-        ${img
-          ? `<img src="${img}" alt="${c}" loading="lazy" onerror="this.style.display='none'">`
-          : `<span class="cat-emoji">${emoji}</span>`}
+      <div class="cat-circle">
+        ${img ? `<img src="${img}" alt="${c}" loading="lazy" onerror="this.parentElement.style.background='#efefef'">` : ''}
       </div>
       <div class="cat-lbl">${c}</div>
     </div>`;
@@ -1345,7 +1345,7 @@ function renderDiscGrid() {
   document.getElementById('product-count').textContent = filtered.length;
   g.innerHTML = filtered.length
     ? filtered.map((p, i) => cardHTML(p, i)).join('')
-    : `<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--tl)">🔍 No products found.</div>`;
+    : `<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--tl)">No products found.</div>`;
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1667,7 +1667,7 @@ async function loadSellerData(p) {
       <td class="sel-age"><span>${ageStr}</span></td>
       <td style="color:var(--green);font-weight:700">${fmt(s.newRevenue)}</td>
       <td style="color:var(--orange);font-weight:600">${fmt(s.price)}</td>
-      <td>${s.rating ? `<span class="stars">★</span> ${s.rating}` : '—'}</td>
+      <td>${s.rating ? `${s.rating}` : '—'}</td>
       <td style="color:var(--tl);font-size:.78rem">${s.reviews ? s.reviews.toLocaleString('id-ID') : '—'}</td>
       <td><button class="vb" onclick="event.stopPropagation();window.open('${s.url}','_blank')">Visit ↗</button></td>
     </tr>`;
@@ -1771,7 +1771,7 @@ function renderSourcingGuide(data) {
   // Colors section
   const colorsHTML = (data.colors || []).length ? `
     <div class="sg-card">
-      <div class="sg-card-title">🎨 Colors</div>
+      <div class="sg-card-title">Colors</div>
       <div class="sg-tags">
         ${(data.colors || []).map(c => {
           const hex = colorHex(c.name);
@@ -1784,10 +1784,10 @@ function renderSourcingGuide(data) {
   // Features section
   const featuresHTML = (data.features || []).length ? `
     <div class="sg-card">
-      <div class="sg-card-title">✅ Must-Have Features</div>
+      <div class="sg-card-title">Must-Have Features</div>
       <div class="sg-tags">
         ${(data.features || []).map(f =>
-          `<span class="sg-tag">⚡ ${f.name}<span class="sg-count">${f.count}/10</span></span>`
+          `<span class="sg-tag">${f.name}<span class="sg-count">${f.count}/10</span></span>`
         ).join('')}
       </div>
     </div>` : '';
@@ -1795,7 +1795,7 @@ function renderSourcingGuide(data) {
   // Specs section
   const specsHTML = (data.specs || []).length ? `
     <div class="sg-card">
-      <div class="sg-card-title">📐 Specs & Materials</div>
+      <div class="sg-card-title">Specs & Materials</div>
       <div class="sg-tags">
         ${(data.specs || []).map(s =>
           `<span class="sg-tag">📏 ${s.name}<span class="sg-count">${s.count}/10</span></span>`
@@ -1806,10 +1806,10 @@ function renderSourcingGuide(data) {
   // Avoid section
   const avoidHTML = (data.avoid || []).length ? `
     <div class="sg-card">
-      <div class="sg-card-title">⚠️ What to Avoid</div>
+      <div class="sg-card-title">What to Avoid</div>
       <div class="sg-tags">
         ${(data.avoid || []).map(a =>
-          `<span class="sg-tag" style="border-color:#ffd5d5;color:#c0392b">❌ ${a}</span>`
+          `<span class="sg-tag" style="border-color:#ffd5d5;color:#c0392b">${a}</span>`
         ).join('')}
       </div>
     </div>` : '';
@@ -1817,7 +1817,7 @@ function renderSourcingGuide(data) {
   // Tip
   const tipHTML = data.tip ? `
     <div class="sg-card full">
-      <div class="sg-card-title">💡 Sourcing Tip</div>
+      <div class="sg-card-title">Sourcing Tip</div>
       <div class="sg-tip">${data.tip}</div>
     </div>` : '';
 
@@ -1825,7 +1825,7 @@ function renderSourcingGuide(data) {
     <div class="sg-grid">
       ${colorsHTML}${featuresHTML}${specsHTML}${avoidHTML}${tipHTML}
     </div>
-    <div class="sg-powered">✨ Powered by Claude AI · Based on top 10 seller analysis</div>
+    <div class="sg-powered">Powered by Claude AI · Based on top 10 seller analysis</div>
   `;
 }
 
