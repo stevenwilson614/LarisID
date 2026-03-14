@@ -458,6 +458,52 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 .trust-badge{display:flex;align-items:center;gap:8px;background:#f5f5f5;border-radius:10px;padding:10px 14px;font-size:.8rem;font-weight:600;color:#333;}
 .trust-badge-icon{font-size:1.2rem;}
 .about-cta-block{background:var(--grad);border-radius:14px;padding:32px;text-align:center;color:#fff;margin-bottom:20px;}
+
+/* ── FOOTER ── */
+.site-footer{background:#1a1a1a;color:#ccc;padding:48px 20px 24px;margin-top:40px;}
+.footer-inner{max-width:1200px;margin:0 auto;}
+.footer-top{display:grid;grid-template-columns:1.8fr 1fr 1fr;gap:48px;margin-bottom:40px;}
+@media(max-width:760px){.footer-top{grid-template-columns:1fr;gap:32px;}}
+.footer-brand{}
+.footer-brand-name{font-family:'Roboto','Noto Sans',sans-serif;font-weight:900;font-size:1.25rem;color:#fff;margin-bottom:8px;}
+.footer-brand-desc{font-size:.82rem;line-height:1.7;color:#999;max-width:280px;}
+.footer-col-title{font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:#fff;margin-bottom:14px;}
+.footer-links{display:flex;flex-direction:column;gap:10px;}
+.footer-link{font-size:.84rem;color:#aaa;cursor:pointer;transition:color .15s;text-decoration:none;background:none;border:none;padding:0;text-align:left;font-family:'Roboto','Noto Sans',sans-serif;}
+.footer-link:hover{color:#EE4D2D;}
+.footer-divider{border:none;border-top:1px solid #2e2e2e;margin-bottom:20px;}
+.footer-bottom{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.footer-copy{font-size:.78rem;color:#666;}
+.footer-badge{font-size:.75rem;color:#555;display:flex;align-items:center;gap:6px;}
+
+/* ── WHY SCORE PAGE ── */
+.wscore-hero{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);padding:52px 20px 44px;text-align:center;}
+.wscore-hero-inner{max-width:680px;margin:0 auto;}
+.wscore-hero-badge{display:inline-block;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:5px 16px;font-size:.75rem;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:16px;letter-spacing:.05em;}
+.wscore-hero-title{font-family:'Roboto','Noto Sans',sans-serif;font-weight:900;font-size:2rem;color:#fff;margin-bottom:12px;line-height:1.2;}
+.wscore-hero-sub{font-size:.92rem;color:rgba(255,255,255,.75);line-height:1.7;}
+.wscore-wrap{max-width:860px;margin:0 auto;padding:32px 20px 48px;}
+.wscore-intro{background:#fff;border-radius:14px;padding:28px;border:1.5px solid #f0ebe4;margin-bottom:24px;font-size:.9rem;color:#444;line-height:1.75;}
+.wscore-intro strong{color:#111;}
+.wscore-metrics{display:flex;flex-direction:column;gap:16px;}
+.wscore-card{background:#fff;border-radius:14px;border:1.5px solid #f0ebe4;overflow:hidden;}
+.wscore-card-header{display:flex;align-items:center;gap:14px;padding:20px 24px 16px;}
+.wscore-card-num{width:36px;height:36px;border-radius:50%;background:var(--grad);color:#fff;font-family:'Roboto','Noto Sans',sans-serif;font-weight:900;font-size:.9rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.wscore-card-meta{}
+.wscore-card-title{font-family:'Roboto','Noto Sans',sans-serif;font-weight:900;font-size:1rem;color:#111;margin-bottom:2px;}
+.wscore-card-max{font-size:.75rem;color:var(--tl);}
+.wscore-card-body{padding:0 24px 20px;font-size:.86rem;color:#555;line-height:1.7;}
+.wscore-card-body p{margin-bottom:10px;}
+.wscore-card-body p:last-child{margin-bottom:0;}
+.wscore-thresholds{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+.wscore-thresh{display:flex;align-items:center;gap:7px;background:#faf7f4;border-radius:8px;padding:7px 12px;font-size:.78rem;font-weight:600;}
+.wscore-thresh-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.wscore-total-card{background:var(--grad);border-radius:14px;padding:28px;text-align:center;color:#fff;margin-top:24px;}
+.wscore-total-title{font-family:'Roboto','Noto Sans',sans-serif;font-weight:900;font-size:1.2rem;margin-bottom:8px;}
+.wscore-total-desc{font-size:.86rem;opacity:.9;line-height:1.65;max-width:560px;margin:0 auto;}
+.wscore-cta-block{text-align:center;margin-top:28px;}
+.wscore-cta-btn{background:var(--grad);color:#fff;border:none;border-radius:8px;padding:13px 32px;font-weight:700;font-size:.9rem;cursor:pointer;font-family:'Roboto','Noto Sans',sans-serif;transition:opacity .15s;}
+.wscore-cta-btn:hover{opacity:.88;}
 .about-cta-title{font-family:'Roboto', 'Noto Sans', sans-serif;font-weight:900;font-size:1.4rem;margin-bottom:8px;}
 .about-cta-sub{font-size:.88rem;opacity:.9;margin-bottom:18px;}
 .about-cta-btn{background:#fff;color:var(--orange);border:none;border-radius:8px;padding:11px 28px;font-weight:700;font-size:.9rem;cursor:pointer;font-family:'Roboto', 'Noto Sans', sans-serif;transition:transform .15s,box-shadow .15s;}
@@ -945,6 +991,180 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 
   </div>
 </div>
+
+<!-- ════════════════════════════════════
+     WHY THE SCORE PAGE
+════════════════════════════════════ -->
+<div class="page" id="page-whyscore">
+
+  <div class="wscore-hero">
+    <div class="wscore-hero-inner">
+      <div class="wscore-hero-badge">📊 Metodologi Skor</div>
+      <div class="wscore-hero-title">Kenapa Skornya Begitu?</div>
+      <div class="wscore-hero-sub">Viability Score bukan angka sembarangan. Setiap komponen punya bobot dan logika tersendiri — ini penjelasan lengkapnya.</div>
+    </div>
+  </div>
+
+  <div class="wscore-wrap">
+
+    <div class="wscore-intro">
+      <p><strong>Viability Score</strong> adalah skor komposit dari <strong>0 hingga 5</strong> yang mengukur seberapa layak sebuah produk untuk dijual di Shopee saat ini. Skor ini terdiri dari <strong>5 metrik independen</strong>, masing-masing dinilai berdasarkan data pasar nyata.</p>
+      <p>Setiap metrik diberi warna berdasarkan persentase terhadap nilai maksimalnya: <strong style="color:#00B14F">hijau ≥ 90%</strong>, <strong style="color:#F5A623">kuning 75–89%</strong>, dan <strong style="color:#E74C3C">merah &lt; 75%</strong>. Ini membantu kamu melihat sekilas di mana kekuatan dan kelemahan sebuah produk.</p>
+    </div>
+
+    <div class="wscore-metrics">
+
+      <!-- Metric 1 -->
+      <div class="wscore-card">
+        <div class="wscore-card-header">
+          <div class="wscore-card-num">1</div>
+          <div class="wscore-card-meta">
+            <div class="wscore-card-title">Jumlah Penjual Aktif</div>
+            <div class="wscore-card-max">Maks: 1.75 poin</div>
+          </div>
+        </div>
+        <div class="wscore-card-body">
+          <p>Metrik ini menghitung berapa banyak penjual yang berkontribusi <strong>lebih dari 1% dari total pendapatan pasar</strong>. Pasar yang sehat punya banyak pemain aktif — artinya permintaan nyata dan tidak bergantung pada satu atau dua penjual saja.</p>
+          <p>Skor tinggi berarti ada banyak penjual yang berhasil, yang merupakan sinyal bahwa pasar ini cukup besar untuk menampung pemain baru. Skor rendah bisa berarti pasar masih sangat kecil atau didominasi satu pemain besar.</p>
+          <div class="wscore-thresholds">
+            <div class="wscore-thresh"><div class="wscore-thresh-dot" style="background:#00B14F"></div>≥ 1.58 poin (≥90%) — Pasar ramai, banyak peluang</div>
+            <div class="wscore-thresh"><div class="wscore-thresh-dot" style="background:#F5A623"></div>1.31–1.57 (75–89%) — Cukup kompetitif</div>
+            <div class="wscore-thresh"><div class="wscore-thresh-dot" style="background:#E74C3C"></div>&lt; 1.31 (&lt;75%) — Pasar sempit atau terlalu terpusat</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metric 2 -->
+      <div class="wscore-card">
+        <div class="wscore-card-header">
+          <div class="wscore-card-num">2</div>
+          <div class="wscore-card-meta">
+            <div class="wscore-card-title">Dominasi Penjual Teratas</div>
+            <div class="wscore-card-max">Maks: 0.5 poin</div>
+          </div>
+        </div>
+        <div class="wscore-card-body">
+          <p>Mengukur berapa persen pasar yang dikuasai oleh <strong>1 penjual terbaik</strong>. Jika satu penjual memonopoli 50%+ pendapatan pasar, sangat sulit bagi pemain baru untuk bersaing secara langsung.</p>
+          <p>Skor tinggi di sini berarti pasar lebih merata — tidak ada satu dominan yang menguasai segalanya. Ini adalah kondisi yang lebih ramah untuk pemula.</p>
+          <div class="wscore-thresholds">
+            <div class="wscore-thresh"><div class="wscore-thresh-dot" style="background:#00B14F"></div>≥ 0.45 poin (≥90%) — Pasar merata, tidak monopolistik</div>
+            <div class="wscore-thresh"><div class="wscore-thresh-dot" style="background:#F5A623"></div>0.38–0.44 (75–89%) — Sedikit dominasi</div>
+            <div class="wscore-thresh"><div class="wscore-thresh-dot" style="background:#E74C3C"></div>&lt; 0.38 (&lt;75%) — Satu pemain terlalu dominan</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metric 3 -->
+      <div class="wscore-card">
+        <div class="wscore-card-header">
+          <div class="wscore-card-num">3</div>
+          <div class="wscore-card-meta">
+            <div class="wscore-card-title">Konsentrasi Top 10 Penjual</div>
+            <div class="wscore-card-max">Maks: 1.25 poin</div>
+          </div>
+        </div>
+        <div class="wscore-card-body">
+          <p>Berapa persen total pendapatan pasar yang dikontrol oleh <strong>10 penjual terbaik</strong>. Ini memberikan gambaran lebih luas tentang seberapa terkonsentrasi persaingan di pasar.</p>
+          <p>Jika 10 penjual teratas menguasai 90%+ pasar, ruang untuk pemain baru sangat terbatas. Pasar yang sehat punya distribusi pendapatan yang lebih menyebar di antara banyak penjual.</p>
+          <div class="wscore-thresholds">
+            <div class="wscore-thresh"><div class="wscore-thresh-dot" style="background:#00B14F"></div>≥ 1.13 poin (≥90%) — Distribusi sehat, pasar terbuka</div>
+            <div class="wscore-thresh"><div class="wscore-thresh-dot" style="background:#F5A623"></div>0.94–1.12 (75–89%) — Agak terkonsentrasi</div>
+            <div class="wscore-thresh"><div class="wscore-thresh-dot" style="background:#E74C3C"></div>&lt; 0.94 (&lt;75%) — Pasar dikuasai segelintir pemain</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metric 4 -->
+      <div class="wscore-card">
+        <div class="wscore-card-header">
+          <div class="wscore-card-num">4</div>
+          <div class="wscore-card-meta">
+            <div class="wscore-card-title">Konsistensi Pendapatan (Mean/Median)</div>
+            <div class="wscore-card-max">Maks: 0.5 poin</div>
+          </div>
+        </div>
+        <div class="wscore-card-body">
+          <p>Membandingkan <strong>rata-rata (mean) dan median pendapatan</strong> penjual. Jika mean jauh lebih tinggi dari median, berarti beberapa penjual besar mendistorsi angka rata-rata — dan pendapatan median yang sebenarnya bisa jauh lebih rendah.</p>
+          <p>Rasio mean/median yang mendekati 1 berarti pendapatan lebih konsisten dan dapat diprediksi. Ini penting untuk pemula yang ingin tahu ekspektasi pendapatan yang realistis.</p>
+          <div class="wscore-thresholds">
+            <div class="wscore-thresh"><div class="wscore-thresh-dot" style="background:#00B14F"></div>≥ 0.45 poin (≥90%) — Pendapatan konsisten dan merata</div>
+            <div class="wscore-thresh"><div class="wscore-thresh-dot" style="background:#F5A623"></div>0.38–0.44 (75–89%) — Sedikit tidak merata</div>
+            <div class="wscore-thresh"><div class="wscore-thresh-dot" style="background:#E74C3C"></div>&lt; 0.38 (&lt;75%) — Pendapatan sangat tidak merata</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Metric 5 -->
+      <div class="wscore-card">
+        <div class="wscore-card-header">
+          <div class="wscore-card-num">5</div>
+          <div class="wscore-card-meta">
+            <div class="wscore-card-title">Rasio Penjual Baru (NUB Median)</div>
+            <div class="wscore-card-max">Maks: 1.0 poin</div>
+          </div>
+        </div>
+        <div class="wscore-card-body">
+          <p>Mengukur seberapa baik <strong>penjual baru (New & Upcoming Buyers)</strong> bisa bersaing dibandingkan median pasar. Ini adalah metrik yang paling relevan untuk pemula — apakah orang yang baru masuk ke pasar ini bisa mendapatkan pendapatan yang layak?</p>
+          <p>Skor tinggi berarti penjual baru punya peluang nyata mendapatkan sebagian kue pasar, bukan hanya terpinggirkan oleh seller lama yang sudah punya ribuan review.</p>
+          <div class="wscore-thresholds">
+            <div class="wscore-thresh"><div class="wscore-thresh-dot" style="background:#00B14F"></div>≥ 0.90 poin (≥90%) — Pasar ramah pemula</div>
+            <div class="wscore-thresh"><div class="wscore-thresh-dot" style="background:#F5A623"></div>0.75–0.89 (75–89%) — Peluang ada, tapi butuh usaha</div>
+            <div class="wscore-thresh"><div class="wscore-thresh-dot" style="background:#E74C3C"></div>&lt; 0.75 (&lt;75%) — Penjual lama sangat mendominasi</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end wscore-metrics -->
+
+    <div class="wscore-total-card">
+      <div class="wscore-total-title">Total Skor: 0 – 5 Poin</div>
+      <div class="wscore-total-desc">Jumlah dari kelima metrik di atas. Skor mendekati 5 berarti produk ini memiliki pasar yang sehat, kompetisi yang seimbang, dan peluang nyata bagi penjual baru. Gunakan ini sebagai titik awal riset — bukan keputusan final.</div>
+    </div>
+
+    <div class="wscore-cta-block">
+      <button class="wscore-cta-btn" onclick="showPage('discover')">Mulai Cari Produk →</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════════════════════════════
+     SITE FOOTER
+════════════════════════════════════ -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+
+      <div class="footer-brand">
+        <div class="footer-brand-name">🔍 Product Scout</div>
+        <div class="footer-brand-desc">Platform riset produk gratis untuk penjual Shopee Indonesia. Temukan peluang terbaik berdasarkan data nyata — bukan tebakan.</div>
+      </div>
+
+      <div>
+        <div class="footer-col-title">Navigasi</div>
+        <div class="footer-links">
+          <button class="footer-link" onclick="showPage('home')">Beranda</button>
+          <button class="footer-link" onclick="showPage('discover')">Discover Produk</button>
+          <button class="footer-link" onclick="openFeedback()">Kirim Feedback</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="footer-col-title">Informasi</div>
+        <div class="footer-links">
+          <button class="footer-link" onclick="showPage('about')">Tentang Kami</button>
+          <button class="footer-link" onclick="showPage('whyscore')">Kenapa Skor Ini?</button>
+        </div>
+      </div>
+
+    </div>
+    <hr class="footer-divider">
+    <div class="footer-bottom">
+      <div class="footer-copy">© 2025 Product Scout · Dibuat dengan ❤️ untuk penjual Indonesia</div>
+      <div class="footer-badge">🇮🇩 Data pasar Shopee Indonesia · Tidak berafiliasi dengan Shopee</div>
+    </div>
+  </div>
+</footer>
 
 <!-- FEEDBACK TAB — always visible on right side -->
 <div class="feedback-tab" onclick="openFeedback()">
