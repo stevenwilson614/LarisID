@@ -1382,7 +1382,7 @@ async function loadData() {
 // ════════════════════════════════════════════════════════════
 async function fetchProductImages() {
   // Run up to 4 fetches in parallel to avoid hammering the API
-  const CONCURRENCY = 4;
+  const CONCURRENCY = 24;
   const queue = [...allProducts];
 
   async function fetchOne(p) {
