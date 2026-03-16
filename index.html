@@ -1570,6 +1570,14 @@ async function loadSellerData(p) {
     if (!val) return null;
     const s = String(val).trim();
 
+    // Handle gviz date format: "Date(2023,5,15)" — month is 0-indexed
+    const gviz = s.match(/^Date\((\d+),(\d+),(\d+)\)$/);
+    if (gviz) {
+      const d = new Date(parseInt(gviz[1]), parseInt(gviz[2]), parseInt(gviz[3]));
+      const totalMonths = Math.floor((new Date() - d) / (1000 * 60 * 60 * 24 * 30.44));
+      return totalMonths > 0 ? totalMonths : 1;
+    }
+
     // Try direct date parse (handles "2023-06-15", "June 15 2023", "15/06/2023" etc)
     const direct = new Date(s);
     if (!isNaN(direct.getTime()) && direct.getFullYear() > 2000) {
@@ -1852,16 +1860,16 @@ function renderScoreExp(scoreRows, totalScore) {
 
   if (loadingEl) loadingEl.style.display = 'none';
 
-  // Score rows: metric values are in column A (index 0), rows 1-5
-  // Total score is in A8 (row index 7)
+  // Score rows: weighted scores are in column E (index 4), rows 2-6 (scoreRows 0-4)
+  // Total score is in A8 = SUM(E2:E6), which is scoreRows[6] (row 8, col A index 0)
   const vals = scoreRows.slice(0, 5).map(row => {
     const cells = Object.values(row);
-    const v = parseFloat(cells[0]);
+    const v = parseFloat(cells[4]);
     return isNaN(v) ? 0 : v;
   });
 
-  // Read total from A8 if available, otherwise fall back to summing vals
-  const totalRow = scoreRows[7];
+  // Read total from A8 (scoreRows index 6) if available, otherwise sum vals
+  const totalRow = scoreRows[6];
   const totalFromSheet = totalRow ? parseFloat(Object.values(totalRow)[0]) : NaN;
   const total = !isNaN(totalFromSheet) ? totalFromSheet : vals.reduce((s, v) => s + v, 0);
   const color = scoreColor(total);
