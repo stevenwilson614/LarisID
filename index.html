@@ -1173,10 +1173,10 @@ async function fetchProductImages() {
     if (!rows || !rows.length) return;
 
     // Find the first row that has an image
-    const firstWithImg = rows.find(r => r['X'] && r['X'].trim());
+    const firstWithImg = rows.find(r => r['Image'] && r['Image'].trim());
     if (!firstWithImg) return;
 
-    p.image = firstWithImg['X'].trim();
+    p.image = firstWithImg['Image'].trim();
 
     // Update any card currently in the DOM for this product
     const cards = document.querySelectorAll(`.product-card[data-pid="${p.id}"]`);
@@ -1505,9 +1505,9 @@ async function loadSellerData(p) {
     wishlist:     parseFloat(r['Wishlist'])                || 0,
     comments:     parseFloat(r['Comments'])                || 0,
     slug:         r['Slug']                                || '',
-    url:          r['W']                                   || '#',
-    image:        r['X']                                   || '',
-    newRevenue:   parseRp(r['Y']),
+    url:          r['URL']                                 || '#',
+    image:        r['Image']                               || '',
+    newRevenue:   parseRp(r['New Revenue']),
   })).filter(s => s.name);
 
   // ── TOP 15 by New Revenue ────────────────────────────────
