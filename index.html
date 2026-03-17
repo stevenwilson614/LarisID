@@ -1240,7 +1240,9 @@ function goBack() { showPage(prevPage === 'detail' ? 'discover' : prevPage); }
 function renderHomeCats() {
   const cats = [...new Set(allProducts.map(p => p.category))];
   document.getElementById('home-cats').innerHTML = cats.map(c => {
-    const img = CAT_IMAGES[c] || `images/${encodeURIComponent(c)}.png`;
+    const CAT_FILE_MAP = {'olahraga & outdoor':'olahraga-outdoor','Ibu & Bayi':'Ibu & Bayi'};
+    const imgFile = CAT_FILE_MAP[c] !== undefined ? CAT_FILE_MAP[c] : c;
+    const img = CAT_IMAGES[c] || `images/${encodeURIComponent(imgFile)}.png`;
     const emoji = CAT_EMOJI_FALLBACK[c] || '🛍️';
     return `
     <div class="cat-item ${activeCat === c ? 'active' : ''}" onclick="gotoCat('${c}')">
