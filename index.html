@@ -173,12 +173,11 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 .cat-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:1px;background:#eee;border:1px solid #eee;border-radius:var(--r);overflow:hidden;margin-bottom:14px;box-shadow:var(--sh);}
 @media(max-width:900px){.cat-grid{grid-template-columns:repeat(5,1fr);}}
 @media(max-width:480px){.cat-grid{grid-template-columns:repeat(4,1fr);}}
-.cat-item{display:flex;flex-direction:column;align-items:center;background:#fff;cursor:pointer;transition:background .15s;text-align:center;overflow:hidden;padding:10px 6px 6px;}
-.cat-item:hover .cat-circle{background:#e8e8e8;}
-.cat-item.active .cat-circle{background:#e8e8e8;}
+.cat-item{display:flex;flex-direction:column;align-items:center;background:#fff;cursor:pointer;transition:opacity .15s;text-align:center;overflow:hidden;padding:10px 8px 8px;}
+.cat-item:hover{opacity:.75;}
 .cat-item.active .cat-lbl{color:var(--orange);font-weight:600;}
-.cat-circle{width:72px;height:72px;border-radius:50%;background:#efefef;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:8px;transition:background .15s;flex-shrink:0;}
-.cat-circle img{width:80%;height:80%;object-fit:contain;}
+.cat-circle{width:64px;height:64px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:6px;flex-shrink:0;}
+.cat-circle img{width:100%;height:100%;object-fit:contain;}
 .cat-img-wrap{display:none;}
 .cat-lbl{font-size:.72rem;font-weight:500;color:#333;line-height:1.3;width:100%;}
 
@@ -1246,7 +1245,7 @@ function renderHomeCats() {
     return `
     <div class="cat-item ${activeCat === c ? 'active' : ''}" onclick="gotoCat('${c}')">
       <div class="cat-circle">
-        ${img ? `<img src="${img}" alt="${c}" loading="lazy" onerror="this.parentElement.style.background='#efefef'">` : ''}
+        <img src="${img}" alt="${c}" loading="lazy" onerror="this.style.display='none'">
       </div>
       <div class="cat-lbl">${c}</div>
     </div>`;
