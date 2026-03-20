@@ -549,6 +549,27 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 .email-signup-btn:hover{background:#333;}
 .email-signup-note{font-size:.73rem;color:rgba(255,255,255,.65);margin-top:10px;}
 
+
+/* ── SITE FOOTER ── */
+.site-footer{background:#1a1a1a;color:#ccc;padding:32px 20px 80px;margin-top:0;}
+.site-footer-inner{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start;}
+@media(max-width:600px){.site-footer-inner{grid-template-columns:1fr;gap:24px;}}
+.footer-brand{font-family:'Roboto','Noto Sans',sans-serif;font-weight:900;font-size:1.1rem;color:#fff;margin-bottom:6px;}
+.footer-tagline{font-size:.78rem;color:#888;line-height:1.6;margin-bottom:12px;}
+.footer-links{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;}
+.footer-link{font-size:.78rem;color:#aaa;cursor:pointer;text-decoration:none;transition:color .15s;}
+.footer-link:hover{color:#fff;}
+.footer-copy{font-size:.7rem;color:#555;line-height:1.6;}
+.footer-signup-title{font-weight:700;font-size:.88rem;color:#fff;margin-bottom:4px;}
+.footer-signup-sub{font-size:.75rem;color:#888;margin-bottom:10px;line-height:1.5;}
+.footer-signup-form{display:flex;gap:6px;}
+.footer-signup-input{flex:1;border:1px solid #333;background:#2a2a2a;border-radius:6px;padding:8px 12px;font-size:.82rem;color:#fff;font-family:inherit;outline:none;}
+.footer-signup-input:focus{border-color:#EE4D2D;}
+.footer-signup-input::placeholder{color:#555;}
+.footer-signup-btn{background:var(--orange);color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.footer-signup-btn:hover{background:#d43a1f;}
+.footer-signup-note{font-size:.68rem;color:#555;margin-top:7px;}
+
 /* ── FREE/OPEN SOURCE BANNER ── */
 .free-banner{background:var(--green-light);border:1.5px solid #b8f0d0;border-radius:var(--r);padding:12px 16px;display:flex;align-items:center;gap:12px;margin-bottom:14px;}
 .free-banner-icon{font-size:1.4rem;flex-shrink:0;}
@@ -584,8 +605,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
     <a class="nav-link" onclick="showPage('discover')">Products</a>
     <a class="nav-link" onclick="showPage('about')">Tentang</a>
     <a class="nav-link" onclick="openFeedback()">Feedback</a>
-    <a class="nav-link" href="https://github.com/stevenwilson614/Product-Scout" target="_blank" rel="noopener" title="Open Source on GitHub" style="font-size:.8rem;opacity:.85;">⭐ Open Source</a>
-    <a class="nav-link nav-community" href="https://chat.whatsapp.com/YOUR_GROUP_LINK" target="_blank" rel="noopener">💬 Komunitas</a>
+
   </div>
 </nav>
 
@@ -655,38 +675,34 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
       <!-- VIABILITY SCORE EXPLANATION ACCORDION -->
       <div class="home-score-exp">
         <div class="home-score-exp-header" onclick="toggleHomeScoreExp()">
-          <span class="home-score-exp-title">⭐ What is the Viability Score? <span style="font-weight:400;color:var(--tl);font-size:.75rem;">(tap to learn more)</span></span>
+          <span class="home-score-exp-title">⭐ Apa itu Viability Score? <span style="font-weight:400;color:var(--tl);font-size:.75rem;">(ketuk untuk lihat detail)</span></span>
           <span id="home-score-chevron" style="font-size:.75rem;color:var(--tl);transition:transform .2s;">▼</span>
         </div>
         <div class="home-score-exp-body" id="home-score-exp-body">
-          <p style="font-size:.82rem;color:#444;margin-bottom:12px;line-height:1.6;">Every product is rated <strong>0–10</strong>. A higher score means it's easier to enter the market with strong demand and manageable competition. Here's what goes into it:</p>
+          <p style="font-size:.82rem;color:#444;margin-bottom:12px;line-height:1.6;">Setiap produk diberi skor <strong>0–10</strong>. Skor ini merangkum seberapa layak produk tersebut untuk dijual di Shopee saat ini — semakin tinggi skor, semakin besar peluangnya. Skor dihitung dari 5 faktor berikut:</p>
           <div class="hscore-grid">
             <div class="hscore-item">
-              <div class="hscore-item-name">💰 Revenue Potential</div>
-              <div class="hscore-item-desc">How much active sellers earn per month on average in this category.</div>
+              <div class="hscore-item-name">🏪 Jumlah Penjual Aktif</div>
+              <div class="hscore-item-desc">Berapa banyak penjual yang berkontribusi lebih dari 1% dari total pendapatan pasar. Semakin banyak, semakin terbukti permintaannya.</div>
             </div>
             <div class="hscore-item">
-              <div class="hscore-item-name">📦 Sales Volume</div>
-              <div class="hscore-item-desc">Units sold per month — high volume signals consistent demand.</div>
+              <div class="hscore-item-name">👑 Dominasi Penjual Teratas</div>
+              <div class="hscore-item-desc">Berapa persen pasar yang dikuasai 1 penjual terbaik. Skor tinggi = pasar lebih merata, tidak dikuasai satu pemain saja.</div>
             </div>
             <div class="hscore-item">
-              <div class="hscore-item-name">🏪 Active Sellers</div>
-              <div class="hscore-item-desc">Moderate seller count = real demand without oversaturation.</div>
+              <div class="hscore-item-name">📊 Konsentrasi Top 10 Penjual</div>
+              <div class="hscore-item-desc">Berapa persen pasar yang dikontrol 10 penjual terbaik. Nilai terlalu tinggi berarti pasar sudah sangat kompetitif.</div>
             </div>
             <div class="hscore-item">
-              <div class="hscore-item-name">📊 Revenue Consistency</div>
-              <div class="hscore-item-desc">How stable income is across sellers — predictable markets score higher.</div>
+              <div class="hscore-item-name">📈 Konsistensi Pendapatan</div>
+              <div class="hscore-item-desc">Perbandingan rata-rata dan median pendapatan penjual. Skor tinggi berarti pendapatan lebih merata dan peluang sukses lebih konsisten.</div>
             </div>
-            <div class="hscore-item">
-              <div class="hscore-item-name">🚀 Barrier to Entry</div>
-              <div class="hscore-item-desc">Low minimum order and fair sourcing cost = easier to start.</div>
-            </div>
-            <div class="hscore-item">
-              <div class="hscore-item-name">📈 Market Trend</div>
-              <div class="hscore-item-desc">Growing listings and new sellers finding success scores higher.</div>
+            <div class="hscore-item" style="grid-column:1/-1;">
+              <div class="hscore-item-name">🌱 Rasio Penjual Baru</div>
+              <div class="hscore-item-desc">Seberapa baik penjual baru bisa bersaing dibandingkan median pasar. Skor tinggi berarti penjual baru punya peluang nyata mendapatkan pendapatan yang layak.</div>
             </div>
           </div>
-          <div class="hscore-note">⚠️ Score is a guide, not a guarantee. Always validate with your own research before investing.</div>
+          <div class="hscore-note">⚠️ Skor ini adalah panduan berbasis data, bukan jaminan keberhasilan. Selalu lakukan riset tambahan sebelum memutuskan untuk berjualan.</div>
         </div>
       </div>
       <div class="cat-grid" id="home-cats"></div>
@@ -966,20 +982,6 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 </div>
 
 
-<!-- ════════════════════════════════════
-     EMAIL SIGNUP SECTION
-════════════════════════════════════ -->
-<div class="email-signup-section" id="email-signup">
-  <div class="email-signup-inner">
-    <div class="email-signup-title">📬 Get Weekly Product Alerts</div>
-    <div class="email-signup-sub">Every week we update our list with new high-potential products. Be the first to know — free, no spam, unsubscribe anytime.</div>
-    <form class="email-signup-form" onsubmit="handleEmailSignup(event)">
-      <input class="email-signup-input" type="email" id="signup-email" placeholder="your@email.com" required>
-      <button class="email-signup-btn" type="submit">Notify Me</button>
-    </form>
-    <div class="email-signup-note">🔒 We respect your privacy. No spam, ever. You can unsubscribe at any time.</div>
-  </div>
-</div>
 
 <!-- ════════════════════════════════════
      ABOUT PAGE — Tentang Product Scout
@@ -1142,14 +1144,6 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
       </div>
     </div>
 
-    <!-- COMMUNITY CTA -->
-    <div class="about-cta-block" style="background:linear-gradient(135deg,#128C7E 0%,#25D366 100%);margin-bottom:16px;">
-      <div class="about-cta-title">Bergabung dengan Komunitas Penjual 💬</div>
-      <div class="about-cta-sub">Diskusi produk, tips berjualan, dan update data terbaru — bareng ratusan penjual Shopee lainnya.</div>
-      <a href="https://chat.whatsapp.com/YOUR_GROUP_LINK" target="_blank" rel="noopener" style="text-decoration:none;">
-        <button class="about-cta-btn">Gabung Komunitas WhatsApp →</button>
-      </a>
-    </div>
 
     <!-- CTA -->
     <div class="about-cta-block">
@@ -1185,6 +1179,35 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
   </div>
 </div>
 <div class="copy-toast" id="copy-toast">Link copied!</div>
+
+
+<!-- ════════════════════════════════════
+     SITE FOOTER
+════════════════════════════════════ -->
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <div class="footer-left">
+      <div class="footer-brand">Product Scout</div>
+      <div class="footer-tagline">Riset produk Shopee gratis — untuk semua penjual Indonesia. 100% Gratis, Selamanya.</div>
+      <div class="footer-links">
+        <a onclick="showPage('home')" class="footer-link">Beranda</a>
+        <a onclick="showPage('discover')" class="footer-link">Produk</a>
+        <a onclick="showPage('about')" class="footer-link">Tentang</a>
+        <a onclick="openFeedback()" class="footer-link">Feedback</a>
+      </div>
+      <div class="footer-copy">© 2026 Product Scout. Data diperbarui: 20 Maret 2026. Tidak berafiliasi dengan Shopee.</div>
+    </div>
+    <div class="footer-right">
+      <div class="footer-signup-title">📬 Update Produk Mingguan</div>
+      <div class="footer-signup-sub">Dapatkan notifikasi produk baru berpotensi tinggi setiap minggu — gratis.</div>
+      <form class="footer-signup-form" onsubmit="handleEmailSignup(event)">
+        <input class="footer-signup-input" type="email" id="signup-email" placeholder="email@kamu.com" required>
+        <button class="footer-signup-btn" type="submit">Daftar</button>
+      </form>
+      <div class="footer-signup-note">Tidak ada spam. Berhenti kapan saja.</div>
+    </div>
+  </div>
+</footer>
 
 <!-- FEEDBACK TAB — always visible on right side -->
 <div class="feedback-tab" onclick="openFeedback()">
@@ -1626,19 +1649,24 @@ function onSearchKey(e) {
 }
 
 function applyFilters() {
-  const priceMin = parseFloat(document.getElementById('f-price-min')?.value) || 0;
-  const priceMax = parseFloat(document.getElementById('f-price-max')?.value) || Infinity;
-  const revMin   = parseFloat(document.getElementById('f-rev-min')?.value)   || 0;
-  const revMax   = parseFloat(document.getElementById('f-rev-max')?.value)   || Infinity;
-  const scoreMin = parseFloat(document.getElementById('f-score-min')?.value) || 0;
+  const priceMinRaw = document.getElementById('f-price-min')?.value;
+  const priceMaxRaw = document.getElementById('f-price-max')?.value;
+  const revMinRaw   = document.getElementById('f-rev-min')?.value;
+  const revMaxRaw   = document.getElementById('f-rev-max')?.value;
+  const scorMinRaw  = document.getElementById('f-score-min')?.value;
+  const priceMin = priceMinRaw ? parseFloat(priceMinRaw) : null;
+  const priceMax = priceMaxRaw ? parseFloat(priceMaxRaw) : null;
+  const revMin   = revMinRaw   ? parseFloat(revMinRaw)   : null;
+  const revMax   = revMaxRaw   ? parseFloat(revMaxRaw)   : null;
+  const scoreMin = scorMinRaw  ? parseFloat(scorMinRaw)  : null;
   const fCat     = document.getElementById('f-category')?.value || 'all';
   if (fCat !== 'all') activeCat = fCat;
   filtered = allProducts.filter(p => {
     const nameMatch  = !searchQ || p.name.toLowerCase().includes(searchQ);
     const catMatch   = activeCat === 'all' || p.category === activeCat;
-    const priceMatch = (!priceMin || p.medianPrice >= priceMin) && p.medianPrice <= priceMax;
-    const revMatch   = (!revMin || p.upToRevenue >= revMin) && p.upToRevenue <= revMax;
-    const scoreMatch = p.score >= scoreMin;
+    const priceMatch = (priceMin === null || p.medianPrice >= priceMin) && (priceMax === null || p.medianPrice <= priceMax);
+    const revMatch   = (revMin   === null || p.upToRevenue >= revMin)   && (revMax   === null || p.upToRevenue <= revMax);
+    const scoreMatch = (scoreMin === null || p.score >= scoreMin);
     return nameMatch && catMatch && priceMatch && revMatch && scoreMatch;
   });
   updateFilterBadge();
