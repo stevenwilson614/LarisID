@@ -1381,6 +1381,11 @@ async function loadData() {
   if (!rows || !rows.length) {
     console.warn('No data loaded — check MASTER_SHEET_ID and MASTER_TAB_NAME, and make sure the sheet is publicly shared.');
     document.getElementById('loading-overlay').style.display = 'none';
+    const g = document.getElementById('home-grid');
+    const d = document.getElementById('disc-grid');
+    const msg = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#E74C3C;font-size:.9rem;">Could not load products. Please check your internet connection and try refreshing the page.</div>';
+    if (g) g.innerHTML = msg;
+    if (d) d.innerHTML = msg;
     return;
   }
 
@@ -1401,6 +1406,7 @@ async function loadData() {
   })).filter(p => p.name); // skip empty rows
 
   filtered = [...allProducts];
+  console.log('Product Scout: loaded', allProducts.length, 'products');
   document.getElementById('loading-overlay').style.display = 'none';
   const statCount = document.getElementById('stat-count');
   if (statCount) statCount.textContent = allProducts.length + '+';
