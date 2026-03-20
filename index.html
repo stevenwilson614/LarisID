@@ -3,7 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Product Scout</title>
+<title>Product Scout — Riset Produk Shopee Gratis</title>
+<meta name="description" content="Product Scout adalah platform riset produk gratis untuk penjual Shopee Indonesia. Temukan produk berpotensi tinggi berdasarkan Viability Score, data penjualan nyata, dan analisis kompetitor.">
+<meta property="og:title" content="Product Scout — Riset Produk Shopee Gratis">
+<meta property="og:description" content="Temukan produk terlaris untuk dijual di Shopee. Gratis selamanya — didukung data nyata dan Viability Score eksklusif.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://stevenwilson614.github.io/Product-Scout/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Product Scout — Riset Produk Shopee Gratis">
+<meta name="twitter:description" content="Temukan produk terlaris untuk dijual di Shopee. Gratis selamanya.">
+<meta name="keywords" content="riset produk shopee, shopee seller, produk laris shopee, viability score, product research indonesia, shopee product finder">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Noto+Sans:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -46,6 +55,8 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 .nav-right{margin-left:auto;display:flex;align-items:center;gap:16px;flex-shrink:0;}
 .nav-link{color:rgba(255,255,255,.9);font-size:.85rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:color .15s;text-decoration:none;}
 .nav-link:hover{color:#fff;}
+.nav-community{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:20px;padding:5px 14px;font-size:.78rem;transition:background .15s,color .15s;}
+.nav-community:hover{background:rgba(255,255,255,.3);color:#fff;}
 
 /* ── PAGES ── */
 .page{display:none;}.page.active{display:block;}
@@ -200,6 +211,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 
 /* ── DISCOVER ── */
 .disc-hero{background:var(--grad);padding:12px 22px 18px;}
+.freshness-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:3px 12px;font-size:.72rem;font-weight:600;color:rgba(255,255,255,.95);margin-top:6px;}
 .disc-hero p{color:rgba(255,255,255,.9);font-size:.88rem;}
 .disc-main{max-width:1200px;margin:0 auto;padding:18px 20px 60px;}
 .toolbar{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:var(--r);padding:11px 16px;margin-bottom:14px;box-shadow:var(--sh);flex-wrap:wrap;gap:8px;}
@@ -248,6 +260,9 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 /* RIGHT — product info */
 .det-info{background:#fff;border-radius:12px;padding:20px;box-shadow:var(--sh);margin-bottom:14px;}
 .det-score-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.share-btn{display:inline-flex;align-items:center;gap:7px;background:#25D366;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;margin-top:14px;width:100%;justify-content:center;transition:background .15s,transform .1s;}
+.share-btn:hover{background:#1ebe5d;transform:translateY(-1px);}
+.share-btn svg{flex-shrink:0;}
 .det-score-badge{background:var(--score-clr,var(--score-green));color:#fff;font-family:'Roboto', 'Noto Sans', sans-serif;font-weight:900;font-size:.82rem;padding:3px 10px;border-radius:20px;transition:background .2s;}
 .det-cat-tag{font-size:.78rem;color:var(--orange);font-weight:600;background:var(--orange-light);padding:3px 10px;border-radius:20px;}
 .det-name{font-family:'Roboto', 'Noto Sans', sans-serif;font-weight:900;font-size:1.5rem;line-height:1.25;margin-bottom:14px;color:#111;}
@@ -496,6 +511,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
     <a class="nav-link" onclick="showPage('discover')">Discover</a>
     <a class="nav-link" onclick="showPage('about')">Tentang</a>
     <a class="nav-link" onclick="openFeedback()">Feedback</a>
+    <a class="nav-link nav-community" href="https://chat.whatsapp.com/YOUR_GROUP_LINK" target="_blank" rel="noopener">💬 Komunitas</a>
   </div>
 </nav>
 
@@ -578,6 +594,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 <div class="page" id="page-discover">
   <div class="disc-hero">
     <p>Discover high-potential products to sell — sorted by viability score</p>
+    <span class="freshness-badge">🔄 Data diperbarui: Maret 2026</span>
   </div>
   <div class="disc-main">
     <div class="pills" id="disc-pills"></div>
@@ -697,6 +714,10 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
                 <div class="det-stat-pill-val" id="d-score2">—</div>
               </div>
             </div>
+            <button class="share-btn" onclick="shareProduct()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm6.146 17.04c-.24.67-.88 1.224-1.637 1.466-.757.242-1.642.18-2.367-.018-.724-.198-1.367-.488-1.956-.817a12.347 12.347 0 01-3.17-2.73 12.347 12.347 0 01-1.805-3.37c-.198-.724-.26-1.609-.018-2.366.242-.757.796-1.397 1.466-1.637.225-.08.46-.12.694-.12.18 0 .358.02.528.06.38.087.702.312.9.63l.9 1.563c.198.344.247.75.136 1.13-.112.38-.364.704-.706.908l-.348.2c.243.49.566.94.958 1.333.393.393.843.716 1.333.958l.2-.348c.204-.342.528-.594.908-.706.38-.111.786-.062 1.13.136l1.563.9c.318.198.543.52.63.9.04.17.06.348.06.528 0 .234-.04.469-.12.694z"/></svg>
+              Bagikan ke WhatsApp
+            </button>
           </div>
 
           <!-- store age in business -->
@@ -943,6 +964,15 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
         <p>• <strong>Gunakan sebagai titik awal</strong> — Product Scout paling efektif digunakan sebagai langkah pertama dalam riset. Lanjutkan dengan membeli produk sampel, menguji pasar dengan anggaran kecil, dan belajar dari feedback pelanggan nyata.</p>
         <p>• <strong>Tidak berafiliasi dengan Shopee</strong> — Product Scout adalah platform independen dan tidak memiliki hubungan resmi dengan Shopee atau Sea Group.</p>
       </div>
+    </div>
+
+    <!-- COMMUNITY CTA -->
+    <div class="about-cta-block" style="background:linear-gradient(135deg,#128C7E 0%,#25D366 100%);margin-bottom:16px;">
+      <div class="about-cta-title">Bergabung dengan Komunitas Penjual 💬</div>
+      <div class="about-cta-sub">Diskusi produk, tips berjualan, dan update data terbaru — bareng ratusan penjual Shopee lainnya.</div>
+      <a href="https://chat.whatsapp.com/YOUR_GROUP_LINK" target="_blank" rel="noopener" style="text-decoration:none;">
+        <button class="about-cta-btn">Gabung Komunitas WhatsApp →</button>
+      </a>
     </div>
 
     <!-- CTA -->
@@ -2014,6 +2044,26 @@ function setMainImg(src, thumbEl) {
   document.getElementById('d-main-img').innerHTML = `<img src="${src}" alt="listing" onerror="this.parentElement.innerHTML='📦'">`;
   document.querySelectorAll('.det-thumb').forEach(t => t.classList.remove('active'));
   thumbEl.classList.add('active');
+}
+
+function shareProduct() {
+  const name = document.getElementById('d-name') ? document.getElementById('d-name').textContent.trim() : '';
+  const score = document.getElementById('d-score') ? document.getElementById('d-score').textContent.trim() : '';
+  const revLo = document.getElementById('d-rev-lo') ? document.getElementById('d-rev-lo').textContent.trim() : '';
+  const revHi = document.getElementById('d-rev-hi') ? document.getElementById('d-rev-hi').textContent.trim() : '';
+  const url = 'https://stevenwilson614.github.io/Product-Scout/';
+  let text = '🛍️ *Cek peluang produk ini di Product Scout!*
+
+';
+  if (name) text += '📦 ' + name + '
+';
+  if (score) text += '⭐ Viability Score: ' + score + '/10
+';
+  if (revLo && revHi) text += '💰 Estimasi Pendapatan: ' + revLo + ' – ' + revHi + '/bln
+';
+  text += '
+🔗 Cek selengkapnya (gratis): ' + url;
+  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
 }
 
 function openFeedback() {
