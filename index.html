@@ -368,37 +368,6 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 .fl{color:var(--tm);}.fv{font-weight:700;}
 .fv.o{color:var(--orange);}.fv.r{color:#e74c3c;}.fv.b{color:#2980b9;}
 
-/* ── FEEDBACK TAB ── */
-.feedback-tab{
-  position:fixed;
-  right:16px;
-  top:50%;
-  transform:translateY(-50%);
-  z-index:500;
-  cursor:pointer;
-}
-.feedback-tab-inner{
-  background:var(--grad);
-  color:#fff;
-  font-size:.78rem;
-  font-weight:700;
-  letter-spacing:.06em;
-  white-space:nowrap;
-  writing-mode:vertical-rl;
-  text-orientation:mixed;
-  transform:rotate(180deg);
-  padding:16px 10px;
-  border-radius:8px;
-  box-shadow:0 4px 16px rgba(0,0,0,.2);
-  transition:padding .2s, box-shadow .2s;
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
-.feedback-tab:hover .feedback-tab-inner{
-  padding:20px 12px;
-  box-shadow:0 6px 20px rgba(238,77,45,.35);
-}
 
 /* ── AI SOURCING GUIDE ── */
 .sourcing-loading{display:flex;align-items:center;gap:10px;padding:16px;color:var(--tl);font-size:.85rem;}
@@ -595,6 +564,12 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 #fb-toast-yes{background:var(--orange);color:#fff;border:none;border-radius:7px;padding:6px 14px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;}
 #fb-toast-no{background:none;border:none;color:var(--tl);font-size:.8rem;cursor:pointer;font-family:inherit;}
 
+
+
+/* Floating Masukan button */
+#fb-float{position:fixed;bottom:24px;right:20px;z-index:1050;background:var(--orange);color:#fff;border:none;border-radius:50px;padding:10px 18px;font-size:.84rem;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(238,77,45,.4);display:flex;align-items:center;gap:7px;opacity:0;pointer-events:none;transform:translateY(20px);transition:opacity .35s,transform .35s;}
+#fb-float.show{opacity:1;pointer-events:auto;transform:translateY(0);}
+#fb-float:hover{background:#d43a1f;}
 
 </style>
 </head>
@@ -1221,11 +1196,6 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
     </div>
   </div>
 </footer>
-
-<!-- FEEDBACK TAB — always visible on right side -->
-<div class="feedback-tab" onclick="openFeedback()">
-  <div class="feedback-tab-inner">💬 Feedback</div>
-</div>
 
 <script>
 // ════════════════════════════════════════════════════════════
@@ -2524,6 +2494,10 @@ function openFeedback() {
   const TALLY_ID = '9q1Y1Y';
   let productsViewed = 0;
   let toastShown = false;
+  let floatShown = false;
+
+  /* ── Floating button: show after 30s ── */
+  setTimeout(() => showFloat(), 30000);
 
   /* ── First-visit banner: show after 3s, auto-dismiss 10s ── */
   if (!localStorage.getItem('ps_banner_seen')) {
@@ -2539,6 +2513,7 @@ function openFeedback() {
   window.openDetail = function(id) {
     productsViewed++;
     _origOpenDetail(id);
+    showFloat();
   };
 
   /* ── Hook into goBack to show toast after 2nd product view ── */
@@ -2555,6 +2530,13 @@ function openFeedback() {
     }
   };
 
+  function showFloat() {
+    if (floatShown) return;
+    floatShown = true;
+    const el = document.getElementById('fb-float');
+    if (el) el.classList.add('show');
+  }
+
   window.dismissBanner = function() {
     localStorage.setItem('ps_banner_seen', '1');
     const el = document.getElementById('fb-banner');
@@ -2569,6 +2551,9 @@ function openFeedback() {
 
 loadData();
 </script>
+
+  <!-- ── FLOATING MASUKAN BUTTON ── -->
+  <button id="fb-float" onclick="openFeedback()">💬 Masukan</button>
 
   <!-- ── FEEDBACK BANNER (first visit) ── -->
   <div id="fb-banner">
