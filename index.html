@@ -1819,52 +1819,75 @@ function openDetail(id) {
 }
 
 // ── SELLER ACCURACY VOTING ────────────────────────────────────
-function voteKey(pid) { return 'vote_' + pid; }
-function voteCountKey(pid) { return 'votecount_' + pid; }
+const SUPA_URL = 'https://bzmvlraziqevqdyotvgy.supabase.co';
+const SUPA_KEY = 'sb_publishable_KDSWIJJLckser1e1hk7bbA_yMChRPog';
+const SUPA_HDR = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
 
-function loadVotes(pid) {
-  const myVote = localStorage.getItem(voteKey(pid));
-  const counts = JSON.parse(localStorage.getItem(voteCountKey(pid)) || '{"up":0,"down":0}');
+function voteKey(pid) { return 'vote_' + pid; }
+
+async function loadVotes(pid) {
+  const myVote  = localStorage.getItem(voteKey(pid));
   const upBtn   = document.getElementById('vote-up-btn');
   const downBtn = document.getElementById('vote-down-btn');
   const msg     = document.getElementById('vote-result-msg');
   const barWrap = document.getElementById('vote-bar-wrap');
 
-  // reset classes
   upBtn.classList.remove('voted-up','voted-down');
   downBtn.classList.remove('voted-up','voted-down');
   msg.classList.remove('show');
+
+  // fetch community counts from Supabase
+  let counts = { up: 0, down: 0 };
+  try {
+    const res  = await fetch(`${SUPA_URL}/rest/v1/votes?product_id=eq.${encodeURIComponent(pid)}`, { headers: SUPA_HDR });
+    const rows = await res.json();
+    if (Array.isArray(rows)) rows.forEach(r => { counts[r.direction] = r.count; });
+  } catch(e) { /* show zeros if offline */ }
 
   document.getElementById('vote-up-count').textContent   = counts.up;
   document.getElementById('vote-down-count').textContent = counts.down;
 
   if (myVote) {
-    if (myVote === 'up') { upBtn.classList.add('voted-up'); }
-    else { downBtn.classList.add('voted-down'); }
+    if (myVote === 'up') upBtn.classList.add('voted-up');
+    else downBtn.classList.add('voted-down');
     msg.textContent = myVote === 'up' ? 'Makasih ya! 🙌' : 'Oke, noted! Terima kasih feedbacknya.';
     msg.classList.add('show');
     updateVoteBar(counts);
     barWrap.classList.add('show');
   } else {
-    barWrap.classList.remove('show');
+    updateVoteBar(counts);
+    barWrap.classList.add('show');
   }
 }
 
-function castVote(dir) {
+async function castVote(dir) {
   if (!currentProduct) return;
   const pid     = currentProduct.id;
   const prevDir = localStorage.getItem(voteKey(pid));
-  const counts  = JSON.parse(localStorage.getItem(voteCountKey(pid)) || '{"up":0,"down":0}');
 
-  if (prevDir === dir) return; // already voted same way, do nothing
+  if (prevDir === dir) return; // already voted same way
 
-  // reverse previous vote if exists
-  if (prevDir) counts[prevDir] = Math.max(0, counts[prevDir] - 1);
-  counts[dir]++;
+  // disable buttons while saving
+  document.getElementById('vote-up-btn').disabled   = true;
+  document.getElementById('vote-down-btn').disabled = true;
 
-  localStorage.setItem(voteKey(pid), dir);
-  localStorage.setItem(voteCountKey(pid), JSON.stringify(counts));
-  loadVotes(pid);
+  try {
+    if (prevDir) {
+      await fetch(`${SUPA_URL}/rest/v1/rpc/decrement_vote`, {
+        method: 'POST', headers: SUPA_HDR,
+        body: JSON.stringify({ p_product_id: pid, p_direction: prevDir })
+      });
+    }
+    await fetch(`${SUPA_URL}/rest/v1/rpc/increment_vote`, {
+      method: 'POST', headers: SUPA_HDR,
+      body: JSON.stringify({ p_product_id: pid, p_direction: dir })
+    });
+    localStorage.setItem(voteKey(pid), dir);
+  } catch(e) { /* silently fail */ }
+
+  document.getElementById('vote-up-btn').disabled   = false;
+  document.getElementById('vote-down-btn').disabled = false;
+  await loadVotes(pid);
 }
 
 function updateVoteBar(counts) {
