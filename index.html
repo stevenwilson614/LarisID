@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>LarisID — Riset Produk Shopee Gratis</title>
 <meta name="description" content="LarisID adalah platform riset produk gratis untuk penjual Shopee Indonesia. Temukan produk berpotensi tinggi berdasarkan Viability Score, data penjualan nyata, dan analisis kompetitor.">
 <meta property="og:title" content="LarisID — Riset Produk Shopee Gratis">
@@ -257,7 +257,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 /* main 2-col layout */
 .det-main{max-width:1200px;margin:0 auto;padding:16px 20px 0;}
 .det-layout{display:grid;grid-template-columns:420px 1fr;gap:20px;align-items:start;}
-@media(max-width:900px){.det-layout{grid-template-columns:1fr;}}
+@media(max-width:900px){.det-layout{grid-template-columns:1fr;}} @media(max-width:900px){.det-gallery{position:static;}}
 
 /* LEFT — image gallery */
 .det-gallery{position:sticky;top:72px;}
@@ -630,9 +630,16 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
     <a class="nav-link" onclick="showPage('discover')">Products</a>
     <a class="nav-link" onclick="showPage('about')">Tentang</a>
     <a class="nav-link" onclick="openFeedback()">Feedback</a>
-
   </div>
+  <button class="nav-hamburger" onclick="toggleMobileMenu()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
 </nav>
+<div class="mobile-menu" id="mobile-menu">
+  <a onclick="showPage('discover');closeMobileMenu()">Products</a>
+  <a onclick="showPage('about');closeMobileMenu()">Tentang</a>
+  <a onclick="openFeedback();closeMobileMenu()">Feedback</a>
+</div>
 
 <!-- ════════════════════════════════════
      HOME PAGE
