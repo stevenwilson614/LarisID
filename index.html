@@ -613,6 +613,10 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 .is-mobile .nav-search-wrap{max-width:none;}
 /* ── PREVENT HORIZONTAL OVERFLOW ── */
 html,body{overflow-x:hidden;max-width:100%;}
+@media(max-width:768px){
+  #sellers-scroll-hint{display:block !important;}
+  #sellers-scroll-inner::after{content:'';position:absolute;top:0;right:0;width:40px;height:100%;background:linear-gradient(to right,transparent,rgba(255,255,255,0.9));pointer-events:none;}
+}
 </style>
 </head>
 <body>
@@ -1028,7 +1032,7 @@ html,body{overflow-x:hidden;max-width:100%;}
           <div class="spinner" style="margin:0 auto 10px;"></div>
           Loading seller data...
         </div>
-        <div style="overflow-x:auto;display:none;" id="sellers-table-wrap">
+        <div style="position:relative;display:none;" id="sellers-table-wrap"><div id="sellers-scroll-hint" style="display:none;text-align:center;padding:5px 0 8px;font-size:.75rem;color:var(--tl);letter-spacing:.02em;">← geser untuk lihat lebih →</div><div id="sellers-scroll-inner" style="overflow-x:auto;-webkit-overflow-scrolling:touch;position:relative;">
           <table class="sel-t">
             <thead><tr>
               <th>Rank</th>
@@ -2053,7 +2057,7 @@ async function loadSellerData(p) {
   }
 
   document.getElementById('sellers-loading').style.display = 'none';
-  document.getElementById('sellers-table-wrap').style.display = 'block';
+  document.getElementById('sellers-table-wrap').style.display = 'block'; var si = document.getElementById('sellers-scroll-inner'); if(si){ si.addEventListener('scroll', function(){ document.getElementById('sellers-scroll-hint').style.opacity = this.scrollLeft > 10 ? '0' : '1'; }); }
 
   if (!rows || !rows.length) {
     document.getElementById('sellers-tbody').innerHTML =
