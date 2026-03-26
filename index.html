@@ -601,6 +601,20 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 .vote-bar-track{height:8px;background:#f0ebe4;border-radius:4px;overflow:hidden;}
 .vote-bar-fill{height:100%;background:linear-gradient(90deg,#27AE60,#5dde8d);border-radius:4px;transition:width .4s ease;}
 
+/* ── MOBILE NAV ── */
+.nav-hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;padding:6px;background:none;border:none;flex-shrink:0;}
+.nav-hamburger span{display:block;width:22px;height:2px;background:#fff;border-radius:2px;}
+.mobile-menu{display:none;position:fixed;top:72px;left:0;right:0;background:var(--grad);z-index:199;padding:12px 0;box-shadow:0 4px 12px rgba(0,0,0,.2);}
+.mobile-menu.open{display:block;}
+.mobile-menu a{display:block;padding:13px 24px;color:#fff;font-size:.95rem;font-weight:600;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.12);cursor:pointer;}
+.mobile-menu a:last-child{border-bottom:none;}
+@media(max-width:640px){
+  .nav-hamburger{display:flex;}
+  .nav-right{display:none;}
+  .nav-search-wrap{max-width:none;}
+}
+/* ── PREVENT HORIZONTAL OVERFLOW ── */
+html,body{overflow-x:hidden;max-width:100%;}
 </style>
 </head>
 <body>
