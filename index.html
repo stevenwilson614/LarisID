@@ -626,14 +626,12 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
   </div>
   <div class="search-suggestions" id="search-suggestions"></div>
   </div>
+  <button class="nav-hamburger" onclick="toggleMobileMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
   <div class="nav-right">
     <a class="nav-link" onclick="showPage('discover')">Products</a>
     <a class="nav-link" onclick="showPage('about')">Tentang</a>
     <a class="nav-link" onclick="openFeedback()">Feedback</a>
   </div>
-  <button class="nav-hamburger" onclick="toggleMobileMenu()" aria-label="Menu">
-    <span></span><span></span><span></span>
-  </button>
 </nav>
 <div class="mobile-menu" id="mobile-menu">
   <a onclick="showPage('discover');closeMobileMenu()">Products</a>
@@ -2711,6 +2709,23 @@ function openFeedback() {
 })();
 
 loadData();
+
+// Prevent zoom on iOS/mobile
+document.addEventListener('touchmove', function(e){
+  if(e.touches.length > 1){ e.preventDefault(); }
+}, {passive: false});
+var lastTap = 0;
+document.addEventListener('touchend', function(e){
+  var now = Date.now();
+  if(now - lastTap < 300){ e.preventDefault(); }
+  lastTap = now;
+}, {passive: false});
+
+// Banner carousel auto-scroll
+document.addEventListener('DOMContentLoaded', function(){
+  setInterval(function(){ goToSlide((bannerSlide + 1) % bannerTotal); }, 3500);
+});
+
 </script>
 
   <!-- ── FLOATING MASUKAN BUTTON ── -->
