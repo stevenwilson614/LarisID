@@ -212,8 +212,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 .product-card:hover{transform:scale(1.04);box-shadow:var(--shh);z-index:2;}
 .card-img{position:relative;width:100%;padding-top:100%;background:#f8f3ee;overflow:hidden;}
 .card-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
-.shopee-badge{position:absolute;bottom:6px;right:6px;display:flex;align-items:center;z-index:2;}
-.shopee-badge img{width:20px;height:20px;display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3));}
+
 
 .card-emoji{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:3rem;}
 .score-pill{position:absolute;top:7px;left:7px;background:#fff;border:2px solid var(--score-clr,var(--score-green));border-radius:6px;padding:2px 6px;font-family:'Roboto', 'Noto Sans', sans-serif;font-weight:900;font-size:.78rem;color:var(--score-clr,var(--score-green));line-height:1.4;box-shadow:0 1px 4px rgba(0,0,0,.1);}
@@ -1797,11 +1796,10 @@ function cardHTML(p, idx) {
       ${p.image ? `<img src="${p.image}" alt="${p.name}" onerror="this.style.display='none'">` : ''}
       <div class="card-emoji" ${p.image ? 'style="display:none"' : ''}>${p.emoji||'📦'}</div>
       <div class="score-pill" style="--score-clr:${scoreColor(p.score)}">${fmtScore(p.score)}</div>
-      <div class="shopee-badge"><img src="images/shopee-logo.png" alt="Shopee"></div>
     </div>
     <div class="card-body">
       <div class="card-name">${p.name}</div>
-      <div class="card-cat">${p.category}</div>
+      <div style="display:flex;align-items:center;gap:5px;"><div class="card-cat">${p.category}</div><img src="images/shopee-logo.png" alt="Shopee" style="width:14px;height:14px;flex-shrink:0;"></div>
     </div>
   </div>`;
 }
