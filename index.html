@@ -103,7 +103,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 }
 .banner-main-bg{
   position:absolute;inset:0;
-  background:url('/images/Banner.png') center center/cover no-repeat;
+  background:url('/images/Banner.jpg') center center/cover no-repeat;
   z-index:0;
 }
 
@@ -656,12 +656,12 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 
         <!-- PANEL 2 — top right -->
         <div class="banner-side banner-side-top" onclick="quickFilter('hot'); document.querySelector('.home-grid').scrollIntoView({behavior:'smooth'})">
-          <div style="position:absolute;inset:0;background:url('/images/Banner TR.png') center center/cover no-repeat;"></div>
+          <div style="position:absolute;inset:0;background:url('/images/Banner TR.jpg') center center/cover no-repeat;"></div>
         </div>
 
         <!-- PANEL 3 — bottom right -->
         <div class="banner-side banner-side-bot" onclick="quickFilter('high_revenue'); document.querySelector('.home-grid').scrollIntoView({behavior:'smooth'})">
-          <div style="position:absolute;inset:0;background:url('/images/Banner BR.png') center center/cover no-repeat;"></div>
+          <div style="position:absolute;inset:0;background:url('/images/Banner BR.jpg') center center/cover no-repeat;"></div>
         </div>
 
       </div>
@@ -1797,7 +1797,7 @@ function cardHTML(p, idx) {
       ${p.image ? `<img src="${p.image}" alt="${p.name}" onerror="this.style.display='none'">` : ''}
       <div class="card-emoji" ${p.image ? 'style="display:none"' : ''}>${p.emoji||'📦'}</div>
       <div class="score-pill" style="--score-clr:${scoreColor(p.score)}">${fmtScore(p.score)}</div>
-      <div class="shopee-badge"><img src="/images/shopee-logo.png" alt="Shopee"></div>
+      <div class="shopee-badge"><img src="images/shopee-logo.png" alt="Shopee"></div>
     </div>
     <div class="card-body">
       <div class="card-name">${p.name}</div>
