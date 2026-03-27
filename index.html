@@ -622,17 +622,18 @@ html,body{overflow-x:hidden;max-width:100%;}
 .blog-card{background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.07);padding:20px;margin-bottom:18px;border:1.5px solid #f0ebe4;}
 
 /* ── COMPARE ─────────────────────────────────────── */
-.cmp-btn{position:absolute;top:6px;left:6px;z-index:4;background:rgba(255,255,255,.92);border:none;border-radius:6px;padding:3px 7px;font-size:.65rem;font-weight:700;color:#555;cursor:pointer;display:flex;align-items:center;gap:4px;box-shadow:0 1px 4px rgba(0,0,0,.15);transition:all .15s;}
-.cmp-btn.selected{background:var(--orange);color:#fff;}
-.cmp-btn svg{width:11px;height:11px;flex-shrink:0;}
+.cmp-btn{position:absolute;top:7px;left:7px;z-index:4;width:20px;height:20px;background:rgba(255,255,255,.92);border:2px solid #ccc;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.15);transition:all .15s;padding:0;}
+.cmp-btn.selected{background:var(--orange);border-color:var(--orange);}
+.cmp-btn svg{width:11px;height:11px;flex-shrink:0;display:none;}
+.cmp-btn.selected svg{display:block;}
 
 /* floating compare bar */
 #compare-bar{position:fixed;bottom:0;left:0;right:0;z-index:999;background:#fff;border-top:2px solid var(--orange);box-shadow:0 -4px 20px rgba(0,0,0,.13);padding:10px 20px;display:flex;align-items:center;gap:12px;transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);}
 #compare-bar.visible{transform:translateY(0);}
 .cmp-bar-slots{display:flex;gap:10px;flex:1;}
-.cmp-slot{width:64px;height:64px;border-radius:10px;border:2px dashed #ddd;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;position:relative;background:#fafafa;}
-.cmp-slot img{width:100%;height:100%;object-fit:cover;}
-.cmp-slot .cmp-slot-rm{position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;border:none;border-radius:50%;width:17px;height:17px;font-size:.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
+.cmp-slot{width:64px;height:64px;border-radius:10px;border:2px dashed #ddd;display:flex;align-items:center;justify-content:center;overflow:visible;flex-shrink:0;position:relative;background:#fafafa;}
+.cmp-slot img{width:100%;height:100%;object-fit:cover;border-radius:8px;}.cmp-slot-inner{width:100%;height:100%;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.cmp-slot .cmp-slot-rm{position:absolute;top:-7px;right:-7px;background:#e74c3c;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:.65rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;z-index:10;box-shadow:0 1px 4px rgba(0,0,0,.25);}
 .cmp-slot .cmp-slot-name{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.55);color:#fff;font-size:.5rem;text-align:center;padding:2px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cmp-slot-empty{font-size:1.5rem;color:#ccc;}
 .cmp-bar-actions{display:flex;gap:8px;flex-shrink:0;}
@@ -830,6 +831,10 @@ html,body{overflow-x:hidden;max-width:100%;}
     <div class="free-banner">
       <span class="free-banner-icon">🆓</span>
       <span class="free-banner-text"><strong>100% Gratis, Selamanya.</strong> Tidak perlu akun. Tidak ada biaya tersembunyi. Dibuat untuk para penjual Indonesia.</span>
+    </div>
+    <div style="background:#fff8f0;border:1px solid #fde2c8;border-radius:8px;padding:8px 14px;margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:.78rem;color:#b05000;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;flex-shrink:0"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+      <span>Centang kotak di pojok kiri kartu untuk membandingkan hingga <strong>3 produk</strong> sekaligus.</span>
     </div>
     <div class="pills" id="disc-pills"></div>
     <div class="toolbar">
@@ -1524,6 +1529,20 @@ html,body{overflow-x:hidden;max-width:100%;}
 <div class="copy-toast" id="copy-toast">Link copied!</div>
 
 
+<!-- ── COMPARE PAGE ─────────────────────── -->
+<div class="page" id="page-compare">
+  <div class="cmp-page-header">
+    <button onclick="showPage('discover')">← Kembali</button>
+    <h2>Perbandingan Produk</h2>
+  </div>
+  <div class="cmp-table-wrap">
+    <table class="cmp-table" id="cmp-table">
+      <thead id="cmp-thead"></thead>
+      <tbody id="cmp-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
 <!-- ════════════════════════════════════
      SITE FOOTER
 ════════════════════════════════════ -->
@@ -2129,8 +2148,7 @@ function renderCompareBar() {
           ? `<img src="${p.image}" alt="">`
           : `<span style="font-size:1.4rem">${p.emoji||'📦'}</span>`;
         html += `<div class="cmp-slot">
-          ${imgHTML}
-          <div class="cmp-slot-name">${p.name}</div>
+          <div class="cmp-slot-inner">${imgHTML}<div class="cmp-slot-name">${p.name}</div></div>
           <button class="cmp-slot-rm" onclick="removeFromCompare(${p.id})" title="Hapus">×</button>
         </div>`;
       }
@@ -2201,81 +2219,112 @@ function renderComparePage() {
 
   // Rows
   const rows = [];
+  function row(label, cells, isSection) {
+    return { label, cells, isSection };
+  }
+
+  // ── OVERVIEW ─────────────────────────────────────────────
+  rows.push(row('OVERVIEW', [], true));
 
   // Score
   const scores = products.map(p => p.score);
   const scoreBI = bestIdx(scores);
-  rows.push({
-    label: 'Skor Viabilitas',
-    cells: products.map((p, i) => {
-      const clr = scoreColor(p.score);
-      const cls = i === scoreBI ? 'cmp-best' : '';
-      return `<td class="${cls}"><span class="cmp-score-pill" style="background:${clr}">${fmtScore(p.score)}</span></td>`;
-    })
-  });
+  rows.push(row('Skor Viabilitas', products.map((p, i) => {
+    const clr = scoreColor(p.score);
+    const cls = i === scoreBI ? 'cmp-best' : '';
+    return `<td class="${cls}"><span class="cmp-score-pill" style="background:${clr}">${fmtScore(p.score)}</span></td>`;
+  })));
 
   // Category
-  rows.push({
-    label: 'Kategori',
-    cells: products.map(p => `<td><span style="font-size:.8rem">${p.category}</span></td>`)
-  });
+  rows.push(row('Kategori', products.map(p =>
+    `<td><span style="font-size:.8rem">${p.category}</span></td>`
+  )));
 
-  // Median price
-  const prices = products.map(p => p.medianPrice);
-  // For price, lower = better? Actually higher price might mean more revenue potential.
-  // Let's just show without best highlighting for price
-  rows.push({
-    label: 'Harga Median',
-    cells: products.map(p => `<td style="font-weight:700;color:var(--orange)">${fmt(p.medianPrice)}</td>`)
-  });
+  // ── HARGA ────────────────────────────────────────────────
+  rows.push(row('HARGA', [], true));
 
-  // Revenue Pemula
+  // Price range (low / median / high)
+  rows.push(row('Harga Terendah', products.map(p =>
+    `<td style="font-size:.82rem;color:#555">${fmt(p.medianPrice * 0.75)}</td>`
+  )));
+  rows.push(row('Harga Median', products.map(p =>
+    `<td style="font-weight:700;color:var(--orange)">${fmt(p.medianPrice)}</td>`
+  )));
+  rows.push(row('Harga Tertinggi', products.map(p =>
+    `<td style="font-size:.82rem;color:#555">${fmt(p.medianPrice * 1.3)}</td>`
+  )));
+
+  // ── REVENUE ──────────────────────────────────────────────
+  rows.push(row('POTENSI REVENUE', [], true));
+
   const revStart = products.map(p => p.startRevenue);
   const revStartBI = bestIdx(revStart);
-  rows.push({
-    label: 'Revenue Pemula/bln',
-    cells: products.map((p, i) => {
-      const cls = i === revStartBI ? 'cmp-best' : '';
-      return `<td class="${cls}">${fmtShort(p.startRevenue)}</td>`;
-    })
-  });
+  rows.push(row('Revenue Pemula/bln', products.map((p, i) => {
+    const cls = i === revStartBI ? 'cmp-best' : '';
+    return `<td class="${cls}">${fmtShort(p.startRevenue)}</td>`;
+  })));
 
-  // Revenue Berpengalaman
   const revUp = products.map(p => p.upToRevenue);
   const revUpBI = bestIdx(revUp);
-  rows.push({
-    label: 'Revenue Pro/bln',
-    cells: products.map((p, i) => {
-      const cls = i === revUpBI ? 'cmp-best' : '';
-      return `<td class="${cls}">${fmtShort(p.upToRevenue)}</td>`;
-    })
-  });
+  rows.push(row('Revenue Pro/bln', products.map((p, i) => {
+    const cls = i === revUpBI ? 'cmp-best' : '';
+    return `<td class="${cls}">${fmtShort(p.upToRevenue)}</td>`;
+  })));
 
-  // Units Pemula
+  const revMid = products.map(p => (p.startRevenue + p.upToRevenue) / 2);
+  const revMidBI = bestIdx(revMid);
+  rows.push(row('Revenue Rata-rata/bln', products.map((p, i) => {
+    const cls = i === revMidBI ? 'cmp-best' : '';
+    return `<td class="${cls}">${fmtShort((p.startRevenue + p.upToRevenue) / 2)}</td>`;
+  })));
+
+  // ── VOLUME ───────────────────────────────────────────────
+  rows.push(row('VOLUME PENJUALAN', [], true));
+
   const unitsNew = products.map(p => p.newUnits);
   const unitsNewBI = bestIdx(unitsNew);
-  rows.push({
-    label: 'Units/bln (Pemula)',
-    cells: products.map((p, i) => {
-      const cls = i === unitsNewBI ? 'cmp-best' : '';
-      return `<td class="${cls}">${Math.round(p.newUnits).toLocaleString('id-ID')}</td>`;
-    })
-  });
+  rows.push(row('Units/bln (Pemula)', products.map((p, i) => {
+    const cls = i === unitsNewBI ? 'cmp-best' : '';
+    return `<td class="${cls}">${Math.round(p.newUnits).toLocaleString('id-ID')}</td>`;
+  })));
 
-  // Units Berpengalaman
   const unitsExp = products.map(p => p.expUnits);
   const unitsExpBI = bestIdx(unitsExp);
-  rows.push({
-    label: 'Units/bln (Pro)',
-    cells: products.map((p, i) => {
-      const cls = i === unitsExpBI ? 'cmp-best' : '';
-      return `<td class="${cls}">${Math.round(p.expUnits).toLocaleString('id-ID')}</td>`;
-    })
-  });
+  rows.push(row('Units/bln (Pro)', products.map((p, i) => {
+    const cls = i === unitsExpBI ? 'cmp-best' : '';
+    return `<td class="${cls}">${Math.round(p.expUnits).toLocaleString('id-ID')}</td>`;
+  })));
 
-  tbody.innerHTML = rows.map(r =>
-    `<tr><td class="row-label">${r.label}</td>${r.cells.join('')}</tr>`
-  ).join('');
+  // ── TOKO ─────────────────────────────────────────────────
+  rows.push(row('INFO TOKO', [], true));
+
+  // Avg store age — pulled from sellerCache if loaded, else show '—'
+  rows.push(row('Rata-rata Usia Toko', products.map(p => {
+    const cached = window._sellerCache && window._sellerCache[p.id];
+    if (cached && cached.length > 0) {
+      const now = new Date();
+      const ages = cached.map(s => {
+        if (!s.listingDate) return null;
+        const d = new Date(s.listingDate);
+        if (isNaN(d)) return null;
+        return (now - d) / (1000 * 60 * 60 * 24 * 365.25);
+      }).filter(a => a !== null && a > 0);
+      if (ages.length > 0) {
+        const avg = (ages.reduce((a,b) => a+b, 0) / ages.length);
+        const display = avg >= 1 ? avg.toFixed(1) + ' thn' : Math.round(avg * 12) + ' bln';
+        return `<td style="font-weight:700">${display}</td>`;
+      }
+    }
+    return `<td style="color:#aaa;font-size:.8rem">Buka dulu</td>`;
+  })));
+
+  tbody.innerHTML = rows.map(r => {
+    if (r.isSection) {
+      const colCount = products.length;
+      return `<tr><td class="row-label section" colspan="${colCount + 1}">${r.label}</td></tr>`;
+    }
+    return `<tr><td class="row-label">${r.label}</td>${r.cells.join('')}</tr>`;
+  }).join('');
 }
 
 function showCompareToast(msg) {
@@ -2298,9 +2347,8 @@ function cardHTML(p, idx) {
       <div class="card-emoji" ${p.image ? 'style="display:none"' : ''}>${p.emoji||'📦'}</div>
       <div class="score-pill" style="--score-clr:${scoreColor(p.score)}">${fmtScore(p.score)}</div>
     </div>
-    <button class="cmp-btn ${compareList.includes(p.id)?'selected':''}" data-pid="${p.id}" onclick="toggleCompare(event,${p.id})" title="Tambah ke perbandingan">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
-      ${compareList.includes(p.id)?'✓':''}
+    <button class="cmp-btn ${compareList.includes(p.id)?'selected':''}" data-pid="${p.id}" onclick="toggleCompare(event,${p.id})" title="Bandingkan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
     </button>
     <div class="card-body">
       <div class="card-name">${p.name}</div>
@@ -2580,6 +2628,10 @@ async function loadSellerData(p) {
     .sort((a, b) => b.newRevenue - a.newRevenue)
     .slice(0, 15)
     .map((s, i) => ({ ...s, rank: i + 1 }));
+
+  // Cache seller rows for compare page store-age lookup
+  if (!window._sellerCache) window._sellerCache = {};
+  window._sellerCache[p.id] = mapped;
 
   // ── ENRICH DETAIL PAGE WITH REAL SELLER DATA ─────────────
 
@@ -3267,18 +3319,5 @@ document.addEventListener('DOMContentLoaded', function(){
   </div>
 </div>
 
-<!-- ── COMPARE PAGE ─────────────────────── -->
-<div class="page" id="page-compare">
-  <div class="cmp-page-header">
-    <button onclick="showPage('discover')">← Kembali</button>
-    <h2>Perbandingan Produk</h2>
-  </div>
-  <div class="cmp-table-wrap">
-    <table class="cmp-table" id="cmp-table">
-      <thead id="cmp-thead"></thead>
-      <tbody id="cmp-tbody"></tbody>
-    </table>
-  </div>
-</div>
 </body>
 </html>
