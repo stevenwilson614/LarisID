@@ -620,6 +620,45 @@ html,body{overflow-x:hidden;max-width:100%;}
 .blog-tab{background:#f5f0ea;border:none;border-radius:20px;padding:7px 16px;font-size:.8rem;font-weight:600;color:#555;cursor:pointer;white-space:nowrap;font-family:inherit;transition:background .15s,color .15s;}
 .blog-tab.active{background:var(--orange);color:#fff;}
 .blog-card{background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.07);padding:20px;margin-bottom:18px;border:1.5px solid #f0ebe4;}
+
+/* ── COMPARE ─────────────────────────────────────── */
+.cmp-btn{position:absolute;top:6px;left:6px;z-index:4;background:rgba(255,255,255,.92);border:none;border-radius:6px;padding:3px 7px;font-size:.65rem;font-weight:700;color:#555;cursor:pointer;display:flex;align-items:center;gap:4px;box-shadow:0 1px 4px rgba(0,0,0,.15);transition:all .15s;}
+.cmp-btn.selected{background:var(--orange);color:#fff;}
+.cmp-btn svg{width:11px;height:11px;flex-shrink:0;}
+
+/* floating compare bar */
+#compare-bar{position:fixed;bottom:0;left:0;right:0;z-index:999;background:#fff;border-top:2px solid var(--orange);box-shadow:0 -4px 20px rgba(0,0,0,.13);padding:10px 20px;display:flex;align-items:center;gap:12px;transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);}
+#compare-bar.visible{transform:translateY(0);}
+.cmp-bar-slots{display:flex;gap:10px;flex:1;}
+.cmp-slot{width:64px;height:64px;border-radius:10px;border:2px dashed #ddd;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;position:relative;background:#fafafa;}
+.cmp-slot img{width:100%;height:100%;object-fit:cover;}
+.cmp-slot .cmp-slot-rm{position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;border:none;border-radius:50%;width:17px;height:17px;font-size:.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
+.cmp-slot .cmp-slot-name{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.55);color:#fff;font-size:.5rem;text-align:center;padding:2px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cmp-slot-empty{font-size:1.5rem;color:#ccc;}
+.cmp-bar-actions{display:flex;gap:8px;flex-shrink:0;}
+#cmp-go-btn{background:var(--orange);color:#fff;border:none;border-radius:8px;padding:10px 18px;font-weight:700;font-size:.85rem;cursor:pointer;}
+#cmp-go-btn:disabled{background:#ccc;cursor:default;}
+#cmp-clear-btn{background:#f0f0f0;color:#555;border:none;border-radius:8px;padding:10px 14px;font-weight:600;font-size:.82rem;cursor:pointer;}
+@media(max-width:480px){#compare-bar{padding:8px 12px;gap:8px;}.cmp-slot{width:52px;height:52px;}.cmp-bar-actions{flex-direction:column;gap:5px;}#cmp-go-btn,#cmp-clear-btn{padding:7px 10px;font-size:.78rem;}}
+
+/* compare page */
+#page-compare{padding:0 0 60px;}
+.cmp-page-header{background:var(--orange);color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px;}
+.cmp-page-header button{background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:6px 14px;font-weight:700;cursor:pointer;font-size:.85rem;}
+.cmp-page-header h2{margin:0;font-size:1.1rem;font-weight:800;}
+.cmp-table-wrap{overflow-x:auto;padding:0 16px 20px;}
+.cmp-table{width:100%;border-collapse:collapse;min-width:520px;}
+.cmp-table th,.cmp-table td{padding:10px 12px;text-align:center;border-bottom:1px solid #f0ebe4;}
+.cmp-table th{font-size:.7rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;background:#fafafa;position:sticky;top:0;}
+.cmp-table .row-label{text-align:left;font-size:.8rem;font-weight:600;color:#555;background:#fafafa;white-space:nowrap;}
+.cmp-table .row-label.section{font-size:.7rem;text-transform:uppercase;color:#aaa;letter-spacing:.06em;background:#f5f0ea;padding:6px 12px;}
+.cmp-col-head{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.cmp-col-img{width:70px;height:70px;border-radius:10px;object-fit:cover;background:#f5f0ea;display:flex;align-items:center;justify-content:center;font-size:1.8rem;overflow:hidden;}
+.cmp-col-img img{width:100%;height:100%;object-fit:cover;}
+.cmp-col-name{font-size:.78rem;font-weight:700;color:#111;line-height:1.2;max-width:120px;}
+.cmp-open-btn{background:var(--orange);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:.72rem;font-weight:700;cursor:pointer;margin-top:2px;}
+.cmp-best{background:#e8f7ee;color:#00833a;font-weight:700;}
+.cmp-score-pill{display:inline-block;padding:3px 10px;border-radius:20px;color:#fff;font-weight:800;font-size:.85rem;}
 </style>
 </head>
 <body>
@@ -1570,6 +1609,7 @@ const CAT_EMOJI_FALLBACK = {
 //  STATE
 // ════════════════════════════════════════════════════════════
 let allProducts    = [];
+let compareList    = [];
 let filtered       = [];
 let activeCat      = 'all';
 let searchQ        = '';
@@ -2039,6 +2079,215 @@ function renderDiscGrid() {
 // ════════════════════════════════════════════════════════════
 //  PRODUCT CARD
 // ════════════════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════════
+//  COMPARE
+// ════════════════════════════════════════════════════════════
+function toggleCompare(e, id) {
+  e.stopPropagation();
+  const idx = compareList.indexOf(id);
+  if (idx > -1) {
+    compareList.splice(idx, 1);
+  } else {
+    if (compareList.length >= 3) {
+      showCompareToast('Maksimal 3 produk untuk dibandingkan');
+      return;
+    }
+    compareList.push(id);
+  }
+  refreshCompareBtns();
+  renderCompareBar();
+}
+
+function refreshCompareBtns() {
+  document.querySelectorAll('.cmp-btn').forEach(btn => {
+    const pid = parseInt(btn.dataset.pid);
+    if (compareList.includes(pid)) {
+      btn.classList.add('selected');
+      btn.title = 'Hapus dari perbandingan';
+    } else {
+      btn.classList.remove('selected');
+      btn.title = 'Tambah ke perbandingan';
+    }
+  });
+}
+
+function renderCompareBar() {
+  const bar = document.getElementById('compare-bar');
+  const slots = document.getElementById('cmp-bar-slots');
+  const goBtn = document.getElementById('cmp-go-btn');
+  if (!bar || !slots) return;
+
+  // Build 3 slots
+  let html = '';
+  for (let i = 0; i < 3; i++) {
+    const pid = compareList[i];
+    if (pid) {
+      const p = allProducts.find(x => x.id === pid);
+      if (p) {
+        const imgHTML = p.image
+          ? `<img src="${p.image}" alt="">`
+          : `<span style="font-size:1.4rem">${p.emoji||'📦'}</span>`;
+        html += `<div class="cmp-slot">
+          ${imgHTML}
+          <div class="cmp-slot-name">${p.name}</div>
+          <button class="cmp-slot-rm" onclick="removeFromCompare(${p.id})" title="Hapus">×</button>
+        </div>`;
+      }
+    } else {
+      html += `<div class="cmp-slot"><span class="cmp-slot-empty">+</span></div>`;
+    }
+  }
+  slots.innerHTML = html;
+
+  if (compareList.length > 0) {
+    bar.classList.add('visible');
+  } else {
+    bar.classList.remove('visible');
+  }
+  if (goBtn) goBtn.disabled = compareList.length < 2;
+}
+
+function removeFromCompare(id) {
+  compareList = compareList.filter(x => x !== id);
+  refreshCompareBtns();
+  renderCompareBar();
+}
+
+function clearCompare() {
+  compareList = [];
+  refreshCompareBtns();
+  renderCompareBar();
+}
+
+function openComparePage() {
+  if (compareList.length < 2) return;
+  prevPage = document.querySelector('.page.active')?.id.replace('page-', '') || 'discover';
+  renderComparePage();
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  document.getElementById('page-compare').classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function renderComparePage() {
+  const products = compareList.map(id => allProducts.find(x => x.id === id)).filter(Boolean);
+  const thead = document.getElementById('cmp-thead');
+  const tbody = document.getElementById('cmp-tbody');
+  if (!thead || !tbody) return;
+
+  // Helper: find best (max) index
+  function bestIdx(vals) {
+    let best = -Infinity, idx = 0;
+    vals.forEach((v, i) => { if (v > best) { best = v; idx = i; } });
+    return best > 0 ? idx : -1;
+  }
+
+  // Header row
+  let headHTML = '<tr><th class="row-label"></th>';
+  products.forEach(p => {
+    const imgHTML = p.image
+      ? `<img src="${p.image}" alt="">`
+      : `<span>${p.emoji||'📦'}</span>`;
+    headHTML += `<th>
+      <div class="cmp-col-head">
+        <div class="cmp-col-img">${imgHTML}</div>
+        <div class="cmp-col-name">${p.name}</div>
+        <button class="cmp-open-btn" onclick="openDetail(${p.id})">Lihat Detail</button>
+      </div>
+    </th>`;
+  });
+  headHTML += '</tr>';
+  thead.innerHTML = headHTML;
+
+  // Rows
+  const rows = [];
+
+  // Score
+  const scores = products.map(p => p.score);
+  const scoreBI = bestIdx(scores);
+  rows.push({
+    label: 'Skor Viabilitas',
+    cells: products.map((p, i) => {
+      const clr = scoreColor(p.score);
+      const cls = i === scoreBI ? 'cmp-best' : '';
+      return `<td class="${cls}"><span class="cmp-score-pill" style="background:${clr}">${fmtScore(p.score)}</span></td>`;
+    })
+  });
+
+  // Category
+  rows.push({
+    label: 'Kategori',
+    cells: products.map(p => `<td><span style="font-size:.8rem">${p.category}</span></td>`)
+  });
+
+  // Median price
+  const prices = products.map(p => p.medianPrice);
+  // For price, lower = better? Actually higher price might mean more revenue potential.
+  // Let's just show without best highlighting for price
+  rows.push({
+    label: 'Harga Median',
+    cells: products.map(p => `<td style="font-weight:700;color:var(--orange)">${fmt(p.medianPrice)}</td>`)
+  });
+
+  // Revenue Pemula
+  const revStart = products.map(p => p.startRevenue);
+  const revStartBI = bestIdx(revStart);
+  rows.push({
+    label: 'Revenue Pemula/bln',
+    cells: products.map((p, i) => {
+      const cls = i === revStartBI ? 'cmp-best' : '';
+      return `<td class="${cls}">${fmtShort(p.startRevenue)}</td>`;
+    })
+  });
+
+  // Revenue Berpengalaman
+  const revUp = products.map(p => p.upToRevenue);
+  const revUpBI = bestIdx(revUp);
+  rows.push({
+    label: 'Revenue Pro/bln',
+    cells: products.map((p, i) => {
+      const cls = i === revUpBI ? 'cmp-best' : '';
+      return `<td class="${cls}">${fmtShort(p.upToRevenue)}</td>`;
+    })
+  });
+
+  // Units Pemula
+  const unitsNew = products.map(p => p.newUnits);
+  const unitsNewBI = bestIdx(unitsNew);
+  rows.push({
+    label: 'Units/bln (Pemula)',
+    cells: products.map((p, i) => {
+      const cls = i === unitsNewBI ? 'cmp-best' : '';
+      return `<td class="${cls}">${Math.round(p.newUnits).toLocaleString('id-ID')}</td>`;
+    })
+  });
+
+  // Units Berpengalaman
+  const unitsExp = products.map(p => p.expUnits);
+  const unitsExpBI = bestIdx(unitsExp);
+  rows.push({
+    label: 'Units/bln (Pro)',
+    cells: products.map((p, i) => {
+      const cls = i === unitsExpBI ? 'cmp-best' : '';
+      return `<td class="${cls}">${Math.round(p.expUnits).toLocaleString('id-ID')}</td>`;
+    })
+  });
+
+  tbody.innerHTML = rows.map(r =>
+    `<tr><td class="row-label">${r.label}</td>${r.cells.join('')}</tr>`
+  ).join('');
+}
+
+function showCompareToast(msg) {
+  const toast = document.getElementById('copy-toast');
+  if (!toast) return;
+  const orig = toast.textContent;
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => { toast.classList.remove('show'); toast.textContent = orig; }, 2200);
+}
+
+
 function cardHTML(p, idx) {
   const delay = Math.min(idx * 0.04, 0.5);
   return `
@@ -2049,6 +2298,10 @@ function cardHTML(p, idx) {
       <div class="card-emoji" ${p.image ? 'style="display:none"' : ''}>${p.emoji||'📦'}</div>
       <div class="score-pill" style="--score-clr:${scoreColor(p.score)}">${fmtScore(p.score)}</div>
     </div>
+    <button class="cmp-btn ${compareList.includes(p.id)?'selected':''}" data-pid="${p.id}" onclick="toggleCompare(event,${p.id})" title="Tambah ke perbandingan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+      ${compareList.includes(p.id)?'✓':''}
+    </button>
     <div class="card-body">
       <div class="card-name">${p.name}</div>
       <div style="display:flex;align-items:center;gap:5px;"><div class="card-cat">${p.category}</div><img src="images/shopee-logo.png" alt="Shopee" style="width:14px;height:14px;flex-shrink:0;"></div>
@@ -3004,5 +3257,28 @@ document.addEventListener('DOMContentLoaded', function(){
     </div>
   </div>
 
+
+<!-- ── COMPARE BAR ─────────────────────── -->
+<div id="compare-bar">
+  <div class="cmp-bar-slots" id="cmp-bar-slots"></div>
+  <div class="cmp-bar-actions">
+    <button id="cmp-go-btn" disabled onclick="openComparePage()">Bandingkan</button>
+    <button id="cmp-clear-btn" onclick="clearCompare()">Hapus Semua</button>
+  </div>
+</div>
+
+<!-- ── COMPARE PAGE ─────────────────────── -->
+<div class="page" id="page-compare">
+  <div class="cmp-page-header">
+    <button onclick="showPage('discover')">← Kembali</button>
+    <h2>Perbandingan Produk</h2>
+  </div>
+  <div class="cmp-table-wrap">
+    <table class="cmp-table" id="cmp-table">
+      <thead id="cmp-thead"></thead>
+      <tbody id="cmp-tbody"></tbody>
+    </table>
+  </div>
+</div>
 </body>
 </html>
