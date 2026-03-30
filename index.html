@@ -3737,13 +3737,29 @@ function doShare(type) {
 // ════════════════════════════════════════════════════════════
 //  EMAIL SIGNUP
 // ════════════════════════════════════════════════════════════
-function handleEmailSignup(e) {
+async function handleEmailSignup(e) {
   e.preventDefault();
-  const email = document.getElementById('signup-email').value;
-  // TODO: Replace this URL with your Tally form or Mailchimp endpoint
-  const tallyUrl = 'https://tally.so/r/YOUR_FORM_ID?email=' + encodeURIComponent(email);
-  window.open(tallyUrl, '_blank');
-  document.getElementById('signup-email').value = '';
+  const input = document.getElementById('signup-email');
+  const email = input.value.trim();
+  if (!email) return;
+  const btn = e.target.querySelector('button[type="submit"]');
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    if (_supabase) {
+      await _supabase.from('email_signups').insert({ email });
+    }
+  } catch (_) {}
+  input.value = '';
+  if (btn) { btn.disabled = false; btn.textContent = 'Daftar'; }
+  const note = document.querySelector('.footer-signup-note');
+  if (note) {
+    note.textContent = 'Terima kasih! Kamu akan mendapat update mingguan.';
+    note.style.color = '#a8f0c6';
+    setTimeout(() => {
+      note.textContent = 'Tidak ada spam. Berhenti kapan saja.';
+      note.style.color = '';
+    }, 4000);
+  }
 }
 
 
