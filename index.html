@@ -3963,21 +3963,13 @@ function filterBlog(cat) {
   });
 }
 
-// Mobile detection
-function applyMobileClass(){
+// Always show hamburger, hide inline nav links
+(function(){
   var btn = document.getElementById('nav-hamburger-btn');
   var links = document.getElementById('nav-right-links');
-  if(!btn || !links) return;
-  if(window.innerWidth <= 768){
-    btn.style.display = 'flex';
-    links.style.display = 'none';
-  } else {
-    btn.style.display = 'none';
-    links.style.display = 'flex';
-  }
-}
-applyMobileClass();
-window.addEventListener('resize', applyMobileClass);
+  if(btn) btn.style.display = 'flex';
+  if(links) links.style.display = 'none';
+})();
 
 // Prevent zoom on iOS/mobile
 document.addEventListener('touchmove', function(e){
