@@ -779,6 +779,9 @@ html,body{overflow-x:hidden;max-width:100%;}
         <div class="qf-item" id="qf-low_units" onclick="quickFilter('low_units')">
           <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span><span class="qf-lbl">Lowest Units/mo</span>
         </div>
+        <div class="qf-item" id="qf-trending" onclick="quickFilter('trending')">
+          <span class="qf-icon">🔥</span><span class="qf-lbl">Trending</span>
+        </div>
       </div>
     </div>
   </div>
@@ -897,6 +900,7 @@ html,body{overflow-x:hidden;max-width:100%;}
         <span style="font-size:.8rem;color:var(--tm);font-weight:500;">Sort:</span>
         <select class="sort-select" id="sort-select" onchange="sortProducts()">
           <option value="score">Viability Score</option>
+          <option value="trending">🔥 Trending</option>
           <option value="revenue_up">Revenue (High → Low)</option>
           <option value="revenue_down">Revenue (Low → High)</option>
           <option value="units_down">Units (High → Low)</option>
@@ -1674,15 +1678,22 @@ async function fetchProductImages() {
     }
 
     // ── Avg Trend ─────────────────────────────────────────────
-    // Filter to sellers doing > 1% of gross (New Revenue) then average their trends
+    // Filter to sellers doing > 1% of gross (New Revenue) then average their trends.
+    // If New Revenue column is absent/zero, fall back to all sellers with a trend value.
     const totalRev = rows.reduce((s, r) => s + parseRp(r['New Revenue']), 0);
-    const threshold = totalRev * 0.01;
-    const trendVals = rows
-      .filter(r => parseRp(r['New Revenue']) > threshold)
+    let qualifiedRows;
+    if (totalRev > 0) {
+      const threshold = totalRev * 0.01;
+      qualifiedRows = rows.filter(r => parseRp(r['New Revenue']) > threshold);
+    } else {
+      qualifiedRows = rows; // fallback: use all sellers
+    }
+    const trendVals = qualifiedRows
       .map(r => parseTrendPct(r['Trend']))
       .filter(v => v !== null);
     if (trendVals.length) {
       p.avgTrend = trendVals.reduce((s, v) => s + v, 0) / trendVals.length;
+      console.log('LarisID trend:', p.name, '→', p.avgTrend.toFixed(1) + '%', '(n=' + trendVals.length + ')');
     }
   }
 
@@ -1708,7 +1719,12 @@ function markTrendingProducts() {
     .sort((a, b) => b.avgTrend - a.avgTrend)
     .slice(0, 10);
   ranked.forEach(p => { p.trending = true; });
+  console.log('LarisID: trending products →', ranked.map(p => p.name + ' (' + (p.avgTrend||0).toFixed(1) + '%)'));
   updateTrendingCards();
+  // Re-render grids if trending filter/sort is currently active
+  if (activeQuick === 'trending') renderHomeGrid();
+  const sortSel = document.getElementById('sort-select');
+  if (sortSel && sortSel.value === 'trending') sortProducts();
 }
 
 function updateTrendingCards() {
@@ -1785,6 +1801,14 @@ function renderHomeGrid() {
   else if (activeQuick === 'low_revenue')  show.sort((a,b) => a.upToRevenue - b.upToRevenue);
   else if (activeQuick === 'top_units')    show.sort((a,b) => b.expUnits - a.expUnits);
   else if (activeQuick === 'low_units')    show.sort((a,b) => a.expUnits - b.expUnits);
+  else if (activeQuick === 'trending') {
+    show = show.filter(p => p.trending).sort((a,b) => (b.avgTrend||0) - (a.avgTrend||0));
+    if (!show.length) {
+      document.getElementById('home-grid').innerHTML =
+        '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--tl);font-size:.85rem;">Memuat data trending... Coba lagi sebentar 🔄</div>';
+      return;
+    }
+  }
   document.getElementById('home-grid').innerHTML = show.slice(0, 12).map((p,i) => cardHTML(p, i)).join('');
 }
 
@@ -1938,6 +1962,12 @@ function sortProducts() {
     if (v === 'revenue_down') return a.upToRevenue - b.upToRevenue;
     if (v === 'units_down')   return b.expUnits - a.expUnits;
     if (v === 'units_up')     return a.expUnits - b.expUnits;
+    if (v === 'trending') {
+      // Trending products first (sorted by avgTrend desc), then non-trending by score
+      const aT = a.trending ? 1 : 0, bT = b.trending ? 1 : 0;
+      if (bT !== aT) return bT - aT;
+      return (b.avgTrend||0) - (a.avgTrend||0);
+    }
     return 0;
   });
   renderDiscGrid();
