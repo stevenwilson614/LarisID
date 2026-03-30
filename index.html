@@ -260,6 +260,11 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 .auth-toggle a{color:var(--orange);font-weight:600;cursor:pointer;}
 .auth-error{color:#e74c3c;font-size:.8rem;margin-bottom:8px;display:none;}
 .auth-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--tl);}
+.auth-divider{display:flex;align-items:center;gap:10px;margin:16px 0;color:var(--tl);font-size:.78rem;}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.social-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;border:1.5px solid var(--border);border-radius:8px;padding:10px;font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;background:#fff;margin-bottom:10px;transition:background .15s,border-color .15s;}
+.social-btn:hover{background:#fafafa;border-color:#ccc;}
+.social-btn img{width:20px;height:20px;}
 /* ── NAV AUTH BUTTON ── */
 .nav-auth-btn{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:20px;padding:5px 14px;font-size:.78rem;color:#fff;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;transition:background .15s;}
 .nav-auth-btn:hover{background:rgba(255,255,255,.3);}
@@ -2478,6 +2483,14 @@ async function submitAuth() {
   else { closeAuthModal(); }
 }
 
+async function signInWithProvider(provider) {
+  if (!_supabase) return;
+  await _supabase.auth.signInWithOAuth({
+    provider,
+    options: { redirectTo: window.location.href }
+  });
+}
+
 async function signOut() {
   if (_supabase) await _supabase.auth.signOut();
   showPage('home');
@@ -3483,6 +3496,15 @@ document.addEventListener('DOMContentLoaded', function(){
     <button class="auth-close" onclick="closeAuthModal()">×</button>
     <h2 id="auth-title">Masuk ke LarisID</h2>
     <p id="auth-subtitle">Login untuk melihat produk trending & simpan favorit kamu</p>
+    <button class="social-btn" onclick="signInWithProvider('google')">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+      Lanjutkan dengan Google
+    </button>
+    <button class="social-btn" onclick="signInWithProvider('facebook')">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/facebook.svg" alt="Facebook">
+      Lanjutkan dengan Facebook
+    </button>
+    <div class="auth-divider">atau gunakan email</div>
     <div id="auth-name-wrap">
       <input class="auth-input" id="auth-name" type="text" placeholder="Nama lengkap (opsional)">
     </div>
