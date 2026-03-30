@@ -1656,7 +1656,7 @@ function parseTrendPct(str) {
   const s = String(str).trim();
   const up = s.match(/(?:trend\s+up|tren\s+naik)\s+([\d.,]+)%?/i);
   if (up) return parseFloat(up[1].replace(',', '.'));
-  const dn = s.match(/(?:trend\s+down|tren\s+turun)\s+([\d.,]+)%?/i);
+  const dn = s.match(/(?:trend\s+down|tren\s+turun)\s+-?([\d.,]+)%?/i);
   if (dn) return -parseFloat(dn[1].replace(',', '.'));
   return null;
 }
