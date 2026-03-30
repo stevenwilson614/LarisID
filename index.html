@@ -2952,7 +2952,7 @@ async function loadSellerData(p) {
       <td style="color:var(--orange);font-weight:600">${fmt(s.price)}</td>
       <td>${s.rating ? `${s.rating}` : '—'}</td>
       <td style="color:var(--tl);font-size:.78rem">${s.reviews ? s.reviews.toLocaleString('id-ID') : '—'}</td>
-      <td><button class="vb" onclick="event.stopPropagation();window.open('${s.url}','_blank')">Visit ↗</button></td>
+      <td>${sellerLocked ? `<button class="vb blur-field" onclick="event.stopPropagation();openAuthModal()" style="pointer-events:auto;">Visit ↗</button>` : `<button class="vb" onclick="event.stopPropagation();window.open('${s.url}','_blank')">Visit ↗</button>`}</td>
     </tr>`;
   }).join('');
 }
