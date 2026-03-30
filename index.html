@@ -774,37 +774,25 @@ html,body{overflow-x:hidden;max-width:100%;}
 .kom-section-title{font-family:'Roboto','Noto Sans',sans-serif;font-weight:900;font-size:1.35rem;color:#111;margin-bottom:6px;}
 .kom-section-sub{font-size:.88rem;color:var(--tm);margin-bottom:28px;line-height:1.6;}
 .kom-divider{border:none;border-top:2px solid #e8e2db;margin:40px 0;}
-.kom-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;margin-bottom:32px;}
-.kom-card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.07);border:1.5px solid #f0ebe4;}
-.kom-card-img{width:100%;height:160px;object-fit:cover;display:block;background:#f0ede8;}
-.kom-card-body{padding:18px 16px;}
-.kom-card-label{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--orange);margin-bottom:6px;}
-.kom-card-title{font-size:.95rem;font-weight:800;color:#111;margin-bottom:8px;line-height:1.35;}
-.kom-card-text{font-size:.8rem;color:var(--tm);line-height:1.6;}
-.kom-wa-strip{background:#25d366;border-radius:14px;padding:22px 24px;display:flex;align-items:center;gap:18px;margin-bottom:28px;flex-wrap:wrap;}
-.kom-wa-strip-text{flex:1;min-width:180px;}
-.kom-wa-strip-title{font-weight:900;color:#fff;font-size:1rem;margin-bottom:4px;}
-.kom-wa-strip-sub{color:rgba(255,255,255,.85);font-size:.82rem;line-height:1.5;}
-.kom-wa-btn{background:#fff;color:#25d366;border:none;border-radius:8px;padding:10px 20px;font-size:.85rem;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;text-decoration:none;flex-shrink:0;}
-.kom-wa-btn:hover{background:#f0fdf4;}
-.kom-update-strip{background:#fff;border:1.5px solid #e8e2db;border-radius:14px;padding:20px;margin-bottom:28px;display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;}
-.kom-update-img{width:80px;height:80px;border-radius:10px;object-fit:cover;flex-shrink:0;background:#f0ede8;}
-.kom-update-body{flex:1;min-width:160px;}
-.kom-update-title{font-weight:800;font-size:.92rem;color:#111;margin-bottom:5px;}
-.kom-update-text{font-size:.8rem;color:var(--tm);line-height:1.6;}
-.kom-mentor-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:28px;}
-@media(max-width:580px){.kom-mentor-grid{grid-template-columns:1fr;}}
-.kom-mentor-card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.07);border:1.5px solid #f0ebe4;}
-.kom-mentor-card-img{width:100%;height:180px;object-fit:cover;display:block;background:#f0ede8;}
-.kom-mentor-card-body{padding:16px;}
-.kom-mentor-name{font-weight:900;font-size:.95rem;color:#111;margin-bottom:3px;}
-.kom-mentor-meta{font-size:.75rem;color:var(--orange);font-weight:600;margin-bottom:8px;}
-.kom-mentor-bio{font-size:.78rem;color:var(--tm);line-height:1.6;}
-.kom-lending-strip{background:linear-gradient(135deg,#fff8f0,#fff2e6);border:1.5px solid #ffd0a0;border-radius:14px;padding:22px 24px;margin-bottom:28px;display:flex;gap:18px;align-items:center;flex-wrap:wrap;}
-.kom-lending-img{width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0;background:#f0ede8;}
-.kom-lending-body{flex:1;min-width:160px;}
-.kom-lending-title{font-weight:900;font-size:.95rem;color:#111;margin-bottom:5px;}
-.kom-lending-text{font-size:.8rem;color:var(--tm);line-height:1.6;}
+.kom-benefit-list{display:flex;flex-direction:column;gap:22px;margin-bottom:8px;}
+.kom-benefit-item{background:#fff;border-radius:14px;overflow:hidden;border:1.5px solid #f0ebe4;box-shadow:0 2px 12px rgba(0,0,0,.06);display:flex;gap:0;flex-direction:row;}
+@media(max-width:620px){.kom-benefit-item{flex-direction:column;}}
+.kom-benefit-img{width:220px;min-height:200px;object-fit:cover;flex-shrink:0;background:#f0ede8;display:block;}
+@media(max-width:620px){.kom-benefit-img{width:100%;height:180px;min-height:unset;}}
+.kom-benefit-body{padding:22px 20px;flex:1;}
+.kom-benefit-title{font-weight:900;font-size:1rem;color:#111;margin-bottom:8px;line-height:1.35;}
+.kom-benefit-text{font-size:.82rem;color:var(--tm);line-height:1.7;}
+.kom-wa-btn{background:#25d366;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:.83rem;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;text-decoration:none;}
+.kom-wa-btn:hover{background:#1ebe5d;}
+.kom-blog-btn{background:var(--orange);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:.83rem;font-weight:800;cursor:pointer;font-family:inherit;margin-top:14px;display:inline-block;transition:opacity .15s;}
+.kom-blog-btn:hover{opacity:.88;}
+.kom-mentor-feature{background:#fff;border-radius:14px;overflow:hidden;border:1.5px solid #f0ebe4;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:22px;}
+.kom-mentor-feature-img{width:100%;height:260px;object-fit:cover;display:block;background:#f0ede8;}
+.kom-mentor-feature-body{padding:22px 20px;}
+.kom-mentor-row{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+@media(max-width:580px){.kom-mentor-row{grid-template-columns:1fr;gap:16px;}}
+.kom-mentor-point-title{font-weight:800;font-size:.88rem;color:#111;margin-bottom:5px;}
+.kom-mentor-point-text{font-size:.78rem;color:var(--tm);line-height:1.65;}
 .kom-apply-btn{background:var(--grad);color:#fff;border:none;border-radius:10px;padding:14px 28px;font-size:.9rem;font-weight:800;cursor:pointer;font-family:inherit;width:100%;text-align:center;margin-top:8px;text-decoration:none;display:block;transition:opacity .15s;}
 .kom-apply-btn:hover{opacity:.88;}
 /* compare page */
@@ -1547,56 +1535,29 @@ html,body{overflow-x:hidden;max-width:100%;}
 
   <div class="kom-hero">
     <h1>Komunitas LarisID</h1>
-    <p>Bergabung bersama ribuan penjual Shopee aktif — belajar, berbagi, dan berkembang bersama.</p>
+    <p>Akses grup WhatsApp eksklusif, konten terbaru, dan program mentorship untuk penjual Shopee yang serius berkembang.</p>
   </div>
 
   <!-- COMMUNITY SECTION -->
   <div class="kom-section">
-    <div class="kom-section-title">Komunitas Penjual</div>
-    <div class="kom-section-sub">Tempat berbagi ide, strategi produk, dan pengalaman berjualan. Saling mendukung untuk tumbuh lebih cepat.</div>
+    <div class="kom-section-title">Komunitas Anggota</div>
+    <div class="kom-section-sub">Dua benefit langsung saat kamu bergabung.</div>
 
-    <!-- WhatsApp strip -->
-    <div class="kom-wa-strip">
-      <div class="kom-wa-strip-text">
-        <div class="kom-wa-strip-title">Bergabung ke Grup WhatsApp</div>
-        <div class="kom-wa-strip-sub">Diskusi harian, tips produk, dan update langsung dari komunitas penjual aktif LarisID.</div>
-      </div>
-      <a class="kom-wa-btn" href="#" target="_blank" rel="noopener">Masuk Grup</a>
-    </div>
-
-    <!-- Weekly update strip -->
-    <div class="kom-update-strip">
-      <img class="kom-update-img" src="https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=160&q=80" alt="Weekly update" onerror="this.style.display='none'">
-      <div class="kom-update-body">
-        <div class="kom-update-title">Update Mingguan — Produk Trending</div>
-        <div class="kom-update-text">Setiap minggu kami mengirimkan ringkasan produk paling trending di Shopee langsung ke anggota komunitas. Daftar dan jangan ketinggalan peluang terbaik.</div>
-      </div>
-    </div>
-
-    <!-- Community cards -->
-    <div class="kom-cards">
-      <div class="kom-card">
-        <img class="kom-card-img" src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&q=80" alt="Sharing ideas" onerror="this.style.background='#e8e2db'">
-        <div class="kom-card-body">
-          <div class="kom-card-label">Berbagi Ide</div>
-          <div class="kom-card-title">Temukan Produk Potensial Bersama</div>
-          <div class="kom-card-text">Anggota komunitas berbagi temuan produk, analisis pasar, dan strategi listing yang terbukti meningkatkan penjualan.</div>
+    <div class="kom-benefit-list">
+      <div class="kom-benefit-item">
+        <img class="kom-benefit-img" src="https://images.unsplash.com/photo-1611746872915-64382b5c76da?w=500&q=80" alt="WhatsApp group" onerror="this.style.background='#e8e2db'">
+        <div class="kom-benefit-body">
+          <div class="kom-benefit-title">Grup WhatsApp — Update Produk Trending Mingguan</div>
+          <div class="kom-benefit-text">Setiap minggu kami bagikan ringkasan produk paling trending di Shopee langsung ke grup. Kamu dapat data produk yang sedang naik sebelum pasar jenuh — gratis untuk semua anggota.</div>
+          <a class="kom-wa-btn" href="#" target="_blank" rel="noopener" style="display:inline-block;margin-top:14px;">Masuk Grup WhatsApp</a>
         </div>
       </div>
-      <div class="kom-card">
-        <img class="kom-card-img" src="https://images.unsplash.com/photo-1556761175-4b46a572b786?w=600&q=80" alt="Collaboration" onerror="this.style.background='#e8e2db'">
-        <div class="kom-card-body">
-          <div class="kom-card-label">Kolaborasi</div>
-          <div class="kom-card-title">Jaringan Supplier dan Reseller</div>
-          <div class="kom-card-text">Temukan mitra supplier terpercaya atau bangun jaringan reseller untuk memperluas jangkauan produkmu.</div>
-        </div>
-      </div>
-      <div class="kom-card">
-        <img class="kom-card-img" src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&q=80" alt="Analytics" onerror="this.style.background='#e8e2db'">
-        <div class="kom-card-body">
-          <div class="kom-card-label">Data Trending</div>
-          <div class="kom-card-title">Diskusi Riset Produk Real-Time</div>
-          <div class="kom-card-text">Bahas data terbaru dari LarisID — produk mana yang sedang naik, kategori mana yang mulai jenuh, dan peluang baru yang muncul.</div>
+      <div class="kom-benefit-item">
+        <img class="kom-benefit-img" src="https://images.unsplash.com/photo-1432888622747-4eb9a8f5f989?w=500&q=80" alt="Blog posts" onerror="this.style.background='#e8e2db'">
+        <div class="kom-benefit-body">
+          <div class="kom-benefit-title">Akses Blog &amp; Panduan Penjual</div>
+          <div class="kom-benefit-text">Anggota komunitas mendapat akses ke semua artikel dan panduan dari seller berpengalaman — mulai dari riset produk, strategi iklan, packaging, hingga scaling omset.</div>
+          <button class="kom-blog-btn" onclick="showPage('about')">Baca Blog</button>
         </div>
       </div>
     </div>
@@ -1604,40 +1565,32 @@ html,body{overflow-x:hidden;max-width:100%;}
 
   <hr class="kom-divider">
 
-  <!-- MENTOR SECTION -->
+  <!-- MENTORSHIP SECTION -->
   <div class="kom-section">
     <div class="kom-section-title">Program Mentorship</div>
-    <div class="kom-section-sub">Belajar langsung di bawah bimbingan penjual Shopee berpengalaman. Program 1-on-1 untuk mempercepat pertumbuhan bisnismu dari nol hingga profit.</div>
+    <div class="kom-section-sub">Belajar langsung dari penjual Shopee berpengalaman melalui sesi 1-on-1. Harga ditentukan oleh masing-masing mentor.</div>
 
-    <div class="kom-mentor-grid">
-      <div class="kom-mentor-card">
-        <img class="kom-mentor-card-img" src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&q=80" alt="Mentor" onerror="this.style.background='#e8e2db'">
-        <div class="kom-mentor-card-body">
-          <div class="kom-mentor-name">Mentor Produk &amp; Riset</div>
-          <div class="kom-mentor-meta">Spesialis: Product Research · Trending Analysis</div>
-          <div class="kom-mentor-bio">Membimbing cara membaca data pasar, memilih produk dengan potensi tinggi, dan membangun portofolio produk yang konsisten laris.</div>
-        </div>
-      </div>
-      <div class="kom-mentor-card">
-        <img class="kom-mentor-card-img" src="https://images.unsplash.com/photo-1556157382-97eda2d62296?w=600&q=80" alt="Mentor" onerror="this.style.background='#e8e2db'">
-        <div class="kom-mentor-card-body">
-          <div class="kom-mentor-name">Mentor Operasional &amp; Scaling</div>
-          <div class="kom-mentor-meta">Spesialis: Fulfillment · Iklan Shopee · Scaling</div>
-          <div class="kom-mentor-bio">Panduan pengelolaan stok, optimasi iklan Shopee, dan strategi scaling omset dari puluhan juta ke ratusan juta per bulan.</div>
+    <div class="kom-mentor-feature">
+      <img class="kom-mentor-feature-img" src="https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=800&q=80" alt="Mentorship session" onerror="this.style.background='#e8e2db'">
+      <div class="kom-mentor-feature-body">
+        <div class="kom-mentor-row">
+          <div class="kom-mentor-point">
+            <div class="kom-mentor-point-title">Sesi Mingguan</div>
+            <div class="kom-mentor-point-text">Panggilan video atau pertemuan langsung setiap minggu. Fokus pada tantangan bisnis kamu yang spesifik.</div>
+          </div>
+          <div class="kom-mentor-point">
+            <div class="kom-mentor-point-title">Harga Fleksibel</div>
+            <div class="kom-mentor-point-text">Setiap mentor menetapkan harga sendiri sesuai pengalaman dan waktu yang tersedia.</div>
+          </div>
+          <div class="kom-mentor-point">
+            <div class="kom-mentor-point-title">Modal Awal Tersedia</div>
+            <div class="kom-mentor-point-text">Peserta terpilih dapat mengajukan akses modal usaha untuk memulai atau mengembangkan bisnis mereka.</div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Lending strip -->
-    <div class="kom-lending-strip">
-      <img class="kom-lending-img" src="https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=160&q=80" alt="Lending" onerror="this.style.display='none'">
-      <div class="kom-lending-body">
-        <div class="kom-lending-title">Modal Usaha Tersedia — Lending Available</div>
-        <div class="kom-lending-text">Peserta program mentorship yang memenuhi syarat dapat mengajukan akses modal usaha. Kami menghubungkan penjual terpilih dengan mitra pembiayaan terpercaya untuk mendukung pertumbuhan bisnis.</div>
-      </div>
-    </div>
-
-    <a class="kom-apply-btn" href="#" target="_blank" rel="noopener">Daftar Program Mentorship</a>
+    <a class="kom-apply-btn" href="#" target="_blank" rel="noopener">Apply Now — Daftar Program Mentorship</a>
   </div>
 
 </div>
