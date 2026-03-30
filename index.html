@@ -716,6 +716,20 @@ html,body{overflow-x:hidden;max-width:100%;}
 #cmp-go-btn{background:var(--orange);color:#fff;border:none;border-radius:8px;padding:10px 18px;font-weight:700;font-size:.85rem;cursor:pointer;}
 #cmp-go-btn:disabled{background:#ccc;cursor:default;}
 #cmp-clear-btn{background:#f0f0f0;color:#555;border:none;border-radius:8px;padding:10px 14px;font-weight:600;font-size:.82rem;cursor:pointer;}
+#cmp-save-btn{background:#fff;color:var(--orange);border:2px solid var(--orange);border-radius:8px;padding:10px 14px;font-weight:700;font-size:.82rem;cursor:pointer;transition:background .15s;}
+#cmp-save-btn:hover{background:var(--orange-light);}
+/* ── PROFILE SECTIONS ── */
+.profile-source-section{background:linear-gradient(135deg,#fff5f3,#fff0ec);border:1px solid #ffd5cc;border-radius:14px;padding:22px 20px;margin-bottom:24px;}
+.profile-source-title{font-size:1rem;font-weight:900;color:#111;margin-bottom:4px;}
+.profile-source-sub{font-size:.82rem;color:var(--tm);margin-bottom:16px;line-height:1.5;}
+.source-platforms{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
+.source-platform-btn{display:flex;align-items:center;gap:7px;background:#fff;border:1.5px solid var(--border);border-radius:8px;padding:9px 16px;font-size:.82rem;font-weight:600;color:#333;cursor:pointer;text-decoration:none;transition:border-color .15s,box-shadow .15s;}
+.source-platform-btn:hover{border-color:var(--orange);box-shadow:0 2px 8px rgba(238,77,45,.12);}
+.supplier-ad-slot{background:#fff;border:2px dashed #e0d8d0;border-radius:14px;padding:22px 20px;text-align:center;margin-bottom:24px;}
+.supplier-ad-label{font-size:.68rem;font-weight:700;color:var(--tl);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;}
+.supplier-ad-title{font-size:.95rem;font-weight:700;color:#333;margin-bottom:4px;}
+.supplier-ad-sub{font-size:.78rem;color:var(--tm);margin-bottom:14px;}
+.supplier-ad-cta{display:inline-flex;align-items:center;gap:6px;background:var(--grad);color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none;}
 @media(max-width:480px){#compare-bar{padding:8px 12px;gap:8px;}.cmp-slot{width:52px;height:52px;}.cmp-bar-actions{flex-direction:column;gap:5px;}#cmp-go-btn,#cmp-clear-btn{padding:7px 10px;font-size:.78rem;}}
 
 /* compare page */
@@ -2520,6 +2534,23 @@ async function loadSavedProducts() {
   renderProfileSaved();
 }
 
+async function saveCompareList() {
+  if (!currentUser) { openAuthModal('login'); return; }
+  const unsaved = compareList.filter(id => !savedProducts.has(id));
+  if (!unsaved.length) { alert('Semua produk yang dipilih sudah tersimpan!'); return; }
+  await Promise.all(unsaved.map(pid =>
+    _supabase.from('saved_products').insert({ user_id: currentUser.id, product_id: pid }).then(() => savedProducts.add(pid))
+  ));
+  // Update save button states on cards
+  unsaved.forEach(pid => {
+    document.querySelectorAll(`.save-btn[data-pid="${pid}"]`).forEach(btn => btn.classList.add('saved'));
+  });
+  renderProfileSaved();
+  // Brief feedback on the button
+  const btn = document.getElementById('cmp-save-btn');
+  if (btn) { const orig = btn.textContent; btn.textContent = '✓ Tersimpan!'; setTimeout(() => { btn.textContent = orig; }, 1800); }
+}
+
 async function toggleSave(e, pid) {
   e.stopPropagation();
   if (!currentUser) { openAuthModal('login'); return; }
@@ -3552,10 +3583,48 @@ document.addEventListener('DOMContentLoaded', function(){
     </div>
   </div>
   <div class="profile-main">
+
+    <!-- SAVED PRODUCTS -->
     <div class="profile-section-title">❤ Produk Tersimpan</div>
-    <div class="home-grid" id="profile-saved-grid">
+    <div class="home-grid" id="profile-saved-grid" style="margin-bottom:32px;">
       <div class="saved-empty">Belum ada produk tersimpan.</div>
     </div>
+
+    <!-- SOURCE PRODUCT NOW -->
+    <div class="profile-source-section">
+      <div class="profile-source-title">🚀 Source Product Now</div>
+      <div class="profile-source-sub">Siap jualan? Cari supplier untuk produk tersimpanmu langsung dari platform terpercaya di bawah ini.</div>
+      <div class="source-platforms">
+        <a class="source-platform-btn" href="https://www.alibaba.com" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          Alibaba
+        </a>
+        <a class="source-platform-btn" href="https://www.1688.com" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          1688.com
+        </a>
+        <a class="source-platform-btn" href="https://www.made-in-china.com" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          Made-in-China
+        </a>
+        <a class="source-platform-btn" href="https://www.tokopedia.com/wholesale" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          Tokopedia Grosir
+        </a>
+      </div>
+    </div>
+
+    <!-- SUPPLIER AD SLOT -->
+    <div class="supplier-ad-slot">
+      <div class="supplier-ad-label">Iklan Supplier</div>
+      <div class="supplier-ad-title">📦 Pasang Iklan Supplier Kamu di Sini</div>
+      <div class="supplier-ad-sub">Jangkau ribuan penjual Shopee aktif yang sedang mencari supplier. Hubungi kami untuk informasi pemasangan iklan.</div>
+      <a class="supplier-ad-cta" href="mailto:hello@larisid.com">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Hubungi Kami
+      </a>
+    </div>
+
   </div>
 </div>
 
@@ -3567,6 +3636,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <span id="cmp-hint" style="font-size:.7rem;color:#999;">Pilih hingga 3 produk</span>
       <div style="display:flex;gap:8px;">
         <button id="cmp-clear-btn" onclick="clearCompare()">Hapus Semua</button>
+        <button id="cmp-save-btn" onclick="saveCompareList()">❤ Simpan Semua</button>
         <button id="cmp-go-btn" disabled onclick="openComparePage()">Bandingkan</button>
       </div>
     </div>
