@@ -770,10 +770,35 @@ html,body{overflow-x:hidden;max-width:100%;}
 .kom-hero{background:var(--grad);color:#fff;padding:52px 24px 60px;text-align:center;}
 .kom-hero h1{font-family:'Roboto','Noto Sans',sans-serif;font-weight:900;font-size:2rem;margin-bottom:10px;}
 .kom-hero p{font-size:.95rem;opacity:.9;max-width:520px;margin:0 auto;}
-.kom-section{max-width:960px;margin:0 auto;padding:40px 20px;}
+.kom-section{max-width:960px;margin:0 auto;padding:28px 20px;}
 .kom-section-title{font-family:'Roboto','Noto Sans',sans-serif;font-weight:900;font-size:1.35rem;color:#111;margin-bottom:6px;}
 .kom-section-sub{font-size:.88rem;color:var(--tm);margin-bottom:28px;line-height:1.6;}
-.kom-divider{border:none;border-top:2px solid #e8e2db;margin:40px 0;}
+.kom-divider{border:none;border-top:2px solid #e8e2db;margin:14px 0;}
+/* ── MENTORSHIP APPLY FORM ── */
+.kom-apply-form{background:#fff;border:1.5px solid #f0ebe4;border-radius:14px;padding:24px 22px;margin-bottom:22px;}
+.kom-form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:560px){.kom-form-row{grid-template-columns:1fr;}}
+.kom-field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
+.kom-field label{font-size:.78rem;font-weight:700;color:#333;}
+.kom-field input,.kom-field select,.kom-field textarea{border:1.5px solid #e0d8d0;border-radius:8px;padding:10px 12px;font-size:.85rem;font-family:inherit;outline:none;background:#faf8f5;transition:border-color .15s;}
+.kom-field input:focus,.kom-field select:focus,.kom-field textarea:focus{border-color:var(--orange);}
+.kom-field textarea{resize:vertical;min-height:90px;}
+.kom-seller-details{display:none;gap:14px;}
+.kom-seller-details.visible{display:grid;grid-template-columns:1fr 1fr;}
+@media(max-width:560px){.kom-seller-details.visible{grid-template-columns:1fr;}}
+.kom-apply-submit{background:var(--grad);color:#fff;border:none;border-radius:10px;padding:13px 28px;font-size:.9rem;font-weight:800;cursor:pointer;font-family:inherit;width:100%;transition:opacity .15s;}
+.kom-apply-submit:hover{opacity:.88;}
+.kom-apply-submit:disabled{opacity:.5;cursor:default;}
+.kom-apply-success{background:#e8f8ee;border:1.5px solid #b2dfcc;border-radius:12px;padding:22px;text-align:center;display:none;}
+.kom-apply-success-title{font-weight:900;font-size:1rem;color:#1a6b3a;margin-bottom:6px;}
+.kom-apply-success-text{font-size:.83rem;color:#2d7a4a;line-height:1.6;}
+/* ── PROFILE MEMBERSHIP ── */
+.profile-membership{background:#fff;border:1.5px solid #f0ebe4;border-radius:14px;padding:18px 20px;margin-bottom:20px;}
+.profile-membership-title{font-weight:900;font-size:.95rem;color:#111;margin-bottom:4px;}
+.profile-membership-sub{font-size:.8rem;color:var(--tm);margin-bottom:14px;}
+.profile-membership-pending{display:inline-flex;align-items:center;gap:8px;background:#fff8f0;border:1.5px solid #ffd0a0;border-radius:8px;padding:9px 16px;font-size:.82rem;font-weight:700;color:#b05000;}
+.profile-membership-apply{background:var(--grad);color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s;}
+.profile-membership-apply:hover{opacity:.88;}
 .kom-benefit-list{display:flex;flex-direction:column;gap:22px;margin-bottom:8px;}
 .kom-benefit-item{background:#fff;border-radius:14px;overflow:hidden;border:1.5px solid #f0ebe4;box-shadow:0 2px 12px rgba(0,0,0,.06);display:flex;gap:0;flex-direction:row;}
 @media(max-width:620px){.kom-benefit-item{flex-direction:column;}}
@@ -1533,11 +1558,6 @@ html,body{overflow-x:hidden;max-width:100%;}
 ════════════════════════════════════ -->
 <div class="page" id="page-komunitas">
 
-  <div class="kom-hero">
-    <h1>Komunitas LarisID</h1>
-    <p>Akses grup WhatsApp eksklusif, konten terbaru, dan program mentorship untuk penjual Shopee yang serius berkembang.</p>
-  </div>
-
   <!-- COMMUNITY SECTION -->
   <div class="kom-section">
     <div class="kom-section-title">Komunitas Anggota</div>
@@ -1590,7 +1610,75 @@ html,body{overflow-x:hidden;max-width:100%;}
       </div>
     </div>
 
-    <a class="kom-apply-btn" href="#" target="_blank" rel="noopener">Apply Now — Daftar Program Mentorship</a>
+    <!-- APPLY FORM -->
+    <div class="kom-apply-form" id="kom-apply-form">
+      <div style="font-weight:900;font-size:1rem;color:#111;margin-bottom:4px;">Apply Now</div>
+      <div style="font-size:.8rem;color:var(--tm);margin-bottom:20px;">Isi form di bawah ini. Tim kami akan menghubungi kamu dalam 1–3 hari kerja.</div>
+      <form onsubmit="submitMentorApp(event)">
+        <div class="kom-form-row">
+          <div class="kom-field">
+            <label>Nama Lengkap</label>
+            <input type="text" id="ma-name" placeholder="Nama kamu" required>
+          </div>
+          <div class="kom-field">
+            <label>Nomor WhatsApp</label>
+            <input type="tel" id="ma-wa" placeholder="08xx xxxx xxxx" required>
+          </div>
+        </div>
+        <div class="kom-field">
+          <label>Email</label>
+          <input type="email" id="ma-email" placeholder="email@kamu.com" required>
+        </div>
+        <div class="kom-field">
+          <label>Apakah kamu sudah berjualan sekarang?</label>
+          <select id="ma-seller" onchange="toggleSellerFields(this.value)" required>
+            <option value="">-- Pilih --</option>
+            <option value="yes">Ya, saya sudah aktif berjualan</option>
+            <option value="no">Belum, saya baru mau mulai</option>
+          </select>
+        </div>
+        <div class="kom-seller-details" id="ma-seller-details">
+          <div class="kom-field">
+            <label>Berapa tahun pengalaman berjualan?</label>
+            <select id="ma-years">
+              <option value="">-- Pilih --</option>
+              <option value="<1">Kurang dari 1 tahun</option>
+              <option value="1-2">1–2 tahun</option>
+              <option value="3-5">3–5 tahun</option>
+              <option value="5+">Lebih dari 5 tahun</option>
+            </select>
+          </div>
+          <div class="kom-field">
+            <label>Omset per bulan saat ini</label>
+            <select id="ma-omset">
+              <option value="">-- Pilih --</option>
+              <option value="<5jt">Di bawah Rp 5 juta</option>
+              <option value="5-20jt">Rp 5–20 juta</option>
+              <option value="20-50jt">Rp 20–50 juta</option>
+              <option value="50-100jt">Rp 50–100 juta</option>
+              <option value="100jt+">Di atas Rp 100 juta</option>
+            </select>
+          </div>
+        </div>
+        <div class="kom-field">
+          <label>Kenapa kamu ingin punya mentor?</label>
+          <textarea id="ma-why" placeholder="Ceritakan situasi bisnismu dan apa yang ingin kamu capai..." required></textarea>
+        </div>
+        <div class="kom-field">
+          <label>Apakah kamu tertarik dengan Modal Usaha (Startup Capital)?</label>
+          <select id="ma-capital" required>
+            <option value="">-- Pilih --</option>
+            <option value="yes">Ya, saya ingin tahu lebih lanjut</option>
+            <option value="no">Tidak, saya hanya butuh mentorship</option>
+          </select>
+        </div>
+        <button class="kom-apply-submit" type="submit" id="ma-submit-btn">Kirim Aplikasi</button>
+      </form>
+    </div>
+    <div class="kom-apply-success" id="kom-apply-success">
+      <div class="kom-apply-success-title">Aplikasi Kamu Sedang Diproses</div>
+      <div class="kom-apply-success-text">Terima kasih telah mendaftar program mentorship LarisID. Tim kami akan menghubungi kamu melalui WhatsApp atau email dalam 1–3 hari kerja.</div>
+    </div>
   </div>
 
 </div>
@@ -1628,19 +1716,12 @@ html,body{overflow-x:hidden;max-width:100%;}
       <div class="saved-empty">Belum ada produk tersimpan.</div>
     </div>
 
-    <!-- JOIN COMMUNITY + MENTORING -->
-    <div class="profile-community-row">
-      <div class="profile-cta-card community-card">
-        <div class="profile-cta-icon">🤝</div>
-        <div class="profile-cta-title">Join the Community</div>
-        <div class="profile-cta-sub">Bergabung dengan ribuan penjual Shopee aktif. Sharing, tips, dan diskusi produk setiap hari.</div>
-        <a class="profile-cta-btn community-btn" onclick="showPage('komunitas')" style="cursor:pointer;">Bergabung Sekarang</a>
-      </div>
-      <div class="profile-cta-card mentor-card">
-        <div class="profile-cta-icon">🎓</div>
-        <div class="profile-cta-title">Get a Mentor</div>
-        <div class="profile-cta-sub">1-on-1 training from Shopee experts. Modal awal tersedia — lending available for qualified sellers.</div>
-        <a class="profile-cta-btn mentor-btn" onclick="showPage('komunitas')" style="cursor:pointer;">Find a Mentor</a>
+    <!-- MEMBERSHIP STATUS -->
+    <div class="profile-membership" id="profile-membership">
+      <div class="profile-membership-title">Program Mentorship</div>
+      <div class="profile-membership-sub">1-on-1 bersama mentor berpengalaman. Akses modal usaha tersedia untuk peserta terpilih.</div>
+      <div id="profile-membership-status">
+        <button class="profile-membership-apply" onclick="showPage('komunitas')">Apply Now</button>
       </div>
     </div>
 
@@ -2618,13 +2699,13 @@ function initSupabase() {
   _supabase.auth.getSession().then(({ data: { session } }) => {
     currentUser = session?.user || null;
     updateAuthUI();
-    if (currentUser) loadSavedProducts();
+    if (currentUser) { loadSavedProducts(); checkMentorApplication(); }
   });
   // Listen for auth changes
   _supabase.auth.onAuthStateChange((event, session) => {
     currentUser = session?.user || null;
     updateAuthUI();
-    if (currentUser) { loadSavedProducts(); }
+    if (currentUser) { loadSavedProducts(); checkMentorApplication(); }
     else { savedProducts.clear(); }
     // Re-render all grids to update lock state
     renderHomeGrid();
@@ -2851,6 +2932,53 @@ async function toggleDetailSave() {
     }
   });
   renderProfileSaved();
+}
+
+function toggleSellerFields(val) {
+  const el = document.getElementById('ma-seller-details');
+  if (el) el.classList.toggle('visible', val === 'yes');
+}
+
+async function submitMentorApp(e) {
+  e.preventDefault();
+  const btn = document.getElementById('ma-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Mengirim...'; }
+  const isSeller = document.getElementById('ma-seller').value === 'yes';
+  const payload = {
+    name:       document.getElementById('ma-name').value.trim(),
+    whatsapp:   document.getElementById('ma-wa').value.trim(),
+    email:      document.getElementById('ma-email').value.trim(),
+    is_seller:  isSeller,
+    years_exp:  isSeller ? document.getElementById('ma-years').value : null,
+    omset:      isSeller ? document.getElementById('ma-omset').value : null,
+    why_mentor: document.getElementById('ma-why').value.trim(),
+    want_capital: document.getElementById('ma-capital').value === 'yes',
+    status:     'pending',
+    user_id:    currentUser?.id || null,
+  };
+  try {
+    if (_supabase) await _supabase.from('mentor_applications').insert(payload);
+  } catch(_) {}
+  document.getElementById('kom-apply-form').style.display = 'none';
+  document.getElementById('kom-apply-success').style.display = 'block';
+  updateProfileMembershipStatus(true);
+}
+
+async function checkMentorApplication() {
+  if (!_supabase || !currentUser) return;
+  const { data } = await _supabase.from('mentor_applications')
+    .select('status').eq('user_id', currentUser.id).limit(1);
+  if (data && data.length > 0) updateProfileMembershipStatus(true);
+}
+
+function updateProfileMembershipStatus(pending) {
+  const el = document.getElementById('profile-membership-status');
+  if (!el) return;
+  if (pending) {
+    el.innerHTML = `<div class="profile-membership-pending">Application Pending — tim kami akan segera menghubungi kamu</div>`;
+  } else {
+    el.innerHTML = `<button class="profile-membership-apply" onclick="showPage('komunitas')">Apply Now</button>`;
+  }
 }
 
 function renderProfileSaved() {
