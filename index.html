@@ -773,29 +773,6 @@ html,body{overflow-x:hidden;max-width:100%;}
     </div>
   </div>
 
-  <!-- QUICK FILTER STRIP -->
-  <div class="quick-row">
-    <div class="quick-inner">
-      <div class="quick-filters">
-        <div class="qf-item active" id="qf-hot" onclick="quickFilter('hot')">
-          <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c0 0-5 4-5 9a5 5 0 0 0 10 0c0-5-5-9-5-9z"/></svg></span><span class="qf-lbl">Hot Products</span>
-        </div>
-        <div class="qf-item" id="qf-high_revenue" onclick="quickFilter('high_revenue')">
-          <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M9 9h4.5a1.5 1.5 0 0 1 0 3H10a1.5 1.5 0 0 0 0 3H15"/></svg></span><span class="qf-lbl">High Revenue</span>
-        </div>
-        <div class="qf-item" id="qf-low_revenue" onclick="quickFilter('low_revenue')">
-          <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22,17 13.5,8.5 8.5,13.5 2,7"/><polyline points="16,17 22,17 22,11"/></svg></span><span class="qf-lbl">Lowest Revenue</span>
-        </div>
-        <div class="qf-item" id="qf-top_units" onclick="quickFilter('top_units')">
-          <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span><span class="qf-lbl">Top Units/mo</span>
-        </div>
-        <div class="qf-item" id="qf-low_units" onclick="quickFilter('low_units')">
-          <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span><span class="qf-lbl">Lowest Units/mo</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- TRENDING ROW — HOME -->
   <div class="trending-section" id="home-trending-section">
     <div class="trending-sec-inner">
@@ -850,6 +827,29 @@ html,body{overflow-x:hidden;max-width:100%;}
         <span class="see-all" onclick="showPage('discover')">See All</span>
       </div>
       <div class="cat-grid" id="home-cats"></div>
+
+      <!-- QUICK FILTER STRIP -->
+      <div class="quick-row" style="margin:16px -20px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+        <div class="quick-inner" style="padding:0;">
+          <div class="quick-filters">
+            <div class="qf-item active" id="qf-hot" onclick="quickFilter('hot')">
+              <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c0 0-5 4-5 9a5 5 0 0 0 10 0c0-5-5-9-5-9z"/></svg></span><span class="qf-lbl">Hot Products</span>
+            </div>
+            <div class="qf-item" id="qf-high_revenue" onclick="quickFilter('high_revenue')">
+              <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M9 9h4.5a1.5 1.5 0 0 1 0 3H10a1.5 1.5 0 0 0 0 3H15"/></svg></span><span class="qf-lbl">High Revenue</span>
+            </div>
+            <div class="qf-item" id="qf-low_revenue" onclick="quickFilter('low_revenue')">
+              <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22,17 13.5,8.5 8.5,13.5 2,7"/><polyline points="16,17 22,17 22,11"/></svg></span><span class="qf-lbl">Lowest Revenue</span>
+            </div>
+            <div class="qf-item" id="qf-top_units" onclick="quickFilter('top_units')">
+              <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span><span class="qf-lbl">Top Units/mo</span>
+            </div>
+            <div class="qf-item" id="qf-low_units" onclick="quickFilter('low_units')">
+              <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span><span class="qf-lbl">Lowest Units/mo</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div class="sec-head">
         <div class="sec-title">Featured Products</div>
