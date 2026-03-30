@@ -348,9 +348,14 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 /* RIGHT — product info */
 .det-info{background:#fff;border-radius:12px;padding:20px;box-shadow:var(--sh);margin-bottom:14px;}
 .det-score-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
-.share-btn{display:inline-flex;align-items:center;gap:7px;background:var(--orange);color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;margin-top:14px;width:100%;justify-content:center;transition:background .15s,transform .1s;}
+.share-btn{display:inline-flex;align-items:center;gap:7px;background:var(--orange);color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;margin-top:14px;flex:1;justify-content:center;transition:background .15s,transform .1s;}
 .share-btn:hover{background:#d93d1f;transform:translateY(-1px);}
 .share-btn svg{flex-shrink:0;}
+.det-save-btn{background:#fff;color:var(--orange);border:2px solid var(--orange) !important;}
+.det-save-btn:hover{background:var(--orange-light) !important;transform:translateY(-1px);}
+.det-save-btn svg{stroke:var(--orange);}
+.det-save-btn.saved{background:var(--orange);color:#fff;}
+.det-save-btn.saved svg{stroke:#fff;fill:#fff;}
 .det-score-badge{background:var(--score-clr,var(--score-green));color:#fff;font-family:'Roboto', 'Noto Sans', sans-serif;font-weight:900;font-size:.82rem;padding:3px 10px;border-radius:20px;transition:background .2s;}
 .det-cat-tag{font-size:.78rem;color:var(--orange);font-weight:600;background:var(--orange-light);padding:3px 10px;border-radius:20px;}
 .det-name{font-family:'Roboto', 'Noto Sans', sans-serif;font-weight:900;font-size:1.5rem;line-height:1.25;margin-bottom:14px;color:#111;}
@@ -1141,10 +1146,16 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <div class="det-stat-pill-val" id="d-score2">—</div>
               </div>
             </div>
-            <button class="share-btn" onclick="openShareModal()">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-              Share This Opportunity
-            </button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="share-btn" onclick="openShareModal()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                Share This Opportunity
+              </button>
+              <button class="share-btn det-save-btn" id="det-save-btn" onclick="toggleDetailSave()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                <span id="det-save-label">Simpan Produk</span>
+              </button>
+            </div>
 
             <!-- SELLER ACCURACY VOTE -->
             <div class="seller-vote-box">
@@ -2672,6 +2683,47 @@ async function toggleSave(e, pid) {
     }
   });
   renderProfileSaved();
+  syncDetailSaveBtn();
+}
+
+function syncDetailSaveBtn() {
+  const btn = document.getElementById('det-save-btn');
+  const lbl = document.getElementById('det-save-label');
+  if (!btn || !currentProduct) return;
+  const isSaved = savedProducts.has(currentProduct.id);
+  btn.classList.toggle('saved', isSaved);
+  if (lbl) lbl.textContent = isSaved ? 'Tersimpan ✓' : 'Simpan Produk';
+}
+
+async function toggleDetailSave() {
+  if (!currentProduct) return;
+  if (!currentUser) { openAuthModal('login'); return; }
+  const pid = currentProduct.id;
+  if (!_supabase) return;
+  if (savedProducts.has(pid)) {
+    await _supabase.from('saved_products').delete()
+      .eq('user_id', currentUser.id).eq('product_id', pid);
+    savedProducts.delete(pid);
+  } else {
+    await _supabase.from('saved_products').insert({ user_id: currentUser.id, product_id: pid });
+    savedProducts.add(pid);
+  }
+  syncDetailSaveBtn();
+  // Update card buttons too
+  const isSaved = savedProducts.has(pid);
+  document.querySelectorAll(`.save-btn[data-pid="${pid}"]`).forEach(btn => {
+    btn.classList.toggle('saved', isSaved);
+    if (isSaved) {
+      btn.title = 'Lihat Produk Tersimpan';
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
+      btn.onclick = function(ev) { ev.stopPropagation(); openProfile(); };
+    } else {
+      btn.title = 'Simpan produk';
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EE4D2D" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+      btn.onclick = function(ev) { toggleSave(ev, pid); };
+    }
+  });
+  renderProfileSaved();
 }
 
 function renderProfileSaved() {
@@ -2789,6 +2841,8 @@ function renderDetail(p) {
   // Unlock banner
   const unlockBanner = document.getElementById('det-unlock-banner');
   if (unlockBanner) unlockBanner.style.display = detLocked ? '' : 'none';
+  // Sync save button
+  syncDetailSaveBtn();
   // Name — show but blur if locked
   const nameEl = document.getElementById('d-name');
   nameEl.textContent = p.name;
