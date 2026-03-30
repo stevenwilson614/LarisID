@@ -220,6 +220,8 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 
 .card-emoji{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:3rem;}
 .score-pill{position:absolute;top:7px;left:7px;background:#fff;border:2px solid var(--score-clr,var(--score-green));border-radius:6px;padding:2px 6px;font-family:'Roboto', 'Noto Sans', sans-serif;font-weight:900;font-size:.78rem;color:var(--score-clr,var(--score-green));line-height:1.4;box-shadow:0 1px 4px rgba(0,0,0,.1);}
+.trend-badge{position:absolute;bottom:7px;left:7px;background:linear-gradient(135deg,#ff6b35,#f7c948);color:#fff;font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:8px;box-shadow:0 2px 6px rgba(255,107,53,.4);pointer-events:none;letter-spacing:.02em;line-height:1.5;}
+.trend-badge-det{background:linear-gradient(135deg,#ff6b35,#f7c948);color:#fff;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:20px;box-shadow:0 2px 6px rgba(255,107,53,.35);white-space:nowrap;}
 .card-body{padding:7px 9px 9px;}
 .card-name{font-family:'Roboto', 'Noto Sans', sans-serif;font-weight:700;font-size:.85rem;color:var(--td);line-height:1.3;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .card-cat{font-size:.7rem;color:var(--orange);font-weight:500;}
@@ -1551,6 +1553,17 @@ function parseRp(val) {
   return parseFloat(s) || 0;
 }
 
+// Parse "Trend Up 32.61%" → +32.61  |  "Trend Down 15.00%" → -15  |  other → null
+function parseTrendPct(str) {
+  if (!str) return null;
+  const s = String(str).trim();
+  const up = s.match(/trend\s+up\s+([\d.]+)%?/i);
+  if (up) return parseFloat(up[1]);
+  const dn = s.match(/trend\s+down\s+([\d.]+)%?/i);
+  if (dn) return -parseFloat(dn[1]);
+  return null;
+}
+
 function parseReviews(val) {
   if (!val && val !== 0) return 0;
   let s = String(val).replace(/\s/g, '').trim();
@@ -1596,6 +1609,8 @@ async function loadData() {
     category:        r['Category']                     || 'Other',
     image:           r['Image']                        || '', // optional column
     emoji:           r['Emoji']                        || '📦', // optional column
+    avgTrend:        null,  // computed from seller sheet in background
+    trending:        false, // true for top-10 by avg trend
   })).filter(p => p.name); // skip empty rows
 
   filtered = [...allProducts];
@@ -1624,7 +1639,6 @@ async function fetchProductImages() {
   const queue = [...allProducts];
 
   async function fetchOne(p) {
-    if (p.image) return; // already has an image (e.g. from master sheet)
     const sheetId = extractSheetId(p.sheetUrl);
     if (!sheetId) return;
 
@@ -1635,31 +1649,41 @@ async function fetchProductImages() {
     }
     if (!rows || !rows.length) return;
 
-    // Find the first row that has an image
-    const firstWithImg = rows.find(r => r['Image'] && r['Image'].trim());
-    if (!firstWithImg) return;
-
-    p.image = firstWithImg['Image'].trim();
-
-    // Update any card currently in the DOM for this product
-    const cards = document.querySelectorAll(`.product-card[data-pid="${p.id}"]`);
-    cards.forEach(card => {
-      const imgDiv = card.querySelector('.card-img');
-      if (!imgDiv) return;
-      // Insert image if not already there
-      let img = imgDiv.querySelector('img');
-      if (!img) {
-        img = document.createElement('img');
-        img.alt = p.name;
-        img.onerror = function() { this.style.display = 'none'; };
-        imgDiv.prepend(img);
+    // ── Image ─────────────────────────────────────────────────
+    if (!p.image) {
+      const firstWithImg = rows.find(r => r['Image'] && r['Image'].trim());
+      if (firstWithImg) {
+        p.image = firstWithImg['Image'].trim();
+        const cards = document.querySelectorAll(`.product-card[data-pid="${p.id}"]`);
+        cards.forEach(card => {
+          const imgDiv = card.querySelector('.card-img');
+          if (!imgDiv) return;
+          let img = imgDiv.querySelector('img');
+          if (!img) {
+            img = document.createElement('img');
+            img.alt = p.name;
+            img.onerror = function() { this.style.display = 'none'; };
+            imgDiv.prepend(img);
+          }
+          img.src = p.image;
+          img.style.display = '';
+          const emoji = imgDiv.querySelector('.card-emoji');
+          if (emoji) emoji.style.display = 'none';
+        });
       }
-      img.src = p.image;
-      img.style.display = '';
-      // Hide emoji
-      const emoji = imgDiv.querySelector('.card-emoji');
-      if (emoji) emoji.style.display = 'none';
-    });
+    }
+
+    // ── Avg Trend ─────────────────────────────────────────────
+    // Filter to sellers doing > 1% of gross (New Revenue) then average their trends
+    const totalRev = rows.reduce((s, r) => s + parseRp(r['New Revenue']), 0);
+    const threshold = totalRev * 0.01;
+    const trendVals = rows
+      .filter(r => parseRp(r['New Revenue']) > threshold)
+      .map(r => parseTrendPct(r['Trend']))
+      .filter(v => v !== null);
+    if (trendVals.length) {
+      p.avgTrend = trendVals.reduce((s, v) => s + v, 0) / trendVals.length;
+    }
   }
 
   // Process queue with concurrency limit
@@ -1672,6 +1696,44 @@ async function fetchProductImages() {
 
   const workers = Array.from({ length: CONCURRENCY }, () => runWorker());
   await Promise.all(workers);
+
+  // After all products are processed, mark top 10 by avg trend as trending
+  markTrendingProducts();
+}
+
+function markTrendingProducts() {
+  // Sort products that have trend data by avgTrend descending, take top 10
+  const ranked = allProducts
+    .filter(p => p.avgTrend !== null)
+    .sort((a, b) => b.avgTrend - a.avgTrend)
+    .slice(0, 10);
+  ranked.forEach(p => { p.trending = true; });
+  updateTrendingCards();
+}
+
+function updateTrendingCards() {
+  allProducts.filter(p => p.trending).forEach(p => {
+    // Add badge to any currently rendered cards for this product
+    document.querySelectorAll(`.product-card[data-pid="${p.id}"]`).forEach(card => {
+      const imgDiv = card.querySelector('.card-img');
+      if (imgDiv && !imgDiv.querySelector('.trend-badge')) {
+        const badge = document.createElement('div');
+        badge.className = 'trend-badge';
+        badge.textContent = '🔥 Trending';
+        imgDiv.appendChild(badge);
+      }
+    });
+  });
+  // If the detail page is open for a trending product, add badge there too
+  if (currentProduct && currentProduct.trending) {
+    const row = document.querySelector('.det-score-row');
+    if (row && !row.querySelector('.trend-badge-det')) {
+      const span = document.createElement('span');
+      span.className = 'trend-badge-det';
+      span.textContent = '🔥 Trending';
+      row.appendChild(span);
+    }
+  }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -2149,6 +2211,7 @@ function cardHTML(p, idx) {
       ${p.image ? `<img src="${p.image}" alt="${p.name}" onerror="this.style.display='none'">` : ''}
       <div class="card-emoji" ${p.image ? 'style="display:none"' : ''}>${p.emoji||'📦'}</div>
       <div class="score-pill" style="--score-clr:${scoreColor(p.score)}">${fmtScore(p.score)}</div>
+      ${p.trending ? '<div class="trend-badge">🔥 Trending</div>' : ''}
     </div>
     <button class="cmp-btn ${compareList.includes(p.id)?'selected':''}" data-pid="${p.id}" onclick="toggleCompare(event,${p.id})" title="Bandingkan">
       <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
@@ -2264,6 +2327,18 @@ function renderDetail(p) {
   if (badge) badge.style.background = sc;
   document.querySelectorAll('#d-score2').forEach(el => { el.parentElement.style.setProperty('--score-clr', sc); });
   document.getElementById('d-cat').textContent    = p.category;
+  // Trending badge on detail page — remove stale badge then re-add if trending
+  const detScoreRow = document.querySelector('.det-score-row');
+  if (detScoreRow) {
+    const old = detScoreRow.querySelector('.trend-badge-det');
+    if (old) old.remove();
+    if (p.trending) {
+      const tBadge = document.createElement('span');
+      tBadge.className = 'trend-badge-det';
+      tBadge.textContent = '🔥 Trending';
+      detScoreRow.appendChild(tBadge);
+    }
+  }
   document.getElementById('d-name').textContent   = p.name;
   document.getElementById('d-units-new').textContent = Math.round(p.newUnits) + '/mo';
   document.getElementById('d-units-exp').textContent = Math.round(p.expUnits) + '/mo';
