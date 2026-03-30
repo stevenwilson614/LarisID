@@ -683,16 +683,18 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 .vote-bar-track{height:8px;background:#f0ebe4;border-radius:4px;overflow:hidden;}
 .vote-bar-fill{height:100%;background:linear-gradient(90deg,#27AE60,#5dde8d);border-radius:4px;transition:width .4s ease;}
 
-/* ── MOBILE NAV ── */
-.nav-hamburger{display:none;flex-direction:column;justify-content:center;gap:5px;cursor:pointer;padding:8px;background:rgba(255,255,255,0.18);border:none;border-radius:6px;flex-shrink:0;width:38px;height:38px;}
-.nav-hamburger span{display:block;width:20px;height:2px;background:#fff;border-radius:2px;margin:0 auto;}
-.mobile-menu{display:none;position:fixed;top:72px;left:0;right:0;background:var(--grad);z-index:199;padding:12px 0;box-shadow:0 4px 12px rgba(0,0,0,.2);}
+/* ── HAMBURGER / MOBILE NAV ── */
+.nav-hamburger{display:flex;flex-direction:column;justify-content:center;gap:5px;cursor:pointer;padding:8px;background:rgba(255,255,255,0.18);border:none;border-radius:6px;flex-shrink:0;width:38px;height:38px;}
+.nav-hamburger span{display:block;width:20px;height:2px;background:#fff;border-radius:2px;margin:0 auto;transition:transform .2s,opacity .2s;}
+.nav-hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+.nav-hamburger.open span:nth-child(2){opacity:0;}
+.nav-hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+.mobile-menu{display:none;position:fixed;top:56px;left:0;right:0;background:var(--grad);z-index:199;padding:8px 0 14px;box-shadow:0 4px 16px rgba(0,0,0,.25);}
 .mobile-menu.open{display:block;}
-.mobile-menu a{display:block;padding:14px 24px;color:#fff;font-size:1rem;font-weight:600;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.15);cursor:pointer;}
+.mobile-menu a{display:block;padding:13px 24px;color:#fff;font-size:.95rem;font-weight:600;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.12);cursor:pointer;}
 .mobile-menu a:last-child{border-bottom:none;}
-.is-mobile .nav-hamburger{display:flex;}
-.is-mobile .nav-right{display:none;}
-.is-mobile .nav-search-wrap{max-width:none;}
+.mobile-menu a:hover{background:rgba(255,255,255,.1);}
+@media(min-width:769px){.nav-right{display:flex!important;}}
 /* ── PREVENT HORIZONTAL OVERFLOW ── */
 html,body{overflow-x:hidden;max-width:100%;}
 @media(max-width:768px){
@@ -763,6 +765,48 @@ html,body{overflow-x:hidden;max-width:100%;}
 .supplier-ad-cta{display:inline-flex;align-items:center;gap:6px;background:var(--grad);color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none;}
 @media(max-width:480px){#compare-bar{padding:8px 12px;gap:8px;}.cmp-slot{width:52px;height:52px;}.cmp-bar-actions{flex-direction:column;gap:5px;}#cmp-go-btn,#cmp-clear-btn{padding:7px 10px;font-size:.78rem;}}
 
+/* ── KOMUNITAS PAGE ── */
+#page-komunitas{background:#f5f2ee;min-height:100vh;}
+.kom-hero{background:var(--grad);color:#fff;padding:52px 24px 60px;text-align:center;}
+.kom-hero h1{font-family:'Roboto','Noto Sans',sans-serif;font-weight:900;font-size:2rem;margin-bottom:10px;}
+.kom-hero p{font-size:.95rem;opacity:.9;max-width:520px;margin:0 auto;}
+.kom-section{max-width:960px;margin:0 auto;padding:40px 20px;}
+.kom-section-title{font-family:'Roboto','Noto Sans',sans-serif;font-weight:900;font-size:1.35rem;color:#111;margin-bottom:6px;}
+.kom-section-sub{font-size:.88rem;color:var(--tm);margin-bottom:28px;line-height:1.6;}
+.kom-divider{border:none;border-top:2px solid #e8e2db;margin:40px 0;}
+.kom-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;margin-bottom:32px;}
+.kom-card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.07);border:1.5px solid #f0ebe4;}
+.kom-card-img{width:100%;height:160px;object-fit:cover;display:block;background:#f0ede8;}
+.kom-card-body{padding:18px 16px;}
+.kom-card-label{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--orange);margin-bottom:6px;}
+.kom-card-title{font-size:.95rem;font-weight:800;color:#111;margin-bottom:8px;line-height:1.35;}
+.kom-card-text{font-size:.8rem;color:var(--tm);line-height:1.6;}
+.kom-wa-strip{background:#25d366;border-radius:14px;padding:22px 24px;display:flex;align-items:center;gap:18px;margin-bottom:28px;flex-wrap:wrap;}
+.kom-wa-strip-text{flex:1;min-width:180px;}
+.kom-wa-strip-title{font-weight:900;color:#fff;font-size:1rem;margin-bottom:4px;}
+.kom-wa-strip-sub{color:rgba(255,255,255,.85);font-size:.82rem;line-height:1.5;}
+.kom-wa-btn{background:#fff;color:#25d366;border:none;border-radius:8px;padding:10px 20px;font-size:.85rem;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;text-decoration:none;flex-shrink:0;}
+.kom-wa-btn:hover{background:#f0fdf4;}
+.kom-update-strip{background:#fff;border:1.5px solid #e8e2db;border-radius:14px;padding:20px;margin-bottom:28px;display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;}
+.kom-update-img{width:80px;height:80px;border-radius:10px;object-fit:cover;flex-shrink:0;background:#f0ede8;}
+.kom-update-body{flex:1;min-width:160px;}
+.kom-update-title{font-weight:800;font-size:.92rem;color:#111;margin-bottom:5px;}
+.kom-update-text{font-size:.8rem;color:var(--tm);line-height:1.6;}
+.kom-mentor-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:28px;}
+@media(max-width:580px){.kom-mentor-grid{grid-template-columns:1fr;}}
+.kom-mentor-card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.07);border:1.5px solid #f0ebe4;}
+.kom-mentor-card-img{width:100%;height:180px;object-fit:cover;display:block;background:#f0ede8;}
+.kom-mentor-card-body{padding:16px;}
+.kom-mentor-name{font-weight:900;font-size:.95rem;color:#111;margin-bottom:3px;}
+.kom-mentor-meta{font-size:.75rem;color:var(--orange);font-weight:600;margin-bottom:8px;}
+.kom-mentor-bio{font-size:.78rem;color:var(--tm);line-height:1.6;}
+.kom-lending-strip{background:linear-gradient(135deg,#fff8f0,#fff2e6);border:1.5px solid #ffd0a0;border-radius:14px;padding:22px 24px;margin-bottom:28px;display:flex;gap:18px;align-items:center;flex-wrap:wrap;}
+.kom-lending-img{width:72px;height:72px;border-radius:10px;object-fit:cover;flex-shrink:0;background:#f0ede8;}
+.kom-lending-body{flex:1;min-width:160px;}
+.kom-lending-title{font-weight:900;font-size:.95rem;color:#111;margin-bottom:5px;}
+.kom-lending-text{font-size:.8rem;color:var(--tm);line-height:1.6;}
+.kom-apply-btn{background:var(--grad);color:#fff;border:none;border-radius:10px;padding:14px 28px;font-size:.9rem;font-weight:800;cursor:pointer;font-family:inherit;width:100%;text-align:center;margin-top:8px;text-decoration:none;display:block;transition:opacity .15s;}
+.kom-apply-btn:hover{opacity:.88;}
 /* compare page */
 #page-compare{padding:0 0 60px;}
 .cmp-page-header{background:var(--orange);color:#fff;padding:16px 20px;display:flex;align-items:center;gap:12px;}
@@ -806,22 +850,24 @@ html,body{overflow-x:hidden;max-width:100%;}
   </div>
   <div class="search-suggestions" id="search-suggestions"></div>
   </div>
-  <button id="nav-hamburger-btn" onclick="toggleMobileMenu()" aria-label="Menu" style="display:none;flex-direction:column;justify-content:center;gap:5px;cursor:pointer;padding:8px;background:rgba(255,255,255,0.18);border:none;border-radius:6px;flex-shrink:0;width:38px;height:38px;"><span style="display:block;width:20px;height:2px;background:#fff;border-radius:2px;margin:0 auto;"></span><span style="display:block;width:20px;height:2px;background:#fff;border-radius:2px;margin:0 auto;"></span><span style="display:block;width:20px;height:2px;background:#fff;border-radius:2px;margin:0 auto;"></span></button>
+  <button id="nav-hamburger-btn" class="nav-hamburger" onclick="toggleMobileMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
   <div id="nav-right-links" class="nav-right">
     <a class="nav-link" onclick="showPage('discover')">Products</a>
+    <a class="nav-link" onclick="showPage('komunitas')">Komunitas</a>
     <a class="nav-link" onclick="showPage('about')">Tentang</a>
-
     <a class="nav-link" onclick="openFeedback()">Feedback</a>
     <button class="nav-auth-btn" id="nav-login-btn" onclick="openAuthModal('login')">Login / Daftar</button>
     <div class="nav-avatar" id="nav-user-btn" onclick="openProfile()" style="display:none;">?</div>
   </div>
 </nav>
 <div class="mobile-menu" id="mobile-menu">
+  <a onclick="showPage('home');closeMobileMenu()">Beranda</a>
   <a onclick="showPage('discover');closeMobileMenu()">Products</a>
+  <a onclick="showPage('komunitas');closeMobileMenu()">Komunitas</a>
   <a onclick="showPage('about');closeMobileMenu()">Tentang</a>
-
   <a onclick="openFeedback();closeMobileMenu()">Feedback</a>
-  <a onclick="openAuthModal('login');closeMobileMenu()">Login / Daftar</a>
+  <a id="mobile-login-link" onclick="openAuthModal('login');closeMobileMenu()">Login / Daftar</a>
+  <a id="mobile-profile-link" style="display:none;" onclick="openProfile();closeMobileMenu()">Profil Saya</a>
 </div>
 
 <!-- ════════════════════════════════════
@@ -1494,6 +1540,108 @@ html,body{overflow-x:hidden;max-width:100%;}
 <div class="copy-toast" id="copy-toast">Link copied!</div>
 
 
+<!-- ════════════════════════════════════
+     KOMUNITAS PAGE
+════════════════════════════════════ -->
+<div class="page" id="page-komunitas">
+
+  <div class="kom-hero">
+    <h1>Komunitas LarisID</h1>
+    <p>Bergabung bersama ribuan penjual Shopee aktif — belajar, berbagi, dan berkembang bersama.</p>
+  </div>
+
+  <!-- COMMUNITY SECTION -->
+  <div class="kom-section">
+    <div class="kom-section-title">Komunitas Penjual</div>
+    <div class="kom-section-sub">Tempat berbagi ide, strategi produk, dan pengalaman berjualan. Saling mendukung untuk tumbuh lebih cepat.</div>
+
+    <!-- WhatsApp strip -->
+    <div class="kom-wa-strip">
+      <div class="kom-wa-strip-text">
+        <div class="kom-wa-strip-title">Bergabung ke Grup WhatsApp</div>
+        <div class="kom-wa-strip-sub">Diskusi harian, tips produk, dan update langsung dari komunitas penjual aktif LarisID.</div>
+      </div>
+      <a class="kom-wa-btn" href="#" target="_blank" rel="noopener">Masuk Grup</a>
+    </div>
+
+    <!-- Weekly update strip -->
+    <div class="kom-update-strip">
+      <img class="kom-update-img" src="https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=160&q=80" alt="Weekly update" onerror="this.style.display='none'">
+      <div class="kom-update-body">
+        <div class="kom-update-title">Update Mingguan — Produk Trending</div>
+        <div class="kom-update-text">Setiap minggu kami mengirimkan ringkasan produk paling trending di Shopee langsung ke anggota komunitas. Daftar dan jangan ketinggalan peluang terbaik.</div>
+      </div>
+    </div>
+
+    <!-- Community cards -->
+    <div class="kom-cards">
+      <div class="kom-card">
+        <img class="kom-card-img" src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&q=80" alt="Sharing ideas" onerror="this.style.background='#e8e2db'">
+        <div class="kom-card-body">
+          <div class="kom-card-label">Berbagi Ide</div>
+          <div class="kom-card-title">Temukan Produk Potensial Bersama</div>
+          <div class="kom-card-text">Anggota komunitas berbagi temuan produk, analisis pasar, dan strategi listing yang terbukti meningkatkan penjualan.</div>
+        </div>
+      </div>
+      <div class="kom-card">
+        <img class="kom-card-img" src="https://images.unsplash.com/photo-1556761175-4b46a572b786?w=600&q=80" alt="Collaboration" onerror="this.style.background='#e8e2db'">
+        <div class="kom-card-body">
+          <div class="kom-card-label">Kolaborasi</div>
+          <div class="kom-card-title">Jaringan Supplier dan Reseller</div>
+          <div class="kom-card-text">Temukan mitra supplier terpercaya atau bangun jaringan reseller untuk memperluas jangkauan produkmu.</div>
+        </div>
+      </div>
+      <div class="kom-card">
+        <img class="kom-card-img" src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&q=80" alt="Analytics" onerror="this.style.background='#e8e2db'">
+        <div class="kom-card-body">
+          <div class="kom-card-label">Data Trending</div>
+          <div class="kom-card-title">Diskusi Riset Produk Real-Time</div>
+          <div class="kom-card-text">Bahas data terbaru dari LarisID — produk mana yang sedang naik, kategori mana yang mulai jenuh, dan peluang baru yang muncul.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="kom-divider">
+
+  <!-- MENTOR SECTION -->
+  <div class="kom-section">
+    <div class="kom-section-title">Program Mentorship</div>
+    <div class="kom-section-sub">Belajar langsung di bawah bimbingan penjual Shopee berpengalaman. Program 1-on-1 untuk mempercepat pertumbuhan bisnismu dari nol hingga profit.</div>
+
+    <div class="kom-mentor-grid">
+      <div class="kom-mentor-card">
+        <img class="kom-mentor-card-img" src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&q=80" alt="Mentor" onerror="this.style.background='#e8e2db'">
+        <div class="kom-mentor-card-body">
+          <div class="kom-mentor-name">Mentor Produk &amp; Riset</div>
+          <div class="kom-mentor-meta">Spesialis: Product Research · Trending Analysis</div>
+          <div class="kom-mentor-bio">Membimbing cara membaca data pasar, memilih produk dengan potensi tinggi, dan membangun portofolio produk yang konsisten laris.</div>
+        </div>
+      </div>
+      <div class="kom-mentor-card">
+        <img class="kom-mentor-card-img" src="https://images.unsplash.com/photo-1556157382-97eda2d62296?w=600&q=80" alt="Mentor" onerror="this.style.background='#e8e2db'">
+        <div class="kom-mentor-card-body">
+          <div class="kom-mentor-name">Mentor Operasional &amp; Scaling</div>
+          <div class="kom-mentor-meta">Spesialis: Fulfillment · Iklan Shopee · Scaling</div>
+          <div class="kom-mentor-bio">Panduan pengelolaan stok, optimasi iklan Shopee, dan strategi scaling omset dari puluhan juta ke ratusan juta per bulan.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lending strip -->
+    <div class="kom-lending-strip">
+      <img class="kom-lending-img" src="https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=160&q=80" alt="Lending" onerror="this.style.display='none'">
+      <div class="kom-lending-body">
+        <div class="kom-lending-title">Modal Usaha Tersedia — Lending Available</div>
+        <div class="kom-lending-text">Peserta program mentorship yang memenuhi syarat dapat mengajukan akses modal usaha. Kami menghubungkan penjual terpilih dengan mitra pembiayaan terpercaya untuk mendukung pertumbuhan bisnis.</div>
+      </div>
+    </div>
+
+    <a class="kom-apply-btn" href="#" target="_blank" rel="noopener">Daftar Program Mentorship</a>
+  </div>
+
+</div>
+
 <!-- ── COMPARE PAGE ─────────────────────── -->
 <div class="page" id="page-compare">
   <div class="cmp-page-header">
@@ -1533,13 +1681,13 @@ html,body{overflow-x:hidden;max-width:100%;}
         <div class="profile-cta-icon">🤝</div>
         <div class="profile-cta-title">Join the Community</div>
         <div class="profile-cta-sub">Bergabung dengan ribuan penjual Shopee aktif. Sharing, tips, dan diskusi produk setiap hari.</div>
-        <a class="profile-cta-btn community-btn" href="#" target="_blank" rel="noopener">Bergabung Sekarang</a>
+        <a class="profile-cta-btn community-btn" onclick="showPage('komunitas')" style="cursor:pointer;">Bergabung Sekarang</a>
       </div>
       <div class="profile-cta-card mentor-card">
         <div class="profile-cta-icon">🎓</div>
         <div class="profile-cta-title">Get a Mentor</div>
         <div class="profile-cta-sub">1-on-1 training from Shopee experts. Modal awal tersedia — lending available for qualified sellers.</div>
-        <a class="profile-cta-btn mentor-btn" href="#" target="_blank" rel="noopener">Find a Mentor</a>
+        <a class="profile-cta-btn mentor-btn" onclick="showPage('komunitas')" style="cursor:pointer;">Find a Mentor</a>
       </div>
     </div>
 
@@ -1558,6 +1706,7 @@ html,body{overflow-x:hidden;max-width:100%;}
       <div class="footer-links">
         <a onclick="showPage('home')" class="footer-link">Beranda</a>
         <a onclick="showPage('discover')" class="footer-link">Produk</a>
+        <a onclick="showPage('komunitas')" class="footer-link">Komunitas</a>
         <a onclick="showPage('about')" class="footer-link">Tentang</a>
         <a onclick="openFeedback()" class="footer-link">Feedback</a>
       </div>
@@ -1985,8 +2134,19 @@ function showPage(name) {
   window.scrollTo(0, 0);
   if (name === 'discover') { renderPills(); renderDiscGrid(); }
   if (name === 'home')     { renderHomeCats(); renderHomeGrid(); }
+  closeMobileMenu();
 }
 function goBack() { showPage(prevPage === 'detail' ? 'discover' : prevPage); }
+function toggleMobileMenu() {
+  const menu = document.getElementById('mobile-menu');
+  const btn  = document.getElementById('nav-hamburger-btn');
+  const open = menu.classList.toggle('open');
+  btn.classList.toggle('open', open);
+}
+function closeMobileMenu() {
+  document.getElementById('mobile-menu')?.classList.remove('open');
+  document.getElementById('nav-hamburger-btn')?.classList.remove('open');
+}
 
 // ════════════════════════════════════════════════════════════
 //  HOME — CATEGORIES
@@ -2533,9 +2693,17 @@ function updateAuthUI() {
     const initials = (currentUser.user_metadata?.full_name || currentUser.email || '?')
       .charAt(0).toUpperCase();
     userBtn.textContent = initials;
+    const mLogin = document.getElementById('mobile-login-link');
+    const mProfile = document.getElementById('mobile-profile-link');
+    if (mLogin) mLogin.style.display = 'none';
+    if (mProfile) mProfile.style.display = '';
   } else {
     loginBtn.style.display = '';
     userBtn.style.display  = 'none';
+    const mLogin = document.getElementById('mobile-login-link');
+    const mProfile = document.getElementById('mobile-profile-link');
+    if (mLogin) mLogin.style.display = '';
+    if (mProfile) mProfile.style.display = 'none';
   }
   // Update profile page hero
   const avatarLg = document.getElementById('profile-avatar-lg');
