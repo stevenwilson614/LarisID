@@ -329,6 +329,14 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 
 /* LEFT — image gallery */
 .det-gallery{position:sticky;top:72px;}
+.det-supplier-ad{background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;margin-top:12px;display:flex;align-items:center;gap:10px;overflow:hidden;}
+.det-supplier-ad-img{width:52px;height:52px;border-radius:8px;object-fit:cover;flex-shrink:0;background:#f5f0ea;display:flex;align-items:center;justify-content:center;font-size:1.4rem;}
+.det-supplier-ad-img img{width:100%;height:100%;object-fit:cover;border-radius:8px;}
+.det-supplier-ad-body{flex:1;min-width:0;}
+.det-supplier-ad-label{font-size:.6rem;font-weight:700;color:var(--tl);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;}
+.det-supplier-ad-name{font-size:.8rem;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.det-supplier-ad-price{font-size:.75rem;color:var(--orange);font-weight:600;}
+.det-supplier-ad-btn{background:var(--grad);color:#fff;border:none;border-radius:7px;padding:7px 12px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;text-decoration:none;}
 .det-main-img{width:100%;aspect-ratio:1;border-radius:12px;background:#f8f3ee;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:5rem;box-shadow:var(--sh);margin-bottom:10px;}
 .det-main-img img{width:100%;height:100%;object-fit:cover;}
 .det-thumbs{display:flex;gap:7px;flex-wrap:wrap;}
@@ -1044,6 +1052,16 @@ html,body{overflow-x:hidden;max-width:100%;}
         <div class="det-gallery">
           <div class="det-main-img" id="d-main-img">📦</div>
           <div class="det-thumbs" id="d-thumbs"></div>
+          <!-- SUPPLIER AD STRIP -->
+          <div class="det-supplier-ad" id="det-supplier-ad">
+            <div class="det-supplier-ad-img">📦</div>
+            <div class="det-supplier-ad-body">
+              <div class="det-supplier-ad-label">Sponsored · Supplier</div>
+              <div class="det-supplier-ad-name">Pasang Iklan Supplier Kamu</div>
+              <div class="det-supplier-ad-price">Hubungi kami untuk harga</div>
+            </div>
+            <a class="det-supplier-ad-btn" href="mailto:hello@larisid.com">Klik Di Sini</a>
+          </div>
         </div>
 
         <!-- RIGHT: product info stack -->
@@ -1448,6 +1466,64 @@ html,body{overflow-x:hidden;max-width:100%;}
       <thead id="cmp-thead"></thead>
       <tbody id="cmp-tbody"></tbody>
     </table>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════
+     PROFILE PAGE
+════════════════════════════════════ -->
+<div class="page" id="page-profile">
+  <div class="profile-hero">
+    <div class="profile-hero-inner">
+      <div class="profile-avatar-lg" id="profile-avatar-lg">?</div>
+      <div class="profile-name" id="profile-display-name">—</div>
+      <div class="profile-email" id="profile-display-email">—</div>
+      <button class="profile-logout" onclick="signOut()">Keluar</button>
+    </div>
+  </div>
+  <div class="profile-main">
+
+    <!-- SAVED PRODUCTS -->
+    <div class="profile-section-title">❤ Produk Tersimpan</div>
+    <div class="home-grid" id="profile-saved-grid" style="margin-bottom:32px;">
+      <div class="saved-empty">Belum ada produk tersimpan.</div>
+    </div>
+
+    <!-- SOURCE PRODUCT NOW -->
+    <div class="profile-source-section">
+      <div class="profile-source-title">🚀 Source Product Now</div>
+      <div class="profile-source-sub">Siap jualan? Cari supplier untuk produk tersimpanmu langsung dari platform terpercaya di bawah ini.</div>
+      <div class="source-platforms">
+        <a class="source-platform-btn" href="https://www.alibaba.com" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          Alibaba
+        </a>
+        <a class="source-platform-btn" href="https://www.1688.com" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          1688.com
+        </a>
+        <a class="source-platform-btn" href="https://www.made-in-china.com" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          Made-in-China
+        </a>
+        <a class="source-platform-btn" href="https://www.tokopedia.com/wholesale" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          Tokopedia Grosir
+        </a>
+      </div>
+    </div>
+
+    <!-- SUPPLIER AD SLOT -->
+    <div class="supplier-ad-slot">
+      <div class="supplier-ad-label">Iklan Supplier</div>
+      <div class="supplier-ad-title">📦 Pasang Iklan Supplier Kamu di Sini</div>
+      <div class="supplier-ad-sub">Jangkau ribuan penjual Shopee aktif yang sedang mencari supplier. Hubungi kami untuk informasi pemasangan iklan.</div>
+      <a class="supplier-ad-cta" href="mailto:hello@larisid.com">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        Hubungi Kami
+      </a>
+    </div>
+
   </div>
 </div>
 
@@ -2529,7 +2605,13 @@ async function loadSavedProducts() {
   // Update save button states on any visible cards
   document.querySelectorAll('.save-btn').forEach(btn => {
     const pid = parseInt(btn.dataset.pid);
-    btn.classList.toggle('saved', savedProducts.has(pid));
+    const isSaved = savedProducts.has(pid);
+    btn.classList.toggle('saved', isSaved);
+    if (isSaved) {
+      btn.title = 'Lihat Produk Tersimpan';
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
+      btn.onclick = function(ev) { ev.stopPropagation(); openProfile(); };
+    }
   });
   renderProfileSaved();
 }
@@ -2563,9 +2645,19 @@ async function toggleSave(e, pid) {
     await _supabase.from('saved_products').insert({ user_id: currentUser.id, product_id: pid });
     savedProducts.add(pid);
   }
+  const isSaved = savedProducts.has(pid);
   // Update all save buttons for this product
   document.querySelectorAll(`.save-btn[data-pid="${pid}"]`).forEach(btn => {
-    btn.classList.toggle('saved', savedProducts.has(pid));
+    btn.classList.toggle('saved', isSaved);
+    if (isSaved) {
+      btn.title = 'Lihat Produk Tersimpan';
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
+      btn.onclick = function(ev) { ev.stopPropagation(); openProfile(); };
+    } else {
+      btn.title = 'Save product';
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EE4D2D" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+      btn.onclick = function(ev) { toggleSave(ev, pid); };
+    }
   });
   renderProfileSaved();
 }
@@ -3573,61 +3665,6 @@ document.addEventListener('DOMContentLoaded', function(){
 <!-- ════════════════════════════════════
      PROFILE PAGE
 ════════════════════════════════════ -->
-<div class="page" id="page-profile">
-  <div class="profile-hero">
-    <div class="profile-hero-inner">
-      <div class="profile-avatar-lg" id="profile-avatar-lg">?</div>
-      <div class="profile-name" id="profile-display-name">—</div>
-      <div class="profile-email" id="profile-display-email">—</div>
-      <button class="profile-logout" onclick="signOut()">Keluar</button>
-    </div>
-  </div>
-  <div class="profile-main">
-
-    <!-- SAVED PRODUCTS -->
-    <div class="profile-section-title">❤ Produk Tersimpan</div>
-    <div class="home-grid" id="profile-saved-grid" style="margin-bottom:32px;">
-      <div class="saved-empty">Belum ada produk tersimpan.</div>
-    </div>
-
-    <!-- SOURCE PRODUCT NOW -->
-    <div class="profile-source-section">
-      <div class="profile-source-title">🚀 Source Product Now</div>
-      <div class="profile-source-sub">Siap jualan? Cari supplier untuk produk tersimpanmu langsung dari platform terpercaya di bawah ini.</div>
-      <div class="source-platforms">
-        <a class="source-platform-btn" href="https://www.alibaba.com" target="_blank" rel="noopener">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-          Alibaba
-        </a>
-        <a class="source-platform-btn" href="https://www.1688.com" target="_blank" rel="noopener">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-          1688.com
-        </a>
-        <a class="source-platform-btn" href="https://www.made-in-china.com" target="_blank" rel="noopener">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-          Made-in-China
-        </a>
-        <a class="source-platform-btn" href="https://www.tokopedia.com/wholesale" target="_blank" rel="noopener">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-          Tokopedia Grosir
-        </a>
-      </div>
-    </div>
-
-    <!-- SUPPLIER AD SLOT -->
-    <div class="supplier-ad-slot">
-      <div class="supplier-ad-label">Iklan Supplier</div>
-      <div class="supplier-ad-title">📦 Pasang Iklan Supplier Kamu di Sini</div>
-      <div class="supplier-ad-sub">Jangkau ribuan penjual Shopee aktif yang sedang mencari supplier. Hubungi kami untuk informasi pemasangan iklan.</div>
-      <a class="supplier-ad-cta" href="mailto:hello@larisid.com">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-        Hubungi Kami
-      </a>
-    </div>
-
-  </div>
-</div>
-
 <!-- ── COMPARE BAR ─────────────────────── -->
 <div id="compare-bar">
   <div class="cmp-bar-slots" id="cmp-bar-slots"></div>
