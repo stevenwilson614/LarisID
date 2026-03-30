@@ -694,7 +694,7 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 .mobile-menu a{display:block;padding:13px 24px;color:#fff;font-size:.95rem;font-weight:600;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.12);cursor:pointer;}
 .mobile-menu a:last-child{border-bottom:none;}
 .mobile-menu a:hover{background:rgba(255,255,255,.1);}
-@media(min-width:769px){.nav-right{display:flex!important;}}
+.nav-right{display:none!important;}
 /* ── PREVENT HORIZONTAL OVERFLOW ── */
 html,body{overflow-x:hidden;max-width:100%;}
 @media(max-width:768px){
@@ -794,11 +794,17 @@ html,body{overflow-x:hidden;max-width:100%;}
 .kom-apply-success-text{font-size:.83rem;color:#2d7a4a;line-height:1.6;}
 /* ── PROFILE MEMBERSHIP ── */
 .profile-membership{background:#fff;border:1.5px solid #f0ebe4;border-radius:14px;padding:18px 20px;margin-bottom:20px;}
-.profile-membership-title{font-weight:900;font-size:.95rem;color:#111;margin-bottom:4px;}
-.profile-membership-sub{font-size:.8rem;color:var(--tm);margin-bottom:14px;}
-.profile-membership-pending{display:inline-flex;align-items:center;gap:8px;background:#fff8f0;border:1.5px solid #ffd0a0;border-radius:8px;padding:9px 16px;font-size:.82rem;font-weight:700;color:#b05000;}
-.profile-membership-apply{background:var(--grad);color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s;}
+.profile-membership-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+.profile-membership-info{flex:1;min-width:0;}
+.profile-membership-title{font-weight:900;font-size:.95rem;color:#111;margin-bottom:3px;}
+.profile-membership-sub{font-size:.78rem;color:var(--tm);line-height:1.5;}
+.profile-membership-pending{display:inline-flex;align-items:center;gap:6px;background:#fff8f0;border:1.5px solid #ffd0a0;border-radius:8px;padding:8px 14px;font-size:.78rem;font-weight:700;color:#b05000;white-space:nowrap;}
+.profile-membership-apply{background:var(--grad);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s;white-space:nowrap;}
 .profile-membership-apply:hover{opacity:.88;}
+.profile-wa-strip{background:#25d366;border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.profile-wa-text{font-size:.8rem;font-weight:700;color:#fff;}
+.profile-wa-btn{background:#fff;color:#25d366;border:none;border-radius:7px;padding:7px 14px;font-size:.78rem;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;text-decoration:none;}
+.profile-wa-btn:hover{background:#f0fdf4;}
 .kom-benefit-list{display:flex;flex-direction:column;gap:22px;margin-bottom:8px;}
 .kom-benefit-item{background:#fff;border-radius:14px;overflow:hidden;border:1.5px solid #f0ebe4;box-shadow:0 2px 12px rgba(0,0,0,.06);display:flex;gap:0;flex-direction:row;}
 @media(max-width:620px){.kom-benefit-item{flex-direction:column;}}
@@ -1573,7 +1579,7 @@ html,body{overflow-x:hidden;max-width:100%;}
         </div>
       </div>
       <div class="kom-benefit-item">
-        <img class="kom-benefit-img" src="https://images.unsplash.com/photo-1432888622747-4eb9a8f5f989?w=500&q=80" alt="Blog posts" onerror="this.style.background='#e8e2db'">
+        <img class="kom-benefit-img" src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=500&q=80" alt="Blog posts" onerror="this.style.background='#e8e2db'">
         <div class="kom-benefit-body">
           <div class="kom-benefit-title">Akses Blog &amp; Panduan Penjual</div>
           <div class="kom-benefit-text">Anggota komunitas mendapat akses ke semua artikel dan panduan dari seller berpengalaman — mulai dari riset produk, strategi iklan, packaging, hingga scaling omset.</div>
@@ -1591,7 +1597,7 @@ html,body{overflow-x:hidden;max-width:100%;}
     <div class="kom-section-sub">Belajar langsung dari penjual Shopee berpengalaman melalui sesi 1-on-1. Harga ditentukan oleh masing-masing mentor.</div>
 
     <div class="kom-mentor-feature">
-      <img class="kom-mentor-feature-img" src="https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=800&q=80" alt="Mentorship session" onerror="this.style.background='#e8e2db'">
+      <img class="kom-mentor-feature-img" src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=800&q=80" alt="Mentorship session" onerror="this.style.background='#e8e2db'">
       <div class="kom-mentor-feature-body">
         <div class="kom-mentor-row">
           <div class="kom-mentor-point">
@@ -1611,7 +1617,8 @@ html,body{overflow-x:hidden;max-width:100%;}
     </div>
 
     <!-- APPLY FORM -->
-    <div class="kom-apply-form" id="kom-apply-form">
+    <button class="kom-apply-btn" id="kom-apply-toggle" onclick="toggleApplyForm()">Apply Now — Daftar Program Mentorship</button>
+    <div class="kom-apply-form" id="kom-apply-form" style="display:none;margin-top:14px;">
       <div style="font-weight:900;font-size:1rem;color:#111;margin-bottom:4px;">Apply Now</div>
       <div style="font-size:.8rem;color:var(--tm);margin-bottom:20px;">Isi form di bawah ini. Tim kami akan menghubungi kamu dalam 1–3 hari kerja.</div>
       <form onsubmit="submitMentorApp(event)">
@@ -1718,10 +1725,18 @@ html,body{overflow-x:hidden;max-width:100%;}
 
     <!-- MEMBERSHIP STATUS -->
     <div class="profile-membership" id="profile-membership">
-      <div class="profile-membership-title">Program Mentorship</div>
-      <div class="profile-membership-sub">1-on-1 bersama mentor berpengalaman. Akses modal usaha tersedia untuk peserta terpilih.</div>
-      <div id="profile-membership-status">
-        <button class="profile-membership-apply" onclick="showPage('komunitas')">Apply Now</button>
+      <div class="profile-membership-top">
+        <div class="profile-membership-info">
+          <div class="profile-membership-title">Program Mentorship</div>
+          <div class="profile-membership-sub">1-on-1 bersama mentor berpengalaman. Akses modal usaha tersedia untuk peserta terpilih.</div>
+        </div>
+        <div id="profile-membership-status">
+          <button class="profile-membership-apply" onclick="showPage('komunitas')">Apply Now</button>
+        </div>
+      </div>
+      <div class="profile-wa-strip">
+        <div class="profile-wa-text">Grup WhatsApp — Update produk trending setiap minggu</div>
+        <a class="profile-wa-btn" href="#" target="_blank" rel="noopener">Masuk Grup</a>
       </div>
     </div>
 
@@ -2934,6 +2949,15 @@ async function toggleDetailSave() {
   renderProfileSaved();
 }
 
+function toggleApplyForm() {
+  const form = document.getElementById('kom-apply-form');
+  if (!form) return;
+  const open = form.style.display === 'none';
+  form.style.display = open ? '' : 'none';
+  const btn = document.getElementById('kom-apply-toggle');
+  if (btn) btn.textContent = open ? 'Tutup Form' : 'Apply Now — Daftar Program Mentorship';
+}
+
 function toggleSellerFields(val) {
   const el = document.getElementById('ma-seller-details');
   if (el) el.classList.toggle('visible', val === 'yes');
@@ -2961,6 +2985,8 @@ async function submitMentorApp(e) {
   } catch(_) {}
   document.getElementById('kom-apply-form').style.display = 'none';
   document.getElementById('kom-apply-success').style.display = 'block';
+  const tog = document.getElementById('kom-apply-toggle');
+  if (tog) tog.style.display = 'none';
   updateProfileMembershipStatus(true);
 }
 
@@ -2974,11 +3000,9 @@ async function checkMentorApplication() {
 function updateProfileMembershipStatus(pending) {
   const el = document.getElementById('profile-membership-status');
   if (!el) return;
-  if (pending) {
-    el.innerHTML = `<div class="profile-membership-pending">Application Pending — tim kami akan segera menghubungi kamu</div>`;
-  } else {
-    el.innerHTML = `<button class="profile-membership-apply" onclick="showPage('komunitas')">Apply Now</button>`;
-  }
+  el.innerHTML = pending
+    ? `<div class="profile-membership-pending">Application Pending</div>`
+    : `<button class="profile-membership-apply" onclick="showPage('komunitas')">Apply Now</button>`;
 }
 
 function renderProfileSaved() {
