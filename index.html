@@ -240,9 +240,12 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 /* ── AUTH / LOCK ── */
 .card-locked .card-img-inner{filter:blur(7px);pointer-events:none;user-select:none;}
 .card-locked .card-name{filter:blur(5px);user-select:none;}
-.card-lock-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;z-index:3;}
-.card-lock-icon{background:rgba(255,255,255,.92);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.18);}
-.card-lock-label{background:rgba(0,0,0,.55);color:#fff;font-size:.65rem;font-weight:700;padding:3px 9px;border-radius:10px;letter-spacing:.03em;}
+.card-lock-badge{position:absolute;top:7px;right:7px;background:rgba(0,0,0,.55);color:#fff;font-size:.63rem;font-weight:700;padding:3px 8px;border-radius:8px;display:flex;align-items:center;gap:3px;cursor:pointer;z-index:4;transition:background .15s;}
+.card-lock-badge:hover{background:rgba(0,0,0,.75);}
+.blur-field{filter:blur(6px);user-select:none;}
+.det-unlock-banner{background:linear-gradient(135deg,#fff5f3,#fff0ec);border:1px solid #ffd5cc;border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.det-unlock-banner-text{font-size:.82rem;color:#b05000;line-height:1.4;}
+.det-unlock-btn{background:var(--grad);color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;}
 /* ── SAVE BUTTON ON CARD ── */
 .save-btn{position:absolute;top:7px;right:7px;background:rgba(255,255,255,.92);border:none;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.15);z-index:4;transition:background .15s;}
 .save-btn:hover{background:#fff;}
@@ -1055,6 +1058,10 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
             </div>
 
+            <div class="det-unlock-banner" id="det-unlock-banner" style="display:none;">
+              <div class="det-unlock-banner-text">🔒 <strong>Login untuk melihat nama produk, gambar, dan data penjual lengkap.</strong></div>
+              <button class="det-unlock-btn" onclick="openAuthModal('login')">Login / Daftar Gratis</button>
+            </div>
             <div class="det-name" id="d-name">—</div>
 
             <!-- selling price range -->
@@ -2333,16 +2340,16 @@ function cardHTML(p, idx) {
   const delay = Math.min(idx * 0.04, 0.5);
   const locked = p.trending && !currentUser;
   return `
-  <div class="product-card ${locked ? 'card-locked' : ''}" onclick="${locked ? 'openAuthModal()' : 'openDetail(' + p.id + ')'}" data-pid="${p.id}"
+  <div class="product-card ${locked ? 'card-locked' : ''}" onclick="openDetail(${p.id})" data-pid="${p.id}"
        style="animation:fadeUp .35s ease ${delay}s both;">
     <div class="card-img">
       <div class="card-img-inner" style="position:absolute;inset:0;">
-        ${p.image ? `<img src="${p.image}" alt="${locked ? '' : p.name}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">` : ''}
+        ${p.image ? `<img src="${p.image}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">` : ''}
         <div class="card-emoji" ${p.image ? 'style="display:none"' : ''}>${p.emoji||'📦'}</div>
       </div>
       <div class="score-pill" style="--score-clr:${scoreColor(p.score)}">${fmtScore(p.score)}</div>
       ${p.trending ? '<div class="trend-badge">🔥 Trending</div>' : ''}
-      ${locked ? `<div class="card-lock-overlay" onclick="openAuthModal()"><div class="card-lock-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EE4D2D" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div class="card-lock-label">Login to view</div></div>` : ''}
+      ${locked ? `<div class="card-lock-badge" onclick="event.stopPropagation();openAuthModal()"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Login</div>` : ''}
       ${!locked ? `<button class="save-btn ${savedProducts.has(p.id) ? 'saved' : ''}" data-pid="${p.id}" onclick="toggleSave(event,${p.id})" title="Save product"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EE4D2D" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>` : ''}
     </div>
     <button class="cmp-btn ${compareList.includes(p.id)?'selected':''}" data-pid="${p.id}" onclick="toggleCompare(event,${p.id})" title="Bandingkan">
@@ -2397,6 +2404,8 @@ function initSupabase() {
     renderDiscGrid();
     renderTrendingRow('home-trending-row');
     renderTrendingRow('disc-trending-row');
+    // Re-render detail page if it's currently open
+    if (currentProduct) renderDetail(currentProduct);
   });
 }
 
@@ -2640,14 +2649,23 @@ function renderDetail(p) {
       detScoreRow.appendChild(tBadge);
     }
   }
-  document.getElementById('d-name').textContent   = p.name;
+  const detLocked = p.trending && !currentUser;
+  // Unlock banner
+  const unlockBanner = document.getElementById('det-unlock-banner');
+  if (unlockBanner) unlockBanner.style.display = detLocked ? '' : 'none';
+  // Name — show but blur if locked
+  const nameEl = document.getElementById('d-name');
+  nameEl.textContent = p.name;
+  nameEl.classList.toggle('blur-field', detLocked);
+
   document.getElementById('d-units-new').textContent = Math.round(p.newUnits) + '/mo';
   document.getElementById('d-units-exp').textContent = Math.round(p.expUnits) + '/mo';
 
-  // Main image — show emoji or image placeholder; thumbs filled after seller data loads
+  // Main image — blur if locked
   const mainImg = document.getElementById('d-main-img');
+  mainImg.classList.toggle('blur-field', detLocked);
   mainImg.innerHTML = p.image
-    ? `<img src="${p.image}" alt="${p.name}" onerror="this.parentElement.innerHTML='${p.emoji||'📦'}'">`
+    ? `<img src="${p.image}" alt="" onerror="this.parentElement.innerHTML='${p.emoji||'📦'}'">`
     : (p.emoji || '📦');
 
   // Price range — use master sheet data for now; refined after seller load
@@ -2821,10 +2839,14 @@ async function loadSellerData(p) {
   if (thumbImgs.length) {
     // Set main image to first listing image
     const mainImg = document.getElementById('d-main-img');
-    mainImg.innerHTML = `<img src="${thumbImgs[0].image}" alt="listing" onerror="this.parentElement.innerHTML='📦'">`;
-    // Render thumbs
-    document.getElementById('d-thumbs').innerHTML = thumbImgs.map((s, i) =>
-      `<div class="det-thumb ${i===0?'active':''}" onclick="setMainImg('${s.image}', this)">
+    const imgLocked = currentProduct && currentProduct.trending && !currentUser;
+    mainImg.classList.toggle('blur-field', imgLocked);
+    mainImg.innerHTML = `<img src="${thumbImgs[0].image}" alt="" onerror="this.parentElement.innerHTML='📦'">`;
+    // Render thumbs (blur if locked)
+    const thumbsEl = document.getElementById('d-thumbs');
+    thumbsEl.classList.toggle('blur-field', imgLocked);
+    thumbsEl.innerHTML = thumbImgs.map((s, i) =>
+      `<div class="det-thumb ${i===0?'active':''}" onclick="${imgLocked ? '' : `setMainImg('${s.image}', this)`}">
          <img src="${s.image}" alt="" onerror="this.parentElement.innerHTML='📦'">
        </div>`
     ).join('');
@@ -2908,19 +2930,20 @@ async function loadSellerData(p) {
   }));
   runSourcingAnalysis(p.name, sourcingInput);
 
+  const sellerLocked = currentProduct && currentProduct.trending && !currentUser;
   document.getElementById('sellers-tbody').innerHTML = sellers.map(s => {
     const rankClass = s.rank === 1 ? 'rb1' : s.rank === 2 ? 'rb2' : s.rank === 3 ? 'rb3' : 'rbn';
     const ageMonths = parseListingDate(s.listingDate);
     const ageStr = ageMonths ? fmtAge(ageMonths) : '—';
-    const imgCell = s.image
-      ? `<img class="sel-img" src="${s.image}" alt="" onerror="this.parentElement.innerHTML='<div class=sel-img-wrap>📦</div>'">`
-      : `<div class="sel-img-wrap">📦</div>`;
+    const imgCell = sellerLocked
+      ? `<div class="sel-img-wrap blur-field">📦</div>`
+      : (s.image ? `<img class="sel-img" src="${s.image}" alt="" onerror="this.parentElement.innerHTML='<div class=sel-img-wrap>📦</div>'">` : `<div class="sel-img-wrap">📦</div>`);
     return `
     <tr onclick="window.open('${s.url}','_blank')">
       <td><div class="rbg ${rankClass}">${s.rank}</div></td>
       <td style="padding-right:4px">${imgCell}</td>
       <td>
-        <div class="shn">${s.name}</div>
+        <div class="shn ${sellerLocked ? 'blur-field' : ''}">${s.name}</div>
         ${s.brand ? `<div class="shs">${s.brand}</div>` : ''}
       </td>
       <td style="color:var(--tl);font-size:.78rem">${s.location || '—'}</td>
