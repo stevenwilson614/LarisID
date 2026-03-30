@@ -1557,14 +1557,17 @@ function parseRp(val) {
   return parseFloat(s) || 0;
 }
 
-// Parse "Trend Up 32.61%" → +32.61  |  "Trend Down 15.00%" → -15  |  other → null
+// Parse trend strings → numeric %
+//   "Trend Up 32.61%"  / "Tren Naik 32.61%"  → +32.61
+//   "Trend Down 15%"   / "Tren Turun 15%"     → -15
+//   anything else                              → null
 function parseTrendPct(str) {
   if (!str) return null;
   const s = String(str).trim();
-  const up = s.match(/trend\s+up\s+([\d.]+)%?/i);
-  if (up) return parseFloat(up[1]);
-  const dn = s.match(/trend\s+down\s+([\d.]+)%?/i);
-  if (dn) return -parseFloat(dn[1]);
+  const up = s.match(/(?:trend\s+up|tren\s+naik)\s+([\d.,]+)%?/i);
+  if (up) return parseFloat(up[1].replace(',', '.'));
+  const dn = s.match(/(?:trend\s+down|tren\s+turun)\s+([\d.,]+)%?/i);
+  if (dn) return -parseFloat(dn[1].replace(',', '.'));
   return null;
 }
 
