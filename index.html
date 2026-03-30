@@ -188,6 +188,19 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 /* ── HOME WRAP ── */
 .home-wrap{background:#fff;padding-bottom:24px;}
 .home-section{max-width:1200px;margin:0 auto;padding:0 20px;}
+
+/* ── TRENDING ROW SECTION ── */
+.trending-section{background:#fff;border-bottom:1px solid var(--border);}
+.trending-sec-inner{max-width:1200px;margin:0 auto;padding:0 20px;}
+.trending-sec-head{display:flex;align-items:center;justify-content:space-between;padding:16px 0 10px;}
+.trending-sec-title{font-size:.82rem;font-weight:700;color:#111;letter-spacing:.04em;text-transform:uppercase;display:flex;align-items:center;gap:7px;}
+.trending-sec-title::before{content:'';display:block;width:3px;height:14px;background:linear-gradient(180deg,#ff6b35,#f7c948);border-radius:2px;}
+.trending-row-outer{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:14px;margin:0 -20px;padding-left:20px;padding-right:4px;}
+.trending-row-outer::-webkit-scrollbar{height:3px;}.trending-row-outer::-webkit-scrollbar-track{background:transparent;}.trending-row-outer::-webkit-scrollbar-thumb{background:#e0d8d0;border-radius:2px;}
+.trending-row{display:flex;gap:10px;width:max-content;}
+.trending-row .product-card{width:155px;flex-shrink:0;}
+.trending-loading{padding:8px 0 16px;color:var(--tl);font-size:.8rem;display:flex;align-items:center;gap:8px;}
+@media(max-width:640px){.trending-row .product-card{width:135px;}}
 .sec-head{display:flex;align-items:center;justify-content:space-between;padding:16px 0 10px;}
 .sec-title{font-size:.82rem;font-weight:400;color:#333;letter-spacing:.05em;text-transform:uppercase;display:flex;align-items:center;gap:8px;}
 .sec-title::before{content:'';display:block;width:3px;height:14px;background:var(--orange);border-radius:2px;}
@@ -779,8 +792,19 @@ html,body{overflow-x:hidden;max-width:100%;}
         <div class="qf-item" id="qf-low_units" onclick="quickFilter('low_units')">
           <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span><span class="qf-lbl">Lowest Units/mo</span>
         </div>
-        <div class="qf-item" id="qf-trending" onclick="quickFilter('trending')">
-          <span class="qf-icon">🔥</span><span class="qf-lbl">Trending</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRENDING ROW — HOME -->
+  <div class="trending-section" id="home-trending-section">
+    <div class="trending-sec-inner">
+      <div class="trending-sec-head">
+        <div class="trending-sec-title">🔥 Trending Products</div>
+      </div>
+      <div class="trending-row-outer">
+        <div class="trending-row" id="home-trending-row">
+          <div class="trending-loading"><div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>Memuat trending...</div>
         </div>
       </div>
     </div>
@@ -853,6 +877,20 @@ html,body{overflow-x:hidden;max-width:100%;}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;flex-shrink:0"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
       <span>Centang kotak di pojok kiri kartu untuk membandingkan hingga <strong>3 produk</strong> sekaligus.</span>
     </div>
+    <!-- TRENDING ROW — DISCOVER -->
+    <div class="trending-section" style="margin:0 -20px 16px;border-radius:10px;overflow:hidden;" id="disc-trending-section">
+      <div class="trending-sec-inner">
+        <div class="trending-sec-head">
+          <div class="trending-sec-title">🔥 Trending Products</div>
+        </div>
+        <div class="trending-row-outer">
+          <div class="trending-row" id="disc-trending-row">
+            <div class="trending-loading"><div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>Memuat trending...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="pills" id="disc-pills"></div>
     <div class="toolbar">
       <div class="toolbar-left"><span id="product-count">0</span> Products Found</div>
@@ -1724,15 +1762,27 @@ function markTrendingProducts() {
   ranked.forEach(p => { p.trending = true; });
   console.log('LarisID: trending products →', ranked.map(p => p.name + ' (' + (p.avgTrend||0).toFixed(1) + '%)'));
   updateTrendingCards();
-  // Re-render grids if trending filter/sort is currently active
-  if (activeQuick === 'trending') renderHomeGrid();
+  renderTrendingRow('home-trending-row');
+  renderTrendingRow('disc-trending-row');
+  // Re-render grids if trending sort is currently active
   const sortSel = document.getElementById('sort-select');
   if (sortSel && sortSel.value === 'trending') sortProducts();
 }
 
+function renderTrendingRow(rowId) {
+  const row = document.getElementById(rowId);
+  if (!row) return;
+  const trending = allProducts.filter(p => p.trending).sort((a, b) => (b.avgTrend||0) - (a.avgTrend||0));
+  if (!trending.length) {
+    row.innerHTML = '<div class="trending-loading" style="color:var(--tl)">Belum ada data trending.</div>';
+    return;
+  }
+  row.innerHTML = trending.map((p, i) => cardHTML(p, i)).join('');
+}
+
 function updateTrendingCards() {
   allProducts.filter(p => p.trending).forEach(p => {
-    // Add badge to any currently rendered cards for this product
+    // Add badge to any currently rendered cards for this product (main grids)
     document.querySelectorAll(`.product-card[data-pid="${p.id}"]`).forEach(card => {
       const imgDiv = card.querySelector('.card-img');
       if (imgDiv && !imgDiv.querySelector('.trend-badge')) {
@@ -1745,12 +1795,12 @@ function updateTrendingCards() {
   });
   // If the detail page is open for a trending product, add badge there too
   if (currentProduct && currentProduct.trending) {
-    const row = document.querySelector('.det-score-row');
-    if (row && !row.querySelector('.trend-badge-det')) {
+    const scoreRow = document.querySelector('.det-score-row');
+    if (scoreRow && !scoreRow.querySelector('.trend-badge-det')) {
       const span = document.createElement('span');
       span.className = 'trend-badge-det';
       span.textContent = '🔥 Trending';
-      row.appendChild(span);
+      scoreRow.appendChild(span);
     }
   }
 }
@@ -1804,14 +1854,6 @@ function renderHomeGrid() {
   else if (activeQuick === 'low_revenue')  show.sort((a,b) => a.upToRevenue - b.upToRevenue);
   else if (activeQuick === 'top_units')    show.sort((a,b) => b.expUnits - a.expUnits);
   else if (activeQuick === 'low_units')    show.sort((a,b) => a.expUnits - b.expUnits);
-  else if (activeQuick === 'trending') {
-    show = show.filter(p => p.trending).sort((a,b) => (b.avgTrend||0) - (a.avgTrend||0));
-    if (!show.length) {
-      document.getElementById('home-grid').innerHTML =
-        '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--tl);font-size:.85rem;">Memuat data trending... Coba lagi sebentar 🔄</div>';
-      return;
-    }
-  }
   document.getElementById('home-grid').innerHTML = show.slice(0, 12).map((p,i) => cardHTML(p, i)).join('');
 }
 
