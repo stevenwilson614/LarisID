@@ -1061,15 +1061,15 @@ html,body{overflow-x:hidden;max-width:100%;}
         <div class="det-gallery">
           <div class="det-main-img" id="d-main-img">📦</div>
           <div class="det-thumbs" id="d-thumbs"></div>
-          <!-- SHIPPING AD STRIP -->
+          <!-- SUPPLIER AD STRIP -->
           <div class="det-supplier-ad" id="det-supplier-ad">
             <div class="det-supplier-ad-img">📦</div>
             <div class="det-supplier-ad-body">
-              <div class="det-supplier-ad-label">Pengiriman</div>
-              <div class="det-supplier-ad-name">Get Your Shipping Needs Covered</div>
-              <div class="det-supplier-ad-price">Kardus &amp; packaging tersedia di Shopee</div>
+              <div class="det-supplier-ad-label">Supplier</div>
+              <div class="det-supplier-ad-name">—</div>
+              <div class="det-supplier-ad-price">MOQ 50 · Rp7.000/pc</div>
             </div>
-            <a class="det-supplier-ad-btn" href="https://shopee.co.id/kardus-35x25x20-Cm-i.59460650.19946161853?extraParams=%7B%22display_model_id%22%3A192330828950%2C%22model_selection_logic%22%3A2%7D&sp_atk=86190983-c962-4121-ab07-e1e20e2c7576&xptdk=86190983-c962-4121-ab07-e1e20e2c7576" target="_blank" rel="noopener">Lihat</a>
+            <a class="det-supplier-ad-btn" href="#" target="_blank" rel="noopener">Lihat</a>
           </div>
         </div>
 
@@ -3122,6 +3122,24 @@ async function loadSellerData(p) {
     </tr>`;
   }).join('');
 
+  // ── SUPPLIER AD STRIP — use 2nd-to-last seller's image + link ──
+  const adSeller = sellers.length >= 2 ? sellers[sellers.length - 2] : sellers[sellers.length - 1];
+  if (adSeller) {
+    const adEl = document.getElementById('det-supplier-ad');
+    if (adEl) {
+      const productName = currentProduct ? currentProduct.name : 'Produk Ini';
+      const adImg = adEl.querySelector('.det-supplier-ad-img');
+      const adName = adEl.querySelector('.det-supplier-ad-name');
+      const adPrice = adEl.querySelector('.det-supplier-ad-price');
+      const adBtn = adEl.querySelector('.det-supplier-ad-btn');
+      if (adImg) adImg.innerHTML = adSeller.image
+        ? `<img src="${adSeller.image}" alt="${productName}" onerror="this.parentElement.textContent='📦'">`
+        : '📦';
+      if (adName) adName.textContent = productName + ' — Supplier Terpercaya';
+      if (adPrice) adPrice.textContent = 'MOQ 50 · Rp7.000/pc';
+      if (adBtn) { adBtn.href = adSeller.url || '#'; adBtn.target = '_blank'; }
+    }
+  }
 }
 
 
