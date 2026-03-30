@@ -3090,6 +3090,25 @@ async function loadSellerData(p) {
       <td>${sellerLocked ? `<button class="vb blur-field" onclick="event.stopPropagation();openAuthModal()" style="pointer-events:auto;">Visit ↗</button>` : `<button class="vb" onclick="event.stopPropagation();window.open('${s.url}','_blank')">Visit ↗</button>`}</td>
     </tr>`;
   }).join('');
+
+  // ── SUPPLIER AD STRIP — use 2nd-to-last seller's image + link ──
+  const adSeller = sellers.length >= 2 ? sellers[sellers.length - 2] : sellers[sellers.length - 1];
+  if (adSeller) {
+    const adEl = document.getElementById('det-supplier-ad');
+    if (adEl) {
+      const productName = currentProduct ? currentProduct.name : 'Produk Ini';
+      const adImg = adEl.querySelector('.det-supplier-ad-img');
+      const adName = adEl.querySelector('.det-supplier-ad-name');
+      const adPrice = adEl.querySelector('.det-supplier-ad-price');
+      const adBtn = adEl.querySelector('.det-supplier-ad-btn');
+      if (adImg) adImg.innerHTML = adSeller.image
+        ? `<img src="${adSeller.image}" alt="${productName}" onerror="this.parentElement.textContent='📦'">`
+        : '📦';
+      if (adName) adName.textContent = productName + ' — Supplier Terpercaya';
+      if (adPrice) adPrice.textContent = adSeller.price ? 'Harga mulai ' + fmt(adSeller.price) : 'Hubungi untuk harga';
+      if (adBtn) { adBtn.href = adSeller.url || '#'; adBtn.target = '_blank'; }
+    }
+  }
 }
 
 
