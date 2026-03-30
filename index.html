@@ -735,6 +735,20 @@ html,body{overflow-x:hidden;max-width:100%;}
 #cmp-save-confirm{display:none;align-items:center;gap:8px;background:var(--green-light);border:1px solid #b2dfcc;border-radius:8px;padding:7px 12px;font-size:.8rem;color:var(--green);font-weight:600;}
 #cmp-save-confirm .csc-yes{background:var(--green);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;}
 #cmp-save-confirm .csc-no{background:none;border:none;color:var(--tm);font-size:.78rem;cursor:pointer;font-family:inherit;padding:5px 6px;}
+/* ── PROFILE COMMUNITY / MENTOR ── */
+.profile-community-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;}
+@media(max-width:520px){.profile-community-row{grid-template-columns:1fr;}}
+.profile-cta-card{border-radius:14px;padding:20px 18px;display:flex;flex-direction:column;gap:8px;}
+.community-card{background:linear-gradient(135deg,#f0f7ff,#e6f0ff);border:1.5px solid #b3d0ff;}
+.mentor-card{background:linear-gradient(135deg,#fff8f0,#fff2e6);border:1.5px solid #ffd0a0;}
+.profile-cta-icon{font-size:1.6rem;line-height:1;}
+.profile-cta-title{font-size:.95rem;font-weight:900;color:#111;}
+.profile-cta-sub{font-size:.78rem;color:var(--tm);line-height:1.5;flex:1;}
+.profile-cta-btn{display:inline-block;border:none;border-radius:8px;padding:9px 16px;font-size:.8rem;font-weight:700;cursor:pointer;text-decoration:none;text-align:center;font-family:inherit;margin-top:4px;transition:opacity .15s;}
+.community-btn{background:#2563eb;color:#fff;}
+.community-btn:hover{opacity:.88;}
+.mentor-btn{background:var(--orange);color:#fff;}
+.mentor-btn:hover{opacity:.88;}
 /* ── PROFILE SECTIONS ── */
 .profile-source-section{background:linear-gradient(135deg,#fff5f3,#fff0ec);border:1px solid #ffd5cc;border-radius:14px;padding:22px 20px;margin-bottom:24px;}
 .profile-source-title{font-size:1rem;font-weight:900;color:#111;margin-bottom:4px;}
@@ -1501,6 +1515,22 @@ html,body{overflow-x:hidden;max-width:100%;}
     <div class="profile-section-title">❤ Produk Tersimpan</div>
     <div class="home-grid" id="profile-saved-grid" style="margin-bottom:32px;">
       <div class="saved-empty">Belum ada produk tersimpan.</div>
+    </div>
+
+    <!-- JOIN COMMUNITY + MENTORING -->
+    <div class="profile-community-row">
+      <div class="profile-cta-card community-card">
+        <div class="profile-cta-icon">🤝</div>
+        <div class="profile-cta-title">Join the Community</div>
+        <div class="profile-cta-sub">Bergabung dengan ribuan penjual Shopee aktif. Sharing, tips, dan diskusi produk setiap hari.</div>
+        <a class="profile-cta-btn community-btn" href="#" target="_blank" rel="noopener">Bergabung Sekarang</a>
+      </div>
+      <div class="profile-cta-card mentor-card">
+        <div class="profile-cta-icon">🎓</div>
+        <div class="profile-cta-title">Get a Mentor</div>
+        <div class="profile-cta-sub">1-on-1 training from Shopee experts. Modal awal tersedia — lending available for qualified sellers.</div>
+        <a class="profile-cta-btn mentor-btn" href="#" target="_blank" rel="noopener">Find a Mentor</a>
+      </div>
     </div>
 
     <!-- SHIPPING AD -->
