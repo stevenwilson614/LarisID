@@ -25,6 +25,8 @@
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "7cada22477f048bdbe064f16ac18f17e"}'></script>
 <!-- End Cloudflare Web Analytics -->
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
 <!-- ─── TALLY FEEDBACK FORM ─────────────────────────────────────────────── -->
 <script async src="https://tally.so/widgets/embed.js"></script>
 
@@ -235,6 +237,45 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 .score-pill{position:absolute;top:7px;left:7px;background:#fff;border:2px solid var(--score-clr,var(--score-green));border-radius:6px;padding:2px 6px;font-family:'Roboto', 'Noto Sans', sans-serif;font-weight:900;font-size:.78rem;color:var(--score-clr,var(--score-green));line-height:1.4;box-shadow:0 1px 4px rgba(0,0,0,.1);}
 .trend-badge{position:absolute;bottom:7px;left:7px;background:linear-gradient(135deg,#ff6b35,#f7c948);color:#fff;font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:8px;box-shadow:0 2px 6px rgba(255,107,53,.4);pointer-events:none;letter-spacing:.02em;line-height:1.5;}
 .trend-badge-det{background:linear-gradient(135deg,#ff6b35,#f7c948);color:#fff;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:20px;box-shadow:0 2px 6px rgba(255,107,53,.35);white-space:nowrap;}
+/* ── AUTH / LOCK ── */
+.card-locked .card-img-inner{filter:blur(7px);pointer-events:none;user-select:none;}
+.card-locked .card-name{filter:blur(5px);user-select:none;}
+.card-lock-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;z-index:3;}
+.card-lock-icon{background:rgba(255,255,255,.92);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.18);}
+.card-lock-label{background:rgba(0,0,0,.55);color:#fff;font-size:.65rem;font-weight:700;padding:3px 9px;border-radius:10px;letter-spacing:.03em;}
+/* ── SAVE BUTTON ON CARD ── */
+.save-btn{position:absolute;top:7px;right:7px;background:rgba(255,255,255,.92);border:none;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.15);z-index:4;transition:background .15s;}
+.save-btn:hover{background:#fff;}
+.save-btn.saved svg{fill:#EE4D2D;stroke:#EE4D2D;}
+/* ── AUTH MODAL ── */
+.auth-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;}
+.auth-modal{background:#fff;border-radius:16px;padding:32px 28px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.auth-modal h2{font-size:1.3rem;font-weight:900;margin-bottom:4px;color:#111;}
+.auth-modal p{font-size:.83rem;color:var(--tm);margin-bottom:22px;}
+.auth-input{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;font-size:.9rem;font-family:inherit;outline:none;margin-bottom:12px;transition:border-color .15s;}
+.auth-input:focus{border-color:var(--orange);}
+.auth-submit{width:100%;background:var(--grad);color:#fff;border:none;border-radius:8px;padding:12px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px;}
+.auth-submit:hover{opacity:.92;}
+.auth-toggle{text-align:center;margin-top:14px;font-size:.82rem;color:var(--tm);}
+.auth-toggle a{color:var(--orange);font-weight:600;cursor:pointer;}
+.auth-error{color:#e74c3c;font-size:.8rem;margin-bottom:8px;display:none;}
+.auth-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--tl);}
+/* ── NAV AUTH BUTTON ── */
+.nav-auth-btn{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:20px;padding:5px 14px;font-size:.78rem;color:#fff;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;transition:background .15s;}
+.nav-auth-btn:hover{background:rgba(255,255,255,.3);}
+.nav-avatar{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.25);border:2px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.8rem;font-weight:700;color:#fff;}
+/* ── PROFILE PAGE ── */
+.profile-hero{background:var(--grad);padding:24px 20px 28px;}
+.profile-hero-inner{max-width:800px;margin:0 auto;}
+.profile-avatar-lg{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.25);border:3px solid rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:700;color:#fff;margin-bottom:12px;}
+.profile-name{font-size:1.3rem;font-weight:900;color:#fff;}
+.profile-email{font-size:.82rem;color:rgba(255,255,255,.8);margin-top:2px;}
+.profile-main{max-width:800px;margin:0 auto;padding:20px;}
+.profile-section-title{font-size:.82rem;font-weight:700;color:#333;letter-spacing:.05em;text-transform:uppercase;display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.profile-section-title::before{content:'';display:block;width:3px;height:14px;background:var(--orange);border-radius:2px;}
+.profile-logout{background:none;border:1.5px solid rgba(255,255,255,.5);border-radius:20px;padding:5px 16px;color:#fff;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;margin-top:14px;transition:background .15s;}
+.profile-logout:hover{background:rgba(255,255,255,.15);}
+.saved-empty{text-align:center;padding:40px;color:var(--tl);font-size:.88rem;}
 .card-body{padding:7px 9px 9px;}
 .card-name{font-family:'Roboto', 'Noto Sans', sans-serif;font-weight:700;font-size:.85rem;color:var(--td);line-height:1.3;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .card-cat{font-size:.7rem;color:var(--orange);font-weight:500;}
@@ -716,15 +757,18 @@ html,body{overflow-x:hidden;max-width:100%;}
   <div id="nav-right-links" class="nav-right">
     <a class="nav-link" onclick="showPage('discover')">Products</a>
     <a class="nav-link" onclick="showPage('about')">Tentang</a>
-    
+
     <a class="nav-link" onclick="openFeedback()">Feedback</a>
+    <button class="nav-auth-btn" id="nav-login-btn" onclick="openAuthModal('login')">Login / Daftar</button>
+    <div class="nav-avatar" id="nav-user-btn" onclick="openProfile()" style="display:none;">?</div>
   </div>
 </nav>
 <div class="mobile-menu" id="mobile-menu">
   <a onclick="showPage('discover');closeMobileMenu()">Products</a>
   <a onclick="showPage('about');closeMobileMenu()">Tentang</a>
-  
+
   <a onclick="openFeedback();closeMobileMenu()">Feedback</a>
+  <a onclick="openAuthModal('login');closeMobileMenu()">Login / Daftar</a>
 </div>
 
 <!-- ════════════════════════════════════
@@ -1473,6 +1517,9 @@ let searchQ        = '';
 let currentProduct = null;
 let prevPage       = 'home';
 let activeQuick    = 'hot';
+let currentUser    = null;
+let savedProducts  = new Set(); // set of product IDs the user has saved
+let _supabase      = null; // Supabase client instance
 
 // ════════════════════════════════════════════════════════════
 //  FETCH HELPERS
@@ -2279,20 +2326,25 @@ function showCompareToast(msg) {
 
 function cardHTML(p, idx) {
   const delay = Math.min(idx * 0.04, 0.5);
+  const locked = p.trending && !currentUser;
   return `
-  <div class="product-card" onclick="openDetail(${p.id})" data-pid="${p.id}"
+  <div class="product-card ${locked ? 'card-locked' : ''}" onclick="${locked ? 'openAuthModal()' : 'openDetail(' + p.id + ')'}" data-pid="${p.id}"
        style="animation:fadeUp .35s ease ${delay}s both;">
     <div class="card-img">
-      ${p.image ? `<img src="${p.image}" alt="${p.name}" onerror="this.style.display='none'">` : ''}
-      <div class="card-emoji" ${p.image ? 'style="display:none"' : ''}>${p.emoji||'📦'}</div>
+      <div class="card-img-inner" style="position:absolute;inset:0;">
+        ${p.image ? `<img src="${p.image}" alt="${locked ? '' : p.name}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">` : ''}
+        <div class="card-emoji" ${p.image ? 'style="display:none"' : ''}>${p.emoji||'📦'}</div>
+      </div>
       <div class="score-pill" style="--score-clr:${scoreColor(p.score)}">${fmtScore(p.score)}</div>
       ${p.trending ? '<div class="trend-badge">🔥 Trending</div>' : ''}
+      ${locked ? `<div class="card-lock-overlay" onclick="openAuthModal()"><div class="card-lock-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EE4D2D" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div class="card-lock-label">Login to view</div></div>` : ''}
+      ${!locked ? `<button class="save-btn ${savedProducts.has(p.id) ? 'saved' : ''}" data-pid="${p.id}" onclick="toggleSave(event,${p.id})" title="Save product"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EE4D2D" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>` : ''}
     </div>
     <button class="cmp-btn ${compareList.includes(p.id)?'selected':''}" data-pid="${p.id}" onclick="toggleCompare(event,${p.id})" title="Bandingkan">
       <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
     </button>
     <div class="card-body">
-      <div class="card-name">${p.name}</div>
+      <div class="card-name">${locked ? p.name : p.name}</div>
       <div style="display:flex;align-items:center;gap:5px;"><div class="card-cat">${p.category}</div><img src="images/shopee-logo.png" alt="Shopee" style="width:14px;height:14px;flex-shrink:0;"></div>
     </div>
   </div>`;
@@ -2318,6 +2370,167 @@ function openDetail(id) {
 const SUPA_URL = 'https://bzmvlraziqevqdyotvgy.supabase.co';
 const SUPA_KEY = 'sb_publishable_KDSWIJJLckser1e1hk7bbA_yMChRPog';
 const SUPA_HDR = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
+
+// ── SUPABASE CLIENT + AUTH ─────────────────────────────────
+function initSupabase() {
+  if (typeof window.supabase === 'undefined') return;
+  _supabase = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+  // Restore session
+  _supabase.auth.getSession().then(({ data: { session } }) => {
+    currentUser = session?.user || null;
+    updateAuthUI();
+    if (currentUser) loadSavedProducts();
+  });
+  // Listen for auth changes
+  _supabase.auth.onAuthStateChange((event, session) => {
+    currentUser = session?.user || null;
+    updateAuthUI();
+    if (currentUser) { loadSavedProducts(); }
+    else { savedProducts.clear(); }
+    // Re-render all grids to update lock state
+    renderHomeGrid();
+    renderDiscGrid();
+    renderTrendingRow('home-trending-row');
+    renderTrendingRow('disc-trending-row');
+  });
+}
+
+function updateAuthUI() {
+  const loginBtn = document.getElementById('nav-login-btn');
+  const userBtn  = document.getElementById('nav-user-btn');
+  if (!loginBtn || !userBtn) return;
+  if (currentUser) {
+    loginBtn.style.display = 'none';
+    userBtn.style.display  = 'flex';
+    const initials = (currentUser.user_metadata?.full_name || currentUser.email || '?')
+      .charAt(0).toUpperCase();
+    userBtn.textContent = initials;
+  } else {
+    loginBtn.style.display = '';
+    userBtn.style.display  = 'none';
+  }
+  // Update profile page hero
+  const avatarLg = document.getElementById('profile-avatar-lg');
+  const dispName = document.getElementById('profile-display-name');
+  const dispEmail = document.getElementById('profile-display-email');
+  if (avatarLg && currentUser) {
+    const name = currentUser.user_metadata?.full_name || currentUser.email || '?';
+    avatarLg.textContent = name.charAt(0).toUpperCase();
+    if (dispName) dispName.textContent = name;
+    if (dispEmail) dispEmail.textContent = currentUser.email;
+  }
+}
+
+let _authMode = 'login'; // 'login' or 'signup'
+
+function openAuthModal(mode) {
+  _authMode = mode || 'login';
+  document.getElementById('auth-overlay').style.display = 'flex';
+  renderAuthModal();
+}
+
+function closeAuthModal() {
+  document.getElementById('auth-overlay').style.display = 'none';
+}
+
+function renderAuthModal() {
+  const isLogin = _authMode === 'login';
+  document.getElementById('auth-title').textContent  = isLogin ? 'Masuk ke LarisID' : 'Buat Akun Gratis';
+  document.getElementById('auth-subtitle').textContent = isLogin
+    ? 'Login untuk melihat produk trending & simpan favorit kamu'
+    : 'Gratis selamanya — lihat trending & simpan produk favorit';
+  document.getElementById('auth-submit-btn').textContent = isLogin ? 'Masuk' : 'Daftar';
+  document.getElementById('auth-toggle-text').innerHTML = isLogin
+    ? 'Belum punya akun? <a onclick="_authMode=\'signup\';renderAuthModal()">Daftar</a>'
+    : 'Sudah punya akun? <a onclick="_authMode=\'login\';renderAuthModal()">Masuk</a>';
+  document.getElementById('auth-name-wrap').style.display = isLogin ? 'none' : '';
+  document.getElementById('auth-error').style.display = 'none';
+}
+
+async function submitAuth() {
+  if (!_supabase) return;
+  const email = document.getElementById('auth-email').value.trim();
+  const pass  = document.getElementById('auth-pass').value;
+  const name  = document.getElementById('auth-name').value.trim();
+  const errEl = document.getElementById('auth-error');
+  const btn   = document.getElementById('auth-submit-btn');
+  if (!email || !pass) { errEl.textContent = 'Email dan password wajib diisi.'; errEl.style.display = ''; return; }
+  btn.textContent = '...';
+  btn.disabled = true;
+  let error;
+  if (_authMode === 'signup') {
+    const res = await _supabase.auth.signUp({ email, password: pass, options: { data: { full_name: name } } });
+    error = res.error;
+    if (!error) {
+      errEl.style.display = '';
+      errEl.style.color = 'var(--green)';
+      errEl.textContent = 'Cek email kamu untuk konfirmasi akun!';
+      btn.textContent = 'Daftar'; btn.disabled = false;
+      return;
+    }
+  } else {
+    const res = await _supabase.auth.signInWithPassword({ email, password: pass });
+    error = res.error;
+  }
+  btn.textContent = _authMode === 'login' ? 'Masuk' : 'Daftar';
+  btn.disabled = false;
+  if (error) { errEl.style.color = '#e74c3c'; errEl.textContent = error.message; errEl.style.display = ''; }
+  else { closeAuthModal(); }
+}
+
+async function signOut() {
+  if (_supabase) await _supabase.auth.signOut();
+  showPage('home');
+}
+
+async function loadSavedProducts() {
+  if (!_supabase || !currentUser) return;
+  const { data } = await _supabase
+    .from('saved_products')
+    .select('product_id')
+    .eq('user_id', currentUser.id);
+  savedProducts = new Set((data || []).map(r => r.product_id));
+  // Update save button states on any visible cards
+  document.querySelectorAll('.save-btn').forEach(btn => {
+    const pid = parseInt(btn.dataset.pid);
+    btn.classList.toggle('saved', savedProducts.has(pid));
+  });
+  renderProfileSaved();
+}
+
+async function toggleSave(e, pid) {
+  e.stopPropagation();
+  if (!currentUser) { openAuthModal('login'); return; }
+  if (!_supabase) return;
+  if (savedProducts.has(pid)) {
+    await _supabase.from('saved_products').delete()
+      .eq('user_id', currentUser.id).eq('product_id', pid);
+    savedProducts.delete(pid);
+  } else {
+    await _supabase.from('saved_products').insert({ user_id: currentUser.id, product_id: pid });
+    savedProducts.add(pid);
+  }
+  // Update all save buttons for this product
+  document.querySelectorAll(`.save-btn[data-pid="${pid}"]`).forEach(btn => {
+    btn.classList.toggle('saved', savedProducts.has(pid));
+  });
+  renderProfileSaved();
+}
+
+function renderProfileSaved() {
+  const grid = document.getElementById('profile-saved-grid');
+  if (!grid) return;
+  const saved = allProducts.filter(p => savedProducts.has(p.id));
+  grid.innerHTML = saved.length
+    ? saved.map((p, i) => cardHTML(p, i)).join('')
+    : '<div class="saved-empty">Belum ada produk tersimpan.<br>Tekan ❤ di kartu produk untuk menyimpan.</div>';
+}
+
+function openProfile() {
+  if (!currentUser) { openAuthModal('login'); return; }
+  renderProfileSaved();
+  showPage('profile');
+}
 
 function voteKey(pid) { return 'vote_' + pid; }
 
@@ -3201,6 +3414,7 @@ function openFeedback() {
 })();
 
 loadData();
+initSupabase();
 
 function filterBlog(cat) {
   document.querySelectorAll('.blog-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === cat));
@@ -3262,6 +3476,43 @@ document.addEventListener('DOMContentLoaded', function(){
     </div>
   </div>
 
+
+<!-- AUTH MODAL -->
+<div id="auth-overlay" class="auth-overlay" style="display:none;" onclick="if(event.target===this)closeAuthModal()">
+  <div class="auth-modal" style="position:relative;">
+    <button class="auth-close" onclick="closeAuthModal()">×</button>
+    <h2 id="auth-title">Masuk ke LarisID</h2>
+    <p id="auth-subtitle">Login untuk melihat produk trending & simpan favorit kamu</p>
+    <div id="auth-name-wrap">
+      <input class="auth-input" id="auth-name" type="text" placeholder="Nama lengkap (opsional)">
+    </div>
+    <input class="auth-input" id="auth-email" type="email" placeholder="Email">
+    <input class="auth-input" id="auth-pass" type="password" placeholder="Password">
+    <div class="auth-error" id="auth-error"></div>
+    <button class="auth-submit" id="auth-submit-btn" onclick="submitAuth()">Masuk</button>
+    <div class="auth-toggle" id="auth-toggle-text">Belum punya akun? <a onclick="_authMode='signup';renderAuthModal()">Daftar</a></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════
+     PROFILE PAGE
+════════════════════════════════════ -->
+<div class="page" id="page-profile">
+  <div class="profile-hero">
+    <div class="profile-hero-inner">
+      <div class="profile-avatar-lg" id="profile-avatar-lg">?</div>
+      <div class="profile-name" id="profile-display-name">—</div>
+      <div class="profile-email" id="profile-display-email">—</div>
+      <button class="profile-logout" onclick="signOut()">Keluar</button>
+    </div>
+  </div>
+  <div class="profile-main">
+    <div class="profile-section-title">❤ Produk Tersimpan</div>
+    <div class="home-grid" id="profile-saved-grid">
+      <div class="saved-empty">Belum ada produk tersimpan.</div>
+    </div>
+  </div>
+</div>
 
 <!-- ── COMPARE BAR ─────────────────────── -->
 <div id="compare-bar">
