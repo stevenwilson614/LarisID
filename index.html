@@ -857,8 +857,11 @@ html,body{overflow-x:hidden;max-width:100%;}
 .finder-price-pill{border:1.5px solid var(--border);border-radius:20px;padding:7px 14px;font-size:.8rem;font-weight:600;cursor:pointer;background:#fff;color:var(--tm);transition:border-color .15s,color .15s,background .15s;white-space:nowrap;}
 .finder-price-pill.selected{border-color:var(--orange);color:var(--orange);background:var(--orange-light);}
 .finder-price-pill:hover:not(.selected){border-color:#ccc;color:#333;}
-.finder-cat-select{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:.85rem;font-family:'Roboto','Noto Sans',sans-serif;color:var(--td);background:#fff;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;}
-.finder-cat-select:focus{outline:none;border-color:var(--orange);}
+.finder-cat-pills{display:flex;flex-wrap:wrap;gap:7px;max-height:108px;overflow-y:auto;padding:2px 0;}
+.finder-cat-pills::-webkit-scrollbar{width:3px;}.finder-cat-pills::-webkit-scrollbar-thumb{background:#e0d8d0;border-radius:2px;}
+.finder-cat-pill{border:1.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:.78rem;font-weight:600;cursor:pointer;background:#fff;color:var(--tm);transition:border-color .15s,color .15s,background .15s;white-space:nowrap;}
+.finder-cat-pill.selected{border-color:var(--orange);color:var(--orange);background:var(--orange-light);}
+.finder-cat-pill:hover:not(.selected){border-color:#ccc;color:#333;}
 .finder-slider-value{font-size:.95rem;font-weight:700;color:var(--orange);margin-bottom:10px;}
 .finder-slider{width:100%;accent-color:var(--orange);cursor:pointer;}
 .finder-slider-labels{display:flex;justify-content:space-between;font-size:.72rem;color:var(--tl);margin-top:5px;}
@@ -958,44 +961,44 @@ html,body{overflow-x:hidden;max-width:100%;}
   <!-- PRODUCT FINDER -->
   <div class="finder-section">
     <div class="finder-inner">
-      <div class="finder-title">🔍 Find Your Perfect Product</div>
-      <div class="finder-sub">Answer 3 quick questions and we'll show you the best products to sell</div>
+      <div class="finder-title">🔍 Temukan Produk yang Tepat</div>
+      <div class="finder-sub">Jawab 3 pertanyaan singkat dan kami carikan produk terbaik untukmu</div>
       <div class="finder-steps">
 
-        <!-- STEP 1: Selling Price -->
+        <!-- STEP 1: Harga Jual -->
         <div>
-          <div class="finder-step-label">💰 Selling Price</div>
+          <div class="finder-step-label">💰 Harga Jual</div>
           <div class="finder-price-pills">
-            <div class="finder-price-pill selected" onclick="selectFinderPrice(this,'','10000')">Below Rp 10rb</div>
-            <div class="finder-price-pill" onclick="selectFinderPrice(this,'10000','25000')">Rp 10–25rb</div>
-            <div class="finder-price-pill" onclick="selectFinderPrice(this,'25000','100000')">Rp 25–100rb</div>
-            <div class="finder-price-pill" onclick="selectFinderPrice(this,'100000','')">Rp 100rb+</div>
+            <div class="finder-price-pill selected" onclick="selectFinderPrice(this,'','10000')">Di bawah 10k</div>
+            <div class="finder-price-pill" onclick="selectFinderPrice(this,'10000','25000')">10k – 25k</div>
+            <div class="finder-price-pill" onclick="selectFinderPrice(this,'25000','100000')">25k – 100k</div>
+            <div class="finder-price-pill" onclick="selectFinderPrice(this,'100000','')">100k+</div>
           </div>
         </div>
 
-        <!-- STEP 2: Category -->
+        <!-- STEP 2: Kategori (multi-select) -->
         <div>
-          <div class="finder-step-label">🏪 Category</div>
-          <select class="finder-cat-select" id="finder-cat">
-            <option value="all">All Categories</option>
-          </select>
+          <div class="finder-step-label">🏪 Kategori <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--tl);font-size:.68rem;">(pilih lebih dari satu)</span></div>
+          <div class="finder-cat-pills" id="finder-cat-pills">
+            <div class="finder-cat-pill finder-cat-all selected" onclick="toggleFinderCatAll(this)">Semua</div>
+          </div>
         </div>
 
-        <!-- STEP 3: Monthly Income Slider -->
+        <!-- STEP 3: Target Pendapatan -->
         <div>
-          <div class="finder-step-label">📈 Monthly Income Goal</div>
+          <div class="finder-step-label">📈 Target Pendapatan / Bulan</div>
           <div class="finder-slider-value" id="finder-rev-label">Rp 10 Juta / bulan</div>
           <input type="range" class="finder-slider" id="finder-rev-slider"
             min="10" max="80" step="5" value="10"
             oninput="updateFinderRevLabel(this.value)">
-          <div class="finder-slider-labels"><span>Rp 10j</span><span>Rp 40j</span><span>Rp 80j+</span></div>
+          <div class="finder-slider-labels"><span>10j</span><span>40j</span><span>80j+</span></div>
         </div>
 
       </div>
       <div class="finder-cta">
         <button class="finder-cta-btn" onclick="launchProductFinder()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          Find Products
+          Cari Produk
         </button>
       </div>
     </div>
@@ -2285,12 +2288,31 @@ function gotoCat(c) { activeCat = c; showPage('discover'); }
 //  PRODUCT FINDER (home page)
 // ════════════════════════════════════════════════════════════
 let finderPriceMin = '', finderPriceMax = '10000';
+let finderActiveCats = []; // empty = semua kategori
 
 function selectFinderPrice(el, min, max) {
   document.querySelectorAll('.finder-price-pill').forEach(p => p.classList.remove('selected'));
   el.classList.add('selected');
   finderPriceMin = min;
   finderPriceMax = max;
+}
+
+function toggleFinderCat(el, cat) {
+  const allBtn = document.querySelector('.finder-cat-all');
+  if (allBtn) allBtn.classList.remove('selected');
+  el.classList.toggle('selected');
+  if (el.classList.contains('selected')) {
+    if (!finderActiveCats.includes(cat)) finderActiveCats.push(cat);
+  } else {
+    finderActiveCats = finderActiveCats.filter(c => c !== cat);
+  }
+  if (finderActiveCats.length === 0 && allBtn) allBtn.classList.add('selected');
+}
+
+function toggleFinderCatAll(el) {
+  finderActiveCats = [];
+  document.querySelectorAll('#finder-cat-pills .finder-cat-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
 }
 
 function updateFinderRevLabel(val) {
@@ -2300,13 +2322,15 @@ function updateFinderRevLabel(val) {
 }
 
 function populateFinderCats() {
-  const sel = document.getElementById('finder-cat');
-  if (!sel || sel.options.length > 1) return;
+  const container = document.getElementById('finder-cat-pills');
+  if (!container || container.querySelectorAll('.finder-cat-pill:not(.finder-cat-all)').length > 0) return;
   const cats = [...new Set(allProducts.map(p => p.category))].sort();
   cats.forEach(c => {
-    const o = document.createElement('option');
-    o.value = c; o.textContent = c;
-    sel.appendChild(o);
+    const pill = document.createElement('div');
+    pill.className = 'finder-cat-pill';
+    pill.textContent = c;
+    pill.onclick = () => toggleFinderCat(pill, c);
+    container.appendChild(pill);
   });
 }
 
@@ -2317,23 +2341,27 @@ function launchProductFinder() {
   if (priceMinEl) priceMinEl.value = finderPriceMin;
   if (priceMaxEl) priceMaxEl.value = finderPriceMax;
 
-  // Set revenue filter (slider value is in juta, filter expects rupiah)
+  // Set revenue filter (juta → rupiah)
   const revSlider = document.getElementById('finder-rev-slider');
   const revJuta = parseInt(revSlider?.value || 10);
-  const revMin = revJuta * 1000000;
   const revMinEl = document.getElementById('f-rev-min');
   const revMaxEl = document.getElementById('f-rev-max');
-  if (revMinEl) revMinEl.value = revJuta >= 80 ? '' : revMin;
+  if (revMinEl) revMinEl.value = revJuta >= 80 ? '' : revJuta * 1000000;
   if (revMaxEl) revMaxEl.value = '';
 
-  // Set category
-  const cat = document.getElementById('finder-cat')?.value || 'all';
+  // Use 'all' for single-cat filter; we'll apply multi-cat after
+  activeCat = 'all';
   const fCatEl = document.getElementById('f-category');
-  if (fCatEl) fCatEl.value = cat;
-  activeCat = cat;
+  if (fCatEl) fCatEl.value = 'all';
 
   showPage('discover');
   applyFilters();
+
+  // Apply multi-category filter on top if specific cats selected
+  if (finderActiveCats.length > 0) {
+    filtered = filtered.filter(p => finderActiveCats.includes(p.category));
+    renderDiscGrid();
+  }
 }
 
 // ════════════════════════════════════════════════════════════
