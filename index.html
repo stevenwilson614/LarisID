@@ -844,6 +844,27 @@ html,body{overflow-x:hidden;max-width:100%;}
 .cmp-open-btn{background:var(--orange);color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:.72rem;font-weight:700;cursor:pointer;margin-top:2px;}
 .cmp-best{background:#e8f7ee;color:#00833a;font-weight:700;}
 .cmp-score-pill{display:inline-block;padding:3px 10px;border-radius:20px;color:#fff;font-weight:800;font-size:.85rem;}
+
+/* ── PRODUCT FINDER ── */
+.finder-section{background:linear-gradient(135deg,#fff8f5 0%,#fff 100%);border-bottom:2px solid var(--border);padding:28px 20px 32px;}
+.finder-inner{max-width:1200px;margin:0 auto;}
+.finder-title{font-family:'Roboto','Noto Sans',sans-serif;font-weight:900;font-size:1.3rem;color:var(--td);margin-bottom:4px;display:flex;align-items:center;gap:8px;}
+.finder-sub{font-size:.82rem;color:var(--tm);margin-bottom:22px;}
+.finder-steps{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;align-items:start;}
+@media(max-width:760px){.finder-steps{grid-template-columns:1fr;gap:18px;}}
+.finder-step-label{font-size:.7rem;font-weight:700;color:var(--orange);letter-spacing:.08em;text-transform:uppercase;margin-bottom:9px;}
+.finder-price-pills{display:flex;flex-wrap:wrap;gap:8px;}
+.finder-price-pill{border:1.5px solid var(--border);border-radius:20px;padding:7px 14px;font-size:.8rem;font-weight:600;cursor:pointer;background:#fff;color:var(--tm);transition:border-color .15s,color .15s,background .15s;white-space:nowrap;}
+.finder-price-pill.selected{border-color:var(--orange);color:var(--orange);background:var(--orange-light);}
+.finder-price-pill:hover:not(.selected){border-color:#ccc;color:#333;}
+.finder-cat-select{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:.85rem;font-family:'Roboto','Noto Sans',sans-serif;color:var(--td);background:#fff;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;}
+.finder-cat-select:focus{outline:none;border-color:var(--orange);}
+.finder-slider-value{font-size:.95rem;font-weight:700;color:var(--orange);margin-bottom:10px;}
+.finder-slider{width:100%;accent-color:var(--orange);cursor:pointer;}
+.finder-slider-labels{display:flex;justify-content:space-between;font-size:.72rem;color:var(--tl);margin-top:5px;}
+.finder-cta{margin-top:24px;}
+.finder-cta-btn{background:var(--grad);color:#fff;border:none;border-radius:8px;padding:12px 30px;font-size:.92rem;font-weight:700;cursor:pointer;font-family:'Roboto','Noto Sans',sans-serif;transition:opacity .15s,transform .15s,box-shadow .15s;display:inline-flex;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(238,77,45,.35);}
+.finder-cta-btn:hover{opacity:.92;transform:translateY(-2px);box-shadow:0 6px 20px rgba(238,77,45,.45);}
 </style>
 </head>
 <body>
@@ -930,6 +951,52 @@ html,body{overflow-x:hidden;max-width:100%;}
           <button class="banner-carousel-dot" onclick="goToSlide(1)"></button>
           <button class="banner-carousel-dot" onclick="goToSlide(2)"></button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUCT FINDER -->
+  <div class="finder-section">
+    <div class="finder-inner">
+      <div class="finder-title">🔍 Find Your Perfect Product</div>
+      <div class="finder-sub">Answer 3 quick questions and we'll show you the best products to sell</div>
+      <div class="finder-steps">
+
+        <!-- STEP 1: Selling Price -->
+        <div>
+          <div class="finder-step-label">💰 Selling Price</div>
+          <div class="finder-price-pills">
+            <div class="finder-price-pill selected" onclick="selectFinderPrice(this,'','10000')">Below Rp 10rb</div>
+            <div class="finder-price-pill" onclick="selectFinderPrice(this,'10000','25000')">Rp 10–25rb</div>
+            <div class="finder-price-pill" onclick="selectFinderPrice(this,'25000','100000')">Rp 25–100rb</div>
+            <div class="finder-price-pill" onclick="selectFinderPrice(this,'100000','')">Rp 100rb+</div>
+          </div>
+        </div>
+
+        <!-- STEP 2: Category -->
+        <div>
+          <div class="finder-step-label">🏪 Category</div>
+          <select class="finder-cat-select" id="finder-cat">
+            <option value="all">All Categories</option>
+          </select>
+        </div>
+
+        <!-- STEP 3: Monthly Income Slider -->
+        <div>
+          <div class="finder-step-label">📈 Monthly Income Goal</div>
+          <div class="finder-slider-value" id="finder-rev-label">Rp 10 Juta / bulan</div>
+          <input type="range" class="finder-slider" id="finder-rev-slider"
+            min="10" max="80" step="5" value="10"
+            oninput="updateFinderRevLabel(this.value)">
+          <div class="finder-slider-labels"><span>Rp 10j</span><span>Rp 40j</span><span>Rp 80j+</span></div>
+        </div>
+
+      </div>
+      <div class="finder-cta">
+        <button class="finder-cta-btn" onclick="launchProductFinder()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Find Products
+        </button>
       </div>
     </div>
   </div>
@@ -2034,6 +2101,7 @@ async function loadData() {
   renderPills();
   renderDiscGrid();
   populateCategoryFilter();
+  populateFinderCats();
 
   // Fetch product images from seller sheets in background
   fetchProductImages();
@@ -2212,6 +2280,61 @@ function renderHomeCats() {
 }
 
 function gotoCat(c) { activeCat = c; showPage('discover'); }
+
+// ════════════════════════════════════════════════════════════
+//  PRODUCT FINDER (home page)
+// ════════════════════════════════════════════════════════════
+let finderPriceMin = '', finderPriceMax = '10000';
+
+function selectFinderPrice(el, min, max) {
+  document.querySelectorAll('.finder-price-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  finderPriceMin = min;
+  finderPriceMax = max;
+}
+
+function updateFinderRevLabel(val) {
+  const num = parseInt(val);
+  document.getElementById('finder-rev-label').textContent =
+    num >= 80 ? 'Rp 80 Juta+ / bulan' : 'Rp ' + num + ' Juta / bulan';
+}
+
+function populateFinderCats() {
+  const sel = document.getElementById('finder-cat');
+  if (!sel || sel.options.length > 1) return;
+  const cats = [...new Set(allProducts.map(p => p.category))].sort();
+  cats.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c; o.textContent = c;
+    sel.appendChild(o);
+  });
+}
+
+function launchProductFinder() {
+  // Set price filters
+  const priceMinEl = document.getElementById('f-price-min');
+  const priceMaxEl = document.getElementById('f-price-max');
+  if (priceMinEl) priceMinEl.value = finderPriceMin;
+  if (priceMaxEl) priceMaxEl.value = finderPriceMax;
+
+  // Set revenue filter (slider value is in juta, filter expects rupiah)
+  const revSlider = document.getElementById('finder-rev-slider');
+  const revJuta = parseInt(revSlider?.value || 10);
+  const revMin = revJuta * 1000000;
+  const revMinEl = document.getElementById('f-rev-min');
+  const revMaxEl = document.getElementById('f-rev-max');
+  if (revMinEl) revMinEl.value = revJuta >= 80 ? '' : revMin;
+  if (revMaxEl) revMaxEl.value = '';
+
+  // Set category
+  const cat = document.getElementById('finder-cat')?.value || 'all';
+  const fCatEl = document.getElementById('f-category');
+  if (fCatEl) fCatEl.value = cat;
+  activeCat = cat;
+
+  showPage('discover');
+  applyFilters();
+}
 
 // ════════════════════════════════════════════════════════════
 //  HOME — QUICK FILTERS + PRODUCT GRID
