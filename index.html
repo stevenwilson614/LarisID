@@ -3719,12 +3719,27 @@ Aturan:
     const data = await claudePost([{ role: 'user', content: prompt }], '', 1000);
     loadingEl.style.display = 'none';
 
+    // API-level error (wrong key, quota, etc.)
+    if (data?.type === 'error') {
+      resultEl.innerHTML = `<div class="sourcing-error">API Error: ${data.error?.message || JSON.stringify(data.error)}</div>`;
+      return;
+    }
+
     const raw = data?.content?.[0]?.text || '';
+    if (!raw) {
+      resultEl.innerHTML = `<div class="sourcing-error">Respons kosong dari AI. Detail: ${JSON.stringify(data).slice(0,200)}</div>`;
+      return;
+    }
+
     let parsed;
     try {
-      parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
+      // Strip markdown fences and any leading/trailing text before the JSON object
+      const jsonStart = raw.indexOf('{');
+      const jsonEnd   = raw.lastIndexOf('}');
+      const clean     = jsonStart >= 0 && jsonEnd >= 0 ? raw.slice(jsonStart, jsonEnd + 1) : raw;
+      parsed = JSON.parse(clean);
     } catch(e) {
-      resultEl.innerHTML = `<div class="sourcing-error">Tidak dapat memproses respons AI. Coba buka ulang produk ini.</div>`;
+      resultEl.innerHTML = `<div class="sourcing-error">Parse error: ${e.message}<br><small style="word-break:break-all">${raw.slice(0,200)}</small></div>`;
       return;
     }
 
@@ -3732,7 +3747,7 @@ Aturan:
     if (chatWrap) chatWrap.style.display = 'block';
   } catch(err) {
     loadingEl.style.display = 'none';
-    resultEl.innerHTML = `<div class="sourcing-error">AI tidak tersedia. Periksa koneksi internet kamu.</div>`;
+    resultEl.innerHTML = `<div class="sourcing-error">Network error: ${err.message}</div>`;
   }
 }
 
