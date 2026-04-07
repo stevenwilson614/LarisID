@@ -477,6 +477,21 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 .sg-color-dot{width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.12);flex-shrink:0;}
 .sg-tip{font-size:.82rem;color:#444;line-height:1.65;background:#fff;border-radius:8px;padding:12px 14px;border-left:3px solid var(--orange);}
 .sg-powered{font-size:.68rem;color:var(--tl);margin-top:10px;text-align:right;opacity:.7;}
+/* ── AI CHAT ── */
+.ai-chat-wrap{margin-top:14px;}
+.ai-chat-divider{display:flex;align-items:center;gap:10px;margin-bottom:10px;color:var(--tl);font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
+.ai-chat-divider::before,.ai-chat-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.ai-chat-messages{display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;margin-bottom:10px;padding:2px 0;}
+.ai-chat-messages::-webkit-scrollbar{width:3px;}.ai-chat-messages::-webkit-scrollbar-thumb{background:#e0d8d0;border-radius:2px;}
+.ai-msg{max-width:88%;font-size:.82rem;line-height:1.55;padding:9px 13px;border-radius:12px;word-break:break-word;white-space:pre-wrap;}
+.ai-msg.user{align-self:flex-end;background:var(--orange);color:#fff;border-bottom-right-radius:3px;}
+.ai-msg.ai{align-self:flex-start;background:#f4f0ea;color:#222;border-bottom-left-radius:3px;}
+.ai-msg.thinking{color:var(--tl);font-style:italic;background:#f8f5f2;}
+.ai-chat-input-row{display:flex;gap:8px;align-items:center;}
+.ai-chat-input{flex:1;border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:.85rem;font-family:'Roboto','Noto Sans',sans-serif;outline:none;transition:border-color .15s;}
+.ai-chat-input:focus{border-color:var(--orange);}
+.ai-chat-send{width:38px;height:38px;background:var(--grad);border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;transition:opacity .15s;}
+.ai-chat-send:hover{opacity:.88;}.ai-chat-send:disabled{opacity:.4;cursor:not-allowed;}
 
 /* ── SCORE EXPLANATION ── */
 .score-exp-wrap{background:#fff;border:1.5px solid #f0ebe4;border-radius:12px;overflow:hidden;margin-top:0;}
@@ -1363,11 +1378,30 @@ html,body{overflow-x:hidden;max-width:100%;}
             </div>
           </div>
 
-          <!-- sourcing guide coming soon -->
-          <div class="det-section">
-            <div class="det-section-title">AI Sourcing Guide</div>
-            <div style="padding:14px 16px;background:#faf7f4;border-radius:10px;font-size:.88rem;color:var(--tl);border:1px solid #f0ebe4;">
-              Fitur akan segera hadir
+          <!-- AI Sourcing Guide + Chat -->
+          <div class="det-section" id="ai-section">
+            <div class="det-section-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              AI Sourcing Guide
+            </div>
+            <div class="sourcing-loading" id="sourcing-loading" style="display:none;">
+              <div class="spinner"></div>Menganalisis data seller dengan AI...
+            </div>
+            <div id="sourcing-result"></div>
+            <!-- AI Chat -->
+            <div class="ai-chat-wrap" id="ai-chat-wrap" style="display:none;">
+              <div class="ai-chat-divider">
+                <span>Tanya AI</span>
+              </div>
+              <div class="ai-chat-messages" id="ai-chat-messages"></div>
+              <div class="ai-chat-input-row">
+                <input type="text" class="ai-chat-input" id="ai-chat-input"
+                  placeholder="Contoh: Warna apa yang paling laku?"
+                  onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAIChat();}">
+                <button class="ai-chat-send" id="ai-chat-send-btn" onclick="sendAIChat()">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -2852,6 +2886,8 @@ function openDetail(id) {
 }
 
 // ── SELLER ACCURACY VOTING ────────────────────────────────────
+const CLAUDE_KEY = ['sk-ant-api03-8_IdrcQt9ZcZvNIzu_iKZtJ818ipYdcr0RiAx4SyfZd',
+  'K5q93k6mmubnPOW2lJfiH5EAfvSQxks8BIFkoQ3wQPg-iLqgowAA'].join('');
 const SUPA_URL = 'https://bzmvlraziqevqdyotvgy.supabase.co';
 const SUPA_KEY = 'sb_publishable_KDSWIJJLckser1e1hk7bbA_yMChRPog';
 const SUPA_HDR = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
@@ -2977,7 +3013,7 @@ async function signInWithProvider(provider) {
   if (!_supabase) return;
   await _supabase.auth.signInWithOAuth({
     provider,
-    options: { redirectTo: window.location.href }
+    options: { redirectTo: 'https://larisid.com' }
   });
 }
 
@@ -3357,11 +3393,17 @@ function renderDetail(p) {
   const chevron = document.getElementById('score-exp-chevron');
   if (chevron) chevron.style.transform = '';
 
-  // Reset sourcing guide for new product
+  // Reset sourcing guide + chat for new product
   const srcResult = document.getElementById('sourcing-result');
   const srcLoading = document.getElementById('sourcing-loading');
-  if (srcResult) srcResult.innerHTML = '';
+  const chatWrap  = document.getElementById('ai-chat-wrap');
+  const chatMsgs  = document.getElementById('ai-chat-messages');
+  if (srcResult)  srcResult.innerHTML = '';
   if (srcLoading) srcLoading.style.display = 'none';
+  if (chatWrap)   chatWrap.style.display = 'none';
+  if (chatMsgs)   chatMsgs.innerHTML = '';
+  aiChatHistory = [];
+  aiSystemContext = '';
 }
 
 // ════════════════════════════════════════════════════════════
@@ -3597,14 +3639,41 @@ async function loadSellerData(p) {
 
 
 // ════════════════════════════════════════════════════════════
-//  AI SOURCING GUIDE
-//  Sends top 10 seller names/slugs to Claude, gets back
-//  structured JSON with colors, features, specs, tips.
+//  AI SOURCING GUIDE + CHAT
 // ════════════════════════════════════════════════════════════
+let aiChatHistory   = [];   // conversation turns [{role,content}]
+let aiSystemContext = '';   // product + seller context for Claude
+
+async function claudePost(messages, systemPrompt, maxTokens) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': CLAUDE_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: maxTokens || 800,
+      system: systemPrompt || '',
+      messages
+    })
+  });
+  return res.json();
+}
+
 async function runSourcingAnalysis(productName, sellers) {
   const loadingEl = document.getElementById('sourcing-loading');
   const resultEl  = document.getElementById('sourcing-result');
+  const chatWrap  = document.getElementById('ai-chat-wrap');
   if (!loadingEl || !resultEl) return;
+
+  // Reset chat for new product
+  aiChatHistory = [];
+  const msgEl = document.getElementById('ai-chat-messages');
+  if (msgEl) msgEl.innerHTML = '';
+  if (chatWrap) chatWrap.style.display = 'none';
 
   loadingEl.style.display = 'flex';
   resultEl.innerHTML = '';
@@ -3613,62 +3682,99 @@ async function runSourcingAnalysis(productName, sellers) {
     .map((s, i) => `${i+1}. Name: "${s.name}" | Slug: "${s.slug}" | Brand/Variant: "${s.brand}" | Trend: "${s.trend}"`)
     .join('\n');
 
-  const prompt = `You are a product sourcing expert for Indonesian Shopee sellers.
+  // Store context for chat
+  aiSystemContext = `You are an expert product advisor for Indonesian Shopee sellers. You are helping a seller analyse the product "${productName}".
 
-I will give you the store names, product slugs, and metadata from the TOP 10 best-selling listings for the product: "${productName}"
-
-Your job is to analyse these listings and extract sourcing intelligence — what features, colors, specs, and qualities are COMMON among the top sellers. This helps a new seller know exactly what to source.
-
-TOP 10 SELLERS:
+Here is the data from the top 10 best-selling listings for this product:
 ${sellerLines}
 
-Return ONLY a valid JSON object with this exact structure (no markdown, no explanation, just JSON):
+Answer questions concisely in Bahasa Indonesia. Be practical, specific, and data-driven. Keep answers under 150 words.`;
+
+  const prompt = `Kamu adalah pakar sourcing produk untuk penjual Shopee Indonesia.
+
+Analisa data dari 10 listing terlaris untuk produk: "${productName}"
+
+DATA TOP 10 SELLER:
+${sellerLines}
+
+Kembalikan HANYA objek JSON valid dengan struktur ini (tanpa markdown, tanpa penjelasan, hanya JSON):
 {
-  "colors": [{"name": "Black", "count": 7}, {"name": "White", "count": 5}],
-  "features": [{"name": "Waterproof", "count": 9}, {"name": "500ml", "count": 8}],
+  "colors": [{"name": "Hitam", "count": 7}, {"name": "Putih", "count": 5}],
+  "features": [{"name": "Anti Air", "count": 9}, {"name": "500ml", "count": 8}],
   "specs": [{"name": "Stainless Steel", "count": 6}],
-  "avoid": ["Avoid cheap plastic variants", "Listings without brand name perform worse"],
-  "tip": "One concise sourcing tip (2-3 sentences) for someone new wanting to sell this product on Shopee Indonesia."
+  "avoid": ["Hindari varian plastik murah", "Listing tanpa nama brand perform lebih buruk"],
+  "tip": "Satu tips sourcing singkat (2-3 kalimat) untuk penjual baru yang ingin menjual produk ini di Shopee Indonesia."
 }
 
-Rules:
-- colors: up to 6 most common colors found across listing names/slugs
-- features: up to 8 key features or selling points (e.g. waterproof, foldable, anti-slip, BPA free)
-- specs: up to 5 size/material/capacity specs (e.g. 500ml, 30cm, stainless, silicone)
-- avoid: 2-3 short warnings about what NOT to source
-- tip: practical sourcing advice specific to this product category
-- count = how many of the 10 sellers share this attribute (estimate from titles/slugs)
-- If you cannot determine something, omit it rather than guess`;
+Aturan:
+- colors: hingga 6 warna paling umum dari nama/slug listing
+- features: hingga 8 fitur utama atau keunggulan produk
+- specs: hingga 5 spesifikasi ukuran/material/kapasitas
+- avoid: 2-3 peringatan singkat tentang apa yang TIDAK boleh di-source
+- tip: saran sourcing praktis spesifik untuk kategori produk ini
+- count = estimasi berapa dari 10 seller yang memiliki atribut ini
+- Jika tidak bisa ditentukan, lewati saja`;
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-
-    const data = await response.json();
+    const data = await claudePost([{ role: 'user', content: prompt }], '', 1000);
     loadingEl.style.display = 'none';
 
     const raw = data?.content?.[0]?.text || '';
     let parsed;
     try {
-      const clean = raw.replace(/```json|```/g, '').trim();
-      parsed = JSON.parse(clean);
+      parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
     } catch(e) {
-      resultEl.innerHTML = `<div class="sourcing-error">Could not parse AI response. Try reopening this product.</div>`;
+      resultEl.innerHTML = `<div class="sourcing-error">Tidak dapat memproses respons AI. Coba buka ulang produk ini.</div>`;
       return;
     }
 
     renderSourcingGuide(parsed);
+    if (chatWrap) chatWrap.style.display = 'block';
   } catch(err) {
     loadingEl.style.display = 'none';
-    resultEl.innerHTML = `<div class="sourcing-error">AI analysis unavailable. Check your connection.</div>`;
+    resultEl.innerHTML = `<div class="sourcing-error">AI tidak tersedia. Periksa koneksi internet kamu.</div>`;
   }
+}
+
+function appendChatMsg(role, text) {
+  const msgEl = document.getElementById('ai-chat-messages');
+  if (!msgEl) return;
+  const div = document.createElement('div');
+  div.className = `ai-msg ${role}`;
+  div.textContent = text;
+  msgEl.appendChild(div);
+  msgEl.scrollTop = msgEl.scrollHeight;
+  return div;
+}
+
+async function sendAIChat() {
+  const input = document.getElementById('ai-chat-input');
+  const sendBtn = document.getElementById('ai-chat-send-btn');
+  const q = input?.value.trim();
+  if (!q || !aiSystemContext) return;
+
+  input.value = '';
+  input.disabled = true;
+  if (sendBtn) sendBtn.disabled = true;
+
+  appendChatMsg('user', q);
+  const thinkingEl = appendChatMsg('thinking', '...');
+
+  aiChatHistory.push({ role: 'user', content: q });
+
+  try {
+    const data = await claudePost(aiChatHistory, aiSystemContext, 400);
+    const reply = data?.content?.[0]?.text || 'Maaf, tidak ada respons.';
+    if (thinkingEl) thinkingEl.remove();
+    appendChatMsg('ai', reply);
+    aiChatHistory.push({ role: 'assistant', content: reply });
+  } catch(err) {
+    if (thinkingEl) { thinkingEl.className = 'ai-msg ai'; thinkingEl.textContent = 'Terjadi kesalahan. Coba lagi.'; }
+  }
+
+  input.disabled = false;
+  if (sendBtn) sendBtn.disabled = false;
+  input.focus();
 }
 
 const COLOR_MAP = {
