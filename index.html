@@ -3644,6 +3644,8 @@ async function loadSellerData(p) {
 let aiChatHistory   = [];   // conversation turns [{role,content}]
 let aiSystemContext = '';   // product + seller context for Claude
 
+const AI_ENABLED = false; // Set to true to re-enable AI analysis
+
 async function claudePost(messages, systemPrompt, maxTokens) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -3668,6 +3670,12 @@ async function runSourcingAnalysis(productName, sellers) {
   const resultEl  = document.getElementById('sourcing-result');
   const chatWrap  = document.getElementById('ai-chat-wrap');
   if (!loadingEl || !resultEl) return;
+
+  if (!AI_ENABLED) {
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (resultEl) resultEl.innerHTML = '<p style="color:#888;padding:16px;text-align:center;">AI analysis coming soon.</p>';
+    return;
+  }
 
   // Reset chat for new product
   aiChatHistory = [];
