@@ -883,6 +883,59 @@ html,body{overflow-x:hidden;max-width:100%;}
 .finder-cta{margin-top:24px;}
 .finder-cta-btn{background:var(--grad);color:#fff;border:none;border-radius:8px;padding:12px 30px;font-size:.92rem;font-weight:700;cursor:pointer;font-family:'Roboto','Noto Sans',sans-serif;transition:opacity .15s,transform .15s,box-shadow .15s;display:inline-flex;align-items:center;gap:8px;box-shadow:0 4px 14px rgba(238,77,45,.35);}
 .finder-cta-btn:hover{opacity:.92;transform:translateY(-2px);box-shadow:0 6px 20px rgba(238,77,45,.45);}
+
+/* ── MY PLAN SECTION ── */
+.my-plan-section{background:#fff;border-radius:12px;padding:18px 20px;box-shadow:var(--sh);margin-bottom:14px;border-left:4px solid var(--orange);}
+.plan-inputs{display:flex;flex-direction:column;gap:10px;margin-top:12px;}
+.plan-row{display:grid;grid-template-columns:1fr 120px;align-items:center;gap:8px;}
+.plan-row label{font-size:.78rem;color:var(--tm);font-weight:500;}
+.plan-input{border:1.5px solid var(--border);border-radius:6px;padding:7px 10px;font-size:.88rem;font-family:'Roboto','Noto Sans',sans-serif;color:var(--td);width:100%;text-align:right;outline:none;transition:border-color .15s;}
+.plan-input:focus{border-color:var(--orange);}
+.plan-pct-lbl{font-size:.72rem;color:var(--tl);text-align:right;}
+.plan-divider{height:1px;background:var(--border);margin:14px 0;}
+.plan-results{display:flex;flex-direction:column;gap:7px;}
+.plan-result-row{display:flex;justify-content:space-between;align-items:center;font-size:.82rem;color:var(--tm);}
+.plan-result-row span:last-child{font-weight:600;color:var(--td);}
+.plan-result-main{background:var(--orange-light);border-radius:6px;padding:8px 10px;margin:4px 0;}
+.plan-result-main span{font-size:.92rem;}
+.plan-result-main span:last-child{color:var(--orange);font-weight:700;font-size:1.05rem;}
+.plan-margin-pos{color:var(--green) !important;}
+.plan-margin-neg{color:#e74c3c !important;}
+.plan-save-btn{width:100%;background:var(--grad);color:#fff;border:none;border-radius:8px;padding:10px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:'Roboto','Noto Sans',sans-serif;margin-top:14px;transition:opacity .15s;}
+.plan-save-btn:hover{opacity:.88;}
+.plan-saved-msg{font-size:.78rem;color:var(--green);text-align:center;margin-top:6px;min-height:18px;}
+.plan-locked{text-align:center;padding:14px;color:var(--tl);font-size:.82rem;}
+.plan-locked a{color:var(--orange);cursor:pointer;font-weight:600;}
+
+/* ── SOURCING ANALYZE BUTTON ── */
+.sourcing-analyze-wrap{padding:6px 0 10px;}
+.sourcing-prompt-text{font-size:.82rem;color:var(--tm);margin-bottom:12px;line-height:1.5;}
+.sourcing-analyze-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:#f0f7ff;color:#1a6abf;border:1.5px solid #b3d4f5;border-radius:8px;padding:11px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:'Roboto','Noto Sans',sans-serif;transition:background .15s,border-color .15s;}
+.sourcing-analyze-btn:hover{background:#dbeeff;border-color:#5aaaf5;}
+.sourcing-analyze-btn.done{background:var(--green-light);color:var(--green);border-color:#9de0bb;}
+/* Sourcing result tags */
+.sourcing-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.sourcing-tag{background:var(--orange-light);color:var(--orange);border-radius:20px;padding:4px 11px;font-size:.76rem;font-weight:600;}
+.sourcing-tag.feat{background:#eef6ff;color:#1a6abf;}
+.sourcing-tag.bundle{background:var(--green-light);color:var(--green);}
+.sourcing-section-label{font-size:.72rem;font-weight:700;color:var(--tl);text-transform:uppercase;letter-spacing:.06em;margin-top:12px;margin-bottom:4px;}
+.sourcing-tip{background:#fffbec;border-left:3px solid var(--amber);border-radius:0 6px 6px 0;padding:10px 12px;font-size:.82rem;color:var(--td);line-height:1.5;margin-top:10px;}
+
+/* ── PROFILE — PLAN SUMMARY IN SAVED CARD ── */
+.profile-saved-list{display:flex;flex-direction:column;gap:10px;margin-bottom:32px;}
+.psl-item{background:#fff;border-radius:10px;box-shadow:var(--sh);padding:14px 16px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:box-shadow .15s;}
+.psl-item:hover{box-shadow:0 4px 16px rgba(238,77,45,.14);}
+.psl-thumb{width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--orange-light);display:flex;align-items:center;justify-content:center;font-size:1.4rem;overflow:hidden;}
+.psl-thumb img{width:100%;height:100%;object-fit:cover;}
+.psl-info{flex:1;min-width:0;}
+.psl-name{font-size:.88rem;font-weight:700;color:var(--td);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.psl-meta{font-size:.76rem;color:var(--tl);margin-top:2px;}
+.psl-plan{text-align:right;flex-shrink:0;}
+.psl-plan-price{font-size:.88rem;font-weight:700;color:var(--orange);}
+.psl-plan-margin{font-size:.74rem;font-weight:600;margin-top:2px;}
+.psl-plan-margin.pos{color:var(--green);}
+.psl-plan-margin.neg{color:#e74c3c;}
+.psl-no-plan{font-size:.76rem;color:var(--tl);font-style:italic;}
 </style>
 </head>
 <body>
@@ -1381,11 +1434,18 @@ html,body{overflow-x:hidden;max-width:100%;}
           <!-- AI Sourcing Guide + Chat -->
           <div class="det-section" id="ai-section">
             <div class="det-section-title">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-              AI Sourcing Guide
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              Analisa Sourcing
+            </div>
+            <div class="sourcing-analyze-wrap" id="sourcing-analyze-wrap">
+              <div class="sourcing-prompt-text">Klik tombol di bawah untuk menganalisa listing terlaris — warna, fitur, dan keywords yang paling banyak muncul.</div>
+              <button class="sourcing-analyze-btn" id="sourcing-analyze-btn" onclick="triggerSourcingAnalysis()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Analisa Produk Ini
+              </button>
             </div>
             <div class="sourcing-loading" id="sourcing-loading" style="display:none;">
-              <div class="spinner"></div>Menganalisis data seller dengan AI...
+              <div class="spinner"></div>Menganalisis data listing...
             </div>
             <div id="sourcing-result"></div>
             <!-- AI Chat -->
@@ -1417,6 +1477,17 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <div class="fin-col-title g">Skenario Seller Berpengalaman</div>
                 <div id="fin-exp"></div>
               </div>
+            </div>
+          </div>
+
+          <!-- MY PLAN — shown when logged in + product saved -->
+          <div class="my-plan-section" id="my-plan-section" style="display:none;">
+            <div class="det-section-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Rencana Saya
+            </div>
+            <div id="plan-body">
+              <!-- filled by JS: either inputs or locked message -->
             </div>
           </div>
         </div><!-- end right col -->
@@ -1822,7 +1893,7 @@ html,body{overflow-x:hidden;max-width:100%;}
 
     <!-- SAVED PRODUCTS -->
     <div class="profile-section-title">❤ Produk Tersimpan</div>
-    <div class="home-grid" id="profile-saved-grid" style="margin-bottom:32px;">
+    <div class="profile-saved-list" id="profile-saved-grid">
       <div class="saved-empty">Belum ada produk tersimpan.</div>
     </div>
 
@@ -2872,7 +2943,7 @@ function cardHTML(p, idx) {
 // ════════════════════════════════════════════════════════════
 //  DETAIL PAGE
 // ════════════════════════════════════════════════════════════
-function openDetail(id) {
+async function openDetail(id) {
   const p = allProducts.find(x => x.id === id);
   if (!p) return;
   currentProduct = p;
@@ -2881,6 +2952,18 @@ function openDetail(id) {
   document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
   document.getElementById('page-detail').classList.add('active');
   window.scrollTo(0, 0);
+  // Reset sourcing analyze button
+  const analyzeBtn  = document.getElementById('sourcing-analyze-btn');
+  const analyzeWrap = document.getElementById('sourcing-analyze-wrap');
+  const sourResult  = document.getElementById('sourcing-result');
+  if (analyzeBtn)  { analyzeBtn.disabled = false; analyzeBtn.classList.remove('done'); }
+  if (analyzeWrap) analyzeWrap.style.display = '';
+  if (sourResult)  sourResult.innerHTML = '';
+  // Load plan if logged in
+  if (currentUser) {
+    await loadPlanForProduct(p.id);
+    showPlanPanel();
+  }
   loadSellerData(p); // fetch seller sheet in background
   loadVotes(p.id);   // load vote state for this product
 }
@@ -3118,6 +3201,7 @@ async function toggleDetailSave() {
     savedProducts.add(pid);
   }
   syncDetailSaveBtn();
+  showPlanPanel(); // show/hide plan section based on new save state
   // Update card buttons too
   const isSaved = savedProducts.has(pid);
   document.querySelectorAll(`.save-btn[data-pid="${pid}"]`).forEach(btn => {
@@ -3195,16 +3279,212 @@ function renderProfileSaved() {
   const grid = document.getElementById('profile-saved-grid');
   if (!grid) return;
   const saved = allProducts.filter(p => savedProducts.has(p.id));
-  grid.innerHTML = saved.length
-    ? saved.map((p, i) => cardHTML(p, i)).join('')
-    : '<div class="saved-empty">Belum ada produk tersimpan.<br>Tekan ❤ di kartu produk untuk menyimpan.</div>';
+  if (!saved.length) {
+    grid.innerHTML = '<div class="saved-empty">Belum ada produk tersimpan.<br>Tekan ❤ di kartu produk untuk menyimpan.</div>';
+    return;
+  }
+  grid.innerHTML = saved.map(p => {
+    const plan = window._planCache && window._planCache[p.id];
+    const thumb = p.image
+      ? `<div class="psl-thumb"><img src="${p.image}" alt="" onerror="this.parentElement.textContent='📦'"></div>`
+      : `<div class="psl-thumb">${p.emoji || '📦'}</div>`;
+    let planHtml = `<div class="psl-no-plan">+ Tambah rencana</div>`;
+    if (plan && plan.sell_price) {
+      const margin = plan.sell_price - (plan.source_cost||0) - (plan.shipping||0) - (plan.marketing||0);
+      const pct    = plan.sell_price > 0 ? Math.round(margin / plan.sell_price * 100) : 0;
+      const cls    = pct >= 0 ? 'pos' : 'neg';
+      planHtml = `
+        <div class="psl-plan-price">Rp ${Math.round(plan.sell_price).toLocaleString('id-ID')}</div>
+        <div class="psl-plan-margin ${cls}">${pct >= 0 ? '+' : ''}${pct}% margin</div>`;
+    }
+    return `
+      <div class="psl-item" onclick="openDetail(${p.id})">
+        ${thumb}
+        <div class="psl-info">
+          <div class="psl-name">${p.name}</div>
+          <div class="psl-meta">${p.category} · Score ${Math.round(p.score)}/100</div>
+        </div>
+        <div class="psl-plan">${planHtml}</div>
+      </div>`;
+  }).join('');
 }
 
-function openProfile() {
+async function openProfile() {
   if (!currentUser) { openAuthModal('login'); return; }
   clearCompare();
+  await loadAllPlans();
   renderProfileSaved();
   showPage('profile');
+}
+
+// ════════════════════════════════════════════════════════════
+//  MY PLAN — Supabase product_plans table
+// ════════════════════════════════════════════════════════════
+window._planCache = {};   // { [productId]: planRow }
+window._sellerDataCache = {}; // { [productId]: mappedSellers[] }
+
+async function loadAllPlans() {
+  if (!currentUser || !_supabase) return;
+  const { data } = await _supabase
+    .from('product_plans')
+    .select('*')
+    .eq('user_id', currentUser.id);
+  if (data) {
+    window._planCache = {};
+    data.forEach(row => { window._planCache[row.product_id] = row; });
+  }
+}
+
+async function loadPlanForProduct(productId) {
+  if (!currentUser || !_supabase) return null;
+  if (window._planCache[productId] !== undefined) return window._planCache[productId];
+  const { data } = await _supabase
+    .from('product_plans')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .eq('product_id', productId)
+    .maybeSingle();
+  window._planCache[productId] = data || null;
+  return window._planCache[productId];
+}
+
+function showPlanPanel() {
+  const section = document.getElementById('my-plan-section');
+  const body    = document.getElementById('plan-body');
+  if (!section || !body) return;
+
+  if (!currentUser) {
+    section.style.display = 'none';
+    return;
+  }
+
+  const pid = currentProduct?.id;
+  if (!pid || !savedProducts.has(pid)) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+  const p    = currentProduct;
+  const plan = window._planCache[pid] || {};
+
+  body.innerHTML = `
+    <div class="plan-inputs">
+      <div class="plan-row">
+        <label>Harga Jual (Rp)</label>
+        <input type="number" id="plan-sell-price" class="plan-input" placeholder="0" value="${plan.sell_price||''}" oninput="updatePlanCalc()">
+      </div>
+      <div class="plan-row">
+        <label>Harga Modal (Rp)</label>
+        <input type="number" id="plan-source-cost" class="plan-input" placeholder="0" value="${plan.source_cost||''}" oninput="updatePlanCalc()">
+      </div>
+      <div class="plan-row">
+        <label>Ongkos Kirim (Rp)</label>
+        <input type="number" id="plan-shipping" class="plan-input" placeholder="0" value="${plan.shipping||''}" oninput="updatePlanCalc()">
+      </div>
+      <div class="plan-row">
+        <label>Biaya Iklan / Marketing (Rp)</label>
+        <input type="number" id="plan-marketing" class="plan-input" placeholder="0" value="${plan.marketing||''}" oninput="updatePlanCalc()">
+      </div>
+    </div>
+    <div class="plan-divider"></div>
+    <div class="plan-results" id="plan-results">
+      <div class="plan-result-row">
+        <span>Margin per unit</span>
+        <span id="plan-margin-unit">—</span>
+      </div>
+      <div class="plan-result-row plan-result-main">
+        <span>Margin %</span>
+        <span id="plan-margin-pct-val">—</span>
+      </div>
+      <div class="plan-result-row">
+        <span>Estimasi net/bln (seller baru · <span id="plan-units-new-lbl">${Math.round(p.newUnits||0)}</span> unit)</span>
+        <span id="plan-rev-new">—</span>
+      </div>
+      <div class="plan-result-row">
+        <span>Estimasi net/bln (seller berpengalaman · <span id="plan-units-exp-lbl">${Math.round(p.expUnits||0)}</span> unit)</span>
+        <span id="plan-rev-exp">—</span>
+      </div>
+      <div class="plan-result-row">
+        <span>Harga vs. median market</span>
+        <span id="plan-vs-median">—</span>
+      </div>
+    </div>
+    <button class="plan-save-btn" onclick="savePlan()">Simpan Rencana</button>
+    <div class="plan-saved-msg" id="plan-saved-msg"></div>`;
+
+  updatePlanCalc();
+}
+
+function updatePlanCalc() {
+  const sell     = parseFloat(document.getElementById('plan-sell-price')?.value)   || 0;
+  const cost     = parseFloat(document.getElementById('plan-source-cost')?.value)  || 0;
+  const ship     = parseFloat(document.getElementById('plan-shipping')?.value)     || 0;
+  const mktg     = parseFloat(document.getElementById('plan-marketing')?.value)    || 0;
+  const margin   = sell - cost - ship - mktg;
+  const pct      = sell > 0 ? (margin / sell * 100) : 0;
+  const newUnits = currentProduct?.newUnits || 0;
+  const expUnits = currentProduct?.expUnits || 0;
+  const median   = currentProduct?.medianPrice || 0;
+
+  const fmtRp = v => 'Rp ' + Math.round(v).toLocaleString('id-ID');
+
+  const muEl  = document.getElementById('plan-margin-unit');
+  const pctEl = document.getElementById('plan-margin-pct-val');
+  const rnEl  = document.getElementById('plan-rev-new');
+  const reEl  = document.getElementById('plan-rev-exp');
+  const vmEl  = document.getElementById('plan-vs-median');
+
+  if (!muEl) return;
+  muEl.textContent  = sell > 0 ? fmtRp(margin) : '—';
+  muEl.className    = margin >= 0 ? 'plan-margin-pos' : 'plan-margin-neg';
+  pctEl.textContent = sell > 0 ? `${pct.toFixed(1)}%` : '—';
+  pctEl.className   = pct >= 0 ? 'plan-margin-pos' : 'plan-margin-neg';
+  rnEl.textContent  = sell > 0 ? fmtRp(margin * newUnits) : '—';
+  reEl.textContent  = sell > 0 ? fmtRp(margin * expUnits) : '—';
+
+  if (median > 0 && sell > 0) {
+    const diff = ((sell - median) / median * 100);
+    const sign = diff >= 0 ? '+' : '';
+    vmEl.textContent = `${sign}${diff.toFixed(1)}% (median Rp ${Math.round(median).toLocaleString('id-ID')})`;
+    vmEl.style.color = Math.abs(diff) < 15 ? 'var(--green)' : 'var(--amber)';
+  } else {
+    vmEl.textContent = '—';
+  }
+}
+
+async function savePlan() {
+  if (!currentUser || !_supabase || !currentProduct) return;
+  const pid  = currentProduct.id;
+  const sell = parseFloat(document.getElementById('plan-sell-price')?.value)  || 0;
+  const cost = parseFloat(document.getElementById('plan-source-cost')?.value) || 0;
+  const ship = parseFloat(document.getElementById('plan-shipping')?.value)    || 0;
+  const mktg = parseFloat(document.getElementById('plan-marketing')?.value)   || 0;
+
+  const btn = document.querySelector('.plan-save-btn');
+  const msg = document.getElementById('plan-saved-msg');
+  if (btn) btn.disabled = true;
+
+  const { error } = await _supabase
+    .from('product_plans')
+    .upsert({
+      user_id:    currentUser.id,
+      product_id: pid,
+      sell_price: sell,
+      source_cost: cost,
+      shipping:   ship,
+      marketing:  mktg,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,product_id' });
+
+  if (btn) btn.disabled = false;
+  if (msg) {
+    msg.textContent = error ? '⚠ Gagal menyimpan. Coba lagi.' : '✓ Rencana tersimpan!';
+    setTimeout(() => { if (msg) msg.textContent = ''; }, 3000);
+  }
+  if (!error) {
+    window._planCache[pid] = { user_id: currentUser.id, product_id: pid, sell_price: sell, source_cost: cost, shipping: ship, marketing: mktg };
+  }
 }
 
 function voteKey(pid) { return 'vote_' + pid; }
@@ -3582,14 +3862,8 @@ async function loadSellerData(p) {
     document.getElementById('d-age-med').textContent = fmtAge(ages[Math.floor(ages.length / 2)]);
   }
 
-  // ── AI SOURCING GUIDE — analyse top 10 seller slugs/names via Claude ──
-  const sourcingInput = sellers.slice(0, 10).map(s => ({
-    name: s.name,
-    slug: s.slug || '',
-    brand: s.brand || '',
-    trend: s.trend || ''
-  }));
-  runSourcingAnalysis(p.name, sourcingInput);
+  // ── SOURCING GUIDE — cache seller data for on-demand analysis ──
+  window._sellerDataCache[p.id] = sellers.slice(0, 20);
 
   const sellerLocked = currentProduct && currentProduct.trending && !currentUser;
   document.getElementById('sellers-tbody').innerHTML = sellers.map(s => {
@@ -3639,13 +3913,12 @@ async function loadSellerData(p) {
 
 
 // ════════════════════════════════════════════════════════════
-//  AI SOURCING GUIDE + CHAT
+//  SOURCING GUIDE — Phase 1 (local analysis, no API)
 // ════════════════════════════════════════════════════════════
-let aiChatHistory   = [];   // conversation turns [{role,content}]
-let aiSystemContext = '';   // product + seller context for Claude
+let aiChatHistory   = [];
+let aiSystemContext = '';
 
-const AI_ENABLED = false; // Set to true to re-enable AI analysis
-
+// Kept for future Phase 2 use
 async function claudePost(messages, systemPrompt, maxTokens) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -3665,98 +3938,186 @@ async function claudePost(messages, systemPrompt, maxTokens) {
   return res.json();
 }
 
-async function runSourcingAnalysis(productName, sellers) {
-  const loadingEl = document.getElementById('sourcing-loading');
-  const resultEl  = document.getElementById('sourcing-result');
-  const chatWrap  = document.getElementById('ai-chat-wrap');
-  if (!loadingEl || !resultEl) return;
+function triggerSourcingAnalysis() {
+  const pid      = currentProduct?.id;
+  const sellers  = pid && window._sellerDataCache[pid];
+  const analyzeWrap = document.getElementById('sourcing-analyze-wrap');
+  const loadingEl   = document.getElementById('sourcing-loading');
+  const resultEl    = document.getElementById('sourcing-result');
+  const analyzeBtn  = document.getElementById('sourcing-analyze-btn');
 
-  if (!AI_ENABLED) {
-    if (loadingEl) loadingEl.style.display = 'none';
-    if (resultEl) resultEl.innerHTML = '<p style="color:#888;padding:16px;text-align:center;">AI analysis coming soon.</p>';
+  if (!sellers || !sellers.length) {
+    if (resultEl) resultEl.innerHTML = '<p style="color:var(--tl);padding:10px 0;font-size:.82rem;">Data seller belum termuat. Tunggu sebentar lalu coba lagi.</p>';
     return;
   }
 
-  // Reset chat for new product
-  aiChatHistory = [];
-  const msgEl = document.getElementById('ai-chat-messages');
-  if (msgEl) msgEl.innerHTML = '';
-  if (chatWrap) chatWrap.style.display = 'none';
+  if (analyzeWrap) analyzeWrap.style.display = 'none';
+  if (loadingEl)   loadingEl.style.display = 'flex';
+  if (resultEl)    resultEl.innerHTML = '';
 
-  loadingEl.style.display = 'flex';
-  resultEl.innerHTML = '';
-
-  const sellerLines = sellers
-    .map((s, i) => `${i+1}. Name: "${s.name}" | Slug: "${s.slug}" | Brand/Variant: "${s.brand}" | Trend: "${s.trend}"`)
-    .join('\n');
-
-  // Store context for chat
-  aiSystemContext = `You are an expert product advisor for Indonesian Shopee sellers. You are helping a seller analyse the product "${productName}".
-
-Here is the data from the top 10 best-selling listings for this product:
-${sellerLines}
-
-Answer questions concisely in Bahasa Indonesia. Be practical, specific, and data-driven. Keep answers under 150 words.`;
-
-  const prompt = `Kamu adalah pakar sourcing produk untuk penjual Shopee Indonesia.
-
-Analisa data dari 10 listing terlaris untuk produk: "${productName}"
-
-DATA TOP 10 SELLER:
-${sellerLines}
-
-Kembalikan HANYA objek JSON valid dengan struktur ini (tanpa markdown, tanpa penjelasan, hanya JSON):
-{
-  "colors": [{"name": "Hitam", "count": 7}, {"name": "Putih", "count": 5}],
-  "features": [{"name": "Anti Air", "count": 9}, {"name": "500ml", "count": 8}],
-  "specs": [{"name": "Stainless Steel", "count": 6}],
-  "avoid": ["Hindari varian plastik murah", "Listing tanpa nama brand perform lebih buruk"],
-  "tip": "Satu tips sourcing singkat (2-3 kalimat) untuk penjual baru yang ingin menjual produk ini di Shopee Indonesia."
+  // Small delay so spinner shows before heavy work
+  setTimeout(() => {
+    const result = analyzeLocalSourcing(currentProduct.name, sellers);
+    if (loadingEl) loadingEl.style.display = 'none';
+    renderLocalSourcingGuide(result, resultEl);
+    if (analyzeBtn) { analyzeBtn.classList.add('done'); analyzeBtn.disabled = true; }
+  }, 120);
 }
 
-Aturan:
-- colors: hingga 6 warna paling umum dari nama/slug listing
-- features: hingga 8 fitur utama atau keunggulan produk
-- specs: hingga 5 spesifikasi ukuran/material/kapasitas
-- avoid: 2-3 peringatan singkat tentang apa yang TIDAK boleh di-source
-- tip: saran sourcing praktis spesifik untuk kategori produk ini
-- count = estimasi berapa dari 10 seller yang memiliki atribut ini
-- Jika tidak bisa ditentukan, lewati saja`;
+function analyzeLocalSourcing(productName, sellers) {
+  const COLORS = [
+    'hitam','putih','merah','biru','hijau','kuning','pink','ungu','abu','coklat',
+    'emas','silver','perak','orange','tosca','cream','navy','maroon','rose','nude',
+    'black','white','red','green','yellow','gray','grey','brown','gold','purple',
+  ];
+  const FEATURES = [
+    'waterproof','anti slip','anti air','portable','rechargeable','wireless',
+    'led','otomatis','automatic','magnetic','magnet','premium','import',
+    'stainless','silikon','silicone','aluminium','anti nyamuk','fast charging',
+    'usb','bluetooth','sensor','elektrik','minimalis','aesthetic',
+  ];
+  // Words to skip when building keyword frequency
+  const STOPWORDS = new Set([
+    'dan','dengan','untuk','yang','the','and','with','for','dari','in','on',
+    'set','pack','pcs','buah','unit','baru','free','size','isi','per',
+    'model','tipe','type','item','produk','original','shopee','murah','best',
+    'kualitas','quality','promo','diskon','flash','sale','super','terbaik',
+  ]);
 
-  try {
-    const data = await claudePost([{ role: 'user', content: prompt }], '', 1000);
-    loadingEl.style.display = 'none';
+  const colorCounts   = {};
+  const featureCounts = {};
+  const wordFreq      = {};
+  const bundleHints   = {};
+  const prices        = sellers.map(s => s.price).filter(v => v > 0);
+  const ratings       = sellers.map(s => s.rating).filter(v => v > 0);
+  const totalSellers  = sellers.length;
 
-    // API-level error (wrong key, quota, etc.)
-    if (data?.type === 'error') {
-      resultEl.innerHTML = `<div class="sourcing-error">API Error: ${data.error?.message || JSON.stringify(data.error)}</div>`;
-      return;
-    }
+  sellers.forEach(s => {
+    const raw  = `${s.name||''} ${s.slug||''} ${s.brand||''}`.toLowerCase().replace(/[-_]/g, ' ');
 
-    const raw = data?.content?.[0]?.text || '';
-    if (!raw) {
-      resultEl.innerHTML = `<div class="sourcing-error">Respons kosong dari AI. Detail: ${JSON.stringify(data).slice(0,200)}</div>`;
-      return;
-    }
+    // Colors
+    COLORS.forEach(c => {
+      if (raw.includes(c)) colorCounts[c] = (colorCounts[c] || 0) + 1;
+    });
 
-    let parsed;
-    try {
-      // Strip markdown fences and any leading/trailing text before the JSON object
-      const jsonStart = raw.indexOf('{');
-      const jsonEnd   = raw.lastIndexOf('}');
-      const clean     = jsonStart >= 0 && jsonEnd >= 0 ? raw.slice(jsonStart, jsonEnd + 1) : raw;
-      parsed = JSON.parse(clean);
-    } catch(e) {
-      resultEl.innerHTML = `<div class="sourcing-error">Parse error: ${e.message}<br><small style="word-break:break-all">${raw.slice(0,200)}</small></div>`;
-      return;
-    }
+    // Features
+    FEATURES.forEach(f => {
+      if (raw.includes(f)) featureCounts[f] = (featureCounts[f] || 0) + 1;
+    });
 
-    renderSourcingGuide(parsed);
-    if (chatWrap) chatWrap.style.display = 'block';
-  } catch(err) {
-    loadingEl.style.display = 'none';
-    resultEl.innerHTML = `<div class="sourcing-error">Network error: ${err.message}</div>`;
+    // Bundle patterns: "3 pcs", "5 pasang", "2 in 1", "set 3"
+    const bundlePats = raw.match(/(\d+)\s*(in\s*1|pcs|pasang|pair|pack|buah|pieces|set\s+\d+|\d+\s+set)/gi) || [];
+    bundlePats.forEach(b => {
+      const norm = b.replace(/\s+/g, ' ').trim();
+      bundleHints[norm] = (bundleHints[norm] || 0) + 1;
+    });
+
+    // Word frequency (meaningful nouns/adjectives only)
+    raw.split(/[\s,]+/).forEach(w => {
+      if (w.length < 4 || STOPWORDS.has(w) || /^\d+$/.test(w)) return;
+      wordFreq[w] = (wordFreq[w] || 0) + 1;
+    });
+  });
+
+  // Top colors (≥2 occurrences)
+  const topColors = Object.entries(colorCounts)
+    .filter(([,c]) => c >= 2).sort((a,b) => b[1]-a[1]).slice(0, 6);
+
+  // Top features (≥2 occurrences)
+  const topFeatures = Object.entries(featureCounts)
+    .filter(([,c]) => c >= 2).sort((a,b) => b[1]-a[1]).slice(0, 7);
+
+  // Top keywords excluding color/feature words already shown
+  const usedWords = new Set([...topColors.map(([w]) => w), ...topFeatures.map(([w]) => w)]);
+  const topKeywords = Object.entries(wordFreq)
+    .filter(([w, c]) => c >= 2 && !usedWords.has(w))
+    .sort((a,b) => b[1]-a[1]).slice(0, 8);
+
+  // Top bundles
+  const topBundles = Object.entries(bundleHints)
+    .sort((a,b) => b[1]-a[1]).slice(0, 4);
+
+  // Price insight
+  const sortedPrices = [...prices].sort((a,b) => a-b);
+  const priceMed  = sortedPrices[Math.floor(sortedPrices.length/2)] || 0;
+  const priceQ1   = sortedPrices[Math.floor(sortedPrices.length*0.25)] || 0;
+  const priceQ3   = sortedPrices[Math.floor(sortedPrices.length*0.75)] || 0;
+
+  // Avg rating
+  const avgRating = ratings.length ? (ratings.reduce((a,b)=>a+b,0) / ratings.length).toFixed(1) : null;
+
+  return { topColors, topFeatures, topKeywords, topBundles, priceMed, priceQ1, priceQ3, avgRating, totalSellers };
+}
+
+function renderLocalSourcingGuide(r, resultEl) {
+  if (!resultEl) return;
+  const fmtRp = v => v ? 'Rp ' + Math.round(v).toLocaleString('id-ID') : '—';
+
+  const colorHex = (name) => {
+    const map = {
+      hitam:'#111',putih:'#fff',merah:'#e74c3c',biru:'#2980b9',hijau:'#27ae60',
+      kuning:'#f1c40f',pink:'#e91e8c',ungu:'#8e44ad','abu':'#888',coklat:'#8b5e3c',
+      emas:'#f5a623',silver:'#aaa',perak:'#aaa',orange:'#ee4d2d',tosca:'#00b09b',
+      cream:'#f5f0e8',navy:'#1a237e',maroon:'#85122d',rose:'#f06292',nude:'#e8c9a8',
+      black:'#111',white:'#fff',red:'#e74c3c',green:'#27ae60',yellow:'#f1c40f',
+      gray:'#888',grey:'#888',brown:'#8b5e3c',gold:'#f5a623',purple:'#8e44ad',
+    };
+    return map[name] || null;
+  };
+
+  let html = '';
+
+  if (r.topColors.length) {
+    html += `<div class="sourcing-section-label">Warna yang sering muncul</div>
+    <div class="sourcing-tags">`;
+    r.topColors.forEach(([name, cnt]) => {
+      const hex = colorHex(name);
+      const dot = hex ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${hex};margin-right:5px;vertical-align:middle;${hex==='#fff'?'border:1px solid #ccc':''}"></span>` : '';
+      html += `<span class="sourcing-tag">${dot}${name} <span style="opacity:.6;font-weight:400">(${cnt}/${r.totalSellers})</span></span>`;
+    });
+    html += `</div>`;
   }
+
+  if (r.topFeatures.length) {
+    html += `<div class="sourcing-section-label">Fitur yang sering muncul</div>
+    <div class="sourcing-tags">`;
+    r.topFeatures.forEach(([name, cnt]) => {
+      html += `<span class="sourcing-tag feat">${name} <span style="opacity:.6;font-weight:400">(${cnt}/${r.totalSellers})</span></span>`;
+    });
+    html += `</div>`;
+  }
+
+  if (r.topKeywords.length) {
+    html += `<div class="sourcing-section-label">Kata kunci listing terlaris</div>
+    <div class="sourcing-tags">`;
+    r.topKeywords.forEach(([word, cnt]) => {
+      html += `<span class="sourcing-tag feat" style="background:#f0f7ff;color:#1a6abf;">${word} <span style="opacity:.6;font-weight:400">(${cnt})</span></span>`;
+    });
+    html += `</div>`;
+  }
+
+  if (r.topBundles.length) {
+    html += `<div class="sourcing-section-label">Bundle / variant populer</div>
+    <div class="sourcing-tags">`;
+    r.topBundles.forEach(([name, cnt]) => {
+      html += `<span class="sourcing-tag bundle">${name} <span style="opacity:.6;font-weight:400">(${cnt})</span></span>`;
+    });
+    html += `</div>`;
+  }
+
+  // Price insight
+  if (r.priceMed > 0) {
+    html += `<div class="sourcing-section-label">Rentang harga (dari data listing)</div>
+    <div class="sourcing-tip">
+      Rentang umum: <strong>${fmtRp(r.priceQ1)} – ${fmtRp(r.priceQ3)}</strong> &nbsp;|&nbsp;
+      Median: <strong>${fmtRp(r.priceMed)}</strong>
+      ${r.avgRating ? ` &nbsp;|&nbsp; Rating rata-rata: <strong>${r.avgRating} ★</strong>` : ''}
+      <br><span style="font-size:.78rem;opacity:.75">Berdasarkan ${r.totalSellers} seller terkualifikasi</span>
+    </div>`;
+  }
+
+  html += `<div style="font-size:.72rem;color:var(--tl);margin-top:12px;">Berdasarkan analisa ${r.totalSellers} listing terlaris · Data dari scrape terbaru</div>`;
+  resultEl.innerHTML = html;
 }
 
 function appendChatMsg(role, text) {
