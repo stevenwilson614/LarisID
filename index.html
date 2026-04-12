@@ -862,39 +862,60 @@ html,body{overflow-x:hidden;max-width:100%;}
 
 /* ── DASHBOARD — HQ CARDS ── */
 .dash-card{background:#fff;border-radius:14px;box-shadow:var(--sh);margin-bottom:16px;overflow:hidden;}
-.dash-card-header{display:flex;align-items:center;gap:12px;padding:14px 16px 12px;border-bottom:1px solid var(--border);}
-.dash-thumb{width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--orange-light);display:flex;align-items:center;justify-content:center;font-size:1.3rem;overflow:hidden;}
+.dash-card-header{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;user-select:none;}
+.dash-card-header:hover{background:#fafafa;}
+.dash-thumb{width:42px;height:42px;border-radius:8px;flex-shrink:0;background:var(--orange-light);display:flex;align-items:center;justify-content:center;font-size:1.2rem;overflow:hidden;}
 .dash-thumb img{width:100%;height:100%;object-fit:cover;}
 .dash-header-info{flex:1;min-width:0;}
-.dash-name{font-size:.92rem;font-weight:800;color:var(--td);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.dash-meta{font-size:.73rem;color:var(--tl);margin-top:1px;}
-.dash-score-pill{flex-shrink:0;background:var(--orange-light);color:var(--orange);border-radius:20px;padding:3px 10px;font-size:.75rem;font-weight:700;}
-.dash-status-select{border:1.5px solid var(--border);border-radius:6px;padding:4px 8px;font-size:.74rem;font-weight:600;font-family:inherit;color:var(--td);cursor:pointer;outline:none;background:#fff;}
+.dash-name{font-size:.88rem;font-weight:800;color:var(--td);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dash-meta{font-size:.72rem;color:var(--tl);margin-top:1px;}
+.dash-score-pill{flex-shrink:0;background:var(--orange-light);color:var(--orange);border-radius:20px;padding:3px 9px;font-size:.73rem;font-weight:700;}
+.dash-status-select{border:1.5px solid var(--border);border-radius:6px;padding:3px 7px;font-size:.72rem;font-weight:600;font-family:inherit;color:var(--td);cursor:pointer;outline:none;background:#fff;}
+.dash-expand-btn{background:none;border:none;cursor:pointer;color:var(--tl);padding:4px;border-radius:4px;display:flex;align-items:center;transition:transform .2s;}
+.dash-expand-btn.open{transform:rotate(180deg);}
 .dash-remove-btn{background:none;border:none;cursor:pointer;color:var(--tl);padding:4px;border-radius:4px;display:flex;align-items:center;}
-.dash-remove-btn:hover{color:#e74c3c;background:#fff0ee;}
+.dash-remove-btn:hover{color:#e74c3c;}
+/* Collapsible body */
+.dash-card-body{border-top:1px solid var(--border);}
+.dash-card-body.collapsed{display:none;}
 .dash-body{display:grid;grid-template-columns:1fr 1fr;gap:0;}
 @media(max-width:600px){.dash-body{grid-template-columns:1fr;}}
 .dash-col{padding:14px 16px;}
 .dash-col+.dash-col{border-left:1px solid var(--border);}
 @media(max-width:600px){.dash-col+.dash-col{border-left:none;border-top:1px solid var(--border);}}
-.dash-col-title{font-size:.7rem;font-weight:700;color:var(--tl);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.dash-col-title{font-size:.68rem;font-weight:700;color:var(--tl);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
 /* Financial inputs */
-.dash-fin-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
-.dash-fin-label{font-size:.78rem;color:var(--tm);}
-.dash-fin-input{border:1.5px solid var(--border);border-radius:5px;padding:5px 8px;font-size:.8rem;font-family:inherit;color:var(--td);width:110px;text-align:right;outline:none;transition:border-color .15s;}
+.dash-fin-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:6px;}
+.dash-fin-label-wrap{display:flex;flex-direction:column;flex:1;}
+.dash-fin-label{font-size:.77rem;color:var(--tm);}
+.dash-fin-hint{font-size:.68rem;color:var(--tl);margin-top:1px;}
+.dash-fin-input-wrap{position:relative;display:flex;align-items:center;gap:4px;}
+.dash-fin-input{border:1.5px solid var(--border);border-radius:5px;padding:5px 8px;font-size:.8rem;font-family:inherit;color:var(--td);width:108px;text-align:right;outline:none;transition:border-color .15s;}
 .dash-fin-input:focus{border-color:var(--orange);}
+.dash-fin-fee-row{display:flex;justify-content:space-between;font-size:.76rem;color:var(--tl);padding:3px 0;}
+.dash-fin-fee-val{font-weight:600;color:#e67e22;}
 .dash-fin-divider{height:1px;background:var(--border);margin:8px 0;}
-.dash-fin-result{display:flex;justify-content:space-between;align-items:center;padding:6px 0;}
-.dash-fin-result-label{font-size:.78rem;color:var(--tm);}
+.dash-fin-result{display:flex;justify-content:space-between;align-items:center;padding:5px 0;}
+.dash-fin-result-label{font-size:.77rem;color:var(--tm);}
 .dash-fin-result-val{font-size:.82rem;font-weight:700;}
 .dash-fin-result.main{background:var(--orange-light);border-radius:6px;padding:7px 8px;margin:2px 0;}
 .dash-fin-result.main .dash-fin-result-label{font-size:.82rem;font-weight:700;color:var(--td);}
 .dash-fin-result.main .dash-fin-result-val{font-size:1rem;color:var(--orange);}
 .dash-fin-pos{color:var(--green);}
 .dash-fin-neg{color:#e74c3c;}
-.dash-save-btn{width:100%;background:var(--grad);color:#fff;border:none;border-radius:7px;padding:8px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;margin-top:10px;transition:opacity .15s;}
+.dash-autofill-bar{display:flex;gap:6px;margin-top:8px;}
+.dash-autofill-btn{flex:1;background:var(--green-light);color:var(--green);border:1.5px solid #9de0bb;border-radius:6px;padding:6px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;}
+.dash-autofill-btn:hover{background:#c5f0d8;}
+.dash-reset-btn{background:#f5f0ea;color:var(--tm);border:1.5px solid var(--border);border-radius:6px;padding:6px 10px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s;}
+.dash-reset-btn:hover{background:var(--border);}
+.dash-save-btn{width:100%;background:var(--grad);color:#fff;border:none;border-radius:7px;padding:8px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px;transition:opacity .15s;}
 .dash-save-btn:hover{opacity:.88;}
 .dash-saved-ok{font-size:.73rem;color:var(--green);text-align:center;margin-top:4px;min-height:16px;}
+/* Tooltip on sell price */
+.dash-price-info{font-size:.7rem;color:var(--tl);margin-top:3px;line-height:1.4;}
+.dash-price-info b{color:var(--orange);}
+/* Shipping notice */
+.dash-ship-notice{background:#fff8ec;border:1px solid #ffd280;border-radius:5px;font-size:.72rem;color:#b07000;padding:5px 8px;margin-top:4px;line-height:1.4;}
 /* Steps checklist */
 .dash-step{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f5f0ea;cursor:pointer;user-select:none;}
 .dash-step:last-child{border-bottom:none;}
@@ -905,9 +926,30 @@ html,body{overflow-x:hidden;max-width:100%;}
 .dash-progress{height:4px;background:var(--border);border-radius:2px;margin-top:10px;overflow:hidden;}
 .dash-progress-fill{height:100%;background:var(--green);border-radius:2px;transition:width .3s;}
 .dash-progress-label{font-size:.72rem;color:var(--tl);margin-top:4px;}
+/* Sourcing Guide */
+.dash-sourcing{border-top:1px solid var(--border);padding:14px 16px;}
+.dash-sourcing-title{font-size:.7rem;font-weight:700;color:var(--tl);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.dash-load-guide-btn{background:#f0f7ff;color:#1a6abf;border:1.5px solid #b3d4f5;border-radius:6px;padding:5px 12px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;}
+.dash-load-guide-btn:hover{background:#dbeeff;}
+.dash-photo-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:12px;}
+@media(max-width:500px){.dash-photo-grid{grid-template-columns:repeat(3,1fr);}}
+.dash-photo-item{aspect-ratio:1;border-radius:6px;overflow:hidden;background:var(--orange-light);display:flex;align-items:center;justify-content:center;font-size:1.2rem;}
+.dash-photo-item img{width:100%;height:100%;object-fit:cover;}
+.dash-mini-sellers{width:100%;border-collapse:collapse;font-size:.75rem;margin-bottom:12px;}
+.dash-mini-sellers th{background:#f5f5f5;padding:5px 8px;text-align:left;font-weight:700;color:var(--tm);border-bottom:1px solid var(--border);}
+.dash-mini-sellers td{padding:5px 8px;border-bottom:1px solid #f5f0ea;color:var(--td);}
+.dash-mini-sellers tr:last-child td{border-bottom:none;}
+.dash-mini-sellers tr:hover td{background:#fafafa;}
+.dash-ai-reco{background:#f0f7ff;border-left:3px solid #2980b9;border-radius:0 8px 8px 0;padding:11px 13px;font-size:.8rem;color:var(--td);line-height:1.6;margin-bottom:12px;}
+.dash-ai-reco-title{font-weight:700;color:#1a6abf;margin-bottom:5px;font-size:.78rem;}
+.dash-keywords-wrap{margin-top:4px;}
+.dash-keyword-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+.dash-keyword-tag{background:#fff;border:1.5px solid var(--border);border-radius:20px;padding:3px 10px;font-size:.74rem;color:var(--td);cursor:pointer;transition:border-color .15s,background .15s;}
+.dash-keyword-tag:hover{border-color:var(--orange);background:var(--orange-light);color:var(--orange);}
+.dash-keyword-tag.copied{border-color:var(--green);background:var(--green-light);color:var(--green);}
 /* Detail link */
-.dash-footer{padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
-.dash-detail-link{font-size:.76rem;color:var(--orange);cursor:pointer;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:4px;}
+.dash-footer{padding:9px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.dash-detail-link{font-size:.76rem;color:var(--orange);cursor:pointer;font-weight:600;}
 .dash-detail-link:hover{text-decoration:underline;}
 /* Empty state */
 .dash-empty{text-align:center;padding:48px 20px;color:var(--tl);}
@@ -3390,16 +3432,31 @@ function renderProfileSaved() {
   grid.innerHTML = saved.map(p => dashCardHTML(p)).join('');
 }
 
+// Auto-fill defaults based on product median price
+function getDashDefaults(p) {
+  const sell = Math.round(p.medianPrice || 0);
+  const cost = Math.round(sell * 0.33);
+  const fee  = Math.round(sell * 0.04);   // ~4% Shopee fee (commission + payment)
+  const ship = 12000;                      // Rp 12k default — new sellers absorb this
+  const mktg = Math.round(sell * 0.05);   // 5% ads
+  return { sell, cost, fee, ship, mktg };
+}
+
 function dashCardHTML(p) {
   const plan    = window._planCache[p.id] || {};
   const steps   = plan.steps || 0;
   const status  = plan.status || 'Riset';
-  const sell    = plan.sell_price    || 0;
-  const cost    = plan.source_cost   || 0;
-  const ship    = plan.shipping      || 0;
-  const mktg    = plan.marketing     || 0;
-  const margin  = sell - cost - ship - mktg;
-  const pct     = sell > 0 ? (margin / sell * 100).toFixed(1) : null;
+  const def     = getDashDefaults(p);
+
+  // Use saved values if they exist, otherwise autofill defaults
+  const hasSaved = !!(plan.sell_price);
+  const sell  = hasSaved ? (plan.sell_price   || 0) : def.sell;
+  const cost  = hasSaved ? (plan.source_cost  || 0) : def.cost;
+  const ship  = hasSaved ? (plan.shipping     || 0) : def.ship;
+  const mktg  = hasSaved ? (plan.marketing    || 0) : def.mktg;
+  const fee   = Math.round(sell * 0.04);
+  const margin = sell - cost - ship - mktg - fee;
+  const pct    = sell > 0 ? (margin / sell * 100).toFixed(1) : null;
   const margCls = margin >= 0 ? 'dash-fin-pos' : 'dash-fin-neg';
   const fmtRp   = v => v ? 'Rp ' + Math.round(v).toLocaleString('id-ID') : '—';
 
@@ -3415,129 +3472,349 @@ function dashCardHTML(p) {
 
   const stepsHTML = DASH_STEPS.map((label, i) => {
     const done = !!(steps & (1 << i));
-    const checkIcon = done
-      ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`
-      : '';
+    const checkIcon = done ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>` : '';
     return `<div class="dash-step ${done ? 'done' : ''}" onclick="toggleDashStep(${p.id}, ${i})">
       <div class="dash-step-check">${checkIcon}</div>
       <div class="dash-step-label">${label}</div>
     </div>`;
   }).join('');
 
+  const medianFmt = Math.round(p.medianPrice||0).toLocaleString('id-ID');
+  const startFmt  = Math.round(p.startRevenue||0).toLocaleString('id-ID');
+  const uptoFmt   = Math.round(p.upToRevenue||0).toLocaleString('id-ID');
+
   return `<div class="dash-card" id="dash-card-${p.id}">
-    <div class="dash-card-header">
+    <!-- HEADER — always visible, click to collapse -->
+    <div class="dash-card-header" onclick="toggleDashCard(${p.id})">
       ${thumb}
       <div class="dash-header-info">
         <div class="dash-name">${p.name}</div>
-        <div class="dash-meta">${p.category}</div>
+        <div class="dash-meta">${p.category} · Median Rp ${medianFmt}</div>
       </div>
       <div class="dash-score-pill">${Math.round(p.score)}/100</div>
-      <select class="dash-status-select" onchange="saveDashStatus(${p.id}, this.value)">${statusOpts}</select>
-      <button class="dash-remove-btn" onclick="removeSavedProduct(${p.id})" title="Hapus">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <select class="dash-status-select" onchange="event.stopPropagation();saveDashStatus(${p.id}, this.value)">${statusOpts}</select>
+      <button class="dash-expand-btn open" id="df-expand-${p.id}" onclick="event.stopPropagation();toggleDashCard(${p.id})">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+      </button>
+      <button class="dash-remove-btn" onclick="event.stopPropagation();removeSavedProduct(${p.id})" title="Hapus">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div class="dash-body">
-      <div class="dash-col">
-        <div class="dash-col-title">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-          Rencana Finansial
+
+    <!-- COLLAPSIBLE BODY -->
+    <div class="dash-card-body" id="df-body-${p.id}">
+      <!-- ROW 1: Financials + Steps -->
+      <div class="dash-body">
+        <!-- FINANCIAL PLAN -->
+        <div class="dash-col">
+          <div class="dash-col-title">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Rencana Finansial
+          </div>
+
+          <!-- Harga Jual -->
+          <div class="dash-fin-row">
+            <div class="dash-fin-label-wrap">
+              <span class="dash-fin-label">Harga Jual</span>
+              <span class="dash-price-info">Median pasar: <b>Rp ${medianFmt}</b></span>
+            </div>
+            <input class="dash-fin-input" type="number" placeholder="0" value="${sell||''}"
+              oninput="updateDashCalc(${p.id})" id="df-sell-${p.id}">
+          </div>
+
+          <!-- Harga Modal -->
+          <div class="dash-fin-row">
+            <div class="dash-fin-label-wrap">
+              <span class="dash-fin-label">Harga Modal</span>
+              <span class="dash-fin-hint">≈ 33% harga jual</span>
+            </div>
+            <input class="dash-fin-input" type="number" placeholder="0" value="${cost||''}"
+              oninput="updateDashCalc(${p.id})" id="df-cost-${p.id}">
+          </div>
+
+          <!-- Biaya Shopee -->
+          <div class="dash-fin-fee-row">
+            <span>Biaya Shopee (~4%)</span>
+            <span class="dash-fin-fee-val" id="df-fee-${p.id}">${sell > 0 ? '-' + fmtRp(fee) : '—'}</span>
+          </div>
+
+          <!-- Ongkos Kirim -->
+          <div class="dash-fin-row">
+            <div class="dash-fin-label-wrap">
+              <span class="dash-fin-label">Ongkos Kirim</span>
+              <span class="dash-fin-hint">Gratis ongkir = lebih laku</span>
+            </div>
+            <input class="dash-fin-input" type="number" placeholder="0" value="${ship||''}"
+              oninput="updateDashCalc(${p.id})" id="df-ship-${p.id}">
+          </div>
+          <div class="dash-ship-notice">💡 Seller baru wajib tawarkan gratis ongkir untuk bersaing. Masukkan estimasi ongkir ke dalam harga modal kamu.</div>
+
+          <!-- Marketing -->
+          <div class="dash-fin-row" style="margin-top:6px;">
+            <div class="dash-fin-label-wrap">
+              <span class="dash-fin-label">Iklan Shopee Ads</span>
+              <span class="dash-fin-hint" id="df-mktg-pct-${p.id}">≈ 5% harga jual</span>
+            </div>
+            <input class="dash-fin-input" type="number" placeholder="0" value="${mktg||''}"
+              oninput="updateDashCalc(${p.id})" id="df-mktg-${p.id}">
+          </div>
+
+          <div class="dash-fin-divider"></div>
+
+          <div class="dash-fin-result main">
+            <span class="dash-fin-result-label">Margin per unit</span>
+            <span class="dash-fin-result-val ${margCls}" id="df-margin-${p.id}">${sell > 0 ? fmtRp(margin) + (pct ? ' (' + pct + '%)' : '') : '—'}</span>
+          </div>
+          <div class="dash-fin-result">
+            <span class="dash-fin-result-label">Net/bln · seller baru (${Math.round(p.newUnits||0)} unit)</span>
+            <span class="dash-fin-result-val" id="df-rev-new-${p.id}">${sell > 0 ? fmtRp(margin * (p.newUnits||0)) : '—'}</span>
+          </div>
+          <div class="dash-fin-result">
+            <span class="dash-fin-result-label">Net/bln · seller exp (${Math.round(p.expUnits||0)} unit)</span>
+            <span class="dash-fin-result-val" id="df-rev-exp-${p.id}">${sell > 0 ? fmtRp(margin * (p.expUnits||0)) : '—'}</span>
+          </div>
+
+          <div class="dash-autofill-bar">
+            <button class="dash-autofill-btn" onclick="autoFillDash(${p.id})">↺ Auto-isi</button>
+            <button class="dash-save-btn" style="margin-top:0;flex:2;" onclick="saveDashPlan(${p.id})">Simpan</button>
+          </div>
+          <div class="dash-saved-ok" id="df-msg-${p.id}"></div>
         </div>
-        <div class="dash-fin-row">
-          <span class="dash-fin-label">Harga Jual</span>
-          <input class="dash-fin-input" type="number" placeholder="0" value="${sell||''}"
-            oninput="updateDashCalc(${p.id})" id="df-sell-${p.id}">
+
+        <!-- STEPS -->
+        <div class="dash-col">
+          <div class="dash-col-title">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            Langkah Selanjutnya
+          </div>
+          ${stepsHTML}
+          <div class="dash-progress"><div class="dash-progress-fill" id="df-prog-${p.id}" style="width:${progPct}%"></div></div>
+          <div class="dash-progress-label" id="df-prog-lbl-${p.id}">${doneCount}/${DASH_STEPS.length} langkah selesai</div>
+          <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
+            <div class="dash-col-title" style="margin-bottom:6px;">Potensi Pendapatan</div>
+            <div style="font-size:.75rem;color:var(--tm);">Starting: <b style="color:var(--green);">Rp ${startFmt}</b>/bln</div>
+            <div style="font-size:.75rem;color:var(--tm);margin-top:3px;">Up to: <b style="color:var(--green);">Rp ${uptoFmt}</b>/bln</div>
+          </div>
         </div>
-        <div class="dash-fin-row">
-          <span class="dash-fin-label">Harga Modal</span>
-          <input class="dash-fin-input" type="number" placeholder="0" value="${cost||''}"
-            oninput="updateDashCalc(${p.id})" id="df-cost-${p.id}">
-        </div>
-        <div class="dash-fin-row">
-          <span class="dash-fin-label">Ongkos Kirim</span>
-          <input class="dash-fin-input" type="number" placeholder="0" value="${ship||''}"
-            oninput="updateDashCalc(${p.id})" id="df-ship-${p.id}">
-        </div>
-        <div class="dash-fin-row">
-          <span class="dash-fin-label">Iklan / Marketing</span>
-          <input class="dash-fin-input" type="number" placeholder="0" value="${mktg||''}"
-            oninput="updateDashCalc(${p.id})" id="df-mktg-${p.id}">
-        </div>
-        <div class="dash-fin-divider"></div>
-        <div class="dash-fin-result main">
-          <span class="dash-fin-result-label">Margin per unit</span>
-          <span class="dash-fin-result-val ${margCls}" id="df-margin-${p.id}">${sell > 0 ? fmtRp(margin) + (pct ? ' (' + pct + '%)' : '') : '—'}</span>
-        </div>
-        <div class="dash-fin-result">
-          <span class="dash-fin-result-label">Est. net/bln · seller baru (${Math.round(p.newUnits||0)} unit)</span>
-          <span class="dash-fin-result-val" id="df-rev-new-${p.id}">${sell > 0 ? fmtRp(margin * (p.newUnits||0)) : '—'}</span>
-        </div>
-        <div class="dash-fin-result">
-          <span class="dash-fin-result-label">Est. net/bln · seller exp (${Math.round(p.expUnits||0)} unit)</span>
-          <span class="dash-fin-result-val" id="df-rev-exp-${p.id}">${sell > 0 ? fmtRp(margin * (p.expUnits||0)) : '—'}</span>
-        </div>
-        <button class="dash-save-btn" onclick="saveDashPlan(${p.id})">Simpan Rencana</button>
-        <div class="dash-saved-ok" id="df-msg-${p.id}"></div>
       </div>
-      <div class="dash-col">
-        <div class="dash-col-title">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          Langkah Selanjutnya
+
+      <!-- ROW 2: SOURCING GUIDE -->
+      <div class="dash-sourcing">
+        <div class="dash-sourcing-title">
+          <span style="display:flex;align-items:center;gap:5px;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Sourcing Guide
+          </span>
+          <button class="dash-load-guide-btn" id="df-guide-btn-${p.id}" onclick="loadDashSourcingGuide(${p.id})">
+            Load Data Seller →
+          </button>
         </div>
-        ${stepsHTML}
-        <div class="dash-progress">
-          <div class="dash-progress-fill" id="df-prog-${p.id}" style="width:${progPct}%"></div>
+        <div id="df-guide-body-${p.id}" style="color:var(--tl);font-size:.78rem;">
+          Klik tombol di atas untuk memuat foto produk, data 15 seller terlaris, rekomendasi sourcing, dan keyword marketing.
         </div>
-        <div class="dash-progress-label" id="df-prog-lbl-${p.id}">${doneCount}/${DASH_STEPS.length} langkah selesai</div>
       </div>
-    </div>
-    <div class="dash-footer">
-      <span class="dash-detail-link" onclick="openDetail(${p.id})">
-        Lihat data market lengkap →
-      </span>
-      <span style="font-size:.72rem;color:var(--tl)">Median Rp ${Math.round(p.medianPrice||0).toLocaleString('id-ID')}</span>
+
+      <!-- FOOTER -->
+      <div class="dash-footer">
+        <span class="dash-detail-link" onclick="openDetail(${p.id})">Lihat analisis market lengkap →</span>
+        <span style="font-size:.72rem;color:var(--tl);">Score ${Math.round(p.score)}/100</span>
+      </div>
     </div>
   </div>`;
 }
 
+function toggleDashCard(pid) {
+  const body = document.getElementById(`df-body-${pid}`);
+  const btn  = document.getElementById(`df-expand-${pid}`);
+  if (!body) return;
+  const isOpen = !body.classList.contains('collapsed');
+  body.classList.toggle('collapsed', isOpen);
+  if (btn) btn.classList.toggle('open', !isOpen);
+}
+
+function autoFillDash(pid) {
+  const p = allProducts.find(x => x.id === pid);
+  if (!p) return;
+  const d = getDashDefaults(p);
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  setVal(`df-sell-${pid}`, d.sell);
+  setVal(`df-cost-${pid}`, d.cost);
+  setVal(`df-ship-${pid}`, d.ship);
+  setVal(`df-mktg-${pid}`, d.mktg);
+  updateDashCalc(pid);
+}
+
 function updateDashCalc(pid) {
-  const sell   = parseFloat(document.getElementById(`df-sell-${pid}`)?.value)  || 0;
-  const cost   = parseFloat(document.getElementById(`df-cost-${pid}`)?.value)  || 0;
-  const ship   = parseFloat(document.getElementById(`df-ship-${pid}`)?.value)  || 0;
-  const mktg   = parseFloat(document.getElementById(`df-mktg-${pid}`)?.value)  || 0;
-  const margin = sell - cost - ship - mktg;
+  const sell  = parseFloat(document.getElementById(`df-sell-${pid}`)?.value) || 0;
+  const cost  = parseFloat(document.getElementById(`df-cost-${pid}`)?.value) || 0;
+  const ship  = parseFloat(document.getElementById(`df-ship-${pid}`)?.value) || 0;
+  const mktg  = parseFloat(document.getElementById(`df-mktg-${pid}`)?.value) || 0;
+  const fee   = Math.round(sell * 0.04);
+  const margin = sell - cost - ship - mktg - fee;
   const pct    = sell > 0 ? (margin / sell * 100).toFixed(1) : null;
   const p      = allProducts.find(x => x.id === pid);
   const fmtRp  = v => 'Rp ' + Math.round(v).toLocaleString('id-ID');
   const cls    = margin >= 0 ? 'dash-fin-pos' : 'dash-fin-neg';
+  const mktgPct = sell > 0 ? (mktg / sell * 100).toFixed(1) : null;
 
-  const mEl  = document.getElementById(`df-margin-${pid}`);
-  const nEl  = document.getElementById(`df-rev-new-${pid}`);
-  const eEl  = document.getElementById(`df-rev-exp-${pid}`);
-  if (mEl) { mEl.textContent = sell > 0 ? fmtRp(margin) + (pct ? ` (${pct}%)` : '') : '—'; mEl.className = `dash-fin-result-val ${cls}`; }
-  if (nEl) nEl.textContent = sell > 0 ? fmtRp(margin * (p?.newUnits||0)) : '—';
-  if (eEl) eEl.textContent = sell > 0 ? fmtRp(margin * (p?.expUnits||0)) : '—';
+  const feeEl  = document.getElementById(`df-fee-${pid}`);
+  const mEl    = document.getElementById(`df-margin-${pid}`);
+  const nEl    = document.getElementById(`df-rev-new-${pid}`);
+  const eEl    = document.getElementById(`df-rev-exp-${pid}`);
+  const mpEl   = document.getElementById(`df-mktg-pct-${pid}`);
+
+  if (feeEl) feeEl.textContent = sell > 0 ? '-' + fmtRp(fee) : '—';
+  if (mEl)  { mEl.textContent = sell > 0 ? fmtRp(margin) + (pct ? ` (${pct}%)` : '') : '—'; mEl.className = `dash-fin-result-val ${cls}`; }
+  if (nEl)  nEl.textContent = sell > 0 ? fmtRp(margin * (p?.newUnits||0)) : '—';
+  if (eEl)  eEl.textContent = sell > 0 ? fmtRp(margin * (p?.expUnits||0)) : '—';
+  if (mpEl) mpEl.textContent = mktgPct ? `${mktgPct}% dari harga jual` : '≈ 5% harga jual';
 }
 
 async function saveDashPlan(pid) {
   if (!currentUser || !_supabase) return;
-  const sell = parseFloat(document.getElementById(`df-sell-${pid}`)?.value)  || 0;
-  const cost = parseFloat(document.getElementById(`df-cost-${pid}`)?.value)  || 0;
-  const ship = parseFloat(document.getElementById(`df-ship-${pid}`)?.value)  || 0;
-  const mktg = parseFloat(document.getElementById(`df-mktg-${pid}`)?.value)  || 0;
+  const sell = parseFloat(document.getElementById(`df-sell-${pid}`)?.value) || 0;
+  const cost = parseFloat(document.getElementById(`df-cost-${pid}`)?.value) || 0;
+  const ship = parseFloat(document.getElementById(`df-ship-${pid}`)?.value) || 0;
+  const mktg = parseFloat(document.getElementById(`df-mktg-${pid}`)?.value) || 0;
   const existing = window._planCache[pid] || {};
 
   const { error } = await _supabase.from('product_plans').upsert({
     user_id: currentUser.id, product_id: pid,
     sell_price: sell, source_cost: cost, shipping: ship, marketing: mktg,
-    status: existing.status || 'Riset',
-    steps: existing.steps || 0,
+    status: existing.status || 'Riset', steps: existing.steps || 0,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'user_id,product_id' });
 
   const msg = document.getElementById(`df-msg-${pid}`);
-  if (msg) { msg.textContent = error ? '⚠ Gagal.' : '✓ Tersimpan!'; setTimeout(() => { if(msg) msg.textContent=''; }, 2500); }
+  if (msg) { msg.textContent = error ? '⚠ Gagal.' : '✓ Tersimpan!'; setTimeout(() => { if (msg) msg.textContent = ''; }, 2500); }
   if (!error) window._planCache[pid] = { ...existing, user_id: currentUser.id, product_id: pid, sell_price: sell, source_cost: cost, shipping: ship, marketing: mktg };
+}
+
+// ── SOURCING GUIDE — load seller data for dashboard card ──
+async function loadDashSourcingGuide(pid) {
+  const p      = allProducts.find(x => x.id === pid);
+  const bodyEl = document.getElementById(`df-guide-body-${pid}`);
+  const btnEl  = document.getElementById(`df-guide-btn-${pid}`);
+  if (!p || !bodyEl) return;
+
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Loading...'; }
+  bodyEl.innerHTML = '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;color:var(--tl);font-size:.8rem;"><div class="spinner" style="width:16px;height:16px;border-width:2px;"></div>Memuat data seller...</div>';
+
+  // Check cache first
+  if (window._sellerDataCache[pid] && window._sellerDataCache[pid].length) {
+    renderDashSourcingGuide(pid, window._sellerDataCache[pid]);
+    if (btnEl) btnEl.style.display = 'none';
+    return;
+  }
+
+  const sheetId = extractSheetId(p.sheetUrl);
+  if (!sheetId) { bodyEl.innerHTML = '<p style="color:var(--tl);font-size:.8rem;">Sheet tidak ditemukan.</p>'; return; }
+
+  let rows = null;
+  for (const tab of ['Sheet1', 'Sellers', 'Data', p.name]) {
+    rows = await fetchSheet(sheetId, tab);
+    if (rows && rows.length) break;
+  }
+
+  if (!rows || !rows.length) {
+    bodyEl.innerHTML = '<p style="color:var(--tl);font-size:.8rem;">Data seller tidak tersedia. Pastikan sheet di-share ke publik.</p>';
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Coba Lagi'; }
+    return;
+  }
+
+  const mapped = rows.map((r, i) => ({
+    rank: i + 1, name: r['Store Name'] || '', location: r['Location'] || '',
+    brand: r['Brand'] || '', slug: r['Slug'] || '', listingDate: r['Listing Date'] || '',
+    price: parseRp(r['Price']), revenue30: parseRp(r['30-day Revenue']),
+    newRevenue: parseRp(r['New Revenue']), rating: parseFloat(r['Rating']) || 0,
+    reviews: parseReviews(r['Review Count']), image: r['Image'] || '', url: r['URL'] || '#',
+  })).filter(s => s.name);
+
+  const totalRev  = mapped.reduce((s, x) => s + x.newRevenue, 0);
+  const threshold = totalRev * 0.005;
+  const qualified = mapped.filter(s => s.newRevenue > threshold)
+    .sort((a, b) => b.newRevenue - a.newRevenue);
+
+  window._sellerDataCache[pid] = qualified;
+  renderDashSourcingGuide(pid, qualified);
+  if (btnEl) btnEl.style.display = 'none';
+}
+
+function renderDashSourcingGuide(pid, sellers) {
+  const bodyEl = document.getElementById(`df-guide-body-${pid}`);
+  const p      = allProducts.find(x => x.id === pid);
+  if (!bodyEl || !p) return;
+
+  const fmtRp   = v => v ? 'Rp ' + Math.round(v).toLocaleString('id-ID') : '—';
+  const top15   = sellers.slice(0, 15);
+  const top6    = sellers.filter(s => s.image).slice(0, 6);
+
+  // ── Photo grid ──
+  const photos = top6.length
+    ? `<div class="dash-photo-grid">${top6.map(s =>
+        `<div class="dash-photo-item"><img src="${s.image}" alt="" onerror="this.parentElement.innerHTML='📦'"></div>`
+      ).join('')}</div>`
+    : '';
+
+  // ── Top 15 sellers table ──
+  const sellersTable = `
+    <table class="dash-mini-sellers">
+      <thead><tr><th>#</th><th>Toko</th><th>Lokasi</th><th>Harga</th><th>Rev 30hr</th><th>Rating</th></tr></thead>
+      <tbody>${top15.map((s, i) => `
+        <tr onclick="window.open('${s.url}','_blank')" style="cursor:pointer;">
+          <td style="font-weight:700;color:${i < 3 ? 'var(--orange)' : 'var(--tl)'};">${i+1}</td>
+          <td style="font-weight:600;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.name}</td>
+          <td style="color:var(--tl);">${s.location || '—'}</td>
+          <td style="color:var(--orange);font-weight:600;">${fmtRp(s.price)}</td>
+          <td style="color:var(--green);font-weight:600;">${fmtRp(s.revenue30)}</td>
+          <td>${s.rating ? s.rating + '★' : '—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  // ── Local sourcing analysis ──
+  const analysis  = analyzeLocalSourcing(p.name, sellers.slice(0, 20));
+  const { topColors, topFeatures, topKeywords, priceMed, priceQ1, priceQ3, avgRating } = analysis;
+
+  // AI-style recommendation text (deterministic)
+  const colorStr   = topColors.slice(0,3).map(([c])=>c).join(', ');
+  const featStr    = topFeatures.slice(0,4).map(([f])=>f).join(', ');
+  const priceRange = priceQ1 && priceQ3 ? `Rp ${Math.round(priceQ1).toLocaleString('id-ID')} – Rp ${Math.round(priceQ3).toLocaleString('id-ID')}` : fmtRp(priceMed);
+  let recoText = `Berdasarkan <b>${sellers.length} seller terlaris</b> untuk produk ini:`;
+  if (colorStr) recoText += ` Source varian warna <b>${colorStr}</b>.`;
+  if (featStr)  recoText += ` Pastikan produk memiliki fitur: <b>${featStr}</b>.`;
+  recoText += ` Harga jual kompetitif: <b>${priceRange}</b>.`;
+  if (avgRating) recoText += ` Seller sukses rata-rata punya rating <b>${avgRating}★</b> — fokus pada kualitas dan respons cepat.`;
+  recoText += ` Untuk seller baru: mulai di tengah rentang harga, tawarkan gratis ongkir, dan aktifkan Shopee Ads sejak hari pertama.`;
+
+  const aiReco = `<div class="dash-ai-reco">
+    <div class="dash-ai-reco-title">Rekomendasi Sourcing</div>
+    ${recoText}
+  </div>`;
+
+  // ── Keywords ──
+  const allKws = [...topKeywords.map(([w])=>w), ...topColors.map(([w])=>w), ...topFeatures.map(([w])=>w)];
+  const uniqueKws = [...new Set(allKws)].slice(0, 20);
+  const kwTags = uniqueKws.map(kw =>
+    `<span class="dash-keyword-tag" onclick="copyKeyword(this,'${kw}')">${kw}</span>`
+  ).join('');
+  const keywordsSection = `<div class="dash-keywords-wrap">
+    <div class="dash-col-title" style="margin-bottom:6px;">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
+      Keywords untuk Judul & Deskripsi Listing
+    </div>
+    <div style="font-size:.73rem;color:var(--tl);margin-bottom:6px;">Klik untuk copy. Masukkan kata-kata ini ke judul produk Shopee kamu.</div>
+    <div class="dash-keyword-tags">${kwTags}</div>
+  </div>`;
+
+  bodyEl.innerHTML = photos + aiReco + sellersTable + keywordsSection;
+}
+
+function copyKeyword(el, word) {
+  navigator.clipboard?.writeText(word).catch(() => {});
+  el.classList.add('copied');
+  el.textContent = '✓ ' + word;
+  setTimeout(() => { el.classList.remove('copied'); el.textContent = word; }, 1500);
 }
 
 async function saveDashStatus(pid, status) {
