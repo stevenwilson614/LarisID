@@ -862,27 +862,39 @@ html,body{overflow-x:hidden;max-width:100%;}
 
 /* ── DASHBOARD — HQ CARDS ── */
 .dash-card{background:#fff;border-radius:14px;box-shadow:var(--sh);margin-bottom:16px;overflow:hidden;}
-.dash-card-header{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;user-select:none;}
-.dash-card-header:hover{background:#fafafa;}
-.dash-thumb{width:42px;height:42px;border-radius:8px;flex-shrink:0;background:var(--orange-light);display:flex;align-items:center;justify-content:center;font-size:1.2rem;overflow:hidden;}
+/* Header — always visible */
+.dash-card-header{display:flex;align-items:center;gap:9px;padding:11px 13px;user-select:none;}
+.dash-thumb{width:40px;height:40px;border-radius:8px;flex-shrink:0;background:var(--orange-light);display:flex;align-items:center;justify-content:center;font-size:1.1rem;overflow:hidden;cursor:pointer;}
 .dash-thumb img{width:100%;height:100%;object-fit:cover;}
-.dash-header-info{flex:1;min-width:0;}
-.dash-name{font-size:.88rem;font-weight:800;color:var(--td);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.dash-meta{font-size:.72rem;color:var(--tl);margin-top:1px;}
-.dash-score-pill{flex-shrink:0;background:var(--orange-light);color:var(--orange);border-radius:20px;padding:3px 9px;font-size:.73rem;font-weight:700;}
-.dash-status-select{border:1.5px solid var(--border);border-radius:6px;padding:3px 7px;font-size:.72rem;font-weight:600;font-family:inherit;color:var(--td);cursor:pointer;outline:none;background:#fff;}
-.dash-expand-btn{background:none;border:none;cursor:pointer;color:var(--tl);padding:4px;border-radius:4px;display:flex;align-items:center;transition:transform .2s;}
+.dash-header-info{flex:1;min-width:0;cursor:pointer;}
+.dash-name{font-size:.86rem;font-weight:800;color:var(--td);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* Mini progress bar in header */
+.dash-hdr-bottom{display:flex;align-items:center;gap:6px;margin-top:3px;}
+.dash-hdr-prog{height:4px;border-radius:2px;background:var(--border);width:56px;flex-shrink:0;overflow:hidden;}
+.dash-hdr-prog-fill{height:100%;border-radius:2px;background:var(--green);transition:width .3s;}
+.dash-hdr-prog-lbl{font-size:.67rem;color:var(--tl);white-space:nowrap;}
+/* Est net in header — shown after save */
+.dash-hdr-net{font-size:.72rem;font-weight:700;color:var(--green);white-space:nowrap;flex-shrink:0;background:var(--green-light);border-radius:12px;padding:2px 8px;display:none;}
+.dash-hdr-net.show{display:block;}
+.dash-score-pill{flex-shrink:0;background:var(--orange-light);color:var(--orange);border-radius:20px;padding:2px 8px;font-size:.71rem;font-weight:700;}
+.dash-status-select{border:1.5px solid var(--border);border-radius:6px;padding:3px 6px;font-size:.71rem;font-weight:600;font-family:inherit;color:var(--td);cursor:pointer;outline:none;background:#fff;}
+.dash-expand-btn{background:none;border:none;cursor:pointer;color:var(--tl);padding:3px;display:flex;align-items:center;transition:transform .2s;flex-shrink:0;}
 .dash-expand-btn.open{transform:rotate(180deg);}
-.dash-remove-btn{background:none;border:none;cursor:pointer;color:var(--tl);padding:4px;border-radius:4px;display:flex;align-items:center;}
+.dash-remove-btn{background:none;border:none;cursor:pointer;color:var(--tl);padding:3px;display:flex;align-items:center;flex-shrink:0;}
 .dash-remove-btn:hover{color:#e74c3c;}
-/* Collapsible body */
+/* Card body — collapses entirely */
 .dash-card-body{border-top:1px solid var(--border);}
 .dash-card-body.collapsed{display:none;}
-.dash-body{display:grid;grid-template-columns:1fr 1fr;gap:0;}
-@media(max-width:600px){.dash-body{grid-template-columns:1fr;}}
-.dash-col{padding:14px 16px;}
-.dash-col+.dash-col{border-left:1px solid var(--border);}
-@media(max-width:600px){.dash-col+.dash-col{border-left:none;border-top:1px solid var(--border);}}
+/* Individual collapsible sections */
+.dash-section{border-bottom:1px solid var(--border);}
+.dash-section:last-child{border-bottom:none;}
+.dash-section-hdr{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;cursor:pointer;background:#fafafa;user-select:none;}
+.dash-section-hdr:hover{background:#f5f0ea;}
+.dash-section-title{font-size:.7rem;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px;}
+.dash-section-chev{transition:transform .2s;color:var(--tl);}
+.dash-section-chev.open{transform:rotate(180deg);}
+.dash-section-body{padding:13px 14px;}
+.dash-section-body.collapsed{display:none;}
 .dash-col-title{font-size:.68rem;font-weight:700;color:var(--tl);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
 /* Financial inputs */
 .dash-fin-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:6px;}
@@ -3448,176 +3460,177 @@ function dashCardHTML(p) {
   const status  = plan.status || 'Riset';
   const def     = getDashDefaults(p);
 
-  // Use saved values if they exist, otherwise autofill defaults
   const hasSaved = !!(plan.sell_price);
-  const sell  = hasSaved ? (plan.sell_price   || 0) : def.sell;
-  const cost  = hasSaved ? (plan.source_cost  || 0) : def.cost;
-  const ship  = hasSaved ? (plan.shipping     || 0) : def.ship;
-  const mktg  = hasSaved ? (plan.marketing    || 0) : def.mktg;
+  const sell  = hasSaved ? (plan.sell_price  || 0) : def.sell;
+  const cost  = hasSaved ? (plan.source_cost || 0) : def.cost;
+  const ship  = hasSaved ? (plan.shipping    || 0) : def.ship;
+  const mktg  = hasSaved ? (plan.marketing   || 0) : def.mktg;
   const fee   = Math.round(sell * 0.04);
   const margin = sell - cost - ship - mktg - fee;
   const pct    = sell > 0 ? (margin / sell * 100).toFixed(1) : null;
   const margCls = margin >= 0 ? 'dash-fin-pos' : 'dash-fin-neg';
   const fmtRp   = v => v ? 'Rp ' + Math.round(v).toLocaleString('id-ID') : '—';
+  const fmtShort = v => {
+    if (!v) return '—';
+    if (v >= 1000000) return 'Rp ' + (v/1000000).toFixed(1).replace('.0','') + 'jt';
+    if (v >= 1000)    return 'Rp ' + Math.round(v/1000) + 'k';
+    return 'Rp ' + Math.round(v);
+  };
 
   const doneCount = DASH_STEPS.filter((_, i) => steps & (1 << i)).length;
   const progPct   = Math.round(doneCount / DASH_STEPS.length * 100);
+  const netNew    = sell > 0 ? margin * (p.newUnits || 0) : 0;
+  const medianFmt = Math.round(p.medianPrice||0).toLocaleString('id-ID');
 
   const thumb = p.image
-    ? `<div class="dash-thumb"><img src="${p.image}" alt="" onerror="this.parentElement.textContent='📦'"></div>`
-    : `<div class="dash-thumb">${p.emoji || '📦'}</div>`;
+    ? `<div class="dash-thumb" onclick="toggleDashCard(${p.id})"><img src="${p.image}" alt="" onerror="this.parentElement.textContent='📦'"></div>`
+    : `<div class="dash-thumb" onclick="toggleDashCard(${p.id})">${p.emoji || '📦'}</div>`;
 
   const statusOpts = DASH_STATUSES.map(s =>
     `<option value="${s}" ${s === status ? 'selected' : ''}>${s}</option>`).join('');
 
   const stepsHTML = DASH_STEPS.map((label, i) => {
     const done = !!(steps & (1 << i));
-    const checkIcon = done ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>` : '';
-    return `<div class="dash-step ${done ? 'done' : ''}" onclick="toggleDashStep(${p.id}, ${i})">
-      <div class="dash-step-check">${checkIcon}</div>
+    const chk  = done ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>` : '';
+    return `<div class="dash-step ${done?'done':''}" onclick="toggleDashStep(${p.id},${i})">
+      <div class="dash-step-check">${chk}</div>
       <div class="dash-step-label">${label}</div>
     </div>`;
   }).join('');
 
-  const medianFmt = Math.round(p.medianPrice||0).toLocaleString('id-ID');
-  const startFmt  = Math.round(p.startRevenue||0).toLocaleString('id-ID');
-  const uptoFmt   = Math.round(p.upToRevenue||0).toLocaleString('id-ID');
+  const chevSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>`;
 
   return `<div class="dash-card" id="dash-card-${p.id}">
-    <!-- HEADER — always visible, click to collapse -->
-    <div class="dash-card-header" onclick="toggleDashCard(${p.id})">
+
+    <!-- ── HEADER (always visible) ── -->
+    <div class="dash-card-header">
       ${thumb}
-      <div class="dash-header-info">
+      <div class="dash-header-info" onclick="toggleDashCard(${p.id})">
         <div class="dash-name">${p.name}</div>
-        <div class="dash-meta">${p.category} · Median Rp ${medianFmt}</div>
+        <div class="dash-hdr-bottom">
+          <div class="dash-hdr-prog"><div class="dash-hdr-prog-fill" id="df-hprog-${p.id}" style="width:${progPct}%"></div></div>
+          <span class="dash-hdr-prog-lbl" id="df-hprog-lbl-${p.id}">${doneCount}/${DASH_STEPS.length} steps · ${p.category}</span>
+        </div>
       </div>
-      <div class="dash-score-pill">${Math.round(p.score)}/100</div>
-      <select class="dash-status-select" onchange="event.stopPropagation();saveDashStatus(${p.id}, this.value)">${statusOpts}</select>
-      <button class="dash-expand-btn open" id="df-expand-${p.id}" onclick="event.stopPropagation();toggleDashCard(${p.id})">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+      <div class="dash-hdr-net ${netNew > 0 ? 'show' : ''}" id="df-hdr-net-${p.id}">${netNew > 0 ? fmtShort(netNew)+'/bln' : ''}</div>
+      <select class="dash-status-select" onchange="event.stopPropagation();saveDashStatus(${p.id},this.value)">${statusOpts}</select>
+      <button class="dash-expand-btn open" id="df-expand-${p.id}" onclick="toggleDashCard(${p.id})" title="Collapse">
+        ${chevSvg}
       </button>
       <button class="dash-remove-btn" onclick="event.stopPropagation();removeSavedProduct(${p.id})" title="Hapus">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
 
-    <!-- COLLAPSIBLE BODY -->
+    <!-- ── CARD BODY (collapses as a whole) ── -->
     <div class="dash-card-body" id="df-body-${p.id}">
-      <!-- ROW 1: Financials + Steps -->
-      <div class="dash-body">
-        <!-- FINANCIAL PLAN -->
-        <div class="dash-col">
-          <div class="dash-col-title">
+
+      <!-- SECTION 1: FINANSIAL -->
+      <div class="dash-section">
+        <div class="dash-section-hdr" onclick="toggleDashSection(${p.id},'fin')">
+          <span class="dash-section-title">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
             Rencana Finansial
-          </div>
-
-          <!-- Harga Jual -->
+          </span>
+          <span class="dash-section-chev open" id="df-schev-fin-${p.id}">${chevSvg}</span>
+        </div>
+        <div class="dash-section-body" id="df-sec-fin-${p.id}">
           <div class="dash-fin-row">
             <div class="dash-fin-label-wrap">
               <span class="dash-fin-label">Harga Jual</span>
               <span class="dash-price-info">Median pasar: <b>Rp ${medianFmt}</b></span>
             </div>
-            <input class="dash-fin-input" type="number" placeholder="0" value="${sell||''}"
-              oninput="updateDashCalc(${p.id})" id="df-sell-${p.id}">
+            <input class="dash-fin-input" type="number" value="${sell||''}" placeholder="0" oninput="updateDashCalc(${p.id})" id="df-sell-${p.id}">
           </div>
-
-          <!-- Harga Modal -->
           <div class="dash-fin-row">
             <div class="dash-fin-label-wrap">
               <span class="dash-fin-label">Harga Modal</span>
               <span class="dash-fin-hint">≈ 33% harga jual</span>
             </div>
-            <input class="dash-fin-input" type="number" placeholder="0" value="${cost||''}"
-              oninput="updateDashCalc(${p.id})" id="df-cost-${p.id}">
+            <input class="dash-fin-input" type="number" value="${cost||''}" placeholder="0" oninput="updateDashCalc(${p.id})" id="df-cost-${p.id}">
           </div>
-
-          <!-- Biaya Shopee -->
           <div class="dash-fin-fee-row">
             <span>Biaya Shopee (~4%)</span>
-            <span class="dash-fin-fee-val" id="df-fee-${p.id}">${sell > 0 ? '-' + fmtRp(fee) : '—'}</span>
+            <span class="dash-fin-fee-val" id="df-fee-${p.id}">${sell > 0 ? '-'+fmtRp(fee) : '—'}</span>
           </div>
-
-          <!-- Ongkos Kirim -->
           <div class="dash-fin-row">
             <div class="dash-fin-label-wrap">
               <span class="dash-fin-label">Ongkos Kirim</span>
               <span class="dash-fin-hint">Gratis ongkir = lebih laku</span>
             </div>
-            <input class="dash-fin-input" type="number" placeholder="0" value="${ship||''}"
-              oninput="updateDashCalc(${p.id})" id="df-ship-${p.id}">
+            <input class="dash-fin-input" type="number" value="${ship||''}" placeholder="0" oninput="updateDashCalc(${p.id})" id="df-ship-${p.id}">
           </div>
-          <div class="dash-ship-notice">💡 Seller baru wajib tawarkan gratis ongkir untuk bersaing. Masukkan estimasi ongkir ke dalam harga modal kamu.</div>
-
-          <!-- Marketing -->
+          <div class="dash-ship-notice">💡 Seller baru wajib tawarkan gratis ongkir. Masukkan biaya ongkir ke dalam harga modal.</div>
           <div class="dash-fin-row" style="margin-top:6px;">
             <div class="dash-fin-label-wrap">
               <span class="dash-fin-label">Iklan Shopee Ads</span>
               <span class="dash-fin-hint" id="df-mktg-pct-${p.id}">≈ 5% harga jual</span>
             </div>
-            <input class="dash-fin-input" type="number" placeholder="0" value="${mktg||''}"
-              oninput="updateDashCalc(${p.id})" id="df-mktg-${p.id}">
+            <input class="dash-fin-input" type="number" value="${mktg||''}" placeholder="0" oninput="updateDashCalc(${p.id})" id="df-mktg-${p.id}">
           </div>
-
           <div class="dash-fin-divider"></div>
-
           <div class="dash-fin-result main">
             <span class="dash-fin-result-label">Margin per unit</span>
-            <span class="dash-fin-result-val ${margCls}" id="df-margin-${p.id}">${sell > 0 ? fmtRp(margin) + (pct ? ' (' + pct + '%)' : '') : '—'}</span>
+            <span class="dash-fin-result-val ${margCls}" id="df-margin-${p.id}">${sell > 0 ? fmtRp(margin)+(pct?' ('+pct+'%)':'') : '—'}</span>
           </div>
           <div class="dash-fin-result">
-            <span class="dash-fin-result-label">Net/bln · seller baru (${Math.round(p.newUnits||0)} unit)</span>
-            <span class="dash-fin-result-val" id="df-rev-new-${p.id}">${sell > 0 ? fmtRp(margin * (p.newUnits||0)) : '—'}</span>
+            <span class="dash-fin-result-label">Est. net/bln · seller baru (${Math.round(p.newUnits||0)} unit)</span>
+            <span class="dash-fin-result-val dash-fin-pos" id="df-rev-new-${p.id}">${sell > 0 ? fmtRp(netNew) : '—'}</span>
           </div>
           <div class="dash-fin-result">
-            <span class="dash-fin-result-label">Net/bln · seller exp (${Math.round(p.expUnits||0)} unit)</span>
-            <span class="dash-fin-result-val" id="df-rev-exp-${p.id}">${sell > 0 ? fmtRp(margin * (p.expUnits||0)) : '—'}</span>
+            <span class="dash-fin-result-label">Est. net/bln · seller exp (${Math.round(p.expUnits||0)} unit)</span>
+            <span class="dash-fin-result-val dash-fin-pos" id="df-rev-exp-${p.id}">${sell > 0 ? fmtRp(margin*(p.expUnits||0)) : '—'}</span>
           </div>
-
           <div class="dash-autofill-bar">
-            <button class="dash-autofill-btn" onclick="autoFillDash(${p.id})">↺ Auto-isi</button>
+            <button class="dash-autofill-btn" onclick="autoFillDash(${p.id})">↺ Reset</button>
             <button class="dash-save-btn" style="margin-top:0;flex:2;" onclick="saveDashPlan(${p.id})">Simpan</button>
           </div>
           <div class="dash-saved-ok" id="df-msg-${p.id}"></div>
         </div>
+      </div>
 
-        <!-- STEPS -->
-        <div class="dash-col">
-          <div class="dash-col-title">
+      <!-- SECTION 2: LANGKAH -->
+      <div class="dash-section">
+        <div class="dash-section-hdr" onclick="toggleDashSection(${p.id},'steps')">
+          <span class="dash-section-title">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
             Langkah Selanjutnya
-          </div>
+          </span>
+          <span class="dash-section-chev open" id="df-schev-steps-${p.id}">${chevSvg}</span>
+        </div>
+        <div class="dash-section-body" id="df-sec-steps-${p.id}">
           ${stepsHTML}
-          <div class="dash-progress"><div class="dash-progress-fill" id="df-prog-${p.id}" style="width:${progPct}%"></div></div>
+          <div class="dash-progress" style="margin-top:10px;"><div class="dash-progress-fill" id="df-prog-${p.id}" style="width:${progPct}%"></div></div>
           <div class="dash-progress-label" id="df-prog-lbl-${p.id}">${doneCount}/${DASH_STEPS.length} langkah selesai</div>
-          <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);">
-            <div class="dash-col-title" style="margin-bottom:6px;">Potensi Pendapatan</div>
-            <div style="font-size:.75rem;color:var(--tm);">Starting: <b style="color:var(--green);">Rp ${startFmt}</b>/bln</div>
-            <div style="font-size:.75rem;color:var(--tm);margin-top:3px;">Up to: <b style="color:var(--green);">Rp ${uptoFmt}</b>/bln</div>
+          <div style="display:flex;gap:16px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+            <div><div style="font-size:.68rem;color:var(--tl);text-transform:uppercase;letter-spacing:.05em;">Starting</div><div style="font-size:.82rem;font-weight:700;color:var(--green);">${fmtShort(p.startRevenue||0)}/bln</div></div>
+            <div><div style="font-size:.68rem;color:var(--tl);text-transform:uppercase;letter-spacing:.05em;">Up to</div><div style="font-size:.82rem;font-weight:700;color:var(--green);">${fmtShort(p.upToRevenue||0)}/bln</div></div>
           </div>
         </div>
       </div>
 
-      <!-- ROW 2: SOURCING GUIDE -->
-      <div class="dash-sourcing">
-        <div class="dash-sourcing-title">
-          <span style="display:flex;align-items:center;gap:5px;">
+      <!-- SECTION 3: SOURCING GUIDE -->
+      <div class="dash-section">
+        <div class="dash-section-hdr" onclick="toggleDashSection(${p.id},'guide')">
+          <span class="dash-section-title">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            Sourcing Guide
+            Sourcing Guide & Keywords
           </span>
-          <button class="dash-load-guide-btn" id="df-guide-btn-${p.id}" onclick="loadDashSourcingGuide(${p.id})">
-            Load Data Seller →
-          </button>
+          <span class="dash-section-chev" id="df-schev-guide-${p.id}">${chevSvg}</span>
         </div>
-        <div id="df-guide-body-${p.id}" style="color:var(--tl);font-size:.78rem;">
-          Klik tombol di atas untuk memuat foto produk, data 15 seller terlaris, rekomendasi sourcing, dan keyword marketing.
+        <div class="dash-section-body collapsed" id="df-sec-guide-${p.id}">
+          <div id="df-guide-body-${p.id}">
+            <button class="dash-load-guide-btn" id="df-guide-btn-${p.id}" onclick="loadDashSourcingGuide(${p.id})">
+              Load foto produk, top 15 sellers & keywords →
+            </button>
+          </div>
         </div>
       </div>
 
       <!-- FOOTER -->
       <div class="dash-footer">
         <span class="dash-detail-link" onclick="openDetail(${p.id})">Lihat analisis market lengkap →</span>
-        <span style="font-size:.72rem;color:var(--tl);">Score ${Math.round(p.score)}/100</span>
+        <span style="font-size:.71rem;color:var(--tl);">Score ${Math.round(p.score)}/100</span>
       </div>
     </div>
   </div>`;
@@ -3630,6 +3643,15 @@ function toggleDashCard(pid) {
   const isOpen = !body.classList.contains('collapsed');
   body.classList.toggle('collapsed', isOpen);
   if (btn) btn.classList.toggle('open', !isOpen);
+}
+
+function toggleDashSection(pid, section) {
+  const body = document.getElementById(`df-sec-${section}-${pid}`);
+  const chev = document.getElementById(`df-schev-${section}-${pid}`);
+  if (!body) return;
+  const isOpen = !body.classList.contains('collapsed');
+  body.classList.toggle('collapsed', isOpen);
+  if (chev) chev.classList.toggle('open', !isOpen);
 }
 
 function autoFillDash(pid) {
@@ -3645,29 +3667,44 @@ function autoFillDash(pid) {
 }
 
 function updateDashCalc(pid) {
-  const sell  = parseFloat(document.getElementById(`df-sell-${pid}`)?.value) || 0;
-  const cost  = parseFloat(document.getElementById(`df-cost-${pid}`)?.value) || 0;
-  const ship  = parseFloat(document.getElementById(`df-ship-${pid}`)?.value) || 0;
-  const mktg  = parseFloat(document.getElementById(`df-mktg-${pid}`)?.value) || 0;
-  const fee   = Math.round(sell * 0.04);
+  const sell   = parseFloat(document.getElementById(`df-sell-${pid}`)?.value) || 0;
+  const cost   = parseFloat(document.getElementById(`df-cost-${pid}`)?.value) || 0;
+  const ship   = parseFloat(document.getElementById(`df-ship-${pid}`)?.value) || 0;
+  const mktg   = parseFloat(document.getElementById(`df-mktg-${pid}`)?.value) || 0;
+  const fee    = Math.round(sell * 0.04);
   const margin = sell - cost - ship - mktg - fee;
   const pct    = sell > 0 ? (margin / sell * 100).toFixed(1) : null;
   const p      = allProducts.find(x => x.id === pid);
   const fmtRp  = v => 'Rp ' + Math.round(v).toLocaleString('id-ID');
-  const cls    = margin >= 0 ? 'dash-fin-pos' : 'dash-fin-neg';
-  const mktgPct = sell > 0 ? (mktg / sell * 100).toFixed(1) : null;
+  const fmtShort = v => {
+    if (!v || v <= 0) return '';
+    if (v >= 1000000) return 'Rp ' + (v/1000000).toFixed(1).replace('.0','') + 'jt';
+    if (v >= 1000)    return 'Rp ' + Math.round(v/1000) + 'k';
+    return 'Rp ' + Math.round(v);
+  };
+  const cls      = margin >= 0 ? 'dash-fin-pos' : 'dash-fin-neg';
+  const mktgPct  = sell > 0 ? (mktg / sell * 100).toFixed(1) : null;
+  const netNew   = margin * (p?.newUnits || 0);
 
-  const feeEl  = document.getElementById(`df-fee-${pid}`);
-  const mEl    = document.getElementById(`df-margin-${pid}`);
-  const nEl    = document.getElementById(`df-rev-new-${pid}`);
-  const eEl    = document.getElementById(`df-rev-exp-${pid}`);
-  const mpEl   = document.getElementById(`df-mktg-pct-${pid}`);
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  const feeEl = document.getElementById(`df-fee-${pid}`);
+  const mEl   = document.getElementById(`df-margin-${pid}`);
+  const nEl   = document.getElementById(`df-rev-new-${pid}`);
+  const eEl   = document.getElementById(`df-rev-exp-${pid}`);
+  const mpEl  = document.getElementById(`df-mktg-pct-${pid}`);
+  const hdrEl = document.getElementById(`df-hdr-net-${pid}`);
 
   if (feeEl) feeEl.textContent = sell > 0 ? '-' + fmtRp(fee) : '—';
   if (mEl)  { mEl.textContent = sell > 0 ? fmtRp(margin) + (pct ? ` (${pct}%)` : '') : '—'; mEl.className = `dash-fin-result-val ${cls}`; }
-  if (nEl)  nEl.textContent = sell > 0 ? fmtRp(margin * (p?.newUnits||0)) : '—';
+  if (nEl)  nEl.textContent = sell > 0 ? fmtRp(netNew) : '—';
   if (eEl)  eEl.textContent = sell > 0 ? fmtRp(margin * (p?.expUnits||0)) : '—';
   if (mpEl) mpEl.textContent = mktgPct ? `${mktgPct}% dari harga jual` : '≈ 5% harga jual';
+  // Update header net pill (preview while editing, before saving)
+  if (hdrEl) {
+    const short = fmtShort(netNew);
+    hdrEl.textContent = short ? short + '/bln' : '';
+    hdrEl.classList.toggle('show', !!short);
+  }
 }
 
 async function saveDashPlan(pid) {
@@ -3849,8 +3886,13 @@ async function toggleDashStep(pid, stepIndex) {
     const progPct   = Math.round(doneCount / DASH_STEPS.length * 100);
     const progEl    = document.getElementById(`df-prog-${pid}`);
     const lblEl     = document.getElementById(`df-prog-lbl-${pid}`);
-    if (progEl) progEl.style.width = progPct + '%';
-    if (lblEl)  lblEl.textContent = `${doneCount}/${DASH_STEPS.length} langkah selesai`;
+    const hprogEl   = document.getElementById(`df-hprog-${pid}`);
+    const hprogLbl  = document.getElementById(`df-hprog-lbl-${pid}`);
+    if (progEl)   progEl.style.width = progPct + '%';
+    if (lblEl)    lblEl.textContent = `${doneCount}/${DASH_STEPS.length} langkah selesai`;
+    if (hprogEl)  hprogEl.style.width = progPct + '%';
+    const p = allProducts.find(x => x.id === pid);
+    if (hprogLbl) hprogLbl.textContent = `${doneCount}/${DASH_STEPS.length} steps · ${p?.category || ''}`;
   }
 
   await _supabase.from('product_plans').upsert({
