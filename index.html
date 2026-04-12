@@ -26,6 +26,7 @@
 <!-- End Cloudflare Web Analytics -->
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 
 <!-- ─── TALLY FEEDBACK FORM ─────────────────────────────────────────────── -->
 <script async src="https://tally.so/widgets/embed.js"></script>
@@ -439,6 +440,16 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 .vb{background:transparent;border:1.5px solid var(--orange);color:var(--orange);border-radius:5px;padding:3px 9px;font-size:.76rem;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;}
 .vb:hover{background:var(--orange);color:#fff;}
 
+/* ── Charts section ── */
+.det-charts-wrap{max-width:1200px;margin:0 auto;padding:0 20px 14px;}
+.det-charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+@media(max-width:700px){.det-charts-grid{grid-template-columns:1fr;}}
+.det-chart-box{background:#fff;border-radius:12px;padding:18px 20px;box-shadow:var(--sh);}
+.det-chart-title{font-size:.84rem;font-weight:800;color:var(--td);margin-bottom:2px;}
+.det-chart-sub{font-size:.71rem;color:var(--tl);margin-bottom:14px;}
+.det-chart-canvas-wrap{position:relative;height:210px;}
+.det-chart-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:160px;color:var(--tl);font-size:.78rem;text-align:center;line-height:1.6;gap:6px;}
+.det-chart-empty-icon{font-size:1.6rem;opacity:.35;}
 /* recommendations section */
 .det-recs{max-width:1200px;margin:0 auto;padding:0 20px 60px;}
 .recs-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;}
@@ -1644,6 +1655,32 @@ html,body{overflow-x:hidden;max-width:100%;}
     </div>
 
     </div><!-- end sellers wrap -->
+
+    <!-- CHARTS: weekly history + category comparison -->
+    <div class="det-charts-wrap">
+      <div class="det-charts-grid">
+        <div class="det-chart-box">
+          <div class="det-chart-title">Revenue Mingguan — Top 15 Sellers Gabungan</div>
+          <div class="det-chart-sub">Total estimasi pendapatan 30 hari, diperbarui tiap Senin</div>
+          <div id="det-hist-wrap">
+            <div class="det-chart-empty" id="det-hist-empty">
+              <div class="det-chart-empty-icon">&#9676;</div>
+              <div>Riwayat sedang dikumpulkan.<br>Grafik muncul setelah beberapa siklus scraping.</div>
+            </div>
+            <div class="det-chart-canvas-wrap" id="det-hist-canvas-wrap" style="display:none;">
+              <canvas id="det-hist-chart"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="det-chart-box">
+          <div class="det-chart-title">Perbandingan Kategori</div>
+          <div class="det-chart-sub" id="det-cmp-sub">Revenue bulanan estimasi vs produk serupa</div>
+          <div class="det-chart-canvas-wrap">
+            <canvas id="det-cmp-chart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- MORE RECOMMENDATIONS -->
     <div class="det-recs">
@@ -4607,8 +4644,158 @@ async function loadSellerData(p) {
       if (adBtn) { adBtn.href = adSeller.url || '#'; adBtn.target = '_blank'; }
     }
   }
+
+  // Render charts after seller data is ready
+  renderDetailCharts(p, sellers);
 }
 
+
+// ════════════════════════════════════════════════════════════
+//  DETAIL PAGE CHARTS
+// ════════════════════════════════════════════════════════════
+let _histChartInst = null;
+let _cmpChartInst  = null;
+
+async function renderDetailCharts(p, sellers) {
+  // ── 1. Category comparison bar chart (uses allProducts — always available) ──
+  const peers = allProducts
+    .filter(x => x.category === p.category && x.id !== p.id && x.startRevenue > 0)
+    .sort((a, b) => b.startRevenue - a.startRevenue)
+    .slice(0, 3);
+
+  const cmpLabels  = [p.name, ...peers.map(x => x.name)].map(n => n.length > 22 ? n.slice(0, 21) + '…' : n);
+  const cmpValues  = [p.startRevenue, ...peers.map(x => x.startRevenue)];
+  const cmpColors  = cmpValues.map((_, i) => i === 0 ? '#EE4D2D' : '#d4d4d4');
+  const cmpBorders = cmpValues.map((_, i) => i === 0 ? '#c43a1f' : '#bbb');
+
+  const cmpCtx = document.getElementById('det-cmp-chart');
+  if (cmpCtx) {
+    if (_cmpChartInst) { _cmpChartInst.destroy(); _cmpChartInst = null; }
+    _cmpChartInst = new Chart(cmpCtx, {
+      type: 'bar',
+      data: {
+        labels: cmpLabels,
+        datasets: [{
+          label: 'Est. Revenue/Bln (Rp)',
+          data: cmpValues,
+          backgroundColor: cmpColors,
+          borderColor: cmpBorders,
+          borderWidth: 1.5,
+          borderRadius: 5,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ' Rp ' + Math.round(ctx.raw).toLocaleString('id-ID') + '/bln'
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 25 } },
+          y: {
+            grid: { color: '#f0f0f0' },
+            ticks: {
+              font: { size: 10 },
+              callback: v => v >= 1000000 ? 'Rp' + (v/1000000).toFixed(1) + 'jt' : 'Rp' + Math.round(v/1000) + 'k'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  const cmpSub = document.getElementById('det-cmp-sub');
+  if (cmpSub) cmpSub.textContent = `Revenue bulanan estimasi vs ${peers.length} produk serupa di ${p.category}`;
+
+  // ── 2. Historical weekly line chart (reads from Supabase weekly_snapshots) ──
+  if (!_supabase) return;
+
+  const { data: snapshots } = await _supabase
+    .from('weekly_snapshots')
+    .select('week_date, combined_revenue, combined_units, seller_count')
+    .eq('product_name', p.name)
+    .order('week_date', { ascending: true })
+    .limit(12);
+
+  const histEmpty      = document.getElementById('det-hist-empty');
+  const histCanvasWrap = document.getElementById('det-hist-canvas-wrap');
+  const histCtx        = document.getElementById('det-hist-chart');
+
+  if (!snapshots || snapshots.length < 2) {
+    // Not enough history yet — keep empty state visible, but if we have sellers
+    // push today's snapshot so history starts building now
+    if (sellers.length && _supabase) {
+      const combinedRev   = sellers.reduce((s, x) => s + (x.revenue30 || x.newRevenue || 0), 0);
+      const combinedUnits = sellers.reduce((s, x) => s + (x.sales30 || 0), 0);
+      const today = new Date();
+      const day   = today.getDay();
+      today.setDate(today.getDate() - (day === 0 ? 6 : day - 1)); // floor to Monday
+      const weekDate = today.toISOString().slice(0, 10);
+      await _supabase.from('weekly_snapshots').upsert({
+        product_name: p.name, week_date: weekDate,
+        combined_revenue: Math.round(combinedRev),
+        combined_units: Math.round(combinedUnits),
+        seller_count: sellers.length,
+      }, { onConflict: 'product_name,week_date' });
+    }
+    if (histEmpty)      histEmpty.style.display = '';
+    if (histCanvasWrap) histCanvasWrap.style.display = 'none';
+    return;
+  }
+
+  if (histEmpty)      histEmpty.style.display = 'none';
+  if (histCanvasWrap) histCanvasWrap.style.display = '';
+
+  const labels = snapshots.map(s => {
+    const d = new Date(s.week_date);
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  });
+  const revData = snapshots.map(s => s.combined_revenue);
+
+  if (_histChartInst) { _histChartInst.destroy(); _histChartInst = null; }
+  _histChartInst = new Chart(histCtx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Revenue 30hr Gabungan',
+        data: revData,
+        borderColor: '#EE4D2D',
+        backgroundColor: 'rgba(238,77,45,.08)',
+        borderWidth: 2.5,
+        pointBackgroundColor: '#EE4D2D',
+        pointRadius: 4,
+        fill: true,
+        tension: 0.35,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' Rp ' + Math.round(ctx.raw).toLocaleString('id-ID')
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: {
+          grid: { color: '#f0f0f0' },
+          ticks: {
+            font: { size: 10 },
+            callback: v => v >= 1000000 ? 'Rp' + (v/1000000).toFixed(1) + 'jt' : 'Rp' + Math.round(v/1000) + 'k'
+          }
+        }
+      }
+    }
+  });
+}
 
 // ════════════════════════════════════════════════════════════
 //  SOURCING GUIDE — Phase 1 (local analysis, no API)
