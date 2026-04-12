@@ -2351,10 +2351,57 @@ async function loadData() {
 //  Loads the first seller image for every product and updates
 //  any card that is currently visible in the DOM.
 // ════════════════════════════════════════════════════════════
+// ── Image cache helpers ──────────────────────────────────────────────────────
+const IMG_CACHE_KEY = 'larisid_img_v1';
+const IMG_CACHE_TTL = 48 * 60 * 60 * 1000; // 48 hours
+
+function _imgCacheLoad() {
+  try {
+    const raw = localStorage.getItem(IMG_CACHE_KEY);
+    if (!raw) return {};
+    const { ts, data } = JSON.parse(raw);
+    if (Date.now() - ts > IMG_CACHE_TTL) { localStorage.removeItem(IMG_CACHE_KEY); return {}; }
+    return data || {};
+  } catch { return {}; }
+}
+function _imgCacheSave(data) {
+  try { localStorage.setItem(IMG_CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch {}
+}
+function _applyImage(p, url) {
+  p.image = url;
+  document.querySelectorAll(`.product-card[data-pid="${p.id}"]`).forEach(card => {
+    const imgDiv = card.querySelector('.card-img-inner');
+    if (!imgDiv) return;
+    let img = imgDiv.querySelector('img');
+    if (!img) {
+      img = document.createElement('img');
+      img.alt = p.name;
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      img.referrerPolicy = 'no-referrer';
+      img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
+      img.onerror = function() { this.style.display = 'none'; };
+      imgDiv.prepend(img);
+    }
+    img.src = url;
+    img.style.display = '';
+    const emoji = imgDiv.querySelector('.card-emoji');
+    if (emoji) emoji.style.display = 'none';
+  });
+}
+
 async function fetchProductImages() {
-  // Run up to 4 fetches in parallel to avoid hammering the API
-  const CONCURRENCY = 4;
-  const queue = [...allProducts];
+  // Apply cached images immediately (makes repeat visits near-instant)
+  const imgCache = _imgCacheLoad();
+  let cacheHits = 0;
+  allProducts.forEach(p => {
+    if (!p.image && imgCache[p.id]) { _applyImage(p, imgCache[p.id]); cacheHits++; }
+  });
+  if (cacheHits) console.log(`LarisID: ${cacheHits} images from cache`);
+
+  // Only fetch products that still lack an image
+  const CONCURRENCY = 6;
+  const queue = allProducts.filter(p => !p.image);
 
   async function fetchOne(p) {
     const sheetId = extractSheetId(p.sheetUrl);
@@ -2371,23 +2418,9 @@ async function fetchProductImages() {
     if (!p.image) {
       const firstWithImg = rows.find(r => r['Image'] && r['Image'].trim());
       if (firstWithImg) {
-        p.image = firstWithImg['Image'].trim();
-        const cards = document.querySelectorAll(`.product-card[data-pid="${p.id}"]`);
-        cards.forEach(card => {
-          const imgDiv = card.querySelector('.card-img');
-          if (!imgDiv) return;
-          let img = imgDiv.querySelector('img');
-          if (!img) {
-            img = document.createElement('img');
-            img.alt = p.name;
-            img.onerror = function() { this.style.display = 'none'; };
-            imgDiv.prepend(img);
-          }
-          img.src = p.image;
-          img.style.display = '';
-          const emoji = imgDiv.querySelector('.card-emoji');
-          if (emoji) emoji.style.display = 'none';
-        });
+        const url = firstWithImg['Image'].trim();
+        _applyImage(p, url);
+        imgCache[p.id] = url;  // write to cache
       }
     }
 
@@ -2421,6 +2454,9 @@ async function fetchProductImages() {
 
   const workers = Array.from({ length: CONCURRENCY }, () => runWorker());
   await Promise.all(workers);
+
+  // Persist updated image cache
+  _imgCacheSave(imgCache);
 
   // After all products are processed, mark top 10 by avg trend as trending
   markTrendingProducts();
@@ -3731,8 +3767,12 @@ async function saveDashPlan(pid) {
     updated_at: new Date().toISOString(),
   }, { onConflict: 'user_id,product_id' });
 
+  if (error) console.error('saveDashPlan error:', error.message, error.details, error.hint);
   const msg = document.getElementById(`df-msg-${pid}`);
-  if (msg) { msg.textContent = error ? '⚠ Gagal.' : '✓ Tersimpan!'; setTimeout(() => { if (msg) msg.textContent = ''; }, 2500); }
+  if (msg) {
+    msg.textContent = error ? `⚠ ${error.message || 'Gagal.'}` : '✓ Tersimpan!';
+    setTimeout(() => { if (msg) msg.textContent = ''; }, 4000);
+  }
   if (!error) {
     window._planCache[pid] = { ...existing, user_id: currentUser.id, product_id: pid, sell_price: sell, source_cost: cost, shipping: ship, marketing: mktg };
     updateProfileStats();
