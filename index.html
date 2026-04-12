@@ -950,8 +950,10 @@ html,body{overflow-x:hidden;max-width:100%;}
 .dash-load-guide-btn:hover{background:#dbeeff;}
 .dash-photo-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:12px;}
 @media(max-width:500px){.dash-photo-grid{grid-template-columns:repeat(3,1fr);}}
-.dash-photo-item{aspect-ratio:1;border-radius:6px;overflow:hidden;background:var(--orange-light);display:flex;align-items:center;justify-content:center;font-size:1.2rem;}
-.dash-photo-item img{width:100%;height:100%;object-fit:cover;}
+.dash-photo-item{aspect-ratio:1;border-radius:6px;overflow:hidden;background:linear-gradient(90deg,#f0f0f0 25%,#e8e8e8 50%,#f0f0f0 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;display:flex;align-items:center;justify-content:center;font-size:1.2rem;}
+.dash-photo-item img{width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .35s ease;}
+.dash-photo-item img.loaded{opacity:1;}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .dash-mini-sellers{width:100%;border-collapse:collapse;font-size:.75rem;margin-bottom:12px;}
 .dash-mini-sellers th{background:#f5f5f5;padding:5px 8px;text-align:left;font-weight:700;color:var(--tm);border-bottom:1px solid var(--border);}
 .dash-mini-sellers td{padding:5px 8px;border-bottom:1px solid #f5f0ea;color:var(--td);}
@@ -3048,7 +3050,7 @@ function cardHTML(p, idx) {
        style="animation:fadeUp .35s ease ${delay}s both;">
     <div class="card-img">
       <div class="card-img-inner" style="position:absolute;inset:0;">
-        ${p.image ? `<img src="${p.image}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">` : ''}
+        ${p.image ? `<img src="${p.image}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">` : ''}
         <div class="card-emoji" ${p.image ? 'style="display:none"' : ''}>${p.emoji||'📦'}</div>
       </div>
       <div class="score-pill" style="--score-clr:${scoreColor(p.score)}">${fmtScore(p.score)}</div>
@@ -3490,7 +3492,7 @@ function dashCardHTML(p) {
   const medianFmt = Math.round(p.medianPrice||0).toLocaleString('id-ID');
 
   const thumb = p.image
-    ? `<div class="dash-thumb" onclick="toggleDashCard(${p.id})"><img src="${p.image}" alt="" onerror="this.parentElement.textContent='📦'"></div>`
+    ? `<div class="dash-thumb" onclick="toggleDashCard(${p.id})"><img src="${p.image}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentElement.textContent='📦'"></div>`
     : `<div class="dash-thumb" onclick="toggleDashCard(${p.id})">${p.emoji || '📦'}</div>`;
 
   const statusOpts = DASH_STATUSES.map(s =>
@@ -3811,7 +3813,7 @@ function renderDashSourcingGuide(pid, sellers) {
   // ── Photo grid ──
   const photos = top6.length
     ? `<div class="dash-photo-grid">${top6.map(s =>
-        `<div class="dash-photo-item"><img src="${s.image}" alt="" onerror="this.parentElement.innerHTML='📦'"></div>`
+        `<div class="dash-photo-item"><img src="${s.image}" alt="" decoding="async" referrerpolicy="no-referrer" onload="this.classList.add('loaded')" onerror="this.parentElement.innerHTML='📦'"></div>`
       ).join('')}</div>`
     : '';
 
