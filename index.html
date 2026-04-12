@@ -3120,8 +3120,12 @@ function initSupabase() {
   _supabase.auth.onAuthStateChange((event, session) => {
     currentUser = session?.user || null;
     updateAuthUI();
-    if (currentUser) { loadSavedProducts(); checkMentorApplication(); }
-    else { savedProducts.clear(); }
+    // Only reload saved products on real sign-in/sign-out events,
+    // not TOKEN_REFRESHED (which fires ~60s after load and can race-wipe savedProducts)
+    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+      if (currentUser) { loadSavedProducts(); checkMentorApplication(); }
+    }
+    if (event === 'SIGNED_OUT') { savedProducts.clear(); renderProfileSaved(); }
     // Re-render all grids to update lock state
     renderHomeGrid();
     renderDiscGrid();
@@ -3236,13 +3240,23 @@ async function signOut() {
   showPage('home');
 }
 
+let _loadSavedInFlight = false;
 async function loadSavedProducts() {
   if (!_supabase || !currentUser) return;
-  const { data } = await _supabase
-    .from('saved_products')
-    .select('product_id')
-    .eq('user_id', currentUser.id);
-  savedProducts = new Set((data || []).map(r => r.product_id));
+  if (_loadSavedInFlight) return;   // deduplicate concurrent calls
+  _loadSavedInFlight = true;
+  try {
+    const { data, error } = await _supabase
+      .from('saved_products')
+      .select('product_id')
+      .eq('user_id', currentUser.id);
+    // Only update if we got a real response (don't wipe on transient errors)
+    if (!error && data) {
+      savedProducts = new Set(data.map(r => r.product_id));
+    }
+  } finally {
+    _loadSavedInFlight = false;
+  }
   // Update save button states on any visible cards
   document.querySelectorAll('.save-btn').forEach(btn => {
     const pid = parseInt(btn.dataset.pid);
@@ -3254,7 +3268,11 @@ async function loadSavedProducts() {
       btn.onclick = function(ev) { ev.stopPropagation(); openProfile(); };
     }
   });
-  renderProfileSaved();
+  // Only re-render profile grid if profile page is currently visible
+  const profilePage = document.getElementById('page-profile');
+  if (profilePage && profilePage.classList.contains('active')) {
+    renderProfileSaved();
+  }
 }
 
 async function saveCompareList() {
@@ -3419,6 +3437,14 @@ const DASH_STATUSES = ['Riset', 'Sourcing', 'Listing', 'Aktif', 'Pause'];
 function renderProfileSaved() {
   const grid = document.getElementById('profile-saved-grid');
   if (!grid) return;
+
+  // If master product list hasn't loaded yet, show a spinner and bail —
+  // don't falsely render the empty state
+  if (!allProducts.length) {
+    grid.innerHTML = `<div class="dash-empty"><div class="spinner" style="margin:0 auto 8px;"></div><div class="dash-empty-sub">Memuat produk...</div></div>`;
+    return;
+  }
+
   const saved = allProducts.filter(p => savedProducts.has(p.id));
 
   if (!saved.length) {
