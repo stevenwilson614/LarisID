@@ -4716,23 +4716,40 @@ async function renderDetailCharts(p, sellers) {
   const histCanvasWrap = document.getElementById('det-hist-canvas-wrap');
   const histCtx        = document.getElementById('det-hist-chart');
 
-  if (!snapshots || snapshots.length < 2) {
-    // Not enough history yet — keep empty state visible, but if we have sellers
-    // push today's snapshot so history starts building now
-    if (sellers.length && _supabase) {
-      const combinedRev   = sellers.reduce((s, x) => s + (x.revenue30 || x.newRevenue || 0), 0);
-      const combinedUnits = sellers.reduce((s, x) => s + (x.sales30 || 0), 0);
-      const today = new Date();
-      const day   = today.getDay();
-      today.setDate(today.getDate() - (day === 0 ? 6 : day - 1)); // floor to Monday
-      const weekDate = today.toISOString().slice(0, 10);
-      await _supabase.from('weekly_snapshots').upsert({
-        product_name: p.name, week_date: weekDate,
-        combined_revenue: Math.round(combinedRev),
-        combined_units: Math.round(combinedUnits),
-        seller_count: sellers.length,
-      }, { onConflict: 'product_name,week_date' });
+  // Always push/update this week's snapshot with current total_sold so delta can be computed next week
+  if (sellers.length && _supabase) {
+    const today = new Date();
+    const day   = today.getDay();
+    today.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
+    const weekDate        = today.toISOString().slice(0, 10);
+    const combinedTotSold = sellers.reduce((s, x) => s + (x.salesTotal || 0), 0);
+    const combinedRev     = sellers.reduce((s, x) => s + (x.revenue30 || x.newRevenue || 0), 0);
+    const combinedUnits   = sellers.reduce((s, x) => s + (x.sales30 || 0), 0);
+
+    // Compute weekly delta vs previous snapshot
+    let weeklyDelta = null;
+    if (snapshots && snapshots.length) {
+      const prev = snapshots[snapshots.length - 1];
+      if (prev.combined_total_sold > 0) {
+        const unitDelta = combinedTotSold - prev.combined_total_sold;
+        // Average price across top sellers
+        const avgPrice = sellers.reduce((s, x) => s + (x.price || 0), 0) / (sellers.length || 1);
+        weeklyDelta = Math.max(0, Math.round(unitDelta * avgPrice));
+      }
     }
+
+    await _supabase.from('weekly_snapshots').upsert({
+      product_name: p.name, week_date: weekDate,
+      combined_revenue: Math.round(combinedRev),
+      combined_units: Math.round(combinedUnits),
+      combined_total_sold: Math.round(combinedTotSold),
+      seller_count: sellers.length,
+      ...(weeklyDelta !== null ? { weekly_delta_revenue: weeklyDelta } : {}),
+    }, { onConflict: 'product_name,week_date' });
+  }
+
+  // Need ≥2 snapshots to draw a line
+  if (!snapshots || snapshots.length < 2) {
     if (histEmpty)      histEmpty.style.display = '';
     if (histCanvasWrap) histCanvasWrap.style.display = 'none';
     return;
@@ -4741,47 +4758,77 @@ async function renderDetailCharts(p, sellers) {
   if (histEmpty)      histEmpty.style.display = 'none';
   if (histCanvasWrap) histCanvasWrap.style.display = '';
 
-  const labels = snapshots.map(s => {
+  const labels  = snapshots.map(s => {
     const d = new Date(s.week_date);
     return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
   });
-  const revData = snapshots.map(s => s.combined_revenue);
+
+  // Primary line: weekly delta revenue (actual units sold that week × avg price)
+  // Falls back to the 30-day estimate if delta not yet available
+  const hasDeltas = snapshots.some(s => s.weekly_delta_revenue > 0);
+  const weeklyData = snapshots.map(s => s.weekly_delta_revenue || null);
+
+  // 4-week rolling monthly average (sum of 4 consecutive weekly deltas)
+  const rollingMonthly = snapshots.map((_, i, arr) => {
+    if (i < 3) return null; // need 4 points
+    const window = arr.slice(i - 3, i + 1).map(s => s.weekly_delta_revenue || 0);
+    return window.every(v => v === 0) ? null : window.reduce((a, b) => a + b, 0);
+  });
+
+  const hasRolling = rollingMonthly.some(v => v !== null);
+
+  const datasets = [];
+
+  if (hasDeltas) {
+    datasets.push({
+      label: 'Revenue Mingguan',
+      data: weeklyData,
+      borderColor: '#EE4D2D',
+      backgroundColor: 'rgba(238,77,45,.07)',
+      borderWidth: 2, pointBackgroundColor: '#EE4D2D',
+      pointRadius: 3, fill: true, tension: 0.3, spanGaps: true,
+    });
+  }
+
+  if (hasRolling) {
+    datasets.push({
+      label: 'Rata-rata 4 Minggu',
+      data: rollingMonthly,
+      borderColor: '#2E75B6',
+      backgroundColor: 'transparent',
+      borderWidth: 2, borderDash: [4, 3],
+      pointBackgroundColor: '#2E75B6',
+      pointRadius: 3, fill: false, tension: 0.3, spanGaps: true,
+    });
+  }
+
+  // Fallback to 30-day estimate if no deltas yet
+  if (!hasDeltas) {
+    datasets.push({
+      label: 'Est. Revenue 30hr',
+      data: snapshots.map(s => s.combined_revenue),
+      borderColor: '#EE4D2D',
+      backgroundColor: 'rgba(238,77,45,.07)',
+      borderWidth: 2, pointBackgroundColor: '#EE4D2D',
+      pointRadius: 3, fill: true, tension: 0.3,
+    });
+  }
 
   if (_histChartInst) { _histChartInst.destroy(); _histChartInst = null; }
   _histChartInst = new Chart(histCtx, {
     type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Revenue 30hr Gabungan',
-        data: revData,
-        borderColor: '#EE4D2D',
-        backgroundColor: 'rgba(238,77,45,.08)',
-        borderWidth: 2.5,
-        pointBackgroundColor: '#EE4D2D',
-        pointRadius: 4,
-        fill: true,
-        tension: 0.35,
-      }]
-    },
+    data: { labels, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: ctx => ' Rp ' + Math.round(ctx.raw).toLocaleString('id-ID')
-          }
-        }
+        legend: { display: hasRolling, labels: { font: { size: 9 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: Rp ${Math.round(ctx.raw||0).toLocaleString('id-ID')}` } }
       },
       scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        x: { grid: { display: false }, ticks: { font: { size: 9 } } },
         y: {
           grid: { color: '#f0f0f0' },
-          ticks: {
-            font: { size: 10 },
-            callback: v => v >= 1000000 ? 'Rp' + (v/1000000).toFixed(1) + 'jt' : 'Rp' + Math.round(v/1000) + 'k'
-          }
+          ticks: { font: { size: 9 }, callback: v => v >= 1000000 ? 'Rp'+(v/1000000).toFixed(1)+'jt' : 'Rp'+Math.round(v/1000)+'k' }
         }
       }
     }
