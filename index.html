@@ -440,16 +440,13 @@ body{font-family:'Roboto', 'Noto Sans', sans-serif;-webkit-font-smoothing:antial
 .vb{background:transparent;border:1.5px solid var(--orange);color:var(--orange);border-radius:5px;padding:3px 9px;font-size:.76rem;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;}
 .vb:hover{background:var(--orange);color:#fff;}
 
-/* ── Charts section ── */
-.det-charts-wrap{max-width:1200px;margin:0 auto;padding:0 20px 14px;}
-.det-charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-@media(max-width:700px){.det-charts-grid{grid-template-columns:1fr;}}
-.det-chart-box{background:#fff;border-radius:12px;padding:18px 20px;box-shadow:var(--sh);}
-.det-chart-title{font-size:.84rem;font-weight:800;color:var(--td);margin-bottom:2px;}
-.det-chart-sub{font-size:.71rem;color:var(--tl);margin-bottom:14px;}
-.det-chart-canvas-wrap{position:relative;height:210px;}
-.det-chart-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:160px;color:var(--tl);font-size:.78rem;text-align:center;line-height:1.6;gap:6px;}
-.det-chart-empty-icon{font-size:1.6rem;opacity:.35;}
+/* ── Inline charts (under stat pills) ── */
+.det-inline-charts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+@media(max-width:600px){.det-inline-charts{grid-template-columns:1fr;}}
+.det-inline-chart-box{background:#fafafa;border:1px solid var(--border);border-radius:10px;padding:10px 12px;}
+.det-inline-chart-title{font-size:.68rem;font-weight:700;color:var(--tl);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;}
+.det-inline-chart-canvas-wrap{position:relative;height:130px;}
+.det-chart-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--tl);text-align:center;line-height:1.5;gap:4px;}
 /* recommendations section */
 .det-recs{max-width:1200px;margin:0 auto;padding:0 20px 60px;}
 .recs-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;}
@@ -1504,6 +1501,28 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <div class="det-stat-pill-val" id="d-score2">—</div>
               </div>
             </div>
+
+            <!-- inline charts -->
+            <div class="det-inline-charts">
+              <div class="det-inline-chart-box">
+                <div class="det-inline-chart-title">Kategori — Revenue/Bln</div>
+                <div class="det-inline-chart-canvas-wrap">
+                  <canvas id="det-cmp-chart"></canvas>
+                </div>
+              </div>
+              <div class="det-inline-chart-box">
+                <div class="det-inline-chart-title">Tren Mingguan — Top 15</div>
+                <div id="det-hist-wrap">
+                  <div class="det-chart-empty" id="det-hist-empty" style="height:120px;font-size:.68rem;">
+                    <div style="opacity:.4;font-size:1rem;">&#9676;</div>
+                    <div>Sedang dikumpulkan</div>
+                  </div>
+                  <div class="det-inline-chart-canvas-wrap" id="det-hist-canvas-wrap" style="display:none;">
+                    <canvas id="det-hist-chart"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="share-btn" onclick="openShareModal()">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
@@ -1655,32 +1674,6 @@ html,body{overflow-x:hidden;max-width:100%;}
     </div>
 
     </div><!-- end sellers wrap -->
-
-    <!-- CHARTS: weekly history + category comparison -->
-    <div class="det-charts-wrap">
-      <div class="det-charts-grid">
-        <div class="det-chart-box">
-          <div class="det-chart-title">Revenue Mingguan — Top 15 Sellers Gabungan</div>
-          <div class="det-chart-sub">Total estimasi pendapatan 30 hari, diperbarui tiap Senin</div>
-          <div id="det-hist-wrap">
-            <div class="det-chart-empty" id="det-hist-empty">
-              <div class="det-chart-empty-icon">&#9676;</div>
-              <div>Riwayat sedang dikumpulkan.<br>Grafik muncul setelah beberapa siklus scraping.</div>
-            </div>
-            <div class="det-chart-canvas-wrap" id="det-hist-canvas-wrap" style="display:none;">
-              <canvas id="det-hist-chart"></canvas>
-            </div>
-          </div>
-        </div>
-        <div class="det-chart-box">
-          <div class="det-chart-title">Perbandingan Kategori</div>
-          <div class="det-chart-sub" id="det-cmp-sub">Revenue bulanan estimasi vs produk serupa</div>
-          <div class="det-chart-canvas-wrap">
-            <canvas id="det-cmp-chart"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- MORE RECOMMENDATIONS -->
     <div class="det-recs">
@@ -4708,8 +4701,6 @@ async function renderDetailCharts(p, sellers) {
     });
   }
 
-  const cmpSub = document.getElementById('det-cmp-sub');
-  if (cmpSub) cmpSub.textContent = `Revenue bulanan estimasi vs ${peers.length} produk serupa di ${p.category}`;
 
   // ── 2. Historical weekly line chart (reads from Supabase weekly_snapshots) ──
   if (!_supabase) return;
