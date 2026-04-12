@@ -868,11 +868,16 @@ html,body{overflow-x:hidden;max-width:100%;}
 .dash-thumb img{width:100%;height:100%;object-fit:cover;}
 .dash-header-info{flex:1;min-width:0;cursor:pointer;}
 .dash-name{font-size:.86rem;font-weight:800;color:var(--td);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* Inline steps under product name */
+.dash-inline-steps{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;}
+.dash-inline-step{display:inline-flex;align-items:center;gap:3px;font-size:.68rem;color:var(--tl);cursor:pointer;padding:2px 7px;border-radius:10px;border:1.5px solid var(--border);background:#fff;user-select:none;transition:all .15s;white-space:nowrap;}
+.dash-inline-step:hover{border-color:#aaa;}
+.dash-inline-step.done{color:var(--green);border-color:var(--green);background:var(--green-light);font-weight:600;}
 /* Mini progress bar in header */
-.dash-hdr-bottom{display:flex;align-items:center;gap:6px;margin-top:3px;}
-.dash-hdr-prog{height:4px;border-radius:2px;background:var(--border);width:56px;flex-shrink:0;overflow:hidden;}
+.dash-hdr-bottom{display:flex;align-items:center;gap:6px;margin-top:4px;}
+.dash-hdr-prog{height:3px;border-radius:2px;background:var(--border);width:52px;flex-shrink:0;overflow:hidden;}
 .dash-hdr-prog-fill{height:100%;border-radius:2px;background:var(--green);transition:width .3s;}
-.dash-hdr-prog-lbl{font-size:.67rem;color:var(--tl);white-space:nowrap;}
+.dash-hdr-prog-lbl{font-size:.66rem;color:var(--tl);white-space:nowrap;}
 /* Est net in header — shown after save */
 .dash-hdr-net{font-size:.72rem;font-weight:700;color:var(--green);white-space:nowrap;flex-shrink:0;background:var(--green-light);border-radius:12px;padding:2px 8px;display:none;}
 .dash-hdr-net.show{display:block;}
@@ -1999,7 +2004,10 @@ html,body{overflow-x:hidden;max-width:100%;}
   <div class="profile-hero">
     <div class="profile-hero-inner">
       <div class="profile-avatar-lg" id="profile-avatar-lg">?</div>
-      <div class="profile-email-display" id="profile-display-email">—</div>
+      <div style="flex:1;">
+        <div class="profile-email-display" id="profile-display-email">—</div>
+        <div id="profile-omset" style="display:none;font-size:.75rem;color:rgba(255,255,255,.85);margin-top:2px;"></div>
+      </div>
       <button class="profile-logout" onclick="signOut()">Keluar</button>
     </div>
   </div>
@@ -3397,13 +3405,11 @@ function updateProfileMembershipStatus(pending) {
 }
 
 const DASH_STEPS = [
-  'Cari & bandingkan supplier',
-  'Order sampel produk',
-  'Hitung harga jual final',
-  'Buat listing di Shopee',
-  'Upload foto & deskripsi produk',
-  'Aktifkan Shopee Ads',
-  'Terima pesanan pertama',
+  'Cari Supplier',
+  'Order Sampel',
+  'Buat Listing',
+  'Upload Foto',
+  'Aktifkan Ads',
 ];
 
 const DASH_STATUSES = ['Riset', 'Sourcing', 'Listing', 'Aktif', 'Pause'];
@@ -3442,6 +3448,7 @@ function renderProfileSaved() {
     <div class="dash-stat"><div class="dash-stat-val">${totalPotential > 0 ? 'Rp ' + Math.round(totalPotential/1000) + 'k' : '—'}</div><div class="dash-stat-lbl">Est. Net/Bln (seller baru)</div></div>`;
 
   grid.innerHTML = saved.map(p => dashCardHTML(p)).join('');
+  updateProfileStats();
 }
 
 // Auto-fill defaults based on product median price
@@ -3489,13 +3496,10 @@ function dashCardHTML(p) {
   const statusOpts = DASH_STATUSES.map(s =>
     `<option value="${s}" ${s === status ? 'selected' : ''}>${s}</option>`).join('');
 
-  const stepsHTML = DASH_STEPS.map((label, i) => {
+  const inlineStepsHTML = DASH_STEPS.map((label, i) => {
     const done = !!(steps & (1 << i));
-    const chk  = done ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>` : '';
-    return `<div class="dash-step ${done?'done':''}" onclick="toggleDashStep(${p.id},${i})">
-      <div class="dash-step-check">${chk}</div>
-      <div class="dash-step-label">${label}</div>
-    </div>`;
+    const chk  = done ? `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> ` : '';
+    return `<span class="dash-inline-step ${done?'done':''}" id="df-istep-${p.id}-${i}" onclick="event.stopPropagation();toggleDashStep(${p.id},${i})">${chk}${label}</span>`;
   }).join('');
 
   const chevSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>`;
@@ -3505,12 +3509,9 @@ function dashCardHTML(p) {
     <!-- ── HEADER (always visible) ── -->
     <div class="dash-card-header">
       ${thumb}
-      <div class="dash-header-info" onclick="toggleDashCard(${p.id})">
-        <div class="dash-name">${p.name}</div>
-        <div class="dash-hdr-bottom">
-          <div class="dash-hdr-prog"><div class="dash-hdr-prog-fill" id="df-hprog-${p.id}" style="width:${progPct}%"></div></div>
-          <span class="dash-hdr-prog-lbl" id="df-hprog-lbl-${p.id}">${doneCount}/${DASH_STEPS.length} steps · ${p.category}</span>
-        </div>
+      <div class="dash-header-info">
+        <div class="dash-name" onclick="toggleDashCard(${p.id})">${p.name}</div>
+        <div class="dash-inline-steps" id="df-isteps-${p.id}">${inlineStepsHTML}</div>
       </div>
       <div class="dash-hdr-net ${netNew > 0 ? 'show' : ''}" id="df-hdr-net-${p.id}">${netNew > 0 ? fmtShort(netNew)+'/bln' : ''}</div>
       <select class="dash-status-select" onchange="event.stopPropagation();saveDashStatus(${p.id},this.value)">${statusOpts}</select>
@@ -3589,27 +3590,7 @@ function dashCardHTML(p) {
         </div>
       </div>
 
-      <!-- SECTION 2: LANGKAH -->
-      <div class="dash-section">
-        <div class="dash-section-hdr" onclick="toggleDashSection(${p.id},'steps')">
-          <span class="dash-section-title">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-            Langkah Selanjutnya
-          </span>
-          <span class="dash-section-chev open" id="df-schev-steps-${p.id}">${chevSvg}</span>
-        </div>
-        <div class="dash-section-body" id="df-sec-steps-${p.id}">
-          ${stepsHTML}
-          <div class="dash-progress" style="margin-top:10px;"><div class="dash-progress-fill" id="df-prog-${p.id}" style="width:${progPct}%"></div></div>
-          <div class="dash-progress-label" id="df-prog-lbl-${p.id}">${doneCount}/${DASH_STEPS.length} langkah selesai</div>
-          <div style="display:flex;gap:16px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
-            <div><div style="font-size:.68rem;color:var(--tl);text-transform:uppercase;letter-spacing:.05em;">Starting</div><div style="font-size:.82rem;font-weight:700;color:var(--green);">${fmtShort(p.startRevenue||0)}/bln</div></div>
-            <div><div style="font-size:.68rem;color:var(--tl);text-transform:uppercase;letter-spacing:.05em;">Up to</div><div style="font-size:.82rem;font-weight:700;color:var(--green);">${fmtShort(p.upToRevenue||0)}/bln</div></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- SECTION 3: SOURCING GUIDE -->
+      <!-- SECTION 2: SOURCING GUIDE -->
       <div class="dash-section">
         <div class="dash-section-hdr" onclick="toggleDashSection(${p.id},'guide')">
           <span class="dash-section-title">
@@ -3724,7 +3705,48 @@ async function saveDashPlan(pid) {
 
   const msg = document.getElementById(`df-msg-${pid}`);
   if (msg) { msg.textContent = error ? '⚠ Gagal.' : '✓ Tersimpan!'; setTimeout(() => { if (msg) msg.textContent = ''; }, 2500); }
-  if (!error) window._planCache[pid] = { ...existing, user_id: currentUser.id, product_id: pid, sell_price: sell, source_cost: cost, shipping: ship, marketing: mktg };
+  if (!error) {
+    window._planCache[pid] = { ...existing, user_id: currentUser.id, product_id: pid, sell_price: sell, source_cost: cost, shipping: ship, marketing: mktg };
+    updateProfileStats();
+  }
+}
+
+// ── PROFILE STATS — update omset total in hero ──
+function updateProfileStats() {
+  const saved = allProducts.filter(p => savedProducts.has(p.id));
+  let totalNet = 0;
+  saved.forEach(p => {
+    const plan = window._planCache[p.id];
+    if (plan?.sell_price) {
+      const fee    = Math.round((plan.sell_price||0) * 0.04);
+      const margin = (plan.sell_price||0) - (plan.source_cost||0) - (plan.shipping||0) - (plan.marketing||0) - fee;
+      if (margin > 0) totalNet += margin * (p.newUnits || 0);
+    }
+  });
+
+  const el = document.getElementById('profile-omset');
+  if (!el) return;
+  if (totalNet > 0) {
+    const fmt = totalNet >= 1000000
+      ? 'Rp ' + (totalNet/1000000).toFixed(1).replace('.0','') + ' jt/bln (est. omset)'
+      : 'Rp ' + Math.round(totalNet/1000) + 'k/bln (est. omset)';
+    el.textContent = fmt;
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+
+  // Also refresh stats row
+  const statsRow = document.getElementById('dash-stats-row');
+  if (statsRow && statsRow.style.display !== 'none') {
+    let totalActive = 0;
+    saved.forEach(p => { if (window._planCache[p.id]?.status === 'Aktif') totalActive++; });
+    const fmtShort = v => v >= 1000000 ? 'Rp '+(v/1000000).toFixed(1).replace('.0','')+'jt' : v >= 1000 ? 'Rp '+Math.round(v/1000)+'k' : 'Rp '+Math.round(v);
+    statsRow.innerHTML = `
+      <div class="dash-stat"><div class="dash-stat-val">${saved.length}</div><div class="dash-stat-lbl">Produk Tersimpan</div></div>
+      <div class="dash-stat"><div class="dash-stat-val">${totalActive}</div><div class="dash-stat-lbl">Produk Aktif</div></div>
+      <div class="dash-stat"><div class="dash-stat-val">${totalNet > 0 ? fmtShort(totalNet) : '—'}</div><div class="dash-stat-lbl">Est. Net/Bln (seller baru)</div></div>`;
+  }
 }
 
 // ── SOURCING GUIDE — load seller data for dashboard card ──
@@ -3872,28 +3894,15 @@ async function toggleDashStep(pid, stepIndex) {
   const newSteps = ((existing.steps||0) ^ (1 << stepIndex));
   window._planCache[pid] = { ...existing, steps: newSteps };
 
-  // Update UI immediately
-  const card = document.getElementById(`dash-card-${pid}`);
-  if (card) {
-    const stepEls = card.querySelectorAll('.dash-step');
-    if (stepEls[stepIndex]) {
-      const done = !!(newSteps & (1 << stepIndex));
-      stepEls[stepIndex].classList.toggle('done', done);
-      stepEls[stepIndex].querySelector('.dash-step-check').innerHTML = done
-        ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>` : '';
-    }
-    const doneCount = DASH_STEPS.filter((_, i) => newSteps & (1 << i)).length;
-    const progPct   = Math.round(doneCount / DASH_STEPS.length * 100);
-    const progEl    = document.getElementById(`df-prog-${pid}`);
-    const lblEl     = document.getElementById(`df-prog-lbl-${pid}`);
-    const hprogEl   = document.getElementById(`df-hprog-${pid}`);
-    const hprogLbl  = document.getElementById(`df-hprog-lbl-${pid}`);
-    if (progEl)   progEl.style.width = progPct + '%';
-    if (lblEl)    lblEl.textContent = `${doneCount}/${DASH_STEPS.length} langkah selesai`;
-    if (hprogEl)  hprogEl.style.width = progPct + '%';
-    const p = allProducts.find(x => x.id === pid);
-    if (hprogLbl) hprogLbl.textContent = `${doneCount}/${DASH_STEPS.length} steps · ${p?.category || ''}`;
-  }
+  // Update inline step pills immediately
+  DASH_STEPS.forEach((label, i) => {
+    const el = document.getElementById(`df-istep-${pid}-${i}`);
+    if (!el) return;
+    const done = !!(newSteps & (1 << i));
+    el.classList.toggle('done', done);
+    const chk = done ? `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> ` : '';
+    el.innerHTML = chk + label;
+  });
 
   await _supabase.from('product_plans').upsert({
     user_id: currentUser.id, product_id: pid, steps: newSteps,
