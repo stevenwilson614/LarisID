@@ -736,6 +736,23 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
   .dash-content{padding:12px;}
 }
 
+/* ── KEYWORD RANKINGS ── */
+.kwr-table{width:100%;border-collapse:collapse;font-size:.78rem;}
+.kwr-table th{text-align:left;padding:6px 10px;font-size:.68rem;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--border);}
+.kwr-table td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.kwr-table tr:last-child td{border-bottom:none;}
+.kwr-table tr:hover td{background:var(--bg);}
+.kwr-keyword{font-weight:600;color:#111;}
+.kwr-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.65rem;font-weight:700;white-space:nowrap;}
+.kwr-buy  {background:#EAF7F0;color:#1A7A46;}
+.kwr-watch{background:#FFFBEB;color:#B45309;}
+.kwr-avoid{background:#FEF2F0;color:#C0392B;}
+.kwr-trend-up   {color:#1A7A46;font-size:.8rem;}
+.kwr-trend-down {color:#C0392B;font-size:.8rem;}
+.kwr-trend-stable{color:var(--tl);font-size:.8rem;}
+.kwr-efficiency{font-weight:700;color:#111;}
+.kwr-login-prompt{text-align:center;padding:20px;background:var(--bg);border-radius:8px;}
+
 /* ── GUIDED TOUR ── */
 #tour-overlay{position:fixed;inset:0;z-index:8000;display:none;pointer-events:none;}
 #tour-overlay.active{display:block;}
@@ -1730,6 +1747,17 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 </button>
               </div>
+            </div>
+          </div>
+
+          <!-- KEYWORD RANKINGS -->
+          <div class="det-section-wrap" id="kwr-section" style="margin-bottom:16px;">
+            <div class="det-section-title" style="margin-bottom:10px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Keywords untuk Iklan Shopee
+            </div>
+            <div id="kwr-body">
+              <div style="font-size:.78rem;color:var(--tm);">Memuat data keyword...</div>
             </div>
           </div>
 
@@ -3346,8 +3374,9 @@ async function openDetail(id) {
     await loadPlanForProduct(p.id);
     showPlanPanel();
   }
-  loadSellerData(p); // fetch seller sheet in background
-  loadVotes(p.id);   // load vote state for this product
+  loadSellerData(p);           // fetch seller sheet in background
+  loadVotes(p.id);             // load vote state for this product
+  loadKeywordRankings(p.name); // load keyword ad recommendations
 }
 
 // ── SELLER ACCURACY VOTING ────────────────────────────────────
@@ -4248,6 +4277,86 @@ function switchDashTab(tab) {
     if (el)  el.style.display  = (t === tab) ? '' : 'none';
     if (nav) nav.classList.toggle('active', t === tab);
   });
+}
+
+// ════════════════════════════════════════════════════════════
+//  KEYWORD RANKINGS
+// ════════════════════════════════════════════════════════════
+async function loadKeywordRankings(productName) {
+  const el = document.getElementById('kwr-body');
+  if (!el) return;
+
+  if (!_supabase) {
+    el.innerHTML = '';
+    return;
+  }
+
+  el.innerHTML = '<div style="font-size:.78rem;color:var(--tm);">Memuat data keyword...</div>';
+
+  // Fetch latest week's keyword rankings for this product
+  const { data, error } = await _supabase
+    .from('keyword_rankings')
+    .select('keyword,combined_sold,seller_count,avg_price,efficiency_score,trend_direction')
+    .eq('product_name', productName)
+    .order('efficiency_score', { ascending: false })
+    .limit(10);
+
+  if (error || !data?.length) {
+    el.innerHTML = '<div style="font-size:.78rem;color:var(--tm);padding:8px 0;">Data keyword belum tersedia — akan muncul setelah scrape minggu ini diproses.</div>';
+    return;
+  }
+
+  // Score thresholds based on distribution
+  const scores  = data.map(r => r.efficiency_score);
+  const maxScore = Math.max(...scores);
+  const p66      = maxScore * 0.66;
+  const p33      = maxScore * 0.33;
+
+  function badge(score) {
+    if (score >= p66) return '<span class="kwr-badge kwr-buy">✅ Beli Iklan</span>';
+    if (score >= p33) return '<span class="kwr-badge kwr-watch">⚠️ Pertimbangkan</span>';
+    return '<span class="kwr-badge kwr-avoid">❌ Hindari</span>';
+  }
+
+  function trendIcon(dir) {
+    if (dir === 'up')   return '<span class="kwr-trend-up">↑ Naik</span>';
+    if (dir === 'down') return '<span class="kwr-trend-down">↓ Turun</span>';
+    return '<span class="kwr-trend-stable">→ Stabil</span>';
+  }
+
+  const rows = data.map(r => `
+    <tr>
+      <td class="kwr-keyword">${r.keyword}</td>
+      <td class="kwr-efficiency">${Math.round(r.efficiency_score).toLocaleString('id-ID')}</td>
+      <td>${r.seller_count}</td>
+      <td>${fmtShort(r.avg_price)}</td>
+      <td>${trendIcon(r.trend_direction)}</td>
+      <td>${badge(r.efficiency_score)}</td>
+    </tr>`).join('');
+
+  el.innerHTML = `
+    <div style="font-size:.72rem;color:var(--tm);margin-bottom:10px;line-height:1.5;">
+      <strong>Efficiency Score</strong> = total terjual ÷ jumlah penjual.
+      Makin tinggi = permintaan tinggi, persaingan iklan lebih rendah → CPC lebih murah.
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="kwr-table">
+        <thead>
+          <tr>
+            <th>Keyword</th>
+            <th>Efficiency</th>
+            <th>Penjual</th>
+            <th>Avg Harga</th>
+            <th>Tren</th>
+            <th>Rekomendasi</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="font-size:.7rem;color:var(--tl);margin-top:8px;">
+      💡 Targetkan keyword "Beli Iklan" dengan match type broad untuk jangkauan, exact untuk konversi.
+    </div>`;
 }
 
 // ── LOAD DASHBOARD WEEKLY DATA ──
