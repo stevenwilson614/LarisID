@@ -736,6 +736,46 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
   .dash-content{padding:12px;}
 }
 
+/* ── GUIDED TOUR ── */
+#tour-overlay{position:fixed;inset:0;z-index:8000;display:none;pointer-events:none;}
+#tour-overlay.active{display:block;}
+#tour-spotlight{
+  position:fixed;
+  border-radius:10px;
+  box-shadow:0 0 0 9999px rgba(15,17,30,.72);
+  transition:left .35s cubic-bezier(.4,0,.2,1),top .35s cubic-bezier(.4,0,.2,1),
+             width .35s cubic-bezier(.4,0,.2,1),height .35s cubic-bezier(.4,0,.2,1);
+  z-index:8001;
+  pointer-events:none;
+  outline:2.5px solid var(--orange);
+  outline-offset:2px;
+}
+@keyframes tourPulse{0%,100%{outline-color:var(--orange);}50%{outline-color:var(--gold);}}
+#tour-spotlight{animation:tourPulse 1.8s ease-in-out infinite;}
+#tour-tooltip{
+  position:fixed;
+  background:#fff;
+  border-radius:14px;
+  padding:20px 22px 16px;
+  width:280px;
+  box-shadow:0 12px 40px rgba(0,0,0,.22);
+  z-index:8002;
+  pointer-events:all;
+  transition:left .35s cubic-bezier(.4,0,.2,1),top .35s cubic-bezier(.4,0,.2,1);
+}
+#tour-progress{font-size:.7rem;font-weight:700;color:var(--orange);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;}
+#tour-title{font-size:.98rem;font-weight:800;color:#111;margin-bottom:6px;line-height:1.3;}
+#tour-body{font-size:.82rem;color:var(--tm);line-height:1.6;margin-bottom:16px;}
+#tour-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+#tour-skip{background:none;border:none;font-size:.78rem;color:var(--tm);cursor:pointer;font-family:inherit;padding:4px 0;transition:color .15s;}
+#tour-skip:hover{color:#111;}
+#tour-next{background:var(--orange);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;}
+#tour-next:hover{background:var(--orange-dark);}
+/* Progress dots */
+.tour-dots{display:flex;gap:5px;align-items:center;}
+.tour-dot{width:6px;height:6px;border-radius:50%;background:var(--border);transition:background .2s;}
+.tour-dot.active{background:var(--orange);width:18px;border-radius:3px;}
+
 /* ── FEEDBACK ELEMENTS ── */
 /* First-visit banner */
 #fb-banner{position:fixed;bottom:0;left:0;right:0;z-index:1100;background:#E8442A;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 20px;font-size:.88rem;font-weight:500;box-shadow:0 -2px 16px rgba(0,0,0,.15);transform:translateY(100%);transition:transform .4s cubic-bezier(.22,1,.36,1);}
@@ -2514,6 +2554,8 @@ async function loadData() {
   renderDiscGrid();
   populateCategoryFilter();
   populateFinderCats();
+  // Start guided tour for first-time visitors (slight delay so cards are painted)
+  setTimeout(startTour, 600);
 
   // Fetch product images from seller sheets in background
   fetchProductImages();
@@ -5778,6 +5820,157 @@ function openFeedback() {
   }
 }
 
+// ════════════════════════════════════════════════════════════
+//  GUIDED TOUR
+// ════════════════════════════════════════════════════════════
+const TOUR_STEPS = [
+  {
+    sel: '.nav-search-wrap',
+    title: 'Cari Produk Apapun',
+    body: 'Ketik nama produk — "topi baseball", "senter LED", "talenan kayu". LarisID langsung kasih Viability Score-nya.',
+    pos: 'bottom'
+  },
+  {
+    sel: '.cat-grid',
+    title: 'Filter Kategori',
+    body: 'Pilih kategori untuk fokus ke niche yang kamu minati. Dari fashion sampai elektronik — semua ada.',
+    pos: 'bottom'
+  },
+  {
+    sel: () => document.querySelector('#home-grid .product-card') || document.querySelector('.product-card'),
+    title: 'Kartu Produk',
+    body: 'Setiap kartu menampilkan data nyata Shopee — median harga, potensi omzet per bulan, dan jumlah pesaing aktif.',
+    pos: 'right'
+  },
+  {
+    sel: () => document.querySelector('.score-pill'),
+    title: 'Viability Score',
+    body: 'Skor 0–100. Makin tinggi = pasar lebih besar, persaingan lebih terukur.\n🟢 80+ = lampu hijau  🟡 50–79 = perlu strategi  🔴 0–49 = pertimbangkan ulang.',
+    pos: 'right'
+  },
+  {
+    sel: () => document.querySelector('.save-btn'),
+    title: 'Simpan ke Dashboard',
+    body: 'Simpan produk untuk dipantau setiap minggu — perubahan skor, harga, dan jumlah pesaing langsung muncul di dashboard kamu.',
+    pos: 'left'
+  },
+  {
+    sel: '.nav-right .nav-link',
+    title: 'Jelajahi Semua Produk',
+    body: 'Klik "Products" untuk melihat 500+ produk — bisa difilter, diurutkan, dan dibandingkan langsung.',
+    pos: 'bottom',
+    last: true
+  },
+];
+
+let _tourStep   = 0;
+let _tourActive = false;
+
+function startTour() {
+  if (localStorage.getItem('larisid_tour_v1')) return;
+  if (currentUser) return; // returning logged-in users skip it
+  // Wait for at least one product card to be rendered
+  let attempts = 0;
+  const check = setInterval(() => {
+    attempts++;
+    if (document.querySelector('.product-card') || attempts > 40) {
+      clearInterval(check);
+      if (!document.querySelector('.product-card')) return; // products never loaded
+      _tourStep  = 0;
+      _tourActive = true;
+      const overlay = document.getElementById('tour-overlay');
+      if (overlay) overlay.classList.add('active');
+      showTourStep(0);
+    }
+  }, 250);
+}
+
+function showTourStep(i) {
+  const step   = TOUR_STEPS[i];
+  const target = typeof step.sel === 'function' ? step.sel() : document.querySelector(step.sel);
+
+  // Skip step if element not found
+  if (!target) { nextTourStep(); return; }
+
+  // Scroll target into view if needed
+  target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+
+  // Give scroll a moment to settle
+  setTimeout(() => {
+    const rect = target.getBoundingClientRect();
+    const pad  = 8;
+
+    // Spotlight
+    const spot = document.getElementById('tour-spotlight');
+    spot.style.left   = (rect.left - pad) + 'px';
+    spot.style.top    = (rect.top  - pad) + 'px';
+    spot.style.width  = (rect.width  + pad * 2) + 'px';
+    spot.style.height = (rect.height + pad * 2) + 'px';
+
+    // Tooltip content
+    document.getElementById('tour-title').textContent = step.title;
+    document.getElementById('tour-body').textContent  = step.body;
+
+    // Progress dots
+    const dotsHtml = TOUR_STEPS.map((_, idx) =>
+      `<span class="tour-dot${idx === i ? ' active' : ''}"></span>`
+    ).join('');
+    document.getElementById('tour-progress').innerHTML =
+      `<div class="tour-dots">${dotsHtml}</div>`;
+
+    // Next button label
+    const nextBtn = document.getElementById('tour-next');
+    nextBtn.textContent = (i >= TOUR_STEPS.length - 1) ? 'Mulai Riset! 🚀' : 'Lanjut →';
+
+    // Position tooltip
+    positionTourTooltip(rect, step.pos);
+  }, 80);
+}
+
+function positionTourTooltip(rect, pos) {
+  const TW = 280, TH = 180;
+  const PAD = 16;
+  let left, top;
+
+  if (pos === 'bottom') {
+    left = rect.left + rect.width / 2 - TW / 2;
+    top  = rect.bottom + PAD;
+  } else if (pos === 'right') {
+    left = rect.right + PAD;
+    top  = rect.top + rect.height / 2 - TH / 2;
+  } else if (pos === 'left') {
+    left = rect.left - TW - PAD;
+    top  = rect.top + rect.height / 2 - TH / 2;
+  } else { // top
+    left = rect.left + rect.width / 2 - TW / 2;
+    top  = rect.top - TH - PAD;
+  }
+
+  // Clamp within viewport
+  left = Math.max(12, Math.min(left, window.innerWidth  - TW - 12));
+  top  = Math.max(12, Math.min(top,  window.innerHeight - TH - 12));
+
+  const tooltip = document.getElementById('tour-tooltip');
+  tooltip.style.left = left + 'px';
+  tooltip.style.top  = top  + 'px';
+}
+
+function nextTourStep() {
+  _tourStep++;
+  if (_tourStep >= TOUR_STEPS.length) {
+    endTour();
+  } else {
+    showTourStep(_tourStep);
+  }
+}
+
+function endTour() {
+  _tourActive = false;
+  localStorage.setItem('larisid_tour_v1', '1');
+  const overlay = document.getElementById('tour-overlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
 // ── START ──
 // ════════════════════════════════════════════════════════════
 //  FEEDBACK ENGAGEMENT
@@ -5877,6 +6070,20 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 
 </script>
+
+  <!-- ── GUIDED TOUR ── -->
+  <div id="tour-overlay" aria-hidden="true">
+    <div id="tour-spotlight"></div>
+    <div id="tour-tooltip">
+      <div id="tour-progress"></div>
+      <div id="tour-title"></div>
+      <div id="tour-body"></div>
+      <div id="tour-actions">
+        <button id="tour-skip"  onclick="endTour()">Lewati</button>
+        <button id="tour-next"  onclick="nextTourStep()">Lanjut →</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ── FLOATING MASUKAN BUTTON ── -->
   <button id="fb-float" onclick="openFeedback()">Masukan</button>
