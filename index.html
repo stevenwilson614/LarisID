@@ -672,6 +672,70 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
 
+/* ══════════════════════════════════════════════════
+   DASHBOARD — logged-in home
+══════════════════════════════════════════════════ */
+.dashboard-layout{display:flex;min-height:calc(100vh - 72px);background:var(--bg);}
+
+/* Sidebar */
+.dash-sidebar{width:220px;flex-shrink:0;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:72px;height:calc(100vh - 72px);overflow-y:auto;}
+.dash-user-info{padding:20px 16px 16px;border-bottom:1px solid var(--border);}
+.dash-user-avatar{width:40px;height:40px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1rem;margin-bottom:8px;flex-shrink:0;}
+.dash-user-email{font-size:.72rem;color:var(--tm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:10px;}
+.dash-logout-btn{background:none;border:1.5px solid var(--border);border-radius:7px;padding:5px 12px;font-size:.75rem;font-weight:600;color:var(--tm);cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s;}
+.dash-logout-btn:hover{border-color:#C0392B;color:#C0392B;}
+.dash-sidebar-nav{display:flex;flex-direction:column;gap:2px;padding:16px 10px;flex:1;}
+.dash-nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;font-size:.85rem;font-weight:600;color:var(--tm);cursor:pointer;transition:background .15s,color .15s;user-select:none;}
+.dash-nav-item:hover{background:var(--bg);color:#111;}
+.dash-nav-item.active{background:var(--orange-light);color:var(--orange);}
+.dash-nav-icon{font-size:1rem;width:20px;text-align:center;flex-shrink:0;}
+.dash-nav-badge{margin-left:auto;background:var(--orange);color:#fff;font-size:.6rem;font-weight:700;padding:1px 6px;border-radius:20px;}
+
+/* Main content area */
+.dash-content{flex:1;padding:24px;overflow-y:auto;max-width:960px;}
+@media(max-width:900px){.dash-content{padding:16px;}}
+
+/* Stats row */
+.dash-stats-row{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
+.dash-stat{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;flex:1;min-width:100px;}
+.dash-stat-val{font-size:1.4rem;font-weight:800;color:#111;line-height:1;}
+.dash-stat-lbl{font-size:.72rem;color:var(--tm);margin-top:4px;}
+
+/* Section header */
+.dash-section{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px;}
+.dash-section-head{margin-bottom:14px;}
+.dash-section-title{font-size:.9rem;font-weight:700;color:#111;display:flex;align-items:center;gap:8px;}
+.dash-section-title::before{content:'';display:block;width:3px;height:14px;background:var(--orange);border-radius:2px;}
+.dash-section-sub{font-size:.75rem;color:var(--tm);margin-top:3px;}
+
+/* Movers */
+.dash-movers-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+@media(max-width:600px){.dash-movers-row{grid-template-columns:1fr;}}
+.dash-mover-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.dash-mover-up{border-left:3px solid #1A7A46;}
+.dash-mover-down{border-left:3px solid #C0392B;}
+.dash-mover-label{font-size:.7rem;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
+.dash-mover-name{font-size:.88rem;font-weight:700;color:#111;line-height:1.3;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dash-mover-delta{font-size:1.1rem;font-weight:800;}
+.dash-mover-up .dash-mover-delta{color:#1A7A46;}
+.dash-mover-down .dash-mover-delta{color:#C0392B;}
+.dash-mover-meta{font-size:.72rem;color:var(--tm);margin-top:4px;line-height:1.5;}
+
+/* Coming soon placeholder */
+.dash-coming-soon{text-align:center;padding:60px 20px;background:#fff;border:1px solid var(--border);border-radius:12px;}
+.dash-coming-icon{font-size:2.5rem;margin-bottom:12px;}
+.dash-coming-title{font-size:1rem;font-weight:700;color:#111;margin-bottom:8px;}
+.dash-coming-sub{font-size:.83rem;color:var(--tm);max-width:400px;margin:0 auto;line-height:1.6;}
+
+/* Responsive: collapse sidebar on mobile */
+@media(max-width:720px){
+  .dash-sidebar{width:100%;height:auto;position:static;flex-direction:row;border-right:none;border-bottom:1px solid var(--border);}
+  .dash-user-info{display:none;}
+  .dash-sidebar-nav{flex-direction:row;padding:8px 12px;gap:4px;overflow-x:auto;}
+  .dashboard-layout{flex-direction:column;}
+  .dash-content{padding:12px;}
+}
+
 /* ── FEEDBACK ELEMENTS ── */
 /* First-visit banner */
 #fb-banner{position:fixed;bottom:0;left:0;right:0;z-index:1100;background:#E8442A;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 20px;font-size:.88rem;font-weight:500;box-shadow:0 -2px 16px rgba(0,0,0,.15);transform:translateY(100%);transition:transform .4s cubic-bezier(.22,1,.36,1);}
@@ -2046,50 +2110,116 @@ html,body{overflow-x:hidden;max-width:100%;}
      PROFILE PAGE
 ════════════════════════════════════ -->
 <div class="page" id="page-profile">
-  <div class="profile-hero">
-    <div class="profile-hero-inner">
-      <div class="profile-avatar-lg" id="profile-avatar-lg">?</div>
-      <div style="flex:1;">
-        <div class="profile-email-display" id="profile-display-email">—</div>
-        <div id="profile-omset" style="display:none;font-size:.75rem;color:rgba(255,255,255,.85);margin-top:2px;"></div>
+  <div class="dashboard-layout">
+
+    <!-- ── SIDEBAR ── -->
+    <aside class="dash-sidebar">
+      <div class="dash-user-info">
+        <div class="dash-user-avatar" id="dash-avatar">?</div>
+        <div class="dash-user-email" id="dash-email">—</div>
+        <button class="dash-logout-btn" onclick="signOut()">Keluar</button>
       </div>
-      <button class="profile-logout" onclick="signOut()">Keluar</button>
-    </div>
-  </div>
-  <div class="profile-main">
-
-    <!-- DASHBOARD STATS -->
-    <div class="dash-stats-row" id="dash-stats-row" style="display:none;"></div>
-
-    <!-- SAVED PRODUCTS -->
-    <div class="profile-section-title">Produk Saya</div>
-    <div id="profile-saved-grid">
-      <div class="dash-empty">
-        
-        <div class="dash-empty-title">Belum ada produk tersimpan</div>
-        <div class="dash-empty-sub">Tekan simpan di kartu produk untuk menyimpan ke dashboard kamu.</div>
-      </div>
-    </div>
-
-    <!-- MEMBERSHIP STATUS -->
-    <div class="profile-membership" id="profile-membership">
-      <div class="profile-membership-top">
-        <div class="profile-membership-info">
-          <div class="profile-membership-title">Program Mentorship</div>
-          <div class="profile-membership-sub">1-on-1 bersama mentor berpengalaman. Akses modal usaha tersedia untuk peserta terpilih.</div>
+      <nav class="dash-sidebar-nav">
+        <div class="dash-nav-item active" id="dash-nav-products" onclick="switchDashTab('products')">
+          <span class="dash-nav-icon">📦</span> Produk Saya
         </div>
-        <div id="profile-membership-status">
-          <button class="profile-membership-apply" onclick="showPage('komunitas')">Apply Now</button>
+        <div class="dash-nav-item" id="dash-nav-education" onclick="switchDashTab('education')">
+          <span class="dash-nav-icon">🎓</span> Edukasi
+        </div>
+        <div class="dash-nav-item" id="dash-nav-sourcing" onclick="switchDashTab('sourcing')">
+          <span class="dash-nav-icon">🏭</span> Sourcing
+        </div>
+      </nav>
+    </aside>
+
+    <!-- ── MAIN CONTENT ── -->
+    <main class="dash-content">
+
+      <!-- PRODUCTS TAB -->
+      <div id="dash-tab-products">
+
+        <!-- Stats row -->
+        <div class="dash-stats-row" id="dash-stats-row" style="display:none;"></div>
+
+        <!-- Weekly change chart -->
+        <div class="dash-section" id="dash-weekly-section" style="display:none;">
+          <div class="dash-section-head">
+            <div class="dash-section-title">Perubahan Minggu Ini</div>
+            <div class="dash-section-sub">Estimasi delta revenue minggu ini vs minggu lalu untuk produk tersimpan kamu</div>
+          </div>
+          <div style="position:relative;height:220px;">
+            <canvas id="dash-weekly-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Top movers -->
+        <div class="dash-movers-row" id="dash-movers-row" style="display:none;">
+          <div class="dash-mover-card dash-mover-up">
+            <div class="dash-mover-label">📈 Naik Terbesar</div>
+            <div class="dash-mover-name" id="dash-mover-up-name">—</div>
+            <div class="dash-mover-delta" id="dash-mover-up-delta">—</div>
+            <div class="dash-mover-meta" id="dash-mover-up-meta"></div>
+          </div>
+          <div class="dash-mover-card dash-mover-down">
+            <div class="dash-mover-label">📉 Turun Terbesar</div>
+            <div class="dash-mover-name" id="dash-mover-down-name">—</div>
+            <div class="dash-mover-delta" id="dash-mover-down-delta">—</div>
+            <div class="dash-mover-meta" id="dash-mover-down-meta"></div>
+          </div>
+        </div>
+
+        <!-- Saved products -->
+        <div class="dash-section" style="padding-bottom:8px;">
+          <div class="dash-section-head" style="margin-bottom:10px;">
+            <div class="dash-section-title">Produk Tersimpan</div>
+          </div>
+          <div id="profile-saved-grid">
+            <div class="dash-empty">
+              <div class="dash-empty-title">Belum ada produk tersimpan</div>
+              <div class="dash-empty-sub">Tekan ikon simpan di kartu produk untuk menambahkan ke sini.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Membership strip -->
+        <div class="profile-membership" id="profile-membership">
+          <div class="profile-membership-top">
+            <div class="profile-membership-info">
+              <div class="profile-membership-title">Program Mentorship</div>
+              <div class="profile-membership-sub">1-on-1 bersama mentor berpengalaman. Akses modal usaha tersedia untuk peserta terpilih.</div>
+            </div>
+            <div id="profile-membership-status">
+              <button class="profile-membership-apply" onclick="showPage('komunitas')">Apply Now</button>
+            </div>
+          </div>
+          <div class="profile-wa-strip">
+            <div class="profile-wa-text">Grup WhatsApp — Update produk trending setiap minggu</div>
+            <a class="profile-wa-btn" href="#" target="_blank" rel="noopener">Masuk Grup</a>
+          </div>
+        </div>
+
+      </div><!-- /dash-tab-products -->
+
+      <!-- EDUCATION TAB -->
+      <div id="dash-tab-education" style="display:none;">
+        <div class="dash-coming-soon">
+          <div class="dash-coming-icon">🎓</div>
+          <div class="dash-coming-title">Edukasi — Segera Hadir</div>
+          <div class="dash-coming-sub">Video kursus gratis: dari riset produk sampai listing pertama di Shopee. Tersedia untuk semua pengguna LarisID — tidak perlu bayar.</div>
         </div>
       </div>
-      <div class="profile-wa-strip">
-        <div class="profile-wa-text">Grup WhatsApp — Update produk trending setiap minggu</div>
-        <a class="profile-wa-btn" href="#" target="_blank" rel="noopener">Masuk Grup</a>
+
+      <!-- SOURCING TAB -->
+      <div id="dash-tab-sourcing" style="display:none;">
+        <div class="dash-coming-soon">
+          <div class="dash-coming-icon">🏭</div>
+          <div class="dash-coming-title">Sourcing — Segera Hadir</div>
+          <div class="dash-coming-sub">Temukan supplier terpercaya lengkap dengan harga, MOQ, dan estimasi ongkir ke Indonesia — langsung dari dashboard kamu.</div>
+        </div>
       </div>
-    </div>
 
-
-  </div>
+    </main><!-- /dash-content -->
+  </div><!-- /dashboard-layout -->
 </div>
 
 <!-- ════════════════════════════════════
@@ -2561,6 +2691,8 @@ function updateTrendingCards() {
 //  NAVIGATION
 // ════════════════════════════════════════════════════════════
 function showPage(name) {
+  // Logged-in users go to dashboard instead of home
+  if (name === 'home' && currentUser) { openProfile(); return; }
   const prev = document.querySelector('.page.active');
   if (prev) prevPage = prev.id.replace('page-', '');
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -3248,7 +3380,15 @@ function updateAuthUI() {
     if (mLogin) mLogin.style.display = '';
     if (mProfile) mProfile.style.display = 'none';
   }
-  // Update profile page hero
+  // Update sidebar avatar/email
+  const dashAvatar = document.getElementById('dash-avatar');
+  const dashEmail  = document.getElementById('dash-email');
+  if (currentUser) {
+    const name = currentUser.user_metadata?.full_name || currentUser.email || '?';
+    if (dashAvatar) dashAvatar.textContent = name.charAt(0).toUpperCase();
+    if (dashEmail)  dashEmail.textContent  = currentUser.email;
+  }
+  // Legacy profile hero elements (kept for compatibility)
   const avatarLg = document.getElementById('profile-avatar-lg');
   const dispName = document.getElementById('profile-display-name');
   const dispEmail = document.getElementById('profile-display-email');
@@ -3362,6 +3502,7 @@ async function loadSavedProducts() {
   const profilePage = document.getElementById('page-profile');
   if (profilePage && profilePage.classList.contains('active')) {
     renderProfileSaved();
+    loadDashboardData();
   }
 }
 
@@ -4055,7 +4196,169 @@ async function openProfile() {
   clearCompare();
   await loadAllPlans();
   renderProfileSaved();
+  loadDashboardData();
   showPage('profile');
+}
+
+// ── DASHBOARD TAB SWITCHING ──
+function switchDashTab(tab) {
+  ['products','education','sourcing'].forEach(t => {
+    const el  = document.getElementById(`dash-tab-${t}`);
+    const nav = document.getElementById(`dash-nav-${t}`);
+    if (el)  el.style.display  = (t === tab) ? '' : 'none';
+    if (nav) nav.classList.toggle('active', t === tab);
+  });
+}
+
+// ── LOAD DASHBOARD WEEKLY DATA ──
+let _dashChartInstance = null;
+
+async function loadDashboardData() {
+  if (!_supabase || !currentUser) return;
+  const saved = allProducts.filter(p => savedProducts.has(p.id));
+  if (!saved.length) return;
+
+  // Build list of product names to query
+  const names = saved.map(p => p.name).filter(Boolean);
+  if (!names.length) return;
+
+  // Fetch last 3 weeks of snapshots for these products
+  const { data: snaps, error } = await _supabase
+    .from('weekly_snapshots')
+    .select('product_name,week_date,combined_total_sold,seller_count,weekly_delta_revenue')
+    .in('product_name', names)
+    .order('week_date', { ascending: false })
+    .limit(names.length * 3);
+
+  if (error || !snaps?.length) return;
+
+  // Group by product_name, pick latest 2 weeks each
+  const byProduct = {};
+  snaps.forEach(s => {
+    if (!byProduct[s.product_name]) byProduct[s.product_name] = [];
+    if (byProduct[s.product_name].length < 2) byProduct[s.product_name].push(s);
+  });
+
+  // Build deltas
+  const deltas = [];
+  Object.entries(byProduct).forEach(([name, weeks]) => {
+    const curr = weeks[0];
+    const prev = weeks[1];
+    const revDelta = curr.weekly_delta_revenue || 0;
+    const sellerDelta = prev ? (curr.seller_count || 0) - (prev.seller_count || 0) : null;
+    const totalSoldDelta = prev
+      ? (curr.combined_total_sold || 0) - (prev.combined_total_sold || 0)
+      : null;
+    deltas.push({ name, revDelta, sellerDelta, totalSoldDelta, curr, prev });
+  });
+
+  if (!deltas.length) return;
+
+  // Sort by revDelta desc for chart
+  deltas.sort((a, b) => b.revDelta - a.revDelta);
+
+  // Show chart section
+  const section = document.getElementById('dash-weekly-section');
+  if (section) section.style.display = '';
+
+  // Render bar chart
+  renderDashWeeklyChart(deltas);
+
+  // Top movers
+  const withData = deltas.filter(d => d.revDelta !== 0);
+  if (withData.length >= 1) {
+    const moversRow = document.getElementById('dash-movers-row');
+    if (moversRow) moversRow.style.display = 'grid';
+
+    const topUp   = deltas[0];
+    const topDown = deltas[deltas.length - 1];
+
+    // Up mover
+    document.getElementById('dash-mover-up-name').textContent  = topUp.name;
+    document.getElementById('dash-mover-up-delta').textContent = topUp.revDelta > 0
+      ? `+Rp ${fmtShort(topUp.revDelta)}` : 'Data terbatas';
+    document.getElementById('dash-mover-up-meta').innerHTML = buildMoverMeta(topUp);
+
+    // Down mover
+    document.getElementById('dash-mover-down-name').textContent  = topDown.name;
+    document.getElementById('dash-mover-down-delta').textContent = topDown.revDelta < 0
+      ? `-Rp ${fmtShort(Math.abs(topDown.revDelta))}` : 'Stabil';
+    document.getElementById('dash-mover-down-meta').innerHTML = buildMoverMeta(topDown);
+  }
+}
+
+function buildMoverMeta(d) {
+  const parts = [];
+  if (d.sellerDelta !== null) {
+    const sign = d.sellerDelta > 0 ? '+' : '';
+    parts.push(`${sign}${d.sellerDelta} penjual aktif`);
+  }
+  if (d.curr?.seller_count) parts.push(`${d.curr.seller_count} total penjual`);
+  if (d.curr?.combined_total_sold) parts.push(`${fmtShort(d.curr.combined_total_sold)} unit terjual`);
+  return parts.join(' · ') || '—';
+}
+
+function renderDashWeeklyChart(deltas) {
+  const canvas = document.getElementById('dash-weekly-chart');
+  if (!canvas) return;
+  if (_dashChartInstance) { _dashChartInstance.destroy(); _dashChartInstance = null; }
+
+  const labels = deltas.map(d => d.name.length > 22 ? d.name.slice(0, 22) + '…' : d.name);
+  const values = deltas.map(d => d.revDelta);
+  const colors = values.map(v => v >= 0 ? '#1A7A46' : '#C0392B');
+  const bgColors = values.map(v => v >= 0 ? 'rgba(26,122,70,.12)' : 'rgba(192,57,43,.12)');
+
+  // Dynamic height based on number of products
+  const barH = 28;
+  const minH  = 180;
+  canvas.parentElement.style.height = Math.max(minH, deltas.length * barH + 40) + 'px';
+
+  _dashChartInstance = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: bgColors,
+        borderColor: colors,
+        borderWidth: 1.5,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.raw;
+              return v >= 0 ? `+Rp ${fmtShort(v)}` : `-Rp ${fmtShort(Math.abs(v))}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(0,0,0,.05)' },
+          ticks: {
+            font: { family: "'Plus Jakarta Sans', sans-serif", size: 11 },
+            callback: v => {
+              const abs = Math.abs(v);
+              const s = abs >= 1e6 ? (abs/1e6).toFixed(1)+'jt' : abs >= 1e3 ? (abs/1e3).toFixed(0)+'rb' : abs;
+              return v >= 0 ? `+${s}` : `-${s}`;
+            }
+          }
+        },
+        y: {
+          grid: { display: false },
+          ticks: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 11 } }
+        }
+      }
+    }
+  });
 }
 
 // ════════════════════════════════════════════════════════════
