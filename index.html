@@ -1572,8 +1572,8 @@ html,body{overflow-x:hidden;max-width:100%;}
             </div>
 
             <div class="det-unlock-banner" id="det-unlock-banner" style="display:none;">
-              <div class="det-unlock-banner-text"><strong>Login untuk melihat nama produk, gambar, dan data penjual lengkap.</strong></div>
-              <button class="det-unlock-btn" onclick="openAuthModal('login')">Login / Daftar Gratis</button>
+              <div class="det-unlock-banner-text"><strong>Buat akun gratis</strong> untuk menyimpan produk ini dan memantau perubahannya setiap minggu.</div>
+              <button class="det-unlock-btn" onclick="openAuthModal('login')">Daftar Gratis →</button>
             </div>
             <div class="det-name" id="d-name">—</div>
 
@@ -3297,9 +3297,8 @@ function showCompareToast(msg) {
 
 function cardHTML(p, idx) {
   const delay = Math.min(idx * 0.04, 0.5);
-  const locked = p.trending && !currentUser;
   return `
-  <div class="product-card ${locked ? 'card-locked' : ''}" onclick="openDetail(${p.id})" data-pid="${p.id}"
+  <div class="product-card" onclick="openDetail(${p.id})" data-pid="${p.id}"
        style="animation:fadeUp .35s ease ${delay}s both;">
     <div class="card-img">
       <div class="card-img-inner" style="position:absolute;inset:0;">
@@ -3308,17 +3307,16 @@ function cardHTML(p, idx) {
       </div>
       <div class="score-pill" style="--score-clr:${scoreColor(p.score)}">${fmtScore(p.score)}</div>
       ${p.trending ? '<div class="trend-badge">Trending</div>' : ''}
-      ${locked ? `<div class="card-lock-badge" onclick="event.stopPropagation();openAuthModal()"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Login</div>` : ''}
-      ${!locked ? (savedProducts.has(p.id)
+      ${savedProducts.has(p.id)
         ? `<button class="save-btn saved" data-pid="${p.id}" onclick="event.stopPropagation();openProfile()" title="Lihat Produk Tersimpan"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>`
         : `<button class="save-btn" data-pid="${p.id}" onclick="toggleSave(event,${p.id})" title="Simpan produk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>`
-      ) : ''}
+      }
     </div>
     <button class="cmp-btn ${compareList.includes(p.id)?'selected':''}" data-pid="${p.id}" onclick="toggleCompare(event,${p.id})" title="Bandingkan">
       <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
     </button>
     <div class="card-body">
-      <div class="card-name">${locked ? p.name : p.name}</div>
+      <div class="card-name">${p.name}</div>
       <div style="display:flex;align-items:center;gap:5px;"><div class="card-cat">${p.category}</div><img src="images/shopee-logo.png" alt="Shopee" style="width:14px;height:14px;flex-shrink:0;"></div>
     </div>
   </div>`;
@@ -4668,23 +4666,22 @@ function renderDetail(p) {
       detScoreRow.appendChild(tBadge);
     }
   }
-  const detLocked = p.trending && !currentUser;
-  // Unlock banner
+  // Unlock banner — only shown for competitor analysis section now
   const unlockBanner = document.getElementById('det-unlock-banner');
-  if (unlockBanner) unlockBanner.style.display = detLocked ? '' : 'none';
+  if (unlockBanner) unlockBanner.style.display = 'none';
   // Sync save button
   syncDetailSaveBtn();
-  // Name — show but blur if locked
+  // Name — always visible
   const nameEl = document.getElementById('d-name');
   nameEl.textContent = p.name;
-  nameEl.classList.toggle('blur-field', detLocked);
+  nameEl.classList.remove('blur-field');
 
   document.getElementById('d-units-new').textContent = Math.round(p.newUnits) + '/mo';
   document.getElementById('d-units-exp').textContent = Math.round(p.expUnits) + '/mo';
 
-  // Main image — blur if locked
+  // Main image — always visible
   const mainImg = document.getElementById('d-main-img');
-  mainImg.classList.toggle('blur-field', detLocked);
+  mainImg.classList.remove('blur-field');
   mainImg.innerHTML = p.image
     ? `<img src="${p.image}" alt="" onerror="this.style.display='none'">`
     : ('');
@@ -4803,6 +4800,22 @@ async function loadSellerData(p) {
   }
 
   document.getElementById('sellers-loading').style.display = 'none';
+
+  // Gate competitor analysis behind login
+  if (!currentUser) {
+    document.getElementById('sellers-table-wrap').style.display = 'none';
+    const loadingEl = document.getElementById('sellers-loading');
+    loadingEl.style.display = 'block';
+    loadingEl.innerHTML = `
+      <div style="text-align:center;padding:28px 16px;">
+        <div style="font-size:1.5rem;margin-bottom:10px;">🔒</div>
+        <div style="font-size:.9rem;font-weight:700;color:#111;margin-bottom:6px;">Analisis Kompetitor</div>
+        <div style="font-size:.8rem;color:var(--tm);margin-bottom:16px;line-height:1.5;">Lihat data lengkap 15 penjual teratas — harga, revenue, rating, dan perubahan minggu ini. Gratis dengan akun LarisID.</div>
+        <button onclick="openAuthModal('login')" style="background:var(--orange);color:#fff;border:none;border-radius:8px;padding:10px 22px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;">Daftar Gratis / Login →</button>
+      </div>`;
+    return;
+  }
+
   document.getElementById('sellers-table-wrap').style.display = 'block'; var si = document.getElementById('sellers-scroll-inner'); if(si){ si.addEventListener('scroll', function(){ document.getElementById('sellers-scroll-hint').style.opacity = this.scrollLeft > 10 ? '0' : '1'; }); }
 
   if (!rows || !rows.length) {
@@ -4866,14 +4879,12 @@ async function loadSellerData(p) {
   if (thumbImgs.length) {
     // Set main image to first listing image
     const mainImg = document.getElementById('d-main-img');
-    const imgLocked = currentProduct && currentProduct.trending && !currentUser;
-    mainImg.classList.toggle('blur-field', imgLocked);
+    mainImg.classList.remove('blur-field');
     mainImg.innerHTML = `<img src="${thumbImgs[0].image}" alt="" onerror="this.style.display='none'">`;
-    // Render thumbs (blur if locked)
     const thumbsEl = document.getElementById('d-thumbs');
-    thumbsEl.classList.toggle('blur-field', imgLocked);
+    thumbsEl.classList.remove('blur-field');
     thumbsEl.innerHTML = thumbImgs.map((s, i) =>
-      `<div class="det-thumb ${i===0?'active':''}" onclick="${imgLocked ? '' : `setMainImg('${s.image}', this)`}">
+      `<div class="det-thumb ${i===0?'active':''}" onclick="setMainImg('${s.image}', this)">
          <img src="${s.image}" alt="" onerror="this.style.display='none'">
        </div>`
     ).join('');
