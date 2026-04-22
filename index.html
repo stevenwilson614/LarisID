@@ -750,21 +750,31 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .pdb-cats-label{font-size:.68rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;}
 .pdb-select-all{font-size:.7rem;color:#E8442A;font-weight:700;cursor:pointer;margin-bottom:6px;display:inline-block;}
 .pdb-cats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:3px 20px;}
-.pdb-cat-check{display:flex;align-items:center;gap:6px;font-size:.75rem;color:#374151;cursor:pointer;padding:2px 0;}
-.pdb-cat-check input{cursor:pointer;accent-color:#E8442A;width:13px;height:13px;}
+.pdb-cat-label{display:flex;align-items:center;gap:6px;font-size:.75rem;color:#374151;cursor:pointer;padding:2px 0;}
+.pdb-cat-label input{cursor:pointer;accent-color:#E8442A;width:13px;height:13px;}
 .pdb-divider{width:1px;background:#E5E7EB;align-self:stretch;flex-shrink:0;}
-.pdb-ranges-col{flex:1;min-width:260px;}
-.pdb-ranges-label{font-size:.68rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;}
-.pdb-range-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
-.pdb-range-row{display:flex;align-items:center;gap:6px;background:#F7F6F3;border:1px solid #E5E7EB;border-radius:7px;padding:5px 10px;}
-.pdb-range-icon{font-size:.75rem;flex-shrink:0;}
-.pdb-range-input{border:none;background:none;font-size:.72rem;width:60px;outline:none;font-family:inherit;color:#374151;}
+.pdb-ranges-col{flex:1;min-width:320px;}
+.pdb-ranges-label{font-size:.68rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;}
+.pdb-range-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.pdb-range-group{display:flex;flex-direction:column;}
+.pdb-range-label-row{display:flex;align-items:center;gap:5px;margin-bottom:5px;}
+.pdb-range-label-text{font-size:.67rem;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:4px;}
+.pdb-range-label-text svg{flex-shrink:0;opacity:.6;}
+.pdb-tooltip{position:relative;display:inline-flex;align-items:center;}
+.pdb-tooltip-icon{width:14px;height:14px;border-radius:50%;border:1.5px solid #9CA3AF;color:#9CA3AF;font-size:.58rem;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:help;flex-shrink:0;line-height:1;}
+.pdb-tooltip-text{visibility:hidden;opacity:0;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#1A1F3C;color:#fff;font-size:.65rem;padding:5px 9px;border-radius:6px;pointer-events:none;transition:opacity .15s;z-index:99;width:160px;white-space:normal;line-height:1.4;text-align:left;}
+.pdb-tooltip-text::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:4px solid transparent;border-top-color:#1A1F3C;}
+.pdb-tooltip:hover .pdb-tooltip-text{visibility:visible;opacity:1;}
+.pdb-range-inputs{display:flex;align-items:center;gap:5px;}
+.pdb-range-input{flex:1;min-width:0;border:1.5px solid #E5E7EB;background:#F9FAFB;border-radius:7px;padding:9px 10px;font-size:.72rem;outline:none;font-family:inherit;color:#374151;transition:border-color .15s;}
+.pdb-range-input:focus{border-color:#E8442A;background:#fff;}
 .pdb-range-input::placeholder{color:#9CA3AF;}
-.pdb-range-sep{font-size:.68rem;color:#9CA3AF;flex-shrink:0;}
-.pdb-search-row{margin-top:16px;display:flex;align-items:center;gap:12px;}
+.pdb-range-sep{font-size:.65rem;color:#D1D5DB;flex-shrink:0;}
+.pdb-search-row{margin-top:18px;display:flex;align-items:center;gap:10px;justify-content:flex-end;}
 .pdb-search-btn{background:#E8442A;color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;}
 .pdb-search-btn:hover{background:#C23520;}
-.pdb-reset-btn{background:none;border:none;font-size:.75rem;color:#6B7280;cursor:pointer;font-family:inherit;text-decoration:underline;}
+.pdb-reset-btn{background:none;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 18px;font-size:.75rem;font-weight:600;color:#6B7280;cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s;}
+.pdb-reset-btn:hover{border-color:#6B7280;color:#374151;}
 .pdb-results{margin:14px 28px 28px;background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;}
 .pdb-results-bar{padding:10px 18px;border-bottom:1px solid #E5E7EB;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
 .pdb-results-count{font-size:.75rem;color:#6B7280;}
@@ -2393,52 +2403,131 @@ html,body{overflow-x:hidden;max-width:100%;}
 
             <!-- Range filters -->
             <div class="pdb-ranges-col">
-              <div class="pdb-ranges-label">Filter</div>
+              <div class="pdb-ranges-label">Filter Produk</div>
               <div class="pdb-range-grid">
-                <div class="pdb-range-row">
-                  <span class="pdb-range-icon">💰</span>
-                  <input class="pdb-range-input" id="pdb-min-price" type="number" placeholder="Min Harga">
-                  <span class="pdb-range-sep">→</span>
-                  <input class="pdb-range-input" id="pdb-max-price" type="number" placeholder="Max Harga">
+
+                <!-- Price -->
+                <div class="pdb-range-group">
+                  <div class="pdb-range-label-row">
+                    <span class="pdb-range-label-text">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H8"/><line x1="12" y1="5" x2="12" y2="19"/></svg>
+                      Harga
+                    </span>
+                    <span class="pdb-tooltip">
+                      <span class="pdb-tooltip-icon">?</span>
+                      <span class="pdb-tooltip-text">Kisaran harga jual produk dalam Rupiah (IDR).</span>
+                    </span>
+                  </div>
+                  <div class="pdb-range-inputs">
+                    <input class="pdb-range-input" id="pdb-min-price" type="number" placeholder="min">
+                    <span class="pdb-range-sep">—</span>
+                    <input class="pdb-range-input" id="pdb-max-price" type="number" placeholder="max">
+                  </div>
                 </div>
-                <div class="pdb-range-row">
-                  <span class="pdb-range-icon">⭐</span>
-                  <input class="pdb-range-input" id="pdb-min-rating" type="number" step="0.1" min="0" max="5" placeholder="Min Rating">
-                  <span class="pdb-range-sep">→</span>
-                  <input class="pdb-range-input" id="pdb-max-rating" type="number" step="0.1" min="0" max="5" placeholder="Max Rating">
+
+                <!-- Rating -->
+                <div class="pdb-range-group">
+                  <div class="pdb-range-label-row">
+                    <span class="pdb-range-label-text">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                      Rating
+                    </span>
+                    <span class="pdb-tooltip">
+                      <span class="pdb-tooltip-icon">?</span>
+                      <span class="pdb-tooltip-text">Rating rata-rata produk dari 1.0 – 5.0.</span>
+                    </span>
+                  </div>
+                  <div class="pdb-range-inputs">
+                    <input class="pdb-range-input" id="pdb-min-rating" type="number" step="0.1" min="0" max="5" placeholder="min">
+                    <span class="pdb-range-sep">—</span>
+                    <input class="pdb-range-input" id="pdb-max-rating" type="number" step="0.1" min="0" max="5" placeholder="max">
+                  </div>
                 </div>
-                <div class="pdb-range-row">
-                  <span class="pdb-range-icon">📦</span>
-                  <input class="pdb-range-input" id="pdb-min-sold" type="number" placeholder="Min Terjual">
-                  <span class="pdb-range-sep">→</span>
-                  <input class="pdb-range-input" id="pdb-max-sold" type="number" placeholder="Max Terjual">
+
+                <!-- Sold -->
+                <div class="pdb-range-group">
+                  <div class="pdb-range-label-row">
+                    <span class="pdb-range-label-text">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                      Terjual
+                    </span>
+                    <span class="pdb-tooltip">
+                      <span class="pdb-tooltip-icon">?</span>
+                      <span class="pdb-tooltip-text">Total unit terjual sepanjang masa produk aktif.</span>
+                    </span>
+                  </div>
+                  <div class="pdb-range-inputs">
+                    <input class="pdb-range-input" id="pdb-min-sold" type="number" placeholder="min">
+                    <span class="pdb-range-sep">—</span>
+                    <input class="pdb-range-input" id="pdb-max-sold" type="number" placeholder="max">
+                  </div>
                 </div>
-                <div class="pdb-range-row">
-                  <span class="pdb-range-icon">💬</span>
-                  <input class="pdb-range-input" id="pdb-min-reviews" type="number" placeholder="Min Ulasan">
-                  <span class="pdb-range-sep">→</span>
-                  <input class="pdb-range-input" id="pdb-max-reviews" type="number" placeholder="Max Ulasan">
+
+                <!-- Reviews -->
+                <div class="pdb-range-group">
+                  <div class="pdb-range-label-row">
+                    <span class="pdb-range-label-text">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                      Ulasan
+                    </span>
+                    <span class="pdb-tooltip">
+                      <span class="pdb-tooltip-icon">?</span>
+                      <span class="pdb-tooltip-text">Jumlah ulasan pembeli yang terverifikasi.</span>
+                    </span>
+                  </div>
+                  <div class="pdb-range-inputs">
+                    <input class="pdb-range-input" id="pdb-min-reviews" type="number" placeholder="min">
+                    <span class="pdb-range-sep">—</span>
+                    <input class="pdb-range-input" id="pdb-max-reviews" type="number" placeholder="max">
+                  </div>
                 </div>
-                <div class="pdb-range-row">
-                  <span class="pdb-range-icon">🏪</span>
-                  <input class="pdb-range-input" id="pdb-min-stock" type="number" placeholder="Min Stok">
-                  <span class="pdb-range-sep">→</span>
-                  <input class="pdb-range-input" id="pdb-max-stock" type="number" placeholder="Max Stok">
+
+                <!-- Stock -->
+                <div class="pdb-range-group">
+                  <div class="pdb-range-label-row">
+                    <span class="pdb-range-label-text">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><path d="M8 7V5a2 2 0 0 0-4 0v2"/></svg>
+                      Stok
+                    </span>
+                    <span class="pdb-tooltip">
+                      <span class="pdb-tooltip-icon">?</span>
+                      <span class="pdb-tooltip-text">Sisa stok produk saat ini di toko penjual.</span>
+                    </span>
+                  </div>
+                  <div class="pdb-range-inputs">
+                    <input class="pdb-range-input" id="pdb-min-stock" type="number" placeholder="min">
+                    <span class="pdb-range-sep">—</span>
+                    <input class="pdb-range-input" id="pdb-max-stock" type="number" placeholder="max">
+                  </div>
                 </div>
-                <div class="pdb-range-row">
-                  <span class="pdb-range-icon">🎯</span>
-                  <input class="pdb-range-input" id="pdb-min-score" type="number" min="0" max="100" placeholder="Min Score">
-                  <span class="pdb-range-sep">→</span>
-                  <input class="pdb-range-input" id="pdb-max-score" type="number" min="0" max="100" placeholder="Max Score">
+
+                <!-- Score -->
+                <div class="pdb-range-group">
+                  <div class="pdb-range-label-row">
+                    <span class="pdb-range-label-text">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                      Score
+                    </span>
+                    <span class="pdb-tooltip">
+                      <span class="pdb-tooltip-icon">?</span>
+                      <span class="pdb-tooltip-text">Skor kelayakan 0–100 berdasarkan penjualan, stok, dan rating. Hijau ≥70, kuning ≥45.</span>
+                    </span>
+                  </div>
+                  <div class="pdb-range-inputs">
+                    <input class="pdb-range-input" id="pdb-min-score" type="number" min="0" max="100" placeholder="min">
+                    <span class="pdb-range-sep">—</span>
+                    <input class="pdb-range-input" id="pdb-max-score" type="number" min="0" max="100" placeholder="max">
+                  </div>
                 </div>
+
               </div>
             </div>
           </div>
 
           <div class="pdb-search-row">
-            <button class="pdb-search-btn" onclick="loadProductDatabase()">Cari Produk</button>
+            <span id="pdb-status" style="font-size:.72rem;color:#6B7280;margin-right:auto;"></span>
             <button class="pdb-reset-btn" onclick="pdbResetFilters()">Reset Filter</button>
-            <span id="pdb-status" style="font-size:.72rem;color:#6B7280;"></span>
+            <button class="pdb-search-btn" onclick="loadProductDatabase()">Cari Produk</button>
           </div>
         </div>
 
