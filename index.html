@@ -5570,14 +5570,16 @@ async function removeSavedProduct(pid) {
 async function openProfile() {
   if (!currentUser) { openAuthModal('login'); return; }
   clearCompare();
-  await loadAllPlans();
-  renderProfileSaved();
-  loadDashboardData();
+  // switch page immediately — don't let background async calls block navigation
   document.body.classList.add('in-dashboard');
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-profile').classList.add('active');
   window.scrollTo(0, 0);
   switchDashView('home');
+  // load data in background after page is visible
+  try { await loadAllPlans(); } catch(_) {}
+  try { renderProfileSaved(); } catch(_) {}
+  try { loadDashboardData(); } catch(_) {}
 }
 
 // ── DASHBOARD TAB SWITCHING ──
