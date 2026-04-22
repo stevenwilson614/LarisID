@@ -675,65 +675,134 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 /* ══════════════════════════════════════════════════
    DASHBOARD — logged-in home
 ══════════════════════════════════════════════════ */
-.dashboard-layout{display:flex;min-height:calc(100vh - 72px);background:var(--bg);}
+.dashboard-layout{display:flex;min-height:calc(100vh - 72px);background:#F7F6F3;}
 
-/* Sidebar */
-.dash-sidebar{width:220px;flex-shrink:0;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:72px;height:calc(100vh - 72px);overflow-y:auto;}
-.dash-user-info{padding:20px 16px 16px;border-bottom:1px solid var(--border);}
-.dash-user-avatar{width:40px;height:40px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1rem;margin-bottom:8px;flex-shrink:0;}
-.dash-user-email{font-size:.72rem;color:var(--tm);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:10px;}
-.dash-logout-btn{background:none;border:1.5px solid var(--border);border-radius:7px;padding:5px 12px;font-size:.75rem;font-weight:600;color:var(--tm);cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s;}
-.dash-logout-btn:hover{border-color:#C0392B;color:#C0392B;}
-.dash-sidebar-nav{display:flex;flex-direction:column;gap:2px;padding:16px 10px;flex:1;}
-.dash-nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;font-size:.85rem;font-weight:600;color:var(--tm);cursor:pointer;transition:background .15s,color .15s;user-select:none;}
-.dash-nav-item:hover{background:var(--bg);color:#111;}
-.dash-nav-item.active{background:var(--orange-light);color:var(--orange);}
-.dash-nav-icon{font-size:1rem;width:20px;text-align:center;flex-shrink:0;}
-.dash-nav-badge{margin-left:auto;background:var(--orange);color:#fff;font-size:.6rem;font-weight:700;padding:1px 6px;border-radius:20px;}
+/* ── SIDEBAR ── */
+.dash-sidebar{width:240px;flex-shrink:0;background:#1A1F3C;display:flex;flex-direction:column;position:sticky;top:72px;height:calc(100vh - 72px);overflow-y:auto;}
+.dash-sidebar-logo{padding:18px 20px 14px;border-bottom:1px solid rgba(255,255,255,.1);font-size:1.05rem;font-weight:800;color:#fff;letter-spacing:-.01em;}
+.dash-sidebar-logo span{color:#E8442A;font-weight:400;}
+.dash-user-info{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px;}
+.dash-user-avatar{width:30px;height:30px;border-radius:50%;background:#E8442A;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;flex-shrink:0;}
+.dash-user-meta{flex:1;min-width:0;}
+.dash-user-name{font-size:.75rem;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dash-user-email{font-size:.65rem;color:rgba(255,255,255,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dash-logout-btn{background:none;border:none;color:rgba(255,255,255,.35);font-size:.68rem;cursor:pointer;padding:0;font-family:inherit;flex-shrink:0;transition:color .15s;}
+.dash-logout-btn:hover{color:#fff;}
+.dash-sidebar-nav{display:flex;flex-direction:column;gap:1px;padding:10px 8px;flex:1;}
+.dash-nav-item{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:7px;font-size:.8rem;font-weight:600;color:rgba(255,255,255,.55);cursor:pointer;transition:background .15s,color .15s;user-select:none;}
+.dash-nav-item:hover{background:rgba(255,255,255,.08);color:#fff;}
+.dash-nav-item.open{color:#fff;}
+.dash-nav-icon{font-size:.85rem;width:16px;text-align:center;flex-shrink:0;}
+.dash-nav-arrow{margin-left:auto;font-size:.6rem;transition:transform .2s;opacity:.5;}
+.dash-nav-item.open .dash-nav-arrow{transform:rotate(90deg);}
+.dash-nav-sub{display:none;flex-direction:column;gap:1px;padding:3px 0 3px 28px;}
+.dash-nav-sub.open{display:flex;}
+.dash-nav-sub-item{padding:7px 10px;border-radius:6px;font-size:.75rem;font-weight:500;color:rgba(255,255,255,.45);cursor:pointer;transition:color .15s,background .15s;}
+.dash-nav-sub-item:hover{color:#fff;background:rgba(255,255,255,.06);}
+.dash-nav-sub-item.active{color:#E8442A;font-weight:700;}
+.dash-nav-divider{height:1px;background:rgba(255,255,255,.07);margin:6px 4px;}
 
-/* Main content area */
-.dash-content{flex:1;padding:24px;overflow-y:auto;max-width:960px;}
-@media(max-width:900px){.dash-content{padding:16px;}}
+/* ── MAIN CONTENT ── */
+.dash-content{flex:1;overflow-y:auto;background:#F7F6F3;}
+.dash-home{padding:24px 28px;max-width:960px;}
 
 /* Stats row */
 .dash-stats-row{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
-.dash-stat{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;flex:1;min-width:100px;}
+.dash-stat{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:14px 18px;flex:1;min-width:100px;}
 .dash-stat-val{font-size:1.4rem;font-weight:800;color:#111;line-height:1;}
-.dash-stat-lbl{font-size:.72rem;color:var(--tm);margin-top:4px;}
+.dash-stat-lbl{font-size:.72rem;color:#6B7280;margin-top:4px;}
 
-/* Section header */
-.dash-section{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px;}
+/* Section */
+.dash-section{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:18px 20px;margin-bottom:16px;}
 .dash-section-head{margin-bottom:14px;}
 .dash-section-title{font-size:.9rem;font-weight:700;color:#111;display:flex;align-items:center;gap:8px;}
-.dash-section-title::before{content:'';display:block;width:3px;height:14px;background:var(--orange);border-radius:2px;}
-.dash-section-sub{font-size:.75rem;color:var(--tm);margin-top:3px;}
+.dash-section-title::before{content:'';display:block;width:3px;height:14px;background:#E8442A;border-radius:2px;}
+.dash-section-sub{font-size:.75rem;color:#6B7280;margin-top:3px;}
 
 /* Movers */
 .dash-movers-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
 @media(max-width:600px){.dash-movers-row{grid-template-columns:1fr;}}
-.dash-mover-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.dash-mover-card{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px 18px;}
 .dash-mover-up{border-left:3px solid #1A7A46;}
 .dash-mover-down{border-left:3px solid #C0392B;}
-.dash-mover-label{font-size:.7rem;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
+.dash-mover-label{font-size:.7rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
 .dash-mover-name{font-size:.88rem;font-weight:700;color:#111;line-height:1.3;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .dash-mover-delta{font-size:1.1rem;font-weight:800;}
 .dash-mover-up .dash-mover-delta{color:#1A7A46;}
 .dash-mover-down .dash-mover-delta{color:#C0392B;}
-.dash-mover-meta{font-size:.72rem;color:var(--tm);margin-top:4px;line-height:1.5;}
+.dash-mover-meta{font-size:.72rem;color:#6B7280;margin-top:4px;line-height:1.5;}
 
-/* Coming soon placeholder */
-.dash-coming-soon{text-align:center;padding:60px 20px;background:#fff;border:1px solid var(--border);border-radius:12px;}
+/* Coming soon */
+.dash-coming-soon{text-align:center;padding:80px 20px;}
 .dash-coming-icon{font-size:2.5rem;margin-bottom:12px;}
 .dash-coming-title{font-size:1rem;font-weight:700;color:#111;margin-bottom:8px;}
-.dash-coming-sub{font-size:.83rem;color:var(--tm);max-width:400px;margin:0 auto;line-height:1.6;}
+.dash-coming-sub{font-size:.83rem;color:#6B7280;max-width:400px;margin:0 auto;line-height:1.6;}
 
-/* Responsive: collapse sidebar on mobile */
-@media(max-width:720px){
-  .dash-sidebar{width:100%;height:auto;position:static;flex-direction:row;border-right:none;border-bottom:1px solid var(--border);}
-  .dash-user-info{display:none;}
-  .dash-sidebar-nav{flex-direction:row;padding:8px 12px;gap:4px;overflow-x:auto;}
-  .dashboard-layout{flex-direction:column;}
-  .dash-content{padding:12px;}
+/* ── PRODUCT DATABASE ── */
+.pdb-header{display:flex;align-items:center;justify-content:space-between;padding:22px 28px 0;flex-wrap:wrap;gap:12px;}
+.pdb-title{font-size:1.25rem;font-weight:800;color:#1A1F3C;}
+.pdb-header-btns{display:flex;gap:8px;}
+.pdb-btn{border:1.5px solid #E5E7EB;background:#fff;border-radius:7px;padding:7px 16px;font-size:.75rem;font-weight:700;color:#374151;cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s;}
+.pdb-btn:hover{border-color:#E8442A;color:#E8442A;}
+.pdb-filters{margin:16px 28px 0;background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:20px 22px;}
+.pdb-filter-row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;}
+.pdb-cats-col{flex-shrink:0;}
+.pdb-cats-label{font-size:.68rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;}
+.pdb-select-all{font-size:.7rem;color:#E8442A;font-weight:700;cursor:pointer;margin-bottom:6px;display:inline-block;}
+.pdb-cats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:3px 20px;}
+.pdb-cat-check{display:flex;align-items:center;gap:6px;font-size:.75rem;color:#374151;cursor:pointer;padding:2px 0;}
+.pdb-cat-check input{cursor:pointer;accent-color:#E8442A;width:13px;height:13px;}
+.pdb-divider{width:1px;background:#E5E7EB;align-self:stretch;flex-shrink:0;}
+.pdb-ranges-col{flex:1;min-width:260px;}
+.pdb-ranges-label{font-size:.68rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;}
+.pdb-range-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.pdb-range-row{display:flex;align-items:center;gap:6px;background:#F7F6F3;border:1px solid #E5E7EB;border-radius:7px;padding:5px 10px;}
+.pdb-range-icon{font-size:.75rem;flex-shrink:0;}
+.pdb-range-input{border:none;background:none;font-size:.72rem;width:60px;outline:none;font-family:inherit;color:#374151;}
+.pdb-range-input::placeholder{color:#9CA3AF;}
+.pdb-range-sep{font-size:.68rem;color:#9CA3AF;flex-shrink:0;}
+.pdb-search-row{margin-top:16px;display:flex;align-items:center;gap:12px;}
+.pdb-search-btn{background:#E8442A;color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;}
+.pdb-search-btn:hover{background:#C23520;}
+.pdb-reset-btn{background:none;border:none;font-size:.75rem;color:#6B7280;cursor:pointer;font-family:inherit;text-decoration:underline;}
+.pdb-results{margin:14px 28px 28px;background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;}
+.pdb-results-bar{padding:10px 18px;border-bottom:1px solid #E5E7EB;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.pdb-results-count{font-size:.75rem;color:#6B7280;}
+.pdb-results-note{font-size:.68rem;color:#9CA3AF;}
+.pdb-table-wrap{overflow-x:auto;}
+.pdb-table{width:100%;border-collapse:collapse;font-size:.75rem;}
+.pdb-table th{text-align:left;padding:9px 14px;font-size:.63rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #E5E7EB;white-space:nowrap;cursor:pointer;background:#FAFAFA;}
+.pdb-table th:hover{color:#374151;}
+.pdb-table td{padding:10px 14px;border-bottom:1px solid #F3F4F6;vertical-align:middle;}
+.pdb-table tr:last-child td{border-bottom:none;}
+.pdb-table tr:hover td{background:#FAFAFA;}
+.pdb-prod-name{font-weight:600;color:#111;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pdb-prod-name a{color:inherit;text-decoration:none;}
+.pdb-prod-name a:hover{color:#E8442A;}
+.pdb-cat-badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:.62rem;font-weight:700;background:#EEF2FF;color:#3730A3;white-space:nowrap;}
+.pdb-score{font-weight:800;font-size:.8rem;}
+.pdb-score-high{color:#1A7A46;}
+.pdb-score-mid{color:#B45309;}
+.pdb-score-low{color:#6B7280;}
+.pdb-stars{color:#F5A623;font-size:.78rem;}
+.pdb-loading{text-align:center;padding:60px 20px;color:#6B7280;font-size:.85rem;}
+.pdb-empty{text-align:center;padding:60px 20px;}
+.pdb-empty-title{font-size:1rem;font-weight:700;color:#111;margin-bottom:6px;}
+.pdb-empty-sub{font-size:.82rem;color:#6B7280;}
+
+/* Responsive */
+@media(max-width:860px){
+  .dash-sidebar{width:200px;}
+  .pdb-header,.pdb-filters,.pdb-results{margin-left:14px;margin-right:14px;}
+  .pdb-cats-grid{grid-template-columns:1fr;}
+}
+@media(max-width:660px){
+  .dash-sidebar{width:56px;}
+  .dash-sidebar-logo,.dash-user-meta,.dash-logout-btn,.dash-nav-sub,.dash-nav-item span:not(.dash-nav-icon){display:none;}
+  .dash-nav-item{justify-content:center;padding:10px;}
+  .pdb-filter-row{flex-direction:column;}
+  .pdb-divider{display:none;}
+  .dashboard-layout{flex-direction:row;}
 }
 
 /* ── KEYWORD RANKINGS ── */
@@ -2182,112 +2251,282 @@ html,body{overflow-x:hidden;max-width:100%;}
 
     <!-- ── SIDEBAR ── -->
     <aside class="dash-sidebar">
+      <div class="dash-sidebar-logo">Laris<span>ID</span></div>
       <div class="dash-user-info">
         <div class="dash-user-avatar" id="dash-avatar">?</div>
-        <div class="dash-user-email" id="dash-email">—</div>
-        <button class="dash-logout-btn" onclick="signOut()">Keluar</button>
+        <div class="dash-user-meta">
+          <div class="dash-user-name" id="dash-name">—</div>
+          <div class="dash-user-email" id="dash-email">—</div>
+        </div>
+        <button class="dash-logout-btn" onclick="signOut()" title="Keluar">↩</button>
       </div>
       <nav class="dash-sidebar-nav">
-        <div class="dash-nav-item active" id="dash-nav-products" onclick="switchDashTab('products')">
-          <span class="dash-nav-icon">📦</span> Produk Saya
+
+        <!-- Home Dashboard -->
+        <div class="dash-nav-item" id="dash-nav-home" onclick="switchDashView('home')">
+          <span class="dash-nav-icon">🏠</span><span>Home Dashboard</span>
         </div>
-        <div class="dash-nav-item" id="dash-nav-education" onclick="switchDashTab('education')">
-          <span class="dash-nav-icon">🎓</span> Edukasi
+
+        <div class="dash-nav-divider"></div>
+
+        <!-- Product Research -->
+        <div class="dash-nav-item open" id="dash-nav-research" onclick="toggleDashSub('research')">
+          <span class="dash-nav-icon">🔍</span><span>Product Research</span>
+          <span class="dash-nav-arrow">▶</span>
         </div>
-        <div class="dash-nav-item" id="dash-nav-sourcing" onclick="switchDashTab('sourcing')">
-          <span class="dash-nav-icon">🏭</span> Sourcing
+        <div class="dash-nav-sub open" id="dash-sub-research">
+          <div class="dash-nav-sub-item active" id="dash-sub-product-database" onclick="switchDashView('product-database')">Product Database</div>
+          <div class="dash-nav-sub-item" id="dash-sub-product-tracker" onclick="switchDashView('product-tracker')">Product Tracker</div>
+          <div class="dash-nav-sub-item" id="dash-sub-opportunity-finder" onclick="switchDashView('opportunity-finder')">Opportunity Finder</div>
+          <div class="dash-nav-sub-item" id="dash-sub-category-trends" onclick="switchDashView('category-trends')">Category Trends</div>
         </div>
+
+        <div class="dash-nav-divider"></div>
+
+        <!-- Other nav items -->
+        <div class="dash-nav-item" id="dash-nav-suppliers" onclick="switchDashView('suppliers')">
+          <span class="dash-nav-icon">🏭</span><span>Suppliers</span>
+        </div>
+        <div class="dash-nav-item" id="dash-nav-keywords" onclick="switchDashView('keywords')">
+          <span class="dash-nav-icon">🔑</span><span>Keywords</span>
+        </div>
+        <div class="dash-nav-item" id="dash-nav-marketing" onclick="switchDashView('marketing')">
+          <span class="dash-nav-icon">📢</span><span>Marketing</span>
+        </div>
+
+        <div class="dash-nav-divider"></div>
+
+        <div class="dash-nav-item" id="dash-nav-saved" onclick="switchDashView('saved')">
+          <span class="dash-nav-icon">📦</span><span>Produk Tersimpan</span>
+        </div>
+
       </nav>
     </aside>
 
     <!-- ── MAIN CONTENT ── -->
     <main class="dash-content">
 
-      <!-- PRODUCTS TAB -->
-      <div id="dash-tab-products">
-
-        <!-- Stats row -->
-        <div class="dash-stats-row" id="dash-stats-row" style="display:none;"></div>
-
-        <!-- Weekly change chart -->
-        <div class="dash-section" id="dash-weekly-section" style="display:none;">
-          <div class="dash-section-head">
-            <div class="dash-section-title">Perubahan Minggu Ini</div>
-            <div class="dash-section-sub">Estimasi delta revenue minggu ini vs minggu lalu untuk produk tersimpan kamu</div>
+      <!-- HOME DASHBOARD -->
+      <div id="dash-view-home" style="display:none;">
+        <div class="dash-home">
+          <div class="dash-stats-row" id="dash-stats-row" style="display:none;"></div>
+          <div class="dash-section" id="dash-weekly-section" style="display:none;">
+            <div class="dash-section-head">
+              <div class="dash-section-title">Perubahan Minggu Ini</div>
+              <div class="dash-section-sub">Estimasi delta revenue untuk produk tersimpan kamu</div>
+            </div>
+            <div style="position:relative;height:220px;"><canvas id="dash-weekly-chart"></canvas></div>
           </div>
-          <div style="position:relative;height:220px;">
-            <canvas id="dash-weekly-chart"></canvas>
-          </div>
-        </div>
-
-        <!-- Top movers -->
-        <div class="dash-movers-row" id="dash-movers-row" style="display:none;">
-          <div class="dash-mover-card dash-mover-up">
-            <div class="dash-mover-label">📈 Naik Terbesar</div>
-            <div class="dash-mover-name" id="dash-mover-up-name">—</div>
-            <div class="dash-mover-delta" id="dash-mover-up-delta">—</div>
-            <div class="dash-mover-meta" id="dash-mover-up-meta"></div>
-          </div>
-          <div class="dash-mover-card dash-mover-down">
-            <div class="dash-mover-label">📉 Turun Terbesar</div>
-            <div class="dash-mover-name" id="dash-mover-down-name">—</div>
-            <div class="dash-mover-delta" id="dash-mover-down-delta">—</div>
-            <div class="dash-mover-meta" id="dash-mover-down-meta"></div>
-          </div>
-        </div>
-
-        <!-- Saved products -->
-        <div class="dash-section" style="padding-bottom:8px;">
-          <div class="dash-section-head" style="margin-bottom:10px;">
-            <div class="dash-section-title">Produk Tersimpan</div>
-          </div>
-          <div id="profile-saved-grid">
-            <div class="dash-empty">
-              <div class="dash-empty-title">Belum ada produk tersimpan</div>
-              <div class="dash-empty-sub">Tekan ikon simpan di kartu produk untuk menambahkan ke sini.</div>
+          <div class="dash-movers-row" id="dash-movers-row" style="display:none;">
+            <div class="dash-mover-card dash-mover-up">
+              <div class="dash-mover-label">📈 Naik Terbesar</div>
+              <div class="dash-mover-name" id="dash-mover-up-name">—</div>
+              <div class="dash-mover-delta" id="dash-mover-up-delta">—</div>
+              <div class="dash-mover-meta" id="dash-mover-up-meta"></div>
+            </div>
+            <div class="dash-mover-card dash-mover-down">
+              <div class="dash-mover-label">📉 Turun Terbesar</div>
+              <div class="dash-mover-name" id="dash-mover-down-name">—</div>
+              <div class="dash-mover-delta" id="dash-mover-down-delta">—</div>
+              <div class="dash-mover-meta" id="dash-mover-down-meta"></div>
             </div>
           </div>
-        </div>
-
-        <!-- Membership strip -->
-        <div class="profile-membership" id="profile-membership">
-          <div class="profile-membership-top">
-            <div class="profile-membership-info">
-              <div class="profile-membership-title">Program Mentorship</div>
-              <div class="profile-membership-sub">1-on-1 bersama mentor berpengalaman. Akses modal usaha tersedia untuk peserta terpilih.</div>
+          <div class="profile-membership" id="profile-membership">
+            <div class="profile-membership-top">
+              <div class="profile-membership-info">
+                <div class="profile-membership-title">Program Mentorship</div>
+                <div class="profile-membership-sub">1-on-1 bersama mentor berpengalaman. Akses modal usaha tersedia untuk peserta terpilih.</div>
+              </div>
+              <div id="profile-membership-status">
+                <button class="profile-membership-apply" onclick="showPage('komunitas')">Apply Now</button>
+              </div>
             </div>
-            <div id="profile-membership-status">
-              <button class="profile-membership-apply" onclick="showPage('komunitas')">Apply Now</button>
+            <div class="profile-wa-strip">
+              <div class="profile-wa-text">Grup WhatsApp — Update produk trending setiap minggu</div>
+              <a class="profile-wa-btn" href="#" target="_blank" rel="noopener">Masuk Grup</a>
             </div>
           </div>
-          <div class="profile-wa-strip">
-            <div class="profile-wa-text">Grup WhatsApp — Update produk trending setiap minggu</div>
-            <a class="profile-wa-btn" href="#" target="_blank" rel="noopener">Masuk Grup</a>
-          </div>
-        </div>
-
-      </div><!-- /dash-tab-products -->
-
-      <!-- EDUCATION TAB -->
-      <div id="dash-tab-education" style="display:none;">
-        <div class="dash-coming-soon">
-          <div class="dash-coming-icon">🎓</div>
-          <div class="dash-coming-title">Edukasi — Segera Hadir</div>
-          <div class="dash-coming-sub">Video kursus gratis: dari riset produk sampai listing pertama di Shopee. Tersedia untuk semua pengguna LarisID — tidak perlu bayar.</div>
         </div>
       </div>
 
-      <!-- SOURCING TAB -->
-      <div id="dash-tab-sourcing" style="display:none;">
+      <!-- SAVED PRODUCTS -->
+      <div id="dash-view-saved" style="display:none;">
+        <div class="dash-home">
+          <div class="dash-section" style="padding-bottom:8px;">
+            <div class="dash-section-head" style="margin-bottom:10px;">
+              <div class="dash-section-title">Produk Tersimpan</div>
+            </div>
+            <div id="profile-saved-grid">
+              <div class="dash-empty">
+                <div class="dash-empty-title">Belum ada produk tersimpan</div>
+                <div class="dash-empty-sub">Tekan ikon simpan di kartu produk untuk menambahkan ke sini.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRODUCT DATABASE -->
+      <div id="dash-view-product-database">
+        <div class="pdb-header">
+          <div class="pdb-title">Product Database</div>
+          <div class="pdb-header-btns">
+            <button class="pdb-btn" onclick="pdbSaveFilter()">Save Filter</button>
+            <button class="pdb-btn" onclick="pdbLoadFilter()">Load Filter Set</button>
+          </div>
+        </div>
+
+        <div class="pdb-filters">
+          <div class="pdb-filter-row">
+
+            <!-- Categories -->
+            <div class="pdb-cats-col">
+              <div class="pdb-cats-label">Pilih Kategori</div>
+              <span class="pdb-select-all" onclick="pdbSelectAll(true)">Pilih Semua</span> &nbsp;
+              <span class="pdb-select-all" style="color:#6B7280;" onclick="pdbSelectAll(false)">Hapus</span>
+              <div class="pdb-cats-grid" id="pdb-cats-grid">
+                <!-- filled by JS -->
+              </div>
+            </div>
+
+            <div class="pdb-divider"></div>
+
+            <!-- Range filters -->
+            <div class="pdb-ranges-col">
+              <div class="pdb-ranges-label">Filter</div>
+              <div class="pdb-range-grid">
+                <div class="pdb-range-row">
+                  <span class="pdb-range-icon">💰</span>
+                  <input class="pdb-range-input" id="pdb-min-price" type="number" placeholder="Min Harga">
+                  <span class="pdb-range-sep">→</span>
+                  <input class="pdb-range-input" id="pdb-max-price" type="number" placeholder="Max Harga">
+                </div>
+                <div class="pdb-range-row">
+                  <span class="pdb-range-icon">⭐</span>
+                  <input class="pdb-range-input" id="pdb-min-rating" type="number" step="0.1" min="0" max="5" placeholder="Min Rating">
+                  <span class="pdb-range-sep">→</span>
+                  <input class="pdb-range-input" id="pdb-max-rating" type="number" step="0.1" min="0" max="5" placeholder="Max Rating">
+                </div>
+                <div class="pdb-range-row">
+                  <span class="pdb-range-icon">📦</span>
+                  <input class="pdb-range-input" id="pdb-min-sold" type="number" placeholder="Min Terjual">
+                  <span class="pdb-range-sep">→</span>
+                  <input class="pdb-range-input" id="pdb-max-sold" type="number" placeholder="Max Terjual">
+                </div>
+                <div class="pdb-range-row">
+                  <span class="pdb-range-icon">💬</span>
+                  <input class="pdb-range-input" id="pdb-min-reviews" type="number" placeholder="Min Ulasan">
+                  <span class="pdb-range-sep">→</span>
+                  <input class="pdb-range-input" id="pdb-max-reviews" type="number" placeholder="Max Ulasan">
+                </div>
+                <div class="pdb-range-row">
+                  <span class="pdb-range-icon">🏪</span>
+                  <input class="pdb-range-input" id="pdb-min-stock" type="number" placeholder="Min Stok">
+                  <span class="pdb-range-sep">→</span>
+                  <input class="pdb-range-input" id="pdb-max-stock" type="number" placeholder="Max Stok">
+                </div>
+                <div class="pdb-range-row">
+                  <span class="pdb-range-icon">🎯</span>
+                  <input class="pdb-range-input" id="pdb-min-score" type="number" min="0" max="100" placeholder="Min Score">
+                  <span class="pdb-range-sep">→</span>
+                  <input class="pdb-range-input" id="pdb-max-score" type="number" min="0" max="100" placeholder="Max Score">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pdb-search-row">
+            <button class="pdb-search-btn" onclick="loadProductDatabase()">Cari Produk</button>
+            <button class="pdb-reset-btn" onclick="pdbResetFilters()">Reset Filter</button>
+            <span id="pdb-status" style="font-size:.72rem;color:#6B7280;"></span>
+          </div>
+        </div>
+
+        <!-- Results -->
+        <div class="pdb-results">
+          <div class="pdb-results-bar">
+            <span class="pdb-results-count" id="pdb-count">—</span>
+            <span class="pdb-results-note" id="pdb-date-note"></span>
+          </div>
+          <div class="pdb-table-wrap">
+            <table class="pdb-table">
+              <thead>
+                <tr>
+                  <th onclick="pdbSort('product_name')">Produk ↕</th>
+                  <th onclick="pdbSort('category')">Kategori ↕</th>
+                  <th onclick="pdbSort('keyword')">Keyword ↕</th>
+                  <th onclick="pdbSort('price')">Harga ↕</th>
+                  <th onclick="pdbSort('total_sold')">Terjual ↕</th>
+                  <th onclick="pdbSort('rating')">Rating ↕</th>
+                  <th onclick="pdbSort('reviews')">Ulasan ↕</th>
+                  <th onclick="pdbSort('stock')">Stok ↕</th>
+                  <th onclick="pdbSort('score')">Score ↕</th>
+                </tr>
+              </thead>
+              <tbody id="pdb-tbody">
+                <tr><td colspan="9" class="pdb-loading">Pilih kategori dan klik "Cari Produk" untuk mulai</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRODUCT TRACKER -->
+      <div id="dash-view-product-tracker" style="display:none;">
+        <div class="dash-coming-soon">
+          <div class="dash-coming-icon">📈</div>
+          <div class="dash-coming-title">Product Tracker — Segera Hadir</div>
+          <div class="dash-coming-sub">Pantau perubahan harga, stok, dan jumlah terjual produk pilihan kamu dari waktu ke waktu.</div>
+        </div>
+      </div>
+
+      <!-- OPPORTUNITY FINDER -->
+      <div id="dash-view-opportunity-finder" style="display:none;">
+        <div class="dash-coming-soon">
+          <div class="dash-coming-icon">💡</div>
+          <div class="dash-coming-title">Opportunity Finder — Segera Hadir</div>
+          <div class="dash-coming-sub">Temukan celah pasar: keyword dengan permintaan tinggi tapi persaingan rendah di Shopee Indonesia.</div>
+        </div>
+      </div>
+
+      <!-- CATEGORY TRENDS -->
+      <div id="dash-view-category-trends" style="display:none;">
+        <div class="dash-coming-soon">
+          <div class="dash-coming-icon">📊</div>
+          <div class="dash-coming-title">Category Trends — Segera Hadir</div>
+          <div class="dash-coming-sub">Lihat kategori mana yang sedang naik daun berdasarkan data penjualan mingguan LarisID.</div>
+        </div>
+      </div>
+
+      <!-- SUPPLIERS -->
+      <div id="dash-view-suppliers" style="display:none;">
         <div class="dash-coming-soon">
           <div class="dash-coming-icon">🏭</div>
-          <div class="dash-coming-title">Sourcing — Segera Hadir</div>
-          <div class="dash-coming-sub">Temukan supplier terpercaya lengkap dengan harga, MOQ, dan estimasi ongkir ke Indonesia — langsung dari dashboard kamu.</div>
+          <div class="dash-coming-title">Suppliers — Segera Hadir</div>
+          <div class="dash-coming-sub">Temukan supplier terpercaya lengkap dengan harga, MOQ, dan estimasi ongkir ke Indonesia.</div>
         </div>
       </div>
 
-    </main><!-- /dash-content -->
-  </div><!-- /dashboard-layout -->
+      <!-- KEYWORDS -->
+      <div id="dash-view-keywords" style="display:none;">
+        <div class="dash-coming-soon">
+          <div class="dash-coming-icon">🔑</div>
+          <div class="dash-coming-title">Keywords — Segera Hadir</div>
+          <div class="dash-coming-sub">Analisis keyword terpopuler di Shopee: lihat mana yang menghasilkan penjualan terbanyak dan persaingan terendah.</div>
+        </div>
+      </div>
+
+      <!-- MARKETING -->
+      <div id="dash-view-marketing" style="display:none;">
+        <div class="dash-coming-soon">
+          <div class="dash-coming-icon">📢</div>
+          <div class="dash-coming-title">Marketing — Segera Hadir</div>
+          <div class="dash-coming-sub">Tools untuk mengoptimalkan listing, iklan Shopee Ads, dan strategi promosi produk kamu.</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
 </div>
 
 <!-- ════════════════════════════════════
@@ -3449,12 +3688,14 @@ function updateAuthUI() {
     if (mLogin) mLogin.style.display = '';
     if (mProfile) mProfile.style.display = 'none';
   }
-  // Update sidebar avatar/email
+  // Update sidebar avatar/name/email
   const dashAvatar = document.getElementById('dash-avatar');
   const dashEmail  = document.getElementById('dash-email');
+  const dashName   = document.getElementById('dash-name');
   if (currentUser) {
     const name = currentUser.user_metadata?.full_name || currentUser.email || '?';
     if (dashAvatar) dashAvatar.textContent = name.charAt(0).toUpperCase();
+    if (dashName)   dashName.textContent   = name;
     if (dashEmail)  dashEmail.textContent  = currentUser.email;
   }
   // Legacy profile hero elements (kept for compatibility)
@@ -4267,6 +4508,7 @@ async function openProfile() {
   renderProfileSaved();
   loadDashboardData();
   showPage('profile');
+  switchDashView('product-database');
 }
 
 // ── DASHBOARD TAB SWITCHING ──
@@ -4277,6 +4519,252 @@ function switchDashTab(tab) {
     if (el)  el.style.display  = (t === tab) ? '' : 'none';
     if (nav) nav.classList.toggle('active', t === tab);
   });
+}
+
+// ════════════════════════════════════════════════════════════
+//  JUNGLE SCOUT-STYLE DASHBOARD — view switching, Product DB
+// ════════════════════════════════════════════════════════════
+
+const PDB_VIEWS = ['home','product-database','product-tracker','opportunity-finder','category-trends','suppliers','keywords','marketing','saved'];
+const PDB_SUB_MAP = {'product-database':'research','product-tracker':'research','opportunity-finder':'research','category-trends':'research'};
+const PDB_CATS = ['Bayi & Anak','Motor & Mobil','Rumah','Hewan Peliharaan','Dapur','Kamar Mandi','Elektronik','Fashion','Kecantikan','Kesehatan','Olahraga','Outdoor & Camping','Sepeda','Tanaman','Taman','Keamanan','Hobi & Kerajinan','Alat Tulis','HP & Gadget'];
+
+let _pdbSortField  = 'total_sold';
+let _pdbSortDir    = 'desc';
+let _pdbRows       = [];
+let _pdbCatsInited = false;
+
+function switchDashView(view) {
+  PDB_VIEWS.forEach(v => {
+    const el = document.getElementById(`dash-view-${v}`);
+    if (el) el.style.display = (v === view) ? '' : 'none';
+  });
+
+  // Sidebar nav highlighting
+  ['home','research','suppliers','keywords','marketing','saved'].forEach(k => {
+    const el = document.getElementById(`dash-nav-${k}`);
+    if (el) el.classList.toggle('active', k === view || (k === 'research' && PDB_SUB_MAP[view] === 'research'));
+  });
+
+  // Sub-item highlighting
+  ['product-database','product-tracker','opportunity-finder','category-trends'].forEach(k => {
+    const el = document.getElementById(`dash-sub-${k}`);
+    if (el) el.classList.toggle('active', k === view);
+  });
+
+  // Open research submenu when a sub-view is active
+  if (PDB_SUB_MAP[view] === 'research') {
+    const sub = document.getElementById('dash-sub-research');
+    const nav = document.getElementById('dash-nav-research');
+    if (sub) sub.classList.add('open');
+    if (nav) nav.classList.add('open');
+  }
+
+  if (view === 'product-database') _initPdbCats();
+  if (view === 'home') _renderDashHome();
+}
+
+function toggleDashSub(sub) {
+  const el  = document.getElementById(`dash-sub-${sub}`);
+  const nav = document.getElementById(`dash-nav-${sub}`);
+  if (!el) return;
+  const isOpen = el.classList.toggle('open');
+  if (nav) nav.classList.toggle('open', isOpen);
+}
+
+function _initPdbCats() {
+  if (_pdbCatsInited) return;
+  _pdbCatsInited = true;
+  const grid = document.getElementById('pdb-cats-grid');
+  if (!grid) return;
+  grid.innerHTML = PDB_CATS.map(c => `
+    <label class="pdb-cat-label">
+      <input type="checkbox" class="pdb-cat-cb" value="${c}" checked> ${c}
+    </label>`).join('');
+}
+
+function pdbSelectAll(checked) {
+  document.querySelectorAll('.pdb-cat-cb').forEach(cb => cb.checked = checked);
+}
+
+function pdbResetFilters() {
+  document.querySelectorAll('.pdb-cat-cb').forEach(cb => cb.checked = true);
+  ['price','rating','sold','reviews','stock','score'].forEach(f => {
+    const mn = document.getElementById(`pdb-min-${f}`);
+    const mx = document.getElementById(`pdb-max-${f}`);
+    if (mn) mn.value = '';
+    if (mx) mx.value = '';
+  });
+  _pdbRows = [];
+  const tbody = document.getElementById('pdb-tbody');
+  if (tbody) tbody.innerHTML = '';
+  const cnt = document.getElementById('pdb-count');
+  if (cnt) cnt.textContent = '';
+  const st = document.getElementById('pdb-status');
+  if (st) st.textContent = '';
+}
+
+function pdbSaveFilter() {
+  const filters = _pdbGetFilters();
+  localStorage.setItem('pdb_saved_filter', JSON.stringify(filters));
+  const st = document.getElementById('pdb-status');
+  if (st) { st.textContent = '✓ Filter tersimpan'; setTimeout(() => { if(st) st.textContent=''; }, 2500); }
+}
+
+function pdbLoadFilter() {
+  const saved = localStorage.getItem('pdb_saved_filter');
+  if (!saved) return;
+  try {
+    const f = JSON.parse(saved);
+    _initPdbCats();
+    document.querySelectorAll('.pdb-cat-cb').forEach(cb => cb.checked = f.cats?.includes(cb.value) ?? true);
+    const fields = ['price','rating','sold','reviews','stock','score'];
+    fields.forEach(field => {
+      const mn = document.getElementById(`pdb-min-${field}`);
+      const mx = document.getElementById(`pdb-max-${field}`);
+      if (mn && f[`min_${field}`] != null) mn.value = f[`min_${field}`];
+      if (mx && f[`max_${field}`] != null) mx.value = f[`max_${field}`];
+    });
+  } catch(e) {}
+}
+
+function _pdbGetFilters() {
+  const cats = [...document.querySelectorAll('.pdb-cat-cb:checked')].map(cb => cb.value);
+  const gv = id => { const el = document.getElementById(id); return el?.value ? parseFloat(el.value) : null; };
+  return {
+    cats,
+    min_price:   gv('pdb-min-price'),   max_price:   gv('pdb-max-price'),
+    min_rating:  gv('pdb-min-rating'),  max_rating:  gv('pdb-max-rating'),
+    min_sold:    gv('pdb-min-sold'),     max_sold:    gv('pdb-max-sold'),
+    min_reviews: gv('pdb-min-reviews'), max_reviews: gv('pdb-max-reviews'),
+    min_stock:   gv('pdb-min-stock'),    max_stock:   gv('pdb-max-stock'),
+    min_score:   gv('pdb-min-score'),    max_score:   gv('pdb-max-score'),
+  };
+}
+
+function _pdbViabilityScore(r) {
+  const soldScore  = Math.min((r.total_sold || 0) / 500 * 40, 40);
+  const stock      = r.stock || 0;
+  const stockScore = stock < 100 ? 30 : stock < 500 ? 20 : 10;
+  const ratingScore = ((r.rating || 0) / 5) * 30;
+  return Math.round(soldScore + stockScore + ratingScore);
+}
+
+async function loadProductDatabase() {
+  if (!_supabase) return;
+  const st = document.getElementById('pdb-status');
+  const tbody = document.getElementById('pdb-tbody');
+  const cnt = document.getElementById('pdb-count');
+  const dateNote = document.getElementById('pdb-date-note');
+  if (st) st.textContent = 'Memuat data…';
+  if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:#6B7280;font-size:.8rem;">Memuat…</td></tr>';
+
+  // Get latest scraped_at date
+  const { data: latestRow, error: latestErr } = await _supabase
+    .from('listings')
+    .select('scraped_at')
+    .order('scraped_at', { ascending: false })
+    .limit(1);
+
+  if (latestErr || !latestRow?.length) {
+    if (st) st.textContent = 'Gagal memuat data.';
+    return;
+  }
+  const latestDate = latestRow[0].scraped_at.slice(0, 10);
+  if (dateNote) dateNote.textContent = `Data: ${latestDate}`;
+
+  const f = _pdbGetFilters();
+  let query = _supabase
+    .from('listings')
+    .select('keyword,category,product_name,store_name,price,original_price,total_sold,rating,reviews,stock,image_url,url,scraped_at')
+    .gte('scraped_at', latestDate)
+    .order('total_sold', { ascending: false })
+    .limit(500);
+
+  if (f.cats && f.cats.length > 0 && f.cats.length < PDB_CATS.length) {
+    query = query.in('category', f.cats);
+  }
+  if (f.min_price   != null) query = query.gte('price',    f.min_price);
+  if (f.max_price   != null) query = query.lte('price',    f.max_price);
+  if (f.min_rating  != null) query = query.gte('rating',   f.min_rating);
+  if (f.max_rating  != null) query = query.lte('rating',   f.max_rating);
+  if (f.min_sold    != null) query = query.gte('total_sold', f.min_sold);
+  if (f.max_sold    != null) query = query.lte('total_sold', f.max_sold);
+  if (f.min_reviews != null) query = query.gte('reviews',  f.min_reviews);
+  if (f.max_reviews != null) query = query.lte('reviews',  f.max_reviews);
+  if (f.min_stock   != null) query = query.gte('stock',    f.min_stock);
+  if (f.max_stock   != null) query = query.lte('stock',    f.max_stock);
+
+  const { data, error } = await query;
+  if (error) {
+    if (st) st.textContent = `Error: ${error.message}`;
+    return;
+  }
+
+  // Compute score and apply score filter client-side
+  _pdbRows = (data || []).map(r => ({ ...r, score: _pdbViabilityScore(r) }));
+  if (f.min_score != null) _pdbRows = _pdbRows.filter(r => r.score >= f.min_score);
+  if (f.max_score != null) _pdbRows = _pdbRows.filter(r => r.score <= f.max_score);
+
+  _pdbRenderTable();
+  if (cnt) cnt.textContent = `${_pdbRows.length} produk`;
+  if (st) st.textContent = '';
+}
+
+function pdbSort(field) {
+  if (_pdbSortField === field) {
+    _pdbSortDir = _pdbSortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    _pdbSortField = field;
+    _pdbSortDir   = 'desc';
+  }
+  _pdbRenderTable();
+}
+
+function _pdbRenderTable() {
+  const tbody = document.getElementById('pdb-tbody');
+  if (!tbody) return;
+
+  const rows = [..._pdbRows].sort((a, b) => {
+    const av = a[_pdbSortField] ?? 0;
+    const bv = b[_pdbSortField] ?? 0;
+    return _pdbSortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+  });
+
+  const fmtRp = v => v ? 'Rp ' + Math.round(v).toLocaleString('id-ID') : '—';
+  const fmtNum = v => v != null ? Math.round(v).toLocaleString('id-ID') : '—';
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:#6B7280;font-size:.8rem;">Tidak ada produk yang cocok dengan filter ini.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => {
+    const img = r.image_url
+      ? `<img src="${r.image_url}" style="width:36px;height:36px;border-radius:4px;object-fit:cover;margin-right:8px;vertical-align:middle;" onerror="this.style.display='none'">`
+      : '';
+    const name = r.url
+      ? `<a href="${r.url}" target="_blank" rel="noopener" style="color:#1A1F3C;font-weight:600;text-decoration:none;font-size:.78rem;">${r.product_name || '—'}</a>`
+      : `<span style="font-size:.78rem;font-weight:600;">${r.product_name || '—'}</span>`;
+    const scoreBg = r.score >= 70 ? '#16a34a' : r.score >= 45 ? '#ca8a04' : '#dc2626';
+    const scoreEl = `<span style="background:${scoreBg};color:#fff;padding:2px 7px;border-radius:10px;font-size:.7rem;font-weight:700;">${r.score}</span>`;
+    return `<tr>
+      <td style="max-width:220px;">${img}${name}<div style="font-size:.65rem;color:#6B7280;margin-top:2px;">${r.store_name || ''}</div></td>
+      <td style="font-size:.72rem;color:#374151;">${r.category || '—'}</td>
+      <td style="font-size:.72rem;color:#374151;">${r.keyword || '—'}</td>
+      <td style="font-size:.72rem;font-weight:600;">${fmtRp(r.price)}</td>
+      <td style="font-size:.72rem;font-weight:600;">${fmtNum(r.total_sold)}</td>
+      <td style="font-size:.72rem;">${r.rating ? r.rating.toFixed(1) : '—'}</td>
+      <td style="font-size:.72rem;">${fmtNum(r.reviews)}</td>
+      <td style="font-size:.72rem;">${fmtNum(r.stock)}</td>
+      <td>${scoreEl}</td>
+    </tr>`;
+  }).join('');
+}
+
+function _renderDashHome() {
+  const el = document.getElementById('dash-home-stats');
+  if (!el || !_supabase) return;
 }
 
 // ════════════════════════════════════════════════════════════
