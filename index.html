@@ -780,6 +780,46 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
   .pt-content{padding:0 14px 20px;}
 }
 
+/* ── KEYWORD EXPLORER ── */
+.kx-wrap{padding:22px 28px 28px;}
+.kx-title{font-size:1.25rem;font-weight:800;color:#1A1F3C;margin-bottom:18px;}
+.kx-search-bar{display:flex;gap:10px;align-items:center;margin-bottom:22px;flex-wrap:wrap;}
+.kx-input-wrap{position:relative;flex:1;min-width:200px;max-width:420px;}
+.kx-input-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#9CA3AF;pointer-events:none;}
+.kx-input{width:100%;border:1.5px solid #E5E7EB;background:#F9FAFB;border-radius:9px;padding:10px 12px 10px 36px;font-size:.85rem;font-family:inherit;outline:none;box-sizing:border-box;transition:border-color .15s;}
+.kx-input:focus{border-color:#E8442A;background:#fff;}
+.kx-input-wrap datalist{}
+.kx-btn{background:#E8442A;color:#fff;border:none;border-radius:9px;padding:10px 24px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:background .15s;}
+.kx-btn:hover{background:#C23520;}
+.kx-status{font-size:.72rem;color:#6B7280;}
+.kx-stats-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:22px;}
+.kx-stat{background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:12px 16px;}
+.kx-stat-label{font-size:.62rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;}
+.kx-stat-val{font-size:1.2rem;font-weight:800;color:#1A1F3C;line-height:1.1;}
+.kx-stat-sub{font-size:.65rem;color:#9CA3AF;margin-top:2px;}
+.kx-stat-trend-up{color:#16a34a;font-weight:700;}
+.kx-stat-trend-down{color:#dc2626;font-weight:700;}
+.kx-body{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.kx-panel{background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;}
+.kx-panel-header{padding:14px 18px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;}
+.kx-panel-title{font-size:.8rem;font-weight:700;color:#1A1F3C;}
+.kx-panel-sub{font-size:.65rem;color:#9CA3AF;}
+.kx-panel-body{padding:0;}
+.kx-word-row{display:flex;align-items:center;gap:10px;padding:8px 18px;border-bottom:1px solid #F9FAFB;}
+.kx-word-row:last-child{border-bottom:none;}
+.kx-word-rank{font-size:.65rem;color:#9CA3AF;width:18px;flex-shrink:0;text-align:right;}
+.kx-word-text{font-size:.78rem;font-weight:600;color:#1A1F3C;min-width:80px;flex-shrink:0;}
+.kx-word-bar-wrap{flex:1;background:#F3F4F6;border-radius:3px;height:6px;overflow:hidden;}
+.kx-word-bar{height:100%;background:#E8442A;border-radius:3px;transition:width .4s;}
+.kx-word-count{font-size:.68rem;color:#6B7280;width:36px;text-align:right;flex-shrink:0;}
+.kx-word-pct{font-size:.65rem;color:#9CA3AF;width:32px;text-align:right;flex-shrink:0;}
+.kx-empty{text-align:center;padding:40px 20px;color:#9CA3AF;font-size:.8rem;}
+@media(max-width:860px){
+  .kx-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .kx-body{grid-template-columns:minmax(0,1fr);}
+  .kx-wrap{padding:16px 14px 24px;}
+}
+
 /* ── CATEGORY TRENDS ── */
 .ct-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:16px 28px 4px;}
 .ct-card{background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 18px;}
@@ -2948,10 +2988,78 @@ html,body{overflow-x:hidden;max-width:100%;}
 
       <!-- KEYWORDS -->
       <div id="dash-view-keywords" style="display:none;">
-        <div class="dash-coming-soon">
-          <div class="dash-coming-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
-          <div class="dash-coming-title">Keywords — Segera Hadir</div>
-          <div class="dash-coming-sub">Analisis keyword terpopuler di Shopee: lihat mana yang menghasilkan penjualan terbanyak dan persaingan terendah.</div>
+        <div class="kx-wrap">
+          <div class="kx-title">Keyword Explorer</div>
+
+          <!-- Search bar -->
+          <div class="kx-search-bar">
+            <div class="kx-input-wrap">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input class="kx-input" id="kx-input" type="text" list="kx-datalist"
+                placeholder="Ketik keyword, cth: topi hiking, kaos polos…"
+                onkeydown="if(event.key==='Enter')analyzeKeyword()">
+              <datalist id="kx-datalist"><!-- filled by JS --></datalist>
+            </div>
+            <button class="kx-btn" onclick="analyzeKeyword()">Analisis</button>
+            <span class="kx-status" id="kx-status"></span>
+          </div>
+
+          <!-- Stat cards -->
+          <div class="kx-stats-grid" id="kx-stats" style="display:none;"></div>
+
+          <!-- Two panels -->
+          <div class="kx-body" id="kx-body" style="display:none;">
+
+            <!-- Title keyword frequency -->
+            <div class="kx-panel">
+              <div class="kx-panel-header">
+                <div>
+                  <div class="kx-panel-title">Kata di Judul Listing Terlaris</div>
+                  <div class="kx-panel-sub">Kata paling sering muncul di 30 listing dengan penjualan tertinggi</div>
+                </div>
+              </div>
+              <div class="kx-panel-body" id="kx-words"></div>
+            </div>
+
+            <!-- Related keywords -->
+            <div class="kx-panel">
+              <div class="kx-panel-header">
+                <div>
+                  <div class="kx-panel-title">Keyword Terkait</div>
+                  <div class="kx-panel-sub">Keyword lain dalam kategori yang sama, diurutkan berdasarkan peluang</div>
+                </div>
+              </div>
+              <div class="kx-panel-body">
+                <div class="pdb-table-wrap">
+                  <table class="pdb-table" style="font-size:.72rem;">
+                    <thead>
+                      <tr>
+                        <th>Keyword</th>
+                        <th>Seller</th>
+                        <th>Total Terjual</th>
+                        <th>Avg Harga</th>
+                        <th>Score</th>
+                      </tr>
+                    </thead>
+                    <tbody id="kx-related"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /kx-body -->
+
+          <!-- Empty / initial state -->
+          <div id="kx-empty" style="text-align:center;padding:60px 20px;">
+            <div style="color:#E5E7EB;margin-bottom:14px;">
+              <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </div>
+            <div style="font-size:.9rem;font-weight:700;color:#374151;margin-bottom:8px;">Masukkan keyword untuk dianalisis</div>
+            <div style="font-size:.8rem;color:#9CA3AF;max-width:340px;margin:0 auto;line-height:1.6;">
+              Ketik keyword produk Shopee yang ingin kamu riset, lalu klik Analisis. Kamu bisa lihat demand, persaingan, kata judul teratas, dan keyword terkait.
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -5003,6 +5111,7 @@ function switchDashView(view) {
   if (view === 'opportunity-finder') _initOfCats();
   if (view === 'product-tracker') ptRender();
   if (view === 'category-trends') loadCategoryTrends();
+  if (view === 'keywords') _kxLoadKeywordList();
   if (view === 'home') _renderDashHome();
 }
 
@@ -5637,6 +5746,197 @@ function ctDownloadCSV() {
   a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv);
   a.download = `larisid_category_trends_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
+}
+
+// ════════════════════════════════════════════════════════════
+//  KEYWORD EXPLORER
+// ════════════════════════════════════════════════════════════
+
+// Indonesian stop words + noise words to filter from title analysis
+const KX_STOP = new Set([
+  'dan','yang','untuk','dengan','ke','di','dari','ini','itu','pada','juga','sudah',
+  'dalam','akan','atau','karena','setelah','jika','bisa','ada','tidak','nya','pcs',
+  'set','pack','buah','biji','lembar','meter','cm','mm','kg','gr','ml','liter',
+  'new','original','free','ongkir','gratis','best','seller','ready','stok','stock',
+  'promo','murah','berkualitas','premium','import','branded','terbaru','terlaris',
+  'the','and','for','with','of','in','a','an','1','2','3','4','5','10','pcs',
+  'termurah','terpercaya','grosir','ecer','kualitas','bagus','asli','ori',
+]);
+
+let _kxAllKeywords = []; // populated on first load
+
+async function _kxLoadKeywordList() {
+  if (_kxAllKeywords.length || !_supabase) return;
+  const { data } = await _supabase
+    .from('listings')
+    .select('keyword')
+    .order('keyword')
+    .limit(3000);
+  const seen = new Set();
+  _kxAllKeywords = (data || [])
+    .map(r => r.keyword).filter(k => k && !seen.has(k) && seen.add(k));
+  const dl = document.getElementById('kx-datalist');
+  if (dl) dl.innerHTML = _kxAllKeywords.map(k => `<option value="${k}">`).join('');
+}
+
+async function analyzeKeyword() {
+  if (!_supabase) return;
+  const kw = (document.getElementById('kx-input')?.value || '').trim().toLowerCase();
+  if (!kw) return;
+
+  const st = document.getElementById('kx-status');
+  const statsEl = document.getElementById('kx-stats');
+  const bodyEl  = document.getElementById('kx-body');
+  const emptyEl = document.getElementById('kx-empty');
+  if (st) st.textContent = 'Memuat…';
+  if (statsEl) statsEl.style.display = 'none';
+  if (bodyEl)  bodyEl.style.display  = 'none';
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  // Get two latest dates
+  const { data: dates } = await _supabase
+    .from('listings').select('scraped_at').order('scraped_at',{ascending:false}).limit(2);
+  if (!dates?.length) { if(st) st.textContent='Gagal memuat data.'; return; }
+  const latestDate = dates[0].scraped_at.slice(0,10);
+  const prevDate   = dates[1]?.scraped_at?.slice(0,10) || null;
+
+  // Fetch current listings for this keyword
+  const { data: cur, error } = await _supabase
+    .from('listings')
+    .select('product_name,store_name,category,price,total_sold,rating,reviews')
+    .ilike('keyword', kw)
+    .gte('scraped_at', latestDate)
+    .order('total_sold', { ascending: false })
+    .limit(200);
+
+  if (error || !cur?.length) {
+    if (st) st.textContent = `Tidak ada data untuk "${kw}".`;
+    if (emptyEl) emptyEl.style.display = '';
+    return;
+  }
+
+  // Fetch previous snapshot for trend
+  let prevSold = 0;
+  if (prevDate) {
+    const { data: prev } = await _supabase
+      .from('listings')
+      .select('total_sold')
+      .ilike('keyword', kw)
+      .gte('scraped_at', prevDate)
+      .lt('scraped_at', latestDate)
+      .limit(200);
+    prevSold = (prev || []).reduce((s,r) => s + (r.total_sold||0), 0);
+  }
+
+  // Aggregate stats
+  const seller_count = cur.length;
+  const total_sold   = cur.reduce((s,r) => s+(r.total_sold||0), 0);
+  const avg_price    = cur.reduce((s,r) => s+(r.price||0), 0) / seller_count;
+  const avg_rating   = cur.reduce((s,r) => s+(r.rating||0), 0) / seller_count;
+  const efficiency   = seller_count ? Math.round(total_sold / seller_count) : 0;
+  const trendPct     = prevSold ? Math.round((total_sold - prevSold) / prevSold * 100) : null;
+  const category     = cur[0]?.category || '—';
+
+  // Render stat cards
+  const fmtRp  = v => 'Rp ' + Math.round(v).toLocaleString('id-ID');
+  const trendHtml = trendPct == null ? '<span style="color:#9CA3AF">—</span>'
+    : trendPct > 0 ? `<span class="kx-stat-trend-up">+${trendPct}% vs sebelumnya</span>`
+    : trendPct < 0 ? `<span class="kx-stat-trend-down">${trendPct}% vs sebelumnya</span>`
+    : '<span style="color:#9CA3AF">0% vs sebelumnya</span>';
+
+  statsEl.innerHTML = `
+    <div class="kx-stat"><div class="kx-stat-label">Demand Index</div><div class="kx-stat-val">${total_sold.toLocaleString('id-ID')}</div><div class="kx-stat-sub">total unit terjual</div></div>
+    <div class="kx-stat"><div class="kx-stat-label">Jumlah Seller</div><div class="kx-stat-val">${seller_count}</div><div class="kx-stat-sub">seller aktif</div></div>
+    <div class="kx-stat"><div class="kx-stat-label">Avg Harga</div><div class="kx-stat-val" style="font-size:.95rem;">${fmtRp(avg_price)}</div><div class="kx-stat-sub">rata-rata listing</div></div>
+    <div class="kx-stat"><div class="kx-stat-label">Efisiensi</div><div class="kx-stat-val">${efficiency.toLocaleString('id-ID')}</div><div class="kx-stat-sub">terjual per seller</div></div>
+    <div class="kx-stat"><div class="kx-stat-label">Tren</div><div class="kx-stat-val" style="font-size:.85rem;">${trendHtml}</div><div class="kx-stat-sub">vs scrape sebelumnya</div></div>
+  `;
+  statsEl.style.display = 'grid';
+
+  // Title word frequency — use top 30 by total_sold
+  const top30 = cur.slice(0, 30);
+  const wordCount = {};
+  top30.forEach(r => {
+    const words = (r.product_name || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/gi, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 2 && !KX_STOP.has(w) && !/^\d+$/.test(w));
+    words.forEach(w => { wordCount[w] = (wordCount[w] || 0) + 1; });
+  });
+  const sorted = Object.entries(wordCount)
+    .filter(([,c]) => c >= 2)
+    .sort((a,b) => b[1]-a[1])
+    .slice(0, 25);
+  const maxCount = sorted[0]?.[1] || 1;
+
+  const wordsEl = document.getElementById('kx-words');
+  if (wordsEl) {
+    if (!sorted.length) {
+      wordsEl.innerHTML = '<div class="kx-empty">Tidak cukup data judul untuk dianalisis.</div>';
+    } else {
+      wordsEl.innerHTML = sorted.map(([word, count], i) => {
+        const pct  = Math.round(count / top30.length * 100);
+        const barW = Math.round(count / maxCount * 100);
+        return `<div class="kx-word-row">
+          <span class="kx-word-rank">${i+1}</span>
+          <span class="kx-word-text">${word}</span>
+          <div class="kx-word-bar-wrap"><div class="kx-word-bar" style="width:${barW}%"></div></div>
+          <span class="kx-word-count">${count}×</span>
+          <span class="kx-word-pct">${pct}%</span>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // Related keywords — same category, latest date, aggregate by keyword
+  const { data: related } = await _supabase
+    .from('listings')
+    .select('keyword,price,total_sold,rating,reviews')
+    .eq('category', category)
+    .gte('scraped_at', latestDate)
+    .limit(1000);
+
+  const relByKw = {};
+  (related || []).forEach(r => {
+    const k = r.keyword || '';
+    if (!k || k.toLowerCase() === kw) return;
+    if (!relByKw[k]) relByKw[k] = { keyword:k, count:0, sold:0, prices:[], ratings:[] };
+    relByKw[k].count++;
+    relByKw[k].sold += r.total_sold||0;
+    relByKw[k].prices.push(r.price||0);
+    relByKw[k].ratings.push(r.rating||0);
+  });
+
+  const relRows = Object.values(relByKw).map(r => {
+    const avg_p = r.prices.reduce((a,b)=>a+b,0)/r.prices.length;
+    const avg_r = r.ratings.reduce((a,b)=>a+b,0)/r.ratings.length;
+    const score = Math.round(
+      Math.min(r.sold/5000*40,40) +
+      (r.count<=5?35:r.count<=15?28:r.count<=30?18:8) +
+      (avg_r/5)*25
+    );
+    return { keyword:r.keyword, sellers:r.count, total_sold:r.sold, avg_price:avg_p, score };
+  }).sort((a,b) => b.score-a.score).slice(0, 20);
+
+  const relTbody = document.getElementById('kx-related');
+  if (relTbody) {
+    if (!relRows.length) {
+      relTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#9CA3AF;font-size:.78rem;">Tidak ada keyword terkait.</td></tr>';
+    } else {
+      const scoreBg = s => s>=70?'#16a34a':s>=45?'#ca8a04':'#dc2626';
+      relTbody.innerHTML = relRows.map(r => `<tr>
+        <td style="font-weight:600;cursor:pointer;color:#E8442A;" onclick="document.getElementById('kx-input').value='${r.keyword.replace(/'/g,"\\'")}';analyzeKeyword()">${r.keyword}</td>
+        <td style="text-align:center;">${r.sellers}</td>
+        <td style="font-weight:600;">${r.total_sold.toLocaleString('id-ID')}</td>
+        <td>Rp ${Math.round(r.avg_price).toLocaleString('id-ID')}</td>
+        <td><span style="background:${scoreBg(r.score)};color:#fff;padding:2px 7px;border-radius:10px;font-size:.68rem;font-weight:700;">${r.score}</span></td>
+      </tr>`).join('');
+    }
+  }
+
+  if (bodyEl)  bodyEl.style.display  = 'grid';
+  if (st) st.textContent = `${seller_count} listing · ${latestDate}`;
 }
 
 // ════════════════════════════════════════════════════════════
