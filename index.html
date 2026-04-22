@@ -734,9 +734,46 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 
 /* Coming soon */
 .dash-coming-soon{text-align:center;padding:80px 20px;}
-.dash-coming-icon{font-size:2.5rem;margin-bottom:12px;}
+.dash-coming-icon{margin-bottom:14px;color:#D1D5DB;}
 .dash-coming-title{font-size:1rem;font-weight:700;color:#111;margin-bottom:8px;}
 .dash-coming-sub{font-size:.83rem;color:#6B7280;max-width:400px;margin:0 auto;line-height:1.6;}
+
+/* ── OPPORTUNITY FINDER ── */
+.of-layout{display:flex;gap:0;height:100%;min-height:600px;}
+.of-left{width:260px;flex-shrink:0;border-right:1px solid #E5E7EB;padding:22px 20px;overflow-y:auto;}
+.of-right{flex:1;min-width:0;padding:22px 24px;overflow-y:auto;}
+.of-section-label{font-size:.65rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;}
+.of-presets{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:20px;}
+.of-preset-pill{border:1.5px solid #E5E7EB;background:#fff;border-radius:20px;padding:6px 14px;font-size:.73rem;font-weight:600;color:#374151;cursor:pointer;font-family:inherit;transition:all .15s;}
+.of-preset-pill:hover,.of-preset-pill.active{background:#1A1F3C;border-color:#1A1F3C;color:#fff;}
+.of-filter-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:18px;}
+.of-filter-group{display:flex;flex-direction:column;min-width:0;}
+.of-filter-label-row{display:flex;align-items:center;gap:5px;margin-bottom:5px;}
+.of-filter-label{font-size:.65rem;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;}
+.of-filter-inputs{display:flex;align-items:center;gap:4px;min-width:0;}
+.of-input{flex:1;min-width:0;width:0;border:1.5px solid #E5E7EB;background:#F9FAFB;border-radius:7px;padding:8px 8px;font-size:.72rem;outline:none;font-family:inherit;color:#374151;transition:border-color .15s;box-sizing:border-box;}
+.of-input:focus{border-color:#E8442A;background:#fff;}
+.of-input::placeholder{color:#9CA3AF;}
+.of-range-sep{font-size:.65rem;color:#D1D5DB;flex-shrink:0;}
+.of-slider-group{margin-bottom:18px;}
+.of-slider-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
+.of-slider-item{display:flex;flex-direction:column;gap:6px;}
+.of-slider-labels{display:flex;justify-content:space-between;font-size:.62rem;color:#9CA3AF;}
+.of-slider{width:100%;accent-color:#E8442A;cursor:pointer;}
+.of-slider-val{font-size:.68rem;font-weight:700;color:#E8442A;text-align:center;}
+.of-kw-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:18px;}
+.of-kw-group{display:flex;flex-direction:column;gap:5px;}
+.of-kw-input{border:1.5px solid #E5E7EB;background:#F9FAFB;border-radius:7px;padding:8px 10px;font-size:.72rem;outline:none;font-family:inherit;color:#374151;width:100%;box-sizing:border-box;transition:border-color .15s;}
+.of-kw-input:focus{border-color:#E8442A;background:#fff;}
+.of-kw-input::placeholder{color:#9CA3AF;}
+.of-action-row{display:flex;justify-content:flex-end;gap:10px;padding-top:6px;border-top:1px solid #F3F4F6;margin-top:4px;}
+.of-results{margin:0 24px 28px;background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;}
+.of-results-bar{padding:10px 18px;border-bottom:1px solid #E5E7EB;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+@media(max-width:860px){
+  .of-layout{flex-direction:column;}
+  .of-left{width:100%;border-right:none;border-bottom:1px solid #E5E7EB;}
+  .of-filter-grid,.of-kw-row,.of-slider-row{grid-template-columns:minmax(0,1fr);}
+}
 
 /* ── PRODUCT DATABASE ── */
 .pdb-header{display:flex;align-items:center;justify-content:space-between;padding:22px 28px 0;flex-wrap:wrap;gap:12px;}
@@ -2568,7 +2605,7 @@ html,body{overflow-x:hidden;max-width:100%;}
       <!-- PRODUCT TRACKER -->
       <div id="dash-view-product-tracker" style="display:none;">
         <div class="dash-coming-soon">
-          <div class="dash-coming-icon">📈</div>
+          <div class="dash-coming-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
           <div class="dash-coming-title">Product Tracker — Segera Hadir</div>
           <div class="dash-coming-sub">Pantau perubahan harga, stok, dan jumlah terjual produk pilihan kamu dari waktu ke waktu.</div>
         </div>
@@ -2576,17 +2613,177 @@ html,body{overflow-x:hidden;max-width:100%;}
 
       <!-- OPPORTUNITY FINDER -->
       <div id="dash-view-opportunity-finder" style="display:none;">
-        <div class="dash-coming-soon">
-          <div class="dash-coming-icon">💡</div>
-          <div class="dash-coming-title">Opportunity Finder — Segera Hadir</div>
-          <div class="dash-coming-sub">Temukan celah pasar: keyword dengan permintaan tinggi tapi persaingan rendah di Shopee Indonesia.</div>
+
+        <div class="pdb-header">
+          <div class="pdb-title">Opportunity Finder</div>
+          <div class="pdb-header-btns">
+            <button class="pdb-btn" onclick="ofSaveFilter()">Simpan Filter</button>
+            <button class="pdb-btn" onclick="ofLoadFilter()">Muat Filter</button>
+          </div>
         </div>
+
+        <div class="of-layout" style="margin:16px 28px 0;background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;">
+
+          <!-- LEFT: Categories -->
+          <div class="of-left">
+            <div class="of-section-label">Pilih Kategori</div>
+            <div style="margin-bottom:8px;">
+              <span class="pdb-select-all" onclick="ofSelectAll(true)">Pilih Semua</span> &nbsp;
+              <span class="pdb-select-all" style="color:#6B7280;" onclick="ofSelectAll(false)">Hapus</span>
+            </div>
+            <div class="pdb-cats-grid" id="of-cats-grid"><!-- filled by JS --></div>
+          </div>
+
+          <!-- RIGHT: Filters -->
+          <div class="of-right">
+
+            <!-- Preset pills -->
+            <div class="of-section-label">Filter Cepat</div>
+            <div class="of-presets">
+              <button class="of-preset-pill" id="of-pill-high-demand"     onclick="ofPreset('high-demand')">High Demand</button>
+              <button class="of-preset-pill" id="of-pill-good-opportunity" onclick="ofPreset('good-opportunity')">Good Opportunity</button>
+              <button class="of-preset-pill" id="of-pill-low-competition"  onclick="ofPreset('low-competition')">Low Competition</button>
+              <button class="of-preset-pill" id="of-pill-low-seasonality"  onclick="ofPreset('low-seasonality')">Low Seasonality</button>
+              <button class="of-preset-pill" id="of-pill-trending-up"      onclick="ofPreset('trending-up')">Trending Up</button>
+              <button class="of-preset-pill" id="of-pill-strong-price"     onclick="ofPreset('strong-price')">Strong Price Point</button>
+            </div>
+
+            <!-- Metric filters -->
+            <div class="of-section-label">Filter Angka</div>
+            <div class="of-filter-grid">
+
+              <div class="of-filter-group">
+                <div class="of-filter-label-row">
+                  <span class="of-filter-label">Rata-rata Terjual</span>
+                  <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Total unit terjual produk sepanjang masa listing.</span></span>
+                </div>
+                <div class="of-filter-inputs">
+                  <input class="of-input" id="of-min-sold" type="number" placeholder="min">
+                  <span class="of-range-sep">—</span>
+                  <input class="of-input" id="of-max-sold" type="number" placeholder="max">
+                </div>
+              </div>
+
+              <div class="of-filter-group">
+                <div class="of-filter-label-row">
+                  <span class="of-filter-label">Harga</span>
+                  <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Kisaran harga jual produk dalam Rupiah.</span></span>
+                </div>
+                <div class="of-filter-inputs">
+                  <input class="of-input" id="of-min-price" type="number" placeholder="min">
+                  <span class="of-range-sep">—</span>
+                  <input class="of-input" id="of-max-price" type="number" placeholder="max">
+                </div>
+              </div>
+
+              <div class="of-filter-group">
+                <div class="of-filter-label-row">
+                  <span class="of-filter-label">Rating</span>
+                  <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Rating rata-rata produk (1.0 – 5.0).</span></span>
+                </div>
+                <div class="of-filter-inputs">
+                  <input class="of-input" id="of-min-rating" type="number" step="0.1" min="0" max="5" placeholder="min">
+                  <span class="of-range-sep">—</span>
+                  <input class="of-input" id="of-max-rating" type="number" step="0.1" min="0" max="5" placeholder="max">
+                </div>
+              </div>
+
+              <div class="of-filter-group">
+                <div class="of-filter-label-row">
+                  <span class="of-filter-label">Niche Score</span>
+                  <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Skor kelayakan niche 0–100: gabungan penjualan, stok, dan rating.</span></span>
+                </div>
+                <div class="of-filter-inputs">
+                  <input class="of-input" id="of-min-score" type="number" min="0" max="100" placeholder="min">
+                  <span class="of-range-sep">—</span>
+                  <input class="of-input" id="of-max-score" type="number" min="0" max="100" placeholder="max">
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Competition + Seasonality sliders -->
+            <div class="of-section-label">Persaingan &amp; Musiman</div>
+            <div class="of-slider-row" style="margin-bottom:18px;">
+              <div class="of-slider-item">
+                <div class="of-filter-label-row">
+                  <span class="of-filter-label">Persaingan Maks</span>
+                  <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Perkiraan tingkat persaingan berdasarkan jumlah ulasan. Geser ke kiri untuk hanya tampilkan produk dengan persaingan rendah.</span></span>
+                </div>
+                <input class="of-slider" id="of-competition" type="range" min="1" max="5" value="5" oninput="ofSliderUpdate('competition')">
+                <div class="of-slider-labels"><span>Sangat Rendah</span><span>Sangat Tinggi</span></div>
+                <div class="of-slider-val" id="of-competition-val">Semua</div>
+              </div>
+              <div class="of-slider-item">
+                <div class="of-filter-label-row">
+                  <span class="of-filter-label">Musiman Maks</span>
+                  <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Perkiraan tingkat musiman berdasarkan variasi harga produk. Produk musiman cenderung punya harga yang bervariasi.</span></span>
+                </div>
+                <input class="of-slider" id="of-seasonality" type="range" min="1" max="5" value="5" oninput="ofSliderUpdate('seasonality')">
+                <div class="of-slider-labels"><span>Sangat Rendah</span><span>Sangat Tinggi</span></div>
+                <div class="of-slider-val" id="of-seasonality-val">Semua</div>
+              </div>
+            </div>
+
+            <!-- Include / Exclude keywords -->
+            <div class="of-section-label">Filter Keyword</div>
+            <div class="of-kw-row">
+              <div class="of-kw-group">
+                <div class="of-filter-label-row">
+                  <span class="of-filter-label">Sertakan Keyword</span>
+                  <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Hanya tampilkan produk yang nama atau keywordnya mengandung kata-kata ini. Pisahkan dengan koma.</span></span>
+                </div>
+                <input class="of-kw-input" id="of-include-kw" type="text" placeholder="cth: hiking, outdoor, tas">
+              </div>
+              <div class="of-kw-group">
+                <div class="of-filter-label-row">
+                  <span class="of-filter-label">Kecualikan Keyword</span>
+                  <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Sembunyikan produk yang mengandung kata-kata ini. Pisahkan dengan koma.</span></span>
+                </div>
+                <input class="of-kw-input" id="of-exclude-kw" type="text" placeholder="cth: import, china, kw">
+              </div>
+            </div>
+
+            <div class="of-action-row">
+              <span id="of-status" style="font-size:.72rem;color:#6B7280;margin-right:auto;"></span>
+              <button class="pdb-reset-btn" onclick="ofReset()">Reset Filter</button>
+              <button class="pdb-search-btn" onclick="loadOpportunityFinder()">Cari Peluang</button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Results -->
+        <div class="of-results" style="margin:14px 28px 28px;">
+          <div class="of-results-bar">
+            <span class="pdb-results-count" id="of-count">—</span>
+            <span class="pdb-results-note" id="of-date-note"></span>
+          </div>
+          <div class="pdb-table-wrap">
+            <table class="pdb-table">
+              <thead>
+                <tr>
+                  <th onclick="ofSort('product_name')">Produk ↕</th>
+                  <th onclick="ofSort('category')">Kategori ↕</th>
+                  <th onclick="ofSort('keyword')">Keyword ↕</th>
+                  <th onclick="ofSort('price')">Harga ↕</th>
+                  <th onclick="ofSort('total_sold')">Terjual ↕</th>
+                  <th onclick="ofSort('rating')">Rating ↕</th>
+                  <th onclick="ofSort('competition')">Persaingan ↕</th>
+                  <th onclick="ofSort('score')">Score ↕</th>
+                </tr>
+              </thead>
+              <tbody id="of-tbody"><tr><td colspan="8" style="text-align:center;padding:28px;color:#9CA3AF;font-size:.8rem;">Atur filter lalu klik Cari Peluang.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
 
       <!-- CATEGORY TRENDS -->
       <div id="dash-view-category-trends" style="display:none;">
         <div class="dash-coming-soon">
-          <div class="dash-coming-icon">📊</div>
+          <div class="dash-coming-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
           <div class="dash-coming-title">Category Trends — Segera Hadir</div>
           <div class="dash-coming-sub">Lihat kategori mana yang sedang naik daun berdasarkan data penjualan mingguan LarisID.</div>
         </div>
@@ -2595,7 +2792,7 @@ html,body{overflow-x:hidden;max-width:100%;}
       <!-- SUPPLIERS -->
       <div id="dash-view-suppliers" style="display:none;">
         <div class="dash-coming-soon">
-          <div class="dash-coming-icon">🏭</div>
+          <div class="dash-coming-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><path d="M8 7V5a2 2 0 0 0-4 0v2"/></svg></div>
           <div class="dash-coming-title">Suppliers — Segera Hadir</div>
           <div class="dash-coming-sub">Temukan supplier terpercaya lengkap dengan harga, MOQ, dan estimasi ongkir ke Indonesia.</div>
         </div>
@@ -2604,7 +2801,7 @@ html,body{overflow-x:hidden;max-width:100%;}
       <!-- KEYWORDS -->
       <div id="dash-view-keywords" style="display:none;">
         <div class="dash-coming-soon">
-          <div class="dash-coming-icon">🔑</div>
+          <div class="dash-coming-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
           <div class="dash-coming-title">Keywords — Segera Hadir</div>
           <div class="dash-coming-sub">Analisis keyword terpopuler di Shopee: lihat mana yang menghasilkan penjualan terbanyak dan persaingan terendah.</div>
         </div>
@@ -2613,7 +2810,7 @@ html,body{overflow-x:hidden;max-width:100%;}
       <!-- MARKETING -->
       <div id="dash-view-marketing" style="display:none;">
         <div class="dash-coming-soon">
-          <div class="dash-coming-icon">📢</div>
+          <div class="dash-coming-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
           <div class="dash-coming-title">Marketing — Segera Hadir</div>
           <div class="dash-coming-sub">Tools untuk mengoptimalkan listing, iklan Shopee Ads, dan strategi promosi produk kamu.</div>
         </div>
@@ -4655,6 +4852,7 @@ function switchDashView(view) {
   }
 
   if (view === 'product-database') _initPdbCats();
+  if (view === 'opportunity-finder') _initOfCats();
   if (view === 'home') _renderDashHome();
 }
 
@@ -4859,6 +5057,243 @@ function _pdbRenderTable() {
 function _renderDashHome() {
   const el = document.getElementById('dash-home-stats');
   if (!el || !_supabase) return;
+}
+
+// ════════════════════════════════════════════════════════════
+//  OPPORTUNITY FINDER
+// ════════════════════════════════════════════════════════════
+
+let _ofRows      = [];
+let _ofSortField = 'score';
+let _ofSortDir   = 'desc';
+let _ofCatsInited = false;
+
+const OF_COMPETITION_LABELS = ['','Sangat Rendah','Rendah','Sedang','Tinggi','Sangat Tinggi'];
+const OF_COMPETITION_MAX    = [0, 50, 150, 400, 1000, Infinity];
+
+function _initOfCats() {
+  if (_ofCatsInited) return;
+  _ofCatsInited = true;
+  const grid = document.getElementById('of-cats-grid');
+  if (!grid) return;
+  grid.innerHTML = PDB_CATS.map(c => `
+    <label class="pdb-cat-label">
+      <input type="checkbox" class="of-cat-cb" value="${c}" checked> ${c}
+    </label>`).join('');
+}
+
+function ofSelectAll(checked) {
+  document.querySelectorAll('.of-cat-cb').forEach(cb => cb.checked = checked);
+}
+
+function ofSliderUpdate(type) {
+  const val = parseInt(document.getElementById(`of-${type}`)?.value || 5);
+  const el  = document.getElementById(`of-${type}-val`);
+  if (el) el.textContent = val === 5 ? 'Semua' : OF_COMPETITION_LABELS[val];
+}
+
+const OF_PRESETS = {
+  'high-demand':      { 'of-min-sold': 500 },
+  'good-opportunity': { 'of-min-sold': 200, 'of-competition': 2 },
+  'low-competition':  { 'of-competition': 2 },
+  'low-seasonality':  { 'of-seasonality': 2 },
+  'trending-up':      { 'of-min-sold': 100, 'of-min-rating': 4 },
+  'strong-price':     { 'of-min-price': 50000, 'of-max-price': 500000 },
+};
+
+function ofPreset(name) {
+  const pill = document.getElementById(`of-pill-${name}`);
+  const isActive = pill?.classList.toggle('active');
+  if (!isActive) return;
+
+  // Deactivate other pills
+  document.querySelectorAll('.of-preset-pill').forEach(p => {
+    if (p.id !== `of-pill-${name}`) p.classList.remove('active');
+  });
+
+  ofReset(true);
+  const vals = OF_PRESETS[name] || {};
+  Object.entries(vals).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = val;
+    if (el.type === 'range') ofSliderUpdate(id.replace('of-',''));
+  });
+}
+
+function ofReset(keepPills) {
+  ['of-min-sold','of-max-sold','of-min-price','of-max-price',
+   'of-min-rating','of-max-rating','of-min-score','of-max-score',
+   'of-include-kw','of-exclude-kw'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  ['competition','seasonality'].forEach(t => {
+    const sl = document.getElementById(`of-${t}`);
+    if (sl) { sl.value = 5; ofSliderUpdate(t); }
+  });
+  if (!keepPills) document.querySelectorAll('.of-preset-pill').forEach(p => p.classList.remove('active'));
+}
+
+function ofSaveFilter() {
+  localStorage.setItem('of_saved_filter', JSON.stringify(_ofGetFilters()));
+  const st = document.getElementById('of-status');
+  if (st) { st.textContent = 'Filter tersimpan'; setTimeout(() => { if(st) st.textContent=''; }, 2500); }
+}
+
+function ofLoadFilter() {
+  const saved = localStorage.getItem('of_saved_filter');
+  if (!saved) return;
+  try {
+    const f = JSON.parse(saved);
+    _initOfCats();
+    document.querySelectorAll('.of-cat-cb').forEach(cb => cb.checked = f.cats?.includes(cb.value) ?? true);
+    ['sold','price','rating','score'].forEach(k => {
+      const mn = document.getElementById(`of-min-${k}`);
+      const mx = document.getElementById(`of-max-${k}`);
+      if (mn && f[`min_${k}`] != null) mn.value = f[`min_${k}`];
+      if (mx && f[`max_${k}`] != null) mx.value = f[`max_${k}`];
+    });
+    if (f.competition != null) { document.getElementById('of-competition').value = f.competition; ofSliderUpdate('competition'); }
+    if (f.seasonality != null) { document.getElementById('of-seasonality').value = f.seasonality; ofSliderUpdate('seasonality'); }
+    if (f.include_kw) document.getElementById('of-include-kw').value = f.include_kw;
+    if (f.exclude_kw) document.getElementById('of-exclude-kw').value = f.exclude_kw;
+  } catch(e) {}
+}
+
+function _ofGetFilters() {
+  const gv = id => { const el = document.getElementById(id); return el?.value ? parseFloat(el.value) : null; };
+  const gs = id => { const el = document.getElementById(id); return el?.value?.trim() || ''; };
+  return {
+    cats:        [...document.querySelectorAll('.of-cat-cb:checked')].map(cb => cb.value),
+    min_sold:    gv('of-min-sold'),    max_sold:    gv('of-max-sold'),
+    min_price:   gv('of-min-price'),   max_price:   gv('of-max-price'),
+    min_rating:  gv('of-min-rating'),  max_rating:  gv('of-max-rating'),
+    min_score:   gv('of-min-score'),   max_score:   gv('of-max-score'),
+    competition: parseInt(document.getElementById('of-competition')?.value || 5),
+    seasonality: parseInt(document.getElementById('of-seasonality')?.value || 5),
+    include_kw:  gs('of-include-kw'),
+    exclude_kw:  gs('of-exclude-kw'),
+  };
+}
+
+function _ofCompetitionLevel(reviews) {
+  const r = reviews || 0;
+  if (r < 50)   return 1;
+  if (r < 150)  return 2;
+  if (r < 400)  return 3;
+  if (r < 1000) return 4;
+  return 5;
+}
+
+function _ofSeasonalityLevel(price, originalPrice) {
+  if (!price || !originalPrice || originalPrice <= price) return 1;
+  const discount = (originalPrice - price) / originalPrice;
+  if (discount < 0.05) return 1;
+  if (discount < 0.15) return 2;
+  if (discount < 0.30) return 3;
+  if (discount < 0.50) return 4;
+  return 5;
+}
+
+async function loadOpportunityFinder() {
+  if (!_supabase) return;
+  _initOfCats();
+  const st = document.getElementById('of-status');
+  const tbody = document.getElementById('of-tbody');
+  const cnt = document.getElementById('of-count');
+  const dateNote = document.getElementById('of-date-note');
+  if (st) st.textContent = 'Memuat data…';
+  if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#6B7280;font-size:.8rem;">Memuat…</td></tr>';
+
+  const { data: latestRow } = await _supabase.from('listings').select('scraped_at').order('scraped_at',{ascending:false}).limit(1);
+  if (!latestRow?.length) { if(st) st.textContent='Gagal memuat data.'; return; }
+  const latestDate = latestRow[0].scraped_at.slice(0,10);
+  if (dateNote) dateNote.textContent = `Data: ${latestDate}`;
+
+  const f = _ofGetFilters();
+  let query = _supabase.from('listings')
+    .select('keyword,category,product_name,store_name,price,original_price,total_sold,rating,reviews,stock,image_url,url,scraped_at')
+    .gte('scraped_at', latestDate)
+    .order('total_sold',{ascending:false})
+    .limit(1000);
+
+  if (f.cats?.length && f.cats.length < PDB_CATS.length) query = query.in('category', f.cats);
+  if (f.min_sold   != null) query = query.gte('total_sold', f.min_sold);
+  if (f.max_sold   != null) query = query.lte('total_sold', f.max_sold);
+  if (f.min_price  != null) query = query.gte('price',      f.min_price);
+  if (f.max_price  != null) query = query.lte('price',      f.max_price);
+  if (f.min_rating != null) query = query.gte('rating',     f.min_rating);
+  if (f.max_rating != null) query = query.lte('rating',     f.max_rating);
+
+  const { data, error } = await query;
+  if (error) { if(st) st.textContent=`Error: ${error.message}`; return; }
+
+  const inc = f.include_kw ? f.include_kw.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean) : [];
+  const exc = f.exclude_kw ? f.exclude_kw.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean) : [];
+
+  _ofRows = (data || []).map(r => ({
+    ...r,
+    score:       _pdbViabilityScore(r),
+    competition: _ofCompetitionLevel(r.reviews),
+    seasonality: _ofSeasonalityLevel(r.price, r.original_price),
+  })).filter(r => {
+    if (r.competition > f.competition) return false;
+    if (r.seasonality > f.seasonality) return false;
+    if (f.min_score != null && r.score < f.min_score) return false;
+    if (f.max_score != null && r.score > f.max_score) return false;
+    const searchStr = `${r.product_name} ${r.keyword}`.toLowerCase();
+    if (inc.length && !inc.some(kw => searchStr.includes(kw))) return false;
+    if (exc.length &&  exc.some(kw => searchStr.includes(kw))) return false;
+    return true;
+  });
+
+  _ofRenderTable();
+  if (cnt) cnt.textContent = `${_ofRows.length} peluang`;
+  if (st)  st.textContent = '';
+}
+
+function ofSort(field) {
+  if (_ofSortField === field) _ofSortDir = _ofSortDir === 'asc' ? 'desc' : 'asc';
+  else { _ofSortField = field; _ofSortDir = 'desc'; }
+  _ofRenderTable();
+}
+
+function _ofRenderTable() {
+  const tbody = document.getElementById('of-tbody');
+  if (!tbody) return;
+  const rows = [..._ofRows].sort((a,b) => {
+    const av = a[_ofSortField] ?? 0, bv = b[_ofSortField] ?? 0;
+    return _ofSortDir === 'asc' ? (av>bv?1:-1) : (av<bv?1:-1);
+  });
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#6B7280;font-size:.8rem;">Tidak ada peluang yang cocok. Coba perluas filter.</td></tr>';
+    return;
+  }
+  const fmtRp = v => v ? 'Rp '+Math.round(v).toLocaleString('id-ID') : '—';
+  const compBadge = lvl => {
+    const colors = ['','#16a34a','#65a30d','#ca8a04','#ea580c','#dc2626'];
+    const labels = ['','Sangat Rendah','Rendah','Sedang','Tinggi','Sangat Tinggi'];
+    return `<span style="background:${colors[lvl]};color:#fff;padding:2px 7px;border-radius:10px;font-size:.68rem;font-weight:700;">${labels[lvl]}</span>`;
+  };
+  const scoreBadge = s => {
+    const bg = s>=70?'#16a34a':s>=45?'#ca8a04':'#dc2626';
+    return `<span style="background:${bg};color:#fff;padding:2px 7px;border-radius:10px;font-size:.7rem;font-weight:700;">${s}</span>`;
+  };
+  tbody.innerHTML = rows.map(r => {
+    const img = r.image_url ? `<img src="${r.image_url}" style="width:34px;height:34px;border-radius:4px;object-fit:cover;margin-right:8px;vertical-align:middle;" onerror="this.style.display='none'">` : '';
+    const name = r.url ? `<a href="${r.url}" target="_blank" rel="noopener" style="color:#1A1F3C;font-weight:600;text-decoration:none;font-size:.78rem;">${r.product_name||'—'}</a>` : `<span style="font-size:.78rem;font-weight:600;">${r.product_name||'—'}</span>`;
+    return `<tr>
+      <td style="max-width:200px;">${img}${name}<div style="font-size:.65rem;color:#6B7280;margin-top:2px;">${r.store_name||''}</div></td>
+      <td style="font-size:.72rem;">${r.category||'—'}</td>
+      <td style="font-size:.72rem;">${r.keyword||'—'}</td>
+      <td style="font-size:.72rem;font-weight:600;">${fmtRp(r.price)}</td>
+      <td style="font-size:.72rem;font-weight:600;">${Math.round(r.total_sold||0).toLocaleString('id-ID')}</td>
+      <td style="font-size:.72rem;">${r.rating?r.rating.toFixed(1):'—'}</td>
+      <td>${compBadge(r.competition)}</td>
+      <td>${scoreBadge(r.score)}</td>
+    </tr>`;
+  }).join('');
 }
 
 // ════════════════════════════════════════════════════════════
