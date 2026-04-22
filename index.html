@@ -780,6 +780,20 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
   .pt-content{padding:0 14px 20px;}
 }
 
+/* ── CATEGORY TRENDS ── */
+.ct-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:16px 28px 4px;}
+.ct-card{background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 18px;}
+.ct-card-label{font-size:.65rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
+.ct-card-val{font-size:1.3rem;font-weight:800;color:#1A1F3C;line-height:1.1;}
+.ct-card-sub{font-size:.68rem;color:#9CA3AF;margin-top:3px;}
+.ct-bar-wrap{display:flex;align-items:center;gap:8px;}
+.ct-bar{height:6px;border-radius:3px;background:#E8442A;min-width:4px;transition:width .3s;}
+.ct-delta-up{color:#16a34a;font-weight:700;font-size:.72rem;}
+.ct-delta-down{color:#dc2626;font-weight:700;font-size:.72rem;}
+.ct-delta-flat{color:#9CA3AF;font-size:.72rem;}
+@media(max-width:860px){.ct-cards{grid-template-columns:repeat(2,minmax(0,1fr));padding:14px;}}
+@media(max-width:480px){.ct-cards{grid-template-columns:minmax(0,1fr);}}
+
 /* ── OPPORTUNITY FINDER ── */
 .of-layout{display:flex;gap:0;height:100%;min-height:600px;}
 .of-left{width:260px;flex-shrink:0;border-right:1px solid #E5E7EB;padding:22px 20px;overflow-y:auto;}
@@ -2752,8 +2766,8 @@ html,body{overflow-x:hidden;max-width:100%;}
 
               <div class="of-filter-group">
                 <div class="of-filter-label-row">
-                  <span class="of-filter-label">Rata-rata Terjual</span>
-                  <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Total unit terjual produk sepanjang masa listing.</span></span>
+                  <span class="of-filter-label">Total Terjual</span>
+                  <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Gabungan total unit terjual semua seller untuk keyword ini.</span></span>
                 </div>
                 <div class="of-filter-inputs">
                   <input class="of-input" id="of-min-sold" type="number" placeholder="min">
@@ -2764,8 +2778,8 @@ html,body{overflow-x:hidden;max-width:100%;}
 
               <div class="of-filter-group">
                 <div class="of-filter-label-row">
-                  <span class="of-filter-label">Harga</span>
-                  <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Kisaran harga jual produk dalam Rupiah.</span></span>
+                  <span class="of-filter-label">Avg Harga</span>
+                  <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Rata-rata harga jual semua listing untuk keyword ini (IDR).</span></span>
                 </div>
                 <div class="of-filter-inputs">
                   <input class="of-input" id="of-min-price" type="number" placeholder="min">
@@ -2776,20 +2790,20 @@ html,body{overflow-x:hidden;max-width:100%;}
 
               <div class="of-filter-group">
                 <div class="of-filter-label-row">
-                  <span class="of-filter-label">Rating</span>
-                  <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Rating rata-rata produk (1.0 – 5.0).</span></span>
+                  <span class="of-filter-label">Jumlah Seller</span>
+                  <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Berapa banyak seller aktif yang menjual produk dengan keyword ini. Sedikit seller = persaingan rendah.</span></span>
                 </div>
                 <div class="of-filter-inputs">
-                  <input class="of-input" id="of-min-rating" type="number" step="0.1" min="0" max="5" placeholder="min">
+                  <input class="of-input" id="of-min-sellers" type="number" placeholder="min">
                   <span class="of-range-sep">—</span>
-                  <input class="of-input" id="of-max-rating" type="number" step="0.1" min="0" max="5" placeholder="max">
+                  <input class="of-input" id="of-max-sellers" type="number" placeholder="max">
                 </div>
               </div>
 
               <div class="of-filter-group">
                 <div class="of-filter-label-row">
                   <span class="of-filter-label">Niche Score</span>
-                  <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Skor kelayakan niche 0–100: gabungan penjualan, stok, dan rating.</span></span>
+                  <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Skor peluang keyword 0–100: gabungan demand tinggi, persaingan rendah, dan rating bagus.</span></span>
                 </div>
                 <div class="of-filter-inputs">
                   <input class="of-input" id="of-min-score" type="number" min="0" max="100" placeholder="min">
@@ -2861,18 +2875,18 @@ html,body{overflow-x:hidden;max-width:100%;}
             <table class="pdb-table">
               <thead>
                 <tr>
-                  <th onclick="ofSort('product_name')">Produk ↕</th>
-                  <th onclick="ofSort('category')">Kategori ↕</th>
-                  <th onclick="ofSort('keyword')">Keyword ↕</th>
-                  <th onclick="ofSort('price')">Harga ↕</th>
-                  <th onclick="ofSort('total_sold')">Terjual ↕</th>
-                  <th onclick="ofSort('rating')">Rating ↕</th>
-                  <th onclick="ofSort('competition')">Persaingan ↕</th>
-                  <th onclick="ofSort('score')">Score ↕</th>
+                  <th onclick="ofSort('keyword')" style="cursor:pointer;">Keyword ↕</th>
+                  <th onclick="ofSort('category')" style="cursor:pointer;">Kategori ↕</th>
+                  <th onclick="ofSort('seller_count')" style="cursor:pointer;">Seller ↕</th>
+                  <th onclick="ofSort('total_sold')" style="cursor:pointer;">Total Terjual ↕</th>
+                  <th onclick="ofSort('avg_price')" style="cursor:pointer;">Avg Harga ↕</th>
+                  <th onclick="ofSort('avg_rating')" style="cursor:pointer;">Avg Rating ↕</th>
+                  <th onclick="ofSort('competition')" style="cursor:pointer;">Persaingan ↕</th>
+                  <th onclick="ofSort('score')" style="cursor:pointer;">Score ↕</th>
                   <th></th>
                 </tr>
               </thead>
-              <tbody id="of-tbody"><tr><td colspan="8" style="text-align:center;padding:28px;color:#9CA3AF;font-size:.8rem;">Atur filter lalu klik Cari Peluang.</td></tr></tbody>
+              <tbody id="of-tbody"><tr><td colspan="9" style="text-align:center;padding:28px;color:#9CA3AF;font-size:.8rem;">Atur filter lalu klik Cari Peluang.</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -2881,10 +2895,45 @@ html,body{overflow-x:hidden;max-width:100%;}
 
       <!-- CATEGORY TRENDS -->
       <div id="dash-view-category-trends" style="display:none;">
-        <div class="dash-coming-soon">
-          <div class="dash-coming-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
-          <div class="dash-coming-title">Category Trends — Segera Hadir</div>
-          <div class="dash-coming-sub">Lihat kategori mana yang sedang naik daun berdasarkan data penjualan mingguan LarisID.</div>
+        <div class="pdb-header">
+          <div class="pdb-title">Category Trends</div>
+          <div style="font-size:.72rem;color:#6B7280;" id="ct-date-note"></div>
+        </div>
+
+        <!-- Summary cards -->
+        <div class="ct-cards" id="ct-cards"></div>
+
+        <!-- Table bar -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0 28px 10px;flex-wrap:wrap;gap:8px;">
+          <div style="font-size:.68rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Semua Kategori</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="pt-csv-btn" onclick="ctDownloadCSV()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download CSV
+            </button>
+            <button class="pdb-search-btn" onclick="loadCategoryTrends()" style="padding:8px 18px;font-size:.78rem;">Refresh</button>
+          </div>
+        </div>
+
+        <div style="margin:0 28px 28px;background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;">
+          <div class="pdb-table-wrap">
+            <table class="pdb-table">
+              <thead>
+                <tr>
+                  <th onclick="ctSort('category')" style="cursor:pointer;">Kategori ↕</th>
+                  <th onclick="ctSort('keyword_count')" style="cursor:pointer;">Keyword ↕</th>
+                  <th onclick="ctSort('listing_count')" style="cursor:pointer;">Listing ↕</th>
+                  <th onclick="ctSort('total_sold')" style="cursor:pointer;">Total Terjual ↕</th>
+                  <th onclick="ctSort('avg_price')" style="cursor:pointer;">Avg Harga ↕</th>
+                  <th onclick="ctSort('avg_rating')" style="cursor:pointer;">Avg Rating ↕</th>
+                  <th>Top Keyword</th>
+                  <th onclick="ctSort('sold_delta')" style="cursor:pointer;">Tren ↕</th>
+                  <th onclick="ctSort('score')" style="cursor:pointer;">Score ↕</th>
+                </tr>
+              </thead>
+              <tbody id="ct-tbody"><tr><td colspan="9" style="text-align:center;padding:28px;color:#9CA3AF;font-size:.8rem;">Klik Refresh untuk memuat data kategori.</td></tr></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -4953,6 +5002,7 @@ function switchDashView(view) {
   if (view === 'product-database') _initPdbCats();
   if (view === 'opportunity-finder') _initOfCats();
   if (view === 'product-tracker') ptRender();
+  if (view === 'category-trends') loadCategoryTrends();
   if (view === 'home') _renderDashHome();
 }
 
@@ -5209,11 +5259,11 @@ function ofSliderUpdate(type) {
 }
 
 const OF_PRESETS = {
-  'high-demand':      { 'of-min-sold': 500 },
-  'good-opportunity': { 'of-min-sold': 200, 'of-competition': 2 },
-  'low-competition':  { 'of-competition': 2 },
+  'high-demand':      { 'of-min-sold': 2000 },
+  'good-opportunity': { 'of-min-sold': 500, 'of-competition': 2 },
+  'low-competition':  { 'of-competition': 2, 'of-max-sellers': 15 },
   'low-seasonality':  { 'of-seasonality': 2 },
-  'trending-up':      { 'of-min-sold': 100, 'of-min-rating': 4 },
+  'trending-up':      { 'of-min-sold': 1000, 'of-min-score': 60 },
   'strong-price':     { 'of-min-price': 50000, 'of-max-price': 500000 },
 };
 
@@ -5281,15 +5331,15 @@ function _ofGetFilters() {
   const gv = id => { const el = document.getElementById(id); return el?.value ? parseFloat(el.value) : null; };
   const gs = id => { const el = document.getElementById(id); return el?.value?.trim() || ''; };
   return {
-    cats:        [...document.querySelectorAll('.of-cat-cb:checked')].map(cb => cb.value),
-    min_sold:    gv('of-min-sold'),    max_sold:    gv('of-max-sold'),
-    min_price:   gv('of-min-price'),   max_price:   gv('of-max-price'),
-    min_rating:  gv('of-min-rating'),  max_rating:  gv('of-max-rating'),
-    min_score:   gv('of-min-score'),   max_score:   gv('of-max-score'),
-    competition: parseInt(document.getElementById('of-competition')?.value || 5),
-    seasonality: parseInt(document.getElementById('of-seasonality')?.value || 5),
-    include_kw:  gs('of-include-kw'),
-    exclude_kw:  gs('of-exclude-kw'),
+    cats:         [...document.querySelectorAll('.of-cat-cb:checked')].map(cb => cb.value),
+    min_sold:     gv('of-min-sold'),     max_sold:     gv('of-max-sold'),
+    min_price:    gv('of-min-price'),    max_price:    gv('of-max-price'),
+    min_sellers:  gv('of-min-sellers'),  max_sellers:  gv('of-max-sellers'),
+    min_score:    gv('of-min-score'),    max_score:    gv('of-max-score'),
+    competition:  parseInt(document.getElementById('of-competition')?.value || 5),
+    seasonality:  parseInt(document.getElementById('of-seasonality')?.value || 5),
+    include_kw:   gs('of-include-kw'),
+    exclude_kw:   gs('of-exclude-kw'),
   };
 }
 
@@ -5312,15 +5362,30 @@ function _ofSeasonalityLevel(price, originalPrice) {
   return 5;
 }
 
+function _ofKwCompetitionLevel(sellerCount) {
+  if (sellerCount <= 5)  return 1;
+  if (sellerCount <= 15) return 2;
+  if (sellerCount <= 30) return 3;
+  if (sellerCount <= 60) return 4;
+  return 5;
+}
+
+function _ofKwScore(total_sold, seller_count, avg_rating) {
+  const soldScore  = Math.min(total_sold / 5000 * 40, 40);
+  const compScore  = seller_count <= 5 ? 35 : seller_count <= 15 ? 28 : seller_count <= 30 ? 18 : 8;
+  const ratingScore = (avg_rating / 5) * 25;
+  return Math.round(soldScore + compScore + ratingScore);
+}
+
 async function loadOpportunityFinder() {
   if (!_supabase) return;
   _initOfCats();
-  const st = document.getElementById('of-status');
-  const tbody = document.getElementById('of-tbody');
-  const cnt = document.getElementById('of-count');
+  const st     = document.getElementById('of-status');
+  const tbody  = document.getElementById('of-tbody');
+  const cnt    = document.getElementById('of-count');
   const dateNote = document.getElementById('of-date-note');
   if (st) st.textContent = 'Memuat data…';
-  if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#6B7280;font-size:.8rem;">Memuat…</td></tr>';
+  if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:#6B7280;font-size:.8rem;">Memuat…</td></tr>';
 
   const { data: latestRow } = await _supabase.from('listings').select('scraped_at').order('scraped_at',{ascending:false}).limit(1);
   if (!latestRow?.length) { if(st) st.textContent='Gagal memuat data.'; return; }
@@ -5329,43 +5394,61 @@ async function loadOpportunityFinder() {
 
   const f = _ofGetFilters();
   let query = _supabase.from('listings')
-    .select('keyword,category,product_name,store_name,price,original_price,total_sold,rating,reviews,stock,image_url,url,scraped_at')
+    .select('keyword,category,price,original_price,total_sold,rating,reviews,item_id,shop_id')
     .gte('scraped_at', latestDate)
-    .order('total_sold',{ascending:false})
-    .limit(1000);
-
+    .limit(2000);
   if (f.cats?.length && f.cats.length < PDB_CATS.length) query = query.in('category', f.cats);
-  if (f.min_sold   != null) query = query.gte('total_sold', f.min_sold);
-  if (f.max_sold   != null) query = query.lte('total_sold', f.max_sold);
-  if (f.min_price  != null) query = query.gte('price',      f.min_price);
-  if (f.max_price  != null) query = query.lte('price',      f.max_price);
-  if (f.min_rating != null) query = query.gte('rating',     f.min_rating);
-  if (f.max_rating != null) query = query.lte('rating',     f.max_rating);
 
   const { data, error } = await query;
   if (error) { if(st) st.textContent=`Error: ${error.message}`; return; }
 
+  // Aggregate by keyword
+  const byKw = {};
+  (data || []).forEach(r => {
+    const k = r.keyword || '(tanpa keyword)';
+    if (!byKw[k]) byKw[k] = { keyword: k, category: r.category, prices:[], sold: 0, ratings:[], reviews:[], seasonality_vals:[], count: 0 };
+    byKw[k].sold       += r.total_sold || 0;
+    byKw[k].count++;
+    byKw[k].prices.push(r.price || 0);
+    byKw[k].ratings.push(r.rating || 0);
+    byKw[k].reviews.push(r.reviews || 0);
+    byKw[k].seasonality_vals.push(_ofSeasonalityLevel(r.price, r.original_price));
+  });
+
+  const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+
   const inc = f.include_kw ? f.include_kw.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean) : [];
   const exc = f.exclude_kw ? f.exclude_kw.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean) : [];
 
-  _ofRows = (data || []).map(r => ({
-    ...r,
-    score:       _pdbViabilityScore(r),
-    competition: _ofCompetitionLevel(r.reviews),
-    seasonality: _ofSeasonalityLevel(r.price, r.original_price),
-  })).filter(r => {
+  _ofRows = Object.values(byKw).map(k => {
+    const avg_price    = avg(k.prices);
+    const avg_rating   = avg(k.ratings);
+    const avg_reviews  = avg(k.reviews);
+    const seller_count = k.count;
+    const total_sold   = k.sold;
+    const competition  = _ofKwCompetitionLevel(seller_count);
+    const seasonality  = Math.round(avg(k.seasonality_vals));
+    const score        = _ofKwScore(total_sold, seller_count, avg_rating);
+    return { keyword:k.keyword, category:k.category, seller_count, total_sold, avg_price, avg_rating, avg_reviews, competition, seasonality, score };
+  }).filter(r => {
+    if (f.min_sold    != null && r.total_sold   < f.min_sold)    return false;
+    if (f.max_sold    != null && r.total_sold   > f.max_sold)    return false;
+    if (f.min_price   != null && r.avg_price    < f.min_price)   return false;
+    if (f.max_price   != null && r.avg_price    > f.max_price)   return false;
+    if (f.min_sellers != null && r.seller_count < f.min_sellers) return false;
+    if (f.max_sellers != null && r.seller_count > f.max_sellers) return false;
+    if (f.min_score   != null && r.score        < f.min_score)   return false;
+    if (f.max_score   != null && r.score        > f.max_score)   return false;
     if (r.competition > f.competition) return false;
     if (r.seasonality > f.seasonality) return false;
-    if (f.min_score != null && r.score < f.min_score) return false;
-    if (f.max_score != null && r.score > f.max_score) return false;
-    const searchStr = `${r.product_name} ${r.keyword}`.toLowerCase();
-    if (inc.length && !inc.some(kw => searchStr.includes(kw))) return false;
-    if (exc.length &&  exc.some(kw => searchStr.includes(kw))) return false;
+    const kw = r.keyword.toLowerCase();
+    if (inc.length && !inc.some(w => kw.includes(w))) return false;
+    if (exc.length &&  exc.some(w => kw.includes(w))) return false;
     return true;
   });
 
   _ofRenderTable();
-  if (cnt) cnt.textContent = `${_ofRows.length} peluang`;
+  if (cnt) cnt.textContent = `${_ofRows.length} keyword`;
   if (st)  st.textContent = '';
 }
 
@@ -5383,7 +5466,7 @@ function _ofRenderTable() {
     return _ofSortDir === 'asc' ? (av>bv?1:-1) : (av<bv?1:-1);
   });
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#6B7280;font-size:.8rem;">Tidak ada peluang yang cocok. Coba perluas filter.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:#6B7280;font-size:.8rem;">Tidak ada keyword yang cocok. Coba perluas filter.</td></tr>';
     return;
   }
   const fmtRp = v => v ? 'Rp '+Math.round(v).toLocaleString('id-ID') : '—';
@@ -5396,24 +5479,164 @@ function _ofRenderTable() {
     const bg = s>=70?'#16a34a':s>=45?'#ca8a04':'#dc2626';
     return `<span style="background:${bg};color:#fff;padding:2px 7px;border-radius:10px;font-size:.7rem;font-weight:700;">${s}</span>`;
   };
+  tbody.innerHTML = rows.map(r => `<tr>
+    <td style="font-size:.8rem;font-weight:700;color:#1A1F3C;">${r.keyword}</td>
+    <td style="font-size:.72rem;">${r.category||'—'}</td>
+    <td style="font-size:.78rem;font-weight:600;text-align:center;">${r.seller_count}</td>
+    <td style="font-size:.78rem;font-weight:600;">${r.total_sold.toLocaleString('id-ID')}</td>
+    <td style="font-size:.72rem;">${fmtRp(r.avg_price)}</td>
+    <td style="font-size:.72rem;">${r.avg_rating.toFixed(1)}</td>
+    <td>${compBadge(r.competition)}</td>
+    <td>${scoreBadge(r.score)}</td>
+    <td><button class="pdb-btn" style="padding:4px 10px;font-size:.68rem;" onclick="switchDashView('product-database');document.getElementById('pdb-min-sold').value=''">Lihat Produk</button></td>
+  </tr>`).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+//  CATEGORY TRENDS
+// ════════════════════════════════════════════════════════════
+
+let _ctRows     = [];
+let _ctSortField = 'total_sold';
+let _ctSortDir   = 'desc';
+
+async function loadCategoryTrends() {
+  if (!_supabase) return;
+  const tbody    = document.getElementById('ct-tbody');
+  const cardsEl  = document.getElementById('ct-cards');
+  const dateNote = document.getElementById('ct-date-note');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:#6B7280;font-size:.8rem;">Memuat…</td></tr>';
+
+  // Get two latest scraped_at dates
+  const { data: dates } = await _supabase.from('listings').select('scraped_at').order('scraped_at',{ascending:false}).limit(2);
+  if (!dates?.length) return;
+  const latestDate = dates[0].scraped_at.slice(0,10);
+  const prevDate   = dates[1]?.scraped_at?.slice(0,10) || null;
+  if (dateNote) dateNote.textContent = `Data: ${latestDate}${prevDate ? ' vs '+prevDate : ''}`;
+
+  // Fetch current and previous data in parallel
+  const [curRes, prevRes] = await Promise.all([
+    _supabase.from('listings').select('category,keyword,price,total_sold,rating').gte('scraped_at', latestDate).limit(3000),
+    prevDate ? _supabase.from('listings').select('category,total_sold').gte('scraped_at', prevDate).lt('scraped_at', latestDate).limit(3000) : { data: [] },
+  ]);
+
+  const curData  = curRes.data  || [];
+  const prevData = prevRes.data || [];
+
+  // Aggregate current by category
+  const byCat = {};
+  curData.forEach(r => {
+    const c = r.category || 'Lainnya';
+    if (!byCat[c]) byCat[c] = { category:c, keywords:new Set(), listing_count:0, total_sold:0, prices:[], ratings:[], kw_sold:{} };
+    byCat[c].keywords.add(r.keyword);
+    byCat[c].listing_count++;
+    byCat[c].total_sold += r.total_sold || 0;
+    byCat[c].prices.push(r.price || 0);
+    byCat[c].ratings.push(r.rating || 0);
+    const kw = r.keyword || '';
+    byCat[c].kw_sold[kw] = (byCat[c].kw_sold[kw] || 0) + (r.total_sold || 0);
+  });
+
+  // Aggregate previous sold by category for delta
+  const prevByCat = {};
+  prevData.forEach(r => {
+    const c = r.category || 'Lainnya';
+    prevByCat[c] = (prevByCat[c] || 0) + (r.total_sold || 0);
+  });
+
+  const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+  const maxSold = Math.max(...Object.values(byCat).map(c=>c.total_sold), 1);
+
+  _ctRows = Object.values(byCat).map(c => {
+    const avg_price  = avg(c.prices);
+    const avg_rating = avg(c.ratings);
+    const prev_sold  = prevByCat[c.category] || 0;
+    const sold_delta = prev_sold ? Math.round((c.total_sold - prev_sold) / prev_sold * 100) : null;
+    const top_kw     = Object.entries(c.kw_sold).sort((a,b)=>b[1]-a[1])[0]?.[0] || '—';
+    const score      = Math.round(Math.min(c.total_sold/maxSold*60,60) + (avg_rating/5)*25 + Math.min(c.keywords.size/20*15,15));
+    return {
+      category:     c.category,
+      keyword_count: c.keywords.size,
+      listing_count: c.listing_count,
+      total_sold:   c.total_sold,
+      avg_price,
+      avg_rating,
+      top_kw,
+      sold_delta,
+      score,
+      bar_pct: c.total_sold / maxSold * 100,
+    };
+  });
+
+  _ctRenderCards();
+  _ctRenderTable();
+}
+
+function _ctRenderCards() {
+  const el = document.getElementById('ct-cards');
+  if (!el || !_ctRows.length) return;
+  const total_sold = _ctRows.reduce((s,r)=>s+r.total_sold,0);
+  const total_listing = _ctRows.reduce((s,r)=>s+r.listing_count,0);
+  const best = [..._ctRows].sort((a,b)=>b.total_sold-a.total_sold)[0];
+  const fastest = [..._ctRows].filter(r=>r.sold_delta!=null).sort((a,b)=>b.sold_delta-a.sold_delta)[0];
+  const fmtNum = v => v>=1000000 ? (v/1000000).toFixed(1)+'jt' : v>=1000 ? Math.round(v/1000)+'rb' : v.toString();
+  el.innerHTML = `
+    <div class="ct-card"><div class="ct-card-label">Total Kategori Aktif</div><div class="ct-card-val">${_ctRows.length}</div><div class="ct-card-sub">kategori dengan data</div></div>
+    <div class="ct-card"><div class="ct-card-label">Total Listing</div><div class="ct-card-val">${fmtNum(total_listing)}</div><div class="ct-card-sub">produk terlisting</div></div>
+    <div class="ct-card"><div class="ct-card-label">Total Unit Terjual</div><div class="ct-card-val">${fmtNum(total_sold)}</div><div class="ct-card-sub">gabungan semua kategori</div></div>
+    <div class="ct-card"><div class="ct-card-label">Kategori Terbaik</div><div class="ct-card-val" style="font-size:.95rem;">${best?.category||'—'}</div><div class="ct-card-sub">${fmtNum(best?.total_sold||0)} unit terjual${fastest&&fastest.sold_delta>0?' · '+fastest.category+' tumbuh +'+fastest.sold_delta+'%':''}</div></div>
+  `;
+}
+
+function ctSort(field) {
+  if (_ctSortField === field) _ctSortDir = _ctSortDir==='asc'?'desc':'asc';
+  else { _ctSortField = field; _ctSortDir = 'desc'; }
+  _ctRenderTable();
+}
+
+function _ctRenderTable() {
+  const tbody = document.getElementById('ct-tbody');
+  if (!tbody) return;
+  const rows = [..._ctRows].sort((a,b) => {
+    const av = a[_ctSortField] ?? (typeof a[_ctSortField]==='string'?'':''), bv = b[_ctSortField] ?? '';
+    return _ctSortDir==='asc' ? (av>bv?1:-1) : (av<bv?1:-1);
+  });
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:28px;color:#9CA3AF;font-size:.8rem;">Belum ada data.</td></tr>'; return; }
+  const fmtRp  = v => v ? 'Rp '+Math.round(v).toLocaleString('id-ID') : '—';
+  const fmtNum = v => v != null ? Math.round(v).toLocaleString('id-ID') : '—';
+  const maxSold = Math.max(...rows.map(r=>r.total_sold), 1);
   tbody.innerHTML = rows.map(r => {
-    const img = r.image_url ? `<img src="${r.image_url}" style="width:34px;height:34px;border-radius:4px;object-fit:cover;margin-right:8px;vertical-align:middle;" onerror="this.style.display='none'">` : '';
-    const name = r.url ? `<a href="${r.url}" target="_blank" rel="noopener" style="color:#1A1F3C;font-weight:600;text-decoration:none;font-size:.78rem;">${r.product_name||'—'}</a>` : `<span style="font-size:.78rem;font-weight:600;">${r.product_name||'—'}</span>`;
-    const ofTracked = ptIsTracked(r.item_id, r.shop_id);
-    const ofSaveBtn = `<button class="pt-save-btn${ofTracked?' saved':''}" data-key="${r.item_id}_${r.shop_id}"
-      onclick="_pdbSaveRow(this,${JSON.stringify(r).replace(/"/g,'&quot;')})">${ofTracked?'Tersimpan':'+ Simpan'}</button>`;
+    const barW = Math.round(r.total_sold/maxSold*100);
+    const bar  = `<div class="ct-bar-wrap"><div class="ct-bar" style="width:${barW}px;max-width:80px;"></div><span style="font-size:.72rem;font-weight:600;">${fmtNum(r.total_sold)}</span></div>`;
+    const delta = r.sold_delta == null ? '<span class="ct-delta-flat">—</span>'
+      : r.sold_delta > 0 ? `<span class="ct-delta-up">+${r.sold_delta}%</span>`
+      : r.sold_delta < 0 ? `<span class="ct-delta-down">${r.sold_delta}%</span>`
+      : '<span class="ct-delta-flat">0%</span>';
+    const scoreBg = r.score>=70?'#16a34a':r.score>=45?'#ca8a04':'#dc2626';
     return `<tr>
-      <td style="max-width:200px;">${img}${name}<div style="font-size:.65rem;color:#6B7280;margin-top:2px;">${r.store_name||''}</div></td>
-      <td style="font-size:.72rem;">${r.category||'—'}</td>
-      <td style="font-size:.72rem;">${r.keyword||'—'}</td>
-      <td style="font-size:.72rem;font-weight:600;">${fmtRp(r.price)}</td>
-      <td style="font-size:.72rem;font-weight:600;">${Math.round(r.total_sold||0).toLocaleString('id-ID')}</td>
-      <td style="font-size:.72rem;">${r.rating?r.rating.toFixed(1):'—'}</td>
-      <td>${compBadge(r.competition)}</td>
-      <td>${scoreBadge(r.score)}</td>
-      <td>${ofSaveBtn}</td>
+      <td style="font-size:.8rem;font-weight:700;color:#1A1F3C;">${r.category}</td>
+      <td style="font-size:.72rem;text-align:center;">${r.keyword_count}</td>
+      <td style="font-size:.72rem;text-align:center;">${fmtNum(r.listing_count)}</td>
+      <td>${bar}</td>
+      <td style="font-size:.72rem;">${fmtRp(r.avg_price)}</td>
+      <td style="font-size:.72rem;">${r.avg_rating.toFixed(1)}</td>
+      <td style="font-size:.72rem;color:#374151;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.top_kw}</td>
+      <td>${delta}</td>
+      <td><span style="background:${scoreBg};color:#fff;padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:700;">${r.score}</span></td>
     </tr>`;
   }).join('');
+}
+
+function ctDownloadCSV() {
+  if (!_ctRows.length) return;
+  const cols  = ['category','keyword_count','listing_count','total_sold','avg_price','avg_rating','top_kw','sold_delta','score'];
+  const heads = ['Kategori','Keyword','Listing','Total Terjual','Avg Harga','Avg Rating','Top Keyword','Tren %','Score'];
+  const rows  = _ctRows.map(r => cols.map(c => `"${(r[c]??'').toString().replace(/"/g,'""')}"`).join(','));
+  const csv   = [heads.join(','), ...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv);
+  a.download = `larisid_category_trends_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
 }
 
 // ════════════════════════════════════════════════════════════
