@@ -780,6 +780,57 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
   .pt-content{padding:0 14px 20px;}
 }
 
+/* ── PRODUCT TRACKER EXPAND ── */
+.pt-expand-row td{padding:0!important;background:#F9FAFB;}
+.pt-expand-inner{padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.pt-chart-panel{background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;}
+.pt-chart-title{font-size:.72rem;font-weight:700;color:#374151;margin-bottom:10px;}
+.pt-chart-sub{font-size:.62rem;color:#9CA3AF;margin-top:4px;}
+.pt-chart-svg{width:100%;overflow:visible;}
+.pt-expand-btn{background:none;border:none;cursor:pointer;color:#9CA3AF;padding:2px 6px;font-size:.7rem;transition:color .15s;}
+.pt-expand-btn:hover{color:#E8442A;}
+@media(max-width:860px){.pt-expand-inner{grid-template-columns:minmax(0,1fr);}}
+
+/* ── SALES ESTIMATOR ── */
+.se-wrap{padding:22px 28px 28px;max-width:1100px;}
+.se-title{font-size:1.25rem;font-weight:800;color:#1A1F3C;margin-bottom:4px;}
+.se-sub{font-size:.78rem;color:#6B7280;margin-bottom:22px;}
+.se-layout{display:grid;grid-template-columns:380px 1fr;gap:20px;align-items:start;}
+.se-left{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:20px 22px;}
+.se-right{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:20px 22px;min-height:400px;}
+.se-section-label{font-size:.62rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;margin-top:2px;}
+.se-divider{border:none;border-top:1px solid #F3F4F6;margin:14px 0;}
+.se-select{width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 10px;font-size:.78rem;font-family:inherit;outline:none;background:#F9FAFB;margin-bottom:10px;cursor:pointer;transition:border-color .15s;}
+.se-select:focus{border-color:#E8442A;}
+.se-product-card{display:flex;align-items:center;gap:10px;background:#F9FAFB;border-radius:8px;padding:10px;margin-bottom:12px;}
+.se-field{margin-bottom:10px;}
+.se-label{font-size:.68rem;font-weight:600;color:#374151;display:flex;align-items:center;gap:4px;margin-bottom:4px;}
+.se-input{width:100%;border:1.5px solid #E5E7EB;border-radius:7px;padding:8px 10px;font-size:.78rem;font-family:inherit;outline:none;box-sizing:border-box;background:#F9FAFB;transition:border-color .15s;}
+.se-input:focus{border-color:#E8442A;background:#fff;}
+.se-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.se-results-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px;color:#9CA3AF;}
+.se-result-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.se-result-card{background:#F9FAFB;border-radius:9px;padding:12px 14px;border:1px solid #E5E7EB;}
+.se-result-label{font-size:.62rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;}
+.se-result-val{font-size:1.05rem;font-weight:800;color:#1A1F3C;}
+.se-result-val.green{color:#16a34a;}
+.se-result-val.red{color:#dc2626;}
+.se-result-val.orange{color:#ca8a04;}
+.se-breakdown{border:1px solid #E5E7EB;border-radius:9px;overflow:hidden;margin-top:4px;}
+.se-breakdown-row{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid #F3F4F6;font-size:.75rem;}
+.se-breakdown-row:last-child{border-bottom:none;}
+.se-breakdown-row.total{font-weight:700;background:#F9FAFB;}
+.se-breakdown-label{color:#374151;}
+.se-breakdown-val{font-weight:600;color:#1A1F3C;}
+.se-breakdown-val.neg{color:#dc2626;}
+.se-breakdown-val.pos{color:#16a34a;}
+.se-margin-bar{height:10px;border-radius:5px;background:#E5E7EB;margin:14px 0 4px;overflow:hidden;}
+.se-margin-fill{height:100%;border-radius:5px;transition:width .4s;}
+@media(max-width:860px){
+  .se-layout{grid-template-columns:minmax(0,1fr);}
+  .se-wrap{padding:16px 14px 24px;}
+}
+
 /* ── KEYWORD EXPLORER ── */
 .kx-wrap{padding:22px 28px 28px;}
 .kx-title{font-size:1.25rem;font-weight:800;color:#1A1F3C;margin-bottom:18px;}
@@ -2433,19 +2484,22 @@ html,body{overflow-x:hidden;max-width:100%;}
 
         <!-- Other nav items -->
         <div class="dash-nav-item" id="dash-nav-suppliers" onclick="switchDashView('suppliers')">
-          <span class="dash-nav-icon">🏭</span><span>Suppliers</span>
+          <span class="dash-nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span><span>Suppliers</span>
         </div>
         <div class="dash-nav-item" id="dash-nav-keywords" onclick="switchDashView('keywords')">
-          <span class="dash-nav-icon">🔑</span><span>Keywords</span>
+          <span class="dash-nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span><span>Keywords</span>
+        </div>
+        <div class="dash-nav-item" id="dash-nav-estimator" onclick="switchDashView('estimator')">
+          <span class="dash-nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg></span><span>Sales Estimator</span>
         </div>
         <div class="dash-nav-item" id="dash-nav-marketing" onclick="switchDashView('marketing')">
-          <span class="dash-nav-icon">📢</span><span>Marketing</span>
+          <span class="dash-nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span><span>Marketing</span>
         </div>
 
         <div class="dash-nav-divider"></div>
 
         <div class="dash-nav-item" id="dash-nav-saved" onclick="switchDashView('saved')">
-          <span class="dash-nav-icon">📦</span><span>Produk Tersimpan</span>
+          <span class="dash-nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span><span>Produk Tersimpan</span>
         </div>
 
       </nav>
@@ -3060,6 +3114,95 @@ html,body{overflow-x:hidden;max-width:100%;}
             </div>
           </div>
 
+        </div>
+      </div>
+
+      <!-- SALES ESTIMATOR -->
+      <div id="dash-view-estimator" style="display:none;">
+        <div class="se-wrap">
+          <div class="se-title">Sales Estimator</div>
+          <div class="se-sub">Pilih produk tersimpan untuk estimasi biaya dan keuntungan otomatis.</div>
+
+          <div class="se-layout">
+            <!-- LEFT: inputs -->
+            <div class="se-left">
+              <div class="se-section-label">Pilih Produk</div>
+              <select class="se-select" id="se-product-select" onchange="seOnSelect()">
+                <option value="">-- pilih produk dari tracker --</option>
+              </select>
+
+              <div id="se-product-card" style="display:none;" class="se-product-card">
+                <img id="se-product-img" src="" style="width:48px;height:48px;border-radius:6px;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">
+                <div>
+                  <div id="se-product-name" style="font-size:.8rem;font-weight:700;color:#1A1F3C;"></div>
+                  <div id="se-product-store" style="font-size:.68rem;color:#6B7280;"></div>
+                </div>
+              </div>
+
+              <div class="se-divider"></div>
+              <div class="se-section-label">Harga &amp; Volume</div>
+
+              <div class="se-field">
+                <label class="se-label">Harga Jual (Rp) <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Harga yang kamu tetapkan untuk listing. Default dari rata-rata data scrape.</span></span></label>
+                <input class="se-input" id="se-price" type="number" placeholder="0" oninput="seCalc()">
+              </div>
+              <div class="se-field">
+                <label class="se-label">Estimasi Unit Terjual/Bln <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Berapa unit yang kamu targetkan per bulan. Default dari efisiensi seller rata-rata.</span></span></label>
+                <input class="se-input" id="se-units" type="number" placeholder="0" oninput="seCalc()">
+              </div>
+
+              <div class="se-divider"></div>
+              <div class="se-section-label">Biaya Modal &amp; Pengiriman</div>
+
+              <div class="se-field">
+                <label class="se-label">HPP / COGS per Unit (Rp) <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Harga pokok pembelian atau produksi per unit.</span></span></label>
+                <input class="se-input" id="se-cogs" type="number" placeholder="0" oninput="seCalc()">
+              </div>
+              <div class="se-field">
+                <label class="se-label">Ongkos Kirim per Order (Rp) <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Biaya pengiriman yang kamu tanggung per transaksi (setelah subsidi Shopee).</span></span></label>
+                <input class="se-input" id="se-shipping" type="number" placeholder="0" oninput="seCalc()">
+              </div>
+
+              <div class="se-divider"></div>
+              <div class="se-section-label">Biaya Shopee &amp; Marketing</div>
+
+              <div class="se-row-2">
+                <div class="se-field">
+                  <label class="se-label">Komisi Shopee (%) <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Komisi Shopee per transaksi. Rata-rata 1.5–3% tergantung kategori.</span></span></label>
+                  <input class="se-input" id="se-commission" type="number" step="0.1" value="2" oninput="seCalc()">
+                </div>
+                <div class="se-field">
+                  <label class="se-label">Biaya Admin (%)</label>
+                  <input class="se-input" id="se-admin" type="number" step="0.1" value="1" oninput="seCalc()">
+                </div>
+              </div>
+              <div class="se-row-2">
+                <div class="se-field">
+                  <label class="se-label">Biaya Pembayaran (%)</label>
+                  <input class="se-input" id="se-payment" type="number" step="0.1" value="2" oninput="seCalc()">
+                </div>
+                <div class="se-field">
+                  <label class="se-label">Marketing / Iklan (%) <span class="pdb-tooltip"><span class="pdb-tooltip-icon">?</span><span class="pdb-tooltip-text">Anggaran iklan Shopee Ads sebagai % dari revenue. 0 jika tidak beriklan.</span></span></label>
+                  <input class="se-input" id="se-marketing" type="number" step="0.1" value="5" oninput="seCalc()">
+                </div>
+              </div>
+
+              <div style="display:flex;gap:10px;margin-top:18px;">
+                <button class="pdb-search-btn" style="flex:1;" onclick="seSave()">Simpan Kalkulasi</button>
+                <button class="pdb-reset-btn" onclick="seReset()">Reset</button>
+              </div>
+              <div id="se-save-msg" style="font-size:.72rem;color:#16a34a;margin-top:6px;text-align:center;"></div>
+            </div>
+
+            <!-- RIGHT: results -->
+            <div class="se-right">
+              <div class="se-section-label">Hasil Estimasi Per Bulan</div>
+              <div id="se-results" class="se-results-empty">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="color:#E5E7EB;"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
+                <div style="margin-top:10px;font-size:.8rem;color:#9CA3AF;">Isi harga jual dan biaya di kiri untuk melihat estimasi.</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -5072,7 +5215,7 @@ function switchDashTab(tab) {
 //  JUNGLE SCOUT-STYLE DASHBOARD — view switching, Product DB
 // ════════════════════════════════════════════════════════════
 
-const PDB_VIEWS = ['home','product-database','product-tracker','opportunity-finder','category-trends','suppliers','keywords','marketing','saved'];
+const PDB_VIEWS = ['home','product-database','product-tracker','opportunity-finder','category-trends','suppliers','keywords','estimator','marketing','saved'];
 const PDB_SUB_MAP = {'product-database':'research','product-tracker':'research','opportunity-finder':'research','category-trends':'research'};
 const PDB_CATS = ['Bayi & Anak','Motor & Mobil','Rumah','Hewan Peliharaan','Dapur','Kamar Mandi','Elektronik','Fashion','Kecantikan','Kesehatan','Olahraga','Outdoor & Camping','Sepeda','Tanaman','Taman','Keamanan','Hobi & Kerajinan','Alat Tulis','HP & Gadget'];
 
@@ -6136,31 +6279,37 @@ function ptRender() {
       ? `<a href="${r.url}" target="_blank" rel="noopener" style="color:#1A1F3C;font-weight:600;font-size:.78rem;text-decoration:none;">${r.product_name||'—'}</a>`
       : `<span style="font-weight:600;font-size:.78rem;">${r.product_name||'—'}</span>`;
     const groupOpts = groups.map(g => `<option value="${g}"${r.group===g?' selected':''}>${g}</option>`).join('');
-    return `<tr>
-      <td><input type="checkbox" class="pt-row-cb" ${_ptSelected.has(key)?'checked':''} onchange="ptToggleRow(${r.item_id},${r.shop_id},this.checked)"></td>
-      <td style="max-width:220px;">
+    return `<tr id="pt-row-${r.item_id}_${r.shop_id}" style="cursor:pointer;">
+      <td onclick="event.stopPropagation()"><input type="checkbox" class="pt-row-cb" ${_ptSelected.has(key)?'checked':''} onchange="ptToggleRow(${r.item_id},${r.shop_id},this.checked)"></td>
+      <td style="max-width:220px;" onclick="ptToggleExpand(${r.item_id},${r.shop_id})">
         <div style="display:flex;align-items:center;gap:8px;">
           ${img}
           <div>${name}<div style="font-size:.65rem;color:#6B7280;margin-top:1px;">${r.store_name||''}</div></div>
         </div>
       </td>
-      <td style="font-size:.72rem;color:#374151;">${r.category||'—'}</td>
-      <td style="font-size:.72rem;color:#374151;">${r.keyword||'—'}</td>
-      <td style="font-size:.72rem;font-weight:600;">${fmtRp(r.price)}</td>
-      <td style="font-size:.72rem;font-weight:600;">${Math.round(r.total_sold||0).toLocaleString('id-ID')}</td>
-      <td style="font-size:.72rem;">${r.rating?r.rating.toFixed(1):'—'}</td>
-      <td><span style="background:${scoreBg(r.score)};color:#fff;padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:700;">${r.score}</span></td>
-      <td>
+      <td style="font-size:.72rem;color:#374151;" onclick="ptToggleExpand(${r.item_id},${r.shop_id})">${r.category||'—'}</td>
+      <td style="font-size:.72rem;color:#374151;" onclick="ptToggleExpand(${r.item_id},${r.shop_id})">${r.keyword||'—'}</td>
+      <td style="font-size:.72rem;font-weight:600;" onclick="ptToggleExpand(${r.item_id},${r.shop_id})">${fmtRp(r.price)}</td>
+      <td style="font-size:.72rem;font-weight:600;" onclick="ptToggleExpand(${r.item_id},${r.shop_id})">${Math.round(r.total_sold||0).toLocaleString('id-ID')}</td>
+      <td style="font-size:.72rem;" onclick="ptToggleExpand(${r.item_id},${r.shop_id})">${r.rating?r.rating.toFixed(1):'—'}</td>
+      <td onclick="ptToggleExpand(${r.item_id},${r.shop_id})"><span style="background:${scoreBg(r.score)};color:#fff;padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:700;">${r.score}</span></td>
+      <td onclick="event.stopPropagation()">
         <select style="border:1.5px solid #E5E7EB;border-radius:6px;padding:4px 6px;font-size:.68rem;font-family:inherit;background:#fff;cursor:pointer;outline:none;"
           onchange="ptSetGroup(${r.item_id},${r.shop_id},this.value)">${groupOpts}</select>
       </td>
-      <td>
+      <td onclick="event.stopPropagation()" style="white-space:nowrap;">
+        <button class="pt-expand-btn" id="pt-expand-btn-${r.item_id}_${r.shop_id}" onclick="ptToggleExpand(${r.item_id},${r.shop_id})" title="Lihat detail">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
         <button onclick="ptRemove(${r.item_id},${r.shop_id})" title="Hapus dari tracker"
-          style="background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:.9rem;padding:2px 4px;"
+          style="background:none;border:none;cursor:pointer;color:#9CA3AF;padding:2px 4px;"
           onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#9CA3AF'">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
         </button>
       </td>
+    </tr>
+    <tr id="pt-expand-${r.item_id}_${r.shop_id}" class="pt-expand-row" style="display:none;">
+      <td colspan="10"><div class="pt-expand-inner" id="pt-expand-inner-${r.item_id}_${r.shop_id}"><div style="color:#9CA3AF;font-size:.78rem;padding:10px;">Memuat grafik…</div></div></td>
     </tr>`;
   }).join('');
 }
@@ -6170,6 +6319,271 @@ function _refreshSaveBtns(item_id, shop_id, tracked) {
     btn.textContent = tracked ? 'Tersimpan' : '+ Simpan';
     btn.classList.toggle('saved', tracked);
   });
+}
+
+// ── Product Tracker expand / charts ──────────────────────────
+
+const _ptExpanded = new Set();
+
+async function ptToggleExpand(item_id, shop_id) {
+  const key     = `${item_id}_${shop_id}`;
+  const row     = document.getElementById(`pt-expand-${key}`);
+  const btn     = document.getElementById(`pt-expand-btn-${key}`);
+  const inner   = document.getElementById(`pt-expand-inner-${key}`);
+  if (!row) return;
+
+  const opening = row.style.display === 'none';
+  row.style.display = opening ? '' : 'none';
+  if (btn) btn.style.transform = opening ? 'rotate(180deg)' : '';
+  if (!opening) return;
+
+  if (_ptExpanded.has(key)) return; // already loaded
+  _ptExpanded.add(key);
+
+  if (!_supabase || !inner) return;
+
+  // Find the saved product data
+  const saved = _ptLoad().find(r => r.item_id == item_id && r.shop_id == shop_id);
+  const kw    = saved?.keyword || '';
+
+  // Fetch historical snapshots for this item
+  const { data: history } = await _supabase
+    .from('listings')
+    .select('scraped_at,total_sold,price')
+    .eq('item_id', item_id)
+    .eq('shop_id', shop_id)
+    .order('scraped_at', { ascending: true })
+    .limit(30);
+
+  // Fetch all sellers for the same keyword (latest date) for bar chart
+  let sellerData = [];
+  if (kw && _supabase) {
+    const { data: latest } = await _supabase
+      .from('listings').select('scraped_at').order('scraped_at',{ascending:false}).limit(1);
+    const ld = latest?.[0]?.scraped_at?.slice(0,10);
+    if (ld) {
+      const { data: sellers } = await _supabase
+        .from('listings')
+        .select('store_name,total_sold,product_name')
+        .ilike('keyword', kw)
+        .gte('scraped_at', ld)
+        .order('total_sold', { ascending: false })
+        .limit(120);
+      sellerData = sellers || [];
+    }
+  }
+
+  inner.innerHTML = `
+    <div class="pt-chart-panel">
+      <div class="pt-chart-title">Riwayat Terjual (Kumulatif)</div>
+      ${_drawLineChart(history || [])}
+      <div class="pt-chart-sub">${(history||[]).length} snapshot tersedia</div>
+    </div>
+    <div class="pt-chart-panel">
+      <div class="pt-chart-title">Performa Seller — "${kw || '—'}"</div>
+      ${_drawSellerBars(sellerData, saved)}
+      <div class="pt-chart-sub">${sellerData.length} seller · hanya yang >0.5% total terjual ditampilkan</div>
+    </div>
+  `;
+}
+
+function _drawLineChart(snapshots) {
+  if (!snapshots.length) return '<div style="color:#9CA3AF;font-size:.75rem;padding:10px 0;">Belum ada data historis.</div>';
+
+  const W = 320, H = 110, pad = { t:10, r:10, b:28, l:42 };
+  const vals = snapshots.map(s => s.total_sold || 0);
+  const dates = snapshots.map(s => s.scraped_at?.slice(0,10) || '');
+  const minV = 0, maxV = Math.max(...vals, 1);
+
+  const xScale = i => pad.l + (i / Math.max(snapshots.length-1,1)) * (W - pad.l - pad.r);
+  const yScale = v => pad.t + (1 - (v - minV)/(maxV - minV || 1)) * (H - pad.t - pad.b);
+
+  const points = vals.map((v,i) => `${xScale(i)},${yScale(v)}`).join(' ');
+  const area   = `M${xScale(0)},${yScale(vals[0])} ` +
+    vals.slice(1).map((v,i) => `L${xScale(i+1)},${yScale(v)}`).join(' ') +
+    ` L${xScale(vals.length-1)},${H-pad.b} L${xScale(0)},${H-pad.b} Z`;
+
+  const fmtK = v => v>=1000 ? Math.round(v/1000)+'rb' : v.toString();
+  const yTicks = [0, Math.round(maxV/2), maxV].map(v =>
+    `<text x="${pad.l-5}" y="${yScale(v)+4}" text-anchor="end" font-size="9" fill="#9CA3AF">${fmtK(v)}</text>`).join('');
+
+  const first = dates[0]?.slice(5) || '';
+  const last  = dates[dates.length-1]?.slice(5) || '';
+  const xLabels = `<text x="${xScale(0)}" y="${H-4}" text-anchor="middle" font-size="9" fill="#9CA3AF">${first}</text>
+    <text x="${xScale(vals.length-1)}" y="${H-4}" text-anchor="middle" font-size="9" fill="#9CA3AF">${last}</text>`;
+
+  const dots = vals.map((v,i) =>
+    `<circle cx="${xScale(i)}" cy="${yScale(v)}" r="3" fill="#E8442A"/>`
+  ).join('');
+
+  return `<svg viewBox="0 0 ${W} ${H}" class="pt-chart-svg" style="max-height:${H}px;">
+    <defs><linearGradient id="lg-pt" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#E8442A" stop-opacity=".18"/><stop offset="100%" stop-color="#E8442A" stop-opacity="0"/></linearGradient></defs>
+    <path d="${area}" fill="url(#lg-pt)"/>
+    <polyline points="${points}" fill="none" stroke="#E8442A" stroke-width="2" stroke-linejoin="round"/>
+    ${dots}${yTicks}${xLabels}
+  </svg>`;
+}
+
+function _drawSellerBars(sellers, highlight) {
+  if (!sellers.length) return '<div style="color:#9CA3AF;font-size:.75rem;padding:10px 0;">Belum ada data seller untuk keyword ini.</div>';
+
+  const totalSold = sellers.reduce((s,r) => s+(r.total_sold||0), 0) || 1;
+  // Only show sellers with >0.5% of total — but always show highlighted product
+  const filtered = sellers.filter(r => {
+    const pct = (r.total_sold||0)/totalSold*100;
+    if (pct >= 0.5) return true;
+    if (highlight && r.store_name === highlight.store_name) return true;
+    return false;
+  }).slice(0, 20);
+
+  if (!filtered.length) return '<div style="color:#9CA3AF;font-size:.75rem;padding:10px 0;">Tidak ada seller yang menonjol untuk keyword ini.</div>';
+
+  const maxSold = Math.max(...filtered.map(r => r.total_sold||0), 1);
+  const BAR_H = 18, GAP = 6, W = 320, labelW = 100, barAreaW = W - labelW - 50;
+
+  const rows = filtered.map((r, i) => {
+    const y        = i * (BAR_H + GAP);
+    const barW     = Math.max(2, Math.round((r.total_sold||0)/maxSold * barAreaW));
+    const pct      = ((r.total_sold||0)/totalSold*100).toFixed(1);
+    const isMe     = highlight && r.store_name === highlight.store_name;
+    const barColor = isMe ? '#E8442A' : '#93C5FD';
+    const name     = (r.store_name || r.product_name || '—').slice(0,18);
+    return `
+      <text x="0" y="${y+13}" font-size="9" fill="${isMe?'#E8442A':'#374151'}" font-weight="${isMe?'700':'400'}">${name}${isMe?' ◀':''}</text>
+      <rect x="${labelW}" y="${y}" width="${barW}" height="${BAR_H}" rx="3" fill="${barColor}" opacity=".85"/>
+      <text x="${labelW+barW+5}" y="${y+13}" font-size="9" fill="#6B7280">${pct}%</text>`;
+  }).join('');
+
+  const svgH = filtered.length * (BAR_H + GAP) + 10;
+  return `<svg viewBox="0 0 ${W} ${svgH}" class="pt-chart-svg" style="max-height:${Math.min(svgH,260)}px;overflow-y:auto;">${rows}</svg>`;
+}
+
+// ── SALES ESTIMATOR ──────────────────────────────────────────
+
+function loadSalesEstimator() {
+  const sel = document.getElementById('se-product-select');
+  if (!sel) return;
+  const products = _ptLoad();
+  sel.innerHTML = '<option value="">-- pilih produk dari tracker --</option>' +
+    products.map((r,i) => `<option value="${i}">${(r.product_name||'Produk').slice(0,50)} · ${r.keyword||''}</option>`).join('');
+  seCalc();
+}
+
+function seOnSelect() {
+  const sel = document.getElementById('se-product-select');
+  const idx = parseInt(sel?.value);
+  if (isNaN(idx)) { document.getElementById('se-product-card').style.display='none'; return; }
+
+  const products = _ptLoad();
+  const r = products[idx];
+  if (!r) return;
+
+  // Show product card
+  const card  = document.getElementById('se-product-card');
+  const img   = document.getElementById('se-product-img');
+  const pname = document.getElementById('se-product-name');
+  const pstore= document.getElementById('se-product-store');
+  if (card)  card.style.display  = 'flex';
+  if (img)   img.src             = r.image_url || '';
+  if (pname) pname.textContent   = r.product_name || '—';
+  if (pstore)pstore.textContent  = r.store_name || '';
+
+  // Auto-fill price and units
+  const priceEl = document.getElementById('se-price');
+  const unitsEl = document.getElementById('se-units');
+  if (priceEl && r.price)      priceEl.value = Math.round(r.price);
+  if (unitsEl && r.total_sold) unitsEl.value = Math.max(1, Math.round(r.total_sold / 12));
+
+  // Load saved plan if exists
+  const planKey = `se_plan_${r.item_id}_${r.shop_id}`;
+  const saved = JSON.parse(localStorage.getItem(planKey) || 'null');
+  if (saved) {
+    ['se-cogs','se-shipping','se-commission','se-admin','se-payment','se-marketing'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && saved[id] != null) el.value = saved[id];
+    });
+  }
+  seCalc();
+}
+
+function seCalc() {
+  const gv = id => parseFloat(document.getElementById(id)?.value || 0) || 0;
+  const price      = gv('se-price');
+  const units      = gv('se-units');
+  const cogs       = gv('se-cogs');
+  const shipping   = gv('se-shipping');
+  const commission = gv('se-commission');
+  const admin      = gv('se-admin');
+  const payment    = gv('se-payment');
+  const marketing  = gv('se-marketing');
+
+  const el = document.getElementById('se-results');
+  if (!el) return;
+
+  if (!price || !units) {
+    el.innerHTML = `<div class="se-results-empty">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="color:#E5E7EB;"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
+      <div style="margin-top:10px;font-size:.8rem;color:#9CA3AF;">Isi harga jual dan estimasi unit terjual.</div>
+    </div>`;
+    return;
+  }
+
+  const revenue       = price * units;
+  const shopeeFeePct  = (commission + admin + payment) / 100;
+  const shopeeFee     = revenue * shopeeFeePct;
+  const marketingFee  = revenue * (marketing / 100);
+  const cogsTotal     = cogs * units;
+  const shippingTotal = shipping * units;
+  const totalCost     = shopeeFee + marketingFee + cogsTotal + shippingTotal;
+  const net           = revenue - totalCost;
+  const marginPct     = revenue > 0 ? (net / revenue * 100) : 0;
+  const marginColor   = marginPct >= 20 ? '#16a34a' : marginPct >= 10 ? '#ca8a04' : '#dc2626';
+  const barColor      = marginPct >= 20 ? '#16a34a' : marginPct >= 10 ? '#f59e0b' : '#dc2626';
+
+  const fmtRp = v => 'Rp ' + Math.abs(Math.round(v)).toLocaleString('id-ID');
+  const negRp = v => (v < 0 ? '- ' : '') + fmtRp(v);
+
+  el.innerHTML = `
+    <div class="se-result-grid">
+      <div class="se-result-card"><div class="se-result-label">Omset / Bln</div><div class="se-result-val">${fmtRp(revenue)}</div></div>
+      <div class="se-result-card"><div class="se-result-label">Net Profit / Bln</div><div class="se-result-val ${marginPct>=15?'green':marginPct>=5?'orange':'red'}">${negRp(net)}</div></div>
+      <div class="se-result-card"><div class="se-result-label">Margin</div><div class="se-result-val" style="color:${marginColor}">${marginPct.toFixed(1)}%</div></div>
+      <div class="se-result-card"><div class="se-result-label">Net / Unit</div><div class="se-result-val ${net/units>=0?'green':'red'}">${negRp(net/units)}</div></div>
+    </div>
+
+    <div class="se-margin-bar"><div class="se-margin-fill" style="width:${Math.max(0,Math.min(100,marginPct))}%;background:${barColor};"></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:.62rem;color:#9CA3AF;margin-bottom:14px;"><span>0%</span><span>Margin ${marginPct.toFixed(1)}%</span><span>100%</span></div>
+
+    <div class="se-breakdown">
+      <div class="se-breakdown-row"><span class="se-breakdown-label">Revenue (${units} unit × ${fmtRp(price)})</span><span class="se-breakdown-val pos">+ ${fmtRp(revenue)}</span></div>
+      <div class="se-breakdown-row"><span class="se-breakdown-label">HPP / COGS</span><span class="se-breakdown-val neg">- ${fmtRp(cogsTotal)}</span></div>
+      <div class="se-breakdown-row"><span class="se-breakdown-label">Ongkos Kirim</span><span class="se-breakdown-val neg">- ${fmtRp(shippingTotal)}</span></div>
+      <div class="se-breakdown-row"><span class="se-breakdown-label">Biaya Shopee (${(commission+admin+payment).toFixed(1)}%)</span><span class="se-breakdown-val neg">- ${fmtRp(shopeeFee)}</span></div>
+      <div class="se-breakdown-row"><span class="se-breakdown-label">Marketing / Iklan (${marketing}%)</span><span class="se-breakdown-val neg">- ${fmtRp(marketingFee)}</span></div>
+      <div class="se-breakdown-row total"><span class="se-breakdown-label">Net Profit</span><span class="se-breakdown-val ${net>=0?'pos':'neg'}">${net>=0?'+ ':'- '}${fmtRp(net)}</span></div>
+    </div>
+  `;
+}
+
+function seSave() {
+  const sel = document.getElementById('se-product-select');
+  const idx = parseInt(sel?.value);
+  if (isNaN(idx)) { alert('Pilih produk terlebih dahulu.'); return; }
+  const r = _ptLoad()[idx];
+  if (!r) return;
+  const gv = id => parseFloat(document.getElementById(id)?.value || 0) || 0;
+  const plan = { 'se-cogs':gv('se-cogs'),'se-shipping':gv('se-shipping'),'se-commission':gv('se-commission'),'se-admin':gv('se-admin'),'se-payment':gv('se-payment'),'se-marketing':gv('se-marketing'),'price':gv('se-price'),'units':gv('se-units') };
+  localStorage.setItem(`se_plan_${r.item_id}_${r.shop_id}`, JSON.stringify(plan));
+  const msg = document.getElementById('se-save-msg');
+  if (msg) { msg.textContent = 'Kalkulasi tersimpan.'; setTimeout(()=>{ if(msg) msg.textContent=''; },3000); }
+}
+
+function seReset() {
+  ['se-cogs','se-shipping','se-marketing'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('se-commission').value = '2';
+  document.getElementById('se-admin').value = '1';
+  document.getElementById('se-payment').value = '2';
+  seCalc();
 }
 
 // ════════════════════════════════════════════════════════════
