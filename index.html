@@ -965,6 +965,44 @@ body.in-dashboard .dash-content{min-height:calc(100vh - 44px);}
   .se-wrap{padding:16px 14px 24px;}
 }
 
+/* ── OF KEYWORD DETAIL MODAL ── */
+.of-detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+.of-detail-modal{background:#fff;border-radius:16px;width:100%;max-width:860px;box-shadow:0 20px 60px rgba(0,0,0,.2);margin:auto;}
+.of-detail-header{padding:20px 24px 16px;border-bottom:1px solid #E5E7EB;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.of-detail-kw{font-size:1.05rem;font-weight:800;color:#1A1F3C;}
+.of-detail-sub{font-size:.72rem;color:#6B7280;margin-top:2px;}
+.of-detail-close{background:none;border:none;cursor:pointer;color:#6B7280;padding:4px;border-radius:6px;transition:color .12s,background .12s;flex-shrink:0;}
+.of-detail-close:hover{color:#111;background:#F3F4F6;}
+.of-detail-stats{display:flex;gap:0;padding:14px 24px;border-bottom:1px solid #F3F4F6;flex-wrap:wrap;}
+.of-detail-stat{flex:1;min-width:100px;padding:0 16px 0 0;}
+.of-detail-stat-val{font-size:1rem;font-weight:800;color:#1A1F3C;line-height:1;}
+.of-detail-stat-lbl{font-size:.62rem;color:#6B7280;margin-top:3px;text-transform:uppercase;letter-spacing:.04em;}
+.of-detail-stat+.of-detail-stat{border-left:1px solid #F3F4F6;padding-left:16px;}
+.of-detail-body{padding:16px 24px 24px;}
+.of-detail-note{font-size:.68rem;color:#9CA3AF;margin-bottom:14px;}
+.of-seller-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;}
+.of-seller-card{background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden;cursor:pointer;transition:box-shadow .15s,transform .12s;}
+.of-seller-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1);transform:translateY(-2px);}
+.of-seller-img-wrap{aspect-ratio:1/1;overflow:hidden;position:relative;background:#F3F4F6;}
+.of-seller-img{width:100%;height:100%;object-fit:cover;display:block;}
+.of-seller-share-bar{position:absolute;bottom:0;left:0;right:0;height:3px;background:rgba(255,255,255,.3);}
+.of-seller-share-fill{height:100%;background:#E8442A;border-radius:0 2px 2px 0;}
+.of-seller-body{padding:9px 10px;}
+.of-seller-name{font-size:.72rem;font-weight:800;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;}
+.of-seller-product{font-size:.62rem;color:#6B7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px;}
+.of-seller-omset{font-size:.78rem;font-weight:800;color:#E8442A;}
+.of-seller-omset-lbl{font-size:.6rem;color:#9CA3AF;display:block;margin-bottom:1px;}
+.of-seller-meta{display:flex;justify-content:space-between;align-items:center;margin-top:5px;}
+.of-seller-share{font-size:.65rem;font-weight:700;color:#374151;}
+.of-seller-sold{font-size:.62rem;color:#9CA3AF;}
+.of-detail-loading{text-align:center;padding:48px;color:#9CA3AF;font-size:.8rem;}
+@media(max-width:600px){.of-seller-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));}}
+
+/* ── PDB seller card updates ── */
+.pdb-card-store{font-size:.7rem;font-weight:800;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;}
+.pdb-card-omset{font-size:.72rem;font-weight:800;color:#E8442A;margin-top:4px;}
+.pdb-card-omset-lbl{font-size:.58rem;color:#9CA3AF;font-weight:400;}
+
 /* ── KEYWORD EXPLORER ── */
 .kx-wrap{padding:22px 28px 28px;}
 .kx-title{font-size:1.25rem;font-weight:800;color:#1A1F3C;margin-bottom:18px;}
@@ -3462,6 +3500,28 @@ html,body{overflow-x:hidden;max-width:100%;}
         </div>
       </div>
 
+      <!-- OF KEYWORD DETAIL MODAL (portal inside dash-content) -->
+      <div id="of-detail-overlay" class="of-detail-overlay" style="display:none;" onclick="if(event.target===this)ofCloseDetail()">
+        <div class="of-detail-modal">
+          <div class="of-detail-header">
+            <div>
+              <div class="of-detail-kw" id="of-detail-kw">—</div>
+              <div class="of-detail-sub" id="of-detail-sub"></div>
+            </div>
+            <button class="of-detail-close" onclick="ofCloseDetail()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="of-detail-stats" id="of-detail-stats"></div>
+          <div class="of-detail-body">
+            <div class="of-detail-note" id="of-detail-note"></div>
+            <div class="of-seller-grid" id="of-detail-seller-grid">
+              <div class="of-detail-loading">Memuat data seller…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- EDUCATION -->
       <div id="dash-view-education" style="display:none;">
         <div class="edu-wrap">
@@ -5756,10 +5816,10 @@ async function loadProductDatabase() {
   const f = _pdbGetFilters();
   let query = _supabase
     .from('listings')
-    .select('keyword,category,product_name,store_name,price,original_price,total_sold,rating,reviews,stock,image_url,url,scraped_at')
+    .select('keyword,category,product_name,store_name,price,original_price,total_sold,rating,reviews,stock,image_url,url,item_id,shop_id,scraped_at')
     .gte('scraped_at', latestDate)
     .order('total_sold', { ascending: false })
-    .limit(500);
+    .limit(1000);
 
   if (f.cats && f.cats.length > 0 && f.cats.length < PDB_CATS.length) {
     query = query.in('category', f.cats);
@@ -5967,28 +6027,29 @@ function _pdbRenderCards() {
   const rows = [..._pdbRows].sort((a,b) => (b[_pdbSortField]||0) - (a[_pdbSortField]||0));
   if (!rows.length) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#9CA3AF;font-size:.8rem;">Tidak ada produk yang cocok.</div>'; return; }
   grid.innerHTML = rows.map(r => {
-    const rev = fmtRp((r.price||0) * (r.total_sold||0) / 12);
+    const omset = fmtRp((r.price||0) * (r.total_sold||0) / 12);
     const scoreBg = r.score >= 70 ? '#16a34a' : r.score >= 45 ? '#ca8a04' : '#dc2626';
     const tracked = ptIsTracked(r.item_id, r.shop_id);
+    const shopeeBtn = r.url ? `<a href="${r.url}" target="_blank" rel="noopener" class="pdb-card-hover-btn primary" onclick="event.stopPropagation()">Lihat Shopee</a>` : '';
     return `<div class="pdb-card">
       <div class="pdb-card-img-wrap">
-        ${r.image_url ? `<img class="pdb-card-img" src="${r.image_url}" onerror="this.src=''" loading="lazy">` : ''}
+        ${r.image_url ? `<img class="pdb-card-img" src="${r.image_url}" onerror="this.style.display='none'" loading="lazy">` : '<div style="width:100%;height:100%;background:#F3F4F6;"></div>'}
         <div class="pdb-card-score" style="background:${scoreBg}">${r.score||0}</div>
         <button class="pdb-card-save${tracked?' saved':''}" onclick="event.stopPropagation();_pdbSaveRow(this,${JSON.stringify(r).replace(/"/g,'&quot;')})">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="${tracked?'#E8442A':'none'}" stroke="${tracked?'#E8442A':'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
         </button>
         <div class="pdb-card-hover">
-          <div class="pdb-card-hover-rev">Potensi Revenue/Bln</div>
-          <div class="pdb-card-hover-val">${rev}</div>
           <div class="pdb-card-hover-btns">
-            ${r.url ? `<a href="${r.url}" target="_blank" rel="noopener" class="pdb-card-hover-btn primary">Lihat Shopee</a>` : ''}
-            <button class="pdb-card-hover-btn secondary" onclick="event.stopPropagation();switchDashView('opportunity-finder')">Cari Peluang</button>
+            ${shopeeBtn}
+            <button class="pdb-card-hover-btn secondary" onclick="event.stopPropagation();ofOpenKeyword('${(r.keyword||'').replace(/'/g,"\\'")}')">Lihat Keyword</button>
           </div>
         </div>
       </div>
       <div class="pdb-card-body">
-        <div class="pdb-card-name">${r.product_name||'—'}</div>
-        <div class="pdb-card-meta">
+        <div class="pdb-card-store">${r.store_name||'—'}</div>
+        <div class="pdb-card-name" style="-webkit-line-clamp:1;font-weight:500;font-size:.68rem;color:#6B7280;">${r.product_name||'—'}</div>
+        <div class="pdb-card-omset"><span class="pdb-card-omset-lbl">Rata-rata omset/bln </span>${omset}</div>
+        <div class="pdb-card-meta" style="margin-top:4px;">
           <span class="pdb-card-price">${fmtRp(r.price)}</span>
           <span class="pdb-card-sold">${(r.total_sold||0).toLocaleString('id-ID')} terjual</span>
         </div>
@@ -6023,6 +6084,111 @@ function _ofRenderCards() {
         <div class="pdb-card-meta">
           <span class="pdb-card-price">${fmtRp(r.avg_price)}</span>
           <span class="pdb-card-sold">${(r.seller_count||0)} seller</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── OPPORTUNITY FINDER — KEYWORD DRILL-DOWN ──────────────────
+let _ofDetailCache = {};  // keyword → { latestDate, data }
+
+function ofCloseDetail() {
+  const el = document.getElementById('of-detail-overlay');
+  if (el) el.style.display = 'none';
+}
+
+async function ofOpenKeyword(keyword) {
+  if (!_supabase) return;
+  const overlay   = document.getElementById('of-detail-overlay');
+  const kwEl      = document.getElementById('of-detail-kw');
+  const subEl     = document.getElementById('of-detail-sub');
+  const statsEl   = document.getElementById('of-detail-stats');
+  const noteEl    = document.getElementById('of-detail-note');
+  const gridEl    = document.getElementById('of-detail-seller-grid');
+  if (!overlay || !gridEl) return;
+
+  // Show modal with loading state
+  if (kwEl)   kwEl.textContent  = keyword;
+  if (subEl)  subEl.textContent = '';
+  if (statsEl) statsEl.innerHTML = '';
+  if (noteEl) noteEl.textContent = '';
+  if (gridEl) gridEl.innerHTML  = '<div class="of-detail-loading">Memuat data seller…</div>';
+  overlay.style.display = 'flex';
+  overlay.scrollTop = 0;
+
+  const fmtRp = v => 'Rp ' + Math.round(v||0).toLocaleString('id-ID');
+
+  // Get latest date (or reuse from OF if loaded)
+  let latestDate;
+  if (_ofDetailCache[keyword]) {
+    latestDate = _ofDetailCache[keyword].latestDate;
+  } else {
+    const { data: lr } = await _supabase.from('listings').select('scraped_at').order('scraped_at',{ascending:false}).limit(1);
+    latestDate = lr?.[0]?.scraped_at?.slice(0,10);
+    if (!latestDate) { if (gridEl) gridEl.innerHTML = '<div class="of-detail-loading">Gagal memuat data.</div>'; return; }
+  }
+
+  // Fetch all sellers for this keyword
+  let sellers;
+  if (_ofDetailCache[keyword]) {
+    sellers = _ofDetailCache[keyword].data;
+  } else {
+    const { data, error } = await _supabase
+      .from('listings')
+      .select('product_name,store_name,image_url,url,price,total_sold,rating,item_id,shop_id')
+      .gte('scraped_at', latestDate)
+      .eq('keyword', keyword)
+      .order('total_sold', { ascending: false })
+      .limit(300);
+    if (error || !data) { if (gridEl) gridEl.innerHTML = '<div class="of-detail-loading">Gagal memuat data.</div>'; return; }
+    sellers = data;
+    _ofDetailCache[keyword] = { latestDate, data };
+  }
+
+  const totalSold = sellers.reduce((s, r) => s + (r.total_sold || 0), 0);
+  const totalSellers = sellers.length;
+  const avgPrice = sellers.length ? sellers.reduce((s,r) => s+(r.price||0),0)/sellers.length : 0;
+  const threshold = totalSold * 0.005;  // 0.5%
+
+  const topSellers = sellers
+    .filter(r => (r.total_sold || 0) >= threshold)
+    .map(r => ({ ...r, share: totalSold ? (r.total_sold||0)/totalSold*100 : 0, omset_bln: (r.price||0)*(r.total_sold||0)/12 }));
+
+  const maxShare = topSellers.length ? Math.max(...topSellers.map(s=>s.share)) : 1;
+
+  // Update header
+  if (subEl) subEl.textContent = `${topSellers.length} dari ${totalSellers} seller (>0.5% total penjualan)`;
+  if (statsEl) statsEl.innerHTML = [
+    { val: fmtRp(totalSold > 0 ? avgPrice * totalSold / 12 : 0), lbl: 'Est. Market/Bln' },
+    { val: totalSellers, lbl: 'Total Seller' },
+    { val: fmtRp(avgPrice), lbl: 'Avg Harga' },
+    { val: totalSold.toLocaleString('id-ID'), lbl: 'Total Terjual' },
+  ].map(s => `<div class="of-detail-stat"><div class="of-detail-stat-val">${s.val}</div><div class="of-detail-stat-lbl">${s.lbl}</div></div>`).join('');
+  if (noteEl) noteEl.textContent = `Menampilkan seller dengan kontribusi >0.5% dari total penjualan keyword "${keyword}"`;
+
+  if (!topSellers.length) {
+    gridEl.innerHTML = '<div class="of-detail-loading">Tidak ada seller yang memenuhi threshold 0.5%.</div>';
+    return;
+  }
+
+  gridEl.innerHTML = topSellers.map(r => {
+    const barW = Math.round(r.share / maxShare * 100);
+    const tracked = ptIsTracked(r.item_id, r.shop_id);
+    const shopeeHref = r.url ? `href="${r.url}" target="_blank" rel="noopener"` : '';
+    return `<div class="of-seller-card" onclick="${r.url?`window.open('${r.url}','_blank')`:'void(0)'}">
+      <div class="of-seller-img-wrap">
+        ${r.image_url ? `<img class="of-seller-img" src="${r.image_url}" onerror="this.style.display='none'" loading="lazy">` : '<div style="width:100%;height:100%;background:#E5E7EB;"></div>'}
+        <div class="of-seller-share-bar"><div class="of-seller-share-fill" style="width:${barW}%"></div></div>
+      </div>
+      <div class="of-seller-body">
+        <div class="of-seller-name">${r.store_name||'—'}</div>
+        <div class="of-seller-product">${r.product_name||'—'}</div>
+        <span class="of-seller-omset-lbl">Rata-rata omset/bln</span>
+        <div class="of-seller-omset">${fmtRp(r.omset_bln)}</div>
+        <div class="of-seller-meta">
+          <span class="of-seller-share">${r.share.toFixed(1)}% share</span>
+          <span class="of-seller-sold">${(r.total_sold||0).toLocaleString('id-ID')} terjual</span>
         </div>
       </div>
     </div>`;
@@ -6286,6 +6452,7 @@ async function loadOpportunityFinder() {
     return true;
   });
 
+  _ofDetailCache = {};  // invalidate drill-down cache on new search
   _ofRenderTableAndCards();
   if (cnt) cnt.textContent = `${_ofRows.length} keyword`;
   if (st)  st.textContent = '';
@@ -6323,7 +6490,9 @@ function _ofRenderTable() {
     const bg = s>=70?'#16a34a':s>=45?'#ca8a04':'#dc2626';
     return `<span style="background:${bg};color:#fff;padding:2px 7px;border-radius:10px;font-size:.7rem;font-weight:700;">${s}</span>`;
   };
-  tbody.innerHTML = rows.map(r => `<tr>
+  tbody.innerHTML = rows.map(r => {
+    const kwSafe = r.keyword.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    return `<tr style="cursor:pointer;" onclick="ofOpenKeyword('${kwSafe}')">
     <td style="font-size:.8rem;font-weight:700;color:#1A1F3C;">${r.keyword}</td>
     <td style="font-size:.72rem;">${r.category||'—'}</td>
     <td style="font-size:.78rem;font-weight:600;text-align:center;">${r.seller_count}</td>
@@ -6332,8 +6501,8 @@ function _ofRenderTable() {
     <td style="font-size:.72rem;">${r.avg_rating.toFixed(1)}</td>
     <td>${compBadge(r.competition)}</td>
     <td>${scoreBadge(r.score)}</td>
-    <td><button class="pdb-btn" style="padding:4px 10px;font-size:.68rem;" onclick="switchDashView('product-database');document.getElementById('pdb-min-sold').value=''">Lihat Produk</button></td>
-  </tr>`).join('');
+    <td><button class="pdb-btn" style="padding:4px 10px;font-size:.68rem;" onclick="event.stopPropagation();ofOpenKeyword('${kwSafe}')">Lihat Seller</button></td>
+  </tr>`;}).join('');
 }
 
 // ════════════════════════════════════════════════════════════
