@@ -753,9 +753,9 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .pdb-cat-label{display:flex;align-items:center;gap:6px;font-size:.75rem;color:#374151;cursor:pointer;padding:2px 0;}
 .pdb-cat-label input{cursor:pointer;accent-color:#E8442A;width:13px;height:13px;}
 .pdb-divider{width:1px;background:#E5E7EB;align-self:stretch;flex-shrink:0;}
-.pdb-ranges-col{flex:1;min-width:320px;}
+.pdb-ranges-col{flex:1;min-width:0;}
 .pdb-ranges-label{font-size:.68rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;}
-.pdb-range-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.pdb-range-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
 .pdb-range-group{display:flex;flex-direction:column;}
 .pdb-range-label-row{display:flex;align-items:center;gap:5px;margin-bottom:5px;}
 .pdb-range-label-text{font-size:.67rem;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:4px;}
@@ -801,18 +801,28 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .pdb-empty-sub{font-size:.82rem;color:#6B7280;}
 
 /* Responsive */
+@media(max-width:1100px){
+  .pdb-range-grid{grid-template-columns:repeat(2,1fr);}
+}
 @media(max-width:860px){
   .dash-sidebar{width:200px;}
   .pdb-header,.pdb-filters,.pdb-results{margin-left:14px;margin-right:14px;}
   .pdb-cats-grid{grid-template-columns:1fr;}
+  .pdb-filter-row{flex-direction:column;}
+  .pdb-divider{display:none;}
+  .pdb-ranges-col{width:100%;}
+  .pdb-range-grid{grid-template-columns:repeat(2,1fr);}
 }
 @media(max-width:660px){
   .dash-sidebar{width:56px;}
   .dash-sidebar-logo,.dash-user-meta,.dash-logout-btn,.dash-nav-sub,.dash-nav-item span:not(.dash-nav-icon){display:none;}
   .dash-nav-item{justify-content:center;padding:10px;}
-  .pdb-filter-row{flex-direction:column;}
-  .pdb-divider{display:none;}
   .dashboard-layout{flex-direction:row;}
+  .pdb-range-grid{grid-template-columns:1fr 1fr;}
+  .pdb-filters{padding:14px 14px;}
+}
+@media(max-width:420px){
+  .pdb-range-grid{grid-template-columns:1fr;}
 }
 
 /* ── KEYWORD RANKINGS ── */
