@@ -27,6 +27,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
 <!-- ─── TALLY FEEDBACK FORM ─────────────────────────────────────────────── -->
 <script async src="https://tally.so/widgets/embed.js"></script>
@@ -691,7 +692,8 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .dash-sidebar-nav{display:flex;flex-direction:column;gap:1px;padding:10px 8px;flex:1;}
 .dash-nav-item{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:7px;font-size:.8rem;font-weight:600;color:rgba(255,255,255,.55);cursor:pointer;transition:background .15s,color .15s;user-select:none;}
 .dash-nav-item:hover{background:rgba(255,255,255,.08);color:#fff;}
-.dash-nav-item.open{color:#fff;}
+.dash-nav-item.open{color:rgba(255,255,255,.75);}
+.dash-nav-item.active{color:#fff;font-weight:700;background:rgba(255,255,255,.08);}
 .dash-nav-icon{font-size:.85rem;width:16px;text-align:center;flex-shrink:0;}
 .dash-nav-arrow{margin-left:auto;font-size:.6rem;transition:transform .2s;opacity:.5;}
 .dash-nav-item.open .dash-nav-arrow{transform:rotate(90deg);}
@@ -996,6 +998,148 @@ body.in-dashboard .dash-content{min-height:calc(100vh - 44px);}
 .of-seller-share{font-size:.65rem;font-weight:700;color:#374151;}
 .of-seller-sold{font-size:.62rem;color:#9CA3AF;}
 .of-detail-loading{text-align:center;padding:48px;color:#9CA3AF;font-size:.8rem;}
+/* Redesigned keyword detail */
+.of-detail-modal{max-width:960px;}
+.of-detail-top{display:grid;grid-template-columns:220px 1fr;gap:20px;padding:20px 24px;border-bottom:1px solid #F3F4F6;}
+.of-detail-images{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:4px;border-radius:10px;overflow:hidden;aspect-ratio:1/1;}
+.of-detail-img-main{grid-column:1/3;overflow:hidden;background:#F3F4F6;}
+.of-detail-img-main img,.of-detail-img-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.of-detail-img-thumb{overflow:hidden;background:#F3F4F6;}
+.of-detail-info{display:flex;flex-direction:column;gap:14px;}
+.of-detail-score-row{display:flex;align-items:center;gap:12px;}
+.of-detail-score-circle{width:58px;height:58px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;}
+.of-detail-score-num{font-size:1.1rem;font-weight:900;line-height:1;}
+.of-detail-score-lbl{font-size:.52rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;opacity:.7;}
+.of-detail-stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.of-detail-stat2{background:#F9FAFB;border-radius:8px;padding:9px 12px;}
+.of-detail-stat2-val{font-size:.85rem;font-weight:800;color:#1A1F3C;line-height:1.2;}
+.of-detail-stat2-lbl{font-size:.58rem;color:#9CA3AF;margin-top:2px;text-transform:uppercase;letter-spacing:.04em;}
+.of-detail-section{padding:16px 24px;border-bottom:1px solid #F3F4F6;}
+.of-detail-section:last-child{border-bottom:none;padding-bottom:24px;}
+.of-detail-section-title{font-size:.72rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;}
+/* Revenue chart */
+.of-chart-wrap{display:flex;align-items:flex-end;gap:6px;height:70px;overflow-x:auto;}
+.of-chart-bar-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:44px;}
+.of-chart-bar{width:32px;background:#E8442A;border-radius:3px 3px 0 0;transition:opacity .15s;}
+.of-chart-bar:hover{opacity:.75;}
+.of-chart-date{font-size:.55rem;color:#9CA3AF;white-space:nowrap;}
+.of-chart-val{font-size:.55rem;color:#374151;font-weight:700;}
+/* Keyword chips */
+.of-kw-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.of-kw-chip{background:#FEF3F2;color:#E8442A;border:1px solid #FECACA;border-radius:20px;padding:4px 11px;font-size:.7rem;font-weight:700;cursor:pointer;transition:background .12s;}
+.of-kw-chip:hover{background:#FEE2E2;}
+/* Seller list (top 15) */
+.of-seller-list{display:flex;flex-direction:column;gap:0;}
+.of-seller-row{display:grid;grid-template-columns:28px 32px 1fr auto auto auto;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F9FAFB;}
+.of-seller-row:last-child{border-bottom:none;}
+.of-seller-rank{font-size:.65rem;font-weight:800;color:#9CA3AF;text-align:center;}
+.of-seller-row-img{width:32px;height:32px;border-radius:6px;object-fit:cover;background:#F3F4F6;flex-shrink:0;}
+.of-seller-row-name{min-width:0;}
+.of-seller-row-store{font-size:.72rem;font-weight:800;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.of-seller-row-prod{font-size:.6rem;color:#6B7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.of-seller-row-omset{font-size:.72rem;font-weight:800;color:#E8442A;white-space:nowrap;}
+.of-seller-row-share{font-size:.65rem;font-weight:700;color:#374151;white-space:nowrap;}
+.of-seller-row-age{font-size:.62rem;color:#9CA3AF;white-space:nowrap;}
+/* Saved estimates */
+.se-saved-section{margin-top:20px;}
+.se-saved-title{font-size:.7rem;font-weight:700;color:#374151;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;}
+.se-saved-list{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;}
+.se-saved-item{background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:10px 12px;cursor:pointer;transition:border-color .12s;display:flex;justify-content:space-between;align-items:center;}
+.se-saved-item:hover{border-color:#E8442A;}
+.se-saved-name{font-size:.75rem;font-weight:700;color:#1A1F3C;}
+.se-saved-meta{font-size:.62rem;color:#9CA3AF;}
+.se-saved-del{background:none;border:none;cursor:pointer;color:#9CA3AF;padding:2px 4px;border-radius:4px;font-size:.75rem;transition:color .12s;}
+.se-saved-del:hover{color:#dc2626;}
+.se-pdf-btn{background:#1A1F3C;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:.75rem;font-weight:700;cursor:pointer;transition:background .12s;display:flex;align-items:center;gap:6px;}
+.se-pdf-btn:hover{background:#E8442A;}
+/* ── Home Trending Products grid ── */
+.htd-section{margin:16px 0 0;}
+.htd-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.htd-title{font-size:.82rem;font-weight:800;color:#111;letter-spacing:.04em;text-transform:uppercase;display:flex;align-items:center;gap:7px;}
+.htd-title::before{content:'';display:block;width:3px;height:14px;background:linear-gradient(180deg,#E8442A,#F5A623);border-radius:2px;}
+.htd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
+.htd-card{background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden;cursor:pointer;transition:box-shadow .15s,transform .15s;position:relative;}
+.htd-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.1);transform:translateY(-2px);}
+.htd-card-img-wrap{aspect-ratio:1/1;overflow:hidden;background:#F9FAFB;position:relative;}
+.htd-card-img{width:100%;height:100%;object-fit:cover;display:block;}
+.htd-card-score{position:absolute;top:7px;right:7px;padding:2px 7px;border-radius:8px;font-size:.66rem;font-weight:800;color:#fff;}
+.htd-card-body{padding:9px 10px 8px;}
+.htd-card-name{font-size:.72rem;font-weight:700;color:#111;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:4px;}
+.htd-card-cat{font-size:.62rem;color:#9CA3AF;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.htd-card-price{font-size:.72rem;font-weight:800;color:#E8442A;}
+/* ── Keyword Detail Popup ── */
+.kd-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+.kd-modal{background:#fff;border-radius:16px;width:100%;max-width:1100px;box-shadow:0 24px 80px rgba(0,0,0,.25);margin:auto;overflow:hidden;position:relative;}
+.kd-close-btn{position:absolute;top:14px;right:14px;z-index:10;background:#F3F4F6;border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:.9rem;color:#374151;display:flex;align-items:center;justify-content:center;transition:background .12s;}
+.kd-close-btn:hover{background:#E5E7EB;}
+.kd-layout{display:grid;grid-template-columns:280px 1fr;gap:0;}
+.kd-left{padding:20px;border-right:1px solid #F3F4F6;display:flex;flex-direction:column;gap:12px;}
+.kd-main-img-wrap{aspect-ratio:1/1;border-radius:10px;overflow:hidden;background:#F3F4F6;}
+.kd-main-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
+.kd-thumbs{display:flex;gap:5px;flex-wrap:wrap;}
+.kd-thumb{width:42px;height:42px;border-radius:6px;overflow:hidden;background:#F3F4F6;border:2px solid transparent;cursor:pointer;flex-shrink:0;}
+.kd-thumb.active{border-color:#E8442A;}
+.kd-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.kd-info-card{background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;}
+.kd-info-icon{width:30px;height:30px;border-radius:7px;background:#E8442A20;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#E8442A;}
+.kd-info-label{font-size:.68rem;font-weight:700;color:#1A1F3C;}
+.kd-info-sub{font-size:.6rem;color:#9CA3AF;margin-top:1px;}
+.kd-right{padding:20px 22px;display:flex;flex-direction:column;gap:14px;min-width:0;}
+.kd-top-chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.kd-score-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:8px;font-size:.75rem;font-weight:800;}
+.kd-cat-chip{background:#F3F4F6;color:#374151;border-radius:6px;padding:3px 9px;font-size:.72rem;font-weight:600;}
+.kd-product-title{font-size:1.1rem;font-weight:900;color:#1A1F3C;line-height:1.3;}
+.kd-range-card{border:1px solid #E5E7EB;border-radius:10px;padding:10px 14px;}
+.kd-range-label{font-size:.6rem;font-weight:700;color:#9CA3AF;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;}
+.kd-range-values{display:flex;align-items:baseline;gap:7px;font-size:.8rem;color:#374151;flex-wrap:wrap;}
+.kd-range-median{font-size:1.25rem;font-weight:900;color:#1A1F3C;}
+.kd-range-note{font-size:.58rem;color:#9CA3AF;margin-top:3px;}
+.kd-stat-boxes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.kd-stat-box{background:#F9FAFB;border-radius:8px;padding:10px 8px 8px;text-align:center;}
+.kd-stat-box-val{font-size:.9rem;font-weight:900;color:#1A1F3C;}
+.kd-stat-box-lbl{font-size:.58rem;color:#6B7280;margin-top:2px;line-height:1.35;}
+.kd-charts-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.kd-chart-panel{background:#F9FAFB;border-radius:8px;padding:10px 12px;overflow:hidden;}
+.kd-chart-label{font-size:.58rem;font-weight:800;color:#9CA3AF;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;}
+.kd-feedback{background:#FAFAFA;border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;}
+.kd-feedback-q{font-size:.78rem;font-weight:800;color:#1A1F3C;margin-bottom:2px;}
+.kd-feedback-sub{font-size:.62rem;color:#9CA3AF;margin-bottom:10px;}
+.kd-feedback-btns{display:flex;gap:8px;flex-wrap:wrap;}
+.kd-feedback-btn{padding:6px 12px;border-radius:7px;border:1.5px solid #E5E7EB;background:#fff;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit;color:#374151;display:flex;align-items:center;gap:5px;transition:border-color .12s;}
+.kd-feedback-btn:hover{border-color:#E8442A;color:#E8442A;}
+.kd-cta-row{display:flex;gap:10px;}
+.kd-cta-share{flex:1;background:#E8442A;color:#fff;border:none;border-radius:9px;padding:11px;font-size:.77rem;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;transition:opacity .15s;}
+.kd-cta-share:hover{opacity:.88;}
+.kd-cta-save{flex:1;background:#fff;color:#1A1F3C;border:1.5px solid #E5E7EB;border-radius:9px;padding:11px;font-size:.77rem;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;transition:border-color .12s,color .12s;}
+.kd-cta-save:hover{border-color:#E8442A;color:#E8442A;}
+.kd-full{border-top:1px solid #F3F4F6;padding:18px 22px;}
+.kd-full-title{font-size:.72rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;display:flex;align-items:center;gap:7px;}
+.kd-age-boxes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.kd-age-box{background:#F9FAFB;border-radius:8px;padding:12px;text-align:center;}
+.kd-age-box-lbl{font-size:.6rem;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+.kd-age-box-val{font-size:.88rem;font-weight:800;color:#1A1F3C;}
+.kd-age-box-val.accent{color:#E8442A;}
+.kd-profit-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.kd-profit-col{border:1px solid #E5E7EB;border-radius:10px;overflow:hidden;}
+.kd-profit-head{padding:10px 14px;background:#F9FAFB;border-bottom:1px solid #E5E7EB;}
+.kd-profit-row{display:flex;justify-content:space-between;padding:7px 14px;border-bottom:1px solid #F9FAFB;font-size:.72rem;}
+.kd-profit-row:last-child{border-bottom:none;font-weight:800;background:#FAFAFA;}
+.kd-profit-label{color:#374151;}
+.kd-profit-value{font-weight:600;color:#1A1F3C;}
+.kd-profit-value.neg{color:#dc2626;}
+.kd-profit-value.pos{color:#16a34a;}
+.kd-seller-table{width:100%;border-collapse:collapse;font-size:.72rem;}
+.kd-seller-table th{padding:6px 8px;text-align:left;font-size:.6rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.04em;border-bottom:1.5px solid #E5E7EB;white-space:nowrap;}
+.kd-seller-table td{padding:8px 8px;border-bottom:1px solid #F9FAFB;vertical-align:middle;}
+.kd-seller-table tr:last-child td{border-bottom:none;}
+.kd-seller-table tr:hover td{background:#FAFAFA;}
+.kd-rank-badge{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#F3F4F6;font-size:.65rem;font-weight:800;color:#374151;}
+.kd-rank-badge.top{background:#E8442A20;color:#E8442A;}
+.kd-seller-img{width:30px;height:30px;border-radius:6px;object-fit:cover;background:#F3F4F6;}
+.kd-visit-btn{padding:3px 10px;border-radius:6px;border:1.5px solid #E5E7EB;background:#fff;font-size:.65rem;font-weight:700;cursor:pointer;font-family:inherit;color:#374151;white-space:nowrap;transition:border-color .12s,color .12s;}
+.kd-visit-btn:hover{border-color:#E8442A;color:#E8442A;}
+@media(max-width:800px){.kd-layout{grid-template-columns:1fr;}.kd-left{border-right:none;border-bottom:1px solid #F3F4F6;}.kd-charts-row{grid-template-columns:1fr;}.kd-profit-grid{grid-template-columns:1fr;}.htd-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));}}
+@media(max-width:640px){.of-detail-top{grid-template-columns:1fr;}.of-detail-images{aspect-ratio:2/1;}.of-detail-stats-grid{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:600px){.of-seller-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));}}
 
 /* ── PDB seller card updates ── */
@@ -2687,7 +2831,7 @@ html,body{overflow-x:hidden;max-width:100%;}
         <div class="dash-nav-divider"></div>
 
         <!-- Product Research -->
-        <div class="dash-nav-item open" id="dash-nav-research" onclick="toggleDashSub('research')">
+        <div class="dash-nav-item" id="dash-nav-research" onclick="toggleDashSub('research')">
           <span class="dash-nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span><span>Product Research</span>
           <span class="dash-nav-arrow">▶</span>
         </div>
@@ -2812,6 +2956,19 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
               <div id="profile-membership-status">
                 <button class="profile-membership-apply" onclick="showPage('komunitas')">Apply Now</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Trending Products -->
+          <div class="htd-section">
+            <div class="htd-head">
+              <div class="htd-title">Trending Products</div>
+              <span style="font-size:.7rem;color:#9CA3AF;">Klik untuk lihat analisis lengkap</span>
+            </div>
+            <div class="htd-grid" id="home-htd-grid">
+              <div style="grid-column:1/-1;padding:16px 0;color:#9CA3AF;font-size:.78rem;display:flex;align-items:center;gap:8px;">
+                <div class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;"></div>Memuat trending...
               </div>
             </div>
           </div>
@@ -3473,10 +3630,19 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
 
               <div style="display:flex;gap:10px;margin-top:18px;">
-                <button class="pdb-search-btn" style="flex:1;" onclick="seSave()">Simpan Kalkulasi</button>
+                <button class="pdb-search-btn" style="flex:1;" onclick="seSaveNamed()">Simpan Kalkulasi</button>
+                <button class="se-pdf-btn" onclick="seExportPDF()">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  PDF
+                </button>
                 <button class="pdb-reset-btn" onclick="seReset()">Reset</button>
               </div>
               <div id="se-save-msg" style="font-size:.72rem;color:#16a34a;margin-top:6px;text-align:center;"></div>
+              <!-- Saved calculations -->
+              <div class="se-saved-section" id="se-saved-section" style="display:none;">
+                <div class="se-saved-title">Kalkulasi Tersimpan</div>
+                <div class="se-saved-list" id="se-saved-list"></div>
+              </div>
             </div>
 
             <!-- RIGHT: results -->
@@ -3500,9 +3666,48 @@ html,body{overflow-x:hidden;max-width:100%;}
         </div>
       </div>
 
-      <!-- OF KEYWORD DETAIL MODAL (portal inside dash-content) -->
+      <!-- OF KEYWORD DETAIL MODAL -->
+      <!-- Keyword Detail Popup -->
+      <div id="kd-overlay" class="kd-overlay" style="display:none;" onclick="if(event.target===this)kdClose()">
+        <div class="kd-modal">
+          <button class="kd-close-btn" onclick="kdClose()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          <div class="kd-layout">
+            <div class="kd-left" id="kd-left-panel">
+              <div class="kd-main-img-wrap"><img id="kd-main-img" src="" alt="" onerror="this.parentNode.style.background='#F3F4F6';this.remove()"></div>
+              <div class="kd-thumbs" id="kd-thumbs"></div>
+              <div class="kd-info-card" id="kd-supplier-card" style="display:none;">
+                <div class="kd-info-icon">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <div class="kd-info-label" id="kd-supplier-name">Cari Supplier</div>
+                  <div class="kd-info-sub">MOQ &amp; harga grosir tersedia</div>
+                </div>
+                <button style="flex-shrink:0;padding:5px 10px;border-radius:7px;background:#E8442A;color:#fff;border:none;font-size:.65rem;font-weight:700;cursor:pointer;" onclick="kdClose();switchDashView('suppliers')">Lihat</button>
+              </div>
+              <div class="kd-info-card">
+                <div class="kd-info-icon">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 5v4h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                </div>
+                <div>
+                  <div class="kd-info-label">Pengiriman</div>
+                  <div class="kd-info-sub">Get Your Shipping Needs Covered</div>
+                </div>
+              </div>
+            </div>
+            <div class="kd-right" id="kd-right-panel">
+              <div class="of-detail-loading">Memuat data keyword...</div>
+            </div>
+          </div>
+          <div id="kd-full-sections"></div>
+        </div>
+      </div>
+
       <div id="of-detail-overlay" class="of-detail-overlay" style="display:none;" onclick="if(event.target===this)ofCloseDetail()">
         <div class="of-detail-modal">
+          <!-- Header -->
           <div class="of-detail-header">
             <div>
               <div class="of-detail-kw" id="of-detail-kw">—</div>
@@ -3512,12 +3717,39 @@ html,body{overflow-x:hidden;max-width:100%;}
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
-          <div class="of-detail-stats" id="of-detail-stats"></div>
-          <div class="of-detail-body">
-            <div class="of-detail-note" id="of-detail-note"></div>
-            <div class="of-seller-grid" id="of-detail-seller-grid">
+          <!-- Images + Stats -->
+          <div class="of-detail-top">
+            <div class="of-detail-images" id="of-detail-images">
+              <div class="of-detail-img-main"><div style="width:100%;height:100%;background:#F3F4F6;"></div></div>
+              <div class="of-detail-img-thumb"><div style="width:100%;height:100%;background:#F3F4F6;"></div></div>
+              <div class="of-detail-img-thumb"><div style="width:100%;height:100%;background:#F3F4F6;"></div></div>
+            </div>
+            <div class="of-detail-info">
+              <div class="of-detail-score-row" id="of-detail-score-row"></div>
+              <div class="of-detail-stats-grid" id="of-detail-stats"></div>
+            </div>
+          </div>
+          <!-- Revenue history chart -->
+          <div class="of-detail-section" id="of-detail-chart-section" style="display:none;">
+            <div class="of-detail-section-title">Estimasi Revenue Pasar per Scrape</div>
+            <div class="of-chart-wrap" id="of-detail-chart"></div>
+          </div>
+          <!-- Keywords used by top sellers -->
+          <div class="of-detail-section" id="of-detail-kw-section" style="display:none;">
+            <div class="of-detail-section-title">Top 15 Keyword dari Seller Terkuat</div>
+            <div class="of-kw-chips" id="of-detail-kw-chips"></div>
+          </div>
+          <!-- Top 15 sellers list -->
+          <div class="of-detail-section">
+            <div class="of-detail-section-title" id="of-detail-sellers-title">Top Seller (&gt;0.5% share)</div>
+            <div class="of-seller-list" id="of-detail-seller-list">
               <div class="of-detail-loading">Memuat data seller…</div>
             </div>
+          </div>
+          <!-- Rest of sellers grid -->
+          <div class="of-detail-section" id="of-detail-grid-section" style="display:none;">
+            <div class="of-detail-section-title">Semua Seller</div>
+            <div class="of-seller-grid" id="of-detail-seller-grid"></div>
           </div>
         </div>
       </div>
@@ -5671,10 +5903,16 @@ function switchDashView(view) {
     if (el) el.style.display = (v === view) ? '' : 'none';
   });
 
-  // Sidebar nav highlighting
-  ['home','research','suppliers','keywords','marketing','saved'].forEach(k => {
+  // Top-level nav: clear all active, set the matching one
+  const topNavKeys = ['home','research','suppliers','keywords','estimator','marketing','saved','education'];
+  topNavKeys.forEach(k => {
     const el = document.getElementById(`dash-nav-${k}`);
-    if (el) el.classList.toggle('active', k === view || (k === 'research' && PDB_SUB_MAP[view] === 'research'));
+    if (!el) return;
+    const isResearch = k === 'research' && PDB_SUB_MAP[view] === 'research';
+    const isDirect   = k === view;
+    el.classList.toggle('active', isDirect || isResearch);
+    // Keep submenu open indicator separate from active
+    if (k === 'research') el.classList.toggle('open', isResearch || el.classList.contains('open'));
   });
 
   // Sub-item highlighting
@@ -5698,10 +5936,6 @@ function switchDashView(view) {
   if (view === 'keywords') _kxLoadKeywordList();
   if (view === 'home') _renderDashHome();
   if (view === 'estimator') loadSalesEstimator();
-
-  // highlight education nav
-  const eduNav = document.getElementById('dash-nav-education');
-  if (eduNav) eduNav.classList.toggle('open', view === 'education');
 }
 
 function toggleDashSub(sub) {
@@ -5788,6 +6022,40 @@ function _pdbViabilityScore(r) {
   const stockScore = stock < 100 ? 30 : stock < 500 ? 20 : 10;
   const ratingScore = ((r.rating || 0) / 5) * 30;
   return Math.round(soldScore + stockScore + ratingScore);
+}
+
+// Product listing score: 5 factors, 0–100
+// catScore(30) + revenueRank(25) + trendScore(20) + ratingScore(15) + priceScore(10)
+function _calcListingScore(r, allInKeyword) {
+  const catScore    = Math.min((r.score || 0) * 0.30, 30);   // inherit category/viability score
+
+  // Revenue rank within keyword peers
+  const myRev = (r.price||0) * (r.total_sold||0) / 12;
+  const allRevs = (allInKeyword||[]).map(p=>(p.price||0)*(p.total_sold||0)/12).sort((a,b)=>b-a);
+  const rank = allRevs.indexOf(myRev);
+  const rankPct = allRevs.length > 1 ? 1 - rank/(allRevs.length-1) : 0.5;
+  const revRankScore = Math.round(rankPct * 25);
+
+  // Trend (total_sold growth indicator — use sold vs avg of peers)
+  const avgSold = allInKeyword?.length ? allInKeyword.reduce((s,p)=>s+(p.total_sold||0),0)/allInKeyword.length : 0;
+  const mySold  = r.total_sold || 0;
+  const trendScore = avgSold > 0
+    ? Math.min(Math.round(mySold/avgSold*10), 20)
+    : 10;
+
+  // Rating & reviews
+  const rat = r.rating || 0;
+  const rev = r.reviews || r.review_count || 0;
+  const ratingScore = Math.round(((rat/5)*0.6 + Math.min(rev/500,1)*0.4) * 15);
+
+  // Price positioning (within 20% of median price = max points)
+  const prices = (allInKeyword||[]).map(p=>p.price||0).filter(Boolean);
+  const medP = _median(prices);
+  const myP  = r.price || 0;
+  const priceDiff = medP > 0 ? Math.abs(myP-medP)/medP : 0;
+  const priceScore = Math.round(Math.max(0, 1-priceDiff*2.5) * 10);
+
+  return Math.min(100, Math.round(catScore + revRankScore + trendScore + ratingScore + priceScore));
 }
 
 async function loadProductDatabase() {
@@ -5996,6 +6264,9 @@ function _renderDashHome() {
         </div>`).join('');
     }
   }
+
+  // Load trending products (once per session)
+  if (!_htdLoaded) { _htdLoaded = true; _loadHomeTrending(); }
 }
 
 // ── CARD VIEW ──────────────────────────────────────────────────
@@ -6098,101 +6369,632 @@ function ofCloseDetail() {
   if (el) el.style.display = 'none';
 }
 
+// ── Keyword Detail Popup (full modal matching product detail view) ────────────
+let _kdCache = {};
+
+async function openKwDetail(keyword) {
+  if (!_supabase) return;
+  const overlay = document.getElementById('kd-overlay');
+  if (!overlay) return;
+
+  document.getElementById('kd-right-panel').innerHTML = '<div class="of-detail-loading">Memuat data keyword...</div>';
+  document.getElementById('kd-thumbs').innerHTML = '';
+  document.getElementById('kd-full-sections').innerHTML = '';
+  const mainImg = document.getElementById('kd-main-img');
+  if (mainImg) { mainImg.src = ''; mainImg.parentNode.style.background = '#F3F4F6'; }
+  document.getElementById('kd-supplier-card').style.display = 'none';
+  overlay.style.display = 'flex';
+  overlay.scrollTop = 0;
+
+  const fmtS = v => {
+    const n = Math.round(v||0);
+    if (n >= 1e9) return `Rp${(n/1e9).toFixed(1)}M`;
+    if (n >= 1e6) return `Rp${(n/1e6).toFixed(0)}jt`;
+    if (n >= 1e3) return `Rp${(n/1e3).toFixed(0)}rb`;
+    return `Rp${n.toLocaleString('id-ID')}`;
+  };
+  const fmtFull = v => 'Rp ' + Math.round(v||0).toLocaleString('id-ID');
+
+  let latestDate = _kdCache[keyword]?.latestDate;
+  if (!latestDate) {
+    const { data: lr } = await _supabase.from('listings').select('scraped_at').eq('keyword', keyword).order('scraped_at', {ascending:false}).limit(1);
+    latestDate = lr?.[0]?.scraped_at?.slice(0,10);
+    if (!latestDate) { document.getElementById('kd-right-panel').innerHTML = '<div class="of-detail-loading">Gagal memuat data.</div>'; return; }
+  }
+
+  let sellers = _kdCache[keyword]?.sellers;
+  if (!sellers) {
+    const { data, error } = await _supabase
+      .from('listings')
+      .select('product_name,store_name,image_url,url,price,total_sold,rating,review_count,item_id,shop_id,listing_date,location')
+      .gte('scraped_at', latestDate)
+      .eq('keyword', keyword)
+      .order('total_sold', { ascending: false })
+      .limit(300);
+    if (error || !data?.length) { document.getElementById('kd-right-panel').innerHTML = '<div class="of-detail-loading">Gagal memuat data.</div>'; return; }
+    sellers = data;
+    _kdCache[keyword] = { latestDate, sellers };
+  }
+
+  const totalSold  = sellers.reduce((s,r) => s + (r.total_sold||0), 0);
+  const prices     = sellers.map(r => r.price||0).filter(Boolean).sort((a,b) => a-b);
+  const revenues   = sellers.map(r => (r.price||0)*(r.total_sold||0)/12).sort((a,b) => a-b);
+  const medianPrice = _median(prices);
+  const medianRev   = _median(revenues);
+  const minRev = revenues[0]||0, maxRev = revenues[revenues.length-1]||0;
+
+  const soldArr   = sellers.map(r => r.total_sold||0).sort((a,b) => a-b);
+  const newUnits  = Math.max(1, Math.round((soldArr[Math.floor(soldArr.length*0.25)]||0)/12));
+  const expUnits  = Math.max(1, Math.round((soldArr[Math.floor(soldArr.length*0.75)]||0)/12));
+
+  const threshold = totalSold * 0.005;
+  const topSellers = sellers
+    .filter(r => (r.total_sold||0) >= threshold)
+    .map(r => ({...r, share: totalSold?(r.total_sold||0)/totalSold*100:0, omset_bln:(r.price||0)*(r.total_sold||0)/12}));
+
+  const score    = _kwOpportunityScore(sellers, totalSold);
+  const scoreCol = _scoreColor(score);
+
+  const ages       = sellers.map(r => r.listing_date).filter(Boolean);
+  const ageDays    = ages.map(d => Math.floor((Date.now()-new Date(d).getTime())/86400000)).filter(n=>n>=0).sort((a,b)=>a-b);
+  const shortestAge = ageDays[0]??null;
+  const medianAgeDays = _median(ageDays);
+  const longestAge  = ageDays[ageDays.length-1]??null;
+
+  const fmtD = d => {
+    if (d == null) return '—';
+    if (d < 7) return `${d} hari`;
+    if (d < 30) return `${Math.round(d/7)} minggu`;
+    if (d < 365) return `${Math.floor(d/30)} bulan`;
+    const y = Math.floor(d/365), m = Math.floor((d%365)/30);
+    return m > 0 ? `${y} thn ${m} bln` : `${y} tahun`;
+  };
+
+  // Images
+  const imgSellers = sellers.filter(r => r.image_url).slice(0,5);
+  if (imgSellers.length) {
+    const mainImgEl = document.getElementById('kd-main-img');
+    if (mainImgEl) {
+      mainImgEl.src = imgSellers[0].image_url;
+      mainImgEl.parentNode.style.background = '';
+    }
+    const thumbsEl = document.getElementById('kd-thumbs');
+    if (thumbsEl) {
+      thumbsEl.innerHTML = imgSellers.map((s,i) => `
+        <div class="kd-thumb${i===0?' active':''}" onclick="kdSetMain(this,'${s.image_url.replace(/'/g,"\\'")}')">
+          <img src="${s.image_url}" loading="lazy" onerror="this.parentNode.style.opacity=.4">
+        </div>`).join('');
+    }
+    const supCard = document.getElementById('kd-supplier-card');
+    if (supCard) {
+      supCard.style.display = 'flex';
+      const nameEl = document.getElementById('kd-supplier-name');
+      if (nameEl) nameEl.textContent = (imgSellers[0].product_name||'').slice(0,28) + (imgSellers[0].product_name?.length>28?'…':'');
+    }
+  }
+
+  // Right panel
+  document.getElementById('kd-right-panel').innerHTML = `
+    <div class="kd-top-chips">
+      <div class="kd-score-badge" style="background:${scoreCol}22;color:${scoreCol};">
+        <svg width="11" height="11" fill="${scoreCol}" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg>
+        Skor ${score}
+      </div>
+      <div class="kd-cat-chip">${sellers[0]?.category||'Produk'}</div>
+    </div>
+    <div class="kd-product-title">${keyword}</div>
+    <div class="kd-range-card">
+      <div class="kd-range-label">Kisaran Harga Jual</div>
+      <div class="kd-range-values">
+        <span>${fmtS(prices[0]||0)}</span>
+        <span style="color:#D1D5DB;">—</span>
+        <span class="kd-range-median">${fmtS(medianPrice)}</span>
+        <span style="color:#D1D5DB;">—</span>
+        <span>${fmtS(prices[prices.length-1]||0)}</span>
+      </div>
+      <div class="kd-range-note">Median price shown in bold</div>
+    </div>
+    <div class="kd-range-card" style="border-color:#FCA5A530;background:#FEF9F8;">
+      <div class="kd-range-label" style="color:#E8442A;">Estimasi Omset Per Bulan</div>
+      <div class="kd-range-values">
+        <span>${fmtS(minRev)}</span>
+        <span style="color:#D1D5DB;">—</span>
+        <span class="kd-range-median" style="color:#E8442A;">${fmtS(medianRev)}</span>
+        <span style="color:#D1D5DB;">—</span>
+        <span>${fmtS(maxRev)}</span>
+      </div>
+      <div class="kd-range-note">Median revenue shown in bold</div>
+    </div>
+    <div class="kd-stat-boxes">
+      <div class="kd-stat-box">
+        <div class="kd-stat-box-val">${newUnits}/mo</div>
+        <div class="kd-stat-box-lbl">New Seller<br>Units/mo</div>
+      </div>
+      <div class="kd-stat-box">
+        <div class="kd-stat-box-val">${expUnits}/mo</div>
+        <div class="kd-stat-box-lbl">Exp. Seller<br>Units/mo</div>
+      </div>
+      <div class="kd-stat-box" style="background:${scoreCol}12;border:1px solid ${scoreCol}40;">
+        <div class="kd-stat-box-val" style="color:${scoreCol};">${score}</div>
+        <div class="kd-stat-box-lbl">Viability<br>Score</div>
+      </div>
+    </div>
+    <div class="kd-charts-row">
+      <div class="kd-chart-panel">
+        <div class="kd-chart-label">Kategori — Revenue/Bln</div>
+        <div id="kd-cat-chart" style="overflow-x:auto;"><div style="color:#9CA3AF;font-size:.7rem;">Memuat...</div></div>
+      </div>
+      <div class="kd-chart-panel">
+        <div class="kd-chart-label">Tren Mingguan — Top 15</div>
+        <div id="kd-trend-chart" style="overflow-x:auto;"><div style="color:#9CA3AF;font-size:.7rem;">Memuat...</div></div>
+      </div>
+    </div>
+    <div class="kd-feedback">
+      <div class="kd-feedback-q">Kamu seller? Apakah data ini accurate?</div>
+      <div class="kd-feedback-sub">Berdasarkan pengalamanmu jualan produk ini — seberapa akurat data yang ditampilkan?</div>
+      <div class="kd-feedback-btns">
+        <button class="kd-feedback-btn">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z"/><path d="M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>
+          Akurat! 0
+        </button>
+        <button class="kd-feedback-btn">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>
+          Tidak Sesuai Realita 0
+        </button>
+      </div>
+    </div>
+    <div class="kd-cta-row">
+      <button class="kd-cta-share" onclick="kdShare('${keyword.replace(/'/g,"\\'")}')">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Share This Opportunity
+      </button>
+      <button class="kd-cta-save" onclick="kdClose();ofOpenKeyword('${keyword.replace(/'/g,"\\'")}')">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+        Simpan Produk
+      </button>
+    </div>
+  `;
+
+  // Category revenue history chart (async)
+  (async () => {
+    const { data: hist } = await _supabase.from('listings').select('scraped_at,price,total_sold').eq('keyword',keyword).order('scraped_at',{ascending:true}).limit(600);
+    const el = document.getElementById('kd-cat-chart');
+    if (!el) return;
+    if (!hist?.length) { el.innerHTML='<div style="color:#9CA3AF;font-size:.7rem;">Belum ada data</div>'; return; }
+    const byDate = {};
+    hist.forEach(r => { const d=r.scraped_at?.slice(0,10); if(!d) return; byDate[d]=(byDate[d]||0)+(r.price||0)*(r.total_sold||0)/12; });
+    const dates=Object.keys(byDate).sort(), revs=dates.map(d=>byDate[d]), maxR=Math.max(...revs)||1;
+    if (dates.length < 2) { el.innerHTML='<div style="color:#9CA3AF;font-size:.7rem;">Data belum cukup</div>'; return; }
+    el.innerHTML = `<div class="of-chart-wrap">${dates.map((d,i)=>{
+      const h=Math.round(revs[i]/maxR*50)+3, short=d.slice(5);
+      const val=revs[i]>=1e9?`Rp${(revs[i]/1e9).toFixed(1)}M`:revs[i]>=1e6?`Rp${(revs[i]/1e6).toFixed(0)}jt`:`Rp${(revs[i]/1e3).toFixed(0)}rb`;
+      return `<div class="of-chart-bar-wrap"><div class="of-chart-val">${val}</div><div class="of-chart-bar" style="height:${h}px;width:24px;" title="${d}"></div><div class="of-chart-date">${short}</div></div>`;
+    }).join('')}</div>`;
+  })();
+
+  // Top 15 trend chart
+  (() => {
+    const el = document.getElementById('kd-trend-chart');
+    if (!el || !topSellers.length) return;
+    const top15 = topSellers.slice(0,15);
+    const maxS = Math.max(...top15.map(r=>r.total_sold||0))||1;
+    el.innerHTML = `<div class="of-chart-wrap">${top15.map((r,i)=>{
+      const h=Math.round((r.total_sold||0)/maxS*50)+3;
+      return `<div class="of-chart-bar-wrap"><div class="of-chart-val">${Math.round((r.total_sold||0)/12)}</div><div class="of-chart-bar" style="height:${h}px;width:24px;background:#1A1F3C;" title="${r.store_name}"></div><div class="of-chart-date">${(r.store_name||'').slice(0,7)}</div></div>`;
+    }).join('')}</div>`;
+  })();
+
+  // Profit simulation
+  const sp = medianPrice;
+  function sim(units) {
+    const g=sp*units, co=g*.35, mk=g*.15, pl=g*.05, tot=co+mk+pl;
+    return {units,g,co,mk,pl,tot,net:g-tot};
+  }
+  const ns=sim(newUnits), es=sim(expUnits);
+
+  // Keywords from top sellers (async)
+  (async () => {
+    const topStores = topSellers.slice(0,10).map(r=>r.store_name).filter(Boolean);
+    if (!topStores.length) return;
+    const { data: kwData } = await _supabase.from('listings').select('keyword').in('store_name',topStores).gte('scraped_at',latestDate).limit(1000);
+    if (!kwData?.length) return;
+    const kwCount={};
+    kwData.forEach(r => { if (r.keyword&&r.keyword!==keyword) kwCount[r.keyword]=(kwCount[r.keyword]||0)+1; });
+    const topKws=Object.entries(kwCount).sort((a,b)=>b[1]-a[1]).slice(0,15).map(([k])=>k);
+    const el=document.getElementById('kd-kw-chips');
+    if (el&&topKws.length) el.innerHTML=topKws.map(k=>`<span class="of-kw-chip" style="cursor:pointer;" onclick="openKwDetail('${k.replace(/'/g,"\\'")}');kdClose();setTimeout(()=>openKwDetail('${k.replace(/'/g,"\\'")}'),50)">${k}</span>`).join('');
+    else if (el) el.innerHTML='<span style="color:#9CA3AF;font-size:.7rem;">Tidak ada data keywords</span>';
+  })();
+
+  document.getElementById('kd-full-sections').innerHTML = `
+    <div class="kd-full">
+      <div class="kd-full-title">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Usia Produk di Marketplace
+      </div>
+      <div class="kd-age-boxes">
+        <div class="kd-age-box"><div class="kd-age-box-lbl">Shortest</div><div class="kd-age-box-val">${fmtD(shortestAge)}</div></div>
+        <div class="kd-age-box"><div class="kd-age-box-lbl">Median</div><div class="kd-age-box-val accent">${fmtD(medianAgeDays)}</div></div>
+        <div class="kd-age-box"><div class="kd-age-box-lbl">Longest</div><div class="kd-age-box-val">${fmtD(longestAge)}</div></div>
+      </div>
+    </div>
+    <div class="kd-full">
+      <div class="kd-full-title">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Keywords untuk Iklan Shopee
+      </div>
+      <div id="kd-kw-chips" class="of-kw-chips"><div style="color:#9CA3AF;font-size:.7rem;">Memuat keywords dari top sellers...</div></div>
+    </div>
+    <div class="kd-full">
+      <div class="kd-full-title">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        Simulasi Keuntungan
+      </div>
+      <div class="kd-profit-grid">
+        <div class="kd-profit-col">
+          <div class="kd-profit-head"><div style="font-size:.72rem;font-weight:800;color:#E8442A;">Skenario Seller Baru</div></div>
+          ${[['Units Sold/mo',ns.units,''],['Selling Unit Price',fmtFull(sp),''],['Gross Revenue',fmtFull(ns.g),''],['COGS (35%)','-'+fmtFull(ns.co),'neg'],['Marketing (15%)','-'+fmtFull(ns.mk),'neg'],['Platform Fees (5%)','-'+fmtFull(ns.pl),'neg'],['Total Costs',fmtFull(ns.tot),''],['Net Revenue',fmtFull(ns.net),'pos']].map(([l,v,c])=>`<div class="kd-profit-row"><div class="kd-profit-label">${l}</div><div class="kd-profit-value ${c}">${v}</div></div>`).join('')}
+        </div>
+        <div class="kd-profit-col">
+          <div class="kd-profit-head"><div style="font-size:.72rem;font-weight:800;color:#16a34a;">Skenario Seller Berpengalaman</div></div>
+          ${[['Units Sold/mo',es.units,''],['Selling Unit Price',fmtFull(sp),''],['Gross Revenue',fmtFull(es.g),''],['COGS (35%)','-'+fmtFull(es.co),'neg'],['Marketing (15%)','-'+fmtFull(es.mk),'neg'],['Platform Fees (5%)','-'+fmtFull(es.pl),'neg'],['Total Costs',fmtFull(es.tot),''],['Net Revenue',fmtFull(es.net),'pos']].map(([l,v,c])=>`<div class="kd-profit-row"><div class="kd-profit-label">${l}</div><div class="kd-profit-value ${c}">${v}</div></div>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="kd-full">
+      <div class="kd-full-title">Top Sellers</div>
+      <div style="overflow-x:auto;">
+        <table class="kd-seller-table">
+          <thead><tr>
+            <th>Rank</th><th>Store Name</th><th>Location</th>
+            <th>Listing Age</th><th>Pendapatan Rata-rata 30 Hari</th>
+            <th>Price</th><th>Rating</th><th>Reviews</th><th>Link</th>
+          </tr></thead>
+          <tbody>
+            ${topSellers.slice(0,15).map((r,i) => `<tr>
+              <td><span class="kd-rank-badge${i<3?' top':''}">${i+1}</span></td>
+              <td style="min-width:140px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <img class="kd-seller-img" src="${r.image_url||''}" onerror="this.style.opacity=0" loading="lazy">
+                  <div>
+                    <div style="font-weight:800;color:#1A1F3C;font-size:.72rem;max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.store_name||'—'}</div>
+                    <div style="font-size:.6rem;color:#9CA3AF;max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.product_name||''}</div>
+                  </div>
+                </div>
+              </td>
+              <td style="color:#6B7280;white-space:nowrap;">${r.location||'—'}</td>
+              <td style="white-space:nowrap;">${r.listing_date?_fmtAge(r.listing_date):'—'}</td>
+              <td style="font-weight:700;color:#E8442A;white-space:nowrap;">${fmtFull(r.omset_bln)}</td>
+              <td style="font-weight:700;white-space:nowrap;">${fmtFull(r.price)}</td>
+              <td>${r.rating?r.rating.toFixed(2):'—'}</td>
+              <td>${(r.review_count||0).toLocaleString('id-ID')}</td>
+              <td>${r.url?`<button class="kd-visit-btn" onclick="window.open('${r.url}','_blank')">Visit</button>`:'—'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function kdClose() {
+  const el = document.getElementById('kd-overlay');
+  if (el) el.style.display = 'none';
+}
+
+function kdSetMain(thumbEl, src) {
+  const img = document.getElementById('kd-main-img');
+  if (img) img.src = src;
+  document.querySelectorAll('.kd-thumb').forEach(t => t.classList.remove('active'));
+  thumbEl.classList.add('active');
+}
+
+function kdShare(keyword) {
+  const text = `Peluang produk Shopee: ${keyword} — Analisis di LarisID`;
+  if (navigator.share) {
+    navigator.share({ title: `LarisID — ${keyword}`, text, url: window.location.href });
+  } else {
+    navigator.clipboard?.writeText(text + ' ' + window.location.href);
+    alert('Link disalin ke clipboard!');
+  }
+}
+
+// ── Home Trending Products ────────────────────────────────────────────────────
+let _htdLoaded = false;
+
+async function _loadHomeTrending() {
+  if (!_supabase) return;
+  const gridEl = document.getElementById('home-htd-grid');
+  if (!gridEl) return;
+
+  const { data: lr } = await _supabase.from('listings').select('scraped_at').order('scraped_at',{ascending:false}).limit(1);
+  const latestDate = lr?.[0]?.scraped_at?.slice(0,10);
+  if (!latestDate) { gridEl.innerHTML = '<div style="color:#9CA3AF;font-size:.75rem;padding:10px 0;">Belum ada data.</div>'; return; }
+
+  const { data: rows } = await _supabase
+    .from('listings')
+    .select('keyword,category,price,total_sold,image_url,score')
+    .gte('scraped_at', latestDate)
+    .order('total_sold', { ascending: false })
+    .limit(500);
+
+  if (!rows?.length) { gridEl.innerHTML = '<div style="color:#9CA3AF;font-size:.75rem;padding:10px 0;">Belum ada data trending.</div>'; return; }
+
+  const kwMap = {};
+  rows.forEach(r => {
+    const k = r.keyword; if (!k) return;
+    if (!kwMap[k]) kwMap[k] = { keyword:k, category:r.category||'', img:'', totalSold:0, revenue:0, prices:[], score:0 };
+    kwMap[k].totalSold += r.total_sold||0;
+    kwMap[k].revenue   += (r.price||0)*(r.total_sold||0)/12;
+    kwMap[k].prices.push(r.price||0);
+    if (!kwMap[k].img && r.image_url) kwMap[k].img = r.image_url;
+    if ((r.score||0) > kwMap[k].score) kwMap[k].score = r.score||0;
+  });
+
+  const top = Object.values(kwMap).sort((a,b) => b.revenue-a.revenue).slice(0,12);
+
+  const fmtS = v => {
+    const n=Math.round(v||0);
+    if(n>=1e9) return `Rp${(n/1e9).toFixed(1)}M`;
+    if(n>=1e6) return `Rp${(n/1e6).toFixed(0)}jt`;
+    if(n>=1e3) return `Rp${(n/1e3).toFixed(0)}rb`;
+    return `Rp${n}`;
+  };
+
+  gridEl.innerHTML = top.map(kw => {
+    const medP = _median(kw.prices);
+    const scoreCol = _scoreColor(kw.score);
+    const safe = kw.keyword.replace(/'/g,"\\'");
+    return `<div class="htd-card" onclick="openKwDetail('${safe}')">
+      <div class="htd-card-img-wrap">
+        ${kw.img?`<img class="htd-card-img" src="${kw.img}" loading="lazy" onerror="this.parentNode.style.background='#F3F4F6';this.remove()">`:''}
+        <div class="htd-card-score" style="background:${scoreCol};">${kw.score}</div>
+      </div>
+      <div class="htd-card-body">
+        <div class="htd-card-name">${kw.keyword}</div>
+        <div class="htd-card-cat">${kw.category||'—'}</div>
+        <div class="htd-card-price">${fmtS(medP)} · ${fmtS(kw.revenue)}/bln</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── helpers ──────────────────────────────────────────────────
+function _fmtAge(dateStr) {
+  if (!dateStr) return '—';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days < 0) return '—';
+  if (days >= 365) { const y=Math.floor(days/365),m=Math.floor((days%365)/30); return m?`${y} thn ${m} bln`:`${y} tahun`; }
+  if (days >= 30) return `${Math.floor(days/30)} bulan`;
+  if (days >= 7)  return `${Math.floor(days/7)} minggu`;
+  return `${days} hari`;
+}
+function _median(arr) {
+  if (!arr.length) return 0;
+  const s=[...arr].sort((a,b)=>a-b), m=Math.floor(s.length/2);
+  return s.length%2 ? s[m] : (s[m-1]+s[m])/2;
+}
+function _scoreColor(s){return s>=70?'#16a34a':s>=45?'#ca8a04':'#dc2626';}
+function _kwOpportunityScore(sellers,totalSold){
+  const top10 = sellers.slice(0,10).reduce((s,r)=>s+(r.total_sold||0),0);
+  const top10Share = totalSold ? top10/totalSold : 1;
+  const aboveHalf = sellers.filter(r=>(r.total_sold||0)/totalSold>0.005).length;
+  const fragScore = Math.min(aboveHalf/sellers.length*40,40);
+  const concScore = top10Share<.2?35:top10Share<.4?28:top10Share<.6?18:8;
+  const volScore  = Math.min(totalSold/500000*25,25);
+  return Math.round(fragScore+concScore+volScore);
+}
+
 async function ofOpenKeyword(keyword) {
   if (!_supabase) return;
   const overlay   = document.getElementById('of-detail-overlay');
-  const kwEl      = document.getElementById('of-detail-kw');
-  const subEl     = document.getElementById('of-detail-sub');
-  const statsEl   = document.getElementById('of-detail-stats');
-  const noteEl    = document.getElementById('of-detail-note');
-  const gridEl    = document.getElementById('of-detail-seller-grid');
-  if (!overlay || !gridEl) return;
+  if (!overlay) return;
 
-  // Show modal with loading state
-  if (kwEl)   kwEl.textContent  = keyword;
-  if (subEl)  subEl.textContent = '';
-  if (statsEl) statsEl.innerHTML = '';
-  if (noteEl) noteEl.textContent = '';
-  if (gridEl) gridEl.innerHTML  = '<div class="of-detail-loading">Memuat data seller…</div>';
+  // Reset to loading state
+  document.getElementById('of-detail-kw').textContent = keyword;
+  document.getElementById('of-detail-sub').textContent = '';
+  document.getElementById('of-detail-stats').innerHTML = '';
+  document.getElementById('of-detail-score-row').innerHTML = '';
+  document.getElementById('of-detail-seller-list').innerHTML = '<div class="of-detail-loading">Memuat data seller…</div>';
+  document.getElementById('of-detail-seller-grid').innerHTML = '';
+  document.getElementById('of-detail-chart-section').style.display = 'none';
+  document.getElementById('of-detail-kw-section').style.display = 'none';
+  document.getElementById('of-detail-grid-section').style.display = 'none';
   overlay.style.display = 'flex';
   overlay.scrollTop = 0;
 
   const fmtRp = v => 'Rp ' + Math.round(v||0).toLocaleString('id-ID');
 
-  // Get latest date (or reuse from OF if loaded)
+  // Get latest date
   let latestDate;
-  if (_ofDetailCache[keyword]) {
+  if (_ofDetailCache[keyword]?.latestDate) {
     latestDate = _ofDetailCache[keyword].latestDate;
   } else {
-    const { data: lr } = await _supabase.from('listings').select('scraped_at').order('scraped_at',{ascending:false}).limit(1);
+    const { data: lr } = await _supabase.from('listings').select('scraped_at').eq('keyword',keyword).order('scraped_at',{ascending:false}).limit(1);
     latestDate = lr?.[0]?.scraped_at?.slice(0,10);
-    if (!latestDate) { if (gridEl) gridEl.innerHTML = '<div class="of-detail-loading">Gagal memuat data.</div>'; return; }
+    if (!latestDate) { document.getElementById('of-detail-seller-list').innerHTML='<div class="of-detail-loading">Gagal memuat data.</div>'; return; }
   }
 
-  // Fetch all sellers for this keyword
+  // Fetch latest sellers with listing_date
   let sellers;
-  if (_ofDetailCache[keyword]) {
+  if (_ofDetailCache[keyword]?.data) {
     sellers = _ofDetailCache[keyword].data;
   } else {
     const { data, error } = await _supabase
       .from('listings')
-      .select('product_name,store_name,image_url,url,price,total_sold,rating,item_id,shop_id')
+      .select('product_name,store_name,image_url,url,price,total_sold,rating,item_id,shop_id,listing_date')
       .gte('scraped_at', latestDate)
       .eq('keyword', keyword)
       .order('total_sold', { ascending: false })
       .limit(300);
-    if (error || !data) { if (gridEl) gridEl.innerHTML = '<div class="of-detail-loading">Gagal memuat data.</div>'; return; }
+    if (error || !data) { document.getElementById('of-detail-seller-list').innerHTML='<div class="of-detail-loading">Gagal memuat data.</div>'; return; }
     sellers = data;
-    _ofDetailCache[keyword] = { latestDate, data };
+    _ofDetailCache[keyword] = { latestDate, data: sellers };
   }
 
-  const totalSold = sellers.reduce((s, r) => s + (r.total_sold || 0), 0);
+  const totalSold    = sellers.reduce((s,r)=>s+(r.total_sold||0),0);
   const totalSellers = sellers.length;
-  const avgPrice = sellers.length ? sellers.reduce((s,r) => s+(r.price||0),0)/sellers.length : 0;
-  const threshold = totalSold * 0.005;  // 0.5%
+  const prices       = sellers.map(r=>r.price||0).filter(Boolean);
+  const medianPrice  = _median(prices);
+  const minPrice     = prices.length ? Math.min(...prices) : 0;
+  const maxPrice     = prices.length ? Math.max(...prices) : 0;
+  const threshold    = totalSold * 0.005;
+  const estRevBln    = medianPrice * totalSold / 12;
 
+  // Listing ages
+  const ages = sellers.map(r=>r.listing_date).filter(Boolean);
+  const ageDays = ages.map(d=>Math.floor((Date.now()-new Date(d).getTime())/86400000)).filter(n=>n>=0);
+  const medianAgeDays = _median(ageDays);
+  const newestAge = ageDays.length ? Math.min(...ageDays) : null;
+  const oldestAge = ageDays.length ? Math.max(...ageDays) : null;
+
+  // Top sellers (>0.5%)
   const topSellers = sellers
-    .filter(r => (r.total_sold || 0) >= threshold)
-    .map(r => ({ ...r, share: totalSold ? (r.total_sold||0)/totalSold*100 : 0, omset_bln: (r.price||0)*(r.total_sold||0)/12 }));
+    .filter(r=>(r.total_sold||0)>=threshold)
+    .map(r=>({...r, share: totalSold?(r.total_sold||0)/totalSold*100:0, omset_bln:(r.price||0)*(r.total_sold||0)/12}));
 
-  const maxShare = topSellers.length ? Math.max(...topSellers.map(s=>s.share)) : 1;
+  // Opportunity score
+  const score = _kwOpportunityScore(sellers, totalSold);
+  const scoreCol = _scoreColor(score);
 
-  // Update header
-  if (subEl) subEl.textContent = `${topSellers.length} dari ${totalSellers} seller (>0.5% total penjualan)`;
-  if (statsEl) statsEl.innerHTML = [
-    { val: fmtRp(totalSold > 0 ? avgPrice * totalSold / 12 : 0), lbl: 'Est. Market/Bln' },
-    { val: totalSellers, lbl: 'Total Seller' },
-    { val: fmtRp(avgPrice), lbl: 'Avg Harga' },
-    { val: totalSold.toLocaleString('id-ID'), lbl: 'Total Terjual' },
-  ].map(s => `<div class="of-detail-stat"><div class="of-detail-stat-val">${s.val}</div><div class="of-detail-stat-lbl">${s.lbl}</div></div>`).join('');
-  if (noteEl) noteEl.textContent = `Menampilkan seller dengan kontribusi >0.5% dari total penjualan keyword "${keyword}"`;
-
-  if (!topSellers.length) {
-    gridEl.innerHTML = '<div class="of-detail-loading">Tidak ada seller yang memenuhi threshold 0.5%.</div>';
-    return;
+  // ── 5-image collage ──────────────────────────────────────
+  const imgSellers = sellers.filter(r=>r.image_url).slice(0,5);
+  const imgEl = document.getElementById('of-detail-images');
+  if (imgEl && imgSellers.length) {
+    imgEl.innerHTML = `
+      <div class="of-detail-img-main"><img src="${imgSellers[0].image_url}" loading="lazy" onerror="this.parentNode.style.background='#F3F4F6';this.remove()"></div>
+      ${[1,2,3,4].map(i=>imgSellers[i]
+        ? `<div class="of-detail-img-thumb"><img src="${imgSellers[i].image_url}" loading="lazy" onerror="this.parentNode.style.background='#F3F4F6';this.remove()"></div>`
+        : `<div class="of-detail-img-thumb" style="background:#F3F4F6;"></div>`
+      ).join('')}`;
   }
 
-  gridEl.innerHTML = topSellers.map(r => {
-    const barW = Math.round(r.share / maxShare * 100);
-    const tracked = ptIsTracked(r.item_id, r.shop_id);
-    const shopeeHref = r.url ? `href="${r.url}" target="_blank" rel="noopener"` : '';
-    return `<div class="of-seller-card" onclick="${r.url?`window.open('${r.url}','_blank')`:'void(0)'}">
-      <div class="of-seller-img-wrap">
-        ${r.image_url ? `<img class="of-seller-img" src="${r.image_url}" onerror="this.style.display='none'" loading="lazy">` : '<div style="width:100%;height:100%;background:#E5E7EB;"></div>'}
-        <div class="of-seller-share-bar"><div class="of-seller-share-fill" style="width:${barW}%"></div></div>
-      </div>
-      <div class="of-seller-body">
-        <div class="of-seller-name">${r.store_name||'—'}</div>
-        <div class="of-seller-product">${r.product_name||'—'}</div>
-        <span class="of-seller-omset-lbl">Rata-rata omset/bln</span>
-        <div class="of-seller-omset">${fmtRp(r.omset_bln)}</div>
-        <div class="of-seller-meta">
-          <span class="of-seller-share">${r.share.toFixed(1)}% share</span>
-          <span class="of-seller-sold">${(r.total_sold||0).toLocaleString('id-ID')} terjual</span>
-        </div>
-      </div>
+  // ── Score circle ──────────────────────────────────────────
+  document.getElementById('of-detail-score-row').innerHTML = `
+    <div class="of-detail-score-circle" style="background:${scoreCol}20;border:2px solid ${scoreCol};">
+      <div class="of-detail-score-num" style="color:${scoreCol};">${score}</div>
+      <div class="of-detail-score-lbl" style="color:${scoreCol};">Score</div>
+    </div>
+    <div>
+      <div style="font-size:.8rem;font-weight:800;color:#1A1F3C;">Opportunity Score</div>
+      <div style="font-size:.65rem;color:#6B7280;margin-top:2px;">${topSellers.length} seller dominan · ${totalSellers} total listing</div>
     </div>`;
-  }).join('');
+
+  // ── Stats grid ────────────────────────────────────────────
+  document.getElementById('of-detail-sub').textContent = `${topSellers.length} seller >0.5% dari ${totalSellers} total`;
+  document.getElementById('of-detail-stats').innerHTML = [
+    { v: fmtRp(estRevBln),                        l: 'Est. Revenue/Bln' },
+    { v: Math.round(totalSold/12).toLocaleString('id-ID'), l: 'Unit Terjual/Bln' },
+    { v: fmtRp(medianPrice),                      l: 'Median Harga' },
+    { v: `${fmtRp(minPrice)} – ${fmtRp(maxPrice)}`, l: 'Rentang Harga' },
+    { v: _fmtAge(ages.length ? ages.sort((a,b)=>new Date(b)-new Date(a))[0] : null), l: 'Listing Terbaru' },
+    { v: medianAgeDays!=null ? _fmtAge(new Date(Date.now()-medianAgeDays*86400000).toISOString()) : '—', l: 'Median Usia Listing' },
+  ].map(s=>`<div class="of-detail-stat2"><div class="of-detail-stat2-val">${s.v}</div><div class="of-detail-stat2-lbl">${s.l}</div></div>`).join('');
+
+  // ── Revenue history chart ─────────────────────────────────
+  (async () => {
+    const { data: hist } = await _supabase
+      .from('listings')
+      .select('scraped_at,price,total_sold')
+      .eq('keyword', keyword)
+      .order('scraped_at', { ascending: true })
+      .limit(600);
+    if (hist?.length) {
+      const byDate = {};
+      hist.forEach(r => {
+        const d = r.scraped_at?.slice(0,10);
+        if (!d) return;
+        if (!byDate[d]) byDate[d] = { rev: 0, sold: 0 };
+        byDate[d].rev += (r.price||0)*(r.total_sold||0)/12;
+      });
+      const dates = Object.keys(byDate).sort();
+      const revs  = dates.map(d=>byDate[d].rev);
+      const maxRev= Math.max(...revs) || 1;
+      const chartEl = document.getElementById('of-detail-chart');
+      const chartSec= document.getElementById('of-detail-chart-section');
+      if (chartEl && dates.length > 1) {
+        chartEl.innerHTML = dates.map((d,i)=>{
+          const h = Math.round(revs[i]/maxRev*62)+4;
+          const short = d.slice(5); // MM-DD
+          const val = revs[i]>=1e9?`Rp${(revs[i]/1e9).toFixed(1)}M`:revs[i]>=1e6?`Rp${(revs[i]/1e6).toFixed(0)}jt`:`Rp${(revs[i]/1e3).toFixed(0)}rb`;
+          return `<div class="of-chart-bar-wrap"><div class="of-chart-val">${val}</div><div class="of-chart-bar" style="height:${h}px;" title="${d}: ${fmtRp(revs[i])}"></div><div class="of-chart-date">${short}</div></div>`;
+        }).join('');
+        chartSec.style.display = '';
+      }
+    }
+  })();
+
+  // ── Keywords from top sellers ──────────────────────────────
+  (async () => {
+    const topStores = topSellers.slice(0,10).map(r=>r.store_name).filter(Boolean);
+    if (!topStores.length) return;
+    const { data: kwData } = await _supabase
+      .from('listings')
+      .select('keyword,store_name')
+      .in('store_name', topStores)
+      .gte('scraped_at', latestDate)
+      .limit(1000);
+    if (!kwData?.length) return;
+    const kwCount = {};
+    kwData.forEach(r => {
+      const k = r.keyword;
+      if (!k || k === keyword) return;
+      kwCount[k] = (kwCount[k]||0) + 1;
+    });
+    const topKws = Object.entries(kwCount).sort((a,b)=>b[1]-a[1]).slice(0,15).map(([k])=>k);
+    if (!topKws.length) return;
+    const chipsEl = document.getElementById('of-detail-kw-chips');
+    const kwSec   = document.getElementById('of-detail-kw-section');
+    if (chipsEl) {
+      chipsEl.innerHTML = topKws.map(k=>`<span class="of-kw-chip" onclick="ofOpenKeyword('${k.replace(/'/g,"\\'")}')">
+        ${k}</span>`).join('');
+      kwSec.style.display = '';
+    }
+  })();
+
+  // ── Top 15 sellers (list view) ─────────────────────────────
+  const top15 = topSellers.slice(0,15);
+  document.getElementById('of-detail-sellers-title').textContent = `Top ${Math.min(topSellers.length,15)} Seller (>0.5% share)`;
+  document.getElementById('of-detail-seller-list').innerHTML = top15.length
+    ? top15.map((r,i)=>`
+      <div class="of-seller-row" onclick="${r.url?`window.open('${r.url}','_blank')`:'void(0)'}">
+        <div class="of-seller-rank">#${i+1}</div>
+        <img class="of-seller-row-img" src="${r.image_url||''}" onerror="this.style.opacity=0" loading="lazy">
+        <div class="of-seller-row-name">
+          <div class="of-seller-row-store">${r.store_name||'—'}</div>
+          <div class="of-seller-row-prod">${r.product_name||'—'}</div>
+        </div>
+        <div class="of-seller-row-omset">${fmtRp(r.omset_bln)}/bln</div>
+        <div class="of-seller-row-share">${r.share.toFixed(1)}%</div>
+        <div class="of-seller-row-age">${_fmtAge(r.listing_date)}</div>
+      </div>`).join('')
+    : '<div class="of-detail-loading">Tidak ada seller yang memenuhi threshold 0.5%.</div>';
+
+  // ── Rest of sellers grid ───────────────────────────────────
+  const rest = sellers.slice(0);
+  const gridEl  = document.getElementById('of-detail-seller-grid');
+  const gridSec = document.getElementById('of-detail-grid-section');
+  if (gridEl && rest.length) {
+    gridEl.innerHTML = rest.map(r=>`
+      <div class="of-seller-card" onclick="${r.url?`window.open('${r.url}','_blank')`:'void(0)'}">
+        <div class="of-seller-img-wrap">
+          ${r.image_url?`<img class="of-seller-img" src="${r.image_url}" onerror="this.style.display='none'" loading="lazy">`:'<div style="width:100%;height:100%;background:#E5E7EB;"></div>'}
+          <div class="of-seller-share-bar"><div class="of-seller-share-fill" style="width:${Math.round(totalSold?(r.total_sold||0)/totalSold*100:0)}%"></div></div>
+        </div>
+        <div class="of-seller-body">
+          <div class="of-seller-name">${r.store_name||'—'}</div>
+          <div class="of-seller-product">${r.product_name||'—'}</div>
+          <span class="of-seller-omset-lbl">Est. omset/bln</span>
+          <div class="of-seller-omset">${fmtRp((r.price||0)*(r.total_sold||0)/12)}</div>
+          <div class="of-seller-meta">
+            <span class="of-seller-share">${totalSold?((r.total_sold||0)/totalSold*100).toFixed(1):0}% share</span>
+            <span class="of-seller-sold">${_fmtAge(r.listing_date)}</span>
+          </div>
+        </div>
+      </div>`).join('');
+    gridSec.style.display = '';
+  }
 }
 
 // re-render cards after sort/filter
@@ -6704,17 +7506,17 @@ async function analyzeKeyword() {
   const latestDate = dates[0].scraped_at.slice(0,10);
   const prevDate   = dates[1]?.scraped_at?.slice(0,10) || null;
 
-  // Fetch current listings for this keyword
+  // Search across product_name (any listing containing the word)
   const { data: cur, error } = await _supabase
     .from('listings')
-    .select('product_name,store_name,category,price,total_sold,rating,reviews')
-    .ilike('keyword', kw)
+    .select('product_name,store_name,category,keyword,price,total_sold,rating,reviews,listing_date')
+    .ilike('product_name', `%${kw}%`)
     .gte('scraped_at', latestDate)
     .order('total_sold', { ascending: false })
-    .limit(200);
+    .limit(500);
 
   if (error || !cur?.length) {
-    if (st) st.textContent = `Tidak ada data untuk "${kw}".`;
+    if (st) st.textContent = `Tidak ada listing dengan kata "${kw}".`;
     if (emptyEl) emptyEl.style.display = '';
     return;
   }
@@ -6725,10 +7527,10 @@ async function analyzeKeyword() {
     const { data: prev } = await _supabase
       .from('listings')
       .select('total_sold')
-      .ilike('keyword', kw)
+      .ilike('product_name', `%${kw}%`)
       .gte('scraped_at', prevDate)
       .lt('scraped_at', latestDate)
-      .limit(200);
+      .limit(500);
     prevSold = (prev || []).reduce((s,r) => s + (r.total_sold||0), 0);
   }
 
@@ -6748,11 +7550,28 @@ async function analyzeKeyword() {
     : trendPct < 0 ? `<span class="kx-stat-trend-down">${trendPct}% vs sebelumnya</span>`
     : '<span style="color:#9CA3AF">0% vs sebelumnya</span>';
 
+  const prices_all  = cur.map(r=>r.price||0).filter(Boolean);
+  const median_price= _median(prices_all);
+  const min_price   = prices_all.length ? Math.min(...prices_all) : 0;
+  const max_price   = prices_all.length ? Math.max(...prices_all) : 0;
+  const ages_all    = cur.map(r=>r.listing_date).filter(Boolean)
+    .map(d=>Math.floor((Date.now()-new Date(d).getTime())/86400000)).filter(n=>n>=0);
+  const median_age  = _median(ages_all);
+  const newest_age  = ages_all.length ? Math.min(...ages_all) : null;
+  const oldest_age  = ages_all.length ? Math.max(...ages_all) : null;
+  const _ageStr = days => days==null?'—':days>=365?`${Math.floor(days/365)} thn`:days>=30?`${Math.floor(days/30)} bln`:days>=7?`${Math.floor(days/7)} mgg`:`${days} hr`;
+
+  // Keywords breakdown
+  const kwCounts = {};
+  cur.forEach(r=>{ const k=r.keyword; if(k){ kwCounts[k]=(kwCounts[k]||0)+1; }});
+  const topKwsKX = Object.entries(kwCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
   statsEl.innerHTML = `
-    <div class="kx-stat"><div class="kx-stat-label">Demand Index</div><div class="kx-stat-val">${total_sold.toLocaleString('id-ID')}</div><div class="kx-stat-sub">total unit terjual</div></div>
-    <div class="kx-stat"><div class="kx-stat-label">Jumlah Seller</div><div class="kx-stat-val">${seller_count}</div><div class="kx-stat-sub">seller aktif</div></div>
-    <div class="kx-stat"><div class="kx-stat-label">Avg Harga</div><div class="kx-stat-val" style="font-size:.95rem;">${fmtRp(avg_price)}</div><div class="kx-stat-sub">rata-rata listing</div></div>
-    <div class="kx-stat"><div class="kx-stat-label">Efisiensi</div><div class="kx-stat-val">${efficiency.toLocaleString('id-ID')}</div><div class="kx-stat-sub">terjual per seller</div></div>
+    <div class="kx-stat"><div class="kx-stat-label">Total Listing</div><div class="kx-stat-val">${seller_count}</div><div class="kx-stat-sub">mengandung kata "${kw}"</div></div>
+    <div class="kx-stat"><div class="kx-stat-label">Total Terjual</div><div class="kx-stat-val">${total_sold.toLocaleString('id-ID')}</div><div class="kx-stat-sub">unit terjual (lifetime)</div></div>
+    <div class="kx-stat"><div class="kx-stat-label">Est. Revenue/Bln</div><div class="kx-stat-val" style="font-size:.85rem;">${fmtRp(median_price*total_sold/12)}</div><div class="kx-stat-sub">median harga × unit/12</div></div>
+    <div class="kx-stat"><div class="kx-stat-label">Median Harga</div><div class="kx-stat-val" style="font-size:.9rem;">${fmtRp(median_price)}</div><div class="kx-stat-sub">${fmtRp(min_price)} – ${fmtRp(max_price)}</div></div>
+    <div class="kx-stat"><div class="kx-stat-label">Usia Listing</div><div class="kx-stat-val" style="font-size:.85rem;">${_ageStr(median_age)}</div><div class="kx-stat-sub">median · terbaru ${_ageStr(newest_age)} · tertua ${_ageStr(oldest_age)}</div></div>
     <div class="kx-stat"><div class="kx-stat-label">Tren</div><div class="kx-stat-val" style="font-size:.85rem;">${trendHtml}</div><div class="kx-stat-sub">vs scrape sebelumnya</div></div>
   `;
   statsEl.style.display = 'grid';
@@ -6793,7 +7612,25 @@ async function analyzeKeyword() {
     }
   }
 
-  // Related keywords — same category, latest date, aggregate by keyword
+  // Related keywords — which scraped keywords have most listings with this word
+  const relByKw2 = {};
+  cur.forEach(r => {
+    const k = r.keyword||'';
+    if (!k) return;
+    if (!relByKw2[k]) relByKw2[k] = { keyword:k, count:0, sold:0, prices:[], ratings:[] };
+    relByKw2[k].count++;
+    relByKw2[k].sold += r.total_sold||0;
+    relByKw2[k].prices.push(r.price||0);
+    relByKw2[k].ratings.push(r.rating||0);
+  });
+  const relRowsDirect = Object.values(relByKw2).map(r => {
+    const avg_p = r.prices.reduce((a,b)=>a+b,0)/(r.prices.length||1);
+    const avg_r = r.ratings.reduce((a,b)=>a+b,0)/(r.ratings.length||1);
+    const score = Math.round(Math.min(r.sold/5000*40,40)+(r.count<=5?35:r.count<=15?28:r.count<=30?18:8)+(avg_r/5)*25);
+    return { keyword:r.keyword, sellers:r.count, total_sold:r.sold, avg_price:avg_p, score };
+  }).sort((a,b)=>b.total_sold-a.total_sold).slice(0,20);
+
+  // Also fetch same-category keywords for broader related list
   const { data: related } = await _supabase
     .from('listings')
     .select('keyword,price,total_sold,rating,reviews')
@@ -6829,7 +7666,9 @@ async function analyzeKeyword() {
       relTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#9CA3AF;font-size:.78rem;">Tidak ada keyword terkait.</td></tr>';
     } else {
       const scoreBg = s => s>=70?'#16a34a':s>=45?'#ca8a04':'#dc2626';
-      relTbody.innerHTML = relRows.map(r => `<tr>
+      // Prefer direct matches (keywords containing the search word) over same-category
+      const finalRows = relRowsDirect.length ? relRowsDirect : relRows;
+      relTbody.innerHTML = finalRows.map(r => `<tr>
         <td style="font-weight:600;cursor:pointer;color:#E8442A;" onclick="document.getElementById('kx-input').value='${r.keyword.replace(/'/g,"\\'")}';analyzeKeyword()">${r.keyword}</td>
         <td style="text-align:center;">${r.sellers}</td>
         <td style="font-weight:600;">${r.total_sold.toLocaleString('id-ID')}</td>
@@ -7053,7 +7892,10 @@ function ptRender() {
       <td style="font-size:.72rem;font-weight:600;" onclick="ptToggleExpand(${r.item_id},${r.shop_id})">${fmtRp(r.price)}</td>
       <td style="font-size:.72rem;font-weight:600;" onclick="ptToggleExpand(${r.item_id},${r.shop_id})">${Math.round(r.total_sold||0).toLocaleString('id-ID')}</td>
       <td style="font-size:.72rem;" onclick="ptToggleExpand(${r.item_id},${r.shop_id})">${r.rating?r.rating.toFixed(1):'—'}</td>
-      <td onclick="ptToggleExpand(${r.item_id},${r.shop_id})"><span style="background:${scoreBg(r.score)};color:#fff;padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:700;">${r.score}</span></td>
+      <td onclick="ptToggleExpand(${r.item_id},${r.shop_id})">
+        <span style="background:${scoreBg(r.score)};color:#fff;padding:2px 8px;border-radius:10px;font-size:.7rem;font-weight:700;" title="Category score">${r.score}</span>
+        <div style="font-size:.58rem;color:#9CA3AF;margin-top:2px;">kategori</div>
+      </td>
       <td onclick="event.stopPropagation()">
         <select style="border:1.5px solid #E5E7EB;border-radius:6px;padding:4px 6px;font-size:.68rem;font-family:inherit;background:#fff;cursor:pointer;outline:none;"
           onchange="ptSetGroup(${r.item_id},${r.shop_id},this.value)">${groupOpts}</select>
@@ -7134,6 +7976,12 @@ async function ptToggleExpand(item_id, shop_id) {
     }
   }
 
+  // Compute listing score vs peers
+  const listingScore = _calcListingScore(saved, sellerData);
+  const catScore     = saved?.score || 0;
+  const lsCol        = _scoreColor(listingScore);
+  const csCol        = _scoreColor(catScore);
+
   inner.innerHTML = `
     <div class="pt-chart-panel">
       <div class="pt-chart-title">Riwayat Terjual (Kumulatif)</div>
@@ -7144,6 +7992,27 @@ async function ptToggleExpand(item_id, shop_id) {
       <div class="pt-chart-title">Performa Seller — "${kw || '—'}"</div>
       ${_drawSellerBars(sellerData, saved)}
       <div class="pt-chart-sub">${sellerData.length} seller · hanya yang >0.5% total terjual ditampilkan</div>
+    </div>
+    <div class="pt-chart-panel" style="grid-column:1/-1;">
+      <div class="pt-chart-title">Score Listing ini vs Kategori</div>
+      <div style="display:flex;align-items:center;gap:20px;padding:8px 0;">
+        <div style="text-align:center;">
+          <div style="width:52px;height:52px;border-radius:50%;background:${lsCol}18;border:2px solid ${lsCol};display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto;">
+            <div style="font-size:1rem;font-weight:900;color:${lsCol};line-height:1;">${listingScore}</div>
+            <div style="font-size:.5rem;color:${lsCol};font-weight:700;">LISTING</div>
+          </div>
+          <div style="font-size:.6rem;color:#6B7280;margin-top:4px;">Score Produk Ini</div>
+        </div>
+        <div style="font-size:1.2rem;color:#D1D5DB;">vs</div>
+        <div style="text-align:center;">
+          <div style="width:52px;height:52px;border-radius:50%;background:${csCol}18;border:2px solid ${csCol};display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto;">
+            <div style="font-size:1rem;font-weight:900;color:${csCol};line-height:1;">${catScore}</div>
+            <div style="font-size:.5rem;color:${csCol};font-weight:700;">KATEGORI</div>
+          </div>
+          <div style="font-size:.6rem;color:#6B7280;margin-top:4px;">Score Kategori "${kw}"</div>
+        </div>
+        ${kw ? `<button class="pdb-search-btn" style="margin-left:auto;padding:8px 14px;font-size:.72rem;" onclick="ofOpenKeyword('${kw.replace(/'/g,"\\'")}')">Lihat Keyword Detail</button>` : ''}
+      </div>
     </div>
   `;
 }
@@ -7228,6 +8097,7 @@ function loadSalesEstimator() {
   sel.innerHTML = '<option value="">-- pilih produk dari tracker --</option>' +
     products.map((r,i) => `<option value="${i}">${(r.product_name||'Produk').slice(0,50)} · ${r.keyword||''}</option>`).join('');
   seCalc();
+  seRenderSaved();
 }
 
 function seOnSelect() {
@@ -7326,17 +8196,183 @@ function seCalc() {
   `;
 }
 
-function seSave() {
+const SE_CALCS_KEY = 'larisid_se_calcs';
+
+function _seLoadCalcs() { try { return JSON.parse(localStorage.getItem(SE_CALCS_KEY)||'[]'); } catch{ return []; } }
+function _seSaveCalcs(arr) { localStorage.setItem(SE_CALCS_KEY, JSON.stringify(arr)); }
+
+function seRenderSaved() {
+  const calcs = _seLoadCalcs();
+  const sec  = document.getElementById('se-saved-section');
+  const list = document.getElementById('se-saved-list');
+  if (!sec || !list) return;
+  if (!calcs.length) { sec.style.display='none'; return; }
+  sec.style.display = '';
+  list.innerHTML = calcs.slice().reverse().map((c,ri) => {
+    const i = calcs.length-1-ri;
+    return `<div class="se-saved-item" onclick="seLoadCalc(${i})">
+      <div>
+        <div class="se-saved-name">${c.name||'Kalkulasi'}</div>
+        <div class="se-saved-meta">${c.product_name||''} · ${c.date||''} · Margin ${c.margin||0}%</div>
+      </div>
+      <button class="se-saved-del" onclick="event.stopPropagation();seDeleteCalc(${i})">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function seLoadCalc(i) {
+  const c = _seLoadCalcs()[i];
+  if (!c) return;
+  const fields = ['se-price','se-units','se-cogs','se-shipping','se-commission','se-admin','se-payment','se-marketing'];
+  fields.forEach(id => { const el=document.getElementById(id); if(el && c[id]!=null) el.value=c[id]; });
+  seCalc();
+}
+
+function seDeleteCalc(i) {
+  const calcs = _seLoadCalcs();
+  calcs.splice(i,1);
+  _seSaveCalcs(calcs);
+  seRenderSaved();
+}
+
+function seSaveNamed() {
+  const gv = id => parseFloat(document.getElementById(id)?.value||0)||0;
+  const price = gv('se-price'), units = gv('se-units');
+  if (!price || !units) { alert('Isi harga jual dan unit terjual terlebih dahulu.'); return; }
+  const name = prompt('Nama kalkulasi ini:', `Kalkulasi ${new Date().toLocaleDateString('id-ID')}`);
+  if (name === null) return;
+  const revenue = price*units;
+  const shopeeFeePct=(gv('se-commission')+gv('se-admin')+gv('se-payment'))/100;
+  const net = revenue - revenue*shopeeFeePct - revenue*(gv('se-marketing')/100) - gv('se-cogs')*units - gv('se-shipping')*units;
+  const margin = revenue>0 ? (net/revenue*100).toFixed(1) : 0;
   const sel = document.getElementById('se-product-select');
   const idx = parseInt(sel?.value);
-  if (isNaN(idx)) { alert('Pilih produk terlebih dahulu.'); return; }
-  const r = _ptLoad()[idx];
-  if (!r) return;
-  const gv = id => parseFloat(document.getElementById(id)?.value || 0) || 0;
-  const plan = { 'se-cogs':gv('se-cogs'),'se-shipping':gv('se-shipping'),'se-commission':gv('se-commission'),'se-admin':gv('se-admin'),'se-payment':gv('se-payment'),'se-marketing':gv('se-marketing'),'price':gv('se-price'),'units':gv('se-units') };
-  localStorage.setItem(`se_plan_${r.item_id}_${r.shop_id}`, JSON.stringify(plan));
+  const r = isNaN(idx) ? null : _ptLoad()[idx];
+  const calc = {
+    name, date: new Date().toLocaleDateString('id-ID'),
+    product_name: r?.product_name||'',
+    margin, 'se-price':price,'se-units':units,
+    'se-cogs':gv('se-cogs'),'se-shipping':gv('se-shipping'),
+    'se-commission':gv('se-commission'),'se-admin':gv('se-admin'),
+    'se-payment':gv('se-payment'),'se-marketing':gv('se-marketing'),
+  };
+  const calcs = _seLoadCalcs();
+  calcs.push(calc);
+  _seSaveCalcs(calcs);
+  if (r) localStorage.setItem(`se_plan_${r.item_id}_${r.shop_id}`, JSON.stringify(calc));
   const msg = document.getElementById('se-save-msg');
-  if (msg) { msg.textContent = 'Kalkulasi tersimpan.'; setTimeout(()=>{ if(msg) msg.textContent=''; },3000); }
+  if (msg) { msg.textContent = `"${name}" tersimpan.`; setTimeout(()=>{ if(msg) msg.textContent=''; },3000); }
+  seRenderSaved();
+}
+
+function seExportPDF() {
+  const { jsPDF } = window.jspdf || {};
+  if (!jsPDF) { alert('PDF library belum dimuat, coba refresh halaman.'); return; }
+  const gv = id => parseFloat(document.getElementById(id)?.value||0)||0;
+  const price=gv('se-price'),units=gv('se-units'),cogs=gv('se-cogs'),shipping=gv('se-shipping');
+  const commission=gv('se-commission'),admin=gv('se-admin'),payment=gv('se-payment'),marketing=gv('se-marketing');
+  if (!price||!units) { alert('Isi harga jual dan unit terlebih dahulu.'); return; }
+  const revenue      = price*units;
+  const shopeeFeePct = (commission+admin+payment)/100;
+  const shopeeFee    = revenue*shopeeFeePct;
+  const marketingFee = revenue*(marketing/100);
+  const cogsTotal    = cogs*units;
+  const shippingTotal= shipping*units;
+  const net          = revenue-shopeeFee-marketingFee-cogsTotal-shippingTotal;
+  const marginPct    = revenue>0 ? net/revenue*100 : 0;
+  const fmtRp = v => 'Rp ' + Math.abs(Math.round(v)).toLocaleString('id-ID');
+  const sel = document.getElementById('se-product-select');
+  const idx = parseInt(sel?.value);
+  const prod = isNaN(idx) ? null : _ptLoad()[idx];
+
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const W = 210, margin = 18;
+
+  // Header band
+  doc.setFillColor(26,31,60);
+  doc.rect(0,0,W,28,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(18); doc.setFont('helvetica','bold');
+  doc.text('LarisID', margin, 12);
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  doc.text('Sales Estimator Report', margin, 19);
+  doc.setFontSize(8);
+  doc.text(new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}), W-margin, 19, {align:'right'});
+
+  // Product name
+  let y = 38;
+  doc.setTextColor(26,31,60);
+  doc.setFontSize(13); doc.setFont('helvetica','bold');
+  doc.text(prod?.product_name||'Produk', margin, y);
+  y += 5;
+  doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(107,114,128);
+  doc.text((prod?.store_name||'')+(prod?.keyword?` · ${prod.keyword}`:''), margin, y);
+  y += 10;
+
+  // Score boxes
+  const boxes = [
+    { label:'Omset/Bulan', val: fmtRp(revenue), color:[232,68,42] },
+    { label:'Net Profit/Bln', val: fmtRp(net), color: net>=0?[22,163,74]:[220,38,38] },
+    { label:'Margin', val: `${marginPct.toFixed(1)}%`, color: marginPct>=20?[22,163,74]:marginPct>=10?[202,138,4]:[220,38,38] },
+    { label:'Net/Unit', val: fmtRp(net/units), color: net>=0?[22,163,74]:[220,38,38] },
+  ];
+  const bw=(W-margin*2-12)/4, bh=22;
+  boxes.forEach((b,i)=>{
+    const bx=margin+i*(bw+4);
+    doc.setFillColor(249,250,251); doc.roundedRect(bx,y,bw,bh,2,2,'F');
+    doc.setDrawColor(...b.color); doc.setLineWidth(.4); doc.roundedRect(bx,y,bw,bh,2,2,'S');
+    doc.setFontSize(7); doc.setFont('helvetica','normal'); doc.setTextColor(107,114,128);
+    doc.text(b.label, bx+bw/2, y+6, {align:'center'});
+    doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(...b.color);
+    doc.text(b.val, bx+bw/2, y+15, {align:'center'});
+  });
+  y += bh+12;
+
+  // Margin bar
+  const barW = W-margin*2;
+  doc.setFillColor(229,231,235); doc.roundedRect(margin,y,barW,5,2,2,'F');
+  const fillW = Math.max(0,Math.min(barW, barW*marginPct/100));
+  const fc = marginPct>=20?[22,163,74]:marginPct>=10?[245,158,11]:[220,38,38];
+  doc.setFillColor(...fc); doc.roundedRect(margin,y,fillW,5,2,2,'F');
+  doc.setFontSize(7); doc.setTextColor(107,114,128);
+  doc.text(`Margin ${marginPct.toFixed(1)}%`, W/2, y+9, {align:'center'});
+  y += 16;
+
+  // Breakdown table
+  doc.setFillColor(243,244,246); doc.rect(margin,y,barW,8,'F');
+  doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(26,31,60);
+  doc.text('Rincian Biaya', margin+4, y+5.5);
+  y += 10;
+  const rows2 = [
+    ['Revenue', `${units} unit × ${fmtRp(price)}`, `+ ${fmtRp(revenue)}`],
+    ['HPP / COGS', `${units} unit × ${fmtRp(cogs)}`, `- ${fmtRp(cogsTotal)}`],
+    ['Ongkos Kirim', `${units} order × ${fmtRp(shipping)}`, `- ${fmtRp(shippingTotal)}`],
+    [`Biaya Shopee (${(commission+admin+payment).toFixed(1)}%)`, '', `- ${fmtRp(shopeeFee)}`],
+    [`Marketing / Iklan (${marketing}%)`, '', `- ${fmtRp(marketingFee)}`],
+    ['Net Profit', '', `${net>=0?'+ ':'- '}${fmtRp(net)}`],
+  ];
+  rows2.forEach((row,i)=>{
+    if (i===rows2.length-1) { doc.setFillColor(249,250,251); doc.rect(margin,y,barW,8,'F'); doc.setFont('helvetica','bold'); } else { doc.setFont('helvetica','normal'); }
+    doc.setFontSize(8); doc.setTextColor(55,65,81);
+    doc.text(row[0], margin+4, y+5.5);
+    doc.text(row[1], margin+barW*0.55, y+5.5);
+    const col = row[2].startsWith('+') ? [22,163,74] : [220,38,38];
+    doc.setTextColor(...col); doc.setFont('helvetica','bold');
+    doc.text(row[2], margin+barW-4, y+5.5, {align:'right'});
+    doc.setDrawColor(229,231,235); doc.setLineWidth(.2);
+    doc.line(margin,y+8,margin+barW,y+8);
+    y += 9;
+  });
+  y += 8;
+
+  // Footer
+  doc.setFillColor(249,250,251); doc.rect(0,287-8,W,12,'F');
+  doc.setFontSize(7); doc.setTextColor(156,163,175); doc.setFont('helvetica','normal');
+  doc.text('Dibuat dengan LarisID · larisid.com', W/2, 287-2, {align:'center'});
+
+  doc.save(`larisid_estimasi_${(prod?.product_name||'produk').slice(0,20).replace(/\s/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 
 function seReset() {
