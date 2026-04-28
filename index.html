@@ -1176,52 +1176,91 @@ body.on-landing .navbar{display:none;}
 .trk-legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
 
 /* ── DEEP DIVE PAGE ── */
-.dd-wrap{padding:24px 28px;max-width:1140px;}
-.dd-hero{background:#fff;border-radius:14px;border:1px solid #E5E7EB;padding:22px 24px;display:flex;align-items:center;gap:20px;margin-bottom:18px;}
-.dd-hero-img{width:68px;height:68px;border-radius:12px;object-fit:cover;background:#F4F6F9;flex-shrink:0;}
-.dd-hero-img-placeholder{width:68px;height:68px;border-radius:12px;background:#F4F6F9;display:flex;align-items:center;justify-content:center;font-size:2rem;flex-shrink:0;}
-.dd-hero-info{flex:1;min-width:0;}
-.dd-hero-name{font-size:1.15rem;font-weight:800;color:#1A1F3C;margin-bottom:6px;line-height:1.25;}
-.dd-hero-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;}
-.dd-hero-tag{font-size:.72rem;font-weight:700;padding:2px 9px;border-radius:20px;background:#FFF0ED;color:#E8442A;border:1px solid #F9C5BB;}
-.dd-hero-tag.blue{background:#EEF2FF;color:#4F46E5;border-color:#C7D2FE;}
-.dd-hero-cat{font-size:.78rem;color:#9CA3AF;}
-.dd-score-badge{width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#E8442A,#FF6B35);display:flex;align-items:center;justify-content:center;flex-direction:column;flex-shrink:0;}
-.dd-score-badge span{font-size:1.25rem;font-weight:900;color:#fff;line-height:1;}
-.dd-score-badge small{font-size:.55rem;color:rgba(255,255,255,.75);font-weight:600;}
-.dd-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px;}
-@media(max-width:860px){.dd-stats-row{grid-template-columns:repeat(2,1fr);}}
-.dd-stat-card{background:#fff;border-radius:12px;border:1px solid #E5E7EB;padding:16px 18px;}
-.dd-stat-label{font-size:.72rem;color:#9CA3AF;font-weight:600;margin-bottom:4px;}
-.dd-stat-value{font-size:1.1rem;font-weight:800;color:#1A1F3C;}
-.dd-stat-sub{font-size:.72rem;color:#6B7280;margin-top:2px;}
-.dd-two-col{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-bottom:18px;}
-@media(max-width:900px){.dd-two-col{grid-template-columns:1fr;}}
-.dd-card{background:#fff;border-radius:12px;border:1px solid #E5E7EB;padding:20px 22px;}
-.dd-card-title{font-size:.82rem;font-weight:700;color:#1A1F3C;margin-bottom:14px;}
-.dd-card-title span{color:#9CA3AF;font-weight:400;font-size:.76rem;margin-left:6px;}
-.dd-price-range{display:flex;align-items:center;gap:0;margin-top:10px;}
-.dd-price-band{height:10px;border-radius:5px;background:linear-gradient(90deg,#FCD34D,#10B981);flex:1;}
-.dd-price-labels{display:flex;justify-content:space-between;font-size:.72rem;color:#6B7280;margin-top:4px;}
-.dd-ai-list{display:flex;flex-direction:column;gap:9px;}
-.dd-ai-item{display:flex;align-items:flex-start;gap:9px;font-size:.8rem;color:#374151;line-height:1.4;}
-.dd-ai-dot{width:7px;height:7px;border-radius:50%;background:#E8442A;flex-shrink:0;margin-top:5px;}
-.dd-full-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;}
-@media(max-width:860px){.dd-full-row{grid-template-columns:1fr;}}
-.dd-comp-table{width:100%;border-collapse:collapse;font-size:.78rem;}
-.dd-comp-table th{text-align:left;padding:7px 10px;font-size:.7rem;font-weight:700;color:#9CA3AF;border-bottom:2px solid #F3F4F6;}
-.dd-comp-table td{padding:8px 10px;border-bottom:1px solid #F9FAFB;color:#374151;}
+.dd-wrap{padding:20px 24px;max-width:1240px;}
+.dd-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.dd-back-btn{display:inline-flex;align-items:center;gap:6px;font-size:.82rem;font-weight:600;color:#6B7280;cursor:pointer;transition:color .15s;}
+.dd-back-btn:hover{color:#E8442A;}
+.dd-hero{background:#fff;border-radius:14px;border:1px solid #E5E7EB;padding:20px 24px;margin-bottom:16px;}
+.dd-hero-top{display:flex;align-items:flex-start;gap:18px;flex-wrap:wrap;}
+.dd-hero-img{width:88px;height:88px;border-radius:12px;object-fit:cover;background:#F4F6F9;display:flex;align-items:center;justify-content:center;font-size:2.4rem;flex-shrink:0;}
+.dd-hero-info{flex:1;min-width:180px;}
+.dd-hero-name{font-size:1.2rem;font-weight:800;color:#1A1F3C;margin-bottom:3px;line-height:1.25;}
+.dd-hero-cats{font-size:.74rem;color:#9CA3AF;margin-bottom:10px;}
+.dd-hero-cats span{color:#6B7280;}
+.dd-score-block{display:flex;flex-direction:column;align-items:flex-start;min-width:90px;}
+.dd-score-label{font-size:.68rem;color:#9CA3AF;font-weight:600;margin-bottom:2px;}
+.dd-score-num{font-size:2rem;font-weight:900;color:#E8442A;line-height:1;}
+.dd-score-denom{font-size:.9rem;font-weight:600;color:#9CA3AF;}
+.dd-score-tag{font-size:.7rem;font-weight:700;padding:2px 9px;border-radius:4px;background:#EAF7F0;color:#10B981;margin-top:4px;display:inline-block;}
+.dd-hero-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid #F3F4F6;margin-top:16px;}
+@media(max-width:800px){.dd-hero-stats{grid-template-columns:repeat(2,1fr);}}
+.dd-hstat{padding:14px 18px;border-right:1px solid #F3F4F6;}
+.dd-hstat:last-child{border-right:none;}
+.dd-hstat-label{font-size:.68rem;color:#9CA3AF;font-weight:600;margin-bottom:4px;}
+.dd-hstat-value{font-size:1.1rem;font-weight:800;color:#1A1F3C;margin-bottom:2px;}
+.dd-hstat-value.red{color:#E8442A;}
+.dd-hstat-delta{font-size:.72rem;font-weight:600;display:flex;align-items:center;gap:3px;}
+.dd-hstat-delta.up{color:#10B981;}
+.dd-hstat-delta.down{color:#E8442A;}
+.dd-hstat-sub{font-size:.68rem;color:#9CA3AF;}
+.dd-tabs{display:flex;gap:0;border-bottom:2px solid #F3F4F6;margin-bottom:18px;}
+.dd-tab{font-size:.8rem;font-weight:600;color:#9CA3AF;padding:9px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;}
+.dd-tab.active{color:#E8442A;border-bottom-color:#E8442A;}
+.dd-tab:hover:not(.active){color:#374151;}
+.dd-row3{display:grid;grid-template-columns:1.3fr 1fr 0.9fr;gap:16px;margin-bottom:16px;}
+@media(max-width:960px){.dd-row3{grid-template-columns:1fr;}}
+.dd-row2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;}
+@media(max-width:960px){.dd-row2{grid-template-columns:1fr;}}
+.dd-row2b{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-bottom:0;}
+@media(max-width:860px){.dd-row2b{grid-template-columns:1fr;}}
+.dd-card{background:#fff;border-radius:12px;border:1px solid #E5E7EB;padding:18px 20px;}
+.dd-card-title{font-size:.8rem;font-weight:700;color:#1A1F3C;margin-bottom:4px;}
+.dd-card-sub{font-size:.7rem;color:#9CA3AF;margin-bottom:12px;}
+/* trend chart */
+.dd-chart-legend{display:flex;gap:14px;margin-bottom:10px;}
+.dd-chart-legend-item{display:flex;align-items:center;gap:5px;font-size:.7rem;color:#6B7280;}
+.dd-chart-legend-dot{width:20px;height:2.5px;border-radius:2px;flex-shrink:0;}
+/* price range */
+.dd-price-big{font-size:1.25rem;font-weight:900;color:#1A1F3C;margin-bottom:14px;}
+.dd-range-track{position:relative;height:8px;background:#E5E7EB;border-radius:4px;margin:0 0 6px;}
+.dd-range-zone{position:absolute;height:8px;border-radius:4px;background:#E8442A;}
+.dd-range-labels{display:flex;justify-content:space-between;font-size:.68rem;color:#9CA3AF;margin-bottom:10px;}
+.dd-range-note{font-size:.72rem;color:#D97706;background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:6px 10px;display:flex;align-items:center;gap:6px;}
+/* AI insight */
+.dd-ai-list{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
+.dd-ai-item{display:flex;align-items:flex-start;gap:8px;font-size:.78rem;color:#374151;line-height:1.45;}
+.dd-ai-check{width:16px;height:16px;border-radius:50%;background:#EAF7F0;color:#10B981;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;font-size:.6rem;font-weight:700;}
+.dd-ai-btn{font-size:.76rem;font-weight:700;color:#fff;background:#E8442A;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;width:100%;font-family:inherit;}
+/* donut legend */
+.dd-donut-legend{display:flex;flex-direction:column;gap:5px;margin-left:12px;}
+.dd-donut-legend-item{display:flex;align-items:center;gap:6px;font-size:.72rem;color:#374151;}
+.dd-donut-legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+.dd-donut-pct{margin-left:auto;font-weight:600;color:#6B7280;padding-left:8px;}
+/* category perf */
+.dd-catperf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.dd-catperf-stat-label{font-size:.65rem;color:#9CA3AF;font-weight:600;margin-bottom:2px;}
+.dd-catperf-stat-value{font-size:.95rem;font-weight:800;color:#1A1F3C;}
+.dd-catperf-stat-delta{font-size:.68rem;font-weight:600;color:#10B981;}
+/* competitor table */
+.dd-comp-table{width:100%;border-collapse:collapse;font-size:.75rem;}
+.dd-comp-table th{text-align:left;padding:6px 8px;font-size:.67rem;font-weight:700;color:#9CA3AF;border-bottom:1px solid #F3F4F6;white-space:nowrap;}
+.dd-comp-table td{padding:8px 8px;border-bottom:1px solid #F9FAFB;color:#374151;vertical-align:middle;}
 .dd-comp-table tr:hover td{background:#FAFAFA;}
-.dd-comp-bar-wrap{width:80px;background:#F3F4F6;border-radius:4px;height:6px;display:inline-block;vertical-align:middle;}
-.dd-comp-bar{height:6px;border-radius:4px;background:#E8442A;}
-.dd-kwrap{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}
-.dd-kw{font-size:.75rem;padding:4px 10px;border-radius:20px;background:#F4F6F9;color:#374151;font-weight:600;}
-.dd-kw.hot{background:#FFF0ED;color:#E8442A;}
-.dd-tip-box{background:linear-gradient(135deg,#1A1F3C,#2D3561);border-radius:12px;padding:20px 22px;color:#fff;}
-.dd-tip-box h4{font-size:.82rem;font-weight:700;margin-bottom:8px;color:#FCD34D;}
-.dd-tip-box p{font-size:.8rem;line-height:1.55;color:rgba(255,255,255,.85);}
-.dd-back-btn{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;font-weight:600;color:#6B7280;cursor:pointer;margin-bottom:16px;padding:6px 12px;border-radius:8px;border:1px solid #E5E7EB;background:#fff;transition:all .15s;}
-.dd-back-btn:hover{color:#E8442A;border-color:#E8442A;}
+.dd-score-pill{display:inline-flex;align-items:center;justify-content:center;width:28px;height:22px;border-radius:5px;font-size:.72rem;font-weight:800;color:#fff;background:#E8442A;}
+.dd-score-pill.green{background:#10B981;}
+.dd-score-pill.yellow{background:#F59E0B;}
+.dd-show-more-btn{width:100%;margin-top:12px;padding:9px;border-radius:8px;border:1px solid #E5E7EB;background:#fff;font-size:.78rem;font-weight:600;color:#374151;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;}
+.dd-show-more-btn:hover{border-color:#E8442A;color:#E8442A;}
+/* keyword table */
+.dd-kw-table{width:100%;border-collapse:collapse;font-size:.75rem;}
+.dd-kw-table th{text-align:left;padding:6px 8px;font-size:.67rem;font-weight:700;color:#9CA3AF;border-bottom:1px solid #F3F4F6;}
+.dd-kw-table td{padding:8px 8px;border-bottom:1px solid #F9FAFB;color:#374151;vertical-align:middle;}
+.dd-kw-table tr:hover td{background:#FAFAFA;}
+.dd-kw-comp{font-size:.7rem;font-weight:600;padding:2px 7px;border-radius:10px;}
+.dd-kw-comp.high{background:#FFF0ED;color:#E8442A;}
+.dd-kw-comp.med{background:#FFFBEB;color:#D97706;}
+.dd-kw-comp.low{background:#EAF7F0;color:#10B981;}
+.dd-kw-spark{width:54px;height:22px;}
 
 /* ── HOME DASHBOARD REDESIGN ── */
 .home-dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
@@ -4753,95 +4792,139 @@ html,body{overflow-x:hidden;max-width:100%;}
 
         <div id="dash-view-deepdive" style="display:none;">
           <div class="dd-wrap">
-            <!-- back button -->
-            <div class="dd-back-btn" onclick="switchDashView('discover')">
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-              Kembali ke Discover
-            </div>
-
-            <!-- hero -->
-            <div class="dd-hero" id="dd-hero">
-              <div class="dd-hero-img-placeholder" id="dd-hero-emoji">📦</div>
-              <div class="dd-hero-info">
-                <div class="dd-hero-name" id="dd-hero-name">—</div>
-                <div class="dd-hero-tags" id="dd-hero-tags"></div>
-                <div class="dd-hero-cat" id="dd-hero-cat">—</div>
-              </div>
-              <div class="dd-score-badge"><span id="dd-score-num">—</span><small>SKOR</small></div>
-            </div>
-
-            <!-- stats row -->
-            <div class="dd-stats-row">
-              <div class="dd-stat-card">
-                <div class="dd-stat-label">Harga Median</div>
-                <div class="dd-stat-value" id="dd-stat-price">—</div>
-                <div class="dd-stat-sub" id="dd-stat-price-sub">—</div>
-              </div>
-              <div class="dd-stat-card">
-                <div class="dd-stat-label">Est. Penjualan/Bulan</div>
-                <div class="dd-stat-value" id="dd-stat-sales">—</div>
-                <div class="dd-stat-sub" id="dd-stat-sales-sub">—</div>
-              </div>
-              <div class="dd-stat-card">
-                <div class="dd-stat-label">Potensi Keuntungan</div>
-                <div class="dd-stat-value" id="dd-stat-revenue">—</div>
-                <div class="dd-stat-sub" id="dd-stat-revenue-sub">—</div>
-              </div>
-              <div class="dd-stat-card">
-                <div class="dd-stat-label">Margin Potensial</div>
-                <div class="dd-stat-value" id="dd-stat-margin">—</div>
-                <div class="dd-stat-sub">Setelah HPP estimasi</div>
+            <!-- topbar -->
+            <div class="dd-topbar">
+              <div class="dd-back-btn" onclick="switchDashView('discover')">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+                Kembali ke Daftar Produk
               </div>
             </div>
 
-            <!-- 2-col: trend chart + AI insight -->
-            <div class="dd-two-col">
-              <div class="dd-card">
-                <div class="dd-card-title">Tren Growth 30 Hari <span>berdasarkan pencarian</span></div>
-                <canvas id="dd-chart-trend" height="130"></canvas>
-                <div style="margin-top:14px;">
-                  <div class="dd-card-title" style="margin-bottom:6px;">Harga Jual Optimal</div>
-                  <div id="dd-price-range-label" style="font-size:.85rem;font-weight:700;color:#1A1F3C;margin-bottom:6px;">—</div>
-                  <div class="dd-price-band"></div>
-                  <div class="dd-price-labels"><span id="dd-price-low">—</span><span id="dd-price-high">—</span></div>
+            <!-- hero card -->
+            <div class="dd-hero">
+              <div class="dd-hero-top">
+                <div class="dd-hero-img" id="dd-hero-img">📦</div>
+                <div class="dd-hero-info">
+                  <div class="dd-hero-name" id="dd-hero-name">—</div>
+                  <div class="dd-hero-cats" id="dd-hero-cats">—</div>
                 </div>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:16px;">
-                <div class="dd-card">
-                  <div class="dd-card-title">Insight AI</div>
-                  <div class="dd-ai-list" id="dd-ai-list">—</div>
+                <div class="dd-score-block">
+                  <div class="dd-score-label">Skor Produk</div>
+                  <div><span class="dd-score-num" id="dd-score-num">—</span><span class="dd-score-denom">/100</span></div>
+                  <span class="dd-score-tag" id="dd-score-tag">—</span>
                 </div>
-                <div class="dd-card">
-                  <div class="dd-card-title">Distribusi Harga <span>kompetitor</span></div>
-                  <canvas id="dd-chart-dist" height="110"></canvas>
+                <!-- hero stats inline -->
+                <div style="flex:1;min-width:0;display:grid;grid-template-columns:repeat(4,1fr);border-left:1px solid #F3F4F6;margin-left:8px;">
+                  <div class="dd-hstat">
+                    <div class="dd-hstat-label">Total Omset / Bulan</div>
+                    <div class="dd-hstat-value" id="dd-h-omset">—</div>
+                    <div class="dd-hstat-delta up" id="dd-h-omset-d">—</div>
+                    <div class="dd-hstat-sub" id="dd-h-omset-sub">—</div>
+                  </div>
+                  <div class="dd-hstat">
+                    <div class="dd-hstat-label">Unit Terjual / Bulan</div>
+                    <div class="dd-hstat-value" id="dd-h-unit">—</div>
+                    <div class="dd-hstat-delta up" id="dd-h-unit-d">—</div>
+                    <div class="dd-hstat-sub" id="dd-h-unit-sub">—</div>
+                  </div>
+                  <div class="dd-hstat">
+                    <div class="dd-hstat-label">Tingkat Kompetisi</div>
+                    <div class="dd-hstat-value red" id="dd-h-komp">—</div>
+                    <div class="dd-hstat-sub" id="dd-h-komp-sub">—</div>
+                  </div>
+                  <div class="dd-hstat" style="border-right:none;">
+                    <div class="dd-hstat-label">Margin Potensi</div>
+                    <div class="dd-hstat-value" id="dd-h-margin">—</div>
+                    <div class="dd-hstat-sub" id="dd-h-margin-sub">—</div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- weekly performance + competitor table -->
-            <div class="dd-full-row">
+            <!-- tabs -->
+            <div class="dd-tabs">
+              <div class="dd-tab active">Ringkasan</div>
+              <div class="dd-tab">Analisa Pasar</div>
+              <div class="dd-tab">Kompetitor</div>
+              <div class="dd-tab">Keyword</div>
+              <div class="dd-tab">Tren Historis</div>
+              <div class="dd-tab">Kalkulator</div>
+              <div class="dd-tab">Review AI</div>
+            </div>
+
+            <!-- row 1: trend chart | price range | insight AI -->
+            <div class="dd-row3">
               <div class="dd-card">
-                <div class="dd-card-title">Performa Mingguan <span>12 minggu terakhir</span></div>
-                <canvas id="dd-chart-weekly" height="120"></canvas>
+                <div class="dd-card-title">Tren Omset (30 Hari)</div>
+                <div class="dd-chart-legend">
+                  <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#E8442A;"></div>Omset (Rp)</div>
+                  <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#4F46E5;"></div>Unit Terjual</div>
+                  <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#9CA3AF;"></div>Toko Aktif</div>
+                </div>
+                <canvas id="dd-chart-trend" height="140"></canvas>
               </div>
               <div class="dd-card">
-                <div class="dd-card-title">Top 10 Kompetitor</div>
+                <div class="dd-card-title">Rentang Harga Optimal</div>
+                <div class="dd-card-sub">Berdasarkan analisis kompetitor aktif</div>
+                <div class="dd-price-big" id="dd-price-range-label">—</div>
+                <div class="dd-range-track">
+                  <div class="dd-range-zone" id="dd-range-zone"></div>
+                </div>
+                <div class="dd-range-labels" id="dd-range-labels"></div>
+                <div class="dd-range-note">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="#D97706"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12" stroke="#fff" stroke-width="2"/><line x1="12" y1="16" x2="12.01" y2="16" stroke="#fff" stroke-width="2"/></svg>
+                  <span id="dd-range-note">—</span>
+                </div>
+              </div>
+              <div class="dd-card">
+                <div class="dd-card-title">Insight AI</div>
+                <div class="dd-ai-list" id="dd-ai-list"></div>
+                <button class="dd-ai-btn">Lihat Rekomendasi AI</button>
+              </div>
+            </div>
+
+            <!-- row 2: dist harga | usia toko | performa kategori -->
+            <div class="dd-row2">
+              <div class="dd-card">
+                <div class="dd-card-title">Distribusi Harga (Toko Aktif)</div>
+                <div class="dd-card-sub" style="margin-bottom:8px;"></div>
+                <canvas id="dd-chart-dist" height="140"></canvas>
+              </div>
+              <div class="dd-card">
+                <div class="dd-card-title">Usia Toko Kompetitor</div>
+                <div style="display:flex;align-items:center;margin-top:8px;">
+                  <canvas id="dd-chart-donut" width="110" height="110" style="flex-shrink:0;"></canvas>
+                  <div class="dd-donut-legend" id="dd-donut-legend"></div>
+                </div>
+              </div>
+              <div class="dd-card">
+                <div class="dd-card-title">Performa Kategori</div>
+                <div class="dd-card-sub" id="dd-cat-label">—</div>
+                <div class="dd-catperf-stats" id="dd-catperf-stats"></div>
+                <canvas id="dd-chart-catperf" height="70"></canvas>
+              </div>
+            </div>
+
+            <!-- row 3: top 15 kompetitor | top keyword -->
+            <div class="dd-row2b">
+              <div class="dd-card">
+                <div class="dd-card-title" style="margin-bottom:10px;">Top 15 Kompetitor</div>
                 <table class="dd-comp-table">
-                  <thead><tr><th>#</th><th>Toko</th><th>Harga</th><th>Volume</th><th>Share</th></tr></thead>
+                  <thead><tr><th>#</th><th>Toko</th><th>Harga Rata-rata</th><th>Omset / Bulan</th><th>Unit Terjual / Bln</th><th>Usia Toko</th><th>Skor Kompetitor</th><th>Aksi</th></tr></thead>
                   <tbody id="dd-comp-tbody"></tbody>
                 </table>
+                <button class="dd-show-more-btn" id="dd-show-more-btn" onclick="ddToggleCompetitors()">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+                  Lihat Semua 15 Kompetitor
+                </button>
               </div>
-            </div>
-
-            <!-- keywords + tip -->
-            <div class="dd-full-row" style="margin-bottom:0;">
               <div class="dd-card">
-                <div class="dd-card-title">Top Keyword Terkait</div>
-                <div class="dd-kwrap" id="dd-kwrap">—</div>
-              </div>
-              <div class="dd-tip-box">
-                <h4>Tip Mingguan</h4>
-                <p id="dd-tip-text">—</p>
+                <div class="dd-card-title" style="margin-bottom:10px;">Top Keyword</div>
+                <table class="dd-kw-table">
+                  <thead><tr><th>Keyword</th><th>Volume</th><th>Kompetisi</th><th>Trend</th></tr></thead>
+                  <tbody id="dd-kw-tbody"></tbody>
+                </table>
+                <button class="dd-show-more-btn" style="margin-top:10px;">Lihat Semua Keyword</button>
               </div>
             </div>
           </div>
@@ -7246,7 +7329,8 @@ function dscResetFilters() {
 }
 
 // ── DEEP DIVE ──────────────────────────────────────────────────
-let _ddChartTrend = null, _ddChartDist = null, _ddChartWeekly = null;
+let _ddChartTrend = null, _ddChartDist = null, _ddChartDonut = null, _ddChartCatperf = null;
+let _ddCompAll = [], _ddCompShowing = 5;
 
 function _ddRng(seed) {
   let s = seed;
@@ -7254,157 +7338,200 @@ function _ddRng(seed) {
 }
 
 function ddRender(p) {
-  // hero
-  document.getElementById('dd-hero-emoji').textContent = p.emoji || '📦';
-  document.getElementById('dd-hero-name').textContent = p.name;
-  document.getElementById('dd-hero-cat').textContent = p.category || 'Umum';
-  document.getElementById('dd-score-num').textContent = Math.round(p.score);
-  const tags = document.getElementById('dd-hero-tags');
-  const tList = [];
-  if (p.score >= 75) tList.push(['Terpopuler', '']);
-  if (p.avgTrend < 1.05) tList.push(['Harga Pas', 'blue']);
-  if (p.newUnits > 60) tList.push(['Permintaan Tinggi', '']);
-  tags.innerHTML = tList.map(([t,c]) => `<span class="dd-hero-tag ${c}">${t}</span>`).join('');
-
   const rng = _ddRng(p.id * 31337);
   const price = p.medianPrice || 85000;
+  const score = Math.round(p.score);
+  const sales = p.newUnits || Math.round(80 + rng() * 200);
+  const omset = price * sales;
+  const omsetDelta = Math.round(10 + rng() * 20);
+  const unitDelta  = Math.round(8 + rng() * 18);
+  const kompScore  = Math.round(40 + rng() * 40);
+  const kompLabel  = kompScore >= 65 ? 'Tinggi' : kompScore >= 40 ? 'Sedang' : 'Rendah';
+  const kompColor  = kompScore >= 65 ? '#E8442A' : kompScore >= 40 ? '#D97706' : '#10B981';
+  const marginLow  = Math.round(26 + rng() * 8);
+  const marginHigh = marginLow + Math.round(8 + rng() * 6);
 
-  // stats
-  const sales = p.newUnits || Math.round(50 + rng() * 150);
-  const rev = Math.round(price * sales);
-  const margin = Math.round(28 + rng() * 20);
-  document.getElementById('dd-stat-price').textContent = 'Rp ' + price.toLocaleString('id-ID');
-  document.getElementById('dd-stat-price-sub').textContent = 'Harga rata-rata pasar';
-  document.getElementById('dd-stat-sales').textContent = sales.toLocaleString('id-ID') + ' unit';
-  document.getElementById('dd-stat-sales-sub').textContent = 'estimasi dari data tren';
-  document.getElementById('dd-stat-revenue').textContent = 'Rp ' + rev.toLocaleString('id-ID');
-  document.getElementById('dd-stat-revenue-sub').textContent = 'potensi omzet bulanan';
-  document.getElementById('dd-stat-margin').textContent = margin + '%';
+  // hero
+  document.getElementById('dd-hero-img').textContent = p.emoji || '📦';
+  document.getElementById('dd-hero-name').textContent = p.name;
+  document.getElementById('dd-hero-cats').innerHTML = `Kategori: ${p.category||'Umum'} <span>• Sub Kategori: ${p.category||'Umum'}</span>`;
+  document.getElementById('dd-score-num').textContent = score;
+  document.getElementById('dd-score-tag').textContent = score >= 75 ? 'Potensi Tinggi' : score >= 55 ? 'Potensi Sedang' : 'Perlu Riset';
+  document.getElementById('dd-score-tag').style.background = score >= 75 ? '#EAF7F0' : '#FFF0ED';
+  document.getElementById('dd-score-tag').style.color = score >= 75 ? '#10B981' : '#E8442A';
+
+  // hero stats
+  document.getElementById('dd-h-omset').textContent = 'Rp ' + (omset/1000000).toFixed(0) + '.' + String(Math.round((omset%1000000)/1000)).padStart(3,'0') + '.000';
+  document.getElementById('dd-h-omset-d').innerHTML = `<svg width="10" height="10" viewBox="0 0 10 10"><polygon points="5,1 9,9 1,9" fill="#10B981"/></svg> ${omsetDelta}%`;
+  document.getElementById('dd-h-omset-sub').textContent = 'vs 30 hari lalu';
+  document.getElementById('dd-h-unit').textContent = sales.toLocaleString('id-ID');
+  document.getElementById('dd-h-unit-d').innerHTML = `<svg width="10" height="10" viewBox="0 0 10 10"><polygon points="5,1 9,9 1,9" fill="#10B981"/></svg> ${unitDelta}%`;
+  document.getElementById('dd-h-unit-sub').textContent = 'vs 30 hari lalu';
+  document.getElementById('dd-h-komp').textContent = kompLabel;
+  document.getElementById('dd-h-komp').style.color = kompColor;
+  document.getElementById('dd-h-komp-sub').textContent = 'Skor: ' + kompScore + '/100';
+  document.getElementById('dd-h-margin').textContent = marginLow + '% – ' + marginHigh + '%';
+  document.getElementById('dd-h-margin-sub').textContent = 'Tinggi';
 
   // price range
-  const pLow = Math.round(price * 0.82), pHigh = Math.round(price * 1.18);
-  document.getElementById('dd-price-range-label').textContent = `Rp ${pLow.toLocaleString('id-ID')} – Rp ${pHigh.toLocaleString('id-ID')}`;
-  document.getElementById('dd-price-low').textContent = 'Rp ' + pLow.toLocaleString('id-ID');
-  document.getElementById('dd-price-high').textContent = 'Rp ' + pHigh.toLocaleString('id-ID');
+  const pMin = Math.round(price * 0.52), pMax = Math.round(price * 1.85);
+  const zoneLeft = Math.round(price * 0.85), zoneRight = Math.round(price * 1.12);
+  const leftPct  = Math.round((zoneLeft  - pMin) / (pMax - pMin) * 100);
+  const widthPct = Math.round((zoneRight - zoneLeft) / (pMax - pMin) * 100);
+  document.getElementById('dd-price-range-label').textContent = `Rp ${zoneLeft.toLocaleString('id-ID')} – Rp ${zoneRight.toLocaleString('id-ID')}`;
+  document.getElementById('dd-range-zone').style.cssText = `left:${leftPct}%;width:${widthPct}%;`;
+  document.getElementById('dd-range-labels').innerHTML = `<span>${(pMin/1000).toFixed(0)}k</span><span>${(Math.round((pMin+pMax)*0.3)/1000).toFixed(0)}k</span><span>${(Math.round((pMin+pMax)*0.6)/1000).toFixed(0)}k</span><span>${(pMax/1000).toFixed(0)}k</span>`;
+  document.getElementById('dd-range-note').textContent = `Produk di rentang harga ini memiliki penjualan tertinggi`;
 
   // AI insights
-  const insights = [
-    `Produk ini memiliki tingkat konversi estimasi <strong>${(2.5 + rng()*3).toFixed(1)}%</strong> — di atas rata-rata kategori.`,
-    `Kompetisi ${p.score >= 70 ? 'sedang' : 'rendah'}, ada ruang untuk ${p.score >= 70 ? 'diferensiasi harga' : 'masuk dengan harga kompetitif'}.`,
-    `Tren pencarian naik <strong>${Math.round(8 + rng()*22)}%</strong> dalam 30 hari terakhir.`,
-    `Rekomendasi bundling: paket isi 2–3 unit dapat meningkatkan nilai pesanan rata-rata hingga <strong>${Math.round(25 + rng()*20)}%</strong>.`,
-  ];
-  document.getElementById('dd-ai-list').innerHTML = insights.map(t =>
-    `<div class="dd-ai-item"><div class="dd-ai-dot"></div><div>${t}</div></div>`
-  ).join('');
+  document.getElementById('dd-ai-list').innerHTML = [
+    `Permintaan tinggi dan terus meningkat dalam 30 hari terakhir.`,
+    `Kompetisi ${kompLabel.toLowerCase()}, masih ada peluang untuk pemain baru.`,
+    `Disarankan fokus pada variasi warna hitam, coklat, abu-abu.`,
+  ].map(t => `<div class="dd-ai-item"><div class="dd-ai-check">✓</div><div>${t}</div></div>`).join('');
 
-  // 30-day trend chart
-  const trendData = Array.from({length:30}, (_,i) => {
-    const base = 50 + rng()*30;
-    return Math.max(10, Math.round(base + (p.avgTrend > 1 ? i*1.2 : -i*0.4) + (rng()-0.5)*15));
-  });
-  const trendLabels = Array.from({length:30}, (_,i) => i+1+'');
+  // trend chart (3 lines: omset, unit, toko aktif)
+  const dates = ['20 Apr','27 Apr','4 Mei','11 Mei','18 Mei'];
+  const omsetSeries = dates.map((_,i) => Math.round(omset * (0.65 + i*0.09) + (rng()-0.5)*omset*0.08));
+  const unitSeries  = dates.map((_,i) => Math.round(sales * (0.70 + i*0.07) + (rng()-0.5)*sales*0.06));
+  const tokoSeries  = dates.map((_,i) => Math.round(120 + i*15 + rng()*20));
   if (_ddChartTrend) _ddChartTrend.destroy();
   _ddChartTrend = new Chart(document.getElementById('dd-chart-trend'), {
     type: 'line',
     data: {
-      labels: trendLabels,
-      datasets: [{
-        data: trendData,
-        borderColor: '#E8442A',
-        backgroundColor: 'rgba(232,68,42,.08)',
-        borderWidth: 2,
-        fill: true,
-        tension: 0.4,
-        pointRadius: 0,
-      }]
+      labels: dates,
+      datasets: [
+        { label:'Omset (Rp)', data:omsetSeries, borderColor:'#E8442A', backgroundColor:'rgba(232,68,42,.06)', borderWidth:2.5, fill:true, tension:0.4, pointRadius:4, pointBackgroundColor:'#E8442A', yAxisID:'y' },
+        { label:'Unit Terjual', data:unitSeries, borderColor:'#4F46E5', backgroundColor:'transparent', borderWidth:2, tension:0.4, pointRadius:3, pointBackgroundColor:'#4F46E5', yAxisID:'y2' },
+        { label:'Toko Aktif', data:tokoSeries, borderColor:'#9CA3AF', backgroundColor:'transparent', borderWidth:2, tension:0.4, pointRadius:3, pointBackgroundColor:'#9CA3AF', yAxisID:'y2', borderDash:[4,3] },
+      ]
     },
-    options: { plugins:{legend:{display:false}}, scales:{x:{display:false},y:{display:false}}, animation:{duration:400} }
+    options: {
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{font:{size:9}}},
+        y:{display:true,position:'left',ticks:{font:{size:8},callback:v=>(v/1000000).toFixed(0)+'jt'}},
+        y2:{display:true,position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:8}}},
+      },
+      animation:{duration:400}
+    }
   });
 
-  // price distribution bar chart
-  const distLabels = Array.from({length:6}, (_,i) => 'Rp '+(Math.round((price*0.6 + i*price*0.12)/1000))+'rb');
-  const distData = [Math.round(rng()*15+5), Math.round(rng()*25+15), Math.round(rng()*30+25), Math.round(rng()*35+30), Math.round(rng()*20+10), Math.round(rng()*10+3)];
+  // price distribution bar
+  const distBands = ['< 50k','50k–70k','70k–90k','90k–110k','110k–150k'];
+  const basePrice = price / 1000;
+  const centerBand = Math.min(4, Math.max(0, Math.floor((basePrice - 30) / 30)));
+  const distData = distBands.map((_,i) => {
+    const dist = Math.abs(i - centerBand);
+    return Math.round(Math.max(10, 130 - dist * 40 + (rng() - 0.5) * 20));
+  });
   if (_ddChartDist) _ddChartDist.destroy();
   _ddChartDist = new Chart(document.getElementById('dd-chart-dist'), {
     type: 'bar',
     data: {
-      labels: distLabels,
-      datasets: [{
-        data: distData,
-        backgroundColor: distData.map((_,i) => i===3 ? '#E8442A' : '#E5E7EB'),
-        borderRadius: 4,
-        borderSkipped: false,
-      }]
+      labels: distBands,
+      datasets: [{ data:distData, backgroundColor:'#93C5FD', borderRadius:4, borderSkipped:false }]
     },
-    options: { plugins:{legend:{display:false}}, scales:{x:{ticks:{font:{size:9}}},y:{display:false}}, animation:{duration:400} }
+    options: { plugins:{legend:{display:false}}, scales:{x:{ticks:{font:{size:9}}},y:{ticks:{font:{size:9}}}}, animation:{duration:400} }
   });
 
-  // weekly performance
-  const weeklyLabels = ['W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12'];
-  const weeklyData = weeklyLabels.map(() => Math.round(sales*0.22 + (rng()-0.4)*sales*0.18));
-  if (_ddChartWeekly) _ddChartWeekly.destroy();
-  _ddChartWeekly = new Chart(document.getElementById('dd-chart-weekly'), {
-    type: 'line',
-    data: {
-      labels: weeklyLabels,
-      datasets: [{
-        label: 'Unit Terjual',
-        data: weeklyData,
-        borderColor: '#4F46E5',
-        backgroundColor: 'rgba(79,70,229,.07)',
-        borderWidth: 2,
-        fill: true,
-        tension: 0.4,
-        pointRadius: 3,
-        pointBackgroundColor: '#4F46E5',
-      }]
-    },
-    options: { plugins:{legend:{display:false}}, scales:{x:{ticks:{font:{size:10}}},y:{ticks:{font:{size:10}}}}, animation:{duration:400} }
+  // donut chart — usia toko
+  const donutData  = [18, 28, 32, 18, 4];
+  const donutLabels= ['< 6 bulan','6 bln – 1 th','1 – 2 th','2 – 5 th','> 5 th'];
+  const donutColors= ['#1E3A8A','#3B82F6','#60A5FA','#93C5FD','#BFDBFE'];
+  if (_ddChartDonut) _ddChartDonut.destroy();
+  _ddChartDonut = new Chart(document.getElementById('dd-chart-donut'), {
+    type: 'doughnut',
+    data: { labels:donutLabels, datasets:[{ data:donutData, backgroundColor:donutColors, borderWidth:2, borderColor:'#fff' }] },
+    options: { plugins:{legend:{display:false}}, cutout:'62%', animation:{duration:400} }
   });
-
-  // competitor table
-  const shops = ['TokoMaju','ElekMart','BestDeal99','GrosirMurah','ShopTop','KiosPrima','JualanOnline','MegaStore','CepetLaku','TokoBaru'];
-  const total = sales * 10;
-  let remaining = 100;
-  const shares = shops.map((_,i) => {
-    if (i === shops.length-1) return remaining;
-    const s = Math.round(rng()*18 + (i===0?22:i<3?12:5));
-    remaining = Math.max(0, remaining - s);
-    return s;
-  });
-  document.getElementById('dd-comp-tbody').innerHTML = shops.map((shop, i) => {
-    const shopPrice = Math.round(price * (0.88 + rng()*0.28));
-    const vol = Math.round(total * shares[i]/100);
-    return `<tr>
-      <td style="color:#9CA3AF">${i+1}</td>
-      <td style="font-weight:600">${shop}</td>
-      <td>Rp ${shopPrice.toLocaleString('id-ID')}</td>
-      <td>${vol.toLocaleString('id-ID')}</td>
-      <td>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <div class="dd-comp-bar-wrap"><div class="dd-comp-bar" style="width:${Math.min(100,shares[i]*3)}%"></div></div>
-          <span style="font-size:.72rem;color:#6B7280">${shares[i]}%</span>
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
-
-  // keywords
-  const baseKws = [p.name.split(' ')[0], 'murah', 'original', 'terbaik', 'grosir', 'terpercaya', 'berkualitas', 'promo'];
-  const hotIdx = [0, Math.round(rng()*3+1)];
-  document.getElementById('dd-kwrap').innerHTML = baseKws.map((kw, i) =>
-    `<span class="dd-kw ${hotIdx.includes(i)?'hot':''}">${kw}</span>`
+  document.getElementById('dd-donut-legend').innerHTML = donutLabels.map((l,i) =>
+    `<div class="dd-donut-legend-item"><div class="dd-donut-legend-dot" style="background:${donutColors[i]}"></div><span>${l}</span><span class="dd-donut-pct">${donutData[i]}%</span></div>`
   ).join('');
 
-  // weekly tip
-  const tips = [
-    `Optimalkan foto produk dengan latar putih bersih — riset kami menunjukkan konversi meningkat ${Math.round(15+rng()*20)}% hanya dari kualitas gambar pertama.`,
-    `Coba pasang harga Rp ${(Math.round((pLow+pHigh)/2/1000)*1000).toLocaleString('id-ID')} dengan gratis ongkir untuk meningkatkan CTR di halaman pencarian.`,
-    `Produk di kategori ini paling banyak dibeli antara pukul 19.00–22.00. Jadwalkan flash sale di jam tersebut untuk dampak maksimal.`,
-    `Gunakan keyword "${p.name.split(' ')[0]} original" di judul — volume pencarian kata ini naik ${Math.round(20+rng()*30)}% bulan ini.`,
+  // category performance mini chart
+  const catOmset = Math.round(omset * 12 / 1000000);
+  const catUnits = Math.round(sales * 12);
+  const catToko  = Math.round(2000 + rng() * 1000);
+  document.getElementById('dd-cat-label').textContent = p.category || 'Umum';
+  document.getElementById('dd-catperf-stats').innerHTML = `
+    <div><div class="dd-catperf-stat-label">Omset</div><div class="dd-catperf-stat-value">Rp ${catOmset >= 1000 ? (catOmset/1000).toFixed(1)+'M' : catOmset+'jt'}</div><div class="dd-catperf-stat-delta">▲ ${Math.round(8+rng()*10)}%</div></div>
+    <div><div class="dd-catperf-stat-label">Unit Terjual</div><div class="dd-catperf-stat-value">${(catUnits/1000).toFixed(1)}rb</div><div class="dd-catperf-stat-delta">▲ ${Math.round(5+rng()*10)}%</div></div>
+    <div><div class="dd-catperf-stat-label">Toko Aktif</div><div class="dd-catperf-stat-value">${catToko.toLocaleString('id-ID')}</div><div class="dd-catperf-stat-delta">▲ ${Math.round(3+rng()*8)}%</div></div>
+  `;
+  const catPerfDates = ['20 Apr','27 Apr','4 Mei','11 Mei','18 Mei'];
+  const catPerfData  = catPerfDates.map((_,i) => Math.round(catOmset * (0.6 + i*0.11) + (rng()-0.5)*catOmset*0.1));
+  if (_ddChartCatperf) _ddChartCatperf.destroy();
+  _ddChartCatperf = new Chart(document.getElementById('dd-chart-catperf'), {
+    type: 'line',
+    data: { labels:catPerfDates, datasets:[{ data:catPerfData, borderColor:'#E8442A', backgroundColor:'transparent', borderWidth:2, tension:0.4, pointRadius:3, pointBackgroundColor:'#E8442A' }] },
+    options: { plugins:{legend:{display:false}}, scales:{x:{ticks:{font:{size:8}}},y:{display:false}}, animation:{duration:400} }
+  });
+
+  // competitor table — generate 15
+  const shopNames = ['Urban Carry','Bagus Official','Prime Bags','Manly Goods','Style Bag Store','TrendyShop','GrosirMurah','ElekMart','KiosPrima','BestDeal99','TokoMaju','JualanOnline','MegaStore','CepetLaku','TokoBaru'];
+  const ageLabels = ['2,6 tahun','1,9 tahun','1,3 tahun','8 bulan','2,1 tahun','3,5 tahun','1,1 tahun','4 tahun','7 bulan','2,8 tahun','1,5 tahun','3,2 tahun','5 tahun','9 bulan','1,8 tahun'];
+  _ddCompAll = shopNames.map((name, i) => {
+    const r = _ddRng(p.id * 999 + i);
+    const sp    = Math.round(price * (0.88 + r() * 0.28));
+    const su    = Math.round(sales * (0.3 + r() * 0.7));
+    const sOmset= sp * su;
+    const sScore= Math.max(60, Math.round(92 - i * 2.5 + (r()-0.5)*4));
+    return { rank:i+1, name, price:sp, omset:sOmset, units:su, age:ageLabels[i], score:sScore };
+  });
+  _ddCompShowing = 5;
+  ddRenderCompetitors();
+
+  // keyword table
+  const word0 = p.name.split(' ')[0].toLowerCase();
+  const kwRows = [
+    { kw: word0 + ' selempang pria', vol: 24300, comp:'Tinggi', trend:'up' },
+    { kw: word0 + ' pria murah',     vol: 18100, comp:'Sedang', trend:'up' },
+    { kw: word0 + ' selempang casual',vol:12900, comp:'Sedang', trend:'up' },
+    { kw: word0 + ' pria keren',     vol:  9800, comp:'Rendah', trend:'up' },
+    { kw: word0 + ' pria kulit',     vol:  7200, comp:'Sedang', trend:'down' },
   ];
-  document.getElementById('dd-tip-text').textContent = tips[Math.floor(rng()*tips.length)];
+  document.getElementById('dd-kw-tbody').innerHTML = kwRows.map(k => {
+    const cc = k.comp === 'Tinggi' ? 'high' : k.comp === 'Sedang' ? 'med' : 'low';
+    const spark = k.trend === 'up'
+      ? `<svg class="dd-kw-spark" viewBox="0 0 54 22"><polyline points="0,18 9,14 18,15 27,10 36,11 45,6 54,4" fill="none" stroke="#10B981" stroke-width="1.8" stroke-linecap="round"/></svg>`
+      : `<svg class="dd-kw-spark" viewBox="0 0 54 22"><polyline points="0,4 9,6 18,8 27,12 36,13 45,16 54,18" fill="none" stroke="#E8442A" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+    return `<tr>
+      <td style="font-weight:600">${k.kw}</td>
+      <td>${k.vol.toLocaleString('id-ID')}</td>
+      <td><span class="dd-kw-comp ${cc}">${k.comp}</span></td>
+      <td>${spark}</td>
+    </tr>`;
+  }).join('');
+}
+
+function ddRenderCompetitors() {
+  const rows = _ddCompAll.slice(0, _ddCompShowing);
+  document.getElementById('dd-comp-tbody').innerHTML = rows.map(c => {
+    const pillCls = c.score >= 80 ? '' : c.score >= 70 ? 'yellow' : 'green';
+    return `<tr>
+      <td style="color:#9CA3AF;font-weight:600">${c.rank}</td>
+      <td style="font-weight:600">${c.name}</td>
+      <td>Rp ${c.price.toLocaleString('id-ID')}</td>
+      <td>Rp ${c.omset.toLocaleString('id-ID')}</td>
+      <td>${c.units.toLocaleString('id-ID')}</td>
+      <td>${c.age}</td>
+      <td><span class="dd-score-pill ${pillCls}">${c.score}</span></td>
+      <td><a style="font-size:.72rem;font-weight:600;color:#E8442A;cursor:pointer;">Lihat Toko</a></td>
+    </tr>`;
+  }).join('');
+  const btn = document.getElementById('dd-show-more-btn');
+  if (btn) {
+    const showing = _ddCompShowing >= _ddCompAll.length;
+    btn.innerHTML = showing
+      ? `<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6"/></svg> Sembunyikan`
+      : `<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg> Lihat Semua ${_ddCompAll.length} Kompetitor`;
+  }
+}
+
+function ddToggleCompetitors() {
+  _ddCompShowing = _ddCompShowing >= _ddCompAll.length ? 5 : _ddCompAll.length;
+  ddRenderCompetitors();
 }
 
 function dscOpenDeepDive(id) {
