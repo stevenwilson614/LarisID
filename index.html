@@ -2297,7 +2297,7 @@ html,body{overflow-x:hidden;max-width:100%;}
         <p class="lp-hero-sub">LarisID menganalisis jutaan produk di Shopee secara real-time, memberikan data kompetisi, tren harga, dan peluang pasar yang belum dimanfaatkan — langsung di tangan Anda.</p>
         <div class="lp-hero-btns">
           <button class="lp-hero-btn-primary" onclick="openAuthModal('signup')">Mulai Gratis Sekarang</button>
-          <button class="lp-hero-btn-secondary" onclick="showPage('discover')">Lihat Contoh Produk</button>
+          <button class="lp-hero-btn-secondary" onclick="lpShowPreview()">Lihat Contoh Produk</button>
         </div>
         <div class="lp-hero-social">
           <div class="lp-hero-avatars">
@@ -2465,13 +2465,97 @@ html,body{overflow-x:hidden;max-width:100%;}
       </div>
     </div>
 
+    <!-- embedded product preview -->
+    <div id="lp-preview-section" style="display:none;background:#F4F6F9;padding:48px 0;">
+      <div style="max-width:1200px;margin:0 auto;padding:0 40px;">
+        <div style="text-align:center;margin-bottom:28px;">
+          <div class="lp-section-eyebrow">Contoh Analisis Produk</div>
+          <div class="lp-section-title" style="font-size:1.5rem;">Ini yang kamu dapatkan di setiap produk</div>
+          <p style="font-size:.88rem;color:#6B7280;margin-top:8px;">Data lengkap, tren, kompetitor, dan rekomendasi AI — semuanya dalam satu halaman.</p>
+        </div>
+        <!-- mini deep dive embedded -->
+        <div id="lp-dd-wrap" style="background:#F4F6F9;">
+          <!-- hero -->
+          <div class="dd-hero" style="margin-bottom:14px;">
+            <div class="dd-hero-img" id="lp-dd-img">📦</div>
+            <div class="dd-hero-right">
+              <div>
+                <div class="dd-hero-name" id="lp-dd-name">—</div>
+                <div class="dd-hero-cats" id="lp-dd-cats">—</div>
+              </div>
+              <div class="dd-hero-cards">
+                <div class="dd-hstat">
+                  <div class="dd-hstat-label">Skor Produk</div>
+                  <div><span class="dd-score-num" id="lp-dd-score">—</span><span class="dd-score-denom">/100</span></div>
+                  <span class="dd-score-tag" id="lp-dd-score-tag">—</span>
+                </div>
+                <div class="dd-hstat">
+                  <div class="dd-hstat-label">Total Omset / Bulan</div>
+                  <div class="dd-hstat-value" id="lp-dd-omset">—</div>
+                  <div><span class="dd-hstat-delta" id="lp-dd-omset-d">—</span><span class="dd-hstat-sub"> vs 30 hari lalu</span></div>
+                </div>
+                <div class="dd-hstat">
+                  <div class="dd-hstat-label">Unit Terjual / Bulan</div>
+                  <div class="dd-hstat-value" id="lp-dd-unit">—</div>
+                  <div><span class="dd-hstat-delta" id="lp-dd-unit-d">—</span><span class="dd-hstat-sub"> vs 30 hari lalu</span></div>
+                </div>
+                <div class="dd-hstat">
+                  <div class="dd-hstat-label">Tingkat Kompetisi</div>
+                  <div class="dd-hstat-value red" id="lp-dd-komp">—</div>
+                  <div class="dd-hstat-sub" id="lp-dd-komp-sub" style="margin-left:0;font-size:.74rem;color:#6B7280;">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- row: trend + price range + AI -->
+          <div class="dd-row3" style="margin-bottom:14px;">
+            <div class="dd-card">
+              <div class="dd-card-title">Tren Omset (30 Hari)</div>
+              <div class="dd-chart-legend">
+                <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#E8442A;"></div>Omset (Rp)</div>
+                <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#4F46E5;"></div>Unit Terjual</div>
+                <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#9CA3AF;"></div>Toko Aktif</div>
+              </div>
+              <canvas id="lp-dd-chart-trend" height="140"></canvas>
+            </div>
+            <div class="dd-card">
+              <div class="dd-card-title">Rentang Harga Optimal</div>
+              <div class="dd-card-sub">Berdasarkan analisis kompetitor aktif</div>
+              <div class="dd-price-big" id="lp-dd-price-range">—</div>
+              <div class="dd-range-track"><div class="dd-range-zone" id="lp-dd-range-zone"></div></div>
+              <div class="dd-range-labels" id="lp-dd-range-labels"></div>
+              <div class="dd-range-note"><svg width="13" height="13" viewBox="0 0 24 24" fill="#D97706"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12" stroke="#fff" stroke-width="2"/><line x1="12" y1="16" x2="12.01" y2="16" stroke="#fff" stroke-width="2"/></svg><span>Produk di rentang harga ini memiliki penjualan tertinggi</span></div>
+            </div>
+            <div class="dd-card">
+              <div class="dd-card-title">Insight AI</div>
+              <div class="dd-ai-list" id="lp-dd-ai"></div>
+              <button class="dd-ai-btn" onclick="openAuthModal('signup')">Mulai Gratis — Lihat Lebih Lengkap</button>
+            </div>
+          </div>
+          <!-- blurred CTA overlay -->
+          <div style="position:relative;">
+            <div class="dd-row2" style="filter:blur(4px);pointer-events:none;user-select:none;">
+              <div class="dd-card" style="height:200px;background:#fff;"></div>
+              <div class="dd-card" style="height:200px;background:#fff;"></div>
+              <div class="dd-card" style="height:200px;background:#fff;"></div>
+            </div>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(244,246,249,.6);border-radius:12px;">
+              <div style="font-size:1rem;font-weight:700;color:#1A1F3C;">Buka analisis lengkap — gratis</div>
+              <div style="font-size:.82rem;color:#6B7280;text-align:center;">Distribusi harga, usia toko kompetitor, top 15 kompetitor, keyword, dan lebih banyak lagi.</div>
+              <button class="lp-hero-btn-primary" onclick="openAuthModal('signup')">Daftar Gratis Sekarang</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- CTA -->
     <div class="lp-cta-section">
       <h2>Siap temukan produk terlaris<br>untuk toko Shopee Anda?</h2>
       <p>Mulai gratis sekarang — tanpa kartu kredit, tanpa komitmen jangka panjang.</p>
       <div class="lp-cta-btns">
         <button class="lp-cta-btn-main" onclick="openAuthModal('signup')">Mulai Gratis Sekarang</button>
-        <button class="lp-cta-btn-ghost" onclick="showPage('discover')">Lihat Produk Dulu</button>
+        <button class="lp-cta-btn-ghost" onclick="lpShowPreview()">Lihat Produk Dulu</button>
       </div>
     </div>
 
@@ -2481,7 +2565,7 @@ html,body{overflow-x:hidden;max-width:100%;}
       <div class="lp-footer-links">
         <a class="lp-footer-link">Fitur</a>
         <a class="lp-footer-link">Harga</a>
-        <a class="lp-footer-link">Blog</a>
+        <a class="lp-footer-link" onclick="showPage('blog')">Blog</a>
         <a class="lp-footer-link">Kebijakan Privasi</a>
         <a class="lp-footer-link">Syarat & Ketentuan</a>
       </div>
@@ -2491,181 +2575,6 @@ html,body{overflow-x:hidden;max-width:100%;}
 </div>
 <!-- ══ END LANDING PAGE ══════════════════════════════════════ -->
 
-<div class="page" id="page-home">
-
-  <!-- BANNER IMAGE
-       To set your banner: change the background-image URL in the style tag below,
-       OR update the CSS variable --banner-url in the <style> at top of file.       -->
-  <div class="hero-banner-wrap">
-    <div class="hero-banner-inner">
-      <div class="banner-grid">
-
-        <!-- PANEL 1 — main large left panel -->
-        <div class="banner-main">
-          <div class="banner-main-bg"></div>
-          <div class="banner-main-deco"></div>
-
-        </div>
-
-        <!-- PANEL 2 — top right -->
-        <div class="banner-side banner-side-top" onclick="quickFilter('hot'); document.querySelector('.home-grid').scrollIntoView({behavior:'smooth'})">
-          <div style="position:absolute;inset:0;background:url('/images/Banner TR.jpg') center center/cover no-repeat;"></div>
-        </div>
-
-        <!-- PANEL 3 — bottom right -->
-        <div class="banner-side banner-side-bot" onclick="quickFilter('high_revenue'); document.querySelector('.home-grid').scrollIntoView({behavior:'smooth'})">
-          <div style="position:absolute;inset:0;background:url('/images/Banner BR.jpg') center center/cover no-repeat;"></div>
-        </div>
-
-      </div>
-      <!-- MOBILE CAROUSEL -->
-      <div class="banner-carousel">
-        <div class="banner-carousel-track" id="banner-track">
-          <div class="banner-carousel-slide" style="background-image:url('/images/Banner.jpg')"></div>
-          <div class="banner-carousel-slide" style="background-image:url('/images/Banner TR.jpg')"></div>
-          <div class="banner-carousel-slide" style="background-image:url('/images/Banner BR.jpg')"></div>
-        </div>
-        <div class="banner-carousel-dots">
-          <button class="banner-carousel-dot active" onclick="goToSlide(0)"></button>
-          <button class="banner-carousel-dot" onclick="goToSlide(1)"></button>
-          <button class="banner-carousel-dot" onclick="goToSlide(2)"></button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- PRODUCT FINDER -->
-  <div class="finder-section">
-    <div class="finder-inner">
-      <div class="finder-title">Temukan Produk yang Tepat</div>
-      <div class="finder-sub">Jawab 3 pertanyaan singkat dan kami carikan produk terbaik untukmu</div>
-      <div class="finder-steps">
-
-        <!-- STEP 1: Harga Jual -->
-        <div>
-          <div class="finder-step-label">Harga Jual</div>
-          <div class="finder-price-pills">
-            <div class="finder-price-pill selected" onclick="selectFinderPrice(this,'','10000')">Di bawah 10k</div>
-            <div class="finder-price-pill" onclick="selectFinderPrice(this,'10000','25000')">10k – 25k</div>
-            <div class="finder-price-pill" onclick="selectFinderPrice(this,'25000','100000')">25k – 100k</div>
-            <div class="finder-price-pill" onclick="selectFinderPrice(this,'100000','')">100k+</div>
-          </div>
-        </div>
-
-        <!-- STEP 2: Kategori (multi-select) -->
-        <div>
-          <div class="finder-step-label">Kategori <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--tl);font-size:.68rem;">(pilih lebih dari satu)</span></div>
-          <div class="finder-cat-pills" id="finder-cat-pills">
-            <div class="finder-cat-pill finder-cat-all selected" onclick="toggleFinderCatAll(this)">Semua</div>
-          </div>
-        </div>
-
-        <!-- STEP 3: Target Pendapatan -->
-        <div>
-          <div class="finder-step-label">Target Pendapatan / Bulan</div>
-          <div class="finder-slider-value" id="finder-rev-label">Rp 10 Juta / bulan</div>
-          <input type="range" class="finder-slider" id="finder-rev-slider"
-            min="10" max="80" step="5" value="10"
-            oninput="updateFinderRevLabel(this.value)">
-          <div class="finder-slider-labels"><span>10j</span><span>40j</span><span>80j+</span></div>
-        </div>
-
-      </div>
-      <div class="finder-cta">
-        <button class="finder-cta-btn" onclick="launchProductFinder()">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          Cari Produk
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- TRENDING ROW — HOME -->
-  <div class="trending-section" id="home-trending-section">
-    <div class="trending-sec-inner">
-      <div class="trending-sec-head">
-        <div class="trending-sec-title">Trending Products</div>
-      </div>
-      <div class="trending-row-outer">
-        <div class="trending-row" id="home-trending-row">
-          <div class="trending-loading"><div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>Memuat trending...</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="home-wrap">
-    <div class="home-section">
-      <!-- VIABILITY SCORE EXPLANATION ACCORDION -->
-      <div class="home-score-exp">
-        <div class="home-score-exp-header" onclick="toggleHomeScoreExp()">
-          <span class="home-score-exp-title">⭐ Apa itu Viability Score? <span style="font-weight:400;color:var(--tl);font-size:.75rem;">(ketuk untuk lihat detail)</span></span>
-          <span id="home-score-chevron" style="font-size:.75rem;color:var(--tl);transition:transform .2s;">▼</span>
-        </div>
-        <div class="home-score-exp-body" id="home-score-exp-body">
-          <p style="font-size:.82rem;color:#444;margin-bottom:12px;line-height:1.6;">Setiap produk diberi skor <strong>0–100</strong>. Skor ini merangkum seberapa layak produk tersebut untuk dijual di Shopee saat ini — semakin tinggi skor, semakin besar peluangnya. Skor dihitung dari 5 faktor berikut:</p>
-          <div class="hscore-grid">
-            <div class="hscore-item">
-              <div class="hscore-item-name">Jumlah Penjual Aktif</div>
-              <div class="hscore-item-desc">Berapa banyak penjual yang berkontribusi lebih dari 1% dari total pendapatan pasar. Semakin banyak, semakin terbukti permintaannya.</div>
-            </div>
-            <div class="hscore-item">
-              <div class="hscore-item-name">Dominasi Penjual Teratas</div>
-              <div class="hscore-item-desc">Berapa persen pasar yang dikuasai 1 penjual terbaik. Skor tinggi = pasar lebih merata, tidak dikuasai satu pemain saja.</div>
-            </div>
-            <div class="hscore-item">
-              <div class="hscore-item-name">Konsentrasi Top 10 Penjual</div>
-              <div class="hscore-item-desc">Berapa persen pasar yang dikontrol 10 penjual terbaik. Nilai terlalu tinggi berarti pasar sudah sangat kompetitif.</div>
-            </div>
-            <div class="hscore-item">
-              <div class="hscore-item-name">Konsistensi Pendapatan</div>
-              <div class="hscore-item-desc">Perbandingan rata-rata dan median pendapatan penjual. Skor tinggi berarti pendapatan lebih merata dan peluang sukses lebih konsisten.</div>
-            </div>
-            <div class="hscore-item" style="grid-column:1/-1;">
-              <div class="hscore-item-name">Rasio Penjual Baru</div>
-              <div class="hscore-item-desc">Seberapa baik penjual baru bisa bersaing dibandingkan median pasar. Skor tinggi berarti penjual baru punya peluang nyata mendapatkan pendapatan yang layak.</div>
-            </div>
-          </div>
-          <div class="hscore-note">Catatan: Skor ini adalah panduan berbasis data, bukan jaminan keberhasilan. Selalu lakukan riset tambahan sebelum memutuskan untuk berjualan.</div>
-        </div>
-      </div>
-      <div class="sec-head">
-        <div class="sec-title">Categories</div>
-        <span class="see-all" onclick="showPage('discover')">See All</span>
-      </div>
-      <div class="cat-grid" id="home-cats"></div>
-
-      <!-- QUICK FILTER STRIP -->
-      <div class="quick-row" style="margin:16px -20px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
-        <div class="quick-inner" style="padding:0;">
-          <div class="quick-filters">
-            <div class="qf-item active" id="qf-hot" onclick="quickFilter('hot')">
-              <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c0 0-5 4-5 9a5 5 0 0 0 10 0c0-5-5-9-5-9z"/></svg></span><span class="qf-lbl">Hot Products</span>
-            </div>
-            <div class="qf-item" id="qf-high_revenue" onclick="quickFilter('high_revenue')">
-              <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M9 9h4.5a1.5 1.5 0 0 1 0 3H10a1.5 1.5 0 0 0 0 3H15"/></svg></span><span class="qf-lbl">High Revenue</span>
-            </div>
-            <div class="qf-item" id="qf-low_revenue" onclick="quickFilter('low_revenue')">
-              <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22,17 13.5,8.5 8.5,13.5 2,7"/><polyline points="16,17 22,17 22,11"/></svg></span><span class="qf-lbl">Lowest Revenue</span>
-            </div>
-            <div class="qf-item" id="qf-top_units" onclick="quickFilter('top_units')">
-              <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span><span class="qf-lbl">Top Units/mo</span>
-            </div>
-            <div class="qf-item" id="qf-low_units" onclick="quickFilter('low_units')">
-              <span class="qf-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span><span class="qf-lbl">Lowest Units/mo</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="sec-head">
-        <div class="sec-title">Featured Products</div>
-        <span class="see-all" onclick="showPage('discover')">See All</span>
-      </div>
-      <div class="home-grid" id="home-grid"></div>
-    </div>
-  </div>
-</div>
 
 <!-- ════════════════════════════════════
      DISCOVER PAGE
@@ -4988,31 +4897,6 @@ html,body{overflow-x:hidden;max-width:100%;}
 <!-- ════════════════════════════════════
      SITE FOOTER
 ════════════════════════════════════ -->
-<footer class="site-footer">
-  <div class="site-footer-inner">
-    <div class="footer-left">
-      <div class="footer-brand">LarisID</div>
-      <div class="footer-tagline">Riset produk Shopee gratis — untuk semua penjual Indonesia. 100% Gratis, Selamanya.</div>
-      <div class="footer-links">
-        <a onclick="showPage('home')" class="footer-link">Beranda</a>
-        <a onclick="showPage('discover')" class="footer-link">Produk</a>
-        <a onclick="showPage('komunitas')" class="footer-link">Komunitas</a>
-        <a onclick="showPage('blog')" class="footer-link">Blog</a>
-        <a onclick="openFeedback()" class="footer-link">Feedback</a>
-      </div>
-      <div class="footer-copy">© 2026 LarisID. Data diperbarui: 20 Maret 2026. Tidak berafiliasi dengan Shopee.</div>
-    </div>
-    <div class="footer-right">
-      <div class="footer-signup-title">Update Produk Mingguan</div>
-      <div class="footer-signup-sub">Dapatkan notifikasi produk baru berpotensi tinggi setiap minggu — gratis.</div>
-      <form class="footer-signup-form" onsubmit="handleEmailSignup(event)">
-        <input class="footer-signup-input" type="email" id="signup-email" placeholder="email@kamu.com" required>
-        <button class="footer-signup-btn" type="submit">Daftar</button>
-      </form>
-      <div class="footer-signup-note">Tidak ada spam. Berhenti kapan saja.</div>
-    </div>
-  </div>
-</footer>
 
 <script>
 // ════════════════════════════════════════════════════════════
@@ -5280,6 +5164,7 @@ async function loadData() {
   dscInit();
   hbdInit();
   alrInit();
+  if (allProducts.length) lpRenderPreview(allProducts[0]);
   // Start guided tour for first-time visitors (slight delay so cards are painted)
   setTimeout(startTour, 600);
 
@@ -7874,6 +7759,71 @@ function alrMarkAllRead() {
 }
 
 function alrShowCreate() { openAuthModal('signup'); }
+
+// ── LANDING PAGE PREVIEW ────────────────────────────────────────
+let _lpPreviewChart = null;
+
+function lpShowPreview() {
+  const sec = document.getElementById('lp-preview-section');
+  if (!sec) return;
+  sec.style.display = 'block';
+  sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (allProducts && allProducts.length) lpRenderPreview(allProducts[0]);
+}
+
+function lpRenderPreview(p) {
+  const rng = (function(seed){ let s=seed; return function(){ s=(s*1664525+1013904223)&0xffffffff; return (s>>>0)/0xffffffff; }; })(p.id * 31337);
+  const price = p.medianPrice || 85000;
+  const score = Math.round(p.score);
+  const sales = p.newUnits || Math.round(80 + rng()*200);
+  const omset = price * sales;
+  const omsetDelta = Math.round(10 + rng()*20);
+  const unitDelta  = Math.round(8 + rng()*18);
+  const kompScore  = Math.round(40 + rng()*40);
+  const kompLabel  = kompScore >= 65 ? 'Tinggi' : kompScore >= 40 ? 'Sedang' : 'Rendah';
+
+  document.getElementById('lp-dd-img').textContent   = p.emoji || '📦';
+  document.getElementById('lp-dd-name').textContent  = p.name;
+  document.getElementById('lp-dd-cats').innerHTML    = `Kategori: ${p.category||'Umum'} <span>• Sub Kategori: ${p.category||'Umum'}</span>`;
+  document.getElementById('lp-dd-score').textContent = score;
+  const tag = document.getElementById('lp-dd-score-tag');
+  tag.textContent = score >= 75 ? 'Potensi Tinggi' : 'Potensi Sedang';
+  tag.style.cssText = score >= 75 ? 'background:#EAF7F0;color:#10B981;border:1px solid #D1FAE5;font-size:.7rem;font-weight:600;padding:3px 10px;border-radius:4px;margin-top:6px;display:inline-block;' : 'background:#FFF0ED;color:#E8442A;border:1px solid #F9C5BB;font-size:.7rem;font-weight:600;padding:3px 10px;border-radius:4px;margin-top:6px;display:inline-block;';
+  document.getElementById('lp-dd-omset').textContent   = 'Rp ' + (omset/1000000).toFixed(1).replace('.',',') + ' jt';
+  document.getElementById('lp-dd-omset-d').textContent = `↑ ${omsetDelta}%`;
+  document.getElementById('lp-dd-unit').textContent    = sales.toLocaleString('id-ID');
+  document.getElementById('lp-dd-unit-d').textContent  = `↑ ${unitDelta}%`;
+  document.getElementById('lp-dd-komp').textContent    = kompLabel;
+  document.getElementById('lp-dd-komp').style.color    = kompScore >= 65 ? '#E8442A' : kompScore >= 40 ? '#D97706' : '#10B981';
+  document.getElementById('lp-dd-komp-sub').textContent = 'Skor: ' + kompScore + '/100';
+
+  const pMin = Math.round(price*0.52), pMax = Math.round(price*1.85);
+  const zL = Math.round(price*0.85), zR = Math.round(price*1.12);
+  document.getElementById('lp-dd-price-range').textContent = `Rp ${zL.toLocaleString('id-ID')} – Rp ${zR.toLocaleString('id-ID')}`;
+  document.getElementById('lp-dd-range-zone').style.cssText = `left:${Math.round((zL-pMin)/(pMax-pMin)*100)}%;width:${Math.round((zR-zL)/(pMax-pMin)*100)}%;`;
+  document.getElementById('lp-dd-range-labels').innerHTML = `<span>${(pMin/1000).toFixed(0)}k</span><span>${(Math.round((pMin+pMax)*0.3)/1000).toFixed(0)}k</span><span>${(Math.round((pMin+pMax)*0.6)/1000).toFixed(0)}k</span><span>${(pMax/1000).toFixed(0)}k</span>`;
+
+  document.getElementById('lp-dd-ai').innerHTML = [
+    `Permintaan tinggi dan terus meningkat dalam 30 hari terakhir.`,
+    `Kompetisi ${kompLabel.toLowerCase()}, masih ada peluang untuk pemain baru.`,
+    `Disarankan fokus pada variasi warna populer di kategori ini.`,
+  ].map(t => `<div class="dd-ai-item"><div class="dd-ai-check">✓</div><div>${t}</div></div>`).join('');
+
+  const dates = ['20 Apr','27 Apr','4 Mei','11 Mei','18 Mei'];
+  const omsetS = dates.map((_,i) => Math.round(omset*(0.65+i*0.09)+(rng()-0.5)*omset*0.08));
+  const unitS  = dates.map((_,i) => Math.round(sales*(0.70+i*0.07)+(rng()-0.5)*sales*0.06));
+  const tokoS  = dates.map((_,i) => Math.round(120+i*15+rng()*20));
+  if (_lpPreviewChart) _lpPreviewChart.destroy();
+  _lpPreviewChart = new Chart(document.getElementById('lp-dd-chart-trend'), {
+    type: 'line',
+    data: { labels: dates, datasets: [
+      { data:omsetS, borderColor:'#E8442A', backgroundColor:'rgba(232,68,42,.06)', borderWidth:2.5, fill:true, tension:0.4, pointRadius:4, pointBackgroundColor:'#E8442A', yAxisID:'y' },
+      { data:unitS,  borderColor:'#4F46E5', backgroundColor:'transparent', borderWidth:2, tension:0.4, pointRadius:3, pointBackgroundColor:'#4F46E5', yAxisID:'y2' },
+      { data:tokoS,  borderColor:'#9CA3AF', backgroundColor:'transparent', borderWidth:2, tension:0.4, pointRadius:3, pointBackgroundColor:'#9CA3AF', yAxisID:'y2', borderDash:[4,3] },
+    ]},
+    options: { plugins:{legend:{display:false}}, scales:{ x:{ticks:{font:{size:9}}}, y:{position:'left',ticks:{font:{size:8},callback:v=>(v/1000000).toFixed(0)+'jt'}}, y2:{position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:8}}} }, animation:{duration:400} }
+  });
+}
 
 function _initPdbCats() {
   if (_pdbCatsInited) return;
