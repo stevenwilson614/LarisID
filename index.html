@@ -679,30 +679,34 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .dashboard-layout{display:flex;min-height:calc(100vh - 72px);background:#F7F6F3;}
 
 /* ── SIDEBAR ── */
-.dash-sidebar{width:240px;flex-shrink:0;background:#1A1F3C;display:flex;flex-direction:column;position:sticky;top:72px;height:calc(100vh - 72px);overflow-y:auto;}
-.dash-sidebar-logo{padding:18px 20px 14px;border-bottom:1px solid rgba(255,255,255,.1);font-size:1.05rem;font-weight:800;color:#fff;letter-spacing:-.01em;}
-.dash-sidebar-logo span{color:#E8442A;font-weight:400;}
-.dash-user-info{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px;}
-.dash-user-avatar{width:30px;height:30px;border-radius:50%;background:#E8442A;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;flex-shrink:0;}
+.dash-sidebar{width:240px;flex-shrink:0;background:#1A1F3C;display:flex;flex-direction:column;height:100vh;overflow-y:auto;position:fixed;top:0;left:0;z-index:100;transition:transform .25s ease;}
+.dash-sidebar-logo{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08);font-size:1.1rem;font-weight:800;color:#fff;letter-spacing:-.02em;flex-shrink:0;}
+.dash-sidebar-logo span{color:#E8442A;}
+.dash-user-info{padding:14px 16px;border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.dash-user-avatar{width:32px;height:32px;border-radius:50%;background:#E8442A;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.82rem;flex-shrink:0;}
 .dash-user-meta{flex:1;min-width:0;}
 .dash-user-name{font-size:.75rem;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.dash-user-email{font-size:.65rem;color:rgba(255,255,255,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.dash-logout-btn{background:none;border:none;color:rgba(255,255,255,.35);font-size:.68rem;cursor:pointer;padding:0;font-family:inherit;flex-shrink:0;transition:color .15s;}
-.dash-logout-btn:hover{color:#fff;}
-.dash-sidebar-nav{display:flex;flex-direction:column;gap:1px;padding:10px 8px;flex:1;}
-.dash-nav-item{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:7px;font-size:.8rem;font-weight:600;color:rgba(255,255,255,.55);cursor:pointer;transition:background .15s,color .15s;user-select:none;}
+.dash-user-email{font-size:.65rem;color:rgba(255,255,255,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dash-logout-btn{background:none;border:none;color:rgba(255,255,255,.3);cursor:pointer;padding:4px;font-family:inherit;flex-shrink:0;transition:color .15s;display:flex;align-items:center;}
+.dash-logout-btn:hover{color:rgba(255,255,255,.8);}
+.dash-sidebar-nav{display:flex;flex-direction:column;gap:2px;padding:12px 10px;flex:1;}
+.dash-nav-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;font-size:.82rem;font-weight:600;color:rgba(255,255,255,.55);cursor:pointer;transition:background .15s,color .15s;user-select:none;position:relative;}
 .dash-nav-item:hover{background:rgba(255,255,255,.08);color:#fff;}
 .dash-nav-item.open{color:rgba(255,255,255,.75);}
-.dash-nav-item.active{color:#fff;font-weight:700;background:rgba(255,255,255,.08);}
-.dash-nav-icon{font-size:.85rem;width:16px;text-align:center;flex-shrink:0;}
-.dash-nav-arrow{margin-left:auto;font-size:.6rem;transition:transform .2s;opacity:.5;}
+.dash-nav-item.active{background:rgba(255,255,255,.08);color:#fff;}
+.dash-nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;background:#E8442A;border-radius:0 2px 2px 0;}
+.dash-nav-icon{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.dash-nav-arrow{margin-left:auto;font-size:.55rem;transition:transform .2s;opacity:.4;}
 .dash-nav-item.open .dash-nav-arrow{transform:rotate(90deg);}
-.dash-nav-sub{display:none;flex-direction:column;gap:1px;padding:3px 0 3px 28px;}
+.dash-nav-sub{display:none;flex-direction:column;gap:1px;padding:2px 0 4px 38px;}
 .dash-nav-sub.open{display:flex;}
-.dash-nav-sub-item{padding:7px 10px;border-radius:6px;font-size:.75rem;font-weight:500;color:rgba(255,255,255,.45);cursor:pointer;transition:color .15s,background .15s;}
+.dash-nav-sub-item{padding:7px 10px;border-radius:6px;font-size:.77rem;font-weight:500;color:rgba(255,255,255,.4);cursor:pointer;transition:color .15s,background .15s;}
 .dash-nav-sub-item:hover{color:#fff;background:rgba(255,255,255,.06);}
 .dash-nav-sub-item.active{color:#E8442A;font-weight:700;}
 .dash-nav-divider{height:1px;background:rgba(255,255,255,.07);margin:6px 4px;}
+/* sidebar overlay (mobile) */
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99;}
+.sidebar-overlay.open{display:block;}
 
 /* ── MAIN CONTENT ── */
 .dash-content{flex:1;overflow-y:auto;background:#F7F6F3;}
@@ -793,32 +797,38 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .pt-expand-btn:hover{color:#E8442A;}
 @media(max-width:860px){.pt-expand-inner{grid-template-columns:minmax(0,1fr);}}
 
-/* ── SLIM TOP BAR (logged-in dashboard) ── */
-.dash-topbar{height:44px;background:#1A1F3C;display:flex;align-items:center;justify-content:flex-end;padding:0 20px;gap:10px;position:sticky;top:0;z-index:210;box-shadow:0 1px 4px rgba(0,0,0,.25);}
-.dash-topbar-left{flex:1;display:flex;align-items:center;gap:10px;}
-.dash-topbar-brand{font-size:.85rem;font-weight:800;color:#fff;letter-spacing:-.01em;}
-.dash-topbar-brand span{color:#E8442A;}
-.dash-topbar-right{display:flex;align-items:center;gap:8px;}
-.dash-topbar-btn{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:.72rem;font-weight:700;cursor:pointer;transition:background .15s;border:none;font-family:inherit;white-space:nowrap;}
-.dash-topbar-wa{background:#25d366;color:#fff;}
-.dash-topbar-wa:hover{background:#1dbc5a;}
-.dash-topbar-email{background:rgba(255,255,255,.12);color:rgba(255,255,255,.9);border:1px solid rgba(255,255,255,.2);}
-.dash-topbar-email:hover{background:rgba(255,255,255,.22);color:#fff;}
-.dash-topbar-feedback{background:none;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.65);padding:5px 10px;border-radius:20px;font-size:.72rem;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit;}
-.dash-topbar-feedback:hover{border-color:rgba(255,255,255,.5);color:#fff;}
-.dash-topbar-avatar{width:28px;height:28px;border-radius:50%;background:#E8442A;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.72rem;cursor:pointer;flex-shrink:0;position:relative;}
+/* ── TOPBAR (white, inside dash-main) ── */
+.dash-topbar{height:60px;background:#fff;border-bottom:1px solid #E5E7EB;display:flex;align-items:center;padding:0 24px 0 20px;gap:12px;position:sticky;top:0;z-index:90;flex-shrink:0;}
+.dash-topbar-title{font-size:1rem;font-weight:700;color:#111;}
+.dash-topbar-date{font-size:.78rem;color:#6B7280;white-space:nowrap;}
+.dash-topbar-icon-btn{width:34px;height:34px;border-radius:8px;background:#F9FAFB;border:1px solid #E5E7EB;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6B7280;transition:border-color .15s,color .15s;flex-shrink:0;}
+.dash-topbar-icon-btn:hover{border-color:#E8442A;color:#E8442A;}
+.dash-topbar-avatar{width:34px;height:34px;border-radius:50%;background:#E8442A;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;cursor:pointer;flex-shrink:0;position:relative;}
 .dash-topbar-menu{position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);width:180px;z-index:220;overflow:hidden;display:none;}
 .dash-topbar-menu.open{display:block;}
 .dash-topbar-menu-item{padding:10px 14px;font-size:.78rem;color:#374151;cursor:pointer;transition:background .12s;display:flex;align-items:center;gap:8px;}
 .dash-topbar-menu-item:hover{background:#F9FAFB;}
 .dash-topbar-menu-item.danger{color:#dc2626;}
 .dash-topbar-divider{height:1px;background:#F3F4F6;}
+.dash-topbar-hamburger{display:none;align-items:center;justify-content:center;flex-direction:column;gap:5px;width:34px;height:34px;cursor:pointer;background:none;border:none;padding:0;flex-shrink:0;}
+.dash-topbar-hamburger span{display:block;width:20px;height:2px;background:#374151;border-radius:2px;transition:all .2s;}
 
-/* hide main navbar when on profile/dashboard page */
+/* ── DASHBOARD LAYOUT ── */
+.dashboard-layout{display:flex;min-height:100vh;}
+.dash-main{flex:1;display:flex;flex-direction:column;margin-left:240px;min-height:100vh;overflow:hidden;}
+.dash-content{flex:1;overflow-y:auto;background:#F4F6F9;}
+
+/* hide main navbar when in dashboard */
 body.in-dashboard .navbar{display:none;}
-body.in-dashboard .dashboard-layout{min-height:calc(100vh - 44px);}
-body.in-dashboard .dash-sidebar{height:calc(100vh - 44px);top:44px;}
-body.in-dashboard .dash-content{min-height:calc(100vh - 44px);}
+
+/* ── MOBILE ── */
+@media(max-width:768px){
+  .dash-sidebar{transform:translateX(-100%);}
+  .dash-sidebar.open{transform:translateX(0);}
+  .dash-main{margin-left:0;}
+  .dash-topbar-hamburger{display:flex;}
+  .dash-topbar-date{display:none;}
+}
 
 /* ── HOME DASHBOARD REDESIGN ── */
 .home-dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
@@ -2762,119 +2772,104 @@ html,body{overflow-x:hidden;max-width:100%;}
      PROFILE PAGE
 ════════════════════════════════════ -->
 <div class="page" id="page-profile">
-  <!-- slim top bar (replaces full navbar when logged in) -->
-  <div class="dash-topbar">
-    <div class="dash-topbar-left">
-      <span class="dash-topbar-brand">Laris<span>ID</span></span>
-    </div>
-    <div class="dash-topbar-right">
-      <button class="dash-topbar-btn dash-topbar-wa" onclick="window.open('https://chat.whatsapp.com/larisid','_blank')">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
-        Update WA
-      </button>
-      <button class="dash-topbar-btn dash-topbar-email" onclick="document.getElementById('dash-email-modal').style.display='flex'">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-        Update Email
-      </button>
-      <button class="dash-topbar-feedback" onclick="openFeedback()">Feedback</button>
-      <div class="dash-topbar-avatar" id="dash-topbar-av" onclick="event.stopPropagation();document.getElementById('dash-topbar-menu').classList.toggle('open')">
-        ?
-        <div class="dash-topbar-menu" id="dash-topbar-menu">
-          <div class="dash-topbar-menu-item" id="dash-topbar-uname" style="font-weight:700;color:#111;pointer-events:none;font-size:.8rem;"></div>
-          <div class="dash-topbar-divider"></div>
-          <div class="dash-topbar-menu-item" onclick="openFeedback()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            Beri Feedback
-          </div>
-          <div class="dash-topbar-menu-item danger" onclick="signOut()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-            Keluar
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- email update modal -->
-  <div id="dash-email-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
-    <div style="background:#fff;border-radius:14px;padding:28px 28px 24px;max-width:380px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.2);">
-      <div style="font-size:1rem;font-weight:800;color:#111;margin-bottom:6px;">Update Produk via Email</div>
-      <div style="font-size:.78rem;color:#6B7280;margin-bottom:16px;line-height:1.5;">Terima ringkasan produk berpotensi tinggi setiap minggu langsung ke inbox kamu.</div>
-      <form onsubmit="handleDashEmailSignup(event)">
-        <input id="dash-email-input" type="email" placeholder="email@kamu.com" required style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:.82rem;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:10px;">
-        <button type="submit" style="width:100%;background:#E8442A;color:#fff;border:none;border-radius:8px;padding:10px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;">Daftar Sekarang</button>
-      </form>
-      <div id="dash-email-success" style="display:none;text-align:center;padding:10px 0;font-size:.8rem;color:#1A7A46;font-weight:700;">Berhasil! Cek inbox kamu.</div>
-    </div>
-  </div>
-
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
   <div class="dashboard-layout">
 
     <!-- ── SIDEBAR ── -->
-    <aside class="dash-sidebar">
+    <aside class="dash-sidebar" id="app-sidebar">
       <div class="dash-sidebar-logo">Laris<span>ID</span></div>
+      <nav class="dash-sidebar-nav">
+
+        <div class="dash-nav-item active" id="dash-nav-dashboard" onclick="switchDashView('dashboard')">
+          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
+          <span>Dashboard</span>
+        </div>
+
+        <div class="dash-nav-item" id="dash-nav-discover" onclick="switchDashView('discover')">
+          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+          <span>Discover</span>
+        </div>
+
+        <div class="dash-nav-item" id="dash-nav-products" onclick="toggleDashSub('products')">
+          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span>
+          <span>Products</span>
+          <span class="dash-nav-arrow">&#9654;</span>
+        </div>
+        <div class="dash-nav-sub" id="dash-sub-products">
+          <div class="dash-nav-sub-item" id="dash-sub-tracker" onclick="switchDashView('tracker')">Tracker</div>
+          <div class="dash-nav-sub-item" id="dash-sub-deepdive" onclick="switchDashView('deepdive')">Deep Dive</div>
+        </div>
+
+        <div class="dash-nav-item" id="dash-nav-ai" onclick="switchDashView('ai')">
+          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></span>
+          <span>AI Strategist</span>
+        </div>
+
+        <div class="dash-nav-item" id="dash-nav-alerts" onclick="switchDashView('alerts')">
+          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
+          <span>Alerts</span>
+        </div>
+
+      </nav>
+
       <div class="dash-user-info">
         <div class="dash-user-avatar" id="dash-avatar">?</div>
         <div class="dash-user-meta">
           <div class="dash-user-name" id="dash-name">—</div>
           <div class="dash-user-email" id="dash-email">—</div>
         </div>
-        <button class="dash-logout-btn" onclick="signOut()" title="Keluar">↩</button>
+        <button class="dash-logout-btn" onclick="signOut()" title="Keluar">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
       </div>
-      <nav class="dash-sidebar-nav">
-
-        <!-- Home Dashboard -->
-        <div class="dash-nav-item" id="dash-nav-home" onclick="switchDashView('home')">
-          <span class="dash-nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span><span>Home Dashboard</span>
-        </div>
-
-        <div class="dash-nav-divider"></div>
-
-        <!-- Product Research -->
-        <div class="dash-nav-item" id="dash-nav-research" onclick="toggleDashSub('research')">
-          <span class="dash-nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span><span>Product Research</span>
-          <span class="dash-nav-arrow">▶</span>
-        </div>
-        <div class="dash-nav-sub open" id="dash-sub-research">
-          <div class="dash-nav-sub-item active" id="dash-sub-product-database" onclick="switchDashView('product-database')">Product Database</div>
-          <div class="dash-nav-sub-item" id="dash-sub-product-tracker" onclick="switchDashView('product-tracker')">Product Tracker</div>
-          <div class="dash-nav-sub-item" id="dash-sub-opportunity-finder" onclick="switchDashView('opportunity-finder')">Opportunity Finder</div>
-          <div class="dash-nav-sub-item" id="dash-sub-category-trends" onclick="switchDashView('category-trends')">Category Trends</div>
-        </div>
-
-        <div class="dash-nav-divider"></div>
-
-        <!-- Other nav items -->
-        <div class="dash-nav-item" id="dash-nav-suppliers" onclick="switchDashView('suppliers')">
-          <span class="dash-nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span><span>Suppliers</span>
-        </div>
-        <div class="dash-nav-item" id="dash-nav-keywords" onclick="switchDashView('keywords')">
-          <span class="dash-nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span><span>Keywords</span>
-        </div>
-        <div class="dash-nav-item" id="dash-nav-estimator" onclick="switchDashView('estimator')">
-          <span class="dash-nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg></span><span>Sales Estimator</span>
-        </div>
-        <div class="dash-nav-item" id="dash-nav-marketing" onclick="switchDashView('marketing')">
-          <span class="dash-nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span><span>Marketing</span>
-        </div>
-
-        <div class="dash-nav-divider"></div>
-
-        <div class="dash-nav-item" id="dash-nav-saved" onclick="switchDashView('saved')">
-          <span class="dash-nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></span><span>Produk Tersimpan</span>
-        </div>
-
-        <div class="dash-nav-divider"></div>
-
-        <div class="dash-nav-item" id="dash-nav-education" onclick="switchDashView('education')">
-          <span class="dash-nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></span><span>Edukasi</span>
-        </div>
-
-      </nav>
     </aside>
 
-    <!-- ── MAIN CONTENT ── -->
-    <main class="dash-content">
+    <!-- ── MAIN AREA ── -->
+    <div class="dash-main">
+
+      <!-- Topbar -->
+      <header class="dash-topbar">
+        <button class="dash-topbar-hamburger" id="sidebar-toggle" onclick="toggleSidebar()" aria-label="Menu">
+          <span></span><span></span><span></span>
+        </button>
+        <span class="dash-topbar-title" id="dash-topbar-title">Dashboard</span>
+        <div style="flex:1"></div>
+        <span class="dash-topbar-date" id="dash-topbar-date"></span>
+        <button class="dash-topbar-icon-btn" title="Notifikasi">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        </button>
+        <div class="dash-topbar-avatar" id="dash-topbar-av" onclick="event.stopPropagation();document.getElementById('dash-topbar-menu').classList.toggle('open')">
+          ?
+          <div class="dash-topbar-menu" id="dash-topbar-menu">
+            <div class="dash-topbar-menu-item" id="dash-topbar-uname" style="font-weight:700;color:#111;pointer-events:none;font-size:.8rem;"></div>
+            <div class="dash-topbar-divider"></div>
+            <div class="dash-topbar-menu-item" onclick="openFeedback()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Beri Feedback
+            </div>
+            <div class="dash-topbar-menu-item danger" onclick="signOut()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Keluar
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- email update modal -->
+      <div id="dash-email-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
+        <div style="background:#fff;border-radius:14px;padding:28px 28px 24px;max-width:380px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+          <div style="font-size:1rem;font-weight:800;color:#111;margin-bottom:6px;">Update Produk via Email</div>
+          <div style="font-size:.78rem;color:#6B7280;margin-bottom:16px;line-height:1.5;">Terima ringkasan produk berpotensi tinggi setiap minggu langsung ke inbox kamu.</div>
+          <form onsubmit="handleDashEmailSignup(event)">
+            <input id="dash-email-input" type="email" placeholder="email@kamu.com" required style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:.82rem;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:10px;">
+            <button type="submit" style="width:100%;background:#E8442A;color:#fff;border:none;border-radius:8px;padding:10px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;">Daftar Sekarang</button>
+          </form>
+          <div id="dash-email-success" style="display:none;text-align:center;padding:10px 0;font-size:.8rem;color:#1A7A46;font-weight:700;">Berhasil! Cek inbox kamu.</div>
+        </div>
+      </div>
+
+      <!-- ── MAIN CONTENT ── -->
+      <main class="dash-content" id="dash-content">
 
       <!-- HOME DASHBOARD -->
       <div id="dash-view-home" style="display:none;">
@@ -3877,9 +3872,53 @@ html,body{overflow-x:hidden;max-width:100%;}
         </div>
       </div>
 
-    </main>
-  </div>
-</div>
+        <!-- ── NEW VIEWS (built incrementally) ── -->
+        <div id="dash-view-dashboard" style="display:none;">
+          <div style="padding:32px 28px;max-width:1100px;">
+            <div style="font-size:1.3rem;font-weight:800;color:#1A1F3C;margin-bottom:24px;">Beranda</div>
+            <div style="background:#fff;border-radius:12px;padding:48px;text-align:center;color:#9CA3AF;border:1px solid #E5E7EB;font-size:.9rem;">Dashboard — segera hadir</div>
+          </div>
+        </div>
+
+        <div id="dash-view-discover" style="display:none;">
+          <div style="padding:32px 28px;max-width:1100px;">
+            <div style="font-size:1.3rem;font-weight:800;color:#1A1F3C;margin-bottom:24px;">Discover</div>
+            <div style="background:#fff;border-radius:12px;padding:48px;text-align:center;color:#9CA3AF;border:1px solid #E5E7EB;font-size:.9rem;">Discover — akan dibangun berikutnya</div>
+          </div>
+        </div>
+
+        <div id="dash-view-tracker" style="display:none;">
+          <div style="padding:32px 28px;max-width:1100px;">
+            <div style="font-size:1.3rem;font-weight:800;color:#1A1F3C;margin-bottom:24px;">Tracker</div>
+            <div style="background:#fff;border-radius:12px;padding:48px;text-align:center;color:#9CA3AF;border:1px solid #E5E7EB;font-size:.9rem;">Tracker — segera hadir</div>
+          </div>
+        </div>
+
+        <div id="dash-view-deepdive" style="display:none;">
+          <div style="padding:32px 28px;max-width:1100px;">
+            <div style="font-size:1.3rem;font-weight:800;color:#1A1F3C;margin-bottom:24px;">Deep Dive</div>
+            <div style="background:#fff;border-radius:12px;padding:48px;text-align:center;color:#9CA3AF;border:1px solid #E5E7EB;font-size:.9rem;">Deep Dive — segera hadir</div>
+          </div>
+        </div>
+
+        <div id="dash-view-ai" style="display:none;">
+          <div style="padding:32px 28px;max-width:1100px;">
+            <div style="font-size:1.3rem;font-weight:800;color:#1A1F3C;margin-bottom:24px;">AI Strategist</div>
+            <div style="background:#fff;border-radius:12px;padding:48px;text-align:center;color:#9CA3AF;border:1px solid #E5E7EB;font-size:.9rem;">AI Strategist — segera hadir</div>
+          </div>
+        </div>
+
+        <div id="dash-view-alerts" style="display:none;">
+          <div style="padding:32px 28px;max-width:1100px;">
+            <div style="font-size:1.3rem;font-weight:800;color:#1A1F3C;margin-bottom:24px;">Alerts</div>
+            <div style="background:#fff;border-radius:12px;padding:48px;text-align:center;color:#9CA3AF;border:1px solid #E5E7EB;font-size:.9rem;">Alerts — segera hadir</div>
+          </div>
+        </div>
+
+      </main>
+    </div><!-- end dash-main -->
+  </div><!-- end dashboard-layout -->
+</div><!-- end page-profile -->
 
 <!-- ════════════════════════════════════
      SITE FOOTER
@@ -5859,6 +5898,35 @@ async function removeSavedProduct(pid) {
   renderProfileSaved();
 }
 
+// ── SIDEBAR MOBILE TOGGLE ──────────────────────────────────
+function toggleSidebar() {
+  const sidebar = document.getElementById('app-sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  if (!sidebar) return;
+  const open = sidebar.classList.toggle('open');
+  if (overlay) overlay.classList.toggle('open', open);
+}
+function closeSidebar() {
+  const sidebar = document.getElementById('app-sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  if (sidebar) sidebar.classList.remove('open');
+  if (overlay) overlay.classList.remove('open');
+}
+
+// ── TOPBAR DATE ────────────────────────────────────────────
+function initTopbarDate() {
+  const el = document.getElementById('dash-topbar-date');
+  if (!el) return;
+  const d = new Date();
+  el.textContent = d.toLocaleDateString('id-ID', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+}
+
+// Close topbar dropdown when clicking outside
+document.addEventListener('click', () => {
+  const m = document.getElementById('dash-topbar-menu');
+  if (m) m.classList.remove('open');
+});
+
 async function openProfile() {
   if (!currentUser) { openAuthModal('login'); return; }
   clearCompare();
@@ -5867,7 +5935,7 @@ async function openProfile() {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-profile').classList.add('active');
   window.scrollTo(0, 0);
-  switchDashView('home');
+  switchDashView('dashboard');
   // load data in background after page is visible
   try { await loadAllPlans(); } catch(_) {}
   try { renderProfileSaved(); } catch(_) {}
@@ -5888,8 +5956,20 @@ function switchDashTab(tab) {
 //  JUNGLE SCOUT-STYLE DASHBOARD — view switching, Product DB
 // ════════════════════════════════════════════════════════════
 
-const PDB_VIEWS = ['home','product-database','product-tracker','opportunity-finder','category-trends','suppliers','keywords','estimator','marketing','saved','education'];
-const PDB_SUB_MAP = {'product-database':'research','product-tracker':'research','opportunity-finder':'research','category-trends':'research'};
+const PDB_VIEWS = ['home','product-database','product-tracker','opportunity-finder','category-trends','suppliers','keywords','estimator','marketing','saved','education','dashboard','discover','tracker','deepdive','ai','alerts'];
+const PDB_SUB_MAP = {'product-database':'research','product-tracker':'research','opportunity-finder':'research','category-trends':'research','tracker':'products','deepdive':'products'};
+
+// View titles for topbar
+const VIEW_TITLES = {
+  'dashboard':'Dashboard','discover':'Discover','tracker':'Tracker',
+  'deepdive':'Deep Dive','ai':'AI Strategist','alerts':'Alerts',
+  'home':'Home Dashboard','product-database':'Product Database',
+  'product-tracker':'Product Tracker','opportunity-finder':'Opportunity Finder',
+  'saved':'Produk Tersimpan','education':'Edukasi',
+};
+
+// New nav items for the redesigned sidebar
+const NEW_NAV_IDS = ['dashboard','discover','products','ai','alerts'];
 const PDB_CATS = ['Bayi & Anak','Motor & Mobil','Rumah','Hewan Peliharaan','Dapur','Kamar Mandi','Elektronik','Fashion','Kecantikan','Kesehatan','Olahraga','Outdoor & Camping','Sepeda','Tanaman','Taman','Keamanan','Hobi & Kerajinan','Alat Tulis','HP & Gadget'];
 
 let _pdbSortField  = 'total_sold';
@@ -5903,7 +5983,27 @@ function switchDashView(view) {
     if (el) el.style.display = (v === view) ? '' : 'none';
   });
 
-  // Top-level nav: clear all active, set the matching one
+  // Update topbar title
+  const titleEl = document.getElementById('dash-topbar-title');
+  if (titleEl) titleEl.textContent = VIEW_TITLES[view] || view;
+
+  // New sidebar nav: highlight correct item
+  ['dashboard','discover','products','ai','alerts'].forEach(k => {
+    const el = document.getElementById(`dash-nav-${k}`);
+    if (!el) return;
+    const isProducts = k === 'products' && PDB_SUB_MAP[view] === 'products';
+    el.classList.toggle('active', k === view || isProducts);
+    if (k === 'products') el.classList.toggle('open', isProducts);
+  });
+  // Products submenu open/close
+  const prodSub = document.getElementById('dash-sub-products');
+  if (prodSub) prodSub.classList.toggle('open', PDB_SUB_MAP[view] === 'products');
+  ['tracker','deepdive'].forEach(k => {
+    const el = document.getElementById(`dash-sub-${k}`);
+    if (el) el.classList.toggle('active', k === view);
+  });
+
+  // Legacy top-level nav (keep working for old views)
   const topNavKeys = ['home','research','suppliers','keywords','estimator','marketing','saved','education'];
   topNavKeys.forEach(k => {
     const el = document.getElementById(`dash-nav-${k}`);
@@ -5911,7 +6011,6 @@ function switchDashView(view) {
     const isResearch = k === 'research' && PDB_SUB_MAP[view] === 'research';
     const isDirect   = k === view;
     el.classList.toggle('active', isDirect || isResearch);
-    // Keep submenu open indicator separate from active
     if (k === 'research') el.classList.toggle('open', isResearch || el.classList.contains('open'));
   });
 
@@ -10276,6 +10375,7 @@ function endTour() {
 loadData();
 initSupabase();
 initFreshnessBadge();
+initTopbarDate();
 
 function filterBlog(cat) {
   document.querySelectorAll('.blog-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === cat));
