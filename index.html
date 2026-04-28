@@ -923,6 +923,61 @@ body.in-dashboard .navbar{display:none;}
 .dsc-page-btn.active{background:#E8442A;border-color:#E8442A;color:#fff;}
 .dsc-page-btn:disabled{opacity:.4;cursor:default;}
 
+/* ── DASHBOARD PAGE ── */
+.hbd-wrap{padding:24px 28px;max-width:1180px;}
+.hbd-header{margin-bottom:20px;}
+.hbd-header h2{font-size:1.2rem;font-weight:800;color:#1A1F3C;margin:0 0 2px;}
+.hbd-header p{font-size:.76rem;color:#9CA3AF;margin:0;}
+.hbd-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+@media(max-width:860px){.hbd-stats-row{grid-template-columns:repeat(2,1fr);}}
+.hbd-stat{background:#fff;border-radius:12px;border:1px solid #E5E7EB;padding:16px 18px;}
+.hbd-stat-label{font-size:.7rem;font-weight:600;color:#9CA3AF;margin-bottom:4px;}
+.hbd-stat-value{font-size:1.25rem;font-weight:900;color:#1A1F3C;}
+.hbd-stat-sub{font-size:.7rem;color:#9CA3AF;margin-top:3px;}
+.hbd-two-col{display:grid;grid-template-columns:1.55fr 1fr;gap:16px;margin-bottom:18px;}
+@media(max-width:900px){.hbd-two-col{grid-template-columns:1fr;}}
+.hbd-card{background:#fff;border-radius:12px;border:1px solid #E5E7EB;padding:18px 20px;}
+.hbd-card-title{font-size:.82rem;font-weight:700;color:#1A1F3C;margin-bottom:4px;}
+.hbd-card-sub{font-size:.72rem;color:#9CA3AF;margin-bottom:14px;}
+.hbd-chart-tabs{display:flex;gap:6px;margin-bottom:12px;}
+.hbd-tab{font-size:.72rem;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid #E5E7EB;background:#fff;color:#6B7280;cursor:pointer;font-family:inherit;transition:all .15s;}
+.hbd-tab.active{background:#1A1F3C;color:#fff;border-color:#1A1F3C;}
+.hbd-ai-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
+.hbd-ai-item{display:flex;align-items:flex-start;gap:9px;font-size:.78rem;color:#374151;line-height:1.45;}
+.hbd-ai-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+.hbd-ai-dot.red{background:#E8442A;}
+.hbd-ai-dot.green{background:#10B981;}
+.hbd-ai-dot.blue{background:#4F46E5;}
+.hbd-ai-dot.yellow{background:#F59E0B;}
+.hbd-see-more{font-size:.75rem;font-weight:600;color:#E8442A;cursor:pointer;text-decoration:none;display:inline-block;margin-top:2px;}
+.hbd-three-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;}
+@media(max-width:860px){.hbd-three-col{grid-template-columns:1fr;}}
+.hbd-activity-list{display:flex;flex-direction:column;gap:1px;}
+.hbd-activity-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #F9FAFB;font-size:.78rem;}
+.hbd-activity-item:last-child{border-bottom:none;}
+.hbd-act-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;}
+.hbd-act-icon.up{background:#EAF7F0;}
+.hbd-act-icon.down{background:#FFF0ED;}
+.hbd-act-icon.info{background:#EEF2FF;}
+.hbd-act-body{flex:1;min-width:0;}
+.hbd-act-title{font-weight:600;color:#1A1F3C;margin-bottom:1px;}
+.hbd-act-desc{color:#6B7280;font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hbd-act-time{font-size:.68rem;color:#9CA3AF;flex-shrink:0;padding-top:2px;}
+.hbd-opp-list{display:flex;flex-direction:column;gap:1px;}
+.hbd-opp-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #F9FAFB;font-size:.78rem;cursor:pointer;}
+.hbd-opp-item:last-child{border-bottom:none;}
+.hbd-opp-item:hover .hbd-opp-name{color:#E8442A;}
+.hbd-opp-emoji{font-size:1.3rem;width:34px;text-align:center;flex-shrink:0;}
+.hbd-opp-body{flex:1;min-width:0;}
+.hbd-opp-name{font-weight:600;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .15s;}
+.hbd-opp-cat{font-size:.7rem;color:#9CA3AF;}
+.hbd-opp-badge{font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:12px;white-space:nowrap;flex-shrink:0;}
+.hbd-opp-badge.hot{background:#FFF0ED;color:#E8442A;}
+.hbd-opp-badge.ok{background:#EAF7F0;color:#10B981;}
+.hbd-tip{background:linear-gradient(135deg,#1A1F3C,#2D3561);border-radius:12px;padding:20px 22px;color:#fff;}
+.hbd-tip h4{font-size:.82rem;font-weight:700;color:#FCD34D;margin-bottom:6px;}
+.hbd-tip p{font-size:.8rem;line-height:1.55;color:rgba(255,255,255,.85);margin:0;}
+
 /* ── TRACKER PAGE ── */
 .trk-wrap{padding:24px 28px;max-width:1180px;}
 .trk-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
@@ -4072,9 +4127,74 @@ html,body{overflow-x:hidden;max-width:100%;}
 
         <!-- ── NEW VIEWS (built incrementally) ── -->
         <div id="dash-view-dashboard" style="display:none;">
-          <div style="padding:32px 28px;max-width:1100px;">
-            <div style="font-size:1.3rem;font-weight:800;color:#1A1F3C;margin-bottom:24px;">Beranda</div>
-            <div style="background:#fff;border-radius:12px;padding:48px;text-align:center;color:#9CA3AF;border:1px solid #E5E7EB;font-size:.9rem;">Dashboard — segera hadir</div>
+          <div class="hbd-wrap">
+            <div class="hbd-header">
+              <h2>Beranda</h2>
+              <p id="hbd-subtitle">Selamat datang kembali — berikut ringkasan produk Anda hari ini.</p>
+            </div>
+
+            <!-- stats -->
+            <div class="hbd-stats-row">
+              <div class="hbd-stat">
+                <div class="hbd-stat-label">Produk Terpantau</div>
+                <div class="hbd-stat-value" id="hbd-s1">—</div>
+                <div class="hbd-stat-sub" id="hbd-s1-sub">—</div>
+              </div>
+              <div class="hbd-stat">
+                <div class="hbd-stat-label">Rata-rata Nilai Produk</div>
+                <div class="hbd-stat-value" id="hbd-s2">—</div>
+                <div class="hbd-stat-sub" id="hbd-s2-sub">—</div>
+              </div>
+              <div class="hbd-stat">
+                <div class="hbd-stat-label">Total Omzet Potensial</div>
+                <div class="hbd-stat-value" id="hbd-s3">—</div>
+                <div class="hbd-stat-sub" id="hbd-s3-sub">—</div>
+              </div>
+              <div class="hbd-stat">
+                <div class="hbd-stat-label">Peluang Mingguan</div>
+                <div class="hbd-stat-value" id="hbd-s4">—</div>
+                <div class="hbd-stat-sub" id="hbd-s4-sub">—</div>
+              </div>
+            </div>
+
+            <!-- chart + insight -->
+            <div class="hbd-two-col">
+              <div class="hbd-card">
+                <div class="hbd-card-title">Performa Terbaik</div>
+                <div class="hbd-card-sub">Tren produk pilihan 12 minggu terakhir</div>
+                <div class="hbd-chart-tabs">
+                  <button class="hbd-tab active" onclick="hbdSetTab(this,'growth')">Pertumbuhan</button>
+                  <button class="hbd-tab" onclick="hbdSetTab(this,'price')">Harga</button>
+                  <button class="hbd-tab" onclick="hbdSetTab(this,'competition')">Kompetisi</button>
+                </div>
+                <canvas id="hbd-chart-perf" height="150"></canvas>
+                <div class="trk-legend" id="hbd-legend" style="margin-top:10px;"></div>
+              </div>
+              <div class="hbd-card">
+                <div class="hbd-card-title">Insight AI</div>
+                <div class="hbd-card-sub">Analisis otomatis minggu ini</div>
+                <div class="hbd-ai-list" id="hbd-ai-list"></div>
+                <a class="hbd-see-more" onclick="switchDashView('discover')">Lihat lengkap →</a>
+              </div>
+            </div>
+
+            <!-- activity + opportunities -->
+            <div class="hbd-three-col">
+              <div class="hbd-card">
+                <div class="hbd-card-title" style="margin-bottom:12px;">Aksi Terkini</div>
+                <div class="hbd-activity-list" id="hbd-activity-list"></div>
+              </div>
+              <div class="hbd-card">
+                <div class="hbd-card-title" style="margin-bottom:12px;">Peluang Mingguan Hari Ini</div>
+                <div class="hbd-opp-list" id="hbd-opp-list"></div>
+              </div>
+            </div>
+
+            <!-- tip -->
+            <div class="hbd-tip">
+              <h4>Tip Mingguan</h4>
+              <p id="hbd-tip-text">—</p>
+            </div>
           </div>
         </div>
 
@@ -4675,6 +4795,7 @@ async function loadData() {
   populateCategoryFilter();
   populateFinderCats();
   dscInit();
+  hbdInit();
   // Start guided tour for first-time visitors (slight delay so cards are painted)
   setTimeout(startTour, 600);
 
@@ -7003,12 +7124,152 @@ function trkInit() {
 
 function trkRefresh() { trkInit(); }
 
+// ── DASHBOARD ──────────────────────────────────────────────────
+let _hbdChartPerf = null, _hbdTab = 'growth';
+
+function _hbdRng(seed) {
+  let s = seed;
+  return function() { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0xffffffff; };
+}
+
+function hbdSetTab(btn, tab) {
+  document.querySelectorAll('.hbd-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  _hbdTab = tab;
+  _hbdBuildChart();
+}
+
+function _hbdBuildChart() {
+  if (!allProducts || !allProducts.length) return;
+  const prods = allProducts.slice(0, 5);
+  const weeks = ['M1','M2','M3','M4','M5','M6','M7','M8','M9','M10','M11','M12'];
+  const datasets = prods.map((p, ci) => {
+    const rng = _hbdRng(p.id * (ci+1) * 777);
+    let data;
+    if (_hbdTab === 'growth') {
+      const base = 40 + rng()*30;
+      data = weeks.map(() => Math.max(5, Math.round(base + (rng()-0.3)*25)));
+    } else if (_hbdTab === 'price') {
+      const base = p.medianPrice || 85000;
+      data = weeks.map(() => Math.round(base * (0.9 + rng()*0.2)));
+    } else {
+      data = weeks.map(() => Math.round(30 + rng()*60));
+    }
+    return {
+      label: p.name.split(' ').slice(0,2).join(' '),
+      data,
+      borderColor: CHART_COLORS[ci],
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      tension: 0.4,
+      pointRadius: 2,
+      pointBackgroundColor: CHART_COLORS[ci],
+    };
+  });
+  if (_hbdChartPerf) _hbdChartPerf.destroy();
+  _hbdChartPerf = new Chart(document.getElementById('hbd-chart-perf'), {
+    type: 'line',
+    data: { labels: weeks, datasets },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { font: { size: 9 } } },
+        y: { ticks: { font: { size: 9 }, callback: v => _hbdTab==='price' ? 'Rp'+(v/1000).toFixed(0)+'rb' : v } }
+      },
+      animation: { duration: 300 }
+    }
+  });
+  document.getElementById('hbd-legend').innerHTML = prods.map((p,ci) =>
+    `<div class="trk-legend-item"><div class="trk-legend-dot" style="background:${CHART_COLORS[ci]}"></div>${p.name.split(' ').slice(0,2).join(' ')}</div>`
+  ).join('');
+}
+
+function hbdInit() {
+  if (!allProducts || !allProducts.length) return;
+  const prods = allProducts.slice(0, 9);
+  const rng = _hbdRng(12345);
+
+  // stats
+  const omzet = prods.reduce((s,p) => s + ((p.medianPrice||85000)*(p.newUnits||80)), 0);
+  const avgScore = Math.round(prods.reduce((s,p) => s+p.score, 0) / prods.length);
+  const opp = prods.filter(p => p.score >= 65).length;
+  document.getElementById('hbd-s1').textContent = prods.length + ' produk';
+  document.getElementById('hbd-s1-sub').textContent = 'aktif dipantau';
+  document.getElementById('hbd-s2').textContent = avgScore;
+  document.getElementById('hbd-s2-sub').textContent = 'skor rata-rata';
+  document.getElementById('hbd-s3').textContent = 'Rp ' + (omzet/1000000).toFixed(1) + ' jt';
+  document.getElementById('hbd-s3-sub').textContent = 'estimasi bulan ini';
+  document.getElementById('hbd-s4').textContent = opp + ' produk';
+  document.getElementById('hbd-s4-sub').textContent = 'siap dioptimalkan';
+
+  // AI insights
+  const dotColors = ['red','green','blue','yellow'];
+  const insights = [
+    `<strong>${prods[0]?.name?.split(' ').slice(0,3).join(' ')}</strong> menunjukkan lonjakan tren ${Math.round(10+rng()*20)}% — pertimbangkan untuk menambah stok segera.`,
+    `${Math.round(prods.length*0.6)} produk memiliki margin potensial di atas 30% — segmen ini layak diprioritaskan.`,
+    `Kompetisi di kategori <strong>${prods[0]?.category||'ini'}</strong> turun minggu ini — waktu yang tepat untuk meningkatkan iklan.`,
+    `Harga rata-rata pasar naik <strong>${(1+rng()*4).toFixed(1)}%</strong> — Anda bisa naikkan harga tanpa kehilangan pembeli.`,
+  ];
+  document.getElementById('hbd-ai-list').innerHTML = insights.map((t,i) =>
+    `<div class="hbd-ai-item"><div class="hbd-ai-dot ${dotColors[i]}"></div><div>${t}</div></div>`
+  ).join('');
+
+  // recent activity
+  const actTypes = [
+    { icon:'📈', cls:'up',   title:'Harga naik',       desc: p => `${p.name.split(' ').slice(0,3).join(' ')} naik ${(2+rng()*8).toFixed(1)}%`,         time: minsAgo(rng) },
+    { icon:'📉', cls:'down', title:'Harga turun',      desc: p => `${p.name.split(' ').slice(0,3).join(' ')} turun ${(1+rng()*5).toFixed(1)}%`,        time: minsAgo(rng) },
+    { icon:'🔔', cls:'info', title:'Peluang baru',     desc: p => `${p.name.split(' ').slice(0,3).join(' ')} masuk daftar produk potensial`,            time: minsAgo(rng) },
+    { icon:'⚡', cls:'up',   title:'Tren meningkat',   desc: p => `Volume pencarian ${p.name.split(' ').slice(0,2).join(' ')} naik signifikan`,         time: minsAgo(rng) },
+    { icon:'💡', cls:'info', title:'Insight baru',     desc: p => `AI menemukan pola menarik pada ${p.name.split(' ').slice(0,2).join(' ')}`,           time: minsAgo(rng) },
+    { icon:'📦', cls:'up',   title:'Stok menipis',     desc: p => `Kompetitor ${p.name.split(' ').slice(0,2).join(' ')} kehabisan stok`,                time: minsAgo(rng) },
+  ];
+  function minsAgo(r) { const m = Math.round(5+r()*120); return m < 60 ? m+'m lalu' : Math.round(m/60)+'j lalu'; }
+  document.getElementById('hbd-activity-list').innerHTML = prods.slice(0,6).map((p,i) => {
+    const a = actTypes[i % actTypes.length];
+    return `<div class="hbd-activity-item">
+      <div class="hbd-act-icon ${a.cls}">${a.icon}</div>
+      <div class="hbd-act-body">
+        <div class="hbd-act-title">${a.title}</div>
+        <div class="hbd-act-desc">${a.desc(p)}</div>
+      </div>
+      <div class="hbd-act-time">${a.time}</div>
+    </div>`;
+  }).join('');
+
+  // opportunities
+  const oppProds = allProducts.filter(p => p.score >= 65).slice(0, 6);
+  document.getElementById('hbd-opp-list').innerHTML = oppProds.map(p => {
+    const r = _hbdRng(p.id * 3571);
+    const pct = Math.round(8 + r()*25);
+    const hot = p.score >= 75;
+    return `<div class="hbd-opp-item" onclick="dscOpenDeepDive(${p.id})">
+      <div class="hbd-opp-emoji">${p.emoji||'📦'}</div>
+      <div class="hbd-opp-body">
+        <div class="hbd-opp-name">${p.name.split(' ').slice(0,4).join(' ')}</div>
+        <div class="hbd-opp-cat">${p.category||'Umum'}</div>
+      </div>
+      <span class="hbd-opp-badge ${hot?'hot':'ok'}">${hot?'▲ '+pct+'%':'✓ Stabil'}</span>
+    </div>`;
+  }).join('');
+
+  // tip
+  const tips = [
+    `Produk dengan score di atas 75 memiliki peluang konversi 2x lebih tinggi. Fokuskan anggaran iklan ke produk-produk ini minggu ini.`,
+    `Riset kami menunjukkan bahwa menambah foto produk dari berbagai sudut bisa meningkatkan CTR hingga 40% di halaman pencarian Shopee.`,
+    `Coba gunakan keyword panjang (long-tail) di judul produk — persaingannya lebih rendah tapi niatnya lebih spesifik dan konversinya lebih tinggi.`,
+  ];
+  document.getElementById('hbd-tip-text').textContent = tips[Math.floor(rng()*tips.length)];
+
+  _hbdBuildChart();
+}
+
 // Call dscInit when view becomes active and data is loaded
 const _origSwitchDashView = switchDashView;
 function switchDashView(view) {
   _origSwitchDashView(view);
-  if (view === 'discover' && allProducts.length) dscInit();
-  if (view === 'tracker' && allProducts.length) trkInit();
+  if (view === 'discover'   && allProducts.length) dscInit();
+  if (view === 'tracker'    && allProducts.length) trkInit();
+  if (view === 'dashboard'  && allProducts.length) hbdInit();
 }
 
 function _initPdbCats() {
