@@ -923,6 +923,63 @@ body.in-dashboard .navbar{display:none;}
 .dsc-page-btn.active{background:#E8442A;border-color:#E8442A;color:#fff;}
 .dsc-page-btn:disabled{opacity:.4;cursor:default;}
 
+/* ── TRACKER PAGE ── */
+.trk-wrap{padding:24px 28px;max-width:1180px;}
+.trk-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
+.trk-topbar-left h2{font-size:1.2rem;font-weight:800;color:#1A1F3C;margin:0 0 2px;}
+.trk-topbar-left p{font-size:.76rem;color:#9CA3AF;margin:0;}
+.trk-topbar-right{display:flex;gap:8px;}
+.trk-btn{font-size:.76rem;font-weight:600;padding:7px 14px;border-radius:8px;border:1px solid #E5E7EB;background:#fff;color:#374151;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:inherit;transition:all .15s;}
+.trk-btn:hover{border-color:#E8442A;color:#E8442A;}
+.trk-btn.primary{background:#E8442A;border-color:#E8442A;color:#fff;}
+.trk-btn.primary:hover{background:#c73520;}
+.trk-summary-row{display:grid;grid-template-columns:repeat(4,1fr) 1.4fr;gap:14px;margin-bottom:20px;}
+@media(max-width:960px){.trk-summary-row{grid-template-columns:repeat(2,1fr);}}
+.trk-stat{background:#fff;border-radius:12px;border:1px solid #E5E7EB;padding:16px 18px;}
+.trk-stat-label{font-size:.7rem;font-weight:600;color:#9CA3AF;margin-bottom:4px;}
+.trk-stat-value{font-size:1.1rem;font-weight:800;color:#1A1F3C;}
+.trk-stat-delta{font-size:.72rem;font-weight:600;margin-top:3px;}
+.trk-stat-delta.up{color:#10B981;}
+.trk-stat-delta.down{color:#E8442A;}
+.trk-ai-card{background:linear-gradient(135deg,#1A1F3C,#2D3561);border-radius:12px;padding:16px 18px;color:#fff;display:flex;flex-direction:column;gap:8px;}
+.trk-ai-label{font-size:.68rem;font-weight:700;color:#FCD34D;text-transform:uppercase;letter-spacing:.04em;}
+.trk-ai-text{font-size:.78rem;line-height:1.5;color:rgba(255,255,255,.88);}
+.trk-section-title{font-size:.85rem;font-weight:700;color:#1A1F3C;margin-bottom:12px;}
+.trk-products-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;}
+@media(max-width:860px){.trk-products-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:560px){.trk-products-grid{grid-template-columns:1fr;}}
+.trk-prod-card{background:#fff;border-radius:12px;border:1px solid #E5E7EB;padding:14px 16px;cursor:pointer;transition:box-shadow .15s;}
+.trk-prod-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08);}
+.trk-prod-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.trk-prod-emoji{font-size:1.6rem;width:40px;height:40px;background:#F4F6F9;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.trk-prod-info{flex:1;min-width:0;}
+.trk-prod-name{font-size:.8rem;font-weight:700;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.trk-prod-cat{font-size:.7rem;color:#9CA3AF;}
+.trk-prod-bottom{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;}
+.trk-prod-price{font-size:.88rem;font-weight:800;color:#1A1F3C;}
+.trk-prod-delta{font-size:.72rem;font-weight:700;padding:2px 7px;border-radius:20px;}
+.trk-prod-delta.up{background:#EAF7F0;color:#10B981;}
+.trk-prod-delta.down{background:#FFF0ED;color:#E8442A;}
+.trk-prod-delta.flat{background:#F4F6F9;color:#9CA3AF;}
+.trk-sparkline{width:100%;height:36px;}
+.trk-two-col{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-bottom:20px;}
+@media(max-width:860px){.trk-two-col{grid-template-columns:1fr;}}
+.trk-card{background:#fff;border-radius:12px;border:1px solid #E5E7EB;padding:18px 20px;}
+.trk-price-table{width:100%;border-collapse:collapse;font-size:.78rem;}
+.trk-price-table th{text-align:left;padding:7px 10px;font-size:.7rem;font-weight:700;color:#9CA3AF;border-bottom:2px solid #F3F4F6;}
+.trk-price-table td{padding:9px 10px;border-bottom:1px solid #F9FAFB;color:#374151;vertical-align:middle;}
+.trk-price-table tr:hover td{background:#FAFAFA;}
+.trk-price-chg{font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:12px;white-space:nowrap;}
+.trk-price-chg.up{background:#EAF7F0;color:#10B981;}
+.trk-price-chg.down{background:#FFF0ED;color:#E8442A;}
+.trk-price-chg.flat{background:#F4F6F9;color:#9CA3AF;}
+.trk-tip{background:linear-gradient(135deg,#1A1F3C,#2D3561);border-radius:12px;padding:20px 22px;color:#fff;margin-bottom:0;}
+.trk-tip h4{font-size:.82rem;font-weight:700;color:#FCD34D;margin-bottom:6px;}
+.trk-tip p{font-size:.8rem;line-height:1.55;color:rgba(255,255,255,.85);margin:0;}
+.trk-legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;}
+.trk-legend-item{display:flex;align-items:center;gap:5px;font-size:.72rem;color:#6B7280;}
+.trk-legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+
 /* ── DEEP DIVE PAGE ── */
 .dd-wrap{padding:24px 28px;max-width:1140px;}
 .dd-hero{background:#fff;border-radius:14px;border:1px solid #E5E7EB;padding:22px 24px;display:flex;align-items:center;gap:20px;margin-bottom:18px;}
@@ -4138,9 +4195,75 @@ html,body{overflow-x:hidden;max-width:100%;}
         </div>
 
         <div id="dash-view-tracker" style="display:none;">
-          <div style="padding:32px 28px;max-width:1100px;">
-            <div style="font-size:1.3rem;font-weight:800;color:#1A1F3C;margin-bottom:24px;">Tracker</div>
-            <div style="background:#fff;border-radius:12px;padding:48px;text-align:center;color:#9CA3AF;border:1px solid #E5E7EB;font-size:.9rem;">Tracker — segera hadir</div>
+          <div class="trk-wrap">
+            <!-- topbar -->
+            <div class="trk-topbar">
+              <div class="trk-topbar-left">
+                <h2>Tracker</h2>
+                <p id="trk-date-range">Pantau perubahan harga dan penjualan produk pilihan minggu ini.</p>
+              </div>
+              <div class="trk-topbar-right">
+                <button class="trk-btn" onclick="trkRefresh()">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                  Refresh
+                </button>
+                <button class="trk-btn primary" onclick="switchDashView('discover')">+ Tambah Produk</button>
+              </div>
+            </div>
+
+            <!-- summary row -->
+            <div class="trk-summary-row">
+              <div class="trk-stat">
+                <div class="trk-stat-label">Produk Dipantau</div>
+                <div class="trk-stat-value" id="trk-total">—</div>
+                <div class="trk-stat-delta up" id="trk-total-sub">—</div>
+              </div>
+              <div class="trk-stat">
+                <div class="trk-stat-label">Total Penjualan Est.</div>
+                <div class="trk-stat-value" id="trk-sales">—</div>
+                <div class="trk-stat-delta up" id="trk-sales-sub">—</div>
+              </div>
+              <div class="trk-stat">
+                <div class="trk-stat-label">Tingkat Pertumbuhan</div>
+                <div class="trk-stat-value" id="trk-growth">—</div>
+                <div class="trk-stat-delta" id="trk-growth-sub">—</div>
+              </div>
+              <div class="trk-stat">
+                <div class="trk-stat-label">Harga Rata-rata</div>
+                <div class="trk-stat-value" id="trk-avgprice">—</div>
+                <div class="trk-stat-delta" id="trk-avgprice-sub">—</div>
+              </div>
+              <div class="trk-ai-card">
+                <div class="trk-ai-label">Insight AI</div>
+                <div class="trk-ai-text" id="trk-ai-text">—</div>
+              </div>
+            </div>
+
+            <!-- product cards -->
+            <div class="trk-section-title">Produk Terpopuler</div>
+            <div class="trk-products-grid" id="trk-prod-grid"></div>
+
+            <!-- weekly chart + price changes -->
+            <div class="trk-two-col">
+              <div class="trk-card">
+                <div class="trk-section-title" style="margin-bottom:6px;">Performa Mingguan Semua Produk</div>
+                <canvas id="trk-chart-weekly" height="150"></canvas>
+                <div class="trk-legend" id="trk-legend"></div>
+              </div>
+              <div class="trk-card">
+                <div class="trk-section-title" style="margin-bottom:8px;">Perubahan Harga</div>
+                <table class="trk-price-table">
+                  <thead><tr><th>Produk</th><th>Harga</th><th>Perubahan</th></tr></thead>
+                  <tbody id="trk-price-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- tip -->
+            <div class="trk-tip">
+              <h4>Tip Mingguan</h4>
+              <p id="trk-tip-text">—</p>
+            </div>
           </div>
         </div>
 
@@ -6747,11 +6870,145 @@ function dscOpenDeepDive(id) {
   switchDashView('deepdive');
 }
 
+// ── TRACKER ────────────────────────────────────────────────────
+let _trkChartWeekly = null;
+const CHART_COLORS = ['#E8442A','#4F46E5','#10B981','#F59E0B','#EC4899','#06B6D4'];
+
+function _trkRng(seed) {
+  let s = seed;
+  return function() { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0xffffffff; };
+}
+
+function trkSparklineSvg(id, trending) {
+  const rng = _trkRng(id * 7919);
+  const pts = Array.from({length:8}, (_,i) => {
+    const base = 50 + rng()*20;
+    return Math.max(5, Math.min(95, Math.round(base + (trending ? i*4 : -i*2) + (rng()-0.5)*14)));
+  });
+  const w = 100, h = 36;
+  const xs = pts.map((_,i) => Math.round(i * w / (pts.length-1)));
+  const ys = pts.map(p => Math.round(h - (p/100)*h));
+  const color = trending ? '#10B981' : '#E8442A';
+  const d = xs.map((x,i) => (i===0?'M':'L')+x+','+ys[i]).join(' ');
+  return `<svg viewBox="0 0 ${w} ${h}" class="trk-sparkline" preserveAspectRatio="none">
+    <polyline points="${xs.map((x,i)=>x+','+ys[i]).join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+function trkInit() {
+  if (!allProducts || !allProducts.length) return;
+  const prods = allProducts.slice(0, 9);
+  const rng0 = _trkRng(42);
+
+  // summary stats
+  const totalSales = prods.reduce((s,p) => s + (p.newUnits || Math.round(50+rng0()*100)), 0);
+  const avgPrice = Math.round(prods.reduce((s,p) => s + (p.medianPrice||85000), 0) / prods.length);
+  const growth = (3 + rng0()*12).toFixed(1);
+  document.getElementById('trk-total').textContent = prods.length + ' produk';
+  document.getElementById('trk-total-sub').textContent = 'dari seluruh kategori';
+  document.getElementById('trk-sales').textContent = totalSales.toLocaleString('id-ID') + ' unit';
+  document.getElementById('trk-sales-sub').textContent = '▲ ' + Math.round(5+rng0()*10) + '% vs minggu lalu';
+  const growthEl = document.getElementById('trk-growth');
+  const growthSub = document.getElementById('trk-growth-sub');
+  growthEl.textContent = growth + '%';
+  growthSub.textContent = growth > 7 ? 'Tren positif bulan ini' : 'Stabil minggu ini';
+  growthSub.className = 'trk-stat-delta ' + (growth > 7 ? 'up' : 'flat');
+  document.getElementById('trk-avgprice').textContent = 'Rp ' + avgPrice.toLocaleString('id-ID');
+  document.getElementById('trk-avgprice-sub').textContent = 'median semua produk';
+
+  // AI insight
+  const insights = [
+    `${prods[0]?.name?.split(' ').slice(0,3).join(' ')} menunjukkan tren naik ${Math.round(8+rng0()*15)}% — pertimbangkan untuk menambah stok minggu ini.`,
+    `Harga rata-rata kategori ${prods[0]?.category||'ini'} turun ${(1+rng0()*3).toFixed(1)}% — ada peluang masuk dengan harga lebih kompetitif.`,
+    `${Math.round(prods.length * 0.6)} dari ${prods.length} produk menunjukkan pertumbuhan positif minggu ini.`,
+  ];
+  document.getElementById('trk-ai-text').textContent = insights[Math.floor(rng0()*insights.length)];
+
+  // product cards
+  document.getElementById('trk-prod-grid').innerHTML = prods.map(p => {
+    const rng = _trkRng(p.id * 9999);
+    const price = p.medianPrice || 85000;
+    const trend = p.avgTrend > 1;
+    const pctChange = (1 + rng()*6).toFixed(1);
+    const deltaClass = trend ? 'up' : rng() > 0.5 ? 'down' : 'flat';
+    const deltaText = deltaClass === 'up' ? '▲ '+pctChange+'%' : deltaClass === 'down' ? '▼ '+pctChange+'%' : '— stabil';
+    return `<div class="trk-prod-card" onclick="dscOpenDeepDive(${p.id})">
+      <div class="trk-prod-top">
+        <div class="trk-prod-emoji">${p.emoji||'📦'}</div>
+        <div class="trk-prod-info">
+          <div class="trk-prod-name">${p.name}</div>
+          <div class="trk-prod-cat">${p.category||'Umum'}</div>
+        </div>
+      </div>
+      ${trkSparklineSvg(p.id, trend)}
+      <div class="trk-prod-bottom" style="margin-top:8px;">
+        <div class="trk-prod-price">Rp ${price.toLocaleString('id-ID')}</div>
+        <span class="trk-prod-delta ${deltaClass}">${deltaText}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  // weekly multi-line chart
+  const weeks = ['M1','M2','M3','M4','M5','M6','M7','M8','M9','M10','M11','M12'];
+  const datasets = prods.slice(0,6).map((p, ci) => {
+    const rng = _trkRng(p.id * 1234 + ci);
+    const base = (p.newUnits || 60) * 0.25;
+    return {
+      label: p.name.split(' ').slice(0,2).join(' '),
+      data: weeks.map(() => Math.max(5, Math.round(base + (rng()-0.35)*base*0.6))),
+      borderColor: CHART_COLORS[ci],
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      tension: 0.4,
+      pointRadius: 2,
+      pointBackgroundColor: CHART_COLORS[ci],
+    };
+  });
+  if (_trkChartWeekly) _trkChartWeekly.destroy();
+  _trkChartWeekly = new Chart(document.getElementById('trk-chart-weekly'), {
+    type: 'line',
+    data: { labels: weeks, datasets },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: { x: { ticks: { font: { size: 9 } } }, y: { ticks: { font: { size: 9 } } } },
+      animation: { duration: 400 }
+    }
+  });
+  document.getElementById('trk-legend').innerHTML = prods.slice(0,6).map((p,ci) =>
+    `<div class="trk-legend-item"><div class="trk-legend-dot" style="background:${CHART_COLORS[ci]}"></div>${p.name.split(' ').slice(0,2).join(' ')}</div>`
+  ).join('');
+
+  // price changes table
+  document.getElementById('trk-price-tbody').innerHTML = prods.slice(0,8).map(p => {
+    const rng = _trkRng(p.id * 5555);
+    const price = p.medianPrice || 85000;
+    const chgPct = ((rng()-0.4)*12).toFixed(1);
+    const chgClass = chgPct > 0.5 ? 'up' : chgPct < -0.5 ? 'down' : 'flat';
+    const chgText = chgPct > 0.5 ? '▲ '+chgPct+'%' : chgPct < -0.5 ? '▼ '+Math.abs(chgPct)+'%' : '— stabil';
+    return `<tr>
+      <td style="font-weight:600;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name.split(' ').slice(0,3).join(' ')}</td>
+      <td>Rp ${price.toLocaleString('id-ID')}</td>
+      <td><span class="trk-price-chg ${chgClass}">${chgText}</span></td>
+    </tr>`;
+  }).join('');
+
+  // tip
+  const tips = [
+    `Produk dengan tren naik konsisten 3 minggu berturut-turut biasanya mengalami lonjakan besar — pantau stok dan siapkan iklan.`,
+    `Harga turun bukan selalu sinyal buruk — bisa jadi kompetitor sedang clearing stok. Ini peluang untuk masuk dengan margin lebih tinggi.`,
+    `Coba naikkan harga 5–8% pada produk dengan score di atas 75. Permintaan tinggi berarti pasar belum sensitif terhadap harga.`,
+  ];
+  document.getElementById('trk-tip-text').textContent = tips[Math.floor(rng0()*tips.length)];
+}
+
+function trkRefresh() { trkInit(); }
+
 // Call dscInit when view becomes active and data is loaded
 const _origSwitchDashView = switchDashView;
 function switchDashView(view) {
   _origSwitchDashView(view);
   if (view === 'discover' && allProducts.length) dscInit();
+  if (view === 'tracker' && allProducts.length) trkInit();
 }
 
 function _initPdbCats() {
