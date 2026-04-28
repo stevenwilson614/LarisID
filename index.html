@@ -820,6 +820,7 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 
 /* hide main navbar when in dashboard */
 body.in-dashboard .navbar{display:none;}
+body.on-landing .navbar{display:none;}
 
 /* ── MOBILE ── */
 @media(max-width:768px){
@@ -5399,6 +5400,7 @@ function showPage(name) {
   if (target) target.classList.add('active');
   window.scrollTo(0, 0);
   document.body.classList.toggle('in-dashboard', name === 'profile');
+  document.body.classList.toggle('on-landing',   name === 'landing');
   if (name === 'discover') { renderPills(); renderDiscGrid(); }
   if (name === 'home')     { renderHomeCats(); renderHomeGrid(); }
   closeMobileMenu();
@@ -12086,6 +12088,11 @@ function endTour() {
     if (el) el.classList.remove('show');
   };
 })();
+
+// Set on-landing class on initial load for logged-out users
+if (document.getElementById('page-landing')?.classList.contains('active')) {
+  document.body.classList.add('on-landing');
+}
 
 loadData();
 initSupabase();
