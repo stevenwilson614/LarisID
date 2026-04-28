@@ -830,6 +830,99 @@ body.in-dashboard .navbar{display:none;}
   .dash-topbar-date{display:none;}
 }
 
+/* ══════════════════════════════════════════════
+   DISCOVER PAGE
+   ══════════════════════════════════════════════ */
+.dsc-page{padding:28px;max-width:1200px;}
+.dsc-header{margin-bottom:20px;}
+.dsc-title{font-size:1.3rem;font-weight:800;color:#1A1F3C;margin-bottom:4px;}
+.dsc-subtitle{font-size:.82rem;color:#6B7280;}
+
+/* Stats row */
+.dsc-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+@media(max-width:900px){.dsc-stats-row{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:480px){.dsc-stats-row{grid-template-columns:1fr 1fr;gap:10px;}}
+.dsc-stat{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:14px;}
+.dsc-stat-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.dsc-stat-icon.blue{background:#EFF6FF;color:#3B82F6;}
+.dsc-stat-icon.green{background:#ECFDF5;color:#10B981;}
+.dsc-stat-icon.orange{background:#FFF7ED;color:#F97316;}
+.dsc-stat-icon.purple{background:#F5F3FF;color:#8B5CF6;}
+.dsc-stat-val{font-size:1.4rem;font-weight:800;color:#111;line-height:1;}
+.dsc-stat-lbl{font-size:.72rem;color:#6B7280;margin-top:3px;}
+
+/* AI Insight banner */
+.dsc-ai-banner{background:linear-gradient(135deg,#1A1F3C 0%,#2d3561 100%);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:14px;}
+.dsc-ai-badge{background:#E8442A;color:#fff;font-size:.65rem;font-weight:800;padding:3px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0;letter-spacing:.04em;}
+.dsc-ai-text{font-size:.82rem;color:rgba(255,255,255,.85);line-height:1.5;flex:1;}
+.dsc-ai-text strong{color:#fff;}
+.dsc-ai-link{font-size:.78rem;color:#E8442A;font-weight:700;white-space:nowrap;cursor:pointer;flex-shrink:0;}
+.dsc-ai-link:hover{color:#ff6b52;}
+
+/* Layout: filter + table */
+.dsc-layout{display:flex;gap:16px;align-items:flex-start;}
+.dsc-filter-panel{width:210px;flex-shrink:0;background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px;}
+@media(max-width:860px){.dsc-filter-panel{display:none;}}
+.dsc-filter-title{font-size:.82rem;font-weight:800;color:#111;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+.dsc-filter-reset{font-size:.72rem;color:#E8442A;font-weight:600;cursor:pointer;background:none;border:none;font-family:inherit;padding:0;}
+.dsc-filter-group{margin-bottom:16px;}
+.dsc-filter-label{font-size:.72rem;font-weight:700;color:#374151;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em;}
+.dsc-filter-select{width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 10px;font-size:.78rem;font-family:inherit;outline:none;color:#374151;background:#FAFAFA;transition:border-color .15s;-webkit-appearance:none;cursor:pointer;}
+.dsc-filter-select:focus{border-color:#E8442A;background:#fff;}
+.dsc-range-row{display:flex;gap:6px;align-items:center;}
+.dsc-range-input{flex:1;border:1.5px solid #E5E7EB;border-radius:7px;padding:7px 8px;font-size:.75rem;font-family:inherit;outline:none;width:0;transition:border-color .15s;}
+.dsc-range-input:focus{border-color:#E8442A;}
+.dsc-range-sep{font-size:.72rem;color:#9CA3AF;flex-shrink:0;}
+.dsc-competition-checks{display:flex;flex-direction:column;gap:8px;}
+.dsc-check-row{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.78rem;color:#374151;}
+.dsc-check-row input{accent-color:#E8442A;width:14px;height:14px;cursor:pointer;}
+.dsc-filter-apply{width:100%;background:#E8442A;color:#fff;border:none;border-radius:8px;padding:9px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px;transition:background .15s;}
+.dsc-filter-apply:hover{background:#C23520;}
+
+/* Table area */
+.dsc-table-area{flex:1;min-width:0;}
+.dsc-table-controls{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+.dsc-search{flex:1;min-width:180px;border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 12px 8px 34px;font-size:.82rem;font-family:inherit;outline:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") 10px center no-repeat;transition:border-color .15s;}
+.dsc-search:focus{border-color:#E8442A;outline:none;}
+.dsc-sort-select{border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 10px;font-size:.78rem;font-family:inherit;outline:none;color:#374151;background:#fff;cursor:pointer;-webkit-appearance:none;}
+.dsc-count{font-size:.78rem;color:#6B7280;white-space:nowrap;margin-left:auto;}
+
+.dsc-table-wrap{background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;}
+.dsc-table{width:100%;border-collapse:collapse;font-size:.8rem;}
+.dsc-table th{padding:11px 14px;text-align:left;font-size:.7rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.04em;background:#F9FAFB;border-bottom:1px solid #E5E7EB;white-space:nowrap;cursor:pointer;user-select:none;}
+.dsc-table th:hover{color:#374151;}
+.dsc-table th.sort-asc::after{content:' ↑';}
+.dsc-table th.sort-desc::after{content:' ↓';}
+.dsc-table td{padding:12px 14px;border-bottom:1px solid #F3F4F6;vertical-align:middle;}
+.dsc-table tr:last-child td{border-bottom:none;}
+.dsc-table tr:hover td{background:#FAFAFA;}
+.dsc-prod-cell{display:flex;align-items:center;gap:10px;max-width:220px;}
+.dsc-prod-img{width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0;background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-size:1.1rem;overflow:hidden;}
+.dsc-prod-img img{width:100%;height:100%;object-fit:cover;border-radius:8px;}
+.dsc-prod-name{font-size:.8rem;font-weight:600;color:#111;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.dsc-prod-cat{font-size:.65rem;color:#6B7280;margin-top:2px;}
+.dsc-sparkline{width:64px;height:28px;}
+.dsc-price{font-size:.82rem;font-weight:600;color:#111;white-space:nowrap;}
+.dsc-price-sub{font-size:.7rem;color:#6B7280;}
+.dsc-margin{font-size:.82rem;font-weight:700;}
+.dsc-margin.good{color:#10B981;}
+.dsc-margin.ok{color:#F97316;}
+.dsc-margin.low{color:#EF4444;}
+.dsc-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:.68rem;font-weight:700;white-space:nowrap;}
+.dsc-badge.low{background:#ECFDF5;color:#059669;}
+.dsc-badge.med{background:#FFFBEB;color:#D97706;}
+.dsc-badge.high{background:#FEF2F2;color:#DC2626;}
+.dsc-analyse-btn{background:#1A1F3C;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:background .15s;}
+.dsc-analyse-btn:hover{background:#E8442A;}
+
+/* Pagination */
+.dsc-pagination{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-top:1px solid #F3F4F6;font-size:.78rem;color:#6B7280;}
+.dsc-page-btns{display:flex;gap:4px;}
+.dsc-page-btn{width:30px;height:30px;border-radius:6px;border:1px solid #E5E7EB;background:#fff;font-size:.75rem;font-weight:600;color:#374151;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-family:inherit;}
+.dsc-page-btn:hover{border-color:#E8442A;color:#E8442A;}
+.dsc-page-btn.active{background:#E8442A;border-color:#E8442A;color:#fff;}
+.dsc-page-btn:disabled{opacity:.4;cursor:default;}
+
 /* ── HOME DASHBOARD REDESIGN ── */
 .home-dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
 @media(max-width:700px){.home-dash-grid{grid-template-columns:1fr;}}
@@ -3881,10 +3974,119 @@ html,body{overflow-x:hidden;max-width:100%;}
         </div>
 
         <div id="dash-view-discover" style="display:none;">
-          <div style="padding:32px 28px;max-width:1100px;">
-            <div style="font-size:1.3rem;font-weight:800;color:#1A1F3C;margin-bottom:24px;">Discover</div>
-            <div style="background:#fff;border-radius:12px;padding:48px;text-align:center;color:#9CA3AF;border:1px solid #E5E7EB;font-size:.9rem;">Discover — akan dibangun berikutnya</div>
-          </div>
+          <div class="dsc-page">
+
+            <div class="dsc-header">
+              <div>
+                <h2 class="dsc-title">Discover</h2>
+                <p class="dsc-subtitle">Temukan peluang produk berpotensi tinggi berdasarkan data pasar terkini</p>
+              </div>
+            </div>
+
+            <!-- Stats row -->
+            <div class="dsc-stats-row" id="dsc-stats-row">
+              <div class="dsc-stat">
+                <div class="dsc-stat-icon blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+                <div><div class="dsc-stat-val" id="dsc-stat-total">—</div><div class="dsc-stat-lbl">Total Produk</div></div>
+              </div>
+              <div class="dsc-stat">
+                <div class="dsc-stat-icon green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+                <div><div class="dsc-stat-val" id="dsc-stat-margin">—</div><div class="dsc-stat-lbl">Margin Bagus</div></div>
+              </div>
+              <div class="dsc-stat">
+                <div class="dsc-stat-icon orange"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+                <div><div class="dsc-stat-val" id="dsc-stat-high">—</div><div class="dsc-stat-lbl">Potensi Tinggi</div></div>
+              </div>
+              <div class="dsc-stat">
+                <div class="dsc-stat-icon purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+                <div><div class="dsc-stat-val" id="dsc-stat-low-comp">—</div><div class="dsc-stat-lbl">Kompetisi Rendah</div></div>
+              </div>
+            </div>
+
+            <!-- AI Insight banner -->
+            <div class="dsc-ai-banner">
+              <span class="dsc-ai-badge">INSIGHT AI</span>
+              <span class="dsc-ai-text" id="dsc-ai-text">Memuat insight...</span>
+              <span class="dsc-ai-link">Lihat Lengkap &rarr;</span>
+            </div>
+
+            <!-- Filter + Table -->
+            <div class="dsc-layout">
+
+              <!-- Filter panel -->
+              <aside class="dsc-filter-panel">
+                <div class="dsc-filter-title">
+                  Filter
+                  <button class="dsc-filter-reset" onclick="dscResetFilters()">Reset</button>
+                </div>
+
+                <div class="dsc-filter-group">
+                  <div class="dsc-filter-label">Kategori</div>
+                  <select class="dsc-filter-select" id="dsc-filter-cat" onchange="dscApplyFilters()">
+                    <option value="">Semua Kategori</option>
+                  </select>
+                </div>
+
+                <div class="dsc-filter-group">
+                  <div class="dsc-filter-label">Harga (Rp)</div>
+                  <div class="dsc-range-row">
+                    <input class="dsc-range-input" id="dsc-filter-price-min" type="number" placeholder="Min" min="0">
+                    <span class="dsc-range-sep">—</span>
+                    <input class="dsc-range-input" id="dsc-filter-price-max" type="number" placeholder="Max" min="0">
+                  </div>
+                </div>
+
+                <div class="dsc-filter-group">
+                  <div class="dsc-filter-label">Kompetisi</div>
+                  <div class="dsc-competition-checks">
+                    <label class="dsc-check-row"><input type="checkbox" id="dsc-comp-low" value="Rendah" checked onchange="dscApplyFilters()"> Rendah</label>
+                    <label class="dsc-check-row"><input type="checkbox" id="dsc-comp-med" value="Sedang" checked onchange="dscApplyFilters()"> Sedang</label>
+                    <label class="dsc-check-row"><input type="checkbox" id="dsc-comp-high" value="Tinggi" checked onchange="dscApplyFilters()"> Tinggi</label>
+                  </div>
+                </div>
+
+                <button class="dsc-filter-apply" onclick="dscApplyFilters()">Terapkan Filter</button>
+              </aside>
+
+              <!-- Table area -->
+              <div class="dsc-table-area">
+                <div class="dsc-table-controls">
+                  <input class="dsc-search" id="dsc-search" type="text" placeholder="Cari produk..." oninput="dscApplyFilters()">
+                  <select class="dsc-sort-select" id="dsc-sort" onchange="dscApplyFilters()">
+                    <option value="score-desc">Score Tertinggi</option>
+                    <option value="price-asc">Harga Terendah</option>
+                    <option value="price-desc">Harga Tertinggi</option>
+                    <option value="margin-desc">Margin Terbesar</option>
+                    <option value="name-asc">Nama A-Z</option>
+                  </select>
+                  <span class="dsc-count" id="dsc-count"></span>
+                </div>
+
+                <div class="dsc-table-wrap">
+                  <table class="dsc-table">
+                    <thead>
+                      <tr>
+                        <th style="min-width:180px;">Produk</th>
+                        <th>Tren</th>
+                        <th>Harga</th>
+                        <th>Harga Target</th>
+                        <th>Margin</th>
+                        <th>Kompetisi</th>
+                        <th>Score</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody id="dsc-tbody"></tbody>
+                  </table>
+                  <div class="dsc-pagination">
+                    <span id="dsc-page-info" style="font-size:.78rem;color:#6B7280;"></span>
+                    <div class="dsc-page-btns" id="dsc-page-btns"></div>
+                  </div>
+                </div>
+              </div>
+
+            </div><!-- end dsc-layout -->
+          </div><!-- end dsc-page -->
         </div>
 
         <div id="dash-view-tracker" style="display:none;">
@@ -4212,6 +4414,7 @@ async function loadData() {
   renderDiscGrid();
   populateCategoryFilter();
   populateFinderCats();
+  dscInit();
   // Start guided tour for first-time visitors (slight delay so cards are painted)
   setTimeout(startTour, 600);
 
@@ -6043,6 +6246,212 @@ function toggleDashSub(sub) {
   if (!el) return;
   const isOpen = el.classList.toggle('open');
   if (nav) nav.classList.toggle('open', isOpen);
+}
+
+// ════════════════════════════════════════════════════════════
+//  DISCOVER PAGE
+// ════════════════════════════════════════════════════════════
+let _dscFiltered = [];
+let _dscPage     = 1;
+const DSC_PER_PAGE = 20;
+
+// Derive competition level from score
+function dscCompetition(score) {
+  if (score >= 72) return 'Rendah';
+  if (score >= 48) return 'Sedang';
+  return 'Tinggi';
+}
+
+// Target buying price (estimated supplier cost ~58% of sell price)
+function dscTargetPrice(price) { return Math.round(price * 0.58); }
+
+// Estimated margin %
+function dscMargin(price) {
+  const buy = dscTargetPrice(price);
+  return Math.round(((price - buy) / price) * 100);
+}
+
+// Mini SVG sparkline from a seed (deterministic "random" per product)
+function dscSparkline(id, trend) {
+  const pts = [];
+  let v = 50 + (id % 20) - 10;
+  for (let i = 0; i < 7; i++) {
+    v += ((id * (i + 1) * 7919) % 17) - 8 + (trend > 0 ? 1.5 : trend < 0 ? -1.5 : 0);
+    v = Math.max(10, Math.min(90, v));
+    pts.push(v);
+  }
+  const mn = Math.min(...pts), mx = Math.max(...pts), rng = mx - mn || 1;
+  const norm = pts.map(p => 28 - ((p - mn) / rng) * 24);
+  const xs = [0, 10, 20, 30, 42, 52, 63];
+  const d = xs.map((x, i) => `${i === 0 ? 'M' : 'L'}${x},${norm[i].toFixed(1)}`).join(' ');
+  const last = norm[norm.length - 1], first = norm[0];
+  const color = last <= first ? '#10B981' : '#EF4444';
+  return `<svg class="dsc-sparkline" viewBox="0 0 64 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="${d}" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+function dscInit() {
+  // Populate category filter
+  const sel = document.getElementById('dsc-filter-cat');
+  if (!sel) return;
+  const cats = ['', ...new Set(allProducts.map(p => p.category).filter(Boolean))].sort();
+  sel.innerHTML = cats.map(c => `<option value="${c}">${c || 'Semua Kategori'}</option>`).join('');
+
+  // Update stats
+  const total = allProducts.length;
+  const marginGood = allProducts.filter(p => p.score >= 60).length;
+  const highPotential = allProducts.filter(p => p.score >= 75).length;
+  const lowComp = allProducts.filter(p => dscCompetition(p.score) === 'Rendah').length;
+
+  const s = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v.toLocaleString('id-ID'); };
+  s('dsc-stat-total', total);
+  s('dsc-stat-margin', marginGood);
+  s('dsc-stat-high', highPotential);
+  s('dsc-stat-low-comp', lowComp);
+
+  // AI insight
+  const topCat = (() => {
+    const m = {};
+    allProducts.forEach(p => { m[p.category] = (m[p.category] || 0) + 1; });
+    return Object.entries(m).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+  })();
+  const topProduct = allProducts.slice().sort((a, b) => b.score - a.score)[0];
+  const aiEl = document.getElementById('dsc-ai-text');
+  if (aiEl && topProduct) {
+    aiEl.innerHTML = `Kategori <strong>${topCat}</strong> memiliki jumlah produk terbanyak. Produk dengan potensi tertinggi saat ini: <strong>${topProduct.name}</strong> (score ${Math.round(topProduct.score)}). Ada <strong>${lowComp} produk</strong> dengan kompetisi rendah yang siap dimasuki.`;
+  }
+
+  dscApplyFilters();
+}
+
+function dscApplyFilters() {
+  const q       = (document.getElementById('dsc-search')?.value || '').toLowerCase();
+  const cat     = document.getElementById('dsc-filter-cat')?.value || '';
+  const priceMin = parseFloat(document.getElementById('dsc-filter-price-min')?.value) || 0;
+  const priceMax = parseFloat(document.getElementById('dsc-filter-price-max')?.value) || Infinity;
+  const compChecks = ['low','med','high'].map(k => document.getElementById(`dsc-comp-${k}`)?.checked);
+  const allowedComp = ['Rendah','Sedang','Tinggi'].filter((_, i) => compChecks[i]);
+  const sortVal = document.getElementById('dsc-sort')?.value || 'score-desc';
+
+  let list = allProducts.filter(p => {
+    if (q && !p.name.toLowerCase().includes(q) && !(p.category||'').toLowerCase().includes(q)) return false;
+    if (cat && p.category !== cat) return false;
+    if (p.medianPrice < priceMin || p.medianPrice > priceMax) return false;
+    if (!allowedComp.includes(dscCompetition(p.score))) return false;
+    return true;
+  });
+
+  // Sort
+  const [sf, sd] = sortVal.split('-');
+  list.sort((a, b) => {
+    let va, vb;
+    if (sf === 'score')  { va = a.score;       vb = b.score; }
+    if (sf === 'price')  { va = a.medianPrice;  vb = b.medianPrice; }
+    if (sf === 'margin') { va = dscMargin(a.medianPrice); vb = dscMargin(b.medianPrice); }
+    if (sf === 'name')   { va = a.name;         vb = b.name; }
+    if (sf === 'name') return sd === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    return sd === 'asc' ? va - vb : vb - va;
+  });
+
+  _dscFiltered = list;
+  _dscPage = 1;
+  dscRenderTable();
+}
+
+function dscRenderTable() {
+  const total = _dscFiltered.length;
+  const pages = Math.max(1, Math.ceil(total / DSC_PER_PAGE));
+  _dscPage = Math.min(_dscPage, pages);
+  const start = (_dscPage - 1) * DSC_PER_PAGE;
+  const slice = _dscFiltered.slice(start, start + DSC_PER_PAGE);
+
+  const tbody = document.getElementById('dsc-tbody');
+  if (!tbody) return;
+
+  if (!slice.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Tidak ada produk yang sesuai filter.</td></tr>`;
+  } else {
+    tbody.innerHTML = slice.map(p => {
+      const comp    = dscCompetition(p.score);
+      const compCls = comp === 'Rendah' ? 'low' : comp === 'Sedang' ? 'med' : 'high';
+      const compDot = comp === 'Rendah' ? '●' : comp === 'Sedang' ? '●' : '●';
+      const margin  = dscMargin(p.medianPrice);
+      const margCls = margin >= 38 ? 'good' : margin >= 28 ? 'ok' : 'low';
+      const target  = dscTargetPrice(p.medianPrice);
+      const imgHtml = p.image
+        ? `<div class="dsc-prod-img"><img src="${p.image}" alt="" loading="lazy"></div>`
+        : `<div class="dsc-prod-img">${p.emoji || '📦'}</div>`;
+      return `<tr>
+        <td>
+          <div class="dsc-prod-cell">
+            ${imgHtml}
+            <div>
+              <div class="dsc-prod-name">${p.name}</div>
+              <div class="dsc-prod-cat">${p.category || ''}</div>
+            </div>
+          </div>
+        </td>
+        <td>${dscSparkline(p.id, p.avgTrend)}</td>
+        <td><div class="dsc-price">${fmtShort(p.medianPrice)}</div></td>
+        <td><div class="dsc-price">${fmtShort(target)}</div><div class="dsc-price-sub">Harga beli</div></td>
+        <td><div class="dsc-margin ${margCls}">${margin}%</div></td>
+        <td><span class="dsc-badge ${compCls}">${compDot} ${comp}</span></td>
+        <td><div style="font-size:.82rem;font-weight:700;color:${scoreColor(p.score)}">${Math.round(p.score)}</div></td>
+        <td><button class="dsc-analyse-btn" onclick="dscOpenDeepDive(${p.id})">Analisis</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Count label
+  const countEl = document.getElementById('dsc-count');
+  if (countEl) countEl.textContent = `${total.toLocaleString('id-ID')} produk`;
+
+  // Pagination
+  const infoEl = document.getElementById('dsc-page-info');
+  if (infoEl) infoEl.textContent = `${start + 1}–${Math.min(start + DSC_PER_PAGE, total)} dari ${total}`;
+
+  const btnsEl = document.getElementById('dsc-page-btns');
+  if (btnsEl) {
+    let html = `<button class="dsc-page-btn" onclick="dscGoPage(${_dscPage - 1})" ${_dscPage <= 1 ? 'disabled' : ''}>&#8592;</button>`;
+    const range = [];
+    for (let i = Math.max(1, _dscPage - 2); i <= Math.min(pages, _dscPage + 2); i++) range.push(i);
+    range.forEach(i => {
+      html += `<button class="dsc-page-btn ${i === _dscPage ? 'active' : ''}" onclick="dscGoPage(${i})">${i}</button>`;
+    });
+    html += `<button class="dsc-page-btn" onclick="dscGoPage(${_dscPage + 1})" ${_dscPage >= pages ? 'disabled' : ''}>&#8594;</button>`;
+    btnsEl.innerHTML = html;
+  }
+}
+
+function dscGoPage(n) {
+  const pages = Math.ceil(_dscFiltered.length / DSC_PER_PAGE);
+  if (n < 1 || n > pages) return;
+  _dscPage = n;
+  dscRenderTable();
+  document.getElementById('dash-content')?.scrollTo(0, 0);
+}
+
+function dscResetFilters() {
+  const ids = ['dsc-filter-cat','dsc-filter-price-min','dsc-filter-price-max'];
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['dsc-comp-low','dsc-comp-med','dsc-comp-high'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.checked = true;
+  });
+  document.getElementById('dsc-sort').value = 'score-desc';
+  dscApplyFilters();
+}
+
+function dscOpenDeepDive(id) {
+  switchDashView('deepdive');
+  // Will be wired up when deep dive page is built
+}
+
+// Call dscInit when view becomes active and data is loaded
+const _origSwitchDashView = switchDashView;
+function switchDashView(view) {
+  _origSwitchDashView(view);
+  if (view === 'discover' && allProducts.length) dscInit();
 }
 
 function _initPdbCats() {
