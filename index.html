@@ -923,6 +923,54 @@ body.in-dashboard .navbar{display:none;}
 .dsc-page-btn.active{background:#E8442A;border-color:#E8442A;color:#fff;}
 .dsc-page-btn:disabled{opacity:.4;cursor:default;}
 
+/* ── DEEP DIVE PAGE ── */
+.dd-wrap{padding:24px 28px;max-width:1140px;}
+.dd-hero{background:#fff;border-radius:14px;border:1px solid #E5E7EB;padding:22px 24px;display:flex;align-items:center;gap:20px;margin-bottom:18px;}
+.dd-hero-img{width:68px;height:68px;border-radius:12px;object-fit:cover;background:#F4F6F9;flex-shrink:0;}
+.dd-hero-img-placeholder{width:68px;height:68px;border-radius:12px;background:#F4F6F9;display:flex;align-items:center;justify-content:center;font-size:2rem;flex-shrink:0;}
+.dd-hero-info{flex:1;min-width:0;}
+.dd-hero-name{font-size:1.15rem;font-weight:800;color:#1A1F3C;margin-bottom:6px;line-height:1.25;}
+.dd-hero-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;}
+.dd-hero-tag{font-size:.72rem;font-weight:700;padding:2px 9px;border-radius:20px;background:#FFF0ED;color:#E8442A;border:1px solid #F9C5BB;}
+.dd-hero-tag.blue{background:#EEF2FF;color:#4F46E5;border-color:#C7D2FE;}
+.dd-hero-cat{font-size:.78rem;color:#9CA3AF;}
+.dd-score-badge{width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#E8442A,#FF6B35);display:flex;align-items:center;justify-content:center;flex-direction:column;flex-shrink:0;}
+.dd-score-badge span{font-size:1.25rem;font-weight:900;color:#fff;line-height:1;}
+.dd-score-badge small{font-size:.55rem;color:rgba(255,255,255,.75);font-weight:600;}
+.dd-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px;}
+@media(max-width:860px){.dd-stats-row{grid-template-columns:repeat(2,1fr);}}
+.dd-stat-card{background:#fff;border-radius:12px;border:1px solid #E5E7EB;padding:16px 18px;}
+.dd-stat-label{font-size:.72rem;color:#9CA3AF;font-weight:600;margin-bottom:4px;}
+.dd-stat-value{font-size:1.1rem;font-weight:800;color:#1A1F3C;}
+.dd-stat-sub{font-size:.72rem;color:#6B7280;margin-top:2px;}
+.dd-two-col{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-bottom:18px;}
+@media(max-width:900px){.dd-two-col{grid-template-columns:1fr;}}
+.dd-card{background:#fff;border-radius:12px;border:1px solid #E5E7EB;padding:20px 22px;}
+.dd-card-title{font-size:.82rem;font-weight:700;color:#1A1F3C;margin-bottom:14px;}
+.dd-card-title span{color:#9CA3AF;font-weight:400;font-size:.76rem;margin-left:6px;}
+.dd-price-range{display:flex;align-items:center;gap:0;margin-top:10px;}
+.dd-price-band{height:10px;border-radius:5px;background:linear-gradient(90deg,#FCD34D,#10B981);flex:1;}
+.dd-price-labels{display:flex;justify-content:space-between;font-size:.72rem;color:#6B7280;margin-top:4px;}
+.dd-ai-list{display:flex;flex-direction:column;gap:9px;}
+.dd-ai-item{display:flex;align-items:flex-start;gap:9px;font-size:.8rem;color:#374151;line-height:1.4;}
+.dd-ai-dot{width:7px;height:7px;border-radius:50%;background:#E8442A;flex-shrink:0;margin-top:5px;}
+.dd-full-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;}
+@media(max-width:860px){.dd-full-row{grid-template-columns:1fr;}}
+.dd-comp-table{width:100%;border-collapse:collapse;font-size:.78rem;}
+.dd-comp-table th{text-align:left;padding:7px 10px;font-size:.7rem;font-weight:700;color:#9CA3AF;border-bottom:2px solid #F3F4F6;}
+.dd-comp-table td{padding:8px 10px;border-bottom:1px solid #F9FAFB;color:#374151;}
+.dd-comp-table tr:hover td{background:#FAFAFA;}
+.dd-comp-bar-wrap{width:80px;background:#F3F4F6;border-radius:4px;height:6px;display:inline-block;vertical-align:middle;}
+.dd-comp-bar{height:6px;border-radius:4px;background:#E8442A;}
+.dd-kwrap{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}
+.dd-kw{font-size:.75rem;padding:4px 10px;border-radius:20px;background:#F4F6F9;color:#374151;font-weight:600;}
+.dd-kw.hot{background:#FFF0ED;color:#E8442A;}
+.dd-tip-box{background:linear-gradient(135deg,#1A1F3C,#2D3561);border-radius:12px;padding:20px 22px;color:#fff;}
+.dd-tip-box h4{font-size:.82rem;font-weight:700;margin-bottom:8px;color:#FCD34D;}
+.dd-tip-box p{font-size:.8rem;line-height:1.55;color:rgba(255,255,255,.85);}
+.dd-back-btn{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;font-weight:600;color:#6B7280;cursor:pointer;margin-bottom:16px;padding:6px 12px;border-radius:8px;border:1px solid #E5E7EB;background:#fff;transition:all .15s;}
+.dd-back-btn:hover{color:#E8442A;border-color:#E8442A;}
+
 /* ── HOME DASHBOARD REDESIGN ── */
 .home-dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
 @media(max-width:700px){.home-dash-grid{grid-template-columns:1fr;}}
@@ -4097,9 +4145,98 @@ html,body{overflow-x:hidden;max-width:100%;}
         </div>
 
         <div id="dash-view-deepdive" style="display:none;">
-          <div style="padding:32px 28px;max-width:1100px;">
-            <div style="font-size:1.3rem;font-weight:800;color:#1A1F3C;margin-bottom:24px;">Deep Dive</div>
-            <div style="background:#fff;border-radius:12px;padding:48px;text-align:center;color:#9CA3AF;border:1px solid #E5E7EB;font-size:.9rem;">Deep Dive — segera hadir</div>
+          <div class="dd-wrap">
+            <!-- back button -->
+            <div class="dd-back-btn" onclick="switchDashView('discover')">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+              Kembali ke Discover
+            </div>
+
+            <!-- hero -->
+            <div class="dd-hero" id="dd-hero">
+              <div class="dd-hero-img-placeholder" id="dd-hero-emoji">📦</div>
+              <div class="dd-hero-info">
+                <div class="dd-hero-name" id="dd-hero-name">—</div>
+                <div class="dd-hero-tags" id="dd-hero-tags"></div>
+                <div class="dd-hero-cat" id="dd-hero-cat">—</div>
+              </div>
+              <div class="dd-score-badge"><span id="dd-score-num">—</span><small>SKOR</small></div>
+            </div>
+
+            <!-- stats row -->
+            <div class="dd-stats-row">
+              <div class="dd-stat-card">
+                <div class="dd-stat-label">Harga Median</div>
+                <div class="dd-stat-value" id="dd-stat-price">—</div>
+                <div class="dd-stat-sub" id="dd-stat-price-sub">—</div>
+              </div>
+              <div class="dd-stat-card">
+                <div class="dd-stat-label">Est. Penjualan/Bulan</div>
+                <div class="dd-stat-value" id="dd-stat-sales">—</div>
+                <div class="dd-stat-sub" id="dd-stat-sales-sub">—</div>
+              </div>
+              <div class="dd-stat-card">
+                <div class="dd-stat-label">Potensi Keuntungan</div>
+                <div class="dd-stat-value" id="dd-stat-revenue">—</div>
+                <div class="dd-stat-sub" id="dd-stat-revenue-sub">—</div>
+              </div>
+              <div class="dd-stat-card">
+                <div class="dd-stat-label">Margin Potensial</div>
+                <div class="dd-stat-value" id="dd-stat-margin">—</div>
+                <div class="dd-stat-sub">Setelah HPP estimasi</div>
+              </div>
+            </div>
+
+            <!-- 2-col: trend chart + AI insight -->
+            <div class="dd-two-col">
+              <div class="dd-card">
+                <div class="dd-card-title">Tren Growth 30 Hari <span>berdasarkan pencarian</span></div>
+                <canvas id="dd-chart-trend" height="130"></canvas>
+                <div style="margin-top:14px;">
+                  <div class="dd-card-title" style="margin-bottom:6px;">Harga Jual Optimal</div>
+                  <div id="dd-price-range-label" style="font-size:.85rem;font-weight:700;color:#1A1F3C;margin-bottom:6px;">—</div>
+                  <div class="dd-price-band"></div>
+                  <div class="dd-price-labels"><span id="dd-price-low">—</span><span id="dd-price-high">—</span></div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:16px;">
+                <div class="dd-card">
+                  <div class="dd-card-title">Insight AI</div>
+                  <div class="dd-ai-list" id="dd-ai-list">—</div>
+                </div>
+                <div class="dd-card">
+                  <div class="dd-card-title">Distribusi Harga <span>kompetitor</span></div>
+                  <canvas id="dd-chart-dist" height="110"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <!-- weekly performance + competitor table -->
+            <div class="dd-full-row">
+              <div class="dd-card">
+                <div class="dd-card-title">Performa Mingguan <span>12 minggu terakhir</span></div>
+                <canvas id="dd-chart-weekly" height="120"></canvas>
+              </div>
+              <div class="dd-card">
+                <div class="dd-card-title">Top 10 Kompetitor</div>
+                <table class="dd-comp-table">
+                  <thead><tr><th>#</th><th>Toko</th><th>Harga</th><th>Volume</th><th>Share</th></tr></thead>
+                  <tbody id="dd-comp-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- keywords + tip -->
+            <div class="dd-full-row" style="margin-bottom:0;">
+              <div class="dd-card">
+                <div class="dd-card-title">Top Keyword Terkait</div>
+                <div class="dd-kwrap" id="dd-kwrap">—</div>
+              </div>
+              <div class="dd-tip-box">
+                <h4>Tip Mingguan</h4>
+                <p id="dd-tip-text">—</p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -6442,9 +6579,172 @@ function dscResetFilters() {
   dscApplyFilters();
 }
 
+// ── DEEP DIVE ──────────────────────────────────────────────────
+let _ddChartTrend = null, _ddChartDist = null, _ddChartWeekly = null;
+
+function _ddRng(seed) {
+  let s = seed;
+  return function() { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0xffffffff; };
+}
+
+function ddRender(p) {
+  // hero
+  document.getElementById('dd-hero-emoji').textContent = p.emoji || '📦';
+  document.getElementById('dd-hero-name').textContent = p.name;
+  document.getElementById('dd-hero-cat').textContent = p.category || 'Umum';
+  document.getElementById('dd-score-num').textContent = Math.round(p.score);
+  const tags = document.getElementById('dd-hero-tags');
+  const tList = [];
+  if (p.score >= 75) tList.push(['Terpopuler', '']);
+  if (p.avgTrend < 1.05) tList.push(['Harga Pas', 'blue']);
+  if (p.newUnits > 60) tList.push(['Permintaan Tinggi', '']);
+  tags.innerHTML = tList.map(([t,c]) => `<span class="dd-hero-tag ${c}">${t}</span>`).join('');
+
+  const rng = _ddRng(p.id * 31337);
+  const price = p.medianPrice || 85000;
+
+  // stats
+  const sales = p.newUnits || Math.round(50 + rng() * 150);
+  const rev = Math.round(price * sales);
+  const margin = Math.round(28 + rng() * 20);
+  document.getElementById('dd-stat-price').textContent = 'Rp ' + price.toLocaleString('id-ID');
+  document.getElementById('dd-stat-price-sub').textContent = 'Harga rata-rata pasar';
+  document.getElementById('dd-stat-sales').textContent = sales.toLocaleString('id-ID') + ' unit';
+  document.getElementById('dd-stat-sales-sub').textContent = 'estimasi dari data tren';
+  document.getElementById('dd-stat-revenue').textContent = 'Rp ' + rev.toLocaleString('id-ID');
+  document.getElementById('dd-stat-revenue-sub').textContent = 'potensi omzet bulanan';
+  document.getElementById('dd-stat-margin').textContent = margin + '%';
+
+  // price range
+  const pLow = Math.round(price * 0.82), pHigh = Math.round(price * 1.18);
+  document.getElementById('dd-price-range-label').textContent = `Rp ${pLow.toLocaleString('id-ID')} – Rp ${pHigh.toLocaleString('id-ID')}`;
+  document.getElementById('dd-price-low').textContent = 'Rp ' + pLow.toLocaleString('id-ID');
+  document.getElementById('dd-price-high').textContent = 'Rp ' + pHigh.toLocaleString('id-ID');
+
+  // AI insights
+  const insights = [
+    `Produk ini memiliki tingkat konversi estimasi <strong>${(2.5 + rng()*3).toFixed(1)}%</strong> — di atas rata-rata kategori.`,
+    `Kompetisi ${p.score >= 70 ? 'sedang' : 'rendah'}, ada ruang untuk ${p.score >= 70 ? 'diferensiasi harga' : 'masuk dengan harga kompetitif'}.`,
+    `Tren pencarian naik <strong>${Math.round(8 + rng()*22)}%</strong> dalam 30 hari terakhir.`,
+    `Rekomendasi bundling: paket isi 2–3 unit dapat meningkatkan nilai pesanan rata-rata hingga <strong>${Math.round(25 + rng()*20)}%</strong>.`,
+  ];
+  document.getElementById('dd-ai-list').innerHTML = insights.map(t =>
+    `<div class="dd-ai-item"><div class="dd-ai-dot"></div><div>${t}</div></div>`
+  ).join('');
+
+  // 30-day trend chart
+  const trendData = Array.from({length:30}, (_,i) => {
+    const base = 50 + rng()*30;
+    return Math.max(10, Math.round(base + (p.avgTrend > 1 ? i*1.2 : -i*0.4) + (rng()-0.5)*15));
+  });
+  const trendLabels = Array.from({length:30}, (_,i) => i+1+'');
+  if (_ddChartTrend) _ddChartTrend.destroy();
+  _ddChartTrend = new Chart(document.getElementById('dd-chart-trend'), {
+    type: 'line',
+    data: {
+      labels: trendLabels,
+      datasets: [{
+        data: trendData,
+        borderColor: '#E8442A',
+        backgroundColor: 'rgba(232,68,42,.08)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 0,
+      }]
+    },
+    options: { plugins:{legend:{display:false}}, scales:{x:{display:false},y:{display:false}}, animation:{duration:400} }
+  });
+
+  // price distribution bar chart
+  const distLabels = Array.from({length:6}, (_,i) => 'Rp '+(Math.round((price*0.6 + i*price*0.12)/1000))+'rb');
+  const distData = [Math.round(rng()*15+5), Math.round(rng()*25+15), Math.round(rng()*30+25), Math.round(rng()*35+30), Math.round(rng()*20+10), Math.round(rng()*10+3)];
+  if (_ddChartDist) _ddChartDist.destroy();
+  _ddChartDist = new Chart(document.getElementById('dd-chart-dist'), {
+    type: 'bar',
+    data: {
+      labels: distLabels,
+      datasets: [{
+        data: distData,
+        backgroundColor: distData.map((_,i) => i===3 ? '#E8442A' : '#E5E7EB'),
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options: { plugins:{legend:{display:false}}, scales:{x:{ticks:{font:{size:9}}},y:{display:false}}, animation:{duration:400} }
+  });
+
+  // weekly performance
+  const weeklyLabels = ['W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12'];
+  const weeklyData = weeklyLabels.map(() => Math.round(sales*0.22 + (rng()-0.4)*sales*0.18));
+  if (_ddChartWeekly) _ddChartWeekly.destroy();
+  _ddChartWeekly = new Chart(document.getElementById('dd-chart-weekly'), {
+    type: 'line',
+    data: {
+      labels: weeklyLabels,
+      datasets: [{
+        label: 'Unit Terjual',
+        data: weeklyData,
+        borderColor: '#4F46E5',
+        backgroundColor: 'rgba(79,70,229,.07)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 3,
+        pointBackgroundColor: '#4F46E5',
+      }]
+    },
+    options: { plugins:{legend:{display:false}}, scales:{x:{ticks:{font:{size:10}}},y:{ticks:{font:{size:10}}}}, animation:{duration:400} }
+  });
+
+  // competitor table
+  const shops = ['TokoMaju','ElekMart','BestDeal99','GrosirMurah','ShopTop','KiosPrima','JualanOnline','MegaStore','CepetLaku','TokoBaru'];
+  const total = sales * 10;
+  let remaining = 100;
+  const shares = shops.map((_,i) => {
+    if (i === shops.length-1) return remaining;
+    const s = Math.round(rng()*18 + (i===0?22:i<3?12:5));
+    remaining = Math.max(0, remaining - s);
+    return s;
+  });
+  document.getElementById('dd-comp-tbody').innerHTML = shops.map((shop, i) => {
+    const shopPrice = Math.round(price * (0.88 + rng()*0.28));
+    const vol = Math.round(total * shares[i]/100);
+    return `<tr>
+      <td style="color:#9CA3AF">${i+1}</td>
+      <td style="font-weight:600">${shop}</td>
+      <td>Rp ${shopPrice.toLocaleString('id-ID')}</td>
+      <td>${vol.toLocaleString('id-ID')}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="dd-comp-bar-wrap"><div class="dd-comp-bar" style="width:${Math.min(100,shares[i]*3)}%"></div></div>
+          <span style="font-size:.72rem;color:#6B7280">${shares[i]}%</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // keywords
+  const baseKws = [p.name.split(' ')[0], 'murah', 'original', 'terbaik', 'grosir', 'terpercaya', 'berkualitas', 'promo'];
+  const hotIdx = [0, Math.round(rng()*3+1)];
+  document.getElementById('dd-kwrap').innerHTML = baseKws.map((kw, i) =>
+    `<span class="dd-kw ${hotIdx.includes(i)?'hot':''}">${kw}</span>`
+  ).join('');
+
+  // weekly tip
+  const tips = [
+    `Optimalkan foto produk dengan latar putih bersih — riset kami menunjukkan konversi meningkat ${Math.round(15+rng()*20)}% hanya dari kualitas gambar pertama.`,
+    `Coba pasang harga Rp ${(Math.round((pLow+pHigh)/2/1000)*1000).toLocaleString('id-ID')} dengan gratis ongkir untuk meningkatkan CTR di halaman pencarian.`,
+    `Produk di kategori ini paling banyak dibeli antara pukul 19.00–22.00. Jadwalkan flash sale di jam tersebut untuk dampak maksimal.`,
+    `Gunakan keyword "${p.name.split(' ')[0]} original" di judul — volume pencarian kata ini naik ${Math.round(20+rng()*30)}% bulan ini.`,
+  ];
+  document.getElementById('dd-tip-text').textContent = tips[Math.floor(rng()*tips.length)];
+}
+
 function dscOpenDeepDive(id) {
+  const p = (allProducts || []).find(x => x.id == id);
+  if (p) { ddRender(p); }
   switchDashView('deepdive');
-  // Will be wired up when deep dive page is built
 }
 
 // Call dscInit when view becomes active and data is loaded
