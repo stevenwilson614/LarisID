@@ -1180,29 +1180,24 @@ body.on-landing .navbar{display:none;}
 .dd-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
 .dd-back-btn{display:inline-flex;align-items:center;gap:6px;font-size:.82rem;font-weight:600;color:#6B7280;cursor:pointer;transition:color .15s;}
 .dd-back-btn:hover{color:#E8442A;}
-.dd-hero{background:#fff;border-radius:14px;border:1px solid #E5E7EB;padding:20px 24px;margin-bottom:16px;}
-.dd-hero-top{display:flex;align-items:flex-start;gap:18px;flex-wrap:wrap;}
-.dd-hero-img{width:88px;height:88px;border-radius:12px;object-fit:cover;background:#F4F6F9;display:flex;align-items:center;justify-content:center;font-size:2.4rem;flex-shrink:0;}
-.dd-hero-info{flex:1;min-width:180px;}
-.dd-hero-name{font-size:1.2rem;font-weight:800;color:#1A1F3C;margin-bottom:3px;line-height:1.25;}
-.dd-hero-cats{font-size:.74rem;color:#9CA3AF;margin-bottom:10px;}
+.dd-hero{display:flex;align-items:stretch;gap:16px;margin-bottom:16px;flex-wrap:wrap;}
+.dd-hero-img{min-width:140px;max-width:160px;flex-shrink:0;background:#fff;border-radius:12px;border:1px solid #E5E7EB;display:flex;align-items:center;justify-content:center;font-size:3.5rem;padding:12px;}
+.dd-hero-right{flex:1;display:flex;flex-direction:column;gap:10px;min-width:0;}
+.dd-hero-name{font-size:1.3rem;font-weight:800;color:#1A1F3C;margin-bottom:2px;line-height:1.25;}
+.dd-hero-cats{font-size:.78rem;color:#9CA3AF;}
 .dd-hero-cats span{color:#6B7280;}
-.dd-score-block{display:flex;flex-direction:column;align-items:flex-start;min-width:90px;}
-.dd-score-label{font-size:.68rem;color:#9CA3AF;font-weight:600;margin-bottom:2px;}
-.dd-score-num{font-size:2rem;font-weight:900;color:#E8442A;line-height:1;}
+.dd-hero-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+@media(max-width:800px){.dd-hero-cards{grid-template-columns:repeat(2,1fr);}}
+.dd-hstat{background:#fff;border-radius:10px;border:1px solid #E5E7EB;padding:14px 16px;}
+.dd-hstat-label{font-size:.68rem;color:#6B7280;font-weight:500;margin-bottom:6px;}
+.dd-score-num{font-size:2.2rem;font-weight:900;color:#E8442A;line-height:1;}
 .dd-score-denom{font-size:.9rem;font-weight:600;color:#9CA3AF;}
-.dd-score-tag{font-size:.7rem;font-weight:700;padding:2px 9px;border-radius:4px;background:#EAF7F0;color:#10B981;margin-top:4px;display:inline-block;}
-.dd-hero-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid #F3F4F6;margin-top:16px;}
-@media(max-width:800px){.dd-hero-stats{grid-template-columns:repeat(2,1fr);}}
-.dd-hstat{padding:14px 18px;border-right:1px solid #F3F4F6;}
-.dd-hstat:last-child{border-right:none;}
-.dd-hstat-label{font-size:.68rem;color:#9CA3AF;font-weight:600;margin-bottom:4px;}
-.dd-hstat-value{font-size:1.1rem;font-weight:800;color:#1A1F3C;margin-bottom:2px;}
+.dd-score-tag{font-size:.7rem;font-weight:600;padding:3px 10px;border-radius:4px;background:#EAF7F0;color:#10B981;margin-top:6px;display:inline-block;border:1px solid #D1FAE5;}
+.dd-hstat-value{font-size:1.2rem;font-weight:800;color:#1A1F3C;margin-bottom:4px;line-height:1.2;}
 .dd-hstat-value.red{color:#E8442A;}
-.dd-hstat-delta{font-size:.72rem;font-weight:600;display:flex;align-items:center;gap:3px;}
-.dd-hstat-delta.up{color:#10B981;}
+.dd-hstat-delta{font-size:.75rem;font-weight:600;display:inline-flex;align-items:center;gap:3px;color:#10B981;}
 .dd-hstat-delta.down{color:#E8442A;}
-.dd-hstat-sub{font-size:.68rem;color:#9CA3AF;}
+.dd-hstat-sub{font-size:.7rem;color:#9CA3AF;display:inline;margin-left:4px;}
 .dd-tabs{display:flex;gap:0;border-bottom:2px solid #F3F4F6;margin-bottom:18px;}
 .dd-tab{font-size:.8rem;font-weight:600;color:#9CA3AF;padding:9px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;}
 .dd-tab.active{color:#E8442A;border-bottom-color:#E8442A;}
@@ -4800,42 +4795,34 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
             </div>
 
-            <!-- hero card -->
+            <!-- hero -->
             <div class="dd-hero">
-              <div class="dd-hero-top">
-                <div class="dd-hero-img" id="dd-hero-img">📦</div>
-                <div class="dd-hero-info">
+              <div class="dd-hero-img" id="dd-hero-img">📦</div>
+              <div class="dd-hero-right">
+                <div>
                   <div class="dd-hero-name" id="dd-hero-name">—</div>
                   <div class="dd-hero-cats" id="dd-hero-cats">—</div>
                 </div>
-                <div class="dd-score-block">
-                  <div class="dd-score-label">Skor Produk</div>
-                  <div><span class="dd-score-num" id="dd-score-num">—</span><span class="dd-score-denom">/100</span></div>
-                  <span class="dd-score-tag" id="dd-score-tag">—</span>
-                </div>
-                <!-- hero stats inline -->
-                <div style="flex:1;min-width:0;display:grid;grid-template-columns:repeat(4,1fr);border-left:1px solid #F3F4F6;margin-left:8px;">
+                <div class="dd-hero-cards">
+                  <div class="dd-hstat">
+                    <div class="dd-hstat-label">Skor Produk</div>
+                    <div><span class="dd-score-num" id="dd-score-num">—</span><span class="dd-score-denom">/100</span></div>
+                    <span class="dd-score-tag" id="dd-score-tag">—</span>
+                  </div>
                   <div class="dd-hstat">
                     <div class="dd-hstat-label">Total Omset / Bulan</div>
                     <div class="dd-hstat-value" id="dd-h-omset">—</div>
-                    <div class="dd-hstat-delta up" id="dd-h-omset-d">—</div>
-                    <div class="dd-hstat-sub" id="dd-h-omset-sub">—</div>
+                    <div><span class="dd-hstat-delta" id="dd-h-omset-d">—</span><span class="dd-hstat-sub" id="dd-h-omset-sub">—</span></div>
                   </div>
                   <div class="dd-hstat">
                     <div class="dd-hstat-label">Unit Terjual / Bulan</div>
                     <div class="dd-hstat-value" id="dd-h-unit">—</div>
-                    <div class="dd-hstat-delta up" id="dd-h-unit-d">—</div>
-                    <div class="dd-hstat-sub" id="dd-h-unit-sub">—</div>
+                    <div><span class="dd-hstat-delta" id="dd-h-unit-d">—</span><span class="dd-hstat-sub" id="dd-h-unit-sub">—</span></div>
                   </div>
                   <div class="dd-hstat">
                     <div class="dd-hstat-label">Tingkat Kompetisi</div>
                     <div class="dd-hstat-value red" id="dd-h-komp">—</div>
-                    <div class="dd-hstat-sub" id="dd-h-komp-sub">—</div>
-                  </div>
-                  <div class="dd-hstat" style="border-right:none;">
-                    <div class="dd-hstat-label">Margin Potensi</div>
-                    <div class="dd-hstat-value" id="dd-h-margin">—</div>
-                    <div class="dd-hstat-sub" id="dd-h-margin-sub">—</div>
+                    <div class="dd-hstat-sub" id="dd-h-komp-sub" style="margin-left:0;font-size:.74rem;color:#6B7280;">—</div>
                   </div>
                 </div>
               </div>
@@ -7362,16 +7349,15 @@ function ddRender(p) {
 
   // hero stats
   document.getElementById('dd-h-omset').textContent = 'Rp ' + (omset/1000000).toFixed(0) + '.' + String(Math.round((omset%1000000)/1000)).padStart(3,'0') + '.000';
-  document.getElementById('dd-h-omset-d').innerHTML = `<svg width="10" height="10" viewBox="0 0 10 10"><polygon points="5,1 9,9 1,9" fill="#10B981"/></svg> ${omsetDelta}%`;
+  document.getElementById('dd-h-omset-d').textContent = `↑ ${omsetDelta}%`;
   document.getElementById('dd-h-omset-sub').textContent = 'vs 30 hari lalu';
   document.getElementById('dd-h-unit').textContent = sales.toLocaleString('id-ID');
-  document.getElementById('dd-h-unit-d').innerHTML = `<svg width="10" height="10" viewBox="0 0 10 10"><polygon points="5,1 9,9 1,9" fill="#10B981"/></svg> ${unitDelta}%`;
+  document.getElementById('dd-h-unit-d').textContent = `↑ ${unitDelta}%`;
   document.getElementById('dd-h-unit-sub').textContent = 'vs 30 hari lalu';
   document.getElementById('dd-h-komp').textContent = kompLabel;
   document.getElementById('dd-h-komp').style.color = kompColor;
   document.getElementById('dd-h-komp-sub').textContent = 'Skor: ' + kompScore + '/100';
-  document.getElementById('dd-h-margin').textContent = marginLow + '% – ' + marginHigh + '%';
-  document.getElementById('dd-h-margin-sub').textContent = 'Tinggi';
+  // margin stat removed from hero (only 4 cards shown)
 
   // price range
   const pMin = Math.round(price * 0.52), pMax = Math.round(price * 1.85);
