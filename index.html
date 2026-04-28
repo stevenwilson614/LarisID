@@ -6619,6 +6619,9 @@ function switchDashView(view) {
   if (view === 'keywords') _kxLoadKeywordList();
   if (view === 'home') _renderDashHome();
   if (view === 'estimator') loadSalesEstimator();
+  if (view === 'discover'  && typeof dscInit  === 'function' && allProducts.length) dscInit();
+  if (view === 'tracker'   && typeof trkInit  === 'function' && allProducts.length) trkInit();
+  if (view === 'dashboard' && typeof hbdInit  === 'function' && allProducts.length) hbdInit();
 }
 
 function toggleDashSub(sub) {
@@ -7263,14 +7266,6 @@ function hbdInit() {
   _hbdBuildChart();
 }
 
-// Call dscInit when view becomes active and data is loaded
-const _origSwitchDashView = switchDashView;
-function switchDashView(view) {
-  _origSwitchDashView(view);
-  if (view === 'discover'   && allProducts.length) dscInit();
-  if (view === 'tracker'    && allProducts.length) trkInit();
-  if (view === 'dashboard'  && allProducts.length) hbdInit();
-}
 
 function _initPdbCats() {
   if (_pdbCatsInited) return;
