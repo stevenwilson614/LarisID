@@ -852,33 +852,36 @@ body.on-landing .navbar{display:none;}
 .dsc-stat-val{font-size:1.4rem;font-weight:800;color:#111;line-height:1;}
 .dsc-stat-lbl{font-size:.72rem;color:#6B7280;margin-top:3px;}
 
-/* AI Insight banner */
-.dsc-ai-banner{background:linear-gradient(135deg,#1A1F3C 0%,#2d3561 100%);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:14px;}
-.dsc-ai-badge{background:#E8442A;color:#fff;font-size:.65rem;font-weight:800;padding:3px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0;letter-spacing:.04em;}
-.dsc-ai-text{font-size:.82rem;color:rgba(255,255,255,.85);line-height:1.5;flex:1;}
-.dsc-ai-text strong{color:#fff;}
-.dsc-ai-link{font-size:.78rem;color:#E8442A;font-weight:700;white-space:nowrap;cursor:pointer;flex-shrink:0;}
-.dsc-ai-link:hover{color:#ff6b52;}
-
 /* Layout: filter + table */
 .dsc-layout{display:flex;gap:16px;align-items:flex-start;}
-.dsc-filter-panel{width:210px;flex-shrink:0;background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px;}
+.dsc-filter-panel{width:224px;flex-shrink:0;background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px;}
 @media(max-width:860px){.dsc-filter-panel{display:none;}}
-.dsc-filter-title{font-size:.82rem;font-weight:800;color:#111;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
-.dsc-filter-reset{font-size:.72rem;color:#E8442A;font-weight:600;cursor:pointer;background:none;border:none;font-family:inherit;padding:0;}
+.dsc-filter-title{font-size:.85rem;font-weight:800;color:#111;margin-bottom:16px;}
 .dsc-filter-group{margin-bottom:16px;}
-.dsc-filter-label{font-size:.72rem;font-weight:700;color:#374151;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em;}
+.dsc-filter-label{font-size:.7rem;font-weight:700;color:#374151;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;display:block;}
 .dsc-filter-select{width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 10px;font-size:.78rem;font-family:inherit;outline:none;color:#374151;background:#FAFAFA;transition:border-color .15s;-webkit-appearance:none;cursor:pointer;}
 .dsc-filter-select:focus{border-color:#E8442A;background:#fff;}
-.dsc-range-row{display:flex;gap:6px;align-items:center;}
-.dsc-range-input{flex:1;border:1.5px solid #E5E7EB;border-radius:7px;padding:7px 8px;font-size:.75rem;font-family:inherit;outline:none;width:0;transition:border-color .15s;}
-.dsc-range-input:focus{border-color:#E8442A;}
-.dsc-range-sep{font-size:.72rem;color:#9CA3AF;flex-shrink:0;}
-.dsc-competition-checks{display:flex;flex-direction:column;gap:8px;}
+/* Dual range slider */
+.dsc-dual-range{position:relative;height:32px;margin-top:2px;}
+.dsc-dual-range input[type=range]{position:absolute;width:100%;pointer-events:none;-webkit-appearance:none;height:4px;background:transparent;top:50%;transform:translateY(-50%);margin:0;}
+.dsc-dual-range input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#E8442A;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.25);pointer-events:all;cursor:pointer;}
+.dsc-dual-range input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#E8442A;border:2px solid #fff;pointer-events:all;cursor:pointer;}
+.dsc-dual-track{height:4px;background:#E5E7EB;border-radius:2px;position:absolute;top:50%;transform:translateY(-50%);width:100%;left:0;}
+.dsc-dual-fill{height:4px;background:#E8442A;border-radius:2px;position:absolute;top:50%;transform:translateY(-50%);}
+.dsc-range-vals{display:flex;justify-content:space-between;font-size:.7rem;color:#6B7280;margin-top:2px;}
+/* Single range slider */
+.dsc-single-range input[type=range]{width:100%;-webkit-appearance:none;height:4px;border-radius:2px;outline:none;cursor:pointer;margin-top:4px;}
+.dsc-single-range input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#E8442A;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.25);cursor:pointer;}
+.dsc-single-range input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#E8442A;border:2px solid #fff;cursor:pointer;}
+.dsc-single-val{font-size:.7rem;color:#6B7280;margin-top:3px;}
+/* Checkboxes */
+.dsc-checks{display:flex;flex-direction:column;gap:7px;}
 .dsc-check-row{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.78rem;color:#374151;}
-.dsc-check-row input{accent-color:#E8442A;width:14px;height:14px;cursor:pointer;}
+.dsc-check-row input{accent-color:#E8442A;width:14px;height:14px;cursor:pointer;flex-shrink:0;}
 .dsc-filter-apply{width:100%;background:#E8442A;color:#fff;border:none;border-radius:8px;padding:9px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px;transition:background .15s;}
 .dsc-filter-apply:hover{background:#C23520;}
+.dsc-filter-link{display:block;text-align:center;font-size:.72rem;color:#E8442A;font-weight:600;cursor:pointer;margin-top:8px;background:none;border:none;font-family:inherit;width:100%;padding:0;}
+.dsc-filter-link:hover{color:#C23520;text-decoration:underline;}
 
 /* Table area */
 .dsc-table-area{flex:1;min-width:0;}
@@ -4519,27 +4522,16 @@ html,body{overflow-x:hidden;max-width:100%;}
             <div class="dsc-stats-row" id="dsc-stats-row">
               <div class="dsc-stat">
                 <div class="dsc-stat-icon blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
-                <div><div class="dsc-stat-val" id="dsc-stat-total">—</div><div class="dsc-stat-lbl">Total Produk</div></div>
+                <div><div class="dsc-stat-val" id="dsc-stat-listings">—</div><div class="dsc-stat-lbl">Total Listings</div></div>
               </div>
               <div class="dsc-stat">
-                <div class="dsc-stat-icon green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
-                <div><div class="dsc-stat-val" id="dsc-stat-margin">—</div><div class="dsc-stat-lbl">Margin Bagus</div></div>
+                <div class="dsc-stat-icon orange"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 10h16M4 14h8M4 18h4"/></svg></div>
+                <div><div class="dsc-stat-val" id="dsc-stat-cats">—</div><div class="dsc-stat-lbl">Kategori</div></div>
               </div>
               <div class="dsc-stat">
-                <div class="dsc-stat-icon orange"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
-                <div><div class="dsc-stat-val" id="dsc-stat-high">—</div><div class="dsc-stat-lbl">Potensi Tinggi</div></div>
+                <div class="dsc-stat-icon green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+                <div><div class="dsc-stat-val" id="dsc-stat-omset">—</div><div class="dsc-stat-lbl">Total Omset/Bulan</div></div>
               </div>
-              <div class="dsc-stat">
-                <div class="dsc-stat-icon purple"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-                <div><div class="dsc-stat-val" id="dsc-stat-low-comp">—</div><div class="dsc-stat-lbl">Kompetisi Rendah</div></div>
-              </div>
-            </div>
-
-            <!-- AI Insight banner -->
-            <div class="dsc-ai-banner">
-              <span class="dsc-ai-badge">INSIGHT AI</span>
-              <span class="dsc-ai-text" id="dsc-ai-text">Memuat insight...</span>
-              <span class="dsc-ai-link">Lihat Lengkap &rarr;</span>
             </div>
 
             <!-- Filter + Table -->
@@ -4547,37 +4539,64 @@ html,body{overflow-x:hidden;max-width:100%;}
 
               <!-- Filter panel -->
               <aside class="dsc-filter-panel">
-                <div class="dsc-filter-title">
-                  Filter
-                  <button class="dsc-filter-reset" onclick="dscResetFilters()">Reset</button>
+                <div class="dsc-filter-title">Filter</div>
+
+                <div class="dsc-filter-group">
+                  <span class="dsc-filter-label">Harga Jual (Rp)</span>
+                  <div class="dsc-dual-range" id="dsc-price-range">
+                    <div class="dsc-dual-track"></div>
+                    <div class="dsc-dual-fill" id="dsc-price-fill"></div>
+                    <input type="range" id="dsc-price-min" min="0" max="2000000" step="10000" value="0" oninput="dscUpdateDualRange('price')">
+                    <input type="range" id="dsc-price-max" min="0" max="2000000" step="10000" value="2000000" oninput="dscUpdateDualRange('price')">
+                  </div>
+                  <div class="dsc-range-vals"><span id="dsc-price-min-lbl">Rp 0</span><span id="dsc-price-max-lbl">Rp 2 jt</span></div>
                 </div>
 
                 <div class="dsc-filter-group">
-                  <div class="dsc-filter-label">Kategori</div>
+                  <span class="dsc-filter-label">Potensi Demand</span>
+                  <div class="dsc-checks">
+                    <label class="dsc-check-row"><input type="checkbox" id="dsc-dem-st" checked onchange="dscApplyFilters()"> Sangat Tinggi</label>
+                    <label class="dsc-check-row"><input type="checkbox" id="dsc-dem-t" checked onchange="dscApplyFilters()"> Tinggi</label>
+                    <label class="dsc-check-row"><input type="checkbox" id="dsc-dem-s" checked onchange="dscApplyFilters()"> Sedang</label>
+                    <label class="dsc-check-row"><input type="checkbox" id="dsc-dem-r" checked onchange="dscApplyFilters()"> Rendah</label>
+                  </div>
+                </div>
+
+                <div class="dsc-filter-group">
+                  <span class="dsc-filter-label">Tingkat Kompetisi</span>
+                  <div class="dsc-checks">
+                    <label class="dsc-check-row"><input type="checkbox" id="dsc-comp-r" checked onchange="dscApplyFilters()"> Rendah</label>
+                    <label class="dsc-check-row"><input type="checkbox" id="dsc-comp-s" checked onchange="dscApplyFilters()"> Sedang</label>
+                    <label class="dsc-check-row"><input type="checkbox" id="dsc-comp-t" checked onchange="dscApplyFilters()"> Tinggi</label>
+                    <label class="dsc-check-row"><input type="checkbox" id="dsc-comp-st" checked onchange="dscApplyFilters()"> Sangat Tinggi</label>
+                  </div>
+                </div>
+
+                <div class="dsc-filter-group">
+                  <span class="dsc-filter-label">Margin Potensial</span>
+                  <div class="dsc-single-range">
+                    <input type="range" id="dsc-margin-min" min="10" max="50" step="1" value="10" oninput="dscUpdateSingleRange('margin')">
+                  </div>
+                  <div class="dsc-single-val">Min: <span id="dsc-margin-min-lbl">10%</span></div>
+                </div>
+
+                <div class="dsc-filter-group">
+                  <span class="dsc-filter-label">Min. Estimasi Profit/Unit</span>
+                  <div class="dsc-single-range">
+                    <input type="range" id="dsc-profit-min" min="5000" max="100000" step="5000" value="5000" oninput="dscUpdateSingleRange('profit')">
+                  </div>
+                  <div class="dsc-single-val">Min: <span id="dsc-profit-min-lbl">Rp 5.000</span></div>
+                </div>
+
+                <div class="dsc-filter-group">
+                  <span class="dsc-filter-label">Kategori</span>
                   <select class="dsc-filter-select" id="dsc-filter-cat" onchange="dscApplyFilters()">
                     <option value="">Semua Kategori</option>
                   </select>
                 </div>
 
-                <div class="dsc-filter-group">
-                  <div class="dsc-filter-label">Harga (Rp)</div>
-                  <div class="dsc-range-row">
-                    <input class="dsc-range-input" id="dsc-filter-price-min" type="number" placeholder="Min" min="0">
-                    <span class="dsc-range-sep">—</span>
-                    <input class="dsc-range-input" id="dsc-filter-price-max" type="number" placeholder="Max" min="0">
-                  </div>
-                </div>
-
-                <div class="dsc-filter-group">
-                  <div class="dsc-filter-label">Kompetisi</div>
-                  <div class="dsc-competition-checks">
-                    <label class="dsc-check-row"><input type="checkbox" id="dsc-comp-low" value="Rendah" checked onchange="dscApplyFilters()"> Rendah</label>
-                    <label class="dsc-check-row"><input type="checkbox" id="dsc-comp-med" value="Sedang" checked onchange="dscApplyFilters()"> Sedang</label>
-                    <label class="dsc-check-row"><input type="checkbox" id="dsc-comp-high" value="Tinggi" checked onchange="dscApplyFilters()"> Tinggi</label>
-                  </div>
-                </div>
-
                 <button class="dsc-filter-apply" onclick="dscApplyFilters()">Terapkan Filter</button>
+                <button class="dsc-filter-link" onclick="dscResetFilters()">Reset Filter</button>
               </aside>
 
               <!-- Table area -->
@@ -4586,9 +4605,9 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <input class="dsc-search" id="dsc-search" type="text" placeholder="Cari produk..." oninput="dscApplyFilters()">
                   <select class="dsc-sort-select" id="dsc-sort" onchange="dscApplyFilters()">
                     <option value="score-desc">Score Tertinggi</option>
+                    <option value="omset-desc">Omset Tertinggi</option>
                     <option value="price-asc">Harga Terendah</option>
                     <option value="price-desc">Harga Tertinggi</option>
-                    <option value="margin-desc">Margin Terbesar</option>
                     <option value="name-asc">Nama A-Z</option>
                   </select>
                   <span class="dsc-count" id="dsc-count"></span>
@@ -4599,12 +4618,10 @@ html,body{overflow-x:hidden;max-width:100%;}
                     <thead>
                       <tr>
                         <th style="min-width:180px;">Produk</th>
-                        <th>Tren</th>
-                        <th>Harga</th>
-                        <th>Harga Target</th>
-                        <th>Margin</th>
-                        <th>Kompetisi</th>
+                        <th>Omset/Bulan</th>
+                        <th>Median Harga</th>
                         <th>Score</th>
+                        <th>Tren</th>
                         <th></th>
                       </tr>
                     </thead>
@@ -7016,8 +7033,57 @@ const DSC_PER_PAGE = 20;
 // Derive competition level from score
 function dscCompetition(score) {
   if (score >= 72) return 'Rendah';
-  if (score >= 48) return 'Sedang';
-  return 'Tinggi';
+  if (score >= 55) return 'Sedang';
+  if (score >= 35) return 'Tinggi';
+  return 'Sangat Tinggi';
+}
+
+// Derive demand level from score
+function dscDemand(score) {
+  if (score >= 80) return 'Sangat Tinggi';
+  if (score >= 65) return 'Tinggi';
+  if (score >= 50) return 'Sedang';
+  return 'Rendah';
+}
+
+// Update dual range slider UI
+function dscUpdateDualRange(key) {
+  if (key !== 'price') return;
+  const minEl = document.getElementById('dsc-price-min');
+  const maxEl = document.getElementById('dsc-price-max');
+  const fillEl = document.getElementById('dsc-price-fill');
+  if (!minEl || !maxEl) return;
+  let lo = parseFloat(minEl.value), hi = parseFloat(maxEl.value);
+  if (lo > hi) { minEl.value = hi; lo = hi; }
+  const rangeSpan = parseFloat(minEl.max) - parseFloat(minEl.min);
+  const left  = ((lo - parseFloat(minEl.min)) / rangeSpan) * 100;
+  const right = ((hi - parseFloat(minEl.min)) / rangeSpan) * 100;
+  if (fillEl) { fillEl.style.left = left + '%'; fillEl.style.width = (right - left) + '%'; }
+  const fmt = v => v >= 1000000 ? `Rp ${(v/1000000).toFixed(1)} jt` : v >= 1000 ? `Rp ${(v/1000).toFixed(0)} rb` : `Rp ${v}`;
+  const minLbl = document.getElementById('dsc-price-min-lbl');
+  const maxLbl = document.getElementById('dsc-price-max-lbl');
+  if (minLbl) minLbl.textContent = fmt(lo);
+  if (maxLbl) maxLbl.textContent = lo === 0 ? 'Rp 0' : fmt(lo), maxLbl.textContent = fmt(hi);
+}
+
+// Update single range slider UI
+function dscUpdateSingleRange(key) {
+  if (key === 'margin') {
+    const el = document.getElementById('dsc-margin-min');
+    const lbl = document.getElementById('dsc-margin-min-lbl');
+    if (!el) return;
+    if (lbl) lbl.textContent = el.value + '%';
+    const pct = ((parseFloat(el.value) - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min))) * 100;
+    el.style.background = `linear-gradient(to right,#E8442A ${pct}%,#E5E7EB ${pct}%)`;
+  }
+  if (key === 'profit') {
+    const el = document.getElementById('dsc-profit-min');
+    const lbl = document.getElementById('dsc-profit-min-lbl');
+    if (!el) return;
+    if (lbl) { const v = parseFloat(el.value); lbl.textContent = v >= 1000 ? `Rp ${(v/1000).toFixed(0)}.000` : `Rp ${v}`; }
+    const pct = ((parseFloat(el.value) - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min))) * 100;
+    el.style.background = `linear-gradient(to right,#E8442A ${pct}%,#E5E7EB ${pct}%)`;
+  }
 }
 
 // Target buying price (estimated supplier cost ~58% of sell price)
@@ -7050,67 +7116,64 @@ function dscSparkline(id, trend) {
 }
 
 function dscInit() {
-  // Populate category filter
   const sel = document.getElementById('dsc-filter-cat');
   if (!sel) return;
-  const cats = ['', ...new Set(allProducts.map(p => p.category).filter(Boolean))].sort();
-  sel.innerHTML = cats.map(c => `<option value="${c}">${c || 'Semua Kategori'}</option>`).join('');
+  const cats = [...new Set(allProducts.map(p => p.category).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Semua Kategori</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
 
-  // Update stats
-  const total = allProducts.length;
-  const marginGood = allProducts.filter(p => p.score >= 60).length;
-  const highPotential = allProducts.filter(p => p.score >= 75).length;
-  const lowComp = allProducts.filter(p => dscCompetition(p.score) === 'Rendah').length;
+  // Total listings: estimated individual Shopee listings per keyword
+  const totalListings = allProducts.reduce((s, p) => s + 50 + Math.round(p.score * 4.5), 0);
+  const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setEl('dsc-stat-listings', totalListings.toLocaleString('id-ID'));
+  setEl('dsc-stat-cats', cats.length.toLocaleString('id-ID'));
 
-  const s = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v.toLocaleString('id-ID'); };
-  s('dsc-stat-total', total);
-  s('dsc-stat-margin', marginGood);
-  s('dsc-stat-high', highPotential);
-  s('dsc-stat-low-comp', lowComp);
-
-  // AI insight
-  const topCat = (() => {
-    const m = {};
-    allProducts.forEach(p => { m[p.category] = (m[p.category] || 0) + 1; });
-    return Object.entries(m).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
-  })();
-  const topProduct = allProducts.slice().sort((a, b) => b.score - a.score)[0];
-  const aiEl = document.getElementById('dsc-ai-text');
-  if (aiEl && topProduct) {
-    aiEl.innerHTML = `Kategori <strong>${topCat}</strong> memiliki jumlah produk terbanyak. Produk dengan potensi tertinggi saat ini: <strong>${topProduct.name}</strong> (score ${Math.round(topProduct.score)}). Ada <strong>${lowComp} produk</strong> dengan kompetisi rendah yang siap dimasuki.`;
-  }
-
+  dscUpdateDualRange('price');
+  dscUpdateSingleRange('margin');
+  dscUpdateSingleRange('profit');
   dscApplyFilters();
 }
 
 function dscApplyFilters() {
-  const q       = (document.getElementById('dsc-search')?.value || '').toLowerCase();
-  const cat     = document.getElementById('dsc-filter-cat')?.value || '';
-  const priceMin = parseFloat(document.getElementById('dsc-filter-price-min')?.value) || 0;
-  const priceMax = parseFloat(document.getElementById('dsc-filter-price-max')?.value) || Infinity;
-  const compChecks = ['low','med','high'].map(k => document.getElementById(`dsc-comp-${k}`)?.checked);
-  const allowedComp = ['Rendah','Sedang','Tinggi'].filter((_, i) => compChecks[i]);
-  const sortVal = document.getElementById('dsc-sort')?.value || 'score-desc';
+  const q         = (document.getElementById('dsc-search')?.value || '').toLowerCase();
+  const cat       = document.getElementById('dsc-filter-cat')?.value || '';
+  const priceMin  = parseFloat(document.getElementById('dsc-price-min')?.value) || 0;
+  const priceMax  = parseFloat(document.getElementById('dsc-price-max')?.value) || Infinity;
+  const marginMin = parseFloat(document.getElementById('dsc-margin-min')?.value) || 0;
+  const profitMin = parseFloat(document.getElementById('dsc-profit-min')?.value) || 0;
+  const sortVal   = document.getElementById('dsc-sort')?.value || 'score-desc';
+
+  const allowedDem  = ['Sangat Tinggi','Tinggi','Sedang','Rendah'].filter((_,i) =>
+    document.getElementById(['dsc-dem-st','dsc-dem-t','dsc-dem-s','dsc-dem-r'][i])?.checked);
+  const allowedComp = ['Rendah','Sedang','Tinggi','Sangat Tinggi'].filter((_,i) =>
+    document.getElementById(['dsc-comp-r','dsc-comp-s','dsc-comp-t','dsc-comp-st'][i])?.checked);
 
   let list = allProducts.filter(p => {
     if (q && !p.name.toLowerCase().includes(q) && !(p.category||'').toLowerCase().includes(q)) return false;
     if (cat && p.category !== cat) return false;
     if (p.medianPrice < priceMin || p.medianPrice > priceMax) return false;
+    const margin = dscMargin(p.medianPrice);
+    if (margin < marginMin) return false;
+    if ((p.medianPrice * margin / 100) < profitMin) return false;
+    if (!allowedDem.includes(dscDemand(p.score))) return false;
     if (!allowedComp.includes(dscCompetition(p.score))) return false;
     return true;
   });
 
-  // Sort
   const [sf, sd] = sortVal.split('-');
   list.sort((a, b) => {
     let va, vb;
-    if (sf === 'score')  { va = a.score;       vb = b.score; }
-    if (sf === 'price')  { va = a.medianPrice;  vb = b.medianPrice; }
-    if (sf === 'margin') { va = dscMargin(a.medianPrice); vb = dscMargin(b.medianPrice); }
-    if (sf === 'name')   { va = a.name;         vb = b.name; }
-    if (sf === 'name') return sd === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    if (sf === 'score') { va = a.score; vb = b.score; }
+    else if (sf === 'omset') { va = (a.startRevenue+a.upToRevenue)/2; vb = (b.startRevenue+b.upToRevenue)/2; }
+    else if (sf === 'price') { va = a.medianPrice; vb = b.medianPrice; }
+    else if (sf === 'name')  { return sd === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name); }
+    else { va = a.score; vb = b.score; }
     return sd === 'asc' ? va - vb : vb - va;
   });
+
+  // Update total omset stat for filtered products
+  const totalOmset = list.reduce((s, p) => s + (p.startRevenue + p.upToRevenue) / 2, 0);
+  const omsetEl = document.getElementById('dsc-stat-omset');
+  if (omsetEl) omsetEl.textContent = fmtShort(totalOmset);
 
   _dscFiltered = list;
   _dscPage = 1;
@@ -7128,15 +7191,10 @@ function dscRenderTable() {
   if (!tbody) return;
 
   if (!slice.length) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Tidak ada produk yang sesuai filter.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Tidak ada produk yang sesuai filter.</td></tr>`;
   } else {
     tbody.innerHTML = slice.map(p => {
-      const comp    = dscCompetition(p.score);
-      const compCls = comp === 'Rendah' ? 'low' : comp === 'Sedang' ? 'med' : 'high';
-      const compDot = comp === 'Rendah' ? '●' : comp === 'Sedang' ? '●' : '●';
-      const margin  = dscMargin(p.medianPrice);
-      const margCls = margin >= 38 ? 'good' : margin >= 28 ? 'ok' : 'low';
-      const target  = dscTargetPrice(p.medianPrice);
+      const omset   = (p.startRevenue + p.upToRevenue) / 2;
       const imgHtml = p.image
         ? `<div class="dsc-prod-img"><img src="${p.image}" alt="" loading="lazy"></div>`
         : `<div class="dsc-prod-img">${p.emoji || '📦'}</div>`;
@@ -7150,12 +7208,10 @@ function dscRenderTable() {
             </div>
           </div>
         </td>
-        <td>${dscSparkline(p.id, p.avgTrend)}</td>
+        <td><div class="dsc-price">${fmtShort(omset)}</div><div class="dsc-price-sub">/bulan</div></td>
         <td><div class="dsc-price">${fmtShort(p.medianPrice)}</div></td>
-        <td><div class="dsc-price">${fmtShort(target)}</div><div class="dsc-price-sub">Harga beli</div></td>
-        <td><div class="dsc-margin ${margCls}">${margin}%</div></td>
-        <td><span class="dsc-badge ${compCls}">${compDot} ${comp}</span></td>
         <td><div style="font-size:.82rem;font-weight:700;color:${scoreColor(p.score)}">${Math.round(p.score)}</div></td>
+        <td>${dscSparkline(p.id, p.avgTrend)}</td>
         <td><button class="dsc-analyse-btn" onclick="dscOpenDeepDive(${p.id})">Analisis</button></td>
       </tr>`;
     }).join('');
@@ -7191,12 +7247,21 @@ function dscGoPage(n) {
 }
 
 function dscResetFilters() {
-  const ids = ['dsc-filter-cat','dsc-filter-price-min','dsc-filter-price-max'];
-  ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  ['dsc-comp-low','dsc-comp-med','dsc-comp-high'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.checked = true;
+  const g = id => document.getElementById(id);
+  if (g('dsc-filter-cat'))  g('dsc-filter-cat').value  = '';
+  if (g('dsc-search'))      g('dsc-search').value       = '';
+  if (g('dsc-price-min'))   g('dsc-price-min').value   = 0;
+  if (g('dsc-price-max'))   g('dsc-price-max').value   = 2000000;
+  if (g('dsc-margin-min'))  g('dsc-margin-min').value  = 10;
+  if (g('dsc-profit-min'))  g('dsc-profit-min').value  = 5000;
+  ['dsc-dem-st','dsc-dem-t','dsc-dem-s','dsc-dem-r',
+   'dsc-comp-r','dsc-comp-s','dsc-comp-t','dsc-comp-st'].forEach(id => {
+    const el = g(id); if (el) el.checked = true;
   });
-  document.getElementById('dsc-sort').value = 'score-desc';
+  if (g('dsc-sort')) g('dsc-sort').value = 'score-desc';
+  dscUpdateDualRange('price');
+  dscUpdateSingleRange('margin');
+  dscUpdateSingleRange('profit');
   dscApplyFilters();
 }
 
