@@ -1003,16 +1003,36 @@ body.on-landing .navbar{display:none;}
 .lp-hero-avatars{display:flex;}
 .lp-hero-avatar{width:30px;height:30px;border-radius:50%;border:2px solid #fff;margin-left:-8px;background:linear-gradient(135deg,#E8442A,#FF6B35);display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:#fff;}
 .lp-hero-avatar:first-child{margin-left:0;}
-.lp-hero-social-text{font-size:.78rem;color:#6B7280;}<br>.lp-hero-mockup{border-radius:18px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.14);border:1px solid #E5E7EB;background:#F4F6F9;}
-.lp-hero-mockup-inner{padding:20px;background:linear-gradient(160deg,#1A1F3C 0%,#2D3561 100%);}
-.lp-mockup-topbar{display:flex;gap:6px;margin-bottom:16px;}
-.lp-mockup-dot{width:9px;height:9px;border-radius:50%;}
-.lp-mockup-card{background:#fff;border-radius:10px;padding:14px 16px;margin-bottom:10px;}
-.lp-mockup-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-.lp-mockup-label{font-size:.65rem;color:#9CA3AF;font-weight:600;}
-.lp-mockup-value{font-size:.95rem;font-weight:800;color:#1A1F3C;}
-.lp-mockup-bar{height:6px;border-radius:3px;background:#F3F4F6;margin-bottom:6px;}
-.lp-mockup-fill{height:6px;border-radius:3px;background:linear-gradient(90deg,#E8442A,#FF6B35);}
+.lp-hero-social-text{font-size:.78rem;color:#6B7280;}
+/* ── Hero screenshot mockup ── */
+.lp-hero-shot-wrap{position:relative;}
+.lp-hero-shot{border-radius:14px;overflow:hidden;box-shadow:0 28px 70px rgba(0,0,0,.18);border:1px solid #2D3561;}
+.lp-hero-shot-bar{background:#111827;padding:8px 12px;display:flex;align-items:center;gap:5px;}
+.lp-hero-shot-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.lp-hero-shot-url{flex:1;background:#1F2937;border-radius:4px;height:14px;margin-left:6px;opacity:.6;}
+.lp-hero-shot-body{display:flex;background:#F4F6F9;height:320px;}
+.lp-hero-shot-sidebar{width:52px;background:#1A1F3C;flex-shrink:0;display:flex;flex-direction:column;padding:12px 0;gap:6px;align-items:center;}
+.lp-hero-shot-logo{font-size:.5rem;font-weight:900;color:#fff;letter-spacing:.5px;margin-bottom:8px;}
+.lp-hero-shot-logo span{color:#E8442A;}
+.lp-hero-shot-nav{width:36px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;}
+.lp-hero-shot-nav.active{background:#E8442A;}
+.lp-hero-shot-main{flex:1;padding:12px;overflow:hidden;}
+.lp-hero-shot-toprow{display:flex;gap:7px;margin-bottom:9px;}
+.lp-hero-shot-stat{background:#fff;border-radius:8px;flex:1;padding:8px 10px;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.lp-hero-shot-stat-lbl{font-size:.48rem;color:#9CA3AF;font-weight:600;margin-bottom:3px;}
+.lp-hero-shot-stat-val{font-size:.78rem;font-weight:800;color:#1A1F3C;}
+.lp-hero-shot-stat-delta{font-size:.42rem;font-weight:700;color:#10B981;margin-top:2px;}
+.lp-hero-shot-chart{background:#fff;border-radius:8px;padding:10px;margin-bottom:9px;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.lp-hero-shot-chart-lbl{font-size:.5rem;color:#6B7280;font-weight:600;margin-bottom:6px;}
+.lp-hero-shot-prodrow{display:flex;gap:7px;}
+.lp-hero-shot-prod{background:#fff;border-radius:8px;flex:1;padding:8px 10px;display:flex;align-items:center;gap:7px;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.lp-hero-shot-prod-img{width:28px;height:28px;border-radius:5px;background:linear-gradient(135deg,#E8442A22,#E8442A44);flex-shrink:0;}
+.lp-hero-shot-prod-name{font-size:.44rem;font-weight:700;color:#1A1F3C;line-height:1.3;}
+.lp-hero-shot-prod-score{font-size:.55rem;font-weight:800;color:#E8442A;}
+/* annotation */
+.lp-hero-annotation{position:absolute;top:-28px;right:-20px;display:flex;flex-direction:column;align-items:flex-start;pointer-events:none;}
+.lp-hero-annotation-text{background:#fff;border-radius:8px;padding:7px 11px;font-size:.72rem;font-weight:700;color:#1A1F3C;box-shadow:0 4px 16px rgba(0,0,0,.12);line-height:1.4;max-width:160px;transform:rotate(-2deg);border:1.5px solid #F3F4F6;}
+@media(max-width:900px){.lp-hero-annotation{top:-22px;right:0;}.lp-hero-shot-body{height:240px;}.lp-hero-shot-stat-val{font-size:.65rem;}}
 .lp-features-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid #F3F4F6;border-bottom:1px solid #F3F4F6;}
 @media(max-width:700px){.lp-features-strip{grid-template-columns:repeat(2,1fr);}}
 .lp-feat-item{padding:24px 28px;border-right:1px solid #F3F4F6;display:flex;align-items:center;gap:14px;}
@@ -2383,41 +2403,144 @@ html,body{overflow-x:hidden;max-width:100%;}
           <button class="lp-hero-btn-secondary" onclick="document.getElementById('lp-preview-section').scrollIntoView({behavior:'smooth',block:'start'})">Lihat Contoh Produk</button>
         </div>
       </div>
-      <!-- mockup -->
-      <div class="lp-hero-mockup">
-        <div class="lp-hero-mockup-inner">
-          <div class="lp-mockup-topbar">
-            <div class="lp-mockup-dot" style="background:#FF5F57"></div>
-            <div class="lp-mockup-dot" style="background:#FFBD2E"></div>
-            <div class="lp-mockup-dot" style="background:#28C840"></div>
+      <!-- dashboard screenshot mockup -->
+      <div class="lp-hero-shot-wrap">
+
+        <!-- hand-drawn annotation -->
+        <div class="lp-hero-annotation">
+          <div class="lp-hero-annotation-text">Semua insight yang kamu butuhkan dalam satu dashboard</div>
+          <!-- hand-drawn arrow SVG pointing down-left toward the dashboard -->
+          <svg width="80" height="54" viewBox="0 0 80 54" fill="none" style="margin-top:2px;margin-left:10px;">
+            <path d="M68,4 C60,8 44,10 32,18 C20,26 10,36 6,46" stroke="#E8442A" stroke-width="2.2" stroke-linecap="round" fill="none"
+              style="stroke-dasharray:none;"
+              pathLength="1"
+              stroke-linejoin="round"/>
+            <!-- arrowhead -->
+            <path d="M6,46 L2,38 M6,46 L14,42" stroke="#E8442A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <div class="lp-hero-shot">
+          <!-- browser chrome bar -->
+          <div class="lp-hero-shot-bar">
+            <div class="lp-hero-shot-dot" style="background:#FF5F57;"></div>
+            <div class="lp-hero-shot-dot" style="background:#FFBD2E;"></div>
+            <div class="lp-hero-shot-dot" style="background:#28C840;"></div>
+            <div class="lp-hero-shot-url"></div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-            <div class="lp-mockup-card">
-              <div class="lp-mockup-label">Skor Produk</div>
-              <div class="lp-mockup-value" style="color:#E8442A;">87</div>
-              <div class="lp-mockup-bar"><div class="lp-mockup-fill" style="width:87%"></div></div>
-            </div>
-            <div class="lp-mockup-card">
-              <div class="lp-mockup-label">Margin Est.</div>
-              <div class="lp-mockup-value">34%</div>
-              <div class="lp-mockup-bar"><div class="lp-mockup-fill" style="width:34%;background:linear-gradient(90deg,#10B981,#059669)"></div></div>
-            </div>
-          </div>
-          <div class="lp-mockup-card">
-            <div class="lp-mockup-row">
-              <div>
-                <div class="lp-mockup-label">Omzet Potensial</div>
-                <div class="lp-mockup-value">Rp 15.280.000</div>
+
+          <!-- dashboard body -->
+          <div class="lp-hero-shot-body">
+
+            <!-- sidebar -->
+            <div class="lp-hero-shot-sidebar">
+              <div class="lp-hero-shot-logo">Laris<span>ID</span></div>
+              <!-- Dashboard (active) -->
+              <div class="lp-hero-shot-nav active">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
               </div>
-              <div style="font-size:.72rem;font-weight:700;background:#EAF7F0;color:#10B981;padding:3px 8px;border-radius:10px;">▲ 12%</div>
+              <!-- Discover -->
+              <div class="lp-hero-shot-nav">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </div>
+              <!-- Products -->
+              <div class="lp-hero-shot-nav">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+              </div>
+              <!-- AI -->
+              <div class="lp-hero-shot-nav">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              </div>
+              <!-- Alerts -->
+              <div class="lp-hero-shot-nav">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2.2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              </div>
             </div>
-          </div>
-          <div class="lp-mockup-card" style="margin-top:8px;">
-            <div class="lp-mockup-label" style="margin-bottom:8px;">Tren 30 hari</div>
-            <svg viewBox="0 0 200 50" style="width:100%;height:40px;">
-              <polyline points="0,40 28,32 56,36 84,20 112,24 140,12 168,16 200,5" fill="none" stroke="#E8442A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <polyline points="0,40 28,32 56,36 84,20 112,24 140,12 168,16 200,5 200,50 0,50" fill="rgba(232,68,42,.08)" stroke="none"/>
-            </svg>
+
+            <!-- main content -->
+            <div class="lp-hero-shot-main">
+              <!-- page title -->
+              <div style="font-size:.52rem;font-weight:800;color:#1A1F3C;margin-bottom:8px;">Dashboard</div>
+
+              <!-- 4 stat cards -->
+              <div class="lp-hero-shot-toprow">
+                <div class="lp-hero-shot-stat">
+                  <div class="lp-hero-shot-stat-lbl">Omset / Bulan</div>
+                  <div class="lp-hero-shot-stat-val">Rp 15,3 jt</div>
+                  <div class="lp-hero-shot-stat-delta">▲ 12%</div>
+                </div>
+                <div class="lp-hero-shot-stat">
+                  <div class="lp-hero-shot-stat-lbl">Unit Terjual</div>
+                  <div class="lp-hero-shot-stat-val">1.840</div>
+                  <div class="lp-hero-shot-stat-delta">▲ 8%</div>
+                </div>
+                <div class="lp-hero-shot-stat">
+                  <div class="lp-hero-shot-stat-lbl">Produk Dipantau</div>
+                  <div class="lp-hero-shot-stat-val">24</div>
+                  <div class="lp-hero-shot-stat-delta" style="color:#6B7280;">aktif</div>
+                </div>
+                <div class="lp-hero-shot-stat">
+                  <div class="lp-hero-shot-stat-lbl">Skor Rata-rata</div>
+                  <div class="lp-hero-shot-stat-val" style="color:#E8442A;">81</div>
+                  <div class="lp-hero-shot-stat-delta">▲ 3 poin</div>
+                </div>
+              </div>
+
+              <!-- trend chart -->
+              <div class="lp-hero-shot-chart">
+                <div class="lp-hero-shot-chart-lbl">Tren Omset 30 Hari</div>
+                <svg viewBox="0 0 260 60" style="width:100%;height:52px;">
+                  <!-- grid lines -->
+                  <line x1="0" y1="15" x2="260" y2="15" stroke="#F3F4F6" stroke-width="1"/>
+                  <line x1="0" y1="30" x2="260" y2="30" stroke="#F3F4F6" stroke-width="1"/>
+                  <line x1="0" y1="45" x2="260" y2="45" stroke="#F3F4F6" stroke-width="1"/>
+                  <!-- area fill -->
+                  <path d="M0,50 C20,46 40,42 60,38 C80,34 100,28 120,22 C140,16 160,14 180,10 C200,6 220,8 240,5 L260,3 L260,60 L0,60 Z" fill="rgba(232,68,42,.07)" stroke="none"/>
+                  <!-- line -->
+                  <path d="M0,50 C20,46 40,42 60,38 C80,34 100,28 120,22 C140,16 160,14 180,10 C200,6 220,8 240,5 L260,3" fill="none" stroke="#E8442A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <!-- secondary line (units) -->
+                  <path d="M0,54 C20,50 40,48 60,44 C80,40 100,36 120,32 C140,28 160,26 180,22 C200,18 220,16 240,14 L260,12" fill="none" stroke="#4F46E5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3,2"/>
+                  <!-- dots -->
+                  <circle cx="0" cy="50" r="2.5" fill="#E8442A"/>
+                  <circle cx="65" cy="38" r="2.5" fill="#E8442A"/>
+                  <circle cx="130" cy="22" r="2.5" fill="#E8442A"/>
+                  <circle cx="195" cy="8" r="2.5" fill="#E8442A"/>
+                  <circle cx="260" cy="3" r="2.5" fill="#E8442A"/>
+                  <!-- x-axis labels -->
+                  <text x="0" y="60" font-size="4.5" fill="#9CA3AF">1 Apr</text>
+                  <text x="58" y="60" font-size="4.5" fill="#9CA3AF">8 Apr</text>
+                  <text x="118" y="60" font-size="4.5" fill="#9CA3AF">15 Apr</text>
+                  <text x="182" y="60" font-size="4.5" fill="#9CA3AF">22 Apr</text>
+                  <text x="236" y="60" font-size="4.5" fill="#9CA3AF">29 Apr</text>
+                </svg>
+              </div>
+
+              <!-- top products row -->
+              <div style="font-size:.45rem;font-weight:700;color:#6B7280;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px;">Produk Teratas</div>
+              <div class="lp-hero-shot-prodrow">
+                <div class="lp-hero-shot-prod">
+                  <div class="lp-hero-shot-prod-img"></div>
+                  <div>
+                    <div class="lp-hero-shot-prod-name">Tas Selempang<br>Pria Premium</div>
+                    <div class="lp-hero-shot-prod-score">87</div>
+                  </div>
+                </div>
+                <div class="lp-hero-shot-prod">
+                  <div class="lp-hero-shot-prod-img" style="background:linear-gradient(135deg,#4F46E522,#4F46E544);"></div>
+                  <div>
+                    <div class="lp-hero-shot-prod-name">Sepatu Casual<br>Pria Slip-On</div>
+                    <div class="lp-hero-shot-prod-score" style="color:#4F46E5;">79</div>
+                  </div>
+                </div>
+                <div class="lp-hero-shot-prod">
+                  <div class="lp-hero-shot-prod-img" style="background:linear-gradient(135deg,#10B98122,#10B98144);"></div>
+                  <div>
+                    <div class="lp-hero-shot-prod-name">Masker Wajah<br>Clay Matcha</div>
+                    <div class="lp-hero-shot-prod-score" style="color:#10B981;">74</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
