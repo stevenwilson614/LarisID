@@ -1078,21 +1078,35 @@ body.on-landing .navbar{display:none;}
 .lp-fitur-hero-sub{font-size:.88rem;color:#6B7280;line-height:1.65;margin-bottom:20px;}
 .lp-fitur-badges{display:flex;gap:20px;flex-wrap:wrap;}
 .lp-fitur-badge{display:flex;align-items:center;gap:6px;font-size:.78rem;color:#374151;font-weight:600;}
-.lp-feat-section-title{font-size:1.4rem;font-weight:900;color:#1A1F3C;text-align:center;margin-bottom:52px;}
-.lp-feature-row{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;margin-bottom:60px;}
+/* Section title */
+.lp-feat-section-title{font-size:1.5rem;font-weight:900;color:#1A1F3C;text-align:center;margin-bottom:52px;}
+/* Feature rows */
+.lp-feature-row{display:grid;grid-template-columns:1fr 1fr;gap:52px;align-items:center;margin-bottom:64px;}
 .lp-feature-row:last-child{margin-bottom:0;}
 @media(max-width:860px){.lp-feature-row{grid-template-columns:1fr;gap:24px;}}
 .lp-feature-row.rev{direction:rtl;}
 .lp-feature-row.rev>*{direction:ltr;}
 @media(max-width:860px){.lp-feature-row.rev{direction:ltr;}}
-.lp-feat-num{width:30px;height:30px;border-radius:50%;background:#FFF0ED;color:#E8442A;font-size:.75rem;font-weight:900;display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
+.lp-feat-num{width:32px;height:32px;border-radius:50%;background:#FFF0ED;color:#E8442A;font-size:.75rem;font-weight:900;display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
 .lp-feat-icon-bg{width:50px;height:50px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:1.4rem;}
 .lp-feat-title{font-size:1.1rem;font-weight:900;color:#1A1F3C;margin-bottom:7px;}
 .lp-feat-desc{font-size:.84rem;color:#6B7280;line-height:1.65;margin-bottom:14px;}
 .lp-feat-bullets{display:flex;flex-direction:column;gap:7px;}
 .lp-feat-bullet{display:flex;align-items:center;gap:8px;font-size:.81rem;color:#374151;}
 .lp-feat-bullet::before{content:'';width:5px;height:5px;border-radius:50%;background:#E8442A;flex-shrink:0;}
-.lp-feat-mockup{border-radius:14px;overflow:hidden;box-shadow:0 10px 36px rgba(0,0,0,.13);}
+/* Phone frame */
+.lp-phone-wrap{display:flex;justify-content:center;}
+.lp-phone{background:#111827;border-radius:36px;padding:12px 8px;box-shadow:0 20px 60px rgba(0,0,0,.28);width:220px;flex-shrink:0;}
+.lp-phone-notch{width:70px;height:6px;background:#374151;border-radius:3px;margin:0 auto 10px;}
+.lp-phone-screen{border-radius:24px;overflow:hidden;background:#F4F6F9;}
+/* Browser frame */
+.lp-browser{border-radius:12px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.14);border:1px solid #E5E7EB;}
+.lp-browser-bar{background:#F3F4F6;padding:8px 12px;display:flex;align-items:center;gap:5px;border-bottom:1px solid #E5E7EB;}
+.lp-browser-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.lp-browser-url{flex:1;background:#fff;border-radius:4px;height:16px;margin-left:6px;opacity:.7;}
+.lp-browser-body{background:#F4F6F9;}
+/* White card frame */
+.lp-card-frame{background:#fff;border:1.5px solid #E5E7EB;border-radius:14px;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,.08);}
 
 /* ── PRICING SECTION ── */
 #lp-harga{background:#F8F9FC;padding:80px 40px;}
@@ -2497,7 +2511,7 @@ html,body{overflow-x:hidden;max-width:100%;}
     <section id="lp-fitur">
       <div class="lp-fitur-wrap">
 
-        <!-- Hero -->
+        <!-- Hero: text left + dashboard mockup right -->
         <div class="lp-fitur-hero">
           <div>
             <div class="lp-fitur-eyebrow">
@@ -2512,45 +2526,74 @@ html,body{overflow-x:hidden;max-width:100%;}
               <span class="lp-fitur-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Hemat waktu riset</span>
             </div>
           </div>
-          <!-- Dashboard mockup -->
-          <div style="background:#1A1F3C;border-radius:16px;padding:14px;box-shadow:0 16px 48px rgba(0,0,0,.22);">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-              <div style="font-size:.82rem;font-weight:900;color:#fff;">Laris<span style="color:#E8442A;">ID</span></div>
-              <div style="font-size:.62rem;color:rgba(255,255,255,.4);margin-left:auto;font-weight:600;">Dashboard</div>
+          <!-- Dashboard screenshot mockup -->
+          <div class="lp-browser" style="background:#1A1F3C;">
+            <div class="lp-browser-bar" style="background:#111827;border-color:#374151;">
+              <div class="lp-browser-dot" style="background:#FF5F57;"></div>
+              <div class="lp-browser-dot" style="background:#FFBD2E;"></div>
+              <div class="lp-browser-dot" style="background:#28C840;"></div>
+              <div style="flex:1;background:rgba(255,255,255,.08);border-radius:4px;height:16px;margin-left:8px;display:flex;align-items:center;padding:0 8px;"><span style="font-size:.55rem;color:rgba(255,255,255,.4);">larisid.com/dashboard</span></div>
             </div>
-            <div style="background:#F4F6F9;border-radius:10px;padding:12px;">
-              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;">
-                <div style="background:#fff;border-radius:7px;padding:9px 10px;"><div style="font-size:.52rem;color:#9CA3AF;font-weight:600;margin-bottom:2px;">Produk Terpilih</div><div style="font-size:.9rem;font-weight:800;color:#1A1F3C;">14</div><div style="font-size:.52rem;color:#10B981;font-weight:600;">▲ 2 minggu ini</div></div>
-                <div style="background:#fff;border-radius:7px;padding:9px 10px;"><div style="font-size:.52rem;color:#9CA3AF;font-weight:600;margin-bottom:2px;">Rata-rata Profit</div><div style="font-size:.9rem;font-weight:800;color:#1A1F3C;">32%</div><div style="font-size:.52rem;color:#10B981;font-weight:600;">▲ 4% minggu lalu</div></div>
-                <div style="background:#fff;border-radius:7px;padding:9px 10px;"><div style="font-size:.52rem;color:#9CA3AF;font-weight:600;margin-bottom:2px;">Total Omset Pot.</div><div style="font-size:.9rem;font-weight:800;color:#1A1F3C;">Rp 24,5jt</div><div style="font-size:.52rem;color:#10B981;font-weight:600;">▲ 10% minggu lalu</div></div>
-                <div style="background:#fff;border-radius:7px;padding:9px 10px;"><div style="font-size:.52rem;color:#9CA3AF;font-weight:600;margin-bottom:2px;">Peluang Menjanjikan</div><div style="font-size:.9rem;font-weight:800;color:#4F46E5;">18</div><div style="font-size:.52rem;color:#6B7280;">Lihat di Finder</div></div>
-              </div>
-              <div style="background:#fff;border-radius:8px;padding:12px;margin-bottom:8px;">
-                <div style="font-size:.62rem;font-weight:700;color:#374151;margin-bottom:8px;">Performa Produk Terpilih</div>
-                <div style="display:flex;gap:12px;margin-bottom:8px;">
-                  <div style="display:flex;align-items:center;gap:4px;font-size:.52rem;color:#E8442A;font-weight:600;"><div style="width:10px;height:2px;background:#E8442A;border-radius:2px;"></div>Omset</div>
-                  <div style="display:flex;align-items:center;gap:4px;font-size:.52rem;color:#4F46E5;font-weight:600;"><div style="width:10px;height:2px;background:#4F46E5;border-radius:2px;"></div>Unit Terjual</div>
-                  <div style="display:flex;align-items:center;gap:4px;font-size:.52rem;color:#10B981;font-weight:600;"><div style="width:10px;height:2px;background:#10B981;border-radius:2px;"></div>Harga</div>
+            <div style="display:flex;">
+              <!-- sidebar -->
+              <div style="width:130px;background:#111827;padding:14px 10px;flex-shrink:0;border-right:1px solid rgba(255,255,255,.06);">
+                <div style="font-size:.78rem;font-weight:900;color:#fff;margin-bottom:16px;">Laris<span style="color:#E8442A;">ID</span></div>
+                <div style="display:flex;flex-direction:column;gap:2px;">
+                  <div style="background:#E8442A;border-radius:7px;padding:7px 10px;display:flex;align-items:center;gap:7px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span style="font-size:.62rem;font-weight:700;color:#fff;">Dashboard</span></div>
+                  <div style="padding:7px 10px;display:flex;align-items:center;gap:7px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span style="font-size:.62rem;color:rgba(255,255,255,.5);">Discover</span></div>
+                  <div style="padding:4px 10px;"><div style="font-size:.52rem;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.05em;margin:6px 0 4px;">Products</div></div>
+                  <div style="padding:7px 10px;display:flex;align-items:center;gap:7px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span style="font-size:.62rem;color:rgba(255,255,255,.5);">Tracker</span></div>
+                  <div style="padding:7px 10px;display:flex;align-items:center;gap:7px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><span style="font-size:.62rem;color:rgba(255,255,255,.5);">Deep Dive</span></div>
+                  <div style="padding:7px 10px;display:flex;align-items:center;gap:7px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2"><path d="M12 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"/><path d="M2 21a10 10 0 0 1 20 0"/></svg><span style="font-size:.62rem;color:rgba(255,255,255,.5);">AI Strategist</span></div>
+                  <div style="padding:7px 10px;display:flex;align-items:center;gap:7px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span style="font-size:.62rem;color:rgba(255,255,255,.5);">Alerts</span></div>
                 </div>
-                <svg viewBox="0 0 300 70" style="width:100%;height:52px;">
-                  <polyline points="0,55 45,44 90,40 135,26 180,30 225,16 270,20 300,8" fill="none" stroke="#E8442A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                  <polyline points="0,58 45,52 90,50 135,40 180,43 225,34 270,37 300,28" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                  <polyline points="0,50 45,48 90,52 135,45 180,47 225,42 270,38 300,40" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
               </div>
-              <div style="background:#fff;border-radius:8px;padding:10px;display:flex;align-items:center;gap:10px;">
-                <div style="width:36px;height:36px;background:#F3F4F6;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1rem;">&#x1F45C;</div>
-                <div style="flex:1;min-width:0;"><div style="font-size:.65rem;font-weight:700;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Tas Selempang Pria</div><div style="font-size:.55rem;color:#9CA3AF;">Skor Produk</div></div>
-                <div style="text-align:right;"><div><span style="font-size:.95rem;font-weight:900;color:#E8442A;">82</span><span style="font-size:.6rem;color:#9CA3AF;">/100</span></div><span style="font-size:.56rem;font-weight:700;background:#ECFDF5;color:#059669;padding:2px 6px;border-radius:6px;">Tinggi</span></div>
+              <!-- main content -->
+              <div style="flex:1;background:#F4F6F9;padding:14px;">
+                <div style="font-size:.72rem;font-weight:800;color:#1A1F3C;margin-bottom:10px;">Dashboard</div>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;">
+                  <div style="background:#fff;border-radius:7px;padding:8px 9px;"><div style="font-size:.5rem;color:#9CA3AF;margin-bottom:2px;">Produk Terpilih</div><div style="font-size:.85rem;font-weight:800;color:#1A1F3C;">14</div><div style="font-size:.5rem;color:#10B981;">▲ 20% minggu ini</div></div>
+                  <div style="background:#fff;border-radius:7px;padding:8px 9px;"><div style="font-size:.5rem;color:#9CA3AF;margin-bottom:2px;">Rata-rata Profit</div><div style="font-size:.85rem;font-weight:800;color:#1A1F3C;">32%</div><div style="font-size:.5rem;color:#10B981;">▲ 5% dari minggu lalu</div></div>
+                  <div style="background:#fff;border-radius:7px;padding:8px 9px;"><div style="font-size:.5rem;color:#9CA3AF;margin-bottom:2px;">Total Omset Pot.</div><div style="font-size:.85rem;font-weight:800;color:#1A1F3C;">Rp 24,5jt</div><div style="font-size:.5rem;color:#10B981;">▲ 10% dari minggu lalu</div></div>
+                  <div style="background:#fff;border-radius:7px;padding:8px 9px;"><div style="font-size:.5rem;color:#9CA3AF;margin-bottom:2px;">Peluang Menjanjikan</div><div style="font-size:.85rem;font-weight:800;color:#4F46E5;">18</div><div style="font-size:.5rem;color:#4F46E5;cursor:pointer;">Lihat di Finder &#x2192;</div></div>
+                </div>
+                <div style="background:#fff;border-radius:8px;padding:10px;margin-bottom:8px;">
+                  <div style="font-size:.6rem;font-weight:700;color:#374151;margin-bottom:6px;">Performa Produk Terpilih</div>
+                  <div style="display:flex;gap:10px;margin-bottom:6px;">
+                    <div style="display:flex;align-items:center;gap:4px;font-size:.5rem;color:#E8442A;font-weight:600;"><div style="width:10px;height:2px;background:#E8442A;border-radius:2px;"></div>Omset</div>
+                    <div style="display:flex;align-items:center;gap:4px;font-size:.5rem;color:#4F46E5;font-weight:600;"><div style="width:10px;height:2px;background:#4F46E5;border-radius:2px;"></div>Unit Terjual</div>
+                    <div style="display:flex;align-items:center;gap:4px;font-size:.5rem;color:#10B981;font-weight:600;"><div style="width:10px;height:2px;background:#10B981;border-radius:2px;"></div>Harga</div>
+                  </div>
+                  <svg viewBox="0 0 280 56" style="width:100%;height:42px;">
+                    <polyline points="0,48 35,40 70,36 105,24 140,28 175,14 210,18 245,10 280,6" fill="none" stroke="#E8442A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <polyline points="0,50 35,45 70,43 105,36 140,38 175,30 210,33 245,27 280,22" fill="none" stroke="#4F46E5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <polyline points="0,44 35,42 70,46 105,40 140,42 175,38 210,34 245,36 280,38" fill="none" stroke="#10B981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                  <div style="display:flex;justify-content:space-between;margin-top:4px;">
+                    <span style="font-size:.48rem;color:#9CA3AF;">10 Mei</span>
+                    <span style="font-size:.48rem;color:#9CA3AF;">13 Mei</span>
+                    <span style="font-size:.48rem;color:#9CA3AF;">14 Mei</span>
+                    <span style="font-size:.48rem;color:#9CA3AF;">15 Mei</span>
+                    <span style="font-size:.48rem;color:#9CA3AF;">16 Mei</span>
+                    <span style="font-size:.48rem;color:#9CA3AF;">17 Mei</span>
+                    <span style="font-size:.48rem;color:#9CA3AF;">18 Mei</span>
+                  </div>
+                </div>
+                <div style="background:#fff;border-radius:8px;padding:9px;display:flex;align-items:center;gap:9px;">
+                  <div style="width:32px;height:32px;background:#F3F4F6;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0;">&#x1F45C;</div>
+                  <div style="flex:1;min-width:0;"><div style="font-size:.6rem;font-weight:700;color:#1A1F3C;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Tas Selempang Pria</div><div style="font-size:.5rem;color:#9CA3AF;">Skor Produk</div></div>
+                  <div style="text-align:right;flex-shrink:0;"><div><span style="font-size:.88rem;font-weight:900;color:#E8442A;">82</span><span style="font-size:.5rem;color:#9CA3AF;">/100</span></div><span style="font-size:.52rem;font-weight:700;background:#ECFDF5;color:#059669;padding:2px 6px;border-radius:5px;">Tinggi</span></div>
+                  <div style="font-size:.6rem;font-weight:600;color:#E8442A;cursor:pointer;flex-shrink:0;">Lihat Detail</div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Feature rows title -->
+        <!-- Section title -->
         <div class="lp-feat-section-title">Fitur Unggulan LarisID</div>
 
-        <!-- Feature 1: Discover -->
+        <!-- ── Feature 01: Temukan Produk Laris (text left, phone right) ── -->
         <div class="lp-feature-row">
           <div>
             <div class="lp-feat-num">01</div>
@@ -2558,156 +2601,251 @@ html,body{overflow-x:hidden;max-width:100%;}
             <div class="lp-feat-title">Temukan Produk Laris</div>
             <p class="lp-feat-desc">Cari ribuan produk dengan filter canggih berdasarkan kategori, omset, profit, persaingan, dan tren pasar terkini.</p>
             <div class="lp-feat-bullets">
-              <div class="lp-feat-bullet">Filter lengkap &amp; mudah digunakan</div>
+              <div class="lp-feat-bullet">Data Shopee real-time</div>
+              <div class="lp-feat-bullet">Filter lengkap &amp; mudah</div>
               <div class="lp-feat-bullet">Skor peluang produk otomatis</div>
-              <div class="lp-feat-bullet">Data omset &amp; kompetisi real-time</div>
             </div>
           </div>
-          <div class="lp-feat-mockup" style="background:#F4F6F9;padding:12px;">
-            <div style="display:flex;gap:10px;">
-              <div style="width:88px;background:#fff;border-radius:9px;padding:10px;flex-shrink:0;">
-                <div style="font-size:.62rem;font-weight:800;color:#374151;margin-bottom:9px;">Filter</div>
-                <div style="font-size:.55rem;font-weight:700;color:#9CA3AF;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em;">Kategori</div>
-                <div style="background:#FFF0ED;border-radius:6px;padding:4px 7px;font-size:.55rem;color:#E8442A;font-weight:600;margin-bottom:9px;">Semua</div>
-                <div style="font-size:.55rem;font-weight:700;color:#9CA3AF;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;">Kompetisi</div>
-                <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;">
-                  <label style="display:flex;align-items:center;gap:4px;font-size:.56rem;color:#374151;"><div style="width:8px;height:8px;border-radius:2px;background:#E8442A;flex-shrink:0;"></div>Rendah</label>
-                  <label style="display:flex;align-items:center;gap:4px;font-size:.56rem;color:#374151;"><div style="width:8px;height:8px;border-radius:2px;border:1px solid #D1D5DB;flex-shrink:0;"></div>Sedang</label>
-                  <label style="display:flex;align-items:center;gap:4px;font-size:.56rem;color:#374151;"><div style="width:8px;height:8px;border-radius:2px;border:1px solid #D1D5DB;flex-shrink:0;"></div>Tinggi</label>
+          <!-- Mobile phone frame -->
+          <div style="display:flex;justify-content:center;align-items:center;">
+            <div style="display:flex;gap:14px;align-items:flex-start;">
+              <!-- Phone -->
+              <div class="lp-phone">
+                <div class="lp-phone-notch"></div>
+                <div class="lp-phone-screen">
+                  <!-- top bar -->
+                  <div style="background:#1A1F3C;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;">
+                    <span style="font-size:.65rem;font-weight:900;color:#fff;">Laris<span style="color:#E8442A;">ID</span></span>
+                    <div style="display:flex;gap:8px;">
+                      <span style="font-size:.55rem;color:rgba(255,255,255,.6);">Discover</span>
+                      <span style="font-size:.55rem;color:rgba(255,255,255,.6);">Filter</span>
+                    </div>
+                  </div>
+                  <!-- filter panel -->
+                  <div style="padding:10px;background:#F4F6F9;">
+                    <div style="font-size:.58rem;font-weight:800;color:#374151;margin-bottom:8px;">Filter</div>
+                    <div style="margin-bottom:7px;"><div style="font-size:.52rem;font-weight:700;color:#9CA3AF;margin-bottom:3px;text-transform:uppercase;">Kategori</div><div style="background:#fff;border:1px solid #E5E7EB;border-radius:5px;padding:4px 7px;font-size:.55rem;color:#374151;">Semua Kategori</div></div>
+                    <div style="margin-bottom:7px;"><div style="font-size:.52rem;font-weight:700;color:#9CA3AF;margin-bottom:3px;text-transform:uppercase;">Omset / Bulan</div><div style="background:#fff;border:1px solid #E5E7EB;border-radius:5px;padding:4px 7px;font-size:.55rem;color:#374151;">Min Rp 5jt</div></div>
+                    <div style="margin-bottom:7px;"><div style="font-size:.52rem;font-weight:700;color:#9CA3AF;margin-bottom:4px;text-transform:uppercase;">Persaingan</div><div style="background:#FFF0ED;border:1px solid #FECACA;border-radius:5px;padding:3px 8px;font-size:.55rem;color:#E8442A;font-weight:700;display:inline-block;">Sedang</div></div>
+                    <div style="margin-bottom:9px;"><div style="font-size:.52rem;font-weight:700;color:#9CA3AF;margin-bottom:3px;text-transform:uppercase;">Margin / Profit</div><div style="background:#fff;border:1px solid #E5E7EB;border-radius:5px;padding:4px 7px;font-size:.55rem;color:#374151;">Minimal 20%</div></div>
+                    <div style="background:#E8442A;border-radius:6px;padding:6px;text-align:center;font-size:.58rem;font-weight:800;color:#fff;">Terapkan Filter</div>
+                  </div>
                 </div>
-                <div style="background:#E8442A;color:#fff;border-radius:6px;padding:5px;text-align:center;font-size:.56rem;font-weight:700;">Terapkan</div>
               </div>
-              <div style="flex:1;min-width:0;">
-                <div style="font-size:.56rem;color:#9CA3AF;margin-bottom:7px;">Hasil 1.234 produk</div>
-                <div style="background:#fff;border-radius:7px;padding:7px 9px;margin-bottom:5px;display:flex;align-items:center;gap:6px;">
-                  <div style="font-size:.85rem;">&#x1F45C;</div>
-                  <div style="flex:1;min-width:0;"><div style="font-size:.6rem;font-weight:700;color:#1A1F3C;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Tas Selempang Pria</div><div style="font-size:.52rem;color:#9CA3AF;">Fashion</div></div>
-                  <div><span style="font-size:.65rem;font-weight:900;color:#E8442A;">82</span></div>
-                  <div style="font-size:.52rem;background:#ECFDF5;color:#059669;padding:2px 5px;border-radius:4px;white-space:nowrap;font-weight:600;">Rendah</div>
-                </div>
-                <div style="background:#fff;border-radius:7px;padding:7px 9px;margin-bottom:5px;display:flex;align-items:center;gap:6px;">
-                  <div style="font-size:.85rem;">&#x1F392;</div>
-                  <div style="flex:1;min-width:0;"><div style="font-size:.6rem;font-weight:700;color:#1A1F3C;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Ransel Laptop 15 inch</div><div style="font-size:.52rem;color:#9CA3AF;">Fashion</div></div>
-                  <div><span style="font-size:.65rem;font-weight:900;color:#10B981;">76</span></div>
-                  <div style="font-size:.52rem;background:#ECFDF5;color:#059669;padding:2px 5px;border-radius:4px;white-space:nowrap;font-weight:600;">Rendah</div>
-                </div>
-                <div style="background:#fff;border-radius:7px;padding:7px 9px;display:flex;align-items:center;gap:6px;">
-                  <div style="font-size:.85rem;">&#x1F45F;</div>
-                  <div style="flex:1;min-width:0;"><div style="font-size:.6rem;font-weight:700;color:#1A1F3C;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Sepatu Sneakers Pria</div><div style="font-size:.52rem;color:#9CA3AF;">Fashion</div></div>
-                  <div><span style="font-size:.65rem;font-weight:900;color:#D97706;">68</span></div>
-                  <div style="font-size:.52rem;background:#FEF3C7;color:#D97706;padding:2px 5px;border-radius:4px;white-space:nowrap;font-weight:600;">Sedang</div>
+              <!-- Small card on right of phone -->
+              <div style="margin-top:20px;">
+                <div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:10px;padding:10px 12px;box-shadow:0 4px 16px rgba(0,0,0,.08);width:140px;">
+                  <div style="font-size:.55rem;color:#9CA3AF;margin-bottom:4px;">Hasil 1.234 produk</div>
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <div style="display:flex;align-items:center;gap:6px;padding:6px;background:#F9FAFB;border-radius:6px;">
+                      <div style="font-size:.85rem;">&#x1F45C;</div>
+                      <div style="flex:1;min-width:0;"><div style="font-size:.58rem;font-weight:700;color:#1A1F3C;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Tas Selempang Pria</div><div style="font-size:.5rem;color:#9CA3AF;">Rp 82.000/bln</div></div>
+                      <div style="font-size:.6rem;font-weight:900;color:#E8442A;">82</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;padding:6px;background:#F9FAFB;border-radius:6px;">
+                      <div style="font-size:.85rem;">&#x1F392;</div>
+                      <div style="flex:1;min-width:0;"><div style="font-size:.58rem;font-weight:700;color:#1A1F3C;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Ransel Laptop</div><div style="font-size:.5rem;color:#9CA3AF;">Rp 64.000/bln</div></div>
+                      <div style="font-size:.6rem;font-weight:900;color:#10B981;">76</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;padding:6px;background:#F9FAFB;border-radius:6px;">
+                      <div style="font-size:.85rem;">&#x1F45F;</div>
+                      <div style="flex:1;min-width:0;"><div style="font-size:.58rem;font-weight:700;color:#1A1F3C;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Sepatu Sneakers</div><div style="font-size:.5rem;color:#9CA3AF;">Rp 49.000/bln</div></div>
+                      <div style="font-size:.6rem;font-weight:900;color:#D97706;">68</div>
+                    </div>
+                  </div>
+                  <div style="background:#FFF0ED;border-radius:6px;padding:6px 8px;margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
+                    <div><div style="font-size:.5rem;color:#9CA3AF;">Tas Selempang Pria</div><div style="font-size:.6rem;font-weight:800;color:#1A1F3C;">Skor Produk</div></div>
+                    <div><span style="font-size:.85rem;font-weight:900;color:#E8442A;">82</span><span style="font-size:.52rem;color:#9CA3AF;">/100</span></div>
+                    <span style="font-size:.52rem;font-weight:700;background:#ECFDF5;color:#059669;padding:2px 5px;border-radius:4px;">Tinggi</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Feature 2: Deep Dive (reversed) -->
+        <!-- ── Feature 02: Analisa Mendalam (browser left, text right) ── -->
         <div class="lp-feature-row rev">
           <div>
             <div class="lp-feat-num">02</div>
             <div class="lp-feat-icon-bg" style="background:#EEF2FF;">&#x1F4CA;</div>
             <div class="lp-feat-title">Analisa Mendalam (Deep Dive)</div>
-            <p class="lp-feat-desc">Lihat semua data penting dalam satu halaman untuk setiap produk yang kamu minati — dari tren hingga kompetitor.</p>
+            <p class="lp-feat-desc">Lihat semua data penting dalam satu halaman untuk setiap produk yang kamu minati.</p>
             <div class="lp-feat-bullets">
-              <div class="lp-feat-bullet">Grafik tren &amp; historis 30 hari</div>
+              <div class="lp-feat-bullet">Grafik tren &amp; historis</div>
               <div class="lp-feat-bullet">Analisa kompetitor teratas</div>
               <div class="lp-feat-bullet">Estimasi profit &amp; margin</div>
             </div>
           </div>
-          <div class="lp-feat-mockup" style="background:#1A1F3C;padding:12px;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-              <div style="font-size:.6rem;font-weight:900;color:#fff;">Deep Dive</div>
-              <div style="font-size:.56rem;color:rgba(255,255,255,.5);margin-left:auto;">Tas Selempang Pria</div>
+          <!-- Browser frame -->
+          <div class="lp-browser">
+            <div class="lp-browser-bar">
+              <div class="lp-browser-dot" style="background:#FF5F57;"></div>
+              <div class="lp-browser-dot" style="background:#FFBD2E;"></div>
+              <div class="lp-browser-dot" style="background:#28C840;"></div>
+              <div class="lp-browser-url"></div>
             </div>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;">
-              <div style="background:rgba(255,255,255,.08);border-radius:7px;padding:8px;"><div style="font-size:.52rem;color:rgba(255,255,255,.5);margin-bottom:2px;">Skor</div><div style="font-size:.88rem;font-weight:900;color:#E8442A;">82</div></div>
-              <div style="background:rgba(255,255,255,.08);border-radius:7px;padding:8px;"><div style="font-size:.52rem;color:rgba(255,255,255,.5);margin-bottom:2px;">Omset/Bulan</div><div style="font-size:.75rem;font-weight:800;color:#fff;">Rp 15,3jt</div></div>
-              <div style="background:rgba(255,255,255,.08);border-radius:7px;padding:8px;"><div style="font-size:.52rem;color:rgba(255,255,255,.5);margin-bottom:2px;">Kompetisi</div><div style="font-size:.75rem;font-weight:800;color:#F59E0B;">Sedang</div></div>
-            </div>
-            <div style="background:rgba(255,255,255,.06);border-radius:8px;padding:10px;">
-              <div style="font-size:.58rem;color:rgba(255,255,255,.6);margin-bottom:8px;">Tren Omset (30 Hari)</div>
-              <svg viewBox="0 0 260 60" style="width:100%;height:48px;">
-                <polyline points="0,48 32,42 64,38 96,26 128,30 160,18 195,14 228,10 260,6" fill="none" stroke="#E8442A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                <polyline points="0,48 32,42 64,38 96,26 128,30 160,18 195,14 228,10 260,6 260,60 0,60" fill="rgba(232,68,42,.1)" stroke="none"/>
-                <polyline points="0,52 32,48 64,46 96,40 128,43 160,34 195,30 228,27 260,22" fill="none" stroke="#4F46E5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
+            <div class="lp-browser-body" style="display:flex;">
+              <!-- mini sidebar -->
+              <div style="width:100px;background:#1A1F3C;padding:10px 8px;flex-shrink:0;">
+                <div style="font-size:.65rem;font-weight:900;color:#fff;margin-bottom:12px;">Laris<span style="color:#E8442A;">ID</span></div>
+                <div style="display:flex;flex-direction:column;gap:1px;">
+                  <div style="padding:5px 7px;font-size:.55rem;color:rgba(255,255,255,.4);">Dashboard</div>
+                  <div style="padding:5px 7px;font-size:.55rem;color:rgba(255,255,255,.4);">Discover</div>
+                  <div style="background:rgba(232,68,42,.2);border-radius:5px;padding:5px 7px;font-size:.55rem;color:#E8442A;font-weight:700;">Deep Dive</div>
+                  <div style="padding:5px 7px;font-size:.55rem;color:rgba(255,255,255,.4);">AI Strategist</div>
+                  <div style="padding:5px 7px;font-size:.55rem;color:rgba(255,255,255,.4);">Alerts</div>
+                </div>
+              </div>
+              <!-- content -->
+              <div style="flex:1;padding:12px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                  <div style="width:32px;height:32px;background:#F3F4F6;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0;">&#x1F45C;</div>
+                  <div><div style="font-size:.62rem;font-weight:800;color:#1A1F3C;">Tas Selempang Pria Premium</div><div style="font-size:.52rem;color:#9CA3AF;">Fashion &amp; Aksesoris</div></div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;">
+                  <div style="background:#fff;border:1px solid #E5E7EB;border-radius:7px;padding:7px 8px;"><div style="font-size:.5rem;color:#9CA3AF;margin-bottom:2px;">Skor Produk</div><div style="font-size:.88rem;font-weight:900;color:#E8442A;">87</div></div>
+                  <div style="background:#fff;border:1px solid #E5E7EB;border-radius:7px;padding:7px 8px;"><div style="font-size:.5rem;color:#9CA3AF;margin-bottom:2px;">Omset/Bulan</div><div style="font-size:.75rem;font-weight:800;color:#1A1F3C;">Rp 15,3jt</div></div>
+                  <div style="background:#fff;border:1px solid #E5E7EB;border-radius:7px;padding:7px 8px;"><div style="font-size:.5rem;color:#9CA3AF;margin-bottom:2px;">Unit Terjual</div><div style="font-size:.75rem;font-weight:800;color:#1A1F3C;">180/bln</div></div>
+                </div>
+                <div style="background:#fff;border:1px solid #E5E7EB;border-radius:8px;padding:10px;">
+                  <div style="font-size:.58rem;font-weight:700;color:#374151;margin-bottom:6px;">Tren Omset &amp; Unit (30 Hari)</div>
+                  <svg viewBox="0 0 240 52" style="width:100%;height:40px;">
+                    <polyline points="0,44 30,38 60,34 90,22 120,26 150,14 180,16 210,10 240,6" fill="none" stroke="#E8442A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <polyline points="0,44 30,38 60,34 90,22 120,26 150,14 180,16 210,10 240,6 240,52 0,52" fill="rgba(232,68,42,.06)" stroke="none"/>
+                    <polyline points="0,46 30,42 60,40 90,32 120,35 150,26 180,28 210,22 240,18" fill="none" stroke="#4F46E5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Feature 3: AI Strategist -->
+        <!-- ── Feature 03: AI Strategist (text left, browser right) ── -->
         <div class="lp-feature-row">
           <div>
             <div class="lp-feat-num">03</div>
             <div class="lp-feat-icon-bg" style="background:#F0FDF4;">&#x1F916;</div>
             <div class="lp-feat-title">AI Strategist</div>
-            <p class="lp-feat-desc">Dapatkan rekomendasi cerdas dari AI berdasarkan data pasar dan tujuan bisnismu — seperti punya konsultan pribadi.</p>
+            <p class="lp-feat-desc">Dapatkan rekomendasi cerdas dari AI berdasarkan data pasar dan tujuan bisnismu.</p>
             <div class="lp-feat-bullets">
               <div class="lp-feat-bullet">Rekomendasi produk &amp; variasi</div>
               <div class="lp-feat-bullet">Strategi harga terbaik</div>
               <div class="lp-feat-bullet">Keyword &amp; konten yang disarankan</div>
             </div>
           </div>
-          <div class="lp-feat-mockup" style="background:#F8F9FC;padding:14px;">
-            <div style="background:#fff;border-radius:10px;border:1px solid #E5E7EB;padding:12px;margin-bottom:8px;">
-              <div style="font-size:.6rem;font-weight:700;color:#9CA3AF;margin-bottom:8px;">Apakah produk ini layak dijual?</div>
-              <div style="font-size:.62rem;color:#374151;line-height:1.6;margin-bottom:8px;">Berdasarkan data terbaru:</div>
-              <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">
-                <div style="display:flex;align-items:center;gap:6px;font-size:.6rem;color:#374151;"><div style="width:4px;height:4px;border-radius:50%;background:#10B981;flex-shrink:0;"></div>Permintaan naik dan terus naik (+18%)</div>
-                <div style="display:flex;align-items:center;gap:6px;font-size:.6rem;color:#374151;"><div style="width:4px;height:4px;border-radius:50%;background:#10B981;flex-shrink:0;"></div>Persaingan sedang, tren naik 6% per pekan</div>
-                <div style="display:flex;align-items:center;gap:6px;font-size:.6rem;color:#374151;"><div style="width:4px;height:4px;border-radius:50%;background:#10B981;flex-shrink:0;"></div>Margin profit estimasi 38% - 42%</div>
-              </div>
-              <div style="background:#ECFDF5;border-radius:7px;padding:8px 10px;font-size:.6rem;color:#065F46;font-weight:600;line-height:1.4;">Kesimpulan: Produk ini sangat layak untuk dijual &#x1F44D;</div>
+          <!-- Browser frame -->
+          <div class="lp-browser">
+            <div class="lp-browser-bar">
+              <div class="lp-browser-dot" style="background:#FF5F57;"></div>
+              <div class="lp-browser-dot" style="background:#FFBD2E;"></div>
+              <div class="lp-browser-dot" style="background:#28C840;"></div>
+              <div class="lp-browser-url"></div>
             </div>
-            <div style="background:#fff;border-radius:8px;border:1px solid #E5E7EB;padding:10px;display:flex;gap:10px;align-items:center;">
-              <div style="font-size:1rem;">&#x1F45C;</div>
-              <div><div style="font-size:.6rem;font-weight:700;color:#1A1F3C;">Tas Selempang Pria</div><div style="font-size:.55rem;color:#9CA3AF;">Produk yang Dianalisa</div></div>
-              <div style="margin-left:auto;text-align:right;"><div style="font-size:.6rem;color:#6B7280;">Estimasi Profit</div><div style="font-size:.78rem;font-weight:800;color:#10B981;">Rp 32.000 - 45.000</div><div style="font-size:.56rem;color:#9CA3AF;">per unit</div></div>
+            <div class="lp-browser-body" style="display:flex;">
+              <div style="width:100px;background:#1A1F3C;padding:10px 8px;flex-shrink:0;">
+                <div style="font-size:.65rem;font-weight:900;color:#fff;margin-bottom:12px;">Laris<span style="color:#E8442A;">ID</span></div>
+                <div style="display:flex;flex-direction:column;gap:1px;">
+                  <div style="padding:5px 7px;font-size:.55rem;color:rgba(255,255,255,.4);">Dashboard</div>
+                  <div style="padding:5px 7px;font-size:.55rem;color:rgba(255,255,255,.4);">Discover</div>
+                  <div style="padding:5px 7px;font-size:.55rem;color:rgba(255,255,255,.4);">Deep Dive</div>
+                  <div style="background:rgba(232,68,42,.2);border-radius:5px;padding:5px 7px;font-size:.55rem;color:#E8442A;font-weight:700;">AI Strategist</div>
+                  <div style="padding:5px 7px;font-size:.55rem;color:rgba(255,255,255,.4);">Alerts</div>
+                </div>
+              </div>
+              <div style="flex:1;padding:12px;">
+                <div style="background:#1A1F3C;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:.58rem;color:rgba(255,255,255,.8);">Apakah produk ini layak untuk dijual saat ini?</div>
+                <div style="background:#fff;border:1px solid #E5E7EB;border-radius:8px;padding:10px;margin-bottom:8px;">
+                  <div style="font-size:.58rem;color:#374151;line-height:1.6;margin-bottom:8px;">Berdasarkan data terbaru:</div>
+                  <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px;">
+                    <div style="display:flex;align-items:center;gap:5px;font-size:.58rem;color:#374151;"><div style="width:4px;height:4px;border-radius:50%;background:#10B981;flex-shrink:0;"></div>Permintaan naik dan terus naik (+18%)</div>
+                    <div style="display:flex;align-items:center;gap:5px;font-size:.58rem;color:#374151;"><div style="width:4px;height:4px;border-radius:50%;background:#10B981;flex-shrink:0;"></div>Persaingan sedang, tren naik 6% per pekan</div>
+                    <div style="display:flex;align-items:center;gap:5px;font-size:.58rem;color:#374151;"><div style="width:4px;height:4px;border-radius:50%;background:#10B981;flex-shrink:0;"></div>Margin profit estimasi 38% - 42%</div>
+                  </div>
+                  <div style="background:#ECFDF5;border-radius:6px;padding:6px 8px;font-size:.58rem;color:#065F46;font-weight:600;">Kesimpulan: Produk ini sangat layak untuk dijual &#x1F44D;</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <div style="flex:1;background:#fff;border:1px solid #E5E7EB;border-radius:8px;padding:9px;">
+                    <div style="font-size:.5rem;color:#9CA3AF;margin-bottom:3px;">Produk yang Dianalisa</div>
+                    <div style="display:flex;align-items:center;gap:5px;"><div style="font-size:.85rem;">&#x1F45C;</div><div style="font-size:.58rem;font-weight:700;color:#1A1F3C;">Tas Selempang Pria</div></div>
+                    <div style="margin-top:4px;"><div style="font-size:.5rem;color:#9CA3AF;">Estimasi Profit</div><div style="font-size:.65rem;font-weight:800;color:#10B981;">Rp 32.000 - 45.000</div><div style="font-size:.5rem;color:#9CA3AF;">per unit</div></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Feature 4: Tracker (reversed) -->
+        <!-- ── Feature 04: Tracker & Alerts (dual frame left, text right) ── -->
         <div class="lp-feature-row rev">
           <div>
             <div class="lp-feat-num">04</div>
             <div class="lp-feat-icon-bg" style="background:#FFFBEB;">&#x1F514;</div>
             <div class="lp-feat-title">Tracker &amp; Alerts</div>
-            <p class="lp-feat-desc">Pantau perubahan produk favoritmu dan dapatkan notifikasi penting secara real-time tanpa perlu cek manual setiap hari.</p>
+            <p class="lp-feat-desc">Pantau perubahan produk favoritmu dan dapatkan notifikasi penting secara real-time.</p>
             <div class="lp-feat-bullets">
               <div class="lp-feat-bullet">Pantau omset, harga, unit terjual</div>
               <div class="lp-feat-bullet">Notifikasi perubahan signifikan</div>
               <div class="lp-feat-bullet">Jangan lewatkan peluang emas</div>
             </div>
           </div>
-          <div class="lp-feat-mockup" style="background:#F4F6F9;padding:12px;">
-            <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:8px;">
-              <div style="background:#1A1F3C;border-radius:10px;padding:10px;">
-                <div style="font-size:.58rem;font-weight:700;color:rgba(255,255,255,.7);margin-bottom:8px;">Alerts Terbaru</div>
-                <div style="display:flex;flex-direction:column;gap:6px;">
-                  <div style="background:rgba(255,255,255,.08);border-radius:6px;padding:7px;"><div style="font-size:.56rem;color:#F59E0B;font-weight:600;margin-bottom:2px;">&#x26A0; Permintaan naik</div><div style="font-size:.55rem;color:rgba(255,255,255,.7);">Tas Selempang Pria</div></div>
-                  <div style="background:rgba(255,255,255,.08);border-radius:6px;padding:7px;"><div style="font-size:.56rem;color:#10B981;font-weight:600;margin-bottom:2px;">&#x2B06; Harga naik 8%</div><div style="font-size:.55rem;color:rgba(255,255,255,.7);">Dompet Kulit Pria</div></div>
-                  <div style="background:rgba(255,255,255,.08);border-radius:6px;padding:7px;"><div style="font-size:.56rem;color:#EF4444;font-weight:600;margin-bottom:2px;">&#x2B07; Stok menipis</div><div style="font-size:.55rem;color:rgba(255,255,255,.7);">Jam Tangan Pria</div></div>
+          <!-- Dual frame: phone (alerts) + table (tracker) -->
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <!-- Phone: alerts -->
+            <div class="lp-phone" style="width:160px;">
+              <div class="lp-phone-notch"></div>
+              <div class="lp-phone-screen">
+                <div style="background:#1A1F3C;padding:7px 10px;display:flex;justify-content:space-between;align-items:center;">
+                  <span style="font-size:.62rem;font-weight:900;color:#fff;">Laris<span style="color:#E8442A;">ID</span></span>
+                  <span style="font-size:.55rem;color:rgba(255,255,255,.6);">Alerts</span>
+                </div>
+                <div style="padding:8px;background:#F4F6F9;">
+                  <div style="display:flex;gap:4px;margin-bottom:8px;overflow:hidden;">
+                    <div style="background:#E8442A;border-radius:12px;padding:3px 8px;font-size:.52rem;font-weight:700;color:#fff;white-space:nowrap;">Semua</div>
+                    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:3px 8px;font-size:.52rem;color:#6B7280;white-space:nowrap;">Harga</div>
+                    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:3px 8px;font-size:.52rem;color:#6B7280;white-space:nowrap;">Tren</div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:5px;">
+                    <div style="background:#fff;border-radius:7px;padding:7px 8px;border-left:3px solid #F59E0B;">
+                      <div style="font-size:.56rem;font-weight:700;color:#374151;">Permintaan naik</div>
+                      <div style="font-size:.52rem;color:#9CA3AF;margin-top:1px;">Tas Selempang Pria +18%</div>
+                    </div>
+                    <div style="background:#fff;border-radius:7px;padding:7px 8px;border-left:3px solid #10B981;">
+                      <div style="font-size:.56rem;font-weight:700;color:#374151;">Harga kompetitor naik</div>
+                      <div style="font-size:.52rem;color:#9CA3AF;margin-top:1px;">Sepatu Sneakers +8%</div>
+                    </div>
+                    <div style="background:#fff;border-radius:7px;padding:7px 8px;border-left:3px solid #EF4444;">
+                      <div style="font-size:.56rem;font-weight:700;color:#374151;">Harga turun signifikan</div>
+                      <div style="font-size:.52rem;color:#9CA3AF;margin-top:1px;">Jam Tangan Pria -12%</div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div style="background:#fff;border-radius:10px;padding:10px;">
-                <div style="font-size:.58rem;font-weight:700;color:#374151;margin-bottom:8px;">Produk Terpantau</div>
-                <div style="display:flex;flex-direction:column;gap:6px;">
+            </div>
+            <!-- Tracker table -->
+            <div class="lp-card-frame" style="flex:1;">
+              <div style="background:#F9FAFB;padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:.6rem;font-weight:700;color:#374151;">Tracker</div>
+              <div style="padding:8px;">
+                <div style="display:flex;gap:4px;margin-bottom:6px;">
+                  <div style="background:#E8442A;border-radius:10px;padding:2px 8px;font-size:.5rem;font-weight:700;color:#fff;">Semua</div>
+                  <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:2px 8px;font-size:.5rem;color:#6B7280;">Harga</div>
+                  <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:2px 8px;font-size:.5rem;color:#6B7280;">Tren</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:5px;">
                   <div style="display:flex;align-items:center;gap:6px;padding:6px;background:#F9FAFB;border-radius:6px;">
                     <div style="font-size:.8rem;">&#x1F45C;</div>
-                    <div style="flex:1;min-width:0;"><div style="font-size:.58rem;font-weight:600;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Dompet Kulit Pria</div><div style="font-size:.52rem;color:#9CA3AF;">Rp 15.380.000</div></div>
-                    <div style="font-size:.58rem;color:#10B981;font-weight:700;">+12%</div>
+                    <div style="flex:1;min-width:0;"><div style="font-size:.56rem;font-weight:600;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Dompet Kulit Pria</div><div style="font-size:.5rem;color:#9CA3AF;">Rp 12.400.000</div></div>
+                    <div style="font-size:.56rem;color:#10B981;font-weight:700;">+12%</div>
                   </div>
                   <div style="display:flex;align-items:center;gap:6px;padding:6px;background:#F9FAFB;border-radius:6px;">
                     <div style="font-size:.8rem;">&#x1F45F;</div>
-                    <div style="flex:1;min-width:0;"><div style="font-size:.58rem;font-weight:600;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Sepatu Sneakers Pria</div><div style="font-size:.52rem;color:#9CA3AF;">Rp 12.890.000</div></div>
-                    <div style="font-size:.58rem;color:#10B981;font-weight:700;">+5%</div>
+                    <div style="flex:1;min-width:0;"><div style="font-size:.56rem;font-weight:600;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Sepatu Sneakers Pria</div><div style="font-size:.5rem;color:#9CA3AF;">Rp 9.810.000</div></div>
+                    <div style="font-size:.56rem;color:#10B981;font-weight:700;">+5%</div>
                   </div>
                   <div style="display:flex;align-items:center;gap:6px;padding:6px;background:#F9FAFB;border-radius:6px;">
                     <div style="font-size:.8rem;">&#x231A;</div>
-                    <div style="flex:1;min-width:0;"><div style="font-size:.58rem;font-weight:600;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Jam Tangan Pria</div><div style="font-size:.52rem;color:#9CA3AF;">Rp 15.670.000</div></div>
-                    <div style="font-size:.58rem;color:#EF4444;font-weight:700;">-3%</div>
+                    <div style="flex:1;min-width:0;"><div style="font-size:.56rem;font-weight:600;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Jam Tangan Pria</div><div style="font-size:.5rem;color:#9CA3AF;">Rp 15.670.000</div></div>
+                    <div style="font-size:.56rem;color:#EF4444;font-weight:700;">-3%</div>
                   </div>
                 </div>
               </div>
@@ -2715,35 +2853,36 @@ html,body{overflow-x:hidden;max-width:100%;}
           </div>
         </div>
 
-        <!-- Feature 5: Kalkulator Profit -->
+        <!-- ── Feature 05: Kalkulator Profit (text left, card right) ── -->
         <div class="lp-feature-row">
           <div>
             <div class="lp-feat-num">05</div>
             <div class="lp-feat-icon-bg" style="background:#FFF0ED;">&#x1F4B0;</div>
             <div class="lp-feat-title">Kalkulator Profit</div>
-            <p class="lp-feat-desc">Hitung estimasi keuntungan dengan mudah sebelum kamu mulai jualand — pertimbangkan semua biaya secara otomatis.</p>
+            <p class="lp-feat-desc">Hitung estimasi keuntungan dengan mudah sebelum kamu mulai jualan.</p>
             <div class="lp-feat-bullets">
               <div class="lp-feat-bullet">Hitung COGS, ongkir, iklan &amp; komisi</div>
               <div class="lp-feat-bullet">Lihat estimasi profit bersih</div>
               <div class="lp-feat-bullet">Bantu tentukan harga terbaik</div>
             </div>
           </div>
-          <div class="lp-feat-mockup" style="background:#fff;border:1px solid #E5E7EB;padding:16px;">
-            <div style="font-size:.64rem;font-weight:700;color:#374151;margin-bottom:12px;">Kalkulator Profit</div>
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
-              <div><div style="font-size:.52rem;color:#9CA3AF;margin-bottom:3px;">Harga Jual</div><div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:6px;padding:6px;font-size:.6rem;font-weight:600;color:#374151;">Rp 150.000</div></div>
-              <div><div style="font-size:.52rem;color:#9CA3AF;margin-bottom:3px;">COGS / Modal</div><div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:6px;padding:6px;font-size:.6rem;font-weight:600;color:#374151;">Rp 65.000</div></div>
-              <div><div style="font-size:.52rem;color:#9CA3AF;margin-bottom:3px;">Ongkir ke Customer</div><div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:6px;padding:6px;font-size:.6rem;font-weight:600;color:#374151;">Rp 9.000</div></div>
-              <div><div style="font-size:.52rem;color:#9CA3AF;margin-bottom:3px;">Biaya Iklan</div><div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:6px;padding:6px;font-size:.6rem;font-weight:600;color:#374151;">Rp 9.000</div></div>
+          <div class="lp-card-frame" style="padding:20px;">
+            <div style="font-size:.7rem;font-weight:800;color:#374151;margin-bottom:14px;">Kalkulator Profit</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+              <div><div style="font-size:.55rem;color:#9CA3AF;margin-bottom:3px;">Harga Jual</div><div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:6px;padding:7px 8px;font-size:.62rem;font-weight:600;color:#374151;">Rp 150.000</div></div>
+              <div><div style="font-size:.55rem;color:#9CA3AF;margin-bottom:3px;">COGS / Modal</div><div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:6px;padding:7px 8px;font-size:.62rem;font-weight:600;color:#374151;">Rp 65.000</div></div>
+              <div><div style="font-size:.55rem;color:#9CA3AF;margin-bottom:3px;">Ongkir ke Customer</div><div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:6px;padding:7px 8px;font-size:.62rem;font-weight:600;color:#374151;">Rp 9.000</div></div>
+              <div><div style="font-size:.55rem;color:#9CA3AF;margin-bottom:3px;">Biaya Iklan</div><div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:6px;padding:7px 8px;font-size:.62rem;font-weight:600;color:#374151;">Rp 9.000</div></div>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:#F0FDF4;border-radius:8px;">
+            <div style="background:#F0FDF4;border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;">
               <div>
-                <div style="font-size:.58rem;color:#6B7280;">Estimasi Profit Bersih</div>
-                <div style="font-size:1.1rem;font-weight:900;color:#059669;">Rp 52.000</div>
+                <div style="font-size:.62rem;color:#6B7280;margin-bottom:3px;">Estimasi Profit Bersih</div>
+                <div style="font-size:1.3rem;font-weight:900;color:#059669;">Rp 52.000</div>
               </div>
+              <div style="width:1px;height:40px;background:#D1FAE5;"></div>
               <div style="text-align:right;">
-                <div style="font-size:.58rem;color:#6B7280;">Margin</div>
-                <div style="font-size:.9rem;font-weight:900;color:#059669;">34.7%</div>
+                <div style="font-size:.62rem;color:#6B7280;margin-bottom:3px;">Margin</div>
+                <div style="font-size:1.1rem;font-weight:900;color:#059669;">34.7%</div>
               </div>
             </div>
           </div>
@@ -6245,7 +6384,12 @@ function initSupabase() {
   _supabase.auth.getSession().then(({ data: { session } }) => {
     currentUser = session?.user || null;
     updateAuthUI();
-    if (currentUser) { loadSavedProducts(); checkMentorApplication(); }
+    if (currentUser) {
+      loadSavedProducts();
+      checkMentorApplication();
+      const onLanding = document.getElementById('page-landing')?.classList.contains('active');
+      if (onLanding) showPage('discover');
+    }
   });
   // Listen for auth changes
   _supabase.auth.onAuthStateChange((event, session) => {
@@ -6254,9 +6398,15 @@ function initSupabase() {
     // Only reload saved products on real sign-in/sign-out events,
     // not TOKEN_REFRESHED (which fires ~60s after load and can race-wipe savedProducts)
     if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-      if (currentUser) { loadSavedProducts(); checkMentorApplication(); }
+      if (currentUser) {
+        loadSavedProducts();
+        checkMentorApplication();
+        // Redirect off landing page when session is restored or user just logged in
+        const onLanding = document.getElementById('page-landing')?.classList.contains('active');
+        if (onLanding) showPage('discover');
+      }
     }
-    if (event === 'SIGNED_OUT') { savedProducts.clear(); renderProfileSaved(); }
+    if (event === 'SIGNED_OUT') { savedProducts.clear(); renderProfileSaved(); showPage('landing'); }
     // Re-render all grids to update lock state
     renderHomeGrid();
     renderDiscGrid();
