@@ -1875,17 +1875,7 @@ html,body{overflow-x:hidden;max-width:100%;}
   #sellers-scroll-hint{display:block !important;}
   #sellers-scroll-inner::after{content:'';position:absolute;top:0;right:0;width:40px;height:100%;background:linear-gradient(to right,transparent,rgba(255,255,255,0.9));pointer-events:none;}
 }
-.blog-tab{background:#f5f0ea;border:none;border-radius:20px;padding:7px 16px;font-size:.8rem;font-weight:600;color:#555;cursor:pointer;white-space:nowrap;font-family:inherit;transition:background .15s,color .15s;}
-.blog-tab.active{background:var(--orange);color:#fff;}
-.blog-card{background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.07);padding:20px;margin-bottom:18px;border:1.5px solid #f0ebe4;}
-#page-blog{background:#f0ede8;}
-#page-blog > div{background:#f0ede8;}
-@media(max-width:620px){
-  .blog-author-row{flex-direction:column!important;}
-  .blog-author-row > div:first-child{width:100%!important;flex-direction:row;display:flex;border-radius:14px;overflow:hidden;}
-  .blog-author-row > div:first-child img{width:100px!important;height:120px!important;flex-shrink:0;}
-  .blog-author-row > div:first-child > div{flex:1;}
-}
+
 
 /* ── COMPARE ─────────────────────────────────────── */
 .cmp-btn{position:absolute;top:7px;right:7px;z-index:4;width:20px;height:20px;background:rgba(255,255,255,.92);border:2px solid #ccc;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.15);transition:all .15s;padding:0;}
@@ -1992,8 +1982,6 @@ html,body{overflow-x:hidden;max-width:100%;}
 .kom-benefit-text{font-size:.82rem;color:var(--tm);line-height:1.7;}
 .kom-wa-btn{background:#25d366;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:.83rem;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;text-decoration:none;}
 .kom-wa-btn:hover{background:#1ebe5d;}
-.kom-blog-btn{background:var(--orange);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:.83rem;font-weight:800;cursor:pointer;font-family:inherit;margin-top:14px;display:inline-block;transition:opacity .15s;}
-.kom-blog-btn:hover{opacity:.88;}
 .kom-mentor-feature{background:#fff;border-radius:14px;overflow:hidden;border:1.5px solid #f0ebe4;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:22px;}
 .kom-mentor-feature-img{width:100%;height:260px;object-fit:cover;display:block;background:#f0ede8;}
 .kom-mentor-feature-body{padding:22px 20px;}
@@ -2252,7 +2240,6 @@ html,body{overflow-x:hidden;max-width:100%;}
   <div id="nav-right-links" class="nav-right">
     <a class="nav-link" onclick="showPage('discover')">Products</a>
     <a class="nav-link" onclick="showPage('komunitas')">Komunitas</a>
-    <a class="nav-link" onclick="showPage('blog')">Blog</a>
     <a class="nav-link" onclick="openFeedback()">Feedback</a>
     <button class="nav-auth-btn" id="nav-login-btn" onclick="openAuthModal('login')">Login / Daftar</button>
     <div class="nav-avatar" id="nav-user-btn" onclick="openProfile()" style="display:none;">?</div>
@@ -2261,7 +2248,6 @@ html,body{overflow-x:hidden;max-width:100%;}
 <div class="mobile-menu" id="mobile-menu">
   <a onclick="showPage('discover');closeMobileMenu()">Products</a>
   <a onclick="showPage('komunitas');closeMobileMenu()">Komunitas</a>
-  <a onclick="showPage('blog');closeMobileMenu()">Blog</a>
   <a onclick="openFeedback();closeMobileMenu()">Feedback</a>
   <a id="mobile-login-link" onclick="openAuthModal('login');closeMobileMenu()">Login / Daftar</a>
   <a id="mobile-profile-link" style="display:none;" onclick="openProfile();closeMobileMenu()">Profil Saya</a>
@@ -2276,13 +2262,7 @@ html,body{overflow-x:hidden;max-width:100%;}
     <!-- nav -->
     <nav class="lp-nav">
       <span class="lp-nav-logo">Laris<span>ID</span></span>
-      <div class="lp-nav-links">
-        <a class="lp-nav-link">Fitur</a>
-        <a class="lp-nav-link">Harga</a>
-        <a class="lp-nav-link">Testimoni</a>
-        <a class="lp-nav-link" onclick="showPage('blog')">Blog</a>
-        <a class="lp-nav-link">Panduan</a>
-      </div>
+      <div class="lp-nav-links"></div>
       <div class="lp-nav-right">
         <button class="lp-nav-login" onclick="openAuthModal('login')">Login</button>
         <button class="lp-nav-cta" onclick="openAuthModal('signup')">Mulai Gratis</button>
@@ -2300,16 +2280,7 @@ html,body{overflow-x:hidden;max-width:100%;}
         <p class="lp-hero-sub">LarisID menganalisis jutaan produk di Shopee secara real-time, memberikan data kompetisi, tren harga, dan peluang pasar yang belum dimanfaatkan — langsung di tangan Anda.</p>
         <div class="lp-hero-btns">
           <button class="lp-hero-btn-primary" onclick="openAuthModal('signup')">Mulai Gratis Sekarang</button>
-          <button class="lp-hero-btn-secondary" onclick="lpShowPreview()">Lihat Contoh Produk</button>
-        </div>
-        <div class="lp-hero-social">
-          <div class="lp-hero-avatars">
-            <div class="lp-hero-avatar" style="background:linear-gradient(135deg,#E8442A,#FF6B35);">AN</div>
-            <div class="lp-hero-avatar" style="background:linear-gradient(135deg,#4F46E5,#7C3AED);">BS</div>
-            <div class="lp-hero-avatar" style="background:linear-gradient(135deg,#10B981,#059669);">CR</div>
-            <div class="lp-hero-avatar" style="background:linear-gradient(135deg,#F59E0B,#D97706);">DW</div>
-          </div>
-          <span class="lp-hero-social-text">Bergabung dengan <strong>2.400+</strong> seller aktif di Indonesia</span>
+          <button class="lp-hero-btn-secondary" onclick="document.getElementById('lp-preview-section').scrollIntoView({behavior:'smooth',block:'start'})">Lihat Contoh Produk</button>
         </div>
       </div>
       <!-- mockup -->
@@ -2436,40 +2407,8 @@ html,body{overflow-x:hidden;max-width:100%;}
     </div>
     </div>
 
-    <!-- testimonials -->
-    <div class="lp-section">
-      <div class="lp-section-eyebrow">Testimoni</div>
-      <div class="lp-section-title">Dipercaya ribuan seller Indonesia</div>
-      <div class="lp-testi-grid">
-        <div class="lp-testi-card">
-          <div class="lp-testi-stars">★★★★★</div>
-          <p class="lp-testi-text">"Dalam 2 minggu pakai LarisID, omzet saya naik 3x lipat. Saya bisa langsung tahu produk mana yang punya kompetisi rendah tapi permintaan tinggi."</p>
-          <div class="lp-testi-author">
-            <div class="lp-testi-av" style="background:linear-gradient(135deg,#E8442A,#FF6B35);">AN</div>
-            <div><div class="lp-testi-name">Andi Nugroho</div><div class="lp-testi-role">Seller Shopee, Jakarta</div></div>
-          </div>
-        </div>
-        <div class="lp-testi-card">
-          <div class="lp-testi-stars">★★★★★</div>
-          <p class="lp-testi-text">"Fitur Deep Dive-nya luar biasa. Saya bisa lihat distribusi harga kompetitor dan menyesuaikan harga saya persis di titik optimal."</p>
-          <div class="lp-testi-author">
-            <div class="lp-testi-av" style="background:linear-gradient(135deg,#4F46E5,#7C3AED);">SR</div>
-            <div><div class="lp-testi-name">Siti Rahayu</div><div class="lp-testi-role">Seller Shopee, Surabaya</div></div>
-          </div>
-        </div>
-        <div class="lp-testi-card">
-          <div class="lp-testi-stars">★★★★★</div>
-          <p class="lp-testi-text">"Dulu riset produk makan waktu 3 jam sehari. Sekarang 10 menit sudah dapat insight lengkap. LarisID benar-benar mengubah cara saya berbisnis."</p>
-          <div class="lp-testi-author">
-            <div class="lp-testi-av" style="background:linear-gradient(135deg,#10B981,#059669);">BP</div>
-            <div><div class="lp-testi-name">Budi Pratama</div><div class="lp-testi-role">Seller Shopee, Bandung</div></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- embedded product preview -->
-    <div id="lp-preview-section" style="display:none;background:#F4F6F9;padding:48px 0;">
+    <div id="lp-preview-section" style="background:#F4F6F9;padding:48px 0;">
       <div style="max-width:1200px;margin:0 auto;padding:0 40px;">
         <div style="text-align:center;margin-bottom:28px;">
           <div class="lp-section-eyebrow">Contoh Analisis Produk</div>
@@ -2558,7 +2497,7 @@ html,body{overflow-x:hidden;max-width:100%;}
       <p>Mulai gratis sekarang — tanpa kartu kredit, tanpa komitmen jangka panjang.</p>
       <div class="lp-cta-btns">
         <button class="lp-cta-btn-main" onclick="openAuthModal('signup')">Mulai Gratis Sekarang</button>
-        <button class="lp-cta-btn-ghost" onclick="lpShowPreview()">Lihat Produk Dulu</button>
+        <button class="lp-cta-btn-ghost" onclick="document.getElementById('lp-preview-section').scrollIntoView({behavior:'smooth',block:'start'})">Lihat Contoh Produk</button>
       </div>
     </div>
 
@@ -2568,7 +2507,6 @@ html,body{overflow-x:hidden;max-width:100%;}
       <div class="lp-footer-links">
         <a class="lp-footer-link">Fitur</a>
         <a class="lp-footer-link">Harga</a>
-        <a class="lp-footer-link" onclick="showPage('blog')">Blog</a>
         <a class="lp-footer-link">Kebijakan Privasi</a>
         <a class="lp-footer-link">Syarat & Ketentuan</a>
       </div>
@@ -2991,174 +2929,7 @@ html,body{overflow-x:hidden;max-width:100%;}
 
 
 
-<!-- ════════════════════════════════════
-     ABOUT PAGE — Blog LarisID
-════════════════════════════════════ -->
-<div class="page" id="page-blog">
-  <div style="max-width:960px;margin:0 auto;padding:24px 20px 60px;">
-
-    <!-- HEADER -->
-    <div style="margin-bottom:24px;">
-      <h1 style="font-size:1.7rem;font-weight:900;color:#111;margin-bottom:4px;">Panduan Seller LarisID</h1>
-      <p style="font-size:.88rem;color:var(--tl);">Tips nyata dari seller berpengalaman — bukan teori, tapi praktik langsung.</p>
-    </div>
-
-    <!-- CATEGORY TABS -->
-    <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:12px;margin-bottom:28px;scrollbar-width:none;-webkit-overflow-scrolling:touch;">
-      <button onclick="filterBlog('semua')" class="blog-tab active" data-tab="semua">Semua</button>
-      <button onclick="filterBlog('foto')" class="blog-tab" data-tab="foto">Foto Produk</button>
-      <button onclick="filterBlog('pengiriman')" class="blog-tab" data-tab="pengiriman">Pengiriman</button>
-      <button onclick="filterBlog('inventory')" class="blog-tab" data-tab="inventory">Inventory</button>
-      <button onclick="filterBlog('iklan')" class="blog-tab" data-tab="iklan">Iklan</button>
-    </div>
-
-    <!-- ARTICLES -->
-    <div id="blog-articles" style="display:flex;flex-direction:column;gap:32px;">
-
-      <!-- ── ARTICLE 1 ─────────────────────────────────────── -->
-      <div class="blog-card" data-category="foto" style="background:transparent;box-shadow:none;padding:0;border-radius:0;">
-        <!-- category tag + title above the two panels -->
-        <div style="margin-bottom:16px;">
-          <div style="display:inline-block;background:#FFF0EC;color:var(--orange);font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:10px;">Foto Produk</div>
-          <h2 style="font-size:1.2rem;font-weight:900;color:#111;line-height:1.35;margin:0;">Foto Produk dengan HP Rp 2 Jutaan: Hasilnya Bisa Saingi Studio Profesional</h2>
-        </div>
-        <div class="blog-author-row" style="display:flex;gap:20px;align-items:flex-start;">
-          <!-- LEFT: author card -->
-          <div style="width:200px;flex-shrink:0;background:#f7f4f1;border-radius:14px;overflow:hidden;border:1px solid #ede8e2;">
-            <img src="images/headshot-rina.png" style="width:100%;height:240px;object-fit:cover;object-position:center top;display:block;">
-            <div style="padding:12px 14px 14px;">
-              <div style="font-size:.85rem;font-weight:900;color:#111;margin-bottom:2px;">Rina Setiawati</div>
-              <div style="font-size:.74rem;color:var(--tl);">CantikStore_ID</div>
-              <div style="font-size:.72rem;color:var(--tl);margin-bottom:10px;">Fashion Wanita</div>
-              <div style="border-top:1px solid #e0d9d0;padding-top:8px;margin-top:2px;">
-                <div style="font-size:.62rem;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Omset / Bulan</div>
-                <div style="font-size:1rem;font-weight:900;color:var(--orange);">Rp 22jt</div>
-              </div>
-              <div style="border-top:1px solid #e0d9d0;padding-top:8px;margin-top:8px;">
-                <div style="font-size:.62rem;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Pengalaman</div>
-                <div style="font-size:1rem;font-weight:900;color:#111;">3 Tahun</div>
-              </div>
-            </div>
-          </div>
-          <!-- RIGHT: article panel -->
-          <div style="flex:1;min-width:0;background:#fff;border-radius:14px;border:1px solid #ede8e2;padding:20px 22px;">
-            <div style="font-size:.87rem;color:#333;line-height:1.8;">
-              <p style="margin-bottom:14px;">Dulu saya kira butuh kamera DSLR mahal untuk foto produk yang bagus. Ternyata salah besar. Setelah 3 tahun jualan fashion di Shopee, saya bisa bilang: <strong>pencahayaan jauh lebih penting dari kamera.</strong></p>
-              <h3 style="font-size:.95rem;font-weight:800;color:#111;margin:16px 0 6px;">1. Gunakan cahaya alami dari jendela</h3>
-              <p style="margin-bottom:14px;">Taruh produk di dekat jendela pagi hari (jam 8–10). Cahaya matahari pagi lembut dan merata. Hindari siang hari karena bayangan terlalu keras.</p>
-              <h3 style="font-size:.95rem;font-weight:800;color:#111;margin:16px 0 6px;">2. Background putih dari karton</h3>
-              <p style="margin-bottom:14px;">Beli karton putih Rp 5.000 di Alfamart. Lipat jadi sudut 90 derajat. Ini trik paling murah yang bikin foto terlihat profesional dan bersih.</p>
-              <h3 style="font-size:.95rem;font-weight:800;color:#111;margin:16px 0 6px;">3. Edit pakai Lightroom Mobile (gratis)</h3>
-              <p style="margin-bottom:14px;">Naikan Exposure +0.3, turunkan Highlights, naikkan Whites. Foto langsung terlihat lebih terang dan bersih. Satu preset bisa dipakai ke semua foto produk.</p>
-              <div style="background:#FFF0EC;border-left:3px solid var(--orange);border-radius:0 8px 8px 0;padding:12px 14px;margin:16px 0;">
-                <div style="font-size:.78rem;font-weight:700;color:var(--orange);margin-bottom:3px;">Tips dari Rina</div>
-                <div style="font-size:.82rem;color:#333;">Foto pertama di listing adalah yang paling penting. Saya selalu bikin 3 versi foto pertama dan test mana yang paling banyak diklik. CTR naik 40% setelah saya ganti foto pertama dengan yang menampilkan produk dipakai orang.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div style="margin-top:14px;font-size:.75rem;color:var(--tl);">20 Mar 2026 · 4 min baca</div>
-      </div>
-
-      <!-- ── ARTICLE 2 ─────────────────────────────────────── -->
-      <div class="blog-card" data-category="pengiriman" style="background:transparent;box-shadow:none;padding:0;border-radius:0;">
-        <div style="margin-bottom:16px;">
-          <div style="display:inline-block;background:#E8F8EE;color:#1a6b3a;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:10px;">Pengiriman</div>
-          <h2 style="font-size:1.2rem;font-weight:900;color:#111;line-height:1.35;margin:0;">Cara Saya Hemat Rp 3 Juta Per Bulan di Ongkos Kirim Shopee</h2>
-        </div>
-        <div class="blog-author-row" style="display:flex;gap:20px;align-items:flex-start;">
-          <!-- LEFT: author card -->
-          <div style="width:200px;flex-shrink:0;background:#f7f4f1;border-radius:14px;overflow:hidden;border:1px solid #ede8e2;">
-            <img src="images/headshot-budi.png" style="width:100%;height:240px;object-fit:cover;object-position:center top;display:block;">
-            <div style="padding:12px 14px 14px;">
-              <div style="font-size:.85rem;font-weight:900;color:#111;margin-bottom:2px;">Budi Wijaya</div>
-              <div style="font-size:.74rem;color:var(--tl);">ElektronikMurah88</div>
-              <div style="font-size:.72rem;color:var(--tl);margin-bottom:10px;">Elektronik & Gadget</div>
-              <div style="border-top:1px solid #e0d9d0;padding-top:8px;margin-top:2px;">
-                <div style="font-size:.62rem;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Omset / Bulan</div>
-                <div style="font-size:1rem;font-weight:900;color:var(--orange);">Rp 45jt</div>
-              </div>
-              <div style="border-top:1px solid #e0d9d0;padding-top:8px;margin-top:8px;">
-                <div style="font-size:.62rem;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Pengalaman</div>
-                <div style="font-size:1rem;font-weight:900;color:#111;">5 Tahun</div>
-              </div>
-            </div>
-          </div>
-          <!-- RIGHT: article panel -->
-          <div style="flex:1;min-width:0;background:#fff;border-radius:14px;border:1px solid #ede8e2;padding:20px 22px;">
-            <div style="font-size:.87rem;color:#333;line-height:1.8;">
-              <p style="margin-bottom:14px;">Pengiriman adalah biaya tersembunyi yang sering diabaikan seller pemula. Dulu saya kirim semua paket lewat counter JNE terdekat. Setelah saya hitung, saya buang-buang hampir Rp 3 juta per bulan.</p>
-              <h3 style="font-size:.95rem;font-weight:800;color:#111;margin:16px 0 6px;">1. Aktifkan semua kurir di Shopee</h3>
-              <p style="margin-bottom:14px;">Jangan hanya pakai satu kurir. Aktifkan J&amp;T, SiCepat, Anteraja, dan Ninja. Buyer yang berbeda daerah punya kurir favorit berbeda, dan rate-nya pun beda. Saya hemat rata-rata Rp 2.000–4.000 per paket hanya dari ini.</p>
-              <h3 style="font-size:.95rem;font-weight:800;color:#111;margin:16px 0 6px;">2. Daftar Shopee Xpress untuk volume tinggi</h3>
-              <p style="margin-bottom:14px;">Kalau kamu kirim lebih dari 30 paket per hari, daftar ke program Shopee Xpress. Rate-nya bisa 20–30% lebih murah dari counter biasa.</p>
-              <h3 style="font-size:.95rem;font-weight:800;color:#111;margin:16px 0 6px;">3. Packaging efisien = berat lebih ringan</h3>
-              <p style="margin-bottom:14px;">Saya pindah dari bubble wrap tebal ke single-layer + kardus custom yang pas ukurannya. Berat rata-rata turun 150gr per paket. Dikali 300 paket/bulan = hemat signifikan.</p>
-              <div style="background:#EAF7F0;border-left:3px solid #1A7A46;border-radius:0 8px 8px 0;padding:12px 14px;margin:16px 0;">
-                <div style="font-size:.78rem;font-weight:700;color:#1a6b3a;margin-bottom:3px;">Tips dari Budi</div>
-                <div style="font-size:.82rem;color:#333;">Minta pickup jangan drop off. Kurir yang pickup ke rumah biasanya gratis kalau volume cukup, dan kamu hemat waktu + bensin. Saya nego langsung dengan driver Shopee Express area saya — deal 30 paket/hari, dia pickup tiap pagi jam 9.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div style="margin-top:14px;font-size:.75rem;color:var(--tl);">22 Mar 2026 · 5 min baca</div>
-      </div>
-
-      <!-- ── ARTICLE 3 ─────────────────────────────────────── -->
-      <div class="blog-card" data-category="inventory" style="background:transparent;box-shadow:none;padding:0;border-radius:0;">
-        <div style="margin-bottom:16px;">
-          <div style="display:inline-block;background:#EFF6FF;color:#1d4ed8;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:10px;">Inventory</div>
-          <h2 style="font-size:1.2rem;font-weight:900;color:#111;line-height:1.35;margin:0;">Dari Pasar Tanah Abang ke Alibaba: Panduan Cari Supplier Produk Dapur</h2>
-        </div>
-        <div class="blog-author-row" style="display:flex;gap:20px;align-items:flex-start;">
-          <!-- LEFT: author card -->
-          <div style="width:200px;flex-shrink:0;background:#f7f4f1;border-radius:14px;overflow:hidden;border:1px solid #ede8e2;">
-            <img src="images/headshot-andi.png" style="width:100%;height:240px;object-fit:cover;object-position:center top;display:block;">
-            <div style="padding:12px 14px 14px;">
-              <div style="font-size:.85rem;font-weight:900;color:#111;margin-bottom:2px;">Andi Susanto</div>
-              <div style="font-size:.74rem;color:var(--tl);">DapurKeren_ID</div>
-              <div style="font-size:.72rem;color:var(--tl);margin-bottom:10px;">Alat Dapur & Masak</div>
-              <div style="border-top:1px solid #e0d9d0;padding-top:8px;margin-top:2px;">
-                <div style="font-size:.62rem;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Omset / Bulan</div>
-                <div style="font-size:1rem;font-weight:900;color:var(--orange);">Rp 31jt</div>
-              </div>
-              <div style="border-top:1px solid #e0d9d0;padding-top:8px;margin-top:8px;">
-                <div style="font-size:.62rem;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px;">Pengalaman</div>
-                <div style="font-size:1rem;font-weight:900;color:#111;">4 Tahun</div>
-              </div>
-            </div>
-          </div>
-          <!-- RIGHT: article panel -->
-          <div style="flex:1;min-width:0;background:#fff;border-radius:14px;border:1px solid #ede8e2;padding:20px 22px;">
-            <div style="font-size:.87rem;color:#333;line-height:1.8;">
-              <p style="margin-bottom:14px;">Supplier yang salah bisa bikin margin kamu habis sebelum sempat untung. Setelah 4 tahun jualan alat dapur, saya sudah coba semua: Tanah Abang, Mangga Dua, Tokopedia B2B, sampai Alibaba. Ini yang saya pelajari.</p>
-              <h3 style="font-size:.95rem;font-weight:800;color:#111;margin:16px 0 6px;">1. Mulai dari pasar lokal dulu</h3>
-              <p style="margin-bottom:14px;">Tanah Abang dan Mangga Dua bagus untuk test produk karena MOQ rendah — bisa beli 5–10 pcs. Harga memang lebih mahal, tapi kamu bisa validasi dulu mana yang laku sebelum order banyak.</p>
-              <h3 style="font-size:.95rem;font-weight:800;color:#111;margin:16px 0 6px;">2. Naik ke Alibaba kalau sudah terbukti</h3>
-              <p style="margin-bottom:14px;">Setelah ada produk yang konsisten laku 50+ per bulan, saya pindah ke Alibaba. MOQ biasanya 100–500 pcs, tapi harga bisa 40–60% lebih murah. Margin saya naik dari 20% ke 45%.</p>
-              <h3 style="font-size:.95rem;font-weight:800;color:#111;margin:16px 0 6px;">3. Cek supplier dengan metode "trial order"</h3>
-              <p style="margin-bottom:14px;">Jangan langsung order besar. Minta sampel dulu (biasanya kena ongkir DHL ~Rp 300rb). Cek kualitas, packaging, dan waktu kirim. Saya pernah dapat supplier yang bagus dari Yiwu — ongkirnya cepat 8–12 hari.</p>
-              <div style="background:#EFF6FF;border-left:3px solid #1d4ed8;border-radius:0 8px 8px 0;padding:12px 14px;margin:16px 0;">
-                <div style="font-size:.78rem;font-weight:700;color:#1d4ed8;margin-bottom:3px;">Tips dari Andi</div>
-                <div style="font-size:.82rem;color:#333;">Minta foto produk di kardus asli sebelum dikirim. Kalau supplier nolak, itu red flag. Supplier bagus selalu mau kirim bukti foto sebelum shipment — ini cara saya hindari barang palsu atau kualitas jelek.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div style="margin-top:14px;font-size:.75rem;color:var(--tl);">25 Mar 2026 · 6 min baca</div>
-      </div>
-
-    </div><!-- /blog-articles -->
-
-    <!-- CTA -->
-    <div class="about-cta" style="margin-top:40px;">
-      <div class="about-cta-title">Siap menemukan produk pertamamu?</div>
-      <div class="about-cta-sub">Jelajahi ratusan produk dengan data lengkap — gratis, selamanya.</div>
-      <button class="about-cta-btn" onclick="showPage('discover')">Mulai Riset Gratis →</button>
-    </div>
-
-  </div>
-</div>
+<!-- blog removed -->
 
 
 <!-- SHARE MODAL -->
@@ -3203,14 +2974,6 @@ html,body{overflow-x:hidden;max-width:100%;}
           <div class="kom-benefit-title">Grup WhatsApp — Update Produk Trending Mingguan</div>
           <div class="kom-benefit-text">Setiap minggu kami bagikan ringkasan produk paling trending di Shopee langsung ke grup. Kamu dapat data produk yang sedang naik sebelum pasar jenuh — gratis untuk semua anggota.</div>
           <a class="kom-wa-btn" href="#" target="_blank" rel="noopener" style="display:inline-block;margin-top:14px;">Masuk Grup WhatsApp</a>
-        </div>
-      </div>
-      <div class="kom-benefit-item">
-        <img class="kom-benefit-img" src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=500&q=80" alt="Blog posts" onerror="this.style.background='#e8e2db'">
-        <div class="kom-benefit-body">
-          <div class="kom-benefit-title">Akses Blog &amp; Panduan Penjual</div>
-          <div class="kom-benefit-text">Anggota komunitas mendapat akses ke semua artikel dan panduan dari seller berpengalaman — mulai dari riset produk, strategi iklan, packaging, hingga scaling omset.</div>
-          <button class="kom-blog-btn" onclick="showPage('blog')">Baca Blog</button>
         </div>
       </div>
     </div>
@@ -7830,10 +7593,7 @@ let _lpPreviewChart = null;
 
 function lpShowPreview() {
   const sec = document.getElementById('lp-preview-section');
-  if (!sec) return;
-  sec.style.display = 'block';
-  sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  if (allProducts && allProducts.length) lpRenderPreview(allProducts[0]);
+  if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function lpRenderPreview(p) {
@@ -7847,7 +7607,11 @@ function lpRenderPreview(p) {
   const kompScore  = Math.round(40 + rng()*40);
   const kompLabel  = kompScore >= 65 ? 'Tinggi' : kompScore >= 40 ? 'Sedang' : 'Rendah';
 
-  document.getElementById('lp-dd-img').textContent   = p.emoji || '📦';
+  const imgEl = document.getElementById('lp-dd-img');
+  if (imgEl) {
+    if (p.image) imgEl.innerHTML = `<img src="${p.image}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
+    else imgEl.textContent = p.emoji || '📦';
+  }
   document.getElementById('lp-dd-name').textContent  = p.name;
   document.getElementById('lp-dd-cats').innerHTML    = `Kategori: ${p.category||'Umum'} <span>• Sub Kategori: ${p.category||'Umum'}</span>`;
   document.getElementById('lp-dd-score').textContent = score;
@@ -12227,12 +11991,7 @@ initSupabase();
 initFreshnessBadge();
 initTopbarDate();
 
-function filterBlog(cat) {
-  document.querySelectorAll('.blog-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === cat));
-  document.querySelectorAll('.blog-card').forEach(c => {
-    c.style.display = (cat === 'semua' || c.dataset.category === cat) ? 'block' : 'none';
-  });
-}
+
 
 // Always show hamburger, hide inline nav links
 (function(){
