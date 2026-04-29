@@ -7094,7 +7094,12 @@ function ddRender(p) {
   const marginHigh = marginLow + Math.round(8 + rng() * 6);
 
   // hero
-  document.getElementById('dd-hero-img').textContent = p.emoji || '📦';
+  const _ddHeroEl = document.getElementById('dd-hero-img');
+  if (p.image) {
+    _ddHeroEl.innerHTML = `<img src="${p.image}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.parentElement.textContent='📦'">`;
+  } else {
+    _ddHeroEl.textContent = p.emoji || '📦';
+  }
   document.getElementById('dd-hero-name').textContent = p.name;
   document.getElementById('dd-hero-cats').innerHTML = `Kategori: ${p.category||'Umum'} <span>• Sub Kategori: ${p.category||'Umum'}</span>`;
   document.getElementById('dd-score-num').textContent = score;
@@ -7222,6 +7227,8 @@ function ddRender(p) {
   });
   _ddCompShowing = 5;
   ddRenderCompetitors();
+  // Try to load real listing data (images + live stats) asynchronously
+  ddLoadRealCompetitors(p);
 
   // keyword table
   const word0 = p.name.split(' ')[0].toLowerCase();
@@ -7252,7 +7259,7 @@ function ddRenderCompetitors() {
     const pillCls = c.score >= 80 ? '' : c.score >= 70 ? 'yellow' : 'green';
     return `<tr>
       <td style="color:#9CA3AF;font-weight:600">${c.rank}</td>
-      <td style="font-weight:600">${c.name}</td>
+      <td><div style="display:flex;align-items:center;gap:8px;">${c.image ? `<img src="${c.image}" style="width:34px;height:34px;border-radius:5px;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">` : ''}<span style="font-weight:600">${c.name}</span></div></td>
       <td>Rp ${c.price.toLocaleString('id-ID')}</td>
       <td>Rp ${c.omset.toLocaleString('id-ID')}</td>
       <td>${c.units.toLocaleString('id-ID')}</td>
@@ -7272,6 +7279,45 @@ function ddRenderCompetitors() {
 
 function ddToggleCompetitors() {
   _ddCompShowing = _ddCompShowing >= _ddCompAll.length ? 5 : _ddCompAll.length;
+  ddRenderCompetitors();
+}
+
+async function ddLoadRealCompetitors(p) {
+  if (!p || !p.sheetUrl) return;
+  const sheetId = extractSheetId(p.sheetUrl);
+  if (!sheetId) return;
+  let rows = null;
+  for (const tab of ['Sheet1', 'Sellers', 'Data', p.name]) {
+    rows = await fetchSheet(sheetId, tab);
+    if (rows && rows.length) break;
+  }
+  if (!rows || rows.length < 3) return;
+  const mapped = rows.map((r, i) => ({
+    rank:  parseInt(r['No']) || i + 1,
+    name:  r['Store Name'] || '',
+    price: parseRp(r['Price']),
+    omset: parseRp(r['New Revenue']) || parseRp(r['30-day Revenue']),
+    units: parseFloat(r['30-day Sales']) || 0,
+    age:   r['Listing Date'] || '—',
+    score: Math.max(60, Math.round(92 - i * 2.5)),
+    image: r['Image'] || '',
+    url:   r['URL'] || '#',
+  })).filter(s => s.name);
+  if (mapped.length < 3) return;
+  const totalRev   = mapped.reduce((s, r) => s + r.omset, 0);
+  const threshold  = totalRev * 0.01;
+  const qualified  = mapped
+    .filter(s => s.omset > threshold)
+    .sort((a, b) => b.omset - a.omset)
+    .slice(0, 15)
+    .map((s, i) => ({ ...s, rank: i + 1 }));
+  if (qualified.length < 3) return;
+  // Also set hero image to top listing's image if product has none
+  const heroEl = document.getElementById('dd-hero-img');
+  if (heroEl && !p.image && qualified[0].image) {
+    heroEl.innerHTML = `<img src="${qualified[0].image}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.parentElement.textContent='📦'">`;
+  }
+  _ddCompAll = qualified;
   ddRenderCompetitors();
 }
 
