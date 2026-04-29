@@ -2335,16 +2335,16 @@ html,body{overflow-x:hidden;max-width:100%;}
   </div>
   <button id="nav-hamburger-btn" class="nav-hamburger" onclick="toggleMobileMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
   <div id="nav-right-links" class="nav-right">
-    <a class="nav-link" onclick="showPage('discover')">Products</a>
-    <a class="nav-link" onclick="showPage('komunitas')">Komunitas</a>
+    <a class="nav-link" onclick="openProfile();setTimeout(()=>switchDashView('discover'),50)">Products</a>
+    <a class="nav-link" onclick="openProfile()">Komunitas</a>
     <a class="nav-link" onclick="openFeedback()">Feedback</a>
     <button class="nav-auth-btn" id="nav-login-btn" onclick="openAuthModal('login')">Login / Daftar</button>
     <div class="nav-avatar" id="nav-user-btn" onclick="openProfile()" style="display:none;">?</div>
   </div>
 </nav>
 <div class="mobile-menu" id="mobile-menu">
-  <a onclick="showPage('discover');closeMobileMenu()">Products</a>
-  <a onclick="showPage('komunitas');closeMobileMenu()">Komunitas</a>
+  <a onclick="openProfile();setTimeout(()=>switchDashView('discover'),50);closeMobileMenu()">Products</a>
+  <a onclick="openProfile();closeMobileMenu()">Komunitas</a>
   <a onclick="openFeedback();closeMobileMenu()">Feedback</a>
   <a id="mobile-login-link" onclick="openAuthModal('login');closeMobileMenu()">Login / Daftar</a>
   <a id="mobile-profile-link" style="display:none;" onclick="openProfile();closeMobileMenu()">Profil Saya</a>
@@ -3127,584 +3127,6 @@ html,body{overflow-x:hidden;max-width:100%;}
 </div>
 <!-- ══ END LANDING PAGE ══════════════════════════════════════ -->
 
-
-<!-- ════════════════════════════════════
-     DISCOVER PAGE
-════════════════════════════════════ -->
-<div class="page" id="page-discover">
-  <div class="disc-hero">
-    <p>Browse all products — filter by category, price, and revenue potential</p>
-    <span class="freshness-badge"><span id="freshness-text">Data diperbarui setiap Senin</span></span>
-  </div>
-  <div class="disc-main">
-    <div class="free-banner">
-      
-      <span class="free-banner-text"><strong>100% Gratis, Selamanya.</strong> Tidak perlu akun. Tidak ada biaya tersembunyi. Dibuat untuk para penjual Indonesia.</span>
-    </div>
-    <div style="background:#fff8f0;border:1px solid #fde2c8;border-radius:8px;padding:8px 14px;margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:.78rem;color:#b05000;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;flex-shrink:0"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
-      <span>Centang kotak di pojok kiri kartu untuk membandingkan hingga <strong>3 produk</strong> sekaligus.</span>
-    </div>
-    <!-- TRENDING ROW — DISCOVER -->
-    <div class="trending-section" style="margin:0 -20px 16px;border-radius:10px;overflow:hidden;" id="disc-trending-section">
-      <div class="trending-sec-inner">
-        <div class="trending-sec-head">
-          <div class="trending-sec-title">Trending Products</div>
-        </div>
-        <div class="trending-row-outer">
-          <div class="trending-row" id="disc-trending-row">
-            <div class="trending-loading"><div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>Memuat trending...</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="pills" id="disc-pills"></div>
-    <div class="toolbar">
-      <div class="toolbar-left"><span id="product-count">0</span> Products Found</div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <div class="filter-inline-wrap" id="filter-inline-wrap">
-          <button class="filter-inline-btn" onclick="toggleFilterPanel()" id="filter-inline-btn">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
-            Filter <span id="filter-count-badge" style="display:none;background:var(--orange);color:#fff;border-radius:10px;padding:0 6px;font-size:.68rem;margin-left:3px;"></span>
-          </button>
-          <div class="filter-popup" id="filter-body">
-            <div class="filter-popup-group">
-              <label>Harga Jual (Rp)</label>
-              <div class="filter-range-row">
-                <input class="filter-input" type="number" id="f-price-min" placeholder="Min" min="0" step="1000">
-                <span class="filter-sep">–</span>
-                <input class="filter-input" type="number" id="f-price-max" placeholder="Max" min="0" step="1000">
-              </div>
-            </div>
-            <div class="filter-popup-group">
-              <label>Revenue Bulanan (Rp)</label>
-              <div class="filter-range-row">
-                <input class="filter-input" type="number" id="f-rev-min" placeholder="Min" min="0" step="100000">
-                <span class="filter-sep">–</span>
-                <input class="filter-input" type="number" id="f-rev-max" placeholder="Max" min="0" step="100000">
-              </div>
-            </div>
-            <div class="filter-popup-group">
-              <label>Kategori</label>
-              <select class="filter-input" id="f-category">
-                <option value="all">Semua Kategori</option>
-              </select>
-            </div>
-            <div class="filter-popup-group">
-              <label>Skor Viabilitas Min: <span id="f-score-min-label" style="font-weight:700;color:var(--orange);">0</span> / 100</label>
-              <input type="range" id="f-score-min" min="0" max="100" step="1" value="0"
-                style="width:100%;accent-color:var(--orange);cursor:pointer;margin-top:4px;"
-                oninput="document.getElementById('f-score-min-label').textContent=parseInt(this.value);applyFilters()">
-            </div>
-            <div class="filter-popup-btns">
-              <button class="filter-reset-btn" onclick="resetFilters()">Reset</button>
-              <button class="filter-apply-btn" onclick="applyFilters()">Terapkan</button>
-            </div>
-          </div>
-        </div>
-        <span style="font-size:.8rem;color:var(--tm);font-weight:500;">Sort:</span>
-        <select class="sort-select" id="sort-select" onchange="sortProducts()">
-          <option value="score">Viability Score</option>
-          <option value="trending">Trending</option>
-          <option value="revenue_up">Revenue (High → Low)</option>
-          <option value="revenue_down">Revenue (Low → High)</option>
-          <option value="units_down">Units (High → Low)</option>
-          <option value="units_up">Units (Low → High)</option>
-        </select>
-      </div>
-    </div>
-    <div class="disc-grid" id="disc-grid">
-      <div class="skel-card"><div class="skel-img skel"></div><div class="skel-body"><div class="skel-line skel"></div><div class="skel-line s skel"></div></div></div>
-      <div class="skel-card"><div class="skel-img skel"></div><div class="skel-body"><div class="skel-line skel"></div><div class="skel-line s skel"></div></div></div>
-      <div class="skel-card"><div class="skel-img skel"></div><div class="skel-body"><div class="skel-line skel"></div><div class="skel-line s skel"></div></div></div>
-      <div class="skel-card"><div class="skel-img skel"></div><div class="skel-body"><div class="skel-line skel"></div><div class="skel-line s skel"></div></div></div>
-      <div class="skel-card"><div class="skel-img skel"></div><div class="skel-body"><div class="skel-line skel"></div><div class="skel-line s skel"></div></div></div>
-      <div class="skel-card"><div class="skel-img skel"></div><div class="skel-body"><div class="skel-line skel"></div><div class="skel-line s skel"></div></div></div>
-    </div>
-  </div>
-</div>
-
-<!-- ════════════════════════════════════
-     DETAIL PAGE — Shopee style
-════════════════════════════════════ -->
-<div class="page" id="page-detail">
-  <div class="det-page-wrap">
-
-    <!-- back bar -->
-    <div class="det-topbar">
-      <div class="det-topbar-inner">
-        <div class="back-btn" onclick="goBack()">← Back to Products</div>
-      </div>
-    </div>
-
-    <!-- main 2-col -->
-    <div class="det-main">
-      <div class="det-layout">
-
-        <!-- LEFT: image gallery -->
-        <div class="det-gallery">
-          <div class="det-main-img" id="d-main-img"></div>
-          <div class="det-thumbs" id="d-thumbs"></div>
-          <!-- SUPPLIER AD STRIP -->
-          <div class="det-supplier-ad" id="det-supplier-ad">
-            <div class="det-supplier-ad-img"></div>
-            <div class="det-supplier-ad-body">
-              <div class="det-supplier-ad-label">Supplier</div>
-              <div class="det-supplier-ad-name">—</div>
-              <div class="det-supplier-ad-price">MOQ 50 · Rp7.000/pc</div>
-            </div>
-            <a class="det-supplier-ad-btn" href="#" target="_blank" rel="noopener">Lihat</a>
-          </div>
-          <!-- SHIPPING AD STRIP -->
-          <div class="det-supplier-ad">
-            <div class="det-supplier-ad-img"><img src="https://down-id.img.susercontent.com/file/id-11134207-7qula-licw90i199y1d4" alt="Kardus" onerror="this.style.display='none'"></div>
-            <div class="det-supplier-ad-body">
-              <div class="det-supplier-ad-label">Pengiriman</div>
-              <div class="det-supplier-ad-name">Get Your Shipping Needs Covered</div>
-              <div class="det-supplier-ad-price">Rp100/kotak</div>
-            </div>
-            <a class="det-supplier-ad-btn" href="https://shopee.co.id/kardus-35x25x20-Cm-i.59460650.19946161853?extraParams=%7B%22display_model_id%22%3A192330828950%2C%22model_selection_logic%22%3A2%7D&sp_atk=86190983-c962-4121-ab07-e1e20e2c7576&xptdk=86190983-c962-4121-ab07-e1e20e2c7576" target="_blank" rel="noopener">Lihat</a>
-          </div>
-        </div>
-
-        <!-- RIGHT: product info stack -->
-        <div>
-          <!-- score + category + name -->
-          <div class="det-info">
-            <div class="det-score-row">
-              <span class="det-score-badge" id="d-score-badge">Skor <span id="d-score">—</span></span>
-              <span class="det-cat-tag" id="d-cat">—</span>
-            </div>
-
-            <!-- score explanation accordion -->
-            <div class="score-exp-wrap" style="margin-bottom:14px;">
-              <div class="score-exp-header" onclick="toggleScoreExp()">
-                <span class="score-exp-title">Kenapa skor ini?</span>
-                <div style="display:flex;align-items:center;gap:8px;">
-                  <span class="score-exp-total" id="d-score-exp-total" style="background:#aaa;">—</span>
-                  <span class="score-exp-toggle" id="score-exp-chevron">▼</span>
-                </div>
-              </div>
-              <div class="score-exp-body" id="score-exp-body">
-                <div class="score-exp-loading" id="score-exp-loading">
-                  <div class="spinner" style="width:16px;height:16px;border-width:2px;"></div>Memuat data skor...
-                </div>
-                <div id="score-exp-metrics"></div>
-              </div>
-            </div>
-
-            <div class="det-unlock-banner" id="det-unlock-banner" style="display:none;">
-              <div class="det-unlock-banner-text"><strong>Buat akun gratis</strong> untuk menyimpan produk ini dan memantau perubahannya setiap minggu.</div>
-              <button class="det-unlock-btn" onclick="openAuthModal('login')">Daftar Gratis →</button>
-            </div>
-            <div class="det-name" id="d-name">—</div>
-
-            <!-- selling price range -->
-            <div class="det-price-block">
-              <div class="det-price-label">Kisaran Harga Jual</div>
-              <div class="det-price-range">
-                <span class="det-price-lo" id="d-price-lo">—</span>
-                <span style="color:var(--tl);font-size:.9rem">–</span>
-                <span class="det-price-med" id="d-price-med">—</span>
-                <span style="color:var(--tl);font-size:.9rem">–</span>
-                <span class="det-price-hi" id="d-price-hi">—</span>
-              </div>
-              <div class="det-price-note">Median price shown in bold</div>
-            </div>
-
-            <!-- revenue range -->
-            <div class="det-rev-block">
-              <div class="det-rev-label">Estimasi Omset per Bulan</div>
-              <div class="det-rev-range">
-                <span class="det-rev-lo" id="d-rev-lo">—</span>
-                <span style="color:var(--tl);font-size:.9rem">–</span>
-                <span class="det-rev-med" id="d-rev-med">—</span>
-                <span style="color:var(--tl);font-size:.9rem">–</span>
-                <span class="det-rev-hi" id="d-rev-hi">—</span>
-              </div>
-              <div class="det-rev-note">Median revenue shown in bold</div>
-            </div>
-
-            <!-- stat pills -->
-            <div class="det-stats-row">
-              <div class="det-stat-pill">
-                <div class="det-stat-pill-lbl">New Seller Units/mo</div>
-                <div class="det-stat-pill-val" id="d-units-new">—</div>
-              </div>
-              <div class="det-stat-pill">
-                <div class="det-stat-pill-lbl">Exp. Seller Units/mo</div>
-                <div class="det-stat-pill-val" id="d-units-exp">—</div>
-              </div>
-              <div class="det-stat-pill">
-                <div class="det-stat-pill-lbl">Viability Score</div>
-                <div class="det-stat-pill-val" id="d-score2">—</div>
-              </div>
-            </div>
-
-            <!-- inline charts -->
-            <div class="det-inline-charts">
-              <div class="det-inline-chart-box">
-                <div class="det-inline-chart-title">Kategori — Revenue/Bln</div>
-                <div class="det-inline-chart-canvas-wrap">
-                  <canvas id="det-cmp-chart"></canvas>
-                </div>
-              </div>
-              <div class="det-inline-chart-box">
-                <div class="det-inline-chart-title">Tren Mingguan — Top 15</div>
-                <div id="det-hist-wrap">
-                  <div class="det-chart-empty" id="det-hist-empty" style="height:120px;font-size:.68rem;">
-                    <div style="opacity:.4;font-size:1rem;">&#9676;</div>
-                    <div>Sedang dikumpulkan</div>
-                  </div>
-                  <div class="det-inline-chart-canvas-wrap" id="det-hist-canvas-wrap" style="display:none;">
-                    <canvas id="det-hist-chart"></canvas>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button class="share-btn" onclick="openShareModal()">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                Share This Opportunity
-              </button>
-              <button class="share-btn det-save-btn" id="det-save-btn" onclick="toggleDetailSave()">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                <span id="det-save-label">Simpan Produk</span>
-              </button>
-            </div>
-
-            <!-- SELLER ACCURACY VOTE -->
-            <div class="seller-vote-box">
-              <div class="seller-vote-title">Kamu seller? Apakah data ini accurate?</div>
-              <div class="seller-vote-sub">Berdasarkan pengalamanmu jualan produk ini — seberapa akurat data yang ditampilkan?</div>
-              <div class="vote-btn-row">
-                <button class="vote-btn" id="vote-up-btn" onclick="castVote('up')">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
-                  Akurat!
-                  <span class="vote-count" id="vote-up-count">0</span>
-                </button>
-                <button class="vote-btn" id="vote-down-btn" onclick="castVote('down')">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>
-                  Tidak Sesuai Realita
-                  <span class="vote-count" id="vote-down-count">0</span>
-                </button>
-                <span class="vote-result-msg" id="vote-result-msg"></span>
-              </div>
-              <div class="vote-bar-wrap" id="vote-bar-wrap">
-                <div class="vote-bar-labels">
-                  <span id="vote-bar-pct">0% akurat</span>
-                  <span id="vote-bar-total">0 votes</span>
-                </div>
-                <div class="vote-bar-track">
-                  <div class="vote-bar-fill" id="vote-bar-fill" style="width:0%"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- store age in business -->
-          <div class="det-section">
-            <div class="det-section-title">Usia Produk di Marketplace</div>
-            <div class="det-age-row">
-              <div class="det-age-box">
-                <div class="det-age-lbl">Shortest</div>
-                <div class="det-age-val" id="d-age-min">—</div>
-              </div>
-              <div class="det-age-box">
-                <div class="det-age-lbl">Median</div>
-                <div class="det-age-val med" id="d-age-med">—</div>
-              </div>
-              <div class="det-age-box">
-                <div class="det-age-lbl">Longest</div>
-                <div class="det-age-val" id="d-age-max">—</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- AI Sourcing Guide + Chat -->
-          <div class="det-section" id="ai-section">
-            <div class="det-section-title">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-              Analisa Sourcing
-            </div>
-            <div class="sourcing-analyze-wrap" id="sourcing-analyze-wrap">
-              <div class="sourcing-prompt-text">Klik tombol di bawah untuk menganalisa listing terlaris — warna, fitur, dan keywords yang paling banyak muncul.</div>
-              <button class="sourcing-analyze-btn" id="sourcing-analyze-btn" onclick="triggerSourcingAnalysis()">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                Analisa Produk Ini
-              </button>
-            </div>
-            <div class="sourcing-loading" id="sourcing-loading" style="display:none;">
-              <div class="spinner"></div>Menganalisis data listing...
-            </div>
-            <div id="sourcing-result"></div>
-            <!-- AI Chat -->
-            <div class="ai-chat-wrap" id="ai-chat-wrap" style="display:none;">
-              <div class="ai-chat-divider">
-                <span>Tanya AI</span>
-              </div>
-              <div class="ai-chat-messages" id="ai-chat-messages"></div>
-              <div class="ai-chat-input-row">
-                <input type="text" class="ai-chat-input" id="ai-chat-input"
-                  placeholder="Contoh: Warna apa yang paling laku?"
-                  onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAIChat();}">
-                <button class="ai-chat-send" id="ai-chat-send-btn" onclick="sendAIChat()">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- KEYWORD RANKINGS -->
-          <div class="det-section-wrap" id="kwr-section" style="margin-bottom:16px;">
-            <div class="det-section-title" style="margin-bottom:10px;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              Keywords untuk Iklan Shopee
-            </div>
-            <div id="kwr-body">
-              <div style="font-size:.78rem;color:var(--tm);">Memuat data keyword...</div>
-            </div>
-          </div>
-
-          <!-- financial breakdown -->
-          <div class="fin-breakdown">
-            <div class="det-section-title">Simulasi Keuntungan</div>
-            <div class="fin-grid">
-              <div>
-                <div class="fin-col-title o">Skenario Seller Baru</div>
-                <div id="fin-new"></div>
-              </div>
-              <div>
-                <div class="fin-col-title g">Skenario Seller Berpengalaman</div>
-                <div id="fin-exp"></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- MY PLAN — shown when logged in + product saved -->
-          <div class="my-plan-section" id="my-plan-section" style="display:none;">
-            <div class="det-section-title">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              Rencana Saya
-            </div>
-            <div id="plan-body">
-              <!-- filled by JS: either inputs or locked message -->
-            </div>
-          </div>
-        </div><!-- end right col -->
-      </div><!-- end det-layout -->
-    </div><!-- end det-main -->
-
-    <!-- TOP 15 SELLERS — full width below the 2-col -->
-    <div style="max-width:1200px;margin:0 auto;padding:0 20px 14px;">
-      <div class="det-sellers">
-        <div class="det-section-title">Top Sellers</div>
-        <div id="sellers-loading" style="text-align:center;padding:28px;color:var(--tl);font-size:.85rem;">
-          <div class="spinner" style="margin:0 auto 10px;"></div>
-          Loading seller data...
-        </div>
-        <div style="position:relative;display:none;" id="sellers-table-wrap"><div id="sellers-scroll-hint" style="display:none;text-align:center;padding:5px 0 8px;font-size:.75rem;color:var(--tl);letter-spacing:.02em;">← geser untuk lihat lebih →</div><div id="sellers-scroll-inner" style="overflow-x:auto;-webkit-overflow-scrolling:touch;position:relative;">
-          <table class="sel-t">
-            <thead><tr>
-              <th>Rank</th>
-              <th></th>
-              <th>Store Name</th>
-              <th>Location</th>
-              <th>Listing Age</th>
-              <th>Pendapatan rata-rata 30 Hari</th>
-              <th>Price</th>
-              <th>Rating</th>
-              <th>Reviews</th>
-              <th>Link</th>
-            </tr></thead>
-            <tbody id="sellers-tbody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    </div><!-- end sellers wrap -->
-
-    <!-- MORE RECOMMENDATIONS -->
-    <div class="det-recs">
-      <div class="sec-head">
-        <div class="sec-title">More Products to Consider</div>
-        <span class="see-all" onclick="showPage('discover')">See All</span>
-      </div>
-      <div class="recs-grid" id="recs-grid"></div>
-    </div>
-
-  </div><!-- end det-page-wrap -->
-</div>
-
-
-
-<!-- blog removed -->
-
-
-<!-- SHARE MODAL -->
-<div class="share-modal-overlay" id="share-modal-overlay" style="display:none;" onclick="closeShareModal(event)">
-  <div class="share-modal">
-    <div class="share-modal-title">Share This Product</div>
-    <div class="share-modal-sub" id="share-modal-product-name"></div>
-    <div class="share-options">
-      <a class="share-option wa" onclick="doShare('wa')">
-        WhatsApp
-      </a>
-      <a class="share-option em" onclick="doShare('email')">
-        Email
-      </a>
-      <a class="share-option tw" onclick="doShare('twitter')">
-        <span class="share-option-icon">𝕏</span>Twitter / X
-      </a>
-      <a class="share-option cp" onclick="doShare('copy')">
-        Copy Link
-      </a>
-    </div>
-    <button class="share-modal-close" onclick="closeShareModal()">Cancel</button>
-  </div>
-</div>
-<div class="copy-toast" id="copy-toast">Link copied!</div>
-
-
-<!-- ════════════════════════════════════
-     KOMUNITAS PAGE
-════════════════════════════════════ -->
-<div class="page" id="page-komunitas">
-
-  <!-- COMMUNITY SECTION -->
-  <div class="kom-section">
-    <div class="kom-section-title">Komunitas Anggota</div>
-    <div class="kom-section-sub">Dua benefit langsung saat kamu bergabung.</div>
-
-    <div class="kom-benefit-list">
-      <div class="kom-benefit-item">
-        <img class="kom-benefit-img" src="https://images.unsplash.com/photo-1611746872915-64382b5c76da?w=500&q=80" alt="WhatsApp group" onerror="this.style.background='#e8e2db'">
-        <div class="kom-benefit-body">
-          <div class="kom-benefit-title">Grup WhatsApp — Update Produk Trending Mingguan</div>
-          <div class="kom-benefit-text">Setiap minggu kami bagikan ringkasan produk paling trending di Shopee langsung ke grup. Kamu dapat data produk yang sedang naik sebelum pasar jenuh — gratis untuk semua anggota.</div>
-          <a class="kom-wa-btn" href="#" target="_blank" rel="noopener" style="display:inline-block;margin-top:14px;">Masuk Grup WhatsApp</a>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <hr class="kom-divider">
-
-  <!-- MENTORSHIP SECTION -->
-  <div class="kom-section">
-    <div class="kom-section-title">Program Mentorship</div>
-    <div class="kom-section-sub">Belajar langsung dari penjual Shopee berpengalaman melalui sesi 1-on-1. Harga ditentukan oleh masing-masing mentor.</div>
-
-    <div class="kom-mentor-feature">
-      <img class="kom-mentor-feature-img" src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=1200&q=85" alt="Mentorship session" onerror="this.style.background='#e8e2db'">
-      <div class="kom-mentor-feature-body">
-        <div class="kom-mentor-row">
-          <div class="kom-mentor-point">
-            <div class="kom-mentor-point-title">Sesi Mingguan</div>
-            <div class="kom-mentor-point-text">Panggilan video atau pertemuan langsung setiap minggu. Fokus pada tantangan bisnis kamu yang spesifik.</div>
-          </div>
-          <div class="kom-mentor-point">
-            <div class="kom-mentor-point-title">Harga Fleksibel</div>
-            <div class="kom-mentor-point-text">Setiap mentor menetapkan harga sendiri sesuai pengalaman dan waktu yang tersedia.</div>
-          </div>
-          <div class="kom-mentor-point">
-            <div class="kom-mentor-point-title">Modal Awal Tersedia</div>
-            <div class="kom-mentor-point-text">Peserta terpilih dapat mengajukan akses modal usaha untuk memulai atau mengembangkan bisnis mereka.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- APPLY FORM -->
-    <button class="kom-apply-btn" id="kom-apply-toggle" onclick="toggleApplyForm()">Apply Now — Daftar Program Mentorship</button>
-    <div class="kom-apply-form" id="kom-apply-form" style="display:none;margin-top:14px;">
-      <div style="font-weight:900;font-size:1rem;color:#111;margin-bottom:4px;">Apply Now</div>
-      <div style="font-size:.8rem;color:var(--tm);margin-bottom:20px;">Isi form di bawah ini. Tim kami akan menghubungi kamu dalam 1–3 hari kerja.</div>
-      <form onsubmit="submitMentorApp(event)">
-        <div class="kom-form-row">
-          <div class="kom-field">
-            <label>Nama Lengkap</label>
-            <input type="text" id="ma-name" placeholder="Nama kamu" required>
-          </div>
-          <div class="kom-field">
-            <label>Nomor WhatsApp</label>
-            <input type="tel" id="ma-wa" placeholder="08xx xxxx xxxx" required>
-          </div>
-        </div>
-        <div class="kom-field">
-          <label>Email</label>
-          <input type="email" id="ma-email" placeholder="email@kamu.com" required>
-        </div>
-        <div class="kom-field">
-          <label>Apakah kamu sudah berjualan sekarang?</label>
-          <select id="ma-seller" onchange="toggleSellerFields(this.value)" required>
-            <option value="">-- Pilih --</option>
-            <option value="yes">Ya, saya sudah aktif berjualan</option>
-            <option value="no">Belum, saya baru mau mulai</option>
-          </select>
-        </div>
-        <div class="kom-seller-details" id="ma-seller-details">
-          <div class="kom-field">
-            <label>Berapa tahun pengalaman berjualan?</label>
-            <select id="ma-years">
-              <option value="">-- Pilih --</option>
-              <option value="<1">Kurang dari 1 tahun</option>
-              <option value="1-2">1–2 tahun</option>
-              <option value="3-5">3–5 tahun</option>
-              <option value="5+">Lebih dari 5 tahun</option>
-            </select>
-          </div>
-          <div class="kom-field">
-            <label>Omset per bulan saat ini</label>
-            <select id="ma-omset">
-              <option value="">-- Pilih --</option>
-              <option value="<5jt">Di bawah Rp 5 juta</option>
-              <option value="5-20jt">Rp 5–20 juta</option>
-              <option value="20-50jt">Rp 20–50 juta</option>
-              <option value="50-100jt">Rp 50–100 juta</option>
-              <option value="100jt+">Di atas Rp 100 juta</option>
-            </select>
-          </div>
-        </div>
-        <div class="kom-field">
-          <label>Kenapa kamu ingin punya mentor?</label>
-          <textarea id="ma-why" placeholder="Ceritakan situasi bisnismu dan apa yang ingin kamu capai..." required></textarea>
-        </div>
-        <div class="kom-field">
-          <label>Apakah kamu tertarik dengan Modal Usaha (Startup Capital)?</label>
-          <select id="ma-capital" required>
-            <option value="">-- Pilih --</option>
-            <option value="yes">Ya, saya ingin tahu lebih lanjut</option>
-            <option value="no">Tidak, saya hanya butuh mentorship</option>
-          </select>
-        </div>
-        <button class="kom-apply-submit" type="submit" id="ma-submit-btn">Kirim Aplikasi</button>
-      </form>
-    </div>
-    <div class="kom-apply-success" id="kom-apply-success">
-      <div class="kom-apply-success-title">Aplikasi Kamu Sedang Diproses</div>
-      <div class="kom-apply-success-text">Terima kasih telah mendaftar program mentorship LarisID. Tim kami akan menghubungi kamu melalui WhatsApp atau email dalam 1–3 hari kerja.</div>
-    </div>
-  </div>
-
-</div>
-
-<!-- ── COMPARE PAGE ─────────────────────── -->
-<div class="page" id="page-compare">
-  <div class="cmp-page-header">
-    <button onclick="showPage('discover')">← Kembali</button>
-    <h2>Perbandingan Produk</h2>
-  </div>
-  <div class="cmp-table-wrap">
-    <table class="cmp-table" id="cmp-table">
-      <thead id="cmp-thead"></thead>
-      <tbody id="cmp-tbody"></tbody>
-    </table>
-  </div>
-</div>
-
 <!-- ════════════════════════════════════
      PROFILE PAGE
 ════════════════════════════════════ -->
@@ -3887,7 +3309,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <div class="profile-membership-sub">1-on-1 bersama mentor berpengalaman. Akses modal usaha tersedia untuk peserta terpilih.</div>
               </div>
               <div id="profile-membership-status">
-                <button class="profile-membership-apply" onclick="showPage('komunitas')">Apply Now</button>
+                <button class="profile-membership-apply" onclick="openProfile()">Apply Now</button>
               </div>
             </div>
           </div>
@@ -5747,8 +5169,7 @@ function showPage(name) {
   window.scrollTo(0, 0);
   document.body.classList.toggle('in-dashboard', name === 'profile');
   document.body.classList.toggle('on-landing',   name === 'landing');
-  if (name === 'discover') { renderPills(); renderDiscGrid(); }
-  if (name === 'home')     { renderHomeCats(); renderHomeGrid(); }
+
   closeMobileMenu();
 }
 function goBack() { showPage(prevPage === 'detail' ? 'discover' : prevPage); }
@@ -5778,7 +5199,7 @@ function renderHomeCats() {
   }).join('');
 }
 
-function gotoCat(c) { activeCat = c; showPage('discover'); }
+function gotoCat(c) { activeCat = c; openProfile(); setTimeout(() => switchDashView('discover'), 50); }
 
 // ════════════════════════════════════════════════════════════
 //  PRODUCT FINDER (home page)
@@ -5850,7 +5271,7 @@ function launchProductFinder() {
   const fCatEl = document.getElementById('f-category');
   if (fCatEl) fCatEl.value = 'all';
 
-  showPage('discover');
+  openProfile(); setTimeout(()=>switchDashView('discover'),50);
   applyFilters();
 
   // Apply multi-category filter on top if specific cats selected
@@ -5886,7 +5307,8 @@ function renderHomeGrid() {
 // ════════════════════════════════════════════════════════════
 function renderPills() {
   const cats = ['all', ...new Set(allProducts.map(p => p.category))];
-  document.getElementById('disc-pills').innerHTML = cats.map(c =>
+  const pillsEl = document.getElementById('disc-pills'); if (!pillsEl) return;
+  pillsEl.innerHTML = cats.map(c =>
     `<div class="pill ${c === activeCat ? 'active' : ''}" onclick="filterCat('${c}')">
       ${c === 'all' ? 'All' : c}
     </div>`
@@ -5974,7 +5396,7 @@ function selectSuggestion(name) {
   hideSuggestions();
   searchQ = name.toLowerCase();
   applyFilters();
-  showPage('discover');
+  openProfile(); setTimeout(()=>switchDashView('discover'),50);
 }
 
 function onSearchKey(e) {
@@ -6043,8 +5465,8 @@ function sortProducts() {
 }
 
 function renderDiscGrid() {
-  const g = document.getElementById('disc-grid');
-  document.getElementById('product-count').textContent = filtered.length;
+  const g = document.getElementById('disc-grid'); if (!g) return;
+  const pcEl = document.getElementById('product-count'); if (pcEl) pcEl.textContent = filtered.length;
   g.innerHTML = filtered.length
     ? filtered.map((p, i) => cardHTML(p, i)).join('')
     : `<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--tl)">No products found.</div>`;
@@ -6388,7 +5810,7 @@ function initSupabase() {
       loadSavedProducts();
       checkMentorApplication();
       const onLanding = document.getElementById('page-landing')?.classList.contains('active');
-      if (onLanding) showPage('discover');
+      if (onLanding) openProfile();
     }
   });
   // Listen for auth changes
@@ -6403,15 +5825,13 @@ function initSupabase() {
         checkMentorApplication();
         // Redirect off landing page when session is restored or user just logged in
         const onLanding = document.getElementById('page-landing')?.classList.contains('active');
-        if (onLanding) showPage('discover');
+        if (onLanding) openProfile();
       }
     }
     if (event === 'SIGNED_OUT') { savedProducts.clear(); renderProfileSaved(); showPage('landing'); }
     // Re-render all grids to update lock state
     renderHomeGrid();
-    renderDiscGrid();
     renderTrendingRow('home-trending-row');
-    renderTrendingRow('disc-trending-row');
     // Re-render detail page if it's currently open
     if (currentProduct) renderDetail(currentProduct);
   });
@@ -6718,7 +6138,7 @@ function updateProfileMembershipStatus(pending) {
   if (!el) return;
   el.innerHTML = pending
     ? `<div class="profile-membership-pending">Application Pending</div>`
-    : `<button class="profile-membership-apply" onclick="showPage('komunitas')">Apply Now</button>`;
+    : `<button class="profile-membership-apply" onclick="openProfile()">Apply Now</button>`;
 }
 
 const DASH_STEPS = [
