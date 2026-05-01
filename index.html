@@ -7075,13 +7075,13 @@ async function dscLoadListings() {
     _dscLoaded = true;
 
     // Pre-compute competition per keyword
-    const keywords = [...new Set(deduped.map(r => r.keyword).filter(Boolean))];
+    const keywords = [...new Set(data.map(r => r.keyword).filter(Boolean))];
     keywords.forEach(kw => { _dscCompMap[kw] = _dscCalcComp(kw); });
 
     // Stats
-    const cats = [...new Set(deduped.map(r => r.category).filter(Boolean))].sort();
+    const cats = [...new Set(data.map(r => r.category).filter(Boolean))].sort();
     const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-    setEl('dsc-stat-listings', deduped.length.toLocaleString('id-ID'));
+    setEl('dsc-stat-listings', data.length.toLocaleString('id-ID'));
     setEl('dsc-stat-cats', cats.length.toLocaleString('id-ID'));
 
     // Category dropdown
