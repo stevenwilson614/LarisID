@@ -7434,14 +7434,17 @@ function dscOpenDeepDive(key) {
     score:       65,
     newUnits:    monthlyUnits,
   };
-  ddRender(p);
+  // Switch view first so canvases are visible when Chart.js measures them
+  switchDashView('deepdive');
 
-  // Show keyword context section with real data
   const ctx = document.getElementById('dd-kw-context');
   if (ctx) ctx.style.display = '';
-  ddLoadKeywordContext(listing);
 
-  switchDashView('deepdive');
+  // Defer render one tick so the DOM is painted before Chart.js measures canvases
+  setTimeout(() => {
+    ddRender(p);
+    ddLoadKeywordContext(listing);
+  }, 0);
 }
 
 async function ddLoadKeywordContext(listing) {
@@ -12665,7 +12668,7 @@ document.addEventListener('touchend', function(e){
 // Banner carousel auto-scroll
 document.addEventListener('DOMContentLoaded', function(){
   if (typeof Chart !== 'undefined') lpRenderPreview(_LP_DEMO);
-  setInterval(function(){ goToSlide((bannerSlide + 1) % bannerTotal); }, 3000);
+  setInterval(function(){ if (typeof goToSlide === 'function') goToSlide((bannerSlide + 1) % bannerTotal); }, 3000);
 
   // close topbar avatar dropdown on outside click
   document.addEventListener('click', function(e) {
