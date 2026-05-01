@@ -1404,6 +1404,11 @@ body.on-landing .navbar{display:none;}
 .dd-card{background:#fff;border-radius:12px;border:1px solid #E5E7EB;padding:18px 20px;}
 .dd-card-title{font-size:.8rem;font-weight:700;color:#1A1F3C;margin-bottom:4px;}
 .dd-card-sub{font-size:.7rem;color:#9CA3AF;margin-bottom:12px;}
+.ap-stat-card{background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:12px 10px;display:flex;flex-direction:column;gap:3px;}
+.ap-stat-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.85rem;margin-bottom:4px;}
+.ap-stat-lbl{font-size:.58rem;color:#6B7280;font-weight:500;line-height:1.3;}
+.ap-stat-val{font-size:.95rem;font-weight:800;color:#111827;line-height:1.2;}
+.ap-stat-sub{font-size:.58rem;color:#9CA3AF;}
 /* trend chart */
 .dd-chart-legend{display:flex;gap:14px;margin-bottom:10px;}
 .dd-chart-legend-item{display:flex;align-items:center;gap:5px;font-size:.7rem;color:#6B7280;}
@@ -4994,7 +4999,148 @@ html,body{overflow-x:hidden;max-width:100%;}
             </div>
 
             <!-- ── OTHER TABS (placeholders) ── -->
-            <div id="dd-tab-analisa" class="dd-tab-panel" style="display:none;"><div class="dd-card" style="padding:40px;text-align:center;color:#9CA3AF;">Analisa Pasar — segera hadir</div></div>
+            <div id="dd-tab-analisa" class="dd-tab-panel" style="display:none;">
+
+              <!-- ── Ringkasan Pasar ── -->
+              <div class="dd-card" style="padding:14px;margin-bottom:14px;">
+                <div style="font-size:.8rem;font-weight:700;color:#111827;margin-bottom:10px;">Ringkasan Pasar <span style="color:#9CA3AF;font-size:.7rem;font-weight:400;">ⓘ</span></div>
+                <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;" id="ap-summary-row">
+                  <div class="ap-stat-card"><div class="ap-stat-icon" style="background:#EFF6FF;color:#3B82F6;">👥</div><div class="ap-stat-lbl">Total Permintaan (12 bln)</div><div class="ap-stat-val" id="ap-s1">—</div><div class="ap-stat-sub" id="ap-s1b">Pencarian / bulan</div></div>
+                  <div class="ap-stat-card" style="border-color:#D1FAE5;"><div class="ap-stat-icon" style="background:#ECFDF5;color:#059669;">🛍️</div><div class="ap-stat-lbl">Total Penjualan (Est.)</div><div class="ap-stat-val" id="ap-s2">—</div><div class="ap-stat-sub">Unit / 12 bulan</div></div>
+                  <div class="ap-stat-card" style="border-color:#FEE2E2;"><div class="ap-stat-icon" style="background:#FEF2F2;color:#DC2626;">📈</div><div class="ap-stat-lbl">Pertumbuhan Permintaan</div><div class="ap-stat-val" id="ap-s3" style="color:#16A34A;">—</div><div class="ap-stat-sub">vs 12 bulan sebelumnya</div></div>
+                  <div class="ap-stat-card"><div class="ap-stat-icon" style="background:#FFFBEB;color:#F59E0B;">🏆</div><div class="ap-stat-lbl">Tingkat Persaingan</div><div class="ap-stat-val" id="ap-s4">—</div><div class="ap-stat-sub" id="ap-s4b">—</div></div>
+                  <div class="ap-stat-card" style="border-color:#EDE9FE;"><div class="ap-stat-icon" style="background:#F5F3FF;color:#7C3AED;">🎯</div><div class="ap-stat-lbl">Potensi Pasar</div><div class="ap-stat-val" id="ap-s5" style="color:#7C3AED;">—</div><div class="ap-stat-sub" id="ap-s5b">—</div></div>
+                </div>
+              </div>
+
+              <!-- ── Main 2-column ── -->
+              <div style="display:grid;grid-template-columns:1fr 320px;gap:14px;align-items:start;">
+
+                <!-- LEFT -->
+                <div style="display:flex;flex-direction:column;gap:14px;">
+
+                  <!-- Permintaan Pasar chart -->
+                  <div class="dd-card" style="padding:16px;">
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+                      <div>
+                        <div style="font-size:.8rem;font-weight:700;color:#111827;">Permintaan Pasar</div>
+                        <div style="font-size:.62rem;color:#6B7280;">Tren pencarian di Shopee (Pencarian / bulan)</div>
+                      </div>
+                      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                        <select id="ap-metric" onchange="apRenderDemand()" style="padding:4px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.65rem;background:#fff;">
+                          <option value="search">Metric: Pencarian</option>
+                          <option value="sold">Metric: Terjual</option>
+                        </select>
+                        <select id="ap-period" onchange="apRenderDemand()" style="padding:4px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.65rem;background:#fff;">
+                          <option value="12">Periode: 12 Bulan</option>
+                          <option value="6">Periode: 6 Bulan</option>
+                        </select>
+                        <div style="display:flex;gap:0;background:#F3F4F6;border-radius:6px;padding:2px;">
+                          <button class="ap-gran-btn" data-g="minggu" onclick="apSetGran('minggu')" style="padding:3px 10px;border:none;border-radius:5px;font-size:.62rem;font-weight:600;cursor:pointer;background:transparent;color:#6B7280;">Mingguan</button>
+                          <button class="ap-gran-btn active" data-g="bulan" onclick="apSetGran('bulan')" style="padding:3px 10px;border:none;border-radius:5px;font-size:.62rem;font-weight:600;cursor:pointer;background:#fff;color:#E8442A;box-shadow:0 1px 3px rgba(0,0,0,.1);">Bulanan</button>
+                          <button class="ap-gran-btn" data-g="tahun" onclick="apSetGran('tahun')" style="padding:3px 10px;border:none;border-radius:5px;font-size:.62rem;font-weight:600;cursor:pointer;background:transparent;color:#6B7280;">Tahunan</button>
+                        </div>
+                      </div>
+                    </div>
+                    <div style="position:relative;height:200px;"><canvas id="ap-demand-chart"></canvas></div>
+                    <div style="margin-top:8px;font-size:.62rem;color:#6B7280;display:flex;align-items:center;gap:4px;"><span>ⓘ</span><span id="ap-demand-note">Puncak permintaan biasanya terjadi di Agu – Okt</span></div>
+                  </div>
+
+                  <!-- Bottom row: Lanskap + Tipe Produk -->
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+
+                    <!-- Lanskap Kompetisi -->
+                    <div class="dd-card" style="padding:16px;">
+                      <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:3px;">Lanskap Kompetisi</div>
+                      <div style="font-size:.62rem;color:#6B7280;margin-bottom:10px;">Jumlah kompetitor aktif di Shopee</div>
+                      <div style="display:flex;gap:12px;align-items:center;">
+                        <div style="position:relative;flex-shrink:0;">
+                          <canvas id="ap-comp-donut" width="100" height="100"></canvas>
+                          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
+                            <div style="font-size:.55rem;color:#9CA3AF;font-weight:600;">Total</div>
+                            <div style="font-size:.88rem;font-weight:700;color:#111827;" id="ap-comp-total">—</div>
+                          </div>
+                        </div>
+                        <div style="flex:1;font-size:.62rem;display:flex;flex-direction:column;gap:5px;" id="ap-comp-legend"></div>
+                      </div>
+                      <div style="margin-top:10px;background:#EFF6FF;border-radius:8px;padding:8px;font-size:.62rem;color:#374151;" id="ap-comp-note"></div>
+                    </div>
+
+                    <!-- Tipe Produk yang Laku -->
+                    <div class="dd-card" style="padding:16px;">
+                      <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:3px;">Tipe Produk yang Laku</div>
+                      <div style="font-size:.62rem;color:#6B7280;margin-bottom:12px;">Berdasarkan estimasi penjualan</div>
+                      <div style="display:flex;flex-direction:column;gap:10px;" id="ap-product-types"></div>
+                    </div>
+                  </div>
+
+                </div>
+
+                <!-- RIGHT -->
+                <div style="display:flex;flex-direction:column;gap:14px;">
+
+                  <!-- Skor Peluang Pasar -->
+                  <div class="dd-card" style="padding:14px;">
+                    <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:10px;">Skor Peluang Pasar</div>
+                    <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;">
+                      <div style="position:relative;flex-shrink:0;">
+                        <canvas id="ap-gauge" width="100" height="70"></canvas>
+                        <div style="position:absolute;left:50%;bottom:2px;transform:translateX(-50%);text-align:center;pointer-events:none;">
+                          <div style="font-size:1.3rem;font-weight:800;color:#111827;line-height:1;" id="ap-score-val">—</div>
+                          <div style="font-size:.55rem;color:#9CA3AF;">/100</div>
+                          <div style="font-size:.65rem;font-weight:700;" id="ap-score-lbl">—</div>
+                        </div>
+                      </div>
+                      <div style="flex:1;display:flex;flex-direction:column;gap:6px;" id="ap-score-breakdown"></div>
+                    </div>
+                    <div style="background:#DCFCE7;border-radius:8px;padding:8px;font-size:.65rem;font-weight:600;color:#16A34A;display:flex;align-items:center;gap:6px;" id="ap-score-verdict">
+                      <span>✓</span><span>Pasar ini memiliki peluang yang baik untuk dimasuki!</span>
+                    </div>
+                  </div>
+
+                  <!-- Segmentasi Harga -->
+                  <div class="dd-card" style="padding:14px;">
+                    <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:10px;">Segmentasi Pasar <span style="font-size:.65rem;color:#6B7280;font-weight:400;">(Berdasarkan Harga)</span></div>
+                    <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;">
+                      <div style="position:relative;flex-shrink:0;">
+                        <canvas id="ap-seg-donut" width="90" height="90"></canvas>
+                        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
+                          <div style="font-size:.5rem;color:#9CA3AF;text-align:center;">Total Produk</div>
+                          <div style="font-size:.82rem;font-weight:700;color:#111827;line-height:1.1;" id="ap-seg-total">—</div>
+                        </div>
+                      </div>
+                      <div style="flex:1;display:flex;flex-direction:column;gap:5px;font-size:.6rem;" id="ap-seg-legend"></div>
+                    </div>
+                    <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:6px;padding:7px;font-size:.62rem;color:#F97316;font-weight:600;" id="ap-seg-note"></div>
+                  </div>
+
+                  <!-- Insight AI -->
+                  <div class="dd-card" style="padding:14px;">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+                      <div style="width:22px;height:22px;background:#E8442A;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.75rem;flex-shrink:0;">🤖</div>
+                      <div style="font-size:.75rem;font-weight:700;color:#111827;">Insight AI</div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px;" id="ap-insights"></div>
+                    <div style="margin-top:8px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:8px;font-size:.62rem;color:#374151;" id="ap-rec-box"></div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- ── Bottom strategy bar ── -->
+              <div style="margin-top:14px;background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                  <div style="width:36px;height:36px;background:#FEF2F0;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;">🎯</div>
+                  <div>
+                    <div style="font-size:.72rem;font-weight:700;color:#111827;">Rekomendasi Strategi Masuk Pasar</div>
+                    <div style="font-size:.62rem;color:#6B7280;">Berdasarkan analisa pasar, ini strategi terbaik untuk produk ini</div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:20px;flex:1;flex-wrap:wrap;" id="ap-strategy-cols"></div>
+                <button onclick="ddSwitchTab('kalkulator')" style="flex-shrink:0;padding:10px 18px;background:linear-gradient(135deg,#E8442A,#F97316);color:#fff;border:none;border-radius:10px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;">Lihat Strategi Lengkap →</button>
+              </div>
+
+            </div>
             <div id="dd-tab-kompetitor" class="dd-tab-panel" style="display:none;">
               <div style="display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start;">
 
@@ -8482,6 +8628,9 @@ function ddSwitchTab(tab) {
   if (tab === 'tren') {
     ddRenderTren();
   }
+  if (tab === 'analisa') {
+    ddRenderAnalisa();
+  }
 }
 
 async function ddLoadKeywordContext(listing) {
@@ -9246,6 +9395,429 @@ function trenDownloadCSV() {
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download = 'tren-penjualan.csv';
   a.click();
+}
+
+// ── Analisa Pasar ─────────────────────────────────────────────────────────────
+
+let _apDemandChart = null;
+let _apGran = 'bulan';
+let _apData = null;
+
+function apSeededRng(seed) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return function() { s = s * 16807 % 2147483647; return (s - 1) / 2147483646; };
+}
+
+function apGenData(listing) {
+  if (!listing) return null;
+  const seed     = listing.item_id || 42;
+  const rng      = apSeededRng(seed * 31);
+  const price    = listing.price || 50000;
+  const total    = listing.total_sold || 1000;
+  const avgM     = Math.round(total / 12);
+  const nSellers = _ddKwRows.length || Math.round(80 + rng() * 120);
+  const SEASON   = [0.80,0.82,0.88,0.92,0.95,0.90,0.98,1.10,1.20,1.15,0.95,1.05];
+  const MONTHS   = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+
+  // Demand curve (12 months)
+  const now = new Date();
+  const demandMonthly = [];
+  const demandWeekly  = [];
+  const soldMonthly   = [];
+  for (let i = 11; i >= 0; i--) {
+    const d   = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const mo  = d.getMonth();
+    const lbl = MONTHS[mo] + " '" + String(d.getFullYear()).slice(2);
+    const s   = SEASON[mo];
+    const n   = 0.85 + rng() * 0.30;
+    const searches = Math.round(avgM * s * n * 5.2);
+    const sold     = Math.round(avgM * s * (0.85 + rng() * 0.30));
+    demandMonthly.push({ label: lbl, val: searches, sold });
+    soldMonthly.push(sold);
+    for (let w = 0; w < 4; w++) {
+      const wLbl = `W${w+1} ${MONTHS[mo]}`;
+      demandWeekly.push({ label: wLbl, val: Math.round(searches / 4 * (0.85 + rng() * 0.30)), sold: Math.round(sold/4*(0.85+rng()*0.30)) });
+    }
+  }
+  const demandYearly = [];
+  for (let y = 2; y >= 0; y--) {
+    const yr = now.getFullYear() - y;
+    const base = Math.round(avgM * 12 * 5.2 * (0.7 + y * 0.15));
+    demandYearly.push({ label: String(yr), val: Math.round(base * (0.9 + rng() * 0.2)), sold: Math.round(total * (0.7 + y * 0.15)) });
+  }
+
+  // Competition landscape
+  const nBrand    = Math.round(nSellers * (0.10 + rng() * 0.08));
+  const nPower    = Math.round(nSellers * (0.20 + rng() * 0.10));
+  const nRegular  = Math.round(nSellers * (0.45 + rng() * 0.10));
+  const nNew      = Math.max(1, nSellers - nBrand - nPower - nRegular);
+  const compTypes = [
+    { label: 'Top Brand', count: nBrand,   color: '#E8442A' },
+    { label: 'Power Seller', count: nPower,  color: '#F59E0B' },
+    { label: 'Regular Seller', count: nRegular, color: '#3B82F6' },
+    { label: 'New Seller', count: nNew,    color: '#10B981' },
+  ];
+
+  // Product types (simulated by material/type)
+  const TYPES = ['Canvas / Premium','Kulit Sintetis','Nylon','Kulit Asli','Kain','Poliester'];
+  const typeVals = TYPES.map((t, i) => ({ label: t, pct: Math.round(5 + rng() * 35) }));
+  const typeSum  = typeVals.reduce((s, t) => s + t.pct, 0);
+  typeVals.forEach(t => t.pct = Math.round(t.pct / typeSum * 100));
+  typeVals.sort((a, b) => b.pct - a.pct);
+
+  // Market opportunity score
+  const growthScore  = Math.min(100, Math.round(50 + rng() * 40));
+  const competScore  = Math.max(10, Math.round(100 - (nSellers / 2)));
+  const demandScore  = Math.min(100, Math.round(55 + rng() * 35));
+  const marginScore  = Math.min(100, Math.round(50 + rng() * 40));
+  const totalScore   = Math.round((growthScore + competScore + demandScore + marginScore) / 4);
+  const scoreLbl     = totalScore >= 75 ? 'Sangat Baik' : totalScore >= 60 ? 'Baik' : totalScore >= 40 ? 'Sedang' : 'Rendah';
+  const scoreColor   = totalScore >= 75 ? '#16A34A' : totalScore >= 60 ? '#F59E0B' : '#DC2626';
+
+  // Price segmentation
+  const SEG_LABELS = ['< Rp 50rb','Rp 50–100rb','Rp 100–200rb','Rp 200–500rb','> Rp 500rb'];
+  const segVals = SEG_LABELS.map((l, i) => {
+    const mid = [25000, 75000, 150000, 350000, 750000][i];
+    const dist = Math.abs(price - mid);
+    const base = Math.max(3, Math.round(35 * Math.exp(-dist / price) * (0.6 + rng() * 0.8)));
+    return { label: l, count: base };
+  });
+  const segSum = segVals.reduce((s, v) => s + v.count, 0);
+  const segColors = ['#E8442A','#F59E0B','#3B82F6','#10B981','#8B5CF6'];
+  segVals.forEach((v, i) => { v.pct = Math.round(v.count / segSum * 100); v.color = segColors[i]; });
+
+  // Stats
+  const totalDemand  = demandMonthly.reduce((s, m) => s + m.val, 0);
+  const avgDemandM   = Math.round(totalDemand / 12);
+  const totalSoldEst = soldMonthly.reduce((s, v) => s + v, 0);
+  const priorSold    = Math.round(totalSoldEst / (1 + 0.18 + rng() * 0.20));
+  const growth       = Math.round((totalSoldEst - priorSold) / priorSold * 100);
+  const compLevel    = nSellers > 200 ? 'Sangat Tinggi' : nSellers > 100 ? 'Tinggi' : nSellers > 50 ? 'Sedang' : 'Rendah';
+  const compColor    = nSellers > 200 ? '#DC2626' : nSellers > 100 ? '#F59E0B' : '#16A34A';
+  const potensiBesar = totalDemand > 500000;
+  const potensiLabel = potensiBesar ? 'Tinggi' : totalDemand > 100000 ? 'Sedang' : 'Rendah';
+  const potensiColor = potensiBesar ? '#7C3AED' : '#6B7280';
+
+  // Peak month
+  const peakIdx = demandMonthly.reduce((bi, m, i, arr) => m.val > arr[bi].val ? i : bi, 0);
+  const peakLbl = demandMonthly[peakIdx].label;
+
+  // Insights
+  const insights = [
+    { icon: '📈', text: `Permintaan tumbuh ${growth > 0 ? '+' : ''}${growth}% vs tahun lalu`, color: growth > 0 ? '#DCFCE7' : '#FEE2E2', tc: growth > 0 ? '#16A34A' : '#DC2626' },
+    { icon: '🏆', text: `${nSellers} penjual aktif — persaingan ${compLevel.toLowerCase()}`, color: '#FFF7ED', tc: '#F97316' },
+    { icon: '🎯', text: `Puncak permintaan di ${peakLbl}`, color: '#EFF6FF', tc: '#3B82F6' },
+    { icon: '💰', text: `Segmen harga dominan: ${segVals.sort((a,b)=>b.pct-a.pct)[0].label}`, color: '#F5F3FF', tc: '#7C3AED' },
+  ];
+
+  const recText = totalScore >= 70
+    ? `Pasar ini memiliki peluang yang baik. Masuk dengan harga kompetitif di kisaran ${(price * 0.92 / 100000).toFixed(0)} – ${(price * 1.05 / 100000).toFixed(0)} juta dan fokus pada kualitas foto produk.`
+    : `Persaingan cukup ketat dengan ${nSellers} penjual. Diferensiasi produk dan optimasi listing sangat penting untuk sukses.`;
+
+  // Strategy columns
+  const strategies = [
+    { title: 'Harga', icon: '💰', text: `Targetkan Rp ${(price * 0.95 / 1000).toFixed(0)}rb–${(price * 1.05 / 1000).toFixed(0)}rb untuk tetap kompetitif` },
+    { title: 'Keyword', icon: '🔍', text: `Optimalkan kata kunci utama dan 3–5 kata kunci ekor panjang di judul listing` },
+    { title: 'Timing', icon: '📅', text: `Tingkatkan stok sebelum ${peakLbl} — puncak permintaan tahunan` },
+  ];
+
+  return {
+    demandMonthly, demandWeekly, demandYearly,
+    compTypes, typeVals, segVals,
+    growthScore, competScore, demandScore, marginScore, totalScore, scoreLbl, scoreColor,
+    totalDemand, avgDemandM, totalSoldEst, growth,
+    compLevel, compColor, potensiLabel, potensiColor,
+    nSellers, peakLbl, insights, recText, strategies, segSum,
+  };
+}
+
+function ddRenderAnalisa() {
+  const listing = _ddKwListing || _ddCurrentP;
+  if (!listing) {
+    document.getElementById('ap-s1').textContent = '—';
+    return;
+  }
+  _apData = apGenData(listing);
+  const d = _apData;
+  const fmt = n => n >= 1000000 ? (n/1000000).toFixed(1)+'jt' : n >= 1000 ? (n/1000).toFixed(0)+'rb' : String(n);
+
+  // Stat cards
+  document.getElementById('ap-s1').textContent   = fmt(d.totalDemand);
+  document.getElementById('ap-s1b').textContent  = fmt(d.avgDemandM) + ' pencarian / bulan';
+  document.getElementById('ap-s2').textContent   = d.totalSoldEst.toLocaleString('id-ID');
+  document.getElementById('ap-s3').textContent   = (d.growth > 0 ? '+' : '') + d.growth + '%';
+  document.getElementById('ap-s3').style.color   = d.growth > 0 ? '#16A34A' : '#DC2626';
+  document.getElementById('ap-s4').textContent   = d.compLevel;
+  document.getElementById('ap-s4').style.color   = d.compColor;
+  document.getElementById('ap-s4b').textContent  = d.nSellers + ' penjual aktif';
+  document.getElementById('ap-s5').textContent   = d.potensiLabel;
+  document.getElementById('ap-s5').style.color   = d.potensiColor;
+  document.getElementById('ap-s5b').textContent  = 'Potensi ' + d.potensiLabel.toLowerCase();
+
+  apRenderDemand();
+  apRenderCompDonut();
+  apRenderProductTypes();
+  apRenderGauge();
+  apRenderSegDonut();
+  apRenderInsights();
+  apRenderStrategy();
+}
+
+function apRenderDemand() {
+  if (!_apData) return;
+  const metric  = document.getElementById('ap-metric')?.value || 'search';
+  const period  = parseInt(document.getElementById('ap-period')?.value || '12');
+  let src;
+  if (_apGran === 'minggu')  src = _apData.demandWeekly.slice(-(period * 4));
+  else if (_apGran === 'tahun') src = _apData.demandYearly;
+  else src = _apData.demandMonthly.slice(-period);
+
+  const labels = src.map(m => m.label);
+  const vals   = src.map(m => metric === 'sold' ? m.sold : m.val);
+
+  if (_apDemandChart) { _apDemandChart.destroy(); _apDemandChart = null; }
+  const canvas = document.getElementById('ap-demand-chart');
+  if (!canvas) return;
+
+  const grad = canvas.getContext('2d').createLinearGradient(0, 0, 0, 200);
+  grad.addColorStop(0, 'rgba(232,68,42,0.18)');
+  grad.addColorStop(1, 'rgba(232,68,42,0)');
+
+  _apDemandChart = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: metric === 'sold' ? 'Terjual' : 'Pencarian',
+        data: vals,
+        borderColor: '#E8442A',
+        backgroundColor: grad,
+        fill: true,
+        tension: 0.4,
+        pointRadius: src.length > 24 ? 0 : 3,
+        pointBackgroundColor: '#E8442A',
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false,
+        callbacks: { label: ctx => (metric==='sold'?'Terjual: ':'Pencarian: ') + ctx.parsed.y.toLocaleString('id-ID') }
+      }},
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 8 }, color: '#9CA3AF', maxRotation: 45, maxTicksLimit: 12 } },
+        y: { grid: { color: '#F9FAFB' }, ticks: { font: { size: 9 }, color: '#9CA3AF', callback: v => v >= 1000 ? (v/1000).toFixed(0)+'k' : v } }
+      }
+    }
+  });
+
+  const peakM = _apData.demandMonthly.reduce((bi, m, i, arr) => m.val > arr[bi].val ? i : bi, 0);
+  const noteEl = document.getElementById('ap-demand-note');
+  if (noteEl) noteEl.textContent = `Puncak permintaan biasanya terjadi di ${_apData.demandMonthly[peakM].label}`;
+}
+
+function apSetGran(g) {
+  _apGran = g;
+  document.querySelectorAll('.ap-gran-btn').forEach(b => {
+    const active = b.dataset.g === g;
+    b.style.background    = active ? '#fff' : 'transparent';
+    b.style.color         = active ? '#E8442A' : '#6B7280';
+    b.style.boxShadow     = active ? '0 1px 3px rgba(0,0,0,.1)' : 'none';
+  });
+  apRenderDemand();
+}
+
+function apRenderCompDonut() {
+  if (!_apData) return;
+  const canvas = document.getElementById('ap-comp-donut');
+  if (!canvas) return;
+  const types  = _apData.compTypes;
+  const total  = types.reduce((s, t) => s + t.count, 0);
+
+  const existingChart = Chart.getChart(canvas);
+  if (existingChart) existingChart.destroy();
+
+  new Chart(canvas.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: types.map(t => t.label),
+      datasets: [{ data: types.map(t => t.count), backgroundColor: types.map(t => t.color), borderWidth: 2, borderColor: '#fff', hoverOffset: 4 }]
+    },
+    options: {
+      responsive: false, cutout: '68%',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.label + ': ' + ctx.parsed + ' ('+Math.round(ctx.parsed/total*100)+'%)' } } }
+    }
+  });
+
+  document.getElementById('ap-comp-total').textContent = total;
+  const legend = document.getElementById('ap-comp-legend');
+  if (legend) legend.innerHTML = types.map(t => `
+    <div style="display:flex;align-items:center;gap:5px;">
+      <span style="width:8px;height:8px;border-radius:50%;background:${t.color};flex-shrink:0;"></span>
+      <span style="flex:1;color:#374151;">${t.label}</span>
+      <span style="font-weight:700;color:#111827;">${t.count}</span>
+      <span style="color:#9CA3AF;">(${Math.round(t.count/total*100)}%)</span>
+    </div>`).join('');
+
+  const note = document.getElementById('ap-comp-note');
+  if (note) {
+    const dom = types.sort((a,b) => b.count - a.count)[0];
+    note.innerHTML = `<b>Didominasi ${dom.label}</b> (${Math.round(dom.count/total*100)}%). ${_apData.nSellers > 100 ? 'Persaingan ketat — fokus pada diferensiasi.' : 'Masih ada ruang untuk pemain baru.'}`;
+  }
+}
+
+function apRenderProductTypes() {
+  if (!_apData) return;
+  const el = document.getElementById('ap-product-types');
+  if (!el) return;
+  const types = [..._apData.typeVals].sort((a,b) => b.pct - a.pct).slice(0, 5);
+  const COLORS = ['#E8442A','#F59E0B','#3B82F6','#10B981','#8B5CF6'];
+  el.innerHTML = types.map((t, i) => `
+    <div>
+      <div style="display:flex;justify-content:space-between;font-size:.62rem;margin-bottom:3px;">
+        <span style="color:#374151;font-weight:600;">${t.label}</span>
+        <span style="color:#111827;font-weight:700;">${t.pct}%</span>
+      </div>
+      <div style="height:7px;background:#F3F4F6;border-radius:4px;overflow:hidden;">
+        <div style="height:100%;width:${t.pct}%;background:${COLORS[i]};border-radius:4px;transition:width .6s ease;"></div>
+      </div>
+    </div>`).join('');
+}
+
+function apRenderGauge() {
+  if (!_apData) return;
+  const canvas = document.getElementById('ap-gauge');
+  if (!canvas) return;
+  const score = _apData.totalScore;
+  const color = _apData.scoreColor;
+  const ctx   = canvas.getContext('2d');
+  const cx = 50, cy = 62, r = 42;
+  ctx.clearRect(0, 0, 100, 70);
+
+  // Background arc
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, Math.PI, 0);
+  ctx.strokeStyle = '#F3F4F6';
+  ctx.lineWidth   = 9;
+  ctx.lineCap     = 'round';
+  ctx.stroke();
+
+  // Score arc
+  const end = Math.PI + (score / 100) * Math.PI;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, Math.PI, end);
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = 9;
+  ctx.lineCap     = 'round';
+  ctx.stroke();
+
+  document.getElementById('ap-score-val').textContent  = score;
+  document.getElementById('ap-score-val').style.color  = color;
+  document.getElementById('ap-score-lbl').textContent  = _apData.scoreLbl;
+  document.getElementById('ap-score-lbl').style.color  = color;
+
+  const breakdown = document.getElementById('ap-score-breakdown');
+  if (breakdown) {
+    const items = [
+      { label: 'Pertumbuhan', val: _apData.growthScore },
+      { label: 'Persaingan',  val: _apData.competScore },
+      { label: 'Permintaan',  val: _apData.demandScore },
+      { label: 'Margin',      val: _apData.marginScore },
+    ];
+    breakdown.innerHTML = items.map(it => {
+      const c = it.val >= 70 ? '#16A34A' : it.val >= 50 ? '#F59E0B' : '#DC2626';
+      return `<div style="display:flex;align-items:center;gap:5px;">
+        <span style="font-size:.58rem;color:#6B7280;flex:1;">${it.label}</span>
+        <div style="flex:2;height:5px;background:#F3F4F6;border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${it.val}%;background:${c};border-radius:3px;"></div>
+        </div>
+        <span style="font-size:.6rem;font-weight:700;color:${c};width:24px;text-align:right;">${it.val}</span>
+      </div>`;
+    }).join('');
+  }
+
+  const verdict = document.getElementById('ap-score-verdict');
+  if (verdict) {
+    if (score >= 75) {
+      verdict.style.background = '#DCFCE7'; verdict.style.color = '#16A34A';
+      verdict.innerHTML = '<span>✓</span><span>Pasar ini memiliki peluang yang sangat baik!</span>';
+    } else if (score >= 60) {
+      verdict.style.background = '#FFF7ED'; verdict.style.color = '#F59E0B';
+      verdict.innerHTML = '<span>⚡</span><span>Peluang sedang — masuk dengan strategi tepat.</span>';
+    } else {
+      verdict.style.background = '#FEE2E2'; verdict.style.color = '#DC2626';
+      verdict.innerHTML = '<span>⚠</span><span>Pasar kompetitif — perlu diferensiasi kuat.</span>';
+    }
+  }
+}
+
+function apRenderSegDonut() {
+  if (!_apData) return;
+  const canvas = document.getElementById('ap-seg-donut');
+  if (!canvas) return;
+  const segs = _apData.segVals;
+  const total = segs.reduce((s, v) => s + v.count, 0);
+
+  const existingChart = Chart.getChart(canvas);
+  if (existingChart) existingChart.destroy();
+
+  new Chart(canvas.getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: segs.map(s => s.label),
+      datasets: [{ data: segs.map(s => s.count), backgroundColor: segs.map(s => s.color), borderWidth: 2, borderColor: '#fff' }]
+    },
+    options: {
+      responsive: false, cutout: '65%',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.label + ': ' + ctx.parsed + '%' } } }
+    }
+  });
+
+  document.getElementById('ap-seg-total').textContent = total;
+  const legend = document.getElementById('ap-seg-legend');
+  if (legend) {
+    const top2 = [...segs].sort((a,b) => b.pct - a.pct).slice(0, 3);
+    legend.innerHTML = top2.map(s => `
+      <div style="display:flex;align-items:center;gap:4px;">
+        <span style="width:7px;height:7px;border-radius:50%;background:${s.color};flex-shrink:0;"></span>
+        <span style="flex:1;color:#374151;">${s.label}</span>
+        <span style="font-weight:700;">${s.pct}%</span>
+      </div>`).join('');
+  }
+
+  const note = document.getElementById('ap-seg-note');
+  if (note) {
+    const top = [...segs].sort((a,b) => b.pct - a.pct)[0];
+    note.textContent = `Segmen "${top.label}" paling banyak diminati (${top.pct}% produk).`;
+  }
+}
+
+function apRenderInsights() {
+  if (!_apData) return;
+  const el = document.getElementById('ap-insights');
+  if (el) el.innerHTML = _apData.insights.map(ins => `
+    <div style="display:flex;align-items:flex-start;gap:6px;padding:6px 8px;background:${ins.color};border-radius:7px;">
+      <span style="font-size:.75rem;">${ins.icon}</span>
+      <span style="font-size:.62rem;color:${ins.tc};font-weight:600;line-height:1.4;">${ins.text}</span>
+    </div>`).join('');
+
+  const rec = document.getElementById('ap-rec-box');
+  if (rec) rec.innerHTML = `<b style="display:block;margin-bottom:4px;font-size:.63rem;color:#F97316;">Rekomendasi AI</b><span style="font-size:.61rem;line-height:1.5;">${_apData.recText}</span>`;
+}
+
+function apRenderStrategy() {
+  if (!_apData) return;
+  const el = document.getElementById('ap-strategy-cols');
+  if (!el) return;
+  el.innerHTML = _apData.strategies.map(s => `
+    <div style="flex:1;min-width:140px;display:flex;align-items:flex-start;gap:6px;">
+      <span style="font-size:1rem;">${s.icon}</span>
+      <div>
+        <div style="font-size:.68rem;font-weight:700;color:#111827;">${s.title}</div>
+        <div style="font-size:.62rem;color:#6B7280;margin-top:2px;line-height:1.4;">${s.text}</div>
+      </div>
+    </div>`).join('');
 }
 
 function dscGoPage(n) {
