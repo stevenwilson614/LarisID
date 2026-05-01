@@ -5304,8 +5304,9 @@ function closeMobileMenu() {
 //  HOME — CATEGORIES
 // ════════════════════════════════════════════════════════════
 function renderHomeCats() {
+  const el = document.getElementById('home-cats'); if (!el) return;
   const cats = [...new Set(allProducts.map(p => p.category))];
-  document.getElementById('home-cats').innerHTML = cats.map(c => {
+  el.innerHTML = cats.map(c => {
     const icon = CAT_ICONS[c] || `<svg viewBox="0 0 48 48" fill="none" stroke="#E8442A" stroke-width="2" stroke-linecap="round"><rect x="10" y="10" width="28" height="28" rx="4"/><path d="M18 24h12M24 18v12"/></svg>`;
     return `
     <div class="cat-item ${activeCat === c ? 'active' : ''}" onclick="gotoCat('${c}')">
@@ -5409,13 +5410,14 @@ function quickFilter(type) {
 }
 
 function renderHomeGrid() {
+  const el = document.getElementById('home-grid'); if (!el) return;
   let show = [...allProducts];
   if      (activeQuick === 'hot')          show.sort((a,b) => b.score - a.score);
   else if (activeQuick === 'high_revenue') show.sort((a,b) => b.upToRevenue - a.upToRevenue);
   else if (activeQuick === 'low_revenue')  show.sort((a,b) => a.upToRevenue - b.upToRevenue);
   else if (activeQuick === 'top_units')    show.sort((a,b) => b.expUnits - a.expUnits);
   else if (activeQuick === 'low_units')    show.sort((a,b) => a.expUnits - b.expUnits);
-  document.getElementById('home-grid').innerHTML = show.slice(0, 12).map((p,i) => cardHTML(p, i)).join('');
+  el.innerHTML = show.slice(0, 12).map((p,i) => cardHTML(p, i)).join('');
 }
 
 // ════════════════════════════════════════════════════════════
@@ -6302,6 +6304,7 @@ function renderProfileSaved() {
     if (plan?.status === 'Aktif') totalActive++;
   });
   const statsRow = document.getElementById('dash-stats-row');
+  if (!statsRow) return;
   statsRow.style.display = 'flex';
   statsRow.innerHTML = `
     <div class="dash-stat"><div class="dash-stat-val">${totalSaved}</div><div class="dash-stat-lbl">Produk Tersimpan</div></div>
