@@ -4473,10 +4473,10 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <div class="dsc-dual-range" id="dsc-price-range">
                     <div class="dsc-dual-track"></div>
                     <div class="dsc-dual-fill" id="dsc-price-fill"></div>
-                    <input type="range" id="dsc-price-min" min="0" max="1000000" step="5000" value="0" oninput="dscUpdateDualRange('price')">
-                    <input type="range" id="dsc-price-max" min="0" max="1000000" step="5000" value="1000000" oninput="dscUpdateDualRange('price')">
+                    <input type="range" id="dsc-price-min" min="0" max="10000000" step="50000" value="0" oninput="dscUpdateDualRange('price')">
+                    <input type="range" id="dsc-price-max" min="0" max="10000000" step="50000" value="10000000" oninput="dscUpdateDualRange('price')">
                   </div>
-                  <div class="dsc-range-vals"><span id="dsc-price-min-lbl">Rp 0</span><span id="dsc-price-max-lbl">Rp 1 jt</span></div>
+                  <div class="dsc-range-vals"><span id="dsc-price-min-lbl">Rp 0</span><span id="dsc-price-max-lbl">Rp 10 jt</span></div>
                 </div>
 
                 <div class="dsc-filter-group">
@@ -4484,10 +4484,10 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <div class="dsc-dual-range" id="dsc-omset-range">
                     <div class="dsc-dual-track"></div>
                     <div class="dsc-dual-fill" id="dsc-omset-fill"></div>
-                    <input type="range" id="dsc-omset-min" min="0" max="50000000" step="500000" value="0" oninput="dscUpdateDualRange('omset')">
-                    <input type="range" id="dsc-omset-max" min="0" max="50000000" step="500000" value="50000000" oninput="dscUpdateDualRange('omset')">
+                    <input type="range" id="dsc-omset-min" min="0" max="500000000" step="5000000" value="0" oninput="dscUpdateDualRange('omset')">
+                    <input type="range" id="dsc-omset-max" min="0" max="500000000" step="5000000" value="500000000" oninput="dscUpdateDualRange('omset')">
                   </div>
-                  <div class="dsc-range-vals"><span id="dsc-omset-min-lbl">Rp 0</span><span id="dsc-omset-max-lbl">Rp 50 jt</span></div>
+                  <div class="dsc-range-vals"><span id="dsc-omset-min-lbl">Rp 0</span><span id="dsc-omset-max-lbl">Rp 500 jt</span></div>
                 </div>
 
                 <div class="dsc-filter-group">
@@ -7113,7 +7113,7 @@ function _dscCurrentFilters() {
   return {
     cat:      document.getElementById('dsc-filter-cat')?.value || '',
     priceMin: parseFloat(document.getElementById('dsc-price-min')?.value) || 0,
-    priceMax: parseFloat(document.getElementById('dsc-price-max')?.value) || 1000000,
+    priceMax: parseFloat(document.getElementById('dsc-price-max')?.value) || 10000000,
     search:   document.getElementById('dsc-search')?.value?.trim() || '',
   };
 }
@@ -7129,9 +7129,11 @@ function dscApplyFilters() {
   const q        = (document.getElementById('dsc-search')?.value || '').toLowerCase();
   const cat      = document.getElementById('dsc-filter-cat')?.value || '';
   const priceMin = parseFloat(document.getElementById('dsc-price-min')?.value) || 0;
-  const priceMax = parseFloat(document.getElementById('dsc-price-max')?.value) || Infinity;
+  const priceMaxRaw = parseFloat(document.getElementById('dsc-price-max')?.value) || 10000000;
+  const priceMax = priceMaxRaw >= 10000000 ? Infinity : priceMaxRaw;
   const omsetMin = parseFloat(document.getElementById('dsc-omset-min')?.value) || 0;
-  const omsetMax = parseFloat(document.getElementById('dsc-omset-max')?.value) || Infinity;
+  const omsetMaxRaw = parseFloat(document.getElementById('dsc-omset-max')?.value) || 500000000;
+  const omsetMax = omsetMaxRaw >= 500000000 ? Infinity : omsetMaxRaw;
   const sortVal  = document.getElementById('dsc-sort')?.value || 'omset-desc';
 
   // If server-side filters changed, reset and re-fetch from offset 0
@@ -7276,9 +7278,9 @@ function dscResetFilters() {
   if (g('dsc-filter-cat')) g('dsc-filter-cat').value = '';
   if (g('dsc-search'))     g('dsc-search').value     = '';
   if (g('dsc-price-min'))  g('dsc-price-min').value  = 0;
-  if (g('dsc-price-max'))  g('dsc-price-max').value  = 1000000;
+  if (g('dsc-price-max'))  g('dsc-price-max').value  = 10000000;
   if (g('dsc-omset-min'))  g('dsc-omset-min').value  = 0;
-  if (g('dsc-omset-max'))  g('dsc-omset-max').value  = 50000000;
+  if (g('dsc-omset-max'))  g('dsc-omset-max').value  = 500000000;
   ['dsc-comp-r','dsc-comp-s','dsc-comp-t'].forEach(id => { const el = g(id); if (el) el.checked = true; });
   if (g('dsc-sort')) g('dsc-sort').value = 'omset-desc';
   dscUpdateDualRange('price');
