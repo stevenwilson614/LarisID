@@ -7841,11 +7841,7 @@ async function ddLoadRealCompetitors(p) {
   ddRenderCompetitors();
 }
 
-function dscOpenDeepDive(id) {
-  const p = (allProducts || []).find(x => x.id == id);
-  if (p) { ddRender(p); }
-  switchDashView('deepdive');
-}
+// dscOpenDeepDive defined above (uses item_id__shop_id key from _dscAllListings)
 
 // ── TRACKER ────────────────────────────────────────────────────
 let _trkChartWeekly = null;
