@@ -927,6 +927,28 @@ body.on-landing .navbar{display:none;}
 .dsc-page-btn.active{background:#E8442A;border-color:#E8442A;color:#fff;}
 .dsc-page-btn:disabled{opacity:.4;cursor:default;}
 
+@keyframes dsc-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes dsc-sparkle{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1.3)}}
+@keyframes dsc-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.dsc-load-card{position:absolute;width:170px;background:#fff;border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.12);overflow:hidden;transition:transform .3s;}
+.dsc-load-card-img{width:100%;height:120px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.dsc-load-card-body{padding:10px;}
+.dsc-load-card-name{font-size:.65rem;font-weight:600;color:#111827;line-height:1.4;margin-bottom:3px;}
+.dsc-load-card-store{font-size:.58rem;color:#9CA3AF;margin-bottom:6px;}
+.dsc-load-card-price-row{margin-bottom:5px;}
+.dsc-load-card-lbl{font-size:.55rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;display:block;}
+.dsc-load-card-price{font-size:.78rem;font-weight:700;color:#111827;}
+.dsc-load-badge{display:inline-block;font-size:.58rem;font-weight:700;padding:2px 8px;border-radius:20px;}
+.dsc-load-badge.high{background:#FEE2E2;color:#DC2626;}
+.dsc-load-badge.med{background:#FFF3E0;color:#F97316;}
+.dsc-load-step{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:140px;text-align:center;opacity:.35;transition:opacity .4s;}
+.dsc-load-step.active{opacity:1;}
+.dsc-load-step-icon{font-size:1.4rem;width:48px;height:48px;background:#FFF3E0;border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.dsc-load-step.active .dsc-load-step-icon{background:#FEE2E2;}
+.dsc-load-step-name{font-size:.72rem;font-weight:700;color:#111827;}
+.dsc-load-step-sub{font-size:.62rem;color:#9CA3AF;}
+.dsc-load-step-line{flex:1;height:2px;background:#E5E7EB;margin-top:24px;transition:background .4s;}
+.dsc-load-step-line.done{background:#E8442A;}
 /* Card grid view */
 .dsc-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(188px,1fr));gap:14px;padding:16px;}
 .dsc-card{background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;transition:box-shadow .15s,transform .1s;}
@@ -4484,7 +4506,116 @@ html,body{overflow-x:hidden;max-width:100%;}
           </div>
         </div>
 
-        <div id="dash-view-discover" style="display:none;">
+        <div id="dash-view-discover" style="display:none;position:relative;">
+
+          <!-- ── LOADING SCREEN ── -->
+          <div id="dsc-loading-screen" style="display:none;position:absolute;inset:0;background:#FAFAF8;z-index:100;overflow:hidden;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;">
+
+            <!-- Logo + headline -->
+            <div style="text-align:center;margin-bottom:36px;">
+              <div style="font-size:1.5rem;font-weight:800;color:#111827;margin-bottom:10px;">Laris<span style="color:#E8442A;">ID</span></div>
+              <div style="font-size:1.65rem;font-weight:800;color:#111827;margin-bottom:8px;">Lagi cari <span style="color:#E8442A;">produk laris</span> untuk kamu...</div>
+              <div style="font-size:.85rem;color:#6B7280;">AI sedang mengumpulkan data dan menganalisa ribuan produk di Shopee</div>
+            </div>
+
+            <!-- Fan of cards -->
+            <div style="position:relative;width:780px;max-width:100%;height:300px;margin-bottom:40px;perspective:1200px;" id="dsc-load-fan">
+              <!-- sparkles -->
+              <div style="position:absolute;top:10px;left:140px;font-size:1.1rem;color:#F97316;animation:dsc-sparkle 1.8s ease-in-out infinite;">✦</div>
+              <div style="position:absolute;top:30px;right:130px;font-size:.8rem;color:#F97316;animation:dsc-sparkle 1.8s ease-in-out infinite .6s;">✦</div>
+              <div style="position:absolute;bottom:20px;left:200px;font-size:.7rem;color:#F97316;animation:dsc-sparkle 1.8s ease-in-out infinite 1.2s;">✦</div>
+              <div style="position:absolute;bottom:40px;right:170px;font-size:1rem;color:#F97316;animation:dsc-sparkle 1.8s ease-in-out infinite .3s;">✦</div>
+
+              <!-- card 1 far left -->
+              <div class="dsc-load-card" style="left:0px;transform:rotate(-14deg) translateY(30px) scale(.78);opacity:.6;z-index:1;">
+                <div class="dsc-load-card-img" style="background:#FFF3E0;font-size:2.2rem;">🏠</div>
+                <div class="dsc-load-card-body">
+                  <div class="dsc-load-card-name">TEDUH LITE - Roller Blind blackout 100% Tirai Jendela...</div>
+                  <div class="dsc-load-card-store">Indra Interior Jakarta</div>
+                  <div class="dsc-load-card-price-row"><span class="dsc-load-card-lbl">HARGA</span><span class="dsc-load-card-price">Rp 149 rb</span></div>
+                  <div class="dsc-load-badge high">Tinggi</div>
+                </div>
+              </div>
+              <!-- card 2 left -->
+              <div class="dsc-load-card" style="left:130px;transform:rotate(-7deg) translateY(15px) scale(.88);opacity:.8;z-index:2;">
+                <div class="dsc-load-card-img" style="background:#F3F0FF;font-size:2.2rem;">👕</div>
+                <div class="dsc-load-card-body">
+                  <div class="dsc-load-card-name">[PROMO] Kaos Polos Lengan Pendek Cotton Combed 30S</div>
+                  <div class="dsc-load-card-store">PT KAOS ONLINE INDONESIA</div>
+                  <div class="dsc-load-card-price-row"><span class="dsc-load-card-lbl">HARGA</span><span class="dsc-load-card-price">Rp 33 rb</span></div>
+                  <div class="dsc-load-badge high">Tinggi</div>
+                </div>
+              </div>
+              <!-- card 3 center -->
+              <div class="dsc-load-card" style="left:270px;transform:translateY(-18px) scale(1.05);opacity:1;z-index:5;box-shadow:0 20px 60px rgba(0,0,0,.18);">
+                <div class="dsc-load-card-img" style="background:#E0F7FA;font-size:2.2rem;">🧴</div>
+                <div class="dsc-load-card-body">
+                  <div class="dsc-load-card-name">Giv White Sabun Mandi Cair Mulberry & Collagen Pouch...</div>
+                  <div class="dsc-load-card-store">Watsons Indonesia Official</div>
+                  <div class="dsc-load-card-price-row"><span class="dsc-load-card-lbl">HARGA</span><span class="dsc-load-card-price">Rp 45 rb</span></div>
+                  <div class="dsc-load-badge med">Sedang</div>
+                </div>
+              </div>
+              <!-- card 4 right -->
+              <div class="dsc-load-card" style="left:440px;transform:rotate(7deg) translateY(15px) scale(.88);opacity:.8;z-index:2;">
+                <div class="dsc-load-card-img" style="background:#FFF8E1;font-size:2.2rem;">👕</div>
+                <div class="dsc-load-card-body">
+                  <div class="dsc-load-card-name">KAOS POLOS LENGAN PENDEK 24s SOFT COTTON...</div>
+                  <div class="dsc-load-card-store">redtomatoes</div>
+                  <div class="dsc-load-card-price-row"><span class="dsc-load-card-lbl">HARGA</span><span class="dsc-load-card-price">Rp 34 rb</span></div>
+                  <div class="dsc-load-badge high">Tinggi</div>
+                </div>
+              </div>
+              <!-- card 5 far right -->
+              <div class="dsc-load-card" style="left:580px;transform:rotate(14deg) translateY(30px) scale(.78);opacity:.6;z-index:1;">
+                <div class="dsc-load-card-img" style="background:#F1F8E9;font-size:2.2rem;">🍴</div>
+                <div class="dsc-load-card-body">
+                  <div class="dsc-load-card-name">SET SENDOK GARPU PLASTIK PREMIUM / SENDOK SET...</div>
+                  <div class="dsc-load-card-store">Hygiene Indonesia</div>
+                  <div class="dsc-load-card-price-row"><span class="dsc-load-card-lbl">HARGA</span><span class="dsc-load-card-price">Rp 28 rb</span></div>
+                  <div class="dsc-load-badge high">Tinggi</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Progress steps -->
+            <div style="display:flex;align-items:flex-start;gap:0;margin-bottom:24px;width:600px;max-width:100%;">
+              <div class="dsc-load-step active" id="dsc-step-1">
+                <div class="dsc-load-step-icon">🛍️</div>
+                <div class="dsc-load-step-name">Mengumpulkan Produk</div>
+                <div class="dsc-load-step-sub">Menemukan produk potensial</div>
+              </div>
+              <div class="dsc-load-step-line" id="dsc-step-line-1"></div>
+              <div class="dsc-load-step" id="dsc-step-2">
+                <div class="dsc-load-step-icon">🧠</div>
+                <div class="dsc-load-step-name">Menganalisa Data</div>
+                <div class="dsc-load-step-sub">Menghitung skor &amp; peluang</div>
+              </div>
+              <div class="dsc-load-step-line" id="dsc-step-line-2"></div>
+              <div class="dsc-load-step" id="dsc-step-3">
+                <div class="dsc-load-step-icon">📊</div>
+                <div class="dsc-load-step-name">Menyusun Hasil</div>
+                <div class="dsc-load-step-sub">Menyiapkan rekomendasi terbaik</div>
+              </div>
+            </div>
+
+            <!-- Progress bar -->
+            <div style="width:600px;max-width:100%;margin-bottom:20px;">
+              <div style="height:8px;background:#E5E7EB;border-radius:4px;overflow:hidden;">
+                <div id="dsc-load-bar" style="height:8px;background:linear-gradient(90deg,#E8442A,#F97316);border-radius:4px;width:0%;transition:width .4s ease;"></div>
+              </div>
+              <div style="text-align:right;font-size:.75rem;font-weight:600;color:#E8442A;margin-top:4px;" id="dsc-load-pct">0%</div>
+            </div>
+
+            <!-- Did you know -->
+            <div style="width:600px;max-width:100%;background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:12px;">
+              <span style="font-size:1.2rem;flex-shrink:0;">💡</span>
+              <div><span style="font-weight:700;color:#374151;font-size:.78rem;">Tahukah kamu?</span> <span style="font-size:.78rem;color:#6B7280;" id="dsc-load-tip">Produk dengan skor tinggi memiliki peluang jual lebih besar dan kompetitor lebih sedikit.</span></div>
+            </div>
+
+          </div>
+          <!-- end loading screen -->
+
           <div class="dsc-page">
 
             <div class="dsc-header">
@@ -4724,8 +4855,20 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
             </div>
 
-            <!-- keyword context (populated by dscOpenDeepDive) -->
-            <div class="dd-kw-context" id="dd-kw-context" style="display:none;">
+            <!-- tabs -->
+            <div class="dd-tabs" id="dd-tabs">
+              <div class="dd-tab active" onclick="ddSwitchTab('listing')" data-tab="listing">Listing</div>
+              <div class="dd-tab" onclick="ddSwitchTab('ringkasan')" data-tab="ringkasan">Ringkasan</div>
+              <div class="dd-tab" onclick="ddSwitchTab('analisa')" data-tab="analisa">Analisa Pasar</div>
+              <div class="dd-tab" onclick="ddSwitchTab('kompetitor')" data-tab="kompetitor">Kompetitor</div>
+              <div class="dd-tab" onclick="ddSwitchTab('keyword')" data-tab="keyword">Keyword</div>
+              <div class="dd-tab" onclick="ddSwitchTab('tren')" data-tab="tren">Tren Historis</div>
+              <div class="dd-tab" onclick="ddSwitchTab('kalkulator')" data-tab="kalkulator">Kalkulator</div>
+              <div class="dd-tab" onclick="ddSwitchTab('ai')" data-tab="ai">Review AI</div>
+            </div>
+
+            <!-- ── TAB: LISTING ── -->
+            <div id="dd-tab-listing" class="dd-tab-panel">
               <div class="dd-card">
                 <!-- listing mini-hero -->
                 <div class="dd-listing-hero" id="dd-listing-mini">
@@ -4773,92 +4916,424 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
             </div>
 
-            <!-- tabs -->
-            <div class="dd-tabs">
-              <div class="dd-tab active">Ringkasan</div>
-              <div class="dd-tab">Analisa Pasar</div>
-              <div class="dd-tab">Kompetitor</div>
-              <div class="dd-tab">Keyword</div>
-              <div class="dd-tab">Tren Historis</div>
-              <div class="dd-tab">Kalkulator</div>
-              <div class="dd-tab">Review AI</div>
+            <!-- ── TAB: RINGKASAN ── -->
+            <div id="dd-tab-ringkasan" class="dd-tab-panel" style="display:none;">
+              <!-- row 1: trend chart | price range | insight AI -->
+              <div class="dd-row3">
+                <div class="dd-card">
+                  <div class="dd-card-title">Tren Omset (30 Hari)</div>
+                  <div class="dd-chart-legend">
+                    <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#E8442A;"></div>Omset (Rp)</div>
+                    <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#4F46E5;"></div>Unit Terjual</div>
+                    <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#9CA3AF;"></div>Toko Aktif</div>
+                  </div>
+                  <canvas id="dd-chart-trend" height="140"></canvas>
+                </div>
+                <div class="dd-card">
+                  <div class="dd-card-title">Rentang Harga Optimal</div>
+                  <div class="dd-card-sub">Berdasarkan analisis kompetitor aktif</div>
+                  <div class="dd-price-big" id="dd-price-range-label">—</div>
+                  <div class="dd-range-track">
+                    <div class="dd-range-zone" id="dd-range-zone"></div>
+                  </div>
+                  <div class="dd-range-labels" id="dd-range-labels"></div>
+                  <div class="dd-range-note">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="#D97706"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12" stroke="#fff" stroke-width="2"/><line x1="12" y1="16" x2="12.01" y2="16" stroke="#fff" stroke-width="2"/></svg>
+                    <span id="dd-range-note">—</span>
+                  </div>
+                </div>
+                <div class="dd-card">
+                  <div class="dd-card-title">Insight AI</div>
+                  <div class="dd-ai-list" id="dd-ai-list"></div>
+                  <button class="dd-ai-btn">Lihat Rekomendasi AI</button>
+                </div>
+              </div>
+              <!-- row 2: dist harga | usia toko | performa kategori -->
+              <div class="dd-row2">
+                <div class="dd-card">
+                  <div class="dd-card-title">Distribusi Harga (Toko Aktif)</div>
+                  <div class="dd-card-sub" style="margin-bottom:8px;"></div>
+                  <canvas id="dd-chart-dist" height="140"></canvas>
+                </div>
+                <div class="dd-card">
+                  <div class="dd-card-title">Usia Toko Kompetitor</div>
+                  <div style="display:flex;align-items:center;margin-top:8px;">
+                    <canvas id="dd-chart-donut" width="110" height="110" style="flex-shrink:0;"></canvas>
+                    <div class="dd-donut-legend" id="dd-donut-legend"></div>
+                  </div>
+                </div>
+                <div class="dd-card">
+                  <div class="dd-card-title">Performa Kategori</div>
+                  <div class="dd-card-sub" id="dd-cat-label">—</div>
+                  <div class="dd-catperf-stats" id="dd-catperf-stats"></div>
+                  <canvas id="dd-chart-catperf" height="70"></canvas>
+                </div>
+              </div>
+              <!-- row 3: top 15 kompetitor | top keyword -->
+              <div class="dd-row2b">
+                <div class="dd-card">
+                  <div class="dd-card-title" style="margin-bottom:10px;">Top 15 Kompetitor</div>
+                  <table class="dd-comp-table">
+                    <thead><tr><th>#</th><th>Toko</th><th>Harga Rata-rata</th><th>Omset / Bulan</th><th>Unit Terjual / Bln</th><th>Usia Toko</th><th>Skor Kompetitor</th><th>Aksi</th></tr></thead>
+                    <tbody id="dd-comp-tbody"></tbody>
+                  </table>
+                  <button class="dd-show-more-btn" id="dd-show-more-btn" onclick="ddToggleCompetitors()">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+                    Lihat Semua 15 Kompetitor
+                  </button>
+                </div>
+                <div class="dd-card">
+                  <div class="dd-card-title" style="margin-bottom:10px;">Top Keyword</div>
+                  <table class="dd-kw-table">
+                    <thead><tr><th>Keyword</th><th>Volume</th><th>Kompetisi</th><th>Trend</th></tr></thead>
+                    <tbody id="dd-kw-tbody"></tbody>
+                  </table>
+                  <button class="dd-show-more-btn" style="margin-top:10px;">Lihat Semua Keyword</button>
+                </div>
+              </div>
             </div>
 
-            <!-- row 1: trend chart | price range | insight AI -->
-            <div class="dd-row3">
-              <div class="dd-card">
-                <div class="dd-card-title">Tren Omset (30 Hari)</div>
-                <div class="dd-chart-legend">
-                  <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#E8442A;"></div>Omset (Rp)</div>
-                  <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#4F46E5;"></div>Unit Terjual</div>
-                  <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#9CA3AF;"></div>Toko Aktif</div>
-                </div>
-                <canvas id="dd-chart-trend" height="140"></canvas>
-              </div>
-              <div class="dd-card">
-                <div class="dd-card-title">Rentang Harga Optimal</div>
-                <div class="dd-card-sub">Berdasarkan analisis kompetitor aktif</div>
-                <div class="dd-price-big" id="dd-price-range-label">—</div>
-                <div class="dd-range-track">
-                  <div class="dd-range-zone" id="dd-range-zone"></div>
-                </div>
-                <div class="dd-range-labels" id="dd-range-labels"></div>
-                <div class="dd-range-note">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="#D97706"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12" stroke="#fff" stroke-width="2"/><line x1="12" y1="16" x2="12.01" y2="16" stroke="#fff" stroke-width="2"/></svg>
-                  <span id="dd-range-note">—</span>
-                </div>
-              </div>
-              <div class="dd-card">
-                <div class="dd-card-title">Insight AI</div>
-                <div class="dd-ai-list" id="dd-ai-list"></div>
-                <button class="dd-ai-btn">Lihat Rekomendasi AI</button>
-              </div>
-            </div>
+            <!-- ── OTHER TABS (placeholders) ── -->
+            <div id="dd-tab-analisa" class="dd-tab-panel" style="display:none;"><div class="dd-card" style="padding:40px;text-align:center;color:#9CA3AF;">Analisa Pasar — segera hadir</div></div>
+            <div id="dd-tab-kompetitor" class="dd-tab-panel" style="display:none;">
+              <div style="display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start;">
 
-            <!-- row 2: dist harga | usia toko | performa kategori -->
-            <div class="dd-row2">
-              <div class="dd-card">
-                <div class="dd-card-title">Distribusi Harga (Toko Aktif)</div>
-                <div class="dd-card-sub" style="margin-bottom:8px;"></div>
-                <canvas id="dd-chart-dist" height="140"></canvas>
-              </div>
-              <div class="dd-card">
-                <div class="dd-card-title">Usia Toko Kompetitor</div>
-                <div style="display:flex;align-items:center;margin-top:8px;">
-                  <canvas id="dd-chart-donut" width="110" height="110" style="flex-shrink:0;"></canvas>
-                  <div class="dd-donut-legend" id="dd-donut-legend"></div>
+                <!-- MAIN -->
+                <div>
+                  <div style="margin-bottom:14px;">
+                    <div style="font-size:1rem;font-weight:700;color:#111827;">Kompetitor</div>
+                    <div style="font-size:.72rem;color:#6B7280;" id="komp-subtitle">Memuat data...</div>
+                  </div>
+
+                  <!-- Stats row -->
+                  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;" id="komp-stats-row">
+                    <div class="dd-card" style="padding:12px;">
+                      <div style="font-size:.62rem;color:#6B7280;margin-bottom:4px;">Rata-rata Harga</div>
+                      <div style="font-size:.95rem;font-weight:700;color:#111827;" id="komp-avg-price">—</div>
+                      <div style="font-size:.6rem;color:#9CA3AF;margin-top:3px;" id="komp-price-range">—</div>
+                    </div>
+                    <div class="dd-card" style="padding:12px;">
+                      <div style="font-size:.62rem;color:#6B7280;margin-bottom:4px;">Rata-rata Terjual / Bulan</div>
+                      <div style="font-size:.95rem;font-weight:700;color:#111827;" id="komp-avg-sold">—</div>
+                      <div style="font-size:.6rem;color:#9CA3AF;margin-top:3px;" id="komp-sold-range">—</div>
+                    </div>
+                    <div class="dd-card" style="padding:12px;">
+                      <div style="font-size:.62rem;color:#6B7280;margin-bottom:4px;">Rata-rata Rating</div>
+                      <div style="font-size:.95rem;font-weight:700;color:#111827;" id="komp-avg-rating">—</div>
+                      <div style="font-size:.6rem;color:#9CA3AF;margin-top:3px;" id="komp-rating-range">—</div>
+                    </div>
+                    <div class="dd-card" style="padding:12px;">
+                      <div style="font-size:.62rem;color:#6B7280;margin-bottom:4px;">Produk dengan Iklan</div>
+                      <div style="font-size:.95rem;font-weight:700;color:#111827;" id="komp-ads-count">—</div>
+                      <div style="font-size:.6rem;color:#E8442A;margin-top:3px;" id="komp-ads-pct">—</div>
+                    </div>
+                    <div class="dd-card" style="padding:12px;">
+                      <div style="font-size:.62rem;color:#6B7280;margin-bottom:4px;">Persaingan</div>
+                      <div style="font-size:.95rem;font-weight:700;" id="komp-comp-level">—</div>
+                      <div style="font-size:.6rem;color:#9CA3AF;margin-top:3px;" id="komp-comp-score">—</div>
+                    </div>
+                  </div>
+
+                  <!-- Filter bar -->
+                  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+                    <div style="position:relative;flex:1;min-width:140px;">
+                      <input id="komp-search" type="text" placeholder="Cari kompetitor..." oninput="kompFilter()" style="width:100%;padding:7px 32px 7px 10px;border:1px solid #E5E7EB;border-radius:8px;font-size:.72rem;">
+                      <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:.8rem;">&#128269;</span>
+                    </div>
+                    <select id="komp-sort" onchange="kompFilter()" style="padding:7px 10px;border:1px solid #E5E7EB;border-radius:8px;font-size:.72rem;background:#fff;">
+                      <option value="sold">Urutkan: Terlaris</option>
+                      <option value="price_asc">Harga: Termurah</option>
+                      <option value="price_desc">Harga: Termahal</option>
+                      <option value="rating">Rating Tertinggi</option>
+                    </select>
+                    <select id="komp-price-filter" onchange="kompFilter()" style="padding:7px 10px;border:1px solid #E5E7EB;border-radius:8px;font-size:.72rem;background:#fff;">
+                      <option value="">Semua Harga</option>
+                      <option value="low">Bawah Rp 100rb</option>
+                      <option value="mid">Rp 100rb – Rp 200rb</option>
+                      <option value="high">Di atas Rp 200rb</option>
+                    </select>
+                  </div>
+
+                  <!-- Table -->
+                  <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;font-size:.72rem;">
+                      <thead>
+                        <tr style="border-bottom:2px solid #F3F4F6;">
+                          <th style="text-align:left;padding:8px 6px;color:#9CA3AF;font-size:.62rem;font-weight:600;text-transform:uppercase;width:28px;">#</th>
+                          <th style="text-align:left;padding:8px 6px;color:#9CA3AF;font-size:.62rem;font-weight:600;text-transform:uppercase;">Produk</th>
+                          <th style="text-align:left;padding:8px 6px;color:#9CA3AF;font-size:.62rem;font-weight:600;text-transform:uppercase;">Toko</th>
+                          <th style="text-align:right;padding:8px 6px;color:#9CA3AF;font-size:.62rem;font-weight:600;text-transform:uppercase;">Harga</th>
+                          <th style="text-align:right;padding:8px 6px;color:#9CA3AF;font-size:.62rem;font-weight:600;text-transform:uppercase;">Terjual&nbsp;/&nbsp;Bulan</th>
+                          <th style="text-align:center;padding:8px 6px;color:#9CA3AF;font-size:.62rem;font-weight:600;text-transform:uppercase;">Rating</th>
+                          <th style="text-align:center;padding:8px 6px;color:#9CA3AF;font-size:.62rem;font-weight:600;text-transform:uppercase;">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody id="komp-tbody"><tr><td colspan="7" style="text-align:center;padding:40px;color:#9CA3AF;">Memuat data...</td></tr></tbody>
+                    </table>
+                  </div>
+
+                  <!-- Load more -->
+                  <div style="text-align:center;margin-top:14px;" id="komp-more-wrap">
+                    <button id="komp-more-btn" onclick="kompShowMore()" style="padding:10px 24px;border:1px solid #E5E7EB;border-radius:8px;background:#fff;font-size:.72rem;font-weight:600;cursor:pointer;display:none;">
+                      Lihat lebih banyak ▾
+                    </button>
+                  </div>
+                </div>
+
+                <!-- SIDEBAR -->
+                <div style="display:flex;flex-direction:column;gap:14px;position:sticky;top:0;">
+
+                  <!-- Price distribution -->
+                  <div class="dd-card" style="padding:16px;">
+                    <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:10px;">Distribusi Harga <span style="color:#9CA3AF;font-weight:400;font-size:.7rem;">ⓘ</span></div>
+                    <div style="display:flex;flex-direction:column;gap:7px;" id="komp-dist-bars"></div>
+                  </div>
+
+                  <!-- Insights -->
+                  <div class="dd-card" style="padding:16px;">
+                    <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:10px;">Insight Kompetitor</div>
+                    <div style="display:flex;flex-direction:column;gap:10px;" id="komp-insights"></div>
+                  </div>
+
+                  <!-- Recommendation -->
+                  <div class="dd-card" style="padding:16px;">
+                    <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:4px;">Rekomendasi untukmu</div>
+                    <div style="font-size:.65rem;color:#6B7280;margin-bottom:6px;">Harga ideal produkmu berada di</div>
+                    <div style="font-size:1rem;font-weight:700;color:#16A34A;margin-bottom:6px;" id="komp-rec-price">—</div>
+                    <div style="font-size:.65rem;color:#6B7280;margin-bottom:8px;">Agar tetap kompetitif dan memiliki margin yang sehat.</div>
+                    <a href="#" onclick="ddSwitchTab('kalkulator');return false;" style="font-size:.68rem;color:#E8442A;font-weight:600;text-decoration:none;">Lihat Strategi Harga →</a>
+                  </div>
+
                 </div>
               </div>
-              <div class="dd-card">
-                <div class="dd-card-title">Performa Kategori</div>
-                <div class="dd-card-sub" id="dd-cat-label">—</div>
-                <div class="dd-catperf-stats" id="dd-catperf-stats"></div>
-                <canvas id="dd-chart-catperf" height="70"></canvas>
-              </div>
             </div>
+            <div id="dd-tab-keyword" class="dd-tab-panel" style="display:none;"><div class="dd-card" style="padding:40px;text-align:center;color:#9CA3AF;">Keyword — segera hadir</div></div>
+            <div id="dd-tab-tren" class="dd-tab-panel" style="display:none;"><div class="dd-card" style="padding:40px;text-align:center;color:#9CA3AF;">Tren Historis — segera hadir</div></div>
+            <div id="dd-tab-kalkulator" class="dd-tab-panel" style="display:none;">
+              <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start;">
 
-            <!-- row 3: top 15 kompetitor | top keyword -->
-            <div class="dd-row2b">
-              <div class="dd-card">
-                <div class="dd-card-title" style="margin-bottom:10px;">Top 15 Kompetitor</div>
-                <table class="dd-comp-table">
-                  <thead><tr><th>#</th><th>Toko</th><th>Harga Rata-rata</th><th>Omset / Bulan</th><th>Unit Terjual / Bln</th><th>Usia Toko</th><th>Skor Kompetitor</th><th>Aksi</th></tr></thead>
-                  <tbody id="dd-comp-tbody"></tbody>
-                </table>
-                <button class="dd-show-more-btn" id="dd-show-more-btn" onclick="ddToggleCompetitors()">
-                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
-                  Lihat Semua 15 Kompetitor
-                </button>
-              </div>
-              <div class="dd-card">
-                <div class="dd-card-title" style="margin-bottom:10px;">Top Keyword</div>
-                <table class="dd-kw-table">
-                  <thead><tr><th>Keyword</th><th>Volume</th><th>Kompetisi</th><th>Trend</th></tr></thead>
-                  <tbody id="dd-kw-tbody"></tbody>
-                </table>
-                <button class="dd-show-more-btn" style="margin-top:10px;">Lihat Semua Keyword</button>
+                <!-- LEFT COLUMN -->
+                <div style="display:flex;flex-direction:column;gap:14px;">
+
+                  <!-- Top 3 sections -->
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
+
+                    <!-- 1. Harga & Biaya Produk -->
+                    <div class="dd-card" style="padding:16px;">
+                      <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">1. Harga &amp; Biaya Produk</div>
+                      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+                        <div>
+                          <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Harga Jual</div>
+                          <div style="position:relative;">
+                            <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span>
+                            <input id="kal-price" type="number" value="150000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;">
+                          </div>
+                        </div>
+                        <div>
+                          <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Harga Modal (COGS)</div>
+                          <div style="position:relative;">
+                            <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span>
+                            <input id="kal-cogs" type="number" value="65000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;">
+                          </div>
+                        </div>
+                        <div>
+                          <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Ongkir ke Customer</div>
+                          <div style="position:relative;">
+                            <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span>
+                            <input id="kal-shipping" type="number" value="9000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;">
+                          </div>
+                        </div>
+                      </div>
+                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                        <div>
+                          <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Berat Produk</div>
+                          <div style="display:flex;gap:4px;align-items:center;">
+                            <input id="kal-weight" type="number" value="250" min="0" oninput="kalcCalc()" style="flex:1;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;">
+                            <span style="font-size:.65rem;color:#9CA3AF;white-space:nowrap;">gram</span>
+                          </div>
+                        </div>
+                        <div>
+                          <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Asal Pengiriman</div>
+                          <select id="kal-origin" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.68rem;background:#fff;">
+                            <option>Kota Bandung</option>
+                            <option>Jakarta Pusat</option>
+                            <option>Surabaya</option>
+                            <option>Medan</option>
+                            <option>Yogyakarta</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 2. Biaya di Shopee -->
+                    <div class="dd-card" style="padding:16px;">
+                      <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">2. Biaya di Shopee</div>
+                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+                        <div>
+                          <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Komisi Shopee</div>
+                          <select id="kal-commission" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;">
+                            <option value="0.08">8%</option>
+                            <option value="0.10" selected>10%</option>
+                            <option value="0.12">12%</option>
+                            <option value="0.15">15%</option>
+                          </select>
+                          <div style="font-size:.6rem;color:#9CA3AF;margin-top:3px;" id="kal-comm-note">10% + 2% (incl. PPN)</div>
+                        </div>
+                        <div>
+                          <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Layanan</div>
+                          <select id="kal-service" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;">
+                            <option value="0.01" selected>1%</option>
+                            <option value="0.02">2%</option>
+                            <option value="0.03">3%</option>
+                          </select>
+                          <div style="font-size:.6rem;color:#9CA3AF;margin-top:3px;">1% dari harga jual</div>
+                        </div>
+                      </div>
+                      <div>
+                        <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Program Gratis Ongkir</div>
+                        <select id="kal-freeship" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;">
+                          <option value="0">Tidak ikut</option>
+                          <option value="5000">Rp 5.000</option>
+                          <option value="8000" selected>Rp 8.000</option>
+                          <option value="12000">Rp 12.000</option>
+                          <option value="15000">Rp 15.000</option>
+                        </select>
+                        <div style="font-size:.6rem;color:#9CA3AF;margin-top:3px;">Estimasi subsidi</div>
+                      </div>
+                    </div>
+
+                    <!-- 3. Biaya Promosi -->
+                    <div class="dd-card" style="padding:16px;">
+                      <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">3. Biaya Promosi (Iklan)</div>
+                      <div style="margin-bottom:10px;">
+                        <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Iklan Shopee (Opsional)</div>
+                        <div style="position:relative;">
+                          <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span>
+                          <input id="kal-ads" type="number" value="7500" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;">
+                        </div>
+                      </div>
+                      <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:10px;display:flex;align-items:center;gap:10px;">
+                        <div style="flex:1;">
+                          <div style="font-size:.65rem;font-weight:600;color:#EA580C;">Rekomendasi Iklan</div>
+                          <div style="font-size:.6rem;color:#9CA3AF;margin-top:2px;">7-10% dari harga jual</div>
+                          <div style="font-size:.62rem;font-weight:600;color:#374151;margin-top:2px;" id="kal-ads-rec">—</div>
+                        </div>
+                        <div style="font-size:1.4rem;">🎯</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Section 4 + BEP row -->
+                  <div style="display:grid;grid-template-columns:1fr 2fr;gap:14px;">
+
+                    <!-- 4. Biaya Lainnya -->
+                    <div class="dd-card" style="padding:16px;">
+                      <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">4. Biaya Lainnya</div>
+                      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                        <div>
+                          <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Packing</div>
+                          <div style="position:relative;">
+                            <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span>
+                            <input id="kal-packing" type="number" value="2000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;">
+                          </div>
+                        </div>
+                        <div>
+                          <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Operasional Lain</div>
+                          <div style="position:relative;">
+                            <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span>
+                            <input id="kal-opex" type="number" value="1000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;">
+                          </div>
+                        </div>
+                        <div>
+                          <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Return / Refund (Estimasi)</div>
+                          <select id="kal-return" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;">
+                            <option value="0.01">1%</option>
+                            <option value="0.02" selected>2%</option>
+                            <option value="0.03">3%</option>
+                            <option value="0.05">5%</option>
+                          </select>
+                          <div style="font-size:.6rem;color:#9CA3AF;margin-top:3px;">2% dari harga jual</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- BEP -->
+                    <div class="dd-card" style="padding:16px;">
+                      <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:4px;">Break Even Point (BEP)</div>
+                      <div style="font-size:.65rem;color:#6B7280;margin-bottom:12px;">Minimal penjualan agar tidak rugi (dengan biaya di atas)</div>
+                      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <div></div>
+                        <div style="font-size:1.1rem;font-weight:700;color:#E8442A;" id="kal-bep-val">—</div>
+                      </div>
+                      <div style="position:relative;height:6px;background:#F3F4F6;border-radius:3px;margin-bottom:8px;">
+                        <div id="kal-bep-fill" style="position:absolute;left:0;top:0;height:6px;background:linear-gradient(90deg,#E8442A,#F97316);border-radius:3px;width:50%;transition:width .3s;"></div>
+                        <div id="kal-bep-dot" style="position:absolute;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;background:#E8442A;border:2px solid #fff;border-radius:50%;left:50%;box-shadow:0 1px 4px rgba(0,0,0,.2);transition:left .3s;"></div>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;font-size:.6rem;color:#9CA3AF;" id="kal-bep-scale">
+                        <span>—</span><span>—</span><span>—</span><span>—</span><span>—</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Skenario -->
+                  <div class="dd-card" style="padding:16px;">
+                    <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:4px;">Skenario Perhitungan</div>
+                    <div style="font-size:.65rem;color:#6B7280;margin-bottom:14px;">Lihat bagaimana perubahan harga mempengaruhi profitmu</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;" id="kal-scenarios"></div>
+                  </div>
+
+                  <!-- Tips bar -->
+                  <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:1.1rem;">💡</span>
+                    <span style="font-size:.72rem;color:#374151;" id="kal-tip">Gunakan harga psikologis seperti <strong id="kal-tip-price">—</strong> untuk meningkatkan konversi penjualan.</span>
+                    <button onclick="ddSwitchTab('kompetitor')" style="margin-left:auto;white-space:nowrap;padding:7px 14px;border:1px solid #D1D5DB;border-radius:8px;background:#fff;font-size:.7rem;font-weight:600;cursor:pointer;">Lihat Contoh Kompetitor →</button>
+                  </div>
+
+                </div>
+
+                <!-- RIGHT SIDEBAR -->
+                <div style="display:flex;flex-direction:column;gap:14px;position:sticky;top:0;">
+                  <div class="dd-card" style="padding:16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                      <div style="font-size:.78rem;font-weight:700;color:#111827;">Ringkasan Profit (Realistis)</div>
+                      <span style="font-size:1rem;color:#9CA3AF;">ⓘ</span>
+                    </div>
+                    <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Estimasi Profit per Unit</div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                      <div style="font-size:1.4rem;font-weight:700;color:#111827;" id="kal-profit-unit">—</div>
+                      <div style="background:#DCFCE7;color:#16A34A;font-size:.62rem;font-weight:700;padding:3px 7px;border-radius:20px;" id="kal-margin-badge">—</div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:5px;font-size:.68rem;border-top:1px solid #F3F4F6;padding-top:10px;margin-bottom:10px;">
+                      <div style="display:flex;justify-content:space-between;"><span style="color:#6B7280;">Harga Jual</span><span style="font-weight:600;" id="kal-sum-price">—</span></div>
+                      <div style="display:flex;justify-content:space-between;"><span style="color:#6B7280;">Total Biaya</span><span style="font-weight:600;" id="kal-sum-cost">—</span></div>
+                      <div style="display:flex;justify-content:space-between;"><span style="color:#6B7280;">Laba Bersih per Unit</span><span style="font-weight:600;color:#16A34A;" id="kal-sum-profit">—</span></div>
+                      <div style="display:flex;justify-content:space-between;"><span style="color:#6B7280;">ROI (Return on Investment)</span><span style="font-weight:600;" id="kal-sum-roi">—</span></div>
+                    </div>
+                    <div style="font-size:.72rem;font-weight:700;color:#111827;margin-bottom:8px;">Rincian Biaya per Unit</div>
+                    <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">
+                      <canvas id="kal-donut" width="80" height="80" style="flex-shrink:0;"></canvas>
+                      <div style="font-size:.6rem;color:#374151;display:flex;flex-direction:column;gap:4px;" id="kal-legend"></div>
+                    </div>
+                    <div style="border-top:1px solid #F3F4F6;padding-top:10px;margin-bottom:4px;">
+                      <div style="font-size:.72rem;font-weight:700;color:#111827;margin-bottom:2px;">Keuntungan Bulanan (Estimasi)</div>
+                      <div style="font-size:.62rem;color:#6B7280;margin-bottom:6px;">Jika terjual <input id="kal-monthly-units" type="number" value="30" min="1" max="9999" oninput="kalcCalc()" style="width:44px;padding:2px 4px;border:1px solid #E5E7EB;border-radius:4px;font-size:.62rem;text-align:center;"> unit / bulan</div>
+                      <div style="font-size:1.1rem;font-weight:700;color:#16A34A;margin-bottom:8px;" id="kal-monthly-profit">—</div>
+                      <div style="display:flex;justify-content:space-between;font-size:.65rem;">
+                        <div><div style="color:#6B7280;margin-bottom:2px;">Potensi Omset</div><div style="font-weight:600;" id="kal-monthly-omset">—</div></div>
+                        <div><div style="color:#6B7280;margin-bottom:2px;">Total Laba Kotor</div><div style="font-weight:600;" id="kal-monthly-gross">—</div></div>
+                      </div>
+                    </div>
+                    <div style="border-top:1px solid #F3F4F6;padding-top:10px;margin-top:4px;">
+                      <div style="font-size:.72rem;font-weight:700;color:#111827;margin-bottom:6px;">Insight untuk Produk Ini</div>
+                      <div style="font-size:.63rem;color:#374151;display:flex;flex-direction:column;gap:5px;" id="kal-insights"></div>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
+            <div id="dd-tab-ai" class="dd-tab-panel" style="display:none;"><div class="dd-card" style="padding:40px;text-align:center;color:#9CA3AF;">Review AI — segera hadir</div></div>
+
           </div>
         </div>
 
@@ -7164,13 +7639,142 @@ async function dscFetchPage(offset, filters = {}) {
   return data || [];
 }
 
+const DSC_CACHE_KEY = 'larisid_dsc_cache';
+const DSC_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+let _dscLoadTimer = null;
+const DSC_TIPS = [
+  'Produk dengan skor tinggi memiliki peluang jual lebih besar dan kompetitor lebih sedikit.',
+  'Keyword dengan volume tinggi tapi kompetisi rendah adalah peluang emas.',
+  'Toko dengan rating 4.8+ biasanya mendapat 3x lebih banyak klik organik.',
+  'Harga psikologis (Rp 49.999) terbukti meningkatkan konversi hingga 15%.',
+  'Produk dengan foto background putih cenderung mendapat ranking lebih tinggi di Shopee.',
+];
+
+function dscShowLoadingScreen() {
+  const el = document.getElementById('dsc-loading-screen');
+  if (!el) return;
+  el.style.display = 'flex';
+
+  // Tip rotation
+  let tipIdx = 0;
+  const tipEl = document.getElementById('dsc-load-tip');
+  if (tipEl) tipEl.textContent = DSC_TIPS[0];
+
+  // Animate progress bar and steps
+  let pct = 0;
+  const steps = [
+    { delay: 0,    step: 1, line: null, pct: 20 },
+    { delay: 1200, step: 2, line: 1,    pct: 55 },
+    { delay: 2800, step: 3, line: 2,    pct: 85 },
+  ];
+
+  function setStep(n, line) {
+    document.querySelectorAll('.dsc-load-step').forEach((el,i) => el.classList.toggle('active', i < n));
+    document.querySelectorAll('.dsc-load-step-line').forEach((el,i) => el.classList.toggle('done', i < (line||0)));
+  }
+
+  steps.forEach(s => {
+    setTimeout(() => {
+      setStep(s.step, s.line);
+      animateTo(s.pct);
+      tipIdx = (tipIdx + 1) % DSC_TIPS.length;
+      if (tipEl) tipEl.textContent = DSC_TIPS[tipIdx];
+    }, s.delay);
+  });
+
+  function animateTo(target) {
+    const bar = document.getElementById('dsc-load-bar');
+    const pctEl = document.getElementById('dsc-load-pct');
+    const start = pct;
+    const duration = 600;
+    const t0 = performance.now();
+    function tick(now) {
+      const p = Math.min((now - t0) / duration, 1);
+      pct = Math.round(start + (target - start) * p);
+      if (bar) bar.style.width = pct + '%';
+      if (pctEl) pctEl.textContent = pct + '%';
+      if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+}
+
+function dscHideLoadingScreen() {
+  const el = document.getElementById('dsc-loading-screen');
+  if (!el) return;
+  // Complete the bar then fade out
+  const bar = document.getElementById('dsc-load-bar');
+  const pctEl = document.getElementById('dsc-load-pct');
+  if (bar) bar.style.width = '100%';
+  if (pctEl) pctEl.textContent = '100%';
+  document.querySelectorAll('.dsc-load-step').forEach(e => e.classList.add('active'));
+  document.querySelectorAll('.dsc-load-step-line').forEach(e => e.classList.add('done'));
+  setTimeout(() => {
+    el.style.transition = 'opacity .4s';
+    el.style.opacity = '0';
+    setTimeout(() => { el.style.display = 'none'; el.style.opacity = '1'; el.style.transition = ''; }, 400);
+  }, 300);
+}
+
+function dscShowSkeleton() {
+  const grid = document.getElementById('dsc-card-grid');
+  const tbody = document.getElementById('dsc-tbody');
+  const skel = Array(12).fill(0).map(() => `
+    <div class="dsc-card" style="pointer-events:none;">
+      <div style="width:100%;height:130px;background:linear-gradient(90deg,#F3F4F6 25%,#E5E7EB 50%,#F3F4F6 75%);background-size:200% 100%;animation:dsc-shimmer 1.2s infinite;border-radius:6px;"></div>
+      <div class="dsc-card-body">
+        <div style="height:12px;width:85%;background:#F3F4F6;border-radius:4px;margin-bottom:8px;animation:dsc-shimmer 1.2s infinite;background-size:200% 100%;"></div>
+        <div style="height:10px;width:55%;background:#F3F4F6;border-radius:4px;animation:dsc-shimmer 1.2s infinite;background-size:200% 100%;"></div>
+      </div>
+    </div>`).join('');
+  if (grid) grid.innerHTML = skel;
+  if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Memuat data listing...</td></tr>`;
+}
+
+function dscSaveCache(rows) {
+  try {
+    sessionStorage.setItem(DSC_CACHE_KEY, JSON.stringify({ ts: Date.now(), rows }));
+  } catch(e) {}
+}
+
+function dscLoadCache() {
+  try {
+    const raw = sessionStorage.getItem(DSC_CACHE_KEY);
+    if (!raw) return null;
+    const { ts, rows } = JSON.parse(raw);
+    if (Date.now() - ts > DSC_CACHE_TTL) { sessionStorage.removeItem(DSC_CACHE_KEY); return null; }
+    return rows;
+  } catch(e) { return null; }
+}
+
 async function dscLoadListings() {
   if (_dscLoading || !_supabase) return;
   _dscLoading = true;
 
-  const tbody = document.getElementById('dsc-tbody');
-  if (!_dscAllListings.length && tbody)
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Memuat data listing...</td></tr>`;
+  // Show cache instantly, then refresh in background
+  if (!_dscAllListings.length && _dscOffset === 0) {
+    const cached = dscLoadCache();
+    if (cached && cached.length) {
+      _dscAllListings = cached;
+      _dscOffset = cached.length;
+      _dscLoaded = true;
+      const newKws = [...new Set(cached.map(r => r.keyword).filter(Boolean))].filter(k => !_dscCompMap[k]);
+      newKws.forEach(kw => { _dscCompMap[kw] = _dscCalcComp(kw); });
+      const cats = [...new Set(cached.map(r => r.category).filter(Boolean))].sort();
+      const sel = document.getElementById('dsc-filter-cat');
+      if (sel && sel.options.length <= 1)
+        sel.innerHTML = '<option value="">Semua Kategori</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+      const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      setEl('dsc-stat-listings', cached.length + '+');
+      setEl('dsc-stat-cats', cats.length.toLocaleString('id-ID'));
+      if (_dscLastSrvFilters === null) _dscLastSrvFilters = JSON.stringify({ cat: '', priceMin: 0, priceMax: 10000000, search: '' });
+      dscApplyFilters();
+      _dscLoading = false;
+      return; // serve from cache; next open will re-check TTL
+    }
+    dscShowLoadingScreen();
+  }
 
   try {
     const filters = _dscCurrentFilters();
@@ -7203,15 +7807,19 @@ async function dscLoadListings() {
     setEl('dsc-stat-listings', (_dscAllListings.length + (_dscHasMore ? '+' : '')).toLocaleString?.() || _dscAllListings.length + (_dscHasMore ? '+' : ''));
 
     _dscLoaded = true;
+    // Cache the first batch for instant reload within the session
+    if (_dscOffset <= DSC_FETCH * 2) dscSaveCache(_dscAllListings.slice(0, DSC_FETCH));
     // Stamp what server-side filters produced this batch (used by dscApplyFilters change-detection)
     if (_dscLastSrvFilters === null) {
       const f = filters;
       _dscLastSrvFilters = JSON.stringify({ cat: f.cat, priceMin: f.priceMin, priceMax: f.priceMax, search: f.search });
     }
+    dscHideLoadingScreen();
     dscApplyFilters();
 
   } catch(e) {
     console.error('dscLoadListings:', e);
+    dscHideLoadingScreen();
   } finally {
     _dscLoading = false;
   }
@@ -7436,6 +8044,7 @@ function dscOpenDeepDive(key) {
   };
   // Switch view first so canvases are visible when Chart.js measures them
   switchDashView('deepdive');
+  ddSwitchTab('listing');
 
   const ctx = document.getElementById('dd-kw-context');
   if (ctx) ctx.style.display = '';
@@ -7445,6 +8054,182 @@ function dscOpenDeepDive(key) {
     ddRender(p);
     ddLoadKeywordContext(listing);
   }, 0);
+}
+
+let _ddCurrentP = null;
+
+// ── KALKULATOR ────────────────────────────────────────────────────────────────
+function kalcFmt(n) {
+  if (n >= 1000000) return 'Rp ' + (n/1000000).toFixed(1).replace(/\.0$/,'') + ' jt';
+  if (n >= 1000) return 'Rp ' + Math.round(n/1000) + ' rb';
+  return 'Rp ' + Math.round(n).toLocaleString('id-ID');
+}
+function kalcFmtFull(n) {
+  return 'Rp ' + Math.round(n).toLocaleString('id-ID');
+}
+
+function kalcCalc() {
+  try {
+  const price    = parseFloat(document.getElementById('kal-price')?.value) || 0;
+  const cogs     = parseFloat(document.getElementById('kal-cogs')?.value) || 0;
+  const shipping = parseFloat(document.getElementById('kal-shipping')?.value) || 0;
+  const packing  = parseFloat(document.getElementById('kal-packing')?.value) || 0;
+  const opex     = parseFloat(document.getElementById('kal-opex')?.value) || 0;
+  const ads      = parseFloat(document.getElementById('kal-ads')?.value) || 0;
+  const comm     = parseFloat(document.getElementById('kal-commission')?.value) || 0.10;
+  const svc      = parseFloat(document.getElementById('kal-service')?.value) || 0.01;
+  const freeship = parseFloat(document.getElementById('kal-freeship')?.value) || 0;
+  const ret      = parseFloat(document.getElementById('kal-return')?.value) || 0.02;
+  const monthlyUnits = parseInt(document.getElementById('kal-monthly-units')?.value) || 30;
+
+  const commAmt    = price * comm;
+  const svcAmt     = price * svc;
+  const retAmt     = price * ret;
+  const totalCost  = cogs + shipping + packing + opex + ads + commAmt + svcAmt + freeship + retAmt;
+  const profit     = price - totalCost;
+  const margin     = price > 0 ? (profit / price * 100) : 0;
+  const roi        = cogs > 0 ? (profit / cogs * 100) : 0;
+
+  // Ads recommendation
+  const adsRecEl = document.getElementById('kal-ads-rec');
+  if (adsRecEl) adsRecEl.textContent = `${kalcFmtFull(price*0.07)} – ${kalcFmtFull(price*0.10)}`;
+
+  // Summary sidebar
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('kal-profit-unit', kalcFmtFull(profit));
+  set('kal-margin-badge', margin.toFixed(1) + '% Margin');
+  const badgeEl = document.getElementById('kal-margin-badge');
+  if (badgeEl) {
+    badgeEl.style.background = margin >= 20 ? '#DCFCE7' : margin >= 10 ? '#FEF9C3' : '#FEE2E2';
+    badgeEl.style.color = margin >= 20 ? '#16A34A' : margin >= 10 ? '#CA8A04' : '#DC2626';
+  }
+  set('kal-sum-price', kalcFmtFull(price));
+  set('kal-sum-cost', kalcFmtFull(totalCost));
+  set('kal-sum-profit', kalcFmtFull(profit));
+  set('kal-sum-roi', roi.toFixed(1) + '%');
+
+  // Monthly
+  set('kal-monthly-profit', kalcFmtFull(profit * monthlyUnits));
+  set('kal-monthly-omset', kalcFmtFull(price * monthlyUnits));
+  set('kal-monthly-gross', (margin.toFixed(1) + '%'));
+
+  // BEP
+  const bepEl = document.getElementById('kal-bep-val');
+  if (bepEl) bepEl.textContent = kalcFmtFull(totalCost);
+  const bepPct = price > 0 ? Math.min((totalCost / price) * 100, 100) : 50;
+  const fillEl = document.getElementById('kal-bep-fill');
+  const dotEl  = document.getElementById('kal-bep-dot');
+  if (fillEl) fillEl.style.width = bepPct + '%';
+  if (dotEl)  dotEl.style.left   = bepPct + '%';
+  const scaleEl = document.getElementById('kal-bep-scale');
+  if (scaleEl) {
+    const ticks = [0.6,0.7,0.8,0.9,1.0].map(f => kalcFmt(price * f));
+    scaleEl.innerHTML = ticks.map(t => `<span>${t}</span>`).join('');
+  }
+
+  // Donut chart
+  const costs = [
+    { label: 'Modal (COGS)', val: cogs,     color: '#3B4FD8' },
+    { label: 'Komisi & Layanan', val: commAmt+svcAmt, color: '#6B7280' },
+    { label: 'Iklan', val: ads,             color: '#F59E0B' },
+    { label: 'Ongkir & Subsidi', val: shipping+freeship, color: '#E8442A' },
+    { label: 'Lainnya', val: packing+opex+retAmt, color: '#CBD5E1' },
+  ].filter(c => c.val > 0);
+  const canvas = document.getElementById('kal-donut');
+  if (canvas && canvas.getContext) {
+    const ctx2 = canvas.getContext('2d');
+    const total = costs.reduce((s,c) => s+c.val, 0) || 1;
+    ctx2.clearRect(0,0,80,80);
+    let angle = -Math.PI/2;
+    costs.forEach(c => {
+      const sweep = (c.val/total) * Math.PI * 2;
+      ctx2.beginPath();
+      ctx2.moveTo(40,40);
+      ctx2.arc(40,40,36,angle,angle+sweep);
+      ctx2.closePath();
+      ctx2.fillStyle = c.color;
+      ctx2.fill();
+      angle += sweep;
+    });
+    ctx2.beginPath();
+    ctx2.arc(40,40,22,0,Math.PI*2);
+    ctx2.fillStyle = '#fff';
+    ctx2.fill();
+  }
+  const legendEl = document.getElementById('kal-legend');
+  if (legendEl && costs.length) {
+    const totalC = costs.reduce((s,c) => s+c.val, 0);
+    legendEl.innerHTML = costs.map(c => `
+      <div style="display:flex;align-items:center;gap:5px;">
+        <div style="width:8px;height:8px;border-radius:2px;background:${c.color};flex-shrink:0;"></div>
+        <span style="color:#374151;">${c.label}</span>
+        <span style="margin-left:auto;color:#6B7280;">${kalcFmtFull(c.val)} (${(c.val/totalC*100).toFixed(1)}%)</span>
+      </div>`).join('');
+  }
+
+  // Scenarios
+  const scenEl = document.getElementById('kal-scenarios');
+  if (scenEl) {
+    const scenarios = [
+      { name: 'Pesimis', priceMult: 0.93, rec: false },
+      { name: 'Realistis', priceMult: 1.0, rec: true },
+      { name: 'Optimis', priceMult: 1.07, rec: false },
+    ];
+    scenEl.innerHTML = scenarios.map(s => {
+      const sp = price * s.priceMult;
+      const sc = totalCost + (sp - price) * 0; // costs same
+      const sv = sp - totalCost;
+      const sm = sp > 0 ? (sv/sp*100) : 0;
+      const border = s.rec ? 'border:2px solid #F97316;' : 'border:1px solid #E5E7EB;';
+      return `<div style="border-radius:10px;padding:14px;${border}position:relative;">
+        ${s.rec ? '<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#F97316;color:#fff;font-size:.58rem;font-weight:700;padding:2px 8px;border-radius:20px;">Direkomendasikan</div>' : ''}
+        <div style="font-size:.72rem;font-weight:700;color:#111827;margin-bottom:10px;">${s.name}</div>
+        <div style="display:flex;justify-content:space-between;font-size:.65rem;margin-bottom:4px;"><span style="color:#6B7280;">Harga Jual</span><span style="font-weight:600;">${kalcFmtFull(sp)}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:.65rem;margin-bottom:4px;"><span style="color:#6B7280;">Margin</span><span style="font-weight:600;">${sm.toFixed(1)}%</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:.65rem;"><span style="color:#6B7280;">Profit / Unit</span><span style="font-weight:600;color:${sv>=0?'#16A34A':'#DC2626'};">${kalcFmtFull(sv)}</span></div>
+      </div>`;
+    }).join('');
+  }
+
+  // Insights
+  const insightsEl = document.getElementById('kal-insights');
+  if (insightsEl) {
+    const tips = [];
+    if (margin >= 20) tips.push(`Margin ${margin.toFixed(1)}% termasuk kategori sehat`);
+    else tips.push(`Margin ${margin.toFixed(1)}% — pertimbangkan kurangi biaya atau naikkan harga`);
+    if (price > 0) tips.push(`Harga jual masih kompetitif di pasaran`);
+    tips.push(`Kamu bisa naikkan harga hingga ${kalcFmtFull(price*1.03)} – ${kalcFmtFull(price*1.07)}`);
+    if (ads > 0) tips.push(`Iklan ${(ads/price*100).toFixed(1)}% membantu meningkatkan visibilitas produk`);
+    insightsEl.innerHTML = tips.map(t => `<div style="display:flex;gap:6px;"><span style="color:#16A34A;flex-shrink:0;">✓</span><span>${t}</span></div>`).join('');
+  }
+
+  // Tip bar
+  const tipPriceEl = document.getElementById('kal-tip-price');
+  if (tipPriceEl && price > 0) {
+    const psych = Math.floor((price - 1) / 1000) * 1000 + 999;
+    tipPriceEl.textContent = kalcFmtFull(psych);
+  }
+  } catch(e) { console.error('kalcCalc:', e); }
+}
+
+function ddSwitchTab(tab) {
+  const tabs = ['listing','ringkasan','analisa','kompetitor','keyword','tren','kalkulator','ai'];
+  tabs.forEach(t => {
+    const panel = document.getElementById(`dd-tab-${t}`);
+    if (panel) panel.style.display = t === tab ? '' : 'none';
+  });
+  document.querySelectorAll('#dd-tabs .dd-tab').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === tab);
+  });
+  if (tab === 'ringkasan' && typeof ddRender === 'function' && _ddCurrentP) {
+    setTimeout(() => ddRender(_ddCurrentP), 0);
+  }
+  if (tab === 'kalkulator') {
+    kalcCalc();
+  }
+  if (tab === 'kompetitor') {
+    ddRenderKompetitor();
+  }
 }
 
 async function ddLoadKeywordContext(listing) {
@@ -7480,7 +8265,7 @@ async function ddLoadKeywordContext(listing) {
     // Fetch all listings for this keyword (raw table — faster with keyword filter)
     const { data, error } = await _supabase
       .from('listings')
-      .select('item_id,shop_id,product_name,store_name,price,total_sold,image_url,url')
+      .select('item_id,shop_id,product_name,store_name,price,total_sold,image_url,url,rating,reviews')
       .eq('keyword', kw)
       .order('total_sold', { ascending: false })
       .limit(120);
@@ -7555,10 +8340,225 @@ async function ddLoadKeywordContext(listing) {
     if (loadEl) loadEl.style.display = 'none';
     if (tableEl) tableEl.style.display = '';
 
+    // Store for competitor tab
+    _ddKwRows    = rows;
+    _ddKwListing = listing;
+    _ddKwTotal   = totalSold;
+    ddRenderKompetitor();
+
   } catch(e) {
     console.error('ddLoadKeywordContext:', e);
     if (loadEl) loadEl.textContent = 'Gagal memuat data.';
   }
+}
+
+// ── COMPETITOR TAB ─────────────────────────────────────────────────────────────
+let _ddKwRows    = [];
+let _ddKwListing = null;
+let _ddKwTotal   = 0;
+let _kompShowing = 10;
+let _kompFiltered = [];
+
+function kompFmt(n) {
+  if (n >= 1000000) return 'Rp ' + (n/1000000).toFixed(1).replace(/\.0$/,'') + ' jt';
+  if (n >= 1000)    return 'Rp ' + Math.round(n/1000) + ' rb';
+  return 'Rp ' + Math.round(n).toLocaleString('id-ID');
+}
+
+function ddRenderKompetitor() {
+  const rows    = _ddKwRows;
+  const listing = _ddKwListing;
+  const totalSold = _ddKwTotal;
+  if (!rows || !rows.length) {
+    const tbody = document.getElementById('komp-tbody');
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.8rem;">Buka listing dari halaman Discover untuk melihat data kompetitor.</td></tr>`;
+    const sub = document.getElementById('komp-subtitle');
+    if (sub) sub.textContent = 'Data kompetitor belum tersedia';
+    return;
+  }
+
+  const g = id => document.getElementById(id);
+
+  // ── Stats ──
+  const prices   = rows.map(r => r.price||0).filter(p => p > 0);
+  const solds    = rows.map(r => r.total_sold||0);
+  const ratings  = rows.map(r => parseFloat(r.rating)||0).filter(r => r > 0);
+  const avgPrice = prices.length ? prices.reduce((a,b)=>a+b,0)/prices.length : 0;
+  const avgSold  = solds.length  ? solds.reduce((a,b)=>a+b,0)/solds.length   : 0;
+  const avgRating= ratings.length? ratings.reduce((a,b)=>a+b,0)/ratings.length: 0;
+  const minPrice = prices.length ? Math.min(...prices) : 0;
+  const maxPrice = prices.length ? Math.max(...prices) : 0;
+  const minSold  = solds.length  ? Math.min(...solds)  : 0;
+  const maxSold  = solds.length  ? Math.max(...solds)  : 0;
+  const minRating= ratings.length? Math.min(...ratings): 0;
+  const maxRating= ratings.length? Math.max(...ratings): 0;
+
+  // Estimate ads: top-30% sellers we assume use ads
+  const adsCount = Math.round(rows.length * 0.6);
+  const adsPct   = rows.length ? Math.round(adsCount/rows.length*100) : 0;
+
+  // Competition level from top3 concentration
+  const top3sold = rows.slice(0,3).reduce((s,r)=>(s+(r.total_sold||0)),0);
+  const top3pct  = totalSold > 0 ? top3sold/totalSold*100 : 0;
+  let compLevel = 'Rendah'; let compColor = '#16A34A';
+  if (top3pct > 60) { compLevel = 'Tinggi'; compColor = '#DC2626'; }
+  else if (top3pct > 35) { compLevel = 'Sedang'; compColor = '#F97316'; }
+  const compScore = Math.round(Math.min(100, top3pct * 1.5));
+
+  const set = (id, v) => { const el = g(id); if (el) el.textContent = v; };
+  set('komp-subtitle', `Analisis ${rows.length} kompetitor di keyword ini`);
+  set('komp-avg-price', kompFmt(avgPrice));
+  set('komp-price-range', `Min: ${kompFmt(minPrice)}  Maks: ${kompFmt(maxPrice)}`);
+  set('komp-avg-sold', Math.round(avgSold).toLocaleString('id-ID'));
+  set('komp-sold-range', `Min: ${Math.round(minSold).toLocaleString('id-ID')}  Maks: ${Math.round(maxSold).toLocaleString('id-ID')}`);
+  set('komp-avg-rating', avgRating > 0 ? avgRating.toFixed(1) + ' / 5' : '—');
+  set('komp-rating-range', ratings.length ? `Min: ${minRating.toFixed(1)}  Maks: ${maxRating.toFixed(1)}` : '—');
+  set('komp-ads-count', `${adsCount} / ${rows.length}`);
+  set('komp-ads-pct', `${adsPct}% kompetitor`);
+  const compEl = g('komp-comp-level');
+  if (compEl) { compEl.textContent = compLevel; compEl.style.color = compColor; }
+  set('komp-comp-score', `Skor: ${compScore}/100`);
+
+  // ── Price distribution bars ──
+  const distEl = g('komp-dist-bars');
+  if (distEl) {
+    const buckets = [
+      { label: `< ${kompFmt(100000)}`, fn: p => p < 100000 },
+      { label: `${kompFmt(100000)} - ${kompFmt(150000)}`, fn: p => p >= 100000 && p < 150000 },
+      { label: `${kompFmt(150000)} - ${kompFmt(200000)}`, fn: p => p >= 150000 && p < 200000 },
+      { label: `${kompFmt(200000)} - ${kompFmt(300000)}`, fn: p => p >= 200000 && p < 300000 },
+      { label: `> ${kompFmt(300000)}`,                    fn: p => p >= 300000 },
+    ].map(b => ({ ...b, count: prices.filter(b.fn).length }));
+    const maxCount = Math.max(...buckets.map(b => b.count), 1);
+    const topBucket = buckets.reduce((a,b) => b.count > a.count ? b : a, buckets[0]);
+    distEl.innerHTML = buckets.map(b => {
+      const pct = Math.round(b.count/prices.length*100)||0;
+      const isTop = b === topBucket;
+      return `<div style="display:flex;align-items:center;gap:8px;font-size:.65rem;">
+        <div style="width:110px;color:#6B7280;flex-shrink:0;">${b.label}</div>
+        <div style="flex:1;height:6px;background:#F3F4F6;border-radius:3px;overflow:hidden;">
+          <div style="height:6px;border-radius:3px;background:${isTop?'#E8442A':'#D1D5DB'};width:${Math.round(b.count/maxCount*100)}%;"></div>
+        </div>
+        <div style="width:30px;text-align:right;color:#6B7280;font-weight:${isTop?'700':'400'};">${pct}%</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Insights ──
+  const insEl = g('komp-insights');
+  if (insEl) {
+    const icons = ['📈','✅','🏆','⭐'];
+    const tips = [
+      `Mayoritas kompetitor menjual di harga <strong>${kompFmt(Math.round(avgPrice*0.9))} – ${kompFmt(Math.round(avgPrice*1.1))}</strong>`,
+      `${adsPct}% kompetitor menggunakan iklan Shopee Ads`,
+      `Top 3 kompetitor menguasai <strong>${top3pct.toFixed(0)}%</strong> penjualan di keyword ini`,
+      ratings.length ? `Produk dengan rating di atas ${(avgRating+0.3).toFixed(1)} cenderung terjual lebih banyak` : `${rows.length} kompetitor aktif di keyword ini`,
+    ];
+    insEl.innerHTML = tips.map((t,i) => `<div style="display:flex;gap:8px;align-items:flex-start;font-size:.65rem;color:#374151;">
+      <span style="font-size:.9rem;flex-shrink:0;">${icons[i]}</span><span>${t}</span></div>`).join('');
+  }
+
+  // ── Recommendation price ──
+  const recEl = g('komp-rec-price');
+  if (recEl) {
+    const p10 = [...prices].sort((a,b)=>a-b)[Math.floor(prices.length*0.35)]||avgPrice;
+    const p60 = [...prices].sort((a,b)=>a-b)[Math.floor(prices.length*0.65)]||avgPrice;
+    recEl.textContent = `${kompFmt(p10)} – ${kompFmt(p60)}`;
+  }
+
+  // ── Table (initialise filter) ──
+  _kompFiltered = rows;
+  _kompShowing  = 10;
+  kompFilter();
+}
+
+function kompFilter() {
+  const rows    = _ddKwRows;
+  if (!rows || !rows.length) return;
+  const q       = (document.getElementById('komp-search')?.value || '').toLowerCase();
+  const sort    = document.getElementById('komp-sort')?.value || 'sold';
+  const pf      = document.getElementById('komp-price-filter')?.value || '';
+
+  let filtered = rows.filter(r => {
+    if (q && !(r.product_name||'').toLowerCase().includes(q) && !(r.store_name||'').toLowerCase().includes(q)) return false;
+    if (pf === 'low'  && (r.price||0) >= 100000) return false;
+    if (pf === 'mid'  && ((r.price||0) < 100000 || (r.price||0) > 200000)) return false;
+    if (pf === 'high' && (r.price||0) <= 200000) return false;
+    return true;
+  });
+
+  if (sort === 'price_asc')  filtered.sort((a,b) => (a.price||0) - (b.price||0));
+  else if (sort === 'price_desc') filtered.sort((a,b) => (b.price||0) - (a.price||0));
+  else if (sort === 'rating') filtered.sort((a,b) => (parseFloat(b.rating)||0) - (parseFloat(a.rating)||0));
+  else filtered.sort((a,b) => (b.total_sold||0) - (a.total_sold||0));
+
+  _kompFiltered = filtered;
+  kompRenderTable();
+}
+
+function kompRenderTable() {
+  const rows    = _kompFiltered;
+  const listing = _ddKwListing;
+  const totalSold = _ddKwTotal;
+  const tbody = document.getElementById('komp-tbody');
+  const moreBtn = document.getElementById('komp-more-btn');
+  if (!tbody) return;
+
+  const visible = rows.slice(0, _kompShowing);
+  if (!visible.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.8rem;">Tidak ada kompetitor ditemukan.</td></tr>`;
+    if (moreBtn) moreBtn.style.display = 'none';
+    return;
+  }
+
+  const isThis = r => listing && String(r.item_id) === String(listing.item_id) && String(r.shop_id) === String(listing.shop_id);
+
+  tbody.innerHTML = visible.map((r, i) => {
+    const rating = parseFloat(r.rating) || 0;
+    const stars  = rating > 0 ? `<span style="color:#F59E0B;">&#9733;</span> ${rating.toFixed(1)}` : '—';
+    const badge  = rating >= 4.9 ? `<span style="background:#FFF0E0;color:#EA580C;font-size:.58rem;font-weight:700;padding:2px 5px;border-radius:4px;margin-left:4px;">Star+</span>`
+                 : rating >= 4.7 ? `<span style="background:#FFF0E0;color:#EA580C;font-size:.58rem;font-weight:700;padding:2px 5px;border-radius:4px;margin-left:4px;">Star</span>` : '';
+    const highlight = isThis(r) ? 'background:#FFF5F5;' : '';
+    const imgHtml = r.image_url
+      ? `<img src="${r.image_url}" style="width:36px;height:36px;border-radius:6px;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">`
+      : `<div style="width:36px;height:36px;border-radius:6px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0;">📦</div>`;
+    const thisTag = isThis(r) ? `<span style="background:#E8442A;color:#fff;font-size:.58rem;font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px;">Ini</span>` : '';
+    return `<tr style="border-bottom:1px solid #F3F4F6;${highlight}">
+      <td style="padding:10px 6px;color:#9CA3AF;font-weight:700;font-size:.72rem;">${i+1}</td>
+      <td style="padding:10px 6px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${imgHtml}
+          <div>
+            <div style="font-size:.72rem;font-weight:600;line-height:1.3;">${(r.product_name||'').slice(0,48)}${thisTag}</div>
+          </div>
+        </div>
+      </td>
+      <td style="padding:10px 6px;">
+        <div style="font-size:.68rem;font-weight:600;color:#374151;">${r.store_name||'—'}${badge}</div>
+      </td>
+      <td style="padding:10px 6px;text-align:right;font-weight:600;font-size:.72rem;">${kompFmt(r.price||0)}</td>
+      <td style="padding:10px 6px;text-align:right;font-weight:600;font-size:.72rem;">${(r.total_sold||0).toLocaleString('id-ID')}</td>
+      <td style="padding:10px 6px;text-align:center;font-size:.7rem;">${stars}</td>
+      <td style="padding:10px 6px;text-align:center;">
+        ${r.url ? `<a href="${r.url}" target="_blank" onclick="event.stopPropagation()" style="padding:5px 10px;border:1px solid #E5E7EB;border-radius:6px;font-size:.65rem;font-weight:600;color:#374151;text-decoration:none;background:#fff;">Lihat Detail</a>` : '—'}
+      </td>
+    </tr>`;
+  }).join('');
+
+  if (moreBtn) {
+    const remaining = rows.length - _kompShowing;
+    if (remaining > 0) {
+      moreBtn.style.display = '';
+      moreBtn.textContent = `Lihat ${Math.min(remaining, 10)} kompetitor lainnya ▾`;
+    } else {
+      moreBtn.style.display = 'none';
+    }
+  }
+}
+
+function kompShowMore() {
+  _kompShowing += 10;
+  kompRenderTable();
 }
 
 function dscGoPage(n) {
@@ -7600,6 +8600,7 @@ function _ddRng(seed) {
 }
 
 function ddRender(p) {
+  _ddCurrentP = p;
   const rng = _ddRng(p.id * 31337);
   const price = p.medianPrice || 85000;
   const score = Math.round(p.score);
