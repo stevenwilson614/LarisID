@@ -7018,81 +7018,105 @@ function _dscTrendDelta(listing) {
   return (listing.total_sold || 0) - prev;
 }
 
-async function dscLoadListings() {
-  if (_dscLoaded || !_supabase) return;
-  const tbody = document.getElementById('dsc-tbody');
-  if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Memuat data listing...</td></tr>`;
+let _dscOffset      = 0;
+let _dscHasMore     = true;
+let _dscLoading     = false;
+let _dscLastSrvFilters = null;  // track last server-side fetch params
+const DSC_FETCH  = 60;
 
-  try {
-    const FIELDS = 'item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews';
+async function dscFetchPage(offset, filters = {}) {
+  if (!_supabase) return [];
+  const FIELDS = 'item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews';
+  let q = _supabase
+    .from('listings_latest')
+    .select(FIELDS)
+    .order('total_sold', { ascending: false })
+    .range(offset, offset + DSC_FETCH - 1);
 
-    // Try view first, fall back to raw table with higher limit
-    let { data, error } = await _supabase
-      .from('listings_latest')
+  if (filters.cat)      q = q.eq('category', filters.cat);
+  if (filters.priceMin) q = q.gte('price', filters.priceMin);
+  if (filters.priceMax && filters.priceMax < 1000000) q = q.lte('price', filters.priceMax);
+  if (filters.search)   q = q.ilike('product_name', `%${filters.search}%`);
+
+  const { data, error } = await q;
+  if (error) {
+    // Fall back to raw listings table if view not ready
+    let qf = _supabase
+      .from('listings')
       .select(FIELDS)
       .order('total_sold', { ascending: false })
-      .limit(20000);
+      .order('scraped_at', { ascending: false })
+      .range(offset, offset + DSC_FETCH - 1);
+    if (filters.cat)      qf = qf.eq('category', filters.cat);
+    if (filters.priceMin) qf = qf.gte('price', filters.priceMin);
+    if (filters.priceMax && filters.priceMax < 1000000) qf = qf.lte('price', filters.priceMax);
+    if (filters.search)   qf = qf.ilike('product_name', `%${filters.search}%`);
+    const fb = await qf;
+    return fb.data || [];
+  }
+  return data || [];
+}
 
-    if (error || !data || !data.length) {
-      console.warn('listings_latest failed:', error?.message, '— falling back to listings table');
-      const fb = await _supabase
-        .from('listings')
-        .select(FIELDS)
-        .order('scraped_at', { ascending: false })
-        .limit(10000);
-      data = fb.data;
-      if (fb.error || !data || !data.length) {
-        console.error('listings fallback also failed:', fb.error?.message);
-        if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#9CA3AF">Gagal memuat data. Cek console.</td></tr>`;
-        return;
+async function dscLoadListings() {
+  if (_dscLoading || !_supabase) return;
+  _dscLoading = true;
+
+  const tbody = document.getElementById('dsc-tbody');
+  if (!_dscAllListings.length && tbody)
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Memuat data listing...</td></tr>`;
+
+  try {
+    const filters = _dscCurrentFilters();
+    const rows = await dscFetchPage(_dscOffset, filters);
+
+    if (rows.length < DSC_FETCH) _dscHasMore = false;
+
+    // Deduplicate against already-loaded items
+    const seen = new Set(_dscAllListings.map(r => `${r.item_id}_${r.shop_id}`));
+    const fresh = rows.filter(r => { const k = `${r.item_id}_${r.shop_id}`; if (seen.has(k)) return false; seen.add(k); return true; });
+    _dscAllListings.push(...fresh);
+    _dscOffset += DSC_FETCH;
+
+    // Compute competition for new keywords
+    const newKws = [...new Set(fresh.map(r => r.keyword).filter(Boolean))].filter(k => !_dscCompMap[k]);
+    newKws.forEach(kw => { _dscCompMap[kw] = _dscCalcComp(kw); });
+
+    // Update category dropdown once
+    if (_dscOffset === DSC_FETCH) {
+      const cats = [...new Set(_dscAllListings.map(r => r.category).filter(Boolean))].sort();
+      const sel = document.getElementById('dsc-filter-cat');
+      if (sel && sel.options.length <= 1) {
+        sel.innerHTML = '<option value="">Semua Kategori</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
       }
-      // Deduplicate in JS since we're on raw table
-      const seen = new Set();
-      data = data.filter(r => { const k = `${r.item_id}_${r.shop_id}`; if (seen.has(k)) return false; seen.add(k); return true; });
-      console.log('Fallback deduped listings:', data.length);
-    } else {
-      console.log('listings_latest rows:', data.length);
+      const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      setEl('dsc-stat-cats', cats.length.toLocaleString('id-ID'));
     }
 
-    _dscAllListings = data;
-
-    // Load previous snapshot for trend (listings from 7-14 days ago)
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
-    _supabase
-      .from('listings')
-      .select('item_id,shop_id,total_sold')
-      .gte('scraped_at', fourteenDaysAgo)
-      .lte('scraped_at', sevenDaysAgo)
-      .limit(20000)
-      .then(({ data: prev }) => {
-        if (!prev) return;
-        for (const row of prev) {
-          const key = `${row.item_id}_${row.shop_id}`;
-          if (_dscPrevMap[key] == null) _dscPrevMap[key] = row.total_sold || 0;
-        }
-      });
-    _dscLoaded = true;
-
-    // Pre-compute competition per keyword
-    const keywords = [...new Set(data.map(r => r.keyword).filter(Boolean))];
-    keywords.forEach(kw => { _dscCompMap[kw] = _dscCalcComp(kw); });
-
-    // Stats
-    const cats = [...new Set(data.map(r => r.category).filter(Boolean))].sort();
     const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-    setEl('dsc-stat-listings', data.length.toLocaleString('id-ID'));
-    setEl('dsc-stat-cats', cats.length.toLocaleString('id-ID'));
+    setEl('dsc-stat-listings', (_dscAllListings.length + (_dscHasMore ? '+' : '')).toLocaleString?.() || _dscAllListings.length + (_dscHasMore ? '+' : ''));
 
-    // Category dropdown
-    const sel = document.getElementById('dsc-filter-cat');
-    if (sel) sel.innerHTML = '<option value="">Semua Kategori</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
-
+    _dscLoaded = true;
+    // Stamp what server-side filters produced this batch (used by dscApplyFilters change-detection)
+    if (_dscLastSrvFilters === null) {
+      const f = filters;
+      _dscLastSrvFilters = JSON.stringify({ cat: f.cat, priceMin: f.priceMin, priceMax: f.priceMax === Infinity ? 1000000 : f.priceMax, search: f.search });
+    }
     dscApplyFilters();
 
   } catch(e) {
     console.error('dscLoadListings:', e);
+  } finally {
+    _dscLoading = false;
   }
+}
+
+function _dscCurrentFilters() {
+  return {
+    cat:      document.getElementById('dsc-filter-cat')?.value || '',
+    priceMin: parseFloat(document.getElementById('dsc-price-min')?.value) || 0,
+    priceMax: parseFloat(document.getElementById('dsc-price-max')?.value) || 1000000,
+    search:   document.getElementById('dsc-search')?.value?.trim() || '',
+  };
 }
 
 function dscInit() {
@@ -7110,6 +7134,19 @@ function dscApplyFilters() {
   const omsetMin = parseFloat(document.getElementById('dsc-omset-min')?.value) || 0;
   const omsetMax = parseFloat(document.getElementById('dsc-omset-max')?.value) || Infinity;
   const sortVal  = document.getElementById('dsc-sort')?.value || 'omset-desc';
+
+  // If server-side filters changed, reset and re-fetch from offset 0
+  const srvKey = JSON.stringify({ cat, priceMin, priceMax: priceMax === Infinity ? 1000000 : priceMax, search: q });
+  if (_dscLastSrvFilters !== null && _dscLastSrvFilters !== srvKey) {
+    _dscAllListings = [];
+    _dscOffset = 0;
+    _dscHasMore = true;
+    _dscLoaded = false;
+    _dscLastSrvFilters = srvKey;
+    dscLoadListings();
+    return;
+  }
+  _dscLastSrvFilters = srvKey;
 
   const allowedComp = ['Rendah','Sedang','Tinggi'].filter((_,i) =>
     document.getElementById(['dsc-comp-r','dsc-comp-s','dsc-comp-t'][i])?.checked);
@@ -7223,10 +7260,16 @@ function dscRenderTable() {
 
 function dscGoPage(n) {
   const pages = Math.ceil(_dscFiltered.length / DSC_PER_PAGE);
-  if (n < 1 || n > pages) return;
+  // Allow navigating to next page even if filtered list doesn't have it yet (more may load)
+  if (n < 1) return;
+  if (n > pages && !_dscHasMore) return;
   _dscPage = n;
   dscRenderTable();
   document.getElementById('dash-content')?.scrollTo(0, 0);
+  // Fetch next batch when reaching last 2 pages of loaded data
+  if (_dscHasMore && !_dscLoading && n >= pages - 1) {
+    dscLoadListings();
+  }
 }
 
 function dscResetFilters() {
