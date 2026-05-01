@@ -7021,31 +7021,36 @@ async function dscLoadListings() {
   if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Memuat data listing...</td></tr>`;
 
   try {
+    // listings_latest is a DB view: DISTINCT ON (item_id, shop_id) ORDER BY scraped_at DESC
     const { data, error } = await _supabase
-      .from('listings')
+      .from('listings_latest')
       .select('item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews')
-      .order('scraped_at', { ascending: false })
-      .limit(5000);
+      .order('total_sold', { ascending: false })
+      .limit(20000);
 
     if (error || !data || !data.length) {
       if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#9CA3AF">Gagal memuat data.</td></tr>`;
       return;
     }
 
-    // Deduplicate: keep most recent per item_id+shop_id; second occurrence = prev snapshot
-    const seen = new Map();
-    const deduped = [];
-    for (const row of data) {
-      const key = `${row.item_id}_${row.shop_id}`;
-      if (!seen.has(key)) {
-        seen.set(key, true);
-        deduped.push(row);
-      } else if (_dscPrevMap[key] == null) {
-        _dscPrevMap[key] = row.total_sold || 0;
-      }
-    }
+    _dscAllListings = data;
 
-    _dscAllListings = deduped;
+    // Load previous snapshot for trend (listings from 7-14 days ago)
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+    _supabase
+      .from('listings')
+      .select('item_id,shop_id,total_sold')
+      .gte('scraped_at', fourteenDaysAgo)
+      .lte('scraped_at', sevenDaysAgo)
+      .limit(20000)
+      .then(({ data: prev }) => {
+        if (!prev) return;
+        for (const row of prev) {
+          const key = `${row.item_id}_${row.shop_id}`;
+          if (_dscPrevMap[key] == null) _dscPrevMap[key] = row.total_sold || 0;
+        }
+      });
     _dscLoaded = true;
 
     // Pre-compute competition per keyword
