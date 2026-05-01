@@ -4473,46 +4473,30 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <div class="dsc-dual-range" id="dsc-price-range">
                     <div class="dsc-dual-track"></div>
                     <div class="dsc-dual-fill" id="dsc-price-fill"></div>
-                    <input type="range" id="dsc-price-min" min="0" max="2000000" step="10000" value="0" oninput="dscUpdateDualRange('price')">
-                    <input type="range" id="dsc-price-max" min="0" max="2000000" step="10000" value="2000000" oninput="dscUpdateDualRange('price')">
+                    <input type="range" id="dsc-price-min" min="0" max="1000000" step="5000" value="0" oninput="dscUpdateDualRange('price')">
+                    <input type="range" id="dsc-price-max" min="0" max="1000000" step="5000" value="1000000" oninput="dscUpdateDualRange('price')">
                   </div>
-                  <div class="dsc-range-vals"><span id="dsc-price-min-lbl">Rp 0</span><span id="dsc-price-max-lbl">Rp 2 jt</span></div>
+                  <div class="dsc-range-vals"><span id="dsc-price-min-lbl">Rp 0</span><span id="dsc-price-max-lbl">Rp 1 jt</span></div>
                 </div>
 
                 <div class="dsc-filter-group">
-                  <span class="dsc-filter-label">Potensi Demand</span>
-                  <div class="dsc-checks">
-                    <label class="dsc-check-row"><input type="checkbox" id="dsc-dem-st" checked onchange="dscApplyFilters()"> Sangat Tinggi</label>
-                    <label class="dsc-check-row"><input type="checkbox" id="dsc-dem-t" checked onchange="dscApplyFilters()"> Tinggi</label>
-                    <label class="dsc-check-row"><input type="checkbox" id="dsc-dem-s" checked onchange="dscApplyFilters()"> Sedang</label>
-                    <label class="dsc-check-row"><input type="checkbox" id="dsc-dem-r" checked onchange="dscApplyFilters()"> Rendah</label>
+                  <span class="dsc-filter-label">Omset/Bulan (est.)</span>
+                  <div class="dsc-dual-range" id="dsc-omset-range">
+                    <div class="dsc-dual-track"></div>
+                    <div class="dsc-dual-fill" id="dsc-omset-fill"></div>
+                    <input type="range" id="dsc-omset-min" min="0" max="50000000" step="500000" value="0" oninput="dscUpdateDualRange('omset')">
+                    <input type="range" id="dsc-omset-max" min="0" max="50000000" step="500000" value="50000000" oninput="dscUpdateDualRange('omset')">
                   </div>
+                  <div class="dsc-range-vals"><span id="dsc-omset-min-lbl">Rp 0</span><span id="dsc-omset-max-lbl">Rp 50 jt</span></div>
                 </div>
 
                 <div class="dsc-filter-group">
-                  <span class="dsc-filter-label">Tingkat Kompetisi</span>
+                  <span class="dsc-filter-label">Kompetisi</span>
                   <div class="dsc-checks">
                     <label class="dsc-check-row"><input type="checkbox" id="dsc-comp-r" checked onchange="dscApplyFilters()"> Rendah</label>
                     <label class="dsc-check-row"><input type="checkbox" id="dsc-comp-s" checked onchange="dscApplyFilters()"> Sedang</label>
                     <label class="dsc-check-row"><input type="checkbox" id="dsc-comp-t" checked onchange="dscApplyFilters()"> Tinggi</label>
-                    <label class="dsc-check-row"><input type="checkbox" id="dsc-comp-st" checked onchange="dscApplyFilters()"> Sangat Tinggi</label>
                   </div>
-                </div>
-
-                <div class="dsc-filter-group">
-                  <span class="dsc-filter-label">Margin Potensial</span>
-                  <div class="dsc-single-range">
-                    <input type="range" id="dsc-margin-min" min="10" max="50" step="1" value="10" oninput="dscUpdateSingleRange('margin')">
-                  </div>
-                  <div class="dsc-single-val">Min: <span id="dsc-margin-min-lbl">10%</span></div>
-                </div>
-
-                <div class="dsc-filter-group">
-                  <span class="dsc-filter-label">Min. Estimasi Profit/Unit</span>
-                  <div class="dsc-single-range">
-                    <input type="range" id="dsc-profit-min" min="5000" max="100000" step="5000" value="5000" oninput="dscUpdateSingleRange('profit')">
-                  </div>
-                  <div class="dsc-single-val">Min: <span id="dsc-profit-min-lbl">Rp 5.000</span></div>
                 </div>
 
                 <div class="dsc-filter-group">
@@ -4531,8 +4515,8 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <div class="dsc-table-controls">
                   <input class="dsc-search" id="dsc-search" type="text" placeholder="Cari produk..." oninput="dscApplyFilters()">
                   <select class="dsc-sort-select" id="dsc-sort" onchange="dscApplyFilters()">
-                    <option value="score-desc">Score Tertinggi</option>
                     <option value="omset-desc">Omset Tertinggi</option>
+                    <option value="tren-desc">Tren Naik</option>
                     <option value="price-asc">Harga Terendah</option>
                     <option value="price-desc">Harga Tertinggi</option>
                     <option value="name-asc">Nama A-Z</option>
@@ -4544,10 +4528,11 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <table class="dsc-table">
                     <thead>
                       <tr>
-                        <th style="min-width:180px;">Produk</th>
+                        <th style="min-width:200px;">Produk</th>
+                        <th>Harga Jual</th>
+                        <th>Kategori</th>
                         <th>Omset/Bulan</th>
-                        <th>Median Harga</th>
-                        <th>Score</th>
+                        <th>Kompetisi</th>
                         <th>Tren</th>
                         <th></th>
                       </tr>
@@ -6945,7 +6930,7 @@ function switchDashView(view) {
   if (view === 'keywords') _kxLoadKeywordList();
   if (view === 'home') _renderDashHome();
   if (view === 'estimator') loadSalesEstimator();
-  if (view === 'discover'  && typeof dscInit  === 'function' && allProducts.length) dscInit();
+  if (view === 'discover'  && typeof dscInit  === 'function') dscInit();
   if (view === 'tracker'   && typeof trkInit  === 'function' && allProducts.length) trkInit();
   if (view === 'dashboard' && typeof hbdInit  === 'function' && allProducts.length) hbdInit();
   if (view === 'alerts'    && typeof alrInit   === 'function' && allProducts.length) alrInit();
@@ -6960,156 +6945,175 @@ function toggleDashSub(sub) {
 }
 
 // ════════════════════════════════════════════════════════════
-//  DISCOVER PAGE
+//  DISCOVER PAGE  — individual listings from Supabase
 // ════════════════════════════════════════════════════════════
-let _dscFiltered = [];
-let _dscPage     = 1;
-const DSC_PER_PAGE = 20;
+let _dscAllListings = [];   // deduplicated listing objects
+let _dscPrevMap     = {};   // "itemId_shopId" -> prev total_sold
+let _dscCompMap     = {};   // keyword -> "Rendah"|"Sedang"|"Tinggi"
+let _dscFiltered    = [];
+let _dscPage        = 1;
+let _dscLoaded      = false;
+const DSC_PER_PAGE  = 25;
 
-// Derive competition level from score
-function dscCompetition(score) {
-  if (score >= 72) return 'Rendah';
-  if (score >= 55) return 'Sedang';
-  if (score >= 35) return 'Tinggi';
-  return 'Sangat Tinggi';
-}
+// fmt helpers
+const _dscFmt = v => v >= 1000000 ? `Rp ${(v/1000000).toFixed(1)} jt` : v >= 1000 ? `Rp ${(v/1000).toFixed(0)} rb` : `Rp ${Math.round(v)}`;
 
-// Derive demand level from score
-function dscDemand(score) {
-  if (score >= 80) return 'Sangat Tinggi';
-  if (score >= 65) return 'Tinggi';
-  if (score >= 50) return 'Sedang';
-  return 'Rendah';
-}
-
-// Update dual range slider UI
+// Dual range slider update
 function dscUpdateDualRange(key) {
-  if (key !== 'price') return;
-  const minEl = document.getElementById('dsc-price-min');
-  const maxEl = document.getElementById('dsc-price-max');
-  const fillEl = document.getElementById('dsc-price-fill');
+  const ids = key === 'price'
+    ? ['dsc-price-min','dsc-price-max','dsc-price-fill','dsc-price-min-lbl','dsc-price-max-lbl']
+    : ['dsc-omset-min','dsc-omset-max','dsc-omset-fill','dsc-omset-min-lbl','dsc-omset-max-lbl'];
+  const [minId,maxId,fillId,minLblId,maxLblId] = ids;
+  const minEl = document.getElementById(minId);
+  const maxEl = document.getElementById(maxId);
   if (!minEl || !maxEl) return;
   let lo = parseFloat(minEl.value), hi = parseFloat(maxEl.value);
   if (lo > hi) { minEl.value = hi; lo = hi; }
-  const rangeSpan = parseFloat(minEl.max) - parseFloat(minEl.min);
-  const left  = ((lo - parseFloat(minEl.min)) / rangeSpan) * 100;
-  const right = ((hi - parseFloat(minEl.min)) / rangeSpan) * 100;
-  if (fillEl) { fillEl.style.left = left + '%'; fillEl.style.width = (right - left) + '%'; }
-  const fmt = v => v >= 1000000 ? `Rp ${(v/1000000).toFixed(1)} jt` : v >= 1000 ? `Rp ${(v/1000).toFixed(0)} rb` : `Rp ${v}`;
-  const minLbl = document.getElementById('dsc-price-min-lbl');
-  const maxLbl = document.getElementById('dsc-price-max-lbl');
-  if (minLbl) minLbl.textContent = fmt(lo);
-  if (maxLbl) maxLbl.textContent = lo === 0 ? 'Rp 0' : fmt(lo), maxLbl.textContent = fmt(hi);
-}
-
-// Update single range slider UI
-function dscUpdateSingleRange(key) {
-  if (key === 'margin') {
-    const el = document.getElementById('dsc-margin-min');
-    const lbl = document.getElementById('dsc-margin-min-lbl');
-    if (!el) return;
-    if (lbl) lbl.textContent = el.value + '%';
-    const pct = ((parseFloat(el.value) - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min))) * 100;
-    el.style.background = `linear-gradient(to right,#E8442A ${pct}%,#E5E7EB ${pct}%)`;
-  }
-  if (key === 'profit') {
-    const el = document.getElementById('dsc-profit-min');
-    const lbl = document.getElementById('dsc-profit-min-lbl');
-    if (!el) return;
-    if (lbl) { const v = parseFloat(el.value); lbl.textContent = v >= 1000 ? `Rp ${(v/1000).toFixed(0)}.000` : `Rp ${v}`; }
-    const pct = ((parseFloat(el.value) - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min))) * 100;
-    el.style.background = `linear-gradient(to right,#E8442A ${pct}%,#E5E7EB ${pct}%)`;
-  }
-}
-
-// Target buying price (estimated supplier cost ~58% of sell price)
-function dscTargetPrice(price) { return Math.round(price * 0.58); }
-
-// Estimated margin %
-function dscMargin(price) {
-  const buy = dscTargetPrice(price);
-  return Math.round(((price - buy) / price) * 100);
-}
-
-// Mini SVG sparkline from a seed (deterministic "random" per product)
-function dscSparkline(id, trend) {
-  const pts = [];
-  let v = 50 + (id % 20) - 10;
-  for (let i = 0; i < 7; i++) {
-    v += ((id * (i + 1) * 7919) % 17) - 8 + (trend > 0 ? 1.5 : trend < 0 ? -1.5 : 0);
-    v = Math.max(10, Math.min(90, v));
-    pts.push(v);
-  }
-  const mn = Math.min(...pts), mx = Math.max(...pts), rng = mx - mn || 1;
-  const norm = pts.map(p => 28 - ((p - mn) / rng) * 24);
-  const xs = [0, 10, 20, 30, 42, 52, 63];
-  const d = xs.map((x, i) => `${i === 0 ? 'M' : 'L'}${x},${norm[i].toFixed(1)}`).join(' ');
-  const last = norm[norm.length - 1], first = norm[0];
-  const color = last <= first ? '#10B981' : '#EF4444';
-  return `<svg class="dsc-sparkline" viewBox="0 0 64 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="${d}" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>`;
-}
-
-function dscInit() {
-  const sel = document.getElementById('dsc-filter-cat');
-  if (!sel) return;
-  const cats = [...new Set(allProducts.map(p => p.category).filter(Boolean))].sort();
-  sel.innerHTML = '<option value="">Semua Kategori</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
-
-  // Total listings: estimated individual Shopee listings per keyword
-  const totalListings = allProducts.reduce((s, p) => s + 50 + Math.round(p.score * 4.5), 0);
-  const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  setEl('dsc-stat-listings', totalListings.toLocaleString('id-ID'));
-  setEl('dsc-stat-cats', cats.length.toLocaleString('id-ID'));
-
-  dscUpdateDualRange('price');
-  dscUpdateSingleRange('margin');
-  dscUpdateSingleRange('profit');
+  const span = parseFloat(minEl.max) - parseFloat(minEl.min);
+  const left  = ((lo - parseFloat(minEl.min)) / span) * 100;
+  const right = ((hi - parseFloat(minEl.min)) / span) * 100;
+  const fill = document.getElementById(fillId);
+  if (fill) { fill.style.left = left + '%'; fill.style.width = (right - left) + '%'; }
+  const minLbl = document.getElementById(minLblId);
+  const maxLbl = document.getElementById(maxLblId);
+  if (minLbl) minLbl.textContent = _dscFmt(lo);
+  if (maxLbl) maxLbl.textContent = _dscFmt(hi);
   dscApplyFilters();
 }
 
+// Competition from seller concentration within keyword
+function _dscCalcComp(keyword) {
+  const rows = _dscAllListings.filter(r => r.keyword === keyword);
+  if (rows.length < 2) return 'Sedang';
+  const sales = rows.map(r => r.total_sold || 0).sort((a, b) => b - a);
+  const total  = sales.reduce((s, v) => s + v, 0) || 1;
+  const top1   = sales[0] / total;
+  const top10  = sales.slice(0, 10).reduce((s, v) => s + v, 0) / total;
+  if (top1 > 0.4 || top10 > 0.8) return 'Tinggi';
+  if (top1 > 0.2 || top10 > 0.55) return 'Sedang';
+  return 'Rendah';
+}
+
+// Estimated monthly omset for one listing
+function _dscOmset(listing) {
+  const key = `${listing.item_id}_${listing.shop_id}`;
+  const prev = _dscPrevMap[key];
+  const price = listing.price || 0;
+  if (prev != null) {
+    const delta = Math.max(0, (listing.total_sold || 0) - prev);
+    return price * delta * 4;  // ~4 weeks in a month
+  }
+  // Fallback: total_sold / 3 months
+  return price * Math.round((listing.total_sold || 0) / 3);
+}
+
+// Trend delta (units gained since last scrape)
+function _dscTrendDelta(listing) {
+  const key = `${listing.item_id}_${listing.shop_id}`;
+  const prev = _dscPrevMap[key];
+  if (prev == null) return null;
+  return (listing.total_sold || 0) - prev;
+}
+
+async function dscLoadListings() {
+  if (_dscLoaded || !_supabase) return;
+  const tbody = document.getElementById('dsc-tbody');
+  if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Memuat data listing...</td></tr>`;
+
+  try {
+    const { data, error } = await _supabase
+      .from('listings')
+      .select('item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews')
+      .order('scraped_at', { ascending: false })
+      .limit(5000);
+
+    if (error || !data || !data.length) {
+      if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#9CA3AF">Gagal memuat data.</td></tr>`;
+      return;
+    }
+
+    // Deduplicate: keep most recent per item_id+shop_id; second occurrence = prev snapshot
+    const seen = new Map();
+    const deduped = [];
+    for (const row of data) {
+      const key = `${row.item_id}_${row.shop_id}`;
+      if (!seen.has(key)) {
+        seen.set(key, true);
+        deduped.push(row);
+      } else if (_dscPrevMap[key] == null) {
+        _dscPrevMap[key] = row.total_sold || 0;
+      }
+    }
+
+    _dscAllListings = deduped;
+    _dscLoaded = true;
+
+    // Pre-compute competition per keyword
+    const keywords = [...new Set(deduped.map(r => r.keyword).filter(Boolean))];
+    keywords.forEach(kw => { _dscCompMap[kw] = _dscCalcComp(kw); });
+
+    // Stats
+    const cats = [...new Set(deduped.map(r => r.category).filter(Boolean))].sort();
+    const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setEl('dsc-stat-listings', deduped.length.toLocaleString('id-ID'));
+    setEl('dsc-stat-cats', cats.length.toLocaleString('id-ID'));
+
+    // Category dropdown
+    const sel = document.getElementById('dsc-filter-cat');
+    if (sel) sel.innerHTML = '<option value="">Semua Kategori</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+
+    dscApplyFilters();
+
+  } catch(e) {
+    console.error('dscLoadListings:', e);
+  }
+}
+
+function dscInit() {
+  dscUpdateDualRange('price');
+  dscUpdateDualRange('omset');
+  if (!_dscLoaded) dscLoadListings();
+}
+
 function dscApplyFilters() {
-  const q         = (document.getElementById('dsc-search')?.value || '').toLowerCase();
-  const cat       = document.getElementById('dsc-filter-cat')?.value || '';
-  const priceMin  = parseFloat(document.getElementById('dsc-price-min')?.value) || 0;
-  const priceMax  = parseFloat(document.getElementById('dsc-price-max')?.value) || Infinity;
-  const marginMin = parseFloat(document.getElementById('dsc-margin-min')?.value) || 0;
-  const profitMin = parseFloat(document.getElementById('dsc-profit-min')?.value) || 0;
-  const sortVal   = document.getElementById('dsc-sort')?.value || 'score-desc';
+  if (!_dscLoaded) return;
+  const q        = (document.getElementById('dsc-search')?.value || '').toLowerCase();
+  const cat      = document.getElementById('dsc-filter-cat')?.value || '';
+  const priceMin = parseFloat(document.getElementById('dsc-price-min')?.value) || 0;
+  const priceMax = parseFloat(document.getElementById('dsc-price-max')?.value) || Infinity;
+  const omsetMin = parseFloat(document.getElementById('dsc-omset-min')?.value) || 0;
+  const omsetMax = parseFloat(document.getElementById('dsc-omset-max')?.value) || Infinity;
+  const sortVal  = document.getElementById('dsc-sort')?.value || 'omset-desc';
 
-  const allowedDem  = ['Sangat Tinggi','Tinggi','Sedang','Rendah'].filter((_,i) =>
-    document.getElementById(['dsc-dem-st','dsc-dem-t','dsc-dem-s','dsc-dem-r'][i])?.checked);
-  const allowedComp = ['Rendah','Sedang','Tinggi','Sangat Tinggi'].filter((_,i) =>
-    document.getElementById(['dsc-comp-r','dsc-comp-s','dsc-comp-t','dsc-comp-st'][i])?.checked);
+  const allowedComp = ['Rendah','Sedang','Tinggi'].filter((_,i) =>
+    document.getElementById(['dsc-comp-r','dsc-comp-s','dsc-comp-t'][i])?.checked);
 
-  let list = allProducts.filter(p => {
-    if (q && !p.name.toLowerCase().includes(q) && !(p.category||'').toLowerCase().includes(q)) return false;
+  let list = _dscAllListings.filter(p => {
+    if (q && !(p.product_name||'').toLowerCase().includes(q) && !(p.store_name||'').toLowerCase().includes(q) && !(p.category||'').toLowerCase().includes(q)) return false;
     if (cat && p.category !== cat) return false;
-    if (p.medianPrice < priceMin || p.medianPrice > priceMax) return false;
-    const margin = dscMargin(p.medianPrice);
-    if (margin < marginMin) return false;
-    if ((p.medianPrice * margin / 100) < profitMin) return false;
-    if (!allowedDem.includes(dscDemand(p.score))) return false;
-    if (!allowedComp.includes(dscCompetition(p.score))) return false;
+    const price = p.price || 0;
+    if (price < priceMin || price > priceMax) return false;
+    const omset = _dscOmset(p);
+    if (omset < omsetMin || omset > omsetMax) return false;
+    const comp = _dscCompMap[p.keyword] || 'Sedang';
+    if (!allowedComp.includes(comp)) return false;
     return true;
   });
 
   const [sf, sd] = sortVal.split('-');
   list.sort((a, b) => {
     let va, vb;
-    if (sf === 'score') { va = a.score; vb = b.score; }
-    else if (sf === 'omset') { va = (a.startRevenue+a.upToRevenue)/2; vb = (b.startRevenue+b.upToRevenue)/2; }
-    else if (sf === 'price') { va = a.medianPrice; vb = b.medianPrice; }
-    else if (sf === 'name')  { return sd === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name); }
-    else { va = a.score; vb = b.score; }
+    if (sf === 'omset')  { va = _dscOmset(a); vb = _dscOmset(b); }
+    else if (sf === 'tren')  { va = _dscTrendDelta(a) ?? -Infinity; vb = _dscTrendDelta(b) ?? -Infinity; }
+    else if (sf === 'price') { va = a.price || 0; vb = b.price || 0; }
+    else if (sf === 'name')  { return sd === 'asc' ? (a.product_name||'').localeCompare(b.product_name||'') : (b.product_name||'').localeCompare(a.product_name||''); }
+    else { va = _dscOmset(a); vb = _dscOmset(b); }
     return sd === 'asc' ? va - vb : vb - va;
   });
 
-  // Update total omset stat for filtered products
-  const totalOmset = list.reduce((s, p) => s + (p.startRevenue + p.upToRevenue) / 2, 0);
+  const totalOmset = list.reduce((s, p) => s + _dscOmset(p), 0);
   const omsetEl = document.getElementById('dsc-stat-omset');
-  if (omsetEl) omsetEl.textContent = fmtShort(totalOmset);
+  if (omsetEl) omsetEl.textContent = _dscFmt(totalOmset);
 
   _dscFiltered = list;
   _dscPage = 1;
@@ -7126,49 +7130,66 @@ function dscRenderTable() {
   const tbody = document.getElementById('dsc-tbody');
   if (!tbody) return;
 
+  const compBadge = comp => {
+    const cfg = { Rendah: '#10B981', Sedang: '#F59E0B', Tinggi: '#EF4444' };
+    const color = cfg[comp] || '#9CA3AF';
+    return `<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:.72rem;font-weight:700;background:${color}1a;color:${color};border:1px solid ${color}40">${comp}</span>`;
+  };
+
+  const trendCell = delta => {
+    if (delta == null) return `<span style="color:#9CA3AF;font-size:.8rem;">—</span>`;
+    if (delta > 0) return `<span style="color:#10B981;font-weight:700;font-size:.82rem;display:flex;align-items:center;gap:3px;">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 10V2M6 2L2 6M6 2L10 6" stroke="#10B981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      +${delta.toLocaleString('id-ID')}</span>`;
+    if (delta < 0) return `<span style="color:#EF4444;font-weight:700;font-size:.82rem;display:flex;align-items:center;gap:3px;">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2V10M6 10L2 6M6 10L10 6" stroke="#EF4444" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      ${delta.toLocaleString('id-ID')}</span>`;
+    return `<span style="color:#9CA3AF;font-size:.8rem;">0</span>`;
+  };
+
   if (!slice.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Tidak ada produk yang sesuai filter.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Tidak ada produk yang sesuai filter.</td></tr>`;
   } else {
     tbody.innerHTML = slice.map(p => {
-      const omset   = (p.startRevenue + p.upToRevenue) / 2;
-      const imgHtml = p.image
-        ? `<div class="dsc-prod-img"><img src="${p.image}" alt="" loading="lazy"></div>`
-        : `<div class="dsc-prod-img">${p.emoji || '📦'}</div>`;
-      return `<tr>
+      const imgHtml = (p.image_url)
+        ? `<div class="dsc-prod-img"><img src="${p.image_url}" alt="" loading="lazy" onerror="this.style.display='none'"></div>`
+        : `<div class="dsc-prod-img" style="background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-size:1.2rem;">📦</div>`;
+      const comp  = _dscCompMap[p.keyword] || 'Sedang';
+      const omset = _dscOmset(p);
+      const delta = _dscTrendDelta(p);
+      const productUrl = p.url || '#';
+      return `<tr style="cursor:pointer" onclick="window.open('${productUrl}','_blank')">
         <td>
           <div class="dsc-prod-cell">
             ${imgHtml}
             <div>
-              <div class="dsc-prod-name">${p.name}</div>
-              <div class="dsc-prod-cat">${p.category || ''}</div>
+              <div class="dsc-prod-name">${(p.product_name||'').slice(0,60)}</div>
+              <div class="dsc-prod-cat" style="color:#6B7280;font-size:.72rem;">${p.store_name||''}</div>
             </div>
           </div>
         </td>
-        <td><div class="dsc-price">${fmtShort(omset)}</div><div class="dsc-price-sub">/bulan</div></td>
-        <td><div class="dsc-price">${fmtShort(p.medianPrice)}</div></td>
-        <td><div style="font-size:.82rem;font-weight:700;color:${scoreColor(p.score)}">${Math.round(p.score)}</div></td>
-        <td>${dscSparkline(p.id, p.avgTrend)}</td>
-        <td><button class="dsc-analyse-btn" onclick="dscOpenDeepDive(${p.id})">Analisis</button></td>
+        <td><div class="dsc-price">${_dscFmt(p.price||0)}</div></td>
+        <td><div style="font-size:.78rem;color:#6B7280">${p.category||'—'}</div></td>
+        <td><div class="dsc-price">${omset > 0 ? _dscFmt(omset) : '—'}</div><div class="dsc-price-sub">/bulan</div></td>
+        <td>${compBadge(comp)}</td>
+        <td>${trendCell(delta)}</td>
+        <td onclick="event.stopPropagation()"><a href="${productUrl}" target="_blank" class="dsc-analyse-btn">Lihat</a></td>
       </tr>`;
     }).join('');
   }
 
-  // Count label
   const countEl = document.getElementById('dsc-count');
-  if (countEl) countEl.textContent = `${total.toLocaleString('id-ID')} produk`;
+  if (countEl) countEl.textContent = `${total.toLocaleString('id-ID')} listing`;
 
-  // Pagination
   const infoEl = document.getElementById('dsc-page-info');
   if (infoEl) infoEl.textContent = `${start + 1}–${Math.min(start + DSC_PER_PAGE, total)} dari ${total}`;
 
   const btnsEl = document.getElementById('dsc-page-btns');
   if (btnsEl) {
     let html = `<button class="dsc-page-btn" onclick="dscGoPage(${_dscPage - 1})" ${_dscPage <= 1 ? 'disabled' : ''}>&#8592;</button>`;
-    const range = [];
-    for (let i = Math.max(1, _dscPage - 2); i <= Math.min(pages, _dscPage + 2); i++) range.push(i);
-    range.forEach(i => {
+    for (let i = Math.max(1, _dscPage - 2); i <= Math.min(pages, _dscPage + 2); i++) {
       html += `<button class="dsc-page-btn ${i === _dscPage ? 'active' : ''}" onclick="dscGoPage(${i})">${i}</button>`;
-    });
+    }
     html += `<button class="dsc-page-btn" onclick="dscGoPage(${_dscPage + 1})" ${_dscPage >= pages ? 'disabled' : ''}>&#8594;</button>`;
     btnsEl.innerHTML = html;
   }
@@ -7184,20 +7205,16 @@ function dscGoPage(n) {
 
 function dscResetFilters() {
   const g = id => document.getElementById(id);
-  if (g('dsc-filter-cat'))  g('dsc-filter-cat').value  = '';
-  if (g('dsc-search'))      g('dsc-search').value       = '';
-  if (g('dsc-price-min'))   g('dsc-price-min').value   = 0;
-  if (g('dsc-price-max'))   g('dsc-price-max').value   = 2000000;
-  if (g('dsc-margin-min'))  g('dsc-margin-min').value  = 10;
-  if (g('dsc-profit-min'))  g('dsc-profit-min').value  = 5000;
-  ['dsc-dem-st','dsc-dem-t','dsc-dem-s','dsc-dem-r',
-   'dsc-comp-r','dsc-comp-s','dsc-comp-t','dsc-comp-st'].forEach(id => {
-    const el = g(id); if (el) el.checked = true;
-  });
-  if (g('dsc-sort')) g('dsc-sort').value = 'score-desc';
+  if (g('dsc-filter-cat')) g('dsc-filter-cat').value = '';
+  if (g('dsc-search'))     g('dsc-search').value     = '';
+  if (g('dsc-price-min'))  g('dsc-price-min').value  = 0;
+  if (g('dsc-price-max'))  g('dsc-price-max').value  = 1000000;
+  if (g('dsc-omset-min'))  g('dsc-omset-min').value  = 0;
+  if (g('dsc-omset-max'))  g('dsc-omset-max').value  = 50000000;
+  ['dsc-comp-r','dsc-comp-s','dsc-comp-t'].forEach(id => { const el = g(id); if (el) el.checked = true; });
+  if (g('dsc-sort')) g('dsc-sort').value = 'omset-desc';
   dscUpdateDualRange('price');
-  dscUpdateSingleRange('margin');
-  dscUpdateSingleRange('profit');
+  dscUpdateDualRange('omset');
   dscApplyFilters();
 }
 
@@ -12250,6 +12267,8 @@ if (document.getElementById('page-landing')?.classList.contains('active')) {
 
 loadData();
 initSupabase();
+// Trigger discover data load after Supabase is ready
+setTimeout(() => { if (typeof dscInit === 'function') dscInit(); }, 300);
 initFreshnessBadge();
 initTopbarDate();
 
