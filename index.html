@@ -7021,16 +7021,34 @@ async function dscLoadListings() {
   if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Memuat data listing...</td></tr>`;
 
   try {
-    // listings_latest is a DB view: DISTINCT ON (item_id, shop_id) ORDER BY scraped_at DESC
-    const { data, error } = await _supabase
+    const FIELDS = 'item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews';
+
+    // Try view first, fall back to raw table with higher limit
+    let { data, error } = await _supabase
       .from('listings_latest')
-      .select('item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews')
+      .select(FIELDS)
       .order('total_sold', { ascending: false })
       .limit(20000);
 
     if (error || !data || !data.length) {
-      if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#9CA3AF">Gagal memuat data.</td></tr>`;
-      return;
+      console.warn('listings_latest failed:', error?.message, '— falling back to listings table');
+      const fb = await _supabase
+        .from('listings')
+        .select(FIELDS)
+        .order('scraped_at', { ascending: false })
+        .limit(10000);
+      data = fb.data;
+      if (fb.error || !data || !data.length) {
+        console.error('listings fallback also failed:', fb.error?.message);
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#9CA3AF">Gagal memuat data. Cek console.</td></tr>`;
+        return;
+      }
+      // Deduplicate in JS since we're on raw table
+      const seen = new Set();
+      data = data.filter(r => { const k = `${r.item_id}_${r.shop_id}`; if (seen.has(k)) return false; seen.add(k); return true; });
+      console.log('Fallback deduped listings:', data.length);
+    } else {
+      console.log('listings_latest rows:', data.length);
     }
 
     _dscAllListings = data;
