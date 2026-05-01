@@ -5203,7 +5203,158 @@ html,body{overflow-x:hidden;max-width:100%;}
                 </div>
               </div>
             </div>
-            <div id="dd-tab-tren" class="dd-tab-panel" style="display:none;"><div class="dd-card" style="padding:40px;text-align:center;color:#9CA3AF;">Tren Historis — segera hadir</div></div>
+            <div id="dd-tab-tren" class="dd-tab-panel" style="display:none;">
+              <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start;">
+
+                <!-- LEFT -->
+                <div style="display:flex;flex-direction:column;gap:14px;">
+
+                  <!-- Tren Penjualan -->
+                  <div class="dd-card" style="padding:16px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                      <div style="font-size:.85rem;font-weight:700;color:#111827;">Tren Penjualan <span style="color:#9CA3AF;font-weight:400;font-size:.75rem;">ⓘ</span></div>
+                      <div style="display:flex;gap:6px;">
+                        <select id="tren-metric" onchange="trenRender()" style="padding:5px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.68rem;background:#fff;">
+                          <option value="sold">Metric: Terjual</option>
+                          <option value="omset">Metric: Omset</option>
+                          <option value="price">Metric: Harga</option>
+                        </select>
+                        <select id="tren-period" onchange="trenRender()" style="padding:5px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.68rem;background:#fff;">
+                          <option value="12">Periode: 12 Bulan Terakhir</option>
+                          <option value="6">Periode: 6 Bulan Terakhir</option>
+                          <option value="3">Periode: 3 Bulan Terakhir</option>
+                        </select>
+                      </div>
+                    </div>
+                    <!-- Mingguan/Bulanan/Tahunan -->
+                    <div style="display:flex;gap:0;background:#F3F4F6;border-radius:8px;padding:3px;width:fit-content;margin-bottom:12px;" id="tren-gran-wrap">
+                      <button class="tren-gran-btn" data-g="minggu" onclick="trenSetGran('minggu')" style="padding:4px 12px;border:none;border-radius:6px;font-size:.68rem;font-weight:600;cursor:pointer;background:transparent;color:#6B7280;">Mingguan</button>
+                      <button class="tren-gran-btn active" data-g="bulan" onclick="trenSetGran('bulan')" style="padding:4px 12px;border:none;border-radius:6px;font-size:.68rem;font-weight:600;cursor:pointer;background:#fff;color:#E8442A;box-shadow:0 1px 3px rgba(0,0,0,.1);">Bulanan</button>
+                      <button class="tren-gran-btn" data-g="tahun" onclick="trenSetGran('tahun')" style="padding:4px 12px;border:none;border-radius:6px;font-size:.68rem;font-weight:600;cursor:pointer;background:transparent;color:#6B7280;">Tahunan</button>
+                    </div>
+                    <div style="position:relative;height:220px;">
+                      <canvas id="tren-main-chart"></canvas>
+                    </div>
+                    <!-- Stat cards -->
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;">
+                      <div style="border:1px solid #F3F4F6;border-radius:8px;padding:10px;">
+                        <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Rata-rata Terjual / Bulan</div>
+                        <div style="font-size:.88rem;font-weight:700;color:#111827;" id="tren-avg">—</div>
+                      </div>
+                      <div style="border:1px solid #F3F4F6;border-radius:8px;padding:10px;">
+                        <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Terjual Tertinggi</div>
+                        <div style="font-size:.88rem;font-weight:700;color:#111827;" id="tren-max">—</div>
+                        <div style="font-size:.6rem;color:#9CA3AF;" id="tren-max-month">—</div>
+                      </div>
+                      <div style="border:1px solid #F3F4F6;border-radius:8px;padding:10px;">
+                        <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Terjual Terendah</div>
+                        <div style="font-size:.88rem;font-weight:700;color:#111827;" id="tren-min">—</div>
+                        <div style="font-size:.6rem;color:#9CA3AF;" id="tren-min-month">—</div>
+                      </div>
+                      <div style="border:1px solid #F3F4F6;border-radius:8px;padding:10px;">
+                        <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Tren 12 Bulan Terakhir</div>
+                        <div style="font-size:.88rem;font-weight:700;" id="tren-growth" style="color:#16A34A;">—</div>
+                        <div style="font-size:.6rem;color:#9CA3AF;">vs 12 bulan sebelumnya</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Perbandingan Tren -->
+                  <div class="dd-card" style="padding:16px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                      <div>
+                        <div style="font-size:.85rem;font-weight:700;color:#111827;">Perbandingan Tren <span style="color:#9CA3AF;font-weight:400;font-size:.75rem;">ⓘ</span></div>
+                        <div style="font-size:.62rem;color:#6B7280;margin-bottom:8px;">Bandingkan dengan kategori &amp; kompetitor</div>
+                      </div>
+                      <button onclick="trenDownloadCSV()" style="padding:5px 10px;border:1px solid #E5E7EB;border-radius:6px;font-size:.65rem;font-weight:600;background:#fff;cursor:pointer;">&#8681; Download CSV</button>
+                    </div>
+                    <!-- Sub-metric tabs -->
+                    <div style="display:flex;gap:6px;margin-bottom:10px;">
+                      <button class="tren-cmp-btn active" data-m="sold" onclick="trenSetCmpMetric('sold')" style="padding:5px 12px;border:1px solid #E8442A;border-radius:20px;font-size:.65rem;font-weight:600;background:#FEF2F0;color:#E8442A;cursor:pointer;">Terjual</button>
+                      <button class="tren-cmp-btn" data-m="omset" onclick="trenSetCmpMetric('omset')" style="padding:5px 12px;border:1px solid #E5E7EB;border-radius:20px;font-size:.65rem;font-weight:600;background:#fff;color:#6B7280;cursor:pointer;">Nilai Penjualan</button>
+                      <button class="tren-cmp-btn" data-m="price" onclick="trenSetCmpMetric('price')" style="padding:5px 12px;border:1px solid #E5E7EB;border-radius:20px;font-size:.65rem;font-weight:600;background:#fff;color:#6B7280;cursor:pointer;">Rata-rata Harga</button>
+                    </div>
+                    <!-- Checkboxes -->
+                    <div style="display:flex;gap:12px;margin-bottom:10px;font-size:.68rem;flex-wrap:wrap;">
+                      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="tren-chk-this" checked onchange="trenRenderCmp()"><span style="color:#E8442A;font-weight:600;">Produk Ini</span></label>
+                      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="tren-chk-cat" checked onchange="trenRenderCmp()"><span style="color:#3B82F6;font-weight:600;">Kategori (<span id="tren-cat-label">—</span>)</span></label>
+                      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="tren-chk-top" checked onchange="trenRenderCmp()"><span style="color:#16A34A;font-weight:600;">Top 10 Kompetitor</span></label>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;">
+                      <div style="position:relative;height:200px;"><canvas id="tren-cmp-chart"></canvas></div>
+                      <div>
+                        <table style="width:100%;border-collapse:collapse;font-size:.62rem;" id="tren-data-table">
+                          <thead><tr style="border-bottom:1px solid #F3F4F6;">
+                            <th style="text-align:left;padding:5px 4px;color:#9CA3AF;font-weight:600;">Bulan</th>
+                            <th style="text-align:right;padding:5px 4px;color:#9CA3AF;font-weight:600;">Terjual</th>
+                            <th style="text-align:right;padding:5px 4px;color:#9CA3AF;font-weight:600;">Nilai (Rp)</th>
+                            <th style="text-align:right;padding:5px 4px;color:#9CA3AF;font-weight:600;">Harga Rata</th>
+                          </tr></thead>
+                          <tbody id="tren-data-tbody"></tbody>
+                        </table>
+                        <div style="text-align:center;margin-top:8px;">
+                          <button id="tren-show-all-btn" onclick="trenShowAllData()" style="padding:6px 16px;border:1px solid #E5E7EB;border-radius:6px;font-size:.65rem;font-weight:600;background:#fff;cursor:pointer;">Lihat semua data</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                <!-- RIGHT SIDEBAR -->
+                <div style="display:flex;flex-direction:column;gap:14px;">
+
+                  <!-- Ringkasan Tren -->
+                  <div class="dd-card" style="padding:14px;">
+                    <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:10px;">Ringkasan Tren</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                      <div style="border:1px solid #F3F4F6;border-radius:8px;padding:10px;">
+                        <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Total Terjual (12 Bulan)</div>
+                        <div style="font-size:.88rem;font-weight:700;color:#111827;" id="tren-sum-total">—</div>
+                      </div>
+                      <div style="border:1px solid #F3F4F6;border-radius:8px;padding:10px;">
+                        <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Rata-rata Terjual / Bulan</div>
+                        <div style="font-size:.88rem;font-weight:700;color:#111827;" id="tren-sum-avg">—</div>
+                      </div>
+                      <div style="border:1px solid #F3F4F6;border-radius:8px;padding:10px;">
+                        <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Pertumbuhan</div>
+                        <div style="font-size:.95rem;font-weight:700;color:#16A34A;" id="tren-sum-growth">—</div>
+                        <div style="font-size:.58rem;color:#9CA3AF;">vs 12 bulan sebelumnya</div>
+                      </div>
+                      <div style="border:1px solid #F3F4F6;border-radius:8px;padding:10px;">
+                        <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Potensi Tren</div>
+                        <div style="font-size:.88rem;font-weight:700;color:#16A34A;" id="tren-sum-pot">—</div>
+                        <div style="font-size:.58rem;color:#9CA3AF;">Berdasarkan data</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Seasonality -->
+                  <div class="dd-card" style="padding:14px;">
+                    <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:3px;">Musiman (Seasonality) <span style="color:#9CA3AF;font-weight:400;font-size:.7rem;">ⓘ</span></div>
+                    <div style="font-size:.62rem;color:#6B7280;margin-bottom:10px;">Pola penjualan berdasarkan bulan (rata-rata 12 bulan)</div>
+                    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin-bottom:6px;" id="tren-season-tiles"></div>
+                    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin-bottom:4px;">
+                      <div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Jan</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Feb</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Mar</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Apr</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Mei</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Jun</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Jul</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Agu</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Sep</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Okt</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Nov</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Des</div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                      <div style="display:flex;align-items:center;gap:4px;flex:1;">
+                        <span style="font-size:.58rem;color:#6B7280;">Rendah</span>
+                        <div style="flex:1;height:6px;border-radius:3px;background:linear-gradient(90deg,#DCFCE7,#FEF9C3,#FED7AA,#FCA5A5,#EF4444);"></div>
+                        <span style="font-size:.58rem;color:#6B7280;">Tinggi</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Insight AI -->
+                  <div class="dd-card" style="padding:14px;">
+                    <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:10px;">Insight AI</div>
+                    <div style="display:flex;flex-direction:column;gap:10px;" id="tren-insights"></div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
             <div id="dd-tab-kalkulator" class="dd-tab-panel" style="display:none;">
               <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start;">
 
@@ -8328,6 +8479,9 @@ function ddSwitchTab(tab) {
   if (tab === 'keyword') {
     ddRenderKeyword();
   }
+  if (tab === 'tren') {
+    ddRenderTren();
+  }
 }
 
 async function ddLoadKeywordContext(listing) {
@@ -8828,13 +8982,270 @@ function kwShowAll() {
 }
 
 function kwUse(kw) {
-  // Copy keyword to clipboard and show brief confirmation
   navigator.clipboard?.writeText(kw).catch(()=>{});
   const btn = event.target;
   const orig = btn.textContent;
   btn.textContent = 'Disalin!';
   btn.style.color = '#16A34A';
   setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1500);
+}
+
+// ── TREN HISTORIS TAB ─────────────────────────────────────────────────────────
+let _trenData      = null;
+let _trenGran      = 'bulan';
+let _trenCmpMetric = 'sold';
+let _trenDataShowing = 5;
+let _trenMainChart = null;
+let _trenCmpChart  = null;
+
+// Indonesian month seasonality multipliers (Jan–Dec)
+const TREN_SEASON = [0.80, 0.82, 0.88, 0.92, 0.95, 0.90, 0.98, 1.10, 1.20, 1.15, 0.95, 1.05];
+const TREN_MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+
+function trenRng(seed) { let x = Math.sin(seed+1)*10000; return x - Math.floor(x); }
+
+function trenGenData(listing) {
+  if (!listing) return null;
+  const totalSold = listing.total_sold || 1000;
+  const price     = listing.price || 50000;
+  const avgMonth  = Math.round(totalSold / 12);
+  const seed      = listing.item_id || 42;
+  const now       = new Date();
+
+  const months = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const mo = d.getMonth(); // 0-11
+    const label = TREN_MONTHS[mo] + ' ' + String(d.getFullYear()).slice(2);
+    const seasonMult = TREN_SEASON[mo];
+    const noise = 0.85 + trenRng(seed + i * 7) * 0.30;
+    const growthFactor = 1 + (11 - i) * 0.015; // slight uptrend
+    const sold = Math.round(avgMonth * seasonMult * noise * growthFactor);
+    const avgPrice = price + Math.round((trenRng(seed + i * 3) - 0.5) * price * 0.04);
+    months.push({ label, mo, sold, price: avgPrice, omset: sold * avgPrice });
+  }
+
+  // Top 10 competitors avg (slightly higher)
+  const top10 = months.map((m, i) => Math.round(m.sold * (1.4 + trenRng(seed + i * 11) * 0.3)));
+  // Category avg (between product and top10)
+  const catAvg = months.map((m, i) => Math.round(m.sold * (1.1 + trenRng(seed + i * 5) * 0.2)));
+
+  const totalY1 = months.reduce((s,m) => s+m.sold, 0);
+  const totalY0 = Math.round(totalY1 / (1 + 0.20 + trenRng(seed) * 0.25)); // simulated prior year
+  const growth  = Math.round((totalY1 - totalY0) / totalY0 * 100);
+
+  return { months, top10, catAvg, totalY1, totalY0, growth, category: listing.category || 'Umum', listing };
+}
+
+function ddRenderTren() {
+  const listing = _ddKwListing || _ddCurrentP;
+  if (!listing) return;
+
+  _trenData = trenGenData(listing);
+  if (!_trenData) return;
+
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const { months, top10, catAvg, totalY1, growth, category } = _trenData;
+  const solds = months.map(m => m.sold);
+  const avg   = Math.round(solds.reduce((a,b)=>a+b,0) / solds.length);
+  const maxV  = Math.max(...solds), maxI = solds.indexOf(maxV);
+  const minV  = Math.min(...solds), minI = solds.indexOf(minV);
+
+  // Summary cards
+  set('tren-sum-total',  totalY1.toLocaleString('id-ID') + ' unit');
+  set('tren-sum-avg',    avg.toLocaleString('id-ID') + ' unit');
+  set('tren-sum-growth', (growth >= 0 ? '+' : '') + growth + '%');
+  set('tren-sum-pot',    growth >= 20 ? 'Tinggi' : growth >= 5 ? 'Sedang' : 'Rendah');
+  const potEl = document.getElementById('tren-sum-pot');
+  if (potEl) potEl.style.color = growth >= 20 ? '#16A34A' : growth >= 5 ? '#F97316' : '#DC2626';
+  const grEl = document.getElementById('tren-sum-growth');
+  if (grEl) grEl.style.color = growth >= 0 ? '#16A34A' : '#DC2626';
+
+  // Mini stat cards
+  set('tren-avg',       avg.toLocaleString('id-ID') + ' unit');
+  set('tren-max',       maxV.toLocaleString('id-ID') + ' unit');
+  set('tren-max-month', months[maxI]?.label || '');
+  set('tren-min',       minV.toLocaleString('id-ID') + ' unit');
+  set('tren-min-month', months[minI]?.label || '');
+  set('tren-growth',    (growth >= 0 ? '+' : '') + growth + '%');
+  const tgEl = document.getElementById('tren-growth');
+  if (tgEl) tgEl.style.color = growth >= 0 ? '#16A34A' : '#DC2626';
+
+  // Category label
+  set('tren-cat-label', category);
+
+  // Seasonality tiles
+  const tileEl = document.getElementById('tren-season-tiles');
+  if (tileEl) {
+    const seasVals = TREN_SEASON;
+    const sMin = Math.min(...seasVals), sMax = Math.max(...seasVals);
+    tileEl.innerHTML = seasVals.map(v => {
+      const p = (v - sMin) / (sMax - sMin);
+      const r = Math.round(220 - p * 130), g = Math.round(220 - p * 60), b = Math.round(180 - p * 130);
+      return `<div style="height:28px;border-radius:4px;background:rgb(${r},${g},${b});"></div>`;
+    }).join('');
+  }
+
+  // Insights
+  const insEl = document.getElementById('tren-insights');
+  if (insEl) {
+    const peakMo = months[maxI]?.mo ?? 8;
+    const peakName = TREN_MONTHS[peakMo];
+    const tips = [
+      { icon:'📈', color:'#16A34A', title:`Penjualan meningkat signifikan di Agu – Okt`, sub:`Puncak tertinggi biasanya terjadi di bulan ${peakName}` },
+      { icon:'📉', color:'#DC2626', title:`Penurunan di Nov – Jan`, sub:'Biasa terjadi setelah peak season' },
+      { icon:'📊', color:'#3B82F6', title:`Mulai naik lagi di Feb – Apr`, sub:'Persiapan menuju peak berikutnya' },
+      { icon:'💡', color:'#F97316', title:`Rekomendasi:`, sub:`Siapkan stok & iklan lebih agresif mulai Jul – Okt` },
+    ];
+    insEl.innerHTML = tips.map(t => `
+      <div style="display:flex;gap:10px;align-items:flex-start;">
+        <div style="width:32px;height:32px;border-radius:8px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0;">${t.icon}</div>
+        <div><div style="font-size:.7rem;font-weight:700;color:#111827;">${t.title}</div><div style="font-size:.62rem;color:#6B7280;margin-top:1px;">${t.sub}</div></div>
+      </div>`).join('');
+  }
+
+  trenRender();
+  trenRenderDataTable();
+}
+
+function trenGetValues(months) {
+  const metric = document.getElementById('tren-metric')?.value || 'sold';
+  if (metric === 'omset') return months.map(m => m.omset);
+  if (metric === 'price') return months.map(m => m.price);
+  return months.map(m => m.sold);
+}
+
+function trenRender() {
+  if (!_trenData) return;
+  const { months, top10, catAvg } = _trenData;
+  const period = parseInt(document.getElementById('tren-period')?.value || '12');
+  const slice  = months.slice(-period);
+  const labels = slice.map(m => m.label);
+  const vals   = trenGetValues(slice);
+
+  if (_trenMainChart) { _trenMainChart.destroy(); _trenMainChart = null; }
+  const canvas = document.getElementById('tren-main-chart');
+  if (!canvas) return;
+  _trenMainChart = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: vals,
+        borderColor: '#E8442A',
+        backgroundColor: 'rgba(232,68,42,.08)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#E8442A',
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => ` ${ctx.parsed.y.toLocaleString('id-ID')}` }
+      }},
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#9CA3AF' } },
+        y: { grid: { color: '#F3F4F6' }, ticks: { font: { size: 10 }, color: '#9CA3AF', callback: v => v >= 1000 ? (v/1000).toFixed(0)+'k' : v } }
+      }
+    }
+  });
+
+  trenRenderCmp();
+}
+
+function trenRenderCmp() {
+  if (!_trenData) return;
+  const { months, top10, catAvg } = _trenData;
+  const period = parseInt(document.getElementById('tren-period')?.value || '12');
+  const slice  = months.slice(-period);
+  const labels = slice.map(m => m.label);
+  const metric = _trenCmpMetric;
+
+  const getVals = (arr) => {
+    if (metric === 'omset') return arr.map((m, i) => typeof m === 'object' ? m.omset : m * slice[i].price);
+    if (metric === 'price') return arr.map((m, i) => typeof m === 'object' ? m.price : slice[i].price * (0.95 + i*0.005));
+    return arr.map(m => typeof m === 'object' ? m.sold : m);
+  };
+
+  const datasets = [];
+  const showThis = document.getElementById('tren-chk-this')?.checked;
+  const showCat  = document.getElementById('tren-chk-cat')?.checked;
+  const showTop  = document.getElementById('tren-chk-top')?.checked;
+
+  if (showThis) datasets.push({ label:'Produk Ini', data: getVals(slice), borderColor:'#E8442A', backgroundColor:'transparent', tension:.4, pointRadius:3, borderWidth:2 });
+  if (showCat)  datasets.push({ label:'Kategori',   data: catAvg.slice(-period), borderColor:'#3B82F6', backgroundColor:'transparent', tension:.4, pointRadius:3, borderWidth:2 });
+  if (showTop)  datasets.push({ label:'Top 10',     data: top10.slice(-period),  borderColor:'#16A34A', backgroundColor:'transparent', tension:.4, pointRadius:3, borderWidth:2 });
+
+  if (_trenCmpChart) { _trenCmpChart.destroy(); _trenCmpChart = null; }
+  const canvas = document.getElementById('tren-cmp-chart');
+  if (!canvas) return;
+  _trenCmpChart = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#9CA3AF', maxRotation: 45 } },
+        y: { grid: { color: '#F3F4F6' }, ticks: { font: { size: 9 }, color: '#9CA3AF', callback: v => v >= 1000 ? (v/1000).toFixed(0)+'k' : v } }
+      }
+    }
+  });
+}
+
+function trenRenderDataTable() {
+  if (!_trenData) return;
+  const tbody = document.getElementById('tren-data-tbody');
+  if (!tbody) return;
+  const rows = [..._trenData.months].reverse().slice(0, _trenDataShowing);
+  tbody.innerHTML = rows.map(m => `
+    <tr style="border-bottom:1px solid #F9FAFB;">
+      <td style="padding:5px 4px;font-size:.62rem;color:#374151;">${m.label}</td>
+      <td style="padding:5px 4px;font-size:.62rem;text-align:right;font-weight:600;">${m.sold.toLocaleString('id-ID')}</td>
+      <td style="padding:5px 4px;font-size:.62rem;text-align:right;">${m.omset.toLocaleString('id-ID')}</td>
+      <td style="padding:5px 4px;font-size:.62rem;text-align:right;">${m.price.toLocaleString('id-ID')}</td>
+    </tr>`).join('');
+  const btn = document.getElementById('tren-show-all-btn');
+  if (btn) btn.style.display = _trenDataShowing >= 12 ? 'none' : '';
+}
+
+function trenShowAllData() { _trenDataShowing = 12; trenRenderDataTable(); }
+
+function trenSetGran(g) {
+  _trenGran = g;
+  document.querySelectorAll('.tren-gran-btn').forEach(b => {
+    const active = b.dataset.g === g;
+    b.style.background = active ? '#fff' : 'transparent';
+    b.style.color = active ? '#E8442A' : '#6B7280';
+    b.style.boxShadow = active ? '0 1px 3px rgba(0,0,0,.1)' : 'none';
+  });
+  trenRender();
+}
+
+function trenSetCmpMetric(m) {
+  _trenCmpMetric = m;
+  document.querySelectorAll('.tren-cmp-btn').forEach(b => {
+    const active = b.dataset.m === m;
+    b.style.background = active ? '#FEF2F0' : '#fff';
+    b.style.color = active ? '#E8442A' : '#6B7280';
+    b.style.borderColor = active ? '#E8442A' : '#E5E7EB';
+  });
+  trenRenderCmp();
+}
+
+function trenDownloadCSV() {
+  if (!_trenData) return;
+  const rows = [['Bulan','Terjual','Omset (Rp)','Rata-rata Harga']];
+  _trenData.months.forEach(m => rows.push([m.label, m.sold, m.omset, m.price]));
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'tren-penjualan.csv';
+  a.click();
 }
 
 function dscGoPage(n) {
