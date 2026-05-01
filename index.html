@@ -7098,7 +7098,7 @@ async function dscLoadListings() {
     // Stamp what server-side filters produced this batch (used by dscApplyFilters change-detection)
     if (_dscLastSrvFilters === null) {
       const f = filters;
-      _dscLastSrvFilters = JSON.stringify({ cat: f.cat, priceMin: f.priceMin, priceMax: f.priceMax === Infinity ? 1000000 : f.priceMax, search: f.search });
+      _dscLastSrvFilters = JSON.stringify({ cat: f.cat, priceMin: f.priceMin, priceMax: f.priceMax, search: f.search });
     }
     dscApplyFilters();
 
@@ -7137,7 +7137,7 @@ function dscApplyFilters() {
   const sortVal  = document.getElementById('dsc-sort')?.value || 'omset-desc';
 
   // If server-side filters changed, reset and re-fetch from offset 0
-  const srvKey = JSON.stringify({ cat, priceMin, priceMax: priceMax === Infinity ? 1000000 : priceMax, search: q });
+  const srvKey = JSON.stringify({ cat, priceMin, priceMax: priceMaxRaw, search: q });
   if (_dscLastSrvFilters !== null && _dscLastSrvFilters !== srvKey) {
     _dscAllListings = [];
     _dscOffset = 0;
