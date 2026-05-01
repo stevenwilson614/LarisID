@@ -7334,8 +7334,8 @@ function dscRenderTable() {
         const imgHtml = p.image_url
           ? `<img src="${p.image_url}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='📦'">`
           : '📦';
-        const idx = _dscAllListings.indexOf(p);
-        return `<div class="dsc-card" onclick="dscOpenDeepDive(${idx})">
+        const key = `${p.item_id}__${p.shop_id}`;
+        return `<div class="dsc-card" onclick="dscOpenDeepDive('${key}')">
           <div class="dsc-card-img">${imgHtml}</div>
           <div class="dsc-card-body">
             <div class="dsc-card-name">${(p.product_name||'').slice(0,70)}</div>
@@ -7353,7 +7353,7 @@ function dscRenderTable() {
           </div>
           <div class="dsc-card-footer">
             <div style="display:flex;align-items:center;gap:6px;">${compBadge(comp, true)}${trendHtml(delta)}</div>
-            <button class="dsc-analyse-btn" onclick="event.stopPropagation();dscOpenDeepDive(${idx})" style="padding:5px 10px;font-size:.68rem;">Analisis</button>
+            <button class="dsc-analyse-btn" onclick="event.stopPropagation();dscOpenDeepDive('${key}')" style="padding:5px 10px;font-size:.68rem;">Analisis</button>
           </div>
         </div>`;
       }).join('');
@@ -7366,15 +7366,15 @@ function dscRenderTable() {
     if (!slice.length) {
       tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Tidak ada produk yang sesuai filter.</td></tr>`;
     } else {
-      tbody.innerHTML = slice.map((p, i) => {
+      tbody.innerHTML = slice.map(p => {
         const imgHtml = p.image_url
           ? `<div class="dsc-prod-img"><img src="${p.image_url}" alt="" loading="lazy" onerror="this.style.display='none'"></div>`
           : `<div class="dsc-prod-img">📦</div>`;
         const comp  = _dscCompMap[p.keyword] || 'Sedang';
         const omset = _dscOmset(p);
         const delta = _dscTrendDelta(p);
-        const idx = _dscAllListings.indexOf(p);
-        return `<tr style="cursor:pointer" onclick="dscOpenDeepDive(${idx})">
+        const key = `${p.item_id}__${p.shop_id}`;
+        return `<tr style="cursor:pointer" onclick="dscOpenDeepDive('${key}')">
           <td>
             <div class="dsc-prod-cell">
               ${imgHtml}
@@ -7389,7 +7389,7 @@ function dscRenderTable() {
           <td><div class="dsc-price">${omset > 0 ? _dscFmt(omset) : '—'}</div><div class="dsc-price-sub">/bulan</div></td>
           <td>${compBadge(comp, false)}</td>
           <td>${trendHtml(delta)}</td>
-          <td onclick="event.stopPropagation()"><button class="dsc-analyse-btn" onclick="dscOpenDeepDive(${idx})">Analisis</button></td>
+          <td onclick="event.stopPropagation()"><button class="dsc-analyse-btn" onclick="dscOpenDeepDive('${key}')">Analisis</button></td>
         </tr>`;
       }).join('');
     }
@@ -7419,8 +7419,9 @@ function dscSetView(mode) {
   dscRenderTable();
 }
 
-function dscOpenDeepDive(idx) {
-  const listing = _dscAllListings[idx];
+function dscOpenDeepDive(key) {
+  const [itemId, shopId] = String(key).split('__');
+  const listing = _dscAllListings.find(r => String(r.item_id) === itemId && String(r.shop_id) === shopId);
   if (!listing) return;
   const omset = _dscOmset(listing);
   const monthlyUnits = listing.price > 0 ? Math.round(omset / listing.price) : 0;
