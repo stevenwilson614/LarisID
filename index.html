@@ -8219,7 +8219,7 @@ async function dscLoadListings() {
       _dscLastSrvFilters = JSON.stringify({ cat: f.cat, priceMin: f.priceMin, priceMax: f.priceMax, search: f.search });
     }
     dscHideLoadingScreen();
-    dscApplyFilters();
+    dscApplyFilters(false);
     // Load trend data in background (non-blocking) after first batch
     if (_dscOffset <= DSC_FETCH * 2) dscLoadTrendData();
 
@@ -8273,7 +8273,7 @@ async function dscLoadTrendData() {
     });
 
     // Re-render table and cards now that trend data is available
-    dscApplyFilters();
+    dscApplyFilters(false);
   } catch(e) {
     console.warn('dscLoadTrendData:', e);
   }
@@ -8294,7 +8294,7 @@ function dscInit() {
   if (!_dscLoaded) dscLoadListings();
 }
 
-function dscApplyFilters() {
+function dscApplyFilters(resetPage = true) {
   if (!_dscLoaded) return;
   const q        = (document.getElementById('dsc-search')?.value || '').toLowerCase();
   const cat      = document.getElementById('dsc-filter-cat')?.value || '';
@@ -8358,7 +8358,7 @@ function dscApplyFilters() {
   if (omsetEl) omsetEl.textContent = _dscFmt(totalOmset);
 
   _dscFiltered = list;
-  _dscPage = 1;
+  if (resetPage) _dscPage = 1;
   dscRenderTable();
 }
 
@@ -9936,9 +9936,9 @@ function dscGoPage(n) {
   if (n > pages && !_dscHasMore) return;
   _dscPage = n;
 
-  // If the page we need isn't loaded yet, show a spinner in the content area
-  // while we fetch the next batch, then re-render when done.
-  const needsFetch = _dscHasMore && !_dscLoading && (n > pages || n >= pages - 1);
+  // If the requested page isn't loaded yet, show a spinner and fetch the next batch.
+  // dscApplyFilters(false) preserves _dscPage, so no page-restore hack needed.
+  const needsFetch = _dscHasMore && !_dscLoading && n > pages;
   if (needsFetch) {
     const cardGrid   = document.getElementById('dsc-card-grid');
     const tableInner = document.getElementById('dsc-table-inner');
@@ -9948,11 +9948,7 @@ function dscGoPage(n) {
     </div>`;
     if (_dscViewMode === 'card'  && cardGrid)   cardGrid.innerHTML   = spinHtml;
     if (_dscViewMode === 'table' && tableInner) tableInner.innerHTML = `<table class="dsc-table" style="width:100%"><tbody>${spinHtml.replace('grid-column:1/-1;', '')}</tbody></table>`;
-    dscLoadListings().then(() => {
-      // dscLoadListings calls dscApplyFilters which resets page to 1 — restore it
-      _dscPage = Math.min(n, Math.ceil(_dscFiltered.length / DSC_PER_PAGE));
-      dscRenderTable();
-    });
+    dscLoadListings(); // dscApplyFilters(false) inside preserves _dscPage = n
   } else {
     dscRenderTable();
   }
