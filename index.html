@@ -8399,8 +8399,8 @@ function dscRenderTable() {
     } else {
       const _cardKwMap = {};
       _dscAllListings.forEach(r => { const k = r.keyword||'__'; if (!_cardKwMap[k]) _cardKwMap[k]=[]; _cardKwMap[k].push(r); });
+      const _fmtRp = v => 'Rp' + Math.round(v).toLocaleString('id-ID');
       cardGrid.innerHTML = slice.map(p => {
-        const comp  = _dscCompMap[p.keyword] || 'Sedang';
         const omset = _dscOmset(p);
         const delta = _dscTrendDelta(p);
         const imgHtml = p.image_url
@@ -8411,26 +8411,17 @@ function dscRenderTable() {
         const lslbl = listingScoreLabel(ls.total);
         return `<div class="dsc-card" onclick="dscOpenDeepDive('${key}')">
           <div class="dsc-card-img" style="position:relative;">${imgHtml}
-            <div style="position:absolute;top:6px;left:6px;background:${lslbl.clr};color:#fff;border-radius:7px;padding:2px 7px;font-size:.72rem;font-weight:800;line-height:1.4;box-shadow:0 1px 4px rgba(0,0,0,.18);">${ls.total}</div>
+            <div style="position:absolute;top:6px;left:6px;background:${lslbl.clr};color:#fff;border-radius:8px;padding:3px 9px;font-size:.82rem;font-weight:800;line-height:1.4;box-shadow:0 1px 4px rgba(0,0,0,.22);">${ls.total}</div>
           </div>
           <div class="dsc-card-body">
             <div class="dsc-card-name">${(p.product_name||'').slice(0,70)}</div>
             <div class="dsc-card-store">${p.store_name||''}</div>
-            <div class="dsc-card-row" style="margin-top:6px;">
-              <div>
-                <div style="font-size:.66rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Harga</div>
-                <div class="dsc-card-price">${_dscFmt(p.price||0)}</div>
-              </div>
-              <div style="text-align:right;">
-                <div style="font-size:.66rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Omset/Bln</div>
-                <div class="dsc-card-price" style="font-size:.78rem;">${omset > 0 ? _dscFmt(omset) : '—'}</div>
-              </div>
+            <div style="margin-top:8px;">
+              <div class="dsc-card-price">${_fmtRp(p.price||0)}</div>
+              <div style="font-size:.74rem;color:#6B7280;margin-top:1px;">${omset > 0 ? _fmtRp(omset)+'/bln' : '—'}</div>
             </div>
           </div>
-          <div class="dsc-card-footer">
-            <div style="display:flex;align-items:center;gap:6px;">${compBadge(comp, true)}${trendHtml(delta)}</div>
-            <button class="dsc-analyse-btn" onclick="event.stopPropagation();dscOpenDeepDive('${key}')" style="padding:5px 10px;font-size:.68rem;">Analisis</button>
-          </div>
+          ${delta !== null ? `<div class="dsc-card-footer" style="padding:6px 10px;">${trendHtml(delta)}</div>` : ''}
         </div>`;
       }).join('');
     }
