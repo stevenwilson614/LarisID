@@ -4929,11 +4929,11 @@ html,body{overflow-x:hidden;max-width:100%;}
               <!-- row 1: trend chart | price range | insight AI -->
               <div class="dd-row3">
                 <div class="dd-card">
-                  <div class="dd-card-title">Tren Omset (30 Hari)</div>
+                  <div class="dd-card-title">Tren Omset &amp; Unit Terjual</div>
                   <div class="dd-chart-legend">
                     <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#E8442A;"></div>Omset (Rp)</div>
                     <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#4F46E5;"></div>Unit Terjual</div>
-                    <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#9CA3AF;"></div>Toko Aktif</div>
+                    <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#10B981;border-style:dashed;height:0;border-top:2.5px dashed #10B981;background:transparent;"></div>Forecast</div>
                   </div>
                   <canvas id="dd-chart-trend" height="140"></canvas>
                 </div>
@@ -8526,6 +8526,7 @@ function dscOpenDeepDive(key) {
   setTimeout(() => {
     ddRender(p);
     ddLoadKeywordContext(listing);
+    ddLoadTrendHistory(listing);
   }, 0);
 }
 
@@ -10037,27 +10038,19 @@ function ddRender(p) {
     `Disarankan fokus pada variasi warna hitam, coklat, abu-abu.`,
   ].map(t => `<div class="dd-ai-item"><div class="dd-ai-check">✓</div><div>${t}</div></div>`).join('');
 
-  // trend chart (3 lines: omset, unit, toko aktif)
-  const dates = ['20 Apr','27 Apr','4 Mei','11 Mei','18 Mei'];
-  const omsetSeries = dates.map((_,i) => Math.round(omset * (0.65 + i*0.09) + (rng()-0.5)*omset*0.08));
-  const unitSeries  = dates.map((_,i) => Math.round(sales * (0.70 + i*0.07) + (rng()-0.5)*sales*0.06));
-  const tokoSeries  = dates.map((_,i) => Math.round(120 + i*15 + rng()*20));
+  // Trend chart — placeholder while ddLoadTrendHistory fetches real data
   if (_ddChartTrend) _ddChartTrend.destroy();
   _ddChartTrend = new Chart(document.getElementById('dd-chart-trend'), {
     type: 'line',
-    data: {
-      labels: dates,
-      datasets: [
-        { label:'Omset (Rp)', data:omsetSeries, borderColor:'#E8442A', backgroundColor:'rgba(232,68,42,.06)', borderWidth:2.5, fill:true, tension:0.4, pointRadius:4, pointBackgroundColor:'#E8442A', yAxisID:'y' },
-        { label:'Unit Terjual', data:unitSeries, borderColor:'#4F46E5', backgroundColor:'transparent', borderWidth:2, tension:0.4, pointRadius:3, pointBackgroundColor:'#4F46E5', yAxisID:'y2' },
-        { label:'Toko Aktif', data:tokoSeries, borderColor:'#9CA3AF', backgroundColor:'transparent', borderWidth:2, tension:0.4, pointRadius:3, pointBackgroundColor:'#9CA3AF', yAxisID:'y2', borderDash:[4,3] },
-      ]
-    },
+    data: { labels: [], datasets: [
+      { label:'Omset (Rp)', data:[], borderColor:'#E8442A', backgroundColor:'rgba(232,68,42,.06)', borderWidth:2.5, fill:true, tension:0.3, pointRadius:4, pointBackgroundColor:'#E8442A', yAxisID:'y' },
+      { label:'Unit Terjual', data:[], borderColor:'#4F46E5', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:3, pointBackgroundColor:'#4F46E5', yAxisID:'y2' },
+    ]},
     options: {
       plugins:{legend:{display:false}},
       scales:{
         x:{ticks:{font:{size:9}}},
-        y:{display:true,position:'left',ticks:{font:{size:8},callback:v=>(v/1000000).toFixed(0)+'jt'}},
+        y:{display:true,position:'left',ticks:{font:{size:8},callback:v=>v>=1000000?(v/1000000).toFixed(1)+'jt':v>=1000?(v/1000).toFixed(0)+'rb':v}},
         y2:{display:true,position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:8}}},
       },
       animation:{duration:400}
@@ -10152,6 +10145,71 @@ function ddRender(p) {
       <td>${spark}</td>
     </tr>`;
   }).join('');
+}
+
+// Fetches up to 4 real scrape points for this listing and updates the trend chart.
+// Adds a 1-week forecast point using the average delta across available scrapes.
+async function ddLoadTrendHistory(listing) {
+  if (!_supabase || !listing?.item_id || !listing?.shop_id) return;
+  try {
+    // Fetch up to 4 most-recent scrapes for this item
+    const { data: rows, error } = await _supabase
+      .from('listings')
+      .select('scraped_at,total_sold,price')
+      .eq('item_id', listing.item_id)
+      .eq('shop_id', listing.shop_id)
+      .order('scraped_at', { ascending: false })
+      .limit(4);
+
+    if (error || !rows || rows.length < 2) return; // need at least 2 points to compute delta
+
+    // Sort oldest → newest
+    rows.sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
+
+    // Build per-period labels, unit deltas, and omset
+    const labels = [], unitData = [], omsetData = [];
+    for (let i = 1; i < rows.length; i++) {
+      const prev = rows[i - 1], curr = rows[i];
+      const deltaUnits = Math.max(0, (curr.total_sold || 0) - (prev.total_sold || 0));
+      const price      = curr.price || listing.price || 0;
+      const date       = new Date(curr.scraped_at);
+      labels.push(date.toLocaleDateString('id-ID', { day:'numeric', month:'short' }));
+      unitData.push(deltaUnits);
+      omsetData.push(deltaUnits * price);
+    }
+
+    // Forecast: average delta units/omset, label = 1 week after last scrape
+    const avgUnits = Math.round(unitData.reduce((s,v)=>s+v,0) / unitData.length);
+    const avgOmset = Math.round(omsetData.reduce((s,v)=>s+v,0) / omsetData.length);
+    const lastDate = new Date(rows[rows.length - 1].scraped_at);
+    lastDate.setDate(lastDate.getDate() + 7);
+    const forecastLabel = lastDate.toLocaleDateString('id-ID', { day:'numeric', month:'short' }) + ' *';
+
+    labels.push(forecastLabel);
+    unitData.push(null);   // null = gap before forecast point
+    omsetData.push(null);
+
+    // Forecast datasets (separate so they render dashed green)
+    const forecastUnitData  = new Array(labels.length).fill(null);
+    const forecastOmsetData = new Array(labels.length).fill(null);
+    // Bridge from last real point to forecast
+    forecastUnitData[labels.length - 2]  = unitData[labels.length - 2]  ?? avgUnits;
+    forecastOmsetData[labels.length - 2] = omsetData[labels.length - 2] ?? avgOmset;
+    forecastUnitData[labels.length - 1]  = avgUnits;
+    forecastOmsetData[labels.length - 1] = avgOmset;
+
+    if (!_ddChartTrend) return;
+    _ddChartTrend.data.labels = labels;
+    _ddChartTrend.data.datasets = [
+      { label:'Omset (Rp)',     data:omsetData,        borderColor:'#E8442A', backgroundColor:'rgba(232,68,42,.06)', borderWidth:2.5, fill:true,  tension:0.3, pointRadius:4, pointBackgroundColor:'#E8442A', yAxisID:'y',  spanGaps:false },
+      { label:'Unit Terjual',   data:unitData,         borderColor:'#4F46E5', backgroundColor:'transparent',         borderWidth:2,   fill:false, tension:0.3, pointRadius:3, pointBackgroundColor:'#4F46E5', yAxisID:'y2', spanGaps:false },
+      { label:'Forecast Omset', data:forecastOmsetData,borderColor:'#10B981', backgroundColor:'transparent',         borderWidth:2,   fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y',  borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
+      { label:'Forecast Unit',  data:forecastUnitData, borderColor:'#10B981', backgroundColor:'transparent',         borderWidth:2,   fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
+    ];
+    _ddChartTrend.update();
+  } catch(e) {
+    console.warn('ddLoadTrendHistory:', e);
+  }
 }
 
 function ddRenderCompetitors() {
