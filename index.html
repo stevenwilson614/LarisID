@@ -4726,6 +4726,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                         <th>Harga Jual</th>
                         <th>Kategori</th>
                         <th>Omset/Bulan</th>
+                        <th>Skor</th>
                         <th>Kompetisi</th>
                         <th>Tren</th>
                         <th></th>
@@ -4840,6 +4841,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                     <div class="dd-hstat-label">Skor Produk</div>
                     <div><span class="dd-score-num" id="dd-score-num">—</span><span class="dd-score-denom">/100</span></div>
                     <span class="dd-score-tag" id="dd-score-tag">—</span>
+                    <div style="font-size:.58rem;color:#9CA3AF;margin-top:3px;" id="dd-score-sub"></div>
                   </div>
                   <div class="dd-hstat">
                     <div class="dd-hstat-label">Total Omset / Bulan</div>
@@ -8327,6 +8329,8 @@ function dscRenderTable() {
     if (!slice.length) {
       cardGrid.innerHTML = emptyHtml;
     } else {
+      const _cardKwMap = {};
+      _dscAllListings.forEach(r => { const k = r.keyword||'__'; if (!_cardKwMap[k]) _cardKwMap[k]=[]; _cardKwMap[k].push(r); });
       cardGrid.innerHTML = slice.map(p => {
         const comp  = _dscCompMap[p.keyword] || 'Sedang';
         const omset = _dscOmset(p);
@@ -8334,9 +8338,13 @@ function dscRenderTable() {
         const imgHtml = p.image_url
           ? `<img src="${p.image_url}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='📦'">`
           : '📦';
-        const key = `${p.item_id}__${p.shop_id}`;
+        const key   = `${p.item_id}__${p.shop_id}`;
+        const ls    = calcListingScore(p, _cardKwMap[p.keyword||'__']);
+        const lslbl = listingScoreLabel(ls.total);
         return `<div class="dsc-card" onclick="dscOpenDeepDive('${key}')">
-          <div class="dsc-card-img">${imgHtml}</div>
+          <div class="dsc-card-img" style="position:relative;">${imgHtml}
+            <div style="position:absolute;top:6px;left:6px;background:${lslbl.clr};color:#fff;border-radius:7px;padding:2px 7px;font-size:.72rem;font-weight:800;line-height:1.4;box-shadow:0 1px 4px rgba(0,0,0,.18);">${ls.total}</div>
+          </div>
           <div class="dsc-card-body">
             <div class="dsc-card-name">${(p.product_name||'').slice(0,70)}</div>
             <div class="dsc-card-store">${p.store_name||''}</div>
@@ -8364,16 +8372,25 @@ function dscRenderTable() {
   const tbody = document.getElementById('dsc-tbody');
   if (_dscViewMode === 'table' && tbody) {
     if (!slice.length) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Tidak ada produk yang sesuai filter.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Tidak ada produk yang sesuai filter.</td></tr>`;
     } else {
+      // Group all loaded listings by keyword for peer-context scoring
+      const _dscKwMap = {};
+      _dscAllListings.forEach(r => { const k = r.keyword||'__'; if (!_dscKwMap[k]) _dscKwMap[k]=[]; _dscKwMap[k].push(r); });
       tbody.innerHTML = slice.map(p => {
         const imgHtml = p.image_url
           ? `<div class="dsc-prod-img"><img src="${p.image_url}" alt="" loading="lazy" onerror="this.style.display='none'"></div>`
           : `<div class="dsc-prod-img">📦</div>`;
-        const comp  = _dscCompMap[p.keyword] || 'Sedang';
-        const omset = _dscOmset(p);
-        const delta = _dscTrendDelta(p);
-        const key = `${p.item_id}__${p.shop_id}`;
+        const comp   = _dscCompMap[p.keyword] || 'Sedang';
+        const omset  = _dscOmset(p);
+        const delta  = _dscTrendDelta(p);
+        const key    = `${p.item_id}__${p.shop_id}`;
+        const ls     = calcListingScore(p, _dscKwMap[p.keyword||'__']);
+        const lslbl  = listingScoreLabel(ls.total);
+        const scoreBadge = `<span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;">
+          <span style="background:${lslbl.clr};color:#fff;padding:2px 8px;border-radius:8px;font-size:.72rem;font-weight:800;">${ls.total}</span>
+          <span style="font-size:.55rem;color:#9CA3AF;">/${ls.larisScore} mkt</span>
+        </span>`;
         return `<tr style="cursor:pointer" onclick="dscOpenDeepDive('${key}')">
           <td>
             <div class="dsc-prod-cell">
@@ -8387,6 +8404,7 @@ function dscRenderTable() {
           <td><div class="dsc-price">${_dscFmt(p.price||0)}</div></td>
           <td><div style="font-size:.78rem;color:#6B7280">${p.category||'—'}</div></td>
           <td><div class="dsc-price">${omset > 0 ? _dscFmt(omset) : '—'}</div><div class="dsc-price-sub">/bulan</div></td>
+          <td style="text-align:center;">${scoreBadge}</td>
           <td>${compBadge(comp, false)}</td>
           <td>${trendHtml(delta)}</td>
           <td onclick="event.stopPropagation()"><button class="dsc-analyse-btn" onclick="dscOpenDeepDive('${key}')">Analisis</button></td>
@@ -8746,17 +8764,23 @@ async function ddLoadKeywordContext(listing) {
     _ddKwListing = listing;
     _ddKwTotal   = totalSold;
 
-    // Update Deep Dive score now that we have full keyword peers
-    const larisScore = calcLarisScore(listing, rows);
+    // Update Deep Dive scores now that we have full keyword peers
+    const _ls  = calcListingScore(listing, rows);
+    const _lbl = listingScoreLabel(_ls.total);
     const numEl = document.getElementById('dd-score-num');
     const tagEl = document.getElementById('dd-score-tag');
-    if (numEl) numEl.textContent = larisScore;
+    if (numEl) numEl.textContent = _ls.total;
     if (tagEl) {
-      const lbl = larisScore >= 75 ? 'Mudah Masuk' : larisScore >= 55 ? 'Persaingan Sedang' : larisScore >= 35 ? 'Cukup Sulit' : 'Sangat Kompetitif';
-      const bg  = larisScore >= 75 ? '#EAF7F0' : larisScore >= 55 ? '#FFF7ED' : '#FEF2F2';
-      const clr = larisScore >= 75 ? '#10B981' : larisScore >= 55 ? '#F59E0B' : '#DC2626';
-      tagEl.textContent = lbl; tagEl.style.background = bg; tagEl.style.color = clr;
-      tagEl.style.borderColor = larisScore >= 75 ? '#D1FAE5' : larisScore >= 55 ? '#FDE68A' : '#FECACA';
+      tagEl.textContent = _lbl.lbl;
+      tagEl.style.background  = _lbl.bg;
+      tagEl.style.color       = _lbl.clr;
+      tagEl.style.borderColor = _lbl.border;
+    }
+    // Show LarisScore (market ease) as a sub-label below main score
+    const subEl = document.getElementById('dd-score-sub');
+    if (subEl) {
+      const mkLbl = _ls.larisScore >= 75 ? 'Mudah Masuk' : _ls.larisScore >= 55 ? 'Persaingan Sedang' : _ls.larisScore >= 35 ? 'Cukup Sulit' : 'Sangat Kompetitif';
+      subEl.textContent = `Pasar: ${_ls.larisScore}/100 · ${mkLbl}`;
     }
     ddRenderKompetitor();
 
@@ -9479,9 +9503,10 @@ function apGenData(listing) {
   typeVals.forEach(t => t.pct = Math.round(t.pct / typeSum * 100));
   typeVals.sort((a, b) => b.pct - a.pct);
 
-  // Market entry ease score — use real LarisScore from keyword context
+  // Use ListingScore for gauge (combines market ease + listing strength)
   const peers        = _ddKwRows.length > 0 ? _ddKwRows : null;
-  const totalScore   = calcLarisScore(listing, peers);
+  const _lsObj       = calcListingScore(listing, peers);
+  const totalScore   = _lsObj.total;
   // Sub-scores derived consistently from LarisScore components
   const _totalSoldPeers = peers ? peers.reduce((s,r)=>s+(r.total_sold||0),0) : (listing.total_sold||0)*100;
   const _nSellers = peers ? Math.max(1, new Set(peers.map(r=>String(r.shop_id||r.store_name||''))).size) : Math.round(50+rng()*100);
@@ -10728,6 +10753,59 @@ function calcLarisScore(listing, peers) {
   return Math.min(100, Math.round(soldScore + revScore + ratingGap + priceScore));
 }
 
+// ── ListingScore: How attractive is THIS specific listing as an opportunity? ──
+// Combines keyword-level market ease (LarisScore) with the listing's own strength.
+// peers = the same ~120 page-1-2 listings used for LarisScore.
+// Returns { total, kwScore, salesScore, revScore, omsetScore, larisScore }
+function calcListingScore(listing, peers) {
+  const rows = peers && peers.length > 5 ? peers : null;
+
+  // A. Keyword ease contribution (30 pts)
+  // Ties this listing's ceiling to how easy its market is to enter.
+  // Hard market → all listings there start with a lower ceiling.
+  const larisScore = calcLarisScore(listing, rows);
+  const kwScore    = Math.round(larisScore * 0.30);
+
+  // B. Sales percentile rank within the 120 (25 pts)
+  // Uses percentile (not ratio to median) because all 120 are already top-performers —
+  // a listing at p75 of page-1-2 is genuinely strong; p25 is still visible but weaker.
+  let salesScore;
+  if (rows) {
+    const sortedSold = rows.map(r => r.total_sold || 0).sort((a, b) => a - b);
+    const below      = sortedSold.filter(v => v <= (listing.total_sold || 0)).length;
+    salesScore       = Math.round((below / sortedSold.length) * 25);
+  } else {
+    const sold = listing.total_sold || 0;
+    salesScore = Math.min(25, Math.round(Math.log10(Math.max(sold, 1)) / Math.log10(5000) * 25));
+  }
+
+  // C. Review efficiency — can a new seller replicate this without a review history? (25 pts)
+  // Part 1: sales-per-review ratio (15 pts) — high = selling without review dependency
+  const sold      = listing.total_sold || 0;
+  const reviews   = listing.reviews || listing.review_count || 0;
+  const spR       = sold / Math.max(reviews, 1);
+  const effScore  = Math.min(15, Math.round(spR / 40 * 15)); // spR ≥ 40 → max
+  // Part 2: absolute review count barrier (10 pts) — fewer reviews = lower social proof bar
+  const barScore  = Math.max(0, Math.round((1 - Math.min(reviews / 300, 1)) * 10));
+  const revScore  = effScore + barScore;
+
+  // D. Revenue opportunity (20 pts)
+  // What is the monthly prize for winning this listing's niche?
+  // Rp 1M/month → ~6pts, 10M → ~13pts, 50M+ → 20pts
+  const monthly   = (listing.price || 0) * sold / 12;
+  const omsetScore = Math.min(20, Math.round(Math.log10(Math.max(monthly, 1)) / Math.log10(50000000) * 20));
+
+  const total = Math.min(100, kwScore + salesScore + revScore + omsetScore);
+  return { total, kwScore, salesScore, revScore, omsetScore, larisScore };
+}
+
+function listingScoreLabel(score) {
+  if (score >= 75) return { lbl: 'Peluang Tinggi',   bg: '#DCFCE7', clr: '#16A34A', border: '#D1FAE5' };
+  if (score >= 55) return { lbl: 'Cukup Menjanjikan', bg: '#FFF7ED', clr: '#F59E0B', border: '#FDE68A' };
+  if (score >= 35) return { lbl: 'Perlu Strategi',   bg: '#FEF2F2', clr: '#DC2626', border: '#FECACA' };
+  return               { lbl: 'Sangat Kompetitif',   bg: '#F3F4F6', clr: '#6B7280', border: '#E5E7EB' };
+}
+
 async function loadProductDatabase() {
   if (!_supabase) return;
   const st = document.getElementById('pdb-status');
@@ -10786,7 +10864,7 @@ async function loadProductDatabase() {
     if (!_kwPeers[k]) _kwPeers[k] = [];
     _kwPeers[k].push(r);
   });
-  _pdbRows = (data || []).map(r => ({ ...r, score: calcLarisScore(r, _kwPeers[r.keyword || '__']) }));
+  _pdbRows = (data || []).map(r => ({ ...r, score: calcListingScore(r, _kwPeers[r.keyword || '__']).total, larisScore: calcLarisScore(r, _kwPeers[r.keyword || '__']) }));
   if (f.min_score != null) _pdbRows = _pdbRows.filter(r => r.score >= f.min_score);
   if (f.max_score != null) _pdbRows = _pdbRows.filter(r => r.score <= f.max_score);
 
