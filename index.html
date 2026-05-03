@@ -10659,75 +10659,72 @@ function _pdbViabilityScore(r) {
   return Math.round(soldScore + stockScore + ratingScore);
 }
 
-// ── LarisScore: How easy is it for a new seller to capture ≥0.5% of total market sales? ──
-// 0 = very hard, 100 = very easy.
-// When peers (all listings in same keyword) are supplied the score uses full market context.
-// When peers is empty/null it falls back to single-listing heuristics.
+// ── LarisScore: How easy is it to break into page 1-2 and capture ≥0.5% of their sales? ──
+// peers = ~120 page-1-2 Shopee listings — NOT all sellers, just the visible top performers.
+// The score measures entry difficulty against THAT specific competitive set.
+// 0 = very hard to break in, 100 = low barrier, easy to enter.
 function calcLarisScore(listing, peers) {
-  const rows = (peers && peers.length > 1) ? peers : null;
+  const rows = peers && peers.length > 5 ? peers : null;
 
   if (rows) {
-    // ── Full market-context score ──────────────────────────────────────────
-    const totalSold   = rows.reduce((s, r) => s + (r.total_sold || 0), 0);
-    const nSellers    = Math.max(1, new Set(rows.map(r => String(r.shop_id || r.store_name || r.item_id || ''))).size);
-    const target05    = totalSold * 0.005; // units needed to capture 0.5%
-    const avgPerSeller = totalSold / nSellers;
+    // All 120 listings are already "top performers" — we compare within that set.
+    const soldArr   = rows.map(r => r.total_sold || 0).sort((a, b) => a - b);
+    const totalSold = soldArr.reduce((s, v) => s + v, 0);
+    const target05  = totalSold * 0.005; // 0.5% of what pages 1-2 collectively sell
 
-    // Factor 1 — Seller fragmentation (30 pts)
-    // difficulty_ratio: how many avg-sellers' output you need to match to reach 0.5%
-    // ratio < 0.5 → easy (need below-average);  ratio > 2 → hard (need 2× average)
-    const fragRatio  = avgPerSeller > 0 ? target05 / avgPerSeller : 2;
-    const fragScore  = Math.max(0, Math.min(30, 30 * (1.5 - fragRatio) / 1.5));
+    // Factor 1 — Entry bar vs. 0.5% target (35 pts)
+    // p20 = what the weakest visible sellers (bottom 20% of the 120) sell.
+    // This is the approximate minimum to appear on page 2.
+    // If that bar is BELOW the 0.5% target → getting 0.5% automatically gets you visible → easy.
+    // If that bar is ABOVE the 0.5% target → you need to sell more than 0.5% just to be seen → hard.
+    const p20Sold    = soldArr[Math.floor(soldArr.length * 0.20)] || 0;
+    const entryRatio = target05 > 0 ? p20Sold / target05 : 1;
+    // entryRatio 0→35pts (very easy), 1→17.5pts (neutral), ≥2→0pts (hard)
+    const entryScore = Math.max(0, Math.min(35, 35 * (2 - entryRatio) / 2));
 
-    // Factor 2 — Top-seller concentration (25 pts)
-    // If top 3 listings own most of sales → market is locked up → harder
-    const top3Sold  = rows.slice().sort((a,b)=>(b.total_sold||0)-(a.total_sold||0)).slice(0,3)
-                          .reduce((s,r)=>s+(r.total_sold||0),0);
-    const top3Share = totalSold > 0 ? top3Sold / totalSold : 1;
-    // top3Share=0.1→25pts, 0.5→12.5, ≥0.75→0
-    const concScore  = Math.max(0, Math.min(25, 25 * (1 - top3Share / 0.75)));
+    // Factor 2 — Review moat of page 1-2 sellers (30 pts)
+    // If even the best visible sellers have few reviews, the market is young/niche
+    // and a new seller can compete without a review history.
+    const revArr  = rows.map(r => r.reviews || r.review_count || 0).sort((a, b) => a - b);
+    const medRev  = revArr[Math.floor(revArr.length * 0.5)] || 0;
+    // 0 reviews → 30 pts;  400+ reviews → 0 pts
+    const reviewScore = Math.max(0, Math.min(30, 30 * (1 - medRev / 400)));
 
-    // Factor 3 — Review moat (25 pts)
-    // Median competitor review count. High reviews = hard to outrank organically.
-    const revArr     = rows.map(r => r.reviews || r.review_count || 0).sort((a,b)=>a-b);
-    const medRev     = revArr[Math.floor(revArr.length * 0.5)] || 0;
-    // medRev=0→25pts, 200→12.5, ≥400→0
-    const reviewScore = Math.max(0, Math.min(25, 25 * (1 - medRev / 400)));
+    // Factor 3 — Sales concentration within the 120 (20 pts)
+    // Using top-10 of 120 (not top-3) because all 120 are already "top" sellers.
+    // If top-10 own most of the sales, they are dominant — very hard to displace.
+    const top10Sold  = rows.slice().sort((a, b) => (b.total_sold||0) - (a.total_sold||0))
+                           .slice(0, 10).reduce((s, r) => s + (r.total_sold||0), 0);
+    const top10Share = totalSold > 0 ? top10Sold / totalSold : 1;
+    // top10Share ≤ 0.30 → 20 pts (spread);  ≥ 0.90 → 0 pts (dominated by 10 sellers)
+    const concScore  = Math.max(0, Math.min(20, 20 * (1 - (top10Share - 0.30) / 0.60)));
 
-    // Factor 4 — Market demand health (20 pts)
-    // Market should be proven (not too small) but not so huge 0.5% is unreachable.
-    // Sweet spot: total_sold 2k–100k.
-    const demandScore = totalSold < 500
-      ? Math.round(totalSold / 500 * 8)
-      : totalSold <= 50000
-      ? Math.round(8 + (totalSold - 500) / 49500 * 12)
-      : Math.max(5, Math.round(20 - (totalSold - 50000) / 50000 * 10));
+    // Factor 4 — Price accessibility (15 pts)
+    // Can a new seller realistically source and sell at the market price?
+    // Rp 20k–500k is the sweet spot: affordable to stock, good margin potential.
+    const prices    = rows.map(r => r.price || 0).filter(Boolean).sort((a, b) => a - b);
+    const medPrice  = prices[Math.floor(prices.length * 0.5)] || 0;
+    const priceScore = medPrice >= 20000 && medPrice <= 500000 ? 15
+      : medPrice < 20000  ? Math.round(medPrice / 20000 * 15)
+      : Math.max(0, Math.round(15 - (medPrice - 500000) / 500000 * 15));
 
-    return Math.min(100, Math.round(fragScore + concScore + reviewScore + demandScore));
+    return Math.min(100, Math.round(entryScore + reviewScore + concScore + priceScore));
   }
 
-  // ── Single-listing heuristic (no peer context) ─────────────────────────
+  // ── Single-listing heuristic (no peer context available) ─────────────────
+  // Treat this one listing as a proxy for how hard the market is.
   const sold    = listing.total_sold || 0;
   const reviews = listing.reviews || listing.review_count || 0;
   const rating  = listing.rating  || 0;
   const price   = listing.price   || 0;
-
-  // Demand signal: proven but not swamped
-  const soldScore = sold < 100  ? Math.min(sold / 100, 1) * 25
+  const soldScore  = sold < 100  ? Math.min(sold / 100, 1) * 25
     : sold <= 5000 ? 25 - (sold - 100) / 4900 * 10
     : Math.max(5, 15 - (sold - 5000) / 5000 * 5);
-
-  // Review barrier: fewer reviews on top products = easier to compete
-  const revScore  = Math.max(0, 35 * (1 - reviews / 500));
-
-  // Quality gap: lower average rating = room to win on quality
-  const ratingGap = Math.max(0, 20 * (1 - Math.max(0, rating - 3.5) / 1.5));
-
-  // Price accessibility: Rp 25k–400k is easiest to source/fund
+  const revScore   = Math.max(0, 35 * (1 - reviews / 500));
+  const ratingGap  = Math.max(0, 20 * (1 - Math.max(0, rating - 3.5) / 1.5));
   const priceScore = price >= 25000 && price <= 400000 ? 20
     : price < 25000  ? Math.round(price / 25000 * 20)
     : Math.max(0, Math.round(20 - (price - 400000) / 400000 * 20));
-
   return Math.min(100, Math.round(soldScore + revScore + ratingGap + priceScore));
 }
 
