@@ -10148,63 +10148,95 @@ function ddRender(p) {
 }
 
 // Fetches up to 4 real scrape points for this listing and updates the trend chart.
-// Adds a 1-week forecast point using the average delta across available scrapes.
+// Falls back to _dscPrevMap (already in memory) when DB returns < 2 rows.
+// Adds a 1-week forecast point using the average of available deltas.
 async function ddLoadTrendHistory(listing) {
-  if (!_supabase || !listing?.item_id || !listing?.shop_id) return;
+  if (!listing?.item_id) return;
   try {
-    // Fetch up to 4 most-recent scrapes for this item
-    const { data: rows, error } = await _supabase
-      .from('listings')
-      .select('scraped_at,total_sold,price')
-      .eq('item_id', listing.item_id)
-      .eq('shop_id', listing.shop_id)
-      .order('scraped_at', { ascending: false })
-      .limit(4);
-
-    if (error || !rows || rows.length < 2) return; // need at least 2 points to compute delta
+    let dbRows = [];
+    if (_supabase) {
+      // Try both numeric and string forms of item_id/shop_id to handle type variance
+      const { data } = await _supabase
+        .from('listings')
+        .select('scraped_at,total_sold,price')
+        .eq('item_id', listing.item_id)
+        .eq('shop_id', listing.shop_id)
+        .order('scraped_at', { ascending: false })
+        .limit(4);
+      dbRows = data || [];
+      // If nothing found, retry with string-cast ids
+      if (!dbRows.length) {
+        const { data: d2 } = await _supabase
+          .from('listings')
+          .select('scraped_at,total_sold,price')
+          .eq('item_id', String(listing.item_id))
+          .eq('shop_id', String(listing.shop_id))
+          .order('scraped_at', { ascending: false })
+          .limit(4);
+        dbRows = d2 || [];
+      }
+    }
 
     // Sort oldest → newest
-    rows.sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
+    dbRows.sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
 
-    // Build per-period labels, unit deltas, and omset
+    // If DB only has 1 row (scraper does upserts) or 0, synthesize a "previous" point
+    // using _dscPrevMap which dscLoadTrendData already populated in memory.
+    if (dbRows.length < 2) {
+      const prevKey  = `${listing.item_id}_${listing.shop_id}`;
+      const prevSold = _dscPrevMap[prevKey];
+      if (prevSold != null) {
+        // Estimate previous scrape date as ~7 days before the listing's scraped_at
+        const currDate = listing.scraped_at
+          ? new Date(listing.scraped_at)
+          : new Date();
+        const prevDate = new Date(currDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const syntheticPrev = { scraped_at: prevDate.toISOString(), total_sold: prevSold, price: listing.price };
+        const syntheticCurr = { scraped_at: currDate.toISOString(), total_sold: listing.total_sold || 0, price: listing.price };
+        dbRows = [syntheticPrev, syntheticCurr];
+      } else if (dbRows.length === 0) {
+        // No data at all — leave chart empty
+        return;
+      }
+    }
+
+    // Build per-period delta labels
     const labels = [], unitData = [], omsetData = [];
-    for (let i = 1; i < rows.length; i++) {
-      const prev = rows[i - 1], curr = rows[i];
+    for (let i = 1; i < dbRows.length; i++) {
+      const prev = dbRows[i - 1], curr = dbRows[i];
       const deltaUnits = Math.max(0, (curr.total_sold || 0) - (prev.total_sold || 0));
       const price      = curr.price || listing.price || 0;
       const date       = new Date(curr.scraped_at);
-      labels.push(date.toLocaleDateString('id-ID', { day:'numeric', month:'short' }));
+      labels.push(date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }));
       unitData.push(deltaUnits);
       omsetData.push(deltaUnits * price);
     }
 
-    // Forecast: average delta units/omset, label = 1 week after last scrape
-    const avgUnits = Math.round(unitData.reduce((s,v)=>s+v,0) / unitData.length);
-    const avgOmset = Math.round(omsetData.reduce((s,v)=>s+v,0) / omsetData.length);
-    const lastDate = new Date(rows[rows.length - 1].scraped_at);
+    // Forecast: average delta, 1 week after last point
+    const avgUnits = Math.round(unitData.reduce((s, v) => s + v, 0) / unitData.length);
+    const avgOmset = Math.round(omsetData.reduce((s, v) => s + v, 0) / omsetData.length);
+    const lastDate = new Date(dbRows[dbRows.length - 1].scraped_at);
     lastDate.setDate(lastDate.getDate() + 7);
-    const forecastLabel = lastDate.toLocaleDateString('id-ID', { day:'numeric', month:'short' }) + ' *';
-
-    labels.push(forecastLabel);
-    unitData.push(null);   // null = gap before forecast point
+    labels.push(lastDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) + ' *');
+    unitData.push(null);
     omsetData.push(null);
 
-    // Forecast datasets (separate so they render dashed green)
-    const forecastUnitData  = new Array(labels.length).fill(null);
-    const forecastOmsetData = new Array(labels.length).fill(null);
-    // Bridge from last real point to forecast
-    forecastUnitData[labels.length - 2]  = unitData[labels.length - 2]  ?? avgUnits;
-    forecastOmsetData[labels.length - 2] = omsetData[labels.length - 2] ?? avgOmset;
-    forecastUnitData[labels.length - 1]  = avgUnits;
-    forecastOmsetData[labels.length - 1] = avgOmset;
+    // Forecast datasets bridge last real point → forecast (dashed green)
+    const fUnit  = new Array(labels.length).fill(null);
+    const fOmset = new Array(labels.length).fill(null);
+    const lastIdx = labels.length - 2;
+    fUnit[lastIdx]      = unitData[lastIdx]  ?? avgUnits;
+    fOmset[lastIdx]     = omsetData[lastIdx] ?? avgOmset;
+    fUnit[lastIdx + 1]  = avgUnits;
+    fOmset[lastIdx + 1] = avgOmset;
 
     if (!_ddChartTrend) return;
     _ddChartTrend.data.labels = labels;
     _ddChartTrend.data.datasets = [
-      { label:'Omset (Rp)',     data:omsetData,        borderColor:'#E8442A', backgroundColor:'rgba(232,68,42,.06)', borderWidth:2.5, fill:true,  tension:0.3, pointRadius:4, pointBackgroundColor:'#E8442A', yAxisID:'y',  spanGaps:false },
-      { label:'Unit Terjual',   data:unitData,         borderColor:'#4F46E5', backgroundColor:'transparent',         borderWidth:2,   fill:false, tension:0.3, pointRadius:3, pointBackgroundColor:'#4F46E5', yAxisID:'y2', spanGaps:false },
-      { label:'Forecast Omset', data:forecastOmsetData,borderColor:'#10B981', backgroundColor:'transparent',         borderWidth:2,   fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y',  borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
-      { label:'Forecast Unit',  data:forecastUnitData, borderColor:'#10B981', backgroundColor:'transparent',         borderWidth:2,   fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
+      { label:'Omset (Rp)',     data:omsetData, borderColor:'#E8442A', backgroundColor:'rgba(232,68,42,.06)', borderWidth:2.5, fill:true,  tension:0.3, pointRadius:4, pointBackgroundColor:'#E8442A', yAxisID:'y',  spanGaps:false },
+      { label:'Unit Terjual',   data:unitData,  borderColor:'#4F46E5', backgroundColor:'transparent',         borderWidth:2,   fill:false, tension:0.3, pointRadius:3, pointBackgroundColor:'#4F46E5', yAxisID:'y2', spanGaps:false },
+      { label:'Forecast Omset', data:fOmset,    borderColor:'#10B981', backgroundColor:'transparent',         borderWidth:2,   fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y',  borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
+      { label:'Forecast Unit',  data:fUnit,     borderColor:'#10B981', backgroundColor:'transparent',         borderWidth:2,   fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
     ];
     _ddChartTrend.update();
   } catch(e) {
