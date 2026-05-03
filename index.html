@@ -4701,6 +4701,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <input class="dsc-search" id="dsc-search" type="text" placeholder="Cari produk..." oninput="dscApplyFilters()">
                   <select class="dsc-sort-select" id="dsc-sort" onchange="dscApplyFilters()">
                     <option value="omset-desc">Omset Tertinggi</option>
+                    <option value="score-desc">Skor Tertinggi</option>
                     <option value="tren-desc">Tren Naik</option>
                     <option value="price-asc">Harga Terendah</option>
                     <option value="price-desc">Harga Tertinggi</option>
@@ -7933,7 +7934,7 @@ let _dscCompMap     = {};   // keyword -> "Rendah"|"Sedang"|"Tinggi"
 let _dscFiltered    = [];
 let _dscPage        = 1;
 let _dscLoaded      = false;
-const DSC_PER_PAGE  = 25;
+const DSC_PER_PAGE  = 60;
 
 // fmt helpers
 const _dscFmt = v => v >= 1000000 ? `Rp ${(v/1000000).toFixed(1)} jt` : v >= 1000 ? `Rp ${(v/1000).toFixed(0)} rb` : `Rp ${Math.round(v)}`;
@@ -8333,10 +8334,18 @@ function dscApplyFilters() {
     return true;
   });
 
+  // Pre-compute scores once for score-sort (avoid re-scoring per comparison)
+  const _kwMapForSort = {};
+  if (sortVal.startsWith('score')) {
+    _dscAllListings.forEach(r => { const k = r.keyword||'__'; if (!_kwMapForSort[k]) _kwMapForSort[k]=[]; _kwMapForSort[k].push(r); });
+  }
+  const _scoreOf = p => calcListingScore(p, _kwMapForSort[p.keyword||'__'], _dscListingTrendPct(p), _dscKwTrendMap[p.keyword]??null).total;
+
   const [sf, sd] = sortVal.split('-');
   list.sort((a, b) => {
     let va, vb;
     if (sf === 'omset')  { va = _dscOmset(a); vb = _dscOmset(b); }
+    else if (sf === 'score') { va = _scoreOf(a); vb = _scoreOf(b); }
     else if (sf === 'tren')  { va = _dscTrendDelta(a) ?? -Infinity; vb = _dscTrendDelta(b) ?? -Infinity; }
     else if (sf === 'price') { va = a.price || 0; vb = b.price || 0; }
     else if (sf === 'name')  { return sd === 'asc' ? (a.product_name||'').localeCompare(b.product_name||'') : (b.product_name||'').localeCompare(a.product_name||''); }
@@ -9928,16 +9937,31 @@ function apRenderStrategy() {
 
 function dscGoPage(n) {
   const pages = Math.ceil(_dscFiltered.length / DSC_PER_PAGE);
-  // Allow navigating to next page even if filtered list doesn't have it yet (more may load)
   if (n < 1) return;
   if (n > pages && !_dscHasMore) return;
   _dscPage = n;
-  dscRenderTable();
-  document.getElementById('dash-content')?.scrollTo(0, 0);
-  // Fetch next batch when reaching last 2 pages of loaded data
-  if (_dscHasMore && !_dscLoading && n >= pages - 1) {
-    dscLoadListings();
+
+  // If the page we need isn't loaded yet, show a spinner in the content area
+  // while we fetch the next batch, then re-render when done.
+  const needsFetch = _dscHasMore && !_dscLoading && (n > pages || n >= pages - 1);
+  if (needsFetch) {
+    const cardGrid   = document.getElementById('dsc-card-grid');
+    const tableInner = document.getElementById('dsc-table-inner');
+    const spinHtml   = `<div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 0;gap:14px;">
+      <div style="width:36px;height:36px;border:3px solid #E5E7EB;border-top-color:#E8442A;border-radius:50%;animation:spin .7s linear infinite;"></div>
+      <div style="font-size:.85rem;color:#9CA3AF;font-weight:500;">Memuat data halaman ${n}...</div>
+    </div>`;
+    if (_dscViewMode === 'card'  && cardGrid)   cardGrid.innerHTML   = spinHtml;
+    if (_dscViewMode === 'table' && tableInner) tableInner.innerHTML = `<table class="dsc-table" style="width:100%"><tbody>${spinHtml.replace('grid-column:1/-1;', '')}</tbody></table>`;
+    dscLoadListings().then(() => {
+      // dscLoadListings calls dscApplyFilters which resets page to 1 — restore it
+      _dscPage = Math.min(n, Math.ceil(_dscFiltered.length / DSC_PER_PAGE));
+      dscRenderTable();
+    });
+  } else {
+    dscRenderTable();
   }
+  document.getElementById('dash-content')?.scrollTo(0, 0);
 }
 
 function dscResetFilters() {
