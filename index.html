@@ -7927,7 +7927,8 @@ function toggleDashSub(sub) {
 //  DISCOVER PAGE  — individual listings from Supabase
 // ════════════════════════════════════════════════════════════
 let _dscAllListings = [];   // deduplicated listing objects
-let _dscPrevMap     = {};   // "itemId_shopId" -> prev total_sold
+let _dscPrevMap     = {};   // "itemId_shopId" -> prev total_sold (from earlier scrape)
+let _dscKwTrendMap  = {};   // keyword -> pct change in total keyword sold vs prev scrape
 let _dscCompMap     = {};   // keyword -> "Rendah"|"Sedang"|"Tinggi"
 let _dscFiltered    = [];
 let _dscPage        = 1;
@@ -7992,6 +7993,14 @@ function _dscTrendDelta(listing) {
   const prev = _dscPrevMap[key];
   if (prev == null) return null;
   return (listing.total_sold || 0) - prev;
+}
+
+// Listing trend as % change vs previous scrape (null if no prev data)
+function _dscListingTrendPct(listing) {
+  const key  = `${listing.item_id}_${listing.shop_id}`;
+  const prev = _dscPrevMap[key];
+  if (prev == null || prev === 0) return null;
+  return Math.round(((listing.total_sold || 0) - prev) / prev * 100);
 }
 
 let _dscOffset      = 0;
@@ -8210,12 +8219,62 @@ async function dscLoadListings() {
     }
     dscHideLoadingScreen();
     dscApplyFilters();
+    // Load trend data in background (non-blocking) after first batch
+    if (_dscOffset <= DSC_FETCH * 2) dscLoadTrendData();
 
   } catch(e) {
     console.error('dscLoadListings:', e);
     dscHideLoadingScreen();
   } finally {
     _dscLoading = false;
+  }
+}
+
+// Fetch previous scrape's total_sold to compute listing + keyword trends.
+// Runs in background; re-renders table once data is ready.
+async function dscLoadTrendData() {
+  if (!_supabase || !_dscAllListings.length) return;
+  try {
+    // Get the two most recent scrape dates
+    const { data: dates } = await _supabase.from('listings')
+      .select('scraped_at').order('scraped_at', { ascending: false }).limit(2);
+    const latestDate = dates?.[0]?.scraped_at?.slice(0, 10);
+    const prevDate   = dates?.[1]?.scraped_at?.slice(0, 10);
+    if (!prevDate || prevDate === latestDate) return;
+
+    // Fetch prev scrape data for all loaded listings' keywords
+    const keywords = [...new Set(_dscAllListings.map(r => r.keyword).filter(Boolean))];
+    const { data: prevRows } = await _supabase
+      .from('listings')
+      .select('item_id,shop_id,total_sold,keyword')
+      .gte('scraped_at', prevDate)
+      .lt('scraped_at', latestDate)
+      .limit(3000);
+
+    if (!prevRows?.length) return;
+
+    // Populate per-listing prev map
+    const kwPrev = {}, kwCurr = {};
+    prevRows.forEach(r => {
+      _dscPrevMap[`${r.item_id}_${r.shop_id}`] = r.total_sold || 0;
+      kwPrev[r.keyword] = (kwPrev[r.keyword] || 0) + (r.total_sold || 0);
+    });
+
+    // Compute keyword-level total sold for current scrape
+    _dscAllListings.forEach(r => {
+      kwCurr[r.keyword] = (kwCurr[r.keyword] || 0) + (r.total_sold || 0);
+    });
+
+    // Compute keyword trend %
+    keywords.forEach(kw => {
+      const prev = kwPrev[kw], curr = kwCurr[kw];
+      _dscKwTrendMap[kw] = prev > 0 ? Math.round((curr - prev) / prev * 100) : null;
+    });
+
+    // Re-render table and cards now that trend data is available
+    dscApplyFilters();
+  } catch(e) {
+    console.warn('dscLoadTrendData:', e);
   }
 }
 
@@ -8339,7 +8398,7 @@ function dscRenderTable() {
           ? `<img src="${p.image_url}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='📦'">`
           : '📦';
         const key   = `${p.item_id}__${p.shop_id}`;
-        const ls    = calcListingScore(p, _cardKwMap[p.keyword||'__']);
+        const ls    = calcListingScore(p, _cardKwMap[p.keyword||'__'], _dscListingTrendPct(p), _dscKwTrendMap[p.keyword]??null);
         const lslbl = listingScoreLabel(ls.total);
         return `<div class="dsc-card" onclick="dscOpenDeepDive('${key}')">
           <div class="dsc-card-img" style="position:relative;">${imgHtml}
@@ -8385,7 +8444,7 @@ function dscRenderTable() {
         const omset  = _dscOmset(p);
         const delta  = _dscTrendDelta(p);
         const key    = `${p.item_id}__${p.shop_id}`;
-        const ls     = calcListingScore(p, _dscKwMap[p.keyword||'__']);
+        const ls     = calcListingScore(p, _dscKwMap[p.keyword||'__'], _dscListingTrendPct(p), _dscKwTrendMap[p.keyword]??null);
         const lslbl  = listingScoreLabel(ls.total);
         const scoreBadge = `<span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;">
           <span style="background:${lslbl.clr};color:#fff;padding:2px 8px;border-radius:8px;font-size:.72rem;font-weight:800;">${ls.total}</span>
@@ -8765,7 +8824,9 @@ async function ddLoadKeywordContext(listing) {
     _ddKwTotal   = totalSold;
 
     // Update Deep Dive scores now that we have full keyword peers
-    const _ls  = calcListingScore(listing, rows);
+    const _kwTrend = _dscKwTrendMap[listing.keyword] ?? null;
+    const _lstTrend = _dscListingTrendPct(listing);
+    const _ls  = calcListingScore(listing, rows, _lstTrend, _kwTrend);
     const _lbl = listingScoreLabel(_ls.total);
     const numEl = document.getElementById('dd-score-num');
     const tagEl = document.getElementById('dd-score-tag');
@@ -9505,7 +9566,7 @@ function apGenData(listing) {
 
   // Use ListingScore for gauge (combines market ease + listing strength)
   const peers        = _ddKwRows.length > 0 ? _ddKwRows : null;
-  const _lsObj       = calcListingScore(listing, peers);
+  const _lsObj       = calcListingScore(listing, peers, _dscListingTrendPct(listing), _dscKwTrendMap[listing.keyword]??null);
   const totalScore   = _lsObj.total;
   // Sub-scores derived consistently from LarisScore components
   const _totalSoldPeers = peers ? peers.reduce((s,r)=>s+(r.total_sold||0),0) : (listing.total_sold||0)*100;
@@ -10686,89 +10747,80 @@ function _pdbViabilityScore(r) {
 
 // ── LarisScore: How easy is it to break into page 1-2 and capture ≥0.5% of their sales? ──
 // peers = ~120 page-1-2 Shopee listings — NOT all sellers, just the visible top performers.
-// The score measures entry difficulty against THAT specific competitive set.
-// 0 = very hard to break in, 100 = low barrier, easy to enter.
-function calcLarisScore(listing, peers) {
+// kwTrendPct = % change in total keyword sold vs previous scrape (null if unavailable).
+// Growing market → easier to enter; declining → harder (existing sellers fight for less).
+function calcLarisScore(listing, peers, kwTrendPct = null) {
   const rows = peers && peers.length > 5 ? peers : null;
+  let baseScore;
 
   if (rows) {
-    // All 120 listings are already "top performers" — we compare within that set.
     const soldArr   = rows.map(r => r.total_sold || 0).sort((a, b) => a - b);
     const totalSold = soldArr.reduce((s, v) => s + v, 0);
-    const target05  = totalSold * 0.005; // 0.5% of what pages 1-2 collectively sell
+    const target05  = totalSold * 0.005;
 
     // Factor 1 — Entry bar vs. 0.5% target (35 pts)
-    // p20 = what the weakest visible sellers (bottom 20% of the 120) sell.
-    // This is the approximate minimum to appear on page 2.
-    // If that bar is BELOW the 0.5% target → getting 0.5% automatically gets you visible → easy.
-    // If that bar is ABOVE the 0.5% target → you need to sell more than 0.5% just to be seen → hard.
     const p20Sold    = soldArr[Math.floor(soldArr.length * 0.20)] || 0;
     const entryRatio = target05 > 0 ? p20Sold / target05 : 1;
-    // entryRatio 0→35pts (very easy), 1→17.5pts (neutral), ≥2→0pts (hard)
     const entryScore = Math.max(0, Math.min(35, 35 * (2 - entryRatio) / 2));
 
-    // Factor 2 — Review moat of page 1-2 sellers (30 pts)
-    // If even the best visible sellers have few reviews, the market is young/niche
-    // and a new seller can compete without a review history.
-    const revArr  = rows.map(r => r.reviews || r.review_count || 0).sort((a, b) => a - b);
-    const medRev  = revArr[Math.floor(revArr.length * 0.5)] || 0;
-    // 0 reviews → 30 pts;  400+ reviews → 0 pts
+    // Factor 2 — Review moat (30 pts)
+    const revArr      = rows.map(r => r.reviews || r.review_count || 0).sort((a, b) => a - b);
+    const medRev      = revArr[Math.floor(revArr.length * 0.5)] || 0;
     const reviewScore = Math.max(0, Math.min(30, 30 * (1 - medRev / 400)));
 
-    // Factor 3 — Sales concentration within the 120 (20 pts)
-    // Using top-10 of 120 (not top-3) because all 120 are already "top" sellers.
-    // If top-10 own most of the sales, they are dominant — very hard to displace.
+    // Factor 3 — Top-10 concentration (20 pts)
     const top10Sold  = rows.slice().sort((a, b) => (b.total_sold||0) - (a.total_sold||0))
                            .slice(0, 10).reduce((s, r) => s + (r.total_sold||0), 0);
     const top10Share = totalSold > 0 ? top10Sold / totalSold : 1;
-    // top10Share ≤ 0.30 → 20 pts (spread);  ≥ 0.90 → 0 pts (dominated by 10 sellers)
     const concScore  = Math.max(0, Math.min(20, 20 * (1 - (top10Share - 0.30) / 0.60)));
 
     // Factor 4 — Price accessibility (15 pts)
-    // Can a new seller realistically source and sell at the market price?
-    // Rp 20k–500k is the sweet spot: affordable to stock, good margin potential.
     const prices    = rows.map(r => r.price || 0).filter(Boolean).sort((a, b) => a - b);
     const medPrice  = prices[Math.floor(prices.length * 0.5)] || 0;
     const priceScore = medPrice >= 20000 && medPrice <= 500000 ? 15
       : medPrice < 20000  ? Math.round(medPrice / 20000 * 15)
       : Math.max(0, Math.round(15 - (medPrice - 500000) / 500000 * 15));
 
-    return Math.min(100, Math.round(entryScore + reviewScore + concScore + priceScore));
+    baseScore = entryScore + reviewScore + concScore + priceScore;
+  } else {
+    const sold    = listing.total_sold || 0;
+    const reviews = listing.reviews || listing.review_count || 0;
+    const rating  = listing.rating  || 0;
+    const price   = listing.price   || 0;
+    const soldScore  = sold < 100  ? Math.min(sold / 100, 1) * 25
+      : sold <= 5000 ? 25 - (sold - 100) / 4900 * 10
+      : Math.max(5, 15 - (sold - 5000) / 5000 * 5);
+    const revScore   = Math.max(0, 35 * (1 - reviews / 500));
+    const ratingGap  = Math.max(0, 20 * (1 - Math.max(0, rating - 3.5) / 1.5));
+    const priceScore = price >= 25000 && price <= 400000 ? 20
+      : price < 25000  ? Math.round(price / 25000 * 20)
+      : Math.max(0, Math.round(20 - (price - 400000) / 400000 * 20));
+    baseScore = soldScore + revScore + ratingGap + priceScore;
   }
 
-  // ── Single-listing heuristic (no peer context available) ─────────────────
-  // Treat this one listing as a proxy for how hard the market is.
-  const sold    = listing.total_sold || 0;
-  const reviews = listing.reviews || listing.review_count || 0;
-  const rating  = listing.rating  || 0;
-  const price   = listing.price   || 0;
-  const soldScore  = sold < 100  ? Math.min(sold / 100, 1) * 25
-    : sold <= 5000 ? 25 - (sold - 100) / 4900 * 10
-    : Math.max(5, 15 - (sold - 5000) / 5000 * 5);
-  const revScore   = Math.max(0, 35 * (1 - reviews / 500));
-  const ratingGap  = Math.max(0, 20 * (1 - Math.max(0, rating - 3.5) / 1.5));
-  const priceScore = price >= 25000 && price <= 400000 ? 20
-    : price < 25000  ? Math.round(price / 25000 * 20)
-    : Math.max(0, Math.round(20 - (price - 400000) / 400000 * 20));
-  return Math.min(100, Math.round(soldScore + revScore + ratingGap + priceScore));
+  // Factor 5 — Keyword trend adjustment (±10 pts)
+  // Growing market: new demand entering = less zero-sum, share easier to capture.
+  // Declining market: existing sellers fight over shrinking pie = harder to enter.
+  // Capped at ±10 so trend nudges without overriding structural factors.
+  const trendAdj = kwTrendPct != null
+    ? Math.max(-10, Math.min(10, kwTrendPct * 0.33))
+    : 0;
+
+  return Math.min(100, Math.max(0, Math.round(baseScore + trendAdj)));
 }
 
 // ── ListingScore: How attractive is THIS specific listing as an opportunity? ──
-// Combines keyword-level market ease (LarisScore) with the listing's own strength.
-// peers = the same ~120 page-1-2 listings used for LarisScore.
-// Returns { total, kwScore, salesScore, revScore, omsetScore, larisScore }
-function calcListingScore(listing, peers) {
+// kwTrendPct = % change in keyword total sold vs prev scrape.
+// listingTrendPct = % change in this listing's total_sold vs prev scrape.
+// Returns { total, kwScore, salesScore, revScore, omsetScore, trendScore, larisScore }
+function calcListingScore(listing, peers, listingTrendPct = null, kwTrendPct = null) {
   const rows = peers && peers.length > 5 ? peers : null;
 
   // A. Keyword ease contribution (30 pts)
-  // Ties this listing's ceiling to how easy its market is to enter.
-  // Hard market → all listings there start with a lower ceiling.
-  const larisScore = calcLarisScore(listing, rows);
+  const larisScore = calcLarisScore(listing, rows, kwTrendPct);
   const kwScore    = Math.round(larisScore * 0.30);
 
   // B. Sales percentile rank within the 120 (25 pts)
-  // Uses percentile (not ratio to median) because all 120 are already top-performers —
-  // a listing at p75 of page-1-2 is genuinely strong; p25 is still visible but weaker.
   let salesScore;
   if (rows) {
     const sortedSold = rows.map(r => r.total_sold || 0).sort((a, b) => a - b);
@@ -10779,24 +10831,28 @@ function calcListingScore(listing, peers) {
     salesScore = Math.min(25, Math.round(Math.log10(Math.max(sold, 1)) / Math.log10(5000) * 25));
   }
 
-  // C. Review efficiency — can a new seller replicate this without a review history? (25 pts)
-  // Part 1: sales-per-review ratio (15 pts) — high = selling without review dependency
+  // C. Review efficiency (25 pts)
   const sold      = listing.total_sold || 0;
   const reviews   = listing.reviews || listing.review_count || 0;
   const spR       = sold / Math.max(reviews, 1);
-  const effScore  = Math.min(15, Math.round(spR / 40 * 15)); // spR ≥ 40 → max
-  // Part 2: absolute review count barrier (10 pts) — fewer reviews = lower social proof bar
+  const effScore  = Math.min(15, Math.round(spR / 40 * 15));
   const barScore  = Math.max(0, Math.round((1 - Math.min(reviews / 300, 1)) * 10));
   const revScore  = effScore + barScore;
 
   // D. Revenue opportunity (20 pts)
-  // What is the monthly prize for winning this listing's niche?
-  // Rp 1M/month → ~6pts, 10M → ~13pts, 50M+ → 20pts
-  const monthly   = (listing.price || 0) * sold / 12;
+  const monthly    = (listing.price || 0) * sold / 12;
   const omsetScore = Math.min(20, Math.round(Math.log10(Math.max(monthly, 1)) / Math.log10(50000000) * 20));
 
-  const total = Math.min(100, kwScore + salesScore + revScore + omsetScore);
-  return { total, kwScore, salesScore, revScore, omsetScore, larisScore };
+  // E. Trend adjustment (±10 pts)
+  // Prefer listing-level trend; fall back to keyword trend if listing data unavailable.
+  // Strongly rising listing = momentum, easier to ride. Falling = declining opportunity.
+  const trendPct   = listingTrendPct ?? kwTrendPct ?? null;
+  const trendScore = trendPct != null
+    ? Math.max(-10, Math.min(10, trendPct * 0.33))
+    : 0;
+
+  const total = Math.min(100, Math.max(0, Math.round(kwScore + salesScore + revScore + omsetScore + trendScore)));
+  return { total, kwScore, salesScore, revScore, omsetScore, trendScore, larisScore };
 }
 
 function listingScoreLabel(score) {
@@ -10864,7 +10920,12 @@ async function loadProductDatabase() {
     if (!_kwPeers[k]) _kwPeers[k] = [];
     _kwPeers[k].push(r);
   });
-  _pdbRows = (data || []).map(r => ({ ...r, score: calcListingScore(r, _kwPeers[r.keyword || '__']).total, larisScore: calcLarisScore(r, _kwPeers[r.keyword || '__']) }));
+  _pdbRows = (data || []).map(r => {
+    const kwT  = _dscKwTrendMap[r.keyword] ?? null;
+    const lstT = _dscListingTrendPct(r);
+    const ls   = calcListingScore(r, _kwPeers[r.keyword || '__'], lstT, kwT);
+    return { ...r, score: ls.total, larisScore: ls.larisScore };
+  });
   if (f.min_score != null) _pdbRows = _pdbRows.filter(r => r.score >= f.min_score);
   if (f.max_score != null) _pdbRows = _pdbRows.filter(r => r.score <= f.max_score);
 
@@ -12731,7 +12792,7 @@ async function ptToggleExpand(item_id, shop_id) {
   }
 
   // Compute listing score vs peers
-  const listingScore = _calcListingScore(saved, sellerData);
+  const listingScore = calcListingScore(saved, sellerData, _dscListingTrendPct(saved), _dscKwTrendMap[saved?.keyword]??null).total;
   const catScore     = saved?.score || 0;
   const lsCol        = _scoreColor(listingScore);
   const csCol        = _scoreColor(catScore);
