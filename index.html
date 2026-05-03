@@ -8745,6 +8745,19 @@ async function ddLoadKeywordContext(listing) {
     _ddKwRows    = rows;
     _ddKwListing = listing;
     _ddKwTotal   = totalSold;
+
+    // Update Deep Dive score now that we have full keyword peers
+    const larisScore = calcLarisScore(listing, rows);
+    const numEl = document.getElementById('dd-score-num');
+    const tagEl = document.getElementById('dd-score-tag');
+    if (numEl) numEl.textContent = larisScore;
+    if (tagEl) {
+      const lbl = larisScore >= 75 ? 'Mudah Masuk' : larisScore >= 55 ? 'Persaingan Sedang' : larisScore >= 35 ? 'Cukup Sulit' : 'Sangat Kompetitif';
+      const bg  = larisScore >= 75 ? '#EAF7F0' : larisScore >= 55 ? '#FFF7ED' : '#FEF2F2';
+      const clr = larisScore >= 75 ? '#10B981' : larisScore >= 55 ? '#F59E0B' : '#DC2626';
+      tagEl.textContent = lbl; tagEl.style.background = bg; tagEl.style.color = clr;
+      tagEl.style.borderColor = larisScore >= 75 ? '#D1FAE5' : larisScore >= 55 ? '#FDE68A' : '#FECACA';
+    }
     ddRenderKompetitor();
 
   } catch(e) {
@@ -9466,14 +9479,21 @@ function apGenData(listing) {
   typeVals.forEach(t => t.pct = Math.round(t.pct / typeSum * 100));
   typeVals.sort((a, b) => b.pct - a.pct);
 
-  // Market opportunity score
-  const growthScore  = Math.min(100, Math.round(50 + rng() * 40));
-  const competScore  = Math.max(10, Math.round(100 - (nSellers / 2)));
-  const demandScore  = Math.min(100, Math.round(55 + rng() * 35));
-  const marginScore  = Math.min(100, Math.round(50 + rng() * 40));
-  const totalScore   = Math.round((growthScore + competScore + demandScore + marginScore) / 4);
-  const scoreLbl     = totalScore >= 75 ? 'Sangat Baik' : totalScore >= 60 ? 'Baik' : totalScore >= 40 ? 'Sedang' : 'Rendah';
-  const scoreColor   = totalScore >= 75 ? '#16A34A' : totalScore >= 60 ? '#F59E0B' : '#DC2626';
+  // Market entry ease score — use real LarisScore from keyword context
+  const peers        = _ddKwRows.length > 0 ? _ddKwRows : null;
+  const totalScore   = calcLarisScore(listing, peers);
+  // Sub-scores derived consistently from LarisScore components
+  const _totalSoldPeers = peers ? peers.reduce((s,r)=>s+(r.total_sold||0),0) : (listing.total_sold||0)*100;
+  const _nSellers = peers ? Math.max(1, new Set(peers.map(r=>String(r.shop_id||r.store_name||''))).size) : Math.round(50+rng()*100);
+  const _top3    = peers ? peers.slice().sort((a,b)=>(b.total_sold||0)-(a.total_sold||0)).slice(0,3).reduce((s,r)=>s+(r.total_sold||0),0) : 0;
+  const _top3Share = _totalSoldPeers > 0 ? _top3/_totalSoldPeers : 0.5;
+  const _medRev  = peers ? (peers.map(r=>r.reviews||0).sort((a,b)=>a-b)[Math.floor(peers.length/2)]||0) : Math.round(rng()*200);
+  const growthScore  = Math.min(100, Math.round(50 + rng() * 40)); // trend proxy (simulated)
+  const competScore  = Math.max(0, Math.min(100, Math.round(100 - _top3Share * 100)));
+  const demandScore  = Math.max(0, Math.min(100, Math.round(100 * (1 - _medRev / 400))));
+  const marginScore  = Math.max(0, Math.min(100, Math.round(100 * (1 - Math.max(0,_nSellers/200-0.5)/1.5))));
+  const scoreLbl     = totalScore >= 75 ? 'Mudah Masuk' : totalScore >= 55 ? 'Persaingan Sedang' : totalScore >= 35 ? 'Cukup Sulit' : 'Sangat Kompetitif';
+  const scoreColor   = totalScore >= 75 ? '#16A34A' : totalScore >= 55 ? '#F59E0B' : '#DC2626';
 
   // Price segmentation
   const SEG_LABELS = ['< Rp 50rb','Rp 50–100rb','Rp 100–200rb','Rp 200–500rb','> Rp 500rb'];
@@ -9882,10 +9902,10 @@ function ddRender(p) {
   }
   document.getElementById('dd-hero-name').textContent = p.name;
   document.getElementById('dd-hero-cats').innerHTML = `Kategori: ${p.category||'Umum'} <span>• Sub Kategori: ${p.category||'Umum'}</span>`;
-  document.getElementById('dd-score-num').textContent = score;
-  document.getElementById('dd-score-tag').textContent = score >= 75 ? 'Potensi Tinggi' : score >= 55 ? 'Potensi Sedang' : 'Perlu Riset';
-  document.getElementById('dd-score-tag').style.background = score >= 75 ? '#EAF7F0' : '#FFF0ED';
-  document.getElementById('dd-score-tag').style.color = score >= 75 ? '#10B981' : '#E8442A';
+  document.getElementById('dd-score-num').textContent = score || '…';
+  // Label updated to final value once ddLoadKeywordContext resolves; show placeholder for now
+  const _tagEl = document.getElementById('dd-score-tag');
+  if (_tagEl) { _tagEl.textContent = score ? (score >= 75 ? 'Mudah Masuk' : score >= 55 ? 'Persaingan Sedang' : 'Cukup Sulit') : 'Menghitung…'; _tagEl.style.background = '#F3F4F6'; _tagEl.style.color = '#6B7280'; }
 
   // hero stats
   document.getElementById('dd-h-omset').textContent = 'Rp ' + (omset/1000000).toFixed(0) + '.' + String(Math.round((omset%1000000)/1000)).padStart(3,'0') + '.000';
@@ -10639,38 +10659,76 @@ function _pdbViabilityScore(r) {
   return Math.round(soldScore + stockScore + ratingScore);
 }
 
-// Product listing score: 5 factors, 0–100
-// catScore(30) + revenueRank(25) + trendScore(20) + ratingScore(15) + priceScore(10)
-function _calcListingScore(r, allInKeyword) {
-  const catScore    = Math.min((r.score || 0) * 0.30, 30);   // inherit category/viability score
+// ── LarisScore: How easy is it for a new seller to capture ≥0.5% of total market sales? ──
+// 0 = very hard, 100 = very easy.
+// When peers (all listings in same keyword) are supplied the score uses full market context.
+// When peers is empty/null it falls back to single-listing heuristics.
+function calcLarisScore(listing, peers) {
+  const rows = (peers && peers.length > 1) ? peers : null;
 
-  // Revenue rank within keyword peers
-  const myRev = (r.price||0) * (r.total_sold||0) / 12;
-  const allRevs = (allInKeyword||[]).map(p=>(p.price||0)*(p.total_sold||0)/12).sort((a,b)=>b-a);
-  const rank = allRevs.indexOf(myRev);
-  const rankPct = allRevs.length > 1 ? 1 - rank/(allRevs.length-1) : 0.5;
-  const revRankScore = Math.round(rankPct * 25);
+  if (rows) {
+    // ── Full market-context score ──────────────────────────────────────────
+    const totalSold   = rows.reduce((s, r) => s + (r.total_sold || 0), 0);
+    const nSellers    = Math.max(1, new Set(rows.map(r => String(r.shop_id || r.store_name || r.item_id || ''))).size);
+    const target05    = totalSold * 0.005; // units needed to capture 0.5%
+    const avgPerSeller = totalSold / nSellers;
 
-  // Trend (total_sold growth indicator — use sold vs avg of peers)
-  const avgSold = allInKeyword?.length ? allInKeyword.reduce((s,p)=>s+(p.total_sold||0),0)/allInKeyword.length : 0;
-  const mySold  = r.total_sold || 0;
-  const trendScore = avgSold > 0
-    ? Math.min(Math.round(mySold/avgSold*10), 20)
-    : 10;
+    // Factor 1 — Seller fragmentation (30 pts)
+    // difficulty_ratio: how many avg-sellers' output you need to match to reach 0.5%
+    // ratio < 0.5 → easy (need below-average);  ratio > 2 → hard (need 2× average)
+    const fragRatio  = avgPerSeller > 0 ? target05 / avgPerSeller : 2;
+    const fragScore  = Math.max(0, Math.min(30, 30 * (1.5 - fragRatio) / 1.5));
 
-  // Rating & reviews
-  const rat = r.rating || 0;
-  const rev = r.reviews || r.review_count || 0;
-  const ratingScore = Math.round(((rat/5)*0.6 + Math.min(rev/500,1)*0.4) * 15);
+    // Factor 2 — Top-seller concentration (25 pts)
+    // If top 3 listings own most of sales → market is locked up → harder
+    const top3Sold  = rows.slice().sort((a,b)=>(b.total_sold||0)-(a.total_sold||0)).slice(0,3)
+                          .reduce((s,r)=>s+(r.total_sold||0),0);
+    const top3Share = totalSold > 0 ? top3Sold / totalSold : 1;
+    // top3Share=0.1→25pts, 0.5→12.5, ≥0.75→0
+    const concScore  = Math.max(0, Math.min(25, 25 * (1 - top3Share / 0.75)));
 
-  // Price positioning (within 20% of median price = max points)
-  const prices = (allInKeyword||[]).map(p=>p.price||0).filter(Boolean);
-  const medP = _median(prices);
-  const myP  = r.price || 0;
-  const priceDiff = medP > 0 ? Math.abs(myP-medP)/medP : 0;
-  const priceScore = Math.round(Math.max(0, 1-priceDiff*2.5) * 10);
+    // Factor 3 — Review moat (25 pts)
+    // Median competitor review count. High reviews = hard to outrank organically.
+    const revArr     = rows.map(r => r.reviews || r.review_count || 0).sort((a,b)=>a-b);
+    const medRev     = revArr[Math.floor(revArr.length * 0.5)] || 0;
+    // medRev=0→25pts, 200→12.5, ≥400→0
+    const reviewScore = Math.max(0, Math.min(25, 25 * (1 - medRev / 400)));
 
-  return Math.min(100, Math.round(catScore + revRankScore + trendScore + ratingScore + priceScore));
+    // Factor 4 — Market demand health (20 pts)
+    // Market should be proven (not too small) but not so huge 0.5% is unreachable.
+    // Sweet spot: total_sold 2k–100k.
+    const demandScore = totalSold < 500
+      ? Math.round(totalSold / 500 * 8)
+      : totalSold <= 50000
+      ? Math.round(8 + (totalSold - 500) / 49500 * 12)
+      : Math.max(5, Math.round(20 - (totalSold - 50000) / 50000 * 10));
+
+    return Math.min(100, Math.round(fragScore + concScore + reviewScore + demandScore));
+  }
+
+  // ── Single-listing heuristic (no peer context) ─────────────────────────
+  const sold    = listing.total_sold || 0;
+  const reviews = listing.reviews || listing.review_count || 0;
+  const rating  = listing.rating  || 0;
+  const price   = listing.price   || 0;
+
+  // Demand signal: proven but not swamped
+  const soldScore = sold < 100  ? Math.min(sold / 100, 1) * 25
+    : sold <= 5000 ? 25 - (sold - 100) / 4900 * 10
+    : Math.max(5, 15 - (sold - 5000) / 5000 * 5);
+
+  // Review barrier: fewer reviews on top products = easier to compete
+  const revScore  = Math.max(0, 35 * (1 - reviews / 500));
+
+  // Quality gap: lower average rating = room to win on quality
+  const ratingGap = Math.max(0, 20 * (1 - Math.max(0, rating - 3.5) / 1.5));
+
+  // Price accessibility: Rp 25k–400k is easiest to source/fund
+  const priceScore = price >= 25000 && price <= 400000 ? 20
+    : price < 25000  ? Math.round(price / 25000 * 20)
+    : Math.max(0, Math.round(20 - (price - 400000) / 400000 * 20));
+
+  return Math.min(100, Math.round(soldScore + revScore + ratingGap + priceScore));
 }
 
 async function loadProductDatabase() {
@@ -10724,8 +10782,14 @@ async function loadProductDatabase() {
     return;
   }
 
-  // Compute score and apply score filter client-side
-  _pdbRows = (data || []).map(r => ({ ...r, score: _pdbViabilityScore(r) }));
+  // Group by keyword so each listing is scored against its market peers
+  const _kwPeers = {};
+  (data || []).forEach(r => {
+    const k = r.keyword || '__';
+    if (!_kwPeers[k]) _kwPeers[k] = [];
+    _kwPeers[k].push(r);
+  });
+  _pdbRows = (data || []).map(r => ({ ...r, score: calcLarisScore(r, _kwPeers[r.keyword || '__']) }));
   if (f.min_score != null) _pdbRows = _pdbRows.filter(r => r.score >= f.min_score);
   if (f.max_score != null) _pdbRows = _pdbRows.filter(r => r.score <= f.max_score);
 
@@ -10800,8 +10864,8 @@ function _renderDashHome() {
     statsEl.innerHTML = [
       { val: products.length, lbl: 'Produk Tersimpan' },
       { val: products.length ? fmtRp(products.reduce((s,p) => s + (p.price||0)*(p.total_sold||0)/12, 0)) : 'Rp 0', lbl: 'Potensi Revenue/Bln' },
-      { val: products.length ? (products.reduce((s,p) => s + (_pdbViabilityScore(p)||0), 0) / products.length).toFixed(0) : '—', lbl: 'Avg Viability Score' },
-      { val: products.filter(p => (_pdbViabilityScore(p)||0) >= 70).length, lbl: 'Produk Score 70+' },
+      { val: products.length ? (products.reduce((s,p) => s + (p.score||0), 0) / products.length).toFixed(0) : '—', lbl: 'Avg LarisScore' },
+      { val: products.filter(p => (p.score||0) >= 70).length, lbl: 'Produk Score 70+' },
     ].map(s => `<div class="dash-stat"><div class="dash-stat-val">${s.val}</div><div class="dash-stat-lbl">${s.lbl}</div></div>`).join('');
   }
 
@@ -10809,7 +10873,7 @@ function _renderDashHome() {
   const revTotal = products.reduce((s,p) => s + (p.price||0)*(p.total_sold||0)/12, 0);
   const revAvg   = products.length ? revTotal / products.length : 0;
   const best     = products.slice().sort((a,b) => (b.price||0)*(b.total_sold||0) - (a.price||0)*(a.total_sold||0))[0];
-  const avgScore = products.length ? (products.reduce((s,p) => s + (_pdbViabilityScore(p)||0), 0) / products.length).toFixed(1) : '—';
+  const avgScore = products.length ? (products.reduce((s,p) => s + (p.score||0), 0) / products.length).toFixed(1) : '—';
 
   const rtEl = document.getElementById('home-rev-total');
   const raEl = document.getElementById('home-rev-avg');
@@ -10853,13 +10917,13 @@ function _renderDashHome() {
     } else {
       const alerts = [];
       products.forEach(p => {
-        const score = _pdbViabilityScore(p) || 0;
+        const score = p.score || calcLarisScore(p, null);
         if (score >= 70) alerts.push({ type:'up', title: (p.product_name||'').slice(0,38), sub: `Score ${score} — produk berpotensi tinggi`, badge: `Score ${score}`, badgeType:'up' });
         else if (score < 40) alerts.push({ type:'warn', title: (p.product_name||'').slice(0,38), sub: `Score ${score} — perlu ditinjau ulang`, badge: `Score ${score}`, badgeType:'down' });
       });
       if (!alerts.length) {
         products.slice(0,3).forEach(p => {
-          const score = _pdbViabilityScore(p) || 0;
+          const score = p.score || calcLarisScore(p, null);
           alerts.push({ type:'info', title:(p.product_name||'').slice(0,38), sub:`Score ${score} — tersimpan di tracker`, badge:`Score ${score}`, badgeType:'info' });
         });
       }
