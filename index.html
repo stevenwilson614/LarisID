@@ -8475,16 +8475,20 @@ function dscRenderTable() {
   const countEl = document.getElementById('dsc-count');
   if (countEl) countEl.textContent = `${total.toLocaleString('id-ID')} listing`;
 
+  // If there's more data on the server, show one extra page button beyond what's loaded
+  const visiblePages = _dscHasMore ? pages + 1 : pages;
+
   const infoEl = document.getElementById('dsc-page-info');
-  if (infoEl) infoEl.textContent = total ? `${start + 1}–${Math.min(start + DSC_PER_PAGE, total)} dari ${total}` : '';
+  if (infoEl) infoEl.textContent = total ? `${start + 1}–${Math.min(start + DSC_PER_PAGE, total)} dari ${total}${_dscHasMore ? '+' : ''}` : '';
 
   const btnsEl = document.getElementById('dsc-page-btns');
   if (btnsEl) {
     let html = `<button class="dsc-page-btn" onclick="dscGoPage(${_dscPage - 1})" ${_dscPage <= 1 ? 'disabled' : ''}>&#8592;</button>`;
-    for (let i = Math.max(1, _dscPage - 2); i <= Math.min(pages, _dscPage + 2); i++) {
-      html += `<button class="dsc-page-btn ${i === _dscPage ? 'active' : ''}" onclick="dscGoPage(${i})">${i}</button>`;
+    for (let i = Math.max(1, _dscPage - 2); i <= Math.min(visiblePages, _dscPage + 2); i++) {
+      const isExtra = i > pages; // page exists only on server, not loaded yet
+      html += `<button class="dsc-page-btn ${i === _dscPage ? 'active' : ''}" onclick="dscGoPage(${i})" ${isExtra ? 'style="opacity:.7"' : ''}>${i}</button>`;
     }
-    html += `<button class="dsc-page-btn" onclick="dscGoPage(${_dscPage + 1})" ${_dscPage >= pages ? 'disabled' : ''}>&#8594;</button>`;
+    html += `<button class="dsc-page-btn" onclick="dscGoPage(${_dscPage + 1})" ${_dscPage >= visiblePages ? 'disabled' : ''}>&#8594;</button>`;
     btnsEl.innerHTML = html;
   }
 }
