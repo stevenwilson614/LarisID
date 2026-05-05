@@ -7986,7 +7986,7 @@ async function dscFetchPage(offset, filters = {}) {
     .from('listings_latest')
     .select(FIELDS)
     .order('total_sold', { ascending: false })
-    .range(offset, offset + DSC_FETCH * 2 - 1);
+    .range(offset, offset + 180 - 1);
 
   if (filters.cat)      q = q.eq('category', filters.cat);
   if (filters.priceMin) q = q.gte('price', filters.priceMin);
@@ -8000,7 +8000,7 @@ async function dscFetchPage(offset, filters = {}) {
       .from('listings_latest')
       .select(FIELDS)
       .order('total_sold', { ascending: false })
-      .range(offset, offset + DSC_FETCH * 2 - 1);
+      .range(offset, offset + 180 - 1);
     if (filters.cat)      qf = qf.eq('category', filters.cat);
     if (filters.priceMin) qf = qf.gte('price', filters.priceMin);
     if (filters.priceMax && filters.priceMax < 1000000) qf = qf.lte('price', filters.priceMax);
