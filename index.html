@@ -4982,7 +4982,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <div class="dd-card">
                   <div class="dd-card-title" style="margin-bottom:10px;">Top 15 Kompetitor</div>
                   <table class="dd-comp-table">
-                    <thead><tr><th>#</th><th>Toko</th><th>Harga Rata-rata</th><th>Omset / Bulan</th><th>Unit Terjual / Bln</th><th>Usia Toko</th><th>Skor Kompetitor</th><th>Aksi</th></tr></thead>
+                    <thead><tr><th>#</th><th>Produk &amp; Toko</th><th>Harga</th><th>Est. Omset/Bln</th><th>Market Share</th><th>Aksi</th></tr></thead>
                     <tbody id="dd-comp-tbody"></tbody>
                   </table>
                   <button class="dd-show-more-btn" id="dd-show-more-btn" onclick="ddToggleCompetitors()">
@@ -5358,12 +5358,6 @@ html,body{overflow-x:hidden;max-width:100%;}
                         <select id="tren-metric" onchange="trenRender()" style="padding:5px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.68rem;background:#fff;">
                           <option value="sold">Metric: Terjual</option>
                           <option value="omset">Metric: Omset</option>
-                          <option value="price">Metric: Harga</option>
-                        </select>
-                        <select id="tren-period" onchange="trenRender()" style="padding:5px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.68rem;background:#fff;">
-                          <option value="12">Periode: 12 Bulan Terakhir</option>
-                          <option value="6">Periode: 6 Bulan Terakhir</option>
-                          <option value="3">Periode: 3 Bulan Terakhir</option>
                         </select>
                       </div>
                     </div>
@@ -5379,23 +5373,23 @@ html,body{overflow-x:hidden;max-width:100%;}
                     <!-- Stat cards -->
                     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;">
                       <div style="border:1px solid #F3F4F6;border-radius:8px;padding:10px;">
-                        <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Rata-rata Terjual / Bulan</div>
+                        <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Rata-rata Terjual / Minggu</div>
                         <div style="font-size:.88rem;font-weight:700;color:#111827;" id="tren-avg">—</div>
                       </div>
                       <div style="border:1px solid #F3F4F6;border-radius:8px;padding:10px;">
-                        <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Terjual Tertinggi</div>
+                        <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Minggu Terbaik</div>
                         <div style="font-size:.88rem;font-weight:700;color:#111827;" id="tren-max">—</div>
                         <div style="font-size:.6rem;color:#9CA3AF;" id="tren-max-month">—</div>
                       </div>
                       <div style="border:1px solid #F3F4F6;border-radius:8px;padding:10px;">
-                        <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Terjual Terendah</div>
+                        <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Minggu Terendah</div>
                         <div style="font-size:.88rem;font-weight:700;color:#111827;" id="tren-min">—</div>
                         <div style="font-size:.6rem;color:#9CA3AF;" id="tren-min-month">—</div>
                       </div>
                       <div style="border:1px solid #F3F4F6;border-radius:8px;padding:10px;">
-                        <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Tren 12 Bulan Terakhir</div>
+                        <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Pertumbuhan (est.)</div>
                         <div style="font-size:.88rem;font-weight:700;" id="tren-growth" style="color:#16A34A;">—</div>
-                        <div style="font-size:.6rem;color:#9CA3AF;">vs 12 bulan sebelumnya</div>
+                        <div style="font-size:.6rem;color:#9CA3AF;">minggu terakhir vs pertama</div>
                       </div>
                     </div>
                   </div>
@@ -5426,10 +5420,9 @@ html,body{overflow-x:hidden;max-width:100%;}
                       <div>
                         <table style="width:100%;border-collapse:collapse;font-size:.62rem;" id="tren-data-table">
                           <thead><tr style="border-bottom:1px solid #F3F4F6;">
-                            <th style="text-align:left;padding:5px 4px;color:#9CA3AF;font-weight:600;">Bulan</th>
-                            <th style="text-align:right;padding:5px 4px;color:#9CA3AF;font-weight:600;">Terjual</th>
-                            <th style="text-align:right;padding:5px 4px;color:#9CA3AF;font-weight:600;">Nilai (Rp)</th>
-                            <th style="text-align:right;padding:5px 4px;color:#9CA3AF;font-weight:600;">Harga Rata</th>
+                            <th style="text-align:left;padding:5px 4px;color:#9CA3AF;font-weight:600;">Periode</th>
+                            <th style="text-align:right;padding:5px 4px;color:#9CA3AF;font-weight:600;">Terjual (est.)</th>
+                            <th style="text-align:right;padding:5px 4px;color:#9CA3AF;font-weight:600;">Omset (est.)</th>
                           </tr></thead>
                           <tbody id="tren-data-tbody"></tbody>
                         </table>
@@ -5450,39 +5443,22 @@ html,body{overflow-x:hidden;max-width:100%;}
                     <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:10px;">Ringkasan Tren</div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                       <div style="border:1px solid #F3F4F6;border-radius:8px;padding:10px;">
-                        <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Total Terjual (12 Bulan)</div>
+                        <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Total Terjual (Est.)</div>
                         <div style="font-size:.88rem;font-weight:700;color:#111827;" id="tren-sum-total">—</div>
                       </div>
                       <div style="border:1px solid #F3F4F6;border-radius:8px;padding:10px;">
-                        <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Rata-rata Terjual / Bulan</div>
+                        <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Rata-rata / Minggu</div>
                         <div style="font-size:.88rem;font-weight:700;color:#111827;" id="tren-sum-avg">—</div>
                       </div>
                       <div style="border:1px solid #F3F4F6;border-radius:8px;padding:10px;">
                         <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Pertumbuhan</div>
                         <div style="font-size:.95rem;font-weight:700;color:#16A34A;" id="tren-sum-growth">—</div>
-                        <div style="font-size:.58rem;color:#9CA3AF;">vs 12 bulan sebelumnya</div>
+                        <div style="font-size:.58rem;color:#9CA3AF;">minggu terakhir vs pertama</div>
                       </div>
                       <div style="border:1px solid #F3F4F6;border-radius:8px;padding:10px;">
                         <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Potensi Tren</div>
                         <div style="font-size:.88rem;font-weight:700;color:#16A34A;" id="tren-sum-pot">—</div>
                         <div style="font-size:.58rem;color:#9CA3AF;">Berdasarkan data</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Seasonality -->
-                  <div class="dd-card" style="padding:14px;">
-                    <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:3px;">Musiman (Seasonality) <span style="color:#9CA3AF;font-weight:400;font-size:.7rem;">ⓘ</span></div>
-                    <div style="font-size:.62rem;color:#6B7280;margin-bottom:10px;">Pola penjualan berdasarkan bulan (rata-rata 12 bulan)</div>
-                    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin-bottom:6px;" id="tren-season-tiles"></div>
-                    <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin-bottom:4px;">
-                      <div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Jan</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Feb</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Mar</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Apr</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Mei</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Jun</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Jul</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Agu</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Sep</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Okt</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Nov</div><div style="font-size:.48rem;color:#9CA3AF;text-align:center;">Des</div>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
-                      <div style="display:flex;align-items:center;gap:4px;flex:1;">
-                        <span style="font-size:.58rem;color:#6B7280;">Rendah</span>
-                        <div style="flex:1;height:6px;border-radius:3px;background:linear-gradient(90deg,#DCFCE7,#FEF9C3,#FED7AA,#FCA5A5,#EF4444);"></div>
-                        <span style="font-size:.58rem;color:#6B7280;">Tinggi</span>
                       </div>
                     </div>
                   </div>
@@ -8847,6 +8823,18 @@ async function ddLoadKeywordContext(listing) {
     }
     ddRenderKompetitor();
     ddUpdateRingkasanFromKw(rows, totalSold, listing);
+    // Rebuild Listing tab competitor table now that _ddKwRows is populated
+    _ddCompAll = rows.slice(0, 15).map((r, i) => ({
+      rank: i + 1,
+      product_name: r.product_name || '—',
+      store_name:   r.store_name   || '—',
+      url:          r.url          || null,
+      image_url:    r.image_url    || null,
+      price:        r.price        || 0,
+      total_sold:   r.total_sold   || 0,
+      rating:       r.rating       || 0,
+    }));
+    ddRenderCompetitors();
 
   } catch(e) {
     console.error('ddLoadKeywordContext:', e);
@@ -9348,154 +9336,227 @@ let _trenCmpChart  = null;
 const TREN_SEASON = [0.80, 0.82, 0.88, 0.92, 0.95, 0.90, 0.98, 1.10, 1.20, 1.15, 0.95, 1.05];
 const TREN_MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 
-function trenRng(seed) { let x = Math.sin(seed+1)*10000; return x - Math.floor(x); }
-
-function trenGenData(listing) {
-  if (!listing) return null;
-  const totalSold = listing.total_sold || 1000;
-  const price     = listing.price || 50000;
-  const avgMonth  = Math.round(totalSold / 12);
-  const seed      = listing.item_id || 42;
-  const now       = new Date();
-
-  const months = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const mo = d.getMonth(); // 0-11
-    const label = TREN_MONTHS[mo] + ' ' + String(d.getFullYear()).slice(2);
-    const seasonMult = TREN_SEASON[mo];
-    const noise = 0.85 + trenRng(seed + i * 7) * 0.30;
-    const growthFactor = 1 + (11 - i) * 0.015; // slight uptrend
-    const sold = Math.round(avgMonth * seasonMult * noise * growthFactor);
-    const avgPrice = price + Math.round((trenRng(seed + i * 3) - 0.5) * price * 0.04);
-    months.push({ label, mo, sold, price: avgPrice, omset: sold * avgPrice });
-  }
-
-  // Top 10 competitors avg (slightly higher)
-  const top10 = months.map((m, i) => Math.round(m.sold * (1.4 + trenRng(seed + i * 11) * 0.3)));
-  // Category avg (between product and top10)
-  const catAvg = months.map((m, i) => Math.round(m.sold * (1.1 + trenRng(seed + i * 5) * 0.2)));
-
-  const totalY1 = months.reduce((s,m) => s+m.sold, 0);
-  const totalY0 = Math.round(totalY1 / (1 + 0.20 + trenRng(seed) * 0.25)); // simulated prior year
-  const growth  = Math.round((totalY1 - totalY0) / totalY0 * 100);
-
-  return { months, top10, catAvg, totalY1, totalY0, growth, category: listing.category || 'Umum', listing };
-}
-
-function ddRenderTren() {
-  const listing = _ddKwListing || _ddCurrentP;
+async function ddRenderTren() {
+  const listing = _ddKwListing || _ddCurrentP?._listing;
   if (!listing) return;
-
-  _trenData = trenGenData(listing);
-  if (!_trenData) return;
+  _trenData = null;
 
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  const { months, top10, catAvg, totalY1, growth, category } = _trenData;
-  const solds = months.map(m => m.sold);
-  const avg   = Math.round(solds.reduce((a,b)=>a+b,0) / solds.length);
-  const maxV  = Math.max(...solds), maxI = solds.indexOf(maxV);
-  const minV  = Math.min(...solds), minI = solds.indexOf(minV);
-
-  // Summary cards
-  set('tren-sum-total',  totalY1.toLocaleString('id-ID') + ' unit');
-  set('tren-sum-avg',    avg.toLocaleString('id-ID') + ' unit');
-  set('tren-sum-growth', (growth >= 0 ? '+' : '') + growth + '%');
-  set('tren-sum-pot',    growth >= 20 ? 'Tinggi' : growth >= 5 ? 'Sedang' : 'Rendah');
-  const potEl = document.getElementById('tren-sum-pot');
-  if (potEl) potEl.style.color = growth >= 20 ? '#16A34A' : growth >= 5 ? '#F97316' : '#DC2626';
-  const grEl = document.getElementById('tren-sum-growth');
-  if (grEl) grEl.style.color = growth >= 0 ? '#16A34A' : '#DC2626';
-
-  // Mini stat cards
-  set('tren-avg',       avg.toLocaleString('id-ID') + ' unit');
-  set('tren-max',       maxV.toLocaleString('id-ID') + ' unit');
-  set('tren-max-month', months[maxI]?.label || '');
-  set('tren-min',       minV.toLocaleString('id-ID') + ' unit');
-  set('tren-min-month', months[minI]?.label || '');
-  set('tren-growth',    (growth >= 0 ? '+' : '') + growth + '%');
-  const tgEl = document.getElementById('tren-growth');
-  if (tgEl) tgEl.style.color = growth >= 0 ? '#16A34A' : '#DC2626';
-
-  // Category label
-  set('tren-cat-label', category);
-
-  // Seasonality tiles
-  const tileEl = document.getElementById('tren-season-tiles');
-  if (tileEl) {
-    const seasVals = TREN_SEASON;
-    const sMin = Math.min(...seasVals), sMax = Math.max(...seasVals);
-    tileEl.innerHTML = seasVals.map(v => {
-      const p = (v - sMin) / (sMax - sMin);
-      const r = Math.round(220 - p * 130), g = Math.round(220 - p * 60), b = Math.round(180 - p * 130);
-      return `<div style="height:28px;border-radius:4px;background:rgb(${r},${g},${b});"></div>`;
-    }).join('');
-  }
-
-  // Insights
   const insEl = document.getElementById('tren-insights');
-  if (insEl) {
-    const peakMo = months[maxI]?.mo ?? 8;
-    const peakName = TREN_MONTHS[peakMo];
-    const tips = [
-      { icon:'📈', color:'#16A34A', title:`Penjualan meningkat signifikan di Agu – Okt`, sub:`Puncak tertinggi biasanya terjadi di bulan ${peakName}` },
-      { icon:'📉', color:'#DC2626', title:`Penurunan di Nov – Jan`, sub:'Biasa terjadi setelah peak season' },
-      { icon:'📊', color:'#3B82F6', title:`Mulai naik lagi di Feb – Apr`, sub:'Persiapan menuju peak berikutnya' },
-      { icon:'💡', color:'#F97316', title:`Rekomendasi:`, sub:`Siapkan stok & iklan lebih agresif mulai Jul – Okt` },
-    ];
-    insEl.innerHTML = tips.map(t => `
-      <div style="display:flex;gap:10px;align-items:flex-start;">
-        <div style="width:32px;height:32px;border-radius:8px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0;">${t.icon}</div>
-        <div><div style="font-size:.7rem;font-weight:700;color:#111827;">${t.title}</div><div style="font-size:.62rem;color:#6B7280;margin-top:1px;">${t.sub}</div></div>
-      </div>`).join('');
+  if (insEl) insEl.innerHTML = '<div style="font-size:.68rem;color:#9CA3AF;padding:8px 0;">Memuat data...</div>';
+
+  try {
+    let dbRows = [];
+    if (_supabase) {
+      const { data } = await _supabase
+        .from('listings')
+        .select('scraped_at,total_sold,price,reviews')
+        .eq('item_id', listing.item_id)
+        .eq('shop_id', listing.shop_id)
+        .order('scraped_at', { ascending: true })
+        .limit(20);
+      dbRows = data || [];
+      if (!dbRows.length) {
+        const { data: d2 } = await _supabase
+          .from('listings')
+          .select('scraped_at,total_sold,price,reviews')
+          .eq('item_id', String(listing.item_id))
+          .eq('shop_id', String(listing.shop_id))
+          .order('scraped_at', { ascending: true })
+          .limit(20);
+        dbRows = d2 || [];
+      }
+    }
+
+    if (dbRows.length < 2) {
+      const prevKey  = `${listing.item_id}_${listing.shop_id}`;
+      const prevSold = _dscPrevMap[prevKey];
+      const currDate = listing.scraped_at ? new Date(listing.scraped_at) : new Date();
+      const currRow  = { scraped_at: currDate.toISOString(), total_sold: listing.total_sold, price: listing.price, reviews: listing.reviews };
+      if (dbRows.length === 1) {
+        const dbDate = new Date(dbRows[0].scraped_at);
+        dbRows = dbDate < currDate ? [dbRows[0], currRow] : [currRow, dbRows[0]];
+      } else if (prevSold != null) {
+        const prevDate = new Date(currDate.getTime() - 7 * 86400000);
+        dbRows = [{ scraped_at: prevDate.toISOString(), total_sold: prevSold, price: listing.price, reviews: null }, currRow];
+      } else {
+        if (insEl) insEl.innerHTML = '<div style="font-size:.68rem;color:#9CA3AF;padding:8px 0;">Belum cukup data untuk menampilkan tren. Data akan muncul setelah 2+ scrape.</div>';
+        return;
+      }
+    }
+
+    const fallbackPrice = listing.price || 0;
+    const _CAT_MULT = { 'Rumah':2.94,'Fashion':2.77,'Dapur':3.41,'Kamar Mandi':4.21,'Keamanan':3.40,
+      'Kecantikan':2.70,'Motor & Mobil':2.96,'Elektronik':3.10,'HP & Gadget':3.40,
+      'Hewan Peliharaan':3.95,'Sepeda':2.58,'Taman':3.50,'Olahraga':2.68,'Bayi & Anak':4.12,
+      'Hobi & Kerajinan':2.48,'Kesehatan':2.38,'Tanaman':3.63,'Alat Tulis':2.87,
+      'Outdoor & Camping':2.67,'__default__':3.20 };
+    const mult = _CAT_MULT[listing.category] || _CAT_MULT['__default__'];
+    const atCeiling = dbRows.every(r => (r.total_sold ?? 0) >= 10000);
+    const hasReviews = dbRows.some(r => r.reviews > 0);
+
+    let unitData, isEstimated = false;
+    if (atCeiling && hasReviews) {
+      isEstimated = true;
+      let base = 10000;
+      unitData = [base];
+      for (let i = 1; i < dbRows.length; i++) {
+        const revDelta = Math.max(0, (dbRows[i].reviews || 0) - (dbRows[i-1].reviews || 0));
+        base += Math.round(revDelta * mult);
+        unitData.push(base);
+      }
+    } else {
+      unitData = dbRows.map(r => r.total_sold ?? 0);
+    }
+
+    const _MO = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+    function _wKey(d) {
+      const t = new Date(+d), day = t.getDay() || 7;
+      t.setDate(t.getDate() + 4 - day);
+      const y1 = new Date(t.getFullYear(), 0, 1);
+      return `${t.getFullYear()}-W${String(Math.ceil(((t-y1)/86400000+1)/7)).padStart(2,'0')}`;
+    }
+    function _wLabel(d) {
+      const k = _wKey(d), [yr, ws] = k.split('-W'), wn = +ws;
+      const j4 = new Date(+yr, 0, 4), dw = j4.getDay() || 7;
+      const mon = new Date(j4.getTime()-(dw-1)*86400000+(wn-1)*7*86400000);
+      return `W${wn} ${_MO[mon.getMonth()]}`;
+    }
+    const weekMap = new Map();
+    for (let i = 0; i < dbRows.length - 1; i++) {
+      const t0 = new Date(dbRows[i].scraped_at), t1 = new Date(dbRows[i+1].scraped_at);
+      const s0 = unitData[i] ?? 0, s1 = unitData[i+1] ?? 0;
+      const p0 = dbRows[i].price || fallbackPrice, p1 = dbRows[i+1].price || fallbackPrice;
+      const delta = Math.max(0, s1 - s0);
+      const daysDiff = Math.max(1, (t1 - t0) / 86400000);
+      const dUnit = delta / daysDiff;
+      for (let d = 1; d <= Math.ceil(daysDiff); d++) {
+        const date = new Date(t0.getTime() + d * 86400000);
+        if (date > t1) break;
+        const frac = d / daysDiff;
+        const key  = _wKey(date);
+        if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(date), units: 0, omset: 0, firstDate: date });
+        const wk = weekMap.get(key);
+        wk.units += dUnit;
+        wk.omset += dUnit * (p0 + (p1 - p0) * frac);
+      }
+    }
+    const weeks = [...weekMap.values()]
+      .sort((a, b) => a.firstDate - b.firstDate)
+      .map(w => ({ label: w.label, units: Math.round(w.units), omset: Math.round(w.omset), firstDate: w.firstDate }));
+
+    if (!weeks.length) {
+      if (insEl) insEl.innerHTML = '<div style="font-size:.68rem;color:#9CA3AF;padding:8px 0;">Belum ada perubahan penjualan terdeteksi antara scrape.</div>';
+      return;
+    }
+
+    // Aggregate weeks into months
+    const monthMap = new Map();
+    for (const w of weeks) {
+      const d = w.firstDate instanceof Date ? w.firstDate : new Date(w.firstDate);
+      const mKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      const mLabel = _MO[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2);
+      if (!monthMap.has(mKey)) monthMap.set(mKey, { label: mLabel, units: 0, omset: 0 });
+      const m = monthMap.get(mKey);
+      m.units += w.units;
+      m.omset += w.omset;
+    }
+    const months = [...monthMap.values()];
+
+    _trenData = { weeks, months, listing, category: listing.category || 'Umum', isEstimated, dbRows };
+
+    // Stat cards from weekly data
+    const nW = weeks.length;
+    const totalUnits = weeks.reduce((s, w) => s + w.units, 0);
+    const avgUnits   = Math.round(totalUnits / nW);
+    const maxW = weeks.reduce((a,b) => b.units > a.units ? b : a);
+    const minW = weeks.reduce((a,b) => b.units < a.units ? b : a);
+    const growthPct = weeks[0].units > 0 ? Math.round((weeks[nW-1].units - weeks[0].units) / weeks[0].units * 100) : null;
+    const growthStr = growthPct == null ? '—' : (growthPct >= 0 ? '+' : '') + growthPct + '%';
+
+    set('tren-avg',       avgUnits.toLocaleString('id-ID') + ' unit');
+    set('tren-max',       maxW.units.toLocaleString('id-ID') + ' unit');
+    set('tren-max-month', maxW.label);
+    set('tren-min',       minW.units.toLocaleString('id-ID') + ' unit');
+    set('tren-min-month', minW.label);
+    set('tren-growth',    growthStr);
+    const tgEl = document.getElementById('tren-growth');
+    if (tgEl) tgEl.style.color = (growthPct ?? 0) >= 0 ? '#16A34A' : '#DC2626';
+
+    set('tren-sum-total',  totalUnits.toLocaleString('id-ID') + ' unit');
+    set('tren-sum-avg',    avgUnits.toLocaleString('id-ID') + ' unit');
+    set('tren-sum-growth', growthStr);
+    const potEl = document.getElementById('tren-sum-pot');
+    if (potEl) { potEl.textContent = (growthPct ?? 0) >= 20 ? 'Tinggi' : (growthPct ?? 0) >= 5 ? 'Sedang' : 'Rendah'; potEl.style.color = (growthPct ?? 0) >= 20 ? '#16A34A' : (growthPct ?? 0) >= 5 ? '#F97316' : '#DC2626'; }
+    const sgEl = document.getElementById('tren-sum-growth');
+    if (sgEl) sgEl.style.color = (growthPct ?? 0) >= 0 ? '#16A34A' : '#DC2626';
+
+    set('tren-cat-label', listing.category || 'Umum');
+
+    // Insights from real data
+    if (insEl) {
+      const peakWeek = maxW.label;
+      const lowWeek  = minW.label;
+      const nScrapes = dbRows.length;
+      const tips = [
+        { color:'#16A34A', title:`Puncak penjualan di ${peakWeek}`, sub:`${maxW.units.toLocaleString('id-ID')} unit/minggu${isEstimated ? ' (estimasi dari ulasan)' : ''}` },
+        { color:'#DC2626', title:`Terendah di ${lowWeek}`, sub:`${minW.units.toLocaleString('id-ID')} unit/minggu` },
+        { color:'#3B82F6', title:`Data dari ${nScrapes} scrape`, sub:`${nW} minggu data · ${isEstimated ? 'estimasi dari ulasan (10k+ ceiling)' : 'berdasarkan total_sold langsung'}` },
+        { color:'#F97316', title:`Rata-rata ${avgUnits.toLocaleString('id-ID')} unit/minggu`, sub:`Setara ${Math.round(avgUnits*4).toLocaleString('id-ID')} unit/bulan estimasi` },
+      ];
+      const icons = [
+        `<svg width="16" height="16" fill="none" stroke="#16A34A" stroke-width="2" viewBox="0 0 24 24"><path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></svg>`,
+        `<svg width="16" height="16" fill="none" stroke="#DC2626" stroke-width="2" viewBox="0 0 24 24"><path d="M23 18l-9.5-9.5-5 5L1 6"/><path d="M17 18h6v-6"/></svg>`,
+        `<svg width="16" height="16" fill="none" stroke="#3B82F6" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+        `<svg width="16" height="16" fill="none" stroke="#F97316" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>`,
+      ];
+      insEl.innerHTML = tips.map((t, i) => `
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <div style="width:32px;height:32px;border-radius:8px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${icons[i]}</div>
+          <div><div style="font-size:.7rem;font-weight:700;color:#111827;">${t.title}</div><div style="font-size:.62rem;color:#6B7280;margin-top:1px;">${t.sub}</div></div>
+        </div>`).join('');
+    }
+
+    trenRender();
+    trenRenderCmp();
+    trenRenderDataTable();
+  } catch(e) {
+    console.warn('ddRenderTren:', e);
+    if (insEl) insEl.innerHTML = '<div style="font-size:.68rem;color:#DC2626;padding:8px 0;">Gagal memuat data tren.</div>';
   }
-
-  trenRender();
-  trenRenderDataTable();
-}
-
-function trenGetValues(months) {
-  const metric = document.getElementById('tren-metric')?.value || 'sold';
-  if (metric === 'omset') return months.map(m => m.omset);
-  if (metric === 'price') return months.map(m => m.price);
-  return months.map(m => m.sold);
 }
 
 function trenRender() {
   if (!_trenData) return;
-  const { months, top10, catAvg } = _trenData;
-  const period = parseInt(document.getElementById('tren-period')?.value || '12');
-  const slice  = months.slice(-period);
-  const labels = slice.map(m => m.label);
-  const vals   = trenGetValues(slice);
+  const gran   = _trenGran || 'minggu';
+  const rows   = gran === 'bulan' ? _trenData.months : _trenData.weeks;
+  const metric = document.getElementById('tren-metric')?.value || 'sold';
+  const labels = rows.map(r => r.label);
+  const vals   = metric === 'omset' ? rows.map(r => r.omset) : rows.map(r => r.units);
 
   if (_trenMainChart) { _trenMainChart.destroy(); _trenMainChart = null; }
   const canvas = document.getElementById('tren-main-chart');
   if (!canvas) return;
   _trenMainChart = new Chart(canvas.getContext('2d'), {
-    type: 'line',
+    type: 'bar',
     data: {
       labels,
       datasets: [{
         data: vals,
+        backgroundColor: 'rgba(232,68,42,.75)',
         borderColor: '#E8442A',
-        backgroundColor: 'rgba(232,68,42,.08)',
-        fill: true,
-        tension: 0.4,
-        pointBackgroundColor: '#E8442A',
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        borderWidth: 2,
+        borderWidth: 1,
+        borderRadius: 4,
       }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: {
-        callbacks: { label: ctx => ` ${ctx.parsed.y.toLocaleString('id-ID')}` }
+        callbacks: { label: ctx => ` ${ctx.parsed.y.toLocaleString('id-ID')}${metric === 'omset' ? ' Rp' : ' unit'}${_trenData?.isEstimated ? ' (est.)' : ''}` }
       }},
       scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#9CA3AF' } },
-        y: { grid: { color: '#F3F4F6' }, ticks: { font: { size: 10 }, color: '#9CA3AF', callback: v => v >= 1000 ? (v/1000).toFixed(0)+'k' : v } }
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#9CA3AF', maxRotation: 45 } },
+        y: { grid: { color: '#F3F4F6' }, ticks: { font: { size: 10 }, color: '#9CA3AF', callback: v => v >= 1e6 ? (v/1e6).toFixed(1)+'jt' : v >= 1000 ? (v/1000).toFixed(0)+'k' : v } }
       }
     }
   });
@@ -9505,26 +9566,35 @@ function trenRender() {
 
 function trenRenderCmp() {
   if (!_trenData) return;
-  const { months, top10, catAvg } = _trenData;
-  const period = parseInt(document.getElementById('tren-period')?.value || '12');
-  const slice  = months.slice(-period);
-  const labels = slice.map(m => m.label);
-  const metric = _trenCmpMetric;
+  const gran   = _trenGran || 'minggu';
+  const rows   = gran === 'bulan' ? _trenData.months : _trenData.weeks;
+  const labels = rows.map(r => r.label);
+  const metric = _trenCmpMetric || 'sold';
 
-  const getVals = (arr) => {
-    if (metric === 'omset') return arr.map((m, i) => typeof m === 'object' ? m.omset : m * slice[i].price);
-    if (metric === 'price') return arr.map((m, i) => typeof m === 'object' ? m.price : slice[i].price * (0.95 + i*0.005));
-    return arr.map(m => typeof m === 'object' ? m.sold : m);
-  };
+  const listingPrice = _trenData.listing?.price || 0;
+
+  // Produk Ini — real weekly/monthly
+  const thisVals = rows.map(r => metric === 'omset' ? r.omset : r.units);
+
+  // Category avg and Top10 avg — flat benchmark from current peer snapshot
+  const peers = _ddKwRows || [];
+  const nPeers = peers.length || 1;
+  const totalPeerSold = _ddKwTotal || 0;
+  const avgPeerWeekly = Math.round(totalPeerSold / nPeers / 6 / 4);
+  const top10peers = peers.slice(0, 10);
+  const top10Avg = top10peers.length ? Math.round(top10peers.reduce((s,r)=>s+(r.total_sold||0),0) / top10peers.length / 6 / 4) : 0;
+
+  const catVals  = labels.map(() => metric === 'omset' ? avgPeerWeekly * listingPrice : avgPeerWeekly);
+  const top10Vals= labels.map(() => metric === 'omset' ? top10Avg      * listingPrice : top10Avg);
 
   const datasets = [];
   const showThis = document.getElementById('tren-chk-this')?.checked;
   const showCat  = document.getElementById('tren-chk-cat')?.checked;
   const showTop  = document.getElementById('tren-chk-top')?.checked;
 
-  if (showThis) datasets.push({ label:'Produk Ini', data: getVals(slice), borderColor:'#E8442A', backgroundColor:'transparent', tension:.4, pointRadius:3, borderWidth:2 });
-  if (showCat)  datasets.push({ label:'Kategori',   data: catAvg.slice(-period), borderColor:'#3B82F6', backgroundColor:'transparent', tension:.4, pointRadius:3, borderWidth:2 });
-  if (showTop)  datasets.push({ label:'Top 10',     data: top10.slice(-period),  borderColor:'#16A34A', backgroundColor:'transparent', tension:.4, pointRadius:3, borderWidth:2 });
+  if (showThis) datasets.push({ label:'Produk Ini', data: thisVals,  borderColor:'#E8442A', backgroundColor:'rgba(232,68,42,.06)', fill:true, tension:.3, pointRadius:3, borderWidth:2 });
+  if (showCat && peers.length)  datasets.push({ label:'Rata-rata Kategori', data: catVals, borderColor:'#3B82F6', backgroundColor:'transparent', tension:.0, pointRadius:0, borderWidth:1.5, borderDash:[4,3] });
+  if (showTop && top10peers.length) datasets.push({ label:'Avg Top 10',     data: top10Vals, borderColor:'#16A34A', backgroundColor:'transparent', tension:.0, pointRadius:0, borderWidth:1.5, borderDash:[4,3] });
 
   if (_trenCmpChart) { _trenCmpChart.destroy(); _trenCmpChart = null; }
   const canvas = document.getElementById('tren-cmp-chart');
@@ -9534,10 +9604,12 @@ function trenRenderCmp() {
     data: { labels, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false,
+        callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('id-ID')}` }
+      }},
       scales: {
         x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#9CA3AF', maxRotation: 45 } },
-        y: { grid: { color: '#F3F4F6' }, ticks: { font: { size: 9 }, color: '#9CA3AF', callback: v => v >= 1000 ? (v/1000).toFixed(0)+'k' : v } }
+        y: { grid: { color: '#F3F4F6' }, ticks: { font: { size: 9 }, color: '#9CA3AF', callback: v => v >= 1e6 ? (v/1e6).toFixed(1)+'jt' : v >= 1000 ? (v/1000).toFixed(0)+'k' : v } }
       }
     }
   });
@@ -9547,19 +9619,20 @@ function trenRenderDataTable() {
   if (!_trenData) return;
   const tbody = document.getElementById('tren-data-tbody');
   if (!tbody) return;
-  const rows = [..._trenData.months].reverse().slice(0, _trenDataShowing);
-  tbody.innerHTML = rows.map(m => `
+  const gran = _trenGran || 'minggu';
+  const allRows = gran === 'bulan' ? _trenData.months : _trenData.weeks;
+  const rows = [...allRows].reverse().slice(0, _trenDataShowing);
+  tbody.innerHTML = rows.map(w => `
     <tr style="border-bottom:1px solid #F9FAFB;">
-      <td style="padding:5px 4px;font-size:.62rem;color:#374151;">${m.label}</td>
-      <td style="padding:5px 4px;font-size:.62rem;text-align:right;font-weight:600;">${m.sold.toLocaleString('id-ID')}</td>
-      <td style="padding:5px 4px;font-size:.62rem;text-align:right;">${m.omset.toLocaleString('id-ID')}</td>
-      <td style="padding:5px 4px;font-size:.62rem;text-align:right;">${m.price.toLocaleString('id-ID')}</td>
+      <td style="padding:5px 4px;font-size:.62rem;color:#374151;">${w.label}</td>
+      <td style="padding:5px 4px;font-size:.62rem;text-align:right;font-weight:600;">${w.units.toLocaleString('id-ID')}</td>
+      <td style="padding:5px 4px;font-size:.62rem;text-align:right;">${w.omset.toLocaleString('id-ID')}</td>
     </tr>`).join('');
   const btn = document.getElementById('tren-show-all-btn');
-  if (btn) btn.style.display = _trenDataShowing >= 12 ? 'none' : '';
+  if (btn) btn.style.display = _trenDataShowing >= allRows.length ? 'none' : '';
 }
 
-function trenShowAllData() { _trenDataShowing = 12; trenRenderDataTable(); }
+function trenShowAllData() { _trenDataShowing = 999; trenRenderDataTable(); }
 
 function trenSetGran(g) {
   _trenGran = g;
@@ -9570,6 +9643,7 @@ function trenSetGran(g) {
     b.style.boxShadow = active ? '0 1px 3px rgba(0,0,0,.1)' : 'none';
   });
   trenRender();
+  trenRenderDataTable();
 }
 
 function trenSetCmpMetric(m) {
@@ -9585,8 +9659,10 @@ function trenSetCmpMetric(m) {
 
 function trenDownloadCSV() {
   if (!_trenData) return;
-  const rows = [['Bulan','Terjual','Omset (Rp)','Rata-rata Harga']];
-  _trenData.months.forEach(m => rows.push([m.label, m.sold, m.omset, m.price]));
+  const gran = _trenGran || 'minggu';
+  const allRows = gran === 'bulan' ? _trenData.months : _trenData.weeks;
+  const rows = [['Periode','Terjual (est.)','Omset (est. Rp)']];
+  allRows.forEach(w => rows.push([w.label, w.units, w.omset]));
   const csv = rows.map(r => r.join(',')).join('\n');
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
@@ -10157,21 +10233,19 @@ function ddRender(p) {
     options: { plugins:{legend:{display:false}}, scales:{x:{ticks:{font:{size:8}}},y:{display:false}}, animation:{duration:400} }
   });
 
-  // competitor table — generate 15
-  const shopNames = ['Urban Carry','Bagus Official','Prime Bags','Manly Goods','Style Bag Store','TrendyShop','GrosirMurah','ElekMart','KiosPrima','BestDeal99','TokoMaju','JualanOnline','MegaStore','CepetLaku','TokoBaru'];
-  const ageLabels = ['2,6 tahun','1,9 tahun','1,3 tahun','8 bulan','2,1 tahun','3,5 tahun','1,1 tahun','4 tahun','7 bulan','2,8 tahun','1,5 tahun','3,2 tahun','5 tahun','9 bulan','1,8 tahun'];
-  _ddCompAll = shopNames.map((name, i) => {
-    const r = _ddRng(p.id * 999 + i);
-    const sp    = Math.round(price * (0.88 + r() * 0.28));
-    const su    = Math.round(sales * (0.3 + r() * 0.7));
-    const sOmset= sp * su;
-    const sScore= Math.max(60, Math.round(92 - i * 2.5 + (r()-0.5)*4));
-    return { rank:i+1, name, price:sp, omset:sOmset, units:su, age:ageLabels[i], score:sScore };
-  });
+  // competitor table — built from real peer listings (_ddKwRows populated by ddLoadKeywordContext)
+  _ddCompAll = (_ddKwRows || []).slice(0, 15).map((r, i) => ({
+    rank: i + 1,
+    product_name: r.product_name || '—',
+    store_name:   r.store_name   || '—',
+    url:          r.url          || null,
+    image_url:    r.image_url    || null,
+    price:        r.price        || 0,
+    total_sold:   r.total_sold   || 0,
+    rating:       r.rating       || 0,
+  }));
   _ddCompShowing = 5;
   ddRenderCompetitors();
-  // Try to load real listing data (images + live stats) asynchronously
-  ddLoadRealCompetitors(p);
 
   // keyword table
   const word0 = p.name.split(' ')[0].toLowerCase();
@@ -10403,19 +10477,41 @@ async function ddLoadTrendHistory(listing) {
 
 function ddRenderCompetitors() {
   const rows = _ddCompAll.slice(0, _ddCompShowing);
-  document.getElementById('dd-comp-tbody').innerHTML = rows.map(c => {
-    const pillCls = c.score >= 80 ? '' : c.score >= 70 ? 'yellow' : 'green';
+  const totalSold = _ddKwTotal || Math.max(_ddCompAll.reduce((s,c)=>s+(c.total_sold||0),0), 1);
+  document.getElementById('dd-comp-tbody').innerHTML = rows.length ? rows.map(c => {
+    const estMonthly = Math.round((c.total_sold||0) / 6 * (c.price||0));
+    const sharePct   = totalSold > 0 ? (c.total_sold||0) / totalSold * 100 : 0;
+    const tierColor  = sharePct >= 10 ? '#EF4444' : sharePct >= 3 ? '#F97316' : sharePct >= 1 ? '#3B82F6' : '#9CA3AF';
+    const tierLabel  = sharePct >= 10 ? 'Dominan' : sharePct >= 3 ? 'Signifikan' : sharePct >= 1 ? 'Menengah' : 'Kecil';
+    const barW       = Math.min(100, Math.round((c.total_sold||0) / Math.max(..._ddCompAll.map(r=>r.total_sold||0),1) * 100));
+    const imgHtml    = c.image_url ? `<img src="${c.image_url}" style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">` : '';
+    const ratingHtml = c.rating ? `<span style="color:#F59E0B;font-size:.6rem;">★ ${c.rating.toFixed(1)}</span>` : '';
     return `<tr>
-      <td style="color:#9CA3AF;font-weight:600">${c.rank}</td>
-      <td><div style="display:flex;align-items:center;gap:8px;">${c.image ? `<img src="${c.image}" style="width:34px;height:34px;border-radius:5px;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">` : ''}<span style="font-weight:600">${c.name}</span></div></td>
-      <td>Rp ${c.price.toLocaleString('id-ID')}</td>
-      <td>Rp ${c.omset.toLocaleString('id-ID')}</td>
-      <td>${c.units.toLocaleString('id-ID')}</td>
-      <td>${c.age}</td>
-      <td><span class="dd-score-pill ${pillCls}">${c.score}</span></td>
-      <td><a style="font-size:.72rem;font-weight:600;color:#E8442A;cursor:pointer;">Lihat Toko</a></td>
+      <td style="color:#9CA3AF;font-weight:600;font-size:.72rem;">${c.rank}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:7px;">
+          ${imgHtml}
+          <div>
+            <div style="font-size:.68rem;font-weight:600;color:#111827;line-height:1.2;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.product_name}</div>
+            <div style="font-size:.6rem;color:#6B7280;">${c.store_name} ${ratingHtml}</div>
+          </div>
+        </div>
+      </td>
+      <td style="font-size:.68rem;font-weight:600;">Rp ${(c.price||0).toLocaleString('id-ID')}</td>
+      <td>
+        <div style="font-size:.68rem;font-weight:600;">Rp ${estMonthly.toLocaleString('id-ID')}</div>
+        <div style="font-size:.58rem;color:#9CA3AF;">${(c.total_sold||0).toLocaleString('id-ID')} terjual</div>
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;gap:5px;">
+          <div style="height:6px;width:60px;background:#F3F4F6;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${barW}%;background:${tierColor};border-radius:3px;"></div></div>
+          <span style="font-size:.6rem;color:${tierColor};font-weight:600;">${tierLabel}</span>
+        </div>
+        <div style="font-size:.56rem;color:#9CA3AF;">${sharePct.toFixed(1)}% pasar</div>
+      </td>
+      <td>${c.url ? `<a href="${c.url}" target="_blank" style="font-size:.68rem;font-weight:600;color:#E8442A;text-decoration:none;">Lihat</a>` : '—'}</td>
     </tr>`;
-  }).join('');
+  }).join('') : `<tr><td colspan="6" style="padding:20px;text-align:center;color:#9CA3AF;font-size:.72rem;">Data kompetitor akan muncul setelah keyword dimuat.</td></tr>`;
   const btn = document.getElementById('dd-show-more-btn');
   if (btn) {
     const showing = _ddCompShowing >= _ddCompAll.length;
@@ -10427,45 +10523,6 @@ function ddRenderCompetitors() {
 
 function ddToggleCompetitors() {
   _ddCompShowing = _ddCompShowing >= _ddCompAll.length ? 5 : _ddCompAll.length;
-  ddRenderCompetitors();
-}
-
-async function ddLoadRealCompetitors(p) {
-  if (!p || !p.sheetUrl) return;
-  const sheetId = extractSheetId(p.sheetUrl);
-  if (!sheetId) return;
-  let rows = null;
-  for (const tab of ['Sheet1', 'Sellers', 'Data', p.name]) {
-    rows = await fetchSheet(sheetId, tab);
-    if (rows && rows.length) break;
-  }
-  if (!rows || rows.length < 3) return;
-  const mapped = rows.map((r, i) => ({
-    rank:  parseInt(r['No']) || i + 1,
-    name:  r['Store Name'] || '',
-    price: parseRp(r['Price']),
-    omset: parseRp(r['New Revenue']) || parseRp(r['30-day Revenue']),
-    units: parseFloat(r['30-day Sales']) || 0,
-    age:   r['Listing Date'] || '—',
-    score: Math.max(60, Math.round(92 - i * 2.5)),
-    image: r['Image'] || '',
-    url:   r['URL'] || '#',
-  })).filter(s => s.name);
-  if (mapped.length < 3) return;
-  const totalRev   = mapped.reduce((s, r) => s + r.omset, 0);
-  const threshold  = totalRev * 0.01;
-  const qualified  = mapped
-    .filter(s => s.omset > threshold)
-    .sort((a, b) => b.omset - a.omset)
-    .slice(0, 15)
-    .map((s, i) => ({ ...s, rank: i + 1 }));
-  if (qualified.length < 3) return;
-  // Also set hero image to top listing's image if product has none
-  const heroEl = document.getElementById('dd-hero-img');
-  if (heroEl && !p.image && qualified[0].image) {
-    heroEl.innerHTML = `<img src="${qualified[0].image}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.parentElement.textContent='📦'">`;
-  }
-  _ddCompAll = qualified;
   ddRenderCompetitors();
 }
 
