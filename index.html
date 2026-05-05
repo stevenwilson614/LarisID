@@ -7983,10 +7983,10 @@ async function dscFetchPage(offset, filters = {}) {
   if (!_supabase) return [];
   const FIELDS = 'item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews';
   let q = _supabase
-    .from('listings')
+    .from('listings_latest')
     .select(FIELDS)
     .order('total_sold', { ascending: false })
-    .range(offset, offset + 300 - 1);
+    .range(offset, offset + DSC_FETCH * 2 - 1);
 
   if (filters.cat)      q = q.eq('category', filters.cat);
   if (filters.priceMin) q = q.gte('price', filters.priceMin);
@@ -7997,10 +7997,10 @@ async function dscFetchPage(offset, filters = {}) {
   if (error) {
     // Fall back to raw listings table if view not ready
     let qf = _supabase
-      .from('listings')
+      .from('listings_latest')
       .select(FIELDS)
       .order('total_sold', { ascending: false })
-      .range(offset, offset + 300 - 1);
+      .range(offset, offset + DSC_FETCH * 2 - 1);
     if (filters.cat)      qf = qf.eq('category', filters.cat);
     if (filters.priceMin) qf = qf.gte('price', filters.priceMin);
     if (filters.priceMax && filters.priceMax < 1000000) qf = qf.lte('price', filters.priceMax);
@@ -8205,7 +8205,7 @@ async function dscLoadTrendData() {
   if (!_supabase || !_dscAllListings.length) return;
   try {
     // Get the two most recent scrape dates
-    const { data: dates } = await _supabase.from('listings')
+    const { data: dates } = await _supabase.from('listings_latest')
       .select('scraped_at').order('scraped_at', { ascending: false }).limit(2);
     const latestDate = dates?.[0]?.scraped_at?.slice(0, 10);
     const prevDate   = dates?.[1]?.scraped_at?.slice(0, 10);
@@ -8214,7 +8214,7 @@ async function dscLoadTrendData() {
     // Fetch prev scrape data for all loaded listings' keywords
     const keywords = [...new Set(_dscAllListings.map(r => r.keyword).filter(Boolean))];
     const { data: prevRows } = await _supabase
-      .from('listings')
+      .from('listings_latest')
       .select('item_id,shop_id,total_sold,keyword')
       .gte('scraped_at', prevDate)
       .lt('scraped_at', latestDate)
@@ -8720,7 +8720,7 @@ async function ddLoadKeywordContext(listing) {
   try {
     // Fetch all listings for this keyword (raw table — faster with keyword filter)
     const { data, error } = await _supabase
-      .from('listings')
+      .from('listings_latest')
       .select('item_id,shop_id,product_name,store_name,price,total_sold,image_url,url,rating,reviews')
       .eq('keyword', kw)
       .order('total_sold', { ascending: false })
@@ -9349,7 +9349,7 @@ async function ddRenderTren() {
     let dbRows = [];
     if (_supabase) {
       const { data } = await _supabase
-        .from('listings')
+        .from('listings_latest')
         .select('scraped_at,total_sold,price,reviews')
         .eq('item_id', listing.item_id)
         .eq('shop_id', listing.shop_id)
@@ -9358,7 +9358,7 @@ async function ddRenderTren() {
       dbRows = data || [];
       if (!dbRows.length) {
         const { data: d2 } = await _supabase
-          .from('listings')
+          .from('listings_latest')
           .select('scraped_at,total_sold,price,reviews')
           .eq('item_id', String(listing.item_id))
           .eq('shop_id', String(listing.shop_id))
@@ -10289,7 +10289,7 @@ async function ddLoadTrendHistory(listing) {
     console.log('[ddTrend] start item_id:', listing?.item_id, 'shop_id:', listing?.shop_id, 'sold:', listing?.total_sold, 'reviews:', listing?.reviews, 'price:', listing?.price);
     if (_supabase) {
       const { data } = await _supabase
-        .from('listings')
+        .from('listings_latest')
         .select('scraped_at,total_sold,price,reviews')
         .eq('item_id', listing.item_id)
         .eq('shop_id', listing.shop_id)
@@ -10299,7 +10299,7 @@ async function ddLoadTrendHistory(listing) {
       console.log('[ddTrend] DB rows (int):', dbRows.length, dbRows);
       if (!dbRows.length) {
         const { data: d2 } = await _supabase
-          .from('listings')
+          .from('listings_latest')
           .select('scraped_at,total_sold,price,reviews')
           .eq('item_id', String(listing.item_id))
           .eq('shop_id', String(listing.shop_id))
@@ -11192,7 +11192,7 @@ async function loadProductDatabase() {
 
   // Get latest scraped_at date
   const { data: latestRow, error: latestErr } = await _supabase
-    .from('listings')
+    .from('listings_latest')
     .select('scraped_at')
     .order('scraped_at', { ascending: false })
     .limit(1);
@@ -11206,7 +11206,7 @@ async function loadProductDatabase() {
 
   const f = _pdbGetFilters();
   let query = _supabase
-    .from('listings')
+    .from('listings_latest')
     .select('keyword,category,product_name,store_name,price,original_price,total_sold,rating,reviews,stock,image_url,url,item_id,shop_id,scraped_at')
     .gte('scraped_at', latestDate)
     .order('total_sold', { ascending: false })
@@ -11531,7 +11531,7 @@ async function openKwDetail(keyword) {
 
   let latestDate = _kdCache[keyword]?.latestDate;
   if (!latestDate) {
-    const { data: lr } = await _supabase.from('listings').select('scraped_at').eq('keyword', keyword).order('scraped_at', {ascending:false}).limit(1);
+    const { data: lr } = await _supabase.from('listings_latest').select('scraped_at').eq('keyword', keyword).order('scraped_at', {ascending:false}).limit(1);
     latestDate = lr?.[0]?.scraped_at?.slice(0,10);
     if (!latestDate) { document.getElementById('kd-right-panel').innerHTML = '<div class="of-detail-loading">Gagal memuat data.</div>'; return; }
   }
@@ -11539,7 +11539,7 @@ async function openKwDetail(keyword) {
   let sellers = _kdCache[keyword]?.sellers;
   if (!sellers) {
     const { data, error } = await _supabase
-      .from('listings')
+      .from('listings_latest')
       .select('product_name,store_name,image_url,url,price,total_sold,rating,review_count,item_id,shop_id,listing_date,location')
       .gte('scraped_at', latestDate)
       .eq('keyword', keyword)
@@ -11691,7 +11691,7 @@ async function openKwDetail(keyword) {
 
   // Category revenue history chart (async)
   (async () => {
-    const { data: hist } = await _supabase.from('listings').select('scraped_at,price,total_sold').eq('keyword',keyword).order('scraped_at',{ascending:true}).limit(600);
+    const { data: hist } = await _supabase.from('listings_latest').select('scraped_at,price,total_sold').eq('keyword',keyword).order('scraped_at',{ascending:true}).limit(600);
     const el = document.getElementById('kd-cat-chart');
     if (!el) return;
     if (!hist?.length) { el.innerHTML='<div style="color:#9CA3AF;font-size:.7rem;">Belum ada data</div>'; return; }
@@ -11730,7 +11730,7 @@ async function openKwDetail(keyword) {
   (async () => {
     const topStores = topSellers.slice(0,10).map(r=>r.store_name).filter(Boolean);
     if (!topStores.length) return;
-    const { data: kwData } = await _supabase.from('listings').select('keyword').in('store_name',topStores).gte('scraped_at',latestDate).limit(1000);
+    const { data: kwData } = await _supabase.from('listings_latest').select('keyword').in('store_name',topStores).gte('scraped_at',latestDate).limit(1000);
     if (!kwData?.length) return;
     const kwCount={};
     kwData.forEach(r => { if (r.keyword&&r.keyword!==keyword) kwCount[r.keyword]=(kwCount[r.keyword]||0)+1; });
@@ -11841,12 +11841,12 @@ async function _loadHomeTrending() {
   const gridEl = document.getElementById('home-htd-grid');
   if (!gridEl) return;
 
-  const { data: lr } = await _supabase.from('listings').select('scraped_at').order('scraped_at',{ascending:false}).limit(1);
+  const { data: lr } = await _supabase.from('listings_latest').select('scraped_at').order('scraped_at',{ascending:false}).limit(1);
   const latestDate = lr?.[0]?.scraped_at?.slice(0,10);
   if (!latestDate) { gridEl.innerHTML = '<div style="color:#9CA3AF;font-size:.75rem;padding:10px 0;">Belum ada data.</div>'; return; }
 
   const { data: rows } = await _supabase
-    .from('listings')
+    .from('listings_latest')
     .select('keyword,category,price,total_sold,image_url,score')
     .gte('scraped_at', latestDate)
     .order('total_sold', { ascending: false })
@@ -11945,7 +11945,7 @@ async function ofOpenKeyword(keyword) {
   if (_ofDetailCache[keyword]?.latestDate) {
     latestDate = _ofDetailCache[keyword].latestDate;
   } else {
-    const { data: lr } = await _supabase.from('listings').select('scraped_at').eq('keyword',keyword).order('scraped_at',{ascending:false}).limit(1);
+    const { data: lr } = await _supabase.from('listings_latest').select('scraped_at').eq('keyword',keyword).order('scraped_at',{ascending:false}).limit(1);
     latestDate = lr?.[0]?.scraped_at?.slice(0,10);
     if (!latestDate) { document.getElementById('of-detail-seller-list').innerHTML='<div class="of-detail-loading">Gagal memuat data.</div>'; return; }
   }
@@ -11956,7 +11956,7 @@ async function ofOpenKeyword(keyword) {
     sellers = _ofDetailCache[keyword].data;
   } else {
     const { data, error } = await _supabase
-      .from('listings')
+      .from('listings_latest')
       .select('product_name,store_name,image_url,url,price,total_sold,rating,item_id,shop_id,listing_date')
       .gte('scraped_at', latestDate)
       .eq('keyword', keyword)
@@ -12029,7 +12029,7 @@ async function ofOpenKeyword(keyword) {
   // ── Revenue history chart ─────────────────────────────────
   (async () => {
     const { data: hist } = await _supabase
-      .from('listings')
+      .from('listings_latest')
       .select('scraped_at,price,total_sold')
       .eq('keyword', keyword)
       .order('scraped_at', { ascending: true })
@@ -12064,7 +12064,7 @@ async function ofOpenKeyword(keyword) {
     const topStores = topSellers.slice(0,10).map(r=>r.store_name).filter(Boolean);
     if (!topStores.length) return;
     const { data: kwData } = await _supabase
-      .from('listings')
+      .from('listings_latest')
       .select('keyword,store_name')
       .in('store_name', topStores)
       .gte('scraped_at', latestDate)
@@ -12328,13 +12328,13 @@ async function loadOpportunityFinder() {
   if (st) st.textContent = 'Memuat data…';
   if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:#6B7280;font-size:.8rem;">Memuat…</td></tr>';
 
-  const { data: latestRow } = await _supabase.from('listings').select('scraped_at').order('scraped_at',{ascending:false}).limit(1);
+  const { data: latestRow } = await _supabase.from('listings_latest').select('scraped_at').order('scraped_at',{ascending:false}).limit(1);
   if (!latestRow?.length) { if(st) st.textContent='Gagal memuat data.'; return; }
   const latestDate = latestRow[0].scraped_at.slice(0,10);
   if (dateNote) dateNote.textContent = `Data: ${latestDate}`;
 
   const f = _ofGetFilters();
-  let query = _supabase.from('listings')
+  let query = _supabase.from('listings_latest')
     .select('keyword,category,price,original_price,total_sold,rating,reviews,item_id,shop_id')
     .gte('scraped_at', latestDate)
     .limit(2000);
@@ -12457,7 +12457,7 @@ async function loadCategoryTrends() {
   if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:#6B7280;font-size:.8rem;">Memuat…</td></tr>';
 
   // Get two latest scraped_at dates
-  const { data: dates } = await _supabase.from('listings').select('scraped_at').order('scraped_at',{ascending:false}).limit(2);
+  const { data: dates } = await _supabase.from('listings_latest').select('scraped_at').order('scraped_at',{ascending:false}).limit(2);
   if (!dates?.length) return;
   const latestDate = dates[0].scraped_at.slice(0,10);
   const prevDate   = dates[1]?.scraped_at?.slice(0,10) || null;
@@ -12465,8 +12465,8 @@ async function loadCategoryTrends() {
 
   // Fetch current and previous data in parallel
   const [curRes, prevRes] = await Promise.all([
-    _supabase.from('listings').select('category,keyword,price,total_sold,rating').gte('scraped_at', latestDate).limit(3000),
-    prevDate ? _supabase.from('listings').select('category,total_sold').gte('scraped_at', prevDate).lt('scraped_at', latestDate).limit(3000) : { data: [] },
+    _supabase.from('listings_latest').select('category,keyword,price,total_sold,rating').gte('scraped_at', latestDate).limit(3000),
+    prevDate ? _supabase.from('listings_latest').select('category,total_sold').gte('scraped_at', prevDate).lt('scraped_at', latestDate).limit(3000) : { data: [] },
   ]);
 
   const curData  = curRes.data  || [];
@@ -12608,7 +12608,7 @@ let _kxAllKeywords = []; // populated on first load
 async function _kxLoadKeywordList() {
   if (_kxAllKeywords.length || !_supabase) return;
   const { data } = await _supabase
-    .from('listings')
+    .from('listings_latest')
     .select('keyword')
     .order('keyword')
     .limit(3000);
@@ -12635,14 +12635,14 @@ async function analyzeKeyword() {
 
   // Get two latest dates
   const { data: dates } = await _supabase
-    .from('listings').select('scraped_at').order('scraped_at',{ascending:false}).limit(2);
+    .from('listings_latest').select('scraped_at').order('scraped_at',{ascending:false}).limit(2);
   if (!dates?.length) { if(st) st.textContent='Gagal memuat data.'; return; }
   const latestDate = dates[0].scraped_at.slice(0,10);
   const prevDate   = dates[1]?.scraped_at?.slice(0,10) || null;
 
   // Search across product_name (any listing containing the word)
   const { data: cur, error } = await _supabase
-    .from('listings')
+    .from('listings_latest')
     .select('product_name,store_name,category,keyword,price,total_sold,rating,reviews,listing_date')
     .ilike('product_name', `%${kw}%`)
     .gte('scraped_at', latestDate)
@@ -12659,7 +12659,7 @@ async function analyzeKeyword() {
   let prevSold = 0;
   if (prevDate) {
     const { data: prev } = await _supabase
-      .from('listings')
+      .from('listings_latest')
       .select('total_sold')
       .ilike('product_name', `%${kw}%`)
       .gte('scraped_at', prevDate)
@@ -12766,7 +12766,7 @@ async function analyzeKeyword() {
 
   // Also fetch same-category keywords for broader related list
   const { data: related } = await _supabase
-    .from('listings')
+    .from('listings_latest')
     .select('keyword,price,total_sold,rating,reviews')
     .eq('category', category)
     .gte('scraped_at', latestDate)
@@ -13085,7 +13085,7 @@ async function ptToggleExpand(item_id, shop_id) {
 
   // Fetch historical snapshots for this item
   const { data: history } = await _supabase
-    .from('listings')
+    .from('listings_latest')
     .select('scraped_at,total_sold,price')
     .eq('item_id', item_id)
     .eq('shop_id', shop_id)
@@ -13096,11 +13096,11 @@ async function ptToggleExpand(item_id, shop_id) {
   let sellerData = [];
   if (kw && _supabase) {
     const { data: latest } = await _supabase
-      .from('listings').select('scraped_at').order('scraped_at',{ascending:false}).limit(1);
+      .from('listings_latest').select('scraped_at').order('scraped_at',{ascending:false}).limit(1);
     const ld = latest?.[0]?.scraped_at?.slice(0,10);
     if (ld) {
       const { data: sellers } = await _supabase
-        .from('listings')
+        .from('listings_latest')
         .select('store_name,total_sold,product_name')
         .ilike('keyword', kw)
         .gte('scraped_at', ld)
