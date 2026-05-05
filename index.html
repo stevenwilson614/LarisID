@@ -10188,26 +10188,28 @@ async function ddLoadTrendHistory(listing) {
       }
     }
 
-    // Augment with _dscPrevMap when we have < 2 DB rows
+    // Augment to reach 2 rows
     if (dbRows.length < 2) {
       const prevKey  = `${listing.item_id}_${listing.shop_id}`;
       const prevSold = _dscPrevMap[prevKey];
-      console.log('[ddTrend] < 2 rows, prevKey:', prevKey, 'prevSold:', prevSold);
-      if (prevSold != null && listing.scraped_at) {
-        const currDate = new Date(listing.scraped_at);
-        const prevDate = new Date(currDate.getTime() - 7 * 24 * 60 * 60 * 1000);
-        // Use the one DB row (if any) as prev, current listing as latest
-        if (dbRows.length === 1) {
-          dbRows = [
-            dbRows[0],
-            { scraped_at: currDate.toISOString(), total_sold: listing.total_sold, price: listing.price, reviews: listing.reviews },
-          ];
+      const currDate = listing.scraped_at ? new Date(listing.scraped_at) : new Date();
+      const currRow  = { scraped_at: currDate.toISOString(), total_sold: listing.total_sold, price: listing.price, reviews: listing.reviews };
+
+      if (dbRows.length === 1) {
+        // Pair the 1 DB row (historical) with current listing
+        const dbDate = new Date(dbRows[0].scraped_at);
+        if (dbDate < currDate) {
+          dbRows = [dbRows[0], currRow];
         } else {
-          dbRows = [
-            { scraped_at: prevDate.toISOString(), total_sold: prevSold, price: listing.price, reviews: null },
-            { scraped_at: currDate.toISOString(), total_sold: listing.total_sold, price: listing.price, reviews: listing.reviews },
-          ];
+          dbRows = [currRow, dbRows[0]];
         }
+      } else if (prevSold != null) {
+        // No DB rows but _dscPrevMap has previous sold — synthesise prev point
+        const prevDate = new Date(currDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+        dbRows = [
+          { scraped_at: prevDate.toISOString(), total_sold: prevSold, price: listing.price, reviews: null },
+          currRow,
+        ];
       } else {
         if (_ddChartTrend) { _ddChartTrend.data.labels = []; _ddChartTrend.data.datasets.forEach(d => d.data = []); _ddChartTrend.update(); }
         _noDataMsg('Belum cukup data scrape untuk menampilkan tren.<br>Data akan muncul setelah 2+ scrape.');
