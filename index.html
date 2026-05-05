@@ -7983,10 +7983,10 @@ async function dscFetchPage(offset, filters = {}) {
   if (!_supabase) return [];
   const FIELDS = 'item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews';
   let q = _supabase
-    .from('listings_latest')
+    .from('listings')
     .select(FIELDS)
     .order('total_sold', { ascending: false })
-    .range(offset, offset + DSC_FETCH - 1);
+    .range(offset, offset + DSC_FETCH * 2 - 1);
 
   if (filters.cat)      q = q.eq('category', filters.cat);
   if (filters.priceMin) q = q.gte('price', filters.priceMin);
@@ -8000,7 +8000,7 @@ async function dscFetchPage(offset, filters = {}) {
       .from('listings')
       .select(FIELDS)
       .order('total_sold', { ascending: false })
-      .range(offset, offset + DSC_FETCH - 1);
+      .range(offset, offset + DSC_FETCH * 2 - 1);
     if (filters.cat)      qf = qf.eq('category', filters.cat);
     if (filters.priceMin) qf = qf.gte('price', filters.priceMin);
     if (filters.priceMax && filters.priceMax < 1000000) qf = qf.lte('price', filters.priceMax);
