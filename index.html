@@ -10168,7 +10168,7 @@ async function ddLoadTrendHistory(listing) {
     if (_supabase) {
       const { data } = await _supabase
         .from('listings')
-        .select('scraped_at,total_sold,price,price_min,reviews')
+        .select('scraped_at,total_sold,price,reviews')
         .eq('item_id', listing.item_id)
         .eq('shop_id', listing.shop_id)
         .order('scraped_at', { ascending: true })
@@ -10178,7 +10178,7 @@ async function ddLoadTrendHistory(listing) {
       if (!dbRows.length) {
         const { data: d2 } = await _supabase
           .from('listings')
-          .select('scraped_at,total_sold,price,price_min,reviews')
+          .select('scraped_at,total_sold,price,reviews')
           .eq('item_id', String(listing.item_id))
           .eq('shop_id', String(listing.shop_id))
           .order('scraped_at', { ascending: true })
@@ -10200,12 +10200,12 @@ async function ddLoadTrendHistory(listing) {
         if (dbRows.length === 1) {
           dbRows = [
             dbRows[0],
-            { scraped_at: currDate.toISOString(), total_sold: listing.total_sold, price: listing.price, price_min: listing.price_min, reviews: listing.reviews },
+            { scraped_at: currDate.toISOString(), total_sold: listing.total_sold, price: listing.price, reviews: listing.reviews },
           ];
         } else {
           dbRows = [
-            { scraped_at: prevDate.toISOString(), total_sold: prevSold, price: listing.price, price_min: listing.price_min, reviews: null },
-            { scraped_at: currDate.toISOString(), total_sold: listing.total_sold, price: listing.price, price_min: listing.price_min, reviews: listing.reviews },
+            { scraped_at: prevDate.toISOString(), total_sold: prevSold, price: listing.price, reviews: null },
+            { scraped_at: currDate.toISOString(), total_sold: listing.total_sold, price: listing.price, reviews: listing.reviews },
           ];
         }
       } else {
@@ -10215,7 +10215,7 @@ async function ddLoadTrendHistory(listing) {
       }
     }
 
-    const fallbackPrice = listing.price || listing.price_min || 0;
+    const fallbackPrice = listing.price || 0;
 
     // Category multipliers (calibrated 2026-05-04)
     const _CAT_MULT = { 'Rumah':2.94,'Fashion':2.77,'Dapur':3.41,'Kamar Mandi':4.21,'Keamanan':3.40,
@@ -10249,7 +10249,7 @@ async function ddLoadTrendHistory(listing) {
 
     const labels   = dbRows.map(r => new Date(r.scraped_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }));
     const omsetData = unitData.map((u, i) => {
-      const p = (dbRows[i]?.price || dbRows[i]?.price_min || fallbackPrice);
+      const p = (dbRows[i]?.price || fallbackPrice);
       return u * p;
     });
 
