@@ -7902,7 +7902,7 @@ let _dscCompMap     = {};   // keyword -> "Rendah"|"Sedang"|"Tinggi"
 let _dscFiltered    = [];
 let _dscPage        = 1;
 let _dscLoaded      = false;
-const DSC_PER_PAGE  = 60;
+const DSC_PER_PAGE  = 120;
 
 // fmt helpers
 const _dscFmt = v => v >= 1000000 ? `Rp ${(v/1000000).toFixed(1)} jt` : v >= 1000 ? `Rp ${(v/1000).toFixed(0)} rb` : `Rp ${Math.round(v)}`;
@@ -8011,7 +8011,7 @@ async function dscFetchPage(offset, filters = {}) {
   return data || [];
 }
 
-const DSC_CACHE_KEY = 'larisid_dsc_cache_v2';
+const DSC_CACHE_KEY = 'larisid_dsc_cache';
 const DSC_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 let _dscLoadTimer = null;
