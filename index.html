@@ -10147,94 +10147,137 @@ function ddRender(p) {
   }).join('');
 }
 
-// Fetches up to 4 real scrape points for this listing and updates the trend chart.
-// Falls back to _dscPrevMap (already in memory) when DB returns < 2 rows.
-// Adds a 1-week forecast point using the average of available deltas.
+// Fetches up to 4 real scrape points and plots CUMULATIVE total_sold + estimated omset.
+// Cumulative always shows something meaningful even for slow sellers (0 delta ≠ no data).
+// Falls back to _dscPrevMap when DB returns < 2 rows.
+// Forecast = last value + average growth per period, 1 week ahead.
 async function ddLoadTrendHistory(listing) {
   if (!listing?.item_id) return;
+
+  // Helper: show no-data message inside chart container
+  function _noDataMsg(msg) {
+    const el = document.getElementById('dd-chart-trend');
+    if (el) el.closest('.dd-card')?.querySelector('.dd-card-title')?.insertAdjacentHTML('afterend',
+      `<div id="dd-trend-nodata" style="text-align:center;padding:28px 0;font-size:.75rem;color:#9CA3AF;">${msg}</div>`);
+  }
+  document.getElementById('dd-trend-nodata')?.remove();
+
   try {
     let dbRows = [];
+    console.log('[ddTrend] start item_id:', listing?.item_id, 'shop_id:', listing?.shop_id, 'sold:', listing?.total_sold, 'reviews:', listing?.reviews, 'price:', listing?.price);
     if (_supabase) {
-      // Try both numeric and string forms of item_id/shop_id to handle type variance
       const { data } = await _supabase
         .from('listings')
-        .select('scraped_at,total_sold,price')
+        .select('scraped_at,total_sold,price,price_min,reviews')
         .eq('item_id', listing.item_id)
         .eq('shop_id', listing.shop_id)
-        .order('scraped_at', { ascending: false })
-        .limit(4);
+        .order('scraped_at', { ascending: true })
+        .limit(6);
       dbRows = data || [];
-      // If nothing found, retry with string-cast ids
+      console.log('[ddTrend] DB rows (int):', dbRows.length, dbRows);
       if (!dbRows.length) {
         const { data: d2 } = await _supabase
           .from('listings')
-          .select('scraped_at,total_sold,price')
+          .select('scraped_at,total_sold,price,price_min,reviews')
           .eq('item_id', String(listing.item_id))
           .eq('shop_id', String(listing.shop_id))
-          .order('scraped_at', { ascending: false })
-          .limit(4);
+          .order('scraped_at', { ascending: true })
+          .limit(6);
         dbRows = d2 || [];
+        console.log('[ddTrend] DB rows (str):', dbRows.length, dbRows);
       }
     }
 
-    // Sort oldest → newest
-    dbRows.sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
-
-    // If DB only has 1 row (scraper does upserts) or 0, synthesize a "previous" point
-    // using _dscPrevMap which dscLoadTrendData already populated in memory.
+    // Augment with _dscPrevMap when we have < 2 DB rows
     if (dbRows.length < 2) {
       const prevKey  = `${listing.item_id}_${listing.shop_id}`;
       const prevSold = _dscPrevMap[prevKey];
-      if (prevSold != null) {
-        // Estimate previous scrape date as ~7 days before the listing's scraped_at
-        const currDate = listing.scraped_at
-          ? new Date(listing.scraped_at)
-          : new Date();
+      console.log('[ddTrend] < 2 rows, prevKey:', prevKey, 'prevSold:', prevSold);
+      if (prevSold != null && listing.scraped_at) {
+        const currDate = new Date(listing.scraped_at);
         const prevDate = new Date(currDate.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const syntheticPrev = { scraped_at: prevDate.toISOString(), total_sold: prevSold, price: listing.price };
-        const syntheticCurr = { scraped_at: currDate.toISOString(), total_sold: listing.total_sold || 0, price: listing.price };
-        dbRows = [syntheticPrev, syntheticCurr];
-      } else if (dbRows.length === 0) {
-        // No data at all — leave chart empty
+        // Use the one DB row (if any) as prev, current listing as latest
+        if (dbRows.length === 1) {
+          dbRows = [
+            dbRows[0],
+            { scraped_at: currDate.toISOString(), total_sold: listing.total_sold, price: listing.price, price_min: listing.price_min, reviews: listing.reviews },
+          ];
+        } else {
+          dbRows = [
+            { scraped_at: prevDate.toISOString(), total_sold: prevSold, price: listing.price, price_min: listing.price_min, reviews: null },
+            { scraped_at: currDate.toISOString(), total_sold: listing.total_sold, price: listing.price, price_min: listing.price_min, reviews: listing.reviews },
+          ];
+        }
+      } else {
+        if (_ddChartTrend) { _ddChartTrend.data.labels = []; _ddChartTrend.data.datasets.forEach(d => d.data = []); _ddChartTrend.update(); }
+        _noDataMsg('Belum cukup data scrape untuk menampilkan tren.<br>Data akan muncul setelah 2+ scrape.');
         return;
       }
     }
 
-    // Build per-period delta labels
-    const labels = [], unitData = [], omsetData = [];
-    for (let i = 1; i < dbRows.length; i++) {
-      const prev = dbRows[i - 1], curr = dbRows[i];
-      const deltaUnits = Math.max(0, (curr.total_sold || 0) - (prev.total_sold || 0));
-      const price      = curr.price || listing.price || 0;
-      const date       = new Date(curr.scraped_at);
-      labels.push(date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }));
-      unitData.push(deltaUnits);
-      omsetData.push(deltaUnits * price);
+    const fallbackPrice = listing.price || listing.price_min || 0;
+
+    // Category multipliers (calibrated 2026-05-04)
+    const _CAT_MULT = { 'Rumah':2.94,'Fashion':2.77,'Dapur':3.41,'Kamar Mandi':4.21,'Keamanan':3.40,
+      'Kecantikan':2.70,'Motor & Mobil':2.96,'Elektronik':3.10,'HP & Gadget':3.40,
+      'Hewan Peliharaan':3.95,'Sepeda':2.58,'Taman':3.50,'Olahraga':2.68,'Bayi & Anak':4.12,
+      'Hobi & Kerajinan':2.48,'Kesehatan':2.38,'Tanaman':3.63,'Alat Tulis':2.87,
+      'Outdoor & Camping':2.67,'__default__':3.20 };
+    const mult = _CAT_MULT[listing.category] || _CAT_MULT['__default__'];
+
+    // 10k+ ceiling: total_sold is capped — use review delta × multiplier instead
+    const atCeiling = dbRows.every(r => (r.total_sold ?? 0) >= 10000);
+    const hasReviews = dbRows.some(r => r.reviews > 0);
+
+    let unitData, isEstimated = false;
+    if (atCeiling && hasReviews) {
+      isEstimated = true;
+      let base = 10000;
+      unitData = [base];
+      for (let i = 1; i < dbRows.length; i++) {
+        const revDelta = Math.max(0, (dbRows[i].reviews || 0) - (dbRows[i-1].reviews || 0));
+        base += Math.round(revDelta * mult);
+        unitData.push(base);
+      }
+    } else if (atCeiling && !hasReviews) {
+      if (_ddChartTrend) { _ddChartTrend.data.labels = []; _ddChartTrend.data.datasets.forEach(d => d.data = []); _ddChartTrend.update(); }
+      _noDataMsg('Produk ini melebihi 10rb penjualan.<br>Data ulasan belum tersedia untuk estimasi pertumbuhan.');
+      return;
+    } else {
+      unitData = dbRows.map(r => r.total_sold ?? 0);
     }
 
-    // Forecast: average delta, 1 week after last point
-    const avgUnits = Math.round(unitData.reduce((s, v) => s + v, 0) / unitData.length);
-    const avgOmset = Math.round(omsetData.reduce((s, v) => s + v, 0) / omsetData.length);
-    const lastDate = new Date(dbRows[dbRows.length - 1].scraped_at);
-    lastDate.setDate(lastDate.getDate() + 7);
-    labels.push(lastDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) + ' *');
+    const labels   = dbRows.map(r => new Date(r.scraped_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }));
+    const omsetData = unitData.map((u, i) => {
+      const p = (dbRows[i]?.price || dbRows[i]?.price_min || fallbackPrice);
+      return u * p;
+    });
+
+    // Forecast: project 1 week ahead
+    const n = unitData.length;
+    const avgDeltaUnits = n >= 2 ? Math.max(0, Math.round((unitData[n-1] - unitData[0]) / (n - 1))) : 0;
+    const avgDeltaOmset = avgDeltaUnits * fallbackPrice;
+    const forecastUnits = unitData[n - 1] + avgDeltaUnits;
+    const forecastOmset = omsetData[n - 1] + avgDeltaOmset;
+    const forecastDate  = new Date(dbRows[n - 1].scraped_at);
+    forecastDate.setDate(forecastDate.getDate() + 7);
+
+    labels.push(forecastDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) + ' *');
     unitData.push(null);
     omsetData.push(null);
 
-    // Forecast datasets bridge last real point → forecast (dashed green)
     const fUnit  = new Array(labels.length).fill(null);
     const fOmset = new Array(labels.length).fill(null);
-    const lastIdx = labels.length - 2;
-    fUnit[lastIdx]      = unitData[lastIdx]  ?? avgUnits;
-    fOmset[lastIdx]     = omsetData[lastIdx] ?? avgOmset;
-    fUnit[lastIdx + 1]  = avgUnits;
-    fOmset[lastIdx + 1] = avgOmset;
+    fUnit[n - 1]  = unitData[n - 1] ?? forecastUnits;
+    fOmset[n - 1] = omsetData[n - 1] ?? forecastOmset;
+    fUnit[n]  = forecastUnits;
+    fOmset[n] = forecastOmset;
 
     if (!_ddChartTrend) return;
     _ddChartTrend.data.labels = labels;
     _ddChartTrend.data.datasets = [
-      { label:'Omset (Rp)',     data:omsetData, borderColor:'#E8442A', backgroundColor:'rgba(232,68,42,.06)', borderWidth:2.5, fill:true,  tension:0.3, pointRadius:4, pointBackgroundColor:'#E8442A', yAxisID:'y',  spanGaps:false },
-      { label:'Unit Terjual',   data:unitData,  borderColor:'#4F46E5', backgroundColor:'transparent',         borderWidth:2,   fill:false, tension:0.3, pointRadius:3, pointBackgroundColor:'#4F46E5', yAxisID:'y2', spanGaps:false },
+      { label: isEstimated ? 'Omset Est. (Rp)' : 'Omset (Rp)',   data:omsetData, borderColor:'#E8442A', backgroundColor:'rgba(232,68,42,.06)', borderWidth:2.5, fill:true,  tension:0.3, pointRadius:4, pointBackgroundColor:'#E8442A', yAxisID:'y',  spanGaps:false, borderDash: isEstimated ? [3,3] : [] },
+      { label: isEstimated ? 'Unit Est.'       : 'Unit Terjual', data:unitData,  borderColor:'#4F46E5', backgroundColor:'transparent',         borderWidth:2,   fill:false, tension:0.3, pointRadius:3, pointBackgroundColor:'#4F46E5', yAxisID:'y2', spanGaps:false, borderDash: isEstimated ? [3,3] : [] },
       { label:'Forecast Omset', data:fOmset,    borderColor:'#10B981', backgroundColor:'transparent',         borderWidth:2,   fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y',  borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
       { label:'Forecast Unit',  data:fUnit,     borderColor:'#10B981', backgroundColor:'transparent',         borderWidth:2,   fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
     ];
