@@ -10207,10 +10207,9 @@ function ddRender(p) {
   }).join('');
 }
 
-// Fetches up to 4 real scrape points and plots CUMULATIVE total_sold + estimated omset.
-// Cumulative always shows something meaningful even for slow sellers (0 delta ≠ no data).
-// Falls back to _dscPrevMap when DB returns < 2 rows.
-// Forecast = last value + average growth per period, 1 week ahead.
+// Fetches up to 20 scrape points, interpolates deltas day-by-day between consecutive
+// scrapes, and buckets into ISO calendar weeks. Shows weekly units + weekly omset so
+// even sparse scrapes produce a smooth weekly view. Forecast = avg of last 2 weeks.
 async function ddLoadTrendHistory(listing) {
   if (!listing?.item_id) return;
 
@@ -10232,7 +10231,7 @@ async function ddLoadTrendHistory(listing) {
         .eq('item_id', listing.item_id)
         .eq('shop_id', listing.shop_id)
         .order('scraped_at', { ascending: true })
-        .limit(6);
+        .limit(20);
       dbRows = data || [];
       console.log('[ddTrend] DB rows (int):', dbRows.length, dbRows);
       if (!dbRows.length) {
@@ -10242,7 +10241,7 @@ async function ddLoadTrendHistory(listing) {
           .eq('item_id', String(listing.item_id))
           .eq('shop_id', String(listing.shop_id))
           .order('scraped_at', { ascending: true })
-          .limit(6);
+          .limit(20);
         dbRows = d2 || [];
         console.log('[ddTrend] DB rows (str):', dbRows.length, dbRows);
       }
@@ -10312,69 +10311,102 @@ async function ddLoadTrendHistory(listing) {
       unitData = dbRows.map(r => r.total_sold ?? 0);
     }
 
-    const labels   = dbRows.map(r => new Date(r.scraped_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }));
-    const omsetData = unitData.map((u, i) => {
-      const p = (dbRows[i]?.price || fallbackPrice);
-      return u * p;
-    });
+    // ── Interpolate scrape deltas into ISO calendar weeks ──────────────────────
+    // Between each pair of scrape points, distribute sold delta uniformly across
+    // days, then bucket days into weeks. This gives weekly estimates even when
+    // scrapes happen to fall on non-weekly boundaries.
+    const _MO = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+    function _wKey(d) {
+      const t = new Date(+d), day = t.getDay() || 7;
+      t.setDate(t.getDate() + 4 - day);
+      const y1 = new Date(t.getFullYear(), 0, 1);
+      return `${t.getFullYear()}-W${String(Math.ceil(((t-y1)/86400000+1)/7)).padStart(2,'0')}`;
+    }
+    function _wLabel(d) {
+      const k = _wKey(d), [yr, ws] = k.split('-W'), wn = +ws;
+      const j4 = new Date(+yr, 0, 4), dw = j4.getDay() || 7;
+      const mon = new Date(j4.getTime()-(dw-1)*86400000+(wn-1)*7*86400000);
+      return `W${wn} ${_MO[mon.getMonth()]}`;
+    }
+    const weekMap = new Map();
+    for (let i = 0; i < dbRows.length - 1; i++) {
+      const t0 = new Date(dbRows[i].scraped_at), t1 = new Date(dbRows[i+1].scraped_at);
+      const s0 = unitData[i] ?? 0, s1 = unitData[i+1] ?? 0;
+      const p0 = dbRows[i].price || fallbackPrice, p1 = dbRows[i+1].price || fallbackPrice;
+      const delta = Math.max(0, s1 - s0);
+      const daysDiff = Math.max(1, (t1 - t0) / 86400000);
+      const dUnit = delta / daysDiff;
+      for (let d = 1; d <= Math.ceil(daysDiff); d++) {
+        const date = new Date(t0.getTime() + d * 86400000);
+        if (date > t1) break;
+        const frac = d / daysDiff;
+        const key  = _wKey(date);
+        if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(date), units: 0, omset: 0, firstDate: date });
+        const wk = weekMap.get(key);
+        wk.units += dUnit;
+        wk.omset += dUnit * (p0 + (p1 - p0) * frac);
+      }
+    }
+    const weeklyRows = [...weekMap.values()]
+      .sort((a, b) => a.firstDate - b.firstDate)
+      .map(w => ({ label: w.label, units: Math.round(w.units), omset: Math.round(w.omset), firstDate: w.firstDate }));
 
-    // Forecast: project 1 week ahead
-    const n = unitData.length;
-    const avgDeltaUnits = n >= 2 ? Math.max(0, Math.round((unitData[n-1] - unitData[0]) / (n - 1))) : 0;
-    const avgDeltaOmset = avgDeltaUnits * fallbackPrice;
-    const forecastUnits = unitData[n - 1] + avgDeltaUnits;
-    const forecastOmset = omsetData[n - 1] + avgDeltaOmset;
-    const forecastDate  = new Date(dbRows[n - 1].scraped_at);
-    forecastDate.setDate(forecastDate.getDate() + 7);
+    if (!weeklyRows.length) {
+      _noDataMsg('Belum ada perubahan penjualan terdeteksi antara scrape.');
+      return;
+    }
 
-    labels.push(forecastDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) + ' *');
-    unitData.push(null);
-    omsetData.push(null);
+    const labels        = weeklyRows.map(w => w.label);
+    const chartUnitData = weeklyRows.map(w => w.units);
+    const chartOmsetData= weeklyRows.map(w => w.omset);
 
-    const fUnit  = new Array(labels.length).fill(null);
-    const fOmset = new Array(labels.length).fill(null);
-    fUnit[n - 1]  = unitData[n - 1] ?? forecastUnits;
-    fOmset[n - 1] = omsetData[n - 1] ?? forecastOmset;
-    fUnit[n]  = forecastUnits;
-    fOmset[n] = forecastOmset;
+    // Forecast: avg of last 2 weeks (or last 1) projected 1 week ahead
+    const nW = weeklyRows.length;
+    const slice2 = weeklyRows.slice(-2);
+    const fcUnit  = Math.round(slice2.reduce((s,w) => s+w.units, 0) / slice2.length);
+    const fcOmset = Math.round(slice2.reduce((s,w) => s+w.omset, 0) / slice2.length);
+    const nextWeek = new Date(weeklyRows[nW-1].firstDate.getTime() + 7*86400000);
+    labels.push(_wLabel(nextWeek) + ' *');
+    chartUnitData.push(null);
+    chartOmsetData.push(null);
+    const fUnitW  = new Array(labels.length).fill(null);
+    const fOmsetW = new Array(labels.length).fill(null);
+    fUnitW[nW-1]  = weeklyRows[nW-1].units;
+    fOmsetW[nW-1] = weeklyRows[nW-1].omset;
+    fUnitW[nW]    = fcUnit;
+    fOmsetW[nW]   = fcOmset;
 
     if (!_ddChartTrend) return;
     _ddChartTrend.data.labels = labels;
     _ddChartTrend.data.datasets = [
-      { label: isEstimated ? 'Omset Est. (Rp)' : 'Omset (Rp)',   data:omsetData, borderColor:'#E8442A', backgroundColor:'rgba(232,68,42,.06)', borderWidth:2.5, fill:true,  tension:0.3, pointRadius:4, pointBackgroundColor:'#E8442A', yAxisID:'y',  spanGaps:false, borderDash: isEstimated ? [3,3] : [] },
-      { label: isEstimated ? 'Unit Est.'       : 'Unit Terjual', data:unitData,  borderColor:'#4F46E5', backgroundColor:'transparent',         borderWidth:2,   fill:false, tension:0.3, pointRadius:3, pointBackgroundColor:'#4F46E5', yAxisID:'y2', spanGaps:false, borderDash: isEstimated ? [3,3] : [] },
-      { label:'Forecast Omset', data:fOmset,    borderColor:'#10B981', backgroundColor:'transparent',         borderWidth:2,   fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y',  borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
-      { label:'Forecast Unit',  data:fUnit,     borderColor:'#10B981', backgroundColor:'transparent',         borderWidth:2,   fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
+      { label: isEstimated ? 'Omset Est./Minggu' : 'Omset/Minggu',  data:chartOmsetData, borderColor:'#E8442A', backgroundColor:'rgba(232,68,42,.06)', borderWidth:2.5, fill:true,  tension:0.3, pointRadius:4, pointBackgroundColor:'#E8442A', yAxisID:'y',  spanGaps:false, borderDash: isEstimated ? [3,3] : [] },
+      { label: isEstimated ? 'Unit Est./Minggu'  : 'Unit/Minggu',   data:chartUnitData,  borderColor:'#4F46E5', backgroundColor:'transparent',         borderWidth:2,   fill:false, tension:0.3, pointRadius:3, pointBackgroundColor:'#4F46E5', yAxisID:'y2', spanGaps:false, borderDash: isEstimated ? [3,3] : [] },
+      { label:'Forecast Omset', data:fOmsetW, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y',  borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
+      { label:'Forecast Unit',  data:fUnitW,  borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
     ];
     _ddChartTrend.update();
 
-    // Update Ringkasan hero stat cards with real trend delta
-    if (n >= 2) {
-      const firstUnit  = unitData[0]  ?? 0;
-      const lastUnit   = unitData[n-1] ?? 0;
-      const firstOmset = omsetData[0]  ?? 0;
-      const lastOmset  = omsetData[n-1] ?? 0;
-      const unitDeltaAbs  = lastUnit  - firstUnit;
-      const omsetDeltaAbs = lastOmset - firstOmset;
-      const unitDeltaPct  = firstUnit  > 0 ? Math.round(unitDeltaAbs  / firstUnit  * 100) : null;
-      const omsetDeltaPct = firstOmset > 0 ? Math.round(omsetDeltaAbs / firstOmset * 100) : null;
-      const _fmtV = v => v >= 1e9 ? 'Rp '+(v/1e9).toFixed(1)+'M' : v >= 1e6 ? 'Rp '+(v/1e6).toFixed(1)+'jt' : 'Rp '+(v/1e3).toFixed(0)+'rb';
-      const unitEl  = document.getElementById('dd-h-unit');
-      const omsetEl = document.getElementById('dd-h-omset');
-      const unitDEl  = document.getElementById('dd-h-unit-d');
-      const omsetDEl = document.getElementById('dd-h-omset-d');
-      const unitSubEl  = document.getElementById('dd-h-unit-sub');
-      const omsetSubEl = document.getElementById('dd-h-omset-sub');
-      if (unitEl)  unitEl.textContent  = lastUnit > 0 ? lastUnit.toLocaleString('id-ID') : '—';
-      if (omsetEl) omsetEl.textContent = lastOmset > 0 ? _fmtV(lastOmset) : '—';
-      if (unitDEl)  unitDEl.textContent  = unitDeltaPct  != null ? (unitDeltaPct  >= 0 ? `↑ ${unitDeltaPct}%`  : `↓ ${Math.abs(unitDeltaPct)}%`)  : '—';
-      if (omsetDEl) omsetDEl.textContent = omsetDeltaPct != null ? (omsetDeltaPct >= 0 ? `↑ ${omsetDeltaPct}%` : `↓ ${Math.abs(omsetDeltaPct)}%`) : '—';
-      if (unitDEl)  unitDEl.style.color  = (unitDeltaPct  ?? 0) >= 0 ? '#10B981' : '#E8442A';
-      if (omsetDEl) omsetDEl.style.color = (omsetDeltaPct ?? 0) >= 0 ? '#10B981' : '#E8442A';
-      const periodLabel = isEstimated ? `est. (${dbRows.length} titik data)` : `${dbRows.length} scrape`;
-      if (unitSubEl)  unitSubEl.textContent  = `Total terjual · ${periodLabel}`;
-      if (omsetSubEl) omsetSubEl.textContent = `Est. omset · ${periodLabel}`;
-    }
+    // ── Update Ringkasan hero stat cards from real weekly data ──────────────────
+    const totalUnits = weeklyRows.reduce((s, w) => s + w.units, 0);
+    const totalOmset = weeklyRows.reduce((s, w) => s + w.omset, 0);
+    // Week-over-week delta: last week vs first week
+    const wowUnitPct  = weeklyRows[0].units  > 0 ? Math.round((weeklyRows[nW-1].units  - weeklyRows[0].units)  / weeklyRows[0].units  * 100) : null;
+    const wowOmsetPct = weeklyRows[0].omset  > 0 ? Math.round((weeklyRows[nW-1].omset  - weeklyRows[0].omset)  / weeklyRows[0].omset  * 100) : null;
+    const _fmtV = v => v >= 1e9 ? 'Rp '+(v/1e9).toFixed(1)+'M' : v >= 1e6 ? 'Rp '+(v/1e6).toFixed(1)+'jt' : 'Rp '+(v/1e3).toFixed(0)+'rb';
+    const _fmtDelta = pct => pct == null ? '—' : pct >= 0 ? `↑ ${pct}%` : `↓ ${Math.abs(pct)}%`;
+    const unitEl  = document.getElementById('dd-h-unit');
+    const omsetEl = document.getElementById('dd-h-omset');
+    const unitDEl  = document.getElementById('dd-h-unit-d');
+    const omsetDEl = document.getElementById('dd-h-omset-d');
+    const unitSubEl  = document.getElementById('dd-h-unit-sub');
+    const omsetSubEl = document.getElementById('dd-h-omset-sub');
+    if (unitEl)  unitEl.textContent  = totalUnits > 0 ? totalUnits.toLocaleString('id-ID') : '—';
+    if (omsetEl) omsetEl.textContent = totalOmset > 0 ? _fmtV(totalOmset) : '—';
+    if (unitDEl)  { unitDEl.textContent  = _fmtDelta(wowUnitPct);  unitDEl.style.color  = (wowUnitPct  ?? 0) >= 0 ? '#10B981' : '#E8442A'; }
+    if (omsetDEl) { omsetDEl.textContent = _fmtDelta(wowOmsetPct); omsetDEl.style.color = (wowOmsetPct ?? 0) >= 0 ? '#10B981' : '#E8442A'; }
+    const periodNote = isEstimated ? `est. · ${nW} minggu` : `${nW} minggu · ${dbRows.length} scrape`;
+    if (unitSubEl)  unitSubEl.textContent  = `Total estimasi terjual · ${periodNote}`;
+    if (omsetSubEl) omsetSubEl.textContent = `Total estimasi omset · ${periodNote}`;
   } catch(e) {
     console.warn('ddLoadTrendHistory:', e);
   }
