@@ -10217,6 +10217,8 @@ async function ddLoadTrendHistory(listing) {
       }
     }
 
+    console.log('[ddTrend] augmented rows:', dbRows.length, dbRows.map(r => ({date:r.scraped_at?.slice(0,10), sold:r.total_sold, rev:r.reviews, price:r.price})));
+
     const fallbackPrice = listing.price || 0;
 
     // Category multipliers (calibrated 2026-05-04)
@@ -10230,6 +10232,7 @@ async function ddLoadTrendHistory(listing) {
     // 10k+ ceiling: total_sold is capped — use review delta × multiplier instead
     const atCeiling = dbRows.every(r => (r.total_sold ?? 0) >= 10000);
     const hasReviews = dbRows.some(r => r.reviews > 0);
+    console.log('[ddTrend] atCeiling:', atCeiling, 'hasReviews:', hasReviews, 'mult:', mult);
 
     let unitData, isEstimated = false;
     if (atCeiling && hasReviews) {
