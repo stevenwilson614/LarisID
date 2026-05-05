@@ -8514,7 +8514,12 @@ function dscOpenDeepDive(key) {
     medianPrice: listing.price || 0,
     score:       65,
     newUnits:    monthlyUnits,
+    total_sold:  listing.total_sold || 0,
+    _listing:    listing,
   };
+  // Reset keyword context so stale peer data doesn't bleed into new product's Ringkasan
+  _ddKwRows = []; _ddKwListing = null; _ddKwTotal = 0;
+
   // Switch view first so canvases are visible when Chart.js measures them
   switchDashView('deepdive');
   ddSwitchTab('ringkasan');
@@ -8849,11 +8854,83 @@ async function ddLoadKeywordContext(listing) {
       subEl.textContent = `Pasar: ${_ls.larisScore}/100 · ${mkLbl}`;
     }
     ddRenderKompetitor();
+    ddUpdateRingkasanFromKw(rows, totalSold, listing);
 
   } catch(e) {
     console.error('ddLoadKeywordContext:', e);
     if (loadEl) loadEl.textContent = 'Gagal memuat data.';
   }
+}
+
+// Updates Ringkasan stat cards and charts using real keyword peer data from Supabase.
+// Called by ddLoadKeywordContext after rows are loaded.
+function ddUpdateRingkasanFromKw(rows, totalSold, listing) {
+  if (!rows || !rows.length) return;
+
+  // Competition score: combination of top-3 concentration and seller count
+  const top3Sold   = rows.slice(0, 3).reduce((s, r) => s + (r.total_sold || 0), 0);
+  const top3Share  = totalSold > 0 ? top3Sold / totalSold : 0;
+  const nSellers   = new Set(rows.map(r => String(r.shop_id || r.store_name || ''))).size;
+  const concScore  = Math.round(top3Share * 100);
+  const sellScore  = Math.min(100, Math.round(nSellers / 80 * 100));
+  const kompDiff   = Math.round(concScore * 0.6 + sellScore * 0.4);
+  const kompLbl    = kompDiff >= 65 ? 'Tinggi' : kompDiff >= 40 ? 'Sedang' : 'Rendah';
+  const kompClr    = kompDiff >= 65 ? '#E8442A' : kompDiff >= 40 ? '#D97706' : '#10B981';
+  const kompEl = document.getElementById('dd-h-komp');
+  if (kompEl) { kompEl.textContent = kompLbl; kompEl.style.color = kompClr; }
+  const kompSubEl = document.getElementById('dd-h-komp-sub');
+  if (kompSubEl) kompSubEl.textContent = `Skor: ${kompDiff}/100 · ${nSellers} penjual`;
+
+  // Price range bar from real peer prices (p25–p75 sweet spot)
+  const prices = rows.map(r => r.price || 0).filter(p => p > 0).sort((a, b) => a - b);
+  if (prices.length >= 4) {
+    const pMin = prices[0], pMax = prices[prices.length - 1];
+    const p25  = prices[Math.floor(prices.length * 0.25)];
+    const p75  = prices[Math.floor(prices.length * 0.75)];
+    const span = pMax - pMin || 1;
+    const leftPct  = Math.max(0, Math.round((p25 - pMin) / span * 100));
+    const widthPct = Math.max(5, Math.round((p75 - p25) / span * 100));
+    const fmtK = v => v >= 1000000 ? (v/1000000).toFixed(1)+'jt' : (v/1000).toFixed(0)+'k';
+    const rangeLabel = document.getElementById('dd-price-range-label');
+    const rangeZone  = document.getElementById('dd-range-zone');
+    const rangeLabels = document.getElementById('dd-range-labels');
+    const rangeNote   = document.getElementById('dd-range-note');
+    if (rangeLabel) rangeLabel.textContent = `Rp ${p25.toLocaleString('id-ID')} – Rp ${p75.toLocaleString('id-ID')}`;
+    if (rangeZone)  rangeZone.style.cssText = `left:${leftPct}%;width:${widthPct}%;`;
+    if (rangeLabels) rangeLabels.innerHTML = `<span>${fmtK(pMin)}</span><span>${fmtK(Math.round(pMin+(pMax-pMin)*0.33))}</span><span>${fmtK(Math.round(pMin+(pMax-pMin)*0.66))}</span><span>${fmtK(pMax)}</span>`;
+    if (rangeNote) rangeNote.textContent = `Rentang harga dari ${prices.length} listing di keyword ini`;
+  }
+
+  // Price distribution — bucket real prices into 5 bands
+  const bands  = ['< 50k','50k–100k','100k–200k','200k–500k','> 500k'];
+  const counts = [0, 0, 0, 0, 0];
+  prices.forEach(p => {
+    if      (p <  50000) counts[0]++;
+    else if (p < 100000) counts[1]++;
+    else if (p < 200000) counts[2]++;
+    else if (p < 500000) counts[3]++;
+    else                 counts[4]++;
+  });
+  if (_ddChartDist) {
+    _ddChartDist.data.labels = bands;
+    _ddChartDist.data.datasets[0].data = counts;
+    _ddChartDist.update();
+  }
+
+  // Update listing count in category perf card
+  const tokoEl = document.getElementById('dd-catperf-toko');
+  if (tokoEl) tokoEl.textContent = rows.length.toLocaleString('id-ID');
+
+  // AI insights from real data
+  const medianPrice = prices[Math.floor(prices.length / 2)] || 0;
+  const priceLbl = listing.price && medianPrice ? (listing.price < medianPrice ? 'di bawah' : listing.price > medianPrice * 1.1 ? 'di atas' : 'setara dengan') : 'setara dengan';
+  const insights = [
+    `Keyword ini memiliki ${rows.length} listing dengan ${nSellers} penjual unik.`,
+    `Kompetisi ${kompLbl.toLowerCase()} — top 3 penjual menguasai ${Math.round(top3Share*100)}% total penjualan.`,
+    `Harga produk ini ${priceLbl} median pasar (Rp ${medianPrice.toLocaleString('id-ID')}).`,
+  ];
+  const aiList = document.getElementById('dd-ai-list');
+  if (aiList) aiList.innerHTML = insights.map(t => `<div class="dd-ai-item"><div class="dd-ai-check">✓</div><div>${t}</div></div>`).join('');
 }
 
 // ── COMPETITOR TAB ─────────────────────────────────────────────────────────────
@@ -9985,15 +10062,9 @@ function ddRender(p) {
   const rng = _ddRng(p.id * 31337);
   const price = p.medianPrice || 85000;
   const score = Math.round(p.score);
-  const sales = p.newUnits || Math.round(80 + rng() * 200);
-  const omset = price * sales;
-  const omsetDelta = Math.round(10 + rng() * 20);
-  const unitDelta  = Math.round(8 + rng() * 18);
-  const kompScore  = Math.round(40 + rng() * 40);
-  const kompLabel  = kompScore >= 65 ? 'Tinggi' : kompScore >= 40 ? 'Sedang' : 'Rendah';
-  const kompColor  = kompScore >= 65 ? '#E8442A' : kompScore >= 40 ? '#D97706' : '#10B981';
-  const marginLow  = Math.round(26 + rng() * 8);
-  const marginHigh = marginLow + Math.round(8 + rng() * 6);
+  const listing = p._listing || {};
+  const sales = p.newUnits || listing.total_sold || p.total_sold || 0;
+  const omset = sales * price;
 
   // hero
   const _ddHeroEl = document.getElementById('dd-hero-img');
@@ -10009,19 +10080,20 @@ function ddRender(p) {
   const _tagEl = document.getElementById('dd-score-tag');
   if (_tagEl) { _tagEl.textContent = score ? (score >= 75 ? 'Mudah Masuk' : score >= 55 ? 'Persaingan Sedang' : 'Cukup Sulit') : 'Menghitung…'; _tagEl.style.background = '#F3F4F6'; _tagEl.style.color = '#6B7280'; }
 
-  // hero stats
-  document.getElementById('dd-h-omset').textContent = 'Rp ' + (omset/1000000).toFixed(0) + '.' + String(Math.round((omset%1000000)/1000)).padStart(3,'0') + '.000';
-  document.getElementById('dd-h-omset-d').textContent = `↑ ${omsetDelta}%`;
-  document.getElementById('dd-h-omset-sub').textContent = 'vs 30 hari lalu';
-  document.getElementById('dd-h-unit').textContent = sales.toLocaleString('id-ID');
-  document.getElementById('dd-h-unit-d').textContent = `↑ ${unitDelta}%`;
-  document.getElementById('dd-h-unit-sub').textContent = 'vs 30 hari lalu';
-  document.getElementById('dd-h-komp').textContent = kompLabel;
-  document.getElementById('dd-h-komp').style.color = kompColor;
-  document.getElementById('dd-h-komp-sub').textContent = 'Skor: ' + kompScore + '/100';
+  // hero stats — omset/unit show lifetime totals; deltas updated async by ddLoadTrendHistory
+  const _fmtOmset = v => v >= 1e9 ? 'Rp '+(v/1e9).toFixed(1)+'M' : v >= 1e6 ? 'Rp '+(v/1e6).toFixed(1)+'jt' : 'Rp '+(v/1e3).toFixed(0)+'rb';
+  document.getElementById('dd-h-omset').textContent = sales > 0 ? _fmtOmset(omset) : '—';
+  document.getElementById('dd-h-omset-d').textContent = '—';
+  document.getElementById('dd-h-omset-sub').textContent = 'Total estimasi omset';
+  document.getElementById('dd-h-unit').textContent = sales > 0 ? sales.toLocaleString('id-ID') : '—';
+  document.getElementById('dd-h-unit-d').textContent = '—';
+  document.getElementById('dd-h-unit-sub').textContent = 'Total terjual';
+  document.getElementById('dd-h-komp').textContent = 'Menghitung…';
+  document.getElementById('dd-h-komp').style.color = '#9CA3AF';
+  document.getElementById('dd-h-komp-sub').textContent = 'Memuat data…';
   // margin stat removed from hero (only 4 cards shown)
 
-  // price range
+  // price range — placeholder from medianPrice; replaced by ddUpdateRingkasanFromKw with real peer data
   const pMin = Math.round(price * 0.52), pMax = Math.round(price * 1.85);
   const zoneLeft = Math.round(price * 0.85), zoneRight = Math.round(price * 1.12);
   const leftPct  = Math.round((zoneLeft  - pMin) / (pMax - pMin) * 100);
@@ -10031,11 +10103,9 @@ function ddRender(p) {
   document.getElementById('dd-range-labels').innerHTML = `<span>${(pMin/1000).toFixed(0)}k</span><span>${(Math.round((pMin+pMax)*0.3)/1000).toFixed(0)}k</span><span>${(Math.round((pMin+pMax)*0.6)/1000).toFixed(0)}k</span><span>${(pMax/1000).toFixed(0)}k</span>`;
   document.getElementById('dd-range-note').textContent = `Produk di rentang harga ini memiliki penjualan tertinggi`;
 
-  // AI insights
+  // AI insights — generic placeholder; updated by ddUpdateRingkasanFromKw with real observations
   document.getElementById('dd-ai-list').innerHTML = [
-    `Permintaan tinggi dan terus meningkat dalam 30 hari terakhir.`,
-    `Kompetisi ${kompLabel.toLowerCase()}, masih ada peluang untuk pemain baru.`,
-    `Disarankan fokus pada variasi warna hitam, coklat, abu-abu.`,
+    `Data pasar sedang dimuat…`,
   ].map(t => `<div class="dd-ai-item"><div class="dd-ai-check">✓</div><div>${t}</div></div>`).join('');
 
   // Trend chart — placeholder while ddLoadTrendHistory fetches real data
@@ -10057,21 +10127,11 @@ function ddRender(p) {
     }
   });
 
-  // price distribution bar
-  const distBands = ['< 50k','50k–70k','70k–90k','90k–110k','110k–150k'];
-  const basePrice = price / 1000;
-  const centerBand = Math.min(4, Math.max(0, Math.floor((basePrice - 30) / 30)));
-  const distData = distBands.map((_,i) => {
-    const dist = Math.abs(i - centerBand);
-    return Math.round(Math.max(10, 130 - dist * 40 + (rng() - 0.5) * 20));
-  });
+  // price distribution bar — empty placeholder; filled by ddUpdateRingkasanFromKw with real peer prices
   if (_ddChartDist) _ddChartDist.destroy();
   _ddChartDist = new Chart(document.getElementById('dd-chart-dist'), {
     type: 'bar',
-    data: {
-      labels: distBands,
-      datasets: [{ data:distData, backgroundColor:'#93C5FD', borderRadius:4, borderSkipped:false }]
-    },
+    data: { labels: ['< 50k','50k–100k','100k–200k','200k–500k','500k+'], datasets: [{ data:[0,0,0,0,0], backgroundColor:'#93C5FD', borderRadius:4, borderSkipped:false }] },
     options: { plugins:{legend:{display:false}}, scales:{x:{ticks:{font:{size:9}}},y:{ticks:{font:{size:9}}}}, animation:{duration:400} }
   });
 
@@ -10089,18 +10149,18 @@ function ddRender(p) {
     `<div class="dd-donut-legend-item"><div class="dd-donut-legend-dot" style="background:${donutColors[i]}"></div><span>${l}</span><span class="dd-donut-pct">${donutData[i]}%</span></div>`
   ).join('');
 
-  // category performance mini chart
-  const catOmset = Math.round(omset * 12 / 1000000);
-  const catUnits = Math.round(sales * 12);
-  const catToko  = Math.round(2000 + rng() * 1000);
+  // category performance mini chart — uses real keyword peer data when available
+  const catOmset = Math.round(omset / 1000000);  // in juta
+  const catUnits = sales;
+  const catToko  = _ddKwRows.length || '—';
   document.getElementById('dd-cat-label').textContent = p.category || 'Umum';
   document.getElementById('dd-catperf-stats').innerHTML = `
-    <div><div class="dd-catperf-stat-label">Omset</div><div class="dd-catperf-stat-value">Rp ${catOmset >= 1000 ? (catOmset/1000).toFixed(1)+'M' : catOmset+'jt'}</div><div class="dd-catperf-stat-delta">▲ ${Math.round(8+rng()*10)}%</div></div>
-    <div><div class="dd-catperf-stat-label">Unit Terjual</div><div class="dd-catperf-stat-value">${(catUnits/1000).toFixed(1)}rb</div><div class="dd-catperf-stat-delta">▲ ${Math.round(5+rng()*10)}%</div></div>
-    <div><div class="dd-catperf-stat-label">Toko Aktif</div><div class="dd-catperf-stat-value">${catToko.toLocaleString('id-ID')}</div><div class="dd-catperf-stat-delta">▲ ${Math.round(3+rng()*8)}%</div></div>
+    <div><div class="dd-catperf-stat-label">Est. Omset</div><div class="dd-catperf-stat-value">Rp ${catOmset >= 1000 ? (catOmset/1000).toFixed(1)+'M' : catOmset+'jt'}</div><div class="dd-catperf-stat-delta" id="dd-catperf-omset-d">—</div></div>
+    <div><div class="dd-catperf-stat-label">Unit Terjual</div><div class="dd-catperf-stat-value">${typeof catUnits==='number'?(catUnits/1000).toFixed(1)+'rb':'—'}</div><div class="dd-catperf-stat-delta" id="dd-catperf-unit-d">—</div></div>
+    <div><div class="dd-catperf-stat-label">Listing di Keyword</div><div class="dd-catperf-stat-value" id="dd-catperf-toko">${typeof catToko==='number'?catToko.toLocaleString('id-ID'):catToko}</div><div class="dd-catperf-stat-delta" id="dd-catperf-toko-d"></div></div>
   `;
   const catPerfDates = ['20 Apr','27 Apr','4 Mei','11 Mei','18 Mei'];
-  const catPerfData  = catPerfDates.map((_,i) => Math.round(catOmset * (0.6 + i*0.11) + (rng()-0.5)*catOmset*0.1));
+  const catPerfData  = catPerfDates.map((_,i) => Math.round(omset * (0.6 + i*0.11)));
   if (_ddChartCatperf) _ddChartCatperf.destroy();
   _ddChartCatperf = new Chart(document.getElementById('dd-chart-catperf'), {
     type: 'line',
@@ -10287,6 +10347,34 @@ async function ddLoadTrendHistory(listing) {
       { label:'Forecast Unit',  data:fUnit,     borderColor:'#10B981', backgroundColor:'transparent',         borderWidth:2,   fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
     ];
     _ddChartTrend.update();
+
+    // Update Ringkasan hero stat cards with real trend delta
+    if (n >= 2) {
+      const firstUnit  = unitData[0]  ?? 0;
+      const lastUnit   = unitData[n-1] ?? 0;
+      const firstOmset = omsetData[0]  ?? 0;
+      const lastOmset  = omsetData[n-1] ?? 0;
+      const unitDeltaAbs  = lastUnit  - firstUnit;
+      const omsetDeltaAbs = lastOmset - firstOmset;
+      const unitDeltaPct  = firstUnit  > 0 ? Math.round(unitDeltaAbs  / firstUnit  * 100) : null;
+      const omsetDeltaPct = firstOmset > 0 ? Math.round(omsetDeltaAbs / firstOmset * 100) : null;
+      const _fmtV = v => v >= 1e9 ? 'Rp '+(v/1e9).toFixed(1)+'M' : v >= 1e6 ? 'Rp '+(v/1e6).toFixed(1)+'jt' : 'Rp '+(v/1e3).toFixed(0)+'rb';
+      const unitEl  = document.getElementById('dd-h-unit');
+      const omsetEl = document.getElementById('dd-h-omset');
+      const unitDEl  = document.getElementById('dd-h-unit-d');
+      const omsetDEl = document.getElementById('dd-h-omset-d');
+      const unitSubEl  = document.getElementById('dd-h-unit-sub');
+      const omsetSubEl = document.getElementById('dd-h-omset-sub');
+      if (unitEl)  unitEl.textContent  = lastUnit > 0 ? lastUnit.toLocaleString('id-ID') : '—';
+      if (omsetEl) omsetEl.textContent = lastOmset > 0 ? _fmtV(lastOmset) : '—';
+      if (unitDEl)  unitDEl.textContent  = unitDeltaPct  != null ? (unitDeltaPct  >= 0 ? `↑ ${unitDeltaPct}%`  : `↓ ${Math.abs(unitDeltaPct)}%`)  : '—';
+      if (omsetDEl) omsetDEl.textContent = omsetDeltaPct != null ? (omsetDeltaPct >= 0 ? `↑ ${omsetDeltaPct}%` : `↓ ${Math.abs(omsetDeltaPct)}%`) : '—';
+      if (unitDEl)  unitDEl.style.color  = (unitDeltaPct  ?? 0) >= 0 ? '#10B981' : '#E8442A';
+      if (omsetDEl) omsetDEl.style.color = (omsetDeltaPct ?? 0) >= 0 ? '#10B981' : '#E8442A';
+      const periodLabel = isEstimated ? `est. (${dbRows.length} titik data)` : `${dbRows.length} scrape`;
+      if (unitSubEl)  unitSubEl.textContent  = `Total terjual · ${periodLabel}`;
+      if (omsetSubEl) omsetSubEl.textContent = `Est. omset · ${periodLabel}`;
+    }
   } catch(e) {
     console.warn('ddLoadTrendHistory:', e);
   }
