@@ -4823,11 +4823,15 @@ html,body{overflow-x:hidden;max-width:100%;}
         <div id="dash-view-deepdive" style="display:none;">
           <div class="dd-wrap">
             <!-- topbar -->
-            <div class="dd-topbar">
+            <div class="dd-topbar" style="display:flex;align-items:center;justify-content:space-between;">
               <div class="dd-back-btn" onclick="switchDashView('discover')">
                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
                 Kembali ke Daftar Produk
               </div>
+              <button id="dd-track-btn" onclick="ddToggleTrack()" style="display:inline-flex;align-items:center;gap:7px;padding:7px 16px;border-radius:8px;border:1.5px solid #E5E7EB;background:#fff;font-size:.75rem;font-weight:700;color:#6B7280;cursor:pointer;font-family:inherit;transition:all .15s;">
+                <svg id="dd-track-icon" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+                <span id="dd-track-label">Lacak Produk</span>
+              </button>
             </div>
 
             <!-- hero -->
@@ -10134,6 +10138,63 @@ function dscResetFilters() {
   dscApplyFilters();
 }
 
+// ── TRACKED PRODUCTS ───────────────────────────────────────────
+const _TRK_KEY = 'larisid_tracked_v1';
+function trkLoad() { try { return JSON.parse(localStorage.getItem(_TRK_KEY) || '[]'); } catch { return []; } }
+function trkSave(arr) { localStorage.setItem(_TRK_KEY, JSON.stringify(arr)); }
+function trkKey(listing) { return `${listing.item_id}_${listing.shop_id}`; }
+function trkIsTracked(listing) { return trkLoad().some(t => t.key === trkKey(listing)); }
+
+function ddToggleTrack() {
+  const listing = _ddKwListing || _ddCurrentP?._listing;
+  if (!listing) return;
+  const key = trkKey(listing);
+  let arr = trkLoad();
+  const idx = arr.findIndex(t => t.key === key);
+  if (idx >= 0) {
+    arr.splice(idx, 1);
+  } else {
+    arr.push({
+      key,
+      item_id:      listing.item_id,
+      shop_id:      listing.shop_id,
+      product_name: listing.product_name || '—',
+      store_name:   listing.store_name   || '—',
+      image_url:    listing.image_url    || null,
+      category:     listing.category     || '',
+      price:        listing.price        || 0,
+      total_sold:   listing.total_sold   || 0,
+      keyword:      listing.keyword      || '',
+      tracked_at:   new Date().toISOString(),
+    });
+  }
+  trkSave(arr);
+  ddUpdateTrackBtn(listing);
+}
+
+function ddUpdateTrackBtn(listing) {
+  const btn   = document.getElementById('dd-track-btn');
+  const label = document.getElementById('dd-track-label');
+  const icon  = document.getElementById('dd-track-icon');
+  if (!btn || !label || !icon) return;
+  const tracked = listing ? trkIsTracked(listing) : false;
+  if (tracked) {
+    btn.style.background   = '#FEF2F0';
+    btn.style.borderColor  = '#E8442A';
+    btn.style.color        = '#E8442A';
+    label.textContent      = 'Dilacak';
+    icon.setAttribute('fill', '#E8442A');
+    icon.setAttribute('stroke', '#E8442A');
+  } else {
+    btn.style.background   = '#fff';
+    btn.style.borderColor  = '#E5E7EB';
+    btn.style.color        = '#6B7280';
+    label.textContent      = 'Lacak Produk';
+    icon.setAttribute('fill', 'none');
+    icon.setAttribute('stroke', 'currentColor');
+  }
+}
+
 // ── DEEP DIVE ──────────────────────────────────────────────────
 let _ddChartTrend = null, _ddChartDist = null, _ddChartDonut = null, _ddChartCatperf = null;
 let _ddCompAll = [], _ddCompShowing = 5;
@@ -10161,6 +10222,7 @@ function ddRender(p) {
   }
   document.getElementById('dd-hero-name').textContent = p.name;
   document.getElementById('dd-hero-cats').innerHTML = `Kategori: ${p.category||'Umum'} <span>• Sub Kategori: ${p.category||'Umum'}</span>`;
+  ddUpdateTrackBtn(p._listing || null);
   document.getElementById('dd-score-num').textContent = score || '…';
   // Label updated to final value once ddLoadKeywordContext resolves; show placeholder for now
   const _tagEl = document.getElementById('dd-score-tag');
