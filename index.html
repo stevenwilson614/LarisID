@@ -4685,10 +4685,11 @@ html,body{overflow-x:hidden;max-width:100%;}
                 </div>
 
                 <div class="dsc-filter-group">
-                  <span class="dsc-filter-label">Kategori</span>
-                  <select class="dsc-filter-select" id="dsc-filter-cat" onchange="dscApplyFilters()">
-                    <option value="">Semua Kategori</option>
-                  </select>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <span class="dsc-filter-label" style="margin-bottom:0;">Kategori</span>
+                    <button onclick="dscCatSelectAll()" style="font-size:.62rem;color:#E8442A;background:none;border:none;cursor:pointer;padding:0;font-family:inherit;" id="dsc-cat-all-btn">Semua</button>
+                  </div>
+                  <div id="dsc-cat-checks" style="display:flex;flex-direction:column;gap:3px;max-height:240px;overflow-y:auto;"></div>
                 </div>
 
                 <button class="dsc-filter-apply" onclick="dscApplyFilters()">Terapkan Filter</button>
@@ -8134,13 +8135,11 @@ async function dscLoadListings() {
       const newKws = [...new Set(cached.map(r => r.keyword).filter(Boolean))].filter(k => !_dscCompMap[k]);
       newKws.forEach(kw => { _dscCompMap[kw] = _dscCalcComp(kw); });
       const cats = [...new Set(cached.map(r => r.category).filter(Boolean))].sort();
-      const sel = document.getElementById('dsc-filter-cat');
-      if (sel && sel.options.length <= 1)
-        sel.innerHTML = '<option value="">Semua Kategori</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+      dscBuildCatChecks(cats);
       const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
       setEl('dsc-stat-listings', cached.length + '+');
       setEl('dsc-stat-cats', cats.length.toLocaleString('id-ID'));
-      if (_dscLastSrvFilters === null) _dscLastSrvFilters = JSON.stringify({ cat: '', priceMin: 0, priceMax: 10000000, search: '' });
+      if (_dscLastSrvFilters === null) _dscLastSrvFilters = JSON.stringify({ priceMin: 0, priceMax: 10000000, search: '' });
       dscApplyFilters();
       _dscLoading = false;
       return; // serve from cache; next open will re-check TTL
@@ -8167,10 +8166,7 @@ async function dscLoadListings() {
     // Update category dropdown once
     if (_dscOffset === DSC_FETCH) {
       const cats = [...new Set(_dscAllListings.map(r => r.category).filter(Boolean))].sort();
-      const sel = document.getElementById('dsc-filter-cat');
-      if (sel && sel.options.length <= 1) {
-        sel.innerHTML = '<option value="">Semua Kategori</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
-      }
+      dscBuildCatChecks(cats);
       const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
       setEl('dsc-stat-cats', cats.length.toLocaleString('id-ID'));
     }
@@ -8184,7 +8180,7 @@ async function dscLoadListings() {
     // Stamp what server-side filters produced this batch (used by dscApplyFilters change-detection)
     if (_dscLastSrvFilters === null) {
       const f = filters;
-      _dscLastSrvFilters = JSON.stringify({ cat: f.cat, priceMin: f.priceMin, priceMax: f.priceMax, search: f.search });
+      _dscLastSrvFilters = JSON.stringify({ priceMin: f.priceMin, priceMax: f.priceMax, search: f.search });
     }
     dscHideLoadingScreen();
     dscApplyFilters(false);
@@ -8247,9 +8243,34 @@ async function dscLoadTrendData() {
   }
 }
 
+function _dscSelectedCats() {
+  const checks = document.querySelectorAll('#dsc-cat-checks input[type=checkbox]');
+  if (!checks.length) return null; // not yet populated — no filter
+  const checked = [...checks].filter(c => c.checked).map(c => c.value);
+  return checked.length === checks.length ? null : checked; // null = all selected = no filter
+}
+
+function dscBuildCatChecks(cats) {
+  const el = document.getElementById('dsc-cat-checks');
+  if (!el || el.dataset.built === cats.join(',')) return;
+  el.dataset.built = cats.join(',');
+  el.innerHTML = cats.map(c => `
+    <label style="display:flex;align-items:center;gap:7px;padding:4px 6px;border-radius:6px;cursor:pointer;font-size:.72rem;color:#374151;user-select:none;transition:background .1s;" onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+      <input type="checkbox" value="${c}" checked onchange="dscApplyFilters()" style="accent-color:#E8442A;width:13px;height:13px;flex-shrink:0;">
+      <span>${c}</span>
+    </label>`).join('');
+}
+
+function dscCatSelectAll() {
+  const checks = document.querySelectorAll('#dsc-cat-checks input[type=checkbox]');
+  const allChecked = [...checks].every(c => c.checked);
+  checks.forEach(c => c.checked = !allChecked);
+  dscApplyFilters();
+}
+
 function _dscCurrentFilters() {
   return {
-    cat:      document.getElementById('dsc-filter-cat')?.value || '',
+    cat:      '', // category filtering is now client-side via checkboxes
     priceMin: parseFloat(document.getElementById('dsc-price-min')?.value) || 0,
     priceMax: parseFloat(document.getElementById('dsc-price-max')?.value) || 10000000,
     search:   document.getElementById('dsc-search')?.value?.trim() || '',
@@ -8265,7 +8286,7 @@ function dscInit() {
 function dscApplyFilters(resetPage = true) {
   if (!_dscLoaded) return;
   const q        = (document.getElementById('dsc-search')?.value || '').toLowerCase();
-  const cat      = document.getElementById('dsc-filter-cat')?.value || '';
+  const selectedCats = _dscSelectedCats(); // null = all, array = filter to these
   const priceMin = parseFloat(document.getElementById('dsc-price-min')?.value) || 0;
   const priceMaxRaw = parseFloat(document.getElementById('dsc-price-max')?.value) || 10000000;
   const priceMax = priceMaxRaw >= 10000000 ? Infinity : priceMaxRaw;
@@ -8275,7 +8296,7 @@ function dscApplyFilters(resetPage = true) {
   const sortVal  = document.getElementById('dsc-sort')?.value || 'omset-desc';
 
   // If server-side filters changed, reset and re-fetch from offset 0
-  const srvKey = JSON.stringify({ cat, priceMin, priceMax: priceMaxRaw, search: q });
+  const srvKey = JSON.stringify({ priceMin, priceMax: priceMaxRaw, search: q });
   if (_dscLastSrvFilters !== null && _dscLastSrvFilters !== srvKey) {
     _dscAllListings = [];
     _dscOffset = 0;
@@ -8292,7 +8313,7 @@ function dscApplyFilters(resetPage = true) {
 
   let list = _dscAllListings.filter(p => {
     if (q && !(p.product_name||'').toLowerCase().includes(q) && !(p.store_name||'').toLowerCase().includes(q) && !(p.category||'').toLowerCase().includes(q)) return false;
-    if (cat && p.category !== cat) return false;
+    if (selectedCats && !selectedCats.includes(p.category)) return false;
     const price = p.price || 0;
     if (price < priceMin || price > priceMax) return false;
     const omset = _dscOmset(p);
@@ -10100,7 +10121,7 @@ function dscGoPage(n) {
 
 function dscResetFilters() {
   const g = id => document.getElementById(id);
-  if (g('dsc-filter-cat')) g('dsc-filter-cat').value = '';
+  document.querySelectorAll('#dsc-cat-checks input[type=checkbox]').forEach(c => c.checked = true);
   if (g('dsc-search'))     g('dsc-search').value     = '';
   if (g('dsc-price-min'))  g('dsc-price-min').value  = 0;
   if (g('dsc-price-max'))  g('dsc-price-max').value  = 10000000;
