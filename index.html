@@ -3367,8 +3367,8 @@ html,body{overflow-x:hidden;max-width:100%;}
         </div>
 
         <div class="dash-nav-item" id="dash-nav-ai" onclick="switchDashView('ai')">
-          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></span>
-          <span>AI Strategist</span>
+          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
+          <span>Mulai Berjualan</span>
         </div>
 
         <div class="dash-nav-item" id="dash-nav-alerts" onclick="switchDashView('alerts')">
@@ -4865,7 +4865,6 @@ html,body{overflow-x:hidden;max-width:100%;}
               <div class="dd-tab" onclick="ddSwitchTab('kompetitor')" data-tab="kompetitor">Kompetitor</div>
               <div class="dd-tab" onclick="ddSwitchTab('keyword')" data-tab="keyword">Keyword</div>
               <div class="dd-tab" onclick="ddSwitchTab('tren')" data-tab="tren">Tren Historis</div>
-              <div class="dd-tab" onclick="ddSwitchTab('kalkulator')" data-tab="kalkulator">Kalkulator</div>
               <div class="dd-tab" onclick="ddSwitchTab('ai')" data-tab="ai">Review AI</div>
             </div>
 
@@ -5125,7 +5124,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                   </div>
                 </div>
                 <div style="display:flex;gap:20px;flex:1;flex-wrap:wrap;" id="ap-strategy-cols"></div>
-                <button onclick="ddSwitchTab('kalkulator')" style="flex-shrink:0;padding:10px 18px;background:linear-gradient(135deg,#E8442A,#F97316);color:#fff;border:none;border-radius:10px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;">Lihat Strategi Lengkap →</button>
+                <button onclick="switchDashView('ai')" style="flex-shrink:0;padding:10px 18px;background:linear-gradient(135deg,#E8442A,#F97316);color:#fff;border:none;border-radius:10px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;">Lihat Strategi Lengkap →</button>
               </div>
 
             </div>
@@ -5467,12 +5466,62 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
             </div>
             <div id="dd-tab-kalkulator" class="dd-tab-panel" style="display:none;">
+              <div class="dd-card" style="padding:40px;text-align:center;">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" stroke-width="1.5" style="margin-bottom:12px;"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="8" y1="7" x2="8" y2="17"/><line x1="12" y1="7" x2="12" y2="17"/><line x1="16" y1="7" x2="16" y2="13"/></svg>
+                <div style="font-size:.9rem;font-weight:700;color:#374151;margin-bottom:8px;">Kalkulator Profit</div>
+                <div style="font-size:.78rem;color:#9CA3AF;margin-bottom:20px;">Kalkulator profit telah dipindahkan ke halaman Mulai Berjualan.</div>
+                <button onclick="switchDashView('ai')" style="padding:10px 24px;background:#E8442A;color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:700;cursor:pointer;">Buka Mulai Berjualan →</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div id="dash-view-ai" style="display:none;">
+          <div style="padding:24px 28px;max-width:1200px;">
+            <div style="font-size:1.3rem;font-weight:800;color:#1A1F3C;margin-bottom:4px;">Mulai Berjualan</div>
+            <div style="font-size:.8rem;color:#6B7280;margin-bottom:20px;">Riset produk, hitung profit, dan rencanakan strategi bersama AI.</div>
+
+            <!-- Product picker -->
+            <div class="dd-card" style="padding:16px;margin-bottom:16px;">
+              <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:10px;">Pilih Produk yang Ingin Dijual</div>
+              <div id="mls-no-tracked" style="display:none;padding:20px;text-align:center;color:#9CA3AF;font-size:.78rem;">
+                Belum ada produk tersimpan. Cari produk di halaman Discover, buka Deep Dive, lalu klik "Lacak Produk".
+              </div>
+              <select id="mls-product-pick" onchange="mlsSelectProduct(this.value)" style="width:100%;padding:8px 12px;border:1px solid #E5E7EB;border-radius:8px;font-size:.78rem;font-weight:600;background:#fff;color:#111827;">
+                <option value="">-- Pilih dari produk tersimpan --</option>
+              </select>
+            </div>
+
+            <!-- Market snapshot (hidden until product selected) -->
+            <div id="mls-market-snap" style="display:none;margin-bottom:16px;">
+              <div class="dd-card" style="padding:16px;">
+                <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">Snapshot Pasar: Top 5 Produk Serupa</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;">
+                  <div style="background:#F9FAFB;border-radius:8px;padding:12px;">
+                    <div style="font-size:.63rem;color:#6B7280;margin-bottom:4px;">Median Harga</div>
+                    <div style="font-size:1.15rem;font-weight:700;color:#111827;" id="mls-median-price">—</div>
+                  </div>
+                  <div style="background:#F9FAFB;border-radius:8px;padding:12px;">
+                    <div style="font-size:.63rem;color:#6B7280;margin-bottom:4px;">Median Unit Terjual</div>
+                    <div style="font-size:1.15rem;font-weight:700;color:#111827;" id="mls-median-sold">—</div>
+                  </div>
+                  <div style="background:#F9FAFB;border-radius:8px;padding:12px;">
+                    <div style="font-size:.63rem;color:#6B7280;margin-bottom:4px;">Keyword</div>
+                    <div style="font-size:.85rem;font-weight:700;color:#E8442A;" id="mls-keyword-label">—</div>
+                  </div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;" id="mls-top5-grid"></div>
+              </div>
+            </div>
+
+            <!-- Kalkulator Profit -->
+            <div style="margin-bottom:16px;">
+              <div style="font-size:.85rem;font-weight:700;color:#111827;margin-bottom:10px;">Kalkulator Profit</div>
               <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start;">
 
                 <!-- LEFT COLUMN -->
                 <div style="display:flex;flex-direction:column;gap:14px;">
-
-                  <!-- Top 3 sections -->
                   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
 
                     <!-- 1. Harga & Biaya Produk -->
@@ -5575,15 +5624,13 @@ html,body{overflow-x:hidden;max-width:100%;}
                           <div style="font-size:.6rem;color:#9CA3AF;margin-top:2px;">7-10% dari harga jual</div>
                           <div style="font-size:.62rem;font-weight:600;color:#374151;margin-top:2px;" id="kal-ads-rec">—</div>
                         </div>
-                        <div style="font-size:1.4rem;">🎯</div>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                       </div>
                     </div>
                   </div>
 
                   <!-- Section 4 + BEP row -->
                   <div style="display:grid;grid-template-columns:1fr 2fr;gap:14px;">
-
-                    <!-- 4. Biaya Lainnya -->
                     <div class="dd-card" style="padding:16px;">
                       <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">4. Biaya Lainnya</div>
                       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
@@ -5641,11 +5688,9 @@ html,body{overflow-x:hidden;max-width:100%;}
 
                   <!-- Tips bar -->
                   <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;">
-                    <span style="font-size:1.1rem;">💡</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                     <span style="font-size:.72rem;color:#374151;" id="kal-tip">Gunakan harga psikologis seperti <strong id="kal-tip-price">—</strong> untuk meningkatkan konversi penjualan.</span>
-                    <button onclick="ddSwitchTab('kompetitor')" style="margin-left:auto;white-space:nowrap;padding:7px 14px;border:1px solid #D1D5DB;border-radius:8px;background:#fff;font-size:.7rem;font-weight:600;cursor:pointer;">Lihat Contoh Kompetitor →</button>
                   </div>
-
                 </div>
 
                 <!-- RIGHT SIDEBAR -->
@@ -5653,7 +5698,6 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <div class="dd-card" style="padding:16px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
                       <div style="font-size:.78rem;font-weight:700;color:#111827;">Ringkasan Profit (Realistis)</div>
-                      <span style="font-size:1rem;color:#9CA3AF;">ⓘ</span>
                     </div>
                     <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Estimasi Profit per Unit</div>
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
@@ -5689,15 +5733,39 @@ html,body{overflow-x:hidden;max-width:100%;}
 
               </div>
             </div>
-            <div id="dd-tab-ai" class="dd-tab-panel" style="display:none;"><div class="dd-card" style="padding:40px;text-align:center;color:#9CA3AF;">Review AI — segera hadir</div></div>
 
-          </div>
-        </div>
+            <!-- AI Chat -->
+            <div class="dd-card" style="padding:20px;margin-bottom:16px;">
+              <div style="font-size:.85rem;font-weight:700;color:#111827;margin-bottom:4px;">Konsultasi dengan AI</div>
+              <div style="font-size:.65rem;color:#6B7280;margin-bottom:14px;">Tanyakan strategi produk, harga, sourcing, atau ide bisnis kepada AI Agent.</div>
 
-        <div id="dash-view-ai" style="display:none;">
-          <div style="padding:32px 28px;max-width:1100px;">
-            <div style="font-size:1.3rem;font-weight:800;color:#1A1F3C;margin-bottom:24px;">AI Strategist</div>
-            <div style="background:#fff;border-radius:12px;padding:48px;text-align:center;color:#9CA3AF;border:1px solid #E5E7EB;font-size:.9rem;">AI Strategist — segera hadir</div>
+              <!-- API Key section -->
+              <div id="mls-apikey-wrap" style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:12px;margin-bottom:12px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <span style="font-size:.68rem;font-weight:600;color:#374151;">Anthropic API Key</span>
+                  <span id="mls-apikey-status" style="font-size:.6rem;color:#9CA3AF;margin-left:auto;"></span>
+                </div>
+                <div id="mls-apikey-input-row" style="display:flex;gap:8px;margin-top:8px;">
+                  <input id="mls-apikey-input" type="password" placeholder="sk-ant-..." style="flex:1;padding:7px 10px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-family:monospace;">
+                  <button onclick="mlsSaveApiKey()" style="padding:7px 14px;background:#1A1F3C;color:#fff;border:none;border-radius:6px;font-size:.72rem;font-weight:600;cursor:pointer;">Simpan</button>
+                </div>
+              </div>
+
+              <!-- Chat messages -->
+              <div id="mls-chat-messages" style="height:320px;overflow-y:auto;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px;margin-bottom:10px;">
+                <div class="mls-msg mls-msg-assistant" style="align-self:flex-start;max-width:85%;background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:10px 14px;font-size:.73rem;color:#374151;line-height:1.5;">
+                  Halo! Saya AI strategist Anda. Pilih produk di atas lalu tanya saya apa saja — strategi harga, ide sourcing, analisis kompetitor, atau cara meningkatkan penjualan.
+                </div>
+              </div>
+
+              <!-- Input row -->
+              <div style="display:flex;gap:8px;">
+                <input id="mls-chat-input" type="text" placeholder="Ketik pertanyaan Anda..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){mlsChatSend();event.preventDefault();}" style="flex:1;padding:9px 14px;border:1px solid #E5E7EB;border-radius:8px;font-size:.76rem;outline:none;">
+                <button onclick="mlsChatSend()" id="mls-chat-send" style="padding:9px 18px;background:#E8442A;color:#fff;border:none;border-radius:8px;font-size:.76rem;font-weight:700;cursor:pointer;">Kirim</button>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -7874,7 +7942,8 @@ function switchDashView(view) {
   if (view === 'estimator') loadSalesEstimator();
   if (view === 'discover'  && typeof dscInit  === 'function') dscInit();
   if (view === 'tracker'   && typeof trkInit  === 'function') trkInit();
-  if (view === 'dashboard' && typeof hbdInit  === 'function' && allProducts.length) hbdInit();
+  if (view === 'dashboard' && typeof hbdInit  === 'function') hbdInit();
+  if (view === 'ai'        && typeof mlsInit   === 'function') mlsInit();
   if (view === 'alerts'    && typeof alrInit   === 'function' && allProducts.length) alrInit();
 }
 
@@ -10767,7 +10836,7 @@ function hbdSetTab(btn, tab) {
   document.querySelectorAll('.hbd-tab').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   _hbdTab = tab;
-  _hbdBuildChart();
+  hbdInit();
 }
 
 function _hbdBuildChart() {
@@ -10815,83 +10884,338 @@ function _hbdBuildChart() {
   ).join('');
 }
 
-function hbdInit() {
-  if (!allProducts || !allProducts.length) return;
-  const prods = allProducts.slice(0, 9);
-  const rng = _hbdRng(12345);
+async function hbdInit() {
+  const tracked = trkLoad();
 
-  // stats
-  const omzet = prods.reduce((s,p) => s + ((p.medianPrice||85000)*(p.newUnits||80)), 0);
-  const avgScore = Math.round(prods.reduce((s,p) => s+p.score, 0) / prods.length);
-  const opp = prods.filter(p => p.score >= 65).length;
-  document.getElementById('hbd-s1').textContent = prods.length + ' produk';
-  document.getElementById('hbd-s1-sub').textContent = 'aktif dipantau';
-  document.getElementById('hbd-s2').textContent = avgScore;
-  document.getElementById('hbd-s2-sub').textContent = 'skor rata-rata';
-  document.getElementById('hbd-s3').textContent = 'Rp ' + (omzet/1000000).toFixed(1) + ' jt';
-  document.getElementById('hbd-s3-sub').textContent = 'estimasi bulan ini';
-  document.getElementById('hbd-s4').textContent = opp + ' produk';
-  document.getElementById('hbd-s4-sub').textContent = 'siap dioptimalkan';
+  if (!tracked.length) {
+    document.getElementById('hbd-s1').textContent = '0';
+    document.getElementById('hbd-s1-sub').textContent = 'produk terpantau';
+    document.getElementById('hbd-s2').textContent = '—';
+    document.getElementById('hbd-s2-sub').textContent = 'belum ada data';
+    document.getElementById('hbd-s3').textContent = '—';
+    document.getElementById('hbd-s3-sub').textContent = 'tambahkan produk dulu';
+    document.getElementById('hbd-s4').textContent = '—';
+    document.getElementById('hbd-s4-sub').textContent = '—';
+    document.getElementById('hbd-subtitle').textContent = 'Belum ada produk terpantau. Cari produk di Discover dan lacak yang menarik.';
+    document.getElementById('hbd-ai-list').innerHTML = '<div style="color:#9CA3AF;font-size:.78rem;padding:12px 0;">Lacak produk terlebih dahulu untuk mendapatkan insight.</div>';
+    document.getElementById('hbd-activity-list').innerHTML = '<div style="color:#9CA3AF;font-size:.75rem;">Belum ada aktivitas.</div>';
+    document.getElementById('hbd-opp-list').innerHTML = '<div style="color:#9CA3AF;font-size:.75rem;">Belum ada peluang terdeteksi.</div>';
+    document.getElementById('hbd-tip-text').textContent = 'Mulai dengan melacak 3-5 produk dari halaman Discover untuk mendapatkan ringkasan performa di sini.';
+    return;
+  }
 
-  // AI insights
-  const dotColors = ['red','green','blue','yellow'];
-  const insights = [
-    `<strong>${prods[0]?.name?.split(' ').slice(0,3).join(' ')}</strong> menunjukkan lonjakan tren ${Math.round(10+rng()*20)}% — pertimbangkan untuk menambah stok segera.`,
-    `${Math.round(prods.length*0.6)} produk memiliki margin potensial di atas 30% — segmen ini layak diprioritaskan.`,
-    `Kompetisi di kategori <strong>${prods[0]?.category||'ini'}</strong> turun minggu ini — waktu yang tepat untuk meningkatkan iklan.`,
-    `Harga rata-rata pasar naik <strong>${(1+rng()*4).toFixed(1)}%</strong> — Anda bisa naikkan harga tanpa kehilangan pembeli.`,
-  ];
-  document.getElementById('hbd-ai-list').innerHTML = insights.map((t,i) =>
-    `<div class="hbd-ai-item"><div class="hbd-ai-dot ${dotColors[i]}"></div><div>${t}</div></div>`
-  ).join('');
+  document.getElementById('hbd-subtitle').textContent = 'Berikut ringkasan produk yang Anda lacak.';
 
-  // recent activity
-  const actTypes = [
-    { icon:'📈', cls:'up',   title:'Harga naik',       desc: p => `${p.name.split(' ').slice(0,3).join(' ')} naik ${(2+rng()*8).toFixed(1)}%`,         time: minsAgo(rng) },
-    { icon:'📉', cls:'down', title:'Harga turun',      desc: p => `${p.name.split(' ').slice(0,3).join(' ')} turun ${(1+rng()*5).toFixed(1)}%`,        time: minsAgo(rng) },
-    { icon:'🔔', cls:'info', title:'Peluang baru',     desc: p => `${p.name.split(' ').slice(0,3).join(' ')} masuk daftar produk potensial`,            time: minsAgo(rng) },
-    { icon:'⚡', cls:'up',   title:'Tren meningkat',   desc: p => `Volume pencarian ${p.name.split(' ').slice(0,2).join(' ')} naik signifikan`,         time: minsAgo(rng) },
-    { icon:'💡', cls:'info', title:'Insight baru',     desc: p => `AI menemukan pola menarik pada ${p.name.split(' ').slice(0,2).join(' ')}`,           time: minsAgo(rng) },
-    { icon:'📦', cls:'up',   title:'Stok menipis',     desc: p => `Kompetitor ${p.name.split(' ').slice(0,2).join(' ')} kehabisan stok`,                time: minsAgo(rng) },
-  ];
-  function minsAgo(r) { const m = Math.round(5+r()*120); return m < 60 ? m+'m lalu' : Math.round(m/60)+'j lalu'; }
-  document.getElementById('hbd-activity-list').innerHTML = prods.slice(0,6).map((p,i) => {
-    const a = actTypes[i % actTypes.length];
+  // Fetch last 2 scrape rows per tracked product
+  const enriched = await Promise.all(tracked.map(async t => {
+    try {
+      const { data } = await _supabase
+        .from('listings')
+        .select('total_sold, price, scraped_at')
+        .eq('item_id', t.item_id)
+        .eq('shop_id', t.shop_id)
+        .order('scraped_at', { ascending: false })
+        .limit(2);
+      const curr = data?.[0];
+      const prev = data?.[1];
+      const delta = (curr && prev) ? Math.max(0, (curr.total_sold||0) - (prev.total_sold||0)) : 0;
+      return { ...t, curr_sold: curr?.total_sold||t.total_sold||0, curr_price: curr?.price||t.price||0, delta, scraped_at: curr?.scraped_at };
+    } catch { return { ...t, curr_sold: t.total_sold||0, curr_price: t.price||0, delta: 0 }; }
+  }));
+
+  const count    = enriched.length;
+  const avgPrice = enriched.reduce((s,p) => s + (p.curr_price||0), 0) / count;
+  const totalOmset = enriched.reduce((s,p) => s + ((p.curr_price||0) * (p.curr_sold||0) / 6), 0);
+  const nUp      = enriched.filter(p => p.delta > 0).length;
+
+  document.getElementById('hbd-s1').textContent = count;
+  document.getElementById('hbd-s1-sub').textContent = 'produk terpantau';
+  document.getElementById('hbd-s2').textContent = 'Rp ' + Math.round(avgPrice).toLocaleString('id-ID');
+  document.getElementById('hbd-s2-sub').textContent = 'rata-rata harga produk';
+  document.getElementById('hbd-s3').textContent = totalOmset >= 1e6 ? 'Rp ' + (totalOmset/1e6).toFixed(1) + ' jt' : 'Rp ' + Math.round(totalOmset).toLocaleString('id-ID');
+  document.getElementById('hbd-s3-sub').textContent = 'estimasi omzet/bln';
+  document.getElementById('hbd-s4').textContent = nUp;
+  document.getElementById('hbd-s4-sub').textContent = 'produk tren naik';
+
+  // Tracked product list as insight
+  document.getElementById('hbd-ai-list').innerHTML = enriched.slice(0,5).map(p => {
+    const arrow = p.delta > 0 ? '<span style="color:#16A34A;">▲</span>' : '<span style="color:#9CA3AF;">–</span>';
+    const name  = (p.product_name||'').split(' ').slice(0,4).join(' ') || p.keyword;
+    return `<div class="hbd-ai-item"><div class="hbd-ai-dot ${p.delta>0?'green':'blue'}"></div><div>${arrow} <strong>${name}</strong> — ${p.curr_sold?.toLocaleString('id-ID')||'—'} unit terjual, harga Rp ${(p.curr_price||0).toLocaleString('id-ID')}</div></div>`;
+  }).join('');
+
+  // Recent tracked products as activity
+  document.getElementById('hbd-activity-list').innerHTML = enriched.slice(0,6).map(p => {
+    const name = (p.product_name||'').split(' ').slice(0,3).join(' ') || p.keyword;
+    const upSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>`;
+    const flatSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+    const cls = p.delta > 0 ? 'up' : 'info';
     return `<div class="hbd-activity-item">
-      <div class="hbd-act-icon ${a.cls}">${a.icon}</div>
+      <div class="hbd-act-icon ${cls}">${p.delta>0?upSvg:flatSvg}</div>
       <div class="hbd-act-body">
-        <div class="hbd-act-title">${a.title}</div>
-        <div class="hbd-act-desc">${a.desc(p)}</div>
+        <div class="hbd-act-title">${name}</div>
+        <div class="hbd-act-desc">${p.delta>0?'+'+p.delta+' unit sejak scrape terakhir':'Belum ada perubahan unit'}</div>
       </div>
-      <div class="hbd-act-time">${a.time}</div>
+      <div class="hbd-act-time">${(p.category||'').split(' ')[0]||'—'}</div>
     </div>`;
   }).join('');
 
-  // opportunities
-  const oppProds = allProducts.filter(p => p.score >= 65).slice(0, 6);
+  // Opportunities: products with highest delta
+  const oppProds = [...enriched].sort((a,b) => b.delta - a.delta).slice(0,6);
   document.getElementById('hbd-opp-list').innerHTML = oppProds.map(p => {
-    const r = _hbdRng(p.id * 3571);
-    const pct = Math.round(8 + r()*25);
-    const hot = p.score >= 75;
-    return `<div class="hbd-opp-item" onclick="dscOpenDeepDive(${p.id})">
-      <div class="hbd-opp-emoji">${p.emoji||'📦'}</div>
+    const name = (p.product_name||'').split(' ').slice(0,4).join(' ') || p.keyword;
+    const hot = p.delta > 0;
+    return `<div class="hbd-opp-item">
+      <img src="${p.image_url||''}" onerror="this.style.display='none'" style="width:32px;height:32px;object-fit:cover;border-radius:6px;flex-shrink:0;">
       <div class="hbd-opp-body">
-        <div class="hbd-opp-name">${p.name.split(' ').slice(0,4).join(' ')}</div>
-        <div class="hbd-opp-cat">${p.category||'Umum'}</div>
+        <div class="hbd-opp-name">${name}</div>
+        <div class="hbd-opp-cat">${p.category||p.keyword||'—'}</div>
       </div>
-      <span class="hbd-opp-badge ${hot?'hot':'ok'}">${hot?'▲ '+pct+'%':'✓ Stabil'}</span>
+      <span class="hbd-opp-badge ${hot?'hot':'ok'}">${hot?'▲ +'+p.delta:'Stabil'}</span>
     </div>`;
   }).join('');
 
-  // tip
   const tips = [
-    `Produk dengan score di atas 75 memiliki peluang konversi 2x lebih tinggi. Fokuskan anggaran iklan ke produk-produk ini minggu ini.`,
-    `Riset kami menunjukkan bahwa menambah foto produk dari berbagai sudut bisa meningkatkan CTR hingga 40% di halaman pencarian Shopee.`,
-    `Coba gunakan keyword panjang (long-tail) di judul produk — persaingannya lebih rendah tapi niatnya lebih spesifik dan konversinya lebih tinggi.`,
+    'Lacak lebih banyak produk untuk mendapatkan analisis yang lebih akurat.',
+    'Produk dengan delta penjualan tinggi adalah kandidat bagus untuk mulai berjualan.',
+    'Coba gunakan Kalkulator Profit di halaman Mulai Berjualan untuk menghitung kelayakan.',
   ];
-  document.getElementById('hbd-tip-text').textContent = tips[Math.floor(rng()*tips.length)];
+  document.getElementById('hbd-tip-text').textContent = tips[Math.floor(Math.random()*tips.length)];
 
-  _hbdBuildChart();
+  // Build chart with tracked products
+  const prods = enriched.slice(0,6).map(p => ({
+    name: (p.product_name||p.keyword||'').split(' ').slice(0,3).join(' '),
+    delta: p.delta || 0,
+    price: p.curr_price || 0,
+    sold:  p.curr_sold  || 0,
+  }));
+  _hbdBuildChartFromTracked(prods);
+}
+
+function _hbdBuildChartFromTracked(prods) {
+  const canvas = document.getElementById('hbd-chart-perf');
+  if (!canvas || !prods.length) return;
+  if (window._hbdChart) { window._hbdChart.destroy(); window._hbdChart = null; }
+  const labels = prods.map(p => p.name);
+  const data   = prods.map(p => p.delta);
+  window._hbdChart = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ label: 'Unit Delta', data, backgroundColor: CHART_COLORS.slice(0,prods.length), borderRadius: 6 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 10 } } } }
+    }
+  });
+  document.getElementById('hbd-legend').innerHTML = prods.map((p,i) =>
+    `<div class="trk-legend-item"><div class="trk-legend-dot" style="background:${CHART_COLORS[i]}"></div>${p.name}</div>`
+  ).join('');
+}
+
+// ── MULAI BERJUALAN ────────────────────────────────────────────
+const _MLS_APIKEY = 'larisid_anthropic_key';
+let _mlsContext = null;   // { keyword, medianPrice, medianSold, top5 }
+let _mlsChatHistory = []; // { role, content }
+
+function mlsInit() {
+  const tracked = trkLoad();
+  const pick = document.getElementById('mls-product-pick');
+  const noTrk = document.getElementById('mls-no-tracked');
+  if (!pick) return;
+
+  // Clear and rebuild picker
+  pick.innerHTML = '<option value="">-- Pilih dari produk tersimpan --</option>';
+  if (!tracked.length) {
+    pick.style.display = 'none';
+    noTrk.style.display = 'block';
+    return;
+  }
+  noTrk.style.display = 'none';
+  pick.style.display = 'block';
+  tracked.forEach(t => {
+    const name = (t.product_name||t.keyword||'Produk').split(' ').slice(0,5).join(' ');
+    const opt  = document.createElement('option');
+    opt.value  = t.key || `${t.item_id}_${t.shop_id}`;
+    opt.textContent = name + (t.keyword ? ` (${t.keyword})` : '');
+    opt._data  = t;
+    pick.appendChild(opt);
+  });
+
+  // Restore API key status
+  const saved = localStorage.getItem(_MLS_APIKEY);
+  const statusEl = document.getElementById('mls-apikey-status');
+  const inputRow = document.getElementById('mls-apikey-input-row');
+  if (saved) {
+    if (statusEl) statusEl.textContent = 'Tersimpan';
+    if (inputRow) inputRow.style.display = 'none';
+  }
+
+  // Init calculator
+  setTimeout(() => kalcCalc(), 100);
+}
+
+async function mlsSelectProduct(val) {
+  const tracked = trkLoad();
+  const t = tracked.find(p => (p.key || `${p.item_id}_${p.shop_id}`) === val);
+  if (!t) { document.getElementById('mls-market-snap').style.display = 'none'; return; }
+
+  _mlsContext = { keyword: t.keyword, product: t };
+
+  // Show loading state
+  const snap = document.getElementById('mls-market-snap');
+  snap.style.display = 'block';
+  document.getElementById('mls-median-price').textContent = '…';
+  document.getElementById('mls-median-sold').textContent  = '…';
+  document.getElementById('mls-keyword-label').textContent = t.keyword || '—';
+  document.getElementById('mls-top5-grid').innerHTML = '<div style="color:#9CA3AF;font-size:.72rem;">Memuat...</div>';
+
+  // Fetch top 5 from Supabase for this keyword
+  try {
+    const { data } = await _supabase
+      .from('listings_latest')
+      .select('product_name, store_name, image_url, price, total_sold, item_id, shop_id')
+      .eq('keyword', t.keyword)
+      .order('total_sold', { ascending: false })
+      .limit(5);
+
+    const rows = data || [];
+    const prices = rows.map(r => r.price||0).filter(v => v > 0).sort((a,b)=>a-b);
+    const solds  = rows.map(r => r.total_sold||0).filter(v => v > 0).sort((a,b)=>a-b);
+    const median = arr => arr.length ? arr[Math.floor(arr.length/2)] : 0;
+    const mPrice = median(prices);
+    const mSold  = median(solds);
+
+    _mlsContext.medianPrice = mPrice;
+    _mlsContext.medianSold  = mSold;
+    _mlsContext.top5        = rows;
+
+    document.getElementById('mls-median-price').textContent = mPrice ? 'Rp ' + Math.round(mPrice).toLocaleString('id-ID') : '—';
+    document.getElementById('mls-median-sold').textContent  = mSold ? mSold.toLocaleString('id-ID') + ' unit' : '—';
+
+    // Pre-fill calculator price with median
+    const kalPrice = document.getElementById('kal-price');
+    if (kalPrice && mPrice > 0) { kalPrice.value = Math.round(mPrice); kalcCalc(); }
+
+    // Render top 5 cards
+    document.getElementById('mls-top5-grid').innerHTML = rows.length
+      ? rows.map(r => `
+        <div style="border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;background:#fff;">
+          <img src="${r.image_url||''}" onerror="this.src=''" style="width:100%;aspect-ratio:1;object-fit:cover;background:#F3F4F6;">
+          <div style="padding:6px 8px;">
+            <div style="font-size:.62rem;font-weight:600;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.product_name||'—'}</div>
+            <div style="font-size:.58rem;color:#6B7280;margin-top:2px;">${r.store_name||'—'}</div>
+            <div style="font-size:.65rem;font-weight:700;color:#E8442A;margin-top:4px;">Rp ${(r.price||0).toLocaleString('id-ID')}</div>
+            <div style="font-size:.58rem;color:#9CA3AF;">${(r.total_sold||0).toLocaleString('id-ID')} terjual</div>
+          </div>
+        </div>`).join('')
+      : '<div style="color:#9CA3AF;font-size:.72rem;grid-column:span 5;">Tidak ada data untuk keyword ini.</div>';
+
+  } catch(e) {
+    document.getElementById('mls-top5-grid').innerHTML = '<div style="color:#EF4444;font-size:.72rem;grid-column:span 5;">Gagal memuat data.</div>';
+  }
+}
+
+function mlsSaveApiKey() {
+  const val = (document.getElementById('mls-apikey-input')?.value||'').trim();
+  if (!val) return;
+  localStorage.setItem(_MLS_APIKEY, val);
+  const statusEl = document.getElementById('mls-apikey-status');
+  const inputRow = document.getElementById('mls-apikey-input-row');
+  if (statusEl) statusEl.textContent = 'Tersimpan';
+  if (inputRow) inputRow.style.display = 'none';
+  document.getElementById('mls-apikey-input').value = '';
+}
+
+function _mlsChatAppend(role, text) {
+  const wrap = document.getElementById('mls-chat-messages');
+  if (!wrap) return;
+  const isUser = role === 'user';
+  const div = document.createElement('div');
+  div.className = 'mls-msg mls-msg-' + role;
+  div.style.cssText = `align-self:${isUser?'flex-end':'flex-start'};max-width:85%;background:${isUser?'#E8442A':'#fff'};color:${isUser?'#fff':'#374151'};border:1px solid ${isUser?'#E8442A':'#E5E7EB'};border-radius:10px;padding:10px 14px;font-size:.73rem;line-height:1.5;white-space:pre-wrap;`;
+  div.textContent = text;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+async function mlsChatSend() {
+  const input = document.getElementById('mls-chat-input');
+  const sendBtn = document.getElementById('mls-chat-send');
+  const text = (input?.value||'').trim();
+  if (!text) return;
+
+  const apiKey = localStorage.getItem(_MLS_APIKEY);
+  if (!apiKey) {
+    document.getElementById('mls-apikey-input-row').style.display = 'flex';
+    _mlsChatAppend('assistant', 'Masukkan Anthropic API Key Anda terlebih dahulu untuk menggunakan fitur AI chat.');
+    return;
+  }
+
+  input.value = '';
+  input.disabled = true;
+  if (sendBtn) sendBtn.disabled = true;
+  _mlsChatAppend('user', text);
+  _mlsChatHistory.push({ role: 'user', content: text });
+
+  // Show typing indicator
+  const typingId = 'mls-typing-' + Date.now();
+  const wrap = document.getElementById('mls-chat-messages');
+  if (wrap) {
+    const td = document.createElement('div');
+    td.id = typingId;
+    td.style.cssText = 'align-self:flex-start;font-size:.7rem;color:#9CA3AF;padding:6px 10px;';
+    td.textContent = 'AI sedang mengetik…';
+    wrap.appendChild(td);
+    wrap.scrollTop = wrap.scrollHeight;
+  }
+
+  // Build system prompt with product context
+  let systemPrompt = 'Kamu adalah AI strategist untuk platform Larisid, membantu penjual memulai berjualan di Shopee Indonesia. Jawab dalam Bahasa Indonesia, singkat dan praktis.';
+  if (_mlsContext?.keyword) {
+    systemPrompt += ` Konteks: pengguna tertarik pada keyword "${_mlsContext.keyword}".`;
+    if (_mlsContext.medianPrice) systemPrompt += ` Median harga produk: Rp ${Math.round(_mlsContext.medianPrice).toLocaleString('id-ID')}.`;
+    if (_mlsContext.medianSold)  systemPrompt += ` Median unit terjual: ${_mlsContext.medianSold}.`;
+  }
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 512,
+        system: systemPrompt,
+        messages: _mlsChatHistory.slice(-10),
+      }),
+    });
+
+    document.getElementById(typingId)?.remove();
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      _mlsChatAppend('assistant', 'Terjadi kesalahan: ' + (err?.error?.message || resp.status));
+    } else {
+      const data = await resp.json();
+      const reply = data?.content?.[0]?.text || '(Tidak ada jawaban)';
+      _mlsChatHistory.push({ role: 'assistant', content: reply });
+      _mlsChatAppend('assistant', reply);
+    }
+  } catch(e) {
+    document.getElementById(typingId)?.remove();
+    _mlsChatAppend('assistant', 'Koneksi gagal. Pastikan API key benar dan coba lagi. (' + e.message + ')');
+  }
+
+  if (input) input.disabled = false;
+  if (sendBtn) sendBtn.disabled = false;
+  if (input) input.focus();
 }
 
 // ── ALERTS ─────────────────────────────────────────────────────
