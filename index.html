@@ -4765,19 +4765,19 @@ html,body{overflow-x:hidden;max-width:100%;}
             </div>
 
             <!-- summary row -->
-            <div class="trk-summary-row">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
               <div class="trk-stat">
                 <div class="trk-stat-label">Produk Dipantau</div>
                 <div class="trk-stat-value" id="trk-total">—</div>
-                <div class="trk-stat-delta up" id="trk-total-sub">—</div>
+                <div class="trk-stat-delta" id="trk-total-sub">—</div>
               </div>
               <div class="trk-stat">
-                <div class="trk-stat-label">Total Penjualan Est.</div>
+                <div class="trk-stat-label">Total Terjual (est.)</div>
                 <div class="trk-stat-value" id="trk-sales">—</div>
-                <div class="trk-stat-delta up" id="trk-sales-sub">—</div>
+                <div class="trk-stat-delta" id="trk-sales-sub">—</div>
               </div>
               <div class="trk-stat">
-                <div class="trk-stat-label">Tingkat Pertumbuhan</div>
+                <div class="trk-stat-label">Produk Tren Naik</div>
                 <div class="trk-stat-value" id="trk-growth">—</div>
                 <div class="trk-stat-delta" id="trk-growth-sub">—</div>
               </div>
@@ -4786,36 +4786,25 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <div class="trk-stat-value" id="trk-avgprice">—</div>
                 <div class="trk-stat-delta" id="trk-avgprice-sub">—</div>
               </div>
-              <div class="trk-ai-card">
-                <div class="trk-ai-label">Insight AI</div>
-                <div class="trk-ai-text" id="trk-ai-text">—</div>
-              </div>
             </div>
 
             <!-- product cards -->
             <div class="trk-section-title">Produk Terpopuler</div>
             <div class="trk-products-grid" id="trk-prod-grid"></div>
 
-            <!-- weekly chart + price changes -->
+            <!-- delta chart + price table -->
             <div class="trk-two-col">
               <div class="trk-card">
-                <div class="trk-section-title" style="margin-bottom:6px;">Performa Mingguan Semua Produk</div>
-                <canvas id="trk-chart-weekly" height="150"></canvas>
-                <div class="trk-legend" id="trk-legend"></div>
+                <div class="trk-section-title" style="margin-bottom:6px;">Unit Terjual Sejak Scrape Terakhir</div>
+                <div style="position:relative;height:160px;"><canvas id="trk-chart-weekly"></canvas></div>
               </div>
               <div class="trk-card">
-                <div class="trk-section-title" style="margin-bottom:8px;">Perubahan Harga</div>
+                <div class="trk-section-title" style="margin-bottom:8px;">Harga Saat Ini</div>
                 <table class="trk-price-table">
-                  <thead><tr><th>Produk</th><th>Harga</th><th>Perubahan</th></tr></thead>
+                  <thead><tr><th>Produk</th><th>Harga</th><th>Tren Jual</th></tr></thead>
                   <tbody id="trk-price-tbody"></tbody>
                 </table>
               </div>
-            </div>
-
-            <!-- tip -->
-            <div class="trk-tip">
-              <h4>Tip Mingguan</h4>
-              <p id="trk-tip-text">—</p>
             </div>
           </div>
         </div>
@@ -7884,7 +7873,7 @@ function switchDashView(view) {
   if (view === 'home') _renderDashHome();
   if (view === 'estimator') loadSalesEstimator();
   if (view === 'discover'  && typeof dscInit  === 'function') dscInit();
-  if (view === 'tracker'   && typeof trkInit  === 'function' && allProducts.length) trkInit();
+  if (view === 'tracker'   && typeof trkInit  === 'function') trkInit();
   if (view === 'dashboard' && typeof hbdInit  === 'function' && allProducts.length) hbdInit();
   if (view === 'alerts'    && typeof alrInit   === 'function' && allProducts.length) alrInit();
 }
@@ -10636,110 +10625,132 @@ function trkSparklineSvg(id, trending) {
   </svg>`;
 }
 
-function trkInit() {
-  if (!allProducts || !allProducts.length) return;
-  const prods = allProducts.slice(0, 9);
-  const rng0 = _trkRng(42);
+async function trkInit() {
+  const tracked = trkLoad();
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const grid = document.getElementById('trk-prod-grid');
 
-  // summary stats
-  const totalSales = prods.reduce((s,p) => s + (p.newUnits || Math.round(50+rng0()*100)), 0);
-  const avgPrice = Math.round(prods.reduce((s,p) => s + (p.medianPrice||85000), 0) / prods.length);
-  const growth = (3 + rng0()*12).toFixed(1);
-  document.getElementById('trk-total').textContent = prods.length + ' produk';
-  document.getElementById('trk-total-sub').textContent = 'dari seluruh kategori';
-  document.getElementById('trk-sales').textContent = totalSales.toLocaleString('id-ID') + ' unit';
-  document.getElementById('trk-sales-sub').textContent = '▲ ' + Math.round(5+rng0()*10) + '% vs minggu lalu';
-  const growthEl = document.getElementById('trk-growth');
-  const growthSub = document.getElementById('trk-growth-sub');
-  growthEl.textContent = growth + '%';
-  growthSub.textContent = growth > 7 ? 'Tren positif bulan ini' : 'Stabil minggu ini';
-  growthSub.className = 'trk-stat-delta ' + (growth > 7 ? 'up' : 'flat');
-  document.getElementById('trk-avgprice').textContent = 'Rp ' + avgPrice.toLocaleString('id-ID');
-  document.getElementById('trk-avgprice-sub').textContent = 'median semua produk';
+  if (!tracked.length) {
+    set('trk-total', '0 produk');
+    set('trk-total-sub', '');
+    set('trk-sales', '—');
+    set('trk-sales-sub', '');
+    set('trk-growth', '—');
+    set('trk-growth-sub', '');
+    set('trk-avgprice', '—');
+    set('trk-avgprice-sub', '');
+    if (grid) grid.innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:48px 20px;color:#9CA3AF;font-size:.82rem;">
+        Belum ada produk dilacak.<br>
+        <span style="font-size:.75rem;">Buka produk di Discover, lalu klik tombol <strong style="color:#E8442A;">Lacak Produk</strong>.</span>
+      </div>`;
+    document.getElementById('trk-price-tbody').innerHTML = '';
+    if (_trkChartWeekly) { _trkChartWeekly.destroy(); _trkChartWeekly = null; }
+    return;
+  }
 
-  // AI insight
-  const insights = [
-    `${prods[0]?.name?.split(' ').slice(0,3).join(' ')} menunjukkan tren naik ${Math.round(8+rng0()*15)}% — pertimbangkan untuk menambah stok minggu ini.`,
-    `Harga rata-rata kategori ${prods[0]?.category||'ini'} turun ${(1+rng0()*3).toFixed(1)}% — ada peluang masuk dengan harga lebih kompetitif.`,
-    `${Math.round(prods.length * 0.6)} dari ${prods.length} produk menunjukkan pertumbuhan positif minggu ini.`,
-  ];
-  document.getElementById('trk-ai-text').textContent = insights[Math.floor(rng0()*insights.length)];
+  // Fetch last 2 scrape rows for each tracked product
+  const enriched = await Promise.all(tracked.map(async t => {
+    if (!_supabase) return { ...t, delta: null, curr_sold: t.total_sold || 0, curr_price: t.price || 0 };
+    try {
+      let { data } = await _supabase
+        .from('listings')
+        .select('scraped_at,total_sold,price')
+        .eq('item_id', t.item_id)
+        .eq('shop_id', t.shop_id)
+        .order('scraped_at', { ascending: false })
+        .limit(2);
+      if (!data || !data.length) {
+        const { data: d2 } = await _supabase
+          .from('listings')
+          .select('scraped_at,total_sold,price')
+          .eq('item_id', String(t.item_id))
+          .eq('shop_id', String(t.shop_id))
+          .order('scraped_at', { ascending: false })
+          .limit(2);
+        data = d2 || [];
+      }
+      const curr = data[0] || null;
+      const prev = data[1] || null;
+      const curr_sold  = curr?.total_sold  ?? t.total_sold  ?? 0;
+      const prev_sold  = prev?.total_sold  ?? null;
+      const curr_price = curr?.price ?? t.price ?? 0;
+      const delta = prev_sold != null ? Math.max(0, curr_sold - prev_sold) : null;
+      return { ...t, curr_sold, prev_sold, curr_price, delta, scrape_date: curr?.scraped_at };
+    } catch { return { ...t, delta: null, curr_sold: t.total_sold || 0, curr_price: t.price || 0 }; }
+  }));
 
-  // product cards
-  document.getElementById('trk-prod-grid').innerHTML = prods.map(p => {
-    const rng = _trkRng(p.id * 9999);
-    const price = p.medianPrice || 85000;
-    const trend = p.avgTrend > 1;
-    const pctChange = (1 + rng()*6).toFixed(1);
-    const deltaClass = trend ? 'up' : rng() > 0.5 ? 'down' : 'flat';
-    const deltaText = deltaClass === 'up' ? '▲ '+pctChange+'%' : deltaClass === 'down' ? '▼ '+pctChange+'%' : '— stabil';
-    return `<div class="trk-prod-card" onclick="dscOpenDeepDive(${p.id})">
+  // Summary stats
+  const nUp   = enriched.filter(p => (p.delta ?? 0) > 0).length;
+  const totalSold  = enriched.reduce((s, p) => s + (p.curr_sold || 0), 0);
+  const avgPrice   = Math.round(enriched.reduce((s, p) => s + (p.curr_price || 0), 0) / enriched.length);
+  const cats = [...new Set(enriched.map(p => p.category).filter(Boolean))];
+  set('trk-total',       enriched.length + ' produk');
+  set('trk-total-sub',   cats.length + ' kategori');
+  set('trk-sales',       totalSold.toLocaleString('id-ID') + ' unit');
+  set('trk-sales-sub',   'total terjual saat ini');
+  set('trk-growth',      nUp + ' / ' + enriched.length);
+  const grSub = document.getElementById('trk-growth-sub');
+  if (grSub) { grSub.textContent = nUp > 0 ? 'naik sejak scrape terakhir' : 'tidak ada kenaikan terdeteksi'; grSub.className = 'trk-stat-delta ' + (nUp > 0 ? 'up' : 'flat'); }
+  set('trk-avgprice',    'Rp ' + avgPrice.toLocaleString('id-ID'));
+  set('trk-avgprice-sub','median semua produk dilacak');
+
+  // Product cards
+  const _upArrow = `<svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 10V2M6 2L2 6M6 2L10 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const _dnArrow = `<svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 2V10M6 10L2 6M6 10L10 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  if (grid) grid.innerHTML = enriched.map(p => {
+    const dc   = p.delta == null ? 'flat' : p.delta > 0 ? 'up' : 'flat';
+    const icon = dc === 'up' ? _upArrow : dc === 'down' ? _dnArrow : '';
+    const dtxt = p.delta == null ? '— belum ada data' : p.delta > 0 ? `+${p.delta.toLocaleString('id-ID')} unit` : '0 unit (stabil)';
+    const imgHtml = p.image_url
+      ? `<img src="${p.image_url}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" onerror="this.parentElement.innerHTML='📦'">`
+      : '📦';
+    const key = `${p.item_id}__${p.shop_id}`;
+    return `<div class="trk-prod-card" onclick="dscOpenDeepDive('${key}')">
       <div class="trk-prod-top">
-        <div class="trk-prod-emoji">${p.emoji||'📦'}</div>
+        <div class="trk-prod-emoji">${imgHtml}</div>
         <div class="trk-prod-info">
-          <div class="trk-prod-name">${p.name}</div>
-          <div class="trk-prod-cat">${p.category||'Umum'}</div>
+          <div class="trk-prod-name">${p.product_name || '—'}</div>
+          <div class="trk-prod-cat">${p.category || ''} · ${p.store_name || ''}</div>
         </div>
       </div>
-      ${trkSparklineSvg(p.id, trend)}
-      <div class="trk-prod-bottom" style="margin-top:8px;">
-        <div class="trk-prod-price">Rp ${price.toLocaleString('id-ID')}</div>
-        <span class="trk-prod-delta ${deltaClass}">${deltaText}</span>
+      <div class="trk-prod-bottom" style="margin-top:10px;align-items:center;">
+        <div class="trk-prod-price">Rp ${(p.curr_price||0).toLocaleString('id-ID')}</div>
+        <span class="trk-prod-delta ${dc}" style="display:inline-flex;align-items:center;gap:3px;">${icon}${dtxt}</span>
       </div>
+      <div style="font-size:.58rem;color:#9CA3AF;margin-top:5px;">${p.curr_sold.toLocaleString('id-ID')} total terjual</div>
     </div>`;
   }).join('');
 
-  // weekly multi-line chart
-  const weeks = ['M1','M2','M3','M4','M5','M6','M7','M8','M9','M10','M11','M12'];
-  const datasets = prods.slice(0,6).map((p, ci) => {
-    const rng = _trkRng(p.id * 1234 + ci);
-    const base = (p.newUnits || 60) * 0.25;
-    return {
-      label: p.name.split(' ').slice(0,2).join(' '),
-      data: weeks.map(() => Math.max(5, Math.round(base + (rng()-0.35)*base*0.6))),
-      borderColor: CHART_COLORS[ci],
-      backgroundColor: 'transparent',
-      borderWidth: 2,
-      tension: 0.4,
-      pointRadius: 2,
-      pointBackgroundColor: CHART_COLORS[ci],
-    };
-  });
-  if (_trkChartWeekly) _trkChartWeekly.destroy();
-  _trkChartWeekly = new Chart(document.getElementById('trk-chart-weekly'), {
-    type: 'line',
-    data: { labels: weeks, datasets },
-    options: {
-      plugins: { legend: { display: false } },
-      scales: { x: { ticks: { font: { size: 9 } } }, y: { ticks: { font: { size: 9 } } } },
-      animation: { duration: 400 }
-    }
-  });
-  document.getElementById('trk-legend').innerHTML = prods.slice(0,6).map((p,ci) =>
-    `<div class="trk-legend-item"><div class="trk-legend-dot" style="background:${CHART_COLORS[ci]}"></div>${p.name.split(' ').slice(0,2).join(' ')}</div>`
-  ).join('');
+  // Bar chart: delta per product
+  const chartLabels = enriched.map(p => (p.product_name || '').split(' ').slice(0,2).join(' '));
+  const chartData   = enriched.map(p => p.delta ?? 0);
+  const chartColors = enriched.map(p => (p.delta ?? 0) > 0 ? '#10B981' : '#9CA3AF');
+  if (_trkChartWeekly) { _trkChartWeekly.destroy(); _trkChartWeekly = null; }
+  const cvs = document.getElementById('trk-chart-weekly');
+  if (cvs) {
+    _trkChartWeekly = new Chart(cvs, {
+      type: 'bar',
+      data: { labels: chartLabels, datasets: [{ data: chartData, backgroundColor: chartColors, borderRadius: 4, borderSkipped: false }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` +${ctx.parsed.y.toLocaleString('id-ID')} unit` } } },
+        scales: { x: { ticks: { font: { size: 9 }, maxRotation: 40 } }, y: { ticks: { font: { size: 9 }, callback: v => v >= 1000 ? (v/1000).toFixed(0)+'k' : v } } }
+      }
+    });
+  }
 
-  // price changes table
-  document.getElementById('trk-price-tbody').innerHTML = prods.slice(0,8).map(p => {
-    const rng = _trkRng(p.id * 5555);
-    const price = p.medianPrice || 85000;
-    const chgPct = ((rng()-0.4)*12).toFixed(1);
-    const chgClass = chgPct > 0.5 ? 'up' : chgPct < -0.5 ? 'down' : 'flat';
-    const chgText = chgPct > 0.5 ? '▲ '+chgPct+'%' : chgPct < -0.5 ? '▼ '+Math.abs(chgPct)+'%' : '— stabil';
+  // Price table
+  document.getElementById('trk-price-tbody').innerHTML = enriched.map(p => {
+    const dc = (p.delta ?? 0) > 0 ? 'up' : 'flat';
+    const icon = dc === 'up' ? _upArrow : _dnArrow;
+    const dtxt = p.delta == null ? '—' : p.delta > 0 ? `+${p.delta.toLocaleString('id-ID')}` : '0';
     return `<tr>
-      <td style="font-weight:600;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name.split(' ').slice(0,3).join(' ')}</td>
-      <td>Rp ${price.toLocaleString('id-ID')}</td>
-      <td><span class="trk-price-chg ${chgClass}">${chgText}</span></td>
+      <td style="font-weight:600;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(p.product_name||'').split(' ').slice(0,4).join(' ')}</td>
+      <td>Rp ${(p.curr_price||0).toLocaleString('id-ID')}</td>
+      <td><span class="trk-price-chg ${dc}" style="display:inline-flex;align-items:center;gap:3px;">${icon}${dtxt} unit</span></td>
     </tr>`;
   }).join('');
-
-  // tip
-  const tips = [
-    `Produk dengan tren naik konsisten 3 minggu berturut-turut biasanya mengalami lonjakan besar — pantau stok dan siapkan iklan.`,
-    `Harga turun bukan selalu sinyal buruk — bisa jadi kompetitor sedang clearing stok. Ini peluang untuk masuk dengan margin lebih tinggi.`,
-    `Coba naikkan harga 5–8% pada produk dengan score di atas 75. Permintaan tinggi berarti pasar belum sensitif terhadap harga.`,
-  ];
-  document.getElementById('trk-tip-text').textContent = tips[Math.floor(rng0()*tips.length)];
 }
 
 function trkRefresh() { trkInit(); }
