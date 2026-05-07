@@ -3409,6 +3409,10 @@ html,body{overflow-x:hidden;max-width:100%;}
           <div class="dash-topbar-menu" id="dash-topbar-menu">
             <div class="dash-topbar-menu-item" id="dash-topbar-uname" style="font-weight:700;color:#111;pointer-events:none;font-size:.8rem;"></div>
             <div class="dash-topbar-divider"></div>
+            <div class="dash-topbar-menu-item" onclick="openExtensionLink()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
+              Hubungkan Extension
+            </div>
             <div class="dash-topbar-menu-item" onclick="openFeedback()">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               Beri Feedback
@@ -3431,6 +3435,27 @@ html,body{overflow-x:hidden;max-width:100%;}
             <button type="submit" style="width:100%;background:#E8442A;color:#fff;border:none;border-radius:8px;padding:10px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;">Daftar Sekarang</button>
           </form>
           <div id="dash-email-success" style="display:none;text-align:center;padding:10px 0;font-size:.8rem;color:#1A7A46;font-weight:700;">Berhasil! Cek inbox kamu.</div>
+        </div>
+      </div>
+
+      <!-- extension link modal -->
+      <div id="ext-link-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
+        <div style="background:#0f172a;border-radius:16px;padding:28px;max-width:360px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.4);">
+          <div style="font-size:1rem;font-weight:800;color:#f1f5f9;margin-bottom:6px;">Hubungkan Extension</div>
+          <div style="font-size:.78rem;color:#64748b;margin-bottom:20px;line-height:1.5;">Buka extension LarisID di Chrome, pilih "Masuk dengan Kode", lalu masukkan kode di bawah ini.</div>
+
+          <div id="ext-link-code-wrap" style="display:none;">
+            <div style="background:#1e293b;border-radius:12px;padding:16px;text-align:center;margin-bottom:14px;">
+              <div style="font-size:2rem;font-weight:900;letter-spacing:10px;color:#f97316;font-family:monospace;" id="ext-link-code">——————</div>
+              <div style="font-size:.72rem;color:#64748b;margin-top:6px;">Berlaku <span id="ext-link-ttl">15:00</span> menit</div>
+            </div>
+            <button onclick="extLinkCopyCode()" style="width:100%;background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:10px;padding:9px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px;" id="ext-link-copy-btn">Salin Kode</button>
+          </div>
+
+          <div id="ext-link-loading" style="text-align:center;padding:16px 0;color:#64748b;font-size:.82rem;">Membuat kode...</div>
+          <div id="ext-link-error"  style="display:none;color:#f87171;font-size:.78rem;margin-bottom:10px;"></div>
+
+          <button onclick="extLinkGenerate()" id="ext-link-regen-btn" style="display:none;width:100%;background:transparent;color:#475569;border:none;font-size:.75rem;cursor:pointer;font-family:inherit;padding:4px 0;">Buat kode baru</button>
         </div>
       </div>
 
@@ -15733,6 +15758,79 @@ function openFeedback() {
   } else {
     window.open('https://tally.so/r/9q1Y1Y', '_blank');
   }
+}
+
+// ── Extension Linking ─────────────────────────────────────────────────────────
+
+let _extLinkTimer = null;
+
+async function openExtensionLink() {
+  document.getElementById('dash-topbar-menu').classList.remove('open');
+  const modal = document.getElementById('ext-link-modal');
+  modal.style.display = 'flex';
+  document.getElementById('ext-link-code-wrap').style.display = 'none';
+  document.getElementById('ext-link-loading').style.display   = 'block';
+  document.getElementById('ext-link-error').style.display     = 'none';
+  document.getElementById('ext-link-regen-btn').style.display = 'none';
+  if (_extLinkTimer) clearInterval(_extLinkTimer);
+  await extLinkGenerate();
+}
+
+async function extLinkGenerate() {
+  document.getElementById('ext-link-loading').style.display   = 'block';
+  document.getElementById('ext-link-code-wrap').style.display = 'none';
+  document.getElementById('ext-link-error').style.display     = 'none';
+  document.getElementById('ext-link-regen-btn').style.display = 'none';
+
+  try {
+    const { data: { session } } = await _supabase.auth.getSession();
+    if (!session) throw new Error('Tidak ada sesi aktif. Silakan login ulang.');
+
+    const { data: code, error } = await _supabase.rpc('create_extension_code', {
+      p_access_token:  session.access_token,
+      p_refresh_token: session.refresh_token,
+    });
+    if (error) throw new Error(error.message);
+
+    document.getElementById('ext-link-code').textContent       = code;
+    document.getElementById('ext-link-loading').style.display  = 'none';
+    document.getElementById('ext-link-code-wrap').style.display = 'block';
+    document.getElementById('ext-link-regen-btn').style.display = 'block';
+    document.getElementById('ext-link-copy-btn').textContent   = 'Salin Kode';
+
+    // Countdown timer
+    let secs = 15 * 60;
+    if (_extLinkTimer) clearInterval(_extLinkTimer);
+    _extLinkTimer = setInterval(() => {
+      secs--;
+      const m = String(Math.floor(secs / 60)).padStart(2, '0');
+      const s = String(secs % 60).padStart(2, '0');
+      document.getElementById('ext-link-ttl').textContent = `${m}:${s}`;
+      if (secs <= 0) {
+        clearInterval(_extLinkTimer);
+        document.getElementById('ext-link-code').textContent = '——————';
+        document.getElementById('ext-link-ttl').textContent  = 'Kadaluarsa';
+        document.getElementById('ext-link-regen-btn').style.display = 'block';
+      }
+    }, 1000);
+
+  } catch (e) {
+    document.getElementById('ext-link-loading').style.display = 'none';
+    document.getElementById('ext-link-error').textContent     = e.message || 'Gagal membuat kode.';
+    document.getElementById('ext-link-error').style.display   = 'block';
+    document.getElementById('ext-link-regen-btn').style.display = 'block';
+  }
+}
+
+function extLinkCopyCode() {
+  const code = document.getElementById('ext-link-code').textContent.trim();
+  if (!code || code.includes('—')) return;
+  navigator.clipboard.writeText(code).then(() => {
+    document.getElementById('ext-link-copy-btn').textContent = 'Tersalin!';
+    setTimeout(() => {
+      document.getElementById('ext-link-copy-btn').textContent = 'Salin Kode';
+    }, 2000);
+  });
 }
 
 // ════════════════════════════════════════════════════════════
