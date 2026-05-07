@@ -812,6 +812,28 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .dash-topbar-divider{height:1px;background:#F3F4F6;}
 .dash-topbar-hamburger{display:none;align-items:center;justify-content:center;flex-direction:column;gap:5px;width:34px;height:34px;cursor:pointer;background:none;border:none;padding:0;flex-shrink:0;}
 .dash-topbar-hamburger span{display:block;width:20px;height:2px;background:#374151;border-radius:2px;transition:all .2s;}
+/* credit pill in topbar */
+.dash-credit-pill{display:flex;align-items:center;gap:6px;background:#fff8f0;border:1.5px solid #fde0c0;border-radius:20px;padding:5px 12px;cursor:pointer;user-select:none;transition:background .15s;}
+.dash-credit-pill:hover{background:#fff0e0;}
+.dash-credit-pill-icon{font-size:.85rem;line-height:1;flex-shrink:0;}
+.dash-credit-pill-val{font-size:.8rem;font-weight:800;color:#c05000;}
+.dash-credit-pill-lbl{font-size:.72rem;color:#b06030;font-weight:500;}
+/* credit card on dashboard home */
+.home-credit-card{background:linear-gradient(135deg,#1a1f3c,#2d1800);border-radius:14px;padding:20px;margin:0 20px 20px;display:flex;gap:20px;flex-wrap:wrap;align-items:stretch;}
+.hcc-balance{flex:0 0 auto;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(255,255,255,.06);border-radius:10px;padding:16px 22px;min-width:120px;}
+.hcc-balance-num{font-size:2.6rem;font-weight:900;color:#f97316;line-height:1;}
+.hcc-balance-lbl{font-size:.72rem;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em;margin-top:4px;}
+.hcc-earn{flex:1;min-width:200px;display:flex;flex-direction:column;gap:6px;}
+.hcc-earn-title{font-size:.82rem;font-weight:800;color:#fff;margin-bottom:2px;}
+.hcc-earn-row{display:flex;align-items:center;gap:8px;font-size:.78rem;color:rgba(255,255,255,.6);}
+.hcc-earn-row strong{color:#fbbf24;font-weight:700;}
+.hcc-prog-wrap{background:rgba(255,255,255,.1);border-radius:999px;height:6px;overflow:hidden;margin-top:4px;}
+.hcc-prog-fill{height:100%;background:linear-gradient(90deg,#f97316,#fbbf24);border-radius:999px;transition:width .5s cubic-bezier(.34,1.56,.64,1);}
+.hcc-spend{flex:1;min-width:180px;display:flex;flex-direction:column;gap:6px;border-left:1px solid rgba(255,255,255,.1);padding-left:18px;}
+.hcc-spend-title{font-size:.82rem;font-weight:800;color:#fff;margin-bottom:2px;}
+.hcc-spend-item{display:flex;align-items:flex-start;gap:7px;font-size:.78rem;color:rgba(255,255,255,.6);line-height:1.4;}
+.hcc-spend-item svg{flex-shrink:0;margin-top:1px;color:#f97316;}
+@media(max-width:600px){.hcc-spend{border-left:none;padding-left:0;border-top:1px solid rgba(255,255,255,.1);padding-top:14px;}}
 
 /* ── DASHBOARD LAYOUT ── */
 .dashboard-layout{display:flex;min-height:100vh;}
@@ -3404,6 +3426,11 @@ html,body{overflow-x:hidden;max-width:100%;}
         <button class="dash-topbar-icon-btn" title="Notifikasi">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         </button>
+        <div class="dash-credit-pill" id="dash-topbar-credit-pill" onclick="switchDashView('dashboard');scrollToCreditCard()" title="Kredit kamu">
+          <svg class="dash-credit-pill-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <span class="dash-credit-pill-val" id="dash-credit-pill-val">—</span>
+          <span class="dash-credit-pill-lbl">kredit</span>
+        </div>
         <div class="dash-topbar-avatar" id="dash-topbar-av" onclick="event.stopPropagation();document.getElementById('dash-topbar-menu').classList.toggle('open')">
           ?
           <div class="dash-topbar-menu" id="dash-topbar-menu">
@@ -3468,6 +3495,47 @@ html,body{overflow-x:hidden;max-width:100%;}
 
           <!-- Stats row -->
           <div class="dash-stats-row" id="dash-home-stats"></div>
+
+          <!-- Credits card -->
+          <div class="home-credit-card" id="dash-credit-card">
+            <div class="hcc-balance">
+              <div class="hcc-balance-num" id="hcc-balance-num">—</div>
+              <div class="hcc-balance-lbl">Kredit</div>
+            </div>
+            <div class="hcc-earn">
+              <div class="hcc-earn-title">Cara mendapatkan kredit</div>
+              <div class="hcc-earn-row">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Cari produk di Shopee pakai Extension → <strong>10 pencarian = 1 kredit</strong>
+              </div>
+              <div class="hcc-earn-row">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                Maks <strong>10 kredit/hari</strong> — 5 kredit gratis setiap bulan
+              </div>
+              <div class="hcc-earn-row" style="margin-top:6px;">
+                <span style="font-size:.72rem;color:rgba(255,255,255,.35);">Progress hari ini</span>
+                <span style="font-size:.72rem;color:#fbbf24;font-weight:700;margin-left:auto;" id="hcc-prog-label">—</span>
+              </div>
+              <div class="hcc-prog-wrap">
+                <div class="hcc-prog-fill" id="hcc-prog-fill" style="width:0%"></div>
+              </div>
+            </div>
+            <div class="hcc-spend">
+              <div class="hcc-spend-title">Gunakan kredit untuk</div>
+              <div class="hcc-spend-item">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                <span><strong style="color:#fbbf24;">1 kredit = 10 pertanyaan AI</strong> — analisis produk, strategi jualan, sumber produk</span>
+              </div>
+              <div class="hcc-spend-item">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                <span>Deep Dive laporan produk lengkap per keyword</span>
+              </div>
+              <div class="hcc-spend-item">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>Unlimited AI prompt terkunci sampai punya kredit</span>
+              </div>
+            </div>
+          </div>
 
           <!-- Notification strip: WhatsApp + Email -->
           <div class="home-notif-strip">
@@ -7890,6 +7958,58 @@ function closeSidebar() {
   if (overlay) overlay.classList.remove('open');
 }
 
+// ── CREDITS ───────────────────────────────────────────────
+let _creditBalance = null;
+let _creditProgress = 0; // searches completed today toward next credit
+
+async function loadCreditData() {
+  if (!_supabase || !currentUser) return;
+  try {
+    const { data, error } = await _supabase
+      .from('user_credits')
+      .select('balance')
+      .eq('user_id', currentUser.id)
+      .single();
+    // PGRST116 = no row yet (user hasn't earned credits); treat as 0
+    _creditBalance = (!error && data) ? (data.balance ?? 0) : 0;
+    renderCreditUI();
+  } catch (_) {}
+}
+
+function renderCreditUI() {
+  const bal = _creditBalance ?? 0;
+  // Topbar pill
+  const pillVal = document.getElementById('dash-credit-pill-val');
+  if (pillVal) pillVal.textContent = bal;
+  // Card balance
+  const cardNum = document.getElementById('hcc-balance-num');
+  if (cardNum) cardNum.textContent = bal;
+  // Progress bar — fetch today's completions from search_completions table
+  if (_supabase && currentUser) {
+    const today = new Date().toISOString().slice(0, 10);
+    _supabase
+      .from('search_completions')
+      .select('keyword', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id)
+      .eq('completed_date', today)
+      .then(({ count, error }) => {
+        if (error) return;
+        const done = count ?? 0;
+        const max  = 10;
+        const pct  = Math.min(100, Math.round((done / max) * 100));
+        const fill = document.getElementById('hcc-prog-fill');
+        const lbl  = document.getElementById('hcc-prog-label');
+        if (fill) fill.style.width = pct + '%';
+        if (lbl)  lbl.textContent  = `${done}/${max} pencarian hari ini`;
+      });
+  }
+}
+
+function scrollToCreditCard() {
+  const el = document.getElementById('dash-credit-card');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 // ── TOPBAR DATE ────────────────────────────────────────────
 function initTopbarDate() {
   const el = document.getElementById('dash-topbar-date');
@@ -7917,6 +8037,7 @@ async function openProfile() {
   try { await loadAllPlans(); } catch(_) {}
   try { renderProfileSaved(); } catch(_) {}
   try { loadDashboardData(); } catch(_) {}
+  try { loadCreditData(); } catch(_) {}
 }
 
 // ── DASHBOARD TAB SWITCHING ──
