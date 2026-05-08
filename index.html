@@ -6284,12 +6284,17 @@ function _guessCat(kw) {
 }
 
 async function _fetchListingsPage(offset, limit = 1000) {
-  const resp = await fetch(
-    `${SUPA_URL}/rest/v1/listings?select=keyword,product_name,price,total_sold,image_url,category,rating,reviews,item_id,shop_id&order=scraped_at.desc,total_sold.desc`,
-    { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, Range: `${offset}-${offset + limit - 1}` } }
-  );
-  if (!resp.ok) throw new Error('Supabase ' + resp.status);
-  return resp.json();
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const resp = await fetch(
+      `${SUPA_URL}/rest/v1/listings?select=keyword,product_name,price,total_sold,image_url,category,rating,reviews,item_id,shop_id&order=scraped_at.desc,total_sold.desc`,
+      { signal: ctrl.signal, headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, Range: `${offset}-${offset + limit - 1}` } }
+    );
+    clearTimeout(t);
+    if (!resp.ok) return [];
+    return resp.json();
+  } catch (_) { clearTimeout(t); return []; }
 }
 
 async function loadData() {
@@ -6311,17 +6316,24 @@ async function loadData() {
 
   if (!rows) {
     try {
-      // Try the efficient RPC function first (run the SQL in Supabase to create it)
+      // Try the efficient RPC function (3 s timeout — skips gracefully if not yet created)
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 3000);
       const rpcResp = await fetch(`${SUPA_URL}/rest/v1/rpc/get_product_catalog`, {
-        method: 'POST', headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json' }, body: '{}'
+        method: 'POST', signal: ctrl.signal,
+        headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json' }, body: '{}'
       });
+      clearTimeout(t);
       if (rpcResp.ok) {
-        rows = await rpcResp.json();
-        console.log('LarisID: loaded', rows.length, 'products via RPC');
+        const rpcData = await rpcResp.json();
+        if (Array.isArray(rpcData) && rpcData.length) {
+          rows = rpcData;
+          console.log('LarisID: loaded', rows.length, 'products via RPC');
+        }
       }
     } catch (_) {}
 
-    // Fallback: paginate listings table across time range for keyword coverage
+    // Fallback: fetch 5 pages from listings in parallel and deduplicate
     if (!rows?.length) {
       try {
         const pages = await Promise.all([
