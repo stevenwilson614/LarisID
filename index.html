@@ -6228,20 +6228,37 @@ function fetchSheetJsonp(sheetId, tabName) {
 
 async function fetchSheet(sheetId, tabName) {
   if (!sheetId || sheetId.includes('YOUR_')) return null;
+
+  // Cache in localStorage for 60 minutes so repeat visits are instant
+  const cacheKey = `gsheet_${sheetId}_${tabName}`;
+  const cacheTTL = 60 * 60 * 1000;
+  try {
+    const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+    if (cached && cached.ts && Date.now() - cached.ts < cacheTTL && cached.rows?.length) {
+      console.log('LarisID: serving products from cache');
+      return cached.rows;
+    }
+  } catch (_) {}
+
+  // Fetch with an 8-second timeout so the loading overlay never hangs forever
   try {
     const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(tabName)}`;
-    const res  = await fetch(url, { credentials: 'omit' });
-    const txt  = await res.text();
-    // Google wraps the JSON in a callback — strip it
-    const json = JSON.parse(txt.substring(47).slice(0, -2));
-    const cols = json.table.cols.map(c => c.label);
-    return json.table.rows
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    const res   = await fetch(url, { credentials: 'omit', signal: ctrl.signal });
+    clearTimeout(timer);
+    const txt   = await res.text();
+    const json  = JSON.parse(txt.substring(47).slice(0, -2));
+    const cols  = json.table.cols.map(c => c.label);
+    const rows  = json.table.rows
       .filter(row => row.c && row.c.some(c => c && c.v !== null && c.v !== ''))
       .map(row => {
         const obj = {};
         row.c.forEach((cell, i) => { obj[cols[i]] = cell ? cell.v : ''; });
         return obj;
       });
+    try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), rows })); } catch (_) {}
+    return rows;
   } catch(e) {
     console.warn('fetch() failed, trying JSONP fallback:', sheetId, tabName, e.message);
     return fetchSheetJsonp(sheetId, tabName);
@@ -6326,13 +6343,19 @@ function parseReviews(val) {
 //  LOAD DATA
 // ════════════════════════════════════════════════════════════
 async function loadData() {
-  document.getElementById('loading-overlay').style.display = 'flex';
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) overlay.style.display = 'flex';
+  // Hard safety net: never spin more than 12 seconds
+  const safetyTimer = setTimeout(() => {
+    if (overlay) overlay.style.display = 'none';
+  }, 12000);
 
   const rows = await fetchSheet(MASTER_SHEET_ID, MASTER_TAB_NAME);
+  clearTimeout(safetyTimer);
 
   if (!rows || !rows.length) {
     console.warn('No data loaded — check MASTER_SHEET_ID and MASTER_TAB_NAME, and make sure the sheet is publicly shared.');
-    document.getElementById('loading-overlay').style.display = 'none';
+    if (overlay) overlay.style.display = 'none';
     const g = document.getElementById('home-grid');
     const d = document.getElementById('disc-grid');
     const msg = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#C0392B;font-size:.9rem;">Could not load products. Please check your internet connection and try refreshing the page.</div>';
@@ -6361,7 +6384,7 @@ async function loadData() {
 
   filtered = [...allProducts];
   console.log('LarisID: loaded', allProducts.length, 'products');
-  document.getElementById('loading-overlay').style.display = 'none';
+  if (overlay) overlay.style.display = 'none';
   const statCount = document.getElementById('stat-count');
   if (statCount) statCount.textContent = allProducts.length + '+';
   renderHomeCats();
