@@ -6109,30 +6109,20 @@ html,body{overflow-x:hidden;max-width:100%;}
 
 <script>
 // ════════════════════════════════════════════════════════════
-//  CONFIG — SET YOUR MASTER SHEET ID HERE
-//  This is the Google Sheet with your Products master list.
-//  Get the ID from the URL:
-//  https://docs.google.com/spreadsheets/d/THIS_PART_HERE/edit
-// ════════════════════════════════════════════════════════════
-const MASTER_SHEET_ID  = '1zKpY_hOafVaP9ap44v9WDdS2iP4eHj7eMscTHGTvqRU';
-const MASTER_TAB_NAME  = 'SheetList';
-
-// ════════════════════════════════════════════════════════════
-//  YOUR MASTER SHEET COLUMNS (exact names from your sheet):
+//  CONFIG — Product catalog loaded from Supabase listings table.
+//  To maximise keyword coverage, run this once in Supabase SQL Editor:
 //
-//  Product             → product name
-//  Google Sheet URL    → link to that product's individual seller sheet
-//  Score               → viability score
-//  Median Price        → typical price (Rp)
-//  New Sellers Units   → units/mo for new sellers
-//  Experienced Sellers Units → units/mo for experienced sellers
-//  Starting Revenue    → low end revenue estimate (Rp)
-//  Up to Revenue       → high end revenue estimate (Rp)
-//  Category            → category name
-//
-//  YOUR SELLER SHEETS — each product links to its own Google Sheet.
-//  That sheet should have these columns:
-//  Rank | Shop Name | Last Month Revenue | Units Sold | Price | Rating | Performance | Shop Link
+//  CREATE OR REPLACE FUNCTION public.get_product_catalog()
+//  RETURNS TABLE(keyword text, product_name text, price numeric,
+//    total_sold bigint, image_url text, category text,
+//    rating numeric, reviews integer, item_id bigint, shop_id bigint)
+//  LANGUAGE sql STABLE SECURITY DEFINER SET statement_timeout='30s' AS $$
+//    SELECT DISTINCT ON (keyword) keyword, product_name, price, total_sold,
+//      image_url, category, rating, reviews, item_id, shop_id
+//    FROM listings WHERE keyword IS NOT NULL AND product_name IS NOT NULL
+//    ORDER BY keyword, total_sold DESC NULLS LAST;
+//  $$;
+//  GRANT EXECUTE ON FUNCTION public.get_product_catalog() TO anon, authenticated;
 // ════════════════════════════════════════════════════════════
 
 // Category image mapping — add/change as needed
@@ -6179,91 +6169,11 @@ let _supabase      = null; // Supabase client instance
 //  FETCH HELPERS
 // ════════════════════════════════════════════════════════════
 
-// Extract Sheet ID from a full Google Sheets URL
-function extractSheetId(url) {
-  if (!url) return null;
-  const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-  return m ? m[1] : null;
-}
 
 // Fetch any Google Sheet tab as array of row objects
 // ── JSONP fallback: bypasses CORS via script injection ──
 // Google always calls google.visualization.Query.setResponse(), so we
 // intercept it globally and use reqId to route concurrent responses.
-const _gvizPending = {};
-window.google = window.google || {};
-window.google.visualization = window.google.visualization || {};
-window.google.visualization.Query = window.google.visualization.Query || {};
-window.google.visualization.Query.setResponse = function(raw) {
-  const handler = _gvizPending[raw.reqId];
-  if (handler) { delete _gvizPending[raw.reqId]; handler(raw); }
-};
-
-function _parseGvizRows(raw) {
-  const cols = raw.table.cols.map(c => c.label);
-  return raw.table.rows
-    .filter(row => row.c && row.c.some(c => c && c.v !== null && c.v !== ''))
-    .map(row => { const obj = {}; row.c.forEach((cell, i) => { obj[cols[i]] = cell ? cell.v : ''; }); return obj; });
-}
-
-function fetchSheetJsonp(sheetId, tabName) {
-  return new Promise((resolve) => {
-    const reqId = 'r' + Date.now() + Math.random().toString(36).slice(2);
-    const script = document.createElement('script');
-    const timer = setTimeout(() => {
-      delete _gvizPending[reqId];
-      if (script.parentNode) script.parentNode.removeChild(script);
-      resolve(null);
-    }, 10000);
-    _gvizPending[reqId] = function(raw) {
-      clearTimeout(timer);
-      if (script.parentNode) script.parentNode.removeChild(script);
-      try { resolve(_parseGvizRows(raw)); } catch(e) { resolve(null); }
-    };
-    script.onerror = () => { delete _gvizPending[reqId]; clearTimeout(timer); resolve(null); };
-    script.src = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json;reqId:${reqId}&sheet=${encodeURIComponent(tabName)}`;
-    document.head.appendChild(script);
-  });
-}
-
-async function fetchSheet(sheetId, tabName) {
-  if (!sheetId || sheetId.includes('YOUR_')) return null;
-
-  // Cache in localStorage for 60 minutes so repeat visits are instant
-  const cacheKey = `gsheet_${sheetId}_${tabName}`;
-  const cacheTTL = 60 * 60 * 1000;
-  try {
-    const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
-    if (cached && cached.ts && Date.now() - cached.ts < cacheTTL && cached.rows?.length) {
-      console.log('LarisID: serving products from cache');
-      return cached.rows;
-    }
-  } catch (_) {}
-
-  // Fetch with an 8-second timeout so the loading overlay never hangs forever
-  try {
-    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(tabName)}`;
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 8000);
-    const res   = await fetch(url, { credentials: 'omit', signal: ctrl.signal });
-    clearTimeout(timer);
-    const txt   = await res.text();
-    const json  = JSON.parse(txt.substring(47).slice(0, -2));
-    const cols  = json.table.cols.map(c => c.label);
-    const rows  = json.table.rows
-      .filter(row => row.c && row.c.some(c => c && c.v !== null && c.v !== ''))
-      .map(row => {
-        const obj = {};
-        row.c.forEach((cell, i) => { obj[cols[i]] = cell ? cell.v : ''; });
-        return obj;
-      });
-    try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), rows })); } catch (_) {}
-    return rows;
-  } catch(e) {
-    console.warn('fetch() failed, trying JSONP fallback:', sheetId, tabName, e.message);
-    return fetchSheetJsonp(sheetId, tabName);
-  }
-}
 
 // ════════════════════════════════════════════════════════════
 //  FORMAT
@@ -6342,49 +6252,152 @@ function parseReviews(val) {
 // ════════════════════════════════════════════════════════════
 //  LOAD DATA
 // ════════════════════════════════════════════════════════════
+// ── SCORE + CATEGORY HELPERS (Supabase data) ─────────────────────────────
+function _computeScore(totalSold, avgRating, sellerCount, topReviews) {
+  const demandScore = Math.min(100, Math.log10(Math.max(1, totalSold)) / 5 * 100);
+  const ratingScore = Math.min(100, Math.max(0, ((avgRating || 0) - 3) / 2 * 100));
+  const compPenalty = Math.max(0, 100 - Math.min(100, (sellerCount / 25) * 100));
+  const revScore    = Math.min(100, Math.log10(Math.max(1, topReviews || 1)) / 4 * 100);
+  return Math.max(1, Math.round(demandScore * 0.4 + ratingScore * 0.25 + compPenalty * 0.2 + revScore * 0.15));
+}
+
+function _guessCat(kw) {
+  const k = (kw || '').toLowerCase();
+  if (/dapur|masak|spatula|wajan|panci|pisau|talenan|blender|parut|pengaduk|makan|sendok|garpu/.test(k)) return 'Dapur';
+  if (/mandi|sabun|handuk|sikat gigi|cermin|shower/.test(k)) return 'Kamar Mandi';
+  if (/baju|celana|kaos|kemeja|dress|rok|jaket|sepatu|tas|dompet|fashion|topi|hat/.test(k)) return 'Fashion';
+  if (/hp|handphone|ponsel|charger|kabel|headset|earphone|powerbank|casing/.test(k)) return 'HP & Gadget';
+  if (/laptop|komputer|keyboard|mouse|monitor|printer|speaker|kamera|elektronik/.test(k)) return 'Elektronik';
+  if (/motor|mobil|ban|helm|oli|velg|aki/.test(k)) return 'Motor & Mobil';
+  if (/bayi|anak|mainan|popok|susu|stroller/.test(k)) return 'Bayi & Anak';
+  if (/kecantikan|skincare|lipstik|maskara|bedak|serum|moisturizer/.test(k)) return 'Kecantikan';
+  if (/olahraga|gym|sepeda|lari|yoga|fitness|dumbbell|golf|bola/.test(k)) return 'Olahraga';
+  if (/tanaman|pot|pupuk|benih|biji|hidroponik/.test(k)) return 'Tanaman';
+  if (/hewan|anjing|kucing|pakan|kandang/.test(k)) return 'Hewan Peliharaan';
+  if (/outdoor|camping|tenda|ransel|survival/.test(k)) return 'Outdoor & Camping';
+  if (/kesehatan|obat|vitamin|masker|termometer|tensimeter/.test(k)) return 'Kesehatan';
+  if (/taman|lampu taman|pupuk taman/.test(k)) return 'Taman';
+  if (/gembok|kunci|cctv|alarm|brankas|keamanan/.test(k)) return 'Keamanan';
+  if (/alat tulis|buku|pensil|pulpen|spidol/.test(k)) return 'Alat Tulis';
+  if (/hobi|kerajinan|lukis|puzzle|menjahit/.test(k)) return 'Hobi & Kerajinan';
+  return 'Rumah';
+}
+
+async function _fetchListingsPage(offset, limit = 1000) {
+  const resp = await fetch(
+    `${SUPA_URL}/rest/v1/listings?select=keyword,product_name,price,total_sold,image_url,category,rating,reviews,item_id,shop_id&order=scraped_at.desc,total_sold.desc`,
+    { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, Range: `${offset}-${offset + limit - 1}` } }
+  );
+  if (!resp.ok) throw new Error('Supabase ' + resp.status);
+  return resp.json();
+}
+
 async function loadData() {
   const overlay = document.getElementById('loading-overlay');
   if (overlay) overlay.style.display = 'flex';
-  // Hard safety net: never spin more than 12 seconds
-  const safetyTimer = setTimeout(() => {
-    if (overlay) overlay.style.display = 'none';
-  }, 12000);
+  const safetyTimer = setTimeout(() => { if (overlay) overlay.style.display = 'none'; }, 15000);
 
-  const rows = await fetchSheet(MASTER_SHEET_ID, MASTER_TAB_NAME);
+  const CACHE_KEY = 'laris_catalog_v3';
+  const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+  let rows = null;
+  try {
+    const c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+    if (c?.ts && Date.now() - c.ts < CACHE_TTL && c.rows?.length) {
+      rows = c.rows;
+      console.log('LarisID: products from cache');
+    }
+  } catch (_) {}
+
+  if (!rows) {
+    try {
+      // Try the efficient RPC function first (run the SQL in Supabase to create it)
+      const rpcResp = await fetch(`${SUPA_URL}/rest/v1/rpc/get_product_catalog`, {
+        method: 'POST', headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json' }, body: '{}'
+      });
+      if (rpcResp.ok) {
+        rows = await rpcResp.json();
+        console.log('LarisID: loaded', rows.length, 'products via RPC');
+      }
+    } catch (_) {}
+
+    // Fallback: paginate listings table across time range for keyword coverage
+    if (!rows?.length) {
+      try {
+        const pages = await Promise.all([
+          _fetchListingsPage(0),
+          _fetchListingsPage(1000),
+          _fetchListingsPage(2000),
+          _fetchListingsPage(3000),
+          _fetchListingsPage(4000),
+        ]);
+        const all = pages.flat();
+        // Deduplicate by item_id+shop_id, keeping highest total_sold
+        const seen = new Map();
+        for (const r of all) {
+          const k = `${r.item_id}_${r.shop_id}`;
+          if (!seen.has(k) || (r.total_sold || 0) > (seen.get(k).total_sold || 0)) seen.set(k, r);
+        }
+        rows = [...seen.values()];
+        console.log('LarisID: loaded', rows.length, 'products via fallback');
+      } catch (e) {
+        console.error('LarisID: load failed', e);
+      }
+    }
+
+    if (rows?.length) {
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), rows })); } catch (_) {}
+    }
+  }
+
   clearTimeout(safetyTimer);
+  if (overlay) overlay.style.display = 'none';
 
-  if (!rows || !rows.length) {
-    console.warn('No data loaded — check MASTER_SHEET_ID and MASTER_TAB_NAME, and make sure the sheet is publicly shared.');
-    if (overlay) overlay.style.display = 'none';
-    const g = document.getElementById('home-grid');
-    const d = document.getElementById('disc-grid');
-    const msg = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#C0392B;font-size:.9rem;">Could not load products. Please check your internet connection and try refreshing the page.</div>';
-    if (g) g.innerHTML = msg;
-    if (d) d.innerHTML = msg;
+  if (!rows?.length) {
+    const g = document.getElementById('home-grid'), d = document.getElementById('disc-grid');
+    const msg = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#C0392B;font-size:.85rem;">Gagal memuat produk. Periksa koneksi internet dan muat ulang halaman.</div>';
+    if (g) g.innerHTML = msg; if (d) d.innerHTML = msg;
     return;
   }
 
-  // Map your exact column names to internal fields
-  allProducts = rows.map((r, i) => ({
-    id:              i + 1,
-    name:            r['Product']                      || '',
-    sheetUrl:        r['Google Sheet URL']             || '',
-    score:           (parseFloat(r['Score']) || 0) * 20,
-    medianPrice:     parseFloat(r['Median Price'])     || 0,
-    newUnits:        parseFloat(r['New Sellers Units'])       || 0,
-    expUnits:        parseFloat(r['Experienced Sellers Units']) || 0,
-    startRevenue:    parseFloat(r['Starting Revenue']) || 0,
-    upToRevenue:     parseFloat(r['Up to Revenue'])    || 0,
-    category:        r['Category']                     || 'Other',
-    image:           r['Image']                        || '', // optional column
-    emoji:           r['Emoji']                        || '', // optional column
-    avgTrend:        null,  // computed from seller sheet in background
-    trending:        false, // true for top-10 by avg trend
-  })).filter(p => p.name); // skip empty rows
+  // Group by keyword, pick best product per keyword, compute stats
+  const byKw = {};
+  for (const r of rows) {
+    if (!r.keyword) continue;
+    if (!byKw[r.keyword]) byKw[r.keyword] = [];
+    byKw[r.keyword].push(r);
+  }
+
+  let idx = 0;
+  allProducts = Object.entries(byKw).map(([kw, prods]) => {
+    const sorted    = [...prods].sort((a,b) => (b.total_sold||0) - (a.total_sold||0));
+    const top       = sorted[0];
+    const prices    = prods.map(p => p.price||0).filter(v => v > 0).sort((a,b) => a-b);
+    const median    = prices.length ? prices[Math.floor(prices.length/2)] : (top.price||0);
+    const totalSold = prods.reduce((s,p) => s + (p.total_sold||0), 0);
+    const expSold   = sorted.slice(0,3).reduce((s,p) => s + (p.total_sold||0), 0);
+    const newSold   = sorted.slice(3).reduce((s,p) => s + (p.total_sold||0), 0);
+    const avgRating = prods.reduce((s,p) => s + (p.rating||0), 0) / prods.length;
+    const score     = _computeScore(totalSold, avgRating, prods.length, top.reviews||0);
+    const cat       = prods.find(p => p.category)?.category || _guessCat(kw);
+    return {
+      id: ++idx, item_id: top.item_id, shop_id: top.shop_id,
+      name: kw, product_name: top.product_name, keyword: kw,
+      store_name: top.store_name,
+      score, medianPrice: median, price: top.price || median,
+      total_sold: totalSold, rating: +avgRating.toFixed(2) || 0,
+      reviews: prods.reduce((s,p) => s + (p.reviews||0), 0),
+      newUnits: newSold, expUnits: expSold,
+      startRevenue: median * newSold * 0.08,
+      upToRevenue: median * expSold * 0.2,
+      category: cat, image: top.image_url || '', image_url: top.image_url || '',
+      sheetUrl: '', avgTrend: null, trending: score >= 65,
+    };
+  }).filter(p => p.name);
 
   filtered = [...allProducts];
-  console.log('LarisID: loaded', allProducts.length, 'products');
-  if (overlay) overlay.style.display = 'none';
+  console.log('LarisID: catalog built —', allProducts.length, 'keywords');
+
   const statCount = document.getElementById('stat-count');
   if (statCount) statCount.textContent = allProducts.length + '+';
   renderHomeCats();
@@ -6397,11 +6410,7 @@ async function loadData() {
   hbdInit();
   alrInit();
   lpRenderPreview(_LP_DEMO);
-  // Start guided tour for first-time visitors (slight delay so cards are painted)
   setTimeout(startTour, 600);
-
-  // Fetch product images from seller sheets in background
-  fetchProductImages();
 }
 
 // ════════════════════════════════════════════════════════════
@@ -6446,130 +6455,6 @@ function _applyImage(p, url) {
     const emoji = imgDiv.querySelector('.card-emoji');
     if (emoji) emoji.style.display = 'none';
   });
-}
-
-async function fetchProductImages() {
-  // Apply cached images immediately (makes repeat visits near-instant)
-  const imgCache = _imgCacheLoad();
-  let cacheHits = 0;
-  allProducts.forEach(p => {
-    if (!p.image && imgCache[p.id]) { _applyImage(p, imgCache[p.id]); cacheHits++; }
-  });
-  if (cacheHits) console.log(`LarisID: ${cacheHits} images from cache`);
-
-  // Only fetch products that still lack an image
-  const CONCURRENCY = 6;
-  const queue = allProducts.filter(p => !p.image);
-
-  async function fetchOne(p) {
-    const sheetId = extractSheetId(p.sheetUrl);
-    if (!sheetId) return;
-
-    let rows = null;
-    for (const tab of ['Sheet1', 'Sellers', 'Data', p.name]) {
-      rows = await fetchSheet(sheetId, tab);
-      if (rows && rows.length) break;
-    }
-    if (!rows || !rows.length) return;
-
-    // ── Image ─────────────────────────────────────────────────
-    if (!p.image) {
-      const firstWithImg = rows.find(r => r['Image'] && r['Image'].trim());
-      if (firstWithImg) {
-        const url = firstWithImg['Image'].trim();
-        _applyImage(p, url);
-        imgCache[p.id] = url;  // write to cache
-      }
-    }
-
-    // ── Avg Trend ─────────────────────────────────────────────
-    // Filter to sellers doing > 1% of gross (New Revenue) then average their trends.
-    // If New Revenue column is absent/zero, fall back to all sellers with a trend value.
-    const totalRev = rows.reduce((s, r) => s + parseRp(r['New Revenue']), 0);
-    let qualifiedRows;
-    if (totalRev > 0) {
-      const threshold = totalRev * 0.01;
-      qualifiedRows = rows.filter(r => parseRp(r['New Revenue']) > threshold);
-    } else {
-      qualifiedRows = rows; // fallback: use all sellers
-    }
-    const trendVals = qualifiedRows
-      .map(r => parseTrendPct(r['Trend']))
-      .filter(v => v !== null);
-    if (trendVals.length) {
-      p.avgTrend = trendVals.reduce((s, v) => s + v, 0) / trendVals.length;
-      console.log('LarisID trend:', p.name, '→', p.avgTrend.toFixed(1) + '%', '(n=' + trendVals.length + ')');
-    }
-  }
-
-  // Process queue with concurrency limit
-  async function runWorker() {
-    while (queue.length) {
-      const p = queue.shift();
-      await fetchOne(p);
-    }
-  }
-
-  const workers = Array.from({ length: CONCURRENCY }, () => runWorker());
-  await Promise.all(workers);
-
-  // Persist updated image cache
-  _imgCacheSave(imgCache);
-
-  // After all products are processed, mark top 10 by avg trend as trending
-  markTrendingProducts();
-}
-
-function markTrendingProducts() {
-  // Sort products that have trend data by avgTrend descending, take top 10
-  const ranked = allProducts
-    .filter(p => p.avgTrend !== null)
-    .sort((a, b) => b.avgTrend - a.avgTrend)
-    .slice(0, 10);
-  ranked.forEach(p => { p.trending = true; });
-  console.log('LarisID: trending products →', ranked.map(p => p.name + ' (' + (p.avgTrend||0).toFixed(1) + '%)'));
-  updateTrendingCards();
-  renderTrendingRow('home-trending-row');
-  renderTrendingRow('disc-trending-row');
-  // Re-render grids if trending sort is currently active
-  const sortSel = document.getElementById('sort-select');
-  if (sortSel && sortSel.value === 'trending') sortProducts();
-}
-
-function renderTrendingRow(rowId) {
-  const row = document.getElementById(rowId);
-  if (!row) return;
-  const trending = allProducts.filter(p => p.trending).sort((a, b) => (b.avgTrend||0) - (a.avgTrend||0));
-  if (!trending.length) {
-    row.innerHTML = '<div class="trending-loading" style="color:var(--tl)">Belum ada data trending.</div>';
-    return;
-  }
-  row.innerHTML = trending.map((p, i) => cardHTML(p, i)).join('');
-}
-
-function updateTrendingCards() {
-  allProducts.filter(p => p.trending).forEach(p => {
-    // Add badge to any currently rendered cards for this product (main grids)
-    document.querySelectorAll(`.product-card[data-pid="${p.id}"]`).forEach(card => {
-      const imgDiv = card.querySelector('.card-img');
-      if (imgDiv && !imgDiv.querySelector('.trend-badge')) {
-        const badge = document.createElement('div');
-        badge.className = 'trend-badge';
-        badge.textContent = 'Trending';
-        imgDiv.appendChild(badge);
-      }
-    });
-  });
-  // If the detail page is open for a trending product, add badge there too
-  if (currentProduct && currentProduct.trending) {
-    const scoreRow = document.querySelector('.det-score-row');
-    if (scoreRow && !scoreRow.querySelector('.trend-badge-det')) {
-      const span = document.createElement('span');
-      span.className = 'trend-badge-det';
-      span.textContent = 'Trending';
-      scoreRow.appendChild(span);
-    }
-  }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -7938,36 +7823,29 @@ async function loadDashSourcingGuide(pid) {
     return;
   }
 
-  const sheetId = extractSheetId(p.sheetUrl);
-  if (!sheetId) { bodyEl.innerHTML = '<p style="color:var(--tl);font-size:.8rem;">Sheet tidak ditemukan.</p>'; return; }
-
-  let rows = null;
-  for (const tab of ['Sheet1', 'Sellers', 'Data', p.name]) {
-    rows = await fetchSheet(sheetId, tab);
-    if (rows && rows.length) break;
-  }
-
-  if (!rows || !rows.length) {
-    bodyEl.innerHTML = '<p style="color:var(--tl);font-size:.8rem;">Data seller tidak tersedia. Pastikan sheet di-share ke publik.</p>';
-    if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Coba Lagi'; }
+  // Fetch competitors from Supabase
+  if (!p.keyword) {
+    bodyEl.innerHTML = '<p style="color:var(--tl);font-size:.8rem;">Keyword tidak ditemukan untuk produk ini.</p>';
     return;
   }
-
-  const mapped = rows.map((r, i) => ({
-    rank: i + 1, name: r['Store Name'] || '', location: r['Location'] || '',
-    brand: r['Brand'] || '', slug: r['Slug'] || '', listingDate: r['Listing Date'] || '',
-    price: parseRp(r['Price']), revenue30: parseRp(r['30-day Revenue']),
-    newRevenue: parseRp(r['New Revenue']), rating: parseFloat(r['Rating']) || 0,
-    reviews: parseReviews(r['Review Count']), image: r['Image'] || '', url: r['URL'] || '#',
-  })).filter(s => s.name);
-
-  const totalRev  = mapped.reduce((s, x) => s + x.newRevenue, 0);
-  const threshold = totalRev * 0.005;
-  const qualified = mapped.filter(s => s.newRevenue > threshold)
-    .sort((a, b) => b.newRevenue - a.newRevenue);
-
-  window._sellerDataCache[pid] = qualified;
-  renderDashSourcingGuide(pid, qualified);
+  try {
+    const resp = await fetch(
+      `${SUPA_URL}/rest/v1/listings?select=product_name,store_name,price,total_sold,rating,reviews,image_url,item_id,shop_id&eq.keyword=${encodeURIComponent(p.keyword)}&order=total_sold.desc&limit=30`,
+      { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } }
+    );
+    const rows = resp.ok ? await resp.json() : [];
+    const totalRev = rows.reduce((s,r) => s+(r.price||0)*(r.total_sold||0),0);
+    const qualified = rows.map((r,i) => ({
+      rank: i+1, name: r.store_name||'', location: '', brand: '', slug: '', listingDate: '',
+      price: r.price||0, revenue30: (r.price||0)*(r.total_sold||0)/12,
+      newRevenue: (r.price||0)*(r.total_sold||0)/12,
+      rating: r.rating||0, reviews: r.reviews||0, image: r.image_url||'', url: '#',
+    })).filter(s => s.name);
+    window._sellerDataCache[pid] = qualified;
+    renderDashSourcingGuide(pid, qualified);
+  } catch(e) {
+    bodyEl.innerHTML = `<p style="color:var(--tl);font-size:.8rem;">Gagal memuat: ${e.message}</p>`;
+  }
   if (btnEl) btnEl.style.display = 'none';
 }
 
@@ -15151,823 +15029,60 @@ function renderDetail(p) {
 //  LOAD SELLER DATA from per-product Google Sheet
 // ════════════════════════════════════════════════════════════
 async function loadSellerData(p) {
-  const sheetId = extractSheetId(p.sheetUrl);
-
-  if (!sheetId) {
-    document.getElementById('sellers-loading').innerHTML =
-      '<p style="color:var(--tl);padding:20px 0;">No seller sheet linked for this product.</p>';
+  const loadingEl = document.getElementById('sellers-loading');
+  const bodyEl    = document.getElementById('sellers-body');
+  if (!p?.keyword) {
+    if (loadingEl) loadingEl.innerHTML = '<p style="color:var(--tl);padding:20px 0;">Keyword tidak ditemukan untuk produk ini.</p>';
     return;
   }
-
-  // Fetch Score tab in parallel
-  fetchScoreTab(sheetId).then(scoreRows => {
-    if (scoreRows && scoreRows.length >= 5) { // needs rows 1-5 for metrics; A8 used for total if present
-      renderScoreExp(scoreRows, currentProduct?.score || 0);
-    } else {
-      const l = document.getElementById('score-exp-loading');
-      if (l) l.innerHTML = '<span style="color:var(--tl);font-size:.8rem">Data skor tidak tersedia.</span>';
-    }
-  });
-
-  // Try fetching — the seller sheet's first tab (Sheet1 or whatever it's named)
-  // We try common tab names automatically
-  let rows = null;
-  for (const tab of ['Sheet1', 'Sellers', 'Data', p.name]) {
-    rows = await fetchSheet(sheetId, tab);
-    if (rows && rows.length) break;
-  }
-
-  document.getElementById('sellers-loading').style.display = 'none';
-
-  // Gate competitor analysis behind login
-  if (!currentUser) {
-    document.getElementById('sellers-table-wrap').style.display = 'none';
-    const loadingEl = document.getElementById('sellers-loading');
-    loadingEl.style.display = 'block';
-    loadingEl.innerHTML = `
-      <div style="text-align:center;padding:28px 16px;">
-        <div style="font-size:1.5rem;margin-bottom:10px;">🔒</div>
-        <div style="font-size:.9rem;font-weight:700;color:#111;margin-bottom:6px;">Analisis Kompetitor</div>
-        <div style="font-size:.8rem;color:var(--tm);margin-bottom:16px;line-height:1.5;">Lihat data lengkap 15 penjual teratas — harga, revenue, rating, dan perubahan minggu ini. Gratis dengan akun LarisID.</div>
-        <button onclick="openAuthModal('login')" style="background:var(--orange);color:#fff;border:none;border-radius:8px;padding:10px 22px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;">Daftar Gratis / Login →</button>
-      </div>`;
-    return;
-  }
-
-  document.getElementById('sellers-table-wrap').style.display = 'block'; var si = document.getElementById('sellers-scroll-inner'); if(si){ si.addEventListener('scroll', function(){ document.getElementById('sellers-scroll-hint').style.opacity = this.scrollLeft > 10 ? '0' : '1'; }); }
-
-  if (!rows || !rows.length) {
-    document.getElementById('sellers-tbody').innerHTML =
-      `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--tl)">No seller data found. Make sure the sheet is publicly shared.</td></tr>`;
-    return;
-  }
-
-  // Map your exact seller sheet columns
-  const mapped = rows.map((r, i) => ({
-    rank:         parseInt(r['No'])                        || i + 1,
-    name:         r['Store Name']                          || '',
-    location:     r['Location']                            || '',
-    trend:        r['Trend']                               || '',
-    brand:        r['Brand']                               || '',
-    listingDate:  r['Listing Date']                        || '',
-    origPrice:    parseRp(r['Original Price']),
-    price:        parseRp(r['Price']),
-    revenue30:    parseRp(r['30-day Revenue']),
-    revenueAvg:   parseRp(r['Average monthly revenue']),
-    revenueTotal: parseRp(r['Total Revenue']),
-    sales30:      parseFloat(r['30-day Sales'])            || 0,
-    salesAvg:     parseFloat(r['Average monthly sales'])   || 0,
-    salesTotal:   parseFloat(r['Total Sold'])              || 0,
-    stock:        parseFloat(r['Stock Count'])             || 0,
-    stockValue:   parseRp(r['Stock Value']),
-    rating:       parseFloat(r['Rating'])                  || 0,
-    reviews:      parseReviews(r['Review Count']),
-    wishlist:     parseFloat(r['Wishlist'])                || 0,
-    comments:     parseFloat(r['Comments'])                || 0,
-    slug:         r['Slug']                                || '',
-    url:          r['URL']                                 || '#',
-    image:        r['Image']                               || '',
-    newRevenue:   parseRp(r['New Revenue']),
-  })).filter(s => s.name);
-
-  // ── TOP 15 by New Revenue ────────────────────────────────
-  // Step 1: sum all New Revenue values
-  const totalNewRevenue = mapped.reduce((sum, s) => sum + s.newRevenue, 0);
-
-  // Step 2: keep only sellers doing more than 1% of total New Revenue
-  const threshold = totalNewRevenue * 0.01;
-  const qualified = mapped.filter(s => s.newRevenue > threshold);
-
-  // Step 3: sort by New Revenue greatest → least, take top 15
-  const sellers = qualified
-    .sort((a, b) => b.newRevenue - a.newRevenue)
-    .slice(0, 15)
-    .map((s, i) => ({ ...s, rank: i + 1 }));
-
-  // Cache seller rows for compare page store-age lookup
-  if (!window._sellerCache) window._sellerCache = {};
-  window._sellerCache[p.id] = mapped;
-
-  // ── ENRICH DETAIL PAGE WITH REAL SELLER DATA ─────────────
-
-  // Image thumbnails from top 10 seller listings
-  const thumbImgs = mapped
-    .filter(s => s.image)
-    .slice(0, 8);
-  if (thumbImgs.length) {
-    // Set main image to first listing image
-    const mainImg = document.getElementById('d-main-img');
-    mainImg.classList.remove('blur-field');
-    mainImg.innerHTML = `<img src="${thumbImgs[0].image}" alt="" onerror="this.style.display='none'">`;
-    const thumbsEl = document.getElementById('d-thumbs');
-    thumbsEl.classList.remove('blur-field');
-    thumbsEl.innerHTML = thumbImgs.map((s, i) =>
-      `<div class="det-thumb ${i===0?'active':''}" onclick="setMainImg('${s.image}', this)">
-         <img src="${s.image}" alt="" onerror="this.style.display='none'">
-       </div>`
-    ).join('');
-  }
-
-  // Price range from qualified sellers (>1% threshold)
-  const qualPrices = qualified.map(s => s.price).filter(v => v > 0).sort((a,b) => a-b);
-  if (qualPrices.length >= 3) {
-    const pLo  = qualPrices[0];
-    const pHi  = qualPrices[qualPrices.length - 1];
-    const pMed = qualPrices[Math.floor(qualPrices.length / 2)];
-    document.getElementById('d-price-lo').textContent  = fmt(pLo);
-    document.getElementById('d-price-med').textContent = fmt(pMed);
-    document.getElementById('d-price-hi').textContent  = fmt(pHi);
-  }
-
-  // Revenue range from qualified sellers
-  const qualRevs = qualified.map(s => s.newRevenue).filter(v => v > 0).sort((a,b) => a-b);
-  if (qualRevs.length >= 3) {
-    const rLo  = qualRevs[0];
-    const rHi  = qualRevs[qualRevs.length - 1];
-    const rMed = qualRevs[Math.floor(qualRevs.length / 2)];
-    document.getElementById('d-rev-lo').textContent  = fmtShort(rLo);
-    document.getElementById('d-rev-med').textContent = fmtShort(rMed);
-    document.getElementById('d-rev-hi').textContent  = fmtShort(rHi);
-  }
-
-  // Usia Produk di Marketplace — parse Listing Date (column G) as an actual date
-  // Output: "8 months", "1 year 4 months", "3 years", etc.
-  function parseListingDate(val) {
-    if (!val) return null;
-    const s = String(val).trim();
-
-    // Handle gviz date format: "Date(2023,5,15)" — month is 0-indexed
-    const gviz = s.match(/^Date\((\d+),(\d+),(\d+)\)$/);
-    if (gviz) {
-      const d = new Date(parseInt(gviz[1]), parseInt(gviz[2]), parseInt(gviz[3]));
-      const totalMonths = Math.floor((new Date() - d) / (1000 * 60 * 60 * 24 * 30.44));
-      return totalMonths > 0 ? totalMonths : 1;
-    }
-
-    // Try direct date parse (handles "2023-06-15", "June 15 2023", "15/06/2023" etc)
-    const direct = new Date(s);
-    if (!isNaN(direct.getTime()) && direct.getFullYear() > 2000) {
-      const now = new Date();
-      const diffMs = now - direct;
-      const totalMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30.44));
-      return totalMonths > 0 ? totalMonths : 1;
-    }
-
-    // Fallback: handle "22 months ago", "3 years ago", "1 year 4 months ago"
-    const lower = s.toLowerCase();
-    const yM = lower.match(/(\d+)\s*year/);
-    const mM = lower.match(/(\d+)\s*month/);
-    if (yM) return parseInt(yM[1]) * 12 + (mM ? parseInt(mM[1]) : 0);
-    if (mM) return parseInt(mM[1]);
-    return null;
-  }
-
-  function fmtAge(totalMonths) {
-    if (totalMonths < 12) return `${totalMonths} month${totalMonths !== 1 ? 's' : ''}`;
-    const years  = Math.floor(totalMonths / 12);
-    const months = totalMonths % 12;
-    if (months === 0) return `${years} year${years !== 1 ? 's' : ''}`;
-    return `${years} year${years !== 1 ? 's' : ''} ${months} month${months !== 1 ? 's' : ''}`;
-  }
-
-  const ages = qualified.map(s => parseListingDate(s.listingDate)).filter(v => v !== null).sort((a,b) => a-b);
-  if (ages.length >= 1) {
-    document.getElementById('d-age-min').textContent = fmtAge(ages[0]);
-    document.getElementById('d-age-max').textContent = fmtAge(ages[ages.length - 1]);
-    document.getElementById('d-age-med').textContent = fmtAge(ages[Math.floor(ages.length / 2)]);
-  }
-
-  // ── SOURCING GUIDE — cache seller data for on-demand analysis ──
-  window._sellerDataCache[p.id] = sellers.slice(0, 20);
-
-  const sellerLocked = currentProduct && currentProduct.trending && !currentUser;
-  document.getElementById('sellers-tbody').innerHTML = sellers.map(s => {
-    const rankClass = s.rank === 1 ? 'rb1' : s.rank === 2 ? 'rb2' : s.rank === 3 ? 'rb3' : 'rbn';
-    const ageMonths = parseListingDate(s.listingDate);
-    const ageStr = ageMonths ? fmtAge(ageMonths) : '—';
-    const imgCell = sellerLocked
-      ? `<div class="sel-img-wrap blur-field"></div>`
-      : (s.image ? `<img class="sel-img" src="${s.image}" alt="" onerror="this.style.display='none'">` : `<div class="sel-img-wrap"></div>`);
-    return `
-    <tr onclick="window.open('${s.url}','_blank')">
-      <td><div class="rbg ${rankClass}">${s.rank}</div></td>
-      <td style="padding-right:4px">${imgCell}</td>
-      <td>
-        <div class="shn ${sellerLocked ? 'blur-field' : ''}">${s.name}</div>
-        ${s.brand ? `<div class="shs">${s.brand}</div>` : ''}
-      </td>
-      <td style="color:var(--tl);font-size:.78rem">${s.location || '—'}</td>
-      <td class="sel-age"><span>${ageStr}</span></td>
-      <td style="color:var(--green);font-weight:700">${fmt(s.newRevenue)}</td>
-      <td style="color:var(--orange);font-weight:600">${fmt(s.price)}</td>
-      <td>${s.rating ? `${s.rating}` : '—'}</td>
-      <td style="color:var(--tl);font-size:.78rem">${s.reviews ? s.reviews.toLocaleString('id-ID') : '—'}</td>
-      <td>${sellerLocked ? `<button class="vb blur-field" onclick="event.stopPropagation();openAuthModal()" style="pointer-events:auto;">Visit ↗</button>` : `<button class="vb" onclick="event.stopPropagation();window.open('${s.url}','_blank')">Visit ↗</button>`}</td>
-    </tr>`;
-  }).join('');
-
-  // ── SUPPLIER AD STRIP — use 2nd-to-last seller's image + link ──
-  const adSeller = sellers.length >= 2 ? sellers[sellers.length - 2] : sellers[sellers.length - 1];
-  if (adSeller) {
-    const adEl = document.getElementById('det-supplier-ad');
-    if (adEl) {
-      const productName = currentProduct ? currentProduct.name : 'Produk Ini';
-      const adImg = adEl.querySelector('.det-supplier-ad-img');
-      const adName = adEl.querySelector('.det-supplier-ad-name');
-      const adPrice = adEl.querySelector('.det-supplier-ad-price');
-      const adBtn = adEl.querySelector('.det-supplier-ad-btn');
-      if (adImg) adImg.innerHTML = adSeller.image
-        ? `<img src="${adSeller.image}" alt="${productName}" onerror="this.style.display='none'">`
-        : '';
-      if (adName) adName.textContent = productName + ' — Supplier Terpercaya';
-      if (adPrice) adPrice.textContent = 'MOQ 50 · Rp7.000/pc';
-      if (adBtn) { adBtn.href = adSeller.url || '#'; adBtn.target = '_blank'; }
-    }
-  }
-
-  // Render charts after seller data is ready
-  renderDetailCharts(p, sellers);
-}
-
-
-// ════════════════════════════════════════════════════════════
-//  DETAIL PAGE CHARTS
-// ════════════════════════════════════════════════════════════
-let _histChartInst = null;
-let _cmpChartInst  = null;
-
-async function renderDetailCharts(p, sellers) {
-  // ── 1. Category comparison bar chart (uses allProducts — always available) ──
-  const peers = allProducts
-    .filter(x => x.category === p.category && x.id !== p.id && x.startRevenue > 0)
-    .sort((a, b) => b.startRevenue - a.startRevenue)
-    .slice(0, 3);
-
-  const cmpLabels  = [p.name, ...peers.map(x => x.name)].map(n => n.length > 22 ? n.slice(0, 21) + '…' : n);
-  const cmpValues  = [p.startRevenue, ...peers.map(x => x.startRevenue)];
-  const cmpColors  = cmpValues.map((_, i) => i === 0 ? '#E8442A' : '#d4d4d4');
-  const cmpBorders = cmpValues.map((_, i) => i === 0 ? '#c43a1f' : '#bbb');
-
-  const cmpCtx = document.getElementById('det-cmp-chart');
-  if (cmpCtx) {
-    if (_cmpChartInst) { _cmpChartInst.destroy(); _cmpChartInst = null; }
-    _cmpChartInst = new Chart(cmpCtx, {
-      type: 'bar',
-      data: {
-        labels: cmpLabels,
-        datasets: [{
-          label: 'Est. Revenue/Bln (Rp)',
-          data: cmpValues,
-          backgroundColor: cmpColors,
-          borderColor: cmpBorders,
-          borderWidth: 1.5,
-          borderRadius: 5,
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: ctx => ' Rp ' + Math.round(ctx.raw).toLocaleString('id-ID') + '/bln'
-            }
-          }
-        },
-        scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 25 } },
-          y: {
-            grid: { color: '#f0f0f0' },
-            ticks: {
-              font: { size: 10 },
-              callback: v => v >= 1000000 ? 'Rp' + (v/1000000).toFixed(1) + 'jt' : 'Rp' + Math.round(v/1000) + 'k'
-            }
-          }
-        }
-      }
-    });
-  }
-
-
-  // ── 2. Historical weekly line chart (reads from Supabase weekly_snapshots) ──
-  if (!_supabase) return;
-
-  const { data: snapshots } = await _supabase
-    .from('weekly_snapshots')
-    .select('week_date, combined_revenue, combined_units, seller_count')
-    .eq('product_name', p.name)
-    .order('week_date', { ascending: true })
-    .limit(12);
-
-  const histEmpty      = document.getElementById('det-hist-empty');
-  const histCanvasWrap = document.getElementById('det-hist-canvas-wrap');
-  const histCtx        = document.getElementById('det-hist-chart');
-
-  // Always push/update this week's snapshot with current total_sold so delta can be computed next week
-  if (sellers.length && _supabase) {
-    const today = new Date();
-    const day   = today.getDay();
-    today.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
-    const weekDate        = today.toISOString().slice(0, 10);
-    const combinedTotSold = sellers.reduce((s, x) => s + (x.salesTotal || 0), 0);
-    const combinedRev     = sellers.reduce((s, x) => s + (x.revenue30 || x.newRevenue || 0), 0);
-    const combinedUnits   = sellers.reduce((s, x) => s + (x.sales30 || 0), 0);
-
-    // Compute weekly delta vs previous snapshot
-    let weeklyDelta = null;
-    if (snapshots && snapshots.length) {
-      const prev = snapshots[snapshots.length - 1];
-      if (prev.combined_total_sold > 0) {
-        const unitDelta = combinedTotSold - prev.combined_total_sold;
-        // Average price across top sellers
-        const avgPrice = sellers.reduce((s, x) => s + (x.price || 0), 0) / (sellers.length || 1);
-        weeklyDelta = Math.max(0, Math.round(unitDelta * avgPrice));
-      }
-    }
-
-    await _supabase.from('weekly_snapshots').upsert({
-      product_name: p.name, week_date: weekDate,
-      combined_revenue: Math.round(combinedRev),
-      combined_units: Math.round(combinedUnits),
-      combined_total_sold: Math.round(combinedTotSold),
-      seller_count: sellers.length,
-      ...(weeklyDelta !== null ? { weekly_delta_revenue: weeklyDelta } : {}),
-    }, { onConflict: 'product_name,week_date' });
-  }
-
-  // Need ≥2 snapshots to draw a line
-  if (!snapshots || snapshots.length < 2) {
-    if (histEmpty)      histEmpty.style.display = '';
-    if (histCanvasWrap) histCanvasWrap.style.display = 'none';
-    return;
-  }
-
-  if (histEmpty)      histEmpty.style.display = 'none';
-  if (histCanvasWrap) histCanvasWrap.style.display = '';
-
-  const labels  = snapshots.map(s => {
-    const d = new Date(s.week_date);
-    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-  });
-
-  // Primary line: weekly delta revenue (actual units sold that week × avg price)
-  // Falls back to the 30-day estimate if delta not yet available
-  const hasDeltas = snapshots.some(s => s.weekly_delta_revenue > 0);
-  const weeklyData = snapshots.map(s => s.weekly_delta_revenue || null);
-
-  // 4-week rolling monthly average (sum of 4 consecutive weekly deltas)
-  const rollingMonthly = snapshots.map((_, i, arr) => {
-    if (i < 3) return null; // need 4 points
-    const window = arr.slice(i - 3, i + 1).map(s => s.weekly_delta_revenue || 0);
-    return window.every(v => v === 0) ? null : window.reduce((a, b) => a + b, 0);
-  });
-
-  const hasRolling = rollingMonthly.some(v => v !== null);
-
-  const datasets = [];
-
-  if (hasDeltas) {
-    datasets.push({
-      label: 'Revenue Mingguan',
-      data: weeklyData,
-      borderColor: '#E8442A',
-      backgroundColor: 'rgba(232,68,42,.07)',
-      borderWidth: 2, pointBackgroundColor: '#E8442A',
-      pointRadius: 3, fill: true, tension: 0.3, spanGaps: true,
-    });
-  }
-
-  if (hasRolling) {
-    datasets.push({
-      label: 'Rata-rata 4 Minggu',
-      data: rollingMonthly,
-      borderColor: '#2E75B6',
-      backgroundColor: 'transparent',
-      borderWidth: 2, borderDash: [4, 3],
-      pointBackgroundColor: '#2E75B6',
-      pointRadius: 3, fill: false, tension: 0.3, spanGaps: true,
-    });
-  }
-
-  // Fallback to 30-day estimate only if values actually vary across snapshots
-  if (!hasDeltas) {
-    const revValues = snapshots.map(s => s.combined_revenue);
-    const revVaries = revValues.some(v => v !== revValues[0]);
-    if (revVaries) {
-      datasets.push({
-        label: 'Est. Revenue 30hr',
-        data: revValues,
-        borderColor: '#E8442A',
-        backgroundColor: 'rgba(232,68,42,.07)',
-        borderWidth: 2, pointBackgroundColor: '#E8442A',
-        pointRadius: 3, fill: true, tension: 0.3,
-      });
-    } else {
-      // All values identical — not enough real data yet
-      if (histEmpty)      histEmpty.style.display = '';
-      if (histCanvasWrap) histCanvasWrap.style.display = 'none';
-      return;
-    }
-  }
-
-  if (_histChartInst) { _histChartInst.destroy(); _histChartInst = null; }
-  _histChartInst = new Chart(histCtx, {
-    type: 'line',
-    data: { labels, datasets },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: hasRolling, labels: { font: { size: 9 }, boxWidth: 12 } },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: Rp ${Math.round(ctx.raw||0).toLocaleString('id-ID')}` } }
-      },
-      scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 9 } } },
-        y: {
-          grid: { color: '#f0f0f0' },
-          ticks: { font: { size: 9 }, callback: v => v >= 1000000 ? 'Rp'+(v/1000000).toFixed(1)+'jt' : 'Rp'+Math.round(v/1000)+'k' }
-        }
-      }
-    }
-  });
-}
-
-// ════════════════════════════════════════════════════════════
-//  SOURCING GUIDE — Phase 1 (local analysis, no API)
-// ════════════════════════════════════════════════════════════
-let aiChatHistory   = [];
-let aiSystemContext = '';
-
-// Kept for future Phase 2 use
-async function claudePost(messages, systemPrompt, maxTokens) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': CLAUDE_KEY,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: maxTokens || 800,
-      system: systemPrompt || '',
-      messages
-    })
-  });
-  return res.json();
-}
-
-function triggerSourcingAnalysis() {
-  const pid      = currentProduct?.id;
-  const sellers  = pid && window._sellerDataCache[pid];
-  const analyzeWrap = document.getElementById('sourcing-analyze-wrap');
-  const loadingEl   = document.getElementById('sourcing-loading');
-  const resultEl    = document.getElementById('sourcing-result');
-  const analyzeBtn  = document.getElementById('sourcing-analyze-btn');
-
-  if (!sellers || !sellers.length) {
-    if (resultEl) resultEl.innerHTML = '<p style="color:var(--tl);padding:10px 0;font-size:.82rem;">Data seller belum termuat. Tunggu sebentar lalu coba lagi.</p>';
-    return;
-  }
-
-  if (analyzeWrap) analyzeWrap.style.display = 'none';
-  if (loadingEl)   loadingEl.style.display = 'flex';
-  if (resultEl)    resultEl.innerHTML = '';
-
-  // Small delay so spinner shows before heavy work
-  setTimeout(() => {
-    const result = analyzeLocalSourcing(currentProduct.name, sellers);
-    if (loadingEl) loadingEl.style.display = 'none';
-    renderLocalSourcingGuide(result, resultEl);
-    if (analyzeBtn) { analyzeBtn.classList.add('done'); analyzeBtn.disabled = true; }
-  }, 120);
-}
-
-function analyzeLocalSourcing(productName, sellers) {
-  const COLORS = [
-    'hitam','putih','merah','biru','hijau','kuning','pink','ungu','abu','coklat',
-    'emas','silver','perak','orange','tosca','cream','navy','maroon','rose','nude',
-    'black','white','red','green','yellow','gray','grey','brown','gold','purple',
-  ];
-  const FEATURES = [
-    'waterproof','anti slip','anti air','portable','rechargeable','wireless',
-    'led','otomatis','automatic','magnetic','magnet','premium','import',
-    'stainless','silikon','silicone','aluminium','anti nyamuk','fast charging',
-    'usb','bluetooth','sensor','elektrik','minimalis','aesthetic',
-  ];
-  // Words to skip when building keyword frequency
-  const STOPWORDS = new Set([
-    'dan','dengan','untuk','yang','the','and','with','for','dari','in','on',
-    'set','pack','pcs','buah','unit','baru','free','size','isi','per',
-    'model','tipe','type','item','produk','original','shopee','murah','best',
-    'kualitas','quality','promo','diskon','flash','sale','super','terbaik',
-  ]);
-
-  const colorCounts   = {};
-  const featureCounts = {};
-  const wordFreq      = {};
-  const bundleHints   = {};
-  const prices        = sellers.map(s => s.price).filter(v => v > 0);
-  const ratings       = sellers.map(s => s.rating).filter(v => v > 0);
-  const totalSellers  = sellers.length;
-
-  sellers.forEach(s => {
-    const raw  = `${s.name||''} ${s.slug||''} ${s.brand||''}`.toLowerCase().replace(/[-_]/g, ' ');
-
-    // Colors
-    COLORS.forEach(c => {
-      if (raw.includes(c)) colorCounts[c] = (colorCounts[c] || 0) + 1;
-    });
-
-    // Features
-    FEATURES.forEach(f => {
-      if (raw.includes(f)) featureCounts[f] = (featureCounts[f] || 0) + 1;
-    });
-
-    // Bundle patterns: "3 pcs", "5 pasang", "2 in 1", "set 3"
-    const bundlePats = raw.match(/(\d+)\s*(in\s*1|pcs|pasang|pair|pack|buah|pieces|set\s+\d+|\d+\s+set)/gi) || [];
-    bundlePats.forEach(b => {
-      const norm = b.replace(/\s+/g, ' ').trim();
-      bundleHints[norm] = (bundleHints[norm] || 0) + 1;
-    });
-
-    // Word frequency (meaningful nouns/adjectives only)
-    raw.split(/[\s,]+/).forEach(w => {
-      if (w.length < 4 || STOPWORDS.has(w) || /^\d+$/.test(w)) return;
-      wordFreq[w] = (wordFreq[w] || 0) + 1;
-    });
-  });
-
-  // Top colors (≥2 occurrences)
-  const topColors = Object.entries(colorCounts)
-    .filter(([,c]) => c >= 2).sort((a,b) => b[1]-a[1]).slice(0, 6);
-
-  // Top features (≥2 occurrences)
-  const topFeatures = Object.entries(featureCounts)
-    .filter(([,c]) => c >= 2).sort((a,b) => b[1]-a[1]).slice(0, 7);
-
-  // Top keywords excluding color/feature words already shown
-  const usedWords = new Set([...topColors.map(([w]) => w), ...topFeatures.map(([w]) => w)]);
-  const topKeywords = Object.entries(wordFreq)
-    .filter(([w, c]) => c >= 2 && !usedWords.has(w))
-    .sort((a,b) => b[1]-a[1]).slice(0, 8);
-
-  // Top bundles
-  const topBundles = Object.entries(bundleHints)
-    .sort((a,b) => b[1]-a[1]).slice(0, 4);
-
-  // Price insight
-  const sortedPrices = [...prices].sort((a,b) => a-b);
-  const priceMed  = sortedPrices[Math.floor(sortedPrices.length/2)] || 0;
-  const priceQ1   = sortedPrices[Math.floor(sortedPrices.length*0.25)] || 0;
-  const priceQ3   = sortedPrices[Math.floor(sortedPrices.length*0.75)] || 0;
-
-  // Avg rating
-  const avgRating = ratings.length ? (ratings.reduce((a,b)=>a+b,0) / ratings.length).toFixed(1) : null;
-
-  return { topColors, topFeatures, topKeywords, topBundles, priceMed, priceQ1, priceQ3, avgRating, totalSellers };
-}
-
-function renderLocalSourcingGuide(r, resultEl) {
-  if (!resultEl) return;
-  const fmtRp = v => v ? 'Rp ' + Math.round(v).toLocaleString('id-ID') : '—';
-
-  const colorHex = (name) => {
-    const map = {
-      hitam:'#111',putih:'#fff',merah:'#e74c3c',biru:'#2980b9',hijau:'#27ae60',
-      kuning:'#f1c40f',pink:'#e91e8c',ungu:'#8e44ad','abu':'#888',coklat:'#8b5e3c',
-      emas:'#f5a623',silver:'#aaa',perak:'#aaa',orange:'#ee4d2d',tosca:'#00b09b',
-      cream:'#f5f0e8',navy:'#1a237e',maroon:'#85122d',rose:'#f06292',nude:'#e8c9a8',
-      black:'#111',white:'#fff',red:'#e74c3c',green:'#27ae60',yellow:'#f1c40f',
-      gray:'#888',grey:'#888',brown:'#8b5e3c',gold:'#f5a623',purple:'#8e44ad',
-    };
-    return map[name] || null;
-  };
-
-  let html = '';
-
-  if (r.topColors.length) {
-    html += `<div class="sourcing-section-label">Warna yang sering muncul</div>
-    <div class="sourcing-tags">`;
-    r.topColors.forEach(([name, cnt]) => {
-      const hex = colorHex(name);
-      const dot = hex ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${hex};margin-right:5px;vertical-align:middle;${hex==='#fff'?'border:1px solid #ccc':''}"></span>` : '';
-      html += `<span class="sourcing-tag">${dot}${name} <span style="opacity:.6;font-weight:400">(${cnt}/${r.totalSellers})</span></span>`;
-    });
-    html += `</div>`;
-  }
-
-  if (r.topFeatures.length) {
-    html += `<div class="sourcing-section-label">Fitur yang sering muncul</div>
-    <div class="sourcing-tags">`;
-    r.topFeatures.forEach(([name, cnt]) => {
-      html += `<span class="sourcing-tag feat">${name} <span style="opacity:.6;font-weight:400">(${cnt}/${r.totalSellers})</span></span>`;
-    });
-    html += `</div>`;
-  }
-
-  if (r.topKeywords.length) {
-    html += `<div class="sourcing-section-label">Kata kunci listing terlaris</div>
-    <div class="sourcing-tags">`;
-    r.topKeywords.forEach(([word, cnt]) => {
-      html += `<span class="sourcing-tag feat" style="background:#f0f7ff;color:#1a6abf;">${word} <span style="opacity:.6;font-weight:400">(${cnt})</span></span>`;
-    });
-    html += `</div>`;
-  }
-
-  if (r.topBundles.length) {
-    html += `<div class="sourcing-section-label">Bundle / variant populer</div>
-    <div class="sourcing-tags">`;
-    r.topBundles.forEach(([name, cnt]) => {
-      html += `<span class="sourcing-tag bundle">${name} <span style="opacity:.6;font-weight:400">(${cnt})</span></span>`;
-    });
-    html += `</div>`;
-  }
-
-  // Price insight
-  if (r.priceMed > 0) {
-    html += `<div class="sourcing-section-label">Rentang harga (dari data listing)</div>
-    <div class="sourcing-tip">
-      Rentang umum: <strong>${fmtRp(r.priceQ1)} – ${fmtRp(r.priceQ3)}</strong> &nbsp;|&nbsp;
-      Median: <strong>${fmtRp(r.priceMed)}</strong>
-      ${r.avgRating ? ` &nbsp;|&nbsp; Rating rata-rata: <strong>${r.avgRating} ★</strong>` : ''}
-      <br><span style="font-size:.78rem;opacity:.75">Berdasarkan ${r.totalSellers} seller terkualifikasi</span>
-    </div>`;
-  }
-
-  html += `<div style="font-size:.72rem;color:var(--tl);margin-top:12px;">Berdasarkan analisa ${r.totalSellers} listing terlaris · Data dari scrape terbaru</div>`;
-  resultEl.innerHTML = html;
-}
-
-function appendChatMsg(role, text) {
-  const msgEl = document.getElementById('ai-chat-messages');
-  if (!msgEl) return;
-  const div = document.createElement('div');
-  div.className = `ai-msg ${role}`;
-  div.textContent = text;
-  msgEl.appendChild(div);
-  msgEl.scrollTop = msgEl.scrollHeight;
-  return div;
-}
-
-async function sendAIChat() {
-  const input = document.getElementById('ai-chat-input');
-  const sendBtn = document.getElementById('ai-chat-send-btn');
-  const q = input?.value.trim();
-  if (!q || !aiSystemContext) return;
-
-  input.value = '';
-  input.disabled = true;
-  if (sendBtn) sendBtn.disabled = true;
-
-  appendChatMsg('user', q);
-  const thinkingEl = appendChatMsg('thinking', '...');
-
-  aiChatHistory.push({ role: 'user', content: q });
+  if (loadingEl) loadingEl.style.display = 'flex';
 
   try {
-    const data = await claudePost(aiChatHistory, aiSystemContext, 400);
-    const reply = data?.content?.[0]?.text || 'Maaf, tidak ada respons.';
-    if (thinkingEl) thinkingEl.remove();
-    appendChatMsg('ai', reply);
-    aiChatHistory.push({ role: 'assistant', content: reply });
-  } catch(err) {
-    if (thinkingEl) { thinkingEl.className = 'ai-msg ai'; thinkingEl.textContent = 'Terjadi kesalahan. Coba lagi.'; }
+    const resp = await fetch(
+      `${SUPA_URL}/rest/v1/listings?select=product_name,store_name,price,total_sold,rating,reviews,image_url,item_id,shop_id&eq.keyword=${encodeURIComponent(p.keyword)}&order=total_sold.desc&limit=50`,
+      { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } }
+    );
+    if (!resp.ok) throw new Error(resp.status);
+    const rows = await resp.json();
+    if (loadingEl) loadingEl.style.display = 'none';
+
+    if (!rows?.length) {
+      if (bodyEl) bodyEl.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--tl);font-size:.85rem;">Tidak ada data kompetitor untuk keyword ini.</td></tr>';
+      return;
+    }
+
+    const totalSold = rows.reduce((s,r) => s + (r.total_sold||0), 0);
+    const fmt = n => 'Rp' + Math.round(n||0).toLocaleString('id-ID');
+    if (bodyEl) bodyEl.innerHTML = rows.map((r, i) => {
+      const share = totalSold > 0 ? ((r.total_sold||0) / totalSold * 100).toFixed(1) : '0';
+      const omset = (r.price||0) * (r.total_sold||0);
+      const isTop = i < 3;
+      return `<tr style="${isTop ? 'background:#FFFBEB;' : ''}">
+        <td style="padding:8px;font-size:.7rem;color:#6B7280;">${i+1}</td>
+        <td style="padding:8px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <img src="${r.image_url||''}" onerror="this.style.opacity='.2'" style="width:36px;height:36px;object-fit:cover;border-radius:6px;background:#F3F4F6;">
+            <div>
+              <div style="font-size:.72rem;font-weight:600;color:#111;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.product_name||'—'}</div>
+              <div style="font-size:.62rem;color:#9CA3AF;">${r.store_name||'—'}</div>
+            </div>
+          </div>
+        </td>
+        <td style="padding:8px;text-align:right;font-size:.72rem;font-weight:600;color:#111;white-space:nowrap;">${fmt(r.price)}</td>
+        <td style="padding:8px;text-align:right;font-size:.72rem;color:#374151;white-space:nowrap;">${(r.total_sold||0).toLocaleString('id-ID')}</td>
+        <td style="padding:8px;text-align:right;font-size:.72rem;font-weight:600;white-space:nowrap;">${fmt(omset)}</td>
+        <td style="padding:8px;text-align:right;">
+          <div style="display:flex;align-items:center;justify-content:flex-end;gap:5px;">
+            <div style="width:40px;height:5px;background:#F3F4F6;border-radius:3px;overflow:hidden;"><div style="height:5px;background:${isTop?'#E8442A':'#9CA3AF'};border-radius:3px;width:${Math.min(parseFloat(share)*5,100)}%;"></div></div>
+            <span style="font-size:.7rem;font-weight:700;color:${isTop?'#E8442A':'#374151'};white-space:nowrap;">${share}%</span>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (bodyEl) bodyEl.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--tl);">Gagal memuat data seller: ${e.message}</td></tr>`;
   }
-
-  input.disabled = false;
-  if (sendBtn) sendBtn.disabled = false;
-  input.focus();
-}
-
-const COLOR_MAP = {
-  'black':'#111','white':'#fff','red':'#e74c3c','blue':'#2980b9','green':'#27ae60',
-  'pink':'#e91e8c','gray':'#888','grey':'#888','brown':'#8b5e3c','yellow':'#f1c40f',
-  'purple':'#8e44ad','orange':'#ee4d2d','navy':'#1a237e','gold':'#f5a623',
-  'silver':'#aaa','beige':'#c8ad7f','cream':'#f5f0e8','pastel':'#b3d9f7',
-  'tosca':'#00b09b','hijau':'#27ae60','merah':'#e74c3c','biru':'#2980b9',
-  'hitam':'#111','putih':'#fff','abu':'#888','kuning':'#f1c40f','ungu':'#8e44ad',
-};
-
-function renderSourcingGuide(data) {
-  const resultEl = document.getElementById('sourcing-result');
-  if (!resultEl) return;
-
-  const colorHex = (name) => {
-    const key = name.toLowerCase();
-    return Object.entries(COLOR_MAP).find(([k]) => key.includes(k))?.[1] || null;
-  };
-
-  // Colors section
-  const colorsHTML = (data.colors || []).length ? `
-    <div class="sg-card">
-      <div class="sg-card-title">Colors</div>
-      <div class="sg-tags">
-        ${(data.colors || []).map(c => {
-          const hex = colorHex(c.name);
-          const dot = hex ? `<span class="sg-color-dot" style="background:${hex};${hex==='#fff'?'border-color:#ccc':''}"></span>` : '';
-          return `<span class="sg-tag">${dot}${c.name}<span class="sg-count">${c.count}/10</span></span>`;
-        }).join('')}
-      </div>
-    </div>` : '';
-
-  // Features section
-  const featuresHTML = (data.features || []).length ? `
-    <div class="sg-card">
-      <div class="sg-card-title">Must-Have Features</div>
-      <div class="sg-tags">
-        ${(data.features || []).map(f =>
-          `<span class="sg-tag">${f.name}<span class="sg-count">${f.count}/10</span></span>`
-        ).join('')}
-      </div>
-    </div>` : '';
-
-  // Specs section
-  const specsHTML = (data.specs || []).length ? `
-    <div class="sg-card">
-      <div class="sg-card-title">Specs & Materials</div>
-      <div class="sg-tags">
-        ${(data.specs || []).map(s =>
-          `<span class="sg-tag">${s.name}<span class="sg-count">${s.count}/10</span></span>`
-        ).join('')}
-      </div>
-    </div>` : '';
-
-  // Avoid section
-  const avoidHTML = (data.avoid || []).length ? `
-    <div class="sg-card">
-      <div class="sg-card-title">What to Avoid</div>
-      <div class="sg-tags">
-        ${(data.avoid || []).map(a =>
-          `<span class="sg-tag" style="border-color:#ffd5d5;color:#c0392b">${a}</span>`
-        ).join('')}
-      </div>
-    </div>` : '';
-
-  // Tip
-  const tipHTML = data.tip ? `
-    <div class="sg-card full">
-      <div class="sg-card-title">Sourcing Tip</div>
-      <div class="sg-tip">${data.tip}</div>
-    </div>` : '';
-
-  resultEl.innerHTML = `
-    <div class="sg-grid">
-      ${colorsHTML}${featuresHTML}${specsHTML}${avoidHTML}${tipHTML}
-    </div>
-    <div class="sg-powered">Powered by Claude AI · Based on top 10 seller analysis</div>
-  `;
-}
-
-
-// ════════════════════════════════════════════════════════════
-//  SCORE EXPLANATION
-// ════════════════════════════════════════════════════════════
-function toggleScoreExp() {
-  const body    = document.getElementById('score-exp-body');
-  const chevron = document.getElementById('score-exp-chevron');
-  if (!body) return;
-  const isOpen = body.classList.toggle('open');
-  chevron.style.transform = isOpen ? 'rotate(180deg)' : '';
-}
-
-// Each metric: key shown in col A/B of Score sheet, bahasa label, bahasa description
-const SCORE_METRICS = [
-  {
-    key: 0, // row index 0 in Score tab
-    label: 'Jumlah Penjual Aktif',
-    desc: 'Berapa banyak penjual yang berkontribusi lebih dari 1% dari total pendapatan pasar. Semakin banyak penjual aktif, semakin terbukti permintaan produk ini.',
-    maxVal: 40,
-  },
-  {
-    key: 1,
-    label: 'Dominasi Penjual Teratas',
-    desc: 'Berapa persen pasar yang dikuasai oleh 1 penjual terbaik. Skor lebih tinggi berarti pasar lebih merata — tidak dikuasai satu pemain saja.',
-    maxVal: 40,
-  },
-  {
-    key: 2,
-    label: 'Konsentrasi Top 10 Penjual',
-    desc: 'Berapa persen pasar yang dikontrol oleh 10 penjual terbaik. Jika angkanya terlalu tinggi, pasar sudah sangat kompetitif dan sulit ditembus pemain baru.',
-    maxVal: 40,
-  },
-  {
-    key: 3,
-    label: 'Konsistensi Pendapatan (Mean/Median)',
-    desc: 'Perbandingan rata-rata dan median pendapatan penjual. Skor tinggi berarti pendapatan antar penjual lebih merata — peluang sukses lebih konsisten.',
-    maxVal: 40,
-  },
-  {
-    key: 4,
-    label: 'Rasio Penjual Baru (NUB Median)',
-    desc: 'Seberapa baik penjual baru bisa bersaing dibandingkan median pasar. Skor tinggi berarti penjual baru punya peluang nyata mendapatkan pendapatan yang layak.',
-    maxVal: 40,
-  },
-];
-
-async function fetchScoreTab(sheetId) {
-  const rows = await fetchSheet(sheetId, 'Score');
-  return rows; // each row is an object keyed by column header
 }
 
 function renderScoreExp(scoreRows, totalScore) {
