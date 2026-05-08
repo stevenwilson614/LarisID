@@ -835,6 +835,114 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .hcc-spend-item svg{flex-shrink:0;margin-top:1px;color:#f97316;}
 @media(max-width:600px){.hcc-spend{border-left:none;padding-left:0;border-top:1px solid rgba(255,255,255,.1);padding-top:14px;}}
 
+/* ── CREDITS PAGE ── */
+.cr-wrap{padding:28px 32px;max-width:860px;}
+.cr-header{display:flex;align-items:center;gap:24px;background:linear-gradient(135deg,#1a1f3c,#2d1800);border-radius:16px;padding:24px 28px;margin-bottom:24px;}
+.cr-balance-block{display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border-radius:12px;padding:18px 24px;min-width:120px;}
+.cr-balance-num{font-size:3rem;font-weight:900;color:#f97316;line-height:1;}
+.cr-balance-lbl{font-size:.7rem;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em;margin-top:4px;}
+.cr-header-info{flex:1;min-width:0;}
+.cr-header-title{font-size:1rem;font-weight:800;color:#fff;margin-bottom:6px;}
+.cr-header-sub{font-size:.78rem;color:rgba(255,255,255,.55);line-height:1.5;margin-bottom:12px;}
+.cr-earn-bar{background:rgba(255,255,255,.08);border-radius:10px;padding:12px 16px;}
+.cr-earn-bar-label{display:flex;justify-content:space-between;font-size:.7rem;color:rgba(255,255,255,.5);margin-bottom:6px;}
+.cr-earn-bar-track{height:6px;background:rgba(255,255,255,.15);border-radius:999px;overflow:hidden;}
+.cr-earn-bar-fill{height:100%;background:linear-gradient(90deg,#f97316,#fbbf24);border-radius:999px;transition:width .5s cubic-bezier(.34,1.56,.64,1);}
+.cr-section{background:#fff;border:1px solid #E5E7EB;border-radius:14px;padding:20px 22px;margin-bottom:16px;}
+.cr-section-title{font-size:.85rem;font-weight:800;color:#1A1F3C;margin-bottom:4px;}
+.cr-section-sub{font-size:.75rem;color:#6B7280;margin-bottom:16px;line-height:1.5;}
+.cr-free-row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#FFF8F0;border:1.5px solid #FED7AA;border-radius:10px;margin-bottom:10px;}
+.cr-free-icon{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#f97316,#ef4444);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.cr-free-info{flex:1;min-width:0;}
+.cr-free-count{font-size:.85rem;font-weight:800;color:#111;}
+.cr-free-sub{font-size:.68rem;color:#6B7280;margin-top:1px;}
+.cr-free-exp{font-size:.65rem;font-weight:700;color:#b45309;background:#FEF3C7;border-radius:20px;padding:2px 10px;white-space:nowrap;}
+.cr-buy-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+@media(max-width:600px){.cr-buy-grid{grid-template-columns:1fr;}}
+.cr-buy-card{border:2px solid #E5E7EB;border-radius:12px;padding:16px;text-align:center;cursor:pointer;transition:border-color .15s,box-shadow .15s;position:relative;}
+.cr-buy-card:hover{border-color:#f97316;box-shadow:0 4px 16px rgba(249,115,22,.15);}
+.cr-buy-card.popular{border-color:#f97316;}
+.cr-buy-badge{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#f97316;color:#fff;font-size:.6rem;font-weight:800;border-radius:999px;padding:2px 10px;white-space:nowrap;}
+.cr-buy-amount{font-size:2rem;font-weight:900;color:#f97316;line-height:1;}
+.cr-buy-unit{font-size:.72rem;color:#6B7280;margin-bottom:8px;}
+.cr-buy-price{font-size:.88rem;font-weight:700;color:#111;margin-bottom:4px;}
+.cr-buy-sub{font-size:.65rem;color:#9CA3AF;margin-bottom:12px;}
+.cr-buy-btn{display:block;width:100%;padding:9px 0;background:linear-gradient(135deg,#f97316,#ef4444);color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s;}
+.cr-buy-btn:hover{opacity:.88;}
+.cr-earn-step{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #F3F4F6;}
+.cr-earn-step:last-child{border-bottom:none;}
+.cr-earn-step-num{width:24px;height:24px;border-radius:50%;background:#FFF0ED;border:1.5px solid #FED7AA;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;color:#E8442A;flex-shrink:0;margin-top:1px;}
+.cr-earn-step-text{flex:1;}
+.cr-earn-step-title{font-size:.78rem;font-weight:700;color:#111;margin-bottom:2px;}
+.cr-earn-step-sub{font-size:.7rem;color:#6B7280;line-height:1.4;}
+.cr-usage-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #F3F4F6;}
+.cr-usage-item:last-child{border-bottom:none;}
+.cr-usage-cost{width:32px;height:32px;border-radius:8px;background:#FFF0ED;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;color:#E8442A;flex-shrink:0;}
+.cr-usage-info{flex:1;}
+.cr-usage-title{font-size:.78rem;font-weight:700;color:#111;}
+.cr-usage-sub{font-size:.68rem;color:#6B7280;line-height:1.4;}
+
+/* ── MULAI BERJUALAN REDESIGN ── */
+.mls-wrap{padding:24px 28px;max-width:1200px;}
+.mls-picker-row{display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap;}
+.mls-picker-label{font-size:1.1rem;font-weight:800;color:#1A1F3C;white-space:nowrap;}
+.mls-picker-select{flex:1;max-width:400px;padding:9px 14px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:.8rem;font-weight:600;background:#fff;color:#111827;cursor:pointer;outline:none;font-family:inherit;}
+.mls-picker-select:focus{border-color:#E8442A;}
+.mls-hero-grid{display:grid;grid-template-columns:240px 1fr;gap:24px;margin-bottom:24px;align-items:start;}
+@media(max-width:800px){.mls-hero-grid{grid-template-columns:1fr;}}
+.mls-img-col{}
+.mls-main-img-wrap{width:100%;aspect-ratio:1;border-radius:12px;overflow:hidden;background:#F3F4F6;margin-bottom:8px;border:1px solid #E5E7EB;}
+.mls-main-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
+.mls-thumbs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+.mls-thumb{aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid transparent;background:#F3F4F6;transition:border-color .15s;}
+.mls-thumb.active,.mls-thumb:hover{border-color:#E8442A;}
+.mls-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.mls-info-col{display:flex;flex-direction:column;gap:16px;}
+.mls-score-title-row{display:flex;align-items:flex-start;gap:16px;}
+.mls-score-badge{flex-shrink:0;width:78px;height:78px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid;}
+.mls-score-badge .num{font-size:2rem;font-weight:900;line-height:1;}
+.mls-score-badge .denom{font-size:.6rem;font-weight:600;color:#6B7280;}
+.mls-title-block{flex:1;min-width:0;}
+.mls-name{font-size:1rem;font-weight:800;color:#111827;line-height:1.3;margin-bottom:4px;}
+.mls-breadcrumb{font-size:.7rem;color:#9CA3AF;margin-bottom:10px;}
+.mls-stat-pills{display:flex;flex-wrap:wrap;gap:14px;}
+.mls-stat-pill{display:flex;flex-direction:column;}
+.mls-stat-pill .lbl{font-size:.6rem;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;}
+.mls-stat-pill .val{font-size:.9rem;font-weight:800;color:#111827;}
+.mls-ai-box{background:#F8FAFC;border:1.5px solid #E5E7EB;border-radius:12px;padding:14px;}
+.mls-ai-box-title{font-size:.72rem;font-weight:700;color:#374151;margin-bottom:8px;}
+.mls-ai-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.mls-ai-chip{font-size:.67rem;padding:4px 10px;border-radius:20px;border:1px solid #E5E7EB;background:#fff;cursor:pointer;color:#374151;font-family:inherit;transition:background .15s,border-color .15s;}
+.mls-ai-chip:hover{background:#FFF0ED;border-color:#E8442A;color:#E8442A;}
+.mls-ai-input-row{display:flex;gap:8px;}
+.mls-ai-input{flex:1;border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 12px;font-size:.78rem;font-family:inherit;outline:none;transition:border-color .15s;}
+.mls-ai-input:focus{border-color:#E8442A;}
+.mls-ai-send{padding:8px 18px;background:#E8442A;color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;}
+.mls-ai-response{margin-top:10px;font-size:.75rem;color:#374151;line-height:1.6;display:none;background:#fff;border-radius:8px;padding:12px;border:1px solid #E5E7EB;max-height:200px;overflow-y:auto;}
+.mls-comp-table{width:100%;border-collapse:collapse;font-size:.72rem;}
+.mls-comp-table th{padding:9px 10px;text-align:left;font-size:.62rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.04em;background:#F9FAFB;border-bottom:2px solid #E5E7EB;white-space:nowrap;}
+.mls-comp-table td{padding:9px 10px;border-bottom:1px solid #F3F4F6;vertical-align:middle;}
+.mls-comp-table tr:last-child td{border-bottom:none;}
+.mls-comp-table tr.top3{background:#FFFBEB;}
+.mls-comp-rank{font-size:.68rem;font-weight:700;color:#6B7280;width:28px;}
+.mls-comp-img{width:38px;height:38px;border-radius:7px;object-fit:cover;background:#F3F4F6;flex-shrink:0;}
+.mls-comp-name{font-size:.7rem;font-weight:600;color:#111827;line-height:1.3;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mls-comp-store{font-size:.6rem;color:#9CA3AF;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mls-comp-bar{width:50px;height:5px;background:#F3F4F6;border-radius:3px;overflow:hidden;margin-right:4px;}
+.mls-comp-bar-fill{height:100%;border-radius:3px;}
+/* credit gate modal */
+.cg-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:600;display:flex;align-items:center;justify-content:center;padding:20px;}
+.cg-modal{background:#fff;border-radius:16px;padding:28px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2);text-align:center;}
+.cg-icon{font-size:2.5rem;margin-bottom:12px;}
+.cg-title{font-size:1rem;font-weight:800;color:#111;margin-bottom:6px;}
+.cg-sub{font-size:.8rem;color:#6B7280;margin-bottom:20px;line-height:1.5;}
+.cg-cost{display:inline-flex;align-items:center;gap:6px;background:#FFF8F0;border:1.5px solid #FED7AA;border-radius:20px;padding:6px 14px;margin-bottom:20px;font-size:.82rem;font-weight:700;color:#c05000;}
+.cg-btns{display:flex;gap:10px;}
+.cg-btn{flex:1;padding:11px 0;border:none;border-radius:9px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;}
+.cg-btn.primary{background:linear-gradient(135deg,#f97316,#ef4444);color:#fff;}
+.cg-btn.secondary{background:#F3F4F6;color:#374151;}
+.cg-btn:hover{opacity:.88;}
+
 /* ── DASHBOARD LAYOUT ── */
 .dashboard-layout{display:flex;min-height:100vh;}
 .dash-main{flex:1;display:flex;flex-direction:column;margin-left:240px;min-height:100vh;overflow:hidden;}
@@ -3398,6 +3506,12 @@ html,body{overflow-x:hidden;max-width:100%;}
           <span>Alerts</span>
         </div>
 
+        <div class="dash-nav-item" id="dash-nav-credits" onclick="switchDashView('credits')" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:12px;">
+          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+          <span>Kredit</span>
+          <span id="dash-nav-credit-badge" style="margin-left:auto;background:#f97316;color:#fff;font-size:.6rem;font-weight:800;border-radius:999px;padding:1px 7px;display:none;"></span>
+        </div>
+
       </nav>
 
       <div class="dash-user-info">
@@ -5571,53 +5685,91 @@ html,body{overflow-x:hidden;max-width:100%;}
         </div>
 
         <div id="dash-view-ai" style="display:none;">
-          <div style="padding:24px 28px;max-width:1200px;">
-            <div style="font-size:1.3rem;font-weight:800;color:#1A1F3C;margin-bottom:4px;">Mulai Berjualan</div>
-            <div style="font-size:.8rem;color:#6B7280;margin-bottom:20px;">Riset produk, hitung profit, dan rencanakan strategi bersama AI.</div>
+          <div class="mls-wrap">
 
-            <!-- Product picker -->
-            <div class="dd-card" style="padding:16px;margin-bottom:16px;">
-              <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:10px;">Pilih Produk yang Ingin Dijual</div>
-              <div id="mls-no-tracked" style="display:none;padding:20px;text-align:center;color:#9CA3AF;font-size:.78rem;">
-                Belum ada produk tersimpan. Cari produk di halaman Discover, buka Deep Dive, lalu klik "Lacak Produk".
-              </div>
-              <select id="mls-product-pick" onchange="mlsSelectProduct(this.value)" style="width:100%;padding:8px 12px;border:1px solid #E5E7EB;border-radius:8px;font-size:.78rem;font-weight:600;background:#fff;color:#111827;">
-                <option value="">-- Pilih dari produk tersimpan --</option>
+            <!-- Picker row -->
+            <div class="mls-picker-row">
+              <div class="mls-picker-label">Mulai Berjualan</div>
+              <select id="mls-product-pick" class="mls-picker-select" onchange="mlsSelectProduct(this.value)">
+                <option value="">-- Pilih produk tersimpan --</option>
               </select>
+              <div id="mls-no-tracked" style="display:none;font-size:.78rem;color:#9CA3AF;">Belum ada produk tersimpan. Simpan dari Discover terlebih dahulu.</div>
             </div>
 
-            <!-- Tab bar -->
-            <div class="dd-tabs" id="mls-tabs" style="margin-bottom:18px;">
-              <div class="dd-tab active" onclick="mlsSwitchTab('kalc')" data-tab="kalc">Kalkulasi Pasar</div>
-            </div>
+            <!-- Hero + details (hidden until product selected) -->
+            <div id="mls-hero" style="display:none;">
 
-            <!-- ── TAB: KALC ── -->
-            <div id="mls-tab-kalc">
+              <!-- Image + info grid -->
+              <div class="mls-hero-grid">
 
-              <!-- Hero: selected product + top 5 seller photos -->
-              <div id="mls-hero" style="display:none;margin-bottom:16px;">
-                <div style="display:grid;grid-template-columns:200px 1fr;gap:14px;align-items:start;">
-                  <div class="dd-card" style="padding:14px;text-align:center;">
-                    <img id="mls-hero-img" src="" onerror="this.style.display='none'" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;background:#F3F4F6;margin-bottom:10px;display:block;">
-                    <div id="mls-hero-name" style="font-size:.72rem;font-weight:700;color:#111827;line-height:1.3;margin-bottom:6px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">—</div>
-                    <div id="mls-hero-kw" style="font-size:.6rem;color:#E8442A;font-weight:600;background:#FFF0ED;border-radius:20px;padding:2px 8px;display:inline-block;margin-bottom:8px;">—</div>
-                    <div style="display:flex;justify-content:space-around;font-size:.6rem;color:#6B7280;border-top:1px solid #F3F4F6;padding-top:8px;">
-                      <div style="text-align:center;"><div style="font-size:.72rem;font-weight:700;color:#E8442A;" id="mls-hero-price">—</div><div>harga</div></div>
-                      <div style="text-align:center;"><div style="font-size:.72rem;font-weight:700;color:#111827;" id="mls-hero-sold">—</div><div>terjual</div></div>
+                <!-- Left: main image + 5 thumbnails -->
+                <div class="mls-img-col">
+                  <div class="mls-main-img-wrap">
+                    <img id="mls-main-img" src="" onerror="this.style.opacity='.25'" alt="">
+                  </div>
+                  <div class="mls-thumbs" id="mls-thumb-row">
+                    <!-- filled by JS -->
+                  </div>
+                </div>
+
+                <!-- Right: score + title + stats + AI -->
+                <div class="mls-info-col">
+
+                  <!-- Score + title -->
+                  <div class="mls-score-title-row">
+                    <div class="mls-score-badge" id="mls-score-badge" style="border-color:#BFDBFE;background:#EFF6FF;">
+                      <div class="num" id="mls-score-num" style="color:#1D4ED8;">—</div>
+                      <div class="denom">/100</div>
+                    </div>
+                    <div class="mls-title-block">
+                      <div class="mls-name" id="mls-hero-name">—</div>
+                      <div class="mls-breadcrumb" id="mls-hero-cats">—</div>
+                      <div class="mls-stat-pills">
+                        <div class="mls-stat-pill">
+                          <div class="lbl">Terjual</div>
+                          <div class="val" id="mls-hero-sold">—</div>
+                        </div>
+                        <div class="mls-stat-pill">
+                          <div class="lbl">Harga</div>
+                          <div class="val" style="color:#E8442A;" id="mls-hero-price">—</div>
+                        </div>
+                        <div class="mls-stat-pill">
+                          <div class="lbl">Keyword</div>
+                          <div class="val" id="mls-hero-kw">—</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <div style="font-size:.72rem;font-weight:700;color:#111827;margin-bottom:10px;">Top 5 Penjual di Keyword Ini</div>
-                    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;" id="mls-top5-grid"></div>
+
+                  <!-- AI ask box -->
+                  <div class="mls-ai-box">
+                    <div class="mls-ai-box-title">Tanya AI tentang produk ini</div>
+                    <div class="mls-ai-chips">
+                      <button class="mls-ai-chip" onclick="mlsAiAsk('Bagaimana peluang produk ini di Shopee?')">Peluang pasar</button>
+                      <button class="mls-ai-chip" onclick="mlsAiAsk('Strategi iklan terbaik untuk produk ini?')">Strategi iklan</button>
+                      <button class="mls-ai-chip" onclick="mlsAiAsk('Cara bersaing dengan penjual teratas?')">Cara bersaing</button>
+                      <button class="mls-ai-chip" onclick="mlsAiAsk('Berapa harga optimal untuk produk ini?')">Harga optimal</button>
+                    </div>
+                    <div class="mls-ai-input-row">
+                      <input id="mls-ai-input" class="mls-ai-input" placeholder="Tanya apapun tentang produk ini..." onkeydown="if(event.key==='Enter')mlsAiAsk()">
+                      <button class="mls-ai-send" onclick="mlsAiAsk()">Kirim</button>
+                    </div>
+                    <div id="mls-ai-response" class="mls-ai-response"></div>
                   </div>
                 </div>
               </div>
 
-              <!-- Informasi Pasar -->
-              <div id="mls-pasar-cards" style="display:none;margin-bottom:16px;">
-                <div class="dd-card" style="padding:14px;">
-                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-                    <div style="font-size:.78rem;font-weight:700;color:#111827;">Informasi Pasar</div>
+              <!-- Tabs: Informasi Pasar (default) | Kalkulator -->
+              <div class="dd-tabs" id="mls-tabs" style="margin-bottom:18px;">
+                <div class="dd-tab active" onclick="mlsSwitchTab('pasar')" data-tab="pasar">Informasi Pasar</div>
+                <div class="dd-tab" onclick="mlsSwitchTab('kalc')" data-tab="kalc">Kalkulator</div>
+              </div>
+
+              <!-- TAB: Informasi Pasar -->
+              <div id="mls-tab-pasar">
+                <div class="dd-card" style="padding:16px;margin-bottom:16px;">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                    <div style="font-size:.82rem;font-weight:700;color:#111827;">Informasi Pasar</div>
                     <span id="mls-kw-badge" style="font-size:.63rem;font-weight:600;background:#FFF0ED;color:#E8442A;border-radius:20px;padding:2px 10px;">—</span>
                   </div>
                   <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
@@ -5630,282 +5782,116 @@ html,body{overflow-x:hidden;max-width:100%;}
                 </div>
               </div>
 
-            <!-- Kalkulator Profit -->
-            <div style="margin-bottom:16px;">
-              <div style="font-size:.85rem;font-weight:700;color:#111827;margin-bottom:10px;">Kalkulator Profit</div>
-              <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start;">
-
-                <!-- LEFT COLUMN -->
-                <div style="display:flex;flex-direction:column;gap:14px;">
-                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
-
-                    <!-- 1. Harga & Biaya Produk -->
-                    <div class="dd-card" style="padding:16px;">
-                      <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">1. Harga &amp; Biaya Produk</div>
-                      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
-                        <div>
-                          <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Harga Jual</div>
-                          <div style="position:relative;">
-                            <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span>
-                            <input id="kal-price" type="number" value="150000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;">
-                          </div>
+              <!-- TAB: Kalkulator (hidden by default) -->
+              <div id="mls-tab-kalc" style="display:none;">
+                <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start;">
+                  <div style="display:flex;flex-direction:column;gap:14px;">
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
+                      <div class="dd-card" style="padding:16px;">
+                        <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">1. Harga &amp; Biaya Produk</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Harga Jual</div><div style="position:relative;"><span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span><input id="kal-price" type="number" value="150000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;"></div></div>
+                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Harga Modal (COGS)</div><div style="position:relative;"><span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span><input id="kal-cogs" type="number" value="65000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;"></div></div>
+                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Ongkir ke Customer</div><div style="position:relative;"><span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span><input id="kal-shipping" type="number" value="9000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;"></div></div>
                         </div>
-                        <div>
-                          <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Harga Modal (COGS)</div>
-                          <div style="position:relative;">
-                            <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span>
-                            <input id="kal-cogs" type="number" value="65000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;">
-                          </div>
-                        </div>
-                        <div>
-                          <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Ongkir ke Customer</div>
-                          <div style="position:relative;">
-                            <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span>
-                            <input id="kal-shipping" type="number" value="9000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;">
-                          </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Berat Produk</div><div style="display:flex;gap:4px;align-items:center;"><input id="kal-weight" type="number" value="250" min="0" oninput="kalcCalc()" style="flex:1;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;"><span style="font-size:.65rem;color:#9CA3AF;white-space:nowrap;">gram</span></div></div>
+                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Asal Pengiriman</div><select id="kal-origin" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.68rem;background:#fff;"><option>Kota Bandung</option><option>Jakarta Pusat</option><option>Surabaya</option><option>Medan</option><option>Yogyakarta</option></select></div>
                         </div>
                       </div>
-                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                        <div>
-                          <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Berat Produk</div>
-                          <div style="display:flex;gap:4px;align-items:center;">
-                            <input id="kal-weight" type="number" value="250" min="0" oninput="kalcCalc()" style="flex:1;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;">
-                            <span style="font-size:.65rem;color:#9CA3AF;white-space:nowrap;">gram</span>
-                          </div>
+                      <div class="dd-card" style="padding:16px;">
+                        <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">2. Biaya di Shopee</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Komisi Shopee</div><select id="kal-commission" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;"><option value="0.08">8%</option><option value="0.10" selected>10%</option><option value="0.12">12%</option><option value="0.15">15%</option></select></div>
+                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Layanan</div><select id="kal-service" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;"><option value="0.01" selected>1%</option><option value="0.02">2%</option><option value="0.03">3%</option></select></div>
                         </div>
-                        <div>
-                          <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Asal Pengiriman</div>
-                          <select id="kal-origin" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.68rem;background:#fff;">
-                            <option>Kota Bandung</option>
-                            <option>Jakarta Pusat</option>
-                            <option>Surabaya</option>
-                            <option>Medan</option>
-                            <option>Yogyakarta</option>
-                          </select>
-                        </div>
+                        <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Program Gratis Ongkir</div><select id="kal-freeship" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;"><option value="0">Tidak ikut</option><option value="5000">Rp 5.000</option><option value="8000" selected>Rp 8.000</option><option value="12000">Rp 12.000</option><option value="15000">Rp 15.000</option></select></div>
+                      </div>
+                      <div class="dd-card" style="padding:16px;">
+                        <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">3. Biaya Promosi (Iklan)</div>
+                        <div style="margin-bottom:10px;"><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Iklan Shopee</div><div style="position:relative;"><span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span><input id="kal-ads" type="number" value="7500" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;"></div></div>
+                        <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:10px;display:flex;align-items:center;gap:10px;"><div style="flex:1;"><div style="font-size:.65rem;font-weight:600;color:#EA580C;">Rekomendasi Iklan</div><div style="font-size:.62rem;font-weight:600;color:#374151;margin-top:2px;" id="kal-ads-rec">—</div></div><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
                       </div>
                     </div>
-
-                    <!-- 2. Biaya di Shopee -->
-                    <div class="dd-card" style="padding:16px;">
-                      <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">2. Biaya di Shopee</div>
-                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-                        <div>
-                          <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Komisi Shopee</div>
-                          <select id="kal-commission" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;">
-                            <option value="0.08">8%</option>
-                            <option value="0.10" selected>10%</option>
-                            <option value="0.12">12%</option>
-                            <option value="0.15">15%</option>
-                          </select>
-                          <div style="font-size:.6rem;color:#9CA3AF;margin-top:3px;" id="kal-comm-note">10% + 2% (incl. PPN)</div>
-                        </div>
-                        <div>
-                          <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Layanan</div>
-                          <select id="kal-service" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;">
-                            <option value="0.01" selected>1%</option>
-                            <option value="0.02">2%</option>
-                            <option value="0.03">3%</option>
-                          </select>
-                          <div style="font-size:.6rem;color:#9CA3AF;margin-top:3px;">1% dari harga jual</div>
+                    <div style="display:grid;grid-template-columns:1fr 2fr;gap:14px;">
+                      <div class="dd-card" style="padding:16px;">
+                        <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">4. Biaya Lainnya</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Packing</div><div style="position:relative;"><span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span><input id="kal-packing" type="number" value="2000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;"></div></div>
+                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Operasional</div><div style="position:relative;"><span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span><input id="kal-opex" type="number" value="1000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;"></div></div>
+                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Return / Refund</div><select id="kal-return" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;"><option value="0.01">1%</option><option value="0.02" selected>2%</option><option value="0.03">3%</option><option value="0.05">5%</option></select></div>
                         </div>
                       </div>
-                      <div>
-                        <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Program Gratis Ongkir</div>
-                        <select id="kal-freeship" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;">
-                          <option value="0">Tidak ikut</option>
-                          <option value="5000">Rp 5.000</option>
-                          <option value="8000" selected>Rp 8.000</option>
-                          <option value="12000">Rp 12.000</option>
-                          <option value="15000">Rp 15.000</option>
-                        </select>
-                        <div style="font-size:.6rem;color:#9CA3AF;margin-top:3px;">Estimasi subsidi</div>
+                      <div class="dd-card" style="padding:16px;">
+                        <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:4px;">Break Even Point (BEP)</div>
+                        <div style="font-size:.65rem;color:#6B7280;margin-bottom:12px;">Minimal penjualan agar tidak rugi</div>
+                        <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:10px;"><div style="font-size:1.1rem;font-weight:700;color:#E8442A;" id="kal-bep-val">—</div></div>
+                        <div style="position:relative;height:6px;background:#F3F4F6;border-radius:3px;margin-bottom:8px;"><div id="kal-bep-fill" style="position:absolute;left:0;top:0;height:6px;background:linear-gradient(90deg,#E8442A,#F97316);border-radius:3px;width:50%;transition:width .3s;"></div><div id="kal-bep-dot" style="position:absolute;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;background:#E8442A;border:2px solid #fff;border-radius:50%;left:50%;box-shadow:0 1px 4px rgba(0,0,0,.2);transition:left .3s;"></div></div>
+                        <div style="display:flex;justify-content:space-between;font-size:.6rem;color:#9CA3AF;" id="kal-bep-scale"><span>—</span><span>—</span><span>—</span><span>—</span><span>—</span></div>
                       </div>
                     </div>
-
-                    <!-- 3. Biaya Promosi -->
                     <div class="dd-card" style="padding:16px;">
-                      <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">3. Biaya Promosi (Iklan)</div>
-                      <div style="margin-bottom:10px;">
-                        <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Iklan Shopee (Opsional)</div>
-                        <div style="position:relative;">
-                          <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span>
-                          <input id="kal-ads" type="number" value="7500" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;">
-                        </div>
+                      <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:4px;">Skenario Perhitungan</div>
+                      <div style="font-size:.65rem;color:#6B7280;margin-bottom:14px;">Perubahan harga vs profit</div>
+                      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;" id="kal-scenarios"></div>
+                    </div>
+                    <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span style="font-size:.72rem;color:#374151;" id="kal-tip">Gunakan harga psikologis seperti <strong id="kal-tip-price">—</strong> untuk meningkatkan konversi.</span></div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:14px;position:sticky;top:0;">
+                    <div class="dd-card" style="padding:16px;">
+                      <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:10px;">Ringkasan Profit (Realistis)</div>
+                      <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Estimasi Profit per Unit</div>
+                      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><div style="font-size:1.4rem;font-weight:700;color:#111827;" id="kal-profit-unit">—</div><div style="background:#DCFCE7;color:#16A34A;font-size:.62rem;font-weight:700;padding:3px 7px;border-radius:20px;" id="kal-margin-badge">—</div></div>
+                      <div style="display:flex;flex-direction:column;gap:5px;font-size:.68rem;border-top:1px solid #F3F4F6;padding-top:10px;margin-bottom:10px;">
+                        <div style="display:flex;justify-content:space-between;"><span style="color:#6B7280;">Harga Jual</span><span style="font-weight:600;" id="kal-sum-price">—</span></div>
+                        <div style="display:flex;justify-content:space-between;"><span style="color:#6B7280;">Total Biaya</span><span style="font-weight:600;" id="kal-sum-cost">—</span></div>
+                        <div style="display:flex;justify-content:space-between;"><span style="color:#6B7280;">Laba Bersih per Unit</span><span style="font-weight:600;color:#16A34A;" id="kal-sum-profit">—</span></div>
+                        <div style="display:flex;justify-content:space-between;"><span style="color:#6B7280;">ROI</span><span style="font-weight:600;" id="kal-sum-roi">—</span></div>
                       </div>
-                      <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:10px;display:flex;align-items:center;gap:10px;">
-                        <div style="flex:1;">
-                          <div style="font-size:.65rem;font-weight:600;color:#EA580C;">Rekomendasi Iklan</div>
-                          <div style="font-size:.6rem;color:#9CA3AF;margin-top:2px;">7-10% dari harga jual</div>
-                          <div style="font-size:.62rem;font-weight:600;color:#374151;margin-top:2px;" id="kal-ads-rec">—</div>
+                      <div style="font-size:.72rem;font-weight:700;color:#111827;margin-bottom:8px;">Rincian Biaya per Unit</div>
+                      <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;"><canvas id="kal-donut" width="80" height="80" style="flex-shrink:0;"></canvas><div style="font-size:.6rem;color:#374151;display:flex;flex-direction:column;gap:4px;" id="kal-legend"></div></div>
+                      <div style="border-top:1px solid #F3F4F6;padding-top:10px;">
+                        <div style="font-size:.72rem;font-weight:700;color:#111827;margin-bottom:2px;">Keuntungan Bulanan (Estimasi)</div>
+                        <div style="font-size:.62rem;color:#6B7280;margin-bottom:6px;">Jika terjual <input id="kal-monthly-units" type="number" value="30" min="1" max="9999" oninput="kalcCalc()" style="width:44px;padding:2px 4px;border:1px solid #E5E7EB;border-radius:4px;font-size:.62rem;text-align:center;"> unit / bulan</div>
+                        <div style="font-size:1.1rem;font-weight:700;color:#16A34A;margin-bottom:8px;" id="kal-monthly-profit">—</div>
+                        <div style="display:flex;justify-content:space-between;font-size:.65rem;">
+                          <div><div style="color:#6B7280;margin-bottom:2px;">Potensi Omset</div><div style="font-weight:600;" id="kal-monthly-omset">—</div></div>
+                          <div><div style="color:#6B7280;margin-bottom:2px;">Total Laba Kotor</div><div style="font-weight:600;" id="kal-monthly-gross">—</div></div>
                         </div>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
 
-                  <!-- Section 4 + BEP row -->
-                  <div style="display:grid;grid-template-columns:1fr 2fr;gap:14px;">
-                    <div class="dd-card" style="padding:16px;">
-                      <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">4. Biaya Lainnya</div>
-                      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-                        <div>
-                          <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Packing</div>
-                          <div style="position:relative;">
-                            <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span>
-                            <input id="kal-packing" type="number" value="2000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;">
-                          </div>
-                        </div>
-                        <div>
-                          <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Operasional Lain</div>
-                          <div style="position:relative;">
-                            <span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span>
-                            <input id="kal-opex" type="number" value="1000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;">
-                          </div>
-                        </div>
-                        <div>
-                          <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Return / Refund (Estimasi)</div>
-                          <select id="kal-return" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;">
-                            <option value="0.01">1%</option>
-                            <option value="0.02" selected>2%</option>
-                            <option value="0.03">3%</option>
-                            <option value="0.05">5%</option>
-                          </select>
-                          <div style="font-size:.6rem;color:#9CA3AF;margin-top:3px;">2% dari harga jual</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- BEP -->
-                    <div class="dd-card" style="padding:16px;">
-                      <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:4px;">Break Even Point (BEP)</div>
-                      <div style="font-size:.65rem;color:#6B7280;margin-bottom:12px;">Minimal penjualan agar tidak rugi (dengan biaya di atas)</div>
-                      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                        <div></div>
-                        <div style="font-size:1.1rem;font-weight:700;color:#E8442A;" id="kal-bep-val">—</div>
-                      </div>
-                      <div style="position:relative;height:6px;background:#F3F4F6;border-radius:3px;margin-bottom:8px;">
-                        <div id="kal-bep-fill" style="position:absolute;left:0;top:0;height:6px;background:linear-gradient(90deg,#E8442A,#F97316);border-radius:3px;width:50%;transition:width .3s;"></div>
-                        <div id="kal-bep-dot" style="position:absolute;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;background:#E8442A;border:2px solid #fff;border-radius:50%;left:50%;box-shadow:0 1px 4px rgba(0,0,0,.2);transition:left .3s;"></div>
-                      </div>
-                      <div style="display:flex;justify-content:space-between;font-size:.6rem;color:#9CA3AF;" id="kal-bep-scale">
-                        <span>—</span><span>—</span><span>—</span><span>—</span><span>—</span>
-                      </div>
+              <!-- Top 15 Competitors (always visible below tabs) -->
+              <div id="mls-comp-section" style="display:none;margin-top:24px;">
+                <div class="dd-card" style="padding:18px;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                    <div>
+                      <div style="font-size:.85rem;font-weight:800;color:#1A1F3C;">Top 15 Kompetitor</div>
+                      <div style="font-size:.7rem;color:#6B7280;margin-top:2px;" id="mls-comp-sub">Produk dengan penjualan tertinggi di keyword ini</div>
                     </div>
                   </div>
-
-                  <!-- Skenario -->
-                  <div class="dd-card" style="padding:16px;">
-                    <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:4px;">Skenario Perhitungan</div>
-                    <div style="font-size:.65rem;color:#6B7280;margin-bottom:14px;">Lihat bagaimana perubahan harga mempengaruhi profitmu</div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;" id="kal-scenarios"></div>
-                  </div>
-
-                  <!-- Tips bar -->
-                  <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    <span style="font-size:.72rem;color:#374151;" id="kal-tip">Gunakan harga psikologis seperti <strong id="kal-tip-price">—</strong> untuk meningkatkan konversi penjualan.</span>
-                  </div>
-                </div>
-
-                <!-- RIGHT SIDEBAR -->
-                <div style="display:flex;flex-direction:column;gap:14px;position:sticky;top:0;">
-                  <div class="dd-card" style="padding:16px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                      <div style="font-size:.78rem;font-weight:700;color:#111827;">Ringkasan Profit (Realistis)</div>
-                    </div>
-                    <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Estimasi Profit per Unit</div>
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-                      <div style="font-size:1.4rem;font-weight:700;color:#111827;" id="kal-profit-unit">—</div>
-                      <div style="background:#DCFCE7;color:#16A34A;font-size:.62rem;font-weight:700;padding:3px 7px;border-radius:20px;" id="kal-margin-badge">—</div>
-                    </div>
-                    <div style="display:flex;flex-direction:column;gap:5px;font-size:.68rem;border-top:1px solid #F3F4F6;padding-top:10px;margin-bottom:10px;">
-                      <div style="display:flex;justify-content:space-between;"><span style="color:#6B7280;">Harga Jual</span><span style="font-weight:600;" id="kal-sum-price">—</span></div>
-                      <div style="display:flex;justify-content:space-between;"><span style="color:#6B7280;">Total Biaya</span><span style="font-weight:600;" id="kal-sum-cost">—</span></div>
-                      <div style="display:flex;justify-content:space-between;"><span style="color:#6B7280;">Laba Bersih per Unit</span><span style="font-weight:600;color:#16A34A;" id="kal-sum-profit">—</span></div>
-                      <div style="display:flex;justify-content:space-between;"><span style="color:#6B7280;">ROI (Return on Investment)</span><span style="font-weight:600;" id="kal-sum-roi">—</span></div>
-                    </div>
-                    <div style="font-size:.72rem;font-weight:700;color:#111827;margin-bottom:8px;">Rincian Biaya per Unit</div>
-                    <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">
-                      <canvas id="kal-donut" width="80" height="80" style="flex-shrink:0;"></canvas>
-                      <div style="font-size:.6rem;color:#374151;display:flex;flex-direction:column;gap:4px;" id="kal-legend"></div>
-                    </div>
-                    <div style="border-top:1px solid #F3F4F6;padding-top:10px;margin-bottom:4px;">
-                      <div style="font-size:.72rem;font-weight:700;color:#111827;margin-bottom:2px;">Keuntungan Bulanan (Estimasi)</div>
-                      <div style="font-size:.62rem;color:#6B7280;margin-bottom:6px;">Jika terjual <input id="kal-monthly-units" type="number" value="30" min="1" max="9999" oninput="kalcCalc()" style="width:44px;padding:2px 4px;border:1px solid #E5E7EB;border-radius:4px;font-size:.62rem;text-align:center;"> unit / bulan</div>
-                      <div style="font-size:1.1rem;font-weight:700;color:#16A34A;margin-bottom:8px;" id="kal-monthly-profit">—</div>
-                      <div style="display:flex;justify-content:space-between;font-size:.65rem;">
-                        <div><div style="color:#6B7280;margin-bottom:2px;">Potensi Omset</div><div style="font-weight:600;" id="kal-monthly-omset">—</div></div>
-                        <div><div style="color:#6B7280;margin-bottom:2px;">Total Laba Kotor</div><div style="font-weight:600;" id="kal-monthly-gross">—</div></div>
-                      </div>
-                    </div>
-                    <div style="border-top:1px solid #F3F4F6;padding-top:10px;margin-top:4px;">
-                      <div style="font-size:.72rem;font-weight:700;color:#111827;margin-bottom:6px;">Insight untuk Produk Ini</div>
-                      <div style="font-size:.63rem;color:#374151;display:flex;flex-direction:column;gap:5px;" id="kal-insights"></div>
-                    </div>
+                  <div style="overflow-x:auto;">
+                    <table class="mls-comp-table">
+                      <thead>
+                        <tr>
+                          <th style="width:32px;">#</th>
+                          <th>Produk &amp; Toko</th>
+                          <th style="text-align:right;">Harga</th>
+                          <th style="text-align:right;">Terjual</th>
+                          <th style="text-align:right;">Est. Omset/Bln</th>
+                          <th style="text-align:right;min-width:100px;">Market Share</th>
+                        </tr>
+                      </thead>
+                      <tbody id="mls-comp-tbody"></tbody>
+                    </table>
                   </div>
                 </div>
-
-              </div>
-            </div>
-
-            <!-- Penjual > 0.5% Market Share -->
-            <div id="mls-sig-sellers-wrap" style="display:none;margin-bottom:16px;">
-              <div class="dd-card" style="padding:18px;">
-                <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:4px;">Penjual Aktif &gt; 0.5% Market Share</div>
-                <div style="font-size:.65rem;color:#6B7280;margin-bottom:12px;" id="mls-sig-sellers-sub">Kompetitor yang menguasai porsi pasar signifikan di keyword ini</div>
-                <div style="overflow-x:auto;">
-                  <table style="width:100%;border-collapse:collapse;font-size:.72rem;">
-                    <thead>
-                      <tr style="border-bottom:2px solid #F3F4F6;">
-                        <th style="text-align:left;padding:8px 8px;font-size:.63rem;font-weight:700;color:#6B7280;width:32px;">#</th>
-                        <th style="text-align:left;padding:8px 8px;font-size:.63rem;font-weight:700;color:#6B7280;">Produk &amp; Toko</th>
-                        <th style="text-align:right;padding:8px 8px;font-size:.63rem;font-weight:700;color:#6B7280;white-space:nowrap;">Harga</th>
-                        <th style="text-align:right;padding:8px 8px;font-size:.63rem;font-weight:700;color:#6B7280;white-space:nowrap;">Total Terjual</th>
-                        <th style="text-align:right;padding:8px 8px;font-size:.63rem;font-weight:700;color:#6B7280;white-space:nowrap;">Est. Omset/Bln</th>
-                        <th style="text-align:right;padding:8px 8px;font-size:.63rem;font-weight:700;color:#6B7280;white-space:nowrap;">Market Share</th>
-                      </tr>
-                    </thead>
-                    <tbody id="mls-sig-sellers-tbody"></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            <!-- AI Chat -->
-            <div class="dd-card" style="padding:20px;margin-bottom:16px;">
-              <div style="font-size:.85rem;font-weight:700;color:#111827;margin-bottom:4px;">Konsultasi dengan AI</div>
-              <div style="font-size:.65rem;color:#6B7280;margin-bottom:14px;">Tanyakan strategi produk, harga, sourcing, atau ide bisnis kepada AI Agent.</div>
-
-              <!-- API Key section -->
-              <div id="mls-apikey-wrap" style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:12px;margin-bottom:12px;">
-                <div style="display:flex;align-items:center;gap:8px;">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                  <span style="font-size:.68rem;font-weight:600;color:#374151;">Anthropic API Key</span>
-                  <span id="mls-apikey-status" style="font-size:.6rem;color:#9CA3AF;margin-left:auto;"></span>
-                </div>
-                <div id="mls-apikey-input-row" style="display:flex;gap:8px;margin-top:8px;">
-                  <input id="mls-apikey-input" type="password" placeholder="sk-ant-..." style="flex:1;padding:7px 10px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-family:monospace;">
-                  <button onclick="mlsSaveApiKey()" style="padding:7px 14px;background:#1A1F3C;color:#fff;border:none;border-radius:6px;font-size:.72rem;font-weight:600;cursor:pointer;">Simpan</button>
-                </div>
               </div>
 
-              <!-- Chat messages -->
-              <div id="mls-chat-messages" style="height:320px;overflow-y:auto;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px;margin-bottom:10px;">
-                <div class="mls-msg mls-msg-assistant" style="align-self:flex-start;max-width:85%;background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:10px 14px;font-size:.73rem;color:#374151;line-height:1.5;">
-                  Halo! Saya AI strategist Anda. Pilih produk di atas lalu tanya saya apa saja — strategi harga, ide sourcing, analisis kompetitor, atau cara meningkatkan penjualan.
-                </div>
-              </div>
-
-              <!-- Input row -->
-              <div style="display:flex;gap:8px;">
-                <input id="mls-chat-input" type="text" placeholder="Ketik pertanyaan Anda..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){mlsChatSend();event.preventDefault();}" style="flex:1;padding:9px 14px;border:1px solid #E5E7EB;border-radius:8px;font-size:.76rem;outline:none;">
-                <button onclick="mlsChatSend()" id="mls-chat-send" style="padding:9px 18px;background:#E8442A;color:#fff;border:none;border-radius:8px;font-size:.76rem;font-weight:700;cursor:pointer;">Kirim</button>
-              </div>
-            </div>
-
-            </div><!-- /mls-tab-kalc -->
-
+            </div><!-- /mls-hero -->
           </div>
         </div>
 
@@ -5965,7 +5951,154 @@ html,body{overflow-x:hidden;max-width:100%;}
           </div>
         </div>
 
+        <!-- CREDITS PAGE -->
+        <div id="dash-view-credits" style="display:none;">
+          <div class="cr-wrap">
+
+            <!-- Header with balance -->
+            <div class="cr-header">
+              <div class="cr-balance-block">
+                <div class="cr-balance-num" id="cr-balance-num">—</div>
+                <div class="cr-balance-lbl">Kredit</div>
+              </div>
+              <div class="cr-header-info">
+                <div class="cr-header-title">Kredit LarisID</div>
+                <div class="cr-header-sub">Gunakan kredit untuk membuka fitur premium: Deep Dive, simpan produk, dan AI Strategist. Dapatkan kredit gratis setiap bulan atau dengan menggunakan Extension.</div>
+                <div class="cr-earn-bar">
+                  <div class="cr-earn-bar-label">
+                    <span>Progress hari ini (10 pencarian = 1 kredit)</span>
+                    <span id="cr-prog-text">—</span>
+                  </div>
+                  <div class="cr-earn-bar-track"><div class="cr-earn-bar-fill" id="cr-prog-fill" style="width:0%"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Free credits -->
+            <div class="cr-section">
+              <div class="cr-section-title">Kredit Gratis Bulanan</div>
+              <div class="cr-section-sub">Setiap awal bulan kamu mendapatkan 5 kredit gratis. Kredit berlaku selama 30 hari.</div>
+              <div class="cr-free-row">
+                <div class="cr-free-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+                <div class="cr-free-info">
+                  <div class="cr-free-count" id="cr-free-count">5 kredit gratis</div>
+                  <div class="cr-free-sub">Diberikan otomatis setiap tanggal 1 bulan berjalan</div>
+                </div>
+                <div class="cr-free-exp" id="cr-free-exp">Berlaku 30 hari</div>
+              </div>
+            </div>
+
+            <!-- How to earn -->
+            <div class="cr-section">
+              <div class="cr-section-title">Dapat Kredit Gratis via Extension</div>
+              <div class="cr-section-sub">Install Extension LarisID di Chrome, lalu lakukan pencarian di Shopee. Setiap 10 pencarian yang selesai (min. 2 halaman per keyword) = 1 kredit. Maks 10 kredit/hari.</div>
+              <div class="cr-earn-step">
+                <div class="cr-earn-step-num">1</div>
+                <div class="cr-earn-step-text">
+                  <div class="cr-earn-step-title">Install Extension LarisID</div>
+                  <div class="cr-earn-step-sub">Tambahkan ke Chrome, lalu hubungkan akun kamu dari dashboard ini (menu avatar → Hubungkan Extension).</div>
+                </div>
+              </div>
+              <div class="cr-earn-step">
+                <div class="cr-earn-step-num">2</div>
+                <div class="cr-earn-step-text">
+                  <div class="cr-earn-step-title">Cari produk di Shopee — buka minimal 2 halaman</div>
+                  <div class="cr-earn-step-sub">Extension akan otomatis mencatat setiap keyword yang kamu telusuri hingga halaman 2.</div>
+                </div>
+              </div>
+              <div class="cr-earn-step">
+                <div class="cr-earn-step-num">3</div>
+                <div class="cr-earn-step-text">
+                  <div class="cr-earn-step-title">Dapatkan 1 kredit setiap 10 pencarian</div>
+                  <div class="cr-earn-step-sub">Kredit langsung masuk ke akunmu dan bisa digunakan segera. Maks 10 kredit/hari.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- What credits buy -->
+            <div class="cr-section">
+              <div class="cr-section-title">Gunakan Kredit Untuk</div>
+              <div class="cr-section-sub">Kredit membuka fitur analisis mendalam untuk membantu kamu menemukan dan menjual produk laris.</div>
+              <div class="cr-usage-item">
+                <div class="cr-usage-cost">1</div>
+                <div class="cr-usage-info">
+                  <div class="cr-usage-title">Buka Deep Dive produk</div>
+                  <div class="cr-usage-sub">Akses analisis lengkap: tren historis, kompetitor, keyword, review AI, dan lebih banyak data untuk satu produk.</div>
+                </div>
+              </div>
+              <div class="cr-usage-item">
+                <div class="cr-usage-cost">1</div>
+                <div class="cr-usage-info">
+                  <div class="cr-usage-title">Simpan &amp; lacak produk di Mulai Berjualan</div>
+                  <div class="cr-usage-sub">Tambahkan produk ke tracker untuk analisis pasar, kalkulator profit, dan pantau kompetitor.</div>
+                </div>
+              </div>
+              <div class="cr-usage-item">
+                <div class="cr-usage-cost">1</div>
+                <div class="cr-usage-info">
+                  <div class="cr-usage-title">Pertahankan tracking tiap bulan</div>
+                  <div class="cr-usage-sub">Produk yang dilacak membutuhkan 1 kredit per bulan untuk tetap mendapatkan update data dan alerts.</div>
+                </div>
+              </div>
+              <div class="cr-usage-item">
+                <div class="cr-usage-cost">1</div>
+                <div class="cr-usage-info">
+                  <div class="cr-usage-title">10 pertanyaan AI Strategist</div>
+                  <div class="cr-usage-sub">Tanya AI tentang strategi jualan, analisis produk, sourcing, dan peluang pasar di halaman Mulai Berjualan.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Buy credits -->
+            <div class="cr-section">
+              <div class="cr-section-title">Beli Kredit Tambahan</div>
+              <div class="cr-section-sub">Butuh lebih banyak kredit? Beli paket kredit sekali bayar — tidak ada langganan bulanan.</div>
+              <div class="cr-buy-grid">
+                <div class="cr-buy-card" onclick="crBuy(5)">
+                  <div class="cr-buy-amount">5</div>
+                  <div class="cr-buy-unit">kredit</div>
+                  <div class="cr-buy-price">Rp 25.000</div>
+                  <div class="cr-buy-sub">Rp 5.000 / kredit</div>
+                  <button class="cr-buy-btn">Beli Sekarang</button>
+                </div>
+                <div class="cr-buy-card popular" onclick="crBuy(20)">
+                  <div class="cr-buy-badge">Paling Populer</div>
+                  <div class="cr-buy-amount">20</div>
+                  <div class="cr-buy-unit">kredit</div>
+                  <div class="cr-buy-price">Rp 79.000</div>
+                  <div class="cr-buy-sub">Rp 3.950 / kredit — hemat 21%</div>
+                  <button class="cr-buy-btn">Beli Sekarang</button>
+                </div>
+                <div class="cr-buy-card" onclick="crBuy(50)">
+                  <div class="cr-buy-amount">50</div>
+                  <div class="cr-buy-unit">kredit</div>
+                  <div class="cr-buy-price">Rp 149.000</div>
+                  <div class="cr-buy-sub">Rp 2.980 / kredit — hemat 40%</div>
+                  <button class="cr-buy-btn">Beli Sekarang</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
       </main>
+
+      <!-- Credit gate modal -->
+      <div class="cg-overlay" id="cg-overlay" style="display:none;" onclick="if(event.target===this)cgClose()">
+        <div class="cg-modal">
+          <div class="cg-icon">⭐</div>
+          <div class="cg-title" id="cg-title">Fitur Premium</div>
+          <div class="cg-sub" id="cg-sub">Gunakan 1 kredit untuk mengakses fitur ini.</div>
+          <div class="cg-cost"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c05000" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>1 kredit akan digunakan</div>
+          <div class="cg-btns">
+            <button class="cg-btn secondary" onclick="cgClose()">Batal</button>
+            <button class="cg-btn primary" id="cg-confirm-btn" onclick="cgConfirm()">Gunakan Kredit</button>
+          </div>
+          <div style="margin-top:12px;font-size:.72rem;color:#9CA3AF;">Saldo: <span id="cg-balance-display" style="font-weight:700;color:#f97316;">—</span> kredit • <a onclick="switchDashView('credits');cgClose()" style="color:#E8442A;cursor:pointer;text-decoration:underline;">Beli lebih</a></div>
+        </div>
+      </div>
+
     </div><!-- end dash-main -->
   </div><!-- end dashboard-layout -->
 </div><!-- end page-profile -->
@@ -7022,6 +7155,7 @@ function cardHTML(p, idx) {
 async function openDetail(id) {
   const p = allProducts.find(x => x.id === id);
   if (!p) return;
+  trackView(p.category); // personalized discover
   currentProduct = p;
   prevPage = document.querySelector('.page.active')?.id.replace('page-', '') || 'discover';
   renderDetail(p);
@@ -7978,6 +8112,9 @@ async function loadCreditData() {
 
 function renderCreditUI() {
   const bal = _creditBalance ?? 0;
+  // Sidebar badge
+  const badge = document.getElementById('dash-nav-credit-badge');
+  if (badge) { badge.textContent = bal; badge.style.display = bal > 0 ? '' : 'none'; }
   // Topbar pill
   const pillVal = document.getElementById('dash-credit-pill-val');
   if (pillVal) pillVal.textContent = bal;
@@ -8008,6 +8145,176 @@ function renderCreditUI() {
 function scrollToCreditCard() {
   const el = document.getElementById('dash-credit-card');
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── CREDITS PAGE ─────────────────────────────────────────
+async function creditsInit() {
+  // Update sidebar badge
+  const badge = document.getElementById('dash-nav-credit-badge');
+  if (badge && _creditBalance !== null) {
+    badge.textContent = _creditBalance;
+    badge.style.display = _creditBalance > 0 ? '' : 'none';
+  }
+  // Update header balance
+  const numEl = document.getElementById('cr-balance-num');
+  if (numEl) numEl.textContent = _creditBalance ?? '—';
+
+  // Progress bar from search_completions
+  if (_supabase && currentUser) {
+    const today = new Date().toISOString().slice(0, 10);
+    const { count } = await _supabase
+      .from('search_completions')
+      .select('keyword', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id)
+      .eq('completed_date', today);
+    const done = count ?? 0;
+    const pct  = Math.min(100, Math.round((done / 10) * 100));
+    const fill = document.getElementById('cr-prog-fill');
+    const txt  = document.getElementById('cr-prog-text');
+    if (fill) fill.style.width = pct + '%';
+    if (txt)  txt.textContent  = `${done}/10 pencarian`;
+  }
+
+  // Free credits expiry: compute days left in current month
+  const now   = new Date();
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysLeft = lastDay - now.getDate() + 1;
+  const expEl = document.getElementById('cr-free-exp');
+  if (expEl) expEl.textContent = `Berlaku ${daysLeft} hari lagi`;
+
+  const freeEl = document.getElementById('cr-free-count');
+  if (freeEl) freeEl.textContent = '5 kredit gratis / bulan';
+}
+
+function crBuy(amount) {
+  alert(`Pembelian ${amount} kredit akan segera tersedia. Hubungi kami via WhatsApp untuk informasi lebih lanjut.`);
+}
+
+// ── CREDIT GATE ──────────────────────────────────────────
+let _cgCallback = null;
+
+function cgShow(title, sub, callback) {
+  document.getElementById('cg-title').textContent = title;
+  document.getElementById('cg-sub').textContent   = sub;
+  const balEl = document.getElementById('cg-balance-display');
+  if (balEl) balEl.textContent = (_creditBalance ?? 0) + ' kredit';
+  _cgCallback = callback;
+  document.getElementById('cg-overlay').style.display = 'flex';
+}
+
+function cgClose() {
+  document.getElementById('cg-overlay').style.display = 'none';
+  _cgCallback = null;
+}
+
+async function cgConfirm() {
+  if ((_creditBalance ?? 0) < 1) {
+    switchDashView('credits'); cgClose(); return;
+  }
+  const btn = document.getElementById('cg-confirm-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
+  try {
+    if (_supabase && currentUser) {
+      const { data, error } = await _supabase.rpc('spend_credit', { p_keyword: 'deepdive', p_amount: 1 });
+      if (!error && data != null) {
+        _creditBalance = data;
+        renderCreditUI();
+      }
+    }
+  } catch (_) {}
+  if (btn) { btn.disabled = false; btn.textContent = 'Gunakan Kredit'; }
+  cgClose();
+  if (_cgCallback) { _cgCallback(); _cgCallback = null; }
+}
+
+function gateDeepDive() {
+  if (!currentUser) { openAuthModal('login'); return; }
+  if ((_creditBalance ?? 0) >= 1) {
+    switchDashView('deepdive');
+  } else {
+    cgShow('Buka Deep Dive', 'Akses analisis lengkap produk ini: tren historis, kompetitor, keyword ranking, dan review AI.', () => switchDashView('deepdive'));
+  }
+}
+
+// ── MULAI BERJUALAN — updated JS ─────────────────────────
+function mlsSwitchTab(tab) {
+  document.querySelectorAll('#mls-tabs .dd-tab').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
+  ['pasar','kalc'].forEach(t => {
+    const el = document.getElementById(`mls-tab-${t}`);
+    if (el) el.style.display = t === tab ? '' : 'none';
+  });
+}
+
+async function mlsAiAsk(prompt) {
+  const ctx = window._mlsContext || {};
+  const p   = ctx.product || {};
+  const q   = prompt || document.getElementById('mls-ai-input')?.value?.trim();
+  if (!q) return;
+  const respEl = document.getElementById('mls-ai-response');
+  if (!respEl) return;
+  respEl.style.display = 'block';
+  respEl.textContent   = 'AI sedang menganalisis...';
+  const systemCtx = `Kamu adalah analis pasar Shopee Indonesia. Produk: "${p.product_name||p.name||'—'}", keyword: "${p.keyword||'—'}", harga: Rp ${p.price ? Math.round(p.price).toLocaleString('id-ID') : '—'}, total terjual: ${p.total_sold||'—'}. Median harga pasar: Rp ${ctx.medianPrice ? Math.round(ctx.medianPrice).toLocaleString('id-ID') : '—'}. Total omset pasar: Rp ${ctx.totalOmset ? Math.round(ctx.totalOmset).toLocaleString('id-ID') : '—'}/bulan. Jawab singkat dan praktis dalam Bahasa Indonesia.`;
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': CLAUDE_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 400, system: systemCtx, messages: [{ role: 'user', content: q }] })
+    });
+    const d = await res.json();
+    respEl.textContent = d.content?.[0]?.text || 'Tidak ada respons.';
+  } catch (e) {
+    respEl.textContent = 'Gagal menghubungi AI. Coba lagi.';
+  }
+  if (document.getElementById('mls-ai-input')) document.getElementById('mls-ai-input').value = '';
+}
+
+// ── PERSONALIZED DISCOVER ─────────────────────────────────
+const _VIEW_KEY = 'laris_viewed_cats';
+
+function trackView(category) {
+  if (!category) return;
+  try {
+    const raw  = JSON.parse(localStorage.getItem(_VIEW_KEY) || '{}');
+    raw[category] = (raw[category] || 0) + 1;
+    localStorage.setItem(_VIEW_KEY, JSON.stringify(raw));
+  } catch (_) {}
+}
+
+function getTopCats(n = 3) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(_VIEW_KEY) || '{}');
+    return Object.entries(raw).sort((a,b) => b[1]-a[1]).slice(0,n).map(([c]) => c);
+  } catch (_) { return []; }
+}
+
+function renderForYou() {
+  const topCats = getTopCats(3);
+  if (!topCats.length || !allProducts.length) return;
+  const pool = allProducts.filter(p => topCats.includes(p.category)).slice(0,8);
+  if (!pool.length) return;
+  const existingForYou = document.getElementById('discover-for-you');
+  if (existingForYou) existingForYou.remove();
+  const wrap = document.getElementById('dsc-grid-wrap') || document.querySelector('.dsc-layout');
+  if (!wrap) return;
+  const section = document.createElement('div');
+  section.id = 'discover-for-you';
+  section.style.cssText = 'margin-bottom:24px;';
+  section.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <div style="font-size:.85rem;font-weight:800;color:#1A1F3C;">Untuk Kamu</div>
+      <div style="font-size:.72rem;color:#9CA3AF;">Berdasarkan produk yang kamu lihat</div>
+      <button onclick="clearViewHistory()" style="margin-left:auto;font-size:.65rem;color:#9CA3AF;background:none;border:none;cursor:pointer;text-decoration:underline;">Reset</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;" id="for-you-grid">
+      ${pool.map(p => cardHTML(p)).join('')}
+    </div>`;
+  wrap.insertBefore(section, wrap.firstChild);
+}
+
+function clearViewHistory() {
+  localStorage.removeItem(_VIEW_KEY);
+  document.getElementById('discover-for-you')?.remove();
 }
 
 // ── TOPBAR DATE ────────────────────────────────────────────
@@ -8054,20 +8361,20 @@ function switchDashTab(tab) {
 //  JUNGLE SCOUT-STYLE DASHBOARD — view switching, Product DB
 // ════════════════════════════════════════════════════════════
 
-const PDB_VIEWS = ['home','product-database','product-tracker','opportunity-finder','category-trends','suppliers','keywords','estimator','marketing','saved','education','dashboard','discover','tracker','deepdive','ai','alerts'];
+const PDB_VIEWS = ['home','product-database','product-tracker','opportunity-finder','category-trends','suppliers','keywords','estimator','marketing','saved','education','dashboard','discover','tracker','deepdive','ai','alerts','credits'];
 const PDB_SUB_MAP = {'product-database':'research','product-tracker':'research','opportunity-finder':'research','category-trends':'research','tracker':'products','deepdive':'products'};
 
 // View titles for topbar
 const VIEW_TITLES = {
   'dashboard':'Dashboard','discover':'Discover','tracker':'Tracker',
-  'deepdive':'Deep Dive','ai':'AI Strategist','alerts':'Alerts',
+  'deepdive':'Deep Dive','ai':'Mulai Berjualan','alerts':'Alerts','credits':'Kredit Saya',
   'home':'Home Dashboard','product-database':'Product Database',
   'product-tracker':'Product Tracker','opportunity-finder':'Opportunity Finder',
   'saved':'Produk Tersimpan','education':'Edukasi',
 };
 
 // New nav items for the redesigned sidebar
-const NEW_NAV_IDS = ['dashboard','discover','products','ai','alerts'];
+const NEW_NAV_IDS = ['dashboard','discover','products','ai','alerts','credits'];
 const PDB_CATS = ['Bayi & Anak','Motor & Mobil','Rumah','Hewan Peliharaan','Dapur','Kamar Mandi','Elektronik','Fashion','Kecantikan','Kesehatan','Olahraga','Outdoor & Camping','Sepeda','Tanaman','Taman','Keamanan','Hobi & Kerajinan','Alat Tulis','HP & Gadget'];
 
 let _pdbSortField  = 'total_sold';
@@ -8133,11 +8440,12 @@ function switchDashView(view) {
   if (view === 'keywords') _kxLoadKeywordList();
   if (view === 'home') _renderDashHome();
   if (view === 'estimator') loadSalesEstimator();
-  if (view === 'discover'  && typeof dscInit  === 'function') dscInit();
+  if (view === 'discover'  && typeof dscInit  === 'function') { dscInit(); setTimeout(renderForYou, 400); }
   if (view === 'tracker'   && typeof trkInit  === 'function') trkInit();
   if (view === 'dashboard' && typeof hbdInit  === 'function') hbdInit();
-  if (view === 'ai'        && typeof mlsInit   === 'function') mlsInit();
-  if (view === 'alerts'    && typeof alrInit   === 'function' && allProducts.length) alrInit();
+  if (view === 'ai'        && typeof mlsInit      === 'function') mlsInit();
+  if (view === 'alerts'    && typeof alrInit      === 'function' && allProducts.length) alrInit();
+  if (view === 'credits'   && typeof creditsInit  === 'function') creditsInit();
 }
 
 function toggleDashSub(sub) {
@@ -11264,34 +11572,40 @@ function mlsSwitchTab(tab) {
 async function mlsSelectProduct(val) {
   const tracked = trkLoad();
   const t = tracked.find(p => (p.key || `${p.item_id}_${p.shop_id}`) === val);
-  if (!t) {
-    ['mls-hero','mls-pasar-cards','mls-sig-sellers-wrap'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.style.display = 'none';
-    });
-    return;
-  }
+  const heroEl = document.getElementById('mls-hero');
+  if (!t) { if (heroEl) heroEl.style.display = 'none'; return; }
 
   _mlsContext = { keyword: t.keyword, product: t };
-
-  // Show loading states
-  const heroEl   = document.getElementById('mls-hero');
-  const pasarEl  = document.getElementById('mls-pasar-cards');
-  const sellWrap = document.getElementById('mls-sig-sellers-wrap');
-  if (heroEl)  { heroEl.style.display  = 'block'; }
-  if (pasarEl) { pasarEl.style.display = 'block'; }
+  if (heroEl) heroEl.style.display = 'block';
 
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  set('mls-hero-name',  t.name || t.product_name || '—');
+  set('mls-hero-name',  t.product_name || t.name || '—');
   set('mls-hero-kw',    t.keyword || '—');
   set('mls-hero-price', t.price ? 'Rp ' + Math.round(t.price).toLocaleString('id-ID') : '—');
   set('mls-hero-sold',  t.total_sold ? Number(t.total_sold).toLocaleString('id-ID') : '—');
-  const heroImg = document.getElementById('mls-hero-img');
-  if (heroImg) { heroImg.src = t.image_url || ''; heroImg.style.display = t.image_url ? 'block' : 'none'; }
-  set('mls-kw-badge',   t.keyword || '—');
+  set('mls-hero-cats',  t.category || '—');
+
+  // Main image
+  const mainImg = document.getElementById('mls-main-img');
+  if (mainImg) { mainImg.src = t.image_url || ''; mainImg.style.opacity = '1'; }
+
+  // Score badge
+  const score = t.score || (typeof calcLarisScore === 'function' ? calcLarisScore(t, null) : null);
+  const scoreNum = document.getElementById('mls-score-num');
+  const scoreBadge = document.getElementById('mls-score-badge');
+  if (scoreNum) scoreNum.textContent = score ?? '—';
+  if (scoreBadge && score) {
+    const [bg, border, color] = score >= 70 ? ['#ECFDF5','#6EE7B7','#065F46'] : score >= 50 ? ['#EFF6FF','#BFDBFE','#1D4ED8'] : ['#FEF2F2','#FECACA','#991B1B'];
+    scoreBadge.style.cssText = `flex-shrink:0;width:78px;height:78px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid ${border};background:${bg};`;
+    if (scoreNum) scoreNum.style.color = color;
+  }
+
+  set('mls-kw-badge', t.keyword || '—');
   set('mls-median-price', '…');
-  set('mls-p-omset',  '…'); set('mls-p-listing', '…'); set('mls-p-dom', '…'); set('mls-p-sig', '…');
-  document.getElementById('mls-top5-grid').innerHTML = '<div style="color:#9CA3AF;font-size:.72rem;grid-column:span 5;">Memuat...</div>';
-  if (sellWrap) sellWrap.style.display = 'none';
+  set('mls-p-omset','…'); set('mls-p-listing','…'); set('mls-p-dom','…'); set('mls-p-sig','…');
+
+  const compSection = document.getElementById('mls-comp-section');
+  if (compSection) compSection.style.display = 'none';
 
   try {
     const { data } = await _supabase
@@ -11335,59 +11649,63 @@ async function mlsSelectProduct(val) {
     set('mls-p-dom', dom3 + '%');
     set('mls-p-sig', sigSellers.length + ' penjual');
 
-    // Top 5 photo cards
-    document.getElementById('mls-top5-grid').innerHTML = top5.length
-      ? top5.map(r => `
-        <div style="border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;background:#fff;">
-          <img src="${r.image_url||''}" onerror="this.style.opacity='.2'" style="width:100%;aspect-ratio:1;object-fit:cover;background:#F3F4F6;">
-          <div style="padding:7px 8px;">
-            <div style="font-size:.6rem;font-weight:600;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;">${r.product_name||'—'}</div>
-            <div style="font-size:.56rem;color:#9CA3AF;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.store_name||'—'}</div>
-            <div style="font-size:.65rem;font-weight:700;color:#E8442A;margin-top:4px;">Rp ${(r.price||0).toLocaleString('id-ID')}</div>
-            <div style="font-size:.56rem;color:#9CA3AF;">${(r.total_sold||0).toLocaleString('id-ID')} terjual</div>
-          </div>
-        </div>`).join('')
-      : '<div style="color:#9CA3AF;font-size:.72rem;grid-column:span 5;">Tidak ada data.</div>';
-
-    // Sellers > 0.5% table
-    if (sellWrap) {
-      sellWrap.style.display = sigSellers.length ? 'block' : 'none';
-      const subEl = document.getElementById('mls-sig-sellers-sub');
-      if (subEl) subEl.textContent = `${sigSellers.length} penjual dengan market share > 0.5% — total omset pasar ${fmt(totalOmset)}/bulan`;
-      const tbody = document.getElementById('mls-sig-sellers-tbody');
-      if (tbody) tbody.innerHTML = sigSellers.map((r, i) => {
-        const omset  = (r.price||0) * (r.total_sold||0);
-        const share  = totalOmset > 0 ? (omset / totalOmset * 100).toFixed(1) : '0';
-        const isTop3 = i < 3;
-        return `<tr style="border-bottom:1px solid #F9FAFB;${isTop3?'background:#FFFBEB;':''}">
-          <td style="padding:8px 8px;font-size:.65rem;font-weight:700;color:#6B7280;">${i+1}</td>
-          <td style="padding:8px 8px;">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <img src="${r.image_url||''}" onerror="this.style.opacity='.2'" style="width:40px;height:40px;object-fit:cover;border-radius:6px;background:#F3F4F6;flex-shrink:0;">
-              <div>
-                <div style="font-size:.68rem;font-weight:600;color:#111827;line-height:1.3;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.product_name||'—'}</div>
-                <div style="font-size:.6rem;color:#9CA3AF;margin-top:1px;">${r.store_name||'—'}</div>
-              </div>
-            </div>
-          </td>
-          <td style="padding:8px 8px;text-align:right;font-size:.68rem;font-weight:600;color:#111827;white-space:nowrap;">Rp ${(r.price||0).toLocaleString('id-ID')}</td>
-          <td style="padding:8px 8px;text-align:right;font-size:.68rem;color:#374151;white-space:nowrap;">${(r.total_sold||0).toLocaleString('id-ID')}</td>
-          <td style="padding:8px 8px;text-align:right;font-size:.68rem;font-weight:600;color:#111827;white-space:nowrap;">${fmt(omset)}</td>
-          <td style="padding:8px 8px;text-align:right;">
-            <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;">
-              <div style="width:40px;height:5px;background:#F3F4F6;border-radius:3px;overflow:hidden;">
-                <div style="height:5px;background:${isTop3?'#E8442A':'#9CA3AF'};border-radius:3px;width:${Math.min(parseFloat(share)*4,100)}%;"></div>
-              </div>
-              <span style="font-size:.68rem;font-weight:700;color:${isTop3?'#E8442A':'#374151'};white-space:nowrap;">${share}%</span>
-            </div>
-          </td>
-        </tr>`;
-      }).join('');
+    // Build 5-thumbnail row from top 5 competitors
+    const thumbRow = document.getElementById('mls-thumb-row');
+    const top5 = rows.slice(0, 5);
+    if (thumbRow) {
+      // First thumb = the selected product itself
+      const allThumbs = [t, ...top5.filter(r => r.image_url !== t.image_url).slice(0,4)];
+      thumbRow.innerHTML = allThumbs.map((r, i) => `
+        <div class="mls-thumb${i===0?' active':''}" onclick="mlsSetThumb(this,'${r.image_url||''}')">
+          <img src="${r.image_url||''}" onerror="this.style.opacity='.3'" alt="">
+        </div>`).join('');
     }
 
+    // Top 15 competitors table
+    const top15 = rows.slice(0, 15);
+    const compSection = document.getElementById('mls-comp-section');
+    const compSub     = document.getElementById('mls-comp-sub');
+    const compTbody   = document.getElementById('mls-comp-tbody');
+    if (compSection) compSection.style.display = top15.length ? 'block' : 'none';
+    if (compSub) compSub.textContent = `${top15.length} produk teratas di keyword "${t.keyword}" — total omset pasar ${fmt(totalOmset)}/bulan`;
+    if (compTbody) compTbody.innerHTML = top15.map((r, i) => {
+      const omset  = (r.price||0) * (r.total_sold||0);
+      const share  = totalOmset > 0 ? (omset / totalOmset * 100).toFixed(1) : '0';
+      const isTop3 = i < 3;
+      const barColor = isTop3 ? '#E8442A' : '#9CA3AF';
+      return `<tr class="${isTop3?'top3':''}">
+        <td class="mls-comp-rank">${i+1}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <img class="mls-comp-img" src="${r.image_url||''}" onerror="this.style.opacity='.2'" alt="">
+            <div>
+              <div class="mls-comp-name">${r.product_name||'—'}</div>
+              <div class="mls-comp-store">${r.store_name||'—'}</div>
+            </div>
+          </div>
+        </td>
+        <td style="text-align:right;font-size:.7rem;font-weight:600;color:#111827;white-space:nowrap;">Rp ${(r.price||0).toLocaleString('id-ID')}</td>
+        <td style="text-align:right;font-size:.7rem;color:#374151;white-space:nowrap;">${(r.total_sold||0).toLocaleString('id-ID')}</td>
+        <td style="text-align:right;font-size:.7rem;font-weight:600;color:#111827;white-space:nowrap;">${fmt(omset)}</td>
+        <td style="text-align:right;">
+          <div style="display:flex;align-items:center;justify-content:flex-end;gap:5px;">
+            <div class="mls-comp-bar"><div class="mls-comp-bar-fill" style="background:${barColor};width:${Math.min(parseFloat(share)*5,100)}%;"></div></div>
+            <span style="font-size:.7rem;font-weight:700;color:${barColor};white-space:nowrap;">${share}%</span>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+
   } catch(e) {
-    document.getElementById('mls-top5-grid').innerHTML = '<div style="color:#EF4444;font-size:.72rem;grid-column:span 5;">Gagal memuat data.</div>';
+    console.warn('mlsSelectProduct error', e);
   }
+}
+
+function mlsSetThumb(el, imgSrc) {
+  document.querySelectorAll('.mls-thumb').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const mainImg = document.getElementById('mls-main-img');
+  if (mainImg && imgSrc) { mainImg.src = imgSrc; mainImg.style.opacity = '1'; }
 }
 
 function mlsSaveApiKey() {
