@@ -526,7 +526,7 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .score-metric-bar{width:60px;height:5px;background:#f0ebe4;border-radius:3px;margin-top:4px;margin-left:auto;}
 .score-metric-bar-fill{height:100%;border-radius:3px;transition:width .4s ease;}
 .score-exp-loading{padding:16px;font-size:.82rem;color:var(--tl);display:flex;align-items:center;gap:8px;}
-.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px;}
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.85);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px;}
 .spinner{width:36px;height:36px;border:3px solid #f0ebe4;border-top-color:var(--orange);border-radius:50%;animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .loading-overlay p{font-size:.88rem;color:var(--tm);}
@@ -6298,9 +6298,6 @@ async function _fetchListingsPage(offset, limit = 1000) {
 }
 
 async function loadData() {
-  const overlay = document.getElementById('loading-overlay');
-  if (overlay) overlay.style.display = 'flex';
-  const safetyTimer = setTimeout(() => { if (overlay) overlay.style.display = 'none'; }, 15000);
 
   const CACHE_KEY = 'laris_catalog_v3';
   const CACHE_TTL = 60 * 60 * 1000; // 1 hour
@@ -6361,9 +6358,6 @@ async function loadData() {
       try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), rows })); } catch (_) {}
     }
   }
-
-  clearTimeout(safetyTimer);
-  if (overlay) overlay.style.display = 'none';
 
   if (!rows?.length) {
     const g = document.getElementById('home-grid'), d = document.getElementById('disc-grid');
