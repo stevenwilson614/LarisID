@@ -11781,9 +11781,21 @@ async function ddLoadTrendHistory(listing) {
         unitData.push(base);
       }
     } else if (atCeiling && !hasReviews) {
-      if (_ddChartTrend) { _ddChartTrend.data.labels = []; _ddChartTrend.data.datasets.forEach(d => d.data = []); _ddChartTrend.update(); }
-      _noDataMsg('Produk ini melebihi 10rb penjualan.<br>Data ulasan belum tersedia untuk estimasi pertumbuhan.');
-      return;
+      // At 10k+ ceiling with no reviews — show raw scraped values as a floor line
+      isEstimated = true;
+      unitData = dbRows.map(r => r.total_sold ?? 10000);
+      // Show note below chart (not blocking it) after render
+      setTimeout(() => {
+        document.getElementById('dd-trend-nodata')?.remove();
+        const canvas = document.getElementById('dd-chart-trend');
+        if (canvas && !canvas.parentElement.querySelector('#dd-trend-ceiling-note')) {
+          const note = document.createElement('div');
+          note.id = 'dd-trend-ceiling-note';
+          note.style.cssText = 'font-size:.68rem;color:#9CA3AF;margin-top:6px;text-align:center;';
+          note.textContent = 'Penjualan 10.000+ (batas Shopee) — grafik menunjukkan minimum, garis putus = estimasi.';
+          canvas.parentElement.appendChild(note);
+        }
+      }, 500);
     } else {
       unitData = dbRows.map(r => r.total_sold ?? 0);
     }
@@ -11829,7 +11841,24 @@ async function ddLoadTrendHistory(listing) {
       .map(w => ({ label: w.label, units: Math.round(w.units), omset: Math.round(w.omset), firstDate: w.firstDate }));
 
     if (!weeklyRows.length) {
-      _noDataMsg('Belum ada perubahan penjualan terdeteksi antara scrape.');
+      // Fallback: no week-deltas (all data flat or single point) — plot one point per scrape row directly
+      if (dbRows.length >= 1) {
+        const _fallbackLabels = dbRows.map(r => {
+          const d = new Date(r.scraped_at);
+          return `${d.getDate()} ${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][d.getMonth()]}`;
+        });
+        const _fallbackUnits = dbRows.map(r => r.total_sold ?? 0);
+        const _fallbackOmset = dbRows.map((r,i) => (r.total_sold ?? 0) * (r.price || fallbackPrice));
+        if (!_ddChartTrend) return;
+        _ddChartTrend.data.labels = _fallbackLabels;
+        _ddChartTrend.data.datasets = [
+          { label:'Omset Est.', data:_fallbackOmset, borderColor:'#E8442A', backgroundColor:'rgba(232,68,42,.06)', borderWidth:2.5, fill:true, tension:0.3, pointRadius:5, pointBackgroundColor:'#E8442A', yAxisID:'y', borderDash:[4,4] },
+          { label:'Unit Terjual (min)', data:_fallbackUnits, borderColor:'#4F46E5', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:4, pointBackgroundColor:'#4F46E5', yAxisID:'y2', borderDash:[4,4] },
+        ];
+        _ddChartTrend.update();
+      } else {
+        _noDataMsg('Belum ada perubahan penjualan terdeteksi antara scrape.');
+      }
       return;
     }
 
