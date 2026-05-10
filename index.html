@@ -9262,6 +9262,7 @@ let _dscOffset      = 0;
 let _dscHasMore     = true;
 let _dscLoading     = false;
 let _dscLastSrvFilters = null;
+let _dscCurrentCatFilter = ''; // category passed to server when exactly 1 cat selected
 let _dscViewMode    = 'card';
 const DSC_FETCH  = 60;
 
@@ -9448,8 +9449,8 @@ async function dscLoadListings() {
     const newKws = [...new Set(fresh.map(r => r.keyword).filter(Boolean))].filter(k => !_dscCompMap[k]);
     newKws.forEach(kw => { _dscCompMap[kw] = _dscCalcComp(kw); });
 
-    // Update category dropdown once
-    if (_dscOffset === DSC_FETCH) {
+    // Rebuild category list after every page so all categories appear
+    {
       const cats = [...new Set(_dscAllListings.map(r => r.category).filter(Boolean))].sort();
       dscBuildCatChecks(cats);
       const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
@@ -9537,11 +9538,15 @@ function _dscSelectedCats() {
 
 function dscBuildCatChecks(cats) {
   const el = document.getElementById('dsc-cat-checks');
-  if (!el || el.dataset.built === cats.join(',')) return;
-  el.dataset.built = cats.join(',');
+  if (!el) return;
+  const newKey = cats.join(',');
+  if (el.dataset.built === newKey) return; // no new categories — skip
+  // Preserve currently-unchecked cats so adding new cats doesn't reset user choices
+  const unchecked = new Set([...el.querySelectorAll('input[type=checkbox]:not(:checked)')].map(i => i.value));
+  el.dataset.built = newKey;
   el.innerHTML = cats.map(c => `
     <label style="display:flex;align-items:center;gap:7px;padding:4px 6px;border-radius:6px;cursor:pointer;font-size:.72rem;color:#374151;user-select:none;transition:background .1s;" onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
-      <input type="checkbox" value="${c}" checked onchange="dscApplyFilters()" style="accent-color:#E8442A;width:13px;height:13px;flex-shrink:0;">
+      <input type="checkbox" value="${c}" ${unchecked.has(c) ? '' : 'checked'} onchange="dscApplyFilters()" style="accent-color:#E8442A;width:13px;height:13px;flex-shrink:0;">
       <span>${c}</span>
     </label>`).join('');
 }
@@ -9555,7 +9560,7 @@ function dscCatSelectAll() {
 
 function _dscCurrentFilters() {
   return {
-    cat:      '', // category filtering is now client-side via checkboxes
+    cat:      _dscCurrentCatFilter, // empty = all; set when exactly 1 category selected
     priceMin: parseFloat(document.getElementById('dsc-price-min')?.value) || 0,
     priceMax: parseFloat(document.getElementById('dsc-price-max')?.value) || 10000000,
     search:   document.getElementById('dsc-search')?.value?.trim() || '',
@@ -9580,14 +9585,18 @@ function dscApplyFilters(resetPage = true) {
   const omsetMax = omsetMaxRaw >= 500000000 ? Infinity : omsetMaxRaw;
   const sortVal  = document.getElementById('dsc-sort')?.value || 'omset-desc';
 
-  // If server-side filters changed, reset and re-fetch from offset 0
-  const srvKey = JSON.stringify({ priceMin, priceMax: priceMaxRaw, search: q });
+  // Include single-category selection in server key so DB re-fetch targets that category
+  // (only when exactly 1 cat is selected — multi-cat stays client-side)
+  const srvCat = selectedCats && selectedCats.length === 1 ? selectedCats[0] : '';
+  const srvKey = JSON.stringify({ priceMin, priceMax: priceMaxRaw, search: q, cat: srvCat });
   if (_dscLastSrvFilters !== null && _dscLastSrvFilters !== srvKey) {
     _dscAllListings = [];
     _dscOffset = 0;
     _dscHasMore = true;
     _dscLoaded = false;
     _dscLastSrvFilters = srvKey;
+    // Pass the category filter to the loader so dscFetchPage uses it
+    _dscCurrentCatFilter = srvCat;
     dscLoadListings();
     return;
   }
@@ -11436,6 +11445,7 @@ function dscGoPage(n) {
 
 function dscResetFilters() {
   const g = id => document.getElementById(id);
+  _dscCurrentCatFilter = ''; // clear server-side category filter
   document.querySelectorAll('#dsc-cat-checks input[type=checkbox]').forEach(c => c.checked = true);
   if (g('dsc-search'))     g('dsc-search').value     = '';
   if (g('dsc-price-min'))  g('dsc-price-min').value  = 0;
