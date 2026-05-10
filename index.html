@@ -9540,7 +9540,9 @@ function _dscSelectedCats() {
   const checks = document.querySelectorAll('#dsc-cat-checks input[type=checkbox]');
   if (!checks.length) return null; // not yet populated — no filter
   const checked = [...checks].filter(c => c.checked).map(c => c.value);
-  return checked.length === checks.length ? null : checked; // null = all selected = no filter
+  // 0 checked or all checked both mean "no filter" — never return an empty array
+  if (checked.length === 0 || checked.length === checks.length) return null;
+  return checked;
 }
 
 function dscBuildCatChecks(cats) {
@@ -9614,6 +9616,9 @@ function dscApplyFilters(resetPage = true) {
     // Store selected cats for dscFetchPage to use
     _dscCurrentCatFilter = selectedCats && selectedCats.length === 1 ? selectedCats[0] : '';
     _dscCurrentCatFilters = selectedCats || null; // multi-cat list
+    // Show inline loading feedback while re-fetching from Supabase
+    const _tbody = document.getElementById('dsc-tbody');
+    if (_tbody) _tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Memuat produk...</td></tr>`;
     dscLoadListings();
     return;
   }
