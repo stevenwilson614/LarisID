@@ -11889,6 +11889,10 @@ async function ddLoadTrendHistory(listing) {
       }
     }
 
+    // Deduplicate by exact scraped_at timestamp (multiple push-runs create identical rows)
+    { const seenTs = new Set(); dbRows = dbRows.filter(r => { if (seenTs.has(r.scraped_at)) return false; seenTs.add(r.scraped_at); return true; }); }
+    console.log('[ddTrend] deduplicated rows:', dbRows.length);
+
     // Augment to reach 2 rows
     let isPeerEstimated = false, peerCount = 0, peerSoldMin = 0, peerSoldMax = 0;
     if (dbRows.length < 2) {
@@ -12006,7 +12010,7 @@ async function ddLoadTrendHistory(listing) {
     const weekMap = new Map();
     for (const r of dbRows) {
       const key = _wKey(new Date(r.scraped_at));
-      if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(new Date(r.scraped_at)), units: 0, omset: 0, firstDate: _mondayOf(new Date(r.scraped_at)) });
+      if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(new Date(r.scraped_at)), units: 0, omset: 0, days: 0, firstDate: _mondayOf(new Date(r.scraped_at)) });
     }
     // Now fill each week's delta via inter-scrape interpolation
     for (let i = 0; i < dbRows.length - 1; i++) {
@@ -12021,15 +12025,20 @@ async function ddLoadTrendHistory(listing) {
         if (date > t1) break;
         const frac = d / daysDiff;
         const key  = _wKey(date);
-        if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(date), units: 0, omset: 0, firstDate: _mondayOf(date) });
+        if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(date), units: 0, omset: 0, days: 0, firstDate: _mondayOf(date) });
         const wk = weekMap.get(key);
         wk.units += dUnit;
         wk.omset += dUnit * (p0 + (p1 - p0) * frac);
+        wk.days  += 1;
       }
     }
+    // Scale every week to a full 7 days so partial weeks don't look artificially small
     const weeklyRows = [...weekMap.values()]
       .sort((a, b) => a.firstDate - b.firstDate)
-      .map(w => ({ label: w.label, units: Math.round(w.units), omset: Math.round(w.omset), firstDate: w.firstDate }));
+      .map(w => {
+        const scale = w.days > 0 && w.days < 7 ? 7 / w.days : 1;
+        return { label: w.label, units: Math.round(w.units * scale), omset: Math.round(w.omset * scale), firstDate: w.firstDate };
+      });
 
     if (!weeklyRows.length) {
       // Zero-delta fallback: scrapes exist but total_sold didn't change between them
@@ -12118,10 +12127,13 @@ async function ddLoadTrendHistory(listing) {
       document.getElementById('dd-chart-trend')?.parentElement?.appendChild(note);
     }
 
-    // ── Update Ringkasan hero stat cards from real weekly data ──────────────────
+    // ── Update Ringkasan hero stat cards — show monthly estimates ──────────────
     const totalUnits = weeklyRows.reduce((s, w) => s + w.units, 0);
     const totalOmset = weeklyRows.reduce((s, w) => s + w.omset, 0);
-    // Week-over-week delta: last week vs first week
+    // Convert period total → monthly: (total / weeks) × (30/7)
+    const monthlyUnits = Math.round(totalUnits / nW * (30 / 7));
+    const monthlyOmset = Math.round(totalOmset / nW * (30 / 7));
+    // Week-over-week delta: last week vs first week (both already scaled to 7 days)
     const wowUnitPct  = weeklyRows[0].units  > 0 ? Math.round((weeklyRows[nW-1].units  - weeklyRows[0].units)  / weeklyRows[0].units  * 100) : null;
     const wowOmsetPct = weeklyRows[0].omset  > 0 ? Math.round((weeklyRows[nW-1].omset  - weeklyRows[0].omset)  / weeklyRows[0].omset  * 100) : null;
     const _fmtV = v => v >= 1e9 ? 'Rp '+(v/1e9).toFixed(1)+'M' : v >= 1e6 ? 'Rp '+(v/1e6).toFixed(1)+'jt' : 'Rp '+(v/1e3).toFixed(0)+'rb';
@@ -12132,13 +12144,13 @@ async function ddLoadTrendHistory(listing) {
     const omsetDEl = document.getElementById('dd-h-omset-d');
     const unitSubEl  = document.getElementById('dd-h-unit-sub');
     const omsetSubEl = document.getElementById('dd-h-omset-sub');
-    if (unitEl)  unitEl.textContent  = totalUnits > 0 ? totalUnits.toLocaleString('id-ID') : '—';
-    if (omsetEl) omsetEl.textContent = totalOmset > 0 ? _fmtV(totalOmset) : '—';
+    if (unitEl)  unitEl.textContent  = monthlyUnits > 0 ? monthlyUnits.toLocaleString('id-ID') : '—';
+    if (omsetEl) omsetEl.textContent = monthlyOmset > 0 ? _fmtV(monthlyOmset) : '—';
     if (unitDEl)  { unitDEl.textContent  = _fmtDelta(wowUnitPct);  unitDEl.style.color  = (wowUnitPct  ?? 0) >= 0 ? '#10B981' : '#E8442A'; }
     if (omsetDEl) { omsetDEl.textContent = _fmtDelta(wowOmsetPct); omsetDEl.style.color = (wowOmsetPct ?? 0) >= 0 ? '#10B981' : '#E8442A'; }
     const periodNote = isPeerEstimated ? `peer est. · ${nW} minggu` : isEstimated ? `est. · ${nW} minggu` : `${nW} minggu · ${dbRows.length} scrape`;
-    if (unitSubEl)  unitSubEl.textContent  = `Total estimasi terjual · ${periodNote}`;
-    if (omsetSubEl) omsetSubEl.textContent = `Total estimasi omset · ${periodNote}`;
+    if (unitSubEl)  unitSubEl.textContent  = `Est. unit / bulan · ${periodNote}`;
+    if (omsetSubEl) omsetSubEl.textContent = `Est. omset / bulan · ${periodNote}`;
   } catch(e) {
     console.warn('ddLoadTrendHistory:', e);
   }
