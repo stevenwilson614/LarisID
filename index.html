@@ -894,7 +894,7 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .mls-img-col{}
 .mls-main-img-wrap{width:100%;aspect-ratio:1;border-radius:12px;overflow:hidden;background:#F3F4F6;margin-bottom:8px;border:1px solid #E5E7EB;}
 .mls-main-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
-.mls-thumbs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+.mls-thumbs{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}
 .mls-thumb{aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid transparent;background:#F3F4F6;transition:border-color .15s;}
 .mls-thumb.active,.mls-thumb:hover{border-color:#E8442A;}
 .mls-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
@@ -924,6 +924,30 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .mls-comp-table th{padding:9px 10px;text-align:left;font-size:.62rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.04em;background:#F9FAFB;border-bottom:2px solid #E5E7EB;white-space:nowrap;}
 .mls-comp-table td{padding:9px 10px;border-bottom:1px solid #F3F4F6;vertical-align:middle;}
 .mls-comp-table tr:last-child td{border-bottom:none;}
+/* ── MLS Ringkasan bar ── */
+.mls-ringkasan-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+@media(max-width:700px){.mls-ringkasan-bar{grid-template-columns:repeat(2,1fr);}}
+.mls-rbar-card{background:#F7F6F3;border-radius:10px;padding:14px 16px;border-left:3px solid #E8442A;}
+.mls-rbar-val{font-family:var(--font-display,'Plus Jakarta Sans');font-size:1.25rem;font-weight:800;color:#1A1F3C;line-height:1;margin-bottom:4px;}
+.mls-rbar-lbl{font-size:.65rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
+/* ── MLS Seller card grid ── */
+.mls-seller-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+@media(max-width:900px){.mls-seller-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:500px){.mls-seller-grid{grid-template-columns:1fr;}}
+.mls-seller-card{background:#fff;border-radius:12px;border:1px solid #F0EDE8;overflow:hidden;transition:box-shadow .15s;}
+.mls-seller-card:hover{box-shadow:0 4px 18px rgba(0,0,0,.08);}
+.mls-seller-card.rank-1{border:2px solid #E8442A;}
+.mls-seller-card.rank-2{border:2px solid #F5A623;}
+.mls-seller-card.rank-3{border:2px solid #9CA3AF;}
+.mls-seller-img{width:100%;aspect-ratio:1;object-fit:cover;background:#F7F6F3;display:block;}
+.mls-seller-img-wrap{position:relative;}
+.mls-seller-rank{position:absolute;top:8px;left:8px;width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;color:#fff;}
+.mls-seller-body{padding:10px 12px;}
+.mls-seller-store{font-size:.75rem;font-weight:700;color:#1A1F3C;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mls-seller-price{font-size:.7rem;color:#6B7280;margin-bottom:6px;}
+.mls-seller-stats{display:flex;gap:8px;font-size:.65rem;font-weight:700;color:#374151;margin-bottom:8px;}
+.mls-seller-share-bar{height:3px;background:#F0EDE8;border-radius:2px;overflow:hidden;}
+.mls-seller-share-fill{height:100%;border-radius:2px;background:#E8442A;}
 .mls-comp-table tr.top3{background:#FFFBEB;}
 .mls-comp-rank{font-size:.68rem;font-weight:700;color:#6B7280;width:28px;}
 .mls-comp-img{width:38px;height:38px;border-radius:7px;object-fit:cover;background:#F3F4F6;flex-shrink:0;}
@@ -1082,6 +1106,11 @@ body.in-dashboard .navbar{display:flex;}
 .dsc-load-step-line.done{background:#E8442A;}
 /* Card grid view */
 .dsc-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(188px,1fr));gap:14px;padding:16px;}
+.dsc-skel{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 8px rgba(0,0,0,.06);}
+.dsc-skel-img{width:100%;aspect-ratio:1;background:linear-gradient(90deg,#F0EDE8 25%,#E8E4DF 50%,#F0EDE8 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;}
+.dsc-skel-body{padding:10px;}
+.dsc-skel-line{height:9px;border-radius:4px;background:linear-gradient(90deg,#F0EDE8 25%,#E8E4DF 50%,#F0EDE8 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;margin-bottom:7px;}
+.dsc-skel-line.short{width:55%;}
 .dsc-card{background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;transition:box-shadow .15s,transform .1s;}
 .dsc-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.09);transform:translateY(-2px);}
 .dsc-card-img{width:100%;aspect-ratio:1/1;background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-size:2.2rem;overflow:hidden;flex-shrink:0;}
@@ -1189,6 +1218,7 @@ body.in-dashboard .navbar{display:flex;}
 .lp-nav-cta{font-size:.84rem;font-weight:700;color:#fff;cursor:pointer;padding:8px 18px;border-radius:8px;border:none;background:#E8442A;font-family:inherit;transition:background .15s;}
 .lp-nav-cta:hover{background:#c73520;}
 @media(max-width:700px){.lp-nav-links{display:none;}.lp-nav{padding:0 20px;gap:16px;}}
+.lp-nav-scrolled{box-shadow:0 2px 24px rgba(0,0,0,.10);border-bottom-color:#E5E7EB;}
 
 /* ── HERO — navy full-bleed ── */
 .lp-hero{background:#1A1F3C;position:relative;overflow:hidden;}
@@ -1220,14 +1250,16 @@ body.in-dashboard .navbar{display:flex;}
 .lp-hero-visual{position:relative;}
 .lp-verdict-card{background:#fff;border-radius:20px;padding:24px 26px;box-shadow:0 32px 80px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.15);position:relative;z-index:2;}
 .lp-verdict-product{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid #F3F4F6;}
-.lp-verdict-img{width:52px;height:52px;border-radius:10px;background:linear-gradient(135deg,#FFF0ED,#FFD5CC);flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.lp-verdict-img{width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,#FFF0ED,#FFD5CC);flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;}
 .lp-verdict-prod-name{font-size:.88rem;font-weight:700;color:#1A1F3C;line-height:1.3;margin-bottom:3px;}
 .lp-verdict-prod-cat{font-size:.7rem;color:#9CA3AF;}
 .lp-verdict-score-block{display:flex;align-items:center;gap:16px;margin-bottom:18px;}
 .lp-verdict-badge{display:inline-flex;align-items:center;gap:5px;font-size:.68rem;font-weight:800;letter-spacing:.06em;padding:5px 12px;border-radius:6px;text-transform:uppercase;}
 .lp-verdict-badge.potensial{background:#ECFDF5;color:#059669;border:1px solid #A7F3D0;}
 .lp-verdict-badge.laris{background:#FFF0ED;color:#E8442A;border:1px solid #FECACA;}
-.lp-verdict-score-num{font-family:var(--font-display);font-size:3.2rem;font-weight:800;color:#1A1F3C;line-height:1;}
+.lp-verdict-score-num{font-family:var(--font-display);display:flex;align-items:baseline;gap:1px;line-height:1;}
+.lp-verdict-score-big{font-size:3.2rem;font-weight:800;color:#1A7A46;line-height:1;}
+.lp-verdict-score-denom{font-size:1.05rem;font-weight:600;color:#9CA3AF;padding-bottom:4px;}
 .lp-verdict-score-info{display:flex;flex-direction:column;}
 .lp-verdict-score-label{font-size:.62rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
 .lp-verdict-score-bar{width:80px;height:5px;background:#F3F4F6;border-radius:3px;margin-top:6px;overflow:hidden;}
@@ -2161,7 +2193,7 @@ body.in-dashboard .navbar{display:flex;}
   z-index:1180;flex-direction:row;align-items:flex-start;
   justify-content:space-around;padding-top:6px;
 }
-body.in-dashboard #mobile-bottom-nav{display:flex;}
+@media(max-width:768px){body.in-dashboard #mobile-bottom-nav{display:flex;}}
 .mbn-item{
   flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
   background:none;border:none;cursor:pointer;color:#9CA3AF;
@@ -2755,23 +2787,11 @@ html,body{overflow-x:hidden;max-width:100%;}
 
         <!-- LEFT: copy -->
         <div>
-          <div class="lp-hero-community-badge">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            <span>2.400+</span> seller aktif minggu ini
-          </div>
           <h1>Tahu mana yang laris,<br>sebelum kamu jual.<br><span class="lp-hero-accent">Gratis.</span></h1>
           <p class="lp-hero-sub">LarisID kasih kamu satu skor untuk setiap produk Shopee. Bukan data mentah — tapi keputusan yang siap dieksekusi. Kamu tinggal jual.</p>
           <div class="lp-hero-btns">
             <button class="lp-hero-btn-primary" onclick="openAuthModal('signup')">Mulai Gratis Sekarang</button>
             <button class="lp-hero-btn-secondary" onclick="document.getElementById('lp-preview-section').scrollIntoView({behavior:'smooth',block:'start'})">Lihat Contoh Produk</button>
-          </div>
-          <div class="lp-hero-trust">
-            <div class="lp-hero-avatars">
-              <div class="lp-hero-avatar">AS</div>
-              <div class="lp-hero-avatar">RD</div>
-              <div class="lp-hero-avatar">NF</div>
-            </div>
-            <span class="lp-hero-trust-text"><strong>2.400+ penjual Shopee</strong> sudah pakai LarisID — gratis</span>
           </div>
         </div>
 
@@ -2782,7 +2802,8 @@ html,body{overflow-x:hidden;max-width:100%;}
             <!-- product header -->
             <div class="lp-verdict-product">
               <div class="lp-verdict-img">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+                <img src="/images/tas-selempang-hero.webp" alt="Tas Selempang Pria Premium" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                <svg style="display:none;width:24px;height:24px;" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
               </div>
               <div>
                 <div class="lp-verdict-prod-name">Tas Selempang Pria Premium</div>
@@ -2792,7 +2813,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             <!-- score block -->
             <div class="lp-verdict-score-block">
               <div>
-                <div class="lp-verdict-score-num">87</div>
+                <div class="lp-verdict-score-num"><span class="lp-verdict-score-big">87</span><span class="lp-verdict-score-denom">/100</span></div>
               </div>
               <div class="lp-verdict-score-info">
                 <div class="lp-verdict-badge potensial">
@@ -2821,7 +2842,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             <!-- CTA line -->
             <div class="lp-verdict-cta">
               <span class="lp-verdict-cta-text">Kenapa produk ini potensial?</span>
-              <span class="lp-verdict-cta-link">
+              <span class="lp-verdict-cta-link" onclick="document.getElementById('lp-preview-section').scrollIntoView({behavior:'smooth',block:'start'})">
                 Lihat data
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
               </span>
@@ -2847,8 +2868,8 @@ html,body{overflow-x:hidden;max-width:100%;}
         <div class="lp-stat-label">Biaya selamanya<br>— gratis tanpa syarat</div>
       </div>
       <div class="lp-stat-item">
-        <div class="lp-stat-num">2.400+</div>
-        <div class="lp-stat-label">Seller aktif<br>bergabung</div>
+        <div class="lp-stat-num">Senin</div>
+        <div class="lp-stat-label">Update data otomatis<br>setiap minggu</div>
       </div>
     </div>
 
@@ -3439,7 +3460,7 @@ html,body{overflow-x:hidden;max-width:100%;}
     </section>
 
     <!-- embedded product preview -->
-    <div id="lp-preview-section" style="background:#F4F6F9;padding:48px 0;">
+    <div id="lp-preview-section" style="background:#F7F6F3;padding:48px 0;">
       <div style="max-width:1200px;margin:0 auto;padding:0 40px;">
         <div style="text-align:center;margin-bottom:28px;">
           <div class="lp-section-eyebrow">Contoh Analisis Produk</div>
@@ -3450,7 +3471,7 @@ html,body{overflow-x:hidden;max-width:100%;}
         <div id="lp-dd-wrap" style="background:#F4F6F9;">
           <!-- hero -->
           <div class="dd-hero" style="margin-bottom:14px;">
-            <div class="dd-hero-img" id="lp-dd-img"><img src="https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=300&q=80" alt="Tas Selempang Pria" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"></div>
+            <div class="dd-hero-img" id="lp-dd-img"><img src="/images/tas-selempang-hero.webp" alt="Tas Selempang Pria" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.src='https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=300&q=80'"></div>
             <div class="dd-hero-right">
               <div>
                 <div class="dd-hero-name" id="lp-dd-name">Tas Selempang Pria Premium — Kulit Sintetis Anti Air</div>
@@ -5042,7 +5063,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                 </div>
 
                 <div class="dsc-table-wrap">
-                  <div id="dsc-card-grid" class="dsc-card-grid"></div>
+                  <div id="dsc-card-grid" class="dsc-card-grid"><div class="dsc-skel"><div class="dsc-skel-img"></div><div class="dsc-skel-body"><div class="dsc-skel-line"></div><div class="dsc-skel-line short"></div></div></div><div class="dsc-skel"><div class="dsc-skel-img"></div><div class="dsc-skel-body"><div class="dsc-skel-line"></div><div class="dsc-skel-line short"></div></div></div><div class="dsc-skel"><div class="dsc-skel-img"></div><div class="dsc-skel-body"><div class="dsc-skel-line"></div><div class="dsc-skel-line short"></div></div></div><div class="dsc-skel"><div class="dsc-skel-img"></div><div class="dsc-skel-body"><div class="dsc-skel-line"></div><div class="dsc-skel-line short"></div></div></div><div class="dsc-skel"><div class="dsc-skel-img"></div><div class="dsc-skel-body"><div class="dsc-skel-line"></div><div class="dsc-skel-line short"></div></div></div><div class="dsc-skel"><div class="dsc-skel-img"></div><div class="dsc-skel-body"><div class="dsc-skel-line"></div><div class="dsc-skel-line short"></div></div></div></div>
                   <table class="dsc-table" id="dsc-table-inner" style="display:none;">
                     <thead>
                       <tr>
@@ -6026,28 +6047,34 @@ html,body{overflow-x:hidden;max-width:100%;}
 
               <!-- Top 15 Competitors (always visible below tabs) -->
               <div id="mls-comp-section" style="display:none;margin-top:24px;">
+                <!-- Ringkasan bar -->
+                <div class="mls-ringkasan-bar" id="mls-ringkasan-bar">
+                  <div class="mls-rbar-card">
+                    <div class="mls-rbar-val" id="mls-rb-kompetisi">—</div>
+                    <div class="mls-rbar-lbl">Kompetisi Pasar</div>
+                  </div>
+                  <div class="mls-rbar-card" style="border-left-color:#1A7A46;">
+                    <div class="mls-rbar-val" id="mls-rb-harga">—</div>
+                    <div class="mls-rbar-lbl">Harga Rata-rata</div>
+                  </div>
+                  <div class="mls-rbar-card" style="border-left-color:#F5A623;">
+                    <div class="mls-rbar-val" id="mls-rb-omset">—</div>
+                    <div class="mls-rbar-lbl">Total Omset Pasar</div>
+                  </div>
+                  <div class="mls-rbar-card" style="border-left-color:#4F46E5;">
+                    <div class="mls-rbar-val" id="mls-rb-penjual">—</div>
+                    <div class="mls-rbar-lbl">Listing di Pasar</div>
+                  </div>
+                </div>
+                <!-- Seller card grid -->
                 <div class="dd-card" style="padding:18px;">
                   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
                     <div>
-                      <div style="font-size:.85rem;font-weight:800;color:#1A1F3C;">Top 15 Kompetitor</div>
+                      <div style="font-size:.85rem;font-weight:800;color:#1A1F3C;">Top 15 Penjual</div>
                       <div style="font-size:.7rem;color:#6B7280;margin-top:2px;" id="mls-comp-sub">Produk dengan penjualan tertinggi di keyword ini</div>
                     </div>
                   </div>
-                  <div style="overflow-x:auto;">
-                    <table class="mls-comp-table">
-                      <thead>
-                        <tr>
-                          <th style="width:32px;">#</th>
-                          <th>Produk &amp; Toko</th>
-                          <th style="text-align:right;">Harga</th>
-                          <th style="text-align:right;">Terjual</th>
-                          <th style="text-align:right;">Est. Omset/Bln</th>
-                          <th style="text-align:right;min-width:100px;">Market Share</th>
-                        </tr>
-                      </thead>
-                      <tbody id="mls-comp-tbody"></tbody>
-                    </table>
-                  </div>
+                  <div id="mls-comp-tbody" class="mls-seller-grid"></div>
                 </div>
               </div>
 
@@ -10947,10 +10974,8 @@ function dscGoPage(n) {
   if (needsFetch) {
     const cardGrid   = document.getElementById('dsc-card-grid');
     const tableInner = document.getElementById('dsc-table-inner');
-    const spinHtml   = `<div style="grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 0;gap:14px;">
-      <div style="width:36px;height:36px;border:3px solid #E5E7EB;border-top-color:#E8442A;border-radius:50%;animation:spin .7s linear infinite;"></div>
-      <div style="font-size:.85rem;color:#9CA3AF;font-weight:500;">Memuat data halaman ${n}...</div>
-    </div>`;
+    const skelCard = `<div class="dsc-skel"><div class="dsc-skel-img"></div><div class="dsc-skel-body"><div class="dsc-skel-line"></div><div class="dsc-skel-line short"></div></div></div>`;
+    const spinHtml = Array(8).fill(skelCard).join('');
     if (_dscViewMode === 'card'  && cardGrid)   cardGrid.innerHTML   = spinHtml;
     if (_dscViewMode === 'table' && tableInner) tableInner.innerHTML = `<table class="dsc-table" style="width:100%"><tbody>${spinHtml.replace('grid-column:1/-1;', '')}</tbody></table>`;
     dscLoadListings(); // dscApplyFilters(false) inside preserves _dscPage = n
@@ -12040,54 +12065,64 @@ async function mlsSelectProduct(val) {
     set('mls-p-dom', dom3 + '%');
     set('mls-p-sig', sigSellers.length + ' penjual');
 
-    // Build 5-thumbnail row from top 5 competitors
+    // Build 10-thumbnail row from top competitors
     const thumbRow = document.getElementById('mls-thumb-row');
     if (thumbRow) {
-      // First thumb = the selected product itself
-      const allThumbs = [t, ...top5.filter(r => r.image_url !== t.image_url).slice(0,4)];
+      const allThumbs = [t, ...rows.filter(r => r.image_url && r.image_url !== t.image_url).slice(0,9)];
       thumbRow.innerHTML = allThumbs.map((r, i) => `
-        <div class="mls-thumb${i===0?' active':''}" onclick="mlsSetThumb(this,'${r.image_url||''}')">
+        <div class="mls-thumb${i===0?' active':''}" onclick="mlsSetThumb(this,'${(r.image_url||'').replace(/'/g,"\\'")}')">
           <img src="${r.image_url||''}" onerror="this.style.opacity='.3'" alt="">
         </div>`).join('');
     }
 
-    // Top 15 competitors table
+    // Populate Ringkasan bar
+    const kompScore = rows.length > 0 ? Math.min(100, Math.round(Math.log10(Math.max(1, rows.length)) / 2.7 * 100)) : 0;
+    const kompLabel = kompScore >= 70 ? 'Tinggi' : kompScore >= 40 ? 'Sedang' : 'Rendah';
+    const kompColor = kompScore >= 70 ? '#DC2626' : kompScore >= 40 ? '#D97706' : '#16A34A';
+    const rbKomp  = document.getElementById('mls-rb-kompetisi');
+    const rbHarga = document.getElementById('mls-rb-harga');
+    const rbOmset = document.getElementById('mls-rb-omset');
+    const rbPenjual = document.getElementById('mls-rb-penjual');
+    if (rbKomp)    { rbKomp.textContent = kompLabel; rbKomp.style.color = kompColor; }
+    if (rbHarga)   rbHarga.textContent = mPrice ? 'Rp ' + Math.round(mPrice).toLocaleString('id-ID') : '—';
+    if (rbOmset)   rbOmset.textContent = fmt(totalOmset) + '/bln';
+    if (rbPenjual) rbPenjual.textContent = rows.length + ' listing';
+
+    // Top 15 competitors — visual card grid
     const top15 = rows.slice(0, 15);
     const compSection = document.getElementById('mls-comp-section');
     const compSub     = document.getElementById('mls-comp-sub');
     const compTbody   = document.getElementById('mls-comp-tbody');
     if (compSection) compSection.style.display = top15.length ? 'block' : 'none';
-    if (compSub) compSub.textContent = `${top15.length} produk teratas di keyword "${t.keyword}" — total omset pasar ${fmt(totalOmset)}/bulan`;
+    if (compSub) compSub.textContent = `${top15.length} produk teratas di keyword "${t.keyword}"`;
+    const rankColors = ['#E8442A','#F5A623','#9CA3AF'];
     if (compTbody) compTbody.innerHTML = top15.map((r, i) => {
-      const omset    = (r.price||0) * (r.total_sold||0);
-      const share    = totalOmset > 0 ? (omset / totalOmset * 100).toFixed(1) : '0';
-      const isTop3   = i < 3;
-      const barColor = isTop3 ? '#E8442A' : '#9CA3AF';
-      // Find matching product in allProducts to enable detail link
+      const omset  = (r.price||0) * (r.total_sold||0);
+      const share  = totalOmset > 0 ? (omset / totalOmset * 100) : 0;
+      const rank   = i + 1;
+      const rc     = rankColors[i] || '#E5E7EB';
+      const rankCls = i < 3 ? `rank-${rank}` : '';
+      const storeName = (r.store_name || '—').substring(0, 24);
+      const soldFmt = (r.total_sold||0) >= 1000 ? ((r.total_sold||0)/1000).toFixed(1) + 'rb' : String(r.total_sold||0);
       const kw = (r.keyword || t.keyword || '').toLowerCase();
       const linkedProd = allProducts.find(p => p.keyword && p.keyword.toLowerCase() === kw);
-      const rowClick = linkedProd ? `onclick="openDetail(${linkedProd.id})" title="Lihat detail produk" style="cursor:pointer;"` : '';
-      return `<tr class="${isTop3?'top3':''}" ${rowClick}>
-        <td class="mls-comp-rank">${i+1}</td>
-        <td>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <img class="mls-comp-img" src="${r.image_url||''}" onerror="this.style.opacity='.2'" alt="">
-            <div>
-              <div class="mls-comp-name">${r.product_name||'—'}</div>
-              <div class="mls-comp-store">${r.store_name||'—'}</div>
-            </div>
+      const clickAttr = linkedProd ? `onclick="openDetail(${linkedProd.id})" style="cursor:pointer;"` : '';
+      return `<div class="mls-seller-card ${rankCls}" ${clickAttr}>
+        <div class="mls-seller-img-wrap">
+          <img class="mls-seller-img" src="${r.image_url||''}" onerror="this.src='';this.style.background='#F0EDE8';" alt="${r.product_name||''}">
+          <div class="mls-seller-rank" style="background:${rc};">${rank}</div>
+        </div>
+        <div class="mls-seller-body">
+          <div class="mls-seller-store">${storeName}</div>
+          <div class="mls-seller-price">Rp ${(r.price||0).toLocaleString('id-ID')}</div>
+          <div class="mls-seller-stats">
+            <span>${soldFmt} terjual</span>
+            <span style="color:#9CA3AF;">·</span>
+            <span style="color:#E8442A;">${share.toFixed(1)}% share</span>
           </div>
-        </td>
-        <td style="text-align:right;font-size:.7rem;font-weight:600;color:#111827;white-space:nowrap;">Rp ${(r.price||0).toLocaleString('id-ID')}</td>
-        <td style="text-align:right;font-size:.7rem;color:#374151;white-space:nowrap;">${(r.total_sold||0).toLocaleString('id-ID')}</td>
-        <td style="text-align:right;font-size:.7rem;font-weight:600;color:#111827;white-space:nowrap;">${fmt(omset)}</td>
-        <td style="text-align:right;">
-          <div style="display:flex;align-items:center;justify-content:flex-end;gap:5px;">
-            <div class="mls-comp-bar"><div class="mls-comp-bar-fill" style="background:${barColor};width:${Math.min(parseFloat(share)*5,100)}%;"></div></div>
-            <span style="font-size:.7rem;font-weight:700;color:${barColor};white-space:nowrap;">${share}%</span>
-          </div>
-        </td>
-      </tr>`;
+          <div class="mls-seller-share-bar"><div class="mls-seller-share-fill" style="width:${Math.min(share*4,100)}%;background:${rc};"></div></div>
+        </div>
+      </div>`;
     }).join('');
 
   } catch(e) {
@@ -16156,6 +16191,14 @@ document.addEventListener('touchend', function(e){
 document.addEventListener('DOMContentLoaded', function(){
   if (typeof Chart !== 'undefined') lpRenderPreview(_LP_DEMO);
   setInterval(function(){ if (typeof goToSlide === 'function') goToSlide((bannerSlide + 1) % bannerTotal); }, 3000);
+
+  // Sticky nav shadow on scroll
+  const lpNav = document.querySelector('.lp-nav');
+  if (lpNav) {
+    window.addEventListener('scroll', function() {
+      lpNav.classList.toggle('lp-nav-scrolled', window.scrollY > 20);
+    }, { passive: true });
+  }
 
   // close topbar avatar dropdown on outside click
   document.addEventListener('click', function(e) {
