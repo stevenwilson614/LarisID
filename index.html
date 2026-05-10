@@ -2081,6 +2081,132 @@ body.in-dashboard .navbar{display:flex;}
   .dashboard-layout{flex-direction:row;}
   .pdb-filters{padding:14px;}
 }
+
+/* ══════════════════════════════════════════════════════
+   MOBILE (HP) REDESIGN — all rules scoped to ≤768px
+   Desktop is completely unaffected.
+═══════════════════════════════════════════════════════ */
+
+/* ── Issue 1: Discover grid — 2/3 columns on mobile ── */
+@media(max-width:768px){
+  .dsc-page{padding:10px 10px 80px;}
+  .dsc-card-grid{grid-template-columns:repeat(2,1fr);gap:10px;padding:10px;}
+  .dsc-count{display:none;}
+  .dsc-search{font-size:.75rem;padding:7px 10px 7px 30px;min-width:0;}
+  .dsc-sort-select{display:none;}
+  .dsc-table-controls{flex-wrap:nowrap;gap:6px;}
+}
+@media(min-width:480px) and (max-width:768px){
+  .dsc-card-grid{grid-template-columns:repeat(3,1fr);}
+}
+
+/* ── Issue 2a: Deep dive image — cap height, no stretch ── */
+@media(max-width:768px){
+  .dd-hero{flex-direction:column;align-items:flex-start;gap:12px;}
+  .dd-hero-img{width:100%;height:180px;min-width:unset;max-width:unset;padding:0;overflow:hidden;border-radius:10px;display:block;}
+  .dd-hero-img img{width:100%;height:100%;object-fit:cover;}
+  .dd-wrap{padding:12px 12px 80px;}
+}
+
+/* ── Issue 2b: Title truncation ── */
+@media(max-width:768px){
+  .dd-hero-name{font-size:1rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+}
+
+/* ── Issue 2c: Deep dive tabs scroll horizontally ── */
+@media(max-width:768px){
+  .dd-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap;margin:0 -12px;padding-left:12px;}
+  .dd-tabs::-webkit-scrollbar{display:none;}
+  .dd-tab{font-size:.73rem;padding:9px 10px;white-space:nowrap;flex-shrink:0;}
+}
+
+/* ── Issue 2d: Table scroll wrappers ── */
+.dd-tbl-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.dd-scroll-hint{font-size:.65rem;color:#9CA3AF;margin-bottom:4px;display:none;align-items:center;gap:4px;}
+@media(max-width:768px){.dd-scroll-hint{display:flex;}}
+
+/* ── Issue 4b: Bottom nav CSS ── */
+#mobile-bottom-nav{
+  display:none;position:fixed;bottom:0;left:0;right:0;
+  height:calc(60px + env(safe-area-inset-bottom));
+  padding-bottom:env(safe-area-inset-bottom);
+  background:#fff;border-top:1px solid #E5E7EB;
+  box-shadow:0 -2px 16px rgba(0,0,0,.09);
+  z-index:1180;flex-direction:row;align-items:flex-start;
+  justify-content:space-around;padding-top:6px;
+}
+body.in-dashboard #mobile-bottom-nav{display:flex;}
+.mbn-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  background:none;border:none;cursor:pointer;color:#9CA3AF;
+  font-family:'Plus Jakarta Sans',sans-serif;padding:4px 0 0;
+  transition:color .15s;-webkit-tap-highlight-color:transparent;
+}
+.mbn-item.active{color:#E8442A;}
+.mbn-icon{width:24px;height:24px;display:flex;align-items:center;justify-content:center;}
+.mbn-label{font-size:.59rem;font-weight:600;line-height:1;}
+.mbn-center{position:relative;top:-14px;flex-shrink:0;}
+.mbn-center-icon{
+  width:48px;height:48px;border-radius:50%;
+  background:linear-gradient(135deg,#E8442A,#F97316);
+  box-shadow:0 4px 16px rgba(232,68,42,.45);color:#fff;
+}
+.mbn-center .mbn-label{margin-top:6px;}
+#mbn-sheet-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1199;
+}
+#mbn-more-sheet{
+  display:none;position:fixed;bottom:0;left:0;right:0;
+  background:#fff;border-radius:20px 20px 0 0;z-index:1200;
+  padding:20px 16px calc(20px + env(safe-area-inset-bottom));
+  transform:translateY(100%);transition:transform .3s cubic-bezier(.22,1,.36,1);
+}
+.mbn-sheet-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.mbn-sheet-item{
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+  background:none;border:none;cursor:pointer;font-size:.72rem;font-weight:600;
+  color:#374151;padding:10px 4px;font-family:'Plus Jakarta Sans',sans-serif;
+  -webkit-tap-highlight-color:transparent;
+}
+.mbn-sheet-icon{
+  width:44px;height:44px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;font-size:1.3rem;
+}
+
+/* ── Issue 4c: Override 660px icon-only sidebar; restore full sidebar when it slides in ── */
+@media(max-width:768px){
+  body.in-dashboard .dash-sidebar{width:240px !important;transform:translateX(-100%) !important;}
+  body.in-dashboard .dash-sidebar.open{transform:translateX(0) !important;}
+  body.in-dashboard .dash-nav-item{justify-content:flex-start !important;padding:10px 14px !important;}
+  body.in-dashboard .dash-nav-item span:not(.dash-nav-icon){display:inline !important;}
+  body.in-dashboard .dash-sidebar-logo,
+  body.in-dashboard .dash-nav-sub{display:block !important;}
+  body.in-dashboard .dash-content{padding-bottom:calc(68px + env(safe-area-inset-bottom));}
+  #fb-float{bottom:calc(70px + env(safe-area-inset-bottom));}
+  body.in-dashboard .dash-topbar-hamburger{display:none !important;}
+}
+
+/* ── Issue 5a: Card score badge — smaller + colour-coded on mobile ── */
+@media(max-width:768px){
+  .dsc-card-body{padding:7px 8px;gap:3px;}
+  .dsc-card-name{font-size:.71rem;}
+  .dsc-card-store{display:none;}
+  .dsc-card-price{font-size:.74rem;}
+}
+
+/* ── Issue 5b: Mobile sort chips ── */
+.dsc-sort-chips{display:none;}
+@media(max-width:768px){
+  .dsc-sort-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:8px 10px 4px;-webkit-overflow-scrolling:touch;}
+  .dsc-sort-chips::-webkit-scrollbar{display:none;}
+}
+.dsc-chip{
+  padding:6px 13px;border-radius:20px;font-size:.72rem;font-weight:600;
+  border:1.5px solid #E5E7EB;background:#fff;color:#374151;
+  cursor:pointer;white-space:nowrap;font-family:'Plus Jakarta Sans',sans-serif;
+  flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:all .15s;
+}
+.dsc-chip.active{background:#E8442A;border-color:#E8442A;color:#fff;}
 @media(max-width:420px){
   .pdb-range-grid{grid-template-columns:minmax(0,1fr);}
 }
@@ -4946,6 +5072,14 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <span class="dsc-count" id="dsc-count"></span>
                 </div>
 
+                <!-- Mobile-only sort chips (⭐ Skor Tinggi first = goal) -->
+                <div class="dsc-sort-chips" id="dsc-sort-chips">
+                  <button class="dsc-chip active" onclick="dscSetChip(this,'score-desc')">⭐ Skor Tinggi</button>
+                  <button class="dsc-chip" onclick="dscSetChip(this,'omset-desc')">📈 Omset</button>
+                  <button class="dsc-chip" onclick="dscSetChip(this,'tren-desc')">🔥 Trending</button>
+                  <button class="dsc-chip" onclick="dscSetChip(this,'price-asc')">💰 Termurah</button>
+                </div>
+
                 <div class="dsc-table-wrap">
                   <div id="dsc-card-grid" class="dsc-card-grid"></div>
                   <table class="dsc-table" id="dsc-table-inner" style="display:none;">
@@ -5201,10 +5335,13 @@ html,body{overflow-x:hidden;max-width:100%;}
               <div class="dd-row2b">
                 <div class="dd-card">
                   <div class="dd-card-title" style="margin-bottom:10px;">Top 15 Kompetitor</div>
-                  <table class="dd-comp-table">
-                    <thead><tr><th>#</th><th>Produk &amp; Toko</th><th>Harga</th><th>Est. Omset/Bln</th><th>Market Share</th><th>Aksi</th></tr></thead>
-                    <tbody id="dd-comp-tbody"></tbody>
-                  </table>
+                  <div class="dd-scroll-hint"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg> Geser untuk lihat semua kolom</div>
+                  <div class="dd-tbl-scroll-wrap">
+                    <table class="dd-comp-table">
+                      <thead><tr><th>#</th><th>Produk &amp; Toko</th><th>Harga</th><th>Est. Omset/Bln</th><th>Market Share</th><th>Aksi</th></tr></thead>
+                      <tbody id="dd-comp-tbody"></tbody>
+                    </table>
+                  </div>
                   <button class="dd-show-more-btn" id="dd-show-more-btn" onclick="ddToggleCompetitors()">
                     <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
                     Lihat Semua 15 Kompetitor
@@ -5212,10 +5349,13 @@ html,body{overflow-x:hidden;max-width:100%;}
                 </div>
                 <div class="dd-card">
                   <div class="dd-card-title" style="margin-bottom:10px;">Top Keyword</div>
-                  <table class="dd-kw-table">
-                    <thead><tr><th>Keyword</th><th>Volume</th><th>Kompetisi</th><th>Trend</th></tr></thead>
-                    <tbody id="dd-kw-tbody"></tbody>
-                  </table>
+                  <div class="dd-scroll-hint"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg> Geser untuk lihat semua kolom</div>
+                  <div class="dd-tbl-scroll-wrap">
+                    <table class="dd-kw-table">
+                      <thead><tr><th>Keyword</th><th>Volume</th><th>Kompetisi</th><th>Trend</th></tr></thead>
+                      <tbody id="dd-kw-tbody"></tbody>
+                    </table>
+                  </div>
                   <button class="dd-show-more-btn" style="margin-top:10px;">Lihat Semua Keyword</button>
                 </div>
               </div>
@@ -8535,6 +8675,49 @@ function switchDashView(view) {
   if (view === 'ai'        && typeof mlsInit      === 'function') mlsInit();
   if (view === 'alerts'    && typeof alrInit      === 'function' && allProducts.length) alrInit();
   if (view === 'credits'   && typeof creditsInit  === 'function') creditsInit();
+  mbnSync(view);
+}
+
+// ── MOBILE BOTTOM NAV ──────────────────────────────────────────
+const MBN_MAP = {
+  dashboard:'mbn-dashboard', discover:'mbn-discover',
+  ai:'mbn-ai', tracker:'mbn-tracker',
+  deepdive:'mbn-tracker',          // deep dive lives under tracker in mobile nav
+  alerts:'mbn-more', credits:'mbn-more',
+  'product-database':'mbn-more', keywords:'mbn-more', estimator:'mbn-more',
+};
+
+function mbnSync(view) {
+  document.querySelectorAll('.mbn-item').forEach(el => el.classList.remove('active'));
+  const id = MBN_MAP[view];
+  if (id) { const el = document.getElementById(id); if (el) el.classList.add('active'); }
+}
+
+function mbnOpenMore() {
+  document.getElementById('mbn-sheet-overlay').style.display = 'block';
+  const s = document.getElementById('mbn-more-sheet');
+  s.style.display = 'block';
+  s.getBoundingClientRect(); // force reflow
+  s.style.transform = 'translateY(0)';
+}
+
+function mbnCloseMore() {
+  const s = document.getElementById('mbn-more-sheet');
+  if (!s) return;
+  s.style.transform = 'translateY(100%)';
+  setTimeout(() => {
+    s.style.display = 'none';
+    document.getElementById('mbn-sheet-overlay').style.display = 'none';
+  }, 300);
+}
+
+// ── MOBILE DISCOVER SORT CHIPS ──────────────────────────────────
+function dscSetChip(el, val) {
+  document.querySelectorAll('.dsc-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  const sel = document.getElementById('dsc-sort');
+  if (sel) { sel.value = val; }
+  dscApplyFilters();
 }
 
 function toggleDashSub(sub) {
@@ -16033,6 +16216,57 @@ document.addEventListener('DOMContentLoaded', function(){
         <button id="cmp-go-btn" disabled onclick="openComparePage()">Bandingkan</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ══ MOBILE BOTTOM NAVIGATION (only shown body.in-dashboard ≤768px) ══ -->
+<nav id="mobile-bottom-nav" aria-label="Navigasi utama">
+  <button class="mbn-item" id="mbn-dashboard" onclick="switchDashView('dashboard')">
+    <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+    <span class="mbn-label">Beranda</span>
+  </button>
+  <button class="mbn-item" id="mbn-discover" onclick="switchDashView('discover')">
+    <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+    <span class="mbn-label">Discover</span>
+  </button>
+  <button class="mbn-item mbn-center" id="mbn-ai" onclick="switchDashView('ai')">
+    <span class="mbn-icon mbn-center-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+    <span class="mbn-label">AI</span>
+  </button>
+  <button class="mbn-item" id="mbn-tracker" onclick="switchDashView('tracker')">
+    <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+    <span class="mbn-label">Tracker</span>
+  </button>
+  <button class="mbn-item" id="mbn-more" onclick="mbnOpenMore()">
+    <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg></span>
+    <span class="mbn-label">Lainnya</span>
+  </button>
+</nav>
+
+<!-- "Lainnya" bottom sheet -->
+<div id="mbn-sheet-overlay" onclick="mbnCloseMore()"></div>
+<div id="mbn-more-sheet">
+  <div style="width:36px;height:4px;background:#E5E7EB;border-radius:2px;margin:0 auto 20px;"></div>
+  <div style="font-size:.88rem;font-weight:800;color:#1A1F3C;margin-bottom:16px;">Menu Lainnya</div>
+  <div class="mbn-sheet-grid">
+    <button class="mbn-sheet-item" onclick="switchDashView('deepdive');mbnCloseMore()">
+      <span class="mbn-sheet-icon" style="background:#FFF0ED;">🔍</span><span>Deep Dive</span>
+    </button>
+    <button class="mbn-sheet-item" onclick="switchDashView('alerts');mbnCloseMore()">
+      <span class="mbn-sheet-icon" style="background:#EEF2FF;">🔔</span><span>Alerts</span>
+    </button>
+    <button class="mbn-sheet-item" onclick="switchDashView('credits');mbnCloseMore()">
+      <span class="mbn-sheet-icon" style="background:#FFFBEB;">⭐</span><span>Kredit</span>
+    </button>
+    <button class="mbn-sheet-item" onclick="switchDashView('product-database');mbnCloseMore()">
+      <span class="mbn-sheet-icon" style="background:#ECFDF5;">📦</span><span>Database</span>
+    </button>
+    <button class="mbn-sheet-item" onclick="switchDashView('keywords');mbnCloseMore()">
+      <span class="mbn-sheet-icon" style="background:#F5F3FF;">🔑</span><span>Keyword</span>
+    </button>
+    <button class="mbn-sheet-item" onclick="switchDashView('estimator');mbnCloseMore()">
+      <span class="mbn-sheet-icon" style="background:#EFF6FF;">🧮</span><span>Estimator</span>
+    </button>
   </div>
 </div>
 
