@@ -204,9 +204,9 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .trending-row-outer{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:14px;margin:0 -20px;padding-left:20px;padding-right:4px;}
 .trending-row-outer::-webkit-scrollbar{height:3px;}.trending-row-outer::-webkit-scrollbar-track{background:transparent;}.trending-row-outer::-webkit-scrollbar-thumb{background:#e0d8d0;border-radius:2px;}
 .trending-row{display:flex;gap:10px;width:max-content;}
-.trending-row .product-card{width:155px;flex-shrink:0;}
+.trending-row .product-card{flex:0 0 auto;width:clamp(130px,18vw,175px);}
 .trending-loading{padding:8px 0 16px;color:var(--tl);font-size:.8rem;display:flex;align-items:center;gap:8px;}
-@media(max-width:640px){.trending-row .product-card{width:135px;}}
+@media(max-width:640px){.trending-row .product-card{width:clamp(110px,38vw,145px);}}
 .sec-head{display:flex;align-items:center;justify-content:space-between;padding:16px 0 10px;}
 .sec-title{font-size:.82rem;font-weight:400;color:#333;letter-spacing:.05em;text-transform:uppercase;display:flex;align-items:center;gap:8px;}
 .sec-title::before{content:'';display:block;width:3px;height:14px;background:var(--orange);border-radius:2px;}
@@ -5226,7 +5226,6 @@ html,body{overflow-x:hidden;max-width:100%;}
               <div class="dd-tab" onclick="ddSwitchTab('kompetitor')" data-tab="kompetitor">Kompetitor</div>
               <div class="dd-tab" onclick="ddSwitchTab('keyword')" data-tab="keyword">Keyword</div>
               <div class="dd-tab" onclick="ddSwitchTab('tren')" data-tab="tren">Tren Historis</div>
-              <div class="dd-tab" onclick="ddSwitchTab('ai')" data-tab="ai">Review AI</div>
             </div>
 
             <!-- ── TAB: LISTING ── -->
@@ -5272,7 +5271,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <div class="dd-card-title" style="margin-bottom:10px;">Top Penjual di Keyword Ini</div>
                 <div id="dd-kw-sellers-loading" style="text-align:center;padding:20px;color:#9CA3AF;font-size:.8rem;">Memuat data...</div>
                 <table class="dd-kw-sellers-table" id="dd-kw-sellers-table" style="display:none;">
-                  <thead><tr><th>#</th><th>Produk</th><th>Harga</th><th>Total Terjual</th><th>Market Share</th></tr></thead>
+                  <thead><tr><th>#</th><th>Produk</th><th>Harga</th><th>Total Terjual <span title="Data langsung dari Shopee via scraping LarisID" style="cursor:help;color:#9CA3AF;font-weight:400;">ⓘ</span></th><th>Market Share</th></tr></thead>
                   <tbody id="dd-kw-sellers-tbody"></tbody>
                 </table>
               </div>
@@ -5324,11 +5323,13 @@ html,body{overflow-x:hidden;max-width:100%;}
                     <div class="dd-donut-legend" id="dd-donut-legend"></div>
                   </div>
                 </div>
-                <div class="dd-card">
+                <div class="dd-card" style="overflow:hidden;">
                   <div class="dd-card-title">Performa Kategori</div>
                   <div class="dd-card-sub" id="dd-cat-label">—</div>
                   <div class="dd-catperf-stats" id="dd-catperf-stats"></div>
-                  <canvas id="dd-chart-catperf" height="70"></canvas>
+                  <div style="width:100%;overflow:hidden;position:relative;">
+                    <canvas id="dd-chart-catperf" height="70"></canvas>
+                  </div>
                 </div>
               </div>
               <!-- row 3: top 15 kompetitor | top keyword -->
@@ -5696,7 +5697,8 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <div class="dd-card" style="padding:14px;background:linear-gradient(135deg,#FFF7F0,#FFF3E0);">
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
                       <div style="width:28px;height:28px;background:#E8442A;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0;">🤖</div>
-                      <div style="font-size:.78rem;font-weight:700;color:#111827;">Rekomendasi AI</div>
+                      <div style="font-size:.78rem;font-weight:700;color:#111827;">Rekomendasi Keyword</div>
+                      <div style="font-size:.62rem;color:#9CA3AF;margin-bottom:4px;">Berdasarkan analisis keyword produk &amp; kompetitor di pasar ini</div>
                     </div>
                     <div style="display:flex;flex-direction:column;gap:7px;" id="kw-ai-recs"></div>
                   </div>
@@ -5705,7 +5707,16 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
             </div>
             <div id="dd-tab-tren" class="dd-tab-panel" style="display:none;">
-              <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start;">
+              <div id="tren-empty-state" style="display:none;text-align:center;padding:40px 24px;">
+                <div style="max-width:400px;margin:0 auto;background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:28px 24px;">
+                  <div style="width:48px;height:48px;border-radius:50%;background:#FFF0ED;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                  </div>
+                  <div style="font-size:.85rem;font-weight:700;color:#111827;margin-bottom:8px;">Data Historis Belum Tersedia</div>
+                  <div style="font-size:.72rem;color:#6B7280;line-height:1.6;">Scraping dilakukan setiap Senin — data tren akan muncul setelah 2 scrape <span style="white-space:nowrap;">(±1–2 minggu).</span><br><br>Produk baru ditambahkan ke database saat kamu pertama kali membuka Deep Dive-nya.</div>
+                </div>
+              </div>
+              <div id="tren-content-grid" style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start;">
 
                 <!-- LEFT -->
                 <div style="display:flex;flex-direction:column;gap:14px;">
@@ -5830,7 +5841,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                   </div>
 
                 </div>
-              </div>
+              </div><!-- /tren-content-grid -->
             </div>
             <div id="dd-tab-kalkulator" class="dd-tab-panel" style="display:none;">
               <div class="dd-card" style="padding:40px;text-align:center;">
@@ -5921,7 +5932,8 @@ html,body{overflow-x:hidden;max-width:100%;}
                       <button onclick="mlsToggleApiSettings()" style="font-size:.68rem;color:#E8442A;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;">⚙ Hubungkan API kamu</button>
                     </div>
                     <div id="mls-api-settings" style="display:none;margin-top:10px;padding:12px;background:#F9FAFB;border-radius:8px;border:1px solid #E5E7EB;">
-                      <div style="font-size:.72rem;font-weight:700;color:#374151;margin-bottom:8px;">Hubungkan API sendiri — tetap menggunakan kredit, tapi pakai model lebih kuat</div>
+                      <div style="font-size:.72rem;font-weight:700;color:#374151;margin-bottom:4px;">Hubungkan API sendiri — tetap menggunakan kredit, tapi pakai model lebih kuat</div>
+                      <div style="font-size:.65rem;color:#9CA3AF;margin-bottom:8px;">⚠️ API kamu hanya mendapat akses ke konteks produk yang dipilih, bukan seluruh database.</div>
                       <div style="margin-bottom:8px;">
                         <label style="font-size:.7rem;color:#6B7280;display:block;margin-bottom:3px;">Anthropic API Key (claude.ai)</label>
                         <div style="display:flex;gap:6px;">
@@ -6283,6 +6295,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             <button class="cg-btn primary" id="cg-confirm-btn" onclick="cgConfirm()">Gunakan Kredit</button>
           </div>
           <div style="margin-top:12px;font-size:.72rem;color:#9CA3AF;">Saldo: <span id="cg-balance-display" style="font-weight:700;color:#f97316;">—</span> kredit • <a onclick="switchDashView('credits');cgClose()" style="color:#E8442A;cursor:pointer;text-decoration:underline;">Beli lebih</a></div>
+          <div id="cg-earn-note" style="display:none;margin-top:8px;padding:8px 10px;background:#FFF7ED;border-radius:8px;font-size:.68rem;color:#92400E;line-height:1.5;text-align:center;"></div>
         </div>
       </div>
 
@@ -7329,7 +7342,6 @@ function _authOnSignIn(session) {
   const onLanding = document.getElementById('page-landing')?.classList.contains('active');
   if (onLanding) openProfile();
   renderHomeGrid();
-  renderTrendingRow('home-trending-row');
   if (currentProduct) renderDetail(currentProduct);
 }
 
@@ -7341,7 +7353,6 @@ function _authOnSignOut() {
   renderProfileSaved();
   showPage('landing');
   renderHomeGrid();
-  renderTrendingRow('home-trending-row');
 }
 
 function initSupabase() {
@@ -8365,6 +8376,8 @@ function cgShow(title, sub, callback, action) {
 function cgClose() {
   document.getElementById('cg-overlay').style.display = 'none';
   _cgCallback = null;
+  const earnNote = document.getElementById('cg-earn-note');
+  if (earnNote) earnNote.style.display = 'none';
 }
 
 async function cgConfirm() {
@@ -8464,7 +8477,7 @@ async function mlsAiAsk(prompt) {
   if (!respEl) return;
   respEl.style.display = 'block';
   respEl.textContent   = 'AI sedang menganalisis...';
-  const systemCtx = `Kamu adalah analis pasar Shopee Indonesia. Produk: "${p.product_name||p.name||'—'}", keyword: "${p.keyword||'—'}", harga: Rp ${p.price ? Math.round(p.price).toLocaleString('id-ID') : '—'}, total terjual: ${p.total_sold||'—'}. Median harga pasar: Rp ${ctx.medianPrice ? Math.round(ctx.medianPrice).toLocaleString('id-ID') : '—'}. Total omset pasar: Rp ${ctx.totalOmset ? Math.round(ctx.totalOmset).toLocaleString('id-ID') : '—'}/bulan. Jawab singkat dan praktis dalam Bahasa Indonesia.`;
+  const systemCtx = `Kamu adalah analis pasar Shopee Indonesia. Kamu HANYA dapat menganalisis produk yang disebutkan di bawah — jangan mencoba mengakses data produk lain atau database. Produk: "${p.product_name||p.name||'—'}", keyword: "${p.keyword||'—'}", harga: Rp ${p.price ? Math.round(p.price).toLocaleString('id-ID') : '—'}, total terjual: ${p.total_sold||'—'}. Median harga pasar: Rp ${ctx.medianPrice ? Math.round(ctx.medianPrice).toLocaleString('id-ID') : '—'}. Total omset pasar: Rp ${ctx.totalOmset ? Math.round(ctx.totalOmset).toLocaleString('id-ID') : '—'}/bulan. Jawab singkat dan praktis dalam Bahasa Indonesia.`;
 
   const userAnthropicKey = localStorage.getItem('larisid_anthropic_key');
   const userOpenAiKey    = localStorage.getItem('larisid_openai_key');
@@ -9342,7 +9355,7 @@ function dscOpenDeepDive(key) {
     _listing:    listing,
   };
   // Reset keyword context so stale peer data doesn't bleed into new product's Ringkasan
-  _ddKwRows = []; _ddKwListing = null; _ddKwTotal = 0;
+  _ddKwRows = []; _ddKwListing = null; _ddKwTotal = 0; _analisa_pending = false; _tren_pending = false;
 
   // Switch view first so canvases are visible when Chart.js measures them
   switchDashView('deepdive');
@@ -9516,7 +9529,7 @@ function kalcCalc() {
 }
 
 function ddSwitchTab(tab) {
-  const tabs = ['listing','ringkasan','analisa','kompetitor','keyword','tren','kalkulator','ai'];
+  const tabs = ['listing','ringkasan','analisa','kompetitor','keyword','tren','kalkulator'];
   tabs.forEach(t => {
     const panel = document.getElementById(`dd-tab-${t}`);
     if (panel) panel.style.display = t === tab ? '' : 'none';
@@ -9537,10 +9550,20 @@ function ddSwitchTab(tab) {
     ddRenderKeyword();
   }
   if (tab === 'tren') {
-    ddRenderTren();
+    if (!_ddKwListing && !_ddCurrentP?._listing) {
+      _tren_pending = true;
+    } else {
+      ddRenderTren();
+    }
   }
   if (tab === 'analisa') {
-    ddRenderAnalisa();
+    if (!_ddKwRows || !_ddKwRows.length) {
+      _analisa_pending = true;
+      const s1 = document.getElementById('ap-s1');
+      if (s1) s1.innerHTML = '<span style="font-size:.75rem;color:#6B7280;">Memuat data pasar...</span>';
+    } else {
+      ddRenderAnalisa();
+    }
   }
 }
 
@@ -9577,7 +9600,7 @@ async function ddLoadKeywordContext(listing) {
     // Fetch all listings for this keyword (raw table — faster with keyword filter)
     const { data, error } = await _supabase
       .from('listings')
-      .select('item_id,shop_id,product_name,store_name,price,total_sold,image_url,url,rating,reviews')
+      .select('item_id,shop_id,product_name,store_name,price,total_sold,image_url,url,rating,reviews,listing_date,location')
       .eq('keyword', kw)
       .order('total_sold', { ascending: false })
       .limit(120);
@@ -9656,6 +9679,8 @@ async function ddLoadKeywordContext(listing) {
     _ddKwRows    = rows;
     _ddKwListing = listing;
     _ddKwTotal   = totalSold;
+    if (_analisa_pending) { _analisa_pending = false; ddRenderAnalisa(); }
+    if (_tren_pending)    { _tren_pending    = false; ddRenderTren(); }
 
     // Update Deep Dive scores now that we have full keyword peers
     const _kwTrend = _dscKwTrendMap[listing.keyword] ?? null;
@@ -9773,6 +9798,8 @@ function ddUpdateRingkasanFromKw(rows, totalSold, listing) {
 let _ddKwRows    = [];
 let _ddKwListing = null;
 let _ddKwTotal   = 0;
+let _analisa_pending = false;
+let _tren_pending    = false;
 let _kompShowing = 10;
 let _kompFiltered = [];
 
@@ -10103,16 +10130,24 @@ function ddRenderKeyword() {
       </div>`).join('');
   }
 
-  // AI recommendations
+  // Keyword recommendations (algorithmic, based on actual ranking data)
   const aiEl = document.getElementById('kw-ai-recs');
   if (aiEl) {
     const top3 = kwsRanked.slice(0,3).map(k=>k.kw).join(', ');
     const bestLt = longtail[0]?.kw || kwsRanked[2]?.kw || baseKw;
+    const highComp  = kwsRanked.filter(k => k.comp === 'Tinggi').length;
+    const lowComp   = kwsRanked.filter(k => k.comp === 'Rendah').length;
+    const hasBestLt = longtail.length > 0;
+    // Vary tips based on actual competition landscape
     const tips = [
-      { icon:'🔍', txt: `Gunakan keyword utama di judul: <strong>${top3}</strong>` },
-      { icon:'🎯', txt: `Tambahkan variasi long-tail untuk menjangkau niche market` },
-      { icon:'📈', txt: `Fokus pada keyword dengan potensi tinggi dan persaingan rendah` },
-      { icon:'📝', txt: `Letakkan keyword utama di 60 karakter pertama judul Shopee` },
+      { icon:'🔍', txt: `Keyword utama terbaik: <strong>${top3 || baseKw}</strong>` },
+      highComp > lowComp
+        ? { icon:'⚠️', txt: `Pasar ini kompetitif — prioritaskan long-tail keyword dengan volume lebih kecil tapi konversi tinggi` }
+        : { icon:'✅', txt: `Ada keyword dengan persaingan rendah — peluang bagus untuk bersaing lebih mudah` },
+      hasBestLt
+        ? { icon:'🎯', txt: `Coba long-tail: <strong>${bestLt}</strong> — lebih spesifik, konversi lebih tinggi` }
+        : { icon:'🎯', txt: `Gunakan variasi long-tail keyword produk ini untuk menjangkau segmen niche` },
+      { icon:'📝', txt: `Letakkan keyword utama dalam 60 karakter pertama judul Shopee` },
     ];
     aiEl.innerHTML = tips.map(t => `
       <div style="display:flex;gap:8px;align-items:flex-start;font-size:.65rem;color:#374151;">
@@ -10236,10 +10271,20 @@ async function ddRenderTren() {
         const prevDate = new Date(currDate.getTime() - 7 * 86400000);
         dbRows = [{ scraped_at: prevDate.toISOString(), total_sold: prevSold, price: listing.price, reviews: null }, currRow];
       } else {
-        if (insEl) insEl.innerHTML = '<div style="font-size:.68rem;color:#9CA3AF;padding:8px 0;">Belum cukup data untuk menampilkan tren. Data akan muncul setelah 2+ scrape.</div>';
+        const emptyEl = document.getElementById('tren-empty-state');
+        const gridEl  = document.getElementById('tren-content-grid');
+        if (emptyEl) emptyEl.style.display = '';
+        if (gridEl)  gridEl.style.display  = 'none';
+        if (insEl) insEl.innerHTML = '';
         return;
       }
     }
+
+    // Data is sufficient — show content, hide empty state
+    const _trenEmptyEl = document.getElementById('tren-empty-state');
+    const _trenGridEl  = document.getElementById('tren-content-grid');
+    if (_trenEmptyEl) _trenEmptyEl.style.display = 'none';
+    if (_trenGridEl)  _trenGridEl.style.display  = '';
 
     const fallbackPrice = listing.price || 0;
     const _CAT_MULT = { 'Rumah':2.94,'Fashion':2.77,'Dapur':3.41,'Kamar Mandi':4.21,'Keamanan':3.40,
@@ -11016,6 +11061,11 @@ function ddToggleTrack() {
     },
     'tracker'
   );
+  const earnNote = document.getElementById('cg-earn-note');
+  if (earnNote) {
+    earnNote.innerHTML = 'Belum punya kredit? <a href="https://shopee.co.id" target="_blank" style="color:#92400E;font-weight:700;text-decoration:underline;">Cari produk di Shopee pakai Extension →</a><br>10 pencarian = 1 kredit gratis';
+    earnNote.style.display = 'block';
+  }
 }
 
 function ddUpdateTrackBtn(listing) {
@@ -11415,30 +11465,39 @@ function ddRenderCompetitors() {
     const barW       = Math.min(100, Math.round((c.total_sold||0) / Math.max(..._ddCompAll.map(r=>r.total_sold||0),1) * 100));
     const imgHtml    = c.image_url ? `<img src="${c.image_url}" style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">` : '';
     const ratingHtml = c.rating ? `<span style="color:#F59E0B;font-size:.6rem;">★ ${c.rating.toFixed(1)}</span>` : '';
+    const reviewsHtml = c.reviews ? `<span style="font-size:.58rem;color:#9CA3AF;">(${c.reviews >= 1000 ? (c.reviews/1000).toFixed(1)+'rb' : c.reviews} ulasan)</span>` : '';
+    const locationHtml = c.location ? `<span style="font-size:.58rem;color:#9CA3AF;display:inline-flex;align-items:center;gap:2px;">📍${c.location}</span>` : '';
+    const listingAgeHtml = c.listing_date ? (() => {
+      const d = new Date(c.listing_date);
+      const months = Math.max(0, Math.floor((Date.now() - d) / (1000*60*60*24*30)));
+      const label = months < 1 ? 'Baru' : months < 12 ? `${months} bln` : `${Math.floor(months/12)} thn`;
+      return `<span style="font-size:.58rem;color:#9CA3AF;">Sejak ${label}</span>`;
+    })() : '';
     return `<tr>
       <td style="color:#9CA3AF;font-weight:600;font-size:.72rem;">${c.rank}</td>
-      <td>
-        <div style="display:flex;align-items:center;gap:7px;">
+      <td style="min-width:180px;">
+        <div style="display:flex;align-items:flex-start;gap:7px;">
           ${imgHtml}
           <div>
             <div style="font-size:.68rem;font-weight:600;color:#111827;line-height:1.2;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.product_name}</div>
-            <div style="font-size:.6rem;color:#6B7280;">${c.store_name} ${ratingHtml}</div>
+            <div style="font-size:.6rem;color:#6B7280;margin-top:2px;">${c.store_name} ${ratingHtml} ${reviewsHtml}</div>
+            <div style="display:flex;gap:6px;margin-top:2px;">${locationHtml} ${listingAgeHtml}</div>
           </div>
         </div>
       </td>
-      <td style="font-size:.68rem;font-weight:600;">Rp ${(c.price||0).toLocaleString('id-ID')}</td>
-      <td>
+      <td style="font-size:.68rem;font-weight:600;white-space:nowrap;">Rp ${(c.price||0).toLocaleString('id-ID')}</td>
+      <td style="min-width:110px;">
         <div style="font-size:.68rem;font-weight:600;">Rp ${estMonthly.toLocaleString('id-ID')}</div>
         <div style="font-size:.58rem;color:#9CA3AF;">${(c.total_sold||0).toLocaleString('id-ID')} terjual</div>
       </td>
-      <td>
+      <td style="min-width:100px;">
         <div style="display:flex;align-items:center;gap:5px;">
           <div style="height:6px;width:60px;background:#F3F4F6;border-radius:3px;overflow:hidden;"><div style="height:100%;width:${barW}%;background:${tierColor};border-radius:3px;"></div></div>
           <span style="font-size:.6rem;color:${tierColor};font-weight:600;">${tierLabel}</span>
         </div>
         <div style="font-size:.56rem;color:#9CA3AF;">${sharePct.toFixed(1)}% pasar</div>
       </td>
-      <td>${c.url ? `<a href="${c.url}" target="_blank" style="font-size:.68rem;font-weight:600;color:#E8442A;text-decoration:none;">Lihat</a>` : '—'}</td>
+      <td>${c.url ? `<a href="${c.url}" target="_blank" style="font-size:.68rem;font-weight:600;color:#E8442A;text-decoration:none;white-space:nowrap;">Lihat →</a>` : '—'}</td>
     </tr>`;
   }).join('') : `<tr><td colspan="6" style="padding:20px;text-align:center;color:#9CA3AF;font-size:.72rem;">Data kompetitor akan muncul setelah keyword dimuat.</td></tr>`;
   const btn = document.getElementById('dd-show-more-btn');
@@ -11691,6 +11750,20 @@ async function hbdInit() {
     document.getElementById('hbd-activity-list').innerHTML = '<div style="color:#9CA3AF;font-size:.75rem;">Belum ada aktivitas.</div>';
     document.getElementById('hbd-opp-list').innerHTML = '<div style="color:#9CA3AF;font-size:.75rem;">Belum ada peluang terdeteksi.</div>';
     document.getElementById('hbd-tip-text').textContent = 'Mulai dengan melacak 3-5 produk dari halaman Discover untuk mendapatkan ringkasan performa di sini.';
+    // Sample chart from top allProducts so the chart area isn't blank
+    if (allProducts.length) {
+      const top5 = [...allProducts].sort((a,b) => (b.score||0) - (a.score||0)).slice(0,5);
+      // Use newUnits/total_sold as delta proxy so bars are non-empty in sample view
+      const sampleProds = top5.map(p => ({
+        name:  (p.keyword || p.category || '').split(' ').slice(0,3).join(' ') || 'Produk',
+        delta: p.newUnits || p.total_sold || p.medianPrice || 1,
+        price: p.medianPrice || 0,
+        sold:  p.newUnits    || 0,
+      }));
+      _hbdBuildChartFromTracked(sampleProds);
+      const legendEl = document.getElementById('hbd-legend');
+      if (legendEl) legendEl.innerHTML = '<span style="font-size:.6rem;color:#9CA3AF;font-style:italic;">Contoh: 5 produk teratas di pasar</span>';
+    }
     return;
   }
 
