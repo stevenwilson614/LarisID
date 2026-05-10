@@ -9261,7 +9261,8 @@ let _dscOffset      = 0;
 let _dscHasMore     = true;
 let _dscLoading     = false;
 let _dscLastSrvFilters = null;
-let _dscCurrentCatFilter = ''; // category passed to server when exactly 1 cat selected
+let _dscCurrentCatFilter  = ''; // single cat passed to server (kept for _dscCurrentFilters compat)
+let _dscCurrentCatFilters = null; // full selected-cat array for multi-cat server filter
 let _dscViewMode    = 'card';
 const DSC_FETCH  = 60;
 
@@ -9274,20 +9275,27 @@ async function dscFetchPage(offset, filters = {}) {
     .order('total_sold', { ascending: false })
     .range(offset, offset + 400 - 1);
 
-  if (filters.cat)      q = q.eq('category', filters.cat);
+  if (_dscCurrentCatFilters && _dscCurrentCatFilters.length > 1) {
+    q = q.in('category', _dscCurrentCatFilters);
+  } else if (filters.cat) {
+    q = q.eq('category', filters.cat);
+  }
   if (filters.priceMin) q = q.gte('price', filters.priceMin);
   if (filters.priceMax && filters.priceMax < 1000000) q = q.lte('price', filters.priceMax);
   if (filters.search)   q = q.ilike('product_name', `%${filters.search}%`);
 
   const { data, error } = await q;
   if (error) {
-    // Fall back to raw listings table if view not ready
     let qf = _supabase
       .from('listings')
       .select(FIELDS)
       .order('total_sold', { ascending: false })
       .range(offset, offset + 400 - 1);
-    if (filters.cat)      qf = qf.eq('category', filters.cat);
+    if (_dscCurrentCatFilters && _dscCurrentCatFilters.length > 1) {
+      qf = qf.in('category', _dscCurrentCatFilters);
+    } else if (filters.cat) {
+      qf = qf.eq('category', filters.cat);
+    }
     if (filters.priceMin) qf = qf.gte('price', filters.priceMin);
     if (filters.priceMax && filters.priceMax < 1000000) qf = qf.lte('price', filters.priceMax);
     if (filters.search)   qf = qf.ilike('product_name', `%${filters.search}%`);
@@ -9410,8 +9418,8 @@ async function dscLoadListings() {
   if (_dscLoading || !_supabase) return;
   _dscLoading = true;
 
-  // Show cache instantly, then refresh in background
-  if (!_dscAllListings.length && _dscOffset === 0) {
+  // Show cache instantly — but only when no category filter is active
+  if (!_dscAllListings.length && _dscOffset === 0 && !_dscCurrentCatFilter) {
     const cached = dscLoadCache();
     if (cached && cached.length) {
       _dscAllListings = cached;
@@ -9594,17 +9602,18 @@ function dscApplyFilters(resetPage = true) {
   const sortVal  = document.getElementById('dsc-sort')?.value || 'omset-desc';
 
   // Include single-category selection in server key so DB re-fetch targets that category
-  // (only when exactly 1 cat is selected — multi-cat stays client-side)
-  const srvCat = selectedCats && selectedCats.length === 1 ? selectedCats[0] : '';
-  const srvKey = JSON.stringify({ priceMin, priceMax: priceMaxRaw, search: q, cat: srvCat });
+  // Any non-null selectedCats (partial selection) triggers a server re-fetch filtered by those cats
+  const srvCatKey = selectedCats ? selectedCats.slice().sort().join('|') : '';
+  const srvKey = JSON.stringify({ priceMin, priceMax: priceMaxRaw, search: q, cat: srvCatKey });
   if (_dscLastSrvFilters !== null && _dscLastSrvFilters !== srvKey) {
     _dscAllListings = [];
     _dscOffset = 0;
     _dscHasMore = true;
     _dscLoaded = false;
     _dscLastSrvFilters = srvKey;
-    // Pass the category filter to the loader so dscFetchPage uses it
-    _dscCurrentCatFilter = srvCat;
+    // Store selected cats for dscFetchPage to use
+    _dscCurrentCatFilter = selectedCats && selectedCats.length === 1 ? selectedCats[0] : '';
+    _dscCurrentCatFilters = selectedCats || null; // multi-cat list
     dscLoadListings();
     return;
   }
@@ -11496,7 +11505,8 @@ function dscGoPage(n) {
 
 function dscResetFilters() {
   const g = id => document.getElementById(id);
-  _dscCurrentCatFilter = ''; // clear server-side category filter
+  _dscCurrentCatFilter  = ''; // clear server-side category filter
+  _dscCurrentCatFilters = null;
   document.querySelectorAll('#dsc-cat-checks input[type=checkbox]').forEach(c => c.checked = true);
   if (g('dsc-search'))     g('dsc-search').value     = '';
   if (g('dsc-price-min'))  g('dsc-price-min').value  = 0;
