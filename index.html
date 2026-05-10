@@ -11696,8 +11696,8 @@ function ddRender(p) {
       plugins:{legend:{display:false}},
       scales:{
         x:{ticks:{font:{size:9}}},
-        y:{display:true,position:'left',ticks:{font:{size:8},callback:v=>v>=1000000?(v/1000000).toFixed(1)+'jt':v>=1000?(v/1000).toFixed(0)+'rb':v}},
-        y2:{display:true,position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:8}}},
+        y:{display:true,position:'left',min:0,ticks:{font:{size:8},callback:v=>v>=1000000?(v/1000000).toFixed(1)+'jt':v>=1000?(v/1000).toFixed(0)+'rb':v}},
+        y2:{display:true,position:'right',min:0,grid:{drawOnChartArea:false},ticks:{font:{size:8}}},
       },
       animation:{duration:400}
     }
