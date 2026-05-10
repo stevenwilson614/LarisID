@@ -12728,14 +12728,20 @@ async function mlsSelectProduct(val) {
   if (compSection) compSection.style.display = 'none';
 
   try {
-    const { data } = await _supabase
-      .from('listings_latest')
-      .select('product_name, store_name, image_url, price, total_sold, item_id, shop_id')
+    const { data: rawData } = await _supabase
+      .from('listings')
+      .select('product_name, store_name, image_url, price, total_sold, item_id, shop_id, keyword')
       .eq('keyword', t.keyword)
       .order('total_sold', { ascending: false })
-      .limit(60);
+      .limit(300);
 
-    const rows   = data || [];
+    // Deduplicate by item_id+shop_id, keeping highest total_sold per product
+    const seen = new Map();
+    for (const r of (rawData || [])) {
+      const k = `${r.item_id}_${r.shop_id}`;
+      if (!seen.has(k) || (r.total_sold||0) > (seen.get(k).total_sold||0)) seen.set(k, r);
+    }
+    const rows = [...seen.values()].sort((a, b) => (b.total_sold||0) - (a.total_sold||0));
     const top5   = rows.slice(0, 5);
     const median = arr => { const s = [...arr].sort((a,b)=>a-b); return s.length ? s[Math.floor(s.length/2)] : 0; };
     const prices = rows.map(r => r.price||0).filter(v => v > 0);
