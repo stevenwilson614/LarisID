@@ -9538,12 +9538,17 @@ function _dscSelectedCats() {
 function dscBuildCatChecks(cats) {
   const el = document.getElementById('dsc-cat-checks');
   if (!el) return;
-  const newKey = cats.join(',');
-  if (el.dataset.built === newKey) return; // no new categories — skip
+  // Always include all 19 known categories; merge any extras from loaded data
+  const ALL_CATS = ['Alat Tulis','Bayi & Anak','Dapur','Elektronik','Fashion','Hewan Peliharaan',
+    'Hobi & Kerajinan','HP & Gadget','Kamar Mandi','Keamanan','Kecantikan','Kesehatan',
+    'Motor & Mobil','Olahraga','Outdoor & Camping','Rumah','Sepeda','Taman','Tanaman'];
+  const merged = [...new Set([...ALL_CATS, ...cats])].sort();
+  const newKey = merged.join(',');
+  if (el.dataset.built === newKey) return;
   // Preserve currently-unchecked cats so adding new cats doesn't reset user choices
   const unchecked = new Set([...el.querySelectorAll('input[type=checkbox]:not(:checked)')].map(i => i.value));
   el.dataset.built = newKey;
-  el.innerHTML = cats.map(c => `
+  el.innerHTML = merged.map(c => `
     <label style="display:flex;align-items:center;gap:7px;padding:4px 6px;border-radius:6px;cursor:pointer;font-size:.72rem;color:#374151;user-select:none;transition:background .1s;" onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
       <input type="checkbox" value="${c}" ${unchecked.has(c) ? '' : 'checked'} onchange="dscApplyFilters()" style="accent-color:#E8442A;width:13px;height:13px;flex-shrink:0;">
       <span>${c}</span>
