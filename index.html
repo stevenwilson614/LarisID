@@ -5460,11 +5460,10 @@ html,body{overflow-x:hidden;max-width:100%;}
                 </div>
 
                 <div class="dsc-filter-group">
-                  <span class="dsc-filter-label">Kompetisi</span>
-                  <div class="dsc-checks">
-                    <label class="dsc-check-row"><input type="checkbox" id="dsc-comp-r" checked onchange="dscApplyFilters()"> Rendah</label>
-                    <label class="dsc-check-row"><input type="checkbox" id="dsc-comp-s" checked onchange="dscApplyFilters()"> Sedang</label>
-                    <label class="dsc-check-row"><input type="checkbox" id="dsc-comp-t" checked onchange="dscApplyFilters()"> Tinggi</label>
+                  <span class="dsc-filter-label">Minimum Skor</span>
+                  <input type="range" id="dsc-skor-min" min="0" max="100" step="5" value="0" oninput="document.getElementById('dsc-skor-min-lbl').textContent=this.value;dscApplyFilters()" style="width:100%;accent-color:#E8442A;margin-top:4px;">
+                  <div style="display:flex;justify-content:space-between;font-size:.7rem;color:#9CA3AF;margin-top:2px;">
+                    <span>0</span><span style="font-weight:700;color:#E8442A;" id="dsc-skor-min-lbl">0</span><span>100</span>
                   </div>
                 </div>
 
@@ -9570,6 +9569,10 @@ function _dscCurrentFilters() {
 function dscInit() {
   dscUpdateDualRange('price');
   dscUpdateDualRange('omset');
+  // Pre-populate all known categories immediately so filters are usable before data loads
+  dscBuildCatChecks(['Alat Tulis','Bayi & Anak','Dapur','Elektronik','Fashion','Hewan Peliharaan',
+    'Hobi & Kerajinan','HP & Gadget','Kamar Mandi','Keamanan','Kecantikan','Kesehatan',
+    'Motor & Mobil','Olahraga','Outdoor & Camping','Rumah','Sepeda','Taman','Tanaman']);
   if (!_dscLoaded) dscLoadListings();
 }
 
@@ -9602,8 +9605,15 @@ function dscApplyFilters(resetPage = true) {
   }
   _dscLastSrvFilters = srvKey;
 
-  const allowedComp = ['Rendah','Sedang','Tinggi'].filter((_,i) =>
-    document.getElementById(['dsc-comp-r','dsc-comp-s','dsc-comp-t'][i])?.checked);
+  const minSkor = parseInt(document.getElementById('dsc-skor-min')?.value) || 0;
+
+  // Pre-compute scores when needed for filtering or sorting
+  const needsScore = sortVal.startsWith('score') || minSkor > 0;
+  const _kwMapForSort = {};
+  if (needsScore) {
+    _dscAllListings.forEach(r => { const k = r.keyword||'__'; if (!_kwMapForSort[k]) _kwMapForSort[k]=[]; _kwMapForSort[k].push(r); });
+  }
+  const _scoreOf = p => calcListingScore(p, _kwMapForSort[p.keyword||'__'], _dscListingTrendPct(p), _dscKwTrendMap[p.keyword]??null).total;
 
   let list = _dscAllListings.filter(p => {
     if (q && !(p.product_name||'').toLowerCase().includes(q) && !(p.store_name||'').toLowerCase().includes(q) && !(p.category||'').toLowerCase().includes(q)) return false;
@@ -9612,17 +9622,9 @@ function dscApplyFilters(resetPage = true) {
     if (price < priceMin || price > priceMax) return false;
     const omset = _dscOmset(p);
     if (omset < omsetMin || omset > omsetMax) return false;
-    const comp = _dscCompMap[p.keyword] || 'Sedang';
-    if (!allowedComp.includes(comp)) return false;
+    if (minSkor > 0 && _scoreOf(p) < minSkor) return false;
     return true;
   });
-
-  // Pre-compute scores once for score-sort (avoid re-scoring per comparison)
-  const _kwMapForSort = {};
-  if (sortVal.startsWith('score')) {
-    _dscAllListings.forEach(r => { const k = r.keyword||'__'; if (!_kwMapForSort[k]) _kwMapForSort[k]=[]; _kwMapForSort[k].push(r); });
-  }
-  const _scoreOf = p => calcListingScore(p, _kwMapForSort[p.keyword||'__'], _dscListingTrendPct(p), _dscKwTrendMap[p.keyword]??null).total;
 
   const [sf, sd] = sortVal.split('-');
   list.sort((a, b) => {
@@ -11496,7 +11498,7 @@ function dscResetFilters() {
   if (g('dsc-price-max'))  g('dsc-price-max').value  = 10000000;
   if (g('dsc-omset-min'))  g('dsc-omset-min').value  = 0;
   if (g('dsc-omset-max'))  g('dsc-omset-max').value  = 500000000;
-  ['dsc-comp-r','dsc-comp-s','dsc-comp-t'].forEach(id => { const el = g(id); if (el) el.checked = true; });
+  if (g('dsc-skor-min'))   { g('dsc-skor-min').value = 0; const lbl = g('dsc-skor-min-lbl'); if (lbl) lbl.textContent = '0'; }
   if (g('dsc-sort')) g('dsc-sort').value = 'omset-desc';
   dscUpdateDualRange('price');
   dscUpdateDualRange('omset');
