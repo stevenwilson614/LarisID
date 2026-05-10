@@ -7169,14 +7169,15 @@ function initSupabase() {
       _authRefresh(stored.refresh_token).then(s => { if (s) _authOnSignIn(s); else _authClear(); });
     }
   }
-  // Watch for OAuth sign-ins (Google) via JS client
+  // Watch for OAuth sign-ins (Google) via JS client.
+  // ONLY handle SIGNED_IN, not INITIAL_SESSION — session restoration is done above via _authLoad().
+  // INITIAL_SESSION fires with stale localStorage data and would call openProfile() on users who aren't logged in.
   if (_supabase) {
     _supabase.auth.onAuthStateChange((event, session) => {
-      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.access_token && !currentUser) {
+      if (event === 'SIGNED_IN' && session?.access_token && !currentUser) {
         _authSave(session);
         _authOnSignIn(session);
       }
-      if (event === 'SIGNED_OUT' && !currentUser) _authOnSignOut();
     });
   }
 }
@@ -7234,8 +7235,10 @@ let _authMode = 'login'; // 'login', 'signup', or 'reset'
 
 function openAuthModal(mode) {
   _authMode = mode || 'login';
-  document.getElementById('auth-overlay').style.display = 'flex';
-  renderAuthModal();
+  const overlay = document.getElementById('auth-overlay');
+  if (!overlay) return;
+  overlay.style.display = 'flex';
+  try { renderAuthModal(); } catch(e) { console.error('[LarisID] renderAuthModal error:', e); }
 }
 
 function closeAuthModal() {
