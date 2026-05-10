@@ -948,9 +948,9 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .dash-main{flex:1;display:flex;flex-direction:column;margin-left:240px;min-height:100vh;overflow:hidden;}
 .dash-content{flex:1;overflow-y:auto;background:#F4F6F9;}
 
-/* hide main navbar when in dashboard */
-body.in-dashboard .navbar{display:none;}
-body.on-landing .navbar{display:none;}
+/* main navbar only visible inside dashboard — hidden by default so landing page never shows it */
+.navbar{display:none;}
+body.in-dashboard .navbar{display:flex;}
 
 /* ── MOBILE ── */
 @media(max-width:768px){
@@ -3231,94 +3231,93 @@ html,body{overflow-x:hidden;max-width:100%;}
     <!-- HARGA SECTION -->
     <section id="lp-harga">
       <div class="lp-pricing-head">
-        <div class="lp-section-eyebrow" style="display:inline-block;padding:4px 14px;border-radius:20px;">Pilih paket yang sesuai kebutuhanmu</div>
-        <div class="lp-pricing-title">Mulai Gratis, Upgrade Kapan Saja</div>
-        <p class="lp-pricing-sub">Semua paket dirancang untuk membantu kamu menemukan produk laris, menganalisis kompetitor, dan meningkatkan penjualan.</p>
+        <div class="lp-section-eyebrow" style="display:inline-block;padding:4px 14px;border-radius:20px;">Tanpa langganan bulanan</div>
+        <div class="lp-pricing-title">Bayar Sesuai Pakai — Mulai Gratis</div>
+        <p class="lp-pricing-sub">Dapatkan 5 kredit gratis setiap bulan. Beli kredit tambahan kapan saja — tidak ada biaya berulang, tidak ada kontrak.</p>
         <div class="lp-pricing-trust">
-          <span class="lp-trust-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Gratis 7 hari</span>
+          <span class="lp-trust-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>5 kredit gratis / bulan</span>
           <span class="lp-trust-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Aman &amp; Terpercaya</span>
-          <span class="lp-trust-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Bisa batal kapan saja</span>
+          <span class="lp-trust-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Tanpa kartu kredit</span>
         </div>
       </div>
 
-      <div class="lp-billing-wrap">
-        <div class="lp-billing-toggle">
-          <button class="lp-billing-btn active" data-period="bulanan" onclick="lpSetBilling('bulanan')">Bulanan</button>
-          <button class="lp-billing-btn" data-period="tahunan" onclick="lpSetBilling('tahunan')">Tahunan <span class="lp-billing-save">-20%</span></button>
+      <!-- Credit value table -->
+      <div style="max-width:520px;margin:0 auto 36px;background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;">
+        <div style="background:#1A1F3C;color:#fff;padding:12px 20px;font-size:.82rem;font-weight:700;letter-spacing:.03em;">1 KREDIT = APA SAJA?</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+          <div style="padding:14px 20px;border-bottom:1px solid #F3F4F6;border-right:1px solid #F3F4F6;"><div style="font-size:.72rem;color:#6B7280;margin-bottom:2px;">Riset Mendalam</div><div style="font-size:.88rem;font-weight:700;color:#111;">1 Deep Dive Produk</div></div>
+          <div style="padding:14px 20px;border-bottom:1px solid #F3F4F6;"><div style="font-size:.72rem;color:#6B7280;margin-bottom:2px;">Pantau Harga</div><div style="font-size:.88rem;font-weight:700;color:#111;">1 Bulan Tracker</div></div>
+          <div style="padding:14px 20px;border-right:1px solid #F3F4F6;"><div style="font-size:.72rem;color:#6B7280;margin-bottom:2px;">Strategi AI</div><div style="font-size:.88rem;font-weight:700;color:#111;">10 Pertanyaan AI</div></div>
+          <div style="padding:14px 20px;"><div style="font-size:.72rem;color:#6B7280;margin-bottom:2px;">Harga Satuan</div><div style="font-size:.88rem;font-weight:700;color:#E8442A;">Rp 5.000 / kredit</div></div>
         </div>
       </div>
 
       <div class="lp-plans">
-        <!-- Free -->
+        <!-- Free Monthly -->
         <div class="lp-plan">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
             <div>
-              <div class="lp-plan-name">Free</div>
-              <div class="lp-plan-tagline">Coba gratis fitur dasar LarisID</div>
+              <div class="lp-plan-name">Gratis Bulanan</div>
+              <div class="lp-plan-tagline">Selalu tersedia, tanpa kartu kredit</div>
             </div>
             <div style="width:38px;height:38px;background:#EEF2FF;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div>
           </div>
           <div class="lp-plan-price-wrap">
-            <div><span class="lp-plan-price">Rp 0</span><span class="lp-plan-price-unit"> /bulan</span></div>
-            <div class="lp-plan-price-annual" id="plan-free-annual">&nbsp;</div>
+            <div><span class="lp-plan-price">Rp 0</span><span class="lp-plan-price-unit"> / bulan</span></div>
+            <div class="lp-plan-price-annual" style="color:#059669;font-weight:600;">5 kredit baru setiap bulan</div>
           </div>
-          <button class="lp-plan-cta outline" onclick="openAuthModal('signup')">Selalu Gratis</button>
-          <div class="lp-plan-feats-lbl" style="background:#F3F4F6;color:#6B7280;">Termasuk:</div>
-          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Akses terbatas ke Finder (10 pencarian / bulan)</div>
-          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>1 AI token / bulan</div>
-          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>1 produk tersimpan</div>
-          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Data historis 7 hari terakhir</div>
-          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Tracker dasar</div>
-          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Akses ke komunitas</div>
+          <button class="lp-plan-cta outline" onclick="openAuthModal('signup')">Mulai Gratis</button>
+          <div class="lp-plan-feats-lbl" style="background:#F3F4F6;color:#6B7280;">Termasuk setiap bulan:</div>
+          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>5 kredit gratis (diperbaharui tiap bulan)</div>
+          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Akses Finder — telusuri ribuan produk</div>
+          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Data historis 7 hari</div>
+          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Kredit tambahan lewat Extension Shopee</div>
+          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Akses komunitas seller</div>
         </div>
 
-        <!-- Pro (popular) -->
+        <!-- Starter Pack -->
         <div class="lp-plan popular">
           <div class="lp-plan-badge">Paling Populer</div>
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
             <div>
-              <div class="lp-plan-name">Pro</div>
-              <div class="lp-plan-tagline">Untuk seller serius yang ingin berkembang</div>
+              <div class="lp-plan-name">Starter Pack</div>
+              <div class="lp-plan-tagline">Untuk seller yang mulai serius</div>
             </div>
             <div style="width:38px;height:38px;background:#FFF0ED;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
           </div>
           <div class="lp-plan-price-wrap">
-            <div><span class="lp-plan-price orange" id="plan-pro-price">Rp 99.000</span><span class="lp-plan-price-unit"> /bulan</span></div>
-            <div class="lp-plan-price-annual" id="plan-pro-annual">Dibayar Rp <strong>950.400</strong> / tahun</div>
+            <div><span class="lp-plan-price orange">Rp 25.000</span><span class="lp-plan-price-unit"> sekali bayar</span></div>
+            <div class="lp-plan-price-annual" style="color:#E8442A;font-weight:600;">25 kredit + 1 bulan historis</div>
           </div>
-          <button class="lp-plan-cta primary" onclick="openAuthModal('signup')">Mulai Sekarang</button>
-          <div class="lp-plan-feats-lbl or">Semua fitur Free, ditambah:</div>
-          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Akses penuh ke Finder (500+ pencarian / bulan)</div>
-          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>5 AI token / bulan</div>
-          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>3 produk tersimpan</div>
-          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Data historis 1 bulan terakhir</div>
-          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Analisis kompetitor mendalam</div>
-          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Export data &amp; laporan mingguan</div>
-          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Priority support</div>
+          <button class="lp-plan-cta primary" onclick="openAuthModal('signup')">Beli Sekarang</button>
+          <div class="lp-plan-feats-lbl or">Yang kamu dapat:</div>
+          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>25 kredit (setara Rp 1.000/kredit)</div>
+          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span><strong>Unlock data historis 1 bulan</strong></div>
+          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>25 Deep Dive produk atau 250 pertanyaan AI</div>
+          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Tracker multi-produk sebulan penuh</div>
+          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Kredit tidak kadaluarsa</div>
         </div>
 
-        <!-- Pro+ -->
+        <!-- Growth Pack -->
         <div class="lp-plan">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
             <div>
-              <div class="lp-plan-name">Pro+</div>
-              <div class="lp-plan-tagline">Untuk seller skala besar &amp; tim</div>
+              <div class="lp-plan-name">Growth Pack</div>
+              <div class="lp-plan-tagline">Data lengkap untuk keputusan terbaik</div>
             </div>
             <div style="width:38px;height:38px;background:#EEF2FF;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
           </div>
           <div class="lp-plan-price-wrap">
-            <div><span class="lp-plan-price" id="plan-proplus-price">Rp 299.000</span><span class="lp-plan-price-unit"> /bulan</span></div>
-            <div class="lp-plan-price-annual" id="plan-proplus-annual">Dibayar Rp <strong>2.870.400</strong> / tahun</div>
+            <div><span class="lp-plan-price">Rp 50.000</span><span class="lp-plan-price-unit"> sekali bayar</span></div>
+            <div class="lp-plan-price-annual" style="color:#4F46E5;font-weight:600;">50 kredit + 1 tahun historis</div>
           </div>
-          <button class="lp-plan-cta dark" onclick="openAuthModal('signup')">Mulai Sekarang</button>
-          <div class="lp-plan-feats-lbl bl">Semua fitur Pro, ditambah:</div>
-          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Akses penuh tanpa batas</div>
-          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>20 AI token / bulan</div>
-          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>20 produk tersimpan</div>
-          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Data historis penuh (tanpa batas)</div>
-          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Tracker &amp; alert real-time</div>
-          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Multi-device &amp; multi-user (segera hadir)</div>
-          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Priority support 24/7</div>
+          <button class="lp-plan-cta dark" onclick="openAuthModal('signup')">Beli Sekarang</button>
+          <div class="lp-plan-feats-lbl bl">Yang kamu dapat:</div>
+          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>50 kredit (setara Rp 1.000/kredit)</div>
+          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span><strong>Unlock data historis 1 tahun penuh</strong></div>
+          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>50 Deep Dive atau 500 pertanyaan AI</div>
+          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Tracker semua produk 1 tahun</div>
+          <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Kredit tidak kadaluarsa</div>
         </div>
       </div>
 
@@ -3328,20 +3327,20 @@ html,body{overflow-x:hidden;max-width:100%;}
           <div class="lp-faq-head">Pertanyaan yang Sering Diajukan</div>
           <div class="lp-faq-grid">
             <div class="lp-faq-item" onclick="lpToggleFaq(this)">
-              <div class="lp-faq-q">Apakah benar bisa gratis? <svg class="lp-faq-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-              <div class="lp-faq-a">Ya! Paket Free tersedia selamanya tanpa kartu kredit. Kamu bisa upgrade kapan saja jika membutuhkan fitur lebih lengkap.</div>
+              <div class="lp-faq-q">Kredit gratis bulanan itu nyata? <svg class="lp-faq-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+              <div class="lp-faq-a">Ya! Setiap akun terdaftar mendapat 5 kredit gratis yang diperbaharui setiap bulan, tanpa kartu kredit. Kredit bisa digunakan untuk Deep Dive, Tracker, atau pertanyaan AI.</div>
             </div>
             <div class="lp-faq-item" onclick="lpToggleFaq(this)">
-              <div class="lp-faq-q">Bisa batalkan kapan saja? <svg class="lp-faq-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-              <div class="lp-faq-a">Tentu saja. Tidak ada kontrak jangka panjang. Kamu bisa batalkan langganan kapan saja dengan mudah dari pengaturan akun.</div>
+              <div class="lp-faq-q">Apakah kredit bisa kadaluarsa? <svg class="lp-faq-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+              <div class="lp-faq-a">Kredit yang kamu beli (Starter/Growth Pack) tidak pernah kadaluarsa. Hanya kredit gratis bulanan yang direset tiap awal bulan.</div>
             </div>
             <div class="lp-faq-item" onclick="lpToggleFaq(this)">
-              <div class="lp-faq-q">Kapan saya akan dikenakan biaya? <svg class="lp-faq-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-              <div class="lp-faq-a">Hanya setelah kamu memilih paket berbayar dan mengonfirmasi pembayaran. Tidak ada biaya tersembunyi.</div>
+              <div class="lp-faq-q">Bagaimana cara dapat kredit tambahan gratis? <svg class="lp-faq-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+              <div class="lp-faq-a">Install Extension LarisID untuk Chrome, lalu lakukan 10 pencarian produk di Shopee — kamu otomatis dapat 1 kredit. Bisa diulang hingga 10 kredit per hari.</div>
             </div>
             <div class="lp-faq-item" onclick="lpToggleFaq(this)">
               <div class="lp-faq-q">Metode pembayaran apa saja? <svg class="lp-faq-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-              <div class="lp-faq-a">Kami menerima transfer bank, kartu kredit/debit, GoPay, OVO, dan QRIS. Semua transaksi terenkripsi dan aman.</div>
+              <div class="lp-faq-a">Transfer bank, GoPay, OVO, dan QRIS. Semua transaksi aman dan terenkripsi. Tidak ada biaya berulang.</div>
             </div>
           </div>
         </div>
@@ -3349,8 +3348,8 @@ html,body{overflow-x:hidden;max-width:100%;}
           <div class="lp-guarantee-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           </div>
-          <h4>7 Hari Garansi Uang Kembali</h4>
-          <p>Jika dalam 7 hari pertama kamu merasa LarisID tidak cocok, kami akan kembalikan 100% pembayaranmu. Tanpa pertanyaan.</p>
+          <h4>Garansi Kredit Kembali</h4>
+          <p>Jika kredit yang kamu beli tidak bisa digunakan karena masalah teknis di pihak kami, kami jamin kredit dikembalikan penuh. Tanpa pertanyaan.</p>
         </div>
       </div>
     </section>
@@ -4612,6 +4611,9 @@ html,body{overflow-x:hidden;max-width:100%;}
               <p id="hbd-subtitle">Selamat datang kembali — berikut ringkasan produk Anda hari ini.</p>
             </div>
 
+            <!-- price-change alert strip -->
+            <div id="hbd-alerts-strip" style="display:none;margin-bottom:16px;"></div>
+
             <!-- stats -->
             <div class="hbd-stats-row">
               <div class="hbd-stat">
@@ -4634,6 +4636,15 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <div class="hbd-stat-value" id="hbd-s4">—</div>
                 <div class="hbd-stat-sub" id="hbd-s4-sub">—</div>
               </div>
+            </div>
+
+            <!-- tracked products visual strip -->
+            <div id="hbd-tracked-strip" style="display:none;margin-bottom:20px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <div style="font-size:.82rem;font-weight:700;color:#111;">Produk yang Kamu Pantau</div>
+                <a onclick="switchDashView('tracker')" style="font-size:.75rem;color:#E8442A;cursor:pointer;font-weight:600;">Lihat semua →</a>
+              </div>
+              <div id="hbd-tracked-cards" style="display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;"></div>
             </div>
 
             <!-- Credits card -->
@@ -4708,6 +4719,15 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <div class="hbd-card-title" style="margin-bottom:12px;">Peluang Mingguan Hari Ini</div>
                 <div class="hbd-opp-list" id="hbd-opp-list"></div>
               </div>
+            </div>
+
+            <!-- trending products for you -->
+            <div id="hbd-trending-section" style="margin-bottom:20px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <div style="font-size:.82rem;font-weight:700;color:#111;">Produk Trending untuk Kamu</div>
+                <a onclick="switchDashView('discover')" style="font-size:.75rem;color:#E8442A;cursor:pointer;font-weight:600;">Lihat semua →</a>
+              </div>
+              <div id="hbd-trending-cards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;"></div>
             </div>
 
             <!-- tip -->
@@ -5755,6 +5775,33 @@ html,body{overflow-x:hidden;max-width:100%;}
                       <button class="mls-ai-send" onclick="mlsAiAsk()">Kirim</button>
                     </div>
                     <div id="mls-ai-response" class="mls-ai-response"></div>
+                    <!-- Model badge + API key settings -->
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
+                      <span id="mls-model-badge" style="font-size:.68rem;color:#9CA3AF;">Model: Claude Haiku (bawaan)</span>
+                      <button onclick="mlsToggleApiSettings()" style="font-size:.68rem;color:#E8442A;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;">⚙ Hubungkan API kamu</button>
+                    </div>
+                    <div id="mls-api-settings" style="display:none;margin-top:10px;padding:12px;background:#F9FAFB;border-radius:8px;border:1px solid #E5E7EB;">
+                      <div style="font-size:.72rem;font-weight:700;color:#374151;margin-bottom:8px;">Hubungkan API sendiri — tetap menggunakan kredit, tapi pakai model lebih kuat</div>
+                      <div style="margin-bottom:8px;">
+                        <label style="font-size:.7rem;color:#6B7280;display:block;margin-bottom:3px;">Anthropic API Key (claude.ai)</label>
+                        <div style="display:flex;gap:6px;">
+                          <input id="mls-anthropic-key-input" type="password" placeholder="sk-ant-..." style="flex:1;font-size:.72rem;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-family:inherit;">
+                          <select id="mls-anthropic-model" style="font-size:.72rem;padding:6px;border:1px solid #E5E7EB;border-radius:6px;font-family:inherit;">
+                            <option value="claude-haiku-4-5-20251001">Haiku (cepat)</option>
+                            <option value="claude-sonnet-4-6">Sonnet 4.6 (pintar)</option>
+                            <option value="claude-opus-4-7">Opus 4.7 (terkuat)</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div style="margin-bottom:10px;">
+                        <label style="font-size:.7rem;color:#6B7280;display:block;margin-bottom:3px;">OpenAI API Key (ChatGPT/GPT-4o)</label>
+                        <input id="mls-openai-key-input" type="password" placeholder="sk-..." style="width:100%;font-size:.72rem;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-family:inherit;box-sizing:border-box;">
+                      </div>
+                      <div style="display:flex;gap:6px;">
+                        <button onclick="mlsSaveApiKeys()" style="flex:1;background:#E8442A;color:#fff;border:none;border-radius:6px;padding:6px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;">Simpan</button>
+                        <button onclick="mlsClearApiKeys()" style="flex:1;background:#F3F4F6;color:#374151;border:none;border-radius:6px;padding:6px;font-size:.72rem;cursor:pointer;font-family:inherit;">Hapus</button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -6254,9 +6301,11 @@ function parseReviews(val) {
 // ════════════════════════════════════════════════════════════
 // ── SCORE + CATEGORY HELPERS (Supabase data) ─────────────────────────────
 function _computeScore(totalSold, avgRating, sellerCount, topReviews) {
-  const demandScore = Math.min(100, Math.log10(Math.max(1, totalSold)) / 5 * 100);
+  // Demand: log scale, 1k→50, 10k→75, 100k→100
+  const demandScore = Math.min(100, Math.log10(Math.max(1, totalSold)) / 4 * 100);
   const ratingScore = Math.min(100, Math.max(0, ((avgRating || 0) - 3) / 2 * 100));
-  const compPenalty = Math.max(0, 100 - Math.min(100, (sellerCount / 25) * 100));
+  // Competition: log scale so 25 sellers=63pts, 200=85pts, 1000=100pts (not instant-zero)
+  const compPenalty = Math.max(0, 100 - Math.min(100, Math.log10(Math.max(1, sellerCount)) / 2.7 * 100));
   const revScore    = Math.min(100, Math.log10(Math.max(1, topReviews || 1)) / 4 * 100);
   return Math.max(1, Math.round(demandScore * 0.4 + ratingScore * 0.25 + compPenalty * 0.2 + revScore * 0.15));
 }
@@ -8161,13 +8210,15 @@ function crBuy(amount) {
 
 // ── CREDIT GATE ──────────────────────────────────────────
 let _cgCallback = null;
+let _cgAction   = 'deepdive'; // track action type for spend_credit RPC
 
-function cgShow(title, sub, callback) {
+function cgShow(title, sub, callback, action) {
   document.getElementById('cg-title').textContent = title;
   document.getElementById('cg-sub').textContent   = sub;
   const balEl = document.getElementById('cg-balance-display');
   if (balEl) balEl.textContent = (_creditBalance ?? 0) + ' kredit';
   _cgCallback = callback;
+  _cgAction   = action || 'deepdive';
   document.getElementById('cg-overlay').style.display = 'flex';
 }
 
@@ -8184,7 +8235,7 @@ async function cgConfirm() {
   if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
   try {
     if (_supabase && currentUser) {
-      const { data, error } = await _supabase.rpc('spend_credit', { p_keyword: 'deepdive', p_amount: 1 });
+      const { data, error } = await _supabase.rpc('spend_credit', { p_keyword: _cgAction, p_amount: 1 });
       if (!error && data != null) {
         _creditBalance = data;
         renderCreditUI();
@@ -8198,11 +8249,12 @@ async function cgConfirm() {
 
 function gateDeepDive() {
   if (!currentUser) { openAuthModal('login'); return; }
-  if ((_creditBalance ?? 0) >= 1) {
-    switchDashView('deepdive');
-  } else {
-    cgShow('Buka Deep Dive', 'Akses analisis lengkap produk ini: tren historis, kompetitor, keyword ranking, dan review AI.', () => switchDashView('deepdive'));
-  }
+  cgShow(
+    'Deep Dive Produk',
+    'Gunakan 1 kredit untuk melihat analisis mendalam produk ini — harga historis, tren pesaing & peluang pasar.',
+    () => switchDashView('deepdive'),
+    'deepdive'
+  );
 }
 
 // ── MULAI BERJUALAN — updated JS ─────────────────────────
@@ -8212,6 +8264,55 @@ function mlsSwitchTab(tab) {
     const el = document.getElementById(`mls-tab-${t}`);
     if (el) el.style.display = t === tab ? '' : 'none';
   });
+}
+
+function mlsToggleApiSettings() {
+  const el = document.getElementById('mls-api-settings');
+  if (!el) return;
+  const open = el.style.display === 'none';
+  el.style.display = open ? 'block' : 'none';
+  if (open) {
+    const aKey = localStorage.getItem('larisid_anthropic_key') || '';
+    const oKey = localStorage.getItem('larisid_openai_key') || '';
+    const aModel = localStorage.getItem('larisid_anthropic_model') || 'claude-haiku-4-5-20251001';
+    const inp = document.getElementById('mls-anthropic-key-input');
+    const sel = document.getElementById('mls-anthropic-model');
+    const oinp = document.getElementById('mls-openai-key-input');
+    if (inp) inp.value = aKey;
+    if (sel) sel.value = aModel;
+    if (oinp) oinp.value = oKey;
+  }
+}
+
+function mlsSaveApiKeys() {
+  const aKey  = document.getElementById('mls-anthropic-key-input')?.value?.trim();
+  const aModel = document.getElementById('mls-anthropic-model')?.value || 'claude-haiku-4-5-20251001';
+  const oKey  = document.getElementById('mls-openai-key-input')?.value?.trim();
+  if (aKey)  localStorage.setItem('larisid_anthropic_key', aKey);
+  else       localStorage.removeItem('larisid_anthropic_key');
+  if (aModel) localStorage.setItem('larisid_anthropic_model', aModel);
+  if (oKey)  localStorage.setItem('larisid_openai_key', oKey);
+  else       localStorage.removeItem('larisid_openai_key');
+  mlsUpdateModelBadge();
+  document.getElementById('mls-api-settings').style.display = 'none';
+}
+
+function mlsClearApiKeys() {
+  ['larisid_anthropic_key','larisid_openai_key','larisid_anthropic_model'].forEach(k => localStorage.removeItem(k));
+  ['mls-anthropic-key-input','mls-openai-key-input'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+  mlsUpdateModelBadge();
+}
+
+function mlsUpdateModelBadge() {
+  const badge = document.getElementById('mls-model-badge');
+  if (!badge) return;
+  const aKey  = localStorage.getItem('larisid_anthropic_key');
+  const oKey  = localStorage.getItem('larisid_openai_key');
+  const aModel = localStorage.getItem('larisid_anthropic_model') || 'claude-haiku-4-5-20251001';
+  const modelName = { 'claude-haiku-4-5-20251001':'Claude Haiku', 'claude-sonnet-4-6':'Claude Sonnet 4.6', 'claude-opus-4-7':'Claude Opus 4.7' };
+  if (oKey)       badge.textContent = 'Model: GPT-4o (OpenAI)';
+  else if (aKey)  badge.textContent = `Model: ${modelName[aModel]||aModel} (API kamu)`;
+  else            badge.textContent = 'Model: Claude Haiku (bawaan)';
 }
 
 async function mlsAiAsk(prompt) {
@@ -8224,14 +8325,33 @@ async function mlsAiAsk(prompt) {
   respEl.style.display = 'block';
   respEl.textContent   = 'AI sedang menganalisis...';
   const systemCtx = `Kamu adalah analis pasar Shopee Indonesia. Produk: "${p.product_name||p.name||'—'}", keyword: "${p.keyword||'—'}", harga: Rp ${p.price ? Math.round(p.price).toLocaleString('id-ID') : '—'}, total terjual: ${p.total_sold||'—'}. Median harga pasar: Rp ${ctx.medianPrice ? Math.round(ctx.medianPrice).toLocaleString('id-ID') : '—'}. Total omset pasar: Rp ${ctx.totalOmset ? Math.round(ctx.totalOmset).toLocaleString('id-ID') : '—'}/bulan. Jawab singkat dan praktis dalam Bahasa Indonesia.`;
+
+  const userAnthropicKey = localStorage.getItem('larisid_anthropic_key');
+  const userOpenAiKey    = localStorage.getItem('larisid_openai_key');
+  const userModel        = localStorage.getItem('larisid_anthropic_model') || 'claude-haiku-4-5-20251001';
+
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': CLAUDE_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 400, system: systemCtx, messages: [{ role: 'user', content: q }] })
-    });
-    const d = await res.json();
-    respEl.textContent = d.content?.[0]?.text || 'Tidak ada respons.';
+    if (userOpenAiKey) {
+      // Use user's OpenAI key with GPT-4o
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${userOpenAiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'gpt-4o', max_tokens: 400, messages: [{ role: 'system', content: systemCtx }, { role: 'user', content: q }] })
+      });
+      const d = await res.json();
+      respEl.textContent = d.choices?.[0]?.message?.content || d.error?.message || 'Tidak ada respons.';
+    } else {
+      // Use Anthropic (user's key or built-in)
+      const apiKey = userAnthropicKey || CLAUDE_KEY;
+      const model  = userAnthropicKey ? userModel : 'claude-haiku-4-5-20251001';
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify({ model, max_tokens: 400, system: systemCtx, messages: [{ role: 'user', content: q }] })
+      });
+      const d = await res.json();
+      respEl.textContent = d.content?.[0]?.text || d.error?.message || 'Tidak ada respons.';
+    }
   } catch (e) {
     respEl.textContent = 'Gagal menghubungi AI. Coba lagi.';
   }
@@ -10680,24 +10800,39 @@ function ddToggleTrack() {
   let arr = trkLoad();
   const idx = arr.findIndex(t => t.key === key);
   if (idx >= 0) {
+    // Remove from tracker — no credit refund
     arr.splice(idx, 1);
-  } else {
-    arr.push({
-      key,
-      item_id:      listing.item_id,
-      shop_id:      listing.shop_id,
-      product_name: listing.product_name || '—',
-      store_name:   listing.store_name   || '—',
-      image_url:    listing.image_url    || null,
-      category:     listing.category     || '',
-      price:        listing.price        || 0,
-      total_sold:   listing.total_sold   || 0,
-      keyword:      listing.keyword      || '',
-      tracked_at:   new Date().toISOString(),
-    });
+    trkSave(arr);
+    ddUpdateTrackBtn(listing);
+    return;
   }
-  trkSave(arr);
-  ddUpdateTrackBtn(listing);
+  // Adding to tracker — require 1 credit
+  if (!currentUser) { openAuthModal('login'); return; }
+  cgShow(
+    'Tambah ke Tracker',
+    'Gunakan 1 kredit untuk melacak produk ini setiap bulan — update harga & penjualan otomatis.',
+    () => {
+      let a = trkLoad();
+      if (!a.find(t => t.key === key)) {
+        a.push({
+          key,
+          item_id:      listing.item_id,
+          shop_id:      listing.shop_id,
+          product_name: listing.product_name || '—',
+          store_name:   listing.store_name   || '—',
+          image_url:    listing.image_url    || null,
+          category:     listing.category     || '',
+          price:        listing.price        || 0,
+          total_sold:   listing.total_sold   || 0,
+          keyword:      listing.keyword      || '',
+          tracked_at:   new Date().toISOString(),
+        });
+        trkSave(a);
+      }
+      ddUpdateTrackBtn(listing);
+    },
+    'tracker'
+  );
 }
 
 function ddUpdateTrackBtn(listing) {
@@ -11447,6 +11582,75 @@ async function hbdInit() {
     </div>`;
   }).join('');
 
+  // ── Tracked product visual strip ──────────────────────────
+  const trackedStrip = document.getElementById('hbd-tracked-strip');
+  const trackedCards = document.getElementById('hbd-tracked-cards');
+  if (trackedStrip && trackedCards && enriched.length) {
+    trackedStrip.style.display = 'block';
+    const fmtRp = v => 'Rp ' + Math.round(v||0).toLocaleString('id-ID');
+    trackedCards.innerHTML = enriched.slice(0, 8).map(p => {
+      const name = (p.product_name||'').split(' ').slice(0,3).join(' ') || p.keyword || '—';
+      const priceDelta = p.curr_price - (p.price || p.curr_price);
+      const deltaChip = p.delta > 0
+        ? `<span style="background:#ECFDF5;color:#16A34A;font-size:.65rem;font-weight:700;padding:2px 6px;border-radius:10px;">▲ ${p.delta}</span>`
+        : priceDelta < -500
+          ? `<span style="background:#FFF7ED;color:#C2410C;font-size:.65rem;font-weight:700;padding:2px 6px;border-radius:10px;">↓ harga</span>`
+          : `<span style="background:#F9FAFB;color:#9CA3AF;font-size:.65rem;padding:2px 6px;border-radius:10px;">Stabil</span>`;
+      return `<div style="flex-shrink:0;width:120px;background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden;cursor:pointer;" onclick="switchDashView('tracker')">
+        <div style="height:80px;background:#F3F4F6;overflow:hidden;">
+          <img src="${p.image_url||''}" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover;">
+        </div>
+        <div style="padding:8px;">
+          <div style="font-size:.7rem;font-weight:600;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px;">${name}</div>
+          <div style="font-size:.68rem;color:#6B7280;margin-bottom:4px;">${fmtRp(p.curr_price)}</div>
+          ${deltaChip}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Price-change alert strip ───────────────────────────────
+  const alertStrip = document.getElementById('hbd-alerts-strip');
+  if (alertStrip) {
+    const bigChanges = enriched.filter(p => {
+      const pricePct = p.price > 0 ? Math.abs((p.curr_price - p.price) / p.price * 100) : 0;
+      const soldPct  = p.total_sold > 0 ? Math.abs(p.delta / p.total_sold * 100) : 0;
+      return pricePct > 10 || soldPct > 20;
+    });
+    if (bigChanges.length) {
+      alertStrip.style.display = 'block';
+      alertStrip.innerHTML = bigChanges.slice(0,3).map(p => {
+        const name = (p.product_name||'').split(' ').slice(0,4).join(' ') || p.keyword;
+        const pricePct = p.price > 0 ? ((p.curr_price - p.price) / p.price * 100).toFixed(0) : 0;
+        const msg = p.delta > 0 ? `Penjualan naik +${p.delta} unit` : `Harga berubah ${pricePct > 0 ? '+' : ''}${pricePct}%`;
+        const color = p.delta > 0 ? '#16A34A' : '#C2410C';
+        return `<div style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #E5E7EB;border-left:3px solid ${color};border-radius:8px;padding:10px 14px;font-size:.78rem;">
+          <img src="${p.image_url||''}" onerror="this.style.display='none'" style="width:28px;height:28px;border-radius:5px;object-fit:cover;flex-shrink:0;">
+          <div><strong>${name}</strong> — ${msg}</div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // ── Trending for you from allProducts ─────────────────────
+  const trendingCards = document.getElementById('hbd-trending-cards');
+  if (trendingCards && allProducts.length) {
+    const trending = [...allProducts].sort((a,b) => (b.avgTrend||0) - (a.avgTrend||0)).slice(0, 6);
+    trendingCards.innerHTML = trending.map(p => {
+      const scoreColor = p.score >= 70 ? '#16A34A' : p.score >= 45 ? '#B45309' : '#C0392B';
+      return `<div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden;cursor:pointer;" onclick="openDetail(${p.id})">
+        <div style="height:80px;background:#F3F4F6;position:relative;overflow:hidden;">
+          <img src="${p.image||''}" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover;">
+          <span style="position:absolute;top:6px;right:6px;background:${scoreColor};color:#fff;font-size:.6rem;font-weight:800;padding:2px 6px;border-radius:8px;">${p.score}</span>
+        </div>
+        <div style="padding:8px;">
+          <div style="font-size:.7rem;font-weight:600;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name||'—'}</div>
+          <div style="font-size:.65rem;color:#6B7280;margin-top:2px;">↑ Trending · ${p.category||'—'}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
   const tips = [
     'Lacak lebih banyak produk untuk mendapatkan analisis yang lebih akurat.',
     'Produk dengan delta penjualan tinggi adalah kandidat bagus untuk mulai berjualan.',
@@ -11493,6 +11697,7 @@ let _mlsContext = null;   // { keyword, medianPrice, medianSold, top5 }
 let _mlsChatHistory = []; // { role, content }
 
 function mlsInit() {
+  mlsUpdateModelBadge();
   const tracked = trkLoad();
   const pick = document.getElementById('mls-product-pick');
   const noTrk = document.getElementById('mls-no-tracked');
@@ -11637,11 +11842,15 @@ async function mlsSelectProduct(val) {
     if (compSection) compSection.style.display = top15.length ? 'block' : 'none';
     if (compSub) compSub.textContent = `${top15.length} produk teratas di keyword "${t.keyword}" — total omset pasar ${fmt(totalOmset)}/bulan`;
     if (compTbody) compTbody.innerHTML = top15.map((r, i) => {
-      const omset  = (r.price||0) * (r.total_sold||0);
-      const share  = totalOmset > 0 ? (omset / totalOmset * 100).toFixed(1) : '0';
-      const isTop3 = i < 3;
+      const omset    = (r.price||0) * (r.total_sold||0);
+      const share    = totalOmset > 0 ? (omset / totalOmset * 100).toFixed(1) : '0';
+      const isTop3   = i < 3;
       const barColor = isTop3 ? '#E8442A' : '#9CA3AF';
-      return `<tr class="${isTop3?'top3':''}">
+      // Find matching product in allProducts to enable detail link
+      const kw = (r.keyword || t.keyword || '').toLowerCase();
+      const linkedProd = allProducts.find(p => p.keyword && p.keyword.toLowerCase() === kw);
+      const rowClick = linkedProd ? `onclick="openDetail(${linkedProd.id})" title="Lihat detail produk" style="cursor:pointer;"` : '';
+      return `<tr class="${isTop3?'top3':''}" ${rowClick}>
         <td class="mls-comp-rank">${i+1}</td>
         <td>
           <div style="display:flex;align-items:center;gap:10px;">
