@@ -11854,7 +11854,28 @@ async function ddLoadTrendHistory(listing) {
       const currDate = listing.scraped_at ? new Date(listing.scraped_at) : new Date();
       const currRow  = { scraped_at: currDate.toISOString(), total_sold: listing.total_sold, price: listing.price, reviews: listing.reviews };
 
-      if (dbRows.length === 1) {
+      // Always try peer estimation first — gives meaningful deltas even for 1-row products
+      const peerResult = await ddEstimateTrendFromPeers(listing);
+      if (peerResult && peerResult.medianRate > 0) {
+        isPeerEstimated = true;
+        peerCount = peerResult.peerCount;
+        peerSoldMin = peerResult.soldMin;
+        peerSoldMax = peerResult.soldMax;
+        const rate = peerResult.medianRate;
+        const anchor = currDate;
+        const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
+        const anchorSold = listing.total_sold || 0;
+        function _synRow(weekOffset) {
+          return {
+            scraped_at: new Date(anchor.getTime() + weekOffset * MS_WEEK).toISOString(),
+            total_sold: Math.max(0, Math.round(anchorSold + rate * weekOffset)),
+            price: listing.price,
+            reviews: null,
+          };
+        }
+        dbRows = [_synRow(-3), _synRow(-2), _synRow(-1), _synRow(0), _synRow(1)];
+        console.log('[ddTrend] peer-estimated rows, rate/week:', Math.round(rate), 'peers:', peerCount);
+      } else if (dbRows.length === 1) {
         // Pair the 1 DB row (historical) with current listing
         const dbDate = new Date(dbRows[0].scraped_at);
         if (dbDate < currDate) {
@@ -11870,39 +11891,9 @@ async function ddLoadTrendHistory(listing) {
           currRow,
         ];
       } else {
-        const peerResult = await ddEstimateTrendFromPeers(listing);
-        if (peerResult && peerResult.medianRate > 0) {
-          isPeerEstimated = true;
-          peerCount = peerResult.peerCount;
-          peerSoldMin = peerResult.soldMin;
-          peerSoldMax = peerResult.soldMax;
-          const rate = peerResult.medianRate;
-          const anchor = currDate;
-          const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
-          const anchorSold = listing.total_sold || 0;
-          const anchorReviews = listing.reviews || 0;
-          const mult = ({ 'Rumah':2.94,'Fashion':2.77,'Dapur':3.41,'Kamar Mandi':4.21,'Keamanan':3.40,
-            'Kecantikan':2.70,'Motor & Mobil':2.96,'Elektronik':3.10,'HP & Gadget':3.40,
-            'Hewan Peliharaan':3.95,'Sepeda':2.58,'Taman':3.50,'Olahraga':2.68,'Bayi & Anak':4.12,
-            'Hobi & Kerajinan':2.48,'Kesehatan':2.38,'Tanaman':3.63,'Alat Tulis':2.87,
-            'Outdoor & Camping':2.67,'__default__':3.20 })[listing.category] || 3.20;
-          const atCeil = anchorSold >= 10000;
-          const weeklyRevDelta = atCeil && mult > 0 ? rate / mult : 0;
-          function _synRow(weekOffset) {
-            return {
-              scraped_at: new Date(anchor.getTime() + weekOffset * MS_WEEK).toISOString(),
-              total_sold: Math.max(0, Math.round(anchorSold + rate * weekOffset)),
-              price: listing.price,
-              reviews: atCeil ? Math.max(0, Math.round(anchorReviews + weeklyRevDelta * weekOffset)) : null,
-            };
-          }
-          dbRows = [_synRow(-3), _synRow(-2), _synRow(-1), _synRow(0), _synRow(1)];
-          console.log('[ddTrend] peer-estimated rows, rate/week:', Math.round(rate), 'peers:', peerCount);
-        } else {
-          if (_ddChartTrend) { _ddChartTrend.data.labels = []; _ddChartTrend.data.datasets.forEach(d => d.data = []); _ddChartTrend.update(); }
-          _noDataMsg('Belum cukup data scrape untuk menampilkan tren.<br>Data akan muncul setelah 2+ scrape.');
-          return;
-        }
+        if (_ddChartTrend) { _ddChartTrend.data.labels = []; _ddChartTrend.data.datasets.forEach(d => d.data = []); _ddChartTrend.update(); }
+        _noDataMsg('Belum cukup data scrape untuk menampilkan tren.<br>Data akan muncul setelah 2+ scrape.');
+        return;
       }
     }
 
@@ -11924,7 +11915,7 @@ async function ddLoadTrendHistory(listing) {
     console.log('[ddTrend] atCeiling:', atCeiling, 'hasReviews:', hasReviews, 'mult:', mult);
 
     let unitData, isEstimated = false;
-    if (atCeiling && hasReviews) {
+    if (atCeiling && hasReviews && !isPeerEstimated) {
       isEstimated = true;
       let base = 10000;
       unitData = [base];
