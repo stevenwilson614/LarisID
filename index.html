@@ -11620,7 +11620,6 @@ async function mlsSelectProduct(val) {
 
     // Build 5-thumbnail row from top 5 competitors
     const thumbRow = document.getElementById('mls-thumb-row');
-    const top5 = rows.slice(0, 5);
     if (thumbRow) {
       // First thumb = the selected product itself
       const allThumbs = [t, ...top5.filter(r => r.image_url !== t.image_url).slice(0,4)];
