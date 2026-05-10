@@ -7156,6 +7156,10 @@ function _authOnSignOut() {
 }
 
 function initSupabase() {
+  // Clear any stale Supabase JS-client sessions that trigger spurious INITIAL_SESSION redirects
+  try {
+    Object.keys(localStorage).filter(k => k.startsWith('sb-') && k.endsWith('-auth-token')).forEach(k => localStorage.removeItem(k));
+  } catch(_) {}
   // Init JS client (needed for DB queries + OAuth)
   if (typeof window.supabase !== 'undefined') {
     try { _supabase = window.supabase.createClient(SUPA_URL, SUPA_KEY); } catch(e) { console.error('Supabase init failed', e); }
@@ -7235,10 +7239,8 @@ let _authMode = 'login'; // 'login', 'signup', or 'reset'
 
 function openAuthModal(mode) {
   _authMode = mode || 'login';
-  const overlay = document.getElementById('auth-overlay');
-  if (!overlay) return;
-  overlay.style.display = 'flex';
-  try { renderAuthModal(); } catch(e) { console.error('[LarisID] renderAuthModal error:', e); }
+  document.getElementById('auth-overlay').style.display = 'flex';
+  renderAuthModal();
 }
 
 function closeAuthModal() {
@@ -7246,27 +7248,17 @@ function closeAuthModal() {
 }
 
 function renderAuthModal() {
-  const isLogin  = _authMode === 'login';
-  const isSignup = _authMode === 'signup';
-  const isReset  = _authMode === 'reset';
-
-  document.getElementById('auth-title').textContent = isReset ? 'Reset Password'
-    : isLogin ? 'Masuk ke LarisID' : 'Buat Akun Gratis';
-  document.getElementById('auth-subtitle').textContent = isReset
-    ? 'Masukkan email kamu dan kami kirim link reset password.'
-    : isLogin ? 'Login untuk melihat produk trending & simpan favorit kamu'
-    : 'Gratis selamanya — lihat trending & simpan produk favorit';
-  document.getElementById('auth-submit-btn').textContent = isReset ? 'Kirim Link Reset' : isLogin ? 'Masuk' : 'Daftar';
-  document.getElementById('auth-toggle-text').innerHTML = isReset
-    ? '<a onclick="_authMode=\'login\';renderAuthModal()">Kembali ke Login</a>'
-    : isLogin
-      ? 'Belum punya akun? <a onclick="_authMode=\'signup\';renderAuthModal()">Daftar</a>'
-      : 'Sudah punya akun? <a onclick="_authMode=\'login\';renderAuthModal()">Masuk</a>';
-  document.getElementById('auth-name-wrap').style.display  = isSignup ? '' : 'none';
-  document.getElementById('auth-pass-wrap').style.display  = isReset  ? 'none' : '';
-  document.getElementById('auth-forgot-wrap').style.display = isLogin  ? '' : 'none';
-  document.getElementById('auth-social-wrap').style.display = isReset  ? 'none' : '';
-  document.getElementById('auth-error').style.display = 'none';
+  const m = _authMode;
+  var el;
+  el = document.getElementById('auth-title');      if(el) el.textContent = m==='reset'?'Reset Password':m==='signup'?'Buat Akun Gratis':'Masuk ke LarisID';
+  el = document.getElementById('auth-subtitle');   if(el) el.textContent = m==='reset'?'Masukkan email kamu dan kami kirim link reset.':m==='signup'?'Gratis selamanya — lihat trending & simpan produk favorit':'Login untuk melihat produk trending & simpan favorit kamu';
+  el = document.getElementById('auth-submit-btn'); if(el) el.textContent = m==='reset'?'Kirim Link Reset':m==='signup'?'Daftar':'Masuk';
+  el = document.getElementById('auth-toggle-text');if(el) el.innerHTML = m==='reset'?'<a onclick="_authMode=\'login\';renderAuthModal()">Kembali ke Login</a>':m==='signup'?'Sudah punya akun? <a onclick="_authMode=\'login\';renderAuthModal()">Masuk</a>':'Belum punya akun? <a onclick="_authMode=\'signup\';renderAuthModal()">Daftar</a>';
+  el = document.getElementById('auth-name-wrap');  if(el) el.style.display = m==='signup'?'':'none';
+  el = document.getElementById('auth-pass-wrap');  if(el) el.style.display = m==='reset'?'none':'';
+  el = document.getElementById('auth-forgot-wrap');if(el) el.style.display = m==='login'?'':'none';
+  el = document.getElementById('auth-social-wrap');if(el) el.style.display = m==='reset'?'none':'';
+  el = document.getElementById('auth-error');      if(el) el.style.display = 'none';
 }
 
 function _authErrMsg(msg) {
