@@ -9545,6 +9545,13 @@ function _dscSelectedCats() {
   return checked;
 }
 
+const _DSC_CAT_SS_KEY = 'larisid_dsc_unchecked_cats_v1';
+
+function _dscSaveCatState() {
+  const unchecked = [...document.querySelectorAll('#dsc-cat-checks input[type=checkbox]:not(:checked)')].map(i => i.value);
+  try { sessionStorage.setItem(_DSC_CAT_SS_KEY, JSON.stringify(unchecked)); } catch {}
+}
+
 function dscBuildCatChecks(cats) {
   const el = document.getElementById('dsc-cat-checks');
   if (!el) return;
@@ -9555,20 +9562,25 @@ function dscBuildCatChecks(cats) {
   const merged = [...new Set([...ALL_CATS, ...cats])].sort();
   const newKey = merged.join(',');
   if (el.dataset.built === newKey) return;
-  // Preserve currently-unchecked cats so adding new cats doesn't reset user choices
-  const unchecked = new Set([...el.querySelectorAll('input[type=checkbox]:not(:checked)')].map(i => i.value));
+  // Restore from sessionStorage (survives tab switches) then also read current DOM
+  let unchecked = new Set();
+  try { const s = sessionStorage.getItem(_DSC_CAT_SS_KEY); if (s) JSON.parse(s).forEach(c => unchecked.add(c)); } catch {}
+  [...el.querySelectorAll('input[type=checkbox]:not(:checked)')].forEach(i => unchecked.add(i.value));
   el.dataset.built = newKey;
   el.innerHTML = merged.map(c => `
     <label style="display:flex;align-items:center;gap:7px;padding:4px 6px;border-radius:6px;cursor:pointer;font-size:.72rem;color:#374151;user-select:none;transition:background .1s;" onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
-      <input type="checkbox" value="${c}" ${unchecked.has(c) ? '' : 'checked'} onchange="dscApplyFilters()" style="accent-color:#E8442A;width:13px;height:13px;flex-shrink:0;">
+      <input type="checkbox" value="${c}" ${unchecked.has(c) ? '' : 'checked'} onchange="dscSaveCatAndApply()" style="accent-color:#E8442A;width:13px;height:13px;flex-shrink:0;">
       <span>${c}</span>
     </label>`).join('');
 }
+
+function dscSaveCatAndApply() { _dscSaveCatState(); dscApplyFilters(); }
 
 function dscCatSelectAll() {
   const checks = document.querySelectorAll('#dsc-cat-checks input[type=checkbox]');
   const allChecked = [...checks].every(c => c.checked);
   checks.forEach(c => c.checked = !allChecked);
+  _dscSaveCatState();
   dscApplyFilters();
 }
 
@@ -11512,6 +11524,7 @@ function dscResetFilters() {
   const g = id => document.getElementById(id);
   _dscCurrentCatFilter  = ''; // clear server-side category filter
   _dscCurrentCatFilters = null;
+  try { sessionStorage.removeItem(_DSC_CAT_SS_KEY); } catch {}
   document.querySelectorAll('#dsc-cat-checks input[type=checkbox]').forEach(c => c.checked = true);
   if (g('dsc-search'))     g('dsc-search').value     = '';
   if (g('dsc-price-min'))  g('dsc-price-min').value  = 0;
