@@ -1358,8 +1358,32 @@ body.in-dashboard .navbar{display:flex;}
 .lp-hero-badge{display:inline-flex;align-items:center;gap:6px;background:#FFF0ED;color:#E8442A;font-size:.72rem;font-weight:700;padding:5px 12px;border-radius:20px;margin-bottom:20px;border:1px solid #FECACA;}
 /* Hero photo + floating cards */
 .lp-hero-photo-wrap{position:relative;padding-top:20px;}
-.lp-hero-photo{width:100%;max-width:440px;margin:0 auto;display:block;border-radius:20px;object-fit:cover;}
+/* Decorative circles behind person */
+.lp-hero-photo-wrap::before{content:'';position:absolute;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(232,68,42,.18) 0%,rgba(232,68,42,.06) 50%,transparent 75%);top:50%;left:50%;transform:translate(-50%,-42%);z-index:0;pointer-events:none;}
+.lp-hero-photo-wrap::after{content:'';position:absolute;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(245,166,35,.14) 0%,transparent 70%);top:20%;right:10%;z-index:0;pointer-events:none;}
+.lp-hero-circle-sm{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(232,68,42,.1) 0%,transparent 70%);pointer-events:none;z-index:0;}
+.lp-hero-photo{width:100%;max-width:440px;margin:0 auto;display:block;object-fit:cover;position:relative;z-index:1;}
 @media(max-width:960px){.lp-hero-photo{max-width:100%;}}
+/* Extra product card floats */
+.lp-hero-float-score{bottom:20px;right:-16px;z-index:3;width:140px;text-align:center;}
+@media(max-width:960px){.lp-hero-float-score{right:0;}}
+/* Orange banner */
+.lp-banner-cta{background:linear-gradient(135deg,#E8442A 0%,#C23520 100%);border-radius:20px;margin:0 40px;overflow:hidden;position:relative;display:grid;grid-template-columns:1fr auto;align-items:center;min-height:140px;}
+@media(max-width:900px){.lp-banner-cta{margin:0 20px;grid-template-columns:1fr;}}
+.lp-banner-cta-left{padding:32px 48px;position:relative;z-index:2;}
+@media(max-width:900px){.lp-banner-cta-left{padding:28px 28px 20px;}}
+.lp-banner-cta-title{font-family:var(--font-display);font-size:1.7rem;font-weight:800;color:#fff;line-height:1.2;margin-bottom:20px;letter-spacing:-.01em;}
+@media(max-width:700px){.lp-banner-cta-title{font-size:1.35rem;}}
+.lp-banner-cta-btn{display:inline-flex;align-items:center;gap:8px;background:#fff;color:#E8442A;font-weight:800;font-size:.88rem;padding:11px 24px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;transition:background .15s;}
+.lp-banner-cta-btn:hover{background:#F7F6F3;}
+.lp-banner-cta-note{font-size:.7rem;color:rgba(255,255,255,.7);margin-top:8px;}
+.lp-banner-cta-right{position:relative;height:160px;width:300px;flex-shrink:0;overflow:hidden;}
+@media(max-width:900px){.lp-banner-cta-right{display:none;}}
+.lp-banner-person{height:160px;width:auto;object-fit:contain;position:absolute;bottom:0;right:20px;z-index:2;}
+.lp-banner-shopee-bag{position:absolute;top:20px;right:10px;z-index:3;}
+/* Confetti decorations */
+.lp-banner-deco{position:absolute;z-index:1;}
+.lp-banner-wrap{padding:0 0 48px;background:#fff;}
 .lp-hero-float{position:absolute;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12);padding:12px 14px;}
 .lp-hero-float-top{top:8px;right:-16px;width:210px;z-index:3;}
 @media(max-width:960px){.lp-hero-float-top{right:0;top:8px;width:180px;}}
@@ -1460,9 +1484,9 @@ body.in-dashboard .navbar{display:flex;}
 /* New footer */
 .lp-footer-new{background:#1A1F3C;color:rgba(255,255,255,.6);padding:56px 80px 28px;}
 @media(max-width:900px){.lp-footer-new{padding:40px 28px 24px;}}
-.lp-footer-new-inner{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr 1.5fr;gap:36px;margin-bottom:40px;}
-@media(max-width:1000px){.lp-footer-new-inner{grid-template-columns:1fr 1fr 1fr;}}
-@media(max-width:600px){.lp-footer-new-inner{grid-template-columns:1fr 1fr;}}
+.lp-footer-new-inner{display:grid;grid-template-columns:2fr 1fr 1fr 2fr;gap:36px;margin-bottom:40px;}
+@media(max-width:900px){.lp-footer-new-inner{grid-template-columns:1fr 1fr;}}
+@media(max-width:500px){.lp-footer-new-inner{grid-template-columns:1fr;}}
 .lp-footer-logo-new{font-family:var(--font-display);font-size:1.4rem;font-weight:800;color:#fff;margin-bottom:10px;display:block;}
 .lp-footer-logo-new span{color:#E8442A;}
 .lp-footer-brand-desc{font-size:.78rem;color:rgba(255,255,255,.5);line-height:1.6;margin-bottom:16px;}
@@ -2917,7 +2941,6 @@ html,body{overflow-x:hidden;max-width:100%;}
         <a class="lp-nav-link" onclick="document.getElementById('lp-harga').scrollIntoView({behavior:'smooth'})">Harga</a>
         <a class="lp-nav-link" onclick="document.getElementById('lp-community').scrollIntoView({behavior:'smooth'})">Komunitas</a>
         <a class="lp-nav-link" onclick="document.getElementById('lp-preview-section').scrollIntoView({behavior:'smooth'})">Edukasi</a>
-        <a class="lp-nav-link" onclick="document.getElementById('lp-testi').scrollIntoView({behavior:'smooth'})">Sukses Seller</a>
       </div>
       <div class="lp-nav-right">
         <button class="lp-nav-login" onclick="openAuthModal('login')">Login</button>
@@ -2948,6 +2971,9 @@ html,body{overflow-x:hidden;max-width:100%;}
 
         <!-- RIGHT: person photo + floating UI cards -->
         <div class="lp-hero-photo-wrap">
+          <!-- Extra decorative circles -->
+          <div class="lp-hero-circle-sm" style="width:100px;height:100px;top:5%;left:0%;"></div>
+          <div class="lp-hero-circle-sm" style="width:60px;height:60px;bottom:15%;left:5%;opacity:.7;"></div>
           <img src="/images/hero-person.webp" alt="Seller Shopee Indonesia" class="lp-hero-photo">
 
           <!-- Floating "Produk Potensial" card -->
@@ -2983,6 +3009,16 @@ html,body{overflow-x:hidden;max-width:100%;}
               <path d="M0,30 C15,28 30,24 45,20 C60,16 75,10 90,6 C100,3 110,3 120,2" fill="none" stroke="#E8442A" stroke-width="2.5" stroke-linecap="round"/>
               <path d="M0,30 C15,28 30,24 45,20 C60,16 75,10 90,6 C100,3 110,3 120,2 L120,36 L0,36 Z" fill="rgba(232,68,42,.08)"/>
             </svg>
+          </div>
+
+          <!-- Floating score card -->
+          <div class="lp-hero-float lp-hero-float-score">
+            <div style="font-size:.55rem;color:#9CA3AF;margin-bottom:3px;">Viability Score</div>
+            <div style="font-family:var(--font-display);font-size:1.6rem;font-weight:800;color:#1A7A46;line-height:1;">87<span style="font-size:.7rem;color:#9CA3AF;font-weight:500;">/100</span></div>
+            <div style="font-size:.6rem;font-weight:700;color:#059669;margin-top:3px;display:flex;align-items:center;gap:3px;justify-content:center;">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+              Potensial
+            </div>
           </div>
 
           <!-- Floating profit badge -->
@@ -3067,20 +3103,23 @@ html,body{overflow-x:hidden;max-width:100%;}
       <div class="lp-solution-grid">
         <!-- Card 1: Find opportunities -->
         <div class="lp-solution-card">
-          <div class="lp-solution-mockup">
-            <div style="font-size:.58rem;font-weight:700;color:#9CA3AF;margin-bottom:7px;text-transform:uppercase;">Produk Terlaris</div>
-            <div style="display:flex;flex-direction:column;gap:5px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:5px;padding:5px 7px;">
-                <span style="font-size:.6rem;font-weight:600;color:#1A1F3C;">Wireless Earbuds</span>
-                <span style="font-size:.55rem;color:#10B981;font-weight:700;">↑ Tinggi</span>
+          <div class="lp-solution-mockup" style="padding:8px;">
+            <div style="font-size:.55rem;font-weight:700;color:#9CA3AF;margin-bottom:6px;text-transform:uppercase;padding:0 4px;">Produk Terlaris</div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <div style="display:flex;align-items:center;gap:7px;background:#fff;border-radius:6px;padding:5px 7px;">
+                <img src="/images/olahraga-outdoor.png" style="width:22px;height:22px;border-radius:4px;object-fit:cover;flex-shrink:0;" alt="">
+                <span style="font-size:.58rem;font-weight:600;color:#1A1F3C;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Sepatu Olahraga</span>
+                <span style="font-size:.52rem;color:#10B981;font-weight:700;flex-shrink:0;">↑ Tinggi</span>
               </div>
-              <div style="display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:5px;padding:5px 7px;">
-                <span style="font-size:.6rem;font-weight:600;color:#1A1F3C;">Jam Tangan Wanita</span>
-                <span style="font-size:.55rem;color:#10B981;font-weight:700;">↑ Tinggi</span>
+              <div style="display:flex;align-items:center;gap:7px;background:#fff;border-radius:6px;padding:5px 7px;">
+                <img src="/images/Kamar Tidur.png" style="width:22px;height:22px;border-radius:4px;object-fit:cover;flex-shrink:0;" alt="">
+                <span style="font-size:.58rem;font-weight:600;color:#1A1F3C;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Bantal Memory Foam</span>
+                <span style="font-size:.52rem;color:#10B981;font-weight:700;flex-shrink:0;">↑ Tinggi</span>
               </div>
-              <div style="display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:5px;padding:5px 7px;">
-                <span style="font-size:.6rem;font-weight:600;color:#1A1F3C;">Lampu Tidur LED</span>
-                <span style="font-size:.55rem;color:#F59E0B;font-weight:700;">↗ Sedang</span>
+              <div style="display:flex;align-items:center;gap:7px;background:#fff;border-radius:6px;padding:5px 7px;">
+                <img src="/images/Alat Dapur.png" style="width:22px;height:22px;border-radius:4px;object-fit:cover;flex-shrink:0;" alt="">
+                <span style="font-size:.58rem;font-weight:600;color:#1A1F3C;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Alat Masak Anti Lengket</span>
+                <span style="font-size:.52rem;color:#F59E0B;font-weight:700;flex-shrink:0;">↗ Sedang</span>
               </div>
             </div>
           </div>
@@ -3904,38 +3943,36 @@ html,body{overflow-x:hidden;max-width:100%;}
       </div>
     </div>
 
-    <!-- ── FEATURES SUMMARY ROW ── -->
-    <div class="lp-feat-row">
-      <div class="lp-feat-row-item">
-        <div class="lp-feat-row-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
-        <div><div class="lp-feat-row-title">Discover Products</div><div class="lp-feat-row-desc">Temukan peluang produk dengan permintaan tinggi dan persaingan rendah.</div></div>
-      </div>
-      <div class="lp-feat-row-item">
-        <div class="lp-feat-row-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
-        <div><div class="lp-feat-row-title">Understand Demand</div><div class="lp-feat-row-desc">Lihat data permintaan dan tren Shopee sebelum kamu mulai berjualan.</div></div>
-      </div>
-      <div class="lp-feat-row-item">
-        <div class="lp-feat-row-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg></div>
-        <div><div class="lp-feat-row-title">Analyze Competition</div><div class="lp-feat-row-desc">Ketahui kompetitor, toko aktif, dan kekuatan pasar yang kamu masuki.</div></div>
-      </div>
-      <div class="lp-feat-row-item">
-        <div class="lp-feat-row-icon"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></div>
-        <div><div class="lp-feat-row-title">Grow Smarter</div><div class="lp-feat-row-desc">Gunakan insight data untuk strategi dan scale bisnismu dengan tepat.</div></div>
-      </div>
-    </div>
-
-    <!-- ── CTA ── -->
-    <div class="lp-cta-section">
-      <div style="position:relative;z-index:1;">
-        <div style="display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:.72rem;font-weight:700;padding:5px 14px;border-radius:20px;margin-bottom:20px;">100% Gratis · Tidak perlu kartu kredit</div>
-        <h2>Peluang Produk Pertamamu<br>Bisa Ditemukan Hari Ini.</h2>
-        <p>Tidak perlu pengalaman. Tidak perlu bayar. Cukup daftar dan mulai riset.</p>
-        <div class="lp-cta-btns">
-          <button class="lp-cta-btn-main" onclick="openAuthModal('signup')">Mulai Sekarang
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:6px;vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-          </button>
+    <!-- ── ORANGE BANNER CTA ── -->
+    <div class="lp-banner-wrap">
+      <div class="lp-banner-cta">
+        <!-- Confetti SVG decorations -->
+        <svg class="lp-banner-deco" style="left:10%;top:10%;opacity:.7;" width="12" height="12" viewBox="0 0 12 12"><polygon points="6,0 7.5,4.5 12,4.5 8.5,7.5 10,12 6,9 2,12 3.5,7.5 0,4.5 4.5,4.5" fill="rgba(255,255,255,.5)"/></svg>
+        <svg class="lp-banner-deco" style="left:30%;bottom:15%;opacity:.5;" width="8" height="8" viewBox="0 0 8 8"><rect width="8" height="8" rx="2" fill="rgba(255,255,255,.4)" transform="rotate(20 4 4)"/></svg>
+        <svg class="lp-banner-deco" style="left:20%;top:20%;opacity:.4;" width="10" height="10" viewBox="0 0 10 10"><polygon points="5,0 6.5,3.5 10,3.5 7.5,5.5 8.5,9 5,7 1.5,9 2.5,5.5 0,3.5 3.5,3.5" fill="rgba(255,255,255,.5)"/></svg>
+        <svg class="lp-banner-deco" style="right:320px;top:15%;opacity:.6;" width="10" height="10" viewBox="0 0 10 10"><rect width="10" height="10" rx="2" fill="rgba(255,255,255,.4)" transform="rotate(35 5 5)"/></svg>
+        <svg class="lp-banner-deco" style="right:330px;bottom:20%;opacity:.5;" width="8" height="8" viewBox="0 0 8 8"><polygon points="4,0 5,3 8,3 5.5,5 6.5,8 4,6 1.5,8 2.5,5 0,3 3,3" fill="rgba(255,255,255,.45)"/></svg>
+        <!-- Left: text + CTA -->
+        <div class="lp-banner-cta-left">
+          <div class="lp-banner-cta-title">Your First Product Opportunity<br>Could Be One Search Away.</div>
+          <div>
+            <button class="lp-banner-cta-btn" onclick="openAuthModal('signup')">
+              Start Free
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            </button>
+            <div class="lp-banner-cta-note">No experience needed.</div>
+          </div>
         </div>
-        <div style="font-size:.72rem;color:rgba(255,255,255,.6);margin-top:12px;">No experience needed</div>
+        <!-- Right: person photo + Shopee bag -->
+        <div class="lp-banner-cta-right">
+          <img src="/images/hero-person.webp" alt="" class="lp-banner-person" style="filter:brightness(1.05);">
+          <!-- Shopee bag SVG -->
+          <div class="lp-banner-shopee-bag">
+            <div style="width:48px;height:48px;background:rgba(255,255,255,.25);border-radius:12px;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.35);">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -3952,7 +3989,6 @@ html,body{overflow-x:hidden;max-width:100%;}
             <div class="lp-footer-soc-icon" title="YouTube"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M22.54 6.42A2.78 2.78 0 0 0 20.59 4.5C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.41 19.5C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon fill="#1A1F3C" points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"/></svg></div>
             <div class="lp-footer-soc-icon" title="Facebook"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></div>
           </div>
-          <div style="font-size:.68rem;color:rgba(255,255,255,.3);">© 2024 LarisID. All rights reserved.</div>
         </div>
         <!-- Product col -->
         <div>
@@ -3960,36 +3996,18 @@ html,body{overflow-x:hidden;max-width:100%;}
           <a class="lp-footer-col-link" onclick="document.getElementById('lp-fitur').scrollIntoView({behavior:'smooth'})">Fitur</a>
           <a class="lp-footer-col-link" onclick="document.getElementById('lp-harga').scrollIntoView({behavior:'smooth'})">Harga</a>
           <a class="lp-footer-col-link" onclick="document.getElementById('lp-steps').scrollIntoView({behavior:'smooth'})">Cara Kerja</a>
-          <a class="lp-footer-col-link">Update</a>
         </div>
         <!-- Community col -->
         <div>
           <div class="lp-footer-col-title">Community</div>
           <a class="lp-footer-col-link" onclick="document.getElementById('lp-community').scrollIntoView({behavior:'smooth'})">Komunitas</a>
-          <a class="lp-footer-col-link">Event</a>
-          <a class="lp-footer-col-link">Leaderboard</a>
-          <a class="lp-footer-col-link">Affiliate</a>
         </div>
-        <!-- Resources col -->
-        <div>
-          <div class="lp-footer-col-title">Resources</div>
-          <a class="lp-footer-col-link">Edukasi</a>
-          <a class="lp-footer-col-link">Blog</a>
-          <a class="lp-footer-col-link">Panduan</a>
-          <a class="lp-footer-col-link">FAQ</a>
-        </div>
-        <!-- Company + newsletter -->
-        <div>
-          <div class="lp-footer-col-title">Company</div>
-          <a class="lp-footer-col-link">Tentang Kami</a>
-          <a class="lp-footer-col-link">Karir</a>
-          <a class="lp-footer-col-link">Kontak</a>
-          <div style="margin-top:20px;">
-            <div class="lp-footer-nl-title">Dapatkan tips &amp; peluang terbaru</div>
-            <div class="lp-footer-nl-row">
-              <input class="lp-footer-nl-input" type="email" placeholder="Email kamu">
-              <button class="lp-footer-nl-btn">Subscribe</button>
-            </div>
+        <!-- Newsletter -->
+        <div style="grid-column:span 2;">
+          <div class="lp-footer-col-title">Dapatkan tips &amp; peluang terbaru</div>
+          <div class="lp-footer-nl-row" style="max-width:340px;">
+            <input class="lp-footer-nl-input" type="email" placeholder="Email kamu">
+            <button class="lp-footer-nl-btn">Subscribe</button>
           </div>
         </div>
       </div>
