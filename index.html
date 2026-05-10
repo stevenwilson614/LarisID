@@ -10768,7 +10768,12 @@ async function ddRenderTren() {
     function _wKey(d)   { return _mondayOf(d).toISOString().slice(0, 10); }
     function _wLabel(d) { const m = _mondayOf(d); return `${m.getDate()} ${_MO[m.getMonth()]}`; }
 
+    // Seed weekMap with all scrape dates so same-date pairs still produce at least one entry
     const weekMap = new Map();
+    for (const r of dbRows) {
+      const key = _wKey(new Date(r.scraped_at));
+      if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(new Date(r.scraped_at)), units: 0, omset: 0, firstDate: _mondayOf(new Date(r.scraped_at)) });
+    }
     for (let i = 0; i < dbRows.length - 1; i++) {
       const t0 = new Date(dbRows[i].scraped_at), t1 = new Date(dbRows[i+1].scraped_at);
       const s0 = unitData[i] ?? 0, s1 = unitData[i+1] ?? 0;
@@ -10792,7 +10797,27 @@ async function ddRenderTren() {
       .map(w => ({ label: w.label, units: Math.round(w.units), omset: Math.round(w.omset), firstDate: w.firstDate }));
 
     if (!weeks.length) {
-      if (insEl) insEl.innerHTML = '<div style="font-size:.68rem;color:#9CA3AF;padding:8px 0;">Belum ada perubahan penjualan terdeteksi antara scrape.</div>';
+      // Zero-delta: build Monday-anchored snapshot from raw scrape rows
+      const snapMap2 = new Map();
+      for (const r of dbRows) {
+        const key = _wKey(new Date(r.scraped_at));
+        if (!snapMap2.has(key)) {
+          snapMap2.set(key, { label: _wLabel(new Date(r.scraped_at)), units: r.total_sold ?? 0, omset: (r.total_sold ?? 0) * (r.price || fallbackPrice), firstDate: _mondayOf(new Date(r.scraped_at)) });
+        }
+      }
+      const snapWeeks = [...snapMap2.values()].sort((a, b) => a.firstDate - b.firstDate);
+      if (!snapWeeks.length) {
+        if (insEl) insEl.innerHTML = '<div style="font-size:.68rem;color:#9CA3AF;padding:8px 0;">Belum ada data scrape.</div>';
+        return;
+      }
+      // Add forecast Monday
+      const lastSnapMon = snapWeeks[snapWeeks.length - 1].firstDate;
+      const nextSnapMon = new Date(lastSnapMon.getTime() + 7 * 86400000);
+      snapWeeks.push({ label: `${nextSnapMon.getDate()} ${_MO[nextSnapMon.getMonth()]} ▶`, units: Math.round(snapWeeks.reduce((s,r)=>s+r.units,0)/snapWeeks.length), omset: Math.round(snapWeeks.reduce((s,r)=>s+r.omset,0)/snapWeeks.length), firstDate: nextSnapMon, isForecast: true });
+      const snapMonths = [{ label: _MO[snapWeeks[0].firstDate.getMonth()] + ' ' + String(snapWeeks[0].firstDate.getFullYear()).slice(2), units: snapWeeks[0].units, omset: snapWeeks[0].omset }];
+      _trenData = { weeks: snapWeeks, months: snapMonths, listing, category: listing.category || 'Umum', isEstimated: true, dbRows };
+      if (insEl) insEl.innerHTML = '<div style="font-size:.68rem;color:#9CA3AF;padding:8px 0;">Baru 1 sesi scrape — nilai kumulatif, bukan selisih mingguan. Prediksi ditambahkan untuk minggu depan.</div>';
+      trenRender(); trenRenderCmp(); trenRenderDataTable();
       return;
     }
 
@@ -11844,7 +11869,13 @@ async function ddLoadTrendHistory(listing) {
     function _wKey(d)   { return _mondayOf(d).toISOString().slice(0, 10); }
     function _wLabel(d) { const m = _mondayOf(d); return `${m.getDate()} ${_MO[m.getMonth()]}`; }
 
+    // Also bucket every individual scrape row so same-date pairs still produce an entry
     const weekMap = new Map();
+    for (const r of dbRows) {
+      const key = _wKey(new Date(r.scraped_at));
+      if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(new Date(r.scraped_at)), units: 0, omset: 0, firstDate: _mondayOf(new Date(r.scraped_at)) });
+    }
+    // Now fill each week's delta via inter-scrape interpolation
     for (let i = 0; i < dbRows.length - 1; i++) {
       const t0 = new Date(dbRows[i].scraped_at), t1 = new Date(dbRows[i+1].scraped_at);
       const s0 = unitData[i] ?? 0, s1 = unitData[i+1] ?? 0;
@@ -11868,24 +11899,48 @@ async function ddLoadTrendHistory(listing) {
       .map(w => ({ label: w.label, units: Math.round(w.units), omset: Math.round(w.omset), firstDate: w.firstDate }));
 
     if (!weeklyRows.length) {
-      // Fallback: no week-deltas (all data flat or single point) — plot one point per scrape row directly
-      if (dbRows.length >= 1) {
-        const _fallbackLabels = dbRows.map(r => {
-          const d = new Date(r.scraped_at);
-          return `${d.getDate()} ${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][d.getMonth()]}`;
-        });
-        const _fallbackUnits = dbRows.map(r => r.total_sold ?? 0);
-        const _fallbackOmset = dbRows.map((r,i) => (r.total_sold ?? 0) * (r.price || fallbackPrice));
-        if (!_ddChartTrend) return;
-        _ddChartTrend.data.labels = _fallbackLabels;
-        _ddChartTrend.data.datasets = [
-          { label:'Omset Est.', data:_fallbackOmset, borderColor:'#E8442A', backgroundColor:'rgba(232,68,42,.06)', borderWidth:2.5, fill:true, tension:0.3, pointRadius:5, pointBackgroundColor:'#E8442A', yAxisID:'y', borderDash:[4,4] },
-          { label:'Unit Terjual (min)', data:_fallbackUnits, borderColor:'#4F46E5', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:4, pointBackgroundColor:'#4F46E5', yAxisID:'y2', borderDash:[4,4] },
-        ];
-        _ddChartTrend.update();
-      } else {
-        _noDataMsg('Belum ada perubahan penjualan terdeteksi antara scrape.');
+      // Zero-delta fallback: scrapes exist but total_sold didn't change between them
+      // (single scrape or same-date pair). Build Monday-anchored snapshot from raw rows.
+      const snapMap = new Map();
+      for (const r of dbRows) {
+        const key = _wKey(new Date(r.scraped_at));
+        if (!snapMap.has(key)) {
+          const mon = _mondayOf(new Date(r.scraped_at));
+          snapMap.set(key, { label: _wLabel(new Date(r.scraped_at)), units: r.total_sold ?? 0, omset: (r.total_sold ?? 0) * (r.price || fallbackPrice), firstDate: mon });
+        }
       }
+      const snapRows = [...snapMap.values()].sort((a, b) => a.firstDate - b.firstDate);
+
+      if (!snapRows.length) {
+        _noDataMsg('Belum ada data scrape untuk produk ini.');
+        return;
+      }
+
+      // Add one forecast Monday based on average units of available snaps
+      const avgUnits = Math.round(snapRows.reduce((s, r) => s + r.units, 0) / snapRows.length);
+      const avgOmset = Math.round(snapRows.reduce((s, r) => s + r.omset, 0) / snapRows.length);
+      const lastMon  = snapRows[snapRows.length - 1].firstDate;
+      const nextMon  = new Date(lastMon.getTime() + 7 * 86400000);
+      const snapLabels    = [...snapRows.map(r => r.label), `${nextMon.getDate()} ${_MO[nextMon.getMonth()]} ▶`];
+      const snapUnits     = [...snapRows.map(r => r.units), null];
+      const snapOmset     = [...snapRows.map(r => r.omset), null];
+      const fcSnapUnits   = new Array(snapLabels.length).fill(null);
+      const fcSnapOmset   = new Array(snapLabels.length).fill(null);
+      fcSnapUnits[snapRows.length - 1] = snapRows[snapRows.length - 1].units;
+      fcSnapOmset[snapRows.length - 1] = snapRows[snapRows.length - 1].omset;
+      fcSnapUnits[snapRows.length]     = avgUnits;
+      fcSnapOmset[snapRows.length]     = avgOmset;
+
+      if (!_ddChartTrend) return;
+      _ddChartTrend.data.labels = snapLabels;
+      _ddChartTrend.data.datasets = [
+        { label:'Omset (snapshot)', data:snapOmset, borderColor:'#E8442A', backgroundColor:'rgba(232,68,42,.06)', borderWidth:2.5, fill:true, tension:0.3, pointRadius:5, pointBackgroundColor:'#E8442A', yAxisID:'y', borderDash:[4,4], spanGaps:false },
+        { label:'Unit Terjual', data:snapUnits, borderColor:'#4F46E5', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:4, pointBackgroundColor:'#4F46E5', yAxisID:'y2', borderDash:[4,4], spanGaps:false },
+        { label:'Prediksi Omset', data:fcSnapOmset, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:6, pointBackgroundColor:'#10B981', yAxisID:'y', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
+        { label:'Prediksi Unit', data:fcSnapUnits, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:6, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
+      ];
+      _ddChartTrend.update();
+      _noDataMsg('Baru 1 sesi scrape tersedia — nilai menunjukkan total kumulatif. Prediksi berdasarkan rata-rata pasar.');
       return;
     }
 
