@@ -10757,18 +10757,17 @@ async function ddRenderTren() {
     }
 
     const _MO = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-    function _wKey(d) {
-      const t = new Date(+d), day = t.getDay() || 7;
-      t.setDate(t.getDate() + 4 - day);
-      const y1 = new Date(t.getFullYear(), 0, 1);
-      return `${t.getFullYear()}-W${String(Math.ceil(((t-y1)/86400000+1)/7)).padStart(2,'0')}`;
+    // Monday-anchored week helpers — labels show the actual Monday date ("13 Apr", "20 Apr"...)
+    function _mondayOf(d) {
+      const date = new Date(+d);
+      const day = date.getDay(); // 0=Sun,1=Mon,...6=Sat
+      date.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
+      date.setHours(0, 0, 0, 0);
+      return date;
     }
-    function _wLabel(d) {
-      const k = _wKey(d), [yr, ws] = k.split('-W'), wn = +ws;
-      const j4 = new Date(+yr, 0, 4), dw = j4.getDay() || 7;
-      const mon = new Date(j4.getTime()-(dw-1)*86400000+(wn-1)*7*86400000);
-      return `W${wn} ${_MO[mon.getMonth()]}`;
-    }
+    function _wKey(d)   { return _mondayOf(d).toISOString().slice(0, 10); }
+    function _wLabel(d) { const m = _mondayOf(d); return `${m.getDate()} ${_MO[m.getMonth()]}`; }
+
     const weekMap = new Map();
     for (let i = 0; i < dbRows.length - 1; i++) {
       const t0 = new Date(dbRows[i].scraped_at), t1 = new Date(dbRows[i+1].scraped_at);
@@ -10782,7 +10781,7 @@ async function ddRenderTren() {
         if (date > t1) break;
         const frac = d / daysDiff;
         const key  = _wKey(date);
-        if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(date), units: 0, omset: 0, firstDate: date });
+        if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(date), units: 0, omset: 0, firstDate: _mondayOf(date) });
         const wk = weekMap.get(key);
         wk.units += dUnit;
         wk.omset += dUnit * (p0 + (p1 - p0) * frac);
@@ -10878,31 +10877,51 @@ function trenRender() {
   const gran   = _trenGran || 'minggu';
   const rows   = gran === 'bulan' ? _trenData.months : _trenData.weeks;
   const metric = document.getElementById('tren-metric')?.value || 'sold';
-  const labels = rows.map(r => r.label);
+  const labels = [...rows.map(r => r.label)];
   const vals   = metric === 'omset' ? rows.map(r => r.omset) : rows.map(r => r.units);
+
+  // Add one forecast Monday point for weekly view
+  let fcVals = null;
+  if (gran === 'minggu' && rows.length >= 1) {
+    const slice = rows.slice(-2);
+    const fcVal = Math.round(slice.reduce((s,r) => s + (metric === 'omset' ? r.omset : r.units), 0) / slice.length);
+    const lastMon = rows[rows.length-1].firstDate instanceof Date ? rows[rows.length-1].firstDate : new Date(rows[rows.length-1].firstDate);
+    const nextMon = new Date(lastMon.getTime() + 7*86400000);
+    const _MO2 = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+    labels.push(`${nextMon.getDate()} ${_MO2[nextMon.getMonth()]} ▶`);
+    fcVals = new Array(rows.length).fill(null);
+    fcVals.push(fcVal);
+  }
 
   if (_trenMainChart) { _trenMainChart.destroy(); _trenMainChart = null; }
   const canvas = document.getElementById('tren-main-chart');
   if (!canvas) return;
+  const datasets = [
+    {
+      label: metric === 'omset' ? 'Omset/Minggu' : 'Unit Terjual/Minggu',
+      data: fcVals ? [...vals, null] : vals,
+      backgroundColor: labels.map((_, i) => i < rows.length ? 'rgba(232,68,42,.75)' : 'transparent'),
+      borderColor: '#E8442A', borderWidth: 1, borderRadius: 4,
+    }
+  ];
+  if (fcVals) {
+    datasets.push({
+      label: 'Prediksi',
+      data: fcVals,
+      backgroundColor: 'rgba(16,185,129,.6)',
+      borderColor: '#10B981', borderWidth: 1, borderRadius: 4,
+    });
+  }
   _trenMainChart = new Chart(canvas.getContext('2d'), {
     type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        data: vals,
-        backgroundColor: 'rgba(232,68,42,.75)',
-        borderColor: '#E8442A',
-        borderWidth: 1,
-        borderRadius: 4,
-      }]
-    },
+    data: { labels, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: {
-        callbacks: { label: ctx => ` ${ctx.parsed.y.toLocaleString('id-ID')}${metric === 'omset' ? ' Rp' : ' unit'}${_trenData?.isEstimated ? ' (est.)' : ''}` }
+      plugins: { legend: { display: fcVals != null, labels: { font: { size: 10 }, boxWidth: 12 } }, tooltip: {
+        callbacks: { label: ctx => ` ${ctx.parsed.y != null ? ctx.parsed.y.toLocaleString('id-ID') : '—'}${metric === 'omset' ? ' Rp' : ' unit'}${_trenData?.isEstimated ? ' (est.)' : ''}` }
       }},
       scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#9CA3AF', maxRotation: 45 } },
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#9CA3AF', maxRotation: 30 } },
         y: { grid: { color: '#F3F4F6' }, ticks: { font: { size: 10 }, color: '#9CA3AF', callback: v => v >= 1e6 ? (v/1e6).toFixed(1)+'jt' : v >= 1000 ? (v/1000).toFixed(0)+'k' : v } }
       }
     }
@@ -11810,23 +11829,21 @@ async function ddLoadTrendHistory(listing) {
       unitData = dbRows.map(r => r.total_sold ?? 0);
     }
 
-    // ── Interpolate scrape deltas into ISO calendar weeks ──────────────────────
-    // Between each pair of scrape points, distribute sold delta uniformly across
-    // days, then bucket days into weeks. This gives weekly estimates even when
-    // scrapes happen to fall on non-weekly boundaries.
+    // ── Interpolate scrape deltas into Monday-anchored calendar weeks ──────────
+    // Between each pair of scrapes, distribute the sold delta uniformly across days,
+    // then bucket each day into the Monday-week it belongs to.
+    // Labels: actual Monday dates ("13 Apr", "20 Apr", "27 Apr", "4 Mei"...)
     const _MO = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-    function _wKey(d) {
-      const t = new Date(+d), day = t.getDay() || 7;
-      t.setDate(t.getDate() + 4 - day);
-      const y1 = new Date(t.getFullYear(), 0, 1);
-      return `${t.getFullYear()}-W${String(Math.ceil(((t-y1)/86400000+1)/7)).padStart(2,'0')}`;
+    function _mondayOf(d) {
+      const date = new Date(+d);
+      const day = date.getDay(); // 0=Sun,1=Mon,...6=Sat
+      date.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
+      date.setHours(0, 0, 0, 0);
+      return date;
     }
-    function _wLabel(d) {
-      const k = _wKey(d), [yr, ws] = k.split('-W'), wn = +ws;
-      const j4 = new Date(+yr, 0, 4), dw = j4.getDay() || 7;
-      const mon = new Date(j4.getTime()-(dw-1)*86400000+(wn-1)*7*86400000);
-      return `W${wn} ${_MO[mon.getMonth()]}`;
-    }
+    function _wKey(d)   { return _mondayOf(d).toISOString().slice(0, 10); }
+    function _wLabel(d) { const m = _mondayOf(d); return `${m.getDate()} ${_MO[m.getMonth()]}`; }
+
     const weekMap = new Map();
     for (let i = 0; i < dbRows.length - 1; i++) {
       const t0 = new Date(dbRows[i].scraped_at), t1 = new Date(dbRows[i+1].scraped_at);
@@ -11840,7 +11857,7 @@ async function ddLoadTrendHistory(listing) {
         if (date > t1) break;
         const frac = d / daysDiff;
         const key  = _wKey(date);
-        if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(date), units: 0, omset: 0, firstDate: date });
+        if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(date), units: 0, omset: 0, firstDate: _mondayOf(date) });
         const wk = weekMap.get(key);
         wk.units += dUnit;
         wk.omset += dUnit * (p0 + (p1 - p0) * frac);
@@ -11881,8 +11898,9 @@ async function ddLoadTrendHistory(listing) {
     const slice2 = weeklyRows.slice(-2);
     const fcUnit  = Math.round(slice2.reduce((s,w) => s+w.units, 0) / slice2.length);
     const fcOmset = Math.round(slice2.reduce((s,w) => s+w.omset, 0) / slice2.length);
+    // nextWeek is the Monday 7 days after the last data Monday → e.g. "12 Mei"
     const nextWeek = new Date(weeklyRows[nW-1].firstDate.getTime() + 7*86400000);
-    labels.push(_wLabel(nextWeek) + ' *');
+    labels.push(_wLabel(nextWeek) + ' ▶');
     chartUnitData.push(null);
     chartOmsetData.push(null);
     const fUnitW  = new Array(labels.length).fill(null);
