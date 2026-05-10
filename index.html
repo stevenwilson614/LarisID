@@ -5442,10 +5442,10 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <div class="dsc-dual-range" id="dsc-price-range">
                     <div class="dsc-dual-track"></div>
                     <div class="dsc-dual-fill" id="dsc-price-fill"></div>
-                    <input type="range" id="dsc-price-min" min="0" max="10000000" step="50000" value="0" oninput="dscUpdateDualRange('price')">
-                    <input type="range" id="dsc-price-max" min="0" max="10000000" step="50000" value="10000000" oninput="dscUpdateDualRange('price')">
+                    <input type="range" id="dsc-price-min" min="0" max="500000" step="10000" value="0" oninput="dscUpdateDualRange('price')">
+                    <input type="range" id="dsc-price-max" min="0" max="500000" step="10000" value="500000" oninput="dscUpdateDualRange('price')">
                   </div>
-                  <div class="dsc-range-vals"><span id="dsc-price-min-lbl">Rp 0</span><span id="dsc-price-max-lbl">Rp 10 jt</span></div>
+                  <div class="dsc-range-vals"><span id="dsc-price-min-lbl">Rp 0</span><span id="dsc-price-max-lbl">Rp 500rb+</span></div>
                 </div>
 
                 <div class="dsc-filter-group">
@@ -5475,7 +5475,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <div id="dsc-cat-checks" style="display:flex;flex-direction:column;gap:3px;max-height:240px;overflow-y:auto;"></div>
                 </div>
 
-                <button class="dsc-filter-apply" onclick="dscApplyFilters()">Terapkan Filter</button>
+                <button class="dsc-filter-apply" onclick="dscTerapkanFilter()">Terapkan Filter</button>
                 <button class="dsc-filter-link" onclick="dscResetFilters()">Reset Filter</button>
               </aside>
 
@@ -9211,7 +9211,7 @@ function dscUpdateDualRange(key) {
   const minLbl = document.getElementById(minLblId);
   const maxLbl = document.getElementById(maxLblId);
   if (minLbl) minLbl.textContent = _dscFmt(lo);
-  if (maxLbl) maxLbl.textContent = _dscFmt(hi);
+  if (maxLbl) maxLbl.textContent = hi >= parseFloat(maxEl.max) ? _dscFmt(hi) + '+' : _dscFmt(hi);
   dscApplyFilters();
 }
 
@@ -9281,7 +9281,7 @@ async function dscFetchPage(offset, filters = {}) {
     q = q.eq('category', filters.cat);
   }
   if (filters.priceMin) q = q.gte('price', filters.priceMin);
-  if (filters.priceMax && filters.priceMax < 1000000) q = q.lte('price', filters.priceMax);
+  if (filters.priceMax && filters.priceMax < 500000) q = q.lte('price', filters.priceMax);
   if (filters.search)   q = q.ilike('product_name', `%${filters.search}%`);
 
   const { data, error } = await q;
@@ -9297,7 +9297,7 @@ async function dscFetchPage(offset, filters = {}) {
       qf = qf.eq('category', filters.cat);
     }
     if (filters.priceMin) qf = qf.gte('price', filters.priceMin);
-    if (filters.priceMax && filters.priceMax < 1000000) qf = qf.lte('price', filters.priceMax);
+    if (filters.priceMax && filters.priceMax < 500000) qf = qf.lte('price', filters.priceMax);
     if (filters.search)   qf = qf.ilike('product_name', `%${filters.search}%`);
     const fb = await qf;
     return fb.data || [];
@@ -9569,19 +9569,17 @@ function dscBuildCatChecks(cats) {
   el.dataset.built = newKey;
   el.innerHTML = merged.map(c => `
     <label style="display:flex;align-items:center;gap:7px;padding:4px 6px;border-radius:6px;cursor:pointer;font-size:.72rem;color:#374151;user-select:none;transition:background .1s;" onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
-      <input type="checkbox" value="${c}" ${unchecked.has(c) ? '' : 'checked'} onchange="dscSaveCatAndApply()" style="accent-color:#E8442A;width:13px;height:13px;flex-shrink:0;">
+      <input type="checkbox" value="${c}" ${unchecked.has(c) ? '' : 'checked'} onchange="_dscSaveCatState()" style="accent-color:#E8442A;width:13px;height:13px;flex-shrink:0;">
       <span>${c}</span>
     </label>`).join('');
 }
 
-function dscSaveCatAndApply() { _dscSaveCatState(); dscApplyFilters(); }
 
 function dscCatSelectAll() {
   const checks = document.querySelectorAll('#dsc-cat-checks input[type=checkbox]');
   const allChecked = [...checks].every(c => c.checked);
   checks.forEach(c => c.checked = !allChecked);
   _dscSaveCatState();
-  dscApplyFilters();
 }
 
 function _dscCurrentFilters() {
@@ -9608,8 +9606,8 @@ function dscApplyFilters(resetPage = true) {
   const q        = (document.getElementById('dsc-search')?.value || '').toLowerCase();
   const selectedCats = _dscSelectedCats(); // null = all, array = filter to these
   const priceMin = parseFloat(document.getElementById('dsc-price-min')?.value) || 0;
-  const priceMaxRaw = parseFloat(document.getElementById('dsc-price-max')?.value) || 10000000;
-  const priceMax = priceMaxRaw >= 10000000 ? Infinity : priceMaxRaw;
+  const priceMaxRaw = parseFloat(document.getElementById('dsc-price-max')?.value) || 500000;
+  const priceMax = priceMaxRaw >= 500000 ? Infinity : priceMaxRaw;
   const omsetMin = parseFloat(document.getElementById('dsc-omset-min')?.value) || 0;
   const omsetMaxRaw = parseFloat(document.getElementById('dsc-omset-max')?.value) || 500000000;
   const omsetMax = omsetMaxRaw >= 500000000 ? Infinity : omsetMaxRaw;
@@ -11520,6 +11518,16 @@ function dscGoPage(n) {
   document.getElementById('dash-content')?.scrollTo(0, 0);
 }
 
+function dscTerapkanFilter() {
+  // Force a fresh server re-fetch regardless of current load state
+  _dscAllListings = [];
+  _dscOffset = 0;
+  _dscHasMore = true;
+  _dscLoaded = true;         // allow dscApplyFilters to proceed past the guard
+  _dscLastSrvFilters = '';   // non-null sentinel so key comparison always triggers re-fetch
+  dscApplyFilters();
+}
+
 function dscResetFilters() {
   const g = id => document.getElementById(id);
   _dscCurrentCatFilter  = ''; // clear server-side category filter
@@ -11528,7 +11536,7 @@ function dscResetFilters() {
   document.querySelectorAll('#dsc-cat-checks input[type=checkbox]').forEach(c => c.checked = true);
   if (g('dsc-search'))     g('dsc-search').value     = '';
   if (g('dsc-price-min'))  g('dsc-price-min').value  = 0;
-  if (g('dsc-price-max'))  g('dsc-price-max').value  = 10000000;
+  if (g('dsc-price-max'))  g('dsc-price-max').value  = 500000;
   if (g('dsc-omset-min'))  g('dsc-omset-min').value  = 0;
   if (g('dsc-omset-max'))  g('dsc-omset-max').value  = 500000000;
   if (g('dsc-skor-min'))   { g('dsc-skor-min').value = 0; const lbl = g('dsc-skor-min-lbl'); if (lbl) lbl.textContent = '0'; }
