@@ -11738,6 +11738,73 @@ function ddRender(p) {
   }).join('');
 }
 
+async function ddEstimateTrendFromPeers(listing) {
+  if (!_supabase || !listing?.item_id || !(listing.total_sold > 0)) return null;
+  if (!_ddKwRows || _ddKwRows.length < 2) return null;
+
+  const target = listing.total_sold;
+  const CAT_MULT = { 'Rumah':2.94,'Fashion':2.77,'Dapur':3.41,'Kamar Mandi':4.21,'Keamanan':3.40,
+    'Kecantikan':2.70,'Motor & Mobil':2.96,'Elektronik':3.10,'HP & Gadget':3.40,
+    'Hewan Peliharaan':3.95,'Sepeda':2.58,'Taman':3.50,'Olahraga':2.68,'Bayi & Anak':4.12,
+    'Hobi & Kerajinan':2.48,'Kesehatan':2.38,'Tanaman':3.63,'Alat Tulis':2.87,
+    'Outdoor & Camping':2.67,'__default__':3.20 };
+
+  function _peers(lo, hi) {
+    return _ddKwRows.filter(r =>
+      !(String(r.item_id) === String(listing.item_id) && String(r.shop_id) === String(listing.shop_id)) &&
+      (r.total_sold || 0) >= lo && (r.total_sold || 0) <= hi
+    );
+  }
+
+  let peers = _peers(target * 0.25, target * 4);
+  if (peers.length < 3) peers = _peers(target * 0.1, target * 10);
+  if (peers.length < 2) return null;
+
+  const { data: peerHistory } = await _supabase
+    .from('listings')
+    .select('item_id,shop_id,scraped_at,total_sold,reviews,category')
+    .in('item_id', peers.map(r => r.item_id))
+    .order('scraped_at', { ascending: true })
+    .limit(300);
+
+  const peerMap = new Map();
+  for (const r of (peerHistory || [])) {
+    const k = `${r.item_id}_${r.shop_id}`;
+    if (!peerMap.has(k)) peerMap.set(k, []);
+    peerMap.get(k).push(r);
+  }
+
+  const weeklyRates = [];
+  for (const [, rows] of peerMap) {
+    if (rows.length < 2) continue;
+    const first = rows[0], last = rows[rows.length - 1];
+    const days = (new Date(last.scraped_at) - new Date(first.scraped_at)) / 86400000;
+    if (days < 1) continue;
+    const mult = CAT_MULT[last.category || listing.category] || CAT_MULT['__default__'];
+    const atCeil = rows.every(r => (r.total_sold ?? 0) >= 10000);
+    let delta;
+    if (atCeil && (last.reviews || 0) > (first.reviews || 0)) {
+      delta = Math.round(Math.max(0, (last.reviews || 0) - (first.reviews || 0)) * mult);
+    } else if (atCeil) {
+      continue;
+    } else {
+      delta = Math.max(0, (last.total_sold || 0) - (first.total_sold || 0));
+    }
+    if (delta === 0) continue;
+    weeklyRates.push(delta / (days / 7));
+  }
+
+  if (weeklyRates.length < 2) return null;
+
+  const sorted = [...weeklyRates].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const medianRate = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+
+  const soldVals = peers.map(r => r.total_sold || 0).filter(v => v > 0);
+  console.log('[ddPeerTrend] medianRate/week:', Math.round(medianRate), 'peers:', weeklyRates.length);
+  return { medianRate, peerCount: weeklyRates.length, soldMin: Math.min(...soldVals), soldMax: Math.max(...soldVals) };
+}
+
 // Fetches up to 20 scrape points, interpolates deltas day-by-day between consecutive
 // scrapes, and buckets into ISO calendar weeks. Shows weekly units + weekly omset so
 // even sparse scrapes produce a smooth weekly view. Forecast = avg of last 2 weeks.
@@ -11751,6 +11818,7 @@ async function ddLoadTrendHistory(listing) {
       `<div id="dd-trend-nodata" style="text-align:center;padding:28px 0;font-size:.75rem;color:#9CA3AF;">${msg}</div>`);
   }
   document.getElementById('dd-trend-nodata')?.remove();
+  document.getElementById('dd-trend-peernote')?.remove();
 
   try {
     let dbRows = [];
@@ -11779,6 +11847,7 @@ async function ddLoadTrendHistory(listing) {
     }
 
     // Augment to reach 2 rows
+    let isPeerEstimated = false, peerCount = 0, peerSoldMin = 0, peerSoldMax = 0;
     if (dbRows.length < 2) {
       const prevKey  = `${listing.item_id}_${listing.shop_id}`;
       const prevSold = _dscPrevMap[prevKey];
@@ -11801,9 +11870,39 @@ async function ddLoadTrendHistory(listing) {
           currRow,
         ];
       } else {
-        if (_ddChartTrend) { _ddChartTrend.data.labels = []; _ddChartTrend.data.datasets.forEach(d => d.data = []); _ddChartTrend.update(); }
-        _noDataMsg('Belum cukup data scrape untuk menampilkan tren.<br>Data akan muncul setelah 2+ scrape.');
-        return;
+        const peerResult = await ddEstimateTrendFromPeers(listing);
+        if (peerResult && peerResult.medianRate > 0) {
+          isPeerEstimated = true;
+          peerCount = peerResult.peerCount;
+          peerSoldMin = peerResult.soldMin;
+          peerSoldMax = peerResult.soldMax;
+          const rate = peerResult.medianRate;
+          const anchor = currDate;
+          const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
+          const anchorSold = listing.total_sold || 0;
+          const anchorReviews = listing.reviews || 0;
+          const mult = ({ 'Rumah':2.94,'Fashion':2.77,'Dapur':3.41,'Kamar Mandi':4.21,'Keamanan':3.40,
+            'Kecantikan':2.70,'Motor & Mobil':2.96,'Elektronik':3.10,'HP & Gadget':3.40,
+            'Hewan Peliharaan':3.95,'Sepeda':2.58,'Taman':3.50,'Olahraga':2.68,'Bayi & Anak':4.12,
+            'Hobi & Kerajinan':2.48,'Kesehatan':2.38,'Tanaman':3.63,'Alat Tulis':2.87,
+            'Outdoor & Camping':2.67,'__default__':3.20 })[listing.category] || 3.20;
+          const atCeil = anchorSold >= 10000;
+          const weeklyRevDelta = atCeil && mult > 0 ? rate / mult : 0;
+          function _synRow(weekOffset) {
+            return {
+              scraped_at: new Date(anchor.getTime() + weekOffset * MS_WEEK).toISOString(),
+              total_sold: Math.max(0, Math.round(anchorSold + rate * weekOffset)),
+              price: listing.price,
+              reviews: atCeil ? Math.max(0, Math.round(anchorReviews + weeklyRevDelta * weekOffset)) : null,
+            };
+          }
+          dbRows = [_synRow(-3), _synRow(-2), _synRow(-1), _synRow(0), _synRow(1)];
+          console.log('[ddTrend] peer-estimated rows, rate/week:', Math.round(rate), 'peers:', peerCount);
+        } else {
+          if (_ddChartTrend) { _ddChartTrend.data.labels = []; _ddChartTrend.data.datasets.forEach(d => d.data = []); _ddChartTrend.update(); }
+          _noDataMsg('Belum cukup data scrape untuk menampilkan tren.<br>Data akan muncul setelah 2+ scrape.');
+          return;
+        }
       }
     }
 
@@ -11975,6 +12074,16 @@ async function ddLoadTrendHistory(listing) {
     ];
     _ddChartTrend.update();
 
+    document.getElementById('dd-trend-peernote')?.remove();
+    if (isPeerEstimated) {
+      const _fmtS = v => v >= 1e6 ? (v/1e6).toFixed(1)+'jt' : v >= 1000 ? Math.round(v/1000)+'rb' : String(v);
+      const note = document.createElement('div');
+      note.id = 'dd-trend-peernote';
+      note.style.cssText = 'font-size:.68rem;color:#9CA3AF;margin-top:6px;text-align:center;';
+      note.textContent = `Estimasi dari ${peerCount} produk serupa (${_fmtS(peerSoldMin)}–${_fmtS(peerSoldMax)} terjual) — bukan data nyata.`;
+      document.getElementById('dd-chart-trend')?.parentElement?.appendChild(note);
+    }
+
     // ── Update Ringkasan hero stat cards from real weekly data ──────────────────
     const totalUnits = weeklyRows.reduce((s, w) => s + w.units, 0);
     const totalOmset = weeklyRows.reduce((s, w) => s + w.omset, 0);
@@ -11993,7 +12102,7 @@ async function ddLoadTrendHistory(listing) {
     if (omsetEl) omsetEl.textContent = totalOmset > 0 ? _fmtV(totalOmset) : '—';
     if (unitDEl)  { unitDEl.textContent  = _fmtDelta(wowUnitPct);  unitDEl.style.color  = (wowUnitPct  ?? 0) >= 0 ? '#10B981' : '#E8442A'; }
     if (omsetDEl) { omsetDEl.textContent = _fmtDelta(wowOmsetPct); omsetDEl.style.color = (wowOmsetPct ?? 0) >= 0 ? '#10B981' : '#E8442A'; }
-    const periodNote = isEstimated ? `est. · ${nW} minggu` : `${nW} minggu · ${dbRows.length} scrape`;
+    const periodNote = isPeerEstimated ? `peer est. · ${nW} minggu` : isEstimated ? `est. · ${nW} minggu` : `${nW} minggu · ${dbRows.length} scrape`;
     if (unitSubEl)  unitSubEl.textContent  = `Total estimasi terjual · ${periodNote}`;
     if (omsetSubEl) omsetSubEl.textContent = `Total estimasi omset · ${periodNote}`;
   } catch(e) {
