@@ -7114,7 +7114,7 @@ function initFreshnessBadge() {
 // ── SUPABASE CLIENT + AUTH ─────────────────────────────────
 function initSupabase() {
   if (typeof window.supabase === 'undefined') return;
-  _supabase = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+  try { _supabase = window.supabase.createClient(SUPA_URL, SUPA_KEY); } catch(e) { console.error('Supabase init failed', e); return; }
   // Restore session
   _supabase.auth.getSession().then(({ data: { session } }) => {
     currentUser = session?.user || null;
@@ -7199,7 +7199,7 @@ function updateAuthUI() {
   }
 }
 
-let _authMode = 'login'; // 'login' or 'signup'
+let _authMode = 'login'; // 'login', 'signup', or 'reset'
 
 function openAuthModal(mode) {
   _authMode = mode || 'login';
@@ -7212,38 +7212,74 @@ function closeAuthModal() {
 }
 
 function renderAuthModal() {
-  const isLogin = _authMode === 'login';
-  document.getElementById('auth-title').textContent  = isLogin ? 'Masuk ke LarisID' : 'Buat Akun Gratis';
-  document.getElementById('auth-subtitle').textContent = isLogin
-    ? 'Login untuk melihat produk trending & simpan favorit kamu'
+  const isLogin  = _authMode === 'login';
+  const isSignup = _authMode === 'signup';
+  const isReset  = _authMode === 'reset';
+
+  document.getElementById('auth-title').textContent = isReset ? 'Reset Password'
+    : isLogin ? 'Masuk ke LarisID' : 'Buat Akun Gratis';
+  document.getElementById('auth-subtitle').textContent = isReset
+    ? 'Masukkan email kamu dan kami kirim link reset password.'
+    : isLogin ? 'Login untuk melihat produk trending & simpan favorit kamu'
     : 'Gratis selamanya — lihat trending & simpan produk favorit';
-  document.getElementById('auth-submit-btn').textContent = isLogin ? 'Masuk' : 'Daftar';
-  document.getElementById('auth-toggle-text').innerHTML = isLogin
-    ? 'Belum punya akun? <a onclick="_authMode=\'signup\';renderAuthModal()">Daftar</a>'
-    : 'Sudah punya akun? <a onclick="_authMode=\'login\';renderAuthModal()">Masuk</a>';
-  document.getElementById('auth-name-wrap').style.display = isLogin ? 'none' : '';
+  document.getElementById('auth-submit-btn').textContent = isReset ? 'Kirim Link Reset' : isLogin ? 'Masuk' : 'Daftar';
+  document.getElementById('auth-toggle-text').innerHTML = isReset
+    ? '<a onclick="_authMode=\'login\';renderAuthModal()">Kembali ke Login</a>'
+    : isLogin
+      ? 'Belum punya akun? <a onclick="_authMode=\'signup\';renderAuthModal()">Daftar</a>'
+      : 'Sudah punya akun? <a onclick="_authMode=\'login\';renderAuthModal()">Masuk</a>';
+  document.getElementById('auth-name-wrap').style.display  = isSignup ? '' : 'none';
+  document.getElementById('auth-pass-wrap').style.display  = isReset  ? 'none' : '';
+  document.getElementById('auth-forgot-wrap').style.display = isLogin  ? '' : 'none';
+  document.getElementById('auth-social-wrap').style.display = isReset  ? 'none' : '';
   document.getElementById('auth-error').style.display = 'none';
 }
 
+function _authErrMsg(msg) {
+  const map = {
+    'Invalid login credentials': 'Email atau password salah.',
+    'Email not confirmed': 'Email belum dikonfirmasi. Cek inbox (atau folder spam) kamu.',
+    'User already registered': 'Email sudah terdaftar. Coba login.',
+    'Password should be at least 6 characters': 'Password minimal 6 karakter.',
+    'Unable to validate email address: invalid format': 'Format email tidak valid.',
+  };
+  return map[msg] || msg;
+}
+
 async function submitAuth() {
-  if (!_supabase) return;
+  const errEl = document.getElementById('auth-error');
+  const btn   = document.getElementById('auth-submit-btn');
+  if (!_supabase) {
+    errEl.style.color = '#e74c3c';
+    errEl.textContent = 'Layanan auth tidak tersedia. Coba muat ulang halaman.';
+    errEl.style.display = '';
+    return;
+  }
   const email = document.getElementById('auth-email').value.trim();
   const pass  = document.getElementById('auth-pass').value;
   const name  = document.getElementById('auth-name').value.trim();
-  const errEl = document.getElementById('auth-error');
-  const btn   = document.getElementById('auth-submit-btn');
-  if (!email || !pass) { errEl.textContent = 'Email dan password wajib diisi.'; errEl.style.display = ''; return; }
-  btn.textContent = '...';
-  btn.disabled = true;
+
+  if (_authMode === 'reset') {
+    if (!email) { errEl.style.color='#e74c3c'; errEl.textContent='Masukkan email kamu.'; errEl.style.display=''; return; }
+    btn.textContent = '...'; btn.disabled = true;
+    const { error } = await _supabase.auth.resetPasswordForEmail(email, { redirectTo: 'https://larisid.com' });
+    btn.textContent = 'Kirim Link Reset'; btn.disabled = false;
+    errEl.style.display = '';
+    if (error) { errEl.style.color='#e74c3c'; errEl.textContent=_authErrMsg(error.message); }
+    else { errEl.style.color='var(--green)'; errEl.textContent='Link reset sudah dikirim! Cek email kamu.'; }
+    return;
+  }
+
+  if (!email || !pass) { errEl.style.color='#e74c3c'; errEl.textContent='Email dan password wajib diisi.'; errEl.style.display=''; return; }
+  btn.textContent = '...'; btn.disabled = true;
   let error;
   if (_authMode === 'signup') {
     const res = await _supabase.auth.signUp({ email, password: pass, options: { data: { full_name: name } } });
     error = res.error;
     if (!error) {
-      errEl.style.display = '';
-      errEl.style.color = 'var(--green)';
-      errEl.textContent = 'Cek email kamu untuk konfirmasi akun!';
-      btn.textContent = 'Daftar'; btn.disabled = false;
+      errEl.style.display=''; errEl.style.color='var(--green)';
+      errEl.textContent='Cek email kamu untuk konfirmasi akun!';
+      btn.textContent='Daftar'; btn.disabled=false;
       return;
     }
   } else {
@@ -7252,16 +7288,20 @@ async function submitAuth() {
   }
   btn.textContent = _authMode === 'login' ? 'Masuk' : 'Daftar';
   btn.disabled = false;
-  if (error) { errEl.style.color = '#e74c3c'; errEl.textContent = error.message; errEl.style.display = ''; }
+  if (error) { errEl.style.color='#e74c3c'; errEl.textContent=_authErrMsg(error.message); errEl.style.display=''; }
   else { closeAuthModal(); }
 }
 
 async function signInWithProvider(provider) {
   if (!_supabase) return;
-  await _supabase.auth.signInWithOAuth({
+  const { error } = await _supabase.auth.signInWithOAuth({
     provider,
     options: { redirectTo: 'https://larisid.com' }
   });
+  if (error) {
+    const errEl = document.getElementById('auth-error');
+    errEl.style.color='#e74c3c'; errEl.textContent='Login dengan '+provider+' gagal. Coba lagi.'; errEl.style.display='';
+  }
 }
 
 async function signOut() {
@@ -15720,20 +15760,23 @@ document.addEventListener('DOMContentLoaded', function(){
     <button class="auth-close" onclick="closeAuthModal()">×</button>
     <h2 id="auth-title">Masuk ke LarisID</h2>
     <p id="auth-subtitle">Login untuk melihat produk trending & simpan favorit kamu</p>
-    <button class="social-btn" onclick="signInWithProvider('google')">
-      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
-      Lanjutkan dengan Google
-    </button>
-    <button class="social-btn" onclick="signInWithProvider('facebook')">
-      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/facebook.svg" alt="Facebook">
-      Lanjutkan dengan Facebook
-    </button>
-    <div class="auth-divider">atau gunakan email</div>
-    <div id="auth-name-wrap">
+    <div id="auth-social-wrap">
+      <button class="social-btn" onclick="signInWithProvider('google')">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+        Lanjutkan dengan Google
+      </button>
+      <div class="auth-divider">atau gunakan email</div>
+    </div>
+    <div id="auth-name-wrap" style="display:none;">
       <input class="auth-input" id="auth-name" type="text" placeholder="Nama lengkap (opsional)">
     </div>
     <input class="auth-input" id="auth-email" type="email" placeholder="Email">
-    <input class="auth-input" id="auth-pass" type="password" placeholder="Password">
+    <div id="auth-pass-wrap">
+      <input class="auth-input" id="auth-pass" type="password" placeholder="Password">
+    </div>
+    <div id="auth-forgot-wrap" style="text-align:right;margin-top:-6px;margin-bottom:4px;">
+      <a style="font-size:.78rem;color:var(--orange);cursor:pointer;" onclick="_authMode='reset';renderAuthModal()">Lupa password?</a>
+    </div>
     <div class="auth-error" id="auth-error"></div>
     <button class="auth-submit" id="auth-submit-btn" onclick="submitAuth()">Masuk</button>
     <div class="auth-toggle" id="auth-toggle-text">Belum punya akun? <a onclick="_authMode='signup';renderAuthModal()">Daftar</a></div>
