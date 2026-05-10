@@ -7112,42 +7112,73 @@ function initFreshnessBadge() {
 }
 
 // ── SUPABASE CLIENT + AUTH ─────────────────────────────────
+const _AUTH_SK = 'laris_auth_v1';
+
+function _authSave(session) {
+  try { localStorage.setItem(_AUTH_SK, JSON.stringify({ access_token: session.access_token, refresh_token: session.refresh_token, expires_at: Date.now() + (session.expires_in || 3600) * 1000, user: session.user })); } catch(_) {}
+}
+function _authClear() { try { localStorage.removeItem(_AUTH_SK); } catch(_) {} }
+function _authLoad() { try { return JSON.parse(localStorage.getItem(_AUTH_SK) || 'null'); } catch(_) { return null; } }
+
+async function _authRefresh(refreshToken) {
+  try {
+    const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`, { method:'POST', headers:{ apikey:SUPA_KEY, 'Content-Type':'application/json' }, body:JSON.stringify({ refresh_token:refreshToken }) });
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (d.access_token) { _authSave(d); return d; }
+  } catch(_) {}
+  return null;
+}
+
+function _authOnSignIn(session) {
+  currentUser = session.user;
+  // Inject access token into Supabase JS client so database queries are authenticated
+  if (_supabase) _supabase.auth.setSession({ access_token: session.access_token, refresh_token: session.refresh_token }).catch(()=>{});
+  updateAuthUI();
+  loadSavedProducts();
+  checkMentorApplication();
+  const onLanding = document.getElementById('page-landing')?.classList.contains('active');
+  if (onLanding) openProfile();
+  renderHomeGrid();
+  renderTrendingRow('home-trending-row');
+  if (currentProduct) renderDetail(currentProduct);
+}
+
+function _authOnSignOut() {
+  currentUser = null;
+  _authClear();
+  updateAuthUI();
+  savedProducts.clear();
+  renderProfileSaved();
+  showPage('landing');
+  renderHomeGrid();
+  renderTrendingRow('home-trending-row');
+}
+
 function initSupabase() {
-  if (typeof window.supabase === 'undefined') return;
-  try { _supabase = window.supabase.createClient(SUPA_URL, SUPA_KEY); } catch(e) { console.error('Supabase init failed', e); return; }
-  // Restore session
-  _supabase.auth.getSession().then(({ data: { session } }) => {
-    currentUser = session?.user || null;
-    updateAuthUI();
-    if (currentUser) {
-      loadSavedProducts();
-      checkMentorApplication();
-      const onLanding = document.getElementById('page-landing')?.classList.contains('active');
-      if (onLanding) openProfile();
+  // Init JS client (needed for DB queries + OAuth)
+  if (typeof window.supabase !== 'undefined') {
+    try { _supabase = window.supabase.createClient(SUPA_URL, SUPA_KEY); } catch(e) { console.error('Supabase init failed', e); }
+  }
+  // Restore session from localStorage (bypasses JS-client auth which returns 204 for sb_publishable keys)
+  const stored = _authLoad();
+  if (stored?.access_token) {
+    if (stored.expires_at > Date.now() + 30000) {
+      _authOnSignIn(stored);
+    } else if (stored.refresh_token) {
+      _authRefresh(stored.refresh_token).then(s => { if (s) _authOnSignIn(s); else _authClear(); });
     }
-  });
-  // Listen for auth changes
-  _supabase.auth.onAuthStateChange((event, session) => {
-    currentUser = session?.user || null;
-    updateAuthUI();
-    // Only reload saved products on real sign-in/sign-out events,
-    // not TOKEN_REFRESHED (which fires ~60s after load and can race-wipe savedProducts)
-    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-      if (currentUser) {
-        loadSavedProducts();
-        checkMentorApplication();
-        // Redirect off landing page when session is restored or user just logged in
-        const onLanding = document.getElementById('page-landing')?.classList.contains('active');
-        if (onLanding) openProfile();
+  }
+  // Watch for OAuth sign-ins (Google) via JS client
+  if (_supabase) {
+    _supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.access_token && !currentUser) {
+        _authSave(session);
+        _authOnSignIn(session);
       }
-    }
-    if (event === 'SIGNED_OUT') { savedProducts.clear(); renderProfileSaved(); showPage('landing'); }
-    // Re-render all grids to update lock state
-    renderHomeGrid();
-    renderTrendingRow('home-trending-row');
-    // Re-render detail page if it's currently open
-    if (currentProduct) renderDetail(currentProduct);
-  });
+      if (event === 'SIGNED_OUT' && !currentUser) _authOnSignOut();
+    });
+  }
 }
 
 function updateAuthUI() {
@@ -7249,55 +7280,48 @@ function _authErrMsg(msg) {
 async function submitAuth() {
   const errEl = document.getElementById('auth-error');
   const btn   = document.getElementById('auth-submit-btn');
-  if (!_supabase) {
-    errEl.style.color = '#e74c3c';
-    errEl.textContent = 'Layanan auth tidak tersedia. Coba muat ulang halaman.';
-    errEl.style.display = '';
-    return;
-  }
   const email = document.getElementById('auth-email').value.trim();
   const pass  = document.getElementById('auth-pass').value;
   const name  = document.getElementById('auth-name').value.trim();
+  const hdrs  = { apikey: SUPA_KEY, 'Content-Type': 'application/json' };
+
+  const showErr = msg => { errEl.style.color='#e74c3c'; errEl.textContent=_authErrMsg(msg); errEl.style.display=''; };
+  const showOk  = msg => { errEl.style.color='var(--green)'; errEl.textContent=msg; errEl.style.display=''; };
 
   if (_authMode === 'reset') {
-    if (!email) { errEl.style.color='#e74c3c'; errEl.textContent='Masukkan email kamu.'; errEl.style.display=''; return; }
-    btn.textContent = '...'; btn.disabled = true;
-    const { error } = await _supabase.auth.resetPasswordForEmail(email, { redirectTo: 'https://larisid.com' });
-    btn.textContent = 'Kirim Link Reset'; btn.disabled = false;
-    errEl.style.display = '';
-    if (error) { errEl.style.color='#e74c3c'; errEl.textContent=_authErrMsg(error.message); }
-    else { errEl.style.color='var(--green)'; errEl.textContent='Link reset sudah dikirim! Cek email kamu.'; }
+    if (!email) { showErr('Masukkan email kamu.'); return; }
+    btn.textContent='...'; btn.disabled=true;
+    await fetch(`${SUPA_URL}/auth/v1/recover`, { method:'POST', headers:hdrs, body:JSON.stringify({ email }) });
+    btn.textContent='Kirim Link Reset'; btn.disabled=false;
+    showOk('Link reset sudah dikirim! Cek email kamu.');
     return;
   }
 
-  if (!email || !pass) { errEl.style.color='#e74c3c'; errEl.textContent='Email dan password wajib diisi.'; errEl.style.display=''; return; }
-  btn.textContent = '...'; btn.disabled = true;
-  let error;
+  if (!email || !pass) { showErr('Email dan password wajib diisi.'); return; }
+  btn.textContent='...'; btn.disabled=true;
+
   if (_authMode === 'signup') {
-    const res = await _supabase.auth.signUp({ email, password: pass, options: { data: { full_name: name } } });
-    error = res.error;
-    if (!error) {
-      errEl.style.display=''; errEl.style.color='var(--green)';
-      errEl.textContent='Cek email kamu untuk konfirmasi akun!';
-      btn.textContent='Daftar'; btn.disabled=false;
-      return;
-    }
-  } else {
-    const res = await _supabase.auth.signInWithPassword({ email, password: pass });
-    error = res.error;
+    const r = await fetch(`${SUPA_URL}/auth/v1/signup`, { method:'POST', headers:hdrs, body:JSON.stringify({ email, password:pass, data:{ full_name:name } }) });
+    const d = await r.json();
+    btn.textContent='Daftar'; btn.disabled=false;
+    if (d.error_code || d.error || d.msg?.includes('invalid')) { showErr(d.msg || d.error || 'Daftar gagal.'); }
+    else { showOk('Cek email kamu untuk konfirmasi akun!'); }
+    return;
   }
-  btn.textContent = _authMode === 'login' ? 'Masuk' : 'Daftar';
-  btn.disabled = false;
-  if (error) { errEl.style.color='#e74c3c'; errEl.textContent=_authErrMsg(error.message); errEl.style.display=''; }
-  else { closeAuthModal(); }
+
+  // Login via direct REST — bypasses JS-client 204 issue with sb_publishable keys
+  const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, { method:'POST', headers:hdrs, body:JSON.stringify({ email, password:pass }) });
+  const d = await r.json();
+  btn.textContent='Masuk'; btn.disabled=false;
+  if (!r.ok || !d.access_token) { showErr(d.msg || d.error || 'Login gagal.'); return; }
+  _authSave(d);
+  closeAuthModal();
+  _authOnSignIn(d);
 }
 
 async function signInWithProvider(provider) {
   if (!_supabase) return;
-  const { error } = await _supabase.auth.signInWithOAuth({
-    provider,
-    options: { redirectTo: 'https://larisid.com' }
-  });
+  const { error } = await _supabase.auth.signInWithOAuth({ provider, options:{ redirectTo:'https://larisid.com' } });
   if (error) {
     const errEl = document.getElementById('auth-error');
     errEl.style.color='#e74c3c'; errEl.textContent='Login dengan '+provider+' gagal. Coba lagi.'; errEl.style.display='';
@@ -7305,8 +7329,11 @@ async function signInWithProvider(provider) {
 }
 
 async function signOut() {
-  if (_supabase) await _supabase.auth.signOut();
-  showPage('home');
+  const stored = _authLoad();
+  if (stored?.access_token) {
+    fetch(`${SUPA_URL}/auth/v1/logout`, { method:'POST', headers:{ apikey:SUPA_KEY, Authorization:`Bearer ${stored.access_token}`, 'Content-Type':'application/json' } }).catch(()=>{});
+  }
+  _authOnSignOut();
 }
 
 let _loadSavedInFlight = false;
