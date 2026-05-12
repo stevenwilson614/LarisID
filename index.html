@@ -973,9 +973,10 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .dash-main{flex:1;display:flex;flex-direction:column;margin-left:240px;min-height:100vh;overflow:hidden;}
 .dash-content{flex:1;overflow-y:auto;background:#F4F6F9;}
 
-/* main navbar only visible inside dashboard — hidden by default so landing page never shows it */
+/* navbar is for the marketing/landing page only — always hidden inside the dashboard */
 .navbar{display:none;}
-body.in-dashboard .navbar{display:flex;}
+body.in-dashboard .navbar{display:none;}
+body.in-dashboard .mobile-menu{display:none!important;}
 
 /* ── MOBILE ── */
 @media(max-width:768px){
@@ -2045,7 +2046,8 @@ body.in-dashboard .navbar{display:flex;}
 .htd-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
 .htd-title{font-size:.82rem;font-weight:800;color:#111;letter-spacing:.04em;text-transform:uppercase;display:flex;align-items:center;gap:7px;}
 .htd-title::before{content:'';display:block;width:3px;height:14px;background:linear-gradient(180deg,#E8442A,#F5A623);border-radius:2px;}
-.htd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
+.htd-grid{display:grid;grid-template-columns:repeat(auto-fill,160px);gap:12px;justify-content:start;}
+@media(max-width:800px){.htd-grid{grid-template-columns:repeat(auto-fill,140px);}}
 .htd-card{background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden;cursor:pointer;transition:box-shadow .15s,transform .15s;position:relative;}
 .htd-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.1);transform:translateY(-2px);}
 .htd-card-img-wrap{aspect-ratio:1/1;overflow:hidden;background:#F9FAFB;position:relative;}
@@ -4068,8 +4070,17 @@ html,body{overflow-x:hidden;max-width:100%;}
           <span id="dash-nav-credit-badge" style="margin-left:auto;background:#f97316;color:#fff;font-size:.6rem;font-weight:800;border-radius:999px;padding:1px 7px;display:none;"></span>
         </div>
 
+        <div class="dash-nav-item" id="dash-nav-admin" onclick="switchDashView('admin')" style="display:none;margin-top:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:12px;">
+          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
+          <span>Admin</span>
+        </div>
+
       </nav>
 
+      <button onclick="localStorage.removeItem('laris_welcomed');showWelcomeVideo()" style="width:100%;margin-bottom:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:rgba(255,255,255,.7);font-size:.72rem;font-weight:600;padding:7px 10px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg>
+        Tonton Tutorial
+      </button>
       <div class="dash-user-info">
         <div class="dash-user-avatar" id="dash-avatar">?</div>
         <div class="dash-user-meta">
@@ -5245,6 +5256,29 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
             </div>
 
+            <!-- Weekly Chest -->
+            <div id="weekly-chest-card" style="background:linear-gradient(135deg,#1a0a00,#2d1400);border-radius:14px;padding:18px 20px;margin-bottom:20px;display:flex;align-items:center;gap:16px;">
+              <div style="font-size:2.2rem;flex-shrink:0;" id="chest-icon">🔒</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:.82rem;font-weight:800;color:#fbbf24;margin-bottom:3px;">Peti Mingguan</div>
+                <div style="font-size:.72rem;color:rgba(255,255,255,.6);margin-bottom:8px;" id="chest-desc">Selesaikan 5 pencarian minggu ini untuk membuka hadiah kredit</div>
+                <div style="background:rgba(255,255,255,.1);border-radius:999px;height:6px;overflow:hidden;margin-bottom:6px;">
+                  <div id="chest-prog-fill" style="height:100%;background:linear-gradient(90deg,#f97316,#fbbf24);border-radius:999px;width:0%;transition:width .4s;"></div>
+                </div>
+                <div style="font-size:.68rem;color:rgba(255,255,255,.5);" id="chest-prog-label">0 / 5 pencarian</div>
+              </div>
+              <button id="chest-btn" onclick="claimChest()" disabled style="background:#f97316;color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:.78rem;font-weight:800;cursor:not-allowed;opacity:.4;font-family:inherit;flex-shrink:0;">Buka</button>
+            </div>
+            <!-- Chest modal -->
+            <div id="chest-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;">
+              <div style="background:#fff;border-radius:20px;padding:32px 28px;text-align:center;max-width:320px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+                <div id="chest-modal-icon" style="font-size:3.5rem;margin-bottom:12px;">🎁</div>
+                <div id="chest-modal-title" style="font-size:1.2rem;font-weight:900;color:#1A1F3C;margin-bottom:6px;">Selamat!</div>
+                <div id="chest-modal-msg" style="font-size:.85rem;color:#6B7280;margin-bottom:20px;"></div>
+                <button onclick="document.getElementById('chest-modal').style.display='none'" style="background:#E8442A;color:#fff;border:none;border-radius:10px;padding:10px 24px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;">Tutup</button>
+              </div>
+            </div>
+
             <!-- chart + insight -->
             <div class="hbd-two-col">
               <div class="hbd-card">
@@ -5510,7 +5544,11 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <button class="dsc-chip" onclick="dscSetChip(this,'price-asc')">💰 Termurah</button>
                 </div>
 
-                <div class="dsc-table-wrap">
+                <div class="dsc-table-wrap" style="position:relative;">
+                  <div id="dsc-loading-overlay" style="display:none;position:absolute;inset:0;background:rgba(255,255,255,.82);z-index:10;border-radius:10px;align-items:center;justify-content:center;flex-direction:column;gap:10px;">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2.5" style="animation:spin 0.8s linear infinite;"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                    <span style="font-size:.78rem;color:#6B7280;font-weight:600;">Memuat produk...</span>
+                  </div>
                   <div id="dsc-card-grid" class="dsc-card-grid"><div class="dsc-skel"><div class="dsc-skel-img"></div><div class="dsc-skel-body"><div class="dsc-skel-line"></div><div class="dsc-skel-line short"></div></div></div><div class="dsc-skel"><div class="dsc-skel-img"></div><div class="dsc-skel-body"><div class="dsc-skel-line"></div><div class="dsc-skel-line short"></div></div></div><div class="dsc-skel"><div class="dsc-skel-img"></div><div class="dsc-skel-body"><div class="dsc-skel-line"></div><div class="dsc-skel-line short"></div></div></div><div class="dsc-skel"><div class="dsc-skel-img"></div><div class="dsc-skel-body"><div class="dsc-skel-line"></div><div class="dsc-skel-line short"></div></div></div><div class="dsc-skel"><div class="dsc-skel-img"></div><div class="dsc-skel-body"><div class="dsc-skel-line"></div><div class="dsc-skel-line short"></div></div></div><div class="dsc-skel"><div class="dsc-skel-img"></div><div class="dsc-skel-body"><div class="dsc-skel-line"></div><div class="dsc-skel-line short"></div></div></div></div>
                   <table class="dsc-table" id="dsc-table-inner" style="display:none;">
                     <thead>
@@ -6355,6 +6393,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                       <input id="mls-ai-input" class="mls-ai-input" placeholder="Tanya apapun tentang produk ini..." onkeydown="if(event.key==='Enter')mlsAiAsk()">
                       <button class="mls-ai-send" onclick="mlsAiAsk()">Kirim</button>
                     </div>
+                    <div style="font-size:.62rem;color:#9CA3AF;margin-top:4px;text-align:right;" id="mls-ai-counter">10/10 tanya tersisa</div>
                     <div id="mls-ai-response" class="mls-ai-response"></div>
                     <!-- Model badge + API key settings -->
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
@@ -6514,15 +6553,40 @@ html,body{overflow-x:hidden;max-width:100%;}
                     <div class="mls-rbar-lbl">Listing di Pasar</div>
                   </div>
                 </div>
-                <!-- Seller card grid -->
+                <!-- Top 15 sellers — row view (default) with card toggle -->
                 <div class="dd-card" style="padding:18px;">
-                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
                     <div>
                       <div style="font-size:.85rem;font-weight:800;color:#1A1F3C;">Top 15 Penjual</div>
                       <div style="font-size:.7rem;color:#6B7280;margin-top:2px;" id="mls-comp-sub">Produk dengan penjualan tertinggi di keyword ini</div>
                     </div>
+                    <div style="display:flex;gap:4px;">
+                      <button id="mls-view-row" onclick="mlsSetView('row')" style="padding:4px 10px;border:1px solid #E8442A;border-radius:6px;font-size:.65rem;font-weight:700;background:#FEF2F0;color:#E8442A;cursor:pointer;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg> Baris
+                      </button>
+                      <button id="mls-view-card" onclick="mlsSetView('card')" style="padding:4px 10px;border:1px solid #E5E7EB;border-radius:6px;font-size:.65rem;font-weight:700;background:#fff;color:#6B7280;cursor:pointer;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Kartu
+                      </button>
+                    </div>
                   </div>
-                  <div id="mls-comp-tbody" class="mls-seller-grid"></div>
+                  <!-- Row view (default) -->
+                  <div id="mls-comp-table-wrap" style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;font-size:.72rem;">
+                      <thead><tr style="border-bottom:2px solid #F3F4F6;">
+                        <th style="padding:7px 6px;text-align:left;color:#9CA3AF;font-weight:700;font-size:.65rem;">#</th>
+                        <th style="padding:7px 8px;text-align:left;color:#9CA3AF;font-weight:700;font-size:.65rem;">Produk</th>
+                        <th style="padding:7px 6px;text-align:left;color:#9CA3AF;font-weight:700;font-size:.65rem;">Toko</th>
+                        <th style="padding:7px 6px;text-align:left;color:#9CA3AF;font-weight:700;font-size:.65rem;">Lokasi</th>
+                        <th style="padding:7px 6px;text-align:right;color:#9CA3AF;font-weight:700;font-size:.65rem;">Harga</th>
+                        <th style="padding:7px 6px;text-align:right;color:#9CA3AF;font-weight:700;font-size:.65rem;">Terjual</th>
+                        <th style="padding:7px 6px;text-align:right;color:#9CA3AF;font-weight:700;font-size:.65rem;">Ulasan</th>
+                        <th style="padding:7px 6px;text-align:right;color:#9CA3AF;font-weight:700;font-size:.65rem;">Share</th>
+                      </tr></thead>
+                      <tbody id="mls-comp-tbody"></tbody>
+                    </table>
+                  </div>
+                  <!-- Card view (hidden by default) -->
+                  <div id="mls-comp-cards" class="mls-seller-grid" style="display:none;"></div>
                 </div>
               </div>
 
@@ -6714,6 +6778,54 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
             </div>
 
+          </div>
+        </div>
+
+        <!-- ADMIN (owner only — hidden from others) -->
+        <div id="dash-view-admin" style="display:none;">
+          <div style="padding:20px 0;">
+            <div style="font-size:1.1rem;font-weight:900;color:#1A1F3C;margin-bottom:4px;">Admin Analytics</div>
+            <div style="font-size:.78rem;color:#9CA3AF;margin-bottom:20px;">Owner view only — refreshes on load</div>
+            <div id="admin-stats-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:24px;">
+              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px;">
+                <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Total Sign-ups</div>
+                <div id="adm-total" style="font-size:1.8rem;font-weight:900;color:#1A1F3C;">—</div>
+              </div>
+              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px;">
+                <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Last 7 Days</div>
+                <div id="adm-7d" style="font-size:1.8rem;font-weight:900;color:#1A1F3C;">—</div>
+              </div>
+              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px;">
+                <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Last 30 Days</div>
+                <div id="adm-30d" style="font-size:1.8rem;font-weight:900;color:#1A1F3C;">—</div>
+              </div>
+              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px;">
+                <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Never Purchased</div>
+                <div id="adm-nopurchase" style="font-size:1.8rem;font-weight:900;color:#E8442A;">—</div>
+              </div>
+              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px;">
+                <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Credits in Circulation</div>
+                <div id="adm-credits" style="font-size:1.8rem;font-weight:900;color:#f97316;">—</div>
+              </div>
+              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px;">
+                <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Avg Balance/User</div>
+                <div id="adm-avgbal" style="font-size:1.8rem;font-weight:900;color:#1A1F3C;">—</div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:16px;">
+                <div style="font-size:.78rem;font-weight:700;color:#1A1F3C;margin-bottom:12px;">Credit Events by Type</div>
+                <div id="adm-events-table"></div>
+              </div>
+              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:16px;">
+                <div style="font-size:.78rem;font-weight:700;color:#1A1F3C;margin-bottom:12px;">Top 10 Keywords Searched</div>
+                <div id="adm-keywords-table"></div>
+              </div>
+            </div>
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:16px;">
+              <div style="font-size:.78rem;font-weight:700;color:#1A1F3C;margin-bottom:12px;">Daily Active Users (last 30 days)</div>
+              <div id="adm-dau-chart" style="display:flex;align-items:flex-end;gap:3px;height:80px;overflow-x:auto;"></div>
+            </div>
           </div>
         </div>
 
@@ -7779,6 +7891,8 @@ function _authOnSignIn(session) {
   if (onLanding) openProfile();
   renderHomeGrid();
   if (currentProduct) renderDetail(currentProduct);
+  // Show welcome video for first-time users
+  setTimeout(showWelcomeVideo, 1200);
 }
 
 function _authOnSignOut() {
@@ -7853,6 +7967,9 @@ function updateAuthUI() {
     if (dashAvatar) dashAvatar.textContent = name.charAt(0).toUpperCase();
     if (dashName)   dashName.textContent   = name;
     if (dashEmail)  dashEmail.textContent  = currentUser.email;
+    // show admin nav for owner only
+    const adminNav = document.getElementById('dash-nav-admin');
+    if (adminNav) adminNav.style.display = currentUser.email === 'stevenwilson614@gmail.com' ? '' : 'none';
     // topbar avatar
     const tbAv = document.getElementById('dash-topbar-av');
     const tbUn = document.getElementById('dash-topbar-uname');
@@ -8701,6 +8818,104 @@ function closeSidebar() {
 let _creditBalance = null;
 let _creditProgress = 0; // searches completed today toward next credit
 
+// ── Admin Analytics ──────────────────────────────────────────
+async function loadAdminStats() {
+  if (!_supabase || !currentUser) return;
+  if (currentUser.email !== 'stevenwilson614@gmail.com') return;
+  try {
+    const { data, error } = await _supabase.rpc('admin_stats');
+    if (error || !data) return;
+    const s = data;
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ?? '—'; };
+    set('adm-total',      s.total_signups);
+    set('adm-7d',         s.signups_last_7d);
+    set('adm-30d',        s.signups_last_30d);
+    set('adm-nopurchase', s.users_never_purchased);
+    set('adm-credits',    s.total_credits_in_circulation);
+    set('adm-avgbal',     s.avg_balance_per_user);
+
+    const evtEl = document.getElementById('adm-events-table');
+    if (evtEl && s.credit_events_by_type) {
+      evtEl.innerHTML = s.credit_events_by_type.map(r =>
+        `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #F3F4F6;font-size:.75rem;"><span style="color:#374151">${r.type}</span><span style="font-weight:700;color:#1A1F3C">${r.events} <span style="color:#9CA3AF;font-weight:400;">(${r.total_credits} cr)</span></span></div>`
+      ).join('');
+    }
+
+    const kwEl = document.getElementById('adm-keywords-table');
+    if (kwEl && s.top_keywords) {
+      kwEl.innerHTML = s.top_keywords.slice(0,10).map(r =>
+        `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #F3F4F6;font-size:.72rem;"><span style="color:#374151;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.keyword}</span><span style="font-weight:700;color:#E8442A;">${r.completions}</span></div>`
+      ).join('');
+    }
+
+    const dauEl = document.getElementById('adm-dau-chart');
+    if (dauEl && s.dau_last_30d?.length) {
+      const maxDAU = Math.max(...s.dau_last_30d.map(r => r.active_users)) || 1;
+      dauEl.innerHTML = s.dau_last_30d.map(r => {
+        const h = Math.round(r.active_users / maxDAU * 70) + 4;
+        return `<div title="${r.date}: ${r.active_users} users" style="flex:1;min-width:6px;max-width:18px;background:#E8442A;border-radius:3px 3px 0 0;height:${h}px;opacity:.8;"></div>`;
+      }).join('');
+    }
+  } catch(e) { console.warn('loadAdminStats', e); }
+}
+
+// ── Weekly Treasure Chest ─────────────────────────────────────
+async function loadChestState() {
+  if (!_supabase || !currentUser) return;
+  try {
+    const monday = new Date();
+    monday.setDate(monday.getDate() - (monday.getDay() === 0 ? 6 : monday.getDay() - 1));
+    const weekStart = monday.toISOString().slice(0,10);
+
+    const [{ count: searches }, { data: claimed }] = await Promise.all([
+      _supabase.from('search_completions').select('keyword', {count:'exact',head:true}).eq('user_id', currentUser.id).gte('completed_date', weekStart),
+      _supabase.from('chest_history').select('id').eq('user_id', currentUser.id).eq('week_start', weekStart).limit(1),
+    ]);
+
+    const done      = Math.min(searches || 0, 5);
+    const alreadyGot = claimed?.length > 0;
+    const unlocked  = done >= 5 && !alreadyGot;
+
+    const fill  = document.getElementById('chest-prog-fill');
+    const label = document.getElementById('chest-prog-label');
+    const btn   = document.getElementById('chest-btn');
+    const icon  = document.getElementById('chest-icon');
+    const desc  = document.getElementById('chest-desc');
+
+    if (fill)  fill.style.width = (done / 5 * 100) + '%';
+    if (label) label.textContent = alreadyGot ? 'Sudah diklaim minggu ini — kembali Senin depan' : `${done} / 5 pencarian`;
+    if (btn) { btn.disabled = !unlocked; btn.style.opacity = unlocked ? '1' : '.4'; btn.style.cursor = unlocked ? 'pointer' : 'not-allowed'; }
+    if (icon) icon.textContent = alreadyGot ? '✅' : unlocked ? '🎁' : '🔒';
+    if (desc) desc.textContent = alreadyGot ? 'Sudah diklaim minggu ini — kembali Senin depan 🎉' : unlocked ? 'Peti terbuka! Klik untuk klaim hadiahmu.' : 'Selesaikan 5 pencarian minggu ini untuk membuka hadiah kredit';
+  } catch(e) { console.warn('loadChestState', e); }
+}
+
+async function claimChest() {
+  if (!_supabase || !currentUser) return;
+  const btn = document.getElementById('chest-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    const { data, error } = await _supabase.rpc('claim_weekly_chest');
+    const modal     = document.getElementById('chest-modal');
+    const modalIcon = document.getElementById('chest-modal-icon');
+    const modalTitle= document.getElementById('chest-modal-title');
+    const modalMsg  = document.getElementById('chest-modal-msg');
+    if (error || !data) throw new Error(error?.message || 'Gagal');
+    if (data.error === 'already_claimed') { if (btn) btn.textContent = 'Sudah'; return; }
+    if (data.needed) { if (btn) { btn.disabled = true; btn.style.opacity = '.4'; btn.textContent = 'Buka'; } return; }
+    const reward = data.reward;
+    if (modalIcon) modalIcon.textContent = reward >= 10 ? '🏆' : reward >= 5 ? '💎' : '🎁';
+    if (modalTitle) modalTitle.textContent = `+${reward} Kredit!`;
+    if (modalMsg)  modalMsg.textContent = `Kamu mendapat ${reward} kredit dari Peti Mingguan. Saldo baru: ${data.balance} kredit.`;
+    if (modal) modal.style.display = 'flex';
+    loadChestState();
+    loadCreditData();
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Buka'; }
+    console.warn('claimChest', e);
+  }
+}
+
 async function loadCreditData() {
   if (!_supabase || !currentUser) return;
   try {
@@ -8904,6 +9119,25 @@ function mlsUpdateModelBadge() {
   else            badge.textContent = 'Model: Claude Haiku (bawaan)';
 }
 
+const _MLS_AI_CTR_KEY = 'larisid_mls_ai_used';
+const MLS_AI_PER_CREDIT = 10;
+
+function _mlsAiCounter() {
+  return parseInt(localStorage.getItem(_MLS_AI_CTR_KEY) || '0', 10);
+}
+function _mlsAiCounterInc() {
+  const n = _mlsAiCounter() + 1;
+  localStorage.setItem(_MLS_AI_CTR_KEY, String(n));
+  _mlsAiUpdateCounter();
+}
+function _mlsAiUpdateCounter() {
+  const total = _mlsAiCounter();
+  const usedInBlock = total % MLS_AI_PER_CREDIT;
+  const remaining = usedInBlock === 0 ? MLS_AI_PER_CREDIT : MLS_AI_PER_CREDIT - usedInBlock;
+  const el = document.getElementById('mls-ai-counter');
+  if (el) el.textContent = `${remaining}/${MLS_AI_PER_CREDIT} tanya tersisa`;
+}
+
 async function mlsAiAsk(prompt) {
   const ctx = window._mlsContext || {};
   const p   = ctx.product || {};
@@ -8911,9 +9145,40 @@ async function mlsAiAsk(prompt) {
   if (!q) return;
   const respEl = document.getElementById('mls-ai-response');
   if (!respEl) return;
+
+  // Credit gate: every MLS_AI_PER_CREDIT prompts costs 1 credit (at the start of each new block)
+  const used = _mlsAiCounter();
+  if (used % MLS_AI_PER_CREDIT === 0) {  // 0, 10, 20... → start of a new block
+    // Need to spend a credit before this block of 10
+    if ((_creditBalance ?? 0) < 1) {
+      respEl.style.display = 'block';
+      respEl.textContent = 'Kredit habis. Cari lebih banyak produk di Shopee untuk mendapatkan kredit gratis (10 pencarian = 1 kredit).';
+      return;
+    }
+    try {
+      if (_supabase && currentUser) {
+        const { data, error } = await _supabase.rpc('spend_credit', { p_keyword: 'ai_mls', p_amount: 1 });
+        if (!error && data != null) { _creditBalance = data; renderCreditUI(); }
+      }
+    } catch (_) {}
+  }
+
   respEl.style.display = 'block';
   respEl.textContent   = 'AI sedang menganalisis...';
-  const systemCtx = `Kamu adalah analis pasar Shopee Indonesia. Kamu HANYA dapat menganalisis produk yang disebutkan di bawah — jangan mencoba mengakses data produk lain atau database. Produk: "${p.product_name||p.name||'—'}", keyword: "${p.keyword||'—'}", harga: Rp ${p.price ? Math.round(p.price).toLocaleString('id-ID') : '—'}, total terjual: ${p.total_sold||'—'}. Median harga pasar: Rp ${ctx.medianPrice ? Math.round(ctx.medianPrice).toLocaleString('id-ID') : '—'}. Total omset pasar: Rp ${ctx.totalOmset ? Math.round(ctx.totalOmset).toLocaleString('id-ID') : '—'}/bulan. Jawab singkat dan praktis dalam Bahasa Indonesia.`;
+
+  // Build rich system context: product + top competitors + category summary
+  const top10Comps = (ctx.top5 || []).slice(0, 10).map((r, i) =>
+    `${i+1}. ${(r.product_name||'').slice(0,40)} — Rp ${Math.round(r.price||0).toLocaleString('id-ID')}, terjual ${(r.total_sold||0).toLocaleString('id-ID')}`
+  ).join('\n');
+  const systemCtx = [
+    `Kamu adalah analis pasar Shopee Indonesia yang membantu penjual. Jawab singkat, praktis, dan dalam Bahasa Indonesia.`,
+    `\nPRODUK UTAMA: "${p.product_name||p.name||'—'}"`,
+    `Keyword: ${p.keyword||'—'} | Harga: Rp ${p.price ? Math.round(p.price).toLocaleString('id-ID') : '—'} | Terjual: ${(p.total_sold||0).toLocaleString('id-ID')} | Rating: ${p.rating||'—'}`,
+    `\nPASAR (keyword "${p.keyword||'—'}"):`,
+    `Total listing: ${(ctx.sigSellers||[]).length} penjual signifikan | Median harga: Rp ${ctx.medianPrice ? Math.round(ctx.medianPrice).toLocaleString('id-ID') : '—'} | Total omset pasar: Rp ${ctx.totalOmset ? Math.round(ctx.totalOmset).toLocaleString('id-ID') : '—'}/bln`,
+    top10Comps ? `\nTOP KOMPETITOR:\n${top10Comps}` : '',
+    `\nHANYA analisis produk dan keyword di atas. Jangan mengarang data lain.`,
+  ].filter(Boolean).join('\n');
 
   const userAnthropicKey = localStorage.getItem('larisid_anthropic_key');
   const userOpenAiKey    = localStorage.getItem('larisid_openai_key');
@@ -8921,26 +9186,25 @@ async function mlsAiAsk(prompt) {
 
   try {
     if (userOpenAiKey) {
-      // Use user's OpenAI key with GPT-4o
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${userOpenAiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'gpt-4o', max_tokens: 400, messages: [{ role: 'system', content: systemCtx }, { role: 'user', content: q }] })
+        body: JSON.stringify({ model: 'gpt-4o', max_tokens: 500, messages: [{ role: 'system', content: systemCtx }, { role: 'user', content: q }] })
       });
       const d = await res.json();
       respEl.textContent = d.choices?.[0]?.message?.content || d.error?.message || 'Tidak ada respons.';
     } else {
-      // Use Anthropic (user's key or built-in)
       const apiKey = userAnthropicKey || CLAUDE_KEY;
       const model  = userAnthropicKey ? userModel : 'claude-haiku-4-5-20251001';
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-        body: JSON.stringify({ model, max_tokens: 400, system: systemCtx, messages: [{ role: 'user', content: q }] })
+        body: JSON.stringify({ model, max_tokens: 500, system: systemCtx, messages: [{ role: 'user', content: q }] })
       });
       const d = await res.json();
       respEl.textContent = d.content?.[0]?.text || d.error?.message || 'Tidak ada respons.';
     }
+    _mlsAiCounterInc();
   } catch (e) {
     respEl.textContent = 'Gagal menghubungi AI. Coba lagi.';
   }
@@ -9039,7 +9303,7 @@ function switchDashTab(tab) {
 //  JUNGLE SCOUT-STYLE DASHBOARD — view switching, Product DB
 // ════════════════════════════════════════════════════════════
 
-const PDB_VIEWS = ['home','product-database','product-tracker','opportunity-finder','category-trends','suppliers','keywords','estimator','marketing','saved','education','dashboard','discover','tracker','deepdive','ai','alerts','credits'];
+const PDB_VIEWS = ['home','product-database','product-tracker','opportunity-finder','category-trends','suppliers','keywords','estimator','marketing','saved','education','dashboard','discover','tracker','deepdive','ai','alerts','credits','admin'];
 const PDB_SUB_MAP = {'product-database':'research','product-tracker':'research','opportunity-finder':'research','category-trends':'research','tracker':'products','deepdive':'products'};
 
 // View titles for topbar
@@ -9118,6 +9382,7 @@ function switchDashView(view) {
   if (view === 'keywords') _kxLoadKeywordList();
   if (view === 'home') _renderDashHome();
   if (view === 'estimator') loadSalesEstimator();
+  if (view === 'admin') loadAdminStats();
   if (view === 'discover'  && typeof dscInit  === 'function') { dscInit(); setTimeout(renderForYou, 400); }
   if (view === 'tracker'   && typeof trkInit  === 'function') trkInit();
   if (view === 'dashboard' && typeof hbdInit  === 'function') hbdInit();
@@ -9229,6 +9494,42 @@ function _dscCalcComp(keyword) {
 }
 
 // Estimated monthly omset for one listing
+// Cache peer velocity per "category|priceBucket" so we query Supabase once per bucket
+const _peerVelocityCache = {};
+let _peerVelocityFetching = new Set();
+
+async function _fetchPeerVelocity(category, price) {
+  if (!_supabase) return null;
+  const bucket = `${category}|${Math.round(price / 20000) * 20000}`;
+  if (_peerVelocityCache[bucket] !== undefined) return _peerVelocityCache[bucket];
+  if (_peerVelocityFetching.has(bucket)) return null;
+  _peerVelocityFetching.add(bucket);
+  try {
+    const priceMin = price * 0.7, priceMax = price * 1.3;
+    const { data } = await _supabase
+      .from('listing_deltas')
+      .select('estimated_sold_delta,scraped_at,prev_scraped_at')
+      .eq('category', category)
+      .gt('estimated_sold_delta', 0)
+      .in('confidence', ['high', 'medium'])
+      .limit(60);
+    if (!data || data.length < 3) { _peerVelocityCache[bucket] = null; return null; }
+    // Compute velocity = units/day for each delta
+    const velocities = data
+      .map(d => {
+        const days = Math.max(1, (new Date(d.scraped_at) - new Date(d.prev_scraped_at)) / 86400000);
+        return d.estimated_sold_delta / days;
+      })
+      .filter(v => v > 0 && v < 5000)
+      .sort((a, b) => a - b);
+    if (velocities.length < 3) { _peerVelocityCache[bucket] = null; return null; }
+    const median = velocities[Math.floor(velocities.length / 2)];
+    _peerVelocityCache[bucket] = median;
+    return median;
+  } catch { _peerVelocityCache[bucket] = null; return null; }
+  finally { _peerVelocityFetching.delete(bucket); }
+}
+
 function _dscOmset(listing) {
   const key = `${listing.item_id}_${listing.shop_id}`;
   const prev = _dscPrevMap[key];
@@ -9237,8 +9538,23 @@ function _dscOmset(listing) {
     const delta = Math.max(0, (listing.total_sold || 0) - prev);
     return price * delta * 4;  // ~4 weeks in a month
   }
-  // Fallback: total_sold / 3 months
-  return price * Math.round((listing.total_sold || 0) / 3);
+  // Check if we have a peer velocity cached for this category+price
+  if (price > 0 && listing.category) {
+    const bucket = `${listing.category}|${Math.round(price / 20000) * 20000}`;
+    const peerVel = _peerVelocityCache[bucket];
+    if (peerVel != null) {
+      return Math.round(price * peerVel * 30);  // monthly estimate from peer daily velocity
+    }
+    // Trigger async fetch so next render has the data (fire-and-forget)
+    _fetchPeerVelocity(listing.category, price).then(v => {
+      if (v != null) {
+        // Re-render once peer data arrives so cards update with better estimates
+        if (_dscLoaded) setTimeout(() => dscRenderTable(), 0);
+      }
+    });
+  }
+  // Fallback: total_sold / 6 months (less aggressive than /3)
+  return price * Math.round((listing.total_sold || 0) / 6);
 }
 
 // Trend delta (units gained since last scrape)
@@ -9626,9 +9942,11 @@ function dscApplyFilters(resetPage = true) {
     // Store selected cats for dscFetchPage to use
     _dscCurrentCatFilter = selectedCats && selectedCats.length === 1 ? selectedCats[0] : '';
     _dscCurrentCatFilters = selectedCats || null; // multi-cat list
-    // Show inline loading feedback while re-fetching from Supabase
+    // Show loading feedback while re-fetching from Supabase
     const _tbody = document.getElementById('dsc-tbody');
     if (_tbody) _tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Memuat produk...</td></tr>`;
+    const _overlay = document.getElementById('dsc-loading-overlay');
+    if (_overlay) { _overlay.style.display = 'flex'; }
     dscLoadListings();
     return;
   }
@@ -9805,6 +10123,9 @@ function dscRenderTable() {
     html += `<button class="dsc-page-btn" onclick="dscGoPage(${_dscPage + 1})" ${_dscPage >= visiblePages ? 'disabled' : ''}>&#8594;</button>`;
     btnsEl.innerHTML = html;
   }
+  // Hide loading overlay once render completes
+  const _ov = document.getElementById('dsc-loading-overlay');
+  if (_ov) _ov.style.display = 'none';
 }
 
 function dscSetView(mode) {
@@ -10015,7 +10336,10 @@ function ddSwitchTab(tab) {
     el.classList.toggle('active', el.dataset.tab === tab);
   });
   if (tab === 'ringkasan' && typeof ddRender === 'function' && _ddCurrentP) {
-    setTimeout(() => ddRender(_ddCurrentP), 0);
+    // Show the panel first so canvas elements have non-zero dimensions before Chart.js renders
+    const _rPanel = document.getElementById('dd-tab-ringkasan');
+    if (_rPanel) _rPanel.style.display = '';
+    setTimeout(() => ddRender(_ddCurrentP), 50);
   }
   if (tab === 'kalkulator') {
     kalcCalc();
@@ -10459,7 +10783,7 @@ function kompRenderTable() {
     const barWidthPct = Math.round(sold / maxSold * 100);
     const barColor    = isThis(r) ? '#E8442A' : sharePct >= 10 ? '#6366F1' : sharePct >= 3 ? '#3B82F6' : '#93C5FD';
 
-    return `<tr style="border-bottom:1px solid #F3F4F6;${highlight}cursor:pointer;" onclick="window.open('${r.url||'#'}','_blank')">
+    return `<tr style="border-bottom:1px solid #F3F4F6;${highlight}cursor:pointer;" onclick="ddOpenFromKompetitor('${r.item_id}','${r.shop_id}')">
       <td style="padding:10px 6px;color:#9CA3AF;font-weight:700;font-size:.7rem;">${globalRank}</td>
       <td style="padding:10px 8px;">
         <div style="display:flex;align-items:center;gap:8px;">
@@ -10505,6 +10829,27 @@ function kompRenderTable() {
 function kompShowMore() {
   _kompShowing += 10;
   kompRenderTable();
+}
+
+function ddOpenFromKompetitor(itemId, shopId) {
+  const r = (_ddKwRows || []).find(x => String(x.item_id) === String(itemId) && String(x.shop_id) === String(shopId));
+  if (!r) return;
+  const omset = (r.price || 0) * Math.round((r.total_sold || 0) / 6);
+  const monthlyUnits = r.price > 0 ? Math.round(omset / r.price) : 0;
+  const p = {
+    id:          r.item_id,
+    name:        r.product_name || '—',
+    category:    r.category || _ddCurrentP?.category || 'Umum',
+    image:       r.image_url || null,
+    medianPrice: r.price || 0,
+    score:       65,
+    newUnits:    monthlyUnits,
+    total_sold:  r.total_sold || 0,
+    _listing:    r,
+  };
+  _ddKwRows = []; _ddKwListing = null; _ddKwTotal = 0; _analisa_pending = false; _tren_pending = false;
+  ddSwitchTab('ringkasan');
+  ddRender(p);
 }
 
 // ── KEYWORD TAB ───────────────────────────────────────────────────────────────
@@ -10787,6 +11132,31 @@ async function ddRenderTren() {
       unitData = dbRows.map(r => r.total_sold ?? 0);
     }
 
+    // Per-interval sanity: detect Shopee display recalibrations (e.g. 3k→90k jump that
+    // isn't real sales) and implausible spikes vs review growth. Use review model for those.
+    const correctedDeltas = [];
+    for (let i = 0; i < dbRows.length - 1; i++) {
+      const s0 = unitData[i] ?? 0, s1 = unitData[i+1] ?? 0;
+      const rawDelta = Math.max(0, s1 - s0);
+      const revDelta = Math.max(0, (dbRows[i+1].reviews ?? 0) - (dbRows[i].reviews ?? 0));
+      const reviewEst = Math.round(revDelta * mult);
+      if (s0 < 10000 && s1 >= 10000) {
+        // Shopee recalibrated total_sold (bucketed-small → real number) — not genuine sales
+        isEstimated = true;
+        correctedDeltas.push(reviewEst);
+      } else if (s0 >= 10000 && s1 >= 10000 && !atCeiling) {
+        // Both ceiling but atCeiling path didn't apply (mixed rows) — use review model
+        isEstimated = true;
+        correctedDeltas.push(reviewEst);
+      } else if (rawDelta > 0 && reviewEst > 0 && rawDelta > reviewEst * 5) {
+        // Delta > 5× what review growth implies — treat as data artifact
+        isEstimated = true;
+        correctedDeltas.push(reviewEst);
+      } else {
+        correctedDeltas.push(rawDelta);
+      }
+    }
+
     const _MO = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
     // Monday-anchored week helpers — labels show the actual Monday date ("13 Apr", "20 Apr"...)
     function _mondayOf(d) {
@@ -10807,9 +11177,8 @@ async function ddRenderTren() {
     }
     for (let i = 0; i < dbRows.length - 1; i++) {
       const t0 = new Date(dbRows[i].scraped_at), t1 = new Date(dbRows[i+1].scraped_at);
-      const s0 = unitData[i] ?? 0, s1 = unitData[i+1] ?? 0;
       const p0 = dbRows[i].price || fallbackPrice, p1 = dbRows[i+1].price || fallbackPrice;
-      const delta = Math.max(0, s1 - s0);
+      const delta = correctedDeltas[i] ?? 0;
       const daysDiff = Math.max(1, (t1 - t0) / 86400000);
       const dUnit = delta / daysDiff;
       for (let d = 1; d <= Math.ceil(daysDiff); d++) {
@@ -10828,12 +11197,15 @@ async function ddRenderTren() {
       .map(w => ({ label: w.label, units: Math.round(w.units), omset: Math.round(w.omset), firstDate: w.firstDate }));
 
     if (!weeks.length) {
-      // Zero-delta: build Monday-anchored snapshot from raw scrape rows
+      // Zero-delta: no inter-scrape change detected. Show review-based weekly velocity
+      // estimate (not cumulative total_sold × price, which would be lifetime revenue).
       const snapMap2 = new Map();
       for (const r of dbRows) {
         const key = _wKey(new Date(r.scraped_at));
         if (!snapMap2.has(key)) {
-          snapMap2.set(key, { label: _wLabel(new Date(r.scraped_at)), units: r.total_sold ?? 0, omset: (r.total_sold ?? 0) * (r.price || fallbackPrice), firstDate: _mondayOf(new Date(r.scraped_at)) });
+          // Estimate weekly units from reviews ÷ avg review rate (rough: reviews / listing_age_weeks)
+          // Use 0 for units/omset — we have no delta, so we cannot show a period amount.
+          snapMap2.set(key, { label: _wLabel(new Date(r.scraped_at)), units: 0, omset: 0, firstDate: _mondayOf(new Date(r.scraped_at)) });
         }
       }
       const snapWeeks = [...snapMap2.values()].sort((a, b) => a.firstDate - b.firstDate);
@@ -11590,6 +11962,10 @@ function ddToggleTrack() {
         trkSave(a);
       }
       ddUpdateTrackBtn(listing);
+      // Refresh tracker view immediately if it's visible
+      if (typeof trkInit === 'function') trkInit();
+      // Refresh MLS dropdown so the new product appears
+      if (typeof mlsInit === 'function') mlsInit();
     },
     'tracker'
   );
@@ -12656,21 +13032,46 @@ let _mlsChatHistory = []; // { role, content }
 
 function mlsInit() {
   mlsUpdateModelBadge();
+  _mlsAiUpdateCounter();
   const tracked = trkLoad();
   const pick = document.getElementById('mls-product-pick');
   const noTrk = document.getElementById('mls-no-tracked');
   if (!pick) return;
 
+  // Merge tracked (localStorage) with saved (in-memory savedProducts Set backed by Supabase).
+  // Build a unified list keyed by item_id_shop_id to avoid duplicates.
+  const merged = new Map();
+  tracked.forEach(t => {
+    const k = t.key || `${t.item_id}_${t.shop_id}`;
+    merged.set(k, t);
+  });
+  // Add saved products that aren't already tracked — pull from _dscAllListings if available
+  if (savedProducts && savedProducts.size > 0 && _dscAllListings && _dscAllListings.length) {
+    _dscAllListings.forEach(p => {
+      if (savedProducts.has(p.item_id)) {
+        const k = `${p.item_id}_${p.shop_id}`;
+        if (!merged.has(k)) {
+          merged.set(k, { key: k, item_id: p.item_id, shop_id: p.shop_id,
+            product_name: p.product_name, store_name: p.store_name,
+            image_url: p.image_url, category: p.category,
+            price: p.price, total_sold: p.total_sold, keyword: p.keyword,
+            tracked_at: new Date().toISOString() });
+        }
+      }
+    });
+  }
+  const allPicks = [...merged.values()];
+
   // Clear and rebuild picker
-  pick.innerHTML = '<option value="">-- Pilih dari produk tersimpan --</option>';
-  if (!tracked.length) {
+  pick.innerHTML = '<option value="">-- Pilih produk dilacak / tersimpan --</option>';
+  if (!allPicks.length) {
     pick.style.display = 'none';
-    noTrk.style.display = 'block';
+    if (noTrk) noTrk.style.display = 'block';
     return;
   }
-  noTrk.style.display = 'none';
+  if (noTrk) noTrk.style.display = 'none';
   pick.style.display = 'block';
-  tracked.forEach(t => {
+  allPicks.forEach(t => {
     const name = (t.product_name||t.keyword||'Produk').split(' ').slice(0,5).join(' ');
     const opt  = document.createElement('option');
     opt.value  = t.key || `${t.item_id}_${t.shop_id}`;
@@ -12702,8 +13103,16 @@ function mlsSwitchTab(tab) {
 }
 
 async function mlsSelectProduct(val) {
+  // Search both tracked (localStorage) and saved (Supabase-backed) sources
   const tracked = trkLoad();
-  const t = tracked.find(p => (p.key || `${p.item_id}_${p.shop_id}`) === val);
+  let t = tracked.find(p => (p.key || `${p.item_id}_${p.shop_id}`) === val);
+  if (!t && _dscAllListings && _dscAllListings.length) {
+    const found = _dscAllListings.find(p => `${p.item_id}_${p.shop_id}` === val);
+    if (found) t = { key: val, item_id: found.item_id, shop_id: found.shop_id,
+      product_name: found.product_name, store_name: found.store_name,
+      image_url: found.image_url, category: found.category,
+      price: found.price, total_sold: found.total_sold, keyword: found.keyword };
+  }
   const heroEl = document.getElementById('mls-hero');
   if (!t) { if (heroEl) heroEl.style.display = 'none'; return; }
 
@@ -12742,7 +13151,7 @@ async function mlsSelectProduct(val) {
   try {
     const { data: rawData } = await _supabase
       .from('listings')
-      .select('product_name, store_name, image_url, price, total_sold, item_id, shop_id, keyword')
+      .select('product_name, store_name, image_url, price, total_sold, reviews, location, item_id, shop_id, keyword, url')
       .eq('keyword', t.keyword)
       .order('total_sold', { ascending: false })
       .limit(300);
@@ -12810,15 +13219,46 @@ async function mlsSelectProduct(val) {
     if (rbOmset)   rbOmset.textContent = fmt(totalOmset) + '/bln';
     if (rbPenjual) rbPenjual.textContent = rows.length + ' listing';
 
-    // Top 15 competitors — visual card grid
+    // Top 15 competitors — row table (default) + card grid (toggle)
     const top15 = rows.slice(0, 15);
     const compSection = document.getElementById('mls-comp-section');
     const compSub     = document.getElementById('mls-comp-sub');
-    const compTbody   = document.getElementById('mls-comp-tbody');
+    const compTbody   = document.getElementById('mls-comp-tbody');   // <tbody> in table
+    const compCards   = document.getElementById('mls-comp-cards');    // card grid
     if (compSection) compSection.style.display = top15.length ? 'block' : 'none';
     if (compSub) compSub.textContent = `${top15.length} produk teratas di keyword "${t.keyword}"`;
     const rankColors = ['#E8442A','#F5A623','#9CA3AF'];
+
+    // ── Row view (table) ──
     if (compTbody) compTbody.innerHTML = top15.map((r, i) => {
+      const omset  = (r.price||0) * (r.total_sold||0);
+      const share  = totalOmset > 0 ? (omset / totalOmset * 100) : 0;
+      const rank   = i + 1;
+      const rc     = rankColors[i] || '#6366F1';
+      const rankBadge = `<span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:${rc};color:#fff;font-size:.65rem;font-weight:800;flex-shrink:0;">${rank}</span>`;
+      const imgHtml = r.image_url ? `<img src="${r.image_url}" style="width:32px;height:32px;border-radius:6px;object-fit:cover;" onerror="this.style.display='none'">` : `<div style="width:32px;height:32px;border-radius:6px;background:#F3F4F6;"></div>`;
+      const soldFmt = (r.total_sold||0) >= 1000 ? ((r.total_sold||0)/1000).toFixed(1) + 'rb' : String(r.total_sold||0);
+      const reviewsFmt = (r.reviews||0) >= 1000 ? ((r.reviews||0)/1000).toFixed(1) + 'rb' : String(r.reviews||0);
+      const shopUrl = r.url ? `<a href="${r.url}" target="_blank" onclick="event.stopPropagation()" style="color:#3B82F6;text-decoration:none;font-size:.6rem;">↗</a>` : '';
+      return `<tr style="border-bottom:1px solid #F9FAFB;cursor:pointer;" onclick="mlsOpenCompDive('${r.item_id}','${r.shop_id}')">
+        <td style="padding:9px 6px;">${rankBadge}</td>
+        <td style="padding:9px 8px;">
+          <div style="display:flex;align-items:center;gap:7px;">
+            ${imgHtml}
+            <div style="font-size:.68rem;font-weight:600;line-height:1.3;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(r.product_name||'—').slice(0,48)} ${shopUrl}</div>
+          </div>
+        </td>
+        <td style="padding:9px 6px;font-size:.65rem;color:#374151;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(r.store_name||'—').slice(0,20)}</td>
+        <td style="padding:9px 6px;font-size:.63rem;color:#9CA3AF;white-space:nowrap;">${r.location||'—'}</td>
+        <td style="padding:9px 6px;text-align:right;font-size:.72rem;font-weight:700;color:#111827;white-space:nowrap;">Rp ${(r.price||0).toLocaleString('id-ID')}</td>
+        <td style="padding:9px 6px;text-align:right;font-size:.7rem;font-weight:700;color:#374151;white-space:nowrap;">${soldFmt}</td>
+        <td style="padding:9px 6px;text-align:right;font-size:.7rem;color:#6B7280;white-space:nowrap;">${reviewsFmt}</td>
+        <td style="padding:9px 6px;text-align:right;font-size:.68rem;font-weight:700;color:#E8442A;white-space:nowrap;">${share.toFixed(1)}%</td>
+      </tr>`;
+    }).join('');
+
+    // ── Card view (hidden by default) ──
+    if (compCards) compCards.innerHTML = top15.map((r, i) => {
       const omset  = (r.price||0) * (r.total_sold||0);
       const share  = totalOmset > 0 ? (omset / totalOmset * 100) : 0;
       const rank   = i + 1;
@@ -12826,10 +13266,7 @@ async function mlsSelectProduct(val) {
       const rankCls = i < 3 ? `rank-${rank}` : '';
       const storeName = (r.store_name || '—').substring(0, 24);
       const soldFmt = (r.total_sold||0) >= 1000 ? ((r.total_sold||0)/1000).toFixed(1) + 'rb' : String(r.total_sold||0);
-      const kw = (r.keyword || t.keyword || '').toLowerCase();
-      const linkedProd = allProducts.find(p => p.keyword && p.keyword.toLowerCase() === kw);
-      const clickAttr = linkedProd ? `onclick="openDetail(${linkedProd.id})" style="cursor:pointer;"` : '';
-      return `<div class="mls-seller-card ${rankCls}" ${clickAttr}>
+      return `<div class="mls-seller-card ${rankCls}" style="cursor:pointer;" onclick="mlsOpenCompDive('${r.item_id}','${r.shop_id}')">
         <div class="mls-seller-img-wrap">
           <img class="mls-seller-img" src="${r.image_url||''}" onerror="this.src='';this.style.background='#F0EDE8';" alt="${r.product_name||''}">
           <div class="mls-seller-rank" style="background:${rc};">${rank}</div>
@@ -12837,9 +13274,9 @@ async function mlsSelectProduct(val) {
         <div class="mls-seller-body">
           <div class="mls-seller-store">${storeName}</div>
           <div class="mls-seller-price">Rp ${(r.price||0).toLocaleString('id-ID')}</div>
+          <div style="font-size:.6rem;color:#9CA3AF;">${r.location||''}</div>
           <div class="mls-seller-stats">
-            <span>${soldFmt} terjual</span>
-            <span style="color:#9CA3AF;">·</span>
+            <span>${soldFmt} terjual</span><span style="color:#9CA3AF;">·</span>
             <span style="color:#E8442A;">${share.toFixed(1)}% share</span>
           </div>
           <div class="mls-seller-share-bar"><div class="mls-seller-share-fill" style="width:${Math.min(share*4,100)}%;background:${rc};"></div></div>
@@ -12857,6 +13294,28 @@ function mlsSetThumb(el, imgSrc) {
   el.classList.add('active');
   const mainImg = document.getElementById('mls-main-img');
   if (mainImg && imgSrc) { mainImg.src = imgSrc; mainImg.style.opacity = '1'; }
+}
+
+let _mlsView = 'row';
+function mlsSetView(mode) {
+  _mlsView = mode;
+  const tableWrap = document.getElementById('mls-comp-table-wrap');
+  const cardsWrap = document.getElementById('mls-comp-cards');
+  const btnRow  = document.getElementById('mls-view-row');
+  const btnCard = document.getElementById('mls-view-card');
+  if (tableWrap) tableWrap.style.display = mode === 'row'  ? '' : 'none';
+  if (cardsWrap) cardsWrap.style.display = mode === 'card' ? '' : 'none';
+  if (btnRow)  { btnRow.style.background  = mode === 'row'  ? '#FEF2F0' : '#fff'; btnRow.style.borderColor  = mode === 'row'  ? '#E8442A' : '#E5E7EB'; btnRow.style.color  = mode === 'row'  ? '#E8442A' : '#6B7280'; }
+  if (btnCard) { btnCard.style.background = mode === 'card' ? '#FEF2F0' : '#fff'; btnCard.style.borderColor = mode === 'card' ? '#E8442A' : '#E5E7EB'; btnCard.style.color = mode === 'card' ? '#E8442A' : '#6B7280'; }
+}
+
+function mlsOpenCompDive(itemId, shopId) {
+  // Find the competitor in current MLS keyword rows and open its deep dive
+  const ctx = window._mlsContext || {};
+  if (!ctx.keyword) return;
+  // Find from discover listings or fetch
+  const found = (_dscAllListings || []).find(p => String(p.item_id) === String(itemId) && String(p.shop_id) === String(shopId));
+  if (found) { dscOpenDeepDive(`${found.item_id}__${found.shop_id}`); switchDashView('deepdive'); }
 }
 
 function mlsSaveApiKey() {
@@ -13711,7 +14170,8 @@ async function openKwDetail(keyword) {
 
   const totalSold  = sellers.reduce((s,r) => s + (r.total_sold||0), 0);
   const prices     = sellers.map(r => r.price||0).filter(Boolean).sort((a,b) => a-b);
-  const revenues   = sellers.map(r => (r.price||0)*(r.total_sold||0)/12).sort((a,b) => a-b);
+  const rawRevenues = sellers.map(r => (r.price||0)*(r.total_sold||0)/12).sort((a,b) => a-b);
+  const revenues   = filterOutliers(rawRevenues);   // remove statistical outliers before display
   const medianPrice = _median(prices);
   const medianRev   = _median(revenues);
   const minRev = revenues[0]||0, maxRev = revenues[revenues.length-1]||0;
@@ -13727,6 +14187,7 @@ async function openKwDetail(keyword) {
 
   const score    = _kwOpportunityScore(sellers, totalSold);
   const scoreCol = _scoreColor(score);
+  const scoreHint = _scoreHint(score, sellers, totalSold, medianRev);
 
   const ages       = sellers.map(r => r.listing_date).filter(Boolean);
   const ageDays    = ages.map(d => Math.floor((Date.now()-new Date(d).getTime())/86400000)).filter(n=>n>=0).sort((a,b)=>a-b);
@@ -13768,6 +14229,37 @@ async function openKwDetail(keyword) {
 
   // Right panel
   document.getElementById('kd-right-panel').innerHTML = `
+    <!-- Score hero — simple first view -->
+    <div style="background:${scoreCol}0d;border:1px solid ${scoreCol}30;border-radius:12px;padding:14px 16px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+        <div style="font-size:2.2rem;font-weight:900;color:${scoreCol};line-height:1;">${score}</div>
+        <div>
+          <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9CA3AF;">Skor Kelayakan</div>
+          <div style="font-size:.82rem;font-weight:700;color:${scoreCol};">${scoreHint.verdict}</div>
+        </div>
+      </div>
+      <div style="font-size:.78rem;color:#374151;line-height:1.5;">${scoreHint.sentence}</div>
+      <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:90px;background:#fff;border-radius:8px;padding:8px 10px;border:1px solid #E5E7EB;">
+          <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;">Omset Median/bln</div>
+          <div style="font-size:.88rem;font-weight:800;color:#E8442A;">${fmtS(medianRev)}</div>
+        </div>
+        <div style="flex:1;min-width:90px;background:#fff;border-radius:8px;padding:8px 10px;border:1px solid #E5E7EB;">
+          <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;">Jumlah Seller</div>
+          <div style="font-size:.88rem;font-weight:800;color:#1A1F3C;">${sellers.length}</div>
+        </div>
+        <div style="flex:1;min-width:90px;background:#fff;border-radius:8px;padding:8px 10px;border:1px solid #E5E7EB;">
+          <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;">Harga Median</div>
+          <div style="font-size:.88rem;font-weight:800;color:#1A1F3C;">${fmtS(medianPrice)}</div>
+        </div>
+      </div>
+    </div>
+    <!-- Full analysis toggle -->
+    <details style="margin-bottom:8px;">
+    <summary style="cursor:pointer;font-size:.78rem;font-weight:700;color:#E8442A;padding:6px 0;list-style:none;display:flex;align-items:center;gap:5px;">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      Lihat Analisis Lengkap
+    </summary>
     <div class="kd-top-chips">
       <div class="kd-score-badge" style="background:${scoreCol}22;color:${scoreCol};">
         <svg width="11" height="11" fill="${scoreCol}" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg>
@@ -13846,16 +14338,36 @@ async function openKwDetail(keyword) {
         Simpan Produk
       </button>
     </div>
+    </details>
   `;
 
-  // Category revenue history chart (async)
+  // Category revenue history chart (async) — gated: only unlocked keywords show full history
   (async () => {
-    const { data: hist } = await _supabase.from('listings').select('scraped_at,price,total_sold').eq('keyword',keyword).order('scraped_at',{ascending:true}).limit(600);
     const el = document.getElementById('kd-cat-chart');
     if (!el) return;
+    // Check if this keyword is unlocked (in keyword_library)
+    let historyUnlocked = false;
+    if (currentUser && _supabase) {
+      const { data: lib } = await _supabase.from('keyword_library').select('id').eq('user_id', currentUser.id).eq('keyword', keyword).limit(1);
+      historyUnlocked = lib?.length > 0;
+    }
+    if (!historyUnlocked) {
+      el.innerHTML = `<div style="text-align:center;padding:14px 10px;">
+        <div style="font-size:.72rem;color:#9CA3AF;margin-bottom:8px;">Riwayat data tersembunyi</div>
+        <button onclick="cgOpenFor('${keyword.replace(/'/g,'\\'')}', 'history')" style="background:#E8442A;color:#fff;border:none;border-radius:7px;padding:6px 14px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;">Buka Riwayat 30 Hari — 1 Kredit</button>
+      </div>`;
+      return;
+    }
+    const { data: hist } = await _supabase.from('listings').select('scraped_at,price,total_sold').eq('keyword',keyword).order('scraped_at',{ascending:true}).limit(600);
     if (!hist?.length) { el.innerHTML='<div style="color:#9CA3AF;font-size:.7rem;">Belum ada data</div>'; return; }
+    const allRevs = hist.map(r => (r.price||0)*(r.total_sold||0)/12);
+    const revCap  = filterOutliersMax(allRevs);
     const byDate = {};
-    hist.forEach(r => { const d=r.scraped_at?.slice(0,10); if(!d) return; byDate[d]=(byDate[d]||0)+(r.price||0)*(r.total_sold||0)/12; });
+    hist.forEach(r => {
+      const rev = (r.price||0)*(r.total_sold||0)/12;
+      if (rev > revCap) return;
+      const d=r.scraped_at?.slice(0,10); if(!d) return; byDate[d]=(byDate[d]||0)+rev;
+    });
     const dates=Object.keys(byDate).sort(), revs=dates.map(d=>byDate[d]), maxR=Math.max(...revs)||1;
     if (dates.length < 2) { el.innerHTML='<div style="color:#9CA3AF;font-size:.7rem;">Data belum cukup</div>'; return; }
     el.innerHTML = `<div class="of-chart-wrap">${dates.map((d,i)=>{
@@ -13967,6 +14479,36 @@ async function openKwDetail(keyword) {
         </table>
       </div>
     </div>
+    <!-- Seller Workflow Guide -->
+    <div class="kd-full" style="background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border:1px solid #bbf7d0;border-radius:12px;padding:16px;">
+      <div class="kd-full-title" style="color:#16a34a;margin-bottom:12px;">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Cara Jual Produk Ini — 4 Langkah
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div style="background:#fff;border-radius:10px;padding:12px;border:1px solid #E5E7EB;">
+          <div style="font-size:.7rem;font-weight:800;color:#E8442A;margin-bottom:4px;">1. CARI SUPPLIER</div>
+          <div style="font-size:.72rem;color:#374151;margin-bottom:8px;">Target HPP ≤ <strong>${fmtS(sp * 0.35)}</strong> per unit (35% COGS)</div>
+          <a href="https://s.1688.com/selloffer/offerlist.htm?keywords=${encodeURIComponent(keyword)}" target="_blank" rel="noopener" style="display:inline-block;padding:4px 10px;background:#E8442A;color:#fff;border-radius:6px;font-size:.65rem;font-weight:700;text-decoration:none;margin-right:4px;">1688.com →</a>
+          <a href="https://www.tokopedia.com/search?q=${encodeURIComponent(keyword)}+grosir" target="_blank" rel="noopener" style="display:inline-block;padding:4px 10px;background:#42b883;color:#fff;border-radius:6px;font-size:.65rem;font-weight:700;text-decoration:none;">Tokopedia Grosir →</a>
+        </div>
+        <div style="background:#fff;border-radius:10px;padding:12px;border:1px solid #E5E7EB;">
+          <div style="font-size:.7rem;font-weight:800;color:#E8442A;margin-bottom:4px;">2. BUAT LISTING</div>
+          <div style="font-size:.72rem;color:#374151;margin-bottom:4px;">Kisaran harga: <strong>${fmtS(prices[0]||0)} – ${fmtS(prices[prices.length-1]||0)}</strong></div>
+          <div style="font-size:.68rem;color:#6B7280;">Masukkan keyword "<strong>${keyword}</strong>" di judul. Gunakan 3–5 hashtag relevan. Foto utama putih polos.</div>
+        </div>
+        <div style="background:#fff;border-radius:10px;padding:12px;border:1px solid #E5E7EB;">
+          <div style="font-size:.7rem;font-weight:800;color:#E8442A;margin-bottom:4px;">3. PENGIRIMAN</div>
+          <div style="font-size:.72rem;color:#374151;margin-bottom:4px;">Kota dominan seller: <strong>${(()=>{const locs={};sellers.forEach(r=>{if(r.location){const c=r.location.split(',')[0].trim();locs[c]=(locs[c]||0)+1;}});return Object.entries(locs).sort((a,b)=>b[1]-a[1])[0]?.[0]||'—';})()}</strong></div>
+          <div style="font-size:.68rem;color:#6B7280;">Aktifkan SFF (Shopee Fulfillment) untuk badge pengiriman cepat. Dropship tersedia via supplier 1688.</div>
+        </div>
+        <div style="background:#fff;border-radius:10px;padding:12px;border:1px solid #E5E7EB;">
+          <div style="font-size:.7rem;font-weight:800;color:#E8442A;margin-bottom:4px;">4. MARKETING</div>
+          <div style="font-size:.72rem;color:#374151;margin-bottom:4px;">Anggaran iklan: <strong>${fmtS(sp * (newUnits||1) * 0.15)}/bln</strong> (15% revenue)</div>
+          <div style="font-size:.68rem;color:#6B7280;">Mulai dengan Iklan Pencarian Shopee Ads. Gunakan keyword di atas sebagai target. Review iklan setelah 7 hari.</div>
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -14062,6 +14604,30 @@ function _fmtAge(dateStr) {
   if (days >= 30) return `${Math.floor(days/30)} bulan`;
   if (days >= 7)  return `${Math.floor(days/7)} minggu`;
   return `${days} hari`;
+}
+function _scoreHint(score, sellers, totalSold, medianRev) {
+  const sellerCount  = sellers.length;
+  const top3share    = sellers.slice(0,3).reduce((s,r) => s + (r.total_sold||0), 0) / (totalSold||1);
+  const demand       = medianRev > 5e6  ? 'permintaan tinggi' : medianRev > 1e6 ? 'permintaan sedang' : 'permintaan terbatas';
+  const competition  = sellerCount < 20 ? 'persaingan rendah' : sellerCount < 60 ? 'persaingan sedang' : 'persaingan ketat';
+  const entry        = top3share < 0.4  ? 'masih ada celah untuk pendatang baru' : top3share < 0.7 ? 'pemimpin pasar sudah terbentuk' : 'pasar didominasi seller besar';
+  const verdict      = score >= 70 ? '🟢 Peluang Bagus' : score >= 45 ? '🟡 Perlu Strategi' : '🔴 Pasar Sulit';
+  return { sentence: `${demand[0].toUpperCase()+demand.slice(1)}, ${competition} — ${entry}.`, verdict };
+}
+function filterOutliers(arr) {
+  if (arr.length < 4) return arr;
+  const s = [...arr].sort((a,b) => a-b);
+  const q1 = s[Math.floor(s.length * 0.25)];
+  const q3 = s[Math.floor(s.length * 0.75)];
+  const fence = q3 + 2.5 * (q3 - q1);
+  return s.filter(v => v <= fence);
+}
+function filterOutliersMax(arr) {
+  if (arr.length < 4) return Infinity;
+  const s = [...arr].sort((a,b) => a-b);
+  const q1 = s[Math.floor(s.length * 0.25)];
+  const q3 = s[Math.floor(s.length * 0.75)];
+  return q3 + 2.5 * (q3 - q1);
 }
 function _median(arr) {
   if (!arr.length) return 0;
@@ -15761,6 +16327,7 @@ let _dashChartInstance = null;
 
 async function loadDashboardData() {
   if (!_supabase || !currentUser) return;
+  loadChestState();
   const saved = allProducts.filter(p => savedProducts.has(p.id));
   if (!saved.length) return;
 
@@ -16910,6 +17477,18 @@ document.addEventListener('touchend', function(e){
 }, {passive: false});
 
 // Banner carousel auto-scroll
+// ── Video Welcome Modal ──────────────────────────────────────
+function showWelcomeVideo() {
+  if (localStorage.getItem('laris_welcomed')) return;
+  const modal = document.getElementById('welcome-video-modal');
+  if (modal) modal.style.display = 'flex';
+}
+function closeWelcomeVideo() {
+  localStorage.setItem('laris_welcomed', '1');
+  const modal = document.getElementById('welcome-video-modal');
+  if (modal) modal.style.display = 'none';
+}
+
 document.addEventListener('DOMContentLoaded', function(){
   if (typeof Chart !== 'undefined') lpRenderPreview(_LP_DEMO);
   setInterval(function(){ if (typeof goToSlide === 'function') goToSlide((bannerSlide + 1) % bannerTotal); }, 3000);
@@ -16931,6 +17510,34 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 
 </script>
+
+  <!-- ── Welcome Video Modal ── -->
+  <div id="welcome-video-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10000;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#fff;border-radius:20px;max-width:600px;width:100%;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,.4);">
+      <div style="background:linear-gradient(135deg,#1A1F3C,#2d3561);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:1.05rem;font-weight:900;color:#fff;">Selamat Datang di LarisID</div>
+          <div style="font-size:.75rem;color:rgba(255,255,255,.6);margin-top:2px;">Tonton panduan singkat ini untuk memulai (2 menit)</div>
+        </div>
+        <button onclick="closeWelcomeVideo()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:.75rem;cursor:pointer;font-family:inherit;">Lewati</button>
+      </div>
+      <!-- Replace the src below with your YouTube/Loom embed URL after recording -->
+      <div style="position:relative;padding-bottom:56.25%;background:#000;">
+        <iframe id="welcome-video-iframe" src="about:blank" data-src="https://www.youtube.com/embed/YOUR_VIDEO_ID?autoplay=1" style="position:absolute;inset:0;width:100%;height:100%;border:none;" allowfullscreen allow="autoplay"></iframe>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#1A1F3C;flex-direction:column;gap:12px;" id="video-placeholder">
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="rgba(255,255,255,.4)" stroke="none"/></svg>
+          <div style="color:rgba(255,255,255,.4);font-size:.78rem;">Video tutorial akan ditambahkan segera</div>
+        </div>
+      </div>
+      <div style="padding:16px 24px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #F3F4F6;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:.75rem;color:#6B7280;cursor:pointer;">
+          <input type="checkbox" onchange="if(this.checked)localStorage.setItem('laris_welcomed','1')" style="width:14px;height:14px;">
+          Jangan tampilkan lagi
+        </label>
+        <button onclick="closeWelcomeVideo()" style="background:#E8442A;color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;">Mulai Eksplorasi →</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ── GUIDED TOUR ── -->
   <div id="tour-overlay" aria-hidden="true">
