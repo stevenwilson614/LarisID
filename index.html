@@ -14354,7 +14354,7 @@ async function openKwDetail(keyword) {
     if (!historyUnlocked) {
       el.innerHTML = `<div style="text-align:center;padding:14px 10px;">
         <div style="font-size:.72rem;color:#9CA3AF;margin-bottom:8px;">Riwayat data tersembunyi</div>
-        <button onclick="cgOpenFor('${keyword.replace(/'/g,'\\'')}', 'history')" style="background:#E8442A;color:#fff;border:none;border-radius:7px;padding:6px 14px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;">Buka Riwayat 30 Hari — 1 Kredit</button>
+        <button onclick="cgOpenFor('${keyword.replace(/'/g, "\\'")}', 'history')" style="background:#E8442A;color:#fff;border:none;border-radius:7px;padding:6px 14px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;">Buka Riwayat 30 Hari — 1 Kredit</button>
       </div>`;
       return;
     }
