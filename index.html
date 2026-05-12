@@ -12518,25 +12518,69 @@ async function ddLoadTrendHistory(listing) {
       return;
     }
 
-    // Fill calendar-week gaps after last scrape using recent observed velocity.
-    // This keeps the chart continuous when a product misses one or more scrape cycles.
+    // Fill calendar-week gaps around sparse scrape windows.
+    // - Forward fill: from last known week -> current week.
+    // - Back fill: ensure at least recent 5-week window is visible even if first scrape is recent.
+    // Use trend-based projection (not flat average) so consecutive estimated weeks are not identical.
     const weeklyRowsFilled = [...weeklyRows];
     const lastDataMon = weeklyRowsFilled[weeklyRowsFilled.length - 1]?.firstDate;
+    const firstDataMon = weeklyRowsFilled[0]?.firstDate;
     const latestKnownDate = listing?.scraped_at ? new Date(listing.scraped_at) : new Date();
     const latestKnownMon = _mondayOf(latestKnownDate);
-    if (lastDataMon && latestKnownMon > lastDataMon) {
-      const baseSlice = weeklyRowsFilled.slice(-2);
-      const estUnits = Math.max(0, Math.round(baseSlice.reduce((s, w) => s + (w.units || 0), 0) / baseSlice.length));
-      const estOmset = Math.max(0, Math.round(baseSlice.reduce((s, w) => s + (w.omset || 0), 0) / baseSlice.length));
-      let curMon = new Date(lastDataMon.getTime() + 7 * 86400000);
-      while (curMon <= latestKnownMon) {
-        weeklyRowsFilled.push({
+    const _trendProject = (a, b) => {
+      // Linear projection from 2 latest/earliest points.
+      const slopeUnits = (b.units || 0) - (a.units || 0);
+      const slopeOmset = (b.omset || 0) - (a.omset || 0);
+      return {
+        units: Math.max(0, Math.round((b.units || 0) + slopeUnits)),
+        omset: Math.max(0, Math.round((b.omset || 0) + slopeOmset)),
+      };
+    };
+
+    // Back fill to keep last ~5 calendar weeks visible.
+    const targetWindowStart = new Date(latestKnownMon.getTime() - 4 * 7 * 86400000);
+    if (firstDataMon && firstDataMon > targetWindowStart) {
+      const seedA = weeklyRowsFilled[0];
+      const seedB = weeklyRowsFilled[1] || weeklyRowsFilled[0];
+      let refA = { units: seedA.units || 0, omset: seedA.omset || 0 };
+      let refB = { units: seedB.units || 0, omset: seedB.omset || 0 };
+      let curMon = new Date(firstDataMon.getTime() - 7 * 86400000);
+      const preRows = [];
+      while (curMon >= targetWindowStart) {
+        // Reverse projection by mirroring slope backward.
+        const prevUnits = Math.max(0, Math.round((refA.units || 0) - ((refB.units || 0) - (refA.units || 0))));
+        const prevOmset = Math.max(0, Math.round((refA.omset || 0) - ((refB.omset || 0) - (refA.omset || 0))));
+        preRows.push({
           label: `${curMon.getDate()} ${_MO[curMon.getMonth()]}`,
-          units: estUnits,
-          omset: estOmset,
+          units: prevUnits,
+          omset: prevOmset,
           firstDate: new Date(curMon),
           isGapEstimate: true,
         });
+        refB = { ...refA };
+        refA = { units: prevUnits, omset: prevOmset };
+        curMon = new Date(curMon.getTime() - 7 * 86400000);
+      }
+      preRows.reverse().forEach(r => weeklyRowsFilled.unshift(r));
+    }
+
+    if (lastDataMon && latestKnownMon > lastDataMon) {
+      const seedA = weeklyRowsFilled[Math.max(0, weeklyRowsFilled.length - 2)] || weeklyRowsFilled[weeklyRowsFilled.length - 1];
+      const seedB = weeklyRowsFilled[weeklyRowsFilled.length - 1];
+      let refA = { units: seedA.units || 0, omset: seedA.omset || 0 };
+      let refB = { units: seedB.units || 0, omset: seedB.omset || 0 };
+      let curMon = new Date(lastDataMon.getTime() + 7 * 86400000);
+      while (curMon <= latestKnownMon) {
+        const proj = _trendProject(refA, refB);
+        weeklyRowsFilled.push({
+          label: `${curMon.getDate()} ${_MO[curMon.getMonth()]}`,
+          units: proj.units,
+          omset: proj.omset,
+          firstDate: new Date(curMon),
+          isGapEstimate: true,
+        });
+        refA = refB;
+        refB = proj;
         curMon = new Date(curMon.getTime() + 7 * 86400000);
       }
     }
