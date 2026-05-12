@@ -11156,6 +11156,11 @@ async function ddRenderTren() {
         // Delta > 5× what review growth implies — treat as data artifact
         isEstimated = true;
         correctedDeltas.push(reviewEst);
+      } else if (rawDelta === 0 && revDelta > 0) {
+        // total_sold unchanged but reviews grew — product is inside a Shopee display bucket
+        // that didn't cross a threshold boundary; use review model to capture real sales
+        isEstimated = true;
+        correctedDeltas.push(reviewEst);
       } else {
         correctedDeltas.push(rawDelta);
       }
@@ -12409,6 +12414,10 @@ async function ddLoadTrendHistory(listing) {
         _corrDeltas.push(reviewEst);
       } else if (rawDelta > 0 && reviewEst > 0 && rawDelta > reviewEst * 5) {
         // Delta > 5× what review growth implies — treat as data artifact
+        _corrDeltas.push(reviewEst);
+      } else if (rawDelta === 0 && revDelta > 0) {
+        // total_sold unchanged but reviews grew — product is inside a Shopee display bucket
+        // that didn't cross a threshold boundary; use review model to capture real sales
         _corrDeltas.push(reviewEst);
       } else {
         _corrDeltas.push(rawDelta);
