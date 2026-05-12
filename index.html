@@ -12518,24 +12518,47 @@ async function ddLoadTrendHistory(listing) {
       return;
     }
 
-    const labels        = weeklyRows.map(w => w.label);
-    const chartUnitData = weeklyRows.map(w => w.units);
-    const chartOmsetData= weeklyRows.map(w => w.omset);
+    // Fill calendar-week gaps after last scrape using recent observed velocity.
+    // This keeps the chart continuous when a product misses one or more scrape cycles.
+    const weeklyRowsFilled = [...weeklyRows];
+    const lastDataMon = weeklyRowsFilled[weeklyRowsFilled.length - 1]?.firstDate;
+    const latestKnownDate = listing?.scraped_at ? new Date(listing.scraped_at) : new Date();
+    const latestKnownMon = _mondayOf(latestKnownDate);
+    if (lastDataMon && latestKnownMon > lastDataMon) {
+      const baseSlice = weeklyRowsFilled.slice(-2);
+      const estUnits = Math.max(0, Math.round(baseSlice.reduce((s, w) => s + (w.units || 0), 0) / baseSlice.length));
+      const estOmset = Math.max(0, Math.round(baseSlice.reduce((s, w) => s + (w.omset || 0), 0) / baseSlice.length));
+      let curMon = new Date(lastDataMon.getTime() + 7 * 86400000);
+      while (curMon <= latestKnownMon) {
+        weeklyRowsFilled.push({
+          label: `${curMon.getDate()} ${_MO[curMon.getMonth()]}`,
+          units: estUnits,
+          omset: estOmset,
+          firstDate: new Date(curMon),
+          isGapEstimate: true,
+        });
+        curMon = new Date(curMon.getTime() + 7 * 86400000);
+      }
+    }
+
+    const labels        = weeklyRowsFilled.map(w => w.label);
+    const chartUnitData = weeklyRowsFilled.map(w => w.units);
+    const chartOmsetData= weeklyRowsFilled.map(w => w.omset);
 
     // Forecast: avg of last 2 weeks (or last 1) projected 1 week ahead
-    const nW = weeklyRows.length;
-    const slice2 = weeklyRows.slice(-2);
+    const nW = weeklyRowsFilled.length;
+    const slice2 = weeklyRowsFilled.slice(-2);
     const fcUnit  = Math.round(slice2.reduce((s,w) => s+w.units, 0) / slice2.length);
     const fcOmset = Math.round(slice2.reduce((s,w) => s+w.omset, 0) / slice2.length);
     // nextWeek is the Monday 7 days after the last data Monday → e.g. "12 Mei"
-    const nextWeek = new Date(weeklyRows[nW-1].firstDate.getTime() + 7*86400000);
+    const nextWeek = new Date(weeklyRowsFilled[nW-1].firstDate.getTime() + 7*86400000);
     labels.push(_wLabel(nextWeek) + ' ▶');
     chartUnitData.push(null);
     chartOmsetData.push(null);
     const fUnitW  = new Array(labels.length).fill(null);
     const fOmsetW = new Array(labels.length).fill(null);
-    fUnitW[nW-1]  = weeklyRows[nW-1].units;
-    fOmsetW[nW-1] = weeklyRows[nW-1].omset;
+    fUnitW[nW-1]  = weeklyRowsFilled[nW-1].units;
+    fOmsetW[nW-1] = weeklyRowsFilled[nW-1].omset;
     fUnitW[nW]    = fcUnit;
     fOmsetW[nW]   = fcOmset;
 
@@ -12560,14 +12583,14 @@ async function ddLoadTrendHistory(listing) {
     }
 
     // ── Update Ringkasan hero stat cards — show monthly estimates ──────────────
-    const totalUnits = weeklyRows.reduce((s, w) => s + w.units, 0);
-    const totalOmset = weeklyRows.reduce((s, w) => s + w.omset, 0);
+    const totalUnits = weeklyRowsFilled.reduce((s, w) => s + w.units, 0);
+    const totalOmset = weeklyRowsFilled.reduce((s, w) => s + w.omset, 0);
     // Convert period total → monthly: (total / weeks) × (30/7)
     const monthlyUnits = Math.round(totalUnits / nW * (30 / 7));
     const monthlyOmset = Math.round(totalOmset / nW * (30 / 7));
     // Week-over-week delta: last week vs first week (both already scaled to 7 days)
-    const wowUnitPct  = weeklyRows[0].units  > 0 ? Math.round((weeklyRows[nW-1].units  - weeklyRows[0].units)  / weeklyRows[0].units  * 100) : null;
-    const wowOmsetPct = weeklyRows[0].omset  > 0 ? Math.round((weeklyRows[nW-1].omset  - weeklyRows[0].omset)  / weeklyRows[0].omset  * 100) : null;
+    const wowUnitPct  = weeklyRowsFilled[0].units  > 0 ? Math.round((weeklyRowsFilled[nW-1].units  - weeklyRowsFilled[0].units)  / weeklyRowsFilled[0].units  * 100) : null;
+    const wowOmsetPct = weeklyRowsFilled[0].omset  > 0 ? Math.round((weeklyRowsFilled[nW-1].omset  - weeklyRowsFilled[0].omset)  / weeklyRowsFilled[0].omset  * 100) : null;
     const _fmtV = v => v >= 1e9 ? 'Rp '+(v/1e9).toFixed(1)+'M' : v >= 1e6 ? 'Rp '+(v/1e6).toFixed(1)+'jt' : 'Rp '+(v/1e3).toFixed(0)+'rb';
     const _fmtDelta = pct => pct == null ? '—' : pct >= 0 ? `↑ ${pct}%` : `↓ ${Math.abs(pct)}%`;
     const unitEl  = document.getElementById('dd-h-unit');
