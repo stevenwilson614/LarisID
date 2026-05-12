@@ -11070,18 +11070,19 @@ async function ddRenderTren() {
         .select('scraped_at,total_sold,price,reviews')
         .eq('item_id', listing.item_id)
         .eq('shop_id', listing.shop_id)
-        .order('scraped_at', { ascending: true })
+        // Pull latest points first, then sort ascending for interval math.
+        .order('scraped_at', { ascending: false })
         .limit(20);
-      dbRows = data || [];
+      dbRows = (data || []).slice().sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
       if (!dbRows.length) {
         const { data: d2 } = await _supabase
           .from('listings')
           .select('scraped_at,total_sold,price,reviews')
           .eq('item_id', String(listing.item_id))
           .eq('shop_id', String(listing.shop_id))
-          .order('scraped_at', { ascending: true })
+          .order('scraped_at', { ascending: false })
           .limit(20);
-        dbRows = d2 || [];
+        dbRows = (d2 || []).slice().sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
       }
     }
 
@@ -11090,7 +11091,23 @@ async function ddRenderTren() {
       const prevSold = _dscPrevMap[prevKey];
       const currDate = listing.scraped_at ? new Date(listing.scraped_at) : new Date();
       const currRow  = { scraped_at: currDate.toISOString(), total_sold: listing.total_sold, price: listing.price, reviews: listing.reviews };
-      if (dbRows.length === 1) {
+      // If only one/no point exists, estimate velocity from similar products first.
+      const peerResult = await ddEstimateTrendFromPeers(listing);
+      if (peerResult && peerResult.medianRate > 0) {
+        const rate = peerResult.medianRate;
+        const anchor = currDate;
+        const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
+        const anchorSold = listing.total_sold || 0;
+        function _synRow(weekOffset) {
+          return {
+            scraped_at: new Date(anchor.getTime() + weekOffset * MS_WEEK).toISOString(),
+            total_sold: Math.max(0, Math.round(anchorSold + rate * weekOffset)),
+            price: listing.price,
+            reviews: null,
+          };
+        }
+        dbRows = [_synRow(-3), _synRow(-2), _synRow(-1), _synRow(0), _synRow(1)];
+      } else if (dbRows.length === 1) {
         const dbDate = new Date(dbRows[0].scraped_at);
         dbRows = dbDate < currDate ? [dbRows[0], currRow] : [currRow, dbRows[0]];
       } else if (prevSold != null) {
@@ -12192,7 +12209,8 @@ async function ddEstimateTrendFromPeers(listing) {
     .from('listings')
     .select('item_id,shop_id,scraped_at,total_sold,reviews,category')
     .in('item_id', peers.map(r => r.item_id))
-    .order('scraped_at', { ascending: true })
+    // Pull most recent history window first, then sort per peer below.
+    .order('scraped_at', { ascending: false })
     .limit(300);
 
   const peerMap = new Map();
@@ -12204,6 +12222,7 @@ async function ddEstimateTrendFromPeers(listing) {
 
   const weeklyRates = [];
   for (const [, rows] of peerMap) {
+    rows.sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
     if (rows.length < 2) continue;
     const first = rows[0], last = rows[rows.length - 1];
     const days = (new Date(last.scraped_at) - new Date(first.scraped_at)) / 86400000;
@@ -12257,9 +12276,10 @@ async function ddLoadTrendHistory(listing) {
         .select('scraped_at,total_sold,price,reviews')
         .eq('item_id', listing.item_id)
         .eq('shop_id', listing.shop_id)
-        .order('scraped_at', { ascending: true })
+        // Use latest scrapes (not oldest), then re-sort ascending for chart logic.
+        .order('scraped_at', { ascending: false })
         .limit(20);
-      dbRows = data || [];
+      dbRows = (data || []).slice().sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
       console.log('[ddTrend] DB rows (int):', dbRows.length, dbRows);
       if (!dbRows.length) {
         const { data: d2 } = await _supabase
@@ -12267,9 +12287,9 @@ async function ddLoadTrendHistory(listing) {
           .select('scraped_at,total_sold,price,reviews')
           .eq('item_id', String(listing.item_id))
           .eq('shop_id', String(listing.shop_id))
-          .order('scraped_at', { ascending: true })
+          .order('scraped_at', { ascending: false })
           .limit(20);
-        dbRows = d2 || [];
+        dbRows = (d2 || []).slice().sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
         console.log('[ddTrend] DB rows (str):', dbRows.length, dbRows);
       }
     }
