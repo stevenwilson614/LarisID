@@ -7973,6 +7973,35 @@ function _authOnSignIn(session) {
   setTimeout(() => { pendingCohortJoinIfAny().catch(() => {}); }, 400);
 }
 
+/** Close fixed overlays so logout is visible immediately (mobile "Lainnya" sheet uses a delayed hide that browsers throttle in background tabs). */
+function dismissLogoutChrome() {
+  try { document.getElementById('dash-topbar-menu')?.classList.remove('open'); } catch (_) {}
+  try { closeSidebar(); } catch (_) {}
+  try {
+    const ov = document.getElementById('mbn-sheet-overlay');
+    const s = document.getElementById('mbn-more-sheet');
+    if (ov) ov.style.display = 'none';
+    if (s) {
+      s.style.display = 'none';
+      s.style.transform = 'translateY(100%)';
+    }
+  } catch (_) {}
+  try {
+    const em = document.getElementById('dash-email-modal');
+    if (em) em.style.display = 'none';
+    const xm = document.getElementById('ext-link-modal');
+    if (xm) xm.style.display = 'none';
+    const cg = document.getElementById('cg-overlay');
+    if (cg) cg.style.display = 'none';
+    const ch = document.getElementById('chest-modal');
+    if (ch) ch.style.display = 'none';
+    const lo = document.getElementById('loading-overlay');
+    if (lo) lo.style.display = 'none';
+  } catch (_) {}
+  try { closeAuthModal(); } catch (_) {}
+  try { endTour(); } catch (_) {}
+}
+
 function _authOnSignOut() {
   currentUser = null;
   _authClear();
@@ -7981,6 +8010,7 @@ function _authOnSignOut() {
   try { renderProfileSaved(); } catch (_) {}
   showPage('landing');
   renderHomeGrid();
+  dismissLogoutChrome();
 }
 
 function initSupabase() {
@@ -8173,10 +8203,14 @@ async function signInWithProvider(provider) {
 
 async function signOut() {
   const stored = _authLoad();
-  if (stored?.access_token) {
-    fetch(`${SUPA_URL}/auth/v1/logout`, { method:'POST', headers:{ apikey:SUPA_KEY, Authorization:`Bearer ${stored.access_token}`, 'Content-Type':'application/json' } }).catch(()=>{});
+  const access = stored?.access_token;
+  if (access) {
+    fetch(`${SUPA_URL}/auth/v1/logout`, { method:'POST', headers:{ apikey:SUPA_KEY, Authorization:`Bearer ${access}`, 'Content-Type':'application/json' } }).catch(()=>{});
   }
   _authOnSignOut();
+  if (_supabase?.auth?.signOut) {
+    try { _supabase.auth.signOut(); } catch (_) {}
+  }
 }
 
 let _loadSavedInFlight = false;
