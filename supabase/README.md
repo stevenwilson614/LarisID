@@ -40,7 +40,7 @@ Adds to `cohorts`: `theme_primary`, `theme_secondary`, `theme_json`, `badge_icon
 
 Adds to `community_posts`: `kind`, `metadata`, `hidden_at`, `hidden_by` for structured feed + moderation (RLS: students do not see hidden posts from others).
 
-After applying, cohort leaders set colors (hex `#RRGGBB`) and slogan in the app under **Kohort → Leader → Branding & tema kohort**.
+After applying, cohort leaders set the cohort name, colors (hex `#RRGGBB`), emblem/badge icon, and slogan in the app under **Kohort → Leader → Branding & tema kohort**.
 
 ### Ocean Blue starter cohort
 
@@ -53,7 +53,7 @@ Student invite link: https://larisid.com/?invite=OCEANBLUE-STUDENT
 Leader invite link:  https://larisid.com/?invite=OCEANBLUE-LEADER
 ```
 
-Share the leader code only with the cohort leader because it grants leader access for Ocean Blue. After joining, leaders can update the cohort colors, badge, and slogan in **Kohort → Leader → Branding & tema kohort**.
+Share the leader code only with the cohort leader because it grants leader access for Ocean Blue. After joining, leaders can update the cohort name, colors, badge/emblem, and motto in **Kohort → Leader → Branding & tema kohort**.
 
 ### Seed example with ocean / sand theme
 

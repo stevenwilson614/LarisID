@@ -711,6 +711,17 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .cohort-input{width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:.82rem;font-family:inherit;margin-bottom:8px;box-sizing:border-box;}
 .cohort-btn{padding:9px 16px;border-radius:8px;border:none;background:var(--cohort-secondary,#E8442A);color:#fff;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;}
 .cohort-btn.secondary{background:#F3F4F6;color:#374151;}
+.cohort-brand-card{background:linear-gradient(135deg,#fff 0%,var(--cohort-surface,#F7F6F3) 100%);border-color:rgba(229,231,235,.9);overflow:hidden;position:relative;}
+.cohort-brand-card::before{content:'';position:absolute;inset:0 0 auto;height:4px;background:linear-gradient(90deg,var(--cohort-primary,#0f2942),var(--cohort-secondary,#c9a87c));}
+.cohort-brand-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px;}
+.cohort-brand-kicker{font-size:.62rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--cohort-secondary,#E8442A);margin-bottom:3px;}
+.cohort-brand-preview{min-width:150px;border-radius:14px;padding:12px;background:linear-gradient(135deg,var(--cohort-primary,#0f2942),var(--cohort-sidebar-end,#101827));color:#fff;box-shadow:0 10px 28px rgba(15,23,42,.16);}
+.cohort-brand-preview-badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;background:rgba(255,255,255,.14);padding:5px 9px;font-size:.7rem;font-weight:900;}
+.cohort-brand-preview-motto{margin-top:8px;font-size:.66rem;color:rgba(255,255,255,.75);line-height:1.4;}
+.cohort-brand-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.cohort-color-row{display:flex;gap:8px;align-items:center;}
+.cohort-color-swatch{width:42px;height:38px;border:none;border-radius:9px;background:transparent;padding:0;cursor:pointer;}
+@media(max-width:700px){.cohort-brand-head{display:block;}.cohort-brand-preview{margin-top:12px;}.cohort-brand-grid{grid-template-columns:1fr;}}
 .dash-topbar-cohort-chip{align-items:center;gap:6px;padding:5px 12px;border-radius:999px;border:1px solid var(--cohort-secondary,#E5E7EB);font-size:.68rem;font-weight:800;color:#111;background:#fff;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cohort-app-strip{background:linear-gradient(90deg,var(--cohort-primary,#1A1F3C),var(--cohort-sidebar-end,#12172a));border-bottom:1px solid rgba(255,255,255,.1);}
 .cohort-app-strip-inner{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;flex-wrap:wrap;}
@@ -6887,24 +6898,41 @@ html,body{overflow-x:hidden;max-width:100%;}
             </div>
           </div>
           <div id="cohort-mentor-wrap" style="display:none;">
-            <div class="cohort-card" id="cohort-branding-card" style="display:none;margin-bottom:14px;">
-              <h3>Branding &amp; tema kohort</h3>
-              <p class="cohort-muted" style="margin-bottom:12px;">Hanya pemimpin kohort yang bisa mengubah warna dan slogan. Siswa hanya melihat hasilnya.</p>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <div class="cohort-card cohort-brand-card" id="cohort-branding-card" style="display:none;margin-bottom:14px;">
+              <div class="cohort-brand-head">
                 <div>
-                  <label class="cohort-muted" style="font-size:.65rem;">Warna utama (hex)</label>
-                  <input type="text" id="cohort-brand-primary" class="cohort-input" placeholder="#0f2942" maxlength="7" autocomplete="off">
+                  <div class="cohort-brand-kicker">Cohort identity</div>
+                  <h3>Branding &amp; tema kohort</h3>
+                  <p class="cohort-muted">Pemimpin kohort dapat mengatur nama, warna, emblem, dan motto. Siswa otomatis melihat tampilan ini di dashboard mereka.</p>
                 </div>
-                <div>
-                  <label class="cohort-muted" style="font-size:.65rem;">Warna sekunder (hex)</label>
-                  <input type="text" id="cohort-brand-secondary" class="cohort-input" placeholder="#c9a87c" maxlength="7" autocomplete="off">
+                <div class="cohort-brand-preview">
+                  <div id="cohort-brand-preview-badge" class="cohort-brand-preview-badge">🌊 Ocean Blue</div>
+                  <div id="cohort-brand-preview-motto" class="cohort-brand-preview-motto">Together we learn, together we grow.</div>
                 </div>
               </div>
-              <label class="cohort-muted" style="font-size:.65rem;">Badge / ikon (emoji opsional)</label>
-              <input type="text" id="cohort-brand-badge" class="cohort-input" placeholder="🌊" maxlength="8" autocomplete="off">
-              <label class="cohort-muted" style="font-size:.65rem;">Slogan singkat</label>
-              <input type="text" id="cohort-brand-slogan" class="cohort-input" placeholder="Satu baris untuk tim kamu" maxlength="200" autocomplete="off">
-              <button type="button" class="cohort-btn" id="cohort-brand-save-btn" onclick="cohortLeaderSaveBranding()">Simpan tampilan</button>
+              <label class="cohort-muted" style="font-size:.65rem;">Nama kohort</label>
+              <input type="text" id="cohort-brand-name" class="cohort-input" placeholder="Ocean Blue" maxlength="80" autocomplete="off" oninput="cohortPreviewBrandingForm()">
+              <div class="cohort-brand-grid">
+                <div>
+                  <label class="cohort-muted" style="font-size:.65rem;">Warna utama (hex)</label>
+                  <div class="cohort-color-row">
+                    <input type="color" id="cohort-brand-primary-picker" class="cohort-color-swatch" value="#0c4a6e" oninput="cohortSyncBrandColor('primary','picker')">
+                    <input type="text" id="cohort-brand-primary" class="cohort-input" placeholder="#0c4a6e" maxlength="7" autocomplete="off" oninput="cohortSyncBrandColor('primary','text')">
+                  </div>
+                </div>
+                <div>
+                  <label class="cohort-muted" style="font-size:.65rem;">Warna aksen (hex)</label>
+                  <div class="cohort-color-row">
+                    <input type="color" id="cohort-brand-secondary-picker" class="cohort-color-swatch" value="#d4b896" oninput="cohortSyncBrandColor('secondary','picker')">
+                    <input type="text" id="cohort-brand-secondary" class="cohort-input" placeholder="#d4b896" maxlength="7" autocomplete="off" oninput="cohortSyncBrandColor('secondary','text')">
+                  </div>
+                </div>
+              </div>
+              <label class="cohort-muted" style="font-size:.65rem;">Badge icon / emblem</label>
+              <input type="text" id="cohort-brand-badge" class="cohort-input" placeholder="🌊" maxlength="16" autocomplete="off" oninput="cohortPreviewBrandingForm()">
+              <label class="cohort-muted" style="font-size:.65rem;">Group motto saying</label>
+              <input type="text" id="cohort-brand-slogan" class="cohort-input" placeholder="Together we learn, together we grow." maxlength="200" autocomplete="off" oninput="cohortPreviewBrandingForm()">
+              <button type="button" class="cohort-btn" id="cohort-brand-save-btn" onclick="cohortLeaderSaveBranding()">Simpan tampilan kohort</button>
               <span id="cohort-brand-status" class="cohort-muted" style="margin-top:10px;display:block;"></span>
             </div>
             <div id="cohort-mentor-subtabs" class="cohort-subtabs">
@@ -10012,9 +10040,52 @@ function cohortResolveThemeCohortRowForUi() {
   return null;
 }
 
+function cohortCurrentUserCanManageRow(cohortRow) {
+  if (!cohortRow || !currentUser) return false;
+  if (isPlatformAdmin()) return true;
+  if (cohortRow.mentor_user_id === currentUser.id) return true;
+  return (_cohortState.studentRows || []).some(m =>
+    m.cohort_id === cohortRow.id && m.role === 'mentor' && m.status === 'active'
+  );
+}
+
 function cohortRefreshDashboardTheme() {
   cohortApplyDashboardThemeFromRow(cohortResolveThemeCohortRowForUi());
   cohortUpdateCohortChrome();
+}
+
+function cohortPreviewBrandingForm() {
+  const nameEl = document.getElementById('cohort-brand-name');
+  const priEl = document.getElementById('cohort-brand-primary');
+  const secEl = document.getElementById('cohort-brand-secondary');
+  const badgeEl = document.getElementById('cohort-brand-badge');
+  const sloganEl = document.getElementById('cohort-brand-slogan');
+  const prev = document.getElementById('cohort-brand-preview-badge');
+  const motto = document.getElementById('cohort-brand-preview-motto');
+  const pri = _cohortParseThemeHex(priEl && priEl.value) || '#0c4a6e';
+  const sec = _cohortParseThemeHex(secEl && secEl.value) || '#d4b896';
+  const pr = _cohortHexToRgb(pri);
+  const end = _cohortMixRgb(pr, { r: 8, g: 12, b: 22 }, 0.55);
+  const name = (nameEl && nameEl.value || 'Ocean Blue').trim();
+  const badge = (badgeEl && badgeEl.value || '🌊').trim();
+  document.documentElement.style.setProperty('--cohort-primary', pri);
+  document.documentElement.style.setProperty('--cohort-secondary', sec);
+  document.documentElement.style.setProperty('--cohort-sidebar-end', _cohortRgbStr(end));
+  if (prev) prev.textContent = (badge ? badge + ' ' : '') + (name || 'Kohort');
+  if (motto) motto.textContent = (sloganEl && sloganEl.value || '').trim() || 'Together we learn, together we grow.';
+}
+
+function cohortSyncBrandColor(which, source) {
+  const text = document.getElementById(which === 'primary' ? 'cohort-brand-primary' : 'cohort-brand-secondary');
+  const picker = document.getElementById(which === 'primary' ? 'cohort-brand-primary-picker' : 'cohort-brand-secondary-picker');
+  if (!text || !picker) return;
+  if (source === 'picker') {
+    text.value = picker.value;
+  } else {
+    const hex = _cohortParseThemeHex(text.value);
+    if (hex) picker.value = hex;
+  }
+  cohortPreviewBrandingForm();
 }
 
 async function cohortLoadLightForTheme() {
@@ -10032,8 +10103,10 @@ async function cohortLoadLightForTheme() {
       .eq('user_id', currentUser.id)
       .eq('status', 'active');
     const st = (mem || []).find(m => m.role === 'student');
-    if (st) {
-      const { data: c } = await _supabase.from('cohorts').select('*').eq('id', st.cohort_id).maybeSingle();
+    const mt = (mem || []).find(m => m.role === 'mentor');
+    const target = mt || st;
+    if (target) {
+      const { data: c } = await _supabase.from('cohorts').select('*').eq('id', target.cohort_id).maybeSingle();
       row = c;
     }
   }
@@ -10090,18 +10163,24 @@ async function cohortLeaderSaveBranding() {
     if (st) st.textContent = 'Tidak ada kohort yang kamu pimpin.';
     return;
   }
-  if (c.mentor_user_id !== currentUser.id && !isPlatformAdmin()) {
+  if (!cohortCurrentUserCanManageRow(c)) {
     if (st) st.textContent = 'Hanya pemimpin kohort atau admin yang bisa menyimpan.';
     return;
   }
+  const nameEl = document.getElementById('cohort-brand-name');
   const priEl = document.getElementById('cohort-brand-primary');
   const secEl = document.getElementById('cohort-brand-secondary');
   const badgeEl = document.getElementById('cohort-brand-badge');
   const sloganEl = document.getElementById('cohort-brand-slogan');
+  const name = nameEl ? String(nameEl.value || '').trim() : null;
   const pri = priEl ? String(priEl.value || '').trim() : null;
   const sec = secEl ? String(secEl.value || '').trim() : null;
   const badge = badgeEl ? String(badgeEl.value || '').trim() : null;
   const slogan = sloganEl ? String(sloganEl.value || '').trim() : null;
+  if (!name) {
+    if (st) st.textContent = 'Nama kohort wajib diisi.';
+    return;
+  }
   if (st) st.textContent = 'Menyimpan…';
   const { error } = await _supabase.rpc('cohort_leader_update_branding', {
     p_cohort: c.id,
@@ -10115,7 +10194,17 @@ async function cohortLeaderSaveBranding() {
     if (st) st.textContent = error.message || 'Gagal simpan.';
     return;
   }
-  if (st) st.textContent = 'Tersimpan.';
+  let nameWarning = '';
+  if (name !== (c.name || '')) {
+    const { error: nameError } = await _supabase.rpc('cohort_leader_update_identity', {
+      p_cohort: c.id,
+      p_name: name,
+    });
+    if (nameError) {
+      nameWarning = ' Nama kohort aktif setelah migrasi database terbaru diterapkan.';
+    }
+  }
+  if (st) st.textContent = 'Tersimpan. Tampilan siswa akan mengikuti tema ini.' + nameWarning;
   const { data: fresh } = await _supabase.from('cohorts').select('*').eq('id', c.id).maybeSingle();
   if (fresh) {
     _cohortState.primaryMentorCohort = fresh;
@@ -10269,6 +10358,14 @@ async function cohortInit() {
   } else {
     const res = await _supabase.from('cohorts').select('*').eq('mentor_user_id', currentUser.id);
     led = res.data || [];
+    const mentorIds = [...new Set((mem || []).filter(m => m.role === 'mentor').map(m => m.cohort_id).filter(Boolean))];
+    if (mentorIds.length) {
+      const { data: memberLed } = await _supabase.from('cohorts').select('*').in('id', mentorIds);
+      const seen = new Set((led || []).map(c => c.id));
+      (memberLed || []).forEach(c => {
+        if (!seen.has(c.id)) led.push(c);
+      });
+    }
   }
   _cohortState.mentorCohorts = led || [];
   _cohortState.primaryMentorCohort = (led && led[0]) || null;
@@ -10735,19 +10832,27 @@ async function cohortRenderMentorPanels() {
       </div>`;
   }
   if (bc) {
-    const isRealLeader = currentUser && c.mentor_user_id === currentUser.id;
+    const isRealLeader = cohortCurrentUserCanManageRow(c) && !isCohortPlatformAdmin();
     const adminPrevLeader = isCohortPlatformAdmin() && cohortGetPreviewShell() === 'leader';
     const canEditBrand = isRealLeader || adminPrevLeader;
     bc.style.display = isRealLeader || adminPrevLeader ? '' : 'none';
     if (bc.style.display !== 'none') {
+      const name = document.getElementById('cohort-brand-name');
       const pri = document.getElementById('cohort-brand-primary');
       const sec = document.getElementById('cohort-brand-secondary');
+      const priPick = document.getElementById('cohort-brand-primary-picker');
+      const secPick = document.getElementById('cohort-brand-secondary-picker');
       const badge = document.getElementById('cohort-brand-badge');
       const slogan = document.getElementById('cohort-brand-slogan');
       const btn = document.getElementById('cohort-brand-save-btn');
       const stBr = document.getElementById('cohort-brand-status');
-      if (pri) pri.value = (c.theme_primary || '').trim();
-      if (sec) sec.value = (c.theme_secondary || '').trim();
+      const priHex = _cohortParseThemeHex(c.theme_primary) || '#0c4a6e';
+      const secHex = _cohortParseThemeHex(c.theme_secondary) || '#d4b896';
+      if (name) name.value = (c.name || '').trim();
+      if (pri) pri.value = priHex;
+      if (sec) sec.value = secHex;
+      if (priPick) priPick.value = priHex;
+      if (secPick) secPick.value = secHex;
       if (badge) badge.value = (c.badge_icon || '').trim();
       if (slogan) slogan.value = (c.slogan || '').trim();
       if (btn) {
@@ -10756,6 +10861,7 @@ async function cohortRenderMentorPanels() {
         btn.title = canEditBrand ? '' : 'Hanya pemimpin kohort atau admin yang dapat menyimpan.';
       }
       if (stBr) stBr.textContent = '';
+      cohortPreviewBrandingForm();
     }
   }
 }
