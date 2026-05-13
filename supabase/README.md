@@ -34,6 +34,11 @@ on conflict (slug) do nothing;
 
 Students join in the app via **Kohort → Gabung** with invite code `LARIS2026` (or whatever you set).
 
+### Roles: platform admin vs cohort leader
+
+- **Platform admin** (Analytics tab, cohort Student|Leader preview): emails listed in the site code as `PLATFORM_ADMIN_EMAILS` in `index.html` (default: `stevenwilson614@gmail.com`). To add more admins later, add their emails to that array and redeploy.
+- **Cohort leader (mentor)** for a cohort: the `mentor_user_id` column on that row in `public.cohorts` must be the Auth user id of the leader (e.g. `stevenfwilson1@gmail.com`). After both users exist in **Authentication**, run `supabase/seed_admin_and_leader.sql` in the SQL Editor (adjust `slug` / `invite_code` if needed).
+
 ### Invite links for signup (no extra SQL)
 
 Mentors can share a link so the code is saved when the student opens the site, then applied automatically after they log in or sign up (email or Google):

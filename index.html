@@ -7952,6 +7952,12 @@ const SUPA_URL = 'https://bzmvlraziqevqdyotvgy.supabase.co';
 const SUPA_KEY = 'sb_publishable_KDSWIJJLckser1e1hk7bbA_yMChRPog';
 const SUPA_HDR = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
 
+// Platform admins (owner analytics + cohort Student|Leader preview). Add emails here. Cohort leaders are `cohorts.mentor_user_id` in DB — see supabase/seed_admin_and_leader.sql
+const PLATFORM_ADMIN_EMAILS = ['stevenwilson614@gmail.com'];
+function isPlatformAdmin() {
+  return !!(currentUser && PLATFORM_ADMIN_EMAILS.includes(String(currentUser.email || '').toLowerCase()));
+}
+
 // ── FRESHNESS BADGE — last Monday date ─────────────────────
 function initFreshnessBadge() {
   const el = document.getElementById('freshness-text');
@@ -8134,7 +8140,7 @@ function updateAuthUI() {
     if (dashEmail)  dashEmail.textContent  = currentUser.email;
     // show admin nav for owner only
     const adminNav = document.getElementById('dash-nav-admin');
-    if (adminNav) adminNav.style.display = currentUser.email === 'stevenwilson614@gmail.com' ? '' : 'none';
+    if (adminNav) adminNav.style.display = isPlatformAdmin() ? '' : 'none';
     // topbar avatar
     const tbAv = document.getElementById('dash-topbar-av');
     const tbUn = document.getElementById('dash-topbar-uname');
@@ -9000,7 +9006,7 @@ let _creditProgress = 0; // searches completed today toward next credit
 // ── Admin Analytics ──────────────────────────────────────────
 async function loadAdminStats() {
   if (!_supabase || !currentUser) return;
-  if (currentUser.email !== 'stevenwilson614@gmail.com') return;
+  if (!isPlatformAdmin()) return;
   try {
     const { data, error } = await _supabase.rpc('admin_stats');
     if (error || !data) return;
@@ -9635,10 +9641,8 @@ function toggleDashSub(sub) {
 //  COHORT COMMUNITY — student / mentor dashboards + admin preview
 // ════════════════════════════════════════════════════════════
 
-const COHORT_ADMIN_EMAIL = 'stevenwilson614@gmail.com';
-
 function isCohortPlatformAdmin() {
-  return currentUser && currentUser.email === COHORT_ADMIN_EMAIL;
+  return isPlatformAdmin();
 }
 
 function cohortGetPreviewShell() {
