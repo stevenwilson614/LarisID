@@ -10263,7 +10263,8 @@ function cohortApplyShellUI() {
     stu.style.display = sh === 'student' ? '' : 'none';
     men.style.display = sh === 'leader' ? '' : 'none';
   } else {
-    stu.style.display = '';
+    const leaderOnly = _cohortState.hasMentorCohort && !_cohortState.primaryStudentCohortId;
+    stu.style.display = leaderOnly ? 'none' : '';
     men.style.display = _cohortState.hasMentorCohort ? '' : 'none';
   }
 }
@@ -10308,8 +10309,15 @@ async function cohortJoinInvite() {
     return;
   }
   if (inp) inp.value = '';
-  if (st) st.textContent = 'Berhasil gabung kohort.';
   await cohortInit();
+  if (st) st.textContent = _cohortState.hasMentorCohort
+    ? 'Berhasil gabung sebagai pemimpin kohort. Panel branding tersedia di bawah.'
+    : 'Berhasil gabung kohort.';
+  if (_cohortState.hasMentorCohort) {
+    setTimeout(() => {
+      document.getElementById('cohort-branding-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 120);
+  }
 }
 
 async function cohortInit() {
