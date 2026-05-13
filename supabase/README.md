@@ -34,6 +34,25 @@ on conflict (slug) do nothing;
 
 Students join in the app via **Kohort → Gabung** with invite code `LARIS2026` (or whatever you set).
 
+## Cohort theme & leader branding (`migrations/20260215120000_cohort_theme_leader_branding.sql`)
+
+Adds to `cohorts`: `theme_primary`, `theme_secondary`, `theme_json`, `badge_icon`, `slogan` (all readable by members; **writes only** via `cohort_leader_update_branding` RPC by `mentor_user_id`).
+
+Adds to `community_posts`: `kind`, `metadata`, `hidden_at`, `hidden_by` for structured feed + moderation (RLS: students do not see hidden posts from others).
+
+After applying, cohort leaders set colors (hex `#RRGGBB`) and slogan in the app under **Kohort → Leader → Branding & tema kohort**.
+
+### Seed example with ocean / sand theme
+
+```sql
+update public.cohorts
+set theme_primary = '#0c4a6e',
+    theme_secondary = '#d4b896',
+    badge_icon = '🌊',
+    slogan = 'Cohort Ocean Blue — fokus & akuntabilitas'
+where slug = 'demo';
+```
+
 ### Roles: platform admin vs cohort leader
 
 - **Platform admin** (Analytics tab, cohort Student|Leader preview): emails listed in the site code as `PLATFORM_ADMIN_EMAILS` in `index.html` (default: `stevenwilson614@gmail.com`). To add more admins later, add their emails to that array and redeploy.
