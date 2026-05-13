@@ -17,6 +17,7 @@
 <meta name="twitter:title" content="LarisID — Riset Produk Shopee Gratis">
 <meta name="twitter:description" content="Temukan produk terlaris untuk dijual di Shopee. Gratis selamanya.">
 <meta name="keywords" content="riset produk shopee, shopee seller, produk laris shopee, viability score, product research indonesia, shopee product finder">
+<link rel="icon" type="image/svg+xml" href="/images/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
@@ -4058,14 +4059,14 @@ html,body{overflow-x:hidden;max-width:100%;}
           <span>Discover</span>
         </div>
 
-        <div class="dash-nav-item" id="dash-nav-products" onclick="toggleDashSub('products')">
+        <div class="dash-nav-item" id="dash-nav-deepdive" onclick="switchDashView('deepdive')">
           <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span>
-          <span>Products</span>
-          <span class="dash-nav-arrow">&#9654;</span>
+          <span>Deep Dive</span>
         </div>
-        <div class="dash-nav-sub" id="dash-sub-products">
-          <div class="dash-nav-sub-item" id="dash-sub-tracker" onclick="switchDashView('tracker')">Tracker</div>
-          <div class="dash-nav-sub-item" id="dash-sub-deepdive" onclick="switchDashView('deepdive')">Deep Dive</div>
+
+        <div class="dash-nav-item" id="dash-nav-tracker" onclick="switchDashView('tracker')">
+          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+          <span>Tracker</span>
         </div>
 
         <div class="dash-nav-item" id="dash-nav-ai" onclick="switchDashView('ai')">
@@ -4096,9 +4097,9 @@ html,body{overflow-x:hidden;max-width:100%;}
 
       </nav>
 
-      <button onclick="localStorage.removeItem('laris_welcomed');showWelcomeVideo()" style="width:100%;margin-bottom:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:rgba(255,255,255,.7);font-size:.72rem;font-weight:600;padding:7px 10px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;">
+      <button onclick="localStorage.removeItem('laris_dashboard_tour_v1');startDashboardOnboarding({ force: true })" style="width:100%;margin-bottom:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:rgba(255,255,255,.7);font-size:.72rem;font-weight:600;padding:7px 10px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;">
         <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg>
-        Tonton Tutorial
+        Ulangi Panduan
       </button>
       <div class="dash-user-info">
         <div class="dash-user-avatar" id="dash-avatar">?</div>
@@ -5350,114 +5351,6 @@ html,body{overflow-x:hidden;max-width:100%;}
 
         <div id="dash-view-discover" style="display:none;position:relative;">
 
-          <!-- ── LOADING SCREEN ── -->
-          <div id="dsc-loading-screen" style="display:none;position:absolute;inset:0;background:#FAFAF8;z-index:100;overflow:hidden;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;">
-
-            <!-- Logo + headline -->
-            <div style="text-align:center;margin-bottom:36px;">
-              <div style="font-size:1.5rem;font-weight:800;color:#111827;margin-bottom:10px;">Laris<span style="color:#E8442A;">ID</span></div>
-              <div style="font-size:1.65rem;font-weight:800;color:#111827;margin-bottom:8px;">Lagi cari <span style="color:#E8442A;">produk laris</span> untuk kamu...</div>
-              <div style="font-size:.85rem;color:#6B7280;">AI sedang mengumpulkan data dan menganalisa ribuan produk di Shopee</div>
-            </div>
-
-            <!-- Fan of cards -->
-            <div style="position:relative;width:780px;max-width:100%;height:300px;margin-bottom:40px;perspective:1200px;" id="dsc-load-fan">
-              <!-- sparkles -->
-              <div style="position:absolute;top:10px;left:140px;font-size:1.1rem;color:#F97316;animation:dsc-sparkle 1.8s ease-in-out infinite;">✦</div>
-              <div style="position:absolute;top:30px;right:130px;font-size:.8rem;color:#F97316;animation:dsc-sparkle 1.8s ease-in-out infinite .6s;">✦</div>
-              <div style="position:absolute;bottom:20px;left:200px;font-size:.7rem;color:#F97316;animation:dsc-sparkle 1.8s ease-in-out infinite 1.2s;">✦</div>
-              <div style="position:absolute;bottom:40px;right:170px;font-size:1rem;color:#F97316;animation:dsc-sparkle 1.8s ease-in-out infinite .3s;">✦</div>
-
-              <!-- card 1 far left -->
-              <div class="dsc-load-card" style="left:0px;transform:rotate(-14deg) translateY(30px) scale(.78);opacity:.6;z-index:1;">
-                <div class="dsc-load-card-img"><img src="https://cf.shopee.co.id/file/id-11134207-7r98w-ly0dcea45x1m64" alt="" style="width:100%;height:100%;object-fit:cover;"></div>
-                <div class="dsc-load-card-body">
-                  <div class="dsc-load-card-name">Roller Blind Blackout Custom Tirai Jendela Minimalis...</div>
-                  <div class="dsc-load-card-store">Indra Interior Jakarta</div>
-                  <div class="dsc-load-card-price-row"><span class="dsc-load-card-lbl">HARGA</span><span class="dsc-load-card-price">Rp 149 rb</span></div>
-                  <div class="dsc-load-badge high">Tinggi</div>
-                </div>
-              </div>
-              <!-- card 2 left -->
-              <div class="dsc-load-card" style="left:130px;transform:rotate(-7deg) translateY(15px) scale(.88);opacity:.8;z-index:2;">
-                <div class="dsc-load-card-img"><img src="https://cf.shopee.co.id/file/156d69d498f597c163ac0540ea7f9da7" alt="" style="width:100%;height:100%;object-fit:cover;"></div>
-                <div class="dsc-load-card-body">
-                  <div class="dsc-load-card-name">[PROMO] Kaos Polos Lengan Pendek Cotton Combed 30S</div>
-                  <div class="dsc-load-card-store">PT KAOS ONLINE INDONESIA</div>
-                  <div class="dsc-load-card-price-row"><span class="dsc-load-card-lbl">HARGA</span><span class="dsc-load-card-price">Rp 33 rb</span></div>
-                  <div class="dsc-load-badge high">Tinggi</div>
-                </div>
-              </div>
-              <!-- card 3 center -->
-              <div class="dsc-load-card" style="left:270px;transform:translateY(-18px) scale(1.05);opacity:1;z-index:5;box-shadow:0 20px 60px rgba(0,0,0,.18);">
-                <div class="dsc-load-card-img"><img src="https://cf.shopee.co.id/file/id-11134207-8224u-mj88gr1hnuo065" alt="" style="width:100%;height:100%;object-fit:cover;"></div>
-                <div class="dsc-load-card-body">
-                  <div class="dsc-load-card-name">Giv White Sabun Mandi Cair Mulberry & Collagen Pouch...</div>
-                  <div class="dsc-load-card-store">Watsons Indonesia Official</div>
-                  <div class="dsc-load-card-price-row"><span class="dsc-load-card-lbl">HARGA</span><span class="dsc-load-card-price">Rp 45 rb</span></div>
-                  <div class="dsc-load-badge med">Sedang</div>
-                </div>
-              </div>
-              <!-- card 4 right -->
-              <div class="dsc-load-card" style="left:440px;transform:rotate(7deg) translateY(15px) scale(.88);opacity:.8;z-index:2;">
-                <div class="dsc-load-card-img"><img src="https://cf.shopee.co.id/file/e770c37f3532070736b3223f7b97c882" alt="" style="width:100%;height:100%;object-fit:cover;"></div>
-                <div class="dsc-load-card-body">
-                  <div class="dsc-load-card-name">KAOS POLOS LENGAN PENDEK 24s SOFT COTTON...</div>
-                  <div class="dsc-load-card-store">redtomatoes</div>
-                  <div class="dsc-load-card-price-row"><span class="dsc-load-card-lbl">HARGA</span><span class="dsc-load-card-price">Rp 34 rb</span></div>
-                  <div class="dsc-load-badge high">Tinggi</div>
-                </div>
-              </div>
-              <!-- card 5 far right -->
-              <div class="dsc-load-card" style="left:580px;transform:rotate(14deg) translateY(30px) scale(.78);opacity:.6;z-index:1;">
-                <div class="dsc-load-card-img"><img src="https://cf.shopee.co.id/file/id-11134207-7ra0g-mcsvk7d55sqd62" alt="" style="width:100%;height:100%;object-fit:cover;"></div>
-                <div class="dsc-load-card-body">
-                  <div class="dsc-load-card-name">SET SENDOK GARPU PLASTIK PREMIUM / SENDOK SET...</div>
-                  <div class="dsc-load-card-store">Hygiene Indonesia</div>
-                  <div class="dsc-load-card-price-row"><span class="dsc-load-card-lbl">HARGA</span><span class="dsc-load-card-price">Rp 28 rb</span></div>
-                  <div class="dsc-load-badge high">Tinggi</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Progress steps -->
-            <div style="display:flex;align-items:flex-start;gap:0;margin-bottom:24px;width:600px;max-width:100%;">
-              <div class="dsc-load-step active" id="dsc-step-1">
-                <div class="dsc-load-step-icon">🛍️</div>
-                <div class="dsc-load-step-name">Mengumpulkan Produk</div>
-                <div class="dsc-load-step-sub">Menemukan produk potensial</div>
-              </div>
-              <div class="dsc-load-step-line" id="dsc-step-line-1"></div>
-              <div class="dsc-load-step" id="dsc-step-2">
-                <div class="dsc-load-step-icon">🧠</div>
-                <div class="dsc-load-step-name">Menganalisa Data</div>
-                <div class="dsc-load-step-sub">Menghitung skor &amp; peluang</div>
-              </div>
-              <div class="dsc-load-step-line" id="dsc-step-line-2"></div>
-              <div class="dsc-load-step" id="dsc-step-3">
-                <div class="dsc-load-step-icon">📊</div>
-                <div class="dsc-load-step-name">Menyusun Hasil</div>
-                <div class="dsc-load-step-sub">Menyiapkan rekomendasi terbaik</div>
-              </div>
-            </div>
-
-            <!-- Progress bar -->
-            <div style="width:600px;max-width:100%;margin-bottom:20px;">
-              <div style="height:8px;background:#E5E7EB;border-radius:4px;overflow:hidden;">
-                <div id="dsc-load-bar" style="height:8px;background:linear-gradient(90deg,#E8442A,#F97316);border-radius:4px;width:0%;transition:width .4s ease;"></div>
-              </div>
-              <div style="text-align:right;font-size:.75rem;font-weight:600;color:#E8442A;margin-top:4px;" id="dsc-load-pct">0%</div>
-            </div>
-
-            <!-- Did you know -->
-            <div style="width:600px;max-width:100%;background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:12px;">
-              <span style="font-size:1.2rem;flex-shrink:0;">💡</span>
-              <div><span style="font-weight:700;color:#374151;font-size:.78rem;">Tahukah kamu?</span> <span style="font-size:.78rem;color:#6B7280;" id="dsc-load-tip">Produk dengan skor tinggi memiliki peluang jual lebih besar dan kompetitor lebih sedikit.</span></div>
-            </div>
-
-          </div>
-          <!-- end loading screen -->
-
           <div class="dsc-page">
 
             <div class="dsc-header">
@@ -5553,6 +5446,19 @@ html,body{overflow-x:hidden;max-width:100%;}
                     </button>
                   </div>
                   <span class="dsc-count" id="dsc-count"></span>
+                </div>
+                <div id="dsc-loading-screen" style="display:none;background:#FFFBF8;border:1px solid #FDE7E2;border-radius:10px;padding:14px 14px 12px;margin-bottom:10px;">
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                    <div class="spinner" style="width:18px;height:18px;border-width:2px;flex-shrink:0;"></div>
+                    <div style="font-size:.82rem;font-weight:700;color:#1F2937;">Lagi cari produk laris buat kamu...</div>
+                  </div>
+                  <div style="height:6px;background:#F3F4F6;border-radius:999px;overflow:hidden;">
+                    <div id="dsc-load-bar" style="height:6px;background:linear-gradient(90deg,#E8442A,#F97316);border-radius:999px;width:0%;transition:width .4s ease;"></div>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:7px;gap:10px;">
+                    <div id="dsc-load-tip" style="font-size:.7rem;color:#6B7280;line-height:1.4;">Produk dengan skor tinggi memiliki peluang jual lebih besar dan kompetitor lebih sedikit.</div>
+                    <div style="font-size:.72rem;font-weight:700;color:#E8442A;white-space:nowrap;" id="dsc-load-pct">0%</div>
+                  </div>
                 </div>
 
                 <!-- Mobile-only sort chips (⭐ Skor Tinggi first = goal) -->
@@ -8061,8 +7967,8 @@ function _authOnSignIn(session) {
   if (onLanding) openProfile();
   renderHomeGrid();
   if (currentProduct) renderDetail(currentProduct);
-  // Show welcome video for first-time users
-  setTimeout(showWelcomeVideo, 1200);
+  // Start dashboard onboarding for first-time users
+  setTimeout(() => startDashboardOnboarding(), 1200);
   setTimeout(() => { pendingCohortJoinIfAny().catch(() => {}); }, 400);
 }
 
@@ -9498,7 +9404,7 @@ function switchDashTab(tab) {
 // ════════════════════════════════════════════════════════════
 
 const PDB_VIEWS = ['home','product-database','product-tracker','opportunity-finder','category-trends','suppliers','keywords','estimator','marketing','saved','education','dashboard','discover','tracker','deepdive','ai','alerts','credits','cohort','admin'];
-const PDB_SUB_MAP = {'product-database':'research','product-tracker':'research','opportunity-finder':'research','category-trends':'research','tracker':'products','deepdive':'products'};
+const PDB_SUB_MAP = {'product-database':'research','product-tracker':'research','opportunity-finder':'research','category-trends':'research'};
 
 // View titles for topbar
 const VIEW_TITLES = {
@@ -9510,7 +9416,7 @@ const VIEW_TITLES = {
 };
 
 // New nav items for the redesigned sidebar
-const NEW_NAV_IDS = ['dashboard','discover','products','ai','alerts','credits'];
+const NEW_NAV_IDS = ['dashboard','discover','deepdive','tracker','ai','alerts','credits'];
 const PDB_CATS = ['Bayi & Anak','Motor & Mobil','Rumah','Hewan Peliharaan','Dapur','Kamar Mandi','Elektronik','Fashion','Kecantikan','Kesehatan','Olahraga','Outdoor & Camping','Sepeda','Tanaman','Taman','Keamanan','Hobi & Kerajinan','Alat Tulis','HP & Gadget'];
 
 let _pdbSortField  = 'total_sold';
@@ -9529,19 +9435,10 @@ function switchDashView(view) {
   if (titleEl) titleEl.textContent = VIEW_TITLES[view] || view;
 
   // New sidebar nav: highlight correct item
-  ['dashboard','discover','products','ai','alerts','cohort'].forEach(k => {
+  ['dashboard','discover','deepdive','tracker','ai','alerts','cohort'].forEach(k => {
     const el = document.getElementById(`dash-nav-${k}`);
     if (!el) return;
-    const isProducts = k === 'products' && PDB_SUB_MAP[view] === 'products';
-    el.classList.toggle('active', k === view || isProducts);
-    if (k === 'products') el.classList.toggle('open', isProducts);
-  });
-  // Products submenu open/close
-  const prodSub = document.getElementById('dash-sub-products');
-  if (prodSub) prodSub.classList.toggle('open', PDB_SUB_MAP[view] === 'products');
-  ['tracker','deepdive'].forEach(k => {
-    const el = document.getElementById(`dash-sub-${k}`);
-    if (el) el.classList.toggle('active', k === view);
+    el.classList.toggle('active', k === view);
   });
 
   // Legacy top-level nav (keep working for old views)
@@ -9585,13 +9482,14 @@ function switchDashView(view) {
   if (view === 'credits'   && typeof creditsInit  === 'function') creditsInit();
   if (view === 'cohort'    && typeof cohortInit   === 'function') cohortInit();
   mbnSync(view);
+  dashboardTourHandleViewChange(view);
 }
 
 // ── MOBILE BOTTOM NAV ──────────────────────────────────────────
 const MBN_MAP = {
   dashboard:'mbn-dashboard', discover:'mbn-discover',
   ai:'mbn-ai', tracker:'mbn-tracker',
-  deepdive:'mbn-tracker',          // deep dive lives under tracker in mobile nav
+  deepdive:'mbn-more',
   alerts:'mbn-more', credits:'mbn-more', cohort:'mbn-more',
   'product-database':'mbn-more', keywords:'mbn-more', estimator:'mbn-more',
 };
@@ -10662,6 +10560,7 @@ function dscOpenDeepDive(key) {
     ddRender(p);
     ddLoadKeywordContext(listing);
     ddLoadTrendHistory(listing);
+    dashboardTourHandleProductOpen();
   }, 0);
 }
 
@@ -12445,6 +12344,7 @@ function trkIsTracked(listing) { return trkLoad().some(t => t.key === trkKey(lis
 function ddToggleTrack() {
   const listing = _ddKwListing || _ddCurrentP?._listing;
   if (!listing) return;
+  dashboardTourHandleTrackClick();
   const key = trkKey(listing);
   let arr = trkLoad();
   const idx = arr.findIndex(t => t.key === key);
@@ -17889,6 +17789,80 @@ const TOUR_STEPS = [
 
 let _tourStep   = 0;
 let _tourActive = false;
+let _dashboardTourStep = 0;
+let _dashboardTourActive = false;
+let _dashboardTourPending = null;
+let _dashboardTourRetry = 0;
+const DASHBOARD_TOUR_KEY = 'laris_dashboard_tour_v1';
+
+const DASHBOARD_TOUR_STEPS = [
+  {
+    sel: '#dash-nav-discover',
+    title: 'Mulai dari Discover',
+    body: 'Klik menu Discover untuk mulai riset produk yang sedang naik.',
+    pos: 'right',
+    onEnter: () => switchDashView('dashboard'),
+    onNext: () => switchDashView('discover'),
+  },
+  {
+    sel: () => window.matchMedia('(max-width: 860px)').matches
+      ? (document.getElementById('dsc-sort-chips') || document.querySelector('.dsc-table-controls'))
+      : document.getElementById('dsc-filter-panel'),
+    title: 'Ini Area Filter',
+    body: 'Di sini kamu bisa atur harga, omzet, skor, dan kategori supaya produk yang muncul lebih tepat.',
+    pos: 'left',
+    onEnter: () => switchDashView('discover'),
+  },
+  {
+    sel: () => document.querySelector('#dsc-card-grid .dsc-card'),
+    title: 'Klik Salah Satu Produk',
+    body: 'Pilih produk apa saja dari Discover untuk membuka halaman Deep Dive.',
+    pos: 'bottom',
+    waitFor: 'product-open',
+  },
+  {
+    sel: '#dd-tabs',
+    title: 'Pelajari Tab Deep Dive',
+    body: 'Di sini ada Listing, Analisa Pasar, dan Kompetitor untuk evaluasi produk lebih detail.',
+    pos: 'bottom',
+    onEnter: () => { switchDashView('deepdive'); ddSwitchTab('listing'); },
+  },
+  {
+    sel: '#dd-track-btn',
+    title: 'Lacak Produk',
+    body: 'Klik tombol Lacak Produk supaya data produk ini masuk ke tracker kamu.',
+    pos: 'left',
+    waitFor: 'track-click',
+  },
+  {
+    sel: '#dash-nav-tracker',
+    title: 'Buka Halaman Tracker',
+    body: 'Tracker dipakai untuk memantau perubahan harga dan performa produk yang kamu lacak.',
+    pos: 'right',
+    onNext: () => switchDashView('tracker'),
+  },
+  {
+    sel: () => document.getElementById('mls-product-pick') || document.getElementById('mls-ai-box'),
+    title: 'Mulai Berjualan + AI',
+    body: 'Masuk ke Mulai Berjualan, pilih produk, lalu cek AI chat, kompetisi, dan insight pasar.',
+    pos: 'left',
+    onEnter: () => switchDashView('ai'),
+  },
+  {
+    sel: '#dash-nav-alerts',
+    title: 'Cek Alerts',
+    body: 'Alerts memberi sinyal perubahan penting pada produk yang sedang kamu pantau.',
+    pos: 'right',
+    onNext: () => switchDashView('alerts'),
+  },
+  {
+    sel: '#dash-nav-credits',
+    title: 'Pahami Sistem Kredit',
+    body: 'Kredit dipakai untuk fitur premium seperti Deep Dive, AI, dan tracking. Kamu bisa dapat kredit gratis dari Extension.',
+    pos: 'right',
+    onNext: () => switchDashView('credits'),
+  },
+];
 
 function startTour() {
   if (localStorage.getItem('larisid_tour_v1')) return;
@@ -17980,6 +17954,10 @@ function positionTourTooltip(rect, pos) {
 }
 
 function nextTourStep() {
+  if (_dashboardTourActive) {
+    nextDashboardTourStep();
+    return;
+  }
   _tourStep++;
   if (_tourStep >= TOUR_STEPS.length) {
     endTour();
@@ -17989,10 +17967,120 @@ function nextTourStep() {
 }
 
 function endTour() {
+  if (_dashboardTourActive) {
+    endDashboardTour();
+    return;
+  }
   _tourActive = false;
   localStorage.setItem('larisid_tour_v1', '1');
   const overlay = document.getElementById('tour-overlay');
   if (overlay) overlay.classList.remove('active');
+}
+
+function startDashboardOnboarding(opts) {
+  const force = !!(opts && opts.force);
+  if (!currentUser) return;
+  if (!force && localStorage.getItem(DASHBOARD_TOUR_KEY)) return;
+  _dashboardTourStep = 0;
+  _dashboardTourActive = true;
+  _dashboardTourPending = null;
+  _dashboardTourRetry = 0;
+  const overlay = document.getElementById('tour-overlay');
+  if (overlay) overlay.classList.add('active');
+  showDashboardTourStep(0);
+}
+
+function showDashboardTourStep(i) {
+  if (!_dashboardTourActive) return;
+  const step = DASHBOARD_TOUR_STEPS[i];
+  if (!step) { endDashboardTour(); return; }
+  if (typeof step.onEnter === 'function') step.onEnter();
+
+  const target = typeof step.sel === 'function' ? step.sel() : document.querySelector(step.sel);
+  if (!target) {
+    if (_dashboardTourRetry < 16) {
+      _dashboardTourRetry++;
+      setTimeout(() => showDashboardTourStep(i), 150);
+    } else {
+      _dashboardTourRetry = 0;
+      nextDashboardTourStep();
+    }
+    return;
+  }
+  _dashboardTourRetry = 0;
+  target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+
+  setTimeout(() => {
+    const rect = target.getBoundingClientRect();
+    const pad  = 8;
+    const spot = document.getElementById('tour-spotlight');
+    if (!spot) return;
+    spot.style.left   = (rect.left - pad) + 'px';
+    spot.style.top    = (rect.top  - pad) + 'px';
+    spot.style.width  = (rect.width  + pad * 2) + 'px';
+    spot.style.height = (rect.height + pad * 2) + 'px';
+
+    document.getElementById('tour-title').textContent = step.title;
+    document.getElementById('tour-body').textContent  = step.body;
+    const dotsHtml = DASHBOARD_TOUR_STEPS.map((_, idx) =>
+      `<span class="tour-dot${idx === i ? ' active' : ''}"></span>`
+    ).join('');
+    document.getElementById('tour-progress').innerHTML = `<div class="tour-dots">${dotsHtml}</div>`;
+
+    const nextBtn = document.getElementById('tour-next');
+    if (!nextBtn) return;
+    if (step.waitFor === 'product-open') nextBtn.textContent = 'Saya sudah klik produk';
+    else if (step.waitFor === 'track-click') nextBtn.textContent = 'Saya sudah klik lacak';
+    else nextBtn.textContent = (i >= DASHBOARD_TOUR_STEPS.length - 1) ? 'Selesai' : 'Lanjut →';
+
+    positionTourTooltip(rect, step.pos);
+  }, 80);
+}
+
+function nextDashboardTourStep() {
+  if (!_dashboardTourActive) return;
+  const step = DASHBOARD_TOUR_STEPS[_dashboardTourStep];
+  if (step && typeof step.onNext === 'function') step.onNext();
+  _dashboardTourStep++;
+  if (_dashboardTourStep >= DASHBOARD_TOUR_STEPS.length) endDashboardTour();
+  else showDashboardTourStep(_dashboardTourStep);
+}
+
+function endDashboardTour() {
+  _dashboardTourActive = false;
+  _dashboardTourPending = null;
+  localStorage.setItem(DASHBOARD_TOUR_KEY, '1');
+  localStorage.setItem('laris_welcomed', '1');
+  const overlay = document.getElementById('tour-overlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
+function dashboardTourHandleViewChange(view) {
+  if (!_dashboardTourActive) return;
+  if (_dashboardTourStep === 0 && view === 'discover') {
+    _dashboardTourStep = 1;
+    setTimeout(() => showDashboardTourStep(_dashboardTourStep), 120);
+    return;
+  }
+  if (DASHBOARD_TOUR_STEPS[_dashboardTourStep] && typeof DASHBOARD_TOUR_STEPS[_dashboardTourStep].onEnter === 'function') {
+    setTimeout(() => showDashboardTourStep(_dashboardTourStep), 120);
+  }
+}
+
+function dashboardTourHandleProductOpen() {
+  if (!_dashboardTourActive) return;
+  if (_dashboardTourStep === 2) {
+    _dashboardTourStep = 3;
+    setTimeout(() => showDashboardTourStep(_dashboardTourStep), 120);
+  }
+}
+
+function dashboardTourHandleTrackClick() {
+  if (!_dashboardTourActive) return;
+  if (_dashboardTourStep === 4) {
+    _dashboardTourStep = 5;
+    setTimeout(() => showDashboardTourStep(_dashboardTourStep), 120);
+  }
 }
 
 // ── START ──
@@ -18093,16 +18181,13 @@ document.addEventListener('touchend', function(e){
 }, {passive: false});
 
 // Banner carousel auto-scroll
-// ── Video Welcome Modal ──────────────────────────────────────
+// ── Dashboard onboarding entrypoint ──────────────────────────
 function showWelcomeVideo() {
-  if (localStorage.getItem('laris_welcomed')) return;
-  const modal = document.getElementById('welcome-video-modal');
-  if (modal) modal.style.display = 'flex';
+  startDashboardOnboarding();
 }
 function closeWelcomeVideo() {
+  localStorage.setItem(DASHBOARD_TOUR_KEY, '1');
   localStorage.setItem('laris_welcomed', '1');
-  const modal = document.getElementById('welcome-video-modal');
-  if (modal) modal.style.display = 'none';
 }
 
 document.addEventListener('DOMContentLoaded', function(){
@@ -18126,34 +18211,6 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 
 </script>
-
-  <!-- ── Welcome Video Modal ── -->
-  <div id="welcome-video-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10000;align-items:center;justify-content:center;padding:20px;">
-    <div style="background:#fff;border-radius:20px;max-width:600px;width:100%;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,.4);">
-      <div style="background:linear-gradient(135deg,#1A1F3C,#2d3561);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;">
-        <div>
-          <div style="font-size:1.05rem;font-weight:900;color:#fff;">Selamat Datang di LarisID</div>
-          <div style="font-size:.75rem;color:rgba(255,255,255,.6);margin-top:2px;">Tonton panduan singkat ini untuk memulai (2 menit)</div>
-        </div>
-        <button onclick="closeWelcomeVideo()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:6px 12px;font-size:.75rem;cursor:pointer;font-family:inherit;">Lewati</button>
-      </div>
-      <!-- Replace the src below with your YouTube/Loom embed URL after recording -->
-      <div style="position:relative;padding-bottom:56.25%;background:#000;">
-        <iframe id="welcome-video-iframe" src="about:blank" data-src="https://www.youtube.com/embed/YOUR_VIDEO_ID?autoplay=1" style="position:absolute;inset:0;width:100%;height:100%;border:none;" allowfullscreen allow="autoplay"></iframe>
-        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#1A1F3C;flex-direction:column;gap:12px;" id="video-placeholder">
-          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="rgba(255,255,255,.4)" stroke="none"/></svg>
-          <div style="color:rgba(255,255,255,.4);font-size:.78rem;">Video tutorial akan ditambahkan segera</div>
-        </div>
-      </div>
-      <div style="padding:16px 24px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #F3F4F6;">
-        <label style="display:flex;align-items:center;gap:8px;font-size:.75rem;color:#6B7280;cursor:pointer;">
-          <input type="checkbox" onchange="if(this.checked)localStorage.setItem('laris_welcomed','1')" style="width:14px;height:14px;">
-          Jangan tampilkan lagi
-        </label>
-        <button onclick="closeWelcomeVideo()" style="background:#E8442A;color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;">Mulai Eksplorasi →</button>
-      </div>
-    </div>
-  </div>
 
   <!-- ── GUIDED TOUR ── -->
   <div id="tour-overlay" aria-hidden="true">
