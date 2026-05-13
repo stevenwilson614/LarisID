@@ -9567,8 +9567,8 @@ function renderForYou() {
   if (!pool.length) return;
   const existingForYou = document.getElementById('discover-for-you');
   if (existingForYou) existingForYou.remove();
-  const wrap = document.getElementById('dsc-grid-wrap') || document.querySelector('.dsc-layout');
-  if (!wrap) return;
+  const layout = document.querySelector('#dash-view-discover .dsc-layout');
+  if (!layout || !layout.parentElement) return;
   const section = document.createElement('div');
   section.id = 'discover-for-you';
   section.style.cssText = 'margin-bottom:24px;';
@@ -9581,7 +9581,7 @@ function renderForYou() {
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;" id="for-you-grid">
       ${pool.map(p => cardHTML(p)).join('')}
     </div>`;
-  wrap.insertBefore(section, wrap.firstChild);
+  layout.parentElement.insertBefore(section, layout);
 }
 
 function clearViewHistory() {
@@ -10917,7 +10917,7 @@ const DSC_TIPS = [
 function dscShowLoadingScreen() {
   const el = document.getElementById('dsc-loading-screen');
   if (!el) return;
-  el.style.display = 'flex';
+  el.style.display = 'block';
 
   // Tip rotation
   let tipIdx = 0;
