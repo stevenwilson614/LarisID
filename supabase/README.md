@@ -53,10 +53,21 @@ set theme_primary = '#0c4a6e',
 where slug = 'demo';
 ```
 
-### Roles: platform admin vs cohort leader
+### Roles: platform admin vs cohort leader vs student
 
-- **Platform admin** (Analytics tab, cohort Student|Leader preview): emails listed in the site code as `PLATFORM_ADMIN_EMAILS` in `index.html` (default: `stevenwilson614@gmail.com`). To add more admins later, add their emails to that array and redeploy.
-- **Cohort leader (mentor)** for a cohort: the `mentor_user_id` column on that row in `public.cohorts` must be the Auth user id of the leader (e.g. `stevenfwilson1@gmail.com`). After both users exist in **Authentication**, run `supabase/seed_admin_and_leader.sql` in the SQL Editor (adjust `slug` / `invite_code` if needed).
+- **Platform admin**: managed in `public.app_role_assignments` with `role = 'admin'`, with `stevenwilson614@gmail.com` bootstrapped as the first admin. Admins can open the Admin tab, view all users, assign app roles, preview cohort shells, and manage cohort leader/student access through RPCs.
+- **Cohort leader**: either assigned as `cohorts.mentor_user_id` or given `role = 'leader'`. Leaders see only their cohorts, student directory, recent activity, feed moderation, announcements, milestones, branding, and student status controls.
+- **Student / normal user**: default role. Students use the regular UI and can see classmates' feed/activity inside their active cohort.
+
+The role infrastructure lives in `migrations/20260513150000_roles_admin_leader_infra.sql`. Starter accounts:
+
+```text
+Admin:          stevenwilson614@gmail.com
+Cohort leader:  stevenfwilson1@gmail.com
+Student:        olivia.melia.park@gmail.com
+```
+
+After those users exist in **Authentication**, run `supabase/seed_admin_and_leader.sql` in the SQL Editor or apply the migrations so the demo cohort gets the leader/student assignments.
 
 ### Invite links for signup (no extra SQL)
 

@@ -6944,6 +6944,13 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <input type="text" id="cohort-ms-title" class="cohort-input" placeholder="Judul milestone">
                   <button type="button" class="cohort-btn secondary" onclick="cohortMentorAddMilestone()">Tambah</button>
                 </div>
+                <div class="cohort-card">
+                  <h3>Tambah / aktifkan siswa</h3>
+                  <p class="cohort-muted" style="margin-bottom:10px;">Masukkan email siswa yang sudah punya akun LarisID.</p>
+                  <input type="email" id="cohort-add-student-email" class="cohort-input" placeholder="siswa@email.com" autocomplete="off">
+                  <button type="button" class="cohort-btn" onclick="cohortLeaderAddStudent()">Tambahkan siswa</button>
+                  <div id="cohort-add-student-status" class="cohort-muted" style="margin-top:8px;"></div>
+                </div>
               </div>
             </div>
             <div id="cohort-mentor-panel-students" style="display:none;">
@@ -7025,6 +7032,31 @@ html,body{overflow-x:hidden;max-width:100%;}
             <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:16px;">
               <div style="font-size:.78rem;font-weight:700;color:#1A1F3C;margin-bottom:12px;">Daily Active Users (last 30 days)</div>
               <div id="adm-dau-chart" style="display:flex;align-items:flex-end;gap:3px;height:80px;overflow-x:auto;"></div>
+            </div>
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:16px;margin-top:16px;">
+              <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;">
+                <div>
+                  <div style="font-size:.78rem;font-weight:800;color:#1A1F3C;">Users &amp; role control</div>
+                  <div style="font-size:.7rem;color:#6B7280;margin-top:3px;">Admin can view every user, assign app roles, and connect leaders to cohorts.</div>
+                </div>
+                <button type="button" class="cohort-btn secondary" style="padding:7px 12px;font-size:.68rem;" onclick="loadAdminStats()">Refresh</button>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 180px 1fr;gap:8px;margin-bottom:12px;">
+                <input id="adm-role-email" class="cohort-input" style="margin:0;" type="email" placeholder="user@email.com">
+                <select id="adm-role-select" class="cohort-input" style="margin:0;">
+                  <option value="student">Student</option>
+                  <option value="leader">Cohort leader</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <button type="button" class="cohort-btn" onclick="adminAssignRole()">Set role</button>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+                <input id="adm-leader-email" class="cohort-input" style="margin:0;" type="email" placeholder="leader@email.com">
+                <select id="adm-cohort-select" class="cohort-input" style="margin:0;"></select>
+                <button type="button" class="cohort-btn secondary" onclick="adminAssignLeader()">Assign cohort leader</button>
+              </div>
+              <div id="adm-role-status" class="cohort-muted" style="margin-bottom:10px;"></div>
+              <div id="adm-user-directory" style="overflow:auto;max-height:420px;"></div>
             </div>
           </div>
         </div>
@@ -8050,10 +8082,40 @@ const SUPA_URL = 'https://bzmvlraziqevqdyotvgy.supabase.co';
 const SUPA_KEY = 'sb_publishable_KDSWIJJLckser1e1hk7bbA_yMChRPog';
 const SUPA_HDR = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
 
-// Platform admins (owner analytics + cohort Student|Leader preview). Add emails here. Cohort leaders are `cohorts.mentor_user_id` in DB — see supabase/seed_admin_and_leader.sql
+// Bootstrap roles. Database-backed role RPCs are the source of truth when available.
+// Keep these emails as safe fallbacks so the first admin can still open the Admin tab.
 const PLATFORM_ADMIN_EMAILS = ['stevenwilson614@gmail.com'];
+const BOOTSTRAP_LEADER_EMAILS = ['stevenfwilson1@gmail.com'];
+const BOOTSTRAP_STUDENT_EMAILS = ['olivia.melia.park@gmail.com'];
+let _accessState = { loaded: false, role: 'student', isAdmin: false, isLeader: false };
 function isPlatformAdmin() {
-  return !!(currentUser && PLATFORM_ADMIN_EMAILS.includes(String(currentUser.email || '').toLowerCase()));
+  const email = String(currentUser?.email || '').toLowerCase();
+  return !!(currentUser && (_accessState.isAdmin || PLATFORM_ADMIN_EMAILS.includes(email)));
+}
+function isBootstrapLeader() {
+  const email = String(currentUser?.email || '').toLowerCase();
+  return !!(currentUser && (BOOTSTRAP_LEADER_EMAILS.includes(email) || _accessState.isLeader));
+}
+async function loadCurrentAccess() {
+  if (!_supabase || !currentUser) {
+    _accessState = { loaded: false, role: 'student', isAdmin: false, isLeader: false };
+    return _accessState;
+  }
+  const email = String(currentUser.email || '').toLowerCase();
+  const fallbackRole = PLATFORM_ADMIN_EMAILS.includes(email) ? 'admin' : (BOOTSTRAP_LEADER_EMAILS.includes(email) ? 'leader' : 'student');
+  let role = fallbackRole;
+  try {
+    const { data, error } = await _supabase.rpc('current_app_role');
+    if (!error && data) role = String(data);
+  } catch (_) {}
+  _accessState = {
+    loaded: true,
+    role,
+    isAdmin: role === 'admin' || PLATFORM_ADMIN_EMAILS.includes(email),
+    isLeader: role === 'leader' || BOOTSTRAP_LEADER_EMAILS.includes(email),
+  };
+  updateAuthUI();
+  return _accessState;
 }
 
 // ── FRESHNESS BADGE — last Monday date ─────────────────────
@@ -8152,6 +8214,7 @@ function _authOnSignIn(session) {
   currentUser = session.user;
   // Inject access token into Supabase JS client so database queries are authenticated
   if (_supabase) _supabase.auth.setSession({ access_token: session.access_token, refresh_token: session.refresh_token }).catch(()=>{});
+  loadCurrentAccess().catch(() => {});
   updateAuthUI();
   loadSavedProducts();
   checkMentorApplication();
@@ -8196,6 +8259,7 @@ function dismissLogoutChrome() {
 
 function _authOnSignOut() {
   currentUser = null;
+  _accessState = { loaded: false, role: 'student', isAdmin: false, isLeader: false };
   _authClear();
   updateAuthUI();
   savedProducts.clear();
@@ -9153,39 +9217,132 @@ async function loadAdminStats() {
   if (!isPlatformAdmin()) return;
   try {
     const { data, error } = await _supabase.rpc('admin_stats');
-    if (error || !data) return;
-    const s = data;
-    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ?? '—'; };
-    set('adm-total',      s.total_signups);
-    set('adm-7d',         s.signups_last_7d);
-    set('adm-30d',        s.signups_last_30d);
-    set('adm-nopurchase', s.users_never_purchased);
-    set('adm-credits',    s.total_credits_in_circulation);
-    set('adm-avgbal',     s.avg_balance_per_user);
+    if (!error && data) {
+      const s = data;
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ?? '—'; };
+      set('adm-total',      s.total_signups);
+      set('adm-7d',         s.signups_last_7d);
+      set('adm-30d',        s.signups_last_30d);
+      set('adm-nopurchase', s.users_never_purchased);
+      set('adm-credits',    s.total_credits_in_circulation);
+      set('adm-avgbal',     s.avg_balance_per_user);
 
-    const evtEl = document.getElementById('adm-events-table');
-    if (evtEl && s.credit_events_by_type) {
-      evtEl.innerHTML = s.credit_events_by_type.map(r =>
-        `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #F3F4F6;font-size:.75rem;"><span style="color:#374151">${r.type}</span><span style="font-weight:700;color:#1A1F3C">${r.events} <span style="color:#9CA3AF;font-weight:400;">(${r.total_credits} cr)</span></span></div>`
-      ).join('');
-    }
+      const evtEl = document.getElementById('adm-events-table');
+      if (evtEl && s.credit_events_by_type) {
+        evtEl.innerHTML = s.credit_events_by_type.map(r =>
+          `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #F3F4F6;font-size:.75rem;"><span style="color:#374151">${r.type}</span><span style="font-weight:700;color:#1A1F3C">${r.events} <span style="color:#9CA3AF;font-weight:400;">(${r.total_credits} cr)</span></span></div>`
+        ).join('');
+      }
 
-    const kwEl = document.getElementById('adm-keywords-table');
-    if (kwEl && s.top_keywords) {
-      kwEl.innerHTML = s.top_keywords.slice(0,10).map(r =>
-        `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #F3F4F6;font-size:.72rem;"><span style="color:#374151;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.keyword}</span><span style="font-weight:700;color:#E8442A;">${r.completions}</span></div>`
-      ).join('');
-    }
+      const kwEl = document.getElementById('adm-keywords-table');
+      if (kwEl && s.top_keywords) {
+        kwEl.innerHTML = s.top_keywords.slice(0,10).map(r =>
+          `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #F3F4F6;font-size:.72rem;"><span style="color:#374151;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.keyword}</span><span style="font-weight:700;color:#E8442A;">${r.completions}</span></div>`
+        ).join('');
+      }
 
-    const dauEl = document.getElementById('adm-dau-chart');
-    if (dauEl && s.dau_last_30d?.length) {
-      const maxDAU = Math.max(...s.dau_last_30d.map(r => r.active_users)) || 1;
-      dauEl.innerHTML = s.dau_last_30d.map(r => {
-        const h = Math.round(r.active_users / maxDAU * 70) + 4;
-        return `<div title="${r.date}: ${r.active_users} users" style="flex:1;min-width:6px;max-width:18px;background:#E8442A;border-radius:3px 3px 0 0;height:${h}px;opacity:.8;"></div>`;
-      }).join('');
+      const dauEl = document.getElementById('adm-dau-chart');
+      if (dauEl && s.dau_last_30d?.length) {
+        const maxDAU = Math.max(...s.dau_last_30d.map(r => r.active_users)) || 1;
+        dauEl.innerHTML = s.dau_last_30d.map(r => {
+          const h = Math.round(r.active_users / maxDAU * 70) + 4;
+          return `<div title="${r.date}: ${r.active_users} users" style="flex:1;min-width:6px;max-width:18px;background:#E8442A;border-radius:3px 3px 0 0;height:${h}px;opacity:.8;"></div>`;
+        }).join('');
+      }
     }
   } catch(e) { console.warn('loadAdminStats', e); }
+  await adminLoadCohortOptions();
+  await adminLoadUserDirectory();
+}
+
+let _adminCohorts = [];
+async function adminLoadCohortOptions() {
+  const sel = document.getElementById('adm-cohort-select');
+  if (!sel || !_supabase || !isPlatformAdmin()) return;
+  const { data, error } = await _supabase.from('cohorts').select('id,name,slug,invite_code').order('created_at', { ascending: false });
+  if (error) {
+    sel.innerHTML = '<option value="">Tidak bisa memuat kohort</option>';
+    return;
+  }
+  _adminCohorts = data || [];
+  sel.innerHTML = _adminCohorts.length
+    ? _adminCohorts.map(c => `<option value="${_cohortEsc(c.id)}">${_cohortEsc(c.name || c.slug || c.invite_code || 'Kohort')}</option>`).join('')
+    : '<option value="">Belum ada kohort</option>';
+}
+
+async function adminLoadUserDirectory() {
+  const el = document.getElementById('adm-user-directory');
+  if (!el || !_supabase || !isPlatformAdmin()) return;
+  el.innerHTML = '<div class="cohort-muted">Memuat users...</div>';
+  try {
+    const { data, error } = await _supabase.rpc('admin_user_directory');
+    if (error) { el.textContent = error.message || 'Gagal memuat user.'; return; }
+    const rows = data || [];
+    if (!rows.length) { el.innerHTML = '<div class="cohort-muted">Belum ada user.</div>'; return; }
+    el.innerHTML = `<table style="width:100%;font-size:.72rem;border-collapse:collapse;min-width:760px;">
+      <thead><tr style="text-align:left;color:#9CA3AF;border-bottom:1px solid #F3F4F6;"><th style="padding:7px 4px;">User</th><th>Role</th><th>Cohorts</th><th>Leads</th><th>Created</th><th>Last activity</th><th></th></tr></thead>
+      <tbody>${rows.map(r => {
+        const role = r.app_role || 'student';
+        const roleColor = role === 'admin' ? '#E8442A' : (role === 'leader' ? '#B45309' : '#1A7A46');
+        return `<tr style="border-bottom:1px solid #F9FAFB;">
+          <td style="padding:8px 4px;"><strong>${_cohortEsc(r.display_name || 'User')}</strong><br><span class="cohort-muted">${_cohortEsc(r.email || '')}</span></td>
+          <td><span style="color:${roleColor};font-weight:800;">${_cohortEsc(role)}</span></td>
+          <td>${r.cohort_count || 0}</td>
+          <td>${r.led_cohort_count || 0}</td>
+          <td class="cohort-muted">${r.created_at ? _cohortEsc(r.created_at.slice(0, 10)) : '—'}</td>
+          <td class="cohort-muted">${r.last_activity_at ? _cohortEsc(r.last_activity_at.slice(0, 16).replace('T', ' ')) : '—'}</td>
+          <td><button type="button" class="cohort-btn secondary" style="padding:4px 8px;font-size:.62rem;" onclick="adminPrefillRole('${_cohortEsc(r.email || '')}','${_cohortEsc(role)}')">Edit</button></td>
+        </tr>`;
+      }).join('')}</tbody></table>`;
+  } catch(e) {
+    el.textContent = 'Gagal memuat user.';
+  }
+}
+
+function adminPrefillRole(email, role) {
+  const e = document.getElementById('adm-role-email');
+  const le = document.getElementById('adm-leader-email');
+  const r = document.getElementById('adm-role-select');
+  if (e) e.value = email || '';
+  if (le) le.value = email || '';
+  if (r && role) r.value = role;
+}
+
+async function adminAssignRole() {
+  const email = (document.getElementById('adm-role-email')?.value || '').trim();
+  const role = document.getElementById('adm-role-select')?.value || 'student';
+  const st = document.getElementById('adm-role-status');
+  if (!email || !_supabase || !isPlatformAdmin()) return;
+  if (st) st.textContent = 'Menyimpan role...';
+  const { error } = await _supabase.rpc('admin_assign_app_role', {
+    p_email: email,
+    p_role: role,
+    p_note: 'Updated from LarisID Admin UI',
+  });
+  if (error) {
+    if (st) st.textContent = error.message || 'Gagal menyimpan role.';
+    return;
+  }
+  if (st) st.textContent = 'Role tersimpan.';
+  await adminLoadUserDirectory();
+}
+
+async function adminAssignLeader() {
+  const email = (document.getElementById('adm-leader-email')?.value || '').trim();
+  const cohortId = document.getElementById('adm-cohort-select')?.value || '';
+  const st = document.getElementById('adm-role-status');
+  if (!email || !cohortId || !_supabase || !isPlatformAdmin()) return;
+  if (st) st.textContent = 'Menghubungkan leader ke kohort...';
+  const { error } = await _supabase.rpc('admin_assign_cohort_leader', {
+    p_email: email,
+    p_cohort: cohortId,
+  });
+  if (error) {
+    if (st) st.textContent = error.message || 'Gagal assign leader.';
+    return;
+  }
+  if (st) st.textContent = 'Leader tersimpan untuk kohort.';
+  await adminLoadUserDirectory();
 }
 
 // ── Weekly Treasure Chest ─────────────────────────────────────
@@ -9933,8 +10090,8 @@ async function cohortLeaderSaveBranding() {
     if (st) st.textContent = 'Tidak ada kohort yang kamu pimpin.';
     return;
   }
-  if (c.mentor_user_id !== currentUser.id) {
-    if (st) st.textContent = 'Hanya pemimpin kohort yang bisa menyimpan.';
+  if (c.mentor_user_id !== currentUser.id && !isPlatformAdmin()) {
+    if (st) st.textContent = 'Hanya pemimpin kohort atau admin yang bisa menyimpan.';
     return;
   }
   const priEl = document.getElementById('cohort-brand-primary');
@@ -10105,7 +10262,14 @@ async function cohortInit() {
     (coh || []).forEach(c => { cohortMap[c.id] = c; });
   }
 
-  const { data: led } = await _supabase.from('cohorts').select('*').eq('mentor_user_id', currentUser.id);
+  let led = [];
+  if (isPlatformAdmin()) {
+    const { data: allCohorts } = await _supabase.from('cohorts').select('*').order('created_at', { ascending: false });
+    led = allCohorts || [];
+  } else {
+    const res = await _supabase.from('cohorts').select('*').eq('mentor_user_id', currentUser.id);
+    led = res.data || [];
+  }
   _cohortState.mentorCohorts = led || [];
   _cohortState.primaryMentorCohort = (led && led[0]) || null;
   _cohortState.hasMentorCohort = !!(led && led.length);
@@ -10573,6 +10737,7 @@ async function cohortRenderMentorPanels() {
   if (bc) {
     const isRealLeader = currentUser && c.mentor_user_id === currentUser.id;
     const adminPrevLeader = isCohortPlatformAdmin() && cohortGetPreviewShell() === 'leader';
+    const canEditBrand = isRealLeader || adminPrevLeader;
     bc.style.display = isRealLeader || adminPrevLeader ? '' : 'none';
     if (bc.style.display !== 'none') {
       const pri = document.getElementById('cohort-brand-primary');
@@ -10586,11 +10751,11 @@ async function cohortRenderMentorPanels() {
       if (badge) badge.value = (c.badge_icon || '').trim();
       if (slogan) slogan.value = (c.slogan || '').trim();
       if (btn) {
-        btn.disabled = !isRealLeader;
-        btn.style.opacity = isRealLeader ? '' : '0.45';
-        btn.title = isRealLeader ? '' : 'Hanya pemimpin kohort (mentor) yang dapat menyimpan.';
+        btn.disabled = !canEditBrand;
+        btn.style.opacity = canEditBrand ? '' : '0.45';
+        btn.title = canEditBrand ? '' : 'Hanya pemimpin kohort atau admin yang dapat menyimpan.';
       }
-      if (stBr) stBr.textContent = isRealLeader ? '' : (adminPrevLeader ? 'Pratinjau admin — simpan dinonaktifkan.' : '');
+      if (stBr) stBr.textContent = '';
     }
   }
 }
@@ -10603,13 +10768,19 @@ async function cohortRenderMentorDirectory(cohortId) {
   if (error) { el.textContent = error.message || 'Gagal memuat direktori.'; return; }
   _cohortState.directoryRows = data || [];
   if (!_cohortState.directoryRows.length) { el.innerHTML = '<span class="cohort-muted">Belum ada siswa.</span>'; return; }
-  el.innerHTML = `<table style="width:100%;font-size:.72rem;border-collapse:collapse;"><thead><tr style="text-align:left;color:#9CA3AF;"><th>Nama</th><th>Skor</th><th>Event</th><th>Last event</th><th></th></tr></thead><tbody>` +
+  el.innerHTML = `<table style="width:100%;font-size:.72rem;border-collapse:collapse;"><thead><tr style="text-align:left;color:#9CA3AF;"><th>Nama</th><th>Status</th><th>Skor</th><th>Event</th><th>Last event</th><th></th></tr></thead><tbody>` +
     _cohortState.directoryRows.map(r => `<tr style="border-top:1px solid #F3F4F6;">
-      <td style="padding:8px 4px;">${_cohortEsc(r.display_name)}</td>
+      <td style="padding:8px 4px;">${_cohortEsc(r.display_name)}<br><span class="cohort-muted">${_cohortEsc(r.email || '')}</span></td>
+      <td><span style="font-weight:800;color:${r.status === 'active' ? '#1A7A46' : '#B45309'};">${_cohortEsc(r.status || 'active')}</span></td>
       <td>${Number(r.engagement_score || 0).toFixed(1)}</td>
       <td>${r.event_count}</td>
       <td class="cohort-muted">${r.last_event_at ? _cohortEsc(r.last_event_at.slice(0, 16).replace('T', ' ')) : '—'}</td>
-      <td><button type="button" class="cohort-btn secondary" style="padding:4px 8px;font-size:.62rem;" onclick="cohortOpenStudentDrawer('${r.user_id}')">Detail</button></td>
+      <td style="white-space:nowrap;">
+        <button type="button" class="cohort-btn secondary" style="padding:4px 8px;font-size:.62rem;" onclick="cohortOpenStudentDrawer('${r.user_id}')">Detail</button>
+        ${r.status === 'active'
+          ? `<button type="button" class="cohort-btn secondary" style="padding:4px 8px;font-size:.62rem;" onclick="cohortLeaderSetStudentStatus('${r.user_id}','paused')">Pause</button>`
+          : `<button type="button" class="cohort-btn secondary" style="padding:4px 8px;font-size:.62rem;" onclick="cohortLeaderSetStudentStatus('${r.user_id}','active')">Aktifkan</button>`}
+      </td>
     </tr>`).join('') + '</tbody></table>';
 }
 
@@ -10630,6 +10801,46 @@ async function cohortRenderModFeed(cohortId) {
       </div>
     </div>`;
   }).join('');
+}
+
+async function cohortLeaderAddStudent() {
+  const c = _cohortState.primaryMentorCohort;
+  const inp = document.getElementById('cohort-add-student-email');
+  const st = document.getElementById('cohort-add-student-status');
+  const email = (inp && inp.value || '').trim();
+  if (!c || !_supabase || !email) {
+    if (st) st.textContent = 'Masukkan email siswa.';
+    return;
+  }
+  if (st) st.textContent = 'Menambahkan siswa...';
+  const { error } = await _supabase.rpc('cohort_leader_add_student_by_email', {
+    p_cohort: c.id,
+    p_email: email,
+  });
+  if (error) {
+    if (st) st.textContent = error.message || 'Gagal menambahkan siswa.';
+    return;
+  }
+  if (inp) inp.value = '';
+  if (st) st.textContent = 'Siswa ditambahkan / diaktifkan.';
+  await cohortRenderMentorPanels();
+  await cohortRenderMentorDirectory(c.id);
+}
+
+async function cohortLeaderSetStudentStatus(userId, status) {
+  const c = _cohortState.primaryMentorCohort;
+  if (!c || !_supabase || !userId) return;
+  const { error } = await _supabase.rpc('cohort_leader_set_student_status', {
+    p_cohort: c.id,
+    p_student: userId,
+    p_status: status,
+  });
+  if (error) {
+    alert(error.message || 'Gagal mengubah status siswa.');
+    return;
+  }
+  await cohortRenderMentorPanels();
+  await cohortRenderMentorDirectory(c.id);
 }
 
 async function cohortLeaderHidePost(postId) {
