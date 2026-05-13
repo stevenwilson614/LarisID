@@ -4292,6 +4292,7 @@ html,body{overflow-x:hidden;max-width:100%;}
       <!-- SAVED PRODUCTS -->
       <div id="dash-view-saved" style="display:none;">
         <div class="dash-home">
+          <div class="dash-stats-row" id="dash-stats-row" style="display:none;"></div>
           <div class="dash-section" style="padding-bottom:8px;">
             <div class="dash-section-head" style="margin-bottom:10px;">
               <div class="dash-section-title">Produk Tersimpan</div>
@@ -7889,7 +7890,7 @@ async function _authRefresh(refreshToken) {
     const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`, { method:'POST', headers:{ apikey:SUPA_KEY, 'Content-Type':'application/json' }, body:JSON.stringify({ refresh_token:refreshToken }) });
     if (!r.ok) return null;
     const d = await r.json();
-    if (d.access_token) { _authSave(d); return d; }
+    if (d.access_token) return d;
   } catch(_) {}
   return null;
 }
@@ -7977,7 +7978,7 @@ function _authOnSignOut() {
   _authClear();
   updateAuthUI();
   savedProducts.clear();
-  renderProfileSaved();
+  try { renderProfileSaved(); } catch (_) {}
   showPage('landing');
   renderHomeGrid();
 }
@@ -7997,7 +7998,12 @@ function initSupabase() {
     if (stored.expires_at > Date.now() + 30000) {
       _authOnSignIn(stored);
     } else if (stored.refresh_token) {
-      _authRefresh(stored.refresh_token).then(s => { if (s) _authOnSignIn(s); else _authClear(); });
+      _authRefresh(stored.refresh_token).then(s => {
+        if (!s) { _authClear(); return; }
+        if (!_authLoad()) return;
+        _authSave(s);
+        _authOnSignIn(s);
+      });
     }
   }
   // Watch for OAuth sign-ins (Google) via JS client.
@@ -8389,7 +8395,8 @@ function renderProfileSaved() {
       <div class="dash-empty-title">Belum ada produk tersimpan</div>
       <div class="dash-empty-sub">Tekan simpan di kartu produk untuk menyimpan ke dashboard kamu.</div>
     </div>`;
-    document.getElementById('dash-stats-row').style.display = 'none';
+    const statsRowEmpty = document.getElementById('dash-stats-row');
+    if (statsRowEmpty) statsRowEmpty.style.display = 'none';
     return;
   }
 
@@ -8405,12 +8412,13 @@ function renderProfileSaved() {
     if (plan?.status === 'Aktif') totalActive++;
   });
   const statsRow = document.getElementById('dash-stats-row');
-  if (!statsRow) return;
-  statsRow.style.display = 'flex';
-  statsRow.innerHTML = `
+  if (statsRow) {
+    statsRow.style.display = 'flex';
+    statsRow.innerHTML = `
     <div class="dash-stat"><div class="dash-stat-val">${totalSaved}</div><div class="dash-stat-lbl">Produk Tersimpan</div></div>
     <div class="dash-stat"><div class="dash-stat-val">${totalActive}</div><div class="dash-stat-lbl">Produk Aktif</div></div>
     <div class="dash-stat"><div class="dash-stat-val">${totalPotential > 0 ? 'Rp ' + Math.round(totalPotential/1000) + 'k' : '—'}</div><div class="dash-stat-lbl">Est. Net/Bln (seller baru)</div></div>`;
+  }
 
   grid.innerHTML = saved.map(p => dashCardHTML(p)).join('');
   updateProfileStats();
