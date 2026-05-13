@@ -42,6 +42,19 @@ Adds to `community_posts`: `kind`, `metadata`, `hidden_at`, `hidden_by` for stru
 
 After applying, cohort leaders set colors (hex `#RRGGBB`) and slogan in the app under **Kohort → Leader → Branding & tema kohort**.
 
+### Ocean Blue starter cohort
+
+The starter cohort is created by `migrations/20260513153000_ocean_blue_role_invites.sql`.
+
+```text
+Student invite code: OCEANBLUE-STUDENT
+Leader invite code:  OCEANBLUE-LEADER
+Student invite link: https://larisid.com/?invite=OCEANBLUE-STUDENT
+Leader invite link:  https://larisid.com/?invite=OCEANBLUE-LEADER
+```
+
+Share the leader code only with the cohort leader because it grants leader access for Ocean Blue. After joining, leaders can update the cohort colors, badge, and slogan in **Kohort → Leader → Branding & tema kohort**.
+
 ### Seed example with ocean / sand theme
 
 ```sql
@@ -67,14 +80,14 @@ Cohort leader:  stevenfwilson1@gmail.com
 Student:        olivia.melia.park@gmail.com
 ```
 
-After those users exist in **Authentication**, run `supabase/seed_admin_and_leader.sql` in the SQL Editor or apply the migrations so the demo cohort gets the leader/student assignments.
+After those users exist in **Authentication**, run `supabase/seed_admin_and_leader.sql` in the SQL Editor or apply the migrations so Ocean Blue gets the leader/student assignments.
 
 ### Invite links for signup (no extra SQL)
 
 Mentors can share a link so the code is saved when the student opens the site, then applied automatically after they log in or sign up (email or Google):
 
 ```text
-https://larisid.com/?invite=LARIS2026
+https://larisid.com/?invite=OCEANBLUE-STUDENT
 ```
 
 The `invite` query parameter is read on first load, stored in `sessionStorage`, and removed from the URL. After authentication, the app calls `join_cohort` with that code.
