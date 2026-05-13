@@ -743,6 +743,34 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .cohort-week-cell{flex:1;height:22px;border-radius:4px;background:#EEF2F7;}
 .cohort-week-cell.on{background:linear-gradient(180deg,var(--cohort-secondary,#fb923c),#ea580c);}
 .dash-cohort-pill{display:none;margin-top:6px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;font-size:.65rem;font-weight:800;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* Kohort view: make leader theme colors visible in main content (not only sidebar/strip) */
+body.cohort-themed.in-dashboard .dash-content{background:var(--cohort-surface,#F7F6F3);}
+body.cohort-themed.in-dashboard #dash-view-cohort .cohort-card{
+  border:1px solid #E8ECF2;
+  border-top:3px solid var(--cohort-secondary,#E8442A);
+  box-shadow:0 2px 14px rgba(17,24,39,.07);
+}
+body.cohort-themed.in-dashboard #dash-view-cohort .cohort-card h3{color:var(--cohort-primary,#1A1F3C);}
+body.cohort-themed.in-dashboard #dash-view-cohort .cohort-subtab:not(.active){
+  border-color:#d1d9e6;
+  color:var(--cohort-primary,#374151);
+}
+body.cohort-themed.in-dashboard #dash-view-cohort .cohort-input:focus,
+body.cohort-themed.in-dashboard #dash-view-cohort .cohort-input:focus-visible{
+  border-color:var(--cohort-secondary,#E8442A);
+  outline:none;
+  box-shadow:0 0 0 2px rgba(232,68,42,.22);
+}
+body.cohort-themed.in-dashboard #dash-view-cohort .cohort-feed-card{
+  border:1px solid #E8edf4;
+  border-left:3px solid var(--cohort-accent,#a67c52);
+}
+body.cohort-themed.in-dashboard #dash-view-cohort .cohort-feed-kind{color:#64748b;}
+body.cohort-themed.in-dashboard .dash-topbar-cohort-chip{
+  border-color:var(--cohort-secondary,#d1d5db);
+  background:#fff;
+  box-shadow:inset 0 0 0 1px rgba(232,68,42,.12);
+}
 .dash-nav-icon{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
 .dash-nav-arrow{margin-left:auto;font-size:.55rem;transition:transform .2s;opacity:.4;}
 .dash-nav-item.open .dash-nav-arrow{transform:rotate(90deg);}
@@ -750,7 +778,7 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .dash-nav-sub.open{display:flex;}
 .dash-nav-sub-item{padding:7px 10px;border-radius:6px;font-size:.77rem;font-weight:500;color:rgba(255,255,255,.4);cursor:pointer;transition:color .15s,background .15s;}
 .dash-nav-sub-item:hover{color:#fff;background:rgba(255,255,255,.06);}
-.dash-nav-sub-item.active{color:#E8442A;font-weight:700;}
+.dash-nav-sub-item.active{color:var(--cohort-secondary,#E8442A);font-weight:700;}
 .dash-nav-divider{height:1px;background:rgba(255,255,255,.07);margin:6px 4px;}
 /* sidebar overlay (mobile) */
 .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99;}
@@ -9781,7 +9809,7 @@ function _cohortRgbStr(rgb) {
 function cohortClearDashboardTheme() {
   document.body.classList.remove('cohort-themed');
   const root = document.documentElement;
-  ['--cohort-primary', '--cohort-secondary', '--cohort-accent', '--cohort-sidebar-end'].forEach(k => root.style.removeProperty(k));
+  ['--cohort-primary', '--cohort-secondary', '--cohort-accent', '--cohort-sidebar-end', '--cohort-surface'].forEach(k => root.style.removeProperty(k));
   const chip = document.getElementById('dash-topbar-cohort-chip');
   const strip = document.getElementById('cohort-app-strip');
   if (chip) chip.style.display = 'none';
@@ -9802,12 +9830,14 @@ function cohortApplyDashboardThemeFromRow(cohortRow) {
   const sr = _cohortHexToRgb(sec);
   const accent = _cohortMixRgb(pr, sr, 0.42);
   const end = _cohortMixRgb(pr, { r: 8, g: 12, b: 22 }, 0.55);
+  const surface = _cohortMixRgb(pr, { r: 252, g: 251, b: 248 }, 0.94);
   document.body.classList.add('cohort-themed');
   const root = document.documentElement;
   root.style.setProperty('--cohort-primary', pri);
   root.style.setProperty('--cohort-secondary', sec);
   root.style.setProperty('--cohort-accent', _cohortRgbStr(accent));
   root.style.setProperty('--cohort-sidebar-end', _cohortRgbStr(end));
+  root.style.setProperty('--cohort-surface', _cohortRgbStr(surface));
 }
 
 function cohortResolveThemeCohortRowForUi() {
