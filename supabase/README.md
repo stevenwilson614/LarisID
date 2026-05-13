@@ -33,3 +33,15 @@ on conflict (slug) do nothing;
 ```
 
 Students join in the app via **Kohort → Gabung** with invite code `LARIS2026` (or whatever you set).
+
+### Invite links for signup (no extra SQL)
+
+Mentors can share a link so the code is saved when the student opens the site, then applied automatically after they log in or sign up (email or Google):
+
+```text
+https://larisid.com/?invite=LARIS2026
+```
+
+The `invite` query parameter is read on first load, stored in `sessionStorage`, and removed from the URL. After authentication, the app calls `join_cohort` with that code.
+
+Optional: students can also paste the same code in the auth modal under **Kode kohort (opsional)** before **Daftar** / **Masuk** / **Google**.

@@ -7982,6 +7982,68 @@ async function _authRefresh(refreshToken) {
   return null;
 }
 
+const PENDING_INVITE_KEY = 'larisid_pending_invite';
+
+function captureInviteFromUrl() {
+  try {
+    const u = new URLSearchParams(window.location.search || '');
+    let code = (u.get('invite') || u.get('cohort') || '').trim();
+    if (!code) return;
+    if (code.length > 64) code = code.slice(0, 64);
+    sessionStorage.setItem(PENDING_INVITE_KEY, code);
+    u.delete('invite');
+    u.delete('cohort');
+    const qs = u.toString();
+    const path = window.location.pathname + (qs ? '?' + qs : '') + (window.location.hash || '');
+    history.replaceState(null, '', path);
+  } catch (_) {}
+}
+
+function getPendingInvite() {
+  try { return (sessionStorage.getItem(PENDING_INVITE_KEY) || '').trim(); } catch (_) { return ''; }
+}
+
+function setPendingInvite(code) {
+  try {
+    const c = (code || '').trim().slice(0, 64);
+    if (c) sessionStorage.setItem(PENDING_INVITE_KEY, c);
+    else sessionStorage.removeItem(PENDING_INVITE_KEY);
+  } catch (_) {}
+}
+
+function clearPendingInvite() {
+  try { sessionStorage.removeItem(PENDING_INVITE_KEY); } catch (_) {}
+}
+
+async function pendingCohortJoinIfAny() {
+  const code = getPendingInvite();
+  if (!code || !_supabase || !currentUser) return;
+  const { error } = await _supabase.rpc('join_cohort', { p_invite: code });
+  if (!error) {
+    clearPendingInvite();
+    const inp = document.getElementById('cohort-invite-input');
+    if (inp) inp.value = '';
+    const authInv = document.getElementById('auth-invite-code');
+    if (authInv) authInv.value = '';
+    if (typeof cohortInit === 'function' && document.body.classList.contains('in-dashboard')) {
+      switchDashView('cohort');
+      await cohortInit();
+    }
+  } else {
+    console.warn('join_cohort:', error.message);
+    clearPendingInvite();
+    try {
+      const ov = document.getElementById('auth-overlay');
+      const er = document.getElementById('auth-error');
+      if (er && ov && ov.style.display === 'flex') {
+        er.style.display = '';
+        er.style.color = '#e74c3c';
+        er.textContent = 'Kode kohort tidak valid atau kedaluwarsa.';
+      }
+    } catch (_) {}
+  }
+}
+
 function _authOnSignIn(session) {
   currentUser = session.user;
   // Inject access token into Supabase JS client so database queries are authenticated
@@ -7995,6 +8057,7 @@ function _authOnSignIn(session) {
   if (currentProduct) renderDetail(currentProduct);
   // Show welcome video for first-time users
   setTimeout(showWelcomeVideo, 1200);
+  setTimeout(() => { pendingCohortJoinIfAny().catch(() => {}); }, 400);
 }
 
 function _authOnSignOut() {
@@ -8096,6 +8159,8 @@ function openAuthModal(mode) {
   _authMode = mode || 'login';
   document.getElementById('auth-overlay').style.display = 'flex';
   renderAuthModal();
+  const inv = document.getElementById('auth-invite-code');
+  if (inv) inv.value = getPendingInvite();
 }
 
 function closeAuthModal() {
@@ -8113,6 +8178,7 @@ function renderAuthModal() {
   el = document.getElementById('auth-pass-wrap');  if(el) el.style.display = m==='reset'?'none':'';
   el = document.getElementById('auth-forgot-wrap');if(el) el.style.display = m==='login'?'':'none';
   el = document.getElementById('auth-social-wrap');if(el) el.style.display = m==='reset'?'none':'';
+  el = document.getElementById('auth-invite-wrap'); if (el) el.style.display = m === 'reset' ? 'none' : '';
   el = document.getElementById('auth-error');      if(el) el.style.display = 'none';
 }
 
@@ -8151,6 +8217,8 @@ async function submitAuth() {
   btn.textContent='...'; btn.disabled=true;
 
   if (_authMode === 'signup') {
+    const invEl = document.getElementById('auth-invite-code');
+    if (invEl && invEl.value.trim()) setPendingInvite(invEl.value);
     const r = await fetch(`${SUPA_URL}/auth/v1/signup`, { method:'POST', headers:hdrs, body:JSON.stringify({ email, password:pass, data:{ full_name:name } }) });
     const d = await r.json();
     btn.textContent='Daftar'; btn.disabled=false;
@@ -8159,6 +8227,8 @@ async function submitAuth() {
     return;
   }
 
+  const invEl2 = document.getElementById('auth-invite-code');
+  if (invEl2 && invEl2.value.trim()) setPendingInvite(invEl2.value);
   // Login via direct REST — bypasses JS-client 204 issue with sb_publishable keys
   const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, { method:'POST', headers:hdrs, body:JSON.stringify({ email, password:pass }) });
   const d = await r.json();
@@ -8171,6 +8241,11 @@ async function submitAuth() {
 
 async function signInWithProvider(provider) {
   if (!_supabase) return;
+  try {
+    const invEl = document.getElementById('auth-invite-code');
+    if (invEl && invEl.value.trim()) setPendingInvite(invEl.value);
+  } catch (_) {}
+  // Pending invite is in sessionStorage (?invite= on load or typed in modal); OAuth redirect does not need to carry the code.
   const { error } = await _supabase.auth.signInWithOAuth({ provider, options:{ redirectTo:'https://larisid.com' } });
   if (error) {
     const errEl = document.getElementById('auth-error');
@@ -9658,6 +9733,9 @@ async function cohortInit() {
     if (st) st.textContent = 'Login untuk melihat kohort.';
     return;
   }
+  const ci = document.getElementById('cohort-invite-input');
+  const pend = getPendingInvite();
+  if (ci && pend && !ci.value.trim()) ci.value = pend;
   _cohortState = { studentRows: [], mentorCohorts: [], primaryStudentCohortId: null, primaryMentorCohort: null, hasMentorCohort: false };
 
   const { data: mem } = await _supabase
@@ -17982,6 +18060,7 @@ if (document.getElementById('page-landing')?.classList.contains('active')) {
 }
 
 loadData();
+captureInviteFromUrl();
 initSupabase();
 // Trigger discover data load after Supabase is ready
 setTimeout(() => { if (typeof dscInit === 'function') dscInit(); }, 300);
@@ -18125,6 +18204,10 @@ document.addEventListener('DOMContentLoaded', function(){
     <input class="auth-input" id="auth-email" type="email" placeholder="Email">
     <div id="auth-pass-wrap">
       <input class="auth-input" id="auth-pass" type="password" placeholder="Password">
+    </div>
+    <div id="auth-invite-wrap">
+      <label for="auth-invite-code" style="display:block;font-size:.72rem;font-weight:600;color:#6B7280;margin-bottom:5px;">Kode kohort (opsional)</label>
+      <input class="auth-input" id="auth-invite-code" type="text" placeholder="Dari link undangan atau ketik manual" maxlength="64" autocomplete="off" onblur="setPendingInvite(document.getElementById('auth-invite-code')?.value||'')">
     </div>
     <div id="auth-forgot-wrap" style="text-align:right;margin-top:-6px;margin-bottom:4px;">
       <a style="font-size:.78rem;color:var(--orange);cursor:pointer;" onclick="_authMode='reset';renderAuthModal()">Lupa password?</a>
