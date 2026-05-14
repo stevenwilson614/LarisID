@@ -10662,10 +10662,10 @@ function cohortLeaderSwitchCohort(cohortId) {
 }
 
 /* ── Create cohort modal ── */
-let _cohortCreateState = { step:1, name:'', slogan:'', pri:'#0f2942', sec:'#c9a87c', emails:[], newCohort:null };
+let _cohortCreateState = { step:1, name:'', slogan:'', pri:'#0f2942', sec:'#c9a87c', waUrl:'', emails:[], newCohort:null };
 
 function cohortOpenCreateModal() {
-  _cohortCreateState = { step:1, name:'', slogan:'', pri:'#0f2942', sec:'#c9a87c', emails:[], newCohort:null };
+  _cohortCreateState = { step:1, name:'', slogan:'', pri:'#0f2942', sec:'#c9a87c', waUrl:'', emails:[], newCohort:null };
   const m = document.getElementById('cohort-create-modal');
   if (m) { m.classList.add('open'); cohortCreateRenderStep(); }
 }
@@ -10701,9 +10701,23 @@ function cohortCreateRenderStep() {
     if (title) title.textContent = 'Pilih Warna';
     body.innerHTML = `<label class="cohort-muted" style="font-size:.65rem;">Warna utama</label><div class="cohort-color-row" style="margin-bottom:12px;"><input type="color" id="cc-pri-pick" class="cohort-color-swatch" value="${_cohortEsc(s.pri)}" oninput="document.getElementById('cc-pri-hex').value=this.value;_cohortCreateState.pri=this.value;"><input type="text" id="cc-pri-hex" class="cohort-input" placeholder="#0f2942" maxlength="7" value="${_cohortEsc(s.pri)}" oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value)){document.getElementById('cc-pri-pick').value=this.value;_cohortCreateState.pri=this.value;}"></div><label class="cohort-muted" style="font-size:.65rem;">Warna aksen</label><div class="cohort-color-row" style="margin-bottom:12px;"><input type="color" id="cc-sec-pick" class="cohort-color-swatch" value="${_cohortEsc(s.sec)}" oninput="document.getElementById('cc-sec-hex').value=this.value;_cohortCreateState.sec=this.value;"><input type="text" id="cc-sec-hex" class="cohort-input" placeholder="#c9a87c" maxlength="7" value="${_cohortEsc(s.sec)}" oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value)){document.getElementById('cc-sec-pick').value=this.value;_cohortCreateState.sec=this.value;}"></div><div class="cohort-create-actions"><button type="button" class="cohort-btn secondary" onclick="_cohortCreateState.step=1;cohortCreateRenderStep()">← Kembali</button><button type="button" class="cohort-btn" onclick="cohortCreateNext2()">Lanjut →</button></div>`;
   } else if (s.step === 3) {
-    if (title) title.textContent = 'Undang Siswa via Email';
+    if (title) title.textContent = 'Hubungkan & Undang';
     const tagHtml = s.emails.map(e => `<span class="cohort-invite-tag">${_cohortEsc(e)}<button type="button" onclick="cohortCreateRemoveEmail('${_cohortEsc(e)}')">&#x2715;</button></span>`).join('');
-    body.innerHTML = `<p class="cohort-muted" style="margin-bottom:10px;">Opsional — tambah email siswa yang ingin langsung diundang. Kamu bisa lewati ini dan share URL undangan nanti.</p><div style="display:flex;gap:6px;margin-bottom:8px;"><input type="email" id="cc-email-input" class="cohort-input" placeholder="siswa@email.com" style="margin-bottom:0;flex:1;" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();cohortCreateAddEmail();}"><button type="button" class="cohort-btn secondary" onclick="cohortCreateAddEmail()">Tambah</button></div><div id="cc-email-tags" style="margin-bottom:12px;">${tagHtml}</div><div class="cohort-create-actions"><button type="button" class="cohort-btn secondary" onclick="_cohortCreateState.step=2;cohortCreateRenderStep()">← Kembali</button><button type="button" class="cohort-btn" id="cc-create-btn" onclick="cohortCreateFinal()">Buat Kohort</button></div><p class="cohort-muted" style="text-align:right;margin-top:8px;font-size:.65rem;">Tidak perlu tambah siswa sekarang — <a href="#" style="color:var(--cohort-secondary,#E8442A);text-decoration:none;font-weight:700;" onclick="event.preventDefault();cohortCreateFinal()">Lewati &amp; buat →</a></p>`;
+    body.innerHTML = `
+      <label class="cohort-muted" style="font-size:.65rem;">URL grup WhatsApp <span style="font-weight:400;">(opsional)</span></label>
+      <input type="url" id="cc-wa-url" class="cohort-input" placeholder="https://chat.whatsapp.com/…" value="${_cohortEsc(s.waUrl)}" autocomplete="off" oninput="_cohortCreateState.waUrl=this.value.trim();">
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid #F3F4F6;">
+        <label class="cohort-muted" style="font-size:.65rem;">Undang siswa via email <span style="font-weight:400;">(opsional)</span></label>
+        <div style="display:flex;gap:6px;margin-bottom:8px;">
+          <input type="email" id="cc-email-input" class="cohort-input" placeholder="siswa@email.com" style="margin-bottom:0;flex:1;" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();cohortCreateAddEmail();}">
+          <button type="button" class="cohort-btn secondary" onclick="cohortCreateAddEmail()">Tambah</button>
+        </div>
+        <div id="cc-email-tags" style="min-height:8px;margin-bottom:4px;">${tagHtml}</div>
+      </div>
+      <div class="cohort-create-actions">
+        <button type="button" class="cohort-btn secondary" onclick="_cohortCreateState.step=2;cohortCreateRenderStep()">← Kembali</button>
+        <button type="button" class="cohort-btn" id="cc-create-btn" onclick="cohortCreateFinal()">Buat Kohort</button>
+      </div>`;
   } else if (s.step === 4) {
     if (title) title.textContent = 'Kohort Berhasil Dibuat!';
     const c = s.newCohort;
@@ -10770,6 +10784,7 @@ async function cohortCreateFinal() {
       p_theme_secondary: s.sec,
       p_slogan: s.slogan || null,
       p_invite_code: inviteCode,
+      p_whatsapp_invite_url: s.waUrl || null,
     });
     if (error) {
       cohortCreateShowStatus(error.message || 'Gagal membuat kohort.');
