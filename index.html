@@ -10703,7 +10703,7 @@ function cohortCreateRenderStep() {
   } else if (s.step === 3) {
     if (title) title.textContent = 'Undang Siswa via Email';
     const tagHtml = s.emails.map(e => `<span class="cohort-invite-tag">${_cohortEsc(e)}<button type="button" onclick="cohortCreateRemoveEmail('${_cohortEsc(e)}')">&#x2715;</button></span>`).join('');
-    body.innerHTML = `<p class="cohort-muted" style="margin-bottom:10px;">Tambah email siswa untuk langsung diundang. Kamu juga bisa share URL undangan di langkah berikutnya.</p><div style="display:flex;gap:6px;margin-bottom:8px;"><input type="email" id="cc-email-input" class="cohort-input" placeholder="siswa@email.com" style="margin-bottom:0;flex:1;" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();cohortCreateAddEmail();}"><button type="button" class="cohort-btn secondary" onclick="cohortCreateAddEmail()">Tambah</button></div><div id="cc-email-tags" style="margin-bottom:12px;">${tagHtml}</div><div class="cohort-create-actions"><button type="button" class="cohort-btn secondary" onclick="_cohortCreateState.step=2;cohortCreateRenderStep()">← Kembali</button><button type="button" class="cohort-btn" id="cc-create-btn" onclick="cohortCreateFinal()">Buat Kohort</button></div>`;
+    body.innerHTML = `<p class="cohort-muted" style="margin-bottom:10px;">Opsional — tambah email siswa yang ingin langsung diundang. Kamu bisa lewati ini dan share URL undangan nanti.</p><div style="display:flex;gap:6px;margin-bottom:8px;"><input type="email" id="cc-email-input" class="cohort-input" placeholder="siswa@email.com" style="margin-bottom:0;flex:1;" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();cohortCreateAddEmail();}"><button type="button" class="cohort-btn secondary" onclick="cohortCreateAddEmail()">Tambah</button></div><div id="cc-email-tags" style="margin-bottom:12px;">${tagHtml}</div><div class="cohort-create-actions"><button type="button" class="cohort-btn secondary" onclick="_cohortCreateState.step=2;cohortCreateRenderStep()">← Kembali</button><button type="button" class="cohort-btn" id="cc-create-btn" onclick="cohortCreateFinal()">Buat Kohort</button></div><p class="cohort-muted" style="text-align:right;margin-top:8px;font-size:.65rem;">Tidak perlu tambah siswa sekarang — <a href="#" style="color:var(--cohort-secondary,#E8442A);text-decoration:none;font-weight:700;" onclick="event.preventDefault();cohortCreateFinal()">Lewati &amp; buat →</a></p>`;
   } else if (s.step === 4) {
     if (title) title.textContent = 'Kohort Berhasil Dibuat!';
     const c = s.newCohort;
@@ -10760,32 +10760,44 @@ async function cohortCreateFinal() {
   const btn = document.getElementById('cc-create-btn');
   if (btn) btn.disabled = true;
   cohortCreateShowStatus('Membuat kohort…');
-  const slug = s.name.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'').slice(0,56) || ('cohort-' + Date.now());
-  const inviteCode = cohortGenInviteCode();
-  const { data: newC, error } = await _supabase.rpc('leader_create_cohort', {
-    p_name: s.name,
-    p_slug: slug,
-    p_theme_primary: s.pri,
-    p_theme_secondary: s.sec,
-    p_slogan: s.slogan || null,
-    p_invite_code: inviteCode,
-  });
-  if (error) {
-    cohortCreateShowStatus(error.message || 'Gagal membuat kohort.');
-    if (btn) btn.disabled = false;
-    return;
-  }
-  if (s.emails.length && newC) {
-    cohortCreateShowStatus('Mengirim undangan email…');
-    for (const email of s.emails) {
-      await _supabase.rpc('cohort_leader_add_student_by_email', { p_cohort: newC.id, p_email: email }).catch(() => {});
+  try {
+    const slug = s.name.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'').slice(0,56) || ('cohort-' + Date.now());
+    const inviteCode = cohortGenInviteCode();
+    const { data: raw, error } = await _supabase.rpc('leader_create_cohort', {
+      p_name: s.name,
+      p_slug: slug,
+      p_theme_primary: s.pri,
+      p_theme_secondary: s.sec,
+      p_slogan: s.slogan || null,
+      p_invite_code: inviteCode,
+    });
+    if (error) {
+      cohortCreateShowStatus(error.message || 'Gagal membuat kohort.');
+      if (btn) btn.disabled = false;
+      return;
     }
+    // PostgREST may return a single object or a one-item array for row-valued functions.
+    const newC = Array.isArray(raw) ? raw[0] : raw;
+    if (!newC || !newC.id) {
+      cohortCreateShowStatus('Kohort dibuat tetapi respons tidak terbaca. Coba refresh.');
+      if (btn) btn.disabled = false;
+      return;
+    }
+    if (s.emails.length) {
+      cohortCreateShowStatus('Mengirim undangan email…');
+      for (const email of s.emails) {
+        await _supabase.rpc('cohort_leader_add_student_by_email', { p_cohort: newC.id, p_email: email }).catch(() => {});
+      }
+    }
+    _cohortCreateState.newCohort = newC;
+    _cohortCreateState.step = 4;
+    cohortCreateRenderStep();
+    const stEl = document.getElementById('cohort-create-status');
+    if (stEl) stEl.style.display = 'none';
+  } catch (e) {
+    cohortCreateShowStatus((e && e.message) || 'Terjadi kesalahan.');
+    if (btn) btn.disabled = false;
   }
-  _cohortCreateState.newCohort = newC;
-  _cohortCreateState.step = 4;
-  cohortCreateRenderStep();
-  const stEl = document.getElementById('cohort-create-status');
-  if (stEl) stEl.style.display = 'none';
 }
 
 function cohortGenInviteCode() {
