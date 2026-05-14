@@ -775,21 +775,6 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .cohort-badge--onDark .cohort-badge__name{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.2);}
 .cohort-badge--onDark .cohort-badge__sub{color:rgba(255,255,255,.72);font-weight:500;}
 .cohort-badge--onDark .cohort-badge__icon--fallback{box-shadow:0 2px 10px rgba(0,0,0,.25);}
-/* ── Solid header badge: fixed square shape, primary color fill, initials only ── */
-.cohort-badge--solid .cohort-badge__outer{
-  width:50px;height:50px;min-width:50px;max-width:50px;padding:0;
-  display:flex;align-items:center;justify-content:center;
-  background:var(--cb-pri,#1A1F3C) !important;
-  border:2.5px solid var(--cohort-secondary,#c9a87c) !important;
-  box-shadow:0 4px 16px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.12);
-}
-.cohort-badge__initials{
-  color:#fff;font-weight:900;font-size:1.1rem;letter-spacing:.05em;
-  line-height:1;font-family:'Plus Jakarta Sans',sans-serif;user-select:none;
-}
-.cohort-badge--solid .cohort-badge__name,
-.cohort-badge--solid .cohort-badge__sub,
-.cohort-badge--solid .cohort-badge__icon{display:none;}
 .dash-topbar-cohort-chip{display:none;align-items:center;padding:2px 6px 2px 2px;border-radius:14px;border:1px solid var(--cohort-secondary,#E5E7EB);background:#fff;max-width:min(220px,42vw);box-shadow:0 1px 3px rgba(15,23,42,.06);}
 .dash-topbar-cohort-chip .cohort-badge{max-width:100%;}
 .dash-topbar-brand-block{display:none;align-items:center;gap:20px;flex-wrap:wrap;min-width:0;}
@@ -826,12 +811,6 @@ body.cohort-themed.in-dashboard .dash-topbar{
 }
 @supports not (background:color-mix(in srgb,red,red)){
   body.cohort-themed.in-dashboard .dash-topbar{background:linear-gradient(90deg,#EDE7D5 0px,#F7F6F3 290px);}
-}
-.cohort-topbar-badge{position:absolute;left:16px;bottom:-20px;z-index:95;filter:drop-shadow(0 6px 16px rgba(15,23,42,.3));}
-body.cohort-themed.in-dashboard .dash-topbar-brand-block{margin-left:80px;}
-@media(max-width:700px){
-  .cohort-topbar-badge{left:12px;bottom:-16px;transform:scale(.86);transform-origin:left bottom;}
-  body.cohort-themed.in-dashboard .dash-topbar-brand-block{margin-left:64px;}
 }
 .cohort-app-strip-center{flex:1;min-width:0;}
 .cohort-strip-slogan{color:rgba(255,255,255,.92);font-size:.8rem;font-weight:600;}
@@ -4314,7 +4293,6 @@ html,body{overflow-x:hidden;max-width:100%;}
           <span id="dash-topbar-view-label" class="dash-topbar-view-page">Dashboard</span>
         </div>
         <span class="dash-topbar-title" id="dash-topbar-title">Dashboard</span>
-        <span id="cohort-strip-badge" class="cohort-strip-badge-host cohort-topbar-badge" aria-label="Badge kohort" style="display:none;"></span>
         <div style="flex:1"></div>
         <span class="dash-topbar-date" id="dash-topbar-date"></span>
         <button class="dash-topbar-icon-btn" title="Notifikasi">
@@ -10231,9 +10209,7 @@ function cohortClearDashboardTheme() {
   ['--cohort-primary', '--cohort-secondary', '--cohort-accent', '--cohort-sidebar-end', '--cohort-surface'].forEach(k => root.style.removeProperty(k));
   const chip = document.getElementById('dash-topbar-cohort-chip');
   const strip = document.getElementById('cohort-app-strip');
-  const bd = document.getElementById('cohort-strip-badge');
   if (chip) chip.style.display = 'none';
-  if (bd) bd.style.display = 'none';
   if (strip) strip.style.display = 'none';
   const brand = document.getElementById('dash-topbar-brand-block');
   const titleEl = document.getElementById('dash-topbar-title');
@@ -10406,32 +10382,19 @@ function cohortUpdateCohortChrome(cohortRowOpt) {
   const chip = document.getElementById('dash-topbar-cohort-chip');
   const strip = document.getElementById('cohort-app-strip');
   const sl = document.getElementById('cohort-strip-slogan');
-  const sm = document.getElementById('cohort-strip-meta');
-  const bd = document.getElementById('cohort-strip-badge');
   if (!chip || !strip) return;
   if (!row || !document.body.classList.contains('in-dashboard')) {
     chip.style.display = 'none';
     strip.style.display = 'none';
-    strip.classList.remove('cohort-app-strip--with-badge');
     cohortSyncDashTopbarTitle();
     return;
   }
   const name = row.name || 'Kohort';
-  const badge = (row.badge_icon || '').trim();
-  const pri = _cohortParseThemeHex(row.theme_primary) || '#1A1F3C';
-  const sec = _cohortParseThemeHex(row.theme_secondary) || '#c9a87c';
   const sub = (row.slogan && row.slogan.trim()) ? row.slogan.trim() : '';
-  const shape = cohortBadgeShapeFromRow(row);
   chip.style.display = 'none';
   chip.innerHTML = '';
   strip.style.display = 'block';
-  if (bd) {
-    bd.innerHTML = cohortHeaderBadgeHtml(name, pri, shape);
-    bd.style.display = 'inline-flex';
-  }
   if (sl) sl.textContent = sub || 'Bangun momentum bareng tim kamu.';
-  if (sm) sm.textContent = 'Memuat ringkasan kohort…';
-  void cohortHydrateStripMeta(row.id);
   cohortSyncDashTopbarTitle();
 }
 
@@ -10574,20 +10537,6 @@ function cohortBadgeTrimSubtitle(sub, maxLen) {
   return t.length > cap ? t.slice(0, cap - 1).trim() + '\u2026' : t;
 }
 
-/** Extract up to 2 initials from a cohort name ("Ocean Blue" → "OB"). */
-function cohortBadgeInitials(name) {
-  const words = String(name || '').trim().split(/\s+/).filter(Boolean);
-  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return 'C';
-}
-
-/** Compact solid-color header badge: shape + initials only, no name or subtitle below. */
-function cohortHeaderBadgeHtml(name, pri, shape) {
-  const initials = cohortBadgeInitials(name);
-  const s = cohortNormalizeBadgeShape(shape);
-  return `<div class="cohort-badge cohort-badge--${s} cohort-badge--solid" style="--cb-pri:${_cohortEsc(pri)};" role="img" aria-label="${_cohortEsc(name)}"><div class="cohort-badge__outer"><div class="cohort-badge__initials">${_cohortEsc(initials)}</div></div></div>`;
-}
 
 /**
  * Reusable cohort badge markup: shield | circle | square | octagon | triangle, icon, name, subtitle.
