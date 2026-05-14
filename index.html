@@ -823,6 +823,29 @@ body.cohort-themed.in-dashboard .dash-topbar{
 .cohort-subtabs{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 10px;}
 .cohort-subtab{padding:7px 14px;border-radius:999px;border:1px solid #E5E7EB;background:#fff;color:#374151;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;}
 .cohort-subtab.active{background:var(--cohort-secondary,#E8442A);border-color:var(--cohort-secondary,#E8442A);color:#fff;}
+/* ── Leader cohort switcher ── */
+.cohort-leader-tabs{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
+.cohort-leader-tab{padding:7px 16px;border-radius:999px;border:1.5px solid #E5E7EB;background:#fff;color:#374151;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s,background .15s;}
+.cohort-leader-tab:hover{border-color:var(--cohort-primary,#1A1F3C);color:var(--cohort-primary,#1A1F3C);}
+.cohort-leader-tab.active{background:var(--cohort-primary,#1A1F3C);border-color:var(--cohort-primary,#1A1F3C);color:#fff;}
+.cohort-leader-tab--new{border-style:dashed;border-color:#D1D5DB;color:#6B7280;}
+.cohort-leader-tab--new:hover{border-color:var(--cohort-secondary,#E8442A);color:var(--cohort-secondary,#E8442A);background:#fff;}
+/* ── Create cohort modal ── */
+.cohort-create-modal{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:600;display:none;align-items:center;justify-content:center;padding:16px;}
+.cohort-create-modal.open{display:flex;}
+.cohort-create-panel{background:#fff;border-radius:16px;padding:28px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.22);}
+.cohort-create-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;}
+.cohort-create-title{font-size:1rem;font-weight:800;color:#111;}
+.cohort-create-sub{font-size:.72rem;color:#6B7280;margin-top:3px;}
+.cohort-create-close{background:none;border:none;font-size:1.1rem;cursor:pointer;color:#9CA3AF;padding:0;line-height:1;flex-shrink:0;}
+.cohort-create-steps{display:flex;gap:5px;margin-bottom:20px;}
+.cohort-create-step{flex:1;height:3px;border-radius:2px;background:#E5E7EB;transition:background .2s;}
+.cohort-create-step.done{background:var(--cohort-primary,#1A1F3C);}
+.cohort-create-step.active{background:var(--cohort-secondary,#E8442A);}
+.cohort-create-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap;}
+.cohort-invite-tag{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:#F3F4F6;border-radius:6px;font-size:.72rem;color:#374151;margin:3px 3px 0 0;}
+.cohort-invite-tag button{background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:.8rem;padding:0;line-height:1;}
+.cohort-join-url-box{background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:10px 14px;font-size:.73rem;color:#374151;word-break:break-all;font-family:monospace;margin-top:8px;line-height:1.5;}
 .cohort-feed-card{border:1px solid #EEF2F7;border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#FAFBFC;}
 .cohort-feed-kind{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#9CA3AF;margin-bottom:4px;}
 .cohort-feed-body{font-size:.8rem;color:#1f2937;line-height:1.45;}
@@ -4340,6 +4363,27 @@ html,body{overflow-x:hidden;max-width:100%;}
         </div>
       </div>
 
+      <!-- create cohort modal -->
+      <div id="cohort-create-modal" class="cohort-create-modal" onclick="if(event.target===this)cohortCloseCreateModal()">
+        <div class="cohort-create-panel">
+          <div class="cohort-create-head">
+            <div>
+              <div class="cohort-create-title" id="cohort-create-modal-title">Buat Kohort Baru</div>
+              <div class="cohort-create-sub" id="cohort-create-modal-sub">Langkah 1 dari 4</div>
+            </div>
+            <button class="cohort-create-close" onclick="cohortCloseCreateModal()">&#x2715;</button>
+          </div>
+          <div class="cohort-create-steps">
+            <div class="cohort-create-step active" id="cohort-cs-1"></div>
+            <div class="cohort-create-step" id="cohort-cs-2"></div>
+            <div class="cohort-create-step" id="cohort-cs-3"></div>
+            <div class="cohort-create-step" id="cohort-cs-4"></div>
+          </div>
+          <div id="cohort-create-body"></div>
+          <div id="cohort-create-status" class="cohort-muted" style="margin-top:8px;display:none;"></div>
+        </div>
+      </div>
+
       <!-- email update modal -->
       <div id="dash-email-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
         <div style="background:#fff;border-radius:14px;padding:28px 28px 24px;max-width:380px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.2);">
@@ -7027,6 +7071,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             </div>
           </div>
           <div id="cohort-mentor-wrap" style="display:none;">
+            <div id="cohort-leader-tabs" class="cohort-leader-tabs" style="display:none;"></div>
             <div id="cohort-mentor-subtabs" class="cohort-subtabs">
               <button type="button" class="cohort-subtab active" data-cmtab="overview" onclick="cohortSwitchMentorTab('overview')">Ringkasan</button>
               <button type="button" class="cohort-subtab" id="cohort-mentor-subtab-identity" data-cmtab="identity" onclick="cohortSwitchMentorTab('identity')" style="display:none;">Identitas kohort</button>
@@ -10572,6 +10617,177 @@ function cohortBadgeHtml(opts) {
   return `<div class="${cls}" style="--cb-pri:${pri};--cb-sec:${sec};" role="group" aria-label="${_cohortEsc(displayName)}"><div class="cohort-badge__outer"${outerStyle}>${iconBlock}<div class="cohort-badge__name">${_cohortEsc(displayName)}</div>${subHtml}</div></div>`;
 }
 
+/* ── Leader cohort switcher ── */
+function cohortLeaderRenderSwitcher() {
+  const tabs = document.getElementById('cohort-leader-tabs');
+  if (!tabs) return;
+  const led = _cohortState.mentorCohorts || [];
+  if (!led.length) { tabs.style.display = 'none'; return; }
+  tabs.style.display = 'flex';
+  const activeId = (_cohortState.primaryMentorCohort && _cohortState.primaryMentorCohort.id) || (led[0] && led[0].id);
+  tabs.innerHTML = led.map(c => {
+    const isA = c.id === activeId;
+    return `<button type="button" class="cohort-leader-tab${isA ? ' active' : ''}" onclick="cohortLeaderSwitchCohort('${_cohortEsc(c.id)}')">${_cohortEsc(c.name || 'Kohort')}</button>`;
+  }).join('') + `<button type="button" class="cohort-leader-tab cohort-leader-tab--new" onclick="cohortOpenCreateModal()">+ Buat Kohort</button>`;
+}
+
+function cohortLeaderSwitchCohort(cohortId) {
+  const c = (_cohortState.mentorCohorts || []).find(x => x.id === cohortId);
+  if (!c) return;
+  _cohortState.primaryMentorCohort = c;
+  cohortApplyDashboardThemeFromRow(c);
+  cohortUpdateCohortChrome(c);
+  cohortLeaderRenderSwitcher();
+  cohortRenderMentorPanels();
+}
+
+/* ── Create cohort modal ── */
+let _cohortCreateState = { step:1, name:'', slogan:'', pri:'#0f2942', sec:'#c9a87c', emails:[], newCohort:null };
+
+function cohortOpenCreateModal() {
+  _cohortCreateState = { step:1, name:'', slogan:'', pri:'#0f2942', sec:'#c9a87c', emails:[], newCohort:null };
+  const m = document.getElementById('cohort-create-modal');
+  if (m) { m.classList.add('open'); cohortCreateRenderStep(); }
+}
+
+function cohortCloseCreateModal() {
+  const m = document.getElementById('cohort-create-modal');
+  if (m) m.classList.remove('open');
+}
+
+function cohortCreateSetStep(n) {
+  _cohortCreateState.step = n;
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('cohort-cs-' + i);
+    if (el) el.className = 'cohort-create-step' + (i < n ? ' done' : i === n ? ' active' : '');
+  }
+  const sub = document.getElementById('cohort-create-modal-sub');
+  if (sub) sub.textContent = 'Langkah ' + n + ' dari 4';
+}
+
+function cohortCreateRenderStep() {
+  const s = _cohortCreateState;
+  const body = document.getElementById('cohort-create-body');
+  const title = document.getElementById('cohort-create-modal-title');
+  const stEl = document.getElementById('cohort-create-status');
+  if (!body) return;
+  if (stEl) { stEl.style.display = 'none'; stEl.textContent = ''; }
+  cohortCreateSetStep(s.step);
+  if (s.step === 1) {
+    if (title) title.textContent = 'Nama & Motto';
+    body.innerHTML = `<label class="cohort-muted" style="font-size:.65rem;">Nama kohort</label><input type="text" id="cc-name" class="cohort-input" placeholder="Ocean Blue" maxlength="80" value="${_cohortEsc(s.name)}" autocomplete="off"><label class="cohort-muted" style="font-size:.65rem;">Motto (opsional)</label><input type="text" id="cc-slogan" class="cohort-input" placeholder="Together we learn, together we grow." maxlength="200" value="${_cohortEsc(s.slogan)}" autocomplete="off"><div class="cohort-create-actions"><button type="button" class="cohort-btn" onclick="cohortCreateNext1()">Lanjut →</button></div>`;
+    setTimeout(() => { const el = document.getElementById('cc-name'); if (el) el.focus(); }, 50);
+  } else if (s.step === 2) {
+    if (title) title.textContent = 'Pilih Warna';
+    body.innerHTML = `<label class="cohort-muted" style="font-size:.65rem;">Warna utama</label><div class="cohort-color-row" style="margin-bottom:12px;"><input type="color" id="cc-pri-pick" class="cohort-color-swatch" value="${_cohortEsc(s.pri)}" oninput="document.getElementById('cc-pri-hex').value=this.value;_cohortCreateState.pri=this.value;"><input type="text" id="cc-pri-hex" class="cohort-input" placeholder="#0f2942" maxlength="7" value="${_cohortEsc(s.pri)}" oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value)){document.getElementById('cc-pri-pick').value=this.value;_cohortCreateState.pri=this.value;}"></div><label class="cohort-muted" style="font-size:.65rem;">Warna aksen</label><div class="cohort-color-row" style="margin-bottom:12px;"><input type="color" id="cc-sec-pick" class="cohort-color-swatch" value="${_cohortEsc(s.sec)}" oninput="document.getElementById('cc-sec-hex').value=this.value;_cohortCreateState.sec=this.value;"><input type="text" id="cc-sec-hex" class="cohort-input" placeholder="#c9a87c" maxlength="7" value="${_cohortEsc(s.sec)}" oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value)){document.getElementById('cc-sec-pick').value=this.value;_cohortCreateState.sec=this.value;}"></div><div class="cohort-create-actions"><button type="button" class="cohort-btn secondary" onclick="_cohortCreateState.step=1;cohortCreateRenderStep()">← Kembali</button><button type="button" class="cohort-btn" onclick="cohortCreateNext2()">Lanjut →</button></div>`;
+  } else if (s.step === 3) {
+    if (title) title.textContent = 'Undang Siswa via Email';
+    const tagHtml = s.emails.map(e => `<span class="cohort-invite-tag">${_cohortEsc(e)}<button type="button" onclick="cohortCreateRemoveEmail('${_cohortEsc(e)}')">&#x2715;</button></span>`).join('');
+    body.innerHTML = `<p class="cohort-muted" style="margin-bottom:10px;">Tambah email siswa untuk langsung diundang. Kamu juga bisa share URL undangan di langkah berikutnya.</p><div style="display:flex;gap:6px;margin-bottom:8px;"><input type="email" id="cc-email-input" class="cohort-input" placeholder="siswa@email.com" style="margin-bottom:0;flex:1;" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();cohortCreateAddEmail();}"><button type="button" class="cohort-btn secondary" onclick="cohortCreateAddEmail()">Tambah</button></div><div id="cc-email-tags" style="margin-bottom:12px;">${tagHtml}</div><div class="cohort-create-actions"><button type="button" class="cohort-btn secondary" onclick="_cohortCreateState.step=2;cohortCreateRenderStep()">← Kembali</button><button type="button" class="cohort-btn" id="cc-create-btn" onclick="cohortCreateFinal()">Buat Kohort</button></div>`;
+  } else if (s.step === 4) {
+    if (title) title.textContent = 'Kohort Berhasil Dibuat!';
+    const c = s.newCohort;
+    const joinUrl = cohortGetJoinUrl(c && c.invite_code);
+    body.innerHTML = `<p class="cohort-muted" style="margin-bottom:12px;">Kohort <strong style="color:#111;">${_cohortEsc(c ? c.name : '')}</strong> sudah aktif. Share URL di bawah agar siswa bisa bergabung langsung.</p><label class="cohort-muted" style="font-size:.65rem;">URL undangan siswa</label><div class="cohort-join-url-box">${_cohortEsc(joinUrl)}</div><div class="cohort-create-actions" style="margin-top:14px;"><button type="button" class="cohort-btn secondary" id="cc-copy-btn" onclick="cohortCopyJoinUrl('${_cohortEsc(joinUrl)}',this)">Salin URL</button><button type="button" class="cohort-btn" onclick="cohortCloseCreateModal();cohortInit().catch(()=>{})">Selesai</button></div>`;
+  }
+}
+
+function cohortCreateNext1() {
+  const name = (document.getElementById('cc-name')?.value || '').trim();
+  const slogan = (document.getElementById('cc-slogan')?.value || '').trim();
+  if (!name) { cohortCreateShowStatus('Nama kohort wajib diisi.'); return; }
+  _cohortCreateState.name = name;
+  _cohortCreateState.slogan = slogan;
+  _cohortCreateState.step = 2;
+  cohortCreateRenderStep();
+}
+
+function cohortCreateNext2() {
+  const pri = (document.getElementById('cc-pri-hex')?.value || '').trim();
+  const sec = (document.getElementById('cc-sec-hex')?.value || '').trim();
+  if (pri) _cohortCreateState.pri = pri;
+  if (sec) _cohortCreateState.sec = sec;
+  _cohortCreateState.step = 3;
+  cohortCreateRenderStep();
+}
+
+function cohortCreateAddEmail() {
+  const inp = document.getElementById('cc-email-input');
+  const email = (inp?.value || '').trim().toLowerCase();
+  if (!email || !email.includes('@')) return;
+  if (!_cohortCreateState.emails.includes(email)) {
+    _cohortCreateState.emails.push(email);
+    const tags = document.getElementById('cc-email-tags');
+    if (tags) tags.innerHTML = _cohortCreateState.emails.map(e => `<span class="cohort-invite-tag">${_cohortEsc(e)}<button type="button" onclick="cohortCreateRemoveEmail('${_cohortEsc(e)}')">&#x2715;</button></span>`).join('');
+  }
+  if (inp) inp.value = '';
+}
+
+function cohortCreateRemoveEmail(email) {
+  _cohortCreateState.emails = _cohortCreateState.emails.filter(e => e !== email);
+  const tags = document.getElementById('cc-email-tags');
+  if (tags) tags.innerHTML = _cohortCreateState.emails.map(e => `<span class="cohort-invite-tag">${_cohortEsc(e)}<button type="button" onclick="cohortCreateRemoveEmail('${_cohortEsc(e)}')">&#x2715;</button></span>`).join('');
+}
+
+function cohortCreateShowStatus(msg) {
+  const stEl = document.getElementById('cohort-create-status');
+  if (stEl) { stEl.textContent = msg; stEl.style.display = 'block'; }
+}
+
+async function cohortCreateFinal() {
+  if (!_supabase || !currentUser) { cohortCreateShowStatus('Tidak terkoneksi.'); return; }
+  const s = _cohortCreateState;
+  const btn = document.getElementById('cc-create-btn');
+  if (btn) btn.disabled = true;
+  cohortCreateShowStatus('Membuat kohort…');
+  const slug = s.name.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'').slice(0,64) || ('cohort-' + Date.now());
+  const inviteCode = cohortGenInviteCode();
+  const { data: newC, error } = await _supabase.from('cohorts').insert({
+    name: s.name,
+    slug,
+    theme_primary: s.pri,
+    theme_secondary: s.sec,
+    slogan: s.slogan || null,
+    mentor_user_id: currentUser.id,
+    invite_code: inviteCode,
+  }).select().single();
+  if (error) {
+    cohortCreateShowStatus(error.message || 'Gagal membuat kohort.');
+    if (btn) btn.disabled = false;
+    return;
+  }
+  if (s.emails.length && newC) {
+    cohortCreateShowStatus('Mengirim undangan email…');
+    for (const email of s.emails) {
+      await _supabase.rpc('cohort_leader_add_student_by_email', { p_cohort: newC.id, p_email: email }).catch(() => {});
+    }
+  }
+  _cohortCreateState.newCohort = newC;
+  _cohortCreateState.step = 4;
+  cohortCreateRenderStep();
+  const stEl = document.getElementById('cohort-create-status');
+  if (stEl) stEl.style.display = 'none';
+}
+
+function cohortGenInviteCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+function cohortGetJoinUrl(inviteCode) {
+  if (!inviteCode) return '';
+  return window.location.origin + window.location.pathname + '?invite=' + encodeURIComponent(inviteCode);
+}
+
+function cohortCopyJoinUrl(url, btn) {
+  if (!url) return;
+  navigator.clipboard.writeText(url).then(() => {
+    if (btn) { const orig = btn.textContent; btn.textContent = 'Tersalin!'; setTimeout(() => { if (btn) btn.textContent = orig; }, 1800); }
+  }).catch(() => { if (btn) btn.textContent = 'Gagal salin'; });
+}
+
 let _cohortState = {
   studentRows: [],
   mentorCohorts: [],
@@ -10605,6 +10821,7 @@ function cohortApplyShellUI() {
     stu.style.display = leaderOnly ? 'none' : '';
     men.style.display = _cohortState.hasMentorCohort ? '' : 'none';
   }
+  if (!admin) cohortLeaderRenderSwitcher();
 }
 
 async function cohortGetPrimaryStudentCohortId() {
