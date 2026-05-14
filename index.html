@@ -4242,29 +4242,17 @@ html,body{overflow-x:hidden;max-width:100%;}
           <span>Dashboard</span>
         </div>
 
-        <div class="dash-nav-item" id="dash-nav-discover" onclick="switchDashView('discover')">
-          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-          <span>Discover</span>
+        <div class="dash-nav-item" id="dash-nav-research-tools" onclick="toggleResearchToolsNav()">
+          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>
+          <span>Research Tools</span>
+          <span class="dash-nav-arrow" id="dash-nav-rt-arrow">&#9654;</span>
         </div>
-
-        <div class="dash-nav-item" id="dash-nav-deepdive" onclick="switchDashView('deepdive')">
-          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span>
-          <span>Deep Dive</span>
-        </div>
-
-        <div class="dash-nav-item" id="dash-nav-tracker" onclick="switchDashView('tracker')">
-          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
-          <span>Tracker</span>
-        </div>
-
-        <div class="dash-nav-item" id="dash-nav-ai" onclick="switchDashView('ai')">
-          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
-          <span>Mulai Berjualan</span>
-        </div>
-
-        <div class="dash-nav-item" id="dash-nav-alerts" onclick="switchDashView('alerts')">
-          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
-          <span>Alerts</span>
+        <div class="dash-nav-sub" id="dash-sub-research-tools">
+          <div class="dash-nav-sub-item" id="dash-nav-discover" onclick="switchDashView('discover')">Discover</div>
+          <div class="dash-nav-sub-item" id="dash-nav-deepdive" onclick="switchDashView('deepdive')">Deep Dive</div>
+          <div class="dash-nav-sub-item" id="dash-nav-tracker" onclick="switchDashView('tracker')">Tracker</div>
+          <div class="dash-nav-sub-item" id="dash-nav-ai" onclick="switchDashView('ai')">Mulai Berjualan</div>
+          <div class="dash-nav-sub-item" id="dash-nav-alerts" onclick="switchDashView('alerts')">Alerts</div>
         </div>
 
         <div class="dash-nav-item" id="dash-nav-credits" onclick="switchDashView('credits')" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:12px;">
@@ -5433,6 +5421,25 @@ html,body{overflow-x:hidden;max-width:100%;}
 
             <!-- price-change alert strip -->
             <div id="hbd-alerts-strip" style="display:none;margin-bottom:16px;"></div>
+
+            <!-- mentor cohort overview (shown when user leads a cohort) -->
+            <div id="hbd-mentor-wrap" style="display:none;margin-bottom:20px;">
+              <div class="hbd-two-col" style="margin-bottom:0;">
+                <div class="hbd-card">
+                  <div class="hbd-card-title">Siswa &amp; Progres</div>
+                  <div class="hbd-card-sub" id="hbd-mentor-cohort-name" style="margin-bottom:10px;">—</div>
+                  <div id="hbd-mentor-stats"></div>
+                  <div id="hbd-mentor-inactive-list" style="margin-top:8px;"></div>
+                  <a class="hbd-see-more" onclick="switchDashView('cohort');typeof cohortSwitchMentorTab==='function'&&cohortSwitchMentorTab('students')">Lihat semua siswa →</a>
+                </div>
+                <div class="hbd-card">
+                  <div class="hbd-card-title">Feed terbaru siswa</div>
+                  <div class="hbd-card-sub">Aktivitas kohort minggu ini</div>
+                  <div id="hbd-mentor-feed-list" class="hbd-activity-list" style="margin-top:10px;"></div>
+                  <a class="hbd-see-more" onclick="switchDashView('cohort');typeof cohortSwitchMentorTab==='function'&&cohortSwitchMentorTab('overview')">Buka panel kohort →</a>
+                </div>
+              </div>
+            </div>
 
             <div id="hbd-cohort-digest-wrap" class="hbd-cohort-digest-wrap" style="display:none;margin-bottom:20px;">
               <div class="hbd-two-col" style="margin-bottom:0;">
@@ -9544,11 +9551,12 @@ async function adminLoadUserDirectory() {
       <tbody>${rows.map(r => {
         const role = r.app_role || 'student';
         const roleColor = role === 'admin' ? '#E8442A' : (role === 'leader' ? '#B45309' : '#1A7A46');
+        const isIndep = !r.cohort_count && !r.led_cohort_count;
         return `<tr style="border-bottom:1px solid #F9FAFB;">
           <td style="padding:8px 4px;"><strong>${_cohortEsc(r.display_name || 'User')}</strong><br><span class="cohort-muted">${_cohortEsc(r.email || '')}</span></td>
           <td><span style="color:${roleColor};font-weight:800;">${_cohortEsc(role)}</span></td>
-          <td>${r.cohort_count || 0}</td>
-          <td>${r.led_cohort_count || 0}</td>
+          <td>${isIndep ? '<span style="background:#F3F4F6;color:#6B7280;font-size:.62rem;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.04em;">Independent</span>' : (r.cohort_count || 0)}</td>
+          <td>${isIndep ? '' : (r.led_cohort_count || 0)}</td>
           <td class="cohort-muted">${r.created_at ? _cohortEsc(r.created_at.slice(0, 10)) : '—'}</td>
           <td class="cohort-muted">${r.last_activity_at ? _cohortEsc(r.last_activity_at.slice(0, 16).replace('T', ' ')) : '—'}</td>
           <td><button type="button" class="cohort-btn secondary" style="padding:4px 8px;font-size:.62rem;" onclick="adminPrefillRole('${_cohortEsc(r.email || '')}','${_cohortEsc(role)}')">Edit</button></td>
@@ -10083,6 +10091,13 @@ let _pdbSortDir    = 'desc';
 let _pdbRows       = [];
 let _pdbCatsInited = false;
 
+function toggleResearchToolsNav() {
+  const sub = document.getElementById('dash-sub-research-tools');
+  const parent = document.getElementById('dash-nav-research-tools');
+  if (sub) sub.classList.toggle('open');
+  if (parent) parent.classList.toggle('open');
+}
+
 function switchDashView(view) {
   _dashActiveView = view;
   PDB_VIEWS.forEach(v => {
@@ -10094,11 +10109,16 @@ function switchDashView(view) {
   cohortSyncDashTopbarTitle(view);
 
   // New sidebar nav: highlight correct item
+  const _rtViews = new Set(['discover','deepdive','tracker','ai','alerts']);
   ['dashboard','discover','deepdive','tracker','ai','alerts','cohort'].forEach(k => {
     const el = document.getElementById(`dash-nav-${k}`);
     if (!el) return;
     el.classList.toggle('active', k === view);
   });
+  const _rtParent = document.getElementById('dash-nav-research-tools');
+  const _rtSub = document.getElementById('dash-sub-research-tools');
+  if (_rtParent) _rtParent.classList.toggle('active', _rtViews.has(view));
+  if (_rtSub && _rtViews.has(view)) _rtSub.classList.add('open');
 
   // Legacy top-level nav (keep working for old views)
   const topNavKeys = ['home','research','suppliers','keywords','estimator','marketing','saved','education'];
@@ -11007,8 +11027,9 @@ async function cohortInit() {
   cohortRefreshDashboardTheme();
   cohortSwitchStudentTab('ringkasan');
   cohortSwitchMentorTab(_cohortState.mentorTab || 'overview');
-  if (typeof _dashActiveView !== 'undefined' && _dashActiveView === 'dashboard' && typeof hbdRenderCohortDigest === 'function') {
-    void hbdRenderCohortDigest();
+  if (typeof _dashActiveView !== 'undefined' && _dashActiveView === 'dashboard') {
+    if (typeof hbdRenderCohortDigest === 'function') void hbdRenderCohortDigest();
+    if (typeof hbdRenderMentorDigest === 'function') void hbdRenderMentorDigest();
   }
 }
 
@@ -15193,6 +15214,8 @@ async function hbdInit() {
       if (legendEl) legendEl.innerHTML = '<span style="font-size:.6rem;color:#9CA3AF;font-style:italic;">Contoh: 5 produk teratas di pasar</span>';
     }
     void hbdRenderCohortDigest();
+    if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {});
+    else void hbdRenderMentorDigest();
     return;
   }
 
@@ -15352,6 +15375,50 @@ async function hbdInit() {
   }));
   _hbdBuildChartFromTracked(prods);
   void hbdRenderCohortDigest();
+  if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {});
+  else void hbdRenderMentorDigest();
+}
+
+async function hbdRenderMentorDigest() {
+  const wrap = document.getElementById('hbd-mentor-wrap');
+  if (!wrap || !_supabase || !currentUser) return;
+  if (!_cohortState || !_cohortState.hasMentorCohort || !_cohortState.primaryMentorCohort) {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = '';
+  const c = _cohortState.primaryMentorCohort;
+  const nameEl = document.getElementById('hbd-mentor-cohort-name');
+  const statsEl = document.getElementById('hbd-mentor-stats');
+  const inacEl = document.getElementById('hbd-mentor-inactive-list');
+  const feedEl = document.getElementById('hbd-mentor-feed-list');
+  if (nameEl) nameEl.textContent = c.name || 'Kohort';
+  const since7d = new Date(Date.now() - 7 * 86400000).toISOString();
+  const [{ data: members }, { data: recent }] = await Promise.all([
+    _supabase.from('cohort_members').select('user_id,role,status,last_seen_at').eq('cohort_id', c.id).eq('status', 'active'),
+    _supabase.from('activity_events').select('user_id').eq('cohort_id', c.id).gte('created_at', since7d),
+  ]);
+  const studs = (members || []).filter(m => m.role === 'student');
+  const activeSet = new Set((recent || []).map(r => r.user_id));
+  const inactive = studs.filter(s => !activeSet.has(s.user_id));
+  await cohortLoadMemberNames(c.id);
+  if (statsEl) statsEl.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;">
+    <div style="background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:1.3rem;font-weight:900;color:#111;">${studs.length}</div><div class="cohort-muted" style="font-size:.6rem;">Siswa</div></div>
+    <div style="background:${inactive.length?'#FEF2F0':'#F0FDF4'};border-radius:8px;padding:10px;text-align:center;"><div style="font-size:1.3rem;font-weight:900;color:${inactive.length?'#C0392B':'#1A7A46'};">${inactive.length}</div><div class="cohort-muted" style="font-size:.6rem;">Perlu perhatian</div></div>
+    <div style="background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;"><div style="font-size:1.3rem;font-weight:900;color:#111;">${studs.length-inactive.length}</div><div class="cohort-muted" style="font-size:.6rem;">Aktif 7 hari</div></div>
+  </div>`;
+  if (inacEl) inacEl.innerHTML = inactive.length
+    ? `<div style="font-size:.65rem;font-weight:700;color:#C0392B;margin-bottom:4px;">Tidak aktif 7 hari:</div>`
+      + inactive.slice(0,5).map(s => `<div style="font-size:.72rem;padding:4px 0;border-bottom:1px solid #F3F4F6;">${_cohortEsc(cohortCohortDisplayName(s.user_id,null))}</div>`).join('')
+      + (inactive.length > 5 ? `<div class="cohort-muted" style="font-size:.65rem;margin-top:4px;">+${inactive.length-5} lainnya</div>` : '')
+    : '<div style="font-size:.72rem;color:#1A7A46;font-weight:700;">Semua siswa aktif minggu ini 🎉</div>';
+  if (feedEl) {
+    const { data: posts } = await _supabase.from('community_posts').select('user_id,body,kind,created_at').eq('cohort_id',c.id).gte('created_at',since7d).order('created_at',{ascending:false}).limit(6);
+    const kindLbl = {win:'Menang',milestone_share:'Milestone',product_share:'Produk',general:'Umum',question:'Pertanyaan'};
+    feedEl.innerHTML = (posts||[]).length ? (posts||[]).map(p =>
+      `<div style="padding:6px 0;border-bottom:1px solid #F3F4F6;"><div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;"><span style="font-size:.58rem;font-weight:700;text-transform:uppercase;color:#9CA3AF;">${_cohortEsc(kindLbl[p.kind]||p.kind||'')}</span><span style="font-size:.68rem;font-weight:700;color:#111;">${_cohortEsc(cohortCohortDisplayName(p.user_id,null))}</span></div><div style="font-size:.72rem;color:#374151;line-height:1.4;">${_cohortEsc((p.body||'').slice(0,90))}${(p.body||'').length>90?'…':''}</div></div>`
+    ).join('') : '<div class="cohort-muted" style="font-size:.72rem;">Belum ada postingan minggu ini.</div>';
+  }
 }
 
 /**
