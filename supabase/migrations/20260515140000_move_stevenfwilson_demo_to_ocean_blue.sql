@@ -1,4 +1,4 @@
--- Move stevenfwilson@gmail.com from demo cohort leadership to Ocean Blue.
+-- Move stevenfwilson1@gmail.com from demo cohort leadership to Ocean Blue.
 -- Safe to re-run: only touches rows tied to this user / known slugs.
 -- Requires the user to exist in auth.users (sign in once).
 
@@ -9,9 +9,9 @@ declare
   v_ocean uuid;
   v_old_ocean uuid;
 begin
-  select id into v_uid from auth.users where lower(email) = 'stevenfwilson@gmail.com' limit 1;
+  select id into v_uid from auth.users where lower(email) = 'stevenfwilson1@gmail.com' limit 1;
   if v_uid is null then
-    raise exception 'auth user stevenfwilson@gmail.com not found — create the account in Auth (sign up once) then re-run.';
+    raise exception 'auth user stevenfwilson1@gmail.com not found — create the account in Auth (sign up once) then re-run.';
   end if;
 
   select id into v_demo

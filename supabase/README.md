@@ -76,7 +76,7 @@ The role infrastructure lives in `migrations/20260513150000_roles_admin_leader_i
 
 ```text
 Admin:          stevenwilson614@gmail.com
-Cohort leader:  stevenfwilson@gmail.com
+Cohort leader:  stevenfwilson1@gmail.com
 Student:        olivia.melia.park@gmail.com
 ```
 
