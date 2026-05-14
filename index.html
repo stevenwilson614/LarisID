@@ -777,39 +777,40 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .cohort-badge--onDark .cohort-badge__icon--fallback{box-shadow:0 2px 10px rgba(0,0,0,.25);}
 .dash-topbar-cohort-chip{display:none;align-items:center;padding:2px 6px 2px 2px;border-radius:14px;border:1px solid var(--cohort-secondary,#E5E7EB);background:#fff;max-width:min(220px,42vw);box-shadow:0 1px 3px rgba(15,23,42,.06);}
 .dash-topbar-cohort-chip .cohort-badge{max-width:100%;}
-.dash-topbar-brand-block{display:none;align-items:center;gap:16px;flex-wrap:wrap;min-width:0;}
+.dash-topbar-brand-block{display:none;align-items:center;gap:20px;flex-wrap:wrap;min-width:0;}
 .dash-topbar-brand-stack{display:flex;flex-direction:column;gap:1px;line-height:1.15;}
-.dash-topbar-brand-kicker{font-size:.58rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#94a3b8;}
-.dash-topbar-cohort-name-accent{font-size:.82rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:var(--cohort-secondary,#c9a87c);max-width:min(200px,40vw);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.dash-topbar-view-page{font-size:1rem;font-weight:800;color:var(--cohort-primary,#1A1F3C);padding-left:4px;border-left:1px solid #E5E7EB;margin-left:2px;}
+.dash-topbar-brand-kicker{font-size:.58rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#6B7280;}
+.dash-topbar-cohort-name-accent{font-size:.88rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:var(--cohort-secondary,#c9a87c);max-width:min(200px,40vw);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dash-topbar-view-page{font-size:1rem;font-weight:800;color:var(--cohort-primary,#1A1F3C);padding-left:10px;border-left:1.5px solid rgba(0,0,0,.1);margin-left:8px;}
 .cohort-app-strip{
   position:relative;
   overflow:visible;
   background:
+    radial-gradient(ellipse at 22% 130%, rgba(255,255,255,.22) 0%, transparent 52%),
     linear-gradient(118deg,rgba(255,255,255,.11) 0%,transparent 40%),
     linear-gradient(-18deg,rgba(0,0,0,.14) 0%,transparent 38%),
     linear-gradient(95deg,var(--cohort-primary,#1A1F3C) 0%,color-mix(in srgb,var(--cohort-primary,#1A1F3C) 55%,var(--cohort-secondary,#7c6a4a) 45%) 52%,var(--cohort-sidebar-end,#12172a) 100%);
   border-bottom:1px solid rgba(255,255,255,.12);
 }
 @supports not (background:color-mix(in srgb,red,red)){
-  .cohort-app-strip{background:linear-gradient(118deg,rgba(255,255,255,.1) 0%,transparent 40%),linear-gradient(-18deg,rgba(0,0,0,.14) 0%,transparent 38%),linear-gradient(90deg,var(--cohort-primary,#1A1F3C),var(--cohort-sidebar-end,#12172a));}
+  .cohort-app-strip{background:radial-gradient(ellipse at 22% 130%, rgba(255,255,255,.22) 0%, transparent 52%),linear-gradient(118deg,rgba(255,255,255,.1) 0%,transparent 40%),linear-gradient(-18deg,rgba(0,0,0,.14) 0%,transparent 38%),linear-gradient(90deg,var(--cohort-primary,#1A1F3C),var(--cohort-sidebar-end,#12172a));}
 }
 .cohort-app-strip::before{
   content:'';
-  position:absolute;inset:0;pointer-events:none;opacity:.14;
+  position:absolute;inset:0;pointer-events:none;opacity:.2;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
   background-size:180px 180px;
-  mix-blend-mode:overlay;
+  mix-blend-mode:soft-light;
 }
 .cohort-app-strip-inner{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;flex-wrap:wrap;position:relative;z-index:1;}
-.cohort-app-strip--with-badge .cohort-app-strip-inner{padding-left:120px;}
+.cohort-app-strip--with-badge .cohort-app-strip-inner{padding-left:124px;}
 .cohort-app-strip--with-badge .cohort-strip-badge-host{
-  position:absolute;left:16px;top:-22px;z-index:8;
-  filter:drop-shadow(0 8px 16px rgba(15,23,42,.22));
+  position:absolute;left:16px;top:-32px;z-index:8;
+  filter:drop-shadow(0 8px 18px rgba(15,23,42,.28));
 }
 @media(max-width:700px){
-  .cohort-app-strip--with-badge .cohort-strip-badge-host{left:12px;top:-18px;transform:scale(.92);transform-origin:left top;}
-  .cohort-app-strip--with-badge .cohort-app-strip-inner{padding-left:100px;}
+  .cohort-app-strip--with-badge .cohort-strip-badge-host{left:12px;top:-26px;transform:scale(.92);transform-origin:left top;}
+  .cohort-app-strip--with-badge .cohort-app-strip-inner{padding-left:104px;}
 }
 .cohort-strip-badge-host{display:inline-flex;align-items:center;flex-shrink:0;}
 .cohort-app-strip-center{flex:1;min-width:0;}
@@ -7108,10 +7109,9 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <input type="text" id="cohort-brand-badge" class="cohort-input" placeholder="🌊" maxlength="16" autocomplete="off" oninput="cohortPreviewBrandingForm()">
                 <label class="cohort-muted" style="font-size:.65rem;">Bentuk badge (muncul di strip, sedikit overlap)</label>
                 <select id="cohort-brand-badge-shape" class="cohort-input" onchange="cohortPreviewBrandingForm()">
-                  <option value="shield">Perisai</option>
+                  <option value="octagon">Segi delapan</option>
                   <option value="circle">Lingkaran</option>
                   <option value="square">Persegi</option>
-                  <option value="octagon">Segi delapan</option>
                   <option value="triangle">Segitiga</option>
                 </select>
                 <p class="cohort-muted" style="font-size:.62rem;margin:-4px 0 10px;line-height:1.35;">Bentuk digambar dengan CSS (bukan model AI) supaya konsisten di semua perangkat.</p>
@@ -10542,14 +10542,14 @@ function cohortBadgeSanitizedIcon(icon) {
   return s.length > 8 ? s.slice(0, 8) : s;
 }
 
-const COHORT_BADGE_SHAPES = ['shield', 'circle', 'square', 'octagon', 'triangle'];
+const COHORT_BADGE_SHAPES = ['circle', 'square', 'octagon', 'triangle'];
 function cohortNormalizeBadgeShape(raw) {
   const s = String(raw || '').toLowerCase().trim();
-  return COHORT_BADGE_SHAPES.includes(s) ? s : 'shield';
+  return COHORT_BADGE_SHAPES.includes(s) ? s : 'octagon';
 }
 /** Reads `theme_json.badge_shape` from a cohort row (deterministic CSS shapes — no generative model). */
 function cohortBadgeShapeFromRow(row) {
-  if (!row || row.theme_json == null) return 'shield';
+  if (!row || row.theme_json == null) return 'octagon';
   try {
     const tj = typeof row.theme_json === 'string' ? JSON.parse(row.theme_json) : row.theme_json;
     if (tj && typeof tj.badge_shape === 'string') return cohortNormalizeBadgeShape(tj.badge_shape);
