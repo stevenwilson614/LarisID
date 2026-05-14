@@ -8238,11 +8238,15 @@ async function pendingCohortJoinIfAny() {
   }
 }
 
-function _authOnSignIn(session) {
+async function _authOnSignIn(session) {
   currentUser = session.user;
   // Inject access token into Supabase JS client so database queries are authenticated
-  if (_supabase) _supabase.auth.setSession({ access_token: session.access_token, refresh_token: session.refresh_token }).catch(()=>{});
-  loadCurrentAccess().catch(() => {});
+  if (_supabase) {
+    try {
+      await _supabase.auth.setSession({ access_token: session.access_token, refresh_token: session.refresh_token });
+    } catch (_) {}
+  }
+  await loadCurrentAccess().catch(() => {});
   updateAuthUI();
   loadSavedProducts();
   checkMentorApplication();
@@ -8254,6 +8258,9 @@ function _authOnSignIn(session) {
   setTimeout(() => startDashboardOnboarding(), 1200);
   setTimeout(() => { pendingCohortJoinIfAny().catch(() => {}); }, 400);
   setTimeout(() => { cohortLoadLightForTheme().catch(() => {}); }, 600);
+  if (document.body.classList.contains('in-dashboard') && typeof _dashActiveView !== 'undefined' && _dashActiveView === 'cohort') {
+    queueMicrotask(() => { cohortInit().catch(() => {}); });
+  }
 }
 
 /** Close fixed overlays so logout is visible immediately (mobile "Lainnya" sheet uses a delayed hide that browsers throttle in background tabs). */
@@ -8311,13 +8318,13 @@ function initSupabase() {
   const stored = _authLoad();
   if (stored?.access_token) {
     if (stored.expires_at > Date.now() + 30000) {
-      _authOnSignIn(stored);
+      void _authOnSignIn(stored).catch(() => {});
     } else if (stored.refresh_token) {
       _authRefresh(stored.refresh_token).then(s => {
         if (!s) { _authClear(); return; }
         if (!_authLoad()) return;
         _authSave(s);
-        _authOnSignIn(s);
+        void _authOnSignIn(s).catch(() => {});
       });
     }
   }
@@ -8328,7 +8335,7 @@ function initSupabase() {
     _supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.access_token && !currentUser) {
         _authSave(session);
-        _authOnSignIn(session);
+        void _authOnSignIn(session).catch(() => {});
       }
     });
   }
@@ -8470,7 +8477,7 @@ async function submitAuth() {
   if (!r.ok || !d.access_token) { showErr(d.msg || d.error || 'Login gagal.'); return; }
   _authSave(d);
   closeAuthModal();
-  _authOnSignIn(d);
+  void _authOnSignIn(d).catch(() => {});
 }
 
 async function signInWithProvider(provider) {
@@ -9839,6 +9846,9 @@ const VIEW_TITLES = {
   'saved':'Produk Tersimpan','education':'Edukasi',
 };
 
+/** Tracks which dashboard pane is visible (used after auth/session sync). */
+let _dashActiveView = 'dashboard';
+
 // New nav items for the redesigned sidebar
 const NEW_NAV_IDS = ['dashboard','discover','deepdive','tracker','ai','alerts','credits'];
 const PDB_CATS = ['Bayi & Anak','Motor & Mobil','Rumah','Hewan Peliharaan','Dapur','Kamar Mandi','Elektronik','Fashion','Kecantikan','Kesehatan','Olahraga','Outdoor & Camping','Sepeda','Tanaman','Taman','Keamanan','Hobi & Kerajinan','Alat Tulis','HP & Gadget'];
@@ -9849,6 +9859,7 @@ let _pdbRows       = [];
 let _pdbCatsInited = false;
 
 function switchDashView(view) {
+  _dashActiveView = view;
   PDB_VIEWS.forEach(v => {
     const el = document.getElementById(`dash-view-${v}`);
     if (el) el.style.display = (v === view) ? '' : 'none';
@@ -10047,6 +10058,35 @@ function cohortCurrentUserCanManageRow(cohortRow) {
   return (_cohortState.studentRows || []).some(m =>
     m.cohort_id === cohortRow.id && m.role === 'mentor' && m.status === 'active'
   );
+}
+
+/** True when this user is the cohort's primary mentor or has an active mentor membership row. */
+function cohortIsActualMentorForCohort(cohortRow) {
+  if (!cohortRow || !currentUser) return false;
+  if (cohortRow.mentor_user_id === currentUser.id) return true;
+  return (_cohortState.studentRows || []).some(m =>
+    m.cohort_id === cohortRow.id && m.role === 'mentor' && m.status === 'active'
+  );
+}
+
+/** Ensure REST calls from cohortInit carry a JWT (avoids empty cohort data right after hard refresh). */
+async function cohortEnsureSupabaseSession() {
+  if (!_supabase || !currentUser) return false;
+  try {
+    const { data: { session } } = await _supabase.auth.getSession();
+    if (session?.access_token) return true;
+    const stored = _authLoad();
+    if (!stored?.access_token) return false;
+    const { error } = await _supabase.auth.setSession({
+      access_token: stored.access_token,
+      refresh_token: stored.refresh_token || '',
+    });
+    if (error) return false;
+    const { data: { session: s2 } } = await _supabase.auth.getSession();
+    return !!s2?.access_token;
+  } catch (_) {
+    return false;
+  }
 }
 
 function cohortRefreshDashboardTheme() {
@@ -10327,6 +10367,15 @@ async function cohortInit() {
     cohortClearDashboardTheme();
     return;
   }
+  let sessionReady = await cohortEnsureSupabaseSession();
+  if (!sessionReady) {
+    await new Promise(r => setTimeout(r, 400));
+    sessionReady = await cohortEnsureSupabaseSession();
+  }
+  if (!sessionReady) {
+    if (st) st.textContent = 'Sesi login belum siap. Tunggu sebentar lalu buka tab Kohort lagi.';
+    return;
+  }
   const ci = document.getElementById('cohort-invite-input');
   const pend = getPendingInvite();
   if (ci && pend && !ci.value.trim()) ci.value = pend;
@@ -10419,8 +10468,6 @@ async function cohortInit() {
   cohortRefreshDashboardTheme();
   cohortSwitchStudentTab('ringkasan');
   cohortSwitchMentorTab(_cohortState.mentorTab || 'overview');
-
-  if (st && !st.textContent.includes('Berhasil')) st.textContent = '';
 }
 
 async function cohortLoadMemberNames(cohortId) {
@@ -10840,10 +10887,10 @@ async function cohortRenderMentorPanels() {
       </div>`;
   }
   if (bc) {
-    const isRealLeader = cohortCurrentUserCanManageRow(c) && !isCohortPlatformAdmin();
-    const adminPrevLeader = isCohortPlatformAdmin() && cohortGetPreviewShell() === 'leader';
-    const canEditBrand = isRealLeader || adminPrevLeader;
-    bc.style.display = isRealLeader || adminPrevLeader ? '' : 'none';
+    const isActualMentor = cohortIsActualMentorForCohort(c);
+    const adminPrevLeader = isPlatformAdmin() && cohortGetPreviewShell() === 'leader';
+    const canEditBrand = isActualMentor || adminPrevLeader;
+    bc.style.display = (isActualMentor || adminPrevLeader) ? '' : 'none';
     if (bc.style.display !== 'none') {
       const name = document.getElementById('cohort-brand-name');
       const pri = document.getElementById('cohort-brand-primary');
