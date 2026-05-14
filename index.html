@@ -701,9 +701,11 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .cohort-shell-btns{display:flex;gap:8px;}
 .cohort-shell-btn{padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;}
 .cohort-shell-btn.active{background:var(--cohort-secondary,#E8442A);border-color:var(--cohort-secondary,#E8442A);}
-.cohort-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.cohort-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 @media(max-width:900px){.cohort-grid{grid-template-columns:1fr;}}
-.cohort-card{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px 18px;}
+#dash-view-cohort{padding:24px 28px;}
+@media(max-width:700px){#dash-view-cohort{padding:16px;}}
+.cohort-card{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:18px 20px;}
 .cohort-card h3{font-family:'Plus Jakarta Sans',sans-serif;font-size:.88rem;font-weight:800;color:#1A1F3C;margin-bottom:10px;}
 .cohort-muted{font-size:.72rem;color:#9CA3AF;line-height:1.5;}
 .cohort-list{margin:0;padding:0;list-style:none;font-size:.78rem;color:#374151;}
@@ -6932,12 +6934,6 @@ html,body{overflow-x:hidden;max-width:100%;}
           </div>
           <div id="cohort-status" class="cohort-muted" style="margin-bottom:14px;"></div>
           <div id="cohort-student-wrap">
-            <div class="cohort-card" style="margin-bottom:14px;">
-              <h3>Gabung kohort</h3>
-              <p class="cohort-muted" style="margin-bottom:10px;">Masukkan kode undangan dari mentor kamu.</p>
-              <input type="text" id="cohort-invite-input" class="cohort-input" placeholder="Kode undangan" autocomplete="off">
-              <button type="button" class="cohort-btn" onclick="cohortJoinInvite()">Gabung</button>
-            </div>
             <div id="cohort-student-subtabs" class="cohort-subtabs" style="display:none;">
               <button type="button" class="cohort-subtab active" data-cstab="ringkasan" onclick="cohortSwitchStudentTab('ringkasan')">Ringkasan</button>
               <button type="button" class="cohort-subtab" data-cstab="feed" onclick="cohortSwitchStudentTab('feed')">Feed</button>
@@ -7022,6 +7018,12 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <a id="cohort-chat-wa" href="#" target="_blank" rel="noopener" class="cohort-btn" style="display:none;text-decoration:none;text-align:center;">Buka WhatsApp</a>
                 <p id="cohort-chat-wa-missing" class="cohort-muted" style="display:none;">Mentor belum menautkan grup WhatsApp.</p>
               </div>
+            </div>
+            <div id="cohort-join-card" class="cohort-card" style="margin-top:16px;">
+              <h3>Gabung kohort</h3>
+              <p class="cohort-muted" style="margin-bottom:10px;">Masukkan kode undangan dari mentor kamu.</p>
+              <input type="text" id="cohort-invite-input" class="cohort-input" placeholder="Kode undangan" autocomplete="off">
+              <button type="button" class="cohort-btn" onclick="cohortJoinInvite()">Gabung</button>
             </div>
           </div>
           <div id="cohort-mentor-wrap" style="display:none;">
@@ -10753,7 +10755,10 @@ async function cohortInit() {
   const wa = document.getElementById('cohort-wa-link');
   const pcid = _cohortState.primaryStudentCohortId;
   const subTabs = document.getElementById('cohort-student-subtabs');
+  const joinCard = document.getElementById('cohort-join-card');
+  const stuWrap = document.getElementById('cohort-student-wrap');
   if (subTabs) subTabs.style.display = pcid ? 'flex' : 'none';
+  if (joinCard && stuWrap && !pcid) stuWrap.prepend(joinCard);
   if (!pcid) {
     if (infoEl) infoEl.innerHTML = 'Kamu belum di kohort. Pakai kode undangan di atas, atau minta mentor untuk undangan.';
     if (wa) { wa.style.display = 'none'; }
