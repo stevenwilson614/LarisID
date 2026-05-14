@@ -716,16 +716,51 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .cohort-brand-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px;}
 .cohort-brand-kicker{font-size:.62rem;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--cohort-secondary,#E8442A);margin-bottom:3px;}
 .cohort-brand-preview{min-width:150px;border-radius:14px;padding:12px;background:linear-gradient(135deg,var(--cohort-primary,#0f2942),var(--cohort-sidebar-end,#101827));color:#fff;box-shadow:0 10px 28px rgba(15,23,42,.16);}
-.cohort-brand-preview-badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;background:rgba(255,255,255,.14);padding:5px 9px;font-size:.7rem;font-weight:900;}
+.cohort-brand-preview-badge-host{display:flex;justify-content:center;margin-bottom:4px;min-height:52px;align-items:center;}
 .cohort-brand-preview-motto{margin-top:8px;font-size:.66rem;color:rgba(255,255,255,.75);line-height:1.4;}
 .cohort-brand-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
 .cohort-color-row{display:flex;gap:8px;align-items:center;}
 .cohort-color-swatch{width:42px;height:38px;border:none;border-radius:9px;background:transparent;padding:0;cursor:pointer;}
 @media(max-width:700px){.cohort-brand-head{display:block;}.cohort-brand-preview{margin-top:12px;}.cohort-brand-grid{grid-template-columns:1fr;}}
-.dash-topbar-cohort-chip{align-items:center;gap:6px;padding:5px 12px;border-radius:999px;border:1px solid var(--cohort-secondary,#E5E7EB);font-size:.68rem;font-weight:800;color:#111;background:#fff;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* ── Reusable cohort badge (shield / icon / name / subtitle) ── */
+.cohort-badge{display:inline-flex;vertical-align:middle;font-family:'Plus Jakarta Sans',sans-serif;line-height:1.2;}
+.cohort-badge__outer{
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;
+  padding:9px 12px 7px;
+  min-width:92px;max-width:132px;
+  border-radius:20px 20px 14px 14px;
+  background:#f8fafc;
+  border:1px solid #e8ecf1;
+  box-shadow:0 4px 14px rgba(15,23,42,.1), 0 1px 0 rgba(255,255,255,.75) inset;
+}
+.cohort-badge--circle .cohort-badge__outer{border-radius:999px;min-width:96px;max-width:96px;padding:10px 8px 8px;}
+.cohort-badge__icon{font-size:1.28rem;line-height:1;margin:0 0 5px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.08));}
+.cohort-badge__icon--fallback{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:12px;
+  background:linear-gradient(145deg,var(--cb-pri,#1A1F3C),var(--cb-sec,#c9a87c));
+  color:#fff;font-size:1rem;font-weight:900;margin-bottom:5px;box-shadow:0 2px 8px rgba(15,23,42,.15);}
+.cohort-badge__icon--fallback span{line-height:1;}
+.cohort-badge__name{font-weight:800;font-size:.72rem;letter-spacing:-.02em;color:var(--cb-pri,#1A1F3C);word-break:break-word;max-width:100%;}
+.cohort-badge__sub{font-size:.58rem;font-weight:600;color:#64748b;margin-top:3px;line-height:1.25;max-width:100%;word-break:break-word;}
+.cohort-badge--compact .cohort-badge__outer{min-width:76px;max-width:104px;padding:6px 8px 5px;border-radius:16px 16px 12px 12px;}
+.cohort-badge--compact .cohort-badge__icon{font-size:1.05rem;margin-bottom:3px;}
+.cohort-badge--compact .cohort-badge__icon--fallback{width:30px;height:30px;font-size:.88rem;margin-bottom:3px;}
+.cohort-badge--compact .cohort-badge__name{font-size:.62rem;}
+.cohort-badge--compact .cohort-badge__sub{display:none;}
+.cohort-badge--onDark .cohort-badge__outer{
+  background:linear-gradient(165deg,rgba(255,255,255,.16),rgba(255,255,255,.06));
+  border:1px solid rgba(255,255,255,.32);
+  box-shadow:0 6px 18px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.22);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+}
+.cohort-badge--onDark .cohort-badge__name{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.2);}
+.cohort-badge--onDark .cohort-badge__sub{color:rgba(255,255,255,.72);font-weight:500;}
+.cohort-badge--onDark .cohort-badge__icon--fallback{box-shadow:0 2px 10px rgba(0,0,0,.25);}
+.dash-topbar-cohort-chip{display:none;align-items:center;padding:2px 6px 2px 2px;border-radius:14px;border:1px solid var(--cohort-secondary,#E5E7EB);background:#fff;max-width:min(220px,42vw);box-shadow:0 1px 3px rgba(15,23,42,.06);}
+.dash-topbar-cohort-chip .cohort-badge{max-width:100%;}
 .cohort-app-strip{background:linear-gradient(90deg,var(--cohort-primary,#1A1F3C),var(--cohort-sidebar-end,#12172a));border-bottom:1px solid rgba(255,255,255,.1);}
 .cohort-app-strip-inner{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;flex-wrap:wrap;}
-.cohort-strip-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:8px;background:rgba(255,255,255,.12);color:#fff;font-size:.72rem;font-weight:800;}
+.cohort-strip-badge-host{display:inline-flex;align-items:center;flex-shrink:0;}
 .cohort-app-strip-center{flex:1;min-width:0;}
 .cohort-strip-slogan{color:rgba(255,255,255,.92);font-size:.8rem;font-weight:600;}
 .cohort-strip-meta{color:rgba(255,255,255,.55);font-size:.68rem;margin-top:2px;}
@@ -753,7 +788,8 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .cohort-week-bar{display:flex;gap:4px;margin-top:8px;}
 .cohort-week-cell{flex:1;height:22px;border-radius:4px;background:#EEF2F7;}
 .cohort-week-cell.on{background:linear-gradient(180deg,var(--cohort-secondary,#fb923c),#ea580c);}
-.dash-cohort-pill{display:none;margin-top:6px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#fff;font-size:.65rem;font-weight:800;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dash-cohort-pill{display:none;margin-top:8px;max-width:100%;}
+.dash-cohort-pill .cohort-badge{max-width:100%;}
 /* Kohort view: make leader theme colors visible in main content (not only sidebar/strip) */
 body.cohort-themed.in-dashboard .dash-content{background:var(--cohort-surface,#F7F6F3);}
 body.cohort-themed.in-dashboard #dash-view-cohort .cohort-card{
@@ -778,9 +814,9 @@ body.cohort-themed.in-dashboard #dash-view-cohort .cohort-feed-card{
 }
 body.cohort-themed.in-dashboard #dash-view-cohort .cohort-feed-kind{color:#64748b;}
 body.cohort-themed.in-dashboard .dash-topbar-cohort-chip{
-  border-color:var(--cohort-secondary,#d1d5db);
+  border-color:var(--cohort-secondary,#e5e7eb);
   background:#fff;
-  box-shadow:inset 0 0 0 1px rgba(232,68,42,.12);
+  box-shadow:0 1px 4px rgba(15,23,42,.07), inset 0 0 0 1px rgba(232,68,42,.12);
 }
 .dash-nav-icon{width:18px;height:18px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
 .dash-nav-arrow{margin-left:auto;font-size:.55rem;transition:transform .2s;opacity:.4;}
@@ -4228,7 +4264,7 @@ html,body{overflow-x:hidden;max-width:100%;}
 
       <div id="cohort-app-strip" class="cohort-app-strip" style="display:none;" role="region" aria-label="Info kohort">
         <div class="cohort-app-strip-inner">
-          <span id="cohort-strip-badge" class="cohort-strip-badge"></span>
+          <span id="cohort-strip-badge" class="cohort-strip-badge-host" aria-label="Badge kohort"></span>
           <div class="cohort-app-strip-center">
             <div id="cohort-strip-slogan" class="cohort-strip-slogan"></div>
             <div id="cohort-strip-meta" class="cohort-strip-meta"></div>
@@ -6909,7 +6945,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <p class="cohort-muted">Pemimpin kohort dapat mengatur nama, warna, emblem, dan motto. Siswa otomatis melihat tampilan ini di dashboard mereka.</p>
                 </div>
                 <div class="cohort-brand-preview">
-                  <div id="cohort-brand-preview-badge" class="cohort-brand-preview-badge">🌊 Ocean Blue</div>
+                  <div id="cohort-brand-preview-badge" class="cohort-brand-preview-badge-host"></div>
                   <div id="cohort-brand-preview-motto" class="cohort-brand-preview-motto">Together we learn, together we grow.</div>
                 </div>
               </div>
@@ -10154,7 +10190,20 @@ function cohortPreviewBrandingForm() {
   document.documentElement.style.setProperty('--cohort-primary', pri);
   document.documentElement.style.setProperty('--cohort-secondary', sec);
   document.documentElement.style.setProperty('--cohort-sidebar-end', _cohortRgbStr(end));
-  if (prev) prev.textContent = (badge ? badge + ' ' : '') + (name || 'Kohort');
+  if (prev) {
+    const sub = (sloganEl && sloganEl.value || '').trim();
+    prev.innerHTML = cohortBadgeHtml({
+      cohortName: name,
+      cohortIcon: badge,
+      cohortPrimaryColor: pri,
+      cohortSecondaryColor: sec,
+      cohortSubtitle: sub,
+      variant: 'onDark',
+      shape: 'shield',
+      subtitleMaxLen: 36,
+      hideSubtitle: !sub,
+    });
+  }
   if (motto) motto.textContent = (sloganEl && sloganEl.value || '').trim() || 'Together we learn, together we grow.';
 }
 
@@ -10213,12 +10262,35 @@ function cohortUpdateCohortChrome(cohortRowOpt) {
   }
   const name = row.name || 'Kohort';
   const badge = (row.badge_icon || '').trim();
+  const pri = _cohortParseThemeHex(row.theme_primary) || '#1A1F3C';
+  const sec = _cohortParseThemeHex(row.theme_secondary) || '#c9a87c';
+  const sub = (row.slogan && row.slogan.trim()) ? row.slogan.trim() : '';
   chip.style.display = 'flex';
-  chip.textContent = (badge ? badge + ' ' : '') + name;
+  chip.innerHTML = cohortBadgeHtml({
+    cohortName: name,
+    cohortIcon: badge,
+    cohortPrimaryColor: pri,
+    cohortSecondaryColor: sec,
+    cohortSubtitle: sub,
+    variant: 'compact',
+    shape: 'shield',
+    hideSubtitle: true,
+  });
   chip.title = name;
   strip.style.display = 'block';
-  if (bd) bd.textContent = (badge ? badge + ' ' : '') + name;
-  if (sl) sl.textContent = (row.slogan && row.slogan.trim()) ? row.slogan.trim() : 'Bangun momentum bareng tim kamu.';
+  if (bd) {
+    bd.innerHTML = cohortBadgeHtml({
+      cohortName: name,
+      cohortIcon: badge,
+      cohortPrimaryColor: pri,
+      cohortSecondaryColor: sec,
+      cohortSubtitle: sub,
+      variant: 'onDark',
+      shape: 'shield',
+      hideSubtitle: !sub,
+    });
+  }
+  if (sl) sl.textContent = sub || 'Bangun momentum bareng tim kamu.';
   if (sm) sm.textContent = 'Memuat ringkasan kohort…';
   void cohortHydrateStripMeta(row.id);
 }
@@ -10315,6 +10387,57 @@ function _cohortEsc(s) {
   const d = document.createElement('div');
   d.textContent = s == null ? '' : String(s);
   return d.innerHTML;
+}
+
+/** Max two words for compact badge titles (premium SaaS rhythm). */
+function cohortBadgeShortDisplayName(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return 'Kohort';
+  return parts.slice(0, 2).join(' ');
+}
+
+function cohortBadgeSanitizedIcon(icon) {
+  const s = String(icon || '').trim();
+  if (!s) return '';
+  return s.length > 8 ? s.slice(0, 8) : s;
+}
+
+function cohortBadgeTrimSubtitle(sub, maxLen) {
+  const t = String(sub || '').trim().replace(/\s+/g, ' ');
+  const cap = maxLen || 40;
+  if (!t) return '';
+  return t.length > cap ? t.slice(0, cap - 1).trim() + '\u2026' : t;
+}
+
+/**
+ * Reusable cohort badge markup: shield, centered icon, bold name, optional subtitle.
+ * opts: { cohortName, cohortIcon, cohortPrimaryColor, cohortSecondaryColor, cohortSubtitle,
+ *         variant?: 'compact'|'onDark', shape?: 'shield'|'circle', hideSubtitle?: bool, subtitleMaxLen?: number }
+ */
+function cohortBadgeHtml(opts) {
+  const o = opts || {};
+  const displayName = cohortBadgeShortDisplayName(o.cohortName);
+  const iconRaw = cohortBadgeSanitizedIcon(o.cohortIcon);
+  const pri = _cohortParseThemeHex(o.cohortPrimaryColor) || '#1A1F3C';
+  const sec = _cohortParseThemeHex(o.cohortSecondaryColor) || '#c9a87c';
+  const subFull = cohortBadgeTrimSubtitle(o.cohortSubtitle, o.subtitleMaxLen || 40);
+  const hideSub = !!o.hideSubtitle || !subFull;
+  const variant = o.variant === 'compact' ? 'compact' : o.variant === 'onDark' ? 'onDark' : '';
+  const shape = o.shape === 'circle' ? 'circle' : 'shield';
+  const pr = _cohortHexToRgb(pri);
+  const sr = _cohortHexToRgb(sec);
+  const bgTop = _cohortRgbStr(_cohortMixRgb(pr, { r: 255, g: 255, b: 255 }, 0.9));
+  const bgBot = _cohortRgbStr(_cohortMixRgb(sr, { r: 255, g: 255, b: 255 }, 0.88));
+  const borderMix = _cohortRgbStr(_cohortMixRgb(pr, { r: 229, g: 231, b: 235 }, 0.35));
+  const iconBlock = iconRaw
+    ? `<div class="cohort-badge__icon" aria-hidden="true">${_cohortEsc(iconRaw)}</div>`
+    : `<div class="cohort-badge__icon cohort-badge__icon--fallback" aria-hidden="true"><span>${_cohortEsc(displayName.charAt(0).toUpperCase())}</span></div>`;
+  const subHtml = !hideSub && subFull ? `<div class="cohort-badge__sub">${_cohortEsc(subFull)}</div>` : '';
+  const cls = ['cohort-badge', `cohort-badge--${shape}`, variant && `cohort-badge--${variant}`].filter(Boolean).join(' ');
+  const outerStyle = variant === 'onDark'
+    ? ''
+    : ` style="background:linear-gradient(165deg, ${bgTop}, ${bgBot});border-color:${borderMix};"`;
+  return `<div class="${cls}" style="--cb-pri:${pri};--cb-sec:${sec};" role="group" aria-label="${_cohortEsc(displayName)}"><div class="cohort-badge__outer"${outerStyle}>${iconBlock}<div class="cohort-badge__name">${_cohortEsc(displayName)}</div>${subHtml}</div></div>`;
 }
 
 let _cohortState = {
@@ -10568,13 +10691,26 @@ function cohortUpdateSidebarCohortPill() {
   const cid = _cohortState.primaryStudentCohortId;
   const c = cid && _cohortState.cohortMap ? _cohortState.cohortMap[cid] : null;
   if (cid && c) {
-    const badge = (c.badge_icon || '').trim();
+    const pri = _cohortParseThemeHex(c.theme_primary) || '#1A1F3C';
+    const sec = _cohortParseThemeHex(c.theme_secondary) || '#c9a87c';
+    const icon = (c.badge_icon || '').trim();
+    const sub = (c.slogan && c.slogan.trim()) ? c.slogan.trim() : '';
     el.style.display = 'block';
-    el.textContent = (badge ? badge + ' ' : '') + (c.name || 'Kohort');
+    el.innerHTML = cohortBadgeHtml({
+      cohortName: c.name || 'Kohort',
+      cohortIcon: icon,
+      cohortPrimaryColor: pri,
+      cohortSecondaryColor: sec,
+      cohortSubtitle: sub,
+      variant: 'compact',
+      shape: 'shield',
+      hideSubtitle: true,
+    });
     el.title = c.name || '';
   } else {
     el.style.display = 'none';
     el.textContent = '';
+    el.innerHTML = '';
   }
 }
 
@@ -10587,14 +10723,26 @@ async function cohortRefreshCohortPillFromServer() {
     el.textContent = '';
     return;
   }
-  const { data: c } = await _supabase.from('cohorts').select('name,badge_icon').eq('id', m.cohort_id).maybeSingle();
+  const { data: c } = await _supabase.from('cohorts').select('name,badge_icon,theme_primary,theme_secondary,slogan').eq('id', m.cohort_id).maybeSingle();
   if (!c) {
     el.style.display = 'none';
     return;
   }
-  const badge = (c.badge_icon || '').trim();
+  const pri = _cohortParseThemeHex(c.theme_primary) || '#1A1F3C';
+  const sec = _cohortParseThemeHex(c.theme_secondary) || '#c9a87c';
+  const icon = (c.badge_icon || '').trim();
+  const sub = (c.slogan && c.slogan.trim()) ? c.slogan.trim() : '';
   el.style.display = 'block';
-  el.textContent = (badge ? badge + ' ' : '') + (c.name || 'Kohort');
+  el.innerHTML = cohortBadgeHtml({
+    cohortName: c.name || 'Kohort',
+    cohortIcon: icon,
+    cohortPrimaryColor: pri,
+    cohortSecondaryColor: sec,
+    cohortSubtitle: sub,
+    variant: 'compact',
+    shape: 'shield',
+    hideSubtitle: true,
+  });
   el.title = c.name || '';
 }
 
