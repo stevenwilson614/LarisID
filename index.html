@@ -10760,17 +10760,16 @@ async function cohortCreateFinal() {
   const btn = document.getElementById('cc-create-btn');
   if (btn) btn.disabled = true;
   cohortCreateShowStatus('Membuat kohort…');
-  const slug = s.name.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'').slice(0,64) || ('cohort-' + Date.now());
+  const slug = s.name.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'').slice(0,56) || ('cohort-' + Date.now());
   const inviteCode = cohortGenInviteCode();
-  const { data: newC, error } = await _supabase.from('cohorts').insert({
-    name: s.name,
-    slug,
-    theme_primary: s.pri,
-    theme_secondary: s.sec,
-    slogan: s.slogan || null,
-    mentor_user_id: currentUser.id,
-    invite_code: inviteCode,
-  }).select().single();
+  const { data: newC, error } = await _supabase.rpc('leader_create_cohort', {
+    p_name: s.name,
+    p_slug: slug,
+    p_theme_primary: s.pri,
+    p_theme_secondary: s.sec,
+    p_slogan: s.slogan || null,
+    p_invite_code: inviteCode,
+  });
   if (error) {
     cohortCreateShowStatus(error.message || 'Gagal membuat kohort.');
     if (btn) btn.disabled = false;
