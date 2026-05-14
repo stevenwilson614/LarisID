@@ -6797,7 +6797,10 @@ html,body{overflow-x:hidden;max-width:100%;}
         <!-- COHORT COMMUNITY -->
         <div id="dash-view-cohort" style="display:none;">
           <div id="cohort-shell-bar" class="cohort-shell-bar">
-            <span style="font-size:.78rem;font-weight:700;">Admin — preview tampilan</span>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:1;min-width:0;">
+              <span style="font-size:.78rem;font-weight:700;">Admin — preview tampilan</span>
+              <select id="cohort-admin-cohort-picker" class="cohort-input" style="display:none;max-width:220px;margin:0;padding:6px 10px;font-size:.72rem;min-height:0;" title="Pilih kohort untuk pratinjau leader" onchange="cohortAdminSetPreviewCohort(this.value)"></select>
+            </div>
             <div class="cohort-shell-btns">
               <button type="button" class="cohort-shell-btn" id="cohort-shell-student" onclick="cohortSetPreviewShell('student')">Student</button>
               <button type="button" class="cohort-shell-btn" id="cohort-shell-leader" onclick="cohortSetPreviewShell('leader')">Leader</button>
@@ -8177,6 +8180,46 @@ async function _authRefresh(refreshToken) {
 }
 
 const PENDING_INVITE_KEY = 'larisid_pending_invite';
+const ADMIN_PREVIEW_COHORT_KEY = 'larisid_admin_preview_cohort_id';
+
+/** Which cohort the platform admin is previewing as leader (sessionStorage UUID). */
+function cohortPickAdminPreviewCohort(led) {
+  const list = led || [];
+  if (!list.length) return null;
+  let saved = '';
+  try { saved = (sessionStorage.getItem(ADMIN_PREVIEW_COHORT_KEY) || '').trim(); } catch (_) {}
+  if (saved) {
+    const m = list.find(c => c.id === saved);
+    if (m) return m;
+  }
+  const ob = list.find(c => String(c.slug || '').toLowerCase() === 'ocean-blue');
+  if (ob) return ob;
+  return list[0];
+}
+
+function cohortAdminSetPreviewCohort(cohortId) {
+  const id = String(cohortId || '').trim();
+  if (!id) return;
+  try { sessionStorage.setItem(ADMIN_PREVIEW_COHORT_KEY, id); } catch (_) {}
+  cohortInit().catch(() => {});
+}
+
+function cohortPopulateAdminCohortPicker(led) {
+  const sel = document.getElementById('cohort-admin-cohort-picker');
+  if (!sel) return;
+  if (!isPlatformAdmin() || !led || !led.length) {
+    sel.style.display = 'none';
+    sel.innerHTML = '';
+    return;
+  }
+  sel.style.display = '';
+  sel.innerHTML = (led || []).map(c => {
+    const label = _cohortEsc((c.name || c.slug || c.id || '').toString());
+    return `<option value="${c.id}">${label}</option>`;
+  }).join('');
+  const cur = (_cohortState.primaryMentorCohort && _cohortState.primaryMentorCohort.id) || '';
+  if (cur) sel.value = cur;
+}
 
 function captureInviteFromUrl() {
   try {
@@ -10410,8 +10453,13 @@ async function cohortInit() {
 
   let led = [];
   if (isPlatformAdmin()) {
-    const { data: allCohorts } = await _supabase.from('cohorts').select('*').order('created_at', { ascending: false });
+    const { data: allCohorts, error: acErr } = await _supabase.from('cohorts').select('*').order('created_at', { ascending: false });
     led = allCohorts || [];
+    if (acErr) {
+      if (st) st.textContent = 'Gagal memuat daftar kohort: ' + (acErr.message || 'error');
+    } else if (!led.length && st && !String(st.textContent || '').includes('Gagal')) {
+      st.textContent = 'Belum ada kohort di database. Pastikan migrasi Supabase (Ocean Blue) sudah diterapkan.';
+    }
   } else {
     const res = await _supabase.from('cohorts').select('*').eq('mentor_user_id', currentUser.id);
     led = res.data || [];
@@ -10425,10 +10473,25 @@ async function cohortInit() {
     }
   }
   _cohortState.mentorCohorts = led || [];
-  _cohortState.primaryMentorCohort = (led && led[0]) || null;
+  let primaryMentor = null;
+  if (isPlatformAdmin()) {
+    primaryMentor = cohortPickAdminPreviewCohort(led);
+    if (primaryMentor?.id) {
+      try {
+        if (!sessionStorage.getItem(ADMIN_PREVIEW_COHORT_KEY)) {
+          sessionStorage.setItem(ADMIN_PREVIEW_COHORT_KEY, primaryMentor.id);
+        }
+      } catch (_) {}
+    }
+  } else {
+    primaryMentor = (led && led[0]) || null;
+  }
+  _cohortState.primaryMentorCohort = primaryMentor;
   _cohortState.hasMentorCohort = !!(led && led.length);
   (led || []).forEach(c => { cohortMap[c.id] = c; });
   _cohortState.cohortMap = cohortMap;
+
+  cohortPopulateAdminCohortPicker(led);
 
   cohortApplyShellUI();
 
