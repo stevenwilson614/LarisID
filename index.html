@@ -734,6 +734,21 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
   box-shadow:0 4px 14px rgba(15,23,42,.1), 0 1px 0 rgba(255,255,255,.75) inset;
 }
 .cohort-badge--circle .cohort-badge__outer{border-radius:999px;min-width:96px;max-width:96px;padding:10px 8px 8px;}
+.cohort-badge--square .cohort-badge__outer{border-radius:12px;min-width:96px;max-width:104px;padding:10px 8px 8px;}
+.cohort-badge--octagon .cohort-badge__outer{
+  border-radius:0;
+  clip-path:polygon(28% 0%,72% 0%,100% 28%,100% 72%,72% 100%,28% 100%,0% 72%,0% 28%);
+  min-width:98px;max-width:104px;padding:11px 9px 9px;
+}
+.cohort-badge--triangle .cohort-badge__outer{
+  border-radius:0;
+  clip-path:polygon(50% 6%,94% 86%,6% 86%);
+  min-width:104px;max-width:112px;min-height:108px;padding:20px 10px 12px;justify-content:center;
+}
+.cohort-badge--triangle .cohort-badge__name{font-size:.62rem;line-height:1.15;}
+.cohort-badge--triangle .cohort-badge__icon{margin-bottom:4px;}
+.cohort-badge--octagon .cohort-badge__icon--fallback,
+.cohort-badge--square .cohort-badge__icon--fallback{border-radius:10px;}
 .cohort-badge__icon{font-size:1.28rem;line-height:1;margin:0 0 5px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.08));}
 .cohort-badge__icon--fallback{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:12px;
   background:linear-gradient(145deg,var(--cb-pri,#1A1F3C),var(--cb-sec,#c9a87c));
@@ -746,6 +761,10 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .cohort-badge--compact .cohort-badge__icon--fallback{width:30px;height:30px;font-size:.88rem;margin-bottom:3px;}
 .cohort-badge--compact .cohort-badge__name{font-size:.62rem;}
 .cohort-badge--compact .cohort-badge__sub{display:none;}
+.cohort-badge--compact.cohort-badge--circle .cohort-badge__outer{min-width:76px;max-width:84px;padding:6px 5px 5px;}
+.cohort-badge--compact.cohort-badge--square .cohort-badge__outer{border-radius:10px;min-width:76px;max-width:90px;}
+.cohort-badge--compact.cohort-badge--octagon .cohort-badge__outer{min-width:78px;max-width:90px;padding:7px 5px 5px;}
+.cohort-badge--compact.cohort-badge--triangle .cohort-badge__outer{min-width:86px;max-width:94px;min-height:92px;padding:15px 5px 7px;}
 .cohort-badge--onDark .cohort-badge__outer{
   background:linear-gradient(165deg,rgba(255,255,255,.16),rgba(255,255,255,.06));
   border:1px solid rgba(255,255,255,.32);
@@ -758,8 +777,40 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .cohort-badge--onDark .cohort-badge__icon--fallback{box-shadow:0 2px 10px rgba(0,0,0,.25);}
 .dash-topbar-cohort-chip{display:none;align-items:center;padding:2px 6px 2px 2px;border-radius:14px;border:1px solid var(--cohort-secondary,#E5E7EB);background:#fff;max-width:min(220px,42vw);box-shadow:0 1px 3px rgba(15,23,42,.06);}
 .dash-topbar-cohort-chip .cohort-badge{max-width:100%;}
-.cohort-app-strip{background:linear-gradient(90deg,var(--cohort-primary,#1A1F3C),var(--cohort-sidebar-end,#12172a));border-bottom:1px solid rgba(255,255,255,.1);}
-.cohort-app-strip-inner{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;flex-wrap:wrap;}
+.dash-topbar-brand-block{display:none;align-items:center;gap:16px;flex-wrap:wrap;min-width:0;}
+.dash-topbar-brand-stack{display:flex;flex-direction:column;gap:1px;line-height:1.15;}
+.dash-topbar-brand-kicker{font-size:.58rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#94a3b8;}
+.dash-topbar-cohort-name-accent{font-size:.82rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:var(--cohort-secondary,#c9a87c);max-width:min(200px,40vw);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dash-topbar-view-page{font-size:1rem;font-weight:800;color:var(--cohort-primary,#1A1F3C);padding-left:4px;border-left:1px solid #E5E7EB;margin-left:2px;}
+.cohort-app-strip{
+  position:relative;
+  overflow:visible;
+  background:
+    linear-gradient(118deg,rgba(255,255,255,.11) 0%,transparent 40%),
+    linear-gradient(-18deg,rgba(0,0,0,.14) 0%,transparent 38%),
+    linear-gradient(95deg,var(--cohort-primary,#1A1F3C) 0%,color-mix(in srgb,var(--cohort-primary,#1A1F3C) 55%,var(--cohort-secondary,#7c6a4a) 45%) 52%,var(--cohort-sidebar-end,#12172a) 100%);
+  border-bottom:1px solid rgba(255,255,255,.12);
+}
+@supports not (background:color-mix(in srgb,red,red)){
+  .cohort-app-strip{background:linear-gradient(118deg,rgba(255,255,255,.1) 0%,transparent 40%),linear-gradient(-18deg,rgba(0,0,0,.14) 0%,transparent 38%),linear-gradient(90deg,var(--cohort-primary,#1A1F3C),var(--cohort-sidebar-end,#12172a));}
+}
+.cohort-app-strip::before{
+  content:'';
+  position:absolute;inset:0;pointer-events:none;opacity:.14;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+  background-size:180px 180px;
+  mix-blend-mode:overlay;
+}
+.cohort-app-strip-inner{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;flex-wrap:wrap;position:relative;z-index:1;}
+.cohort-app-strip--with-badge .cohort-app-strip-inner{padding-left:120px;}
+.cohort-app-strip--with-badge .cohort-strip-badge-host{
+  position:absolute;left:16px;top:-22px;z-index:8;
+  filter:drop-shadow(0 8px 16px rgba(15,23,42,.22));
+}
+@media(max-width:700px){
+  .cohort-app-strip--with-badge .cohort-strip-badge-host{left:12px;top:-18px;transform:scale(.92);transform-origin:left top;}
+  .cohort-app-strip--with-badge .cohort-app-strip-inner{padding-left:100px;}
+}
 .cohort-strip-badge-host{display:inline-flex;align-items:center;flex-shrink:0;}
 .cohort-app-strip-center{flex:1;min-width:0;}
 .cohort-strip-slogan{color:rgba(255,255,255,.92);font-size:.8rem;font-weight:600;}
@@ -1772,6 +1823,11 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .hbd-act-title{font-weight:600;color:#1A1F3C;margin-bottom:1px;}
 .hbd-act-desc{color:#6B7280;font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .hbd-act-time{font-size:.68rem;color:#9CA3AF;flex-shrink:0;padding-top:2px;}
+.hbd-cohort-digest-wrap .hbd-cohort-announce-list{display:flex;flex-direction:column;gap:8px;}
+.hbd-cohort-ann-item{padding:10px 12px;background:#F9FAFB;border-radius:8px;border:1px solid #F3F4F6;font-size:.78rem;}
+.hbd-cohort-ann-item strong{color:#1A1F3C;display:block;margin-bottom:2px;}
+.hbd-cohort-ann-meta{font-size:.68rem;color:#9CA3AF;margin-top:4px;}
+.hbd-cohort-act-snippet{color:#6B7280;font-size:.72rem;line-height:1.4;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .hbd-opp-list{display:flex;flex-direction:column;gap:1px;}
 .hbd-opp-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #F9FAFB;font-size:.78rem;cursor:pointer;}
 .hbd-opp-item:last-child{border-bottom:none;}
@@ -4229,6 +4285,13 @@ html,body{overflow-x:hidden;max-width:100%;}
         <button class="dash-topbar-hamburger" id="sidebar-toggle" onclick="toggleSidebar()" aria-label="Menu">
           <span></span><span></span><span></span>
         </button>
+        <div id="dash-topbar-brand-block" class="dash-topbar-brand-block" style="display:none;" aria-label="Kohort dan halaman">
+          <div class="dash-topbar-brand-stack">
+            <span class="dash-topbar-brand-kicker">Cohort</span>
+            <span id="dash-topbar-cohort-name" class="dash-topbar-cohort-name-accent">—</span>
+          </div>
+          <span id="dash-topbar-view-label" class="dash-topbar-view-page">Dashboard</span>
+        </div>
         <span class="dash-topbar-title" id="dash-topbar-title">Dashboard</span>
         <div style="flex:1"></div>
         <span class="dash-topbar-date" id="dash-topbar-date"></span>
@@ -5325,6 +5388,32 @@ html,body{overflow-x:hidden;max-width:100%;}
 
             <!-- price-change alert strip -->
             <div id="hbd-alerts-strip" style="display:none;margin-bottom:16px;"></div>
+
+            <div id="hbd-cohort-digest-wrap" class="hbd-cohort-digest-wrap" style="display:none;margin-bottom:20px;">
+              <div class="hbd-two-col" style="margin-bottom:0;">
+                <div class="hbd-card">
+                  <div class="hbd-card-title">Dari kelas kamu</div>
+                  <div class="hbd-card-sub">Pengumuman mentor dan cuplikan aktivitas kohort</div>
+                  <div style="font-size:.72rem;font-weight:700;color:#374151;margin-bottom:6px;">Pengumuman mentor</div>
+                  <div id="hbd-cohort-announce-list" class="hbd-cohort-announce-list"></div>
+                  <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+                    <a class="hbd-see-more" style="margin:0;" onclick="switchDashView('cohort');(typeof cohortSwitchStudentTab==='function')&&cohortSwitchStudentTab('ringkasan')">Ringkasan kohort →</a>
+                    <span style="font-size:.68rem;color:#D1D5DB;">|</span>
+                    <a class="hbd-see-more" style="margin:0;" onclick="switchDashView('cohort');(typeof cohortSwitchStudentTab==='function')&&cohortSwitchStudentTab('feed')">Buka feed →</a>
+                  </div>
+                  <div id="hbd-cohort-activity-block" style="margin-top:14px;padding-top:14px;border-top:1px solid #F3F4F6;">
+                    <div style="font-size:.72rem;font-weight:700;color:#374151;margin-bottom:8px;">Aktivitas teman sekelas</div>
+                    <div id="hbd-cohort-activity-list" class="hbd-activity-list"></div>
+                  </div>
+                </div>
+                <div class="hbd-card">
+                  <div class="hbd-card-title">Produk rekomendasi</div>
+                  <div class="hbd-card-sub">Ide riset berdasarkan skor — buka detail atau Discover</div>
+                  <div id="hbd-cohort-rec-list" class="hbd-opp-list"></div>
+                  <a class="hbd-see-more" onclick="switchDashView('discover')">Buka Discover →</a>
+                </div>
+              </div>
+            </div>
 
             <!-- stats -->
             <div class="hbd-stats-row">
@@ -6937,45 +7026,9 @@ html,body{overflow-x:hidden;max-width:100%;}
             </div>
           </div>
           <div id="cohort-mentor-wrap" style="display:none;">
-            <div class="cohort-card cohort-brand-card" id="cohort-branding-card" style="display:none;margin-bottom:14px;">
-              <div class="cohort-brand-head">
-                <div>
-                  <div class="cohort-brand-kicker">Cohort identity</div>
-                  <h3>Branding &amp; tema kohort</h3>
-                  <p class="cohort-muted">Pemimpin kohort dapat mengatur nama, warna, emblem, dan motto. Siswa otomatis melihat tampilan ini di dashboard mereka.</p>
-                </div>
-                <div class="cohort-brand-preview">
-                  <div id="cohort-brand-preview-badge" class="cohort-brand-preview-badge-host"></div>
-                  <div id="cohort-brand-preview-motto" class="cohort-brand-preview-motto">Together we learn, together we grow.</div>
-                </div>
-              </div>
-              <label class="cohort-muted" style="font-size:.65rem;">Nama kohort</label>
-              <input type="text" id="cohort-brand-name" class="cohort-input" placeholder="Ocean Blue" maxlength="80" autocomplete="off" oninput="cohortPreviewBrandingForm()">
-              <div class="cohort-brand-grid">
-                <div>
-                  <label class="cohort-muted" style="font-size:.65rem;">Warna utama (hex)</label>
-                  <div class="cohort-color-row">
-                    <input type="color" id="cohort-brand-primary-picker" class="cohort-color-swatch" value="#0c4a6e" oninput="cohortSyncBrandColor('primary','picker')">
-                    <input type="text" id="cohort-brand-primary" class="cohort-input" placeholder="#0c4a6e" maxlength="7" autocomplete="off" oninput="cohortSyncBrandColor('primary','text')">
-                  </div>
-                </div>
-                <div>
-                  <label class="cohort-muted" style="font-size:.65rem;">Warna aksen (hex)</label>
-                  <div class="cohort-color-row">
-                    <input type="color" id="cohort-brand-secondary-picker" class="cohort-color-swatch" value="#d4b896" oninput="cohortSyncBrandColor('secondary','picker')">
-                    <input type="text" id="cohort-brand-secondary" class="cohort-input" placeholder="#d4b896" maxlength="7" autocomplete="off" oninput="cohortSyncBrandColor('secondary','text')">
-                  </div>
-                </div>
-              </div>
-              <label class="cohort-muted" style="font-size:.65rem;">Badge icon / emblem</label>
-              <input type="text" id="cohort-brand-badge" class="cohort-input" placeholder="🌊" maxlength="16" autocomplete="off" oninput="cohortPreviewBrandingForm()">
-              <label class="cohort-muted" style="font-size:.65rem;">Group motto saying</label>
-              <input type="text" id="cohort-brand-slogan" class="cohort-input" placeholder="Together we learn, together we grow." maxlength="200" autocomplete="off" oninput="cohortPreviewBrandingForm()">
-              <button type="button" class="cohort-btn" id="cohort-brand-save-btn" onclick="cohortLeaderSaveBranding()">Simpan tampilan kohort</button>
-              <span id="cohort-brand-status" class="cohort-muted" style="margin-top:10px;display:block;"></span>
-            </div>
             <div id="cohort-mentor-subtabs" class="cohort-subtabs">
               <button type="button" class="cohort-subtab active" data-cmtab="overview" onclick="cohortSwitchMentorTab('overview')">Ringkasan</button>
+              <button type="button" class="cohort-subtab" id="cohort-mentor-subtab-identity" data-cmtab="identity" onclick="cohortSwitchMentorTab('identity')" style="display:none;">Identitas kohort</button>
               <button type="button" class="cohort-subtab" data-cmtab="students" onclick="cohortSwitchMentorTab('students')">Siswa</button>
               <button type="button" class="cohort-subtab" data-cmtab="mod" onclick="cohortSwitchMentorTab('mod')">Moderasi</button>
               <button type="button" class="cohort-subtab" data-cmtab="report" onclick="cohortSwitchMentorTab('report')">Laporan</button>
@@ -7018,6 +7071,54 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <button type="button" class="cohort-btn" onclick="cohortLeaderAddStudent()">Tambahkan siswa</button>
                   <div id="cohort-add-student-status" class="cohort-muted" style="margin-top:8px;"></div>
                 </div>
+              </div>
+            </div>
+            <div id="cohort-mentor-panel-identity" style="display:none;">
+              <div class="cohort-card cohort-brand-card" id="cohort-branding-card" style="margin-bottom:0;">
+                <div class="cohort-brand-head">
+                  <div>
+                    <div class="cohort-brand-kicker">Cohort identity</div>
+                    <h3>Identitas &amp; tema kohort</h3>
+                    <p class="cohort-muted">Pemimpin kohort dapat mengatur nama, warna, emblem, dan motto. Siswa otomatis melihat tampilan ini di dashboard mereka.</p>
+                  </div>
+                  <div class="cohort-brand-preview">
+                    <div id="cohort-brand-preview-badge" class="cohort-brand-preview-badge-host"></div>
+                    <div id="cohort-brand-preview-motto" class="cohort-brand-preview-motto">Together we learn, together we grow.</div>
+                  </div>
+                </div>
+                <label class="cohort-muted" style="font-size:.65rem;">Nama kohort</label>
+                <input type="text" id="cohort-brand-name" class="cohort-input" placeholder="Ocean Blue" maxlength="80" autocomplete="off" oninput="cohortPreviewBrandingForm()">
+                <div class="cohort-brand-grid">
+                  <div>
+                    <label class="cohort-muted" style="font-size:.65rem;">Warna utama (hex)</label>
+                    <div class="cohort-color-row">
+                      <input type="color" id="cohort-brand-primary-picker" class="cohort-color-swatch" value="#0c4a6e" oninput="cohortSyncBrandColor('primary','picker')">
+                      <input type="text" id="cohort-brand-primary" class="cohort-input" placeholder="#0c4a6e" maxlength="7" autocomplete="off" oninput="cohortSyncBrandColor('primary','text')">
+                    </div>
+                  </div>
+                  <div>
+                    <label class="cohort-muted" style="font-size:.65rem;">Warna aksen (hex)</label>
+                    <div class="cohort-color-row">
+                      <input type="color" id="cohort-brand-secondary-picker" class="cohort-color-swatch" value="#d4b896" oninput="cohortSyncBrandColor('secondary','picker')">
+                      <input type="text" id="cohort-brand-secondary" class="cohort-input" placeholder="#d4b896" maxlength="7" autocomplete="off" oninput="cohortSyncBrandColor('secondary','text')">
+                    </div>
+                  </div>
+                </div>
+                <label class="cohort-muted" style="font-size:.65rem;">Badge icon / emblem</label>
+                <input type="text" id="cohort-brand-badge" class="cohort-input" placeholder="🌊" maxlength="16" autocomplete="off" oninput="cohortPreviewBrandingForm()">
+                <label class="cohort-muted" style="font-size:.65rem;">Bentuk badge (muncul di strip, sedikit overlap)</label>
+                <select id="cohort-brand-badge-shape" class="cohort-input" onchange="cohortPreviewBrandingForm()">
+                  <option value="shield">Perisai</option>
+                  <option value="circle">Lingkaran</option>
+                  <option value="square">Persegi</option>
+                  <option value="octagon">Segi delapan</option>
+                  <option value="triangle">Segitiga</option>
+                </select>
+                <p class="cohort-muted" style="font-size:.62rem;margin:-4px 0 10px;line-height:1.35;">Bentuk digambar dengan CSS (bukan model AI) supaya konsisten di semua perangkat.</p>
+                <label class="cohort-muted" style="font-size:.65rem;">Group motto saying</label>
+                <input type="text" id="cohort-brand-slogan" class="cohort-input" placeholder="Together we learn, together we grow." maxlength="200" autocomplete="off" oninput="cohortPreviewBrandingForm()">
+                <button type="button" class="cohort-btn" id="cohort-brand-save-btn" onclick="cohortLeaderSaveBranding()">Simpan tampilan kohort</button>
+                <span id="cohort-brand-status" class="cohort-muted" style="margin-top:10px;display:block;"></span>
               </div>
             </div>
             <div id="cohort-mentor-panel-students" style="display:none;">
@@ -9945,8 +10046,7 @@ function switchDashView(view) {
   });
 
   // Update topbar title
-  const titleEl = document.getElementById('dash-topbar-title');
-  if (titleEl) titleEl.textContent = VIEW_TITLES[view] || view;
+  cohortSyncDashTopbarTitle(view);
 
   // New sidebar nav: highlight correct item
   ['dashboard','discover','deepdive','tracker','ai','alerts','cohort'].forEach(k => {
@@ -10081,6 +10181,30 @@ function _cohortRgbStr(rgb) {
   return `rgb(${rgb.r},${rgb.g},${rgb.b})`;
 }
 
+/** When cohort theme is active, topbar shows COHORT + name (accent) + current view (primary). */
+function cohortSyncDashTopbarTitle(view) {
+  const v = view != null ? view : (typeof _dashActiveView !== 'undefined' ? _dashActiveView : 'dashboard');
+  const titleEl = document.getElementById('dash-topbar-title');
+  const brand = document.getElementById('dash-topbar-brand-block');
+  const vlab = document.getElementById('dash-topbar-view-label');
+  const nm = document.getElementById('dash-topbar-cohort-name');
+  const t = (typeof VIEW_TITLES !== 'undefined' && VIEW_TITLES[v]) ? VIEW_TITLES[v] : v;
+  const row = typeof cohortResolveThemeCohortRowForUi === 'function' ? cohortResolveThemeCohortRowForUi() : null;
+  const themed = !!(row && row.id && document.body.classList.contains('cohort-themed') && document.body.classList.contains('in-dashboard'));
+  if (themed && brand && vlab && nm) {
+    brand.style.display = 'flex';
+    if (titleEl) titleEl.style.display = 'none';
+    nm.textContent = (row.name || 'Kohort').trim();
+    vlab.textContent = t;
+  } else {
+    if (brand) brand.style.display = 'none';
+    if (titleEl) {
+      titleEl.style.display = '';
+      titleEl.textContent = t;
+    }
+  }
+}
+
 function cohortClearDashboardTheme() {
   document.body.classList.remove('cohort-themed');
   const root = document.documentElement;
@@ -10088,7 +10212,15 @@ function cohortClearDashboardTheme() {
   const chip = document.getElementById('dash-topbar-cohort-chip');
   const strip = document.getElementById('cohort-app-strip');
   if (chip) chip.style.display = 'none';
-  if (strip) strip.style.display = 'none';
+  if (strip) {
+    strip.style.display = 'none';
+    strip.classList.remove('cohort-app-strip--with-badge');
+  }
+  const brand = document.getElementById('dash-topbar-brand-block');
+  const titleEl = document.getElementById('dash-topbar-title');
+  if (brand) brand.style.display = 'none';
+  if (titleEl) titleEl.style.display = '';
+  cohortSyncDashTopbarTitle();
 }
 
 /** Apply cohort colors to CSS variables (students read leader-chosen values). */
@@ -10113,6 +10245,7 @@ function cohortApplyDashboardThemeFromRow(cohortRow) {
   root.style.setProperty('--cohort-accent', _cohortRgbStr(accent));
   root.style.setProperty('--cohort-sidebar-end', _cohortRgbStr(end));
   root.style.setProperty('--cohort-surface', _cohortRgbStr(surface));
+  cohortSyncDashTopbarTitle();
 }
 
 function cohortResolveThemeCohortRowForUi() {
@@ -10178,6 +10311,7 @@ function cohortPreviewBrandingForm() {
   const priEl = document.getElementById('cohort-brand-primary');
   const secEl = document.getElementById('cohort-brand-secondary');
   const badgeEl = document.getElementById('cohort-brand-badge');
+  const shapeEl = document.getElementById('cohort-brand-badge-shape');
   const sloganEl = document.getElementById('cohort-brand-slogan');
   const prev = document.getElementById('cohort-brand-preview-badge');
   const motto = document.getElementById('cohort-brand-preview-motto');
@@ -10187,6 +10321,7 @@ function cohortPreviewBrandingForm() {
   const end = _cohortMixRgb(pr, { r: 8, g: 12, b: 22 }, 0.55);
   const name = (nameEl && nameEl.value || 'Ocean Blue').trim();
   const badge = (badgeEl && badgeEl.value || '🌊').trim();
+  const shape = cohortNormalizeBadgeShape(shapeEl && shapeEl.value);
   document.documentElement.style.setProperty('--cohort-primary', pri);
   document.documentElement.style.setProperty('--cohort-secondary', sec);
   document.documentElement.style.setProperty('--cohort-sidebar-end', _cohortRgbStr(end));
@@ -10199,7 +10334,7 @@ function cohortPreviewBrandingForm() {
       cohortSecondaryColor: sec,
       cohortSubtitle: sub,
       variant: 'onDark',
-      shape: 'shield',
+      shape,
       subtitleMaxLen: 36,
       hideSubtitle: !sub,
     });
@@ -10258,6 +10393,8 @@ function cohortUpdateCohortChrome(cohortRowOpt) {
   if (!row || !document.body.classList.contains('in-dashboard')) {
     chip.style.display = 'none';
     strip.style.display = 'none';
+    strip.classList.remove('cohort-app-strip--with-badge');
+    cohortSyncDashTopbarTitle();
     return;
   }
   const name = row.name || 'Kohort';
@@ -10265,19 +10402,11 @@ function cohortUpdateCohortChrome(cohortRowOpt) {
   const pri = _cohortParseThemeHex(row.theme_primary) || '#1A1F3C';
   const sec = _cohortParseThemeHex(row.theme_secondary) || '#c9a87c';
   const sub = (row.slogan && row.slogan.trim()) ? row.slogan.trim() : '';
-  chip.style.display = 'flex';
-  chip.innerHTML = cohortBadgeHtml({
-    cohortName: name,
-    cohortIcon: badge,
-    cohortPrimaryColor: pri,
-    cohortSecondaryColor: sec,
-    cohortSubtitle: sub,
-    variant: 'compact',
-    shape: 'shield',
-    hideSubtitle: true,
-  });
-  chip.title = name;
+  const shape = cohortBadgeShapeFromRow(row);
+  chip.style.display = 'none';
+  chip.innerHTML = '';
   strip.style.display = 'block';
+  strip.classList.add('cohort-app-strip--with-badge');
   if (bd) {
     bd.innerHTML = cohortBadgeHtml({
       cohortName: name,
@@ -10286,13 +10415,14 @@ function cohortUpdateCohortChrome(cohortRowOpt) {
       cohortSecondaryColor: sec,
       cohortSubtitle: sub,
       variant: 'onDark',
-      shape: 'shield',
+      shape,
       hideSubtitle: !sub,
     });
   }
   if (sl) sl.textContent = sub || 'Bangun momentum bareng tim kamu.';
   if (sm) sm.textContent = 'Memuat ringkasan kohort…';
   void cohortHydrateStripMeta(row.id);
+  cohortSyncDashTopbarTitle();
 }
 
 async function cohortHydrateStripMeta(cohortId) {
@@ -10326,12 +10456,21 @@ async function cohortLeaderSaveBranding() {
   const priEl = document.getElementById('cohort-brand-primary');
   const secEl = document.getElementById('cohort-brand-secondary');
   const badgeEl = document.getElementById('cohort-brand-badge');
+  const shapeEl = document.getElementById('cohort-brand-badge-shape');
   const sloganEl = document.getElementById('cohort-brand-slogan');
   const name = nameEl ? String(nameEl.value || '').trim() : null;
   const pri = priEl ? String(priEl.value || '').trim() : null;
   const sec = secEl ? String(secEl.value || '').trim() : null;
   const badge = badgeEl ? String(badgeEl.value || '').trim() : null;
   const slogan = sloganEl ? String(sloganEl.value || '').trim() : null;
+  const shape = cohortNormalizeBadgeShape(shapeEl && shapeEl.value);
+  let themeJson = {};
+  try {
+    const raw = c.theme_json;
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) themeJson = { ...raw };
+    else if (typeof raw === 'string') themeJson = JSON.parse(raw || '{}');
+  } catch (_) { themeJson = {}; }
+  themeJson.badge_shape = shape;
   if (!name) {
     if (st) st.textContent = 'Nama kohort wajib diisi.';
     return;
@@ -10343,7 +10482,7 @@ async function cohortLeaderSaveBranding() {
     p_theme_secondary: sec === '' ? '' : (sec || null),
     p_slogan: slogan === '' ? '' : (slogan || null),
     p_badge_icon: badge === '' ? '' : (badge || null),
-    p_theme_json: null,
+    p_theme_json: themeJson,
   });
   if (error) {
     if (st) st.textContent = error.message || 'Gagal simpan.';
@@ -10381,6 +10520,7 @@ function cohortSetPreviewShell(shell) {
   try { sessionStorage.setItem('larisid_admin_cohort_shell', shell); } catch (_) {}
   cohortApplyShellUI();
   cohortRefreshDashboardTheme();
+  void cohortRenderMentorPanels();
 }
 
 function _cohortEsc(s) {
@@ -10402,6 +10542,21 @@ function cohortBadgeSanitizedIcon(icon) {
   return s.length > 8 ? s.slice(0, 8) : s;
 }
 
+const COHORT_BADGE_SHAPES = ['shield', 'circle', 'square', 'octagon', 'triangle'];
+function cohortNormalizeBadgeShape(raw) {
+  const s = String(raw || '').toLowerCase().trim();
+  return COHORT_BADGE_SHAPES.includes(s) ? s : 'shield';
+}
+/** Reads `theme_json.badge_shape` from a cohort row (deterministic CSS shapes — no generative model). */
+function cohortBadgeShapeFromRow(row) {
+  if (!row || row.theme_json == null) return 'shield';
+  try {
+    const tj = typeof row.theme_json === 'string' ? JSON.parse(row.theme_json) : row.theme_json;
+    if (tj && typeof tj.badge_shape === 'string') return cohortNormalizeBadgeShape(tj.badge_shape);
+  } catch (_) {}
+  return 'shield';
+}
+
 function cohortBadgeTrimSubtitle(sub, maxLen) {
   const t = String(sub || '').trim().replace(/\s+/g, ' ');
   const cap = maxLen || 40;
@@ -10410,9 +10565,10 @@ function cohortBadgeTrimSubtitle(sub, maxLen) {
 }
 
 /**
- * Reusable cohort badge markup: shield, centered icon, bold name, optional subtitle.
+ * Reusable cohort badge markup: shield | circle | square | octagon | triangle, icon, name, subtitle.
+ * Shapes are pure CSS (clip-path / radius) so they always match brand guidelines; no generative model needed.
  * opts: { cohortName, cohortIcon, cohortPrimaryColor, cohortSecondaryColor, cohortSubtitle,
- *         variant?: 'compact'|'onDark', shape?: 'shield'|'circle', hideSubtitle?: bool, subtitleMaxLen?: number }
+ *         variant?: 'compact'|'onDark', shape?: 'shield'|'circle'|'square'|'octagon'|'triangle', hideSubtitle?: bool, subtitleMaxLen?: number }
  */
 function cohortBadgeHtml(opts) {
   const o = opts || {};
@@ -10423,7 +10579,7 @@ function cohortBadgeHtml(opts) {
   const subFull = cohortBadgeTrimSubtitle(o.cohortSubtitle, o.subtitleMaxLen || 40);
   const hideSub = !!o.hideSubtitle || !subFull;
   const variant = o.variant === 'compact' ? 'compact' : o.variant === 'onDark' ? 'onDark' : '';
-  const shape = o.shape === 'circle' ? 'circle' : 'shield';
+  const shape = cohortNormalizeBadgeShape(o.shape);
   const pr = _cohortHexToRgb(pri);
   const sr = _cohortHexToRgb(sec);
   const bgTop = _cohortRgbStr(_cohortMixRgb(pr, { r: 255, g: 255, b: 255 }, 0.9));
@@ -10517,10 +10673,11 @@ async function cohortJoinInvite() {
   if (inp) inp.value = '';
   await cohortInit();
   if (st) st.textContent = _cohortState.hasMentorCohort
-    ? 'Berhasil gabung sebagai pemimpin kohort. Panel branding tersedia di bawah.'
+    ? 'Berhasil gabung sebagai pemimpin kohort. Atur identitas di tab Identitas kohort.'
     : 'Berhasil gabung kohort.';
   if (_cohortState.hasMentorCohort) {
     setTimeout(() => {
+      cohortSwitchMentorTab('identity');
       document.getElementById('cohort-branding-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 120);
   }
@@ -10654,6 +10811,9 @@ async function cohortInit() {
   cohortRefreshDashboardTheme();
   cohortSwitchStudentTab('ringkasan');
   cohortSwitchMentorTab(_cohortState.mentorTab || 'overview');
+  if (typeof _dashActiveView !== 'undefined' && _dashActiveView === 'dashboard' && typeof hbdRenderCohortDigest === 'function') {
+    void hbdRenderCohortDigest();
+  }
 }
 
 async function cohortLoadMemberNames(cohortId) {
@@ -10703,7 +10863,7 @@ function cohortUpdateSidebarCohortPill() {
       cohortSecondaryColor: sec,
       cohortSubtitle: sub,
       variant: 'compact',
-      shape: 'shield',
+      shape: cohortBadgeShapeFromRow(c),
       hideSubtitle: true,
     });
     el.title = c.name || '';
@@ -10723,7 +10883,7 @@ async function cohortRefreshCohortPillFromServer() {
     el.textContent = '';
     return;
   }
-  const { data: c } = await _supabase.from('cohorts').select('name,badge_icon,theme_primary,theme_secondary,slogan').eq('id', m.cohort_id).maybeSingle();
+  const { data: c } = await _supabase.from('cohorts').select('name,badge_icon,theme_primary,theme_secondary,slogan,theme_json').eq('id', m.cohort_id).maybeSingle();
   if (!c) {
     el.style.display = 'none';
     return;
@@ -10740,7 +10900,7 @@ async function cohortRefreshCohortPillFromServer() {
     cohortSecondaryColor: sec,
     cohortSubtitle: sub,
     variant: 'compact',
-    shape: 'shield',
+    shape: cohortBadgeShapeFromRow(c),
     hideSubtitle: true,
   });
   el.title = c.name || '';
@@ -10768,12 +10928,13 @@ function cohortSwitchMentorTab(tab) {
   document.querySelectorAll('#cohort-mentor-subtabs .cohort-subtab').forEach(b => {
     b.classList.toggle('active', b.dataset.cmtab === tab);
   });
-  ['overview', 'students', 'mod', 'report'].forEach(t => {
+  ['overview', 'identity', 'students', 'mod', 'report'].forEach(t => {
     const el = document.getElementById('cohort-mentor-panel-' + t);
     if (el) el.style.display = t === tab ? '' : 'none';
   });
   const c = _cohortState.primaryMentorCohort;
   if (!c) return;
+  if (tab === 'identity') cohortPreviewBrandingForm();
   if (tab === 'students') void cohortRenderMentorDirectory(c.id);
   if (tab === 'mod') void cohortRenderModFeed(c.id);
 }
@@ -11056,13 +11217,14 @@ async function cohortRenderMentorPanels() {
   const inac = document.getElementById('cohort-mentor-inactive');
   const ov = document.getElementById('cohort-mentor-overview');
   const bc = document.getElementById('cohort-branding-card');
+  const idTab = document.getElementById('cohort-mentor-subtab-identity');
   const c = _cohortState.primaryMentorCohort;
   if (!c) {
     if (sum) sum.textContent = 'Kamu belum ditetapkan sebagai mentor kohort.';
     if (memEl) memEl.textContent = '—';
     if (inac) inac.innerHTML = '';
     if (ov) ov.textContent = '—';
-    if (bc) bc.style.display = 'none';
+    if (idTab) idTab.style.display = 'none';
     return;
   }
   const cohortId = c.id;
@@ -11101,8 +11263,12 @@ async function cohortRenderMentorPanels() {
     const isActualMentor = cohortIsActualMentorForCohort(c);
     const adminPrevLeader = isPlatformAdmin() && cohortGetPreviewShell() === 'leader';
     const canEditBrand = isActualMentor || adminPrevLeader;
-    bc.style.display = (isActualMentor || adminPrevLeader) ? '' : 'none';
-    if (bc.style.display !== 'none') {
+    const showIdentityTab = canEditBrand;
+    if (idTab) idTab.style.display = showIdentityTab ? '' : 'none';
+    if (!showIdentityTab && _cohortState.mentorTab === 'identity') {
+      cohortSwitchMentorTab('overview');
+    }
+    if (showIdentityTab) {
       const name = document.getElementById('cohort-brand-name');
       const pri = document.getElementById('cohort-brand-primary');
       const sec = document.getElementById('cohort-brand-secondary');
@@ -11120,6 +11286,8 @@ async function cohortRenderMentorPanels() {
       if (priPick) priPick.value = priHex;
       if (secPick) secPick.value = secHex;
       if (badge) badge.value = (c.badge_icon || '').trim();
+      const shapeSel = document.getElementById('cohort-brand-badge-shape');
+      if (shapeSel) shapeSel.value = cohortBadgeShapeFromRow(c);
       if (slogan) slogan.value = (c.slogan || '').trim();
       if (btn) {
         btn.disabled = !canEditBrand;
@@ -14828,6 +14996,7 @@ async function hbdInit() {
       const legendEl = document.getElementById('hbd-legend');
       if (legendEl) legendEl.innerHTML = '<span style="font-size:.6rem;color:#9CA3AF;font-style:italic;">Contoh: 5 produk teratas di pasar</span>';
     }
+    void hbdRenderCohortDigest();
     return;
   }
 
@@ -14986,6 +15155,138 @@ async function hbdInit() {
     sold:  p.curr_sold  || 0,
   }));
   _hbdBuildChartFromTracked(prods);
+  void hbdRenderCohortDigest();
+}
+
+/**
+ * Beranda digest: mentor announcements + cohort activity teaser (win / milestone / product_share)
+ * + recommended products (allProducts by score, else latest listings by score).
+ * Privacy: author labels via cohort_member_names RPC only; no emails; hidden posts excluded.
+ */
+async function hbdRenderCohortDigest() {
+  const wrap = document.getElementById('hbd-cohort-digest-wrap');
+  const annEl = document.getElementById('hbd-cohort-announce-list');
+  const actEl = document.getElementById('hbd-cohort-activity-list');
+  const recEl = document.getElementById('hbd-cohort-rec-list');
+  if (!wrap || !annEl || !actEl || !recEl) return;
+  if (!_supabase || !currentUser) {
+    wrap.style.display = 'none';
+    return;
+  }
+  const { data: mem } = await _supabase
+    .from('cohort_members')
+    .select('cohort_id,role,status')
+    .eq('user_id', currentUser.id)
+    .eq('status', 'active');
+  const stu = (mem || []).find(m => m.role === 'student');
+  const pcid = stu ? stu.cohort_id : null;
+  if (!pcid) {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = 'block';
+  const { data: cRow } = await _supabase.from('cohorts').select('mentor_user_id,name').eq('id', pcid).maybeSingle();
+  const mentorId = cRow && cRow.mentor_user_id;
+  await cohortLoadMemberNames(pcid);
+  const kindLbl = { win: 'Menang', milestone_share: 'Milestone', product_share: 'Produk' };
+  const kindIcon = { win: '🎉', milestone_share: '🏁', product_share: '📦' };
+  const [{ data: ann }, { data: postsRaw, error: postErr }] = await Promise.all([
+    _supabase.from('cohort_announcements').select('title,body,created_at').eq('cohort_id', pcid).order('created_at', { ascending: false }).limit(3),
+    _supabase.from('community_posts').select('body,created_at,author_id,kind,metadata').eq('cohort_id', pcid).is('hidden_at', null).in('kind', ['win', 'milestone_share', 'product_share']).order('created_at', { ascending: false }).limit(16),
+  ]);
+  if (postErr) console.warn('hbd cohort digest posts', postErr);
+  if (!(ann || []).length) {
+    annEl.innerHTML = '<div style="color:#9CA3AF;font-size:.75rem;">Belum ada pengumuman dari mentor.</div>';
+  } else {
+    annEl.innerHTML = (ann || []).map(a => {
+      const snip = String(a.body || '').trim().slice(0, 100);
+      const more = (a.body || '').length > 100 ? '…' : '';
+      return `<div class="hbd-cohort-ann-item"><strong>${_cohortEsc(a.title)}</strong>${snip ? `<div class="hbd-cohort-act-snippet">${_cohortEsc(snip)}${more}</div>` : ''}<div class="hbd-cohort-ann-meta">${_cohortEsc((a.created_at || '').slice(0, 10))}</div></div>`;
+    }).join('');
+  }
+  const postsList = [...(postsRaw || [])].sort((a, b) => {
+    const aself = a.author_id === currentUser.id ? 1 : 0;
+    const bself = b.author_id === currentUser.id ? 1 : 0;
+    if (aself !== bself) return aself - bself;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  }).slice(0, 5);
+  if (!postsList.length) {
+    actEl.innerHTML = '<div style="color:#9CA3AF;font-size:.75rem;">Belum ada aktivitas (menang, milestone, bagikan produk) di feed kohort.</div>';
+  } else {
+    actEl.innerHTML = postsList.map(p => {
+      const mine = p.author_id === currentUser.id;
+      const isMentor = mentorId && p.author_id === mentorId;
+      const who = mine ? 'Kamu' : (isMentor ? 'Mentor' : cohortCohortDisplayName(p.author_id, null));
+      const k = p.kind || 'general';
+      const meta = p.metadata || {};
+      const url = meta.listing_url || meta.product_url || meta.url || '';
+      const note = (meta.note || meta.jumlah || '').trim();
+      const bodyShort = String(p.body || '').trim().slice(0, 88);
+      const extra = url ? ' · tautan produk' : (note ? ' · ' + note.slice(0, 40) : '');
+      const icon = kindIcon[k] || '•';
+      const lbl = kindLbl[k] || k;
+      return `<div class="hbd-activity-item">
+        <div class="hbd-act-icon info" style="font-size:1rem;line-height:1;">${icon}</div>
+        <div class="hbd-act-body">
+          <div class="hbd-act-title">${_cohortEsc(lbl)} · ${_cohortEsc(who)}</div>
+          <div class="hbd-act-desc">${_cohortEsc(bodyShort)}${(p.body || '').length > 88 ? '…' : ''}${_cohortEsc(extra)}</div>
+        </div>
+        <div class="hbd-act-time">${_cohortEsc((p.created_at || '').slice(0, 10))}</div>
+      </div>`;
+    }).join('');
+  }
+  let recHtml = '';
+  if (typeof allProducts !== 'undefined' && allProducts && allProducts.length) {
+    const top = [...allProducts].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 5);
+    recHtml = top.map(p => {
+      const name = (p.name || p.keyword || 'Produk').split(' ').slice(0, 5).join(' ') || 'Produk';
+      const sc = p.score >= 70 ? 'hot' : 'ok';
+      return `<div class="hbd-opp-item" onclick="openDetail(${p.id})">
+        <div class="hbd-opp-emoji" style="font-size:1rem;">📈</div>
+        <div class="hbd-opp-body">
+          <div class="hbd-opp-name">${_cohortEsc(name)}</div>
+          <div class="hbd-opp-cat">${_cohortEsc(p.category || '—')}</div>
+        </div>
+        <span class="hbd-opp-badge ${sc}">${p.score != null ? p.score : '—'}</span>
+      </div>`;
+    }).join('');
+  } else {
+    const { data: lr } = await _supabase.from('listings').select('scraped_at').order('scraped_at', { ascending: false }).limit(1);
+    const latestDate = lr && lr[0] && lr[0].scraped_at ? lr[0].scraped_at.slice(0, 10) : null;
+    if (latestDate) {
+      const { data: rows } = await _supabase
+        .from('listings')
+        .select('keyword,category,score,image_url')
+        .gte('scraped_at', latestDate)
+        .order('score', { ascending: false })
+        .limit(40);
+      const seen = new Set();
+      const uniq = [];
+      (rows || []).forEach(r => {
+        const kw = r.keyword;
+        if (!kw || seen.has(kw)) return;
+        seen.add(kw);
+        uniq.push(r);
+      });
+      recHtml = uniq.slice(0, 5).map(r => {
+        const hot = (r.score || 0) >= 70;
+        const safeKw = JSON.stringify(String(r.keyword || ''));
+        return `<div class="hbd-opp-item" onclick="openKwDetail(${safeKw})">
+          <div class="hbd-opp-emoji" style="font-size:1rem;">🔎</div>
+          <div class="hbd-opp-body">
+            <div class="hbd-opp-name">${_cohortEsc(r.keyword)}</div>
+            <div class="hbd-opp-cat">${_cohortEsc(r.category || '—')}</div>
+          </div>
+          <span class="hbd-opp-badge ${hot ? 'hot' : 'ok'}">${r.score != null ? r.score : '—'}</span>
+        </div>`;
+      }).join('');
+    }
+  }
+  if (!recHtml) {
+    recEl.innerHTML = '<div style="color:#9CA3AF;font-size:.75rem;">Buka Discover untuk melihat produk dan keyword terbaru.</div>';
+  } else {
+    recEl.innerHTML = recHtml;
+  }
 }
 
 function _hbdBuildChartFromTracked(prods) {
