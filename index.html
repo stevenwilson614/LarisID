@@ -26,9 +26,9 @@
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "7cada22477f048bdbe064f16ac18f17e"}'></script>
 <!-- End Cloudflare Web Analytics -->
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
 <!-- ─── TALLY FEEDBACK FORM ─────────────────────────────────────────────── -->
 <script async src="https://tally.so/widgets/embed.js"></script>
@@ -8409,8 +8409,7 @@ async function openDetail(id) {
 }
 
 // ── SELLER ACCURACY VOTING ────────────────────────────────────
-const CLAUDE_KEY = ['sk-ant-api03-LCZnGgxRAmzh1NdtEWQ8durTHzHiN8RgI-YdU_yRc5JKEhZZhvpxahhnUd7kjEPUYuqc2d9VXvrvudwtxNwFq',
-  'w-IZre6wAA'].join('');
+// CLAUDE_KEY removed — AI calls now go through the claude-proxy Edge Function.
 const SUPA_URL = 'https://bzmvlraziqevqdyotvgy.supabase.co';
 const SUPA_KEY = 'sb_publishable_KDSWIJJLckser1e1hk7bbA_yMChRPog';
 const SUPA_HDR = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
@@ -8590,6 +8589,11 @@ async function _authOnSignIn(session) {
     try {
       await _supabase.auth.setSession({ access_token: session.access_token, refresh_token: session.refresh_token });
     } catch (_) {}
+  }
+  // Track signup vs return visit for analytics
+  if (_supabase && session.user) {
+    const isNew = session.user.created_at === session.user.last_sign_in_at;
+    _supabase.from('user_sessions').insert({ user_id: session.user.id, is_new_user: isNew }).then(() => {});
   }
   await loadCurrentAccess().catch(() => {});
   updateAuthUI();
@@ -9639,7 +9643,7 @@ let _adminCohorts = [];
 async function adminLoadCohortOptions() {
   const sel = document.getElementById('adm-cohort-select');
   if (!sel || !_supabase || !isPlatformAdmin()) return;
-  const { data, error } = await _supabase.from('cohorts').select('id,name,slug,invite_code').order('created_at', { ascending: false });
+  const { data, error } = await _supabase.from('cohorts').select('id,name,slug,invite_code').order('created_at', { ascending: false }).limit(200);
   if (error) {
     sel.innerHTML = '<option value="">Tidak bisa memuat kohort</option>';
     return;
@@ -10048,9 +10052,8 @@ async function mlsAiAsk(prompt) {
     `\nHANYA analisis produk dan keyword di atas. Jangan mengarang data lain.`,
   ].filter(Boolean).join('\n');
 
-  const userAnthropicKey = localStorage.getItem('larisid_anthropic_key');
-  const userOpenAiKey    = localStorage.getItem('larisid_openai_key');
-  const userModel        = localStorage.getItem('larisid_anthropic_model') || 'claude-haiku-4-5-20251001';
+  const userOpenAiKey = localStorage.getItem('larisid_openai_key');
+  const userModel     = localStorage.getItem('larisid_anthropic_model') || 'claude-haiku-4-5-20251001';
 
   try {
     if (userOpenAiKey) {
@@ -10062,14 +10065,16 @@ async function mlsAiAsk(prompt) {
       const d = await res.json();
       respEl.textContent = d.choices?.[0]?.message?.content || d.error?.message || 'Tidak ada respons.';
     } else {
-      const apiKey = userAnthropicKey || CLAUDE_KEY;
-      const model  = userAnthropicKey ? userModel : 'claude-haiku-4-5-20251001';
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      // Route through claude-proxy Edge Function — API key stays server-side
+      const session = _supabase ? (await _supabase.auth.getSession()).data?.session : null;
+      if (!session) { respEl.textContent = 'Login untuk menggunakan fitur AI.'; return; }
+      const res = await fetch(`${SUPA_URL}/functions/v1/claude-proxy`, {
         method: 'POST',
-        headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-        body: JSON.stringify({ model, max_tokens: 500, system: systemCtx, messages: [{ role: 'user', content: q }] })
+        headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: userModel, system: systemCtx, messages: [{ role: 'user', content: q }] })
       });
       const d = await res.json();
+      if (res.status === 429) { respEl.textContent = 'Batas penggunaan AI hari ini sudah tercapai (10 permintaan/hari).'; return; }
       respEl.textContent = d.content?.[0]?.text || d.error?.message || 'Tidak ada respons.';
     }
     _mlsAiCounterInc();
