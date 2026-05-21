@@ -2639,6 +2639,118 @@ body.in-dashboard .mobile-menu{display:none!important;}
   .pdb-range-grid{grid-template-columns:minmax(0,1fr);}
 }
 
+/* ══════════════════════════════════════════════════
+   MY TOKO
+   ══════════════════════════════════════════════════ */
+.myt-wrap{padding:28px;max-width:1200px;}
+@media(max-width:768px){.myt-wrap{padding:12px 12px 80px;}}
+
+/* Connect state */
+.myt-connect-hero{display:flex;flex-direction:column;align-items:center;text-align:center;padding:60px 24px;max-width:480px;margin:0 auto;}
+.myt-connect-icon{width:72px;height:72px;border-radius:20px;background:#FFF0ED;display:flex;align-items:center;justify-content:center;margin-bottom:24px;color:#E8442A;}
+.myt-connect-hero h2{font-size:1.4rem;font-weight:800;color:#1A1F3C;margin:0 0 10px;}
+.myt-connect-hero p{font-size:.88rem;color:#6B7280;line-height:1.6;margin:0 0 28px;}
+.myt-connect-row{display:flex;gap:8px;width:100%;}
+.myt-connect-input{flex:1;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.85rem;font-family:inherit;outline:none;transition:border-color .15s;}
+.myt-connect-input:focus{border-color:#E8442A;}
+.myt-connect-btn{padding:10px 20px;background:#E8442A;color:#fff;border:none;border-radius:8px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:background .15s;}
+.myt-connect-btn:hover{background:#C23520;}
+.myt-connect-btn:disabled{background:#9CA3AF;cursor:not-allowed;}
+.myt-connect-error{font-size:.78rem;color:#dc2626;margin-top:10px;display:none;}
+.myt-connect-note{font-size:.72rem;color:#9CA3AF;margin-top:14px;line-height:1.5;}
+
+/* Dashboard header */
+.myt-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
+.myt-store-badge{display:flex;align-items:center;gap:10px;}
+.myt-store-dot{width:8px;height:8px;border-radius:50%;background:#10B981;flex-shrink:0;}
+.myt-store-name{font-size:1.15rem;font-weight:800;color:#1A1F3C;}
+.myt-store-sub{font-size:.72rem;color:#6B7280;margin-top:2px;}
+.myt-change-btn{font-size:.72rem;color:#E8442A;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;text-decoration:underline;}
+
+/* Portfolio bar */
+.myt-pbar{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+@media(max-width:700px){.myt-pbar{grid-template-columns:repeat(2,1fr);}}
+.myt-pbar-card{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px;}
+.myt-pbar-val{font-size:1.3rem;font-weight:800;color:#1A1F3C;line-height:1;margin-bottom:4px;}
+.myt-pbar-lbl{font-size:.68rem;color:#6B7280;font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
+.myt-pbar-warn{border-color:#FCA5A5;background:#FFF5F5;}
+.myt-pbar-warn .myt-pbar-val{color:#DC2626;}
+
+/* Sections */
+.myt-section{margin-bottom:28px;}
+.myt-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
+.myt-section-title{font-size:.95rem;font-weight:800;color:#1A1F3C;}
+.myt-link-btn{font-size:.72rem;color:#E8442A;background:none;border:1px solid #E8442A;border-radius:6px;padding:4px 10px;cursor:pointer;font-family:inherit;font-weight:600;transition:background .15s;}
+.myt-link-btn:hover{background:#FFF0ED;}
+
+/* Product position cards */
+.myt-products{display:flex;flex-direction:column;gap:12px;}
+.myt-prod-card{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px;display:grid;grid-template-columns:48px 1fr auto;gap:14px;align-items:start;}
+@media(max-width:600px){.myt-prod-card{grid-template-columns:40px 1fr;}.myt-prod-stats{grid-column:1/-1;}}
+.myt-prod-img{width:48px;height:48px;border-radius:8px;object-fit:cover;background:#F3F4F6;}
+.myt-prod-name{font-size:.82rem;font-weight:700;color:#1A1F3C;margin-bottom:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.myt-prod-keyword{font-size:.68rem;color:#9CA3AF;margin-bottom:8px;}
+.myt-prod-stats{display:flex;flex-wrap:wrap;gap:8px;}
+.myt-stat-chip{display:flex;flex-direction:column;gap:1px;min-width:64px;}
+.myt-stat-chip-lbl{font-size:.6rem;color:#9CA3AF;text-transform:uppercase;letter-spacing:.04em;}
+.myt-stat-chip-val{font-size:.82rem;font-weight:700;color:#1A1F3C;}
+.myt-stat-chip-val.ok{color:#1A7A46;}
+.myt-stat-chip-val.warn{color:#D97706;}
+.myt-stat-chip-val.bad{color:#DC2626;}
+.myt-prod-rank{text-align:center;flex-shrink:0;}
+.myt-rank-num{font-size:1.6rem;font-weight:900;color:#1A1F3C;line-height:1;}
+.myt-rank-lbl{font-size:.6rem;color:#9CA3AF;text-transform:uppercase;letter-spacing:.04em;}
+.myt-rank-of{font-size:.65rem;color:#6B7280;}
+
+/* Gap callouts */
+.myt-gaps{margin-top:10px;display:flex;flex-direction:column;gap:5px;}
+.myt-gap-row{display:flex;align-items:flex-start;gap:7px;font-size:.72rem;color:#374151;padding:6px 10px;background:#F7F6F3;border-radius:7px;line-height:1.4;}
+.myt-gap-icon{flex-shrink:0;margin-top:1px;}
+
+/* Selling toggle in tracker */
+.trk-sell-toggle{display:flex;align-items:center;gap:6px;margin-top:6px;cursor:pointer;}
+.trk-sell-toggle input[type=checkbox]{width:14px;height:14px;accent-color:#E8442A;cursor:pointer;}
+.trk-sell-toggle-lbl{font-size:.68rem;font-weight:600;color:#6B7280;}
+.trk-sell-toggle input:checked ~ .trk-sell-toggle-lbl{color:#E8442A;}
+
+/* Risk quadrant */
+.myt-risk-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+@media(max-width:500px){.myt-risk-grid{grid-template-columns:1fr;}}
+.myt-quadrant{border-radius:12px;padding:14px 16px;min-height:100px;}
+.myt-q-hold   {background:#ECFDF5;border:1px solid #A7F3D0;}
+.myt-q-defend {background:#FFF7ED;border:1px solid #FED7AA;}
+.myt-q-milk   {background:#EFF6FF;border:1px solid #BFDBFE;}
+.myt-q-exit   {background:#FFF5F5;border:1px solid #FCA5A5;}
+.myt-q-label{font-size:.78rem;font-weight:800;margin-bottom:2px;}
+.myt-q-hold   .myt-q-label{color:#065F46;}
+.myt-q-defend .myt-q-label{color:#92400E;}
+.myt-q-milk   .myt-q-label{color:#1E40AF;}
+.myt-q-exit   .myt-q-label{color:#991B1B;}
+.myt-q-sub{font-size:.65rem;color:#6B7280;margin-bottom:10px;}
+.myt-q-products{display:flex;flex-direction:column;gap:4px;}
+.myt-q-prod-chip{font-size:.68rem;font-weight:600;color:#374151;background:rgba(255,255,255,.7);border-radius:5px;padding:3px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.myt-q-empty{font-size:.68rem;color:#9CA3AF;font-style:italic;}
+
+/* Suggestions */
+.myt-suggestions{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+@media(max-width:700px){.myt-suggestions{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:400px){.myt-suggestions{grid-template-columns:1fr;}}
+.myt-sug-card{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:14px;cursor:pointer;transition:box-shadow .15s,border-color .15s;}
+.myt-sug-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08);border-color:#E8442A;}
+.myt-sug-cat{font-size:.68rem;font-weight:700;color:#E8442A;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;}
+.myt-sug-prod{font-size:.75rem;font-weight:600;color:#1A1F3C;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.myt-sug-meta{display:flex;align-items:center;justify-content:space-between;}
+.myt-sug-shops{font-size:.65rem;color:#6B7280;}
+.myt-sug-score{font-size:.7rem;font-weight:700;padding:2px 7px;border-radius:20px;}
+
+/* Empty state */
+.myt-empty{text-align:center;padding:40px 20px;color:#6B7280;font-size:.82rem;line-height:1.6;}
+.myt-empty-icon{width:48px;height:48px;border-radius:14px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;color:#9CA3AF;}
+
+/* Loading skeleton */
+.myt-skel{background:#F3F4F6;border-radius:12px;height:120px;animation:skelPulse 1.4s ease-in-out infinite;}
+@keyframes skelPulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
 /* ════════════════════════════════════════════════
    MOBILE UI FIXES (≤768px)
    ════════════════════════════════════════════════ */
@@ -4357,6 +4469,7 @@ html,body{overflow-x:hidden;max-width:100%;}
         <div class="dash-nav-sub" id="dash-sub-research-tools">
           <div class="dash-nav-sub-item" id="dash-nav-discover" onclick="switchDashView('discover')">Discover</div>
           <div class="dash-nav-sub-item" id="dash-nav-deepdive" onclick="switchDashView('deepdive')">Deep Dive</div>
+          <div class="dash-nav-sub-item" id="dash-nav-mytoko" onclick="switchDashView('mytoko')">My Toko</div>
           <div class="dash-nav-sub-item" id="dash-nav-tracker" onclick="switchDashView('tracker')">Tracker</div>
           <div class="dash-nav-sub-item" id="dash-nav-ai" onclick="switchDashView('ai')">Mulai Berjualan</div>
           <div class="dash-nav-sub-item" id="dash-nav-alerts" onclick="switchDashView('alerts')">Alerts</div>
@@ -6620,6 +6733,125 @@ html,body{overflow-x:hidden;max-width:100%;}
 
           </div>
         </div>
+
+        <!-- ══ MY TOKO ══════════════════════════════════════════ -->
+        <div id="dash-view-mytoko" style="display:none;">
+          <div class="myt-wrap">
+
+            <!-- STATE A: store not connected -->
+            <div id="myt-connect-state">
+              <div class="myt-connect-hero">
+                <div class="myt-connect-icon">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                </div>
+                <h2>Hubungkan Toko Shopee Kamu</h2>
+                <p>Masukkan nama toko Shopee kamu untuk melihat posisi kompetitif di setiap keyword, portfolio health, dan peluang produk selanjutnya.</p>
+                <div class="myt-connect-row">
+                  <input id="myt-store-input" class="myt-connect-input" type="text" placeholder="Nama toko Shopee kamu..." autocomplete="off" onkeydown="if(event.key==='Enter')myTokoConnect()">
+                  <button class="myt-connect-btn" id="myt-connect-btn" onclick="myTokoConnect()">Hubungkan</button>
+                </div>
+                <div class="myt-connect-error" id="myt-connect-error"></div>
+                <div class="myt-connect-note">Nama toko harus sama persis seperti di Shopee. Data toko kamu tidak disimpan ke server pihak ketiga.</div>
+              </div>
+            </div>
+
+            <!-- STATE B: store connected -->
+            <div id="myt-dashboard-state" style="display:none;">
+
+              <!-- Store header -->
+              <div class="myt-header">
+                <div class="myt-store-badge">
+                  <div class="myt-store-dot"></div>
+                  <div>
+                    <div class="myt-store-name" id="myt-store-name">—</div>
+                    <div class="myt-store-sub" id="myt-store-sub">Toko Shopee terhubung</div>
+                  </div>
+                </div>
+                <button class="myt-change-btn" onclick="myTokoShowConnect()">Ganti toko</button>
+              </div>
+
+              <!-- Portfolio summary bar -->
+              <div class="myt-pbar" id="myt-pbar">
+                <div class="myt-pbar-card">
+                  <div class="myt-pbar-val" id="myt-total-omset">—</div>
+                  <div class="myt-pbar-lbl">Est. Omset/Bulan</div>
+                </div>
+                <div class="myt-pbar-card">
+                  <div class="myt-pbar-val" id="myt-product-count">—</div>
+                  <div class="myt-pbar-lbl">Produk Aktif</div>
+                </div>
+                <div class="myt-pbar-card">
+                  <div class="myt-pbar-val" id="myt-avg-score">—</div>
+                  <div class="myt-pbar-lbl">Avg Viability Score</div>
+                </div>
+                <div class="myt-pbar-card" id="myt-concentration-card">
+                  <div class="myt-pbar-val" id="myt-concentration">—</div>
+                  <div class="myt-pbar-lbl">Konsentrasi Kategori</div>
+                </div>
+              </div>
+
+              <!-- My selling products -->
+              <div class="myt-section">
+                <div class="myt-section-hdr">
+                  <div class="myt-section-title">Produk Yang Kamu Jual</div>
+                  <button class="myt-link-btn" onclick="switchDashView('tracker')">+ Tambah dari Tracker</button>
+                </div>
+                <div id="myt-products-wrap">
+                  <div id="myt-products-loading" style="display:flex;flex-direction:column;gap:12px;">
+                    <div class="myt-skel"></div><div class="myt-skel"></div>
+                  </div>
+                  <div id="myt-products-empty" style="display:none;">
+                    <div class="myt-empty">
+                      <div class="myt-empty-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>
+                      Belum ada produk. Buka <span style="color:#E8442A;cursor:pointer;font-weight:700;" onclick="switchDashView('tracker')">Tracker</span> dan aktifkan "Saya jual ini" pada produk yang sedang kamu jual.
+                    </div>
+                  </div>
+                  <div id="myt-products-list" class="myt-products"></div>
+                </div>
+              </div>
+
+              <!-- Risk quadrant -->
+              <div class="myt-section" id="myt-risk-section" style="display:none;">
+                <div class="myt-section-hdr">
+                  <div class="myt-section-title">Status Portfolio</div>
+                  <div style="font-size:.68rem;color:#9CA3AF;">Berdasarkan tren pasar & posisi kamu</div>
+                </div>
+                <div class="myt-risk-grid">
+                  <div class="myt-quadrant myt-q-hold">
+                    <div class="myt-q-label">Hold</div>
+                    <div class="myt-q-sub">Pasar sehat · posisi naik</div>
+                    <div class="myt-q-products" id="myt-q-hold"></div>
+                  </div>
+                  <div class="myt-quadrant myt-q-defend">
+                    <div class="myt-q-label">Defend</div>
+                    <div class="myt-q-sub">Pasar sehat · posisi turun</div>
+                    <div class="myt-q-products" id="myt-q-defend"></div>
+                  </div>
+                  <div class="myt-quadrant myt-q-milk">
+                    <div class="myt-q-label">Milk</div>
+                    <div class="myt-q-sub">Posisi kuat · pasar jenuh</div>
+                    <div class="myt-q-products" id="myt-q-milk"></div>
+                  </div>
+                  <div class="myt-quadrant myt-q-exit">
+                    <div class="myt-q-label">Exit</div>
+                    <div class="myt-q-sub">Pasar jenuh · posisi turun</div>
+                    <div class="myt-q-products" id="myt-q-exit"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Complementary suggestions -->
+              <div class="myt-section" id="myt-suggestions-section" style="display:none;">
+                <div class="myt-section-hdr">
+                  <div class="myt-section-title">Peluang Produk Selanjutnya</div>
+                  <div style="font-size:.68rem;color:#9CA3AF;">Kategori yang sering dijual bersama produk kamu</div>
+                </div>
+                <div class="myt-suggestions" id="myt-suggestions-grid"></div>
+              </div>
+
+            </div><!-- /myt-dashboard-state -->
+          </div><!-- /myt-wrap -->
+        </div><!-- /dash-view-mytoko -->
 
         <div id="dash-view-ai" style="display:none;">
           <div class="mls-wrap">
@@ -10185,7 +10417,7 @@ function switchDashTab(tab) {
 //  JUNGLE SCOUT-STYLE DASHBOARD — view switching, Product DB
 // ════════════════════════════════════════════════════════════
 
-const PDB_VIEWS = ['home','product-database','product-tracker','opportunity-finder','category-trends','suppliers','keywords','estimator','marketing','saved','education','dashboard','discover','tracker','deepdive','ai','alerts','credits','cohort','admin'];
+const PDB_VIEWS = ['home','product-database','product-tracker','opportunity-finder','category-trends','suppliers','keywords','estimator','marketing','saved','education','dashboard','discover','tracker','deepdive','ai','alerts','credits','cohort','admin','mytoko'];
 const PDB_SUB_MAP = {'product-database':'research','product-tracker':'research','opportunity-finder':'research','category-trends':'research'};
 
 // View titles for topbar
@@ -10194,7 +10426,7 @@ const VIEW_TITLES = {
   'deepdive':'Deep Dive','ai':'Mulai Berjualan','alerts':'Alerts','credits':'Kredit Saya','cohort':'Kohort',
   'home':'Home Dashboard','product-database':'Product Database',
   'product-tracker':'Product Tracker','opportunity-finder':'Opportunity Finder',
-  'saved':'Produk Tersimpan','education':'Edukasi',
+  'saved':'Produk Tersimpan','education':'Edukasi','mytoko':'My Toko',
 };
 
 /** Tracks which dashboard pane is visible (used after auth/session sync). */
@@ -10271,10 +10503,11 @@ function switchDashView(view) {
   if (view === 'home') _renderDashHome();
   if (view === 'estimator') loadSalesEstimator();
   if (view === 'admin') loadAdminStats();
-  if (view === 'discover'  && typeof dscInit  === 'function') { dscInit(); setTimeout(renderForYou, 400); }
-  if (view === 'tracker'   && typeof trkInit  === 'function') trkInit();
-  if (view === 'dashboard' && typeof hbdInit  === 'function') hbdInit();
-  if (view === 'ai'        && typeof mlsInit      === 'function') mlsInit();
+  if (view === 'discover'  && typeof dscInit     === 'function') { dscInit(); setTimeout(renderForYou, 400); }
+  if (view === 'tracker'   && typeof trkInit     === 'function') trkInit();
+  if (view === 'dashboard' && typeof hbdInit     === 'function') hbdInit();
+  if (view === 'ai'        && typeof mlsInit     === 'function') mlsInit();
+  if (view === 'mytoko'    && typeof myTokoInit  === 'function') myTokoInit();
   if (view === 'alerts'    && typeof alrInit      === 'function' && allProducts.length) alrInit();
   if (view === 'credits'   && typeof creditsInit  === 'function') creditsInit();
   if (view === 'cohort'    && typeof cohortInit   === 'function') cohortInit();
@@ -10285,8 +10518,8 @@ function switchDashView(view) {
 // ── MOBILE BOTTOM NAV ──────────────────────────────────────────
 const MBN_MAP = {
   dashboard:'mbn-dashboard', discover:'mbn-discover',
-  ai:'mbn-ai', tracker:'mbn-tracker',
-  deepdive:'mbn-ai',
+  mytoko:'mbn-mytoko', tracker:'mbn-mytoko',
+  ai:'mbn-ai', deepdive:'mbn-ai',
   alerts:'mbn-dashboard', credits:'mbn-dashboard', cohort:'mbn-dashboard',
   'product-database':'mbn-discover', keywords:'mbn-discover', estimator:'mbn-discover',
 };
@@ -14349,9 +14582,83 @@ function dscResetFilters() {
 // ── TRACKED PRODUCTS ───────────────────────────────────────────
 const _TRK_KEY = 'larisid_tracked_v1';
 function trkLoad() { try { return JSON.parse(localStorage.getItem(_TRK_KEY) || '[]'); } catch { return []; } }
-function trkSave(arr) { localStorage.setItem(_TRK_KEY, JSON.stringify(arr)); }
+function trkSave(arr) {
+  localStorage.setItem(_TRK_KEY, JSON.stringify(arr));
+  // Mirror to Supabase for logged-in users (fire and forget)
+  if (currentUser && _supabase) _trkSyncToSupabase(arr).catch(() => {});
+}
 function trkKey(listing) { return `${listing.item_id}_${listing.shop_id}`; }
 function trkIsTracked(listing) { return trkLoad().some(t => t.key === trkKey(listing)); }
+
+// ── Supabase sync helpers ────────────────────────────────────
+let _trkSellingSet = new Set(); // set of "itemId_shopId" marked is_selling
+
+async function _trkSyncToSupabase(arr) {
+  if (!currentUser || !_supabase || !arr.length) return;
+  const rows = arr.map(t => ({
+    user_id:      currentUser.id,
+    item_id:      Number(t.item_id),
+    shop_id:      Number(t.shop_id),
+    keyword:      t.keyword      || null,
+    product_name: t.product_name || null,
+    category:     t.category     || null,
+    image_url:    t.image_url    || null,
+    price:        t.price        || null,
+    total_sold:   t.total_sold   || null,
+    store_name:   t.store_name   || null,
+    is_selling:   _trkSellingSet.has(`${t.item_id}_${t.shop_id}`),
+  }));
+  await _supabase.from('user_tracked_products').upsert(rows, { onConflict: 'user_id,item_id,shop_id', ignoreDuplicates: false });
+}
+
+async function _trkLoadSellingFromSupabase() {
+  if (!currentUser || !_supabase) return;
+  try {
+    const { data } = await _supabase
+      .from('user_tracked_products')
+      .select('item_id,shop_id,is_selling')
+      .eq('user_id', currentUser.id)
+      .eq('is_selling', true);
+    _trkSellingSet = new Set((data || []).map(r => `${r.item_id}_${r.shop_id}`));
+  } catch (_) {}
+}
+
+async function trkToggleSelling(itemId, shopId) {
+  if (!currentUser) { openAuthModal('login'); return; }
+  const k = `${itemId}_${shopId}`;
+  const nowSelling = !_trkSellingSet.has(k);
+  if (nowSelling) _trkSellingSet.add(k); else _trkSellingSet.delete(k);
+  // Update checkbox UI immediately
+  const cb = document.getElementById(`trk-sell-${k}`);
+  if (cb) {
+    cb.checked = nowSelling;
+    const lbl = cb.nextElementSibling;
+    if (lbl) lbl.textContent = nowSelling ? 'Saya jual ini' : 'Saya jual ini';
+    lbl && lbl.style && (lbl.style.color = nowSelling ? '#E8442A' : '#6B7280');
+  }
+  // Persist to Supabase
+  if (_supabase) {
+    const tracked = trkLoad().find(t => String(t.item_id) === String(itemId) && String(t.shop_id) === String(shopId));
+    if (tracked) {
+      await _supabase.from('user_tracked_products').upsert({
+        user_id:      currentUser.id,
+        item_id:      Number(itemId),
+        shop_id:      Number(shopId),
+        keyword:      tracked.keyword      || null,
+        product_name: tracked.product_name || null,
+        category:     tracked.category     || null,
+        image_url:    tracked.image_url    || null,
+        price:        tracked.price        || null,
+        total_sold:   tracked.total_sold   || null,
+        store_name:   tracked.store_name   || null,
+        is_selling:   nowSelling,
+      }, { onConflict: 'user_id,item_id,shop_id' });
+    }
+  }
+  // Refresh My Toko badge if visible
+  const myTokoEl = document.getElementById('dash-view-mytoko');
+  if (myTokoEl && myTokoEl.style.display !== 'none') myTokoInit();
+}
 
 function ddToggleTrack() {
   const listing = _ddKwListing || _ddCurrentP?._listing;
@@ -15146,6 +15453,7 @@ function trkSparklineSvg(id, trending) {
 }
 
 async function trkInit() {
+  await _trkLoadSellingFromSupabase();
   const tracked = trkLoad();
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
   const grid = document.getElementById('trk-prod-grid');
@@ -15225,9 +15533,11 @@ async function trkInit() {
     const imgHtml = p.image_url
       ? `<img src="${p.image_url}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" onerror="this.parentElement.innerHTML='📦'">`
       : '📦';
-    const key = `${p.item_id}__${p.shop_id}`;
-    return `<div class="trk-prod-card" onclick="dscOpenDeepDive('${key}')">
-      <div class="trk-prod-top">
+    const ddKey = `${p.item_id}__${p.shop_id}`;
+    const sellKey = `${p.item_id}_${p.shop_id}`;
+    const isSelling = _trkSellingSet.has(sellKey);
+    return `<div class="trk-prod-card">
+      <div class="trk-prod-top" onclick="dscOpenDeepDive('${ddKey}')" style="cursor:pointer;">
         <div class="trk-prod-emoji">${imgHtml}</div>
         <div class="trk-prod-info">
           <div class="trk-prod-name">${p.product_name || '—'}</div>
@@ -15239,6 +15549,10 @@ async function trkInit() {
         <span class="trk-prod-delta ${dc}" style="display:inline-flex;align-items:center;gap:3px;">${icon}${dtxt}</span>
       </div>
       <div style="font-size:.58rem;color:#9CA3AF;margin-top:5px;">${p.curr_sold.toLocaleString('id-ID')} total terjual</div>
+      <label class="trk-sell-toggle" onclick="event.stopPropagation();trkToggleSelling(${p.item_id},${p.shop_id})">
+        <input type="checkbox" id="trk-sell-${sellKey}" ${isSelling ? 'checked' : ''} onclick="event.stopPropagation()">
+        <span class="trk-sell-toggle-lbl" style="color:${isSelling ? '#E8442A' : '#6B7280'}">Saya jual ini</span>
+      </label>
     </div>`;
   }).join('');
 
@@ -20388,6 +20702,306 @@ function closeWelcomeVideo() {
   localStorage.setItem('laris_welcomed', '1');
 }
 
+// ════════════════════════════════════════════════════════════
+//  MY TOKO
+// ════════════════════════════════════════════════════════════
+let _mytShopId   = null;
+let _mytStoreName = null;
+let _mytProfile  = null;
+
+// ── Init: decide which state to show ─────────────────────────
+async function myTokoInit() {
+  if (!currentUser) { openAuthModal('login'); return; }
+  await _trkLoadSellingFromSupabase();
+  const profile = await _mytLoadProfile();
+  if (profile && profile.shopee_shop_id) {
+    _mytShopId    = profile.shopee_shop_id;
+    _mytStoreName = profile.shopee_store_name;
+    _mytShowDashboard();
+    await _mytLoadDashboard();
+  } else {
+    _mytShowConnect();
+  }
+}
+
+function _mytShowConnect() {
+  document.getElementById('myt-connect-state').style.display = '';
+  document.getElementById('myt-dashboard-state').style.display = 'none';
+  const inp = document.getElementById('myt-store-input');
+  if (inp && _mytStoreName) inp.value = _mytStoreName;
+}
+
+function myTokoShowConnect() { _mytShowConnect(); }
+
+function _mytShowDashboard() {
+  document.getElementById('myt-connect-state').style.display = 'none';
+  document.getElementById('myt-dashboard-state').style.display = '';
+  const nameEl = document.getElementById('myt-store-name');
+  if (nameEl) nameEl.textContent = _mytStoreName || '—';
+}
+
+// ── Store connection ──────────────────────────────────────────
+async function myTokoConnect() {
+  if (!currentUser) { openAuthModal('login'); return; }
+  const inp = document.getElementById('myt-store-input');
+  const btn = document.getElementById('myt-connect-btn');
+  const err = document.getElementById('myt-connect-error');
+  const name = (inp?.value || '').trim();
+  if (!name) { _mytErr('Masukkan nama toko kamu terlebih dahulu.'); return; }
+  err.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Mencari...';
+  try {
+    const { data, error } = await _supabase.rpc('find_shop_by_name', { p_store_name: name });
+    if (error || !data?.length) {
+      _mytErr('Toko tidak ditemukan di database kami. Coba variasi nama lain, atau pastikan toko sudah aktif di Shopee.');
+      btn.disabled = false; btn.textContent = 'Hubungkan'; return;
+    }
+    const match = data[0];
+    _mytShopId    = match.shop_id;
+    _mytStoreName = match.store_name;
+    // Persist to Supabase
+    await _supabase.from('user_store_profiles').upsert({
+      user_id: currentUser.id,
+      shopee_store_name: match.store_name,
+      shopee_shop_id:    match.shop_id,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' });
+    _mytShowDashboard();
+    await _mytLoadDashboard();
+  } catch (e) {
+    _mytErr('Terjadi kesalahan. Coba lagi.');
+  }
+  btn.disabled = false; btn.textContent = 'Hubungkan';
+}
+
+function _mytErr(msg) {
+  const el = document.getElementById('myt-connect-error');
+  if (el) { el.textContent = msg; el.style.display = ''; }
+}
+
+async function _mytLoadProfile() {
+  if (!_supabase || !currentUser) return null;
+  try {
+    const { data } = await _supabase
+      .from('user_store_profiles')
+      .select('shopee_store_name,shopee_shop_id')
+      .eq('user_id', currentUser.id)
+      .single();
+    return data || null;
+  } catch { return null; }
+}
+
+// ── Main dashboard load ───────────────────────────────────────
+async function _mytLoadDashboard() {
+  const selling = trkLoad().filter(t => _trkSellingSet.has(`${t.item_id}_${t.shop_id}`));
+
+  // Portfolio bar
+  _mytRenderPortfolioBar(selling);
+
+  // Product position cards
+  const loadEl   = document.getElementById('myt-products-loading');
+  const emptyEl  = document.getElementById('myt-products-empty');
+  const listEl   = document.getElementById('myt-products-list');
+  if (loadEl)  loadEl.style.display = selling.length ? 'flex' : 'none';
+  if (emptyEl) emptyEl.style.display = selling.length ? 'none' : '';
+  if (listEl)  listEl.innerHTML = '';
+
+  if (!selling.length) return;
+
+  // Fetch competitive position for each product in parallel
+  const positions = await Promise.all(selling.map(p => _mytFetchPosition(p)));
+  if (loadEl) loadEl.style.display = 'none';
+
+  if (listEl) {
+    listEl.innerHTML = positions.map(pos => _mytProductCard(pos)).join('');
+  }
+
+  // Risk quadrant
+  _mytRenderRiskQuadrant(positions);
+
+  // Suggestions
+  const cats = [...new Set(selling.map(p => p.category).filter(Boolean))];
+  if (cats.length) _mytLoadSuggestions(cats);
+}
+
+// ── Portfolio bar ─────────────────────────────────────────────
+function _mytRenderPortfolioBar(selling) {
+  const fmt = n => n >= 1e9 ? (n/1e9).toFixed(1)+'M' : n >= 1e6 ? (n/1e6).toFixed(0)+'jt' : n >= 1e3 ? (n/1e3).toFixed(0)+'rb' : String(Math.round(n));
+  const fmtRp = n => 'Rp ' + fmt(n);
+
+  const totalOmset = selling.reduce((s, p) => s + ((p.price || 0) * (p.total_sold || 0) / 6), 0);
+  const avgScore   = selling.length
+    ? Math.round(selling.reduce((s, p) => {
+        const sc = allProducts.find(x => String(x.keyword) === String(p.keyword))?.score || 0;
+        return s + sc;
+      }, 0) / selling.length)
+    : 0;
+
+  const catCounts = {};
+  selling.forEach(p => { if (p.category) catCounts[p.category] = (catCounts[p.category] || 0) + 1; });
+  const topCatCount = Math.max(...Object.values(catCounts), 0);
+  const concentration = selling.length ? Math.round(topCatCount / selling.length * 100) : 0;
+
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('myt-total-omset',   selling.length ? fmtRp(totalOmset) : '—');
+  set('myt-product-count', selling.length + ' produk');
+  set('myt-avg-score',     avgScore ? avgScore + '/100' : '—');
+  set('myt-concentration', selling.length ? concentration + '%' : '—');
+
+  const concCard = document.getElementById('myt-concentration-card');
+  if (concCard) {
+    concCard.classList.toggle('myt-pbar-warn', concentration >= 80 && selling.length > 1);
+  }
+}
+
+// ── Competitive position fetch ────────────────────────────────
+async function _mytFetchPosition(product) {
+  const base = { ...product, position: null };
+  if (!_supabase || !_mytShopId || !product.keyword) return base;
+  try {
+    const { data } = await _supabase.rpc('get_competitive_position', {
+      p_keyword:  product.keyword,
+      p_shop_id:  Number(_mytShopId),
+      p_item_id:  Number(product.item_id),
+    });
+    return { ...product, position: data || null };
+  } catch { return base; }
+}
+
+// ── Product position card HTML ────────────────────────────────
+function _mytProductCard(p) {
+  const pos = p.position;
+  const fmtRp = n => 'Rp ' + Math.round(n||0).toLocaleString('id-ID');
+  const imgHtml = p.image_url
+    ? `<img class="myt-prod-img" src="${p.image_url}" onerror="this.style.opacity='.2'" alt="">`
+    : `<div class="myt-prod-img" style="display:flex;align-items:center;justify-content:center;font-size:1.4rem;">🏪</div>`;
+
+  const rank      = pos?.my_rank       ?? '—';
+  const total     = pos?.total_sellers ?? '—';
+  const share     = pos?.market_share  ?? '—';
+  const myPrice   = pos?.my_price      ?? p.price ?? 0;
+  const medPrice  = pos?.median_price  ?? 0;
+  const myRev     = pos?.my_reviews    ?? 0;
+  const top3Rev   = pos?.top3_reviews  ?? 0;
+  const found     = pos?.found         ?? false;
+
+  const rankColor = !found ? '#9CA3AF' : rank <= 3 ? '#1A7A46' : rank <= 10 ? '#D97706' : '#DC2626';
+  const priceDiff = medPrice ? Math.round((myPrice - medPrice) / medPrice * 100) : 0;
+  const priceClass = Math.abs(priceDiff) <= 15 ? 'ok' : priceDiff > 15 ? 'warn' : 'ok';
+  const revGap    = Math.max(0, Math.round(top3Rev - myRev));
+
+  // Gap callouts
+  const gaps = [];
+  if (!found) {
+    gaps.push({ icon: '⚠', text: 'Produkmu belum terdeteksi di scrape terakhir untuk keyword ini.' });
+  } else {
+    if (priceDiff > 15)  gaps.push({ icon: '💰', text: `Harga kamu ${priceDiff}% di atas median pasar (${fmtRp(medPrice)}) — pertimbangkan penyesuaian.` });
+    if (priceDiff < -20) gaps.push({ icon: '💰', text: `Harga kamu ${Math.abs(priceDiff)}% di bawah median — kamu bisa naikkan margin.` });
+    if (revGap > 50)     gaps.push({ icon: '⭐', text: `Top 3 rata-rata punya ${Math.round(top3Rev)} ulasan — kamu butuh ${revGap} ulasan lagi untuk menyamai.` });
+    if (rank > 10)       gaps.push({ icon: '📈', text: `Posisi #${rank} dari ${total} seller — fokus pada review & keyword untuk naik peringkat.` });
+  }
+
+  return `<div class="myt-prod-card">
+    ${imgHtml}
+    <div>
+      <div class="myt-prod-name">${(p.product_name || '—').slice(0, 80)}</div>
+      <div class="myt-prod-keyword">${p.keyword || ''} · ${p.category || ''}</div>
+      <div class="myt-prod-stats">
+        <div class="myt-stat-chip">
+          <span class="myt-stat-chip-lbl">Harga</span>
+          <span class="myt-stat-chip-val ${priceClass}">${fmtRp(myPrice)}</span>
+        </div>
+        <div class="myt-stat-chip">
+          <span class="myt-stat-chip-lbl">Market share</span>
+          <span class="myt-stat-chip-val ${share !== '—' && share > 5 ? 'ok' : 'warn'}">${share}%</span>
+        </div>
+        <div class="myt-stat-chip">
+          <span class="myt-stat-chip-lbl">Ulasan</span>
+          <span class="myt-stat-chip-val">${(myRev||0).toLocaleString('id-ID')}</span>
+        </div>
+      </div>
+      ${gaps.length ? `<div class="myt-gaps">${gaps.map(g =>
+        `<div class="myt-gap-row"><span class="myt-gap-icon">${g.icon}</span>${g.text}</div>`
+      ).join('')}</div>` : ''}
+    </div>
+    <div class="myt-prod-rank">
+      <div class="myt-rank-num" style="color:${rankColor}">${found ? '#'+rank : '—'}</div>
+      <div class="myt-rank-lbl">Rank</div>
+      ${found ? `<div class="myt-rank-of">dari ${total}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+// ── Risk quadrant ─────────────────────────────────────────────
+function _mytRenderRiskQuadrant(positions) {
+  const section = document.getElementById('myt-risk-section');
+  if (!section || !positions.length) return;
+
+  const quadrants = { hold: [], defend: [], milk: [], exit: [] };
+
+  positions.forEach(p => {
+    const pos     = p.position;
+    const rank    = pos?.my_rank       ?? 99;
+    const total   = pos?.total_sellers ?? 1;
+    const share   = pos?.market_share  ?? 0;
+    const found   = pos?.found         ?? false;
+    if (!found) return;
+
+    // Score trend from allProducts (proxy for market health)
+    const prod        = allProducts.find(x => String(x.keyword) === String(p.keyword));
+    const score       = prod?.score ?? 50;
+    const marketGood  = score >= 55;  // market still healthy
+    const posGood     = rank <= Math.max(3, Math.ceil(total * 0.2)); // top 20%
+
+    const name = (p.product_name || '').split(' ').slice(0, 3).join(' ');
+    if (marketGood  && posGood)  quadrants.hold.push(name);
+    if (marketGood  && !posGood) quadrants.defend.push(name);
+    if (!marketGood && posGood)  quadrants.milk.push(name);
+    if (!marketGood && !posGood) quadrants.exit.push(name);
+  });
+
+  const hasAny = Object.values(quadrants).some(arr => arr.length);
+  section.style.display = hasAny ? '' : 'none';
+
+  ['hold','defend','milk','exit'].forEach(q => {
+    const el = document.getElementById(`myt-q-${q}`);
+    if (!el) return;
+    el.innerHTML = quadrants[q].length
+      ? quadrants[q].map(n => `<div class="myt-q-prod-chip">${n}</div>`).join('')
+      : `<div class="myt-q-empty">Tidak ada</div>`;
+  });
+}
+
+// ── Complementary suggestions ─────────────────────────────────
+async function _mytLoadSuggestions(categories) {
+  const section = document.getElementById('myt-suggestions-section');
+  const grid    = document.getElementById('myt-suggestions-grid');
+  if (!section || !grid || !_supabase) return;
+
+  try {
+    const { data } = await _supabase.rpc('get_category_suggestions', {
+      p_categories: categories,
+      p_limit: 6,
+    });
+    if (!data?.length) return;
+
+    const scoreColor = s => s >= 70 ? '#1A7A46' : s >= 45 ? '#D97706' : '#DC2626';
+    grid.innerHTML = data.map(row => `
+      <div class="myt-sug-card" onclick="switchDashView('discover')">
+        <div class="myt-sug-cat">${row.category}</div>
+        <div class="myt-sug-prod">${row.top_product_name || '—'}</div>
+        <div class="myt-sug-meta">
+          <span class="myt-sug-shops">${row.co_shop_count} toko jual keduanya</span>
+          <span class="myt-sug-score" style="background:${scoreColor(row.top_score)}20;color:${scoreColor(row.top_score)};">
+            ${Math.round(row.top_score || 0)}/100
+          </span>
+        </div>
+      </div>`).join('');
+    section.style.display = '';
+  } catch (_) {}
+}
+
 // ── DISCOVER FILTER DRAWER (mobile) ─────────────────────────
 function dscOpenFilter() {
   const panel = document.getElementById('dsc-filter-panel');
@@ -20582,9 +21196,9 @@ document.addEventListener('DOMContentLoaded', function(){
     <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
     <span class="mbn-label">Discover</span>
   </button>
-  <button class="mbn-item" id="mbn-tracker" onclick="switchDashView('tracker')">
-    <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
-    <span class="mbn-label">Tracker</span>
+  <button class="mbn-item" id="mbn-mytoko" onclick="switchDashView('mytoko')">
+    <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
+    <span class="mbn-label">My Toko</span>
   </button>
   <button class="mbn-item" id="mbn-ai" onclick="switchDashView('ai')">
     <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
