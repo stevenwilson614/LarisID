@@ -2611,7 +2611,7 @@ body.in-dashboard .mobile-menu{display:none!important;}
   body.in-dashboard .dash-nav-sub{display:block !important;}
   body.in-dashboard .dash-content{padding-bottom:calc(68px + env(safe-area-inset-bottom));}
   #fb-float{bottom:calc(70px + env(safe-area-inset-bottom));}
-  body.in-dashboard .dash-topbar-hamburger{display:none !important;}
+  body.in-dashboard .dash-topbar-hamburger{display:flex !important;}
 }
 
 /* ── Issue 5a: Card score badge — smaller + colour-coded on mobile ── */
@@ -2638,6 +2638,110 @@ body.in-dashboard .mobile-menu{display:none!important;}
 @media(max-width:420px){
   .pdb-range-grid{grid-template-columns:minmax(0,1fr);}
 }
+
+/* ════════════════════════════════════════════════
+   MOBILE UI FIXES (≤768px)
+   ════════════════════════════════════════════════ */
+
+/* Fix 1: Top header — smaller, inline, less crowded */
+@media(max-width:768px){
+  .dash-topbar{padding:0 10px 0 12px;gap:6px;}
+  .dash-topbar-title{font-size:.82rem;}
+  .dash-topbar-icon-btn{display:none;}
+  .dash-credit-pill-lbl{display:none;}
+  .dash-credit-pill{padding:5px 8px;gap:4px;}
+  .dash-credit-pill-val{font-size:.75rem;}
+  .dash-topbar-brand-stack{flex-direction:row;align-items:center;gap:5px;}
+  .dash-topbar-brand-kicker{display:none;}
+  .dash-topbar-cohort-name-accent{font-size:.75rem;max-width:min(100px,28vw);}
+  .dash-topbar-view-page{font-size:.8rem;padding-left:6px;margin-left:4px;}
+}
+/* Fix 1b: Fixed topbar on mobile dashboard */
+@media(max-width:768px){
+  body.in-dashboard .dash-topbar{position:fixed;top:0;left:0;right:0;z-index:95;}
+  body.in-dashboard .dash-content{padding-top:60px;}
+}
+
+/* Fix 2: Discover filter — mobile drawer */
+@media(max-width:860px){
+  .dsc-filter-btn{display:flex;align-items:center;gap:5px;padding:6px 12px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;font-size:.75rem;font-weight:600;color:#374151;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;}
+  .dsc-filter-btn svg{flex-shrink:0;}
+}
+@media(min-width:861px){
+  .dsc-filter-btn{display:none;}
+}
+.dsc-filter-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1199;}
+.dsc-filter-overlay.open{display:block;}
+@media(max-width:860px){
+  .dsc-filter-panel{display:none;position:fixed;bottom:0;left:0;right:0;z-index:1200;border-radius:16px 16px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));max-height:85vh;overflow-y:auto;box-shadow:0 -4px 24px rgba(0,0,0,.15);}
+  .dsc-filter-panel.open{display:block;}
+}
+
+/* Fix 3: MLS image — full square, no border, swipeable */
+@media(max-width:768px){
+  .mls-main-img-wrap{border:none;border-radius:0;margin-bottom:0;position:relative;user-select:none;}
+  .mls-thumbs{display:none;}
+  .mls-img-nav{display:flex;}
+}
+.mls-img-nav{display:none;position:absolute;top:50%;transform:translateY(-50%);left:0;right:0;justify-content:space-between;pointer-events:none;padding:0 8px;z-index:5;}
+.mls-img-nav-btn{pointer-events:all;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.35);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;}
+.mls-img-dot-row{display:none;justify-content:center;gap:5px;padding:6px 0;}
+@media(max-width:768px){.mls-img-dot-row{display:flex;}}
+.mls-img-dot{width:6px;height:6px;border-radius:50%;background:#D1D5DB;transition:background .15s;}
+.mls-img-dot.active{background:#E8442A;}
+
+/* Fix 4: Charts — constrained width */
+@media(max-width:768px){
+  .dd-card canvas,.mls-wrap canvas{max-width:100% !important;height:auto !important;}
+  .kal-chart-wrap,.dd-chart-outer{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+}
+
+/* Fix 5: Competitor tables — scroll inside container only */
+@media(max-width:768px){
+  .mls-comp-section .dd-card{overflow:hidden;min-width:0;}
+  #mls-comp-table-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .dd-tbl-scroll-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+}
+
+/* Fix 6: MLS tabs — vertical stack */
+@media(max-width:768px){
+  #mls-tabs.dd-tabs{flex-direction:column;overflow-x:visible;margin:0 0 12px;padding:0;border-bottom:none;gap:4px;}
+  #mls-tabs .dd-tab{border-radius:8px;border:1.5px solid #E5E7EB;text-align:center;padding:10px 12px;flex-shrink:unset;font-size:.8rem;white-space:normal;}
+  #mls-tabs .dd-tab.active{background:#E8442A;color:#fff;border-color:#E8442A;}
+  #mls-tabs .dd-tab-indicator{display:none;}
+}
+
+/* Fix 7: Remove excess boxes on mobile */
+@media(max-width:768px){
+  .mls-wrap{padding:0 0 80px;}
+  .mls-wrap .dd-card{border:none;box-shadow:none;border-radius:0;border-bottom:1px solid #F3F4F6;padding:14px 12px;}
+  .mls-wrap .dd-card:last-child{border-bottom:none;}
+  .mls-comp-section .dd-card{padding:14px 12px;}
+  .mls-hero-grid{padding:0;gap:0;}
+  .mls-img-col{border-radius:0;}
+  .mls-info-col{padding:14px 12px;}
+  .mls-picker-row{padding:12px 12px 0;margin-bottom:12px;}
+  .mls-ringkasan-bar{padding:0 12px;margin-bottom:12px;}
+  .mls-comp-section{margin-top:0 !important;padding:0 12px;}
+}
+
+/* Fix 8: Truncate long product titles */
+.mls-name{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+
+/* Fix 9: Bottom nav — 4 items, no star */
+@media(max-width:768px){
+  .mbn-center{position:static;top:0;}
+  .mbn-center-icon{width:24px;height:24px;border-radius:0;background:none;box-shadow:none;color:inherit;}
+  .mbn-center .mbn-label{margin-top:0;}
+}
+
+/* Fix 10: Hide discover stats row on mobile */
+@media(max-width:768px){#dsc-stats-row{display:none;}}
+
+/* Fix 12: Informasi Pasar — 2-col grid on mobile */
+.mls-pasar-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+@media(max-width:768px){.mls-pasar-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:380px){.mls-pasar-grid{grid-template-columns:1fr;}}
 
 /* ── KEYWORD RANKINGS ── */
 .kwr-table{width:100%;border-collapse:collapse;font-size:.78rem;}
@@ -4225,6 +4329,9 @@ html,body{overflow-x:hidden;max-width:100%;}
 </div>
 <!-- ══ END LANDING PAGE ══════════════════════════════════════ -->
 
+<!-- Filter overlay backdrop for discover mobile -->
+<div class="dsc-filter-overlay" id="dsc-filter-overlay" onclick="dscCloseFilter()"></div>
+
 <!-- ════════════════════════════════════
      PROFILE PAGE
 ════════════════════════════════════ -->
@@ -5645,8 +5752,8 @@ html,body{overflow-x:hidden;max-width:100%;}
             <div class="dsc-layout">
 
               <!-- Filter panel -->
-              <aside class="dsc-filter-panel">
-                <div class="dsc-filter-title">Filter</div>
+              <aside class="dsc-filter-panel" id="dsc-filter-panel">
+                <div class="dsc-filter-title" style="display:flex;align-items:center;justify-content:space-between;">Filter<button onclick="dscCloseFilter()" style="display:none;background:none;border:none;cursor:pointer;font-size:1.2rem;color:#6B7280;line-height:1;" id="dsc-filter-close-btn">×</button></div>
 
                 <div class="dsc-filter-group">
                   <span class="dsc-filter-label">Harga Jual (Rp)</span>
@@ -5693,6 +5800,7 @@ html,body{overflow-x:hidden;max-width:100%;}
               <!-- Table area -->
               <div class="dsc-table-area">
                 <div class="dsc-table-controls">
+                  <button class="dsc-filter-btn" onclick="dscOpenFilter()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg> Filter</button>
                   <input class="dsc-search" id="dsc-search" type="text" placeholder="Cari produk..." oninput="dscApplyFilters()">
                   <select class="dsc-sort-select" id="dsc-sort" onchange="dscApplyFilters()">
                     <option value="omset-desc">Omset Tertinggi</option>
@@ -6533,9 +6641,14 @@ html,body{overflow-x:hidden;max-width:100%;}
 
                 <!-- Left: main image + 5 thumbnails -->
                 <div class="mls-img-col">
-                  <div class="mls-main-img-wrap">
+                  <div class="mls-main-img-wrap" id="mls-main-img-wrap">
                     <img id="mls-main-img" src="" onerror="this.style.opacity='.25'" alt="">
+                    <div class="mls-img-nav">
+                      <button class="mls-img-nav-btn" onclick="mlsPrevImg()" aria-label="Sebelumnya"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+                      <button class="mls-img-nav-btn" onclick="mlsNextImg()" aria-label="Berikutnya"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+                    </div>
                   </div>
+                  <div class="mls-img-dot-row" id="mls-img-dots"></div>
                   <div class="mls-thumbs" id="mls-thumb-row">
                     <!-- filled by JS -->
                   </div>
@@ -6630,7 +6743,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                     <div style="font-size:.82rem;font-weight:700;color:#111827;">Informasi Pasar</div>
                     <span id="mls-kw-badge" style="font-size:.63rem;font-weight:600;background:#FFF0ED;color:#E8442A;border-radius:20px;padding:2px 10px;">—</span>
                   </div>
-                  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
+                  <div class="mls-pasar-grid">
                     <div class="ap-stat-card"><div class="ap-stat-icon" style="background:#EFF6FF;color:#3B82F6;">🛍️</div><div class="ap-stat-lbl">Total Omset Pasar</div><div class="ap-stat-val" id="mls-p-omset">—</div><div class="ap-stat-sub">estimasi / bulan</div></div>
                     <div class="ap-stat-card"><div class="ap-stat-icon" style="background:#ECFDF5;color:#059669;">📦</div><div class="ap-stat-lbl">Listing Aktif</div><div class="ap-stat-val" id="mls-p-listing">—</div><div class="ap-stat-sub">di keyword ini</div></div>
                     <div class="ap-stat-card"><div class="ap-stat-icon" style="background:#FFFBEB;color:#F59E0B;">💰</div><div class="ap-stat-lbl">Median Harga</div><div class="ap-stat-val" id="mls-median-price">—</div><div class="ap-stat-sub" id="mls-median-sold">— unit / bulan</div></div>
@@ -10168,9 +10281,9 @@ function switchDashView(view) {
 const MBN_MAP = {
   dashboard:'mbn-dashboard', discover:'mbn-discover',
   ai:'mbn-ai', tracker:'mbn-tracker',
-  deepdive:'mbn-more',
-  alerts:'mbn-more', credits:'mbn-more', cohort:'mbn-more',
-  'product-database':'mbn-more', keywords:'mbn-more', estimator:'mbn-more',
+  deepdive:'mbn-ai',
+  alerts:'mbn-dashboard', credits:'mbn-dashboard', cohort:'mbn-dashboard',
+  'product-database':'mbn-discover', keywords:'mbn-discover', estimator:'mbn-discover',
 };
 
 function mbnSync(view) {
@@ -14197,6 +14310,7 @@ function dscTerapkanFilter() {
   _dscLoaded = true;         // allow dscApplyFilters to proceed past the guard
   _dscLastSrvFilters = '';   // non-null sentinel so key comparison always triggers re-fetch
   dscApplyFilters();
+  dscCloseFilter(); // close drawer on mobile after applying
 }
 
 function dscResetFilters() {
@@ -15781,6 +15895,8 @@ async function mlsSelectProduct(val) {
         <div class="mls-thumb${i===0?' active':''}" onclick="mlsSetThumb(this,'${(r.image_url||'').replace(/'/g,"\\'")}')">
           <img src="${r.image_url||''}" onerror="this.style.opacity='.3'" alt="">
         </div>`).join('');
+      // Populate swipe image array
+      mlsSetImages(allThumbs.map(r => r.image_url).filter(Boolean));
     }
 
     // Populate Ringkasan bar
@@ -15867,10 +15983,14 @@ async function mlsSelectProduct(val) {
 }
 
 function mlsSetThumb(el, imgSrc) {
-  document.querySelectorAll('.mls-thumb').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.mls-thumb').forEach((t, i) => {
+    t.classList.remove('active');
+    if (t === el) _mlsImgIdx = i;
+  });
   el.classList.add('active');
   const mainImg = document.getElementById('mls-main-img');
   if (mainImg && imgSrc) { mainImg.src = imgSrc; mainImg.style.opacity = '1'; }
+  _mlsRenderDots();
 }
 
 let _mlsView = 'row';
@@ -20253,6 +20373,78 @@ function closeWelcomeVideo() {
   localStorage.setItem('laris_welcomed', '1');
 }
 
+// ── DISCOVER FILTER DRAWER (mobile) ─────────────────────────
+function dscOpenFilter() {
+  const panel = document.getElementById('dsc-filter-panel');
+  const overlay = document.getElementById('dsc-filter-overlay');
+  const closeBtn = document.getElementById('dsc-filter-close-btn');
+  if (!panel) return;
+  panel.classList.add('open');
+  if (overlay) overlay.classList.add('open');
+  if (closeBtn) closeBtn.style.display = '';
+}
+function dscCloseFilter() {
+  const panel = document.getElementById('dsc-filter-panel');
+  const overlay = document.getElementById('dsc-filter-overlay');
+  const closeBtn = document.getElementById('dsc-filter-close-btn');
+  if (!panel) return;
+  panel.classList.remove('open');
+  if (overlay) overlay.classList.remove('open');
+  if (closeBtn) closeBtn.style.display = 'none';
+}
+
+// ── MLS IMAGE SWIPE NAVIGATION ───────────────────────────────
+let _mlsImages = [];
+let _mlsImgIdx = 0;
+
+function mlsSetImages(urls) {
+  _mlsImages = urls.filter(Boolean);
+  _mlsImgIdx = 0;
+  _mlsRenderDots();
+  _mlsShowImg(0);
+}
+
+function _mlsShowImg(idx) {
+  _mlsImgIdx = Math.max(0, Math.min(idx, _mlsImages.length - 1));
+  const img = document.getElementById('mls-main-img');
+  if (img && _mlsImages[_mlsImgIdx]) {
+    img.src = _mlsImages[_mlsImgIdx];
+    img.style.opacity = '1';
+  }
+  _mlsRenderDots();
+  // Sync thumbnail active state
+  document.querySelectorAll('.mls-thumb').forEach((t, i) => t.classList.toggle('active', i === _mlsImgIdx));
+}
+
+function mlsNextImg() {
+  if (_mlsImages.length > 1) _mlsShowImg((_mlsImgIdx + 1) % _mlsImages.length);
+}
+function mlsPrevImg() {
+  if (_mlsImages.length > 1) _mlsShowImg((_mlsImgIdx - 1 + _mlsImages.length) % _mlsImages.length);
+}
+
+function _mlsRenderDots() {
+  const dotsEl = document.getElementById('mls-img-dots');
+  if (!dotsEl) return;
+  dotsEl.innerHTML = _mlsImages.slice(0, 10).map((_, i) =>
+    `<div class="mls-img-dot${i === _mlsImgIdx ? ' active' : ''}"></div>`
+  ).join('');
+}
+
+(function _mlsInitSwipe() {
+  let _tx = 0;
+  document.addEventListener('touchstart', function(e) {
+    const wrap = document.getElementById('mls-main-img-wrap');
+    if (wrap && wrap.contains(e.target)) _tx = e.touches[0].clientX;
+  }, { passive: true });
+  document.addEventListener('touchend', function(e) {
+    const wrap = document.getElementById('mls-main-img-wrap');
+    if (!wrap || !wrap.contains(e.target)) return;
+    const dx = e.changedTouches[0].clientX - _tx;
+    if (Math.abs(dx) > 40) { if (dx < 0) mlsNextImg(); else mlsPrevImg(); }
+  }, { passive: true });
+})();
+
 document.addEventListener('DOMContentLoaded', function(){
   if (typeof Chart !== 'undefined') lpRenderPreview(_LP_DEMO);
   setInterval(function(){ if (typeof goToSlide === 'function') goToSlide((bannerSlide + 1) % bannerTotal); }, 3000);
@@ -20375,17 +20567,13 @@ document.addEventListener('DOMContentLoaded', function(){
     <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
     <span class="mbn-label">Discover</span>
   </button>
-  <button class="mbn-item mbn-center" id="mbn-ai" onclick="switchDashView('ai')">
-    <span class="mbn-icon mbn-center-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
-    <span class="mbn-label">AI</span>
-  </button>
   <button class="mbn-item" id="mbn-tracker" onclick="switchDashView('tracker')">
     <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
     <span class="mbn-label">Tracker</span>
   </button>
-  <button class="mbn-item" id="mbn-more" onclick="mbnOpenMore()">
-    <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg></span>
-    <span class="mbn-label">Lainnya</span>
+  <button class="mbn-item" id="mbn-ai" onclick="switchDashView('ai')">
+    <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
+    <span class="mbn-label">Mulai Jual</span>
   </button>
 </nav>
 
