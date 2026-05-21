@@ -11078,33 +11078,43 @@ async function cohortInit() {
     .eq('user_id', currentUser.id)
     .eq('status', 'active');
   const mids = [...new Set((mem || []).map(m => m.cohort_id).filter(Boolean))];
+  const mentorIds = [...new Set((mem || []).filter(m => m.role === 'mentor').map(m => m.cohort_id).filter(Boolean))];
   _cohortState.studentRows = mem || [];
   const firstStu = (mem || []).find(m => m.role === 'student');
   _cohortState.primaryStudentCohortId = firstStu ? firstStu.cohort_id : null;
 
+  // Q2, Q3, Q4 are all independent once mem is resolved — run in parallel
+  const [cohResult, ledResult, memberLedResult] = await Promise.all([
+    // Q2: details for cohorts this user is a member of
+    mids.length
+      ? _supabase.from('cohorts').select('*').in('id', mids)
+      : Promise.resolve({ data: [] }),
+    // Q3: cohorts this user leads (admin gets all; leader gets own)
+    isPlatformAdmin()
+      ? _supabase.from('cohorts').select('*').order('created_at', { ascending: false })
+      : _supabase.from('cohorts').select('*').eq('mentor_user_id', currentUser.id),
+    // Q4: additional led cohorts via cohort_members.role=mentor (leader path only)
+    (!isPlatformAdmin() && mentorIds.length)
+      ? _supabase.from('cohorts').select('*').in('id', mentorIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
   let cohortMap = {};
-  if (mids.length) {
-    const { data: coh } = await _supabase.from('cohorts').select('*').in('id', mids);
-    (coh || []).forEach(c => { cohortMap[c.id] = c; });
-  }
+  (cohResult.data || []).forEach(c => { cohortMap[c.id] = c; });
 
   let led = [];
   if (isPlatformAdmin()) {
-    const { data: allCohorts, error: acErr } = await _supabase.from('cohorts').select('*').order('created_at', { ascending: false });
-    led = allCohorts || [];
-    if (acErr) {
-      if (st) st.textContent = 'Gagal memuat daftar kohort: ' + (acErr.message || 'error');
+    led = ledResult.data || [];
+    if (ledResult.error) {
+      if (st) st.textContent = 'Gagal memuat daftar kohort: ' + (ledResult.error.message || 'error');
     } else if (!led.length && st && !String(st.textContent || '').includes('Gagal')) {
       st.textContent = 'Belum ada kohort di database. Pastikan migrasi Supabase (Ocean Blue) sudah diterapkan.';
     }
   } else {
-    const res = await _supabase.from('cohorts').select('*').eq('mentor_user_id', currentUser.id);
-    led = res.data || [];
-    const mentorIds = [...new Set((mem || []).filter(m => m.role === 'mentor').map(m => m.cohort_id).filter(Boolean))];
+    led = ledResult.data || [];
     if (mentorIds.length) {
-      const { data: memberLed } = await _supabase.from('cohorts').select('*').in('id', mentorIds);
-      const seen = new Set((led || []).map(c => c.id));
-      (memberLed || []).forEach(c => {
+      const seen = new Set(led.map(c => c.id));
+      (memberLedResult.data || []).forEach(c => {
         if (!seen.has(c.id)) led.push(c);
       });
     }
