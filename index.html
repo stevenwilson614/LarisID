@@ -4586,13 +4586,14 @@ html,body{overflow-x:hidden;max-width:100%;}
 
       <!-- Admin site-wide preview bar — hidden for non-admins -->
       <div id="admin-preview-bar" role="banner" aria-label="Admin preview mode">
-        <span class="apb-label">Lihat sebagai</span>
+        <span class="apb-label">Preview sebagai</span>
         <div style="display:flex;gap:6px;">
           <button class="apb-btn active" id="apb-admin"   onclick="setAdminViewMode('admin')">Admin</button>
           <button class="apb-btn"        id="apb-student" onclick="setAdminViewMode('student')">Student</button>
           <button class="apb-btn"        id="apb-leader"  onclick="setAdminViewMode('leader')">Leader</button>
         </div>
         <span class="apb-mode-badge" id="apb-mode-badge">Mode: Admin</span>
+        <div style="margin-left:auto;font-size:.6rem;color:rgba(255,255,255,.25);">Hanya terlihat oleh admin</div>
       </div>
 
       <div id="cohort-app-strip" class="cohort-app-strip" style="display:none;" role="region" aria-label="Info kohort">
@@ -5752,7 +5753,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             </div>
 
             <!-- stats -->
-            <div class="hbd-stats-row">
+            <div class="hbd-stats-row" id="hbd-stats-row">
               <div class="hbd-stat">
                 <div class="hbd-stat-label">Produk Terpantau</div>
                 <div class="hbd-stat-value" id="hbd-s1">—</div>
@@ -10774,9 +10775,9 @@ function switchDashView(view) {
   if (view === 'cohort'    && typeof cohortInit   === 'function') cohortInit();
   mbnSync(view);
   dashboardTourHandleViewChange(view);
-  // Re-apply admin preview mode on every nav switch
-  if (isPlatformAdmin() && _adminViewMode !== 'admin') {
-    requestAnimationFrame(() => applyAdminViewMode(_adminViewMode));
+  // For non-dashboard views when in student/leader preview, update nav chrome
+  if (isPlatformAdmin() && _adminViewMode !== 'admin' && view !== 'dashboard' && view !== 'admin') {
+    _hbdApplyLeaderMode(_adminViewMode === 'leader');
   }
 }
 
@@ -15948,8 +15949,8 @@ async function hbdInit() {
       if (legendEl) legendEl.innerHTML = '<span style="font-size:.6rem;color:#9CA3AF;font-style:italic;">Contoh: 5 produk teratas di pasar</span>';
     }
     void hbdRenderCohortDigest();
-    if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(() => _hbdApplyLeaderMode(_accessState.isLeader || isBootstrapLeader()));
-    else { void hbdRenderMentorDigest(); _hbdApplyLeaderMode(_accessState.isLeader || isBootstrapLeader()); }
+    if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(() => _hbdApplyLeaderMode(_effectiveLeaderMode()));
+    else { void hbdRenderMentorDigest(); _hbdApplyLeaderMode(_effectiveLeaderMode()); }
     return;
   }
 
@@ -21298,6 +21299,13 @@ function _admSyncButtons(mode) {
   if (badge) badge.textContent = `Mode: ${mode.charAt(0).toUpperCase() + mode.slice(1)}`;
 }
 
+// Returns true if the current effective view should show leader UI —
+// respects admin preview mode as well as actual user role.
+function _effectiveLeaderMode() {
+  if (isPlatformAdmin()) return _adminViewMode === 'leader';
+  return _accessState.isLeader || isBootstrapLeader();
+}
+
 function applyAdminViewMode(mode) {
   const isLeader  = mode === 'leader';
   const isStudent = mode === 'student';
@@ -21307,16 +21315,21 @@ function applyAdminViewMode(mode) {
   const adminNav = document.getElementById('dash-nav-admin');
   if (adminNav) adminNav.style.display = isAdmin ? '' : 'none';
 
-  // If in admin view, switch away from admin-only page
-  if (!isAdmin) {
-    const cur = document.querySelector('#dash-main > main > [id^="dash-view-"]:not([style*="none"])')?.id?.replace('dash-view-','') || _dashActiveView;
-    if (cur === 'admin') switchDashView('dashboard');
+  // Admin mode → go straight to the admin tab
+  if (isAdmin) {
+    switchDashView('admin');
+    return;
   }
 
-  // Apply leader/student mode gating
+  // Student or Leader → navigate to dashboard if not already there
+  if (_dashActiveView === 'admin') switchDashView('dashboard');
+
+  // Apply leader/student dashboard layout directly
+  // Do NOT call hbdInit() here — it re-runs with the real user role
+  // and would undo the preview mode via _effectiveLeaderMode()
   _hbdApplyLeaderMode(isLeader);
 
-  // In student mode: explicitly restore product sections that leader mode hides
+  // Student mode: ensure all product sections are visible
   if (isStudent) {
     ['hbd-stats-row','hbd-tracked-strip','dash-credit-card','weekly-chest-card',
      'hbd-product-chart-col','hbd-product-opp-col','hbd-cohort-rec-card'].forEach(id => {
@@ -21325,28 +21338,25 @@ function applyAdminViewMode(mode) {
     });
     const qaRow = document.getElementById('hbd-leader-quick-actions');
     if (qaRow) qaRow.style.display = 'none';
-    // Restore sidebar Research Tools tag if any
+    // Restore sidebar (Research Tools first, Kohort below)
+    const nav = document.querySelector('.dash-sidebar-nav');
+    const cohortItem = document.getElementById('dash-nav-cohort');
+    const creditItem = document.getElementById('dash-nav-credits');
+    if (nav && cohortItem && creditItem) nav.insertBefore(cohortItem, creditItem);
+    // Remove leader tag from Research Tools if present
     const researchEl = document.getElementById('dash-nav-research-tools');
-    if (researchEl) {
-      const tag = researchEl.querySelector('[data-adm-tag]');
-      if (tag) tag.remove();
-      delete researchEl.dataset.leaderTagged;
-    }
+    if (researchEl) { delete researchEl.dataset.leaderTagged; const tag = researchEl.querySelector('[style*="Alat Siswa"]'); if (tag) tag.remove(); }
     // Restore bottom nav
     const myTokoBtn = document.getElementById('mbn-mytoko');
     if (myTokoBtn) myTokoBtn.style.display = '';
     const kohortLeaderBtn = document.getElementById('mbn-kohort-leader');
     if (kohortLeaderBtn) kohortLeaderBtn.style.display = 'none';
-    // Restore sidebar order (move Kohort below Research Tools)
-    const nav = document.querySelector('.dash-sidebar-nav');
-    const cohortItem  = document.getElementById('dash-nav-cohort');
-    const creditItem  = document.getElementById('dash-nav-credits');
-    if (nav && cohortItem && creditItem) nav.insertBefore(cohortItem, creditItem);
-  }
-
-  // Re-trigger dashboard render if on dashboard view
-  if (_dashActiveView === 'dashboard' && typeof hbdInit === 'function') {
-    setTimeout(() => hbdInit(), 50);
+    // Update subtitle
+    const sub = document.getElementById('hbd-subtitle');
+    if (sub) sub.textContent = 'Selamat datang kembali — ini yang kamu pantau hari ini.';
+    // Update topbar
+    const title = document.getElementById('dash-topbar-title');
+    if (title) title.textContent = 'Dashboard';
   }
 }
 
@@ -21373,9 +21383,14 @@ function _hbdApplyLeaderMode(isLeader) {
   // Ensure mentor digest is always visible for leaders
   if (isLeader) {
     const mentorWrap = document.getElementById('hbd-mentor-wrap');
-    if (mentorWrap && _cohortState?.hasMentorCohort) mentorWrap.style.display = '';
+    if (mentorWrap) mentorWrap.style.display = '';
     const sub = document.getElementById('hbd-subtitle');
     if (sub) sub.textContent = 'Pantau progres siswa dan aktivitas kohort kamu.';
+    const title = document.getElementById('dash-topbar-title');
+    if (title) title.textContent = 'Beranda Leader';
+  } else {
+    const title = document.getElementById('dash-topbar-title');
+    if (title && _dashActiveView === 'dashboard') title.textContent = 'Dashboard';
   }
 
   // Apply sidebar + bottom nav changes
