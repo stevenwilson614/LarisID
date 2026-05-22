@@ -697,7 +697,33 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .dash-nav-item.open{color:rgba(255,255,255,.75);}
 .dash-nav-item.active{background:rgba(255,255,255,.08);color:#fff;}
 .dash-nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;background:var(--cohort-secondary,#E8442A);border-radius:0 2px 2px 0;}
+/* ── Admin preview bar (site-wide role toggle) ── */
+#admin-preview-bar{display:none;align-items:center;gap:8px;padding:6px 20px;background:#0F172A;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:60px;z-index:94;flex-shrink:0;}
+@media(max-width:768px){body.in-dashboard #admin-preview-bar{top:60px;position:sticky;}}
+.apb-label{font-size:.65rem;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;}
+.apb-btn{padding:4px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.18);background:transparent;color:rgba(255,255,255,.55);font-size:.68rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;}
+.apb-btn:hover{background:rgba(255,255,255,.08);color:#fff;}
+.apb-btn.active{background:#E8442A;border-color:#E8442A;color:#fff;}
+.apb-mode-badge{margin-left:auto;font-size:.6rem;color:rgba(255,255,255,.35);white-space:nowrap;}
 .cohort-shell-bar{display:none;margin-bottom:16px;padding:12px 14px;background:#1e293b;color:#fff;border-radius:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+/* ── Admin dashboard cards ── */
+.adm-wrap{padding:24px 28px;max-width:1200px;}
+@media(max-width:768px){.adm-wrap{padding:12px 12px 80px;}}
+.adm-section-title{font-size:.78rem;font-weight:800;color:#1A1F3C;margin-bottom:12px;}
+.adm-stat-card{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px 18px;}
+.adm-stat-val{font-size:1.7rem;font-weight:900;color:#1A1F3C;line-height:1;margin:6px 0 4px;}
+.adm-stat-lbl{font-size:.62rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;}
+.adm-stat-sub{font-size:.68rem;color:#6B7280;margin-top:2px;}
+.adm-table{width:100%;border-collapse:collapse;font-size:.75rem;}
+.adm-table th{text-align:left;padding:8px 10px;font-size:.62rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #F3F4F6;background:#F9FAFB;}
+.adm-table td{padding:9px 10px;border-bottom:1px solid #F3F4F6;vertical-align:middle;}
+.adm-table tr:last-child td{border-bottom:none;}
+.adm-table tr:hover td{background:#FAFAFA;}
+.adm-badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:.62rem;font-weight:700;}
+.adm-badge.new{background:#ECFDF5;color:#065F46;}
+.adm-badge.return{background:#EFF6FF;color:#1E40AF;}
+.adm-cohort-bar{height:4px;background:#F3F4F6;border-radius:2px;margin-top:4px;overflow:hidden;}
+.adm-cohort-bar-fill{height:4px;background:#E8442A;border-radius:2px;}
 .cohort-shell-btns{display:flex;gap:8px;}
 .cohort-shell-btn{padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;}
 .cohort-shell-btn.active{background:var(--cohort-secondary,#E8442A);border-color:var(--cohort-secondary,#E8442A);}
@@ -4558,6 +4584,17 @@ html,body{overflow-x:hidden;max-width:100%;}
         </div>
       </header>
 
+      <!-- Admin site-wide preview bar — hidden for non-admins -->
+      <div id="admin-preview-bar" role="banner" aria-label="Admin preview mode">
+        <span class="apb-label">Lihat sebagai</span>
+        <div style="display:flex;gap:6px;">
+          <button class="apb-btn active" id="apb-admin"   onclick="setAdminViewMode('admin')">Admin</button>
+          <button class="apb-btn"        id="apb-student" onclick="setAdminViewMode('student')">Student</button>
+          <button class="apb-btn"        id="apb-leader"  onclick="setAdminViewMode('leader')">Leader</button>
+        </div>
+        <span class="apb-mode-badge" id="apb-mode-badge">Mode: Admin</span>
+      </div>
+
       <div id="cohort-app-strip" class="cohort-app-strip" style="display:none;" role="region" aria-label="Info kohort">
         <div class="cohort-app-strip-inner">
           <div class="cohort-app-strip-center">
@@ -7582,63 +7619,99 @@ html,body{overflow-x:hidden;max-width:100%;}
 
         <!-- ADMIN (owner only — hidden from others) -->
         <div id="dash-view-admin" style="display:none;">
-          <div style="padding:20px 0;">
-            <div style="font-size:1.1rem;font-weight:900;color:#1A1F3C;margin-bottom:4px;">Admin Analytics</div>
-            <div style="font-size:.78rem;color:#9CA3AF;margin-bottom:20px;">Owner view only — refreshes on load</div>
-            <div id="admin-stats-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:24px;">
-              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px;">
-                <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Total Sign-ups</div>
-                <div id="adm-total" style="font-size:1.8rem;font-weight:900;color:#1A1F3C;">—</div>
+          <div class="adm-wrap">
+
+            <!-- Header -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+              <div>
+                <div style="font-size:1.1rem;font-weight:900;color:#1A1F3C;margin-bottom:2px;">Admin Overview</div>
+                <div style="font-size:.75rem;color:#9CA3AF;">Signups, sessions, cohorts, people — owner view only</div>
               </div>
-              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px;">
-                <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">New Signups (7d)</div>
-                <div id="adm-7d" style="font-size:1.8rem;font-weight:900;color:#E8442A;">—</div>
+              <button type="button" class="cohort-btn secondary" style="padding:7px 14px;font-size:.72rem;" onclick="loadAdminStats()">
+                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right:5px;"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                Refresh
+              </button>
+            </div>
+
+            <!-- Section 1: Headline metrics -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:24px;">
+              <div class="adm-stat-card">
+                <div class="adm-stat-lbl">Total Sign-ups</div>
+                <div class="adm-stat-val" id="adm-total">—</div>
+                <div class="adm-stat-sub">semua waktu</div>
               </div>
-              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px;">
-                <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Active Users (7d)</div>
-                <div id="adm-active7d" style="font-size:1.8rem;font-weight:900;color:#F5A623;">—</div>
+              <div class="adm-stat-card">
+                <div class="adm-stat-lbl">7 Hari Terakhir</div>
+                <div class="adm-stat-val" id="adm-7d">—</div>
+                <div class="adm-stat-sub">pendaftar baru</div>
               </div>
-              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px;">
-                <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">New Signups (30d)</div>
-                <div id="adm-30d" style="font-size:1.8rem;font-weight:900;color:#1A1F3C;">—</div>
+              <div class="adm-stat-card">
+                <div class="adm-stat-lbl">30 Hari Terakhir</div>
+                <div class="adm-stat-val" id="adm-30d">—</div>
+                <div class="adm-stat-sub">pendaftar baru</div>
               </div>
-              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px;">
-                <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Never Purchased</div>
-                <div id="adm-nopurchase" style="font-size:1.8rem;font-weight:900;color:#E8442A;">—</div>
+              <div class="adm-stat-card">
+                <div class="adm-stat-lbl">Return Rate</div>
+                <div class="adm-stat-val" style="color:#1A7A46;" id="adm-return-rate">—</div>
+                <div class="adm-stat-sub" id="adm-sessions-sub">kembali ke platform</div>
               </div>
-              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px;">
-                <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Credits in Circulation</div>
-                <div id="adm-credits" style="font-size:1.8rem;font-weight:900;color:#f97316;">—</div>
+              <div class="adm-stat-card">
+                <div class="adm-stat-lbl">Active Leaders</div>
+                <div class="adm-stat-val" style="color:#1A1F3C;" id="adm-leaders">—</div>
+                <div class="adm-stat-sub">cohort mentor aktif</div>
               </div>
-              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px;">
-                <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Avg Balance/User</div>
-                <div id="adm-avgbal" style="font-size:1.8rem;font-weight:900;color:#1A1F3C;">—</div>
+              <div class="adm-stat-card">
+                <div class="adm-stat-lbl">Active Cohorts</div>
+                <div class="adm-stat-val" style="color:#E8442A;" id="adm-cohorts">—</div>
+                <div class="adm-stat-sub">dengan siswa aktif</div>
               </div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
-              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:16px;">
-                <div style="font-size:.78rem;font-weight:700;color:#1A1F3C;margin-bottom:12px;">Credit Events by Type</div>
-                <div id="adm-events-table"></div>
-              </div>
-              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:16px;">
-                <div style="font-size:.78rem;font-weight:700;color:#1A1F3C;margin-bottom:12px;">Top 10 Keywords Searched</div>
-                <div id="adm-keywords-table"></div>
-              </div>
-            </div>
-            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:16px;">
-              <div style="font-size:.78rem;font-weight:700;color:#1A1F3C;margin-bottom:12px;">Daily Active Users (last 30 days)</div>
+
+            <!-- Section 2: Sessions chart -->
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:18px;margin-bottom:20px;">
+              <div class="adm-section-title">Sesi Harian — 30 Hari Terakhir</div>
+              <div style="font-size:.7rem;color:#9CA3AF;margin-bottom:12px;">Jumlah login unik per hari (dari user_sessions)</div>
               <div id="adm-dau-chart" style="display:flex;align-items:flex-end;gap:3px;height:80px;overflow-x:auto;"></div>
             </div>
-            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:16px;margin-top:16px;">
-              <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;">
-                <div>
-                  <div style="font-size:.78rem;font-weight:800;color:#1A1F3C;">Users &amp; role control</div>
-                  <div style="font-size:.7rem;color:#6B7280;margin-top:3px;">Admin can view every user, assign app roles, and connect leaders to cohorts.</div>
+
+            <!-- Section 3: Cohort overview + Recent signups -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:18px;min-width:0;">
+                <div class="adm-section-title">Cohort Overview</div>
+                <div style="overflow-x:auto;">
+                  <table class="adm-table" id="adm-cohorts-table">
+                    <thead><tr>
+                      <th>Kohort</th><th>Leader</th><th>Siswa</th><th>Last Activity</th>
+                    </tr></thead>
+                    <tbody id="adm-cohorts-body">
+                      <tr><td colspan="4" style="text-align:center;padding:24px;color:#9CA3AF;font-size:.78rem;">Memuat...</td></tr>
+                    </tbody>
+                  </table>
                 </div>
-                <button type="button" class="cohort-btn secondary" style="padding:7px 12px;font-size:.68rem;" onclick="loadAdminStats()">Refresh</button>
               </div>
-              <div style="display:grid;grid-template-columns:1fr 180px 1fr;gap:8px;margin-bottom:12px;">
-                <input id="adm-role-email" class="cohort-input" style="margin:0;" type="email" placeholder="user@email.com">
+              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:18px;min-width:0;">
+                <div class="adm-section-title">Pendaftar Terbaru</div>
+                <div style="overflow-x:auto;">
+                  <table class="adm-table" id="adm-signups-table">
+                    <thead><tr>
+                      <th>Email</th><th>Tanggal</th><th>Tipe</th>
+                    </tr></thead>
+                    <tbody id="adm-signups-body">
+                      <tr><td colspan="3" style="text-align:center;padding:24px;color:#9CA3AF;font-size:.78rem;">Memuat...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 4: Users & role control -->
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:18px;">
+              <div style="margin-bottom:14px;">
+                <div class="adm-section-title" style="margin-bottom:2px;">Users &amp; Role Control</div>
+                <div style="font-size:.7rem;color:#6B7280;">Assign app roles and connect leaders to cohorts.</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 180px 1fr;gap:8px;margin-bottom:10px;">
+                <input id="adm-role-email"   class="cohort-input" style="margin:0;" type="email" placeholder="user@email.com">
                 <select id="adm-role-select" class="cohort-input" style="margin:0;">
                   <option value="student">Student</option>
                   <option value="leader">Cohort leader</option>
@@ -7647,13 +7720,23 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <button type="button" class="cohort-btn" onclick="adminAssignRole()">Set role</button>
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
-                <input id="adm-leader-email" class="cohort-input" style="margin:0;" type="email" placeholder="leader@email.com">
+                <input id="adm-leader-email"  class="cohort-input" style="margin:0;" type="email" placeholder="leader@email.com">
                 <select id="adm-cohort-select" class="cohort-input" style="margin:0;"></select>
                 <button type="button" class="cohort-btn secondary" onclick="adminAssignLeader()">Assign cohort leader</button>
               </div>
               <div id="adm-role-status" class="cohort-muted" style="margin-bottom:10px;"></div>
               <div id="adm-user-directory" style="overflow:auto;max-height:420px;"></div>
             </div>
+
+            <!-- Hidden legacy IDs kept so old loadAdminStats references don't break -->
+            <div style="display:none;">
+              <div id="adm-nopurchase"></div>
+              <div id="adm-credits"></div>
+              <div id="adm-avgbal"></div>
+              <div id="adm-events-table"></div>
+              <div id="adm-keywords-table"></div>
+            </div>
+
           </div>
         </div>
 
@@ -9024,7 +9107,8 @@ function updateAuthUI() {
     // show admin nav for owner only
     const adminNav = document.getElementById('dash-nav-admin');
     if (adminNav) adminNav.style.display = isPlatformAdmin() ? '' : 'none';
-    adminFloatInit();
+    // show admin preview bar + float widget and restore saved view mode
+    if (isPlatformAdmin()) { _adminViewModeInit(); adminFloatInit(); }
     // topbar avatar
     const tbAv = document.getElementById('dash-topbar-av');
     const tbUn = document.getElementById('dash-topbar-uname');
@@ -9974,35 +10058,73 @@ async function loadAdminStats() {
     if (!error && data) {
       const s = data;
       const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ?? '—'; };
-      set('adm-total',      s.total_signups);
-      set('adm-7d',         s.signups_last_7d);
-      set('adm-30d',        s.signups_last_30d);
-      set('adm-active7d',   s.active_users_7d);
-      set('adm-nopurchase', s.users_never_purchased);
-      set('adm-credits',    s.total_credits_in_circulation);
-      set('adm-avgbal',     s.avg_balance_per_user);
+      // Signup metrics
+      set('adm-total', s.total_signups);
+      set('adm-7d',    s.signups_last_7d);
+      set('adm-30d',   s.signups_last_30d);
 
-      const evtEl = document.getElementById('adm-events-table');
-      if (evtEl && s.credit_events_by_type) {
-        evtEl.innerHTML = s.credit_events_by_type.map(r =>
-          `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #F3F4F6;font-size:.75rem;"><span style="color:#374151">${r.type}</span><span style="font-weight:700;color:#1A1F3C">${r.events} <span style="color:#9CA3AF;font-weight:400;">(${r.total_credits} cr)</span></span></div>`
-        ).join('');
-      }
+      // New: session / people metrics
+      const returnRate = s.return_rate != null ? s.return_rate + '%' : '—';
+      set('adm-return-rate', returnRate);
+      const totalSess = s.total_sessions;
+      const retUsers  = s.returning_users;
+      const sessSubEl = document.getElementById('adm-sessions-sub');
+      if (sessSubEl && totalSess != null) sessSubEl.textContent = `${retUsers ?? '—'} dari ${totalSess} sesi`;
+      set('adm-leaders', s.active_leaders ?? '—');
+      set('adm-cohorts', s.active_cohorts ?? '—');
 
-      const kwEl = document.getElementById('adm-keywords-table');
-      if (kwEl && s.top_keywords) {
-        kwEl.innerHTML = s.top_keywords.slice(0,10).map(r =>
-          `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #F3F4F6;font-size:.72rem;"><span style="color:#374151;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.keyword}</span><span style="font-weight:700;color:#E8442A;">${r.completions}</span></div>`
-        ).join('');
-      }
-
+      // Sessions chart (DAU from user_sessions)
       const dauEl = document.getElementById('adm-dau-chart');
       if (dauEl && s.dau_last_30d?.length) {
         const maxDAU = Math.max(...s.dau_last_30d.map(r => r.active_users)) || 1;
         dauEl.innerHTML = s.dau_last_30d.map(r => {
-          const h = Math.round(r.active_users / maxDAU * 70) + 4;
-          return `<div title="${r.date}: ${r.active_users} users" style="flex:1;min-width:6px;max-width:18px;background:#E8442A;border-radius:3px 3px 0 0;height:${h}px;opacity:.8;"></div>`;
+          const h = Math.round((r.active_users / maxDAU) * 68) + 4;
+          const d = (r.day || r.date || '').slice(5); // MM-DD
+          return `<div title="${d}: ${r.active_users} sesi" style="flex:1;min-width:5px;max-width:20px;background:#E8442A;border-radius:3px 3px 0 0;height:${h}px;opacity:.85;cursor:default;"></div>`;
         }).join('');
+      }
+
+      // Cohort overview table
+      const cohortBody = document.getElementById('adm-cohorts-body');
+      if (cohortBody) {
+        const cohorts = s.cohorts_overview || [];
+        cohortBody.innerHTML = cohorts.length
+          ? cohorts.map(c => {
+              const activity = c.last_activity ? c.last_activity.slice(0,10) : '—';
+              const barW = Math.min(100, Math.round((c.student_count || 0) / Math.max(...cohorts.map(x => x.student_count||0), 1) * 100));
+              return `<tr>
+                <td style="font-weight:700;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_cohortEsc(c.name || '—')}</td>
+                <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#6B7280;font-size:.68rem;">${_cohortEsc(c.leader_email || '—')}</td>
+                <td>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-weight:700;">${c.student_count || 0}</span>
+                    <div class="adm-cohort-bar" style="flex:1;"><div class="adm-cohort-bar-fill" style="width:${barW}%;"></div></div>
+                  </div>
+                </td>
+                <td style="color:#9CA3AF;font-size:.68rem;">${activity}</td>
+              </tr>`;
+            }).join('')
+          : '<tr><td colspan="4" style="text-align:center;padding:20px;color:#9CA3AF;">Belum ada kohort aktif.</td></tr>';
+      }
+
+      // Recent signups table
+      const signupsBody = document.getElementById('adm-signups-body');
+      if (signupsBody) {
+        const signups = s.recent_signups || [];
+        signupsBody.innerHTML = signups.length
+          ? signups.map(u => {
+              const email   = (u.email || '').replace(/(.{3}).*(@)/, '$1***$2');
+              const date    = (u.signed_in_at || '').slice(0,10);
+              const badge   = u.is_new_user
+                ? '<span class="adm-badge new">Baru</span>'
+                : '<span class="adm-badge return">Kembali</span>';
+              return `<tr>
+                <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;">${_cohortEsc(email)}</td>
+                <td style="color:#6B7280;font-size:.68rem;">${date}</td>
+                <td>${badge}</td>
+              </tr>`;
+            }).join('')
+          : '<tr><td colspan="3" style="text-align:center;padding:20px;color:#9CA3AF;">Belum ada data pendaftar.</td></tr>';
       }
     }
   } catch(e) { console.warn('loadAdminStats', e); }
@@ -10652,6 +10774,10 @@ function switchDashView(view) {
   if (view === 'cohort'    && typeof cohortInit   === 'function') cohortInit();
   mbnSync(view);
   dashboardTourHandleViewChange(view);
+  // Re-apply admin preview mode on every nav switch
+  if (isPlatformAdmin() && _adminViewMode !== 'admin') {
+    requestAnimationFrame(() => applyAdminViewMode(_adminViewMode));
+  }
 }
 
 // ── MOBILE BOTTOM NAV ──────────────────────────────────────────
@@ -21139,6 +21265,89 @@ async function _mytLoadSuggestions(categories) {
       </div>`).join('');
     section.style.display = '';
   } catch (_) {}
+}
+
+// ════════════════════════════════════════════════════════════
+//  ADMIN SITE-WIDE VIEW MODE TOGGLE
+// ════════════════════════════════════════════════════════════
+const _ADM_VIEW_KEY = 'larisid_admin_view_mode';
+let _adminViewMode = 'admin';
+
+function _adminViewModeInit() {
+  if (!isPlatformAdmin()) return;
+  try { _adminViewMode = sessionStorage.getItem(_ADM_VIEW_KEY) || 'admin'; } catch (_) {}
+  const bar = document.getElementById('admin-preview-bar');
+  if (bar) bar.style.display = 'flex';
+  _admSyncButtons(_adminViewMode);
+}
+
+function setAdminViewMode(mode) {
+  if (!isPlatformAdmin()) return;
+  _adminViewMode = mode;
+  try { sessionStorage.setItem(_ADM_VIEW_KEY, mode); } catch (_) {}
+  _admSyncButtons(mode);
+  applyAdminViewMode(mode);
+}
+
+function _admSyncButtons(mode) {
+  ['admin','student','leader'].forEach(m => {
+    const btn = document.getElementById('apb-' + m);
+    if (btn) btn.classList.toggle('active', m === mode);
+  });
+  const badge = document.getElementById('apb-mode-badge');
+  if (badge) badge.textContent = `Mode: ${mode.charAt(0).toUpperCase() + mode.slice(1)}`;
+}
+
+function applyAdminViewMode(mode) {
+  const isLeader  = mode === 'leader';
+  const isStudent = mode === 'student';
+  const isAdmin   = mode === 'admin';
+
+  // Admin nav item: only visible in admin mode
+  const adminNav = document.getElementById('dash-nav-admin');
+  if (adminNav) adminNav.style.display = isAdmin ? '' : 'none';
+
+  // If in admin view, switch away from admin-only page
+  if (!isAdmin) {
+    const cur = document.querySelector('#dash-main > main > [id^="dash-view-"]:not([style*="none"])')?.id?.replace('dash-view-','') || _dashActiveView;
+    if (cur === 'admin') switchDashView('dashboard');
+  }
+
+  // Apply leader/student mode gating
+  _hbdApplyLeaderMode(isLeader);
+
+  // In student mode: explicitly restore product sections that leader mode hides
+  if (isStudent) {
+    ['hbd-stats-row','hbd-tracked-strip','dash-credit-card','weekly-chest-card',
+     'hbd-product-chart-col','hbd-product-opp-col','hbd-cohort-rec-card'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = '';
+    });
+    const qaRow = document.getElementById('hbd-leader-quick-actions');
+    if (qaRow) qaRow.style.display = 'none';
+    // Restore sidebar Research Tools tag if any
+    const researchEl = document.getElementById('dash-nav-research-tools');
+    if (researchEl) {
+      const tag = researchEl.querySelector('[data-adm-tag]');
+      if (tag) tag.remove();
+      delete researchEl.dataset.leaderTagged;
+    }
+    // Restore bottom nav
+    const myTokoBtn = document.getElementById('mbn-mytoko');
+    if (myTokoBtn) myTokoBtn.style.display = '';
+    const kohortLeaderBtn = document.getElementById('mbn-kohort-leader');
+    if (kohortLeaderBtn) kohortLeaderBtn.style.display = 'none';
+    // Restore sidebar order (move Kohort below Research Tools)
+    const nav = document.querySelector('.dash-sidebar-nav');
+    const cohortItem  = document.getElementById('dash-nav-cohort');
+    const creditItem  = document.getElementById('dash-nav-credits');
+    if (nav && cohortItem && creditItem) nav.insertBefore(cohortItem, creditItem);
+  }
+
+  // Re-trigger dashboard render if on dashboard view
+  if (_dashActiveView === 'dashboard' && typeof hbdInit === 'function') {
+    setTimeout(() => hbdInit(), 50);
+  }
 }
 
 // ════════════════════════════════════════════════════════════
