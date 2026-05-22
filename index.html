@@ -20,7 +20,7 @@
 <link rel="icon" type="image/svg+xml" href="/images/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Caveat:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
 <!-- Cloudflare Web Analytics -->
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "7cada22477f048bdbe064f16ac18f17e"}'></script>
@@ -54,7 +54,7 @@
   --td:#111;--tm:#6B7280;--tl:#9CA3AF;
   --border:#E5E7EB;--bg:#F7F6F3;--card:#fff;
   --r:12px;--sh:0 1px 8px rgba(0,0,0,.08);--shh:0 4px 16px rgba(0,0,0,.08);
-  --font-display:'Bricolage Grotesque','Plus Jakarta Sans',sans-serif;
+  --font-display:'Plus Jakarta Sans',sans-serif;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialiased;background:var(--bg);color:var(--td);}
@@ -5674,7 +5674,7 @@ html,body{overflow-x:hidden;max-width:100%;}
           <div class="hbd-wrap">
             <div class="hbd-header">
               <h2>Beranda</h2>
-              <p id="hbd-subtitle">Selamat datang kembali — berikut ringkasan produk Anda hari ini.</p>
+              <p id="hbd-subtitle">Selamat datang kembali — berikut ringkasan produk kamu hari ini.</p>
             </div>
 
             <!-- price-change alert strip -->
@@ -7199,7 +7199,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             <div class="alr-topbar">
               <div>
                 <h2>Alerts</h2>
-                <p>Notifikasi perubahan harga, tren, dan peluang produk Anda.</p>
+                <p>Notifikasi perubahan harga, tren, dan peluang produk kamu.</p>
               </div>
               <div style="display:flex;gap:8px;">
                 <button class="alr-btn" onclick="alrMarkAllRead()">Tandai Semua Dibaca</button>
@@ -13198,9 +13198,9 @@ function kalcCalc() {
       const sc = totalCost + (sp - price) * 0; // costs same
       const sv = sp - totalCost;
       const sm = sp > 0 ? (sv/sp*100) : 0;
-      const border = s.rec ? 'border:2px solid #F97316;' : 'border:1px solid #E5E7EB;';
+      const border = s.rec ? 'border:2px solid #E8442A;' : 'border:1px solid #E5E7EB;';
       return `<div style="border-radius:10px;padding:14px;${border}position:relative;">
-        ${s.rec ? '<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#F97316;color:#fff;font-size:.58rem;font-weight:700;padding:2px 8px;border-radius:20px;">Direkomendasikan</div>' : ''}
+        ${s.rec ? '<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#E8442A;color:#fff;font-size:.58rem;font-weight:700;padding:2px 8px;border-radius:20px;">Direkomendasikan</div>' : ''}
         <div style="font-size:.72rem;font-weight:700;color:#111827;margin-bottom:10px;">${s.name}</div>
         <div style="display:flex;justify-content:space-between;font-size:.65rem;margin-bottom:4px;"><span style="color:#6B7280;">Harga Jual</span><span style="font-weight:600;">${kalcFmtFull(sp)}</span></div>
         <div style="display:flex;justify-content:space-between;font-size:.65rem;margin-bottom:4px;"><span style="color:#6B7280;">Margin</span><span style="font-weight:600;">${sm.toFixed(1)}%</span></div>
@@ -14776,7 +14776,7 @@ function apRenderInsights() {
     </div>`).join('');
 
   const rec = document.getElementById('ap-rec-box');
-  if (rec) rec.innerHTML = `<b style="display:block;margin-bottom:4px;font-size:.63rem;color:#F97316;">Rekomendasi AI</b><span style="font-size:.61rem;line-height:1.5;">${_apData.recText}</span>`;
+  if (rec) rec.innerHTML = `<b style="display:block;margin-bottom:4px;font-size:.63rem;color:#E8442A;">Rekomendasi AI</b><span style="font-size:.61rem;line-height:1.5;">${_apData.recText}</span>`;
 }
 
 function apRenderStrategy() {
