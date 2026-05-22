@@ -7591,11 +7591,15 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <div id="adm-total" style="font-size:1.8rem;font-weight:900;color:#1A1F3C;">—</div>
               </div>
               <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px;">
-                <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Last 7 Days</div>
-                <div id="adm-7d" style="font-size:1.8rem;font-weight:900;color:#1A1F3C;">—</div>
+                <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">New Signups (7d)</div>
+                <div id="adm-7d" style="font-size:1.8rem;font-weight:900;color:#E8442A;">—</div>
               </div>
               <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px;">
-                <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Last 30 Days</div>
+                <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Active Users (7d)</div>
+                <div id="adm-active7d" style="font-size:1.8rem;font-weight:900;color:#F5A623;">—</div>
+              </div>
+              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px;">
+                <div style="font-size:.65rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">New Signups (30d)</div>
                 <div id="adm-30d" style="font-size:1.8rem;font-weight:900;color:#1A1F3C;">—</div>
               </div>
               <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:14px;">
@@ -7674,6 +7678,43 @@ html,body{overflow-x:hidden;max-width:100%;}
     </div><!-- end dash-main -->
   </div><!-- end dashboard-layout -->
 </div><!-- end page-profile -->
+
+<!-- ── ADMIN FLOATING WIDGET (platform admin only) ── -->
+<div id="admin-float-widget" style="display:none;position:fixed;bottom:20px;right:20px;z-index:9999;font-family:'Plus Jakarta Sans',sans-serif;">
+  <div id="admin-preview-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:10000;background:#E8442A;color:#fff;text-align:center;font-size:.72rem;font-weight:700;padding:5px 12px;letter-spacing:.06em;">
+    PREVIEW MODE — Aktivitas kamu tidak dihitung dalam statistik
+    <button onclick="adminTogglePreview()" style="margin-left:12px;background:rgba(255,255,255,.25);border:none;border-radius:4px;color:#fff;font-size:.68rem;font-weight:700;padding:2px 8px;cursor:pointer;">Matikan</button>
+  </div>
+  <div id="admin-float-pill" onclick="adminFloatExpand()" style="cursor:pointer;background:#1A1F3C;color:#fff;border-radius:20px;padding:7px 14px;font-size:.7rem;font-weight:700;display:flex;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span id="admin-float-label">Stats</span>
+  </div>
+  <div id="admin-float-card" style="display:none;background:#1A1F3C;border-radius:14px;padding:16px;min-width:220px;box-shadow:0 8px 32px rgba(0,0,0,.35);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <span style="font-size:.72rem;font-weight:800;color:#fff;letter-spacing:.04em;">ADMIN STATS</span>
+      <button onclick="adminFloatCollapse()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:1rem;cursor:pointer;line-height:1;padding:0;">&#x2715;</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
+      <div style="background:rgba(255,255,255,.08);border-radius:8px;padding:10px 8px;text-align:center;">
+        <div style="font-size:.58rem;color:rgba(255,255,255,.5);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Total</div>
+        <div id="af-total" style="font-size:1.4rem;font-weight:900;color:#fff;">—</div>
+      </div>
+      <div style="background:rgba(255,255,255,.08);border-radius:8px;padding:10px 8px;text-align:center;">
+        <div style="font-size:.58rem;color:rgba(255,255,255,.5);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Daftar 7d</div>
+        <div id="af-new7d" style="font-size:1.4rem;font-weight:900;color:#E8442A;">—</div>
+      </div>
+      <div style="background:rgba(255,255,255,.08);border-radius:8px;padding:10px 8px;text-align:center;">
+        <div style="font-size:.58rem;color:rgba(255,255,255,.5);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Aktif 7d</div>
+        <div id="af-active7d" style="font-size:1.4rem;font-weight:900;color:#F5A623;">—</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="adminLoadFloatStats()" style="flex:1;background:rgba(255,255,255,.1);border:none;border-radius:7px;color:rgba(255,255,255,.7);font-size:.65rem;font-weight:700;padding:6px;cursor:pointer;">Refresh</button>
+      <button id="admin-preview-toggle-btn" onclick="adminTogglePreview()" style="flex:1;background:rgba(232,68,42,.15);border:1px solid rgba(232,68,42,.4);border-radius:7px;color:#E8442A;font-size:.65rem;font-weight:700;padding:6px;cursor:pointer;">Preview Mode</button>
+    </div>
+    <div id="af-preview-note" style="display:none;margin-top:8px;font-size:.6rem;color:#F5A623;text-align:center;">Kamu tidak dihitung sebagai pengguna aktif</div>
+  </div>
+</div>
 
 <!-- ════════════════════════════════════
      SITE FOOTER
@@ -8983,6 +9024,7 @@ function updateAuthUI() {
     // show admin nav for owner only
     const adminNav = document.getElementById('dash-nav-admin');
     if (adminNav) adminNav.style.display = isPlatformAdmin() ? '' : 'none';
+    adminFloatInit();
     // topbar avatar
     const tbAv = document.getElementById('dash-topbar-av');
     const tbUn = document.getElementById('dash-topbar-uname');
@@ -9854,18 +9896,88 @@ function closeSidebar() {
 let _creditBalance = null;
 let _creditProgress = 0; // searches completed today toward next credit
 
+// ── Admin floating widget ────────────────────────────────────────────────────
+const PREVIEW_MODE_KEY = 'larisid_preview_mode';
+
+function adminIsPreviewMode() {
+  try { return localStorage.getItem(PREVIEW_MODE_KEY) === '1'; } catch(_) { return false; }
+}
+
+function adminTogglePreview() {
+  const next = !adminIsPreviewMode();
+  try { next ? localStorage.setItem(PREVIEW_MODE_KEY, '1') : localStorage.removeItem(PREVIEW_MODE_KEY); } catch(_) {}
+  _adminApplyPreviewUI(next);
+  adminLoadFloatStats();
+}
+
+function _adminApplyPreviewUI(on) {
+  const banner = document.getElementById('admin-preview-banner');
+  const note   = document.getElementById('af-preview-note');
+  const btn    = document.getElementById('admin-preview-toggle-btn');
+  if (banner) banner.style.display = on ? 'block' : 'none';
+  if (note)   note.style.display   = on ? 'block' : 'none';
+  if (btn) {
+    btn.textContent = on ? 'Preview ON' : 'Preview Mode';
+    btn.style.background = on ? 'rgba(232,68,42,.35)' : 'rgba(232,68,42,.15)';
+    btn.style.color = on ? '#fff' : '#E8442A';
+  }
+}
+
+function adminFloatExpand() {
+  const pill = document.getElementById('admin-float-pill');
+  const card = document.getElementById('admin-float-card');
+  if (pill) pill.style.display = 'none';
+  if (card) card.style.display = 'block';
+  adminLoadFloatStats();
+}
+
+function adminFloatCollapse() {
+  const pill = document.getElementById('admin-float-pill');
+  const card = document.getElementById('admin-float-card');
+  if (card) card.style.display = 'none';
+  if (pill) pill.style.display = 'flex';
+}
+
+async function adminLoadFloatStats() {
+  if (!_supabase || !currentUser || !isPlatformAdmin()) return;
+  const preview = adminIsPreviewMode();
+  const params = preview ? { exclude_user_id: currentUser.id } : {};
+  try {
+    const { data, error } = await _supabase.rpc('admin_stats', params);
+    if (!error && data) {
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ?? '—'; };
+      set('af-total',    data.total_signups);
+      set('af-new7d',    data.signups_last_7d);
+      set('af-active7d', data.active_users_7d);
+      const lbl = document.getElementById('admin-float-label');
+      if (lbl) lbl.textContent = `${data.total_signups ?? '?'} users · ${data.active_users_7d ?? '?'} aktif`;
+    }
+  } catch(e) { console.warn('adminLoadFloatStats', e); }
+}
+
+function adminFloatInit() {
+  if (!isPlatformAdmin()) return;
+  const w = document.getElementById('admin-float-widget');
+  if (w) w.style.display = 'block';
+  _adminApplyPreviewUI(adminIsPreviewMode());
+  adminLoadFloatStats();
+}
+
 // ── Admin Analytics ──────────────────────────────────────────
 async function loadAdminStats() {
   if (!_supabase || !currentUser) return;
   if (!isPlatformAdmin()) return;
+  const preview = adminIsPreviewMode();
+  const params = preview ? { exclude_user_id: currentUser.id } : {};
   try {
-    const { data, error } = await _supabase.rpc('admin_stats');
+    const { data, error } = await _supabase.rpc('admin_stats', params);
     if (!error && data) {
       const s = data;
       const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ?? '—'; };
       set('adm-total',      s.total_signups);
       set('adm-7d',         s.signups_last_7d);
       set('adm-30d',        s.signups_last_30d);
+      set('adm-active7d',   s.active_users_7d);
       set('adm-nopurchase', s.users_never_purchased);
       set('adm-credits',    s.total_credits_in_circulation);
       set('adm-avgbal',     s.avg_balance_per_user);
