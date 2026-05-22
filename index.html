@@ -5661,6 +5661,33 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
             </div>
 
+            <!-- Leader quick actions (hidden for students, shown for leaders by JS) -->
+            <div id="hbd-leader-quick-actions" style="display:none;margin-bottom:20px;">
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+                <div class="hbd-card" style="cursor:pointer;text-align:center;padding:20px 16px;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''" onclick="switchDashView('cohort');setTimeout(()=>typeof cohortSwitchMentorTab==='function'&&cohortSwitchMentorTab('students'),120)">
+                  <div style="width:44px;height:44px;background:#EFF6FF;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;color:#3B82F6;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  </div>
+                  <div style="font-size:.82rem;font-weight:700;color:#1A1F3C;">Lihat Siswa</div>
+                  <div style="font-size:.68rem;color:#6B7280;margin-top:3px;">Direktori &amp; progres</div>
+                </div>
+                <div class="hbd-card" style="cursor:pointer;text-align:center;padding:20px 16px;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''" onclick="switchDashView('cohort');setTimeout(()=>typeof cohortSwitchMentorTab==='function'&&cohortSwitchMentorTab('overview'),120)">
+                  <div style="width:44px;height:44px;background:#FFF0ED;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;color:#E8442A;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  </div>
+                  <div style="font-size:.82rem;font-weight:700;color:#1A1F3C;">Buat Pengumuman</div>
+                  <div style="font-size:.68rem;color:#6B7280;margin-top:3px;">Kirim ke semua siswa</div>
+                </div>
+                <div class="hbd-card" style="cursor:pointer;text-align:center;padding:20px 16px;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''" onclick="switchDashView('cohort');setTimeout(()=>typeof cohortSwitchMentorTab==='function'&&cohortSwitchMentorTab('overview'),120)">
+                  <div style="width:44px;height:44px;background:#ECFDF5;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;color:#1A7A46;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                  </div>
+                  <div style="font-size:.82rem;font-weight:700;color:#1A1F3C;">Tambah Siswa</div>
+                  <div style="font-size:.68rem;color:#6B7280;margin-top:3px;">Undang via email</div>
+                </div>
+              </div>
+            </div>
+
             <div id="hbd-cohort-digest-wrap" class="hbd-cohort-digest-wrap" style="display:none;margin-bottom:20px;">
               <div class="hbd-two-col" style="margin-bottom:0;">
                 <div class="hbd-card">
@@ -5678,7 +5705,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                     <div id="hbd-cohort-activity-list" class="hbd-activity-list"></div>
                   </div>
                 </div>
-                <div class="hbd-card">
+                <div class="hbd-card" id="hbd-cohort-rec-card">
                   <div class="hbd-card-title">Produk rekomendasi</div>
                   <div class="hbd-card-sub">Ide riset berdasarkan skor — buka detail atau Discover</div>
                   <div id="hbd-cohort-rec-list" class="hbd-opp-list"></div>
@@ -5785,7 +5812,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             </div>
 
             <!-- chart + insight -->
-            <div class="hbd-two-col">
+            <div class="hbd-two-col" id="hbd-product-chart-col">
               <div class="hbd-card">
                 <div class="hbd-card-title">Performa Terbaik</div>
                 <div class="hbd-card-sub">Tren produk pilihan 12 minggu terakhir</div>
@@ -5806,7 +5833,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             </div>
 
             <!-- activity + opportunities -->
-            <div class="hbd-three-col">
+            <div class="hbd-three-col" id="hbd-product-opp-col">
               <div class="hbd-card">
                 <div class="hbd-card-title" style="margin-bottom:12px;">Aksi Terkini</div>
                 <div class="hbd-activity-list" id="hbd-activity-list"></div>
@@ -15683,12 +15710,12 @@ async function hbdInit() {
       if (legendEl) legendEl.innerHTML = '<span style="font-size:.6rem;color:#9CA3AF;font-style:italic;">Contoh: 5 produk teratas di pasar</span>';
     }
     void hbdRenderCohortDigest();
-    if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {});
-    else void hbdRenderMentorDigest();
+    if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(() => _hbdApplyLeaderMode(_accessState.isLeader || isBootstrapLeader()));
+    else { void hbdRenderMentorDigest(); _hbdApplyLeaderMode(_accessState.isLeader || isBootstrapLeader()); }
     return;
   }
 
-  document.getElementById('hbd-subtitle').textContent = 'Berikut ringkasan produk yang Anda lacak.';
+  document.getElementById('hbd-subtitle').textContent = 'Berikut ringkasan produk kamu hari ini.';
 
   // Fetch last 2 scrape rows per tracked product
   const enriched = await Promise.all(tracked.map(async t => {
@@ -15844,8 +15871,8 @@ async function hbdInit() {
   }));
   _hbdBuildChartFromTracked(prods);
   void hbdRenderCohortDigest();
-  if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {});
-  else void hbdRenderMentorDigest();
+  if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(() => _hbdApplyLeaderMode(_accessState.isLeader || isBootstrapLeader()));
+  else { void hbdRenderMentorDigest(); _hbdApplyLeaderMode(_accessState.isLeader || isBootstrapLeader()); }
 }
 
 async function hbdRenderMentorDigest() {
@@ -21000,6 +21027,89 @@ async function _mytLoadSuggestions(categories) {
       </div>`).join('');
     section.style.display = '';
   } catch (_) {}
+}
+
+// ════════════════════════════════════════════════════════════
+//  LEADER DASHBOARD MODE
+// ════════════════════════════════════════════════════════════
+
+function _hbdApplyLeaderMode(isLeader) {
+  // Product-focused elements to hide from leaders
+  const hideIds = ['hbd-stats-row','hbd-tracked-strip','dash-credit-card','weekly-chest-card','hbd-product-chart-col','hbd-product-opp-col'];
+  hideIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = isLeader ? 'none' : '';
+  });
+
+  // Hide product recommendations column inside cohort digest
+  const recCard = document.getElementById('hbd-cohort-rec-card');
+  if (recCard) recCard.style.display = isLeader ? 'none' : '';
+
+  // Quick actions row — only for leaders
+  const qaRow = document.getElementById('hbd-leader-quick-actions');
+  if (qaRow) qaRow.style.display = isLeader ? '' : 'none';
+
+  // Ensure mentor digest is always visible for leaders
+  if (isLeader) {
+    const mentorWrap = document.getElementById('hbd-mentor-wrap');
+    if (mentorWrap && _cohortState?.hasMentorCohort) mentorWrap.style.display = '';
+    const sub = document.getElementById('hbd-subtitle');
+    if (sub) sub.textContent = 'Pantau progres siswa dan aktivitas kohort kamu.';
+  }
+
+  // Apply sidebar + bottom nav changes
+  _hbdApplySidebarLeaderMode(isLeader);
+  _mbnApplyLeaderMode(isLeader);
+}
+
+function _hbdApplySidebarLeaderMode(isLeader) {
+  if (!isLeader) return;
+  const nav         = document.querySelector('.dash-sidebar-nav');
+  const cohortItem  = document.getElementById('dash-nav-cohort');
+  const creditItem  = document.getElementById('dash-nav-credits');
+  if (!nav || !cohortItem || !creditItem) return;
+
+  // Move Kohort to just below the Dashboard item (before research tools)
+  const researchItem = document.getElementById('dash-nav-research-tools');
+  if (researchItem) nav.insertBefore(cohortItem, researchItem);
+  else nav.insertBefore(cohortItem, creditItem);
+
+  // Add a subtle "Siswa" tag to Research Tools so leaders know it's the student side
+  const researchEl = document.getElementById('dash-nav-research-tools');
+  if (researchEl && !researchEl.dataset.leaderTagged) {
+    researchEl.dataset.leaderTagged = '1';
+    const tag = document.createElement('span');
+    tag.style.cssText = 'font-size:.52rem;background:rgba(255,255,255,.14);border-radius:4px;padding:1px 6px;margin-left:auto;color:rgba(255,255,255,.45);white-space:nowrap;';
+    tag.textContent = 'Alat Siswa';
+    researchEl.appendChild(tag);
+  }
+}
+
+function _mbnApplyLeaderMode(isLeader) {
+  const myTokoBtn = document.getElementById('mbn-mytoko');
+  if (!myTokoBtn) return;
+
+  if (isLeader) {
+    myTokoBtn.style.display = 'none';
+    // Insert Kohort button if not already present
+    if (!document.getElementById('mbn-kohort-leader')) {
+      const btn = document.createElement('button');
+      btn.className = 'mbn-item';
+      btn.id        = 'mbn-kohort-leader';
+      btn.setAttribute('onclick', "switchDashView('cohort')");
+      btn.innerHTML = `
+        <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+        <span class="mbn-label">Kohort</span>`;
+      myTokoBtn.parentNode.insertBefore(btn, myTokoBtn);
+    } else {
+      document.getElementById('mbn-kohort-leader').style.display = '';
+    }
+    MBN_MAP.cohort = 'mbn-kohort-leader';
+  } else {
+    myTokoBtn.style.display = '';
+    const kohortBtn = document.getElementById('mbn-kohort-leader');
+    if (kohortBtn) kohortBtn.style.display = 'none';
+  }
 }
 
 // ── DISCOVER FILTER DRAWER (mobile) ─────────────────────────
