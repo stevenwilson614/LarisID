@@ -66,7 +66,7 @@ as $$
       coalesce((
         select json_agg(row_to_json(e) order by e.created_at desc)
         from (
-          select ae.kind, ae.created_at, u.email
+          select ae.event_type as kind, ae.created_at, u.email
           from public.activity_events ae
           join auth.users u on u.id = ae.user_id
           order by ae.created_at desc
