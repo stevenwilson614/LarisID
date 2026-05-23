@@ -7734,6 +7734,22 @@ html,body{overflow-x:hidden;max-width:100%;}
               <div id="adm-user-directory" style="overflow:auto;max-height:420px;"></div>
             </div>
 
+            <!-- Section 5: User Feedback -->
+            <div id="adm-feedback-section" style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:18px;margin-bottom:0;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                <div>
+                  <div class="adm-section-title" style="margin-bottom:2px;">Masukan Pengguna</div>
+                  <div style="font-size:.7rem;color:#6B7280;">Feedback langsung dari pengguna LarisID.</div>
+                </div>
+                <button type="button" class="cohort-btn secondary" style="padding:6px 12px;font-size:.65rem;" onclick="loadAdminFeedback()">
+                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right:4px;vertical-align:middle;"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Refresh
+                </button>
+              </div>
+              <div id="adm-feedback-list">
+                <div style="text-align:center;padding:24px;color:#9CA3AF;font-size:.78rem;">Klik Refresh untuk memuat masukan pengguna.</div>
+              </div>
+            </div>
+
             <!-- Hidden legacy IDs kept so old loadAdminStats references don't break -->
             <div style="display:none;">
               <div id="adm-nopurchase"></div>
@@ -7855,6 +7871,25 @@ html,body{overflow-x:hidden;max-width:100%;}
       <button onclick="addSiswaBulk()" id="add-siswa-bulk-btn" class="cohort-btn" style="width:100%;">Tambah Semua</button>
     </div>
     <div id="add-siswa-modal-status" style="font-size:.72rem;color:#6B7280;margin-top:10px;min-height:1.2em;white-space:pre-line;"></div>
+  </div>
+</div>
+
+<!-- ── NATIVE FEEDBACK MODAL ── -->
+<div id="feedback-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;align-items:center;justify-content:center;" onclick="if(event.target===this)closeFeedbackModal()">
+  <div style="background:#fff;border-radius:16px;padding:24px;max-width:440px;width:calc(100% - 32px);box-shadow:0 8px 32px rgba(0,0,0,.2);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div style="font-size:1rem;font-weight:800;color:#1A1F3C;">Beri Masukan</div>
+      <button onclick="closeFeedbackModal()" style="background:none;border:none;font-size:1.2rem;color:#9CA3AF;cursor:pointer;line-height:1;">&#x2715;</button>
+    </div>
+    <div style="font-size:.78rem;color:#6B7280;margin-bottom:14px;">Bantu kami tingkatkan LarisID. Setiap masukan dibaca langsung oleh tim kami.</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button type="button" onclick="fbSetType('bug')" id="fb-chip-bug" style="flex:1;padding:8px 6px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;font-size:.72rem;font-weight:700;color:#374151;cursor:pointer;">Bug / Error</button>
+      <button type="button" onclick="fbSetType('feature')" id="fb-chip-feature" style="flex:1;padding:8px 6px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;font-size:.72rem;font-weight:700;color:#374151;cursor:pointer;">Saran Fitur</button>
+      <button type="button" onclick="fbSetType('other')" id="fb-chip-other" style="flex:1;padding:8px 6px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;font-size:.72rem;font-weight:700;color:#374151;cursor:pointer;">Lainnya</button>
+    </div>
+    <textarea id="fb-message" placeholder="Ceritakan apa yang terjadi atau apa yang kamu inginkan..." style="width:100%;min-height:110px;border:1.5px solid #E5E7EB;border-radius:8px;padding:10px 12px;font-size:.82rem;font-family:inherit;resize:vertical;outline:none;box-sizing:border-box;color:#374151;" oninput="this.style.borderColor='#E5E7EB'"></textarea>
+    <div id="fb-submit-status" style="font-size:.72rem;min-height:18px;margin-top:6px;"></div>
+    <button type="button" onclick="submitFeedback()" id="fb-submit-btn" style="margin-top:10px;width:100%;padding:11px;background:#E8442A;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:.88rem;cursor:pointer;">Kirim Masukan</button>
   </div>
 </div>
 
@@ -10226,6 +10261,7 @@ async function loadAdminStats() {
   } catch(e) { console.warn('loadAdminStats', e); }
   await adminLoadCohortOptions();
   await adminLoadUserDirectory();
+  loadAdminFeedback();
 }
 
 let _adminCohorts = [];
@@ -20726,12 +20762,110 @@ function shareProduct() {
   window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
 }
 
-function openFeedback() {
-  if (window.Tally) {
-    window.Tally.openPopup('9q1Y1Y', { width: 480, autoClose: 3000 });
-  } else {
-    window.open('https://tally.so/r/9q1Y1Y', '_blank');
+function openFeedback() { openFeedbackModal(); }
+
+// ── Native Feedback Modal ─────────────────────────────────────────────────────
+
+let _fbType = 'bug';
+
+function openFeedbackModal() {
+  const overlay = document.getElementById('feedback-modal-overlay');
+  if (!overlay) return;
+  overlay.style.display = 'flex';
+  _fbType = 'bug';
+  fbSetType('bug');
+  const msg = document.getElementById('fb-message');
+  if (msg) { msg.value = ''; msg.style.borderColor = '#E5E7EB'; }
+  const status = document.getElementById('fb-submit-status');
+  if (status) { status.textContent = ''; status.style.color = ''; }
+  const btn = document.getElementById('fb-submit-btn');
+  if (btn) { btn.disabled = false; btn.textContent = 'Kirim Masukan'; }
+}
+
+function closeFeedbackModal() {
+  const overlay = document.getElementById('feedback-modal-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+function fbSetType(type) {
+  _fbType = type;
+  ['bug','feature','other'].forEach(t => {
+    const chip = document.getElementById('fb-chip-' + t);
+    if (!chip) return;
+    if (t === type) {
+      chip.style.borderColor = '#E8442A'; chip.style.background = '#FFF0ED'; chip.style.color = '#E8442A';
+    } else {
+      chip.style.borderColor = '#E5E7EB'; chip.style.background = '#fff'; chip.style.color = '#374151';
+    }
+  });
+}
+
+async function submitFeedback() {
+  const msg = (document.getElementById('fb-message')?.value || '').trim();
+  const status = document.getElementById('fb-submit-status');
+  const btn = document.getElementById('fb-submit-btn');
+  if (msg.length < 10) {
+    if (status) { status.textContent = 'Tulis minimal 10 karakter ya.'; status.style.color = '#E8442A'; }
+    const ta = document.getElementById('fb-message');
+    if (ta) ta.style.borderColor = '#E8442A';
+    return;
   }
+  if (btn) { btn.disabled = true; btn.textContent = 'Mengirim...'; }
+  if (status) { status.textContent = ''; }
+  try {
+    const { error } = await _supabase.from('feedback').insert({
+      user_id:    currentUser?.id   || null,
+      user_email: currentUser?.email || null,
+      type:       _fbType,
+      message:    msg,
+      page:       document.title || window.location.hash || 'app',
+    });
+    if (error) throw error;
+    if (status) { status.textContent = 'Terkirim! Terima kasih.'; status.style.color = '#16A34A'; }
+    if (btn) { btn.textContent = 'Terkirim'; }
+    setTimeout(closeFeedbackModal, 1800);
+  } catch (err) {
+    if (status) { status.textContent = 'Gagal mengirim. Coba lagi.'; status.style.color = '#E8442A'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Kirim Masukan'; }
+  }
+}
+
+async function loadAdminFeedback() {
+  const list = document.getElementById('adm-feedback-list');
+  if (!list || !_supabase) return;
+  list.innerHTML = '<div style="text-align:center;padding:24px;color:#9CA3AF;font-size:.78rem;">Memuat...</div>';
+  const { data, error } = await _supabase
+    .from('feedback').select('*').order('created_at', { ascending: false }).limit(60);
+  if (error || !data?.length) {
+    list.innerHTML = '<div style="text-align:center;padding:24px;color:#9CA3AF;font-size:.78rem;">' +
+      (error ? 'Gagal memuat masukan.' : 'Belum ada masukan.') + '</div>';
+    return;
+  }
+  const badge = { bug: ['#FEE2E2','#DC2626','Bug'], feature: ['#DBEAFE','#1D4ED8','Fitur'], other: ['#F3F4F6','#6B7280','Lainnya'] };
+  const statOpts = ['new','reviewing','done','dismissed'];
+  list.innerHTML = data.map(row => {
+    const [bg, fg, lbl] = badge[row.type] || badge.other;
+    const diff = Math.floor((Date.now() - new Date(row.created_at).getTime()) / 60000);
+    const rel = diff < 2 ? 'Baru saja' : diff < 60 ? diff + ' mnt lalu' : diff < 1440 ? Math.floor(diff/60) + ' jam lalu' : Math.floor(diff/1440) + ' hari lalu';
+    const txt = (row.message || '').substring(0, 240).replace(/</g, '&lt;') + (row.message?.length > 240 ? '…' : '');
+    return `<div style="border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;margin-bottom:8px;background:#FAFAFA;">
+      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">
+        <span style="background:${bg};color:${fg};font-size:.62rem;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0;margin-top:2px;">${lbl}</span>
+        <div style="font-size:.8rem;color:#374151;flex:1;line-height:1.5;">${txt}</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+        <div style="font-size:.65rem;color:#9CA3AF;">${row.user_email || 'Anonim'} &middot; ${rel}</div>
+        <select style="font-size:.65rem;padding:3px 6px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;color:#374151;cursor:pointer;" onchange="updateFeedbackStatus('${row.id}',this.value)">
+          ${statOpts.map(s => `<option value="${s}"${s===row.status?' selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function updateFeedbackStatus(id, status) {
+  if (!_supabase) return;
+  await _supabase.from('feedback').update({ status }).eq('id', id);
 }
 
 // ── Extension Linking ─────────────────────────────────────────────────────────
