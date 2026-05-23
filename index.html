@@ -4495,9 +4495,9 @@ html,body{overflow-x:hidden;max-width:100%;}
         <div class="dash-nav-sub" id="dash-sub-research-tools">
           <div class="dash-nav-sub-item" id="dash-nav-discover" onclick="switchDashView('discover')">Discover</div>
           <div class="dash-nav-sub-item" id="dash-nav-deepdive" onclick="switchDashView('deepdive')">Deep Dive</div>
-          <div class="dash-nav-sub-item" id="dash-nav-mytoko" onclick="switchDashView('mytoko')">My Toko</div>
           <div class="dash-nav-sub-item" id="dash-nav-tracker" onclick="switchDashView('tracker')">Tracker</div>
           <div class="dash-nav-sub-item" id="dash-nav-ai" onclick="switchDashView('ai')">Mulai Berjualan</div>
+          <div class="dash-nav-sub-item" id="dash-nav-mytoko" onclick="switchDashView('mytoko')">My Toko</div>
           <div class="dash-nav-sub-item" id="dash-nav-alerts" onclick="switchDashView('alerts')">Alerts</div>
         </div>
 
@@ -5709,20 +5709,31 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <div style="font-size:.82rem;font-weight:700;color:#1A1F3C;">Lihat Siswa</div>
                   <div style="font-size:.68rem;color:#6B7280;margin-top:3px;">Direktori &amp; progres</div>
                 </div>
-                <div class="hbd-card" style="cursor:pointer;text-align:center;padding:20px 16px;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''" onclick="switchDashView('cohort');setTimeout(()=>typeof cohortSwitchMentorTab==='function'&&cohortSwitchMentorTab('overview'),120)">
+                <div class="hbd-card" style="cursor:pointer;text-align:center;padding:20px 16px;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''" onclick="annModal()">
                   <div style="width:44px;height:44px;background:#FFF0ED;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;color:#E8442A;">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                   </div>
                   <div style="font-size:.82rem;font-weight:700;color:#1A1F3C;">Buat Pengumuman</div>
                   <div style="font-size:.68rem;color:#6B7280;margin-top:3px;">Kirim ke semua siswa</div>
                 </div>
-                <div class="hbd-card" style="cursor:pointer;text-align:center;padding:20px 16px;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''" onclick="switchDashView('cohort');setTimeout(()=>typeof cohortSwitchMentorTab==='function'&&cohortSwitchMentorTab('overview'),120)">
+                <div class="hbd-card" style="cursor:pointer;text-align:center;padding:20px 16px;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''" onclick="addSiswaModal()">
                   <div style="width:44px;height:44px;background:#ECFDF5;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;color:#1A7A46;">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
                   </div>
                   <div style="font-size:.82rem;font-weight:700;color:#1A1F3C;">Tambah Siswa</div>
                   <div style="font-size:.68rem;color:#6B7280;margin-top:3px;">Undang via email</div>
                 </div>
+              </div>
+            </div>
+
+            <!-- Siswa & Progress — visible to leader only (loaded by hbdSiswaProgressLoad) -->
+            <div id="hbd-siswa-progress" style="display:none;margin-bottom:20px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <div style="font-size:.88rem;font-weight:800;color:#1A1F3C;">Siswa &amp; Progress</div>
+                <button onclick="hbdSiswaProgressLoad(true)" style="background:none;border:none;font-size:.7rem;color:#E8442A;font-weight:700;cursor:pointer;">Refresh</button>
+              </div>
+              <div id="hbd-siswa-rows" style="border:1px solid #E5E7EB;border-radius:10px;overflow:hidden;background:#fff;">
+                <div class="cohort-muted" style="padding:16px;font-size:.75rem;">Memuat data siswa...</div>
               </div>
             </div>
 
@@ -6800,124 +6811,6 @@ html,body{overflow-x:hidden;max-width:100%;}
         </div>
 
         <!-- ══ MY TOKO ══════════════════════════════════════════ -->
-        <div id="dash-view-mytoko" style="display:none;">
-          <div class="myt-wrap">
-
-            <!-- STATE A: store not connected -->
-            <div id="myt-connect-state">
-              <div class="myt-connect-hero">
-                <div class="myt-connect-icon">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                </div>
-                <h2>Hubungkan Toko Shopee Kamu</h2>
-                <p>Masukkan nama toko Shopee kamu untuk melihat posisi kompetitif di setiap keyword, portfolio health, dan peluang produk selanjutnya.</p>
-                <div class="myt-connect-row">
-                  <input id="myt-store-input" class="myt-connect-input" type="text" placeholder="Nama toko Shopee kamu..." autocomplete="off" onkeydown="if(event.key==='Enter')myTokoConnect()">
-                  <button class="myt-connect-btn" id="myt-connect-btn" onclick="myTokoConnect()">Hubungkan</button>
-                </div>
-                <div class="myt-connect-error" id="myt-connect-error"></div>
-                <div class="myt-connect-note">Nama toko harus sama persis seperti di Shopee. Data toko kamu tidak disimpan ke server pihak ketiga.</div>
-              </div>
-            </div>
-
-            <!-- STATE B: store connected -->
-            <div id="myt-dashboard-state" style="display:none;">
-
-              <!-- Store header -->
-              <div class="myt-header">
-                <div class="myt-store-badge">
-                  <div class="myt-store-dot"></div>
-                  <div>
-                    <div class="myt-store-name" id="myt-store-name">—</div>
-                    <div class="myt-store-sub" id="myt-store-sub">Toko Shopee terhubung</div>
-                  </div>
-                </div>
-                <button class="myt-change-btn" onclick="myTokoShowConnect()">Ganti toko</button>
-              </div>
-
-              <!-- Portfolio summary bar -->
-              <div class="myt-pbar" id="myt-pbar">
-                <div class="myt-pbar-card">
-                  <div class="myt-pbar-val" id="myt-total-omset">—</div>
-                  <div class="myt-pbar-lbl">Est. Omset/Bulan</div>
-                </div>
-                <div class="myt-pbar-card">
-                  <div class="myt-pbar-val" id="myt-product-count">—</div>
-                  <div class="myt-pbar-lbl">Produk Aktif</div>
-                </div>
-                <div class="myt-pbar-card">
-                  <div class="myt-pbar-val" id="myt-avg-score">—</div>
-                  <div class="myt-pbar-lbl">Avg Viability Score</div>
-                </div>
-                <div class="myt-pbar-card" id="myt-concentration-card">
-                  <div class="myt-pbar-val" id="myt-concentration">—</div>
-                  <div class="myt-pbar-lbl">Konsentrasi Kategori</div>
-                </div>
-              </div>
-
-              <!-- My selling products -->
-              <div class="myt-section">
-                <div class="myt-section-hdr">
-                  <div class="myt-section-title">Produk Yang Kamu Jual</div>
-                  <button class="myt-link-btn" onclick="switchDashView('tracker')">+ Tambah dari Tracker</button>
-                </div>
-                <div id="myt-products-wrap">
-                  <div id="myt-products-loading" style="display:flex;flex-direction:column;gap:12px;">
-                    <div class="myt-skel"></div><div class="myt-skel"></div>
-                  </div>
-                  <div id="myt-products-empty" style="display:none;">
-                    <div class="myt-empty">
-                      <div class="myt-empty-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>
-                      Belum ada produk. Buka <span style="color:#E8442A;cursor:pointer;font-weight:700;" onclick="switchDashView('tracker')">Tracker</span> dan aktifkan "Saya jual ini" pada produk yang sedang kamu jual.
-                    </div>
-                  </div>
-                  <div id="myt-products-list" class="myt-products"></div>
-                </div>
-              </div>
-
-              <!-- Risk quadrant -->
-              <div class="myt-section" id="myt-risk-section" style="display:none;">
-                <div class="myt-section-hdr">
-                  <div class="myt-section-title">Status Portfolio</div>
-                  <div style="font-size:.68rem;color:#9CA3AF;">Berdasarkan tren pasar & posisi kamu</div>
-                </div>
-                <div class="myt-risk-grid">
-                  <div class="myt-quadrant myt-q-hold">
-                    <div class="myt-q-label">Hold</div>
-                    <div class="myt-q-sub">Pasar sehat · posisi naik</div>
-                    <div class="myt-q-products" id="myt-q-hold"></div>
-                  </div>
-                  <div class="myt-quadrant myt-q-defend">
-                    <div class="myt-q-label">Defend</div>
-                    <div class="myt-q-sub">Pasar sehat · posisi turun</div>
-                    <div class="myt-q-products" id="myt-q-defend"></div>
-                  </div>
-                  <div class="myt-quadrant myt-q-milk">
-                    <div class="myt-q-label">Milk</div>
-                    <div class="myt-q-sub">Posisi kuat · pasar jenuh</div>
-                    <div class="myt-q-products" id="myt-q-milk"></div>
-                  </div>
-                  <div class="myt-quadrant myt-q-exit">
-                    <div class="myt-q-label">Exit</div>
-                    <div class="myt-q-sub">Pasar jenuh · posisi turun</div>
-                    <div class="myt-q-products" id="myt-q-exit"></div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Complementary suggestions -->
-              <div class="myt-section" id="myt-suggestions-section" style="display:none;">
-                <div class="myt-section-hdr">
-                  <div class="myt-section-title">Peluang Produk Selanjutnya</div>
-                  <div style="font-size:.68rem;color:#9CA3AF;">Kategori yang sering dijual bersama produk kamu</div>
-                </div>
-                <div class="myt-suggestions" id="myt-suggestions-grid"></div>
-              </div>
-
-            </div><!-- /myt-dashboard-state -->
-          </div><!-- /myt-wrap -->
-        </div><!-- /dash-view-mytoko -->
-
         <div id="dash-view-ai" style="display:none;">
           <div class="mls-wrap">
 
@@ -7194,6 +7087,124 @@ html,body{overflow-x:hidden;max-width:100%;}
           </div>
         </div>
 
+        <div id="dash-view-mytoko" style="display:none;">
+          <div class="myt-wrap">
+
+            <!-- STATE A: store not connected -->
+            <div id="myt-connect-state">
+              <div class="myt-connect-hero">
+                <div class="myt-connect-icon">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                </div>
+                <h2>Hubungkan Toko Shopee Kamu</h2>
+                <p>Masukkan nama toko Shopee kamu untuk melihat posisi kompetitif di setiap keyword, portfolio health, dan peluang produk selanjutnya.</p>
+                <div class="myt-connect-row">
+                  <input id="myt-store-input" class="myt-connect-input" type="text" placeholder="Nama toko Shopee kamu..." autocomplete="off" onkeydown="if(event.key==='Enter')myTokoConnect()">
+                  <button class="myt-connect-btn" id="myt-connect-btn" onclick="myTokoConnect()">Hubungkan</button>
+                </div>
+                <div class="myt-connect-error" id="myt-connect-error"></div>
+                <div class="myt-connect-note">Nama toko harus sama persis seperti di Shopee. Data toko kamu tidak disimpan ke server pihak ketiga.</div>
+              </div>
+            </div>
+
+            <!-- STATE B: store connected -->
+            <div id="myt-dashboard-state" style="display:none;">
+
+              <!-- Store header -->
+              <div class="myt-header">
+                <div class="myt-store-badge">
+                  <div class="myt-store-dot"></div>
+                  <div>
+                    <div class="myt-store-name" id="myt-store-name">—</div>
+                    <div class="myt-store-sub" id="myt-store-sub">Toko Shopee terhubung</div>
+                  </div>
+                </div>
+                <button class="myt-change-btn" onclick="myTokoShowConnect()">Ganti toko</button>
+              </div>
+
+              <!-- Portfolio summary bar -->
+              <div class="myt-pbar" id="myt-pbar">
+                <div class="myt-pbar-card">
+                  <div class="myt-pbar-val" id="myt-total-omset">—</div>
+                  <div class="myt-pbar-lbl">Est. Omset/Bulan</div>
+                </div>
+                <div class="myt-pbar-card">
+                  <div class="myt-pbar-val" id="myt-product-count">—</div>
+                  <div class="myt-pbar-lbl">Produk Aktif</div>
+                </div>
+                <div class="myt-pbar-card">
+                  <div class="myt-pbar-val" id="myt-avg-score">—</div>
+                  <div class="myt-pbar-lbl">Avg Viability Score</div>
+                </div>
+                <div class="myt-pbar-card" id="myt-concentration-card">
+                  <div class="myt-pbar-val" id="myt-concentration">—</div>
+                  <div class="myt-pbar-lbl">Konsentrasi Kategori</div>
+                </div>
+              </div>
+
+              <!-- My selling products -->
+              <div class="myt-section">
+                <div class="myt-section-hdr">
+                  <div class="myt-section-title">Produk Yang Kamu Jual</div>
+                  <button class="myt-link-btn" onclick="switchDashView('tracker')">+ Tambah dari Tracker</button>
+                </div>
+                <div id="myt-products-wrap">
+                  <div id="myt-products-loading" style="display:flex;flex-direction:column;gap:12px;">
+                    <div class="myt-skel"></div><div class="myt-skel"></div>
+                  </div>
+                  <div id="myt-products-empty" style="display:none;">
+                    <div class="myt-empty">
+                      <div class="myt-empty-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>
+                      Belum ada produk. Buka <span style="color:#E8442A;cursor:pointer;font-weight:700;" onclick="switchDashView('tracker')">Tracker</span> dan aktifkan "Saya jual ini" pada produk yang sedang kamu jual.
+                    </div>
+                  </div>
+                  <div id="myt-products-list" class="myt-products"></div>
+                </div>
+              </div>
+
+              <!-- Risk quadrant -->
+              <div class="myt-section" id="myt-risk-section" style="display:none;">
+                <div class="myt-section-hdr">
+                  <div class="myt-section-title">Status Portfolio</div>
+                  <div style="font-size:.68rem;color:#9CA3AF;">Berdasarkan tren pasar & posisi kamu</div>
+                </div>
+                <div class="myt-risk-grid">
+                  <div class="myt-quadrant myt-q-hold">
+                    <div class="myt-q-label">Hold</div>
+                    <div class="myt-q-sub">Pasar sehat · posisi naik</div>
+                    <div class="myt-q-products" id="myt-q-hold"></div>
+                  </div>
+                  <div class="myt-quadrant myt-q-defend">
+                    <div class="myt-q-label">Defend</div>
+                    <div class="myt-q-sub">Pasar sehat · posisi turun</div>
+                    <div class="myt-q-products" id="myt-q-defend"></div>
+                  </div>
+                  <div class="myt-quadrant myt-q-milk">
+                    <div class="myt-q-label">Milk</div>
+                    <div class="myt-q-sub">Posisi kuat · pasar jenuh</div>
+                    <div class="myt-q-products" id="myt-q-milk"></div>
+                  </div>
+                  <div class="myt-quadrant myt-q-exit">
+                    <div class="myt-q-label">Exit</div>
+                    <div class="myt-q-sub">Pasar jenuh · posisi turun</div>
+                    <div class="myt-q-products" id="myt-q-exit"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Complementary suggestions -->
+              <div class="myt-section" id="myt-suggestions-section" style="display:none;">
+                <div class="myt-section-hdr">
+                  <div class="myt-section-title">Peluang Produk Selanjutnya</div>
+                  <div style="font-size:.68rem;color:#9CA3AF;">Kategori yang sering dijual bersama produk kamu</div>
+                </div>
+                <div class="myt-suggestions" id="myt-suggestions-grid"></div>
+              </div>
+
+            </div><!-- /myt-dashboard-state -->
+          </div><!-- /myt-wrap -->
+        </div><!-- /dash-view-mytoko -->
+
         <div id="dash-view-alerts" style="display:none;">
           <div class="alr-wrap">
             <div class="alr-topbar">
@@ -7391,6 +7402,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             <div class="cohort-shell-btns">
               <button type="button" class="cohort-shell-btn" id="cohort-shell-student" onclick="cohortSetPreviewShell('student')">Student</button>
               <button type="button" class="cohort-shell-btn" id="cohort-shell-leader" onclick="cohortSetPreviewShell('leader')">Leader</button>
+              <button type="button" class="cohort-shell-btn" id="cohort-shell-individual" onclick="cohortSetPreviewShell('individual')">Individual</button>
             </div>
           </div>
           <div id="cohort-status" class="cohort-muted" style="margin-bottom:14px;"></div>
@@ -7542,7 +7554,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <div>
                     <div class="cohort-brand-kicker">Cohort identity</div>
                     <h3>Identitas &amp; tema kohort</h3>
-                    <p class="cohort-muted">Pemimpin kohort dapat mengatur nama, warna, emblem, dan motto. Siswa otomatis melihat tampilan ini di dashboard mereka.</p>
+                    <p class="cohort-muted">Pemimpin kohort dapat mengatur nama, warna, dan motto. Siswa otomatis melihat tampilan ini di dashboard mereka.</p>
                   </div>
                   <div class="cohort-brand-preview">
                     <div id="cohort-brand-preview-badge" class="cohort-brand-preview-badge-host"></div>
@@ -7567,16 +7579,9 @@ html,body{overflow-x:hidden;max-width:100%;}
                     </div>
                   </div>
                 </div>
-                <label class="cohort-muted" style="font-size:.65rem;">Badge icon / emblem</label>
-                <input type="text" id="cohort-brand-badge" class="cohort-input" placeholder="🌊" maxlength="16" autocomplete="off" oninput="cohortPreviewBrandingForm()">
-                <label class="cohort-muted" style="font-size:.65rem;">Bentuk badge (muncul di strip, sedikit overlap)</label>
-                <select id="cohort-brand-badge-shape" class="cohort-input" onchange="cohortPreviewBrandingForm()">
-                  <option value="octagon">Segi delapan</option>
-                  <option value="circle">Lingkaran</option>
-                  <option value="square">Persegi</option>
-                  <option value="triangle">Segitiga</option>
-                </select>
-                <p class="cohort-muted" style="font-size:.62rem;margin:-4px 0 10px;line-height:1.35;">Bentuk digambar dengan CSS (bukan model AI) supaya konsisten di semua perangkat.</p>
+                <!-- Badge icon and shape removed — cohort identity is name + color only -->
+                <input type="hidden" id="cohort-brand-badge" value="">
+                <input type="hidden" id="cohort-brand-badge-shape" value="circle">
                 <label class="cohort-muted" style="font-size:.65rem;">Group motto saying</label>
                 <input type="text" id="cohort-brand-slogan" class="cohort-input" placeholder="Together we learn, together we grow." maxlength="200" autocomplete="off" oninput="cohortPreviewBrandingForm()">
                 <button type="button" class="cohort-btn" id="cohort-brand-save-btn" onclick="cohortLeaderSaveBranding()">Simpan tampilan kohort</button>
@@ -7762,6 +7767,96 @@ html,body{overflow-x:hidden;max-width:100%;}
     </div><!-- end dash-main -->
   </div><!-- end dashboard-layout -->
 </div><!-- end page-profile -->
+
+<!-- ── SISWA PROFILE MODAL ── -->
+<div id="siswa-profile-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:700;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;" onclick="if(event.target===this)siswaProfileClose()">
+  <div style="background:#fff;border-radius:16px;padding:24px;max-width:520px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.2);margin:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+      <div>
+        <div id="sp-name" style="font-size:1.05rem;font-weight:800;color:#1A1F3C;">—</div>
+        <div id="sp-email" style="font-size:.72rem;color:#6B7280;margin-top:2px;">—</div>
+      </div>
+      <button onclick="siswaProfileClose()" style="background:none;border:none;font-size:1.2rem;color:#9CA3AF;cursor:pointer;line-height:1;flex-shrink:0;margin-left:12px;">&#x2715;</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+      <span id="sp-status-badge" style="font-size:.65rem;font-weight:700;padding:3px 10px;border-radius:20px;background:#ECFDF5;color:#1A7A46;">Active</span>
+      <span style="font-size:.65rem;color:#9CA3AF;padding:3px 0;">Terakhir aktif: <strong id="sp-last-active">—</strong></span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px;">
+      <div style="background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:.58rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Skor</div>
+        <div id="sp-score" style="font-size:1.4rem;font-weight:900;color:#1A1F3C;">—</div>
+      </div>
+      <div style="background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:.58rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Aktivitas</div>
+        <div id="sp-events" style="font-size:1.4rem;font-weight:900;color:#1A1F3C;">—</div>
+      </div>
+      <div style="background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;">
+        <div style="font-size:.58rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Milestone</div>
+        <div id="sp-milestones" style="font-size:1.4rem;font-weight:900;color:#1A1F3C;">—</div>
+      </div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:.75rem;font-weight:700;color:#1A1F3C;margin-bottom:8px;">Produk Tersimpan</div>
+      <div id="sp-products" style="font-size:.72rem;color:#6B7280;">Memuat...</div>
+    </div>
+    <div>
+      <div style="font-size:.75rem;font-weight:700;color:#1A1F3C;margin-bottom:8px;">Milestone Selesai</div>
+      <div id="sp-milestone-list" style="font-size:.72rem;color:#6B7280;">Memuat...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── BUAT PENGUMUMAN MODAL ── -->
+<div id="ann-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:700;display:none;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)annModalClose()">
+  <div style="background:#fff;border-radius:16px;padding:24px;max-width:480px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.2);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <div style="font-size:1rem;font-weight:800;color:#1A1F3C;">Buat Pengumuman</div>
+      <button onclick="annModalClose()" style="background:none;border:none;font-size:1.2rem;color:#9CA3AF;cursor:pointer;line-height:1;">&#x2715;</button>
+    </div>
+    <!-- Type selector -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;" id="ann-type-btns">
+      <button onclick="annSetType('update')" id="ann-type-update" style="flex:1;padding:7px;border-radius:8px;border:2px solid #E8442A;background:#E8442A;color:#fff;font-size:.75rem;font-weight:700;cursor:pointer;">Update</button>
+      <button onclick="annSetType('challenge')" id="ann-type-challenge" style="flex:1;padding:7px;border-radius:8px;border:2px solid #E5E7EB;background:#fff;color:#374151;font-size:.75rem;font-weight:700;cursor:pointer;">Challenge</button>
+      <button onclick="annSetType('psa')" id="ann-type-psa" style="flex:1;padding:7px;border-radius:8px;border:2px solid #E5E7EB;background:#fff;color:#374151;font-size:.75rem;font-weight:700;cursor:pointer;">PSA</button>
+    </div>
+    <input type="hidden" id="ann-modal-type" value="update">
+    <label style="font-size:.7rem;color:#6B7280;font-weight:600;display:block;margin-bottom:4px;">Judul</label>
+    <input type="text" id="ann-modal-title" class="cohort-input" placeholder="Judul pengumuman..." style="margin-bottom:12px;">
+    <label style="font-size:.7rem;color:#6B7280;font-weight:600;display:block;margin-bottom:4px;">Pesan</label>
+    <textarea id="ann-modal-body" class="cohort-input" rows="4" placeholder="Tulis pesan untuk siswa kamu..." style="margin-bottom:16px;resize:vertical;"></textarea>
+    <div id="ann-modal-status" style="font-size:.72rem;color:#6B7280;margin-bottom:10px;display:none;"></div>
+    <button onclick="annModalSubmit()" id="ann-modal-submit-btn" class="cohort-btn" style="width:100%;">Kirim Pengumuman</button>
+  </div>
+</div>
+
+<!-- ── TAMBAH SISWA MODAL ── -->
+<div id="add-siswa-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:700;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)addSiswaModalClose()">
+  <div style="background:#fff;border-radius:16px;padding:24px;max-width:460px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.2);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <div style="font-size:1rem;font-weight:800;color:#1A1F3C;">Tambah Siswa</div>
+      <button onclick="addSiswaModalClose()" style="background:none;border:none;font-size:1.2rem;color:#9CA3AF;cursor:pointer;line-height:1;">&#x2715;</button>
+    </div>
+    <!-- Tab toggle -->
+    <div style="display:flex;gap:0;margin-bottom:18px;border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;">
+      <button onclick="addSiswaTab('single')" id="add-siswa-tab-single" style="flex:1;padding:8px;background:#1A1F3C;color:#fff;border:none;font-size:.75rem;font-weight:700;cursor:pointer;">Satu Siswa</button>
+      <button onclick="addSiswaTab('bulk')" id="add-siswa-tab-bulk" style="flex:1;padding:8px;background:#fff;color:#374151;border:none;font-size:.75rem;font-weight:700;cursor:pointer;">Bulk (banyak)</button>
+    </div>
+    <!-- Single tab -->
+    <div id="add-siswa-single-panel">
+      <label style="font-size:.7rem;color:#6B7280;font-weight:600;display:block;margin-bottom:4px;">Email siswa</label>
+      <input type="email" id="add-siswa-modal-email" class="cohort-input" placeholder="siswa@email.com" style="margin-bottom:12px;">
+      <button onclick="addSiswaModalSubmit()" id="add-siswa-submit-btn" class="cohort-btn" style="width:100%;">Tambahkan Siswa</button>
+    </div>
+    <!-- Bulk tab -->
+    <div id="add-siswa-bulk-panel" style="display:none;">
+      <label style="font-size:.7rem;color:#6B7280;font-weight:600;display:block;margin-bottom:4px;">Satu email per baris</label>
+      <textarea id="add-siswa-bulk-input" class="cohort-input" rows="6" placeholder="siswa1@email.com&#10;siswa2@email.com&#10;siswa3@email.com" style="margin-bottom:12px;resize:vertical;"></textarea>
+      <button onclick="addSiswaBulk()" id="add-siswa-bulk-btn" class="cohort-btn" style="width:100%;">Tambah Semua</button>
+    </div>
+    <div id="add-siswa-modal-status" style="font-size:.72rem;color:#6B7280;margin-top:10px;min-height:1.2em;white-space:pre-line;"></div>
+  </div>
+</div>
 
 <!-- ── ADMIN FLOATING WIDGET (platform admin only) ── -->
 <div id="admin-float-widget" style="display:none;position:fixed;bottom:20px;right:20px;z-index:9999;font-family:'Plus Jakarta Sans',sans-serif;">
@@ -10296,16 +10391,17 @@ async function loadCreditData() {
 }
 
 function renderCreditUI() {
+  const unlimited = currentUser && (isPlatformAdmin() || _accessState.isLeader);
   const bal = _creditBalance ?? 0;
-  // Sidebar badge
+  // Sidebar badge — hide for unlimited users
   const badge = document.getElementById('dash-nav-credit-badge');
-  if (badge) { badge.textContent = bal; badge.style.display = bal > 0 ? '' : 'none'; }
+  if (badge) { badge.textContent = bal; badge.style.display = (!unlimited && bal > 0) ? '' : 'none'; }
   // Topbar pill
   const pillVal = document.getElementById('dash-credit-pill-val');
-  if (pillVal) pillVal.textContent = bal;
+  if (pillVal) pillVal.textContent = unlimited ? '∞' : bal;
   // Card balance
   const cardNum = document.getElementById('hcc-balance-num');
-  if (cardNum) cardNum.textContent = bal;
+  if (cardNum) cardNum.textContent = unlimited ? '∞' : bal;
   // Progress bar — fetch today's completions from search_completions table
   if (_supabase && currentUser) {
     const today = new Date().toISOString().slice(0, 10);
@@ -10380,6 +10476,11 @@ let _cgCallback = null;
 let _cgAction   = 'deepdive'; // track action type for spend_credit RPC
 
 function cgShow(title, sub, callback, action) {
+  // Admin and leader bypass — no credit gate
+  if (currentUser && (isPlatformAdmin() || _accessState.isLeader)) {
+    if (callback) callback();
+    return;
+  }
   document.getElementById('cg-title').textContent = title;
   document.getElementById('cg-sub').textContent   = sub;
   const balEl = document.getElementById('cg-balance-display');
@@ -10397,9 +10498,11 @@ function cgClose() {
 }
 
 async function cgConfirm() {
-  if ((_creditBalance ?? 0) < 1) {
+  const _isPriv = currentUser && (isPlatformAdmin() || _accessState.isLeader);
+  if (!_isPriv && (_creditBalance ?? 0) < 1) {
     switchDashView('credits'); cgClose(); return;
   }
+  if (_isPriv) { cgClose(); if (_cgCallback) { _cgCallback(); _cgCallback = null; } return; }
   const btn = document.getElementById('cg-confirm-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
   try {
@@ -10513,8 +10616,10 @@ async function mlsAiAsk(prompt) {
   if (!respEl) return;
 
   // Credit gate: every MLS_AI_PER_CREDIT prompts costs 1 credit (at the start of each new block)
+  // Admin and leader are exempt from credit spending
+  const _isPrivileged = currentUser && (isPlatformAdmin() || _accessState.isLeader);
   const used = _mlsAiCounter();
-  if (used % MLS_AI_PER_CREDIT === 0) {  // 0, 10, 20... → start of a new block
+  if (!_isPrivileged && used % MLS_AI_PER_CREDIT === 0) {  // 0, 10, 20... → start of a new block
     // Need to spend a credit before this block of 10
     if ((_creditBalance ?? 0) < 1) {
       respEl.style.display = 'block';
@@ -11067,6 +11172,13 @@ function cohortUpdateCohortChrome(cohortRowOpt) {
   const strip = document.getElementById('cohort-app-strip');
   const sl = document.getElementById('cohort-strip-slogan');
   if (!chip || !strip) return;
+  // Admin in their own admin view (not simulating a role) sees the plain site — no cohort strip
+  if (isPlatformAdmin() && !adminIsPreviewMode()) {
+    chip.style.display = 'none';
+    strip.style.display = 'none';
+    cohortSyncDashTopbarTitle();
+    return;
+  }
   if (!row || !document.body.classList.contains('in-dashboard')) {
     chip.style.display = 'none';
     strip.style.display = 'none';
@@ -11167,7 +11279,7 @@ async function cohortLeaderSaveBranding() {
 function cohortGetPreviewShell() {
   try {
     const v = sessionStorage.getItem('larisid_admin_cohort_shell');
-    if (v === 'student' || v === 'leader') return v;
+    if (v === 'student' || v === 'leader' || v === 'individual') return v;
   } catch (_) {}
   return 'student';
 }
@@ -11178,6 +11290,16 @@ function cohortSetPreviewShell(shell) {
   cohortApplyShellUI();
   cohortRefreshDashboardTheme();
   void cohortRenderMentorPanels();
+  // Reflect the full sidebar layout so admin sees exactly what each role sees
+  if (shell === 'leader') {
+    _hbdApplySidebarLeaderMode(true);
+    _hbdApplyLeaderMode(true);
+  } else {
+    // Student and Individual: standard ungrouped sidebar, no cohort strip for individual
+    _hbdRevertSidebarLeaderMode();
+    _hbdApplyLeaderMode(false);
+    if (shell === 'individual') cohortUpdateCohortChrome();
+  }
 }
 
 function _cohortEsc(s) {
@@ -11229,29 +11351,17 @@ function cohortBadgeTrimSubtitle(sub, maxLen) {
  *         variant?: 'compact'|'onDark', shape?: 'shield'|'circle'|'square'|'octagon'|'triangle', hideSubtitle?: bool, subtitleMaxLen?: number }
  */
 function cohortBadgeHtml(opts) {
+  // Cohort logo/badge removed — display name pill with cohort color only
   const o = opts || {};
-  const displayName = cohortBadgeShortDisplayName(o.cohortName);
-  const iconRaw = cohortBadgeSanitizedIcon(o.cohortIcon);
+  const displayName = cohortBadgeShortDisplayName(o.cohortName) || 'Kohort';
   const pri = _cohortParseThemeHex(o.cohortPrimaryColor) || '#1A1F3C';
   const sec = _cohortParseThemeHex(o.cohortSecondaryColor) || '#c9a87c';
   const subFull = cohortBadgeTrimSubtitle(o.cohortSubtitle, o.subtitleMaxLen || 40);
   const hideSub = !!o.hideSubtitle || !subFull;
-  const variant = o.variant === 'compact' ? 'compact' : o.variant === 'onDark' ? 'onDark' : '';
-  const shape = cohortNormalizeBadgeShape(o.shape);
-  const pr = _cohortHexToRgb(pri);
-  const sr = _cohortHexToRgb(sec);
-  const bgTop = _cohortRgbStr(_cohortMixRgb(pr, { r: 255, g: 255, b: 255 }, 0.9));
-  const bgBot = _cohortRgbStr(_cohortMixRgb(sr, { r: 255, g: 255, b: 255 }, 0.88));
-  const borderMix = _cohortRgbStr(_cohortMixRgb(pr, { r: 229, g: 231, b: 235 }, 0.35));
-  const iconBlock = iconRaw
-    ? `<div class="cohort-badge__icon" aria-hidden="true">${_cohortEsc(iconRaw)}</div>`
-    : `<div class="cohort-badge__icon cohort-badge__icon--fallback" aria-hidden="true"><span>${_cohortEsc(displayName.charAt(0).toUpperCase())}</span></div>`;
-  const subHtml = !hideSub && subFull ? `<div class="cohort-badge__sub">${_cohortEsc(subFull)}</div>` : '';
-  const cls = ['cohort-badge', `cohort-badge--${shape}`, variant && `cohort-badge--${variant}`].filter(Boolean).join(' ');
-  const outerStyle = variant === 'onDark'
-    ? ''
-    : ` style="background:linear-gradient(165deg, ${bgTop}, ${bgBot});border-color:${borderMix};"`;
-  return `<div class="${cls}" style="--cb-pri:${pri};--cb-sec:${sec};" role="group" aria-label="${_cohortEsc(displayName)}"><div class="cohort-badge__outer"${outerStyle}>${iconBlock}<div class="cohort-badge__name">${_cohortEsc(displayName)}</div>${subHtml}</div></div>`;
+  const subHtml = !hideSub && subFull
+    ? `<div style="font-size:.7rem;opacity:.75;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">${_cohortEsc(subFull)}</div>`
+    : '';
+  return `<div class="cohort-name-pill" style="display:inline-flex;flex-direction:column;align-items:center;background:${pri};color:#fff;border-radius:8px;padding:6px 14px;font-weight:800;font-size:.82rem;letter-spacing:.02em;line-height:1.2;max-width:200px;text-align:center;" role="group" aria-label="${_cohortEsc(displayName)}"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">${_cohortEsc(displayName)}</span>${subHtml}</div>`;
 }
 
 /* ── Leader cohort switcher ── */
@@ -11470,15 +11580,28 @@ function cohortApplyShellUI() {
   const men = document.getElementById('cohort-mentor-wrap');
   const bSt = document.getElementById('cohort-shell-student');
   const bLe = document.getElementById('cohort-shell-leader');
+  const bIn = document.getElementById('cohort-shell-individual');
   if (!bar || !stu || !men) return;
   const admin = isCohortPlatformAdmin();
   bar.style.display = admin ? 'flex' : 'none';
   const sh = cohortGetPreviewShell();
   if (bSt) bSt.classList.toggle('active', sh === 'student');
   if (bLe) bLe.classList.toggle('active', sh === 'leader');
+  if (bIn) bIn.classList.toggle('active', sh === 'individual');
   if (admin) {
     stu.style.display = sh === 'student' ? '' : 'none';
     men.style.display = sh === 'leader' ? '' : 'none';
+    // Individual: no cohort content, plain tool interface
+    const cohortNav = document.getElementById('dash-nav-cohort');
+    const cohortStrip = document.getElementById('cohort-app-strip');
+    if (sh === 'individual') {
+      if (cohortNav) cohortNav.style.display = 'none';
+      if (cohortStrip) cohortStrip.style.display = 'none';
+      stu.style.display = 'none';
+      men.style.display = 'none';
+    } else {
+      if (cohortNav) cohortNav.style.display = '';
+    }
   } else {
     const leaderOnly = _cohortState.hasMentorCohort && !_cohortState.primaryStudentCohortId;
     stu.style.display = leaderOnly ? 'none' : '';
@@ -12170,6 +12293,21 @@ async function cohortRenderMentorPanels() {
   }
 }
 
+function _cohortRelTime(isoStr) {
+  if (!isoStr) return 'Belum aktif';
+  const diff = Date.now() - new Date(isoStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 2)   return 'Baru saja';
+  if (mins < 60)  return `${mins} menit lalu`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)   return `${hrs} jam lalu`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return 'Kemarin';
+  if (days < 7)   return `${days} hari lalu`;
+  if (days < 30)  return `${Math.floor(days/7)} minggu lalu`;
+  return `${Math.floor(days/30)} bulan lalu`;
+}
+
 async function cohortRenderMentorDirectory(cohortId) {
   const el = document.getElementById('cohort-mentor-directory');
   if (!el || !_supabase) return;
@@ -12178,20 +12316,31 @@ async function cohortRenderMentorDirectory(cohortId) {
   if (error) { el.textContent = error.message || 'Gagal memuat direktori.'; return; }
   _cohortState.directoryRows = data || [];
   if (!_cohortState.directoryRows.length) { el.innerHTML = '<span class="cohort-muted">Belum ada siswa.</span>'; return; }
-  el.innerHTML = `<table style="width:100%;font-size:.72rem;border-collapse:collapse;"><thead><tr style="text-align:left;color:#9CA3AF;"><th>Nama</th><th>Status</th><th>Skor</th><th>Event</th><th>Last event</th><th></th></tr></thead><tbody>` +
-    _cohortState.directoryRows.map(r => `<tr style="border-top:1px solid #F3F4F6;">
-      <td style="padding:8px 4px;">${_cohortEsc(r.display_name)}<br><span class="cohort-muted">${_cohortEsc(r.email || '')}</span></td>
-      <td><span style="font-weight:800;color:${r.status === 'active' ? '#1A7A46' : '#B45309'};">${_cohortEsc(r.status || 'active')}</span></td>
-      <td>${Number(r.engagement_score || 0).toFixed(1)}</td>
-      <td>${r.event_count}</td>
-      <td class="cohort-muted">${r.last_event_at ? _cohortEsc(r.last_event_at.slice(0, 16).replace('T', ' ')) : '—'}</td>
-      <td style="white-space:nowrap;">
-        <button type="button" class="cohort-btn secondary" style="padding:4px 8px;font-size:.62rem;" onclick="cohortOpenStudentDrawer('${r.user_id}')">Detail</button>
-        ${r.status === 'active'
-          ? `<button type="button" class="cohort-btn secondary" style="padding:4px 8px;font-size:.62rem;" onclick="cohortLeaderSetStudentStatus('${r.user_id}','paused')">Pause</button>`
-          : `<button type="button" class="cohort-btn secondary" style="padding:4px 8px;font-size:.62rem;" onclick="cohortLeaderSetStudentStatus('${r.user_id}','active')">Aktifkan</button>`}
-      </td>
-    </tr>`).join('') + '</tbody></table>';
+  const scoreClr = s => s >= 70 ? '#10B981' : s >= 40 ? '#F59E0B' : '#9CA3AF';
+  el.innerHTML =
+    `<div style="font-size:.65rem;color:#9CA3AF;font-weight:700;display:grid;grid-template-columns:1fr 110px 60px 90px;gap:4px;padding:6px 12px;border-bottom:2px solid #E5E7EB;">
+      <span>Siswa</span><span style="text-align:center;">Aktif terakhir</span><span style="text-align:center;">Skor</span><span></span>
+    </div>` +
+    _cohortState.directoryRows.map(r => {
+      const lastActive = _cohortRelTime(r.last_event_at || r.last_seen_at);
+      const score = Number(r.engagement_score || 0);
+      const isActive = r.status !== 'paused';
+      return `<div onclick="cohortOpenStudentDrawer('${r.user_id}')" style="display:grid;grid-template-columns:1fr 110px 60px 90px;gap:4px;align-items:center;padding:10px 12px;border-bottom:1px solid #F3F4F6;cursor:pointer;transition:background .12s;" onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+        <div>
+          <div style="font-size:.78rem;font-weight:700;color:#1A1F3C;">${_cohortEsc(r.display_name || r.email || '—')}</div>
+          <div style="font-size:.65rem;color:#9CA3AF;">${_cohortEsc(r.email || '')}</div>
+        </div>
+        <div style="text-align:center;font-size:.7rem;color:${isActive ? '#374151' : '#9CA3AF'};">${lastActive}</div>
+        <div style="text-align:center;">
+          <span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:.68rem;font-weight:800;background:${scoreClr(score)}1a;color:${scoreClr(score)};">${score.toFixed(0)}</span>
+        </div>
+        <div style="text-align:right;white-space:nowrap;" onclick="event.stopPropagation()">
+          ${isActive
+            ? `<button type="button" class="cohort-btn secondary" style="padding:3px 8px;font-size:.6rem;" onclick="cohortLeaderSetStudentStatus('${r.user_id}','paused')">Pause</button>`
+            : `<button type="button" class="cohort-btn secondary" style="padding:3px 8px;font-size:.6rem;" onclick="cohortLeaderSetStudentStatus('${r.user_id}','active')">Aktifkan</button>`}
+        </div>
+      </div>`;
+    }).join('');
 }
 
 async function cohortRenderModFeed(cohortId) {
@@ -12321,6 +12470,125 @@ async function cohortMentorPostAnnouncement() {
     document.getElementById('cohort-ann-body').value = '';
     await cohortInit();
   }
+}
+
+// ── Announcement modal (leader quick action) ───────────────────────────────
+function annModal() {
+  const el = document.getElementById('ann-modal-overlay');
+  if (!el) return;
+  el.style.display = 'flex';
+  document.getElementById('ann-modal-title').value = '';
+  document.getElementById('ann-modal-body').value = '';
+  document.getElementById('ann-modal-type').value = 'update';
+  annSetType('update');
+  const st = document.getElementById('ann-modal-status');
+  if (st) { st.style.display = 'none'; st.textContent = ''; }
+}
+function annModalClose() {
+  const el = document.getElementById('ann-modal-overlay');
+  if (el) el.style.display = 'none';
+}
+function annSetType(type) {
+  document.getElementById('ann-modal-type').value = type;
+  ['update','challenge','psa'].forEach(t => {
+    const btn = document.getElementById('ann-type-' + t);
+    if (!btn) return;
+    const active = t === type;
+    btn.style.background = active ? '#E8442A' : '#fff';
+    btn.style.color = active ? '#fff' : '#374151';
+    btn.style.borderColor = active ? '#E8442A' : '#E5E7EB';
+  });
+}
+async function annModalSubmit() {
+  const c = _cohortState.primaryMentorCohort;
+  if (!c || !_supabase || !currentUser) { return; }
+  const type  = document.getElementById('ann-modal-type').value || 'update';
+  const title = (document.getElementById('ann-modal-title').value || '').trim();
+  const body  = (document.getElementById('ann-modal-body').value || '').trim();
+  const st    = document.getElementById('ann-modal-status');
+  if (!title || !body) {
+    if (st) { st.textContent = 'Judul dan pesan tidak boleh kosong.'; st.style.display = 'block'; st.style.color = '#E8442A'; }
+    return;
+  }
+  const btn = document.getElementById('ann-modal-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Mengirim...'; }
+  const typeTag = type === 'update' ? '[UPDATE]' : type === 'challenge' ? '[CHALLENGE]' : '[PSA]';
+  const { error } = await _supabase.from('cohort_announcements').insert({
+    cohort_id: c.id,
+    author_id: currentUser.id,
+    title: title,
+    body: `${typeTag} ${body}`,
+  });
+  if (btn) { btn.disabled = false; btn.textContent = 'Kirim Pengumuman'; }
+  if (error) {
+    if (st) { st.textContent = error.message || 'Gagal mengirim.'; st.style.display = 'block'; st.style.color = '#E8442A'; }
+    return;
+  }
+  if (st) { st.textContent = 'Pengumuman terkirim!'; st.style.display = 'block'; st.style.color = '#1A7A46'; }
+  setTimeout(annModalClose, 1200);
+  void cohortInit().catch(() => {});
+}
+
+// ── Tambah Siswa modal (leader quick action) ───────────────────────────────
+function addSiswaModal() {
+  const el = document.getElementById('add-siswa-modal-overlay');
+  if (!el) return;
+  el.style.display = 'flex';
+  const inp = document.getElementById('add-siswa-modal-email');
+  if (inp) inp.value = '';
+  const bulk = document.getElementById('add-siswa-bulk-input');
+  if (bulk) bulk.value = '';
+  const st = document.getElementById('add-siswa-modal-status');
+  if (st) st.textContent = '';
+  addSiswaTab('single');
+}
+function addSiswaModalClose() {
+  const el = document.getElementById('add-siswa-modal-overlay');
+  if (el) el.style.display = 'none';
+}
+function addSiswaTab(tab) {
+  const single = document.getElementById('add-siswa-single-panel');
+  const bulk   = document.getElementById('add-siswa-bulk-panel');
+  const btnS   = document.getElementById('add-siswa-tab-single');
+  const btnB   = document.getElementById('add-siswa-tab-bulk');
+  if (single) single.style.display = tab === 'single' ? '' : 'none';
+  if (bulk)   bulk.style.display   = tab === 'bulk'   ? '' : 'none';
+  if (btnS) { btnS.style.background = tab === 'single' ? '#1A1F3C' : '#fff'; btnS.style.color = tab === 'single' ? '#fff' : '#374151'; }
+  if (btnB) { btnB.style.background = tab === 'bulk'   ? '#1A1F3C' : '#fff'; btnB.style.color = tab === 'bulk'   ? '#fff' : '#374151'; }
+}
+async function addSiswaModalSubmit() {
+  const c = _cohortState.primaryMentorCohort;
+  const inp = document.getElementById('add-siswa-modal-email');
+  const st  = document.getElementById('add-siswa-modal-status');
+  const btn = document.getElementById('add-siswa-submit-btn');
+  const email = (inp?.value || '').trim();
+  if (!c || !email) { if (st) st.textContent = 'Masukkan email siswa.'; return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Menambahkan...'; }
+  if (st) st.textContent = '';
+  const { error } = await _supabase.rpc('cohort_leader_add_student_by_email', { p_cohort: c.id, p_email: email });
+  if (btn) { btn.disabled = false; btn.textContent = 'Tambahkan Siswa'; }
+  if (error) { if (st) { st.textContent = error.message || 'Gagal menambahkan siswa.'; st.style.color = '#E8442A'; } return; }
+  if (inp) inp.value = '';
+  if (st) { st.textContent = `Siswa ${email} berhasil ditambahkan.`; st.style.color = '#1A7A46'; }
+  void cohortRenderMentorPanels().catch(() => {});
+}
+async function addSiswaBulk() {
+  const c = _cohortState.primaryMentorCohort;
+  const ta  = document.getElementById('add-siswa-bulk-input');
+  const st  = document.getElementById('add-siswa-modal-status');
+  const btn = document.getElementById('add-siswa-bulk-btn');
+  const emails = (ta?.value || '').split('\n').map(e => e.trim()).filter(e => e.includes('@'));
+  if (!c || !emails.length) { if (st) st.textContent = 'Masukkan setidaknya satu email yang valid.'; return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
+  if (st) st.textContent = `Menambahkan ${emails.length} siswa...`;
+  const results = [];
+  for (const email of emails) {
+    const { error } = await _supabase.rpc('cohort_leader_add_student_by_email', { p_cohort: c.id, p_email: email });
+    results.push(error ? `${email} — GAGAL: ${error.message}` : `${email} — OK`);
+  }
+  if (btn) { btn.disabled = false; btn.textContent = 'Tambah Semua'; }
+  if (st) { st.textContent = results.join('\n'); st.style.color = '#374151'; }
+  void cohortRenderMentorPanels().catch(() => {});
 }
 
 async function cohortMentorAddMilestone() {
@@ -13467,19 +13735,15 @@ function ddUpdateRingkasanFromKw(rows, totalSold, listing) {
     if (rangeNote) rangeNote.textContent = `Rentang harga dari ${prices.length} listing di keyword ini`;
   }
 
-  // Price distribution — bucket real prices into 5 bands
-  const bands  = ['< 50k','50k–100k','100k–200k','200k–500k','> 500k'];
-  const counts = [0, 0, 0, 0, 0];
-  prices.forEach(p => {
-    if      (p <  50000) counts[0]++;
-    else if (p < 100000) counts[1]++;
-    else if (p < 200000) counts[2]++;
-    else if (p < 500000) counts[3]++;
-    else                 counts[4]++;
-  });
+  // Price distribution — scatter plot of sellers with >0.5% of total sales
+  // X = price (Rp), Y = sales share (%)
+  const scatterPoints = (sigSellers || []).map(r => ({
+    x: r.price || 0,
+    y: totalSold > 0 ? +((r.total_sold || 0) / totalSold * 100).toFixed(2) : 0,
+    label: r.store_name || r.product_name || '',
+  }));
   if (_ddChartDist) {
-    _ddChartDist.data.labels = bands;
-    _ddChartDist.data.datasets[0].data = counts;
+    _ddChartDist.data.datasets[0].data = scatterPoints;
     _ddChartDist.update();
   }
 
@@ -14820,9 +15084,12 @@ function dscTerapkanFilter() {
   // Force a fresh server re-fetch regardless of current load state
   _dscAllListings = [];
   _dscOffset = 0;
+  _dscPage = 1;              // reset to page 1 so results appear immediately
   _dscHasMore = true;
+  _dscLoading = false;       // release any stale in-flight guard so new fetch can proceed
   _dscLoaded = true;         // allow dscApplyFilters to proceed past the guard
   _dscLastSrvFilters = '';   // non-null sentinel so key comparison always triggers re-fetch
+  try { sessionStorage.removeItem(DSC_CACHE_KEY); } catch (_) {}  // bust stale cache
   dscApplyFilters();
   dscCloseFilter(); // close drawer on mobile after applying
 }
@@ -15084,9 +15351,27 @@ function ddRender(p) {
   // price distribution bar — empty placeholder; filled by ddUpdateRingkasanFromKw with real peer prices
   if (_ddChartDist) _ddChartDist.destroy();
   _ddChartDist = new Chart(document.getElementById('dd-chart-dist'), {
-    type: 'bar',
-    data: { labels: ['< 50k','50k–100k','100k–200k','200k–500k','500k+'], datasets: [{ data:[0,0,0,0,0], backgroundColor:'#93C5FD', borderRadius:4, borderSkipped:false }] },
-    options: { plugins:{legend:{display:false}}, scales:{x:{ticks:{font:{size:9}}},y:{ticks:{font:{size:9}}}}, animation:{duration:400} }
+    type: 'scatter',
+    data: { datasets: [{ data: [], backgroundColor: 'rgba(232,68,42,.65)', pointRadius: 5, pointHoverRadius: 7 }] },
+    options: {
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const d = ctx.raw;
+              const fmtRp = v => 'Rp ' + Math.round(v).toLocaleString('id-ID');
+              return [`${d.label || 'Penjual'}`, `Harga: ${fmtRp(d.x)}`, `Pangsa: ${d.y}%`];
+            }
+          }
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Harga (Rp)', font: { size: 9 } }, ticks: { font: { size: 8 }, callback: v => v >= 1000000 ? (v/1000000).toFixed(1)+'jt' : (v/1000).toFixed(0)+'k' } },
+        y: { title: { display: true, text: '% penjualan', font: { size: 9 } }, ticks: { font: { size: 8 } } }
+      },
+      animation: { duration: 300 }
+    }
   });
 
   // donut chart — usia toko
@@ -21018,15 +21303,28 @@ async function myTokoConnect() {
   btn.disabled = true;
   btn.textContent = 'Mencari...';
   try {
-    const { data, error } = await _supabase.rpc('find_shop_by_name', { p_store_name: name });
-    if (error || !data?.length) {
-      _mytErr('Toko tidak ditemukan di database kami. Coba variasi nama lain, atau pastikan toko sudah aktif di Shopee.');
+    // Query listings directly — exact match first, then case-insensitive, limit to 1 to avoid timeout
+    const { data: exactData } = await _supabase
+      .from('listings')
+      .select('store_name,shop_id')
+      .eq('store_name', name)
+      .limit(1);
+    let match = exactData?.[0] || null;
+    if (!match) {
+      const { data: ilikeData } = await _supabase
+        .from('listings')
+        .select('store_name,shop_id')
+        .ilike('store_name', name)
+        .limit(1);
+      match = ilikeData?.[0] || null;
+    }
+    if (!match) {
+      _mytErr('Toko tidak ditemukan dalam database LarisID. Pastikan nama toko sama persis seperti di Shopee (contoh: "TokoBaju123").');
       btn.disabled = false; btn.textContent = 'Hubungkan'; return;
     }
-    const match = data[0];
     _mytShopId    = match.shop_id;
     _mytStoreName = match.store_name;
-    // Persist to Supabase
+    // Persist connection to Supabase
     await _supabase.from('user_store_profiles').upsert({
       user_id: currentUser.id,
       shopee_store_name: match.store_name,
@@ -21418,6 +21716,26 @@ function _hbdApplySidebarLeaderMode(isLeader) {
     tag.style.cssText = 'font-size:.52rem;background:rgba(255,255,255,.14);border-radius:4px;padding:1px 6px;margin-left:auto;color:rgba(255,255,255,.45);white-space:nowrap;';
     tag.textContent = 'Alat Siswa';
     researchEl.appendChild(tag);
+  }
+}
+
+function _hbdRevertSidebarLeaderMode() {
+  // Undo _hbdApplySidebarLeaderMode: restore cohort nav to its original position (before credits)
+  const nav        = document.querySelector('.dash-sidebar-nav');
+  const cohortItem = document.getElementById('dash-nav-cohort');
+  const creditItem = document.getElementById('dash-nav-credits');
+  if (nav && cohortItem && creditItem) {
+    // Re-insert cohort nav before credits (original student position)
+    nav.insertBefore(cohortItem, creditItem);
+  }
+  // Remove "Alat Siswa" tag from research tools
+  const researchEl = document.getElementById('dash-nav-research-tools');
+  if (researchEl && researchEl.dataset.leaderTagged) {
+    delete researchEl.dataset.leaderTagged;
+    const tag = researchEl.querySelector('span[style*="Alat Siswa"], span');
+    // Remove the last span if it's the tag we added (has specific style)
+    const spans = researchEl.querySelectorAll('span');
+    spans.forEach(sp => { if (sp.textContent.trim() === 'Alat Siswa') sp.remove(); });
   }
 }
 
