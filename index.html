@@ -4568,7 +4568,7 @@ html,body{overflow-x:hidden;max-width:100%;}
           <div class="dash-topbar-menu" id="dash-topbar-menu">
             <div class="dash-topbar-menu-item" id="dash-topbar-uname" style="font-weight:700;color:#111;pointer-events:none;font-size:.8rem;"></div>
             <div class="dash-topbar-divider"></div>
-            <div class="dash-topbar-menu-item" onclick="document.getElementById('about-modal').style.display='flex';document.getElementById('dash-topbar-menu').classList.remove('open')">
+            <div class="dash-topbar-menu-item" onclick="switchDashView('about');document.getElementById('dash-topbar-menu').classList.remove('open')">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               Tentang LarisID
             </div>
@@ -7209,6 +7209,89 @@ html,body{overflow-x:hidden;max-width:100%;}
             </div><!-- /myt-dashboard-state -->
           </div><!-- /myt-wrap -->
         </div><!-- /dash-view-mytoko -->
+
+        <!-- ── ABOUT PAGE ── -->
+        <div id="dash-view-about" style="display:none;min-height:100%;background:#F9FAFB;">
+          <div style="max-width:900px;margin:0 auto;padding:40px 28px 80px;">
+
+            <!-- Profile card row -->
+            <div style="display:flex;gap:36px;align-items:flex-start;flex-wrap:wrap;margin-bottom:40px;">
+
+              <!-- Left: photo + name + socials -->
+              <div style="flex-shrink:0;text-align:center;width:200px;">
+                <div style="width:180px;height:180px;border-radius:16px;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,.18);margin-bottom:14px;">
+                  <img src="images/steven-wilson.jpg" alt="Steven Wilson" style="width:100%;height:100%;object-fit:cover;object-position:center top;">
+                </div>
+                <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:900;font-size:1.15rem;color:#1A1F3C;margin-bottom:2px;">Steven Wilson</div>
+                <div style="font-size:.78rem;color:#6B7280;margin-bottom:4px;">Bandung, Indonesia</div>
+                <div style="font-size:.72rem;color:#9CA3AF;margin-bottom:14px;">Pindah ke Bandung 2023</div>
+                <!-- Social icons — colored -->
+                <div style="display:flex;gap:8px;justify-content:center;">
+                  <a href="https://instagram.com/bule_barat1" target="_blank" rel="noopener" title="Instagram" style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#f58529,#dd2a7b,#8134af);display:flex;align-items:center;justify-content:center;text-decoration:none;transition:opacity .15s;" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                  </a>
+                  <a href="https://tiktok.com/@bule_barat" target="_blank" rel="noopener" title="TikTok" style="width:36px;height:36px;border-radius:10px;background:#010101;display:flex;align-items:center;justify-content:center;text-decoration:none;transition:opacity .15s;" onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="#fff" stroke="none"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.19 8.19 0 0 0 4.79 1.53V6.78a4.85 4.85 0 0 1-1.02-.09z"/></svg>
+                  </a>
+                  <a href="https://youtube.com/@bule_barat" target="_blank" rel="noopener" title="YouTube" style="width:36px;height:36px;border-radius:10px;background:#FF0000;display:flex;align-items:center;justify-content:center;text-decoration:none;transition:opacity .15s;" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="#fff" stroke="none"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
+                  </a>
+                </div>
+              </div>
+
+              <!-- Right: bio + story -->
+              <div style="flex:1;min-width:220px;">
+                <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:900;font-size:1.55rem;color:#1A1F3C;line-height:1.2;margin-bottom:10px;">Tentang LarisID</div>
+                <div style="font-size:.9rem;color:#374151;line-height:1.75;margin-bottom:14px;">
+                  Saya pindah ke Bandung tahun 2023 dan langsung jatuh cinta dengan semangat wirausaha di sini. Tapi saya sadar satu hal — banyak penjual Shopee yang kesulitan membaca data dan menentukan produk mana yang benar-benar akan laku.
+                </div>
+                <div style="font-size:.9rem;color:#374151;line-height:1.75;margin-bottom:14px;">
+                  LarisID lahir dari masalah itu. Platform ini dirancang untuk membuat riset produk jadi mudah, cepat, dan terjangkau — sehingga siapa pun, dari penjual baru hingga yang sudah berpengalaman, bisa mengambil keputusan berbasis data.
+                </div>
+                <!-- Three pillars -->
+                <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+                  <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#fff;border-radius:10px;border:1px solid #E5E7EB;">
+                    <div style="width:32px;height:32px;border-radius:8px;background:#FFF1EE;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    </div>
+                    <div>
+                      <div style="font-size:.8rem;font-weight:700;color:#111;">Membaca Data Jadi Mudah</div>
+                      <div style="font-size:.73rem;color:#6B7280;line-height:1.5;">Grafik, skor, dan tren — semua dalam satu tampilan yang bisa langsung dipahami.</div>
+                    </div>
+                  </div>
+                  <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#fff;border-radius:10px;border:1px solid #E5E7EB;">
+                    <div style="width:32px;height:32px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    </div>
+                    <div>
+                      <div style="font-size:.8rem;font-weight:700;color:#111;">Temukan Produk yang Laku</div>
+                      <div style="font-size:.73rem;color:#6B7280;line-height:1.5;">Database ribuan produk aktif diperbarui setiap minggu dari data nyata Shopee.</div>
+                    </div>
+                  </div>
+                  <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#fff;border-radius:10px;border:1px solid #E5E7EB;">
+                    <div style="width:32px;height:32px;border-radius:8px;background:#F0FDF4;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </div>
+                    <div>
+                      <div style="font-size:.8rem;font-weight:700;color:#111;">Harga Terjangkau untuk Semua</div>
+                      <div style="font-size:.73rem;color:#6B7280;line-height:1.5;">5 kredit gratis tiap bulan. Fitur penuh mulai Rp 1.000/kredit, tanpa langganan.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div><!-- /profile row -->
+
+            <!-- Back button -->
+            <div style="text-align:center;">
+              <button onclick="history.back();switchDashView('dashboard')" style="background:#1A1F3C;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;">
+                Kembali ke Dashboard
+              </button>
+            </div>
+
+          </div>
+        </div><!-- /dash-view-about -->
+
 
         <div id="dash-view-alerts" style="display:none;">
           <div class="alr-wrap">
@@ -10838,7 +10921,7 @@ function switchDashTab(tab) {
 //  JUNGLE SCOUT-STYLE DASHBOARD — view switching, Product DB
 // ════════════════════════════════════════════════════════════
 
-const PDB_VIEWS = ['home','product-database','product-tracker','opportunity-finder','category-trends','suppliers','keywords','estimator','marketing','saved','education','dashboard','discover','tracker','deepdive','ai','alerts','credits','cohort','admin','mytoko'];
+const PDB_VIEWS = ['home','product-database','product-tracker','opportunity-finder','category-trends','suppliers','keywords','estimator','marketing','saved','education','dashboard','discover','tracker','deepdive','ai','alerts','credits','cohort','admin','mytoko','about'];
 const PDB_SUB_MAP = {'product-database':'research','product-tracker':'research','opportunity-finder':'research','category-trends':'research'};
 
 // View titles for topbar
@@ -10847,7 +10930,7 @@ const VIEW_TITLES = {
   'deepdive':'Deep Dive','ai':'Mulai Berjualan','alerts':'Alerts','credits':'Kredit Saya','cohort':'Kohort',
   'home':'Home Dashboard','product-database':'Product Database',
   'product-tracker':'Product Tracker','opportunity-finder':'Opportunity Finder',
-  'saved':'Produk Tersimpan','education':'Edukasi','mytoko':'My Toko',
+  'saved':'Produk Tersimpan','education':'Edukasi','mytoko':'My Toko','about':'Tentang',
 };
 
 /** Tracks which dashboard pane is visible (used after auth/session sync). */
@@ -22263,79 +22346,6 @@ document.addEventListener('DOMContentLoaded', function(){
   </div>
 </div>
 
-<!-- ── ABOUT MODAL ── -->
-<div id="about-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:800;align-items:center;justify-content:center;padding:16px;" onclick="if(event.target===this)this.style.display='none'">
-  <div style="background:#fff;border-radius:16px;max-width:560px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.25);position:relative;">
-    <!-- Close -->
-    <button onclick="document.getElementById('about-modal').style.display='none'" style="position:absolute;top:12px;right:14px;background:rgba(255,255,255,.25);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-    <!-- Hero -->
-    <div class="about-hero" style="padding:36px 24px 32px;border-radius:16px 16px 0 0;">
-      <div class="about-hero-inner">
-        <!-- Photo placeholder -->
-        <div style="width:88px;height:88px;border-radius:50%;background:rgba(255,255,255,.2);border:3px solid rgba(255,255,255,.5);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;overflow:hidden;">
-          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        </div>
-        <div class="about-hero-badge">LarisID</div>
-        <div class="about-hero-title" style="font-size:1.6rem;">Bule Barat</div>
-        <div class="about-hero-sub">Riset produk Shopee jadi mudah, cepat, dan terjangkau untuk semua penjual Indonesia.</div>
-      </div>
-    </div>
-    <!-- Content -->
-    <div style="padding:20px 24px 28px;">
-      <!-- Value props -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
-        <div style="background:#F9FAFB;border-radius:10px;padding:14px 12px;border:1px solid #E5E7EB;">
-          <div style="margin-bottom:6px;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          </div>
-          <div style="font-size:.8rem;font-weight:700;color:#111;margin-bottom:2px;">Baca Data dengan Mudah</div>
-          <div style="font-size:.72rem;color:#6B7280;line-height:1.5;">Grafik penjualan, tren pasar, dan skor produk — semua dalam satu tampilan.</div>
-        </div>
-        <div style="background:#F9FAFB;border-radius:10px;padding:14px 12px;border:1px solid #E5E7EB;">
-          <div style="margin-bottom:6px;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          </div>
-          <div style="font-size:.8rem;font-weight:700;color:#111;margin-bottom:2px;">Temukan Produk yang Laku</div>
-          <div style="font-size:.72rem;color:#6B7280;line-height:1.5;">Database 5.000+ produk aktif diperbarui setiap minggu dari pencarian nyata.</div>
-        </div>
-        <div style="background:#F9FAFB;border-radius:10px;padding:14px 12px;border:1px solid #E5E7EB;">
-          <div style="margin-bottom:6px;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-          </div>
-          <div style="font-size:.8rem;font-weight:700;color:#111;margin-bottom:2px;">Harga Terjangkau</div>
-          <div style="font-size:.72rem;color:#6B7280;line-height:1.5;">5 kredit gratis tiap bulan. Fitur penuh mulai Rp 1.000/kredit — tidak ada langganan.</div>
-        </div>
-        <div style="background:#F9FAFB;border-radius:10px;padding:14px 12px;border:1px solid #E5E7EB;">
-          <div style="margin-bottom:6px;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          </div>
-          <div style="font-size:.8rem;font-weight:700;color:#111;margin-bottom:2px;">Komunitas Kohort</div>
-          <div style="font-size:.72rem;color:#6B7280;line-height:1.5;">Belajar bareng, pantau progress, dan tumbuh bersama dalam kelompok yang terstruktur.</div>
-        </div>
-      </div>
-      <!-- Social links -->
-      <div style="border-top:1px solid #E5E7EB;padding-top:16px;">
-        <div style="font-size:.72rem;font-weight:700;color:#9CA3AF;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px;">Ikuti Saya</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <a href="https://instagram.com/bule_barat1" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:7px;padding:7px 14px;border:1.5px solid #E5E7EB;border-radius:8px;text-decoration:none;color:#374151;font-size:.75rem;font-weight:600;transition:border-color .15s;" onmouseover="this.style.borderColor='#E8442A'" onmouseout="this.style.borderColor='#E5E7EB'">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
-            @bule_barat1
-          </a>
-          <a href="https://tiktok.com/@bule_barat" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:7px;padding:7px 14px;border:1.5px solid #E5E7EB;border-radius:8px;text-decoration:none;color:#374151;font-size:.75rem;font-weight:600;transition:border-color .15s;" onmouseover="this.style.borderColor='#E8442A'" onmouseout="this.style.borderColor='#E5E7EB'">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg>
-            @bule_barat
-          </a>
-          <a href="https://youtube.com/@bule_barat" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:7px;padding:7px 14px;border:1.5px solid #E5E7EB;border-radius:8px;text-decoration:none;color:#374151;font-size:.75rem;font-weight:600;transition:border-color .15s;" onmouseover="this.style.borderColor='#E8442A'" onmouseout="this.style.borderColor='#E5E7EB'">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-1.96C18.88 4 12 4 12 4s-6.88 0-8.6.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 1.94C5.12 20 12 20 12 20s6.88 0 8.6-.48a2.78 2.78 0 0 0 1.94-1.94A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"/></svg>
-            @bule_barat
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 
 </body>
 </html>
