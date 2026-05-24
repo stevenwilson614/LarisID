@@ -4568,6 +4568,10 @@ html,body{overflow-x:hidden;max-width:100%;}
           <div class="dash-topbar-menu" id="dash-topbar-menu">
             <div class="dash-topbar-menu-item" id="dash-topbar-uname" style="font-weight:700;color:#111;pointer-events:none;font-size:.8rem;"></div>
             <div class="dash-topbar-divider"></div>
+            <div class="dash-topbar-menu-item" onclick="document.getElementById('about-modal').style.display='flex';document.getElementById('dash-topbar-menu').classList.remove('open')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Tentang LarisID
+            </div>
             <div class="dash-topbar-menu-item" onclick="openExtensionLink()">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
               Hubungkan Extension
@@ -7395,17 +7399,6 @@ html,body{overflow-x:hidden;max-width:100%;}
 
         <!-- COHORT COMMUNITY -->
         <div id="dash-view-cohort" style="display:none;">
-          <div id="cohort-shell-bar" class="cohort-shell-bar">
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:1;min-width:0;">
-              <span style="font-size:.78rem;font-weight:700;">Admin — preview tampilan</span>
-              <select id="cohort-admin-cohort-picker" class="cohort-input" style="display:none;max-width:220px;margin:0;padding:6px 10px;font-size:.72rem;min-height:0;" title="Pilih kohort untuk pratinjau leader" onchange="cohortAdminSetPreviewCohort(this.value)"></select>
-            </div>
-            <div class="cohort-shell-btns">
-              <button type="button" class="cohort-shell-btn" id="cohort-shell-student" onclick="cohortSetPreviewShell('student')">Student</button>
-              <button type="button" class="cohort-shell-btn" id="cohort-shell-leader" onclick="cohortSetPreviewShell('leader')">Leader</button>
-              <button type="button" class="cohort-shell-btn" id="cohort-shell-individual" onclick="cohortSetPreviewShell('individual')">Individual</button>
-            </div>
-          </div>
           <div id="cohort-status" class="cohort-muted" style="margin-bottom:14px;"></div>
           <div id="cohort-student-wrap">
             <div id="cohort-student-subtabs" class="cohort-subtabs" style="display:none;">
@@ -7748,6 +7741,30 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
               <div id="adm-feedback-list">
                 <div style="text-align:center;padding:24px;color:#9CA3AF;font-size:.78rem;">Klik Refresh untuk memuat masukan pengguna.</div>
+              </div>
+            </div>
+
+            <!-- Broadcast Email -->
+            <div class="adm-card" style="margin-bottom:20px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+                <div>
+                  <div class="adm-section-title" style="margin-bottom:2px;">Broadcast Email</div>
+                  <div style="font-size:.7rem;color:#6B7280;">Kirim email ke segmen pengguna LarisID.</div>
+                </div>
+                <div id="adm-bc-count" style="font-size:.7rem;color:#6B7280;"></div>
+              </div>
+              <!-- Segment selector -->
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+                <button type="button" class="cohort-shell-btn active" id="adm-bc-seg-all"           onclick="admBcSetSeg('all')">Semua</button>
+                <button type="button" class="cohort-shell-btn"        id="adm-bc-seg-leaders"       onclick="admBcSetSeg('leaders')">Leader</button>
+                <button type="button" class="cohort-shell-btn"        id="adm-bc-seg-students"      onclick="admBcSetSeg('students')">Student</button>
+                <button type="button" class="cohort-shell-btn"        id="adm-bc-seg-independents"  onclick="admBcSetSeg('independents')">Independent</button>
+              </div>
+              <input  id="adm-bc-subject" type="text"     placeholder="Subjek email…"  style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.8rem;margin-bottom:8px;font-family:inherit;">
+              <textarea id="adm-bc-body" rows="5" placeholder="Isi pesan (plain text)…" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.8rem;resize:vertical;font-family:inherit;margin-bottom:10px;"></textarea>
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <button type="button" class="cohort-btn primary" id="adm-bc-send-btn" style="padding:8px 18px;font-size:.75rem;" onclick="admBcSend()">Kirim Email</button>
+                <div id="adm-bc-status" style="font-size:.72rem;color:#6B7280;"></div>
               </div>
             </div>
 
@@ -11612,23 +11629,15 @@ let _cohortState = {
 };
 
 function cohortApplyShellUI() {
-  const bar = document.getElementById('cohort-shell-bar');
   const stu = document.getElementById('cohort-student-wrap');
   const men = document.getElementById('cohort-mentor-wrap');
-  const bSt = document.getElementById('cohort-shell-student');
-  const bLe = document.getElementById('cohort-shell-leader');
-  const bIn = document.getElementById('cohort-shell-individual');
-  if (!bar || !stu || !men) return;
+  if (!stu || !men) return;
   const admin = isCohortPlatformAdmin();
-  bar.style.display = admin ? 'flex' : 'none';
   const sh = cohortGetPreviewShell();
-  if (bSt) bSt.classList.toggle('active', sh === 'student');
-  if (bLe) bLe.classList.toggle('active', sh === 'leader');
-  if (bIn) bIn.classList.toggle('active', sh === 'individual');
   if (admin) {
     stu.style.display = sh === 'student' ? '' : 'none';
     men.style.display = sh === 'leader' ? '' : 'none';
-    // Individual: no cohort content, plain tool interface
+    // Individual: no cohort content for admin preview
     const cohortNav = document.getElementById('dash-nav-cohort');
     const cohortStrip = document.getElementById('cohort-app-strip');
     if (sh === 'individual') {
@@ -15813,6 +15822,18 @@ async function ddLoadTrendHistory(listing) {
       ];
       _ddChartTrend.update();
       _noDataMsg('Baru 1 sesi scrape tersedia — nilai menunjukkan total kumulatif. Prediksi berdasarkan rata-rata pasar.');
+      // Last-scraped date for snapshot path
+      document.getElementById('dd-trend-lastupdated')?.remove();
+      const _snapLastScrape = dbRows.length ? dbRows[dbRows.length - 1].scraped_at : null;
+      if (_snapLastScrape) {
+        const _sld = new Date(_snapLastScrape);
+        const _sll = `${_sld.getDate()} ${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][_sld.getMonth()]} ${_sld.getFullYear()}`;
+        const _slEl = document.createElement('div');
+        _slEl.id = 'dd-trend-lastupdated';
+        _slEl.style.cssText = 'font-size:.64rem;color:#9CA3AF;margin-top:4px;text-align:right;';
+        _slEl.textContent = `Data terakhir: ${_sll}`;
+        document.getElementById('dd-chart-trend')?.parentElement?.appendChild(_slEl);
+      }
       return;
     }
 
@@ -15913,6 +15934,19 @@ async function ddLoadTrendHistory(listing) {
       { label:'Forecast Unit',  data:fUnitW,  borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
     ];
     _ddChartTrend.update();
+
+    // Show last-scraped date so users can judge data freshness
+    document.getElementById('dd-trend-lastupdated')?.remove();
+    const _lastScrape = dbRows.length ? dbRows[dbRows.length - 1].scraped_at : null;
+    if (_lastScrape) {
+      const _lsDate = new Date(_lastScrape);
+      const _lsLabel = `${_lsDate.getDate()} ${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][_lsDate.getMonth()]} ${_lsDate.getFullYear()}`;
+      const _lu = document.createElement('div');
+      _lu.id = 'dd-trend-lastupdated';
+      _lu.style.cssText = 'font-size:.64rem;color:#9CA3AF;margin-top:4px;text-align:right;';
+      _lu.textContent = `Data terakhir: ${_lsLabel}`;
+      document.getElementById('dd-chart-trend')?.parentElement?.appendChild(_lu);
+    }
 
     document.getElementById('dd-trend-peernote')?.remove();
     if (isPeerEstimated) {
@@ -20869,6 +20903,49 @@ async function updateFeedbackStatus(id, status) {
   await _supabase.from('feedback').update({ status }).eq('id', id);
 }
 
+// ── Broadcast Email ───────────────────────────────────────────────────────────
+
+let _admBcSeg = 'all';
+
+function admBcSetSeg(seg) {
+  _admBcSeg = seg;
+  ['all','leaders','students','independents'].forEach(s => {
+    const btn = document.getElementById('adm-bc-seg-' + s);
+    if (btn) btn.classList.toggle('active', s === seg);
+  });
+  document.getElementById('adm-bc-count').textContent = '';
+}
+
+async function admBcSend() {
+  const subject = (document.getElementById('adm-bc-subject')?.value || '').trim();
+  const body    = (document.getElementById('adm-bc-body')?.value || '').trim();
+  const statusEl = document.getElementById('adm-bc-status');
+  const sendBtn  = document.getElementById('adm-bc-send-btn');
+  if (!subject || !body) { if (statusEl) statusEl.textContent = 'Isi subjek dan pesan terlebih dahulu.'; return; }
+  if (!confirm(`Kirim email ke segmen "${_admBcSeg}"?\n\nSubjek: ${subject}`)) return;
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Mengirim…'; }
+  if (statusEl) statusEl.textContent = '';
+  try {
+    const session = (await _supabase?.auth.getSession())?.data?.session;
+    const res = await fetch(`${SUPA_URL}/functions/v1/send-broadcast`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${session?.access_token || ''}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ segment: _admBcSeg, subject, body }),
+    });
+    const json = await res.json();
+    if (res.ok) {
+      if (statusEl) statusEl.textContent = `Terkirim ke ${json.sent} penerima.${json.failed?.length ? ` Gagal: ${json.failed.length}.` : ''}`;
+      document.getElementById('adm-bc-subject').value = '';
+      document.getElementById('adm-bc-body').value = '';
+    } else {
+      if (statusEl) statusEl.textContent = `Error: ${json.error || res.status}`;
+    }
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'Gagal mengirim. Coba lagi.';
+  }
+  if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Kirim Email'; }
+}
+
 // ── Extension Linking ─────────────────────────────────────────────────────────
 
 let _extLinkTimer = null;
@@ -21438,23 +21515,11 @@ async function myTokoConnect() {
   btn.disabled = true;
   btn.textContent = 'Mencari...';
   try {
-    // Query listings directly — exact match first, then case-insensitive, limit to 1 to avoid timeout
-    const { data: exactData } = await _supabase
-      .from('listings')
-      .select('store_name,shop_id')
-      .eq('store_name', name)
-      .limit(1);
-    let match = exactData?.[0] || null;
+    // Use find_shop_by_name RPC — has a server-side timeout and avoids full table scans
+    const { data: rpcData, error: rpcErr } = await _supabase.rpc('find_shop_by_name', { p_store_name: name });
+    let match = rpcData?.[0] || null;
     if (!match) {
-      const { data: ilikeData } = await _supabase
-        .from('listings')
-        .select('store_name,shop_id')
-        .ilike('store_name', name)
-        .limit(1);
-      match = ilikeData?.[0] || null;
-    }
-    if (!match) {
-      _mytErr('Toko tidak ditemukan dalam database LarisID. Pastikan nama toko sama persis seperti di Shopee (contoh: "TokoBaju123").');
+      _mytErr('Toko tidak ditemukan dalam database LarisID. Pastikan nama toko sama persis seperti di Shopee (contoh: "TokoBaju123"). Toko baru muncul setelah kami scrape keyword yang relevan.');
       btn.disabled = false; btn.textContent = 'Hubungkan'; return;
     }
     _mytShopId    = match.shop_id;
@@ -21493,17 +21558,38 @@ async function _mytLoadProfile() {
 
 // ── Main dashboard load ───────────────────────────────────────
 async function _mytLoadDashboard() {
-  const selling = trkLoad().filter(t => _trkSellingSet.has(`${t.item_id}_${t.shop_id}`));
+  let selling = trkLoad().filter(t => _trkSellingSet.has(`${t.item_id}_${t.shop_id}`));
+
+  const loadEl   = document.getElementById('myt-products-loading');
+  const emptyEl  = document.getElementById('myt-products-empty');
+  const listEl   = document.getElementById('myt-products-list');
+
+  // Auto-load from listings by shop_id when no tracker products are marked selling
+  if (!selling.length && _mytShopId && _supabase) {
+    if (loadEl) loadEl.style.display = 'flex';
+    if (emptyEl) emptyEl.style.display = 'none';
+    const { data: tokoRows } = await _supabase.rpc('get_toko_listings', { p_shop_id: Number(_mytShopId) });
+    if (tokoRows && tokoRows.length) {
+      selling = tokoRows.map(r => ({
+        item_id: r.item_id, shop_id: _mytShopId, product_name: r.product_name,
+        price: r.price, total_sold: r.total_sold, rating: r.rating,
+        reviews: r.reviews, image_url: r.image_url, category: r.category,
+        keyword: r.keyword, is_selling: false,
+      }));
+      const infoEl = document.getElementById('myt-products-empty');
+      if (infoEl) {
+        infoEl.style.display = '';
+        infoEl.innerHTML = `<div style="font-size:.75rem;color:#6B7280;padding:8px 0 14px;">Menampilkan ${selling.length} produk dari database toko kamu. <a style="color:#E8442A;cursor:pointer;" onclick="switchDashView('tracker')">Tandai sebagai Dijual di Tracker →</a></div>`;
+      }
+    }
+  }
 
   // Portfolio bar
   _mytRenderPortfolioBar(selling);
 
   // Product position cards
-  const loadEl   = document.getElementById('myt-products-loading');
-  const emptyEl  = document.getElementById('myt-products-empty');
-  const listEl   = document.getElementById('myt-products-list');
   if (loadEl)  loadEl.style.display = selling.length ? 'flex' : 'none';
-  if (emptyEl) emptyEl.style.display = selling.length ? 'none' : '';
+  if (emptyEl && !selling.length) emptyEl.style.display = '';
   if (listEl)  listEl.innerHTML = '';
 
   if (!selling.length) return;
@@ -21745,12 +21831,19 @@ function applyAdminViewMode(mode) {
   const isIndependent = mode === 'independent';
   const isAdmin       = mode === 'admin';
 
+  // Always pre-reset cohort theme vars before anything else — eliminates
+  // the one-frame color flash when switching between roles (Item 5 fix).
+  document.body.classList.remove('cohort-themed');
+  ['--cohort-primary','--cohort-secondary','--cohort-accent','--cohort-sidebar-end','--cohort-surface']
+    .forEach(v => document.documentElement.style.removeProperty(v));
+
   // Admin nav item: only visible in admin mode
   const adminNav = document.getElementById('dash-nav-admin');
   if (adminNav) adminNav.style.display = isAdmin ? '' : 'none';
 
-  // Admin mode → go straight to the admin tab
+  // Admin mode → fully clear cohort chrome and go to admin tab
   if (isAdmin) {
+    if (typeof cohortClearDashboardTheme === 'function') cohortClearDashboardTheme();
     switchDashView('admin');
     return;
   }
@@ -21762,6 +21855,13 @@ function applyAdminViewMode(mode) {
   // Do NOT call hbdInit() here — it re-runs with the real user role
   // and would undo the preview mode via _effectiveLeaderMode()
   _hbdApplyLeaderMode(isLeader);
+
+  // Sync cohort panel view to match the admin preview bar selection (Item 7)
+  if (typeof cohortSetPreviewShell === 'function') {
+    if (isLeader)      cohortSetPreviewShell('leader');
+    else if (isIndependent) cohortSetPreviewShell('individual');
+    else               cohortSetPreviewShell('student');
+  }
 
   // Independent mode: same as student but cohort nav + digest hidden
   if (isIndependent) {
@@ -22160,6 +22260,80 @@ document.addEventListener('DOMContentLoaded', function(){
     <button class="mbn-sheet-item" onclick="switchDashView('estimator');mbnCloseMore()">
       <span class="mbn-sheet-icon" style="background:#EFF6FF;">🧮</span><span>Estimator</span>
     </button>
+  </div>
+</div>
+
+<!-- ── ABOUT MODAL ── -->
+<div id="about-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:800;align-items:center;justify-content:center;padding:16px;" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#fff;border-radius:16px;max-width:560px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.25);position:relative;">
+    <!-- Close -->
+    <button onclick="document.getElementById('about-modal').style.display='none'" style="position:absolute;top:12px;right:14px;background:rgba(255,255,255,.25);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <!-- Hero -->
+    <div class="about-hero" style="padding:36px 24px 32px;border-radius:16px 16px 0 0;">
+      <div class="about-hero-inner">
+        <!-- Photo placeholder -->
+        <div style="width:88px;height:88px;border-radius:50%;background:rgba(255,255,255,.2);border:3px solid rgba(255,255,255,.5);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="about-hero-badge">LarisID</div>
+        <div class="about-hero-title" style="font-size:1.6rem;">Bule Barat</div>
+        <div class="about-hero-sub">Riset produk Shopee jadi mudah, cepat, dan terjangkau untuk semua penjual Indonesia.</div>
+      </div>
+    </div>
+    <!-- Content -->
+    <div style="padding:20px 24px 28px;">
+      <!-- Value props -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+        <div style="background:#F9FAFB;border-radius:10px;padding:14px 12px;border:1px solid #E5E7EB;">
+          <div style="margin-bottom:6px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <div style="font-size:.8rem;font-weight:700;color:#111;margin-bottom:2px;">Baca Data dengan Mudah</div>
+          <div style="font-size:.72rem;color:#6B7280;line-height:1.5;">Grafik penjualan, tren pasar, dan skor produk — semua dalam satu tampilan.</div>
+        </div>
+        <div style="background:#F9FAFB;border-radius:10px;padding:14px 12px;border:1px solid #E5E7EB;">
+          <div style="margin-bottom:6px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <div style="font-size:.8rem;font-weight:700;color:#111;margin-bottom:2px;">Temukan Produk yang Laku</div>
+          <div style="font-size:.72rem;color:#6B7280;line-height:1.5;">Database 5.000+ produk aktif diperbarui setiap minggu dari pencarian nyata.</div>
+        </div>
+        <div style="background:#F9FAFB;border-radius:10px;padding:14px 12px;border:1px solid #E5E7EB;">
+          <div style="margin-bottom:6px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+          <div style="font-size:.8rem;font-weight:700;color:#111;margin-bottom:2px;">Harga Terjangkau</div>
+          <div style="font-size:.72rem;color:#6B7280;line-height:1.5;">5 kredit gratis tiap bulan. Fitur penuh mulai Rp 1.000/kredit — tidak ada langganan.</div>
+        </div>
+        <div style="background:#F9FAFB;border-radius:10px;padding:14px 12px;border:1px solid #E5E7EB;">
+          <div style="margin-bottom:6px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div style="font-size:.8rem;font-weight:700;color:#111;margin-bottom:2px;">Komunitas Kohort</div>
+          <div style="font-size:.72rem;color:#6B7280;line-height:1.5;">Belajar bareng, pantau progress, dan tumbuh bersama dalam kelompok yang terstruktur.</div>
+        </div>
+      </div>
+      <!-- Social links -->
+      <div style="border-top:1px solid #E5E7EB;padding-top:16px;">
+        <div style="font-size:.72rem;font-weight:700;color:#9CA3AF;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px;">Ikuti Saya</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <a href="https://instagram.com/bule_barat1" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:7px;padding:7px 14px;border:1.5px solid #E5E7EB;border-radius:8px;text-decoration:none;color:#374151;font-size:.75rem;font-weight:600;transition:border-color .15s;" onmouseover="this.style.borderColor='#E8442A'" onmouseout="this.style.borderColor='#E5E7EB'">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+            @bule_barat1
+          </a>
+          <a href="https://tiktok.com/@bule_barat" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:7px;padding:7px 14px;border:1.5px solid #E5E7EB;border-radius:8px;text-decoration:none;color:#374151;font-size:.75rem;font-weight:600;transition:border-color .15s;" onmouseover="this.style.borderColor='#E8442A'" onmouseout="this.style.borderColor='#E5E7EB'">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg>
+            @bule_barat
+          </a>
+          <a href="https://youtube.com/@bule_barat" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:7px;padding:7px 14px;border:1.5px solid #E5E7EB;border-radius:8px;text-decoration:none;color:#374151;font-size:.75rem;font-weight:600;transition:border-color .15s;" onmouseover="this.style.borderColor='#E8442A'" onmouseout="this.style.borderColor='#E5E7EB'">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-1.96C18.88 4 12 4 12 4s-6.88 0-8.6.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 1.94C5.12 20 12 20 12 20s6.88 0 8.6-.48a2.78 2.78 0 0 0 1.94-1.94A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"/></svg>
+            @bule_barat
+          </a>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
