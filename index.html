@@ -4588,9 +4588,10 @@ html,body{overflow-x:hidden;max-width:100%;}
       <div id="admin-preview-bar" role="banner" aria-label="Admin preview mode">
         <span class="apb-label">Preview sebagai</span>
         <div style="display:flex;gap:6px;">
-          <button class="apb-btn active" id="apb-admin"   onclick="setAdminViewMode('admin')">Admin</button>
-          <button class="apb-btn"        id="apb-student" onclick="setAdminViewMode('student')">Student</button>
-          <button class="apb-btn"        id="apb-leader"  onclick="setAdminViewMode('leader')">Leader</button>
+          <button class="apb-btn active" id="apb-admin"       onclick="setAdminViewMode('admin')">Admin</button>
+          <button class="apb-btn"        id="apb-student"     onclick="setAdminViewMode('student')">Student</button>
+          <button class="apb-btn"        id="apb-independent" onclick="setAdminViewMode('independent')">Independent</button>
+          <button class="apb-btn"        id="apb-leader"      onclick="setAdminViewMode('leader')">Leader</button>
         </div>
         <span class="apb-mode-badge" id="apb-mode-badge">Mode: Admin</span>
         <div style="margin-left:auto;font-size:.6rem;color:rgba(255,255,255,.25);">Hanya terlihat oleh admin</div>
@@ -21723,7 +21724,7 @@ function setAdminViewMode(mode) {
 }
 
 function _admSyncButtons(mode) {
-  ['admin','student','leader'].forEach(m => {
+  ['admin','student','independent','leader'].forEach(m => {
     const btn = document.getElementById('apb-' + m);
     if (btn) btn.classList.toggle('active', m === mode);
   });
@@ -21739,9 +21740,10 @@ function _effectiveLeaderMode() {
 }
 
 function applyAdminViewMode(mode) {
-  const isLeader  = mode === 'leader';
-  const isStudent = mode === 'student';
-  const isAdmin   = mode === 'admin';
+  const isLeader      = mode === 'leader';
+  const isStudent     = mode === 'student';
+  const isIndependent = mode === 'independent';
+  const isAdmin       = mode === 'admin';
 
   // Admin nav item: only visible in admin mode
   const adminNav = document.getElementById('dash-nav-admin');
@@ -21753,13 +21755,39 @@ function applyAdminViewMode(mode) {
     return;
   }
 
-  // Student or Leader → navigate to dashboard if not already there
+  // Student / Independent / Leader → navigate to dashboard if not already there
   if (_dashActiveView === 'admin') switchDashView('dashboard');
 
   // Apply leader/student dashboard layout directly
   // Do NOT call hbdInit() here — it re-runs with the real user role
   // and would undo the preview mode via _effectiveLeaderMode()
   _hbdApplyLeaderMode(isLeader);
+
+  // Independent mode: same as student but cohort nav + digest hidden
+  if (isIndependent) {
+    ['hbd-stats-row','hbd-tracked-strip','dash-credit-card','weekly-chest-card',
+     'hbd-product-chart-col','hbd-product-opp-col'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = '';
+    });
+    const recCard = document.getElementById('hbd-cohort-rec-card');
+    if (recCard) recCard.style.display = 'none';
+    const cohortDigest = document.getElementById('hbd-cohort-digest-wrap');
+    if (cohortDigest) cohortDigest.style.display = 'none';
+    const cohortNav = document.getElementById('dash-nav-cohort');
+    if (cohortNav) cohortNav.style.display = 'none';
+    const qaRow = document.getElementById('hbd-leader-quick-actions');
+    if (qaRow) qaRow.style.display = 'none';
+    const myTokoBtn = document.getElementById('mbn-mytoko');
+    if (myTokoBtn) myTokoBtn.style.display = '';
+    const kohortLeaderBtn = document.getElementById('mbn-kohort-leader');
+    if (kohortLeaderBtn) kohortLeaderBtn.style.display = 'none';
+    const sub = document.getElementById('hbd-subtitle');
+    if (sub) sub.textContent = 'Selamat datang kembali — ini yang kamu pantau hari ini.';
+    const title = document.getElementById('dash-topbar-title');
+    if (title) title.textContent = 'Dashboard';
+    return;
+  }
 
   // Student mode: ensure all product sections are visible
   if (isStudent) {
@@ -21774,6 +21802,7 @@ function applyAdminViewMode(mode) {
     const nav = document.querySelector('.dash-sidebar-nav');
     const cohortItem = document.getElementById('dash-nav-cohort');
     const creditItem = document.getElementById('dash-nav-credits');
+    if (cohortItem) cohortItem.style.display = '';
     if (nav && cohortItem && creditItem) nav.insertBefore(cohortItem, creditItem);
     // Remove leader tag from Research Tools if present
     const researchEl = document.getElementById('dash-nav-research-tools');
