@@ -8443,7 +8443,7 @@ async function loadData() {
   dscInit();
   hbdInit();
   alrInit();
-  lpRenderPreview(_LP_DEMO);
+  if (typeof Chart !== 'undefined') lpRenderPreview(_LP_DEMO);
   setTimeout(startTour, 600);
 }
 
@@ -9745,8 +9745,9 @@ async function submitMentorApp(e) {
 
 async function checkMentorApplication() {
   if (!_supabase || !currentUser) return;
-  const { data } = await _supabase.from('mentor_applications')
+  const { data, error } = await _supabase.from('mentor_applications')
     .select('status').eq('user_id', currentUser.id).limit(1);
+  if (error) return;
   if (data && data.length > 0) updateProfileMembershipStatus(true);
 }
 
@@ -10562,10 +10563,12 @@ async function loadChestState() {
     monday.setDate(monday.getDate() - (monday.getDay() === 0 ? 6 : monday.getDay() - 1));
     const weekStart = monday.toISOString().slice(0,10);
 
-    const [{ count: searches }, { data: claimed }] = await Promise.all([
+    const [searchRes, chestRes] = await Promise.all([
       _supabase.from('search_completions').select('keyword', {count:'exact',head:true}).eq('user_id', currentUser.id).gte('completed_date', weekStart),
       _supabase.from('chest_history').select('id').eq('user_id', currentUser.id).eq('week_start', weekStart).limit(1),
     ]);
+    const searches = searchRes.count;
+    const claimed  = chestRes.error ? [] : (chestRes.data || []);
 
     const done      = Math.min(searches || 0, 5);
     const alreadyGot = claimed?.length > 0;
@@ -16839,6 +16842,7 @@ async function hbdRenderCohortDigest() {
 }
 
 function _hbdBuildChartFromTracked(prods) {
+  if (typeof Chart === 'undefined') return;
   const canvas = document.getElementById('hbd-chart-perf');
   if (!canvas || !prods.length) return;
   if (window._hbdChart) { window._hbdChart.destroy(); window._hbdChart = null; }
@@ -21287,7 +21291,10 @@ async function admBcSend() {
     });
     const json = await res.json();
     if (res.ok) {
-      if (statusEl) statusEl.textContent = `Terkirim ke ${json.sent} penerima.${json.failed?.length ? ` Gagal: ${json.failed.length}.` : ''}`;
+      const failMsg = json.failed?.length
+        ? ` Gagal: ${json.failed.length}.${json.fail_reasons?.[0] ? ' (' + json.fail_reasons[0] + ')' : ''}`
+        : '';
+      if (statusEl) statusEl.textContent = `Terkirim ke ${json.sent} penerima.${failMsg}`;
       document.getElementById('adm-bc-subject').value = '';
       document.getElementById('adm-bc-body').value = '';
       if (_admBcSeg === 'specific') {

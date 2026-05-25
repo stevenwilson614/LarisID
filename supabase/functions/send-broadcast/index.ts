@@ -75,50 +75,69 @@ serve(async (req) => {
 
     const RESEND_KEY = Deno.env.get('RESEND_API_KEY')!
     const failed: string[] = []
+    const failReasons: string[] = []
     let sent = 0
 
-    // Send in batches of 50 to stay within Resend rate limits
-    const BATCH = 50
-    for (let i = 0; i < targets.length; i += BATCH) {
-      const batch = targets.slice(i, i + BATCH)
-      const res = await fetch('https://api.resend.com/emails/batch', {
+    const htmlBody = `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+      <div style="background:#1A1F3C;padding:20px 24px;border-radius:10px 10px 0 0;">
+        <span style="color:#fff;font-weight:800;font-size:1.1rem;">LarisID</span>
+      </div>
+      <div style="padding:24px;background:#fff;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 10px 10px;">
+        ${body.replace(/\n/g, '<br>')}
+        <hr style="margin:24px 0;border:none;border-top:1px solid #E5E7EB;">
+        <p style="font-size:12px;color:#9CA3AF;margin:0;">
+          Kamu menerima email ini karena terdaftar di <a href="https://larisid.com" style="color:#E8442A;">larisid.com</a>.
+        </p>
+      </div>
+    </div>`
+
+    // Use single-email endpoint when sending to one address (clearer error messages)
+    if (targets.length === 1) {
+      const msg: any = { from: 'LarisID <noreply@larisid.com>', to: targets[0], subject, html: htmlBody }
+      if (attachment?.filename && attachment?.content) {
+        msg.attachments = [{ filename: attachment.filename, content: attachment.content }]
+      }
+      const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(batch.map(email => {
-          const msg: any = {
-            from: 'LarisID <noreply@larisid.com>',
-            to: email,
-            subject,
-            html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-              <div style="background:#1A1F3C;padding:20px 24px;border-radius:10px 10px 0 0;">
-                <span style="color:#fff;font-weight:800;font-size:1.1rem;">LarisID</span>
-              </div>
-              <div style="padding:24px;background:#fff;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 10px 10px;">
-                ${body.replace(/\n/g, '<br>')}
-                <hr style="margin:24px 0;border:none;border-top:1px solid #E5E7EB;">
-                <p style="font-size:12px;color:#9CA3AF;margin:0;">
-                  Kamu menerima email ini karena terdaftar di <a href="https://larisid.com" style="color:#E8442A;">larisid.com</a>.
-                </p>
-              </div>
-            </div>`,
-          }
-          if (attachment?.filename && attachment?.content) {
-            msg.attachments = [{ filename: attachment.filename, content: attachment.content }]
-          }
-          return msg
-        })),
+        body: JSON.stringify(msg),
       })
-
       if (res.ok) {
-        sent += batch.length
+        sent = 1
       } else {
         const errBody = await res.json().catch(() => ({}))
-        console.error('Resend batch error:', errBody)
-        failed.push(...batch)
+        console.error('Resend single error:', errBody)
+        failed.push(targets[0])
+        failReasons.push(errBody.message || errBody.name || JSON.stringify(errBody))
+      }
+    } else {
+      // Send in batches of 50 to stay within Resend rate limits
+      const BATCH = 50
+      for (let i = 0; i < targets.length; i += BATCH) {
+        const batch = targets.slice(i, i + BATCH)
+        const res = await fetch('https://api.resend.com/emails/batch', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(batch.map(email => {
+            const msg: any = { from: 'LarisID <noreply@larisid.com>', to: email, subject, html: htmlBody }
+            if (attachment?.filename && attachment?.content) {
+              msg.attachments = [{ filename: attachment.filename, content: attachment.content }]
+            }
+            return msg
+          })),
+        })
+        if (res.ok) {
+          sent += batch.length
+        } else {
+          const errBody = await res.json().catch(() => ({}))
+          console.error('Resend batch error:', errBody)
+          failed.push(...batch)
+          failReasons.push(errBody.message || errBody.name || JSON.stringify(errBody))
+        }
       }
     }
 
-    return new Response(JSON.stringify({ sent, failed, total_targets: targets.length }), {
+    return new Response(JSON.stringify({ sent, failed, fail_reasons: failReasons, total_targets: targets.length }), {
       headers: { ...CORS, 'Content-Type': 'application/json' },
     })
 
