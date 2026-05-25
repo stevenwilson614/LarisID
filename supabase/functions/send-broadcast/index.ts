@@ -37,7 +37,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: CORS })
     }
 
-    const { segment, subject, body, specific_email } = await req.json()
+    const { segment, subject, body, specific_email, attachment } = await req.json()
     if (!segment || !subject || !body) {
       return new Response(JSON.stringify({ error: 'Missing segment, subject, or body' }), { status: 400, headers: CORS })
     }
@@ -84,23 +84,29 @@ serve(async (req) => {
       const res = await fetch('https://api.resend.com/emails/batch', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(batch.map(email => ({
-          from: 'LarisID <noreply@larisid.com>',
-          to: email,
-          subject,
-          html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-            <div style="background:#1A1F3C;padding:20px 24px;border-radius:10px 10px 0 0;">
-              <span style="color:#fff;font-weight:800;font-size:1.1rem;">LarisID</span>
-            </div>
-            <div style="padding:24px;background:#fff;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 10px 10px;">
-              ${body.replace(/\n/g, '<br>')}
-              <hr style="margin:24px 0;border:none;border-top:1px solid #E5E7EB;">
-              <p style="font-size:12px;color:#9CA3AF;margin:0;">
-                Kamu menerima email ini karena terdaftar di <a href="https://larisid.com" style="color:#E8442A;">larisid.com</a>.
-              </p>
-            </div>
-          </div>`,
-        }))),
+        body: JSON.stringify(batch.map(email => {
+          const msg: any = {
+            from: 'LarisID <noreply@larisid.com>',
+            to: email,
+            subject,
+            html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+              <div style="background:#1A1F3C;padding:20px 24px;border-radius:10px 10px 0 0;">
+                <span style="color:#fff;font-weight:800;font-size:1.1rem;">LarisID</span>
+              </div>
+              <div style="padding:24px;background:#fff;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 10px 10px;">
+                ${body.replace(/\n/g, '<br>')}
+                <hr style="margin:24px 0;border:none;border-top:1px solid #E5E7EB;">
+                <p style="font-size:12px;color:#9CA3AF;margin:0;">
+                  Kamu menerima email ini karena terdaftar di <a href="https://larisid.com" style="color:#E8442A;">larisid.com</a>.
+                </p>
+              </div>
+            </div>`,
+          }
+          if (attachment?.filename && attachment?.content) {
+            msg.attachments = [{ filename: attachment.filename, content: attachment.content }]
+          }
+          return msg
+        })),
       })
 
       if (res.ok) {
