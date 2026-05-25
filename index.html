@@ -2769,6 +2769,21 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .myt-sug-shops{font-size:.65rem;color:#6B7280;}
 .myt-sug-score{font-size:.7rem;font-weight:700;padding:2px 7px;border-radius:20px;}
 
+/* Competition section */
+.myt-comp-tab{padding:6px 14px;border-radius:20px;border:1.5px solid #E5E7EB;background:#fff;color:#374151;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit;transition:border-color .12s,background .12s,color .12s;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;}
+.myt-comp-tab.active{background:#1A1F3C;border-color:#1A1F3C;color:#fff;}
+.myt-comp-table-wrap{overflow-x:auto;}
+.myt-comp-tbl{width:100%;border-collapse:collapse;font-size:.74rem;}
+.myt-comp-tbl th{text-align:left;padding:7px 10px;font-size:.64rem;font-weight:700;color:#9CA3AF;border-bottom:1.5px solid #E5E7EB;white-space:nowrap;}
+.myt-comp-tbl td{padding:9px 10px;border-bottom:1px solid #F3F4F6;color:#374151;vertical-align:middle;}
+.myt-comp-tbl tr:last-child td{border-bottom:none;}
+.myt-comp-tbl tr:hover td{background:#F9FAFB;}
+.myt-comp-rank{width:28px;height:28px;border-radius:50%;background:#EEF2FF;color:#4F46E5;font-weight:800;font-size:.72rem;display:flex;align-items:center;justify-content:center;}
+.myt-comp-rank.top{background:#FEF3C7;color:#D97706;}
+.myt-comp-img{width:32px;height:32px;border-radius:6px;object-fit:cover;border:1px solid #E5E7EB;}
+.myt-comp-name{max-width:180px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.4;color:#1A1F3C;font-weight:600;}
+.myt-comp-store{font-size:.64rem;color:#9CA3AF;margin-top:1px;}
+
 /* Empty state */
 .myt-empty{text-align:center;padding:40px 20px;color:#6B7280;font-size:.82rem;line-height:1.6;}
 .myt-empty-icon{width:48px;height:48px;border-radius:14px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;color:#9CA3AF;}
@@ -7195,6 +7210,16 @@ html,body{overflow-x:hidden;max-width:100%;}
                     <div class="myt-q-products" id="myt-q-exit"></div>
                   </div>
                 </div>
+              </div>
+
+              <!-- Competition -->
+              <div class="myt-section" id="myt-competition-section" style="display:none;">
+                <div class="myt-section-hdr">
+                  <div class="myt-section-title">Kompetitor</div>
+                  <div style="font-size:.68rem;color:#9CA3AF;">Produk lain dalam keyword yang sama</div>
+                </div>
+                <div id="myt-comp-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;"></div>
+                <div id="myt-comp-table"></div>
               </div>
 
               <!-- Complementary suggestions -->
@@ -15686,7 +15711,20 @@ async function ddLoadTrendHistory(listing) {
 
     // Deduplicate by exact scraped_at timestamp (multiple push-runs create identical rows)
     { const seenTs = new Set(); dbRows = dbRows.filter(r => { if (seenTs.has(r.scraped_at)) return false; seenTs.add(r.scraped_at); return true; }); }
-    console.log('[ddTrend] deduplicated rows:', dbRows.length);
+    // Deduplicate to one row per calendar date — the scraper runs the same product
+    // across multiple keywords per day, producing many rows with near-identical timestamps
+    // but the same total_sold. Keeping one row per day gives clean inter-scrape deltas.
+    {
+      const dayMap = new Map();
+      for (const r of dbRows) {
+        const day = r.scraped_at.slice(0, 10);
+        const cur = dayMap.get(day);
+        // Keep the row with the highest total_sold for that day (most up-to-date value)
+        if (!cur || (r.total_sold ?? 0) > (cur.total_sold ?? 0)) dayMap.set(day, r);
+      }
+      dbRows = [...dayMap.values()].sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
+    }
+    console.log('[ddTrend] deduplicated rows (by date):', dbRows.length, dbRows.map(r => r.scraped_at.slice(0,10) + ' sold=' + r.total_sold));
 
     // Augment to reach 2 rows
     let isPeerEstimated = false, peerCount = 0, peerSoldMin = 0, peerSoldMax = 0;
@@ -21688,6 +21726,9 @@ async function _mytLoadDashboard() {
   // Risk quadrant
   _mytRenderRiskQuadrant(positions);
 
+  // Competition section
+  _mytLoadCompetition(positions);
+
   // Suggestions
   const cats = [...new Set(selling.map(p => p.category).filter(Boolean))];
   if (cats.length) _mytLoadSuggestions(cats);
@@ -21868,6 +21909,113 @@ async function _mytLoadSuggestions(categories) {
       </div>`).join('');
     section.style.display = '';
   } catch (_) {}
+}
+
+// ── Competition section ───────────────────────────────────────
+async function _mytLoadCompetition(positions) {
+  const section  = document.getElementById('myt-competition-section');
+  const tabsEl   = document.getElementById('myt-comp-tabs');
+  const tableEl  = document.getElementById('myt-comp-table');
+  if (!section || !tabsEl || !tableEl) return;
+
+  // Collect unique keywords from positions that have one
+  const kwPositions = positions.filter(p => p.keyword);
+  if (!kwPositions.length) return;
+
+  // Deduplicate by keyword, keeping one representative product per keyword
+  const seen = new Set();
+  const kwList = [];
+  for (const p of kwPositions) {
+    if (!seen.has(p.keyword)) {
+      seen.add(p.keyword);
+      kwList.push({ keyword: p.keyword, product_name: p.product_name });
+    }
+  }
+
+  // Build tabs
+  tabsEl.innerHTML = kwList.map((k, i) =>
+    `<button class="myt-comp-tab${i === 0 ? ' active' : ''}"
+       onclick="_mytShowCompetitors('${k.keyword.replace(/'/g, "\\'")}', this)"
+       title="${k.product_name || k.keyword}">${k.keyword.slice(0, 30)}${k.keyword.length > 30 ? '…' : ''}</button>`
+  ).join('');
+
+  section.style.display = '';
+
+  // Load competitors for first keyword
+  if (kwList.length) await _mytShowCompetitors(kwList[0].keyword, tabsEl.firstElementChild);
+}
+
+async function _mytShowCompetitors(keyword, tabEl) {
+  // Update active tab
+  const tabsEl = document.getElementById('myt-comp-tabs');
+  if (tabsEl && tabEl) {
+    tabsEl.querySelectorAll('.myt-comp-tab').forEach(b => b.classList.remove('active'));
+    tabEl.classList.add('active');
+  }
+
+  const tableEl = document.getElementById('myt-comp-table');
+  if (!tableEl) return;
+  tableEl.innerHTML = `<div style="font-size:.72rem;color:#9CA3AF;padding:10px 0;">Memuat kompetitor…</div>`;
+
+  if (!_supabase || !_mytShopId) {
+    tableEl.innerHTML = '';
+    return;
+  }
+
+  try {
+    const { data, error } = await _supabase.rpc('get_keyword_competitors', {
+      p_keyword: keyword,
+      p_shop_id: Number(_mytShopId),
+      p_limit:   10,
+    });
+    if (error) throw error;
+    _mytRenderCompTable(data || [], keyword);
+  } catch (e) {
+    console.warn('[myt competition]', e);
+    if (tableEl) tableEl.innerHTML = `<div style="font-size:.72rem;color:#9CA3AF;padding:10px 0;">Gagal memuat data kompetitor.</div>`;
+  }
+}
+
+function _mytRenderCompTable(rows, keyword) {
+  const tableEl = document.getElementById('myt-comp-table');
+  if (!tableEl) return;
+
+  if (!rows.length) {
+    tableEl.innerHTML = `<div style="font-size:.72rem;color:#9CA3AF;padding:10px 0;">Tidak ada kompetitor ditemukan untuk keyword ini.</div>`;
+    return;
+  }
+
+  const fmtRp = n => 'Rp ' + Math.round(n || 0).toLocaleString('id-ID');
+  const fmtNum = n => (n || 0).toLocaleString('id-ID');
+
+  const rows_html = rows.map(r => {
+    const isTop = r.comp_rank <= 3;
+    const img = r.image_url
+      ? `<img class="myt-comp-img" src="${r.image_url}" onerror="this.style.opacity='.2'" alt="">`
+      : `<div class="myt-comp-img" style="background:#F3F4F6;"></div>`;
+    return `<tr>
+      <td><span class="myt-comp-rank${isTop ? ' top' : ''}">#${r.comp_rank}</span></td>
+      <td style="display:flex;align-items:center;gap:8px;padding:8px 0;">
+        ${img}
+        <div>
+          <div class="myt-comp-name">${(r.product_name || '—').slice(0, 60)}${(r.product_name || '').length > 60 ? '…' : ''}</div>
+          <div class="myt-comp-store">${r.store_name || ''}</div>
+        </div>
+      </td>
+      <td>${fmtRp(r.price)}</td>
+      <td>${fmtNum(r.total_sold)}</td>
+      <td>${fmtNum(r.reviews)}</td>
+    </tr>`;
+  }).join('');
+
+  tableEl.innerHTML = `<div class="myt-comp-table-wrap">
+    <table class="myt-comp-tbl">
+      <thead><tr>
+        <th>#</th><th>Produk</th><th>Harga</th><th>Terjual</th><th>Ulasan</th>
+      </tr></thead>
+      <tbody>${rows_html}</tbody>
+    </table>
+  </div>`;
 }
 
 // ════════════════════════════════════════════════════════════
