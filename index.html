@@ -7275,6 +7275,9 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <a href="https://youtube.com/@bule_barat" target="_blank" rel="noopener" title="YouTube" style="width:36px;height:36px;border-radius:10px;background:#FF0000;display:flex;align-items:center;justify-content:center;text-decoration:none;transition:opacity .15s;" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="#fff" stroke="none"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
                   </a>
+                  <a href="https://wa.me/16147533043" target="_blank" rel="noopener" title="WhatsApp" style="width:36px;height:36px;border-radius:10px;background:#25D366;display:flex;align-items:center;justify-content:center;text-decoration:none;transition:opacity .15s;" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="#fff" stroke="none"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+                  </a>
                 </div>
               </div>
 
@@ -7885,14 +7888,18 @@ html,body{overflow-x:hidden;max-width:100%;}
 
             <!-- Section 5: User Feedback -->
             <div id="adm-feedback-section" style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:18px;margin-bottom:0;">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
                 <div>
                   <div class="adm-section-title" style="margin-bottom:2px;">Masukan Pengguna</div>
-                  <div style="font-size:.7rem;color:#6B7280;">Feedback langsung dari pengguna LarisID.</div>
+                  <div style="font-size:.7rem;color:#6B7280;">Inbox = perlu ditindak. Vault = selesai / diabaikan.</div>
                 </div>
                 <button type="button" class="cohort-btn secondary" style="padding:6px 12px;font-size:.65rem;" onclick="loadAdminFeedback()">
                   <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right:4px;vertical-align:middle;"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Refresh
                 </button>
+              </div>
+              <div style="display:flex;gap:6px;margin-bottom:12px;">
+                <button type="button" class="adm-seg-btn active" id="adm-fb-tab-inbox" onclick="admFbSetView('inbox')">Inbox</button>
+                <button type="button" class="adm-seg-btn" id="adm-fb-tab-vault" onclick="admFbSetView('vault')">Vault</button>
               </div>
               <div id="adm-feedback-list">
                 <div style="text-align:center;padding:24px;color:#9CA3AF;font-size:.78rem;">Klik Refresh untuk memuat masukan pengguna.</div>
@@ -7905,6 +7912,9 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <div>
                   <div class="adm-section-title" style="margin-bottom:2px;">Broadcast Email</div>
                   <div style="font-size:.7rem;color:#6B7280;">Kirim email ke segmen pengguna LarisID.</div>
+                  <div id="adm-bc-resend-note" style="font-size:.68rem;color:#B45309;margin-top:6px;line-height:1.4;">
+                    Resend: domain larisid.com harus Verified (DKIM + SPF + MX hijau). Sementara hanya bisa kirim ke stevenwilson614@gmail.com.
+                  </div>
                 </div>
                 <div id="adm-bc-count" style="font-size:.7rem;color:#6B7280;"></div>
               </div>
@@ -21120,8 +21130,13 @@ async function submitFeedback() {
     if (error) throw error;
     const recordWithId = { ...record, id: inserted?.id };
     // fire-and-forget: email + AI analysis in parallel
-    _supabase.functions.invoke('notify-feedback',   { body: { record: recordWithId } }).catch(() => {});
-    _supabase.functions.invoke('analyze-feedback',  { body: { record: recordWithId } }).catch(() => {});
+    _supabase.functions.invoke('notify-feedback',  { body: { record: recordWithId } })
+      .then(({ error }) => { if (error) console.warn('notify-feedback:', error.message); });
+    _supabase.functions.invoke('analyze-feedback', { body: { record: recordWithId } })
+      .then(({ data, error }) => {
+        if (error) console.warn('analyze-feedback invoke:', error.message);
+        else if (data?.errors?.length) console.warn('analyze-feedback errors:', data.errors);
+      });
     if (status) { status.textContent = 'Terkirim! Terima kasih.'; status.style.color = '#16A34A'; }
     if (btn) { btn.textContent = 'Terkirim'; }
     setTimeout(closeFeedbackModal, 1800);
@@ -21131,17 +21146,19 @@ async function submitFeedback() {
   }
 }
 
-async function loadAdminFeedback() {
-  const list = document.getElementById('adm-feedback-list');
-  if (!list || !_supabase) return;
-  list.innerHTML = '<div style="text-align:center;padding:24px;color:#9CA3AF;font-size:.78rem;">Memuat...</div>';
-  const { data, error } = await _supabase
-    .from('feedback').select('*').order('created_at', { ascending: false }).limit(60);
-  if (error || !data?.length) {
-    list.innerHTML = '<div style="text-align:center;padding:24px;color:#9CA3AF;font-size:.78rem;">' +
-      (error ? 'Gagal memuat masukan.' : 'Belum ada masukan.') + '</div>';
-    return;
-  }
+let _admFbView = 'inbox';
+
+function admFbSetView(view) {
+  _admFbView = view === 'vault' ? 'vault' : 'inbox';
+  ['inbox', 'vault'].forEach(v => {
+    const btn = document.getElementById('adm-fb-tab-' + v);
+    if (btn) btn.classList.toggle('active', v === _admFbView);
+  });
+  loadAdminFeedback();
+}
+
+function renderFeedbackCard(row, opts = {}) {
+  const inVault = opts.inVault === true;
   const badge = {
     bug:          ['#FEE2E2','#DC2626','Bug'],
     feature:      ['#DBEAFE','#1D4ED8','Fitur'],
@@ -21151,67 +21168,112 @@ async function loadAdminFeedback() {
     other:        ['#F3F4F6','#6B7280','Lainnya'],
   };
   const statOpts = ['new','reviewing','done','dismissed'];
-  list.innerHTML = data.map(row => {
-    const [bg, fg, lbl] = badge[row.type] || badge.other;
-    const diff = Math.floor((Date.now() - new Date(row.created_at).getTime()) / 60000);
-    const rel = diff < 2 ? 'Baru saja' : diff < 60 ? diff + ' mnt lalu' : diff < 1440 ? Math.floor(diff/60) + ' jam lalu' : Math.floor(diff/1440) + ' hari lalu';
-    const txt = (row.message || '—').substring(0, 240).replace(/</g, '&lt;') + ((row.message?.length || 0) > 240 ? '…' : '');
-    const ctx = row.element_context;
-    const ctxHtml = ctx?.element
-      ? `<div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;font-size:.65rem;color:#6B7280;">
-           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2.5"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-           <span style="font-weight:700;color:#1A1F3C;">${ctx.element}</span>${ctx.section ? ' &middot; ' + ctx.section : ''}
-         </div>`
-      : '';
-    // ── AI analysis panel ──
-    const aiPriBadge = {
-      critical: ['#FEE2E2','#DC2626','CRITICAL'],
-      high:     ['#FFEDD5','#C2410C','HIGH'],
-      medium:   ['#FEF9C3','#B45309','MEDIUM'],
-      low:      ['#DBEAFE','#1D4ED8','LOW'],
-      personal: ['#F3F4F6','#6B7280','PERSONAL'],
-    };
-    const aiActBadge = {
-      'fix-now':    ['#FEE2E2','#DC2626','fix-now'],
-      'investigate':['#FFEDD5','#C2410C','investigate'],
-      'monitor':    ['#DBEAFE','#1D4ED8','monitor'],
-      'note-only':  ['#F3F4F6','#6B7280','note-only'],
-    };
-    const [pBg, pFg, pLbl] = aiPriBadge[row.ai_priority] || ['#F3F4F6','#9CA3AF','—'];
-    const [aBg, aFg, aLbl] = aiActBadge[row.ai_action]   || ['#F3F4F6','#9CA3AF','—'];
-    const aiPanel = row.ai_analyzed_at ? `
-      <div style="border-top:1px solid #F3F4F6;margin-top:8px;padding-top:8px;">
-        <div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;flex-wrap:wrap;">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-          <span style="font-size:.58rem;font-weight:700;color:#9CA3AF;letter-spacing:.05em;">ANALISIS AI</span>
-          <span style="background:${pBg};color:${pFg};font-size:.58rem;font-weight:700;padding:1px 6px;border-radius:20px;">${pLbl}</span>
-          <span style="background:${aBg};color:${aFg};font-size:.58rem;font-weight:700;padding:1px 6px;border-radius:20px;">${aLbl}</span>
-        </div>
-        <div style="font-size:.74rem;color:#374151;line-height:1.55;">${(row.ai_notes || '').replace(/</g,'&lt;')}</div>
-      </div>` : `
-      <div style="border-top:1px solid #F3F4F6;margin-top:8px;padding-top:6px;">
-        <span style="font-size:.62rem;color:#D1D5DB;font-style:italic;">AI analysis pending...</span>
-      </div>`;
-    return `<div style="border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;margin-bottom:8px;background:#FAFAFA;">
-      ${ctxHtml}
-      <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">
-        <span style="background:${bg};color:${fg};font-size:.62rem;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0;margin-top:2px;">${lbl}</span>
-        <div style="font-size:.8rem;color:#374151;flex:1;line-height:1.5;">${txt}</div>
+  const [bg, fg, lbl] = badge[row.type] || badge.other;
+  const diff = Math.floor((Date.now() - new Date(row.created_at).getTime()) / 60000);
+  const rel = diff < 2 ? 'Baru saja' : diff < 60 ? diff + ' mnt lalu' : diff < 1440 ? Math.floor(diff/60) + ' jam lalu' : Math.floor(diff/1440) + ' hari lalu';
+  const txt = (row.message || '—').substring(0, 240).replace(/</g, '&lt;') + ((row.message?.length || 0) > 240 ? '…' : '');
+  const ctx = row.element_context;
+  const ctxHtml = ctx?.element
+    ? `<div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;font-size:.65rem;color:#6B7280;">
+         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2.5"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+         <span style="font-weight:700;color:#1A1F3C;">${ctx.element}</span>${ctx.section ? ' &middot; ' + ctx.section : ''}
+       </div>`
+    : '';
+  const aiPriBadge = {
+    critical: ['#FEE2E2','#DC2626','CRITICAL'],
+    high:     ['#FFEDD5','#C2410C','HIGH'],
+    medium:   ['#FEF9C3','#B45309','MEDIUM'],
+    low:      ['#DBEAFE','#1D4ED8','LOW'],
+    personal: ['#F3F4F6','#6B7280','PERSONAL'],
+  };
+  const aiActBadge = {
+    'fix-now':    ['#FEE2E2','#DC2626','fix-now'],
+    'investigate':['#FFEDD5','#C2410C','investigate'],
+    'monitor':    ['#DBEAFE','#1D4ED8','monitor'],
+    'note-only':  ['#F3F4F6','#6B7280','note-only'],
+  };
+  const [pBg, pFg, pLbl] = aiPriBadge[row.ai_priority] || ['#F3F4F6','#9CA3AF','—'];
+  const [aBg, aFg, aLbl] = aiActBadge[row.ai_action]   || ['#F3F4F6','#9CA3AF','—'];
+  const aiPanel = row.ai_analyzed_at ? `
+    <div style="border-top:1px solid #F3F4F6;margin-top:8px;padding-top:8px;">
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;flex-wrap:wrap;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+        <span style="font-size:.58rem;font-weight:700;color:#9CA3AF;letter-spacing:.05em;">ANALISIS AI</span>
+        <span style="background:${pBg};color:${pFg};font-size:.58rem;font-weight:700;padding:1px 6px;border-radius:20px;">${pLbl}</span>
+        <span style="background:${aBg};color:${aFg};font-size:.58rem;font-weight:700;padding:1px 6px;border-radius:20px;">${aLbl}</span>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-        <div style="font-size:.65rem;color:#9CA3AF;">${row.user_email || 'Anonim'} &middot; ${rel}</div>
-        <select style="font-size:.65rem;padding:3px 6px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;color:#374151;cursor:pointer;" onchange="updateFeedbackStatus('${row.id}',this.value)">
-          ${statOpts.map(s => `<option value="${s}"${s===row.status?' selected':''}>${s}</option>`).join('')}
-        </select>
-      </div>
-      ${aiPanel}
+      <div style="font-size:.74rem;color:#374151;line-height:1.55;">${(row.ai_notes || '').replace(/</g,'&lt;')}</div>
+    </div>` : `
+    <div style="border-top:1px solid #F3F4F6;margin-top:8px;padding-top:6px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <span style="font-size:.62rem;color:#D1D5DB;font-style:italic;">AI analysis pending...</span>
+      <button type="button" style="font-size:.6rem;padding:2px 8px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;color:#6B7280;cursor:pointer;" onclick="retryFeedbackAnalysis('${row.id}')">Retry AI</button>
     </div>`;
-  }).join('');
+  const cardBg = inVault ? '#F9FAFB' : '#FAFAFA';
+  return `<div style="border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;margin-bottom:8px;background:${cardBg};${inVault ? 'opacity:.92;' : ''}">
+    ${ctxHtml}
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">
+      <span style="background:${bg};color:${fg};font-size:.62rem;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0;margin-top:2px;">${lbl}</span>
+      <div style="font-size:.8rem;color:#374151;flex:1;line-height:1.5;">${txt}</div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+      <div style="font-size:.65rem;color:#9CA3AF;">${row.user_email || 'Anonim'} &middot; ${rel}${inVault ? ' &middot; <span style="color:#9CA3AF;">archived</span>' : ''}</div>
+      <select style="font-size:.65rem;padding:3px 6px;border:1px solid #E5E7EB;border-radius:6px;background:#fff;color:#374151;cursor:pointer;" onchange="updateFeedbackStatus('${row.id}',this.value)">
+        ${statOpts.map(s => `<option value="${s}"${(row.status || 'new') === s ? ' selected' : ''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    ${aiPanel}
+  </div>`;
+}
+
+async function loadAdminFeedback() {
+  const list = document.getElementById('adm-feedback-list');
+  if (!list || !_supabase) return;
+  list.innerHTML = '<div style="text-align:center;padding:24px;color:#9CA3AF;font-size:.78rem;">Memuat...</div>';
+  const isVault = _admFbView === 'vault';
+  let q = _supabase.from('feedback').select('*').order('created_at', { ascending: false }).limit(80);
+  if (isVault) {
+    q = q.in('status', ['done', 'dismissed']);
+  } else {
+    q = q.or('status.eq.new,status.eq.reviewing,status.is.null');
+  }
+  const { data, error } = await q;
+  if (error) {
+    list.innerHTML = '<div style="text-align:center;padding:24px;color:#9CA3AF;font-size:.78rem;">Gagal memuat masukan.</div>';
+    console.warn('loadAdminFeedback:', error.message);
+    return;
+  }
+  if (!data?.length) {
+    list.innerHTML = '<div style="text-align:center;padding:24px;color:#9CA3AF;font-size:.78rem;">' +
+      (isVault ? 'Vault kosong — selesaikan masukan dari Inbox.' : 'Inbox kosong — belum ada masukan aktif.') + '</div>';
+    return;
+  }
+  list.innerHTML = data.map(row => renderFeedbackCard(row, { inVault: isVault })).join('');
 }
 
 async function updateFeedbackStatus(id, status) {
   if (!_supabase) return;
-  await _supabase.from('feedback').update({ status }).eq('id', id);
+  const { error } = await _supabase.from('feedback').update({ status }).eq('id', id);
+  if (error) { console.warn('updateFeedbackStatus:', error.message); return; }
+  if (status === 'done' || status === 'dismissed') {
+    _admFbView = 'vault';
+    ['inbox', 'vault'].forEach(v => {
+      const btn = document.getElementById('adm-fb-tab-' + v);
+      if (btn) btn.classList.toggle('active', v === 'vault');
+    });
+  }
+  loadAdminFeedback();
+}
+
+async function retryFeedbackAnalysis(id) {
+  if (!_supabase || !id) return;
+  const { data, error } = await _supabase.functions.invoke('analyze-feedback', { body: { record: { id } } });
+  if (error) { console.warn('retryFeedbackAnalysis:', error.message); alert('AI retry failed: ' + error.message); return; }
+  if (data?.errors?.length) {
+    console.warn('retryFeedbackAnalysis errors:', data.errors);
+    alert('AI error: ' + data.errors[0].error);
+    return;
+  }
+  setTimeout(loadAdminFeedback, 1500);
 }
 
 // ── Broadcast Email ───────────────────────────────────────────────────────────

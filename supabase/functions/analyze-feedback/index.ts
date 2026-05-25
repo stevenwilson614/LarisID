@@ -1,6 +1,11 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 // ── Classification rules baked into the system prompt ────────────────────────
 const SYSTEM_PROMPT = `You are a feedback triage agent for LarisID, a Shopee product intelligence tool for Indonesian e-commerce sellers. Your notes go directly to the developer/admin — be technical and specific.
 
@@ -54,8 +59,14 @@ Charts: sales trends (dd-chart-trend), price distribution (dd-chart-dist), compe
 Data pipeline: Shopee scraper → Supabase (weekly_snapshots, keyword_intelligence, listings_deduped, listing_deltas, scrape_runs).
 Feedback types: bug, feature, other (general) | wrong_data, not_working, request_edit (element-specific).`
 
+const HAIKU_MODEL = 'claude-haiku-4-5-20251001'
+
 // ── Main handler ─────────────────────────────────────────────────────────────
 serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: CORS })
+  }
+
   try {
     const payload = await req.json()
 
@@ -67,55 +78,63 @@ serve(async (req) => {
     let items: Record<string, unknown>[] = []
 
     if (payload.batch) {
-      // Batch mode: pick up everything unanalyzed in the last 24 h
       const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('feedback')
         .select('*')
         .is('ai_analyzed_at', null)
         .gte('created_at', cutoff)
         .order('created_at', { ascending: false })
         .limit(30)
+      if (error) throw new Error(`fetch batch: ${error.message}`)
       items = data || []
     } else {
-      // Single mode: resolve the row
       let row = payload.record as Record<string, unknown> | null
 
       if (row?.id) {
-        // Prefer a fresh read so we have all columns
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('feedback').select('*').eq('id', row.id).single()
+        if (error) console.error('analyze-feedback: row fetch', error.message)
         if (data) row = data
       } else {
-        // Fallback: find the most recent unanalyzed row (within 60 s)
         const since = new Date(Date.now() - 60_000).toISOString()
-        const q = supabase
+        const { data, error } = await supabase
           .from('feedback').select('*')
           .is('ai_analyzed_at', null)
           .gte('created_at', since)
           .order('created_at', { ascending: false })
           .limit(1)
-        const { data } = await q
+        if (error) console.error('analyze-feedback: fallback fetch', error.message)
         if (data?.[0]) row = data[0]
       }
 
       if (row) items = [row]
     }
 
-    const results = []
+    const results: Record<string, unknown>[] = []
+    const errors: { id: unknown; error: string }[] = []
+
     for (const row of items) {
-      const analysis = await analyzeRow(row, supabase)
-      if (analysis) results.push({ id: row.id, ...analysis })
+      try {
+        const analysis = await analyzeRow(row, supabase)
+        if (analysis) results.push({ id: row.id, ...analysis })
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        console.error('analyze-feedback: row failed', row.id, msg)
+        errors.push({ id: row.id, error: msg })
+      }
     }
 
     return new Response(
-      JSON.stringify({ ok: true, processed: results.length, results }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
+      JSON.stringify({ ok: true, processed: results.length, results, errors, itemCount: items.length }),
+      { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } },
     )
   } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('analyze-feedback: fatal', msg)
     return new Response(
-      JSON.stringify({ ok: false, error: String(err) }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } },
+      JSON.stringify({ ok: false, error: msg }),
+      { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } },
     )
   }
 })
@@ -125,26 +144,32 @@ async function analyzeRow(
   row: Record<string, unknown>,
   supabase: ReturnType<typeof createClient>,
 ): Promise<Record<string, string> | null> {
-  // Pattern detection: how many other reports on the same element in last 7 days?
   let patternContext = ''
   const ctx = row.element_context as { element?: string; section?: string } | null
   if (ctx?.element) {
-    const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-    const { data: related } = await supabase
-      .from('feedback')
-      .select('id, type, created_at')
-      .contains('element_context', { element: ctx.element })
-      .neq('id', row.id as string)
-      .gte('created_at', since7d)
-      .limit(10)
+    try {
+      const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+      const { data: related, error } = await supabase
+        .from('feedback')
+        .select('id, type, created_at, element_context')
+        .neq('id', row.id as string)
+        .gte('created_at', since7d)
+        .limit(20)
 
-    const count = related?.length ?? 0
-    if (count >= 2) {
-      patternContext = `\nPATTERN ALERT: ${count} other user(s) reported issues with "${ctx.element}" in the last 7 days — likely site-wide.`
+      if (!error && related?.length) {
+        const sameElement = related.filter((r) => {
+          const ec = r.element_context as { element?: string } | null
+          return ec?.element === ctx.element
+        })
+        if (sameElement.length >= 2) {
+          patternContext = `\nPATTERN ALERT: ${sameElement.length} other user(s) reported issues with "${ctx.element}" in the last 7 days — likely site-wide.`
+        }
+      }
+    } catch (e) {
+      console.warn('analyze-feedback: pattern detection skipped', e)
     }
   }
 
-  // Build the prompt
   const typeMap: Record<string, string> = {
     bug: 'Bug / Error', feature: 'Feature Request', other: 'Other',
     wrong_data: 'Wrong Data', not_working: 'Not Working', request_edit: 'Request Edit',
@@ -157,44 +182,54 @@ User: ${row.user_email || 'anonymous'}
 Page: ${row.page || '—'}
 ${patternContext}`
 
-  // Call Claude Haiku
+  const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY secret not set on Supabase project')
+
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
-      'x-api-key': Deno.env.get('ANTHROPIC_API_KEY')!,
+      'x-api-key': apiKey,
       'anthropic-version': '2023-06-01',
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
+      model: HAIKU_MODEL,
       max_tokens: 350,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: prompt }],
     }),
   })
 
-  if (!res.ok) return null
+  if (!res.ok) {
+    const errBody = await res.text()
+    throw new Error(`Anthropic ${res.status}: ${errBody.slice(0, 500)}`)
+  }
 
   const result = await res.json()
   const text: string = result.content?.[0]?.text ?? ''
 
   let analysis: Record<string, string> = {}
-  try {
-    const match = text.match(/\{[\s\S]*\}/)
-    if (match) analysis = JSON.parse(match[0])
-  } catch {
-    return null
+  const match = text.match(/\{[\s\S]*\}/)
+  if (match) {
+    try { analysis = JSON.parse(match[0]) } catch {
+      console.warn('analyze-feedback: JSON parse failed, using defaults. Raw:', text.slice(0, 200))
+    }
   }
 
   const patch = {
     ai_priority:    analysis.priority  || 'low',
     ai_scope:       analysis.scope     || 'element',
     ai_action:      analysis.action    || 'monitor',
-    ai_notes:       analysis.notes     || '',
+    ai_notes:       analysis.notes     || text.slice(0, 500) || 'Analysis completed but response was not valid JSON.',
     ai_analyzed_at: new Date().toISOString(),
   }
 
-  await supabase.from('feedback').update(patch).eq('id', row.id as string)
+  const { error: updateErr } = await supabase
+    .from('feedback')
+    .update(patch)
+    .eq('id', row.id as string)
+
+  if (updateErr) throw new Error(`DB update failed: ${updateErr.message}`)
 
   return patch
 }
