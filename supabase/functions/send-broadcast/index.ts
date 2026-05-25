@@ -7,6 +7,7 @@ const CORS = {
 }
 
 const ADMIN_EMAIL = 'stevenwilson614@gmail.com'
+const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'Steven <steven@larisid.com>'
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -50,8 +51,15 @@ serve(async (req) => {
       }
       targets = [specific_email.toLowerCase().trim()]
     } else {
-      // Fetch emails by segment using the admin_user_directory view
-      const { data: users, error: usersErr } = await supabase.rpc('admin_user_directory')
+      // Fetch emails by segment using the admin_user_directory view.
+      // Must use a client carrying the user's JWT so auth.uid() is set inside the
+      // security-definer function (the service-role client has no user context).
+      const userClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } },
+      )
+      const { data: users, error: usersErr } = await userClient.rpc('admin_user_directory')
       if (usersErr) throw usersErr
 
       if (segment === 'all') {
@@ -76,14 +84,18 @@ serve(async (req) => {
     const RESEND_KEY = Deno.env.get('RESEND_API_KEY')!
     const failed: string[] = []
     const failReasons: string[] = []
+    const resendIds: string[] = []
     let sent = 0
+
+    const escapeHtml = (s: string) =>
+      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
     const htmlBody = `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
       <div style="background:#1A1F3C;padding:20px 24px;border-radius:10px 10px 0 0;">
         <span style="color:#fff;font-weight:800;font-size:1.1rem;">LarisID</span>
       </div>
       <div style="padding:24px;background:#fff;border:1px solid #E5E7EB;border-top:none;border-radius:0 0 10px 10px;">
-        ${body.replace(/\n/g, '<br>')}
+        ${escapeHtml(body).replace(/\n/g, '<br>')}
         <hr style="margin:24px 0;border:none;border-top:1px solid #E5E7EB;">
         <p style="font-size:12px;color:#9CA3AF;margin:0;">
           Kamu menerima email ini karena terdaftar di <a href="https://larisid.com" style="color:#E8442A;">larisid.com</a>.
@@ -91,9 +103,17 @@ serve(async (req) => {
       </div>
     </div>`
 
+    const baseMsg = {
+      from: FROM_EMAIL,
+      reply_to: ADMIN_EMAIL,
+      subject,
+      html: htmlBody,
+      text: body,
+    }
+
     // Use single-email endpoint when sending to one address (clearer error messages)
     if (targets.length === 1) {
-      const msg: any = { from: 'LarisID <onboarding@resend.dev>', to: targets[0], subject, html: htmlBody }
+      const msg: any = { ...baseMsg, to: targets[0] }
       if (attachment?.filename && attachment?.content) {
         msg.attachments = [{ filename: attachment.filename, content: attachment.content }]
       }
@@ -102,13 +122,14 @@ serve(async (req) => {
         headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(msg),
       })
-      if (res.ok) {
+      const resBody = await res.json().catch(() => ({}))
+      if (res.ok && resBody?.id) {
         sent = 1
+        resendIds.push(resBody.id)
       } else {
-        const errBody = await res.json().catch(() => ({}))
-        console.error('Resend single error:', errBody)
+        console.error('Resend single error:', res.status, resBody)
         failed.push(targets[0])
-        failReasons.push(errBody.message || errBody.name || JSON.stringify(errBody))
+        failReasons.push(resBody.message || resBody.name || JSON.stringify(resBody))
       }
     } else {
       // Send in batches of 50 to stay within Resend rate limits
@@ -119,25 +140,45 @@ serve(async (req) => {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
           body: JSON.stringify(batch.map(email => {
-            const msg: any = { from: 'LarisID <onboarding@resend.dev>', to: email, subject, html: htmlBody }
+            const msg: any = { ...baseMsg, to: email }
             if (attachment?.filename && attachment?.content) {
               msg.attachments = [{ filename: attachment.filename, content: attachment.content }]
             }
             return msg
           })),
         })
-        if (res.ok) {
-          sent += batch.length
+        const resBody = await res.json().catch(() => ({}))
+        if (res.ok && Array.isArray(resBody?.data)) {
+          sent += resBody.data.length
+          for (const row of resBody.data) {
+            if (row?.id) resendIds.push(row.id)
+          }
+          if (Array.isArray(resBody.errors)) {
+            for (const err of resBody.errors) {
+              const email = batch[err.index]
+              if (email) {
+                failed.push(email)
+                failReasons.push(err.message || 'Batch validation failed')
+              }
+            }
+          }
         } else {
-          const errBody = await res.json().catch(() => ({}))
-          console.error('Resend batch error:', errBody)
+          console.error('Resend batch error:', res.status, resBody)
           failed.push(...batch)
-          failReasons.push(errBody.message || errBody.name || JSON.stringify(errBody))
+          failReasons.push(resBody.message || resBody.name || JSON.stringify(resBody))
         }
       }
     }
 
-    return new Response(JSON.stringify({ sent, failed, fail_reasons: failReasons, total_targets: targets.length }), {
+    return new Response(JSON.stringify({
+      sent,
+      failed,
+      fail_reasons: failReasons,
+      total_targets: targets.length,
+      recipients: targets,
+      from: FROM_EMAIL,
+      resend_ids: resendIds,
+    }), {
       headers: { ...CORS, 'Content-Type': 'application/json' },
     })
 
