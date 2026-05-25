@@ -93,7 +93,7 @@ serve(async (req) => {
 
     // Use single-email endpoint when sending to one address (clearer error messages)
     if (targets.length === 1) {
-      const msg: any = { from: 'LarisID <noreply@larisid.com>', to: targets[0], subject, html: htmlBody }
+      const msg: any = { from: 'LarisID <onboarding@resend.dev>', to: targets[0], subject, html: htmlBody }
       if (attachment?.filename && attachment?.content) {
         msg.attachments = [{ filename: attachment.filename, content: attachment.content }]
       }
@@ -119,7 +119,7 @@ serve(async (req) => {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
           body: JSON.stringify(batch.map(email => {
-            const msg: any = { from: 'LarisID <noreply@larisid.com>', to: email, subject, html: htmlBody }
+            const msg: any = { from: 'LarisID <onboarding@resend.dev>', to: email, subject, html: htmlBody }
             if (attachment?.filename && attachment?.content) {
               msg.attachments = [{ filename: attachment.filename, content: attachment.content }]
             }
