@@ -13964,7 +13964,8 @@ function ddUpdateRingkasanFromKw(rows, totalSold, listing) {
 
   // Price distribution — scatter plot of sellers with >0.5% of total sales
   // X = price (Rp), Y = sales share (%)
-  const scatterPoints = (sigSellers || []).map(r => ({
+  const sigSellers = rows.filter(r => (r.total_sold || 0) >= totalSold * 0.005);
+  const scatterPoints = sigSellers.map(r => ({
     x: r.price || 0,
     y: totalSold > 0 ? +((r.total_sold || 0) / totalSold * 100).toFixed(2) : 0,
     label: r.store_name || r.product_name || '',
@@ -16698,10 +16699,10 @@ async function hbdRenderMentorDigest() {
       + (inactive.length > 5 ? `<div class="cohort-muted" style="font-size:.65rem;margin-top:4px;">+${inactive.length-5} lainnya</div>` : '')
     : '<div style="font-size:.72rem;color:#1A7A46;font-weight:700;">Semua siswa aktif minggu ini 🎉</div>';
   if (feedEl) {
-    const { data: posts } = await _supabase.from('community_posts').select('user_id,body,kind,created_at').eq('cohort_id',c.id).gte('created_at',since7d).order('created_at',{ascending:false}).limit(6);
+    const { data: posts } = await _supabase.from('community_posts').select('author_id,body,kind,created_at').eq('cohort_id',c.id).gte('created_at',since7d).order('created_at',{ascending:false}).limit(6);
     const kindLbl = {win:'Menang',milestone_share:'Milestone',product_share:'Produk',general:'Umum',question:'Pertanyaan'};
     feedEl.innerHTML = (posts||[]).length ? (posts||[]).map(p =>
-      `<div style="padding:6px 0;border-bottom:1px solid #F3F4F6;"><div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;"><span style="font-size:.58rem;font-weight:700;text-transform:uppercase;color:#9CA3AF;">${_cohortEsc(kindLbl[p.kind]||p.kind||'')}</span><span style="font-size:.68rem;font-weight:700;color:#111;">${_cohortEsc(cohortCohortDisplayName(p.user_id,null))}</span></div><div style="font-size:.72rem;color:#374151;line-height:1.4;">${_cohortEsc((p.body||'').slice(0,90))}${(p.body||'').length>90?'…':''}</div></div>`
+      `<div style="padding:6px 0;border-bottom:1px solid #F3F4F6;"><div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;"><span style="font-size:.58rem;font-weight:700;text-transform:uppercase;color:#9CA3AF;">${_cohortEsc(kindLbl[p.kind]||p.kind||'')}</span><span style="font-size:.68rem;font-weight:700;color:#111;">${_cohortEsc(cohortCohortDisplayName(p.author_id,null))}</span></div><div style="font-size:.72rem;color:#374151;line-height:1.4;">${_cohortEsc((p.body||'').slice(0,90))}${(p.body||'').length>90?'…':''}</div></div>`
     ).join('') : '<div class="cohort-muted" style="font-size:.72rem;">Belum ada postingan minggu ini.</div>';
   }
 }
@@ -21250,7 +21251,12 @@ async function admBcSend() {
   let specificEmail = '';
   if (_admBcSeg === 'specific') {
     specificEmail = (document.getElementById('adm-bc-specific-email')?.value || '').trim();
-    if (!specificEmail) { if (statusEl) statusEl.textContent = 'Pilih penerima dari daftar.'; return; }
+    if (!specificEmail) {
+      // Fallback: accept a directly typed valid email
+      const typed = (document.getElementById('adm-bc-specific-search')?.value || '').trim();
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typed)) specificEmail = typed;
+    }
+    if (!specificEmail) { if (statusEl) statusEl.textContent = 'Pilih penerima dari daftar atau ketik email yang valid.'; return; }
   }
   let attachment = null;
   const fileInput = document.getElementById('adm-bc-attachment');
