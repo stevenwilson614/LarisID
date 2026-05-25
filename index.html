@@ -4556,6 +4556,7 @@ html,body{overflow-x:hidden;max-width:100%;}
         <div class="dash-nav-item" id="dash-nav-admin" onclick="switchDashView('admin')" style="display:none;margin-top:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:12px;">
           <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
           <span>Admin</span>
+          <span id="adm-fb-nav-dot" style="display:none;width:8px;height:8px;min-width:8px;background:#F5A623;border-radius:50%;margin-left:auto;"></span>
         </div>
 
       </nav>
@@ -7926,7 +7927,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             <div id="adm-feedback-section" style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:18px;margin-bottom:0;">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
                 <div>
-                  <div class="adm-section-title" style="margin-bottom:2px;">Masukan Pengguna</div>
+                  <div class="adm-section-title" style="margin-bottom:2px;">Masukan Pengguna <span id="adm-fb-pending-chip" style="display:none;background:#FEF3C7;color:#92400E;font-size:.6rem;font-weight:800;padding:2px 8px;border-radius:100px;vertical-align:middle;letter-spacing:.03em;">0 AI Pending</span></div>
                   <div style="font-size:.7rem;color:#6B7280;">Inbox = perlu ditindak. Vault = selesai / diabaikan.</div>
                 </div>
                 <button type="button" class="cohort-btn secondary" style="padding:6px 12px;font-size:.65rem;" onclick="loadAdminFeedback()">
@@ -21265,6 +21266,8 @@ function renderFeedbackCard(row, opts = {}) {
   </div>`;
 }
 
+let _admFbPendingLast = -1;
+
 async function loadAdminFeedback() {
   const list = document.getElementById('adm-feedback-list');
   if (!list || !_supabase) return;
@@ -21282,12 +21285,46 @@ async function loadAdminFeedback() {
     console.warn('loadAdminFeedback:', error.message);
     return;
   }
+
+  // Count pending AI analysis across all inbox items (not just current view)
+  const pendingInData = (data || []).filter(r => !r.ai_analyzed_at).length;
+  const pendingCount = isVault ? _admFbPendingLast : pendingInData;
+
+  if (!isVault) {
+    const navDot = document.getElementById('adm-fb-nav-dot');
+    if (navDot) navDot.style.display = pendingCount > 0 ? 'block' : 'none';
+    const chip = document.getElementById('adm-fb-pending-chip');
+    if (chip) {
+      chip.style.display = pendingCount > 0 ? 'inline' : 'none';
+      chip.textContent = `${pendingCount} AI Pending`;
+    }
+    if (_admFbPendingLast > 0 && pendingCount < _admFbPendingLast) {
+      const done = _admFbPendingLast - pendingCount;
+      _admShowToast(`AI analyzed ${done} feedback item${done > 1 ? 's' : ''}`);
+    }
+    _admFbPendingLast = pendingCount;
+  }
+
   if (!data?.length) {
     list.innerHTML = '<div style="text-align:center;padding:24px;color:#9CA3AF;font-size:.78rem;">' +
       (isVault ? 'Vault kosong — selesaikan masukan dari Inbox.' : 'Inbox kosong — belum ada masukan aktif.') + '</div>';
     return;
   }
   list.innerHTML = data.map(row => renderFeedbackCard(row, { inVault: isVault })).join('');
+}
+
+function _admShowToast(msg) {
+  let t = document.getElementById('adm-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'adm-toast';
+    t.style.cssText = 'position:fixed;bottom:80px;right:20px;z-index:10001;background:#1A1F3C;color:#fff;font-size:.75rem;font-weight:700;padding:10px 16px;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.25);transition:opacity .3s;pointer-events:none;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.opacity = '0'; }, 3500);
 }
 
 async function updateFeedbackStatus(id, status) {
