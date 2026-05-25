@@ -12999,6 +12999,7 @@ async function dscFetchPage(offset, filters = {}) {
   let q = _supabase
     .from('listings')
     .select(FIELDS)
+    .gt('total_sold', 0)
     .order('total_sold', { ascending: false })
     .range(offset, offset + 400 - 1);
 
@@ -13016,6 +13017,7 @@ async function dscFetchPage(offset, filters = {}) {
     let qf = _supabase
       .from('listings')
       .select(FIELDS)
+      .gt('total_sold', 0)
       .order('total_sold', { ascending: false })
       .range(offset, offset + 400 - 1);
     if (_dscCurrentCatFilters && _dscCurrentCatFilters.length > 1) {
@@ -14490,6 +14492,8 @@ async function ddRenderTren() {
           .limit(20);
         dbRows = (d2 || []).slice().sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
       }
+      // Remove exact-timestamp duplicates (multiple push-runs create identical rows)
+      { const seenTs = new Set(); dbRows = dbRows.filter(r => { if (seenTs.has(r.scraped_at)) return false; seenTs.add(r.scraped_at); return true; }); }
     }
 
     if (dbRows.length < 2) {
@@ -14628,31 +14632,20 @@ async function ddRenderTren() {
       .sort((a, b) => a.firstDate - b.firstDate)
       .map(w => ({ label: w.label, units: Math.round(w.units), omset: Math.round(w.omset), firstDate: w.firstDate }));
 
-    if (!weeks.length) {
-      // Zero-delta: no inter-scrape change detected. Show review-based weekly velocity
-      // estimate (not cumulative total_sold × price, which would be lifetime revenue).
-      const snapMap2 = new Map();
-      for (const r of dbRows) {
-        const key = _wKey(new Date(r.scraped_at));
-        if (!snapMap2.has(key)) {
-          // Estimate weekly units from reviews ÷ avg review rate (rough: reviews / listing_age_weeks)
-          // Use 0 for units/omset — we have no delta, so we cannot show a period amount.
-          snapMap2.set(key, { label: _wLabel(new Date(r.scraped_at)), units: 0, omset: 0, firstDate: _mondayOf(new Date(r.scraped_at)) });
-        }
-      }
-      const snapWeeks = [...snapMap2.values()].sort((a, b) => a.firstDate - b.firstDate);
-      if (!snapWeeks.length) {
-        if (insEl) insEl.innerHTML = '<div style="font-size:.68rem;color:#9CA3AF;padding:8px 0;">Belum ada data scrape.</div>';
-        return;
-      }
-      // Add forecast Monday
-      const lastSnapMon = snapWeeks[snapWeeks.length - 1].firstDate;
-      const nextSnapMon = new Date(lastSnapMon.getTime() + 7 * 86400000);
-      snapWeeks.push({ label: `${nextSnapMon.getDate()} ${_MO[nextSnapMon.getMonth()]} ▶`, units: Math.round(snapWeeks.reduce((s,r)=>s+r.units,0)/snapWeeks.length), omset: Math.round(snapWeeks.reduce((s,r)=>s+r.omset,0)/snapWeeks.length), firstDate: nextSnapMon, isForecast: true });
-      const snapMonths = [{ label: _MO[snapWeeks[0].firstDate.getMonth()] + ' ' + String(snapWeeks[0].firstDate.getFullYear()).slice(2), units: snapWeeks[0].units, omset: snapWeeks[0].omset }];
-      _trenData = { weeks: snapWeeks, months: snapMonths, listing, category: listing.category || 'Umum', isEstimated: true, dbRows };
-      if (insEl) insEl.innerHTML = '<div style="font-size:.68rem;color:#9CA3AF;padding:8px 0;">Baru 1 sesi scrape — nilai kumulatif, bukan selisih mingguan. Prediksi ditambahkan untuk minggu depan.</div>';
-      trenRender(); trenRenderCmp(); trenRenderDataTable();
+    const totalUnitsRaw = weeks.reduce((s, w) => s + w.units, 0);
+    if (!weeks.length || totalUnitsRaw === 0) {
+      // Zero-delta: scrape data exists but total_sold and reviews showed no change between sessions.
+      // This happens when the product is inside a Shopee display bucket that didn't cross a threshold
+      // (e.g. always shows "1.000+" across multiple scrapes). Show empty state with explanation.
+      const emptyEl = document.getElementById('tren-empty-state');
+      const gridEl  = document.getElementById('tren-content-grid');
+      if (emptyEl) emptyEl.style.display = '';
+      if (gridEl)  gridEl.style.display  = 'none';
+      const nSessions = [...new Set(dbRows.map(r => r.scraped_at?.slice(0, 10)))].length;
+      if (insEl) insEl.innerHTML = `<div style="font-size:.68rem;color:#9CA3AF;padding:8px 0;">
+        Data ${nSessions} sesi scrape tidak menunjukkan perubahan penjualan yang terdeteksi.<br>
+        Tren mingguan akan muncul setelah ada selisih data antar scrape (perubahan total terjual atau ulasan).
+      </div>`;
       return;
     }
 
@@ -14673,7 +14666,7 @@ async function ddRenderTren() {
 
     // Stat cards from weekly data
     const nW = weeks.length;
-    const totalUnits = weeks.reduce((s, w) => s + w.units, 0);
+    const totalUnits = totalUnitsRaw;
     const avgUnits   = Math.round(totalUnits / nW);
     const maxW = weeks.reduce((a,b) => b.units > a.units ? b : a);
     const minW = weeks.reduce((a,b) => b.units < a.units ? b : a);
