@@ -216,11 +216,21 @@ ${patternContext}`
     }
   }
 
+  // Normalize to strict enums in case the model goes off-script
+  const VALID_PRIORITY = ['critical','high','medium','low','personal']
+  const VALID_SCOPE    = ['site-wide','section','element','personal-preference']
+  const VALID_ACTION   = ['fix-now','investigate','monitor','note-only']
+  const normalizeEnum = (val: string | undefined, valid: string[], fallback: string) => {
+    if (!val) return fallback
+    const v = val.toLowerCase()
+    return valid.find(e => v === e || v.startsWith(e.replace('-','')) || v.startsWith(e)) ?? fallback
+  }
+
   const patch = {
-    ai_priority:    analysis.priority  || 'low',
-    ai_scope:       analysis.scope     || 'element',
-    ai_action:      analysis.action    || 'monitor',
-    ai_notes:       analysis.notes     || text.slice(0, 500) || 'Analysis completed but response was not valid JSON.',
+    ai_priority:    normalizeEnum(analysis.priority, VALID_PRIORITY, 'low'),
+    ai_scope:       normalizeEnum(analysis.scope,    VALID_SCOPE,    'element'),
+    ai_action:      normalizeEnum(analysis.action,   VALID_ACTION,   'monitor'),
+    ai_notes:       analysis.notes || text.slice(0, 500) || 'Analysis completed but response was not valid JSON.',
     ai_analyzed_at: new Date().toISOString(),
   }
 
