@@ -22274,6 +22274,8 @@ function _adminViewModeInit() {
   const bar = document.getElementById('admin-preview-bar');
   if (bar) bar.style.display = 'flex';
   _admSyncButtons(_adminViewMode);
+  // Defer so openProfile()'s switchDashView('dashboard') runs first, then we override with saved mode
+  setTimeout(() => applyAdminViewMode(_adminViewMode), 0);
 }
 
 function setAdminViewMode(mode) {
