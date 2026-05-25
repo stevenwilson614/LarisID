@@ -15958,6 +15958,35 @@ async function ddLoadTrendHistory(listing) {
       unitData = dbRows.map(r => r.total_sold ?? 0);
     }
 
+    // Shopee buckets like "4000 sold" never increment within the bucket, so multiple
+    // scrapes produce identical total_sold values → rawDelta=0, reviewDelta=0 → chart
+    // would show 0 across all dates. Fall back to peer estimation in that case.
+    if (!isPeerEstimated && (listing.total_sold ?? 0) > 0) {
+      const allSameSold = unitData.length >= 2 && unitData.every(v => v === unitData[0]);
+      if (allSameSold) {
+        const peerResult = await ddEstimateTrendFromPeers(listing);
+        if (peerResult && peerResult.medianRate > 0) {
+          isPeerEstimated = true;
+          peerCount = peerResult.peerCount;
+          peerSoldMin = peerResult.soldMin;
+          peerSoldMax = peerResult.soldMax;
+          const rate = peerResult.medianRate;
+          const anchor = listing.scraped_at ? new Date(listing.scraped_at) : new Date();
+          const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
+          const anchorSold = listing.total_sold || 0;
+          const _pSyn = off => ({
+            scraped_at: new Date(anchor.getTime() + off * MS_WEEK).toISOString(),
+            total_sold: Math.max(0, Math.round(anchorSold + rate * off)),
+            price: listing.price,
+            reviews: null,
+          });
+          dbRows = [_pSyn(-3), _pSyn(-2), _pSyn(-1), _pSyn(0), _pSyn(1)];
+          unitData = dbRows.map(r => r.total_sold ?? 0);
+          isEstimated = true;
+        }
+      }
+    }
+
     // ── Interpolate scrape deltas into Monday-anchored calendar weeks ──────────
     // Between each pair of scrapes, distribute the sold delta uniformly across days,
     // then bucket each day into the Monday-week it belongs to.
