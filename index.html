@@ -11251,6 +11251,11 @@ function cohortApplyDashboardThemeFromRow(cohortRow) {
     cohortClearDashboardTheme();
     return;
   }
+  // Admin in site-level admin view must never carry cohort colors
+  if (isPlatformAdmin() && _adminViewMode === 'admin') {
+    cohortClearDashboardTheme();
+    return;
+  }
   const fallbackPri = '#0f2942';
   const fallbackSec = '#c9a87c';
   const pri = _cohortParseThemeHex(cohortRow.theme_primary) || fallbackPri;
@@ -11378,6 +11383,12 @@ function cohortSyncBrandColor(which, source) {
 }
 
 async function cohortLoadLightForTheme() {
+  // Admin in their own site-level view — never apply cohort colors
+  if (isPlatformAdmin() && _adminViewMode === 'admin') {
+    cohortClearDashboardTheme();
+    cohortUpdateCohortChrome();
+    return;
+  }
   if (!_supabase || !currentUser) {
     cohortClearDashboardTheme();
     cohortUpdateCohortChrome();
@@ -21111,9 +21122,13 @@ async function submitFeedback() {
       page:            document.title || window.location.hash || 'app',
       element_context: _fbElementCtx || null,
     };
-    const { error } = await _supabase.from('feedback').insert(record);
+    const { data: inserted, error } = await _supabase
+      .from('feedback').insert(record).select('id').single();
     if (error) throw error;
-    _supabase.functions.invoke('notify-feedback', { body: { record } }).catch(() => {});
+    const recordWithId = { ...record, id: inserted?.id };
+    // fire-and-forget: email + AI analysis in parallel
+    _supabase.functions.invoke('notify-feedback',   { body: { record: recordWithId } }).catch(() => {});
+    _supabase.functions.invoke('analyze-feedback',  { body: { record: recordWithId } }).catch(() => {});
     if (status) { status.textContent = 'Terkirim! Terima kasih.'; status.style.color = '#16A34A'; }
     if (btn) { btn.textContent = 'Terkirim'; }
     setTimeout(closeFeedbackModal, 1800);
@@ -21155,6 +21170,35 @@ async function loadAdminFeedback() {
            <span style="font-weight:700;color:#1A1F3C;">${ctx.element}</span>${ctx.section ? ' &middot; ' + ctx.section : ''}
          </div>`
       : '';
+    // ── AI analysis panel ──
+    const aiPriBadge = {
+      critical: ['#FEE2E2','#DC2626','CRITICAL'],
+      high:     ['#FFEDD5','#C2410C','HIGH'],
+      medium:   ['#FEF9C3','#B45309','MEDIUM'],
+      low:      ['#DBEAFE','#1D4ED8','LOW'],
+      personal: ['#F3F4F6','#6B7280','PERSONAL'],
+    };
+    const aiActBadge = {
+      'fix-now':    ['#FEE2E2','#DC2626','fix-now'],
+      'investigate':['#FFEDD5','#C2410C','investigate'],
+      'monitor':    ['#DBEAFE','#1D4ED8','monitor'],
+      'note-only':  ['#F3F4F6','#6B7280','note-only'],
+    };
+    const [pBg, pFg, pLbl] = aiPriBadge[row.ai_priority] || ['#F3F4F6','#9CA3AF','—'];
+    const [aBg, aFg, aLbl] = aiActBadge[row.ai_action]   || ['#F3F4F6','#9CA3AF','—'];
+    const aiPanel = row.ai_analyzed_at ? `
+      <div style="border-top:1px solid #F3F4F6;margin-top:8px;padding-top:8px;">
+        <div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;flex-wrap:wrap;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+          <span style="font-size:.58rem;font-weight:700;color:#9CA3AF;letter-spacing:.05em;">ANALISIS AI</span>
+          <span style="background:${pBg};color:${pFg};font-size:.58rem;font-weight:700;padding:1px 6px;border-radius:20px;">${pLbl}</span>
+          <span style="background:${aBg};color:${aFg};font-size:.58rem;font-weight:700;padding:1px 6px;border-radius:20px;">${aLbl}</span>
+        </div>
+        <div style="font-size:.74rem;color:#374151;line-height:1.55;">${(row.ai_notes || '').replace(/</g,'&lt;')}</div>
+      </div>` : `
+      <div style="border-top:1px solid #F3F4F6;margin-top:8px;padding-top:6px;">
+        <span style="font-size:.62rem;color:#D1D5DB;font-style:italic;">AI analysis pending...</span>
+      </div>`;
     return `<div style="border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;margin-bottom:8px;background:#FAFAFA;">
       ${ctxHtml}
       <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">
@@ -21167,6 +21211,7 @@ async function loadAdminFeedback() {
           ${statOpts.map(s => `<option value="${s}"${s===row.status?' selected':''}>${s}</option>`).join('')}
         </select>
       </div>
+      ${aiPanel}
     </div>`;
   }).join('');
 }
