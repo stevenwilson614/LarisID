@@ -21174,6 +21174,7 @@ async function updateFeedbackStatus(id, status) {
 // ── Broadcast Email ───────────────────────────────────────────────────────────
 
 let _admBcSeg = 'all';
+let _admBcUsers = null;
 
 function admBcSetSeg(seg) {
   _admBcSeg = seg;
@@ -21181,21 +21182,86 @@ function admBcSetSeg(seg) {
     const btn = document.getElementById('adm-bc-seg-' + s);
     if (btn) btn.classList.toggle('active', s === seg);
   });
-  const specificInput = document.getElementById('adm-bc-specific-email');
-  if (specificInput) specificInput.style.display = seg === 'specific' ? 'block' : 'none';
+  const wrap = document.getElementById('adm-bc-specific-wrap');
+  if (wrap) wrap.style.display = seg === 'specific' ? 'block' : 'none';
+  if (seg === 'specific' && !_admBcUsers) admBcLoadUsers();
   document.getElementById('adm-bc-count').textContent = '';
 }
 
+async function admBcLoadUsers() {
+  if (!_supabase) return;
+  const { data } = await _supabase.rpc('admin_user_directory');
+  _admBcUsers = (data || []).filter(u => u.email);
+}
+
+function admBcSearchUser(query) {
+  const dropdown = document.getElementById('adm-bc-specific-dropdown');
+  const hidden   = document.getElementById('adm-bc-specific-email');
+  if (!dropdown) return;
+  hidden.value = '';
+  const q = query.trim().toLowerCase();
+  if (!q) { dropdown.style.display = 'none'; return; }
+  const matches = (_admBcUsers || []).filter(u =>
+    (u.display_name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q)
+  ).slice(0, 10);
+  if (!matches.length) { dropdown.style.display = 'none'; return; }
+  const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  dropdown.innerHTML = matches.map(u => {
+    const name = u.display_name || u.email;
+    const safeE = u.email.replace(/\\/g,'\\\\').replace(/\'/g,"\\'");
+    const safeN = name.replace(/\\/g,'\\\\').replace(/\'/g,"\\'");
+    return `<div style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #F3F4F6;" onmousedown="admBcSelectUser('${safeE}','${safeN}')">
+      <div style="font-size:.78rem;font-weight:700;color:#1A1F3C;">${esc(name)}</div>
+      <div style="font-size:.68rem;color:#6B7280;">${esc(u.email)}</div>
+    </div>`;
+  }).join('');
+  dropdown.style.display = 'block';
+}
+
+function admBcSelectUser(email, name) {
+  document.getElementById('adm-bc-specific-search').value = name + ' <' + email + '>';
+  document.getElementById('adm-bc-specific-email').value  = email;
+  document.getElementById('adm-bc-specific-dropdown').style.display = 'none';
+}
+
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('adm-bc-specific-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    const dd = document.getElementById('adm-bc-specific-dropdown');
+    if (dd) dd.style.display = 'none';
+  }
+});
+
+document.addEventListener('change', e => {
+  if (e.target.id !== 'adm-bc-attachment') return;
+  const info = document.getElementById('adm-bc-attachment-info');
+  if (info) {
+    const file = e.target.files?.[0];
+    info.textContent = file ? `${file.name} (${(file.size/1024).toFixed(1)} KB)` : '';
+  }
+});
+
 async function admBcSend() {
-  const subject = (document.getElementById('adm-bc-subject')?.value || '').trim();
-  const body    = (document.getElementById('adm-bc-body')?.value || '').trim();
+  const subject  = (document.getElementById('adm-bc-subject')?.value || '').trim();
+  const body     = (document.getElementById('adm-bc-body')?.value || '').trim();
   const statusEl = document.getElementById('adm-bc-status');
   const sendBtn  = document.getElementById('adm-bc-send-btn');
   if (!subject || !body) { if (statusEl) statusEl.textContent = 'Isi subjek dan pesan terlebih dahulu.'; return; }
   let specificEmail = '';
   if (_admBcSeg === 'specific') {
     specificEmail = (document.getElementById('adm-bc-specific-email')?.value || '').trim();
-    if (!specificEmail) { if (statusEl) statusEl.textContent = 'Masukkan email penerima.'; return; }
+    if (!specificEmail) { if (statusEl) statusEl.textContent = 'Pilih penerima dari daftar.'; return; }
+  }
+  let attachment = null;
+  const fileInput = document.getElementById('adm-bc-attachment');
+  if (fileInput?.files?.length) {
+    const file = fileInput.files[0];
+    attachment = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res({ filename: file.name, content: r.result.split(',')[1], content_type: file.type || 'application/octet-stream' });
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
   }
   const confirmMsg = _admBcSeg === 'specific'
     ? `Kirim email ke ${specificEmail}?\n\nSubjek: ${subject}`
@@ -21207,6 +21273,7 @@ async function admBcSend() {
     const session = (await _supabase?.auth.getSession())?.data?.session;
     const payload = { segment: _admBcSeg, subject, body };
     if (_admBcSeg === 'specific') payload.specific_email = specificEmail;
+    if (attachment) payload.attachment = attachment;
     const res = await fetch(`${SUPA_URL}/functions/v1/send-broadcast`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${session?.access_token || ''}`, 'Content-Type': 'application/json' },
@@ -21217,7 +21284,11 @@ async function admBcSend() {
       if (statusEl) statusEl.textContent = `Terkirim ke ${json.sent} penerima.${json.failed?.length ? ` Gagal: ${json.failed.length}.` : ''}`;
       document.getElementById('adm-bc-subject').value = '';
       document.getElementById('adm-bc-body').value = '';
-      if (_admBcSeg === 'specific') document.getElementById('adm-bc-specific-email').value = '';
+      if (_admBcSeg === 'specific') {
+        document.getElementById('adm-bc-specific-search').value = '';
+        document.getElementById('adm-bc-specific-email').value = '';
+      }
+      if (fileInput) { fileInput.value = ''; document.getElementById('adm-bc-attachment-info').textContent = ''; }
     } else {
       if (statusEl) statusEl.textContent = `Error: ${json.error || res.status}`;
     }
