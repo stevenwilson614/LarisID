@@ -7867,7 +7867,9 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <button type="button" class="cohort-shell-btn"        id="adm-bc-seg-leaders"       onclick="admBcSetSeg('leaders')">Leader</button>
                 <button type="button" class="cohort-shell-btn"        id="adm-bc-seg-students"      onclick="admBcSetSeg('students')">Student</button>
                 <button type="button" class="cohort-shell-btn"        id="adm-bc-seg-independents"  onclick="admBcSetSeg('independents')">Independent</button>
+                <button type="button" class="cohort-shell-btn"        id="adm-bc-seg-specific"      onclick="admBcSetSeg('specific')">Spesifik</button>
               </div>
+              <input id="adm-bc-specific-email" type="email" placeholder="Email penerima…" style="display:none;width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.8rem;margin-bottom:8px;font-family:inherit;">
               <input  id="adm-bc-subject" type="text"     placeholder="Subjek email…"  style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.8rem;margin-bottom:8px;font-family:inherit;">
               <textarea id="adm-bc-body" rows="5" placeholder="Isi pesan (plain text)…" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.8rem;resize:vertical;font-family:inherit;margin-bottom:10px;"></textarea>
               <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -20969,14 +20971,17 @@ async function submitFeedback() {
   if (btn) { btn.disabled = true; btn.textContent = 'Mengirim...'; }
   if (status) { status.textContent = ''; }
   try {
-    const { error } = await _supabase.from('feedback').insert({
+    const record = {
       user_id:    currentUser?.id   || null,
       user_email: currentUser?.email || null,
       type:       _fbType,
       message:    msg,
       page:       document.title || window.location.hash || 'app',
-    });
+    };
+    const { error } = await _supabase.from('feedback').insert(record);
     if (error) throw error;
+    // Fire email notification (non-blocking — don't await)
+    _supabase.functions.invoke('notify-feedback', { body: { record } }).catch(() => {});
     if (status) { status.textContent = 'Terkirim! Terima kasih.'; status.style.color = '#16A34A'; }
     if (btn) { btn.textContent = 'Terkirim'; }
     setTimeout(closeFeedbackModal, 1800);

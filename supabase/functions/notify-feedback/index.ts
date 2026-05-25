@@ -19,7 +19,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'LarisID Feedback <feedback@larisid.com>',
+        from: 'LarisID Feedback <onboarding@resend.dev>',
         to: 'stevenwilson614@gmail.com',
         subject: `[${label}] Masukan baru dari LarisID`,
         html: `
