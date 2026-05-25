@@ -727,6 +727,9 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .cohort-shell-btns{display:flex;gap:8px;}
 .cohort-shell-btn{padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;}
 .cohort-shell-btn.active{background:var(--cohort-secondary,#E8442A);border-color:var(--cohort-secondary,#E8442A);}
+.adm-seg-btn{padding:7px 14px;border-radius:8px;border:1.5px solid #D1D5DB;background:#fff;color:#374151;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s,color .15s;}
+.adm-seg-btn:hover{border-color:#9CA3AF;background:#F9FAFB;}
+.adm-seg-btn.active{background:#E8442A;border-color:#E8442A;color:#fff;}
 .cohort-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 @media(max-width:900px){.cohort-grid{grid-template-columns:1fr;}}
 #dash-view-cohort{padding:24px 28px;}
@@ -3347,6 +3350,16 @@ html,body{overflow-x:hidden;max-width:100%;}
 .psl-plan-margin.pos{color:var(--green);}
 .psl-plan-margin.neg{color:#e74c3c;}
 .psl-no-plan{font-size:.76rem;color:var(--tl);font-style:italic;}
+
+/* ── Element-level feedback flag ── */
+.fb-flaggable{position:relative;}
+.fb-flag-btn{position:absolute;top:8px;right:8px;width:26px;height:26px;background:#fff;border:1px solid #E5E7EB;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s,border-color .1s;z-index:10;padding:0;flex-shrink:0;}
+.fb-flaggable:hover>.fb-flag-btn,.fb-flaggable:hover .fb-flag-btn{opacity:1;}
+.fb-flag-btn:hover{border-color:#E8442A;}
+.fb-flag-btn:hover svg{stroke:#E8442A;}
+@media(hover:none){.fb-flag-btn{opacity:.55;}}
+.fb-ctx-banner{display:none;background:#FFF0ED;border:1px solid #FECACA;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:.75rem;color:#1A1F3C;align-items:center;gap:8px;}
+.fb-ctx-banner svg{flex-shrink:0;stroke:#E8442A;}
 </style>
 </head>
 <body>
@@ -3359,11 +3372,12 @@ html,body{overflow-x:hidden;max-width:100%;}
 
 <!-- ── NAVBAR ── -->
 <nav class="navbar">
-  <a class="nav-brand" onclick="showPage('home')" style="padding:0;">
+  <a class="nav-brand" onclick="showPage('home')" style="padding:0;display:flex;align-items:center;">
     <svg width="110" height="36" viewBox="0 0 110 36" fill="none" xmlns="http://www.w3.org/2000/svg">
       <text x="2" y="27" font-family="'Plus Jakarta Sans',sans-serif" font-weight="900" font-size="26" fill="#ffffff">Laris</text>
       <text x="76" y="27" font-family="'Plus Jakarta Sans',sans-serif" font-weight="900" font-size="26" fill="rgba(255,255,255,0.75)">ID</text>
     </svg>
+    <span style="background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.35);color:#fff;font-size:.52rem;font-weight:700;letter-spacing:.09em;border-radius:4px;padding:2px 7px;margin-left:8px;text-transform:uppercase;">BETA</span>
   </a>
   <div class="nav-search-wrap">
   <div class="nav-search">
@@ -3397,7 +3411,7 @@ html,body{overflow-x:hidden;max-width:100%;}
   <div class="lp-page">
     <!-- nav -->
     <nav class="lp-nav">
-      <span class="lp-nav-logo">Laris<span>ID</span></span>
+      <span class="lp-nav-logo" style="display:inline-flex;align-items:center;gap:8px;">Laris<span>ID</span><span style="background:#FFF0ED;border:1px solid rgba(232,68,42,0.25);color:#E8442A;font-size:.5rem;font-weight:700;letter-spacing:.09em;border-radius:4px;padding:2px 6px;text-transform:uppercase;">BETA</span></span>
       <div class="lp-nav-links">
         <a class="lp-nav-link" onclick="document.getElementById('lp-fitur').scrollIntoView({behavior:'smooth'})">Fitur</a>
         <a class="lp-nav-link" onclick="document.getElementById('lp-harga').scrollIntoView({behavior:'smooth'})">Harga</a>
@@ -6256,7 +6270,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             <div id="dd-tab-ringkasan" class="dd-tab-panel">
               <!-- row 1: trend chart | price range | insight AI -->
               <div class="dd-row3">
-                <div class="dd-card">
+                <div class="dd-card fb-flaggable" data-fb-element="Tren Omset &amp; Unit Terjual" data-fb-section="Riset Produk">
                   <div class="dd-card-title">Tren Omset &amp; Unit Terjual</div>
                   <div class="dd-chart-legend">
                     <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#E8442A;"></div>Omset (Rp)</div>
@@ -6286,19 +6300,19 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
               <!-- row 2: dist harga | usia toko | performa kategori -->
               <div class="dd-row2">
-                <div class="dd-card">
+                <div class="dd-card fb-flaggable" data-fb-element="Distribusi Harga" data-fb-section="Riset Produk">
                   <div class="dd-card-title">Distribusi Harga (Toko Aktif)</div>
                   <div class="dd-card-sub" style="margin-bottom:8px;"></div>
                   <canvas id="dd-chart-dist" height="140"></canvas>
                 </div>
-                <div class="dd-card">
+                <div class="dd-card fb-flaggable" data-fb-element="Usia Toko Kompetitor" data-fb-section="Riset Produk">
                   <div class="dd-card-title">Usia Toko Kompetitor</div>
                   <div style="display:flex;align-items:center;margin-top:8px;">
                     <canvas id="dd-chart-donut" width="110" height="110" style="flex-shrink:0;"></canvas>
                     <div class="dd-donut-legend" id="dd-donut-legend"></div>
                   </div>
                 </div>
-                <div class="dd-card" style="overflow:hidden;">
+                <div class="dd-card fb-flaggable" style="overflow:hidden;" data-fb-element="Performa Kategori" data-fb-section="Riset Produk">
                   <div class="dd-card-title">Performa Kategori</div>
                   <div class="dd-card-sub" id="dd-cat-label">—</div>
                   <div class="dd-catperf-stats" id="dd-catperf-stats"></div>
@@ -6359,7 +6373,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <div style="display:flex;flex-direction:column;gap:14px;">
 
                   <!-- Permintaan Pasar chart -->
-                  <div class="dd-card" style="padding:16px;">
+                  <div class="dd-card fb-flaggable" style="padding:16px;" data-fb-element="Permintaan Pasar" data-fb-section="Analisis Pasar">
                     <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
                       <div>
                         <div style="font-size:.8rem;font-weight:700;color:#111827;">Permintaan Pasar</div>
@@ -6697,7 +6711,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <div style="display:flex;flex-direction:column;gap:14px;">
 
                   <!-- Tren Penjualan -->
-                  <div class="dd-card" style="padding:16px;">
+                  <div class="dd-card fb-flaggable" style="padding:16px;" data-fb-element="Tren Penjualan" data-fb-section="Analisis Tren">
                     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
                       <div style="font-size:.85rem;font-weight:700;color:#111827;">Tren Penjualan <span style="color:#9CA3AF;font-weight:400;font-size:.75rem;">ⓘ</span></div>
                       <div style="display:flex;gap:6px;">
@@ -6741,7 +6755,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                   </div>
 
                   <!-- Perbandingan Tren -->
-                  <div class="dd-card" style="padding:16px;">
+                  <div class="dd-card fb-flaggable" style="padding:16px;" data-fb-element="Perbandingan Tren" data-fb-section="Analisis Tren">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
                       <div>
                         <div style="font-size:.85rem;font-weight:700;color:#111827;">Perbandingan Tren <span style="color:#9CA3AF;font-weight:400;font-size:.75rem;">ⓘ</span></div>
@@ -7307,6 +7321,39 @@ html,body{overflow-x:hidden;max-width:100%;}
 
             </div><!-- /profile row -->
 
+            <!-- Beta notice -->
+            <div style="background:linear-gradient(135deg,#FFF7ED,#FFF0ED);border:1.5px solid rgba(232,68,42,0.25);border-radius:14px;padding:28px 32px;margin-bottom:24px;">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+                <div style="width:40px;height:40px;border-radius:10px;background:#E8442A;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div>
+                  <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1rem;color:#1A1F3C;">LarisID sedang dalam masa Beta</div>
+                  <div style="font-size:.75rem;color:#6B7280;margin-top:1px;">Produk ini masih aktif dikembangkan</div>
+                </div>
+              </div>
+              <div style="font-size:.88rem;color:#374151;line-height:1.75;margin-bottom:12px;">
+                LarisID saat ini dalam fase <strong style="color:#E8442A;">Beta Testing</strong> — artinya platform ini masih dalam tahap pengujian aktif. Fitur-fitur baru terus ditambahkan, performa sedang dioptimalkan, dan beberapa hal mungkin masih berubah.
+              </div>
+              <div style="font-size:.88rem;color:#374151;line-height:1.75;margin-bottom:16px;">
+                Dengan bergabung sekarang, kamu adalah salah satu pengguna pertama yang membantu membentuk arah produk ini. Feedback kamu sangat berarti — setiap laporan bug, saran fitur, atau kritik membantu kami membangun LarisID jadi lebih baik.
+              </div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:6px;font-size:.78rem;color:#374151;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  Data produk aktif & real-time
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:.78rem;color:#374151;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  Fitur baru rilis setiap minggu
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:.78rem;color:#374151;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  Feedback kamu langsung didengar
+                </div>
+              </div>
+            </div>
+
             <!-- Back button -->
             <div style="text-align:center;">
               <button onclick="history.back();switchDashView('dashboard')" style="background:#1A1F3C;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;">
@@ -7863,15 +7910,26 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
               <!-- Segment selector -->
               <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
-                <button type="button" class="cohort-shell-btn active" id="adm-bc-seg-all"           onclick="admBcSetSeg('all')">Semua</button>
-                <button type="button" class="cohort-shell-btn"        id="adm-bc-seg-leaders"       onclick="admBcSetSeg('leaders')">Leader</button>
-                <button type="button" class="cohort-shell-btn"        id="adm-bc-seg-students"      onclick="admBcSetSeg('students')">Student</button>
-                <button type="button" class="cohort-shell-btn"        id="adm-bc-seg-independents"  onclick="admBcSetSeg('independents')">Independent</button>
-                <button type="button" class="cohort-shell-btn"        id="adm-bc-seg-specific"      onclick="admBcSetSeg('specific')">Spesifik</button>
+                <button type="button" class="adm-seg-btn active" id="adm-bc-seg-all"          onclick="admBcSetSeg('all')">Semua</button>
+                <button type="button" class="adm-seg-btn"        id="adm-bc-seg-leaders"      onclick="admBcSetSeg('leaders')">Leader</button>
+                <button type="button" class="adm-seg-btn"        id="adm-bc-seg-students"     onclick="admBcSetSeg('students')">Student</button>
+                <button type="button" class="adm-seg-btn"        id="adm-bc-seg-independents" onclick="admBcSetSeg('independents')">Independent</button>
+                <button type="button" class="adm-seg-btn"        id="adm-bc-seg-specific"     onclick="admBcSetSeg('specific')">Spesifik</button>
               </div>
-              <input id="adm-bc-specific-email" type="email" placeholder="Email penerima…" style="display:none;width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.8rem;margin-bottom:8px;font-family:inherit;">
+              <!-- Specific person search -->
+              <div id="adm-bc-specific-wrap" style="display:none;position:relative;margin-bottom:8px;">
+                <input id="adm-bc-specific-search" type="text" autocomplete="off" placeholder="Cari nama atau email…" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.8rem;font-family:inherit;" oninput="admBcSearchUser(this.value)">
+                <input id="adm-bc-specific-email" type="hidden">
+                <div id="adm-bc-specific-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #E5E7EB;border-radius:8px;margin-top:3px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:200;max-height:220px;overflow-y:auto;"></div>
+              </div>
               <input  id="adm-bc-subject" type="text"     placeholder="Subjek email…"  style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.8rem;margin-bottom:8px;font-family:inherit;">
               <textarea id="adm-bc-body" rows="5" placeholder="Isi pesan (plain text)…" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.8rem;resize:vertical;font-family:inherit;margin-bottom:10px;"></textarea>
+              <!-- Attachment -->
+              <div style="margin-bottom:12px;">
+                <label style="font-size:.72rem;font-weight:700;color:#374151;display:block;margin-bottom:5px;">Lampiran (opsional)</label>
+                <input id="adm-bc-attachment" type="file" style="font-size:.75rem;color:#374151;width:100%;box-sizing:border-box;">
+                <div id="adm-bc-attachment-info" style="font-size:.65rem;color:#9CA3AF;margin-top:3px;"></div>
+              </div>
               <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                 <button type="button" class="cohort-btn primary" id="adm-bc-send-btn" style="padding:8px 18px;font-size:.75rem;" onclick="admBcSend()">Kirim Email</button>
                 <div id="adm-bc-status" style="font-size:.72rem;color:#6B7280;"></div>
@@ -8006,16 +8064,29 @@ html,body{overflow-x:hidden;max-width:100%;}
 <div id="feedback-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;align-items:center;justify-content:center;" onclick="if(event.target===this)closeFeedbackModal()">
   <div style="background:#fff;border-radius:16px;padding:24px;max-width:440px;width:calc(100% - 32px);box-shadow:0 8px 32px rgba(0,0,0,.2);">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <div style="font-size:1rem;font-weight:800;color:#1A1F3C;">Beri Masukan</div>
+      <div id="fb-modal-title" style="font-size:1rem;font-weight:800;color:#1A1F3C;">Beri Masukan</div>
       <button onclick="closeFeedbackModal()" style="background:none;border:none;font-size:1.2rem;color:#9CA3AF;cursor:pointer;line-height:1;">&#x2715;</button>
     </div>
-    <div style="font-size:.78rem;color:#6B7280;margin-bottom:14px;">Bantu kami tingkatkan LarisID. Setiap masukan dibaca langsung oleh tim kami.</div>
-    <div style="display:flex;gap:8px;margin-bottom:14px;">
+    <!-- element context banner — shown when opened from a flaggable element -->
+    <div class="fb-ctx-banner" id="fb-ctx-banner" style="display:none;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2.5"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+      <span id="fb-ctx-label" style="font-weight:700;"></span>
+    </div>
+    <div id="fb-modal-sub" style="font-size:.78rem;color:#6B7280;margin-bottom:14px;">Bantu kami tingkatkan LarisID. Setiap masukan dibaca langsung oleh tim kami.</div>
+    <!-- general chips -->
+    <div id="fb-chips-general" style="display:flex;gap:8px;margin-bottom:14px;">
       <button type="button" onclick="fbSetType('bug')" id="fb-chip-bug" style="flex:1;padding:8px 6px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;font-size:.72rem;font-weight:700;color:#374151;cursor:pointer;">Bug / Error</button>
       <button type="button" onclick="fbSetType('feature')" id="fb-chip-feature" style="flex:1;padding:8px 6px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;font-size:.72rem;font-weight:700;color:#374151;cursor:pointer;">Saran Fitur</button>
       <button type="button" onclick="fbSetType('other')" id="fb-chip-other" style="flex:1;padding:8px 6px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;font-size:.72rem;font-weight:700;color:#374151;cursor:pointer;">Lainnya</button>
     </div>
-    <textarea id="fb-message" placeholder="Ceritakan apa yang terjadi atau apa yang kamu inginkan..." style="width:100%;min-height:110px;border:1.5px solid #E5E7EB;border-radius:8px;padding:10px 12px;font-size:.82rem;font-family:inherit;resize:vertical;outline:none;box-sizing:border-box;color:#374151;" oninput="this.style.borderColor='#E5E7EB'"></textarea>
+    <!-- element-specific chips — shown when opened from a flaggable element -->
+    <div id="fb-chips-element" style="display:none;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+      <button type="button" onclick="fbSetType('wrong_data')" id="fb-chip-wrong_data" style="flex:1;min-width:100px;padding:8px 6px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;font-size:.72rem;font-weight:700;color:#374151;cursor:pointer;">Data Salah</button>
+      <button type="button" onclick="fbSetType('not_working')" id="fb-chip-not_working" style="flex:1;min-width:100px;padding:8px 6px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;font-size:.72rem;font-weight:700;color:#374151;cursor:pointer;">Tidak Berfungsi</button>
+      <button type="button" onclick="fbSetType('request_edit')" id="fb-chip-request_edit" style="flex:1;min-width:100px;padding:8px 6px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;font-size:.72rem;font-weight:700;color:#374151;cursor:pointer;">Minta Edit</button>
+      <button type="button" onclick="fbSetType('other')" id="fb-chip-other2" style="flex:1;min-width:100px;padding:8px 6px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;font-size:.72rem;font-weight:700;color:#374151;cursor:pointer;">Lainnya</button>
+    </div>
+    <textarea id="fb-message" placeholder="Ceritakan apa yang terjadi atau apa yang kamu inginkan..." style="width:100%;min-height:90px;border:1.5px solid #E5E7EB;border-radius:8px;padding:10px 12px;font-size:.82rem;font-family:inherit;resize:vertical;outline:none;box-sizing:border-box;color:#374151;" oninput="this.style.borderColor='#E5E7EB'"></textarea>
     <div id="fb-submit-status" style="font-size:.72rem;min-height:18px;margin-top:6px;"></div>
     <button type="button" onclick="submitFeedback()" id="fb-submit-btn" style="margin-top:10px;width:100%;padding:11px;background:#E8442A;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:.88rem;cursor:pointer;">Kirim Masukan</button>
   </div>
@@ -18076,11 +18147,11 @@ async function openKwDetail(keyword) {
       </div>
     </div>
     <div class="kd-charts-row">
-      <div class="kd-chart-panel">
+      <div class="kd-chart-panel fb-flaggable" data-fb-element="Kategori Revenue/Bln" data-fb-section="Data Keyword">
         <div class="kd-chart-label">Kategori — Revenue/Bln</div>
         <div id="kd-cat-chart" style="overflow-x:auto;"><div style="color:#9CA3AF;font-size:.7rem;">Memuat...</div></div>
       </div>
-      <div class="kd-chart-panel">
+      <div class="kd-chart-panel fb-flaggable" data-fb-element="Tren Mingguan Top 15" data-fb-section="Data Keyword">
         <div class="kd-chart-label">Tren Mingguan — Top 15</div>
         <div id="kd-trend-chart" style="overflow-x:auto;"><div style="color:#9CA3AF;font-size:.7rem;">Memuat...</div></div>
       </div>
@@ -20925,36 +20996,91 @@ function openFeedback() { openFeedbackModal(); }
 // ── Native Feedback Modal ─────────────────────────────────────────────────────
 
 let _fbType = 'bug';
+let _fbElementCtx = null; // { element, section, value } when opened from a flag button
 
-function openFeedbackModal() {
+function openFeedbackModal(ctx) {
   const overlay = document.getElementById('feedback-modal-overlay');
   if (!overlay) return;
-  overlay.style.display = 'flex';
-  _fbType = 'bug';
-  fbSetType('bug');
+  _fbElementCtx = ctx || null;
+  const isElement = !!ctx;
+
+  // title + subtitle
+  const title = document.getElementById('fb-modal-title');
+  const sub = document.getElementById('fb-modal-sub');
+  if (title) title.textContent = isElement ? 'Laporkan Masalah' : 'Beri Masukan';
+  if (sub) sub.textContent = isElement
+    ? 'Pilih jenis masalah dan tambahkan catatan jika perlu.'
+    : 'Bantu kami tingkatkan LarisID. Setiap masukan dibaca langsung oleh tim kami.';
+
+  // element context banner
+  const banner = document.getElementById('fb-ctx-banner');
+  const ctxLabel = document.getElementById('fb-ctx-label');
+  if (banner) banner.style.display = isElement ? 'flex' : 'none';
+  if (ctxLabel && ctx) ctxLabel.textContent = ctx.element + (ctx.section ? ' · ' + ctx.section : '');
+
+  // chip set
+  const gChips = document.getElementById('fb-chips-general');
+  const eChips = document.getElementById('fb-chips-element');
+  if (gChips) gChips.style.display = isElement ? 'none' : 'flex';
+  if (eChips) eChips.style.display = isElement ? 'flex' : 'none';
+
+  const defaultType = isElement ? 'wrong_data' : 'bug';
+  _fbType = defaultType;
+  fbSetType(defaultType);
+
   const msg = document.getElementById('fb-message');
-  if (msg) { msg.value = ''; msg.style.borderColor = '#E5E7EB'; }
+  if (msg) {
+    msg.value = '';
+    msg.style.borderColor = '#E5E7EB';
+    msg.placeholder = isElement
+      ? 'Opsional — jelaskan lebih lanjut apa yang terlihat salah...'
+      : 'Ceritakan apa yang terjadi atau apa yang kamu inginkan...';
+  }
   const status = document.getElementById('fb-submit-status');
   if (status) { status.textContent = ''; status.style.color = ''; }
   const btn = document.getElementById('fb-submit-btn');
   if (btn) { btn.disabled = false; btn.textContent = 'Kirim Masukan'; }
+  overlay.style.display = 'flex';
 }
 
 function closeFeedbackModal() {
   const overlay = document.getElementById('feedback-modal-overlay');
   if (overlay) overlay.style.display = 'none';
+  _fbElementCtx = null;
 }
 
 function fbSetType(type) {
   _fbType = type;
-  ['bug','feature','other'].forEach(t => {
+  const allChips = ['bug','feature','other','wrong_data','not_working','request_edit','other2'];
+  allChips.forEach(t => {
     const chip = document.getElementById('fb-chip-' + t);
     if (!chip) return;
-    if (t === type) {
-      chip.style.borderColor = '#E8442A'; chip.style.background = '#FFF0ED'; chip.style.color = '#E8442A';
-    } else {
-      chip.style.borderColor = '#E5E7EB'; chip.style.background = '#fff'; chip.style.color = '#374151';
-    }
+    const match = t === type || (t === 'other2' && type === 'other');
+    chip.style.borderColor = match ? '#E8442A' : '#E5E7EB';
+    chip.style.background  = match ? '#FFF0ED' : '#fff';
+    chip.style.color       = match ? '#E8442A' : '#374151';
+  });
+}
+
+// Attach flag buttons to all [data-fb-element] containers
+function initFlagButtons() {
+  document.querySelectorAll('[data-fb-element]').forEach(el => {
+    if (el.querySelector(':scope > .fb-flag-btn')) return;
+    if (!el.classList.contains('fb-flaggable')) el.classList.add('fb-flaggable');
+    const btn = document.createElement('button');
+    btn.className = 'fb-flag-btn';
+    btn.title = 'Laporkan masalah pada bagian ini';
+    btn.setAttribute('aria-label', 'Laporkan masalah');
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>';
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      openFeedbackModal({
+        element: el.dataset.fbElement || '',
+        section: el.dataset.fbSection || '',
+        value:   el.dataset.fbValue   || '',
+      });
+    };
+    el.appendChild(btn);
   });
 }
 
@@ -20962,7 +21088,8 @@ async function submitFeedback() {
   const msg = (document.getElementById('fb-message')?.value || '').trim();
   const status = document.getElementById('fb-submit-status');
   const btn = document.getElementById('fb-submit-btn');
-  if (msg.length < 10) {
+  const minLen = _fbElementCtx ? 0 : 10;
+  if (msg.length < minLen) {
     if (status) { status.textContent = 'Tulis minimal 10 karakter ya.'; status.style.color = '#E8442A'; }
     const ta = document.getElementById('fb-message');
     if (ta) ta.style.borderColor = '#E8442A';
@@ -20972,15 +21099,15 @@ async function submitFeedback() {
   if (status) { status.textContent = ''; }
   try {
     const record = {
-      user_id:    currentUser?.id   || null,
-      user_email: currentUser?.email || null,
-      type:       _fbType,
-      message:    msg,
-      page:       document.title || window.location.hash || 'app',
+      user_id:         currentUser?.id    || null,
+      user_email:      currentUser?.email || null,
+      type:            _fbType,
+      message:         msg,
+      page:            document.title || window.location.hash || 'app',
+      element_context: _fbElementCtx || null,
     };
     const { error } = await _supabase.from('feedback').insert(record);
     if (error) throw error;
-    // Fire email notification (non-blocking — don't await)
     _supabase.functions.invoke('notify-feedback', { body: { record } }).catch(() => {});
     if (status) { status.textContent = 'Terkirim! Terima kasih.'; status.style.color = '#16A34A'; }
     if (btn) { btn.textContent = 'Terkirim'; }
@@ -21002,14 +21129,29 @@ async function loadAdminFeedback() {
       (error ? 'Gagal memuat masukan.' : 'Belum ada masukan.') + '</div>';
     return;
   }
-  const badge = { bug: ['#FEE2E2','#DC2626','Bug'], feature: ['#DBEAFE','#1D4ED8','Fitur'], other: ['#F3F4F6','#6B7280','Lainnya'] };
+  const badge = {
+    bug:          ['#FEE2E2','#DC2626','Bug'],
+    feature:      ['#DBEAFE','#1D4ED8','Fitur'],
+    wrong_data:   ['#FEF9C3','#B45309','Data Salah'],
+    not_working:  ['#FEE2E2','#DC2626','Tidak Berfungsi'],
+    request_edit: ['#DCFCE7','#15803D','Minta Edit'],
+    other:        ['#F3F4F6','#6B7280','Lainnya'],
+  };
   const statOpts = ['new','reviewing','done','dismissed'];
   list.innerHTML = data.map(row => {
     const [bg, fg, lbl] = badge[row.type] || badge.other;
     const diff = Math.floor((Date.now() - new Date(row.created_at).getTime()) / 60000);
     const rel = diff < 2 ? 'Baru saja' : diff < 60 ? diff + ' mnt lalu' : diff < 1440 ? Math.floor(diff/60) + ' jam lalu' : Math.floor(diff/1440) + ' hari lalu';
-    const txt = (row.message || '').substring(0, 240).replace(/</g, '&lt;') + (row.message?.length > 240 ? '…' : '');
+    const txt = (row.message || '—').substring(0, 240).replace(/</g, '&lt;') + ((row.message?.length || 0) > 240 ? '…' : '');
+    const ctx = row.element_context;
+    const ctxHtml = ctx?.element
+      ? `<div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;font-size:.65rem;color:#6B7280;">
+           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2.5"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+           <span style="font-weight:700;color:#1A1F3C;">${ctx.element}</span>${ctx.section ? ' &middot; ' + ctx.section : ''}
+         </div>`
+      : '';
     return `<div style="border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;margin-bottom:8px;background:#FAFAFA;">
+      ${ctxHtml}
       <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;">
         <span style="background:${bg};color:${fg};font-size:.62rem;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0;margin-top:2px;">${lbl}</span>
         <div style="font-size:.8rem;color:#374151;flex:1;line-height:1.5;">${txt}</div>
@@ -22368,6 +22510,12 @@ document.addEventListener('DOMContentLoaded', function(){
     const av   = document.getElementById('dash-topbar-av');
     if (menu && av && !av.contains(e.target)) menu.classList.remove('open');
   });
+
+  // Attach flag buttons to all static flaggable elements
+  initFlagButtons();
+  // Also catch dynamically rendered elements (charts load async)
+  setTimeout(initFlagButtons, 1500);
+  setTimeout(initFlagButtons, 4000);
 });
 
 </script>

@@ -6,11 +6,15 @@ serve(async (req) => {
     const record = payload.record ?? payload   // works for both webhook and direct call
 
     const typeLabel: Record<string, string> = {
-      bug: 'Bug / Error',
-      feature: 'Saran Fitur',
-      other: 'Lainnya',
+      bug:          'Bug / Error',
+      feature:      'Saran Fitur',
+      wrong_data:   'Data Salah',
+      not_working:  'Tidak Berfungsi',
+      request_edit: 'Minta Edit',
+      other:        'Lainnya',
     }
     const label = typeLabel[record.type] ?? record.type
+    const ctx = record.element_context as { element?: string; section?: string; value?: string } | null
 
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -29,6 +33,7 @@ serve(async (req) => {
             <table style="width:100%;border-collapse:collapse;font-size:14px;">
               <tr><td style="padding:8px 0;font-weight:700;color:#374151;width:100px;">Tipe</td><td style="padding:8px 0;color:#1A1F3C;">${label}</td></tr>
               <tr><td style="padding:8px 0;font-weight:700;color:#374151;">Pengguna</td><td style="padding:8px 0;color:#1A1F3C;">${record.user_email || 'Anonim'}</td></tr>
+              ${ctx?.element ? `<tr><td style="padding:8px 0;font-weight:700;color:#374151;">Elemen</td><td style="padding:8px 0;color:#E8442A;font-weight:600;">${ctx.element}${ctx.section ? ' · ' + ctx.section : ''}</td></tr>` : ''}
               <tr><td style="padding:8px 0;font-weight:700;color:#374151;">Halaman</td><td style="padding:8px 0;color:#6B7280;">${record.page || '—'}</td></tr>
             </table>
             <div style="margin-top:16px;padding:14px;background:#F9FAFB;border-left:3px solid #E8442A;border-radius:4px;">
