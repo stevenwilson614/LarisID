@@ -21035,10 +21035,12 @@ let _admBcSeg = 'all';
 
 function admBcSetSeg(seg) {
   _admBcSeg = seg;
-  ['all','leaders','students','independents'].forEach(s => {
+  ['all','leaders','students','independents','specific'].forEach(s => {
     const btn = document.getElementById('adm-bc-seg-' + s);
     if (btn) btn.classList.toggle('active', s === seg);
   });
+  const specificInput = document.getElementById('adm-bc-specific-email');
+  if (specificInput) specificInput.style.display = seg === 'specific' ? 'block' : 'none';
   document.getElementById('adm-bc-count').textContent = '';
 }
 
@@ -21048,21 +21050,32 @@ async function admBcSend() {
   const statusEl = document.getElementById('adm-bc-status');
   const sendBtn  = document.getElementById('adm-bc-send-btn');
   if (!subject || !body) { if (statusEl) statusEl.textContent = 'Isi subjek dan pesan terlebih dahulu.'; return; }
-  if (!confirm(`Kirim email ke segmen "${_admBcSeg}"?\n\nSubjek: ${subject}`)) return;
+  let specificEmail = '';
+  if (_admBcSeg === 'specific') {
+    specificEmail = (document.getElementById('adm-bc-specific-email')?.value || '').trim();
+    if (!specificEmail) { if (statusEl) statusEl.textContent = 'Masukkan email penerima.'; return; }
+  }
+  const confirmMsg = _admBcSeg === 'specific'
+    ? `Kirim email ke ${specificEmail}?\n\nSubjek: ${subject}`
+    : `Kirim email ke segmen "${_admBcSeg}"?\n\nSubjek: ${subject}`;
+  if (!confirm(confirmMsg)) return;
   if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Mengirim…'; }
   if (statusEl) statusEl.textContent = '';
   try {
     const session = (await _supabase?.auth.getSession())?.data?.session;
+    const payload = { segment: _admBcSeg, subject, body };
+    if (_admBcSeg === 'specific') payload.specific_email = specificEmail;
     const res = await fetch(`${SUPA_URL}/functions/v1/send-broadcast`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${session?.access_token || ''}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ segment: _admBcSeg, subject, body }),
+      body: JSON.stringify(payload),
     });
     const json = await res.json();
     if (res.ok) {
       if (statusEl) statusEl.textContent = `Terkirim ke ${json.sent} penerima.${json.failed?.length ? ` Gagal: ${json.failed.length}.` : ''}`;
       document.getElementById('adm-bc-subject').value = '';
       document.getElementById('adm-bc-body').value = '';
+      if (_admBcSeg === 'specific') document.getElementById('adm-bc-specific-email').value = '';
     } else {
       if (statusEl) statusEl.textContent = `Error: ${json.error || res.status}`;
     }

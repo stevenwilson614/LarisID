@@ -37,30 +37,36 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: CORS })
     }
 
-    const { segment, subject, body } = await req.json()
+    const { segment, subject, body, specific_email } = await req.json()
     if (!segment || !subject || !body) {
       return new Response(JSON.stringify({ error: 'Missing segment, subject, or body' }), { status: 400, headers: CORS })
     }
 
-    // Fetch emails by segment using the admin_user_directory view
-    const { data: users, error: usersErr } = await supabase.rpc('admin_user_directory')
-    if (usersErr) throw usersErr
-
     let targets: string[] = []
-    if (segment === 'all') {
-      targets = (users || []).map((u: any) => u.email).filter(Boolean)
-    } else if (segment === 'leaders') {
-      targets = (users || []).filter((u: any) => u.app_role === 'leader').map((u: any) => u.email).filter(Boolean)
-    } else if (segment === 'students') {
-      // Students = in a cohort (cohort_count > 0) and not a leader
-      targets = (users || [])
-        .filter((u: any) => u.app_role === 'student' && (u.cohort_count || 0) > 0)
-        .map((u: any) => u.email).filter(Boolean)
-    } else if (segment === 'independents') {
-      // Independents = not in any cohort, not a leader
-      targets = (users || [])
-        .filter((u: any) => u.app_role === 'student' && (u.cohort_count || 0) === 0)
-        .map((u: any) => u.email).filter(Boolean)
+
+    if (segment === 'specific') {
+      if (!specific_email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(specific_email)) {
+        return new Response(JSON.stringify({ error: 'Invalid or missing specific_email' }), { status: 400, headers: CORS })
+      }
+      targets = [specific_email.toLowerCase().trim()]
+    } else {
+      // Fetch emails by segment using the admin_user_directory view
+      const { data: users, error: usersErr } = await supabase.rpc('admin_user_directory')
+      if (usersErr) throw usersErr
+
+      if (segment === 'all') {
+        targets = (users || []).map((u: any) => u.email).filter(Boolean)
+      } else if (segment === 'leaders') {
+        targets = (users || []).filter((u: any) => u.app_role === 'leader').map((u: any) => u.email).filter(Boolean)
+      } else if (segment === 'students') {
+        targets = (users || [])
+          .filter((u: any) => u.app_role === 'student' && (u.cohort_count || 0) > 0)
+          .map((u: any) => u.email).filter(Boolean)
+      } else if (segment === 'independents') {
+        targets = (users || [])
+          .filter((u: any) => u.app_role === 'student' && (u.cohort_count || 0) === 0)
+          .map((u: any) => u.email).filter(Boolean)
+      }
     }
 
     if (!targets.length) {
