@@ -5758,7 +5758,7 @@ html,body{overflow-x:hidden;max-width:100%;}
 
             <!-- Leader quick actions (hidden for students, shown for leaders by JS) -->
             <div id="hbd-leader-quick-actions" style="display:none;margin-bottom:20px;">
-              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
                 <div class="hbd-card" style="cursor:pointer;text-align:center;padding:20px 16px;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''" onclick="switchDashView('cohort');setTimeout(()=>typeof cohortSwitchMentorTab==='function'&&cohortSwitchMentorTab('students'),120)">
                   <div style="width:44px;height:44px;background:#EFF6FF;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;color:#3B82F6;">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -5779,6 +5779,13 @@ html,body{overflow-x:hidden;max-width:100%;}
                   </div>
                   <div style="font-size:.82rem;font-weight:700;color:#1A1F3C;">Tambah Siswa</div>
                   <div style="font-size:.68rem;color:#6B7280;margin-top:3px;">Undang via email</div>
+                </div>
+                <div class="hbd-card" style="cursor:pointer;text-align:center;padding:20px 16px;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''" onclick="switchDashView('cohort');setTimeout(()=>typeof cohortSwitchMentorTab==='function'&&cohortSwitchMentorTab('email'),120)">
+                  <div style="width:44px;height:44px;background:#F5F3FF;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;color:#7C3AED;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
+                  </div>
+                  <div style="font-size:.82rem;font-weight:700;color:#1A1F3C;">Kirim Email</div>
+                  <div style="font-size:.68rem;color:#6B7280;margin-top:3px;">Broadcast ke siswa</div>
                 </div>
               </div>
             </div>
