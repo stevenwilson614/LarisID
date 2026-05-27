@@ -775,12 +775,10 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .cohort-name-style-chip{border:1.5px solid #E5E7EB;background:#fff;border-radius:999px;padding:5px 12px;font-size:.68rem;font-weight:700;color:#374151;cursor:pointer;transition:border-color .15s,background .15s,color .15s;}
 .cohort-name-style-chip:hover{border-color:#CBD5E1;}
 .cohort-name-style-chip.active{border-color:var(--cohort-primary,#0c4a6e);background:color-mix(in srgb,var(--cohort-primary,#0c4a6e) 8%,#fff);color:var(--cohort-primary,#0c4a6e);}
-.dash-topbar-cohort-name-accent.cohort-name-style-gradient{background:linear-gradient(105deg,var(--cohort-primary,#1A1F3C) 0%,var(--cohort-secondary,#c9a87c) 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
-.dash-topbar-cohort-name-accent.cohort-name-style-glow{color:var(--cohort-primary,#1A1F3C);text-shadow:0 0 18px color-mix(in srgb,var(--cohort-secondary,#c9a87c) 55%,transparent),0 1px 0 rgba(255,255,255,.4);}
-.dash-topbar-cohort-name-accent.cohort-name-style-outline{color:var(--cohort-primary,#1A1F3C);-webkit-text-stroke:1px color-mix(in srgb,var(--cohort-secondary,#c9a87c) 70%,#111);paint-order:stroke fill;}
-.dash-topbar-cohort-name-accent.cohort-name-style-elegant{font-family:Georgia,'Times New Roman',serif;font-weight:700;letter-spacing:.12em;font-style:italic;text-transform:none;color:var(--cohort-primary,#1A1F3C);}
-.dash-topbar-cohort-name-accent.cohort-name-style-wide{font-weight:800;letter-spacing:.24em;font-size:.78rem;color:var(--cohort-secondary,#c9a87c);}
-.dash-topbar-cohort-name-accent.cohort-name-style-condensed{font-weight:900;letter-spacing:-.03em;text-transform:uppercase;font-size:.92rem;color:var(--cohort-primary,#1A1F3C);}
+.dash-topbar-cohort-name-accent.cohort-name-style-elegant{font-family:Georgia,'Times New Roman',serif;font-weight:700;letter-spacing:.1em;font-style:italic;text-transform:none;font-size:.9rem;}
+.dash-topbar-cohort-name-accent.cohort-name-style-wide{font-weight:800;letter-spacing:.22em;font-size:.75rem;}
+.dash-topbar-cohort-name-accent.cohort-name-style-bold{font-weight:900;letter-spacing:-.02em;font-size:.95rem;}
+.dash-topbar-cohort-name-accent.cohort-name-style-soft{font-weight:600;letter-spacing:.08em;font-size:.82rem;opacity:.92;}
 @media(max-width:700px){.cohort-brand-head{display:block;}.cohort-brand-preview{margin-top:12px;}.cohort-brand-grid{grid-template-columns:1fr;}}
 /* ── Reusable cohort badge (shield / icon / name / subtitle) ── */
 .cohort-badge{display:inline-flex;vertical-align:middle;font-family:'Plus Jakarta Sans',sans-serif;line-height:1.2;}
@@ -840,7 +838,7 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .dash-topbar-brand-block{display:none;align-items:center;gap:20px;flex-wrap:wrap;min-width:0;}
 .dash-topbar-brand-stack{display:flex;flex-direction:column;gap:1px;line-height:1.15;}
 .dash-topbar-brand-kicker{font-size:.58rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--cohort-secondary,#6B7280);}
-.dash-topbar-cohort-name-accent{font-size:.88rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:var(--cohort-secondary,#1A1F3C);max-width:min(200px,40vw);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dash-topbar-cohort-name-accent{font-size:.88rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:var(--cohort-primary,#1A1F3C);max-width:min(200px,40vw);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .dash-topbar-view-page{font-size:1rem;font-weight:800;color:var(--cohort-primary,#1A1F3C);padding-left:10px;border-left:1.5px solid color-mix(in srgb,var(--cohort-secondary,#c9a87c) 65%,transparent);margin-left:8px;}
 .cohort-app-strip{
   position:relative;
@@ -867,10 +865,11 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 /* Badge lives in the header, anchored bottom-left, slightly overlapping the strip */
 body.cohort-themed.in-dashboard .dash-topbar{
   overflow:visible;
-  background:linear-gradient(90deg,color-mix(in srgb,var(--cohort-secondary,#c9a87c) 18%,#EDE7D5 82%) 0px,#F7F6F3 290px);
+  background:linear-gradient(90deg,var(--cohort-secondary,#c9a87c) 0px,color-mix(in srgb,var(--cohort-secondary,#c9a87c) 55%,#fff 45%) 120px,#fff 280px,#F7F6F3 100%);
+  border-bottom-color:color-mix(in srgb,var(--cohort-secondary,#c9a87c) 28%,#E5E7EB 72%);
 }
 @supports not (background:color-mix(in srgb,red,red)){
-  body.cohort-themed.in-dashboard .dash-topbar{background:linear-gradient(90deg,#EDE7D5 0px,#F7F6F3 290px);}
+  body.cohort-themed.in-dashboard .dash-topbar{background:linear-gradient(90deg,#EDE7D5 0px,#fff 220px,#F7F6F3 100%);}
 }
 .cohort-app-strip-center{flex:1;min-width:0;}
 .cohort-strip-slogan{color:rgba(255,255,255,.92);font-size:.8rem;font-weight:600;}
@@ -7925,14 +7924,13 @@ html,body{overflow-x:hidden;max-width:100%;}
                     </div>
                   </div>
                 </div>
-                <label class="cohort-muted" style="font-size:.65rem;">Gaya nama kohort di header</label>
+                <label class="cohort-muted" style="font-size:.65rem;">Gaya teks nama kohort di header <span style="font-weight:500;opacity:.75;">· warna utama</span></label>
                 <div class="cohort-name-style-row" id="cohort-brand-name-style-row" role="listbox" aria-label="Gaya teks nama kohort">
                   <button type="button" class="cohort-name-style-chip active" data-style="classic" onclick="cohortSelectHeaderNameStyle('classic')">Klasik</button>
-                  <button type="button" class="cohort-name-style-chip" data-style="gradient" onclick="cohortSelectHeaderNameStyle('gradient')">Gradien</button>
-                  <button type="button" class="cohort-name-style-chip" data-style="glow" onclick="cohortSelectHeaderNameStyle('glow')">Berkilau</button>
-                  <button type="button" class="cohort-name-style-chip" data-style="outline" onclick="cohortSelectHeaderNameStyle('outline')">Garis</button>
                   <button type="button" class="cohort-name-style-chip" data-style="elegant" onclick="cohortSelectHeaderNameStyle('elegant')">Elegan</button>
                   <button type="button" class="cohort-name-style-chip" data-style="wide" onclick="cohortSelectHeaderNameStyle('wide')">Lebar</button>
+                  <button type="button" class="cohort-name-style-chip" data-style="bold" onclick="cohortSelectHeaderNameStyle('bold')">Tebal</button>
+                  <button type="button" class="cohort-name-style-chip" data-style="soft" onclick="cohortSelectHeaderNameStyle('soft')">Halus</button>
                 </div>
                 <input type="hidden" id="cohort-brand-name-style" value="classic">
                 <!-- Badge icon and shape removed — cohort identity is name + color only -->
@@ -11776,12 +11774,36 @@ function _cohortDeriveAccentHex(primaryHex) {
   return _cohortRgbToHex(_cohortHslToRgb(accentHue, accentS, accentL));
 }
 
-const COHORT_HEADER_NAME_STYLES = ['classic', 'gradient', 'glow', 'outline', 'elegant', 'wide', 'condensed'];
+const COHORT_HEADER_NAME_STYLES = ['classic', 'elegant', 'wide', 'bold', 'soft'];
+const COHORT_HEADER_NAME_STYLE_ALIASES = {
+  gradient: 'classic', glow: 'classic', outline: 'classic', condensed: 'bold',
+};
 let _cohortBrandColorPopoverWhich = null;
 
 function cohortNormalizeHeaderNameStyle(raw) {
   const s = String(raw || '').toLowerCase().trim();
-  return COHORT_HEADER_NAME_STYLES.includes(s) ? s : 'classic';
+  if (COHORT_HEADER_NAME_STYLES.includes(s)) return s;
+  if (COHORT_HEADER_NAME_STYLE_ALIASES[s]) return COHORT_HEADER_NAME_STYLE_ALIASES[s];
+  return 'classic';
+}
+
+function cohortIsIdentityBrandingPreviewActive() {
+  const panel = document.getElementById('cohort-mentor-panel-identity');
+  return !!(panel && panel.style.display !== 'none');
+}
+
+/** Set primary swatch/inputs and always re-derive accent from primary. */
+function cohortOnPrimaryColorChange(priHex) {
+  const pri = _cohortParseThemeHex(priHex);
+  if (!pri) return;
+  const text = document.getElementById('cohort-brand-primary');
+  const picker = document.getElementById('cohort-brand-primary-picker');
+  const swatch = document.getElementById('cohort-brand-primary-swatch');
+  if (text) text.value = pri;
+  if (picker) picker.value = pri;
+  if (swatch) swatch.style.backgroundColor = pri;
+  cohortSetBrandSecondaryHex(_cohortDeriveAccentHex(pri));
+  cohortPreviewBrandingForm();
 }
 
 function cohortHeaderNameStyleFromRow(row) {
@@ -11811,9 +11833,7 @@ function cohortSelectHeaderNameStyle(style) {
     chip.classList.toggle('active', chip.getAttribute('data-style') === normalized);
   });
   cohortApplyHeaderNameStyle(normalized);
-  const row = typeof cohortResolveThemeCohortRowForUi === 'function' ? cohortResolveThemeCohortRowForUi() : null;
-  const nm = document.getElementById('dash-topbar-cohort-name');
-  if (nm && row) nm.textContent = (row.name || 'Kohort').trim();
+  cohortSyncDashTopbarTitle();
 }
 
 function cohortSyncBrandColorSwatches() {
@@ -11920,13 +11940,13 @@ function cohortApplyBrandColorFromPopover(hex) {
   if (!which) return;
   const parsed = _cohortParseThemeHex(hex);
   if (!parsed) return;
-  const text = document.getElementById(which === 'primary' ? 'cohort-brand-primary' : 'cohort-brand-secondary');
-  const picker = document.getElementById(which === 'primary' ? 'cohort-brand-primary-picker' : 'cohort-brand-secondary-picker');
-  const swatch = document.getElementById(which === 'primary' ? 'cohort-brand-primary-swatch' : 'cohort-brand-secondary-swatch');
-  if (text) text.value = parsed;
-  if (picker) picker.value = parsed;
-  if (swatch) swatch.style.backgroundColor = parsed;
-  cohortSyncBrandColor(which, 'picker');
+  if (which === 'primary') {
+    cohortOnPrimaryColorChange(parsed);
+    return;
+  }
+  cohortSetBrandSecondaryHex(parsed);
+  cohortSyncBrandColorSwatches();
+  cohortPreviewBrandingForm();
 }
 
 /** When cohort theme is active, topbar shows COHORT + name (accent) + current view (primary). */
@@ -11942,9 +11962,16 @@ function cohortSyncDashTopbarTitle(view) {
   if (themed && brand && vlab && nm) {
     brand.style.display = 'flex';
     if (titleEl) titleEl.style.display = 'none';
-    nm.textContent = (row.name || 'Kohort').trim();
+    if (cohortIsIdentityBrandingPreviewActive()) {
+      const nameEl = document.getElementById('cohort-brand-name');
+      nm.textContent = ((nameEl && nameEl.value) || row.name || 'Kohort').trim();
+      const styleEl = document.getElementById('cohort-brand-name-style');
+      cohortApplyHeaderNameStyle(styleEl ? styleEl.value : 'classic');
+    } else {
+      nm.textContent = (row.name || 'Kohort').trim();
+      cohortApplyHeaderNameStyle(row);
+    }
     vlab.textContent = t;
-    cohortApplyHeaderNameStyle(row);
   } else {
     if (brand) brand.style.display = 'none';
     if (titleEl) {
@@ -12088,18 +12115,29 @@ function cohortPreviewBrandingForm() {
 }
 
 function cohortSyncBrandColor(which, source) {
-  const text = document.getElementById(which === 'primary' ? 'cohort-brand-primary' : 'cohort-brand-secondary');
-  const picker = document.getElementById(which === 'primary' ? 'cohort-brand-primary-picker' : 'cohort-brand-secondary-picker');
-  if (!text || !picker) return;
-  if (source === 'picker') {
-    text.value = picker.value;
-  } else {
-    const hex = _cohortParseThemeHex(text.value);
-    if (hex) picker.value = hex;
-  }
   if (which === 'primary') {
-    const priHex = _cohortParseThemeHex(text.value);
-    if (priHex) cohortSetBrandSecondaryHex(_cohortDeriveAccentHex(priHex));
+    const text = document.getElementById('cohort-brand-primary');
+    const picker = document.getElementById('cohort-brand-primary-picker');
+    if (!text || !picker) return;
+    let priHex = source === 'picker' ? picker.value : text.value;
+    if (source === 'picker') text.value = picker.value;
+    else {
+      const hex = _cohortParseThemeHex(text.value);
+      if (!hex) return;
+      picker.value = hex;
+      priHex = hex;
+    }
+    cohortOnPrimaryColorChange(priHex);
+    return;
+  }
+  const text = document.getElementById('cohort-brand-secondary');
+  const picker = document.getElementById('cohort-brand-secondary-picker');
+  if (!text || !picker) return;
+  if (source === 'picker') text.value = picker.value;
+  else {
+    const hex = _cohortParseThemeHex(text.value);
+    if (!hex) return;
+    picker.value = hex;
   }
   cohortSyncBrandColorSwatches();
   cohortPreviewBrandingForm();

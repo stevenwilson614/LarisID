@@ -1,10 +1,34 @@
 # Supabase migrations (LarisID)
 
-Apply cohort community tables and policies in the Supabase SQL Editor, or with the Supabase CLI from this repo root:
+Linked project ref: `bzmvlraziqevqdyotvgy` (see `supabase/.temp/linked-project.json` after `supabase link`).
+
+## CLI auth (agents & developers)
+
+**Never commit personal access tokens** to `README`, `AGENTS.md`, or git. Store the PAT in **`supabase/.env.local`** (gitignored):
 
 ```bash
-supabase db push
+cp supabase/.env.example supabase/.env.local
+# Edit supabase/.env.local — set SUPABASE_ACCESS_TOKEN from:
+# https://supabase.com/dashboard/account/tokens
 ```
+
+Push migrations from the repo root:
+
+```bash
+set -a && source supabase/.env.local && set +a
+supabase db push --linked --yes
+```
+
+Agents: read `SUPABASE_ACCESS_TOKEN` from `supabase/.env.local` if present; do not print or commit the value.
+
+Alternative without a PAT: use the database password from Project Settings → Database:
+
+```bash
+export SUPABASE_DB_PASSWORD='your-db-password'
+supabase db push --linked --yes
+```
+
+Apply cohort community tables and policies in the Supabase SQL Editor, or with the Supabase CLI as above:
 
 ## Cohort MVP (`migrations/20260213120000_cohort_community.sql`)
 
