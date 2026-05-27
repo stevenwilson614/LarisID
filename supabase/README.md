@@ -2,6 +2,8 @@
 
 Linked project ref: `bzmvlraziqevqdyotvgy` (see `supabase/.temp/linked-project.json` after `supabase link`).
 
+**Scraper ingest:** see [`docs/SCRAPER_TODO.md`](../docs/SCRAPER_TODO.md) for `total_sold` Shopee display-bucket handling before the next bulk scrape.
+
 ## CLI auth (agents & developers)
 
 **Never commit personal access tokens** to `README`, `AGENTS.md`, or git. Store the PAT in **`supabase/.env.local`** (gitignored):
