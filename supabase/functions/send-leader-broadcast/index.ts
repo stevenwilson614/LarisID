@@ -6,8 +6,10 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'Steven <steven@larisid.com>'
-const REPLY_TO   = 'stevenwilson614@gmail.com'
+// The verified sending domain. Resend only delivers from domains you own.
+// The leader's real email goes in reply_to so replies reach them directly.
+const FROM_DOMAIN = Deno.env.get('RESEND_FROM_DOMAIN') || 'larisid.com'
+const FROM_ADDR   = Deno.env.get('RESEND_FROM_EMAIL')  || `noreply@${FROM_DOMAIN}`
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -20,7 +22,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: CORS })
     }
 
-    // Verify the calling user's JWT
+    // Verify the calling user's JWT and get their profile
     const anonClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
@@ -31,6 +33,14 @@ serve(async (req) => {
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: CORS })
     }
+
+    // Build From / Reply-To from the leader's profile
+    const leaderEmail = user.email ?? ''
+    const leaderName  = (user.user_metadata?.full_name as string | undefined)
+      ?? leaderEmail.split('@')[0]
+    // "Steven F Wilson via LarisID <noreply@larisid.com>"
+    const fromEmail = `${leaderName} via LarisID <${FROM_ADDR}>`
+    const replyTo   = leaderEmail
 
     // User-scoped client so security-definer RPCs have auth.uid() set correctly
     const userClient = createClient(
@@ -126,8 +136,8 @@ serve(async (req) => {
     </div>`
 
     const baseMsg = {
-      from:     FROM_EMAIL,
-      reply_to: REPLY_TO,
+      from:     fromEmail,
+      reply_to: replyTo,
       subject,
       html:     htmlBody,
       text:     body,
@@ -197,7 +207,8 @@ serve(async (req) => {
         fail_reasons:   failReasons,
         total_targets:  targets.length,
         recipients:     targets,
-        from:           FROM_EMAIL,
+        from:           fromEmail,
+        reply_to:       replyTo,
         resend_ids:     resendIds,
       }),
       { headers: { ...CORS, 'Content-Type': 'application/json' } },
