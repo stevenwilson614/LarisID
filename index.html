@@ -5758,7 +5758,7 @@ html,body{overflow-x:hidden;max-width:100%;}
 
             <!-- Leader quick actions (hidden for students, shown for leaders by JS) -->
             <div id="hbd-leader-quick-actions" style="display:none;margin-bottom:20px;">
-              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
                 <div class="hbd-card" style="cursor:pointer;text-align:center;padding:20px 16px;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''" onclick="switchDashView('cohort');setTimeout(()=>typeof cohortSwitchMentorTab==='function'&&cohortSwitchMentorTab('students'),120)">
                   <div style="width:44px;height:44px;background:#EFF6FF;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;color:#3B82F6;">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -5780,24 +5780,68 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <div style="font-size:.82rem;font-weight:700;color:#1A1F3C;">Tambah Siswa</div>
                   <div style="font-size:.68rem;color:#6B7280;margin-top:3px;">Undang via email</div>
                 </div>
-                <div class="hbd-card" style="cursor:pointer;text-align:center;padding:20px 16px;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''" onclick="switchDashView('cohort');setTimeout(()=>typeof cohortSwitchMentorTab==='function'&&cohortSwitchMentorTab('email'),120)">
-                  <div style="width:44px;height:44px;background:#F5F3FF;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;color:#7C3AED;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
-                  </div>
-                  <div style="font-size:.82rem;font-weight:700;color:#1A1F3C;">Kirim Email</div>
-                  <div style="font-size:.68rem;color:#6B7280;margin-top:3px;">Broadcast ke siswa</div>
+              </div>
+            </div>
+
+            <!-- Leader student roster with group creation -->
+            <div id="hbd-siswa-progress" style="display:none;margin-bottom:20px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <div style="font-size:.88rem;font-weight:800;color:#1A1F3C;">Siswa Kohort</div>
+                <button onclick="hbdSiswaProgressLoad(true)" style="background:none;border:none;font-size:.7rem;color:#E8442A;font-weight:700;cursor:pointer;">Refresh</button>
+              </div>
+              <div style="border:1px solid #E5E7EB;border-radius:10px;background:#fff;overflow:hidden;">
+                <!-- Scrollable rows -->
+                <div id="hbd-siswa-rows" style="max-height:320px;overflow-y:auto;">
+                  <div class="cohort-muted" style="padding:16px;font-size:.75rem;">Memuat data siswa...</div>
+                </div>
+                <!-- Group creation from selection -->
+                <div style="padding:10px 14px;border-top:1px solid #E5E7EB;background:#F9FAFB;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                  <span id="hbd-stu-sel-count" style="font-size:.7rem;color:#6B7280;white-space:nowrap;">0 dipilih</span>
+                  <input id="hbd-stu-group-name" type="text" placeholder="Nama grup baru…" maxlength="100" autocomplete="off" style="flex:1;min-width:120px;padding:6px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.75rem;font-family:inherit;">
+                  <button type="button" class="cohort-btn secondary" style="padding:6px 12px;font-size:.72rem;white-space:nowrap;" onclick="hbdCreateGroupFromSelection()">Buat Grup</button>
+                  <div id="hbd-stu-group-status" style="font-size:.68rem;color:#6B7280;width:100%;"></div>
                 </div>
               </div>
             </div>
 
-            <!-- Siswa & Progress — visible to leader only (loaded by hbdSiswaProgressLoad) -->
-            <div id="hbd-siswa-progress" style="display:none;margin-bottom:20px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                <div style="font-size:.88rem;font-weight:800;color:#1A1F3C;">Siswa &amp; Progress</div>
-                <button onclick="hbdSiswaProgressLoad(true)" style="background:none;border:none;font-size:.7rem;color:#E8442A;font-weight:700;cursor:pointer;">Refresh</button>
+            <!-- Leader email broadcast — embedded directly on dashboard -->
+            <div id="hbd-leader-email" style="display:none;margin-bottom:20px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div style="font-size:.88rem;font-weight:800;color:#1A1F3C;">Broadcast Email</div>
+                <div style="font-size:.7rem;color:#6B7280;">via Resend · steven@larisid.com</div>
               </div>
-              <div id="hbd-siswa-rows" style="border:1px solid #E5E7EB;border-radius:10px;overflow:hidden;background:#fff;">
-                <div class="cohort-muted" style="padding:16px;font-size:.75rem;">Memuat data siswa...</div>
+              <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:16px;">
+                <!-- Segment selector -->
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+                  <button type="button" class="adm-seg-btn active" id="hbdbc-seg-all_cohort"   onclick="hbdbcSetSeg('all_cohort')">Semua Siswa</button>
+                  <button type="button" class="adm-seg-btn"        id="hbdbc-seg-specific"     onclick="hbdbcSetSeg('specific')">Spesifik</button>
+                  <button type="button" class="adm-seg-btn"        id="hbdbc-seg-custom_group" onclick="hbdbcSetSeg('custom_group')">Custom Group</button>
+                </div>
+                <!-- Specific person search -->
+                <div id="hbdbc-specific-wrap" style="display:none;position:relative;margin-bottom:8px;">
+                  <input id="hbdbc-specific-search" type="text" autocomplete="off" placeholder="Cari nama atau email siswa…" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.8rem;font-family:inherit;" oninput="hbdbcSearchStudent(this.value)">
+                  <input id="hbdbc-specific-email" type="hidden">
+                  <div id="hbdbc-specific-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #E5E7EB;border-radius:8px;margin-top:3px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:200;max-height:220px;overflow-y:auto;"></div>
+                </div>
+                <!-- Custom group selector -->
+                <div id="hbdbc-group-wrap" style="display:none;margin-bottom:8px;">
+                  <select id="hbdbc-group-select" class="cohort-input" style="margin:0;">
+                    <option value="">— Pilih grup —</option>
+                  </select>
+                </div>
+                <!-- Email fields -->
+                <input  id="hbdbc-subject" type="text"     placeholder="Subjek email…"         style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.8rem;margin-bottom:8px;font-family:inherit;">
+                <textarea id="hbdbc-body" rows="5"         placeholder="Isi pesan (plain text)…" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.8rem;resize:vertical;font-family:inherit;margin-bottom:10px;"></textarea>
+                <!-- Attachment -->
+                <div style="margin-bottom:12px;">
+                  <label style="font-size:.72rem;font-weight:700;color:#374151;display:block;margin-bottom:5px;">Lampiran (opsional)</label>
+                  <input id="hbdbc-attachment" type="file" style="font-size:.75rem;color:#374151;width:100%;box-sizing:border-box;">
+                  <div id="hbdbc-attachment-info" style="font-size:.65rem;color:#9CA3AF;margin-top:3px;"></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                  <button type="button" class="cohort-btn" id="hbdbc-send-btn" onclick="hbdbcSend()">Kirim Email</button>
+                  <div id="hbdbc-status" style="font-size:.72rem;color:#6B7280;"></div>
+                </div>
               </div>
             </div>
 
@@ -21745,40 +21789,183 @@ async function admBcSend() {
   if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Kirim Email'; }
 }
 
-// ─── Leader email broadcast ───────────────────────────────────────────────────
+// ─── Leader email broadcast (shared state + prefix-based logic) ───────────────
 
 let _ldrBcSeg      = 'all_cohort';
-let _ldrBcStudents = null; // [{user_id, email, display_name}]
+let _ldrBcStudents = null; // [{user_id, email, display_name, status, engagement_score}]
 let _ldrBcGroups   = null; // [{id, name, member_count}]
 
+// Generic: set segment on any email panel identified by id-prefix
+function _ldrEmailSetSeg(seg, pfx) {
+  _ldrBcSeg = seg;
+  ['all_cohort','specific','custom_group'].forEach(s => {
+    const btn = document.getElementById(pfx + 'seg-' + s);
+    if (btn) btn.classList.toggle('active', s === seg);
+  });
+  const sw = document.getElementById(pfx + 'specific-wrap');
+  const gw = document.getElementById(pfx + 'group-wrap');
+  if (sw) sw.style.display = seg === 'specific'     ? 'block' : 'none';
+  if (gw) gw.style.display = seg === 'custom_group' ? 'block' : 'none';
+}
+
+// Generic: render student autocomplete into a dropdown element
+function _ldrEmailSearchStudent(query, dropdownId, hiddenId) {
+  const dropdown = document.getElementById(dropdownId);
+  const hidden   = document.getElementById(hiddenId);
+  if (!dropdown) return;
+  if (hidden) hidden.value = '';
+  const q = query.trim().toLowerCase();
+  if (!q) { dropdown.style.display = 'none'; return; }
+  const matches = (_ldrBcStudents || []).filter(u =>
+    (u.display_name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q)
+  ).slice(0, 10);
+  if (!matches.length) { dropdown.style.display = 'none'; return; }
+  const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  dropdown.innerHTML = matches.map(u => {
+    const name  = u.display_name || u.email;
+    const safeE = u.email.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const safeN = name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    // Encode the target field IDs so we know where to write the selection
+    return `<div style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #F3F4F6;" onmousedown="_ldrEmailSelectStudent('${safeE}','${safeN}','${dropdownId}','${hiddenId}')">
+      <div style="font-size:.78rem;font-weight:700;color:#1A1F3C;">${esc(name)}</div>
+      <div style="font-size:.68rem;color:#6B7280;">${esc(u.email)}</div>
+    </div>`;
+  }).join('');
+  dropdown.style.display = 'block';
+}
+
+function _ldrEmailSelectStudent(email, name, dropdownId, hiddenId) {
+  const dropdown = document.getElementById(dropdownId);
+  const hidden   = document.getElementById(hiddenId);
+  // The search input id is derived: "xxx-specific-dropdown" → "xxx-specific-search"
+  const searchId = dropdownId.replace('-dropdown', '-search');
+  const search   = document.getElementById(searchId);
+  if (search) search.value = name + ' <' + email + '>';
+  if (hidden) hidden.value = email;
+  if (dropdown) dropdown.style.display = 'none';
+}
+
+// Rebuild the group <select> inside a given panel (by prefix)
+function _ldrEmailRebuildGroupSelect(pfx) {
+  const sel = document.getElementById(pfx + 'group-select');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Pilih grup —</option>';
+  (_ldrBcGroups || []).forEach(g => {
+    const opt = document.createElement('option');
+    opt.value = g.id;
+    opt.textContent = `${g.name} (${g.member_count} siswa)`;
+    if (g.id === cur) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+// Generic: send email via send-leader-broadcast using a given panel's prefix
+async function _ldrEmailSend(pfx) {
+  const c        = _cohortState?.primaryMentorCohort;
+  const subject  = (document.getElementById(pfx + 'subject')?.value  || '').trim();
+  const body     = (document.getElementById(pfx + 'body')?.value     || '').trim();
+  const statusEl = document.getElementById(pfx + 'status');
+  const sendBtn  = document.getElementById(pfx + 'send-btn');
+
+  if (!c)                { if (statusEl) statusEl.textContent = 'Tidak ada kohort aktif.'; return; }
+  if (!subject || !body) { if (statusEl) statusEl.textContent = 'Isi subjek dan pesan terlebih dahulu.'; return; }
+
+  let specificEmail = '';
+  let groupId       = '';
+
+  if (_ldrBcSeg === 'specific') {
+    specificEmail = (document.getElementById(pfx + 'specific-email')?.value || '').trim();
+    if (!specificEmail) {
+      const typed = (document.getElementById(pfx + 'specific-search')?.value || '').trim();
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typed)) specificEmail = typed;
+    }
+    if (!specificEmail) { if (statusEl) statusEl.textContent = 'Pilih penerima dari daftar atau ketik email yang valid.'; return; }
+  }
+
+  if (_ldrBcSeg === 'custom_group') {
+    groupId = (document.getElementById(pfx + 'group-select')?.value || '').trim();
+    if (!groupId) { if (statusEl) statusEl.textContent = 'Pilih grup terlebih dahulu.'; return; }
+  }
+
+  let attachment = null;
+  const fileInput = document.getElementById(pfx + 'attachment');
+  if (fileInput?.files?.length) {
+    const file = fileInput.files[0];
+    attachment = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload  = () => res({ filename: file.name, content: r.result.split(',')[1], content_type: file.type || 'application/octet-stream' });
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+  }
+
+  const segLabel = _ldrBcSeg === 'specific'
+    ? specificEmail
+    : _ldrBcSeg === 'custom_group'
+      ? `grup "${(_ldrBcGroups || []).find(g => g.id === groupId)?.name || groupId}"`
+      : 'semua siswa aktif';
+  if (!confirm(`Kirim email ke ${segLabel}?\n\nSubjek: ${subject}`)) return;
+
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Mengirim…'; }
+  if (statusEl) { statusEl.textContent = ''; statusEl.style.color = '#6B7280'; }
+
+  try {
+    const session = (await _supabase?.auth.getSession())?.data?.session;
+    const payload = { cohort_id: c.id, segment: _ldrBcSeg, subject, body };
+    if (_ldrBcSeg === 'specific')     payload.specific_email = specificEmail;
+    if (_ldrBcSeg === 'custom_group') payload.group_id       = groupId;
+    if (attachment)                   payload.attachment      = attachment;
+
+    const res = await fetch(`${SUPA_URL}/functions/v1/send-leader-broadcast`, {
+      method:  'POST',
+      headers: { 'Authorization': `Bearer ${session?.access_token || ''}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    });
+    const json = await res.json();
+
+    if (res.ok) {
+      const failMsg  = json.failed?.length ? ` Gagal: ${json.failed.length}.${json.fail_reasons?.[0] ? ' (' + json.fail_reasons[0] + ')' : ''}` : '';
+      const toList   = (json.recipients || []).join(', ');
+      const idHint   = json.resend_ids?.[0] ? ` ID Resend: ${json.resend_ids[0]}.` : '';
+      const fromHint = json.from ? ` Dari: ${json.from}.` : '';
+      const spamNote = json.sent > 0 ? ' Cek folder spam/promosi jika tidak masuk inbox.' : '';
+      if (statusEl) {
+        statusEl.textContent = `Diterima Resend (${json.sent}/${json.total_targets || json.sent}) → ${toList || '—'}.${fromHint}${idHint}${failMsg}${spamNote}`;
+        statusEl.style.color = json.failed?.length ? '#B45309' : '#1A7A46';
+      }
+      ['subject','body'].forEach(f => { const el = document.getElementById(pfx + f); if (el) el.value = ''; });
+      if (_ldrBcSeg === 'specific') {
+        const s = document.getElementById(pfx + 'specific-search'); if (s) s.value = '';
+        const h = document.getElementById(pfx + 'specific-email');  if (h) h.value = '';
+      }
+      if (fileInput) { fileInput.value = ''; const inf = document.getElementById(pfx + 'attachment-info'); if (inf) inf.textContent = ''; }
+    } else {
+      if (statusEl) statusEl.textContent = `Error: ${json.error || res.status}`;
+    }
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'Gagal mengirim. Coba lagi.';
+  }
+  if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Kirim Email'; }
+}
+
+// ── Cohort-tab panel wrappers (prefix: 'ldr-bc-') ────────────────────────────
 async function ldrBcInit() {
   const c = _cohortState?.primaryMentorCohort;
   if (!c) return;
   ldrBcSetSeg('all_cohort');
-  // Reset form
-  const fields = ['ldr-bc-subject','ldr-bc-body','ldr-bc-specific-search','ldr-bc-specific-email'];
-  fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  const fi = document.getElementById('ldr-bc-attachment');
-  if (fi) fi.value = '';
-  const info = document.getElementById('ldr-bc-attachment-info');
-  if (info) info.textContent = '';
-  const st = document.getElementById('ldr-bc-status');
-  if (st) { st.textContent = ''; st.style.color = '#6B7280'; }
-  // Parallel load
+  ['ldr-bc-subject','ldr-bc-body','ldr-bc-specific-search','ldr-bc-specific-email'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const fi = document.getElementById('ldr-bc-attachment');   if (fi) fi.value = '';
+  const info = document.getElementById('ldr-bc-attachment-info'); if (info) info.textContent = '';
+  const st   = document.getElementById('ldr-bc-status');     if (st) { st.textContent = ''; st.style.color = '#6B7280'; }
   await Promise.all([ldrBcLoadStudents(), ldrGroupLoad()]);
 }
-
-function ldrBcSetSeg(seg) {
-  _ldrBcSeg = seg;
-  ['all_cohort','specific','custom_group'].forEach(s => {
-    const btn = document.getElementById('ldr-bc-seg-' + s);
-    if (btn) btn.classList.toggle('active', s === seg);
-  });
-  const sw = document.getElementById('ldr-bc-specific-wrap');
-  const gw = document.getElementById('ldr-bc-group-wrap');
-  if (sw) sw.style.display = seg === 'specific'     ? 'block' : 'none';
-  if (gw) gw.style.display = seg === 'custom_group' ? 'block' : 'none';
-}
+function ldrBcSetSeg(seg)              { _ldrEmailSetSeg(seg, 'ldr-bc-'); }
+function ldrBcSearchStudent(query)     { _ldrEmailSearchStudent(query, 'ldr-bc-specific-dropdown', 'ldr-bc-specific-email'); }
+function ldrBcSelectStudent(e, n)      { _ldrEmailSelectStudent(e, n, 'ldr-bc-specific-dropdown', 'ldr-bc-specific-email'); }
+async function ldrBcSend()             { return _ldrEmailSend('ldr-bc-'); }
 
 async function ldrBcLoadStudents() {
   const c = _cohortState?.primaryMentorCohort;
@@ -21821,121 +22008,27 @@ function ldrBcSelectStudent(email, name) {
 }
 
 document.addEventListener('click', e => {
-  const wrap = document.getElementById('ldr-bc-specific-wrap');
-  if (wrap && !wrap.contains(e.target)) {
-    const dd = document.getElementById('ldr-bc-specific-dropdown');
-    if (dd) dd.style.display = 'none';
-  }
+  // Close any open leader-email autocomplete dropdowns
+  ['ldr-bc-specific-wrap', 'hbdbc-specific-wrap'].forEach(wrapId => {
+    const wrap = document.getElementById(wrapId);
+    if (wrap && !wrap.contains(e.target)) {
+      const ddId = wrapId.replace('-wrap', '-dropdown');
+      const dd = document.getElementById(ddId);
+      if (dd) dd.style.display = 'none';
+    }
+  });
 });
 
 document.addEventListener('change', e => {
-  if (e.target.id !== 'ldr-bc-attachment') return;
-  const info = document.getElementById('ldr-bc-attachment-info');
+  const infoMap = { 'ldr-bc-attachment': 'ldr-bc-attachment-info', 'hbdbc-attachment': 'hbdbc-attachment-info' };
+  const infoId = infoMap[e.target.id];
+  if (!infoId) return;
+  const info = document.getElementById(infoId);
   if (info) {
     const file = e.target.files?.[0];
     info.textContent = file ? `${file.name} (${(file.size / 1024).toFixed(1)} KB)` : '';
   }
 });
-
-async function ldrBcSend() {
-  const c       = _cohortState?.primaryMentorCohort;
-  const subject = (document.getElementById('ldr-bc-subject')?.value || '').trim();
-  const body    = (document.getElementById('ldr-bc-body')?.value    || '').trim();
-  const statusEl = document.getElementById('ldr-bc-status');
-  const sendBtn  = document.getElementById('ldr-bc-send-btn');
-
-  if (!c)           { if (statusEl) statusEl.textContent = 'Tidak ada kohort aktif.'; return; }
-  if (!subject || !body) {
-    if (statusEl) statusEl.textContent = 'Isi subjek dan pesan terlebih dahulu.';
-    return;
-  }
-
-  let specificEmail = '';
-  let groupId       = '';
-
-  if (_ldrBcSeg === 'specific') {
-    specificEmail = (document.getElementById('ldr-bc-specific-email')?.value || '').trim();
-    if (!specificEmail) {
-      const typed = (document.getElementById('ldr-bc-specific-search')?.value || '').trim();
-      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typed)) specificEmail = typed;
-    }
-    if (!specificEmail) {
-      if (statusEl) statusEl.textContent = 'Pilih penerima dari daftar atau ketik email yang valid.';
-      return;
-    }
-  }
-
-  if (_ldrBcSeg === 'custom_group') {
-    groupId = (document.getElementById('ldr-bc-group-select')?.value || '').trim();
-    if (!groupId) {
-      if (statusEl) statusEl.textContent = 'Pilih grup terlebih dahulu.';
-      return;
-    }
-  }
-
-  let attachment = null;
-  const fileInput = document.getElementById('ldr-bc-attachment');
-  if (fileInput?.files?.length) {
-    const file = fileInput.files[0];
-    attachment = await new Promise((res, rej) => {
-      const r = new FileReader();
-      r.onload  = () => res({ filename: file.name, content: r.result.split(',')[1], content_type: file.type || 'application/octet-stream' });
-      r.onerror = rej;
-      r.readAsDataURL(file);
-    });
-  }
-
-  const segLabel = _ldrBcSeg === 'specific'
-    ? specificEmail
-    : _ldrBcSeg === 'custom_group'
-      ? `grup "${(_ldrBcGroups || []).find(g => g.id === groupId)?.name || groupId}"`
-      : 'semua siswa aktif';
-  if (!confirm(`Kirim email ke ${segLabel}?\n\nSubjek: ${subject}`)) return;
-
-  if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Mengirim…'; }
-  if (statusEl) { statusEl.textContent = ''; statusEl.style.color = '#6B7280'; }
-
-  try {
-    const session = (await _supabase?.auth.getSession())?.data?.session;
-    const payload = { cohort_id: c.id, segment: _ldrBcSeg, subject, body };
-    if (_ldrBcSeg === 'specific')      payload.specific_email = specificEmail;
-    if (_ldrBcSeg === 'custom_group')  payload.group_id       = groupId;
-    if (attachment)                    payload.attachment      = attachment;
-
-    const res = await fetch(`${SUPA_URL}/functions/v1/send-leader-broadcast`, {
-      method:  'POST',
-      headers: { 'Authorization': `Bearer ${session?.access_token || ''}`, 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload),
-    });
-    const json = await res.json();
-
-    if (res.ok) {
-      const failMsg  = json.failed?.length
-        ? ` Gagal: ${json.failed.length}.${json.fail_reasons?.[0] ? ' (' + json.fail_reasons[0] + ')' : ''}`
-        : '';
-      const toList   = (json.recipients || []).join(', ');
-      const idHint   = json.resend_ids?.[0] ? ` ID Resend: ${json.resend_ids[0]}.` : '';
-      const fromHint = json.from ? ` Dari: ${json.from}.` : '';
-      const spamNote = json.sent > 0 ? ' Cek folder spam/promosi jika tidak masuk inbox.' : '';
-      if (statusEl) {
-        statusEl.textContent = `Diterima Resend (${json.sent}/${json.total_targets || json.sent}) → ${toList || '—'}.${fromHint}${idHint}${failMsg}${spamNote}`;
-        statusEl.style.color = json.failed?.length ? '#B45309' : '#1A7A46';
-      }
-      // Reset fields
-      ['ldr-bc-subject','ldr-bc-body'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-      if (_ldrBcSeg === 'specific') {
-        const s = document.getElementById('ldr-bc-specific-search'); if (s) s.value = '';
-        const h = document.getElementById('ldr-bc-specific-email');  if (h) h.value = '';
-      }
-      if (fileInput) { fileInput.value = ''; const inf = document.getElementById('ldr-bc-attachment-info'); if (inf) inf.textContent = ''; }
-    } else {
-      if (statusEl) statusEl.textContent = `Error: ${json.error || res.status}`;
-    }
-  } catch (e) {
-    if (statusEl) statusEl.textContent = 'Gagal mengirim. Coba lagi.';
-  }
-  if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Kirim Email'; }
-}
 
 // ─── Group management ─────────────────────────────────────────────────────────
 
@@ -21945,23 +22038,9 @@ async function ldrGroupLoad() {
   const { data } = await _supabase.rpc('leader_get_email_groups', { p_cohort: c.id });
   _ldrBcGroups = data || [];
   ldrGroupRender();
-  _ldrBcGroupRebuildSelect();
-}
-
-function _ldrBcGroupRebuildSelect() {
-  const sel = document.getElementById('ldr-bc-group-select');
-  if (!sel) return;
-  const cur = sel.value;
-  sel.innerHTML = '<option value="">— Pilih grup —</option>';
-  (_ldrBcGroups || []).forEach(g => {
-    const opt = document.createElement('option');
-    opt.value       = g.id;
-    opt.textContent = `${g.name} (${g.member_count} siswa)`;
-    if (g.id === cur) opt.selected = true;
-    sel.appendChild(opt);
-  });
-  const cnt = document.getElementById('ldr-bc-group-count');
-  if (cnt) cnt.textContent = '';
+  // Sync group dropdowns in both panels
+  _ldrEmailRebuildGroupSelect('ldr-bc-');
+  _ldrEmailRebuildGroupSelect('hbdbc-');
 }
 
 function ldrGroupRender() {
@@ -22108,6 +22187,150 @@ async function ldrGroupRemoveMember(groupId, userId) {
     alert('Gagal menghapus anggota: ' + (e.message || e));
   }
 }
+
+// ─── Dashboard student roster + group creation ────────────────────────────────
+
+let _hbdSiswaLoaded = false;
+
+async function hbdSiswaProgressLoad(force) {
+  const c = _cohortState?.primaryMentorCohort;
+  if (!c || !_supabase) return;
+  if (_hbdSiswaLoaded && !force) return;
+  _hbdSiswaLoaded = true;
+
+  const rowsEl = document.getElementById('hbd-siswa-rows');
+  if (rowsEl) rowsEl.innerHTML = '<div class="cohort-muted" style="padding:16px;font-size:.75rem;">Memuat data siswa…</div>';
+
+  const { data, error } = await _supabase.rpc('cohort_student_directory', { p_cohort: c.id });
+  if (error) {
+    if (rowsEl) rowsEl.innerHTML = `<div class="cohort-muted" style="padding:16px;font-size:.75rem;color:#E8442A;">Gagal memuat: ${error.message}</div>`;
+    return;
+  }
+
+  const students = data || [];
+  // Also update the shared cache used by email panels
+  _ldrBcStudents = students.filter(s => s.email && s.status === 'active');
+
+  if (!students.length) {
+    if (rowsEl) rowsEl.innerHTML = '<div class="cohort-muted" style="padding:16px;font-size:.75rem;">Belum ada siswa di kohort ini.</div>';
+    _hbdUpdateSelCount();
+    return;
+  }
+
+  const esc      = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const statusBadge = st => {
+    const color = st === 'active' ? '#1A7A46' : st === 'paused' ? '#B45309' : '#9CA3AF';
+    const label = st === 'active' ? 'Aktif'  : st === 'paused' ? 'Jeda'    : 'Keluar';
+    return `<span style="font-size:.6rem;font-weight:700;color:${color};background:${color}18;border-radius:4px;padding:2px 6px;">${label}</span>`;
+  };
+
+  if (rowsEl) {
+    rowsEl.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:.75rem;">
+        <thead>
+          <tr style="border-bottom:2px solid #F3F4F6;background:#F9FAFB;">
+            <th style="padding:8px 10px;text-align:left;width:28px;">
+              <input type="checkbox" id="hbd-stu-chk-all" onchange="hbdToggleAllStudents(this.checked)" title="Pilih semua" style="cursor:pointer;">
+            </th>
+            <th style="padding:8px 10px;text-align:left;color:#6B7280;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Nama</th>
+            <th style="padding:8px 10px;text-align:left;color:#6B7280;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Email</th>
+            <th style="padding:8px 10px;text-align:center;color:#6B7280;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Status</th>
+            <th style="padding:8px 10px;text-align:right;color:#6B7280;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Skor</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${students.map(s => `
+            <tr style="border-bottom:1px solid #F3F4F6;">
+              <td style="padding:8px 10px;">
+                <input type="checkbox" class="hbd-stu-chk" data-uid="${esc(s.user_id)}" data-email="${esc(s.email)}"
+                  onchange="hbdUpdateSelCount()" style="cursor:pointer;" ${s.status !== 'active' ? 'disabled title="Hanya siswa aktif yang bisa ditambah ke grup"' : ''}>
+              </td>
+              <td style="padding:8px 10px;font-weight:600;color:#1A1F3C;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(s.display_name || s.email)}</td>
+              <td style="padding:8px 10px;color:#6B7280;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(s.email)}</td>
+              <td style="padding:8px 10px;text-align:center;">${statusBadge(s.status)}</td>
+              <td style="padding:8px 10px;text-align:right;font-weight:700;color:#1A1F3C;">${Math.round(s.engagement_score || 0)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+  _hbdUpdateSelCount();
+}
+
+function hbdUpdateSelCount() { _hbdUpdateSelCount(); }
+
+function _hbdUpdateSelCount() {
+  const checked = document.querySelectorAll('.hbd-stu-chk:checked').length;
+  const el = document.getElementById('hbd-stu-sel-count');
+  if (el) el.textContent = checked + ' dipilih';
+}
+
+function hbdToggleAllStudents(checked) {
+  document.querySelectorAll('.hbd-stu-chk:not(:disabled)').forEach(cb => { cb.checked = checked; });
+  _hbdUpdateSelCount();
+}
+
+async function hbdCreateGroupFromSelection() {
+  const c    = _cohortState?.primaryMentorCohort;
+  const name = (document.getElementById('hbd-stu-group-name')?.value || '').trim();
+  const statusEl = document.getElementById('hbd-stu-group-status');
+
+  if (!c)    { if (statusEl) statusEl.textContent = 'Tidak ada kohort aktif.'; return; }
+  if (!name) { if (statusEl) statusEl.textContent = 'Masukkan nama grup terlebih dahulu.'; return; }
+
+  const checked  = [...document.querySelectorAll('.hbd-stu-chk:checked')];
+  if (!checked.length) { if (statusEl) statusEl.textContent = 'Pilih minimal satu siswa.'; return; }
+
+  if (statusEl) { statusEl.textContent = 'Membuat grup…'; statusEl.style.color = '#6B7280'; }
+
+  try {
+    // Create the group
+    const { data: groupId, error: cErr } = await _supabase.rpc('leader_create_email_group', { p_cohort: c.id, p_name: name });
+    if (cErr) throw cErr;
+
+    // Add all selected students
+    await Promise.all(checked.map(cb =>
+      _supabase.rpc('leader_add_email_group_member', { p_group: groupId, p_user_id: cb.dataset.uid }).catch(() => {})
+    ));
+
+    // Reset UI
+    const inp = document.getElementById('hbd-stu-group-name');
+    if (inp) inp.value = '';
+    document.querySelectorAll('.hbd-stu-chk:checked').forEach(cb => { cb.checked = false; });
+    const allChk = document.getElementById('hbd-stu-chk-all');
+    if (allChk) allChk.checked = false;
+    _hbdUpdateSelCount();
+
+    // Reload groups so both panels' dropdowns update
+    await ldrGroupLoad();
+
+    if (statusEl) {
+      statusEl.textContent = `Grup "${name}" berhasil dibuat dengan ${checked.length} siswa.`;
+      statusEl.style.color = '#1A7A46';
+    }
+  } catch (e) {
+    if (statusEl) { statusEl.textContent = 'Gagal: ' + (e.message || e); statusEl.style.color = '#E8442A'; }
+  }
+}
+
+// ─── Dashboard email panel wrappers (prefix: 'hbdbc-') ───────────────────────
+
+async function hbdbcInit() {
+  const c = _cohortState?.primaryMentorCohort;
+  if (!c) return;
+  hbdbcSetSeg('all_cohort');
+  ['hbdbc-subject','hbdbc-body','hbdbc-specific-search','hbdbc-specific-email'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const fi   = document.getElementById('hbdbc-attachment');       if (fi) fi.value = '';
+  const info = document.getElementById('hbdbc-attachment-info');  if (info) info.textContent = '';
+  const st   = document.getElementById('hbdbc-status');           if (st) { st.textContent = ''; st.style.color = '#6B7280'; }
+  // Students may already be cached from the roster load; groups need a fresh pull
+  if (!_ldrBcStudents) await ldrBcLoadStudents();
+  await ldrGroupLoad();
+}
+function hbdbcSetSeg(seg)          { _ldrEmailSetSeg(seg, 'hbdbc-'); }
+function hbdbcSearchStudent(query) { _ldrEmailSearchStudent(query, 'hbdbc-specific-dropdown', 'hbdbc-specific-email'); }
+async  function hbdbcSend()        { return _ldrEmailSend('hbdbc-'); }
 
 // ── Extension Linking ─────────────────────────────────────────────────────────
 
@@ -23293,6 +23516,13 @@ function _hbdApplyLeaderMode(isLeader) {
   const qaRow = document.getElementById('hbd-leader-quick-actions');
   if (qaRow) qaRow.style.display = isLeader ? '' : 'none';
 
+  // Show/hide leader-only dashboard sections
+  const leaderSections = ['hbd-siswa-progress', 'hbd-leader-email'];
+  leaderSections.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = isLeader ? '' : 'none';
+  });
+
   // Ensure mentor digest is always visible for leaders
   if (isLeader) {
     const mentorWrap = document.getElementById('hbd-mentor-wrap');
@@ -23301,6 +23531,9 @@ function _hbdApplyLeaderMode(isLeader) {
     if (sub) sub.textContent = 'Pantau progres siswa dan aktivitas kohort kamu.';
     const title = document.getElementById('dash-topbar-title');
     if (title) title.textContent = 'Beranda Leader';
+    // Load data for the new sections
+    if (typeof hbdSiswaProgressLoad === 'function') hbdSiswaProgressLoad(false);
+    if (typeof hbdbcInit === 'function') hbdbcInit();
   } else {
     const title = document.getElementById('dash-topbar-title');
     if (title && _dashActiveView === 'dashboard') title.textContent = 'Dashboard';
