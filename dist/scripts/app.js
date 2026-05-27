@@ -2496,6 +2496,85 @@ function scrollToCreditCard() {
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// ── Monthly free credits: renewal on signup anniversary (not calendar month) ──
+function _nextBillingAnniversaryDate(signupIso) {
+  if (!signupIso) return null;
+  const anchorDay = new Date(signupIso).getDate();
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let cursor = new Date(today);
+  for (let i = 0; i < 400; i++) {
+    const lastDay = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate();
+    const effective = Math.min(anchorDay, lastDay);
+    if (cursor.getDate() === effective && cursor > today) return cursor;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return null;
+}
+
+function _fmtIdDate(d) {
+  if (!d) return '';
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long' });
+}
+
+async function _renderMonthlyCreditSchedule() {
+  const subEl = document.getElementById('cr-free-sub');
+  const expEl = document.getElementById('cr-free-exp');
+  if (!subEl && !expEl) return;
+
+  let daysUntilGrant = null;
+  let daysUntilExpiry = null;
+  let nextGrantAt = null;
+
+  if (_supabase && currentUser) {
+    try {
+      const { data } = await _supabase.rpc('get_my_monthly_credit_status');
+      if (data && !data.error) {
+        daysUntilGrant = data.days_until_grant;
+        daysUntilExpiry = data.days_until_expiry;
+        if (data.next_grant_at) nextGrantAt = new Date(data.next_grant_at + 'T12:00:00');
+      }
+    } catch (_) {}
+  }
+
+  if (daysUntilGrant == null && currentUser?.created_at) {
+    const anchorDay = new Date(currentUser.created_at).getDate();
+    const now = new Date();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    if (now.getDate() === Math.min(anchorDay, lastDay)) {
+      nextGrantAt = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      daysUntilGrant = 0;
+    } else {
+      nextGrantAt = _nextBillingAnniversaryDate(currentUser.created_at);
+      if (nextGrantAt) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        daysUntilGrant = Math.max(0, Math.round((nextGrantAt - today) / 86400000));
+      }
+    }
+  }
+
+  if (subEl) {
+    if (nextGrantAt) {
+      subEl.textContent = daysUntilGrant === 0
+        ? '5 kredit baru tersedia hari ini'
+        : `Kredit berikutnya: ${_fmtIdDate(nextGrantAt)} (${daysUntilGrant} hari lagi)`;
+    } else {
+      subEl.textContent = 'Diperbarui otomatis setiap bulan pada tanggal pendaftaran';
+    }
+  }
+
+  if (expEl) {
+    if (daysUntilExpiry != null) {
+      expEl.textContent = daysUntilExpiry === 0
+        ? 'Masa berlaku berakhir hari ini'
+        : `Berlaku ${daysUntilExpiry} hari lagi`;
+    } else {
+      expEl.textContent = 'Berlaku 30 hari sejak diberikan';
+    }
+  }
+}
+
 // ── CREDITS PAGE ─────────────────────────────────────────
 async function creditsInit() {
   // Update sidebar badge
@@ -2524,15 +2603,10 @@ async function creditsInit() {
     if (txt)  txt.textContent  = `${done}/10 pencarian`;
   }
 
-  // Free credits expiry: compute days left in current month
-  const now   = new Date();
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const daysLeft = lastDay - now.getDate() + 1;
-  const expEl = document.getElementById('cr-free-exp');
-  if (expEl) expEl.textContent = `Berlaku ${daysLeft} hari lagi`;
-
   const freeEl = document.getElementById('cr-free-count');
   if (freeEl) freeEl.textContent = '5 kredit gratis / bulan';
+
+  await _renderMonthlyCreditSchedule();
 }
 
 function crBuy(amount) {

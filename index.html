@@ -4353,7 +4353,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             </div>
             <div class="lp-faq-item" onclick="lpToggleFaq(this)">
               <div class="lp-faq-q">Apakah kredit bisa kadaluarsa? <svg class="lp-faq-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
-              <div class="lp-faq-a">Kredit yang kamu beli (Starter/Growth Pack) tidak pernah kadaluarsa. Hanya kredit gratis bulanan yang direset tiap awal bulan.</div>
+              <div class="lp-faq-a">Kredit yang kamu beli (Starter/Growth Pack) tidak pernah kadaluarsa. Kredit gratis bulanan berlaku 30 hari sejak diberikan, lalu diperbarui lagi pada tanggal pendaftaran kamu setiap bulannya.</div>
             </div>
             <div class="lp-faq-item" onclick="lpToggleFaq(this)">
               <div class="lp-faq-q">Bagaimana cara dapat kredit tambahan gratis? <svg class="lp-faq-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
@@ -7640,12 +7640,12 @@ html,body{overflow-x:hidden;max-width:100%;}
             <!-- Free credits -->
             <div class="cr-section">
               <div class="cr-section-title">Kredit Gratis Bulanan</div>
-              <div class="cr-section-sub">Setiap awal bulan kamu mendapatkan 5 kredit gratis. Kredit berlaku selama 30 hari.</div>
+              <div class="cr-section-sub">5 kredit gratis diperbarui setiap bulan pada tanggal kamu mendaftar. Kredit berlaku selama 30 hari sejak diberikan.</div>
               <div class="cr-free-row">
                 <div class="cr-free-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
                 <div class="cr-free-info">
                   <div class="cr-free-count" id="cr-free-count">5 kredit gratis</div>
-                  <div class="cr-free-sub">Diberikan otomatis setiap tanggal 1 bulan berjalan</div>
+                  <div class="cr-free-sub" id="cr-free-sub">Diperbarui otomatis setiap bulan pada tanggal pendaftaran</div>
                 </div>
                 <div class="cr-free-exp" id="cr-free-exp">Berlaku 30 hari</div>
               </div>
@@ -11173,6 +11173,85 @@ function scrollToCreditCard() {
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// ── Monthly free credits: renewal on signup anniversary (not calendar month) ──
+function _nextBillingAnniversaryDate(signupIso) {
+  if (!signupIso) return null;
+  const anchorDay = new Date(signupIso).getDate();
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let cursor = new Date(today);
+  for (let i = 0; i < 400; i++) {
+    const lastDay = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate();
+    const effective = Math.min(anchorDay, lastDay);
+    if (cursor.getDate() === effective && cursor > today) return cursor;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return null;
+}
+
+function _fmtIdDate(d) {
+  if (!d) return '';
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long' });
+}
+
+async function _renderMonthlyCreditSchedule() {
+  const subEl = document.getElementById('cr-free-sub');
+  const expEl = document.getElementById('cr-free-exp');
+  if (!subEl && !expEl) return;
+
+  let daysUntilGrant = null;
+  let daysUntilExpiry = null;
+  let nextGrantAt = null;
+
+  if (_supabase && currentUser) {
+    try {
+      const { data } = await _supabase.rpc('get_my_monthly_credit_status');
+      if (data && !data.error) {
+        daysUntilGrant = data.days_until_grant;
+        daysUntilExpiry = data.days_until_expiry;
+        if (data.next_grant_at) nextGrantAt = new Date(data.next_grant_at + 'T12:00:00');
+      }
+    } catch (_) {}
+  }
+
+  if (daysUntilGrant == null && currentUser?.created_at) {
+    const anchorDay = new Date(currentUser.created_at).getDate();
+    const now = new Date();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    if (now.getDate() === Math.min(anchorDay, lastDay)) {
+      nextGrantAt = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      daysUntilGrant = 0;
+    } else {
+      nextGrantAt = _nextBillingAnniversaryDate(currentUser.created_at);
+      if (nextGrantAt) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        daysUntilGrant = Math.max(0, Math.round((nextGrantAt - today) / 86400000));
+      }
+    }
+  }
+
+  if (subEl) {
+    if (nextGrantAt) {
+      subEl.textContent = daysUntilGrant === 0
+        ? '5 kredit baru tersedia hari ini'
+        : `Kredit berikutnya: ${_fmtIdDate(nextGrantAt)} (${daysUntilGrant} hari lagi)`;
+    } else {
+      subEl.textContent = 'Diperbarui otomatis setiap bulan pada tanggal pendaftaran';
+    }
+  }
+
+  if (expEl) {
+    if (daysUntilExpiry != null) {
+      expEl.textContent = daysUntilExpiry === 0
+        ? 'Masa berlaku berakhir hari ini'
+        : `Berlaku ${daysUntilExpiry} hari lagi`;
+    } else {
+      expEl.textContent = 'Berlaku 30 hari sejak diberikan';
+    }
+  }
+}
+
 // ── CREDITS PAGE ─────────────────────────────────────────
 async function creditsInit() {
   // Update sidebar badge
@@ -11201,15 +11280,10 @@ async function creditsInit() {
     if (txt)  txt.textContent  = `${done}/10 pencarian`;
   }
 
-  // Free credits expiry: compute days left in current month
-  const now   = new Date();
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const daysLeft = lastDay - now.getDate() + 1;
-  const expEl = document.getElementById('cr-free-exp');
-  if (expEl) expEl.textContent = `Berlaku ${daysLeft} hari lagi`;
-
   const freeEl = document.getElementById('cr-free-count');
   if (freeEl) freeEl.textContent = '5 kredit gratis / bulan';
+
+  await _renderMonthlyCreditSchedule();
 }
 
 function crBuy(amount) {
