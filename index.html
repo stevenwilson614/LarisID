@@ -276,6 +276,16 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .social-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;border:1.5px solid var(--border);border-radius:8px;padding:10px;font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;background:#fff;margin-bottom:10px;transition:background .15s,border-color .15s;}
 .social-btn:hover{background:#fafafa;border-color:#ccc;}
 .social-btn img{width:20px;height:20px;}
+/* ── AUTH WA TAB ── */
+.auth-tabs{display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:20px;}
+.auth-tab{flex:1;padding:9px 6px;background:#fff;border:none;font-size:.8rem;font-weight:700;cursor:pointer;color:var(--tm);font-family:inherit;transition:background .15s,color .15s;}
+.auth-tab.active{background:var(--grad);color:#fff;}
+.wa-phone-wrap{display:flex;align-items:stretch;margin-bottom:12px;}
+.wa-phone-prefix{padding:10px 10px;background:#F7F6F3;border:1.5px solid var(--border);border-right:none;border-radius:8px 0 0 8px;font-size:.88rem;color:var(--tm);display:flex;align-items:center;white-space:nowrap;}
+.wa-phone-wrap .auth-input{border-radius:0 8px 8px 0;margin-bottom:0;border-left:none;}
+.wa-phone-wrap .auth-input:focus{border-color:var(--orange);outline:none;}
+.wa-otp-hint{font-size:.75rem;color:var(--tm);margin-bottom:10px;line-height:1.4;}
+.wa-resend{font-size:.75rem;color:var(--orange);cursor:pointer;margin-top:6px;display:inline-block;}
 /* ── NAV AUTH BUTTON ── */
 .nav-auth-btn{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:20px;padding:5px 14px;font-size:.78rem;color:#fff;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;transition:background .15s;}
 .nav-auth-btn:hover{background:rgba(255,255,255,.3);}
@@ -9577,6 +9587,9 @@ function closeAuthModal() {
 function renderAuthModal() {
   const m = _authMode;
   var el;
+  // Hide tab switcher on reset mode; reset to email tab otherwise
+  el = document.getElementById('auth-tabs-wrap'); if(el) el.style.display = m==='reset'?'none':'';
+  if(m !== 'reset') _authTabSwitch('email');
   el = document.getElementById('auth-title');      if(el) el.textContent = m==='reset'?'Reset Password':m==='signup'?'Buat Akun Gratis':'Masuk ke LarisID';
   el = document.getElementById('auth-subtitle');   if(el) el.textContent = m==='reset'?'Masukkan email kamu dan kami kirim link reset.':m==='signup'?'Gratis selamanya — lihat trending & simpan produk favorit':'Login untuk melihat produk trending & simpan favorit kamu';
   el = document.getElementById('auth-submit-btn'); if(el) el.textContent = m==='reset'?'Kirim Link Reset':m==='signup'?'Daftar':'Masuk';
@@ -9657,6 +9670,130 @@ async function signInWithProvider(provider) {
   if (error) {
     const errEl = document.getElementById('auth-error');
     errEl.style.color='#e74c3c'; errEl.textContent='Login dengan '+provider+' gagal. Coba lagi.'; errEl.style.display='';
+  }
+}
+
+// ── WHATSAPP OTP AUTH ─────────────────────────────────────
+let _waPhone = '';
+
+function _authTabSwitch(tab) {
+  const emailPanel = document.getElementById('auth-email-panel');
+  const waPanel    = document.getElementById('auth-wa-panel');
+  const tabEmail   = document.getElementById('auth-tab-email');
+  const tabWa      = document.getElementById('auth-tab-wa');
+  if (!emailPanel || !waPanel) return;
+  if (tab === 'wa') {
+    emailPanel.style.display = 'none';
+    waPanel.style.display    = '';
+    tabEmail.classList.remove('active');
+    tabWa.classList.add('active');
+    // Always start at phone step when switching to WA
+    document.getElementById('wa-step-phone').style.display = '';
+    document.getElementById('wa-step-otp').style.display   = 'none';
+    const we = document.getElementById('wa-error');
+    if (we) { we.textContent = ''; we.style.display = 'none'; }
+  } else {
+    emailPanel.style.display = '';
+    waPanel.style.display    = 'none';
+    tabEmail.classList.add('active');
+    tabWa.classList.remove('active');
+  }
+}
+
+async function sendWhatsappOtp(isResend) {
+  const phoneEl = document.getElementById('wa-phone-input');
+  const errEl   = document.getElementById('wa-error');
+  const btn     = document.getElementById('wa-send-btn');
+  const rawPhone = (phoneEl?.value || '').trim();
+  if (!rawPhone) {
+    errEl.textContent = 'Masukkan nomor WhatsApp kamu.';
+    errEl.style.display = '';
+    return;
+  }
+  errEl.style.display = 'none';
+  btn.textContent = '...'; btn.disabled = true;
+  try {
+    const res = await fetch(`${SUPA_URL}/functions/v1/send-whatsapp-otp`, {
+      method: 'POST',
+      headers: { apikey: SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: rawPhone }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      errEl.textContent = data.error || 'Gagal mengirim OTP. Coba lagi.';
+      errEl.style.display = '';
+      btn.textContent = 'Kirim Kode OTP'; btn.disabled = false;
+      return;
+    }
+    _waPhone = data.phone;
+    // Show OTP step
+    document.getElementById('wa-step-phone').style.display = 'none';
+    document.getElementById('wa-step-otp').style.display   = '';
+    const hint = document.getElementById('wa-otp-hint');
+    if (hint) hint.textContent = 'Kode OTP sudah dikirim ke WhatsApp ' + _waPhone + '. Masukkan 6 digit di bawah.';
+    const otpErr = document.getElementById('wa-otp-error');
+    if (otpErr) { otpErr.textContent = ''; otpErr.style.display = 'none'; }
+    setTimeout(() => document.getElementById('wa-otp-input')?.focus(), 100);
+    _waStartResendCooldown();
+  } catch (e) {
+    errEl.textContent = 'Terjadi kesalahan. Coba lagi.';
+    errEl.style.display = '';
+  } finally {
+    btn.textContent = 'Kirim Kode OTP'; btn.disabled = false;
+  }
+}
+
+function _waStartResendCooldown() {
+  const link = document.getElementById('wa-resend-link');
+  if (!link) return;
+  let secs = 60;
+  link.style.pointerEvents = 'none'; link.style.color = 'var(--tl)';
+  link.textContent = 'Kirim ulang (' + secs + 's)';
+  const t = setInterval(() => {
+    secs--;
+    if (secs <= 0) {
+      clearInterval(t);
+      link.style.pointerEvents = ''; link.style.color = 'var(--orange)';
+      link.textContent = 'Kirim ulang kode';
+    } else {
+      link.textContent = 'Kirim ulang (' + secs + 's)';
+    }
+  }, 1000);
+}
+
+async function verifyWhatsappOtp() {
+  const otpEl  = document.getElementById('wa-otp-input');
+  const errEl  = document.getElementById('wa-otp-error');
+  const btn    = document.getElementById('wa-verify-btn');
+  const otp = (otpEl?.value || '').replace(/\s/g, '');
+  if (!otp || !/^\d{6}$/.test(otp)) {
+    errEl.textContent = 'Masukkan 6 digit kode OTP.';
+    errEl.style.display = '';
+    return;
+  }
+  errEl.style.display = 'none';
+  btn.textContent = '...'; btn.disabled = true;
+  try {
+    const res = await fetch(`${SUPA_URL}/functions/v1/verify-whatsapp-otp`, {
+      method: 'POST',
+      headers: { apikey: SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: _waPhone, otp }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      errEl.textContent = data.error || 'Verifikasi gagal. Periksa kode OTP kamu.';
+      errEl.style.display = '';
+      btn.textContent = 'Verifikasi'; btn.disabled = false;
+      return;
+    }
+    const session = data.session;
+    _authSave(session);
+    closeAuthModal();
+    void _authOnSignIn(session).catch(() => {});
+  } catch (e) {
+    errEl.textContent = 'Terjadi kesalahan. Coba lagi.';
+    errEl.style.display = '';
+    btn.textContent = 'Verifikasi'; btn.disabled = false;
   }
 }
 
@@ -23360,30 +23497,65 @@ document.addEventListener('DOMContentLoaded', function(){
     <button class="auth-close" onclick="closeAuthModal()">×</button>
     <h2 id="auth-title">Masuk ke LarisID</h2>
     <p id="auth-subtitle">Login untuk melihat produk trending & simpan favorit kamu</p>
-    <div id="auth-social-wrap">
-      <button class="social-btn" onclick="signInWithProvider('google')">
-        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
-        Lanjutkan dengan Google
-      </button>
-      <div class="auth-divider">atau gunakan email</div>
+    <!-- Tab switcher: hidden on reset mode -->
+    <div class="auth-tabs" id="auth-tabs-wrap">
+      <button class="auth-tab active" id="auth-tab-email" onclick="_authTabSwitch('email')">Email</button>
+      <button class="auth-tab" id="auth-tab-wa" onclick="_authTabSwitch('wa')">WhatsApp OTP</button>
     </div>
-    <div id="auth-name-wrap" style="display:none;">
-      <input class="auth-input" id="auth-name" type="text" placeholder="Nama lengkap (opsional)">
+    <!-- EMAIL PANEL -->
+    <div id="auth-email-panel">
+      <div id="auth-social-wrap">
+        <button class="social-btn" onclick="signInWithProvider('google')">
+          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+          Lanjutkan dengan Google
+        </button>
+        <div class="auth-divider">atau gunakan email</div>
+      </div>
+      <div id="auth-name-wrap" style="display:none;">
+        <input class="auth-input" id="auth-name" type="text" placeholder="Nama lengkap (opsional)">
+      </div>
+      <input class="auth-input" id="auth-email" type="email" placeholder="Email">
+      <div id="auth-pass-wrap">
+        <input class="auth-input" id="auth-pass" type="password" placeholder="Password">
+      </div>
+      <div id="auth-invite-wrap">
+        <label for="auth-invite-code" style="display:block;font-size:.72rem;font-weight:600;color:#6B7280;margin-bottom:5px;">Kode kohort (opsional)</label>
+        <input class="auth-input" id="auth-invite-code" type="text" placeholder="Dari link undangan atau ketik manual" maxlength="64" autocomplete="off" onblur="setPendingInvite(document.getElementById('auth-invite-code')?.value||'')">
+      </div>
+      <div id="auth-forgot-wrap" style="text-align:right;margin-top:-6px;margin-bottom:4px;">
+        <a style="font-size:.78rem;color:var(--orange);cursor:pointer;" onclick="_authMode='reset';renderAuthModal()">Lupa password?</a>
+      </div>
+      <div class="auth-error" id="auth-error"></div>
+      <button class="auth-submit" id="auth-submit-btn" onclick="submitAuth()">Masuk</button>
+      <div class="auth-toggle" id="auth-toggle-text">Belum punya akun? <a onclick="_authMode='signup';renderAuthModal()">Daftar</a></div>
     </div>
-    <input class="auth-input" id="auth-email" type="email" placeholder="Email">
-    <div id="auth-pass-wrap">
-      <input class="auth-input" id="auth-pass" type="password" placeholder="Password">
+    <!-- WHATSAPP OTP PANEL -->
+    <div id="auth-wa-panel" style="display:none;">
+      <!-- Step 1: enter phone number -->
+      <div id="wa-step-phone">
+        <div class="wa-phone-wrap">
+          <span class="wa-phone-prefix">+62</span>
+          <input class="auth-input" id="wa-phone-input" type="tel" placeholder="8123456789"
+            maxlength="13" inputmode="numeric"
+            onkeydown="if(event.key==='Enter')sendWhatsappOtp()">
+        </div>
+        <div class="auth-error" id="wa-error"></div>
+        <button class="auth-submit" id="wa-send-btn" onclick="sendWhatsappOtp()">Kirim Kode OTP</button>
+      </div>
+      <!-- Step 2: enter OTP (shown after send) -->
+      <div id="wa-step-otp" style="display:none;">
+        <p class="wa-otp-hint" id="wa-otp-hint">Masukkan 6 digit kode OTP yang dikirim ke WhatsApp kamu.</p>
+        <input class="auth-input" id="wa-otp-input" type="text" placeholder="000000"
+          maxlength="6" inputmode="numeric"
+          style="letter-spacing:.2em;font-size:1.2rem;text-align:center;"
+          onkeydown="if(event.key==='Enter')verifyWhatsappOtp()">
+        <div class="auth-error" id="wa-otp-error"></div>
+        <button class="auth-submit" id="wa-verify-btn" onclick="verifyWhatsappOtp()">Verifikasi</button>
+        <div style="text-align:center;">
+          <a class="wa-resend" id="wa-resend-link" onclick="sendWhatsappOtp(true)">Kirim ulang kode</a>
+        </div>
+      </div>
     </div>
-    <div id="auth-invite-wrap">
-      <label for="auth-invite-code" style="display:block;font-size:.72rem;font-weight:600;color:#6B7280;margin-bottom:5px;">Kode kohort (opsional)</label>
-      <input class="auth-input" id="auth-invite-code" type="text" placeholder="Dari link undangan atau ketik manual" maxlength="64" autocomplete="off" onblur="setPendingInvite(document.getElementById('auth-invite-code')?.value||'')">
-    </div>
-    <div id="auth-forgot-wrap" style="text-align:right;margin-top:-6px;margin-bottom:4px;">
-      <a style="font-size:.78rem;color:var(--orange);cursor:pointer;" onclick="_authMode='reset';renderAuthModal()">Lupa password?</a>
-    </div>
-    <div class="auth-error" id="auth-error"></div>
-    <button class="auth-submit" id="auth-submit-btn" onclick="submitAuth()">Masuk</button>
-    <div class="auth-toggle" id="auth-toggle-text">Belum punya akun? <a onclick="_authMode='signup';renderAuthModal()">Daftar</a></div>
   </div>
 </div>
 
