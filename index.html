@@ -7895,9 +7895,17 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
               <div class="cohort-card">
                 <h3>Direktori siswa</h3>
-                <p class="cohort-muted" style="margin-bottom:10px;">Skor = aktivitas (30h) + 3× milestone selesai.</p>
-                <div style="overflow:auto;max-height:420px;" id="cohort-mentor-directory-wrap">
-                  <div id="cohort-mentor-directory" class="cohort-muted">—</div>
+                <p class="cohort-muted" style="margin-bottom:10px;">Skor = aktivitas (30h) + 3× milestone selesai. Centang siswa lalu buat grup dari pilihan.</p>
+                <div style="border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;">
+                  <div style="max-height:420px;overflow-y:auto;" id="cohort-mentor-directory-wrap">
+                    <div id="cohort-mentor-directory" class="cohort-muted" style="padding:16px;">—</div>
+                  </div>
+                  <div style="padding:10px 14px;border-top:1px solid #E5E7EB;background:#F9FAFB;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                    <span id="cohort-dir-sel-count" style="font-size:.7rem;color:#6B7280;white-space:nowrap;">0 dipilih</span>
+                    <input id="cohort-dir-sel-group-name" type="text" placeholder="Nama grup dari pilihan…" maxlength="100" autocomplete="off" style="flex:1;min-width:120px;padding:6px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.75rem;font-family:inherit;">
+                    <button type="button" class="cohort-btn secondary" style="padding:6px 12px;font-size:.72rem;white-space:nowrap;" onclick="cohortDirCreateGroupFromSelection()">Buat Grup</button>
+                    <div id="cohort-dir-sel-status" style="font-size:.68rem;color:#6B7280;width:100%;"></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -12899,36 +12907,106 @@ function _cohortRelTime(isoStr) {
 async function cohortRenderMentorDirectory(cohortId) {
   const el = document.getElementById('cohort-mentor-directory');
   if (!el || !_supabase) return;
+  el.style.padding = '16px';
   el.innerHTML = 'Memuat…';
   const { data, error } = await _supabase.rpc('cohort_student_directory', { p_cohort: cohortId, p_days: 30 });
   if (error) { el.textContent = error.message || 'Gagal memuat direktori.'; return; }
   _cohortState.directoryRows = data || [];
-  if (!_cohortState.directoryRows.length) { el.innerHTML = '<span class="cohort-muted">Belum ada siswa.</span>'; return; }
+  el.style.padding = '';
+  if (!_cohortState.directoryRows.length) {
+    el.style.padding = '16px';
+    el.innerHTML = '<span class="cohort-muted">Belum ada siswa.</span>';
+    _cohortDirUpdateSelCount();
+    return;
+  }
+  const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const scoreClr = s => s >= 70 ? '#10B981' : s >= 40 ? '#F59E0B' : '#9CA3AF';
-  el.innerHTML =
-    `<div style="font-size:.65rem;color:#9CA3AF;font-weight:700;display:grid;grid-template-columns:1fr 110px 60px 90px;gap:4px;padding:6px 12px;border-bottom:2px solid #E5E7EB;">
-      <span>Siswa</span><span style="text-align:center;">Aktif terakhir</span><span style="text-align:center;">Skor</span><span></span>
-    </div>` +
-    _cohortState.directoryRows.map(r => {
-      const lastActive = _cohortRelTime(r.last_event_at || r.last_seen_at);
-      const score = Number(r.engagement_score || 0);
-      const isActive = r.status !== 'paused';
-      return `<div onclick="cohortOpenStudentDrawer('${r.user_id}')" style="display:grid;grid-template-columns:1fr 110px 60px 90px;gap:4px;align-items:center;padding:10px 12px;border-bottom:1px solid #F3F4F6;cursor:pointer;transition:background .12s;" onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
-        <div>
-          <div style="font-size:.78rem;font-weight:700;color:#1A1F3C;">${_cohortEsc(r.display_name || r.email || '—')}</div>
-          <div style="font-size:.65rem;color:#9CA3AF;">${_cohortEsc(r.email || '')}</div>
-        </div>
-        <div style="text-align:center;font-size:.7rem;color:${isActive ? '#374151' : '#9CA3AF'};">${lastActive}</div>
-        <div style="text-align:center;">
-          <span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:.68rem;font-weight:800;background:${scoreClr(score)}1a;color:${scoreClr(score)};">${score.toFixed(0)}</span>
-        </div>
-        <div style="text-align:right;white-space:nowrap;" onclick="event.stopPropagation()">
-          ${isActive
-            ? `<button type="button" class="cohort-btn secondary" style="padding:3px 8px;font-size:.6rem;" onclick="cohortLeaderSetStudentStatus('${r.user_id}','paused')">Pause</button>`
-            : `<button type="button" class="cohort-btn secondary" style="padding:3px 8px;font-size:.6rem;" onclick="cohortLeaderSetStudentStatus('${r.user_id}','active')">Aktifkan</button>`}
-        </div>
-      </div>`;
-    }).join('');
+  const statusBadge = st => {
+    const color = st === 'active' ? '#1A7A46' : st === 'paused' ? '#B45309' : '#9CA3AF';
+    const label = st === 'active' ? 'Aktif'  : st === 'paused' ? 'Jeda'    : 'Keluar';
+    return `<span style="font-size:.6rem;font-weight:700;color:${color};background:${color}18;border-radius:4px;padding:2px 6px;">${label}</span>`;
+  };
+  el.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:.75rem;">
+      <thead>
+        <tr style="border-bottom:2px solid #F3F4F6;background:#F9FAFB;">
+          <th style="padding:8px 10px;text-align:left;width:28px;">
+            <input type="checkbox" id="cohort-dir-chk-all" onchange="cohortDirToggleAll(this.checked)" title="Pilih semua" style="cursor:pointer;">
+          </th>
+          <th style="padding:8px 10px;text-align:left;color:#6B7280;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Nama</th>
+          <th style="padding:8px 10px;text-align:left;color:#6B7280;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Email</th>
+          <th style="padding:8px 10px;text-align:center;color:#6B7280;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Status</th>
+          <th style="padding:8px 10px;text-align:right;color:#6B7280;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Skor</th>
+          <th style="padding:8px 10px;text-align:right;color:#6B7280;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${_cohortState.directoryRows.map(r => {
+          const score = Number(r.engagement_score || 0);
+          const isActive = r.status === 'active';
+          return `<tr style="border-bottom:1px solid #F3F4F6;" onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+            <td style="padding:8px 10px;">
+              <input type="checkbox" class="cohort-dir-stu-chk" data-uid="${esc(r.user_id)}"
+                onchange="cohortDirUpdateSelCount()" style="cursor:pointer;"
+                ${!isActive ? 'disabled title="Hanya siswa aktif yang bisa ditambah ke grup"' : ''}>
+            </td>
+            <td style="padding:8px 10px;font-weight:600;color:#1A1F3C;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" onclick="cohortOpenStudentDrawer('${esc(r.user_id)}')">${esc(r.display_name || r.email || '—')}</td>
+            <td style="padding:8px 10px;color:#6B7280;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.email || '')}</td>
+            <td style="padding:8px 10px;text-align:center;">${statusBadge(r.status)}</td>
+            <td style="padding:8px 10px;text-align:right;font-weight:700;">
+              <span style="display:inline-block;padding:2px 8px;border-radius:20px;font-size:.68rem;font-weight:800;background:${scoreClr(score)}1a;color:${scoreClr(score)};">${score.toFixed(0)}</span>
+            </td>
+            <td style="padding:8px 10px;text-align:right;white-space:nowrap;">
+              ${isActive
+                ? `<button type="button" class="cohort-btn secondary" style="padding:3px 8px;font-size:.6rem;" onclick="cohortLeaderSetStudentStatus('${esc(r.user_id)}','paused')">Pause</button>`
+                : `<button type="button" class="cohort-btn secondary" style="padding:3px 8px;font-size:.6rem;" onclick="cohortLeaderSetStudentStatus('${esc(r.user_id)}','active')">Aktifkan</button>`}
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+  _cohortDirUpdateSelCount();
+}
+
+function cohortDirToggleAll(checked) {
+  document.querySelectorAll('.cohort-dir-stu-chk:not(:disabled)').forEach(cb => { cb.checked = checked; });
+  _cohortDirUpdateSelCount();
+}
+
+function cohortDirUpdateSelCount() { _cohortDirUpdateSelCount(); }
+
+function _cohortDirUpdateSelCount() {
+  const n = document.querySelectorAll('.cohort-dir-stu-chk:checked').length;
+  const el = document.getElementById('cohort-dir-sel-count');
+  if (el) el.textContent = n + ' dipilih';
+}
+
+async function cohortDirCreateGroupFromSelection() {
+  const c    = _cohortState?.primaryMentorCohort;
+  const name = (document.getElementById('cohort-dir-sel-group-name')?.value || '').trim();
+  const statusEl = document.getElementById('cohort-dir-sel-status');
+  if (!c)    { if (statusEl) statusEl.textContent = 'Tidak ada kohort aktif.'; return; }
+  if (!name) { if (statusEl) statusEl.textContent = 'Masukkan nama grup terlebih dahulu.'; return; }
+  const checked = [...document.querySelectorAll('.cohort-dir-stu-chk:checked')];
+  if (!checked.length) { if (statusEl) statusEl.textContent = 'Pilih minimal satu siswa.'; return; }
+  if (statusEl) { statusEl.textContent = 'Membuat grup…'; statusEl.style.color = '#6B7280'; }
+  try {
+    const { data: groupId, error: cErr } = await _supabase.rpc('leader_create_email_group', { p_cohort: c.id, p_name: name });
+    if (cErr) throw cErr;
+    await Promise.all(checked.map(async cb => {
+      try { await _supabase.rpc('leader_add_email_group_member', { p_group: groupId, p_user_id: cb.dataset.uid }); } catch (_) {}
+    }));
+    const inp = document.getElementById('cohort-dir-sel-group-name');
+    if (inp) inp.value = '';
+    document.querySelectorAll('.cohort-dir-stu-chk:checked').forEach(cb => { cb.checked = false; });
+    const allChk = document.getElementById('cohort-dir-chk-all');
+    if (allChk) allChk.checked = false;
+    _cohortDirUpdateSelCount();
+    await ldrGroupLoad();
+    if (statusEl) { statusEl.textContent = `Grup "${name}" berhasil dibuat dengan ${checked.length} siswa.`; statusEl.style.color = '#1A7A46'; }
+  } catch (e) {
+    if (statusEl) { statusEl.textContent = 'Gagal: ' + (e.message || e); statusEl.style.color = '#E8442A'; }
+  }
 }
 
 async function cohortRenderModFeed(cohortId) {
