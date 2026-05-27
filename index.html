@@ -22288,10 +22288,11 @@ async function hbdCreateGroupFromSelection() {
     const { data: groupId, error: cErr } = await _supabase.rpc('leader_create_email_group', { p_cohort: c.id, p_name: name });
     if (cErr) throw cErr;
 
-    // Add all selected students
-    await Promise.all(checked.map(cb =>
-      _supabase.rpc('leader_add_email_group_member', { p_group: groupId, p_user_id: cb.dataset.uid }).catch(() => {})
-    ));
+    // Add all selected students (ignore individual failures — duplicates etc.)
+    await Promise.all(checked.map(async cb => {
+      try { await _supabase.rpc('leader_add_email_group_member', { p_group: groupId, p_user_id: cb.dataset.uid }); }
+      catch (_) {}
+    }));
 
     // Reset UI
     const inp = document.getElementById('hbd-stu-group-name');
