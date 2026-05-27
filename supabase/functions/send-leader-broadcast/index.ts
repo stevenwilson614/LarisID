@@ -6,10 +6,15 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// The verified sending domain. Resend only delivers from domains you own.
-// The leader's real email goes in reply_to so replies reach them directly.
-const FROM_DOMAIN = Deno.env.get('RESEND_FROM_DOMAIN') || 'larisid.com'
-const FROM_ADDR   = Deno.env.get('RESEND_FROM_EMAIL')  || `noreply@${FROM_DOMAIN}`
+// Extract a bare email address from "Name <email@example.com>" or "email@example.com"
+function extractEmail(s: string): string {
+  const m = s.match(/<([^>]+)>/)
+  return m ? m[1].trim() : s.trim()
+}
+
+// The verified sending domain — Resend only delivers from domains you own.
+const _fromEnv  = Deno.env.get('RESEND_FROM_EMAIL') || 'noreply@larisid.com'
+const FROM_ADDR = extractEmail(_fromEnv)   // bare email, e.g. steven@larisid.com
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
