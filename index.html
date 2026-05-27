@@ -23643,6 +23643,46 @@ function isWaUser() {
   return !!currentUser?.email?.endsWith('@wa.larisid.com');
 }
 
+function _psetupShopeeSlugFromUrl(url) {
+  const s = (url || '').trim();
+  if (!s) return '';
+  try {
+    const href = /^https?:\/\//i.test(s) ? s : 'https://shopee.co.id/' + s.replace(/^\/+/, '');
+    const u = new URL(href);
+    const parts = u.pathname.split('/').filter(Boolean);
+    const skip = new Set(['product', 'search', 'mall', 'buyer', 'shop', 'universal-link']);
+    const slug = parts.find(p => !skip.has(p.toLowerCase()));
+    return slug ? decodeURIComponent(slug) : '';
+  } catch (_) {
+    const m = s.match(/shopee\.co\.id\/([^/?#]+)/i);
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+}
+
+/** Link My Toko only when shop exists in LarisID DB (needs shopee_shop_id). */
+async function _psetupTryLinkStore(storeName, storeUrl) {
+  if (!_supabase || !currentUser) return { linked: false };
+  let lookup = (storeName || '').trim();
+  if (!lookup && storeUrl) lookup = _psetupShopeeSlugFromUrl(storeUrl);
+  if (!lookup) return { linked: false };
+  try {
+    const { data, error } = await _supabase.rpc('find_shop_by_name', { p_store_name: lookup });
+    if (error) return { linked: false, lookup, error };
+    const match = data?.[0];
+    if (!match?.shop_id) return { linked: false, lookup };
+    const { error: upErr } = await _supabase.from('user_store_profiles').upsert({
+      user_id:           currentUser.id,
+      shopee_store_name: match.store_name,
+      shopee_shop_id:    match.shop_id,
+      updated_at:        new Date().toISOString(),
+    }, { onConflict: 'user_id' });
+    if (upErr) return { linked: false, lookup, error: upErr };
+    return { linked: true, storeName: match.store_name, shopId: match.shop_id };
+  } catch (error) {
+    return { linked: false, lookup, error };
+  }
+}
+
 async function checkProfileComplete() {
   if (!currentUser || !_supabase) return true;
   try {
@@ -23749,12 +23789,8 @@ async function submitProfileSetup() {
   if (!currentUser) return showErr('Silakan login terlebih dahulu.');
   if (!firstName) return showErr('Nama depan wajib diisi.');
   if (!lastName)  return showErr('Nama belakang wajib diisi.');
-  if (!isWa && !waRaw)  return showErr('Nomor WhatsApp wajib diisi.');
-  if (isWa  && !emailInput) return showErr('Alamat email wajib diisi.');
-  if (isWa  && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailInput)) return showErr('Format email tidak valid.');
+  if (isWa && emailInput && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailInput)) return showErr('Format email tidak valid.');
   if (!_psetupSellerStatus) return showErr('Pilih status penjual kamu terlebih dahulu.');
-  if (_psetupSellerStatus === 'existing' && !storeName) return showErr('Nama toko Shopee wajib diisi.');
-  if (_psetupSellerStatus === 'existing' && !storeUrl)  return showErr('URL toko Shopee wajib diisi.');
 
   const btn = document.getElementById('psetup-submit-btn');
   btn.disabled    = true;
@@ -23773,11 +23809,11 @@ async function submitProfileSetup() {
       user_id:           currentUser.id,
       first_name:        firstName,
       last_name:         lastName,
-      wa_number:         waStored,
-      contact_email:     isWa ? emailInput : null,
+      wa_number:         !isWa && waStored ? waStored : null,
+      contact_email:     isWa && emailInput ? emailInput : null,
       seller_status:     _psetupSellerStatus,
-      shopee_store_name: _psetupSellerStatus === 'existing' ? storeName : null,
-      shopee_store_url:  _psetupSellerStatus === 'existing' ? storeUrl  : null,
+      shopee_store_name: (_psetupSellerStatus === 'existing' && storeName) ? storeName : null,
+      shopee_store_url:  (_psetupSellerStatus === 'existing' && storeUrl)  ? storeUrl  : null,
       updated_at:        new Date().toISOString(),
     };
 
@@ -23786,12 +23822,11 @@ async function submitProfileSetup() {
       .upsert(payload, { onConflict: 'user_id' });
     if (upsertErr) throw upsertErr;
 
-    if (_psetupSellerStatus === 'existing') {
-      await _supabase.from('user_store_profiles').upsert({
-        user_id:           currentUser.id,
-        shopee_store_name: storeName,
-        updated_at:        new Date().toISOString(),
-      }, { onConflict: 'user_id' }).catch(() => {});
+    if (_psetupSellerStatus === 'existing' && (storeName || storeUrl)) {
+      const link = await _psetupTryLinkStore(storeName, storeUrl);
+      if (!link.linked) {
+        console.info('[psetup] toko belum di DB LarisID — bisa hubungkan nanti di My Toko', link.lookup || storeName);
+      }
     }
 
     const fullName = `${firstName} ${lastName}`;
@@ -23811,7 +23846,8 @@ async function submitProfileSetup() {
       setTimeout(() => { cohortLoadLightForTheme().catch(() => {}); }, 600);
     }
   } catch (e) {
-    showErr('Terjadi kesalahan. Coba lagi.');
+    const msg = e?.message || e?.details || e?.hint || '';
+    showErr(msg ? `Terjadi kesalahan: ${msg}` : 'Terjadi kesalahan. Coba lagi.');
     console.error('[psetup]', e);
   } finally {
     btn.disabled    = false;
@@ -24877,7 +24913,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
     <!-- WA number (email / Google users only) -->
     <div id="psetup-wa-wrap" style="margin-bottom:12px;">
-      <label style="display:block;font-size:.71rem;font-weight:700;color:#374151;margin-bottom:4px;">Nomor WhatsApp *</label>
+      <label style="display:block;font-size:.71rem;font-weight:700;color:#374151;margin-bottom:4px;">Nomor WhatsApp <span style="font-weight:500;color:#9CA3AF;">(opsional)</span></label>
       <div id="psetup-wa-border" style="display:flex;align-items:center;border:1.5px solid #E5E7EB;border-radius:8px;overflow:hidden;">
         <span style="padding:9px 10px;font-size:.82rem;color:#6B7280;background:#F9FAFB;border-right:1px solid #E5E7EB;white-space:nowrap;flex-shrink:0;">+62</span>
         <input id="psetup-wa-number" type="tel" placeholder="8123456789" inputmode="numeric" maxlength="13"
@@ -24889,7 +24925,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
     <!-- Email (WhatsApp OTP users only) -->
     <div id="psetup-email-wrap" style="display:none;margin-bottom:12px;">
-      <label style="display:block;font-size:.71rem;font-weight:700;color:#374151;margin-bottom:4px;">Alamat Email *</label>
+      <label style="display:block;font-size:.71rem;font-weight:700;color:#374151;margin-bottom:4px;">Alamat Email <span style="font-weight:500;color:#9CA3AF;">(opsional)</span></label>
       <input id="psetup-contact-email" type="email" placeholder="email@kamu.com" autocomplete="email"
         style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 11px;font-size:.82rem;font-family:inherit;outline:none;box-sizing:border-box;"
         onfocus="this.style.borderColor='#E8442A'" onblur="this.style.borderColor='#E5E7EB'">
@@ -24912,15 +24948,16 @@ document.addEventListener('DOMContentLoaded', function(){
 
     <!-- Shopee store fields (existing sellers only) -->
     <div id="psetup-store-wrap" style="display:none;margin-bottom:14px;padding:14px;background:#FFF8F7;border-radius:10px;border:1.5px solid #FBBCB2;">
-      <div style="font-size:.72rem;font-weight:700;color:#E8442A;margin-bottom:10px;">Hubungkan toko Shopee kamu</div>
+      <div style="font-size:.72rem;font-weight:700;color:#E8442A;margin-bottom:4px;">Hubungkan toko Shopee kamu</div>
+      <div style="font-size:.7rem;color:#6B7280;line-height:1.45;margin-bottom:10px;">Opsional — bisa lewati sekarang dan hubungkan nanti di menu <strong>My Toko</strong>.</div>
       <div style="margin-bottom:10px;">
-        <label style="display:block;font-size:.71rem;font-weight:700;color:#374151;margin-bottom:4px;">Nama Toko *</label>
+        <label style="display:block;font-size:.71rem;font-weight:700;color:#374151;margin-bottom:4px;">Nama Toko <span style="font-weight:500;color:#9CA3AF;">(opsional)</span></label>
         <input id="psetup-store-name" type="text" placeholder="Nama toko di Shopee" autocomplete="off"
           style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 11px;font-size:.82rem;font-family:inherit;outline:none;box-sizing:border-box;background:#fff;"
           onfocus="this.style.borderColor='#E8442A'" onblur="this.style.borderColor='#E5E7EB'">
       </div>
       <div>
-        <label style="display:block;font-size:.71rem;font-weight:700;color:#374151;margin-bottom:4px;">URL Toko Shopee *</label>
+        <label style="display:block;font-size:.71rem;font-weight:700;color:#374151;margin-bottom:4px;">URL Toko Shopee <span style="font-weight:500;color:#9CA3AF;">(opsional)</span></label>
         <input id="psetup-store-url" type="text" placeholder="https://shopee.co.id/nama_toko" autocomplete="off"
           style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 11px;font-size:.82rem;font-family:inherit;outline:none;box-sizing:border-box;background:#fff;"
           onfocus="this.style.borderColor='#E8442A'" onblur="this.style.borderColor='#E5E7EB'">
