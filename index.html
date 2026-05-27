@@ -7873,6 +7873,26 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
             </div>
             <div id="cohort-mentor-panel-students" style="display:none;">
+              <div class="cohort-card" style="margin-bottom:14px;">
+                <h3>Tambah siswa</h3>
+                <p class="cohort-muted" style="margin-bottom:10px;">Masukkan email siswa yang sudah punya akun LarisID.</p>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <input type="email" id="cohort-dir-add-email" class="cohort-input" placeholder="siswa@email.com" autocomplete="off" style="flex:1;min-width:180px;margin:0;">
+                  <button type="button" class="cohort-btn" onclick="cohortDirAddStudent()">Tambahkan</button>
+                </div>
+                <div id="cohort-dir-add-status" class="cohort-muted" style="margin-top:8px;"></div>
+              </div>
+              <div class="cohort-card" style="margin-bottom:14px;">
+                <h3>Grup custom</h3>
+                <p class="cohort-muted" style="margin-bottom:12px;">Kelompokkan siswa — misalnya per tim atau per gender — untuk memudahkan broadcast email.</p>
+                <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+                  <input id="cohort-dir-group-name" type="text" class="cohort-input" placeholder="Nama grup baru…" maxlength="100" autocomplete="off" style="flex:1;min-width:140px;margin:0;">
+                  <button type="button" class="cohort-btn secondary" onclick="cohortDirGroupCreate()" style="white-space:nowrap;">+ Buat Grup</button>
+                </div>
+                <div id="cohort-dir-group-list">
+                  <div class="cohort-muted" style="font-size:.75rem;">Memuat grup…</div>
+                </div>
+              </div>
               <div class="cohort-card">
                 <h3>Direktori siswa</h3>
                 <p class="cohort-muted" style="margin-bottom:10px;">Skor = aktivitas (30h) + 3× milestone selesai.</p>
@@ -12495,7 +12515,7 @@ function cohortSwitchMentorTab(tab) {
   const c = _cohortState.primaryMentorCohort;
   if (!c) return;
   if (tab === 'identity') cohortPreviewBrandingForm();
-  if (tab === 'students') void cohortRenderMentorDirectory(c.id);
+  if (tab === 'students') { void cohortRenderMentorDirectory(c.id); void cohortDirStudentsInit(c.id); }
   if (tab === 'mod') void cohortRenderModFeed(c.id);
   if (tab === 'email') ldrBcInit();
 }
@@ -12968,6 +12988,143 @@ async function cohortLeaderSetStudentStatus(userId, status) {
   }
   await cohortRenderMentorPanels();
   await cohortRenderMentorDirectory(c.id);
+}
+
+// ─── Students panel: tambah siswa + custom groups ─────────────────────────────
+
+async function cohortDirStudentsInit(cohortId) {
+  await Promise.all([ldrBcLoadStudents(), ldrGroupLoad()]);
+}
+
+async function cohortDirAddStudent() {
+  const c   = _cohortState.primaryMentorCohort;
+  const inp = document.getElementById('cohort-dir-add-email');
+  const st  = document.getElementById('cohort-dir-add-status');
+  const email = (inp && inp.value || '').trim();
+  if (!c || !_supabase || !email) { if (st) st.textContent = 'Masukkan email siswa.'; return; }
+  if (st) st.textContent = 'Menambahkan siswa...';
+  const { error } = await _supabase.rpc('cohort_leader_add_student_by_email', { p_cohort: c.id, p_email: email });
+  if (error) { if (st) st.textContent = error.message || 'Gagal menambahkan siswa.'; return; }
+  if (inp) inp.value = '';
+  if (st) st.textContent = 'Siswa ditambahkan / diaktifkan.';
+  await cohortRenderMentorPanels();
+  await cohortRenderMentorDirectory(c.id);
+  await ldrBcLoadStudents();
+}
+
+async function cohortDirGroupCreate() {
+  const inp  = document.getElementById('cohort-dir-group-name');
+  const name = (inp?.value || '').trim();
+  const c    = _cohortState?.primaryMentorCohort;
+  if (!name) { alert('Masukkan nama grup.'); return; }
+  if (!c)    { alert('Tidak ada kohort aktif.'); return; }
+  try {
+    const { error } = await _supabase.rpc('leader_create_email_group', { p_cohort: c.id, p_name: name });
+    if (error) throw error;
+    if (inp) inp.value = '';
+    await ldrGroupLoad();
+  } catch (e) {
+    alert('Gagal membuat grup: ' + (e.message || e));
+  }
+}
+
+function cohortDirGroupRender() {
+  const wrap = document.getElementById('cohort-dir-group-list');
+  if (!wrap) return;
+  const groups = _ldrBcGroups || [];
+  const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  if (!groups.length) {
+    wrap.innerHTML = '<div class="cohort-muted" style="font-size:.75rem;">Belum ada grup. Buat grup baru di atas.</div>';
+    return;
+  }
+  wrap.innerHTML = groups.map(g => `
+    <div id="cohort-dir-grp-${g.id}" style="border:1px solid #E5E7EB;border-radius:8px;margin-bottom:10px;overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#F9FAFB;gap:8px;flex-wrap:wrap;">
+        <div>
+          <span style="font-size:.82rem;font-weight:700;color:#1A1F3C;">${esc(g.name)}</span>
+          <span style="font-size:.68rem;color:#6B7280;margin-left:6px;">${g.member_count} siswa</span>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button type="button" class="cohort-btn secondary" style="padding:4px 10px;font-size:.65rem;" onclick="cohortDirGroupToggleMembers('${g.id}')">Anggota</button>
+          <button type="button" class="cohort-btn secondary" style="padding:4px 10px;font-size:.65rem;" onclick="ldrGroupRename('${g.id}','${esc(g.name)}')">Ganti nama</button>
+          <button type="button" class="cohort-btn secondary" style="padding:4px 10px;font-size:.65rem;color:#E8442A;border-color:#E8442A;" onclick="ldrGroupDelete('${g.id}','${esc(g.name)}')">Hapus</button>
+        </div>
+      </div>
+      <div id="cohort-dir-grp-members-${g.id}" style="display:none;padding:10px 12px;border-top:1px solid #E5E7EB;">
+        <div class="cohort-muted" style="font-size:.72rem;">Memuat anggota…</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function cohortDirGroupToggleMembers(groupId) {
+  const wrap = document.getElementById('cohort-dir-grp-members-' + groupId);
+  if (!wrap) return;
+  if (wrap.style.display !== 'none') { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  await cohortDirGroupLoadMembers(groupId);
+}
+
+async function cohortDirGroupLoadMembers(groupId) {
+  const wrap = document.getElementById('cohort-dir-grp-members-' + groupId);
+  if (!wrap) return;
+  try {
+    const { data, error } = await _supabase.rpc('leader_get_email_group_members', { p_group: groupId });
+    if (error) throw error;
+    const members = data || [];
+    const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    const memberIds = new Set(members.map(m => m.user_id));
+    const available = (_ldrBcStudents || []).filter(s => !memberIds.has(s.user_id));
+    const addRow = available.length
+      ? `<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+           <select id="cohort-dir-grp-add-sel-${groupId}" class="cohort-input" style="flex:1;min-width:120px;margin:0;font-size:.72rem;">
+             <option value="">— Tambah siswa —</option>
+             ${available.map(s => `<option value="${esc(s.user_id)}">${esc(s.display_name || s.email)}</option>`).join('')}
+           </select>
+           <button type="button" class="cohort-btn secondary" style="padding:5px 10px;font-size:.68rem;" onclick="cohortDirGroupAddMember('${groupId}')">Tambah</button>
+         </div>`
+      : `<div class="cohort-muted" style="font-size:.7rem;margin-bottom:10px;">Semua siswa aktif sudah ada di grup ini.</div>`;
+    const memberRows = members.length
+      ? members.map(m => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #F3F4F6;">
+            <div>
+              <span style="font-size:.78rem;font-weight:600;color:#1A1F3C;">${esc(m.display_name)}</span>
+              <span style="font-size:.65rem;color:#6B7280;margin-left:5px;">${esc(m.email)}</span>
+            </div>
+            <button type="button" class="cohort-btn secondary" style="padding:3px 8px;font-size:.62rem;color:#E8442A;border-color:#E8442A;" onclick="cohortDirGroupRemoveMember('${groupId}','${m.user_id}')">Hapus</button>
+          </div>`).join('')
+      : '<div class="cohort-muted" style="font-size:.72rem;">Grup ini belum punya anggota.</div>';
+    wrap.innerHTML = addRow + memberRows;
+  } catch (e) {
+    wrap.innerHTML = `<div class="cohort-muted" style="font-size:.72rem;color:#E8442A;">Gagal memuat: ${e.message || e}</div>`;
+  }
+}
+
+async function cohortDirGroupAddMember(groupId) {
+  const sel    = document.getElementById('cohort-dir-grp-add-sel-' + groupId);
+  const userId = sel?.value;
+  if (!userId) return;
+  try {
+    const { error } = await _supabase.rpc('leader_add_email_group_member', { p_group: groupId, p_user_id: userId });
+    if (error) throw error;
+    await ldrGroupLoad();
+    const wrap = document.getElementById('cohort-dir-grp-members-' + groupId);
+    if (wrap) { wrap.style.display = 'block'; await cohortDirGroupLoadMembers(groupId); }
+  } catch (e) {
+    alert('Gagal menambah anggota: ' + (e.message || e));
+  }
+}
+
+async function cohortDirGroupRemoveMember(groupId, userId) {
+  try {
+    const { error } = await _supabase.rpc('leader_remove_email_group_member', { p_group: groupId, p_user_id: userId });
+    if (error) throw error;
+    await ldrGroupLoad();
+    const wrap = document.getElementById('cohort-dir-grp-members-' + groupId);
+    if (wrap) { wrap.style.display = 'block'; await cohortDirGroupLoadMembers(groupId); }
+  } catch (e) {
+    alert('Gagal menghapus anggota: ' + (e.message || e));
+  }
 }
 
 async function cohortLeaderHidePost(postId) {
@@ -22074,6 +22231,7 @@ async function ldrGroupLoad() {
   const { data } = await _supabase.rpc('leader_get_email_groups', { p_cohort: c.id });
   _ldrBcGroups = data || [];
   ldrGroupRender();
+  cohortDirGroupRender();
   // Sync group dropdowns in both panels
   _ldrEmailRebuildGroupSelect('ldr-bc-');
   _ldrEmailRebuildGroupSelect('hbdbc-');
