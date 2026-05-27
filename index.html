@@ -9288,6 +9288,7 @@ async function openDetail(id) {
 // CLAUDE_KEY removed — AI calls now go through the claude-proxy Edge Function.
 const SUPA_URL = 'https://bzmvlraziqevqdyotvgy.supabase.co';
 const SUPA_KEY = 'sb_publishable_KDSWIJJLckser1e1hk7bbA_yMChRPog';
+const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6bXZscmF6aXFldnFkeW90dmd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0MDU1MjUsImV4cCI6MjA4OTk4MTUyNX0.nppVtaxoT4z4slUOTvZo5stmP26bb5qoJXkswHVw9EE';
 const SUPA_HDR = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
 
 // Bootstrap roles. Database-backed role RPCs are the source of truth when available.
@@ -9766,7 +9767,7 @@ async function sendWhatsappOtp(isResend) {
   try {
     const res = await fetch(`${SUPA_URL}/functions/v1/send-whatsapp-otp`, {
       method: 'POST',
-      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
+      headers: { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: rawPhone }),
     });
     const data = await res.json();
@@ -9827,7 +9828,7 @@ async function verifyWhatsappOtp() {
   try {
     const res = await fetch(`${SUPA_URL}/functions/v1/verify-whatsapp-otp`, {
       method: 'POST',
-      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
+      headers: { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: _waPhone, otp }),
     });
     const data = await res.json();
