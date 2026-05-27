@@ -11,6 +11,7 @@ function normalisePhone(raw: string): string | null {
   if (/^\+62\d{8,13}$/.test(s)) return s
   if (/^628\d{7,12}$/.test(s)) return '+' + s
   if (/^08\d{7,12}$/.test(s)) return '+62' + s.slice(1)
+  if (/^8\d{7,12}$/.test(s)) return '+62' + s   // user typed 8xx after the +62 prefix shown in UI
   return null
 }
 

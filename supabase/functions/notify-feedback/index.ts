@@ -23,7 +23,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'LarisID Feedback <onboarding@resend.dev>',
+        from: Deno.env.get('RESEND_FROM_EMAIL') || 'Steven <steven@larisid.com>',
         to: 'stevenwilson614@gmail.com',
         subject: `[${label}] Masukan baru dari LarisID`,
         html: `
