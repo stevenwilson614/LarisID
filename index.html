@@ -14963,6 +14963,23 @@ async function ddRenderTren() {
         </div>`).join('');
     }
 
+    // Extend chart to current Monday, estimating weeks with no scrape data
+    {
+      const _nowMon = _mondayOf(new Date());
+      const cw = _trenData.weeks;
+      const _lm = cw.length ? cw[cw.length - 1].firstDate : null;
+      if (_lm && _nowMon > _lm) {
+        const sA = cw[Math.max(0, cw.length - 2)], sB = cw[cw.length - 1];
+        let rA = { units: sA.units || 0, omset: sA.omset || 0 };
+        let rB = { units: sB.units || 0, omset: sB.omset || 0 };
+        for (let t = new Date(_lm.getTime() + 7 * 86400000); t <= _nowMon; t = new Date(t.getTime() + 7 * 86400000)) {
+          const pu = Math.max(0, Math.round(rB.units + (rB.units - rA.units)));
+          const po = Math.max(0, Math.round(rB.omset + (rB.omset - rA.omset)));
+          cw.push({ label: `${t.getDate()} ${_MO[t.getMonth()]}`, units: pu, omset: po, firstDate: new Date(t) });
+          rA = rB; rB = { units: pu, omset: po };
+        }
+      }
+    }
     trenRender();
     trenRenderCmp();
     trenRenderDataTable();
@@ -16330,7 +16347,7 @@ async function ddLoadTrendHistory(listing) {
     const weeklyRowsFilled = [...weeklyRows];
     const lastDataMon = weeklyRowsFilled[weeklyRowsFilled.length - 1]?.firstDate;
     const firstDataMon = weeklyRowsFilled[0]?.firstDate;
-    const latestKnownDate = listing?.scraped_at ? new Date(listing.scraped_at) : new Date();
+    const latestKnownDate = new Date(); // always extend to today's Monday, not last scraped_at
     const latestKnownMon = _mondayOf(latestKnownDate);
     const _trendProject = (a, b) => {
       // Linear projection from 2 latest/earliest points.
