@@ -7902,7 +7902,12 @@ html,body{overflow-x:hidden;max-width:100%;}
                   </div>
                   <div style="padding:10px 14px;border-top:1px solid #E5E7EB;background:#F9FAFB;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                     <span id="cohort-dir-sel-count" style="font-size:.7rem;color:#6B7280;white-space:nowrap;">0 dipilih</span>
-                    <input id="cohort-dir-sel-group-name" type="text" placeholder="Nama grup dari pilihan…" maxlength="100" autocomplete="off" style="flex:1;min-width:120px;padding:6px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.75rem;font-family:inherit;">
+                    <select id="cohort-dir-sel-existing-group" class="cohort-input" style="flex:1;min-width:140px;margin:0;font-size:.72rem;padding:6px 10px;" onchange="cohortDirSelExistingGroupChange()">
+                      <option value="">— Tambah ke grup —</option>
+                    </select>
+                    <button type="button" class="cohort-btn secondary" style="padding:6px 12px;font-size:.72rem;white-space:nowrap;" onclick="cohortDirAddToExistingGroupFromSelection()">Tambah ke Grup</button>
+                    <span style="font-size:.65rem;color:#9CA3AF;">atau</span>
+                    <input id="cohort-dir-sel-group-name" type="text" placeholder="Nama grup baru…" maxlength="100" autocomplete="off" style="flex:1;min-width:120px;padding:6px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.75rem;font-family:inherit;">
                     <button type="button" class="cohort-btn secondary" style="padding:6px 12px;font-size:.72rem;white-space:nowrap;" onclick="cohortDirCreateGroupFromSelection()">Buat Grup</button>
                     <div id="cohort-dir-sel-status" style="font-size:.68rem;color:#6B7280;width:100%;"></div>
                   </div>
@@ -12981,6 +12986,55 @@ function _cohortDirUpdateSelCount() {
   if (el) el.textContent = n + ' dipilih';
 }
 
+function cohortDirSelGroupRebuild() {
+  const sel = document.getElementById('cohort-dir-sel-existing-group');
+  if (!sel) return;
+  const prev = sel.value;
+  const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const groups = _ldrBcGroups || [];
+  sel.innerHTML = '<option value="">— Tambah ke grup —</option>' +
+    groups.map(g => `<option value="${esc(g.id)}">${esc(g.name)} (${g.member_count})</option>`).join('');
+  if (prev && groups.some(g => g.id === prev)) sel.value = prev;
+}
+
+function cohortDirSelExistingGroupChange() {
+  const sel = document.getElementById('cohort-dir-sel-existing-group');
+  const nameInp = document.getElementById('cohort-dir-sel-group-name');
+  if (sel?.value && nameInp) nameInp.value = '';
+}
+
+async function cohortDirAddToExistingGroupFromSelection() {
+  const c = _cohortState?.primaryMentorCohort;
+  const groupId = document.getElementById('cohort-dir-sel-existing-group')?.value;
+  const statusEl = document.getElementById('cohort-dir-sel-status');
+  if (!c) { if (statusEl) statusEl.textContent = 'Tidak ada kohort aktif.'; return; }
+  if (!groupId) { if (statusEl) statusEl.textContent = 'Pilih grup tujuan terlebih dahulu.'; return; }
+  const checked = [...document.querySelectorAll('.cohort-dir-stu-chk:checked')];
+  if (!checked.length) { if (statusEl) statusEl.textContent = 'Pilih minimal satu siswa.'; return; }
+  const groupName = (_ldrBcGroups || []).find(g => g.id === groupId)?.name || 'grup';
+  if (statusEl) { statusEl.textContent = 'Menambahkan ke grup…'; statusEl.style.color = '#6B7280'; }
+  try {
+    let added = 0;
+    await Promise.all(checked.map(async cb => {
+      try {
+        const { error } = await _supabase.rpc('leader_add_email_group_member', { p_group: groupId, p_user_id: cb.dataset.uid });
+        if (!error) added++;
+      } catch (_) {}
+    }));
+    document.querySelectorAll('.cohort-dir-stu-chk:checked').forEach(cb => { cb.checked = false; });
+    const allChk = document.getElementById('cohort-dir-chk-all');
+    if (allChk) allChk.checked = false;
+    _cohortDirUpdateSelCount();
+    await ldrGroupLoad();
+    if (statusEl) {
+      statusEl.textContent = `${added} siswa ditambahkan ke "${groupName}".`;
+      statusEl.style.color = '#1A7A46';
+    }
+  } catch (e) {
+    if (statusEl) { statusEl.textContent = 'Gagal: ' + (e.message || e); statusEl.style.color = '#E8442A'; }
+  }
+}
+
 async function cohortDirCreateGroupFromSelection() {
   const c    = _cohortState?.primaryMentorCohort;
   const name = (document.getElementById('cohort-dir-sel-group-name')?.value || '').trim();
@@ -12998,6 +13052,8 @@ async function cohortDirCreateGroupFromSelection() {
     }));
     const inp = document.getElementById('cohort-dir-sel-group-name');
     if (inp) inp.value = '';
+    const existSel = document.getElementById('cohort-dir-sel-existing-group');
+    if (existSel) existSel.value = '';
     document.querySelectorAll('.cohort-dir-stu-chk:checked').forEach(cb => { cb.checked = false; });
     const allChk = document.getElementById('cohort-dir-chk-all');
     if (allChk) allChk.checked = false;
@@ -22310,6 +22366,7 @@ async function ldrGroupLoad() {
   _ldrBcGroups = data || [];
   ldrGroupRender();
   cohortDirGroupRender();
+  cohortDirSelGroupRebuild();
   // Sync group dropdowns in both panels
   _ldrEmailRebuildGroupSelect('ldr-bc-');
   _ldrEmailRebuildGroupSelect('hbdbc-');
