@@ -9766,7 +9766,7 @@ async function sendWhatsappOtp(isResend) {
   try {
     const res = await fetch(`${SUPA_URL}/functions/v1/send-whatsapp-otp`, {
       method: 'POST',
-      headers: { apikey: SUPA_KEY, 'Content-Type': 'application/json' },
+      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: rawPhone }),
     });
     const data = await res.json();
@@ -9827,7 +9827,7 @@ async function verifyWhatsappOtp() {
   try {
     const res = await fetch(`${SUPA_URL}/functions/v1/verify-whatsapp-otp`, {
       method: 'POST',
-      headers: { apikey: SUPA_KEY, 'Content-Type': 'application/json' },
+      headers: { apikey: SUPA_KEY, Authorization: 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: _waPhone, otp }),
     });
     const data = await res.json();
