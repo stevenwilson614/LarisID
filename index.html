@@ -4501,7 +4501,7 @@ html,body{overflow-x:hidden;max-width:100%;}
       </div>
       <div class="lp-footer-bottom-new">
         <span>© 2024 LarisID. Hak cipta dilindungi.</span>
-        <span><a class="lp-footer-col-link" style="display:inline;margin:0;margin-right:16px;">Syarat &amp; Ketentuan</a><a class="lp-footer-col-link" style="display:inline;margin:0;">Kebijakan Privasi</a></span>
+        <span><a class="lp-footer-col-link" href="/privacy/" style="display:inline;margin:0;">Kebijakan Privasi</a></span>
       </div>
     </footer>
   </div>
@@ -7694,6 +7694,7 @@ html,body{overflow-x:hidden;max-width:100%;}
               <button type="button" class="cohort-subtab" data-cmtab="students" onclick="cohortSwitchMentorTab('students')">Siswa</button>
               <button type="button" class="cohort-subtab" data-cmtab="mod" onclick="cohortSwitchMentorTab('mod')">Moderasi</button>
               <button type="button" class="cohort-subtab" data-cmtab="report" onclick="cohortSwitchMentorTab('report')">Laporan</button>
+              <button type="button" class="cohort-subtab" data-cmtab="email" onclick="cohortSwitchMentorTab('email')">Email</button>
             </div>
             <div id="cohort-mentor-panel-overview">
               <div class="cohort-grid">
@@ -7796,6 +7797,62 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <h3>Ekspor laporan</h3>
                 <p class="cohort-muted" style="margin-bottom:12px;">Unduh CSV direktori siswa untuk spreadsheet.</p>
                 <button type="button" class="cohort-btn" id="cohort-export-csv-btn" onclick="cohortExportDirectoryCsv()">Unduh CSV</button>
+              </div>
+            </div>
+
+            <!-- Leader email broadcast panel -->
+            <div id="cohort-mentor-panel-email" style="display:none;">
+              <!-- Send form -->
+              <div class="cohort-card" style="margin-bottom:14px;">
+                <h3>Broadcast Email ke Siswa</h3>
+                <p class="cohort-muted" style="margin-bottom:14px;">Kirim email ke siswa kohort ini via Resend. Dikirim dari Steven (steven@larisid.com).</p>
+                <!-- Segment selector -->
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+                  <button type="button" class="adm-seg-btn active" id="ldr-bc-seg-all_cohort"    onclick="ldrBcSetSeg('all_cohort')">Semua Siswa</button>
+                  <button type="button" class="adm-seg-btn"        id="ldr-bc-seg-specific"      onclick="ldrBcSetSeg('specific')">Spesifik</button>
+                  <button type="button" class="adm-seg-btn"        id="ldr-bc-seg-custom_group"  onclick="ldrBcSetSeg('custom_group')">Custom Group</button>
+                </div>
+                <!-- Specific person search (cohort-scoped) -->
+                <div id="ldr-bc-specific-wrap" style="display:none;position:relative;margin-bottom:8px;">
+                  <input id="ldr-bc-specific-search" type="text" autocomplete="off" placeholder="Cari nama atau email siswa…" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.8rem;font-family:inherit;" oninput="ldrBcSearchStudent(this.value)">
+                  <input id="ldr-bc-specific-email" type="hidden">
+                  <div id="ldr-bc-specific-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #E5E7EB;border-radius:8px;margin-top:3px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:200;max-height:220px;overflow-y:auto;"></div>
+                </div>
+                <!-- Custom group selector -->
+                <div id="ldr-bc-group-wrap" style="display:none;margin-bottom:8px;">
+                  <select id="ldr-bc-group-select" class="cohort-input" style="margin:0;">
+                    <option value="">— Pilih grup —</option>
+                  </select>
+                  <div id="ldr-bc-group-count" style="font-size:.68rem;color:#6B7280;margin-top:4px;"></div>
+                </div>
+                <!-- Email fields -->
+                <input  id="ldr-bc-subject" type="text"     placeholder="Subjek email…" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.8rem;margin-bottom:8px;font-family:inherit;">
+                <textarea id="ldr-bc-body" rows="5" placeholder="Isi pesan (plain text)…" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:.8rem;resize:vertical;font-family:inherit;margin-bottom:10px;"></textarea>
+                <!-- Optional attachment -->
+                <div style="margin-bottom:12px;">
+                  <label style="font-size:.72rem;font-weight:700;color:#374151;display:block;margin-bottom:5px;">Lampiran (opsional)</label>
+                  <input id="ldr-bc-attachment" type="file" style="font-size:.75rem;color:#374151;width:100%;box-sizing:border-box;">
+                  <div id="ldr-bc-attachment-info" style="font-size:.65rem;color:#9CA3AF;margin-top:3px;"></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                  <button type="button" class="cohort-btn" id="ldr-bc-send-btn" onclick="ldrBcSend()">Kirim Email</button>
+                  <div id="ldr-bc-status" style="font-size:.72rem;color:#6B7280;"></div>
+                </div>
+              </div>
+
+              <!-- Custom group manager -->
+              <div class="cohort-card">
+                <h3>Kelola Grup Email</h3>
+                <p class="cohort-muted" style="margin-bottom:12px;">Buat grup siswa bernama yang bisa kamu kirimi email kapan saja.</p>
+                <!-- Create new group -->
+                <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+                  <input id="ldr-group-new-name" type="text" class="cohort-input" placeholder="Nama grup baru…" maxlength="100" autocomplete="off" style="flex:1;min-width:140px;margin:0;">
+                  <button type="button" class="cohort-btn secondary" onclick="ldrGroupCreate()" style="white-space:nowrap;">+ Buat Grup</button>
+                </div>
+                <!-- Group list -->
+                <div id="ldr-group-list">
+                  <div class="cohort-muted" style="font-size:.75rem;">Memuat grup…</div>
+                </div>
               </div>
             </div>
           </div>
@@ -12207,7 +12264,7 @@ function cohortSwitchMentorTab(tab) {
   document.querySelectorAll('#cohort-mentor-subtabs .cohort-subtab').forEach(b => {
     b.classList.toggle('active', b.dataset.cmtab === tab);
   });
-  ['overview', 'identity', 'students', 'mod', 'report'].forEach(t => {
+  ['overview', 'identity', 'students', 'mod', 'report', 'email'].forEach(t => {
     const el = document.getElementById('cohort-mentor-panel-' + t);
     if (el) el.style.display = t === tab ? '' : 'none';
   });
@@ -12216,6 +12273,7 @@ function cohortSwitchMentorTab(tab) {
   if (tab === 'identity') cohortPreviewBrandingForm();
   if (tab === 'students') void cohortRenderMentorDirectory(c.id);
   if (tab === 'mod') void cohortRenderModFeed(c.id);
+  if (tab === 'email') ldrBcInit();
 }
 
 function cohortCohortDisplayName(userId, fallbackRank) {
@@ -21524,6 +21582,370 @@ async function admBcSend() {
     if (statusEl) statusEl.textContent = 'Gagal mengirim. Coba lagi.';
   }
   if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Kirim Email'; }
+}
+
+// ─── Leader email broadcast ───────────────────────────────────────────────────
+
+let _ldrBcSeg      = 'all_cohort';
+let _ldrBcStudents = null; // [{user_id, email, display_name}]
+let _ldrBcGroups   = null; // [{id, name, member_count}]
+
+async function ldrBcInit() {
+  const c = _cohortState?.primaryMentorCohort;
+  if (!c) return;
+  ldrBcSetSeg('all_cohort');
+  // Reset form
+  const fields = ['ldr-bc-subject','ldr-bc-body','ldr-bc-specific-search','ldr-bc-specific-email'];
+  fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const fi = document.getElementById('ldr-bc-attachment');
+  if (fi) fi.value = '';
+  const info = document.getElementById('ldr-bc-attachment-info');
+  if (info) info.textContent = '';
+  const st = document.getElementById('ldr-bc-status');
+  if (st) { st.textContent = ''; st.style.color = '#6B7280'; }
+  // Parallel load
+  await Promise.all([ldrBcLoadStudents(), ldrGroupLoad()]);
+}
+
+function ldrBcSetSeg(seg) {
+  _ldrBcSeg = seg;
+  ['all_cohort','specific','custom_group'].forEach(s => {
+    const btn = document.getElementById('ldr-bc-seg-' + s);
+    if (btn) btn.classList.toggle('active', s === seg);
+  });
+  const sw = document.getElementById('ldr-bc-specific-wrap');
+  const gw = document.getElementById('ldr-bc-group-wrap');
+  if (sw) sw.style.display = seg === 'specific'     ? 'block' : 'none';
+  if (gw) gw.style.display = seg === 'custom_group' ? 'block' : 'none';
+}
+
+async function ldrBcLoadStudents() {
+  const c = _cohortState?.primaryMentorCohort;
+  if (!c || !_supabase) return;
+  const { data } = await _supabase.rpc('cohort_student_directory', { p_cohort: c.id });
+  _ldrBcStudents = (data || []).filter(s => s.email && s.status === 'active');
+}
+
+function ldrBcSearchStudent(query) {
+  const dropdown = document.getElementById('ldr-bc-specific-dropdown');
+  const hidden   = document.getElementById('ldr-bc-specific-email');
+  if (!dropdown) return;
+  if (hidden) hidden.value = '';
+  const q = query.trim().toLowerCase();
+  if (!q) { dropdown.style.display = 'none'; return; }
+  const matches = (_ldrBcStudents || []).filter(u =>
+    (u.display_name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q)
+  ).slice(0, 10);
+  if (!matches.length) { dropdown.style.display = 'none'; return; }
+  const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  dropdown.innerHTML = matches.map(u => {
+    const name  = u.display_name || u.email;
+    const safeE = u.email.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const safeN = name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<div style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #F3F4F6;" onmousedown="ldrBcSelectStudent('${safeE}','${safeN}')">
+      <div style="font-size:.78rem;font-weight:700;color:#1A1F3C;">${esc(name)}</div>
+      <div style="font-size:.68rem;color:#6B7280;">${esc(u.email)}</div>
+    </div>`;
+  }).join('');
+  dropdown.style.display = 'block';
+}
+
+function ldrBcSelectStudent(email, name) {
+  const search = document.getElementById('ldr-bc-specific-search');
+  const hidden = document.getElementById('ldr-bc-specific-email');
+  const dd     = document.getElementById('ldr-bc-specific-dropdown');
+  if (search) search.value = name + ' <' + email + '>';
+  if (hidden) hidden.value = email;
+  if (dd)     dd.style.display = 'none';
+}
+
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('ldr-bc-specific-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    const dd = document.getElementById('ldr-bc-specific-dropdown');
+    if (dd) dd.style.display = 'none';
+  }
+});
+
+document.addEventListener('change', e => {
+  if (e.target.id !== 'ldr-bc-attachment') return;
+  const info = document.getElementById('ldr-bc-attachment-info');
+  if (info) {
+    const file = e.target.files?.[0];
+    info.textContent = file ? `${file.name} (${(file.size / 1024).toFixed(1)} KB)` : '';
+  }
+});
+
+async function ldrBcSend() {
+  const c       = _cohortState?.primaryMentorCohort;
+  const subject = (document.getElementById('ldr-bc-subject')?.value || '').trim();
+  const body    = (document.getElementById('ldr-bc-body')?.value    || '').trim();
+  const statusEl = document.getElementById('ldr-bc-status');
+  const sendBtn  = document.getElementById('ldr-bc-send-btn');
+
+  if (!c)           { if (statusEl) statusEl.textContent = 'Tidak ada kohort aktif.'; return; }
+  if (!subject || !body) {
+    if (statusEl) statusEl.textContent = 'Isi subjek dan pesan terlebih dahulu.';
+    return;
+  }
+
+  let specificEmail = '';
+  let groupId       = '';
+
+  if (_ldrBcSeg === 'specific') {
+    specificEmail = (document.getElementById('ldr-bc-specific-email')?.value || '').trim();
+    if (!specificEmail) {
+      const typed = (document.getElementById('ldr-bc-specific-search')?.value || '').trim();
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typed)) specificEmail = typed;
+    }
+    if (!specificEmail) {
+      if (statusEl) statusEl.textContent = 'Pilih penerima dari daftar atau ketik email yang valid.';
+      return;
+    }
+  }
+
+  if (_ldrBcSeg === 'custom_group') {
+    groupId = (document.getElementById('ldr-bc-group-select')?.value || '').trim();
+    if (!groupId) {
+      if (statusEl) statusEl.textContent = 'Pilih grup terlebih dahulu.';
+      return;
+    }
+  }
+
+  let attachment = null;
+  const fileInput = document.getElementById('ldr-bc-attachment');
+  if (fileInput?.files?.length) {
+    const file = fileInput.files[0];
+    attachment = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload  = () => res({ filename: file.name, content: r.result.split(',')[1], content_type: file.type || 'application/octet-stream' });
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+  }
+
+  const segLabel = _ldrBcSeg === 'specific'
+    ? specificEmail
+    : _ldrBcSeg === 'custom_group'
+      ? `grup "${(_ldrBcGroups || []).find(g => g.id === groupId)?.name || groupId}"`
+      : 'semua siswa aktif';
+  if (!confirm(`Kirim email ke ${segLabel}?\n\nSubjek: ${subject}`)) return;
+
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Mengirim…'; }
+  if (statusEl) { statusEl.textContent = ''; statusEl.style.color = '#6B7280'; }
+
+  try {
+    const session = (await _supabase?.auth.getSession())?.data?.session;
+    const payload = { cohort_id: c.id, segment: _ldrBcSeg, subject, body };
+    if (_ldrBcSeg === 'specific')      payload.specific_email = specificEmail;
+    if (_ldrBcSeg === 'custom_group')  payload.group_id       = groupId;
+    if (attachment)                    payload.attachment      = attachment;
+
+    const res = await fetch(`${SUPA_URL}/functions/v1/send-leader-broadcast`, {
+      method:  'POST',
+      headers: { 'Authorization': `Bearer ${session?.access_token || ''}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    });
+    const json = await res.json();
+
+    if (res.ok) {
+      const failMsg  = json.failed?.length
+        ? ` Gagal: ${json.failed.length}.${json.fail_reasons?.[0] ? ' (' + json.fail_reasons[0] + ')' : ''}`
+        : '';
+      const toList   = (json.recipients || []).join(', ');
+      const idHint   = json.resend_ids?.[0] ? ` ID Resend: ${json.resend_ids[0]}.` : '';
+      const fromHint = json.from ? ` Dari: ${json.from}.` : '';
+      const spamNote = json.sent > 0 ? ' Cek folder spam/promosi jika tidak masuk inbox.' : '';
+      if (statusEl) {
+        statusEl.textContent = `Diterima Resend (${json.sent}/${json.total_targets || json.sent}) → ${toList || '—'}.${fromHint}${idHint}${failMsg}${spamNote}`;
+        statusEl.style.color = json.failed?.length ? '#B45309' : '#1A7A46';
+      }
+      // Reset fields
+      ['ldr-bc-subject','ldr-bc-body'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      if (_ldrBcSeg === 'specific') {
+        const s = document.getElementById('ldr-bc-specific-search'); if (s) s.value = '';
+        const h = document.getElementById('ldr-bc-specific-email');  if (h) h.value = '';
+      }
+      if (fileInput) { fileInput.value = ''; const inf = document.getElementById('ldr-bc-attachment-info'); if (inf) inf.textContent = ''; }
+    } else {
+      if (statusEl) statusEl.textContent = `Error: ${json.error || res.status}`;
+    }
+  } catch (e) {
+    if (statusEl) statusEl.textContent = 'Gagal mengirim. Coba lagi.';
+  }
+  if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Kirim Email'; }
+}
+
+// ─── Group management ─────────────────────────────────────────────────────────
+
+async function ldrGroupLoad() {
+  const c = _cohortState?.primaryMentorCohort;
+  if (!c || !_supabase) return;
+  const { data } = await _supabase.rpc('leader_get_email_groups', { p_cohort: c.id });
+  _ldrBcGroups = data || [];
+  ldrGroupRender();
+  _ldrBcGroupRebuildSelect();
+}
+
+function _ldrBcGroupRebuildSelect() {
+  const sel = document.getElementById('ldr-bc-group-select');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Pilih grup —</option>';
+  (_ldrBcGroups || []).forEach(g => {
+    const opt = document.createElement('option');
+    opt.value       = g.id;
+    opt.textContent = `${g.name} (${g.member_count} siswa)`;
+    if (g.id === cur) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  const cnt = document.getElementById('ldr-bc-group-count');
+  if (cnt) cnt.textContent = '';
+}
+
+function ldrGroupRender() {
+  const wrap = document.getElementById('ldr-group-list');
+  if (!wrap) return;
+  const groups = _ldrBcGroups || [];
+  if (!groups.length) {
+    wrap.innerHTML = '<div class="cohort-muted" style="font-size:.75rem;">Belum ada grup. Buat grup baru di atas.</div>';
+    return;
+  }
+  const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  wrap.innerHTML = groups.map(g => `
+    <div id="ldr-grp-${g.id}" style="border:1px solid #E5E7EB;border-radius:8px;margin-bottom:10px;overflow:hidden;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#F9FAFB;gap:8px;flex-wrap:wrap;">
+        <div>
+          <span style="font-size:.82rem;font-weight:700;color:#1A1F3C;">${esc(g.name)}</span>
+          <span style="font-size:.68rem;color:#6B7280;margin-left:6px;">${g.member_count} siswa</span>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button type="button" class="cohort-btn secondary" style="padding:4px 10px;font-size:.65rem;" onclick="ldrGroupToggleMembers('${g.id}')">Anggota</button>
+          <button type="button" class="cohort-btn secondary" style="padding:4px 10px;font-size:.65rem;" onclick="ldrGroupRename('${g.id}','${esc(g.name)}')">Ganti nama</button>
+          <button type="button" class="cohort-btn secondary" style="padding:4px 10px;font-size:.65rem;color:#E8442A;border-color:#E8442A;" onclick="ldrGroupDelete('${g.id}','${esc(g.name)}')">Hapus</button>
+        </div>
+      </div>
+      <div id="ldr-grp-members-${g.id}" style="display:none;padding:10px 12px;border-top:1px solid #E5E7EB;">
+        <div class="cohort-muted" style="font-size:.72rem;">Memuat anggota…</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function ldrGroupCreate() {
+  const inp  = document.getElementById('ldr-group-new-name');
+  const name = (inp?.value || '').trim();
+  const c    = _cohortState?.primaryMentorCohort;
+  if (!name) { alert('Masukkan nama grup.'); return; }
+  if (!c)    { alert('Tidak ada kohort aktif.'); return; }
+  try {
+    const { error } = await _supabase.rpc('leader_create_email_group', { p_cohort: c.id, p_name: name });
+    if (error) throw error;
+    if (inp) inp.value = '';
+    await ldrGroupLoad();
+  } catch (e) {
+    alert('Gagal membuat grup: ' + (e.message || e));
+  }
+}
+
+async function ldrGroupRename(groupId, currentName) {
+  const newName = prompt('Nama baru untuk grup ini:', currentName);
+  if (!newName || newName.trim() === currentName) return;
+  try {
+    const { error } = await _supabase.rpc('leader_rename_email_group', { p_group: groupId, p_name: newName.trim() });
+    if (error) throw error;
+    await ldrGroupLoad();
+  } catch (e) {
+    alert('Gagal mengganti nama: ' + (e.message || e));
+  }
+}
+
+async function ldrGroupDelete(groupId, groupName) {
+  if (!confirm(`Hapus grup "${groupName}"? Semua anggota akan dihapus dari grup ini.`)) return;
+  try {
+    const { error } = await _supabase.rpc('leader_delete_email_group', { p_group: groupId });
+    if (error) throw error;
+    await ldrGroupLoad();
+  } catch (e) {
+    alert('Gagal menghapus grup: ' + (e.message || e));
+  }
+}
+
+async function ldrGroupToggleMembers(groupId) {
+  const wrap = document.getElementById('ldr-grp-members-' + groupId);
+  if (!wrap) return;
+  if (wrap.style.display !== 'none') { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  await ldrGroupLoadMembers(groupId);
+}
+
+async function ldrGroupLoadMembers(groupId) {
+  const wrap = document.getElementById('ldr-grp-members-' + groupId);
+  if (!wrap) return;
+  try {
+    const { data, error } = await _supabase.rpc('leader_get_email_group_members', { p_group: groupId });
+    if (error) throw error;
+    const members = data || [];
+    const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+
+    // Build student options for "add member" dropdown (exclude existing members)
+    const memberIds = new Set(members.map(m => m.user_id));
+    const available = (_ldrBcStudents || []).filter(s => !memberIds.has(s.user_id));
+
+    const addRow = available.length
+      ? `<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+           <select id="ldr-grp-add-sel-${groupId}" class="cohort-input" style="flex:1;min-width:120px;margin:0;font-size:.72rem;">
+             <option value="">— Tambah siswa —</option>
+             ${available.map(s => `<option value="${esc(s.user_id)}">${esc(s.display_name || s.email)}</option>`).join('')}
+           </select>
+           <button type="button" class="cohort-btn secondary" style="padding:5px 10px;font-size:.68rem;" onclick="ldrGroupAddMember('${groupId}')">Tambah</button>
+         </div>`
+      : `<div class="cohort-muted" style="font-size:.7rem;margin-bottom:10px;">Semua siswa aktif sudah ada di grup ini.</div>`;
+
+    const memberRows = members.length
+      ? members.map(m => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #F3F4F6;">
+            <div>
+              <span style="font-size:.78rem;font-weight:600;color:#1A1F3C;">${esc(m.display_name)}</span>
+              <span style="font-size:.65rem;color:#6B7280;margin-left:5px;">${esc(m.email)}</span>
+            </div>
+            <button type="button" class="cohort-btn secondary" style="padding:3px 8px;font-size:.62rem;color:#E8442A;border-color:#E8442A;" onclick="ldrGroupRemoveMember('${groupId}','${m.user_id}')">Hapus</button>
+          </div>`
+        ).join('')
+      : '<div class="cohort-muted" style="font-size:.72rem;">Grup ini belum punya anggota.</div>';
+
+    wrap.innerHTML = addRow + memberRows;
+  } catch (e) {
+    wrap.innerHTML = `<div class="cohort-muted" style="font-size:.72rem;color:#E8442A;">Gagal memuat: ${e.message || e}</div>`;
+  }
+}
+
+async function ldrGroupAddMember(groupId) {
+  const sel    = document.getElementById('ldr-grp-add-sel-' + groupId);
+  const userId = sel?.value;
+  if (!userId) return;
+  try {
+    const { error } = await _supabase.rpc('leader_add_email_group_member', { p_group: groupId, p_user_id: userId });
+    if (error) throw error;
+    await ldrGroupLoad();
+    // Re-open the member list after reload
+    const wrap = document.getElementById('ldr-grp-members-' + groupId);
+    if (wrap) { wrap.style.display = 'block'; await ldrGroupLoadMembers(groupId); }
+  } catch (e) {
+    alert('Gagal menambah anggota: ' + (e.message || e));
+  }
+}
+
+async function ldrGroupRemoveMember(groupId, userId) {
+  try {
+    const { error } = await _supabase.rpc('leader_remove_email_group_member', { p_group: groupId, p_user_id: userId });
+    if (error) throw error;
+    await ldrGroupLoad();
+    const wrap = document.getElementById('ldr-grp-members-' + groupId);
+    if (wrap) { wrap.style.display = 'block'; await ldrGroupLoadMembers(groupId); }
+  } catch (e) {
+    alert('Gagal menghapus anggota: ' + (e.message || e));
+  }
 }
 
 // ── Extension Linking ─────────────────────────────────────────────────────────
