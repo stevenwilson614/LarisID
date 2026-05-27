@@ -762,6 +762,25 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .cohort-brand-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
 .cohort-color-row{display:flex;gap:8px;align-items:center;}
 .cohort-color-swatch{width:42px;height:38px;border:none;border-radius:9px;background:transparent;padding:0;cursor:pointer;}
+.cohort-color-swatch-btn{width:42px;height:38px;border:2px solid rgba(15,23,42,.12);border-radius:9px;padding:0;cursor:pointer;flex-shrink:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35);}
+.cohort-color-swatch-btn:focus-visible{outline:2px solid var(--cohort-primary,#0c4a6e);outline-offset:2px;}
+.cohort-color-hex-input{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.02em;cursor:pointer;}
+.cohort-color-popover{position:fixed;z-index:10050;min-width:220px;padding:0;border:none;background:transparent;}
+.cohort-color-popover[hidden]{display:none!important;}
+.cohort-color-popover-panel{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:12px 14px;box-shadow:0 16px 40px rgba(15,23,42,.18);}
+.cohort-color-popover-label{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#6B7280;margin-bottom:8px;}
+.cohort-color-popover-picker{display:block;width:100%;height:44px;border:none;border-radius:8px;padding:0;cursor:pointer;background:transparent;}
+.cohort-color-popover-hex{width:100%;margin-top:8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;}
+.cohort-name-style-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 12px;}
+.cohort-name-style-chip{border:1.5px solid #E5E7EB;background:#fff;border-radius:999px;padding:5px 12px;font-size:.68rem;font-weight:700;color:#374151;cursor:pointer;transition:border-color .15s,background .15s,color .15s;}
+.cohort-name-style-chip:hover{border-color:#CBD5E1;}
+.cohort-name-style-chip.active{border-color:var(--cohort-primary,#0c4a6e);background:color-mix(in srgb,var(--cohort-primary,#0c4a6e) 8%,#fff);color:var(--cohort-primary,#0c4a6e);}
+.dash-topbar-cohort-name-accent.cohort-name-style-gradient{background:linear-gradient(105deg,var(--cohort-primary,#1A1F3C) 0%,var(--cohort-secondary,#c9a87c) 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
+.dash-topbar-cohort-name-accent.cohort-name-style-glow{color:var(--cohort-primary,#1A1F3C);text-shadow:0 0 18px color-mix(in srgb,var(--cohort-secondary,#c9a87c) 55%,transparent),0 1px 0 rgba(255,255,255,.4);}
+.dash-topbar-cohort-name-accent.cohort-name-style-outline{color:var(--cohort-primary,#1A1F3C);-webkit-text-stroke:1px color-mix(in srgb,var(--cohort-secondary,#c9a87c) 70%,#111);paint-order:stroke fill;}
+.dash-topbar-cohort-name-accent.cohort-name-style-elegant{font-family:Georgia,'Times New Roman',serif;font-weight:700;letter-spacing:.12em;font-style:italic;text-transform:none;color:var(--cohort-primary,#1A1F3C);}
+.dash-topbar-cohort-name-accent.cohort-name-style-wide{font-weight:800;letter-spacing:.24em;font-size:.78rem;color:var(--cohort-secondary,#c9a87c);}
+.dash-topbar-cohort-name-accent.cohort-name-style-condensed{font-weight:900;letter-spacing:-.03em;text-transform:uppercase;font-size:.92rem;color:var(--cohort-primary,#1A1F3C);}
 @media(max-width:700px){.cohort-brand-head{display:block;}.cohort-brand-preview{margin-top:12px;}.cohort-brand-grid{grid-template-columns:1fr;}}
 /* ── Reusable cohort badge (shield / icon / name / subtitle) ── */
 .cohort-badge{display:inline-flex;vertical-align:middle;font-family:'Plus Jakarta Sans',sans-serif;line-height:1.2;}
@@ -820,9 +839,9 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .dash-topbar-cohort-chip .cohort-badge{max-width:100%;}
 .dash-topbar-brand-block{display:none;align-items:center;gap:20px;flex-wrap:wrap;min-width:0;}
 .dash-topbar-brand-stack{display:flex;flex-direction:column;gap:1px;line-height:1.15;}
-.dash-topbar-brand-kicker{font-size:.58rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#6B7280;}
-.dash-topbar-cohort-name-accent{font-size:.88rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:var(--cohort-primary,#1A1F3C);max-width:min(200px,40vw);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.dash-topbar-view-page{font-size:1rem;font-weight:800;color:var(--cohort-primary,#1A1F3C);padding-left:10px;border-left:1.5px solid rgba(0,0,0,.1);margin-left:8px;}
+.dash-topbar-brand-kicker{font-size:.58rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--cohort-secondary,#6B7280);}
+.dash-topbar-cohort-name-accent{font-size:.88rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:var(--cohort-secondary,#1A1F3C);max-width:min(200px,40vw);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dash-topbar-view-page{font-size:1rem;font-weight:800;color:var(--cohort-primary,#1A1F3C);padding-left:10px;border-left:1.5px solid color-mix(in srgb,var(--cohort-secondary,#c9a87c) 65%,transparent);margin-left:8px;}
 .cohort-app-strip{
   position:relative;
   overflow:visible;
@@ -4670,6 +4689,39 @@ html,body{overflow-x:hidden;max-width:100%;}
         </div>
       </div>
 
+      <!-- leader cohort switch confirm -->
+      <div id="cohort-switch-modal" class="cohort-create-modal" onclick="if(event.target===this)cohortCloseSwitchConfirmModal()">
+        <div class="cohort-create-panel">
+          <div class="cohort-create-head">
+            <div>
+              <div class="cohort-create-title">Ganti kohort?</div>
+              <div class="cohort-create-sub">Konfirmasi sebelum beralih tampilan</div>
+            </div>
+            <button class="cohort-create-close" type="button" onclick="cohortCloseSwitchConfirmModal()">&#x2715;</button>
+          </div>
+          <p class="cohort-muted" style="margin:0 0 16px;line-height:1.5;">Anda akan beralih ke kohort <strong id="cohort-switch-target-name" style="color:#111;">—</strong>. Lanjutkan?</p>
+          <div class="cohort-create-actions" style="margin-top:0;">
+            <button type="button" class="cohort-btn secondary" onclick="cohortCloseSwitchConfirmModal()">Batal</button>
+            <button type="button" class="cohort-btn" onclick="cohortLeaderApplySwitch()">Ya, ganti kohort</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- delete cohort modal -->
+      <div id="cohort-delete-modal" class="cohort-create-modal" onclick="if(event.target===this)cohortCloseDeleteModal()">
+        <div class="cohort-create-panel">
+          <div class="cohort-create-head">
+            <div>
+              <div class="cohort-create-title" id="cohort-delete-modal-title">Hapus kohort?</div>
+              <div class="cohort-create-sub">Tindakan permanen</div>
+            </div>
+            <button class="cohort-create-close" type="button" onclick="cohortCloseDeleteModal()">&#x2715;</button>
+          </div>
+          <div id="cohort-delete-body"></div>
+          <div id="cohort-delete-status" class="cohort-muted" style="margin-top:8px;display:none;"></div>
+        </div>
+      </div>
+
       <!-- create cohort modal -->
       <div id="cohort-create-modal" class="cohort-create-modal" onclick="if(event.target===this)cohortCloseCreateModal()">
         <div class="cohort-create-panel">
@@ -4688,6 +4740,14 @@ html,body{overflow-x:hidden;max-width:100%;}
           </div>
           <div id="cohort-create-body"></div>
           <div id="cohort-create-status" class="cohort-muted" style="margin-top:8px;display:none;"></div>
+        </div>
+      </div>
+
+      <div id="cohort-color-popover" class="cohort-color-popover" hidden>
+        <div class="cohort-color-popover-panel" role="dialog" aria-modal="true" aria-labelledby="cohort-color-popover-label">
+          <div id="cohort-color-popover-label" class="cohort-color-popover-label">Warna</div>
+          <input type="color" id="cohort-color-popover-picker" class="cohort-color-popover-picker" value="#0c4a6e" aria-label="Pilih warna">
+          <input type="text" id="cohort-color-popover-hex" class="cohort-input cohort-color-popover-hex" placeholder="#000000" maxlength="7" autocomplete="off" aria-label="Kode hex">
         </div>
       </div>
 
@@ -7851,18 +7911,30 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <div>
                     <label class="cohort-muted" style="font-size:.65rem;">Warna utama (hex)</label>
                     <div class="cohort-color-row">
-                      <input type="color" id="cohort-brand-primary-picker" class="cohort-color-swatch" value="#0c4a6e" oninput="cohortSyncBrandColor('primary','picker')">
-                      <input type="text" id="cohort-brand-primary" class="cohort-input" placeholder="#0c4a6e" maxlength="7" autocomplete="off" oninput="cohortSyncBrandColor('primary','text')">
+                      <button type="button" class="cohort-color-swatch-btn" id="cohort-brand-primary-swatch" style="background-color:#0c4a6e" aria-label="Pilih warna utama" onclick="cohortOpenBrandColorPopover('primary', this)"></button>
+                      <input type="text" id="cohort-brand-primary" class="cohort-input cohort-color-hex-input" placeholder="#0c4a6e" maxlength="7" autocomplete="off" onclick="cohortOpenBrandColorPopover('primary', this)" oninput="cohortSyncBrandColor('primary','text')">
+                      <input type="color" id="cohort-brand-primary-picker" class="cohort-color-swatch" value="#0c4a6e" hidden tabindex="-1" aria-hidden="true">
                     </div>
                   </div>
                   <div>
-                    <label class="cohort-muted" style="font-size:.65rem;">Warna aksen (hex)</label>
+                    <label class="cohort-muted" style="font-size:.65rem;">Warna aksen (hex) <span style="font-weight:500;opacity:.75;">· otomatis dari utama</span></label>
                     <div class="cohort-color-row">
-                      <input type="color" id="cohort-brand-secondary-picker" class="cohort-color-swatch" value="#d4b896" oninput="cohortSyncBrandColor('secondary','picker')">
-                      <input type="text" id="cohort-brand-secondary" class="cohort-input" placeholder="#d4b896" maxlength="7" autocomplete="off" oninput="cohortSyncBrandColor('secondary','text')">
+                      <button type="button" class="cohort-color-swatch-btn" id="cohort-brand-secondary-swatch" style="background-color:#d4b896" aria-label="Pilih warna aksen" onclick="cohortOpenBrandColorPopover('secondary', this)"></button>
+                      <input type="text" id="cohort-brand-secondary" class="cohort-input cohort-color-hex-input" placeholder="#d4b896" maxlength="7" autocomplete="off" onclick="cohortOpenBrandColorPopover('secondary', this)" oninput="cohortSyncBrandColor('secondary','text')">
+                      <input type="color" id="cohort-brand-secondary-picker" class="cohort-color-swatch" value="#d4b896" hidden tabindex="-1" aria-hidden="true">
                     </div>
                   </div>
                 </div>
+                <label class="cohort-muted" style="font-size:.65rem;">Gaya nama kohort di header</label>
+                <div class="cohort-name-style-row" id="cohort-brand-name-style-row" role="listbox" aria-label="Gaya teks nama kohort">
+                  <button type="button" class="cohort-name-style-chip active" data-style="classic" onclick="cohortSelectHeaderNameStyle('classic')">Klasik</button>
+                  <button type="button" class="cohort-name-style-chip" data-style="gradient" onclick="cohortSelectHeaderNameStyle('gradient')">Gradien</button>
+                  <button type="button" class="cohort-name-style-chip" data-style="glow" onclick="cohortSelectHeaderNameStyle('glow')">Berkilau</button>
+                  <button type="button" class="cohort-name-style-chip" data-style="outline" onclick="cohortSelectHeaderNameStyle('outline')">Garis</button>
+                  <button type="button" class="cohort-name-style-chip" data-style="elegant" onclick="cohortSelectHeaderNameStyle('elegant')">Elegan</button>
+                  <button type="button" class="cohort-name-style-chip" data-style="wide" onclick="cohortSelectHeaderNameStyle('wide')">Lebar</button>
+                </div>
+                <input type="hidden" id="cohort-brand-name-style" value="classic">
                 <!-- Badge icon and shape removed — cohort identity is name + color only -->
                 <input type="hidden" id="cohort-brand-badge" value="">
                 <input type="hidden" id="cohort-brand-badge-shape" value="circle">
@@ -7870,6 +7942,11 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <input type="text" id="cohort-brand-slogan" class="cohort-input" placeholder="Together we learn, together we grow." maxlength="200" autocomplete="off" oninput="cohortPreviewBrandingForm()">
                 <button type="button" class="cohort-btn" id="cohort-brand-save-btn" onclick="cohortLeaderSaveBranding()">Simpan tampilan kohort</button>
                 <span id="cohort-brand-status" class="cohort-muted" style="margin-top:10px;display:block;"></span>
+                <div style="margin-top:28px;padding-top:20px;border-top:1px solid #FEE2E2;">
+                  <h4 style="font-size:.82rem;font-weight:800;color:#E8442A;margin:0 0 6px;">Zona berbahaya</h4>
+                  <p class="cohort-muted" style="font-size:.72rem;margin-bottom:12px;line-height:1.45;">Menghapus kohort bersifat permanen. Siswa yang tergabung akan menjadi pengguna independen.</p>
+                  <button type="button" class="cohort-btn secondary" style="color:#E8442A;border-color:#E8442A;" onclick="cohortOpenDeleteModal()">Hapus kohort ini</button>
+                </div>
               </div>
             </div>
             <div id="cohort-mentor-panel-students" style="display:none;">
@@ -9357,6 +9434,7 @@ async function openDetail(id) {
 const SUPA_URL = 'https://bzmvlraziqevqdyotvgy.supabase.co';
 const SUPA_KEY = 'sb_publishable_KDSWIJJLckser1e1hk7bbA_yMChRPog';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6bXZscmF6aXFldnFkeW90dmd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0MDU1MjUsImV4cCI6MjA4OTk4MTUyNX0.nppVtaxoT4z4slUOTvZo5stmP26bb5qoJXkswHVw9EE';
+const AUTH_HDR  = { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, 'Content-Type': 'application/json' };
 const SUPA_HDR = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
 
 // Bootstrap roles. Database-backed role RPCs are the source of truth when available.
@@ -9417,7 +9495,7 @@ function _authLoad() { try { return JSON.parse(localStorage.getItem(_AUTH_SK) ||
 
 async function _authRefresh(refreshToken) {
   try {
-    const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`, { method:'POST', headers:{ apikey:SUPA_KEY, 'Content-Type':'application/json' }, body:JSON.stringify({ refresh_token:refreshToken }) });
+    const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`, { method:'POST', headers:AUTH_HDR, body:JSON.stringify({ refresh_token:refreshToken }) });
     if (!r.ok) return null;
     const d = await r.json();
     if (d.access_token) return d;
@@ -9427,6 +9505,35 @@ async function _authRefresh(refreshToken) {
 
 const PENDING_INVITE_KEY = 'larisid_pending_invite';
 const ADMIN_PREVIEW_COHORT_KEY = 'larisid_admin_preview_cohort_id';
+const LEADER_ACTIVE_COHORT_KEY = 'larisid_leader_active_cohort_id';
+
+/** Which cohort a leader last viewed (localStorage UUID). */
+function cohortPickLeaderActiveCohort(led) {
+  const list = led || [];
+  if (!list.length) return null;
+  let saved = '';
+  try { saved = (localStorage.getItem(LEADER_ACTIVE_COHORT_KEY) || '').trim(); } catch (_) {}
+  if (saved) {
+    const m = list.find(c => c.id === saved);
+    if (m) return m;
+  }
+  return list[0];
+}
+
+function cohortLeaderSetActiveCohort(cohortId) {
+  const id = String(cohortId || '').trim();
+  if (!id) return;
+  try { localStorage.setItem(LEADER_ACTIVE_COHORT_KEY, id); } catch (_) {}
+}
+
+function cohortLeaderClearActiveCohort(cohortId) {
+  try {
+    const saved = (localStorage.getItem(LEADER_ACTIVE_COHORT_KEY) || '').trim();
+    if (!cohortId || saved === String(cohortId)) {
+      localStorage.removeItem(LEADER_ACTIVE_COHORT_KEY);
+    }
+  } catch (_) {}
+}
 
 /** Which cohort the platform admin is previewing as leader (sessionStorage UUID). */
 function cohortPickAdminPreviewCohort(led) {
@@ -9542,13 +9649,21 @@ async function _authOnSignIn(session) {
   }
   await loadCurrentAccess().catch(() => {});
   updateAuthUI();
+
+  const profileDone = await checkProfileComplete().catch(() => true);
+  if (!profileDone) {
+    const onLanding = document.getElementById('page-landing')?.classList.contains('active');
+    if (onLanding) openProfile();
+    openProfileSetupModal('setup');
+    return;
+  }
+
   loadSavedProducts();
   checkMentorApplication();
   const onLanding = document.getElementById('page-landing')?.classList.contains('active');
   if (onLanding) openProfile();
   renderHomeGrid();
   if (currentProduct) renderDetail(currentProduct);
-  // Start dashboard onboarding for first-time users
   setTimeout(() => startDashboardOnboarding(), 1200);
   setTimeout(() => { pendingCohortJoinIfAny().catch(() => {}); }, 400);
   setTimeout(() => { cohortLoadLightForTheme().catch(() => {}); }, 600);
@@ -9633,6 +9748,17 @@ function initSupabase() {
       }
     });
   }
+  try {
+    const preview = new URLSearchParams(location.search).get('preview');
+    if (preview === 'new-user') {
+      localStorage.removeItem(DASHBOARD_TOUR_KEY);
+      localStorage.removeItem('laris_welcomed');
+      setTimeout(() => {
+        if (currentUser) openProfileSetupModal('setup');
+        else openAuthModal('signup');
+      }, 400);
+    }
+  } catch (_) {}
 }
 
 function updateAuthUI() {
@@ -9716,6 +9842,7 @@ function renderAuthModal() {
   el = document.getElementById('auth-toggle-text');if(el) el.innerHTML = m==='reset'?'<a onclick="_authMode=\'login\';renderAuthModal()">Kembali ke Login</a>':m==='signup'?'Sudah punya akun? <a onclick="_authMode=\'login\';renderAuthModal()">Masuk</a>':'Belum punya akun? <a onclick="_authMode=\'signup\';renderAuthModal()">Daftar</a>';
   el = document.getElementById('auth-name-wrap');  if(el) el.style.display = m==='signup'?'':'none';
   el = document.getElementById('auth-pass-wrap');  if(el) el.style.display = m==='reset'?'none':'';
+  el = document.getElementById('auth-pass');     if(el) el.placeholder = m==='signup'?'Password (min. 8 karakter, huruf + angka)':'Password';
   el = document.getElementById('auth-forgot-wrap');if(el) el.style.display = m==='login'?'':'none';
   el = document.getElementById('auth-social-wrap');if(el) el.style.display = m==='reset'?'none':'';
   el = document.getElementById('auth-invite-wrap'); if (el) el.style.display = m === 'reset' ? 'none' : '';
@@ -9733,47 +9860,70 @@ function _authErrMsg(msg) {
   return map[msg] || msg;
 }
 
+function _authParseError(d, fallback) {
+  const code = d?.error_code || '';
+  const msg  = d?.msg || d?.error_description || d?.error || '';
+  const byCode = {
+    email_address_invalid: 'Email tidak diterima. Gunakan alamat email asli kamu (bukan test@gmail.com atau email sementara).',
+    over_email_send_rate_limit: 'Terlalu banyak percobaan daftar. Tunggu 10–15 menit lalu coba lagi.',
+    weak_password: 'Password terlalu lemah. Gunakan minimal 8 karakter dengan huruf dan angka.',
+    validation_failed: 'Data tidak valid. Periksa format email dan password kamu.',
+    user_already_registered: 'Email sudah terdaftar. Coba login.',
+    signup_disabled: 'Pendaftaran email sedang dinonaktifkan. Hubungi admin.',
+  };
+  if (byCode[code]) return byCode[code];
+  if (msg) return _authErrMsg(msg);
+  return fallback;
+}
+
 async function submitAuth() {
   const errEl = document.getElementById('auth-error');
   const btn   = document.getElementById('auth-submit-btn');
   const email = document.getElementById('auth-email').value.trim();
   const pass  = document.getElementById('auth-pass').value;
   const name  = document.getElementById('auth-name').value.trim();
-  const hdrs  = { apikey: SUPA_KEY, 'Content-Type': 'application/json' };
-
-  const showErr = msg => { errEl.style.color='#e74c3c'; errEl.textContent=_authErrMsg(msg); errEl.style.display=''; };
+  const showErr = msg => { errEl.style.color='#e74c3c'; errEl.textContent=msg; errEl.style.display=''; };
   const showOk  = msg => { errEl.style.color='var(--green)'; errEl.textContent=msg; errEl.style.display=''; };
 
   if (_authMode === 'reset') {
     if (!email) { showErr('Masukkan email kamu.'); return; }
     btn.textContent='...'; btn.disabled=true;
-    await fetch(`${SUPA_URL}/auth/v1/recover`, { method:'POST', headers:hdrs, body:JSON.stringify({ email }) });
+    const rr = await fetch(`${SUPA_URL}/auth/v1/recover`, { method:'POST', headers:AUTH_HDR, body:JSON.stringify({ email }) });
+    const rd = await rr.json().catch(() => ({}));
     btn.textContent='Kirim Link Reset'; btn.disabled=false;
+    if (!rr.ok) { showErr(_authParseError(rd, 'Gagal mengirim link reset.')); return; }
     showOk('Link reset sudah dikirim! Cek email kamu.');
     return;
   }
 
   if (!email || !pass) { showErr('Email dan password wajib diisi.'); return; }
+  if (_authMode === 'signup' && pass.length < 8) { showErr('Password minimal 8 karakter.'); return; }
   btn.textContent='...'; btn.disabled=true;
 
   if (_authMode === 'signup') {
     const invEl = document.getElementById('auth-invite-code');
     if (invEl && invEl.value.trim()) setPendingInvite(invEl.value);
-    const r = await fetch(`${SUPA_URL}/auth/v1/signup`, { method:'POST', headers:hdrs, body:JSON.stringify({ email, password:pass, data:{ full_name:name } }) });
-    const d = await r.json();
+    const r = await fetch(`${SUPA_URL}/auth/v1/signup`, { method:'POST', headers:AUTH_HDR, body:JSON.stringify({ email, password:pass, data:{ full_name:name } }) });
+    const d = await r.json().catch(() => ({}));
     btn.textContent='Daftar'; btn.disabled=false;
-    if (d.error_code || d.error || d.msg?.includes('invalid')) { showErr(d.msg || d.error || 'Daftar gagal.'); }
-    else { showOk('Cek email kamu untuk konfirmasi akun!'); }
+    if (!r.ok) { showErr(_authParseError(d, 'Daftar gagal.')); return; }
+    if (d.access_token) {
+      _authSave(d);
+      closeAuthModal();
+      void _authOnSignIn(d).catch(() => {});
+      return;
+    }
+    showOk('Cek email kamu untuk konfirmasi akun!');
     return;
   }
 
   const invEl2 = document.getElementById('auth-invite-code');
   if (invEl2 && invEl2.value.trim()) setPendingInvite(invEl2.value);
   // Login via direct REST — bypasses JS-client 204 issue with sb_publishable keys
-  const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, { method:'POST', headers:hdrs, body:JSON.stringify({ email, password:pass }) });
-  const d = await r.json();
+  const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, { method:'POST', headers:AUTH_HDR, body:JSON.stringify({ email, password:pass }) });
+  const d = await r.json().catch(() => ({}));
   btn.textContent='Masuk'; btn.disabled=false;
-  if (!r.ok || !d.access_token) { showErr(d.msg || d.error || 'Login gagal.'); return; }
+  if (!r.ok || !d.access_token) { showErr(_authParseError(d, 'Login gagal.')); return; }
   _authSave(d);
   closeAuthModal();
   void _authOnSignIn(d).catch(() => {});
@@ -11356,6 +11506,7 @@ async function openProfile() {
   try { renderProfileSaved(); } catch(_) {}
   try { loadDashboardData(); } catch(_) {}
   try { loadCreditData(); } catch(_) {}
+  try { loadUserProfile(); } catch(_) {}
   try {
     const u = new URLSearchParams(window.location.search || '');
     if (u.get('view') === 'cohort') setTimeout(() => switchDashView('cohort'), 80);
@@ -11565,6 +11716,219 @@ function _cohortRgbStr(rgb) {
   return `rgb(${rgb.r},${rgb.g},${rgb.b})`;
 }
 
+function _cohortRgbToHex(rgb) {
+  const c = (n) => Math.max(0, Math.min(255, n)).toString(16).padStart(2, '0');
+  return `#${c(rgb.r)}${c(rgb.g)}${c(rgb.b)}`;
+}
+
+function _cohortRgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      default: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return { h: h * 360, s: s * 100, l: l * 100 };
+}
+
+function _cohortHslToRgb(h, s, l) {
+  h = ((h % 360) + 360) % 360;
+  s /= 100;
+  l /= 100;
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  const m = l - c / 2;
+  let r = 0; let g = 0; let b = 0;
+  if (h < 60) { r = c; g = x; }
+  else if (h < 120) { r = x; g = c; }
+  else if (h < 180) { g = c; b = x; }
+  else if (h < 240) { g = x; b = c; }
+  else if (h < 300) { r = x; b = c; }
+  else { r = c; b = x; }
+  return {
+    r: Math.round((r + m) * 255),
+    g: Math.round((g + m) * 255),
+    b: Math.round((b + m) * 255),
+  };
+}
+
+/** Complementary accent tuned for UI: cool primaries → warm sand/gold highlight; others → hue +180°. */
+function _cohortDeriveAccentHex(primaryHex) {
+  const rgb = _cohortHexToRgb(primaryHex);
+  const hsl = _cohortRgbToHsl(rgb.r, rgb.g, rgb.b);
+  let accentHue = (hsl.h + 180) % 360;
+  let accentS = Math.min(68, Math.max(30, hsl.s * 0.7 + 22));
+  let accentL = hsl.l < 42 ? 64 : Math.max(38, hsl.l + 12);
+  if (hsl.h >= 175 && hsl.h <= 255) {
+    accentHue = 36;
+    accentS = Math.min(52, Math.max(26, 40));
+    accentL = 67;
+  }
+  return _cohortRgbToHex(_cohortHslToRgb(accentHue, accentS, accentL));
+}
+
+const COHORT_HEADER_NAME_STYLES = ['classic', 'gradient', 'glow', 'outline', 'elegant', 'wide', 'condensed'];
+let _cohortBrandColorPopoverWhich = null;
+
+function cohortNormalizeHeaderNameStyle(raw) {
+  const s = String(raw || '').toLowerCase().trim();
+  return COHORT_HEADER_NAME_STYLES.includes(s) ? s : 'classic';
+}
+
+function cohortHeaderNameStyleFromRow(row) {
+  if (!row || row.theme_json == null) return 'classic';
+  try {
+    const tj = typeof row.theme_json === 'string' ? JSON.parse(row.theme_json) : row.theme_json;
+    if (tj && typeof tj.header_name_style === 'string') return cohortNormalizeHeaderNameStyle(tj.header_name_style);
+  } catch (_) {}
+  return 'classic';
+}
+
+function cohortApplyHeaderNameStyle(styleOrRow) {
+  const nm = document.getElementById('dash-topbar-cohort-name');
+  if (!nm) return;
+  const style = typeof styleOrRow === 'string'
+    ? cohortNormalizeHeaderNameStyle(styleOrRow)
+    : cohortHeaderNameStyleFromRow(styleOrRow);
+  COHORT_HEADER_NAME_STYLES.forEach(s => nm.classList.remove('cohort-name-style-' + s));
+  if (style !== 'classic') nm.classList.add('cohort-name-style-' + style);
+}
+
+function cohortSelectHeaderNameStyle(style) {
+  const normalized = cohortNormalizeHeaderNameStyle(style);
+  const hidden = document.getElementById('cohort-brand-name-style');
+  if (hidden) hidden.value = normalized;
+  document.querySelectorAll('#cohort-brand-name-style-row .cohort-name-style-chip').forEach(chip => {
+    chip.classList.toggle('active', chip.getAttribute('data-style') === normalized);
+  });
+  cohortApplyHeaderNameStyle(normalized);
+  const row = typeof cohortResolveThemeCohortRowForUi === 'function' ? cohortResolveThemeCohortRowForUi() : null;
+  const nm = document.getElementById('dash-topbar-cohort-name');
+  if (nm && row) nm.textContent = (row.name || 'Kohort').trim();
+}
+
+function cohortSyncBrandColorSwatches() {
+  const pri = _cohortParseThemeHex(document.getElementById('cohort-brand-primary')?.value) || '#0c4a6e';
+  const sec = _cohortParseThemeHex(document.getElementById('cohort-brand-secondary')?.value) || '#d4b896';
+  const priSw = document.getElementById('cohort-brand-primary-swatch');
+  const secSw = document.getElementById('cohort-brand-secondary-swatch');
+  if (priSw) priSw.style.backgroundColor = pri;
+  if (secSw) secSw.style.backgroundColor = sec;
+}
+
+function cohortSetBrandSecondaryHex(hex) {
+  const sec = _cohortParseThemeHex(hex);
+  if (!sec) return;
+  const text = document.getElementById('cohort-brand-secondary');
+  const picker = document.getElementById('cohort-brand-secondary-picker');
+  const swatch = document.getElementById('cohort-brand-secondary-swatch');
+  if (text) text.value = sec;
+  if (picker) picker.value = sec;
+  if (swatch) swatch.style.backgroundColor = sec;
+}
+
+/** Push primary + accent (secondary) into CSS variables for topbar, strip, and cards. */
+function cohortApplyThemeCssVars(pri, sec) {
+  const pr = _cohortHexToRgb(pri);
+  const sr = _cohortHexToRgb(sec);
+  const accent = _cohortMixRgb(pr, sr, 0.42);
+  const end = _cohortMixRgb(pr, { r: 8, g: 12, b: 22 }, 0.55);
+  const surface = _cohortMixRgb(pr, { r: 252, g: 251, b: 248 }, 0.94);
+  const root = document.documentElement;
+  root.style.setProperty('--cohort-primary', pri);
+  root.style.setProperty('--cohort-secondary', sec);
+  root.style.setProperty('--cohort-accent', _cohortRgbStr(accent));
+  root.style.setProperty('--cohort-sidebar-end', _cohortRgbStr(end));
+  root.style.setProperty('--cohort-surface', _cohortRgbStr(surface));
+}
+
+function cohortInitBrandColorPopover() {
+  if (window._cohortColorPopoverInited) return;
+  window._cohortColorPopoverInited = true;
+  document.addEventListener('click', (e) => {
+    const pop = document.getElementById('cohort-color-popover');
+    if (!pop || pop.hidden) return;
+    if (pop.contains(e.target)) return;
+    if (e.target.closest('.cohort-color-swatch-btn, .cohort-color-hex-input')) return;
+    cohortCloseBrandColorPopover();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') cohortCloseBrandColorPopover();
+  });
+  const popPicker = document.getElementById('cohort-color-popover-picker');
+  const popHex = document.getElementById('cohort-color-popover-hex');
+  if (popPicker) popPicker.addEventListener('input', () => cohortOnBrandColorPopoverInput('picker'));
+  if (popHex) popHex.addEventListener('input', () => cohortOnBrandColorPopoverInput('hex'));
+}
+
+function cohortOpenBrandColorPopover(which, anchor) {
+  cohortInitBrandColorPopover();
+  _cohortBrandColorPopoverWhich = which;
+  const text = document.getElementById(which === 'primary' ? 'cohort-brand-primary' : 'cohort-brand-secondary');
+  const hex = _cohortParseThemeHex(text && text.value) || (which === 'primary' ? '#0c4a6e' : '#d4b896');
+  const pop = document.getElementById('cohort-color-popover');
+  const picker = document.getElementById('cohort-color-popover-picker');
+  const hexIn = document.getElementById('cohort-color-popover-hex');
+  const label = document.getElementById('cohort-color-popover-label');
+  if (picker) picker.value = hex;
+  if (hexIn) hexIn.value = hex;
+  if (label) label.textContent = which === 'primary' ? 'Warna utama' : 'Warna aksen';
+  if (!pop || !anchor) return;
+  pop.hidden = false;
+  const r = anchor.getBoundingClientRect();
+  const w = 240;
+  pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
+  pop.style.top = Math.min(r.bottom + 8, window.innerHeight - 160) + 'px';
+}
+
+function cohortCloseBrandColorPopover() {
+  const pop = document.getElementById('cohort-color-popover');
+  if (pop) pop.hidden = true;
+  _cohortBrandColorPopoverWhich = null;
+}
+
+function cohortOnBrandColorPopoverInput(source) {
+  const picker = document.getElementById('cohort-color-popover-picker');
+  const hexIn = document.getElementById('cohort-color-popover-hex');
+  if (!picker || !_cohortBrandColorPopoverWhich) return;
+  let hex = picker.value;
+  if (source === 'hex' && hexIn) {
+    const parsed = _cohortParseThemeHex(hexIn.value);
+    if (parsed) {
+      hex = parsed;
+      picker.value = hex;
+    } else {
+      return;
+    }
+  } else if (hexIn) {
+    hexIn.value = hex;
+  }
+  cohortApplyBrandColorFromPopover(hex);
+}
+
+function cohortApplyBrandColorFromPopover(hex) {
+  const which = _cohortBrandColorPopoverWhich;
+  if (!which) return;
+  const parsed = _cohortParseThemeHex(hex);
+  if (!parsed) return;
+  const text = document.getElementById(which === 'primary' ? 'cohort-brand-primary' : 'cohort-brand-secondary');
+  const picker = document.getElementById(which === 'primary' ? 'cohort-brand-primary-picker' : 'cohort-brand-secondary-picker');
+  const swatch = document.getElementById(which === 'primary' ? 'cohort-brand-primary-swatch' : 'cohort-brand-secondary-swatch');
+  if (text) text.value = parsed;
+  if (picker) picker.value = parsed;
+  if (swatch) swatch.style.backgroundColor = parsed;
+  cohortSyncBrandColor(which, 'picker');
+}
+
 /** When cohort theme is active, topbar shows COHORT + name (accent) + current view (primary). */
 function cohortSyncDashTopbarTitle(view) {
   const v = view != null ? view : (typeof _dashActiveView !== 'undefined' ? _dashActiveView : 'dashboard');
@@ -11580,12 +11944,14 @@ function cohortSyncDashTopbarTitle(view) {
     if (titleEl) titleEl.style.display = 'none';
     nm.textContent = (row.name || 'Kohort').trim();
     vlab.textContent = t;
+    cohortApplyHeaderNameStyle(row);
   } else {
     if (brand) brand.style.display = 'none';
     if (titleEl) {
       titleEl.style.display = '';
       titleEl.textContent = t;
     }
+    cohortApplyHeaderNameStyle('classic');
   }
 }
 
@@ -11619,18 +11985,8 @@ function cohortApplyDashboardThemeFromRow(cohortRow) {
   const fallbackSec = '#c9a87c';
   const pri = _cohortParseThemeHex(cohortRow.theme_primary) || fallbackPri;
   const sec = _cohortParseThemeHex(cohortRow.theme_secondary) || fallbackSec;
-  const pr = _cohortHexToRgb(pri);
-  const sr = _cohortHexToRgb(sec);
-  const accent = _cohortMixRgb(pr, sr, 0.42);
-  const end = _cohortMixRgb(pr, { r: 8, g: 12, b: 22 }, 0.55);
-  const surface = _cohortMixRgb(pr, { r: 252, g: 251, b: 248 }, 0.94);
   document.body.classList.add('cohort-themed');
-  const root = document.documentElement;
-  root.style.setProperty('--cohort-primary', pri);
-  root.style.setProperty('--cohort-secondary', sec);
-  root.style.setProperty('--cohort-accent', _cohortRgbStr(accent));
-  root.style.setProperty('--cohort-sidebar-end', _cohortRgbStr(end));
-  root.style.setProperty('--cohort-surface', _cohortRgbStr(surface));
+  cohortApplyThemeCssVars(pri, sec);
   cohortSyncDashTopbarTitle();
 }
 
@@ -11703,14 +12059,13 @@ function cohortPreviewBrandingForm() {
   const motto = document.getElementById('cohort-brand-preview-motto');
   const pri = _cohortParseThemeHex(priEl && priEl.value) || '#0c4a6e';
   const sec = _cohortParseThemeHex(secEl && secEl.value) || '#d4b896';
-  const pr = _cohortHexToRgb(pri);
-  const end = _cohortMixRgb(pr, { r: 8, g: 12, b: 22 }, 0.55);
   const name = (nameEl && nameEl.value || 'Ocean Blue').trim();
   const badge = (badgeEl && badgeEl.value || '🌊').trim();
   const shape = cohortNormalizeBadgeShape(shapeEl && shapeEl.value);
-  document.documentElement.style.setProperty('--cohort-primary', pri);
-  document.documentElement.style.setProperty('--cohort-secondary', sec);
-  document.documentElement.style.setProperty('--cohort-sidebar-end', _cohortRgbStr(end));
+  cohortApplyThemeCssVars(pri, sec);
+  if (document.body.classList.contains('in-dashboard')) {
+    document.body.classList.add('cohort-themed');
+  }
   if (prev) {
     const sub = (sloganEl && sloganEl.value || '').trim();
     prev.innerHTML = cohortBadgeHtml({
@@ -11726,6 +12081,10 @@ function cohortPreviewBrandingForm() {
     });
   }
   if (motto) motto.textContent = (sloganEl && sloganEl.value || '').trim() || 'Together we learn, together we grow.';
+  cohortSyncBrandColorSwatches();
+  const styleEl = document.getElementById('cohort-brand-name-style');
+  if (styleEl) cohortApplyHeaderNameStyle(styleEl.value);
+  cohortSyncDashTopbarTitle();
 }
 
 function cohortSyncBrandColor(which, source) {
@@ -11738,6 +12097,11 @@ function cohortSyncBrandColor(which, source) {
     const hex = _cohortParseThemeHex(text.value);
     if (hex) picker.value = hex;
   }
+  if (which === 'primary') {
+    const priHex = _cohortParseThemeHex(text.value);
+    if (priHex) cohortSetBrandSecondaryHex(_cohortDeriveAccentHex(priHex));
+  }
+  cohortSyncBrandColorSwatches();
   cohortPreviewBrandingForm();
 }
 
@@ -11848,6 +12212,8 @@ async function cohortLeaderSaveBranding() {
     else if (typeof raw === 'string') themeJson = JSON.parse(raw || '{}');
   } catch (_) { themeJson = {}; }
   themeJson.badge_shape = shape;
+  const styleEl = document.getElementById('cohort-brand-name-style');
+  themeJson.header_name_style = cohortNormalizeHeaderNameStyle(styleEl && styleEl.value);
   if (!name) {
     if (st) st.textContent = 'Nama kohort wajib diisi.';
     return;
@@ -11989,11 +12355,114 @@ function cohortLeaderRenderSwitcher() {
 function cohortLeaderSwitchCohort(cohortId) {
   const c = (_cohortState.mentorCohorts || []).find(x => x.id === cohortId);
   if (!c) return;
+  const activeId = (_cohortState.primaryMentorCohort && _cohortState.primaryMentorCohort.id) || '';
+  if (cohortId === activeId) return;
+  _cohortSwitchPendingId = cohortId;
+  cohortOpenSwitchConfirmModal(c);
+}
+
+function cohortLeaderApplySwitch() {
+  const cohortId = _cohortSwitchPendingId;
+  if (!cohortId) return;
+  const c = (_cohortState.mentorCohorts || []).find(x => x.id === cohortId);
+  if (!c) return;
+  if (isPlatformAdmin()) {
+    try { sessionStorage.setItem(ADMIN_PREVIEW_COHORT_KEY, cohortId); } catch (_) {}
+  } else {
+    cohortLeaderSetActiveCohort(cohortId);
+  }
   _cohortState.primaryMentorCohort = c;
   cohortApplyDashboardThemeFromRow(c);
   cohortUpdateCohortChrome(c);
   cohortLeaderRenderSwitcher();
   cohortRenderMentorPanels();
+  cohortCloseSwitchConfirmModal();
+  _cohortSwitchPendingId = null;
+}
+
+let _cohortSwitchPendingId = null;
+
+function cohortOpenSwitchConfirmModal(c) {
+  const m = document.getElementById('cohort-switch-modal');
+  const nameEl = document.getElementById('cohort-switch-target-name');
+  if (nameEl) nameEl.textContent = (c && c.name) ? c.name : 'Kohort';
+  if (m) m.classList.add('open');
+}
+
+function cohortCloseSwitchConfirmModal() {
+  const m = document.getElementById('cohort-switch-modal');
+  if (m) m.classList.remove('open');
+  _cohortSwitchPendingId = null;
+}
+
+let _cohortDeleteState = { step: 1, cohortId: '', cohortName: '' };
+
+function cohortOpenDeleteModal() {
+  const c = _cohortState.primaryMentorCohort;
+  if (!c || !c.id) return;
+  _cohortDeleteState = { step: 1, cohortId: c.id, cohortName: (c.name || 'Kohort').trim() };
+  const m = document.getElementById('cohort-delete-modal');
+  if (m) { m.classList.add('open'); cohortDeleteRenderStep(); }
+}
+
+function cohortCloseDeleteModal() {
+  const m = document.getElementById('cohort-delete-modal');
+  if (m) m.classList.remove('open');
+  _cohortDeleteState = { step: 1, cohortId: '', cohortName: '' };
+}
+
+function cohortDeleteRenderStep() {
+  const s = _cohortDeleteState;
+  const body = document.getElementById('cohort-delete-body');
+  const title = document.getElementById('cohort-delete-modal-title');
+  const stEl = document.getElementById('cohort-delete-status');
+  if (!body) return;
+  if (stEl) { stEl.style.display = 'none'; stEl.textContent = ''; }
+  const name = _cohortEsc(s.cohortName || 'Kohort');
+  if (s.step === 1) {
+    if (title) title.textContent = 'Hapus kohort?';
+    body.innerHTML = `<p class="cohort-muted" style="margin-bottom:12px;line-height:1.5;">Anda akan menghapus kohort <strong style="color:#111;">${name}</strong> secara permanen. Semua siswa yang tergabung akan menjadi <strong>pengguna independen</strong> dan tidak lagi terhubung ke kohort ini.</p><p class="cohort-muted" style="margin-bottom:0;font-size:.72rem;">Tindakan ini tidak dapat dibatalkan.</p><div class="cohort-create-actions" style="margin-top:18px;"><button type="button" class="cohort-btn secondary" onclick="cohortCloseDeleteModal()">Batal</button><button type="button" class="cohort-btn" style="background:#E8442A;border-color:#E8442A;" onclick="_cohortDeleteState.step=2;cohortDeleteRenderStep()">Ya, lanjutkan</button></div>`;
+  } else {
+    if (title) title.textContent = 'Konfirmasi penghapusan';
+    body.innerHTML = `<p class="cohort-muted" style="margin-bottom:10px;font-size:.72rem;">Ketik nama kohort persis seperti di bawah untuk menghapus:</p><div style="text-align:center;font-weight:800;font-size:1rem;color:#111;margin-bottom:12px;padding:10px 14px;background:#F9FAFB;border-radius:8px;border:1px solid #E5E7EB;">${name}</div><input type="text" id="cohort-delete-confirm-input" class="cohort-input" placeholder="Ketik nama kohort…" autocomplete="off" maxlength="80"><div class="cohort-create-actions" style="margin-top:14px;"><button type="button" class="cohort-btn secondary" onclick="_cohortDeleteState.step=1;cohortDeleteRenderStep()">← Kembali</button><button type="button" class="cohort-btn" id="cohort-delete-submit-btn" style="background:#E8442A;border-color:#E8442A;" onclick="cohortDeleteFinal()" disabled>Hapus kohort</button></div>`;
+    setTimeout(() => {
+      const inp = document.getElementById('cohort-delete-confirm-input');
+      const btn = document.getElementById('cohort-delete-submit-btn');
+      if (!inp || !btn) return;
+      const check = () => { btn.disabled = inp.value.trim() !== s.cohortName; };
+      inp.addEventListener('input', check);
+      inp.focus();
+      check();
+    }, 50);
+  }
+}
+
+async function cohortDeleteFinal() {
+  const s = _cohortDeleteState;
+  const inp = document.getElementById('cohort-delete-confirm-input');
+  const typed = (inp && inp.value || '').trim();
+  const stEl = document.getElementById('cohort-delete-status');
+  const btn = document.getElementById('cohort-delete-submit-btn');
+  if (typed !== s.cohortName) {
+    if (stEl) { stEl.textContent = 'Nama tidak cocok. Ketik persis seperti yang ditampilkan.'; stEl.style.display = 'block'; }
+    return;
+  }
+  if (!_supabase || !currentUser) {
+    if (stEl) { stEl.textContent = 'Tidak terkoneksi.'; stEl.style.display = 'block'; }
+    return;
+  }
+  if (btn) btn.disabled = true;
+  if (stEl) { stEl.textContent = 'Menghapus kohort…'; stEl.style.display = 'block'; }
+  try {
+    const { error } = await _supabase.rpc('leader_delete_cohort', { p_cohort: s.cohortId });
+    if (error) throw error;
+    cohortLeaderClearActiveCohort(s.cohortId);
+    cohortCloseDeleteModal();
+    await cohortInit();
+  } catch (e) {
+    if (stEl) { stEl.textContent = (e && e.message) || 'Gagal menghapus kohort.'; stEl.style.display = 'block'; }
+    if (btn) btn.disabled = false;
+  }
 }
 
 /* ── Create cohort modal ── */
@@ -12140,6 +12609,7 @@ async function cohortCreateFinal() {
       }
     }
     _cohortCreateState.newCohort = newC;
+    if (!isPlatformAdmin()) cohortLeaderSetActiveCohort(newC.id);
     _cohortCreateState.step = 4;
     cohortCreateRenderStep();
     const stEl = document.getElementById('cohort-create-status');
@@ -12353,7 +12823,8 @@ async function cohortInit() {
       } catch (_) {}
     }
   } else {
-    primaryMentor = (led && led[0]) || null;
+    primaryMentor = cohortPickLeaderActiveCohort(led);
+    if (primaryMentor?.id) cohortLeaderSetActiveCohort(primaryMentor.id);
   }
   _cohortState.primaryMentorCohort = primaryMentor;
   _cohortState.hasMentorCohort = !!(led && led.length);
@@ -12873,16 +13344,24 @@ async function cohortRenderMentorPanels() {
       const btn = document.getElementById('cohort-brand-save-btn');
       const stBr = document.getElementById('cohort-brand-status');
       const priHex = _cohortParseThemeHex(c.theme_primary) || '#0c4a6e';
-      const secHex = _cohortParseThemeHex(c.theme_secondary) || '#d4b896';
+      const secHex = _cohortParseThemeHex(c.theme_secondary) || _cohortDeriveAccentHex(priHex);
       if (name) name.value = (c.name || '').trim();
       if (pri) pri.value = priHex;
       if (sec) sec.value = secHex;
       if (priPick) priPick.value = priHex;
       if (secPick) secPick.value = secHex;
+      const priSw = document.getElementById('cohort-brand-primary-swatch');
+      const secSw = document.getElementById('cohort-brand-secondary-swatch');
+      if (priSw) priSw.style.backgroundColor = priHex;
+      if (secSw) secSw.style.backgroundColor = secHex;
       if (badge) badge.value = (c.badge_icon || '').trim();
       const shapeSel = document.getElementById('cohort-brand-badge-shape');
       if (shapeSel) shapeSel.value = cohortBadgeShapeFromRow(c);
       if (slogan) slogan.value = (c.slogan || '').trim();
+      const nameStyle = cohortHeaderNameStyleFromRow(c);
+      const styleHidden = document.getElementById('cohort-brand-name-style');
+      if (styleHidden) styleHidden.value = nameStyle;
+      cohortSelectHeaderNameStyle(nameStyle);
       if (btn) {
         btn.disabled = !canEditBrand;
         btn.style.opacity = canEditBrand ? '' : '0.45';
@@ -15112,6 +15591,7 @@ async function ddRenderTren() {
       }
       // Remove exact-timestamp duplicates (multiple push-runs create identical rows)
       { const seenTs = new Set(); dbRows = dbRows.filter(r => { if (seenTs.has(r.scraped_at)) return false; seenTs.add(r.scraped_at); return true; }); }
+      dbRows = _ddDedupeListingsByDay(dbRows);
     }
 
     if (dbRows.length < 2) {
@@ -15122,19 +15602,7 @@ async function ddRenderTren() {
       // If only one/no point exists, estimate velocity from similar products first.
       const peerResult = await ddEstimateTrendFromPeers(listing);
       if (peerResult && peerResult.medianRate > 0) {
-        const rate = peerResult.medianRate;
-        const anchor = currDate;
-        const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
-        const anchorSold = listing.total_sold || 0;
-        function _synRow(weekOffset) {
-          return {
-            scraped_at: new Date(anchor.getTime() + weekOffset * MS_WEEK).toISOString(),
-            total_sold: Math.max(0, Math.round(anchorSold + rate * weekOffset)),
-            price: listing.price,
-            reviews: null,
-          };
-        }
-        dbRows = [_synRow(-3), _synRow(-2), _synRow(-1), _synRow(0), _synRow(1)];
+        dbRows = _ddPeerSyntheticRows(listing, peerResult.medianRate);
       } else if (dbRows.length === 1) {
         const dbDate = new Date(dbRows[0].scraped_at);
         dbRows = dbDate < currDate ? [dbRows[0], currRow] : [currRow, dbRows[0]];
@@ -15179,6 +15647,18 @@ async function ddRenderTren() {
       }
     } else {
       unitData = dbRows.map(r => r.total_sold ?? 0);
+    }
+
+    if ((listing.total_sold ?? 0) > 0) {
+      const allSameSold = unitData.length >= 2 && unitData.every(v => v === unitData[0]);
+      if (allSameSold) {
+        const peerResult = await ddEstimateTrendFromPeers(listing);
+        if (peerResult?.medianRate > 0) {
+          dbRows = _ddPeerSyntheticRows(listing, peerResult.medianRate);
+          unitData = dbRows.map(r => r.total_sold ?? 0);
+          isEstimated = true;
+        }
+      }
     }
 
     // Per-interval sanity: detect Shopee display recalibrations (e.g. 3k→90k jump that
@@ -15334,20 +15814,28 @@ async function ddRenderTren() {
         </div>`).join('');
     }
 
-    // Extend chart to current Monday, estimating weeks with no scrape data
+    // Extend chart to current Monday — flat hold unless real weeks show different velocity.
     {
       const _nowMon = _mondayOf(new Date());
       const cw = _trenData.weeks;
       const _lm = cw.length ? cw[cw.length - 1].firstDate : null;
+      const _weeksVary = cw.length >= 2 && cw.some((w, i) => i > 0 && (w.units || 0) !== (cw[i - 1].units || 0));
       if (_lm && _nowMon > _lm) {
-        const sA = cw[Math.max(0, cw.length - 2)], sB = cw[cw.length - 1];
-        let rA = { units: sA.units || 0, omset: sA.omset || 0 };
-        let rB = { units: sB.units || 0, omset: sB.omset || 0 };
-        for (let t = new Date(_lm.getTime() + 7 * 86400000); t <= _nowMon; t = new Date(t.getTime() + 7 * 86400000)) {
-          const pu = Math.max(0, Math.round(rB.units + (rB.units - rA.units)));
-          const po = Math.max(0, Math.round(rB.omset + (rB.omset - rA.omset)));
-          cw.push({ label: `${t.getDate()} ${_MO[t.getMonth()]}`, units: pu, omset: po, firstDate: new Date(t) });
-          rA = rB; rB = { units: pu, omset: po };
+        const sB = cw[cw.length - 1];
+        if (_weeksVary) {
+          const sA = cw[Math.max(0, cw.length - 2)];
+          let rA = { units: sA.units || 0, omset: sA.omset || 0 };
+          let rB = { units: sB.units || 0, omset: sB.omset || 0 };
+          for (let t = new Date(_lm.getTime() + 7 * 86400000); t <= _nowMon; t = new Date(t.getTime() + 7 * 86400000)) {
+            const pu = Math.max(0, Math.round(rB.units + (rB.units - rA.units)));
+            const po = Math.max(0, Math.round(rB.omset + (rB.omset - rA.omset)));
+            cw.push({ label: `${t.getDate()} ${_MO[t.getMonth()]}`, units: pu, omset: po, firstDate: new Date(t) });
+            rA = rB; rB = { units: pu, omset: po };
+          }
+        } else {
+          for (let t = new Date(_lm.getTime() + 7 * 86400000); t <= _nowMon; t = new Date(t.getTime() + 7 * 86400000)) {
+            cw.push({ label: `${t.getDate()} ${_MO[t.getMonth()]}`, units: sB.units, omset: sB.omset, firstDate: new Date(t) });
+          }
         }
       }
     }
@@ -16322,6 +16810,141 @@ function ddRender(p) {
   }).join('');
 }
 
+// Shopee stores display buckets in total_sold (100000 = "100rb+", etc.) — not exact units.
+function _ddSoldIsDisplayBucket(sold) {
+  return (sold ?? 0) >= 10000;
+}
+
+function _ddIntervalUnitDelta(s0, s1, rev0, rev1, mult) {
+  const rawDelta  = Math.max(0, (s1 ?? 0) - (s0 ?? 0));
+  const revDelta  = Math.max(0, (rev1 ?? 0) - (rev0 ?? 0));
+  const reviewEst = Math.round(revDelta * mult);
+  if ((s0 ?? 0) < 10000 && (s1 ?? 0) >= 10000) return reviewEst;
+  if (rawDelta === 0 && revDelta > 0) return reviewEst;
+  if (rawDelta > 0 && reviewEst > 0 && rawDelta > reviewEst * 5) return reviewEst;
+  return rawDelta;
+}
+
+function _ddPeerSyntheticRows(listing, rate) {
+  const anchor = listing.scraped_at ? new Date(listing.scraped_at) : new Date();
+  const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
+  const anchorSold = listing.total_sold || 0;
+  return [-3, -2, -1, 0, 1].map(off => ({
+    scraped_at: new Date(anchor.getTime() + off * MS_WEEK).toISOString(),
+    total_sold: Math.max(0, Math.round(anchorSold + rate * off)),
+    price: listing.price,
+    reviews: null,
+  }));
+}
+
+function _ddDedupeListingsByDay(dbRows) {
+  const dayMap = new Map();
+  for (const r of dbRows) {
+    const day = r.scraped_at.slice(0, 10);
+    const cur = dayMap.get(day);
+    if (!cur || (r.total_sold ?? 0) > (cur.total_sold ?? 0)) dayMap.set(day, r);
+  }
+  return [...dayMap.values()].sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
+}
+
+// Build Monday-week buckets from scrape rows (units/omset = delta between scrapes, not lifetime totals).
+function _ddBuildWeeklyFromRows(dbRows, listing, { isPeerEstimated = false } = {}) {
+  const fallbackPrice = listing.price || 0;
+  const _CAT_MULT = { 'Rumah':2.94,'Fashion':2.77,'Dapur':3.41,'Kamar Mandi':4.21,'Keamanan':3.40,
+    'Kecantikan':2.70,'Motor & Mobil':2.96,'Elektronik':3.10,'HP & Gadget':3.40,
+    'Hewan Peliharaan':3.95,'Sepeda':2.58,'Taman':3.50,'Olahraga':2.68,'Bayi & Anak':4.12,
+    'Hobi & Kerajinan':2.48,'Kesehatan':2.38,'Tanaman':3.63,'Alat Tulis':2.87,
+    'Outdoor & Camping':2.67,'__default__':3.20 };
+  const mult = _CAT_MULT[listing.category] || _CAT_MULT['__default__'];
+  const atCeiling = dbRows.every(r => (r.total_sold ?? 0) >= 10000);
+  const hasReviews = dbRows.some(r => r.reviews > 0);
+
+  let unitData, isEstimated = false;
+  if (atCeiling && hasReviews && !isPeerEstimated) {
+    isEstimated = true;
+    let base = 10000;
+    unitData = [base];
+    for (let i = 1; i < dbRows.length; i++) {
+      const revDelta = Math.max(0, (dbRows[i].reviews || 0) - (dbRows[i-1].reviews || 0));
+      base += Math.round(revDelta * mult);
+      unitData.push(base);
+    }
+  } else if (atCeiling && !hasReviews) {
+    isEstimated = true;
+    unitData = dbRows.map(r => r.total_sold ?? 10000);
+  } else {
+    unitData = dbRows.map(r => r.total_sold ?? 0);
+  }
+
+  const allSameSold = unitData.length >= 2 && unitData.every(v => v === unitData[0]);
+
+  const _MO = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  function _mondayOf(d) {
+    const date = new Date(+d);
+    const day = date.getDay();
+    date.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
+  function _wKey(d)   { return _mondayOf(d).toISOString().slice(0, 10); }
+  function _wLabel(d) { const m = _mondayOf(d); return `${m.getDate()} ${_MO[m.getMonth()]}`; }
+
+  const weekMap = new Map();
+  for (const r of dbRows) {
+    const key = _wKey(new Date(r.scraped_at));
+    if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(new Date(r.scraped_at)), units: 0, omset: 0, days: 0, firstDate: _mondayOf(new Date(r.scraped_at)) });
+  }
+
+  const _corrDeltas = [];
+  for (let i = 0; i < dbRows.length - 1; i++) {
+    if (atCeiling && hasReviews && !isPeerEstimated) {
+      _corrDeltas.push(Math.max(0, (unitData[i + 1] ?? 0) - (unitData[i] ?? 0)));
+    } else {
+      _corrDeltas.push(_ddIntervalUnitDelta(
+        dbRows[i].total_sold, dbRows[i + 1].total_sold,
+        dbRows[i].reviews, dbRows[i + 1].reviews,
+        mult
+      ));
+    }
+  }
+
+  // Split each scrape-interval delta across calendar weeks by days in week (no 7/days inflation).
+  for (let i = 0; i < dbRows.length - 1; i++) {
+    const t0 = new Date(dbRows[i].scraped_at), t1 = new Date(dbRows[i + 1].scraped_at);
+    const p0 = dbRows[i].price || fallbackPrice, p1 = dbRows[i + 1].price || fallbackPrice;
+    const delta = _corrDeltas[i] ?? 0;
+    if (delta <= 0) continue;
+    const dayMs = 86400000;
+    const start = new Date(t0.getTime() + dayMs);
+    const weekParts = new Map();
+    let totalDays = 0;
+    for (let t = start; t <= t1; t = new Date(t.getTime() + dayMs)) {
+      const key = _wKey(t);
+      if (!weekParts.has(key)) weekParts.set(key, { days: 0, firstDate: _mondayOf(t), label: _wLabel(t) });
+      weekParts.get(key).days += 1;
+      totalDays += 1;
+    }
+    if (!totalDays) continue;
+    const avgPrice = (p0 + p1) / 2;
+    for (const [key, part] of weekParts) {
+      if (!weekMap.has(key)) weekMap.set(key, { label: part.label, units: 0, omset: 0, days: 0, firstDate: part.firstDate });
+      const wk = weekMap.get(key);
+      const frac = part.days / totalDays;
+      const weekUnits = delta * frac;
+      wk.units += weekUnits;
+      wk.omset += weekUnits * avgPrice;
+      wk.days += part.days;
+    }
+  }
+
+  const weeklyRows = [...weekMap.values()]
+    .sort((a, b) => a.firstDate - b.firstDate)
+    .map(w => ({ label: w.label, units: Math.round(w.units), omset: Math.round(w.omset), firstDate: w.firstDate }));
+
+  const totalWeekUnits = weeklyRows.reduce((s, w) => s + (w.units || 0), 0);
+  return { weeklyRows, unitData, isEstimated, atCeiling, hasReviews, mult, allSameSold, totalWeekUnits, _mondayOf, _wLabel, _MO };
+}
+
 async function ddEstimateTrendFromPeers(listing) {
   if (!_supabase || !listing?.item_id || !(listing.total_sold > 0)) return null;
   if (!_ddKwRows || _ddKwRows.length < 2) return null;
@@ -16465,20 +17088,8 @@ async function ddLoadTrendHistory(listing) {
         peerCount = peerResult.peerCount;
         peerSoldMin = peerResult.soldMin;
         peerSoldMax = peerResult.soldMax;
-        const rate = peerResult.medianRate;
-        const anchor = currDate;
-        const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
-        const anchorSold = listing.total_sold || 0;
-        function _synRow(weekOffset) {
-          return {
-            scraped_at: new Date(anchor.getTime() + weekOffset * MS_WEEK).toISOString(),
-            total_sold: Math.max(0, Math.round(anchorSold + rate * weekOffset)),
-            price: listing.price,
-            reviews: null,
-          };
-        }
-        dbRows = [_synRow(-3), _synRow(-2), _synRow(-1), _synRow(0), _synRow(1)];
-        console.log('[ddTrend] peer-estimated rows, rate/week:', Math.round(rate), 'peers:', peerCount);
+        dbRows = _ddPeerSyntheticRows(listing, peerResult.medianRate);
+        console.log('[ddTrend] peer-estimated rows, rate/week:', Math.round(peerResult.medianRate), 'peers:', peerCount);
       } else if (dbRows.length === 1) {
         // Pair the 1 DB row (historical) with current listing
         const dbDate = new Date(dbRows[0].scraped_at);
@@ -16503,36 +17114,36 @@ async function ddLoadTrendHistory(listing) {
 
     console.log('[ddTrend] augmented rows:', dbRows.length, dbRows.map(r => ({date:r.scraped_at?.slice(0,10), sold:r.total_sold, rev:r.reviews, price:r.price})));
 
-    const fallbackPrice = listing.price || 0;
+    let built = _ddBuildWeeklyFromRows(dbRows, listing, { isPeerEstimated });
+    let { weeklyRows, isEstimated, atCeiling, hasReviews, totalWeekUnits } = built;
+    const _mondayOf = built._mondayOf;
+    const _MO = built._MO;
+    console.log('[ddTrend] atCeiling:', atCeiling, 'hasReviews:', hasReviews, 'weekUnits:', totalWeekUnits, 'peer:', isPeerEstimated);
 
-    // Category multipliers (calibrated 2026-05-04)
-    const _CAT_MULT = { 'Rumah':2.94,'Fashion':2.77,'Dapur':3.41,'Kamar Mandi':4.21,'Keamanan':3.40,
-      'Kecantikan':2.70,'Motor & Mobil':2.96,'Elektronik':3.10,'HP & Gadget':3.40,
-      'Hewan Peliharaan':3.95,'Sepeda':2.58,'Taman':3.50,'Olahraga':2.68,'Bayi & Anak':4.12,
-      'Hobi & Kerajinan':2.48,'Kesehatan':2.38,'Tanaman':3.63,'Alat Tulis':2.87,
-      'Outdoor & Camping':2.67,'__default__':3.20 };
-    const mult = _CAT_MULT[listing.category] || _CAT_MULT['__default__'];
-
-    // 10k+ ceiling: total_sold is capped — use review delta × multiplier instead
-    const atCeiling = dbRows.every(r => (r.total_sold ?? 0) >= 10000);
-    const hasReviews = dbRows.some(r => r.reviews > 0);
-    console.log('[ddTrend] atCeiling:', atCeiling, 'hasReviews:', hasReviews, 'mult:', mult);
-
-    let unitData, isEstimated = false;
-    if (atCeiling && hasReviews && !isPeerEstimated) {
+    async function _tryPeerRebuild(reason) {
+      if (isPeerEstimated || !(listing.total_sold > 0)) return false;
+      const peerResult = await ddEstimateTrendFromPeers(listing);
+      if (!peerResult?.medianRate || peerResult.medianRate <= 0) return false;
+      isPeerEstimated = true;
+      peerCount = peerResult.peerCount;
+      peerSoldMin = peerResult.soldMin;
+      peerSoldMax = peerResult.soldMax;
+      dbRows = _ddPeerSyntheticRows(listing, peerResult.medianRate);
+      built = _ddBuildWeeklyFromRows(dbRows, listing, { isPeerEstimated: true });
+      weeklyRows = built.weeklyRows;
       isEstimated = true;
-      let base = 10000;
-      unitData = [base];
-      for (let i = 1; i < dbRows.length; i++) {
-        const revDelta = Math.max(0, (dbRows[i].reviews || 0) - (dbRows[i-1].reviews || 0));
-        base += Math.round(revDelta * mult);
-        unitData.push(base);
-      }
-    } else if (atCeiling && !hasReviews) {
-      // At 10k+ ceiling with no reviews — show raw scraped values as a floor line
-      isEstimated = true;
-      unitData = dbRows.map(r => r.total_sold ?? 10000);
-      // Show note below chart (not blocking it) after render
+      atCeiling = built.atCeiling;
+      hasReviews = built.hasReviews;
+      totalWeekUnits = built.totalWeekUnits;
+      console.log('[ddTrend] peer-estimated rebuild:', reason, 'rate/week:', Math.round(peerResult.medianRate));
+      return true;
+    }
+
+    if (built.allSameSold || totalWeekUnits === 0) {
+      await _tryPeerRebuild(built.allSameSold ? 'flat-sold' : 'zero-weekly');
+    }
+
+    if (atCeiling && !hasReviews && !isPeerEstimated) {
       setTimeout(() => {
         document.getElementById('dd-trend-nodata')?.remove();
         const canvas = document.getElementById('dd-chart-trend');
@@ -16540,188 +17151,33 @@ async function ddLoadTrendHistory(listing) {
           const note = document.createElement('div');
           note.id = 'dd-trend-ceiling-note';
           note.style.cssText = 'font-size:.68rem;color:#9CA3AF;margin-top:6px;text-align:center;';
-          note.textContent = 'Penjualan 10.000+ (batas Shopee) — grafik menunjukkan minimum, garis putus = estimasi.';
+          note.textContent = 'Penjualan 10.000+ (batas Shopee) — omset mingguan membutuhkan pertumbuhan ulasan atau estimasi pasar.';
           canvas.parentElement.appendChild(note);
         }
       }, 500);
-    } else {
-      unitData = dbRows.map(r => r.total_sold ?? 0);
     }
 
-    // Shopee buckets like "4000 sold" never increment within the bucket, so multiple
-    // scrapes produce identical total_sold values → rawDelta=0, reviewDelta=0 → chart
-    // would show 0 across all dates. Fall back to peer estimation in that case.
-    if (!isPeerEstimated && (listing.total_sold ?? 0) > 0) {
-      const allSameSold = unitData.length >= 2 && unitData.every(v => v === unitData[0]);
-      if (allSameSold) {
-        const peerResult = await ddEstimateTrendFromPeers(listing);
-        if (peerResult && peerResult.medianRate > 0) {
-          isPeerEstimated = true;
-          peerCount = peerResult.peerCount;
-          peerSoldMin = peerResult.soldMin;
-          peerSoldMax = peerResult.soldMax;
-          const rate = peerResult.medianRate;
-          const anchor = listing.scraped_at ? new Date(listing.scraped_at) : new Date();
-          const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
-          const anchorSold = listing.total_sold || 0;
-          const _pSyn = off => ({
-            scraped_at: new Date(anchor.getTime() + off * MS_WEEK).toISOString(),
-            total_sold: Math.max(0, Math.round(anchorSold + rate * off)),
-            price: listing.price,
-            reviews: null,
-          });
-          dbRows = [_pSyn(-3), _pSyn(-2), _pSyn(-1), _pSyn(0), _pSyn(1)];
-          unitData = dbRows.map(r => r.total_sold ?? 0);
-          isEstimated = true;
-        }
-      }
-    }
-
-    // ── Interpolate scrape deltas into Monday-anchored calendar weeks ──────────
-    // Between each pair of scrapes, distribute the sold delta uniformly across days,
-    // then bucket each day into the Monday-week it belongs to.
-    // Labels: actual Monday dates ("13 Apr", "20 Apr", "27 Apr", "4 Mei"...)
-    const _MO = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-    function _mondayOf(d) {
-      const date = new Date(+d);
-      const day = date.getDay(); // 0=Sun,1=Mon,...6=Sat
-      date.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
-      date.setHours(0, 0, 0, 0);
-      return date;
-    }
-    function _wKey(d)   { return _mondayOf(d).toISOString().slice(0, 10); }
-    function _wLabel(d) { const m = _mondayOf(d); return `${m.getDate()} ${_MO[m.getMonth()]}`; }
-
-    // Also bucket every individual scrape row so same-date pairs still produce an entry
-    const weekMap = new Map();
-    for (const r of dbRows) {
-      const key = _wKey(new Date(r.scraped_at));
-      if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(new Date(r.scraped_at)), units: 0, omset: 0, days: 0, firstDate: _mondayOf(new Date(r.scraped_at)) });
-    }
-    // Pre-compute corrected per-interval deltas: detect Shopee recalibration artifacts
-    // (e.g. total_sold jumping from 427 → 100,000 is not real sales, it's a display change)
-    // and implausible spikes vs review growth. Same logic as ddRenderTren().
-    const _corrDeltas = [];
-    for (let i = 0; i < dbRows.length - 1; i++) {
-      const s0 = unitData[i] ?? 0, s1 = unitData[i+1] ?? 0;
-      const rawDelta  = Math.max(0, s1 - s0);
-      const revDelta  = Math.max(0, (dbRows[i+1].reviews ?? 0) - (dbRows[i].reviews ?? 0));
-      const reviewEst = Math.round(revDelta * mult);
-      if (s0 < 10000 && s1 >= 10000) {
-        // Shopee switched from exact to bucketed display — not genuine new sales
-        _corrDeltas.push(reviewEst);
-      } else if (s0 >= 10000 && s1 >= 10000 && !atCeiling) {
-        // Both at ceiling but atCeiling path not taken (mixed rows) — use review model
-        _corrDeltas.push(reviewEst);
-      } else if (rawDelta > 0 && reviewEst > 0 && rawDelta > reviewEst * 5) {
-        // Delta > 5× what review growth implies — treat as data artifact
-        _corrDeltas.push(reviewEst);
-      } else if (rawDelta === 0 && revDelta > 0) {
-        // total_sold unchanged but reviews grew — product is inside a Shopee display bucket
-        // that didn't cross a threshold boundary; use review model to capture real sales
-        _corrDeltas.push(reviewEst);
-      } else {
-        _corrDeltas.push(rawDelta);
-      }
-    }
-
-    // Now fill each week's delta via inter-scrape interpolation
-    for (let i = 0; i < dbRows.length - 1; i++) {
-      const t0 = new Date(dbRows[i].scraped_at), t1 = new Date(dbRows[i+1].scraped_at);
-      const p0 = dbRows[i].price || fallbackPrice, p1 = dbRows[i+1].price || fallbackPrice;
-      const delta = _corrDeltas[i] ?? 0;
-      const daysDiff = Math.max(1, (t1 - t0) / 86400000);
-      const dUnit = delta / daysDiff;
-      for (let d = 1; d <= Math.ceil(daysDiff); d++) {
-        const date = new Date(t0.getTime() + d * 86400000);
-        if (date > t1) break;
-        const frac = d / daysDiff;
-        const key  = _wKey(date);
-        if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(date), units: 0, omset: 0, days: 0, firstDate: _mondayOf(date) });
-        const wk = weekMap.get(key);
-        wk.units += dUnit;
-        wk.omset += dUnit * (p0 + (p1 - p0) * frac);
-        wk.days  += 1;
-      }
-    }
-    // Scale every week to a full 7 days so partial weeks don't look artificially small
-    const weeklyRows = [...weekMap.values()]
-      .sort((a, b) => a.firstDate - b.firstDate)
-      .map(w => {
-        const scale = w.days > 0 && w.days < 7 ? 7 / w.days : 1;
-        return { label: w.label, units: Math.round(w.units * scale), omset: Math.round(w.omset * scale), firstDate: w.firstDate };
-      });
-
-    if (!weeklyRows.length) {
-      // Zero-delta fallback: scrapes exist but total_sold didn't change between them
-      // (single scrape or same-date pair). Build Monday-anchored snapshot from raw rows.
-      const snapMap = new Map();
-      for (const r of dbRows) {
-        const key = _wKey(new Date(r.scraped_at));
-        if (!snapMap.has(key)) {
-          const mon = _mondayOf(new Date(r.scraped_at));
-          // Use 0 for units/omset — we have no delta, so showing lifetime total_sold as period revenue is wrong
-          snapMap.set(key, { label: _wLabel(new Date(r.scraped_at)), units: 0, omset: 0, firstDate: mon });
-        }
-      }
-      const snapRows = [...snapMap.values()].sort((a, b) => a.firstDate - b.firstDate);
-
-      if (!snapRows.length) {
-        _noDataMsg('Belum ada data scrape untuk produk ini.');
-        return;
-      }
-
-      // Add one forecast Monday based on average units of available snaps
-      const avgUnits = Math.round(snapRows.reduce((s, r) => s + r.units, 0) / snapRows.length);
-      const avgOmset = Math.round(snapRows.reduce((s, r) => s + r.omset, 0) / snapRows.length);
-      const lastMon  = snapRows[snapRows.length - 1].firstDate;
-      const nextMon  = new Date(lastMon.getTime() + 7 * 86400000);
-      const snapLabels    = [...snapRows.map(r => r.label), `${nextMon.getDate()} ${_MO[nextMon.getMonth()]} ▶`];
-      const snapUnits     = [...snapRows.map(r => r.units), null];
-      const snapOmset     = [...snapRows.map(r => r.omset), null];
-      const fcSnapUnits   = new Array(snapLabels.length).fill(null);
-      const fcSnapOmset   = new Array(snapLabels.length).fill(null);
-      fcSnapUnits[snapRows.length - 1] = snapRows[snapRows.length - 1].units;
-      fcSnapOmset[snapRows.length - 1] = snapRows[snapRows.length - 1].omset;
-      fcSnapUnits[snapRows.length]     = avgUnits;
-      fcSnapOmset[snapRows.length]     = avgOmset;
-
-      if (!_ddChartTrend) return;
-      _ddChartTrend.data.labels = snapLabels;
-      _ddChartTrend.data.datasets = [
-        { label:'Omset (snapshot)', data:snapOmset, borderColor:'#E8442A', backgroundColor:'rgba(232,68,42,.06)', borderWidth:2.5, fill:true, tension:0.3, pointRadius:5, pointBackgroundColor:'#E8442A', yAxisID:'y', borderDash:[4,4], spanGaps:false },
-        { label:'Unit Terjual', data:snapUnits, borderColor:'#4F46E5', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:4, pointBackgroundColor:'#4F46E5', yAxisID:'y2', borderDash:[4,4], spanGaps:false },
-        { label:'Prediksi Omset', data:fcSnapOmset, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:6, pointBackgroundColor:'#10B981', yAxisID:'y', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
-        { label:'Prediksi Unit', data:fcSnapUnits, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:6, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
-      ];
-      _ddChartTrend.update();
-      _noDataMsg('Baru 1 sesi scrape tersedia — nilai menunjukkan total kumulatif. Prediksi berdasarkan rata-rata pasar.');
-      // Last-scraped date for snapshot path
-      document.getElementById('dd-trend-lastupdated')?.remove();
-      const _snapLastScrape = dbRows.length ? dbRows[dbRows.length - 1].scraped_at : null;
-      if (_snapLastScrape) {
-        const _sld = new Date(_snapLastScrape);
-        const _sll = `${_sld.getDate()} ${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][_sld.getMonth()]} ${_sld.getFullYear()}`;
-        const _slEl = document.createElement('div');
-        _slEl.id = 'dd-trend-lastupdated';
-        _slEl.style.cssText = 'font-size:.64rem;color:#9CA3AF;margin-top:4px;text-align:right;';
-        _slEl.textContent = `Data terakhir: ${_sll}`;
-        document.getElementById('dd-chart-trend')?.parentElement?.appendChild(_slEl);
-      }
+    if (totalWeekUnits === 0) {
+      if (_ddChartTrend) { _ddChartTrend.data.labels = []; _ddChartTrend.data.datasets.forEach(d => d.data = []); _ddChartTrend.update(); }
+      _noDataMsg('Tidak ada perubahan penjualan terdeteksi antar scrape.<br>Tren mingguan akan muncul setelah ada selisih data atau estimasi pasar tersedia.');
       return;
     }
 
-    // Fill calendar-week gaps around sparse scrape windows.
-    // - Forward fill: from last known week -> current week.
-    // - Back fill: ensure at least recent 5-week window is visible even if first scrape is recent.
-    // Use trend-based projection (not flat average) so consecutive estimated weeks are not identical.
+    if (!weeklyRows.length) {
+      _noDataMsg('Belum ada data scrape untuk produk ini.');
+      return;
+    }
+
+    // Fill calendar-week gaps — only extrapolate when real weeks show different velocity.
+    // Flat/zero series + linear back-fill caused misleading all-zero, flat, or ramp charts.
     const weeklyRowsFilled = [...weeklyRows];
     const lastDataMon = weeklyRowsFilled[weeklyRowsFilled.length - 1]?.firstDate;
     const firstDataMon = weeklyRowsFilled[0]?.firstDate;
-    const latestKnownDate = new Date(); // always extend to today's Monday, not last scraped_at
-    const latestKnownMon = _mondayOf(latestKnownDate);
+    const latestKnownMon = _mondayOf(new Date());
+    const _weeksVary = weeklyRows.length >= 2 && weeklyRows.some((w, i) => i > 0 && (w.units || 0) !== (weeklyRows[i - 1].units || 0));
+    const _allowTrendGapFill = !isPeerEstimated && _weeksVary;
+
     const _trendProject = (a, b) => {
-      // Linear projection from 2 latest/earliest points.
       const slopeUnits = (b.units || 0) - (a.units || 0);
       const slopeOmset = (b.omset || 0) - (a.omset || 0);
       return {
@@ -16730,51 +17186,66 @@ async function ddLoadTrendHistory(listing) {
       };
     };
 
-    // Back fill to keep last ~5 calendar weeks visible.
-    const targetWindowStart = new Date(latestKnownMon.getTime() - 4 * 7 * 86400000);
-    if (firstDataMon && firstDataMon > targetWindowStart) {
-      const seedA = weeklyRowsFilled[0];
-      const seedB = weeklyRowsFilled[1] || weeklyRowsFilled[0];
-      let refA = { units: seedA.units || 0, omset: seedA.omset || 0 };
-      let refB = { units: seedB.units || 0, omset: seedB.omset || 0 };
-      let curMon = new Date(firstDataMon.getTime() - 7 * 86400000);
-      const preRows = [];
-      while (curMon >= targetWindowStart) {
-        // Reverse projection by mirroring slope backward.
-        const prevUnits = Math.max(0, Math.round((refA.units || 0) - ((refB.units || 0) - (refA.units || 0))));
-        const prevOmset = Math.max(0, Math.round((refA.omset || 0) - ((refB.omset || 0) - (refA.omset || 0))));
-        preRows.push({
-          label: `${curMon.getDate()} ${_MO[curMon.getMonth()]}`,
-          units: prevUnits,
-          omset: prevOmset,
-          firstDate: new Date(curMon),
-          isGapEstimate: true,
-        });
-        refB = { ...refA };
-        refA = { units: prevUnits, omset: prevOmset };
-        curMon = new Date(curMon.getTime() - 7 * 86400000);
+    if (_allowTrendGapFill) {
+      const targetWindowStart = new Date(latestKnownMon.getTime() - 4 * 7 * 86400000);
+      if (firstDataMon && firstDataMon > targetWindowStart) {
+        const seedA = weeklyRowsFilled[0];
+        const seedB = weeklyRowsFilled[1] || weeklyRowsFilled[0];
+        let refA = { units: seedA.units || 0, omset: seedA.omset || 0 };
+        let refB = { units: seedB.units || 0, omset: seedB.omset || 0 };
+        let curMon = new Date(firstDataMon.getTime() - 7 * 86400000);
+        const preRows = [];
+        while (curMon >= targetWindowStart) {
+          const prevUnits = Math.max(0, Math.round((refA.units || 0) - ((refB.units || 0) - (refA.units || 0))));
+          const prevOmset = Math.max(0, Math.round((refA.omset || 0) - ((refB.omset || 0) - (refA.omset || 0))));
+          preRows.push({
+            label: `${curMon.getDate()} ${_MO[curMon.getMonth()]}`,
+            units: prevUnits,
+            omset: prevOmset,
+            firstDate: new Date(curMon),
+            isGapEstimate: true,
+          });
+          refB = { ...refA };
+          refA = { units: prevUnits, omset: prevOmset };
+          curMon = new Date(curMon.getTime() - 7 * 86400000);
+        }
+        preRows.reverse().forEach(r => weeklyRowsFilled.unshift(r));
       }
-      preRows.reverse().forEach(r => weeklyRowsFilled.unshift(r));
     }
 
     if (lastDataMon && latestKnownMon > lastDataMon) {
-      const seedA = weeklyRowsFilled[Math.max(0, weeklyRowsFilled.length - 2)] || weeklyRowsFilled[weeklyRowsFilled.length - 1];
-      const seedB = weeklyRowsFilled[weeklyRowsFilled.length - 1];
-      let refA = { units: seedA.units || 0, omset: seedA.omset || 0 };
-      let refB = { units: seedB.units || 0, omset: seedB.omset || 0 };
-      let curMon = new Date(lastDataMon.getTime() + 7 * 86400000);
-      while (curMon <= latestKnownMon) {
-        const proj = _trendProject(refA, refB);
-        weeklyRowsFilled.push({
-          label: `${curMon.getDate()} ${_MO[curMon.getMonth()]}`,
-          units: proj.units,
-          omset: proj.omset,
-          firstDate: new Date(curMon),
-          isGapEstimate: true,
-        });
-        refA = refB;
-        refB = proj;
-        curMon = new Date(curMon.getTime() + 7 * 86400000);
+      if (_allowTrendGapFill) {
+        const seedA = weeklyRowsFilled[Math.max(0, weeklyRowsFilled.length - 2)] || weeklyRowsFilled[weeklyRowsFilled.length - 1];
+        const seedB = weeklyRowsFilled[weeklyRowsFilled.length - 1];
+        let refA = { units: seedA.units || 0, omset: seedA.omset || 0 };
+        let refB = { units: seedB.units || 0, omset: seedB.omset || 0 };
+        let curMon = new Date(lastDataMon.getTime() + 7 * 86400000);
+        while (curMon <= latestKnownMon) {
+          const proj = _trendProject(refA, refB);
+          weeklyRowsFilled.push({
+            label: `${curMon.getDate()} ${_MO[curMon.getMonth()]}`,
+            units: proj.units,
+            omset: proj.omset,
+            firstDate: new Date(curMon),
+            isGapEstimate: true,
+          });
+          refA = refB;
+          refB = proj;
+          curMon = new Date(curMon.getTime() + 7 * 86400000);
+        }
+      } else {
+        const lastW = weeklyRowsFilled[weeklyRowsFilled.length - 1];
+        let curMon = new Date(lastDataMon.getTime() + 7 * 86400000);
+        while (curMon <= latestKnownMon) {
+          weeklyRowsFilled.push({
+            label: `${curMon.getDate()} ${_MO[curMon.getMonth()]}`,
+            units: lastW.units,
+            omset: lastW.omset,
+            firstDate: new Date(curMon),
+            isGapEstimate: true,
+          });
+          curMon = new Date(curMon.getTime() + 7 * 86400000);
+        }
       }
     }
 
@@ -23170,6 +23641,237 @@ document.addEventListener('touchend', function(e){
   if(now - lastTap < 300){ e.preventDefault(); }
   lastTap = now;
 }, {passive: false});
+
+// ════════════════════════════════════════════════════════════
+//  PROFILE SETUP — post-login onboarding popup
+// ════════════════════════════════════════════════════════════
+
+function isWaUser() {
+  return !!currentUser?.email?.endsWith('@wa.larisid.com');
+}
+
+async function checkProfileComplete() {
+  if (!currentUser || !_supabase) return true;
+  try {
+    const { data, error } = await _supabase
+      .from('user_profiles')
+      .select('user_id')
+      .eq('user_id', currentUser.id)
+      .limit(1);
+    if (error) return true;
+    return Array.isArray(data) && data.length > 0;
+  } catch (_) { return true; }
+}
+
+let _psetupMode         = 'setup';
+let _psetupSellerStatus = null;
+
+function _psetupOverlayClick(ev) {
+  if (_psetupMode === 'edit' && ev.target === document.getElementById('profile-setup-overlay')) {
+    closeProfileSetupModal();
+  }
+}
+
+function openProfileSetupModal(mode, prefill) {
+  _psetupMode         = mode || 'setup';
+  _psetupSellerStatus = null;
+
+  const meta     = currentUser?.user_metadata || {};
+  const fullName = (meta.full_name || '').trim();
+  const parts    = fullName.split(' ');
+
+  document.getElementById('psetup-first-name').value = prefill?.first_name || parts[0] || '';
+  document.getElementById('psetup-last-name').value  = prefill?.last_name  || parts.slice(1).join(' ') || '';
+  document.getElementById('psetup-wa-number').value  = prefill?.wa_number  || '';
+  document.getElementById('psetup-contact-email').value = prefill?.contact_email || '';
+  document.getElementById('psetup-store-name').value = prefill?.shopee_store_name || '';
+  document.getElementById('psetup-store-url').value  = prefill?.shopee_store_url  || '';
+
+  const isWa = isWaUser();
+  document.getElementById('psetup-wa-wrap').style.display    = isWa ? 'none' : '';
+  document.getElementById('psetup-email-wrap').style.display = isWa ? ''     : 'none';
+
+  const btnNew      = document.getElementById('psetup-btn-new');
+  const btnExisting = document.getElementById('psetup-btn-existing');
+  btnNew.style.borderColor      = '#E5E7EB';
+  btnNew.style.color            = '#6B7280';
+  btnNew.style.background       = '#fff';
+  btnExisting.style.borderColor = '#E5E7EB';
+  btnExisting.style.color       = '#6B7280';
+  btnExisting.style.background  = '#fff';
+  document.getElementById('psetup-store-wrap').style.display = 'none';
+
+  if (prefill?.seller_status) psetupToggleSellerFields(prefill.seller_status);
+
+  document.getElementById('psetup-title').textContent       = _psetupMode === 'edit' ? 'Edit Profil Kamu' : 'Lengkapi Profilmu';
+  document.getElementById('psetup-close-btn').style.display = _psetupMode === 'edit' ? '' : 'none';
+  document.getElementById('psetup-submit-btn').textContent  = _psetupMode === 'edit' ? 'Simpan Perubahan' : 'Simpan & Mulai';
+  document.getElementById('psetup-error').style.display     = 'none';
+
+  document.getElementById('profile-setup-overlay').style.display = 'flex';
+}
+
+function closeProfileSetupModal() {
+  document.getElementById('profile-setup-overlay').style.display = 'none';
+}
+
+function psetupToggleSellerFields(status) {
+  _psetupSellerStatus        = status;
+  const btnNew               = document.getElementById('psetup-btn-new');
+  const btnExisting          = document.getElementById('psetup-btn-existing');
+  const storeWrap            = document.getElementById('psetup-store-wrap');
+
+  if (status === 'first_time') {
+    btnNew.style.borderColor      = '#E8442A';
+    btnNew.style.color            = '#E8442A';
+    btnNew.style.background       = '#FFF0ED';
+    btnExisting.style.borderColor = '#E5E7EB';
+    btnExisting.style.color       = '#6B7280';
+    btnExisting.style.background  = '#fff';
+    storeWrap.style.display       = 'none';
+  } else {
+    btnExisting.style.borderColor = '#E8442A';
+    btnExisting.style.color       = '#E8442A';
+    btnExisting.style.background  = '#FFF0ED';
+    btnNew.style.borderColor      = '#E5E7EB';
+    btnNew.style.color            = '#6B7280';
+    btnNew.style.background       = '#fff';
+    storeWrap.style.display       = '';
+  }
+}
+
+async function submitProfileSetup() {
+  const firstName    = document.getElementById('psetup-first-name').value.trim();
+  const lastName     = document.getElementById('psetup-last-name').value.trim();
+  const isWa         = isWaUser();
+  const waRaw        = document.getElementById('psetup-wa-number').value.trim();
+  const emailInput   = document.getElementById('psetup-contact-email').value.trim();
+  const storeName    = document.getElementById('psetup-store-name').value.trim();
+  const storeUrl     = document.getElementById('psetup-store-url').value.trim();
+  const errEl        = document.getElementById('psetup-error');
+
+  function showErr(msg) { errEl.textContent = msg; errEl.style.display = ''; }
+  errEl.style.display = 'none';
+
+  if (!currentUser) return showErr('Silakan login terlebih dahulu.');
+  if (!firstName) return showErr('Nama depan wajib diisi.');
+  if (!lastName)  return showErr('Nama belakang wajib diisi.');
+  if (!isWa && !waRaw)  return showErr('Nomor WhatsApp wajib diisi.');
+  if (isWa  && !emailInput) return showErr('Alamat email wajib diisi.');
+  if (isWa  && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailInput)) return showErr('Format email tidak valid.');
+  if (!_psetupSellerStatus) return showErr('Pilih status penjual kamu terlebih dahulu.');
+  if (_psetupSellerStatus === 'existing' && !storeName) return showErr('Nama toko Shopee wajib diisi.');
+  if (_psetupSellerStatus === 'existing' && !storeUrl)  return showErr('URL toko Shopee wajib diisi.');
+
+  const btn = document.getElementById('psetup-submit-btn');
+  btn.disabled    = true;
+  btn.textContent = 'Menyimpan...';
+
+  try {
+    let waStored = null;
+    if (!isWa && waRaw) {
+      let n = waRaw.replace(/\D/g, '');
+      if (n.startsWith('62'))      n = '0' + n.slice(2);
+      else if (!n.startsWith('0')) n = '0' + n;
+      waStored = n;
+    }
+
+    const payload = {
+      user_id:           currentUser.id,
+      first_name:        firstName,
+      last_name:         lastName,
+      wa_number:         waStored,
+      contact_email:     isWa ? emailInput : null,
+      seller_status:     _psetupSellerStatus,
+      shopee_store_name: _psetupSellerStatus === 'existing' ? storeName : null,
+      shopee_store_url:  _psetupSellerStatus === 'existing' ? storeUrl  : null,
+      updated_at:        new Date().toISOString(),
+    };
+
+    const { error: upsertErr } = await _supabase
+      .from('user_profiles')
+      .upsert(payload, { onConflict: 'user_id' });
+    if (upsertErr) throw upsertErr;
+
+    if (_psetupSellerStatus === 'existing') {
+      await _supabase.from('user_store_profiles').upsert({
+        user_id:           currentUser.id,
+        shopee_store_name: storeName,
+        updated_at:        new Date().toISOString(),
+      }, { onConflict: 'user_id' }).catch(() => {});
+    }
+
+    const fullName = `${firstName} ${lastName}`;
+    try { await _supabase.auth.updateUser({ data: { full_name: fullName } }); } catch (_) {}
+    if (currentUser.user_metadata) currentUser.user_metadata.full_name = fullName;
+    updateAuthUI();
+
+    closeProfileSetupModal();
+    loadUserProfile();
+
+    if (_psetupMode === 'setup') {
+      loadSavedProducts();
+      checkMentorApplication();
+      renderHomeGrid();
+      setTimeout(() => startDashboardOnboarding(), 1200);
+      setTimeout(() => { pendingCohortJoinIfAny().catch(() => {}); }, 400);
+      setTimeout(() => { cohortLoadLightForTheme().catch(() => {}); }, 600);
+    }
+  } catch (e) {
+    showErr('Terjadi kesalahan. Coba lagi.');
+    console.error('[psetup]', e);
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = _psetupMode === 'edit' ? 'Simpan Perubahan' : 'Simpan & Mulai';
+  }
+}
+
+async function openProfileEditModal() {
+  if (!currentUser || !_supabase) return;
+  try {
+    const { data } = await _supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .limit(1);
+    openProfileSetupModal('edit', Array.isArray(data) && data.length ? data[0] : null);
+  } catch (_) {
+    openProfileSetupModal('edit', null);
+  }
+}
+
+async function loadUserProfile() {
+  if (!currentUser || !_supabase) return;
+  try {
+    const { data } = await _supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .limit(1);
+    if (!Array.isArray(data) || !data.length) return;
+    const p = data[0];
+
+    const card = document.getElementById('acct-info-card');
+    if (card) card.style.display = '';
+
+    const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || '—'; };
+    const showWrap = (id, show) => { const el = document.getElementById(id); if (el) el.style.display = show ? '' : 'none'; };
+
+    setEl('acct-card-name', `${p.first_name} ${p.last_name}`.trim());
+    setEl('acct-card-seller', p.seller_status === 'existing' ? 'Penjual aktif' : 'Penjual baru');
+
+    if (p.wa_number) { setEl('acct-card-wa', p.wa_number); showWrap('acct-card-wa-wrap', true); }
+    if (p.contact_email) { setEl('acct-card-email', p.contact_email); showWrap('acct-card-email-wrap', true); }
+    if (p.shopee_store_name) { setEl('acct-card-store', p.shopee_store_name); showWrap('acct-card-store-wrap', true); }
+  } catch (_) {}
+}
+
+/** Dev helper: show new-user profile popup without signing up again. */
+function previewNewUserFlow() {
+  localStorage.removeItem(DASHBOARD_TOUR_KEY);
+  localStorage.removeItem('laris_welcomed');
+  openProfileSetupModal('setup');
+}
 
 // Banner carousel auto-scroll
 // ── Dashboard onboarding entrypoint ──────────────────────────
