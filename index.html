@@ -8110,11 +8110,30 @@ html,body{overflow-x:hidden;max-width:100%;}
                     <h3 style="margin:0 0 2px;">Planner program</h3>
                     <p class="cohort-muted" style="margin:0;font-size:.72rem;">Klik tanggal untuk membuat sesi. Import jadwal dari Google Calendar.</p>
                   </div>
-                  <button type="button" class="cohort-btn secondary" style="white-space:nowrap;display:flex;align-items:center;gap:6px;" onclick="cohortPlannerImportGcal()">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                    Import Google Calendar
-                  </button>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <!-- WS-A: subscribe to cohort calendar feed (Google Calendar) -->
+                    <button type="button" class="cohort-btn secondary" style="white-space:nowrap;display:flex;align-items:center;gap:6px;" onclick="cohortPlannerSubscribeCalendar()">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                      Langganan kalender
+                    </button>
+                    <!-- /WS-A -->
+                    <button type="button" class="cohort-btn secondary" style="white-space:nowrap;display:flex;align-items:center;gap:6px;" onclick="cohortPlannerImportGcal()">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                      Import Google Calendar
+                    </button>
+                  </div>
                 </div>
+                <!-- WS-A: calendar subscription instructions panel -->
+                <div id="wsa-cal-sub-panel" style="display:none;margin:0 0 12px;padding:12px 14px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:10px;">
+                  <div style="font-size:.78rem;font-weight:700;color:#3730A3;margin-bottom:6px;">Langganan kalender kohort</div>
+                  <p class="cohort-muted" style="margin:0 0 8px;font-size:.72rem;line-height:1.5;">URL kalender sudah disalin. Di Google Calendar (web): buka <strong>Kalender lain → Dari URL</strong>, lalu tempel URL ini. Semua sesi akan muncul otomatis dan ikut ter-update.</p>
+                  <div id="wsa-cal-sub-url" style="font-size:.66rem;word-break:break-all;background:#fff;border:1px solid #C7D2FE;border-radius:8px;padding:8px 10px;color:#3730A3;font-family:monospace;"></div>
+                  <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+                    <button type="button" class="cohort-btn secondary" style="font-size:.72rem;" onclick="cohortPlannerCopyCalUrl(this)">Salin lagi</button>
+                    <button type="button" style="font-size:.72rem;background:none;border:1px solid #C7D2FE;border-radius:8px;padding:6px 12px;cursor:pointer;color:#6366F1;" onclick="document.getElementById('wsa-cal-sub-panel').style.display='none';">Tutup</button>
+                  </div>
+                </div>
+                <!-- /WS-A -->
                 <div id="cohort-planner-cal"></div>
               </div>
               <!-- GCal import panel (hidden by default) -->
@@ -25135,7 +25154,7 @@ async function cohortRenderJadwal(cohortId) {
   el.innerHTML = '<span class="cohort-muted">Memuat…</span>';
   const today = new Date().toISOString().split('T')[0];
   const { data: sessions, error } = await _supabase.from('cohort_sessions')
-    .select('id,title,session_date,notes,document_urls')
+    .select('id,title,session_date,notes,document_urls,start_time,end_time,timezone,location,meet_url') /* WS-A: time/location/meet fields */
     .eq('cohort_id', cohortId).gte('session_date', today)
     .order('session_date', { ascending: true }).limit(20);
   if (error || !(sessions || []).length) {
@@ -25146,14 +25165,121 @@ async function cohortRenderJadwal(cohortId) {
     const d = new Date(s.session_date + 'T00:00:00');
     const label = d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
     const docs = (s.document_urls || []).filter(Boolean);
+    // WS-A: time label, location/meeting link, and add-to-Google-Calendar
+    const tr   = _wsaTimeRange(s);
+    const gcal = _wsaGCalLink(s);
     return `<div style="border-left:3px solid #6366F1;padding:10px 14px;margin-bottom:12px;background:#F9FAFB;border-radius:0 10px 10px 0;">
-      <div style="font-size:.62rem;color:#6366F1;font-weight:700;text-transform:uppercase;">${label}</div>
+      <div style="font-size:.62rem;color:#6366F1;font-weight:700;text-transform:uppercase;">${label}${tr ? ` · ${tr}` : ''}</div>
       <div style="font-weight:800;font-size:.82rem;margin:2px 0;">${_cohortEsc(s.title)}</div>
+      ${s.location ? `<div style="font-size:.7rem;color:#6B7280;margin-top:2px;">Lokasi: ${_cohortEsc(s.location)}</div>` : ''}
       ${s.notes ? `<div style="font-size:.72rem;color:#6B7280;margin-top:4px;">${_cohortEsc(s.notes)}</div>` : ''}
-      ${docs.length ? `<div style="margin-top:6px;font-size:.7rem;">${docs.map(u => `<a href="${u}" target="_blank" rel="noopener" style="color:#6366F1;margin-right:8px;">Dokumen</a>`).join('')}</div>` : ''}
+      <div style="margin-top:6px;font-size:.7rem;display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+        ${s.meet_url ? `<a href="${_cohortEsc(s.meet_url)}" target="_blank" rel="noopener" style="color:#6366F1;">Link pertemuan</a>` : ''}
+        ${docs.map(u => `<a href="${_cohortEsc(u)}" target="_blank" rel="noopener" style="color:#6366F1;">Dokumen</a>`).join('')}
+        <a href="${_cohortEsc(gcal)}" target="_blank" rel="noopener" style="color:#6366F1;font-weight:700;">+ Tambah ke Google Calendar</a>
+      </div>
     </div>`;
+    // /WS-A
   }).join('');
 }
+
+// <!-- WS-A: session-time helpers (formatting + Google Calendar add link) -->
+function _wsaTimeHHMM(t) { return t ? String(t).slice(0, 5) : ''; }
+function _wsaTimeRange(s) {
+  const st = _wsaTimeHHMM(s.start_time);
+  if (!st) return '';
+  const et = _wsaTimeHHMM(s.end_time);
+  return et ? `${st}\u2013${et}` : st;
+}
+function _wsaAddHourHHMM(hhmm) {
+  const [h, mi] = hhmm.split(':').map(Number);
+  const total = (((h || 0) * 60 + (mi || 0) + 60) % (24 * 60));
+  return String(Math.floor(total / 60)).padStart(2, '0') + ':' + String(total % 60).padStart(2, '0');
+}
+function _wsaNextDayYMD(ymd) {
+  const [y, mo, d] = ymd.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, mo - 1, d + 1));
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
+}
+// Builds a client-side "Add to Google Calendar" template link (local wall-clock
+// times interpreted in the cohort timezone via ctz; all-day uses date-only range).
+function _wsaGCalLink(s) {
+  const tz = s.timezone || 'Asia/Jakarta';
+  const ymd = (s.session_date || '').replace(/-/g, '');
+  let dates, useTz = false;
+  if (s.start_time) {
+    const st = _wsaTimeHHMM(s.start_time);
+    const et = s.end_time ? _wsaTimeHHMM(s.end_time) : _wsaAddHourHHMM(st);
+    dates = `${ymd}T${st.replace(':', '')}00/${ymd}T${et.replace(':', '')}00`;
+    useTz = true;
+  } else {
+    dates = `${ymd}/${_wsaNextDayYMD(s.session_date).replace(/-/g, '')}`;
+  }
+  const detailParts = [];
+  if (s.notes) detailParts.push(s.notes);
+  const docs = (s.document_urls || []).filter(Boolean);
+  if (docs.length) detailParts.push('Dokumen:\n' + docs.join('\n'));
+  if (s.meet_url) detailParts.push('Link rapat: ' + s.meet_url);
+  const params = new URLSearchParams();
+  params.set('action', 'TEMPLATE');
+  params.set('text', s.title || 'Sesi');
+  params.set('dates', dates);
+  if (useTz) params.set('ctz', tz);
+  if (detailParts.length) params.set('details', detailParts.join('\n\n'));
+  if (s.location) params.set('location', s.location);
+  return 'https://calendar.google.com/calendar/render?' + params.toString();
+}
+
+// Build the read-only ICS feed URL (webcal://) for the active mentor cohort.
+function _wsaCalFeedUrl() {
+  const c = _cohortState && _cohortState.primaryMentorCohort;
+  if (!c || !c.id || !c.calendar_token) return '';
+  return `webcal://bzmvlraziqevqdyotvgy.supabase.co/functions/v1/cohort-calendar-ics?cohort=${encodeURIComponent(c.id)}&token=${encodeURIComponent(c.calendar_token)}`;
+}
+
+async function _wsaCopyText(text) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (_) {}
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch (_) { return false; }
+}
+
+async function cohortPlannerSubscribeCalendar() {
+  const panel = document.getElementById('wsa-cal-sub-panel');
+  const urlEl = document.getElementById('wsa-cal-sub-url');
+  const url = _wsaCalFeedUrl();
+  if (!panel || !urlEl) return;
+  if (!url) {
+    panel.style.display = '';
+    urlEl.textContent = 'Token kalender belum tersedia. Muat ulang halaman lalu coba lagi.';
+    return;
+  }
+  urlEl.textContent = url;
+  panel.style.display = '';
+  await _wsaCopyText(url);
+}
+
+async function cohortPlannerCopyCalUrl(btn) {
+  const url = _wsaCalFeedUrl();
+  if (!url) return;
+  const ok = await _wsaCopyText(url);
+  if (btn) {
+    const prev = btn.textContent;
+    btn.textContent = ok ? 'Tersalin!' : 'Salin manual';
+    setTimeout(() => { btn.textContent = prev; }, 1800);
+  }
+}
+// <!-- /WS-A -->
 
 // ── PLANNER (mentor calendar) ─────────────────────────────────────────────────
 let _plannerCurrentMonth = new Date();
@@ -25169,7 +25295,7 @@ async function cohortPlannerRender(cohortId) {
   const from = firstDay.toISOString().split('T')[0];
   const to   = lastDay.toISOString().split('T')[0];
   const { data } = await _supabase.from('cohort_sessions')
-    .select('id,title,session_date,notes,milestone_ids,document_urls')
+    .select('id,title,session_date,notes,milestone_ids,document_urls,start_time,end_time,timezone,location,meet_url')
     .eq('cohort_id', cohortId).gte('session_date', from).lte('session_date', to)
     .order('session_date', { ascending: true });
   _plannerSessions = data || [];
@@ -25214,11 +25340,19 @@ function _plannerDrawCal(cohortId, year, month) {
     _plannerSessions.forEach(s => {
       const d = new Date(s.session_date + 'T00:00:00');
       const label = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+      // WS-A: time label + add-to-Google-Calendar link
+      const tr = _wsaTimeRange(s);
+      const gcal = _wsaGCalLink(s);
       html += `<div onclick="cohortPlannerOpenEditor('${s.id}','${cohortId}')" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;margin-bottom:4px;background:#F9FAFB;">
         <div style="font-size:.65rem;color:#6366F1;font-weight:700;white-space:nowrap;min-width:40px;">${label}</div>
-        <div style="font-size:.75rem;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_cohortEsc(s.title)}</div>
-        <div style="font-size:.65rem;color:#9CA3AF;">Edit ›</div>
+        <div style="flex:1;overflow:hidden;">
+          <div style="font-size:.75rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_cohortEsc(s.title)}</div>
+          ${tr ? `<div style="font-size:.62rem;color:#9CA3AF;margin-top:1px;">${tr}</div>` : ''}
+        </div>
+        <a href="${_cohortEsc(gcal)}" target="_blank" rel="noopener" onclick="event.stopPropagation();" title="Tambah ke Google Calendar" style="font-size:.62rem;color:#6366F1;white-space:nowrap;text-decoration:none;flex-shrink:0;">+ Google Cal</a>
+        <div style="font-size:.65rem;color:#9CA3AF;flex-shrink:0;">Edit ›</div>
       </div>`;
+      // /WS-A
     });
     html += '</div>';
   }
@@ -25257,6 +25391,23 @@ function cohortPlannerOpenEditor(sessionId, cohortId, prefillDate) {
     <input type="text" id="planner-title" class="cohort-input" placeholder="Nama sesi program" maxlength="120" value="${existing ? _cohortEsc(existing.title) : ''}" autocomplete="off">
     <label style="font-size:.72rem;font-weight:700;display:block;margin-bottom:3px;color:#6B7280;">TANGGAL</label>
     <input type="date" id="planner-date" class="cohort-input" value="${dateVal}">
+    <!-- WS-A: session time / place / meeting link -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:120px;">
+        <label style="font-size:.72rem;font-weight:700;display:block;margin-bottom:3px;color:#6B7280;">JAM MULAI <span style="font-weight:400;">(opsional)</span></label>
+        <input type="time" id="planner-start-time" class="cohort-input" value="${existing && existing.start_time ? existing.start_time.slice(0,5) : ''}">
+      </div>
+      <div style="flex:1;min-width:120px;">
+        <label style="font-size:.72rem;font-weight:700;display:block;margin-bottom:3px;color:#6B7280;">JAM SELESAI <span style="font-weight:400;">(opsional)</span></label>
+        <input type="time" id="planner-end-time" class="cohort-input" value="${existing && existing.end_time ? existing.end_time.slice(0,5) : ''}">
+      </div>
+    </div>
+    <p class="cohort-muted" style="margin:-4px 0 10px;font-size:.66rem;">Kosongkan jam jika sesi berlangsung seharian.</p>
+    <label style="font-size:.72rem;font-weight:700;display:block;margin-bottom:3px;color:#6B7280;">LOKASI <span style="font-weight:400;">(opsional)</span></label>
+    <input type="text" id="planner-location" class="cohort-input" placeholder="Mis. Aula RW 5 / Online" maxlength="200" value="${existing ? _cohortEsc(existing.location || '') : ''}" autocomplete="off">
+    <label style="font-size:.72rem;font-weight:700;display:block;margin-bottom:3px;color:#6B7280;">LINK PERTEMUAN <span style="font-weight:400;">(Google Meet / Zoom, opsional)</span></label>
+    <input type="url" id="planner-meet-url" class="cohort-input" placeholder="https://meet.google.com/..." maxlength="500" value="${existing ? _cohortEsc(existing.meet_url || '') : ''}" autocomplete="off">
+    <!-- /WS-A -->
     <label style="font-size:.72rem;font-weight:700;display:block;margin-bottom:3px;color:#6B7280;">CATATAN SESI</label>
     <textarea id="planner-notes" class="cohort-input" rows="3" placeholder="Agenda, ringkasan, atau catatan sesi (opsional)">${existing ? _cohortEsc(existing.notes || '') : ''}</textarea>
     <label style="font-size:.72rem;font-weight:700;display:block;margin-bottom:3px;color:#6B7280;">DOKUMEN PENDUKUNG</label>
@@ -25300,11 +25451,23 @@ async function cohortPlannerSaveSession(cohortId) {
   const docUrls = [...document.querySelectorAll('#planner-doc-rows .planner-doc-url')]
     .map(i => i.value.trim()).filter(Boolean);
   stEl.textContent = 'Menyimpan…';
+  // WS-A: session time / place / meeting link
+  const startEl = document.getElementById('planner-start-time');
+  const endEl   = document.getElementById('planner-end-time');
+  const locEl   = document.getElementById('planner-location');
+  const meetEl  = document.getElementById('planner-meet-url');
+  const startVal = startEl && startEl.value ? startEl.value : null;
+  const endVal   = endEl && endEl.value ? endEl.value : null;
   const payload = {
     title, session_date: date,
     notes: notesEl ? notesEl.value.trim() || null : null,
     document_urls: docUrls,
+    start_time: startVal,
+    end_time: startVal ? endVal : null,
+    location: locEl && locEl.value.trim() ? locEl.value.trim() : null,
+    meet_url: meetEl && meetEl.value.trim() ? meetEl.value.trim() : null,
   };
+  // /WS-A
   let error;
   if (_plannerEditId) {
     ({ error } = await _supabase.from('cohort_sessions').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', _plannerEditId));
