@@ -896,10 +896,14 @@ body.cohort-themed.in-dashboard .dash-topbar{
 .cohort-feed-thread.open{display:block;}
 .cohort-feed-cmt{font-size:.72rem;color:#374151;margin:6px 0;padding:6px 8px;background:#fff;border-radius:6px;border:1px solid #F3F4F6;}
 .cohort-rank-row{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #F3F4F6;font-size:.76rem;}
-.cohort-drawer{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:400;display:none;align-items:flex-end;justify-content:center;padding:12px;}
+.cohort-drawer{position:fixed;inset:0;background:rgba(15,23,42,.52);z-index:500;display:none;align-items:center;justify-content:center;padding:16px;}
 .cohort-drawer.open{display:flex;}
-.cohort-drawer-panel{width:100%;max-width:520px;max-height:92vh;overflow:auto;background:#fff;border-radius:14px 14px 0 0;padding:18px 18px 32px;box-shadow:0 -8px 40px rgba(0,0,0,.2);}
-.cohort-drawer-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.cohort-drawer-panel{width:100%;max-width:580px;max-height:90vh;overflow-y:auto;background:#fff;border-radius:16px;padding:20px 22px 28px;box-shadow:0 24px 64px rgba(0,0,0,.28);}
+.cohort-drawer-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;}
+.cohort-drawer-notes details summary{cursor:pointer;font-size:.7rem;font-weight:700;color:#374151;list-style:none;display:flex;align-items:center;gap:5px;user-select:none;padding:2px 0;}
+.cohort-drawer-notes details summary::-webkit-details-marker{display:none;}
+.cohort-drawer-notes details summary::before{content:'›';display:inline-block;transition:transform .2s;font-size:.85rem;}
+.cohort-drawer-notes details[open] summary::before{transform:rotate(90deg);}
 .cohort-week-bar{display:flex;gap:4px;margin-top:8px;}
 .cohort-week-cell{flex:1;height:22px;border-radius:4px;background:#EEF2F7;}
 .cohort-week-cell.on{background:linear-gradient(180deg,var(--cohort-secondary,#fb923c),#ea580c);}
@@ -7787,6 +7791,10 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <h3>Pengumuman mentor</h3>
                   <ul id="cohort-announce-list" class="cohort-list"></ul>
                 </div>
+                <div class="cohort-card" id="cohort-student-inbox-card" style="display:none;">
+                  <h3>Pesan dari Mentor</h3>
+                  <div id="cohort-student-inbox" class="cohort-muted" style="font-size:.75rem;">Memuat…</div>
+                </div>
               </div>
               <div class="cohort-card" style="margin-top:14px;">
                 <h3>Tools riset</h3>
@@ -8051,8 +8059,8 @@ html,body{overflow-x:hidden;max-width:100%;}
           <div id="cohort-student-drawer" class="cohort-drawer" onclick="if(event.target===this)cohortCloseStudentDrawer()">
             <div class="cohort-drawer-panel" onclick="event.stopPropagation()">
               <div class="cohort-drawer-head">
-                <strong id="cohort-drawer-title" style="font-size:.9rem;">Siswa</strong>
-                <button type="button" class="cohort-btn secondary" style="padding:6px 12px;font-size:.65rem;" onclick="cohortCloseStudentDrawer()">Tutup</button>
+                <div id="cohort-drawer-title" style="font-size:.82rem;font-weight:800;color:#1A1F3C;">Siswa</div>
+                <button type="button" onclick="cohortCloseStudentDrawer()" style="background:none;border:none;color:#9CA3AF;cursor:pointer;padding:4px;line-height:1;font-size:1.2rem;flex-shrink:0;margin-left:12px;" title="Tutup">&#x2715;</button>
               </div>
               <div id="cohort-drawer-body" class="cohort-muted" style="font-size:.78rem;line-height:1.5;">—</div>
             </div>
@@ -11119,7 +11127,7 @@ async function adminLoadUserDirectory() {
         const roleColor = role === 'admin' ? '#E8442A' : (role === 'leader' ? '#B45309' : '#1A7A46');
         const isIndep = !r.cohort_count && !r.led_cohort_count;
         return `<tr style="border-bottom:1px solid #F9FAFB;">
-          <td style="padding:8px 4px;"><strong>${_cohortEsc(r.display_name || 'User')}</strong><br><span class="cohort-muted">${_cohortEsc(r.email || '')}</span></td>
+          <td style="padding:8px 4px;cursor:pointer;" onclick="cohortOpenStudentDrawer('${_cohortEsc(r.user_id || '')}')"><strong>${_cohortEsc(r.display_name || r.email || 'User')}</strong><br><span class="cohort-muted">${_cohortEsc(r.email || '')}</span></td>
           <td><span style="color:${roleColor};font-weight:800;">${_cohortEsc(role)}</span></td>
           <td>${isIndep ? '<span style="background:#F3F4F6;color:#6B7280;font-size:.62rem;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.04em;">Independent</span>' : (r.cohort_count || 0)}</td>
           <td>${isIndep ? '' : (r.led_cohort_count || 0)}</td>
@@ -12736,6 +12744,7 @@ async function cohortInit() {
   await cohortRenderMilestones(pcid);
   await cohortRenderLeaderboard(pcid);
   await cohortRenderAnnouncements(pcid);
+  void cohortRenderStudentInbox();
   await cohortRenderFeed(pcid);
   await cohortRenderRankingsStudent(pcid);
   await cohortRenderStudentProgressCards(pcid);
@@ -12948,7 +12957,7 @@ async function cohortRenderLeaderboard(cohortId) {
   ul.innerHTML = data.map((r) => {
     const mine = r.user_id === currentUser.id;
     const label = mine ? 'Kamu' : cohortCohortDisplayName(r.user_id, r.rank);
-    const click = mine ? '' : ` onclick="openStudentProfile('${r.user_id}')" style="cursor:pointer;"`;
+    const click = mine ? '' : ` onclick="cohortOpenStudentDrawer('${r.user_id}')" style="cursor:pointer;"`;
     return `<li${click}><span>#${r.rank} ${label}</span><span style="font-weight:800;">${r.points}</span></li>`;
   }).join('');
 }
@@ -13032,6 +13041,26 @@ async function cohortRenderAnnouncements(cohortId) {
   const { data } = await _supabase.from('cohort_announcements').select('title,body,created_at').eq('cohort_id', cohortId).order('created_at', { ascending: false }).limit(12);
   if (!(data || []).length) { ul.innerHTML = '<li class="cohort-muted">Belum ada pengumuman.</li>'; return; }
   ul.innerHTML = data.map(a => `<li><div><strong>${_cohortEsc(a.title)}</strong><div class="cohort-muted" style="margin-top:4px;">${_cohortEsc((a.body || '').slice(0, 120))}${(a.body || '').length > 120 ? '…' : ''}</div></div><span class="cohort-muted" style="white-space:nowrap;">${_cohortEsc((a.created_at || '').slice(0, 10))}</span></li>`).join('');
+}
+
+async function cohortRenderStudentInbox() {
+  const card = document.getElementById('cohort-student-inbox-card');
+  const el   = document.getElementById('cohort-student-inbox');
+  if (!card || !el || !currentUser || !_supabase) return;
+  const { data, error } = await _supabase.from('mentor_messages')
+    .select('body,created_at,from_user_id')
+    .eq('to_user_id', currentUser.id)
+    .order('created_at', { ascending: false })
+    .limit(10);
+  if (error || !(data || []).length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const fmtDt = s => { try { return new Date(s).toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); } catch { return s.slice(0,16); } };
+  el.innerHTML = (data || []).map(m =>
+    `<div style="padding:8px 10px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:7px;margin-bottom:6px;">
+      <div style="font-size:.72rem;color:#1E40AF;line-height:1.4;">${_cohortEsc(m.body)}</div>
+      <div style="font-size:.6rem;color:#93C5FD;margin-top:3px;">${_cohortEsc(fmtDt(m.created_at))}</div>
+    </div>`
+  ).join('');
 }
 
 async function cohortRenderFeed(cohortId) {
@@ -13181,8 +13210,10 @@ async function cohortRenderRankingsStudent(cohortId) {
   }
   if (sum) sum.textContent = 'Poin = jumlah aktivitas 30 hari terakhir. Streak = hari riset beruntun (WIB).';
   host.innerHTML = data.map(r => {
-    const who = cohortCohortDisplayName(r.user_id, r.rank);
-    return `<div class="cohort-rank-row"><span>#${r.rank} ${who}</span><span style="font-weight:800;">${r.points} pt · 🔥${r.streak} · ✓${r.milestones_done}</span></div>`;
+    const who  = cohortCohortDisplayName(r.user_id, r.rank);
+    const mine = r.user_id === (currentUser && currentUser.id);
+    const nameHtml = mine ? who : `<span style="cursor:pointer;text-decoration:underline;text-decoration-color:#E5E7EB;" onclick="cohortOpenStudentDrawer('${r.user_id}')">${who}</span>`;
+    return `<div class="cohort-rank-row"><span>#${r.rank} ${nameHtml}</span><span style="font-weight:800;">${r.points} pt · ${r.streak} · ${r.milestones_done}</span></div>`;
   }).join('');
 }
 
@@ -13707,42 +13738,48 @@ async function cohortOpenStudentDrawer(userId) {
   const drawer = document.getElementById('cohort-student-drawer');
   const title  = document.getElementById('cohort-drawer-title');
   const body   = document.getElementById('cohort-drawer-body');
-  if (!c || !drawer || !body || !_supabase) return;
+  if (!drawer || !body || !_supabase) return;
 
-  title.innerHTML = '<span style="color:#9CA3AF;font-size:.78rem;font-weight:500;">Memuat profil…</span>';
-  body.innerHTML  = '<div style="padding:12px 0;color:#9CA3AF;font-size:.78rem;text-align:center;">Memuat…</div>';
+  title.innerHTML = '<span style="color:#9CA3AF;font-size:.78rem;font-weight:400;">Memuat profil…</span>';
+  body.innerHTML  = '<div style="padding:16px 0;color:#9CA3AF;font-size:.78rem;text-align:center;">Memuat…</div>';
   drawer.classList.add('open');
+  drawer.dataset.openUserId = userId;
 
   const esc     = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
   const fmtDt   = s => { if (!s) return '—'; try { return new Date(s).toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); } catch { return s.slice(0,16); } };
   const fmtDate = s => { if (!s) return '—'; try { return new Date(s).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}); } catch { return s.slice(0,10); } };
 
   try {
-    const [
-      { data: baseRaw },
-      { data: prof },
-      { data: memRow },
-      { data: allMs },
-      { data: doneMs },
-      { data: savedProds },
-      { data: recentEvs },
-    ] = await Promise.all([
+    const queries = [
       _supabase.rpc('cohort_member_profile', { p_user: userId }),
-      _supabase.from('user_profiles').select('display_name,public_whatsapp,public_email,public_shopee_url,bio').eq('user_id', userId).maybeSingle(),
-      _supabase.from('cohort_members').select('joined_at,last_seen_at,status').eq('cohort_id', c.id).eq('user_id', userId).maybeSingle(),
-      _supabase.from('milestones').select('id,title,sort_order').eq('cohort_id', c.id).order('sort_order', { ascending: true }),
-      _supabase.from('user_milestone_progress').select('milestone_id').eq('user_id', userId),
+      _supabase.from('user_profiles').select('display_name,public_whatsapp,public_email,public_shopee_url,bio,headshot_url,school,city').eq('user_id', userId).maybeSingle(),
       _supabase.from('saved_products').select('product_id,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(6),
-      _supabase.from('activity_events').select('event_type,created_at,metadata').eq('cohort_id', c.id).eq('user_id', userId).order('created_at', { ascending: false }).limit(6),
-    ]);
+      _supabase.from('activity_events').select('event_type,created_at,metadata').eq('user_id', userId).order('created_at', { ascending: false }).limit(6),
+    ];
+    if (c) {
+      queries.push(_supabase.from('cohort_members').select('joined_at,last_seen_at,status').eq('cohort_id', c.id).eq('user_id', userId).maybeSingle());
+      queries.push(_supabase.from('milestones').select('id,title,sort_order').eq('cohort_id', c.id).order('sort_order', { ascending: true }));
+      queries.push(_supabase.from('user_milestone_progress').select('milestone_id').eq('user_id', userId));
+      queries.push(_supabase.from('cohort_student_notes').select('id,body,created_at').eq('cohort_id', c.id).eq('student_user_id', userId).order('created_at', { ascending: false }));
+    }
+
+    const results = await Promise.all(queries);
+    const [{ data: baseRaw }, { data: prof }, { data: savedProds }, { data: recentEvs }] = results;
+    const memRow  = c ? (results[4]?.data || {}) : {};
+    const allMs   = c ? (results[5]?.data || []) : [];
+    const doneMs  = c ? (results[6]?.data || []) : [];
+    const notes   = c ? (results[7]?.data || []) : [];
 
     const base = Array.isArray(baseRaw) ? baseRaw[0] : baseRaw;
     const pr   = prof || {};
     const mem  = memRow || {};
 
-    const displayName = (pr.display_name || '').trim() || (base && base.display_name) || 'Anggota kohort';
     const emailAddr   = (base && base.email) || pr.public_email || '';
+    const displayName = (pr.display_name || '').trim() || (base && base.display_name) || emailAddr.split('@')[0] || 'Siswa';
     const whatsApp    = pr.public_whatsapp || '';
+    const headshotUrl = pr.headshot_url || '';
+    const school      = pr.school || '';
+    const city        = pr.city || '';
     const initials    = displayName.split(' ').slice(0,2).map(w => w[0] || '').join('').toUpperCase() || '?';
     const role        = base?.app_role || 'student';
     const roleLabel   = role === 'admin' ? 'Admin' : role === 'leader' ? 'Leader' : 'Siswa';
@@ -13751,17 +13788,18 @@ async function cohortOpenStudentDrawer(userId) {
 
     const score      = Number(base?.engagement_score || 0);
     const eventCount = Number(base?.event_count || 0);
-    const totalMs    = (allMs || []).length;
-    const doneSet    = new Set((doneMs || []).map(d => d.milestone_id));
+    const totalMs    = allMs.length;
+    const doneSet    = new Set(doneMs.map(d => d.milestone_id));
     const doneCount  = doneSet.size;
     const lastSeen   = mem.last_seen_at || base?.last_activity_at;
     const joinedAt   = mem.joined_at || base?.joined_at;
     const progPct    = totalMs > 0 ? Math.round((doneCount / totalMs) * 100) : 0;
     const scoreClr   = s => s >= 70 ? '#10B981' : s >= 40 ? '#F59E0B' : '#9CA3AF';
+    const cohortName = c ? (c.name || 'Kohort') : '—';
 
-    // Fetch product names from listings_deduped
+    // Fetch product names
     let productItems = [];
-    const prodIds = (savedProds || []).map(r => r.product_id).filter(Boolean);
+    const prodIds = savedProds.map(r => r.product_id).filter(Boolean);
     if (prodIds.length) {
       const { data: listings } = await _supabase.from('listings_deduped').select('item_id,product_name').in('item_id', prodIds);
       const nameMap = {};
@@ -13774,7 +13812,7 @@ async function cohortOpenStudentDrawer(userId) {
       switch (ev.event_type) {
         case 'deepdive_open':       return 'Membuka Deep Dive' + (m.product_name ? ' · ' + esc(m.product_name) : '');
         case 'product_saved':       return 'Menyimpan produk ke riset';
-        case 'tracker_plan_update': return 'Memperbarui rencana margin di Tracker';
+        case 'tracker_plan_update': return 'Memperbarui rencana di Tracker';
         case 'community_post':      return 'Mengirim ke feed komunitas';
         case 'milestone_complete':  return 'Menyelesaikan milestone';
         case 'credit_spent':        return 'Menggunakan kredit (' + esc(m.action || 'fitur') + ')';
@@ -13782,23 +13820,36 @@ async function cohortOpenStudentDrawer(userId) {
       }
     };
 
-    title.innerHTML = `<div style="font-size:.8rem;font-weight:800;color:#1A1F3C;line-height:1.2;">${esc(displayName)}</div><div style="font-size:.62rem;color:#9CA3AF;font-weight:400;margin-top:1px;">${esc(c.name || 'Kohort')}</div>`;
+    const avatarHtml = headshotUrl
+      ? `<img src="${esc(headshotUrl)}" alt="" style="width:48px;height:48px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #F3F4F6;">`
+      : `<div style="width:48px;height:48px;border-radius:50%;background:#1A1F3C;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.95rem;flex-shrink:0;">${esc(initials)}</div>`;
+
+    const notesHtml = notes.map(n =>
+      `<div style="position:relative;padding:8px 32px 8px 10px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;font-size:.68rem;color:#374151;line-height:1.45;">
+        ${esc(n.body)}
+        <div style="font-size:.58rem;color:#9CA3AF;margin-top:3px;">${fmtDt(n.created_at)}</div>
+        <button type="button" onclick="cohortDrawerDeleteNote('${esc(n.id)}','${esc(userId)}')" style="position:absolute;top:6px;right:6px;background:none;border:none;color:#9CA3AF;cursor:pointer;font-size:.8rem;line-height:1;padding:2px;" title="Hapus catatan">&#x2715;</button>
+      </div>`
+    ).join('');
+
+    title.innerHTML = `<div>${esc(displayName)}</div><div style="font-size:.62rem;color:#9CA3AF;font-weight:400;margin-top:1px;">${esc(cohortName)}</div>`;
 
     body.innerHTML = `
-      <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #F3F4F6;">
-        <div style="width:44px;height:44px;border-radius:50%;background:#1A1F3C;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.88rem;flex-shrink:0;">${esc(initials)}</div>
+      <div style="display:flex;gap:13px;align-items:center;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #F3F4F6;">
+        ${avatarHtml}
         <div style="flex:1;min-width:0;">
-          <div style="font-weight:800;font-size:.88rem;color:#1A1F3C;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(displayName)}</div>
+          <div style="font-weight:800;font-size:.9rem;color:#1A1F3C;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(displayName)}</div>
           <div style="font-size:.68rem;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(emailAddr) || '—'}</div>
+          ${(school || city) ? `<div style="font-size:.65rem;color:#6B7280;margin-top:1px;">${[school, city].filter(Boolean).map(s => esc(s)).join(' · ')}</div>` : ''}
           <div style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap;">
             <span style="font-size:.58rem;font-weight:700;padding:2px 8px;border-radius:20px;background:${roleBg};color:${roleColor};">${roleLabel}</span>
-            <span style="font-size:.58rem;font-weight:700;padding:2px 8px;border-radius:20px;background:#EFF6FF;color:#1D4ED8;">${esc(c.name || 'Kohort')}</span>
+            <span style="font-size:.58rem;font-weight:700;padding:2px 8px;border-radius:20px;background:#EFF6FF;color:#1D4ED8;">${esc(cohortName)}</span>
           </div>
         </div>
       </div>
 
-      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;font-size:.68rem;color:#6B7280;align-items:center;">
-        ${whatsApp ? `<a href="https://wa.me/${encodeURIComponent(whatsApp.replace(/[^0-9+]/g,''))}" target="_blank" rel="noopener" style="display:inline-flex;gap:4px;align-items:center;color:#1A7A46;font-weight:700;text-decoration:none;"><svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>WhatsApp</a>` : ''}
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;font-size:.68rem;color:#6B7280;align-items:center;">
+        ${whatsApp ? `<a href="https://wa.me/${encodeURIComponent(whatsApp.replace(/[^0-9+]/g,''))}" target="_blank" rel="noopener" style="display:inline-flex;gap:4px;align-items:center;color:#1A7A46;font-weight:700;text-decoration:none;"><svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>WA</a>` : ''}
         ${emailAddr ? `<a href="mailto:${esc(emailAddr)}" style="display:inline-flex;gap:4px;align-items:center;color:#1D4ED8;font-weight:600;text-decoration:none;"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,12 2,6"/></svg>Email</a>` : ''}
         <span>Bergabung: <strong style="color:#374151;">${fmtDate(joinedAt)}</strong></span>
         <span>Terakhir: <strong style="color:#374151;">${fmtDt(lastSeen)}</strong></span>
@@ -13806,16 +13857,16 @@ async function cohortOpenStudentDrawer(userId) {
 
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
         <div style="background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;">
-          <div style="font-size:.54rem;color:#9CA3AF;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Skor</div>
-          <div style="font-size:1.3rem;font-weight:900;color:${scoreClr(score)};">${score.toFixed(0)}</div>
+          <div style="font-size:.52rem;color:#9CA3AF;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Skor</div>
+          <div style="font-size:1.25rem;font-weight:900;color:${scoreClr(score)};">${score.toFixed(0)}</div>
         </div>
         <div style="background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;">
-          <div style="font-size:.54rem;color:#9CA3AF;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Aktivitas</div>
-          <div style="font-size:1.3rem;font-weight:900;color:#1A1F3C;">${eventCount}</div>
+          <div style="font-size:.52rem;color:#9CA3AF;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Aktivitas</div>
+          <div style="font-size:1.25rem;font-weight:900;color:#1A1F3C;">${eventCount}</div>
         </div>
         <div style="background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;">
-          <div style="font-size:.54rem;color:#9CA3AF;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Milestone</div>
-          <div style="font-size:1.3rem;font-weight:900;color:#1A1F3C;">${doneCount}<span style="font-size:.68rem;font-weight:600;color:#9CA3AF;">/${totalMs}</span></div>
+          <div style="font-size:.52rem;color:#9CA3AF;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Milestone</div>
+          <div style="font-size:1.25rem;font-weight:900;color:#1A1F3C;">${doneCount}<span style="font-size:.65rem;font-weight:600;color:#9CA3AF;">/${totalMs}</span></div>
         </div>
       </div>
 
@@ -13824,15 +13875,19 @@ async function cohortOpenStudentDrawer(userId) {
           <div style="font-size:.7rem;font-weight:700;color:#374151;">Progress Program</div>
           <div style="font-size:.65rem;color:#6B7280;font-weight:600;">${progPct}%</div>
         </div>
-        <div style="height:6px;background:#F3F4F6;border-radius:3px;overflow:hidden;margin-bottom:8px;">
+        <div style="height:6px;background:#F3F4F6;border-radius:3px;overflow:hidden;margin-bottom:6px;">
           <div style="height:6px;background:${progPct >= 80 ? '#10B981' : progPct >= 40 ? '#F59E0B' : '#E8442A'};border-radius:3px;width:${progPct}%;"></div>
         </div>
-        ${totalMs > 0
-          ? `<div style="display:flex;flex-wrap:wrap;gap:4px;">${(allMs || []).map(m => {
+        ${totalMs > 0 ? `
+        <div class="cohort-drawer-notes">
+          <details>
+            <summary>Detail milestone</summary>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">${allMs.map(m => {
               const done = doneSet.has(m.id);
-              return `<span style="font-size:.58rem;padding:2px 7px;border-radius:4px;font-weight:600;background:${done ? '#ECFDF5' : '#F3F4F6'};color:${done ? '#1A7A46' : '#9CA3AF'};">${done ? '&#10003; ' : ''}${esc(m.title)}</span>`;
-            }).join('')}</div>`
-          : '<span style="font-size:.68rem;color:#9CA3AF;">Belum ada milestone di kohort ini.</span>'}
+              return `<span style="font-size:.58rem;padding:2px 8px;border-radius:4px;font-weight:600;background:${done ? '#ECFDF5' : '#F3F4F6'};color:${done ? '#1A7A46' : '#9CA3AF'};">${done ? '&#10003; ' : ''}${esc(m.title)}</span>`;
+            }).join('')}</div>
+          </details>
+        </div>` : '<span style="font-size:.68rem;color:#9CA3AF;">Belum ada milestone.</span>'}
       </div>
 
       <div style="margin-bottom:14px;">
@@ -13842,16 +13897,90 @@ async function cohortOpenStudentDrawer(userId) {
           : '<span style="font-size:.68rem;color:#9CA3AF;">Belum ada produk tersimpan.</span>'}
       </div>
 
-      <div>
+      <div style="margin-bottom:16px;">
         <div style="font-size:.7rem;font-weight:700;color:#374151;margin-bottom:6px;">Aktivitas Terbaru</div>
-        ${(recentEvs || []).length
-          ? `<div style="display:flex;flex-direction:column;gap:3px;">${(recentEvs || []).map(e => `<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 8px;background:#F9FAFB;border-radius:5px;"><span style="font-size:.67rem;color:#374151;">${actLabel(e)}</span><span style="font-size:.62rem;color:#9CA3AF;white-space:nowrap;flex-shrink:0;">${fmtDt(e.created_at)}</span></div>`).join('')}</div>`
+        ${recentEvs.length
+          ? `<div style="display:flex;flex-direction:column;gap:3px;">${recentEvs.map(e => `<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 8px;background:#F9FAFB;border-radius:5px;"><span style="font-size:.67rem;color:#374151;">${actLabel(e)}</span><span style="font-size:.62rem;color:#9CA3AF;white-space:nowrap;flex-shrink:0;">${fmtDt(e.created_at)}</span></div>`).join('')}</div>`
           : '<span style="font-size:.68rem;color:#9CA3AF;">Belum ada aktivitas terbaru.</span>'}
-      </div>`;
+      </div>
+
+      ${c ? `
+      <div style="border-top:1px solid #F3F4F6;padding-top:14px;margin-bottom:14px;">
+        <div style="font-size:.7rem;font-weight:700;color:#374151;margin-bottom:8px;">Catatan Pribadi <span style="color:#9CA3AF;font-weight:400;font-size:.62rem;">(hanya kamu yang lihat)</span></div>
+        <div id="cohort-drawer-notes-list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px;">${notesHtml || '<span style="font-size:.68rem;color:#9CA3AF;">Belum ada catatan.</span>'}</div>
+        <div style="display:flex;gap:6px;">
+          <textarea id="cohort-drawer-note-inp" rows="2" class="cohort-input" style="margin:0;flex:1;font-size:.72rem;resize:none;" placeholder="Tambah catatan tentang siswa ini…"></textarea>
+          <button type="button" class="cohort-btn" style="padding:6px 12px;font-size:.65rem;align-self:flex-end;" onclick="cohortDrawerSaveNote('${esc(userId)}')">Simpan</button>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid #F3F4F6;padding-top:14px;">
+        <div style="font-size:.7rem;font-weight:700;color:#374151;margin-bottom:8px;">Kirim Pesan ke Siswa</div>
+        <textarea id="cohort-drawer-msg-inp" rows="2" class="cohort-input" style="margin:0 0 8px;font-size:.72rem;resize:none;" placeholder="Tulis pesan…"></textarea>
+        <div id="cohort-drawer-msg-status" style="font-size:.65rem;color:#9CA3AF;margin-bottom:6px;display:none;"></div>
+        <button type="button" class="cohort-btn" style="padding:7px 16px;font-size:.68rem;" onclick="cohortDrawerSendMsg('${esc(userId)}')">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline;margin-right:4px;vertical-align:-1px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Kirim Pesan
+        </button>
+      </div>` : ''}`;
 
   } catch (e) {
     console.warn('cohortOpenStudentDrawer error', e);
     body.innerHTML = `<span class="cohort-muted" style="font-size:.75rem;">Gagal memuat profil: ${_cohortEsc((e.message || '').slice(0,100))}</span>`;
+  }
+}
+
+async function cohortDrawerSaveNote(userId) {
+  const c = _cohortState.primaryMentorCohort;
+  const inp = document.getElementById('cohort-drawer-note-inp');
+  const body = (inp?.value || '').trim();
+  if (!c || !body || !_supabase || !currentUser) return;
+  inp.disabled = true;
+  const { error } = await _supabase.from('cohort_student_notes').insert({
+    cohort_id: c.id, author_user_id: currentUser.id, student_user_id: userId, body,
+  });
+  inp.disabled = false;
+  if (!error) { inp.value = ''; await cohortDrawerRefreshNotes(userId); }
+}
+
+async function cohortDrawerDeleteNote(noteId, userId) {
+  if (!_supabase) return;
+  await _supabase.from('cohort_student_notes').delete().eq('id', noteId);
+  await cohortDrawerRefreshNotes(userId);
+}
+
+async function cohortDrawerRefreshNotes(userId) {
+  const c = _cohortState.primaryMentorCohort;
+  const el = document.getElementById('cohort-drawer-notes-list');
+  if (!c || !el || !_supabase) return;
+  const { data } = await _supabase.from('cohort_student_notes').select('id,body,created_at').eq('cohort_id', c.id).eq('student_user_id', userId).order('created_at', { ascending: false });
+  const esc   = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const fmtDt = s => { try { return new Date(s).toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); } catch { return s.slice(0,16); } };
+  el.innerHTML = (data || []).map(n =>
+    `<div style="position:relative;padding:8px 32px 8px 10px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;font-size:.68rem;color:#374151;line-height:1.45;">
+      ${esc(n.body)}
+      <div style="font-size:.58rem;color:#9CA3AF;margin-top:3px;">${fmtDt(n.created_at)}</div>
+      <button type="button" onclick="cohortDrawerDeleteNote('${esc(n.id)}','${esc(userId)}')" style="position:absolute;top:6px;right:6px;background:none;border:none;color:#9CA3AF;cursor:pointer;font-size:.8rem;line-height:1;padding:2px;" title="Hapus">&#x2715;</button>
+    </div>`
+  ).join('') || '<span style="font-size:.68rem;color:#9CA3AF;">Belum ada catatan.</span>';
+}
+
+async function cohortDrawerSendMsg(userId) {
+  const c = _cohortState.primaryMentorCohort;
+  const inp = document.getElementById('cohort-drawer-msg-inp');
+  const st  = document.getElementById('cohort-drawer-msg-status');
+  const body = (inp?.value || '').trim();
+  if (!c || !body || !_supabase || !currentUser) return;
+  const btn = inp?.nextElementSibling;
+  if (btn) btn.disabled = true;
+  const { error } = await _supabase.from('mentor_messages').insert({
+    cohort_id: c.id, from_user_id: currentUser.id, to_user_id: userId, body,
+  });
+  if (btn) btn.disabled = false;
+  if (!error) {
+    if (inp) inp.value = '';
+    if (st) { st.textContent = 'Pesan terkirim!'; st.style.color = '#1A7A46'; st.style.display = 'block'; setTimeout(() => { st.style.display = 'none'; }, 3000); }
+  } else {
+    if (st) { st.textContent = error.message || 'Gagal kirim.'; st.style.color = '#E8442A'; st.style.display = 'block'; }
   }
 }
 
@@ -23021,8 +23150,8 @@ async function ldrGroupLoadMembers(groupId) {
     const memberRows = members.length
       ? members.map(m => `
           <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #F3F4F6;">
-            <div>
-              <span style="font-size:.78rem;font-weight:600;color:#1A1F3C;">${esc(m.display_name)}</span>
+            <div style="cursor:pointer;" onclick="cohortOpenStudentDrawer('${m.user_id}')">
+              <span style="font-size:.78rem;font-weight:600;color:#1A1F3C;">${esc(m.display_name || m.email)}</span>
               <span style="font-size:.65rem;color:#6B7280;margin-left:5px;">${esc(m.email)}</span>
             </div>
             <button type="button" class="cohort-btn secondary" style="padding:3px 8px;font-size:.62rem;color:#E8442A;border-color:#E8442A;" onclick="ldrGroupRemoveMember('${groupId}','${m.user_id}')">Hapus</button>
@@ -23121,7 +23250,7 @@ async function hbdSiswaProgressLoad(force) {
                 <input type="checkbox" class="hbd-stu-chk" data-uid="${esc(s.user_id)}" data-email="${esc(s.email)}"
                   onchange="hbdUpdateSelCount()" style="cursor:pointer;" ${s.status !== 'active' ? 'disabled title="Hanya siswa aktif yang bisa ditambah ke grup"' : ''}>
               </td>
-              <td style="padding:8px 10px;font-weight:600;color:#1A1F3C;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(s.display_name || s.email)}</td>
+              <td style="padding:8px 10px;font-weight:600;color:#1A1F3C;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" onclick="cohortOpenStudentDrawer('${esc(s.user_id)}')">${esc(s.display_name || s.email)}</td>
               <td style="padding:8px 10px;color:#6B7280;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(s.email)}</td>
               <td style="padding:8px 10px;text-align:center;">${statusBadge(s.status)}</td>
               <td style="padding:8px 10px;text-align:right;font-weight:700;color:#1A1F3C;">${Math.round(s.engagement_score || 0)}</td>
