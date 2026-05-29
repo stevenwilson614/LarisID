@@ -6002,6 +6002,42 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
             </div>
 
+            <!-- student journey (two-track) -->
+            <div id="hbd-journey-wrap" style="display:none;margin-bottom:20px;">
+              <div class="hbd-card" style="margin-bottom:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+                  <div>
+                    <div class="hbd-card-title">Level kamu</div>
+                    <div class="hbd-card-sub" id="hbd-level-sub">—</div>
+                  </div>
+                  <div id="hbd-level-badge" style="font-size:.72rem;font-weight:800;padding:5px 12px;border-radius:20px;background:#EEF2FF;color:#3730A3;white-space:nowrap;">—</div>
+                </div>
+                <div style="margin-top:12px;">
+                  <div style="background:#F3F4F6;border-radius:999px;height:9px;overflow:hidden;">
+                    <div id="hbd-level-bar" style="width:0%;height:100%;background:linear-gradient(90deg,#7C3AED,#0EA5E9);transition:width .4s;"></div>
+                  </div>
+                  <div id="hbd-level-next" class="hbd-card-sub" style="margin-top:6px;">—</div>
+                </div>
+              </div>
+              <div class="hbd-card" id="hbd-nextaction-card" style="margin-bottom:14px;display:none;background:linear-gradient(135deg,#FFF7ED,#FFFBEB);border:1px solid #FED7AA;">
+                <div class="hbd-card-title">Minggu ini</div>
+                <div class="hbd-card-sub" id="hbd-nextaction-text" style="margin-bottom:10px;">—</div>
+                <button type="button" class="cohort-btn" id="hbd-nextaction-btn" style="display:none;" onclick="hbdJourneyNextAction()">Mulai →</button>
+              </div>
+              <div class="hbd-two-col" style="margin-bottom:0;">
+                <div class="hbd-card">
+                  <div class="hbd-card-title" style="display:flex;align-items:center;gap:7px;"><span style="width:9px;height:9px;border-radius:50%;background:#7C3AED;"></span>Soft Skill</div>
+                  <div class="hbd-card-sub">Jalur mentor soft skill</div>
+                  <div id="hbd-track-soft" style="margin-top:8px;"></div>
+                </div>
+                <div class="hbd-card">
+                  <div class="hbd-card-title" style="display:flex;align-items:center;gap:7px;"><span style="width:9px;height:9px;border-radius:50%;background:#0EA5E9;"></span>Business Skill</div>
+                  <div class="hbd-card-sub">Jalur mentor business skill</div>
+                  <div id="hbd-track-biz" style="margin-top:8px;"></div>
+                </div>
+              </div>
+            </div>
+
             <!-- stats -->
             <div class="hbd-stats-row" id="hbd-stats-row">
               <div class="hbd-stat">
@@ -18315,6 +18351,103 @@ async function hbdRenderCohortDigest() {
   } else {
     recEl.innerHTML = recHtml;
   }
+  void hbdRenderJourney(pcid);
+}
+
+// ── Student journey: two-track checklist, level, next-action ─────
+const HBD_LEVELS = [
+  { key: 'explorer',     name: 'Explorer',      min: 0,  blurb: 'Mulai menjelajah dan melacak produk.' },
+  { key: 'first_sale',   name: 'First Sale',    min: 4,  blurb: 'Validasi produk dan siapkan penjualan pertama.' },
+  { key: 'market_hunter',name: 'Market Hunter', min: 8,  blurb: 'Analisa pasar lebih dalam dan susun rencana.' },
+  { key: 'top_seller',   name: 'Top Seller',    min: 11, blurb: 'Bisnis berjalan dan bertumbuh.' },
+];
+
+async function hbdRenderJourney(cohortId) {
+  const wrap = document.getElementById('hbd-journey-wrap');
+  if (!wrap) return;
+  if (!cohortId || !_supabase || !currentUser) { wrap.style.display = 'none'; return; }
+
+  const [{ data: ms }, { data: done }] = await Promise.all([
+    _supabase.from('milestones').select('id,title,track,sort_order').eq('cohort_id', cohortId).order('sort_order', { ascending: true }),
+    _supabase.from('user_milestone_progress').select('milestone_id').eq('user_id', currentUser.id),
+  ]);
+  if (!(ms || []).length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  const doneSet = new Set((done || []).map(d => d.milestone_id));
+  const doneCount = (ms || []).filter(m => doneSet.has(m.id)).length;
+
+  function renderTrack(track, elId) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const items = (ms || []).filter(m => m.track === track);
+    if (!items.length) { el.innerHTML = '<div class="cohort-muted" style="font-size:.72rem;">Belum ada milestone.</div>'; return; }
+    let unlockedNext = false;
+    el.innerHTML = items.map(m => {
+      const ok = doneSet.has(m.id);
+      let state, mark;
+      if (ok) { state = '#1A7A46'; mark = '✓'; }
+      else if (!unlockedNext) { unlockedNext = true; state = '#E8442A'; mark = '→'; }
+      else { state = '#D1D5DB'; mark = '○'; }
+      return `<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;font-size:.74rem;">
+        <span style="flex:0 0 auto;color:${state};font-weight:800;width:14px;">${mark}</span>
+        <span style="flex:1;${ok ? 'color:#6B7280;text-decoration:line-through;' : 'color:#374151;'}">${_cohortEsc(m.title)}</span>
+      </div>`;
+    }).join('');
+  }
+  renderTrack('soft_skill', 'hbd-track-soft');
+  renderTrack('business_skill', 'hbd-track-biz');
+
+  // Level
+  let level = HBD_LEVELS[0], nextLevel = null;
+  for (let i = 0; i < HBD_LEVELS.length; i++) {
+    if (doneCount >= HBD_LEVELS[i].min) { level = HBD_LEVELS[i]; nextLevel = HBD_LEVELS[i + 1] || null; }
+  }
+  const badge = document.getElementById('hbd-level-badge');
+  const sub = document.getElementById('hbd-level-sub');
+  const bar = document.getElementById('hbd-level-bar');
+  const nextEl = document.getElementById('hbd-level-next');
+  if (badge) badge.textContent = level.name;
+  if (sub) sub.textContent = level.blurb;
+  if (nextLevel) {
+    const span = nextLevel.min - level.min;
+    const within = Math.max(0, doneCount - level.min);
+    const pct = span > 0 ? Math.min(100, Math.round((within / span) * 100)) : 100;
+    if (bar) bar.style.width = pct + '%';
+    if (nextEl) nextEl.textContent = `${nextLevel.min - doneCount} milestone lagi menuju ${nextLevel.name}`;
+  } else {
+    if (bar) bar.style.width = '100%';
+    if (nextEl) nextEl.textContent = 'Level tertinggi tercapai — pertahankan momentum!';
+  }
+
+  // Next action: lowest sort_order incomplete milestone.
+  const next = (ms || []).find(m => !doneSet.has(m.id));
+  const card = document.getElementById('hbd-nextaction-card');
+  const txt = document.getElementById('hbd-nextaction-text');
+  const btn = document.getElementById('hbd-nextaction-btn');
+  if (next && card && txt && btn) {
+    card.style.display = 'block';
+    txt.textContent = next.title;
+    const dest = hbdJourneyDestFor(next);
+    _hbdNextActionDest = dest.view;
+    btn.style.display = dest.view ? 'inline-flex' : 'none';
+    btn.textContent = dest.label;
+  } else if (card) {
+    card.style.display = 'none';
+  }
+}
+
+let _hbdNextActionDest = null;
+function hbdJourneyDestFor(m) {
+  const t = (m.title || '').toLowerCase();
+  const k = (m.milestone_key || '').toLowerCase();
+  if (k.includes('track') || k.includes('deep_dive') || t.includes('produk') || t.includes('discover')) return { view: 'discover', label: 'Buka Discover →' };
+  if (k.includes('unit_economics') || t.includes('kalkulator') || t.includes('hitung')) return { view: 'ai', label: 'Buka Kalkulator →' };
+  if (k.includes('business_plan') || t.includes('rencana')) return { view: 'ai', label: 'Buka Rencana Bisnis →' };
+  if (k.startsWith('ss') || t.includes('feed') || t.includes('komunitas') || t.includes('pertanyaan')) return { view: 'cohort', label: 'Buka Kohort →' };
+  return { view: '', label: '' };
+}
+function hbdJourneyNextAction() {
+  if (_hbdNextActionDest && typeof switchDashView === 'function') switchDashView(_hbdNextActionDest);
 }
 
 function _hbdBuildChartFromTracked(prods) {
