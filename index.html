@@ -1464,12 +1464,12 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .lp-hero{background:#1A1F3C;position:relative;overflow:hidden;}
 .lp-hero::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.04) 1px,transparent 1px);background-size:28px 28px;pointer-events:none;}
 .lp-hero-inner{display:grid;grid-template-columns:1.1fr 0.9fr;gap:56px;align-items:center;padding:80px 80px 72px;max-width:1240px;margin:0 auto;position:relative;z-index:1;}
-@media(max-width:960px){.lp-hero-inner{grid-template-columns:1fr;padding:56px 28px 48px;gap:40px;}}
+@media(max-width:1100px){.lp-hero-inner{grid-template-columns:1fr;padding:56px 28px 48px;gap:40px;}}
 .lp-hero-community-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.85);font-size:.74rem;font-weight:600;padding:5px 14px;border-radius:20px;margin-bottom:22px;}
 .lp-hero-community-badge span{color:#F5A623;font-weight:700;}
 .lp-hero h1{font-family:var(--font-display);font-size:3.4rem;font-weight:800;color:#fff;line-height:1.1;margin:0 0 20px;letter-spacing:-.02em;}
 .lp-hero h1 .lp-hero-accent{color:#E8442A;}
-@media(max-width:960px){.lp-hero h1{font-size:2.4rem;}}
+@media(max-width:1100px){.lp-hero h1{font-size:2.4rem;}}
 @media(max-width:500px){.lp-hero h1{font-size:2rem;}}
 .lp-hero-sub{font-size:1rem;color:rgba(255,255,255,.65);line-height:1.65;margin-bottom:32px;max-width:480px;}
 .lp-hero-btns{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:28px;}
@@ -1603,10 +1603,10 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .lp-hero-photo-wrap::after{content:'';position:absolute;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(245,166,35,.14) 0%,transparent 70%);top:20%;right:10%;z-index:0;pointer-events:none;}
 .lp-hero-circle-sm{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(232,68,42,.1) 0%,transparent 70%);pointer-events:none;z-index:0;}
 .lp-hero-photo{width:100%;max-width:440px;margin:0 auto;display:block;object-fit:cover;position:relative;z-index:1;}
-@media(max-width:960px){.lp-hero-photo{max-width:100%;}}
+@media(max-width:1100px){.lp-hero-photo{max-width:100%;}}
 /* Extra product card floats */
 .lp-hero-float-score{bottom:20px;right:-16px;z-index:3;width:140px;text-align:center;}
-@media(max-width:960px){.lp-hero-float-score{right:0;}}
+@media(max-width:1100px){.lp-hero-float-score{right:0;}}
 /* Orange banner */
 .lp-banner-cta{background:linear-gradient(135deg,#E8442A 0%,#C23520 100%);border-radius:20px;margin:0 40px;overflow:hidden;position:relative;display:grid;grid-template-columns:1fr auto;align-items:center;min-height:140px;}
 @media(max-width:900px){.lp-banner-cta{margin:0 20px;grid-template-columns:1fr;}}
@@ -1626,7 +1626,7 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .lp-banner-wrap{padding:0 0 48px;background:#fff;}
 .lp-hero-float{position:absolute;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12);padding:12px 14px;}
 .lp-hero-float-top{top:8px;right:-16px;width:210px;z-index:3;}
-@media(max-width:960px){.lp-hero-float-top{right:0;top:8px;width:180px;}}
+@media(max-width:1100px){.lp-hero-float-top{right:0;top:8px;width:180px;}}
 .lp-hero-float-title{font-size:.62rem;font-weight:800;color:#1A1F3C;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em;}
 .lp-hero-float-product{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
 .lp-hero-float-product:last-child{margin-bottom:0;}
@@ -1634,16 +1634,17 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .lp-hero-float-prod-name{font-size:.6rem;font-weight:700;color:#1A1F3C;line-height:1.3;}
 .lp-hero-float-prod-tag{font-size:.55rem;color:#10B981;font-weight:600;display:flex;align-items:center;gap:2px;}
 .lp-hero-float-trend{top:auto;bottom:80px;right:-16px;width:170px;z-index:3;}
-@media(max-width:960px){.lp-hero-float-trend{right:0;}}
+@media(max-width:1100px){.lp-hero-float-trend{right:0;}}
 .lp-hero-float-trend-num{font-family:var(--font-display);font-size:1.4rem;font-weight:800;color:#E8442A;margin-bottom:2px;}
 .lp-hero-float-trend-lbl{font-size:.58rem;color:#9CA3AF;}
 .lp-hero-float-badge{position:absolute;bottom:24px;left:24px;background:#1A1F3C;color:#fff;border-radius:20px;padding:8px 14px;font-size:.68rem;font-weight:700;display:flex;align-items:center;gap:6px;z-index:3;}
 /* Trust bar */
 .lp-trust-bar{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 80px;border-bottom:1px solid #F0EDE8;background:#F7F6F3;flex-wrap:wrap;}
 @media(max-width:900px){.lp-trust-bar{padding:20px 28px;}}
-.lp-trust-unis-lbl{font-size:.68rem;color:#9CA3AF;margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
+.lp-trust-unis-lbl{font-size:.7rem;color:#6B7280;margin-bottom:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
 .lp-trust-uni-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.lp-uni-chip{display:inline-block;padding:4px 12px;border:1px solid #E5E7EB;border-radius:20px;font-size:.7rem;font-weight:700;color:#374151;background:#fff;}
+.lp-uni-chip{display:inline-block;padding:5px 13px;border:1px solid #E5E7EB;border-radius:20px;font-size:.78rem;font-weight:700;color:#1F2937;background:#fff;}
+.lp-trust-note{flex-basis:100%;font-size:.68rem;color:#9CA3AF;line-height:1.5;margin-top:4px;}
 .lp-trust-stats{display:flex;gap:24px;flex-wrap:wrap;}
 @media(max-width:700px){.lp-trust-stats{gap:16px;}}
 .lp-trust-stat{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:60px;}
@@ -1668,7 +1669,7 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .lp-solution-section .lp-section-title{max-width:600px;margin:0 auto 10px;}
 .lp-solution-section .lp-section-sub{max-width:560px;margin:0 auto;}
 .lp-solution-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:40px;}
-@media(max-width:900px){.lp-solution-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:1024px){.lp-solution-grid{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:480px){.lp-solution-grid{grid-template-columns:1fr;}}
 .lp-solution-card{background:#fff;border-radius:16px;padding:18px;border:1px solid #F0EDE8;text-align:left;}
 .lp-solution-mockup{background:#F7F6F3;border-radius:8px;padding:12px;margin-bottom:14px;min-height:90px;display:flex;flex-direction:column;justify-content:center;}
@@ -1686,11 +1687,40 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .lp-step-icon{width:68px;height:68px;background:#FFF0ED;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:14px;color:#E8442A;}
 .lp-step h4{font-size:.8rem;font-weight:700;color:#1A1F3C;margin-bottom:6px;line-height:1.3;}
 .lp-step p{font-size:.7rem;color:#6B7280;line-height:1.5;}
+/* How-it-works: circular "journey" nodes to differentiate from solution cards */
+.lp-step-icon{box-shadow:0 0 0 6px #FFF5F2,0 8px 20px rgba(232,68,42,.12);}
+/* ── DEEP DIVE TEASER (lifts the sample analysis higher in the flow) ── */
+.lp-dd-teaser-section{background:#F7F6F3;padding:64px 80px;}
+@media(max-width:1100px){.lp-dd-teaser-section{padding:48px 28px;}}
+@media(max-width:700px){.lp-dd-teaser-section{padding:44px 20px;}}
+.lp-dd-teaser{max-width:1060px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;}
+@media(max-width:1100px){.lp-dd-teaser{grid-template-columns:1fr;gap:28px;}}
+.lp-dd-teaser-title{font-family:var(--font-display);font-size:1.8rem;font-weight:800;color:#1A1F3C;line-height:1.2;margin:0 0 12px;letter-spacing:-.01em;}
+@media(max-width:700px){.lp-dd-teaser-title{font-size:1.4rem;}}
+.lp-dd-teaser-sub{font-size:.92rem;color:#6B7280;line-height:1.65;margin:0 0 22px;max-width:460px;}
+.lp-dd-teaser-card{background:#fff;border:1px solid #F0EDE8;border-radius:16px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.06);}
+.lp-dd-teaser-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;}
+.lp-dd-teaser-name{font-size:.95rem;font-weight:800;color:#1A1F3C;line-height:1.25;}
+.lp-dd-teaser-cat{font-size:.74rem;color:#9CA3AF;margin-top:3px;}
+.lp-dd-teaser-score{font-family:var(--font-display);font-size:2rem;font-weight:800;color:#1A7A46;line-height:1;flex-shrink:0;}
+.lp-dd-teaser-score span{font-size:.8rem;color:#9CA3AF;font-weight:600;}
+.lp-dd-teaser-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+.lp-dd-teaser-metrics>div{background:#F7F6F3;border-radius:8px;padding:10px;}
+.lp-dd-teaser-metrics span{display:block;font-size:.66rem;color:#9CA3AF;margin-bottom:3px;}
+.lp-dd-teaser-metrics b{font-size:.9rem;color:#1A1F3C;}
+.lp-dd-teaser-bar{height:6px;background:#F3F4F6;border-radius:3px;overflow:hidden;margin-bottom:8px;}
+.lp-dd-teaser-bar>div{height:100%;width:87%;background:linear-gradient(90deg,#F5A623,#1A7A46);border-radius:3px;}
+.lp-dd-teaser-note{font-size:.74rem;color:#1A7A46;font-weight:600;}
+/* Features: compact spacing on mobile to reduce scroll depth */
+@media(max-width:700px){
+  .lp-feature-row{margin-bottom:40px;gap:18px;}
+  .lp-phone{width:184px;}
+}
 /* Community section */
 .lp-community-section{background:#E8442A;padding:80px 80px;overflow:hidden;}
 @media(max-width:900px){.lp-community-section{padding:56px 28px;}}
 .lp-community-inner{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;}
-@media(max-width:900px){.lp-community-inner{grid-template-columns:1fr;gap:36px;}}
+@media(max-width:1100px){.lp-community-inner{grid-template-columns:1fr;gap:36px;}}
 .lp-community-left h2{font-family:var(--font-display);font-size:2.4rem;font-weight:800;color:#fff;margin-bottom:16px;letter-spacing:-.01em;line-height:1.15;}
 @media(max-width:700px){.lp-community-left h2{font-size:1.8rem;}}
 .lp-community-left p{color:rgba(255,255,255,.85);line-height:1.65;margin-bottom:28px;font-size:.95rem;}
@@ -1757,7 +1787,7 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .lp-fitur-wrap{padding:80px 40px;max-width:1200px;margin:0 auto;}
 @media(max-width:860px){.lp-fitur-wrap{padding:48px 20px;}}
 .lp-fitur-hero{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;margin-bottom:72px;}
-@media(max-width:860px){.lp-fitur-hero{grid-template-columns:1fr;gap:32px;}}
+@media(max-width:1100px){.lp-fitur-hero{grid-template-columns:1fr;gap:32px;}}
 .lp-fitur-eyebrow{display:inline-flex;align-items:center;gap:6px;background:#FFF0ED;color:#E8442A;font-size:.72rem;font-weight:700;padding:4px 12px;border-radius:20px;margin-bottom:14px;}
 .lp-fitur-hero-title{font-size:2rem;font-weight:900;color:#1A1F3C;line-height:1.22;margin-bottom:12px;}
 .lp-fitur-hero-title span{color:#E8442A;}
@@ -1769,10 +1799,10 @@ body.in-dashboard .mobile-menu{display:none!important;}
 /* Feature rows */
 .lp-feature-row{display:grid;grid-template-columns:1fr 1fr;gap:52px;align-items:center;margin-bottom:64px;}
 .lp-feature-row:last-child{margin-bottom:0;}
-@media(max-width:860px){.lp-feature-row{grid-template-columns:1fr;gap:24px;}}
+@media(max-width:1100px){.lp-feature-row{grid-template-columns:1fr;gap:24px;}}
 .lp-feature-row.rev{direction:rtl;}
 .lp-feature-row.rev>*{direction:ltr;}
-@media(max-width:860px){.lp-feature-row.rev{direction:ltr;}}
+@media(max-width:1100px){.lp-feature-row.rev{direction:ltr;}}
 .lp-feat-num{width:32px;height:32px;border-radius:50%;background:#FFF0ED;color:#E8442A;font-size:.75rem;font-weight:900;display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
 .lp-feat-icon-bg{width:50px;height:50px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:1.4rem;}
 .lp-feat-title{font-size:1.1rem;font-weight:900;color:#1A1F3C;margin-bottom:7px;}
@@ -1812,6 +1842,31 @@ body.in-dashboard .mobile-menu{display:none!important;}
 @media(max-width:860px){.lp-plans{grid-template-columns:1fr;max-width:440px;}}
 .lp-plan{background:#fff;border:1.5px solid #E5E7EB;border-radius:18px;padding:28px 24px;position:relative;}
 .lp-plan.popular{border-color:#E8442A;box-shadow:0 8px 32px rgba(232,68,42,.13);}
+/* ── MOBILE LANDING ENHANCEMENTS ── */
+.lp-mobile-cta{display:none;}
+@media(max-width:700px){
+  /* Sticky bottom CTA bar (landing only) */
+  .lp-mobile-cta{position:fixed;left:0;right:0;bottom:0;z-index:300;display:flex;align-items:center;gap:12px;padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.98);backdrop-filter:blur(8px);border-top:1px solid #F0EDE8;box-shadow:0 -4px 20px rgba(0,0,0,.10);}
+  .lp-mobile-cta-info{flex:1;min-width:0;}
+  .lp-mobile-cta-info b{display:block;font-size:.82rem;font-weight:800;color:#1A1F3C;line-height:1.2;}
+  .lp-mobile-cta-info span{font-size:.66rem;color:#6B7280;}
+  .lp-mobile-cta-btn{flex-shrink:0;background:#E8442A;color:#fff;font-weight:800;font-size:.88rem;padding:12px 22px;border-radius:10px;border:none;font-family:inherit;box-shadow:0 4px 16px rgba(232,68,42,.35);cursor:pointer;}
+  .lp-page{padding-bottom:76px;}
+  /* Lift feedback FAB above the sticky CTA on the landing page */
+  body:has(#page-landing.active) #fb-float{bottom:86px;}
+  /* Trust stats as a 2x2 grid with larger numerals */
+  .lp-trust-bar{flex-direction:column;align-items:flex-start;gap:18px;}
+  .lp-trust-stats{display:grid;grid-template-columns:1fr 1fr;gap:18px 12px;width:100%;}
+  .lp-trust-stat-num{font-size:1.45rem;}
+  .lp-trust-stat-lbl{font-size:.66rem;}
+  /* Pricing: most-popular first, free tier immediately below */
+  .lp-plan.popular{order:-1;}
+  /* Simplify hero floating cards: keep one (score), hide the rest */
+  .lp-hero-float-top,.lp-hero-float-trend,.lp-hero-float-badge{display:none;}
+  /* Tighten section padding to reduce scroll depth */
+  .lp-problem-section,.lp-solution-section,.lp-steps-section,.lp-community-section,.lp-cta-section{padding:44px 20px;}
+  .lp-fitur-wrap{padding:40px 18px;}
+}
 .lp-plan-badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:#E8442A;color:#fff;font-size:.7rem;font-weight:800;padding:4px 18px;border-radius:20px;white-space:nowrap;letter-spacing:.03em;}
 .lp-plan-name{font-size:1.1rem;font-weight:900;color:#1A1F3C;margin-bottom:3px;}
 .lp-plan-tagline{font-size:.78rem;color:#6B7280;margin-bottom:18px;}
@@ -3506,7 +3561,6 @@ html,body{overflow-x:hidden;max-width:100%;}
           <div class="lp-hero-badge">🇮🇩 Dibuat untuk penjual Shopee Indonesia</div>
           <h1>Siapapun Bisa<br>Mulai Jualan<br><span class="lp-hero-accent">Online.</span></h1>
           <p class="lp-hero-sub">LarisID membantu kamu menemukan produk yang sudah dicari banyak orang di Shopee, menggunakan data real-time.</p>
-          <p style="font-size:.82rem;color:#9CA3AF;margin-bottom:28px;margin-top:-10px;">Dibuat untuk mahasiswa, side hustler, dan pemula yang ingin mulai bisnis lebih cerdas.</p>
           <div class="lp-hero-btns">
             <button class="lp-hero-btn-primary" onclick="openAuthModal('signup')">Temukan Produk Terlaris
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:6px;vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
@@ -3515,7 +3569,11 @@ html,body{overflow-x:hidden;max-width:100%;}
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:5px;vertical-align:middle;"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
             </button>
           </div>
-          <p style="font-size:.74rem;color:#9CA3AF;margin-top:14px;">Dipercaya oleh seller awal dan mahasiswa wirausaha di Indonesia.</p>
+          <p style="font-size:.82rem;color:#4B5563;font-weight:600;margin-top:16px;display:flex;align-items:center;gap:7px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A7A46" stroke-width="2.6" style="flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+            Gratis 5 kredit setiap bulan &middot; tanpa kartu kredit
+          </p>
+          <p style="font-size:.78rem;color:#6B7280;margin-top:8px;line-height:1.5;">Dibuat untuk mahasiswa, side hustler &amp; pemula — dipercaya seller awal dan komunitas kampus di Indonesia.</p>
         </div>
 
         <!-- RIGHT: person photo + floating UI cards -->
@@ -3588,7 +3646,7 @@ html,body{overflow-x:hidden;max-width:100%;}
           <span class="lp-uni-chip">UGM</span>
           <span class="lp-uni-chip">ITB Bandung</span>
           <span class="lp-uni-chip">Telkom University</span>
-          <span style="font-size:.7rem;color:#9CA3AF;">dan banyak lagi</span>
+          <span style="font-size:.74rem;color:#6B7280;">dan banyak lagi</span>
         </div>
       </div>
       <div class="lp-trust-stats">
@@ -3613,6 +3671,7 @@ html,body{overflow-x:hidden;max-width:100%;}
           <div class="lp-trust-stat-lbl">Data Shopee</div>
         </div>
       </div>
+      <div class="lp-trust-note">Angka berdasarkan data publik Shopee yang diperbarui setiap minggu. LarisID masih dalam tahap Beta &mdash; kami menampilkan apa adanya, bukan menjanjikan hasil pasti.</div>
     </div>
 
     <!-- ── PROBLEM SECTION ── -->
@@ -3758,6 +3817,34 @@ html,body{overflow-x:hidden;max-width:100%;}
           </div>
           <h4>Mulai jual dengan percaya diri</h4>
           <p>Mulai jual dan bangun bisnis pertamamu!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── DEEP DIVE TEASER (sample analysis preview, lifted higher) ── -->
+    <div class="lp-dd-teaser-section">
+      <div class="lp-dd-teaser">
+        <div class="lp-dd-teaser-copy">
+          <div class="lp-section-eyebrow">Contoh Nyata</div>
+          <h3 class="lp-dd-teaser-title">Lihat satu produk, lengkap dengan datanya.</h3>
+          <p class="lp-dd-teaser-sub">Setiap produk punya halaman Deep Dive: skor kelayakan, tren omset, kompetitor, rentang harga optimal, dan rekomendasi AI &mdash; ditampilkan apa adanya, bukan janji hasil pasti.</p>
+          <button class="lp-hero-btn-primary" style="background:#1A1F3C;box-shadow:none;" onclick="document.getElementById('lp-preview-section').scrollIntoView({behavior:'smooth'})">Lihat contoh analisis &rarr;</button>
+        </div>
+        <div class="lp-dd-teaser-card">
+          <div class="lp-dd-teaser-head">
+            <div>
+              <div class="lp-dd-teaser-name">Tas Selempang Pria Premium</div>
+              <div class="lp-dd-teaser-cat">Fashion &amp; Aksesoris</div>
+            </div>
+            <div class="lp-dd-teaser-score">87<span>/100</span></div>
+          </div>
+          <div class="lp-dd-teaser-metrics">
+            <div><span>Omset/bln</span><b>Rp 15,3 jt</b></div>
+            <div><span>Unit/bln</span><b>180</b></div>
+            <div><span>Kompetisi</span><b>Sedang</b></div>
+          </div>
+          <div class="lp-dd-teaser-bar"><div></div></div>
+          <div class="lp-dd-teaser-note">&#x2713; Skor kelayakan 87 &mdash; potensi tinggi</div>
         </div>
       </div>
     </div>
@@ -4485,7 +4572,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(244,246,249,.6);border-radius:12px;">
               <div style="font-size:1rem;font-weight:700;color:#1A1F3C;">Buka analisis lengkap — gratis</div>
               <div style="font-size:.82rem;color:#6B7280;text-align:center;">Distribusi harga, usia toko kompetitor, top 15 kompetitor, keyword, dan lebih banyak lagi.</div>
-              <button class="lp-hero-btn-primary" onclick="openAuthModal('signup')">Daftar Gratis Sekarang</button>
+              <button class="lp-hero-btn-primary" onclick="openAuthModal('signup')">Mulai Gratis</button>
             </div>
           </div>
         </div>
@@ -4503,13 +4590,13 @@ html,body{overflow-x:hidden;max-width:100%;}
         <svg class="lp-banner-deco" style="right:330px;bottom:20%;opacity:.5;" width="8" height="8" viewBox="0 0 8 8"><polygon points="4,0 5,3 8,3 5.5,5 6.5,8 4,6 1.5,8 2.5,5 0,3 3,3" fill="rgba(255,255,255,.45)"/></svg>
         <!-- Left: text + CTA -->
         <div class="lp-banner-cta-left">
-          <div class="lp-banner-cta-title">Your First Product Opportunity<br>Could Be One Search Away.</div>
+          <div class="lp-banner-cta-title">Peluang Produk Pertamamu<br>Bisa Hanya Satu Pencarian Lagi.</div>
           <div>
             <button class="lp-banner-cta-btn" onclick="openAuthModal('signup')">
-              Start Free
+              Mulai Gratis
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
             </button>
-            <div class="lp-banner-cta-note">No experience needed.</div>
+            <div class="lp-banner-cta-note">Tanpa pengalaman, tanpa kartu kredit &mdash; gratis 5 kredit tiap bulan.</div>
           </div>
         </div>
         <!-- Right: person photo + Shopee bag -->
@@ -4565,6 +4652,15 @@ html,body{overflow-x:hidden;max-width:100%;}
         <span><a class="lp-footer-col-link" href="/privacy/" style="display:inline;margin:0;">Kebijakan Privasi</a></span>
       </div>
     </footer>
+
+    <!-- ── MOBILE STICKY CTA (landing only) ── -->
+    <div class="lp-mobile-cta">
+      <div class="lp-mobile-cta-info">
+        <b>Mulai gratis hari ini</b>
+        <span>5 kredit/bulan &middot; tanpa kartu kredit</span>
+      </div>
+      <button class="lp-mobile-cta-btn" onclick="openAuthModal('signup')">Mulai Gratis</button>
+    </div>
   </div>
 </div>
 <!-- ══ END LANDING PAGE ══════════════════════════════════════ -->
