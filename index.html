@@ -898,7 +898,7 @@ body.cohort-themed.in-dashboard .dash-topbar{
 .cohort-rank-row{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #F3F4F6;font-size:.76rem;}
 .cohort-drawer{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:400;display:none;align-items:flex-end;justify-content:center;padding:12px;}
 .cohort-drawer.open{display:flex;}
-.cohort-drawer-panel{width:100%;max-width:520px;max-height:85vh;overflow:auto;background:#fff;border-radius:14px 14px 0 0;padding:18px 18px 28px;box-shadow:0 -8px 40px rgba(0,0,0,.2);}
+.cohort-drawer-panel{width:100%;max-width:520px;max-height:92vh;overflow:auto;background:#fff;border-radius:14px 14px 0 0;padding:18px 18px 32px;box-shadow:0 -8px 40px rgba(0,0,0,.2);}
 .cohort-drawer-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
 .cohort-week-bar{display:flex;gap:4px;margin-top:8px;}
 .cohort-week-cell{flex:1;height:22px;border-radius:4px;background:#EEF2F7;}
@@ -13705,20 +13705,154 @@ function cohortExportDirectoryCsv() {
 async function cohortOpenStudentDrawer(userId) {
   const c = _cohortState.primaryMentorCohort;
   const drawer = document.getElementById('cohort-student-drawer');
-  const title = document.getElementById('cohort-drawer-title');
-  const body = document.getElementById('cohort-drawer-body');
+  const title  = document.getElementById('cohort-drawer-title');
+  const body   = document.getElementById('cohort-drawer-body');
   if (!c || !drawer || !body || !_supabase) return;
-  title.textContent = cohortCohortDisplayName(userId, null);
-  body.innerHTML = 'Memuat…';
+
+  title.innerHTML = '<span style="color:#9CA3AF;font-size:.78rem;font-weight:500;">Memuat profil…</span>';
+  body.innerHTML  = '<div style="padding:12px 0;color:#9CA3AF;font-size:.78rem;text-align:center;">Memuat…</div>';
   drawer.classList.add('open');
-  const since = new Date(Date.now() - 14 * 86400000).toISOString();
-  const [{ data: evs }, { data: posts }] = await Promise.all([
-    _supabase.from('activity_events').select('event_type,created_at,metadata').eq('cohort_id', c.id).eq('user_id', userId).gte('created_at', since).order('created_at', { ascending: false }).limit(30),
-    _supabase.from('community_posts').select('body,created_at,kind').eq('cohort_id', c.id).eq('author_id', userId).order('created_at', { ascending: false }).limit(8),
-  ]);
-  const evHtml = (evs || []).map(e => `<div>· ${_cohortEsc(e.event_type)} <span class="cohort-muted">${_cohortEsc((e.created_at || '').slice(0, 16))}</span></div>`).join('') || '<span class="cohort-muted">Belum ada event 14 hari.</span>';
-  const postHtml = (posts || []).map(p => `<div style="margin-top:6px;">${_cohortEsc(p.kind)}: ${_cohortEsc((p.body || '').slice(0, 120))}</div>`).join('') || '<span class="cohort-muted">Belum posting.</span>';
-  body.innerHTML = `<div style="font-weight:700;margin-bottom:6px;">Aktivitas (14 hari)</div>${evHtml}<div style="font-weight:700;margin:12px 0 6px;">Posting</div>${postHtml}`;
+
+  const esc     = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const fmtDt   = s => { if (!s) return '—'; try { return new Date(s).toLocaleString('id-ID',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); } catch { return s.slice(0,16); } };
+  const fmtDate = s => { if (!s) return '—'; try { return new Date(s).toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}); } catch { return s.slice(0,10); } };
+
+  try {
+    const [
+      { data: baseRaw },
+      { data: prof },
+      { data: memRow },
+      { data: allMs },
+      { data: doneMs },
+      { data: savedProds },
+      { data: recentEvs },
+    ] = await Promise.all([
+      _supabase.rpc('cohort_member_profile', { p_user: userId }),
+      _supabase.from('user_profiles').select('display_name,public_whatsapp,public_email,public_shopee_url,bio').eq('user_id', userId).maybeSingle(),
+      _supabase.from('cohort_members').select('joined_at,last_seen_at,status').eq('cohort_id', c.id).eq('user_id', userId).maybeSingle(),
+      _supabase.from('milestones').select('id,title,sort_order').eq('cohort_id', c.id).order('sort_order', { ascending: true }),
+      _supabase.from('user_milestone_progress').select('milestone_id').eq('user_id', userId),
+      _supabase.from('saved_products').select('product_id,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(6),
+      _supabase.from('activity_events').select('event_type,created_at,metadata').eq('cohort_id', c.id).eq('user_id', userId).order('created_at', { ascending: false }).limit(6),
+    ]);
+
+    const base = Array.isArray(baseRaw) ? baseRaw[0] : baseRaw;
+    const pr   = prof || {};
+    const mem  = memRow || {};
+
+    const displayName = (pr.display_name || '').trim() || (base && base.display_name) || 'Anggota kohort';
+    const emailAddr   = (base && base.email) || pr.public_email || '';
+    const whatsApp    = pr.public_whatsapp || '';
+    const initials    = displayName.split(' ').slice(0,2).map(w => w[0] || '').join('').toUpperCase() || '?';
+    const role        = base?.app_role || 'student';
+    const roleLabel   = role === 'admin' ? 'Admin' : role === 'leader' ? 'Leader' : 'Siswa';
+    const roleColor   = role === 'admin' ? '#B91C1C' : role === 'leader' ? '#3730A3' : '#1A7A46';
+    const roleBg      = role === 'admin' ? '#FEF2F2' : role === 'leader' ? '#EEF2FF' : '#ECFDF5';
+
+    const score      = Number(base?.engagement_score || 0);
+    const eventCount = Number(base?.event_count || 0);
+    const totalMs    = (allMs || []).length;
+    const doneSet    = new Set((doneMs || []).map(d => d.milestone_id));
+    const doneCount  = doneSet.size;
+    const lastSeen   = mem.last_seen_at || base?.last_activity_at;
+    const joinedAt   = mem.joined_at || base?.joined_at;
+    const progPct    = totalMs > 0 ? Math.round((doneCount / totalMs) * 100) : 0;
+    const scoreClr   = s => s >= 70 ? '#10B981' : s >= 40 ? '#F59E0B' : '#9CA3AF';
+
+    // Fetch product names from listings_deduped
+    let productItems = [];
+    const prodIds = (savedProds || []).map(r => r.product_id).filter(Boolean);
+    if (prodIds.length) {
+      const { data: listings } = await _supabase.from('listings_deduped').select('item_id,product_name').in('item_id', prodIds);
+      const nameMap = {};
+      (listings || []).forEach(l => { nameMap[l.item_id] = l.product_name; });
+      productItems = prodIds.map(id => nameMap[id] || id);
+    }
+
+    const actLabel = ev => {
+      const m = ev.metadata || {};
+      switch (ev.event_type) {
+        case 'deepdive_open':       return 'Membuka Deep Dive' + (m.product_name ? ' · ' + esc(m.product_name) : '');
+        case 'product_saved':       return 'Menyimpan produk ke riset';
+        case 'tracker_plan_update': return 'Memperbarui rencana margin di Tracker';
+        case 'community_post':      return 'Mengirim ke feed komunitas';
+        case 'milestone_complete':  return 'Menyelesaikan milestone';
+        case 'credit_spent':        return 'Menggunakan kredit (' + esc(m.action || 'fitur') + ')';
+        default: return esc(ev.event_type.replace(/_/g,' '));
+      }
+    };
+
+    title.innerHTML = `<div style="font-size:.8rem;font-weight:800;color:#1A1F3C;line-height:1.2;">${esc(displayName)}</div><div style="font-size:.62rem;color:#9CA3AF;font-weight:400;margin-top:1px;">${esc(c.name || 'Kohort')}</div>`;
+
+    body.innerHTML = `
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #F3F4F6;">
+        <div style="width:44px;height:44px;border-radius:50%;background:#1A1F3C;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.88rem;flex-shrink:0;">${esc(initials)}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:800;font-size:.88rem;color:#1A1F3C;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(displayName)}</div>
+          <div style="font-size:.68rem;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(emailAddr) || '—'}</div>
+          <div style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap;">
+            <span style="font-size:.58rem;font-weight:700;padding:2px 8px;border-radius:20px;background:${roleBg};color:${roleColor};">${roleLabel}</span>
+            <span style="font-size:.58rem;font-weight:700;padding:2px 8px;border-radius:20px;background:#EFF6FF;color:#1D4ED8;">${esc(c.name || 'Kohort')}</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;font-size:.68rem;color:#6B7280;align-items:center;">
+        ${whatsApp ? `<a href="https://wa.me/${encodeURIComponent(whatsApp.replace(/[^0-9+]/g,''))}" target="_blank" rel="noopener" style="display:inline-flex;gap:4px;align-items:center;color:#1A7A46;font-weight:700;text-decoration:none;"><svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>WhatsApp</a>` : ''}
+        ${emailAddr ? `<a href="mailto:${esc(emailAddr)}" style="display:inline-flex;gap:4px;align-items:center;color:#1D4ED8;font-weight:600;text-decoration:none;"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,12 2,6"/></svg>Email</a>` : ''}
+        <span>Bergabung: <strong style="color:#374151;">${fmtDate(joinedAt)}</strong></span>
+        <span>Terakhir: <strong style="color:#374151;">${fmtDt(lastSeen)}</strong></span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
+        <div style="background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:.54rem;color:#9CA3AF;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Skor</div>
+          <div style="font-size:1.3rem;font-weight:900;color:${scoreClr(score)};">${score.toFixed(0)}</div>
+        </div>
+        <div style="background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:.54rem;color:#9CA3AF;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Aktivitas</div>
+          <div style="font-size:1.3rem;font-weight:900;color:#1A1F3C;">${eventCount}</div>
+        </div>
+        <div style="background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-size:.54rem;color:#9CA3AF;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Milestone</div>
+          <div style="font-size:1.3rem;font-weight:900;color:#1A1F3C;">${doneCount}<span style="font-size:.68rem;font-weight:600;color:#9CA3AF;">/${totalMs}</span></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div style="font-size:.7rem;font-weight:700;color:#374151;">Progress Program</div>
+          <div style="font-size:.65rem;color:#6B7280;font-weight:600;">${progPct}%</div>
+        </div>
+        <div style="height:6px;background:#F3F4F6;border-radius:3px;overflow:hidden;margin-bottom:8px;">
+          <div style="height:6px;background:${progPct >= 80 ? '#10B981' : progPct >= 40 ? '#F59E0B' : '#E8442A'};border-radius:3px;width:${progPct}%;"></div>
+        </div>
+        ${totalMs > 0
+          ? `<div style="display:flex;flex-wrap:wrap;gap:4px;">${(allMs || []).map(m => {
+              const done = doneSet.has(m.id);
+              return `<span style="font-size:.58rem;padding:2px 7px;border-radius:4px;font-weight:600;background:${done ? '#ECFDF5' : '#F3F4F6'};color:${done ? '#1A7A46' : '#9CA3AF'};">${done ? '&#10003; ' : ''}${esc(m.title)}</span>`;
+            }).join('')}</div>`
+          : '<span style="font-size:.68rem;color:#9CA3AF;">Belum ada milestone di kohort ini.</span>'}
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <div style="font-size:.7rem;font-weight:700;color:#374151;margin-bottom:6px;">Produk Tersimpan${prodIds.length ? ` <span style="color:#9CA3AF;font-weight:400;">(${prodIds.length})</span>` : ''}</div>
+        ${productItems.length
+          ? `<div style="display:flex;flex-direction:column;gap:3px;">${productItems.map(name => `<div style="font-size:.68rem;color:#374151;padding:5px 8px;background:#F9FAFB;border-radius:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(String(name))}</div>`).join('')}</div>`
+          : '<span style="font-size:.68rem;color:#9CA3AF;">Belum ada produk tersimpan.</span>'}
+      </div>
+
+      <div>
+        <div style="font-size:.7rem;font-weight:700;color:#374151;margin-bottom:6px;">Aktivitas Terbaru</div>
+        ${(recentEvs || []).length
+          ? `<div style="display:flex;flex-direction:column;gap:3px;">${(recentEvs || []).map(e => `<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 8px;background:#F9FAFB;border-radius:5px;"><span style="font-size:.67rem;color:#374151;">${actLabel(e)}</span><span style="font-size:.62rem;color:#9CA3AF;white-space:nowrap;flex-shrink:0;">${fmtDt(e.created_at)}</span></div>`).join('')}</div>`
+          : '<span style="font-size:.68rem;color:#9CA3AF;">Belum ada aktivitas terbaru.</span>'}
+      </div>`;
+
+  } catch (e) {
+    console.warn('cohortOpenStudentDrawer error', e);
+    body.innerHTML = `<span class="cohort-muted" style="font-size:.75rem;">Gagal memuat profil: ${_cohortEsc((e.message || '').slice(0,100))}</span>`;
+  }
 }
 
 function cohortCloseStudentDrawer() {
