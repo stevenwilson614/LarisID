@@ -8098,6 +8098,23 @@ html,body{overflow-x:hidden;max-width:100%;}
                   </select>
                   <button type="button" class="cohort-btn" onclick="cohortProgramCreate()">Tambahkan</button>
                 </div>
+                <!-- WS-E: assignment authoring fields -->
+                <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:.74rem;color:#1A1F3C;font-weight:600;cursor:pointer;">
+                  <input type="checkbox" id="cohort-pr-assignment" onchange="cohortProgramToggleAssignmentFields()" style="width:16px;height:16px;cursor:pointer;">
+                  Jadikan tugas (siswa mengumpulkan jawaban)
+                </label>
+                <div id="cohort-pr-assignment-fields" style="display:none;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <select id="cohort-pr-subtype" class="cohort-input" style="flex:1;min-width:150px;margin:0;">
+                      <option value="text">Jawaban teks</option>
+                      <option value="link">Tautan (link)</option>
+                      <option value="file">Unggah berkas</option>
+                    </select>
+                    <input type="date" id="cohort-pr-due" class="cohort-input" style="flex:1;min-width:150px;margin:0;" title="Batas pengumpulan (opsional)">
+                  </div>
+                  <p class="cohort-muted" style="font-size:.68rem;margin:6px 0 0;">Batas waktu opsional. Siswa melihat kontrol pengumpulan sesuai jenis di atas.</p>
+                </div>
+                <!-- /WS-E -->
                 <div id="cohort-pr-status" class="cohort-muted" style="margin-top:8px;"></div>
               </div>
             </div>
@@ -8159,6 +8176,35 @@ html,body{overflow-x:hidden;max-width:100%;}
               <div id="cv-body" style="padding:20px;flex:1;"></div>
             </div>
           </div>
+
+          <!-- WS-E: leader submission inbox overlay -->
+          <div id="asg-inbox-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;align-items:center;justify-content:center;padding:16px;">
+            <div style="background:#fff;border-radius:16px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);display:flex;flex-direction:column;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 12px;border-bottom:1px solid #F3F4F6;position:sticky;top:0;background:#fff;z-index:1;">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:.6rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Tugas masuk</div>
+                  <div id="asg-inbox-title" style="font-size:.9rem;font-weight:800;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+                </div>
+                <button type="button" onclick="cohortCloseSubmissionInbox()" style="margin-left:12px;flex-shrink:0;background:none;border:1px solid #E5E7EB;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:.72rem;color:#6B7280;">Tutup</button>
+              </div>
+              <div id="asg-inbox-body" style="padding:20px;flex:1;"></div>
+            </div>
+          </div>
+
+          <!-- WS-E: student assignment submit overlay -->
+          <div id="asg-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;align-items:center;justify-content:center;padding:16px;">
+            <div style="background:#fff;border-radius:16px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);display:flex;flex-direction:column;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 12px;border-bottom:1px solid #F3F4F6;position:sticky;top:0;background:#fff;z-index:1;">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:.6rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Tugas</div>
+                  <div id="asg-title" style="font-size:.9rem;font-weight:800;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+                </div>
+                <button type="button" onclick="cohortCloseAssignment()" style="margin-left:12px;flex-shrink:0;background:none;border:1px solid #E5E7EB;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:.72rem;color:#6B7280;">Tutup</button>
+              </div>
+              <div id="asg-body" style="padding:20px;flex:1;"></div>
+            </div>
+          </div>
+          <!-- /WS-E -->
 
           <!-- Planner session editor overlay -->
           <div id="cohort-planner-editor-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center;padding:16px;">
@@ -13033,7 +13079,7 @@ async function cohortRenderMilestones(cohortId) {
   if (!ul) return;
   ul.innerHTML = '';
   if (!cohortId || !_supabase) { ul.innerHTML = '<li class="cohort-muted">—</li>'; return; }
-  const { data: ms } = await _supabase.from('milestones').select('id,title,sort_order,track').eq('cohort_id', cohortId).order('sort_order', { ascending: true });
+  const { data: ms } = await _supabase.from('milestones').select('id,title,sort_order,track,is_assignment,submission_type,due_at').eq('cohort_id', cohortId).order('sort_order', { ascending: true });
   const { data: done } = await _supabase.from('user_milestone_progress').select('milestone_id').eq('user_id', currentUser.id);
   const doneSet = new Set((done || []).map(d => d.milestone_id));
   if (!(ms || []).length) {
@@ -13052,12 +13098,23 @@ async function cohortRenderMilestones(cohortId) {
           ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="#6366F1" style="flex-shrink:0;"><polygon points="5,3 19,12 5,21"/></svg>`
           : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`)
       : '';
-    const actionBtn = ok
-      ? `<span style="font-size:.65rem;font-weight:700;color:#059669;white-space:nowrap;">Selesai ✓</span>`
-      : content
-        ? `<button type="button" class="cohort-btn secondary" style="padding:4px 10px;font-size:.65rem;white-space:nowrap;" onclick="cohortOpenContentViewer('${m.id}')">Buka</button>`
-        : `<button type="button" class="cohort-btn secondary" style="padding:4px 10px;font-size:.65rem;white-space:nowrap;" data-ms="${m.id}" onclick="cohortToggleMilestone(this.dataset.ms)">Tandai</button>`;
-    return `<li style="display:flex;align-items:center;gap:6px;"><span style="flex:1;display:flex;align-items:center;gap:5px;">${icon}${_cohortEsc(m.title)}</span>${actionBtn}</li>`;
+    // WS-E: assignment milestones open the submit/feedback overlay
+    let actionBtn;
+    if (m.is_assignment) {
+      const escTitle = _cohortEsc(m.title).replace(/'/g, "\\'");
+      const btnLbl = ok ? 'Tugas ✓' : 'Tugas';
+      actionBtn = `<button type="button" class="cohort-btn secondary" style="padding:4px 10px;font-size:.65rem;white-space:nowrap;${ok ? 'color:#059669;border-color:#A7F3D0;' : ''}" onclick="cohortOpenAssignment('${m.id}','${escTitle}','${m.submission_type || 'text'}')">${btnLbl}</button>`;
+    } else {
+      actionBtn = ok
+        ? `<span style="font-size:.65rem;font-weight:700;color:#059669;white-space:nowrap;">Selesai ✓</span>`
+        : content
+          ? `<button type="button" class="cohort-btn secondary" style="padding:4px 10px;font-size:.65rem;white-space:nowrap;" onclick="cohortOpenContentViewer('${m.id}')">Buka</button>`
+          : `<button type="button" class="cohort-btn secondary" style="padding:4px 10px;font-size:.65rem;white-space:nowrap;" data-ms="${m.id}" onclick="cohortToggleMilestone(this.dataset.ms)">Tandai</button>`;
+    }
+    const asgIcon = m.is_assignment
+      ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>`
+      : icon;
+    return `<li style="display:flex;align-items:center;gap:6px;"><span style="flex:1;display:flex;align-items:center;gap:5px;">${asgIcon}${_cohortEsc(m.title)}</span>${actionBtn}</li>`;
   }).join('');
 }
 
@@ -24878,7 +24935,7 @@ async function cohortProgramRender(cohortId) {
   const el = document.getElementById('cohort-program-list');
   if (!el || !cohortId || !_supabase) return;
   el.innerHTML = '<span class="cohort-muted">Memuat…</span>';
-  let q = _supabase.from('milestones').select('id,title,sort_order,track,description')
+  let q = _supabase.from('milestones').select('id,title,sort_order,track,description,is_assignment,submission_type,due_at')
     .eq('cohort_id', cohortId).order('sort_order', { ascending: true });
   if (_cohortProgramTrack !== 'all') q = q.eq('track', _cohortProgramTrack);
   const { data: ms, error } = await q;
@@ -24947,14 +25004,28 @@ async function cohortProgramRender(cohortId) {
         </div>
         <div id="pr-content-status-${m.id}" class="cohort-muted" style="margin-top:4px;font-size:.7rem;"></div>
       </div>`;
+    // WS-E: assignment badge + inbox button
+    const subTypeLbl = { text: 'Teks', link: 'Tautan', file: 'Berkas' };
+    const asgBadge = m.is_assignment
+      ? `<span style="font-size:.6rem;font-weight:700;color:#B45309;background:#FEF3C7;padding:2px 7px;border-radius:20px;white-space:nowrap;">Tugas${m.submission_type ? ' · ' + (subTypeLbl[m.submission_type] || m.submission_type) : ''}</span>`
+      : '';
+    const dueLine = (m.is_assignment && m.due_at)
+      ? `<p class="cohort-muted" style="font-size:.66rem;margin:2px 0 6px;">Batas: ${new Date(m.due_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>`
+      : '';
+    const inboxBtn = m.is_assignment
+      ? `<button type="button" onclick="cohortOpenSubmissionInbox('${m.id}','${_cohortEsc(m.title).replace(/'/g, "\\'")}')" style="margin-top:8px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:6px 10px;font-size:.7rem;color:#B45309;font-weight:700;cursor:pointer;width:100%;text-align:left;">Tugas masuk — lihat & beri nilai</button>`
+      : '';
     return `<div style="border:1px solid #E5E7EB;border-radius:12px;padding:12px 14px;margin-bottom:10px;">
-      <div style="display:flex;align-items:flex-start;gap:8px;">
-        <span style="flex:1;font-size:.78rem;font-weight:700;color:#1A1F3C;">${_cohortEsc(m.title)}</span>
+      <div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+        <span style="flex:1;font-size:.78rem;font-weight:700;color:#1A1F3C;min-width:120px;">${_cohortEsc(m.title)}</span>
+        ${asgBadge}
         <span style="font-size:.6rem;font-weight:700;color:${meta.color};background:${meta.band};padding:2px 7px;border-radius:20px;white-space:nowrap;">${meta.label}</span>
         <button type="button" onclick="cohortProgramDelete('${m.id}')" style="background:none;border:none;color:#9CA3AF;cursor:pointer;padding:2px;font-size:.75rem;line-height:1;flex-shrink:0;" title="Hapus milestone">✕</button>
       </div>
       ${m.description ? `<p class="cohort-muted" style="font-size:.7rem;margin:4px 0 6px;">${_cohortEsc(m.description)}</p>` : ''}
+      ${dueLine}
       ${itemsHtml}
+      ${inboxBtn}
       <button type="button" onclick="cohortProgramToggleContent('${m.id}')" style="margin-top:8px;background:none;border:1px dashed #D1D5DB;border-radius:8px;padding:5px 10px;font-size:.7rem;color:#6B7280;cursor:pointer;width:100%;text-align:left;">+ Tambah konten (video / dokumen / teks)</button>
       ${addContentHtml}
     </div>`;
@@ -24973,19 +25044,38 @@ async function cohortProgramCreate() {
   if (!c) return;
   statusEl.textContent = 'Menyimpan…';
   const { count: maxOrder } = await _supabase.from('milestones').select('*', { count: 'exact', head: true }).eq('cohort_id', c.id);
-  const { error } = await _supabase.from('milestones').insert({
+  // WS-E: assignment authoring fields
+  const asgEl     = document.getElementById('cohort-pr-assignment');
+  const subtypeEl = document.getElementById('cohort-pr-subtype');
+  const dueEl     = document.getElementById('cohort-pr-due');
+  const isAssignment = !!(asgEl && asgEl.checked);
+  const row = {
     cohort_id: c.id,
     title,
     description: descEl ? descEl.value.trim() || null : null,
     track: trackEl ? trackEl.value : 'general',
     sort_order: (maxOrder || 0),
-  });
+    is_assignment: isAssignment,
+    submission_type: isAssignment && subtypeEl ? subtypeEl.value : null,
+    due_at: isAssignment && dueEl && dueEl.value ? new Date(dueEl.value + 'T23:59:59').toISOString() : null,
+  };
+  const { error } = await _supabase.from('milestones').insert(row);
   if (error) { statusEl.textContent = 'Gagal: ' + error.message; return; }
   titleEl.value = '';
   if (descEl) descEl.value = '';
+  if (asgEl) asgEl.checked = false;
+  if (dueEl) dueEl.value = '';
+  cohortProgramToggleAssignmentFields();
   statusEl.textContent = 'Tersimpan.';
   await cohortProgramRender(c.id);
   setTimeout(() => { statusEl.textContent = ''; }, 2000);
+}
+
+// WS-E: show/hide assignment authoring fields
+function cohortProgramToggleAssignmentFields() {
+  const cb = document.getElementById('cohort-pr-assignment');
+  const box = document.getElementById('cohort-pr-assignment-fields');
+  if (box) box.style.display = (cb && cb.checked) ? 'block' : 'none';
 }
 
 async function cohortProgramDelete(milestoneId) {
@@ -25262,6 +25352,203 @@ async function wscMarkWatched(contentId, cohortId) {
   if (sc) await cohortRenderMilestones(sc);
 }
 // ── /WS-C ─────────────────────────────────────────────────────────────────────
+
+// ── WS-E: ASSIGNMENTS ────────────────────────────────────────────────────────
+// Leader submission inbox + grading, and student submit + feedback view.
+
+const _ASG_SUBTYPE_LBL = { text: 'Jawaban teks', link: 'Tautan (link)', file: 'Unggah berkas' };
+const _ASG_STATUS_LBL  = { submitted: 'Menunggu dinilai', returned: 'Dikembalikan', graded: 'Sudah dinilai' };
+
+function _asgEsc(s) { return _cohortEsc(s == null ? '' : String(s)); }
+
+// ── Leader: submission inbox ──────────────────────────────────────────────────
+
+async function cohortOpenSubmissionInbox(milestoneId, title) {
+  const ov = document.getElementById('asg-inbox-overlay');
+  const titleEl = document.getElementById('asg-inbox-title');
+  if (!ov || !_supabase) return;
+  if (titleEl) titleEl.textContent = title || 'Tugas';
+  ov.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  await cohortRenderSubmissionInbox(milestoneId);
+}
+
+function cohortCloseSubmissionInbox() {
+  const ov = document.getElementById('asg-inbox-overlay');
+  if (ov) ov.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+async function cohortRenderSubmissionInbox(milestoneId) {
+  const body = document.getElementById('asg-inbox-body');
+  if (!body || !_supabase) return;
+  body.innerHTML = '<p class="cohort-muted">Memuat…</p>';
+  const c = _cohortState.primaryMentorCohort;
+  if (c && (!_cohortState.memberNameMap || !Object.keys(_cohortState.memberNameMap).length)) {
+    await cohortLoadMemberNames(c.id);
+  }
+  const nameMap = _cohortState.memberNameMap || {};
+  const { data: subs, error } = await _supabase.from('assignment_submissions')
+    .select('id,user_id,submission_text,link_url,file_url,status,grade,feedback,created_at,updated_at')
+    .eq('milestone_id', milestoneId)
+    .order('created_at', { ascending: true });
+  if (error) { body.innerHTML = `<p class="cohort-muted">Gagal memuat: ${_asgEsc(error.message)}</p>`; return; }
+  if (!(subs || []).length) {
+    body.innerHTML = '<p class="cohort-muted">Belum ada pengumpulan dari siswa.</p>';
+    return;
+  }
+  body.innerHTML = subs.map(s => {
+    const name = nameMap[s.user_id] || 'Siswa';
+    const statusLbl = _ASG_STATUS_LBL[s.status] || s.status;
+    const statusColor = s.status === 'graded' ? '#059669' : (s.status === 'returned' ? '#B45309' : '#6B7280');
+    let answerHtml = '';
+    if (s.submission_text) answerHtml += `<div style="white-space:pre-wrap;font-size:.78rem;line-height:1.6;background:#F9FAFB;border-radius:8px;padding:10px;margin-top:6px;">${_asgEsc(s.submission_text)}</div>`;
+    if (s.link_url) answerHtml += `<p style="font-size:.76rem;margin-top:6px;"><a href="${_asgEsc(s.link_url)}" target="_blank" rel="noopener" style="color:#6366F1;">${_asgEsc(s.link_url)}</a></p>`;
+    if (s.file_url) answerHtml += `<p style="font-size:.76rem;margin-top:6px;"><a href="${_asgEsc(s.file_url)}" target="_blank" rel="noopener" style="color:#6366F1;">Unduh berkas</a></p>`;
+    const when = s.created_at ? new Date(s.created_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+    return `<div style="border:1px solid #E5E7EB;border-radius:12px;padding:12px 14px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <strong style="flex:1;font-size:.82rem;color:#1A1F3C;min-width:100px;">${_asgEsc(name)}</strong>
+        <span style="font-size:.62rem;font-weight:700;color:${statusColor};white-space:nowrap;">${statusLbl}</span>
+        ${when ? `<span class="cohort-muted" style="font-size:.64rem;">${when}</span>` : ''}
+      </div>
+      ${answerHtml || '<p class="cohort-muted" style="font-size:.74rem;margin-top:6px;">(Tidak ada isi)</p>'}
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+        <input type="text" id="asg-grade-${s.id}" class="cohort-input" style="flex:0 0 120px;margin:0;" placeholder="Nilai (mis. A / 90)" value="${_asgEsc(s.grade || '')}" maxlength="40">
+        <input type="text" id="asg-fb-${s.id}" class="cohort-input" style="flex:1;min-width:160px;margin:0;" placeholder="Umpan balik untuk siswa" value="${_asgEsc(s.feedback || '')}">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+        <button type="button" class="cohort-btn" style="font-size:.72rem;padding:6px 14px;" onclick="cohortGradeSubmission('${s.id}','${milestoneId}')">Simpan nilai &amp; umpan balik</button>
+        <span id="asg-grade-status-${s.id}" class="cohort-muted" style="font-size:.7rem;"></span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function cohortGradeSubmission(submissionId, milestoneId) {
+  const gradeEl = document.getElementById('asg-grade-' + submissionId);
+  const fbEl    = document.getElementById('asg-fb-' + submissionId);
+  const stEl    = document.getElementById('asg-grade-status-' + submissionId);
+  if (!_supabase || !submissionId) return;
+  const grade    = gradeEl ? gradeEl.value.trim() : '';
+  const feedback = fbEl ? fbEl.value.trim() : '';
+  if (stEl) stEl.textContent = 'Menyimpan…';
+  const { error } = await _supabase.rpc('leader_grade_submission', {
+    p_submission: submissionId,
+    p_grade: grade || null,
+    p_feedback: feedback || null,
+  });
+  if (error) { if (stEl) stEl.textContent = 'Gagal: ' + error.message; return; }
+  if (stEl) stEl.textContent = 'Tersimpan ✓';
+  await cohortRenderSubmissionInbox(milestoneId);
+}
+
+// ── Student: submit + view feedback ───────────────────────────────────────────
+
+let _asgState = { milestoneId: null, submissionType: null };
+
+async function cohortOpenAssignment(milestoneId, title, submissionType) {
+  const ov = document.getElementById('asg-overlay');
+  const titleEl = document.getElementById('asg-title');
+  if (!ov || !_supabase) return;
+  _asgState = { milestoneId, submissionType: submissionType || 'text' };
+  if (titleEl) titleEl.textContent = title || 'Tugas';
+  ov.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  await cohortRenderAssignmentBody();
+}
+
+function cohortCloseAssignment() {
+  const ov = document.getElementById('asg-overlay');
+  if (ov) ov.style.display = 'none';
+  document.body.style.overflow = '';
+  _asgState = { milestoneId: null, submissionType: null };
+}
+
+async function cohortRenderAssignmentBody() {
+  const body = document.getElementById('asg-body');
+  const { milestoneId, submissionType } = _asgState;
+  if (!body || !milestoneId || !_supabase || !currentUser) return;
+  body.innerHTML = '<p class="cohort-muted">Memuat…</p>';
+  const { data: sub } = await _supabase.from('assignment_submissions')
+    .select('id,submission_text,link_url,file_url,status,grade,feedback,updated_at')
+    .eq('milestone_id', milestoneId).eq('user_id', currentUser.id).maybeSingle();
+
+  // Feedback / status block (shown when a submission exists)
+  let feedbackHtml = '';
+  if (sub) {
+    const statusLbl = _ASG_STATUS_LBL[sub.status] || sub.status;
+    const statusColor = sub.status === 'graded' ? '#059669' : (sub.status === 'returned' ? '#B45309' : '#6B7280');
+    feedbackHtml = `<div style="border:1px solid #E5E7EB;border-radius:12px;padding:12px 14px;margin-bottom:14px;background:#F9FAFB;">
+      <div style="font-size:.7rem;font-weight:700;color:${statusColor};margin-bottom:4px;">Status: ${statusLbl}</div>
+      ${sub.grade ? `<div style="font-size:.82rem;color:#1A1F3C;margin-bottom:4px;"><strong>Nilai:</strong> ${_asgEsc(sub.grade)}</div>` : ''}
+      ${sub.feedback ? `<div style="font-size:.78rem;color:#374151;line-height:1.6;"><strong>Umpan balik:</strong><br>${_asgEsc(sub.feedback)}</div>` : ''}
+      ${(!sub.grade && !sub.feedback) ? '<div class="cohort-muted" style="font-size:.74rem;">Sudah terkirim. Menunggu penilaian mentor.</div>' : ''}
+    </div>`;
+  }
+
+  // Input control by submission_type, pre-filled with any prior submission
+  let inputHtml = '';
+  if (submissionType === 'link') {
+    inputHtml = `<input type="url" id="asg-input-link" class="cohort-input" placeholder="Tempel tautan (https://…)" value="${_asgEsc(sub && sub.link_url || '')}" autocomplete="off">`;
+  } else if (submissionType === 'file') {
+    inputHtml = `
+      <input type="file" id="asg-input-file" class="cohort-input" style="padding:8px;">
+      ${sub && sub.file_url ? `<p style="font-size:.74rem;margin-top:6px;">Berkas saat ini: <a href="${_asgEsc(sub.file_url)}" target="_blank" rel="noopener" style="color:#6366F1;">lihat</a></p>` : ''}`;
+  } else {
+    inputHtml = `<textarea id="asg-input-text" class="cohort-input" rows="6" placeholder="Tulis jawaban kamu di sini…">${_asgEsc(sub && sub.submission_text || '')}</textarea>`;
+  }
+
+  const btnLabel = sub ? 'Perbarui pengumpulan' : 'Kumpulkan tugas';
+  body.innerHTML = `
+    ${feedbackHtml}
+    <div style="font-size:.7rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">${_asgEsc(_ASG_SUBTYPE_LBL[submissionType] || 'Jawaban')}</div>
+    ${inputHtml}
+    <div style="display:flex;align-items:center;gap:10px;margin-top:12px;">
+      <button type="button" class="cohort-btn" onclick="cohortSubmitAssignment()">${btnLabel}</button>
+      <span id="asg-submit-status" class="cohort-muted" style="font-size:.72rem;"></span>
+    </div>`;
+}
+
+async function cohortSubmitAssignment() {
+  const { milestoneId, submissionType } = _asgState;
+  const stEl = document.getElementById('asg-submit-status');
+  if (!milestoneId || !_supabase || !currentUser) return;
+  const payload = { milestone_id: milestoneId, user_id: currentUser.id, status: 'submitted', updated_at: new Date().toISOString() };
+
+  if (submissionType === 'link') {
+    const v = (document.getElementById('asg-input-link') || {}).value || '';
+    if (!v.trim()) { if (stEl) stEl.textContent = 'Tautan tidak boleh kosong.'; return; }
+    payload.link_url = v.trim();
+  } else if (submissionType === 'file') {
+    const fileEl = document.getElementById('asg-input-file');
+    const file = fileEl && fileEl.files && fileEl.files[0];
+    if (!file) { if (stEl) stEl.textContent = 'Pilih berkas terlebih dahulu.'; return; }
+    if (stEl) stEl.textContent = 'Mengunggah berkas…';
+    const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, '_');
+    const path = `submissions/${currentUser.id}/${milestoneId}/${Date.now()}-${safeName}`;
+    const up = await _supabase.storage.from('assignment-files').upload(path, file, { upsert: true, cacheControl: '3600' });
+    if (up.error) { if (stEl) stEl.textContent = 'Gagal unggah: ' + up.error.message; return; }
+    const { data: pub } = _supabase.storage.from('assignment-files').getPublicUrl(path);
+    payload.file_url = (pub && pub.publicUrl) || '';
+  } else {
+    const v = (document.getElementById('asg-input-text') || {}).value || '';
+    if (!v.trim()) { if (stEl) stEl.textContent = 'Jawaban tidak boleh kosong.'; return; }
+    payload.submission_text = v.trim();
+  }
+
+  if (stEl) stEl.textContent = 'Mengirim…';
+  const { error } = await _supabase.from('assignment_submissions')
+    .upsert(payload, { onConflict: 'milestone_id,user_id' });
+  if (error) { if (stEl) stEl.textContent = 'Gagal: ' + error.message; return; }
+  // Mark the milestone complete on first submission (mirrors content completion).
+  try { await _supabase.from('user_milestone_progress').insert({ user_id: currentUser.id, milestone_id: milestoneId }); } catch (e) {}
+  try { await cohortLogActivity('milestone_complete', { milestone_id: milestoneId, via: 'assignment' }); } catch (e) {}
+  if (stEl) stEl.textContent = 'Terkirim ✓';
+  await cohortRenderAssignmentBody();
+  const cid = _cohortState.primaryStudentCohortId || (typeof cohortGetPrimaryStudentCohortId === 'function' ? await cohortGetPrimaryStudentCohortId() : null);
+  if (cid) { await cohortRenderMilestones(cid); }
+}
 
 // ── JADWAL (student schedule view) ───────────────────────────────────────────
 async function cohortRenderJadwal(cohortId) {
