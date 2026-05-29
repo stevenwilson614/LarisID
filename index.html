@@ -25150,7 +25150,7 @@ async function cohortRenderJadwal(cohortId) {
       <div style="font-size:.62rem;color:#6366F1;font-weight:700;text-transform:uppercase;">${label}</div>
       <div style="font-weight:800;font-size:.82rem;margin:2px 0;">${_cohortEsc(s.title)}</div>
       ${s.notes ? `<div style="font-size:.72rem;color:#6B7280;margin-top:4px;">${_cohortEsc(s.notes)}</div>` : ''}
-      ${docs.length ? `<div style="margin-top:6px;font-size:.7rem;">${docs.map(u => `<a href="${u}" target="_blank" rel="noopener" style="color:#6366F1;margin-right:8px;">Dokumen</a>`).join('')}</div>` : ''}
+      ${/* WS-B: downloadable document list for cohort members */ wsbRenderDocList(docs)}
     </div>`;
   }).join('');
 }
@@ -25243,11 +25243,8 @@ function cohortPlannerOpenEditor(sessionId, cohortId, prefillDate) {
   const existing = sessionId ? _plannerSessions.find(s => s.id === sessionId) : null;
   const dateVal  = existing ? existing.session_date : (prefillDate || new Date().toISOString().split('T')[0]);
   const docs = (existing && existing.document_urls) ? existing.document_urls.filter(Boolean) : [''];
-  const docRows = docs.map((u, i) => `
-    <div style="display:flex;gap:6px;margin-bottom:6px;" id="planner-doc-row-${i}">
-      <input type="text" class="cohort-input planner-doc-url" placeholder="URL dokumen (opsional)" value="${_cohortEsc(u)}" style="flex:1;margin:0;font-size:.75rem;" autocomplete="off">
-      <button type="button" onclick="this.parentElement.remove()" style="background:none;border:1px solid #E5E7EB;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:.7rem;color:#EF4444;flex-shrink:0;">✕</button>
-    </div>`).join('');
+  // WS-B: render each doc row via helper so uploaded private docs show as a named chip.
+  const docRows = docs.map((u, i) => wsbDocRowHtml(u, i)).join('');
   panel.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <h3 style="margin:0;font-size:.9rem;">${existing ? 'Edit sesi' : 'Sesi baru'}</h3>
@@ -25261,7 +25258,12 @@ function cohortPlannerOpenEditor(sessionId, cohortId, prefillDate) {
     <textarea id="planner-notes" class="cohort-input" rows="3" placeholder="Agenda, ringkasan, atau catatan sesi (opsional)">${existing ? _cohortEsc(existing.notes || '') : ''}</textarea>
     <label style="font-size:.72rem;font-weight:700;display:block;margin-bottom:3px;color:#6B7280;">DOKUMEN PENDUKUNG</label>
     <div id="planner-doc-rows">${docRows}</div>
-    <button type="button" onclick="cohortPlannerAddDocRow()" style="background:none;border:1px dashed #D1D5DB;border-radius:8px;padding:5px 10px;font-size:.7rem;color:#6B7280;cursor:pointer;width:100%;text-align:left;margin-bottom:12px;">+ Tambah dokumen</button>
+    <button type="button" onclick="cohortPlannerAddDocRow()" style="background:none;border:1px dashed #D1D5DB;border-radius:8px;padding:5px 10px;font-size:.7rem;color:#6B7280;cursor:pointer;width:100%;text-align:left;margin-bottom:8px;">+ Tambah tautan dokumen</button>
+    <!-- WS-B: class-day document upload control -->
+    <label for="wsb-doc-file" style="display:block;background:#EEF2FF;border:1px dashed #A5B4FC;border-radius:8px;padding:8px 10px;font-size:.72rem;color:#4F46E5;cursor:pointer;text-align:center;font-weight:700;margin-bottom:6px;">⬆ Unggah dokumen (PDF, gambar, Word, PowerPoint · maks 20 MB)</label>
+    <input type="file" id="wsb-doc-file" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.ppt,.pptx,application/pdf,image/*,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" onchange="wsbHandleDocUpload(event,'${cohortId}')" style="display:none;">
+    <div id="wsb-upload-status" style="font-size:.7rem;margin-bottom:12px;min-height:1em;color:#6B7280;"></div>
+    <!-- /WS-B -->
     <div style="display:flex;gap:8px;justify-content:flex-end;">
       ${existing ? `<button type="button" onclick="cohortPlannerDeleteSession('${existing.id}','${cohortId}')" style="background:none;border:1px solid #FCA5A5;color:#EF4444;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:.75rem;">Hapus</button>` : ''}
       <button type="button" class="cohort-btn" onclick="cohortPlannerSaveSession('${cohortId}')" style="font-size:.75rem;">Simpan</button>
@@ -25286,6 +25288,139 @@ function cohortPlannerAddDocRow() {
   row.innerHTML = `<input type="text" class="cohort-input planner-doc-url" placeholder="URL dokumen (opsional)" style="flex:1;margin:0;font-size:.75rem;" autocomplete="off"><button type="button" onclick="this.parentElement.remove()" style="background:none;border:1px solid #E5E7EB;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:.7rem;color:#EF4444;flex-shrink:0;">✕</button>`;
   container.appendChild(row);
 }
+
+// ── WS-B: class-day document upload + private-doc rendering ───────────────────
+// Uploaded files live in the private `cohort-docs` Storage bucket at path
+// `<cohort_id>/<session_id-or-temp>/<filename>`. We store a sentinel value
+// `cohortdoc://<path>` inside the existing document_urls text[] so the rest of
+// the save pipeline is untouched; plain http(s) links keep working as before.
+// On render we sign private docs on demand (createSignedUrl) since the bucket
+// is private — this avoids stale signatures stored in the DB.
+const WSB_DOC_PREFIX = 'cohortdoc://';
+const WSB_DOC_BUCKET = 'cohort-docs';
+const WSB_DOC_MAX_BYTES = 20 * 1024 * 1024;
+const WSB_DOC_EXT_RE = /\.(pdf|png|jpe?g|gif|webp|docx?|pptx?)$/i;
+
+function wsbDocFilename(value) {
+  let s = String(value || '');
+  if (s.startsWith(WSB_DOC_PREFIX)) s = s.slice(WSB_DOC_PREFIX.length);
+  s = s.split('?')[0].split('#')[0];
+  let base = s.substring(s.lastIndexOf('/') + 1);
+  base = base.replace(/^\d{10,}-/, ''); // strip the upload timestamp prefix
+  try { base = decodeURIComponent(base); } catch (e) {}
+  return base || 'Dokumen';
+}
+
+function wsbDocIcon(filename) {
+  const ext = (String(filename).split('.').pop() || '').toLowerCase();
+  if (ext === 'pdf') return '📕';
+  if (['png','jpg','jpeg','gif','webp'].includes(ext)) return '🖼️';
+  if (['doc','docx'].includes(ext)) return '📘';
+  if (['ppt','pptx'].includes(ext)) return '📙';
+  return '📄';
+}
+
+function wsbDocRowHtml(value, index) {
+  const v = String(value || '');
+  if (v.startsWith(WSB_DOC_PREFIX)) {
+    const fn = wsbDocFilename(v);
+    return `<div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;" id="planner-doc-row-${index}">
+      <span style="flex:1;display:flex;align-items:center;gap:6px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:8px;padding:6px 10px;font-size:.72rem;overflow:hidden;"><span>${wsbDocIcon(fn)}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_cohortEsc(fn)}</span></span>
+      <input type="hidden" class="planner-doc-url" value="${_cohortEsc(v)}">
+      <button type="button" onclick="this.parentElement.remove()" style="background:none;border:1px solid #E5E7EB;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:.7rem;color:#EF4444;flex-shrink:0;">✕</button>
+    </div>`;
+  }
+  return `<div style="display:flex;gap:6px;margin-bottom:6px;" id="planner-doc-row-${index}">
+    <input type="text" class="cohort-input planner-doc-url" placeholder="URL dokumen (opsional)" value="${_cohortEsc(v)}" style="flex:1;margin:0;font-size:.75rem;" autocomplete="off">
+    <button type="button" onclick="this.parentElement.remove()" style="background:none;border:1px solid #E5E7EB;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:.7rem;color:#EF4444;flex-shrink:0;">✕</button>
+  </div>`;
+}
+
+function wsbAddUploadedDocRow(value) {
+  const container = document.getElementById('planner-doc-rows');
+  if (!container) return;
+  const fn = wsbDocFilename(value);
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:6px;margin-bottom:6px;align-items:center;';
+  row.innerHTML = `<span style="flex:1;display:flex;align-items:center;gap:6px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:8px;padding:6px 10px;font-size:.72rem;overflow:hidden;"><span>${wsbDocIcon(fn)}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_cohortEsc(fn)}</span></span><input type="hidden" class="planner-doc-url" value="${_cohortEsc(value)}"><button type="button" onclick="this.parentElement.remove()" style="background:none;border:1px solid #E5E7EB;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:.7rem;color:#EF4444;flex-shrink:0;">✕</button>`;
+  container.appendChild(row);
+}
+
+async function wsbHandleDocUpload(event, cohortId) {
+  const input = event.target;
+  const stEl = document.getElementById('wsb-upload-status');
+  const setStatus = (msg, color) => { if (stEl) { stEl.textContent = msg; stEl.style.color = color || '#6B7280'; } };
+  const file = input && input.files && input.files[0];
+  if (!file) return;
+  if (!WSB_DOC_EXT_RE.test(file.name)) {
+    setStatus('Tipe file tidak didukung. Gunakan PDF, gambar, Word, atau PowerPoint.', '#EF4444');
+    input.value = '';
+    return;
+  }
+  if (file.size > WSB_DOC_MAX_BYTES) {
+    setStatus('Ukuran file melebihi batas 20 MB. Kompres atau pilih file lain.', '#EF4444');
+    input.value = '';
+    return;
+  }
+  if (!_supabase || !cohortId) {
+    setStatus('Tidak dapat mengunggah saat ini. Coba muat ulang halaman.', '#EF4444');
+    input.value = '';
+    return;
+  }
+  const sessionSeg = _plannerEditId || ('temp-' + Date.now());
+  const safeName = file.name.replace(/[^\w.\-]+/g, '_');
+  const path = `${cohortId}/${sessionSeg}/${Date.now()}-${safeName}`;
+  setStatus('Mengunggah dokumen…', '#6B7280');
+  try {
+    const { error } = await _supabase.storage.from(WSB_DOC_BUCKET).upload(path, file, { upsert: false, cacheControl: '3600' });
+    if (error) throw error;
+    wsbAddUploadedDocRow(WSB_DOC_PREFIX + path);
+    setStatus('Dokumen terunggah: ' + file.name + '. Jangan lupa simpan sesi.', '#16A34A');
+  } catch (e) {
+    setStatus('Gagal mengunggah: ' + (e && e.message ? e.message : e), '#EF4444');
+  }
+  input.value = '';
+}
+
+// Student-facing downloadable list (used on the Jadwal session card / day detail).
+function wsbRenderDocList(docs) {
+  const list = (docs || []).filter(Boolean);
+  if (!list.length) return '';
+  const items = list.map(v => {
+    const fn = wsbDocFilename(v);
+    const icon = wsbDocIcon(fn);
+    return `<a href="#" onclick="wsbOpenDoc('${encodeURIComponent(v)}',event)" title="${_cohortEsc(fn)}" style="display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;padding:6px 10px;font-size:.72rem;color:#1A1F3C;text-decoration:none;">
+      <span>${icon}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_cohortEsc(fn)}</span>
+      <span style="color:#6366F1;font-size:.7rem;flex-shrink:0;">Buka ›</span>
+    </a>`;
+  }).join('');
+  return `<div style="margin-top:8px;display:flex;flex-direction:column;gap:5px;">${items}</div>`;
+}
+
+// Opens a doc: signs private cohort-docs on demand, opens external links as-is.
+// A blank tab is opened synchronously to dodge popup blockers, then redirected.
+async function wsbOpenDoc(encodedValue, event) {
+  if (event) event.preventDefault();
+  let value;
+  try { value = decodeURIComponent(encodedValue); } catch (e) { value = encodedValue; }
+  if (!value.startsWith(WSB_DOC_PREFIX)) {
+    window.open(value, '_blank', 'noopener');
+    return;
+  }
+  if (!_supabase) { alert('Tidak dapat membuka dokumen saat ini.'); return; }
+  const w = window.open('', '_blank');
+  const path = value.slice(WSB_DOC_PREFIX.length);
+  try {
+    const { data, error } = await _supabase.storage.from(WSB_DOC_BUCKET).createSignedUrl(path, 3600);
+    if (error || !data || !data.signedUrl) throw (error || new Error('URL kosong'));
+    if (w) { w.location = data.signedUrl; } else { window.open(data.signedUrl, '_blank', 'noopener'); }
+  } catch (e) {
+    if (w) w.close();
+    alert('Gagal membuka dokumen: ' + (e && e.message ? e.message : e));
+  }
+}
+// ── /WS-B ─────────────────────────────────────────────────────────────────────
 
 async function cohortPlannerSaveSession(cohortId) {
   const titleEl = document.getElementById('planner-title');
