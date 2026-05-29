@@ -18333,6 +18333,7 @@ async function hbdInit() {
 async function hbdRenderMentorDigest() {
   const wrap = document.getElementById('hbd-mentor-wrap');
   if (!wrap || !_supabase || !currentUser) return;
+  if (_accessState && _accessState.role === 'independent') { wrap.style.display = 'none'; return; }
   if (!_cohortState || !_cohortState.hasMentorCohort || !_cohortState.primaryMentorCohort) {
     wrap.style.display = 'none';
     return;
@@ -24978,6 +24979,10 @@ function applyAdminViewMode(mode) {
     if (cohortNav) cohortNav.style.display = 'none';
     const qaRow = document.getElementById('hbd-leader-quick-actions');
     if (qaRow) qaRow.style.display = 'none';
+    const mentorWrapIndep = document.getElementById('hbd-mentor-wrap');
+    if (mentorWrapIndep) mentorWrapIndep.style.display = 'none';
+    const siswaProgressIndep = document.getElementById('hbd-siswa-progress');
+    if (siswaProgressIndep) siswaProgressIndep.style.display = 'none';
     const myTokoBtn = document.getElementById('mbn-mytoko');
     if (myTokoBtn) myTokoBtn.style.display = '';
     const kohortLeaderBtn = document.getElementById('mbn-kohort-leader');
