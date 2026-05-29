@@ -46,6 +46,24 @@ create policy ump_delete_mentor on public.user_milestone_progress
     )
   );
 
+-- ── Mentor milestone management RLS ────────────────────────────
+-- The existing policies only allow select + insert (milestones_insert_mentor).
+-- The track-aware Program manager needs to edit and archive/delete milestones,
+-- so add update/delete policies scoped to the cohort's mentor.
+drop policy if exists milestones_update_mentor on public.milestones;
+create policy milestones_update_mentor on public.milestones
+  for update using (
+    exists (select 1 from public.cohorts c where c.id = milestones.cohort_id and c.mentor_user_id = auth.uid())
+  ) with check (
+    exists (select 1 from public.cohorts c where c.id = milestones.cohort_id and c.mentor_user_id = auth.uid())
+  );
+
+drop policy if exists milestones_delete_mentor on public.milestones;
+create policy milestones_delete_mentor on public.milestones
+  for delete using (
+    exists (select 1 from public.cohorts c where c.id = milestones.cohort_id and c.mentor_user_id = auth.uid())
+  );
+
 -- ── Starter curriculum seed (Ocean Blue) ───────────────────────
 -- Idempotent: keyed on (cohort_id, milestone_key). Safe to re-run.
 insert into public.milestones (cohort_id, title, description, track, milestone_key, sort_order)

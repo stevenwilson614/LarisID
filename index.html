@@ -7909,6 +7909,7 @@ html,body{overflow-x:hidden;max-width:100%;}
               <button type="button" class="cohort-subtab active" data-cmtab="overview" onclick="cohortSwitchMentorTab('overview')">Ringkasan</button>
               <button type="button" class="cohort-subtab" id="cohort-mentor-subtab-identity" data-cmtab="identity" onclick="cohortSwitchMentorTab('identity')" style="display:none;">Identitas kohort</button>
               <button type="button" class="cohort-subtab" data-cmtab="students" onclick="cohortSwitchMentorTab('students')">Siswa</button>
+              <button type="button" class="cohort-subtab" data-cmtab="program" onclick="cohortSwitchMentorTab('program')">Program</button>
               <button type="button" class="cohort-subtab" data-cmtab="mod" onclick="cohortSwitchMentorTab('mod')">Moderasi</button>
               <button type="button" class="cohort-subtab" data-cmtab="report" onclick="cohortSwitchMentorTab('report')">Laporan</button>
               <button type="button" class="cohort-subtab" data-cmtab="email" onclick="cohortSwitchMentorTab('email')">Email</button>
@@ -7918,6 +7919,10 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <div class="cohort-card" style="grid-column:1/-1;">
                   <h3>Overview mentor</h3>
                   <div id="cohort-mentor-overview" class="cohort-muted">—</div>
+                </div>
+                <div class="cohort-card" style="grid-column:1/-1;">
+                  <h3>Kesehatan kohort</h3>
+                  <div id="cohort-mentor-health" class="cohort-muted">Memuat…</div>
                 </div>
                 <div class="cohort-card">
                   <h3>Ringkasan kohort</h3>
@@ -8026,6 +8031,32 @@ html,body{overflow-x:hidden;max-width:100%;}
                     <div id="cohort-dir-sel-status" style="font-size:.68rem;color:#6B7280;width:100%;"></div>
                   </div>
                 </div>
+              </div>
+            </div>
+            <div id="cohort-mentor-panel-program" style="display:none;">
+              <div class="cohort-card" style="margin-bottom:14px;">
+                <h3>Program milestone</h3>
+                <p class="cohort-muted" style="margin-bottom:10px;">Susun perjalanan siswa dalam dua jalur: <strong>Soft Skill</strong> dan <strong>Business Skill</strong>. Setiap mentor mengelola jalurnya sendiri.</p>
+                <div class="cohort-subtabs" style="margin:0 0 12px;">
+                  <button type="button" class="cohort-subtab active" data-prtrack="all" onclick="cohortProgramSetTrack('all')">Semua</button>
+                  <button type="button" class="cohort-subtab" data-prtrack="soft_skill" onclick="cohortProgramSetTrack('soft_skill')">Soft Skill</button>
+                  <button type="button" class="cohort-subtab" data-prtrack="business_skill" onclick="cohortProgramSetTrack('business_skill')">Business Skill</button>
+                </div>
+                <div id="cohort-program-list" class="cohort-muted">Memuat…</div>
+              </div>
+              <div class="cohort-card">
+                <h3>Tambah milestone</h3>
+                <input type="text" id="cohort-pr-title" class="cohort-input" placeholder="Judul milestone" maxlength="120" autocomplete="off">
+                <textarea id="cohort-pr-desc" class="cohort-input" rows="2" placeholder="Deskripsi singkat (opsional)"></textarea>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <select id="cohort-pr-track" class="cohort-input" style="flex:1;min-width:150px;margin:0;">
+                    <option value="soft_skill">Soft Skill</option>
+                    <option value="business_skill">Business Skill</option>
+                    <option value="general">Umum</option>
+                  </select>
+                  <button type="button" class="cohort-btn" onclick="cohortProgramCreate()">Tambahkan</button>
+                </div>
+                <div id="cohort-pr-status" class="cohort-muted" style="margin-top:8px;"></div>
               </div>
             </div>
             <div id="cohort-mentor-panel-mod" style="display:none;">
@@ -8347,9 +8378,26 @@ html,body{overflow-x:hidden;max-width:100%;}
       <div style="font-size:.75rem;font-weight:700;color:#1A1F3C;margin-bottom:8px;">Produk Tersimpan</div>
       <div id="sp-products" style="font-size:.72rem;color:#6B7280;">Memuat...</div>
     </div>
-    <div>
-      <div style="font-size:.75rem;font-weight:700;color:#1A1F3C;margin-bottom:8px;">Milestone Selesai</div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:.75rem;font-weight:700;color:#1A1F3C;margin-bottom:8px;">Bio</div>
       <div id="sp-milestone-list" style="font-size:.72rem;color:#6B7280;">Memuat...</div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:.75rem;font-weight:700;color:#1A1F3C;margin-bottom:8px;">Rencana Bisnis</div>
+      <div id="sp-bizplan" style="font-size:.72rem;color:#6B7280;">Memuat...</div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:.75rem;font-weight:700;color:#1A1F3C;margin-bottom:8px;">Milestone (mentor dapat menandai)</div>
+      <div id="sp-milestone-manage" style="font-size:.72rem;color:#6B7280;">Memuat...</div>
+    </div>
+    <div>
+      <div style="font-size:.75rem;font-weight:700;color:#1A1F3C;margin-bottom:8px;">Catatan Mentor</div>
+      <div id="sp-notes" style="font-size:.72rem;color:#6B7280;margin-bottom:8px;">Memuat...</div>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="sp-note-input" class="cohort-input" style="flex:1;margin:0;" placeholder="Tambah catatan privat antar-mentor…" maxlength="500" autocomplete="off">
+        <button type="button" class="cohort-btn" style="flex:0 0 auto;" onclick="cohortAddStudentNote()">Simpan</button>
+      </div>
+      <div id="sp-note-status" class="cohort-muted" style="font-size:.66rem;margin-top:6px;"></div>
     </div>
   </div>
 </div>
@@ -12937,7 +12985,7 @@ function cohortSwitchMentorTab(tab) {
   document.querySelectorAll('#cohort-mentor-subtabs .cohort-subtab').forEach(b => {
     b.classList.toggle('active', b.dataset.cmtab === tab);
   });
-  ['overview', 'identity', 'students', 'mod', 'report', 'email'].forEach(t => {
+  ['overview', 'identity', 'students', 'program', 'mod', 'report', 'email'].forEach(t => {
     const el = document.getElementById('cohort-mentor-panel-' + t);
     if (el) el.style.display = t === tab ? '' : 'none';
   });
@@ -12945,6 +12993,7 @@ function cohortSwitchMentorTab(tab) {
   if (!c) return;
   if (tab === 'identity') cohortPreviewBrandingForm();
   if (tab === 'students') { void cohortRenderMentorDirectory(c.id); void cohortDirStudentsInit(c.id); }
+  if (tab === 'program') void cohortProgramRender(c.id);
   if (tab === 'mod') void cohortRenderModFeed(c.id);
   if (tab === 'email') ldrBcInit();
 }
@@ -13028,8 +13077,11 @@ async function cohortRenderLeaderboard(cohortId) {
   }).join('');
 }
 
+let _spCurrentUserId = null;
+
 async function openStudentProfile(userId) {
   if (!_supabase || !userId) return;
+  _spCurrentUserId = userId;
   const ov = document.getElementById('siswa-profile-modal-overlay');
   if (!ov) return;
   const nameEl   = document.getElementById('sp-name');
@@ -13089,14 +13141,273 @@ async function openStudentProfile(userId) {
     if (prodsEl) prodsEl.innerHTML = links.length ? links.join(' · ') : 'Belum ada link publik.';
 
     if (listEl) listEl.textContent = pr.bio || 'Belum ada bio.';
+
+    await Promise.all([
+      cohortRenderStudentBizPlan(userId),
+      cohortRenderStudentMilestoneManage(userId),
+      cohortRenderStudentNotes(userId),
+    ]);
   } catch (e) {
     console.warn('openStudentProfile error', e.message || e);
   }
 }
 
+async function cohortRenderStudentBizPlan(userId) {
+  const el = document.getElementById('sp-bizplan');
+  if (!el) return;
+  const { data, error } = await _supabase.from('business_plans').select('product_name,niche,target_market,unit_goal_90d,price_target,notes,updated_at').eq('user_id', userId).maybeSingle();
+  if (error || !data) { el.textContent = 'Belum ada rencana bisnis.'; return; }
+  const rows = [];
+  if (data.product_name) rows.push(`<div><span class="cohort-muted">Produk:</span> ${_cohortEsc(data.product_name)}</div>`);
+  if (data.niche) rows.push(`<div><span class="cohort-muted">Niche:</span> ${_cohortEsc(data.niche)}</div>`);
+  if (data.target_market) rows.push(`<div><span class="cohort-muted">Target pasar:</span> ${_cohortEsc(data.target_market)}</div>`);
+  if (data.unit_goal_90d != null) rows.push(`<div><span class="cohort-muted">Target 90 hari:</span> ${_cohortEsc(String(data.unit_goal_90d))} unit</div>`);
+  if (data.price_target != null) rows.push(`<div><span class="cohort-muted">Harga target:</span> Rp${_cohortEsc(Number(data.price_target).toLocaleString('id-ID'))}</div>`);
+  if (data.notes) rows.push(`<div style="margin-top:4px;">${_cohortEsc(data.notes)}</div>`);
+  el.innerHTML = rows.length ? rows.join('') : 'Rencana bisnis masih kosong.';
+}
+
+async function cohortRenderStudentMilestoneManage(userId) {
+  const el = document.getElementById('sp-milestone-manage');
+  if (!el) return;
+  const c = _cohortState.primaryMentorCohort;
+  if (!c) { el.textContent = '—'; return; }
+  const [{ data: ms }, { data: done }] = await Promise.all([
+    _supabase.from('milestones').select('id,title,track,sort_order').eq('cohort_id', c.id).order('sort_order', { ascending: true }),
+    _supabase.from('user_milestone_progress').select('milestone_id').eq('user_id', userId),
+  ]);
+  const doneSet = new Set((done || []).map(d => d.milestone_id));
+  if (!(ms || []).length) { el.textContent = 'Belum ada milestone.'; return; }
+  el.innerHTML = (ms || []).map(m => {
+    const meta = COHORT_TRACK_META[m.track] || COHORT_TRACK_META.general;
+    const ok = doneSet.has(m.id);
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;">
+      <span style="flex:0 0 auto;width:7px;height:7px;border-radius:50%;background:${meta.color};"></span>
+      <span style="flex:1;min-width:0;${ok ? 'color:#1A7A46;font-weight:600;' : ''}">${_cohortEsc(m.title)}</span>
+      <button type="button" class="cohort-btn ${ok ? 'secondary' : ''}" style="flex:0 0 auto;padding:3px 9px;font-size:.62rem;" data-ms="${m.id}" data-on="${ok ? '1' : '0'}" onclick="cohortMentorToggleMilestone('${userId}',this.dataset.ms,this.dataset.on==='1')">${ok ? 'Batalkan' : 'Tandai'}</button>
+    </div>`;
+  }).join('');
+}
+
+async function cohortMentorToggleMilestone(userId, mid, isDone) {
+  if (!_supabase || !userId || !mid) return;
+  if (isDone) {
+    await _supabase.from('user_milestone_progress').delete().eq('user_id', userId).eq('milestone_id', mid);
+  } else {
+    await _supabase.from('user_milestone_progress').insert({ user_id: userId, milestone_id: mid });
+  }
+  await cohortRenderStudentMilestoneManage(userId);
+}
+
+async function cohortRenderStudentNotes(userId) {
+  const el = document.getElementById('sp-notes');
+  if (!el) return;
+  const c = _cohortState.primaryMentorCohort;
+  if (!c) { el.textContent = '—'; return; }
+  const { data, error } = await _supabase.from('cohort_student_notes')
+    .select('id,body,author_user_id,created_at')
+    .eq('cohort_id', c.id).eq('student_user_id', userId)
+    .order('created_at', { ascending: false }).limit(30);
+  if (error) { el.textContent = 'Gagal memuat catatan.'; return; }
+  if (!(data || []).length) { el.innerHTML = '<span class="cohort-muted">Belum ada catatan.</span>'; return; }
+  el.innerHTML = data.map(n => {
+    const mine = n.author_user_id === (currentUser && currentUser.id);
+    const del = mine ? `<button type="button" class="cohort-btn secondary" style="padding:2px 7px;font-size:.58rem;margin-left:auto;" onclick="cohortDeleteStudentNote('${n.id}','${userId}')">Hapus</button>` : '';
+    return `<div style="background:#F9FAFB;border-radius:8px;padding:8px 10px;margin-bottom:6px;">
+      <div>${_cohortEsc(n.body)}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+        <span class="cohort-muted" style="font-size:.6rem;">${mine ? 'Kamu' : 'Mentor'} · ${_cohortEsc((n.created_at || '').slice(0, 16).replace('T', ' '))}</span>
+        ${del}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function cohortAddStudentNote() {
+  const input = document.getElementById('sp-note-input');
+  const statusEl = document.getElementById('sp-note-status');
+  const c = _cohortState.primaryMentorCohort;
+  if (!c || !_supabase || !_spCurrentUserId || !currentUser) return;
+  const body = (input?.value || '').trim();
+  if (!body) return;
+  if (statusEl) statusEl.textContent = 'Menyimpan…';
+  const { error } = await _supabase.from('cohort_student_notes').insert({
+    cohort_id: c.id, author_user_id: currentUser.id, student_user_id: _spCurrentUserId, body,
+  });
+  if (error) { if (statusEl) statusEl.textContent = 'Gagal: ' + (error.message || ''); return; }
+  if (input) input.value = '';
+  if (statusEl) statusEl.textContent = '';
+  await cohortRenderStudentNotes(_spCurrentUserId);
+}
+
+async function cohortDeleteStudentNote(id, userId) {
+  if (!_supabase || !id) return;
+  await _supabase.from('cohort_student_notes').delete().eq('id', id);
+  await cohortRenderStudentNotes(userId);
+}
+
 function siswaProfileClose() {
   const ov = document.getElementById('siswa-profile-modal-overlay');
   if (ov) ov.style.display = 'none';
+}
+
+// ── Mentor Program manager (track-aware milestones) ──────────────
+let _cohortProgramTrack = 'all';
+const COHORT_TRACK_META = {
+  soft_skill:     { label: 'Soft Skill',     color: '#7C3AED', band: 100 },
+  business_skill: { label: 'Business Skill', color: '#0EA5E9', band: 200 },
+  general:        { label: 'Umum',           color: '#6B7280', band: 300 },
+};
+
+function cohortProgramSetTrack(t) {
+  _cohortProgramTrack = t;
+  document.querySelectorAll('#cohort-mentor-panel-program [data-prtrack]').forEach(b => {
+    b.classList.toggle('active', b.dataset.prtrack === t);
+  });
+  const c = _cohortState.primaryMentorCohort;
+  if (c) void cohortProgramRender(c.id);
+}
+
+async function cohortProgramRender(cohortId) {
+  const root = document.getElementById('cohort-program-list');
+  if (!root) return;
+  if (!cohortId || !_supabase) { root.innerHTML = '<p class="cohort-muted">—</p>'; return; }
+  root.innerHTML = '<p class="cohort-muted">Memuat…</p>';
+
+  let q = _supabase.from('milestones').select('id,title,description,track,sort_order,milestone_key').eq('cohort_id', cohortId);
+  if (_cohortProgramTrack !== 'all') q = q.eq('track', _cohortProgramTrack);
+  const { data: ms, error } = await q.order('sort_order', { ascending: true });
+  if (error) { root.innerHTML = '<p class="cohort-muted">Gagal memuat milestone.</p>'; return; }
+  if (!(ms || []).length) { root.innerHTML = '<p class="cohort-muted">Belum ada milestone di jalur ini.</p>'; return; }
+
+  // Completion counts across the cohort.
+  const ids = ms.map(m => m.id);
+  const countMap = {};
+  if (ids.length) {
+    const { data: prog } = await _supabase.from('user_milestone_progress').select('milestone_id').in('milestone_id', ids);
+    (prog || []).forEach(p => { countMap[p.milestone_id] = (countMap[p.milestone_id] || 0) + 1; });
+  }
+
+  root.innerHTML = ms.map(m => {
+    const meta = COHORT_TRACK_META[m.track] || COHORT_TRACK_META.general;
+    const cnt = countMap[m.id] || 0;
+    const desc = m.description ? `<div class="cohort-muted" style="font-size:.72rem;margin-top:3px;">${_cohortEsc(m.description)}</div>` : '';
+    return `<div class="cohort-feed-card" style="display:flex;gap:10px;align-items:flex-start;">
+      <span style="flex:0 0 auto;width:8px;height:8px;border-radius:50%;background:${meta.color};margin-top:6px;"></span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;">${_cohortEsc(m.title)}</div>
+        ${desc}
+        <div class="cohort-muted" style="font-size:.66rem;margin-top:4px;">
+          <span style="color:${meta.color};font-weight:700;">${meta.label}</span> · ${cnt} selesai${m.milestone_key ? ' · ' + _cohortEsc(m.milestone_key) : ''}
+        </div>
+      </div>
+      <button type="button" class="cohort-btn secondary" style="flex:0 0 auto;padding:4px 10px;font-size:.65rem;" data-ms="${m.id}" onclick="cohortProgramDelete(this.dataset.ms)">Hapus</button>
+    </div>`;
+  }).join('');
+}
+
+async function cohortProgramCreate() {
+  const statusEl = document.getElementById('cohort-pr-status');
+  const titleEl = document.getElementById('cohort-pr-title');
+  const descEl = document.getElementById('cohort-pr-desc');
+  const trackEl = document.getElementById('cohort-pr-track');
+  const c = _cohortState.primaryMentorCohort;
+  if (!c || !_supabase) return;
+  const title = (titleEl?.value || '').trim();
+  if (!title) { if (statusEl) statusEl.textContent = 'Judul wajib diisi.'; return; }
+  const track = trackEl?.value || 'general';
+  const meta = COHORT_TRACK_META[track] || COHORT_TRACK_META.general;
+  if (statusEl) statusEl.textContent = 'Menyimpan…';
+
+  // Next sort_order within the track's band.
+  const { data: last } = await _supabase.from('milestones')
+    .select('sort_order').eq('cohort_id', c.id).eq('track', track)
+    .order('sort_order', { ascending: false }).limit(1);
+  const nextSort = (last && last.length ? last[0].sort_order : meta.band - 1) + 1;
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'm';
+  const key = `${track.slice(0, 2)}_${slug}_${Date.now().toString(36)}`;
+
+  const { error } = await _supabase.from('milestones').insert({
+    cohort_id: c.id, title, description: (descEl?.value || '').trim() || null,
+    track, sort_order: nextSort, milestone_key: key,
+  });
+  if (error) { if (statusEl) statusEl.textContent = 'Gagal: ' + (error.message || 'tidak diketahui'); return; }
+  if (titleEl) titleEl.value = '';
+  if (descEl) descEl.value = '';
+  if (statusEl) statusEl.textContent = 'Tersimpan.';
+  await cohortProgramRender(c.id);
+}
+
+async function cohortProgramDelete(id) {
+  if (!_supabase || !id) return;
+  if (!confirm('Hapus milestone ini? Progres siswa pada milestone ini juga akan hilang.')) return;
+  const c = _cohortState.primaryMentorCohort;
+  const { error } = await _supabase.from('milestones').delete().eq('id', id);
+  if (error) { const s = document.getElementById('cohort-pr-status'); if (s) s.textContent = 'Gagal menghapus: ' + (error.message || ''); return; }
+  if (c) await cohortProgramRender(c.id);
+}
+
+// ── Cohort health: per-track progress + "stuck" detection ────────
+async function cohortRenderHealth(cohortId, studs) {
+  const el = document.getElementById('cohort-mentor-health');
+  if (!el) return;
+  if (!cohortId || !_supabase) { el.textContent = '—'; return; }
+  const studIds = (studs || []).map(s => s.user_id);
+  const nStud = studIds.length;
+
+  const { data: ms } = await _supabase.from('milestones').select('id,track').eq('cohort_id', cohortId);
+  const byTrack = { soft_skill: [], business_skill: [], general: [] };
+  (ms || []).forEach(m => { (byTrack[m.track] || byTrack.general).push(m.id); });
+
+  let prog = [];
+  if (studIds.length && (ms || []).length) {
+    const allIds = (ms || []).map(m => m.id);
+    const { data } = await _supabase.from('user_milestone_progress')
+      .select('user_id,milestone_id,completed_at').in('milestone_id', allIds).in('user_id', studIds);
+    prog = data || [];
+  }
+
+  // Per-track completion ratio across all students.
+  function trackPct(track) {
+    const ids = new Set(byTrack[track]);
+    if (!ids.size || !nStud) return 0;
+    const done = prog.filter(p => ids.has(p.milestone_id)).length;
+    return Math.round((done / (ids.size * nStud)) * 100);
+  }
+  const softPct = trackPct('soft_skill');
+  const bizPct = trackPct('business_skill');
+
+  // "Stuck": no milestone completed in 14 days (but has joined).
+  const cutoff = Date.now() - 14 * 86400000;
+  const lastByUser = {};
+  prog.forEach(p => {
+    const t = p.completed_at ? new Date(p.completed_at).getTime() : 0;
+    if (!lastByUser[p.user_id] || t > lastByUser[p.user_id]) lastByUser[p.user_id] = t;
+  });
+  const stuck = studIds.filter(uid => (lastByUser[uid] || 0) < cutoff);
+
+  function bar(label, pct, color) {
+    return `<div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;font-size:.68rem;font-weight:700;margin-bottom:4px;">
+        <span style="color:${color};">${label}</span><span>${pct}%</span>
+      </div>
+      <div style="background:#F3F4F6;border-radius:999px;height:8px;overflow:hidden;">
+        <div style="width:${pct}%;height:100%;background:${color};"></div>
+      </div>
+    </div>`;
+  }
+
+  const stuckHtml = stuck.length
+    ? stuck.map(uid => `<span style="cursor:pointer;color:#E8442A;font-weight:700;" onclick="openStudentProfile('${uid}')">${_cohortEsc(cohortCohortDisplayName(uid, null))}</span>`).join(', ')
+    : '<span class="cohort-muted">Tidak ada — semua bergerak.</span>';
+
+  el.innerHTML = `
+    ${bar('Soft Skill', softPct, COHORT_TRACK_META.soft_skill.color)}
+    ${bar('Business Skill', bizPct, COHORT_TRACK_META.business_skill.color)}
+    <div style="margin-top:12px;font-size:.7rem;">
+      <div style="font-weight:700;margin-bottom:4px;">Macet (tanpa milestone 14 hari)</div>
+      <div>${stuckHtml}</div>
+    </div>`;
 }
 
 async function cohortRenderAnnouncements(cohortId) {
@@ -13341,6 +13652,7 @@ async function cohortRenderMentorPanels() {
         <div style="background:#F9FAFB;border-radius:8px;padding:10px;"><div class="cohort-muted" style="font-size:.62rem;">Siswa aktif</div><div style="font-size:1.2rem;font-weight:900;">${studs.length}</div></div>
       </div>`;
   }
+  void cohortRenderHealth(cohortId, studs);
   if (bc) {
     const isActualMentor = cohortIsActualMentorForCohort(c);
     const adminPrevLeader = isPlatformAdmin() && cohortGetPreviewShell() === 'leader';
