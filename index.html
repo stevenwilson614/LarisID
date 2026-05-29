@@ -13262,12 +13262,12 @@ async function cohortRenderMentorPanels() {
     memEl.innerHTML = studs.length ? studs.map(s => {
       const nm = cohortCohortDisplayName(s.user_id, null);
       const ls = s.last_seen_at ? ` · terlihat ${_cohortEsc(s.last_seen_at.slice(0, 10))}` : '';
-      return `<div style="padding:6px 0;border-bottom:1px solid #F3F4F6;font-size:.72rem;"><strong>${_cohortEsc(nm)}</strong>${ls}<br><span class="cohort-muted">bergabung ${_cohortEsc((s.joined_at || '').slice(0, 10))}</span></div>`;
+      return `<div style="padding:6px 0;border-bottom:1px solid #F3F4F6;font-size:.72rem;"><span style="cursor:pointer;color:#E8442A;font-weight:700;" onclick="openStudentProfile('${s.user_id}')">${_cohortEsc(nm)}</span>${ls}<br><span class="cohort-muted">bergabung ${_cohortEsc((s.joined_at || '').slice(0, 10))}</span></div>`;
     }).join('') : '<span class="cohort-muted">Belum ada siswa.</span>';
   }
   if (inac) {
     inac.innerHTML = inactive.length
-      ? inactive.map(s => `<li><span style="font-weight:600;">${_cohortEsc(cohortCohortDisplayName(s.user_id, null))}</span><span class="cohort-muted"> tanpa event 7 hari</span></li>`).join('')
+      ? inactive.map(s => `<li><span style="cursor:pointer;color:#E8442A;font-weight:700;" onclick="openStudentProfile('${s.user_id}')">${_cohortEsc(cohortCohortDisplayName(s.user_id, null))}</span><span class="cohort-muted"> tanpa event 7 hari</span></li>`).join('')
       : '<li class="cohort-muted">Semua aktif 🎉</li>';
   }
   const { count: postWeek } = await _supabase.from('community_posts').select('*', { count: 'exact', head: true }).eq('cohort_id', cohortId).gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString());
@@ -17605,8 +17605,8 @@ async function hbdInit() {
       if (legendEl) legendEl.innerHTML = '<span style="font-size:.6rem;color:#9CA3AF;font-style:italic;">Contoh: 5 produk teratas di pasar</span>';
     }
     void hbdRenderCohortDigest();
-    if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(() => _hbdApplyLeaderMode(_effectiveLeaderMode()));
-    else { void hbdRenderMentorDigest(); _hbdApplyLeaderMode(_effectiveLeaderMode()); }
+    if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(() => { _hbdApplyLeaderMode(_effectiveLeaderMode()); _hbdApplyIndependentMode(); });
+    else { void hbdRenderMentorDigest(); _hbdApplyLeaderMode(_effectiveLeaderMode()); _hbdApplyIndependentMode(); }
     return;
   }
 
@@ -17766,8 +17766,8 @@ async function hbdInit() {
   }));
   _hbdBuildChartFromTracked(prods);
   void hbdRenderCohortDigest();
-  if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(() => _hbdApplyLeaderMode(_accessState.isLeader || isBootstrapLeader()));
-  else { void hbdRenderMentorDigest(); _hbdApplyLeaderMode(_accessState.isLeader || isBootstrapLeader()); }
+  if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(() => { _hbdApplyLeaderMode(_accessState.isLeader || isBootstrapLeader()); _hbdApplyIndependentMode(); });
+  else { void hbdRenderMentorDigest(); _hbdApplyLeaderMode(_accessState.isLeader || isBootstrapLeader()); _hbdApplyIndependentMode(); }
 }
 
 async function hbdRenderMentorDigest() {
@@ -24368,6 +24368,31 @@ function _mbnApplyLeaderMode(isLeader) {
     const kohortBtn = document.getElementById('mbn-kohort-leader');
     if (kohortBtn) kohortBtn.style.display = 'none';
   }
+}
+
+// ── INDEPENDENT MODE — hide all cohort-related chrome ────────
+function _hbdApplyIndependentMode() {
+  if (!_accessState || _accessState.role !== 'independent') return;
+  // Sidebar cohort nav
+  const cohortNav = document.getElementById('dash-nav-cohort');
+  if (cohortNav) cohortNav.style.display = 'none';
+  // Dashboard cohort digest + rec card
+  const cohortDigest = document.getElementById('hbd-cohort-digest-wrap');
+  if (cohortDigest) cohortDigest.style.display = 'none';
+  const recCard = document.getElementById('hbd-cohort-rec-card');
+  if (recCard) recCard.style.display = 'none';
+  // Leader-only sections (already hidden by default, ensure they stay hidden)
+  const mentorWrap = document.getElementById('hbd-mentor-wrap');
+  if (mentorWrap) mentorWrap.style.display = 'none';
+  const qaRow = document.getElementById('hbd-leader-quick-actions');
+  if (qaRow) qaRow.style.display = 'none';
+  const siswaProgress = document.getElementById('hbd-siswa-progress');
+  if (siswaProgress) siswaProgress.style.display = 'none';
+  // Mobile bottom nav — hide Kohort leader button, show My Toko
+  const kohortLeaderBtn = document.getElementById('mbn-kohort-leader');
+  if (kohortLeaderBtn) kohortLeaderBtn.style.display = 'none';
+  const myTokoBtn = document.getElementById('mbn-mytoko');
+  if (myTokoBtn) myTokoBtn.style.display = '';
 }
 
 // ── DISCOVER FILTER DRAWER (mobile) ─────────────────────────
