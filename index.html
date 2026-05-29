@@ -7862,6 +7862,13 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <p id="cohort-chat-wa-missing" class="cohort-muted" style="display:none;">Mentor belum menautkan grup WhatsApp.</p>
               </div>
             </div>
+            <div id="cohort-student-panel-jadwal" style="display:none;">
+              <div class="cohort-card">
+                <h3>Jadwal program</h3>
+                <p class="cohort-muted" style="margin-bottom:12px;">Sesi dan materi yang dijadwalkan mentor ke depan.</p>
+                <div id="cohort-jadwal-list"><span class="cohort-muted">Memuat…</span></div>
+              </div>
+            </div>
             <div id="cohort-join-card" class="cohort-card" style="margin-top:16px;">
               <h3>Gabung kohort</h3>
               <p class="cohort-muted" style="margin-bottom:10px;">Masukkan kode undangan dari mentor kamu.</p>
@@ -7875,9 +7882,11 @@ html,body{overflow-x:hidden;max-width:100%;}
               <button type="button" class="cohort-subtab active" data-cmtab="overview" onclick="cohortSwitchMentorTab('overview')">Ringkasan</button>
               <button type="button" class="cohort-subtab" id="cohort-mentor-subtab-identity" data-cmtab="identity" onclick="cohortSwitchMentorTab('identity')" style="display:none;">Identitas kohort</button>
               <button type="button" class="cohort-subtab" data-cmtab="students" onclick="cohortSwitchMentorTab('students')">Siswa</button>
+              <button type="button" class="cohort-subtab" data-cmtab="program" onclick="cohortSwitchMentorTab('program')">Program</button>
               <button type="button" class="cohort-subtab" data-cmtab="mod" onclick="cohortSwitchMentorTab('mod')">Moderasi</button>
               <button type="button" class="cohort-subtab" data-cmtab="report" onclick="cohortSwitchMentorTab('report')">Laporan</button>
               <button type="button" class="cohort-subtab" data-cmtab="email" onclick="cohortSwitchMentorTab('email')">Email</button>
+              <button type="button" class="cohort-subtab" data-cmtab="planner" onclick="cohortSwitchMentorTab('planner')">Planner</button>
             </div>
             <div id="cohort-mentor-panel-overview">
               <div class="cohort-grid">
@@ -8064,7 +8073,79 @@ html,body{overflow-x:hidden;max-width:100%;}
                 </div>
               </div>
             </div>
+
+            <!-- ── PROGRAM PANEL ── -->
+            <div id="cohort-mentor-panel-program" style="display:none;">
+              <div class="cohort-card" style="margin-bottom:14px;">
+                <h3>Program milestone</h3>
+                <p class="cohort-muted" style="margin-bottom:10px;">Susun perjalanan siswa dalam dua jalur: <strong>Soft Skill</strong> dan <strong>Business Skill</strong>. Klik "+ Tambah konten" untuk lampirkan video, dokumen, atau teks ke milestone.</p>
+                <div class="cohort-subtabs" style="margin:0 0 12px;">
+                  <button type="button" class="cohort-subtab active" data-prtrack="all" onclick="cohortProgramSetTrack('all')">Semua</button>
+                  <button type="button" class="cohort-subtab" data-prtrack="soft_skill" onclick="cohortProgramSetTrack('soft_skill')">Soft Skill</button>
+                  <button type="button" class="cohort-subtab" data-prtrack="business_skill" onclick="cohortProgramSetTrack('business_skill')">Business Skill</button>
+                </div>
+                <div id="cohort-program-list" class="cohort-muted">Memuat…</div>
+              </div>
+              <div class="cohort-card">
+                <h3>Tambah milestone</h3>
+                <input type="text" id="cohort-pr-title" class="cohort-input" placeholder="Judul milestone" maxlength="120" autocomplete="off">
+                <textarea id="cohort-pr-desc" class="cohort-input" rows="2" placeholder="Deskripsi singkat (opsional)"></textarea>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <select id="cohort-pr-track" class="cohort-input" style="flex:1;min-width:150px;margin:0;">
+                    <option value="soft_skill">Soft Skill</option>
+                    <option value="business_skill">Business Skill</option>
+                    <option value="general">Umum</option>
+                  </select>
+                  <button type="button" class="cohort-btn" onclick="cohortProgramCreate()">Tambahkan</button>
+                </div>
+                <div id="cohort-pr-status" class="cohort-muted" style="margin-top:8px;"></div>
+              </div>
+            </div>
+
+            <!-- ── PLANNER PANEL ── -->
+            <div id="cohort-mentor-panel-planner" style="display:none;">
+              <div class="cohort-card" style="margin-bottom:14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+                  <div>
+                    <h3 style="margin:0 0 2px;">Planner program</h3>
+                    <p class="cohort-muted" style="margin:0;font-size:.72rem;">Klik tanggal untuk membuat sesi. Import jadwal dari Google Calendar.</p>
+                  </div>
+                  <button type="button" class="cohort-btn secondary" style="white-space:nowrap;display:flex;align-items:center;gap:6px;" onclick="cohortPlannerImportGcal()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    Import Google Calendar
+                  </button>
+                </div>
+                <div id="cohort-planner-cal"></div>
+              </div>
+              <!-- GCal import panel (hidden by default) -->
+              <div id="gcal-import-panel" style="display:none;" class="cohort-card">
+                <h3>Import dari Google Calendar</h3>
+                <div id="gcal-import-body"></div>
+              </div>
+            </div>
+
           </div>
+
+          <!-- Content viewer overlay (student) -->
+          <div id="cv-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;align-items:center;justify-content:center;padding:16px;">
+            <div style="background:#fff;border-radius:16px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);display:flex;flex-direction:column;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 12px;border-bottom:1px solid #F3F4F6;position:sticky;top:0;background:#fff;z-index:1;">
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:.6rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Materi belajar</div>
+                  <div id="cv-title" style="font-size:.9rem;font-weight:800;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+                </div>
+                <button type="button" onclick="cohortCloseContentViewer()" style="margin-left:12px;flex-shrink:0;background:none;border:1px solid #E5E7EB;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:.72rem;color:#6B7280;">Tutup</button>
+              </div>
+              <div style="height:3px;background:#E5E7EB;"><div id="cv-progress-bar" style="height:100%;background:#6366F1;width:0%;transition:width .4s;"></div></div>
+              <div id="cv-body" style="padding:20px;flex:1;"></div>
+            </div>
+          </div>
+
+          <!-- Planner session editor overlay -->
+          <div id="cohort-planner-editor-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center;padding:16px;">
+            <div id="cohort-planner-editor" style="background:#fff;border-radius:16px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);padding:24px;"></div>
+          </div>
+
         </div>
 
         <!-- ADMIN (owner only — hidden from others) -->
