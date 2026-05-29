@@ -3382,6 +3382,30 @@ html,body{overflow-x:hidden;max-width:100%;}
 @media(hover:none){.fb-flag-btn{opacity:.55;}}
 .fb-ctx-banner{display:none;background:#FFF0ED;border:1px solid #FECACA;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:.75rem;color:#1A1F3C;align-items:center;gap:8px;}
 .fb-ctx-banner svg{flex-shrink:0;stroke:#E8442A;}
+
+/* ── STUDENT MOBILE FIXES ── */
+@media(max-width:768px){
+  /* 1. Hide stat blocks */
+  #hbd-s1, #hbd-s2, #hbd-s3, #hbd-s4,
+  .hbd-stats-row { display: none !important; }
+
+  /* 2. Hide Aksi Terkini card */
+  #hbd-product-opp-col .hbd-card:first-child { display: none !important; }
+
+  /* 3. Hide Peluang Mingguan Hari Ini card */
+  #hbd-product-opp-col .hbd-card:last-child { display: none !important; }
+
+  /* 4. Compact credits: hide expanded earn/spend details */
+  .hcc-earn-title,
+  .hcc-earn-row,
+  .hcc-prog-wrap,
+  .hcc-spend { display: none !important; }
+
+  /* 5. Reorder: move Peti Mingguan below Produk Trending */
+  .hbd-wrap { display: flex; flex-direction: column; }
+  #weekly-chest-card { order: 10; }
+  #hbd-trending-section { order: 9; }
+}
 </style>
 </head>
 <body>
