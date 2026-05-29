@@ -709,9 +709,9 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .dash-nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;background:var(--cohort-secondary,#E8442A);border-radius:0 2px 2px 0;}
 /* ── Admin preview bar (site-wide role toggle) ── */
 #admin-preview-bar{display:none;align-items:center;gap:8px;padding:6px 20px;background:#0F172A;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:60px;z-index:94;flex-shrink:0;}
-@media(max-width:768px){body.in-dashboard #admin-preview-bar{top:60px;position:sticky;}}
+@media(max-width:768px){body.in-dashboard #admin-preview-bar{top:60px;position:sticky;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;}}
 .apb-label{font-size:.65rem;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;}
-.apb-btn{padding:4px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.18);background:transparent;color:rgba(255,255,255,.55);font-size:.68rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;}
+.apb-btn{padding:4px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.18);background:transparent;color:rgba(255,255,255,.55);font-size:.68rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;flex-shrink:0;}
 .apb-btn:hover{background:rgba(255,255,255,.08);color:#fff;}
 .apb-btn.active{background:#E8442A;border-color:#E8442A;color:#fff;}
 .apb-mode-badge{margin-left:auto;font-size:.6rem;color:rgba(255,255,255,.35);white-space:nowrap;}
@@ -1235,6 +1235,8 @@ body.in-dashboard .mobile-menu{display:none!important;}
 
 /* ── MOBILE ── */
 @media(max-width:768px){
+  html{overflow-x:hidden;}
+  body{overflow-x:hidden;max-width:100vw;}
   .dash-sidebar{transform:translateX(-100%);}
   .dash-sidebar.open{transform:translateX(0);}
   .dash-main{margin-left:0;}
@@ -1881,6 +1883,7 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .hbd-card{background:#fff;border-radius:12px;border:1px solid #E5E7EB;padding:18px 20px;}
 .hbd-card-title{font-size:.82rem;font-weight:700;color:#1A1F3C;margin-bottom:4px;}
 .hbd-card-sub{font-size:.72rem;color:#9CA3AF;margin-bottom:14px;}
+@media(max-width:768px){#hbd-mentor-cohort-name{white-space:normal;word-break:break-word;overflow:visible;max-width:100%;}}
 .hbd-chart-tabs{display:flex;gap:6px;margin-bottom:12px;}
 .hbd-tab{font-size:.72rem;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid #E5E7EB;background:#fff;color:#6B7280;cursor:pointer;font-family:inherit;transition:all .15s;}
 .hbd-tab.active{background:#1A1F3C;color:#fff;border-color:#1A1F3C;}
@@ -2043,6 +2046,10 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dd-donut-legend-item{display:flex;align-items:center;gap:6px;font-size:.72rem;color:#374151;}
 .dd-donut-legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
 .dd-donut-pct{margin-left:auto;font-weight:600;color:#6B7280;padding-left:8px;}
+@media(max-width:768px){
+  .dd-usia-toko-inner{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .dd-donut-legend{flex-wrap:wrap;flex-direction:row;}
+}
 /* category perf */
 .dd-catperf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
 .dd-catperf-stat-label{font-size:.65rem;color:#9CA3AF;font-weight:600;margin-bottom:2px;}
@@ -2600,7 +2607,7 @@ body.in-dashboard .mobile-menu{display:none!important;}
 
 /* ── Issue 2c: Deep dive tabs scroll horizontally ── */
 @media(max-width:768px){
-  .dd-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap;margin:0 -12px;padding-left:12px;}
+  .dd-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap;margin:0 -12px;padding-left:12px;position:sticky;top:60px;z-index:80;background:#fff;}
   .dd-tabs::-webkit-scrollbar{display:none;}
   .dd-tab{font-size:.73rem;padding:9px 10px;white-space:nowrap;flex-shrink:0;}
 }
@@ -2609,6 +2616,10 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dd-tbl-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .dd-scroll-hint{font-size:.65rem;color:#9CA3AF;margin-bottom:4px;display:none;align-items:center;gap:4px;}
 @media(max-width:768px){.dd-scroll-hint{display:flex;}}
+@media(max-width:768px){
+  .cmp-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;}
+  .dd-tbl-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;}
+}
 
 /* ── Issue 4b: Bottom nav CSS ── */
 #mobile-bottom-nav{
@@ -3400,6 +3411,46 @@ html,body{overflow-x:hidden;max-width:100%;}
 @media(hover:none){.fb-flag-btn{opacity:.55;}}
 .fb-ctx-banner{display:none;background:#FFF0ED;border:1px solid #FECACA;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:.75rem;color:#1A1F3C;align-items:center;gap:8px;}
 .fb-ctx-banner svg{flex-shrink:0;stroke:#E8442A;}
+
+/* ── STUDENT MOBILE FIXES ── */
+@media(max-width:768px){
+  /* 1. Hide stat blocks */
+  #hbd-s1, #hbd-s2, #hbd-s3, #hbd-s4,
+  .hbd-stats-row { display: none !important; }
+
+  /* 2. Hide Aksi Terkini card */
+  #hbd-product-opp-col .hbd-card:first-child { display: none !important; }
+
+  /* 3. Hide Peluang Mingguan Hari Ini card */
+  #hbd-product-opp-col .hbd-card:last-child { display: none !important; }
+
+  /* 4. Compact credits: hide expanded earn/spend details */
+  .hcc-earn-title,
+  .hcc-earn-row,
+  .hcc-prog-wrap,
+  .hcc-spend { display: none !important; }
+
+  /* 5. Reorder: move Peti Mingguan below Produk Trending */
+  .hbd-wrap { display: flex; flex-direction: column; }
+  #weekly-chest-card { order: 10; }
+  #hbd-trending-section { order: 9; }
+}
+
+/* ── AUTH LOADING OVERLAY ─────────────────────────────────── */
+.auth-loading-overlay {
+  position: fixed; inset: 0; background: rgba(255,255,255,0.85);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999; flex-direction: column; gap: 12px;
+}
+.auth-loading-overlay .auth-spinner {
+  width: 40px; height: 40px; border: 3px solid #F3F4F6;
+  border-top-color: #E8442A; border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.auth-loading-overlay .auth-loading-text {
+  font-size: .85rem; color: #6B7280; font-family: 'Plus Jakarta Sans', sans-serif;
+}
 </style>
 </head>
 <body>
@@ -4635,7 +4686,7 @@ html,body{overflow-x:hidden;max-width:100%;}
         <div id="dash-topbar-cohort-chip" class="dash-topbar-cohort-chip" style="display:none;" aria-label="Kohort"></div>
         <div class="dash-topbar-avatar" id="dash-topbar-av" onclick="event.stopPropagation();document.getElementById('dash-topbar-menu').classList.toggle('open')">
           ?
-          <div class="dash-topbar-menu" id="dash-topbar-menu">
+        <div class="dash-topbar-menu" id="dash-topbar-menu">
             <div class="dash-topbar-menu-item" id="dash-topbar-uname" style="font-weight:700;color:#111;pointer-events:none;font-size:.8rem;"></div>
             <div class="dash-topbar-divider"></div>
             <div class="dash-topbar-menu-item" onclick="switchDashView('about');document.getElementById('dash-topbar-menu').classList.remove('open')">
@@ -4760,6 +4811,82 @@ html,body{overflow-x:hidden;max-width:100%;}
             <button type="submit" style="width:100%;background:#E8442A;color:#fff;border:none;border-radius:8px;padding:10px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;">Daftar Sekarang</button>
           </form>
           <div id="dash-email-success" style="display:none;text-align:center;padding:10px 0;font-size:.8rem;color:#1A7A46;font-weight:700;">Berhasil! Cek inbox kamu.</div>
+        </div>
+      </div>
+
+      <!-- profile edit modal -->
+      <div id="profile-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:550;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)closeProfileEditModal()">
+        <div style="background:#fff;border-radius:16px;padding:22px 20px;max-width:520px;width:100%;box-shadow:0 16px 40px rgba(15,23,42,.35);">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+            <div>
+              <div style="font-size:.9rem;font-weight:800;color:#111;">Profil Saya</div>
+              <div style="font-size:.75rem;color:#6B7280;margin-top:2px;">Atur foto, bio singkat, dan cara orang menghubungi kamu.</div>
+            </div>
+            <button onclick="closeProfileEditModal()" style="background:none;border:none;font-size:1.1rem;color:#9CA3AF;cursor:pointer;line-height:1;">&#x2715;</button>
+          </div>
+
+          <div style="display:flex;gap:14px;align-items:center;margin-bottom:16px;">
+            <div id="profile-edit-avatar" style="width:60px;height:60px;border-radius:999px;background:linear-gradient(135deg,#fed7aa,#fb923c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#111;font-size:1.2rem;overflow:hidden;flex-shrink:0;">
+              <span id="profile-edit-avatar-initials">?</span>
+              <img id="profile-edit-avatar-img" alt="" style="display:none;width:100%;height:100%;object-fit:cover;" loading="lazy" decoding="async">
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                <input id="profile-display-name-input" type="text" placeholder="Nama tampilan" maxlength="80" style="flex:1;border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 10px;font-size:.8rem;font-family:inherit;box-sizing:border-box;">
+                <span id="profile-role-pill" style="font-size:.65rem;font-weight:700;padding:4px 10px;border-radius:999px;background:#EFF6FF;color:#1D4ED8;white-space:nowrap;">Individual</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;font-size:.7rem;color:#6B7280;">
+                <label for="profile-headshot-input" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+                  <span style="padding:4px 9px;border-radius:999px;border:1px solid #E5E7EB;font-weight:600;font-size:.7rem;color:#374151;">Upload foto</span>
+                  <span>JPG/PNG &lt; 2 MB</span>
+                </label>
+                <input id="profile-headshot-input" type="file" accept="image/*" style="display:none" onchange="handleProfileHeadshotChange(event)">
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1.2fr 1.3fr;gap:14px;margin-bottom:16px;">
+            <div>
+              <label style="font-size:.68rem;color:#6B7280;font-weight:600;display:block;margin-bottom:4px;">WhatsApp (publik)</label>
+              <input id="profile-wa-input" type="text" placeholder="+62…" maxlength="32" style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 10px;font-size:.8rem;font-family:inherit;box-sizing:border-box;margin-bottom:8px;">
+              <label style="font-size:.68rem;color:#6B7280;font-weight:600;display:block;margin-bottom:4px;">Email (publik)</label>
+              <input id="profile-email-input" type="email" placeholder="email@kamu.com" maxlength="120" style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 10px;font-size:.8rem;font-family:inherit;box-sizing:border-box;">
+            </div>
+            <div>
+              <label style="font-size:.68rem;color:#6B7280;font-weight:600;display:block;margin-bottom:4px;">Toko Shopee</label>
+              <input id="profile-shopee-url-input" type="url" placeholder="https://shopee.co.id/namatoko" maxlength="200" style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 10px;font-size:.8rem;font-family:inherit;box-sizing:border-box;margin-bottom:8px;">
+              <label style="font-size:.68rem;color:#6B7280;font-weight:600;display:block;margin-bottom:4px;">Bio singkat</label>
+              <textarea id="profile-bio-input" rows="3" placeholder="Ceritakan singkat tentang diri kamu, niche jualan, atau target kamu tahun ini…" style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 10px;font-size:.8rem;font-family:inherit;resize:vertical;box-sizing:border-box;"></textarea>
+            </div>
+          </div>
+
+          <div class="profile-source-section" style="margin-bottom:14px;">
+            <div class="profile-community-row">
+              <div class="profile-cta-card" style="background:#fff;">
+                <div class="profile-cta-icon">👥</div>
+                <div class="profile-cta-title">Gabung kohort dengan kode</div>
+                <div class="profile-cta-sub">Sudah punya kode undangan dari mentor? Masukkan di sini untuk gabung ke kohort belajar.</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+                  <input id="profile-cohort-code-input" type="text" placeholder="Kode undangan" maxlength="64" style="flex:1;min-width:0;border:1.5px solid #E5E7EB;border-radius:8px;padding:7px 10px;font-size:.8rem;font-family:inherit;box-sizing:border-box;">
+                  <button type="button" class="profile-cta-btn" onclick="profileJoinCohortFromProfile()">Gabung</button>
+                </div>
+              </div>
+              <div class="profile-cta-card" style="background:#0f172a;color:#e5e7eb;">
+                <div class="profile-cta-icon">🔗</div>
+                <div class="profile-cta-title">Bagikan profil kamu</div>
+                <div class="profile-cta-sub">Setelah disimpan, profil ini bisa dilihat mentor dan siswa lain (nama, peran, bio, dan link publik).</div>
+                <a id="profile-share-link" class="profile-cta-btn" style="background:#f97316;color:#fff;text-decoration:none;margin-top:10px;" href="javascript:void(0)" onclick="copyProfileShareLink()">Salin link profil</a>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+            <div id="profile-edit-status" style="font-size:.72rem;color:#6B7280;"></div>
+            <div style="display:flex;gap:8px;">
+              <button type="button" onclick="closeProfileEditModal()" style="border:1px solid #E5E7EB;border-radius:8px;padding:8px 14px;font-size:.8rem;font-weight:600;background:#fff;color:#374151;font-family:inherit;cursor:pointer;">Batal</button>
+              <button type="button" onclick="saveProfileEdits()" style="border:none;border-radius:8px;padding:8px 16px;font-size:.8rem;font-weight:700;background:#E8442A;color:#fff;font-family:inherit;cursor:pointer;">Simpan Profil</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -5934,6 +6061,42 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
             </div>
 
+            <!-- student journey (two-track) -->
+            <div id="hbd-journey-wrap" style="display:none;margin-bottom:20px;">
+              <div class="hbd-card" style="margin-bottom:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+                  <div>
+                    <div class="hbd-card-title">Level kamu</div>
+                    <div class="hbd-card-sub" id="hbd-level-sub">—</div>
+                  </div>
+                  <div id="hbd-level-badge" style="font-size:.72rem;font-weight:800;padding:5px 12px;border-radius:20px;background:#EEF2FF;color:#3730A3;white-space:nowrap;">—</div>
+                </div>
+                <div style="margin-top:12px;">
+                  <div style="background:#F3F4F6;border-radius:999px;height:9px;overflow:hidden;">
+                    <div id="hbd-level-bar" style="width:0%;height:100%;background:linear-gradient(90deg,#7C3AED,#0EA5E9);transition:width .4s;"></div>
+                  </div>
+                  <div id="hbd-level-next" class="hbd-card-sub" style="margin-top:6px;">—</div>
+                </div>
+              </div>
+              <div class="hbd-card" id="hbd-nextaction-card" style="margin-bottom:14px;display:none;background:linear-gradient(135deg,#FFF7ED,#FFFBEB);border:1px solid #FED7AA;">
+                <div class="hbd-card-title">Minggu ini</div>
+                <div class="hbd-card-sub" id="hbd-nextaction-text" style="margin-bottom:10px;">—</div>
+                <button type="button" class="cohort-btn" id="hbd-nextaction-btn" style="display:none;" onclick="hbdJourneyNextAction()">Mulai →</button>
+              </div>
+              <div class="hbd-two-col" style="margin-bottom:0;">
+                <div class="hbd-card">
+                  <div class="hbd-card-title" style="display:flex;align-items:center;gap:7px;"><span style="width:9px;height:9px;border-radius:50%;background:#7C3AED;"></span>Soft Skill</div>
+                  <div class="hbd-card-sub">Jalur mentor soft skill</div>
+                  <div id="hbd-track-soft" style="margin-top:8px;"></div>
+                </div>
+                <div class="hbd-card">
+                  <div class="hbd-card-title" style="display:flex;align-items:center;gap:7px;"><span style="width:9px;height:9px;border-radius:50%;background:#0EA5E9;"></span>Business Skill</div>
+                  <div class="hbd-card-sub">Jalur mentor business skill</div>
+                  <div id="hbd-track-biz" style="margin-top:8px;"></div>
+                </div>
+              </div>
+            </div>
+
             <!-- stats -->
             <div class="hbd-stats-row" id="hbd-stats-row">
               <div class="hbd-stat">
@@ -6071,12 +6234,6 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <a onclick="switchDashView('discover')" style="font-size:.75rem;color:#E8442A;cursor:pointer;font-weight:600;">Lihat semua →</a>
               </div>
               <div id="hbd-trending-cards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;"></div>
-            </div>
-
-            <!-- tip -->
-            <div class="hbd-tip">
-              <h4>Tip Mingguan</h4>
-              <p id="hbd-tip-text">—</p>
             </div>
 
             <!-- Info Akun card -->
@@ -6475,7 +6632,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                 </div>
                 <div class="dd-card fb-flaggable" data-fb-element="Usia Toko Kompetitor" data-fb-section="Riset Produk">
                   <div class="dd-card-title">Usia Toko Kompetitor</div>
-                  <div style="display:flex;align-items:center;margin-top:8px;">
+                  <div class="dd-usia-toko-inner" style="display:flex;align-items:center;margin-top:8px;">
                     <canvas id="dd-chart-donut" width="110" height="110" style="flex-shrink:0;"></canvas>
                     <div class="dd-donut-legend" id="dd-donut-legend"></div>
                   </div>
@@ -7148,6 +7305,7 @@ html,body{overflow-x:hidden;max-width:100%;}
               <div class="dd-tabs" id="mls-tabs" style="margin-bottom:18px;">
                 <div class="dd-tab active" onclick="mlsSwitchTab('pasar')" data-tab="pasar">Informasi Pasar</div>
                 <div class="dd-tab" onclick="mlsSwitchTab('kalc')" data-tab="kalc">Kalkulator</div>
+                <div class="dd-tab" onclick="mlsSwitchTab('rencana')" data-tab="rencana">Rencana Bisnis</div>
               </div>
 
               <!-- TAB: Informasi Pasar -->
@@ -7244,6 +7402,59 @@ html,body{overflow-x:hidden;max-width:100%;}
                           <div><div style="color:#6B7280;margin-bottom:2px;">Total Laba Kotor</div><div style="font-weight:600;" id="kal-monthly-gross">—</div></div>
                         </div>
                       </div>
+                    </div>
+                    <div class="dd-card" style="padding:14px;">
+                      <div style="font-size:.72rem;font-weight:700;color:#111827;margin-bottom:6px;">Simpan skenario</div>
+                      <div style="font-size:.62rem;color:#6B7280;margin-bottom:10px;">Simpan perhitungan ini ke produk terpilih agar bisa ditinjau kembali dan dilihat mentor.</div>
+                      <button type="button" class="cohort-btn" style="width:100%;" onclick="mlsSaveCalcScenario()">Simpan ke produk</button>
+                      <div id="kal-save-status" style="font-size:.62rem;color:#6B7280;margin-top:6px;text-align:center;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- TAB: Rencana Bisnis (hidden by default) -->
+              <div id="mls-tab-rencana" style="display:none;">
+                <div class="dd-card" style="padding:18px;max-width:680px;">
+                  <div style="font-size:.85rem;font-weight:800;color:#111827;margin-bottom:4px;">Rencana Bisnis</div>
+                  <div style="font-size:.68rem;color:#6B7280;margin-bottom:16px;">Satu halaman yang membuat bisnismu konkret. Mentor dapat melihat ini untuk membimbingmu.</div>
+                  <div style="display:grid;gap:12px;">
+                    <div>
+                      <label style="font-size:.66rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Produk</label>
+                      <input id="rb-product-name" type="text" class="cohort-input" style="margin:0;" placeholder="Nama produk yang kamu jual" maxlength="160">
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                      <div>
+                        <label style="font-size:.66rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Niche</label>
+                        <input id="rb-niche" type="text" class="cohort-input" style="margin:0;" placeholder="mis. hijab sport" maxlength="120">
+                      </div>
+                      <div>
+                        <label style="font-size:.66rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Target pasar</label>
+                        <input id="rb-target" type="text" class="cohort-input" style="margin:0;" placeholder="mis. mahasiswi 18-24" maxlength="160">
+                      </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                      <div>
+                        <label style="font-size:.66rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Target 90 hari (unit)</label>
+                        <input id="rb-unit-goal" type="number" min="0" class="cohort-input" style="margin:0;" placeholder="mis. 100">
+                      </div>
+                      <div>
+                        <label style="font-size:.66rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Harga target (Rp)</label>
+                        <input id="rb-price-target" type="number" min="0" class="cohort-input" style="margin:0;" placeholder="mis. 150000">
+                      </div>
+                    </div>
+                    <div>
+                      <label style="font-size:.66rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Catatan</label>
+                      <textarea id="rb-notes" rows="3" class="cohort-input" style="margin:0;" placeholder="Strategi, keunggulan, rencana modal…" maxlength="1000"></textarea>
+                    </div>
+                    <div id="rb-goal-progress" style="display:none;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:10px;padding:12px 14px;">
+                      <div style="font-size:.68rem;font-weight:700;color:#0369A1;margin-bottom:6px;">Progres 90 hari</div>
+                      <div style="background:#E0F2FE;border-radius:999px;height:8px;overflow:hidden;"><div id="rb-goal-bar" style="width:0%;height:100%;background:#0EA5E9;transition:width .4s;"></div></div>
+                      <div id="rb-goal-label" style="font-size:.64rem;color:#0369A1;margin-top:6px;">—</div>
+                    </div>
+                    <div style="display:flex;gap:10px;align-items:center;">
+                      <button type="button" class="cohort-btn" onclick="mlsBizPlanSave()">Simpan Rencana</button>
+                      <span id="rb-status" style="font-size:.66rem;color:#6B7280;"></span>
                     </div>
                   </div>
                 </div>
@@ -7847,6 +8058,7 @@ html,body{overflow-x:hidden;max-width:100%;}
               <button type="button" class="cohort-subtab active" data-cmtab="overview" onclick="cohortSwitchMentorTab('overview')">Ringkasan</button>
               <button type="button" class="cohort-subtab" id="cohort-mentor-subtab-identity" data-cmtab="identity" onclick="cohortSwitchMentorTab('identity')" style="display:none;">Identitas kohort</button>
               <button type="button" class="cohort-subtab" data-cmtab="students" onclick="cohortSwitchMentorTab('students')">Siswa</button>
+              <button type="button" class="cohort-subtab" data-cmtab="program" onclick="cohortSwitchMentorTab('program')">Program</button>
               <button type="button" class="cohort-subtab" data-cmtab="mod" onclick="cohortSwitchMentorTab('mod')">Moderasi</button>
               <button type="button" class="cohort-subtab" data-cmtab="report" onclick="cohortSwitchMentorTab('report')">Laporan</button>
               <button type="button" class="cohort-subtab" data-cmtab="email" onclick="cohortSwitchMentorTab('email')">Email</button>
@@ -7856,6 +8068,10 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <div class="cohort-card" style="grid-column:1/-1;">
                   <h3>Overview mentor</h3>
                   <div id="cohort-mentor-overview" class="cohort-muted">—</div>
+                </div>
+                <div class="cohort-card" style="grid-column:1/-1;">
+                  <h3>Kesehatan kohort</h3>
+                  <div id="cohort-mentor-health" class="cohort-muted">Memuat…</div>
                 </div>
                 <div class="cohort-card">
                   <h3>Ringkasan kohort</h3>
@@ -7874,13 +8090,6 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <input type="text" id="cohort-ann-title" class="cohort-input" placeholder="Judul">
                   <textarea id="cohort-ann-body" class="cohort-input" rows="2" placeholder="Isi pengumuman"></textarea>
                   <button type="button" class="cohort-btn" onclick="cohortMentorPostAnnouncement()">Kirim</button>
-                </div>
-                <div class="cohort-card">
-                  <h3>Tambah milestone</h3>
-                  <label class="cohort-muted" style="font-size:.65rem;">Kunci sistem (opsional, mis. first_save)</label>
-                  <input type="text" id="cohort-ms-key" class="cohort-input" placeholder="milestone_key" maxlength="64" autocomplete="off">
-                  <input type="text" id="cohort-ms-title" class="cohort-input" placeholder="Judul milestone">
-                  <button type="button" class="cohort-btn secondary" onclick="cohortMentorAddMilestone()">Tambah</button>
                 </div>
                 <div class="cohort-card">
                   <h3>Tambah / aktifkan siswa</h3>
@@ -7987,6 +8196,32 @@ html,body{overflow-x:hidden;max-width:100%;}
                     <div id="cohort-dir-sel-status" style="font-size:.68rem;color:#6B7280;width:100%;"></div>
                   </div>
                 </div>
+              </div>
+            </div>
+            <div id="cohort-mentor-panel-program" style="display:none;">
+              <div class="cohort-card" style="margin-bottom:14px;">
+                <h3>Program milestone</h3>
+                <p class="cohort-muted" style="margin-bottom:10px;">Susun perjalanan siswa dalam dua jalur: <strong>Soft Skill</strong> dan <strong>Business Skill</strong>. Setiap mentor mengelola jalurnya sendiri.</p>
+                <div class="cohort-subtabs" style="margin:0 0 12px;">
+                  <button type="button" class="cohort-subtab active" data-prtrack="all" onclick="cohortProgramSetTrack('all')">Semua</button>
+                  <button type="button" class="cohort-subtab" data-prtrack="soft_skill" onclick="cohortProgramSetTrack('soft_skill')">Soft Skill</button>
+                  <button type="button" class="cohort-subtab" data-prtrack="business_skill" onclick="cohortProgramSetTrack('business_skill')">Business Skill</button>
+                </div>
+                <div id="cohort-program-list" class="cohort-muted">Memuat…</div>
+              </div>
+              <div class="cohort-card">
+                <h3>Tambah milestone</h3>
+                <input type="text" id="cohort-pr-title" class="cohort-input" placeholder="Judul milestone" maxlength="120" autocomplete="off">
+                <textarea id="cohort-pr-desc" class="cohort-input" rows="2" placeholder="Deskripsi singkat (opsional)"></textarea>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <select id="cohort-pr-track" class="cohort-input" style="flex:1;min-width:150px;margin:0;">
+                    <option value="soft_skill">Soft Skill</option>
+                    <option value="business_skill">Business Skill</option>
+                    <option value="general">Umum</option>
+                  </select>
+                  <button type="button" class="cohort-btn" onclick="cohortProgramCreate()">Tambahkan</button>
+                </div>
+                <div id="cohort-pr-status" class="cohort-muted" style="margin-top:8px;"></div>
               </div>
             </div>
             <div id="cohort-mentor-panel-mod" style="display:none;">
@@ -8308,9 +8543,26 @@ html,body{overflow-x:hidden;max-width:100%;}
       <div style="font-size:.75rem;font-weight:700;color:#1A1F3C;margin-bottom:8px;">Produk Tersimpan</div>
       <div id="sp-products" style="font-size:.72rem;color:#6B7280;">Memuat...</div>
     </div>
-    <div>
-      <div style="font-size:.75rem;font-weight:700;color:#1A1F3C;margin-bottom:8px;">Milestone Selesai</div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:.75rem;font-weight:700;color:#1A1F3C;margin-bottom:8px;">Bio</div>
       <div id="sp-milestone-list" style="font-size:.72rem;color:#6B7280;">Memuat...</div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:.75rem;font-weight:700;color:#1A1F3C;margin-bottom:8px;">Rencana Bisnis</div>
+      <div id="sp-bizplan" style="font-size:.72rem;color:#6B7280;">Memuat...</div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:.75rem;font-weight:700;color:#1A1F3C;margin-bottom:8px;">Milestone (mentor dapat menandai)</div>
+      <div id="sp-milestone-manage" style="font-size:.72rem;color:#6B7280;">Memuat...</div>
+    </div>
+    <div>
+      <div style="font-size:.75rem;font-weight:700;color:#1A1F3C;margin-bottom:8px;">Catatan Mentor</div>
+      <div id="sp-notes" style="font-size:.72rem;color:#6B7280;margin-bottom:8px;">Memuat...</div>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="sp-note-input" class="cohort-input" style="flex:1;margin:0;" placeholder="Tambah catatan privat antar-mentor…" maxlength="500" autocomplete="off">
+        <button type="button" class="cohort-btn" style="flex:0 0 auto;" onclick="cohortAddStudentNote()">Simpan</button>
+      </div>
+      <div id="sp-note-status" class="cohort-muted" style="font-size:.66rem;margin-top:6px;"></div>
     </div>
   </div>
 </div>
@@ -8496,6 +8748,7 @@ let activeQuick    = 'hot';
 let currentUser    = null;
 let savedProducts  = new Set(); // set of product IDs the user has saved
 let _supabase      = null; // Supabase client instance
+let _profileState  = { loaded: false, row: null, headshotUploading: false };
 
 // ════════════════════════════════════════════════════════════
 //  FETCH HELPERS
@@ -8526,12 +8779,213 @@ function fmtScore(n) {
   return Math.round(parseFloat(n)).toString();
 }
 
+// Map internal app role → human label for profile pill
+function profileRoleLabel(role) {
+  const r = String(role || '').toLowerCase();
+  if (r === 'admin') return 'Admin';
+  if (r === 'leader') return 'Leader';
+  if (r === 'student' || r === 'mentor') return 'Student';
+  return 'Individual';
+}
+
 function scoreColor(n) {
   const v = parseFloat(n);
   if (!v) return '#aaa';
   if (v >= 80) return '#1A7A46';   // green  (brand: 80–100)
   if (v >= 50) return '#B45309';   // amber  (brand: 50–79)
   return '#C0392B';                 // red    (brand: 0–49)
+}
+
+// ════════════════════════════════════════════════════════════
+//  PROFILE: LOAD / SAVE / HEADSHOT
+// ════════════════════════════════════════════════════════════
+async function loadUserProfile() {
+  if (!_supabase || !currentUser) {
+    _profileState = { loaded: false, row: null, headshotUploading: false };
+    return;
+  }
+  try {
+    const { data, error } = await _supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+    if (error) throw error;
+    _profileState = { loaded: true, row: data || null, headshotUploading: false };
+    hydrateProfileEditUI();
+  } catch (e) {
+    console.warn('loadUserProfile error', e.message || e);
+  }
+}
+
+function hydrateProfileEditUI() {
+  const row = _profileState.row || {};
+  const nameInput   = document.getElementById('profile-display-name-input');
+  const waInput     = document.getElementById('profile-wa-input');
+  const emailInput  = document.getElementById('profile-email-input');
+  const shopeeInput = document.getElementById('profile-shopee-url-input');
+  const bioInput    = document.getElementById('profile-bio-input');
+  const rolePill    = document.getElementById('profile-role-pill');
+  const avatar      = document.getElementById('profile-edit-avatar');
+  const avatarImg   = document.getElementById('profile-edit-avatar-img');
+  const initialsEl  = document.getElementById('profile-edit-avatar-initials');
+
+  const fullName = (row.display_name && row.display_name.trim())
+    || [row.first_name, row.last_name].filter(Boolean).join(' ').trim()
+    || (currentUser?.user_metadata?.full_name || '')
+    || (currentUser?.email || '').split('@')[0];
+
+  if (nameInput) nameInput.value = fullName || '';
+  if (waInput) waInput.value = row.public_whatsapp || row.wa_number || '';
+  if (emailInput) emailInput.value = row.public_email || row.contact_email || (currentUser?.email || '');
+  if (shopeeInput) shopeeInput.value = row.public_shopee_url || row.shopee_store_url || '';
+  if (bioInput) bioInput.value = row.bio || '';
+
+  const roleLabel = profileRoleLabel(_accessState.role);
+  if (rolePill) rolePill.textContent = roleLabel;
+
+  const initials = (fullName || '?')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part.charAt(0).toUpperCase())
+    .join('') || '?';
+  if (initialsEl) initialsEl.textContent = initials;
+
+  const url = row.headshot_url || '';
+  if (avatarImg && initialsEl) {
+    if (url) {
+      avatarImg.src = url;
+      avatarImg.style.display = '';
+      initialsEl.style.display = 'none';
+    } else {
+      avatarImg.src = '';
+      avatarImg.style.display = 'none';
+      initialsEl.style.display = '';
+    }
+  }
+}
+
+function openProfileEditModal() {
+  if (!currentUser) { openAuthModal('login'); return; }
+  const modal = document.getElementById('profile-edit-modal');
+  if (!modal) return;
+  if (!_profileState.loaded) {
+    void loadUserProfile().catch(() => {});
+  } else {
+    hydrateProfileEditUI();
+  }
+  modal.style.display = 'flex';
+}
+
+function closeProfileEditModal() {
+  const modal = document.getElementById('profile-edit-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function handleProfileHeadshotChange(ev) {
+  const file = ev?.target?.files?.[0];
+  const statusEl = document.getElementById('profile-edit-status');
+  if (!file) return;
+  if (!_supabase || !currentUser) { if (statusEl) statusEl.textContent = 'Login diperlukan.'; return; }
+  if (file.size > 2 * 1024 * 1024) {
+    if (statusEl) statusEl.textContent = 'Ukuran foto maksimal 2 MB.';
+    return;
+  }
+  try {
+    _profileState.headshotUploading = true;
+    if (statusEl) statusEl.textContent = 'Mengunggah foto...';
+    const path = `headshots/${currentUser.id}/${Date.now()}-${file.name}`;
+    const { error } = await _supabase.storage
+      .from('profile-headshots')
+      .upload(path, file, { upsert: true, cacheControl: '3600' });
+    if (error) throw error;
+    const { data: pub } = await _supabase.storage.from('profile-headshots').getPublicUrl(path);
+    const url = pub?.publicUrl || '';
+    _profileState.row = { ...(_profileState.row || {}), headshot_url: url };
+    hydrateProfileEditUI();
+    if (statusEl) statusEl.textContent = 'Foto berhasil diunggah.';
+  } catch (e) {
+    console.warn('headshot upload error', e.message || e);
+    if (statusEl) statusEl.textContent = 'Gagal mengunggah foto. Coba lagi.';
+  } finally {
+    _profileState.headshotUploading = false;
+  }
+}
+
+async function saveProfileEdits() {
+  const statusEl   = document.getElementById('profile-edit-status');
+  const nameInput  = document.getElementById('profile-display-name-input');
+  const waInput    = document.getElementById('profile-wa-input');
+  const emailInput = document.getElementById('profile-email-input');
+  const shopInput  = document.getElementById('profile-shopee-url-input');
+  const bioInput   = document.getElementById('profile-bio-input');
+  if (!_supabase || !currentUser) { if (statusEl) statusEl.textContent = 'Login diperlukan.'; return; }
+
+  const payload = {
+    user_id: currentUser.id,
+    display_name: (nameInput?.value || '').trim() || null,
+    public_whatsapp: (waInput?.value || '').trim() || null,
+    public_email: (emailInput?.value || '').trim() || null,
+    public_shopee_url: (shopInput?.value || '').trim() || null,
+    bio: (bioInput?.value || '').trim() || null,
+    is_public: true,
+  };
+  if (_profileState.row?.headshot_url) {
+    payload.headshot_url = _profileState.row.headshot_url;
+  }
+
+  try {
+    if (statusEl) { statusEl.style.color = '#6B7280'; statusEl.textContent = 'Menyimpan profil...'; }
+    const { data, error } = await _supabase
+      .from('user_profiles')
+      .upsert(payload, { onConflict: 'user_id' })
+      .select('*')
+      .maybeSingle();
+    if (error) throw error;
+    _profileState.row = data;
+    _profileState.loaded = true;
+    hydrateProfileEditUI();
+    if (statusEl) { statusEl.style.color = '#1A7A46'; statusEl.textContent = 'Profil tersimpan.'; }
+  } catch (e) {
+    console.warn('saveProfileEdits error', e.message || e);
+    if (statusEl) { statusEl.style.color = '#C0392B'; statusEl.textContent = 'Gagal menyimpan profil. Coba lagi.'; }
+  }
+}
+
+async function profileJoinCohortFromProfile() {
+  const inp = document.getElementById('profile-cohort-code-input');
+  const statusEl = document.getElementById('profile-edit-status');
+  const code = (inp && inp.value || '').trim();
+  if (!code) { if (statusEl) statusEl.textContent = 'Masukkan kode undangan kohort.'; return; }
+  if (!_supabase || !currentUser) { openAuthModal('login'); return; }
+  try {
+    if (statusEl) { statusEl.style.color = '#6B7280'; statusEl.textContent = 'Memproses undangan kohort...'; }
+    const { error } = await _supabase.rpc('join_cohort', { p_invite: code });
+    if (error) throw error;
+    if (inp) inp.value = '';
+    await cohortInit();
+    if (statusEl) { statusEl.style.color = '#1A7A46'; statusEl.textContent = 'Berhasil gabung kohort.'; }
+  } catch (e) {
+    console.warn('profileJoinCohortFromProfile error', e.message || e);
+    if (statusEl) { statusEl.style.color = '#C0392B'; statusEl.textContent = 'Gagal gabung kohort. Cek kode atau hubungi mentor.'; }
+  }
+}
+
+function copyProfileShareLink() {
+  const statusEl = document.getElementById('profile-edit-status');
+  if (!currentUser) { if (statusEl) statusEl.textContent = 'Login diperlukan.'; return; }
+  const origin = window.location.origin || 'https://larisid.com';
+  const url = `${origin}?view=profile&user=${encodeURIComponent(currentUser.id)}`;
+  try {
+    navigator.clipboard.writeText(url).then(() => {
+      if (statusEl) { statusEl.style.color = '#1A7A46'; statusEl.textContent = 'Link profil disalin ke clipboard.'; }
+    }).catch(() => {
+      if (statusEl) { statusEl.style.color = '#6B7280'; statusEl.textContent = url; }
+    });
+  } catch (_) {
+    if (statusEl) { statusEl.style.color = '#6B7280'; statusEl.textContent = url; }
+  }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -9668,6 +10122,8 @@ async function _authOnSignIn(session) {
   if (document.body.classList.contains('in-dashboard') && typeof _dashActiveView !== 'undefined' && _dashActiveView === 'cohort') {
     queueMicrotask(() => { cohortInit().catch(() => {}); });
   }
+  // Auth flow complete — hide the loading overlay
+  _authHideLoadingOverlay();
 }
 
 /** Close fixed overlays so logout is visible immediately (mobile "Lainnya" sheet uses a delayed hide that browsers throttle in background tabs). */
@@ -9712,6 +10168,19 @@ function _authOnSignOut() {
   dismissLogoutChrome();
 }
 
+function _authShowLoadingOverlay() {
+  try {
+    const ov = document.getElementById('auth-loading-overlay');
+    if (ov) ov.style.display = 'flex';
+  } catch (_) {}
+}
+function _authHideLoadingOverlay() {
+  try {
+    const ov = document.getElementById('auth-loading-overlay');
+    if (ov) ov.style.display = 'none';
+  } catch (_) {}
+}
+
 function initSupabase() {
   // Clear any stale Supabase JS-client sessions that trigger spurious INITIAL_SESSION redirects
   try {
@@ -9721,18 +10190,26 @@ function initSupabase() {
   if (typeof window.supabase !== 'undefined') {
     try { _supabase = window.supabase.createClient(SUPA_URL, SUPA_KEY); } catch(e) { console.error('Supabase init failed', e); }
   }
-  // Restore session from localStorage (bypasses JS-client auth which returns 204 for sb_publishable keys)
+  // Show loading overlay immediately if we have a stored session or are returning from OAuth
+  const _href = window.location.href;
+  const _isOAuthCallback = _href.includes('#access_token') || _href.includes('?code=');
   const stored = _authLoad();
+  if (stored?.access_token || _isOAuthCallback) {
+    _authShowLoadingOverlay();
+  }
+  // Restore session from localStorage (bypasses JS-client auth which returns 204 for sb_publishable keys)
   if (stored?.access_token) {
     if (stored.expires_at > Date.now() + 30000) {
-      void _authOnSignIn(stored).catch(() => {});
+      void _authOnSignIn(stored).catch(() => { _authHideLoadingOverlay(); });
     } else if (stored.refresh_token) {
       _authRefresh(stored.refresh_token).then(s => {
-        if (!s) { _authClear(); return; }
-        if (!_authLoad()) return;
+        if (!s) { _authClear(); _authHideLoadingOverlay(); return; }
+        if (!_authLoad()) { _authHideLoadingOverlay(); return; }
         _authSave(s);
-        void _authOnSignIn(s).catch(() => {});
+        void _authOnSignIn(s).catch(() => { _authHideLoadingOverlay(); });
       });
+    } else {
+      _authHideLoadingOverlay();
     }
   }
   // Watch for OAuth sign-ins (Google) via JS client.
@@ -9742,7 +10219,7 @@ function initSupabase() {
     _supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.access_token && !currentUser) {
         _authSave(session);
-        void _authOnSignIn(session).catch(() => {});
+        void _authOnSignIn(session).catch(() => { _authHideLoadingOverlay(); });
       }
     });
   }
@@ -11573,12 +12050,14 @@ async function openProfile() {
   document.getElementById('page-profile').classList.add('active');
   window.scrollTo(0, 0);
   switchDashView('dashboard');
-  // load data in background after page is visible
-  try { await loadAllPlans(); } catch(_) {}
-  try { renderProfileSaved(); } catch(_) {}
-  try { loadDashboardData(); } catch(_) {}
-  try { loadCreditData(); } catch(_) {}
-  try { loadUserProfile(); } catch(_) {}
+  // load data in background after page is visible — run independent fetches in parallel
+  renderProfileSaved();
+  loadDashboardData();
+  loadCreditData();
+  await Promise.all([
+    loadAllPlans().catch(() => {}),
+    loadUserProfile().catch(() => {}),
+  ]);
   try {
     const u = new URLSearchParams(window.location.search || '');
     if (u.get('view') === 'cohort') setTimeout(() => switchDashView('cohort'), 80);
@@ -13104,7 +13583,7 @@ function cohortSwitchMentorTab(tab) {
   document.querySelectorAll('#cohort-mentor-subtabs .cohort-subtab').forEach(b => {
     b.classList.toggle('active', b.dataset.cmtab === tab);
   });
-  ['overview', 'identity', 'students', 'mod', 'report', 'email'].forEach(t => {
+  ['overview', 'identity', 'students', 'program', 'mod', 'report', 'email'].forEach(t => {
     const el = document.getElementById('cohort-mentor-panel-' + t);
     if (el) el.style.display = t === tab ? '' : 'none';
   });
@@ -13112,6 +13591,7 @@ function cohortSwitchMentorTab(tab) {
   if (!c) return;
   if (tab === 'identity') cohortPreviewBrandingForm();
   if (tab === 'students') { void cohortRenderMentorDirectory(c.id); void cohortDirStudentsInit(c.id); }
+  if (tab === 'program') void cohortProgramRender(c.id);
   if (tab === 'mod') void cohortRenderModFeed(c.id);
   if (tab === 'email') ldrBcInit();
 }
@@ -13190,8 +13670,342 @@ async function cohortRenderLeaderboard(cohortId) {
   ul.innerHTML = data.map((r) => {
     const mine = r.user_id === currentUser.id;
     const label = mine ? 'Kamu' : cohortCohortDisplayName(r.user_id, r.rank);
-    return `<li><span>#${r.rank} ${label}</span><span style="font-weight:800;">${r.points}</span></li>`;
+    const click = mine ? '' : ` onclick="openStudentProfile('${r.user_id}')" style="cursor:pointer;"`;
+    return `<li${click}><span>#${r.rank} ${label}</span><span style="font-weight:800;">${r.points}</span></li>`;
   }).join('');
+}
+
+let _spCurrentUserId = null;
+
+async function openStudentProfile(userId) {
+  if (!_supabase || !userId) return;
+  _spCurrentUserId = userId;
+  const ov = document.getElementById('siswa-profile-modal-overlay');
+  if (!ov) return;
+  const nameEl   = document.getElementById('sp-name');
+  const emailEl  = document.getElementById('sp-email');
+  const statusEl = document.getElementById('sp-status-badge');
+  const lastEl   = document.getElementById('sp-last-active');
+  const scoreEl  = document.getElementById('sp-score');
+  const eventsEl = document.getElementById('sp-events');
+  const msEl     = document.getElementById('sp-milestones');
+  const prodsEl  = document.getElementById('sp-products');
+  const listEl   = document.getElementById('sp-milestone-list');
+
+  if (nameEl) nameEl.textContent = 'Memuat...';
+  if (emailEl) emailEl.textContent = '';
+  if (statusEl) { statusEl.textContent = 'Loading'; statusEl.style.background = '#EFF6FF'; statusEl.style.color = '#1D4ED8'; }
+  if (lastEl) lastEl.textContent = '—';
+  if (scoreEl) scoreEl.textContent = '—';
+  if (eventsEl) eventsEl.textContent = '—';
+  if (msEl) msEl.textContent = '—';
+  if (prodsEl) prodsEl.textContent = 'Memuat...';
+  if (listEl) listEl.textContent = 'Memuat...';
+
+  ov.style.display = 'flex';
+
+  try {
+    const [{ data: base }, { data: prof }] = await Promise.all([
+      _supabase.rpc('cohort_member_profile', { p_user: userId }).maybeSingle?.()
+        || _supabase.rpc('cohort_member_profile', { p_user: userId }),
+      _supabase.from('user_profiles').select('*').eq('user_id', userId).maybeSingle(),
+    ]);
+    const row = Array.isArray(base) ? base[0] : base;
+    const pr  = prof || {};
+
+    const fullName = (pr.display_name && pr.display_name.trim())
+      || (row && row.display_name)
+      || (currentUser && currentUser.id === userId ? (currentUser.user_metadata?.full_name || currentUser.email || '') : '');
+
+    if (nameEl) nameEl.textContent = fullName || 'Anggota kohort';
+    if (emailEl) emailEl.textContent = row?.email || '';
+
+    const roleLabel = profileRoleLabel(row?.app_role || 'student');
+    if (statusEl) {
+      statusEl.textContent = roleLabel;
+      statusEl.style.background = roleLabel === 'Admin' ? '#FEF2F2' : (roleLabel === 'Leader' ? '#EEF2FF' : '#ECFDF5');
+      statusEl.style.color = roleLabel === 'Admin' ? '#B91C1C' : (roleLabel === 'Leader' ? '#3730A3' : '#1A7A46');
+    }
+
+    if (lastEl) lastEl.textContent = row?.last_activity_at || row?.joined_at || '—';
+    if (scoreEl) scoreEl.textContent = row?.engagement_score != null ? String(row.engagement_score) : '—';
+    if (eventsEl) eventsEl.textContent = row?.event_count != null ? String(row.event_count) : '—';
+    if (msEl) msEl.textContent = row?.milestones_done != null ? String(row.milestones_done) : '—';
+
+    const links = [];
+    if (pr.public_shopee_url) links.push(`<a href="${pr.public_shopee_url}" target="_blank" rel="noopener">Toko Shopee</a>`);
+    if (pr.public_whatsapp) links.push(`<a href="https://wa.me/${encodeURIComponent(pr.public_whatsapp.replace(/[^0-9+]/g,''))}" target="_blank" rel="noopener">WhatsApp</a>`);
+    if (pr.public_email) links.push(`<a href="mailto:${pr.public_email}">Email</a>`);
+    if (prodsEl) prodsEl.innerHTML = links.length ? links.join(' · ') : 'Belum ada link publik.';
+
+    if (listEl) listEl.textContent = pr.bio || 'Belum ada bio.';
+
+    await Promise.all([
+      cohortRenderStudentBizPlan(userId),
+      cohortRenderStudentMilestoneManage(userId),
+      cohortRenderStudentNotes(userId),
+    ]);
+  } catch (e) {
+    console.warn('openStudentProfile error', e.message || e);
+  }
+}
+
+async function cohortRenderStudentBizPlan(userId) {
+  const el = document.getElementById('sp-bizplan');
+  if (!el) return;
+  const { data, error } = await _supabase.from('business_plans').select('product_name,niche,target_market,unit_goal_90d,price_target,notes,updated_at').eq('user_id', userId).maybeSingle();
+  if (error || !data) { el.textContent = 'Belum ada rencana bisnis.'; return; }
+  const rows = [];
+  if (data.product_name) rows.push(`<div><span class="cohort-muted">Produk:</span> ${_cohortEsc(data.product_name)}</div>`);
+  if (data.niche) rows.push(`<div><span class="cohort-muted">Niche:</span> ${_cohortEsc(data.niche)}</div>`);
+  if (data.target_market) rows.push(`<div><span class="cohort-muted">Target pasar:</span> ${_cohortEsc(data.target_market)}</div>`);
+  if (data.unit_goal_90d != null) rows.push(`<div><span class="cohort-muted">Target 90 hari:</span> ${_cohortEsc(String(data.unit_goal_90d))} unit</div>`);
+  if (data.price_target != null) rows.push(`<div><span class="cohort-muted">Harga target:</span> Rp${_cohortEsc(Number(data.price_target).toLocaleString('id-ID'))}</div>`);
+  if (data.notes) rows.push(`<div style="margin-top:4px;">${_cohortEsc(data.notes)}</div>`);
+  el.innerHTML = rows.length ? rows.join('') : 'Rencana bisnis masih kosong.';
+}
+
+async function cohortRenderStudentMilestoneManage(userId) {
+  const el = document.getElementById('sp-milestone-manage');
+  if (!el) return;
+  const c = _cohortState.primaryMentorCohort;
+  if (!c) { el.textContent = '—'; return; }
+  const [{ data: ms }, { data: done }] = await Promise.all([
+    _supabase.from('milestones').select('id,title,track,sort_order').eq('cohort_id', c.id).order('sort_order', { ascending: true }),
+    _supabase.from('user_milestone_progress').select('milestone_id').eq('user_id', userId),
+  ]);
+  const doneSet = new Set((done || []).map(d => d.milestone_id));
+  if (!(ms || []).length) { el.textContent = 'Belum ada milestone.'; return; }
+  el.innerHTML = (ms || []).map(m => {
+    const meta = COHORT_TRACK_META[m.track] || COHORT_TRACK_META.general;
+    const ok = doneSet.has(m.id);
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;">
+      <span style="flex:0 0 auto;width:7px;height:7px;border-radius:50%;background:${meta.color};"></span>
+      <span style="flex:1;min-width:0;${ok ? 'color:#1A7A46;font-weight:600;' : ''}">${_cohortEsc(m.title)}</span>
+      <button type="button" class="cohort-btn ${ok ? 'secondary' : ''}" style="flex:0 0 auto;padding:3px 9px;font-size:.62rem;" data-ms="${m.id}" data-on="${ok ? '1' : '0'}" onclick="cohortMentorToggleMilestone('${userId}',this.dataset.ms,this.dataset.on==='1')">${ok ? 'Batalkan' : 'Tandai'}</button>
+    </div>`;
+  }).join('');
+}
+
+async function cohortMentorToggleMilestone(userId, mid, isDone) {
+  if (!_supabase || !userId || !mid) return;
+  if (isDone) {
+    await _supabase.from('user_milestone_progress').delete().eq('user_id', userId).eq('milestone_id', mid);
+  } else {
+    await _supabase.from('user_milestone_progress').insert({ user_id: userId, milestone_id: mid });
+  }
+  await cohortRenderStudentMilestoneManage(userId);
+}
+
+async function cohortRenderStudentNotes(userId) {
+  const el = document.getElementById('sp-notes');
+  if (!el) return;
+  const c = _cohortState.primaryMentorCohort;
+  if (!c) { el.textContent = '—'; return; }
+  const { data, error } = await _supabase.from('cohort_student_notes')
+    .select('id,body,author_user_id,created_at')
+    .eq('cohort_id', c.id).eq('student_user_id', userId)
+    .order('created_at', { ascending: false }).limit(30);
+  if (error) { el.textContent = 'Gagal memuat catatan.'; return; }
+  if (!(data || []).length) { el.innerHTML = '<span class="cohort-muted">Belum ada catatan.</span>'; return; }
+  el.innerHTML = data.map(n => {
+    const mine = n.author_user_id === (currentUser && currentUser.id);
+    const del = mine ? `<button type="button" class="cohort-btn secondary" style="padding:2px 7px;font-size:.58rem;margin-left:auto;" onclick="cohortDeleteStudentNote('${n.id}','${userId}')">Hapus</button>` : '';
+    return `<div style="background:#F9FAFB;border-radius:8px;padding:8px 10px;margin-bottom:6px;">
+      <div>${_cohortEsc(n.body)}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+        <span class="cohort-muted" style="font-size:.6rem;">${mine ? 'Kamu' : 'Mentor'} · ${_cohortEsc((n.created_at || '').slice(0, 16).replace('T', ' '))}</span>
+        ${del}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function cohortAddStudentNote() {
+  const input = document.getElementById('sp-note-input');
+  const statusEl = document.getElementById('sp-note-status');
+  const c = _cohortState.primaryMentorCohort;
+  if (!c || !_supabase || !_spCurrentUserId || !currentUser) return;
+  const body = (input?.value || '').trim();
+  if (!body) return;
+  if (statusEl) statusEl.textContent = 'Menyimpan…';
+  const { error } = await _supabase.from('cohort_student_notes').insert({
+    cohort_id: c.id, author_user_id: currentUser.id, student_user_id: _spCurrentUserId, body,
+  });
+  if (error) { if (statusEl) statusEl.textContent = 'Gagal: ' + (error.message || ''); return; }
+  if (input) input.value = '';
+  if (statusEl) statusEl.textContent = '';
+  await cohortRenderStudentNotes(_spCurrentUserId);
+}
+
+async function cohortDeleteStudentNote(id, userId) {
+  if (!_supabase || !id) return;
+  await _supabase.from('cohort_student_notes').delete().eq('id', id);
+  await cohortRenderStudentNotes(userId);
+}
+
+function siswaProfileClose() {
+  const ov = document.getElementById('siswa-profile-modal-overlay');
+  if (ov) ov.style.display = 'none';
+}
+
+// ── Mentor Program manager (track-aware milestones) ──────────────
+let _cohortProgramTrack = 'all';
+const COHORT_TRACK_META = {
+  soft_skill:     { label: 'Soft Skill',     color: '#7C3AED', band: 100 },
+  business_skill: { label: 'Business Skill', color: '#0EA5E9', band: 200 },
+  general:        { label: 'Umum',           color: '#6B7280', band: 300 },
+};
+
+function cohortProgramSetTrack(t) {
+  _cohortProgramTrack = t;
+  document.querySelectorAll('#cohort-mentor-panel-program [data-prtrack]').forEach(b => {
+    b.classList.toggle('active', b.dataset.prtrack === t);
+  });
+  const c = _cohortState.primaryMentorCohort;
+  if (c) void cohortProgramRender(c.id);
+}
+
+async function cohortProgramRender(cohortId) {
+  const root = document.getElementById('cohort-program-list');
+  if (!root) return;
+  if (!cohortId || !_supabase) { root.innerHTML = '<p class="cohort-muted">—</p>'; return; }
+  root.innerHTML = '<p class="cohort-muted">Memuat…</p>';
+
+  let q = _supabase.from('milestones').select('id,title,description,track,sort_order,milestone_key').eq('cohort_id', cohortId);
+  if (_cohortProgramTrack !== 'all') q = q.eq('track', _cohortProgramTrack);
+  const { data: ms, error } = await q.order('sort_order', { ascending: true });
+  if (error) { root.innerHTML = '<p class="cohort-muted">Gagal memuat milestone.</p>'; return; }
+  if (!(ms || []).length) { root.innerHTML = '<p class="cohort-muted">Belum ada milestone di jalur ini.</p>'; return; }
+
+  // Completion counts across the cohort.
+  const ids = ms.map(m => m.id);
+  const countMap = {};
+  if (ids.length) {
+    const { data: prog } = await _supabase.from('user_milestone_progress').select('milestone_id').in('milestone_id', ids);
+    (prog || []).forEach(p => { countMap[p.milestone_id] = (countMap[p.milestone_id] || 0) + 1; });
+  }
+
+  root.innerHTML = ms.map(m => {
+    const meta = COHORT_TRACK_META[m.track] || COHORT_TRACK_META.general;
+    const cnt = countMap[m.id] || 0;
+    const desc = m.description ? `<div class="cohort-muted" style="font-size:.72rem;margin-top:3px;">${_cohortEsc(m.description)}</div>` : '';
+    return `<div class="cohort-feed-card" style="display:flex;gap:10px;align-items:flex-start;">
+      <span style="flex:0 0 auto;width:8px;height:8px;border-radius:50%;background:${meta.color};margin-top:6px;"></span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;">${_cohortEsc(m.title)}</div>
+        ${desc}
+        <div class="cohort-muted" style="font-size:.66rem;margin-top:4px;">
+          <span style="color:${meta.color};font-weight:700;">${meta.label}</span> · ${cnt} selesai${m.milestone_key ? ' · ' + _cohortEsc(m.milestone_key) : ''}
+        </div>
+      </div>
+      <button type="button" class="cohort-btn secondary" style="flex:0 0 auto;padding:4px 10px;font-size:.65rem;" data-ms="${m.id}" onclick="cohortProgramDelete(this.dataset.ms)">Hapus</button>
+    </div>`;
+  }).join('');
+}
+
+async function cohortProgramCreate() {
+  const statusEl = document.getElementById('cohort-pr-status');
+  const titleEl = document.getElementById('cohort-pr-title');
+  const descEl = document.getElementById('cohort-pr-desc');
+  const trackEl = document.getElementById('cohort-pr-track');
+  const c = _cohortState.primaryMentorCohort;
+  if (!c || !_supabase) return;
+  const title = (titleEl?.value || '').trim();
+  if (!title) { if (statusEl) statusEl.textContent = 'Judul wajib diisi.'; return; }
+  const track = trackEl?.value || 'general';
+  const meta = COHORT_TRACK_META[track] || COHORT_TRACK_META.general;
+  if (statusEl) statusEl.textContent = 'Menyimpan…';
+
+  // Next sort_order within the track's band.
+  const { data: last } = await _supabase.from('milestones')
+    .select('sort_order').eq('cohort_id', c.id).eq('track', track)
+    .order('sort_order', { ascending: false }).limit(1);
+  const nextSort = (last && last.length ? last[0].sort_order : meta.band - 1) + 1;
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'm';
+  const key = `${track.slice(0, 2)}_${slug}_${Date.now().toString(36)}`;
+
+  const { error } = await _supabase.from('milestones').insert({
+    cohort_id: c.id, title, description: (descEl?.value || '').trim() || null,
+    track, sort_order: nextSort, milestone_key: key,
+  });
+  if (error) { if (statusEl) statusEl.textContent = 'Gagal: ' + (error.message || 'tidak diketahui'); return; }
+  if (titleEl) titleEl.value = '';
+  if (descEl) descEl.value = '';
+  if (statusEl) statusEl.textContent = 'Tersimpan.';
+  await cohortProgramRender(c.id);
+}
+
+async function cohortProgramDelete(id) {
+  if (!_supabase || !id) return;
+  if (!confirm('Hapus milestone ini? Progres siswa pada milestone ini juga akan hilang.')) return;
+  const c = _cohortState.primaryMentorCohort;
+  const { error } = await _supabase.from('milestones').delete().eq('id', id);
+  if (error) { const s = document.getElementById('cohort-pr-status'); if (s) s.textContent = 'Gagal menghapus: ' + (error.message || ''); return; }
+  if (c) await cohortProgramRender(c.id);
+}
+
+// ── Cohort health: per-track progress + "stuck" detection ────────
+async function cohortRenderHealth(cohortId, studs) {
+  const el = document.getElementById('cohort-mentor-health');
+  if (!el) return;
+  if (!cohortId || !_supabase) { el.textContent = '—'; return; }
+  const studIds = (studs || []).map(s => s.user_id);
+  const nStud = studIds.length;
+
+  const { data: ms } = await _supabase.from('milestones').select('id,track').eq('cohort_id', cohortId);
+  const byTrack = { soft_skill: [], business_skill: [], general: [] };
+  (ms || []).forEach(m => { (byTrack[m.track] || byTrack.general).push(m.id); });
+
+  let prog = [];
+  if (studIds.length && (ms || []).length) {
+    const allIds = (ms || []).map(m => m.id);
+    const { data } = await _supabase.from('user_milestone_progress')
+      .select('user_id,milestone_id,completed_at').in('milestone_id', allIds).in('user_id', studIds);
+    prog = data || [];
+  }
+
+  // Per-track completion ratio across all students.
+  function trackPct(track) {
+    const ids = new Set(byTrack[track]);
+    if (!ids.size || !nStud) return 0;
+    const done = prog.filter(p => ids.has(p.milestone_id)).length;
+    return Math.round((done / (ids.size * nStud)) * 100);
+  }
+  const softPct = trackPct('soft_skill');
+  const bizPct = trackPct('business_skill');
+
+  // "Stuck": no milestone completed in 14 days (but has joined).
+  const cutoff = Date.now() - 14 * 86400000;
+  const lastByUser = {};
+  prog.forEach(p => {
+    const t = p.completed_at ? new Date(p.completed_at).getTime() : 0;
+    if (!lastByUser[p.user_id] || t > lastByUser[p.user_id]) lastByUser[p.user_id] = t;
+  });
+  const stuck = studIds.filter(uid => (lastByUser[uid] || 0) < cutoff);
+
+  function bar(label, pct, color) {
+    return `<div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;font-size:.68rem;font-weight:700;margin-bottom:4px;">
+        <span style="color:${color};">${label}</span><span>${pct}%</span>
+      </div>
+      <div style="background:#F3F4F6;border-radius:999px;height:8px;overflow:hidden;">
+        <div style="width:${pct}%;height:100%;background:${color};"></div>
+      </div>
+    </div>`;
+  }
+
+  const stuckHtml = stuck.length
+    ? stuck.map(uid => `<span style="cursor:pointer;color:#E8442A;font-weight:700;" onclick="openStudentProfile('${uid}')">${_cohortEsc(cohortCohortDisplayName(uid, null))}</span>`).join(', ')
+    : '<span class="cohort-muted">Tidak ada — semua bergerak.</span>';
+
+  el.innerHTML = `
+    ${bar('Soft Skill', softPct, COHORT_TRACK_META.soft_skill.color)}
+    ${bar('Business Skill', bizPct, COHORT_TRACK_META.business_skill.color)}
+    <div style="margin-top:12px;font-size:.7rem;">
+      <div style="font-weight:700;margin-bottom:4px;">Macet (tanpa milestone 14 hari)</div>
+      <div>${stuckHtml}</div>
+    </div>`;
 }
 
 async function cohortRenderAnnouncements(cohortId) {
@@ -13419,12 +14233,12 @@ async function cohortRenderMentorPanels() {
     memEl.innerHTML = studs.length ? studs.map(s => {
       const nm = cohortCohortDisplayName(s.user_id, null);
       const ls = s.last_seen_at ? ` · terlihat ${_cohortEsc(s.last_seen_at.slice(0, 10))}` : '';
-      return `<div style="padding:6px 0;border-bottom:1px solid #F3F4F6;font-size:.72rem;"><strong>${_cohortEsc(nm)}</strong>${ls}<br><span class="cohort-muted">bergabung ${_cohortEsc((s.joined_at || '').slice(0, 10))}</span></div>`;
+      return `<div style="padding:6px 0;border-bottom:1px solid #F3F4F6;font-size:.72rem;"><span style="cursor:pointer;color:#E8442A;font-weight:700;" onclick="openStudentProfile('${s.user_id}')">${_cohortEsc(nm)}</span>${ls}<br><span class="cohort-muted">bergabung ${_cohortEsc((s.joined_at || '').slice(0, 10))}</span></div>`;
     }).join('') : '<span class="cohort-muted">Belum ada siswa.</span>';
   }
   if (inac) {
     inac.innerHTML = inactive.length
-      ? inactive.map(s => `<li><span style="font-weight:600;">${_cohortEsc(cohortCohortDisplayName(s.user_id, null))}</span><span class="cohort-muted"> tanpa event 7 hari</span></li>`).join('')
+      ? inactive.map(s => `<li><span style="cursor:pointer;color:#E8442A;font-weight:700;" onclick="openStudentProfile('${s.user_id}')">${_cohortEsc(cohortCohortDisplayName(s.user_id, null))}</span><span class="cohort-muted"> tanpa event 7 hari</span></li>`).join('')
       : '<li class="cohort-muted">Semua aktif 🎉</li>';
   }
   const { count: postWeek } = await _supabase.from('community_posts').select('*', { count: 'exact', head: true }).eq('cohort_id', cohortId).gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString());
@@ -13436,6 +14250,7 @@ async function cohortRenderMentorPanels() {
         <div style="background:#F9FAFB;border-radius:8px;padding:10px;"><div class="cohort-muted" style="font-size:.62rem;">Siswa aktif</div><div style="font-size:1.2rem;font-weight:900;">${studs.length}</div></div>
       </div>`;
   }
+  void cohortRenderHealth(cohortId, studs);
   if (bc) {
     const isActualMentor = cohortIsActualMentorForCohort(c);
     const adminPrevLeader = isPlatformAdmin() && cohortGetPreviewShell() === 'leader';
@@ -17717,8 +18532,8 @@ async function hbdInit() {
       if (legendEl) legendEl.innerHTML = '<span style="font-size:.6rem;color:#9CA3AF;font-style:italic;">Contoh: 5 produk teratas di pasar</span>';
     }
     void hbdRenderCohortDigest();
-    if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(() => _hbdApplyLeaderMode(_effectiveLeaderMode()));
-    else { void hbdRenderMentorDigest(); _hbdApplyLeaderMode(_effectiveLeaderMode()); }
+    if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(() => { _hbdApplyLeaderMode(_effectiveLeaderMode()); _hbdApplyIndependentMode(); });
+    else { void hbdRenderMentorDigest(); _hbdApplyLeaderMode(_effectiveLeaderMode()); _hbdApplyIndependentMode(); }
     return;
   }
 
@@ -17878,8 +18693,8 @@ async function hbdInit() {
   }));
   _hbdBuildChartFromTracked(prods);
   void hbdRenderCohortDigest();
-  if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(() => _hbdApplyLeaderMode(_accessState.isLeader || isBootstrapLeader()));
-  else { void hbdRenderMentorDigest(); _hbdApplyLeaderMode(_accessState.isLeader || isBootstrapLeader()); }
+  if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(() => { _hbdApplyLeaderMode(_accessState.isLeader || isBootstrapLeader()); _hbdApplyIndependentMode(); });
+  else { void hbdRenderMentorDigest(); _hbdApplyLeaderMode(_accessState.isLeader || isBootstrapLeader()); _hbdApplyIndependentMode(); }
 }
 
 async function hbdRenderMentorDigest() {
@@ -18053,6 +18868,103 @@ async function hbdRenderCohortDigest() {
   } else {
     recEl.innerHTML = recHtml;
   }
+  void hbdRenderJourney(pcid);
+}
+
+// ── Student journey: two-track checklist, level, next-action ─────
+const HBD_LEVELS = [
+  { key: 'explorer',     name: 'Explorer',      min: 0,  blurb: 'Mulai menjelajah dan melacak produk.' },
+  { key: 'first_sale',   name: 'First Sale',    min: 4,  blurb: 'Validasi produk dan siapkan penjualan pertama.' },
+  { key: 'market_hunter',name: 'Market Hunter', min: 8,  blurb: 'Analisa pasar lebih dalam dan susun rencana.' },
+  { key: 'top_seller',   name: 'Top Seller',    min: 11, blurb: 'Bisnis berjalan dan bertumbuh.' },
+];
+
+async function hbdRenderJourney(cohortId) {
+  const wrap = document.getElementById('hbd-journey-wrap');
+  if (!wrap) return;
+  if (!cohortId || !_supabase || !currentUser) { wrap.style.display = 'none'; return; }
+
+  const [{ data: ms }, { data: done }] = await Promise.all([
+    _supabase.from('milestones').select('id,title,track,sort_order').eq('cohort_id', cohortId).order('sort_order', { ascending: true }),
+    _supabase.from('user_milestone_progress').select('milestone_id').eq('user_id', currentUser.id),
+  ]);
+  if (!(ms || []).length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  const doneSet = new Set((done || []).map(d => d.milestone_id));
+  const doneCount = (ms || []).filter(m => doneSet.has(m.id)).length;
+
+  function renderTrack(track, elId) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const items = (ms || []).filter(m => m.track === track);
+    if (!items.length) { el.innerHTML = '<div class="cohort-muted" style="font-size:.72rem;">Belum ada milestone.</div>'; return; }
+    let unlockedNext = false;
+    el.innerHTML = items.map(m => {
+      const ok = doneSet.has(m.id);
+      let state, mark;
+      if (ok) { state = '#1A7A46'; mark = '✓'; }
+      else if (!unlockedNext) { unlockedNext = true; state = '#E8442A'; mark = '→'; }
+      else { state = '#D1D5DB'; mark = '○'; }
+      return `<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;font-size:.74rem;">
+        <span style="flex:0 0 auto;color:${state};font-weight:800;width:14px;">${mark}</span>
+        <span style="flex:1;${ok ? 'color:#6B7280;text-decoration:line-through;' : 'color:#374151;'}">${_cohortEsc(m.title)}</span>
+      </div>`;
+    }).join('');
+  }
+  renderTrack('soft_skill', 'hbd-track-soft');
+  renderTrack('business_skill', 'hbd-track-biz');
+
+  // Level
+  let level = HBD_LEVELS[0], nextLevel = null;
+  for (let i = 0; i < HBD_LEVELS.length; i++) {
+    if (doneCount >= HBD_LEVELS[i].min) { level = HBD_LEVELS[i]; nextLevel = HBD_LEVELS[i + 1] || null; }
+  }
+  const badge = document.getElementById('hbd-level-badge');
+  const sub = document.getElementById('hbd-level-sub');
+  const bar = document.getElementById('hbd-level-bar');
+  const nextEl = document.getElementById('hbd-level-next');
+  if (badge) badge.textContent = level.name;
+  if (sub) sub.textContent = level.blurb;
+  if (nextLevel) {
+    const span = nextLevel.min - level.min;
+    const within = Math.max(0, doneCount - level.min);
+    const pct = span > 0 ? Math.min(100, Math.round((within / span) * 100)) : 100;
+    if (bar) bar.style.width = pct + '%';
+    if (nextEl) nextEl.textContent = `${nextLevel.min - doneCount} milestone lagi menuju ${nextLevel.name}`;
+  } else {
+    if (bar) bar.style.width = '100%';
+    if (nextEl) nextEl.textContent = 'Level tertinggi tercapai — pertahankan momentum!';
+  }
+
+  // Next action: lowest sort_order incomplete milestone.
+  const next = (ms || []).find(m => !doneSet.has(m.id));
+  const card = document.getElementById('hbd-nextaction-card');
+  const txt = document.getElementById('hbd-nextaction-text');
+  const btn = document.getElementById('hbd-nextaction-btn');
+  if (next && card && txt && btn) {
+    card.style.display = 'block';
+    txt.textContent = next.title;
+    const dest = hbdJourneyDestFor(next);
+    _hbdNextActionDest = dest.view;
+    btn.style.display = dest.view ? 'inline-flex' : 'none';
+    btn.textContent = dest.label;
+  } else if (card) {
+    card.style.display = 'none';
+  }
+}
+
+let _hbdNextActionDest = null;
+function hbdJourneyDestFor(m) {
+  const t = (m.title || '').toLowerCase();
+  const k = (m.milestone_key || '').toLowerCase();
+  if (k.includes('track') || k.includes('deep_dive') || t.includes('produk') || t.includes('discover')) return { view: 'discover', label: 'Buka Discover →' };
+  if (k.includes('unit_economics') || t.includes('kalkulator') || t.includes('hitung')) return { view: 'ai', label: 'Buka Kalkulator →' };
+  if (k.includes('business_plan') || t.includes('rencana')) return { view: 'ai', label: 'Buka Rencana Bisnis →' };
+  if (k.startsWith('ss') || t.includes('feed') || t.includes('komunitas') || t.includes('pertanyaan')) return { view: 'cohort', label: 'Buka Kohort →' };
+  return { view: '', label: '' };
+}
+function hbdJourneyNextAction() {
+  if (_hbdNextActionDest && typeof switchDashView === 'function') switchDashView(_hbdNextActionDest);
 }
 
 function _hbdBuildChartFromTracked(prods) {
@@ -18154,6 +19066,117 @@ function mlsSwitchTab(tab) {
   document.querySelectorAll('[id^="mls-tab-"]').forEach(el => {
     el.style.display = el.id === `mls-tab-${tab}` ? '' : 'none';
   });
+  if (tab === 'rencana') void mlsBizPlanLoad();
+}
+
+// ── Phase 4: persist calculator scenario to the selected product ──
+function _mlsSelectedProduct() {
+  const ctx = window._mlsContext || {};
+  return ctx.product || null;
+}
+
+async function mlsSaveCalcScenario() {
+  const statusEl = document.getElementById('kal-save-status');
+  const p = _mlsSelectedProduct();
+  if (!currentUser) { if (statusEl) statusEl.textContent = 'Masuk dulu untuk menyimpan.'; return; }
+  if (!p || p.item_id == null || p.shop_id == null) { if (statusEl) statusEl.textContent = 'Pilih produk tersimpan dulu.'; return; }
+  const num = id => parseFloat(document.getElementById(id)?.value) || 0;
+  const scenario = {
+    price: num('kal-price'), cogs: num('kal-cogs'), shipping: num('kal-shipping'),
+    weight: num('kal-weight'), origin: document.getElementById('kal-origin')?.value || null,
+    commission: num('kal-commission'), service: num('kal-service'), freeship: num('kal-freeship'),
+    ads: num('kal-ads'), packing: num('kal-packing'), opex: num('kal-opex'), return: num('kal-return'),
+    monthly_units: parseInt(document.getElementById('kal-monthly-units')?.value) || 30,
+    profit_unit: document.getElementById('kal-profit-unit')?.textContent || null,
+    margin: document.getElementById('kal-margin-badge')?.textContent || null,
+    roi: document.getElementById('kal-sum-roi')?.textContent || null,
+    bep: document.getElementById('kal-bep-val')?.textContent || null,
+  };
+  if (statusEl) statusEl.textContent = 'Menyimpan…';
+  const { error } = await _supabase.from('user_tracked_products').upsert({
+    user_id: currentUser.id, item_id: Number(p.item_id), shop_id: Number(p.shop_id),
+    keyword: p.keyword || null, product_name: p.product_name || p.name || null,
+    calc_scenario: scenario, calc_updated_at: new Date().toISOString(),
+  }, { onConflict: 'user_id,item_id,shop_id', ignoreDuplicates: false });
+  if (error) { if (statusEl) statusEl.textContent = 'Gagal: ' + (error.message || ''); return; }
+  if (statusEl) statusEl.textContent = 'Tersimpan ke produk.';
+  if (typeof cohortLogActivity === 'function') void cohortLogActivity('tracker_plan_update', { calc: true });
+}
+
+async function mlsLoadCalcScenario() {
+  const p = _mlsSelectedProduct();
+  if (!currentUser || !_supabase || !p || p.item_id == null || p.shop_id == null) return;
+  const { data } = await _supabase.from('user_tracked_products')
+    .select('calc_scenario').eq('user_id', currentUser.id)
+    .eq('item_id', Number(p.item_id)).eq('shop_id', Number(p.shop_id)).maybeSingle();
+  const s = data && data.calc_scenario;
+  if (!s) return;
+  const setV = (id, v) => { const el = document.getElementById(id); if (el != null && v != null) el.value = v; };
+  setV('kal-price', s.price); setV('kal-cogs', s.cogs); setV('kal-shipping', s.shipping);
+  setV('kal-weight', s.weight); setV('kal-ads', s.ads); setV('kal-packing', s.packing);
+  setV('kal-opex', s.opex); setV('kal-monthly-units', s.monthly_units);
+  if (s.origin) setV('kal-origin', s.origin);
+  if (s.commission) setV('kal-commission', s.commission);
+  if (s.service) setV('kal-service', s.service);
+  if (s.freeship != null) setV('kal-freeship', s.freeship);
+  if (s.return) setV('kal-return', s.return);
+  if (typeof kalcCalc === 'function') kalcCalc();
+}
+
+// ── Phase 4: Rencana Bisnis canvas ──────────────────────────────
+async function mlsBizPlanLoad() {
+  if (!currentUser || !_supabase) return;
+  const p = _mlsSelectedProduct();
+  const { data } = await _supabase.from('business_plans').select('*').eq('user_id', currentUser.id).maybeSingle();
+  const setV = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+  if (data) {
+    setV('rb-product-name', data.product_name);
+    setV('rb-niche', data.niche);
+    setV('rb-target', data.target_market);
+    setV('rb-unit-goal', data.unit_goal_90d);
+    setV('rb-price-target', data.price_target);
+    setV('rb-notes', data.notes);
+  }
+  // Prefill product name from current selection if empty.
+  const nameEl = document.getElementById('rb-product-name');
+  if (nameEl && !nameEl.value && p) nameEl.value = p.product_name || p.name || '';
+  void mlsBizPlanRenderGoal(data);
+}
+
+async function mlsBizPlanRenderGoal(plan) {
+  const wrap = document.getElementById('rb-goal-progress');
+  const bar = document.getElementById('rb-goal-bar');
+  const lbl = document.getElementById('rb-goal-label');
+  if (!wrap) return;
+  const goal = plan && plan.unit_goal_90d;
+  if (!goal || goal <= 0) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  if (bar) bar.style.width = '0%';
+  if (lbl) lbl.textContent = `Target: ${Number(goal).toLocaleString('id-ID')} unit dalam 90 hari. Catat penjualan di My Toko untuk melacak progres.`;
+}
+
+async function mlsBizPlanSave() {
+  const statusEl = document.getElementById('rb-status');
+  if (!currentUser) { if (statusEl) statusEl.textContent = 'Masuk dulu untuk menyimpan.'; return; }
+  const val = id => (document.getElementById(id)?.value || '').trim();
+  const numOrNull = id => { const v = document.getElementById(id)?.value; return v === '' || v == null ? null : Number(v); };
+  const p = _mlsSelectedProduct();
+  if (statusEl) statusEl.textContent = 'Menyimpan…';
+  const { error } = await _supabase.from('business_plans').upsert({
+    user_id: currentUser.id,
+    item_id: p && p.item_id != null ? Number(p.item_id) : null,
+    shop_id: p && p.shop_id != null ? Number(p.shop_id) : null,
+    product_name: val('rb-product-name') || null,
+    niche: val('rb-niche') || null,
+    target_market: val('rb-target') || null,
+    unit_goal_90d: numOrNull('rb-unit-goal'),
+    price_target: numOrNull('rb-price-target'),
+    notes: val('rb-notes') || null,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'user_id' });
+  if (error) { if (statusEl) statusEl.textContent = 'Gagal: ' + (error.message || ''); return; }
+  if (statusEl) statusEl.textContent = 'Rencana tersimpan.';
+  void mlsBizPlanRenderGoal({ unit_goal_90d: numOrNull('rb-unit-goal') });
 }
 
 async function mlsSelectProduct(val) {
@@ -18172,6 +19195,7 @@ async function mlsSelectProduct(val) {
 
   _mlsContext = { keyword: t.keyword, product: t };
   if (heroEl) heroEl.style.display = 'block';
+  void mlsLoadCalcScenario();
 
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
   set('mls-hero-name',  t.product_name || t.name || '—');
@@ -24749,6 +25773,31 @@ function _mbnApplyLeaderMode(isLeader) {
   }
 }
 
+// ── INDEPENDENT MODE — hide all cohort-related chrome ────────
+function _hbdApplyIndependentMode() {
+  if (!_accessState || _accessState.role !== 'independent') return;
+  // Sidebar cohort nav
+  const cohortNav = document.getElementById('dash-nav-cohort');
+  if (cohortNav) cohortNav.style.display = 'none';
+  // Dashboard cohort digest + rec card
+  const cohortDigest = document.getElementById('hbd-cohort-digest-wrap');
+  if (cohortDigest) cohortDigest.style.display = 'none';
+  const recCard = document.getElementById('hbd-cohort-rec-card');
+  if (recCard) recCard.style.display = 'none';
+  // Leader-only sections (already hidden by default, ensure they stay hidden)
+  const mentorWrap = document.getElementById('hbd-mentor-wrap');
+  if (mentorWrap) mentorWrap.style.display = 'none';
+  const qaRow = document.getElementById('hbd-leader-quick-actions');
+  if (qaRow) qaRow.style.display = 'none';
+  const siswaProgress = document.getElementById('hbd-siswa-progress');
+  if (siswaProgress) siswaProgress.style.display = 'none';
+  // Mobile bottom nav — hide Kohort leader button, show My Toko
+  const kohortLeaderBtn = document.getElementById('mbn-kohort-leader');
+  if (kohortLeaderBtn) kohortLeaderBtn.style.display = 'none';
+  const myTokoBtn = document.getElementById('mbn-mytoko');
+  if (myTokoBtn) myTokoBtn.style.display = '';
+}
+
 // ── DISCOVER FILTER DRAWER (mobile) ─────────────────────────
 function dscOpenFilter() {
   const panel = document.getElementById('dsc-filter-panel');
@@ -25123,6 +26172,11 @@ document.addEventListener('DOMContentLoaded', function(){
   </div>
 </div>
 
+<!-- ── AUTH LOADING OVERLAY ── -->
+<div class="auth-loading-overlay" id="auth-loading-overlay" style="display:none;">
+  <div class="auth-spinner"></div>
+  <div class="auth-loading-text">Memuat dashboard...</div>
+</div>
 
 </body>
 </html>
