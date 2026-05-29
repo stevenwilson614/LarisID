@@ -709,9 +709,9 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .dash-nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;background:var(--cohort-secondary,#E8442A);border-radius:0 2px 2px 0;}
 /* ── Admin preview bar (site-wide role toggle) ── */
 #admin-preview-bar{display:none;align-items:center;gap:8px;padding:6px 20px;background:#0F172A;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:60px;z-index:94;flex-shrink:0;}
-@media(max-width:768px){body.in-dashboard #admin-preview-bar{top:60px;position:sticky;}}
+@media(max-width:768px){body.in-dashboard #admin-preview-bar{top:60px;position:sticky;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;}}
 .apb-label{font-size:.65rem;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;}
-.apb-btn{padding:4px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.18);background:transparent;color:rgba(255,255,255,.55);font-size:.68rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;}
+.apb-btn{padding:4px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.18);background:transparent;color:rgba(255,255,255,.55);font-size:.68rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;flex-shrink:0;}
 .apb-btn:hover{background:rgba(255,255,255,.08);color:#fff;}
 .apb-btn.active{background:#E8442A;border-color:#E8442A;color:#fff;}
 .apb-mode-badge{margin-left:auto;font-size:.6rem;color:rgba(255,255,255,.35);white-space:nowrap;}
@@ -6090,12 +6090,6 @@ html,body{overflow-x:hidden;max-width:100%;}
               <div id="hbd-trending-cards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;"></div>
             </div>
 
-            <!-- tip -->
-            <div class="hbd-tip">
-              <h4>Tip Mingguan</h4>
-              <p id="hbd-tip-text">—</p>
-            </div>
-
             <!-- Info Akun card -->
             <div id="acct-info-card" style="display:none;background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px 18px;margin-top:20px;">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
@@ -7891,13 +7885,6 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <input type="text" id="cohort-ann-title" class="cohort-input" placeholder="Judul">
                   <textarea id="cohort-ann-body" class="cohort-input" rows="2" placeholder="Isi pengumuman"></textarea>
                   <button type="button" class="cohort-btn" onclick="cohortMentorPostAnnouncement()">Kirim</button>
-                </div>
-                <div class="cohort-card">
-                  <h3>Tambah milestone</h3>
-                  <label class="cohort-muted" style="font-size:.65rem;">Kunci sistem (opsional, mis. first_save)</label>
-                  <input type="text" id="cohort-ms-key" class="cohort-input" placeholder="milestone_key" maxlength="64" autocomplete="off">
-                  <input type="text" id="cohort-ms-title" class="cohort-input" placeholder="Judul milestone">
-                  <button type="button" class="cohort-btn secondary" onclick="cohortMentorAddMilestone()">Tambah</button>
                 </div>
                 <div class="cohort-card">
                   <h3>Tambah / aktifkan siswa</h3>
