@@ -24864,6 +24864,7 @@ const COHORT_TRACK_META = {
 
 // ── PROGRAM (mentor milestone manager) ───────────────────────────────────────
 let _cohortProgramTrack = 'all';
+let _wscProgramSessions = []; // WS-C: cached upcoming sessions for content→session linking
 
 function cohortProgramSetTrack(track) {
   _cohortProgramTrack = track;
@@ -24887,27 +24888,59 @@ async function cohortProgramRender(cohortId) {
   }
   const msIds = ms.map(m => m.id);
   const { data: contents } = await _supabase.from('milestone_content')
-    .select('id,milestone_id,content_type,title,url,body,sort_order')
+    .select('id,milestone_id,content_type,title,url,body,sort_order,session_id,required_before')
     .in('milestone_id', msIds).order('sort_order', { ascending: true });
   const contentMap = {};
   (contents || []).forEach(c => {
     if (!contentMap[c.milestone_id]) contentMap[c.milestone_id] = [];
     contentMap[c.milestone_id].push(c);
   });
+  // WS-C: upcoming sessions of this cohort, offered as an optional link when authoring content.
+  const _wscToday = new Date().toISOString().split('T')[0];
+  const { data: _wscSessions } = await _supabase.from('cohort_sessions')
+    .select('id,title,session_date')
+    .eq('cohort_id', cohortId).gte('session_date', _wscToday)
+    .order('session_date', { ascending: true }).limit(50);
+  _wscProgramSessions = _wscSessions || [];
+  const _wscSessionMap = {};
+  _wscProgramSessions.forEach(s => { _wscSessionMap[s.id] = s; });
+  const _wscSessionOptions = _wscProgramSessions.map(s => {
+    const d = new Date(s.session_date + 'T00:00:00');
+    const lbl = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+    return `<option value="${s.id}">${lbl} · ${_cohortEsc(s.title)}</option>`;
+  }).join('');
+  // /WS-C
   el.innerHTML = ms.map(m => {
     const meta = COHORT_TRACK_META[m.track] || COHORT_TRACK_META.general;
     const items = contentMap[m.id] || [];
-    const itemsHtml = items.map(ci => `
-      <div style="display:flex;align-items:center;gap:6px;padding:6px 8px;background:#F9FAFB;border-radius:8px;margin-top:6px;font-size:.72rem;">
+    const itemsHtml = items.map(ci => {
+      // WS-C: show session link + "wajib sebelum kelas" badge when set.
+      const linkSess = ci.session_id ? _wscSessionMap[ci.session_id] : null;
+      const wscTags = `${ci.required_before ? `<span style="font-size:.58rem;font-weight:700;color:#B45309;background:#FEF3C7;padding:1px 6px;border-radius:20px;white-space:nowrap;">wajib pra-kelas</span>` : ''}${linkSess ? `<span style="font-size:.58rem;font-weight:700;color:#3730A3;background:#EEF2FF;padding:1px 6px;border-radius:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">📅 ${_cohortEsc(linkSess.title)}</span>` : ''}`;
+      return `
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 8px;background:#F9FAFB;border-radius:8px;margin-top:6px;font-size:.72rem;flex-wrap:wrap;">
         <span style="color:${meta.color};">${ci.content_type === 'video' ? '▶' : ci.content_type === 'document' ? '📄' : '📝'}</span>
-        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_cohortEsc(ci.title || ci.url || 'Konten')}</span>
+        <span style="flex:1;min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_cohortEsc(ci.title || ci.url || 'Konten')}</span>
+        ${wscTags}
         <button type="button" onclick="cohortProgramDeleteContent('${ci.id}','${m.id}')" style="background:none;border:none;color:#EF4444;cursor:pointer;padding:2px 4px;font-size:.7rem;line-height:1;">✕</button>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     const addContentHtml = `
       <div id="pr-content-form-${m.id}" style="display:none;margin-top:8px;padding:10px;background:#F9FAFB;border-radius:10px;">
         <input type="text" id="pr-content-url-${m.id}" class="cohort-input" placeholder="URL YouTube / PDF / link (opsional)" style="margin-bottom:6px;" autocomplete="off">
         <textarea id="pr-content-body-${m.id}" class="cohort-input" rows="2" placeholder="Atau tulis teks materi langsung di sini"></textarea>
         <input type="text" id="pr-content-title-${m.id}" class="cohort-input" placeholder="Judul konten (opsional)" style="margin-bottom:6px;" autocomplete="off">
+        <!-- WS-C: optional link to a class session + pre-class requirement -->
+        <label style="font-size:.66rem;font-weight:700;display:block;margin-bottom:3px;color:#6B7280;">TAUTKAN KE SESI KELAS (opsional)</label>
+        <select id="pr-content-session-${m.id}" class="cohort-input" style="margin-bottom:6px;">
+          <option value="">— Tidak ditautkan —</option>
+          ${_wscSessionOptions}
+        </select>
+        <label style="display:flex;align-items:center;gap:8px;font-size:.72rem;margin-bottom:8px;cursor:pointer;color:#1A1F3C;">
+          <input type="checkbox" id="pr-content-required-${m.id}" style="accent-color:#6366F1;width:15px;height:15px;">
+          Wajib ditonton/dibaca sebelum kelas
+        </label>
+        <!-- /WS-C -->
         <div style="display:flex;gap:8px;">
           <button type="button" class="cohort-btn" style="font-size:.72rem;padding:6px 12px;" onclick="cohortProgramSaveContent('${m.id}')">Simpan konten</button>
           <button type="button" class="cohort-btn secondary" style="font-size:.72rem;padding:6px 12px;" onclick="cohortProgramToggleContent('${m.id}')">Batal</button>
@@ -24974,6 +25007,9 @@ async function cohortProgramSaveContent(milestoneId) {
   const bodyEl  = document.getElementById('pr-content-body-'  + milestoneId);
   const titleEl = document.getElementById('pr-content-title-' + milestoneId);
   const stEl    = document.getElementById('pr-content-status-'+ milestoneId);
+  // WS-C: session link + pre-class requirement inputs
+  const sessEl  = document.getElementById('pr-content-session-'  + milestoneId);
+  const reqEl   = document.getElementById('pr-content-required-' + milestoneId);
   if (!stEl || !_supabase) return;
   const url  = (urlEl  ? urlEl.value  : '').trim();
   const body = (bodyEl ? bodyEl.value : '').trim();
@@ -24982,13 +25018,15 @@ async function cohortProgramSaveContent(milestoneId) {
   let type = 'text';
   if (url) {
     const lower = url.toLowerCase();
-    if (lower.includes('youtube.com') || lower.includes('youtu.be')) type = 'video';
+    if (lower.includes('youtube.com') || lower.includes('youtu.be') || lower.includes('vimeo.com') || lower.includes('drive.google.com')) type = 'video';
     else type = 'document';
   }
   stEl.textContent = 'Menyimpan…';
   const { error } = await _supabase.from('milestone_content').insert({
     milestone_id: milestoneId, content_type: type,
     title: title || null, url: url || null, body: body || null, sort_order: 0,
+    session_id: (sessEl && sessEl.value) ? sessEl.value : null, // WS-C
+    required_before: !!(reqEl && reqEl.checked),                 // WS-C
   });
   if (error) { stEl.textContent = 'Gagal: ' + error.message; return; }
   stEl.textContent = 'Tersimpan.';
@@ -25147,6 +25185,84 @@ async function cvCompleteContent() {
   if (cstudid) await cohortRenderMilestones(cstudid);
 }
 
+// ── WS-C: LAZY EMBED PLAYER (YouTube / Google Drive / Vimeo) ──────────────────
+// Embed-only, low-data: we render a click-to-load thumbnail and only swap in the
+// iframe when the student taps it, so iframes never autoload and burn mobile data.
+function wscParseEmbed(url) {
+  if (!url) return null;
+  const u = String(url).trim();
+  // YouTube
+  const yt = u.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/|live\/))([A-Za-z0-9_-]{11})/);
+  if (yt) {
+    return {
+      provider: 'youtube',
+      embed: `https://www.youtube-nocookie.com/embed/${yt[1]}?autoplay=1&rel=0&modestbranding=1`,
+      thumb: `https://i.ytimg.com/vi/${yt[1]}/hqdefault.jpg`,
+    };
+  }
+  // Vimeo (numeric id)
+  const vm = u.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  if (vm) {
+    return {
+      provider: 'vimeo',
+      embed: `https://player.vimeo.com/video/${vm[1]}?autoplay=1`,
+      thumb: null,
+    };
+  }
+  // Google Drive (file id from /file/d/ID/ or ?id=ID or open?id=ID)
+  const gd = u.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?id=)([A-Za-z0-9_-]+)/) || u.match(/[?&]id=([A-Za-z0-9_-]+)/);
+  if (gd && u.includes('drive.google.com')) {
+    return {
+      provider: 'drive',
+      embed: `https://drive.google.com/file/d/${gd[1]}/preview`,
+      thumb: `https://drive.google.com/thumbnail?id=${gd[1]}&sz=w640`,
+    };
+  }
+  return null;
+}
+
+// Returns a self-contained lazy-load thumbnail block. tap → swaps to iframe.
+function wscLazyEmbedHtml(url, label) {
+  const e = wscParseEmbed(url);
+  if (!e) {
+    return `<a href="${_cohortEsc(url || '#')}" target="_blank" rel="noopener" style="display:inline-block;font-size:.72rem;color:#6366F1;">Buka materi ↗</a>`;
+  }
+  const embedAttr = e.embed.replace(/"/g, '&quot;');
+  const bg = e.thumb
+    ? `background:#000 url('${e.thumb}') center/cover no-repeat;`
+    : `background:linear-gradient(135deg,#1A1F3C,#6366F1);`;
+  return `
+    <div class="wsc-embed" role="button" tabindex="0" data-embed="${embedAttr}"
+         onclick="wscLoadEmbed(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();wscLoadEmbed(this);}"
+         aria-label="Muat video ${_cohortEsc(label || '')}"
+         style="position:relative;width:100%;aspect-ratio:16/9;border-radius:10px;overflow:hidden;cursor:pointer;${bg}">
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,.18);"></div>
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:54px;height:54px;border-radius:50%;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;">
+        <span style="color:#fff;font-size:1.3rem;margin-left:3px;">▶</span>
+      </div>
+      <div style="position:absolute;left:8px;bottom:7px;color:#fff;font-size:.6rem;font-weight:700;background:rgba(0,0,0,.5);padding:2px 7px;border-radius:6px;">Ketuk untuk memuat · hemat data</div>
+    </div>`;
+}
+
+function wscLoadEmbed(el) {
+  if (!el) return;
+  const src = el.getAttribute('data-embed');
+  if (!src) return;
+  el.outerHTML = `<div style="width:100%;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#000;">
+    <iframe src="${src}" loading="lazy" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen
+            style="width:100%;height:100%;border:0;" title="Video materi"></iframe></div>`;
+}
+
+// Mark a required pre-class item as watched via the existing RPC, then refresh.
+async function wscMarkWatched(contentId, cohortId) {
+  if (!_supabase || !currentUser || !contentId) return;
+  try { await _supabase.rpc('complete_content_item', { p_content_id: contentId }); } catch (e) {}
+  if (cohortId) await cohortRenderJadwal(cohortId);
+  const sc = _cohortState.primaryStudentCohortId;
+  if (sc) await cohortRenderMilestones(sc);
+}
+// ── /WS-C ─────────────────────────────────────────────────────────────────────
+
 // ── JADWAL (student schedule view) ───────────────────────────────────────────
 async function cohortRenderJadwal(cohortId) {
   const el = document.getElementById('cohort-jadwal-list');
@@ -25161,6 +25277,26 @@ async function cohortRenderJadwal(cohortId) {
     el.innerHTML = '<span class="cohort-muted">Belum ada jadwal mendatang.</span>';
     return;
   }
+  // WS-C: load required pre-class content linked to these upcoming sessions + my progress.
+  const sessIds = sessions.map(s => s.id);
+  let reqBySession = {};
+  let watchedSet = new Set();
+  try {
+    const { data: reqContent } = await _supabase.from('milestone_content')
+      .select('id,session_id,content_type,title,url')
+      .in('session_id', sessIds).eq('required_before', true)
+      .order('sort_order', { ascending: true });
+    (reqContent || []).forEach(c => {
+      if (!reqBySession[c.session_id]) reqBySession[c.session_id] = [];
+      reqBySession[c.session_id].push(c);
+    });
+    const reqIds = (reqContent || []).map(c => c.id);
+    if (reqIds.length && currentUser) {
+      const { data: prog } = await _supabase.from('user_content_progress')
+        .select('content_id,progress_pct').eq('user_id', currentUser.id).in('content_id', reqIds);
+      (prog || []).forEach(p => { if (p.progress_pct >= 100) watchedSet.add(p.content_id); });
+    }
+  } catch (e) {}
   el.innerHTML = sessions.map(s => {
     const d = new Date(s.session_date + 'T00:00:00');
     const label = d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -25178,6 +25314,7 @@ async function cohortRenderJadwal(cohortId) {
         <a href="${_cohortEsc(gcal)}" target="_blank" rel="noopener" style="color:#6366F1;font-weight:700;">+ Tambah ke Google Calendar</a>
       </div>
       ${/* WS-B: downloadable document list for cohort members */ wsbRenderDocList(docs)}
+      ${wscRequiredSectionHtml(reqBySession[s.id] || [], watchedSet, cohortId)}
     </div>`;
     // /WS-A
   }).join('');
@@ -25280,6 +25417,32 @@ async function cohortPlannerCopyCalUrl(btn) {
   }
 }
 // <!-- /WS-A -->
+
+// WS-C: render the "Wajib ditonton sebelum kelas" checklist for one session.
+function wscRequiredSectionHtml(items, watchedSet, cohortId) {
+  if (!items || !items.length) return '';
+  const rows = items.map(ci => {
+    const watched = watchedSet.has(ci.id);
+    const isVideo = ci.content_type === 'video' || wscParseEmbed(ci.url);
+    const player = isVideo
+      ? wscLazyEmbedHtml(ci.url, ci.title)
+      : `<a href="${_cohortEsc(ci.url || '#')}" target="_blank" rel="noopener" style="display:inline-block;font-size:.72rem;color:#6366F1;">Buka materi ↗</a>`;
+    const action = watched
+      ? `<span style="font-size:.66rem;font-weight:700;color:#059669;white-space:nowrap;">Sudah ditonton ✓</span>`
+      : `<button type="button" class="cohort-btn secondary" style="padding:4px 10px;font-size:.66rem;white-space:nowrap;" onclick="wscMarkWatched('${ci.id}','${cohortId}')">Tandai sudah ditonton</button>`;
+    return `<div style="margin-top:8px;padding:8px;background:#fff;border:1px solid #FDE68A;border-radius:10px;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+        <span style="font-size:.72rem;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${watched ? 'color:#059669;' : ''}">${watched ? '✓ ' : ''}${_cohortEsc(ci.title || 'Materi video')}</span>
+        ${action}
+      </div>
+      ${player}
+    </div>`;
+  }).join('');
+  return `<div style="margin-top:10px;padding:10px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;">
+    <div style="font-size:.66rem;font-weight:800;color:#B45309;text-transform:uppercase;letter-spacing:.02em;">⚠ Wajib ditonton sebelum kelas</div>
+    ${rows}
+  </div>`;
+}
 
 // ── PLANNER (mentor calendar) ─────────────────────────────────────────────────
 let _plannerCurrentMonth = new Date();
