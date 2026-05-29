@@ -12950,7 +12950,7 @@ function cohortSwitchStudentTab(tab) {
   document.querySelectorAll('#cohort-student-subtabs .cohort-subtab').forEach(b => {
     b.classList.toggle('active', b.dataset.cstab === tab);
   });
-  ['ringkasan', 'feed', 'rankings', 'chat'].forEach(t => {
+  ['ringkasan', 'feed', 'rankings', 'chat', 'jadwal'].forEach(t => {
     const el = document.getElementById('cohort-student-panel-' + t);
     if (el) el.style.display = t === tab ? '' : 'none';
   });
@@ -12960,6 +12960,7 @@ function cohortSwitchStudentTab(tab) {
     void cohortRenderRankingsStudent(cid);
     void cohortRenderStudentProgressCards(cid);
   }
+  if (tab === 'jadwal' && cid) void cohortRenderJadwal(cid);
 }
 
 function cohortSwitchMentorTab(tab) {
@@ -12967,7 +12968,7 @@ function cohortSwitchMentorTab(tab) {
   document.querySelectorAll('#cohort-mentor-subtabs .cohort-subtab').forEach(b => {
     b.classList.toggle('active', b.dataset.cmtab === tab);
   });
-  ['overview', 'identity', 'students', 'mod', 'report', 'email'].forEach(t => {
+  ['overview', 'identity', 'students', 'program', 'mod', 'report', 'email', 'planner'].forEach(t => {
     const el = document.getElementById('cohort-mentor-panel-' + t);
     if (el) el.style.display = t === tab ? '' : 'none';
   });
@@ -12975,8 +12976,10 @@ function cohortSwitchMentorTab(tab) {
   if (!c) return;
   if (tab === 'identity') cohortPreviewBrandingForm();
   if (tab === 'students') { void cohortRenderMentorDirectory(c.id); void cohortDirStudentsInit(c.id); }
+  if (tab === 'program') void cohortProgramRender(c.id);
   if (tab === 'mod') void cohortRenderModFeed(c.id);
   if (tab === 'email') ldrBcInit();
+  if (tab === 'planner') void cohortPlannerRender(c.id);
 }
 
 function cohortCohortDisplayName(userId, fallbackRank) {
@@ -13015,17 +13018,31 @@ async function cohortRenderMilestones(cohortId) {
   if (!ul) return;
   ul.innerHTML = '';
   if (!cohortId || !_supabase) { ul.innerHTML = '<li class="cohort-muted">—</li>'; return; }
-  const { data: ms } = await _supabase.from('milestones').select('id,title,sort_order,milestone_key').eq('cohort_id', cohortId).order('sort_order', { ascending: true });
+  const { data: ms } = await _supabase.from('milestones').select('id,title,sort_order,track').eq('cohort_id', cohortId).order('sort_order', { ascending: true });
   const { data: done } = await _supabase.from('user_milestone_progress').select('milestone_id').eq('user_id', currentUser.id);
   const doneSet = new Set((done || []).map(d => d.milestone_id));
   if (!(ms || []).length) {
     ul.innerHTML = '<li class="cohort-muted">Belum ada milestone.</li>';
     return;
   }
+  const msIds = (ms || []).map(m => m.id);
+  const { data: contents } = await _supabase.from('milestone_content').select('milestone_id,content_type').in('milestone_id', msIds);
+  const contentByMs = {};
+  (contents || []).forEach(c => { if (!contentByMs[c.milestone_id]) contentByMs[c.milestone_id] = c; });
   ul.innerHTML = (ms || []).map(m => {
     const ok = doneSet.has(m.id);
-    const keyHint = m.milestone_key ? `<span class="cohort-muted" style="font-size:.62rem;"> · ${_cohortEsc(m.milestone_key)}</span>` : '';
-    return `<li><span>${_cohortEsc(m.title)}${keyHint}</span><button type="button" class="cohort-btn secondary" style="padding:4px 10px;font-size:.65rem;" data-ms="${m.id}" onclick="cohortToggleMilestone(this.dataset.ms)">${ok ? 'Selesai' : 'Tandai'}</button></li>`;
+    const content = contentByMs[m.id];
+    const icon = content
+      ? (content.content_type === 'video'
+          ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="#6366F1" style="flex-shrink:0;"><polygon points="5,3 19,12 5,21"/></svg>`
+          : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`)
+      : '';
+    const actionBtn = ok
+      ? `<span style="font-size:.65rem;font-weight:700;color:#059669;white-space:nowrap;">Selesai ✓</span>`
+      : content
+        ? `<button type="button" class="cohort-btn secondary" style="padding:4px 10px;font-size:.65rem;white-space:nowrap;" onclick="cohortOpenContentViewer('${m.id}')">Buka</button>`
+        : `<button type="button" class="cohort-btn secondary" style="padding:4px 10px;font-size:.65rem;white-space:nowrap;" data-ms="${m.id}" onclick="cohortToggleMilestone(this.dataset.ms)">Tandai</button>`;
+    return `<li style="display:flex;align-items:center;gap:6px;"><span style="flex:1;display:flex;align-items:center;gap:5px;">${icon}${_cohortEsc(m.title)}</span>${actionBtn}</li>`;
   }).join('');
 }
 
@@ -24813,6 +24830,649 @@ document.addEventListener('DOMContentLoaded', function(){
   setTimeout(initFlagButtons, 1500);
   setTimeout(initFlagButtons, 4000);
 });
+
+// ── COHORT TRACK META ────────────────────────────────────────────────────────
+const COHORT_TRACK_META = {
+  soft_skill:     { label: 'Soft Skill',     color: '#6366F1', band: '#EEF2FF' },
+  business_skill: { label: 'Business Skill', color: '#059669', band: '#ECFDF5' },
+  general:        { label: 'Umum',           color: '#9CA3AF', band: '#F3F4F6' },
+};
+
+// ── PROGRAM (mentor milestone manager) ───────────────────────────────────────
+let _cohortProgramTrack = 'all';
+
+function cohortProgramSetTrack(track) {
+  _cohortProgramTrack = track;
+  document.querySelectorAll('[data-prtrack]').forEach(b =>
+    b.classList.toggle('active', b.dataset.prtrack === track));
+  const c = _cohortState.primaryMentorCohort;
+  if (c) void cohortProgramRender(c.id);
+}
+
+async function cohortProgramRender(cohortId) {
+  const el = document.getElementById('cohort-program-list');
+  if (!el || !cohortId || !_supabase) return;
+  el.innerHTML = '<span class="cohort-muted">Memuat…</span>';
+  let q = _supabase.from('milestones').select('id,title,sort_order,track,description')
+    .eq('cohort_id', cohortId).order('sort_order', { ascending: true });
+  if (_cohortProgramTrack !== 'all') q = q.eq('track', _cohortProgramTrack);
+  const { data: ms, error } = await q;
+  if (error || !(ms || []).length) {
+    el.innerHTML = '<span class="cohort-muted">Belum ada milestone. Tambahkan di bawah.</span>';
+    return;
+  }
+  const msIds = ms.map(m => m.id);
+  const { data: contents } = await _supabase.from('milestone_content')
+    .select('id,milestone_id,content_type,title,url,body,sort_order')
+    .in('milestone_id', msIds).order('sort_order', { ascending: true });
+  const contentMap = {};
+  (contents || []).forEach(c => {
+    if (!contentMap[c.milestone_id]) contentMap[c.milestone_id] = [];
+    contentMap[c.milestone_id].push(c);
+  });
+  el.innerHTML = ms.map(m => {
+    const meta = COHORT_TRACK_META[m.track] || COHORT_TRACK_META.general;
+    const items = contentMap[m.id] || [];
+    const itemsHtml = items.map(ci => `
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 8px;background:#F9FAFB;border-radius:8px;margin-top:6px;font-size:.72rem;">
+        <span style="color:${meta.color};">${ci.content_type === 'video' ? '▶' : ci.content_type === 'document' ? '📄' : '📝'}</span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_cohortEsc(ci.title || ci.url || 'Konten')}</span>
+        <button type="button" onclick="cohortProgramDeleteContent('${ci.id}','${m.id}')" style="background:none;border:none;color:#EF4444;cursor:pointer;padding:2px 4px;font-size:.7rem;line-height:1;">✕</button>
+      </div>`).join('');
+    const addContentHtml = `
+      <div id="pr-content-form-${m.id}" style="display:none;margin-top:8px;padding:10px;background:#F9FAFB;border-radius:10px;">
+        <input type="text" id="pr-content-url-${m.id}" class="cohort-input" placeholder="URL YouTube / PDF / link (opsional)" style="margin-bottom:6px;" autocomplete="off">
+        <textarea id="pr-content-body-${m.id}" class="cohort-input" rows="2" placeholder="Atau tulis teks materi langsung di sini"></textarea>
+        <input type="text" id="pr-content-title-${m.id}" class="cohort-input" placeholder="Judul konten (opsional)" style="margin-bottom:6px;" autocomplete="off">
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="cohort-btn" style="font-size:.72rem;padding:6px 12px;" onclick="cohortProgramSaveContent('${m.id}')">Simpan konten</button>
+          <button type="button" class="cohort-btn secondary" style="font-size:.72rem;padding:6px 12px;" onclick="cohortProgramToggleContent('${m.id}')">Batal</button>
+        </div>
+        <div id="pr-content-status-${m.id}" class="cohort-muted" style="margin-top:4px;font-size:.7rem;"></div>
+      </div>`;
+    return `<div style="border:1px solid #E5E7EB;border-radius:12px;padding:12px 14px;margin-bottom:10px;">
+      <div style="display:flex;align-items:flex-start;gap:8px;">
+        <span style="flex:1;font-size:.78rem;font-weight:700;color:#1A1F3C;">${_cohortEsc(m.title)}</span>
+        <span style="font-size:.6rem;font-weight:700;color:${meta.color};background:${meta.band};padding:2px 7px;border-radius:20px;white-space:nowrap;">${meta.label}</span>
+        <button type="button" onclick="cohortProgramDelete('${m.id}')" style="background:none;border:none;color:#9CA3AF;cursor:pointer;padding:2px;font-size:.75rem;line-height:1;flex-shrink:0;" title="Hapus milestone">✕</button>
+      </div>
+      ${m.description ? `<p class="cohort-muted" style="font-size:.7rem;margin:4px 0 6px;">${_cohortEsc(m.description)}</p>` : ''}
+      ${itemsHtml}
+      <button type="button" onclick="cohortProgramToggleContent('${m.id}')" style="margin-top:8px;background:none;border:1px dashed #D1D5DB;border-radius:8px;padding:5px 10px;font-size:.7rem;color:#6B7280;cursor:pointer;width:100%;text-align:left;">+ Tambah konten (video / dokumen / teks)</button>
+      ${addContentHtml}
+    </div>`;
+  }).join('');
+}
+
+async function cohortProgramCreate() {
+  const titleEl  = document.getElementById('cohort-pr-title');
+  const descEl   = document.getElementById('cohort-pr-desc');
+  const trackEl  = document.getElementById('cohort-pr-track');
+  const statusEl = document.getElementById('cohort-pr-status');
+  if (!titleEl || !statusEl) return;
+  const title = titleEl.value.trim();
+  if (!title) { statusEl.textContent = 'Judul tidak boleh kosong.'; return; }
+  const c = _cohortState.primaryMentorCohort;
+  if (!c) return;
+  statusEl.textContent = 'Menyimpan…';
+  const { count: maxOrder } = await _supabase.from('milestones').select('*', { count: 'exact', head: true }).eq('cohort_id', c.id);
+  const { error } = await _supabase.from('milestones').insert({
+    cohort_id: c.id,
+    title,
+    description: descEl ? descEl.value.trim() || null : null,
+    track: trackEl ? trackEl.value : 'general',
+    sort_order: (maxOrder || 0),
+  });
+  if (error) { statusEl.textContent = 'Gagal: ' + error.message; return; }
+  titleEl.value = '';
+  if (descEl) descEl.value = '';
+  statusEl.textContent = 'Tersimpan.';
+  await cohortProgramRender(c.id);
+  setTimeout(() => { statusEl.textContent = ''; }, 2000);
+}
+
+async function cohortProgramDelete(milestoneId) {
+  if (!_supabase || !milestoneId) return;
+  if (!confirm('Hapus milestone ini? Semua konten lampiran juga akan dihapus.')) return;
+  await _supabase.from('milestones').delete().eq('id', milestoneId);
+  const c = _cohortState.primaryMentorCohort;
+  if (c) await cohortProgramRender(c.id);
+}
+
+function cohortProgramToggleContent(milestoneId) {
+  const form = document.getElementById('pr-content-form-' + milestoneId);
+  if (!form) return;
+  form.style.display = form.style.display === 'none' ? '' : 'none';
+}
+
+async function cohortProgramSaveContent(milestoneId) {
+  const urlEl   = document.getElementById('pr-content-url-'   + milestoneId);
+  const bodyEl  = document.getElementById('pr-content-body-'  + milestoneId);
+  const titleEl = document.getElementById('pr-content-title-' + milestoneId);
+  const stEl    = document.getElementById('pr-content-status-'+ milestoneId);
+  if (!stEl || !_supabase) return;
+  const url  = (urlEl  ? urlEl.value  : '').trim();
+  const body = (bodyEl ? bodyEl.value : '').trim();
+  const title = (titleEl ? titleEl.value : '').trim();
+  if (!url && !body) { stEl.textContent = 'Isi URL atau teks konten.'; return; }
+  let type = 'text';
+  if (url) {
+    const lower = url.toLowerCase();
+    if (lower.includes('youtube.com') || lower.includes('youtu.be')) type = 'video';
+    else type = 'document';
+  }
+  stEl.textContent = 'Menyimpan…';
+  const { error } = await _supabase.from('milestone_content').insert({
+    milestone_id: milestoneId, content_type: type,
+    title: title || null, url: url || null, body: body || null, sort_order: 0,
+  });
+  if (error) { stEl.textContent = 'Gagal: ' + error.message; return; }
+  stEl.textContent = 'Tersimpan.';
+  if (urlEl) urlEl.value = '';
+  if (bodyEl) bodyEl.value = '';
+  if (titleEl) titleEl.value = '';
+  setTimeout(() => { stEl.textContent = ''; }, 1500);
+  const c = _cohortState.primaryMentorCohort;
+  if (c) await cohortProgramRender(c.id);
+}
+
+async function cohortProgramDeleteContent(contentId) {
+  if (!_supabase || !contentId) return;
+  await _supabase.from('milestone_content').delete().eq('id', contentId);
+  const c = _cohortState.primaryMentorCohort;
+  if (c) await cohortProgramRender(c.id);
+}
+
+// ── CONTENT VIEWER (student) ─────────────────────────────────────────────────
+let _cvState = { contentId: null, milestoneId: null, type: null, ytPlayer: null, pollTimer: null };
+
+async function cohortOpenContentViewer(milestoneId) {
+  const ov = document.getElementById('cv-overlay');
+  const titleEl = document.getElementById('cv-title');
+  const bodyEl  = document.getElementById('cv-body');
+  const bar     = document.getElementById('cv-progress-bar');
+  if (!ov || !_supabase) return;
+  const { data: items } = await _supabase.from('milestone_content')
+    .select('id,content_type,title,url,body').eq('milestone_id', milestoneId)
+    .order('sort_order', { ascending: true }).limit(1);
+  if (!(items || []).length) return;
+  const item = items[0];
+  cohortCloseContentViewer();
+  _cvState = { contentId: item.id, milestoneId, type: item.content_type, ytPlayer: null, pollTimer: null };
+  if (titleEl) titleEl.textContent = item.title || (item.content_type === 'video' ? 'Video' : item.content_type === 'document' ? 'Dokumen' : 'Materi');
+  if (bar) bar.style.width = '0%';
+  ov.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  if (item.content_type === 'video') cvRenderVideo(item, bodyEl, bar);
+  else if (item.content_type === 'text') cvRenderText(item, bodyEl, bar);
+  else cvRenderDocument(item, bodyEl, bar);
+}
+
+function cohortCloseContentViewer() {
+  const ov = document.getElementById('cv-overlay');
+  if (ov) ov.style.display = 'none';
+  document.body.style.overflow = '';
+  if (_cvState.ytPlayer) { try { _cvState.ytPlayer.destroy(); } catch(e) {} }
+  if (_cvState.pollTimer) { clearInterval(_cvState.pollTimer); }
+  _cvState = { contentId: null, milestoneId: null, type: null, ytPlayer: null, pollTimer: null };
+}
+
+function _cvExtractYtId(url) {
+  if (!url) return null;
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+function cvRenderVideo(item, bodyEl, bar) {
+  const ytId = _cvExtractYtId(item.url);
+  if (!ytId) {
+    if (bodyEl) bodyEl.innerHTML = '<p class="cohort-muted">URL video tidak valid.</p>';
+    return;
+  }
+  const containerId = 'cv-yt-' + Date.now();
+  if (bodyEl) bodyEl.innerHTML = `<div id="${containerId}" style="width:100%;aspect-ratio:16/9;"></div>`;
+  const onStateChange = (event) => {
+    if (!_cvState.pollTimer && event.data === 1) {
+      _cvState.pollTimer = setInterval(() => {
+        try {
+          const dur = _cvState.ytPlayer.getDuration();
+          const cur = _cvState.ytPlayer.getCurrentTime();
+          if (dur > 0 && bar) bar.style.width = Math.min(100, Math.round(cur / dur * 100)) + '%';
+        } catch(e) {}
+      }, 2000);
+    }
+    if (event.data === 0) {
+      if (bar) bar.style.width = '100%';
+      void cvCompleteContent();
+    }
+  };
+  const initPlayer = () => {
+    _cvState.ytPlayer = new YT.Player(containerId, {
+      videoId: ytId,
+      playerVars: { rel: 0, modestbranding: 1 },
+      events: { onStateChange },
+    });
+  };
+  if (window.YT && window.YT.Player) initPlayer();
+  else window.onYouTubeIframeAPIReady = initPlayer;
+}
+
+function cvRenderText(item, bodyEl, bar) {
+  if (!bodyEl) return;
+  bodyEl.innerHTML = `
+    <div id="cv-text-scroll" style="max-height:55vh;overflow-y:auto;padding:4px 2px;line-height:1.7;font-size:.83rem;white-space:pre-wrap;">${_cohortEsc(item.body || '')}</div>
+    <p id="cv-read-hint" class="cohort-muted" style="font-size:.7rem;margin-top:8px;">Baca hingga akhir untuk menyelesaikan materi ini.</p>`;
+  let done = false;
+  let dwellStart = null;
+  const scrollEl = document.getElementById('cv-text-scroll');
+  if (!scrollEl) return;
+  const check = () => {
+    if (done) return;
+    const pct = scrollEl.scrollHeight <= scrollEl.clientHeight
+      ? 100
+      : Math.round(scrollEl.scrollTop / (scrollEl.scrollHeight - scrollEl.clientHeight) * 100);
+    if (bar) bar.style.width = pct + '%';
+    if (pct >= 90) {
+      if (!dwellStart) dwellStart = Date.now();
+      if (Date.now() - dwellStart >= 3000) {
+        done = true;
+        void cvCompleteContent();
+        const hint = document.getElementById('cv-read-hint');
+        if (hint) hint.textContent = 'Selesai dibaca!';
+      }
+    } else {
+      dwellStart = null;
+    }
+  };
+  scrollEl.addEventListener('scroll', check);
+  _cvState.pollTimer = setInterval(check, 1000);
+  check();
+}
+
+function cvRenderDocument(item, bodyEl, bar) {
+  if (!bodyEl) return;
+  const url = item.url || '';
+  let elapsed = 0;
+  const WAIT_SEC = 30;
+  bodyEl.innerHTML = `
+    <p style="font-size:.78rem;margin-bottom:10px;">Dokumen: <a href="${url}" target="_blank" rel="noopener" style="color:#6366F1;">${_cohortEsc(item.title || url)}</a></p>
+    <iframe src="${url}" style="width:100%;height:50vh;border:1px solid #E5E7EB;border-radius:8px;" title="Dokumen"></iframe>
+    <div style="margin-top:10px;display:flex;align-items:center;gap:10px;">
+      <span id="cv-doc-hint" class="cohort-muted" style="font-size:.7rem;">Tombol muncul setelah 30 detik membaca…</span>
+      <button id="cv-doc-done-btn" type="button" class="cohort-btn" style="display:none;font-size:.72rem;padding:6px 14px;" onclick="cvCompleteContent()">Tandai selesai dibaca</button>
+    </div>`;
+  _cvState.pollTimer = setInterval(() => {
+    elapsed++;
+    if (bar) bar.style.width = Math.min(100, Math.round(elapsed / WAIT_SEC * 100)) + '%';
+    if (elapsed >= WAIT_SEC) {
+      const btn  = document.getElementById('cv-doc-done-btn');
+      const hint = document.getElementById('cv-doc-hint');
+      if (btn)  btn.style.display  = '';
+      if (hint) hint.style.display = 'none';
+    }
+  }, 1000);
+}
+
+async function cvCompleteContent() {
+  const cid = _cvState.contentId;
+  if (!cid || !_supabase || !currentUser) return;
+  try { await _supabase.rpc('complete_content_item', { p_content_id: cid }); } catch(e) {}
+  const bar = document.getElementById('cv-progress-bar');
+  if (bar) bar.style.width = '100%';
+  const cstudid = _cohortState.primaryStudentCohortId;
+  if (cstudid) await cohortRenderMilestones(cstudid);
+}
+
+// ── JADWAL (student schedule view) ───────────────────────────────────────────
+async function cohortRenderJadwal(cohortId) {
+  const el = document.getElementById('cohort-jadwal-list');
+  if (!el || !cohortId || !_supabase) return;
+  el.innerHTML = '<span class="cohort-muted">Memuat…</span>';
+  const today = new Date().toISOString().split('T')[0];
+  const { data: sessions, error } = await _supabase.from('cohort_sessions')
+    .select('id,title,session_date,notes,document_urls')
+    .eq('cohort_id', cohortId).gte('session_date', today)
+    .order('session_date', { ascending: true }).limit(20);
+  if (error || !(sessions || []).length) {
+    el.innerHTML = '<span class="cohort-muted">Belum ada jadwal mendatang.</span>';
+    return;
+  }
+  el.innerHTML = sessions.map(s => {
+    const d = new Date(s.session_date + 'T00:00:00');
+    const label = d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
+    const docs = (s.document_urls || []).filter(Boolean);
+    return `<div style="border-left:3px solid #6366F1;padding:10px 14px;margin-bottom:12px;background:#F9FAFB;border-radius:0 10px 10px 0;">
+      <div style="font-size:.62rem;color:#6366F1;font-weight:700;text-transform:uppercase;">${label}</div>
+      <div style="font-weight:800;font-size:.82rem;margin:2px 0;">${_cohortEsc(s.title)}</div>
+      ${s.notes ? `<div style="font-size:.72rem;color:#6B7280;margin-top:4px;">${_cohortEsc(s.notes)}</div>` : ''}
+      ${docs.length ? `<div style="margin-top:6px;font-size:.7rem;">${docs.map(u => `<a href="${u}" target="_blank" rel="noopener" style="color:#6366F1;margin-right:8px;">Dokumen</a>`).join('')}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── PLANNER (mentor calendar) ─────────────────────────────────────────────────
+let _plannerCurrentMonth = new Date();
+let _plannerSessions = [];
+let _plannerEditId = null;
+
+async function cohortPlannerRender(cohortId) {
+  if (!cohortId || !_supabase) return;
+  const year  = _plannerCurrentMonth.getFullYear();
+  const month = _plannerCurrentMonth.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay  = new Date(year, month + 1, 0);
+  const from = firstDay.toISOString().split('T')[0];
+  const to   = lastDay.toISOString().split('T')[0];
+  const { data } = await _supabase.from('cohort_sessions')
+    .select('id,title,session_date,notes,milestone_ids,document_urls')
+    .eq('cohort_id', cohortId).gte('session_date', from).lte('session_date', to)
+    .order('session_date', { ascending: true });
+  _plannerSessions = data || [];
+  _plannerDrawCal(cohortId, year, month);
+}
+
+function _plannerDrawCal(cohortId, year, month) {
+  const el = document.getElementById('cohort-planner-cal');
+  if (!el) return;
+  const DAYS = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+  const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const firstDow = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date().toISOString().split('T')[0];
+  const sessionMap = {};
+  _plannerSessions.forEach(s => {
+    if (!sessionMap[s.session_date]) sessionMap[s.session_date] = [];
+    sessionMap[s.session_date].push(s);
+  });
+  let html = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <button type="button" onclick="cohortPlannerChangeMonth(-1)" style="background:none;border:1px solid #E5E7EB;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:.75rem;">&#9664;</button>
+      <strong style="font-size:.82rem;">${MONTHS[month]} ${year}</strong>
+      <button type="button" onclick="cohortPlannerChangeMonth(1)" style="background:none;border:1px solid #E5E7EB;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:.75rem;">&#9654;</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center;">`;
+  DAYS.forEach(d => { html += `<div style="font-size:.62rem;font-weight:700;color:#9CA3AF;padding:2px 0;">${d}</div>`; });
+  for (let i = 0; i < firstDow; i++) html += '<div></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = dateStr === today;
+    const daySessions = sessionMap[dateStr] || [];
+    const dots = daySessions.map(() => `<div style="width:5px;height:5px;background:#6366F1;border-radius:50%;margin:0 1px;display:inline-block;"></div>`).join('');
+    html += `<div onclick="cohortPlannerOpenDay('${dateStr}','${cohortId}')" style="cursor:pointer;padding:5px 2px;border-radius:8px;border:1px solid ${isToday ? '#6366F1' : 'transparent'};background:${isToday ? '#EEF2FF' : 'transparent'};transition:background .1s;" onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='${isToday ? '#EEF2FF' : 'transparent'}'">
+      <div style="font-size:.72rem;font-weight:${isToday ? '800' : '500'};color:${isToday ? '#6366F1' : '#1A1F3C'};">${d}</div>
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;margin-top:2px;">${dots}</div>
+    </div>`;
+  }
+  html += '</div>';
+  if (_plannerSessions.length) {
+    html += '<div style="margin-top:16px;border-top:1px solid #E5E7EB;padding-top:12px;"><div style="font-size:.72rem;font-weight:700;color:#9CA3AF;margin-bottom:6px;">SESI BULAN INI</div>';
+    _plannerSessions.forEach(s => {
+      const d = new Date(s.session_date + 'T00:00:00');
+      const label = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+      html += `<div onclick="cohortPlannerOpenEditor('${s.id}','${cohortId}')" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;margin-bottom:4px;background:#F9FAFB;">
+        <div style="font-size:.65rem;color:#6366F1;font-weight:700;white-space:nowrap;min-width:40px;">${label}</div>
+        <div style="font-size:.75rem;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_cohortEsc(s.title)}</div>
+        <div style="font-size:.65rem;color:#9CA3AF;">Edit ›</div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+  el.innerHTML = html;
+}
+
+async function cohortPlannerChangeMonth(delta) {
+  _plannerCurrentMonth = new Date(_plannerCurrentMonth.getFullYear(), _plannerCurrentMonth.getMonth() + delta, 1);
+  const c = _cohortState.primaryMentorCohort;
+  if (c) await cohortPlannerRender(c.id);
+}
+
+function cohortPlannerOpenDay(dateStr, cohortId) {
+  cohortPlannerOpenEditor(null, cohortId, dateStr);
+}
+
+function cohortPlannerOpenEditor(sessionId, cohortId, prefillDate) {
+  const overlay = document.getElementById('cohort-planner-editor-overlay');
+  const panel   = document.getElementById('cohort-planner-editor');
+  if (!overlay || !panel) return;
+  _plannerEditId = sessionId;
+  const existing = sessionId ? _plannerSessions.find(s => s.id === sessionId) : null;
+  const dateVal  = existing ? existing.session_date : (prefillDate || new Date().toISOString().split('T')[0]);
+  const docs = (existing && existing.document_urls) ? existing.document_urls.filter(Boolean) : [''];
+  const docRows = docs.map((u, i) => `
+    <div style="display:flex;gap:6px;margin-bottom:6px;" id="planner-doc-row-${i}">
+      <input type="text" class="cohort-input planner-doc-url" placeholder="URL dokumen (opsional)" value="${_cohortEsc(u)}" style="flex:1;margin:0;font-size:.75rem;" autocomplete="off">
+      <button type="button" onclick="this.parentElement.remove()" style="background:none;border:1px solid #E5E7EB;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:.7rem;color:#EF4444;flex-shrink:0;">✕</button>
+    </div>`).join('');
+  panel.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h3 style="margin:0;font-size:.9rem;">${existing ? 'Edit sesi' : 'Sesi baru'}</h3>
+      <button type="button" onclick="cohortPlannerCloseEditor()" style="background:none;border:1px solid #E5E7EB;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:.75rem;color:#6B7280;">Tutup</button>
+    </div>
+    <label style="font-size:.72rem;font-weight:700;display:block;margin-bottom:3px;color:#6B7280;">JUDUL SESI</label>
+    <input type="text" id="planner-title" class="cohort-input" placeholder="Nama sesi program" maxlength="120" value="${existing ? _cohortEsc(existing.title) : ''}" autocomplete="off">
+    <label style="font-size:.72rem;font-weight:700;display:block;margin-bottom:3px;color:#6B7280;">TANGGAL</label>
+    <input type="date" id="planner-date" class="cohort-input" value="${dateVal}">
+    <label style="font-size:.72rem;font-weight:700;display:block;margin-bottom:3px;color:#6B7280;">CATATAN SESI</label>
+    <textarea id="planner-notes" class="cohort-input" rows="3" placeholder="Agenda, ringkasan, atau catatan sesi (opsional)">${existing ? _cohortEsc(existing.notes || '') : ''}</textarea>
+    <label style="font-size:.72rem;font-weight:700;display:block;margin-bottom:3px;color:#6B7280;">DOKUMEN PENDUKUNG</label>
+    <div id="planner-doc-rows">${docRows}</div>
+    <button type="button" onclick="cohortPlannerAddDocRow()" style="background:none;border:1px dashed #D1D5DB;border-radius:8px;padding:5px 10px;font-size:.7rem;color:#6B7280;cursor:pointer;width:100%;text-align:left;margin-bottom:12px;">+ Tambah dokumen</button>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      ${existing ? `<button type="button" onclick="cohortPlannerDeleteSession('${existing.id}','${cohortId}')" style="background:none;border:1px solid #FCA5A5;color:#EF4444;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:.75rem;">Hapus</button>` : ''}
+      <button type="button" class="cohort-btn" onclick="cohortPlannerSaveSession('${cohortId}')" style="font-size:.75rem;">Simpan</button>
+    </div>
+    <div id="planner-save-status" class="cohort-muted" style="margin-top:8px;font-size:.72rem;text-align:right;"></div>`;
+  overlay.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function cohortPlannerCloseEditor() {
+  const overlay = document.getElementById('cohort-planner-editor-overlay');
+  if (overlay) overlay.style.display = 'none';
+  document.body.style.overflow = '';
+  _plannerEditId = null;
+}
+
+function cohortPlannerAddDocRow() {
+  const container = document.getElementById('planner-doc-rows');
+  if (!container) return;
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:6px;margin-bottom:6px;';
+  row.innerHTML = `<input type="text" class="cohort-input planner-doc-url" placeholder="URL dokumen (opsional)" style="flex:1;margin:0;font-size:.75rem;" autocomplete="off"><button type="button" onclick="this.parentElement.remove()" style="background:none;border:1px solid #E5E7EB;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:.7rem;color:#EF4444;flex-shrink:0;">✕</button>`;
+  container.appendChild(row);
+}
+
+async function cohortPlannerSaveSession(cohortId) {
+  const titleEl = document.getElementById('planner-title');
+  const dateEl  = document.getElementById('planner-date');
+  const notesEl = document.getElementById('planner-notes');
+  const stEl    = document.getElementById('planner-save-status');
+  if (!titleEl || !dateEl || !stEl || !_supabase) return;
+  const title = titleEl.value.trim();
+  const date  = dateEl.value;
+  if (!title) { stEl.textContent = 'Judul tidak boleh kosong.'; return; }
+  if (!date)  { stEl.textContent = 'Pilih tanggal.'; return; }
+  const docUrls = [...document.querySelectorAll('#planner-doc-rows .planner-doc-url')]
+    .map(i => i.value.trim()).filter(Boolean);
+  stEl.textContent = 'Menyimpan…';
+  const payload = {
+    title, session_date: date,
+    notes: notesEl ? notesEl.value.trim() || null : null,
+    document_urls: docUrls,
+  };
+  let error;
+  if (_plannerEditId) {
+    ({ error } = await _supabase.from('cohort_sessions').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', _plannerEditId));
+  } else {
+    ({ error } = await _supabase.from('cohort_sessions').insert({ cohort_id: cohortId, ...payload }));
+  }
+  if (error) { stEl.textContent = 'Gagal: ' + error.message; return; }
+  cohortPlannerCloseEditor();
+  await cohortPlannerRender(cohortId);
+}
+
+async function cohortPlannerDeleteSession(sessionId, cohortId) {
+  if (!_supabase || !sessionId) return;
+  if (!confirm('Hapus sesi ini?')) return;
+  await _supabase.from('cohort_sessions').delete().eq('id', sessionId);
+  cohortPlannerCloseEditor();
+  await cohortPlannerRender(cohortId);
+}
+
+// ── GOOGLE CALENDAR IMPORT ────────────────────────────────────────────────────
+let _gcalTokenClient = null;
+let _gcalAccessToken = null;
+const GCAL_CLIENT_ID = '14042256546-kt2gdh19vdtls5cc73p20lokk0m6ns45.apps.googleusercontent.com';
+
+function cohortPlannerImportGcal() {
+  const panel = document.getElementById('gcal-import-panel');
+  const body  = document.getElementById('gcal-import-body');
+  if (!panel || !body) return;
+  panel.style.display = '';
+  body.innerHTML = '<span class="cohort-muted">Menghubungkan ke Google…</span>';
+  if (!window.google || !window.google.accounts) {
+    body.innerHTML = '<span class="cohort-muted" style="color:#EF4444;">Google Identity Services belum dimuat. Coba refresh halaman.</span>';
+    return;
+  }
+  if (!_gcalTokenClient) {
+    _gcalTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GCAL_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/calendar.readonly',
+      callback: (response) => {
+        if (response.error) {
+          body.innerHTML = `<span class="cohort-muted" style="color:#EF4444;">Gagal: ${response.error}</span>`;
+          return;
+        }
+        _gcalAccessToken = response.access_token;
+        void cohortPlannerGcalLoadCalendars(body);
+      },
+    });
+  }
+  _gcalTokenClient.requestAccessToken({ prompt: 'consent' });
+}
+
+async function cohortPlannerGcalLoadCalendars(body) {
+  body.innerHTML = '<span class="cohort-muted">Memuat daftar kalender…</span>';
+  const resp = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=50', {
+    headers: { Authorization: 'Bearer ' + _gcalAccessToken },
+  });
+  if (!resp.ok) {
+    body.innerHTML = `<span class="cohort-muted" style="color:#EF4444;">Gagal memuat kalender (${resp.status}).</span>`;
+    return;
+  }
+  const data = await resp.json();
+  const cals = (data.items || []).filter(c => c.accessRole === 'owner' || c.accessRole === 'writer' || c.primary);
+  if (!cals.length) { body.innerHTML = '<span class="cohort-muted">Tidak ada kalender ditemukan.</span>'; return; }
+  let html = '<div style="margin-bottom:8px;font-size:.75rem;font-weight:700;">Pilih kalender:</div>';
+  cals.forEach((c, i) => {
+    html += `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:.78rem;cursor:pointer;">
+      <input type="radio" name="gcal-cal-pick" value="${_cohortEsc(c.id)}" ${i === 0 ? 'checked' : ''} style="accent-color:#6366F1;">
+      <span style="width:10px;height:10px;border-radius:50%;background:${c.backgroundColor || '#6366F1'};display:inline-block;flex-shrink:0;"></span>
+      ${_cohortEsc(c.summary)}
+    </label>`;
+  });
+  const nowDate = new Date();
+  const fromDefault = nowDate.toISOString().split('T')[0];
+  const toDefault   = new Date(nowDate.getFullYear(), nowDate.getMonth() + 3, 0).toISOString().split('T')[0];
+  html += `
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <label style="font-size:.72rem;font-weight:700;color:#6B7280;">DARI</label>
+      <input type="date" id="gcal-from" class="cohort-input" style="flex:1;min-width:130px;margin:0;font-size:.75rem;" value="${fromDefault}">
+      <label style="font-size:.72rem;font-weight:700;color:#6B7280;">SAMPAI</label>
+      <input type="date" id="gcal-to" class="cohort-input" style="flex:1;min-width:130px;margin:0;font-size:.75rem;" value="${toDefault}">
+    </div>
+    <button type="button" class="cohort-btn" style="margin-top:10px;font-size:.75rem;" onclick="cohortPlannerGcalLoadEvents()">Lihat event &#8594;</button>`;
+  body.innerHTML = html;
+}
+
+async function cohortPlannerGcalLoadEvents() {
+  const body  = document.getElementById('gcal-import-body');
+  const calId = (document.querySelector('input[name="gcal-cal-pick"]:checked') || {}).value;
+  const from  = (document.getElementById('gcal-from') || {}).value;
+  const to    = (document.getElementById('gcal-to')   || {}).value;
+  if (!calId || !from || !to || !body) return;
+  const loadEl = document.createElement('div');
+  loadEl.className = 'cohort-muted';
+  loadEl.style.marginTop = '8px';
+  loadEl.textContent = 'Memuat events…';
+  body.appendChild(loadEl);
+  const params = new URLSearchParams({
+    singleEvents: 'true', orderBy: 'startTime',
+    timeMin: new Date(from).toISOString(),
+    timeMax: new Date(to + 'T23:59:59').toISOString(),
+    maxResults: '50',
+  });
+  const resp = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events?${params}`, {
+    headers: { Authorization: 'Bearer ' + _gcalAccessToken },
+  });
+  if (!resp.ok) {
+    loadEl.style.color = '#EF4444';
+    loadEl.textContent = `Gagal memuat events (${resp.status}).`;
+    return;
+  }
+  const data   = await resp.json();
+  const events = (data.items || []).filter(e => e.status !== 'cancelled' && (e.start && (e.start.date || e.start.dateTime)));
+  loadEl.remove();
+  if (!events.length) {
+    const empty = document.createElement('div');
+    empty.className = 'cohort-muted';
+    empty.style.marginTop = '8px';
+    empty.textContent = 'Tidak ada event dalam rentang ini.';
+    body.appendChild(empty);
+    return;
+  }
+  cohortPlannerGcalShowPreview(events, body);
+}
+
+function cohortPlannerGcalShowPreview(events, body) {
+  let html = `<div style="margin-top:14px;border-top:1px solid #E5E7EB;padding-top:12px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div style="font-size:.75rem;font-weight:700;">${events.length} event ditemukan. Pilih yang ingin diimport:</div>
+      <button type="button" onclick="document.querySelectorAll('.gcal-ev-chk').forEach(c=>c.checked=true)" style="font-size:.65rem;background:none;border:none;color:#6366F1;cursor:pointer;">Pilih semua</button>
+    </div>`;
+  events.forEach(e => {
+    const dateStr = ((e.start.date || e.start.dateTime || '').split('T')[0]);
+    const d = new Date(dateStr + 'T00:00:00');
+    const label = d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
+    const desc = (e.description || '').replace(/<[^>]+>/g, '');
+    html += `<label style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid #F3F4F6;font-size:.78rem;cursor:pointer;">
+      <input type="checkbox" class="gcal-ev-chk" checked data-title="${_cohortEsc(e.summary || 'Event')}" data-date="${dateStr}" data-notes="${_cohortEsc(desc)}" style="margin-top:2px;accent-color:#6366F1;flex-shrink:0;">
+      <div>
+        <div style="font-weight:700;">${_cohortEsc(e.summary || 'Event')}</div>
+        <div style="color:#6B7280;font-size:.7rem;">${label}</div>
+        ${desc ? `<div style="color:#9CA3AF;font-size:.68rem;margin-top:2px;">${_cohortEsc(desc.substring(0,80))}${desc.length > 80 ? '…' : ''}</div>` : ''}
+      </div>
+    </label>`;
+  });
+  html += `<button type="button" class="cohort-btn" style="margin-top:12px;font-size:.75rem;" onclick="cohortPlannerGcalImportSelected()">Import yang dipilih ke Planner</button>
+    <div id="gcal-import-status" class="cohort-muted" style="font-size:.72rem;margin-top:6px;"></div>
+  </div>`;
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  body.appendChild(div);
+}
+
+async function cohortPlannerGcalImportSelected() {
+  const c    = _cohortState.primaryMentorCohort;
+  const stEl = document.getElementById('gcal-import-status');
+  if (!c || !_supabase) return;
+  const checked = [...document.querySelectorAll('.gcal-ev-chk:checked')];
+  if (!checked.length) { if (stEl) stEl.textContent = 'Pilih minimal satu event.'; return; }
+  if (stEl) stEl.textContent = 'Mengimport…';
+  const rows = checked.map(chk => ({
+    cohort_id: c.id,
+    title: chk.dataset.title,
+    session_date: chk.dataset.date,
+    notes: chk.dataset.notes || null,
+    document_urls: [],
+  }));
+  const { error } = await _supabase.from('cohort_sessions').insert(rows);
+  if (error) { if (stEl) stEl.textContent = 'Gagal: ' + error.message; return; }
+  if (stEl) stEl.textContent = `${rows.length} sesi berhasil diimport!`;
+  const panel = document.getElementById('gcal-import-panel');
+  if (panel) setTimeout(() => { panel.style.display = 'none'; }, 2500);
+  await cohortPlannerRender(c.id);
+}
 
 </script>
 
