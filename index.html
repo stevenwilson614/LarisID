@@ -8056,15 +8056,6 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
             </div>
           </div>
-          <div id="cohort-student-drawer" class="cohort-drawer" onclick="if(event.target===this)cohortCloseStudentDrawer()">
-            <div class="cohort-drawer-panel" onclick="event.stopPropagation()">
-              <div class="cohort-drawer-head">
-                <div id="cohort-drawer-title" style="font-size:.82rem;font-weight:800;color:#1A1F3C;">Siswa</div>
-                <button type="button" onclick="cohortCloseStudentDrawer()" style="background:none;border:none;color:#9CA3AF;cursor:pointer;padding:4px;line-height:1;font-size:1.2rem;flex-shrink:0;margin-left:12px;" title="Tutup">&#x2715;</button>
-              </div>
-              <div id="cohort-drawer-body" class="cohort-muted" style="font-size:.78rem;line-height:1.5;">—</div>
-            </div>
-          </div>
         </div>
 
         <!-- ADMIN (owner only — hidden from others) -->
@@ -8273,6 +8264,17 @@ html,body{overflow-x:hidden;max-width:100%;}
 </div><!-- end page-profile -->
 
 <!-- ── SISWA PROFILE MODAL ── -->
+<!-- ── STUDENT PROFILE DRAWER (top-level so it works from any view) ── -->
+<div id="cohort-student-drawer" class="cohort-drawer" onclick="if(event.target===this)cohortCloseStudentDrawer()">
+  <div class="cohort-drawer-panel" onclick="event.stopPropagation()">
+    <div class="cohort-drawer-head">
+      <div id="cohort-drawer-title" style="font-size:.82rem;font-weight:800;color:#1A1F3C;line-height:1.3;">Siswa</div>
+      <button type="button" onclick="cohortCloseStudentDrawer()" style="background:none;border:none;color:#9CA3AF;cursor:pointer;padding:4px;line-height:1;font-size:1.2rem;flex-shrink:0;margin-left:12px;" title="Tutup">&#x2715;</button>
+    </div>
+    <div id="cohort-drawer-body" style="font-size:.78rem;line-height:1.5;">—</div>
+  </div>
+</div>
+
 <div id="siswa-profile-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:700;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;" onclick="if(event.target===this)siswaProfileClose()">
   <div style="background:#fff;border-radius:16px;padding:24px;max-width:520px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.2);margin:auto;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
@@ -11127,7 +11129,7 @@ async function adminLoadUserDirectory() {
         const roleColor = role === 'admin' ? '#E8442A' : (role === 'leader' ? '#B45309' : '#1A7A46');
         const isIndep = !r.cohort_count && !r.led_cohort_count;
         return `<tr style="border-bottom:1px solid #F9FAFB;">
-          <td style="padding:8px 4px;cursor:pointer;" onclick="cohortOpenStudentDrawer('${_cohortEsc(r.user_id || '')}')"><strong>${_cohortEsc(r.display_name || r.email || 'User')}</strong><br><span class="cohort-muted">${_cohortEsc(r.email || '')}</span></td>
+          <td style="padding:8px 4px;cursor:pointer;" onclick="cohortOpenStudentDrawer('${_cohortEsc(r.user_id || '')}','${_cohortEsc(r.display_name || '')}','${_cohortEsc(r.email || '')}')"><strong>${_cohortEsc(r.display_name || r.email || 'User')}</strong><br><span class="cohort-muted">${_cohortEsc(r.email || '')}</span></td>
           <td><span style="color:${roleColor};font-weight:800;">${_cohortEsc(role)}</span></td>
           <td>${isIndep ? '<span style="background:#F3F4F6;color:#6B7280;font-size:.62rem;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.04em;">Independent</span>' : (r.cohort_count || 0)}</td>
           <td>${isIndep ? '' : (r.led_cohort_count || 0)}</td>
@@ -12957,7 +12959,7 @@ async function cohortRenderLeaderboard(cohortId) {
   ul.innerHTML = data.map((r) => {
     const mine = r.user_id === currentUser.id;
     const label = mine ? 'Kamu' : cohortCohortDisplayName(r.user_id, r.rank);
-    const click = mine ? '' : ` onclick="cohortOpenStudentDrawer('${r.user_id}')" style="cursor:pointer;"`;
+    const click = mine ? '' : ` onclick="cohortOpenStudentDrawer('${r.user_id}','${label.replace(/'/g,"\\'")}')" style="cursor:pointer;"`;
     return `<li${click}><span>#${r.rank} ${label}</span><span style="font-weight:800;">${r.points}</span></li>`;
   }).join('');
 }
@@ -13212,7 +13214,7 @@ async function cohortRenderRankingsStudent(cohortId) {
   host.innerHTML = data.map(r => {
     const who  = cohortCohortDisplayName(r.user_id, r.rank);
     const mine = r.user_id === (currentUser && currentUser.id);
-    const nameHtml = mine ? who : `<span style="cursor:pointer;text-decoration:underline;text-decoration-color:#E5E7EB;" onclick="cohortOpenStudentDrawer('${r.user_id}')">${who}</span>`;
+    const nameHtml = mine ? who : `<span style="cursor:pointer;text-decoration:underline;text-decoration-color:#E5E7EB;" onclick="cohortOpenStudentDrawer('${r.user_id}','${who.replace(/'/g,"\\'")}')">${who}</span>`;
     return `<div class="cohort-rank-row"><span>#${r.rank} ${nameHtml}</span><span style="font-weight:800;">${r.points} pt · ${r.streak} · ${r.milestones_done}</span></div>`;
   }).join('');
 }
@@ -13399,7 +13401,7 @@ async function cohortRenderMentorDirectory(cohortId) {
                 onchange="cohortDirUpdateSelCount()" style="cursor:pointer;"
                 ${!isActive ? 'disabled title="Hanya siswa aktif yang bisa ditambah ke grup"' : ''}>
             </td>
-            <td style="padding:8px 10px;font-weight:600;color:#1A1F3C;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" onclick="cohortOpenStudentDrawer('${esc(r.user_id)}')">${esc(r.display_name || r.email || '—')}</td>
+            <td style="padding:8px 10px;font-weight:600;color:#1A1F3C;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" onclick="cohortOpenStudentDrawer('${esc(r.user_id)}','${esc(r.display_name || r.email || '')}','${esc(r.email || '')}')">${esc(r.display_name || r.email || '—')}</td>
             <td style="padding:8px 10px;color:#6B7280;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.email || '')}</td>
             <td style="padding:8px 10px;text-align:center;">${statusBadge(r.status)}</td>
             <td style="padding:8px 10px;text-align:right;font-weight:700;">
@@ -13733,14 +13735,23 @@ function cohortExportDirectoryCsv() {
   URL.revokeObjectURL(a.href);
 }
 
-async function cohortOpenStudentDrawer(userId) {
+async function cohortOpenStudentDrawer(userId, hintName, hintEmail) {
   const c = _cohortState.primaryMentorCohort;
   const drawer = document.getElementById('cohort-student-drawer');
   const title  = document.getElementById('cohort-drawer-title');
   const body   = document.getElementById('cohort-drawer-body');
   if (!drawer || !body || !_supabase) return;
 
-  title.innerHTML = '<span style="color:#9CA3AF;font-size:.78rem;font-weight:400;">Memuat profil…</span>';
+  // Use already-loaded directory/student data as instant fallback while async loads
+  const cached = (_cohortState.directoryRows || []).find(r => r.user_id === userId)
+    || (_ldrBcStudents || []).find(r => r.user_id === userId)
+    || (_cohortState.memberNameMap && { display_name: _cohortState.memberNameMap[userId] });
+  const seedName  = hintName  || (cached && (cached.display_name || cached.email)) || '';
+  const seedEmail = hintEmail || (cached && cached.email) || '';
+
+  title.innerHTML = seedName
+    ? `<div>${seedName.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>`
+    : '<span style="color:#9CA3AF;font-size:.78rem;font-weight:400;">Memuat…</span>';
   body.innerHTML  = '<div style="padding:16px 0;color:#9CA3AF;font-size:.78rem;text-align:center;">Memuat…</div>';
   drawer.classList.add('open');
   drawer.dataset.openUserId = userId;
@@ -13774,8 +13785,8 @@ async function cohortOpenStudentDrawer(userId) {
     const pr   = prof || {};
     const mem  = memRow || {};
 
-    const emailAddr   = (base && base.email) || pr.public_email || '';
-    const displayName = (pr.display_name || '').trim() || (base && base.display_name) || emailAddr.split('@')[0] || 'Siswa';
+    const emailAddr   = (base && base.email) || pr.public_email || seedEmail || '';
+    const displayName = (pr.display_name || '').trim() || (base && base.display_name) || seedName || emailAddr.split('@')[0] || 'Siswa';
     const whatsApp    = pr.public_whatsapp || '';
     const headshotUrl = pr.headshot_url || '';
     const school      = pr.school || '';
@@ -23150,7 +23161,7 @@ async function ldrGroupLoadMembers(groupId) {
     const memberRows = members.length
       ? members.map(m => `
           <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #F3F4F6;">
-            <div style="cursor:pointer;" onclick="cohortOpenStudentDrawer('${m.user_id}')">
+            <div style="cursor:pointer;" onclick="cohortOpenStudentDrawer('${m.user_id}','${esc(m.display_name || m.email || '')}','${esc(m.email || '')}')">
               <span style="font-size:.78rem;font-weight:600;color:#1A1F3C;">${esc(m.display_name || m.email)}</span>
               <span style="font-size:.65rem;color:#6B7280;margin-left:5px;">${esc(m.email)}</span>
             </div>
@@ -23250,7 +23261,7 @@ async function hbdSiswaProgressLoad(force) {
                 <input type="checkbox" class="hbd-stu-chk" data-uid="${esc(s.user_id)}" data-email="${esc(s.email)}"
                   onchange="hbdUpdateSelCount()" style="cursor:pointer;" ${s.status !== 'active' ? 'disabled title="Hanya siswa aktif yang bisa ditambah ke grup"' : ''}>
               </td>
-              <td style="padding:8px 10px;font-weight:600;color:#1A1F3C;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" onclick="cohortOpenStudentDrawer('${esc(s.user_id)}')">${esc(s.display_name || s.email)}</td>
+              <td style="padding:8px 10px;font-weight:600;color:#1A1F3C;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" onclick="cohortOpenStudentDrawer('${esc(s.user_id)}','${esc(s.display_name || s.email || '')}','${esc(s.email || '')}')">${esc(s.display_name || s.email)}</td>
               <td style="padding:8px 10px;color:#6B7280;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(s.email)}</td>
               <td style="padding:8px 10px;text-align:center;">${statusBadge(s.status)}</td>
               <td style="padding:8px 10px;text-align:right;font-weight:700;color:#1A1F3C;">${Math.round(s.engagement_score || 0)}</td>
