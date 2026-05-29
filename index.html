@@ -7246,6 +7246,7 @@ html,body{overflow-x:hidden;max-width:100%;}
               <div class="dd-tabs" id="mls-tabs" style="margin-bottom:18px;">
                 <div class="dd-tab active" onclick="mlsSwitchTab('pasar')" data-tab="pasar">Informasi Pasar</div>
                 <div class="dd-tab" onclick="mlsSwitchTab('kalc')" data-tab="kalc">Kalkulator</div>
+                <div class="dd-tab" onclick="mlsSwitchTab('rencana')" data-tab="rencana">Rencana Bisnis</div>
               </div>
 
               <!-- TAB: Informasi Pasar -->
@@ -7342,6 +7343,59 @@ html,body{overflow-x:hidden;max-width:100%;}
                           <div><div style="color:#6B7280;margin-bottom:2px;">Total Laba Kotor</div><div style="font-weight:600;" id="kal-monthly-gross">—</div></div>
                         </div>
                       </div>
+                    </div>
+                    <div class="dd-card" style="padding:14px;">
+                      <div style="font-size:.72rem;font-weight:700;color:#111827;margin-bottom:6px;">Simpan skenario</div>
+                      <div style="font-size:.62rem;color:#6B7280;margin-bottom:10px;">Simpan perhitungan ini ke produk terpilih agar bisa ditinjau kembali dan dilihat mentor.</div>
+                      <button type="button" class="cohort-btn" style="width:100%;" onclick="mlsSaveCalcScenario()">Simpan ke produk</button>
+                      <div id="kal-save-status" style="font-size:.62rem;color:#6B7280;margin-top:6px;text-align:center;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- TAB: Rencana Bisnis (hidden by default) -->
+              <div id="mls-tab-rencana" style="display:none;">
+                <div class="dd-card" style="padding:18px;max-width:680px;">
+                  <div style="font-size:.85rem;font-weight:800;color:#111827;margin-bottom:4px;">Rencana Bisnis</div>
+                  <div style="font-size:.68rem;color:#6B7280;margin-bottom:16px;">Satu halaman yang membuat bisnismu konkret. Mentor dapat melihat ini untuk membimbingmu.</div>
+                  <div style="display:grid;gap:12px;">
+                    <div>
+                      <label style="font-size:.66rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Produk</label>
+                      <input id="rb-product-name" type="text" class="cohort-input" style="margin:0;" placeholder="Nama produk yang kamu jual" maxlength="160">
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                      <div>
+                        <label style="font-size:.66rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Niche</label>
+                        <input id="rb-niche" type="text" class="cohort-input" style="margin:0;" placeholder="mis. hijab sport" maxlength="120">
+                      </div>
+                      <div>
+                        <label style="font-size:.66rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Target pasar</label>
+                        <input id="rb-target" type="text" class="cohort-input" style="margin:0;" placeholder="mis. mahasiswi 18-24" maxlength="160">
+                      </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                      <div>
+                        <label style="font-size:.66rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Target 90 hari (unit)</label>
+                        <input id="rb-unit-goal" type="number" min="0" class="cohort-input" style="margin:0;" placeholder="mis. 100">
+                      </div>
+                      <div>
+                        <label style="font-size:.66rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Harga target (Rp)</label>
+                        <input id="rb-price-target" type="number" min="0" class="cohort-input" style="margin:0;" placeholder="mis. 150000">
+                      </div>
+                    </div>
+                    <div>
+                      <label style="font-size:.66rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Catatan</label>
+                      <textarea id="rb-notes" rows="3" class="cohort-input" style="margin:0;" placeholder="Strategi, keunggulan, rencana modal…" maxlength="1000"></textarea>
+                    </div>
+                    <div id="rb-goal-progress" style="display:none;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:10px;padding:12px 14px;">
+                      <div style="font-size:.68rem;font-weight:700;color:#0369A1;margin-bottom:6px;">Progres 90 hari</div>
+                      <div style="background:#E0F2FE;border-radius:999px;height:8px;overflow:hidden;"><div id="rb-goal-bar" style="width:0%;height:100%;background:#0EA5E9;transition:width .4s;"></div></div>
+                      <div id="rb-goal-label" style="font-size:.64rem;color:#0369A1;margin-top:6px;">—</div>
+                    </div>
+                    <div style="display:flex;gap:10px;align-items:center;">
+                      <button type="button" class="cohort-btn" onclick="mlsBizPlanSave()">Simpan Rencana</button>
+                      <span id="rb-status" style="font-size:.66rem;color:#6B7280;"></span>
                     </div>
                   </div>
                 </div>
@@ -18549,6 +18603,117 @@ function mlsSwitchTab(tab) {
   document.querySelectorAll('[id^="mls-tab-"]').forEach(el => {
     el.style.display = el.id === `mls-tab-${tab}` ? '' : 'none';
   });
+  if (tab === 'rencana') void mlsBizPlanLoad();
+}
+
+// ── Phase 4: persist calculator scenario to the selected product ──
+function _mlsSelectedProduct() {
+  const ctx = window._mlsContext || {};
+  return ctx.product || null;
+}
+
+async function mlsSaveCalcScenario() {
+  const statusEl = document.getElementById('kal-save-status');
+  const p = _mlsSelectedProduct();
+  if (!currentUser) { if (statusEl) statusEl.textContent = 'Masuk dulu untuk menyimpan.'; return; }
+  if (!p || p.item_id == null || p.shop_id == null) { if (statusEl) statusEl.textContent = 'Pilih produk tersimpan dulu.'; return; }
+  const num = id => parseFloat(document.getElementById(id)?.value) || 0;
+  const scenario = {
+    price: num('kal-price'), cogs: num('kal-cogs'), shipping: num('kal-shipping'),
+    weight: num('kal-weight'), origin: document.getElementById('kal-origin')?.value || null,
+    commission: num('kal-commission'), service: num('kal-service'), freeship: num('kal-freeship'),
+    ads: num('kal-ads'), packing: num('kal-packing'), opex: num('kal-opex'), return: num('kal-return'),
+    monthly_units: parseInt(document.getElementById('kal-monthly-units')?.value) || 30,
+    profit_unit: document.getElementById('kal-profit-unit')?.textContent || null,
+    margin: document.getElementById('kal-margin-badge')?.textContent || null,
+    roi: document.getElementById('kal-sum-roi')?.textContent || null,
+    bep: document.getElementById('kal-bep-val')?.textContent || null,
+  };
+  if (statusEl) statusEl.textContent = 'Menyimpan…';
+  const { error } = await _supabase.from('user_tracked_products').upsert({
+    user_id: currentUser.id, item_id: Number(p.item_id), shop_id: Number(p.shop_id),
+    keyword: p.keyword || null, product_name: p.product_name || p.name || null,
+    calc_scenario: scenario, calc_updated_at: new Date().toISOString(),
+  }, { onConflict: 'user_id,item_id,shop_id', ignoreDuplicates: false });
+  if (error) { if (statusEl) statusEl.textContent = 'Gagal: ' + (error.message || ''); return; }
+  if (statusEl) statusEl.textContent = 'Tersimpan ke produk.';
+  if (typeof cohortLogActivity === 'function') void cohortLogActivity('tracker_plan_update', { calc: true });
+}
+
+async function mlsLoadCalcScenario() {
+  const p = _mlsSelectedProduct();
+  if (!currentUser || !_supabase || !p || p.item_id == null || p.shop_id == null) return;
+  const { data } = await _supabase.from('user_tracked_products')
+    .select('calc_scenario').eq('user_id', currentUser.id)
+    .eq('item_id', Number(p.item_id)).eq('shop_id', Number(p.shop_id)).maybeSingle();
+  const s = data && data.calc_scenario;
+  if (!s) return;
+  const setV = (id, v) => { const el = document.getElementById(id); if (el != null && v != null) el.value = v; };
+  setV('kal-price', s.price); setV('kal-cogs', s.cogs); setV('kal-shipping', s.shipping);
+  setV('kal-weight', s.weight); setV('kal-ads', s.ads); setV('kal-packing', s.packing);
+  setV('kal-opex', s.opex); setV('kal-monthly-units', s.monthly_units);
+  if (s.origin) setV('kal-origin', s.origin);
+  if (s.commission) setV('kal-commission', s.commission);
+  if (s.service) setV('kal-service', s.service);
+  if (s.freeship != null) setV('kal-freeship', s.freeship);
+  if (s.return) setV('kal-return', s.return);
+  if (typeof kalcCalc === 'function') kalcCalc();
+}
+
+// ── Phase 4: Rencana Bisnis canvas ──────────────────────────────
+async function mlsBizPlanLoad() {
+  if (!currentUser || !_supabase) return;
+  const p = _mlsSelectedProduct();
+  const { data } = await _supabase.from('business_plans').select('*').eq('user_id', currentUser.id).maybeSingle();
+  const setV = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+  if (data) {
+    setV('rb-product-name', data.product_name);
+    setV('rb-niche', data.niche);
+    setV('rb-target', data.target_market);
+    setV('rb-unit-goal', data.unit_goal_90d);
+    setV('rb-price-target', data.price_target);
+    setV('rb-notes', data.notes);
+  }
+  // Prefill product name from current selection if empty.
+  const nameEl = document.getElementById('rb-product-name');
+  if (nameEl && !nameEl.value && p) nameEl.value = p.product_name || p.name || '';
+  void mlsBizPlanRenderGoal(data);
+}
+
+async function mlsBizPlanRenderGoal(plan) {
+  const wrap = document.getElementById('rb-goal-progress');
+  const bar = document.getElementById('rb-goal-bar');
+  const lbl = document.getElementById('rb-goal-label');
+  if (!wrap) return;
+  const goal = plan && plan.unit_goal_90d;
+  if (!goal || goal <= 0) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  if (bar) bar.style.width = '0%';
+  if (lbl) lbl.textContent = `Target: ${Number(goal).toLocaleString('id-ID')} unit dalam 90 hari. Catat penjualan di My Toko untuk melacak progres.`;
+}
+
+async function mlsBizPlanSave() {
+  const statusEl = document.getElementById('rb-status');
+  if (!currentUser) { if (statusEl) statusEl.textContent = 'Masuk dulu untuk menyimpan.'; return; }
+  const val = id => (document.getElementById(id)?.value || '').trim();
+  const numOrNull = id => { const v = document.getElementById(id)?.value; return v === '' || v == null ? null : Number(v); };
+  const p = _mlsSelectedProduct();
+  if (statusEl) statusEl.textContent = 'Menyimpan…';
+  const { error } = await _supabase.from('business_plans').upsert({
+    user_id: currentUser.id,
+    item_id: p && p.item_id != null ? Number(p.item_id) : null,
+    shop_id: p && p.shop_id != null ? Number(p.shop_id) : null,
+    product_name: val('rb-product-name') || null,
+    niche: val('rb-niche') || null,
+    target_market: val('rb-target') || null,
+    unit_goal_90d: numOrNull('rb-unit-goal'),
+    price_target: numOrNull('rb-price-target'),
+    notes: val('rb-notes') || null,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'user_id' });
+  if (error) { if (statusEl) statusEl.textContent = 'Gagal: ' + (error.message || ''); return; }
+  if (statusEl) statusEl.textContent = 'Rencana tersimpan.';
+  void mlsBizPlanRenderGoal({ unit_goal_90d: numOrNull('rb-unit-goal') });
 }
 
 async function mlsSelectProduct(val) {
@@ -18567,6 +18732,7 @@ async function mlsSelectProduct(val) {
 
   _mlsContext = { keyword: t.keyword, product: t };
   if (heroEl) heroEl.style.display = 'block';
+  void mlsLoadCalcScenario();
 
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
   set('mls-hero-name',  t.product_name || t.name || '—');
