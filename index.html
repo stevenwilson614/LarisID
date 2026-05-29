@@ -4934,7 +4934,7 @@ html,body{overflow-x:hidden;max-width:100%;}
               <div style="display:flex;align-items:center;gap:8px;font-size:.7rem;color:#6B7280;">
                 <label for="profile-headshot-input" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
                   <span style="padding:4px 9px;border-radius:999px;border:1px solid #E5E7EB;font-weight:600;font-size:.7rem;color:#374151;">Upload foto</span>
-                  <span>JPG/PNG &lt; 2 MB</span>
+                  <span>Otomatis diubah ukuran</span>
                 </label>
                 <input id="profile-headshot-input" type="file" accept="image/*" style="display:none" onchange="handleProfileHeadshotChange(event)">
               </div>
@@ -8895,6 +8895,51 @@ function scoreColor(n) {
 // ════════════════════════════════════════════════════════════
 //  PROFILE: LOAD / SAVE / HEADSHOT
 // ════════════════════════════════════════════════════════════
+
+// Returns the best available avatar URL: uploaded headshot → OAuth provider pic → empty
+function _getAvatarUrl() {
+  return _profileState.row?.headshot_url
+    || currentUser?.user_metadata?.avatar_url
+    || currentUser?.user_metadata?.picture
+    || '';
+}
+
+// Resize an image File to maxDim×maxDim and return a JPEG Blob at `quality`
+function _resizeImage(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objUrl);
+      let w = img.width, h = img.height;
+      if (w > maxDim || h > maxDim) {
+        if (w >= h) { h = Math.round(h * maxDim / w); w = maxDim; }
+        else        { w = Math.round(w * maxDim / h); h = maxDim; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('resize failed')), 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(objUrl); reject(new Error('image load failed')); };
+    img.src = objUrl;
+  });
+}
+
+// Apply an avatar URL (or initials fallback) to a circular avatar div
+function _applyAvatarEl(el, url, initials) {
+  if (!el) return;
+  if (url) {
+    el.style.backgroundImage = `url(${JSON.stringify(url)})`;
+    el.style.backgroundSize = 'cover';
+    el.style.backgroundPosition = 'center';
+    el.style.color = 'transparent';
+  } else {
+    el.style.backgroundImage = '';
+    el.style.color = '';
+  }
+}
+
 async function loadUserProfile() {
   if (!_supabase || !currentUser) {
     _profileState = { loaded: false, row: null, headshotUploading: false };
@@ -8909,6 +8954,7 @@ async function loadUserProfile() {
     if (error) throw error;
     _profileState = { loaded: true, row: data || null, headshotUploading: false };
     hydrateProfileEditUI();
+    updateAuthUI();
   } catch (e) {
     console.warn('loadUserProfile error', e.message || e);
   }
@@ -8948,7 +8994,7 @@ function hydrateProfileEditUI() {
     .join('') || '?';
   if (initialsEl) initialsEl.textContent = initials;
 
-  const url = row.headshot_url || '';
+  const url = row.headshot_url || currentUser?.user_metadata?.avatar_url || currentUser?.user_metadata?.picture || '';
   if (avatarImg && initialsEl) {
     if (url) {
       avatarImg.src = url;
@@ -8984,22 +9030,23 @@ async function handleProfileHeadshotChange(ev) {
   const statusEl = document.getElementById('profile-edit-status');
   if (!file) return;
   if (!_supabase || !currentUser) { if (statusEl) statusEl.textContent = 'Login diperlukan.'; return; }
-  if (file.size > 2 * 1024 * 1024) {
-    if (statusEl) statusEl.textContent = 'Ukuran foto maksimal 2 MB.';
-    return;
-  }
+  if (!file.type.startsWith('image/')) { if (statusEl) statusEl.textContent = 'File harus berupa gambar.'; return; }
   try {
     _profileState.headshotUploading = true;
+    if (statusEl) statusEl.textContent = 'Memproses foto...';
+    // Resize to max 400×400 JPEG regardless of original size
+    const blob = await _resizeImage(file, 400, 0.85);
     if (statusEl) statusEl.textContent = 'Mengunggah foto...';
-    const path = `headshots/${currentUser.id}/${Date.now()}-${file.name}`;
+    const path = `headshots/${currentUser.id}/${Date.now()}.jpg`;
     const { error } = await _supabase.storage
       .from('profile-headshots')
-      .upload(path, file, { upsert: true, cacheControl: '3600' });
+      .upload(path, blob, { upsert: true, cacheControl: '3600', contentType: 'image/jpeg' });
     if (error) throw error;
     const { data: pub } = await _supabase.storage.from('profile-headshots').getPublicUrl(path);
     const url = pub?.publicUrl || '';
     _profileState.row = { ...(_profileState.row || {}), headshot_url: url };
     hydrateProfileEditUI();
+    updateAuthUI();
     if (statusEl) statusEl.textContent = 'Foto berhasil diunggah.';
   } catch (e) {
     console.warn('headshot upload error', e.message || e);
@@ -10341,7 +10388,14 @@ function updateAuthUI() {
     userBtn.style.display  = 'flex';
     const initials = (currentUser.user_metadata?.full_name || currentUser.email || '?')
       .charAt(0).toUpperCase();
-    userBtn.textContent = initials;
+    const _navAvatarUrl = _getAvatarUrl();
+    if (_navAvatarUrl) {
+      userBtn.textContent = '';
+      _applyAvatarEl(userBtn, _navAvatarUrl, initials);
+    } else {
+      userBtn.textContent = initials;
+      _applyAvatarEl(userBtn, '', initials);
+    }
     const mLogin = document.getElementById('mobile-login-link');
     const mProfile = document.getElementById('mobile-profile-link');
     if (mLogin) mLogin.style.display = 'none';
@@ -10360,7 +10414,11 @@ function updateAuthUI() {
   const dashName   = document.getElementById('dash-name');
   if (currentUser) {
     const name = currentUser.user_metadata?.full_name || currentUser.email || '?';
-    if (dashAvatar) dashAvatar.textContent = name.charAt(0).toUpperCase();
+    const _dashAvatarUrl = _getAvatarUrl();
+    if (dashAvatar) {
+      if (_dashAvatarUrl) { dashAvatar.textContent = ''; _applyAvatarEl(dashAvatar, _dashAvatarUrl, name.charAt(0).toUpperCase()); }
+      else { dashAvatar.textContent = name.charAt(0).toUpperCase(); _applyAvatarEl(dashAvatar, '', ''); }
+    }
     if (dashName)   dashName.textContent   = name;
     if (dashEmail)  dashEmail.textContent  = currentUser.email;
     // show admin nav for owner only
@@ -10371,7 +10429,10 @@ function updateAuthUI() {
     // topbar avatar
     const tbAv = document.getElementById('dash-topbar-av');
     const tbUn = document.getElementById('dash-topbar-uname');
-    if (tbAv) tbAv.childNodes[0].textContent = name.charAt(0).toUpperCase();
+    if (tbAv) {
+      if (_dashAvatarUrl) { tbAv.childNodes[0].textContent = ''; _applyAvatarEl(tbAv, _dashAvatarUrl, name.charAt(0).toUpperCase()); }
+      else { tbAv.childNodes[0].textContent = name.charAt(0).toUpperCase(); _applyAvatarEl(tbAv, '', ''); }
+    }
     if (tbUn) tbUn.textContent = name;
   }
   // Legacy profile hero elements (kept for compatibility)
@@ -10380,7 +10441,9 @@ function updateAuthUI() {
   const dispEmail = document.getElementById('profile-display-email');
   if (avatarLg && currentUser) {
     const name = currentUser.user_metadata?.full_name || currentUser.email || '?';
-    avatarLg.textContent = name.charAt(0).toUpperCase();
+    const _lgAvatarUrl = _getAvatarUrl();
+    if (_lgAvatarUrl) { avatarLg.textContent = ''; _applyAvatarEl(avatarLg, _lgAvatarUrl, name.charAt(0).toUpperCase()); }
+    else { avatarLg.textContent = name.charAt(0).toUpperCase(); _applyAvatarEl(avatarLg, '', ''); }
     if (dispName) dispName.textContent = name;
     if (dispEmail) dispEmail.textContent = currentUser.email;
   }
