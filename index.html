@@ -22,6 +22,21 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
+<!-- Auth-token URL scrubber — MUST run before any analytics (Cloudflare/Clarity).
+     Supabase OAuth + recovery links return access_token/refresh_token in the URL hash.
+     Stash them for the app to consume, then strip the URL so analytics never record tokens. -->
+<script type="text/javascript">
+  (function(){
+    try {
+      var h = window.location.hash || '';
+      if (h && (h.indexOf('access_token=') !== -1 || h.indexOf('refresh_token=') !== -1)) {
+        window.__larisAuthHash = h;
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+    } catch(_) {}
+  })();
+</script>
+
 <!-- Cloudflare Web Analytics -->
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "7cada22477f048bdbe064f16ac18f17e"}'></script>
 <!-- End Cloudflare Web Analytics -->
@@ -3524,7 +3539,7 @@ html,body{overflow-x:hidden;max-width:100%;}
       </div>
       <div class="lp-nav-right">
         <button class="lp-nav-login" onclick="openAuthModal('login')">Login</button>
-        <button class="lp-nav-cta" onclick="openAuthModal('signup')">Mulai Gratis</button>
+        <button class="lp-nav-cta" onclick="openAuthModal('signup','nav')">Mulai Gratis</button>
       </div>
     </nav>
 
@@ -3538,7 +3553,7 @@ html,body{overflow-x:hidden;max-width:100%;}
           <h1>Siapapun Bisa<br>Mulai Jualan<br><span class="lp-hero-accent">Online.</span></h1>
           <p class="lp-hero-sub">LarisID membantu kamu menemukan produk yang sudah dicari banyak orang di Shopee, menggunakan data real-time.</p>
           <div class="lp-hero-btns">
-            <button class="lp-hero-btn-primary" onclick="openAuthModal('signup')">Temukan Produk Terlaris
+            <button class="lp-hero-btn-primary" onclick="openAuthModal('signup','hero')">Temukan Produk Terlaris
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:6px;vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             </button>
             <button class="lp-hero-btn-secondary" onclick="document.getElementById('lp-steps').scrollIntoView({behavior:'smooth'})">Lihat Cara Kerjanya
@@ -4311,7 +4326,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             <div><span class="lp-plan-price">Rp 0</span><span class="lp-plan-price-unit"> / bulan</span></div>
             <div class="lp-plan-price-annual" style="color:#059669;font-weight:600;">5 kredit baru setiap bulan</div>
           </div>
-          <button class="lp-plan-cta outline" onclick="openAuthModal('signup')">Mulai Gratis</button>
+          <button class="lp-plan-cta outline" onclick="openAuthModal('signup','pricing_free')">Mulai Gratis</button>
           <div class="lp-plan-feats-lbl" style="background:#F3F4F6;color:#6B7280;">Termasuk setiap bulan:</div>
           <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>5 kredit gratis (diperbaharui tiap bulan)</div>
           <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>Akses Finder — telusuri ribuan produk</div>
@@ -4334,7 +4349,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             <div><span class="lp-plan-price orange">Rp 25.000</span><span class="lp-plan-price-unit"> sekali bayar</span></div>
             <div class="lp-plan-price-annual" style="color:#E8442A;font-weight:600;">25 kredit + 1 bulan historis</div>
           </div>
-          <button class="lp-plan-cta primary" onclick="openAuthModal('signup')">Beli Sekarang</button>
+          <button class="lp-plan-cta primary" onclick="openAuthModal('signup','pricing_pro')">Beli Sekarang</button>
           <div class="lp-plan-feats-lbl or">Yang kamu dapat:</div>
           <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>25 kredit (setara Rp 1.000/kredit)</div>
           <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span><strong>Unlock data historis 1 bulan</strong></div>
@@ -4356,7 +4371,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             <div><span class="lp-plan-price">Rp 40.000</span><span class="lp-plan-price-unit"> sekali bayar</span></div>
             <div class="lp-plan-price-annual" style="color:#4F46E5;font-weight:600;">50 kredit + 1 tahun historis</div>
           </div>
-          <button class="lp-plan-cta dark" onclick="openAuthModal('signup')">Beli Sekarang</button>
+          <button class="lp-plan-cta dark" onclick="openAuthModal('signup','pricing_business')">Beli Sekarang</button>
           <div class="lp-plan-feats-lbl bl">Yang kamu dapat:</div>
           <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span>50 kredit (setara Rp 800/kredit)</div>
           <div class="lp-plan-feat"><span class="lp-plan-feat-check">&#x2713;</span><strong>Unlock data historis 1 tahun penuh</strong></div>
@@ -4463,7 +4478,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             <div class="dd-card">
               <div class="dd-card-title">Insight AI</div>
               <div class="dd-ai-list" id="lp-dd-ai"><div class="dd-ai-item"><div class="dd-ai-check"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></div><div>Permintaan tinggi dan terus meningkat dalam 30 hari terakhir.</div></div><div class="dd-ai-item"><div class="dd-ai-check"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></div><div>Kompetisi sedang — masih ada ruang untuk pemain baru dengan harga kompetitif.</div></div><div class="dd-ai-item"><div class="dd-ai-check"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></div><div>Fokus pada variasi warna hitam &amp; coklat yang paling banyak diminati.</div></div></div>
-              <button class="dd-ai-btn" onclick="openAuthModal('signup')">Mulai Gratis — Lihat Lebih Lengkap</button>
+              <button class="dd-ai-btn" onclick="openAuthModal('signup','deepdive_ai')">Mulai Gratis — Lihat Lebih Lengkap</button>
             </div>
           </div>
           <!-- blurred CTA overlay -->
@@ -4476,7 +4491,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(244,246,249,.6);border-radius:12px;">
               <div style="font-size:1rem;font-weight:700;color:#1A1F3C;">Buka analisis lengkap — gratis</div>
               <div style="font-size:.82rem;color:#6B7280;text-align:center;">Distribusi harga, usia toko kompetitor, top 15 kompetitor, keyword, dan lebih banyak lagi.</div>
-              <button class="lp-hero-btn-primary" onclick="openAuthModal('signup')">Mulai Gratis</button>
+              <button class="lp-hero-btn-primary" onclick="openAuthModal('signup','midpage')">Mulai Gratis</button>
             </div>
           </div>
         </div>
@@ -4496,7 +4511,7 @@ html,body{overflow-x:hidden;max-width:100%;}
         <div class="lp-banner-cta-left">
           <div class="lp-banner-cta-title">Peluang Produk Pertamamu<br>Bisa Hanya Satu Pencarian Lagi.</div>
           <div>
-            <button class="lp-banner-cta-btn" onclick="openAuthModal('signup')">
+            <button class="lp-banner-cta-btn" onclick="openAuthModal('signup','banner')">
               Mulai Gratis
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
             </button>
@@ -4563,7 +4578,7 @@ html,body{overflow-x:hidden;max-width:100%;}
         <b>Mulai gratis hari ini</b>
         <span>5 kredit/bulan &middot; tanpa kartu kredit</span>
       </div>
-      <button class="lp-mobile-cta-btn" onclick="openAuthModal('signup')">Mulai Gratis</button>
+      <button class="lp-mobile-cta-btn" onclick="openAuthModal('signup','mobile_sticky')">Mulai Gratis</button>
     </div>
   </div>
 </div>
@@ -10183,7 +10198,10 @@ function initSupabase() {
   } catch(_) {}
   // Init JS client (needed for DB queries + OAuth)
   if (typeof window.supabase !== 'undefined') {
-    try { _supabase = window.supabase.createClient(SUPA_URL, SUPA_KEY); } catch(e) { console.error('Supabase init failed', e); }
+    // detectSessionInUrl:false — the head scrubber already stripped the OAuth hash before
+    // this client loads, so the client can't (and shouldn't) parse it. We consume it manually
+    // via consumeOAuthHash() to keep tokens out of analytics-recorded URLs.
+    try { _supabase = window.supabase.createClient(SUPA_URL, SUPA_KEY, { auth: { detectSessionInUrl: false } }); } catch(e) { console.error('Supabase init failed', e); }
   }
   // Restore session from localStorage (bypasses JS-client auth which returns 204 for sb_publishable keys)
   const stored = _authLoad();
@@ -10269,7 +10287,10 @@ function updateAuthUI() {
 
 let _authMode = 'login'; // 'login', 'signup', or 'reset'
 
-function openAuthModal(mode) {
+function openAuthModal(mode, source) {
+  if (window.clarity && mode === 'signup') {
+    try { clarity('event', 'cta_signup_click'); clarity('set', 'signup_cta_source', source || 'unknown'); } catch (_) {}
+  }
   _authMode = mode || 'login';
   document.getElementById('auth-overlay').style.display = 'flex';
   renderAuthModal();
@@ -10340,7 +10361,10 @@ async function submitAuth() {
     const d = await r.json();
     btn.textContent='Daftar'; btn.disabled=false;
     if (d.error_code || d.error || d.msg?.includes('invalid')) { showErr(d.msg || d.error || 'Daftar gagal.'); }
-    else { showOk('Cek email kamu untuk konfirmasi akun!'); }
+    else {
+      if (window.clarity) { try { clarity('event', 'signup_success'); clarity('set', 'signed_up', 'true'); } catch (_) {} }
+      showOk('Cek email kamu untuk konfirmasi akun!');
+    }
     return;
   }
 
@@ -10363,22 +10387,46 @@ let _recoverySession = null;
 // On load: detect Supabase recovery link (#access_token=...&type=recovery&...)
 // and show the set-new-password screen. Returns true if a recovery flow started.
 function handleRecoveryHash() {
-  let hash = window.location.hash || '';
+  // The head scrubber already moved the hash out of the URL into window.__larisAuthHash.
+  let hash = window.__larisAuthHash || '';
   if (!hash || hash.indexOf('access_token') === -1) return false;
   const params = new URLSearchParams(hash.replace(/^#/, ''));
   const type = params.get('type');
   const accessToken = params.get('access_token');
-  if (type !== 'recovery' || !accessToken) return false;
+  if (type !== 'recovery' || !accessToken) return false; // not a recovery link — leave for consumeOAuthHash()
   _recoverySession = {
     access_token: accessToken,
     refresh_token: params.get('refresh_token') || '',
     expires_in: parseInt(params.get('expires_in') || '3600', 10),
   };
-  // Strip the tokens from the URL so they don't linger in history.
-  try { history.replaceState(null, '', window.location.pathname + window.location.search); } catch (_) {}
+  // Consumed — clear the stash so consumeOAuthHash() doesn't also process it.
+  window.__larisAuthHash = '';
   const ov = document.getElementById('recovery-overlay');
   if (ov) ov.style.display = 'flex';
   setTimeout(() => { const f = document.getElementById('recovery-pass'); if (f) f.focus(); }, 50);
+  return true;
+}
+
+// On load: establish a session from a stashed OAuth (Google) hash. detectSessionInUrl is off
+// and the head scrubber already stripped the URL, so we parse window.__larisAuthHash manually.
+async function consumeOAuthHash() {
+  const hash = window.__larisAuthHash || '';
+  if (!hash || hash.indexOf('access_token') === -1) { window.__larisAuthHash = ''; return false; }
+  const params = new URLSearchParams(hash.replace(/^#/, ''));
+  window.__larisAuthHash = '';
+  if (params.get('type') === 'recovery') return false; // recovery is handled by handleRecoveryHash()
+  const access_token = params.get('access_token');
+  if (!access_token) return false;
+  const refresh_token = params.get('refresh_token') || '';
+  const expires_in = parseInt(params.get('expires_in') || '3600', 10);
+  let user = null;
+  try {
+    const r = await fetch(`${SUPA_URL}/auth/v1/user`, { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${access_token}` } });
+    if (r.ok) user = await r.json();
+  } catch (_) {}
+  const sess = { access_token, refresh_token, expires_in, user };
+  _authSave(sess);
+  await _authOnSignIn(sess).catch(() => {});
   return true;
 }
 
@@ -24670,6 +24718,9 @@ initSupabase();
 // If the user arrived via a password-recovery email link, show the
 // set-new-password screen (handles #access_token=...&type=recovery).
 try { handleRecoveryHash(); } catch (_) {}
+// Otherwise, if the user arrived via Google OAuth, establish their session from the
+// stashed hash (tokens were already stripped from the URL by the head scrubber).
+try { consumeOAuthHash().catch(() => {}); } catch (_) {}
 // Trigger discover data load after Supabase is ready
 setTimeout(() => { if (typeof dscInit === 'function') dscInit(); }, 300);
 initFreshnessBadge();
@@ -25552,6 +25603,22 @@ document.addEventListener('DOMContentLoaded', function(){
       lpNav.classList.toggle('lp-nav-scrolled', window.scrollY > 20);
     }, { passive: true });
   }
+
+  // Landing-page scroll-depth milestones (25/50/75/100%) → Clarity. Each fires once per load.
+  (function() {
+    var fired = {};
+    var marks = [25, 50, 75, 100];
+    window.addEventListener('scroll', function() {
+      var doc = document.documentElement;
+      var scrolled = (window.scrollY + window.innerHeight) / doc.scrollHeight * 100;
+      marks.forEach(function(m) {
+        if (!fired[m] && scrolled >= m) {
+          fired[m] = true;
+          if (window.clarity) { try { clarity('event', 'scroll_depth_' + m); clarity('set', 'max_scroll', String(m)); } catch (_) {} }
+        }
+      });
+    }, { passive: true });
+  })();
 
   // close topbar avatar dropdown on outside click
   document.addEventListener('click', function(e) {
