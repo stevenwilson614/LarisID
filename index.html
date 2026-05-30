@@ -1,12 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>LarisID — Riset Produk Shopee Gratis</title>
-<meta name="description" content="LarisID adalah platform riset produk gratis untuk penjual Shopee Indonesia. Temukan produk berpotensi tinggi berdasarkan Viability Score, data penjualan nyata, dan analisis kompetitor.">
-<meta property="og:title" content="LarisID — Riset Produk Shopee Gratis">
-<meta property="og:description" content="Temukan produk terlaris untuk dijual di Shopee. Gratis selamanya — didukung data nyata dan Viability Score eksklusif.">
+<title>LarisID — Riset Produk Shopee Gratis untuk Seller Indonesia</title>
+<meta name="description" content="LarisID adalah platform riset produk Shopee gratis dan terlengkap untuk penjual Indonesia. Data 60.000+ listing nyata, Viability Score, analisis kompetitor, dan AI — lebih akurat dan terjangkau daripada alat riset produk lain.">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<link rel="canonical" href="https://larisid.com/">
+<meta property="og:locale" content="id_ID">
+<meta property="og:site_name" content="LarisID">
+<meta property="og:title" content="LarisID — Riset Produk Shopee Gratis untuk Seller Indonesia">
+<meta property="og:description" content="Riset produk Shopee dengan data nyata 60.000+ listing, Viability Score, dan AI. Gratis untuk mulai — lebih jelas dan jujur daripada alat riset produk seller lain.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://larisid.com/">
 <meta property="og:image" content="https://larisid.com/images/Banner.jpg">
@@ -15,8 +19,55 @@
 <meta name="twitter:image" content="https://larisid.com/images/Banner.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="LarisID — Riset Produk Shopee Gratis">
-<meta name="twitter:description" content="Temukan produk terlaris untuk dijual di Shopee. Gratis selamanya.">
-<meta name="keywords" content="riset produk shopee, shopee seller, produk laris shopee, viability score, product research indonesia, shopee product finder">
+<meta name="twitter:description" content="Riset produk Shopee dengan data nyata, Viability Score, dan AI. Gratis untuk mulai.">
+<meta name="keywords" content="riset produk shopee, shopee research produk seller, shopee seller tools, produk laris shopee, viability score, product research indonesia, shopee product finder, analisis kompetitor shopee, cari produk shopee">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "name": "LarisID",
+      "url": "https://larisid.com/",
+      "description": "Platform riset produk Shopee gratis untuk penjual Indonesia dengan data nyata, Viability Score, dan AI.",
+      "inLanguage": "id",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://larisid.com/?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "LarisID",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "url": "https://larisid.com/",
+      "description": "Alat riset produk Shopee dengan 60.000+ listing nyata, skor kelayakan, analisis kompetitor, dan rekomendasi AI — dirancang untuk seller pemula dan berpengalaman di Indonesia.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "IDR",
+        "description": "Gratis 5 kredit setiap bulan"
+      },
+      "featureList": [
+        "Riset produk Shopee dengan data penjualan nyata",
+        "Viability Score 0-100",
+        "Analisis kompetitor dan keyword",
+        "AI untuk strategi jualan",
+        "Tracker produk mingguan"
+      ]
+    },
+    {
+      "@type": "Organization",
+      "name": "LarisID",
+      "url": "https://larisid.com/",
+      "logo": "https://larisid.com/images/favicon.svg",
+      "description": "Membantu orang Indonesia memulai bisnis e-commerce yang bertahan dengan data jujur dan terjangkau."
+    }
+  ]
+}
+</script>
 <link rel="icon" type="image/svg+xml" href="/images/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -32,10 +83,25 @@
       if (h && (h.indexOf('access_token=') !== -1 || h.indexOf('refresh_token=') !== -1)) {
         window.__larisAuthHash = h;
         history.replaceState(null, '', window.location.pathname + window.location.search);
+        // OAuth login return (not a password-recovery link): suppress the landing-page
+        // flash by covering the screen with a loader until the session is established.
+        if (h.indexOf('access_token=') !== -1 && h.indexOf('type=recovery') === -1) {
+          window.__larisOAuthReturning = true;
+          try { document.documentElement.classList.add('oauth-returning'); } catch(_) {}
+          // Safety net: never trap the user on the spinner if sign-in stalls.
+          setTimeout(function(){ try { document.documentElement.classList.remove('oauth-returning'); } catch(_) {} }, 8000);
+        }
       }
     } catch(_) {}
   })();
 </script>
+<style>
+  /* OAuth-return loader — full-screen cover + spinner while the Google session is established. */
+  html.oauth-returning #page-landing { display: none !important; }
+  html.oauth-returning::before { content: ""; position: fixed; inset: 0; background: #F7F6F3; z-index: 99998; }
+  html.oauth-returning::after { content: ""; position: fixed; top: 50%; left: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; border: 4px solid #E5E7EB; border-top-color: #E8442A; border-radius: 50%; animation: oauthReturnSpin .7s linear infinite; z-index: 99999; }
+  @keyframes oauthReturnSpin { to { transform: rotate(360deg); } }
+</style>
 
 <!-- Cloudflare Web Analytics -->
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "7cada22477f048bdbe064f16ac18f17e"}'></script>
@@ -1362,7 +1428,7 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dsc-load-step-line{flex:1;height:2px;background:#E5E7EB;margin-top:24px;transition:background .4s;}
 .dsc-load-step-line.done{background:#E8442A;}
 /* Card grid view */
-.dsc-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(188px,1fr));gap:14px;padding:16px;}
+.dsc-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,160px),1fr));gap:14px;padding:16px;}
 .dsc-skel{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 8px rgba(0,0,0,.06);}
 .dsc-skel-img{width:100%;aspect-ratio:1;background:linear-gradient(90deg,#F0EDE8 25%,#E8E4DF 50%,#F0EDE8 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;}
 .dsc-skel-body{padding:10px;}
@@ -2612,17 +2678,14 @@ body.in-dashboard .mobile-menu{display:none!important;}
    Desktop is completely unaffected.
 ═══════════════════════════════════════════════════════ */
 
-/* ── Issue 1: Discover grid — 2/3 columns on mobile ── */
+/* ── Issue 1: Discover grid — minimum 3 columns on mobile ── */
 @media(max-width:768px){
   .dsc-page{padding:10px 10px 80px;}
-  .dsc-card-grid{grid-template-columns:repeat(2,1fr);gap:10px;padding:10px;}
+  .dsc-card-grid{grid-template-columns:repeat(3,1fr);gap:8px;padding:10px;}
   .dsc-count{display:none;}
   .dsc-search{font-size:.75rem;padding:7px 10px 7px 30px;min-width:0;}
   .dsc-sort-select{display:none;}
   .dsc-table-controls{flex-wrap:nowrap;gap:6px;}
-}
-@media(min-width:480px) and (max-width:768px){
-  .dsc-card-grid{grid-template-columns:repeat(3,1fr);}
 }
 
 /* ── Issue 2a: Deep dive image — cap height, no stretch ── */
@@ -2999,6 +3062,24 @@ body.in-dashboard .mobile-menu{display:none!important;}
 /* ── GUIDED TOUR ── */
 #tour-overlay{position:fixed;inset:0;z-index:8000;display:none;pointer-events:none;}
 #tour-overlay.active{display:block;}
+
+/* Contextual onboarding hints (replaces spotlight tour) */
+#hint-overlay{position:fixed;inset:0;z-index:8500;background:rgba(26,31,60,.45);display:none;align-items:center;justify-content:center;padding:20px;}
+#hint-overlay.active{display:flex;}
+.hint-card{background:#fff;border-radius:16px;padding:24px 22px;max-width:360px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.18);position:relative;}
+.hint-card h3{font-size:1rem;font-weight:800;color:#1A1F3C;margin:0 0 8px;}
+.hint-card p{font-size:.82rem;color:#6B7280;line-height:1.55;margin:0 0 18px;}
+.hint-card-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.hint-btn-primary{background:#E8442A;color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;}
+.hint-btn-ghost{background:#F3F4F6;color:#374151;border:none;border-radius:10px;padding:10px 18px;font-size:.8rem;font-weight:600;cursor:pointer;font-family:inherit;}
+.hint-close{position:absolute;top:12px;right:14px;background:none;border:none;font-size:1.1rem;color:#9CA3AF;cursor:pointer;line-height:1;padding:4px;}
+
+/* New-user empty state (dashboard & other views) */
+.nu-empty{text-align:center;padding:48px 24px;background:#fff;border:1px dashed #E5E7EB;border-radius:14px;margin-bottom:20px;}
+.nu-empty-icon{width:52px;height:52px;margin:0 auto 14px;background:#FFF0ED;border-radius:14px;display:flex;align-items:center;justify-content:center;color:#E8442A;}
+.nu-empty h3{font-size:.95rem;font-weight:800;color:#1A1F3C;margin:0 0 8px;}
+.nu-empty p{font-size:.8rem;color:#6B7280;line-height:1.55;margin:0 0 18px;max-width:340px;margin-left:auto;margin-right:auto;}
+.nu-empty-btn{display:inline-flex;align-items:center;gap:6px;background:#E8442A;color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;}
 #tour-spotlight{
   position:fixed;
   border-radius:10px;
@@ -3551,7 +3632,7 @@ html,body{overflow-x:hidden;max-width:100%;}
         <div>
           <div class="lp-hero-badge"><svg width="17" height="12" viewBox="0 0 17 12" style="flex-shrink:0;border:1px solid #E5B5AE;border-radius:2px;" aria-hidden="true"><rect width="17" height="6" fill="#CE1126"/><rect y="6" width="17" height="6" fill="#fff"/></svg> Dibuat untuk penjual Shopee Indonesia</div>
           <h1>Siapapun Bisa<br>Mulai Jualan<br><span class="lp-hero-accent">Online.</span></h1>
-          <p class="lp-hero-sub">LarisID membantu kamu menemukan produk yang sudah dicari banyak orang di Shopee, menggunakan data real-time.</p>
+          <p class="lp-hero-sub">Platform riset produk Shopee gratis dengan 60.000+ listing nyata, Viability Score, dan AI — dirancang untuk seller Indonesia. Lebih jujur, terjangkau, dan mudah dipakai pemula dibanding alat riset produk premium.</p>
           <div class="lp-hero-btns">
             <button class="lp-hero-btn-primary" onclick="openAuthModal('signup','hero')">Temukan Produk Terlaris
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:6px;vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
@@ -4675,7 +4756,7 @@ html,body{overflow-x:hidden;max-width:100%;}
         <button class="dash-topbar-icon-btn" title="Notifikasi">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         </button>
-        <div class="dash-credit-pill" id="dash-topbar-credit-pill" onclick="switchDashView('dashboard');setTimeout(scrollToCreditCard,50)" title="Kredit kamu">
+        <div class="dash-credit-pill" id="dash-topbar-credit-pill" onclick="switchDashView('credits')" title="Kredit kamu">
           <svg class="dash-credit-pill-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           <span class="dash-credit-pill-val" id="dash-credit-pill-val">—</span>
           <span class="dash-credit-pill-lbl">kredit</span>
@@ -5923,6 +6004,14 @@ html,body{overflow-x:hidden;max-width:100%;}
               <p id="hbd-subtitle">Selamat datang kembali — berikut ringkasan produk kamu hari ini.</p>
             </div>
 
+            <!-- New user: start here -->
+            <div id="hbd-new-user-panel" class="nu-empty" style="display:none;">
+              <div class="nu-empty-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+              <h3>Mulai dengan mencari produk</h3>
+              <p>Belum ada produk terpantau. Cari produk di Discover, pilih yang menarik, lalu lacak untuk melihat ringkasan di sini.</p>
+              <button type="button" class="nu-empty-btn" onclick="switchDashView('discover')">Cari Produk di Discover</button>
+            </div>
+
             <!-- price-change alert strip -->
             <div id="hbd-alerts-strip" style="display:none;margin-bottom:16px;"></div>
 
@@ -6093,72 +6182,10 @@ html,body{overflow-x:hidden;max-width:100%;}
               <div id="hbd-tracked-cards" style="display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;"></div>
             </div>
 
-            <!-- Credits card -->
-            <div class="home-credit-card" id="dash-credit-card">
-              <div class="hcc-balance">
-                <div class="hcc-balance-num" id="hcc-balance-num">—</div>
-                <div class="hcc-balance-lbl">Kredit</div>
-              </div>
-              <div class="hcc-earn">
-                <div class="hcc-earn-title">Cara mendapatkan kredit</div>
-                <div class="hcc-earn-row">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                  Cari produk di Shopee pakai Extension → <strong>10 pencarian = 1 kredit</strong>
-                </div>
-                <div class="hcc-earn-row">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                  Maks <strong>10 kredit/hari</strong> — 5 kredit gratis setiap bulan
-                </div>
-                <div class="hcc-earn-row" style="margin-top:6px;">
-                  <span style="font-size:.72rem;color:rgba(255,255,255,.35);">Progress hari ini</span>
-                  <span style="font-size:.72rem;color:#fbbf24;font-weight:700;margin-left:auto;" id="hcc-prog-label">—</span>
-                </div>
-                <div class="hcc-prog-wrap">
-                  <div class="hcc-prog-fill" id="hcc-prog-fill" style="width:0%"></div>
-                </div>
-              </div>
-              <div class="hcc-spend">
-                <div class="hcc-spend-title">Gunakan kredit untuk</div>
-                <div class="hcc-spend-item">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                  <span><strong style="color:#fbbf24;">1 kredit = 10 pertanyaan AI</strong> — analisis produk, strategi jualan, sumber produk</span>
-                </div>
-                <div class="hcc-spend-item">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                  <span>Deep Dive laporan produk lengkap per keyword</span>
-                </div>
-                <div class="hcc-spend-item">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                  <span>Unlimited AI prompt terkunci sampai punya kredit</span>
-                </div>
-              </div>
-            </div>
+            <!-- Credits & Peti Mingguan moved to Kredit page -->
 
-            <!-- Weekly Chest -->
-            <div id="weekly-chest-card" style="background:linear-gradient(135deg,#1a0a00,#2d1400);border-radius:14px;padding:18px 20px;margin-bottom:20px;display:flex;align-items:center;gap:16px;">
-              <div style="font-size:2.2rem;flex-shrink:0;" id="chest-icon">🔒</div>
-              <div style="flex:1;min-width:0;">
-                <div style="font-size:.82rem;font-weight:800;color:#fbbf24;margin-bottom:3px;">Peti Mingguan</div>
-                <div style="font-size:.72rem;color:rgba(255,255,255,.6);margin-bottom:8px;" id="chest-desc">Selesaikan 5 pencarian minggu ini untuk membuka hadiah kredit</div>
-                <div style="background:rgba(255,255,255,.1);border-radius:999px;height:6px;overflow:hidden;margin-bottom:6px;">
-                  <div id="chest-prog-fill" style="height:100%;background:linear-gradient(90deg,#f97316,#fbbf24);border-radius:999px;width:0%;transition:width .4s;"></div>
-                </div>
-                <div style="font-size:.68rem;color:rgba(255,255,255,.5);" id="chest-prog-label">0 / 5 pencarian</div>
-              </div>
-              <button id="chest-btn" onclick="claimChest()" disabled style="background:#f97316;color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:.78rem;font-weight:800;cursor:not-allowed;opacity:.4;font-family:inherit;flex-shrink:0;">Buka</button>
-            </div>
-            <!-- Chest modal -->
-            <div id="chest-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;">
-              <div style="background:#fff;border-radius:20px;padding:32px 28px;text-align:center;max-width:320px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3);">
-                <div id="chest-modal-icon" style="font-size:3.5rem;margin-bottom:12px;">🎁</div>
-                <div id="chest-modal-title" style="font-size:1.2rem;font-weight:900;color:#1A1F3C;margin-bottom:6px;">Selamat!</div>
-                <div id="chest-modal-msg" style="font-size:.85rem;color:#6B7280;margin-bottom:20px;"></div>
-                <button onclick="document.getElementById('chest-modal').style.display='none'" style="background:#E8442A;color:#fff;border:none;border-radius:10px;padding:10px 24px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;">Tutup</button>
-              </div>
-            </div>
-
-            <!-- chart + insight -->
-            <div class="hbd-two-col" id="hbd-product-chart-col">
+            <!-- chart + insight removed from dashboard -->
+            <div class="hbd-two-col" id="hbd-product-chart-col" style="display:none !important;">
               <div class="hbd-card">
                 <div class="hbd-card-title">Performa Terbaik</div>
                 <div class="hbd-card-sub">Tren produk pilihan 12 minggu terakhir</div>
@@ -6290,7 +6317,7 @@ html,body{overflow-x:hidden;max-width:100%;}
 
                 <div class="dsc-filter-group">
                   <span class="dsc-filter-label">Minimum Skor</span>
-                  <input type="range" id="dsc-skor-min" min="0" max="100" step="5" value="0" oninput="document.getElementById('dsc-skor-min-lbl').textContent=this.value;dscApplyFilters()" style="width:100%;accent-color:#E8442A;margin-top:4px;">
+                  <input type="range" id="dsc-skor-min" min="0" max="100" step="5" value="0" oninput="document.getElementById('dsc-skor-min-lbl').textContent=this.value" style="width:100%;accent-color:#E8442A;margin-top:4px;">
                   <div style="display:flex;justify-content:space-between;font-size:.7rem;color:#9CA3AF;margin-top:2px;">
                     <span>0</span><span style="font-weight:700;color:#E8442A;" id="dsc-skor-min-lbl">0</span><span>100</span>
                   </div>
@@ -6386,7 +6413,13 @@ html,body{overflow-x:hidden;max-width:100%;}
         </div>
 
         <div id="dash-view-tracker" style="display:none;">
-          <div class="trk-wrap">
+          <div id="trk-empty-state" class="nu-empty" style="display:none;margin:24px 28px;">
+            <div class="nu-empty-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg></div>
+            <h3>Kamu punya 0 produk yang dilacak</h3>
+            <p>Mulai dengan mencari produk di Discover, buka Deep Dive, lalu klik Lacak Produk untuk memantau perubahan harga dan penjualan.</p>
+            <button type="button" class="nu-empty-btn" onclick="switchDashView('discover')">Cari Produk di Discover</button>
+          </div>
+          <div class="trk-wrap" id="trk-main-content">
             <!-- topbar -->
             <div class="trk-topbar">
               <div class="trk-topbar-left">
@@ -6448,7 +6481,13 @@ html,body{overflow-x:hidden;max-width:100%;}
         </div>
 
         <div id="dash-view-deepdive" style="display:none;">
-          <div class="dd-wrap">
+          <div id="dd-empty-state" class="nu-empty" style="display:none;margin:24px 28px;">
+            <div class="nu-empty-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
+            <h3>Mulai dengan mencari produk</h3>
+            <p>Pilih produk dari Discover untuk melihat analisis lengkap — tren, kompetitor, dan skor kelayakan.</p>
+            <button type="button" class="nu-empty-btn" onclick="switchDashView('discover')">Cari Produk di Discover</button>
+          </div>
+          <div class="dd-wrap" id="dd-main-content">
             <!-- topbar -->
             <div class="dd-topbar" style="display:flex;align-items:center;justify-content:space-between;">
               <div class="dd-back-btn" onclick="switchDashView('discover')">
@@ -7156,7 +7195,13 @@ html,body{overflow-x:hidden;max-width:100%;}
 
         <!-- ══ MY TOKO ══════════════════════════════════════════ -->
         <div id="dash-view-ai" style="display:none;">
-          <div class="mls-wrap">
+          <div id="mls-empty-state" class="nu-empty" style="display:none;margin:24px 28px 0;">
+            <div class="nu-empty-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+            <h3>Mulai dengan mencari produk</h3>
+            <p>Lacak atau simpan produk dari Discover untuk melihat rekomendasi jualan, kalkulator profit, dan Tanya AI.</p>
+            <button type="button" class="nu-empty-btn" onclick="switchDashView('discover')">Cari Produk di Discover</button>
+          </div>
+          <div class="mls-wrap" id="mls-main-content">
 
             <!-- Picker row -->
             <div class="mls-picker-row">
@@ -7232,10 +7277,19 @@ html,body{overflow-x:hidden;max-width:100%;}
                     </div>
                     <div style="font-size:.62rem;color:#9CA3AF;margin-top:4px;text-align:right;" id="mls-ai-counter">10/10 tanya tersisa</div>
                     <div id="mls-ai-response" class="mls-ai-response"></div>
+                    <!-- Rekomendasi jualan dari data pasar -->
+                    <div id="mls-ai-rec" class="mls-ai-rec" style="display:none;margin-top:14px;padding:14px;background:#FFFBF8;border:1px solid #FDE7E2;border-radius:10px;">
+                      <div style="font-size:.72rem;font-weight:800;color:#1A1F3C;margin-bottom:10px;">Rekomendasi dari data pasar</div>
+                      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;font-size:.72rem;">
+                        <div><div style="color:#9CA3AF;font-size:.65rem;margin-bottom:3px;">Produk terbaik untuk dijual</div><div id="mls-rec-product" style="font-weight:700;color:#111;">—</div></div>
+                        <div><div style="color:#9CA3AF;font-size:.65rem;margin-bottom:3px;">Harga optimal</div><div id="mls-rec-price" style="font-weight:700;color:#E8442A;">—</div></div>
+                        <div><div style="color:#9CA3AF;font-size:.65rem;margin-bottom:3px;">Varian / fitur / warna</div><div id="mls-rec-variant" style="font-weight:700;color:#111;">—</div></div>
+                      </div>
+                    </div>
                     <!-- Model badge + API key settings -->
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
                       <span id="mls-model-badge" style="font-size:.68rem;color:#9CA3AF;">Model: Claude Haiku (bawaan)</span>
-                      <button onclick="mlsToggleApiSettings()" style="font-size:.68rem;color:#E8442A;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;">⚙ Hubungkan API kamu</button>
+                      <button onclick="mlsToggleApiSettings()" style="font-size:.68rem;color:#E8442A;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;display:inline-flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Hubungkan API kamu</button>
                     </div>
                     <div id="mls-api-settings" style="display:none;margin-top:10px;padding:12px;background:#F9FAFB;border-radius:8px;border:1px solid #E5E7EB;">
                       <div style="font-size:.72rem;font-weight:700;color:#374151;margin-bottom:4px;">Hubungkan API sendiri — tetap menggunakan kredit, tapi pakai model lebih kuat</div>
@@ -7278,11 +7332,11 @@ html,body{overflow-x:hidden;max-width:100%;}
                     <span id="mls-kw-badge" style="font-size:.63rem;font-weight:600;background:#FFF0ED;color:#E8442A;border-radius:20px;padding:2px 10px;">—</span>
                   </div>
                   <div class="mls-pasar-grid">
-                    <div class="ap-stat-card"><div class="ap-stat-icon" style="background:#EFF6FF;color:#3B82F6;">🛍️</div><div class="ap-stat-lbl">Total Omset Pasar</div><div class="ap-stat-val" id="mls-p-omset">—</div><div class="ap-stat-sub">estimasi / bulan</div></div>
-                    <div class="ap-stat-card"><div class="ap-stat-icon" style="background:#ECFDF5;color:#059669;">📦</div><div class="ap-stat-lbl">Listing Aktif</div><div class="ap-stat-val" id="mls-p-listing">—</div><div class="ap-stat-sub">di keyword ini</div></div>
-                    <div class="ap-stat-card"><div class="ap-stat-icon" style="background:#FFFBEB;color:#F59E0B;">💰</div><div class="ap-stat-lbl">Median Harga</div><div class="ap-stat-val" id="mls-median-price">—</div><div class="ap-stat-sub" id="mls-median-sold">— unit / bulan</div></div>
-                    <div class="ap-stat-card" style="border-color:#FEE2E2;"><div class="ap-stat-icon" style="background:#FEF2F2;color:#DC2626;">👑</div><div class="ap-stat-lbl">Dominasi Top 3</div><div class="ap-stat-val" id="mls-p-dom" style="color:#DC2626;">—</div><div class="ap-stat-sub">dikuasai 3 teratas</div></div>
-                    <div class="ap-stat-card" style="border-color:#EDE9FE;"><div class="ap-stat-icon" style="background:#F5F3FF;color:#7C3AED;">🎯</div><div class="ap-stat-lbl">Penjual Signifikan</div><div class="ap-stat-val" id="mls-p-sig" style="color:#7C3AED;">—</div><div class="ap-stat-sub">&gt; 0.5% market share</div></div>
+                    <div class="ap-stat-card" title="Estimasi total omset bulanan seluruh listing di keyword ini (harga × penjualan / 6)."><div class="ap-stat-icon" style="background:#FFF0ED;color:#E8442A;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div class="ap-stat-lbl">Total Omset Pasar</div><div class="ap-stat-val" id="mls-p-omset">—</div><div class="ap-stat-sub">estimasi / bulan</div></div>
+                    <div class="ap-stat-card" title="Jumlah listing aktif yang kami temukan untuk keyword ini."><div class="ap-stat-icon" style="background:#ECFDF5;color:#059669;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="ap-stat-lbl">Listing Aktif</div><div class="ap-stat-val" id="mls-p-listing">—</div><div class="ap-stat-sub">di keyword ini</div></div>
+                    <div class="ap-stat-card" title="Harga tengah pasar — 50% listing di atas, 50% di bawah angka ini."><div class="ap-stat-icon" style="background:#FFFBEB;color:#D97706;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg></div><div class="ap-stat-lbl">Median Harga</div><div class="ap-stat-val" id="mls-median-price">—</div><div class="ap-stat-sub" id="mls-median-sold">— unit / bulan</div></div>
+                    <div class="ap-stat-card" style="border-color:#FEE2E2;" title="Persentase omset pasar yang dikuasai 3 penjual teratas — makin tinggi, makin sulit bersaing."><div class="ap-stat-icon" style="background:#FEF2F2;color:#DC2626;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></div><div class="ap-stat-lbl">Dominasi Top 3</div><div class="ap-stat-val" id="mls-p-dom" style="color:#DC2626;">—</div><div class="ap-stat-sub">dikuasai 3 teratas</div></div>
+                    <div class="ap-stat-card" style="border-color:#FDE7E2;" title="Penjual dengan market share ≥ 0,5% — menandakan pasar tidak terlalu terkonsentrasi pada satu toko."><div class="ap-stat-icon" style="background:#FFF0ED;color:#E8442A;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div><div class="ap-stat-lbl">Penjual Signifikan</div><div class="ap-stat-val" id="mls-p-sig" style="color:#E8442A;">—</div><div class="ap-stat-sub">&gt; 0.5% market share</div></div>
                   </div>
                 </div>
               </div>
@@ -7679,7 +7733,13 @@ html,body{overflow-x:hidden;max-width:100%;}
 
 
         <div id="dash-view-alerts" style="display:none;">
-          <div class="alr-wrap">
+          <div id="alr-empty-state" class="nu-empty" style="display:none;margin:24px 28px;">
+            <div class="nu-empty-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+            <h3>Mulai dengan mencari produk</h3>
+            <p>Lacak produk dari Discover untuk menerima alert perubahan harga, tren, dan peluang pasar.</p>
+            <button type="button" class="nu-empty-btn" onclick="switchDashView('discover')">Cari Produk di Discover</button>
+          </div>
+          <div class="alr-wrap" id="alr-main-content">
             <div class="alr-topbar">
               <div>
                 <h2>Alerts</h2>
@@ -7754,6 +7814,24 @@ html,body{overflow-x:hidden;max-width:100%;}
                   </div>
                   <div class="cr-earn-bar-track"><div class="cr-earn-bar-fill" id="cr-prog-fill" style="width:0%"></div></div>
                 </div>
+              </div>
+            </div>
+
+            <!-- Peti Mingguan (moved from dashboard) -->
+            <div class="cr-section">
+              <div class="cr-section-title">Peti Mingguan</div>
+              <div class="cr-section-sub">Selesaikan 5 pencarian di Shopee via Extension minggu ini untuk membuka hadiah kredit bonus.</div>
+              <div id="weekly-chest-card" style="background:linear-gradient(135deg,#1a0a00,#2d1400);border-radius:14px;padding:18px 20px;display:flex;align-items:center;gap:16px;">
+                <div style="width:44px;height:44px;flex-shrink:0;background:rgba(251,191,36,.15);border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fbbf24;" id="chest-icon-wrap"><svg id="chest-icon-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8V5a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v3"/><path d="M3 12h18"/></svg></div>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:.82rem;font-weight:800;color:#fbbf24;margin-bottom:3px;">Peti Mingguan</div>
+                  <div style="font-size:.72rem;color:rgba(255,255,255,.6);margin-bottom:8px;" id="chest-desc">Selesaikan 5 pencarian minggu ini untuk membuka hadiah kredit</div>
+                  <div style="background:rgba(255,255,255,.1);border-radius:999px;height:6px;overflow:hidden;margin-bottom:6px;">
+                    <div id="chest-prog-fill" style="height:100%;background:linear-gradient(90deg,#f97316,#fbbf24);border-radius:999px;width:0%;transition:width .4s;"></div>
+                  </div>
+                  <div style="font-size:.68rem;color:rgba(255,255,255,.5);" id="chest-prog-label">0 / 5 pencarian</div>
+                </div>
+                <button id="chest-btn" onclick="claimChest()" disabled style="background:#f97316;color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:.78rem;font-weight:800;cursor:not-allowed;opacity:.4;font-family:inherit;flex-shrink:0;">Buka</button>
               </div>
             </div>
 
@@ -10129,7 +10207,7 @@ async function _authOnSignIn(session) {
   }
   // Track signup vs return visit for analytics
   if (_supabase && session.user) {
-    const isNew = session.user.created_at === session.user.last_sign_in_at;
+    const isNew = !!session.user.created_at && session.user.created_at === session.user.last_sign_in_at;
     _supabase.from('user_sessions').insert({ user_id: session.user.id, is_new_user: isNew }).then(() => {});
   }
   await loadCurrentAccess().catch(() => {});
@@ -10140,8 +10218,8 @@ async function _authOnSignIn(session) {
   if (onLanding) openProfile();
   renderHomeGrid();
   if (currentProduct) renderDetail(currentProduct);
-  // Start dashboard onboarding for first-time users
-  setTimeout(() => startDashboardOnboarding(), 1200);
+  // Start contextual onboarding hints for new users
+  setTimeout(() => nuScheduleHint('dashboard'), 3000);
   setTimeout(() => { pendingCohortJoinIfAny().catch(() => {}); }, 400);
   setTimeout(() => { cohortLoadLightForTheme().catch(() => {}); }, 600);
   if (document.body.classList.contains('in-dashboard') && typeof _dashActiveView !== 'undefined' && _dashActiveView === 'cohort') {
@@ -10342,42 +10420,63 @@ async function submitAuth() {
   const showErr = msg => { errEl.style.color='#e74c3c'; errEl.textContent=_authErrMsg(msg); errEl.style.display=''; };
   const showOk  = msg => { errEl.style.color='var(--green)'; errEl.textContent=msg; errEl.style.display=''; };
 
+  const netErr = 'Gagal terhubung ke server. Cek koneksi internet kamu dan coba lagi.';
+
   if (_authMode === 'reset') {
     if (!email) { showErr('Masukkan email kamu.'); return; }
     btn.textContent='...'; btn.disabled=true;
-    await fetch(`${SUPA_URL}/auth/v1/recover`, { method:'POST', headers:hdrs, body:JSON.stringify({ email }) });
-    btn.textContent='Kirim Link Reset'; btn.disabled=false;
-    showOk('Link reset sudah dikirim! Cek email kamu.');
+    try {
+      await fetch(`${SUPA_URL}/auth/v1/recover`, { method:'POST', headers:hdrs, body:JSON.stringify({ email }) });
+      showOk('Link reset sudah dikirim! Cek email kamu.');
+    } catch (_) {
+      showErr(netErr);
+    } finally {
+      btn.textContent='Kirim Link Reset'; btn.disabled=false;
+    }
     return;
   }
 
   if (!email || !pass) { showErr('Email dan password wajib diisi.'); return; }
-  btn.textContent='...'; btn.disabled=true;
 
   if (_authMode === 'signup') {
     const invEl = document.getElementById('auth-invite-code');
     if (invEl && invEl.value.trim()) setPendingInvite(invEl.value);
-    const r = await fetch(`${SUPA_URL}/auth/v1/signup`, { method:'POST', headers:hdrs, body:JSON.stringify({ email, password:pass, data:{ full_name:name } }) });
-    const d = await r.json();
-    btn.textContent='Daftar'; btn.disabled=false;
-    if (d.error_code || d.error || d.msg?.includes('invalid')) { showErr(d.msg || d.error || 'Daftar gagal.'); }
-    else {
+    btn.textContent='...'; btn.disabled=true;
+    try {
+      const r = await fetch(`${SUPA_URL}/auth/v1/signup`, { method:'POST', headers:hdrs, body:JSON.stringify({ email, password:pass, data:{ full_name:name } }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || d.error_code || d.error || d.code) { showErr(d.msg || d.error_description || d.error || 'Daftar gagal. Coba lagi.'); return; }
+      // Existing-email signups return 200 with an empty identities array (enumeration guard).
+      if (Array.isArray(d.identities) && d.identities.length === 0) { showErr('Email sudah terdaftar. Coba login.'); return; }
       if (window.clarity) { try { clarity('event', 'signup_success'); clarity('set', 'signed_up', 'true'); } catch (_) {} }
+      // Email confirmations OFF → Supabase returns a session immediately; log the user straight in.
+      if (d.access_token) { _authSave(d); closeAuthModal(); void _authOnSignIn(d).catch(() => {}); return; }
+      // Otherwise a confirmation email was sent.
       showOk('Cek email kamu untuk konfirmasi akun!');
+    } catch (_) {
+      showErr(netErr);
+    } finally {
+      btn.textContent='Daftar'; btn.disabled=false;
     }
     return;
   }
 
   const invEl2 = document.getElementById('auth-invite-code');
   if (invEl2 && invEl2.value.trim()) setPendingInvite(invEl2.value);
-  // Login via direct REST — bypasses JS-client 204 issue with sb_publishable keys
-  const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, { method:'POST', headers:hdrs, body:JSON.stringify({ email, password:pass }) });
-  const d = await r.json();
-  btn.textContent='Masuk'; btn.disabled=false;
-  if (!r.ok || !d.access_token) { showErr(d.msg || d.error || 'Login gagal.'); return; }
-  _authSave(d);
-  closeAuthModal();
-  void _authOnSignIn(d).catch(() => {});
+  btn.textContent='...'; btn.disabled=true;
+  try {
+    // Login via direct REST — bypasses JS-client 204 issue with sb_publishable keys
+    const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, { method:'POST', headers:hdrs, body:JSON.stringify({ email, password:pass }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.access_token) { showErr(d.msg || d.error_description || d.error || 'Login gagal.'); return; }
+    _authSave(d);
+    closeAuthModal();
+    void _authOnSignIn(d).catch(() => {});
+  } catch (_) {
+    showErr(netErr);
+  } finally {
+    btn.textContent='Masuk'; btn.disabled=false;
+  }
 }
 
 // Holds the recovery session (tokens) parsed from the email link until the
@@ -10409,25 +10508,54 @@ function handleRecoveryHash() {
 
 // On load: establish a session from a stashed OAuth (Google) hash. detectSessionInUrl is off
 // and the head scrubber already stripped the URL, so we parse window.__larisAuthHash manually.
+function _clearOAuthReturning() {
+  window.__larisOAuthReturning = false;
+  try { document.documentElement.classList.remove('oauth-returning'); } catch (_) {}
+}
+
+// Decode the user claims straight from the access_token JWT (no network round-trip).
+function _decodeJwtUser(token) {
+  try {
+    const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(decodeURIComponent(escape(atob(part))));
+    if (!payload.sub) return null;
+    return {
+      id: payload.sub,
+      email: payload.email || '',
+      phone: payload.phone || '',
+      user_metadata: payload.user_metadata || {},
+      app_metadata: payload.app_metadata || {},
+      role: payload.role || 'authenticated',
+    };
+  } catch (_) { return null; }
+}
+
 async function consumeOAuthHash() {
   const hash = window.__larisAuthHash || '';
-  if (!hash || hash.indexOf('access_token') === -1) { window.__larisAuthHash = ''; return false; }
+  if (!hash || hash.indexOf('access_token') === -1) { window.__larisAuthHash = ''; _clearOAuthReturning(); return false; }
   const params = new URLSearchParams(hash.replace(/^#/, ''));
   window.__larisAuthHash = '';
-  if (params.get('type') === 'recovery') return false; // recovery is handled by handleRecoveryHash()
+  if (params.get('type') === 'recovery') { _clearOAuthReturning(); return false; } // recovery handled by handleRecoveryHash()
   const access_token = params.get('access_token');
-  if (!access_token) return false;
+  if (!access_token) { _clearOAuthReturning(); return false; }
   const refresh_token = params.get('refresh_token') || '';
   const expires_in = parseInt(params.get('expires_in') || '3600', 10);
-  let user = null;
   try {
-    const r = await fetch(`${SUPA_URL}/auth/v1/user`, { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${access_token}` } });
-    if (r.ok) user = await r.json();
-  } catch (_) {}
-  const sess = { access_token, refresh_token, expires_in, user };
-  _authSave(sess);
-  await _authOnSignIn(sess).catch(() => {});
-  return true;
+    // Fast path: build the user from the JWT locally. Only hit the network if decode fails.
+    let user = _decodeJwtUser(access_token);
+    if (!user) {
+      try {
+        const r = await fetch(`${SUPA_URL}/auth/v1/user`, { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${access_token}` } });
+        if (r.ok) user = await r.json();
+      } catch (_) {}
+    }
+    const sess = { access_token, refresh_token, expires_in, user };
+    _authSave(sess);
+    await _authOnSignIn(sess).catch(() => {});
+    return true;
+  } finally {
+    _clearOAuthReturning();
+  }
 }
 
 async function submitRecoveryPassword() {
@@ -11632,14 +11760,14 @@ async function loadChestState() {
     const fill  = document.getElementById('chest-prog-fill');
     const label = document.getElementById('chest-prog-label');
     const btn   = document.getElementById('chest-btn');
-    const icon  = document.getElementById('chest-icon');
     const desc  = document.getElementById('chest-desc');
 
     if (fill)  fill.style.width = (done / 5 * 100) + '%';
     if (label) label.textContent = alreadyGot ? 'Sudah diklaim minggu ini — kembali Senin depan' : `${done} / 5 pencarian`;
     if (btn) { btn.disabled = !unlocked; btn.style.opacity = unlocked ? '1' : '.4'; btn.style.cursor = unlocked ? 'pointer' : 'not-allowed'; }
-    if (icon) icon.textContent = alreadyGot ? '✅' : unlocked ? '🎁' : '🔒';
-    if (desc) desc.textContent = alreadyGot ? 'Sudah diklaim minggu ini — kembali Senin depan 🎉' : unlocked ? 'Peti terbuka! Klik untuk klaim hadiahmu.' : 'Selesaikan 5 pencarian minggu ini untuk membuka hadiah kredit';
+    const iconWrap = document.getElementById('chest-icon-wrap');
+    if (iconWrap) iconWrap.style.color = alreadyGot ? '#10B981' : unlocked ? '#fbbf24' : 'rgba(255,255,255,.45)';
+    if (desc) desc.textContent = alreadyGot ? 'Sudah diklaim minggu ini — kembali Senin depan' : unlocked ? 'Peti terbuka! Klik untuk klaim hadiahmu.' : 'Selesaikan 5 pencarian minggu ini untuk membuka hadiah kredit';
   } catch(e) { console.warn('loadChestState', e); }
 }
 
@@ -11650,14 +11778,12 @@ async function claimChest() {
   try {
     const { data, error } = await _supabase.rpc('claim_weekly_chest');
     const modal     = document.getElementById('chest-modal');
-    const modalIcon = document.getElementById('chest-modal-icon');
     const modalTitle= document.getElementById('chest-modal-title');
     const modalMsg  = document.getElementById('chest-modal-msg');
     if (error || !data) throw new Error(error?.message || 'Gagal');
     if (data.error === 'already_claimed') { if (btn) btn.textContent = 'Sudah'; return; }
     if (data.needed) { if (btn) { btn.disabled = true; btn.style.opacity = '.4'; btn.textContent = 'Buka'; } return; }
     const reward = data.reward;
-    if (modalIcon) modalIcon.textContent = reward >= 10 ? '🏆' : reward >= 5 ? '💎' : '🎁';
     if (modalTitle) modalTitle.textContent = `+${reward} Kredit!`;
     if (modalMsg)  modalMsg.textContent = `Kamu mendapat ${reward} kredit dari Peti Mingguan. Saldo baru: ${data.balance} kredit.`;
     if (modal) modal.style.display = 'flex';
@@ -11692,9 +11818,11 @@ function renderCreditUI() {
   // Topbar pill
   const pillVal = document.getElementById('dash-credit-pill-val');
   if (pillVal) pillVal.textContent = unlimited ? '∞' : bal;
-  // Card balance
+  // Card balance (legacy dashboard card removed)
   const cardNum = document.getElementById('hcc-balance-num');
   if (cardNum) cardNum.textContent = unlimited ? '∞' : bal;
+  const crNum = document.getElementById('cr-balance-num');
+  if (crNum) crNum.textContent = unlimited ? '∞' : bal;
   // Progress bar — fetch today's completions from search_completions table
   if (_supabase && currentUser) {
     const today = new Date().toISOString().slice(0, 10);
@@ -11710,15 +11838,18 @@ function renderCreditUI() {
         const pct  = Math.min(100, Math.round((done / max) * 100));
         const fill = document.getElementById('hcc-prog-fill');
         const lbl  = document.getElementById('hcc-prog-label');
+        const crFill = document.getElementById('cr-prog-fill');
+        const crLbl  = document.getElementById('cr-prog-text');
         if (fill) fill.style.width = pct + '%';
         if (lbl)  lbl.textContent  = `${done}/${max} pencarian hari ini`;
+        if (crFill) crFill.style.width = pct + '%';
+        if (crLbl)  crLbl.textContent  = `${done}/10 pencarian`;
       });
   }
 }
 
 function scrollToCreditCard() {
-  const el = document.getElementById('dash-credit-card');
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  switchDashView('credits');
 }
 
 // ── Monthly free credits: renewal on signup anniversary (not calendar month) ──
@@ -11802,7 +11933,7 @@ async function _renderMonthlyCreditSchedule() {
 
 // ── CREDITS PAGE ─────────────────────────────────────────
 async function creditsInit() {
-  // Update sidebar badge
+  loadChestState();
   const badge = document.getElementById('dash-nav-credit-badge');
   if (badge && _creditBalance !== null) {
     badge.textContent = _creditBalance;
@@ -12244,11 +12375,13 @@ function switchDashView(view) {
   if (view === 'dashboard' && typeof hbdInit     === 'function') hbdInit();
   if (view === 'ai'        && typeof mlsInit     === 'function') mlsInit();
   if (view === 'mytoko'    && typeof myTokoInit  === 'function') myTokoInit();
-  if (view === 'alerts'    && typeof alrInit      === 'function' && allProducts.length) alrInit();
+  if (view === 'alerts'    && typeof alrInit      === 'function') alrInit();
   if (view === 'credits'   && typeof creditsInit  === 'function') creditsInit();
   if (view === 'cohort'    && typeof cohortInit   === 'function') cohortInit();
   mbnSync(view);
-  dashboardTourHandleViewChange(view);
+  nuRefreshView(view);
+  nuScheduleHint(view);
+  // Legacy tour disabled — nuScheduleHint replaces dashboard onboarding
   // For non-dashboard views when in student/leader preview, update nav chrome
   if (isPlatformAdmin() && _adminViewMode !== 'admin' && view !== 'dashboard' && view !== 'admin') {
     _hbdApplyLeaderMode(_adminViewMode === 'leader');
@@ -14973,8 +15106,34 @@ function dscUpdateDualRange(key) {
   const maxLbl = document.getElementById(maxLblId);
   if (minLbl) minLbl.textContent = _dscFmt(lo);
   if (maxLbl) maxLbl.textContent = hi >= parseFloat(maxEl.max) ? _dscFmt(hi) + '+' : _dscFmt(hi);
-  dscApplyFilters();
 }
+
+// Clicking anywhere on a dual-range track jumps the nearer thumb to that spot.
+// The range inputs have pointer-events:none (only thumbs are interactive), so a
+// click on the track lands on the wrapper/track/fill — never an <input>.
+function dscRangeTrackJump(e, key) {
+  if (e.target && e.target.tagName === 'INPUT') return; // let the thumb handle its own drag
+  const wrap = e.currentTarget;
+  const minEl = document.getElementById('dsc-' + key + '-min');
+  const maxEl = document.getElementById('dsc-' + key + '-max');
+  if (!minEl || !maxEl) return;
+  const rect = wrap.getBoundingClientRect();
+  if (!rect.width) return;
+  const pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+  const min = parseFloat(minEl.min), max = parseFloat(minEl.max), step = parseFloat(minEl.step) || 1;
+  let val = Math.round((min + pct * (max - min)) / step) * step;
+  const lo = parseFloat(minEl.value), hi = parseFloat(maxEl.value);
+  if (Math.abs(val - lo) <= Math.abs(val - hi)) minEl.value = Math.min(val, hi);
+  else maxEl.value = Math.max(val, lo);
+  dscUpdateDualRange(key);
+}
+
+(function dscWireRangeTracks() {
+  [['dsc-price-range', 'price'], ['dsc-omset-range', 'omset']].forEach(function (pair) {
+    const el = document.getElementById(pair[0]);
+    if (el) el.addEventListener('pointerdown', function (e) { dscRangeTrackJump(e, pair[1]); });
+  });
+})();
 
 // Competition from seller concentration within keyword
 function _dscCalcComp(keyword) {
@@ -15082,6 +15241,84 @@ let _dscCurrentCatFilters = null; // full selected-cat array for multi-cat serve
 let _dscViewMode    = 'card';
 const DSC_FETCH  = 60;
 
+// Applied sidebar filters — only take effect after "Terapkan Filter"
+let _dscApplied = { minSkor: 0, priceMin: 0, priceMax: Infinity, omsetMin: 0, omsetMax: Infinity, cats: null };
+
+function _dscSnapAppliedFromUI() {
+  const priceMaxRaw = parseFloat(document.getElementById('dsc-price-max')?.value) || 500000;
+  const omsetMaxRaw = parseFloat(document.getElementById('dsc-omset-max')?.value) || 500000000;
+  _dscApplied = {
+    minSkor:  parseInt(document.getElementById('dsc-skor-min')?.value) || 0,
+    priceMin: parseFloat(document.getElementById('dsc-price-min')?.value) || 0,
+    priceMax: priceMaxRaw >= 500000 ? Infinity : priceMaxRaw,
+    omsetMin: parseFloat(document.getElementById('dsc-omset-min')?.value) || 0,
+    omsetMax: omsetMaxRaw >= 500000000 ? Infinity : omsetMaxRaw,
+    cats: _dscSelectedCats(),
+  };
+}
+
+function _dscNormStr(s) {
+  return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s]/g, ' ');
+}
+
+function _dscLevenshtein(a, b) {
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = i;
+    for (let j = 1; j <= b.length; j++) {
+      const val = a[i - 1] === b[j - 1] ? row[j - 1] : Math.min(row[j] + 1, prev + 1, row[j - 1] + 1);
+      row[j - 1] = prev;
+      prev = val;
+    }
+    row[b.length] = prev;
+  }
+  return row[b.length];
+}
+
+function _dscTokenMatch(token, hay) {
+  if (!token) return true;
+  if (hay.includes(token)) return true;
+  const words = hay.split(/\s+/).filter(w => w.length >= 3);
+  return words.some(w => {
+    if (w.includes(token) || token.includes(w)) return true;
+    if (token.length >= 4 && w.length >= 4 && _dscLevenshtein(token, w) <= 1) return true;
+    return false;
+  });
+}
+
+function _dscSearchScore(product, query) {
+  const q = _dscNormStr(query.trim());
+  if (!q) return 1;
+  const name = _dscNormStr(product.product_name);
+  const store = _dscNormStr(product.store_name);
+  const cat = _dscNormStr(product.category);
+  const hay = `${name} ${store} ${cat}`;
+  if (name.includes(q) || hay.includes(q)) return 1000 - name.indexOf(q);
+  const tokens = q.split(/\s+/).filter(Boolean);
+  if (!tokens.length) return 0;
+  let score = 0;
+  tokens.forEach((tok, i) => {
+    if (name.includes(tok)) score += 120 - i * 5;
+    else if (_dscTokenMatch(tok, name)) score += 80 - i * 5;
+    else if (_dscTokenMatch(tok, hay)) score += 40 - i * 3;
+  });
+  if (score > 0 && tokens.every(t => _dscTokenMatch(t, hay))) score += 30;
+  return score;
+}
+
+async function dscFetchTotalCount() {
+  if (!_supabase) return;
+  try {
+    const { count } = await _supabase.from('listings').select('*', { count: 'exact', head: true }).gt('total_sold', 0);
+    if (count != null) {
+      const el = document.getElementById('dsc-stat-listings');
+      if (el) el.textContent = count.toLocaleString('id-ID');
+    }
+  } catch (_) {}
+}
+
 async function dscFetchPage(offset, filters = {}) {
   if (!_supabase) return [];
   const FIELDS = 'item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews';
@@ -15099,7 +15336,11 @@ async function dscFetchPage(offset, filters = {}) {
   }
   if (filters.priceMin) q = q.gte('price', filters.priceMin);
   if (filters.priceMax && filters.priceMax < 500000) q = q.lte('price', filters.priceMax);
-  if (filters.search)   q = q.ilike('product_name', `%${filters.search}%`);
+  if (filters.search) {
+    const toks = filters.search.trim().split(/\s+/).filter(Boolean);
+    if (toks.length === 1) q = q.ilike('product_name', `%${toks[0]}%`);
+    else if (toks.length > 1) q = q.or(toks.map(t => `product_name.ilike.%${t}%`).join(','));
+  }
 
   const { data, error } = await q;
   if (error) {
@@ -15116,7 +15357,11 @@ async function dscFetchPage(offset, filters = {}) {
     }
     if (filters.priceMin) qf = qf.gte('price', filters.priceMin);
     if (filters.priceMax && filters.priceMax < 500000) qf = qf.lte('price', filters.priceMax);
-    if (filters.search)   qf = qf.ilike('product_name', `%${filters.search}%`);
+    if (filters.search) {
+      const toks = filters.search.trim().split(/\s+/).filter(Boolean);
+      if (toks.length === 1) qf = qf.ilike('product_name', `%${toks[0]}%`);
+      else if (toks.length > 1) qf = qf.or(toks.map(t => `product_name.ilike.%${t}%`).join(','));
+    }
     const fb = await qf;
     return fb.data || [];
   }
@@ -15410,8 +15655,10 @@ function _dscCurrentFilters() {
 }
 
 function dscInit() {
+  _dscSnapAppliedFromUI();
   dscUpdateDualRange('price');
   dscUpdateDualRange('omset');
+  dscFetchTotalCount();
   // Pre-populate all known categories immediately so filters are usable before data loads
   dscBuildCatChecks(['Alat Tulis','Bayi & Anak','Dapur','Elektronik','Fashion','Hewan Peliharaan',
     'Hobi & Kerajinan','HP & Gadget','Kamar Mandi','Keamanan','Kecantikan','Kesehatan',
@@ -15421,20 +15668,16 @@ function dscInit() {
 
 function dscApplyFilters(resetPage = true) {
   if (!_dscLoaded) return;
-  const q        = (document.getElementById('dsc-search')?.value || '').toLowerCase();
-  const selectedCats = _dscSelectedCats(); // null = all, array = filter to these
-  const priceMin = parseFloat(document.getElementById('dsc-price-min')?.value) || 0;
-  const priceMaxRaw = parseFloat(document.getElementById('dsc-price-max')?.value) || 500000;
-  const priceMax = priceMaxRaw >= 500000 ? Infinity : priceMaxRaw;
-  const omsetMin = parseFloat(document.getElementById('dsc-omset-min')?.value) || 0;
-  const omsetMaxRaw = parseFloat(document.getElementById('dsc-omset-max')?.value) || 500000000;
-  const omsetMax = omsetMaxRaw >= 500000000 ? Infinity : omsetMaxRaw;
+  const q        = (document.getElementById('dsc-search')?.value || '').trim();
+  const selectedCats = _dscApplied.cats;
+  const priceMin = _dscApplied.priceMin;
+  const priceMax = _dscApplied.priceMax;
+  const omsetMin = _dscApplied.omsetMin;
+  const omsetMax = _dscApplied.omsetMax;
   const sortVal  = document.getElementById('dsc-sort')?.value || 'omset-desc';
 
-  // Include single-category selection in server key so DB re-fetch targets that category
-  // Any non-null selectedCats (partial selection) triggers a server re-fetch filtered by those cats
   const srvCatKey = selectedCats ? selectedCats.slice().sort().join('|') : '';
-  const srvKey = JSON.stringify({ priceMin, priceMax: priceMaxRaw, search: q, cat: srvCatKey });
+  const srvKey = JSON.stringify({ priceMin, priceMax: priceMax === Infinity ? 500000 : priceMax, search: q, cat: srvCatKey });
   if (_dscLastSrvFilters !== null && _dscLastSrvFilters !== srvKey) {
     _dscAllListings = [];
     _dscOffset = 0;
@@ -15454,7 +15697,7 @@ function dscApplyFilters(resetPage = true) {
   }
   _dscLastSrvFilters = srvKey;
 
-  const minSkor = parseInt(document.getElementById('dsc-skor-min')?.value) || 0;
+  const minSkor = _dscApplied.minSkor;
 
   // Pre-compute scores when needed for filtering or sorting
   const needsScore = sortVal.startsWith('score') || minSkor > 0;
@@ -15465,7 +15708,6 @@ function dscApplyFilters(resetPage = true) {
   const _scoreOf = p => calcListingScore(p, _kwMapForSort[p.keyword||'__'], _dscListingTrendPct(p), _dscKwTrendMap[p.keyword]??null).total;
 
   let list = _dscAllListings.filter(p => {
-    if (q && !(p.product_name||'').toLowerCase().includes(q) && !(p.store_name||'').toLowerCase().includes(q) && !(p.category||'').toLowerCase().includes(q)) return false;
     if (selectedCats && !selectedCats.includes(p.category)) return false;
     const price = p.price || 0;
     if (price < priceMin || price > priceMax) return false;
@@ -15474,6 +15716,14 @@ function dscApplyFilters(resetPage = true) {
     if (minSkor > 0 && _scoreOf(p) < minSkor) return false;
     return true;
   });
+
+  if (q) {
+    list = list
+      .map(p => ({ p, _searchScore: _dscSearchScore(p, q) }))
+      .filter(x => x._searchScore > 0)
+      .sort((a, b) => b._searchScore - a._searchScore)
+      .map(x => x.p);
+  }
 
   const [sf, sd] = sortVal.split('-');
   list.sort((a, b) => {
@@ -15656,6 +15906,7 @@ function dscOpenDeepDive(key) {
   };
   // Reset keyword context so stale peer data doesn't bleed into new product's Ringkasan
   _ddKwRows = []; _ddKwListing = null; _ddKwTotal = 0; _analisa_pending = false; _tren_pending = false;
+  _ddCurrentP = p;
 
   // Switch view first so canvases are visible when Chart.js measures them
   switchDashView('deepdive');
@@ -15669,7 +15920,8 @@ function dscOpenDeepDive(key) {
     ddRender(p);
     ddLoadKeywordContext(listing);
     ddLoadTrendHistory(listing);
-    dashboardTourHandleProductOpen();
+    nuRefreshView('deepdive');
+    nuScheduleHint('deepdive');
   }, 0);
   void cohortLogActivity('deepdive_open', { item_id: listing.item_id, shop_id: listing.shop_id, product_name: listing.product_name || '' });
   /* WS-D: badge for first deep dive (idempotent) */
@@ -17432,6 +17684,7 @@ function dscGoPage(n) {
 }
 
 function dscTerapkanFilter() {
+  _dscSnapAppliedFromUI();
   // Force a fresh server re-fetch regardless of current load state
   _dscAllListings = [];
   _dscOffset = 0;
@@ -17458,9 +17711,10 @@ function dscResetFilters() {
   if (g('dsc-omset-max'))  g('dsc-omset-max').value  = 500000000;
   if (g('dsc-skor-min'))   { g('dsc-skor-min').value = 0; const lbl = g('dsc-skor-min-lbl'); if (lbl) lbl.textContent = '0'; }
   if (g('dsc-sort')) g('dsc-sort').value = 'omset-desc';
+  _dscSnapAppliedFromUI();
   dscUpdateDualRange('price');
   dscUpdateDualRange('omset');
-  dscApplyFilters();
+  dscTerapkanFilter();
 }
 
 // ── TRACKED PRODUCTS ───────────────────────────────────────────
@@ -17591,6 +17845,8 @@ function ddToggleTrack() {
       if (typeof trkInit === 'function') trkInit();
       // Refresh MLS dropdown so the new product appears
       if (typeof mlsInit === 'function') mlsInit();
+      nuHintMark('deepdive_track');
+      switchDashView('tracker');
     },
     'tracker'
   );
@@ -18433,6 +18689,7 @@ async function trkInit() {
   const grid = document.getElementById('trk-prod-grid');
 
   if (!tracked.length) {
+    nuRefreshView('tracker');
     set('trk-total', '0 produk');
     set('trk-total-sub', '');
     set('trk-sales', '—');
@@ -18441,15 +18698,16 @@ async function trkInit() {
     set('trk-growth-sub', '');
     set('trk-avgprice', '—');
     set('trk-avgprice-sub', '');
-    if (grid) grid.innerHTML = `
-      <div style="grid-column:1/-1;text-align:center;padding:48px 20px;color:#9CA3AF;font-size:.82rem;">
-        Belum ada produk dilacak.<br>
-        <span style="font-size:.75rem;">Buka produk di Discover, lalu klik tombol <strong style="color:#E8442A;">Lacak Produk</strong>.</span>
-      </div>`;
+    if (grid) grid.innerHTML = '';
     document.getElementById('trk-price-tbody').innerHTML = '';
     if (_trkChartWeekly) { _trkChartWeekly.destroy(); _trkChartWeekly = null; }
     return;
   }
+
+  const trkEmpty = document.getElementById('trk-empty-state');
+  const trkMain  = document.getElementById('trk-main-content');
+  if (trkEmpty) trkEmpty.style.display = 'none';
+  if (trkMain)  trkMain.style.display  = '';
 
   // Fetch last 2 scrape rows for each tracked product
   const enriched = await Promise.all(tracked.map(async t => {
@@ -18629,38 +18887,20 @@ async function hbdInit() {
   const tracked = trkLoad();
 
   if (!tracked.length) {
-    document.getElementById('hbd-s1').textContent = '0';
-    document.getElementById('hbd-s1-sub').textContent = 'produk terpantau';
-    document.getElementById('hbd-s2').textContent = '—';
-    document.getElementById('hbd-s2-sub').textContent = 'belum ada data';
-    document.getElementById('hbd-s3').textContent = '—';
-    document.getElementById('hbd-s3-sub').textContent = 'tambahkan produk dulu';
-    document.getElementById('hbd-s4').textContent = '—';
-    document.getElementById('hbd-s4-sub').textContent = '—';
-    document.getElementById('hbd-subtitle').textContent = 'Belum ada produk terpantau. Cari produk di Discover dan lacak yang menarik.';
-    document.getElementById('hbd-ai-list').innerHTML = '<div style="color:#9CA3AF;font-size:.78rem;padding:12px 0;">Lacak produk terlebih dahulu untuk mendapatkan insight.</div>';
-    document.getElementById('hbd-activity-list').innerHTML = '<div style="color:#9CA3AF;font-size:.75rem;">Belum ada aktivitas.</div>';
-    document.getElementById('hbd-opp-list').innerHTML = '<div style="color:#9CA3AF;font-size:.75rem;">Belum ada peluang terdeteksi.</div>';
-    document.getElementById('hbd-tip-text').textContent = 'Mulai dengan melacak 3-5 produk dari halaman Discover untuk mendapatkan ringkasan performa di sini.';
-    // Sample chart from top allProducts so the chart area isn't blank
-    if (allProducts.length) {
-      const top5 = [...allProducts].sort((a,b) => (b.score||0) - (a.score||0)).slice(0,5);
-      // Use newUnits/total_sold as delta proxy so bars are non-empty in sample view
-      const sampleProds = top5.map(p => ({
-        name:  (p.keyword || p.category || '').split(' ').slice(0,3).join(' ') || 'Produk',
-        delta: p.newUnits || p.total_sold || p.medianPrice || 1,
-        price: p.medianPrice || 0,
-        sold:  p.newUnits    || 0,
-      }));
-      _hbdBuildChartFromTracked(sampleProds);
-      const legendEl = document.getElementById('hbd-legend');
-      if (legendEl) legendEl.innerHTML = '<span style="font-size:.6rem;color:#9CA3AF;font-style:italic;">Contoh: 5 produk teratas di pasar</span>';
-    }
+    document.getElementById('hbd-subtitle').textContent = 'Selamat datang — mulai riset produk pertamamu hari ini.';
+    nuRefreshView('dashboard');
     void hbdRenderCohortDigest();
     if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(() => _hbdApplyLeaderMode(_effectiveLeaderMode()));
     else { void hbdRenderMentorDigest(); _hbdApplyLeaderMode(_effectiveLeaderMode()); }
     return;
   }
+
+  const nuPanel = document.getElementById('hbd-new-user-panel');
+  if (nuPanel) nuPanel.style.display = 'none';
+  ['hbd-stats-row','hbd-product-opp-col','hbd-trending-section'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = '';
+  });
 
   document.getElementById('hbd-subtitle').textContent = 'Berikut ringkasan produk kamu hari ini.';
 
@@ -18807,9 +19047,9 @@ async function hbdInit() {
     'Produk dengan delta penjualan tinggi adalah kandidat bagus untuk mulai berjualan.',
     'Coba gunakan Kalkulator Profit di halaman Mulai Berjualan untuk menghitung kelayakan.',
   ];
-  document.getElementById('hbd-tip-text').textContent = tips[Math.floor(Math.random()*tips.length)];
+  void tips;
 
-  // Build chart with tracked products
+  // Build chart with tracked products (dashboard chart section hidden)
   const prods = enriched.slice(0,6).map(p => ({
     name: (p.product_name||p.keyword||'').split(' ').slice(0,3).join(' '),
     delta: p.delta || 0,
@@ -19151,10 +19391,14 @@ function mlsInit() {
   pick.innerHTML = '<option value="">-- Pilih produk dilacak / tersimpan --</option>';
   if (!allPicks.length) {
     pick.style.display = 'none';
-    if (noTrk) noTrk.style.display = 'block';
+    if (noTrk) noTrk.style.display = 'none';
+    nuRefreshView('ai');
     return;
   }
-  if (noTrk) noTrk.style.display = 'none';
+  const mlsEmpty = document.getElementById('mls-empty-state');
+  const mlsMain  = document.getElementById('mls-main-content');
+  if (mlsEmpty) mlsEmpty.style.display = 'none';
+  if (mlsMain)  mlsMain.style.display  = '';
   pick.style.display = 'block';
   allPicks.forEach(t => {
     const name = (t.product_name||t.keyword||'Produk').split(' ').slice(0,5).join(' ');
@@ -19282,17 +19526,27 @@ async function mlsSelectProduct(val) {
     set('mls-p-dom', dom3 + '%');
     set('mls-p-sig', sigSellers.length + ' penjual');
 
-    // Build 10-thumbnail row from top competitors
+    // Build thumbnails from similar competitors only (same keyword + name overlap)
     const thumbRow = document.getElementById('mls-thumb-row');
     if (thumbRow) {
-      const allThumbs = [t, ...rows.filter(r => r.image_url && r.image_url !== t.image_url).slice(0,9)];
+      const baseName = t.product_name || '';
+      const similar = rows
+        .filter(r => r.image_url && r.image_url !== t.image_url)
+        .map(r => ({ r, sim: _mlsNameSimilarity(baseName, r.product_name) }))
+        .filter(x => x.sim >= 0.2)
+        .sort((a, b) => b.sim - a.sim)
+        .map(x => x.r);
+      const fallback = rows.filter(r => r.image_url && r.image_url !== t.image_url);
+      const related = (similar.length ? similar : fallback).slice(0, 9);
+      const allThumbs = [t, ...related];
       thumbRow.innerHTML = allThumbs.map((r, i) => `
         <div class="mls-thumb${i===0?' active':''}" onclick="mlsSetThumb(this,'${(r.image_url||'').replace(/'/g,"\\'")}')">
           <img src="${r.image_url||''}" onerror="this.style.opacity='.3'" alt="">
         </div>`).join('');
-      // Populate swipe image array
       mlsSetImages(allThumbs.map(r => r.image_url).filter(Boolean));
     }
+
+    mlsRenderMarketRec(top5, mPrice);
 
     // Populate Ringkasan bar
     const kompScore = rows.length > 0 ? Math.min(100, Math.round(Math.log10(Math.max(1, rows.length)) / 2.7 * 100)) : 0;
@@ -19519,6 +19773,10 @@ function _alrRng(seed) {
 }
 
 function alrInit() {
+  if (!userHasTrackedProducts()) {
+    nuRefreshView('alerts');
+    return;
+  }
   if (!allProducts || !allProducts.length) return;
   const rng = _alrRng(99991);
 
@@ -22420,7 +22678,6 @@ let _dashChartInstance = null;
 
 async function loadDashboardData() {
   if (!_supabase || !currentUser) return;
-  loadChestState();
   const saved = allProducts.filter(p => savedProducts.has(p.id));
   if (!saved.length) return;
 
@@ -24306,7 +24563,172 @@ function extLinkCopyCode() {
 }
 
 // ════════════════════════════════════════════════════════════
-//  GUIDED TOUR
+//  NEW-USER EMPTY STATES & CONTEXTUAL HINTS
+// ════════════════════════════════════════════════════════════
+const NU_HINT_KEY = 'larisid_hints_v1';
+let _nuHintTimer = null;
+let _nuHintCurrent = null;
+
+function userHasTrackedProducts() {
+  try { return trkLoad().length > 0; } catch { return false; }
+}
+
+function userHasAnyProduct() {
+  return userHasTrackedProducts() || (savedProducts && savedProducts.size > 0);
+}
+
+function _nuHints() {
+  try { return JSON.parse(localStorage.getItem(NU_HINT_KEY) || '{}'); } catch { return {}; }
+}
+
+function nuHintMark(key) {
+  const h = _nuHints(); h[key] = true;
+  try { localStorage.setItem(NU_HINT_KEY, JSON.stringify(h)); } catch (_) {}
+}
+
+function nuHintSeen(key) {
+  return !!_nuHints()[key];
+}
+
+function nuHintDismiss(markKey) {
+  if (markKey || _nuHintCurrent) nuHintMark(markKey || _nuHintCurrent);
+  _nuHintCurrent = null;
+  const ov = document.getElementById('hint-overlay');
+  if (ov) ov.classList.remove('active');
+}
+
+function nuHintShow(key, opts) {
+  if (nuHintSeen(key)) return;
+  _nuHintCurrent = key;
+  const title = document.getElementById('hint-title');
+  const body  = document.getElementById('hint-body');
+  const cta   = document.getElementById('hint-cta-btn');
+  if (title) title.textContent = opts.title || '';
+  if (body)  body.textContent  = opts.body  || '';
+  if (cta) {
+    cta.textContent = opts.cta || 'Lanjut';
+    cta.onclick = () => {
+      nuHintDismiss(key);
+      if (typeof opts.onCta === 'function') opts.onCta();
+    };
+  }
+  const ov = document.getElementById('hint-overlay');
+  if (ov) ov.classList.add('active');
+}
+
+function nuScheduleHint(view) {
+  if (!currentUser) return;
+  clearTimeout(_nuHintTimer);
+  const delays = { dashboard: 3000, discover: 3000, deepdive: 5000 };
+  const delay = delays[view];
+  if (!delay) return;
+  _nuHintTimer = setTimeout(() => {
+    if (view === 'dashboard' && !userHasAnyProduct() && !nuHintSeen('dashboard')) {
+      nuHintShow('dashboard', {
+        title: 'Mulai dengan mencari produk',
+        body: 'Temukan peluang jualan di Discover — data nyata dari 60.000+ listing Shopee.',
+        cta: 'Buka Discover',
+        onCta: () => switchDashView('discover'),
+      });
+    } else if (view === 'discover' && !nuHintSeen('discover')) {
+      nuHintShow('discover', {
+        title: 'Pilih produk untuk melihat lebih dalam',
+        body: 'Klik salah satu kartu produk untuk membuka Deep Dive — analisis lengkap, kompetitor, dan skor kelayakan.',
+        cta: 'Mengerti',
+        onCta: () => {},
+      });
+    } else if (view === 'deepdive' && _ddCurrentP && !trkIsTracked(_ddCurrentP._listing || _ddKwListing) && !nuHintSeen('deepdive_track')) {
+      nuHintShow('deepdive_track', {
+        title: 'Mulai lacak produk ini',
+        body: 'Klik Lacak Produk untuk memantau perubahan harga dan penjualan mingguan di Tracker.',
+        cta: 'Lacak Produk',
+        onCta: () => { const btn = document.getElementById('dd-track-btn'); if (btn) btn.click(); },
+      });
+    }
+  }, delay);
+}
+
+function nuRefreshView(view) {
+  const hasTracked = userHasTrackedProducts();
+  const hasAny = userHasAnyProduct();
+
+  const hbdPanel = document.getElementById('hbd-new-user-panel');
+  const hbdStats = document.getElementById('hbd-stats-row');
+  const hbdOpp   = document.getElementById('hbd-product-opp-col');
+  const hbdTrend = document.getElementById('hbd-trending-section');
+  const hbdStrip = document.getElementById('hbd-tracked-strip');
+  if (view === 'dashboard') {
+    const empty = !hasTracked;
+    if (hbdPanel) hbdPanel.style.display = empty ? '' : 'none';
+    if (hbdStats) hbdStats.style.display = empty ? 'none' : '';
+    if (hbdOpp)   hbdOpp.style.display   = empty ? 'none' : '';
+    if (hbdTrend) hbdTrend.style.display  = empty ? 'none' : '';
+    if (hbdStrip) hbdStrip.style.display  = empty ? 'none' : hbdStrip.style.display;
+  }
+
+  const ddEmpty = document.getElementById('dd-empty-state');
+  const ddMain  = document.getElementById('dd-main-content');
+  if (view === 'deepdive') {
+    const noProd = !_ddCurrentP;
+    if (ddEmpty) ddEmpty.style.display = noProd ? '' : 'none';
+    if (ddMain)  ddMain.style.display  = noProd ? 'none' : '';
+  }
+
+  const trkEmpty = document.getElementById('trk-empty-state');
+  const trkMain  = document.getElementById('trk-main-content');
+  if (view === 'tracker') {
+    const empty = !hasTracked;
+    if (trkEmpty) trkEmpty.style.display = empty ? '' : 'none';
+    if (trkMain)  trkMain.style.display  = empty ? 'none' : '';
+  }
+
+  const mlsEmpty = document.getElementById('mls-empty-state');
+  const mlsMain  = document.getElementById('mls-main-content');
+  if (view === 'ai') {
+    const empty = !hasAny;
+    if (mlsEmpty) mlsEmpty.style.display = empty ? '' : 'none';
+    if (mlsMain)  mlsMain.style.display  = empty ? 'none' : '';
+  }
+
+  const alrEmpty = document.getElementById('alr-empty-state');
+  const alrMain  = document.getElementById('alr-main-content');
+  if (view === 'alerts') {
+    const empty = !hasTracked;
+    if (alrEmpty) alrEmpty.style.display = empty ? '' : 'none';
+    if (alrMain)  alrMain.style.display  = empty ? 'none' : '';
+  }
+}
+
+function _mlsNameSimilarity(a, b) {
+  const ta = new Set(_dscNormStr(a).split(/\s+/).filter(w => w.length > 2));
+  const tb = new Set(_dscNormStr(b).split(/\s+/).filter(w => w.length > 2));
+  if (!ta.size || !tb.size) return 0;
+  let shared = 0;
+  ta.forEach(w => { if (tb.has(w)) shared++; });
+  return shared / Math.max(ta.size, tb.size);
+}
+
+function _mlsExtractVariant(name) {
+  const colors = ['hitam','putih','merah','biru','hijau','kuning','pink','abu','coklat','navy','grey','gray','silver','gold'];
+  const lower = (name || '').toLowerCase();
+  const found = colors.filter(c => lower.includes(c));
+  const sizeMatch = lower.match(/\b(xxl|xl|l|m|s|xs|\d+\s*(cm|ml|gr|kg|inch|"))\b/i);
+  return [...found, sizeMatch ? sizeMatch[0] : ''].filter(Boolean).join(', ') || 'Lihat variasi populer di kompetitor';
+}
+
+function mlsRenderMarketRec(top5, mPrice) {
+  const recEl = document.getElementById('mls-ai-rec');
+  if (!recEl || !top5 || !top5.length) { if (recEl) recEl.style.display = 'none'; return; }
+  const best = top5[0];
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('mls-rec-product', (best.product_name || '—').slice(0, 60));
+  set('mls-rec-price', mPrice ? 'Rp ' + Math.round(mPrice).toLocaleString('id-ID') : (best.price ? 'Rp ' + Math.round(best.price).toLocaleString('id-ID') : '—'));
+  set('mls-rec-variant', _mlsExtractVariant(best.product_name));
+  recEl.style.display = '';
+}
+
+// ════════════════════════════════════════════════════════════
+//  GUIDED TOUR (legacy — disabled for logged-in users)
 // ════════════════════════════════════════════════════════════
 const TOUR_STEPS = [
   {
@@ -24426,6 +24848,7 @@ const DASHBOARD_TOUR_STEPS = [
 ];
 
 function startTour() {
+  return; /* replaced by nuScheduleHint for logged-in users; landing tour disabled */
   if (localStorage.getItem('larisid_tour_v1')) return;
   if (currentUser) return; // returning logged-in users skip it
   // Wait for at least one product card to be rendered
@@ -24539,6 +24962,7 @@ function endTour() {
 }
 
 function startDashboardOnboarding(opts) {
+  return; /* replaced by nuScheduleHint */
   const force = !!(opts && opts.force);
   if (!currentUser) return;
   if (!force && localStorage.getItem(DASHBOARD_TOUR_KEY)) return;
@@ -25346,7 +25770,7 @@ function applyAdminViewMode(mode) {
 
   // Independent mode: same as student but cohort nav + digest hidden
   if (isIndependent) {
-    ['hbd-stats-row','hbd-tracked-strip','dash-credit-card','weekly-chest-card',
+    ['hbd-stats-row','hbd-tracked-strip',
      'hbd-product-chart-col','hbd-product-opp-col'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = '';
@@ -25372,7 +25796,7 @@ function applyAdminViewMode(mode) {
 
   // Student mode: ensure all product sections are visible
   if (isStudent) {
-    ['hbd-stats-row','hbd-tracked-strip','dash-credit-card','weekly-chest-card',
+    ['hbd-stats-row','hbd-tracked-strip',
      'hbd-product-chart-col','hbd-product-opp-col','hbd-cohort-rec-card'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = '';
@@ -25408,7 +25832,7 @@ function applyAdminViewMode(mode) {
 
 function _hbdApplyLeaderMode(isLeader) {
   // Product-focused elements to hide from leaders
-  const hideIds = ['hbd-stats-row','hbd-tracked-strip','dash-credit-card','weekly-chest-card','hbd-product-chart-col','hbd-product-opp-col'];
+  const hideIds = ['hbd-stats-row','hbd-tracked-strip','hbd-product-chart-col','hbd-product-opp-col'];
   hideIds.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = isLeader ? 'none' : '';
@@ -26951,7 +27375,29 @@ async function cohortPlannerGcalImportSelected() {
 
 </script>
 
-  <!-- ── GUIDED TOUR ── -->
+  <!-- ── CONTEXTUAL ONBOARDING HINTS ── -->
+  <div id="hint-overlay" aria-hidden="true" onclick="if(event.target===this)nuHintDismiss()">
+    <div class="hint-card" role="dialog" aria-modal="true">
+      <button type="button" class="hint-close" onclick="nuHintDismiss()" aria-label="Tutup">×</button>
+      <h3 id="hint-title"></h3>
+      <p id="hint-body"></p>
+      <div class="hint-card-actions">
+        <button type="button" class="hint-btn-ghost" id="hint-dismiss-btn" onclick="nuHintDismiss()">Nanti saja</button>
+        <button type="button" class="hint-btn-primary" id="hint-cta-btn"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chest reward modal (global) -->
+  <div id="chest-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:20px;padding:32px 28px;text-align:center;max-width:320px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+      <div id="chest-modal-title" style="font-size:1.2rem;font-weight:900;color:#1A1F3C;margin-bottom:6px;">Selamat!</div>
+      <div id="chest-modal-msg" style="font-size:.85rem;color:#6B7280;margin-bottom:20px;"></div>
+      <button onclick="document.getElementById('chest-modal').style.display='none'" style="background:#E8442A;color:#fff;border:none;border-radius:10px;padding:10px 24px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;">Tutup</button>
+    </div>
+  </div>
+
+  <!-- ── GUIDED TOUR (legacy — disabled) ── -->
   <div id="tour-overlay" aria-hidden="true">
     <div id="tour-spotlight"></div>
     <div id="tour-tooltip">
