@@ -1546,8 +1546,8 @@ body.in-dashboard .mobile-menu{display:none!important;}
 /* ── HERO — navy full-bleed ── */
 .lp-hero{background:#1A1F3C;position:relative;overflow:hidden;}
 .lp-hero::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.04) 1px,transparent 1px);background-size:28px 28px;pointer-events:none;}
-.lp-hero-inner{display:grid;grid-template-columns:1.1fr 0.9fr;gap:56px;align-items:center;padding:80px 80px 72px;max-width:1240px;margin:0 auto;position:relative;z-index:1;}
-@media(max-width:1100px){.lp-hero-inner{grid-template-columns:1fr;padding:56px 28px 48px;gap:40px;}}
+.lp-hero-inner{display:grid;grid-template-columns:1fr 1.12fr;gap:32px 48px;align-items:start;padding:28px 80px 56px;max-width:1280px;margin:0 auto;position:relative;z-index:1;}
+@media(max-width:1100px){.lp-hero-inner{grid-template-columns:1fr;padding:24px 28px 40px;gap:28px;}}
 .lp-hero-community-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.85);font-size:.74rem;font-weight:600;padding:5px 14px;border-radius:20px;margin-bottom:22px;}
 .lp-hero-community-badge span{color:#F5A623;font-weight:700;}
 .lp-hero h1{font-family:var(--font-display);font-size:3.4rem;font-weight:800;color:#fff;line-height:1.1;margin:0 0 20px;letter-spacing:-.02em;}
@@ -1666,15 +1666,12 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .lp-hero-sub{color:#6B7280;}
 .lp-hero-btn-secondary{border-color:#E8442A;color:#E8442A;background:transparent;}
 .lp-hero-btn-secondary:hover{background:#FFF0ED;border-color:#E8442A;}
-.lp-hero-badge{display:inline-flex;align-items:center;gap:6px;background:#FFF0ED;color:#E8442A;font-size:.72rem;font-weight:700;padding:5px 12px;border-radius:20px;margin-bottom:20px;border:1px solid #FECACA;}
-/* Hero photo + floating cards */
-.lp-hero-photo-wrap{position:relative;padding-top:20px;}
-/* Decorative circles behind person */
-.lp-hero-photo-wrap::before{content:'';position:absolute;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(232,68,42,.18) 0%,rgba(232,68,42,.06) 50%,transparent 75%);top:50%;left:50%;transform:translate(-50%,-42%);z-index:0;pointer-events:none;}
-.lp-hero-photo-wrap::after{content:'';position:absolute;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(245,166,35,.14) 0%,transparent 70%);top:20%;right:10%;z-index:0;pointer-events:none;}
-.lp-hero-circle-sm{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(232,68,42,.1) 0%,transparent 70%);pointer-events:none;z-index:0;}
-.lp-hero-photo{width:100%;max-width:520px;margin:0 auto;display:block;object-fit:contain;border-radius:16px;position:relative;z-index:1;}
-@media(max-width:1100px){.lp-hero-photo{max-width:100%;}}
+.lp-hero-badge{display:inline-flex;align-items:center;gap:6px;background:#FFF0ED;color:#E8442A;font-size:.72rem;font-weight:700;padding:5px 12px;border-radius:20px;margin-bottom:14px;border:1px solid #FECACA;}
+/* Hero photo */
+.lp-hero-photo-wrap{position:relative;padding:0;margin-top:-8px;}
+.lp-hero-photo-wrap::before,.lp-hero-photo-wrap::after{display:none;}
+.lp-hero-photo{width:100%;max-width:none;margin:0;display:block;object-fit:cover;object-position:center 42%;border-radius:12px;position:relative;z-index:1;aspect-ratio:1024/682;}
+@media(max-width:1100px){.lp-hero-photo{margin:0 auto;max-width:100%;object-position:center 38%;}}
 /* Extra product card floats */
 .lp-hero-float-score{bottom:20px;right:-16px;z-index:3;width:140px;text-align:center;}
 @media(max-width:1100px){.lp-hero-float-score{right:0;}}
