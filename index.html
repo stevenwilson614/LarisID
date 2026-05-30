@@ -1667,11 +1667,13 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .lp-hero-btn-secondary{border-color:#E8442A;color:#E8442A;background:transparent;}
 .lp-hero-btn-secondary:hover{background:#FFF0ED;border-color:#E8442A;}
 .lp-hero-badge{display:inline-flex;align-items:center;gap:6px;background:#FFF0ED;color:#E8442A;font-size:.72rem;font-weight:700;padding:5px 12px;border-radius:20px;margin-bottom:14px;border:1px solid #FECACA;}
-/* Hero photo */
-.lp-hero-photo-wrap{position:relative;padding:0;margin-top:-8px;}
-.lp-hero-photo-wrap::before,.lp-hero-photo-wrap::after{display:none;}
-.lp-hero-photo{width:100%;max-width:none;margin:0;display:block;object-fit:cover;object-position:center 42%;border-radius:12px;position:relative;z-index:1;aspect-ratio:1024/682;}
-@media(max-width:1100px){.lp-hero-photo{margin:0 auto;max-width:100%;object-position:center 38%;}}
+/* Hero photo + floating cards */
+.lp-hero-photo-wrap{position:relative;padding-top:20px;}
+.lp-hero-photo-wrap::before{content:'';position:absolute;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(232,68,42,.18) 0%,rgba(232,68,42,.06) 50%,transparent 75%);top:50%;left:50%;transform:translate(-50%,-42%);z-index:0;pointer-events:none;}
+.lp-hero-photo-wrap::after{content:'';position:absolute;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(245,166,35,.14) 0%,transparent 70%);top:20%;right:10%;z-index:0;pointer-events:none;}
+.lp-hero-circle-sm{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(232,68,42,.1) 0%,transparent 70%);pointer-events:none;z-index:0;}
+.lp-hero-photo{width:100%;max-width:440px;margin:0 auto;display:block;object-fit:cover;position:relative;z-index:1;}
+@media(max-width:1100px){.lp-hero-photo{max-width:100%;}}
 /* Extra product card floats */
 .lp-hero-float-score{bottom:20px;right:-16px;z-index:3;width:140px;text-align:center;}
 @media(max-width:1100px){.lp-hero-float-score{right:0;}}
@@ -3645,48 +3647,61 @@ html,body{overflow-x:hidden;max-width:100%;}
           <p style="font-size:.78rem;color:#6B7280;margin-top:8px;line-height:1.5;">Dibuat untuk mahasiswa, side hustler &amp; pemula — dipercaya seller awal dan komunitas kampus di Indonesia.</p>
         </div>
 
-        <!-- RIGHT: hero visual (composite image includes UI cards) -->
+        <!-- RIGHT: person photo + floating UI cards -->
         <div class="lp-hero-photo-wrap">
-          <img src="/images/hero-person.jpg" alt="Penjual Shopee Indonesia menggunakan LarisID" class="lp-hero-photo" width="1024" height="682" loading="eager" decoding="async">
+          <div class="lp-hero-circle-sm" style="width:100px;height:100px;top:5%;left:0%;"></div>
+          <div class="lp-hero-circle-sm" style="width:60px;height:60px;bottom:15%;left:5%;opacity:.7;"></div>
+          <img src="/images/hero-person.webp" alt="Seller Shopee Indonesia" class="lp-hero-photo" loading="eager" decoding="async">
+
+          <div class="lp-hero-float lp-hero-float-top">
+            <div class="lp-hero-float-title">Produk Potensial</div>
+            <div class="lp-hero-float-product">
+              <div class="lp-hero-float-prod-dot"></div>
+              <div>
+                <div class="lp-hero-float-prod-name">Tas Selempang Pria</div>
+                <div class="lp-hero-float-prod-tag">
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                  6.750 pencarian
+                </div>
+              </div>
+            </div>
+            <div class="lp-hero-float-product">
+              <div class="lp-hero-float-prod-dot" style="background:linear-gradient(135deg,#EEF2FF,#C7D2FE);"></div>
+              <div>
+                <div class="lp-hero-float-prod-name">Botol Minum Aesthetic</div>
+                <div class="lp-hero-float-prod-tag">
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                  6.210 pencarian
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="lp-hero-float lp-hero-float-trend">
+            <div class="lp-hero-float-trend-lbl">Tren Permintaan · 30 hari terakhir</div>
+            <div class="lp-hero-float-trend-num">+38%</div>
+            <svg viewBox="0 0 120 36" style="width:100%;height:28px;margin-top:4px;">
+              <path d="M0,30 C15,28 30,24 45,20 C60,16 75,10 90,6 C100,3 110,3 120,2" fill="none" stroke="#E8442A" stroke-width="2.5" stroke-linecap="round"/>
+              <path d="M0,30 C15,28 30,24 45,20 C60,16 75,10 90,6 C100,3 110,3 120,2 L120,36 L0,36 Z" fill="rgba(232,68,42,.08)"/>
+            </svg>
+          </div>
+
+          <div class="lp-hero-float lp-hero-float-score">
+            <div style="font-size:.55rem;color:#9CA3AF;margin-bottom:3px;">Viability Score</div>
+            <div style="font-family:var(--font-display);font-size:1.6rem;font-weight:800;color:#1A7A46;line-height:1;">87<span style="font-size:.7rem;color:#9CA3AF;font-weight:500;">/100</span></div>
+            <div style="font-size:.6rem;font-weight:700;color:#059669;margin-top:3px;display:flex;align-items:center;gap:3px;justify-content:center;">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+              Potensial
+            </div>
+          </div>
+
+          <div class="lp-hero-float-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Peluang Profit Tinggi
+          </div>
         </div>
 
       </div>
-    </div>
-
-    <!-- ── TRUST BAR ── -->
-    <div class="lp-trust-bar">
-      <div>
-        <div class="lp-trust-unis-lbl">Dipercaya oleh komunitas &amp; kampus</div>
-        <div class="lp-trust-uni-row">
-          <span class="lp-uni-chip">UGM</span>
-          <span class="lp-uni-chip">ITB Bandung</span>
-          <span class="lp-uni-chip">Telkom University</span>
-          <span style="font-size:.74rem;color:#6B7280;">dan banyak lagi</span>
-        </div>
-      </div>
-      <div class="lp-trust-stats">
-        <div class="lp-trust-stat">
-          <div class="lp-trust-stat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
-          <div class="lp-trust-stat-num">1.200+</div>
-          <div class="lp-trust-stat-lbl">Produk ditemukan</div>
-        </div>
-        <div class="lp-trust-stat">
-          <div class="lp-trust-stat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-          <div class="lp-trust-stat-num">500+</div>
-          <div class="lp-trust-stat-lbl">Student Sellers</div>
-        </div>
-        <div class="lp-trust-stat">
-          <div class="lp-trust-stat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
-          <div class="lp-trust-stat-num">50K+</div>
-          <div class="lp-trust-stat-lbl">Peluang Analisis</div>
-        </div>
-        <div class="lp-trust-stat">
-          <div class="lp-trust-stat-icon"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v6l4 2"/></svg></div>
-          <div class="lp-trust-stat-num">Real-time</div>
-          <div class="lp-trust-stat-lbl">Data Shopee</div>
-        </div>
-      </div>
-      <div class="lp-trust-note">Angka berdasarkan data publik Shopee yang diperbarui setiap minggu. LarisID masih dalam tahap Beta &mdash; kami menampilkan apa adanya, bukan menjanjikan hasil pasti.</div>
     </div>
 
     <!-- ── PROBLEM SECTION ── -->
