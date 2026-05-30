@@ -4821,6 +4821,29 @@ html,body{overflow-x:hidden;max-width:100%;}
             </div>
           </div>
 
+          <!-- Ganti Password (akun) -->
+          <div class="wsd-section" style="margin-bottom:14px;">
+            <div class="wsd-section-head">
+              <div class="wsd-section-title">Keamanan Akun</div>
+              <div class="wsd-section-sub">Ganti password kamu. Minimal 8 karakter, dan ketik dua kali biar nggak salah.</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;">
+              <div>
+                <label style="font-size:.68rem;color:#6B7280;font-weight:600;display:block;margin-bottom:4px;">Password baru</label>
+                <input id="profile-newpass-input" type="password" placeholder="Minimal 8 karakter" maxlength="72" autocomplete="new-password" style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 10px;font-size:.8rem;font-family:inherit;box-sizing:border-box;">
+              </div>
+              <div>
+                <label style="font-size:.68rem;color:#6B7280;font-weight:600;display:block;margin-bottom:4px;">Ulangi password baru</label>
+                <input id="profile-newpass2-input" type="password" placeholder="Ketik ulang" maxlength="72" autocomplete="new-password" style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 10px;font-size:.8rem;font-family:inherit;box-sizing:border-box;">
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
+              <div id="profile-pass-status" style="font-size:.72rem;color:#6B7280;"></div>
+              <button type="button" id="profile-pass-btn" onclick="changeAccountPassword()" style="border:none;border-radius:8px;padding:8px 16px;font-size:.8rem;font-weight:700;background:#E8442A;color:#fff;font-family:inherit;cursor:pointer;white-space:nowrap;">Ganti Password</button>
+            </div>
+          </div>
+          <!-- /Ganti Password -->
+
           <!-- WS-D: Lencana (platform badges) shelf -->
           <div class="wsd-section" style="margin-bottom:14px;">
             <div class="wsd-section-head">
@@ -8928,6 +8951,61 @@ async function saveProfileEdits() {
   }
 }
 
+// Ganti password (akun yang sedang login). Uses stored access token + Supabase
+// REST /auth/v1/user (PUT) — the JS-client session is intentionally not synced
+// with localStorage in this app, so we call the endpoint directly.
+async function changeAccountPassword() {
+  const statusEl = document.getElementById('profile-pass-status');
+  const btn      = document.getElementById('profile-pass-btn');
+  const p1El     = document.getElementById('profile-newpass-input');
+  const p2El     = document.getElementById('profile-newpass2-input');
+  const setStatus = (color, msg) => { if (statusEl) { statusEl.style.color = color; statusEl.textContent = msg; } };
+
+  const p1 = (p1El?.value || '');
+  const p2 = (p2El?.value || '');
+
+  if (!currentUser) { setStatus('#C0392B', 'Login diperlukan.'); return; }
+  if (!p1 || !p2)   { setStatus('#C0392B', 'Isi password baru dua kali.'); return; }
+  if (p1.length < 8){ setStatus('#C0392B', 'Password minimal 8 karakter.'); return; }
+  if (p1 !== p2)    { setStatus('#C0392B', 'Password nggak sama. Cek lagi ya.'); return; }
+
+  const stored = _authLoad();
+  let token = stored?.access_token;
+  // Refresh first if the token is near expiry, so the update doesn't 401.
+  if (stored && stored.expires_at && stored.expires_at < Date.now() + 60000 && stored.refresh_token) {
+    const fresh = await _authRefresh(stored.refresh_token);
+    if (fresh?.access_token) { _authSave(fresh); token = fresh.access_token; }
+  }
+  if (!token) { setStatus('#C0392B', 'Sesi habis. Coba login ulang.'); return; }
+
+  const origLabel = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  setStatus('#6B7280', 'Menyimpan password baru...');
+  try {
+    const r = await fetch(`${SUPA_URL}/auth/v1/user`, {
+      method: 'PUT',
+      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: p1 }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const raw = d.msg || d.message || d.error_description || d.error || '';
+      let msg = 'Gagal ganti password. Coba lagi.';
+      if (/at least|minimum|6 char|8 char/i.test(raw)) msg = 'Password terlalu pendek. Coba yang lebih panjang.';
+      else if (/same.*password|different from/i.test(raw)) msg = 'Password baru tidak boleh sama dengan yang lama.';
+      else if (raw) msg = _authErrMsg(raw);
+      throw new Error(msg);
+    }
+    if (p1El) p1El.value = '';
+    if (p2El) p2El.value = '';
+    setStatus('#1A7A46', 'Password berhasil diganti.');
+  } catch (e) {
+    setStatus('#C0392B', e.message || 'Gagal ganti password. Coba lagi.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = origLabel || 'Ganti Password'; }
+  }
+}
+
 async function profileJoinCohortFromProfile() {
   const inp = document.getElementById('profile-cohort-code-input');
   const statusEl = document.getElementById('profile-edit-status');
@@ -10283,6 +10361,75 @@ async function submitAuth() {
   _authSave(d);
   closeAuthModal();
   void _authOnSignIn(d).catch(() => {});
+}
+
+// Holds the recovery session (tokens) parsed from the email link until the
+// user sets a new password.
+let _recoverySession = null;
+
+// On load: detect Supabase recovery link (#access_token=...&type=recovery&...)
+// and show the set-new-password screen. Returns true if a recovery flow started.
+function handleRecoveryHash() {
+  let hash = window.location.hash || '';
+  if (!hash || hash.indexOf('access_token') === -1) return false;
+  const params = new URLSearchParams(hash.replace(/^#/, ''));
+  const type = params.get('type');
+  const accessToken = params.get('access_token');
+  if (type !== 'recovery' || !accessToken) return false;
+  _recoverySession = {
+    access_token: accessToken,
+    refresh_token: params.get('refresh_token') || '',
+    expires_in: parseInt(params.get('expires_in') || '3600', 10),
+  };
+  // Strip the tokens from the URL so they don't linger in history.
+  try { history.replaceState(null, '', window.location.pathname + window.location.search); } catch (_) {}
+  const ov = document.getElementById('recovery-overlay');
+  if (ov) ov.style.display = 'flex';
+  setTimeout(() => { const f = document.getElementById('recovery-pass'); if (f) f.focus(); }, 50);
+  return true;
+}
+
+async function submitRecoveryPassword() {
+  const errEl = document.getElementById('recovery-error');
+  const btn   = document.getElementById('recovery-submit-btn');
+  const p1    = (document.getElementById('recovery-pass')?.value || '');
+  const p2    = (document.getElementById('recovery-pass2')?.value || '');
+  const showErr = msg => { if (errEl) { errEl.style.color = '#e74c3c'; errEl.textContent = msg; errEl.style.display = ''; } };
+  const showOk  = msg => { if (errEl) { errEl.style.color = 'var(--green)'; errEl.textContent = msg; errEl.style.display = ''; } };
+
+  if (!_recoverySession?.access_token) { showErr('Link reset sudah tidak berlaku. Minta link baru lewat "Lupa password?".'); return; }
+  if (!p1 || !p2) { showErr('Isi password baru dua kali.'); return; }
+  if (p1.length < 8) { showErr('Password minimal 8 karakter.'); return; }
+  if (p1 !== p2) { showErr('Password nggak sama. Cek lagi ya.'); return; }
+
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    const r = await fetch(`${SUPA_URL}/auth/v1/user`, {
+      method: 'PUT',
+      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${_recoverySession.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: p1 }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const raw = d.msg || d.message || d.error_description || d.error || '';
+      if (/expired|invalid|jwt|token/i.test(raw)) throw new Error('Link reset sudah kedaluwarsa. Minta link baru lewat "Lupa password?".');
+      throw new Error(_authErrMsg(raw) || 'Gagal mengganti password. Coba lagi.');
+    }
+    // Recovery succeeded — we now have a valid session, so log the user straight in.
+    _authSave(_recoverySession);
+    _recoverySession = null;
+    showOk('Password berhasil diganti! Mengalihkan...');
+    setTimeout(() => {
+      const ov = document.getElementById('recovery-overlay');
+      if (ov) ov.style.display = 'none';
+      void _authOnSignIn(_authLoad()).catch(() => {});
+    }, 900);
+  } catch (e) {
+    showErr(e.message || 'Gagal mengganti password. Coba lagi.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = orig || 'Simpan Password Baru'; }
+  }
 }
 
 async function signInWithProvider(provider) {
@@ -24527,6 +24674,9 @@ if (document.getElementById('page-landing')?.classList.contains('active')) {
 loadData();
 captureInviteFromUrl();
 initSupabase();
+// If the user arrived via a password-recovery email link, show the
+// set-new-password screen (handles #access_token=...&type=recovery).
+try { handleRecoveryHash(); } catch (_) {}
 // Trigger discover data load after Supabase is ready
 setTimeout(() => { if (typeof dscInit === 'function') dscInit(); }, 300);
 initFreshnessBadge();
@@ -26840,6 +26990,20 @@ async function cohortPlannerGcalImportSelected() {
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     RECOVERY: SET NEW PASSWORD (from email link)
+═══════════════════════════════════════════════════ -->
+<div id="recovery-overlay" class="auth-overlay" style="display:none;z-index:1200;">
+  <div class="auth-modal" style="position:relative;">
+    <h2 id="recovery-title">Atur Password Baru</h2>
+    <p id="recovery-subtitle">Kamu lagi reset password. Masukkan password baru kamu di bawah ini.</p>
+    <input class="auth-input" id="recovery-pass" type="password" placeholder="Password baru (min. 8 karakter)" maxlength="72" autocomplete="new-password">
+    <input class="auth-input" id="recovery-pass2" type="password" placeholder="Ulangi password baru" maxlength="72" autocomplete="new-password">
+    <div class="auth-error" id="recovery-error"></div>
+    <button class="auth-submit" id="recovery-submit-btn" onclick="submitRecoveryPassword()">Simpan Password Baru</button>
   </div>
 </div>
 
