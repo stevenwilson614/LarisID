@@ -30,9 +30,8 @@ jobs:
       - name: Assemble site
         run: |
           mkdir -p _site
-          cp index.html CNAME robots.txt sitemap.xml _site/
-          cp -r images _site/
-          cp -r privacy _site/
+          cp index.html CNAME robots.txt sitemap.xml llms.txt _site/
+          cp -r images styles privacy perbandingan harga tentang cara-kerja _site/
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

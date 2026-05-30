@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
 
+# Ringkasan untuk asisten AI: https://larisid.com/llms.txt
 Sitemap: https://larisid.com/sitemap.xml

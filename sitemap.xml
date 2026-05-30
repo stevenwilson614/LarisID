@@ -4,10 +4,36 @@
     <loc>https://larisid.com/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+    <lastmod>2026-05-30</lastmod>
+  </url>
+  <url>
+    <loc>https://larisid.com/perbandingan/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+    <lastmod>2026-05-30</lastmod>
+  </url>
+  <url>
+    <loc>https://larisid.com/harga/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+    <lastmod>2026-05-30</lastmod>
+  </url>
+  <url>
+    <loc>https://larisid.com/tentang/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <lastmod>2026-05-30</lastmod>
+  </url>
+  <url>
+    <loc>https://larisid.com/cara-kerja/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <lastmod>2026-05-30</lastmod>
   </url>
   <url>
     <loc>https://larisid.com/privacy/</loc>
-    <changefreq>monthly</changefreq>
+    <changefreq>yearly</changefreq>
     <priority>0.3</priority>
+    <lastmod>2026-05-25</lastmod>
   </url>
 </urlset>

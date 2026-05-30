@@ -12,10 +12,13 @@ It defines **what we are building, why, how, who is involved, and what we will n
 
 | Area | Location |
 |------|----------|
-| Web app | `index.html`, `scripts/`, `styles/` |
+| Web app | `index.html` (landing + dashboard SPA) |
+| SEO / marketing pages | `perbandingan/`, `harga/`, `tentang/`, `cara-kerja/`, `llms.txt` — see **[docs/seo.md](./docs/seo.md)** |
+| Shared static styles | `styles/seo-pages.css` |
 | Privacy policy | `privacy/` |
 | Supabase (DB, auth, edge functions) | `supabase/` — see [supabase/README.md](./supabase/README.md) |
 | Deploy | GitHub Actions → GitHub Pages (`larisid.com`) |
+| Sitemap | `sitemap.xml` (submit in Search Console) |
 
 ## Supabase
 
