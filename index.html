@@ -9470,6 +9470,7 @@ function selectSuggestion(name) {
   input.value = name;
   hideSuggestions();
   searchQ = name.toLowerCase();
+  logSearchHistory(name, null, 'suggestion');
   applyFilters();
   openProfile(); setTimeout(()=>switchDashView('discover'),50);
 }
@@ -9833,6 +9834,7 @@ async function openDetail(id) {
   const p = allProducts.find(x => x.id === id);
   if (!p) return;
   trackView(p.category); // personalized discover
+  logSearchHistory(p.keyword || p.name, p.item_id != null ? p.item_id : null, 'product_open');
   currentProduct = p;
   prevPage = document.querySelector('.page.active')?.id.replace('page-', '') || 'discover';
   renderDetail(p);
@@ -12796,6 +12798,98 @@ async function cohortGetPrimaryStudentCohortId() {
   if (_cohortState.primaryStudentCohortId) return _cohortState.primaryStudentCohortId;
   const row = (_cohortState.studentRows || []).find(r => r.role === 'student' && r.status === 'active');
   return row ? row.cohort_id : null;
+}
+
+// ── SEARCH / BROWSING HISTORY ───────────────────────────────
+// Records what a user searches for and which products they open so the
+// dashboard can recommend products that follow their interests (see GOAL:
+// battery packs today, shirts tomorrow). Writes to Supabase when logged in
+// (RLS: owner-only, table user_search_history) and always keeps a capped
+// localStorage mirror so logged-out users still get personalized recs.
+const LARIS_SEARCH_HISTORY_KEY = 'larisid_search_history_v1';
+const LARIS_SEARCH_HISTORY_MAX = 50;
+
+function _searchHistoryRead() {
+  try {
+    const raw = localStorage.getItem(LARIS_SEARCH_HISTORY_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch (_) { return []; }
+}
+
+// Recent distinct keywords, newest first (used to bias recommendations).
+function searchHistoryRecentKeywords(limit = 12) {
+  const out = [];
+  const seen = new Set();
+  for (const e of _searchHistoryRead()) {
+    const kw = String((e && e.keyword) || '').toLowerCase().trim();
+    if (!kw || seen.has(kw)) continue;
+    seen.add(kw);
+    out.push(kw);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+// Log one history entry. keyword is required-ish; item_id/source optional.
+function logSearchHistory(keyword, itemId, source) {
+  const kw = String(keyword == null ? '' : keyword).trim();
+  if (!kw && itemId == null) return;
+  const entry = {
+    keyword: kw.slice(0, 120),
+    item_id: itemId != null ? itemId : null,
+    source: source || 'search',
+    created_at: new Date().toISOString(),
+  };
+  // localStorage mirror (newest first, capped, deduped on keyword+item_id).
+  try {
+    let arr = _searchHistoryRead();
+    arr = arr.filter(e => !(e && e.keyword === entry.keyword && e.item_id === entry.item_id));
+    arr.unshift(entry);
+    if (arr.length > LARIS_SEARCH_HISTORY_MAX) arr = arr.slice(0, LARIS_SEARCH_HISTORY_MAX);
+    localStorage.setItem(LARIS_SEARCH_HISTORY_KEY, JSON.stringify(arr));
+  } catch (_) {}
+  // Supabase (owner-only via RLS) — fire-and-forget, same style as cohortLogActivity.
+  if (_supabase && currentUser) {
+    try {
+      _supabase.from('user_search_history').insert({
+        user_id: currentUser.id,
+        keyword: entry.keyword || null,
+        item_id: entry.item_id,
+        source: entry.source,
+      }).then(() => {}, () => {});
+    } catch (_) {}
+  }
+}
+
+// Pull recent keywords from Supabase (logged-in) merged with the local mirror,
+// newest first and deduped. Falls back to local-only when not logged in / on error.
+async function searchHistoryRecentKeywordsRemote(limit = 12) {
+  const local = searchHistoryRecentKeywords(limit);
+  if (!_supabase || !currentUser) return local;
+  try {
+    const { data } = await _supabase
+      .from('user_search_history')
+      .select('keyword,created_at')
+      .eq('user_id', currentUser.id)
+      .not('keyword', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(60);
+    const merged = [];
+    const seen = new Set();
+    for (const r of (data || [])) {
+      const kw = String((r && r.keyword) || '').toLowerCase().trim();
+      if (!kw || seen.has(kw)) continue;
+      seen.add(kw);
+      merged.push(kw);
+    }
+    for (const kw of local) {
+      if (!seen.has(kw)) { seen.add(kw); merged.push(kw); }
+    }
+    return merged.slice(0, limit);
+  } catch (_) {
+    return local;
+  }
 }
 
 async function cohortLogActivity(eventType, metadata) {
@@ -18582,9 +18676,96 @@ async function hbdRenderMentorDigest() {
   }
 }
 
+// ── DAILY-ROTATING, PERSONALIZED RECOMMENDATIONS ────────────
+// Deterministic seed from YYYY-MM-DD (local) + user id: stable within a day,
+// rotates across days. NOT Math.random() so reloads on the same day are stable.
+function _recDailySeed(extra) {
+  const d = new Date();
+  const day = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const str = day + '|' + (extra || '');
+  let h = 2166136261 >>> 0; // FNV-1a
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h >>> 0;
+}
+
+// Mulberry32 PRNG seeded deterministically — used for the day-stable shuffle.
+function _recRng(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function _recSeededShuffle(arr, rng) {
+  const out = arr.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+// Build the recommended set: blend interest-matched products (from recent
+// search/browsing history) with high-score discovery picks, rotated by day.
+// - recentKeywords: lowercased keywords, newest first.
+// Returns up to `count` allProducts items. A fresh user (no history) still gets
+// strong discovery picks; a user who searched "battery pack"/"shirt" sees those
+// categories surface. The set varies day to day via the date seed.
+function recBuildPersonalized(products, recentKeywords, userId, count = 5) {
+  if (!products || !products.length) return [];
+  const recent = (recentKeywords || []).map(k => String(k || '').toLowerCase().trim()).filter(Boolean);
+  const matchScore = (p) => {
+    const hay = ((p.keyword || '') + ' ' + (p.name || '') + ' ' + (p.category || '')).toLowerCase();
+    for (let i = 0; i < recent.length; i++) {
+      const kw = recent[i];
+      if (!kw) continue;
+      if (hay.includes(kw)) return recent.length - i; // recency weight
+      // also match on individual significant words of the search
+      const words = kw.split(/\s+/).filter(w => w.length >= 3);
+      if (words.length && words.some(w => hay.includes(w))) return Math.max(1, recent.length - i - 1);
+    }
+    return 0;
+  };
+
+  const seed = _recDailySeed(userId || 'anon');
+  const rng = _recRng(seed);
+
+  // Interest pool: products matching recent history, best matches first, then by score.
+  const interest = products
+    .map(p => ({ p, m: matchScore(p) }))
+    .filter(x => x.m > 0)
+    .sort((a, b) => (b.m - a.m) || ((b.p.score || 0) - (a.p.score || 0)))
+    .map(x => x.p);
+
+  // Discovery pool: high-score products, day-shuffled among near-top so picks
+  // rotate but stay quality. Take a wider top band then seeded-shuffle it.
+  const byScore = [...products].sort((a, b) => (b.score || 0) - (a.score || 0));
+  const topBand = byScore.slice(0, Math.min(byScore.length, Math.max(count * 4, 20)));
+  const discovery = _recSeededShuffle(topBand, rng);
+
+  // Blend: when history exists, fill ~60% from interest, rest from discovery.
+  const out = [];
+  const usedIds = new Set();
+  const push = (p) => { if (p && !usedIds.has(p.id)) { usedIds.add(p.id); out.push(p); } };
+  const interestTarget = recent.length ? Math.min(interest.length, Math.ceil(count * 0.6)) : 0;
+  const interestRotated = _recSeededShuffle(interest.slice(0, Math.max(interestTarget * 2, interestTarget)), rng);
+  for (let i = 0; i < interestRotated.length && out.length < interestTarget; i++) push(interestRotated[i]);
+  for (let i = 0; i < discovery.length && out.length < count; i++) push(discovery[i]);
+  // Safety fill (e.g. tiny catalog) from full score order.
+  for (let i = 0; i < byScore.length && out.length < count; i++) push(byScore[i]);
+  return out.slice(0, count);
+}
+
 /**
  * Beranda digest: mentor announcements + cohort activity teaser (win / milestone / product_share)
- * + recommended products (allProducts by score, else latest listings by score).
+ * + recommended products — personalized to the user's recent search/browsing
+ *   history and rotated daily via a date-seeded shuffle (see recBuildPersonalized).
  * Privacy: author labels via cohort_member_names RPC only; no emails; hidden posts excluded.
  */
 async function hbdRenderCohortDigest() {
@@ -18661,7 +18842,11 @@ async function hbdRenderCohortDigest() {
   }
   let recHtml = '';
   if (typeof allProducts !== 'undefined' && allProducts && allProducts.length) {
-    const top = [...allProducts].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 5);
+    // Personalized + daily-rotating: bias toward the user's recent searches/opens,
+    // blended with day-shuffled high-score discovery picks (recBuildPersonalized).
+    let recentKw = [];
+    try { recentKw = await searchHistoryRecentKeywordsRemote(12); } catch (_) { recentKw = searchHistoryRecentKeywords(12); }
+    const top = recBuildPersonalized(allProducts, recentKw, currentUser && currentUser.id, 5);
     recHtml = top.map(p => {
       const name = (p.name || p.keyword || 'Produk').split(' ').slice(0, 5).join(' ') || 'Produk';
       const sc = p.score >= 70 ? 'hot' : 'ok';
@@ -19847,6 +20032,7 @@ async function openKwDetail(keyword) {
   if (!_supabase) return;
   const overlay = document.getElementById('kd-overlay');
   if (!overlay) return;
+  logSearchHistory(keyword, null, 'keyword_open');
 
   document.getElementById('kd-right-panel').innerHTML = '<div class="of-detail-loading">Memuat data keyword...</div>';
   document.getElementById('kd-thumbs').innerHTML = '';
