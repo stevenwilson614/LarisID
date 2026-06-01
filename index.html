@@ -7440,10 +7440,14 @@ html,body{overflow-x:hidden;max-width:100%;}
                       <div class="dd-card" style="padding:16px;">
                         <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">2. Biaya di Shopee</div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Komisi Shopee <span style="font-weight:400;opacity:.7;">(per kategori)</span></div><select id="kal-commission" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;"><option value="0.01">1%</option><option value="0.02">2%</option><option value="0.03" selected>3%</option><option value="0.04">4%</option><option value="0.05">5%</option><option value="0.06">6%</option><option value="0.08">8%</option></select></div>
-                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Layanan</div><select id="kal-service" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;"><option value="0.01">1%</option><option value="0.02" selected>2%</option><option value="0.03">3%</option></select></div>
+                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Admin <span style="font-weight:400;opacity:.7;">(per kategori)</span></div><select id="kal-commission" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.66rem;font-weight:600;background:#fff;"><option value="0.10" selected>Fashion / FMCG — 10%</option><option value="0.095">Elektronik / Skincare — 9,5%</option><option value="0.0675">Susu / Suplemen — 6,75%</option><option value="0.0525">Elektronik High-End — 5,25%</option><option value="0.0425">Logam Mulia / Perhiasan — 4,25%</option><option value="0.025">E-Money / Tiket — 2,5%</option></select></div>
+                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Layanan</div><select id="kal-service" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;"><option value="0.01">1%</option><option value="0.02" selected>2%</option><option value="0.03">3%</option><option value="0.04">4%</option></select></div>
                         </div>
-                        <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Program Gratis Ongkir</div><select id="kal-freeship" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;"><option value="0">Tidak ikut</option><option value="5000">Rp 5.000</option><option value="8000" selected>Rp 8.000</option><option value="12000">Rp 12.000</option><option value="15000">Rp 15.000</option></select></div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Pajak (PPh Final)</div><select id="kal-tax" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.7rem;font-weight:600;background:#fff;"><option value="0.005" selected>UMKM 0,5%</option><option value="0">Tidak kena</option><option value="0.11">PKP / PPN 11%</option></select></div>
+                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Program Gratis Ongkir</div><select id="kal-freeship" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.66rem;font-weight:600;background:#fff;"><option value="0" selected>Ditanggung pembeli</option><option value="0.5">Subsidi 50% ongkir</option><option value="1">Subsidi penuh ongkir</option></select></div>
+                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Proses Pesanan</div><div style="padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#F9FAFB;color:#6B7280;">Rp 1.250 / pesanan</div></div>
+                        </div>
                       </div>
                       <div class="dd-card" style="padding:16px;">
                         <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">3. Biaya Promosi (Iklan)</div>
@@ -7461,8 +7465,8 @@ html,body{overflow-x:hidden;max-width:100%;}
                         </div>
                       </div>
                       <div class="dd-card" style="padding:16px;">
-                        <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:4px;">Break Even Point (BEP)</div>
-                        <div style="font-size:.65rem;color:#6B7280;margin-bottom:12px;">Minimal penjualan agar tidak rugi</div>
+                        <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:4px;">Harga Impas (Break Even)</div>
+                        <div style="font-size:.65rem;color:#6B7280;margin-bottom:12px;">Harga jual minimum agar tidak rugi</div>
                         <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:10px;"><div style="font-size:1.1rem;font-weight:700;color:#E8442A;" id="kal-bep-val">—</div></div>
                         <div style="position:relative;height:6px;background:#F3F4F6;border-radius:3px;margin-bottom:8px;"><div id="kal-bep-fill" style="position:absolute;left:0;top:0;height:6px;background:linear-gradient(90deg,#E8442A,#F97316);border-radius:3px;width:50%;transition:width .3s;"></div><div id="kal-bep-dot" style="position:absolute;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;background:#E8442A;border:2px solid #fff;border-radius:50%;left:50%;box-shadow:0 1px 4px rgba(0,0,0,.2);transition:left .3s;"></div></div>
                         <div style="display:flex;justify-content:space-between;font-size:.6rem;color:#9CA3AF;" id="kal-bep-scale"><span>—</span><span>—</span><span>—</span><span>—</span><span>—</span></div>
@@ -12461,7 +12465,7 @@ function _mlsAiRenderThread(typing) {
 }
 
 async function mlsAiAsk(prompt) {
-  const ctx = window._mlsContext || {};
+  const ctx = _mlsContext || {};
   const p   = ctx.product || {};
   const inputEl = document.getElementById('mls-ai-input');
   const q   = (prompt || inputEl?.value?.trim() || '');
@@ -16652,22 +16656,39 @@ function kalcCalc() {
   const opex     = parseFloat(document.getElementById('kal-opex')?.value) || 0;
   const ads      = parseFloat(document.getElementById('kal-ads')?.value) || 0;
   const comm     = parseFloat(document.getElementById('kal-commission')?.value) || 0.10;
-  const svc      = parseFloat(document.getElementById('kal-service')?.value) || 0.01;
-  const freeship = parseFloat(document.getElementById('kal-freeship')?.value) || 0;
+  const svc      = parseFloat(document.getElementById('kal-service')?.value) || 0.02;
+  const tax      = parseFloat(document.getElementById('kal-tax')?.value) || 0;
+  const freeship = parseFloat(document.getElementById('kal-freeship')?.value) || 0; // fraction of ongkir seller subsidizes
   const ret      = parseFloat(document.getElementById('kal-return')?.value) || 0.02;
   const monthlyUnits = parseInt(document.getElementById('kal-monthly-units')?.value) || 30;
 
+  const PROC_FEE   = 1250; // Biaya Proses Pesanan, flat per completed order
+  const pctSum     = comm + svc + tax + ret; // price-derived fee rates
   const commAmt    = price * comm;
   const svcAmt     = price * svc;
+  const taxAmt     = price * tax;
   const retAmt     = price * ret;
-  const totalCost  = cogs + shipping + packing + opex + ads + commAmt + svcAmt + freeship + retAmt;
+  const shipCost   = shipping * freeship; // seller pays only the subsidized portion of ongkir
+  const fixedCost  = cogs + shipCost + packing + opex + ads + PROC_FEE; // costs independent of price
+  const totalCost  = fixedCost + commAmt + svcAmt + taxAmt + retAmt;
   const profit     = price - totalCost;
   const margin     = price > 0 ? (profit / price * 100) : 0;
   const roi        = cogs > 0 ? (profit / cogs * 100) : 0;
 
-  // Ads recommendation
+  // Ads recommendation — capped so it never recommends spending past the pre-ads profit
   const adsRecEl = document.getElementById('kal-ads-rec');
-  if (adsRecEl) adsRecEl.textContent = `${kalcFmtFull(price*0.07)} – ${kalcFmtFull(price*0.10)}`;
+  if (adsRecEl) {
+    const profitBeforeAds = profit + ads; // remove current ad spend
+    const recLow = price * 0.07, recHigh = price * 0.10;
+    if (profitBeforeAds <= 0) {
+      adsRecEl.innerHTML = '<span style="color:#DC2626;">Margin negatif — turunkan biaya dulu sebelum iklan</span>';
+    } else if (recLow > profitBeforeAds) {
+      adsRecEl.innerHTML = `<span style="color:#DC2626;">Maks ${kalcFmtFull(profitBeforeAds)} — di atas itu jadi rugi</span>`;
+    } else {
+      const hi = Math.min(recHigh, profitBeforeAds);
+      adsRecEl.textContent = `${kalcFmtFull(recLow)} – ${kalcFmtFull(hi)}`;
+    }
+  }
 
   // Summary sidebar
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
@@ -16686,12 +16707,14 @@ function kalcCalc() {
   // Monthly
   set('kal-monthly-profit', kalcFmtFull(profit * monthlyUnits));
   set('kal-monthly-omset', kalcFmtFull(price * monthlyUnits));
-  set('kal-monthly-gross', (margin.toFixed(1) + '%'));
+  set('kal-monthly-gross', kalcFmtFull((price - cogs) * monthlyUnits));
 
-  // BEP
+  // BEP — minimum selling price where profit = 0, solving price*(1-pctSum) = fixedCost
+  const bepPrice = pctSum < 1 ? fixedCost / (1 - pctSum) : fixedCost;
   const bepEl = document.getElementById('kal-bep-val');
-  if (bepEl) bepEl.textContent = kalcFmtFull(totalCost);
-  const bepPct = price > 0 ? Math.min((totalCost / price) * 100, 100) : 50;
+  if (bepEl) bepEl.textContent = kalcFmtFull(bepPrice);
+  // Gauge: where the break-even price sits relative to the current price (100% = current price covers exactly BEP)
+  const bepPct = price > 0 ? Math.min((bepPrice / price) * 100, 100) : 50;
   const fillEl = document.getElementById('kal-bep-fill');
   const dotEl  = document.getElementById('kal-bep-dot');
   if (fillEl) fillEl.style.width = bepPct + '%';
@@ -16705,10 +16728,11 @@ function kalcCalc() {
   // Donut chart
   const costs = [
     { label: 'Modal (COGS)', val: cogs,     color: '#3B4FD8' },
-    { label: 'Komisi & Layanan', val: commAmt+svcAmt, color: '#6B7280' },
+    { label: 'Admin & Layanan', val: commAmt+svcAmt, color: '#6B7280' },
     { label: 'Iklan', val: ads,             color: '#F59E0B' },
-    { label: 'Ongkir & Subsidi', val: shipping+freeship, color: '#E8442A' },
-    { label: 'Lainnya', val: packing+opex+retAmt, color: '#CBD5E1' },
+    { label: 'Ongkir (subsidi)', val: shipCost, color: '#E8442A' },
+    { label: 'Pajak', val: taxAmt,          color: '#0EA5E9' },
+    { label: 'Lainnya', val: packing+opex+retAmt+PROC_FEE, color: '#CBD5E1' },
   ].filter(c => c.val > 0);
   const canvas = document.getElementById('kal-donut');
   if (canvas && canvas.getContext) {
@@ -16752,8 +16776,8 @@ function kalcCalc() {
     ];
     scenEl.innerHTML = scenarios.map(s => {
       const sp = price * s.priceMult;
-      const sc = totalCost + (sp - price) * 0; // costs same
-      const sv = sp - totalCost;
+      const sc = fixedCost + sp * pctSum; // %-based fees scale with the scenario price
+      const sv = sp - sc;
       const sm = sp > 0 ? (sv/sp*100) : 0;
       const border = s.rec ? 'border:2px solid #E8442A;' : 'border:1px solid #E5E7EB;';
       return `<div style="border-radius:10px;padding:14px;${border}position:relative;">
