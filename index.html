@@ -19333,6 +19333,7 @@ async function hbdInit() {
 async function hbdRenderMentorDigest() {
   const wrap = document.getElementById('hbd-mentor-wrap');
   if (!wrap || !_supabase || !currentUser) return;
+  if (_accessState.role === 'independent') { wrap.style.display = 'none'; return; }
   if (!_cohortState || !_cohortState.hasMentorCohort || !_cohortState.primaryMentorCohort) {
     wrap.style.display = 'none';
     return;
@@ -19470,6 +19471,7 @@ async function hbdRenderCohortDigest() {
   const actEl = document.getElementById('hbd-cohort-activity-list');
   const recEl = document.getElementById('hbd-cohort-rec-list');
   if (!wrap || !annEl || !actEl || !recEl) return;
+  if (_accessState.role === 'independent') { wrap.style.display = 'none'; return; }
   if (!_supabase || !currentUser) {
     wrap.style.display = 'none';
     return;
@@ -26209,6 +26211,13 @@ function _hbdApplyLeaderMode(isLeader) {
   } else {
     const title = document.getElementById('dash-topbar-title');
     if (title && _dashActiveView === 'dashboard') title.textContent = 'Dashboard';
+    // Hide all cohort/student digest sections for independent users
+    if (_accessState.role === 'independent') {
+      ['hbd-mentor-wrap', 'hbd-cohort-digest-wrap', 'hbd-cohort-rec-card'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+    }
   }
 
   // Apply flat vs grouped Research Tools nav
