@@ -12469,6 +12469,97 @@ function _mlsAiRenderThread(typing) {
   respEl.scrollTop = respEl.scrollHeight;
 }
 
+function _mlsAiMedian(arr) {
+  const s = [...arr].sort((a, b) => a - b);
+  return s.length ? s[Math.floor(s.length / 2)] : 0;
+}
+
+async function _mlsFetchKeywordMarket(keyword) {
+  const empty = { rows: [], mPrice: 0, mSold: 0, totalOmset: 0, sigSellers: [], top5: [] };
+  if (!keyword || !_supabase) return empty;
+  const { data: rawData } = await _supabase
+    .from('listings')
+    .select('product_name, store_name, image_url, price, total_sold, reviews, location, item_id, shop_id, keyword, url')
+    .eq('keyword', keyword)
+    .order('total_sold', { ascending: false })
+    .limit(300);
+  const seen = new Map();
+  for (const r of (rawData || [])) {
+    const k = `${r.item_id}_${r.shop_id}`;
+    if (!seen.has(k) || (r.total_sold || 0) > (seen.get(k).total_sold || 0)) seen.set(k, r);
+  }
+  const rows = [...seen.values()].sort((a, b) => (b.total_sold || 0) - (a.total_sold || 0));
+  const prices = rows.map(r => r.price || 0).filter(v => v > 0);
+  const solds  = rows.map(r => r.total_sold || 0).filter(v => v > 0);
+  const mPrice = _mlsAiMedian(prices);
+  const mSold  = _mlsAiMedian(solds);
+  const _toMonthly = r => (r.price || 0) * (r.total_sold || 0) / 6;
+  const totalOmset = rows.reduce((sum, r) => sum + _toMonthly(r), 0);
+  const sigSellers = totalOmset > 0 ? rows.filter(r => _toMonthly(r) / totalOmset >= 0.005) : [];
+  return { rows, mPrice, mSold, totalOmset, sigSellers, top5: rows.slice(0, 5) };
+}
+
+async function _mlsAiEnsureRows(ctx) {
+  if (ctx.allRows?.length) return ctx.allRows;
+  const kw = ctx.keyword || ctx.product?.keyword;
+  if (!kw) return [];
+  const market = await _mlsFetchKeywordMarket(kw);
+  ctx.allRows = market.rows;
+  ctx.medianPrice = market.mPrice;
+  ctx.medianSold = market.mSold;
+  ctx.top5 = market.top5;
+  ctx.sigSellers = market.sigSellers;
+  ctx.totalOmset = market.totalOmset;
+  return market.rows;
+}
+
+const _MLS_SPEC_GROUPS = [
+  { label: 'plastik/plastic', terms: ['plastik', 'plastic', 'tritan', 'pp botol', 'pet '] },
+  { label: 'kaca/glass', terms: ['kaca', 'glass', 'borosilicate', 'tempered'] },
+  { label: 'stainless', terms: ['stainless', '304', '316'] },
+  { label: 'silikon/silicone', terms: ['silikon', 'silicone'] },
+  { label: 'kayu/bamboo', terms: ['kayu', 'bamboo', 'bambu'] },
+  { label: 'keramik', terms: ['keramik', 'ceramic', 'porcelain'] },
+  { label: 'LED', terms: ['led ', 'lumen', ' watt', 'wattage'] },
+  { label: 'rechargeable/USB', terms: ['recharge', 'usb', 'type-c', 'type c', 'cas ', 'charging'] },
+];
+
+function _mlsAiBuildSpecStats(rows, question) {
+  if (!rows?.length) return '';
+  const total = rows.length;
+  const qLower = (question || '').toLowerCase();
+  const groups = [];
+  for (const g of _MLS_SPEC_GROUPS) {
+    const matched = rows.filter(r => g.terms.some(t => (r.product_name || '').toLowerCase().includes(t)));
+    if (matched.length < 2) continue;
+    const prices = matched.map(r => r.price || 0).filter(v => v > 0);
+    const solds  = matched.map(r => r.total_sold || 0).filter(v => v > 0);
+    groups.push({
+      ...g,
+      matched,
+      pct: Math.round(matched.length / total * 100),
+      medPrice: _mlsAiMedian(prices),
+      medSold: _mlsAiMedian(solds),
+      qHit: g.terms.some(t => qLower.includes(t)),
+    });
+  }
+  if (!groups.length) return '';
+  groups.sort((a, b) => {
+    if (a.qHit !== b.qHit) return a.qHit ? -1 : 1;
+    return b.matched.length - a.matched.length;
+  });
+  const lines = groups.slice(0, 6).map(g =>
+    `${g.label}: ${g.pct}% listing (${g.matched.length}/${total}), median harga Rp ${Math.round(g.medPrice).toLocaleString('id-ID')}, median terjual ${Math.round(g.medSold).toLocaleString('id-ID')}`
+  );
+  if (groups.length >= 2 && groups[0].medPrice && groups[1].medPrice) {
+    const hi = groups[0].medPrice >= groups[1].medPrice ? groups[0] : groups[1];
+    const lo = hi === groups[0] ? groups[1] : groups[0];
+    const diff = Math.round((hi.medPrice / lo.medPrice - 1) * 100);
+    if (diff > 0) lines.push(`${hi.label} median harga ~${diff}% lebih tinggi dari ${lo.label}.`);
+  }
+  return 'STATISTIK SPESIFIKASI (dari nama produk — pakai angka ini saat jawab pertanyaan material/spesifikasi):\n' + lines.join('\n');
+}
+
 async function mlsAiAsk(prompt) {
   const ctx = _mlsContext || {};
   const p   = ctx.product || {};
@@ -12481,6 +12572,13 @@ async function mlsAiAsk(prompt) {
   if (inputEl) inputEl.value = '';
   _mlsAiHistory.push({ role: 'user', content: q });
   _mlsAiRenderThread(true);
+
+  const kw = ctx.keyword || p.keyword;
+  if (!kw) {
+    _mlsAiHistory.push({ role: 'assistant', content: 'Pilih produk dulu dari dropdown di atas.' });
+    _mlsAiRenderThread();
+    return;
+  }
 
   // Credit gate: every MLS_AI_PER_CREDIT prompts costs 1 credit (at the start of each new block)
   // Admin and leader are exempt from credit spending
@@ -12501,13 +12599,15 @@ async function mlsAiAsk(prompt) {
     } catch (_) {}
   }
 
-  // Build rich system context: product + full category dataset from database
-  const allRows = ctx.allRows || ctx.top5 || [];
+  // Ensure market rows are loaded (handles race if user asks before fetch completes)
+  let allRows;
+  try { allRows = await _mlsAiEnsureRows(ctx); } catch (_) { allRows = ctx.allRows || ctx.top5 || []; }
+
+  const prodName = p.product_name || p.name || allRows[0]?.product_name || kw;
   const top10Comps = allRows.slice(0, 10).map((r, i) =>
     `${i+1}. ${(r.product_name||'').slice(0,50)} — Rp ${Math.round(r.price||0).toLocaleString('id-ID')}, terjual ${(r.total_sold||0).toLocaleString('id-ID')}`
   ).join('\n');
 
-  // Price distribution from full dataset
   const allPrices = allRows.map(r => r.price||0).filter(v => v > 0).sort((a,b) => a-b);
   const _pct = (arr, pc) => arr.length ? arr[Math.floor(arr.length * pc / 100)] : 0;
   const priceMin = allPrices[0] || 0;
@@ -12515,32 +12615,32 @@ async function mlsAiAsk(prompt) {
   const priceP75 = _pct(allPrices, 75);
   const priceMax = allPrices[allPrices.length - 1] || 0;
 
-  // Sample of product names from the full set for spec pattern inference (up to 75)
-  const nameSample = allRows.slice(0, 75).map((r, i) =>
+  const nameSample = allRows.slice(0, 40).map((r, i) =>
     `${i+1}. ${(r.product_name||'').slice(0, 60)}`
   ).join('\n');
+  const specStats = _mlsAiBuildSpecStats(allRows, q);
 
-  // Detect the user's language so we can force the reply language (the mostly-Indonesian
-  // context otherwise biases the model toward Bahasa even for English questions)
-  const _idWords = ['yang','dan','untuk','dengan','apa','berapa','bagaimana','kenapa','mengapa','ini','itu','harga','jual','jualan','produk','saya','kah','tidak','adalah','gimana','bisa','kalau','sama'];
+  const _idWords = ['yang','dan','untuk','dengan','apa','berapa','bagaimana','kenapa','mengapa','ini','itu','harga','jual','jualan','produk','saya','kah','tidak','adalah','gimana','bisa','kalau','sama','plastik','kaca','biasanya','typical'];
   const _qLower = ' ' + q.toLowerCase() + ' ';
   const _idHits = _idWords.reduce((n, w) => n + (_qLower.includes(' ' + w + ' ') ? 1 : 0), 0);
   const replyLang = _idHits >= 1 ? 'Bahasa Indonesia' : 'English';
 
   const systemCtx = [
-    `You are LarisID's selling assistant for Shopee Indonesia sellers, focused on this product.`,
-    `LANGUAGE: You MUST write your entire reply in ${replyLang}. Ignore the language of the data and instructions below — match the user.`,
-    `STYLE: Keep answers very short and direct — usually 1-3 sentences or a tiny list. No long essays, no preamble, no "as an AI". Lead with the answer.`,
-    `Give concrete numbers from the data when relevant (e.g. ranges, medians). If the data does not contain something asked about (e.g. lumens, watt, a spec), say plainly that there is no data on it and that it is likely not a key selling point — then point to what does matter (price, units sold, ratings).`,
-    `You have no live internet access. Don't pretend to fetch real-time data from Alibaba/Google/Tokopedia. If asked, say so briefly and offer what the LarisID Shopee data shows instead.`,
-    `\nPRODUK YANG DILIHAT: "${p.product_name||p.name||'—'}"`,
-    `Keyword: ${p.keyword||'—'} | Harga: Rp ${p.price ? Math.round(p.price).toLocaleString('id-ID') : '—'} | Terjual: ${(p.total_sold||0).toLocaleString('id-ID')} | Rating: ${p.rating||'—'}`,
-    `\nDATA PASAR — keyword "${p.keyword||'—'}" (${allRows.length} listing di database LarisID):`,
+    `You are LarisID's selling assistant for Shopee Indonesia. The user already selected keyword "${kw}" — NEVER ask what product they mean or ask clarifying questions.`,
+    `LANGUAGE: Write ONLY in ${replyLang}.`,
+    `STYLE (strict): Exactly 1-3 short sentences. No emojis. No bullet lists. No numbered follow-up questions. No preamble ("Halo", "Pertanyaan bagus"). Lead with a direct, data-backed answer.`,
+    `For material/spec questions (plastik vs kaca, size, color, watt, etc.): cite STATISTIK SPESIFIKASI percentages and price gaps. Example: "Sekitar 65% listing plastik; listing kaca median harga ~15% lebih tinggi." If no stat line matches, infer from product names and still give a numeric estimate.`,
+    `Never say data is empty when ${allRows.length} market listings exist below. Never ask the user to specify the product again.`,
+    `You have no live internet. Don't pretend to fetch Alibaba/Google data.`,
+    `\nPRODUK YANG DILIHAT: "${prodName}"`,
+    `Keyword: ${kw} | Harga: Rp ${p.price ? Math.round(p.price).toLocaleString('id-ID') : (ctx.medianPrice ? Math.round(ctx.medianPrice).toLocaleString('id-ID') : '—')} | Terjual: ${(p.total_sold||0).toLocaleString('id-ID')} | Rating: ${p.rating||'—'}`,
+    `\nDATA PASAR — keyword "${kw}" (${allRows.length} listing di database LarisID):`,
     `Penjual signifikan: ${(ctx.sigSellers||[]).length} | Median harga: Rp ${ctx.medianPrice ? Math.round(ctx.medianPrice).toLocaleString('id-ID') : '—'} | Total omset pasar: Rp ${ctx.totalOmset ? Math.round(ctx.totalOmset).toLocaleString('id-ID') : '—'}/bln`,
     allPrices.length ? `Distribusi harga: Min Rp ${Math.round(priceMin).toLocaleString('id-ID')} | P25 Rp ${Math.round(priceP25).toLocaleString('id-ID')} | Median Rp ${ctx.medianPrice ? Math.round(ctx.medianPrice).toLocaleString('id-ID') : '—'} | P75 Rp ${Math.round(priceP75).toLocaleString('id-ID')} | Max Rp ${Math.round(priceMax).toLocaleString('id-ID')}` : '',
-    top10Comps ? `\nTOP 10 PENJUAL (berdasarkan unit terjual):\n${top10Comps}` : '',
-    nameSample ? `\nDAFTAR NAMA PRODUK DI DATABASE (${allRows.length} listing — gunakan untuk inferensi spesifikasi umum seperti lumen, watt, dll):\n${nameSample}` : '',
-    `\nBase answers on the data above. Stay brief. Remember: reply ONLY in ${replyLang}.`,
+    specStats,
+    top10Comps ? `\nTOP 10 PENJUAL:\n${top10Comps}` : '',
+    nameSample ? `\nSAMPLE NAMA PRODUK (${allRows.length} total):\n${nameSample}` : '',
+    `\nAnswer in ${replyLang}. Max 3 sentences.`,
   ].filter(Boolean).join('\n');
 
   const userOpenAiKey = localStorage.getItem('larisid_openai_key');
@@ -12553,7 +12653,7 @@ async function mlsAiAsk(prompt) {
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${userOpenAiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'gpt-4o', max_tokens: 300, messages: [{ role: 'system', content: systemCtx }, ...convo] })
+        body: JSON.stringify({ model: 'gpt-4o', max_tokens: 150, messages: [{ role: 'system', content: systemCtx }, ...convo] })
       });
       const d = await res.json();
       reply = d.choices?.[0]?.message?.content || d.error?.message || 'Tidak ada respons.';
@@ -12568,7 +12668,7 @@ async function mlsAiAsk(prompt) {
       const res = await fetch(`${SUPA_URL}/functions/v1/claude-proxy`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: userModel, max_tokens: 300, system: systemCtx, messages: convo })
+        body: JSON.stringify({ model: userModel, max_tokens: 150, system: systemCtx, messages: convo })
       });
       const d = await res.json();
       if (res.status === 429) {
@@ -20220,33 +20320,9 @@ async function mlsSelectProduct(val) {
   if (compSection) compSection.style.display = 'none';
 
   try {
-    const { data: rawData } = await _supabase
-      .from('listings')
-      .select('product_name, store_name, image_url, price, total_sold, reviews, location, item_id, shop_id, keyword, url')
-      .eq('keyword', t.keyword)
-      .order('total_sold', { ascending: false })
-      .limit(300);
-
-    // Deduplicate by item_id+shop_id, keeping highest total_sold per product
-    const seen = new Map();
-    for (const r of (rawData || [])) {
-      const k = `${r.item_id}_${r.shop_id}`;
-      if (!seen.has(k) || (r.total_sold||0) > (seen.get(k).total_sold||0)) seen.set(k, r);
-    }
-    const rows = [...seen.values()].sort((a, b) => (b.total_sold||0) - (a.total_sold||0));
-    const top5   = rows.slice(0, 5);
-    const median = arr => { const s = [...arr].sort((a,b)=>a-b); return s.length ? s[Math.floor(s.length/2)] : 0; };
-    const prices = rows.map(r => r.price||0).filter(v => v > 0);
-    const solds  = rows.map(r => r.total_sold||0).filter(v => v > 0);
-    const mPrice = median(prices);
-    const mSold  = median(solds);
-
-    // Market totals — divide by 6 to convert lifetime total_sold to approximate monthly estimate
-    const _toMonthly = r => (r.price||0) * (r.total_sold||0) / 6;
-    const totalOmset = rows.reduce((sum, r) => sum + _toMonthly(r), 0);
-    const top3Omset  = rows.slice(0,3).reduce((sum, r) => sum + _toMonthly(r), 0);
+    const { rows, mPrice, mSold, totalOmset, sigSellers, top5 } = await _mlsFetchKeywordMarket(t.keyword);
+    const top3Omset  = rows.slice(0, 3).reduce((sum, r) => sum + (r.price || 0) * (r.total_sold || 0) / 6, 0);
     const dom3       = totalOmset > 0 ? Math.round(top3Omset / totalOmset * 100) : 0;
-    const sigSellers = totalOmset > 0 ? rows.filter(r => _toMonthly(r) / totalOmset >= 0.005) : [];
 
     _mlsContext.medianPrice = mPrice;
     _mlsContext.medianSold  = mSold;
