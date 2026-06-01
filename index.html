@@ -4719,6 +4719,11 @@ html,body{overflow-x:hidden;max-width:100%;}
           <div class="dash-nav-sub-item" id="dash-nav-alerts" onclick="switchDashView('alerts')">Alerts</div>
         </div>
 
+        <div class="dash-nav-item" id="dash-nav-extension" onclick="switchDashView('extension')">
+          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span>
+          <span>Chrome Extension</span>
+        </div>
+
         <div class="dash-nav-item" id="dash-nav-credits" onclick="switchDashView('credits')" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:12px;">
           <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
           <span>Kredit</span>
@@ -8592,6 +8597,115 @@ html,body{overflow-x:hidden;max-width:100%;}
           </div>
         </div>
 
+        <!-- ── CHROME EXTENSION PAGE ── -->
+        <div id="dash-view-extension" style="display:none;min-height:100%;background:#F7F6F3;">
+          <div style="max-width:860px;margin:0 auto;padding:40px 28px 80px;">
+
+            <!-- Header -->
+            <div style="margin-bottom:36px;">
+              <div style="font-size:.72rem;font-weight:700;color:#E8442A;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Chrome Extension</div>
+              <h2 style="font-size:1.75rem;font-weight:800;color:#1A1F3C;margin:0 0 10px;letter-spacing:-.01em;">LarisID untuk Chrome</h2>
+              <p style="font-size:.95rem;color:#6B7280;line-height:1.65;max-width:560px;margin:0;">Riset produk langsung saat kamu browsing Shopee — tanpa buka tab baru. Sekaligus dapat kredit gratis setiap hari.</p>
+            </div>
+
+            <!-- Install CTA card -->
+            <div style="background:#1A1F3C;border-radius:16px;padding:32px;margin-bottom:28px;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;position:relative;overflow:hidden;">
+              <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.03) 1px,transparent 1px);background-size:28px 28px;pointer-events:none;"></div>
+              <div style="position:relative;">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                  <div style="width:44px;height:44px;background:#E8442A;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                  </div>
+                  <div>
+                    <div style="font-size:1rem;font-weight:800;color:#fff;">Pasang di Chrome Sekarang</div>
+                    <div style="font-size:.78rem;color:rgba(255,255,255,.5);margin-top:2px;">Gratis · Tidak perlu daftar ulang</div>
+                  </div>
+                </div>
+                <p style="font-size:.82rem;color:rgba(255,255,255,.6);line-height:1.6;margin:0;max-width:420px;">Tersedia di Chrome Web Store. Setelah terpasang, hubungkan ke akun LarisID kamu untuk mulai dapat kredit dari setiap pencarian di Shopee.</p>
+              </div>
+              <a href="https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae" target="_blank" rel="noopener" style="position:relative;flex-shrink:0;display:inline-flex;align-items:center;gap:8px;background:#E8442A;color:#fff;font-size:.9rem;font-weight:700;padding:13px 24px;border-radius:10px;text-decoration:none;box-shadow:0 4px 20px rgba(232,68,42,.4);transition:background .15s;" onmouseover="this.style.background='#c73520'" onmouseout="this.style.background='#E8442A'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Pasang di Chrome
+              </a>
+            </div>
+
+            <!-- Features grid -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:32px;">
+              <div style="background:#fff;border-radius:12px;padding:20px;border:1px solid #E5E7EB;">
+                <div style="width:36px;height:36px;background:#FFF0ED;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </div>
+                <div style="font-size:.88rem;font-weight:700;color:#1A1F3C;margin-bottom:6px;">Data Langsung di Shopee</div>
+                <div style="font-size:.8rem;color:#6B7280;line-height:1.55;">Lihat data produk LarisID — harga, estimasi terjual, dan Viability Score — langsung di halaman pencarian Shopee tanpa berpindah tab.</div>
+              </div>
+              <div style="background:#fff;border-radius:12px;padding:20px;border:1px solid #E5E7EB;">
+                <div style="width:36px;height:36px;background:#FFF0ED;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                </div>
+                <div style="font-size:.88rem;font-weight:700;color:#1A1F3C;margin-bottom:6px;">Dapat Kredit Gratis Tiap Hari</div>
+                <div style="font-size:.8rem;color:#6B7280;line-height:1.55;">Setiap 10 pencarian di Shopee (min. 2 halaman) = 1 kredit otomatis. Maksimal 10 kredit per hari — sambil riset, sambil dapat kredit.</div>
+              </div>
+              <div style="background:#fff;border-radius:12px;padding:20px;border:1px solid #E5E7EB;">
+                <div style="width:36px;height:36px;background:#FFF0ED;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                </div>
+                <div style="font-size:.88rem;font-weight:700;color:#1A1F3C;margin-bottom:6px;">Ringan & Cepat</div>
+                <div style="font-size:.8rem;color:#6B7280;line-height:1.55;">Tidak memperlambat browser. Hanya aktif di halaman Shopee dan hanya mencatat pencarian yang kamu sendiri lakukan.</div>
+              </div>
+            </div>
+
+            <!-- How to set up -->
+            <div style="background:#fff;border-radius:12px;padding:28px;border:1px solid #E5E7EB;margin-bottom:28px;">
+              <div style="font-size:1rem;font-weight:800;color:#1A1F3C;margin-bottom:20px;">Cara Memulai</div>
+              <div style="display:flex;flex-direction:column;gap:0;">
+
+                <div style="display:flex;gap:16px;padding-bottom:20px;border-bottom:1px solid #F3F4F6;">
+                  <div style="width:32px;height:32px;border-radius:50%;background:#E8442A;color:#fff;font-size:.8rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">1</div>
+                  <div>
+                    <div style="font-size:.88rem;font-weight:700;color:#1A1F3C;margin-bottom:4px;">Pasang Extension di Chrome</div>
+                    <div style="font-size:.8rem;color:#6B7280;line-height:1.55;margin-bottom:10px;">Klik tombol di bawah untuk membuka Chrome Web Store, lalu klik "Tambahkan ke Chrome".</div>
+                    <a href="https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:700;color:#E8442A;text-decoration:none;border:1.5px solid #E8442A;border-radius:8px;padding:7px 14px;transition:background .15s;" onmouseover="this.style.background='#FFF0ED'" onmouseout="this.style.background='transparent'">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      Buka Chrome Web Store
+                    </a>
+                  </div>
+                </div>
+
+                <div style="display:flex;gap:16px;padding:20px 0;border-bottom:1px solid #F3F4F6;">
+                  <div style="width:32px;height:32px;border-radius:50%;background:#E8442A;color:#fff;font-size:.8rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">2</div>
+                  <div>
+                    <div style="font-size:.88rem;font-weight:700;color:#1A1F3C;margin-bottom:4px;">Hubungkan ke Akun LarisID</div>
+                    <div style="font-size:.8rem;color:#6B7280;line-height:1.55;margin-bottom:10px;">Klik ikon extension di Chrome, pilih <strong style="color:#374151;">"Masuk dengan Kode"</strong>, lalu buka menu avatar di sini dan pilih "Hubungkan Extension" untuk mendapatkan kode.</div>
+                    <button onclick="openExtensionLink()" style="display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:700;color:#fff;background:#1A1F3C;border:none;border-radius:8px;padding:7px 14px;cursor:pointer;font-family:inherit;transition:background .15s;" onmouseover="this.style.background='#2d3559'" onmouseout="this.style.background='#1A1F3C'">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+                      Dapatkan Kode Hubung
+                    </button>
+                  </div>
+                </div>
+
+                <div style="display:flex;gap:16px;padding-top:20px;">
+                  <div style="width:32px;height:32px;border-radius:50%;background:#E8442A;color:#fff;font-size:.8rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">3</div>
+                  <div>
+                    <div style="font-size:.88rem;font-weight:700;color:#1A1F3C;margin-bottom:4px;">Cari Produk di Shopee — Kredit Mengalir Otomatis</div>
+                    <div style="font-size:.8rem;color:#6B7280;line-height:1.55;">Setiap 10 pencarian yang kamu buka hingga halaman 2 = 1 kredit langsung masuk ke akunmu. Tidak perlu klik apa-apa. Maks 10 kredit/hari.</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Credit earn info box -->
+            <div style="background:#FFF0ED;border:1.5px solid #F5C5BB;border-radius:12px;padding:20px 24px;display:flex;gap:16px;align-items:flex-start;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <div>
+                <div style="font-size:.88rem;font-weight:700;color:#1A1F3C;margin-bottom:4px;">Rumus Kredit Gratis</div>
+                <div style="font-size:.8rem;color:#92400E;line-height:1.6;">10 pencarian di Shopee (min. 2 halaman per keyword) = <strong>1 kredit</strong>. Bisa diulang hingga <strong>10 kredit per hari</strong>. Kredit langsung bisa dipakai untuk Deep Dive, AI Strategist, dan fitur premium lainnya.</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
       </main>
 
       <!-- Credit gate modal -->
@@ -12312,7 +12426,7 @@ function switchDashTab(tab) {
 //  JUNGLE SCOUT-STYLE DASHBOARD — view switching, Product DB
 // ════════════════════════════════════════════════════════════
 
-const PDB_VIEWS = ['home','product-database','product-tracker','opportunity-finder','category-trends','suppliers','keywords','estimator','marketing','saved','education','dashboard','discover','tracker','deepdive','ai','alerts','credits','cohort','admin','mytoko','about'];
+const PDB_VIEWS = ['home','product-database','product-tracker','opportunity-finder','category-trends','suppliers','keywords','estimator','marketing','saved','education','dashboard','discover','tracker','deepdive','ai','alerts','credits','cohort','admin','mytoko','about','extension'];
 const PDB_SUB_MAP = {'product-database':'research','product-tracker':'research','opportunity-finder':'research','category-trends':'research'};
 
 // View titles for topbar
@@ -12355,7 +12469,7 @@ function switchDashView(view) {
 
   // New sidebar nav: highlight correct item
   const _rtViews = new Set(['discover','deepdive','tracker','ai','alerts']);
-  ['dashboard','discover','deepdive','tracker','ai','alerts','cohort'].forEach(k => {
+  ['dashboard','discover','deepdive','tracker','ai','alerts','cohort','extension'].forEach(k => {
     const el = document.getElementById(`dash-nav-${k}`);
     if (!el) return;
     el.classList.toggle('active', k === view);
@@ -12421,7 +12535,7 @@ const MBN_MAP = {
   dashboard:'mbn-dashboard', discover:'mbn-discover',
   mytoko:'mbn-mytoko', tracker:'mbn-mytoko',
   ai:'mbn-ai', deepdive:'mbn-ai',
-  alerts:'mbn-dashboard', credits:'mbn-dashboard', cohort:'mbn-dashboard',
+  alerts:'mbn-dashboard', credits:'mbn-dashboard', cohort:'mbn-dashboard', extension:'mbn-dashboard',
   'product-database':'mbn-discover', keywords:'mbn-discover', estimator:'mbn-discover',
 };
 
