@@ -12515,9 +12515,16 @@ async function mlsAiAsk(prompt) {
     `${i+1}. ${(r.product_name||'').slice(0, 60)}`
   ).join('\n');
 
+  // Detect the user's language so we can force the reply language (the mostly-Indonesian
+  // context otherwise biases the model toward Bahasa even for English questions)
+  const _idWords = ['yang','dan','untuk','dengan','apa','berapa','bagaimana','kenapa','mengapa','ini','itu','harga','jual','jualan','produk','saya','kah','tidak','adalah','gimana','bisa','kalau','sama'];
+  const _qLower = ' ' + q.toLowerCase() + ' ';
+  const _idHits = _idWords.reduce((n, w) => n + (_qLower.includes(' ' + w + ' ') ? 1 : 0), 0);
+  const replyLang = _idHits >= 1 ? 'Bahasa Indonesia' : 'English';
+
   const systemCtx = [
     `You are LarisID's selling assistant for Shopee Indonesia sellers, focused on this product.`,
-    `LANGUAGE: Always reply in the same language the user wrote in. If they write in English, reply in English; if in Bahasa Indonesia, reply in Bahasa.`,
+    `LANGUAGE: You MUST write your entire reply in ${replyLang}. Ignore the language of the data and instructions below — match the user.`,
     `STYLE: Keep answers very short and direct — usually 1-3 sentences or a tiny list. No long essays, no preamble, no "as an AI". Lead with the answer.`,
     `Give concrete numbers from the data when relevant (e.g. ranges, medians). If the data does not contain something asked about (e.g. lumens, watt, a spec), say plainly that there is no data on it and that it is likely not a key selling point — then point to what does matter (price, units sold, ratings).`,
     `You have no live internet access. Don't pretend to fetch real-time data from Alibaba/Google/Tokopedia. If asked, say so briefly and offer what the LarisID Shopee data shows instead.`,
@@ -12528,7 +12535,7 @@ async function mlsAiAsk(prompt) {
     allPrices.length ? `Distribusi harga: Min Rp ${Math.round(priceMin).toLocaleString('id-ID')} | P25 Rp ${Math.round(priceP25).toLocaleString('id-ID')} | Median Rp ${ctx.medianPrice ? Math.round(ctx.medianPrice).toLocaleString('id-ID') : '—'} | P75 Rp ${Math.round(priceP75).toLocaleString('id-ID')} | Max Rp ${Math.round(priceMax).toLocaleString('id-ID')}` : '',
     top10Comps ? `\nTOP 10 PENJUAL (berdasarkan unit terjual):\n${top10Comps}` : '',
     nameSample ? `\nDAFTAR NAMA PRODUK DI DATABASE (${allRows.length} listing — gunakan untuk inferensi spesifikasi umum seperti lumen, watt, dll):\n${nameSample}` : '',
-    `\nBase answers on the data above. Stay brief.`,
+    `\nBase answers on the data above. Stay brief. Remember: reply ONLY in ${replyLang}.`,
   ].filter(Boolean).join('\n');
 
   const userOpenAiKey = localStorage.getItem('larisid_openai_key');
