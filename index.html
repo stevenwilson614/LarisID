@@ -8901,7 +8901,11 @@ html,body{overflow-x:hidden;max-width:100%;}
     <label style="font-size:.7rem;color:#6B7280;font-weight:600;display:block;margin-bottom:4px;">Judul</label>
     <input type="text" id="ann-modal-title" class="cohort-input" placeholder="Judul pengumuman..." style="margin-bottom:12px;">
     <label style="font-size:.7rem;color:#6B7280;font-weight:600;display:block;margin-bottom:4px;">Pesan</label>
-    <textarea id="ann-modal-body" class="cohort-input" rows="4" placeholder="Tulis pesan untuk siswa kamu..." style="margin-bottom:16px;resize:vertical;"></textarea>
+    <textarea id="ann-modal-body" class="cohort-input" rows="4" placeholder="Tulis pesan untuk siswa kamu..." style="margin-bottom:12px;resize:vertical;"></textarea>
+    <label style="font-size:.7rem;color:#6B7280;font-weight:600;display:block;margin-bottom:4px;">Kirim ke</label>
+    <select id="ann-modal-group" class="cohort-input" style="margin-bottom:16px;">
+      <option value="">Semua Siswa</option>
+    </select>
     <div id="ann-modal-status" style="font-size:.72rem;color:#6B7280;margin-bottom:10px;display:none;"></div>
     <button onclick="annModalSubmit()" id="ann-modal-submit-btn" class="cohort-btn" style="width:100%;">Kirim Pengumuman</button>
   </div>
@@ -14195,20 +14199,50 @@ async function cohortRenderAnnouncements(cohortId) {
   if (!ul) return;
   ul.innerHTML = '';
   if (!cohortId || !_supabase) { ul.innerHTML = '<li class="cohort-muted">—</li>'; return; }
-  const { data } = await _supabase.from('cohort_announcements').select('title,body,created_at').eq('cohort_id', cohortId).order('created_at', { ascending: false }).limit(12);
+
+  const isLeader = _accessState && (_accessState.role === 'leader' || _accessState.isLeader);
+
+  // Fetch announcements + group name in one query
+  const { data } = await _supabase
+    .from('cohort_announcements')
+    .select('title,body,created_at,target_group_id,leader_email_groups(name)')
+    .eq('cohort_id', cohortId)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
   if (!(data || []).length) { ul.innerHTML = '<li class="cohort-muted">Belum ada pengumuman.</li>'; return; }
+
+  let visibleAnn = data;
+
+  // Students: filter out announcements targeted at a group they're not in
+  if (!isLeader && currentUser) {
+    const { data: myGroups } = await _supabase
+      .from('leader_email_group_members')
+      .select('group_id')
+      .eq('user_id', currentUser.id);
+    const myGroupIds = new Set((myGroups || []).map(r => r.group_id));
+    visibleAnn = data.filter(a => !a.target_group_id || myGroupIds.has(a.target_group_id));
+  }
+
+  if (!visibleAnn.length) { ul.innerHTML = '<li class="cohort-muted">Belum ada pengumuman.</li>'; return; }
+
   const readIds = JSON.parse(localStorage.getItem('larisid_read_announcements') || '[]');
   const now = Date.now();
   const sevenDays = 7 * 24 * 60 * 60 * 1000;
-  ul.innerHTML = data.map(a => {
+
+  ul.innerHTML = visibleAnn.map(a => {
     const isNew = (now - new Date(a.created_at).getTime()) < sevenDays;
     const isRead = readIds.includes(a.created_at);
     const dot = (isNew && !isRead) ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#E8442A;margin-right:5px;flex-shrink:0;margin-top:3px;"></span>' : '';
     const titleStyle = (isNew && !isRead) ? 'font-weight:800;color:#111;' : 'font-weight:600;';
+    const groupName = a.leader_email_groups && a.leader_email_groups.name;
+    const groupTag = groupName
+      ? `<span style="display:inline-block;margin-left:5px;font-size:.55rem;font-weight:700;color:#6366F1;background:#EEF2FF;border-radius:4px;padding:1px 6px;vertical-align:middle;">${_cohortEsc(groupName)}</span>`
+      : '';
     const readBtn = (!isRead) ? `<button onclick="event.stopPropagation();cohortMarkAnnouncementRead('${_cohortEsc(a.created_at)}',this)" style="display:inline-flex;align-items:center;gap:4px;margin-top:5px;font-size:.65rem;font-weight:600;color:#6366F1;background:#EEF2FF;border:none;border-radius:5px;padding:3px 8px;cursor:pointer;font-family:inherit;">
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
       Tandai dibaca</button>` : '';
-    return `<li style="align-items:flex-start;gap:6px;${isRead?'opacity:.65':''}"><span style="display:flex;align-items:flex-start;flex:1;gap:4px;">${dot}<div><div style="${titleStyle}">${_cohortEsc(a.title)}</div><div class="cohort-muted" style="margin-top:3px;">${_cohortEsc((a.body||'').slice(0,120))}${(a.body||'').length>120?'…':''}</div>${readBtn}</div></span><span class="cohort-muted" style="white-space:nowrap;font-size:.62rem;">${_cohortEsc((a.created_at||'').slice(0,10))}</span></li>`;
+    return `<li style="align-items:flex-start;gap:6px;${isRead?'opacity:.65':''}"><span style="display:flex;align-items:flex-start;flex:1;gap:4px;">${dot}<div><div style="${titleStyle}">${_cohortEsc(a.title)}${groupTag}</div><div class="cohort-muted" style="margin-top:3px;">${_cohortEsc((a.body||'').slice(0,120))}${(a.body||'').length>120?'…':''}</div>${readBtn}</div></span><span class="cohort-muted" style="white-space:nowrap;font-size:.62rem;">${_cohortEsc((a.created_at||'').slice(0,10))}</span></li>`;
   }).join('');
 }
 
@@ -15217,7 +15251,7 @@ async function cohortMentorPostAnnouncement() {
 }
 
 // ── Announcement modal (leader quick action) ───────────────────────────────
-function annModal() {
+async function annModal() {
   const el = document.getElementById('ann-modal-overlay');
   if (!el) return;
   el.style.display = 'flex';
@@ -15227,6 +15261,25 @@ function annModal() {
   annSetType('update');
   const st = document.getElementById('ann-modal-status');
   if (st) { st.style.display = 'none'; st.textContent = ''; }
+  // Populate group selector from leader_email_groups for this cohort
+  const sel = document.getElementById('ann-modal-group');
+  if (sel) {
+    sel.innerHTML = '<option value="">Semua Siswa</option>';
+    const c = _cohortState && _cohortState.primaryMentorCohort;
+    if (c && _supabase) {
+      const { data: groups } = await _supabase
+        .from('leader_email_groups')
+        .select('id,name')
+        .eq('cohort_id', c.id)
+        .order('name', { ascending: true });
+      (groups || []).forEach(g => {
+        const opt = document.createElement('option');
+        opt.value = g.id;
+        opt.textContent = g.name;
+        sel.appendChild(opt);
+      });
+    }
+  }
 }
 function annModalClose() {
   const el = document.getElementById('ann-modal-overlay');
@@ -15257,12 +15310,16 @@ async function annModalSubmit() {
   const btn = document.getElementById('ann-modal-submit-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Mengirim...'; }
   const typeTag = type === 'update' ? '[UPDATE]' : type === 'challenge' ? '[CHALLENGE]' : '[PSA]';
-  const { error } = await _supabase.from('cohort_announcements').insert({
+  const groupSel = document.getElementById('ann-modal-group');
+  const targetGroupId = groupSel && groupSel.value ? groupSel.value : null;
+  const insertRow = {
     cohort_id: c.id,
     author_id: currentUser.id,
     title: title,
     body: `${typeTag} ${body}`,
-  });
+  };
+  if (targetGroupId) insertRow.target_group_id = targetGroupId;
+  const { error } = await _supabase.from('cohort_announcements').insert(insertRow);
   if (btn) { btn.disabled = false; btn.textContent = 'Kirim Pengumuman'; }
   if (error) {
     if (st) { st.textContent = error.message || 'Gagal mengirim.'; st.style.display = 'block'; st.style.color = '#E8442A'; }
