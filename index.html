@@ -1284,7 +1284,11 @@ body.cohort-themed.in-dashboard .dash-topbar-cohort-chip{
 .mls-ai-input{flex:1;border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 12px;font-size:.78rem;font-family:inherit;outline:none;transition:border-color .15s;}
 .mls-ai-input:focus{border-color:#E8442A;}
 .mls-ai-send{padding:8px 18px;background:#E8442A;color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;}
-.mls-ai-response{margin-top:10px;font-size:.75rem;color:#374151;line-height:1.6;display:none;background:#fff;border-radius:8px;padding:12px;border:1px solid #E5E7EB;max-height:200px;overflow-y:auto;}
+.mls-ai-response{margin-top:10px;font-size:.75rem;color:#374151;line-height:1.6;display:none;flex-direction:column;gap:8px;background:#fff;border-radius:8px;padding:12px;border:1px solid #E5E7EB;max-height:320px;overflow-y:auto;}
+.mls-ai-msg{max-width:90%;padding:8px 11px;border-radius:10px;font-size:.75rem;line-height:1.55;}
+.mls-ai-msg.user{align-self:flex-end;background:#E8442A;color:#fff;border-bottom-right-radius:3px;}
+.mls-ai-msg.ai{align-self:flex-start;background:#F1F5F9;color:#374151;border-bottom-left-radius:3px;}
+.mls-ai-msg.mls-ai-typing{color:#9CA3AF;font-style:italic;background:transparent;padding:4px 6px;}
 .mls-comp-table{width:100%;border-collapse:collapse;font-size:.72rem;}
 .mls-comp-table th{padding:9px 10px;text-align:left;font-size:.62rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.04em;background:#F9FAFB;border-bottom:2px solid #E5E7EB;white-space:nowrap;}
 .mls-comp-table td{padding:9px 10px;border-bottom:1px solid #F3F4F6;vertical-align:middle;}
@@ -12430,13 +12434,44 @@ function _mlsAiUpdateCounter() {
   if (el) el.textContent = `${remaining}/${MLS_AI_PER_CREDIT} tanya tersisa`;
 }
 
+// Conversation history for the Mulai Berjualan AI chat (reset per product)
+let _mlsAiHistory = [];
+
+function _mlsEsc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function _mlsAiResetThread() {
+  _mlsAiHistory = [];
+  const respEl = document.getElementById('mls-ai-response');
+  if (respEl) { respEl.style.display = 'none'; respEl.innerHTML = ''; }
+}
+
+function _mlsAiRenderThread(typing) {
+  const respEl = document.getElementById('mls-ai-response');
+  if (!respEl) return;
+  if (!_mlsAiHistory.length && !typing) { respEl.style.display = 'none'; respEl.innerHTML = ''; return; }
+  respEl.style.display = 'flex';
+  let html = _mlsAiHistory.map(m =>
+    `<div class="mls-ai-msg ${m.role === 'user' ? 'user' : 'ai'}">${_mlsEsc(m.content).replace(/\n/g, '<br>')}</div>`
+  ).join('');
+  if (typing) html += `<div class="mls-ai-msg ai mls-ai-typing">AI sedang mengetik…</div>`;
+  respEl.innerHTML = html;
+  respEl.scrollTop = respEl.scrollHeight;
+}
+
 async function mlsAiAsk(prompt) {
   const ctx = window._mlsContext || {};
   const p   = ctx.product || {};
-  const q   = prompt || document.getElementById('mls-ai-input')?.value?.trim();
+  const inputEl = document.getElementById('mls-ai-input');
+  const q   = (prompt || inputEl?.value?.trim() || '');
   if (!q) return;
-  const respEl = document.getElementById('mls-ai-response');
-  if (!respEl) return;
+  if (!document.getElementById('mls-ai-response')) return;
+
+  // Show the user's turn immediately, with a typing indicator
+  if (inputEl) inputEl.value = '';
+  _mlsAiHistory.push({ role: 'user', content: q });
+  _mlsAiRenderThread(true);
 
   // Credit gate: every MLS_AI_PER_CREDIT prompts costs 1 credit (at the start of each new block)
   // Admin and leader are exempt from credit spending
@@ -12445,8 +12480,8 @@ async function mlsAiAsk(prompt) {
   if (!_isPrivileged && used % MLS_AI_PER_CREDIT === 0) {  // 0, 10, 20... → start of a new block
     // Need to spend a credit before this block of 10
     if ((_creditBalance ?? 0) < 1) {
-      respEl.style.display = 'block';
-      respEl.textContent = 'Kredit habis. Cari lebih banyak produk di Shopee untuk mendapatkan kredit gratis (10 pencarian = 1 kredit).';
+      _mlsAiHistory.push({ role: 'assistant', content: 'Kredit habis. Cari lebih banyak produk di Shopee untuk mendapatkan kredit gratis (10 pencarian = 1 kredit).' });
+      _mlsAiRenderThread();
       return;
     }
     try {
@@ -12457,9 +12492,6 @@ async function mlsAiAsk(prompt) {
     } catch (_) {}
   }
 
-  respEl.style.display = 'block';
-  respEl.textContent   = 'AI sedang menganalisis...';
-
   // Build rich system context: product + full category dataset from database
   const allRows = ctx.allRows || ctx.top5 || [];
   const top10Comps = allRows.slice(0, 10).map((r, i) =>
@@ -12468,7 +12500,7 @@ async function mlsAiAsk(prompt) {
 
   // Price distribution from full dataset
   const allPrices = allRows.map(r => r.price||0).filter(v => v > 0).sort((a,b) => a-b);
-  const _pct = (arr, p) => arr.length ? arr[Math.floor(arr.length * p / 100)] : 0;
+  const _pct = (arr, pc) => arr.length ? arr[Math.floor(arr.length * pc / 100)] : 0;
   const priceMin = allPrices[0] || 0;
   const priceP25 = _pct(allPrices, 25);
   const priceP75 = _pct(allPrices, 75);
@@ -12480,8 +12512,8 @@ async function mlsAiAsk(prompt) {
   ).join('\n');
 
   const systemCtx = [
-    `Kamu adalah analis pasar Shopee Indonesia yang membantu penjual. Jawab singkat, praktis, dan dalam Bahasa Indonesia.`,
-    `PENTING: Kamu hanya boleh menjawab berdasarkan data Shopee yang tersedia di bawah ini. Tolak dengan sopan pertanyaan yang meminta kamu mencari data dari Alibaba, Tokopedia, Google, atau sumber eksternal lainnya. Jika informasi tidak ada dalam data, katakan "Data ini tidak tersedia di database kami."`,
+    `Kamu adalah konsultan jualan AI untuk LarisID yang membantu penjual Shopee Indonesia menyusun strategi menjual produk ini. Bicara dalam Bahasa Indonesia, ramah, seperti sedang berdiskusi. Kamu boleh dan didorong untuk memberi analisis, saran strategi, prediksi, estimasi, perbandingan, dan rekomendasi praktis berdasarkan data pasar di bawah dan akal sehat bisnis. Ingat percakapan sebelumnya dan tetap pada konteks produk ini.`,
+    `Batasan: kamu tidak punya akses internet langsung, jadi jangan berpura-pura mengambil data real-time dari sumber luar (mis. "cek harga di Alibaba/Google/Tokopedia sekarang"). Jika diminta begitu, jelaskan dengan ramah lalu tawarkan analisis dari data Shopee LarisID yang kamu miliki. Untuk pertanyaan lain seputar menjual produk ini — jawablah dengan membantu.`,
     `\nPRODUK YANG DILIHAT: "${p.product_name||p.name||'—'}"`,
     `Keyword: ${p.keyword||'—'} | Harga: Rp ${p.price ? Math.round(p.price).toLocaleString('id-ID') : '—'} | Terjual: ${(p.total_sold||0).toLocaleString('id-ID')} | Rating: ${p.rating||'—'}`,
     `\nDATA PASAR — keyword "${p.keyword||'—'}" (${allRows.length} listing di database LarisID):`,
@@ -12489,39 +12521,51 @@ async function mlsAiAsk(prompt) {
     allPrices.length ? `Distribusi harga: Min Rp ${Math.round(priceMin).toLocaleString('id-ID')} | P25 Rp ${Math.round(priceP25).toLocaleString('id-ID')} | Median Rp ${ctx.medianPrice ? Math.round(ctx.medianPrice).toLocaleString('id-ID') : '—'} | P75 Rp ${Math.round(priceP75).toLocaleString('id-ID')} | Max Rp ${Math.round(priceMax).toLocaleString('id-ID')}` : '',
     top10Comps ? `\nTOP 10 PENJUAL (berdasarkan unit terjual):\n${top10Comps}` : '',
     nameSample ? `\nDAFTAR NAMA PRODUK DI DATABASE (${allRows.length} listing — gunakan untuk inferensi spesifikasi umum seperti lumen, watt, dll):\n${nameSample}` : '',
-    `\nGUNAKAN HANYA data di atas untuk menjawab. Jangan mengarang data, jangan merujuk sumber eksternal.`,
+    `\nDasarkan jawaban pada data di atas. Jika sebuah angka spesifik tidak ada dalam data, beri perkiraan wajar sambil menyebutkan bahwa itu estimasi.`,
   ].filter(Boolean).join('\n');
 
   const userOpenAiKey = localStorage.getItem('larisid_openai_key');
   const userModel     = localStorage.getItem('larisid_anthropic_model') || 'claude-haiku-4-5-20251001';
+  const convo = _mlsAiHistory.slice(-12);
 
+  let reply;
   try {
     if (userOpenAiKey) {
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${userOpenAiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'gpt-4o', max_tokens: 500, messages: [{ role: 'system', content: systemCtx }, { role: 'user', content: q }] })
+        body: JSON.stringify({ model: 'gpt-4o', max_tokens: 500, messages: [{ role: 'system', content: systemCtx }, ...convo] })
       });
       const d = await res.json();
-      respEl.textContent = d.choices?.[0]?.message?.content || d.error?.message || 'Tidak ada respons.';
+      reply = d.choices?.[0]?.message?.content || d.error?.message || 'Tidak ada respons.';
     } else {
       // Route through claude-proxy Edge Function — API key stays server-side
       const session = _supabase ? (await _supabase.auth.getSession()).data?.session : null;
-      if (!session) { respEl.textContent = 'Login untuk menggunakan fitur AI.'; return; }
+      if (!session) {
+        _mlsAiHistory.push({ role: 'assistant', content: 'Login untuk menggunakan fitur AI.' });
+        _mlsAiRenderThread();
+        return;
+      }
       const res = await fetch(`${SUPA_URL}/functions/v1/claude-proxy`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: userModel, system: systemCtx, messages: [{ role: 'user', content: q }] })
+        body: JSON.stringify({ model: userModel, system: systemCtx, messages: convo })
       });
       const d = await res.json();
-      if (res.status === 429) { respEl.textContent = 'Batas penggunaan AI hari ini sudah tercapai (10 permintaan/hari).'; return; }
-      respEl.textContent = d.content?.[0]?.text || d.error?.message || 'Tidak ada respons.';
+      if (res.status === 429) {
+        _mlsAiHistory.push({ role: 'assistant', content: 'Batas penggunaan AI hari ini sudah tercapai (10 permintaan/hari).' });
+        _mlsAiRenderThread();
+        return;
+      }
+      reply = d.content?.[0]?.text || d.error?.message || 'Tidak ada respons.';
     }
+    _mlsAiHistory.push({ role: 'assistant', content: reply });
+    _mlsAiRenderThread();
     _mlsAiCounterInc();
   } catch (e) {
-    respEl.textContent = 'Gagal menghubungi AI. Coba lagi.';
+    _mlsAiHistory.push({ role: 'assistant', content: 'Gagal menghubungi AI. Coba lagi.' });
+    _mlsAiRenderThread();
   }
-  if (document.getElementById('mls-ai-input')) document.getElementById('mls-ai-input').value = '';
 }
 
 // ── PERSONALIZED DISCOVER ─────────────────────────────────
@@ -20104,6 +20148,7 @@ async function mlsSelectProduct(val) {
   if (!t) { if (heroEl) heroEl.style.display = 'none'; return; }
 
   _mlsContext = { keyword: t.keyword, product: t };
+  _mlsAiResetThread();
   if (heroEl) heroEl.style.display = 'block';
 
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
