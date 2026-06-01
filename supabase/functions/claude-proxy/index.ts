@@ -8,6 +8,9 @@ const CORS = {
 
 const MAX_CALLS_PER_DAY = 10;
 
+// Platform admins are exempt from the daily AI rate limit (mirrors PLATFORM_ADMIN_EMAILS client-side)
+const ADMIN_EMAILS = ['stevenwilson614@gmail.com'];
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: CORS });
@@ -40,19 +43,22 @@ serve(async (req) => {
 
     const userId = user.id;
     const today = new Date().toISOString().slice(0, 10);
+    const isAdmin = ADMIN_EMAILS.includes((user.email ?? '').toLowerCase());
 
-    // Rate limit: max MAX_CALLS_PER_DAY per user per UTC day
-    const { count } = await supabase
-      .from('ai_usage')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('date', today);
+    // Rate limit: max MAX_CALLS_PER_DAY per user per UTC day (admins exempt)
+    if (!isAdmin) {
+      const { count } = await supabase
+        .from('ai_usage')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('date', today);
 
-    if ((count ?? 0) >= MAX_CALLS_PER_DAY) {
-      return new Response(
-        JSON.stringify({ error: 'rate_limit_exceeded', limit: MAX_CALLS_PER_DAY }),
-        { status: 429, headers: { ...CORS, 'Content-Type': 'application/json' } },
-      );
+      if ((count ?? 0) >= MAX_CALLS_PER_DAY) {
+        return new Response(
+          JSON.stringify({ error: 'rate_limit_exceeded', limit: MAX_CALLS_PER_DAY }),
+          { status: 429, headers: { ...CORS, 'Content-Type': 'application/json' } },
+        );
+      }
     }
 
     // Parse request body
@@ -89,8 +95,10 @@ serve(async (req) => {
       });
     }
 
-    // Log successful call for rate limiting
-    await supabase.from('ai_usage').insert({ user_id: userId, date: today });
+    // Log successful call for rate limiting (skip for admins — they're unlimited)
+    if (!isAdmin) {
+      await supabase.from('ai_usage').insert({ user_id: userId, date: today });
+    }
 
     return new Response(JSON.stringify(result), {
       status: 200,

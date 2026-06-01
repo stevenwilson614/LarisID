@@ -12431,11 +12431,16 @@ function _mlsAiCounterInc() {
   _mlsAiUpdateCounter();
 }
 function _mlsAiUpdateCounter() {
+  const el = document.getElementById('mls-ai-counter');
+  if (!el) return;
+  if (currentUser && isPlatformAdmin()) {
+    el.textContent = 'Tanya tanpa batas';
+    return;
+  }
   const total = _mlsAiCounter();
   const usedInBlock = total % MLS_AI_PER_CREDIT;
   const remaining = usedInBlock === 0 ? MLS_AI_PER_CREDIT : MLS_AI_PER_CREDIT - usedInBlock;
-  const el = document.getElementById('mls-ai-counter');
-  if (el) el.textContent = `${remaining}/${MLS_AI_PER_CREDIT} tanya tersisa`;
+  el.textContent = `${remaining}/${MLS_AI_PER_CREDIT} tanya tersisa`;
 }
 
 // Conversation history for the Mulai Berjualan AI chat (reset per product)
