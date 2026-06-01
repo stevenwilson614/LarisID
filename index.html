@@ -15508,16 +15508,40 @@ async function annModal() {
   annSetType('update');
   const st = document.getElementById('ann-modal-status');
   if (st) { st.style.display = 'none'; st.textContent = ''; }
-  // Populate group selector from leader_email_groups for this cohort
+  // Populate group selector — query by leader_user_id so it works
+  // whether opened from dashboard or cohort panel (no dependency on cohort state)
   const sel = document.getElementById('ann-modal-group');
-  if (sel) {
+  if (sel && _supabase && currentUser) {
     sel.innerHTML = '<option value="">Semua Siswa</option>';
-    const c = _cohortState && _cohortState.primaryMentorCohort;
-    if (c && _supabase) {
+    // Determine cohort_id: prefer loaded cohort state, else fetch via cohort_members
+    let cohortId = _cohortState && _cohortState.primaryMentorCohort && _cohortState.primaryMentorCohort.id;
+    if (!cohortId) {
+      const { data: mem } = await _supabase
+        .from('cohort_members')
+        .select('cohort_id')
+        .eq('user_id', currentUser.id)
+        .eq('role', 'mentor')
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle();
+      if (!mem) {
+        // fallback: try cohorts.mentor_user_id
+        const { data: owned } = await _supabase
+          .from('cohorts')
+          .select('id')
+          .eq('mentor_user_id', currentUser.id)
+          .limit(1)
+          .maybeSingle();
+        if (owned) cohortId = owned.id;
+      } else {
+        cohortId = mem.cohort_id;
+      }
+    }
+    if (cohortId) {
       const { data: groups } = await _supabase
         .from('leader_email_groups')
         .select('id,name')
-        .eq('cohort_id', c.id)
+        .eq('cohort_id', cohortId)
         .order('name', { ascending: true });
       (groups || []).forEach(g => {
         const opt = document.createElement('option');
