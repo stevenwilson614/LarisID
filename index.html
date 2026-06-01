@@ -12887,6 +12887,8 @@ function switchDashView(view) {
   mbnSync(view);
   nuRefreshView(view);
   nuScheduleHint(view);
+  // Re-apply role preview after nuRefreshView (which resets student block visibility)
+  if (view === 'dashboard') _syncDashboardRoleLayout();
   // Legacy tour disabled — nuScheduleHint replaces dashboard onboarding
   // For non-dashboard views when in student/leader preview, update nav chrome
   if (isPlatformAdmin() && _adminViewMode !== 'admin' && view !== 'dashboard' && view !== 'admin') {
@@ -13309,16 +13311,7 @@ function cohortSetPreviewShell(shell) {
   cohortApplyShellUI();
   cohortRefreshDashboardTheme();
   void cohortRenderMentorPanels();
-  // Reflect the full sidebar layout so admin sees exactly what each role sees
-  if (shell === 'leader') {
-    _hbdApplySidebarLeaderMode(true);
-    _hbdApplyLeaderMode(true);
-  } else {
-    // Student and Individual: standard ungrouped sidebar, no cohort strip for individual
-    _hbdRevertSidebarLeaderMode();
-    _hbdApplyLeaderMode(false);
-    if (shell === 'individual') cohortUpdateCohortChrome();
-  }
+  if (shell === 'individual') cohortUpdateCohortChrome();
 }
 
 function _cohortEsc(s) {
@@ -19729,19 +19722,24 @@ async function hbdInit() {
     document.getElementById('hbd-subtitle').textContent = 'Selamat datang — mulai riset produk pertamamu hari ini.';
     nuRefreshView('dashboard');
     void hbdRenderCohortDigest();
-    if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(() => _hbdApplyLeaderMode(_effectiveLeaderMode()));
-    else { void hbdRenderMentorDigest(); _hbdApplyLeaderMode(_effectiveLeaderMode()); }
+    if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(() => _syncDashboardRoleLayout());
+    else { void hbdRenderMentorDigest(); _syncDashboardRoleLayout(); }
     return;
   }
 
   const nuPanel = document.getElementById('hbd-new-user-panel');
   if (nuPanel) nuPanel.style.display = 'none';
-  ['hbd-stats-row','hbd-product-opp-col','hbd-trending-section'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = '';
-  });
+  const leaderMode = _effectiveLeaderMode();
+  if (!leaderMode) {
+    ['hbd-stats-row','hbd-product-opp-col','hbd-trending-section'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = '';
+    });
+  }
 
-  document.getElementById('hbd-subtitle').textContent = 'Berikut ringkasan produk kamu hari ini.';
+  document.getElementById('hbd-subtitle').textContent = leaderMode
+    ? 'Pantau progres siswa dan aktivitas kohort kamu.'
+    : 'Berikut ringkasan produk kamu hari ini.';
 
   // Fetch last 2 scrape rows per tracked product
   const enriched = await Promise.all(tracked.map(async t => {
@@ -19815,7 +19813,7 @@ async function hbdInit() {
   // ── Tracked product visual strip ──────────────────────────
   const trackedStrip = document.getElementById('hbd-tracked-strip');
   const trackedCards = document.getElementById('hbd-tracked-cards');
-  if (trackedStrip && trackedCards && enriched.length) {
+  if (!leaderMode && trackedStrip && trackedCards && enriched.length) {
     trackedStrip.style.display = 'block';
     const fmtRp = v => 'Rp ' + Math.round(v||0).toLocaleString('id-ID');
     trackedCards.innerHTML = enriched.slice(0, 8).map(p => {
@@ -19841,7 +19839,7 @@ async function hbdInit() {
 
   // ── Price-change alert strip ───────────────────────────────
   const alertStrip = document.getElementById('hbd-alerts-strip');
-  if (alertStrip) {
+  if (!leaderMode && alertStrip) {
     const bigChanges = enriched.filter(p => {
       const pricePct = p.price > 0 ? Math.abs((p.curr_price - p.price) / p.price * 100) : 0;
       const soldPct  = p.total_sold > 0 ? Math.abs(p.delta / p.total_sold * 100) : 0;
@@ -19864,7 +19862,7 @@ async function hbdInit() {
 
   // ── Trending for you from allProducts ─────────────────────
   const trendingCards = document.getElementById('hbd-trending-cards');
-  if (trendingCards && allProducts.length) {
+  if (!leaderMode && trendingCards && allProducts.length) {
     const trending = [...allProducts].sort((a,b) => (b.avgTrend||0) - (a.avgTrend||0)).slice(0, 6);
     trendingCards.innerHTML = trending.map(p => {
       const scoreColor = p.score >= 70 ? '#16A34A' : p.score >= 45 ? '#B45309' : '#C0392B';
@@ -19897,8 +19895,9 @@ async function hbdInit() {
   }));
   _hbdBuildChartFromTracked(prods);
   void hbdRenderCohortDigest();
-  if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(() => _hbdApplyLeaderMode(_accessState.isLeader || isBootstrapLeader()));
-  else { void hbdRenderMentorDigest(); _hbdApplyLeaderMode(_accessState.isLeader || isBootstrapLeader()); }
+  const _finishHbdLayout = () => _syncDashboardRoleLayout();
+  if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(_finishHbdLayout);
+  else { void hbdRenderMentorDigest(); _finishHbdLayout(); }
 }
 
 async function hbdRenderMentorDigest() {
@@ -25541,11 +25540,20 @@ function nuRefreshView(view) {
   const hbdStrip = document.getElementById('hbd-tracked-strip');
   if (view === 'dashboard') {
     const empty = !hasTracked;
-    if (hbdPanel) hbdPanel.style.display = empty ? '' : 'none';
-    if (hbdStats) hbdStats.style.display = empty ? 'none' : '';
-    if (hbdOpp)   hbdOpp.style.display   = empty ? 'none' : '';
-    if (hbdTrend) hbdTrend.style.display  = empty ? 'none' : '';
-    if (hbdStrip) hbdStrip.style.display  = empty ? 'none' : hbdStrip.style.display;
+    const leaderMode = typeof _effectiveLeaderMode === 'function' && _effectiveLeaderMode();
+    if (leaderMode) {
+      if (hbdPanel) hbdPanel.style.display = 'none';
+      if (hbdStats) hbdStats.style.display = 'none';
+      if (hbdOpp)   hbdOpp.style.display   = 'none';
+      if (hbdTrend) hbdTrend.style.display  = 'none';
+      if (hbdStrip) hbdStrip.style.display  = 'none';
+    } else {
+      if (hbdPanel) hbdPanel.style.display = empty ? '' : 'none';
+      if (hbdStats) hbdStats.style.display = empty ? 'none' : '';
+      if (hbdOpp)   hbdOpp.style.display   = empty ? 'none' : '';
+      if (hbdTrend) hbdTrend.style.display  = empty ? 'none' : '';
+      if (hbdStrip) hbdStrip.style.display  = empty ? 'none' : hbdStrip.style.display;
+    }
   }
 
   const ddEmpty = document.getElementById('dd-empty-state');
@@ -26612,11 +26620,78 @@ function _effectiveLeaderMode() {
   return _accessState.isLeader || isBootstrapLeader();
 }
 
-function applyAdminViewMode(mode) {
+/** Apply dashboard block visibility + nav for admin preview or real user role. */
+function _admApplyPreviewDashboardLayout(mode) {
   const isLeader      = mode === 'leader';
   const isStudent     = mode === 'student';
   const isIndependent = mode === 'independent';
-  const isAdmin       = mode === 'admin';
+
+  _hbdApplyLeaderMode(isLeader);
+
+  if (typeof cohortSetPreviewShell === 'function') {
+    if (isLeader)           cohortSetPreviewShell('leader');
+    else if (isIndependent) cohortSetPreviewShell('individual');
+    else                    cohortSetPreviewShell('student');
+  }
+
+  if (isIndependent) {
+    ['hbd-stats-row','hbd-tracked-strip','hbd-product-chart-col','hbd-product-opp-col'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = '';
+    });
+    const recCard = document.getElementById('hbd-cohort-rec-card');
+    if (recCard) recCard.style.display = 'none';
+    const cohortDigest = document.getElementById('hbd-cohort-digest-wrap');
+    if (cohortDigest) cohortDigest.style.display = 'none';
+    const cohortNav = document.getElementById('dash-nav-cohort');
+    if (cohortNav) cohortNav.style.display = 'none';
+    const qaRow = document.getElementById('hbd-leader-quick-actions');
+    if (qaRow) qaRow.style.display = 'none';
+    _hbdRevertSidebarLeaderMode();
+    const myTokoBtn = document.getElementById('mbn-mytoko');
+    if (myTokoBtn) myTokoBtn.style.display = '';
+    const kohortLeaderBtn = document.getElementById('mbn-kohort-leader');
+    if (kohortLeaderBtn) kohortLeaderBtn.style.display = 'none';
+    const sub = document.getElementById('hbd-subtitle');
+    if (sub) sub.textContent = 'Selamat datang kembali — ini yang kamu pantau hari ini.';
+    const title = document.getElementById('dash-topbar-title');
+    if (title) title.textContent = 'Dashboard';
+    _setFlatToolsNav(true);
+    return;
+  }
+
+  if (isStudent) {
+    ['hbd-stats-row','hbd-tracked-strip','hbd-product-chart-col','hbd-product-opp-col','hbd-cohort-rec-card'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = '';
+    });
+    const qaRow = document.getElementById('hbd-leader-quick-actions');
+    if (qaRow) qaRow.style.display = 'none';
+    _hbdRevertSidebarLeaderMode();
+    const cohortItem = document.getElementById('dash-nav-cohort');
+    if (cohortItem) cohortItem.style.display = '';
+    const myTokoBtn = document.getElementById('mbn-mytoko');
+    if (myTokoBtn) myTokoBtn.style.display = '';
+    const kohortLeaderBtn = document.getElementById('mbn-kohort-leader');
+    if (kohortLeaderBtn) kohortLeaderBtn.style.display = 'none';
+    const sub = document.getElementById('hbd-subtitle');
+    if (sub) sub.textContent = 'Selamat datang kembali — ini yang kamu pantau hari ini.';
+    const title = document.getElementById('dash-topbar-title');
+    if (title) title.textContent = 'Dashboard';
+    _setFlatToolsNav(true);
+  }
+}
+
+function _syncDashboardRoleLayout() {
+  if (isPlatformAdmin() && _adminViewMode !== 'admin') {
+    _admApplyPreviewDashboardLayout(_adminViewMode);
+  } else {
+    _hbdApplyLeaderMode(_effectiveLeaderMode());
+  }
+}
+
+function applyAdminViewMode(mode) {
+  const isAdmin = mode === 'admin';
 
   // Always pre-reset cohort theme vars before anything else — eliminates
   // the one-frame color flash when switching between roles (Item 5 fix).
@@ -26638,76 +26713,7 @@ function applyAdminViewMode(mode) {
   // Student / Independent / Leader → navigate to dashboard if not already there
   if (_dashActiveView === 'admin') switchDashView('dashboard');
 
-  // Apply leader/student dashboard layout directly
-  // Do NOT call hbdInit() here — it re-runs with the real user role
-  // and would undo the preview mode via _effectiveLeaderMode()
-  _hbdApplyLeaderMode(isLeader);
-
-  // Sync cohort panel view to match the admin preview bar selection (Item 7)
-  if (typeof cohortSetPreviewShell === 'function') {
-    if (isLeader)      cohortSetPreviewShell('leader');
-    else if (isIndependent) cohortSetPreviewShell('individual');
-    else               cohortSetPreviewShell('student');
-  }
-
-  // Independent mode: same as student but cohort nav + digest hidden
-  if (isIndependent) {
-    ['hbd-stats-row','hbd-tracked-strip',
-     'hbd-product-chart-col','hbd-product-opp-col'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.style.display = '';
-    });
-    const recCard = document.getElementById('hbd-cohort-rec-card');
-    if (recCard) recCard.style.display = 'none';
-    const cohortDigest = document.getElementById('hbd-cohort-digest-wrap');
-    if (cohortDigest) cohortDigest.style.display = 'none';
-    const cohortNav = document.getElementById('dash-nav-cohort');
-    if (cohortNav) cohortNav.style.display = 'none';
-    const qaRow = document.getElementById('hbd-leader-quick-actions');
-    if (qaRow) qaRow.style.display = 'none';
-    const myTokoBtn = document.getElementById('mbn-mytoko');
-    if (myTokoBtn) myTokoBtn.style.display = '';
-    const kohortLeaderBtn = document.getElementById('mbn-kohort-leader');
-    if (kohortLeaderBtn) kohortLeaderBtn.style.display = 'none';
-    const sub = document.getElementById('hbd-subtitle');
-    if (sub) sub.textContent = 'Selamat datang kembali — ini yang kamu pantau hari ini.';
-    const title = document.getElementById('dash-topbar-title');
-    if (title) title.textContent = 'Dashboard';
-    _setFlatToolsNav(true);
-    return;
-  }
-
-  // Student mode: ensure all product sections are visible
-  if (isStudent) {
-    ['hbd-stats-row','hbd-tracked-strip',
-     'hbd-product-chart-col','hbd-product-opp-col','hbd-cohort-rec-card'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.style.display = '';
-    });
-    const qaRow = document.getElementById('hbd-leader-quick-actions');
-    if (qaRow) qaRow.style.display = 'none';
-    // Restore sidebar (Research Tools first, Kohort below)
-    const nav = document.querySelector('.dash-sidebar-nav');
-    const cohortItem = document.getElementById('dash-nav-cohort');
-    const creditItem = document.getElementById('dash-nav-credits');
-    if (cohortItem) cohortItem.style.display = '';
-    if (nav && cohortItem && creditItem) nav.insertBefore(cohortItem, creditItem);
-    // Remove leader tag from Research Tools if present
-    const researchEl = document.getElementById('dash-nav-research-tools');
-    if (researchEl) { delete researchEl.dataset.leaderTagged; const tag = researchEl.querySelector('[style*="Alat Siswa"]'); if (tag) tag.remove(); }
-    // Restore bottom nav
-    const myTokoBtn = document.getElementById('mbn-mytoko');
-    if (myTokoBtn) myTokoBtn.style.display = '';
-    const kohortLeaderBtn = document.getElementById('mbn-kohort-leader');
-    if (kohortLeaderBtn) kohortLeaderBtn.style.display = 'none';
-    // Update subtitle
-    const sub = document.getElementById('hbd-subtitle');
-    if (sub) sub.textContent = 'Selamat datang kembali — ini yang kamu pantau hari ini.';
-    // Update topbar
-    const title = document.getElementById('dash-topbar-title');
-    if (title) title.textContent = 'Dashboard';
-    _setFlatToolsNav(true);
-  }
+  _admApplyPreviewDashboardLayout(mode);
 }
 
 function _setFlatToolsNav(flat) {
@@ -26725,7 +26731,7 @@ function _setFlatToolsNav(flat) {
 
 function _hbdApplyLeaderMode(isLeader) {
   // Product-focused elements to hide from leaders
-  const hideIds = ['hbd-stats-row','hbd-tracked-strip','hbd-product-chart-col','hbd-product-opp-col','hbd-new-user-panel'];
+  const hideIds = ['hbd-stats-row','hbd-tracked-strip','hbd-product-chart-col','hbd-product-opp-col','hbd-new-user-panel','hbd-trending-section','hbd-alerts-strip'];
   hideIds.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = isLeader ? 'none' : '';
