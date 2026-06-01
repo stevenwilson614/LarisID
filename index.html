@@ -12460,18 +12460,36 @@ async function mlsAiAsk(prompt) {
   respEl.style.display = 'block';
   respEl.textContent   = 'AI sedang menganalisis...';
 
-  // Build rich system context: product + top competitors + category summary
-  const top10Comps = (ctx.top5 || []).slice(0, 10).map((r, i) =>
-    `${i+1}. ${(r.product_name||'').slice(0,40)} — Rp ${Math.round(r.price||0).toLocaleString('id-ID')}, terjual ${(r.total_sold||0).toLocaleString('id-ID')}`
+  // Build rich system context: product + full category dataset from database
+  const allRows = ctx.allRows || ctx.top5 || [];
+  const top10Comps = allRows.slice(0, 10).map((r, i) =>
+    `${i+1}. ${(r.product_name||'').slice(0,50)} — Rp ${Math.round(r.price||0).toLocaleString('id-ID')}, terjual ${(r.total_sold||0).toLocaleString('id-ID')}`
   ).join('\n');
+
+  // Price distribution from full dataset
+  const allPrices = allRows.map(r => r.price||0).filter(v => v > 0).sort((a,b) => a-b);
+  const _pct = (arr, p) => arr.length ? arr[Math.floor(arr.length * p / 100)] : 0;
+  const priceMin = allPrices[0] || 0;
+  const priceP25 = _pct(allPrices, 25);
+  const priceP75 = _pct(allPrices, 75);
+  const priceMax = allPrices[allPrices.length - 1] || 0;
+
+  // Sample of product names from the full set for spec pattern inference (up to 75)
+  const nameSample = allRows.slice(0, 75).map((r, i) =>
+    `${i+1}. ${(r.product_name||'').slice(0, 60)}`
+  ).join('\n');
+
   const systemCtx = [
     `Kamu adalah analis pasar Shopee Indonesia yang membantu penjual. Jawab singkat, praktis, dan dalam Bahasa Indonesia.`,
-    `\nPRODUK UTAMA: "${p.product_name||p.name||'—'}"`,
+    `PENTING: Kamu hanya boleh menjawab berdasarkan data Shopee yang tersedia di bawah ini. Tolak dengan sopan pertanyaan yang meminta kamu mencari data dari Alibaba, Tokopedia, Google, atau sumber eksternal lainnya. Jika informasi tidak ada dalam data, katakan "Data ini tidak tersedia di database kami."`,
+    `\nPRODUK YANG DILIHAT: "${p.product_name||p.name||'—'}"`,
     `Keyword: ${p.keyword||'—'} | Harga: Rp ${p.price ? Math.round(p.price).toLocaleString('id-ID') : '—'} | Terjual: ${(p.total_sold||0).toLocaleString('id-ID')} | Rating: ${p.rating||'—'}`,
-    `\nPASAR (keyword "${p.keyword||'—'}"):`,
-    `Total listing: ${(ctx.sigSellers||[]).length} penjual signifikan | Median harga: Rp ${ctx.medianPrice ? Math.round(ctx.medianPrice).toLocaleString('id-ID') : '—'} | Total omset pasar: Rp ${ctx.totalOmset ? Math.round(ctx.totalOmset).toLocaleString('id-ID') : '—'}/bln`,
-    top10Comps ? `\nTOP KOMPETITOR:\n${top10Comps}` : '',
-    `\nHANYA analisis produk dan keyword di atas. Jangan mengarang data lain.`,
+    `\nDATA PASAR — keyword "${p.keyword||'—'}" (${allRows.length} listing di database LarisID):`,
+    `Penjual signifikan: ${(ctx.sigSellers||[]).length} | Median harga: Rp ${ctx.medianPrice ? Math.round(ctx.medianPrice).toLocaleString('id-ID') : '—'} | Total omset pasar: Rp ${ctx.totalOmset ? Math.round(ctx.totalOmset).toLocaleString('id-ID') : '—'}/bln`,
+    allPrices.length ? `Distribusi harga: Min Rp ${Math.round(priceMin).toLocaleString('id-ID')} | P25 Rp ${Math.round(priceP25).toLocaleString('id-ID')} | Median Rp ${ctx.medianPrice ? Math.round(ctx.medianPrice).toLocaleString('id-ID') : '—'} | P75 Rp ${Math.round(priceP75).toLocaleString('id-ID')} | Max Rp ${Math.round(priceMax).toLocaleString('id-ID')}` : '',
+    top10Comps ? `\nTOP 10 PENJUAL (berdasarkan unit terjual):\n${top10Comps}` : '',
+    nameSample ? `\nDAFTAR NAMA PRODUK DI DATABASE (${allRows.length} listing — gunakan untuk inferensi spesifikasi umum seperti lumen, watt, dll):\n${nameSample}` : '',
+    `\nGUNAKAN HANYA data di atas untuk menjawab. Jangan mengarang data, jangan merujuk sumber eksternal.`,
   ].filter(Boolean).join('\n');
 
   const userOpenAiKey = localStorage.getItem('larisid_openai_key');
@@ -20122,6 +20140,7 @@ async function mlsSelectProduct(val) {
     _mlsContext.top5        = top5;
     _mlsContext.sigSellers  = sigSellers;
     _mlsContext.totalOmset  = totalOmset;
+    _mlsContext.allRows     = rows;   // full deduped set for AI category context
 
     // Pre-fill calculator price
     const kalPrice = document.getElementById('kal-price');
