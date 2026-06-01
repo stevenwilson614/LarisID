@@ -6119,6 +6119,23 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
             </div>
 
+            <!-- Leader task widget -->
+            <div id="hbd-leader-tasks" style="display:none;margin-bottom:20px;">
+              <div class="hbd-card" style="padding:18px 20px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                  <div style="font-size:.88rem;font-weight:800;color:#1A1F3C;">Task Saya</div>
+                  <button onclick="cohortTaskModalOpen(null)" style="display:inline-flex;align-items:center;gap:5px;background:#E8442A;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Buat Task
+                  </button>
+                </div>
+                <div id="hbd-tasks-list" style="display:flex;flex-direction:column;gap:7px;">
+                  <span style="font-size:.75rem;color:#9CA3AF;">Memuat…</span>
+                </div>
+                <div id="hbd-tasks-empty" style="display:none;text-align:center;padding:12px 0;font-size:.75rem;color:#9CA3AF;">Tidak ada task terbuka — semuanya selesai!</div>
+              </div>
+            </div>
+
             <!-- Leader student roster with group creation -->
             <div id="hbd-siswa-progress" style="display:none;margin-bottom:20px;">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -8173,6 +8190,7 @@ html,body{overflow-x:hidden;max-width:100%;}
               <button type="button" class="cohort-subtab" data-cmtab="report" onclick="cohortSwitchMentorTab('report')">Laporan</button>
               <button type="button" class="cohort-subtab" data-cmtab="email" onclick="cohortSwitchMentorTab('email')">Email</button>
               <button type="button" class="cohort-subtab" data-cmtab="planner" onclick="cohortSwitchMentorTab('planner')">Planner</button>
+              <button type="button" class="cohort-subtab" data-cmtab="tasks" onclick="cohortSwitchMentorTab('tasks')">Tasks</button>
             </div>
             <div id="cohort-mentor-panel-overview">
               <div class="cohort-grid">
@@ -8443,6 +8461,31 @@ html,body{overflow-x:hidden;max-width:100%;}
               <div id="gcal-import-panel" style="display:none;" class="cohort-card">
                 <h3>Import dari Google Calendar</h3>
                 <div id="gcal-import-body"></div>
+              </div>
+            </div>
+
+            <!-- ── TASKS PANEL ── -->
+            <div id="cohort-mentor-panel-tasks" style="display:none;">
+              <div class="cohort-card" style="margin-bottom:14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+                  <div>
+                    <h3 style="margin:0 0 2px;">Tasks</h3>
+                    <p class="cohort-muted" style="margin:0;font-size:.72rem;">Tindak lanjut siswa dan pengingat umum kohort kamu.</p>
+                  </div>
+                  <button onclick="cohortTaskModalOpen(null)" class="cohort-btn" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Buat Task Baru
+                  </button>
+                </div>
+                <!-- Filter tabs -->
+                <div style="display:flex;gap:6px;margin-bottom:14px;">
+                  <button id="clt-tab-open"      onclick="cohortTasksSetFilter('open')"      style="padding:5px 12px;border:none;border-radius:6px;font-size:.72rem;font-weight:700;cursor:pointer;background:#1A1F3C;color:#fff;font-family:inherit;">Terbuka</button>
+                  <button id="clt-tab-completed" onclick="cohortTasksSetFilter('completed')" style="padding:5px 12px;border:none;border-radius:6px;font-size:.72rem;font-weight:600;cursor:pointer;background:#F3F4F6;color:#6B7280;font-family:inherit;">Selesai</button>
+                  <button id="clt-tab-all"       onclick="cohortTasksSetFilter('all')"       style="padding:5px 12px;border:none;border-radius:6px;font-size:.72rem;font-weight:600;cursor:pointer;background:#F3F4F6;color:#6B7280;font-family:inherit;">Semua</button>
+                </div>
+                <div id="cohort-tasks-list" style="display:flex;flex-direction:column;gap:8px;">
+                  <span class="cohort-muted">Memuat…</span>
+                </div>
               </div>
             </div>
 
@@ -8908,6 +8951,23 @@ html,body{overflow-x:hidden;max-width:100%;}
     </select>
     <div id="ann-modal-status" style="font-size:.72rem;color:#6B7280;margin-bottom:10px;display:none;"></div>
     <button onclick="annModalSubmit()" id="ann-modal-submit-btn" class="cohort-btn" style="width:100%;">Kirim Pengumuman</button>
+  </div>
+</div>
+
+<!-- ── TASK MODAL ── -->
+<div id="cohort-task-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:700;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)cohortTaskModalClose()">
+  <div style="background:#fff;border-radius:16px;padding:24px;max-width:440px;width:100%;box-shadow:0 12px 36px rgba(0,0,0,.2);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <div style="font-size:.95rem;font-weight:800;color:#1A1F3C;" id="cohort-task-modal-title">Buat Task Baru</div>
+      <button onclick="cohortTaskModalClose()" style="background:none;border:none;font-size:1.2rem;color:#9CA3AF;cursor:pointer;line-height:1;">&#x2715;</button>
+    </div>
+    <input type="hidden" id="cohort-task-modal-student-id" value="">
+    <label style="font-size:.7rem;font-weight:600;color:#6B7280;display:block;margin-bottom:4px;">Judul task</label>
+    <input id="cohort-task-modal-inp" type="text" class="cohort-input" placeholder="Contoh: Tindak lanjut siswa ini minggu depan" style="margin-bottom:12px;">
+    <label style="font-size:.7rem;font-weight:600;color:#6B7280;display:block;margin-bottom:4px;">Tenggat (opsional)</label>
+    <input id="cohort-task-modal-due" type="date" class="cohort-input" style="margin-bottom:16px;">
+    <div id="cohort-task-modal-status" style="font-size:.72rem;color:#E8442A;margin-bottom:8px;display:none;"></div>
+    <button onclick="cohortTaskModalSubmit()" class="cohort-btn" id="cohort-task-modal-btn" style="width:100%;">Simpan Task</button>
   </div>
 </div>
 
@@ -14005,7 +14065,7 @@ function cohortSwitchMentorTab(tab) {
   document.querySelectorAll('#cohort-mentor-subtabs .cohort-subtab').forEach(b => {
     b.classList.toggle('active', b.dataset.cmtab === tab);
   });
-  ['overview', 'identity', 'students', 'program', 'mod', 'report', 'email', 'planner'].forEach(t => {
+  ['overview', 'identity', 'students', 'program', 'mod', 'report', 'email', 'planner', 'tasks'].forEach(t => {
     const el = document.getElementById('cohort-mentor-panel-' + t);
     if (el) el.style.display = t === tab ? '' : 'none';
   });
@@ -14017,6 +14077,7 @@ function cohortSwitchMentorTab(tab) {
   if (tab === 'mod') void cohortRenderModFeed(c.id);
   if (tab === 'email') ldrBcInit();
   if (tab === 'planner') void cohortPlannerRender(c.id);
+  if (tab === 'tasks') void cohortTasksLoadTab();
 }
 
 function cohortCohortDisplayName(userId, fallbackRank) {
@@ -15128,9 +15189,23 @@ async function cohortOpenStudentDrawer(userId, hintName, hintEmail) {
       <div style="border-top:1px solid #F3F4F6;padding-top:14px;margin-bottom:14px;">
         <div style="font-size:.7rem;font-weight:700;color:#374151;margin-bottom:8px;">Catatan Pribadi <span style="color:#9CA3AF;font-weight:400;font-size:.62rem;">(hanya kamu yang lihat)</span></div>
         <div id="cohort-drawer-notes-list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px;">${notesHtml || '<span style="font-size:.68rem;color:#9CA3AF;">Belum ada catatan.</span>'}</div>
-        <div style="display:flex;gap:6px;">
+        <div style="display:flex;gap:6px;margin-bottom:8px;">
           <textarea id="cohort-drawer-note-inp" rows="2" class="cohort-input" style="margin:0;flex:1;font-size:.72rem;resize:none;" placeholder="Tambah catatan tentang siswa ini…"></textarea>
           <button type="button" class="cohort-btn" style="padding:6px 12px;font-size:.65rem;align-self:flex-end;" onclick="cohortDrawerSaveNote('${esc(userId)}')">Simpan</button>
+        </div>
+        <div style="border-top:1px dashed #E5E7EB;padding-top:8px;">
+          <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:.68rem;color:#6B7280;font-weight:600;">
+            <input type="checkbox" id="cohort-drawer-task-chk" onchange="this.closest('label').nextElementSibling.style.display=this.checked?'flex':'none'" style="accent-color:#E8442A;width:13px;height:13px;">
+            Buat task terkait catatan ini
+          </label>
+          <div style="display:none;flex-direction:column;gap:6px;margin-top:7px;" id="cohort-drawer-task-form">
+            <input id="cohort-drawer-task-title" type="text" class="cohort-input" style="font-size:.72rem;margin:0;" placeholder="Judul task (contoh: Follow up besok)">
+            <div style="display:flex;gap:6px;align-items:center;">
+              <label style="font-size:.65rem;color:#6B7280;white-space:nowrap;">Tenggat</label>
+              <input id="cohort-drawer-task-due" type="date" class="cohort-input" style="font-size:.72rem;margin:0;flex:1;">
+              <button type="button" class="cohort-btn" style="padding:5px 10px;font-size:.65rem;white-space:nowrap;" onclick="cohortDrawerSaveTask('${esc(userId)}')">Buat</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -15225,6 +15300,178 @@ async function cohortDrawerSendMsg(userId) {
   } else {
     if (st) { st.textContent = error.message || 'Gagal kirim.'; st.style.color = '#E8442A'; st.style.display = 'block'; }
   }
+}
+
+// ── COHORT LEADER TASKS ──────────────────────────────────────────────────────
+
+let _cltFilter = 'open';
+
+function cohortTaskModalOpen(studentUserId, hintTitle) {
+  const el = document.getElementById('cohort-task-modal');
+  if (!el) return;
+  el.style.display = 'flex';
+  const titleEl = document.getElementById('cohort-task-modal-title');
+  const sidEl   = document.getElementById('cohort-task-modal-student-id');
+  const inp     = document.getElementById('cohort-task-modal-inp');
+  const due     = document.getElementById('cohort-task-modal-due');
+  const st      = document.getElementById('cohort-task-modal-status');
+  if (sidEl) sidEl.value = studentUserId || '';
+  if (inp)   inp.value   = hintTitle || '';
+  if (due)   due.value   = '';
+  if (st)  { st.style.display = 'none'; st.textContent = ''; }
+  if (titleEl) titleEl.textContent = studentUserId ? 'Buat Task untuk Siswa' : 'Buat Task Baru';
+  requestAnimationFrame(() => inp && inp.focus());
+}
+
+function cohortTaskModalClose() {
+  const el = document.getElementById('cohort-task-modal');
+  if (el) el.style.display = 'none';
+}
+
+async function cohortTaskModalSubmit() {
+  const c = _cohortState && _cohortState.primaryMentorCohort;
+  if (!c || !_supabase || !currentUser) return;
+  const inp   = document.getElementById('cohort-task-modal-inp');
+  const due   = document.getElementById('cohort-task-modal-due');
+  const sidEl = document.getElementById('cohort-task-modal-student-id');
+  const st    = document.getElementById('cohort-task-modal-status');
+  const btn   = document.getElementById('cohort-task-modal-btn');
+  const title = (inp?.value || '').trim();
+  if (!title) {
+    if (st) { st.textContent = 'Judul task tidak boleh kosong.'; st.style.display = 'block'; }
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan…'; }
+  const row = {
+    cohort_id: c.id,
+    leader_user_id: currentUser.id,
+    title,
+  };
+  const sid = sidEl && sidEl.value ? sidEl.value : null;
+  if (sid) row.student_user_id = sid;
+  const dv = due && due.value ? due.value : null;
+  if (dv) row.due_date = dv;
+  const { error } = await _supabase.from('cohort_leader_tasks').insert(row);
+  if (btn) { btn.disabled = false; btn.textContent = 'Simpan Task'; }
+  if (error) {
+    if (st) { st.textContent = error.message || 'Gagal menyimpan.'; st.style.display = 'block'; }
+    return;
+  }
+  cohortTaskModalClose();
+  // Refresh both dashboard widget and tab if open
+  void cohortTasksLoadDashboard();
+  if (_cohortState.mentorTab === 'tasks') void cohortTasksLoadTab();
+}
+
+async function cohortDrawerSaveTask(studentUserId) {
+  const c = _cohortState && _cohortState.primaryMentorCohort;
+  if (!c || !_supabase || !currentUser) return;
+  const titleInp = document.getElementById('cohort-drawer-task-title');
+  const dueInp   = document.getElementById('cohort-drawer-task-due');
+  const title = (titleInp?.value || '').trim();
+  if (!title) { titleInp && titleInp.focus(); return; }
+  const btn = dueInp && dueInp.nextElementSibling;
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  const row = { cohort_id: c.id, leader_user_id: currentUser.id, title, student_user_id: studentUserId };
+  if (dueInp && dueInp.value) row.due_date = dueInp.value;
+  const { error } = await _supabase.from('cohort_leader_tasks').insert(row);
+  if (btn) { btn.disabled = false; btn.textContent = 'Buat'; }
+  if (!error) {
+    if (titleInp) titleInp.value = '';
+    if (dueInp)   dueInp.value   = '';
+    const chk = document.getElementById('cohort-drawer-task-chk');
+    if (chk) { chk.checked = false; chk.dispatchEvent(new Event('change')); }
+    void cohortTasksLoadDashboard();
+    if (_cohortState.mentorTab === 'tasks') void cohortTasksLoadTab();
+  }
+}
+
+function _cltTaskCard(t, listElId) {
+  const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  const done = !!t.completed_at;
+  const overdue = !done && t.due_date && t.due_date < new Date().toISOString().slice(0,10);
+  const studentLabel = t.student_user_id
+    ? `<span style="font-size:.58rem;background:#EEF2FF;color:#6366F1;border-radius:4px;padding:1px 6px;font-weight:600;margin-left:5px;vertical-align:middle;">Siswa</span>` : '';
+  const dueLabel = t.due_date
+    ? `<span style="font-size:.6rem;color:${overdue?'#E8442A':'#9CA3AF'};margin-top:2px;display:block;">${overdue?'Lewat tenggat: ':'Tenggat: '}${t.due_date}</span>` : '';
+  return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#F9FAFB;border-radius:9px;border:1px solid #E5E7EB;${done?'opacity:.6':''}">
+    <button onclick="cohortTaskToggleDone('${esc(t.id)}','${listElId}')" title="${done?'Buka kembali':'Tandai selesai'}" style="flex-shrink:0;margin-top:1px;width:18px;height:18px;border-radius:50%;border:2px solid ${done?'#1A7A46':'#D1D5DB'};background:${done?'#1A7A46':'transparent'};cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">
+      ${done?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':''}
+    </button>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:.78rem;font-weight:${done?'400':'700'};color:${done?'#9CA3AF':'#1A1F3C'};text-decoration:${done?'line-through':'none'};">${esc(t.title)}${studentLabel}</div>
+      ${dueLabel}
+    </div>
+    <button onclick="cohortTaskDelete('${esc(t.id)}','${listElId}')" style="flex-shrink:0;background:none;border:none;color:#D1D5DB;cursor:pointer;font-size:.9rem;padding:2px 4px;" title="Hapus">&#x2715;</button>
+  </div>`;
+}
+
+async function cohortTaskToggleDone(taskId, listElId) {
+  if (!_supabase) return;
+  const { data: existing } = await _supabase.from('cohort_leader_tasks').select('completed_at').eq('id', taskId).maybeSingle();
+  const newVal = existing && existing.completed_at ? null : new Date().toISOString();
+  await _supabase.from('cohort_leader_tasks').update({ completed_at: newVal }).eq('id', taskId);
+  if (listElId === 'hbd-tasks-list') void cohortTasksLoadDashboard();
+  else void cohortTasksLoadTab();
+}
+
+async function cohortTaskDelete(taskId, listElId) {
+  if (!_supabase) return;
+  await _supabase.from('cohort_leader_tasks').delete().eq('id', taskId);
+  if (listElId === 'hbd-tasks-list') void cohortTasksLoadDashboard();
+  else void cohortTasksLoadTab();
+}
+
+async function cohortTasksLoadDashboard() {
+  const listEl  = document.getElementById('hbd-tasks-list');
+  const emptyEl = document.getElementById('hbd-tasks-empty');
+  const c = _cohortState && _cohortState.primaryMentorCohort;
+  if (!listEl || !c || !_supabase || !currentUser) return;
+  const { data } = await _supabase.from('cohort_leader_tasks')
+    .select('id,title,due_date,completed_at,student_user_id')
+    .eq('cohort_id', c.id).eq('leader_user_id', currentUser.id)
+    .is('completed_at', null)
+    .order('due_date', { ascending: true, nullsFirst: false })
+    .limit(8);
+  const tasks = data || [];
+  if (!tasks.length) {
+    listEl.innerHTML = '';
+    if (emptyEl) emptyEl.style.display = 'block';
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+  listEl.innerHTML = tasks.map(t => _cltTaskCard(t, 'hbd-tasks-list')).join('');
+}
+
+async function cohortTasksLoadTab() {
+  const listEl = document.getElementById('cohort-tasks-list');
+  const c = _cohortState && _cohortState.primaryMentorCohort;
+  if (!listEl || !c || !_supabase || !currentUser) return;
+  listEl.innerHTML = '<span class="cohort-muted">Memuat…</span>';
+  let q = _supabase.from('cohort_leader_tasks')
+    .select('id,title,due_date,completed_at,student_user_id')
+    .eq('cohort_id', c.id).eq('leader_user_id', currentUser.id)
+    .order('due_date', { ascending: true, nullsFirst: false });
+  if (_cltFilter === 'open')      q = q.is('completed_at', null);
+  if (_cltFilter === 'completed') q = q.not('completed_at', 'is', null);
+  const { data } = await q.limit(50);
+  const tasks = data || [];
+  listEl.innerHTML = tasks.length
+    ? tasks.map(t => _cltTaskCard(t, 'cohort-tasks-list')).join('')
+    : '<span class="cohort-muted">Tidak ada task.</span>';
+}
+
+function cohortTasksSetFilter(f) {
+  _cltFilter = f;
+  ['open','completed','all'].forEach(v => {
+    const btn = document.getElementById('clt-tab-' + v);
+    if (!btn) return;
+    const active = v === f;
+    btn.style.background   = active ? '#1A1F3C' : '#F3F4F6';
+    btn.style.color        = active ? '#fff' : '#6B7280';
+    btn.style.fontWeight   = active ? '700' : '600';
+  });
+  void cohortTasksLoadTab();
 }
 
 function cohortCloseStudentDrawer() {
@@ -26261,7 +26508,7 @@ function _hbdApplyLeaderMode(isLeader) {
   if (qaRow) qaRow.style.display = isLeader ? '' : 'none';
 
   // Show/hide leader-only dashboard sections
-  const leaderSections = ['hbd-siswa-progress', 'hbd-leader-email'];
+  const leaderSections = ['hbd-siswa-progress', 'hbd-leader-email', 'hbd-leader-tasks'];
   leaderSections.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = isLeader ? '' : 'none';
@@ -26271,6 +26518,8 @@ function _hbdApplyLeaderMode(isLeader) {
   if (isLeader) {
     const mentorWrap = document.getElementById('hbd-mentor-wrap');
     if (mentorWrap) mentorWrap.style.display = '';
+    const taskWidget = document.getElementById('hbd-leader-tasks');
+    if (taskWidget) taskWidget.style.display = '';
     const sub = document.getElementById('hbd-subtitle');
     if (sub) sub.textContent = 'Pantau progres siswa dan aktivitas kohort kamu.';
     const title = document.getElementById('dash-topbar-title');
@@ -26278,6 +26527,7 @@ function _hbdApplyLeaderMode(isLeader) {
     // Load data for the new sections
     if (typeof hbdSiswaProgressLoad === 'function') hbdSiswaProgressLoad(false);
     if (typeof hbdbcInit === 'function') hbdbcInit();
+    if (typeof cohortTasksLoadDashboard === 'function') void cohortTasksLoadDashboard();
   } else {
     const title = document.getElementById('dash-topbar-title');
     if (title && _dashActiveView === 'dashboard') title.textContent = 'Dashboard';
