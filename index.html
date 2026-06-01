@@ -3692,6 +3692,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
             Pasang Extension di Chrome — dapat kredit gratis tiap hari
           </a>
+          <p style="font-size:.72rem;color:rgba(255,255,255,.4);margin-top:4px;">Tersedia di Chrome Web Store · Gratis</p>
           <p style="font-size:.78rem;color:#6B7280;margin-top:8px;line-height:1.5;">Dibuat untuk mahasiswa, side hustler &amp; pemula — dipercaya seller awal dan komunitas kampus di Indonesia.</p>
         </div>
 
@@ -4719,6 +4720,34 @@ html,body{overflow-x:hidden;max-width:100%;}
           <div class="dash-nav-sub-item" id="dash-nav-alerts" onclick="switchDashView('alerts')">Alerts</div>
         </div>
 
+        <!-- Flat nav items shown for student/independent roles instead of collapsed group -->
+        <div id="dash-nav-flat-tools" style="display:none;">
+          <div class="dash-nav-item" id="dash-nav-flat-discover" onclick="switchDashView('discover')">
+            <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+            <span>Discover</span>
+          </div>
+          <div class="dash-nav-item" id="dash-nav-flat-deepdive" onclick="switchDashView('deepdive')">
+            <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+            <span>Deep Dive</span>
+          </div>
+          <div class="dash-nav-item" id="dash-nav-flat-tracker" onclick="switchDashView('tracker')">
+            <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span>
+            <span>Tracker</span>
+          </div>
+          <div class="dash-nav-item" id="dash-nav-flat-ai" onclick="switchDashView('ai')">
+            <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/></svg></span>
+            <span>Mulai Berjualan</span>
+          </div>
+          <div class="dash-nav-item" id="dash-nav-flat-mytoko" onclick="switchDashView('mytoko')">
+            <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+            <span>My Toko</span>
+          </div>
+          <div class="dash-nav-item" id="dash-nav-flat-alerts" onclick="switchDashView('alerts')">
+            <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
+            <span>Alerts</span>
+          </div>
+        </div>
+
         <div class="dash-nav-item" id="dash-nav-extension" onclick="switchDashView('extension')">
           <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span>
           <span>Chrome Extension</span>
@@ -4878,7 +4907,7 @@ html,body{overflow-x:hidden;max-width:100%;}
 
       <!-- profile edit modal -->
       <div id="profile-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:550;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)closeProfileEditModal()">
-        <div style="background:#fff;border-radius:16px;padding:22px 20px;max-width:520px;width:100%;box-shadow:0 16px 40px rgba(15,23,42,.35);">
+        <div style="background:#fff;border-radius:16px;padding:22px 20px;max-width:520px;width:100%;box-shadow:0 16px 40px rgba(15,23,42,.35);max-height:90vh;overflow-y:auto;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
             <div>
               <div style="font-size:.9rem;font-weight:800;color:#111;">Profil Saya</div>
@@ -7390,8 +7419,8 @@ html,body{overflow-x:hidden;max-width:100%;}
                       <div class="dd-card" style="padding:16px;">
                         <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">2. Biaya di Shopee</div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Komisi Shopee</div><select id="kal-commission" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;"><option value="0.08">8%</option><option value="0.10" selected>10%</option><option value="0.12">12%</option><option value="0.15">15%</option></select></div>
-                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Layanan</div><select id="kal-service" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;"><option value="0.01" selected>1%</option><option value="0.02">2%</option><option value="0.03">3%</option></select></div>
+                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Komisi Shopee <span style="font-weight:400;opacity:.7;">(per kategori)</span></div><select id="kal-commission" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;"><option value="0.01">1%</option><option value="0.02">2%</option><option value="0.03" selected>3%</option><option value="0.04">4%</option><option value="0.05">5%</option><option value="0.06">6%</option><option value="0.08">8%</option></select></div>
+                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Layanan</div><select id="kal-service" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;"><option value="0.01">1%</option><option value="0.02" selected>2%</option><option value="0.03">3%</option></select></div>
                         </div>
                         <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Program Gratis Ongkir</div><select id="kal-freeship" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;"><option value="0">Tidak ikut</option><option value="5000">Rp 5.000</option><option value="8000" selected>Rp 8.000</option><option value="12000">Rp 12.000</option><option value="15000">Rp 15.000</option></select></div>
                       </div>
@@ -7407,7 +7436,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
                           <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Packing</div><div style="position:relative;"><span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span><input id="kal-packing" type="number" value="2000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;"></div></div>
                           <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Operasional</div><div style="position:relative;"><span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span><input id="kal-opex" type="number" value="1000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;"></div></div>
-                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Return / Refund</div><select id="kal-return" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;"><option value="0.01">1%</option><option value="0.02" selected>2%</option><option value="0.03">3%</option><option value="0.05">5%</option></select></div>
+                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Return / Refund</div><select id="kal-return" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;"><option value="0.005">0.5%</option><option value="0.01" selected>1%</option><option value="0.02">2%</option><option value="0.03">3%</option><option value="0.05">5%</option></select></div>
                         </div>
                       </div>
                       <div class="dd-card" style="padding:16px;">
@@ -7780,6 +7809,24 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
             </div>
 
+            <!-- WhatsApp Alert enrollment banner -->
+            <div id="alr-wa-banner" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #86efac;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:40px;height:40px;background:#16a34a;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </div>
+                <div>
+                  <div style="font-size:.85rem;font-weight:700;color:#15803d;">Aktifkan WhatsApp Alert</div>
+                  <div style="font-size:.75rem;color:#16a34a;margin-top:2px;">Terima notifikasi perubahan harga, stok, dan peluang produk langsung di WhatsApp kamu.</div>
+                </div>
+              </div>
+              <button onclick="alrOpenWaModal()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:.8rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;">Aktifkan Sekarang</button>
+            </div>
+            <div id="alr-wa-enrolled" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:20px;display:none;align-items:center;justify-content:space-between;gap:12px;">
+              <div style="font-size:.8rem;color:#15803d;font-weight:600;">WhatsApp Alert aktif — notifikasi akan dikirim ke nomor kamu.</div>
+              <button onclick="alrOpenWaModal()" style="background:none;border:1px solid #16a34a;border-radius:7px;padding:6px 12px;font-size:.75rem;font-weight:600;color:#16a34a;cursor:pointer;font-family:inherit;">Kelola</button>
+            </div>
+
             <div class="alr-stats">
               <div class="alr-stat">
                 <div class="alr-stat-label">Alert Aktif</div>
@@ -7819,6 +7866,34 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <p>Pantau produk tertentu dan dapatkan notifikasi saat harga atau tren berubah.</p>
               </div>
               <button class="alr-create-btn" onclick="alrShowCreate()">Buat Alert Baru</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- WhatsApp Alert Modal -->
+        <div id="alr-wa-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:600;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)alrCloseWaModal()">
+          <div style="background:#fff;border-radius:16px;padding:24px;max-width:460px;width:100%;box-shadow:0 16px 40px rgba(0,0,0,.2);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+              <div style="font-size:.9rem;font-weight:800;color:#111;">WhatsApp Alert</div>
+              <button onclick="alrCloseWaModal()" style="background:none;border:none;font-size:1.1rem;color:#9CA3AF;cursor:pointer;">&#x2715;</button>
+            </div>
+            <div style="margin-bottom:14px;">
+              <label style="font-size:.7rem;font-weight:600;color:#6B7280;display:block;margin-bottom:5px;">Nomor WhatsApp kamu</label>
+              <input id="alr-wa-number" type="tel" placeholder="+628123456789" style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:.85rem;font-family:inherit;box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:16px;">
+              <div style="font-size:.7rem;font-weight:600;color:#6B7280;margin-bottom:8px;">Jenis alert yang ingin kamu terima:</div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.82rem;color:#374151;"><input type="checkbox" id="alr-wa-price" checked style="width:15px;height:15px;accent-color:#E8442A;"> Perubahan harga produk yang kamu pantau</label>
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.82rem;color:#374151;"><input type="checkbox" id="alr-wa-stock" checked style="width:15px;height:15px;accent-color:#E8442A;"> Stok kompetitor hampir habis</label>
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.82rem;color:#374151;"><input type="checkbox" id="alr-wa-keyword" style="width:15px;height:15px;accent-color:#E8442A;"> Kata kunci baru trending</label>
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.82rem;color:#374151;"><input type="checkbox" id="alr-wa-trend" checked style="width:15px;height:15px;accent-color:#E8442A;"> Tren produk naik signifikan</label>
+              </div>
+            </div>
+            <div id="alr-wa-status" style="font-size:.72rem;color:#6B7280;margin-bottom:10px;min-height:18px;"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+              <button onclick="alrCloseWaModal()" style="border:1px solid #E5E7EB;background:#fff;border-radius:8px;padding:9px 16px;font-size:.8rem;font-weight:600;color:#374151;cursor:pointer;font-family:inherit;">Batal</button>
+              <button onclick="alrSaveWaSettings()" style="background:#E8442A;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;">Simpan Pengaturan Alert</button>
             </div>
           </div>
         </div>
@@ -7982,7 +8057,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             </div>
             <div id="cohort-student-panel-ringkasan">
               <div class="cohort-grid">
-                <div class="cohort-card">
+                <div class="cohort-card" style="display:none;" aria-hidden="true">
                   <h3>Kohort kamu</h3>
                   <div id="cohort-student-info" class="cohort-muted">Memuat…</div>
                   <div style="margin-top:12px;">
@@ -7991,7 +8066,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                 </div>
                 <div class="cohort-card">
                   <h3>Milestone</h3>
-                  <ul id="cohort-milestone-list" class="cohort-list"></ul>
+                  <ul id="cohort-milestone-list" class="cohort-list" style="max-height:200px;overflow-y:auto;"></ul>
                 </div>
                 <div class="cohort-card">
                   <h3>Leaderboard (30 hari)</h3>
@@ -8065,7 +8140,14 @@ html,body{overflow-x:hidden;max-width:100%;}
             </div>
             <div id="cohort-student-panel-jadwal" style="display:none;">
               <div class="cohort-card">
-                <h3>Jadwal program</h3>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+                  <h3 style="margin:0;">Jadwal program</h3>
+                  <div style="display:flex;gap:4px;background:#F3F4F6;border-radius:8px;padding:3px;">
+                    <button id="jadwal-tab-list" onclick="jadwalSwitchView('list')" style="padding:5px 12px;border:none;border-radius:6px;font-size:.72rem;font-weight:700;cursor:pointer;background:#fff;color:#1A1F3C;box-shadow:0 1px 3px rgba(0,0,0,.1);font-family:inherit;">Daftar</button>
+                    <button id="jadwal-tab-week" onclick="jadwalSwitchView('week')" style="padding:5px 12px;border:none;border-radius:6px;font-size:.72rem;font-weight:600;cursor:pointer;background:transparent;color:#6B7280;font-family:inherit;">Mingguan</button>
+                    <button id="jadwal-tab-cal" onclick="jadwalSwitchView('cal')" style="padding:5px 12px;border:none;border-radius:6px;font-size:.72rem;font-weight:600;cursor:pointer;background:transparent;color:#6B7280;font-family:inherit;">Kalender</button>
+                  </div>
+                </div>
                 <p class="cohort-muted" style="margin-bottom:12px;">Sesi dan materi yang dijadwalkan mentor ke depan.</p>
                 <div id="cohort-jadwal-list"><span class="cohort-muted">Memuat…</span></div>
               </div>
@@ -8629,6 +8711,15 @@ html,body{overflow-x:hidden;max-width:100%;}
               </a>
             </div>
 
+            <!-- Credit earn callout — shown prominently before features -->
+            <div style="background:#FFF0ED;border:1.5px solid #F5C5BB;border-radius:12px;padding:18px 22px;display:flex;gap:14px;align-items:flex-start;margin-bottom:24px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <div>
+                <div style="font-size:.9rem;font-weight:800;color:#1A1F3C;margin-bottom:4px;">Cara Dapat Kredit Gratis</div>
+                <div style="font-size:.82rem;color:#92400E;line-height:1.6;"><strong>10 pencarian di Shopee</strong> (min. 2 halaman per keyword) = <strong>1 kredit</strong>. Bisa diulang hingga <strong>10 kredit per hari</strong>. Sambil riset, sambil dapat kredit gratis.</div>
+              </div>
+            </div>
+
             <!-- Features grid -->
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:32px;">
               <div style="background:#fff;border-radius:12px;padding:20px;border:1px solid #E5E7EB;">
@@ -9087,6 +9178,27 @@ function hydrateProfileEditUI() {
       initialsEl.style.display = '';
     }
   }
+
+  // Sync sidebar + topbar avatars with headshot
+  const _imgStyle = 'width:100%;height:100%;border-radius:50%;object-fit:cover;';
+  const dashAvEl = document.getElementById('dash-avatar');
+  if (dashAvEl) {
+    if (url) {
+      dashAvEl.innerHTML = `<img src="${url}" style="${_imgStyle}" alt="">`;
+    } else {
+      const initLetter = (initials || '?').charAt(0);
+      dashAvEl.innerHTML = initLetter;
+    }
+  }
+  const tbAvEl = document.getElementById('dash-topbar-av');
+  if (tbAvEl) {
+    if (url) {
+      tbAvEl.innerHTML = `<img src="${url}" style="${_imgStyle}" alt="">`;
+    } else {
+      const initLetter = (initials || '?').charAt(0);
+      if (tbAvEl.childNodes[0]) tbAvEl.childNodes[0].textContent = initLetter;
+    }
+  }
 }
 
 function openProfileEditModal() {
@@ -9173,6 +9285,7 @@ async function saveProfileEdits() {
     _profileState.loaded = true;
     hydrateProfileEditUI();
     if (statusEl) { statusEl.style.color = '#1A7A46'; statusEl.textContent = 'Profil tersimpan.'; }
+    setTimeout(() => closeProfileEditModal(), 1000);
   } catch (e) {
     console.warn('saveProfileEdits error', e.message || e);
     if (statusEl) { statusEl.style.color = '#C0392B'; statusEl.textContent = 'Gagal menyimpan profil. Coba lagi.'; }
@@ -10503,6 +10616,10 @@ function updateAuthUI() {
     if (dispEmail) dispEmail.textContent = currentUser.email;
   }
   void cohortRefreshCohortPillFromServer();
+  // Load profile in background so headshot shows in sidebar/topbar avatars
+  if (currentUser && !_profileState.loaded) {
+    void loadUserProfile().catch(() => {});
+  }
 }
 
 let _authMode = 'login'; // 'login', 'signup', or 'reset'
@@ -14078,7 +14195,17 @@ async function cohortRenderAnnouncements(cohortId) {
   if (!cohortId || !_supabase) { ul.innerHTML = '<li class="cohort-muted">—</li>'; return; }
   const { data } = await _supabase.from('cohort_announcements').select('title,body,created_at').eq('cohort_id', cohortId).order('created_at', { ascending: false }).limit(12);
   if (!(data || []).length) { ul.innerHTML = '<li class="cohort-muted">Belum ada pengumuman.</li>'; return; }
-  ul.innerHTML = data.map(a => `<li><div><strong>${_cohortEsc(a.title)}</strong><div class="cohort-muted" style="margin-top:4px;">${_cohortEsc((a.body || '').slice(0, 120))}${(a.body || '').length > 120 ? '…' : ''}</div></div><span class="cohort-muted" style="white-space:nowrap;">${_cohortEsc((a.created_at || '').slice(0, 10))}</span></li>`).join('');
+  const readIds = JSON.parse(localStorage.getItem('larisid_read_announcements') || '[]');
+  const now = Date.now();
+  const sevenDays = 7 * 24 * 60 * 60 * 1000;
+  ul.innerHTML = data.map(a => {
+    const isNew = (now - new Date(a.created_at).getTime()) < sevenDays;
+    const isRead = readIds.includes(a.created_at);
+    const dot = (isNew && !isRead) ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#E8442A;margin-right:5px;flex-shrink:0;margin-top:3px;"></span>' : '';
+    const titleStyle = (isNew && !isRead) ? 'font-weight:800;color:#111;' : 'font-weight:600;';
+    const readBtn = (!isRead) ? `<button onclick="event.stopPropagation();(function(k){var r=JSON.parse(localStorage.getItem('larisid_read_announcements')||'[]');if(!r.includes(k)){r.push(k);localStorage.setItem('larisid_read_announcements',JSON.stringify(r));}this.closest('li').style.opacity='.6';this.remove();}).call(this,'${_cohortEsc(a.created_at)}')" style="font-size:.6rem;color:#9CA3AF;background:none;border:none;cursor:pointer;padding:0;margin-top:3px;display:block;">Tandai dibaca</button>` : '';
+    return `<li style="align-items:flex-start;gap:6px;${isRead?'opacity:.65':''}"><span style="display:flex;align-items:flex-start;flex:1;gap:4px;">${dot}<div><div style="${titleStyle}">${_cohortEsc(a.title)}</div><div class="cohort-muted" style="margin-top:3px;">${_cohortEsc((a.body||'').slice(0,120))}${(a.body||'').length>120?'…':''}</div>${readBtn}</div></span><span class="cohort-muted" style="white-space:nowrap;font-size:.62rem;">${_cohortEsc((a.created_at||'').slice(0,10))}</span></li>`;
+  }).join('');
 }
 
 async function cohortRenderStudentInbox() {
@@ -15916,7 +16043,7 @@ function dscRenderTable() {
     return `<span style="color:#9CA3AF;font-size:.8rem;">0</span>`;
   };
 
-  const emptyHtml = '<div style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Tidak ada produk yang sesuai filter.</div>';
+  const emptyHtml = '<div style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Tidak ada produk ditemukan untuk kategori dan harga ini. Coba perluas filter atau ubah kata kunci pencarian.</div>';
 
   // ── CARD VIEW ──
   if (_dscViewMode === 'card' && cardGrid) {
@@ -15957,7 +16084,7 @@ function dscRenderTable() {
   const tbody = document.getElementById('dsc-tbody');
   if (_dscViewMode === 'table' && tbody) {
     if (!slice.length) {
-      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Tidak ada produk yang sesuai filter.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Tidak ada produk ditemukan untuk kategori dan harga ini. Coba perluas filter atau ubah kata kunci pencarian.</td></tr>`;
     } else {
       // Group all loaded listings by keyword for peer-context scoring
       const _dscKwMap = {};
@@ -19797,13 +19924,22 @@ function mlsSetView(mode) {
   if (btnCard) { btnCard.style.background = mode === 'card' ? '#FEF2F0' : '#fff'; btnCard.style.borderColor = mode === 'card' ? '#E8442A' : '#E5E7EB'; btnCard.style.color = mode === 'card' ? '#E8442A' : '#6B7280'; }
 }
 
-function mlsOpenCompDive(itemId, shopId) {
+async function mlsOpenCompDive(itemId, shopId) {
   // Find the competitor in current MLS keyword rows and open its deep dive
-  const ctx = window._mlsContext || {};
-  if (!ctx.keyword) return;
-  // Find from discover listings or fetch
   const found = (_dscAllListings || []).find(p => String(p.item_id) === String(itemId) && String(p.shop_id) === String(shopId));
-  if (found) { dscOpenDeepDive(`${found.item_id}__${found.shop_id}`); switchDashView('deepdive'); }
+  if (found) { dscOpenDeepDive(`${found.item_id}__${found.shop_id}`); switchDashView('deepdive'); return; }
+  // Not in local cache — query DB directly
+  if (!_supabase) return;
+  const { data } = await _supabase.from('listings')
+    .select('item_id,shop_id,product_name,keyword,price,total_sold,store_name,category,image_url,url,rating,reviews,location,listing_date,scraped_at')
+    .eq('item_id', itemId).eq('shop_id', shopId).order('scraped_at', { ascending: false }).limit(1);
+  if (data && data.length) {
+    const p = data[0];
+    if (!window._dscAllListings) window._dscAllListings = [];
+    if (!_dscAllListings.find(x => String(x.item_id) === String(itemId))) _dscAllListings.push(p);
+    dscOpenDeepDive(`${p.item_id}__${p.shop_id}`);
+    switchDashView('deepdive');
+  }
 }
 
 function mlsSaveApiKey() {
@@ -19915,6 +20051,7 @@ function _alrRng(seed) {
 }
 
 function alrInit() {
+  alrCheckWaEnrollment();
   if (!userHasTrackedProducts()) {
     nuRefreshView('alerts');
     return;
@@ -19986,6 +20123,59 @@ function alrMarkAllRead() {
 }
 
 function alrShowCreate() { openAuthModal('signup'); }
+
+function alrOpenWaModal() {
+  const modal = document.getElementById('alr-wa-modal');
+  if (!modal) return;
+  const saved = JSON.parse(localStorage.getItem('larisid_wa_alert_settings') || 'null');
+  if (saved) {
+    const numEl = document.getElementById('alr-wa-number');
+    if (numEl) numEl.value = saved.number || '';
+    const checks = { 'alr-wa-price': saved.price, 'alr-wa-stock': saved.stock, 'alr-wa-keyword': saved.keyword, 'alr-wa-trend': saved.trend };
+    Object.entries(checks).forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.checked = !!val; });
+  }
+  const status = document.getElementById('alr-wa-status');
+  if (status) status.textContent = '';
+  modal.style.display = 'flex';
+}
+
+function alrCloseWaModal() {
+  const modal = document.getElementById('alr-wa-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function alrSaveWaSettings() {
+  const number = (document.getElementById('alr-wa-number')?.value || '').trim();
+  const status = document.getElementById('alr-wa-status');
+  if (!number) { if (status) { status.style.color = '#C0392B'; status.textContent = 'Masukkan nomor WhatsApp kamu.'; } return; }
+  const settings = {
+    number,
+    price:   !!(document.getElementById('alr-wa-price')?.checked),
+    stock:   !!(document.getElementById('alr-wa-stock')?.checked),
+    keyword: !!(document.getElementById('alr-wa-keyword')?.checked),
+    trend:   !!(document.getElementById('alr-wa-trend')?.checked),
+  };
+  localStorage.setItem('larisid_wa_alert_settings', JSON.stringify(settings));
+  const banner = document.getElementById('alr-wa-banner');
+  const enrolled = document.getElementById('alr-wa-enrolled');
+  if (banner) banner.style.display = 'none';
+  if (enrolled) enrolled.style.display = 'flex';
+  if (status) { status.style.color = '#16a34a'; status.textContent = 'Tersimpan! Tim kami akan menghubungi kamu dalam 1x24 jam untuk konfirmasi.'; }
+  setTimeout(() => alrCloseWaModal(), 1800);
+}
+
+function alrCheckWaEnrollment() {
+  const saved = JSON.parse(localStorage.getItem('larisid_wa_alert_settings') || 'null');
+  const banner = document.getElementById('alr-wa-banner');
+  const enrolled = document.getElementById('alr-wa-enrolled');
+  if (saved && saved.number) {
+    if (banner) banner.style.display = 'none';
+    if (enrolled) { enrolled.style.display = 'flex'; }
+  } else {
+    if (banner) banner.style.display = 'flex';
+    if (enrolled) enrolled.style.display = 'none';
+  }
+}
 
 // ── LANDING PAGE PREVIEW ────────────────────────────────────────
 let _lpPreviewChart = null;
@@ -25933,6 +26123,7 @@ function applyAdminViewMode(mode) {
     if (sub) sub.textContent = 'Selamat datang kembali — ini yang kamu pantau hari ini.';
     const title = document.getElementById('dash-topbar-title');
     if (title) title.textContent = 'Dashboard';
+    _setFlatToolsNav(true);
     return;
   }
 
@@ -25965,7 +26156,17 @@ function applyAdminViewMode(mode) {
     // Update topbar
     const title = document.getElementById('dash-topbar-title');
     if (title) title.textContent = 'Dashboard';
+    _setFlatToolsNav(true);
   }
+}
+
+function _setFlatToolsNav(flat) {
+  const grouped = document.getElementById('dash-nav-research-tools');
+  const groupedSub = document.getElementById('dash-sub-research-tools');
+  const flatTools = document.getElementById('dash-nav-flat-tools');
+  if (grouped) grouped.style.display = flat ? 'none' : '';
+  if (groupedSub) groupedSub.style.display = 'none';
+  if (flatTools) flatTools.style.display = flat ? '' : 'none';
 }
 
 // ════════════════════════════════════════════════════════════
@@ -25974,7 +26175,7 @@ function applyAdminViewMode(mode) {
 
 function _hbdApplyLeaderMode(isLeader) {
   // Product-focused elements to hide from leaders
-  const hideIds = ['hbd-stats-row','hbd-tracked-strip','hbd-product-chart-col','hbd-product-opp-col'];
+  const hideIds = ['hbd-stats-row','hbd-tracked-strip','hbd-product-chart-col','hbd-product-opp-col','hbd-new-user-panel'];
   hideIds.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = isLeader ? 'none' : '';
@@ -26010,6 +26211,9 @@ function _hbdApplyLeaderMode(isLeader) {
     const title = document.getElementById('dash-topbar-title');
     if (title && _dashActiveView === 'dashboard') title.textContent = 'Dashboard';
   }
+
+  // Apply flat vs grouped Research Tools nav
+  if (typeof _setFlatToolsNav === 'function') _setFlatToolsNav(!isLeader);
 
   // Apply sidebar + bottom nav changes
   _hbdApplySidebarLeaderMode(isLeader);
@@ -26872,7 +27076,8 @@ async function cohortRenderJadwal(cohortId) {
       (prog || []).forEach(p => { if (p.progress_pct >= 100) watchedSet.add(p.content_id); });
     }
   } catch (e) {}
-  el.innerHTML = sessions.map(s => {
+  _jadwalSessions = sessions;
+  const listHtml = sessions.map(s => {
     const d = new Date(s.session_date + 'T00:00:00');
     const label = d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
     const docs = (s.document_urls || []).filter(Boolean);
@@ -26892,6 +27097,120 @@ async function cohortRenderJadwal(cohortId) {
       ${wscRequiredSectionHtml(reqBySession[s.id] || [], watchedSet, cohortId)}
     </div>`;
     // /WS-A
+  }).join('');
+  el.innerHTML = listHtml;
+  jadwalStoreListHtml(listHtml);
+}
+
+// ── JADWAL VIEW SWITCHER ──────────────────────────────────────────────────────
+let _jadwalView = 'list';
+let _jadwalSessions = [];
+
+function jadwalSwitchView(view) {
+  _jadwalView = view;
+  ['list','week','cal'].forEach(v => {
+    const btn = document.getElementById(`jadwal-tab-${v}`);
+    if (btn) {
+      btn.style.background = v === view ? '#fff' : 'transparent';
+      btn.style.color = v === view ? '#1A1F3C' : '#6B7280';
+      btn.style.fontWeight = v === view ? '700' : '600';
+      btn.style.boxShadow = v === view ? '0 1px 3px rgba(0,0,0,.1)' : 'none';
+    }
+  });
+  jadwalRenderCurrent();
+}
+
+function jadwalRenderCurrent() {
+  const el = document.getElementById('cohort-jadwal-list');
+  if (!el || !_jadwalSessions.length) return;
+  if (_jadwalView === 'week') { jadwalRenderWeek(el); return; }
+  if (_jadwalView === 'cal') { jadwalRenderCal(el); return; }
+  // list view — re-use stored HTML
+  if (_jadwalListHtml) el.innerHTML = _jadwalListHtml;
+}
+
+let _jadwalListHtml = '';
+
+function jadwalStoreListHtml(html) { _jadwalListHtml = html; }
+
+function jadwalRenderWeek(el) {
+  if (!_jadwalSessions.length) { el.innerHTML = '<span class="cohort-muted">Belum ada jadwal mendatang.</span>'; return; }
+  const DAY = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+  const byWeek = {};
+  _jadwalSessions.forEach(s => {
+    const d = new Date(s.session_date + 'T00:00:00');
+    const mon = new Date(d); mon.setDate(d.getDate() - ((d.getDay()+6)%7));
+    const wk = mon.toISOString().slice(0,10);
+    if (!byWeek[wk]) byWeek[wk] = [];
+    byWeek[wk].push(s);
+  });
+  el.innerHTML = Object.entries(byWeek).sort(([a],[b])=>a<b?-1:1).map(([wk, sessions]) => {
+    const monDate = new Date(wk + 'T00:00:00');
+    const sunDate = new Date(monDate); sunDate.setDate(monDate.getDate() + 6);
+    const fmt = d => d.toLocaleDateString('id-ID', { day:'numeric', month:'short' });
+    const header = `Minggu ${fmt(monDate)} – ${fmt(sunDate)}`;
+    const cards = sessions.map(s => {
+      const d = new Date(s.session_date + 'T00:00:00');
+      const dayLabel = DAY[d.getDay()];
+      const tr = _wsaTimeRange ? _wsaTimeRange(s) : '';
+      return `<div style="border-left:3px solid #6366F1;padding:8px 12px;background:#F9FAFB;border-radius:0 8px 8px 0;margin-bottom:6px;">
+        <div style="font-size:.6rem;color:#6366F1;font-weight:700;text-transform:uppercase;">${dayLabel}${tr ? ` · ${tr}` : ''}</div>
+        <div style="font-weight:800;font-size:.8rem;margin:2px 0;">${_cohortEsc(s.title)}</div>
+        ${s.location ? `<div style="font-size:.68rem;color:#9CA3AF;">${_cohortEsc(s.location)}</div>` : ''}
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:14px;"><div style="font-size:.68rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;margin-bottom:6px;">${header}</div>${cards}</div>`;
+  }).join('');
+}
+
+function jadwalRenderCal(el) {
+  if (!_jadwalSessions.length) { el.innerHTML = '<span class="cohort-muted">Belum ada jadwal mendatang.</span>'; return; }
+  const sessionDates = new Set(_jadwalSessions.map(s => s.session_date));
+  const sessionMap = {};
+  _jadwalSessions.forEach(s => { if (!sessionMap[s.session_date]) sessionMap[s.session_date] = []; sessionMap[s.session_date].push(s); });
+
+  const today = new Date();
+  const firstSession = new Date(_jadwalSessions[0].session_date + 'T00:00:00');
+  const year = firstSession.getFullYear();
+  const month = firstSession.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startDow = (firstDay.getDay() + 6) % 7; // Mon=0
+
+  const monthLabel = firstDay.toLocaleDateString('id-ID', { month:'long', year:'numeric' });
+  const DAY_HDR = ['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
+
+  let cells = '';
+  for (let i = 0; i < startDow; i++) cells += '<div></div>';
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    const ymd = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const hasSess = sessionDates.has(ymd);
+    const isToday = (today.getFullYear()===year && today.getMonth()===month && today.getDate()===d);
+    cells += `<div onclick="${hasSess ? `jadwalCalDayClick('${ymd}')` : ''}" style="aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;cursor:${hasSess?'pointer':'default'};background:${isToday?'#EFF6FF':hasSess?'#FFF0ED':'transparent'};border:${isToday?'1.5px solid #3B82F6':'1px solid transparent'};position:relative;">
+      <span style="font-size:.72rem;font-weight:${hasSess?'700':'400'};color:${hasSess?'#E8442A':isToday?'#2563EB':'#374151'};">${d}</span>
+      ${hasSess ? '<span style="width:5px;height:5px;border-radius:50%;background:#E8442A;position:absolute;bottom:3px;"></span>' : ''}
+    </div>`;
+  }
+
+  el.innerHTML = `<div style="margin-bottom:10px;font-size:.8rem;font-weight:700;color:#1A1F3C;text-align:center;">${monthLabel}</div>
+  <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:8px;">${DAY_HDR.map(h=>`<div style="text-align:center;font-size:.6rem;color:#9CA3AF;font-weight:600;padding:4px 0;">${h}</div>`).join('')}</div>
+  <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;" id="jadwal-cal-grid">${cells}</div>
+  <div id="jadwal-cal-detail" style="margin-top:10px;"></div>`;
+}
+
+function jadwalCalDayClick(ymd) {
+  const sessionMap = {};
+  _jadwalSessions.forEach(s => { if (!sessionMap[s.session_date]) sessionMap[s.session_date] = []; sessionMap[s.session_date].push(s); });
+  const sessions = sessionMap[ymd] || [];
+  const detail = document.getElementById('jadwal-cal-detail');
+  if (!detail) return;
+  detail.innerHTML = sessions.map(s => {
+    const tr = _wsaTimeRange ? _wsaTimeRange(s) : '';
+    return `<div style="border-left:3px solid #E8442A;padding:8px 12px;background:#FFF0ED;border-radius:0 8px 8px 0;margin-bottom:6px;">
+      <div style="font-size:.6rem;color:#E8442A;font-weight:700;">${tr || ymd}</div>
+      <div style="font-weight:800;font-size:.8rem;margin:2px 0;">${_cohortEsc(s.title)}</div>
+      ${s.notes ? `<div style="font-size:.7rem;color:#6B7280;margin-top:2px;">${_cohortEsc(s.notes)}</div>` : ''}
+    </div>`;
   }).join('');
 }
 
