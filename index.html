@@ -4817,7 +4817,7 @@ html,body{overflow-x:hidden;max-width:100%;}
         </div>
         <div id="dash-topbar-cohort-chip" class="dash-topbar-cohort-chip" style="display:none;" aria-label="Kohort"></div>
         <div class="dash-topbar-avatar" id="dash-topbar-av" onclick="event.stopPropagation();document.getElementById('dash-topbar-menu').classList.toggle('open')">
-          ?
+          <span id="dash-topbar-av-icon">?</span>
         <div class="dash-topbar-menu" id="dash-topbar-menu">
             <div class="dash-topbar-menu-item" id="dash-topbar-uname" style="font-weight:700;color:#111;pointer-events:none;font-size:.8rem;"></div>
             <div class="dash-topbar-divider"></div>
@@ -9190,13 +9190,12 @@ function hydrateProfileEditUI() {
       dashAvEl.innerHTML = initLetter;
     }
   }
-  const tbAvEl = document.getElementById('dash-topbar-av');
-  if (tbAvEl) {
+  const tbAvIcon = document.getElementById('dash-topbar-av-icon');
+  if (tbAvIcon) {
     if (url) {
-      tbAvEl.innerHTML = `<img src="${url}" style="${_imgStyle}" alt="">`;
+      tbAvIcon.outerHTML = `<img id="dash-topbar-av-icon" src="${url}" style="${_imgStyle}" alt="">`;
     } else {
-      const initLetter = (initials || '?').charAt(0);
-      if (tbAvEl.childNodes[0]) tbAvEl.childNodes[0].textContent = initLetter;
+      tbAvIcon.textContent = (initials || '?').charAt(0);
     }
   }
 }
@@ -10600,9 +10599,9 @@ function updateAuthUI() {
     // show admin preview bar + float widget and restore saved view mode
     if (isPlatformAdmin()) { _adminViewModeInit(); adminFloatInit(); }
     // topbar avatar
-    const tbAv = document.getElementById('dash-topbar-av');
+    const tbAvIcon = document.getElementById('dash-topbar-av-icon');
     const tbUn = document.getElementById('dash-topbar-uname');
-    if (tbAv) tbAv.childNodes[0].textContent = name.charAt(0).toUpperCase();
+    if (tbAvIcon) tbAvIcon.textContent = name.charAt(0).toUpperCase();
     if (tbUn) tbUn.textContent = name;
   }
   // Legacy profile hero elements (kept for compatibility)
