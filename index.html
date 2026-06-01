@@ -15060,14 +15060,16 @@ async function cohortOpenStudentDrawer(userId, hintName, hintEmail) {
       queries.push(_supabase.from('milestones').select('id,title,sort_order').eq('cohort_id', c.id).order('sort_order', { ascending: true }));
       queries.push(_supabase.from('user_milestone_progress').select('milestone_id').eq('user_id', userId));
       queries.push(_supabase.from('cohort_student_notes').select('id,body,created_at').eq('cohort_id', c.id).eq('student_user_id', userId).order('created_at', { ascending: false }));
+      queries.push(_supabase.from('cohort_leader_tasks').select('id,title,due_date,completed_at').eq('cohort_id', c.id).eq('leader_user_id', currentUser.id).eq('student_user_id', userId).order('due_date', { ascending: true, nullsFirst: false }));
     }
 
     const results = await Promise.all(queries);
     const [{ data: baseRaw }, { data: prof }, { data: savedProds }, { data: recentEvs }] = results;
-    const memRow  = c ? (results[4]?.data || {}) : {};
-    const allMs   = c ? (results[5]?.data || []) : [];
-    const doneMs  = c ? (results[6]?.data || []) : [];
-    const notes   = c ? (results[7]?.data || []) : [];
+    const memRow      = c ? (results[4]?.data || {}) : {};
+    const allMs       = c ? (results[5]?.data || []) : [];
+    const doneMs      = c ? (results[6]?.data || []) : [];
+    const notes       = c ? (results[7]?.data || []) : [];
+    const stuTasks    = c ? (results[8]?.data || []) : [];
 
     const base = Array.isArray(baseRaw) ? baseRaw[0] : baseRaw;
     const pr   = prof || {};
@@ -15202,6 +15204,33 @@ async function cohortOpenStudentDrawer(userId, hintName, hintEmail) {
           ? `<div style="display:flex;flex-direction:column;gap:3px;">${recentEvs.map(e => `<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 8px;background:#F9FAFB;border-radius:5px;"><span style="font-size:.67rem;color:#374151;">${actLabel(e)}</span><span style="font-size:.62rem;color:#9CA3AF;white-space:nowrap;flex-shrink:0;">${fmtDt(e.created_at)}</span></div>`).join('')}</div>`
           : '<span style="font-size:.68rem;color:#9CA3AF;">Belum ada aktivitas terbaru.</span>'}
       </div>
+
+      ${c && stuTasks.length ? `
+      <div style="border-top:1px solid #F3F4F6;padding-top:14px;margin-bottom:14px;" id="cohort-drawer-student-tasks">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-size:.7rem;font-weight:700;color:#374151;">Tasks <span style="color:#9CA3AF;font-weight:400;font-size:.62rem;">(${stuTasks.filter(t=>!t.completed_at).length} terbuka)</span></div>
+          <button onclick="cohortTaskModalOpen('${esc(userId)}')" style="font-size:.6rem;font-weight:700;color:#E8442A;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;">+ Tambah</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          ${stuTasks.map(t => {
+            const done = !!t.completed_at;
+            const today = new Date().toISOString().slice(0,10);
+            const overdue = !done && t.due_date && t.due_date < today;
+            return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:${done?'#F9FAFB':'#FFF0ED'};border-radius:8px;border:1px solid ${done?'#E5E7EB':'#F5C5BB'};${done?'opacity:.6':''}">
+              <button onclick="cohortTaskToggleDone('${esc(t.id)}','cohort-drawer-student-tasks');setTimeout(()=>cohortOpenStudentDrawer('${esc(userId)}'),300)" title="${done?'Buka kembali':'Tandai selesai'}" style="flex-shrink:0;width:16px;height:16px;border-radius:50%;border:2px solid ${done?'#1A7A46':'#E8442A'};background:${done?'#1A7A46':'transparent'};cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">
+                ${done?'<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':''}
+              </button>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:.7rem;font-weight:${done?'400':'700'};color:${done?'#9CA3AF':'#1A1F3C'};text-decoration:${done?'line-through':'none'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(t.title)}</div>
+                ${t.due_date ? `<div style="font-size:.58rem;color:${overdue?'#E8442A':'#9CA3AF'};margin-top:1px;">${overdue?'Lewat: ':''}${t.due_date}</div>` : ''}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>` : `${c ? `<div style="border-top:1px solid #F3F4F6;padding-top:14px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:.7rem;font-weight:700;color:#374151;">Tasks</div>
+        <button onclick="cohortTaskModalOpen('${esc(userId)}')" style="font-size:.6rem;font-weight:700;color:#E8442A;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;">+ Tambah</button>
+      </div>` : ''}`}
 
       ${c ? `
       <div style="border-top:1px solid #F3F4F6;padding-top:14px;margin-bottom:14px;">
