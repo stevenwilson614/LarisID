@@ -14202,9 +14202,19 @@ async function cohortRenderAnnouncements(cohortId) {
     const isRead = readIds.includes(a.created_at);
     const dot = (isNew && !isRead) ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#E8442A;margin-right:5px;flex-shrink:0;margin-top:3px;"></span>' : '';
     const titleStyle = (isNew && !isRead) ? 'font-weight:800;color:#111;' : 'font-weight:600;';
-    const readBtn = (!isRead) ? `<button onclick="event.stopPropagation();(function(k){var r=JSON.parse(localStorage.getItem('larisid_read_announcements')||'[]');if(!r.includes(k)){r.push(k);localStorage.setItem('larisid_read_announcements',JSON.stringify(r));}this.closest('li').style.opacity='.6';this.remove();}).call(this,'${_cohortEsc(a.created_at)}')" style="font-size:.6rem;color:#9CA3AF;background:none;border:none;cursor:pointer;padding:0;margin-top:3px;display:block;">Tandai dibaca</button>` : '';
+    const readBtn = (!isRead) ? `<button onclick="event.stopPropagation();cohortMarkAnnouncementRead('${_cohortEsc(a.created_at)}',this)" style="display:inline-flex;align-items:center;gap:4px;margin-top:5px;font-size:.65rem;font-weight:600;color:#6366F1;background:#EEF2FF;border:none;border-radius:5px;padding:3px 8px;cursor:pointer;font-family:inherit;">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      Tandai dibaca</button>` : '';
     return `<li style="align-items:flex-start;gap:6px;${isRead?'opacity:.65':''}"><span style="display:flex;align-items:flex-start;flex:1;gap:4px;">${dot}<div><div style="${titleStyle}">${_cohortEsc(a.title)}</div><div class="cohort-muted" style="margin-top:3px;">${_cohortEsc((a.body||'').slice(0,120))}${(a.body||'').length>120?'…':''}</div>${readBtn}</div></span><span class="cohort-muted" style="white-space:nowrap;font-size:.62rem;">${_cohortEsc((a.created_at||'').slice(0,10))}</span></li>`;
   }).join('');
+}
+
+function cohortMarkAnnouncementRead(key, btn) {
+  const r = JSON.parse(localStorage.getItem('larisid_read_announcements') || '[]');
+  if (!r.includes(key)) { r.push(key); localStorage.setItem('larisid_read_announcements', JSON.stringify(r)); }
+  const li = btn.closest('li');
+  if (li) li.style.opacity = '.55';
+  btn.remove();
 }
 
 async function cohortRenderStudentInbox() {
@@ -27113,6 +27123,7 @@ async function cohortRenderJadwal(cohortId) {
 // ── JADWAL VIEW SWITCHER ──────────────────────────────────────────────────────
 let _jadwalView = 'list';
 let _jadwalSessions = [];
+let _jadwalWeekOffset = 0;
 
 function jadwalSwitchView(view) {
   _jadwalView = view;
@@ -27143,32 +27154,75 @@ function jadwalStoreListHtml(html) { _jadwalListHtml = html; }
 
 function jadwalRenderWeek(el) {
   if (!_jadwalSessions.length) { el.innerHTML = '<span class="cohort-muted">Belum ada jadwal mendatang.</span>'; return; }
-  const DAY = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
-  const byWeek = {};
-  _jadwalSessions.forEach(s => {
-    const d = new Date(s.session_date + 'T00:00:00');
-    const mon = new Date(d); mon.setDate(d.getDate() - ((d.getDay()+6)%7));
-    const wk = mon.toISOString().slice(0,10);
-    if (!byWeek[wk]) byWeek[wk] = [];
-    byWeek[wk].push(s);
+
+  // Base Monday = Monday of the week containing the first upcoming session
+  const firstDate = new Date(_jadwalSessions[0].session_date + 'T00:00:00');
+  const baseMonday = new Date(firstDate);
+  baseMonday.setDate(firstDate.getDate() - ((firstDate.getDay() + 6) % 7));
+  baseMonday.setHours(0, 0, 0, 0);
+
+  // Apply week offset navigation
+  const monday = new Date(baseMonday);
+  monday.setDate(baseMonday.getDate() + _jadwalWeekOffset * 7);
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const DAY_LABELS = ['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
+
+  // Build 7 day slots Mon–Sun
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday); d.setDate(monday.getDate() + i);
+    return { d, ymd: d.toISOString().slice(0, 10), isToday: d.getTime() === today.getTime() };
   });
-  el.innerHTML = Object.entries(byWeek).sort(([a],[b])=>a<b?-1:1).map(([wk, sessions]) => {
-    const monDate = new Date(wk + 'T00:00:00');
-    const sunDate = new Date(monDate); sunDate.setDate(monDate.getDate() + 6);
-    const fmt = d => d.toLocaleDateString('id-ID', { day:'numeric', month:'short' });
-    const header = `Minggu ${fmt(monDate)} – ${fmt(sunDate)}`;
+
+  // Map sessions by date, sorted by start_time within each day
+  const sessMap = {};
+  _jadwalSessions.forEach(s => {
+    if (!sessMap[s.session_date]) sessMap[s.session_date] = [];
+    sessMap[s.session_date].push(s);
+  });
+  Object.values(sessMap).forEach(arr => arr.sort((a, b) => (a.start_time || '') < (b.start_time || '') ? -1 : 1));
+
+  const hasSessions = days.some(day => (sessMap[day.ymd] || []).length);
+
+  const fmt = d => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  const sunday = days[6].d;
+
+  const colsHtml = days.map(({ d, ymd, isToday }) => {
+    const sessions = sessMap[ymd] || [];
+    const dayIdx = (d.getDay() + 6) % 7; // 0=Mon
+
+    const headerBg = isToday ? '#1A1F3C' : '#F3F4F6';
+    const labelColor = isToday ? 'rgba(255,255,255,.7)' : '#6B7280';
+    const dateColor = isToday ? '#fff' : '#1A1F3C';
+
     const cards = sessions.map(s => {
-      const d = new Date(s.session_date + 'T00:00:00');
-      const dayLabel = DAY[d.getDay()];
-      const tr = _wsaTimeRange ? _wsaTimeRange(s) : '';
-      return `<div style="border-left:3px solid #6366F1;padding:8px 12px;background:#F9FAFB;border-radius:0 8px 8px 0;margin-bottom:6px;">
-        <div style="font-size:.6rem;color:#6366F1;font-weight:700;text-transform:uppercase;">${dayLabel}${tr ? ` · ${tr}` : ''}</div>
-        <div style="font-weight:800;font-size:.8rem;margin:2px 0;">${_cohortEsc(s.title)}</div>
-        ${s.location ? `<div style="font-size:.68rem;color:#9CA3AF;">${_cohortEsc(s.location)}</div>` : ''}
+      const tr = typeof _wsaTimeRange === 'function' ? _wsaTimeRange(s) : '';
+      return `<div style="background:#FFF0ED;border-radius:8px;padding:7px 9px;margin-bottom:5px;border-left:3px solid #E8442A;">
+        ${tr ? `<div style="font-size:.55rem;color:#E8442A;font-weight:700;margin-bottom:2px;">${tr}</div>` : ''}
+        <div style="font-size:.68rem;font-weight:800;color:#1A1F3C;line-height:1.3;">${_cohortEsc(s.title)}</div>
+        ${s.location ? `<div style="font-size:.58rem;color:#9CA3AF;margin-top:2px;">${_cohortEsc(s.location)}</div>` : ''}
       </div>`;
     }).join('');
-    return `<div style="margin-bottom:14px;"><div style="font-size:.68rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;margin-bottom:6px;">${header}</div>${cards}</div>`;
+
+    return `<div style="min-width:90px;flex:1 1 90px;">
+      <div style="text-align:center;padding:6px 2px;border-radius:8px;background:${headerBg};margin-bottom:8px;">
+        <div style="font-size:.55rem;font-weight:600;color:${labelColor};text-transform:uppercase;letter-spacing:.03em;">${DAY_LABELS[dayIdx]}</div>
+        <div style="font-size:.85rem;font-weight:800;color:${dateColor};margin-top:1px;">${d.getDate()}</div>
+      </div>
+      <div style="min-height:40px;">${cards}</div>
+    </div>`;
   }).join('');
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;">
+      <button onclick="_jadwalWeekOffset--;jadwalRenderCurrent()" style="flex-shrink:0;background:#F3F4F6;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:.7rem;font-weight:700;color:#374151;font-family:inherit;">← Lalu</button>
+      <span style="font-size:.7rem;font-weight:700;color:#1A1F3C;text-align:center;">${fmt(monday)} – ${fmt(sunday)}</span>
+      <button onclick="_jadwalWeekOffset++;jadwalRenderCurrent()" style="flex-shrink:0;background:#F3F4F6;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;font-size:.7rem;font-weight:700;color:#374151;font-family:inherit;">Depan →</button>
+    </div>
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+      <div style="display:flex;gap:5px;min-width:630px;">${colsHtml}</div>
+    </div>
+    ${!hasSessions ? '<div style="text-align:center;padding:16px;font-size:.75rem;color:#9CA3AF;margin-top:6px;">Tidak ada sesi minggu ini</div>' : ''}`;
 }
 
 function jadwalRenderCal(el) {
