@@ -16064,6 +16064,7 @@ let _dscCurrentCatFilter  = ''; // single cat passed to server (kept for _dscCur
 let _dscCurrentCatFilters = null; // full selected-cat array for multi-cat server filter
 let _dscViewMode    = 'card';
 const DSC_FETCH  = 60;
+const DSC_PAGE_SIZE = 400; // rows per Supabase request (search scans full listings table)
 
 // Applied sidebar filters — only take effect after "Terapkan Filter"
 let _dscApplied = { minSkor: 0, priceMin: 0, priceMax: Infinity, omsetMin: 0, omsetMax: Infinity, cats: null };
@@ -16121,11 +16122,35 @@ function _dscApplySearchFilter(q, query) {
   if (!raw) return q;
   const toks = raw.split(/\s+/).map(_dscIlikeToken).filter(t => t.length >= 1);
   if (!toks.length) return q;
+  if (toks.length === 1) {
+    const t = toks[0];
+    return q.or(`keyword.ilike.%${t}%,product_name.ilike.%${t}%`);
+  }
   const parts = [];
   toks.forEach(t => {
     parts.push(`product_name.ilike.%${t}%`, `keyword.ilike.%${t}%`);
   });
   return q.or(parts.join(','));
+}
+
+function _dscBuildListingsQuery(offset, filters) {
+  const FIELDS = 'item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews';
+  let q = _supabase
+    .from('listings')
+    .select(FIELDS)
+    .gt('total_sold', 0)
+    .order('total_sold', { ascending: false })
+    .range(offset, offset + DSC_PAGE_SIZE - 1);
+  if (_dscCurrentCatFilters && _dscCurrentCatFilters.length > 1) {
+    q = q.in('category', _dscCurrentCatFilters);
+  } else if (filters.cat) {
+    q = q.eq('category', filters.cat);
+  }
+  const priceMax = filters.priceMax === Infinity ? 500000 : (filters.priceMax || 500000);
+  if (filters.priceMin) q = q.gte('price', filters.priceMin);
+  if (priceMax < 500000) q = q.lte('price', priceMax);
+  if (filters.search) q = _dscApplySearchFilter(q, filters.search);
+  return q;
 }
 
 function _dscSearchScore(product, query) {
@@ -16164,43 +16189,25 @@ async function dscFetchTotalCount() {
 
 async function dscFetchPage(offset, filters = {}) {
   if (!_supabase) return [];
-  const FIELDS = 'item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews';
-  let q = _supabase
+  const { data, error } = await _dscBuildListingsQuery(offset, filters);
+  if (!error) return data || [];
+
+  console.warn('dscFetchPage:', error.message);
+  if (!filters.search) return [];
+
+  // Fallback: keyword-only ilike (some OR shapes fail on wide tables)
+  const tok = _dscIlikeToken((filters.search || '').trim().split(/\s+/)[0]);
+  if (!tok) return [];
+  let qf = _supabase
     .from('listings')
-    .select(FIELDS)
+    .select('item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews')
     .gt('total_sold', 0)
+    .ilike('keyword', `%${tok}%`)
     .order('total_sold', { ascending: false })
-    .range(offset, offset + 400 - 1);
-
-  if (_dscCurrentCatFilters && _dscCurrentCatFilters.length > 1) {
-    q = q.in('category', _dscCurrentCatFilters);
-  } else if (filters.cat) {
-    q = q.eq('category', filters.cat);
-  }
-  if (filters.priceMin) q = q.gte('price', filters.priceMin);
-  if (filters.priceMax && filters.priceMax < 500000) q = q.lte('price', filters.priceMax);
-  if (filters.search) q = _dscApplySearchFilter(q, filters.search);
-
-  const { data, error } = await q;
-  if (error) {
-    let qf = _supabase
-      .from('listings')
-      .select(FIELDS)
-      .gt('total_sold', 0)
-      .order('total_sold', { ascending: false })
-      .range(offset, offset + 400 - 1);
-    if (_dscCurrentCatFilters && _dscCurrentCatFilters.length > 1) {
-      qf = qf.in('category', _dscCurrentCatFilters);
-    } else if (filters.cat) {
-      qf = qf.eq('category', filters.cat);
-    }
-    if (filters.priceMin) qf = qf.gte('price', filters.priceMin);
-    if (filters.priceMax && filters.priceMax < 500000) qf = qf.lte('price', filters.priceMax);
-    if (filters.search) qf = _dscApplySearchFilter(qf, filters.search);
-    const fb = await qf;
-    return fb.data || [];
-  }
-  return data || [];
+    .range(offset, offset + DSC_PAGE_SIZE - 1);
+  if (filters.priceMin) qf = qf.gte('price', filters.priceMin);
+  const { data: fb } = await qf;
+  return fb || [];
 }
 
 const DSC_CACHE_KEY = 'larisid_dsc_cache_v6';
@@ -16316,8 +16323,11 @@ async function dscLoadListings() {
   if (_dscLoading || !_supabase) return;
   _dscLoading = true;
 
-  // Show cache instantly — but only when no category filter is active
-  if (!_dscAllListings.length && _dscOffset === 0 && !_dscCurrentCatFilter) {
+  const filters = _dscCurrentFilters();
+  const hasSearch = !!(filters.search || '').trim();
+
+  // Cache is top-sellers only — never use when user is searching the full database
+  if (!hasSearch && !_dscAllListings.length && _dscOffset === 0 && !_dscCurrentCatFilter) {
     const cached = dscLoadCache();
     if (cached && cached.length) {
       _dscAllListings = cached;
@@ -16339,16 +16349,15 @@ async function dscLoadListings() {
   }
 
   try {
-    const filters = _dscCurrentFilters();
     const rows = await dscFetchPage(_dscOffset, filters);
 
-    if (rows.length < DSC_FETCH) _dscHasMore = false;
+    if (rows.length < DSC_PAGE_SIZE) _dscHasMore = false;
 
     // Deduplicate against already-loaded items
     const seen = new Set(_dscAllListings.map(r => `${r.item_id}_${r.shop_id}`));
     const fresh = rows.filter(r => { const k = `${r.item_id}_${r.shop_id}`; if (seen.has(k)) return false; seen.add(k); return true; });
     _dscAllListings.push(...fresh);
-    _dscOffset += DSC_FETCH;
+    _dscOffset += rows.length;
 
     // Compute competition for new keywords
     const newKws = [...new Set(fresh.map(r => r.keyword).filter(Boolean))].filter(k => !_dscCompMap[k]);
@@ -16366,8 +16375,8 @@ async function dscLoadListings() {
     setEl('dsc-stat-listings', (_dscAllListings.length + (_dscHasMore ? '+' : '')).toLocaleString?.() || _dscAllListings.length + (_dscHasMore ? '+' : ''));
 
     _dscLoaded = true;
-    // Cache the first batch for instant reload within the session
-    if (_dscOffset <= DSC_FETCH * 2) dscSaveCache(_dscAllListings.slice(0, DSC_FETCH));
+    // Cache the first batch for instant reload (browse mode only — not search results)
+    if (!hasSearch && _dscOffset <= DSC_PAGE_SIZE) dscSaveCache(_dscAllListings.slice(0, DSC_PAGE_SIZE));
     // Stamp what server-side filters produced this batch (used by dscApplyFilters change-detection)
     if (_dscLastSrvFilters === null) {
       const f = filters;
@@ -16481,10 +16490,11 @@ function dscCatSelectAll() {
 }
 
 function _dscCurrentFilters() {
+  const priceMaxRaw = parseFloat(document.getElementById('dsc-price-max')?.value) || 500000;
   return {
     cat:      _dscCurrentCatFilter, // empty = all; set when exactly 1 category selected
     priceMin: parseFloat(document.getElementById('dsc-price-min')?.value) || 0,
-    priceMax: parseFloat(document.getElementById('dsc-price-max')?.value) || 10000000,
+    priceMax: priceMaxRaw >= 500000 ? Infinity : priceMaxRaw,
     search:   document.getElementById('dsc-search')?.value?.trim() || '',
   };
 }
@@ -16632,10 +16642,12 @@ function dscApplyFilters(resetPage = true) {
   const srvCatKey = selectedCats ? selectedCats.slice().sort().join('|') : '';
   const srvKey = JSON.stringify({ priceMin, priceMax: priceMax === Infinity ? 500000 : priceMax, search: q, cat: srvCatKey });
   if (_dscLastSrvFilters !== null && _dscLastSrvFilters !== srvKey) {
+    if (q) try { sessionStorage.removeItem(DSC_CACHE_KEY); } catch (_) {}
     _dscAllListings = [];
     _dscOffset = 0;
     _dscHasMore = true;
     _dscLoaded = false;
+    _dscLoading = false;
     _dscLastSrvFilters = srvKey;
     // Store selected cats for dscFetchPage to use
     _dscCurrentCatFilter = selectedCats && selectedCats.length === 1 ? selectedCats[0] : '';
@@ -16727,7 +16739,10 @@ function dscRenderTable() {
     return `<span style="color:#9CA3AF;font-size:.8rem;">0</span>`;
   };
 
-  const emptyHtml = '<div style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Tidak ada produk ditemukan untuk kategori dan harga ini. Coba perluas filter atau ubah kata kunci pencarian.</div>';
+  const _dscQ = (document.getElementById('dsc-search')?.value || '').trim();
+  const emptyHtml = _dscQ
+    ? `<div style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Tidak ada hasil untuk &ldquo;${_dscQ.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}&rdquo; di database. Coba kata lain atau longgarkan filter harga/kategori.</div>`
+    : '<div style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Tidak ada produk ditemukan untuk kategori dan harga ini. Coba perluas filter atau ubah kata kunci pencarian.</div>';
 
   // ── CARD VIEW ──
   if (_dscViewMode === 'card' && cardGrid) {
@@ -16768,7 +16783,7 @@ function dscRenderTable() {
   const tbody = document.getElementById('dsc-tbody');
   if (_dscViewMode === 'table' && tbody) {
     if (!slice.length) {
-      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Tidak ada produk ditemukan untuk kategori dan harga ini. Coba perluas filter atau ubah kata kunci pencarian.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8">${emptyHtml}</td></tr>`;
     } else {
       // Group all loaded listings by keyword for peer-context scoring
       const _dscKwMap = {};
