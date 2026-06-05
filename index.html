@@ -1411,8 +1411,16 @@ body.in-dashboard .mobile-menu{display:none!important;}
 /* Table area */
 .dsc-table-area{flex:1;min-width:0;}
 .dsc-table-controls{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
-.dsc-search{flex:1;min-width:180px;border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 12px 8px 34px;font-size:.82rem;font-family:inherit;outline:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") 10px center no-repeat;transition:border-color .15s;}
+.dsc-search-wrap{position:relative;flex:1;min-width:180px;}
+.dsc-search{width:100%;box-sizing:border-box;border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 12px 8px 34px;font-size:.82rem;font-family:inherit;outline:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") 10px center no-repeat;transition:border-color .15s;}
 .dsc-search:focus{border-color:#E8442A;outline:none;}
+.dsc-search-suggestions{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid #E5E7EB;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:120;overflow:hidden;display:none;max-height:280px;overflow-y:auto;}
+.dsc-search-suggestions.show{display:block;}
+.dsc-sugg-item{padding:8px 12px;cursor:pointer;font-size:.78rem;color:#111;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.dsc-sugg-item:last-child{border-bottom:none;}
+.dsc-sugg-item:hover,.dsc-sugg-item.active{background:#FFF0ED;}
+.dsc-sugg-item mark{background:none;color:#E8442A;font-weight:700;}
+.dsc-sugg-cat{font-size:.62rem;color:#9CA3AF;white-space:nowrap;flex-shrink:0;}
 .dsc-sort-select{border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 10px;font-size:.78rem;font-family:inherit;outline:none;color:#374151;background:#fff;cursor:pointer;-webkit-appearance:none;}
 .dsc-count{font-size:.78rem;color:#6B7280;white-space:nowrap;margin-left:auto;}
 
@@ -6418,7 +6426,11 @@ html,body{overflow-x:hidden;max-width:100%;}
               <div class="dsc-table-area">
                 <div class="dsc-table-controls">
                   <button class="dsc-filter-btn" onclick="dscOpenFilter()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg> Filter</button>
-                  <input class="dsc-search" id="dsc-search" type="text" placeholder="Cari produk..." oninput="dscApplyFilters()">
+                  <div class="dsc-search-wrap">
+                    <input class="dsc-search" id="dsc-search" type="text" placeholder="Cari keyword atau produk…" autocomplete="off"
+                      oninput="dscOnSearchInput()" onkeydown="dscOnSearchKey(event)" onfocus="dscOnSearchInput()" onblur="setTimeout(dscHideSuggestions,160)">
+                    <div class="dsc-search-suggestions" id="dsc-search-suggestions"></div>
+                  </div>
                   <select class="dsc-sort-select" id="dsc-sort" onchange="dscApplyFilters()">
                     <option value="omset-desc">Omset Tertinggi</option>
                     <option value="score-desc">Skor Tertinggi</option>
@@ -16100,13 +16112,32 @@ function _dscTokenMatch(token, hay) {
   });
 }
 
+function _dscIlikeToken(t) {
+  return String(t || '').replace(/[%_,.()\\]/g, '').trim();
+}
+
+function _dscApplySearchFilter(q, query) {
+  const raw = (query || '').trim();
+  if (!raw) return q;
+  const toks = raw.split(/\s+/).map(_dscIlikeToken).filter(t => t.length >= 1);
+  if (!toks.length) return q;
+  const parts = [];
+  toks.forEach(t => {
+    parts.push(`product_name.ilike.%${t}%`, `keyword.ilike.%${t}%`);
+  });
+  return q.or(parts.join(','));
+}
+
 function _dscSearchScore(product, query) {
   const q = _dscNormStr(query.trim());
   if (!q) return 1;
   const name = _dscNormStr(product.product_name);
+  const kw   = _dscNormStr(product.keyword);
   const store = _dscNormStr(product.store_name);
   const cat = _dscNormStr(product.category);
-  const hay = `${name} ${store} ${cat}`;
+  const hay = `${name} ${kw} ${store} ${cat}`;
+  if (kw === q) return 1100;
+  if (kw.includes(q)) return 1050 - kw.indexOf(q);
   if (name.includes(q) || hay.includes(q)) return 1000 - name.indexOf(q);
   const tokens = q.split(/\s+/).filter(Boolean);
   if (!tokens.length) return 0;
@@ -16148,11 +16179,7 @@ async function dscFetchPage(offset, filters = {}) {
   }
   if (filters.priceMin) q = q.gte('price', filters.priceMin);
   if (filters.priceMax && filters.priceMax < 500000) q = q.lte('price', filters.priceMax);
-  if (filters.search) {
-    const toks = filters.search.trim().split(/\s+/).filter(Boolean);
-    if (toks.length === 1) q = q.ilike('product_name', `%${toks[0]}%`);
-    else if (toks.length > 1) q = q.or(toks.map(t => `product_name.ilike.%${t}%`).join(','));
-  }
+  if (filters.search) q = _dscApplySearchFilter(q, filters.search);
 
   const { data, error } = await q;
   if (error) {
@@ -16169,11 +16196,7 @@ async function dscFetchPage(offset, filters = {}) {
     }
     if (filters.priceMin) qf = qf.gte('price', filters.priceMin);
     if (filters.priceMax && filters.priceMax < 500000) qf = qf.lte('price', filters.priceMax);
-    if (filters.search) {
-      const toks = filters.search.trim().split(/\s+/).filter(Boolean);
-      if (toks.length === 1) qf = qf.ilike('product_name', `%${toks[0]}%`);
-      else if (toks.length > 1) qf = qf.or(toks.map(t => `product_name.ilike.%${t}%`).join(','));
-    }
+    if (filters.search) qf = _dscApplySearchFilter(qf, filters.search);
     const fb = await qf;
     return fb.data || [];
   }
@@ -16476,6 +16499,124 @@ function dscInit() {
     'Hobi & Kerajinan','HP & Gadget','Kamar Mandi','Keamanan','Kecantikan','Kesehatan',
     'Motor & Mobil','Olahraga','Outdoor & Camping','Rumah','Sepeda','Taman','Tanaman']);
   if (!_dscLoaded) dscLoadListings();
+}
+
+// ── Discover search autocomplete + debounced full-DB search ──
+let _dscSuggIdx = -1;
+let _dscSearchDebounce = null;
+let _dscSuggFetchGen = 0;
+
+function dscHideSuggestions() {
+  const box = document.getElementById('dsc-search-suggestions');
+  if (box) box.classList.remove('show');
+  _dscSuggIdx = -1;
+}
+
+function dscOnSearchInput() {
+  const q = (document.getElementById('dsc-search')?.value || '').trim();
+  dscShowSuggestions(q);
+  clearTimeout(_dscSearchDebounce);
+  _dscSearchDebounce = setTimeout(() => dscApplyFilters(), 320);
+}
+
+function dscOnSearchKey(e) {
+  const box = document.getElementById('dsc-search-suggestions');
+  if (!box) return;
+  const items = box.querySelectorAll('.dsc-sugg-item');
+  if (!items.length) {
+    if (e.key === 'Enter') { clearTimeout(_dscSearchDebounce); dscApplyFilters(); }
+    return;
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    _dscSuggIdx = Math.min(_dscSuggIdx + 1, items.length - 1);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    _dscSuggIdx = Math.max(_dscSuggIdx - 1, -1);
+  } else if (e.key === 'Enter' && _dscSuggIdx >= 0) {
+    e.preventDefault();
+    items[_dscSuggIdx].dispatchEvent(new MouseEvent('mousedown'));
+    return;
+  } else if (e.key === 'Escape') {
+    dscHideSuggestions();
+    return;
+  } else if (e.key === 'Enter') {
+    clearTimeout(_dscSearchDebounce);
+    dscHideSuggestions();
+    dscApplyFilters();
+    return;
+  } else { return; }
+  items.forEach((el, i) => el.classList.toggle('active', i === _dscSuggIdx));
+}
+
+function dscSelectSuggestion(text) {
+  const input = document.getElementById('dsc-search');
+  if (input) input.value = text;
+  dscHideSuggestions();
+  clearTimeout(_dscSearchDebounce);
+  dscApplyFilters();
+}
+
+function _dscRenderSuggestions(items, q) {
+  const box = document.getElementById('dsc-search-suggestions');
+  if (!box) return;
+  _dscSuggIdx = -1;
+  if (!items.length) { box.classList.remove('show'); return; }
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  box.innerHTML = items.map(it => {
+    const label = highlightMatch(it.name, q);
+    const cat = it.category ? `<span class="dsc-sugg-cat">${esc(it.category)}</span>` : '';
+    return `<div class="dsc-sugg-item" onmousedown="dscSelectSuggestion(${JSON.stringify(it.name)})">${label}${cat}</div>`;
+  }).join('');
+  box.classList.add('show');
+}
+
+function _dscLocalSuggestions(q) {
+  const scored = (allProducts || [])
+    .map(p => ({ name: p.name, category: p.category || '', score: scoreProduct(p.name, q) }))
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10);
+  const seen = new Set();
+  return scored.filter(x => { if (seen.has(x.name)) return false; seen.add(x.name); return true; });
+}
+
+async function dscShowSuggestions(q) {
+  if (!q || q.length < 1) { dscHideSuggestions(); return; }
+  _dscRenderSuggestions(_dscLocalSuggestions(q), q);
+
+  if (!_supabase || q.length < 2) return;
+  const gen = ++_dscSuggFetchGen;
+  const tok = _dscIlikeToken(q);
+  if (!tok) return;
+  try {
+    const { data } = await _supabase
+      .from('listings')
+      .select('keyword, category')
+      .or(`keyword.ilike.%${tok}%,product_name.ilike.%${tok}%`)
+      .gt('total_sold', 0)
+      .order('total_sold', { ascending: false })
+      .limit(80);
+    if (gen !== _dscSuggFetchGen) return;
+    const cur = (document.getElementById('dsc-search')?.value || '').trim();
+    if (cur.toLowerCase() !== q.toLowerCase()) return;
+
+    const seen = new Set();
+    const merged = [];
+    const add = (name, category, score) => {
+      if (!name || seen.has(name)) return;
+      seen.add(name);
+      merged.push({ name, category: category || '', score });
+    };
+    _dscLocalSuggestions(q).forEach(x => add(x.name, x.category, x.score));
+    for (const r of (data || [])) {
+      if (r.keyword) add(r.keyword, r.category, scoreProduct(r.keyword, q));
+      else if (r.product_name) add(r.product_name, r.category, scoreProduct(r.product_name, q) - 50);
+      if (merged.length >= 12) break;
+    }
+    merged.sort((a, b) => b.score - a.score);
+    _dscRenderSuggestions(merged.slice(0, 10), q);
+  } catch (_) {}
 }
 
 function dscApplyFilters(resetPage = true) {
@@ -18537,6 +18678,7 @@ function dscResetFilters() {
   try { sessionStorage.removeItem(_DSC_CAT_SS_KEY); } catch {}
   document.querySelectorAll('#dsc-cat-checks input[type=checkbox]').forEach(c => c.checked = true);
   if (g('dsc-search'))     g('dsc-search').value     = '';
+  dscHideSuggestions();
   if (g('dsc-price-min'))  g('dsc-price-min').value  = 0;
   if (g('dsc-price-max'))  g('dsc-price-max').value  = 500000;
   if (g('dsc-omset-min'))  g('dsc-omset-min').value  = 0;
