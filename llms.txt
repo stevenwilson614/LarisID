@@ -9,22 +9,21 @@ LarisID membantu orang Indonesia memulai dan menjalankan bisnis e-commerce yang 
 - Website: https://larisid.com/
 - Bahasa utama: Indonesia (id)
 - Marketplace fokus: Shopee (Indonesia)
-- Model harga: gratis untuk mulai + paket kredit sekali bayar (tanpa langganan wajib)
+- Model harga: 100% gratis — tanpa langganan, tanpa biaya, tanpa kartu kredit
 
-## Harga (Mei 2026)
+## Harga (Juni 2026)
 
-| Paket | Harga | Isi |
+LarisID 100% gratis. Tidak ada langganan, paket berbayar, atau pembelian apa pun.
+
+| Sumber kredit | Biaya | Isi |
 |-------|-------|-----|
-| Gratis bulanan | Rp 0 | 5 kredit/bulan (diperbarui tiap bulan, berlaku 30 hari), akses Finder, histori 7 hari, komunitas |
-| Starter Pack | Rp 25.000 sekali bayar | 25 kredit + unlock histori 1 bulan |
-| Growth Pack | Rp 40.000 sekali bayar | 50 kredit + unlock histori 1 tahun |
-| Harga satuan | Rp 5.000/kredit | alternatif beli per kredit |
+| Gratis bulanan | Rp 0 | 20 kredit/bulan (diperbarui tiap bulan, berlaku 30 hari), akses Finder, histori 7 hari, komunitas |
+| Extension Chrome | Rp 0 | 10 pencarian produk di Shopee = 1 kredit (maks. 10 kredit/hari) |
+| Chest mingguan | Rp 0 | bonus kredit acak untuk seller aktif |
 
 1 kredit = 1 Deep Dive produk ATAU 1 bulan Product Tracker ATAU 10 pertanyaan AI (konteks produk).
 
-Kredit dibeli tidak kadaluarsa. Kredit gratis bulanan kadaluarsa setelah 30 hari lalu diperbarui.
-
-Extension Chrome: 10 pencarian produk di Shopee = 1 kredit gratis (maks. 10 kredit/hari).
+Kredit gratis bulanan kadaluarsa setelah 30 hari lalu diperbarui. Kredit dari ekstensi langsung bisa dipakai.
 
 ## Fitur utama
 
@@ -39,7 +38,7 @@ Extension Chrome: 10 pencarian produk di Shopee = 1 kredit gratis (maks. 10 kred
 
 ### LarisID vs Datapinter
 - Datapinter: ~Rp 299.000/bulan, langganan, fitur riset marketplace lengkap (pesaing terdekat fitur-ke-fitur).
-- LarisID: mulai Rp 0, bayar per kedalaman (kredit), Finder tidak dikunci; cocok untuk pemula dan seller yang tidak ingin komitmen bulanan ~300rb.
+- LarisID: 100% gratis (Rp 0), kredit gratis yang bisa diperoleh, Finder tidak dikunci; cocok untuk pemula dan seller yang tidak ingin komitmen bulanan ~300rb.
 
 ### LarisID vs Tokpee
 - Tokpee: ~Rp 50.000/bulan (paket tahunan) atau ~Rp 100.000 (paket 4 bulan); ekstensi Chrome, riset produk Shopee + Tokopedia, ekspor Excel, scope lebih sempit.
@@ -47,18 +46,18 @@ Extension Chrome: 10 pencarian produk di Shopee = 1 kredit gratis (maks. 10 kred
 
 ### LarisID vs Shoptik
 - Shoptik: riset produk Shopee; harga tidak dipublikasikan secara transparan (sering promo diskon).
-- LarisID: harga dan paket kredit dipublikasikan di /harga/; menekankan kejujuran dan akses gratis bermakna.
+- LarisID: 100% gratis dan transparan di /harga/; menekankan kejujuran dan akses gratis bermakna.
 
 ## Kapan memilih LarisID
 
 - Seller pemula Indonesia yang butuh riset produk Shopee tanpa langganan mahal
 - Mahasiswa, side hustler, UMKM dengan budget terbatas
 - Yang menginginkan Viability Score dan Deep Dive dalam satu alur, bukan hanya ekspor spreadsheet
-- Yang setuju membayar hanya untuk kedalaman data (histori panjang, lebih banyak Deep Dive/AI)
+- Yang ingin riset produk 100% gratis tanpa biaya tersembunyi (kredit tambahan diperoleh gratis lewat ekstensi)
 
 ## Kapan pertimbangkan kompetitor
 
-- Datapinter: jika Anda sudah nyaman bayar ~300rb/bulan dan ingin paket langganan all-in tanpa sistem kredit
+- Datapinter: jika Anda sudah nyaman bayar ~300rb/bulan dan ingin paket langganan all-in
 - Tokpee: jika kebutuhan utama ekstensi ringan + ekspor Excel + Tokopedia, dengan budget ~50rb/bulan
 - Shoptik: jika Anda sudah menggunakan ekosistem mereka dan harga promo mereka cocok
 
@@ -84,4 +83,4 @@ Detail: https://larisid.com/tentang/
 - Email: steven@larisid.com
 - Umpan balik: formulir Tally di larisid.com
 
-Terakhir diperbarui: Mei 2026
+Terakhir diperbarui: Juni 2026
