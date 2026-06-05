@@ -1242,6 +1242,16 @@ body.cohort-themed.in-dashboard .dash-topbar-cohort-chip{
 .mls-picker-label{font-size:1.1rem;font-weight:800;color:#1A1F3C;white-space:nowrap;}
 .mls-picker-select{flex:1;max-width:400px;padding:9px 14px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:.8rem;font-weight:600;background:#fff;color:#111827;cursor:pointer;outline:none;font-family:inherit;}
 .mls-picker-select:focus{border-color:#E8442A;}
+.mls-product-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:24px;}
+.mls-pcard{display:flex;align-items:center;gap:10px;padding:10px;border:1.5px solid #E5E7EB;border-radius:12px;background:#fff;cursor:pointer;text-align:left;font-family:inherit;transition:border-color .15s,box-shadow .15s,transform .15s;outline:none;}
+.mls-pcard:hover{border-color:#FBCFC5;box-shadow:0 4px 14px rgba(0,0,0,.06);transform:translateY(-1px);}
+.mls-pcard.active{border-color:#E8442A;background:#FFF7F5;box-shadow:0 4px 14px rgba(232,68,42,.12);}
+.mls-pcard-img{width:52px;height:52px;border-radius:8px;object-fit:cover;background:#F3F4F6;flex-shrink:0;}
+.mls-pcard-body{min-width:0;flex:1;}
+.mls-pcard-name{font-size:.78rem;font-weight:700;color:#1A1F3C;line-height:1.25;margin-bottom:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.mls-pcard-meta{font-size:.66rem;color:#9CA3AF;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mls-pcard-price{font-size:.7rem;font-weight:800;color:#E8442A;margin-top:2px;}
+@media (max-width:640px){.mls-product-cards{grid-template-columns:1fr 1fr;gap:8px;padding:0 12px;}.mls-pcard-img{width:44px;height:44px;}}
 .mls-hero-grid{display:grid;grid-template-columns:240px 1fr;gap:24px;margin-bottom:24px;align-items:start;}
 @media(max-width:800px){.mls-hero-grid{grid-template-columns:1fr;}}
 .mls-img-col{}
@@ -7263,11 +7273,10 @@ html,body{overflow-x:hidden;max-width:100%;}
             <!-- Picker row -->
             <div class="mls-picker-row">
               <div class="mls-picker-label">Mulai Berjualan</div>
-              <select id="mls-product-pick" class="mls-picker-select" onchange="mlsSelectProduct(this.value)">
-                <option value="">-- Pilih produk tersimpan --</option>
-              </select>
               <div id="mls-no-tracked" style="display:none;font-size:.78rem;color:#9CA3AF;">Belum ada produk tersimpan. Simpan dari Discover terlebih dahulu.</div>
             </div>
+            <!-- Product picker cards -->
+            <div id="mls-product-cards" class="mls-product-cards"></div>
 
             <!-- Hero + details (hidden until product selected) -->
             <div id="mls-hero" style="display:none;">
@@ -20328,7 +20337,7 @@ function mlsInit() {
   mlsUpdateModelBadge();
   _mlsAiUpdateCounter();
   const tracked = trkLoad();
-  const pick = document.getElementById('mls-product-pick');
+  const pick = document.getElementById('mls-product-cards');
   const noTrk = document.getElementById('mls-no-tracked');
   if (!pick) return;
 
@@ -20356,8 +20365,8 @@ function mlsInit() {
   }
   const allPicks = [...merged.values()];
 
-  // Clear and rebuild picker
-  pick.innerHTML = '<option value="">-- Pilih produk dilacak / tersimpan --</option>';
+  // Clear and rebuild picker cards
+  pick.innerHTML = '';
   if (!allPicks.length) {
     pick.style.display = 'none';
     if (noTrk) noTrk.style.display = 'none';
@@ -20368,14 +20377,27 @@ function mlsInit() {
   const mlsMain  = document.getElementById('mls-main-content');
   if (mlsEmpty) mlsEmpty.style.display = 'none';
   if (mlsMain)  mlsMain.style.display  = '';
-  pick.style.display = 'block';
+  pick.style.display = 'grid';
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   allPicks.forEach(t => {
-    const name = (t.product_name||t.keyword||'Produk').split(' ').slice(0,5).join(' ');
-    const opt  = document.createElement('option');
-    opt.value  = t.key || `${t.item_id}_${t.shop_id}`;
-    opt.textContent = name + (t.keyword ? ` (${t.keyword})` : '');
-    opt._data  = t;
-    pick.appendChild(opt);
+    const key   = t.key || `${t.item_id}_${t.shop_id}`;
+    const name  = t.product_name || t.keyword || 'Produk';
+    const price = t.price ? 'Rp ' + Math.round(t.price).toLocaleString('id-ID') : '';
+    const sold  = t.total_sold ? Number(t.total_sold).toLocaleString('id-ID') + ' terjual' : '';
+    const meta  = [t.keyword, sold].filter(Boolean).join(' · ');
+    const card  = document.createElement('button');
+    card.type = 'button';
+    card.className = 'mls-pcard';
+    card.dataset.key = key;
+    card.onclick = () => mlsSelectProduct(key);
+    card.innerHTML =
+      (t.image_url ? `<img class="mls-pcard-img" src="${esc(t.image_url)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : `<div class="mls-pcard-img"></div>`) +
+      `<div class="mls-pcard-body">` +
+        `<div class="mls-pcard-name">${esc(name)}</div>` +
+        (meta ? `<div class="mls-pcard-meta">${esc(meta)}</div>` : '') +
+        (price ? `<div class="mls-pcard-price">${esc(price)}</div>` : '') +
+      `</div>`;
+    pick.appendChild(card);
   });
 
   // Restore API key status
@@ -20401,6 +20423,10 @@ function mlsSwitchTab(tab) {
 }
 
 async function mlsSelectProduct(val) {
+  // Highlight the selected card
+  document.querySelectorAll('#mls-product-cards .mls-pcard').forEach(c => {
+    c.classList.toggle('active', c.dataset.key === val);
+  });
   // Search both tracked (localStorage) and saved (Supabase-backed) sources
   const tracked = trkLoad();
   let t = tracked.find(p => (p.key || `${p.item_id}_${p.shop_id}`) === val);
@@ -25844,7 +25870,7 @@ const DASHBOARD_TOUR_STEPS = [
     onNext: () => switchDashView('tracker'),
   },
   {
-    sel: () => document.getElementById('mls-product-pick') || document.getElementById('mls-ai-box'),
+    sel: () => document.getElementById('mls-product-cards') || document.getElementById('mls-ai-box'),
     title: 'Mulai Berjualan + AI',
     body: 'Masuk ke Mulai Berjualan, pilih produk, lalu cek AI chat, kompetisi, dan insight pasar.',
     pos: 'left',
