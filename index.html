@@ -19210,7 +19210,7 @@ const PLATFORM_FEES = {
   tiktok:    { label:'TikTok Shop', color:'#111827', logo:ECOM_LOGO.tiktok,    comm:{A:6,   B:5,   C:4,   D:3,    E:2.5},  program:2.0, flat:1250, src:'seller-id.tokopedia.com' },
   tokopedia: { label:'Tokopedia',   color:'#42B549', logo:ECOM_LOGO.tokopedia, comm:{A:8,   B:6.5, C:5,   D:4,    E:3.5},  program:2.5, flat:1250, src:'tokopedia.com/help' },
   lazada:    { label:'Lazada',      color:'#1E3A8A', logo:ECOM_LOGO.lazada,    comm:{A:8.2, B:6,   C:4,   D:2.43, E:2.43}, program:4.0, admin:1.82, flat:1250, src:'sellercenter.lazada.co.id' },
-  blibli:    { label:'Blibli',      color:'#0072BC', logo:ECOM_LOGO.blibli,    comm:{A:8,   B:7,   C:6,   D:5,    E:5},    program:0,   flat:0, note:'Rincian per kategori tidak dipublikasikan platform.', src:'blibli.com' },
+  blibli:    { label:'Blibli',      color:'#0072BC', logo:ECOM_LOGO.blibli,    comm:{A:8,   B:7,   C:6,   D:5,    E:2.5},  program:0,   flat:0, note:'Hanya komisi kategori (2–8%, tergantung kategori). Tanpa biaya program gratis ongkir atau biaya proses pesanan — biaya pengiriman terpisah.', src:'seller.blibli.com' },
 };
 function feeTierForCat(cat){ return FEE_TIER_BY_CAT[cat] || 'B'; }
 function ecomFmtPct(n){ return (Math.round(n*10)/10).toFixed(1).replace('.', ',').replace(/,0$/, '') + '%'; }
@@ -19223,28 +19223,35 @@ function ecomFmtRp(v){
 }
 // monthly volume estimate for the product (same logic as ddRender)
 function ddProductVolume(p){
-  const price = p.medianPrice || 0;
   const listing = p._listing || {};
+  const price = p.medianPrice || p.price || listing.price || listing.price_min || 0;
   const sales = p.newUnits || listing.total_sold || p.total_sold || 0;
   return { price, sales, omset: sales * price };
 }
-function platformFeePct(plat, cat, price){
+// Rate-based fees (% only) + optional flat Rp/order — flat is NOT folded into % display
+// (avoids 60%+ on cheap products when Rp 1.250/order dominates).
+function platformFeePerProduct(plat, cat, price){
   const f = PLATFORM_FEES[plat], t = feeTierForCat(cat);
-  const flatPct = price > 0 ? (f.flat / price * 100) : 0;
-  return +((f.comm[t]||0) + (f.program||0) + (f.admin||0) + flatPct).toFixed(1);
+  const pctOnly = +((f.comm[t]||0) + (f.program||0) + (f.admin||0)).toFixed(1);
+  const flat = f.flat || 0;
+  const pctRp = price > 0 ? price * pctOnly / 100 : 0;
+  const totalRp = pctRp + flat;
+  return { pctOnly, flat, pctRp, totalRp };
 }
-// line-item breakdown + where each fee goes + Rupiah/month (needs volume)
+function platformFeePct(plat, cat, price){
+  return platformFeePerProduct(plat, cat, price).pctOnly;
+}
+// line-item breakdown + per-product Rupiah
 function platformFeeDetail(plat, cat, vol){
   const f = PLATFORM_FEES[plat], t = feeTierForCat(cat);
-  const { price, sales, omset } = vol;
-  const flatPct = price > 0 ? (f.flat / price * 100) : 0;
+  const { price } = vol;
+  const fee = platformFeePerProduct(plat, cat, price);
   const rows = [];
-  if (f.admin)   rows.push({ name:'Biaya administrasi', where:'Biaya tetap platform tiap transaksi', pct:f.admin, rp: omset*f.admin/100 });
-  rows.push({ name:'Komisi / biaya kategori', where:'Potongan platform tiap produk terjual', pct:(f.comm[t]||0), rp: omset*(f.comm[t]||0)/100 });
-  if (f.program) rows.push({ name:'Program Gratis Ongkir & promo', where:'Subsidi ongkir / voucher untuk pembeli', pct:f.program, rp: omset*f.program/100 });
-  if (f.flat)    rows.push({ name:'Biaya proses pesanan', where:(sales ? sales.toLocaleString('id-ID')+' pesanan × ' : '')+'Rp '+f.flat.toLocaleString('id-ID')+' / order', pct:flatPct, rp: sales*f.flat });
-  const total = (f.comm[t]||0) + (f.program||0) + (f.admin||0) + flatPct;
-  return { rows, total:+total.toFixed(1), totalRp: omset*total/100, note:f.note };
+  if (f.admin)   rows.push({ name:'Biaya administrasi', where:'Biaya tetap platform tiap transaksi', pct:f.admin, rpPer: price*f.admin/100 });
+  rows.push({ name:'Komisi / biaya kategori', where:'Potongan platform tiap produk terjual', pct:(f.comm[t]||0), rpPer: price*(f.comm[t]||0)/100 });
+  if (f.program) rows.push({ name:'Program Gratis Ongkir & promo', where:'Subsidi ongkir / voucher untuk pembeli', pct:f.program, rpPer: price*f.program/100 });
+  if (f.flat)    rows.push({ name:'Biaya proses pesanan', where:'Rp '+f.flat.toLocaleString('id-ID')+' / order (tetap, bukan %)', pct:null, rpPer: f.flat });
+  return { rows, pctOnly: fee.pctOnly, totalRp: fee.totalRp, note:f.note };
 }
 // Top-of-page marketplace comparison section
 function ddRenderFeeStrip(p){
@@ -19252,24 +19259,25 @@ function ddRenderFeeStrip(p){
   if (!el) return;
   const cat = p.category || 'Umum';
   const vol = ddProductVolume(p);
-  const { omset, sales } = vol;
+  const { price } = vol;
   const order = Object.keys(PLATFORM_FEES)
-    .map(plat => ({ plat, pct: platformFeePct(plat, cat, vol.price) }))
-    .sort((a, b) => a.pct - b.pct);
-  const min = order.length ? order[0].pct : 0;
+    .map(plat => ({ plat, fee: platformFeePerProduct(plat, cat, price) }))
+    .sort((a, b) => price > 0 ? a.fee.totalRp - b.fee.totalRp : a.fee.pctOnly - b.fee.pctOnly);
+  const minVal = order.length ? (price > 0 ? order[0].fee.totalRp : order[0].fee.pctOnly) : 0;
   const cards = order.map(o => {
     const f = PLATFORM_FEES[o.plat];
-    const best = o.pct === min;
+    const best = price > 0 ? o.fee.totalRp === minVal : o.fee.pctOnly === minVal;
+    const flatHint = o.fee.flat ? ` + Rp ${o.fee.flat.toLocaleString('id-ID')}/order` : '';
     return `<div class="dd-mp-card${best ? ' best' : ''}" onclick="ddSwitchTab('biaya')">
       ${best ? `<div class="dd-mp-badge">${ECOM_ICON_TROPHY} Terbaik</div>` : ''}
       <div class="dd-mp-brand">${f.logo}<span class="dd-mp-name">${f.label}</span></div>
       <div>
-        <div class="dd-mp-mlabel">Biaya Platform <span class="dd-mp-info" title="Estimasi total potongan platform (komisi + program + biaya proses pesanan) untuk kategori ${cat}.">${ECOM_ICON_Q}</span></div>
-        <div class="dd-mp-fee">${ecomFmtPct(o.pct)}</div>
+        <div class="dd-mp-mlabel">Biaya Platform <span class="dd-mp-info" title="Komisi + program gratis ongkir${flatHint ? ' (biaya proses pesanan ditampilkan terpisah di bawah)' : ''} untuk kategori ${cat}.">${ECOM_ICON_Q}</span></div>
+        <div class="dd-mp-fee">${ecomFmtPct(o.fee.pctOnly)}</div>
       </div>
-      ${omset > 0 ? `<div>
-        <div class="dd-mp-mlabel">Anda Terima / Bulan <span class="dd-mp-info" title="Estimasi omset bulanan dikurangi biaya platform. Belum termasuk modal, iklan & pajak.">${ECOM_ICON_Q}</span></div>
-        <div class="dd-mp-take">${ecomFmtRp(omset * (1 - o.pct/100))}</div>
+      ${price > 0 ? `<div>
+        <div class="dd-mp-mlabel">Dibayar / Produk <span class="dd-mp-info" title="Estimasi potongan platform per unit terjual (harga ${ecomFmtRp(price)} × ${ecomFmtPct(o.fee.pctOnly)}${flatHint}). Belum termasuk modal, ongkir, iklan &amp; pajak.">${ECOM_ICON_Q}</span></div>
+        <div class="dd-mp-take">${ecomFmtRp(o.fee.totalRp)}</div>
       </div>` : ''}
     </div>`;
   }).join('');
@@ -19277,10 +19285,10 @@ function ddRenderFeeStrip(p){
     <div class="dd-mp-head">
       <div>
         <div class="dd-mp-title">Perbandingan Marketplace</div>
-        <div class="dd-mp-sub">Estimasi biaya platform &amp; potensi keuntungan untuk produk ini</div>
+        <div class="dd-mp-sub">Estimasi biaya platform per produk terjual</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-        ${omset > 0 ? `<div class="dd-mp-basis">${ECOM_ICON_Q}<span>Perhitungan berdasarkan omset ${ecomFmtRp(omset)} / bulan (${sales.toLocaleString('id-ID')} unit)</span></div>` : ''}
+        ${price > 0 ? `<div class="dd-mp-basis">${ECOM_ICON_Q}<span>Perhitungan berdasarkan harga produk ${ecomFmtRp(price)}</span></div>` : ''}
         <button class="dd-mp-link" onclick="ddSwitchTab('biaya')">Lihat rincian biaya →</button>
       </div>
     </div>
@@ -19294,37 +19302,36 @@ function ddRenderFees(){
   if (!el) return;
   const cat = p.category || 'Umum';
   const vol = ddProductVolume(p);
-  const { omset, sales } = vol;
-  const order = Object.keys(PLATFORM_FEES).sort((a, b) => platformFeePct(a, cat, vol.price) - platformFeePct(b, cat, vol.price));
+  const { price } = vol;
+  const order = Object.keys(PLATFORM_FEES).sort((a, b) => {
+    const fa = platformFeePerProduct(a, cat, price), fb = platformFeePerProduct(b, cat, price);
+    return price > 0 ? fa.totalRp - fb.totalRp : fa.pctOnly - fb.pctOnly;
+  });
   const best = order[0];
   const cards = order.map(plat => {
     const f = PLATFORM_FEES[plat];
     const d = platformFeeDetail(plat, cat, vol);
     const rowsHtml = d.rows.map(r => `<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #F3F4F6;">
         <div style="min-width:0;"><div style="font-size:.72rem;font-weight:600;color:#374151;">${r.name}</div><div style="font-size:.6rem;color:#9CA3AF;">${r.where}</div></div>
-        <div style="text-align:right;white-space:nowrap;"><div style="font-size:.72rem;font-weight:700;color:#374151;">${ecomFmtPct(r.pct)}</div>${omset > 0 ? `<div style="font-size:.6rem;color:#9CA3AF;">${ecomFmtRp(r.rp)}/bln</div>` : ''}</div>
+        <div style="text-align:right;white-space:nowrap;">${r.pct != null ? `<div style="font-size:.72rem;font-weight:700;color:#374151;">${ecomFmtPct(r.pct)}</div>` : ''}${price > 0 ? `<div style="font-size:.6rem;color:#9CA3AF;">${ecomFmtRp(r.rpPer)}/produk</div>` : ''}</div>
       </div>`).join('');
     const noteHtml = d.note ? `<div style="font-size:.62rem;color:#9CA3AF;margin-top:8px;font-style:italic;">${d.note}</div>` : '';
     const badge = plat === best ? `<span class="dd-mp-badge" style="position:static;margin-left:6px;">${ECOM_ICON_TROPHY} Terbaik</span>` : '';
     return `<div class="dd-card" style="padding:16px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">
         <div class="dd-mp-brand">${f.logo}<span class="dd-mp-name">${f.label}</span>${badge}</div>
-        <div style="text-align:right;"><div style="font-size:1.05rem;font-weight:800;color:#E8442A;line-height:1;">${ecomFmtPct(d.total)}</div><div style="font-size:.56rem;color:#9CA3AF;margin-top:2px;">total potongan</div></div>
+        <div style="text-align:right;"><div style="font-size:1.05rem;font-weight:800;color:#E8442A;line-height:1;">${ecomFmtPct(d.pctOnly)}</div><div style="font-size:.56rem;color:#9CA3AF;margin-top:2px;">komisi + program</div></div>
       </div>
       ${rowsHtml}
       <div style="display:flex;justify-content:space-between;gap:10px;padding:9px 0 6px;">
-        <div style="font-size:.72rem;font-weight:800;color:#1A1F3C;">Total potongan platform</div>
-        <div style="text-align:right;white-space:nowrap;"><div style="font-size:.78rem;font-weight:800;color:#E8442A;">${ecomFmtPct(d.total)}</div>${omset > 0 ? `<div style="font-size:.6rem;color:#9CA3AF;">${ecomFmtRp(d.totalRp)}/bln</div>` : ''}</div>
+        <div style="font-size:.72rem;font-weight:800;color:#1A1F3C;">Total dibayar / produk</div>
+        <div style="text-align:right;white-space:nowrap;"><div style="font-size:.78rem;font-weight:800;color:#E8442A;">${price > 0 ? ecomFmtRp(d.totalRp) : '—'}</div>${price > 0 ? `<div style="font-size:.6rem;color:#9CA3AF;">per unit terjual</div>` : ''}</div>
       </div>
-      ${omset > 0 ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;">
-        <div style="font-size:.72rem;font-weight:800;color:#15803D;">Anda terima / bulan</div>
-        <div style="font-size:.9rem;font-weight:800;color:#16A34A;">${ecomFmtRp(omset - d.totalRp)}</div>
-      </div>` : ''}
       ${noteHtml}
       <div style="font-size:.58rem;color:#9CA3AF;margin-top:8px;">Sumber: ${f.src}</div>
     </div>`;
   }).join('');
-  const basis = omset > 0 ? ` · berdasarkan omset ${ecomFmtRp(omset)}/bln (${sales.toLocaleString('id-ID')} unit)` : '';
+  const basis = price > 0 ? ` · berdasarkan harga produk ${ecomFmtRp(price)}` : '';
   el.innerHTML = `
     <div style="margin-bottom:14px;">
       <div style="font-size:1rem;font-weight:800;color:#1A1F3C;">Rincian Biaya per Marketplace</div>
@@ -19333,7 +19340,7 @@ function ddRenderFees(){
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;">${cards}</div>
     <div style="display:flex;align-items:flex-start;gap:8px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:12px 14px;margin-top:16px;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2" style="flex-shrink:0;margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <div style="font-size:.68rem;color:#9A3412;line-height:1.5;">"Anda terima" belum termasuk <b>modal produk, biaya iklan</b>, &amp; <b>PPh Final 0,5%</b> (pajak penghasilan UMKM, berlaku di semua platform). Angka adalah <b>perkiraan per ${ECOM_FEE_UPDATED}</b> — tarif tiap platform berubah sewaktu-waktu &amp; bergantung tipe penjual, kategori spesifik, dan program yang diikuti. Selalu cek halaman resmi tiap platform untuk angka final.</div>
+      <div style="font-size:.68rem;color:#9A3412;line-height:1.5;">Belum termasuk <b>modal produk, ongkir, biaya iklan</b>, &amp; <b>PPh Final 0,5%</b> (pajak penghasilan UMKM, berlaku di semua platform). Biaya proses pesanan (Rp/order) ditampilkan terpisah agar tidak membesar jadi persentase di produk murah. Angka adalah <b>perkiraan per ${ECOM_FEE_UPDATED}</b> — tarif tiap platform berubah sewaktu-waktu &amp; bergantung tipe penjual, kategori spesifik, dan program yang diikuti. Selalu cek halaman resmi tiap platform untuk angka final.</div>
     </div>`;
 }
 
