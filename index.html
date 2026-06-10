@@ -2149,6 +2149,7 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dd-hero-img{min-width:140px;max-width:160px;flex-shrink:0;background:#fff;border-radius:12px;border:1px solid #E5E7EB;display:flex;align-items:center;justify-content:center;font-size:3.5rem;padding:12px;}
 .dd-hero-right{flex:1;display:flex;flex-direction:column;gap:10px;min-width:0;}
 .dd-hero-name{font-size:1.3rem;font-weight:800;color:#1A1F3C;margin-bottom:2px;line-height:1.25;}
+.dd-hero-price{font-size:1.15rem;font-weight:800;color:#E8442A;margin-bottom:4px;line-height:1.2;}
 .dd-hero-cats{font-size:.78rem;color:#9CA3AF;}
 .dd-hero-cats span{color:#6B7280;}
 .dd-hero-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
@@ -2772,6 +2773,7 @@ body.in-dashboard .mobile-menu{display:none!important;}
 /* ── Issue 2b: Title truncation ── */
 @media(max-width:768px){
   .dd-hero-name{font-size:1rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .dd-hero-price{font-size:1rem;}
 }
 
 /* ── Issue 2c: Deep dive tabs scroll horizontally ── */
@@ -6735,6 +6737,7 @@ html,body{overflow-x:hidden;max-width:100%;}
               <div class="dd-hero-right">
                 <div>
                   <div class="dd-hero-name" id="dd-hero-name">—</div>
+                  <div class="dd-hero-price" id="dd-hero-price">—</div>
                   <div class="dd-hero-cats" id="dd-hero-cats">—</div>
                 </div>
                 <div class="dd-hero-cards">
@@ -6868,7 +6871,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <div class="dd-card fb-flaggable" data-fb-element="Usia Toko Kompetitor" data-fb-section="Riset Produk">
                   <div class="dd-card-title">Usia Toko Kompetitor</div>
                   <div style="display:flex;align-items:center;margin-top:8px;">
-                    <canvas id="dd-chart-donut" width="110" height="110" style="flex-shrink:0;"></canvas>
+                    <canvas id="dd-chart-donut" width="80" height="80" style="flex-shrink:0;"></canvas>
                     <div class="dd-donut-legend" id="dd-donut-legend"></div>
                   </div>
                 </div>
@@ -19351,6 +19354,9 @@ function ddRender(p) {
     _ddHeroEl.textContent = p.emoji || '📦';
   }
   document.getElementById('dd-hero-name').textContent = p.name;
+  const productPrice = listing.price || p.medianPrice || p.price || 0;
+  const heroPriceEl = document.getElementById('dd-hero-price');
+  if (heroPriceEl) heroPriceEl.textContent = productPrice > 0 ? 'Rp ' + Math.round(productPrice).toLocaleString('id-ID') : '—';
   document.getElementById('dd-hero-cats').innerHTML = `Kategori: ${p.category||'Umum'} <span>• Sub Kategori: ${p.category||'Umum'}</span>`;
   ddUpdateTrackBtn(p._listing || null);
   document.getElementById('dd-score-num').textContent = score || '…';

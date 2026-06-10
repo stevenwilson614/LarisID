@@ -6,6 +6,9 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Shopee serves OG meta tags only to social crawlers, not regular browsers.
+const CRAWLER_UA = 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)';
+
 interface ProductData {
   ok: boolean;
   platform: string;
@@ -26,34 +29,44 @@ interface ProductData {
 }
 
 function detectPlatform(url: string): string {
-  if (/shopee\.(co\.id|sg|com|ph|my|vn|tw)/.test(url)) return 'shopee';
-  if (/tiktok\.com|shop\.tiktok/.test(url)) return 'tiktok';
-  if (/tokopedia\.com/.test(url)) return 'tokopedia';
-  if (/lazada\.co\.id|lazada\.com/.test(url)) return 'lazada';
-  if (/bukalapak\.com/.test(url)) return 'bukalapak';
+  if (/shopee\.(co\.id|sg|com|ph|my|vn|tw)|shp\.ee|s\.shopee/i.test(url)) return 'shopee';
+  if (/tiktok\.com|shop\.tiktok/i.test(url)) return 'tiktok';
+  if (/tokopedia\.com/i.test(url)) return 'tokopedia';
+  if (/lazada\.co\.id|lazada\.com/i.test(url)) return 'lazada';
+  if (/bukalapak\.com/i.test(url)) return 'bukalapak';
   return 'unknown';
 }
 
 function extractShopeeIds(url: string): { shopId: number | null; itemId: number | null } {
-  // Pattern: shopee.co.id/slug-i.SHOPID.ITEMID or ?i.SHOPID.ITEMID
-  const m1 = url.match(/[/-]i\.(\d+)\.(\d+)/);
-  if (m1) return { shopId: parseInt(m1[1]), itemId: parseInt(m1[2]) };
-  // Pattern: shopee.co.id/product/SHOPID/ITEMID
-  const m2 = url.match(/shopee\.[^/]+\/product\/(\d+)\/(\d+)/);
-  if (m2) return { shopId: parseInt(m2[1]), itemId: parseInt(m2[2]) };
+  // Canonical: ...-i.SHOPID.ITEMID
+  const m1 = url.match(/[.\/-]i\.(\d+)\.(\d+)/i);
+  if (m1) return { shopId: parseInt(m1[1], 10), itemId: parseInt(m1[2], 10) };
+  // /product/SHOPID/ITEMID
+  const m2 = url.match(/\/product\/(\d+)\/(\d+)/i);
+  if (m2) return { shopId: parseInt(m2[1], 10), itemId: parseInt(m2[2], 10) };
   return { shopId: null, itemId: null };
 }
 
 function getMetaContent(html: string, prop: string): string {
+  const escaped = prop.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const pats = [
-    new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]+content=["']([^"'<]*?)["']`, 'i'),
-    new RegExp(`<meta[^>]+content=["']([^"'<]*?)["'][^>]+(?:property|name)=["']${prop}["']`, 'i'),
+    new RegExp(`<meta[^>]*(?:property|name)=["']${escaped}["'][^>]*content=["']([^"'<]*?)["']`, 'i'),
+    new RegExp(`<meta[^>]*content=["']([^"'<]*?)["'][^>]*(?:property|name)=["']${escaped}["']`, 'i'),
   ];
   for (const p of pats) {
     const m = html.match(p);
-    if (m?.[1]) return m[1].trim();
+    if (m?.[1]) return decodeHtmlEntities(m[1].trim());
   }
   return '';
+}
+
+function decodeHtmlEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
 }
 
 function extractJsonLdProduct(html: string): Record<string, unknown> | null {
@@ -76,6 +89,15 @@ function parsePrice(raw: string): number | null {
   return isNaN(n) || n <= 0 ? null : n;
 }
 
+function cleanTitle(raw: string, platform: string): string {
+  let t = raw.trim();
+  // Strip site suffix: "| Shopee Indonesia", "- Tokopedia", etc.
+  t = t.replace(/\s*[\|–—-]\s*(Shopee|Tokopedia|TikTok|Lazada|Bukalapak)[^|]*$/i, '').trim();
+  // Strip "Jual " prefix common on Shopee titles
+  if (platform === 'shopee') t = t.replace(/^Jual\s+/i, '').trim();
+  return t;
+}
+
 function extractKeywords(title: string): string[] {
   const stopwords = new Set([
     'dan', 'atau', 'untuk', 'dengan', 'yang', 'dari', 'ke', 'di', 'ini', 'itu',
@@ -94,18 +116,80 @@ function extractKeywords(title: string): string[] {
   return unique.slice(0, 5);
 }
 
-async function fetchPage(url: string): Promise<string> {
+async function resolveUrl(url: string): Promise<string> {
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow',
+      headers: { 'User-Agent': CRAWLER_UA, 'Accept': 'text/html' },
+      signal: AbortSignal.timeout(10000),
+    });
+    return res.url || url;
+  } catch {
+    return url;
+  }
+}
+
+async function fetchPage(url: string, platform: string): Promise<string> {
   const res = await fetch(url, {
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'User-Agent': CRAWLER_UA,
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8',
       'Cache-Control': 'no-cache',
     },
+    redirect: 'follow',
     signal: AbortSignal.timeout(12000),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.text();
+}
+
+function scrapeFromHtml(html: string, platform: string): Partial<ProductData> {
+  const out: Partial<ProductData> = { source: 'scrape' };
+
+  const jsonLd = extractJsonLdProduct(html);
+  if (jsonLd) {
+    out.title = cleanTitle((jsonLd.name as string) ?? '', platform);
+    if (typeof jsonLd.description === 'string') {
+      out.description = jsonLd.description.slice(0, 500);
+    }
+    const offers = jsonLd.offers as Record<string, unknown> | undefined;
+    if (offers) {
+      const offerArr = Array.isArray(offers) ? offers[0] : offers;
+      out.price = parsePrice(String((offerArr as Record<string, unknown>).price ?? ''));
+      out.original_price = parsePrice(String((offerArr as Record<string, unknown>).highPrice ?? ''));
+    }
+    const rating = jsonLd.aggregateRating as Record<string, unknown> | undefined;
+    if (rating) {
+      out.rating = parseFloat(String(rating.ratingValue ?? '')) || null;
+      out.reviews_count = parseInt(String(rating.reviewCount ?? '')) || null;
+    }
+    const img = jsonLd.image;
+    if (typeof img === 'string') out.image_url = img;
+    else if (Array.isArray(img) && img[0]) out.image_url = String(img[0]);
+  }
+
+  if (!out.title) {
+    out.title = cleanTitle(getMetaContent(html, 'og:title'), platform);
+  }
+  if (!out.description) {
+    out.description = getMetaContent(html, 'og:description').slice(0, 500);
+  }
+  if (!out.image_url) {
+    out.image_url = getMetaContent(html, 'og:image');
+  }
+  if (!out.price) {
+    out.price = parsePrice(getMetaContent(html, 'product:price:amount'))
+      || parsePrice(getMetaContent(html, 'og:price:amount'));
+  }
+
+  if (!out.title) {
+    const tMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    if (tMatch) out.title = cleanTitle(tMatch[1], platform);
+  }
+
+  return out;
 }
 
 serve(async (req) => {
@@ -143,8 +227,11 @@ serve(async (req) => {
     }
     if (!rawUrl.startsWith('http')) rawUrl = 'https://' + rawUrl;
 
-    const platform = detectPlatform(rawUrl);
-    const shopeeIds = platform === 'shopee' ? extractShopeeIds(rawUrl) : { shopId: null, itemId: null };
+    // Resolve short links (s.shopee.co.id, id.shp.ee, etc.)
+    const resolvedUrl = await resolveUrl(rawUrl);
+
+    const platform = detectPlatform(resolvedUrl);
+    const shopeeIds = platform === 'shopee' ? extractShopeeIds(resolvedUrl) : { shopId: null, itemId: null };
 
     const result: ProductData = {
       ok: false,
@@ -185,68 +272,32 @@ serve(async (req) => {
         result.total_sold = row.total_sold ? Number(row.total_sold) : null;
         result.image_url = row.image_url ?? null;
         result.category = row.category ?? null;
-        result.keywords = row.keyword ? [row.keyword, ...extractKeywords(row.product_name ?? '')] : extractKeywords(row.product_name ?? '');
+        result.keywords = row.keyword
+          ? [row.keyword, ...extractKeywords(row.product_name ?? '')]
+          : extractKeywords(row.product_name ?? '');
         result.keywords = [...new Set(result.keywords)].slice(0, 5);
       }
     }
 
-    // ── 2. If not in DB or non-Shopee: try page scrape ───────────
+    // ── 2. If not in DB: scrape page with social-crawler UA ───────
     if (!result.ok) {
       let html = '';
       try {
-        html = await fetchPage(rawUrl);
+        html = await fetchPage(resolvedUrl, platform);
       } catch (_e) {
-        // Scrape failed; will return what we have from URL only
+        // Scrape failed
       }
 
       if (html) {
+        const scraped = scrapeFromHtml(html, platform);
         result.source = 'scrape';
-
-        // Try JSON-LD structured data (best quality)
-        const jsonLd = extractJsonLdProduct(html);
-        if (jsonLd) {
-          result.title = (jsonLd.name as string) ?? '';
-          if (typeof jsonLd.description === 'string') {
-            result.description = jsonLd.description.slice(0, 500);
-          }
-          const offers = jsonLd.offers as Record<string, unknown> | undefined;
-          if (offers) {
-            const offerArr = Array.isArray(offers) ? offers[0] : offers;
-            result.price = parsePrice(String((offerArr as Record<string, unknown>).price ?? ''));
-            result.original_price = parsePrice(String((offerArr as Record<string, unknown>).highPrice ?? ''));
-          }
-          const rating = jsonLd.aggregateRating as Record<string, unknown> | undefined;
-          if (rating) {
-            result.rating = parseFloat(String(rating.ratingValue ?? '')) || null;
-            result.reviews_count = parseInt(String(rating.reviewCount ?? '')) || null;
-          }
-          const img = jsonLd.image;
-          if (typeof img === 'string') result.image_url = img;
-          else if (Array.isArray(img) && img[0]) result.image_url = String(img[0]);
-        }
-
-        // Fill gaps from Open Graph tags
-        if (!result.title) {
-          result.title = getMetaContent(html, 'og:title')
-            .replace(/\s*[\|–—-].*$/, '').trim(); // strip site name suffix
-        }
-        if (!result.description) {
-          result.description = getMetaContent(html, 'og:description').slice(0, 500);
-        }
-        if (!result.image_url) {
-          result.image_url = getMetaContent(html, 'og:image');
-        }
-        if (!result.price) {
-          result.price = parsePrice(getMetaContent(html, 'product:price:amount'))
-            || parsePrice(getMetaContent(html, 'og:price:amount'));
-        }
-
-        // Last resort title from <title> tag
-        if (!result.title) {
-          const tMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-          if (tMatch) result.title = tMatch[1].replace(/\s*[\|–—-].*$/, '').trim();
-        }
-
+        if (scraped.title) result.title = scraped.title;
+        if (scraped.description) result.description = scraped.description ?? '';
+        if (scraped.price) result.price = scraped.price ?? null;
+        if (scraped.original_price) result.original_price = scraped.original_price ?? null;
+        if (scraped.rating) result.rating = scraped.rating ?? null;
+        if (scraped.reviews_count) result.reviews_count = scraped.reviews_count ?? null;
+        if (scraped.image_url) result.image_url = scraped.image_url ?? null;
         result.ok = result.title.length > 0;
       }
     }
@@ -256,8 +307,12 @@ serve(async (req) => {
       result.keywords = extractKeywords(result.title);
     }
 
-    if (!result.ok && !result.title) {
-      result.error = 'Tidak bisa mengambil data produk. Coba pastikan link produk valid dan bisa dibuka di browser.';
+    if (!result.ok) {
+      if (!shopeeIds.shopId && platform === 'shopee') {
+        result.error = 'Link Shopee tidak dikenali. Gunakan link produk lengkap (contoh: shopee.co.id/nama-produk-i.123.456) atau link pendek s.shopee.co.id.';
+      } else {
+        result.error = 'Tidak bisa mengambil data produk. Pastikan link valid dan produk masih aktif di marketplace.';
+      }
     }
 
     return new Response(JSON.stringify(result), {
