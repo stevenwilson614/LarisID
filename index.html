@@ -3011,6 +3011,122 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .myt-skel{background:#F3F4F6;border-radius:12px;height:120px;animation:skelPulse 1.4s ease-in-out infinite;}
 @keyframes skelPulse{0%,100%{opacity:1;}50%{opacity:.4;}}
 
+/* ── My Toko: mode tabs ─────────────────────────────────────── */
+.myt-mode-tabs{display:flex;gap:0;margin-bottom:24px;border-bottom:2px solid #E5E7EB;}
+.myt-mode-tab{display:flex;align-items:center;gap:6px;padding:10px 18px;font-size:.8rem;font-weight:700;color:#6B7280;background:none;border:none;cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-2px;transition:color .15s,border-color .15s;white-space:nowrap;}
+.myt-mode-tab.active{color:#E8442A;border-bottom-color:#E8442A;}
+.myt-mode-tab:hover:not(.active){color:#374151;}
+@media(max-width:480px){.myt-mode-tab{padding:9px 12px;font-size:.72rem;gap:4px;}}
+
+/* ── Analisis URL: input card ───────────────────────────────── */
+.myta-input-card{background:#fff;border:1px solid #E5E7EB;border-radius:16px;padding:28px;margin-bottom:24px;}
+@media(max-width:600px){.myta-input-card{padding:18px;}}
+.myta-input-card h3{font-size:1.05rem;font-weight:800;color:#1A1F3C;margin:0 0 6px;}
+.myta-input-card p{font-size:.82rem;color:#6B7280;line-height:1.55;margin:0 0 18px;}
+.myta-platform-chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px;}
+.myta-platform-chip{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:.68rem;font-weight:700;border:1.5px solid #E5E7EB;color:#374151;background:#F9FAFB;}
+.myta-input-row{display:flex;gap:10px;align-items:stretch;}
+@media(max-width:560px){.myta-input-row{flex-direction:column;}}
+.myta-url-wrap{flex:1;display:flex;flex-direction:column;gap:5px;}
+.myta-url-input{flex:1;padding:11px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:.85rem;font-family:inherit;outline:none;transition:border-color .15s;}
+.myta-url-input:focus{border-color:#E8442A;}
+.myta-analyze-btn{padding:11px 22px;background:#E8442A;color:#fff;border:none;border-radius:10px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:background .15s;align-self:flex-start;}
+.myta-analyze-btn:hover{background:#C23520;}
+.myta-analyze-btn:disabled{background:#9CA3AF;cursor:not-allowed;}
+.myta-url-error{font-size:.75rem;color:#dc2626;margin-top:6px;display:none;}
+.myta-detected-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:.68rem;font-weight:700;width:fit-content;}
+.myta-detected-badge.shopee{background:#FFF0ED;color:#E8442A;border:1px solid #FECACA;}
+.myta-detected-badge.tokopedia{background:#F0FDF4;color:#16A34A;border:1px solid #BBF7D0;}
+.myta-detected-badge.tiktok{background:#F3F4F6;color:#1A1F3C;border:1px solid #E5E7EB;}
+.myta-detected-badge.lazada{background:#FFF7ED;color:#EA580C;border:1px solid #FED7AA;}
+.myta-detected-badge.bukalapak{background:#FFF7ED;color:#EA580C;border:1px solid #FED7AA;}
+
+/* ── Analisis URL: result sections ─────────────────────────── */
+.myta-section{margin-bottom:28px;}
+.myta-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
+.myta-section-title{font-size:.95rem;font-weight:800;color:#1A1F3C;}
+.myta-platform-tag{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:.68rem;font-weight:700;}
+.myta-platform-tag.shopee{background:#FFF0ED;color:#E8442A;}
+.myta-platform-tag.tokopedia{background:#F0FDF4;color:#16A34A;}
+.myta-platform-tag.tiktok{background:#F3F4F6;color:#1A1F3C;}
+.myta-platform-tag.lazada{background:#FFF7ED;color:#EA580C;}
+
+/* Product overview card */
+.myta-product-card{background:#fff;border:1px solid #E5E7EB;border-radius:14px;padding:18px;display:grid;grid-template-columns:88px 1fr;gap:16px;align-items:start;}
+@media(max-width:480px){.myta-product-card{grid-template-columns:64px 1fr;gap:12px;padding:14px;}}
+.myta-prod-img{width:88px;height:88px;border-radius:10px;object-fit:cover;background:#F3F4F6;display:block;}
+@media(max-width:480px){.myta-prod-img{width:64px;height:64px;}}
+.myta-prod-title{font-size:.9rem;font-weight:700;color:#1A1F3C;margin-bottom:8px;line-height:1.4;}
+.myta-prod-meta{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:8px;}
+.myta-prod-price{font-size:1.1rem;font-weight:800;color:#E8442A;}
+.myta-prod-rating{font-size:.75rem;color:#6B7280;display:flex;align-items:center;gap:3px;}
+.myta-prod-sold{font-size:.72rem;color:#9CA3AF;}
+.myta-prod-desc{font-size:.75rem;color:#6B7280;line-height:1.55;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.myta-source-note{font-size:.65rem;color:#9CA3AF;margin-top:10px;display:flex;align-items:center;gap:4px;}
+.myta-source-dot{width:6px;height:6px;border-radius:50%;background:#10B981;display:inline-block;}
+.myta-prod-enter-price{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid #F3F4F6;}
+.myta-prod-enter-price label{font-size:.72rem;color:#6B7280;font-weight:600;white-space:nowrap;}
+.myta-prod-enter-price input{padding:6px 10px;border:1.5px solid #E5E7EB;border-radius:7px;font-size:.82rem;font-family:inherit;outline:none;width:120px;transition:border-color .15s;}
+.myta-prod-enter-price input:focus{border-color:#E8442A;}
+.myta-prod-enter-price button{padding:6px 12px;background:#E8442A;color:#fff;border:none;border-radius:7px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit;}
+
+/* Platform fee table */
+.myta-fee-card{background:#fff;border:1px solid #E5E7EB;border-radius:14px;overflow:hidden;}
+.myta-fee-tbl{width:100%;border-collapse:collapse;font-size:.78rem;}
+.myta-fee-tbl th{text-align:left;padding:10px 14px;font-size:.63rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.04em;border-bottom:1.5px solid #E5E7EB;background:#F9FAFB;}
+.myta-fee-tbl td{padding:13px 14px;border-bottom:1px solid #F3F4F6;vertical-align:middle;}
+.myta-fee-tbl tr:last-child td{border-bottom:none;}
+.myta-fee-tbl tr.myta-fee-highlight td{background:#FFF8F7;}
+.myta-fee-platform{display:flex;align-items:center;gap:8px;}
+.myta-fee-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.myta-fee-platform-name{font-weight:700;color:#1A1F3C;}
+.myta-fee-platform-note{font-size:.62rem;color:#9CA3AF;margin-top:2px;}
+.myta-fee-bar-wrap{display:flex;align-items:center;gap:8px;}
+.myta-fee-bar{height:7px;border-radius:4px;min-width:4px;}
+.myta-fee-pct{font-size:.72rem;font-weight:700;color:#374151;white-space:nowrap;}
+.myta-fee-rp{font-weight:700;color:#1A1F3C;}
+.myta-fee-net{font-weight:800;color:#1A7A46;}
+.myta-fee-no-price{padding:20px;font-size:.78rem;color:#9CA3AF;text-align:center;}
+
+/* Competitor rows */
+.myta-comp-list{display:flex;flex-direction:column;gap:8px;}
+.myta-comp-row{background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:10px 14px;display:grid;grid-template-columns:30px 36px 1fr auto;gap:10px;align-items:center;}
+@media(max-width:500px){.myta-comp-row{grid-template-columns:26px 1fr auto;}.myta-comp-row-img{display:none;}}
+.myta-comp-ranknum{width:28px;height:28px;border-radius:50%;background:#EEF2FF;color:#4F46E5;font-weight:800;font-size:.72rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.myta-comp-ranknum.gold{background:#FEF3C7;color:#D97706;}
+.myta-comp-img{width:36px;height:36px;border-radius:6px;object-fit:cover;background:#F3F4F6;border:1px solid #E5E7EB;}
+.myta-comp-name{font-size:.78rem;font-weight:700;color:#1A1F3C;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.35;}
+.myta-comp-store{font-size:.62rem;color:#9CA3AF;margin-top:2px;}
+.myta-comp-right{text-align:right;flex-shrink:0;}
+.myta-comp-price{font-size:.78rem;font-weight:700;color:#1A1F3C;}
+.myta-comp-omset{font-size:.63rem;color:#6B7280;}
+.myta-comp-loading{padding:20px 0;display:flex;align-items:center;gap:10px;font-size:.78rem;color:#6B7280;}
+.myta-comp-empty{padding:20px;font-size:.78rem;color:#9CA3AF;text-align:center;}
+
+/* AI Suggestion cards */
+.myta-ai-loading{display:flex;align-items:center;gap:10px;font-size:.8rem;color:#6B7280;padding:20px 0;}
+.myta-ai-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:680px){.myta-ai-grid{grid-template-columns:1fr;}}
+.myta-ai-card{background:#fff;border:1px solid #E5E7EB;border-radius:14px;padding:16px;}
+.myta-ai-card.span2{grid-column:1/-1;}
+.myta-ai-icon{width:30px;height:30px;border-radius:8px;background:#FFF0ED;color:#E8442A;display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
+.myta-ai-card-lbl{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;margin-bottom:8px;}
+.myta-ai-card-body{font-size:.8rem;color:#374151;line-height:1.55;}
+.myta-keyword-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.myta-keyword-chip{padding:4px 12px;background:#EEF2FF;color:#4F46E5;border-radius:20px;font-size:.72rem;font-weight:700;cursor:pointer;transition:background .12s;}
+.myta-keyword-chip:hover{background:#E0E7FF;}
+.myta-ai-compare{display:flex;flex-direction:column;gap:8px;}
+.myta-ai-old{font-size:.73rem;color:#9CA3AF;text-decoration:line-through;line-height:1.4;}
+.myta-ai-new{font-size:.8rem;color:#065F46;font-weight:700;line-height:1.4;background:#F0FDF4;padding:7px 10px;border-radius:8px;}
+.myta-price-suggestion{display:flex;flex-direction:column;gap:6px;}
+.myta-price-tag{font-size:1.05rem;font-weight:800;color:#1A1F3C;}
+.myta-price-note{font-size:.72rem;color:#6B7280;line-height:1.45;}
+.myta-ai-error{padding:20px;font-size:.78rem;color:#9CA3AF;text-align:center;}
+
+/* General spinner */
+.myta-spinner{width:16px;height:16px;border:2px solid #E5E7EB;border-top-color:#E8442A;border-radius:50%;animation:mytaSpin .7s linear infinite;flex-shrink:0;}
+@keyframes mytaSpin{to{transform:rotate(360deg);}}
+
 /* ════════════════════════════════════════════════
    MOBILE UI FIXES (≤768px)
    ════════════════════════════════════════════════ */
@@ -7613,6 +7729,21 @@ html,body{overflow-x:hidden;max-width:100%;}
         <div id="dash-view-mytoko" style="display:none;">
           <div class="myt-wrap">
 
+            <!-- Mode tabs (always visible) -->
+            <div class="myt-mode-tabs">
+              <button class="myt-mode-tab active" id="myt-tab-store" onclick="myTokoModeSwitch('store')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                Toko Saya
+              </button>
+              <button class="myt-mode-tab" id="myt-tab-analyze" onclick="myTokoModeSwitch('analyze')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Analisis URL Produk
+              </button>
+            </div>
+
+            <!-- MODE STORE: existing toko functionality -->
+            <div id="myt-mode-store">
+
             <!-- STATE A: store not connected -->
             <div id="myt-connect-state">
               <div class="myt-connect-hero">
@@ -7735,6 +7866,79 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
 
             </div><!-- /myt-dashboard-state -->
+
+            </div><!-- /myt-mode-store -->
+
+            <!-- MODE ANALYZE: URL product analysis (new) -->
+            <div id="myt-mode-analyze" style="display:none;">
+
+              <!-- URL input card -->
+              <div class="myta-input-card">
+                <h3>Analisis Produk dari Link</h3>
+                <p>Tempel link produk dari Shopee, TikTok Shop, Tokopedia, atau Lazada. LarisID akan membaca judul, harga, ulasan, dan menampilkan estimasi biaya tiap platform, kompetitor, serta saran optimasi dari AI.</p>
+                <div class="myta-platform-chips">
+                  <span class="myta-platform-chip">🟠 Shopee</span>
+                  <span class="myta-platform-chip">🟢 Tokopedia</span>
+                  <span class="myta-platform-chip">🎵 TikTok Shop</span>
+                  <span class="myta-platform-chip">🟧 Lazada</span>
+                  <span class="myta-platform-chip">+ lainnya</span>
+                </div>
+                <div class="myta-input-row">
+                  <div class="myta-url-wrap">
+                    <div id="myta-detected-badge" style="display:none;" class="myta-detected-badge"></div>
+                    <input id="myta-url-input" type="url" class="myta-url-input"
+                      placeholder="https://shopee.co.id/nama-produk-i.123.456"
+                      oninput="mytaOnUrlChange(this.value)"
+                      onkeydown="if(event.key==='Enter')myTokoAnalyzeURL()">
+                  </div>
+                  <button class="myta-analyze-btn" id="myta-analyze-btn" onclick="myTokoAnalyzeURL()">Analisis</button>
+                </div>
+                <div class="myta-url-error" id="myta-url-error"></div>
+              </div>
+
+              <!-- Results (hidden until analyzed) -->
+              <div id="myta-results" style="display:none;">
+
+                <!-- 1. Product overview -->
+                <div class="myta-section">
+                  <div class="myta-section-hdr">
+                    <div class="myta-section-title">Ringkasan Produk</div>
+                    <div id="myta-platform-tag" class="myta-platform-tag"></div>
+                  </div>
+                  <div id="myta-product-card"></div>
+                </div>
+
+                <!-- 2. Platform fee comparison -->
+                <div class="myta-section">
+                  <div class="myta-section-hdr">
+                    <div class="myta-section-title">Estimasi Biaya Platform</div>
+                    <div style="font-size:.68rem;color:#9CA3AF;">Per transaksi, belum termasuk ongkir & iklan</div>
+                  </div>
+                  <div id="myta-fee-table"></div>
+                </div>
+
+                <!-- 3. Competitor snapshot -->
+                <div class="myta-section">
+                  <div class="myta-section-hdr">
+                    <div class="myta-section-title">Kompetitor di Shopee</div>
+                    <div style="font-size:.68rem;color:#9CA3AF;" id="myta-comp-subtitle">Produk serupa dalam database LarisID</div>
+                  </div>
+                  <div id="myta-competitors"></div>
+                </div>
+
+                <!-- 4. AI optimization suggestions -->
+                <div class="myta-section">
+                  <div class="myta-section-hdr">
+                    <div class="myta-section-title">Saran Optimasi AI</div>
+                    <div style="font-size:.68rem;color:#9CA3AF;">Keyword, judul, deskripsi, harga</div>
+                  </div>
+                  <div id="myta-ai-suggestions"></div>
+                </div>
+
+              </div><!-- /myta-results -->
+
+            </div><!-- /myt-mode-analyze -->
+
           </div><!-- /myt-wrap -->
         </div><!-- /dash-view-mytoko -->
 
@@ -16202,9 +16406,11 @@ function _dscSearchScore(product, query) {
   const store = _dscNormStr(product.store_name);
   const cat = _dscNormStr(product.category);
   const hay = `${name} ${kw} ${store} ${cat}`;
-  if (kw === q) return 1100;
-  if (kw.includes(q)) return 1050 - kw.indexOf(q);
-  if (name.includes(q) || hay.includes(q)) return 1000 - name.indexOf(q);
+  if (kw === q) return 1200;
+  if (kw.startsWith(q)) return 1100;            // "sepatu ..." → real shoes outrank "rak sepatu"
+  if (kw.includes(q)) return 1000 - kw.indexOf(q);
+  if (name.includes(q)) return 900 - name.indexOf(q);
+  if (hay.includes(q)) return 800;
   const tokens = q.split(/\s+/).filter(Boolean);
   if (!tokens.length) return 0;
   let score = 0;
@@ -19077,41 +19283,54 @@ function ddRenderFeeStrip(p){
     </div>
     <div class="dd-mp-grid">${cards}</div>`;
 }
-// Full per-platform breakdown tab
+// Detail tab — per-platform fee breakdown + where the money goes
 function ddRenderFees(){
   const p = _ddCurrentP;
   if (!p) return;
   const el = document.getElementById('dd-fees-content');
   if (!el) return;
   const cat = p.category || 'Umum';
-  const price = p.medianPrice || 0;
-  const order = Object.keys(PLATFORM_FEES).sort((a, b) => platformFeePct(a, cat, price) - platformFeePct(b, cat, price));
-  const cheapest = order[0];
+  const vol = ddProductVolume(p);
+  const { omset, sales } = vol;
+  const order = Object.keys(PLATFORM_FEES).sort((a, b) => platformFeePct(a, cat, vol.price) - platformFeePct(b, cat, vol.price));
+  const best = order[0];
   const cards = order.map(plat => {
     const f = PLATFORM_FEES[plat];
-    const b = platformFeeBreakdown(plat, cat, price);
-    const rowsHtml = b.rows.map(r => `<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:5px 0;border-bottom:1px solid #F3F4F6;"><span style="color:#6B7280;">${r[0]}</span><span style="font-weight:600;color:#374151;">${r[1]}</span></div>`).join('');
-    const noteHtml = b.note ? `<div style="font-size:.62rem;color:#9CA3AF;margin-top:6px;font-style:italic;">${b.note}</div>` : '';
-    const cheap = plat === cheapest ? `<span class="dd-fee-badge" style="margin-left:8px;">Termurah</span>` : '';
+    const d = platformFeeDetail(plat, cat, vol);
+    const rowsHtml = d.rows.map(r => `<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #F3F4F6;">
+        <div style="min-width:0;"><div style="font-size:.72rem;font-weight:600;color:#374151;">${r.name}</div><div style="font-size:.6rem;color:#9CA3AF;">${r.where}</div></div>
+        <div style="text-align:right;white-space:nowrap;"><div style="font-size:.72rem;font-weight:700;color:#374151;">${ecomFmtPct(r.pct)}</div>${omset > 0 ? `<div style="font-size:.6rem;color:#9CA3AF;">${ecomFmtRp(r.rp)}/bln</div>` : ''}</div>
+      </div>`).join('');
+    const noteHtml = d.note ? `<div style="font-size:.62rem;color:#9CA3AF;margin-top:8px;font-style:italic;">${d.note}</div>` : '';
+    const badge = plat === best ? `<span class="dd-mp-badge" style="position:static;margin-left:6px;">${ECOM_ICON_TROPHY} Terbaik</span>` : '';
     return `<div class="dd-card" style="padding:16px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:50%;background:${f.color};flex-shrink:0;"></span><span style="font-size:.85rem;font-weight:800;color:#1A1F3C;">${f.label}</span>${cheap}</div>
-        <div style="text-align:right;"><div style="font-size:1.15rem;font-weight:800;color:#E8442A;line-height:1;">≈ ${ecomFmtPct(b.total)}</div><div style="font-size:.56rem;color:#9CA3AF;margin-top:2px;">total potongan</div></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">
+        <div class="dd-mp-brand">${f.logo}<span class="dd-mp-name">${f.label}</span>${badge}</div>
+        <div style="text-align:right;"><div style="font-size:1.05rem;font-weight:800;color:#E8442A;line-height:1;">${ecomFmtPct(d.total)}</div><div style="font-size:.56rem;color:#9CA3AF;margin-top:2px;">total potongan</div></div>
       </div>
       ${rowsHtml}
+      <div style="display:flex;justify-content:space-between;gap:10px;padding:9px 0 6px;">
+        <div style="font-size:.72rem;font-weight:800;color:#1A1F3C;">Total potongan platform</div>
+        <div style="text-align:right;white-space:nowrap;"><div style="font-size:.78rem;font-weight:800;color:#E8442A;">${ecomFmtPct(d.total)}</div>${omset > 0 ? `<div style="font-size:.6rem;color:#9CA3AF;">${ecomFmtRp(d.totalRp)}/bln</div>` : ''}</div>
+      </div>
+      ${omset > 0 ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;">
+        <div style="font-size:.72rem;font-weight:800;color:#15803D;">Anda terima / bulan</div>
+        <div style="font-size:.9rem;font-weight:800;color:#16A34A;">${ecomFmtRp(omset - d.totalRp)}</div>
+      </div>` : ''}
       ${noteHtml}
       <div style="font-size:.58rem;color:#9CA3AF;margin-top:8px;">Sumber: ${f.src}</div>
     </div>`;
   }).join('');
+  const basis = omset > 0 ? ` · berdasarkan omset ${ecomFmtRp(omset)}/bln (${sales.toLocaleString('id-ID')} unit)` : '';
   el.innerHTML = `
     <div style="margin-bottom:14px;">
-      <div style="font-size:1rem;font-weight:800;color:#1A1F3C;">Estimasi Biaya E-commerce</div>
-      <div style="font-size:.74rem;color:#6B7280;margin-top:3px;">Kategori <b>${cat}</b> · perkiraan potongan platform untuk penjual non-Star/reguler dengan program gratis ongkir aktif.</div>
+      <div style="font-size:1rem;font-weight:800;color:#1A1F3C;">Rincian Biaya per Marketplace</div>
+      <div style="font-size:.74rem;color:#6B7280;margin-top:3px;">Kategori <b>${cat}</b>${basis}. Tiap baris menunjukkan ke mana biaya kamu mengalir.</div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;">${cards}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;">${cards}</div>
     <div style="display:flex;align-items:flex-start;gap:8px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:12px 14px;margin-top:16px;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2" style="flex-shrink:0;margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <div style="font-size:.68rem;color:#9A3412;line-height:1.5;">Belum termasuk <b>PPh Final 0,5%</b> (pajak penghasilan UMKM, berlaku di semua platform) &amp; biaya iklan. Angka adalah <b>perkiraan per ${ECOM_FEE_UPDATED}</b> — tarif tiap platform berubah sewaktu-waktu &amp; bergantung tipe penjual, kategori spesifik, dan program yang diikuti. Selalu cek halaman resmi tiap platform untuk angka final.</div>
+      <div style="font-size:.68rem;color:#9A3412;line-height:1.5;">"Anda terima" belum termasuk <b>modal produk, biaya iklan</b>, &amp; <b>PPh Final 0,5%</b> (pajak penghasilan UMKM, berlaku di semua platform). Angka adalah <b>perkiraan per ${ECOM_FEE_UPDATED}</b> — tarif tiap platform berubah sewaktu-waktu &amp; bergantung tipe penjual, kategori spesifik, dan program yang diikuti. Selalu cek halaman resmi tiap platform untuk angka final.</div>
     </div>`;
 }
 
@@ -26535,6 +26754,8 @@ let _mytProfile  = null;
 // ── Init: decide which state to show ─────────────────────────
 async function myTokoInit() {
   if (!currentUser) { openAuthModal('login'); return; }
+  // Always land on "Toko Saya" tab when navigating to My Toko
+  myTokoModeSwitch('store');
   await _trkLoadSellingFromSupabase();
   const profile = await _mytLoadProfile();
   if (profile && profile.shopee_shop_id) {
@@ -26602,6 +26823,508 @@ async function myTokoConnect() {
 function _mytErr(msg) {
   const el = document.getElementById('myt-connect-error');
   if (el) { el.textContent = msg; el.style.display = ''; }
+}
+
+// ════════════════════════════════════════════════════════════
+//  MY TOKO — ANALISIS URL PRODUK
+// ════════════════════════════════════════════════════════════
+
+// ── State ─────────────────────────────────────────────────────
+let _mytaCurrentData = null;  // last analyzed product
+let _mytaManualPrice = null;  // user-entered price override
+
+// ── Mode switching ─────────────────────────────────────────────
+function myTokoModeSwitch(mode) {
+  const storeEl   = document.getElementById('myt-mode-store');
+  const analyzeEl = document.getElementById('myt-mode-analyze');
+  const tabStore   = document.getElementById('myt-tab-store');
+  const tabAnalyze = document.getElementById('myt-tab-analyze');
+  if (!storeEl || !analyzeEl) return;
+
+  if (mode === 'analyze') {
+    storeEl.style.display   = 'none';
+    analyzeEl.style.display = '';
+    tabStore?.classList.remove('active');
+    tabAnalyze?.classList.add('active');
+  } else {
+    storeEl.style.display   = '';
+    analyzeEl.style.display = 'none';
+    tabStore?.classList.add('active');
+    tabAnalyze?.classList.remove('active');
+  }
+}
+
+// ── Live platform detection as user types ─────────────────────
+const _PLATFORM_LABELS = {
+  shopee:    '🟠 Shopee',
+  tokopedia: '🟢 Tokopedia',
+  tiktok:    '🎵 TikTok Shop',
+  lazada:    '🟧 Lazada',
+  bukalapak: '🔴 Bukalapak',
+};
+
+function mytaDetectPlatform(url) {
+  if (/shopee\.(co\.id|sg|com|ph|my|vn|tw)/i.test(url)) return 'shopee';
+  if (/tiktok\.com|shop\.tiktok/i.test(url))            return 'tiktok';
+  if (/tokopedia\.com/i.test(url))                      return 'tokopedia';
+  if (/lazada\.co\.id|lazada\.com/i.test(url))          return 'lazada';
+  if (/bukalapak\.com/i.test(url))                      return 'bukalapak';
+  return null;
+}
+
+function mytaOnUrlChange(value) {
+  const badge = document.getElementById('myta-detected-badge');
+  if (!badge) return;
+  const platform = mytaDetectPlatform(value);
+  if (platform) {
+    badge.textContent  = _PLATFORM_LABELS[platform] || platform;
+    badge.className    = `myta-detected-badge ${platform}`;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// ── Main analysis entry point ─────────────────────────────────
+async function myTokoAnalyzeURL() {
+  if (!currentUser) { openAuthModal('login'); return; }
+
+  const inp = document.getElementById('myta-url-input');
+  const btn = document.getElementById('myta-analyze-btn');
+  const errEl = document.getElementById('myta-url-error');
+  const url = (inp?.value || '').trim();
+
+  if (!url) { _mytaShowErr('Tempel link produk terlebih dahulu.'); return; }
+  if (!/^https?:\/\//i.test(url) && !/\./i.test(url)) {
+    _mytaShowErr('URL tidak valid. Contoh: https://shopee.co.id/produk-i.123.456');
+    return;
+  }
+  _mytaHideErr();
+
+  btn.disabled     = true;
+  btn.textContent  = 'Menganalisis...';
+  document.getElementById('myta-results').style.display = 'none';
+
+  try {
+    const session = _supabase ? (await _supabase.auth.getSession()).data?.session : null;
+    if (!session) { openAuthModal('login'); return; }
+
+    const res = await fetch(`${SUPA_URL}/functions/v1/analyze-product-url`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'server_error');
+
+    _mytaCurrentData = data;
+    _mytaManualPrice = null;
+    _mytaRenderResults(data);
+
+  } catch (e) {
+    _mytaShowErr('Terjadi kesalahan saat menganalisis. Coba lagi atau periksa koneksi internet.');
+    console.error('[LarisID] analyze-product-url error:', e);
+  }
+
+  btn.disabled    = false;
+  btn.textContent = 'Analisis';
+}
+
+function _mytaShowErr(msg) {
+  const el = document.getElementById('myta-url-error');
+  if (el) { el.textContent = msg; el.style.display = ''; }
+}
+function _mytaHideErr() {
+  const el = document.getElementById('myta-url-error');
+  if (el) el.style.display = 'none';
+}
+
+// ── Render all results ─────────────────────────────────────────
+function _mytaRenderResults(data) {
+  const resultsEl = document.getElementById('myta-results');
+  if (!resultsEl) return;
+
+  _mytaRenderProductCard(data);
+  _mytaRenderFeeTable(data.price, data.platform);
+  _mytaFetchAndRenderCompetitors(data);
+  _mytaRenderAISuggestions(data);
+
+  resultsEl.style.display = '';
+  resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── 1. Product overview card ──────────────────────────────────
+function _mytaRenderProductCard(data) {
+  const el = document.getElementById('myta-product-card');
+  if (!el) return;
+
+  const fmtRp = n => n ? 'Rp ' + Math.round(n).toLocaleString('id-ID') : '—';
+  const fmtSold = n => {
+    if (!n) return null;
+    return n >= 1e6 ? (n/1e6).toFixed(1)+'jt terjual' : n >= 1e3 ? (n/1e3).toFixed(0)+'rb terjual' : n+' terjual';
+  };
+  const stars = n => n ? ('★'.repeat(Math.round(n)) + '☆'.repeat(5 - Math.round(n)) + ` ${n.toFixed(1)}`) : null;
+
+  const imgHtml = data.image_url
+    ? `<img class="myta-prod-img" src="${data.image_url}" onerror="this.style.opacity='.15'" alt="">`
+    : `<div class="myta-prod-img" style="display:flex;align-items:center;justify-content:center;font-size:2rem;">📦</div>`;
+
+  const metaParts = [];
+  if (data.price) metaParts.push(`<span class="myta-prod-price">${fmtRp(data.price)}</span>`);
+  const ratingStr = stars(data.rating);
+  if (ratingStr) metaParts.push(`<span class="myta-prod-rating">${ratingStr}${data.reviews_count ? ` (${data.reviews_count.toLocaleString('id-ID')})` : ''}</span>`);
+  const soldStr = fmtSold(data.total_sold);
+  if (soldStr) metaParts.push(`<span class="myta-prod-sold">${soldStr}</span>`);
+
+  const sourceNote = data.source === 'database'
+    ? '<span class="myta-source-dot"></span> Data dari database LarisID'
+    : data.source === 'scrape'
+      ? '<span class="myta-source-dot" style="background:#F59E0B;"></span> Data dari halaman produk'
+      : '';
+
+  const priceEntryHtml = !data.price ? `
+    <div class="myta-prod-enter-price">
+      <label>Harga produk:</label>
+      <input id="myta-manual-price" type="number" placeholder="Rp 50000" min="0">
+      <button onclick="_mytaApplyManualPrice()">Terapkan</button>
+    </div>` : '';
+
+  el.innerHTML = `
+    <div class="myta-product-card">
+      ${imgHtml}
+      <div>
+        <div class="myta-prod-title">${data.title || '(judul tidak terdeteksi)'}</div>
+        <div class="myta-prod-meta">${metaParts.join('')}</div>
+        ${data.description ? `<div class="myta-prod-desc">${data.description}</div>` : ''}
+        ${sourceNote ? `<div class="myta-source-note">${sourceNote}</div>` : ''}
+        ${priceEntryHtml}
+      </div>
+    </div>`;
+
+  // Update platform tag
+  const tagEl = document.getElementById('myta-platform-tag');
+  if (tagEl && data.platform) {
+    tagEl.textContent = _PLATFORM_LABELS[data.platform] || data.platform;
+    tagEl.className   = `myta-platform-tag ${data.platform}`;
+  }
+}
+
+function _mytaApplyManualPrice() {
+  const inp = document.getElementById('myta-manual-price');
+  const val = parseFloat((inp?.value || '').replace(/[^\d]/g, ''));
+  if (!val || val <= 0) return;
+  _mytaManualPrice = val;
+  if (_mytaCurrentData) {
+    _mytaCurrentData.price = val;
+    _mytaRenderProductCard(_mytaCurrentData);
+    _mytaRenderFeeTable(val, _mytaCurrentData.platform);
+  }
+}
+
+// ── 2. Platform fee comparison table ─────────────────────────
+const _PLATFORM_FEES = [
+  {
+    id: 'shopee', name: 'Shopee', dot: '#EE4D2D',
+    rate: 0.044,
+    note: 'Service 2.22% + Payment 2.22% (non-Star seller)',
+  },
+  {
+    id: 'tokopedia', name: 'Tokopedia', dot: '#42B549',
+    rate: 0.030,
+    note: 'Admin 2% + Payment 1% (Power Merchant FREE)',
+  },
+  {
+    id: 'tiktok', name: 'TikTok Shop', dot: '#000000',
+    rate: 0.018,
+    rateMax: 0.054,
+    note: 'Komisi 1.8–5.4% tergantung kategori',
+  },
+  {
+    id: 'lazada', name: 'Lazada', dot: '#F57224',
+    rate: 0.055,
+    note: 'Komisi rata-rata 4–8% tergantung kategori',
+  },
+];
+const _FEE_BAR_MAX_PCT = 0.10; // 10% = full bar width
+
+function _mytaRenderFeeTable(price, currentPlatform) {
+  const el = document.getElementById('myta-fee-table');
+  if (!el) return;
+
+  const fmtRp = n => 'Rp ' + Math.round(n).toLocaleString('id-ID');
+
+  if (!price || price <= 0) {
+    el.innerHTML = `<div class="myta-fee-no-price">Masukkan harga produk untuk melihat estimasi biaya platform.</div>`;
+    return;
+  }
+
+  const rows = _PLATFORM_FEES.map(pf => {
+    const fee    = price * pf.rate;
+    const feeMax = pf.rateMax ? price * pf.rateMax : fee;
+    const net    = price - fee;
+    const barW   = Math.min(pf.rate / _FEE_BAR_MAX_PCT * 100, 100);
+    const pct    = pf.rateMax
+      ? `${(pf.rate*100).toFixed(1)}–${(pf.rateMax*100).toFixed(1)}%`
+      : `${(pf.rate*100).toFixed(1)}%`;
+    const feeRpStr = pf.rateMax
+      ? `${fmtRp(fee)} – ${fmtRp(feeMax)}`
+      : fmtRp(fee);
+    const highlight = pf.id === currentPlatform ? ' class="myta-fee-highlight"' : '';
+    return `
+      <tr${highlight}>
+        <td>
+          <div class="myta-fee-platform">
+            <div class="myta-fee-dot" style="background:${pf.dot};"></div>
+            <div>
+              <div class="myta-fee-platform-name">${pf.name}${pf.id === currentPlatform ? ' ✦' : ''}</div>
+              <div class="myta-fee-platform-note">${pf.note}</div>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div class="myta-fee-bar-wrap">
+            <div class="myta-fee-bar" style="width:${barW}%;background:${pf.dot};opacity:.7;"></div>
+            <span class="myta-fee-pct">${pct}</span>
+          </div>
+        </td>
+        <td class="myta-fee-rp">${feeRpStr}</td>
+        <td class="myta-fee-net">${fmtRp(net)}</td>
+      </tr>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="myta-fee-card">
+      <table class="myta-fee-tbl">
+        <thead>
+          <tr>
+            <th>Platform</th>
+            <th>% Biaya</th>
+            <th>Est. Biaya dari ${fmtRp(price)}</th>
+            <th>Pendapatan Bersih</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="font-size:.65rem;color:#9CA3AF;margin-top:8px;line-height:1.5;">
+      ⚠ Estimasi berdasarkan tarif umum Juni 2026. Biaya sesungguhnya bisa berbeda tergantung kategori, status seller, dan promosi platform. Belum termasuk ongkos kirim dan biaya iklan.
+    </div>`;
+}
+
+// ── 3. Fetch competitors from LarisID DB ─────────────────────
+async function _mytaFetchAndRenderCompetitors(data) {
+  const el = document.getElementById('myta-competitors');
+  const subEl = document.getElementById('myta-comp-subtitle');
+  if (!el) return;
+
+  el.innerHTML = `<div class="myta-comp-loading"><div class="myta-spinner"></div>Mencari kompetitor...</div>`;
+
+  // Build keyword list from data
+  const keywords = (data.keywords || []).filter(Boolean);
+  if (!keywords.length && !data.category) {
+    el.innerHTML = `<div class="myta-comp-empty">Keyword tidak terdeteksi — tidak bisa mencari kompetitor.</div>`;
+    return;
+  }
+
+  try {
+    // Try each keyword, return first that has results
+    let rows = [];
+    const excludeShopId = data.shop_id ? Number(data.shop_id) : -1;
+
+    for (const kw of keywords) {
+      const { data: rpcData } = await _supabase.rpc('get_similar_competitors', {
+        p_keyword:  kw,
+        p_category: data.category || '',
+        p_shop_id:  excludeShopId,
+        p_limit:    8,
+      });
+      if (rpcData && rpcData.length >= 3) {
+        rows = rpcData;
+        if (subEl) subEl.textContent = `Keyword: "${kw}" · ${rows.length} kompetitor ditemukan`;
+        break;
+      }
+      if (rpcData && rpcData.length > rows.length) rows = rpcData;
+    }
+
+    if (!rows.length) {
+      el.innerHTML = `<div class="myta-comp-empty">Kompetitor tidak ditemukan untuk produk ini dalam database LarisID. Coba periksa keyword produk.</div>`;
+      return;
+    }
+
+    const fmtRp  = n => 'Rp ' + Math.round(n||0).toLocaleString('id-ID');
+    const fmtEst = n => {
+      if (!n) return '—';
+      return n >= 1e9 ? (n/1e9).toFixed(1)+'M' : n >= 1e6 ? (n/1e6).toFixed(0)+'jt' : n >= 1e3 ? (n/1e3).toFixed(0)+'rb' : String(Math.round(n));
+    };
+
+    el.innerHTML = `<div class="myta-comp-list">${rows.map(r => {
+      const rank = Number(r.comp_rank);
+      const imgHtml = r.image_url
+        ? `<img class="myta-comp-img" src="${r.image_url}" onerror="this.style.opacity='.15'" alt="">`
+        : `<div class="myta-comp-img" style="display:flex;align-items:center;justify-content:center;font-size:.9rem;">📦</div>`;
+      const estOmset = r.est_omset ? `Est. Rp ${fmtEst(r.est_omset)}/bln` : '';
+      return `
+        <div class="myta-comp-row">
+          <div class="myta-comp-ranknum${rank <= 3 ? ' gold' : ''}">${rank}</div>
+          <div class="myta-comp-row-img">${imgHtml}</div>
+          <div>
+            <div class="myta-comp-name">${r.product_name || '—'}</div>
+            <div class="myta-comp-store">${r.store_name || ''}</div>
+          </div>
+          <div class="myta-comp-right">
+            <div class="myta-comp-price">${fmtRp(r.price)}</div>
+            ${estOmset ? `<div class="myta-comp-omset">${estOmset}</div>` : ''}
+          </div>
+        </div>`;
+    }).join('')}</div>`;
+
+  } catch (e) {
+    el.innerHTML = `<div class="myta-comp-empty">Gagal memuat kompetitor.</div>`;
+  }
+}
+
+// ── 4. AI optimization suggestions ────────────────────────────
+async function _mytaRenderAISuggestions(data) {
+  const el = document.getElementById('myta-ai-suggestions');
+  if (!el) return;
+
+  el.innerHTML = `<div class="myta-ai-loading"><div class="myta-spinner"></div>AI sedang menganalisis produk...</div>`;
+
+  if (!data.title) {
+    el.innerHTML = `<div class="myta-ai-error">Judul produk tidak terdeteksi — tidak bisa membuat saran AI.</div>`;
+    return;
+  }
+
+  try {
+    const session = _supabase ? (await _supabase.auth.getSession()).data?.session : null;
+    if (!session) { el.innerHTML = `<div class="myta-ai-error">Login diperlukan untuk saran AI.</div>`; return; }
+
+    const fmtRp = n => n ? 'Rp ' + Math.round(n).toLocaleString('id-ID') : 'tidak terdeteksi';
+    const prompt = `Kamu adalah analis produk e-commerce Indonesia berpengalaman. Analisis produk berikut dan berikan saran optimasi konkret untuk penjual di Shopee, TikTok Shop, atau Tokopedia.
+
+PRODUK:
+Judul: ${data.title}
+Harga: ${fmtRp(data.price)}
+Rating: ${data.rating ? data.rating + '/5' : 'tidak ada'} (${data.reviews_count ? data.reviews_count + ' ulasan' : 'tidak ada'})
+Platform asal: ${data.platform || 'tidak diketahui'}
+Kategori: ${data.category || 'tidak terdeteksi'}
+Keyword saat ini: ${(data.keywords || []).join(', ') || 'tidak terdeteksi'}
+Deskripsi singkat: ${data.description ? data.description.slice(0, 200) : 'tidak ada'}
+
+Berikan respons HANYA dalam format JSON berikut (tanpa teks lain):
+{
+  "judul_baru": "judul produk yang lebih SEO-friendly dan menarik (max 120 karakter)",
+  "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
+  "deskripsi_saran": "saran 2-3 kalimat untuk memperbaiki deskripsi produk agar lebih menjual",
+  "harga_saran": "rekomendasi harga atau range harga dalam Rupiah berdasarkan pasar",
+  "harga_alasan": "alasan singkat saran harga tersebut",
+  "tips": "1-2 tips utama untuk meningkatkan penjualan produk ini"
+}`;
+
+    const res = await fetch(`${SUPA_URL}/functions/v1/claude-proxy`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model:      'claude-haiku-4-5-20251001',
+        max_tokens: 600,
+        system:     'Kamu adalah analis produk e-commerce Indonesia. Respons selalu dalam Bahasa Indonesia. Selalu balas dengan JSON valid saja.',
+        messages:   [{ role: 'user', content: prompt }],
+      }),
+    });
+
+    if (res.status === 429) {
+      el.innerHTML = `<div class="myta-ai-error">Batas penggunaan AI hari ini tercapai (10 permintaan/hari). Coba lagi besok.</div>`;
+      return;
+    }
+
+    const d = await res.json();
+    const text = d.content?.[0]?.text || '';
+
+    let suggestions;
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      suggestions = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+    } catch { suggestions = null; }
+
+    if (!suggestions) {
+      el.innerHTML = `<div class="myta-ai-error">AI tidak bisa menganalisis produk ini. Coba lagi.</div>`;
+      return;
+    }
+
+    // Render suggestion cards
+    const keywordChips = (suggestions.keywords || [])
+      .map(k => `<span class="myta-keyword-chip" onclick="_mytaCopyText('${k}','keyword')">${k}</span>`)
+      .join('');
+
+    el.innerHTML = `
+      <div class="myta-ai-grid">
+
+        <div class="myta-ai-card">
+          <div class="myta-ai-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <div class="myta-ai-card-lbl">Keyword Terbaik</div>
+          <div class="myta-keyword-chips">${keywordChips}</div>
+        </div>
+
+        <div class="myta-ai-card">
+          <div class="myta-ai-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          </div>
+          <div class="myta-ai-card-lbl">Judul Lebih Baik</div>
+          <div class="myta-ai-compare">
+            <div class="myta-ai-old">${data.title}</div>
+            <div class="myta-ai-new">${suggestions.judul_baru || '—'}</div>
+          </div>
+        </div>
+
+        <div class="myta-ai-card span2">
+          <div class="myta-ai-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <div class="myta-ai-card-lbl">Saran Deskripsi</div>
+          <div class="myta-ai-card-body">${suggestions.deskripsi_saran || '—'}</div>
+        </div>
+
+        <div class="myta-ai-card">
+          <div class="myta-ai-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          </div>
+          <div class="myta-ai-card-lbl">Saran Harga</div>
+          <div class="myta-price-suggestion">
+            <div class="myta-price-tag">${suggestions.harga_saran || '—'}</div>
+            <div class="myta-price-note">${suggestions.harga_alasan || ''}</div>
+          </div>
+        </div>
+
+        <div class="myta-ai-card">
+          <div class="myta-ai-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          </div>
+          <div class="myta-ai-card-lbl">Tips Penjualan</div>
+          <div class="myta-ai-card-body">${suggestions.tips || '—'}</div>
+        </div>
+
+      </div>`;
+
+  } catch (e) {
+    el.innerHTML = `<div class="myta-ai-error">Gagal mendapatkan saran AI. Coba lagi.</div>`;
+    console.error('[LarisID] AI suggestion error:', e);
+  }
+}
+
+// ── Utility: copy keyword to clipboard ───────────────────────
+function _mytaCopyText(text, type) {
+  navigator.clipboard?.writeText(text).then(() => {
+    // Brief visual feedback
+    const chips = document.querySelectorAll('.myta-keyword-chip');
+    chips.forEach(c => { if (c.textContent === text) {
+      const orig = c.style.background;
+      c.style.background = '#C7D2FE';
+      setTimeout(() => { c.style.background = orig; }, 600);
+    }});
+  }).catch(() => {});
 }
 
 async function _mytLoadProfile() {
