@@ -3277,16 +3277,21 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .nu-empty-compact h3{margin-bottom:6px;}
 .nu-empty-compact p{margin-bottom:14px;}
 /* recommended-products grid under the dashboard empty-state */
-.hbd-nu-reco-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.hbd-nu-reco-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.hbd-nu-reco-title{font-size:.82rem;font-weight:700;color:#111;}
+.hbd-nu-reco-link{font-size:.75rem;color:#E8442A;cursor:pointer;font-weight:600;}
+.hbd-nu-reco-msg{font-size:.75rem;color:#6B7280;line-height:1.5;margin:0 0 12px;}
+.hbd-nu-reco-msg a{color:#E8442A;font-weight:700;cursor:pointer;text-decoration:none;}
+.hbd-nu-reco-msg a:hover{text-decoration:underline;}
+.hbd-nu-reco-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;}
 .hbd-nu-reco-card{background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden;cursor:pointer;transition:box-shadow .15s,transform .15s;}
 .hbd-nu-reco-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.08);transform:translateY(-2px);}
-.hbd-nu-reco-thumb{height:84px;background:#F3F4F6;position:relative;overflow:hidden;}
-.hbd-nu-reco-thumb img{width:100%;height:100%;object-fit:cover;}
+.hbd-nu-reco-thumb{aspect-ratio:1/1;background:#F3F4F6;position:relative;overflow:hidden;}
+.hbd-nu-reco-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
 .hbd-nu-reco-score{position:absolute;top:6px;right:6px;color:#fff;font-size:.6rem;font-weight:800;padding:2px 6px;border-radius:8px;}
 .hbd-nu-reco-meta{padding:8px 9px;}
 .hbd-nu-reco-name{font-size:.72rem;font-weight:700;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .hbd-nu-reco-cat{font-size:.64rem;color:#9CA3AF;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-@media(max-width:560px){.hbd-nu-reco-grid{grid-template-columns:repeat(2,1fr);}}
 #tour-spotlight{
   position:fixed;
   border-radius:10px;
@@ -6213,12 +6218,13 @@ html,body{overflow-x:hidden;max-width:100%;}
               <button type="button" class="nu-empty-btn" onclick="switchDashView('discover')">Cari Produk di Discover</button>
             </div>
 
-            <!-- Recommended products beneath the empty-state (daily-rotating) -->
+            <!-- Recommended products (daily-random, student/independent) -->
             <div id="hbd-nu-reco" style="display:none;margin-bottom:20px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                <div style="font-size:.82rem;font-weight:700;color:#111;">Rekomendasi produk untuk kamu</div>
-                <a onclick="switchDashView('discover')" style="font-size:.75rem;color:#E8442A;cursor:pointer;font-weight:600;">Lihat semua &rarr;</a>
+              <div class="hbd-nu-reco-head">
+                <div class="hbd-nu-reco-title">Rekomendasi produk untuk kamu</div>
+                <a class="hbd-nu-reco-link" onclick="switchDashView('discover')">Lihat semua &rarr;</a>
               </div>
+              <p class="hbd-nu-reco-msg">Ini cuplikan produk berpotensi hari ini. Buka <a onclick="switchDashView('discover')">Discover</a> untuk riset lebih banyak keyword, filter pasar, dan lacak produk yang menarik.</p>
               <div id="hbd-nu-reco-cards" class="hbd-nu-reco-grid"></div>
             </div>
 
@@ -20659,6 +20665,33 @@ function recBuildPersonalized(products, recentKeywords, userId, count = 5) {
   return out.slice(0, count);
 }
 
+// Open a recommended product in dashboard Deep Dive (not landing-page detail).
+function hbdNuRecoOpen(p) {
+  if (!p || p.item_id == null || p.shop_id == null) return;
+  if (!window._dscAllListings) window._dscAllListings = [];
+  let listing = _dscAllListings.find(r => String(r.item_id) === String(p.item_id) && String(r.shop_id) === String(p.shop_id));
+  if (!listing) {
+    listing = {
+      item_id: p.item_id,
+      shop_id: p.shop_id,
+      product_name: p.product_name || p.name || p.keyword,
+      keyword: p.keyword || p.name,
+      category: p.category || 'Umum',
+      image_url: p.image_url || p.image || '',
+      price: p.price || p.medianPrice || 0,
+      total_sold: p.total_sold || 0,
+      store_name: p.store_name || '',
+    };
+    _dscAllListings.push(listing);
+  }
+  dscOpenDeepDive(`${p.item_id}__${p.shop_id}`);
+}
+
+function hbdNuRecoOpenById(id) {
+  const p = (allProducts || []).find(x => x.id === id);
+  if (p) hbdNuRecoOpen(p);
+}
+
 // Pick 5–6 products from the full catalog, shuffled by day (stable within a day).
 function recBuildDailyRandom(products, userId, minCount = 5, maxCount = 6) {
   if (!products || !products.length) return [];
@@ -20690,7 +20723,7 @@ function hbdRenderNuReco() {
   grid.innerHTML = picks.map(p => {
     const scoreColor = p.score >= 70 ? '#16A34A' : p.score >= 45 ? '#B45309' : '#C0392B';
     const name = (p.name || p.keyword || '—');
-    return `<div class="hbd-nu-reco-card" onclick="openDetail(${p.id})">
+    return `<div class="hbd-nu-reco-card" role="button" tabindex="0" onclick="hbdNuRecoOpenById(${p.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();hbdNuRecoOpenById(${p.id});}">
       <div class="hbd-nu-reco-thumb">
         <img src="${p.image||''}" onerror="this.style.display='none'" alt="">
         <span class="hbd-nu-reco-score" style="background:${scoreColor};">${p.score != null ? p.score : '—'}</span>
