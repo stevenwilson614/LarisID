@@ -2167,6 +2167,17 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dd-tab{font-size:.8rem;font-weight:600;color:#9CA3AF;padding:9px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;}
 .dd-tab.active{color:#E8442A;border-bottom-color:#E8442A;}
 .dd-tab:hover:not(.active){color:#374151;}
+.dd-fee-strip{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:10px 14px;margin-bottom:16px;}
+.dd-fee-strip-lbl{font-size:.66rem;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.03em;margin-right:2px;}
+.dd-fee-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #E5E7EB;border-radius:8px;background:#F9FAFB;font-size:.74rem;}
+.dd-fee-chip .dd-fee-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.dd-fee-chip .dd-fee-plat{font-weight:600;color:#374151;}
+.dd-fee-chip .dd-fee-pct{font-weight:800;color:#1A1F3C;}
+.dd-fee-chip.cheapest{border-color:#E8442A;background:#FFF0ED;}
+.dd-fee-badge{font-size:.56rem;font-weight:800;color:#fff;background:#E8442A;border-radius:4px;padding:2px 5px;text-transform:uppercase;letter-spacing:.02em;}
+.dd-fee-more{margin-left:auto;font-size:.72rem;font-weight:700;color:#E8442A;cursor:pointer;white-space:nowrap;background:none;border:none;font-family:inherit;padding:4px 0;}
+.dd-fee-more:hover{text-decoration:underline;}
+@media(max-width:640px){.dd-fee-strip{padding:10px 12px;}.dd-fee-more{margin-left:0;width:100%;text-align:right;}}
 .dd-row3{display:grid;grid-template-columns:1.3fr 1fr 0.9fr;gap:16px;margin-bottom:16px;}
 @media(max-width:960px){.dd-row3{grid-template-columns:1fr;}}
 .dd-row2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;}
@@ -3132,6 +3143,22 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .nu-empty h3{font-size:.95rem;font-weight:800;color:#1A1F3C;margin:0 0 8px;}
 .nu-empty p{font-size:.8rem;color:#6B7280;line-height:1.55;margin:0 0 18px;max-width:340px;margin-left:auto;margin-right:auto;}
 .nu-empty-btn{display:inline-flex;align-items:center;gap:6px;background:#E8442A;color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;}
+/* compact empty-state (dashboard) — shorter so recommendations sit closer */
+.nu-empty-compact{padding:26px 24px;margin-bottom:14px;}
+.nu-empty-compact .nu-empty-icon{width:44px;height:44px;margin-bottom:10px;}
+.nu-empty-compact h3{margin-bottom:6px;}
+.nu-empty-compact p{margin-bottom:14px;}
+/* recommended-products grid under the dashboard empty-state */
+.hbd-nu-reco-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.hbd-nu-reco-card{background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden;cursor:pointer;transition:box-shadow .15s,transform .15s;}
+.hbd-nu-reco-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.08);transform:translateY(-2px);}
+.hbd-nu-reco-thumb{height:84px;background:#F3F4F6;position:relative;overflow:hidden;}
+.hbd-nu-reco-thumb img{width:100%;height:100%;object-fit:cover;}
+.hbd-nu-reco-score{position:absolute;top:6px;right:6px;color:#fff;font-size:.6rem;font-weight:800;padding:2px 6px;border-radius:8px;}
+.hbd-nu-reco-meta{padding:8px 9px;}
+.hbd-nu-reco-name{font-size:.72rem;font-weight:700;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hbd-nu-reco-cat{font-size:.64rem;color:#9CA3AF;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+@media(max-width:560px){.hbd-nu-reco-grid{grid-template-columns:repeat(2,1fr);}}
 #tour-spotlight{
   position:fixed;
   border-radius:10px;
@@ -6051,11 +6078,20 @@ html,body{overflow-x:hidden;max-width:100%;}
             </div>
 
             <!-- New user: start here -->
-            <div id="hbd-new-user-panel" class="nu-empty" style="display:none;">
+            <div id="hbd-new-user-panel" class="nu-empty nu-empty-compact" style="display:none;">
               <div class="nu-empty-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
               <h3>Mulai dengan mencari produk</h3>
               <p>Belum ada produk terpantau. Cari produk di Discover, pilih yang menarik, lalu lacak untuk melihat ringkasan di sini.</p>
               <button type="button" class="nu-empty-btn" onclick="switchDashView('discover')">Cari Produk di Discover</button>
+            </div>
+
+            <!-- Recommended products beneath the empty-state (daily-rotating) -->
+            <div id="hbd-nu-reco" style="display:none;margin-bottom:20px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <div style="font-size:.82rem;font-weight:700;color:#111;">Rekomendasi produk untuk kamu</div>
+                <a onclick="switchDashView('discover')" style="font-size:.75rem;color:#E8442A;cursor:pointer;font-weight:600;">Lihat semua &rarr;</a>
+              </div>
+              <div id="hbd-nu-reco-cards" class="hbd-nu-reco-grid"></div>
             </div>
 
             <!-- price-change alert strip -->
@@ -6601,6 +6637,9 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
             </div>
 
+            <!-- e-commerce fee mini comparison strip -->
+            <div class="dd-fee-strip" id="dd-fee-strip"></div>
+
             <!-- tabs -->
             <div class="dd-tabs" id="dd-tabs">
               <div class="dd-tab active" onclick="ddSwitchTab('ringkasan')" data-tab="ringkasan">Ringkasan</div>
@@ -6609,6 +6648,7 @@ html,body{overflow-x:hidden;max-width:100%;}
               <div class="dd-tab" onclick="ddSwitchTab('kompetitor')" data-tab="kompetitor">Kompetitor</div>
               <div class="dd-tab" onclick="ddSwitchTab('keyword')" data-tab="keyword">Keyword</div>
               <div class="dd-tab" onclick="ddSwitchTab('tren')" data-tab="tren">Tren Historis</div>
+              <div class="dd-tab" onclick="ddSwitchTab('biaya')" data-tab="biaya">Biaya E-commerce</div>
             </div>
 
             <!-- ── TAB: LISTING ── -->
@@ -7255,6 +7295,11 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <div style="font-size:.78rem;color:#9CA3AF;margin-bottom:20px;">Kalkulator profit telah dipindahkan ke halaman Mulai Berjualan.</div>
                 <button onclick="switchDashView('ai')" style="padding:10px 24px;background:#E8442A;color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:700;cursor:pointer;">Buka Mulai Berjualan →</button>
               </div>
+            </div>
+
+            <!-- ── TAB: BIAYA E-COMMERCE ── -->
+            <div id="dd-tab-biaya" class="dd-tab-panel" style="display:none;">
+              <div id="dd-fees-content"></div>
             </div>
 
           </div>
@@ -16114,16 +16159,21 @@ function _dscApplySearchFilter(q, query) {
   return q.or(parts.join(','));
 }
 
-function _dscBuildListingsQuery(offset, filters) {
+function _dscBuildListingsQuery(offset, filters, opts = {}) {
   const FIELDS = 'item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews';
+  const rangeFrom = opts.rangeFrom != null ? opts.rangeFrom : offset;
+  const rangeTo   = opts.rangeTo   != null ? opts.rangeTo   : offset + DSC_PAGE_SIZE - 1;
   let q = _supabase
     .from('listings')
     .select(FIELDS)
     .gt('total_sold', 0)
     .order('total_sold', { ascending: false })
-    .range(offset, offset + DSC_PAGE_SIZE - 1);
-  if (_dscCurrentCatFilters && _dscCurrentCatFilters.length > 1) {
-    q = q.in('category', _dscCurrentCatFilters);
+    .range(rangeFrom, rangeTo);
+  // A single `.eq('category', ...)` hits the (category, total_sold DESC) composite
+  // index. An `.in([...])` does NOT, so multi-category fetches are merged in
+  // dscFetchPage via per-category single-cat queries (opts.singleCat) instead.
+  if (opts.singleCat) {
+    q = q.eq('category', opts.singleCat);
   } else if (filters.cat) {
     q = q.eq('category', filters.cat);
   }
@@ -16170,6 +16220,24 @@ async function dscFetchTotalCount() {
 
 async function dscFetchPage(offset, filters = {}) {
   if (!_supabase) return [];
+
+  // Multi-category: a single `.in('category', [...])` ignores the composite
+  // index and times out on the wide listings table. Instead, fetch each
+  // category through its own index-backed query in parallel, then merge.
+  const multiCats = (_dscCurrentCatFilters && _dscCurrentCatFilters.length > 1) ? _dscCurrentCatFilters : null;
+  if (multiCats) {
+    const need = offset + DSC_PAGE_SIZE; // global top-N needed to slice this page
+    const results = await Promise.all(multiCats.map(cat =>
+      _dscBuildListingsQuery(0, filters, { singleCat: cat, rangeFrom: 0, rangeTo: need - 1 })
+    ));
+    const failed = results.find(r => r.error);
+    if (failed) console.warn('dscFetchPage(multi):', failed.error.message);
+    const merged = [];
+    for (const r of results) if (r.data) merged.push(...r.data);
+    merged.sort((a, b) => (b.total_sold || 0) - (a.total_sold || 0));
+    return merged.slice(offset, offset + DSC_PAGE_SIZE);
+  }
+
   const { data, error } = await _dscBuildListingsQuery(offset, filters);
   if (!error) return data || [];
 
@@ -17054,7 +17122,7 @@ function kalcCalc() {
 }
 
 function ddSwitchTab(tab) {
-  const tabs = ['listing','ringkasan','analisa','kompetitor','keyword','tren','kalkulator'];
+  const tabs = ['listing','ringkasan','analisa','kompetitor','keyword','tren','kalkulator','biaya'];
   tabs.forEach(t => {
     const panel = document.getElementById(`dd-tab-${t}`);
     if (panel) panel.style.display = t === tab ? '' : 'none';
@@ -17070,6 +17138,9 @@ function ddSwitchTab(tab) {
   }
   if (tab === 'kalkulator') {
     kalcCalc();
+  }
+  if (tab === 'biaya') {
+    ddRenderFees();
   }
   if (tab === 'kompetitor') {
     ddRenderKompetitor();
@@ -18859,6 +18930,102 @@ function _ddRng(seed) {
   return function() { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0xffffffff; };
 }
 
+// ── E-commerce platform fee estimates ──────────────────────────────────────
+// Researched Juni 2025 (Databoks/Katadata cross-platform survey + masing-masing
+// seller center). Angka adalah PERKIRAAN untuk penjual non-Star/reguler dengan
+// program gratis ongkir aktif — tarif berubah & bergantung kategori spesifik.
+const ECOM_FEE_UPDATED = 'Juni 2025';
+// 19 kategori app -> tier biaya (A tertinggi … E terendah). Default 'B'.
+const FEE_TIER_BY_CAT = {
+  'Fashion':'A','Elektronik':'A','Motor & Mobil':'A',
+  'Kecantikan':'B','Kesehatan':'B','Rumah':'B','Dapur':'B','Bayi & Anak':'B',
+  'Olahraga':'B','Kamar Mandi':'B',
+  'Hobi & Kerajinan':'C','Alat Tulis':'C','Tanaman':'C','Taman':'C',
+  'Outdoor & Camping':'C','Sepeda':'C','Hewan Peliharaan':'C','Keamanan':'C',
+  'HP & Gadget':'D',
+};
+// per platform: comm = komisi/biaya kategori per tier, program = biaya program
+// (gratis ongkir dll), admin = biaya admin tetap, flat = biaya per pesanan (Rp).
+const PLATFORM_FEES = {
+  shopee:    { label:'Shopee',      color:'#EE4D2D', comm:{A:10,  B:8.5, C:6.5, D:5,    E:2.5},  program:4.0, flat:1250, src:'seller.shopee.co.id' },
+  tiktok:    { label:'TikTok Shop', color:'#111827', comm:{A:6,   B:5,   C:4,   D:3,    E:2.5},  program:2.0, flat:1250, src:'seller-id.tokopedia.com' },
+  tokopedia: { label:'Tokopedia',   color:'#16A34A', comm:{A:8,   B:6.5, C:5,   D:4,    E:3.5},  program:2.5, flat:1250, src:'tokopedia.com/help' },
+  lazada:    { label:'Lazada',      color:'#1E3A8A', comm:{A:8.2, B:6,   C:4,   D:2.43, E:2.43}, program:4.0, admin:1.82, flat:1250, src:'sellercenter.lazada.co.id' },
+  blibli:    { label:'Blibli',      color:'#0EA5E9', comm:{A:8,   B:7,   C:6,   D:5,    E:5},    program:0,   flat:0, note:'Rincian per kategori tidak dipublikasikan platform.', src:'blibli.com' },
+};
+function feeTierForCat(cat){ return FEE_TIER_BY_CAT[cat] || 'B'; }
+function ecomFmtPct(n){ return (Math.round(n*10)/10).toFixed(1).replace('.', ',').replace(/,0$/, '') + '%'; }
+function platformFeePct(plat, cat, price){
+  const f = PLATFORM_FEES[plat], t = feeTierForCat(cat);
+  const flatPct = price > 0 ? (f.flat / price * 100) : 0;
+  return +((f.comm[t]||0) + (f.program||0) + (f.admin||0) + flatPct).toFixed(1);
+}
+function platformFeeBreakdown(plat, cat, price){
+  const f = PLATFORM_FEES[plat], t = feeTierForCat(cat);
+  const flatPct = price > 0 ? (f.flat / price * 100) : 0;
+  const rows = [];
+  if (f.admin)   rows.push(['Biaya administrasi', ecomFmtPct(f.admin)]);
+  rows.push(['Komisi / biaya kategori', ecomFmtPct(f.comm[t]||0)]);
+  if (f.program) rows.push(['Program (Gratis Ongkir, dll.)', ecomFmtPct(f.program)]);
+  if (f.flat)    rows.push(['Biaya per pesanan', 'Rp ' + f.flat.toLocaleString('id-ID') + (price > 0 ? ' (≈' + ecomFmtPct(flatPct) + ')' : '')]);
+  const total = (f.comm[t]||0) + (f.program||0) + (f.admin||0) + flatPct;
+  return { rows, total:+total.toFixed(1), note:f.note };
+}
+// Top-of-page mini comparison strip
+function ddRenderFeeStrip(p){
+  const el = document.getElementById('dd-fee-strip');
+  if (!el) return;
+  const cat = p.category || 'Umum';
+  const price = p.medianPrice || 0;
+  const order = Object.keys(PLATFORM_FEES)
+    .map(plat => ({ plat, pct: platformFeePct(plat, cat, price) }))
+    .sort((a, b) => a.pct - b.pct);
+  const min = order.length ? order[0].pct : 0;
+  const chips = order.map(o => {
+    const f = PLATFORM_FEES[o.plat];
+    const cheap = o.pct === min;
+    return `<span class="dd-fee-chip${cheap ? ' cheapest' : ''}"><span class="dd-fee-dot" style="background:${f.color};"></span><span class="dd-fee-plat">${f.label}</span><span class="dd-fee-pct">${ecomFmtPct(o.pct)}</span>${cheap ? '<span class="dd-fee-badge">Termurah</span>' : ''}</span>`;
+  }).join('');
+  el.innerHTML = `<span class="dd-fee-strip-lbl">Estimasi potongan platform</span>${chips}<button class="dd-fee-more" onclick="ddSwitchTab('biaya')">Lihat rincian →</button>`;
+}
+// Full per-platform breakdown tab
+function ddRenderFees(){
+  const p = _ddCurrentP;
+  if (!p) return;
+  const el = document.getElementById('dd-fees-content');
+  if (!el) return;
+  const cat = p.category || 'Umum';
+  const price = p.medianPrice || 0;
+  const order = Object.keys(PLATFORM_FEES).sort((a, b) => platformFeePct(a, cat, price) - platformFeePct(b, cat, price));
+  const cheapest = order[0];
+  const cards = order.map(plat => {
+    const f = PLATFORM_FEES[plat];
+    const b = platformFeeBreakdown(plat, cat, price);
+    const rowsHtml = b.rows.map(r => `<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:5px 0;border-bottom:1px solid #F3F4F6;"><span style="color:#6B7280;">${r[0]}</span><span style="font-weight:600;color:#374151;">${r[1]}</span></div>`).join('');
+    const noteHtml = b.note ? `<div style="font-size:.62rem;color:#9CA3AF;margin-top:6px;font-style:italic;">${b.note}</div>` : '';
+    const cheap = plat === cheapest ? `<span class="dd-fee-badge" style="margin-left:8px;">Termurah</span>` : '';
+    return `<div class="dd-card" style="padding:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;border-radius:50%;background:${f.color};flex-shrink:0;"></span><span style="font-size:.85rem;font-weight:800;color:#1A1F3C;">${f.label}</span>${cheap}</div>
+        <div style="text-align:right;"><div style="font-size:1.15rem;font-weight:800;color:#E8442A;line-height:1;">≈ ${ecomFmtPct(b.total)}</div><div style="font-size:.56rem;color:#9CA3AF;margin-top:2px;">total potongan</div></div>
+      </div>
+      ${rowsHtml}
+      ${noteHtml}
+      <div style="font-size:.58rem;color:#9CA3AF;margin-top:8px;">Sumber: ${f.src}</div>
+    </div>`;
+  }).join('');
+  el.innerHTML = `
+    <div style="margin-bottom:14px;">
+      <div style="font-size:1rem;font-weight:800;color:#1A1F3C;">Estimasi Biaya E-commerce</div>
+      <div style="font-size:.74rem;color:#6B7280;margin-top:3px;">Kategori <b>${cat}</b> · perkiraan potongan platform untuk penjual non-Star/reguler dengan program gratis ongkir aktif.</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;">${cards}</div>
+    <div style="display:flex;align-items:flex-start;gap:8px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:12px 14px;margin-top:16px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2" style="flex-shrink:0;margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div style="font-size:.68rem;color:#9A3412;line-height:1.5;">Belum termasuk <b>PPh Final 0,5%</b> (pajak penghasilan UMKM, berlaku di semua platform) &amp; biaya iklan. Angka adalah <b>perkiraan per ${ECOM_FEE_UPDATED}</b> — tarif tiap platform berubah sewaktu-waktu &amp; bergantung tipe penjual, kategori spesifik, dan program yang diikuti. Selalu cek halaman resmi tiap platform untuk angka final.</div>
+    </div>`;
+}
+
 function ddRender(p) {
   _ddCurrentP = p;
   const rng = _ddRng(p.id * 31337);
@@ -18895,6 +19062,9 @@ function ddRender(p) {
   document.getElementById('dd-h-komp').style.color = '#9CA3AF';
   document.getElementById('dd-h-komp-sub').textContent = 'Memuat data…';
   // margin stat removed from hero (only 4 cards shown)
+
+  // e-commerce fee mini comparison strip (top of page)
+  ddRenderFeeStrip(p);
 
   // price range — placeholder from medianPrice; replaced by ddUpdateRingkasanFromKw with real peer data
   const pMin = Math.round(price * 0.52), pMax = Math.round(price * 1.85);
@@ -20165,6 +20335,40 @@ function recBuildPersonalized(products, recentKeywords, userId, count = 5) {
   // Safety fill (e.g. tiny catalog) from full score order.
   for (let i = 0; i < byScore.length && out.length < count; i++) push(byScore[i]);
   return out.slice(0, count);
+}
+
+// Recommended products shown beneath the "Mulai dengan mencari produk"
+// empty-state on the dashboard (student & independent views). Picks ~6
+// products that rotate daily via the date-seeded personalized builder
+// (recBuildPersonalized). Hides itself gracefully if the catalog isn't ready.
+async function hbdRenderNuReco() {
+  const sec  = document.getElementById('hbd-nu-reco');
+  const grid = document.getElementById('hbd-nu-reco-cards');
+  if (!sec || !grid) return;
+  if (typeof allProducts === 'undefined' || !allProducts || !allProducts.length) {
+    sec.style.display = 'none';
+    return;
+  }
+  let recentKw = [];
+  try { recentKw = await searchHistoryRecentKeywordsRemote(12); }
+  catch (_) { try { recentKw = searchHistoryRecentKeywords(12); } catch (__) { recentKw = []; } }
+  const picks = recBuildPersonalized(allProducts, recentKw, currentUser && currentUser.id, 6);
+  if (!picks.length) { sec.style.display = 'none'; return; }
+  grid.innerHTML = picks.map(p => {
+    const scoreColor = p.score >= 70 ? '#16A34A' : p.score >= 45 ? '#B45309' : '#C0392B';
+    const name = (p.name || p.keyword || '—');
+    return `<div class="hbd-nu-reco-card" onclick="openDetail(${p.id})">
+      <div class="hbd-nu-reco-thumb">
+        <img src="${p.image||''}" onerror="this.style.display='none'" alt="">
+        <span class="hbd-nu-reco-score" style="background:${scoreColor};">${p.score != null ? p.score : '—'}</span>
+      </div>
+      <div class="hbd-nu-reco-meta">
+        <div class="hbd-nu-reco-name">${name}</div>
+        <div class="hbd-nu-reco-cat">Rekomendasi &middot; ${p.category||'—'}</div>
+      </div>
+    </div>`;
+  }).join('');
+  sec.style.display = '';
 }
 
 /**
@@ -25689,6 +25893,7 @@ function nuRefreshView(view) {
   const hasAny = userHasAnyProduct();
 
   const hbdPanel = document.getElementById('hbd-new-user-panel');
+  const hbdReco  = document.getElementById('hbd-nu-reco');
   const hbdStats = document.getElementById('hbd-stats-row');
   const hbdOpp   = document.getElementById('hbd-product-opp-col');
   const hbdTrend = document.getElementById('hbd-trending-section');
@@ -25698,12 +25903,17 @@ function nuRefreshView(view) {
     const leaderMode = typeof _effectiveLeaderMode === 'function' && _effectiveLeaderMode();
     if (leaderMode) {
       if (hbdPanel) hbdPanel.style.display = 'none';
+      if (hbdReco)  hbdReco.style.display  = 'none';
       if (hbdStats) hbdStats.style.display = 'none';
       if (hbdOpp)   hbdOpp.style.display   = 'none';
       if (hbdTrend) hbdTrend.style.display  = 'none';
       if (hbdStrip) hbdStrip.style.display  = 'none';
     } else {
       if (hbdPanel) hbdPanel.style.display = empty ? '' : 'none';
+      if (hbdReco) {
+        if (empty && typeof hbdRenderNuReco === 'function') void hbdRenderNuReco();
+        else hbdReco.style.display = 'none';
+      }
       if (hbdStats) hbdStats.style.display = empty ? 'none' : '';
       if (hbdOpp)   hbdOpp.style.display   = empty ? 'none' : '';
       if (hbdTrend) hbdTrend.style.display  = empty ? 'none' : '';
