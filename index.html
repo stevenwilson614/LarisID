@@ -9929,6 +9929,7 @@ async function loadData() {
   populateFinderCats();
   dscInit();
   hbdInit();
+  if (typeof nuRefreshView === 'function') nuRefreshView('dashboard');
   alrInit();
   if (typeof Chart !== 'undefined') lpRenderPreview(_LP_DEMO);
   setTimeout(startTour, 600);
@@ -13140,10 +13141,10 @@ function switchDashView(view) {
   if (view === 'credits'   && typeof creditsInit  === 'function') creditsInit();
   if (view === 'cohort'    && typeof cohortInit   === 'function') cohortInit();
   mbnSync(view);
+  // Role layout first; nuRefreshView runs last so empty-state + recommendations win.
+  if (view === 'dashboard') _syncDashboardRoleLayout();
   nuRefreshView(view);
   nuScheduleHint(view);
-  // Re-apply role preview after nuRefreshView (which resets student block visibility)
-  if (view === 'dashboard') _syncDashboardRoleLayout();
   // Legacy tour disabled — nuScheduleHint replaces dashboard onboarding
   // For non-dashboard views when in student/leader preview, update nav chrome
   if (isPlatformAdmin() && _adminViewMode !== 'admin' && view !== 'dashboard' && view !== 'admin') {
@@ -20351,8 +20352,8 @@ async function hbdInit() {
     document.getElementById('hbd-subtitle').textContent = 'Selamat datang — mulai riset produk pertamamu hari ini.';
     nuRefreshView('dashboard');
     void hbdRenderCohortDigest();
-    if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(() => _syncDashboardRoleLayout());
-    else { void hbdRenderMentorDigest(); _syncDashboardRoleLayout(); }
+    if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(() => { _syncDashboardRoleLayout(); nuRefreshView('dashboard'); });
+    else { void hbdRenderMentorDigest(); _syncDashboardRoleLayout(); nuRefreshView('dashboard'); }
     return;
   }
 
@@ -20524,7 +20525,7 @@ async function hbdInit() {
   }));
   _hbdBuildChartFromTracked(prods);
   void hbdRenderCohortDigest();
-  const _finishHbdLayout = () => _syncDashboardRoleLayout();
+  const _finishHbdLayout = () => { _syncDashboardRoleLayout(); nuRefreshView('dashboard'); };
   if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(_finishHbdLayout);
   else { void hbdRenderMentorDigest(); _finishHbdLayout(); }
 }
@@ -20658,23 +20659,34 @@ function recBuildPersonalized(products, recentKeywords, userId, count = 5) {
   return out.slice(0, count);
 }
 
-// Recommended products shown beneath the "Mulai dengan mencari produk"
-// empty-state on the dashboard (student & independent views). Picks ~6
-// products that rotate daily via the date-seeded personalized builder
-// (recBuildPersonalized). Hides itself gracefully if the catalog isn't ready.
-async function hbdRenderNuReco() {
+// Pick 5–6 products from the full catalog, shuffled by day (stable within a day).
+function recBuildDailyRandom(products, userId, minCount = 5, maxCount = 6) {
+  if (!products || !products.length) return [];
+  const seed = _recDailySeed(userId || 'anon');
+  const rng = _recRng(seed);
+  const count = Math.min(
+    minCount + Math.floor(rng() * (maxCount - minCount + 1)),
+    products.length
+  );
+  return _recSeededShuffle(products.slice(), rng).slice(0, count);
+}
+
+// Recommended products beneath the search prompt on student/independent dashboards.
+// Shows 5–6 daily-random catalog picks (new set each day).
+function hbdRenderNuReco() {
   const sec  = document.getElementById('hbd-nu-reco');
   const grid = document.getElementById('hbd-nu-reco-cards');
   if (!sec || !grid) return;
+  sec.style.display = '';
   if (typeof allProducts === 'undefined' || !allProducts || !allProducts.length) {
-    sec.style.display = 'none';
+    grid.innerHTML = '<div style="grid-column:1/-1;color:#9CA3AF;font-size:.75rem;padding:8px 0;">Memuat rekomendasi...</div>';
     return;
   }
-  let recentKw = [];
-  try { recentKw = await searchHistoryRecentKeywordsRemote(12); }
-  catch (_) { try { recentKw = searchHistoryRecentKeywords(12); } catch (__) { recentKw = []; } }
-  const picks = recBuildPersonalized(allProducts, recentKw, currentUser && currentUser.id, 6);
-  if (!picks.length) { sec.style.display = 'none'; return; }
+  const picks = recBuildDailyRandom(allProducts, currentUser && currentUser.id, 5, 6);
+  if (!picks.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;color:#9CA3AF;font-size:.75rem;padding:8px 0;">Belum ada rekomendasi.</div>';
+    return;
+  }
   grid.innerHTML = picks.map(p => {
     const scoreColor = p.score >= 70 ? '#16A34A' : p.score >= 45 ? '#B45309' : '#C0392B';
     const name = (p.name || p.keyword || '—');
@@ -20689,7 +20701,6 @@ async function hbdRenderNuReco() {
       </div>
     </div>`;
   }).join('');
-  sec.style.display = '';
 }
 
 /**
@@ -26231,10 +26242,9 @@ function nuRefreshView(view) {
       if (hbdStrip) hbdStrip.style.display  = 'none';
     } else {
       if (hbdPanel) hbdPanel.style.display = empty ? '' : 'none';
-      if (hbdReco) {
-        if (empty && typeof hbdRenderNuReco === 'function') void hbdRenderNuReco();
-        else hbdReco.style.display = 'none';
-      }
+      // Recommendations always visible for student/independent (5–6 daily-random picks)
+      if (hbdReco && typeof hbdRenderNuReco === 'function') hbdRenderNuReco();
+      else if (hbdReco) hbdReco.style.display = 'none';
       if (hbdStats) hbdStats.style.display = empty ? 'none' : '';
       if (hbdOpp)   hbdOpp.style.display   = empty ? 'none' : '';
       if (hbdTrend) hbdTrend.style.display  = empty ? 'none' : '';
@@ -27973,6 +27983,7 @@ function applyAdminViewMode(mode) {
   if (_dashActiveView === 'admin') switchDashView('dashboard');
 
   _admApplyPreviewDashboardLayout(mode);
+  if (_dashActiveView === 'dashboard' && typeof nuRefreshView === 'function') nuRefreshView('dashboard');
 }
 
 function _setFlatToolsNav(flat) {
@@ -27990,16 +28001,19 @@ function _setFlatToolsNav(flat) {
 
 function _hbdApplyLeaderMode(isLeader) {
   // Product-focused elements to hide from leaders
-  const hideIds = ['hbd-stats-row','hbd-tracked-strip','hbd-product-chart-col','hbd-product-opp-col','hbd-new-user-panel','hbd-trending-section','hbd-alerts-strip'];
+  const hideIds = ['hbd-stats-row','hbd-tracked-strip','hbd-product-chart-col','hbd-product-opp-col','hbd-trending-section','hbd-alerts-strip'];
   hideIds.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = isLeader ? 'none' : '';
   });
 
-  // New-user recommendations follow the empty-state panel — never for leaders.
-  // For non-leaders, visibility is governed by nuRefreshView (empty state only).
-  const nuReco = document.getElementById('hbd-nu-reco');
-  if (nuReco && isLeader) nuReco.style.display = 'none';
+  // Empty-state panel + recommendations: never for leaders; nuRefreshView governs non-leaders.
+  if (isLeader) {
+    const nuPanel = document.getElementById('hbd-new-user-panel');
+    if (nuPanel) nuPanel.style.display = 'none';
+    const nuReco = document.getElementById('hbd-nu-reco');
+    if (nuReco) nuReco.style.display = 'none';
+  }
 
   // Hide product recommendations column inside cohort digest
   const recCard = document.getElementById('hbd-cohort-rec-card');
