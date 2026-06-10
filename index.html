@@ -7878,7 +7878,7 @@ html,body{overflow-x:hidden;max-width:100%;}
               <!-- URL input card -->
               <div class="myta-input-card">
                 <h3>Analisis Produk dari Link</h3>
-                <p>Tempel link produk dari Shopee, TikTok Shop, Tokopedia, atau Lazada. LarisID akan membaca judul, harga, ulasan, dan menampilkan estimasi biaya tiap platform, kompetitor, serta saran optimasi dari AI.</p>
+                <p>Tempel link produk dari Shopee, Tokopedia, TikTok Shop, atau Lazada. LarisID membaca judul &amp; harga, lalu mencari <strong>produk serupa di Shopee</strong> untuk dibandingkan — misalnya kemeja dari Tokopedia vs penjual kemeja di Shopee. Plus estimasi biaya platform &amp; saran AI.</p>
                 <div class="myta-platform-chips">
                   <span class="myta-platform-chip">🟠 Shopee</span>
                   <span class="myta-platform-chip">🟢 Tokopedia</span>
@@ -7923,8 +7923,8 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <!-- 3. Competitor snapshot -->
                 <div class="myta-section">
                   <div class="myta-section-hdr">
-                    <div class="myta-section-title">Kompetitor di Shopee</div>
-                    <div style="font-size:.68rem;color:#9CA3AF;" id="myta-comp-subtitle">Produk serupa dalam database LarisID</div>
+                    <div class="myta-section-title" id="myta-comp-title">Produk Serupa untuk Dibandingkan</div>
+                    <div style="font-size:.68rem;color:#9CA3AF;" id="myta-comp-subtitle">Mencari produk sejenis di Shopee...</div>
                   </div>
                   <div id="myta-competitors"></div>
                 </div>
@@ -27118,44 +27118,99 @@ function _mytaRenderFeeTable(price, currentPlatform) {
     </div>`;
 }
 
-// ── 3. Fetch competitors from LarisID DB ─────────────────────
+// ── Build search phrases from any platform's product title ────
+function _mytaInferSearchQueries(title, keywords, category) {
+  const queries = [];
+  const lower = (title || '').toLowerCase();
+  const stop = new Set(['dan','atau','untuk','dengan','yang','dari','ke','di','ini','itu','jual','beli','murah','original','asli','baru','gratis','promo','premium','import','terbaru','unisex','the','and','for','with']);
+  const words = lower.replace(/[^\w\s-]/g,' ').split(/\s+/).filter(w => w.length >= 2 && !stop.has(w) && !/^\d+$/.test(w));
+  if (words.length >= 2) queries.push(words.slice(0, 2).join(' '));
+  if (words.length >= 3) queries.push(words.slice(0, 3).join(' '));
+  const types = ['kemeja','kaos','baju','dress','celana','jaket','hoodie','tas','sepatu','sandal','blouse','rok','koko','batik','jersey','sweater'];
+  for (const t of types) {
+    if (!lower.includes(t)) continue;
+    queries.push(t);
+    const idx = words.indexOf(t);
+    if (idx >= 0 && words[idx + 1]) queries.push(`${t} ${words[idx + 1]}`);
+  }
+  const enMap = { shirt:'kemeja', shirts:'kemeja', tshirt:'kaos', 't-shirt':'kaos', pants:'celana', jacket:'jaket', shoes:'sepatu', bag:'tas' };
+  for (const [en, id] of Object.entries(enMap)) {
+    if (lower.includes(en)) { queries.push(id); if (words[1]) queries.push(`${id} ${words[1]}`); }
+  }
+  if (category) queries.push(category);
+  (keywords || []).forEach(k => queries.push(k));
+  return [...new Set(queries.filter(q => q && q.length >= 3))].slice(0, 8);
+}
+
+// ── 3. Fetch similar products from LarisID Shopee database ──
 async function _mytaFetchAndRenderCompetitors(data) {
   const el = document.getElementById('myta-competitors');
   const subEl = document.getElementById('myta-comp-subtitle');
+  const titleEl = document.getElementById('myta-comp-title');
   if (!el) return;
 
-  el.innerHTML = `<div class="myta-comp-loading"><div class="myta-spinner"></div>Mencari kompetitor...</div>`;
+  const platformLabel = { shopee:'Shopee', tokopedia:'Tokopedia', tiktok:'TikTok Shop', lazada:'Lazada' }[data.platform] || 'marketplace';
+  if (titleEl) {
+    titleEl.textContent = data.platform === 'shopee'
+      ? 'Kompetitor di Shopee'
+      : 'Produk Serupa di Shopee';
+  }
+  if (subEl) {
+    subEl.textContent = data.platform === 'shopee'
+      ? 'Produk lain dalam kategori yang sama'
+      : `Bandingkan produk ${platformLabel} kamu dengan penjual Shopee serupa`;
+  }
 
-  // Build keyword list from data
-  const keywords = (data.keywords || []).filter(Boolean);
-  if (!keywords.length && !data.category) {
-    el.innerHTML = `<div class="myta-comp-empty">Keyword tidak terdeteksi — tidak bisa mencari kompetitor.</div>`;
+  el.innerHTML = `<div class="myta-comp-loading"><div class="myta-spinner"></div>Mencari produk serupa...</div>`;
+
+  const queries = (data.search_queries?.length ? data.search_queries : null)
+    || _mytaInferSearchQueries(data.title, data.keywords, data.category);
+
+  if (!queries.length) {
+    el.innerHTML = `<div class="myta-comp-empty">Judul produk tidak cukup untuk mencari produk serupa. Coba link dengan judul yang lebih deskriptif.</div>`;
     return;
   }
 
   try {
-    // Try each keyword, return first that has results
     let rows = [];
-    const excludeShopId = data.shop_id ? Number(data.shop_id) : -1;
+    let usedQuery = '';
 
-    for (const kw of keywords) {
-      const { data: rpcData } = await _supabase.rpc('get_similar_competitors', {
-        p_keyword:  kw,
-        p_category: data.category || '',
-        p_shop_id:  excludeShopId,
-        p_limit:    8,
+    // Primary: text search across all Shopee listings (works for Tokopedia/TikTok URLs too)
+    for (const q of queries) {
+      const { data: searchData, error } = await _supabase.rpc('search_listings', {
+        q, lim: 12, off: 0, cats: null, price_min: null, price_max: null,
       });
-      if (rpcData && rpcData.length >= 3) {
-        rows = rpcData;
-        if (subEl) subEl.textContent = `Keyword: "${kw}" · ${rows.length} kompetitor ditemukan`;
+      if (error) continue;
+      const filtered = (searchData || []).filter(r =>
+        !(data.shop_id && Number(r.shop_id) === Number(data.shop_id) && Number(r.item_id) === Number(data.item_id))
+      );
+      if (filtered.length >= 3) {
+        rows = filtered;
+        usedQuery = q;
         break;
       }
-      if (rpcData && rpcData.length > rows.length) rows = rpcData;
+      if (filtered.length > rows.length) { rows = filtered; usedQuery = q; }
+    }
+
+    // Fallback: exact keyword scrape match (Shopee products already in a keyword bucket)
+    if (rows.length < 3 && data.platform === 'shopee') {
+      const excludeShopId = data.shop_id ? Number(data.shop_id) : -1;
+      for (const kw of (data.keywords || [])) {
+        const { data: rpcData } = await _supabase.rpc('get_similar_competitors', {
+          p_keyword: kw, p_category: data.category || '', p_shop_id: excludeShopId, p_limit: 8,
+        });
+        if (rpcData?.length >= 3) { rows = rpcData; usedQuery = kw; break; }
+        if (rpcData?.length > rows.length) { rows = rpcData; usedQuery = kw; }
+      }
     }
 
     if (!rows.length) {
-      el.innerHTML = `<div class="myta-comp-empty">Kompetitor tidak ditemukan untuk produk ini dalam database LarisID. Coba periksa keyword produk.</div>`;
+      el.innerHTML = `<div class="myta-comp-empty">Belum ada produk serupa dalam database LarisID untuk "${queries[0]}". Database kami berisi produk Shopee — coba lagi setelah riset keyword ini di Finder.</div>`;
       return;
+    }
+
+    if (subEl) {
+      subEl.textContent = `Pencarian "${usedQuery}" · ${rows.length} produk serupa di Shopee`;
     }
 
     const fmtRp  = n => 'Rp ' + Math.round(n||0).toLocaleString('id-ID');
@@ -27164,12 +27219,13 @@ async function _mytaFetchAndRenderCompetitors(data) {
       return n >= 1e9 ? (n/1e9).toFixed(1)+'M' : n >= 1e6 ? (n/1e6).toFixed(0)+'jt' : n >= 1e3 ? (n/1e3).toFixed(0)+'rb' : String(Math.round(n));
     };
 
-    el.innerHTML = `<div class="myta-comp-list">${rows.map(r => {
-      const rank = Number(r.comp_rank);
+    el.innerHTML = `<div class="myta-comp-list">${rows.map((r, i) => {
+      const rank = Number(r.comp_rank || i + 1);
       const imgHtml = r.image_url
         ? `<img class="myta-comp-img" src="${r.image_url}" onerror="this.style.opacity='.15'" alt="">`
         : `<div class="myta-comp-img" style="display:flex;align-items:center;justify-content:center;font-size:.9rem;">📦</div>`;
-      const estOmset = r.est_omset ? `Est. Rp ${fmtEst(r.est_omset)}/bln` : '';
+      const estOmset = r.est_omset || (r.price && r.total_sold ? Math.round(r.price * r.total_sold / 6) : 0);
+      const estStr = estOmset ? `Est. Rp ${fmtEst(estOmset)}/bln` : '';
       return `
         <div class="myta-comp-row">
           <div class="myta-comp-ranknum${rank <= 3 ? ' gold' : ''}">${rank}</div>
@@ -27180,13 +27236,14 @@ async function _mytaFetchAndRenderCompetitors(data) {
           </div>
           <div class="myta-comp-right">
             <div class="myta-comp-price">${fmtRp(r.price)}</div>
-            ${estOmset ? `<div class="myta-comp-omset">${estOmset}</div>` : ''}
+            ${estStr ? `<div class="myta-comp-omset">${estStr}</div>` : ''}
           </div>
         </div>`;
     }).join('')}</div>`;
 
   } catch (e) {
-    el.innerHTML = `<div class="myta-comp-empty">Gagal memuat kompetitor.</div>`;
+    el.innerHTML = `<div class="myta-comp-empty">Gagal memuat produk serupa.</div>`;
+    console.error('[LarisID] competitor search error:', e);
   }
 }
 
