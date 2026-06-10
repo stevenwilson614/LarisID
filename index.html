@@ -16231,6 +16231,31 @@ async function dscFetchTotalCount() {
 async function dscFetchPage(offset, filters = {}) {
   if (!_supabase) return [];
 
+  // When a search query is present, use the search_listings RPC.
+  // It uses GIN trigram indexes on keyword + product_name so it runs well
+  // within the anon role's 3s statement timeout, and pre-ranks results:
+  //   tier 0 – exact keyword  |  tier 1 – keyword starts with query
+  //   tier 2 – keyword contains query  |  tier 3 – product_name only
+  // Within each tier items are ordered by total_sold DESC.
+  if (filters.search) {
+    const cats = (_dscCurrentCatFilters && _dscCurrentCatFilters.length)
+      ? _dscCurrentCatFilters
+      : (filters.cat ? [filters.cat] : null);
+    const priceMax = (filters.priceMax && filters.priceMax !== Infinity && filters.priceMax < 500000)
+      ? filters.priceMax : null;
+    const { data, error } = await _supabase.rpc('search_listings', {
+      q:         filters.search,
+      lim:       DSC_PAGE_SIZE,
+      off:       offset,
+      cats:      cats,
+      price_min: filters.priceMin || null,
+      price_max: priceMax,
+    });
+    if (!error) return data || [];
+    console.warn('search_listings RPC failed, falling back:', error.message);
+    return [];
+  }
+
   // Multi-category: a single `.in('category', [...])` ignores the composite
   // index and times out on the wide listings table. Instead, fetch each
   // category through its own index-backed query in parallel, then merge.
@@ -16750,16 +16775,21 @@ function dscApplyFilters(resetPage = true) {
   }
 
   const [sf, sd] = sortVal.split('-');
-  list.sort((a, b) => {
-    let va, vb;
-    if (sf === 'omset')  { va = _dscOmset(a); vb = _dscOmset(b); }
-    else if (sf === 'score') { va = _scoreOf(a); vb = _scoreOf(b); }
-    else if (sf === 'tren')  { va = _dscTrendDelta(a) ?? -Infinity; vb = _dscTrendDelta(b) ?? -Infinity; }
-    else if (sf === 'price') { va = a.price || 0; vb = b.price || 0; }
-    else if (sf === 'name')  { return sd === 'asc' ? (a.product_name||'').localeCompare(b.product_name||'') : (b.product_name||'').localeCompare(a.product_name||''); }
-    else { va = _dscOmset(a); vb = _dscOmset(b); }
-    return sd === 'asc' ? va - vb : vb - va;
-  });
+  // When a search is active and the user hasn't overridden the sort, the list
+  // was already ordered by _dscSearchScore above. Skipping a raw omset re-sort
+  // preserves that relevance order (shoes before shoe-racks).
+  if (!q || sf !== 'omset') {
+    list.sort((a, b) => {
+      let va, vb;
+      if (sf === 'omset')  { va = _dscOmset(a); vb = _dscOmset(b); }
+      else if (sf === 'score') { va = _scoreOf(a); vb = _scoreOf(b); }
+      else if (sf === 'tren')  { va = _dscTrendDelta(a) ?? -Infinity; vb = _dscTrendDelta(b) ?? -Infinity; }
+      else if (sf === 'price') { va = a.price || 0; vb = b.price || 0; }
+      else if (sf === 'name')  { return sd === 'asc' ? (a.product_name||'').localeCompare(b.product_name||'') : (b.product_name||'').localeCompare(a.product_name||''); }
+      else { va = _dscOmset(a); vb = _dscOmset(b); }
+      return sd === 'asc' ? va - vb : vb - va;
+    });
+  }
 
   const totalOmset = list.reduce((s, p) => s + _dscOmset(p), 0);
   const omsetEl = document.getElementById('dsc-stat-omset');
