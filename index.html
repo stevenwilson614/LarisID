@@ -1436,17 +1436,6 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dsc-subtitle{font-size:.82rem;color:#6B7280;}
 
 /* Stats row */
-.dsc-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
-@media(max-width:900px){.dsc-stats-row{grid-template-columns:repeat(2,1fr);}}
-@media(max-width:480px){.dsc-stats-row{grid-template-columns:1fr 1fr;gap:10px;}}
-.dsc-stat{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:14px;}
-.dsc-stat-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.dsc-stat-icon.blue{background:#EFF6FF;color:#3B82F6;}
-.dsc-stat-icon.green{background:#ECFDF5;color:#10B981;}
-.dsc-stat-icon.orange{background:#FFF7ED;color:#F97316;}
-.dsc-stat-icon.purple{background:#F5F3FF;color:#8B5CF6;}
-.dsc-stat-val{font-size:1.4rem;font-weight:800;color:#111;line-height:1;}
-.dsc-stat-lbl{font-size:.72rem;color:#6B7280;margin-top:3px;}
 
 /* Layout: filter + table */
 .dsc-layout{display:flex;gap:16px;align-items:flex-start;}
@@ -3320,8 +3309,6 @@ body.in-dashboard .mobile-menu{display:none!important;}
   .mbn-center .mbn-label{margin-top:0;}
 }
 
-/* Fix 10: Hide discover stats row on mobile */
-@media(max-width:768px){#dsc-stats-row{display:none;}}
 
 /* Fix 12: Informasi Pasar — 2-col grid on mobile */
 .mls-pasar-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
@@ -6598,22 +6585,6 @@ html,body{overflow-x:hidden;max-width:100%;}
               </div>
             </div>
 
-            <!-- Stats row -->
-            <div class="dsc-stats-row" id="dsc-stats-row">
-              <div class="dsc-stat">
-                <div class="dsc-stat-icon blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
-                <div><div class="dsc-stat-val" id="dsc-stat-listings">—</div><div class="dsc-stat-lbl">Total Listings</div></div>
-              </div>
-              <div class="dsc-stat">
-                <div class="dsc-stat-icon orange"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 10h16M4 14h8M4 18h4"/></svg></div>
-                <div><div class="dsc-stat-val" id="dsc-stat-cats">—</div><div class="dsc-stat-lbl">Kategori</div></div>
-              </div>
-              <div class="dsc-stat">
-                <div class="dsc-stat-icon green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
-                <div><div class="dsc-stat-val" id="dsc-stat-omset">—</div><div class="dsc-stat-lbl">Total Omset/Bulan</div></div>
-              </div>
-            </div>
-
             <!-- Filter + Table -->
             <div class="dsc-layout">
 
@@ -6666,7 +6637,7 @@ html,body{overflow-x:hidden;max-width:100%;}
               <!-- Table area -->
               <div class="dsc-table-area">
                 <div class="dsc-table-controls">
-                  <button class="dsc-filter-btn" onclick="dscOpenFilter()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg> Filter</button>
+                  <button class="dsc-filter-btn" onclick="dscOpenFilter()" title="Filter" aria-label="Filter"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
                   <div class="dsc-search-wrap">
                     <input class="dsc-search" id="dsc-search" type="text" placeholder="Cari keyword atau produk…" autocomplete="off"
                       oninput="dscOnSearchInput()" onkeydown="dscOnSearchKey(event)" onfocus="dscOnSearchInput()" onblur="setTimeout(dscHideSuggestions,160)">
@@ -16620,20 +16591,6 @@ async function _getLatestPanelDate() {
   return _panelDateCache;
 }
 
-async function dscFetchTotalCount() {
-  if (!_supabase) return;
-  try {
-    const panel = await _getLatestPanelDate();
-    let q = _supabase.from('listings').select('*', { count: 'exact', head: true }).gt('total_sold', 0);
-    q = _applyPanelDateFilter(q, panel.date);
-    const { count } = await q;
-    if (count != null) {
-      const el = document.getElementById('dsc-stat-listings');
-      if (el) el.textContent = count.toLocaleString('id-ID');
-    }
-  } catch (_) {}
-}
-
 async function dscFetchPage(offset, filters = {}) {
   if (!_supabase) return [];
 
@@ -16836,9 +16793,6 @@ async function dscLoadListings() {
         newKws.forEach(kw => { _dscCompMap[kw] = _dscCalcComp(kw); });
         const cats = [...new Set(cached.map(r => r.category).filter(Boolean))].sort();
         dscBuildCatChecks(cats);
-        const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-        setEl('dsc-stat-listings', cached.length + '+');
-        setEl('dsc-stat-cats', cats.length.toLocaleString('id-ID'));
         if (_dscLastSrvFilters === null) _dscLastSrvFilters = JSON.stringify({ priceMin: 0, priceMax: 10000000, search: '' });
         dscApplyFilters();
         return; // serve from cache; next open will re-check TTL
@@ -16865,12 +16819,7 @@ async function dscLoadListings() {
     {
       const cats = [...new Set(_dscAllListings.map(r => r.category).filter(Boolean))].sort();
       dscBuildCatChecks(cats);
-      const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-      setEl('dsc-stat-cats', cats.length.toLocaleString('id-ID'));
     }
-
-    const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-    setEl('dsc-stat-listings', (_dscAllListings.length + (_dscHasMore ? '+' : '')).toLocaleString?.() || _dscAllListings.length + (_dscHasMore ? '+' : ''));
 
     _dscLoaded = true;
     // Cache the first batch for instant reload (browse mode only — not search results)
@@ -16999,7 +16948,6 @@ function dscInit() {
   _dscSnapAppliedFromUI();
   dscUpdateDualRange('price');
   dscUpdateDualRange('omset');
-  dscFetchTotalCount();
   // Pre-populate all known categories immediately so filters are usable before data loads
   dscBuildCatChecks(['Alat Tulis','Bayi & Anak','Dapur','Elektronik','Fashion','Hewan Peliharaan',
     'Hobi & Kerajinan','HP & Gadget','Kamar Mandi','Keamanan','Kecantikan','Kesehatan',
@@ -17198,10 +17146,6 @@ function dscApplyFilters(resetPage = true) {
       return sd === 'asc' ? va - vb : vb - va;
     });
   }
-
-  const totalOmset = list.reduce((s, p) => s + _dscOmset(p), 0);
-  const omsetEl = document.getElementById('dsc-stat-omset');
-  if (omsetEl) omsetEl.textContent = _dscFmt(totalOmset);
 
   _dscFiltered = list;
   if (resetPage) _dscPage = 1;
