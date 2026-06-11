@@ -16309,6 +16309,7 @@ function _dscListingTrendPct(listing) {
 let _dscOffset      = 0;
 let _dscHasMore     = true;
 let _dscLoading     = false;
+let _dscLoadGen     = 0;   // bumped on filter/search change — stale fetches must not apply
 let _dscLastSrvFilters = null;
 let _dscCurrentCatFilter  = ''; // single cat passed to server (kept for _dscCurrentFilters compat)
 let _dscCurrentCatFilters = null; // full selected-cat array for multi-cat server filter
@@ -16622,34 +16623,36 @@ function dscLoadCache() {
 async function dscLoadListings() {
   if (_dscLoading || !_supabase) return;
   _dscLoading = true;
-
-  const filters = _dscCurrentFilters();
-  const hasSearch = !!(filters.search || '').trim();
-
-  // Cache is top-sellers only — never use when user is searching the full database
-  if (!hasSearch && !_dscAllListings.length && _dscOffset === 0 && !_dscCurrentCatFilter) {
-    const cached = dscLoadCache();
-    if (cached && cached.length) {
-      _dscAllListings = cached;
-      _dscOffset = cached.length;
-      _dscLoaded = true;
-      const newKws = [...new Set(cached.map(r => r.keyword).filter(Boolean))].filter(k => !_dscCompMap[k]);
-      newKws.forEach(kw => { _dscCompMap[kw] = _dscCalcComp(kw); });
-      const cats = [...new Set(cached.map(r => r.category).filter(Boolean))].sort();
-      dscBuildCatChecks(cats);
-      const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-      setEl('dsc-stat-listings', cached.length + '+');
-      setEl('dsc-stat-cats', cats.length.toLocaleString('id-ID'));
-      if (_dscLastSrvFilters === null) _dscLastSrvFilters = JSON.stringify({ priceMin: 0, priceMax: 10000000, search: '' });
-      dscApplyFilters();
-      _dscLoading = false;
-      return; // serve from cache; next open will re-check TTL
-    }
-    dscShowLoadingScreen();
-  }
+  const loadGen = _dscLoadGen;
 
   try {
+    const filters = _dscCurrentFilters();
+    const hasSearch = !!(filters.search || '').trim();
+
+    // Cache is top-sellers only — never use when user is searching the full database
+    if (!hasSearch && !_dscAllListings.length && _dscOffset === 0 && !_dscCurrentCatFilter) {
+      const cached = dscLoadCache();
+      if (cached && cached.length) {
+        if (loadGen !== _dscLoadGen) return;
+        _dscAllListings = cached;
+        _dscOffset = cached.length;
+        _dscLoaded = true;
+        const newKws = [...new Set(cached.map(r => r.keyword).filter(Boolean))].filter(k => !_dscCompMap[k]);
+        newKws.forEach(kw => { _dscCompMap[kw] = _dscCalcComp(kw); });
+        const cats = [...new Set(cached.map(r => r.category).filter(Boolean))].sort();
+        dscBuildCatChecks(cats);
+        const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        setEl('dsc-stat-listings', cached.length + '+');
+        setEl('dsc-stat-cats', cats.length.toLocaleString('id-ID'));
+        if (_dscLastSrvFilters === null) _dscLastSrvFilters = JSON.stringify({ priceMin: 0, priceMax: 10000000, search: '' });
+        dscApplyFilters();
+        return; // serve from cache; next open will re-check TTL
+      }
+      dscShowLoadingScreen();
+    }
+
     const rows = await dscFetchPage(_dscOffset, filters);
+    if (loadGen !== _dscLoadGen) return;
 
     if (rows.length < DSC_PAGE_SIZE) _dscHasMore = false;
 
@@ -16688,10 +16691,10 @@ async function dscLoadListings() {
     if (_dscOffset <= DSC_FETCH * 2) dscLoadTrendData();
 
   } catch(e) {
-    console.error('dscLoadListings:', e);
-    dscHideLoadingScreen();
+    if (loadGen === _dscLoadGen) console.error('dscLoadListings:', e);
+    if (loadGen === _dscLoadGen) dscHideLoadingScreen();
   } finally {
-    _dscLoading = false;
+    if (loadGen === _dscLoadGen) _dscLoading = false;
   }
 }
 
@@ -16943,6 +16946,7 @@ function dscApplyFilters(resetPage = true) {
   const srvKey = JSON.stringify({ priceMin, priceMax: priceMax === Infinity ? 500000 : priceMax, search: q, cat: srvCatKey });
   if (_dscLastSrvFilters !== null && _dscLastSrvFilters !== srvKey) {
     if (q) try { sessionStorage.removeItem(DSC_CACHE_KEY); } catch (_) {}
+    _dscLoadGen++;
     _dscAllListings = [];
     _dscOffset = 0;
     _dscHasMore = true;
@@ -16982,13 +16986,8 @@ function dscApplyFilters(resetPage = true) {
     return true;
   });
 
-  if (q) {
-    list = list
-      .map(p => ({ p, _searchScore: _dscSearchScore(p, q) }))
-      .filter(x => x._searchScore > 0)
-      .sort((a, b) => b._searchScore - a._searchScore)
-      .map(x => x.p);
-  }
+  // Active search uses search_listings RPC (matched + ranked server-side).
+  // Client re-scoring caused false empty results when queries changed mid-flight.
 
   const [sf, sd] = sortVal.split('-');
   // When a search is active and the user hasn't overridden the sort, the list
@@ -18982,6 +18981,7 @@ function dscGoPage(n) {
 function dscTerapkanFilter() {
   _dscSnapAppliedFromUI();
   // Force a fresh server re-fetch regardless of current load state
+  _dscLoadGen++;
   _dscAllListings = [];
   _dscOffset = 0;
   _dscPage = 1;              // reset to page 1 so results appear immediately
