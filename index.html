@@ -1243,6 +1243,79 @@ body.cohort-themed.in-dashboard .dash-topbar-cohort-chip{
 .mls-picker-select{flex:1;max-width:400px;padding:9px 14px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:.8rem;font-weight:600;background:#fff;color:#111827;cursor:pointer;outline:none;font-family:inherit;}
 .mls-picker-select:focus{border-color:#E8442A;}
 .mls-product-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:24px;}
+.mls-picker-compact{display:none;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.mls-picker-compact.visible{display:flex;}
+.mls-picker-active{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border:1.5px solid #E8442A;border-radius:10px;background:#FFF7F5;min-width:0;flex:1;max-width:420px;}
+.mls-picker-active img{width:36px;height:36px;border-radius:7px;object-fit:cover;background:#F3F4F6;flex-shrink:0;}
+.mls-picker-active-name{font-size:.76rem;font-weight:700;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mls-picker-expand{font-size:.72rem;font-weight:600;color:#E8442A;background:none;border:none;cursor:pointer;font-family:inherit;padding:4px 8px;white-space:nowrap;}
+.mls-picker-expand:hover{text-decoration:underline;}
+/* ── Kalkulator Keuntungan v2 ── */
+.kalc-wrap{display:flex;flex-direction:column;gap:16px;}
+.kalc-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:4px;}
+.kalc-hdr-title{font-size:1.05rem;font-weight:800;color:#1A1F3C;margin:0 0 2px;}
+.kalc-hdr-sub{font-size:.72rem;color:#6B7280;margin:0;}
+.kalc-auto-badge{display:inline-flex;align-items:center;gap:6px;font-size:.65rem;font-weight:600;color:#059669;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:20px;padding:5px 12px;white-space:nowrap;}
+.kalc-inputs-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+@media(max-width:720px){.kalc-inputs-row{grid-template-columns:1fr;}}
+.kalc-input-card{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:14px 16px;}
+.kalc-input-lbl{font-size:.68rem;font-weight:700;color:#374151;margin-bottom:6px;display:flex;align-items:center;gap:5px;}
+.kalc-input-hint{font-size:.6rem;color:#9CA3AF;margin-top:4px;}
+.kalc-input-card input,.kalc-input-card select{width:100%;padding:8px 10px;border:1px solid #E5E7EB;border-radius:8px;font-size:.78rem;font-weight:600;font-family:inherit;background:#fff;}
+.kalc-input-card input[type=number]{padding-left:28px;}
+.kalc-rp-wrap{position:relative;}
+.kalc-rp-wrap .kalc-rp-prefix{position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;pointer-events:none;}
+.kalc-ads-bar{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.kalc-ads-bar-lbl{font-size:.72rem;font-weight:700;color:#374151;}
+.kalc-ads-bar-sub{font-size:.62rem;color:#9CA3AF;}
+.kalc-toggle{position:relative;width:40px;height:22px;flex-shrink:0;}
+.kalc-toggle input{opacity:0;width:0;height:0;}
+.kalc-toggle-slider{position:absolute;cursor:pointer;inset:0;background:#D1D5DB;border-radius:22px;transition:.2s;}
+.kalc-toggle-slider:before{content:'';position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;}
+.kalc-toggle input:checked+.kalc-toggle-slider{background:#10B981;}
+.kalc-toggle input:checked+.kalc-toggle-slider:before{transform:translateX(18px);}
+.kalc-hero{background:linear-gradient(135deg,#F0FDF4,#ECFDF5);border:2px solid #86EFAC;border-radius:16px;padding:20px 24px;display:grid;grid-template-columns:1.2fr 1fr;gap:20px;align-items:center;}
+@media(max-width:720px){.kalc-hero{grid-template-columns:1fr;}}
+.kalc-hero-profit{font-size:2rem;font-weight:900;color:#059669;line-height:1.1;margin:6px 0;}
+.kalc-hero-margin{display:inline-block;background:#DCFCE7;color:#16A34A;font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:20px;margin-bottom:8px;}
+.kalc-hero-sentence{font-size:.78rem;color:#374151;line-height:1.5;}
+.kalc-hero-breakdown{display:flex;flex-direction:column;gap:8px;font-size:.74rem;}
+.kalc-hero-row{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.kalc-hero-row span:first-child{color:#6B7280;}
+.kalc-hero-row span:last-child{font-weight:700;color:#111827;}
+.kalc-hero-row.cost span:last-child{color:#DC2626;}
+.kalc-rec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.kalc-rec-hdr h4{font-size:.85rem;font-weight:800;color:#1A1F3C;margin:0;}
+.kalc-rec-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+@media(max-width:640px){.kalc-rec-grid{grid-template-columns:1fr;}}
+.kalc-rec-card{border-radius:12px;padding:16px;border:2px solid #E5E7EB;position:relative;background:#fff;}
+.kalc-rec-card.bep{border-color:#FCA5A5;background:#FEF2F2;}
+.kalc-rec-card.good{border-color:#FDBA74;background:#FFF7ED;}
+.kalc-rec-card.healthy{border-color:#86EFAC;background:#F0FDF4;}
+.kalc-rec-badge{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#E8442A;color:#fff;font-size:.58rem;font-weight:700;padding:2px 10px;border-radius:20px;white-space:nowrap;}
+.kalc-rec-lbl{font-size:.68rem;font-weight:600;color:#6B7280;margin-bottom:4px;}
+.kalc-rec-sub{font-size:.6rem;color:#9CA3AF;margin-bottom:8px;}
+.kalc-rec-price{font-size:1.1rem;font-weight:800;color:#111827;}
+.kalc-plat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+@media(max-width:800px){.kalc-plat-grid{grid-template-columns:repeat(2,1fr);}}
+.kalc-plat-card{border:1px solid #E5E7EB;border-radius:12px;padding:14px;background:#fff;text-align:center;position:relative;}
+.kalc-plat-card.current{border-color:#3B82F6;box-shadow:0 0 0 1px #3B82F6;}
+.kalc-plat-badge{font-size:.55rem;font-weight:700;padding:2px 8px;border-radius:20px;margin-bottom:6px;display:inline-block;}
+.kalc-plat-name{font-size:.72rem;font-weight:700;color:#374151;margin-bottom:6px;}
+.kalc-plat-profit{font-size:.95rem;font-weight:800;color:#059669;}
+.kalc-plat-margin{font-size:.65rem;color:#6B7280;margin-top:2px;}
+.kalc-insight{background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;padding:12px 16px;font-size:.74rem;color:#065F46;margin-top:12px;}
+.kalc-detail-hdr{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:4px 0;}
+.kalc-detail-body{display:none;margin-top:12px;}
+.kalc-detail-body.open{display:block;}
+.kalc-detail-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:14px;}
+.kalc-detail-item{background:#F9FAFB;border-radius:8px;padding:10px;font-size:.65rem;}
+.kalc-detail-item .lbl{color:#6B7280;margin-bottom:3px;}
+.kalc-detail-item .val{font-weight:700;color:#111827;}
+.kalc-detail-total{display:flex;justify-content:flex-end;align-items:center;gap:12px;padding-top:12px;border-top:1px solid #E5E7EB;}
+.kalc-detail-total-lbl{font-size:.72rem;color:#6B7280;}
+.kalc-detail-total-val{font-size:1.2rem;font-weight:800;color:#DC2626;}
+.kalc-disclaimer{font-size:.62rem;color:#9CA3AF;display:flex;align-items:flex-start;gap:6px;margin-top:10px;}
 .mls-pcard{display:flex;align-items:center;gap:10px;padding:10px;border:1.5px solid #E5E7EB;border-radius:12px;background:#fff;cursor:pointer;text-align:left;font-family:inherit;transition:border-color .15s,box-shadow .15s,transform .15s;outline:none;}
 .mls-pcard:hover{border-color:#FBCFC5;box-shadow:0 4px 14px rgba(0,0,0,.06);transform:translateY(-1px);}
 .mls-pcard.active{border-color:#E8442A;background:#FFF7F5;box-shadow:0 4px 14px rgba(232,68,42,.12);}
@@ -2105,22 +2178,23 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .trk-ai-label{font-size:.68rem;font-weight:700;color:#FCD34D;text-transform:uppercase;letter-spacing:.04em;}
 .trk-ai-text{font-size:.78rem;line-height:1.5;color:rgba(255,255,255,.88);}
 .trk-section-title{font-size:.85rem;font-weight:700;color:#1A1F3C;margin-bottom:12px;}
-.trk-products-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;}
-@media(max-width:860px){.trk-products-grid{grid-template-columns:repeat(2,1fr);}}
-@media(max-width:560px){.trk-products-grid{grid-template-columns:1fr;}}
-.trk-prod-card{background:#fff;border-radius:12px;border:1px solid #E5E7EB;padding:14px 16px;cursor:pointer;transition:box-shadow .15s;}
-.trk-prod-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08);}
-.trk-prod-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
-.trk-prod-emoji{font-size:1.6rem;width:40px;height:40px;background:#F4F6F9;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.trk-prod-info{flex:1;min-width:0;}
-.trk-prod-name{font-size:.8rem;font-weight:700;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.trk-prod-cat{font-size:.7rem;color:#9CA3AF;}
-.trk-prod-bottom{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;}
-.trk-prod-price{font-size:.88rem;font-weight:800;color:#1A1F3C;}
-.trk-prod-delta{font-size:.72rem;font-weight:700;padding:2px 7px;border-radius:20px;}
+.trk-products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:14px;margin-bottom:20px;}
+@media(max-width:560px){.trk-products-grid{grid-template-columns:repeat(2,1fr);gap:10px;}}
+.trk-prod-card{background:#fff;border-radius:12px;border:1px solid #E5E7EB;overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:box-shadow .15s,transform .1s;}
+.trk-prod-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.09);transform:translateY(-2px);}
+.trk-prod-img{width:100%;aspect-ratio:1/1;background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-size:2rem;overflow:hidden;flex-shrink:0;position:relative;}
+.trk-prod-img img{width:100%;height:100%;object-fit:cover;}
+.trk-prod-body{padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:4px;}
+.trk-prod-name{font-size:.78rem;font-weight:700;color:#111;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.trk-prod-cat{font-size:.66rem;color:#9CA3AF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.trk-prod-price{font-size:.82rem;font-weight:700;color:#1A1F3C;}
+.trk-prod-delta{font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:20px;display:inline-flex;align-items:center;gap:3px;}
 .trk-prod-delta.up{background:#EAF7F0;color:#10B981;}
 .trk-prod-delta.down{background:#FFF0ED;color:#E8442A;}
 .trk-prod-delta.flat{background:#F4F6F9;color:#9CA3AF;}
+.trk-prod-footer{padding:8px 12px;border-top:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.trk-prod-sold{font-size:.62rem;color:#9CA3AF;}
+.trk-price-table tr.trk-row-click{cursor:pointer;}
 .trk-sparkline{width:100%;height:36px;}
 .trk-two-col{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-bottom:20px;}
 @media(max-width:860px){.trk-two-col{grid-template-columns:1fr;}}
@@ -2747,6 +2821,25 @@ body.in-dashboard .mobile-menu{display:none!important;}
   .pdb-filters{padding:14px;}
 }
 
+/* ── Desktop: sidebar auto-collapses to icon rail, expands on hover ── */
+@media(min-width:769px){
+  .dash-sidebar{width:64px;overflow-x:hidden;transition:width .22s ease,box-shadow .22s ease;}
+  .dash-sidebar:hover,.dash-sidebar:focus-within{width:240px;box-shadow:6px 0 24px rgba(0,0,0,.22);}
+  .dash-main{margin-left:64px;}
+  .dash-nav-item{white-space:nowrap;}
+  .dash-sidebar-logo{color:transparent;white-space:nowrap;transition:color .15s ease;}
+  .dash-sidebar-logo span,
+  .dash-nav-item span:not(.dash-nav-icon),
+  .dash-user-meta,.dash-logout-btn,.dash-tour-btn{opacity:0;transition:opacity .15s ease;}
+  .dash-sidebar:hover .dash-sidebar-logo,.dash-sidebar:focus-within .dash-sidebar-logo{color:#fff;}
+  .dash-sidebar:hover .dash-sidebar-logo span,.dash-sidebar:focus-within .dash-sidebar-logo span,
+  .dash-sidebar:hover .dash-nav-item span:not(.dash-nav-icon),.dash-sidebar:focus-within .dash-nav-item span:not(.dash-nav-icon),
+  .dash-sidebar:hover .dash-user-meta,.dash-sidebar:focus-within .dash-user-meta,
+  .dash-sidebar:hover .dash-logout-btn,.dash-sidebar:focus-within .dash-logout-btn,
+  .dash-sidebar:hover .dash-tour-btn,.dash-sidebar:focus-within .dash-tour-btn{opacity:1;}
+  .dash-sidebar:not(:hover):not(:focus-within) .dash-nav-sub.open{display:none;}
+}
+
 /* ══════════════════════════════════════════════════════
    MOBILE (HP) REDESIGN — all rules scoped to ≤768px
    Desktop is completely unaffected.
@@ -2943,9 +3036,9 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .myt-gap-icon{flex-shrink:0;margin-top:1px;}
 
 /* Selling toggle in tracker */
-.trk-sell-toggle{display:flex;align-items:center;gap:6px;margin-top:6px;cursor:pointer;}
+.trk-sell-toggle{display:flex;align-items:center;gap:5px;font-size:.62rem;cursor:pointer;flex-shrink:0;}
 .trk-sell-toggle input[type=checkbox]{width:14px;height:14px;accent-color:#E8442A;cursor:pointer;}
-.trk-sell-toggle-lbl{font-size:.68rem;font-weight:600;color:#6B7280;}
+.trk-sell-toggle-lbl{font-size:.62rem;font-weight:600;color:#6B7280;}
 .trk-sell-toggle input:checked ~ .trk-sell-toggle-lbl{color:#E8442A;}
 
 /* Risk quadrant */
@@ -3092,7 +3185,9 @@ body.in-dashboard .mobile-menu{display:none!important;}
 
 /* Competitor rows */
 .myta-comp-list{display:flex;flex-direction:column;gap:8px;}
-.myta-comp-row{background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:10px 14px;display:grid;grid-template-columns:30px 36px 1fr auto;gap:10px;align-items:center;}
+.myta-comp-row{background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:10px 14px;display:grid;grid-template-columns:30px 36px 1fr auto;gap:10px;align-items:center;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+.myta-comp-row:hover{border-color:#FBCFC5;box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.myta-free-badge{display:inline-flex;align-items:center;gap:5px;font-size:.68rem;font-weight:600;color:#059669;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:20px;padding:3px 10px;margin-bottom:12px;}
 @media(max-width:500px){.myta-comp-row{grid-template-columns:26px 1fr auto;}.myta-comp-row-img{display:none;}}
 .myta-comp-ranknum{width:28px;height:28px;border-radius:50%;background:#EEF2FF;color:#4F46E5;font-weight:800;font-size:.72rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .myta-comp-ranknum.gold{background:#FEF3C7;color:#D97706;}
@@ -4920,7 +5015,7 @@ html,body{overflow-x:hidden;max-width:100%;}
 
       </nav>
 
-      <button onclick="localStorage.removeItem('laris_dashboard_tour_v1');startDashboardOnboarding({ force: true })" style="width:100%;margin-bottom:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:rgba(255,255,255,.7);font-size:.72rem;font-weight:600;padding:7px 10px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;">
+      <button class="dash-tour-btn" onclick="localStorage.removeItem('laris_dashboard_tour_v1');startDashboardOnboarding({ force: true })" style="width:100%;margin-bottom:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:rgba(255,255,255,.7);font-size:.72rem;font-weight:600;padding:7px 10px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;">
         <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg>
         Ulangi Panduan
       </button>
@@ -7455,6 +7550,14 @@ html,body{overflow-x:hidden;max-width:100%;}
               <div class="mls-picker-label">Mulai Berjualan</div>
               <div id="mls-no-tracked" style="display:none;font-size:.78rem;color:#9CA3AF;">Belum ada produk tersimpan. Simpan dari Discover terlebih dahulu.</div>
             </div>
+            <!-- Compact picker (shown after product selected) -->
+            <div id="mls-picker-compact" class="mls-picker-compact">
+              <div class="mls-picker-active">
+                <img id="mls-picker-active-img" src="" alt="" onerror="this.style.opacity='.3'">
+                <span class="mls-picker-active-name" id="mls-picker-active-name">—</span>
+              </div>
+              <button type="button" class="mls-picker-expand" onclick="mlsExpandPicker()">Ganti produk</button>
+            </div>
             <!-- Product picker cards -->
             <div id="mls-product-cards" class="mls-product-cards"></div>
 
@@ -7589,86 +7692,134 @@ html,body{overflow-x:hidden;max-width:100%;}
 
               <!-- TAB: Kalkulator (hidden by default) -->
               <div id="mls-tab-kalc" style="display:none;">
-                <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start;">
-                  <div style="display:flex;flex-direction:column;gap:14px;">
-                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
-                      <div class="dd-card" style="padding:16px;">
-                        <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">1. Harga &amp; Biaya Produk</div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
-                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Harga Jual</div><div style="position:relative;"><span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span><input id="kal-price" type="number" value="150000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;"></div></div>
-                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Harga Modal (COGS)</div><div style="position:relative;"><span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span><input id="kal-cogs" type="number" value="65000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;"></div></div>
-                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Ongkir ke Customer</div><div style="position:relative;"><span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span><input id="kal-shipping" type="number" value="9000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;"></div></div>
-                        </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Berat Produk</div><div style="display:flex;gap:4px;align-items:center;"><input id="kal-weight" type="number" value="250" min="0" oninput="kalcCalc()" style="flex:1;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;"><span style="font-size:.65rem;color:#9CA3AF;white-space:nowrap;">gram</span></div></div>
-                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Asal Pengiriman</div><select id="kal-origin" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.68rem;background:#fff;"><option>Kota Bandung</option><option>Jakarta Pusat</option><option>Surabaya</option><option>Medan</option><option>Yogyakarta</option></select></div>
-                        </div>
-                      </div>
-                      <div class="dd-card" style="padding:16px;">
-                        <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">2. Biaya di Shopee</div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Admin <span style="font-weight:400;opacity:.7;">(per kategori)</span></div><select id="kal-commission" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.66rem;font-weight:600;background:#fff;"><option value="0.10" selected>Fashion / FMCG — 10%</option><option value="0.095">Elektronik / Skincare — 9,5%</option><option value="0.0675">Susu / Suplemen — 6,75%</option><option value="0.0525">Elektronik High-End — 5,25%</option><option value="0.0425">Logam Mulia / Perhiasan — 4,25%</option><option value="0.025">E-Money / Tiket — 2,5%</option></select></div>
-                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Layanan</div><select id="kal-service" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;"><option value="0.01">1%</option><option value="0.02" selected>2%</option><option value="0.03">3%</option><option value="0.04">4%</option></select></div>
-                        </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Pajak (PPh Final)</div><select id="kal-tax" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.7rem;font-weight:600;background:#fff;"><option value="0.005" selected>UMKM 0,5%</option><option value="0">Tidak kena</option><option value="0.11">PKP / PPN 11%</option></select></div>
-                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Program Gratis Ongkir</div><select id="kal-freeship" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.66rem;font-weight:600;background:#fff;"><option value="0" selected>Ditanggung pembeli</option><option value="0.5">Subsidi 50% ongkir</option><option value="1">Subsidi penuh ongkir</option></select></div>
-                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Proses Pesanan</div><div style="padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#F9FAFB;color:#6B7280;">Rp 1.250 / pesanan</div></div>
-                        </div>
-                      </div>
-                      <div class="dd-card" style="padding:16px;">
-                        <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">3. Biaya Promosi (Iklan)</div>
-                        <div style="margin-bottom:10px;"><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Iklan Shopee</div><div style="position:relative;"><span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span><input id="kal-ads" type="number" value="7500" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;"></div></div>
-                        <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:10px;display:flex;align-items:center;gap:10px;"><div style="flex:1;"><div style="font-size:.65rem;font-weight:600;color:#EA580C;">Rekomendasi Iklan</div><div style="font-size:.62rem;font-weight:600;color:#374151;margin-top:2px;" id="kal-ads-rec">—</div></div><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
-                      </div>
+                <div class="kalc-wrap">
+                  <div class="kalc-hdr">
+                    <div>
+                      <h3 class="kalc-hdr-title">Kalkulator Keuntungan</h3>
+                      <p class="kalc-hdr-sub">Hitung otomatis berapa yang Anda dapatkan dari setiap penjualan.</p>
                     </div>
-                    <div style="display:grid;grid-template-columns:1fr 2fr;gap:14px;">
-                      <div class="dd-card" style="padding:16px;">
-                        <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:12px;">4. Biaya Lainnya</div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Packing</div><div style="position:relative;"><span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span><input id="kal-packing" type="number" value="2000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;"></div></div>
-                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Biaya Operasional</div><div style="position:relative;"><span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:.7rem;color:#9CA3AF;">Rp</span><input id="kal-opex" type="number" value="1000" min="0" oninput="kalcCalc()" style="width:100%;padding:6px 6px 6px 24px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;"></div></div>
-                          <div><div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Return / Refund</div><select id="kal-return" oninput="kalcCalc()" style="width:100%;padding:6px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff;"><option value="0.005">0.5%</option><option value="0.01" selected>1%</option><option value="0.02">2%</option><option value="0.03">3%</option><option value="0.05">5%</option></select></div>
-                        </div>
-                      </div>
-                      <div class="dd-card" style="padding:16px;">
-                        <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:4px;">Harga Impas (Break Even)</div>
-                        <div style="font-size:.65rem;color:#6B7280;margin-bottom:12px;">Harga jual minimum agar tidak rugi</div>
-                        <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:10px;"><div style="font-size:1.1rem;font-weight:700;color:#E8442A;" id="kal-bep-val">—</div></div>
-                        <div style="position:relative;height:6px;background:#F3F4F6;border-radius:3px;margin-bottom:8px;"><div id="kal-bep-fill" style="position:absolute;left:0;top:0;height:6px;background:linear-gradient(90deg,#E8442A,#F97316);border-radius:3px;width:50%;transition:width .3s;"></div><div id="kal-bep-dot" style="position:absolute;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;background:#E8442A;border:2px solid #fff;border-radius:50%;left:50%;box-shadow:0 1px 4px rgba(0,0,0,.2);transition:left .3s;"></div></div>
-                        <div style="display:flex;justify-content:space-between;font-size:.6rem;color:#9CA3AF;" id="kal-bep-scale"><span>—</span><span>—</span><span>—</span><span>—</span><span>—</span></div>
-                      </div>
-                    </div>
-                    <div class="dd-card" style="padding:16px;">
-                      <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:4px;">Skenario Perhitungan</div>
-                      <div style="font-size:.65rem;color:#6B7280;margin-bottom:14px;">Perubahan harga vs profit</div>
-                      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;" id="kal-scenarios"></div>
-                    </div>
-                    <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span style="font-size:.72rem;color:#374151;" id="kal-tip">Gunakan harga psikologis seperti <strong id="kal-tip-price">—</strong> untuk meningkatkan konversi.</span></div>
+                    <span class="kalc-auto-badge">✓ Semua biaya dihitung otomatis</span>
                   </div>
-                  <div style="display:flex;flex-direction:column;gap:14px;position:sticky;top:0;">
-                    <div class="dd-card" style="padding:16px;">
-                      <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:10px;">Ringkasan Profit (Realistis)</div>
-                      <div style="font-size:.65rem;color:#6B7280;margin-bottom:4px;">Estimasi Profit per Unit</div>
-                      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><div style="font-size:1.4rem;font-weight:700;color:#111827;" id="kal-profit-unit">—</div><div style="background:#DCFCE7;color:#16A34A;font-size:.62rem;font-weight:700;padding:3px 7px;border-radius:20px;" id="kal-margin-badge">—</div></div>
-                      <div style="display:flex;flex-direction:column;gap:5px;font-size:.68rem;border-top:1px solid #F3F4F6;padding-top:10px;margin-bottom:10px;">
-                        <div style="display:flex;justify-content:space-between;"><span style="color:#6B7280;">Harga Jual</span><span style="font-weight:600;" id="kal-sum-price">—</span></div>
-                        <div style="display:flex;justify-content:space-between;"><span style="color:#6B7280;">Total Biaya</span><span style="font-weight:600;" id="kal-sum-cost">—</span></div>
-                        <div style="display:flex;justify-content:space-between;"><span style="color:#6B7280;">Laba Bersih per Unit</span><span style="font-weight:600;color:#16A34A;" id="kal-sum-profit">—</span></div>
-                        <div style="display:flex;justify-content:space-between;"><span style="color:#6B7280;">ROI</span><span style="font-weight:600;" id="kal-sum-roi">—</span></div>
-                      </div>
-                      <div style="font-size:.72rem;font-weight:700;color:#111827;margin-bottom:8px;">Rincian Biaya per Unit</div>
-                      <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;"><canvas id="kal-donut" width="80" height="80" style="flex-shrink:0;"></canvas><div style="font-size:.6rem;color:#374151;display:flex;flex-direction:column;gap:4px;" id="kal-legend"></div></div>
-                      <div style="border-top:1px solid #F3F4F6;padding-top:10px;">
-                        <div style="font-size:.72rem;font-weight:700;color:#111827;margin-bottom:2px;">Keuntungan Bulanan (Estimasi)</div>
-                        <div style="font-size:.62rem;color:#6B7280;margin-bottom:6px;">Jika terjual <input id="kal-monthly-units" type="number" value="30" min="1" max="9999" oninput="kalcCalc()" style="width:44px;padding:2px 4px;border:1px solid #E5E7EB;border-radius:4px;font-size:.62rem;text-align:center;"> unit / bulan</div>
-                        <div style="font-size:1.1rem;font-weight:700;color:#16A34A;margin-bottom:8px;" id="kal-monthly-profit">—</div>
-                        <div style="display:flex;justify-content:space-between;font-size:.65rem;">
-                          <div><div style="color:#6B7280;margin-bottom:2px;">Potensi Omset</div><div style="font-weight:600;" id="kal-monthly-omset">—</div></div>
-                          <div><div style="color:#6B7280;margin-bottom:2px;">Total Laba Kotor</div><div style="font-weight:600;" id="kal-monthly-gross">—</div></div>
-                        </div>
+
+                  <div class="kalc-inputs-row">
+                    <div class="kalc-input-card">
+                      <div class="kalc-input-lbl">Harga Jual</div>
+                      <div class="kalc-rp-wrap"><span class="kalc-rp-prefix">Rp</span><input id="kal-price" type="number" value="150000" min="0" oninput="kalcCalc()"></div>
+                      <div class="kalc-input-hint">Harga yang Anda tetapkan</div>
+                    </div>
+                    <div class="kalc-input-card">
+                      <div class="kalc-input-lbl">Modal Produk</div>
+                      <div class="kalc-rp-wrap"><span class="kalc-rp-prefix">Rp</span><input id="kal-cogs" type="number" value="65000" min="0" oninput="kalcCalc()"></div>
+                      <div class="kalc-input-hint">Harga modal per produk</div>
+                    </div>
+                    <div class="kalc-input-card">
+                      <div class="kalc-input-lbl">Marketplace</div>
+                      <select id="kal-marketplace" onchange="kalcOnMarketplaceChange()">
+                        <option value="shopee_fashion" selected>Shopee Fashion</option>
+                        <option value="shopee_electronics">Shopee Elektronik</option>
+                        <option value="shopee_fmcg">Shopee FMCG</option>
+                        <option value="tokopedia">Tokopedia</option>
+                        <option value="tiktok">TikTok Shop</option>
+                      </select>
+                      <div class="kalc-input-hint">Biaya &amp; program terisi otomatis</div>
+                    </div>
+                  </div>
+
+                  <div class="kalc-ads-bar">
+                    <div style="flex:1;">
+                      <div class="kalc-ads-bar-lbl">Biaya Iklan <span style="font-weight:400;color:#9CA3AF;">(Opsional)</span></div>
+                      <div class="kalc-ads-bar-sub">Masukkan jika Anda beriklan</div>
+                    </div>
+                    <label class="kalc-toggle" title="Aktifkan biaya iklan">
+                      <input type="checkbox" id="kal-ads-enabled" checked onchange="kalcToggleAds()">
+                      <span class="kalc-toggle-slider"></span>
+                    </label>
+                    <div class="kalc-rp-wrap" style="width:120px;"><span class="kalc-rp-prefix">Rp</span><input id="kal-ads" type="number" value="750" min="0" oninput="kalcCalc()"></div>
+                    <div class="kalc-input-hint" style="margin:0;">per pesanan</div>
+                  </div>
+
+                  <div class="kalc-hero">
+                    <div>
+                      <div style="font-size:.72rem;font-weight:700;color:#059669;margin-bottom:4px;">Uang yang Anda Dapatkan</div>
+                      <div class="kalc-hero-profit" id="kal-hero-profit">—</div>
+                      <span class="kalc-hero-margin" id="kal-hero-margin">—</span>
+                      <p class="kalc-hero-sentence" id="kal-hero-sentence">—</p>
+                    </div>
+                    <div class="kalc-hero-breakdown">
+                      <div class="kalc-hero-row"><span>Omzet per Pesanan</span><span id="kal-bd-omzet">—</span></div>
+                      <div class="kalc-hero-row cost"><span>Total Biaya</span><span id="kal-bd-cost">—</span></div>
+                      <div class="kalc-hero-row"><span>Laba Bersih</span><span id="kal-bd-profit" style="color:#059669;">—</span></div>
+                      <div class="kalc-hero-row"><span>Margin</span><span id="kal-bd-margin">—</span></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="kalc-rec-hdr">
+                      <div>
+                        <h4>Rekomendasi Harga Jual</h4>
+                        <div style="font-size:.65rem;color:#9CA3AF;margin-top:2px;">Agar bisnis tetap aman dan menguntungkan</div>
                       </div>
                     </div>
+                    <div class="kalc-rec-grid">
+                      <div class="kalc-rec-card bep">
+                        <div class="kalc-rec-lbl">Break Even</div>
+                        <div class="kalc-rec-sub">Tidak rugi, impas</div>
+                        <div class="kalc-rec-price" id="kal-rec-bep" style="color:#DC2626;">—</div>
+                      </div>
+                      <div class="kalc-rec-card good">
+                        <div class="kalc-rec-badge">Rekomendasi</div>
+                        <div class="kalc-rec-lbl">Good Profit</div>
+                        <div class="kalc-rec-sub">Keuntungan yang baik</div>
+                        <div class="kalc-rec-price" id="kal-rec-good" style="color:#EA580C;">—</div>
+                      </div>
+                      <div class="kalc-rec-card healthy">
+                        <div class="kalc-rec-lbl">Healthy Margin</div>
+                        <div class="kalc-rec-sub">Margin sehat &amp; scalable</div>
+                        <div class="kalc-rec-price" id="kal-rec-healthy" style="color:#059669;">—</div>
+                      </div>
+                    </div>
+                    <div class="kalc-insight" style="margin-top:10px;background:#EFF6FF;border-color:#BFDBFE;color:#1E40AF;">Semakin tinggi harga jual, semakin besar keuntungan Anda.</div>
+                  </div>
+
+                  <div>
+                    <div class="kalc-rec-hdr">
+                      <div>
+                        <h4>Bandingkan di Berbagai Platform</h4>
+                        <div style="font-size:.65rem;color:#9CA3AF;margin-top:2px;">Lihat di mana Anda bisa mendapatkan keuntungan paling besar</div>
+                      </div>
+                    </div>
+                    <div class="kalc-plat-grid" id="kal-plat-grid"></div>
+                    <div class="kalc-insight" id="kal-plat-insight"></div>
+                  </div>
+
+                  <div class="dd-card" style="padding:16px;">
+                    <div class="kalc-detail-hdr" onclick="kalcToggleDetail()">
+                      <div>
+                        <div style="font-size:.85rem;font-weight:800;color:#1A1F3C;" id="kal-detail-title">Rincian Biaya di Shopee</div>
+                        <div style="font-size:.65rem;color:#9CA3AF;margin-top:2px;" id="kal-detail-sub">Semua biaya dihitung otomatis berdasarkan program terpilih</div>
+                      </div>
+                      <span id="kal-detail-chevron" style="font-size:.75rem;color:#6B7280;">▼ Lihat Detail</span>
+                    </div>
+                    <div class="kalc-detail-body" id="kal-detail-body">
+                      <div class="kalc-detail-items" id="kal-detail-items"></div>
+                      <div class="kalc-detail-total">
+                        <span class="kalc-detail-total-lbl">Total Biaya</span>
+                        <span class="kalc-detail-total-val" id="kal-detail-total">—</span>
+                      </div>
+                      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid #F3F4F6;">
+                        <div><div style="font-size:.62rem;color:#6B7280;margin-bottom:3px;">Ongkir (subsidi)</div><div class="kalc-rp-wrap"><span class="kalc-rp-prefix">Rp</span><input id="kal-shipping" type="number" value="9000" min="0" oninput="kalcCalc()"></div></div>
+                        <div><div style="font-size:.62rem;color:#6B7280;margin-bottom:3px;">Packing</div><div class="kalc-rp-wrap"><span class="kalc-rp-prefix">Rp</span><input id="kal-packing" type="number" value="2000" min="0" oninput="kalcCalc()"></div></div>
+                        <div><div style="font-size:.62rem;color:#6B7280;margin-bottom:3px;">Operasional</div><div class="kalc-rp-wrap"><span class="kalc-rp-prefix">Rp</span><input id="kal-opex" type="number" value="1000" min="0" oninput="kalcCalc()"></div></div>
+                        <div style="display:none;"><input id="kal-weight" type="number" value="250"><select id="kal-origin"><option>Kota Bandung</option></select></div>
+                        <input type="hidden" id="kal-commission" value="0.10">
+                        <input type="hidden" id="kal-service" value="0.02">
+                        <input type="hidden" id="kal-tax" value="0.005">
+                        <input type="hidden" id="kal-freeship" value="1">
+                        <input type="hidden" id="kal-return" value="0.01">
+                        <input type="hidden" id="kal-monthly-units" value="30">
+                      </div>
+                    </div>
+                    <div class="kalc-disclaimer">🛡 Perhitungan ini adalah estimasi. Biaya dapat berubah sewaktu-waktu sesuai kebijakan platform.</div>
                   </div>
                 </div>
               </div>
@@ -7700,6 +7851,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                     <div>
                       <div style="font-size:.85rem;font-weight:800;color:#1A1F3C;">Top 15 Penjual</div>
                       <div style="font-size:.7rem;color:#6B7280;margin-top:2px;" id="mls-comp-sub">Produk dengan penjualan tertinggi di keyword ini</div>
+                      <div id="mls-comp-error" style="display:none;font-size:.72rem;color:#DC2626;margin-top:6px;padding:8px 12px;background:#FEF2F2;border-radius:8px;border:1px solid #FECACA;"></div>
                     </div>
                     <div style="display:flex;gap:4px;">
                       <button id="mls-view-row" onclick="mlsSetView('row')" style="padding:4px 10px;border:1px solid #E8442A;border-radius:6px;font-size:.65rem;font-weight:700;background:#FEF2F0;color:#E8442A;cursor:pointer;">
@@ -7884,6 +8036,7 @@ html,body{overflow-x:hidden;max-width:100%;}
               <!-- URL input card -->
               <div class="myta-input-card">
                 <h3>Analisis Produk dari Link</h3>
+                <div class="myta-free-badge">✓ Analisis gratis — tanpa token AI</div>
                 <p>Tempel link produk dari Shopee, Tokopedia, TikTok Shop, atau Lazada. LarisID membaca judul &amp; harga, lalu mencari <strong>produk serupa di Shopee</strong> untuk dibandingkan — misalnya kemeja dari Tokopedia vs penjual kemeja di Shopee. Plus estimasi biaya platform &amp; saran AI.</p>
                 <div class="myta-platform-chips">
                   <span class="myta-platform-chip">🟠 Shopee</span>
@@ -9350,16 +9503,8 @@ html,body{overflow-x:hidden;max-width:100%;}
 //  CONFIG — Product catalog loaded from Supabase listings table.
 //  To maximise keyword coverage, run this once in Supabase SQL Editor:
 //
-//  CREATE OR REPLACE FUNCTION public.get_product_catalog()
-//  RETURNS TABLE(keyword text, product_name text, price numeric,
-//    total_sold bigint, image_url text, category text,
-//    rating numeric, reviews integer, item_id bigint, shop_id bigint)
-//  LANGUAGE sql STABLE SECURITY DEFINER SET statement_timeout='30s' AS $$
-//    SELECT DISTINCT ON (keyword) keyword, product_name, price, total_sold,
-//      image_url, category, rating, reviews, item_id, shop_id
-//    FROM listings WHERE keyword IS NOT NULL AND product_name IS NOT NULL
-//    ORDER BY keyword, total_sold DESC NULLS LAST;
-//  $$;
+//  See supabase/migrations/20260611120000_get_product_catalog_panel_date.sql
+//  (filters to the scrape panel day with the most rows in the last 7 days).
 //  GRANT EXECUTE ON FUNCTION public.get_product_catalog() TO anon, authenticated;
 // ════════════════════════════════════════════════════════════
 
@@ -9820,7 +9965,7 @@ async function _fetchListingsPage(offset, limit = 1000) {
 
 async function loadData() {
 
-  const CACHE_KEY = 'laris_catalog_v3';
+  const CACHE_KEY = 'laris_catalog_v4';
   const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
   let rows = null;
@@ -12736,6 +12881,8 @@ function _mlsAiMedian(arr) {
   return s.length ? s[Math.floor(s.length / 2)] : 0;
 }
 
+function _toMonthly(r) { return (r.price || 0) * (r.total_sold || 0) / 6; }
+
 async function _mlsFetchKeywordMarket(keyword) {
   const empty = { rows: [], mPrice: 0, mSold: 0, totalOmset: 0, sigSellers: [], top5: [] };
   if (!keyword || !_supabase) return empty;
@@ -12755,7 +12902,6 @@ async function _mlsFetchKeywordMarket(keyword) {
   const solds  = rows.map(r => r.total_sold || 0).filter(v => v > 0);
   const mPrice = _mlsAiMedian(prices);
   const mSold  = _mlsAiMedian(solds);
-  const _toMonthly = r => (r.price || 0) * (r.total_sold || 0) / 6;
   const totalOmset = rows.reduce((sum, r) => sum + _toMonthly(r), 0);
   const sigSellers = totalOmset > 0 ? rows.filter(r => _toMonthly(r) / totalOmset >= 0.005) : [];
   return { rows, mPrice, mSold, totalOmset, sigSellers, top5: rows.slice(0, 5) };
@@ -16406,6 +16552,7 @@ function _dscBuildListingsQuery(offset, filters, opts = {}) {
   if (filters.priceMin) q = q.gte('price', filters.priceMin);
   if (priceMax < 500000) q = q.lte('price', priceMax);
   if (filters.search) q = _dscApplySearchFilter(q, filters.search);
+  if (filters.panelDate) q = _applyPanelDateFilter(q, filters.panelDate);
   return q;
 }
 
@@ -16434,10 +16581,52 @@ function _dscSearchScore(product, query) {
   return score;
 }
 
+let _panelDateCache = { date: null, prev: null, ts: 0 };
+const PANEL_DATE_TTL_MS = 5 * 60 * 1000;
+
+function _nextCalendarDay(day) {
+  const d = new Date(day + 'T12:00:00');
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+function _applyPanelDateFilter(q, panelDate) {
+  if (!panelDate) return q;
+  return q.gte('scraped_at', `${panelDate}T00:00:00`).lt('scraped_at', `${_nextCalendarDay(panelDate)}T00:00:00`);
+}
+
+/** Pick the calendar day with the most rows in the last 7 days (not bare MAX scraped_at). */
+async function _getLatestPanelDate() {
+  if (_panelDateCache.date && Date.now() - _panelDateCache.ts < PANEL_DATE_TTL_MS) return _panelDateCache;
+  if (!_supabase) return { date: null, prev: null, ts: 0 };
+  const days = [];
+  const today = new Date();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().slice(0, 10));
+  }
+  const counts = await Promise.all(days.map(async day => {
+    const { count, error } = await _supabase.from('listings')
+      .select('*', { count: 'exact', head: true })
+      .gte('scraped_at', `${day}T00:00:00`)
+      .lt('scraped_at', `${_nextCalendarDay(day)}T00:00:00`);
+    return { day, count: error ? 0 : (count || 0) };
+  }));
+  counts.sort((a, b) => b.count - a.count);
+  const best = counts[0]?.day || days[0];
+  const prev = counts.find(c => c.day < best && c.count > 100)?.day || counts.find(c => c.day < best)?.day || null;
+  _panelDateCache = { date: best, prev, ts: Date.now() };
+  return _panelDateCache;
+}
+
 async function dscFetchTotalCount() {
   if (!_supabase) return;
   try {
-    const { count } = await _supabase.from('listings').select('*', { count: 'exact', head: true }).gt('total_sold', 0);
+    const panel = await _getLatestPanelDate();
+    let q = _supabase.from('listings').select('*', { count: 'exact', head: true }).gt('total_sold', 0);
+    q = _applyPanelDateFilter(q, panel.date);
+    const { count } = await q;
     if (count != null) {
       const el = document.getElementById('dsc-stat-listings');
       if (el) el.textContent = count.toLocaleString('id-ID');
@@ -16447,6 +16636,9 @@ async function dscFetchTotalCount() {
 
 async function dscFetchPage(offset, filters = {}) {
   if (!_supabase) return [];
+
+  const panel = await _getLatestPanelDate();
+  filters = { ...filters, panelDate: panel.date };
 
   // When a search query is present, use the search_listings RPC.
   // It uses GIN trigram indexes on keyword + product_name so it runs well
@@ -16468,7 +16660,10 @@ async function dscFetchPage(offset, filters = {}) {
       price_min: filters.priceMin || null,
       price_max: priceMax,
     });
-    if (!error) return data || [];
+    if (!error) {
+      const day = filters.panelDate;
+      return (data || []).filter(r => !day || (r.scraped_at && r.scraped_at.slice(0, 10) === day));
+    }
     console.warn('search_listings RPC failed, falling back:', error.message);
     return [];
   }
@@ -16703,20 +16898,18 @@ async function dscLoadListings() {
 async function dscLoadTrendData() {
   if (!_supabase || !_dscAllListings.length) return;
   try {
-    // Get the two most recent scrape dates
-    const { data: dates } = await _supabase.from('listings')
-      .select('scraped_at').order('scraped_at', { ascending: false }).limit(2);
-    const latestDate = dates?.[0]?.scraped_at?.slice(0, 10);
-    const prevDate   = dates?.[1]?.scraped_at?.slice(0, 10);
-    if (!prevDate || prevDate === latestDate) return;
+    const panel = await _getLatestPanelDate();
+    const latestDate = panel.date;
+    const prevDate   = panel.prev;
+    if (!latestDate || !prevDate || prevDate === latestDate) return;
 
     // Fetch prev scrape data for all loaded listings' keywords
     const keywords = [...new Set(_dscAllListings.map(r => r.keyword).filter(Boolean))];
     const { data: prevRows } = await _supabase
       .from('listings')
       .select('item_id,shop_id,total_sold,keyword')
-      .gte('scraped_at', prevDate)
-      .lt('scraped_at', latestDate)
+      .gte('scraped_at', `${prevDate}T00:00:00`)
+      .lt('scraped_at', `${_nextCalendarDay(prevDate)}T00:00:00`)
       .limit(3000);
 
     if (!prevRows?.length) return;
@@ -17203,6 +17396,21 @@ function dscOpenDeepDive(key) {
 let _ddCurrentP = null;
 
 // ── KALKULATOR ────────────────────────────────────────────────────────────────
+const _KALC_MARKETPLACES = {
+  shopee_fashion:     { label: 'Shopee Fashion',     comm: 0.10,   svc: 0.02, tax: 0.005, freeship: 1,    ship: 9000,  detailLabel: 'Shopee Fashion' },
+  shopee_electronics: { label: 'Shopee Elektronik',  comm: 0.095,  svc: 0.02, tax: 0.005, freeship: 0.5,  ship: 12000, detailLabel: 'Shopee Elektronik' },
+  shopee_fmcg:        { label: 'Shopee FMCG',        comm: 0.0675, svc: 0.02, tax: 0.005, freeship: 1,    ship: 8000,  detailLabel: 'Shopee FMCG' },
+  tokopedia:          { label: 'Tokopedia',          comm: 0.02,   svc: 0.01, tax: 0.005, freeship: 0,    ship: 10000, detailLabel: 'Tokopedia' },
+  tiktok:             { label: 'TikTok Shop',        comm: 0.028,  svc: 0.01, tax: 0.005, freeship: 0.5,  ship: 9000,  detailLabel: 'TikTok Shop' },
+};
+const _KALC_COMPARE_PLATFORMS = [
+  { id: 'whatsapp', name: 'WhatsApp',  comm: 0,     svc: 0,    tax: 0,     freeship: 0, shipMult: 0.3, badge: 'Keuntungan tertinggi', badgeBg: '#ECFDF5', badgeColor: '#059669' },
+  { id: 'tiktok',   name: 'TikTok Shop', comm: 0.028, svc: 0.01, tax: 0.005, freeship: 0.5, shipMult: 1 },
+  { id: 'shopee',   name: 'Shopee',    comm: 0.10,  svc: 0.02, tax: 0.005, freeship: 1,   shipMult: 1, current: true, badge: 'Platform saat ini', badgeBg: '#EFF6FF', badgeColor: '#1D4ED8' },
+  { id: 'tokopedia',name: 'Tokopedia', comm: 0.02,  svc: 0.01, tax: 0.005, freeship: 0,   shipMult: 1 },
+];
+let _kalcSaveTimer = null;
+
 function kalcFmt(n) {
   if (n >= 1000000) return 'Rp ' + (n/1000000).toFixed(1).replace(/\.0$/,'') + ' jt';
   if (n >= 1000) return 'Rp ' + Math.round(n/1000) + ' rb';
@@ -17212,167 +17420,236 @@ function kalcFmtFull(n) {
   return 'Rp ' + Math.round(n).toLocaleString('id-ID');
 }
 
+function _kalcReadInputs() {
+  const adsEnabled = document.getElementById('kal-ads-enabled')?.checked !== false;
+  return {
+    price:    parseFloat(document.getElementById('kal-price')?.value) || 0,
+    cogs:     parseFloat(document.getElementById('kal-cogs')?.value) || 0,
+    shipping: parseFloat(document.getElementById('kal-shipping')?.value) || 0,
+    packing:  parseFloat(document.getElementById('kal-packing')?.value) || 0,
+    opex:     parseFloat(document.getElementById('kal-opex')?.value) || 0,
+    ads:      adsEnabled ? (parseFloat(document.getElementById('kal-ads')?.value) || 0) : 0,
+    comm:     parseFloat(document.getElementById('kal-commission')?.value) || 0.10,
+    svc:      parseFloat(document.getElementById('kal-service')?.value) || 0.02,
+    tax:      parseFloat(document.getElementById('kal-tax')?.value) || 0,
+    freeship: parseFloat(document.getElementById('kal-freeship')?.value) || 0,
+    ret:      parseFloat(document.getElementById('kal-return')?.value) || 0.01,
+  };
+}
+
+function _kalcCompute(inp) {
+  const PROC_FEE = 1250;
+  const pctSum = inp.comm + inp.svc + inp.tax + inp.ret;
+  const commAmt = inp.price * inp.comm;
+  const svcAmt  = inp.price * inp.svc;
+  const taxAmt  = inp.price * inp.tax;
+  const retAmt  = inp.price * inp.ret;
+  const shipCost = inp.shipping * inp.freeship;
+  const fixedCost = inp.cogs + shipCost + inp.packing + inp.opex + inp.ads + PROC_FEE;
+  const totalCost = fixedCost + commAmt + svcAmt + taxAmt + retAmt;
+  const profit = inp.price - totalCost;
+  const margin = inp.price > 0 ? (profit / inp.price * 100) : 0;
+  return { ...inp, PROC_FEE, pctSum, commAmt, svcAmt, taxAmt, retAmt, shipCost, fixedCost, totalCost, profit, margin };
+}
+
+function _kalcPriceForMargin(targetMarginPct, fixedCost, pctSum) {
+  const denom = 1 - pctSum - targetMarginPct / 100;
+  return denom > 0 ? fixedCost / denom : fixedCost;
+}
+
+function _kalcBepPrice(fixedCost, pctSum) {
+  return pctSum < 1 ? fixedCost / (1 - pctSum) : fixedCost;
+}
+
+function kalcOnMarketplaceChange() {
+  const key = document.getElementById('kal-marketplace')?.value || 'shopee_fashion';
+  const mp = _KALC_MARKETPLACES[key] || _KALC_MARKETPLACES.shopee_fashion;
+  const setSel = (id, v) => { const el = document.getElementById(id); if (el) el.value = String(v); };
+  const setNum = (id, v) => { const el = document.getElementById(id); if (el) el.value = Math.round(v); };
+  setSel('kal-commission', mp.comm);
+  setSel('kal-service', mp.svc);
+  setSel('kal-tax', mp.tax);
+  setSel('kal-freeship', mp.freeship);
+  setNum('kal-shipping', mp.ship);
+  const title = document.getElementById('kal-detail-title');
+  const sub = document.getElementById('kal-detail-sub');
+  if (title) title.textContent = 'Rincian Biaya di ' + mp.detailLabel;
+  if (sub) sub.textContent = 'Semua biaya dihitung otomatis berdasarkan program ' + mp.detailLabel;
+  kalcCalc();
+}
+
+function kalcToggleAds() {
+  const enabled = document.getElementById('kal-ads-enabled')?.checked;
+  const adsInp = document.getElementById('kal-ads');
+  if (adsInp) adsInp.disabled = !enabled;
+  kalcCalc();
+}
+
+function kalcToggleDetail() {
+  const body = document.getElementById('kal-detail-body');
+  const chev = document.getElementById('kal-detail-chevron');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  if (chev) chev.textContent = open ? '▲ Tutup' : '▼ Lihat Detail';
+}
+
+async function _kalcLoadScenario(itemId, shopId) {
+  if (!currentUser || !_supabase) return null;
+  try {
+    const { data } = await _supabase.from('user_tracked_products')
+      .select('calc_scenario')
+      .eq('user_id', currentUser.id)
+      .eq('item_id', Number(itemId))
+      .eq('shop_id', Number(shopId))
+      .maybeSingle();
+    return data?.calc_scenario || null;
+  } catch { return null; }
+}
+
+function _kalcApplyScenario(scenario) {
+  if (!scenario) return false;
+  const setNum = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = Math.round(v); };
+  const setSel = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = String(v); };
+  const setChk = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.checked = !!v; };
+  setNum('kal-price', scenario.price);
+  setNum('kal-cogs', scenario.cogs);
+  setNum('kal-shipping', scenario.shipping);
+  setNum('kal-packing', scenario.packing);
+  setNum('kal-opex', scenario.opex);
+  setNum('kal-ads', scenario.ads);
+  setChk('kal-ads-enabled', scenario.adsEnabled !== false);
+  if (scenario.marketplace) { const mp = document.getElementById('kal-marketplace'); if (mp) mp.value = scenario.marketplace; kalcOnMarketplaceChange(); }
+  setSel('kal-commission', scenario.comm);
+  setSel('kal-service', scenario.svc);
+  setSel('kal-tax', scenario.tax);
+  setSel('kal-freeship', scenario.freeship);
+  setSel('kal-return', scenario.ret);
+  return true;
+}
+
+async function kalcApplyDefaults(product, mPrice) {
+  const sell = Math.round(mPrice || product?.price || 0);
+  if (!sell) return;
+  const saved = product?.item_id && product?.shop_id
+    ? await _kalcLoadScenario(product.item_id, product.shop_id)
+    : null;
+  if (saved && _kalcApplyScenario(saved)) { kalcCalc(); return; }
+  const def = getDashDefaults({ medianPrice: sell });
+  const setNum = (id, v) => { const el = document.getElementById(id); if (el) el.value = Math.round(v); };
+  setNum('kal-price', sell);
+  setNum('kal-cogs', def.cost);
+  setNum('kal-shipping', def.ship);
+  setNum('kal-packing', 2000);
+  setNum('kal-opex', 1000);
+  setNum('kal-ads', Math.max(750, def.mktg));
+  const mpEl = document.getElementById('kal-marketplace');
+  if (mpEl) mpEl.value = 'shopee_fashion';
+  kalcOnMarketplaceChange();
+}
+
+function _kalcScheduleSave() {
+  clearTimeout(_kalcSaveTimer);
+  _kalcSaveTimer = setTimeout(_kalcSaveScenario, 1200);
+}
+
+async function _kalcSaveScenario() {
+  if (!currentUser || !_supabase) return;
+  const p = _mlsContext?.product;
+  if (!p?.item_id || !p?.shop_id) return;
+  const inp = _kalcReadInputs();
+  const scenario = {
+    price: inp.price, cogs: inp.cogs, shipping: inp.shipping, packing: inp.packing,
+    opex: inp.opex, ads: inp.ads, adsEnabled: document.getElementById('kal-ads-enabled')?.checked !== false,
+    marketplace: document.getElementById('kal-marketplace')?.value,
+    comm: inp.comm, svc: inp.svc, tax: inp.tax, freeship: inp.freeship, ret: inp.ret,
+    saved_at: new Date().toISOString(),
+  };
+  try {
+    await _supabase.from('user_tracked_products').upsert({
+      user_id: currentUser.id, item_id: Number(p.item_id), shop_id: Number(p.shop_id),
+      calc_scenario: scenario, calc_updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,item_id,shop_id' });
+  } catch (_) {}
+}
+
 function kalcCalc() {
   try {
-  const price    = parseFloat(document.getElementById('kal-price')?.value) || 0;
-  const cogs     = parseFloat(document.getElementById('kal-cogs')?.value) || 0;
-  const shipping = parseFloat(document.getElementById('kal-shipping')?.value) || 0;
-  const packing  = parseFloat(document.getElementById('kal-packing')?.value) || 0;
-  const opex     = parseFloat(document.getElementById('kal-opex')?.value) || 0;
-  const ads      = parseFloat(document.getElementById('kal-ads')?.value) || 0;
-  const comm     = parseFloat(document.getElementById('kal-commission')?.value) || 0.10;
-  const svc      = parseFloat(document.getElementById('kal-service')?.value) || 0.02;
-  const tax      = parseFloat(document.getElementById('kal-tax')?.value) || 0;
-  const freeship = parseFloat(document.getElementById('kal-freeship')?.value) || 0; // fraction of ongkir seller subsidizes
-  const ret      = parseFloat(document.getElementById('kal-return')?.value) || 0.02;
-  const monthlyUnits = parseInt(document.getElementById('kal-monthly-units')?.value) || 30;
+  const inp = _kalcReadInputs();
+  const r = _kalcCompute(inp);
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
 
-  const PROC_FEE   = 1250; // Biaya Proses Pesanan, flat per completed order
-  const pctSum     = comm + svc + tax + ret; // price-derived fee rates
-  const commAmt    = price * comm;
-  const svcAmt     = price * svc;
-  const taxAmt     = price * tax;
-  const retAmt     = price * ret;
-  const shipCost   = shipping * freeship; // seller pays only the subsidized portion of ongkir
-  const fixedCost  = cogs + shipCost + packing + opex + ads + PROC_FEE; // costs independent of price
-  const totalCost  = fixedCost + commAmt + svcAmt + taxAmt + retAmt;
-  const profit     = price - totalCost;
-  const margin     = price > 0 ? (profit / price * 100) : 0;
-  const roi        = cogs > 0 ? (profit / cogs * 100) : 0;
+  set('kal-hero-profit', kalcFmtFull(r.profit));
+  set('kal-hero-margin', r.margin.toFixed(1).replace('.', ',') + '% Margin');
+  const sentEl = document.getElementById('kal-hero-sentence');
+  if (sentEl) {
+    sentEl.textContent = r.profit >= 0
+      ? `Artinya, dari setiap penjualan Anda ${kalcFmtFull(r.profit)} bersih masuk ke kantong Anda.`
+      : `Perhatian: estimasi rugi ${kalcFmtFull(Math.abs(r.profit))} per pesanan — periksa biaya atau naikkan harga.`;
+  }
+  set('kal-bd-omzet', kalcFmtFull(r.price));
+  set('kal-bd-cost', kalcFmtFull(r.totalCost));
+  set('kal-bd-profit', kalcFmtFull(r.profit));
+  set('kal-bd-margin', r.margin.toFixed(1).replace('.', ',') + '%');
 
-  // Ads recommendation — capped so it never recommends spending past the pre-ads profit
-  const adsRecEl = document.getElementById('kal-ads-rec');
-  if (adsRecEl) {
-    const profitBeforeAds = profit + ads; // remove current ad spend
-    const recLow = price * 0.07, recHigh = price * 0.10;
-    if (profitBeforeAds <= 0) {
-      adsRecEl.innerHTML = '<span style="color:#DC2626;">Margin negatif — turunkan biaya dulu sebelum iklan</span>';
-    } else if (recLow > profitBeforeAds) {
-      adsRecEl.innerHTML = `<span style="color:#DC2626;">Maks ${kalcFmtFull(profitBeforeAds)} — di atas itu jadi rugi</span>`;
-    } else {
-      const hi = Math.min(recHigh, profitBeforeAds);
-      adsRecEl.textContent = `${kalcFmtFull(recLow)} – ${kalcFmtFull(hi)}`;
+  const bep = _kalcBepPrice(r.fixedCost, r.pctSum);
+  const good = _kalcPriceForMargin(18, r.fixedCost, r.pctSum);
+  const healthy = _kalcPriceForMargin(28, r.fixedCost, r.pctSum);
+  set('kal-rec-bep', kalcFmtFull(bep));
+  set('kal-rec-good', kalcFmtFull(good));
+  set('kal-rec-healthy', kalcFmtFull(healthy));
+
+  const mpKey = document.getElementById('kal-marketplace')?.value || 'shopee_fashion';
+  const mp = _KALC_MARKETPLACES[mpKey] || _KALC_MARKETPLACES.shopee_fashion;
+  const adminPct = ((r.comm + r.svc) * 100).toFixed(1).replace('.', ',');
+  const detailItems = [
+    { lbl: `Admin & Layanan (${adminPct}%)`, val: r.commAmt + r.svcAmt },
+    { lbl: 'Gratis Ongkir (Subsidi)', val: r.shipCost },
+    { lbl: 'Proses Pesanan', val: r.PROC_FEE },
+    { lbl: r.tax >= 0.1 ? 'Pajak (PPN 11%)' : 'Pajak (PPh Final)', val: r.taxAmt },
+    { lbl: 'Return / Refund', val: r.retAmt },
+    { lbl: 'Packing & Operasional', val: r.packing + r.opex },
+  ];
+  if (r.ads > 0) detailItems.push({ lbl: 'Iklan', val: r.ads });
+  const itemsEl = document.getElementById('kal-detail-items');
+  if (itemsEl) {
+    itemsEl.innerHTML = detailItems.filter(d => d.val > 0).map(d =>
+      `<div class="kalc-detail-item"><div class="lbl">${d.lbl}</div><div class="val">${kalcFmtFull(d.val)}</div></div>`
+    ).join('');
+  }
+  set('kal-detail-total', kalcFmtFull(r.totalCost));
+
+  const platGrid = document.getElementById('kal-plat-grid');
+  if (platGrid) {
+    const platResults = _KALC_COMPARE_PLATFORMS.map(pf => {
+      const pInp = {
+        price: r.price, cogs: r.cogs,
+        shipping: r.shipping * (pf.shipMult ?? 1),
+        packing: r.packing, opex: r.opex, ads: r.ads,
+        comm: pf.comm, svc: pf.svc, tax: pf.tax,
+        freeship: pf.freeship, ret: r.ret,
+      };
+      const pr = _kalcCompute(pInp);
+      return { ...pf, profit: pr.profit, margin: pr.margin };
+    }).sort((a, b) => b.profit - a.profit);
+    platGrid.innerHTML = platResults.map(pf => {
+      const isCurrent = pf.id === 'shopee' && mpKey.startsWith('shopee');
+      const cls = isCurrent || pf.current ? ' current' : '';
+      const badge = pf.badge ? `<div class="kalc-plat-badge" style="background:${pf.badgeBg||'#F3F4F6'};color:${pf.badgeColor||'#374151'};">${pf.badge}</div>` : '';
+      return `<div class="kalc-plat-card${cls}">${badge}<div class="kalc-plat-name">${pf.name}</div><div class="kalc-plat-profit">${kalcFmtFull(pf.profit)}</div><div class="kalc-plat-margin">${pf.margin.toFixed(1).replace('.', ',')}% Margin</div></div>`;
+    }).join('');
+    const best = platResults[0];
+    const shopeeR = platResults.find(p => p.id === 'shopee');
+    const insightEl = document.getElementById('kal-plat-insight');
+    if (insightEl && best && shopeeR && best.id !== 'shopee' && shopeeR.profit > 0) {
+      const pctMore = Math.round((best.profit / shopeeR.profit - 1) * 100);
+      insightEl.textContent = `Jual via ${best.name} bisa memberi Anda keuntungan ${pctMore}% lebih besar daripada di Shopee!`;
+      insightEl.style.display = '';
+    } else if (insightEl) {
+      insightEl.style.display = 'none';
     }
   }
 
-  // Summary sidebar
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  set('kal-profit-unit', kalcFmtFull(profit));
-  set('kal-margin-badge', margin.toFixed(1) + '% Margin');
-  const badgeEl = document.getElementById('kal-margin-badge');
-  if (badgeEl) {
-    badgeEl.style.background = margin >= 20 ? '#DCFCE7' : margin >= 10 ? '#FEF9C3' : '#FEE2E2';
-    badgeEl.style.color = margin >= 20 ? '#16A34A' : margin >= 10 ? '#CA8A04' : '#DC2626';
-  }
-  set('kal-sum-price', kalcFmtFull(price));
-  set('kal-sum-cost', kalcFmtFull(totalCost));
-  set('kal-sum-profit', kalcFmtFull(profit));
-  set('kal-sum-roi', roi.toFixed(1) + '%');
-
-  // Monthly
-  set('kal-monthly-profit', kalcFmtFull(profit * monthlyUnits));
-  set('kal-monthly-omset', kalcFmtFull(price * monthlyUnits));
-  set('kal-monthly-gross', kalcFmtFull((price - cogs) * monthlyUnits));
-
-  // BEP — minimum selling price where profit = 0, solving price*(1-pctSum) = fixedCost
-  const bepPrice = pctSum < 1 ? fixedCost / (1 - pctSum) : fixedCost;
-  const bepEl = document.getElementById('kal-bep-val');
-  if (bepEl) bepEl.textContent = kalcFmtFull(bepPrice);
-  // Gauge: where the break-even price sits relative to the current price (100% = current price covers exactly BEP)
-  const bepPct = price > 0 ? Math.min((bepPrice / price) * 100, 100) : 50;
-  const fillEl = document.getElementById('kal-bep-fill');
-  const dotEl  = document.getElementById('kal-bep-dot');
-  if (fillEl) fillEl.style.width = bepPct + '%';
-  if (dotEl)  dotEl.style.left   = bepPct + '%';
-  const scaleEl = document.getElementById('kal-bep-scale');
-  if (scaleEl) {
-    const ticks = [0.6,0.7,0.8,0.9,1.0].map(f => kalcFmt(price * f));
-    scaleEl.innerHTML = ticks.map(t => `<span>${t}</span>`).join('');
-  }
-
-  // Donut chart
-  const costs = [
-    { label: 'Modal (COGS)', val: cogs,     color: '#3B4FD8' },
-    { label: 'Admin & Layanan', val: commAmt+svcAmt, color: '#6B7280' },
-    { label: 'Iklan', val: ads,             color: '#F59E0B' },
-    { label: 'Ongkir (subsidi)', val: shipCost, color: '#E8442A' },
-    { label: 'Pajak', val: taxAmt,          color: '#0EA5E9' },
-    { label: 'Lainnya', val: packing+opex+retAmt+PROC_FEE, color: '#CBD5E1' },
-  ].filter(c => c.val > 0);
-  const canvas = document.getElementById('kal-donut');
-  if (canvas && canvas.getContext) {
-    const ctx2 = canvas.getContext('2d');
-    const total = costs.reduce((s,c) => s+c.val, 0) || 1;
-    ctx2.clearRect(0,0,80,80);
-    let angle = -Math.PI/2;
-    costs.forEach(c => {
-      const sweep = (c.val/total) * Math.PI * 2;
-      ctx2.beginPath();
-      ctx2.moveTo(40,40);
-      ctx2.arc(40,40,36,angle,angle+sweep);
-      ctx2.closePath();
-      ctx2.fillStyle = c.color;
-      ctx2.fill();
-      angle += sweep;
-    });
-    ctx2.beginPath();
-    ctx2.arc(40,40,22,0,Math.PI*2);
-    ctx2.fillStyle = '#fff';
-    ctx2.fill();
-  }
-  const legendEl = document.getElementById('kal-legend');
-  if (legendEl && costs.length) {
-    const totalC = costs.reduce((s,c) => s+c.val, 0);
-    legendEl.innerHTML = costs.map(c => `
-      <div style="display:flex;align-items:center;gap:5px;">
-        <div style="width:8px;height:8px;border-radius:2px;background:${c.color};flex-shrink:0;"></div>
-        <span style="color:#374151;">${c.label}</span>
-        <span style="margin-left:auto;color:#6B7280;">${kalcFmtFull(c.val)} (${(c.val/totalC*100).toFixed(1)}%)</span>
-      </div>`).join('');
-  }
-
-  // Scenarios
-  const scenEl = document.getElementById('kal-scenarios');
-  if (scenEl) {
-    const scenarios = [
-      { name: 'Pesimis', priceMult: 0.93, rec: false },
-      { name: 'Realistis', priceMult: 1.0, rec: true },
-      { name: 'Optimis', priceMult: 1.07, rec: false },
-    ];
-    scenEl.innerHTML = scenarios.map(s => {
-      const sp = price * s.priceMult;
-      const sc = fixedCost + sp * pctSum; // %-based fees scale with the scenario price
-      const sv = sp - sc;
-      const sm = sp > 0 ? (sv/sp*100) : 0;
-      const border = s.rec ? 'border:2px solid #E8442A;' : 'border:1px solid #E5E7EB;';
-      return `<div style="border-radius:10px;padding:14px;${border}position:relative;">
-        ${s.rec ? '<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#E8442A;color:#fff;font-size:.58rem;font-weight:700;padding:2px 8px;border-radius:20px;">Direkomendasikan</div>' : ''}
-        <div style="font-size:.72rem;font-weight:700;color:#111827;margin-bottom:10px;">${s.name}</div>
-        <div style="display:flex;justify-content:space-between;font-size:.65rem;margin-bottom:4px;"><span style="color:#6B7280;">Harga Jual</span><span style="font-weight:600;">${kalcFmtFull(sp)}</span></div>
-        <div style="display:flex;justify-content:space-between;font-size:.65rem;margin-bottom:4px;"><span style="color:#6B7280;">Margin</span><span style="font-weight:600;">${sm.toFixed(1)}%</span></div>
-        <div style="display:flex;justify-content:space-between;font-size:.65rem;"><span style="color:#6B7280;">Profit / Unit</span><span style="font-weight:600;color:${sv>=0?'#16A34A':'#DC2626'};">${kalcFmtFull(sv)}</span></div>
-      </div>`;
-    }).join('');
-  }
-
-  // Insights
-  const insightsEl = document.getElementById('kal-insights');
-  if (insightsEl) {
-    const tips = [];
-    if (margin >= 20) tips.push(`Margin ${margin.toFixed(1)}% termasuk kategori sehat`);
-    else tips.push(`Margin ${margin.toFixed(1)}% — pertimbangkan kurangi biaya atau naikkan harga`);
-    if (price > 0) tips.push(`Harga jual masih kompetitif di pasaran`);
-    tips.push(`Kamu bisa naikkan harga hingga ${kalcFmtFull(price*1.03)} – ${kalcFmtFull(price*1.07)}`);
-    if (ads > 0) tips.push(`Iklan ${(ads/price*100).toFixed(1)}% membantu meningkatkan visibilitas produk`);
-    insightsEl.innerHTML = tips.map(t => `<div style="display:flex;gap:6px;"><span style="color:#16A34A;flex-shrink:0;">✓</span><span>${t}</span></div>`).join('');
-  }
-
-  // Tip bar
-  const tipPriceEl = document.getElementById('kal-tip-price');
-  if (tipPriceEl && price > 0) {
-    const psych = Math.floor((price - 1) / 1000) * 1000 + 999;
-    tipPriceEl.textContent = kalcFmtFull(psych);
-  }
+  _kalcScheduleSave();
   } catch(e) { console.error('kalcCalc:', e); }
 }
 
@@ -20150,6 +20427,31 @@ function trkSparklineSvg(id, trending) {
   </svg>`;
 }
 
+async function trkOpenDeepDive(itemId, shopId) {
+  const found = (_dscAllListings || []).find(p => String(p.item_id) === String(itemId) && String(p.shop_id) === String(shopId));
+  if (found) { dscOpenDeepDive(`${found.item_id}__${found.shop_id}`); switchDashView('deepdive'); return; }
+  if (!_supabase) {
+    showCompareToast('Data produk belum dimuat — coba buka Discover dulu');
+    return;
+  }
+  try {
+    const { data } = await _supabase.from('listings')
+      .select('item_id,shop_id,product_name,keyword,price,total_sold,store_name,category,image_url,url,rating,reviews,location,listing_date,scraped_at')
+      .eq('item_id', itemId).eq('shop_id', shopId).order('scraped_at', { ascending: false }).limit(1);
+    if (data && data.length) {
+      const p = data[0];
+      if (!window._dscAllListings) window._dscAllListings = [];
+      if (!_dscAllListings.find(x => String(x.item_id) === String(itemId))) _dscAllListings.push(p);
+      dscOpenDeepDive(`${p.item_id}__${p.shop_id}`);
+      switchDashView('deepdive');
+      return;
+    }
+    showCompareToast('Data produk belum tersedia di database');
+  } catch (_) {
+    showCompareToast('Gagal membuka detail produk');
+  }
+}
+
 async function trkInit() {
   await _trkLoadSellingFromSupabase();
   const tracked = trkLoad();
@@ -20231,28 +20533,27 @@ async function trkInit() {
     const icon = dc === 'up' ? _upArrow : dc === 'down' ? _dnArrow : '';
     const dtxt = p.delta == null ? '— belum ada data' : p.delta > 0 ? `+${p.delta.toLocaleString('id-ID')} unit` : '0 unit (stabil)';
     const imgHtml = p.image_url
-      ? `<img src="${p.image_url}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;" onerror="this.parentElement.innerHTML='📦'">`
+      ? `<img src="${p.image_url}" alt="" onerror="this.parentElement.innerHTML='📦'">`
       : '📦';
-    const ddKey = `${p.item_id}__${p.shop_id}`;
     const sellKey = `${p.item_id}_${p.shop_id}`;
     const isSelling = _trkSellingSet.has(sellKey);
-    return `<div class="trk-prod-card">
-      <div class="trk-prod-top" onclick="dscOpenDeepDive('${ddKey}')" style="cursor:pointer;">
-        <div class="trk-prod-emoji">${imgHtml}</div>
-        <div class="trk-prod-info">
-          <div class="trk-prod-name">${p.product_name || '—'}</div>
-          <div class="trk-prod-cat">${p.category || ''} · ${p.store_name || ''}</div>
+    return `<div class="trk-prod-card" onclick="trkOpenDeepDive('${p.item_id}','${p.shop_id}')">
+      <div class="trk-prod-img">${imgHtml}</div>
+      <div class="trk-prod-body">
+        <div class="trk-prod-name">${p.product_name || '—'}</div>
+        <div class="trk-prod-cat">${p.category || ''}${p.store_name ? ' · ' + p.store_name : ''}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+          <div class="trk-prod-price">Rp ${(p.curr_price||0).toLocaleString('id-ID')}</div>
+          <span class="trk-prod-delta ${dc}">${icon}${dtxt}</span>
         </div>
       </div>
-      <div class="trk-prod-bottom" style="margin-top:10px;align-items:center;">
-        <div class="trk-prod-price">Rp ${(p.curr_price||0).toLocaleString('id-ID')}</div>
-        <span class="trk-prod-delta ${dc}" style="display:inline-flex;align-items:center;gap:3px;">${icon}${dtxt}</span>
+      <div class="trk-prod-footer" onclick="event.stopPropagation()">
+        <span class="trk-prod-sold">${p.curr_sold.toLocaleString('id-ID')} total terjual</span>
+        <label class="trk-sell-toggle">
+          <input type="checkbox" id="trk-sell-${sellKey}" ${isSelling ? 'checked' : ''} onclick="event.stopPropagation();trkToggleSelling(${p.item_id},${p.shop_id})">
+          <span class="trk-sell-toggle-lbl" style="color:${isSelling ? '#E8442A' : '#6B7280'}">Saya jual ini</span>
+        </label>
       </div>
-      <div style="font-size:.58rem;color:#9CA3AF;margin-top:5px;">${p.curr_sold.toLocaleString('id-ID')} total terjual</div>
-      <label class="trk-sell-toggle" onclick="event.stopPropagation();trkToggleSelling(${p.item_id},${p.shop_id})">
-        <input type="checkbox" id="trk-sell-${sellKey}" ${isSelling ? 'checked' : ''} onclick="event.stopPropagation()">
-        <span class="trk-sell-toggle-lbl" style="color:${isSelling ? '#E8442A' : '#6B7280'}">Saya jual ini</span>
-      </label>
     </div>`;
   }).join('');
 
@@ -20279,7 +20580,7 @@ async function trkInit() {
     const dc = (p.delta ?? 0) > 0 ? 'up' : 'flat';
     const icon = dc === 'up' ? _upArrow : _dnArrow;
     const dtxt = p.delta == null ? '—' : p.delta > 0 ? `+${p.delta.toLocaleString('id-ID')}` : '0';
-    return `<tr>
+    return `<tr class="trk-row-click" onclick="trkOpenDeepDive('${p.item_id}','${p.shop_id}')">
       <td style="font-weight:600;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(p.product_name||'').split(' ').slice(0,4).join(' ')}</td>
       <td>Rp ${(p.curr_price||0).toLocaleString('id-ID')}</td>
       <td><span class="trk-price-chg ${dc}" style="display:inline-flex;align-items:center;gap:3px;">${icon}${dtxt} unit</span></td>
@@ -20835,13 +21136,12 @@ async function hbdRenderCohortDigest() {
       </div>`;
     }).join('');
   } else {
-    const { data: lr } = await _supabase.from('listings').select('scraped_at').order('scraped_at', { ascending: false }).limit(1);
-    const latestDate = lr && lr[0] && lr[0].scraped_at ? lr[0].scraped_at.slice(0, 10) : null;
+    const panel = await _getLatestPanelDate();
+    const latestDate = panel.date;
     if (latestDate) {
-      const { data: rows } = await _supabase
-        .from('listings')
-        .select('keyword,category,score,image_url')
-        .gte('scraped_at', latestDate)
+      let q = _supabase.from('listings').select('keyword,category,score,image_url');
+      q = _applyPanelDateFilter(q, latestDate);
+      const { data: rows } = await q
         .order('score', { ascending: false })
         .limit(40);
       const seen = new Set();
@@ -20947,6 +21247,8 @@ function mlsInit() {
   if (mlsEmpty) mlsEmpty.style.display = 'none';
   if (mlsMain)  mlsMain.style.display  = '';
   pick.style.display = 'grid';
+  const compact = document.getElementById('mls-picker-compact');
+  if (compact) compact.classList.remove('visible');
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   allPicks.forEach(t => {
     const key   = t.key || `${t.item_id}_${t.shop_id}`;
@@ -20991,6 +21293,13 @@ function mlsSwitchTab(tab) {
   });
 }
 
+function mlsExpandPicker() {
+  const compact = document.getElementById('mls-picker-compact');
+  const cards = document.getElementById('mls-product-cards');
+  if (compact) compact.classList.remove('visible');
+  if (cards) cards.style.display = '';
+}
+
 async function mlsSelectProduct(val) {
   // Highlight the selected card
   document.querySelectorAll('#mls-product-cards .mls-pcard').forEach(c => {
@@ -21012,6 +21321,18 @@ async function mlsSelectProduct(val) {
   _mlsContext = { keyword: t.keyword, product: t };
   _mlsAiResetThread();
   if (heroEl) heroEl.style.display = 'block';
+
+  const compact = document.getElementById('mls-picker-compact');
+  const cards = document.getElementById('mls-product-cards');
+  const activeImg = document.getElementById('mls-picker-active-img');
+  const activeName = document.getElementById('mls-picker-active-name');
+  if (compact) compact.classList.add('visible');
+  if (cards) cards.style.display = 'none';
+  if (activeImg) activeImg.src = t.image_url || '';
+  if (activeName) activeName.textContent = t.product_name || t.name || '—';
+
+  const compErr = document.getElementById('mls-comp-error');
+  if (compErr) { compErr.style.display = 'none'; compErr.textContent = ''; }
 
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
   set('mls-hero-name',  t.product_name || t.name || '—');
@@ -21054,9 +21375,8 @@ async function mlsSelectProduct(val) {
     _mlsContext.totalOmset  = totalOmset;
     _mlsContext.allRows     = rows;   // full deduped set for AI category context
 
-    // Pre-fill calculator price
-    const kalPrice = document.getElementById('kal-price');
-    if (kalPrice && mPrice > 0) { kalPrice.value = Math.round(mPrice); kalcCalc(); }
+    // Pre-fill calculator from product + market data
+    await kalcApplyDefaults(t, mPrice);
 
     // Pasar cards
     const fmt = n => n >= 1e9 ? 'Rp ' + (n/1e9).toFixed(1) + 'M' : n >= 1e6 ? 'Rp ' + (n/1e6).toFixed(0) + 'jt' : 'Rp ' + Math.round(n).toLocaleString('id-ID');
@@ -21111,6 +21431,12 @@ async function mlsSelectProduct(val) {
     const compCards   = document.getElementById('mls-comp-cards');    // card grid
     if (compSection) compSection.style.display = top15.length ? 'block' : 'none';
     if (compSub) compSub.textContent = `${top15.length} produk teratas di keyword "${t.keyword}"`;
+    if (compErr && !top15.length) {
+      compErr.style.display = 'block';
+      compErr.textContent = rows.length
+        ? 'Belum cukup data kompetitor untuk ditampilkan.'
+        : `Belum ada listing kompetitor untuk keyword "${t.keyword || '—'}" di database LarisID.`;
+    }
     const rankColors = ['#E8442A','#F5A623','#9CA3AF'];
 
     // ── Row view (table) ──
@@ -21170,6 +21496,11 @@ async function mlsSelectProduct(val) {
 
   } catch(e) {
     console.warn('mlsSelectProduct error', e);
+    const compErr = document.getElementById('mls-comp-error');
+    if (compErr) {
+      compErr.style.display = 'block';
+      compErr.textContent = 'Gagal memuat data kompetitor. Periksa koneksi Anda lalu pilih produk lagi.';
+    }
   }
 }
 
@@ -21763,25 +22094,20 @@ async function loadProductDatabase() {
   if (st) st.textContent = 'Memuat data…';
   if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:#6B7280;font-size:.8rem;">Memuat…</td></tr>';
 
-  // Get latest scraped_at date
-  const { data: latestRow, error: latestErr } = await _supabase
-    .from('listings')
-    .select('scraped_at')
-    .order('scraped_at', { ascending: false })
-    .limit(1);
-
-  if (latestErr || !latestRow?.length) {
+  const panel = await _getLatestPanelDate();
+  if (!panel.date) {
     if (st) st.textContent = 'Gagal memuat data.';
     return;
   }
-  const latestDate = latestRow[0].scraped_at.slice(0, 10);
+  const latestDate = panel.date;
   if (dateNote) dateNote.textContent = `Data: ${latestDate}`;
 
   const f = _pdbGetFilters();
   let query = _supabase
     .from('listings')
-    .select('keyword,category,product_name,store_name,price,original_price,total_sold,rating,reviews,stock,image_url,url,item_id,shop_id,scraped_at')
-    .gte('scraped_at', latestDate)
+    .select('keyword,category,product_name,store_name,price,original_price,total_sold,rating,reviews,stock,image_url,url,item_id,shop_id,scraped_at');
+  query = _applyPanelDateFilter(query, latestDate);
+  query = query
     .order('total_sold', { ascending: false })
     .limit(1000);
 
@@ -23009,15 +23335,16 @@ async function loadOpportunityFinder() {
   if (st) st.textContent = 'Memuat data…';
   if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:#6B7280;font-size:.8rem;">Memuat…</td></tr>';
 
-  const { data: latestRow } = await _supabase.from('listings').select('scraped_at').order('scraped_at',{ascending:false}).limit(1);
-  if (!latestRow?.length) { if(st) st.textContent='Gagal memuat data.'; return; }
-  const latestDate = latestRow[0].scraped_at.slice(0,10);
+  const panel = await _getLatestPanelDate();
+  if (!panel.date) { if(st) st.textContent='Gagal memuat data.'; return; }
+  const latestDate = panel.date;
   if (dateNote) dateNote.textContent = `Data: ${latestDate}`;
 
   const f = _ofGetFilters();
   let query = _supabase.from('listings')
-    .select('keyword,category,price,original_price,total_sold,rating,reviews,item_id,shop_id')
-    .gte('scraped_at', latestDate)
+    .select('keyword,category,price,original_price,total_sold,rating,reviews,item_id,shop_id');
+  query = _applyPanelDateFilter(query, latestDate);
+  query = query
     .limit(2000);
   if (f.cats?.length && f.cats.length < PDB_CATS.length) query = query.in('category', f.cats);
 
@@ -27192,6 +27519,31 @@ function _mytaInferSearchQueries(title, keywords, category) {
   return [...new Set(queries.filter(q => q && q.length >= 3))].slice(0, 8);
 }
 
+async function mytaOpenCompDive(itemId, shopId) {
+  const found = (_dscAllListings || []).find(p => String(p.item_id) === String(itemId) && String(p.shop_id) === String(shopId));
+  if (found) { dscOpenDeepDive(`${found.item_id}__${found.shop_id}`); switchDashView('deepdive'); return; }
+  if (!_supabase) {
+    showCompareToast('Data produk belum tersedia');
+    return;
+  }
+  try {
+    const { data } = await _supabase.from('listings')
+      .select('item_id,shop_id,product_name,keyword,price,total_sold,store_name,category,image_url,url,rating,reviews,location,listing_date,scraped_at')
+      .eq('item_id', itemId).eq('shop_id', shopId).order('scraped_at', { ascending: false }).limit(1);
+    if (data && data.length) {
+      const p = data[0];
+      if (!window._dscAllListings) window._dscAllListings = [];
+      if (!_dscAllListings.find(x => String(x.item_id) === String(itemId))) _dscAllListings.push(p);
+      dscOpenDeepDive(`${p.item_id}__${p.shop_id}`);
+      switchDashView('deepdive');
+      return;
+    }
+    showCompareToast('Data produk belum tersedia di database');
+  } catch (_) {
+    showCompareToast('Gagal membuka detail produk');
+  }
+}
+
 // ── 3. Fetch similar products from LarisID Shopee database ──
 async function _mytaFetchAndRenderCompetitors(data) {
   const el = document.getElementById('myta-competitors');
@@ -27277,7 +27629,7 @@ async function _mytaFetchAndRenderCompetitors(data) {
       const estOmset = r.est_omset || (r.price && r.total_sold ? Math.round(r.price * r.total_sold / 6) : 0);
       const estStr = estOmset ? `Est. Rp ${fmtEst(estOmset)}/bln` : '';
       return `
-        <div class="myta-comp-row">
+        <div class="myta-comp-row" onclick="mytaOpenCompDive('${r.item_id}','${r.shop_id}')" role="button" tabindex="0" onkeydown="if(event.key==='Enter')mytaOpenCompDive('${r.item_id}','${r.shop_id}')">
           <div class="myta-comp-ranknum${rank <= 3 ? ' gold' : ''}">${rank}</div>
           <div class="myta-comp-row-img">${imgHtml}</div>
           <div>
