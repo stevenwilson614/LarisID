@@ -1407,6 +1407,32 @@ body.cohort-themed.in-dashboard .dash-topbar-cohort-chip{
 .cg-btn.primary{background:linear-gradient(135deg,#f97316,#ef4444);color:#fff;}
 .cg-btn.secondary{background:#F3F4F6;color:#374151;}
 .cg-btn:hover{opacity:.88;}
+/* track alert prefs modal */
+.ta-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:610;display:flex;align-items:center;justify-content:center;padding:20px;}
+.ta-modal{background:#fff;border-radius:16px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2);}
+.ta-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;}
+.ta-icon{flex-shrink:0;width:44px;height:44px;border-radius:12px;background:#FFF0ED;display:flex;align-items:center;justify-content:center;color:#E8442A;}
+.ta-title{font-size:1rem;font-weight:800;color:#111;line-height:1.3;}
+.ta-sub{font-size:.76rem;color:#6B7280;line-height:1.5;margin-top:4px;}
+.ta-product{font-size:.72rem;color:#374151;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:8px 10px;margin-bottom:14px;line-height:1.4;}
+.ta-product strong{color:#111;}
+.ta-triggers{margin-bottom:16px;}
+.ta-triggers-title{font-size:.7rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;}
+.ta-trigger-list{display:flex;flex-direction:column;gap:6px;}
+.ta-trigger{display:flex;align-items:flex-start;gap:8px;font-size:.74rem;color:#4B5563;line-height:1.4;}
+.ta-trigger svg{flex-shrink:0;margin-top:1px;color:#059669;}
+.ta-channels-title{font-size:.7rem;font-weight:800;color:#374151;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;}
+.ta-channel{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:10px;margin-bottom:8px;cursor:pointer;transition:border-color .15s,background .15s;}
+.ta-channel:hover{border-color:#D1D5DB;background:#FAFAFA;}
+.ta-channel.checked{border-color:#E8442A;background:#FFF7F5;}
+.ta-channel input{width:16px;height:16px;accent-color:#E8442A;cursor:pointer;flex-shrink:0;}
+.ta-channel-label{font-size:.78rem;font-weight:700;color:#111;}
+.ta-channel-hint{font-size:.65rem;color:#9CA3AF;margin-top:1px;}
+.ta-btns{display:flex;gap:10px;margin-top:18px;}
+.ta-btn{flex:1;padding:11px 0;border:none;border-radius:9px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;}
+.ta-btn.primary{background:linear-gradient(135deg,#E8442A,#C23520);color:#fff;}
+.ta-btn.secondary{background:#F3F4F6;color:#374151;}
+.ta-btn:hover{opacity:.9;}
 
 /* ── DASHBOARD LAYOUT ── */
 .dashboard-layout{display:flex;min-height:100vh;}
@@ -9291,6 +9317,43 @@ html,body{overflow-x:hidden;max-width:100%;}
           </div>
           <div style="margin-top:12px;font-size:.72rem;color:#9CA3AF;">Saldo: <span id="cg-balance-display" style="font-weight:700;color:#f97316;">—</span> kredit • <a onclick="switchDashView('credits');cgClose()" style="color:#E8442A;cursor:pointer;text-decoration:underline;">Dapat kredit gratis</a></div>
           <div id="cg-earn-note" style="display:none;margin-top:8px;padding:8px 10px;background:#FFF7ED;border-radius:8px;font-size:.68rem;color:#92400E;line-height:1.5;text-align:center;"></div>
+        </div>
+      </div>
+
+      <!-- Track alert preferences modal -->
+      <div class="ta-overlay" id="ta-overlay" style="display:none;" onclick="if(event.target===this)ddCloseTrackAlertModal()">
+        <div class="ta-modal" role="dialog" aria-labelledby="ta-title" aria-modal="true">
+          <div class="ta-head">
+            <div class="ta-icon" aria-hidden="true">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </div>
+            <div>
+              <div class="ta-title" id="ta-title">Dapatkan notifikasi perubahan</div>
+              <p class="ta-sub">Kami kabari saat ada perubahan pada produk ini <strong>dan</strong> pesaing di pencarian keyword yang sama.</p>
+            </div>
+          </div>
+          <div class="ta-product" id="ta-product-context">—</div>
+          <div class="ta-triggers">
+            <div class="ta-triggers-title">Notifikasi saat</div>
+            <div class="ta-trigger-list">
+              <div class="ta-trigger"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Harga produk berubah</div>
+              <div class="ta-trigger"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Posisi keyword / ranking berubah</div>
+              <div class="ta-trigger"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Penjualan naik atau turun lebih dari 5%</div>
+            </div>
+          </div>
+          <div class="ta-channels-title">Kirim update lewat</div>
+          <label class="ta-channel checked" id="ta-ch-email-wrap">
+            <input type="checkbox" id="ta-ch-email" checked onchange="ddSyncTrackAlertChannelUI()">
+            <div><div class="ta-channel-label">Email</div><div class="ta-channel-hint">Ke alamat akun kamu</div></div>
+          </label>
+          <label class="ta-channel" id="ta-ch-wa-wrap">
+            <input type="checkbox" id="ta-ch-wa" onchange="ddSyncTrackAlertChannelUI()">
+            <div><div class="ta-channel-label">WhatsApp</div><div class="ta-channel-hint">Ke nomor yang sudah diverifikasi</div></div>
+          </label>
+          <div class="ta-btns">
+            <button type="button" class="ta-btn secondary" onclick="ddTrackWithDefaultAlerts()">Nanti (email saja)</button>
+            <button type="button" class="ta-btn primary" id="ta-confirm-btn" onclick="ddConfirmTrackAlert()">Aktifkan &amp; ke Tracker</button>
+          </div>
         </div>
       </div>
 
@@ -19760,6 +19823,15 @@ function trkIsTracked(listing) { return trkLoad().some(t => t.key === trkKey(lis
 // ── Supabase sync helpers ────────────────────────────────────
 let _trkSellingSet = new Set(); // set of "itemId_shopId" marked is_selling
 
+function _trkAlertPrefs(t) {
+  return {
+    email:        t.alert_email !== false,
+    whatsapp:     !!t.alert_whatsapp,
+    competitors:  t.alert_competitors !== false,
+    triggers:     ['price', 'keywords', 'sales_5pct'],
+  };
+}
+
 async function _trkSyncToSupabase(arr) {
   if (!currentUser || !_supabase || !arr.length) return;
   const rows = arr.map(t => ({
@@ -19774,6 +19846,7 @@ async function _trkSyncToSupabase(arr) {
     total_sold:   t.total_sold   || null,
     store_name:   t.store_name   || null,
     is_selling:   _trkSellingSet.has(`${t.item_id}_${t.shop_id}`),
+    alert_prefs:  _trkAlertPrefs(t),
   }));
   await _supabase.from('user_tracked_products').upsert(rows, { onConflict: 'user_id,item_id,shop_id', ignoreDuplicates: false });
 }
@@ -19824,12 +19897,88 @@ async function trkToggleSelling(itemId, shopId) {
         total_sold:   tracked.total_sold   || null,
         store_name:   tracked.store_name   || null,
         is_selling:   nowSelling,
+        alert_prefs:  _trkAlertPrefs(tracked),
       }, { onConflict: 'user_id,item_id,shop_id' });
     }
   }
   // Refresh My Toko badge if visible
   const myTokoEl = document.getElementById('dash-view-mytoko');
   if (myTokoEl && myTokoEl.style.display !== 'none') myTokoInit();
+}
+
+let _ddPendingTrackListing = null;
+
+function ddSyncTrackAlertChannelUI() {
+  const emailWrap = document.getElementById('ta-ch-email-wrap');
+  const waWrap    = document.getElementById('ta-ch-wa-wrap');
+  const emailCh   = document.getElementById('ta-ch-email');
+  const waCh      = document.getElementById('ta-ch-wa');
+  if (emailWrap && emailCh) emailWrap.classList.toggle('checked', emailCh.checked);
+  if (waWrap && waCh) waWrap.classList.toggle('checked', waCh.checked);
+}
+
+function ddShowTrackAlertModal(listing) {
+  _ddPendingTrackListing = listing;
+  const ctx = document.getElementById('ta-product-context');
+  const kw  = (listing.keyword || '').trim();
+  const name = listing.product_name || 'Produk ini';
+  if (ctx) {
+    ctx.innerHTML = kw
+      ? `<strong>${wsdEsc(name)}</strong> · pesaing di pencarian <strong>“${wsdEsc(kw)}”</strong>`
+      : `<strong>${wsdEsc(name)}</strong> · pesaing di pencarian keyword yang sama`;
+  }
+  const emailCh = document.getElementById('ta-ch-email');
+  const waCh    = document.getElementById('ta-ch-wa');
+  if (emailCh) emailCh.checked = true;
+  if (waCh) waCh.checked = false;
+  ddSyncTrackAlertChannelUI();
+  const overlay = document.getElementById('ta-overlay');
+  if (overlay) overlay.style.display = 'flex';
+}
+
+function ddCloseTrackAlertModal() {
+  const overlay = document.getElementById('ta-overlay');
+  if (overlay) overlay.style.display = 'none';
+  _ddPendingTrackListing = null;
+}
+
+function ddConfirmTrackAlert() {
+  const listing = _ddPendingTrackListing;
+  if (!listing) return;
+  const email    = !!document.getElementById('ta-ch-email')?.checked;
+  const whatsapp = !!document.getElementById('ta-ch-wa')?.checked;
+  if (!email && !whatsapp) {
+    showCompareToast('Pilih Email, WhatsApp, atau keduanya');
+    return;
+  }
+  const key = trkKey(listing);
+  let a = trkLoad();
+  if (!a.find(t => t.key === key)) {
+    a.push({
+      key,
+      item_id:           listing.item_id,
+      shop_id:           listing.shop_id,
+      product_name:      listing.product_name || '—',
+      store_name:        listing.store_name   || '—',
+      image_url:         listing.image_url    || null,
+      category:          listing.category     || '',
+      price:             listing.price        || 0,
+      total_sold:        listing.total_sold   || 0,
+      keyword:           listing.keyword      || '',
+      tracked_at:        new Date().toISOString(),
+      alert_email:       email,
+      alert_whatsapp:    whatsapp,
+      alert_competitors: true,
+    });
+    trkSave(a);
+    journeyApplyNavGating();
+  }
+  ddUpdateTrackBtn(listing);
+  ddCloseTrackAlertModal();
+  if (typeof trkInit === 'function') trkInit();
+  if (typeof mlsInit === 'function') mlsInit();
+  nuHintMark('deepdive_track');
+  switchDashView('tracker');
 }
 
 function ddToggleTrack() {
@@ -19846,38 +19995,12 @@ function ddToggleTrack() {
     ddUpdateTrackBtn(listing);
     return;
   }
-  // Adding to tracker — require 1 credit
+  // Adding to tracker — require 1 credit, then alert prefs
   if (!currentUser) { openAuthModal('login'); return; }
   cgShow(
     'Tambah ke Tracker',
     'Gunakan 1 kredit untuk melacak produk ini setiap bulan — update harga & penjualan otomatis.',
-    () => {
-      let a = trkLoad();
-      if (!a.find(t => t.key === key)) {
-        a.push({
-          key,
-          item_id:      listing.item_id,
-          shop_id:      listing.shop_id,
-          product_name: listing.product_name || '—',
-          store_name:   listing.store_name   || '—',
-          image_url:    listing.image_url    || null,
-          category:     listing.category     || '',
-          price:        listing.price        || 0,
-          total_sold:   listing.total_sold   || 0,
-          keyword:      listing.keyword      || '',
-          tracked_at:   new Date().toISOString(),
-        });
-        trkSave(a);
-        journeyApplyNavGating();
-      }
-      ddUpdateTrackBtn(listing);
-      // Refresh tracker view immediately if it's visible
-      if (typeof trkInit === 'function') trkInit();
-      // Refresh MLS dropdown so the new product appears
-      if (typeof mlsInit === 'function') mlsInit();
-      nuHintMark('deepdive_track');
-      switchDashView('tracker');
-    },
+    () => ddShowTrackAlertModal(listing),
     'tracker'
   );
   const earnNote = document.getElementById('cg-earn-note');
