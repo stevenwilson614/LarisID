@@ -3358,6 +3358,32 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .nu-empty-compact .nu-empty-icon{width:44px;height:44px;margin-bottom:10px;}
 .nu-empty-compact h3{margin-bottom:6px;}
 .nu-empty-compact p{margin-bottom:14px;}
+/* Journey funnel — curated Discover / simplified Deep Dive */
+.dsc-layout.dsc-journey-beginner .dsc-filter-panel{display:none;}
+.dsc-layout.dsc-journey-beginner .dsc-table-area{grid-column:1/-1;}
+.dsc-card.dsc-starter-card{outline:2.5px solid #E8442A;outline-offset:2px;}
+.dsc-starter-tag{position:absolute;bottom:8px;right:8px;background:#E8442A;color:#fff;border-radius:8px;padding:4px 10px;font-size:.68rem;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.18);pointer-events:none;}
+.dsc-journey-filter-btn{display:none;margin-left:8px;padding:7px 12px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;font-size:.72rem;font-weight:700;color:#374151;cursor:pointer;font-family:inherit;}
+.dsc-layout:not(.dsc-journey-beginner) .dsc-journey-filter-btn{display:none!important;}
+.dsc-layout.dsc-journey-tier1 .dsc-journey-filter-btn{display:inline-flex!important;align-items:center;gap:6px;}
+#dd-beginner-panel{display:none;background:#FFF0ED;border:1px solid #FBBCB2;border-radius:14px;padding:18px 20px;margin-bottom:16px;}
+#dd-beginner-panel.show{display:block;}
+#dd-beginner-verdict{font-size:1.05rem;font-weight:800;color:#1A1F3C;line-height:1.35;margin-bottom:10px;}
+#dd-beginner-bullets{margin:0 0 14px;padding-left:18px;color:#374151;font-size:.8rem;line-height:1.55;}
+#dd-beginner-bullets li{margin-bottom:6px;}
+.dd-beginner-actions{display:flex;flex-wrap:wrap;gap:10px;}
+.dd-beginner-cta{background:#E8442A;color:#fff;border:none;border-radius:10px;padding:11px 18px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;}
+.dd-beginner-ghost{background:#fff;color:#374151;border:1.5px solid #E5E7EB;border-radius:10px;padding:11px 16px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;}
+#dd-tab-ringkasan.dd-beginner-simple .dd-row3,#dd-tab-ringkasan.dd-beginner-simple .dd-row2{display:none;}
+#dd-tabs.dd-beginner-tabs .dd-tab[data-tab]:not([data-tab="ringkasan"]):not([data-tab="kompetitor"]){opacity:.45;}
+#dash-nav-journey-more{display:none;}
+body.journey-beginner #dash-nav-journey-more{display:flex;}
+body.journey-beginner #dash-nav-research-tools,
+body.journey-beginner #dash-nav-extension,
+body.journey-beginner #dash-nav-flat-tracker,
+body.journey-beginner #dash-nav-flat-ai,
+body.journey-beginner #dash-nav-flat-mytoko,
+body.journey-beginner #dash-nav-flat-alerts{display:none!important;}
 /* recommended-products grid under the dashboard empty-state */
 .hbd-nu-reco-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
 .hbd-nu-reco-title{font-size:.82rem;font-weight:700;color:#111;}
@@ -4978,6 +5004,11 @@ html,body{overflow-x:hidden;max-width:100%;}
           </div>
         </div>
 
+        <div class="dash-nav-item" id="dash-nav-journey-more" onclick="journeyOpenMoreTools()">
+          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span>
+          <span>Lainnya</span>
+        </div>
+
         <div class="dash-nav-item" id="dash-nav-extension" onclick="switchDashView('extension')">
           <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span>
           <span>Chrome Extension</span>
@@ -6303,7 +6334,7 @@ html,body{overflow-x:hidden;max-width:100%;}
             <!-- Recommended products (daily-random, student/independent) -->
             <div id="hbd-nu-reco" style="display:none;margin-bottom:20px;">
               <div class="hbd-nu-reco-head">
-                <div class="hbd-nu-reco-title">Rekomendasi produk untuk kamu</div>
+                <div class="hbd-nu-reco-title" id="hbd-nu-reco-title">Rekomendasi produk untuk kamu</div>
                 <a class="hbd-nu-reco-link" onclick="switchDashView('discover')">Lihat semua &rarr;</a>
               </div>
               <p class="hbd-nu-reco-msg">Ini cuplikan produk berpotensi hari ini. Buka <a onclick="switchDashView('discover')">Discover</a> untuk riset lebih banyak keyword, filter pasar, dan lacak produk yang menarik.</p>
@@ -6576,12 +6607,20 @@ html,body{overflow-x:hidden;max-width:100%;}
 
         <div id="dash-view-discover" style="display:none;position:relative;">
 
-          <div class="dsc-page">
+          <!-- First-login onboarding (replaces discover content until complete) -->
+          <div id="dsc-onb-screen" class="dsc-onb-screen" style="display:none;" aria-label="Atur preferensi Discover">
+            <div class="dsc-onb-wrap">
+              <button type="button" class="nu-onb-skip" onclick="nuOnbSkip()">Lewati</button>
+              <div id="nu-onb-body"></div>
+            </div>
+          </div>
+
+          <div class="dsc-page" id="dsc-discover-main">
 
             <div class="dsc-header">
               <div>
                 <h2 class="dsc-title">Discover</h2>
-                <p class="dsc-subtitle">Temukan peluang produk berpotensi tinggi berdasarkan data pasar terkini</p>
+                <p class="dsc-subtitle" id="dsc-subtitle">Temukan peluang produk berpotensi tinggi berdasarkan data pasar terkini</p>
               </div>
             </div>
 
@@ -6597,10 +6636,10 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <div class="dsc-dual-range" id="dsc-price-range">
                     <div class="dsc-dual-track"></div>
                     <div class="dsc-dual-fill" id="dsc-price-fill"></div>
-                    <input type="range" id="dsc-price-min" min="0" max="500000" step="10000" value="0" oninput="dscUpdateDualRange('price')">
-                    <input type="range" id="dsc-price-max" min="0" max="500000" step="10000" value="500000" oninput="dscUpdateDualRange('price')">
+                    <input type="range" id="dsc-price-min" min="0" max="500000" step="5000" value="15000" oninput="dscUpdateDualRange('price')">
+                    <input type="range" id="dsc-price-max" min="0" max="500000" step="5000" value="150000" oninput="dscUpdateDualRange('price')">
                   </div>
-                  <div class="dsc-range-vals"><span id="dsc-price-min-lbl">Rp 0</span><span id="dsc-price-max-lbl">Rp 500rb+</span></div>
+                  <div class="dsc-range-vals"><span id="dsc-price-min-lbl">Rp 15 rb</span><span id="dsc-price-max-lbl">Rp 150 rb</span></div>
                 </div>
 
                 <div class="dsc-filter-group">
@@ -6616,9 +6655,9 @@ html,body{overflow-x:hidden;max-width:100%;}
 
                 <div class="dsc-filter-group">
                   <span class="dsc-filter-label">Minimum Skor</span>
-                  <input type="range" id="dsc-skor-min" min="0" max="100" step="5" value="0" oninput="document.getElementById('dsc-skor-min-lbl').textContent=this.value" style="width:100%;accent-color:#E8442A;margin-top:4px;">
+                  <input type="range" id="dsc-skor-min" min="0" max="100" step="5" value="45" oninput="document.getElementById('dsc-skor-min-lbl').textContent=this.value" style="width:100%;accent-color:#E8442A;margin-top:4px;">
                   <div style="display:flex;justify-content:space-between;font-size:.7rem;color:#9CA3AF;margin-top:2px;">
-                    <span>0</span><span style="font-weight:700;color:#E8442A;" id="dsc-skor-min-lbl">0</span><span>100</span>
+                    <span>0</span><span style="font-weight:700;color:#E8442A;" id="dsc-skor-min-lbl">45</span><span>100</span>
                   </div>
                 </div>
 
@@ -6644,6 +6683,7 @@ html,body{overflow-x:hidden;max-width:100%;}
                     <div class="dsc-search-suggestions" id="dsc-search-suggestions"></div>
                   </div>
                   <select class="dsc-sort-select" id="dsc-sort" onchange="dscApplyFilters()">
+                    <option value="random" selected>Acak</option>
                     <option value="omset-desc">Omset Tertinggi</option>
                     <option value="score-desc">Skor Tertinggi</option>
                     <option value="tren-desc">Tren Naik</option>
@@ -6677,7 +6717,7 @@ html,body{overflow-x:hidden;max-width:100%;}
 
                 <!-- Mobile-only sort chips (Skor Tinggi first = goal) -->
                 <div class="dsc-sort-chips" id="dsc-sort-chips">
-                  <button class="dsc-chip active" onclick="dscSetChip(this,'score-desc')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Skor Tinggi</button>
+                  <button class="dsc-chip" onclick="dscSetChip(this,'score-desc')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Skor Tinggi</button>
                   <button class="dsc-chip" onclick="dscSetChip(this,'omset-desc')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> Omset</button>
                   <button class="dsc-chip" onclick="dscSetChip(this,'tren-desc')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg> Trending</button>
                   <button class="dsc-chip" onclick="dscSetChip(this,'price-asc')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg> Termurah</button>
@@ -6903,6 +6943,15 @@ html,body{overflow-x:hidden;max-width:100%;}
 
             <!-- ── TAB: RINGKASAN ── -->
             <div id="dd-tab-ringkasan" class="dd-tab-panel">
+              <div id="dd-beginner-panel">
+                <div id="dd-beginner-verdict">—</div>
+                <ul id="dd-beginner-bullets"></ul>
+                <div class="dd-beginner-actions">
+                  <button type="button" class="dd-beginner-cta" onclick="ddSwitchTab('kompetitor')">Lihat kompetitor</button>
+                  <button type="button" class="dd-beginner-ghost" onclick="journeyUnlockFullDeepDive()">Analisis lengkap</button>
+                </div>
+                <p style="font-size:.68rem;color:#9CA3AF;margin:12px 0 0;line-height:1.45;">Data pasar diperbarui secara berkala — cek lagi nanti untuk tren terbaru.</p>
+              </div>
               <!-- row 1: trend chart | price range | insight AI -->
               <div class="dd-row3">
                 <div class="dd-card fb-flaggable" data-fb-element="Tren Omset &amp; Unit Terjual" data-fb-section="Riset Produk">
@@ -10955,17 +11004,14 @@ async function _authOnSignIn(session) {
     _supabase.from('user_sessions').insert({ user_id: session.user.id, is_new_user: isNew }).then(() => {});
   }
   await loadCurrentAccess().catch(() => {});
+  void journeyHydrateFromRemote();
   updateAuthUI();
   loadSavedProducts();
   checkMentorApplication();
   const onLanding = document.getElementById('page-landing')?.classList.contains('active');
-  if (onLanding) openProfile();
+  if (onLanding) void openProfile();
   renderHomeGrid();
   if (currentProduct) renderDetail(currentProduct);
-  // First-login onboarding picker (category + budget) — once per user
-  setTimeout(() => { nuOnbMaybeShow().catch(() => {}); }, 700);
-  // Start contextual onboarding hints for new users
-  setTimeout(() => nuScheduleHint('dashboard'), 3000);
   setTimeout(() => { pendingCohortJoinIfAny().catch(() => {}); }, 400);
   setTimeout(() => { cohortLoadLightForTheme().catch(() => {}); }, 600);
   if (document.body.classList.contains('in-dashboard') && typeof _dashActiveView !== 'undefined' && _dashActiveView === 'cohort') {
@@ -13171,23 +13217,49 @@ async function openProfile() {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-profile').classList.add('active');
   window.scrollTo(0, 0);
-  switchDashView('dashboard');
+  const needsOnb = await nuOnbCheckNeeded();
+  if (needsOnb) {
+    switchDashView('discover');
+    nuOnbShowInPage(true);
+  } else {
+    switchDashView('dashboard');
+    setTimeout(() => nuScheduleHint('dashboard'), 3000);
+  }
   // load data in background after page is visible
   try { await loadAllPlans(); } catch(_) {}
   try { renderProfileSaved(); } catch(_) {}
   try { loadDashboardData(); } catch(_) {}
   try { loadCreditData(); } catch(_) {}
   try { await loadUserProfile(); } catch(_) {}
-  try { await loadUserProfile(); } catch(_) {}
   try {
     const u = new URLSearchParams(window.location.search || '');
-    if (u.get('view') === 'cohort') setTimeout(() => switchDashView('cohort'), 80);
+    if (!needsOnb && u.get('view') === 'cohort') setTimeout(() => switchDashView('cohort'), 80);
     const pv = u.get('preview');
     if (pv === 'student' || pv === 'leader') {
       try { sessionStorage.setItem('larisid_admin_cohort_shell', pv); } catch (_) {}
     }
   } catch (_) {}
   setTimeout(() => { cohortLoadLightForTheme().catch(() => {}); }, 0);
+  journeyApplyNavGating();
+  void journeyHydrateFromRemote();
+}
+
+async function journeyHydrateFromRemote() {
+  if (!_supabase || !currentUser) return;
+  try {
+    const { data } = await _supabase.from('user_journey_stats')
+      .select('deepdive_count,first_deepdive_at,last_discover_at,full_deepdive_unlocked')
+      .eq('user_id', currentUser.id).maybeSingle();
+    if (!data) return;
+    const local = journeyLoad();
+    journeySave({
+      deepdiveCount: Math.max(local.deepdiveCount || 0, data.deepdive_count || 0),
+      firstDeepDiveAt: local.firstDeepDiveAt || data.first_deepdive_at,
+      lastDiscoverAt: local.lastDiscoverAt || data.last_discover_at,
+      fullDeepDive: !!(local.fullDeepDive || data.full_deepdive_unlocked),
+    });
+    journeyApplyNavGating();
+  } catch (_) {}
 }
 
 // ── DASHBOARD TAB SWITCHING ──
@@ -13237,6 +13309,7 @@ function toggleResearchToolsNav() {
 
 function switchDashView(view) {
   _dashActiveView = view;
+  journeyApplyNavGating();
   PDB_VIEWS.forEach(v => {
     const el = document.getElementById(`dash-view-${v}`);
     if (el) el.style.display = (v === view) ? '' : 'none';
@@ -13290,7 +13363,12 @@ function switchDashView(view) {
   if (view === 'home') _renderDashHome();
   if (view === 'estimator') loadSalesEstimator();
   if (view === 'admin') loadAdminStats();
-  if (view === 'discover'  && typeof dscInit     === 'function') { dscInit(); setTimeout(renderForYou, 400); }
+  if (view === 'discover'  && typeof dscInit     === 'function') {
+    dscInit(); setTimeout(renderForYou, 400); nuOnbSyncDiscoverLayout();
+    journeyApplyDiscoverChrome();
+    journeyMarkDiscoverView();
+  }
+  if (view === 'deepdive') journeyApplyDeepDiveChrome();
   if (view === 'tracker'   && typeof trkInit     === 'function') trkInit();
   if (view === 'dashboard' && typeof hbdInit     === 'function') hbdInit();
   if (view === 'ai'        && typeof mlsInit     === 'function') mlsInit();
@@ -16320,6 +16398,9 @@ let _dscFiltered    = [];
 let _dscPage        = 1;
 let _dscLoaded      = false;
 const DSC_PER_PAGE  = 60;
+const DSC_DEFAULT_PRICE_MIN = 15000;
+const DSC_DEFAULT_PRICE_MAX = 150000;
+const DSC_DEFAULT_MIN_SCOR  = 45;
 
 // fmt helpers
 const _dscFmt = v => v >= 1000000 ? `Rp ${(v/1000000).toFixed(1)} jt` : v >= 1000 ? `Rp ${(v/1000).toFixed(0)} rb` : `Rp ${Math.round(v)}`;
@@ -16482,7 +16563,15 @@ const DSC_FETCH  = 60;
 const DSC_PAGE_SIZE = 400; // rows per Supabase request (search scans full listings table)
 
 // Applied sidebar filters — only take effect after "Terapkan Filter"
-let _dscApplied = { minSkor: 0, priceMin: 0, priceMax: Infinity, omsetMin: 0, omsetMax: Infinity, cats: null };
+let _dscApplied = { minSkor: DSC_DEFAULT_MIN_SCOR, priceMin: DSC_DEFAULT_PRICE_MIN, priceMax: DSC_DEFAULT_PRICE_MAX, omsetMin: 0, omsetMax: Infinity, cats: null };
+
+function _dscShuffleInPlace(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 
 function _dscSnapAppliedFromUI() {
   const priceMaxRaw = parseFloat(document.getElementById('dsc-price-max')?.value) || 500000;
@@ -17135,7 +17224,7 @@ function dscApplyFilters(resetPage = true) {
   const priceMax = _dscApplied.priceMax;
   const omsetMin = _dscApplied.omsetMin;
   const omsetMax = _dscApplied.omsetMax;
-  const sortVal  = document.getElementById('dsc-sort')?.value || 'omset-desc';
+  const sortVal  = document.getElementById('dsc-sort')?.value || 'random';
 
   const srvCatKey = selectedCats ? selectedCats.slice().sort().join('|') : '';
   const srvKey = JSON.stringify({ priceMin, priceMax: priceMax === Infinity ? 500000 : priceMax, search: q, cat: srvCatKey });
@@ -17185,10 +17274,12 @@ function dscApplyFilters(resetPage = true) {
   // Client re-scoring caused false empty results when queries changed mid-flight.
 
   const [sf, sd] = sortVal.split('-');
-  // When a search is active and the user hasn't overridden the sort, the list
-  // was already ordered by _dscSearchScore above. Skipping a raw omset re-sort
-  // preserves that relevance order (shoes before shoe-racks).
-  if (!q || sf !== 'omset') {
+  if (sf === 'random') {
+    _dscShuffleInPlace(list);
+  } else if (!q || sf !== 'omset') {
+    // When a search is active and the user hasn't overridden the sort, the list
+    // was already ordered by _dscSearchScore above. Skipping a raw omset re-sort
+    // preserves that relevance order (shoes before shoe-racks).
     list.sort((a, b) => {
       let va, vb;
       if (sf === 'omset')  { va = _dscOmset(a); vb = _dscOmset(b); }
@@ -17202,16 +17293,21 @@ function dscApplyFilters(resetPage = true) {
   }
 
   _dscFiltered = list;
-  if (resetPage) _dscPage = 1;
+  if (resetPage) { _dscPage = 1; _dscStarterKey = null; }
   dscRenderTable();
 }
 
 function dscRenderTable() {
-  const total = _dscFiltered.length;
-  const pages = Math.max(1, Math.ceil(total / DSC_PER_PAGE));
+  journeyApplyDiscoverChrome();
+  const beginner = isJourneyBeginner() && !journeyBypassGating();
+  const tier0Cap = beginner && userJourneyTier() === 0;
+  const perPage = tier0Cap ? JOURNEY_BEGINNER_DISCOVER_CAP : DSC_PER_PAGE;
+  const cappedList = tier0Cap ? _dscFiltered.slice(0, JOURNEY_BEGINNER_DISCOVER_CAP) : _dscFiltered;
+  const total = cappedList.length;
+  const pages = Math.max(1, Math.ceil(total / perPage));
   _dscPage = Math.min(_dscPage, pages);
-  const start = (_dscPage - 1) * DSC_PER_PAGE;
-  const slice = _dscFiltered.slice(start, start + DSC_PER_PAGE);
+  const start = (_dscPage - 1) * perPage;
+  const slice = cappedList.slice(start, start + perPage);
 
   // Show/hide correct view container
   const cardGrid  = document.getElementById('dsc-card-grid');
@@ -17256,6 +17352,17 @@ function dscRenderTable() {
         const key   = `${p.item_id}__${p.shop_id}`;
         const ls    = calcListingScore(p, _cardKwMap[p.keyword||'__'], _dscListingTrendPct(p), _dscKwTrendMap[p.keyword]??null);
         const lslbl = listingScoreLabel(ls.total);
+        if (beginner) {
+          return `<div class="dsc-card" onclick="dscOpenDeepDive('${key}')">
+            <div class="dsc-card-img" style="position:relative;">${imgHtml}
+              <div style="position:absolute;top:6px;left:6px;background:${lslbl.bg};color:${lslbl.clr};border:1px solid ${lslbl.border};border-radius:8px;padding:3px 9px;font-size:.66rem;font-weight:800;line-height:1.3;">${lslbl.lbl}</div>
+            </div>
+            <div class="dsc-card-body">
+              <div class="dsc-card-name">${(p.product_name||'').slice(0,70)}</div>
+              <div class="dsc-card-price" style="margin-top:8px;">${_fmtRp(p.price||0)}</div>
+            </div>
+          </div>`;
+        }
         return `<div class="dsc-card" onclick="dscOpenDeepDive('${key}')">
           <div class="dsc-card-img" style="position:relative;">${imgHtml}
             <div style="position:absolute;top:6px;left:6px;background:${lslbl.clr};color:#fff;border-radius:8px;padding:3px 9px;font-size:.82rem;font-weight:800;line-height:1.4;box-shadow:0 1px 4px rgba(0,0,0,.22);">${ls.total}</div>
@@ -17341,8 +17448,8 @@ function dscRenderTable() {
   // Hide loading overlay once render completes
   const _ov = document.getElementById('dsc-loading-overlay');
   if (_ov) _ov.style.display = 'none';
-  // Onboarding payoff: highlight the first data-rich card ("Lihat Deep Dive")
   if (_nuOnb.payoff) setTimeout(() => { nuOnbDecorateFirst().catch(() => {}); }, 0);
+  else if (beginner) setTimeout(() => dscHighlightStarterCard(), 0);
 }
 
 function dscSetView(mode) {
@@ -17356,6 +17463,7 @@ function dscOpenDeepDive(key) {
   const [itemId, shopId] = String(key).split('__');
   const listing = _dscAllListings.find(r => String(r.item_id) === itemId && String(r.shop_id) === shopId);
   if (!listing) return;
+  journeyMarkDiscoverClick(key);
   const omset = _dscOmset(listing);
   const monthlyUnits = listing.price > 0 ? Math.round(omset / listing.price) : 0;
   const p = {
@@ -17389,7 +17497,9 @@ function dscOpenDeepDive(key) {
     nuScheduleHint('deepdive');
   }, 0);
   const _fromOnb = _nuOnb.payoff;
-  if (_fromOnb) _nuOnb.payoff = false; // payoff complete — stop decorating
+  if (_fromOnb) _nuOnb.payoff = false;
+  journeyMarkDeepDiveOpen(_fromOnb ? 'onboarding' : 'discover', listing);
+  journeyApplyNavGating();
   void cohortLogActivity('deepdive_open', {
     item_id: listing.item_id, shop_id: listing.shop_id, product_name: listing.product_name || '',
     ...(_fromOnb ? { source: 'onboarding' } : {}),
@@ -19284,12 +19394,13 @@ function dscResetFilters() {
   document.querySelectorAll('#dsc-cat-checks input[type=checkbox]').forEach(c => c.checked = true);
   if (g('dsc-search'))     g('dsc-search').value     = '';
   dscHideSuggestions();
-  if (g('dsc-price-min'))  g('dsc-price-min').value  = 0;
-  if (g('dsc-price-max'))  g('dsc-price-max').value  = 500000;
+  if (g('dsc-price-min'))  g('dsc-price-min').value  = DSC_DEFAULT_PRICE_MIN;
+  if (g('dsc-price-max'))  g('dsc-price-max').value  = DSC_DEFAULT_PRICE_MAX;
   if (g('dsc-omset-min'))  g('dsc-omset-min').value  = 0;
   if (g('dsc-omset-max'))  g('dsc-omset-max').value  = 500000000;
-  if (g('dsc-skor-min'))   { g('dsc-skor-min').value = 0; const lbl = g('dsc-skor-min-lbl'); if (lbl) lbl.textContent = '0'; }
-  if (g('dsc-sort')) g('dsc-sort').value = 'omset-desc';
+  if (g('dsc-skor-min'))   { g('dsc-skor-min').value = DSC_DEFAULT_MIN_SCOR; const lbl = g('dsc-skor-min-lbl'); if (lbl) lbl.textContent = String(DSC_DEFAULT_MIN_SCOR); }
+  if (g('dsc-sort')) g('dsc-sort').value = 'random';
+  document.querySelectorAll('.dsc-chip').forEach(c => c.classList.remove('active'));
   _dscSnapAppliedFromUI();
   dscUpdateDualRange('price');
   dscUpdateDualRange('omset');
@@ -19418,6 +19529,7 @@ function ddToggleTrack() {
           tracked_at:   new Date().toISOString(),
         });
         trkSave(a);
+        journeyApplyNavGating();
       }
       ddUpdateTrackBtn(listing);
       // Refresh tracker view immediately if it's visible
@@ -19804,6 +19916,9 @@ function ddRender(p) {
       <td>${spark}</td>
     </tr>`;
   }).join('');
+
+  ddRenderBeginnerVerdict(p);
+  journeyApplyDeepDiveChrome();
 }
 
 async function ddEstimateTrendFromPeers(listing) {
@@ -26499,6 +26614,213 @@ function extLinkCopyCode() {
 }
 
 // ════════════════════════════════════════════════════════════
+//  USER JOURNEY — progressive Discover → Deep Dive funnel
+// ════════════════════════════════════════════════════════════
+const JOURNEY_LS_KEY = 'larisid_journey_v1';
+const JOURNEY_HINT_SESSION_KEY = 'larisid_journey_hint_sess';
+const JOURNEY_BEGINNER_DISCOVER_CAP = 6;
+
+function journeyLoad() {
+  try { return JSON.parse(localStorage.getItem(JOURNEY_LS_KEY) || '{}'); } catch { return {}; }
+}
+
+function journeySave(patch) {
+  const next = { ...journeyLoad(), ...patch, updatedAt: Date.now() };
+  try { localStorage.setItem(JOURNEY_LS_KEY, JSON.stringify(next)); } catch (_) {}
+  void journeySyncRemote(next);
+  return next;
+}
+
+function journeyBypassGating() {
+  if (typeof isPlatformAdmin === 'function' && isPlatformAdmin()) return true;
+  if (typeof _effectiveLeaderMode === 'function' && _effectiveLeaderMode()) return true;
+  return false;
+}
+
+function userJourneyTier() {
+  if (journeyBypassGating()) return 3;
+  const j = journeyLoad();
+  if (userHasTrackedProducts()) return 2;
+  if ((j.deepdiveCount || 0) >= 3) return 3;
+  if ((j.deepdiveCount || 0) >= 1) return 1;
+  return 0;
+}
+
+function isJourneyBeginner() {
+  return userJourneyTier() <= 1;
+}
+
+function journeyHintAllowed() {
+  try { return !sessionStorage.getItem(JOURNEY_HINT_SESSION_KEY); } catch { return true; }
+}
+
+function journeyMarkHintShown() {
+  try { sessionStorage.setItem(JOURNEY_HINT_SESSION_KEY, '1'); } catch (_) {}
+}
+
+async function journeySyncRemote(j) {
+  if (!_supabase || !currentUser) return;
+  try {
+    await _supabase.from('user_journey_stats').upsert({
+      user_id: currentUser.id,
+      deepdive_count: j.deepdiveCount || 0,
+      first_deepdive_at: j.firstDeepDiveAt || null,
+      last_discover_at: j.lastDiscoverAt || null,
+      full_deepdive_unlocked: !!j.fullDeepDive,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' });
+  } catch (_) {}
+}
+
+function journeyLog(eventType, metadata) {
+  void logUserEvent(eventType, { journey_tier: userJourneyTier(), ...(metadata || {}) });
+}
+
+function journeyMarkDiscoverView() {
+  journeySave({ lastDiscoverAt: new Date().toISOString() });
+  journeyLog('discover_view', {});
+}
+
+function journeyMarkDiscoverClick(key) {
+  journeySave({ lastDiscoverClick: key, lastDiscoverAt: new Date().toISOString() });
+  journeyLog('discover_card_click', { item_key: key });
+}
+
+function journeyMarkDeepDiveOpen(source, listing) {
+  const j = journeyLoad();
+  const count = (j.deepdiveCount || 0) + 1;
+  journeySave({
+    deepdiveCount: count,
+    firstDeepDiveAt: j.firstDeepDiveAt || new Date().toISOString(),
+    lastDeepDiveKey: listing ? `${listing.item_id}__${listing.shop_id}` : null,
+  });
+  journeyLog('deepdive_open', {
+    source: source || 'discover',
+    item_id: listing?.item_id,
+    shop_id: listing?.shop_id,
+    product_name: listing?.product_name || '',
+  });
+}
+
+function journeyUnlockFullDeepDive() {
+  journeySave({ fullDeepDive: true });
+  journeyApplyDeepDiveChrome();
+  if (_ddCurrentP && typeof ddRender === 'function') ddRender(_ddCurrentP);
+}
+
+function journeyOpenMoreTools() {
+  const sub = document.getElementById('dash-sub-research-tools');
+  const nav = document.getElementById('dash-nav-research-tools');
+  if (sub) sub.classList.add('open');
+  if (nav) nav.classList.add('open');
+  switchDashView('tracker');
+}
+
+function journeyApplyNavGating() {
+  const beginner = isJourneyBeginner() && !journeyBypassGating();
+  document.body.classList.toggle('journey-beginner', beginner);
+}
+
+function journeyApplyDiscoverChrome() {
+  const tier = userJourneyTier();
+  const beginner = isJourneyBeginner() && !journeyBypassGating();
+  const layout = document.querySelector('#dash-view-discover .dsc-layout');
+  if (layout) {
+    layout.classList.toggle('dsc-journey-beginner', beginner);
+    layout.classList.toggle('dsc-journey-tier1', beginner && tier === 1);
+  }
+  const sub = document.getElementById('dsc-subtitle');
+  if (sub) {
+    if (beginner && tier === 0) {
+      sub.textContent = `${JOURNEY_BEGINNER_DISCOVER_CAP} produk untukmu hari ini — ketuk satu untuk lihat apakah layak dijual.`;
+    } else if (beginner) {
+      sub.textContent = 'Produk pilihan untuk kamu — ketuk kartu untuk analisis lengkap.';
+    } else {
+      sub.textContent = 'Temukan peluang produk berpotensi tinggi berdasarkan data pasar terkini';
+    }
+  }
+  const filterBtn = document.querySelector('.dsc-filter-btn');
+  if (filterBtn && beginner && tier === 0) filterBtn.style.display = 'none';
+  else if (filterBtn) filterBtn.style.display = '';
+}
+
+function journeyApplyDeepDiveChrome() {
+  const j = journeyLoad();
+  const beginner = isJourneyBeginner() && !journeyBypassGating() && !j.fullDeepDive;
+  const panel = document.getElementById('dd-beginner-panel');
+  const ringkasan = document.getElementById('dd-tab-ringkasan');
+  const tabs = document.getElementById('dd-tabs');
+  const trackBtn = document.getElementById('dd-track-btn');
+  if (panel) panel.classList.toggle('show', beginner);
+  if (ringkasan) ringkasan.classList.toggle('dd-beginner-simple', beginner);
+  if (tabs) tabs.classList.toggle('dd-beginner-tabs', beginner);
+  if (trackBtn) trackBtn.style.display = (beginner && userJourneyTier() === 0) ? 'none' : '';
+}
+
+function ddRenderBeginnerVerdict(p) {
+  const verdictEl = document.getElementById('dd-beginner-verdict');
+  const bulletsEl = document.getElementById('dd-beginner-bullets');
+  if (!verdictEl || !bulletsEl || !p) return;
+  const listing = p._listing || {};
+  const price = listing.price || p.medianPrice || 0;
+  const score = Math.round(p.score || 0);
+  const lslbl = listingScoreLabel(score);
+  verdictEl.textContent = lslbl.lbl;
+  const tip = score >= 75
+    ? 'Peluang bagus — pasar masih terbuka untuk pemula.'
+    : score >= 55
+      ? 'Bisa dijual dengan strategi harga dan positioning yang tepat.'
+      : 'Perlu riset kompetitor lebih dalam sebelum keluarkan modal.';
+  const bullets = [
+    price > 0 ? `Harga jual: Rp ${Math.round(price).toLocaleString('id-ID')}` : 'Harga: data sedang dimuat',
+    `Skor produk: ${score || '—'}/100`,
+    tip,
+  ];
+  bulletsEl.innerHTML = bullets.map(t => `<li>${t}</li>`).join('');
+}
+
+let _dscStarterKey = null;
+
+function dscGetStarterCardKey() {
+  if (_dscStarterKey) return _dscStarterKey;
+  const start = (_dscPage - 1) * DSC_PER_PAGE;
+  const page = _dscFiltered.slice(start, start + (isJourneyBeginner() ? JOURNEY_BEGINNER_DISCOVER_CAP : DSC_PER_PAGE));
+  if (page.length) _dscStarterKey = `${page[0].item_id}__${page[0].shop_id}`;
+  return _dscStarterKey;
+}
+
+function dscOpenStarterDeepDive() {
+  const key = dscGetStarterCardKey();
+  if (key) dscOpenDeepDive(key);
+}
+
+function dscHighlightStarterCard() {
+  if (!isJourneyBeginner() && !_nuOnb.payoff) return;
+  const grid = document.getElementById('dsc-card-grid');
+  if (!grid) return;
+  const key = _nuOnb.payoff ? _nuOnbRichKey : dscGetStarterCardKey();
+  if (!key) return;
+  grid.querySelectorAll('.dsc-card').forEach(el => {
+    el.classList.remove('dsc-starter-card');
+    el.querySelector('.dsc-starter-tag')?.remove();
+  });
+  const start = (_dscPage - 1) * DSC_PER_PAGE;
+  const page = _dscFiltered.slice(start, start + DSC_PER_PAGE);
+  const idx = page.findIndex(p => `${p.item_id}__${p.shop_id}` === key);
+  const cards = [...grid.querySelectorAll('.dsc-card')];
+  const el = cards[idx >= 0 ? idx : 0];
+  if (!el) return;
+  el.classList.add('dsc-starter-card');
+  const img = el.querySelector('.dsc-card-img');
+  if (img && !img.querySelector('.dsc-starter-tag')) {
+    const tag = document.createElement('div');
+    tag.className = 'dsc-starter-tag';
+    tag.textContent = _nuOnb.payoff ? 'Lihat Deep Dive' : 'Mulai di sini';
+    img.appendChild(tag);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
 //  NEW-USER EMPTY STATES & CONTEXTUAL HINTS
 // ════════════════════════════════════════════════════════════
 const NU_HINT_KEY = 'larisid_hints_v1';
@@ -26554,30 +26876,50 @@ function nuHintShow(key, opts) {
 
 function nuScheduleHint(view) {
   if (!currentUser) return;
-  if (_nuOnb.visible || _nuOnb.payoff) return; // picker open or payoff active — banner already guides
+  if (_nuOnb.visible || _nuOnb.payoff) return;
+  if (!journeyHintAllowed()) return;
   clearTimeout(_nuHintTimer);
-  const delays = { dashboard: 3000, discover: 3000, deepdive: 5000 };
+  const delays = { dashboard: 3000, discover: 2500, deepdive: 4000 };
   const delay = delays[view];
   if (!delay) return;
   _nuHintTimer = setTimeout(() => {
-    if (view === 'dashboard' && !userHasAnyProduct() && !nuHintSeen('dashboard')) {
+    if (view === 'dashboard' && isJourneyBeginner() && !nuHintSeen('dashboard_reco')) {
+      journeyMarkHintShown();
+      nuHintShow('dashboard_reco', {
+        title: 'Produk untukmu hari ini',
+        body: 'Ketuk salah satu rekomendasi di bawah untuk buka analisis — apakah produk ini layak dijual?',
+        cta: 'Mengerti',
+        onCta: () => {},
+      });
+    } else if (view === 'dashboard' && !userHasAnyProduct() && !nuHintSeen('dashboard')) {
+      journeyMarkHintShown();
       nuHintShow('dashboard', {
         title: 'Mulai dengan mencari produk',
         body: 'Temukan peluang jualan di Discover — data nyata dari 60.000+ listing Shopee.',
         cta: 'Buka Discover',
         onCta: () => switchDashView('discover'),
       });
-    } else if (view === 'discover' && !nuHintSeen('discover')) {
-      nuHintShow('discover', {
-        title: 'Pilih produk untuk melihat lebih dalam',
-        body: 'Klik salah satu kartu produk untuk membuka Deep Dive — analisis lengkap, kompetitor, dan skor kelayakan.',
-        cta: 'Mengerti',
-        onCta: () => {},
+    } else if (view === 'discover' && isJourneyBeginner() && !nuHintSeen('discover_starter')) {
+      journeyMarkHintShown();
+      nuHintShow('discover_starter', {
+        title: 'Mulai dari produk ini',
+        body: 'Ketuk kartu yang ditandai untuk lihat apakah produk ini layak dijual.',
+        cta: 'Buka produk ini',
+        onCta: () => dscOpenStarterDeepDive(),
       });
-    } else if (view === 'deepdive' && _ddCurrentP && !trkIsTracked(_ddCurrentP._listing || _ddKwListing) && !nuHintSeen('deepdive_track')) {
+    } else if (view === 'deepdive' && isJourneyBeginner() && userJourneyTier() === 0 && !nuHintSeen('deepdive_komp')) {
+      journeyMarkHintShown();
+      nuHintShow('deepdive_komp', {
+        title: 'Lihat siapa kompetitormu',
+        body: 'Baca ringkasan di atas, lalu buka tab kompetitor untuk bandingkan harga dan penjualan.',
+        cta: 'Lihat kompetitor',
+        onCta: () => ddSwitchTab('kompetitor'),
+      });
+    } else if (view === 'deepdive' && userJourneyTier() >= 1 && _ddCurrentP && !trkIsTracked(_ddCurrentP._listing || _ddKwListing) && !nuHintSeen('deepdive_track')) {
+      journeyMarkHintShown();
       nuHintShow('deepdive_track', {
-        title: 'Mulai lacak produk ini',
-        body: 'Klik Lacak Produk untuk memantau perubahan harga dan penjualan mingguan di Tracker.',
+        title: 'Simpan produk ini',
+        body: 'Lacak produk untuk cek lagi besok — kami kabari kalau ada perubahan penting.',
         cta: 'Lacak Produk',
         onCta: () => { const btn = document.getElementById('dd-track-btn'); if (btn) btn.click(); },
       });
@@ -26598,6 +26940,7 @@ function nuRefreshView(view) {
   if (view === 'dashboard') {
     const empty = !hasTracked;
     const leaderMode = typeof _effectiveLeaderMode === 'function' && _effectiveLeaderMode();
+    const lobby = isJourneyBeginner() && !leaderMode;
     if (leaderMode) {
       if (hbdPanel) hbdPanel.style.display = 'none';
       if (hbdReco)  hbdReco.style.display  = 'none';
@@ -26606,14 +26949,18 @@ function nuRefreshView(view) {
       if (hbdTrend) hbdTrend.style.display  = 'none';
       if (hbdStrip) hbdStrip.style.display  = 'none';
     } else {
-      if (hbdPanel) hbdPanel.style.display = empty ? '' : 'none';
-      // Recommendations always visible for student/independent (5–6 daily-random picks)
+      if (hbdPanel) hbdPanel.style.display = (empty && !lobby) ? '' : 'none';
       if (hbdReco && typeof hbdRenderNuReco === 'function') hbdRenderNuReco();
       else if (hbdReco) hbdReco.style.display = 'none';
-      if (hbdStats) hbdStats.style.display = empty ? 'none' : '';
-      if (hbdOpp)   hbdOpp.style.display   = empty ? 'none' : '';
-      if (hbdTrend) hbdTrend.style.display  = empty ? 'none' : '';
-      if (hbdStrip) hbdStrip.style.display  = empty ? 'none' : hbdStrip.style.display;
+      if (hbdStats) hbdStats.style.display = (empty || lobby) ? 'none' : '';
+      if (hbdOpp)   hbdOpp.style.display   = (empty || lobby) ? 'none' : '';
+      if (hbdTrend) hbdTrend.style.display  = (empty || lobby) ? 'none' : '';
+      if (hbdStrip) hbdStrip.style.display  = (empty || lobby) ? 'none' : hbdStrip.style.display;
+      const sub = document.getElementById('hbd-subtitle');
+      const recoTitle = document.getElementById('hbd-nu-reco-title');
+      if (sub && lobby) sub.textContent = 'Ini produk pilihan untukmu hari ini — ketuk untuk analisis lengkap.';
+      else if (sub && !lobby) sub.textContent = 'Selamat datang kembali — berikut ringkasan produk kamu hari ini.';
+      if (recoTitle && lobby) recoTitle.textContent = 'Produk untukmu hari ini';
     }
   }
 
@@ -27133,7 +27480,7 @@ function closeWelcomeVideo() {
 }
 
 // ════════════════════════════════════════════════════════════
-//  FIRST-LOGIN ONBOARDING — category + budget picker
+//  FIRST-LOGIN ONBOARDING — in-page Discover (3 steps)
 //  Prefs → user_onboarding_prefs · funnel → activity_events
 // ════════════════════════════════════════════════════════════
 const NU_ONB_LS_KEY = 'larisid_onboard_v1';
@@ -27170,7 +27517,12 @@ const NU_ONB_ICONS = {
   'Tanaman':           _NU_ONB_SVG('<path d="M12 22V8"/><path d="M12 8C12 4 9 2 5 2c0 4 3 6 7 6z"/><path d="M12 12c0-4 3-6 7-6 0 4-3 6-7 6z"/>'),
   '__default__':       _NU_ONB_SVG('<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>'),
 };
-let _nuOnb = { step: 1, cats: [], budget: -1, visible: false, payoff: false };
+const NU_ONB_MIN_CATS = 3;
+const NU_ONB_SELLER_OPTS = [
+  { id: 'existing',   label: 'Sudah punya toko', sub: 'Saya sudah berjualan di Shopee atau marketplace lain' },
+  { id: 'first_time', label: 'Baru mulai',       sub: 'Belum pernah jual online atau masih persiapan pertama' },
+];
+let _nuOnb = { step: 1, cats: [], budget: -1, sellerStatus: '', visible: false, payoff: false };
 let _nuOnbRichKey = null, _nuOnbRichBusy = false;
 
 // Personal (cohort-less) funnel event — RLS allows self-owned rows with null cohort.
@@ -27185,55 +27537,77 @@ async function logUserEvent(eventType, metadata) {
   } catch (_) {}
 }
 
-async function nuOnbMaybeShow() {
-  if (!currentUser || !_supabase) return;
-  if (localStorage.getItem(NU_ONB_LS_KEY)) return;
-  if ((window.location.hash || '').includes('type=recovery')) return;
+async function nuOnbCheckNeeded() {
+  if (!currentUser || !_supabase) return false;
+  if (localStorage.getItem(NU_ONB_LS_KEY)) return false;
+  if ((window.location.hash || '').includes('type=recovery')) return false;
   try {
     const { data } = await _supabase.from('user_onboarding_prefs')
       .select('completed_at,skipped_at').eq('user_id', currentUser.id).maybeSingle();
     if (data && (data.completed_at || data.skipped_at)) {
       try { localStorage.setItem(NU_ONB_LS_KEY, '1'); } catch (_) {}
-      return;
+      return false;
     }
   } catch (_) {}
-  nuOnbOpen();
-  void logUserEvent('onboarding_start', {});
+  return true;
+}
+
+function nuOnbSyncDiscoverLayout() {
+  const main = document.getElementById('dsc-discover-main');
+  const screen = document.getElementById('dsc-onb-screen');
+  const showOnb = _nuOnb.visible && _dashActiveView === 'discover';
+  if (main) main.style.display = showOnb ? 'none' : '';
+  if (screen) screen.style.display = showOnb ? '' : 'none';
+}
+
+function nuOnbShowInPage(fresh) {
+  if (fresh) {
+    _nuOnb.step = 1;
+    _nuOnb.cats = [];
+    _nuOnb.budget = -1;
+    _nuOnb.sellerStatus = '';
+    void logUserEvent('onboarding_start', {});
+  }
+  _nuOnb.visible = true;
+  nuOnbRender();
+  nuOnbSyncDiscoverLayout();
+  document.getElementById('dash-content')?.scrollTo(0, 0);
+}
+
+function nuOnbHideInPage() {
+  _nuOnb.visible = false;
+  nuOnbSyncDiscoverLayout();
 }
 
 function nuOnbOpen() {
-  _nuOnb.step = 1;
-  _nuOnb.visible = true;
-  nuOnbRender();
-  document.getElementById('nu-onb-overlay')?.classList.add('open');
-}
-
-function nuOnbClose() {
-  _nuOnb.visible = false;
-  document.getElementById('nu-onb-overlay')?.classList.remove('open');
+  switchDashView('discover');
+  nuOnbShowInPage(false);
 }
 
 function nuOnbRender() {
   const el = document.getElementById('nu-onb-body');
   if (!el) return;
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const dots = (n) => [1, 2, 3].map(i => `<div class="nu-onb-dot${i === n ? ' on' : ''}"></div>`).join('');
   if (_nuOnb.step === 1) {
+    const n = _nuOnb.cats.length;
+    const ready = n >= NU_ONB_MIN_CATS;
     el.innerHTML = `
-      <div class="nu-onb-step-lbl">Langkah 1 dari 2</div>
+      <div class="nu-onb-step-lbl">Langkah 1 dari 3</div>
       <div class="nu-onb-title">Kategori apa yang menarik buat kamu?</div>
-      <div class="nu-onb-sub">Pilih satu atau lebih — produk yang kami tampilkan bakal disesuaikan sama minat kamu.</div>
+      <div class="nu-onb-sub">Pilih minimal ${NU_ONB_MIN_CATS} kategori — produk yang kami tampilkan bakal disesuaikan sama minat kamu. <strong>${n}/${NU_ONB_MIN_CATS}</strong> dipilih.</div>
       <div class="nu-onb-cats">${NU_ONB_CATS.map((c, i) => `
         <div class="nu-onb-cat${_nuOnb.cats.includes(c) ? ' sel' : ''}" role="button" tabindex="0" aria-pressed="${_nuOnb.cats.includes(c)}" onclick="nuOnbToggleCat(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nuOnbToggleCat(${i});}">
           ${NU_ONB_ICONS[c] || NU_ONB_ICONS.__default__}
           <span>${esc(c)}</span>
         </div>`).join('')}
       </div>
-      <button type="button" class="nu-onb-cta" onclick="nuOnbNext()" ${_nuOnb.cats.length ? '' : 'disabled'}>Lanjut</button>
-      <div class="nu-onb-dots"><div class="nu-onb-dot on"></div><div class="nu-onb-dot"></div></div>`;
-  } else {
+      <button type="button" class="nu-onb-cta" onclick="nuOnbNext()" ${ready ? '' : 'disabled'}>Lanjut</button>
+      <div class="nu-onb-dots">${dots(1)}</div>`;
+  } else if (_nuOnb.step === 2) {
     el.innerHTML = `
-      <div class="nu-onb-step-lbl">Langkah 2 dari 2</div>
-      <div class="nu-onb-title">Berapa modal per produk yang kamu siapkan?</div>
+      <div class="nu-onb-step-lbl">Langkah 2 dari 3</div>
+      <div class="nu-onb-title">Berapa harga produk yang ingin kamu jual?</div>
       <div class="nu-onb-sub">Kami tampilkan produk dengan harga jual yang pas sama budget kamu.</div>
       <div class="nu-onb-budgets">${NU_ONB_BUDGETS.map((b, i) => `
         <div class="nu-onb-budget${_nuOnb.budget === i ? ' sel' : ''}" role="button" tabindex="0" aria-pressed="${_nuOnb.budget === i}" onclick="nuOnbPickBudget(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nuOnbPickBudget(${i});}">
@@ -27241,9 +27615,23 @@ function nuOnbRender() {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${_nuOnb.budget === i ? '#E8442A' : '#D1D5DB'}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
         </div>`).join('')}
       </div>
-      <button type="button" class="nu-onb-cta" onclick="nuOnbFinish()" ${_nuOnb.budget >= 0 ? '' : 'disabled'}>Lihat Produk Untukmu</button>
+      <button type="button" class="nu-onb-cta" onclick="nuOnbNext()" ${_nuOnb.budget >= 0 ? '' : 'disabled'}>Lanjut</button>
       <button type="button" class="nu-onb-back" onclick="_nuOnb.step=1;nuOnbRender();">Kembali</button>
-      <div class="nu-onb-dots"><div class="nu-onb-dot"></div><div class="nu-onb-dot on"></div></div>`;
+      <div class="nu-onb-dots">${dots(2)}</div>`;
+  } else {
+    el.innerHTML = `
+      <div class="nu-onb-step-lbl">Langkah 3 dari 3</div>
+      <div class="nu-onb-title">Kamu sudah jualan atau baru mulai?</div>
+      <div class="nu-onb-sub">Biar rekomendasi produk lebih relevan sama tahap kamu sekarang.</div>
+      <div class="nu-onb-budgets">${NU_ONB_SELLER_OPTS.map(o => `
+        <div class="nu-onb-budget${_nuOnb.sellerStatus === o.id ? ' sel' : ''}" role="button" tabindex="0" aria-pressed="${_nuOnb.sellerStatus === o.id}" onclick="nuOnbPickSeller('${o.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nuOnbPickSeller('${o.id}');}">
+          <div><div class="nb-l">${o.label}</div><div class="nb-s">${o.sub}</div></div>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${_nuOnb.sellerStatus === o.id ? '#E8442A' : '#D1D5DB'}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>`).join('')}
+      </div>
+      <button type="button" class="nu-onb-cta" onclick="nuOnbFinish()" ${_nuOnb.sellerStatus ? '' : 'disabled'}>Lihat Produk Untukmu</button>
+      <button type="button" class="nu-onb-back" onclick="_nuOnb.step=2;nuOnbRender();">Kembali</button>
+      <div class="nu-onb-dots">${dots(3)}</div>`;
   }
 }
 
@@ -27259,21 +27647,36 @@ function nuOnbPickBudget(i) {
   nuOnbRender();
 }
 
-function nuOnbNext() {
-  if (!_nuOnb.cats.length) return;
-  void logUserEvent('onboarding_cats', { categories: _nuOnb.cats });
-  _nuOnb.step = 2;
+function nuOnbPickSeller(id) {
+  _nuOnb.sellerStatus = id;
   nuOnbRender();
 }
 
+function nuOnbNext() {
+  if (_nuOnb.step === 1) {
+    if (_nuOnb.cats.length < NU_ONB_MIN_CATS) return;
+    void logUserEvent('onboarding_cats', { categories: _nuOnb.cats });
+    _nuOnb.step = 2;
+    nuOnbRender();
+    return;
+  }
+  if (_nuOnb.step === 2) {
+    if (_nuOnb.budget < 0) return;
+    const b = NU_ONB_BUDGETS[_nuOnb.budget];
+    void logUserEvent('onboarding_budget', { budget: b.label, min: b.min, max: b.max });
+    _nuOnb.step = 3;
+    nuOnbRender();
+  }
+}
+
 function nuOnbFinish() {
-  if (_nuOnb.budget < 0) return;
+  if (_nuOnb.budget < 0 || !_nuOnb.sellerStatus) return;
   const b = NU_ONB_BUDGETS[_nuOnb.budget];
-  void logUserEvent('onboarding_budget', { budget: b.label, min: b.min, max: b.max });
-  void logUserEvent('onboarding_complete', { categories: _nuOnb.cats, budget: b.label });
+  void logUserEvent('onboarding_seller', { seller_status: _nuOnb.sellerStatus });
+  void logUserEvent('onboarding_complete', { categories: _nuOnb.cats, budget: b.label, seller_status: _nuOnb.sellerStatus });
   try { localStorage.setItem(NU_ONB_LS_KEY, '1'); } catch (_) {}
   void nuOnbPersist(true);
-  nuOnbClose();
+  nuOnbHideInPage();
   nuOnbApplyToDiscover();
 }
 
@@ -27281,7 +27684,8 @@ function nuOnbSkip() {
   void logUserEvent('onboarding_skip', { step: _nuOnb.step });
   try { localStorage.setItem(NU_ONB_LS_KEY, '1'); } catch (_) {}
   void nuOnbPersist(false);
-  nuOnbClose();
+  nuOnbHideInPage();
+  switchDashView('dashboard');
 }
 
 async function nuOnbPersist(completed) {
@@ -27295,39 +27699,52 @@ async function nuOnbPersist(completed) {
     budget_max: b ? b.max : null,
     updated_at: now,
   };
+  if (_nuOnb.sellerStatus) payload.seller_status = _nuOnb.sellerStatus;
   // Omitted columns are left untouched on conflict, so a later "Lewati" from
   // the re-run picker never erases an earlier completed_at.
   if (completed) { payload.completed_at = now; payload.skipped_at = null; }
   else payload.skipped_at = now;
   try {
     await _supabase.from('user_onboarding_prefs').upsert(payload, { onConflict: 'user_id' });
+    if (completed && _nuOnb.sellerStatus) {
+      await _supabase.from('user_profiles').upsert({
+        user_id: currentUser.id,
+        seller_status: _nuOnb.sellerStatus,
+        updated_at: now,
+      }, { onConflict: 'user_id' });
+    }
   } catch (_) {}
 }
 
-// Payoff: land on Discover pre-filtered to the user's picks ("Untukmu").
+// Payoff: Discover pre-filtered to the user's picks ("Untukmu").
 function nuOnbApplyToDiscover() {
   _nuOnb.payoff = true;
   _nuOnbRichKey = null;
-  openProfile();
-  setTimeout(() => {
-    switchDashView('discover');
-    dscBuildCatChecks([]);
-    document.querySelectorAll('#dsc-cat-checks input[type=checkbox]').forEach(cb => {
-      cb.checked = _nuOnb.cats.includes(cb.value);
-    });
-    _dscSaveCatState();
-    const b = NU_ONB_BUDGETS[_nuOnb.budget] || { min: 0, max: null };
-    const minEl = document.getElementById('dsc-price-min');
-    const maxEl = document.getElementById('dsc-price-max');
-    if (minEl) minEl.value = String(b.min || 0);
-    if (maxEl) maxEl.value = String(b.max == null ? 500000 : b.max);
-    dscUpdateDualRange('price');
-    nuOnbShowBanner();
-    // Same path as the drawer's "Terapkan Filter" — snaps UI state, busts the
-    // top-sellers cache, and forces a fresh server fetch with these filters.
-    dscTerapkanFilter();
-    void logUserEvent('onboarding_results', { categories: _nuOnb.cats });
-  }, 80);
+  switchDashView('discover');
+  dscBuildCatChecks([]);
+  document.querySelectorAll('#dsc-cat-checks input[type=checkbox]').forEach(cb => {
+    cb.checked = _nuOnb.cats.includes(cb.value);
+  });
+  _dscSaveCatState();
+  const b = NU_ONB_BUDGETS[_nuOnb.budget] || { min: 0, max: null };
+  const minEl = document.getElementById('dsc-price-min');
+  const maxEl = document.getElementById('dsc-price-max');
+  if (minEl) minEl.value = String(b.min || 0);
+  if (maxEl) maxEl.value = String(b.max == null ? 500000 : b.max);
+  dscUpdateDualRange('price');
+  const sortEl = document.getElementById('dsc-sort');
+  const skorEl = document.getElementById('dsc-skor-min');
+  const skorLbl = document.getElementById('dsc-skor-min-lbl');
+  if (_nuOnb.sellerStatus === 'first_time') {
+    if (sortEl) sortEl.value = 'score-desc';
+    if (skorEl) { skorEl.value = 45; if (skorLbl) skorLbl.textContent = '45'; }
+  } else if (_nuOnb.sellerStatus === 'existing') {
+    if (sortEl) sortEl.value = 'tren-desc';
+    if (skorEl) { skorEl.value = 0; if (skorLbl) skorLbl.textContent = '0'; }
+  }
+  nuOnbShowBanner();
+  dscTerapkanFilter();
+  void logUserEvent('onboarding_results', { categories: _nuOnb.cats, seller_status: _nuOnb.sellerStatus });
 }
 
 function nuOnbShowBanner() {
@@ -30521,14 +30938,12 @@ async function cohortPlannerGcalImportSelected() {
 </div>
 
 <!-- ══════════════════════════════════════════════════
-     FIRST-LOGIN ONBOARDING — category + budget picker
-     Shown once per user (user_onboarding_prefs). Leads to
-     Discover pre-filtered to their picks → Deep Dive.
+     FIRST-LOGIN ONBOARDING — in-page Discover flow
+     (markup lives in #dash-view-discover · #dsc-onb-screen)
 ═══════════════════════════════════════════════════ -->
 <style>
-#nu-onb-overlay{display:none;position:fixed;inset:0;background:rgba(26,31,60,.72);z-index:1200;align-items:center;justify-content:center;padding:18px;}
-#nu-onb-overlay.open{display:flex;}
-.nu-onb-card{background:#F7F6F3;border-radius:16px;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;padding:28px 26px 24px;box-shadow:0 24px 80px rgba(0,0,0,.35);position:relative;}
+.dsc-onb-screen{padding:8px 0 32px;}
+.dsc-onb-wrap{max-width:640px;margin:0 auto;padding:28px 24px 24px;background:#F7F6F3;border:1px solid #EDE9E3;border-radius:16px;position:relative;}
 .nu-onb-skip{position:absolute;top:16px;right:18px;background:none;border:none;font-family:inherit;font-size:.74rem;font-weight:600;color:#9CA3AF;cursor:pointer;padding:4px 6px;}
 .nu-onb-skip:hover{color:#6B7280;}
 .nu-onb-step-lbl{font-size:.68rem;font-weight:700;letter-spacing:.08em;color:#E8442A;text-transform:uppercase;margin-bottom:6px;}
@@ -30552,14 +30967,8 @@ async function cohortPlannerGcalImportSelected() {
 .nu-onb-dots{display:flex;gap:6px;justify-content:center;margin-top:14px;}
 .nu-onb-dot{width:7px;height:7px;border-radius:50%;background:#E5E7EB;}
 .nu-onb-dot.on{background:#E8442A;}
-@media(max-width:560px){#nu-onb-overlay{padding:0;align-items:stretch;}.nu-onb-card{max-width:none;max-height:none;border-radius:0;height:100%;}}
+@media(max-width:560px){.dsc-onb-wrap{border-radius:12px;padding:22px 16px 20px;}}
 </style>
-<div id="nu-onb-overlay" role="dialog" aria-modal="true" aria-label="Pilih minat kamu">
-  <div class="nu-onb-card">
-    <button type="button" class="nu-onb-skip" onclick="nuOnbSkip()">Lewati</button>
-    <div id="nu-onb-body"></div>
-  </div>
-</div>
 
 <!-- ════════════════════════════════════
      PROFILE PAGE
