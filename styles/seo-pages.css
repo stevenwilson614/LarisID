@@ -1,9 +1,9 @@
 :root {
-  --orange: #E8442A;
-  --navy: #1A1F3C;
+  --orange: #B5202A;
+  --navy: #1A1A1A;
   --td: #111;
   --tm: #6B7280;
-  --bg: #F7F6F3;
+  --bg: #F5EFE0;
   --card: #fff;
   --border: #E5E7EB;
   --green: #059669;
@@ -79,7 +79,7 @@ article p, article li, .card p, .card li {
 article ul, article ol, .card ul { margin: 0 0 16px 20px; }
 
 .summary-box {
-  background: linear-gradient(135deg, #FFF0ED 0%, #fff 100%);
+  background: linear-gradient(135deg, #F9EAE4 0%, #fff 100%);
   border: 1px solid #FECACA;
   border-radius: 12px;
   padding: 22px 24px;
