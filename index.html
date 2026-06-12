@@ -2231,27 +2231,20 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dd-tab{font-size:.8rem;font-weight:600;color:#9CA3AF;padding:9px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;}
 .dd-tab.active{color:#E8442A;border-bottom-color:#E8442A;}
 .dd-tab:hover:not(.active){color:#374151;}
-.dd-mp{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:18px 20px;margin-bottom:16px;}
-.dd-mp-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
-.dd-mp-title{font-size:1rem;font-weight:800;color:#1A1F3C;}
-.dd-mp-sub{font-size:.74rem;color:#6B7280;margin-top:2px;}
-.dd-mp-basis{font-size:.7rem;color:#9CA3AF;display:inline-flex;align-items:center;gap:5px;max-width:280px;text-align:right;line-height:1.35;}
-.dd-mp-link{font-size:.72rem;font-weight:700;color:#E8442A;cursor:pointer;white-space:nowrap;background:none;border:none;font-family:inherit;padding:0;}
-.dd-mp-link:hover{text-decoration:underline;}
-.dd-mp-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
-.dd-mp-card{position:relative;border:1px solid #E5E7EB;border-radius:12px;padding:15px 14px;display:flex;flex-direction:column;gap:12px;background:#fff;cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s;}
-.dd-mp-card:hover{border-color:#D1D5DB;box-shadow:0 3px 10px rgba(0,0,0,.05);transform:translateY(-1px);}
-.dd-mp-card.best{border-color:#F5A623;box-shadow:0 0 0 1px #F5A623;}
-.dd-mp-badge{position:absolute;top:-10px;left:12px;display:inline-flex;align-items:center;gap:4px;background:#FFF7E6;border:1px solid #F5A623;color:#B45309;font-size:.6rem;font-weight:800;padding:3px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.02em;}
-.dd-mp-brand{display:flex;align-items:center;gap:8px;min-width:0;}
-.dd-mp-name{font-size:.85rem;font-weight:800;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.dd-mp-mlabel{font-size:.62rem;color:#9CA3AF;display:flex;align-items:center;gap:4px;margin-bottom:3px;}
-.dd-mp-info{cursor:help;display:inline-flex;}
-.dd-mp-fee{font-size:1.05rem;font-weight:800;color:#1A1F3C;}
-.dd-mp-take{font-size:1.05rem;font-weight:800;color:#1A1F3C;}
-.dd-mp-card.best .dd-mp-fee,.dd-mp-card.best .dd-mp-take{color:#16A34A;}
-@media(max-width:1000px){.dd-mp-grid{grid-template-columns:repeat(3,1fr);}}
-@media(max-width:720px){.dd-mp-head{flex-direction:column;}.dd-mp-basis{text-align:left;max-width:none;}.dd-mp-grid{display:flex;overflow-x:auto;gap:10px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:4px;}.dd-mp-grid::-webkit-scrollbar{display:none;}.dd-mp-card{min-width:155px;scroll-snap-align:start;}}
+.dd-mp{background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:0;margin-bottom:16px;overflow:hidden;}
+.dd-mp-strip{display:flex;align-items:stretch;}
+.dd-mp-item{flex:1;display:flex;align-items:center;gap:8px;padding:10px 14px;min-width:0;background:#fff;cursor:pointer;border:none;border-right:1px solid #E5E7EB;font-family:inherit;text-align:left;transition:background .15s;}
+.dd-mp-item:last-child{border-right:none;}
+.dd-mp-item:hover{background:#F9FAFB;}
+.dd-mp-item.best{background:#F0FDF4;}
+.dd-mp-item.best:hover{background:#DCFCE7;}
+.dd-mp-badge{display:inline-flex;align-items:center;gap:4px;background:#FFF7E6;border:1px solid #F5A623;color:#B45309;font-size:.6rem;font-weight:800;padding:3px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.02em;}
+.dd-mp-brand{display:flex;align-items:center;gap:7px;min-width:0;flex:1;}
+.dd-mp-brand svg{width:22px;height:22px;}
+.dd-mp-name{font-size:.78rem;font-weight:700;color:#1A1F3C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dd-mp-pct{font-size:.82rem;font-weight:800;color:#374151;white-space:nowrap;flex-shrink:0;}
+.dd-mp-item.best .dd-mp-pct{color:#16A34A;}
+@media(max-width:720px){.dd-mp-strip{overflow-x:auto;-webkit-overflow-scrolling:touch;}.dd-mp-strip::-webkit-scrollbar{display:none;}.dd-mp-item{flex:0 0 auto;min-width:148px;}}
 .dd-row3{display:grid;grid-template-columns:1.3fr 1fr 0.9fr;gap:16px;margin-bottom:16px;}
 @media(max-width:960px){.dd-row3{grid-template-columns:1fr;}}
 .dd-row2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;}
@@ -19553,35 +19546,15 @@ function ddRenderFeeStrip(p){
     .map(plat => ({ plat, fee: platformFeePerProduct(plat, cat, price) }))
     .sort((a, b) => price > 0 ? a.fee.totalRp - b.fee.totalRp : a.fee.pctOnly - b.fee.pctOnly);
   const minVal = order.length ? (price > 0 ? order[0].fee.totalRp : order[0].fee.pctOnly) : 0;
-  const cards = order.map(o => {
+  const items = order.map(o => {
     const f = PLATFORM_FEES[o.plat];
     const best = price > 0 ? o.fee.totalRp === minVal : o.fee.pctOnly === minVal;
-    const flatHint = o.fee.flat ? ` + Rp ${o.fee.flat.toLocaleString('id-ID')}/order` : '';
-    return `<div class="dd-mp-card${best ? ' best' : ''}" onclick="ddSwitchTab('biaya')">
-      ${best ? `<div class="dd-mp-badge">${ECOM_ICON_TROPHY} Terbaik</div>` : ''}
-      <div class="dd-mp-brand">${f.logo}<span class="dd-mp-name">${f.label}</span></div>
-      <div>
-        <div class="dd-mp-mlabel">Biaya Platform <span class="dd-mp-info" title="Komisi + program gratis ongkir${flatHint ? ' (biaya proses pesanan ditampilkan terpisah di bawah)' : ''} untuk kategori ${cat}.">${ECOM_ICON_Q}</span></div>
-        <div class="dd-mp-fee">${ecomFmtPct(o.fee.pctOnly)}</div>
-      </div>
-      ${price > 0 ? `<div>
-        <div class="dd-mp-mlabel">Dibayar / Produk <span class="dd-mp-info" title="Estimasi potongan platform per unit terjual (harga ${ecomFmtRp(price)} × ${ecomFmtPct(o.fee.pctOnly)}${flatHint}). Belum termasuk modal, ongkir, iklan &amp; pajak.">${ECOM_ICON_Q}</span></div>
-        <div class="dd-mp-take">${ecomFmtRp(o.fee.totalRp)}</div>
-      </div>` : ''}
-    </div>`;
+    return `<button type="button" class="dd-mp-item${best ? ' best' : ''}" onclick="ddSwitchTab('biaya')" title="Lihat rincian biaya ${f.label}">
+      <span class="dd-mp-brand">${f.logo}<span class="dd-mp-name">${f.label}</span></span>
+      <span class="dd-mp-pct">${ecomFmtPct(o.fee.pctOnly)}</span>
+    </button>`;
   }).join('');
-  el.innerHTML = `
-    <div class="dd-mp-head">
-      <div>
-        <div class="dd-mp-title">Perbandingan Marketplace</div>
-        <div class="dd-mp-sub">Estimasi biaya platform per produk terjual</div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-        ${price > 0 ? `<div class="dd-mp-basis">${ECOM_ICON_Q}<span>Perhitungan berdasarkan harga produk ${ecomFmtRp(price)}</span></div>` : ''}
-        <button class="dd-mp-link" onclick="ddSwitchTab('biaya')">Lihat rincian biaya →</button>
-      </div>
-    </div>
-    <div class="dd-mp-grid">${cards}</div>`;
+  el.innerHTML = `<div class="dd-mp-strip">${items}</div>`;
 }
 // Detail tab — per-platform fee breakdown + where the money goes
 function ddRenderFees(){
