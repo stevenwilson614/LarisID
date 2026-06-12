@@ -6,3 +6,8 @@
 supabase/.env
 supabase/.env.local
 supabase/.temp/
+
+node_modules/
+dist/
+.astro/
+.preview-onboarding.html
