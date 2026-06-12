@@ -7114,15 +7114,19 @@ html,body{overflow-x:hidden;max-width:100%;}
                     <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
                       <div>
                         <div style="font-size:.82rem;font-weight:700;color:#111827;">Permintaan Pasar</div>
-                        <div style="font-size:.7rem;color:#6B7280;margin-top:2px;" id="ap-demand-subtitle">Total terjual di keyword ini (data terkini)</div>
+                        <div style="font-size:.7rem;color:#6B7280;margin-top:2px;" id="ap-demand-subtitle">Omset &amp; unit terjual mingguan — semua toko di keyword</div>
                       </div>
                       <div style="display:flex;gap:0;background:#F3F4F6;border-radius:7px;padding:3px;">
-                        <button class="ap-gran-btn" data-g="minggu" onclick="apSetGran('minggu')" style="padding:4px 12px;border:none;border-radius:5px;font-size:.68rem;font-weight:600;cursor:pointer;background:transparent;color:#6B7280;">Mingguan (est.)</button>
-                        <button class="ap-gran-btn active" data-g="bulan" onclick="apSetGran('bulan')" style="padding:4px 12px;border:none;border-radius:5px;font-size:.68rem;font-weight:600;cursor:pointer;background:#fff;color:#E8442A;box-shadow:0 1px 3px rgba(0,0,0,.1);">Bulanan</button>
+                        <button class="ap-gran-btn active" data-g="minggu" onclick="apSetGran('minggu')" style="padding:4px 12px;border:none;border-radius:5px;font-size:.68rem;font-weight:600;cursor:pointer;background:#fff;color:#E8442A;box-shadow:0 1px 3px rgba(0,0,0,.1);">Mingguan</button>
+                        <button class="ap-gran-btn" data-g="bulan" onclick="apSetGran('bulan')" style="padding:4px 12px;border:none;border-radius:5px;font-size:.68rem;font-weight:600;cursor:pointer;background:transparent;color:#6B7280;">Bulanan</button>
                       </div>
                     </div>
+                    <div class="dd-chart-legend" style="margin-bottom:8px;">
+                      <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#E8442A;"></div>Omset pasar (Rp)</div>
+                      <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#4F46E5;"></div>Unit terjual</div>
+                    </div>
                     <div style="position:relative;height:240px;"><canvas id="ap-demand-chart"></canvas></div>
-                    <div style="margin-top:10px;font-size:.68rem;color:#9CA3AF;display:flex;align-items:center;gap:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg><span id="ap-demand-note">Puncak permintaan biasanya terjadi di Agu – Okt</span></div>
+                    <div style="margin-top:10px;font-size:.68rem;color:#9CA3AF;display:flex;align-items:center;gap:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg><span id="ap-demand-note">Data scrape mingguan sejak 9 Apr 2026 — agregat semua listing di keyword</span></div>
                   </div>
 
                   <!-- Bottom row: Competition + Top Products -->
@@ -7444,24 +7448,18 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <!-- LEFT -->
                 <div style="display:flex;flex-direction:column;gap:14px;">
 
-                  <!-- Tren Penjualan -->
+                  <!-- Tren Omset & Unit (full scrape history) -->
                   <div class="dd-card fb-flaggable" style="padding:16px;" data-fb-element="Tren Penjualan" data-fb-section="Analisis Tren">
-                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-                      <div style="font-size:.85rem;font-weight:700;color:#111827;">Tren Penjualan <span style="color:#9CA3AF;font-weight:400;font-size:.75rem;">ⓘ</span></div>
-                      <div style="display:flex;gap:6px;">
-                        <select id="tren-metric" onchange="trenRender()" style="padding:5px 8px;border:1px solid #E5E7EB;border-radius:6px;font-size:.68rem;background:#fff;">
-                          <option value="sold">Metric: Terjual</option>
-                          <option value="omset">Metric: Omset</option>
-                        </select>
-                      </div>
+                    <div style="margin-bottom:10px;">
+                      <div style="font-size:.85rem;font-weight:700;color:#111827;">Tren Omset &amp; Unit Terjual</div>
+                      <div style="font-size:.7rem;color:#6B7280;margin-top:2px;" id="tren-chart-subtitle">Semua minggu scrape sejak 9 Apr 2026</div>
                     </div>
-                    <!-- Mingguan/Bulanan/Tahunan -->
-                    <div style="display:flex;gap:0;background:#F3F4F6;border-radius:8px;padding:3px;width:fit-content;margin-bottom:12px;" id="tren-gran-wrap">
-                      <button class="tren-gran-btn" data-g="minggu" onclick="trenSetGran('minggu')" style="padding:4px 12px;border:none;border-radius:6px;font-size:.68rem;font-weight:600;cursor:pointer;background:transparent;color:#6B7280;">Mingguan</button>
-                      <button class="tren-gran-btn active" data-g="bulan" onclick="trenSetGran('bulan')" style="padding:4px 12px;border:none;border-radius:6px;font-size:.68rem;font-weight:600;cursor:pointer;background:#fff;color:#E8442A;box-shadow:0 1px 3px rgba(0,0,0,.1);">Bulanan</button>
-                      <button class="tren-gran-btn" data-g="tahun" onclick="trenSetGran('tahun')" style="padding:4px 12px;border:none;border-radius:6px;font-size:.68rem;font-weight:600;cursor:pointer;background:transparent;color:#6B7280;">Tahunan</button>
+                    <div class="dd-chart-legend" style="margin-bottom:8px;">
+                      <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#E8442A;"></div>Omset (Rp)</div>
+                      <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#4F46E5;"></div>Unit Terjual</div>
+                      <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#10B981;border-style:dashed;height:0;border-top:2.5px dashed #10B981;background:transparent;"></div>Forecast</div>
                     </div>
-                    <div style="position:relative;height:220px;">
+                    <div style="position:relative;height:240px;">
                       <canvas id="tren-main-chart"></canvas>
                     </div>
                     <!-- Stat cards -->
@@ -7484,45 +7482,6 @@ html,body{overflow-x:hidden;max-width:100%;}
                         <div style="font-size:.58rem;color:#6B7280;margin-bottom:3px;">Pertumbuhan (est.)</div>
                         <div style="font-size:.88rem;font-weight:700;" id="tren-growth" style="color:#16A34A;">—</div>
                         <div style="font-size:.6rem;color:#9CA3AF;">minggu terakhir vs pertama</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Perbandingan Tren -->
-                  <div class="dd-card fb-flaggable" style="padding:16px;" data-fb-element="Perbandingan Tren" data-fb-section="Analisis Tren">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-                      <div>
-                        <div style="font-size:.85rem;font-weight:700;color:#111827;">Perbandingan Tren <span style="color:#9CA3AF;font-weight:400;font-size:.75rem;">ⓘ</span></div>
-                        <div style="font-size:.62rem;color:#6B7280;margin-bottom:8px;">Bandingkan dengan kategori &amp; kompetitor</div>
-                      </div>
-                      <button onclick="trenDownloadCSV()" style="padding:5px 10px;border:1px solid #E5E7EB;border-radius:6px;font-size:.65rem;font-weight:600;background:#fff;cursor:pointer;">&#8681; Download CSV</button>
-                    </div>
-                    <!-- Sub-metric tabs -->
-                    <div style="display:flex;gap:6px;margin-bottom:10px;">
-                      <button class="tren-cmp-btn active" data-m="sold" onclick="trenSetCmpMetric('sold')" style="padding:5px 12px;border:1px solid #E8442A;border-radius:20px;font-size:.65rem;font-weight:600;background:#FEF2F0;color:#E8442A;cursor:pointer;">Terjual</button>
-                      <button class="tren-cmp-btn" data-m="omset" onclick="trenSetCmpMetric('omset')" style="padding:5px 12px;border:1px solid #E5E7EB;border-radius:20px;font-size:.65rem;font-weight:600;background:#fff;color:#6B7280;cursor:pointer;">Nilai Penjualan</button>
-                      <button class="tren-cmp-btn" data-m="price" onclick="trenSetCmpMetric('price')" style="padding:5px 12px;border:1px solid #E5E7EB;border-radius:20px;font-size:.65rem;font-weight:600;background:#fff;color:#6B7280;cursor:pointer;">Rata-rata Harga</button>
-                    </div>
-                    <!-- Checkboxes -->
-                    <div style="display:flex;gap:12px;margin-bottom:10px;font-size:.68rem;flex-wrap:wrap;">
-                      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="tren-chk-this" checked onchange="trenRenderCmp()"><span style="color:#E8442A;font-weight:600;">Produk Ini</span></label>
-                      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="tren-chk-cat" checked onchange="trenRenderCmp()"><span style="color:#3B82F6;font-weight:600;">Kategori (<span id="tren-cat-label">—</span>)</span></label>
-                      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="tren-chk-top" checked onchange="trenRenderCmp()"><span style="color:#16A34A;font-weight:600;">Top 10 Kompetitor</span></label>
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start;">
-                      <div style="position:relative;height:200px;"><canvas id="tren-cmp-chart"></canvas></div>
-                      <div>
-                        <table style="width:100%;border-collapse:collapse;font-size:.62rem;" id="tren-data-table">
-                          <thead><tr style="border-bottom:1px solid #F3F4F6;">
-                            <th style="text-align:left;padding:5px 4px;color:#9CA3AF;font-weight:600;">Periode</th>
-                            <th style="text-align:right;padding:5px 4px;color:#9CA3AF;font-weight:600;">Terjual (est.)</th>
-                            <th style="text-align:right;padding:5px 4px;color:#9CA3AF;font-weight:600;">Omset (est.)</th>
-                          </tr></thead>
-                          <tbody id="tren-data-tbody"></tbody>
-                        </table>
-                        <div style="text-align:center;margin-top:8px;">
-                          <button id="tren-show-all-btn" onclick="trenShowAllData()" style="padding:6px 16px;border:1px solid #E5E7EB;border-radius:6px;font-size:.65rem;font-weight:600;background:#fff;cursor:pointer;">Lihat semua data</button>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -16438,6 +16397,25 @@ const DSC_DEFAULT_MIN_SCOR  = 45;
 
 // fmt helpers
 const _dscFmt = v => v >= 1000000 ? `Rp ${(v/1000000).toFixed(1)} jt` : v >= 1000 ? `Rp ${(v/1000).toFixed(0)} rb` : `Rp ${Math.round(v)}`;
+const _dscFmtRpFull = v => 'Rp ' + Math.round(v || 0).toLocaleString('id-ID');
+const _ddSoldReviewMult = cat => ({
+  'Rumah': 2.94, 'Fashion': 2.77, 'Dapur': 3.41, 'Kamar Mandi': 4.21, 'Keamanan': 3.40,
+  'Kecantikan': 2.70, 'Motor & Mobil': 2.96, 'Elektronik': 3.10, 'HP & Gadget': 3.40,
+  'Hewan Peliharaan': 3.95, 'Sepeda': 2.58, 'Taman': 3.50, 'Olahraga': 2.68, 'Bayi & Anak': 4.12,
+  'Hobi & Kerajinan': 2.48, 'Kesehatan': 2.38, 'Tanaman': 3.63, 'Alat Tulis': 2.87,
+  'Outdoor & Camping': 2.67,
+}[cat] || 3.20);
+/** Exact sold when Shopee shows a number; review-based estimate when stored value is a 10rb+ bucket. */
+function _dscFmtSold(sold, reviews, category) {
+  const s = Math.round(sold || 0);
+  if (s < 10000) return s.toLocaleString('id-ID');
+  const rev = reviews || 0;
+  if (rev > 0) {
+    const est = Math.round(rev * _ddSoldReviewMult(category));
+    if (est >= s) return est.toLocaleString('id-ID');
+  }
+  return s.toLocaleString('id-ID') + '+';
+}
 
 // Dual range slider update
 function dscUpdateDualRange(key) {
@@ -18033,8 +18011,8 @@ async function ddLoadKeywordContext(listing) {
   const g = id => document.getElementById(id);
   if (g('dd-listing-mini-name'))  g('dd-listing-mini-name').textContent  = listing.product_name || '—';
   if (g('dd-listing-mini-store')) g('dd-listing-mini-store').textContent = listing.store_name || '—';
-  if (g('dd-listing-mini-price')) g('dd-listing-mini-price').textContent = _dscFmt(listing.price || 0);
-  if (g('dd-listing-mini-sold'))  g('dd-listing-mini-sold').textContent  = (listing.total_sold || 0).toLocaleString('id-ID');
+  if (g('dd-listing-mini-price')) g('dd-listing-mini-price').textContent = _dscFmtRpFull(listing.price || 0);
+  if (g('dd-listing-mini-sold'))  g('dd-listing-mini-sold').textContent  = _dscFmtSold(listing.total_sold, listing.reviews, listing.category);
 
   const loadEl = document.getElementById('dd-kw-sellers-loading');
   const tableEl = document.getElementById('dd-kw-sellers-table');
@@ -18085,7 +18063,7 @@ async function ddLoadKeywordContext(listing) {
     if (g('dd-kw-rank'))       g('dd-kw-rank').textContent       = rankDisplay;
     if (g('dd-kw-pos-fill'))   g('dd-kw-pos-fill').style.width   = posPct + '%';
     if (g('dd-kw-rank-sub'))   g('dd-kw-rank-sub').textContent   = `dari ${rows.length} listing`;
-    if (g('dd-kw-med-price'))  g('dd-kw-med-price').textContent  = medianPrice > 0 ? _dscFmt(medianPrice) : '—';
+    if (g('dd-kw-med-price'))  g('dd-kw-med-price').textContent  = medianPrice > 0 ? _dscFmtRpFull(medianPrice) : '—';
     if (g('dd-kw-sig-count'))  g('dd-kw-sig-count').textContent  = sigSellers.length;
     if (g('dd-kw-total-sold')) g('dd-kw-total-sold').textContent = totalSold.toLocaleString('id-ID');
     if (g('dd-listing-mini-share')) g('dd-listing-mini-share').textContent = thisShare > 0 ? thisShare.toFixed(1) + '%' : '< 0.1%';
@@ -18110,8 +18088,8 @@ async function ddLoadKeywordContext(listing) {
               </div>
             </div>
           </td>
-          <td style="font-weight:600;white-space:nowrap;">${_dscFmt(r.price||0)}</td>
-          <td style="font-weight:600;">${(r.total_sold||0).toLocaleString('id-ID')}</td>
+          <td style="font-weight:600;white-space:nowrap;">${_dscFmtRpFull(r.price||0)}</td>
+          <td style="font-weight:600;">${_dscFmtSold(r.total_sold, r.reviews, listing.category)}</td>
           <td>
             <div class="dd-kw-share-bar">
               <div class="dd-kw-share-track"><div class="dd-kw-share-fill" style="width:${barPct}%;background:${isThis?'#E8442A':'#3B82F6'};"></div></div>
@@ -18698,16 +18676,9 @@ function kwUse(kw) {
 }
 
 // ── TREN HISTORIS TAB ─────────────────────────────────────────────────────────
+const LARIS_SCRAPE_START = '2026-04-09';
 let _trenData      = null;
-let _trenGran      = 'bulan';
-let _trenCmpMetric = 'sold';
-let _trenDataShowing = 5;
 let _trenMainChart = null;
-let _trenCmpChart  = null;
-
-// Indonesian month seasonality multipliers (Jan–Dec)
-const TREN_SEASON = [0.80, 0.82, 0.88, 0.92, 0.95, 0.90, 0.98, 1.10, 1.20, 1.15, 0.95, 1.05];
-const TREN_MONTHS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 
 async function ddRenderTren() {
   const listing = _ddKwListing || _ddCurrentP?._listing;
@@ -18726,9 +18697,9 @@ async function ddRenderTren() {
         .select('scraped_at,total_sold,price,reviews')
         .eq('item_id', listing.item_id)
         .eq('shop_id', listing.shop_id)
-        // Pull latest points first, then sort ascending for interval math.
+        .gte('scraped_at', `${LARIS_SCRAPE_START}T00:00:00`)
         .order('scraped_at', { ascending: false })
-        .limit(20);
+        .limit(80);
       dbRows = (data || []).slice().sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
       if (!dbRows.length) {
         const { data: d2 } = await _supabase
@@ -18736,12 +18707,22 @@ async function ddRenderTren() {
           .select('scraped_at,total_sold,price,reviews')
           .eq('item_id', String(listing.item_id))
           .eq('shop_id', String(listing.shop_id))
+          .gte('scraped_at', `${LARIS_SCRAPE_START}T00:00:00`)
           .order('scraped_at', { ascending: false })
-          .limit(20);
+          .limit(80);
         dbRows = (d2 || []).slice().sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
       }
-      // Remove exact-timestamp duplicates (multiple push-runs create identical rows)
       { const seenTs = new Set(); dbRows = dbRows.filter(r => { if (seenTs.has(r.scraped_at)) return false; seenTs.add(r.scraped_at); return true; }); }
+      {
+        const dayMap = new Map();
+        for (const r of dbRows) {
+          const day = r.scraped_at?.slice(0, 10);
+          if (!day) continue;
+          const cur = dayMap.get(day);
+          if (!cur || (r.total_sold ?? 0) > (cur.total_sold ?? 0)) dayMap.set(day, r);
+        }
+        dbRows = [...dayMap.values()].sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
+      }
     }
 
     if (dbRows.length < 2) {
@@ -18749,23 +18730,7 @@ async function ddRenderTren() {
       const prevSold = _dscPrevMap[prevKey];
       const currDate = listing.scraped_at ? new Date(listing.scraped_at) : new Date();
       const currRow  = { scraped_at: currDate.toISOString(), total_sold: listing.total_sold, price: listing.price, reviews: listing.reviews };
-      // If only one/no point exists, estimate velocity from similar products first.
-      const peerResult = await ddEstimateTrendFromPeers(listing);
-      if (peerResult && peerResult.medianRate > 0) {
-        const rate = peerResult.medianRate;
-        const anchor = currDate;
-        const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
-        const anchorSold = listing.total_sold || 0;
-        function _synRow(weekOffset) {
-          return {
-            scraped_at: new Date(anchor.getTime() + weekOffset * MS_WEEK).toISOString(),
-            total_sold: Math.max(0, Math.round(anchorSold + rate * weekOffset)),
-            price: listing.price,
-            reviews: null,
-          };
-        }
-        dbRows = [_synRow(-3), _synRow(-2), _synRow(-1), _synRow(0), _synRow(1)];
-      } else if (dbRows.length === 1) {
+      if (dbRows.length === 1) {
         const dbDate = new Date(dbRows[0].scraped_at);
         dbRows = dbDate < currDate ? [dbRows[0], currRow] : [currRow, dbRows[0]];
       } else if (prevSold != null) {
@@ -18853,11 +18818,11 @@ async function ddRenderTren() {
     function _wKey(d)   { return _mondayOf(d).toISOString().slice(0, 10); }
     function _wLabel(d) { const m = _mondayOf(d); return `${m.getDate()} ${_MO[m.getMonth()]}`; }
 
-    // Seed weekMap with all scrape dates so same-date pairs still produce at least one entry
+    const epochMon = _mondayOf(new Date(LARIS_SCRAPE_START + 'T12:00:00'));
     const weekMap = new Map();
     for (const r of dbRows) {
       const key = _wKey(new Date(r.scraped_at));
-      if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(new Date(r.scraped_at)), units: 0, omset: 0, firstDate: _mondayOf(new Date(r.scraped_at)) });
+      if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(new Date(r.scraped_at)), units: 0, omset: 0, days: 0, firstDate: _mondayOf(new Date(r.scraped_at)) });
     }
     for (let i = 0; i < dbRows.length - 1; i++) {
       const t0 = new Date(dbRows[i].scraped_at), t1 = new Date(dbRows[i+1].scraped_at);
@@ -18870,15 +18835,20 @@ async function ddRenderTren() {
         if (date > t1) break;
         const frac = d / daysDiff;
         const key  = _wKey(date);
-        if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(date), units: 0, omset: 0, firstDate: _mondayOf(date) });
+        if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(date), units: 0, omset: 0, days: 0, firstDate: _mondayOf(date) });
         const wk = weekMap.get(key);
         wk.units += dUnit;
         wk.omset += dUnit * (p0 + (p1 - p0) * frac);
+        wk.days  += 1;
       }
     }
     const weeks = [...weekMap.values()]
+      .filter(w => w.firstDate >= epochMon)
       .sort((a, b) => a.firstDate - b.firstDate)
-      .map(w => ({ label: w.label, units: Math.round(w.units), omset: Math.round(w.omset), firstDate: w.firstDate }));
+      .map(w => {
+        const scale = w.days > 0 && w.days < 7 ? 7 / w.days : 1;
+        return { label: w.label, units: Math.round(w.units * scale), omset: Math.round(w.omset * scale), firstDate: w.firstDate };
+      });
 
     const totalUnitsRaw = weeks.reduce((s, w) => s + w.units, 0);
     if (!weeks.length || totalUnitsRaw === 0) {
@@ -18897,20 +18867,7 @@ async function ddRenderTren() {
       return;
     }
 
-    // Aggregate weeks into months
-    const monthMap = new Map();
-    for (const w of weeks) {
-      const d = w.firstDate instanceof Date ? w.firstDate : new Date(w.firstDate);
-      const mKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-      const mLabel = _MO[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2);
-      if (!monthMap.has(mKey)) monthMap.set(mKey, { label: mLabel, units: 0, omset: 0 });
-      const m = monthMap.get(mKey);
-      m.units += w.units;
-      m.omset += w.omset;
-    }
-    const months = [...monthMap.values()];
-
-    _trenData = { weeks, months, listing, category: listing.category || 'Umum', isEstimated, dbRows };
+    _trenData = { weeks, listing, category: listing.category || 'Umum', isEstimated, dbRows };
 
     // Stat cards from weekly data
     const nW = weeks.length;
@@ -18938,7 +18895,8 @@ async function ddRenderTren() {
     const sgEl = document.getElementById('tren-sum-growth');
     if (sgEl) sgEl.style.color = (growthPct ?? 0) >= 0 ? '#16A34A' : '#DC2626';
 
-    set('tren-cat-label', listing.category || 'Umum');
+    const subEl = document.getElementById('tren-chart-subtitle');
+    if (subEl) subEl.textContent = `${nW} minggu scrape · sejak 9 Apr 2026${isEstimated ? ' · sebagian diestimasi dari ulasan' : ''}`;
 
     // Insights from real data
     if (insEl) {
@@ -18964,26 +18922,7 @@ async function ddRenderTren() {
         </div>`).join('');
     }
 
-    // Extend chart to current Monday, estimating weeks with no scrape data
-    {
-      const _nowMon = _mondayOf(new Date());
-      const cw = _trenData.weeks;
-      const _lm = cw.length ? cw[cw.length - 1].firstDate : null;
-      if (_lm && _nowMon > _lm) {
-        const sA = cw[Math.max(0, cw.length - 2)], sB = cw[cw.length - 1];
-        let rA = { units: sA.units || 0, omset: sA.omset || 0 };
-        let rB = { units: sB.units || 0, omset: sB.omset || 0 };
-        for (let t = new Date(_lm.getTime() + 7 * 86400000); t <= _nowMon; t = new Date(t.getTime() + 7 * 86400000)) {
-          const pu = Math.max(0, Math.round(rB.units + (rB.units - rA.units)));
-          const po = Math.max(0, Math.round(rB.omset + (rB.omset - rA.omset)));
-          cw.push({ label: `${t.getDate()} ${_MO[t.getMonth()]}`, units: pu, omset: po, firstDate: new Date(t) });
-          rA = rB; rB = { units: pu, omset: po };
-        }
-      }
-    }
     trenRender();
-    trenRenderCmp();
-    trenRenderDataTable();
   } catch(e) {
     console.warn('ddRenderTren:', e);
     if (insEl) insEl.innerHTML = '<div style="font-size:.68rem;color:#DC2626;padding:8px 0;">Gagal memuat data tren.</div>';
@@ -18992,173 +18931,289 @@ async function ddRenderTren() {
 
 function trenRender() {
   if (!_trenData) return;
-  const gran   = _trenGran || 'minggu';
-  const rows   = gran === 'bulan' ? _trenData.months : _trenData.weeks;
-  const metric = document.getElementById('tren-metric')?.value || 'sold';
-  const labels = [...rows.map(r => r.label)];
-  const vals   = metric === 'omset' ? rows.map(r => r.omset) : rows.map(r => r.units);
-
-  // Add one forecast Monday point for weekly view
-  let fcVals = null;
-  if (gran === 'minggu' && rows.length >= 1) {
-    const slice = rows.slice(-2);
-    const fcVal = Math.round(slice.reduce((s,r) => s + (metric === 'omset' ? r.omset : r.units), 0) / slice.length);
-    const lastMon = rows[rows.length-1].firstDate instanceof Date ? rows[rows.length-1].firstDate : new Date(rows[rows.length-1].firstDate);
-    const nextMon = new Date(lastMon.getTime() + 7*86400000);
-    const _MO2 = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-    labels.push(`${nextMon.getDate()} ${_MO2[nextMon.getMonth()]} ▶`);
-    fcVals = new Array(rows.length).fill(null);
-    fcVals.push(fcVal);
-  }
+  const rows = _trenData.weeks || [];
+  const isEst = _trenData.isEstimated;
+  const _MO = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 
   if (_trenMainChart) { _trenMainChart.destroy(); _trenMainChart = null; }
   const canvas = document.getElementById('tren-main-chart');
-  if (!canvas) return;
-  const datasets = [
-    {
-      label: metric === 'omset' ? 'Omset/Minggu' : 'Unit Terjual/Minggu',
-      data: fcVals ? [...vals, null] : vals,
-      backgroundColor: labels.map((_, i) => i < rows.length ? 'rgba(232,68,42,.75)' : 'transparent'),
-      borderColor: '#E8442A', borderWidth: 1, borderRadius: 4,
-    }
-  ];
-  if (fcVals) {
-    datasets.push({
-      label: 'Prediksi',
-      data: fcVals,
-      backgroundColor: 'rgba(16,185,129,.6)',
-      borderColor: '#10B981', borderWidth: 1, borderRadius: 4,
-    });
-  }
-  _trenMainChart = new Chart(canvas.getContext('2d'), {
-    type: 'bar',
-    data: { labels, datasets },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: fcVals != null, labels: { font: { size: 10 }, boxWidth: 12 } }, tooltip: {
-        callbacks: { label: ctx => ` ${ctx.parsed.y != null ? ctx.parsed.y.toLocaleString('id-ID') : '—'}${metric === 'omset' ? ' Rp' : ' unit'}${_trenData?.isEstimated ? ' (est.)' : ''}` }
-      }},
-      scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#9CA3AF', maxRotation: 30 } },
-        y: { grid: { color: '#F3F4F6' }, ticks: { font: { size: 10 }, color: '#9CA3AF', callback: v => v >= 1e6 ? (v/1e6).toFixed(1)+'jt' : v >= 1000 ? (v/1000).toFixed(0)+'k' : v } }
-      }
-    }
-  });
+  if (!canvas || !rows.length) return;
 
-  trenRenderCmp();
-}
-
-function trenRenderCmp() {
-  if (!_trenData) return;
-  const gran   = _trenGran || 'minggu';
-  const rows   = gran === 'bulan' ? _trenData.months : _trenData.weeks;
   const labels = rows.map(r => r.label);
-  const metric = _trenCmpMetric || 'sold';
+  const chartUnitData = rows.map(r => r.units);
+  const chartOmsetData = rows.map(r => r.omset);
 
-  const listingPrice = _trenData.listing?.price || 0;
+  const nW = rows.length;
+  const slice2 = rows.slice(-2);
+  const fcUnit  = Math.round(slice2.reduce((s, w) => s + w.units, 0) / slice2.length);
+  const fcOmset = Math.round(slice2.reduce((s, w) => s + w.omset, 0) / slice2.length);
+  const nextWeek = new Date(rows[nW - 1].firstDate.getTime() + 7 * 86400000);
+  labels.push(`${nextWeek.getDate()} ${_MO[nextWeek.getMonth()]} ▶`);
+  chartUnitData.push(null);
+  chartOmsetData.push(null);
+  const fUnitW  = new Array(labels.length).fill(null);
+  const fOmsetW = new Array(labels.length).fill(null);
+  fUnitW[nW - 1]  = rows[nW - 1].units;
+  fOmsetW[nW - 1] = rows[nW - 1].omset;
+  fUnitW[nW]      = fcUnit;
+  fOmsetW[nW]     = fcOmset;
 
-  // Produk Ini — real weekly/monthly
-  const thisVals = rows.map(r => metric === 'omset' ? r.omset : r.units);
+  const grad = canvas.getContext('2d').createLinearGradient(0, 0, 0, 200);
+  grad.addColorStop(0, 'rgba(232,68,42,0.18)');
+  grad.addColorStop(1, 'rgba(232,68,42,0)');
 
-  // Category avg and Top10 avg — flat benchmark from current peer snapshot
-  const peers = _ddKwRows || [];
-  const nPeers = peers.length || 1;
-  const totalPeerSold = _ddKwTotal || 0;
-  const avgPeerWeekly = Math.round(totalPeerSold / nPeers / 6 / 4);
-  const top10peers = peers.slice(0, 10);
-  const top10Avg = top10peers.length ? Math.round(top10peers.reduce((s,r)=>s+(r.total_sold||0),0) / top10peers.length / 6 / 4) : 0;
-
-  const catVals  = labels.map(() => metric === 'omset' ? avgPeerWeekly * listingPrice : avgPeerWeekly);
-  const top10Vals= labels.map(() => metric === 'omset' ? top10Avg      * listingPrice : top10Avg);
-
-  const datasets = [];
-  const showThis = document.getElementById('tren-chk-this')?.checked;
-  const showCat  = document.getElementById('tren-chk-cat')?.checked;
-  const showTop  = document.getElementById('tren-chk-top')?.checked;
-
-  if (showThis) datasets.push({ label:'Produk Ini', data: thisVals,  borderColor:'#E8442A', backgroundColor:'rgba(232,68,42,.06)', fill:true, tension:.3, pointRadius:3, borderWidth:2 });
-  if (showCat && peers.length)  datasets.push({ label:'Rata-rata Kategori', data: catVals, borderColor:'#3B82F6', backgroundColor:'transparent', tension:.0, pointRadius:0, borderWidth:1.5, borderDash:[4,3] });
-  if (showTop && top10peers.length) datasets.push({ label:'Avg Top 10',     data: top10Vals, borderColor:'#16A34A', backgroundColor:'transparent', tension:.0, pointRadius:0, borderWidth:1.5, borderDash:[4,3] });
-
-  if (_trenCmpChart) { _trenCmpChart.destroy(); _trenCmpChart = null; }
-  const canvas = document.getElementById('tren-cmp-chart');
-  if (!canvas) return;
-  _trenCmpChart = new Chart(canvas.getContext('2d'), {
+  _trenMainChart = new Chart(canvas.getContext('2d'), {
     type: 'line',
-    data: { labels, datasets },
+    data: {
+      labels,
+      datasets: [
+        {
+          label: isEst ? 'Omset Est./Minggu' : 'Omset/Minggu',
+          data: chartOmsetData,
+          borderColor: '#E8442A',
+          backgroundColor: grad,
+          fill: true,
+          tension: 0.3,
+          pointRadius: labels.length > 16 ? 2 : 4,
+          pointBackgroundColor: '#E8442A',
+          borderWidth: 2.5,
+          yAxisID: 'y',
+          spanGaps: false,
+          borderDash: isEst ? [3, 3] : [],
+        },
+        {
+          label: isEst ? 'Unit Est./Minggu' : 'Unit/Minggu',
+          data: chartUnitData,
+          borderColor: '#4F46E5',
+          backgroundColor: 'transparent',
+          fill: false,
+          tension: 0.3,
+          pointRadius: labels.length > 16 ? 2 : 3,
+          pointBackgroundColor: '#4F46E5',
+          borderWidth: 2,
+          yAxisID: 'y2',
+          spanGaps: false,
+          borderDash: isEst ? [3, 3] : [],
+        },
+        {
+          label: 'Forecast Omset',
+          data: fOmsetW,
+          borderColor: '#10B981',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          fill: false,
+          tension: 0.3,
+          pointRadius: 5,
+          pointBackgroundColor: '#10B981',
+          yAxisID: 'y',
+          borderDash: [5, 4],
+          spanGaps: false,
+          pointStyle: 'triangle',
+        },
+        {
+          label: 'Forecast Unit',
+          data: fUnitW,
+          borderColor: '#10B981',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          fill: false,
+          tension: 0.3,
+          pointRadius: 5,
+          pointBackgroundColor: '#10B981',
+          yAxisID: 'y2',
+          borderDash: [5, 4],
+          spanGaps: false,
+          pointStyle: 'triangle',
+        },
+      ],
+    },
     options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false,
-        callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('id-ID')}` }
-      }},
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label(ctx) {
+              const v = ctx.parsed.y;
+              if (v == null) return '';
+              if (ctx.dataset.yAxisID === 'y') return ` Omset: Rp ${Math.round(v).toLocaleString('id-ID')}${isEst ? ' (est.)' : ''}`;
+              return ` Unit: ${Math.round(v).toLocaleString('id-ID')}${isEst ? ' (est.)' : ''}`;
+            },
+          },
+        },
+      },
       scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#9CA3AF', maxRotation: 45 } },
-        y: { grid: { color: '#F3F4F6' }, ticks: { font: { size: 9 }, color: '#9CA3AF', callback: v => v >= 1e6 ? (v/1e6).toFixed(1)+'jt' : v >= 1000 ? (v/1000).toFixed(0)+'k' : v } }
-      }
-    }
+        x: { grid: { display: false }, ticks: { font: { size: 8 }, color: '#9CA3AF', maxRotation: 45, maxTicksLimit: 16 } },
+        y: {
+          display: true, position: 'left', min: 0,
+          grid: { color: '#F9FAFB' },
+          ticks: { font: { size: 8 }, color: '#9CA3AF', callback: v => v >= 1e6 ? (v/1e6).toFixed(1)+'jt' : v >= 1e3 ? (v/1e3).toFixed(0)+'rb' : v },
+        },
+        y2: {
+          display: true, position: 'right', min: 0,
+          grid: { drawOnChartArea: false },
+          ticks: { font: { size: 8 }, color: '#9CA3AF' },
+        },
+      },
+    },
   });
-}
-
-function trenRenderDataTable() {
-  if (!_trenData) return;
-  const tbody = document.getElementById('tren-data-tbody');
-  if (!tbody) return;
-  const gran = _trenGran || 'minggu';
-  const allRows = gran === 'bulan' ? _trenData.months : _trenData.weeks;
-  const rows = [...allRows].reverse().slice(0, _trenDataShowing);
-  tbody.innerHTML = rows.map(w => `
-    <tr style="border-bottom:1px solid #F9FAFB;">
-      <td style="padding:5px 4px;font-size:.62rem;color:#374151;">${w.label}</td>
-      <td style="padding:5px 4px;font-size:.62rem;text-align:right;font-weight:600;">${w.units.toLocaleString('id-ID')}</td>
-      <td style="padding:5px 4px;font-size:.62rem;text-align:right;">${w.omset.toLocaleString('id-ID')}</td>
-    </tr>`).join('');
-  const btn = document.getElementById('tren-show-all-btn');
-  if (btn) btn.style.display = _trenDataShowing >= allRows.length ? 'none' : '';
-}
-
-function trenShowAllData() { _trenDataShowing = 999; trenRenderDataTable(); }
-
-function trenSetGran(g) {
-  _trenGran = g;
-  document.querySelectorAll('.tren-gran-btn').forEach(b => {
-    const active = b.dataset.g === g;
-    b.style.background = active ? '#fff' : 'transparent';
-    b.style.color = active ? '#E8442A' : '#6B7280';
-    b.style.boxShadow = active ? '0 1px 3px rgba(0,0,0,.1)' : 'none';
-  });
-  trenRender();
-  trenRenderDataTable();
-}
-
-function trenSetCmpMetric(m) {
-  _trenCmpMetric = m;
-  document.querySelectorAll('.tren-cmp-btn').forEach(b => {
-    const active = b.dataset.m === m;
-    b.style.background = active ? '#FEF2F0' : '#fff';
-    b.style.color = active ? '#E8442A' : '#6B7280';
-    b.style.borderColor = active ? '#E8442A' : '#E5E7EB';
-  });
-  trenRenderCmp();
-}
-
-function trenDownloadCSV() {
-  if (!_trenData) return;
-  const gran = _trenGran || 'minggu';
-  const allRows = gran === 'bulan' ? _trenData.months : _trenData.weeks;
-  const rows = [['Periode','Terjual (est.)','Omset (est. Rp)']];
-  allRows.forEach(w => rows.push([w.label, w.units, w.omset]));
-  const csv = rows.map(r => r.join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = 'tren-penjualan.csv';
-  a.click();
 }
 
 // ── Analisa Pasar ─────────────────────────────────────────────────────────────
 
 let _apDemandChart = null;
-let _apGran = 'bulan';
+let _apGran = 'minggu';
 let _apData = null;
+let _apDemandGen = 0;
+
+/** First LarisID weekly scrape panel (Monday-aligned weeks from here). */
+const AP_SCRAPE_START = LARIS_SCRAPE_START;
+const _AP_MO = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+
+function _apMondayOf(d) {
+  const date = new Date(+d);
+  const day = date.getDay();
+  date.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+function _apWKey(d) { return _apMondayOf(d).toISOString().slice(0, 10); }
+function _apWLabel(d) { const m = _apMondayOf(d); return `${m.getDate()} ${_AP_MO[m.getMonth()]}`; }
+function _apCatMult(cat) {
+  const m = { 'Rumah':2.94,'Fashion':2.77,'Dapur':3.41,'Kamar Mandi':4.21,'Keamanan':3.40,
+    'Kecantikan':2.70,'Motor & Mobil':2.96,'Elektronik':3.10,'HP & Gadget':3.40,
+    'Hewan Peliharaan':3.95,'Sepeda':2.58,'Taman':3.50,'Olahraga':2.68,'Bayi & Anak':4.12,
+    'Hobi & Kerajinan':2.48,'Kesehatan':2.38,'Tanaman':3.63,'Alat Tulis':2.87,
+    'Outdoor & Camping':2.67 };
+  return m[cat] || 3.20;
+}
+function _apDedupeByDay(rows) {
+  const dayMap = new Map();
+  for (const r of rows) {
+    const day = r.scraped_at?.slice(0, 10);
+    if (!day) continue;
+    const cur = dayMap.get(day);
+    if (!cur || (r.total_sold ?? 0) > (cur.total_sold ?? 0)) dayMap.set(day, r);
+  }
+  return [...dayMap.values()].sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
+}
+function _apUnitSeriesAndDeltas(dbRows, category) {
+  const mult = _apCatMult(category);
+  const atCeiling = dbRows.every(r => (r.total_sold ?? 0) >= 10000);
+  const hasReviews = dbRows.some(r => (r.reviews ?? 0) > 0);
+  let unitData, isEstimated = false;
+  if (atCeiling && hasReviews) {
+    isEstimated = true;
+    let base = 10000;
+    unitData = [base];
+    for (let i = 1; i < dbRows.length; i++) {
+      const revDelta = Math.max(0, (dbRows[i].reviews || 0) - (dbRows[i - 1].reviews || 0));
+      base += Math.round(revDelta * mult);
+      unitData.push(base);
+    }
+  } else {
+    unitData = dbRows.map(r => r.total_sold ?? 0);
+  }
+  const corrDeltas = [];
+  for (let i = 0; i < dbRows.length - 1; i++) {
+    const s0 = unitData[i] ?? 0, s1 = unitData[i + 1] ?? 0;
+    const rawDelta = Math.max(0, s1 - s0);
+    const revDelta = Math.max(0, (dbRows[i + 1].reviews ?? 0) - (dbRows[i].reviews ?? 0));
+    const reviewEst = Math.round(revDelta * mult);
+    if (s0 < 10000 && s1 >= 10000) corrDeltas.push(reviewEst);
+    else if (s0 >= 10000 && s1 >= 10000 && !atCeiling) corrDeltas.push(reviewEst);
+    else if (rawDelta > 0 && reviewEst > 0 && rawDelta > reviewEst * 5) corrDeltas.push(reviewEst);
+    else if (rawDelta === 0 && revDelta > 0) corrDeltas.push(reviewEst);
+    else corrDeltas.push(rawDelta);
+  }
+  if (corrDeltas.some((d, i) => d !== Math.max(0, (unitData[i + 1] ?? 0) - (unitData[i] ?? 0)))) isEstimated = true;
+  return { corrDeltas, isEstimated };
+}
+function _apAccumulateListingWeeks(weekMap, dbRows, corrDeltas, fallbackPrice) {
+  for (let i = 0; i < dbRows.length - 1; i++) {
+    const t0 = new Date(dbRows[i].scraped_at), t1 = new Date(dbRows[i + 1].scraped_at);
+    const p0 = dbRows[i].price || fallbackPrice, p1 = dbRows[i + 1].price || fallbackPrice;
+    const delta = corrDeltas[i] ?? 0;
+    const daysDiff = Math.max(1, (t1 - t0) / 86400000);
+    const dUnit = delta / daysDiff;
+    for (let d = 1; d <= Math.ceil(daysDiff); d++) {
+      const date = new Date(t0.getTime() + d * 86400000);
+      if (date > t1) break;
+      const frac = d / daysDiff;
+      const key = _apWKey(date);
+      if (!weekMap.has(key)) weekMap.set(key, { label: _apWLabel(date), units: 0, omset: 0, days: 0, firstDate: _apMondayOf(date) });
+      const wk = weekMap.get(key);
+      wk.units += dUnit;
+      wk.omset += dUnit * (p0 + (p1 - p0) * frac);
+      wk.days += 1;
+    }
+  }
+}
+function apAggregateKeywordWeekly(historyRows, defaultCategory) {
+  const epochMon = _apMondayOf(new Date(AP_SCRAPE_START + 'T12:00:00'));
+  const byListing = new Map();
+  for (const r of historyRows) {
+    const k = `${r.item_id}_${r.shop_id}`;
+    if (!byListing.has(k)) byListing.set(k, []);
+    byListing.get(k).push(r);
+  }
+  const weekMap = new Map();
+  let anyEstimated = false;
+  let listingCount = 0;
+  for (const [, rawRows] of byListing) {
+    const dbRows = _apDedupeByDay(rawRows);
+    if (dbRows.length < 2) continue;
+    listingCount++;
+    const cat = dbRows[dbRows.length - 1].category || defaultCategory;
+    const { corrDeltas, isEstimated } = _apUnitSeriesAndDeltas(dbRows, cat);
+    if (isEstimated) anyEstimated = true;
+    const fallbackPrice = dbRows[dbRows.length - 1].price || 0;
+    for (const r of dbRows) {
+      const key = _apWKey(new Date(r.scraped_at));
+      if (!weekMap.has(key)) weekMap.set(key, { label: _apWLabel(new Date(r.scraped_at)), units: 0, omset: 0, days: 0, firstDate: _apMondayOf(new Date(r.scraped_at)) });
+    }
+    _apAccumulateListingWeeks(weekMap, dbRows, corrDeltas, fallbackPrice);
+  }
+  const weeks = [...weekMap.values()]
+    .filter(w => w.firstDate >= epochMon)
+    .sort((a, b) => a.firstDate - b.firstDate)
+    .map(w => {
+      const scale = w.days > 0 && w.days < 7 ? 7 / w.days : 1;
+      return { label: w.label, units: Math.round(w.units * scale), omset: Math.round(w.omset * scale), firstDate: w.firstDate };
+    });
+  const monthMap = new Map();
+  for (const w of weeks) {
+    const d = w.firstDate;
+    const mKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const mLabel = _AP_MO[d.getMonth()] + " '" + String(d.getFullYear()).slice(2);
+    if (!monthMap.has(mKey)) monthMap.set(mKey, { label: mLabel, units: 0, omset: 0 });
+    const m = monthMap.get(mKey);
+    m.units += w.units;
+    m.omset += w.omset;
+  }
+  const months = [...monthMap.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([, v]) => v);
+  return { weeks, months, meta: { anyEstimated, listingCount, scrapeStart: AP_SCRAPE_START } };
+}
+async function apLoadKeywordDemand(kw, category) {
+  if (!_supabase || !kw) return { weeks: [], months: [], meta: {} };
+  try {
+    const { data, error } = await _supabase
+      .from('listings')
+      .select('item_id,shop_id,scraped_at,total_sold,price,reviews,category')
+      .eq('keyword', kw)
+      .gte('scraped_at', `${AP_SCRAPE_START}T00:00:00`)
+      .order('scraped_at', { ascending: true })
+      .limit(12000);
+    if (error) throw error;
+    return apAggregateKeywordWeekly(data || [], category);
+  } catch (e) {
+    console.warn('apLoadKeywordDemand:', e);
+    return { weeks: [], months: [], meta: {} };
+  }
+}
 
 // Builds Analisa Pasar data entirely from real Supabase keyword peers.
 // No seeded random — all metrics come from _ddKwRows / _ddKwTotal.
@@ -19172,18 +19227,9 @@ function apBuildData(listing, rows, totalSold) {
   const prices  = rows.map(r => r.price||0).filter(p => p > 0).sort((a,b)=>a-b);
   const nSellers = Math.max(1, new Set(rows.map(r => String(r.shop_id||r.store_name||''))).size);
 
-  // ── Demand chart — 6-month estimated trend + weekly breakdown ──────────────
-  const demandMonthly = Array.from({length:6}, (_, i) => {
-    const d2 = new Date(now); d2.setMonth(d2.getMonth() - (5-i));
-    const lbl2 = MONTHS[d2.getMonth()] + " '" + String(d2.getFullYear()).slice(2);
-    const weights = [0.42, 0.54, 0.65, 0.76, 0.88, 1.0];
-    return { label: lbl2, sold: Math.round(totalSold * weights[i]) };
-  });
-  const demandWeekly  = [1,2,3,4].map(w => ({
-    label: `W${w} ${MONTHS[now.getMonth()]}`,
-    sold: Math.round(totalSold / 4),
-  }));
-  const demandYearly = [{ label: String(now.getFullYear()), sold: totalSold }];
+  // Demand time-series loaded async via apLoadKeywordDemand (real scrape history).
+  const demandMonthly = [];
+  const demandWeekly  = [];
 
   // ── Competition landscape by market-share tier ─────────────────────────────
   let nDom=0, nSig=0, nMid=0, nSmall=0;
@@ -19262,7 +19308,7 @@ function apBuildData(listing, rows, totalSold) {
   ];
 
   return {
-    demandMonthly, demandWeekly, demandYearly,
+    demandMonthly, demandWeekly, demandMeta: null,
     compTypes, topProducts, segVals,
     growthScore, competScore, demandScore, marginScore, totalScore, scoreLbl, scoreColor,
     totalSold, nSellers, compLevel, compColor, potensiLabel, potensiColor,
@@ -19297,29 +19343,62 @@ function ddRenderAnalisa() {
   document.getElementById('ap-s5').style.color   = d.potensiColor;
   document.getElementById('ap-s5b').textContent  = 'Potensi ' + d.potensiLabel.toLowerCase();
 
-  // Update demand chart subtitle
   const sub = document.getElementById('ap-demand-subtitle');
-  if (sub) sub.textContent = `Total terjual ${d.totalSold.toLocaleString('id-ID')} unit · data ${d.curMonthLbl}`;
+  if (sub) sub.textContent = 'Memuat tren mingguan semua toko di keyword…';
 
-  apRenderDemand();
+  apRenderDemand(true);
   apRenderCompDonut();
   apRenderProductTypes();
   apRenderGauge();
   apRenderSegDonut();
   apRenderInsights();
   apRenderStrategy();
+
+  const kw = listing.keyword || '';
+  const gen = ++_apDemandGen;
+  void apLoadKeywordDemand(kw, listing.category).then(demand => {
+    if (gen !== _apDemandGen || !_apData) return;
+    _apData.demandWeekly = demand.weeks;
+    _apData.demandMonthly = demand.months;
+    _apData.demandMeta = demand.meta;
+    if (sub) {
+      const nW = demand.weeks.length;
+      sub.textContent = nW
+        ? `Agregat ${demand.meta.listingCount || 0} listing · ${nW} minggu scrape sejak 9 Apr 2026`
+        : 'Belum cukup data scrape mingguan untuk keyword ini';
+    }
+    apRenderDemand();
+  });
 }
 
-function apRenderDemand() {
+function apRenderDemand(loading) {
   if (!_apData) return;
-  // Use weekly (estimated ÷4) or monthly (1 real data point)
-  const src    = _apGran === 'minggu' ? _apData.demandWeekly : _apData.demandMonthly;
-  const labels = src.map(m => m.label);
-  const vals   = src.map(m => m.sold);
+  const weekly  = _apData.demandWeekly || [];
+  const monthly = _apData.demandMonthly || [];
+  const src     = _apGran === 'minggu' ? weekly : monthly;
+  const labels  = src.map(m => m.label);
+  const omset   = src.map(m => m.omset ?? 0);
+  const units   = src.map(m => m.units ?? 0);
+  const meta    = _apData.demandMeta;
+  const isEst   = !!meta?.anyEstimated;
 
   if (_apDemandChart) { _apDemandChart.destroy(); _apDemandChart = null; }
   const canvas = document.getElementById('ap-demand-chart');
   if (!canvas) return;
+
+  if (loading || (!weekly.length && !monthly.length)) {
+    const ctx = canvas.getContext('2d');
+    _apDemandChart = new Chart(ctx, {
+      type: 'line',
+      data: { labels: loading ? ['…'] : [], datasets: [{ label: 'Omset', data: loading ? [0] : [], borderColor: '#E5E7EB' }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } },
+    });
+    const noteEl = document.getElementById('ap-demand-note');
+    if (noteEl) noteEl.textContent = loading
+      ? 'Memuat riwayat scrape semua listing di keyword…'
+      : 'Belum ada selisih data antar scrape mingguan. Grafik muncul setelah ≥2 panel scrape dengan perubahan terjual/ulasan.';
+    return;
+  }
 
   const grad = canvas.getContext('2d').createLinearGradient(0, 0, 0, 200);
   grad.addColorStop(0, 'rgba(232,68,42,0.18)');
@@ -19329,32 +19408,74 @@ function apRenderDemand() {
     type: 'line',
     data: {
       labels,
-      datasets: [{
-        label: 'Terjual',
-        data: vals,
-        borderColor: '#E8442A',
-        backgroundColor: grad,
-        fill: true,
-        tension: 0.4,
-        pointRadius: src.length > 24 ? 0 : 3,
-        pointBackgroundColor: '#E8442A',
-        borderWidth: 2,
-      }]
+      datasets: [
+        {
+          label: isEst ? 'Omset est./minggu' : 'Omset/minggu',
+          data: omset,
+          borderColor: '#E8442A',
+          backgroundColor: grad,
+          fill: true,
+          tension: 0.3,
+          pointRadius: labels.length > 16 ? 2 : 4,
+          pointBackgroundColor: '#E8442A',
+          borderWidth: 2.5,
+          yAxisID: 'y',
+          borderDash: isEst ? [3, 3] : [],
+        },
+        {
+          label: isEst ? 'Unit est./minggu' : 'Unit/minggu',
+          data: units,
+          borderColor: '#4F46E5',
+          backgroundColor: 'transparent',
+          fill: false,
+          tension: 0.3,
+          pointRadius: labels.length > 16 ? 2 : 3,
+          pointBackgroundColor: '#4F46E5',
+          borderWidth: 2,
+          yAxisID: 'y2',
+          borderDash: isEst ? [3, 3] : [],
+        },
+      ],
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false,
-        callbacks: { label: ctx => 'Terjual: ' + ctx.parsed.y.toLocaleString('id-ID') }
-      }},
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index', intersect: false,
+          callbacks: {
+            label(ctx) {
+              const v = ctx.parsed.y;
+              if (v == null) return '';
+              if (ctx.dataset.yAxisID === 'y') return ` Omset: Rp ${Math.round(v).toLocaleString('id-ID')}`;
+              return ` Unit: ${Math.round(v).toLocaleString('id-ID')}`;
+            },
+          },
+        },
+      },
       scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 8 }, color: '#9CA3AF', maxRotation: 45, maxTicksLimit: 12 } },
-        y: { grid: { color: '#F9FAFB' }, ticks: { font: { size: 9 }, color: '#9CA3AF', callback: v => v >= 1000 ? (v/1000).toFixed(0)+'k' : v } }
-      }
-    }
+        x: { grid: { display: false }, ticks: { font: { size: 8 }, color: '#9CA3AF', maxRotation: 45, maxTicksLimit: 14 } },
+        y: {
+          display: true, position: 'left', min: 0,
+          grid: { color: '#F9FAFB' },
+          ticks: { font: { size: 8 }, color: '#9CA3AF', callback: v => v >= 1e6 ? (v/1e6).toFixed(1)+'jt' : v >= 1e3 ? (v/1e3).toFixed(0)+'rb' : v },
+        },
+        y2: {
+          display: true, position: 'right', min: 0,
+          grid: { drawOnChartArea: false },
+          ticks: { font: { size: 8 }, color: '#9CA3AF' },
+        },
+      },
+    },
   });
 
   const noteEl = document.getElementById('ap-demand-note');
-  if (noteEl) noteEl.textContent = `Data ${_apGran === 'minggu' ? 'mingguan (estimasi total ÷ 4)' : 'bulanan'} · akan diperbarui tiap bulan seiring scrape baru`;
+  if (noteEl) {
+    const granLbl = _apGran === 'minggu' ? 'mingguan' : 'bulanan (agregat minggu)';
+    const estNote = isEst ? ' · sebagian unit diestimasi dari ulasan (bucket Shopee 10rb+)' : '';
+    const nList = meta?.listingCount ? `${meta.listingCount} listing` : 'semua listing';
+    noteEl.textContent = `Permintaan pasar ${granLbl} · ${nList} di keyword · scrape sejak 9 Apr 2026${estNote}`;
+  }
 }
 
 function apSetGran(g) {
