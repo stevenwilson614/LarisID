@@ -6,6 +6,16 @@ If a task would violate LarisID’s non-negotiables (access for all, honesty, no
 
 For UI and marketing copy, also follow the LarisID brand guide when available.
 
+## Dashboard SPA: onboarding & journey funnel
+
+The logged-in product UI lives in **`index.html`** (not Astro routes). Before changing first-login flow, Discover defaults, Deep Dive beginner mode, Beranda lobby, nav gating, or return-loop copy:
+
+1. Read **[docs/journey-funnel.md](./docs/journey-funnel.md)** — tiers, key functions, localStorage + Supabase tables.
+2. Run through **[docs/journey-funnel-test.md](./docs/journey-funnel-test.md)** for regressions.
+3. Apply related migrations via `supabase db push` (`user_onboarding_prefs.seller_status`, `user_journey_stats`) — see [supabase/README.md](./supabase/README.md).
+
+**Do not** reintroduce a blocking popup for onboarding; keep the 3-step flow in Discover. **Do not** fabricate price/sales deltas in return strips. Leaders and platform admins bypass journey gating.
+
 ## SEO, static pages & AI discoverability
 
 Before changing titles, competitor comparisons, pricing copy on the public site, or `llms.txt`, read **[docs/seo.md](./docs/seo.md)**.

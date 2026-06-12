@@ -1476,6 +1476,18 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dsc-search:focus{border-color:#E8442A;outline:none;}
 .dsc-search-suggestions{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid #E5E7EB;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:120;overflow:hidden;display:none;max-height:280px;overflow-y:auto;}
 .dsc-search-suggestions.show{display:block;}
+.dsc-scrape-request{display:none;margin-bottom:12px;background:linear-gradient(135deg,#FFF7ED 0%,#FFFBEB 100%);border:1px solid #FED7AA;border-radius:12px;padding:14px 16px;}
+.dsc-scrape-request-title{font-size:.82rem;font-weight:800;color:#9A3412;margin-bottom:4px;}
+.dsc-scrape-request-sub{font-size:.72rem;color:#92400E;line-height:1.45;margin:0 0 12px;}
+.dsc-scrape-request-row{display:flex;gap:8px;flex-wrap:wrap;}
+.dsc-scrape-keyword{flex:1;min-width:160px;border:1.5px solid #FDBA74;border-radius:8px;padding:9px 12px;font-size:.8rem;font-family:inherit;outline:none;background:#fff;color:#1F2937;}
+.dsc-scrape-keyword:focus{border-color:#E8442A;}
+.dsc-scrape-submit{flex-shrink:0;background:#E8442A;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.dsc-scrape-submit:hover{background:#C23520;}
+.dsc-scrape-submit:disabled{opacity:.55;cursor:not-allowed;}
+.dsc-scrape-request-status{font-size:.7rem;margin-top:8px;color:#92400E;min-height:1em;}
+.dsc-scrape-request-status.ok{color:#166534;}
+.dsc-scrape-request-status.err{color:#B91C1C;}
 .dsc-sugg-item{padding:8px 12px;cursor:pointer;font-size:.78rem;color:#111;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .dsc-sugg-item:last-child{border-bottom:none;}
 .dsc-sugg-item:hover,.dsc-sugg-item.active{background:#FFF0ED;}
@@ -2264,7 +2276,16 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dd-chart-legend-item{display:flex;align-items:center;gap:5px;font-size:.7rem;color:#6B7280;}
 .dd-chart-legend-dot{width:20px;height:2.5px;border-radius:2px;flex-shrink:0;}
 /* price range */
+.dd-price-median{font-size:1.45rem;font-weight:900;color:#1A1F3C;line-height:1.15;margin-bottom:4px;}
+.dd-price-range-sub{font-size:.78rem;font-weight:600;color:#6B7280;margin-bottom:12px;}
 .dd-price-big{font-size:1.25rem;font-weight:900;color:#1A1F3C;margin-bottom:14px;}
+.dd-dist-chart-wrap{position:relative;height:150px;}
+.dd-age-chart-wrap{position:relative;height:88px;margin-top:8px;}
+.dd-age-legend{display:flex;flex-direction:column;gap:4px;margin-top:8px;}
+.dd-age-legend-item{display:flex;align-items:center;gap:6px;font-size:.68rem;color:#374151;}
+.dd-age-legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+.dd-age-legend-pct{margin-left:auto;font-weight:600;color:#6B7280;}
+.dd-catperf-chart-wrap{position:relative;height:76px;margin-top:4px;}
 .dd-range-track{position:relative;height:8px;background:#E5E7EB;border-radius:4px;margin:0 0 6px;}
 .dd-range-zone{position:absolute;height:8px;border-radius:4px;background:#E8442A;}
 .dd-range-labels{display:flex;justify-content:space-between;font-size:.68rem;color:#9CA3AF;margin-bottom:10px;}
@@ -2280,9 +2301,9 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dd-donut-legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
 .dd-donut-pct{margin-left:auto;font-weight:600;color:#6B7280;padding-left:8px;}
 /* category perf */
-.dd-catperf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
-.dd-catperf-stat-label{font-size:.65rem;color:#9CA3AF;font-weight:600;margin-bottom:2px;}
-.dd-catperf-stat-value{font-size:.95rem;font-weight:800;color:#1A1F3C;}
+.dd-catperf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;}
+.dd-catperf-stat-label{font-size:.62rem;color:#9CA3AF;font-weight:600;margin-bottom:2px;line-height:1.2;}
+.dd-catperf-stat-value{font-size:.82rem;font-weight:800;color:#1A1F3C;line-height:1.2;}
 .dd-catperf-stat-delta{font-size:.68rem;font-weight:600;color:#10B981;}
 /* competitor table */
 .dd-comp-table{width:100%;border-collapse:collapse;font-size:.75rem;}
@@ -6722,6 +6743,16 @@ html,body{overflow-x:hidden;max-width:100%;}
                   <button class="dsc-chip" onclick="dscSetChip(this,'price-asc')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg> Termurah</button>
                 </div>
 
+                <div id="dsc-scrape-request" class="dsc-scrape-request" style="display:none;" aria-live="polite">
+                  <div class="dsc-scrape-request-title">Belum banyak data untuk pencarian ini?</div>
+                  <p class="dsc-scrape-request-sub">Minta kami scrape keyword Shopee ini. Kamu akan diberi tahu saat produk sudah muncul di Discover.</p>
+                  <div class="dsc-scrape-request-row">
+                    <input type="text" id="dsc-scrape-keyword" class="dsc-scrape-keyword" maxlength="80" placeholder="mis. dompet hp" autocomplete="off" oninput="this.dataset.userEdited='1'">
+                    <button type="button" class="dsc-scrape-submit" id="dsc-scrape-submit-btn" onclick="dscSubmitScrapeRequest()">Minta scrape &amp; kabari saya</button>
+                  </div>
+                  <div id="dsc-scrape-request-status" class="dsc-scrape-request-status"></div>
+                </div>
+
                 <div class="dsc-table-wrap" style="position:relative;">
                   <div id="dsc-loading-overlay" style="display:none;position:absolute;inset:0;background:rgba(255,255,255,.82);z-index:10;border-radius:10px;align-items:center;justify-content:center;flex-direction:column;gap:10px;">
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2.5" style="animation:spin 0.8s linear infinite;"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
@@ -6965,7 +6996,8 @@ html,body{overflow-x:hidden;max-width:100%;}
                 <div class="dd-card">
                   <div class="dd-card-title">Rentang Harga Optimal</div>
                   <div class="dd-card-sub">Berdasarkan analisis kompetitor aktif</div>
-                  <div class="dd-price-big" id="dd-price-range-label">—</div>
+                  <div class="dd-price-median" id="dd-price-median">—</div>
+                  <div class="dd-price-range-sub" id="dd-price-range-label">—</div>
                   <div class="dd-range-track">
                     <div class="dd-range-zone" id="dd-range-zone"></div>
                   </div>
@@ -6985,23 +7017,20 @@ html,body{overflow-x:hidden;max-width:100%;}
               <div class="dd-row2">
                 <div class="dd-card fb-flaggable" data-fb-element="Distribusi Harga" data-fb-section="Riset Produk">
                   <div class="dd-card-title">Distribusi Harga (Toko Aktif)</div>
-                  <div class="dd-card-sub" style="margin-bottom:8px;"></div>
-                  <canvas id="dd-chart-dist" height="140"></canvas>
+                  <div class="dd-card-sub" style="margin-bottom:8px;">Titik = listing penjual signifikan</div>
+                  <div class="dd-dist-chart-wrap"><canvas id="dd-chart-dist"></canvas></div>
                 </div>
                 <div class="dd-card fb-flaggable" data-fb-element="Usia Toko Kompetitor" data-fb-section="Riset Produk">
                   <div class="dd-card-title">Usia Toko Kompetitor</div>
-                  <div style="display:flex;align-items:center;margin-top:8px;">
-                    <canvas id="dd-chart-donut" width="80" height="80" style="flex-shrink:0;"></canvas>
-                    <div class="dd-donut-legend" id="dd-donut-legend"></div>
-                  </div>
+                  <div class="dd-card-sub" id="dd-age-sub">Distribusi usia toko di keyword</div>
+                  <div class="dd-age-chart-wrap"><canvas id="dd-chart-shop-age"></canvas></div>
+                  <div class="dd-age-legend" id="dd-age-legend"></div>
                 </div>
-                <div class="dd-card fb-flaggable" style="overflow:hidden;" data-fb-element="Performa Kategori" data-fb-section="Riset Produk">
+                <div class="dd-card fb-flaggable" data-fb-element="Performa Kategori" data-fb-section="Riset Produk">
                   <div class="dd-card-title">Performa Kategori</div>
                   <div class="dd-card-sub" id="dd-cat-label">—</div>
                   <div class="dd-catperf-stats" id="dd-catperf-stats"></div>
-                  <div style="width:100%;overflow:hidden;position:relative;">
-                    <canvas id="dd-chart-catperf" height="70"></canvas>
-                  </div>
+                  <div class="dd-catperf-chart-wrap"><canvas id="dd-chart-catperf"></canvas></div>
                 </div>
               </div>
               <!-- row 3: top 15 kompetitor | top keyword -->
@@ -11016,6 +11045,9 @@ async function _authOnSignIn(session) {
   if (document.body.classList.contains('in-dashboard') && typeof _dashActiveView !== 'undefined' && _dashActiveView === 'cohort') {
     queueMicrotask(() => { cohortInit().catch(() => {}); });
   }
+  if (document.body.classList.contains('in-dashboard') && typeof _dashActiveView !== 'undefined' && _dashActiveView === 'discover') {
+    void dscLoadScrapeRequests();
+  }
 }
 
 /** Close fixed overlays so logout is visible immediately (mobile "Lainnya" sheet uses a delayed hide that browsers throttle in background tabs). */
@@ -13367,7 +13399,10 @@ function switchDashView(view) {
     journeyApplyDiscoverChrome();
     journeyMarkDiscoverView();
   }
-  if (view === 'deepdive') journeyApplyDeepDiveChrome();
+  if (view === 'deepdive') {
+    journeyApplyDeepDiveChrome();
+    requestAnimationFrame(ddResizeActiveCharts);
+  }
   if (view === 'tracker'   && typeof trkInit     === 'function') trkInit();
   if (view === 'dashboard' && typeof hbdInit     === 'function') hbdInit();
   if (view === 'ai'        && typeof mlsInit     === 'function') mlsInit();
@@ -16560,6 +16595,9 @@ let _dscCurrentCatFilters = null; // full selected-cat array for multi-cat serve
 let _dscViewMode    = 'card';
 const DSC_FETCH  = 60;
 const DSC_PAGE_SIZE = 400; // rows per Supabase request (search scans full listings table)
+const DSC_SCRAPE_MIN_RESULTS = 5;
+let _dscScrapePending = [];
+let _dscScrapePendingNorm = new Set();
 
 // Applied sidebar filters — only take effect after "Terapkan Filter"
 let _dscApplied = { minSkor: DSC_DEFAULT_MIN_SCOR, priceMin: DSC_DEFAULT_PRICE_MIN, priceMax: DSC_DEFAULT_PRICE_MAX, omsetMin: 0, omsetMax: Infinity, cats: null };
@@ -16973,6 +17011,7 @@ async function dscLoadListings() {
     }
     dscHideLoadingScreen();
     dscApplyFilters(false);
+    if (hasSearch) void dscCheckScrapeRequestFulfillment();
     // Load trend data in background (non-blocking) after first batch
     if (_dscOffset <= DSC_FETCH * 2) dscLoadTrendData();
 
@@ -17094,7 +17133,169 @@ function dscInit() {
   dscBuildCatChecks(['Alat Tulis','Bayi & Anak','Dapur','Elektronik','Fashion','Hewan Peliharaan',
     'Hobi & Kerajinan','HP & Gadget','Kamar Mandi','Keamanan','Kecantikan','Kesehatan',
     'Motor & Mobil','Olahraga','Outdoor & Camping','Rumah','Sepeda','Taman','Tanaman']);
+  void dscLoadScrapeRequests();
   if (!_dscLoaded) dscLoadListings();
+}
+
+function _dscNormKw(kw) {
+  return String(kw || '').trim().toLowerCase();
+}
+
+async function dscLoadScrapeRequests() {
+  _dscScrapePending = [];
+  _dscScrapePendingNorm = new Set();
+  if (!_supabase || !currentUser?.id) {
+    dscUpdateScrapeRequestPanel();
+    return;
+  }
+  try {
+    const { data } = await _supabase
+      .from('keyword_scrape_requests')
+      .select('id, keyword, keyword_norm, status, created_at')
+      .eq('user_id', currentUser.id)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(40);
+    _dscScrapePending = data || [];
+    _dscScrapePending.forEach(r => _dscScrapePendingNorm.add(r.keyword_norm || _dscNormKw(r.keyword)));
+    void dscCheckScrapeRequestFulfillment();
+  } catch (e) {
+    console.warn('dscLoadScrapeRequests:', e);
+  }
+  dscUpdateScrapeRequestPanel();
+}
+
+async function dscCheckScrapeRequestFulfillment() {
+  if (!_supabase || !currentUser?.id || !_dscScrapePending.length) return;
+  let changed = false;
+  for (const req of [..._dscScrapePending]) {
+    try {
+      const { data, error } = await _supabase.rpc('search_listings', {
+        q: req.keyword,
+        lim: DSC_SCRAPE_MIN_RESULTS,
+        off: 0,
+        cats: null,
+        price_min: null,
+        price_max: null,
+      });
+      if (error) continue;
+      const n = (data || []).length;
+      if (n < DSC_SCRAPE_MIN_RESULTS) continue;
+      const now = new Date().toISOString();
+      await _supabase
+        .from('keyword_scrape_requests')
+        .update({ status: 'notified', fulfilled_at: now, notified_at: now })
+        .eq('id', req.id)
+        .eq('user_id', currentUser.id);
+      showCompareToast(`Data untuk "${req.keyword}" sudah tersedia di Discover!`);
+      changed = true;
+    } catch (_) {}
+  }
+  if (changed) await dscLoadScrapeRequests();
+}
+
+function dscUpdateScrapeRequestPanel() {
+  const panel = document.getElementById('dsc-scrape-request');
+  const input = document.getElementById('dsc-scrape-keyword');
+  const status = document.getElementById('dsc-scrape-request-status');
+  const btn = document.getElementById('dsc-scrape-submit-btn');
+  if (!panel) return;
+
+  const q = (document.getElementById('dsc-search')?.value || '').trim();
+  const total = _dscFiltered?.length ?? 0;
+  const show = !!q && q.length >= 2 && _dscLoaded && !_dscLoading && total < DSC_SCRAPE_MIN_RESULTS;
+
+  if (!show) {
+    panel.style.display = 'none';
+    return;
+  }
+
+  panel.style.display = '';
+  if (input && input.dataset.userEdited !== '1') input.value = q;
+
+  const norm = _dscNormKw(input?.value || q);
+  const already = _dscScrapePendingNorm.has(norm);
+  if (btn) {
+    btn.disabled = already;
+    btn.textContent = already ? 'Permintaan dicatat' : 'Minta scrape & kabari saya';
+  }
+  if (status) {
+    if (already) {
+      status.className = 'dsc-scrape-request-status ok';
+      status.textContent = `Permintaan scrape untuk "${input?.value || q}" sudah dicatat. Kami kabari saat data siap.`;
+    } else if (!currentUser?.id) {
+      status.className = 'dsc-scrape-request-status';
+      status.textContent = 'Masuk dulu supaya kami bisa memberi tahu saat data tersedia.';
+    } else {
+      status.className = 'dsc-scrape-request-status';
+      status.textContent = total === 0
+        ? 'Tidak ada hasil di database — kamu bisa minta keyword ini di-scrape.'
+        : `Hanya ${total} produk ditemukan — minta scrape untuk melihat lebih banyak.`;
+    }
+  }
+}
+
+async function dscSubmitScrapeRequest() {
+  const input = document.getElementById('dsc-scrape-keyword');
+  const status = document.getElementById('dsc-scrape-request-status');
+  const btn = document.getElementById('dsc-scrape-submit-btn');
+  const keyword = (input?.value || '').trim();
+  if (keyword.length < 2) {
+    if (status) { status.className = 'dsc-scrape-request-status err'; status.textContent = 'Keyword minimal 2 karakter.'; }
+    return;
+  }
+  if (!currentUser?.id) {
+    openAuthModal('signup');
+    return;
+  }
+  if (!_supabase) {
+    if (status) { status.className = 'dsc-scrape-request-status err'; status.textContent = 'Koneksi belum siap. Coba lagi.'; }
+    return;
+  }
+  const norm = _dscNormKw(keyword);
+  if (_dscScrapePendingNorm.has(norm)) {
+    dscUpdateScrapeRequestPanel();
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Mengirim...'; }
+  if (status) { status.className = 'dsc-scrape-request-status'; status.textContent = ''; }
+  try {
+    const resultCount = _dscFiltered?.length ?? 0;
+    const { error } = await _supabase.from('keyword_scrape_requests').insert({
+      user_id: currentUser.id,
+      keyword,
+      result_count_at_request: resultCount,
+      notify_when_ready: true,
+    });
+    if (error) {
+      if (error.code === '23505') {
+        await dscLoadScrapeRequests();
+        dscUpdateScrapeRequestPanel();
+        return;
+      }
+      throw error;
+    }
+    try {
+      await _supabase.from('user_search_history').insert({
+        user_id: currentUser.id,
+        keyword,
+        source: 'scrape_request',
+      });
+    } catch (_) {}
+    journeyLog('scrape_request', { keyword, result_count: resultCount });
+    await dscLoadScrapeRequests();
+    if (status) {
+      status.className = 'dsc-scrape-request-status ok';
+      status.textContent = `Permintaan untuk "${keyword}" dicatat. Kami kabari saat data sudah tersedia di Discover.`;
+    }
+    showCompareToast('Permintaan scrape dicatat — kami kabari saat data siap.');
+  } catch (e) {
+    console.warn('dscSubmitScrapeRequest:', e);
+    if (status) { status.className = 'dsc-scrape-request-status err'; status.textContent = 'Gagal mengirim permintaan. Coba lagi.'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Minta scrape & kabari saya'; }
+    return;
+  }
+  dscUpdateScrapeRequestPanel();
 }
 
 // ── Discover search autocomplete + debounced full-DB search ──
@@ -17110,6 +17311,8 @@ function dscHideSuggestions() {
 
 function dscOnSearchInput() {
   const q = (document.getElementById('dsc-search')?.value || '').trim();
+  const scrapeInput = document.getElementById('dsc-scrape-keyword');
+  if (scrapeInput) scrapeInput.dataset.userEdited = '';
   dscShowSuggestions(q);
   clearTimeout(_dscSearchDebounce);
   _dscSearchDebounce = setTimeout(() => dscApplyFilters(), 320);
@@ -17331,7 +17534,7 @@ function dscRenderTable() {
 
   const _dscQ = (document.getElementById('dsc-search')?.value || '').trim();
   const emptyHtml = _dscQ
-    ? `<div style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Tidak ada hasil untuk &ldquo;${_dscQ.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}&rdquo; di database. Coba kata lain atau longgarkan filter harga/kategori.</div>`
+    ? `<div style="text-align:center;padding:32px 16px 24px;color:#9CA3AF;font-size:.85rem;">Tidak ada hasil untuk &ldquo;${_dscQ.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}&rdquo; di database.<br><span style="font-size:.78rem;">Gunakan formulir di atas untuk minta scrape, atau longgarkan filter.</span></div>`
     : '<div style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Tidak ada produk ditemukan untuk kategori dan harga ini. Coba perluas filter atau ubah kata kunci pencarian.</div>';
 
   // ── CARD VIEW ──
@@ -17449,6 +17652,7 @@ function dscRenderTable() {
   if (_ov) _ov.style.display = 'none';
   if (_nuOnb.payoff) setTimeout(() => { nuOnbDecorateFirst().catch(() => {}); }, 0);
   else if (beginner) setTimeout(() => dscHighlightStarterCard(), 0);
+  dscUpdateScrapeRequestPanel();
 }
 
 function dscSetView(mode) {
@@ -17478,6 +17682,7 @@ function dscOpenDeepDive(key) {
   };
   // Reset keyword context so stale peer data doesn't bleed into new product's Ringkasan
   _ddKwRows = []; _ddKwListing = null; _ddKwTotal = 0; _analisa_pending = false; _tren_pending = false;
+  _ddTrendCache = null;
   _ddCurrentP = p;
 
   // Switch view first so canvases are visible when Chart.js measures them
@@ -17489,9 +17694,9 @@ function dscOpenDeepDive(key) {
 
   // Defer render one tick so the DOM is painted before Chart.js measures canvases
   setTimeout(() => {
-    ddRender(p);
+    const restored = ddRender(p);
     ddLoadKeywordContext(listing);
-    ddLoadTrendHistory(listing);
+    if (!restored) ddLoadTrendHistory(listing);
     nuRefreshView('deepdive');
     nuScheduleHint('deepdive');
   }, 0);
@@ -17776,11 +17981,11 @@ function ddSwitchTab(tab) {
   document.querySelectorAll('#dd-tabs .dd-tab').forEach(el => {
     el.classList.toggle('active', el.dataset.tab === tab);
   });
-  if (tab === 'ringkasan' && typeof ddRender === 'function' && _ddCurrentP) {
+  if (tab === 'ringkasan' && typeof ddRefreshRingkasan === 'function' && _ddCurrentP) {
     // Show the panel first so canvas elements have non-zero dimensions before Chart.js renders
     const _rPanel = document.getElementById('dd-tab-ringkasan');
     if (_rPanel) _rPanel.style.display = '';
-    setTimeout(() => ddRender(_ddCurrentP), 50);
+    setTimeout(() => ddRefreshRingkasan(), 50);
   }
   if (tab === 'kalkulator') {
     kalcCalc();
@@ -17997,14 +18202,23 @@ function ddUpdateRingkasanFromKw(rows, totalSold, listing) {
     const leftPct  = Math.max(0, Math.round((p25 - pMin) / span * 100));
     const widthPct = Math.max(5, Math.round((p75 - p25) / span * 100));
     const fmtK = v => v >= 1000000 ? (v/1000000).toFixed(1)+'jt' : (v/1000).toFixed(0)+'k';
+    const medianPrice = prices[Math.floor(prices.length / 2)];
+    const medianEl = document.getElementById('dd-price-median');
     const rangeLabel = document.getElementById('dd-price-range-label');
     const rangeZone  = document.getElementById('dd-range-zone');
     const rangeLabels = document.getElementById('dd-range-labels');
     const rangeNote   = document.getElementById('dd-range-note');
-    if (rangeLabel) rangeLabel.textContent = `Rp ${p25.toLocaleString('id-ID')} – Rp ${p75.toLocaleString('id-ID')}`;
+    if (medianEl) medianEl.textContent = `Rp ${medianPrice.toLocaleString('id-ID')}`;
+    if (rangeLabel) rangeLabel.textContent = `Rentang optimal: Rp ${p25.toLocaleString('id-ID')} – Rp ${p75.toLocaleString('id-ID')}`;
     if (rangeZone)  rangeZone.style.cssText = `left:${leftPct}%;width:${widthPct}%;`;
     if (rangeLabels) rangeLabels.innerHTML = `<span>${fmtK(pMin)}</span><span>${fmtK(Math.round(pMin+(pMax-pMin)*0.33))}</span><span>${fmtK(Math.round(pMin+(pMax-pMin)*0.66))}</span><span>${fmtK(pMax)}</span>`;
     if (rangeNote) rangeNote.textContent = `Rentang harga dari ${prices.length} listing di keyword ini`;
+  } else if (prices.length) {
+    const medianPrice = prices[Math.floor(prices.length / 2)];
+    const medianEl = document.getElementById('dd-price-median');
+    const rangeLabel = document.getElementById('dd-price-range-label');
+    if (medianEl) medianEl.textContent = `Rp ${medianPrice.toLocaleString('id-ID')}`;
+    if (rangeLabel) rangeLabel.textContent = `Rentang optimal: Rp ${prices[0].toLocaleString('id-ID')} – Rp ${prices[prices.length - 1].toLocaleString('id-ID')}`;
   }
 
   // Price distribution — scatter plot of sellers with >0.5% of total sales
@@ -18014,18 +18228,22 @@ function ddUpdateRingkasanFromKw(rows, totalSold, listing) {
     x: r.price || 0,
     y: totalSold > 0 ? +((r.total_sold || 0) / totalSold * 100).toFixed(2) : 0,
     label: r.store_name || r.product_name || '',
+    image_url: r.image_url || null,
   }));
   if (_ddChartDist) {
     _ddChartDist.data.datasets[0].data = scatterPoints;
-    _ddChartDist.update();
+    ddPrimeDistImages(_ddChartDist, scatterPoints);
+    _ddChartDist.update('none');
   }
+
+  ddUpdateShopAgeChart(rows);
 
   // Update listing count in category perf card
   const tokoEl = document.getElementById('dd-catperf-toko');
   if (tokoEl) tokoEl.textContent = rows.length.toLocaleString('id-ID');
 
   // AI insights from real data
-  const medianPrice = prices[Math.floor(prices.length / 2)] || 0;
+  const medianPrice = prices.length ? prices[Math.floor(prices.length / 2)] : 0;
   const priceLbl = listing.price && medianPrice ? (listing.price < medianPrice ? 'di bawah' : listing.price > medianPrice * 1.1 ? 'di atas' : 'setara dengan') : 'setara dengan';
   const insights = [
     `Keyword ini memiliki ${rows.length} listing dengan ${nSellers} penjual unik.`,
@@ -18289,8 +18507,9 @@ function ddOpenFromKompetitor(itemId, shopId) {
     _listing:    r,
   };
   _ddKwRows = []; _ddKwListing = null; _ddKwTotal = 0; _analisa_pending = false; _tren_pending = false;
+  _ddTrendCache = null;
+  _ddCurrentP = p;
   ddSwitchTab('ringkasan');
-  ddRender(p);
 }
 
 // ── KEYWORD TAB ───────────────────────────────────────────────────────────────
@@ -19571,8 +19790,219 @@ function ddUpdateTrackBtn(listing) {
 }
 
 // ── DEEP DIVE ──────────────────────────────────────────────────
-let _ddChartTrend = null, _ddChartDist = null, _ddChartDonut = null, _ddChartCatperf = null;
+let _ddChartTrend = null, _ddChartDist = null, _ddChartShopAge = null, _ddChartCatperf = null;
+const DD_SHOP_AGE_LABELS = ['< 6 bln', '6 bln – 1 th', '1 – 2 th', '2 – 5 th', '> 5 th'];
+const DD_SHOP_AGE_COLORS = ['#1E3A8A', '#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE'];
+const _ddDistImagePlugin = {
+  id: 'ddDistImages',
+  afterDatasetsDraw(chart) {
+    if (chart.canvas?.id !== 'dd-chart-dist') return;
+    const ctx = chart.ctx;
+    const meta = chart.getDatasetMeta(0);
+    if (!meta?.data?.length) return;
+    meta.data.forEach((point, i) => {
+      const raw = chart.data.datasets[0].data[i];
+      if (!raw || raw.x == null) return;
+      const { x, y } = point.getProps(['x', 'y'], true);
+      const r = 11;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      const img = raw._img;
+      if (img?.complete && img.naturalWidth) {
+        ctx.drawImage(img, x - r, y - r, r * 2, r * 2);
+      } else {
+        ctx.fillStyle = raw._color || '#E8442A';
+        ctx.fill();
+        const letter = (raw.label || '?').trim().charAt(0).toUpperCase();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 10px system-ui,sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(letter, x, y + 0.5);
+      }
+      ctx.restore();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+  },
+};
+function ddShopAgeBuckets(rows) {
+  const shopMap = new Map();
+  (rows || []).forEach(r => {
+    const sid = String(r.shop_id || r.store_name || '');
+    if (!sid || !r.listing_date) return;
+    const cur = shopMap.get(sid);
+    if (!cur || new Date(r.listing_date) < new Date(cur)) shopMap.set(sid, r.listing_date);
+  });
+  const buckets = [0, 0, 0, 0, 0];
+  [...shopMap.values()].forEach(d => {
+    const days = (Date.now() - new Date(d).getTime()) / 86400000;
+    if (days < 180) buckets[0]++;
+    else if (days < 365) buckets[1]++;
+    else if (days < 730) buckets[2]++;
+    else if (days < 1825) buckets[3]++;
+    else buckets[4]++;
+  });
+  const total = buckets.reduce((s, n) => s + n, 0) || 1;
+  return { buckets, pcts: buckets.map(n => Math.round(n / total * 100)), total: buckets.reduce((s, n) => s + n, 0) };
+}
+function ddUpdateShopAgeChart(rows) {
+  const { buckets, pcts, total } = ddShopAgeBuckets(rows);
+  const sub = document.getElementById('dd-age-sub');
+  if (sub) sub.textContent = total ? `${total} toko unik di keyword ini` : 'Belum ada data usia toko';
+  const legend = document.getElementById('dd-age-legend');
+  if (legend) {
+    legend.innerHTML = DD_SHOP_AGE_LABELS.map((l, i) => buckets[i]
+      ? `<div class="dd-age-legend-item"><span class="dd-age-legend-dot" style="background:${DD_SHOP_AGE_COLORS[i]}"></span><span>${l}</span><span class="dd-age-legend-pct">${pcts[i]}%</span></div>`
+      : '').join('');
+  }
+  if (!_ddChartShopAge) return;
+  _ddChartShopAge.data.datasets = DD_SHOP_AGE_LABELS.map((label, i) => ({
+    label,
+    data: [pcts[i] || 0],
+    backgroundColor: DD_SHOP_AGE_COLORS[i],
+    borderWidth: 0,
+    stack: 'age',
+  }));
+  _ddChartShopAge.update('none');
+}
+function ddPrimeDistImages(chart, points) {
+  if (!chart || !points?.length) return;
+  const palette = ['#E8442A', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
+  points.forEach((p, i) => {
+    p._color = palette[i % palette.length];
+    if (!p.image_url) return;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => { if (_ddChartDist === chart) chart.update('none'); };
+    img.onerror = () => { p._img = null; };
+    img.src = p.image_url;
+    p._img = img;
+  });
+}
 let _ddCompAll = [], _ddCompShowing = 5;
+let _ddTrendCache = null;
+let _ddTrendInflight = null;
+
+function ddTrendProductKey(listing) {
+  if (!listing?.item_id || listing?.shop_id == null) return '';
+  return `${listing.item_id}__${listing.shop_id}`;
+}
+function ddCloneTrendDatasets(datasets) {
+  return (datasets || []).map(ds => ({ ...ds, data: Array.isArray(ds.data) ? [...ds.data] : ds.data }));
+}
+function ddSaveTrendCache(listing, payload) {
+  const key = ddTrendProductKey(listing);
+  if (!key) return;
+  _ddTrendCache = { key, ...payload };
+}
+function ddApplyTrendChartPayload(payload) {
+  if (!payload || !_ddChartTrend) return false;
+  _ddChartTrend.data.labels = payload.labels || [];
+  _ddChartTrend.data.datasets = ddCloneTrendDatasets(payload.datasets);
+  _ddChartTrend.update('none');
+  return true;
+}
+function ddRestoreTrendFootnotes(extras) {
+  document.getElementById('dd-trend-nodata')?.remove();
+  document.getElementById('dd-trend-peernote')?.remove();
+  document.getElementById('dd-trend-lastupdated')?.remove();
+  document.getElementById('dd-trend-ceiling-note')?.remove();
+  if (!extras) return;
+  const parent = document.getElementById('dd-chart-trend')?.parentElement;
+  if (!parent) return;
+  if (extras.nodataMsg) {
+    const el = document.createElement('div');
+    el.id = 'dd-trend-nodata';
+    el.style.cssText = 'text-align:center;padding:28px 0;font-size:.75rem;color:#9CA3AF;';
+    el.innerHTML = extras.nodataMsg;
+    parent.insertBefore(el, parent.querySelector('canvas')?.nextSibling || null);
+  }
+  if (extras.ceilingNote) {
+    const el = document.createElement('div');
+    el.id = 'dd-trend-ceiling-note';
+    el.style.cssText = 'font-size:.68rem;color:#9CA3AF;margin-top:6px;text-align:center;';
+    el.textContent = extras.ceilingNote;
+    parent.appendChild(el);
+  }
+  if (extras.lastUpdated) {
+    const el = document.createElement('div');
+    el.id = 'dd-trend-lastupdated';
+    el.style.cssText = 'font-size:.64rem;color:#9CA3AF;margin-top:4px;text-align:right;';
+    el.textContent = extras.lastUpdated;
+    parent.appendChild(el);
+  }
+  if (extras.peerNote) {
+    const el = document.createElement('div');
+    el.id = 'dd-trend-peernote';
+    el.style.cssText = 'font-size:.68rem;color:#9CA3AF;margin-top:6px;text-align:center;';
+    el.textContent = extras.peerNote;
+    parent.appendChild(el);
+  }
+}
+function ddApplyTrendHeroStats(hero) {
+  if (!hero) return;
+  const _fmtV = v => v >= 1e9 ? 'Rp '+(v/1e9).toFixed(1)+'M' : v >= 1e6 ? 'Rp '+(v/1e6).toFixed(1)+'jt' : 'Rp '+(v/1e3).toFixed(0)+'rb';
+  const _fmtDelta = pct => pct == null ? '—' : pct >= 0 ? `↑ ${pct}%` : `↓ ${Math.abs(pct)}%`;
+  const unitEl  = document.getElementById('dd-h-unit');
+  const omsetEl = document.getElementById('dd-h-omset');
+  const unitDEl  = document.getElementById('dd-h-unit-d');
+  const omsetDEl = document.getElementById('dd-h-omset-d');
+  const unitSubEl  = document.getElementById('dd-h-unit-sub');
+  const omsetSubEl = document.getElementById('dd-h-omset-sub');
+  if (unitEl)  unitEl.textContent  = hero.monthlyUnits > 0 ? hero.monthlyUnits.toLocaleString('id-ID') : '—';
+  if (omsetEl) omsetEl.textContent = hero.monthlyOmset > 0 ? _fmtV(hero.monthlyOmset) : '—';
+  if (unitDEl)  { unitDEl.textContent  = _fmtDelta(hero.wowUnitPct);  unitDEl.style.color  = (hero.wowUnitPct  ?? 0) >= 0 ? '#10B981' : '#E8442A'; }
+  if (omsetDEl) { omsetDEl.textContent = _fmtDelta(hero.wowOmsetPct); omsetDEl.style.color = (hero.wowOmsetPct ?? 0) >= 0 ? '#10B981' : '#E8442A'; }
+  if (unitSubEl)  unitSubEl.textContent  = `Est. unit / bulan · ${hero.periodNote || ''}`;
+  if (omsetSubEl) omsetSubEl.textContent = `Est. omset / bulan · ${hero.periodNote || ''}`;
+}
+function ddRestoreTrendChart(listing) {
+  const key = ddTrendProductKey(listing);
+  if (!key || !_ddTrendCache || _ddTrendCache.key !== key || !_ddChartTrend) return false;
+  if (_ddTrendCache.empty) {
+    _ddChartTrend.data.labels = [];
+    _ddChartTrend.data.datasets.forEach(d => { d.data = []; });
+    _ddChartTrend.update('none');
+    ddRestoreTrendFootnotes(_ddTrendCache.extras);
+    if (_ddTrendCache.hero) ddApplyTrendHeroStats(_ddTrendCache.hero);
+    return true;
+  }
+  if (!ddApplyTrendChartPayload(_ddTrendCache)) return false;
+  ddRestoreTrendFootnotes(_ddTrendCache.extras);
+  if (_ddTrendCache.hero) ddApplyTrendHeroStats(_ddTrendCache.hero);
+  return true;
+}
+function ddResizeActiveCharts() {
+  [_ddChartTrend, _ddChartDist, _ddChartShopAge, _ddChartCatperf].forEach(ch => {
+    try { ch?.resize(); } catch (_) {}
+  });
+}
+function ddCommitTrendChart(listing, labels, datasets, meta) {
+  const payload = { labels, datasets: ddCloneTrendDatasets(datasets), hero: meta?.hero, extras: meta?.extras };
+  ddSaveTrendCache(listing, payload);
+  if (ddTrendProductKey(listing) !== ddTrendProductKey(_ddCurrentP?._listing || _ddKwListing)) return;
+  if (!ddApplyTrendChartPayload(payload)) return;
+  ddRestoreTrendFootnotes(meta?.extras);
+  if (meta?.hero) ddApplyTrendHeroStats(meta.hero);
+}
+function ddRefreshRingkasan() {
+  if (!_ddCurrentP) return;
+  const listing = _ddCurrentP._listing || _ddKwListing;
+  const restored = ddRender(_ddCurrentP);
+  if (listing && !restored) void ddLoadTrendHistory(listing);
+  requestAnimationFrame(ddResizeActiveCharts);
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden || _dashActiveView !== 'deepdive') return;
+  requestAnimationFrame(ddResizeActiveCharts);
+});
 
 function _ddRng(seed) {
   let s = seed;
@@ -19772,7 +20202,8 @@ function ddRender(p) {
   const zoneLeft = Math.round(price * 0.85), zoneRight = Math.round(price * 1.12);
   const leftPct  = Math.round((zoneLeft  - pMin) / (pMax - pMin) * 100);
   const widthPct = Math.round((zoneRight - zoneLeft) / (pMax - pMin) * 100);
-  document.getElementById('dd-price-range-label').textContent = `Rp ${zoneLeft.toLocaleString('id-ID')} – Rp ${zoneRight.toLocaleString('id-ID')}`;
+  document.getElementById('dd-price-median').textContent = `Rp ${Math.round(price).toLocaleString('id-ID')}`;
+  document.getElementById('dd-price-range-label').textContent = `Rentang optimal: Rp ${zoneLeft.toLocaleString('id-ID')} – Rp ${zoneRight.toLocaleString('id-ID')}`;
   document.getElementById('dd-range-zone').style.cssText = `left:${leftPct}%;width:${widthPct}%;`;
   document.getElementById('dd-range-labels').innerHTML = `<span>${(pMin/1000).toFixed(0)}k</span><span>${(Math.round((pMin+pMax)*0.3)/1000).toFixed(0)}k</span><span>${(Math.round((pMin+pMax)*0.6)/1000).toFixed(0)}k</span><span>${(pMax/1000).toFixed(0)}k</span>`;
   document.getElementById('dd-range-note').textContent = `Produk di rentang harga ini memiliki penjualan tertinggi`;
@@ -19800,13 +20231,17 @@ function ddRender(p) {
       animation:{duration:400}
     }
   });
+  const _trendRestored = ddRestoreTrendChart(p._listing || _ddKwListing);
 
   // price distribution bar — empty placeholder; filled by ddUpdateRingkasanFromKw with real peer prices
   if (_ddChartDist) _ddChartDist.destroy();
   _ddChartDist = new Chart(document.getElementById('dd-chart-dist'), {
     type: 'scatter',
-    data: { datasets: [{ data: [], backgroundColor: 'rgba(232,68,42,.65)', pointRadius: 5, pointHoverRadius: 7 }] },
+    data: { datasets: [{ data: [], pointRadius: 0, pointHoverRadius: 12, hitRadius: 14 }] },
+    plugins: [_ddDistImagePlugin],
     options: {
+      responsive: true,
+      maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -19827,19 +20262,33 @@ function ddRender(p) {
     }
   });
 
-  // donut chart — usia toko
-  const donutData  = [18, 28, 32, 18, 4];
-  const donutLabels= ['< 6 bulan','6 bln – 1 th','1 – 2 th','2 – 5 th','> 5 th'];
-  const donutColors= ['#1E3A8A','#3B82F6','#60A5FA','#93C5FD','#BFDBFE'];
-  if (_ddChartDonut) _ddChartDonut.destroy();
-  _ddChartDonut = new Chart(document.getElementById('dd-chart-donut'), {
-    type: 'doughnut',
-    data: { labels:donutLabels, datasets:[{ data:donutData, backgroundColor:donutColors, borderWidth:2, borderColor:'#fff' }] },
-    options: { plugins:{legend:{display:false}}, cutout:'62%', animation:{duration:400} }
+  // Usia toko — 100% stacked horizontal bar
+  if (_ddChartShopAge) _ddChartShopAge.destroy();
+  _ddChartShopAge = new Chart(document.getElementById('dd-chart-shop-age'), {
+    type: 'bar',
+    data: {
+      labels: [''],
+      datasets: DD_SHOP_AGE_LABELS.map((label, i) => ({
+        label,
+        data: [0],
+        backgroundColor: DD_SHOP_AGE_COLORS[i],
+        borderWidth: 0,
+        stack: 'age',
+      })),
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.x}%` } } },
+      scales: {
+        x: { stacked: true, max: 100, display: false, grid: { display: false } },
+        y: { stacked: true, display: false, grid: { display: false } },
+      },
+      animation: { duration: 400 },
+    },
   });
-  document.getElementById('dd-donut-legend').innerHTML = donutLabels.map((l,i) =>
-    `<div class="dd-donut-legend-item"><div class="dd-donut-legend-dot" style="background:${donutColors[i]}"></div><span>${l}</span><span class="dd-donut-pct">${donutData[i]}%</span></div>`
-  ).join('');
+  ddUpdateShopAgeChart(_ddKwRows);
 
   // category performance mini chart — uses real keyword peer data when available
   const catOmset = Math.round(omset / 1000000);  // in juta
@@ -19856,8 +20305,18 @@ function ddRender(p) {
   if (_ddChartCatperf) _ddChartCatperf.destroy();
   _ddChartCatperf = new Chart(document.getElementById('dd-chart-catperf'), {
     type: 'line',
-    data: { labels:catPerfDates, datasets:[{ data:catPerfData, borderColor:'#E8442A', backgroundColor:'transparent', borderWidth:2, tension:0.4, pointRadius:3, pointBackgroundColor:'#E8442A' }] },
-    options: { plugins:{legend:{display:false}}, scales:{x:{ticks:{font:{size:8}}},y:{display:false}}, animation:{duration:400} }
+    data: { labels:catPerfDates, datasets:[{ data:catPerfData, borderColor:'#E8442A', backgroundColor:'rgba(232,68,42,.08)', borderWidth:2, tension:0.4, pointRadius:3, pointBackgroundColor:'#E8442A', fill:true }] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 4, right: 4, bottom: 0, left: 0 } },
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ ticks:{ font:{ size:8 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 5 } },
+        y:{ display:false, grace: '12%' },
+      },
+      animation:{ duration:400 },
+    },
   });
 
   // competitor table — built from real peer listings (_ddKwRows populated by ddLoadKeywordContext)
@@ -19898,6 +20357,7 @@ function ddRender(p) {
 
   ddRenderBeginnerVerdict(p);
   journeyApplyDeepDiveChrome();
+  return _trendRestored;
 }
 
 async function ddEstimateTrendFromPeers(listing) {
@@ -19974,12 +20434,23 @@ async function ddEstimateTrendFromPeers(listing) {
 // even sparse scrapes produce a smooth weekly view. Forecast = avg of last 2 weeks.
 async function ddLoadTrendHistory(listing) {
   if (!listing?.item_id) return;
+  const loadKey = ddTrendProductKey(listing);
+  if (!loadKey) return;
+  if (_ddTrendInflight?.key === loadKey) return _ddTrendInflight.promise;
 
+  const run = async () => {
   // Helper: show no-data message inside chart container
   function _noDataMsg(msg) {
+    document.getElementById('dd-trend-nodata')?.remove();
     const el = document.getElementById('dd-chart-trend');
     if (el) el.closest('.dd-card')?.querySelector('.dd-card-title')?.insertAdjacentHTML('afterend',
       `<div id="dd-trend-nodata" style="text-align:center;padding:28px 0;font-size:.75rem;color:#9CA3AF;">${msg}</div>`);
+    ddSaveTrendCache(listing, { empty: true, extras: { nodataMsg: msg } });
+    if (_ddChartTrend && ddTrendProductKey(_ddCurrentP?._listing || _ddKwListing) === loadKey) {
+      _ddChartTrend.data.labels = [];
+      _ddChartTrend.data.datasets.forEach(d => { d.data = []; });
+      _ddChartTrend.update('none');
+    }
   }
   document.getElementById('dd-trend-nodata')?.remove();
   document.getElementById('dd-trend-peernote')?.remove();
@@ -20073,7 +20544,6 @@ async function ddLoadTrendHistory(listing) {
           currRow,
         ];
       } else {
-        if (_ddChartTrend) { _ddChartTrend.data.labels = []; _ddChartTrend.data.datasets.forEach(d => d.data = []); _ddChartTrend.update(); }
         _noDataMsg('Belum cukup data scrape untuk menampilkan tren.<br>Data akan muncul setelah 2+ scrape.');
         return;
       }
@@ -20096,7 +20566,7 @@ async function ddLoadTrendHistory(listing) {
     const hasReviews = dbRows.some(r => r.reviews > 0);
     console.log('[ddTrend] atCeiling:', atCeiling, 'hasReviews:', hasReviews, 'mult:', mult);
 
-    let unitData, isEstimated = false;
+    let unitData, isEstimated = false, trendCeilingNote = null;
     if (atCeiling && hasReviews && !isPeerEstimated) {
       isEstimated = true;
       let base = 10000;
@@ -20110,18 +20580,7 @@ async function ddLoadTrendHistory(listing) {
       // At 10k+ ceiling with no reviews — show raw scraped values as a floor line
       isEstimated = true;
       unitData = dbRows.map(r => r.total_sold ?? 10000);
-      // Show note below chart (not blocking it) after render
-      setTimeout(() => {
-        document.getElementById('dd-trend-nodata')?.remove();
-        const canvas = document.getElementById('dd-chart-trend');
-        if (canvas && !canvas.parentElement.querySelector('#dd-trend-ceiling-note')) {
-          const note = document.createElement('div');
-          note.id = 'dd-trend-ceiling-note';
-          note.style.cssText = 'font-size:.68rem;color:#9CA3AF;margin-top:6px;text-align:center;';
-          note.textContent = 'Penjualan 10.000+ (batas Shopee) — grafik menunjukkan minimum, garis putus = estimasi.';
-          canvas.parentElement.appendChild(note);
-        }
-      }, 500);
+      trendCeilingNote = 'Penjualan 10.000+ (batas Shopee) — grafik menunjukkan minimum, garis putus = estimasi.';
     } else {
       unitData = dbRows.map(r => r.total_sold ?? 0);
     }
@@ -20249,112 +20708,42 @@ async function ddLoadTrendHistory(listing) {
         return;
       }
 
+      // Ringkasan chart: last 4 scrape-weeks + 1 forecast
+      const snapRowsDisplay = snapRows.slice(-4);
+
       // Add one forecast Monday based on average units of available snaps
-      const avgUnits = Math.round(snapRows.reduce((s, r) => s + r.units, 0) / snapRows.length);
-      const avgOmset = Math.round(snapRows.reduce((s, r) => s + r.omset, 0) / snapRows.length);
-      const lastMon  = snapRows[snapRows.length - 1].firstDate;
+      const avgUnits = Math.round(snapRowsDisplay.reduce((s, r) => s + r.units, 0) / snapRowsDisplay.length);
+      const avgOmset = Math.round(snapRowsDisplay.reduce((s, r) => s + r.omset, 0) / snapRowsDisplay.length);
+      const lastMon  = snapRowsDisplay[snapRowsDisplay.length - 1].firstDate;
       const nextMon  = new Date(lastMon.getTime() + 7 * 86400000);
-      const snapLabels    = [...snapRows.map(r => r.label), `${nextMon.getDate()} ${_MO[nextMon.getMonth()]} ▶`];
-      const snapUnits     = [...snapRows.map(r => r.units), null];
-      const snapOmset     = [...snapRows.map(r => r.omset), null];
+      const snapLabels    = [...snapRowsDisplay.map(r => r.label), `${nextMon.getDate()} ${_MO[nextMon.getMonth()]} ▶`];
+      const snapUnits     = [...snapRowsDisplay.map(r => r.units), null];
+      const snapOmset     = [...snapRowsDisplay.map(r => r.omset), null];
       const fcSnapUnits   = new Array(snapLabels.length).fill(null);
       const fcSnapOmset   = new Array(snapLabels.length).fill(null);
-      fcSnapUnits[snapRows.length - 1] = snapRows[snapRows.length - 1].units;
-      fcSnapOmset[snapRows.length - 1] = snapRows[snapRows.length - 1].omset;
-      fcSnapUnits[snapRows.length]     = avgUnits;
-      fcSnapOmset[snapRows.length]     = avgOmset;
+      fcSnapUnits[snapRowsDisplay.length - 1] = snapRowsDisplay[snapRowsDisplay.length - 1].units;
+      fcSnapOmset[snapRowsDisplay.length - 1] = snapRowsDisplay[snapRowsDisplay.length - 1].omset;
+      fcSnapUnits[snapRowsDisplay.length]     = avgUnits;
+      fcSnapOmset[snapRowsDisplay.length]     = avgOmset;
 
-      if (!_ddChartTrend) return;
-      _ddChartTrend.data.labels = snapLabels;
-      _ddChartTrend.data.datasets = [
+      const snapDatasets = [
         { label:'Omset (snapshot)', data:snapOmset, borderColor:'#E8442A', backgroundColor:'rgba(232,68,42,.06)', borderWidth:2.5, fill:true, tension:0.3, pointRadius:5, pointBackgroundColor:'#E8442A', yAxisID:'y', borderDash:[4,4], spanGaps:false },
         { label:'Unit Terjual', data:snapUnits, borderColor:'#4F46E5', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:4, pointBackgroundColor:'#4F46E5', yAxisID:'y2', borderDash:[4,4], spanGaps:false },
         { label:'Prediksi Omset', data:fcSnapOmset, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:6, pointBackgroundColor:'#10B981', yAxisID:'y', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
         { label:'Prediksi Unit', data:fcSnapUnits, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:6, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
       ];
-      _ddChartTrend.update();
-      _noDataMsg('Baru 1 sesi scrape tersedia — nilai menunjukkan total kumulatif. Prediksi berdasarkan rata-rata pasar.');
-      // Last-scraped date for snapshot path
-      document.getElementById('dd-trend-lastupdated')?.remove();
+      const snapExtras = { nodataMsg: 'Baru 1 sesi scrape tersedia — nilai menunjukkan total kumulatif. Prediksi berdasarkan rata-rata pasar.' };
       const _snapLastScrape = dbRows.length ? dbRows[dbRows.length - 1].scraped_at : null;
       if (_snapLastScrape) {
         const _sld = new Date(_snapLastScrape);
-        const _sll = `${_sld.getDate()} ${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][_sld.getMonth()]} ${_sld.getFullYear()}`;
-        const _slEl = document.createElement('div');
-        _slEl.id = 'dd-trend-lastupdated';
-        _slEl.style.cssText = 'font-size:.64rem;color:#9CA3AF;margin-top:4px;text-align:right;';
-        _slEl.textContent = `Data terakhir: ${_sll}`;
-        document.getElementById('dd-chart-trend')?.parentElement?.appendChild(_slEl);
+        snapExtras.lastUpdated = `Data terakhir: ${_sld.getDate()} ${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][_sld.getMonth()]} ${_sld.getFullYear()}`;
       }
+      ddCommitTrendChart(listing, snapLabels, snapDatasets, { extras: snapExtras });
       return;
     }
 
-    // Fill calendar-week gaps around sparse scrape windows.
-    // - Forward fill: from last known week -> current week.
-    // - Back fill: ensure at least recent 5-week window is visible even if first scrape is recent.
-    // Use trend-based projection (not flat average) so consecutive estimated weeks are not identical.
-    const weeklyRowsFilled = [...weeklyRows];
-    const lastDataMon = weeklyRowsFilled[weeklyRowsFilled.length - 1]?.firstDate;
-    const firstDataMon = weeklyRowsFilled[0]?.firstDate;
-    const latestKnownDate = new Date(); // always extend to today's Monday, not last scraped_at
-    const latestKnownMon = _mondayOf(latestKnownDate);
-    const _trendProject = (a, b) => {
-      // Linear projection from 2 latest/earliest points.
-      const slopeUnits = (b.units || 0) - (a.units || 0);
-      const slopeOmset = (b.omset || 0) - (a.omset || 0);
-      return {
-        units: Math.max(0, Math.round((b.units || 0) + slopeUnits)),
-        omset: Math.max(0, Math.round((b.omset || 0) + slopeOmset)),
-      };
-    };
-
-    // Back fill to keep last ~5 calendar weeks visible.
-    const targetWindowStart = new Date(latestKnownMon.getTime() - 4 * 7 * 86400000);
-    if (firstDataMon && firstDataMon > targetWindowStart) {
-      const seedA = weeklyRowsFilled[0];
-      const seedB = weeklyRowsFilled[1] || weeklyRowsFilled[0];
-      let refA = { units: seedA.units || 0, omset: seedA.omset || 0 };
-      let refB = { units: seedB.units || 0, omset: seedB.omset || 0 };
-      let curMon = new Date(firstDataMon.getTime() - 7 * 86400000);
-      const preRows = [];
-      while (curMon >= targetWindowStart) {
-        // Reverse projection by mirroring slope backward.
-        const prevUnits = Math.max(0, Math.round((refA.units || 0) - ((refB.units || 0) - (refA.units || 0))));
-        const prevOmset = Math.max(0, Math.round((refA.omset || 0) - ((refB.omset || 0) - (refA.omset || 0))));
-        preRows.push({
-          label: `${curMon.getDate()} ${_MO[curMon.getMonth()]}`,
-          units: prevUnits,
-          omset: prevOmset,
-          firstDate: new Date(curMon),
-          isGapEstimate: true,
-        });
-        refB = { ...refA };
-        refA = { units: prevUnits, omset: prevOmset };
-        curMon = new Date(curMon.getTime() - 7 * 86400000);
-      }
-      preRows.reverse().forEach(r => weeklyRowsFilled.unshift(r));
-    }
-
-    if (lastDataMon && latestKnownMon > lastDataMon) {
-      const seedA = weeklyRowsFilled[Math.max(0, weeklyRowsFilled.length - 2)] || weeklyRowsFilled[weeklyRowsFilled.length - 1];
-      const seedB = weeklyRowsFilled[weeklyRowsFilled.length - 1];
-      let refA = { units: seedA.units || 0, omset: seedA.omset || 0 };
-      let refB = { units: seedB.units || 0, omset: seedB.omset || 0 };
-      let curMon = new Date(lastDataMon.getTime() + 7 * 86400000);
-      while (curMon <= latestKnownMon) {
-        const proj = _trendProject(refA, refB);
-        weeklyRowsFilled.push({
-          label: `${curMon.getDate()} ${_MO[curMon.getMonth()]}`,
-          units: proj.units,
-          omset: proj.omset,
-          firstDate: new Date(curMon),
-          isGapEstimate: true,
-        });
-        refA = refB;
-        refB = proj;
-        curMon = new Date(curMon.getTime() + 7 * 86400000);
-      }
-    }
+    // Ringkasan chart: last 4 scrape-weeks only (+ 1 forecast below) — no gap back/forward fill.
+    const weeklyRowsFilled = weeklyRows.slice(-4);
 
     const labels        = weeklyRowsFilled.map(w => w.label);
     const chartUnitData = weeklyRowsFilled.map(w => w.units);
@@ -20377,66 +20766,43 @@ async function ddLoadTrendHistory(listing) {
     fUnitW[nW]    = fcUnit;
     fOmsetW[nW]   = fcOmset;
 
-    if (!_ddChartTrend) return;
-    _ddChartTrend.data.labels = labels;
-    _ddChartTrend.data.datasets = [
+    const trendDatasets = [
       { label: isEstimated ? 'Omset Est./Minggu' : 'Omset/Minggu',  data:chartOmsetData, borderColor:'#E8442A', backgroundColor:'rgba(232,68,42,.06)', borderWidth:2.5, fill:true,  tension:0.3, pointRadius:4, pointBackgroundColor:'#E8442A', yAxisID:'y',  spanGaps:false, borderDash: isEstimated ? [3,3] : [] },
       { label: isEstimated ? 'Unit Est./Minggu'  : 'Unit/Minggu',   data:chartUnitData,  borderColor:'#4F46E5', backgroundColor:'transparent',         borderWidth:2,   fill:false, tension:0.3, pointRadius:3, pointBackgroundColor:'#4F46E5', yAxisID:'y2', spanGaps:false, borderDash: isEstimated ? [3,3] : [] },
       { label:'Forecast Omset', data:fOmsetW, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y',  borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
       { label:'Forecast Unit',  data:fUnitW,  borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
     ];
-    _ddChartTrend.update();
-
-    // Show last-scraped date so users can judge data freshness
-    document.getElementById('dd-trend-lastupdated')?.remove();
+    const totalUnits = weeklyRowsFilled.reduce((s, w) => s + w.units, 0);
+    const totalOmset = weeklyRowsFilled.reduce((s, w) => s + w.omset, 0);
+    const monthlyUnits = Math.round(totalUnits / nW * (30 / 7));
+    const monthlyOmset = Math.round(totalOmset / nW * (30 / 7));
+    const wowUnitPct  = weeklyRowsFilled[0].units  > 0 ? Math.round((weeklyRowsFilled[nW-1].units  - weeklyRowsFilled[0].units)  / weeklyRowsFilled[0].units  * 100) : null;
+    const wowOmsetPct = weeklyRowsFilled[0].omset  > 0 ? Math.round((weeklyRowsFilled[nW-1].omset  - weeklyRowsFilled[0].omset)  / weeklyRowsFilled[0].omset  * 100) : null;
+    const periodNote = isPeerEstimated ? `peer est. · ${nW} minggu` : isEstimated ? `est. · ${nW} minggu` : `${nW} minggu · ${dbRows.length} scrape`;
+    const trendExtras = {};
     const _lastScrape = dbRows.length ? dbRows[dbRows.length - 1].scraped_at : null;
     if (_lastScrape) {
       const _lsDate = new Date(_lastScrape);
-      const _lsLabel = `${_lsDate.getDate()} ${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][_lsDate.getMonth()]} ${_lsDate.getFullYear()}`;
-      const _lu = document.createElement('div');
-      _lu.id = 'dd-trend-lastupdated';
-      _lu.style.cssText = 'font-size:.64rem;color:#9CA3AF;margin-top:4px;text-align:right;';
-      _lu.textContent = `Data terakhir: ${_lsLabel}`;
-      document.getElementById('dd-chart-trend')?.parentElement?.appendChild(_lu);
+      trendExtras.lastUpdated = `Data terakhir: ${_lsDate.getDate()} ${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][_lsDate.getMonth()]} ${_lsDate.getFullYear()}`;
     }
-
-    document.getElementById('dd-trend-peernote')?.remove();
     if (isPeerEstimated) {
       const _fmtS = v => v >= 1e6 ? (v/1e6).toFixed(1)+'jt' : v >= 1000 ? Math.round(v/1000)+'rb' : String(v);
-      const note = document.createElement('div');
-      note.id = 'dd-trend-peernote';
-      note.style.cssText = 'font-size:.68rem;color:#9CA3AF;margin-top:6px;text-align:center;';
-      note.textContent = `Estimasi dari ${peerCount} produk serupa (${_fmtS(peerSoldMin)}–${_fmtS(peerSoldMax)} terjual) — bukan data nyata.`;
-      document.getElementById('dd-chart-trend')?.parentElement?.appendChild(note);
+      trendExtras.peerNote = `Estimasi dari ${peerCount} produk serupa (${_fmtS(peerSoldMin)}–${_fmtS(peerSoldMax)} terjual) — bukan data nyata.`;
     }
-
-    // ── Update Ringkasan hero stat cards — show monthly estimates ──────────────
-    const totalUnits = weeklyRowsFilled.reduce((s, w) => s + w.units, 0);
-    const totalOmset = weeklyRowsFilled.reduce((s, w) => s + w.omset, 0);
-    // Convert period total → monthly: (total / weeks) × (30/7)
-    const monthlyUnits = Math.round(totalUnits / nW * (30 / 7));
-    const monthlyOmset = Math.round(totalOmset / nW * (30 / 7));
-    // Week-over-week delta: last week vs first week (both already scaled to 7 days)
-    const wowUnitPct  = weeklyRowsFilled[0].units  > 0 ? Math.round((weeklyRowsFilled[nW-1].units  - weeklyRowsFilled[0].units)  / weeklyRowsFilled[0].units  * 100) : null;
-    const wowOmsetPct = weeklyRowsFilled[0].omset  > 0 ? Math.round((weeklyRowsFilled[nW-1].omset  - weeklyRowsFilled[0].omset)  / weeklyRowsFilled[0].omset  * 100) : null;
-    const _fmtV = v => v >= 1e9 ? 'Rp '+(v/1e9).toFixed(1)+'M' : v >= 1e6 ? 'Rp '+(v/1e6).toFixed(1)+'jt' : 'Rp '+(v/1e3).toFixed(0)+'rb';
-    const _fmtDelta = pct => pct == null ? '—' : pct >= 0 ? `↑ ${pct}%` : `↓ ${Math.abs(pct)}%`;
-    const unitEl  = document.getElementById('dd-h-unit');
-    const omsetEl = document.getElementById('dd-h-omset');
-    const unitDEl  = document.getElementById('dd-h-unit-d');
-    const omsetDEl = document.getElementById('dd-h-omset-d');
-    const unitSubEl  = document.getElementById('dd-h-unit-sub');
-    const omsetSubEl = document.getElementById('dd-h-omset-sub');
-    if (unitEl)  unitEl.textContent  = monthlyUnits > 0 ? monthlyUnits.toLocaleString('id-ID') : '—';
-    if (omsetEl) omsetEl.textContent = monthlyOmset > 0 ? _fmtV(monthlyOmset) : '—';
-    if (unitDEl)  { unitDEl.textContent  = _fmtDelta(wowUnitPct);  unitDEl.style.color  = (wowUnitPct  ?? 0) >= 0 ? '#10B981' : '#E8442A'; }
-    if (omsetDEl) { omsetDEl.textContent = _fmtDelta(wowOmsetPct); omsetDEl.style.color = (wowOmsetPct ?? 0) >= 0 ? '#10B981' : '#E8442A'; }
-    const periodNote = isPeerEstimated ? `peer est. · ${nW} minggu` : isEstimated ? `est. · ${nW} minggu` : `${nW} minggu · ${dbRows.length} scrape`;
-    if (unitSubEl)  unitSubEl.textContent  = `Est. unit / bulan · ${periodNote}`;
-    if (omsetSubEl) omsetSubEl.textContent = `Est. omset / bulan · ${periodNote}`;
+    if (trendCeilingNote) trendExtras.ceilingNote = trendCeilingNote;
+    ddCommitTrendChart(listing, labels, trendDatasets, {
+      extras: trendExtras,
+      hero: { monthlyUnits, monthlyOmset, wowUnitPct, wowOmsetPct, periodNote },
+    });
   } catch(e) {
     console.warn('ddLoadTrendHistory:', e);
   }
+  };
+  const promise = run();
+  _ddTrendInflight = { key: loadKey, promise };
+  return promise.finally(() => {
+    if (_ddTrendInflight?.key === loadKey) _ddTrendInflight = null;
+  });
 }
 
 function ddRenderCompetitors() {
@@ -26832,7 +27198,7 @@ async function journeyRenderReturnStrip() {
 function journeyUnlockFullDeepDive() {
   journeySave({ fullDeepDive: true });
   journeyApplyDeepDiveChrome();
-  if (_ddCurrentP && typeof ddRender === 'function') ddRender(_ddCurrentP);
+  if (_ddCurrentP && typeof ddRefreshRingkasan === 'function') ddRefreshRingkasan();
 }
 
 function journeyOpenMoreTools() {

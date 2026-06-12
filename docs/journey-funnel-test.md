@@ -1,6 +1,8 @@
 # Journey funnel — manual QA checklist
 
-Branch: `feat/journey-funnel`
+Architecture and function reference: **[journey-funnel.md](./journey-funnel.md)**.
+
+Use this before merging changes to onboarding, Discover defaults, journey tiers, or return loops.
 
 ## Onboarding (first login)
 

@@ -119,3 +119,27 @@ https://larisid.com/?invite=OCEANBLUE-STUDENT
 The `invite` query parameter is read on first load, stored in `sessionStorage`, and removed from the URL. After authentication, the app calls `join_cohort` with that code.
 
 Optional: students can also paste the same code in the auth modal under **Kode kohort (opsional)** before **Daftar** / **Masuk** / **Google**.
+
+## Onboarding prefs (`migrations/20260611160000_onboarding_seller_status.sql`)
+
+Adds `seller_status` to `public.user_onboarding_prefs`:
+
+- `first_time` — user is new to selling
+- `existing` — user already sells elsewhere
+
+Written by the in-page Discover onboarding (step 3). See **[docs/journey-funnel.md](../docs/journey-funnel.md)**.
+
+## User journey stats (`migrations/20260611170000_user_journey_stats.sql`)
+
+Lightweight funnel counters synced from the client (`larisid_journey_v1` in localStorage):
+
+| Column | Purpose |
+|--------|---------|
+| `deepdive_count` | Number of Deep Dive opens |
+| `first_deepdive_at` | First open timestamp |
+| `last_discover_at` | Last Discover view |
+| `full_deepdive_unlocked` | User chose “Analisis lengkap” in beginner Deep Dive |
+
+RLS: users read/write **own row only** (`auth.uid() = user_id`).
+
+Product snapshots and Beranda return-loop timing (`seenProducts`, `lastBerandaAt`) stay **client-only** for now — not in this table.
