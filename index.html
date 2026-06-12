@@ -3392,6 +3392,12 @@ body.journey-beginner #dash-nav-flat-alerts{display:none!important;}
 .hbd-nu-reco-msg a{color:#E8442A;font-weight:700;cursor:pointer;text-decoration:none;}
 .hbd-nu-reco-msg a:hover{text-decoration:underline;}
 .hbd-nu-reco-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;}
+.hbd-journey-return{display:flex;flex-direction:column;gap:8px;}
+.hbd-journey-return-item{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #E5E7EB;border-left:3px solid #3B82F6;border-radius:8px;padding:10px 14px;font-size:.78rem;}
+.hbd-journey-return-item.is-up{border-left-color:#16A34A;}
+.hbd-journey-return-item.is-price{border-left-color:#C2410C;}
+.hbd-journey-return-item img{width:28px;height:28px;border-radius:5px;object-fit:cover;flex-shrink:0;}
+.hbd-journey-return-cta{margin-left:auto;font-size:.72rem;font-weight:700;color:#3B82F6;cursor:pointer;white-space:nowrap;}
 .hbd-nu-reco-card{background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden;cursor:pointer;transition:box-shadow .15s,transform .15s;}
 .hbd-nu-reco-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.08);transform:translateY(-2px);}
 .hbd-nu-reco-thumb{aspect-ratio:1/1;background:#F3F4F6;position:relative;overflow:hidden;}
@@ -20778,6 +20784,7 @@ async function hbdInit() {
   if (!tracked.length) {
     document.getElementById('hbd-subtitle').textContent = 'Selamat datang — mulai riset produk pertamamu hari ini.';
     nuRefreshView('dashboard');
+    void journeyRenderReturnStrip();
     void hbdRenderCohortDigest();
     if (_supabase && currentUser && typeof cohortInit === 'function') cohortInit().catch(() => {}).finally(() => { _syncDashboardRoleLayout(); nuRefreshView('dashboard'); });
     else { void hbdRenderMentorDigest(); _syncDashboardRoleLayout(); nuRefreshView('dashboard'); }
@@ -26694,12 +26701,159 @@ function journeyMarkDeepDiveOpen(source, listing) {
     firstDeepDiveAt: j.firstDeepDiveAt || new Date().toISOString(),
     lastDeepDiveKey: listing ? `${listing.item_id}__${listing.shop_id}` : null,
   });
+  journeyRecordSeenProduct(listing);
   journeyLog('deepdive_open', {
     source: source || 'discover',
     item_id: listing?.item_id,
     shop_id: listing?.shop_id,
     product_name: listing?.product_name || '',
   });
+}
+
+function journeySeenProducts() {
+  return journeyLoad().seenProducts || {};
+}
+
+function journeyRecordSeenProduct(listing) {
+  if (!listing || listing.item_id == null) return;
+  const key = `${listing.item_id}__${listing.shop_id}`;
+  const seen = { ...journeySeenProducts() };
+  seen[key] = {
+    name: listing.product_name || listing.name || '',
+    image_url: listing.image_url || listing.image || '',
+    price: listing.price || listing.medianPrice || 0,
+    total_sold: listing.total_sold || 0,
+    seenAt: new Date().toISOString(),
+  };
+  journeySave({ seenProducts: seen });
+}
+
+function journeyTodayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function journeyIsReturningUser() {
+  const j = journeyLoad();
+  return userJourneyTier() >= 1 && !!(j.lastBerandaAt || j.lastDiscoverAt);
+}
+
+function journeyIsNewDaySinceLastBeranda() {
+  const j = journeyLoad();
+  if (!j.lastBerandaAt) return true;
+  return j.lastBerandaAt.slice(0, 10) !== journeyTodayKey();
+}
+
+function journeyMarkBerandaVisit() {
+  journeySave({ lastBerandaAt: new Date().toISOString() });
+}
+
+async function journeyFetchListingSnapshot(key) {
+  const [itemId, shopId] = key.split('__');
+  const cached = (_dscAllListings || []).find(r => String(r.item_id) === itemId && String(r.shop_id) === shopId);
+  if (cached) return cached;
+  if (!_supabase) return null;
+  try {
+    const { data } = await _supabase.from('listings')
+      .select('item_id,shop_id,price,total_sold,product_name,image_url,scraped_at')
+      .eq('item_id', itemId).eq('shop_id', shopId)
+      .order('scraped_at', { ascending: false }).limit(1).maybeSingle();
+    return data;
+  } catch { return null; }
+}
+
+async function journeyCompareSeenProducts() {
+  const seen = journeySeenProducts();
+  const keys = Object.keys(seen).slice(0, 5);
+  if (!keys.length) return [];
+  const rows = await Promise.all(keys.map(async key => {
+    const prev = seen[key];
+    const curr = await journeyFetchListingSnapshot(key);
+    if (!curr || !prev) return null;
+    const name = (prev.name || curr.product_name || '').split(' ').slice(0, 4).join(' ') || 'Produk';
+    const priceDelta = Math.round((curr.price || 0) - (prev.price || 0));
+    const soldDelta = Math.max(0, (curr.total_sold || 0) - (prev.total_sold || 0));
+    if (soldDelta > 0) {
+      return { type: 'sold', name, image: curr.image_url || prev.image_url, msg: `Penjualan naik +${soldDelta.toLocaleString('id-ID')} unit sejak kunjungan terakhir`, key };
+    }
+    if (Math.abs(priceDelta) >= 500) {
+      const dir = priceDelta > 0 ? 'naik' : 'turun';
+      return { type: 'price', name, image: curr.image_url || prev.image_url, msg: `Harga ${dir} ke Rp ${Math.round(curr.price || 0).toLocaleString('id-ID')}`, key };
+    }
+    return null;
+  }));
+  return rows.filter(Boolean);
+}
+
+function journeyRefreshSeenSnapshots() {
+  const seen = journeySeenProducts();
+  const keys = Object.keys(seen);
+  if (!keys.length) return;
+  void Promise.all(keys.map(async key => {
+    const curr = await journeyFetchListingSnapshot(key);
+    if (!curr) return;
+    seen[key] = {
+      ...seen[key],
+      price: curr.price || 0,
+      total_sold: curr.total_sold || 0,
+      name: curr.product_name || seen[key].name,
+      image_url: curr.image_url || seen[key].image_url,
+      seenAt: new Date().toISOString(),
+    };
+  })).then(() => journeySave({ seenProducts: seen }));
+}
+
+async function journeyRenderReturnStrip() {
+  const strip = document.getElementById('hbd-alerts-strip');
+  if (!strip) return;
+  if (typeof _effectiveLeaderMode === 'function' && _effectiveLeaderMode()) return;
+  if (journeyBypassGating()) return;
+  if (userHasTrackedProducts()) return;
+  if (userJourneyTier() < 1) {
+    strip.style.display = 'none';
+    strip.innerHTML = '';
+    return;
+  }
+
+  const items = [];
+  const isReturnDay = journeyIsNewDaySinceLastBeranda();
+  const seenKeys = Object.keys(journeySeenProducts());
+
+  if (isReturnDay && seenKeys.length) {
+    const deltas = await journeyCompareSeenProducts();
+    items.push(...deltas.slice(0, 2));
+  }
+
+  if (typeof allProducts !== 'undefined' && allProducts && allProducts.length) {
+    const n = recBuildDailyRandom(allProducts, currentUser && currentUser.id, 5, 6).length;
+    if (n > 0 && (isReturnDay || !journeyLoad().lastBerandaAt)) {
+      items.push({
+        type: 'new',
+        msg: `${n} produk baru untukmu hari ini di Discover`,
+        cta: 'Buka Discover',
+        onclick: "switchDashView('discover')",
+      });
+    }
+  }
+
+  if (!items.length) {
+    strip.style.display = 'none';
+    strip.innerHTML = '';
+    return;
+  }
+
+  strip.style.display = 'block';
+  strip.innerHTML = `<div class="hbd-journey-return">${items.map(it => {
+    const cls = it.type === 'sold' ? 'is-up' : it.type === 'price' ? 'is-price' : '';
+    const img = it.image ? `<img src="${it.image}" onerror="this.style.display='none'" alt="">` : '';
+    const cta = it.cta ? `<span class="hbd-journey-return-cta" onclick="${it.onclick}">${it.cta} &rarr;</span>` : '';
+    const open = it.key ? `onclick="dscOpenDeepDive('${it.key}')"` : (it.onclick ? `onclick="${it.onclick}"` : '');
+    const label = it.name ? `<strong>${it.name}</strong> — ${it.msg}` : it.msg;
+    return `<div class="hbd-journey-return-item ${cls}" style="cursor:pointer;" ${open}><div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;"><div>${img}</div><div>${label}</div></div>${cta}</div>`;
+  }).join('')}</div>`;
+
+  journeyMarkBerandaVisit();
+  journeyRefreshSeenSnapshots();
+  journeyLog('journey_return_strip', { item_count: items.length, return_day: isReturnDay });
 }
 
 function journeyUnlockFullDeepDive() {
@@ -26734,7 +26888,10 @@ function journeyApplyDiscoverChrome() {
     if (beginner && tier === 0) {
       sub.textContent = `${JOURNEY_BEGINNER_DISCOVER_CAP} produk untukmu hari ini — ketuk satu untuk lihat apakah layak dijual.`;
     } else if (beginner) {
-      sub.textContent = 'Produk pilihan untuk kamu — ketuk kartu untuk analisis lengkap.';
+      const prefix = journeyIsReturningUser() ? 'Diperbarui hari ini — ' : '';
+      sub.textContent = prefix + 'Produk pilihan untuk kamu — ketuk kartu untuk analisis lengkap.';
+    } else if (userJourneyTier() >= 1) {
+      sub.textContent = 'Diperbarui hari ini — temukan peluang produk berpotensi tinggi berdasarkan data pasar terkini';
     } else {
       sub.textContent = 'Temukan peluang produk berpotensi tinggi berdasarkan data pasar terkini';
     }
@@ -26958,9 +27115,17 @@ function nuRefreshView(view) {
       if (hbdStrip) hbdStrip.style.display  = (empty || lobby) ? 'none' : hbdStrip.style.display;
       const sub = document.getElementById('hbd-subtitle');
       const recoTitle = document.getElementById('hbd-nu-reco-title');
-      if (sub && lobby) sub.textContent = 'Ini produk pilihan untukmu hari ini — ketuk untuk analisis lengkap.';
-      else if (sub && !lobby) sub.textContent = 'Selamat datang kembali — berikut ringkasan produk kamu hari ini.';
-      if (recoTitle && lobby) recoTitle.textContent = 'Produk untukmu hari ini';
+      if (sub && lobby) {
+        sub.textContent = journeyIsReturningUser() && journeyIsNewDaySinceLastBeranda()
+          ? 'Selamat datang kembali — ada update sejak kunjungan terakhir.'
+          : 'Ini produk pilihan untukmu hari ini — ketuk untuk analisis lengkap.';
+      } else if (sub && !lobby) sub.textContent = 'Selamat datang kembali — berikut ringkasan produk kamu hari ini.';
+      if (recoTitle && lobby) recoTitle.textContent = journeyIsReturningUser() ? 'Produk untukmu hari ini' : 'Rekomendasi produk untuk kamu';
+      const recoMsg = document.querySelector('#hbd-nu-reco .hbd-nu-reco-msg');
+      if (recoMsg && lobby && journeyIsReturningUser()) {
+        recoMsg.innerHTML = 'Set baru setiap hari — ketuk produk untuk analisis, atau buka <a onclick="switchDashView(\'discover\')">Discover</a> untuk riset lebih lanjut.';
+      }
+      if (lobby) void journeyRenderReturnStrip();
     }
   }
 
