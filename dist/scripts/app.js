@@ -6060,6 +6060,8 @@ async function ddLoadKeywordContext(listing) {
     // Rebuild Listing tab competitor table now that _ddKwRows is populated
     _ddCompAll = rows.slice(0, 15).map((r, i) => ({
       rank: i + 1,
+      item_id:      r.item_id      || null,
+      shop_id:      r.shop_id      || null,
       product_name: r.product_name || '—',
       store_name:   r.store_name   || '—',
       url:          r.url          || null,
@@ -7728,6 +7730,8 @@ function ddRender(p) {
   // competitor table — built from real peer listings (_ddKwRows populated by ddLoadKeywordContext)
   _ddCompAll = (_ddKwRows || []).slice(0, 15).map((r, i) => ({
     rank: i + 1,
+    item_id:      r.item_id      || null,
+    shop_id:      r.shop_id      || null,
     product_name: r.product_name || '—',
     store_name:   r.store_name   || '—',
     url:          r.url          || null,
@@ -8253,7 +8257,10 @@ function ddRenderCompetitors() {
       const label = months < 1 ? 'Baru' : months < 12 ? `${months} bln` : `${Math.floor(months/12)} thn`;
       return `<span style="font-size:.58rem;color:#9CA3AF;">Sejak ${label}</span>`;
     })() : '';
-    return `<tr>
+    const rowClick = (c.item_id && c.shop_id)
+      ? ` style="cursor:pointer;" onclick="ddOpenFromKompetitor('${c.item_id}','${c.shop_id}')"`
+      : '';
+    return `<tr${rowClick}>
       <td style="color:#9CA3AF;font-weight:600;font-size:.72rem;">${c.rank}</td>
       <td style="min-width:180px;">
         <div style="display:flex;align-items:flex-start;gap:7px;">
@@ -8277,7 +8284,7 @@ function ddRenderCompetitors() {
         </div>
         <div style="font-size:.56rem;color:#9CA3AF;">${sharePct.toFixed(1)}% pasar</div>
       </td>
-      <td>${c.url ? `<a href="${c.url}" target="_blank" style="font-size:.68rem;font-weight:600;color:#E8442A;text-decoration:none;white-space:nowrap;">Lihat →</a>` : '—'}</td>
+      <td>${c.url ? `<a href="${c.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:.68rem;font-weight:600;color:#E8442A;text-decoration:none;white-space:nowrap;">Lihat →</a>` : '—'}</td>
     </tr>`;
   }).join('') : `<tr><td colspan="6" style="padding:20px;text-align:center;color:#9CA3AF;font-size:.72rem;">Data kompetitor akan muncul setelah keyword dimuat.</td></tr>`;
   const btn = document.getElementById('dd-show-more-btn');

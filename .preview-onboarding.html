@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Preview — Discover Onboarding</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:#ECEAE6;color:#1A1F3C;min-height:100vh}
+.shell{display:flex;min-height:100vh}
+.sidebar{width:220px;background:#1A1F3C;color:#fff;padding:20px 14px;flex-shrink:0}
+.logo{font-weight:800;font-size:1.1rem;margin-bottom:28px}.logo span{color:#E8442A}
+.nav-item{padding:10px 12px;border-radius:8px;font-size:.82rem;color:rgba(255,255,255,.65);margin-bottom:4px}
+.nav-item.on{background:rgba(232,68,42,.18);color:#fff;font-weight:700}
+.main{flex:1;display:flex;flex-direction:column;background:#FFFBF8}
+.topbar{height:52px;border-bottom:1px solid #EDE9E3;display:flex;align-items:center;padding:0 24px;font-weight:700;font-size:.9rem;background:#fff}
+.content{flex:1;padding:20px 28px 40px;overflow:auto}
+.step-tabs{display:flex;gap:8px;margin-bottom:20px}
+.step-tabs button{border:1.5px solid #E5E7EB;background:#fff;border-radius:8px;padding:8px 14px;font:inherit;font-size:.75rem;font-weight:700;cursor:pointer;color:#6B7280}
+.step-tabs button.on{border-color:#E8442A;background:#FFF0ED;color:#E8442A}
+.dsc-onb-screen{padding:8px 0 32px}
+.dsc-onb-wrap{max-width:640px;margin:0 auto;padding:28px 24px 24px;background:#F7F6F3;border:1px solid #EDE9E3;border-radius:16px;position:relative}
+.nu-onb-skip{position:absolute;top:16px;right:18px;background:none;border:none;font-family:inherit;font-size:.74rem;font-weight:600;color:#9CA3AF;cursor:pointer}
+.nu-onb-step-lbl{font-size:.68rem;font-weight:700;letter-spacing:.08em;color:#E8442A;text-transform:uppercase;margin-bottom:6px}
+.nu-onb-title{font-size:1.25rem;font-weight:800;line-height:1.3;margin-bottom:6px}
+.nu-onb-sub{font-size:.8rem;color:#6B7280;line-height:1.55;margin-bottom:18px}
+.nu-onb-cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;margin-bottom:18px}
+.nu-onb-cat{display:flex;flex-direction:column;align-items:center;gap:7px;padding:12px 6px 10px;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;text-align:center;color:#6B7280}
+.nu-onb-cat svg{width:26px;height:26px}
+.nu-onb-cat span{font-size:.68rem;font-weight:700;color:#374151;line-height:1.25}
+.nu-onb-cat.sel{border-color:#E8442A;background:#FFF0ED;color:#E8442A}
+.nu-onb-cat.sel span{color:#E8442A}
+.nu-onb-budgets{display:flex;flex-direction:column;gap:9px;margin-bottom:18px}
+.nu-onb-budget{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px}
+.nu-onb-budget .nb-l{font-size:.84rem;font-weight:700}
+.nu-onb-budget .nb-s{font-size:.7rem;color:#9CA3AF;margin-top:1px}
+.nu-onb-budget.sel{border-color:#E8442A;background:#FFF0ED}
+.nu-onb-cta{width:100%;background:#E8442A;color:#fff;border:none;border-radius:8px;padding:13px;font-family:inherit;font-size:.88rem;font-weight:700;cursor:pointer}
+.nu-onb-back{display:block;margin:0 auto;background:none;border:none;font-family:inherit;font-size:.76rem;font-weight:700;color:#6B7280;padding:10px 4px 0}
+.nu-onb-dots{display:flex;gap:6px;justify-content:center;margin-top:14px}
+.nu-onb-dot{width:7px;height:7px;border-radius:50%;background:#E5E7EB}
+.nu-onb-dot.on{background:#E8442A}
+.note{margin-top:24px;font-size:.72rem;color:#9CA3AF;max-width:640px}
+.panel{display:none}.panel.show{display:block}
+@media(max-width:700px){.sidebar{display:none}.content{padding:16px}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="logo">Laris<span>ID</span></div>
+    <div class="nav-item">Beranda</div>
+    <div class="nav-item on">Discover</div>
+    <div class="nav-item">Deep Dive</div>
+    <div class="nav-item">Tracker</div>
+  </aside>
+  <div class="main">
+    <div class="topbar">Discover</div>
+    <div class="content">
+      <div class="step-tabs">
+        <button class="on" onclick="show(1,this)">Langkah 1 — Kategori</button>
+        <button onclick="show(2,this)">Langkah 2 — Harga</button>
+        <button onclick="show(3,this)">Langkah 3 — Status</button>
+        <button onclick="show(4,this)">Setelah selesai</button>
+      </div>
+
+      <div id="p1" class="panel show dsc-onb-screen">
+        <div class="dsc-onb-wrap">
+          <button class="nu-onb-skip">Lewati</button>
+          <div class="nu-onb-step-lbl">Langkah 1 dari 3</div>
+          <div class="nu-onb-title">Kategori apa yang menarik buat kamu?</div>
+          <div class="nu-onb-sub">Pilih minimal 3 kategori — produk yang kami tampilkan bakal disesuaikan sama minat kamu. <strong>3/3</strong> dipilih.</div>
+          <div class="nu-onb-cats">
+            <div class="nu-onb-cat sel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/></svg><span>Fashion</span></div>
+            <div class="nu-onb-cat sel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg><span>Dapur</span></div>
+            <div class="nu-onb-cat sel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/></svg><span>Elektronik</span></div>
+            <div class="nu-onb-cat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span>Olahraga</span></div>
+            <div class="nu-onb-cat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Rumah</span></div>
+            <div class="nu-onb-cat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="2" width="14" height="20" rx="2"/></svg><span>HP & Gadget</span></div>
+            <div class="nu-onb-cat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span>Kecantikan</span></div>
+            <div class="nu-onb-cat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span>Kesehatan</span></div>
+          </div>
+          <button class="nu-onb-cta">Lanjut</button>
+          <div class="nu-onb-dots"><div class="nu-onb-dot on"></div><div class="nu-onb-dot"></div><div class="nu-onb-dot"></div></div>
+        </div>
+      </div>
+
+      <div id="p2" class="panel dsc-onb-screen">
+        <div class="dsc-onb-wrap">
+          <button class="nu-onb-skip">Lewati</button>
+          <div class="nu-onb-step-lbl">Langkah 2 dari 3</div>
+          <div class="nu-onb-title">Berapa harga produk yang ingin kamu jual?</div>
+          <div class="nu-onb-sub">Kami tampilkan produk dengan harga jual yang pas sama budget kamu.</div>
+          <div class="nu-onb-budgets">
+            <div class="nu-onb-budget"><div><div class="nb-l">&lt; Rp 50rb</div><div class="nb-s">Modal kecil, mulai santai</div></div>○</div>
+            <div class="nu-onb-budget sel"><div><div class="nb-l">Rp 50rb – 150rb</div><div class="nb-s">Paling umum buat pemula</div></div>✓</div>
+            <div class="nu-onb-budget"><div><div class="nb-l">&gt; Rp 150rb</div><div class="nb-s">Produk premium, margin besar</div></div>○</div>
+            <div class="nu-onb-budget"><div><div class="nb-l">Bebas</div><div class="nb-s">Tampilkan semua rentang harga</div></div>○</div>
+          </div>
+          <button class="nu-onb-cta">Lanjut</button>
+          <button class="nu-onb-back">Kembali</button>
+          <div class="nu-onb-dots"><div class="nu-onb-dot"></div><div class="nu-onb-dot on"></div><div class="nu-onb-dot"></div></div>
+        </div>
+      </div>
+
+      <div id="p3" class="panel dsc-onb-screen">
+        <div class="dsc-onb-wrap">
+          <button class="nu-onb-skip">Lewati</button>
+          <div class="nu-onb-step-lbl">Langkah 3 dari 3</div>
+          <div class="nu-onb-title">Kamu sudah jualan atau baru mulai?</div>
+          <div class="nu-onb-sub">Biar rekomendasi produk lebih relevan sama tahap kamu sekarang.</div>
+          <div class="nu-onb-budgets">
+            <div class="nu-onb-budget"><div><div class="nb-l">Sudah punya toko</div><div class="nb-s">Saya sudah berjualan di Shopee atau marketplace lain</div></div>○</div>
+            <div class="nu-onb-budget sel"><div><div class="nb-l">Baru mulai</div><div class="nb-s">Belum pernah jual online atau masih persiapan pertama</div></div>✓</div>
+          </div>
+          <button class="nu-onb-cta">Lihat Produk Untukmu</button>
+          <button class="nu-onb-back">Kembali</button>
+          <div class="nu-onb-dots"><div class="nu-onb-dot"></div><div class="nu-onb-dot"></div><div class="nu-onb-dot on"></div></div>
+        </div>
+      </div>
+
+      <div id="p4" class="panel">
+        <div style="margin-bottom:12px;padding:12px 16px;background:#FFF0ED;border:1px solid #FBBCB2;border-radius:12px;max-width:900px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <div><div style="font-size:.84rem;font-weight:800">Pilihan Untukmu</div><div style="font-size:.72rem;color:#6B7280;margin-top:2px">Berdasarkan 3 kategori dan modal Rp 50rb – 150rb yang kamu pilih.</div></div>
+          <button style="border:1.5px solid #E8442A;color:#E8442A;background:none;border-radius:8px;padding:7px 14px;font-size:.74rem;font-weight:700">Ubah Pilihan</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:900px">
+          <div style="background:#fff;border:1px solid #EDE9E3;border-radius:12px;overflow:hidden"><div style="height:120px;background:linear-gradient(135deg,#FDE7E2,#fff)"></div><div style="padding:12px"><div style="font-size:.78rem;font-weight:700;margin-bottom:4px">Tas Selempang Mini</div><div style="font-size:.7rem;color:#6B7280">Fashion · Rp 89rb</div><div style="margin-top:8px;font-size:.72rem;font-weight:800;color:#1A7A46">Skor 78</div></div></div>
+          <div style="background:#fff;border:2.5px solid #E8442A;border-radius:12px;overflow:hidden"><div style="height:120px;background:linear-gradient(135deg,#FDE7E2,#fff);position:relative"><span style="position:absolute;bottom:8px;right:8px;background:#E8442A;color:#fff;border-radius:8px;padding:4px 10px;font-size:.68rem;font-weight:700">Lihat Deep Dive</span></div><div style="padding:12px"><div style="font-size:.78rem;font-weight:700;margin-bottom:4px">Set Panci Anti Lengket</div><div style="font-size:.7rem;color:#6B7280">Dapur · Rp 125rb</div><div style="margin-top:8px;font-size:.72rem;font-weight:800;color:#1A7A46">Skor 82</div></div></div>
+          <div style="background:#fff;border:1px solid #EDE9E3;border-radius:12px;overflow:hidden"><div style="height:120px;background:linear-gradient(135deg,#FDE7E2,#fff)"></div><div style="padding:12px"><div style="font-size:.78rem;font-weight:700;margin-bottom:4px">Kabel USB-C 2m</div><div style="font-size:.7rem;color:#6B7280">Elektronik · Rp 45rb</div><div style="margin-top:8px;font-size:.72rem;font-weight:800;color:#1A7A46">Skor 71</div></div></div>
+        </div>
+      </div>
+
+      <p class="note">Preview statis — buka file ini di browser: <code>.preview-onboarding.html</code>. Tab di atas untuk ganti langkah.</p>
+    </div>
+  </div>
+</div>
+<script>
+function show(n,btn){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('show'));document.getElementById('p'+n).classList.add('show');document.querySelectorAll('.step-tabs button').forEach(b=>b.classList.remove('on'));btn.classList.add('on')}
+</script>
+</body>
+</html>
