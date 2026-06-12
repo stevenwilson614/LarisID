@@ -19942,6 +19942,14 @@ function ddCloseTrackAlertModal() {
   _ddPendingTrackListing = null;
 }
 
+function ddTrackWithDefaultAlerts() {
+  const emailCh = document.getElementById('ta-ch-email');
+  const waCh    = document.getElementById('ta-ch-wa');
+  if (emailCh) emailCh.checked = true;
+  if (waCh) waCh.checked = false;
+  ddConfirmTrackAlert();
+}
+
 function ddConfirmTrackAlert() {
   const listing = _ddPendingTrackListing;
   if (!listing) return;
