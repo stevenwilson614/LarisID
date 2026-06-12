@@ -16785,9 +16785,13 @@ async function dscLoadListings() {
   try {
     const filters = _dscCurrentFilters();
     const hasSearch = !!(filters.search || '').trim();
+    // Cache holds UNFILTERED top sellers — only valid when no search, no
+    // category filter (single OR multi), and no price filter is active.
+    const _catFilterOn = !!_dscCurrentCatFilter || !!(_dscCurrentCatFilters && _dscCurrentCatFilters.length);
+    const _priceFilterOn = (filters.priceMin || 0) > 0 || filters.priceMax !== Infinity;
+    const _cacheable = !hasSearch && !_catFilterOn && !_priceFilterOn;
 
-    // Cache is top-sellers only — never use when user is searching the full database
-    if (!hasSearch && !_dscAllListings.length && _dscOffset === 0 && !_dscCurrentCatFilter) {
+    if (_cacheable && !_dscAllListings.length && _dscOffset === 0) {
       const cached = dscLoadCache();
       if (cached && cached.length) {
         if (loadGen !== _dscLoadGen) return;
@@ -16827,8 +16831,9 @@ async function dscLoadListings() {
     }
 
     _dscLoaded = true;
-    // Cache the first batch for instant reload (browse mode only — not search results)
-    if (!hasSearch && _dscOffset <= DSC_PAGE_SIZE) dscSaveCache(_dscAllListings.slice(0, DSC_PAGE_SIZE));
+    // Cache the first batch for instant reload (unfiltered browse mode only —
+    // never persist search results or category/price-filtered rows)
+    if (_cacheable && _dscOffset <= DSC_PAGE_SIZE) dscSaveCache(_dscAllListings.slice(0, DSC_PAGE_SIZE));
     // Stamp what server-side filters produced this batch (used by dscApplyFilters change-detection)
     if (_dscLastSrvFilters === null) {
       const f = filters;
@@ -27275,8 +27280,9 @@ function nuOnbApplyToDiscover() {
     if (maxEl) maxEl.value = String(b.max == null ? 500000 : b.max);
     dscUpdateDualRange('price');
     nuOnbShowBanner();
-    _dscSnapAppliedFromUI();
-    dscApplyFilters();
+    // Same path as the drawer's "Terapkan Filter" — snaps UI state, busts the
+    // top-sellers cache, and forces a fresh server fetch with these filters.
+    dscTerapkanFilter();
     void logUserEvent('onboarding_results', { categories: _nuOnb.cats });
   }, 80);
 }
@@ -30506,104 +30512,6 @@ async function cohortPlannerGcalImportSelected() {
 @media(max-width:560px){#nu-onb-overlay{padding:0;align-items:stretch;}.nu-onb-card{max-width:none;max-height:none;border-radius:0;height:100%;}}
 </style>
 <div id="nu-onb-overlay" role="dialog" aria-modal="true" aria-label="Pilih minat kamu">
-  <div class="nu-onb-card">
-    <button type="button" class="nu-onb-skip" onclick="nuOnbSkip()">Lewati</button>
-    <div id="nu-onb-body"></div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════════
-     PROFILE SETUP MODAL (post-login onboarding)
-═══════════════════════════════════════════════════ -->
-<div id="profile-setup-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1100;align-items:center;justify-content:center;padding:20px;" onclick="_psetupOverlayClick(event)">
-  <div style="background:#fff;border-radius:16px;padding:32px 28px 28px;width:100%;max-width:440px;box-shadow:0 24px 80px rgba(0,0,0,.3);position:relative;max-height:90vh;overflow-y:auto;">
-
-    <!-- Close button — only visible in edit mode -->
-    <button id="psetup-close-btn" onclick="closeProfileSetupModal()" style="display:none;position:absolute;top:14px;right:14px;background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:1.3rem;line-height:1;padding:4px;">&#x2715;</button>
-
-    <!-- Header -->
-    <div style="text-align:center;margin-bottom:22px;">
-      <div style="display:inline-flex;align-items:center;justify-content:center;width:50px;height:50px;background:#FFF0ED;border-radius:13px;margin-bottom:11px;">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      </div>
-      <div id="psetup-title" style="font-size:1.15rem;font-weight:900;color:#1A1F3C;margin-bottom:4px;">Lengkapi Profilmu</div>
-      <div style="font-size:.77rem;color:#6B7280;line-height:1.5;">Isi info berikut agar kami bisa memberi pengalaman terbaik buat kamu.</div>
-    </div>
-
-    <!-- Name row -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-      <div>
-        <label style="display:block;font-size:.71rem;font-weight:700;color:#374151;margin-bottom:4px;">Nama Depan *</label>
-        <input id="psetup-first-name" type="text" placeholder="Nama depan" autocomplete="given-name"
-          style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 11px;font-size:.82rem;font-family:inherit;outline:none;box-sizing:border-box;"
-          onfocus="this.style.borderColor='#E8442A'" onblur="this.style.borderColor='#E5E7EB'">
-      </div>
-      <div>
-        <label style="display:block;font-size:.71rem;font-weight:700;color:#374151;margin-bottom:4px;">Nama Belakang *</label>
-        <input id="psetup-last-name" type="text" placeholder="Nama belakang" autocomplete="family-name"
-          style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 11px;font-size:.82rem;font-family:inherit;outline:none;box-sizing:border-box;"
-          onfocus="this.style.borderColor='#E8442A'" onblur="this.style.borderColor='#E5E7EB'">
-      </div>
-    </div>
-
-    <!-- WA number (email / Google users only) -->
-    <div id="psetup-wa-wrap" style="margin-bottom:12px;">
-      <label style="display:block;font-size:.71rem;font-weight:700;color:#374151;margin-bottom:4px;">Nomor WhatsApp *</label>
-      <div id="psetup-wa-border" style="display:flex;align-items:center;border:1.5px solid #E5E7EB;border-radius:8px;overflow:hidden;">
-        <span style="padding:9px 10px;font-size:.82rem;color:#6B7280;background:#F9FAFB;border-right:1px solid #E5E7EB;white-space:nowrap;flex-shrink:0;">+62</span>
-        <input id="psetup-wa-number" type="tel" placeholder="8123456789" inputmode="numeric" maxlength="13"
-          style="width:100%;border:none;padding:9px 11px;font-size:.82rem;font-family:inherit;outline:none;background:transparent;"
-          onfocus="document.getElementById('psetup-wa-border').style.borderColor='#E8442A'"
-          onblur="document.getElementById('psetup-wa-border').style.borderColor='#E5E7EB'">
-      </div>
-    </div>
-
-    <!-- Email (WhatsApp OTP users only) -->
-    <div id="psetup-email-wrap" style="display:none;margin-bottom:12px;">
-      <label style="display:block;font-size:.71rem;font-weight:700;color:#374151;margin-bottom:4px;">Alamat Email *</label>
-      <input id="psetup-contact-email" type="email" placeholder="email@kamu.com" autocomplete="email"
-        style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 11px;font-size:.82rem;font-family:inherit;outline:none;box-sizing:border-box;"
-        onfocus="this.style.borderColor='#E8442A'" onblur="this.style.borderColor='#E5E7EB'">
-    </div>
-
-    <!-- Seller status -->
-    <div style="margin-bottom:14px;">
-      <label style="display:block;font-size:.71rem;font-weight:700;color:#374151;margin-bottom:8px;">Sudah pernah jualan di Shopee? *</label>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <button id="psetup-btn-new" type="button" onclick="psetupToggleSellerFields('first_time')"
-          style="border:2px solid #E5E7EB;border-radius:10px;padding:10px 8px;font-size:.78rem;font-weight:700;color:#6B7280;background:#fff;cursor:pointer;font-family:inherit;transition:all .15s;">
-          Belum pernah
-        </button>
-        <button id="psetup-btn-existing" type="button" onclick="psetupToggleSellerFields('existing')"
-          style="border:2px solid #E5E7EB;border-radius:10px;padding:10px 8px;font-size:.78rem;font-weight:700;color:#6B7280;background:#fff;cursor:pointer;font-family:inherit;transition:all .15s;">
-          Sudah pernah
-        </button>
-      </div>
-    </div>
-
-    <!-- Shopee store fields (existing sellers only) -->
-    <div id="psetup-store-wrap" style="display:none;margin-bottom:14px;padding:14px;background:#FFF8F7;border-radius:10px;border:1.5px solid #FBBCB2;">
-      <div style="font-size:.72rem;font-weight:700;color:#E8442A;margin-bottom:10px;">Hubungkan toko Shopee kamu</div>
-      <div style="margin-bottom:10px;">
-        <label style="display:block;font-size:.71rem;font-weight:700;color:#374151;margin-bottom:4px;">Nama Toko *</label>
-        <input id="psetup-store-name" type="text" placeholder="Nama toko di Shopee" autocomplete="off"
-          style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 11px;font-size:.82rem;font-family:inherit;outline:none;box-sizing:border-box;background:#fff;"
-          onfocus="this.style.borderColor='#E8442A'" onblur="this.style.borderColor='#E5E7EB'">
-      </div>
-      <div>
-        <label style="display:block;font-size:.71rem;font-weight:700;color:#374151;margin-bottom:4px;">URL Toko Shopee *</label>
-        <input id="psetup-store-url" type="text" placeholder="https://shopee.co.id/nama_toko" autocomplete="off"
-          style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 11px;font-size:.82rem;font-family:inherit;outline:none;box-sizing:border-box;background:#fff;"
-          onfocus="this.style.borderColor='#E8442A'" onblur="this.style.borderColor='#E5E7EB'">
-      </div>
-    </div>
-
-    <!-- Inline error -->
-    <div id="psetup-error" style="display:none;color:#E8442A;font-size:.75rem;font-weight:600;margin-bottom:10px;padding:8px 12px;background:#FFF0ED;border-radius:8px;"></div>
-
-    <!-- Submit -->
-    <button id="psetup-submit-btn" type="button" onclick="submitProfileSetup()"
-      style="width:100%;background:#E8442A;color:#fff;border:none;border-radius:10px;padding:12px;font-size:.85rem;font-weight:800;cursor:pointer;font-family:inherit;"
       onmouseover="this.style.background='#C23520'" onmouseout="this.style.background='#E8442A'">
       Simpan &amp; Mulai
     </button>
