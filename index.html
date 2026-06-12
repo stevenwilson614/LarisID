@@ -17251,8 +17251,8 @@ function dscRenderTable() {
         const omset = _dscOmset(p);
         const delta = _dscTrendDelta(p);
         const imgHtml = p.image_url
-          ? `<img src="${p.image_url}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='📦'">`
-          : '📦';
+          ? `<img src="${p.image_url}" alt="" loading="lazy" onerror="this.parentElement.innerHTML=wIcon('box',36,'#9CA3AF')">`
+          : wIcon('box', 36, '#9CA3AF');
         const key   = `${p.item_id}__${p.shop_id}`;
         const ls    = calcListingScore(p, _cardKwMap[p.keyword||'__'], _dscListingTrendPct(p), _dscKwTrendMap[p.keyword]??null);
         const lslbl = listingScoreLabel(ls.total);
@@ -17286,7 +17286,7 @@ function dscRenderTable() {
       tbody.innerHTML = slice.map(p => {
         const imgHtml = p.image_url
           ? `<div class="dsc-prod-img"><img src="${p.image_url}" alt="" loading="lazy" onerror="this.style.display='none'"></div>`
-          : `<div class="dsc-prod-img">📦</div>`;
+          : `<div class="dsc-prod-img">${wIcon('box', 18, '#9CA3AF')}</div>`;
         const comp   = _dscCompMap[p.keyword] || 'Sedang';
         const omset  = _dscOmset(p);
         const delta  = _dscTrendDelta(p);
@@ -17713,8 +17713,8 @@ async function ddLoadKeywordContext(listing) {
   const miniImg = document.getElementById('dd-listing-mini-img');
   if (miniImg) {
     miniImg.innerHTML = listing.image_url
-      ? `<img src="${listing.image_url}" alt="" onerror="this.parentElement.innerHTML='📦'">`
-      : '📦';
+      ? `<img src="${listing.image_url}" alt="" onerror="this.parentElement.innerHTML=wIcon('box',30,'#9CA3AF')">`
+      : wIcon('box', 30, '#9CA3AF');
   }
   const g = id => document.getElementById(id);
   if (g('dd-listing-mini-name'))  g('dd-listing-mini-name').textContent  = listing.product_name || '—';
@@ -18024,7 +18024,7 @@ function ddRenderKompetitor() {
   // ── Insights ──
   const insEl = g('komp-insights');
   if (insEl) {
-    const icons = ['📈','✅','🏆','⭐'];
+    const icons = [wIcon('trending-up', 14), wIcon('check-circle', 14), wIcon('trophy', 14), wIcon('star', 14)];
     const tips = [
       `Mayoritas kompetitor menjual di harga <strong>${kompFmt(Math.round(avgPrice*0.9))} – ${kompFmt(Math.round(avgPrice*1.1))}</strong>`,
       `${adsPct}% kompetitor menggunakan iklan Shopee Ads`,
@@ -18294,14 +18294,14 @@ function ddRenderKeyword() {
     const hasBestLt = longtail.length > 0;
     // Vary tips based on actual competition landscape
     const tips = [
-      { icon:'🔍', txt: `Keyword utama terbaik: <strong>${top3 || baseKw}</strong>` },
+      { icon: wIcon('search', 13), txt: `Keyword utama terbaik: <strong>${top3 || baseKw}</strong>` },
       highComp > lowComp
-        ? { icon:'⚠️', txt: `Pasar ini kompetitif — prioritaskan long-tail keyword dengan volume lebih kecil tapi konversi tinggi` }
-        : { icon:'✅', txt: `Ada keyword dengan persaingan rendah — peluang bagus untuk bersaing lebih mudah` },
+        ? { icon: wIcon('alert', 13, '#D97706'), txt: `Pasar ini kompetitif — prioritaskan long-tail keyword dengan volume lebih kecil tapi konversi tinggi` }
+        : { icon: wIcon('check-circle', 13, '#1A7A46'), txt: `Ada keyword dengan persaingan rendah — peluang bagus untuk bersaing lebih mudah` },
       hasBestLt
-        ? { icon:'🎯', txt: `Coba long-tail: <strong>${bestLt}</strong> — lebih spesifik, konversi lebih tinggi` }
-        : { icon:'🎯', txt: `Gunakan variasi long-tail keyword produk ini untuk menjangkau segmen niche` },
-      { icon:'📝', txt: `Letakkan keyword utama dalam 60 karakter pertama judul Shopee` },
+        ? { icon: wIcon('target', 13), txt: `Coba long-tail: <strong>${bestLt}</strong> — lebih spesifik, konversi lebih tinggi` }
+        : { icon: wIcon('target', 13), txt: `Gunakan variasi long-tail keyword produk ini untuk menjangkau segmen niche` },
+      { icon: wIcon('file-text', 13), txt: `Letakkan keyword utama dalam 60 karakter pertama judul Shopee` },
     ];
     aiEl.innerHTML = tips.map(t => `
       <div style="display:flex;gap:8px;align-items:flex-start;font-size:.65rem;color:#374151;">
@@ -18928,9 +18928,9 @@ function apBuildData(listing, rows, totalSold) {
     ? `Pasar ini punya peluang baik dengan ${nSellers} penjual. Masuk di harga Rp ${p25.toLocaleString('id-ID')}–${p75.toLocaleString('id-ID')} dan fokus pada kualitas foto dan review awal.`
     : `Persaingan cukup ketat — top-3 kuasai ${Math.round(top3Share*100)}% pasar. Diferensiasi produk dan harga agresif sangat penting untuk breakthrough.`;
   const strategies = [
-    { title: 'Harga', icon: '💰', text: `Sweet spot Rp ${(p25/1000).toFixed(0)}rb–${(p75/1000).toFixed(0)}rb — masuk di rentang ini untuk daya saing optimal` },
-    { title: 'Kompetisi', icon: '🔍', text: `${rows.length} listing di keyword ini — optimalkan judul, foto, dan review awal untuk mengungguli top-3` },
-    { title: 'Diferensiasi', icon: '🎯', text: `Top-3 dominasi ${Math.round(top3Share*100)}% pasar — fokus niche atau variasi produk yang belum diisi kompetitor` },
+    { title: 'Harga', text: `Sweet spot Rp ${(p25/1000).toFixed(0)}rb–${(p75/1000).toFixed(0)}rb — masuk di rentang ini untuk daya saing optimal` },
+    { title: 'Kompetisi', text: `${rows.length} listing di keyword ini — optimalkan judul, foto, dan review awal untuk mengungguli top-3` },
+    { title: 'Diferensiasi', text: `Top-3 dominasi ${Math.round(top3Share*100)}% pasar — fokus niche atau variasi produk yang belum diisi kompetitor` },
   ];
 
   return {
@@ -19645,9 +19645,9 @@ function ddRender(p) {
   // hero
   const _ddHeroEl = document.getElementById('dd-hero-img');
   if (p.image) {
-    _ddHeroEl.innerHTML = `<img src="${p.image}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.parentElement.textContent='📦'">`;
+    _ddHeroEl.innerHTML = `<img src="${p.image}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.parentElement.innerHTML=wIcon('box',48,'#9CA3AF')">`;
   } else {
-    _ddHeroEl.textContent = p.emoji || '📦';
+    _ddHeroEl.innerHTML = wIcon('box', 48, '#9CA3AF');
   }
   document.getElementById('dd-hero-name').textContent = p.name;
   const productPrice = listing.price || p.medianPrice || p.price || 0;
@@ -20357,7 +20357,7 @@ function ddRenderCompetitors() {
     const imgHtml    = c.image_url ? `<img src="${c.image_url}" style="width:32px;height:32px;border-radius:4px;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">` : '';
     const ratingHtml = c.rating ? `<span style="color:#F59E0B;font-size:.6rem;">★ ${c.rating.toFixed(1)}</span>` : '';
     const reviewsHtml = c.reviews ? `<span style="font-size:.58rem;color:#9CA3AF;">(${c.reviews >= 1000 ? (c.reviews/1000).toFixed(1)+'rb' : c.reviews} ulasan)</span>` : '';
-    const locationHtml = c.location ? `<span style="font-size:.58rem;color:#9CA3AF;display:inline-flex;align-items:center;gap:2px;">📍${c.location}</span>` : '';
+    const locationHtml = c.location ? `<span style="font-size:.58rem;color:#9CA3AF;display:inline-flex;align-items:center;gap:2px;">${wIcon('map-pin', 10)}${c.location}</span>` : '';
     const listingAgeHtml = c.listing_date ? (() => {
       const d = new Date(c.listing_date);
       const months = Math.max(0, Math.floor((Date.now() - d) / (1000*60*60*24*30)));
@@ -20538,8 +20538,8 @@ async function trkInit() {
     const icon = dc === 'up' ? _upArrow : dc === 'down' ? _dnArrow : '';
     const dtxt = p.delta == null ? '— belum ada data' : p.delta > 0 ? `+${p.delta.toLocaleString('id-ID')} unit` : '0 unit (stabil)';
     const imgHtml = p.image_url
-      ? `<img src="${p.image_url}" alt="" onerror="this.parentElement.innerHTML='📦'">`
-      : '📦';
+      ? `<img src="${p.image_url}" alt="" onerror="this.parentElement.innerHTML=wIcon('box',32,'#9CA3AF')">`
+      : wIcon('box', 32, '#9CA3AF');
     const sellKey = `${p.item_id}_${p.shop_id}`;
     const isSelling = _trkSellingSet.has(sellKey);
     return `<div class="trk-prod-card" onclick="trkOpenDeepDive('${p.item_id}','${p.shop_id}')">
@@ -20875,7 +20875,7 @@ async function hbdRenderMentorDigest() {
     ? `<div style="font-size:.65rem;font-weight:700;color:#C0392B;margin-bottom:4px;">Tidak aktif 7 hari:</div>`
       + inactive.slice(0,5).map(s => `<div style="font-size:.72rem;padding:4px 0;border-bottom:1px solid #F3F4F6;">${_cohortEsc(cohortCohortDisplayName(s.user_id,null))}</div>`).join('')
       + (inactive.length > 5 ? `<div class="cohort-muted" style="font-size:.65rem;margin-top:4px;">+${inactive.length-5} lainnya</div>` : '')
-    : '<div style="font-size:.72rem;color:#1A7A46;font-weight:700;">Semua siswa aktif minggu ini 🎉</div>';
+    : '<div style="font-size:.72rem;color:#1A7A46;font-weight:700;">Semua siswa aktif minggu ini ' + wIcon('sparkles', 12) + '</div>';
   if (feedEl) {
     const { data: posts } = await _supabase.from('community_posts').select('author_id,body,kind,created_at').eq('cohort_id',c.id).gte('created_at',since7d).order('created_at',{ascending:false}).limit(6);
     const kindLbl = {win:'Menang',milestone_share:'Milestone',product_share:'Produk',general:'Umum',question:'Pertanyaan'};
@@ -21075,7 +21075,7 @@ async function hbdRenderCohortDigest() {
   const mentorId = cRow && cRow.mentor_user_id;
   await cohortLoadMemberNames(pcid);
   const kindLbl = { win: 'Menang', milestone_share: 'Milestone', product_share: 'Produk' };
-  const kindIcon = { win: '🎉', milestone_share: '🏁', product_share: '📦' };
+  const kindIcon = { win: wIcon('sparkles', 16), milestone_share: wIcon('flag', 16), product_share: wIcon('box', 16) };
   const [{ data: ann }, { data: postsRaw, error: postErr }] = await Promise.all([
     _supabase.from('cohort_announcements').select('title,body,created_at').eq('cohort_id', pcid).order('created_at', { ascending: false }).limit(3),
     _supabase.from('community_posts').select('body,created_at,author_id,kind,metadata').eq('cohort_id', pcid).is('hidden_at', null).in('kind', ['win', 'milestone_share', 'product_share']).order('created_at', { ascending: false }).limit(16),
@@ -21132,7 +21132,7 @@ async function hbdRenderCohortDigest() {
       const name = (p.name || p.keyword || 'Produk').split(' ').slice(0, 5).join(' ') || 'Produk';
       const sc = p.score >= 70 ? 'hot' : 'ok';
       return `<div class="hbd-opp-item" onclick="openDetail(${p.id})">
-        <div class="hbd-opp-emoji" style="font-size:1rem;">📈</div>
+        <div class="hbd-opp-emoji">${wIcon('trending-up', 18, '#E8442A')}</div>
         <div class="hbd-opp-body">
           <div class="hbd-opp-name">${_cohortEsc(name)}</div>
           <div class="hbd-opp-cat">${_cohortEsc(p.category || '—')}</div>
@@ -21161,7 +21161,7 @@ async function hbdRenderCohortDigest() {
         const hot = (r.score || 0) >= 70;
         const safeKw = JSON.stringify(String(r.keyword || ''));
         return `<div class="hbd-opp-item" onclick="openKwDetail(${safeKw})">
-          <div class="hbd-opp-emoji" style="font-size:1rem;">🔎</div>
+          <div class="hbd-opp-emoji">${wIcon('search', 18, '#E8442A')}</div>
           <div class="hbd-opp-body">
             <div class="hbd-opp-name">${_cohortEsc(r.keyword)}</div>
             <div class="hbd-opp-cat">${_cohortEsc(r.category || '—')}</div>
@@ -21669,11 +21669,11 @@ function alrInit() {
   const rng = _alrRng(99991);
 
   const types = [
-    { type:'price', icon:'💰', iconCls:'red',   badgeCls:'down', label: (p,r) => `Harga ${p.name.split(' ').slice(0,3).join(' ')} turun ${(2+r()*8).toFixed(1)}%`,    desc: (p,r) => `Dari Rp ${(p.medianPrice||85000).toLocaleString('id-ID')} → Rp ${Math.round((p.medianPrice||85000)*(0.88+r()*0.08)).toLocaleString('id-ID')}`, badge: r => `▼ ${(2+r()*8).toFixed(1)}%`, unread: true, accent: '' },
-    { type:'trend', icon:'📈', iconCls:'green', badgeCls:'up',   label: (p,r) => `Tren ${p.name.split(' ').slice(0,3).join(' ')} naik signifikan`,                    desc: (p,r) => `Volume pencarian minggu ini naik ${Math.round(10+r()*30)}% dibanding minggu lalu`, badge: r => `▲ ${Math.round(10+r()*30)}%`, unread: true, accent: 'green' },
-    { type:'opp',   icon:'⚡', iconCls:'blue',  badgeCls:'info', label: (p,r) => `Peluang baru terdeteksi: ${p.name.split(' ').slice(0,3).join(' ')}`,                 desc: (p,r) => `Skor kompetisi turun — celah masuk terbuka dengan margin estimasi ${Math.round(25+r()*20)}%`, badge: r => 'Peluang', unread: true, accent: 'blue' },
-    { type:'stock', icon:'📦', iconCls:'yellow',badgeCls:'warn', label: (p,r) => `Kompetitor ${p.name.split(' ').slice(0,2).join(' ')} kehabisan stok`,                desc: (p,r) => `Toko teratas kehabisan stok — permintaan tidak terlayani, ini kesempatan Anda`, badge: r => 'Stok Habis', unread: false, accent: '' },
-    { type:'price', icon:'💰', iconCls:'green', badgeCls:'up',   label: (p,r) => `Harga ${p.name.split(' ').slice(0,3).join(' ')} naik ${(3+r()*10).toFixed(1)}%`,     desc: (p,r) => `Pasar sedang menaikkan harga — pertimbangkan ikuti atau jaga harga untuk volume`, badge: r => `▲ ${(3+r()*10).toFixed(1)}%`, unread: false, accent: '' },
+    { type:'price', icon: wIcon('tag', 18, '#E8442A'), iconCls:'red',   badgeCls:'down', label: (p,r) => `Harga ${p.name.split(' ').slice(0,3).join(' ')} turun ${(2+r()*8).toFixed(1)}%`,    desc: (p,r) => `Dari Rp ${(p.medianPrice||85000).toLocaleString('id-ID')} → Rp ${Math.round((p.medianPrice||85000)*(0.88+r()*0.08)).toLocaleString('id-ID')}`, badge: r => `▼ ${(2+r()*8).toFixed(1)}%`, unread: true, accent: '' },
+    { type:'trend', icon: wIcon('trending-up', 18, '#1A7A46'), iconCls:'green', badgeCls:'up',   label: (p,r) => `Tren ${p.name.split(' ').slice(0,3).join(' ')} naik signifikan`,                    desc: (p,r) => `Volume pencarian minggu ini naik ${Math.round(10+r()*30)}% dibanding minggu lalu`, badge: r => `▲ ${Math.round(10+r()*30)}%`, unread: true, accent: 'green' },
+    { type:'opp',   icon: wIcon('zap', 18, '#4F46E5'),  iconCls:'blue',  badgeCls:'info', label: (p,r) => `Peluang baru terdeteksi: ${p.name.split(' ').slice(0,3).join(' ')}`,                 desc: (p,r) => `Skor kompetisi turun — celah masuk terbuka dengan margin estimasi ${Math.round(25+r()*20)}%`, badge: r => 'Peluang', unread: true, accent: 'blue' },
+    { type:'stock', icon: wIcon('box', 18, '#D97706'), iconCls:'yellow',badgeCls:'warn', label: (p,r) => `Kompetitor ${p.name.split(' ').slice(0,2).join(' ')} kehabisan stok`,                desc: (p,r) => `Toko teratas kehabisan stok — permintaan tidak terlayani, ini kesempatan Anda`, badge: r => 'Stok Habis', unread: false, accent: '' },
+    { type:'price', icon: wIcon('tag', 18, '#1A7A46'), iconCls:'green', badgeCls:'up',   label: (p,r) => `Harga ${p.name.split(' ').slice(0,3).join(' ')} naik ${(3+r()*10).toFixed(1)}%`,     desc: (p,r) => `Pasar sedang menaikkan harga — pertimbangkan ikuti atau jaga harga untuk volume`, badge: r => `▲ ${(3+r()*10).toFixed(1)}%`, unread: false, accent: '' },
   ];
 
   const times = ['2m lalu','8m lalu','15m lalu','34m lalu','1j lalu','2j lalu','3j lalu','5j lalu','7j lalu','kemarin'];
@@ -21799,7 +21799,6 @@ const _LP_DEMO = {
   startRevenue: 12000000,
   upToRevenue: 18600000,
   avgTrend: 1,
-  emoji: '👜',
   image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=300&q=80'
 };
 
@@ -21851,7 +21850,7 @@ function lpRenderPreview(p) {
   const imgEl = document.getElementById('lp-dd-img');
   if (imgEl) {
     if (p.image) imgEl.innerHTML = `<img src="${p.image}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
-    else imgEl.textContent = p.emoji || '📦';
+    else imgEl.innerHTML = wIcon('box', 32, '#9CA3AF');
   }
   document.getElementById('lp-dd-name').textContent  = p.name;
   document.getElementById('lp-dd-cats').innerHTML    = `Kategori: ${p.category||'Umum'} <span>• Sub Kategori: ${p.category||'Umum'}</span>`;
@@ -22898,7 +22897,7 @@ function _scoreHint(score, sellers, totalSold, medianRev) {
   const demand       = medianRev > 5e6  ? 'permintaan tinggi' : medianRev > 1e6 ? 'permintaan sedang' : 'permintaan terbatas';
   const competition  = sellerCount < 20 ? 'persaingan rendah' : sellerCount < 60 ? 'persaingan sedang' : 'persaingan ketat';
   const entry        = top3share < 0.4  ? 'masih ada celah untuk pendatang baru' : top3share < 0.7 ? 'pemimpin pasar sudah terbentuk' : 'pasar didominasi seller besar';
-  const verdict      = score >= 70 ? '🟢 Peluang Bagus' : score >= 45 ? '🟡 Perlu Strategi' : '🔴 Pasar Sulit';
+  const verdict      = score >= 70 ? wIcon('circle', 10, '#1A7A46') + ' Peluang Bagus' : score >= 45 ? wIcon('circle', 10, '#D97706') + ' Perlu Strategi' : wIcon('circle', 10, '#DC2626') + ' Pasar Sulit';
   return { sentence: `${demand[0].toUpperCase()+demand.slice(1)}, ${competition} — ${entry}.`, verdict };
 }
 function filterOutliers(arr) {
