@@ -35,11 +35,15 @@ explicitly renames. Never reintroduce the two-tone "Laris|ID" wordmark in new su
 **Variations** (all defined on the sheet): horizontal lockup, compact/stacked, round/circle
 badge, icon-only, app icon (rounded square), monochrome black/white, long banner lockup.
 
-**Web assets (vector recreations, not the original art)**:
-- `images/logo-mark.svg` — red phoenix, transparent bg.
-- `images/favicon.svg` — cream phoenix on red rounded square.
-- Production rasters (social avatars, OG images, print) should be exported from the
-  ORIGINAL sheet artwork, which has the brush texture the SVG approximation lacks.
+**Web assets — cropped from the ORIGINAL sheet artwork (Steven's decision: always use
+the real art, never SVG recreations)**:
+- `images/brand/branding-sheet.png` — the full source sheet (1536x1024). Crop new assets
+  from here (cream bg removed via color-distance alpha; dark lockups via luminance alpha).
+- `images/brand/logo-horizontal-red.png` — red bird + brush LARIS, transparent. For light surfaces.
+- `images/brand/logo-horizontal-light.png` — white bird + LARIS + tagline, transparent. For dark surfaces.
+- `images/brand/logo-primary.png` — big stacked lockup with tagline. Hero/posters/about.
+- `images/brand/appicon-red.png` — red rounded square + gold bird. Favicon + JSON-LD logo.
+- The old `favicon.svg` / `logo-mark.svg` recreations are DELETED — do not reintroduce them.
 
 ## 3. Color — four schemes, one primary
 
@@ -116,9 +120,13 @@ radius 12/8, section padding 80/48) all carry over from v1 unchanged.
 - Hero: gold brush kicker "DARI PENJUAL, UNTUK PENJUAL" above H1; H1 accent switched to gold.
 - Verified: inline JS `node --check` clean, JSON-LD valid, no console errors, screenshot OK.
 
+**Applied 2026-06-12 (pass 2):** original sheet art cropped into `images/brand/`; all 4
+index.html lockups + all 5 subpage headers swapped to the real artwork; favicon + JSON-LD
+logo now `appicon-red.png`; `styles/seo-pages.css` recolored (was missed in pass 1);
+SVG recreations deleted.
+
 **Remaining (future passes):**
 - Mini wordmarks inside landing-page mockup cards still read "LarisID" text-style.
 - OG/social images, Chrome extension icons, email templates.
 - `/manifesto` page (HITAM–MERAH mode).
-- Replace SVG mark with traced vector of the original sheet art (brush texture).
 - llms.txt / structured data wording if the display name ever changes from LarisID.
