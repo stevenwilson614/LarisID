@@ -817,8 +817,10 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 
 /* ── SIDEBAR ── */
 .dash-sidebar{width:240px;flex-shrink:0;background:linear-gradient(180deg,var(--cohort-primary,#1A1A1A) 0%,var(--cohort-sidebar-end,#111111) 100%);display:flex;flex-direction:column;height:100vh;overflow-y:auto;position:fixed;top:0;left:0;z-index:100;transition:transform .25s ease;}
-.dash-sidebar-logo{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08);font-family:var(--font-brand);font-size:1.2rem;font-weight:400;color:#fff;letter-spacing:.01em;flex-shrink:0;}
-.dash-sidebar-logo span{color:var(--cohort-secondary,#B5202A);}
+.dash-sidebar-logo{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px;flex-shrink:0;overflow:hidden;}
+.dash-logo-icon{height:36px;width:auto;display:block;flex-shrink:0;}
+.dash-logo-word{height:28px;width:auto;display:block;flex-shrink:0;}
+.dash-logo-beta{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:rgba(255,255,255,.85);font-size:.48rem;font-weight:700;letter-spacing:.1em;border-radius:4px;padding:2px 6px;text-transform:uppercase;font-family:var(--font-display);flex-shrink:0;}
 .dash-user-info{padding:14px 16px;border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px;flex-shrink:0;}
 .dash-user-avatar{width:32px;height:32px;border-radius:50%;background:var(--cohort-secondary,#B5202A);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.82rem;flex-shrink:0;}
 .dash-user-meta{flex:1;min-width:0;}
@@ -2921,7 +2923,9 @@ body.in-dashboard .mobile-menu{display:none!important;}
 }
 @media(max-width:660px){
   .dash-sidebar{width:56px;}
-  .dash-sidebar-logo,.dash-user-meta,.dash-logout-btn,.dash-nav-sub,.dash-nav-item span:not(.dash-nav-icon){display:none;}
+  .dash-user-meta,.dash-logout-btn,.dash-nav-sub,.dash-nav-item span:not(.dash-nav-icon){display:none;}
+  .dash-logo-word,.dash-logo-beta{display:none;}
+  .dash-sidebar-logo{padding:14px 8px;justify-content:center;}
   .dash-nav-item{justify-content:center;padding:10px;}
   .dashboard-layout{flex-direction:row;}
   .pdb-filters{padding:14px;}
@@ -2933,12 +2937,13 @@ body.in-dashboard .mobile-menu{display:none!important;}
   .dash-sidebar:hover,.dash-sidebar:focus-within{width:240px;box-shadow:6px 0 24px rgba(0,0,0,.22);}
   .dash-main{margin-left:64px;}
   .dash-nav-item{white-space:nowrap;}
-  .dash-sidebar-logo{color:transparent;white-space:nowrap;transition:color .15s ease;}
-  .dash-sidebar-logo span,
+  .dash-sidebar-logo{padding:18px 12px 14px;justify-content:center;gap:0;transition:padding .22s ease,gap .22s ease;}
+  .dash-sidebar:hover .dash-sidebar-logo,.dash-sidebar:focus-within .dash-sidebar-logo{padding:20px 20px 16px;justify-content:flex-start;gap:10px;}
+  .dash-logo-word,.dash-logo-beta{opacity:0;max-width:0;overflow:hidden;transition:opacity .15s ease,max-width .22s ease;}
   .dash-nav-item span:not(.dash-nav-icon),
   .dash-user-meta,.dash-logout-btn,.dash-tour-btn{opacity:0;transition:opacity .15s ease;}
-  .dash-sidebar:hover .dash-sidebar-logo,.dash-sidebar:focus-within .dash-sidebar-logo{color:#fff;}
-  .dash-sidebar:hover .dash-sidebar-logo span,.dash-sidebar:focus-within .dash-sidebar-logo span,
+  .dash-sidebar:hover .dash-logo-word,.dash-sidebar:focus-within .dash-logo-word,
+  .dash-sidebar:hover .dash-logo-beta,.dash-sidebar:focus-within .dash-logo-beta{opacity:1;max-width:160px;}
   .dash-sidebar:hover .dash-nav-item span:not(.dash-nav-icon),.dash-sidebar:focus-within .dash-nav-item span:not(.dash-nav-icon),
   .dash-sidebar:hover .dash-user-meta,.dash-sidebar:focus-within .dash-user-meta,
   .dash-sidebar:hover .dash-logout-btn,.dash-sidebar:focus-within .dash-logout-btn,
@@ -3041,7 +3046,8 @@ body.in-dashboard .mobile-menu{display:none!important;}
   body.in-dashboard .dash-sidebar.open{transform:translateX(0) !important;}
   body.in-dashboard .dash-nav-item{justify-content:flex-start !important;padding:10px 14px !important;}
   body.in-dashboard .dash-nav-item span:not(.dash-nav-icon){display:inline !important;}
-  body.in-dashboard .dash-sidebar-logo,
+  body.in-dashboard .dash-sidebar-logo{display:flex !important;}
+  body.in-dashboard .dash-logo-word,body.in-dashboard .dash-logo-beta{display:block !important;opacity:1 !important;max-width:none !important;}
   body.in-dashboard .dash-nav-sub{display:block !important;}
   body.in-dashboard .dash-content{padding-bottom:calc(68px + env(safe-area-inset-bottom));}
   #fb-float{bottom:calc(70px + env(safe-area-inset-bottom));}
@@ -4015,7 +4021,7 @@ html,body{overflow-x:clip;max-width:100%;}
 <!-- ── NAVBAR ── -->
 <nav class="navbar">
   <a class="nav-brand" onclick="showPage('home')" style="padding:0;display:flex;align-items:center;">
-    <img src="/images/brand/logo-horizontal-light.png" alt="Laris" style="height:30px;width:auto;display:block;">
+    <img src="/images/brand/logo-icon-light.png" alt="Laris" style="height:32px;width:auto;display:block;"><img src="/images/brand/logo-word-light.png" alt="" style="height:23px;width:auto;display:block;margin-left:9px;">
     <span style="background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.35);color:#fff;font-size:.52rem;font-weight:700;letter-spacing:.09em;border-radius:4px;padding:2px 7px;margin-left:8px;text-transform:uppercase;">BETA</span>
   </a>
   <div class="nav-search-wrap">
@@ -5211,7 +5217,7 @@ html,body{overflow-x:clip;max-width:100%;}
 
     <!-- ── SIDEBAR ── -->
     <aside class="dash-sidebar" id="app-sidebar">
-      <div class="dash-sidebar-logo" style="display:flex;align-items:center;gap:9px;"><img src="/images/brand/logo-horizontal-light.png" alt="Laris" style="height:24px;width:auto;display:block;"><span style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:rgba(255,255,255,0.85);font-size:.48rem;font-weight:700;letter-spacing:.1em;border-radius:4px;padding:2px 6px;text-transform:uppercase;font-family:var(--font-display);">BETA</span></div>
+      <div class="dash-sidebar-logo"><img class="dash-logo-icon" src="/images/brand/logo-icon-light.png" alt="Laris"><img class="dash-logo-word" src="/images/brand/logo-word-light.png" alt=""><span class="dash-logo-beta">BETA</span></div>
       <nav class="dash-sidebar-nav">
 
         <div class="dash-nav-item active" id="dash-nav-dashboard" onclick="switchDashView('dashboard')">
