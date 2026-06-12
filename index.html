@@ -1346,11 +1346,15 @@ body.cohort-themed.in-dashboard .dash-topbar-cohort-chip{
 .mls-stat-pill{display:flex;flex-direction:column;}
 .mls-stat-pill .lbl{font-size:.6rem;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;}
 .mls-stat-pill .val{font-size:.9rem;font-weight:800;color:#111827;}
-.mls-ai-box{background:#F8FAFC;border:1.5px solid #E5E7EB;border-radius:12px;padding:14px;}
-.mls-ai-box-title{font-size:.72rem;font-weight:700;color:#374151;margin-bottom:8px;}
-.mls-ai-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
-.mls-ai-chip{font-size:.67rem;padding:4px 10px;border-radius:20px;border:1px solid #E5E7EB;background:#fff;cursor:pointer;color:#374151;font-family:inherit;transition:background .15s,border-color .15s;}
-.mls-ai-chip:hover{background:#FFF0ED;border-color:#E8442A;color:#E8442A;}
+.mls-ai-box{background:#F8FAFC;border:1.5px solid #E5E7EB;border-radius:12px;padding:14px;transition:box-shadow .3s,border-color .3s,transform .3s;}
+.mls-ai-box.mls-ai-box-attn{animation:mlsAiBoxPulse 2.8s ease-in-out infinite;}
+@keyframes mlsAiBoxPulse{
+  0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(232,68,42,0);border-color:#E5E7EB;}
+  50%{transform:scale(1.02);box-shadow:0 0 0 5px rgba(232,68,42,.14),0 10px 28px rgba(232,68,42,.12);border-color:#FDBA74;}
+}
+@media (prefers-reduced-motion: reduce){
+  .mls-ai-box.mls-ai-box-attn{animation:none;box-shadow:0 0 0 3px rgba(232,68,42,.18);}
+}
 .mls-ai-input-row{display:flex;gap:8px;}
 .mls-ai-input{flex:1;border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 12px;font-size:.78rem;font-family:inherit;outline:none;transition:border-color .15s;}
 .mls-ai-input:focus{border-color:#E8442A;}
@@ -2207,8 +2211,30 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .trk-section-title{font-size:.85rem;font-weight:700;color:#1A1F3C;margin-bottom:12px;}
 .trk-products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:14px;margin-bottom:20px;}
 @media(max-width:560px){.trk-products-grid{grid-template-columns:repeat(2,1fr);gap:10px;}}
-.trk-prod-card{background:#fff;border-radius:12px;border:1px solid #E5E7EB;overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:box-shadow .15s,transform .1s;}
+.trk-prod-card{background:#fff;border-radius:12px;border:1px solid #E5E7EB;overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:box-shadow .15s,transform .1s,border-color .15s;}
 .trk-prod-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.09);transform:translateY(-2px);}
+.trk-prod-card.selected{border-color:#E8442A;box-shadow:0 0 0 2px rgba(232,68,42,.18);}
+.trk-prod-badge{position:absolute;top:6px;right:6px;background:#E8442A;color:#fff;font-size:.58rem;font-weight:800;border-radius:999px;padding:2px 6px;min-width:18px;text-align:center;}
+.trk-alerts-panel{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:18px 20px;margin-top:4px;}
+.trk-alerts-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+.trk-alert-feed{display:flex;flex-direction:column;gap:8px;min-height:80px;}
+.trk-alert-item{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border:1px solid #F3F4F6;border-radius:10px;background:#FAFAFA;}
+.trk-alert-item.mine{background:#FFF7F5;border-color:#FECACA;}
+.trk-alert-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;}
+.trk-alert-icon.price{background:#FFF0ED;}
+.trk-alert-icon.sales{background:#EAF7F0;}
+.trk-alert-icon.keyword{background:#EEF2FF;}
+.trk-alert-body{flex:1;min-width:0;}
+.trk-alert-title{font-size:.8rem;font-weight:700;color:#111;margin-bottom:2px;}
+.trk-alert-desc{font-size:.74rem;color:#6B7280;line-height:1.45;}
+.trk-alert-meta{text-align:right;flex-shrink:0;}
+.trk-alert-tag{font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:999px;display:inline-block;margin-bottom:4px;}
+.trk-alert-tag.up{background:#EAF7F0;color:#059669;}
+.trk-alert-tag.down{background:#FFF0ED;color:#E8442A;}
+.trk-alert-tag.info{background:#EEF2FF;color:#4F46E5;}
+.trk-alert-time{font-size:.65rem;color:#9CA3AF;}
+.trk-alert-empty{text-align:center;padding:32px 16px;color:#9CA3AF;font-size:.8rem;line-height:1.5;}
+.trk-filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
 .trk-prod-img{width:100%;aspect-ratio:1/1;background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-size:2rem;overflow:hidden;flex-shrink:0;position:relative;}
 .trk-prod-img img{width:100%;height:100%;object-fit:cover;}
 .trk-prod-body{padding:10px 12px;flex:1;display:flex;flex-direction:column;gap:4px;}
@@ -3422,8 +3448,7 @@ body.journey-beginner #dash-nav-research-tools,
 body.journey-beginner #dash-nav-extension,
 body.journey-beginner #dash-nav-flat-tracker,
 body.journey-beginner #dash-nav-flat-ai,
-body.journey-beginner #dash-nav-flat-mytoko,
-body.journey-beginner #dash-nav-flat-alerts{display:none!important;}
+body.journey-beginner #dash-nav-flat-mytoko{display:none!important;}
 /* recommended-products grid under the dashboard empty-state */
 .hbd-nu-reco-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
 .hbd-nu-reco-title{font-size:.82rem;font-weight:700;color:#111;}
@@ -5016,10 +5041,9 @@ html,body{overflow-x:hidden;max-width:100%;}
         <div class="dash-nav-sub" id="dash-sub-research-tools">
           <div class="dash-nav-sub-item" id="dash-nav-discover" onclick="switchDashView('discover')">Discover</div>
           <div class="dash-nav-sub-item" id="dash-nav-deepdive" onclick="switchDashView('deepdive')">Deep Dive</div>
-          <div class="dash-nav-sub-item" id="dash-nav-tracker" onclick="switchDashView('tracker')">Tracker</div>
+          <div class="dash-nav-sub-item" id="dash-nav-tracker" onclick="switchDashView('tracker')">Alerts</div>
           <div class="dash-nav-sub-item" id="dash-nav-ai" onclick="switchDashView('ai')">Mulai Berjualan</div>
           <div class="dash-nav-sub-item" id="dash-nav-mytoko" onclick="switchDashView('mytoko')">My Toko</div>
-          <div class="dash-nav-sub-item" id="dash-nav-alerts" onclick="switchDashView('alerts')">Alerts</div>
         </div>
 
         <!-- Flat nav items shown for student/independent roles instead of collapsed group -->
@@ -5033,8 +5057,8 @@ html,body{overflow-x:hidden;max-width:100%;}
             <span>Deep Dive</span>
           </div>
           <div class="dash-nav-item" id="dash-nav-flat-tracker" onclick="switchDashView('tracker')">
-            <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span>
-            <span>Tracker</span>
+            <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
+            <span>Alerts</span>
           </div>
           <div class="dash-nav-item" id="dash-nav-flat-ai" onclick="switchDashView('ai')">
             <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/></svg></span>
@@ -5043,10 +5067,6 @@ html,body{overflow-x:hidden;max-width:100%;}
           <div class="dash-nav-item" id="dash-nav-flat-mytoko" onclick="switchDashView('mytoko')">
             <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
             <span>My Toko</span>
-          </div>
-          <div class="dash-nav-item" id="dash-nav-flat-alerts" onclick="switchDashView('alerts')">
-            <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
-            <span>Alerts</span>
           </div>
         </div>
 
@@ -6814,67 +6834,44 @@ html,body{overflow-x:hidden;max-width:100%;}
         <div id="dash-view-tracker" style="display:none;">
           <div id="trk-empty-state" class="nu-empty" style="display:none;margin:24px 28px;">
             <div class="nu-empty-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg></div>
-            <h3>Kamu punya 0 produk yang dilacak</h3>
-            <p>Mulai dengan mencari produk di Discover, buka Deep Dive, lalu klik Lacak Produk untuk memantau perubahan harga dan penjualan.</p>
+            <h3>Belum ada produk yang dilacak</h3>
+            <p>Mulai dengan mencari produk di Discover, buka Deep Dive, lalu klik Lacak Produk untuk menerima alert perubahan harga, keyword, dan penjualan.</p>
             <button type="button" class="nu-empty-btn" onclick="switchDashView('discover')">Cari Produk di Discover</button>
           </div>
           <div class="trk-wrap" id="trk-main-content">
-            <!-- topbar -->
             <div class="trk-topbar">
               <div class="trk-topbar-left">
-                <h2>Tracker</h2>
-                <p id="trk-date-range">Pantau perubahan harga dan penjualan produk pilihan minggu ini.</p>
+                <h2>Alerts</h2>
+                <p id="trk-date-range">Perubahan harga, judul listing, keyword, dan penjualan pada produk yang kamu lacak.</p>
               </div>
               <div class="trk-topbar-right">
                 <button class="trk-btn" onclick="trkRefresh()">
                   <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
                   Refresh
                 </button>
-                <button class="trk-btn primary" onclick="switchDashView('discover')">+ Tambah Produk</button>
+                <button class="trk-btn primary" onclick="switchDashView('discover')">+ Lacak Produk</button>
               </div>
             </div>
 
-            <!-- summary row -->
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;">
-              <div class="trk-stat">
-                <div class="trk-stat-label">Produk Dipantau</div>
-                <div class="trk-stat-value" id="trk-total">—</div>
-                <div class="trk-stat-delta" id="trk-total-sub">—</div>
-              </div>
-              <div class="trk-stat">
-                <div class="trk-stat-label">Total Terjual (est.)</div>
-                <div class="trk-stat-value" id="trk-sales">—</div>
-                <div class="trk-stat-delta" id="trk-sales-sub">—</div>
-              </div>
-              <div class="trk-stat">
-                <div class="trk-stat-label">Produk Tren Naik</div>
-                <div class="trk-stat-value" id="trk-growth">—</div>
-                <div class="trk-stat-delta" id="trk-growth-sub">—</div>
-              </div>
-              <div class="trk-stat">
-                <div class="trk-stat-label">Harga Rata-rata</div>
-                <div class="trk-stat-value" id="trk-avgprice">—</div>
-                <div class="trk-stat-delta" id="trk-avgprice-sub">—</div>
-              </div>
-            </div>
-
-            <!-- product cards -->
-            <div class="trk-section-title">Produk Terpopuler</div>
+            <div class="trk-section-title">Produk Dilacak</div>
             <div class="trk-products-grid" id="trk-prod-grid"></div>
 
-            <!-- delta chart + price table -->
-            <div class="trk-two-col">
-              <div class="trk-card">
-                <div class="trk-section-title" style="margin-bottom:6px;">Unit Terjual Sejak Scrape Terakhir</div>
-                <div style="position:relative;height:160px;"><canvas id="trk-chart-weekly"></canvas></div>
+            <div id="trk-detail-panel" class="trk-alerts-panel" style="display:none;">
+              <div class="trk-alerts-head">
+                <div>
+                  <div class="trk-section-title" style="margin-bottom:4px;" id="trk-detail-title">—</div>
+                  <p style="font-size:.72rem;color:#9CA3AF;margin:0;" id="trk-detail-sub">—</p>
+                </div>
+                <button type="button" class="trk-btn primary" onclick="trkOpenSelectedDeepDive()">Buka Deep Dive</button>
               </div>
-              <div class="trk-card">
-                <div class="trk-section-title" style="margin-bottom:8px;">Harga Saat Ini</div>
-                <table class="trk-price-table">
-                  <thead><tr><th>Produk</th><th>Harga</th><th>Tren Jual</th></tr></thead>
-                  <tbody id="trk-price-tbody"></tbody>
-                </table>
+              <div class="trk-filters" id="trk-alert-filters">
+                <button type="button" class="alr-filter-btn active" onclick="trkAlertFilter(this,'all')">Semua</button>
+                <button type="button" class="alr-filter-btn" onclick="trkAlertFilter(this,'price')">Harga</button>
+                <button type="button" class="alr-filter-btn" onclick="trkAlertFilter(this,'keyword')">Keyword &amp; Judul</button>
+                <button type="button" class="alr-filter-btn" onclick="trkAlertFilter(this,'sales')">Penjualan &gt;5%</button>
               </div>
+              <div id="trk-alert-loading" style="display:none;text-align:center;padding:24px;color:#9CA3AF;font-size:.78rem;">Memuat perubahan...</div>
+              <div id="trk-alert-feed" class="trk-alert-feed"></div>
             </div>
           </div>
         </div>
@@ -7572,8 +7569,8 @@ html,body{overflow-x:hidden;max-width:100%;}
         <div id="dash-view-ai" style="display:none;">
           <div id="mls-empty-state" class="nu-empty" style="display:none;margin:24px 28px 0;">
             <div class="nu-empty-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
-            <h3>Mulai dengan mencari produk</h3>
-            <p>Lacak atau simpan produk dari Discover untuk melihat rekomendasi jualan, kalkulator profit, dan Tanya AI.</p>
+            <h3>Belum ada produk untuk dianalisis</h3>
+            <p>Cari produk di Discover dulu, lalu lacak atau simpan produk yang kamu minati — setelah itu kamu bisa pakai kalkulator profit dan chat AI di sini.</p>
             <button type="button" class="nu-empty-btn" onclick="switchDashView('discover')">Cari Produk di Discover</button>
           </div>
           <div class="mls-wrap" id="mls-main-content">
@@ -7645,16 +7642,9 @@ html,body{overflow-x:hidden;max-width:100%;}
                   </div>
 
                   <!-- AI ask box -->
-                  <div class="mls-ai-box">
-                    <div class="mls-ai-box-title">Tanya AI tentang produk ini</div>
-                    <div class="mls-ai-chips">
-                      <button class="mls-ai-chip" onclick="mlsAiAsk('Bagaimana peluang produk ini di Shopee?')">Peluang pasar</button>
-                      <button class="mls-ai-chip" onclick="mlsAiAsk('Strategi iklan terbaik untuk produk ini?')">Strategi iklan</button>
-                      <button class="mls-ai-chip" onclick="mlsAiAsk('Cara bersaing dengan penjual teratas?')">Cara bersaing</button>
-                      <button class="mls-ai-chip" onclick="mlsAiAsk('Berapa harga optimal untuk produk ini?')">Harga optimal</button>
-                    </div>
+                  <div class="mls-ai-box" id="mls-ai-box" onclick="mlsAiBoxClick(event)">
                     <div class="mls-ai-input-row">
-                      <input id="mls-ai-input" class="mls-ai-input" placeholder="Tanya apapun tentang produk ini..." onkeydown="if(event.key==='Enter')mlsAiAsk()">
+                      <input id="mls-ai-input" class="mls-ai-input" placeholder="Tanya AI tentang produk ini…" onkeydown="if(event.key==='Enter')mlsAiAsk()" onfocus="mlsAiDismissAttention()">
                       <button class="mls-ai-send" onclick="mlsAiAsk()">Kirim</button>
                     </div>
                     <div style="font-size:.62rem;color:#9CA3AF;margin-top:4px;text-align:right;" id="mls-ai-counter">10/10 tanya tersisa</div>
@@ -8287,118 +8277,6 @@ html,body{overflow-x:hidden;max-width:100%;}
 
           </div>
         </div><!-- /dash-view-about -->
-
-
-        <div id="dash-view-alerts" style="display:none;">
-          <div id="alr-empty-state" class="nu-empty" style="display:none;margin:24px 28px;">
-            <div class="nu-empty-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
-            <h3>Mulai dengan mencari produk</h3>
-            <p>Lacak produk dari Discover untuk menerima alert perubahan harga, tren, dan peluang pasar.</p>
-            <button type="button" class="nu-empty-btn" onclick="switchDashView('discover')">Cari Produk di Discover</button>
-          </div>
-          <div class="alr-wrap" id="alr-main-content">
-            <div class="alr-topbar">
-              <div>
-                <h2>Alerts</h2>
-                <p>Notifikasi perubahan harga, tren, dan peluang produk kamu.</p>
-              </div>
-              <div style="display:flex;gap:8px;">
-                <button class="alr-btn" onclick="alrMarkAllRead()">Tandai Semua Dibaca</button>
-                <button class="alr-btn primary" onclick="alrShowCreate()">+ Buat Alert</button>
-              </div>
-            </div>
-
-            <!-- WhatsApp Alert enrollment banner -->
-            <div id="alr-wa-banner" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #86efac;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
-              <div style="display:flex;align-items:center;gap:12px;">
-                <div style="width:40px;height:40px;background:#25D366;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                </div>
-                <div>
-                  <div style="font-size:.85rem;font-weight:700;color:#15803d;">Aktifkan WhatsApp Alert</div>
-                  <div style="font-size:.75rem;color:#16a34a;margin-top:2px;">Terima notifikasi perubahan harga, stok, dan peluang produk langsung di WhatsApp kamu.</div>
-                </div>
-              </div>
-              <button onclick="alrOpenWaModal()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:.8rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;">Aktifkan Sekarang</button>
-            </div>
-            <div id="alr-wa-enrolled" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:20px;display:none;align-items:center;justify-content:space-between;gap:12px;">
-              <div style="font-size:.8rem;color:#15803d;font-weight:600;">WhatsApp Alert aktif — notifikasi akan dikirim ke nomor kamu.</div>
-              <button onclick="alrOpenWaModal()" style="background:none;border:1px solid #16a34a;border-radius:7px;padding:6px 12px;font-size:.75rem;font-weight:600;color:#16a34a;cursor:pointer;font-family:inherit;">Kelola</button>
-            </div>
-
-            <div class="alr-stats">
-              <div class="alr-stat">
-                <div class="alr-stat-label">Alert Aktif</div>
-                <div class="alr-stat-value" id="alr-s1">—</div>
-                <div class="alr-stat-sub" style="color:#9CA3AF" id="alr-s1-sub">—</div>
-              </div>
-              <div class="alr-stat">
-                <div class="alr-stat-label">Dipicu Hari Ini</div>
-                <div class="alr-stat-value" id="alr-s2">—</div>
-                <div class="alr-stat-sub" style="color:#E8442A" id="alr-s2-sub">—</div>
-              </div>
-              <div class="alr-stat">
-                <div class="alr-stat-label">Harga Naik</div>
-                <div class="alr-stat-value" id="alr-s3">—</div>
-                <div class="alr-stat-sub" style="color:#10B981">perlu diperhatikan</div>
-              </div>
-              <div class="alr-stat">
-                <div class="alr-stat-label">Peluang Baru</div>
-                <div class="alr-stat-value" id="alr-s4">—</div>
-                <div class="alr-stat-sub" style="color:#4F46E5">produk potensial</div>
-              </div>
-            </div>
-
-            <div class="alr-filters">
-              <button class="alr-filter-btn active" onclick="alrFilter(this,'all')">Semua</button>
-              <button class="alr-filter-btn" onclick="alrFilter(this,'price')">Perubahan Harga</button>
-              <button class="alr-filter-btn" onclick="alrFilter(this,'trend')">Tren Naik</button>
-              <button class="alr-filter-btn" onclick="alrFilter(this,'opp')">Peluang</button>
-              <button class="alr-filter-btn" onclick="alrFilter(this,'stock')">Stok Kompetitor</button>
-            </div>
-
-            <div class="alr-list" id="alr-list"></div>
-
-            <div class="alr-create-box">
-              <div>
-                <h4>Buat Alert Kustom</h4>
-                <p>Pantau produk tertentu dan dapatkan notifikasi saat harga atau tren berubah.</p>
-              </div>
-              <button class="alr-create-btn" onclick="alrShowCreate()">Buat Alert Baru</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- WhatsApp Alert Modal -->
-        <div id="alr-wa-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:600;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)alrCloseWaModal()">
-          <div style="background:#fff;border-radius:16px;padding:24px;max-width:460px;width:100%;box-shadow:0 16px 40px rgba(0,0,0,.2);">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
-              <div style="display:flex;align-items:center;gap:8px;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="#25D366" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                <div style="font-size:.9rem;font-weight:800;color:#111;">WhatsApp Alert</div>
-              </div>
-              <button onclick="alrCloseWaModal()" style="background:none;border:none;font-size:1.1rem;color:#9CA3AF;cursor:pointer;">&#x2715;</button>
-            </div>
-            <div style="margin-bottom:14px;">
-              <label style="font-size:.7rem;font-weight:600;color:#6B7280;display:block;margin-bottom:5px;">Nomor WhatsApp kamu</label>
-              <input id="alr-wa-number" type="tel" placeholder="+628123456789" style="width:100%;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:.85rem;font-family:inherit;box-sizing:border-box;">
-            </div>
-            <div style="margin-bottom:16px;">
-              <div style="font-size:.7rem;font-weight:600;color:#6B7280;margin-bottom:8px;">Jenis alert yang ingin kamu terima:</div>
-              <div style="display:flex;flex-direction:column;gap:8px;">
-                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.82rem;color:#374151;"><input type="checkbox" id="alr-wa-price" checked style="width:15px;height:15px;accent-color:#E8442A;"> Perubahan harga produk yang kamu pantau</label>
-                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.82rem;color:#374151;"><input type="checkbox" id="alr-wa-stock" checked style="width:15px;height:15px;accent-color:#E8442A;"> Stok kompetitor hampir habis</label>
-                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.82rem;color:#374151;"><input type="checkbox" id="alr-wa-keyword" style="width:15px;height:15px;accent-color:#E8442A;"> Kata kunci baru trending</label>
-                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.82rem;color:#374151;"><input type="checkbox" id="alr-wa-trend" checked style="width:15px;height:15px;accent-color:#E8442A;"> Tren produk naik signifikan</label>
-              </div>
-            </div>
-            <div id="alr-wa-status" style="font-size:.72rem;color:#6B7280;margin-bottom:10px;min-height:18px;"></div>
-            <div style="display:flex;gap:8px;justify-content:flex-end;">
-              <button onclick="alrCloseWaModal()" style="border:1px solid #E5E7EB;background:#fff;border-radius:8px;padding:9px 16px;font-size:.8rem;font-weight:600;color:#374151;cursor:pointer;font-family:inherit;">Batal</button>
-              <button onclick="alrSaveWaSettings()" style="background:#E8442A;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;">Simpan Pengaturan Alert</button>
-            </div>
-          </div>
-        </div>
 
         <!-- CREDITS PAGE -->
         <div id="dash-view-credits" style="display:none;">
@@ -10184,7 +10062,6 @@ async function loadData() {
   dscInit();
   hbdInit();
   if (typeof nuRefreshView === 'function') nuRefreshView('dashboard');
-  alrInit();
   if (typeof Chart !== 'undefined') lpRenderPreview(_LP_DEMO);
   setTimeout(startTour, 600);
 }
@@ -12962,10 +12839,34 @@ function _mlsEsc(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
 
+let _mlsAiAttentionOff = false;
+
+function mlsAiDismissAttention() {
+  _mlsAiAttentionOff = true;
+  const box = document.getElementById('mls-ai-box');
+  if (box) box.classList.remove('mls-ai-box-attn');
+}
+
+function mlsAiBoxClick(e) {
+  if (e.target.closest('.mls-ai-send')) return;
+  const input = document.getElementById('mls-ai-input');
+  if (input) input.focus();
+}
+
+function mlsAiEnableAttention() {
+  if (_mlsAiAttentionOff || _mlsAiHistory.length) return;
+  const box = document.getElementById('mls-ai-box');
+  if (box) box.classList.add('mls-ai-box-attn');
+}
+
 function _mlsAiResetThread() {
   _mlsAiHistory = [];
+  _mlsAiAttentionOff = false;
   const respEl = document.getElementById('mls-ai-response');
   if (respEl) { respEl.style.display = 'none'; respEl.innerHTML = ''; }
+  const box = document.getElementById('mls-ai-box');
+  if (box) box.classList.remove('mls-ai-box-attn');
+  requestAnimationFrame(() => setTimeout(mlsAiEnableAttention, 350));
 }
 
 function _mlsAiRenderThread(typing) {
@@ -13081,6 +12982,7 @@ async function mlsAiAsk(prompt) {
   if (!q) return;
   if (!document.getElementById('mls-ai-response')) return;
 
+  mlsAiDismissAttention();
   // Show the user's turn immediately, with a typing indicator
   if (inputEl) inputEl.value = '';
   _mlsAiHistory.push({ role: 'user', content: q });
@@ -13329,13 +13231,13 @@ function switchDashTab(tab) {
 //  JUNGLE SCOUT-STYLE DASHBOARD — view switching, Product DB
 // ════════════════════════════════════════════════════════════
 
-const PDB_VIEWS = ['home','product-database','product-tracker','opportunity-finder','category-trends','suppliers','keywords','estimator','marketing','saved','education','dashboard','discover','tracker','deepdive','ai','alerts','credits','cohort','admin','mytoko','about','extension'];
+const PDB_VIEWS = ['home','product-database','product-tracker','opportunity-finder','category-trends','suppliers','keywords','estimator','marketing','saved','education','dashboard','discover','tracker','deepdive','ai','credits','cohort','admin','mytoko','about','extension'];
 const PDB_SUB_MAP = {'product-database':'research','product-tracker':'research','opportunity-finder':'research','category-trends':'research'};
 
 // View titles for topbar
 const VIEW_TITLES = {
-  'dashboard':'Dashboard','discover':'Discover','tracker':'Tracker',
-  'deepdive':'Deep Dive','ai':'Mulai Berjualan','alerts':'Alerts','credits':'Kredit Saya','cohort':'Kohort',
+  'dashboard':'Dashboard','discover':'Discover','tracker':'Alerts',
+  'deepdive':'Deep Dive','ai':'Mulai Berjualan','credits':'Kredit Saya','cohort':'Kohort',
   'home':'Home Dashboard','product-database':'Product Database',
   'product-tracker':'Product Tracker','opportunity-finder':'Opportunity Finder',
   'saved':'Produk Tersimpan','education':'Edukasi','mytoko':'My Toko','about':'Tentang',
@@ -13345,7 +13247,7 @@ const VIEW_TITLES = {
 let _dashActiveView = 'dashboard';
 
 // New nav items for the redesigned sidebar
-const NEW_NAV_IDS = ['dashboard','discover','deepdive','tracker','ai','alerts','credits'];
+const NEW_NAV_IDS = ['dashboard','discover','deepdive','tracker','ai','credits'];
 const PDB_CATS = ['Bayi & Anak','Motor & Mobil','Rumah','Hewan Peliharaan','Dapur','Kamar Mandi','Elektronik','Fashion','Kecantikan','Kesehatan','Olahraga','Outdoor & Camping','Sepeda','Tanaman','Taman','Keamanan','Hobi & Kerajinan','Alat Tulis','HP & Gadget'];
 
 let _pdbSortField  = 'total_sold';
@@ -13361,6 +13263,7 @@ function toggleResearchToolsNav() {
 }
 
 function switchDashView(view) {
+  if (view === 'alerts') view = 'tracker';
   _dashActiveView = view;
   journeyApplyNavGating();
   PDB_VIEWS.forEach(v => {
@@ -13372,8 +13275,8 @@ function switchDashView(view) {
   cohortSyncDashTopbarTitle(view);
 
   // New sidebar nav: highlight correct item
-  const _rtViews = new Set(['discover','deepdive','tracker','ai','alerts']);
-  ['dashboard','discover','deepdive','tracker','ai','alerts','cohort','extension'].forEach(k => {
+  const _rtViews = new Set(['discover','deepdive','tracker','ai']);
+  ['dashboard','discover','deepdive','tracker','ai','cohort','extension'].forEach(k => {
     const el = document.getElementById(`dash-nav-${k}`);
     if (!el) return;
     el.classList.toggle('active', k === view);
@@ -13429,7 +13332,6 @@ function switchDashView(view) {
   if (view === 'dashboard' && typeof hbdInit     === 'function') hbdInit();
   if (view === 'ai'        && typeof mlsInit     === 'function') mlsInit();
   if (view === 'mytoko'    && typeof myTokoInit  === 'function') myTokoInit();
-  if (view === 'alerts'    && typeof alrInit      === 'function') alrInit();
   if (view === 'credits'   && typeof creditsInit  === 'function') creditsInit();
   if (view === 'cohort'    && typeof cohortInit   === 'function') cohortInit();
   mbnSync(view);
@@ -13449,7 +13351,7 @@ const MBN_MAP = {
   dashboard:'mbn-dashboard', discover:'mbn-discover',
   mytoko:'mbn-mytoko', tracker:'mbn-mytoko',
   ai:'mbn-ai', deepdive:'mbn-ai',
-  alerts:'mbn-dashboard', credits:'mbn-dashboard', cohort:'mbn-dashboard', extension:'mbn-dashboard',
+  credits:'mbn-dashboard', cohort:'mbn-dashboard', extension:'mbn-dashboard',
   'product-database':'mbn-discover', keywords:'mbn-discover', estimator:'mbn-discover',
 };
 
@@ -21119,29 +21021,278 @@ function ddToggleCompetitors() {
 
 // dscOpenDeepDive defined above (uses item_id__shop_id key from _dscAllListings)
 
-// ── TRACKER ────────────────────────────────────────────────────
-let _trkChartWeekly = null;
+// ── TRACKER (alerts hub) ───────────────────────────────────────
 const CHART_COLORS = ['#E8442A','#4F46E5','#10B981','#F59E0B','#EC4899','#06B6D4'];
+const TRK_SALES_ALERT_PCT = 5;
+let _trkEnriched = [];
+let _trkSelectedKey = null;
+let _trkAlertsByKey = {};
+let _trkAlertFilter = 'all';
 
-function _trkRng(seed) {
-  let s = seed;
-  return function() { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0xffffffff; };
+function _trkListingKey(r) { return `${r.item_id}_${r.shop_id}`; }
+
+function _trkFmtScrapeDate(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch { return '—'; }
 }
 
-function trkSparklineSvg(id, trending) {
-  const rng = _trkRng(id * 7919);
-  const pts = Array.from({length:8}, (_,i) => {
-    const base = 50 + rng()*20;
-    return Math.max(5, Math.min(95, Math.round(base + (trending ? i*4 : -i*2) + (rng()-0.5)*14)));
+function _trkDedupeListings(rows) {
+  const seen = new Map();
+  (rows || []).forEach(r => {
+    const k = _trkListingKey(r);
+    if (!seen.has(k) || (r.total_sold || 0) > (seen.get(k).total_sold || 0)) seen.set(k, r);
   });
-  const w = 100, h = 36;
-  const xs = pts.map((_,i) => Math.round(i * w / (pts.length-1)));
-  const ys = pts.map(p => Math.round(h - (p/100)*h));
-  const color = trending ? '#10B981' : '#E8442A';
-  const d = xs.map((x,i) => (i===0?'M':'L')+x+','+ys[i]).join(' ');
-  return `<svg viewBox="0 0 ${w} ${h}" class="trk-sparkline" preserveAspectRatio="none">
-    <polyline points="${xs.map((x,i)=>x+','+ys[i]).join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>`;
+  return [...seen.values()].sort((a, b) => (b.total_sold || 0) - (a.total_sold || 0));
+}
+
+function _trkRankInMap(map, itemId, shopId) {
+  const sorted = [...map.values()].sort((a, b) => (b.total_sold || 0) - (a.total_sold || 0));
+  const idx = sorted.findIndex(r => String(r.item_id) === String(itemId) && String(r.shop_id) === String(shopId));
+  return idx >= 0 ? idx + 1 : null;
+}
+
+function _trkCompareRows(prev, curr, opts) {
+  const alerts = [];
+  if (!prev || !curr) return alerts;
+  const isMine = !!opts.isTracked;
+  const who = isMine ? 'Produk kamu' : (curr.store_name || 'Kompetitor');
+  const name = (curr.product_name || '').slice(0, 55);
+  const when = _trkFmtScrapeDate(curr.scraped_at);
+
+  const p0 = Number(prev.price), p1 = Number(curr.price);
+  if (p0 > 0 && p1 > 0 && p0 !== p1) {
+    const pct = ((p1 - p0) / p0 * 100);
+    const dir = p1 > p0 ? 'up' : 'down';
+    alerts.push({
+      type: 'price', kind: dir, isMine, sort: 10,
+      title: `${who}: harga ${dir === 'up' ? 'naik' : 'turun'} ${Math.abs(pct).toFixed(1)}%`,
+      desc: `${name} — ${_dscFmtRpFull(p0)} → ${_dscFmtRpFull(p1)}`,
+      tag: dir === 'up' ? `▲ ${Math.abs(pct).toFixed(1)}%` : `▼ ${Math.abs(pct).toFixed(1)}%`,
+      time: when,
+    });
+  }
+
+  const n0 = _dscNormStr(prev.product_name || '');
+  const n1 = _dscNormStr(curr.product_name || '');
+  if (n0 && n1 && n0 !== n1) {
+    alerts.push({
+      type: 'keyword', kind: 'info', isMine, sort: 20,
+      title: `${who}: judul listing berubah`,
+      desc: `"${wsdEsc((prev.product_name || '').slice(0, 70))}" → "${wsdEsc((curr.product_name || '').slice(0, 70))}"`,
+      tag: 'Judul', time: when,
+    });
+  }
+
+  const k0 = (prev.keyword || '').trim();
+  const k1 = (curr.keyword || '').trim();
+  if (k0 && k1 && k0.toLowerCase() !== k1.toLowerCase()) {
+    alerts.push({
+      type: 'keyword', kind: 'info', isMine, sort: 21,
+      title: `${who}: keyword scrape berubah`,
+      desc: `"${wsdEsc(k0)}" → "${wsdEsc(k1)}"`,
+      tag: 'Keyword', time: when,
+    });
+  }
+
+  if (opts.prevRank != null && opts.currRank != null && opts.prevRank !== opts.currRank) {
+    const better = opts.currRank < opts.prevRank;
+    alerts.push({
+      type: 'keyword', kind: better ? 'up' : 'down', isMine, sort: 15,
+      title: `${who}: peringkat di pencarian ${better ? 'naik' : 'turun'}`,
+      desc: `#${opts.prevRank} → #${opts.currRank}${opts.searchKw ? ` di “${wsdEsc(opts.searchKw)}”` : ''}`,
+      tag: `#${opts.currRank}`, time: when,
+    });
+  }
+
+  const s0 = Number(prev.total_sold) || 0;
+  const s1 = Number(curr.total_sold) || 0;
+  if (s0 > 0) {
+    const pct = (s1 - s0) / s0 * 100;
+    if (Math.abs(pct) >= TRK_SALES_ALERT_PCT) {
+      const dir = pct > 0 ? 'up' : 'down';
+      alerts.push({
+        type: 'sales', kind: dir, isMine, sort: 5,
+        title: `${who}: penjualan ${dir === 'up' ? 'naik' : 'turun'} ${Math.abs(pct).toFixed(1)}%`,
+        desc: `${s0.toLocaleString('id-ID')} → ${s1.toLocaleString('id-ID')} total terjual`,
+        tag: dir === 'up' ? `▲ ${Math.abs(pct).toFixed(1)}%` : `▼ ${Math.abs(pct).toFixed(1)}%`,
+        time: when,
+      });
+    }
+  }
+  return alerts;
+}
+
+async function trkFetchKeywordSnapshots(keyword) {
+  if (!_supabase || !keyword) return null;
+  try {
+    const { data: dateRows } = await _supabase.from('listings')
+      .select('scraped_at').eq('keyword', keyword)
+      .order('scraped_at', { ascending: false }).limit(40);
+    const dates = [...new Set((dateRows || []).map(r => r.scraped_at))].slice(0, 2);
+    if (!dates.length) return null;
+
+    const cols = 'item_id,shop_id,product_name,store_name,price,total_sold,image_url,scraped_at,keyword';
+    const fetchAt = async (dt) => {
+      const { data } = await _supabase.from('listings').select(cols)
+        .eq('keyword', keyword).eq('scraped_at', dt).limit(200);
+      const map = new Map();
+      _trkDedupeListings(data).forEach(r => map.set(_trkListingKey(r), { ...r, scraped_at: dt }));
+      return map;
+    };
+    const latestMap = await fetchAt(dates[0]);
+    const prevMap   = dates[1] ? await fetchAt(dates[1]) : new Map();
+    return { keyword, latestDate: dates[0], prevDate: dates[1] || null, latestMap, prevMap };
+  } catch { return null; }
+}
+
+async function trkBuildAlertsForTracked(tracked) {
+  const trackedId = _trkListingKey(tracked);
+  const kw = (tracked.keyword || '').trim();
+  const alerts = [];
+  const snap = kw ? await trkFetchKeywordSnapshots(kw) : null;
+
+  const buildFor = (itemId, shopId, isTracked) => {
+    if (snap) {
+      const k = `${itemId}_${shopId}`;
+      const curr = snap.latestMap.get(k) || null;
+      const prev = snap.prevMap.get(k) || null;
+      const prevRank = snap.prevMap.size ? _trkRankInMap(snap.prevMap, itemId, shopId) : null;
+      const currRank = snap.latestMap.size ? _trkRankInMap(snap.latestMap, itemId, shopId) : null;
+      return _trkCompareRows(prev, curr, { isTracked, prevRank, currRank, searchKw: kw });
+    }
+    return [];
+  };
+
+  if (snap) {
+    alerts.push(...buildFor(tracked.item_id, tracked.shop_id, true));
+    [...snap.latestMap.values()]
+      .filter(r => _trkListingKey(r) !== trackedId)
+      .sort((a, b) => (b.total_sold || 0) - (a.total_sold || 0))
+      .slice(0, 12)
+      .forEach(r => alerts.push(...buildFor(r.item_id, r.shop_id, false)));
+  } else if (_supabase) {
+    try {
+      const { data } = await _supabase.from('listings')
+        .select('item_id,shop_id,product_name,store_name,price,total_sold,scraped_at,keyword')
+        .eq('item_id', tracked.item_id).eq('shop_id', tracked.shop_id)
+        .order('scraped_at', { ascending: false }).limit(2);
+      if (data && data.length >= 2) {
+        alerts.push(..._trkCompareRows(data[1], data[0], { isTracked: true }));
+      }
+    } catch (_) {}
+  }
+
+  alerts.sort((a, b) => {
+    if (a.isMine !== b.isMine) return a.isMine ? -1 : 1;
+    return (a.sort || 99) - (b.sort || 99);
+  });
+  return { alerts, latestDate: snap?.latestDate, prevDate: snap?.prevDate };
+}
+
+function trkRenderProductCards() {
+  const grid = document.getElementById('trk-prod-grid');
+  if (!grid) return;
+  grid.innerHTML = _trkEnriched.map(p => {
+    const selected = p.key === _trkSelectedKey;
+    const badge = p.alertCount > 0 ? `<span class="trk-prod-badge">${p.alertCount}</span>` : '';
+    const imgHtml = p.image_url
+      ? `<img src="${p.image_url}" alt="" onerror="this.parentElement.innerHTML=wIcon('box',32,'#9CA3AF')">`
+      : wIcon('box', 32, '#9CA3AF');
+    const sellKey = `${p.item_id}_${p.shop_id}`;
+    const isSelling = _trkSellingSet.has(sellKey);
+    return `<div class="trk-prod-card${selected ? ' selected' : ''}" onclick="trkSelectProduct('${p.key}')">
+      <div class="trk-prod-img">${badge}${imgHtml}</div>
+      <div class="trk-prod-body">
+        <div class="trk-prod-name">${wsdEsc(p.product_name || '—')}</div>
+        <div class="trk-prod-cat">${wsdEsc(p.category || '')}${p.store_name ? ' · ' + wsdEsc(p.store_name) : ''}</div>
+        <div class="trk-prod-price">${_dscFmtRpFull(p.curr_price || p.price || 0)}</div>
+      </div>
+      <div class="trk-prod-footer" onclick="event.stopPropagation()">
+        <span class="trk-prod-sold">${(p.curr_sold || p.total_sold || 0).toLocaleString('id-ID')} terjual</span>
+        <label class="trk-sell-toggle">
+          <input type="checkbox" id="trk-sell-${sellKey}" ${isSelling ? 'checked' : ''} onclick="event.stopPropagation();trkToggleSelling(${p.item_id},${p.shop_id})">
+          <span class="trk-sell-toggle-lbl" style="color:${isSelling ? '#E8442A' : '#6B7280'}">Saya jual ini</span>
+        </label>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function trkRenderAlertFeed() {
+  const feed = document.getElementById('trk-alert-feed');
+  if (!feed || !_trkSelectedKey) return;
+  const all = _trkAlertsByKey[_trkSelectedKey] || [];
+  const items = _trkAlertFilter === 'all' ? all : all.filter(a => a.type === _trkAlertFilter);
+  if (!items.length) {
+    feed.innerHTML = `<div class="trk-alert-empty">${all.length ? 'Tidak ada alert untuk filter ini.' : 'Belum ada perubahan terdeteksi antara dua scrape terakhir. Cek lagi setelah scrape berikutnya.'}</div>`;
+    return;
+  }
+  const iconFor = (a) => {
+    if (a.type === 'price') return wIcon('tag', 16, a.kind === 'up' ? '#E8442A' : '#059669');
+    if (a.type === 'sales') return wIcon('trending-up', 16, a.kind === 'up' ? '#059669' : '#E8442A');
+    return wIcon('search', 16, '#4F46E5');
+  };
+  feed.innerHTML = items.map(a => `
+    <div class="trk-alert-item${a.isMine ? ' mine' : ''}">
+      <div class="trk-alert-icon ${a.type}">${iconFor(a)}</div>
+      <div class="trk-alert-body">
+        <div class="trk-alert-title">${a.title}</div>
+        <div class="trk-alert-desc">${a.desc}</div>
+      </div>
+      <div class="trk-alert-meta">
+        <span class="trk-alert-tag ${a.kind || 'info'}">${a.tag || ''}</span>
+        <div class="trk-alert-time">${a.time || ''}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function trkAlertFilter(btn, type) {
+  document.querySelectorAll('#trk-alert-filters .alr-filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  _trkAlertFilter = type;
+  trkRenderAlertFeed();
+}
+
+async function trkSelectProduct(key) {
+  _trkSelectedKey = key;
+  trkRenderProductCards();
+  const panel = document.getElementById('trk-detail-panel');
+  const loading = document.getElementById('trk-alert-loading');
+  const feed = document.getElementById('trk-alert-feed');
+  const tracked = _trkEnriched.find(p => p.key === key);
+  if (!panel || !tracked) return;
+  panel.style.display = '';
+  const titleEl = document.getElementById('trk-detail-title');
+  const subEl = document.getElementById('trk-detail-sub');
+  if (titleEl) titleEl.textContent = tracked.product_name || 'Produk';
+  if (subEl) {
+    const kw = tracked.keyword ? `Keyword: ${tracked.keyword}` : 'Tanpa keyword — hanya perubahan produk ini';
+    subEl.textContent = kw + (tracked.store_name ? ` · ${tracked.store_name}` : '');
+  }
+  if (loading) loading.style.display = '';
+  if (feed) feed.innerHTML = '';
+  const result = await trkBuildAlertsForTracked(tracked);
+  _trkAlertsByKey[key] = result.alerts;
+  tracked.alertCount = result.alerts.length;
+  if (loading) loading.style.display = 'none';
+  const rangeEl = document.getElementById('trk-date-range');
+  if (rangeEl) {
+    rangeEl.textContent = result.latestDate && result.prevDate
+      ? `Membandingkan scrape ${_trkFmtScrapeDate(result.prevDate)} → ${_trkFmtScrapeDate(result.latestDate)}`
+      : result.latestDate
+        ? `Scrape terbaru ${_trkFmtScrapeDate(result.latestDate)} — butuh scrape kedua untuk mendeteksi perubahan`
+        : 'Perubahan harga, judul listing, keyword, dan penjualan pada produk yang kamu lacak.';
+  }
+  trkRenderProductCards();
+  trkRenderAlertFeed();
+}
+
+function trkOpenSelectedDeepDive() {
+  const p = _trkEnriched.find(x => x.key === _trkSelectedKey);
+  if (p) trkOpenDeepDive(p.item_id, p.shop_id);
 }
 
 async function trkOpenDeepDive(itemId, shopId) {
@@ -21172,22 +21323,15 @@ async function trkOpenDeepDive(itemId, shopId) {
 async function trkInit() {
   await _trkLoadSellingFromSupabase();
   const tracked = trkLoad();
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
   const grid = document.getElementById('trk-prod-grid');
+  const panel = document.getElementById('trk-detail-panel');
 
   if (!tracked.length) {
     nuRefreshView('tracker');
-    set('trk-total', '0 produk');
-    set('trk-total-sub', '');
-    set('trk-sales', '—');
-    set('trk-sales-sub', '');
-    set('trk-growth', '—');
-    set('trk-growth-sub', '');
-    set('trk-avgprice', '—');
-    set('trk-avgprice-sub', '');
     if (grid) grid.innerHTML = '';
-    document.getElementById('trk-price-tbody').innerHTML = '';
-    if (_trkChartWeekly) { _trkChartWeekly.destroy(); _trkChartWeekly = null; }
+    if (panel) panel.style.display = 'none';
+    _trkEnriched = [];
+    _trkSelectedKey = null;
     return;
   }
 
@@ -21196,116 +21340,34 @@ async function trkInit() {
   if (trkEmpty) trkEmpty.style.display = 'none';
   if (trkMain)  trkMain.style.display  = '';
 
-  // Fetch last 2 scrape rows for each tracked product
-  const enriched = await Promise.all(tracked.map(async t => {
-    if (!_supabase) return { ...t, delta: null, curr_sold: t.total_sold || 0, curr_price: t.price || 0 };
+  _trkEnriched = await Promise.all(tracked.map(async t => {
+    if (!_supabase) return { ...t, curr_sold: t.total_sold || 0, curr_price: t.price || 0, alertCount: _trkAlertsByKey[t.key]?.length || 0 };
     try {
-      let { data } = await _supabase
-        .from('listings')
+      const { data } = await _supabase.from('listings')
         .select('scraped_at,total_sold,price')
-        .eq('item_id', t.item_id)
-        .eq('shop_id', t.shop_id)
-        .order('scraped_at', { ascending: false })
-        .limit(2);
-      if (!data || !data.length) {
-        const { data: d2 } = await _supabase
-          .from('listings')
-          .select('scraped_at,total_sold,price')
-          .eq('item_id', String(t.item_id))
-          .eq('shop_id', String(t.shop_id))
-          .order('scraped_at', { ascending: false })
-          .limit(2);
-        data = d2 || [];
-      }
-      const curr = data[0] || null;
-      const prev = data[1] || null;
-      const curr_sold  = curr?.total_sold  ?? t.total_sold  ?? 0;
-      const prev_sold  = prev?.total_sold  ?? null;
-      const curr_price = curr?.price ?? t.price ?? 0;
-      const delta = prev_sold != null ? Math.max(0, curr_sold - prev_sold) : null;
-      return { ...t, curr_sold, prev_sold, curr_price, delta, scrape_date: curr?.scraped_at };
-    } catch { return { ...t, delta: null, curr_sold: t.total_sold || 0, curr_price: t.price || 0 }; }
+        .eq('item_id', t.item_id).eq('shop_id', t.shop_id)
+        .order('scraped_at', { ascending: false }).limit(1);
+      const curr = data?.[0];
+      return {
+        ...t,
+        curr_sold: curr?.total_sold ?? t.total_sold ?? 0,
+        curr_price: curr?.price ?? t.price ?? 0,
+        alertCount: _trkAlertsByKey[t.key]?.length || 0,
+      };
+    } catch {
+      return { ...t, curr_sold: t.total_sold || 0, curr_price: t.price || 0, alertCount: 0 };
+    }
   }));
 
-  // Summary stats
-  const nUp   = enriched.filter(p => (p.delta ?? 0) > 0).length;
-  const totalSold  = enriched.reduce((s, p) => s + (p.curr_sold || 0), 0);
-  const avgPrice   = Math.round(enriched.reduce((s, p) => s + (p.curr_price || 0), 0) / enriched.length);
-  const cats = [...new Set(enriched.map(p => p.category).filter(Boolean))];
-  set('trk-total',       enriched.length + ' produk');
-  set('trk-total-sub',   cats.length + ' kategori');
-  set('trk-sales',       totalSold.toLocaleString('id-ID') + ' unit');
-  set('trk-sales-sub',   'total terjual saat ini');
-  set('trk-growth',      nUp + ' / ' + enriched.length);
-  const grSub = document.getElementById('trk-growth-sub');
-  if (grSub) { grSub.textContent = nUp > 0 ? 'naik sejak scrape terakhir' : 'tidak ada kenaikan terdeteksi'; grSub.className = 'trk-stat-delta ' + (nUp > 0 ? 'up' : 'flat'); }
-  set('trk-avgprice',    'Rp ' + avgPrice.toLocaleString('id-ID'));
-  set('trk-avgprice-sub','median semua produk dilacak');
+  const keepKey = _trkSelectedKey && _trkEnriched.some(p => p.key === _trkSelectedKey);
+  if (!keepKey) _trkSelectedKey = _trkEnriched[0]?.key || null;
 
-  // Product cards
-  const _upArrow = `<svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 10V2M6 2L2 6M6 2L10 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  const _dnArrow = `<svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 2V10M6 10L2 6M6 10L10 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  if (grid) grid.innerHTML = enriched.map(p => {
-    const dc   = p.delta == null ? 'flat' : p.delta > 0 ? 'up' : 'flat';
-    const icon = dc === 'up' ? _upArrow : dc === 'down' ? _dnArrow : '';
-    const dtxt = p.delta == null ? '— belum ada data' : p.delta > 0 ? `+${p.delta.toLocaleString('id-ID')} unit` : '0 unit (stabil)';
-    const imgHtml = p.image_url
-      ? `<img src="${p.image_url}" alt="" onerror="this.parentElement.innerHTML=wIcon('box',32,'#9CA3AF')">`
-      : wIcon('box', 32, '#9CA3AF');
-    const sellKey = `${p.item_id}_${p.shop_id}`;
-    const isSelling = _trkSellingSet.has(sellKey);
-    return `<div class="trk-prod-card" onclick="trkOpenDeepDive('${p.item_id}','${p.shop_id}')">
-      <div class="trk-prod-img">${imgHtml}</div>
-      <div class="trk-prod-body">
-        <div class="trk-prod-name">${p.product_name || '—'}</div>
-        <div class="trk-prod-cat">${p.category || ''}${p.store_name ? ' · ' + p.store_name : ''}</div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
-          <div class="trk-prod-price">Rp ${(p.curr_price||0).toLocaleString('id-ID')}</div>
-          <span class="trk-prod-delta ${dc}">${icon}${dtxt}</span>
-        </div>
-      </div>
-      <div class="trk-prod-footer" onclick="event.stopPropagation()">
-        <span class="trk-prod-sold">${p.curr_sold.toLocaleString('id-ID')} total terjual</span>
-        <label class="trk-sell-toggle">
-          <input type="checkbox" id="trk-sell-${sellKey}" ${isSelling ? 'checked' : ''} onclick="event.stopPropagation();trkToggleSelling(${p.item_id},${p.shop_id})">
-          <span class="trk-sell-toggle-lbl" style="color:${isSelling ? '#E8442A' : '#6B7280'}">Saya jual ini</span>
-        </label>
-      </div>
-    </div>`;
-  }).join('');
-
-  // Bar chart: delta per product
-  const chartLabels = enriched.map(p => (p.product_name || '').split(' ').slice(0,2).join(' '));
-  const chartData   = enriched.map(p => p.delta ?? 0);
-  const chartColors = enriched.map(p => (p.delta ?? 0) > 0 ? '#10B981' : '#9CA3AF');
-  if (_trkChartWeekly) { _trkChartWeekly.destroy(); _trkChartWeekly = null; }
-  const cvs = document.getElementById('trk-chart-weekly');
-  if (cvs) {
-    _trkChartWeekly = new Chart(cvs, {
-      type: 'bar',
-      data: { labels: chartLabels, datasets: [{ data: chartData, backgroundColor: chartColors, borderRadius: 4, borderSkipped: false }] },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` +${ctx.parsed.y.toLocaleString('id-ID')} unit` } } },
-        scales: { x: { ticks: { font: { size: 9 }, maxRotation: 40 } }, y: { ticks: { font: { size: 9 }, callback: v => v >= 1000 ? (v/1000).toFixed(0)+'k' : v } } }
-      }
-    });
-  }
-
-  // Price table
-  document.getElementById('trk-price-tbody').innerHTML = enriched.map(p => {
-    const dc = (p.delta ?? 0) > 0 ? 'up' : 'flat';
-    const icon = dc === 'up' ? _upArrow : _dnArrow;
-    const dtxt = p.delta == null ? '—' : p.delta > 0 ? `+${p.delta.toLocaleString('id-ID')}` : '0';
-    return `<tr class="trk-row-click" onclick="trkOpenDeepDive('${p.item_id}','${p.shop_id}')">
-      <td style="font-weight:600;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(p.product_name||'').split(' ').slice(0,4).join(' ')}</td>
-      <td>Rp ${(p.curr_price||0).toLocaleString('id-ID')}</td>
-      <td><span class="trk-price-chg ${dc}" style="display:inline-flex;align-items:center;gap:3px;">${icon}${dtxt} unit</span></td>
-    </tr>`;
-  }).join('');
+  trkRenderProductCards();
+  if (_trkSelectedKey) await trkSelectProduct(_trkSelectedKey);
+  else if (panel) panel.style.display = 'none';
 }
 
-function trkRefresh() { trkInit(); }
+function trkRefresh() { _trkAlertsByKey = {}; trkInit(); }
 
 // ── DASHBOARD ──────────────────────────────────────────────────
 let _hbdChartPerf = null, _hbdTab = 'growth';
@@ -21957,7 +22019,12 @@ function mlsInit() {
   if (!allPicks.length) {
     pick.style.display = 'none';
     if (noTrk) noTrk.style.display = 'none';
-    nuRefreshView('ai');
+    const heroEl = document.getElementById('mls-hero');
+    if (heroEl) heroEl.style.display = 'none';
+    const mlsEmpty = document.getElementById('mls-empty-state');
+    const mlsMain  = document.getElementById('mls-main-content');
+    if (mlsEmpty) mlsEmpty.style.display = '';
+    if (mlsMain)  mlsMain.style.display  = 'none';
     return;
   }
   const mlsEmpty = document.getElementById('mls-empty-state');
@@ -22362,141 +22429,6 @@ async function mlsChatSend() {
   if (input) input.disabled = false;
   if (sendBtn) sendBtn.disabled = false;
   if (input) input.focus();
-}
-
-// ── ALERTS ─────────────────────────────────────────────────────
-let _alrAll = [], _alrActiveFilter = 'all';
-
-function _alrRng(seed) {
-  let s = seed;
-  return function() { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0xffffffff; };
-}
-
-function alrInit() {
-  alrCheckWaEnrollment();
-  if (!userHasTrackedProducts()) {
-    nuRefreshView('alerts');
-    return;
-  }
-  if (!allProducts || !allProducts.length) return;
-  const rng = _alrRng(99991);
-
-  const types = [
-    { type:'price', icon: wIcon('tag', 18, '#E8442A'), iconCls:'red',   badgeCls:'down', label: (p,r) => `Harga ${p.name.split(' ').slice(0,3).join(' ')} turun ${(2+r()*8).toFixed(1)}%`,    desc: (p,r) => `Dari Rp ${(p.medianPrice||85000).toLocaleString('id-ID')} → Rp ${Math.round((p.medianPrice||85000)*(0.88+r()*0.08)).toLocaleString('id-ID')}`, badge: r => `▼ ${(2+r()*8).toFixed(1)}%`, unread: true, accent: '' },
-    { type:'trend', icon: wIcon('trending-up', 18, '#1A7A46'), iconCls:'green', badgeCls:'up',   label: (p,r) => `Tren ${p.name.split(' ').slice(0,3).join(' ')} naik signifikan`,                    desc: (p,r) => `Volume pencarian minggu ini naik ${Math.round(10+r()*30)}% dibanding minggu lalu`, badge: r => `▲ ${Math.round(10+r()*30)}%`, unread: true, accent: 'green' },
-    { type:'opp',   icon: wIcon('zap', 18, '#4F46E5'),  iconCls:'blue',  badgeCls:'info', label: (p,r) => `Peluang baru terdeteksi: ${p.name.split(' ').slice(0,3).join(' ')}`,                 desc: (p,r) => `Skor kompetisi turun — celah masuk terbuka dengan margin estimasi ${Math.round(25+r()*20)}%`, badge: r => 'Peluang', unread: true, accent: 'blue' },
-    { type:'stock', icon: wIcon('box', 18, '#D97706'), iconCls:'yellow',badgeCls:'warn', label: (p,r) => `Kompetitor ${p.name.split(' ').slice(0,2).join(' ')} kehabisan stok`,                desc: (p,r) => `Toko teratas kehabisan stok — permintaan tidak terlayani, ini kesempatan Anda`, badge: r => 'Stok Habis', unread: false, accent: '' },
-    { type:'price', icon: wIcon('tag', 18, '#1A7A46'), iconCls:'green', badgeCls:'up',   label: (p,r) => `Harga ${p.name.split(' ').slice(0,3).join(' ')} naik ${(3+r()*10).toFixed(1)}%`,     desc: (p,r) => `Pasar sedang menaikkan harga — pertimbangkan ikuti atau jaga harga untuk volume`, badge: r => `▲ ${(3+r()*10).toFixed(1)}%`, unread: false, accent: '' },
-  ];
-
-  const times = ['2m lalu','8m lalu','15m lalu','34m lalu','1j lalu','2j lalu','3j lalu','5j lalu','7j lalu','kemarin'];
-  _alrAll = allProducts.slice(0, 10).map((p, i) => {
-    const r = _alrRng(p.id * 777 + i);
-    const t = types[i % types.length];
-    return { ...t, prod: p, time: times[i], id: i, label: t.label(p,r), desc: t.desc(p,r), badge: t.badge(r) };
-  });
-
-  const triggered = _alrAll.filter(a => a.unread).length;
-  const priceUp = _alrAll.filter(a => a.type === 'price' && a.badgeCls === 'up').length;
-  const opps = _alrAll.filter(a => a.type === 'opp').length;
-  document.getElementById('alr-s1').textContent = _alrAll.length;
-  document.getElementById('alr-s1-sub').textContent = 'dari ' + allProducts.slice(0,10).length + ' produk dipantau';
-  document.getElementById('alr-s2').textContent = triggered;
-  document.getElementById('alr-s2-sub').textContent = triggered + ' notifikasi belum dibaca';
-  document.getElementById('alr-s3').textContent = priceUp;
-  document.getElementById('alr-s4').textContent = opps;
-
-  alrRender();
-}
-
-function alrFilter(btn, type) {
-  document.querySelectorAll('.alr-filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  _alrActiveFilter = type;
-  alrRender();
-}
-
-function alrRender() {
-  const items = _alrActiveFilter === 'all' ? _alrAll : _alrAll.filter(a => a.type === _alrActiveFilter);
-  if (!items.length) {
-    document.getElementById('alr-list').innerHTML = '<div class="alr-empty">Tidak ada alert untuk filter ini.</div>';
-    return;
-  }
-  document.getElementById('alr-list').innerHTML = items.map(a => `
-    <div class="alr-item ${a.unread ? 'unread' : ''} ${a.accent}">
-      <div class="alr-icon ${a.iconCls}">${a.icon}</div>
-      <div class="alr-body">
-        <div class="alr-body-title">${a.label}</div>
-        <div class="alr-body-desc">${a.desc}</div>
-      </div>
-      <div class="alr-meta">
-        <span class="alr-badge ${a.badgeCls}">${a.badge}</span>
-        <span class="alr-time">${a.time}</span>
-      </div>
-    </div>
-  `).join('');
-}
-
-function alrMarkAllRead() {
-  _alrAll.forEach(a => a.unread = false);
-  document.querySelectorAll('.alr-item.unread').forEach(el => el.classList.remove('unread'));
-  document.getElementById('alr-s2').textContent = '0';
-  document.getElementById('alr-s2-sub').textContent = 'semua sudah dibaca';
-}
-
-function alrShowCreate() { openAuthModal('signup'); }
-
-function alrOpenWaModal() {
-  const modal = document.getElementById('alr-wa-modal');
-  if (!modal) return;
-  const saved = JSON.parse(localStorage.getItem('larisid_wa_alert_settings') || 'null');
-  if (saved) {
-    const numEl = document.getElementById('alr-wa-number');
-    if (numEl) numEl.value = saved.number || '';
-    const checks = { 'alr-wa-price': saved.price, 'alr-wa-stock': saved.stock, 'alr-wa-keyword': saved.keyword, 'alr-wa-trend': saved.trend };
-    Object.entries(checks).forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.checked = !!val; });
-  }
-  const status = document.getElementById('alr-wa-status');
-  if (status) status.textContent = '';
-  modal.style.display = 'flex';
-}
-
-function alrCloseWaModal() {
-  const modal = document.getElementById('alr-wa-modal');
-  if (modal) modal.style.display = 'none';
-}
-
-function alrSaveWaSettings() {
-  const number = (document.getElementById('alr-wa-number')?.value || '').trim();
-  const status = document.getElementById('alr-wa-status');
-  if (!number) { if (status) { status.style.color = '#C0392B'; status.textContent = 'Masukkan nomor WhatsApp kamu.'; } return; }
-  const settings = {
-    number,
-    price:   !!(document.getElementById('alr-wa-price')?.checked),
-    stock:   !!(document.getElementById('alr-wa-stock')?.checked),
-    keyword: !!(document.getElementById('alr-wa-keyword')?.checked),
-    trend:   !!(document.getElementById('alr-wa-trend')?.checked),
-  };
-  localStorage.setItem('larisid_wa_alert_settings', JSON.stringify(settings));
-  const banner = document.getElementById('alr-wa-banner');
-  const enrolled = document.getElementById('alr-wa-enrolled');
-  if (banner) banner.style.display = 'none';
-  if (enrolled) enrolled.style.display = 'flex';
-  if (status) { status.style.color = '#16a34a'; status.textContent = 'Tersimpan! Tim kami akan menghubungi kamu dalam 1x24 jam untuk konfirmasi.'; }
-  setTimeout(() => alrCloseWaModal(), 1800);
-}
-
-function alrCheckWaEnrollment() {
-  const saved = JSON.parse(localStorage.getItem('larisid_wa_alert_settings') || 'null');
-  const banner = document.getElementById('alr-wa-banner');
-  const enrolled = document.getElementById('alr-wa-enrolled');
-  if (saved && saved.number) {
-    if (banner) banner.style.display = 'none';
-    if (enrolled) { enrolled.style.display = 'flex'; }
-  } else {
-    if (banner) banner.style.display = 'flex';
-    if (enrolled) enrolled.style.display = 'none';
-  }
 }
 
 // ── LANDING PAGE PREVIEW ────────────────────────────────────────
@@ -27744,13 +27676,6 @@ function nuRefreshView(view) {
     if (mlsMain)  mlsMain.style.display  = empty ? 'none' : '';
   }
 
-  const alrEmpty = document.getElementById('alr-empty-state');
-  const alrMain  = document.getElementById('alr-main-content');
-  if (view === 'alerts') {
-    const empty = !hasTracked;
-    if (alrEmpty) alrEmpty.style.display = empty ? '' : 'none';
-    if (alrMain)  alrMain.style.display  = empty ? 'none' : '';
-  }
 }
 
 function _mlsNameSimilarity(a, b) {
@@ -27873,8 +27798,8 @@ const DASHBOARD_TOUR_STEPS = [
   },
   {
     sel: '#dash-nav-tracker',
-    title: 'Buka Halaman Tracker',
-    body: 'Tracker dipakai untuk memantau perubahan harga dan performa produk yang kamu lacak.',
+    title: 'Buka Alerts',
+    body: 'Alerts menampilkan perubahan harga, keyword, dan penjualan pada produk yang kamu lacak beserta kompetitornya.',
     pos: 'right',
     onNext: () => switchDashView('tracker'),
   },
@@ -27884,13 +27809,6 @@ const DASHBOARD_TOUR_STEPS = [
     body: 'Masuk ke Mulai Berjualan, pilih produk, lalu cek AI chat, kompetisi, dan insight pasar.',
     pos: 'left',
     onEnter: () => switchDashView('ai'),
-  },
-  {
-    sel: '#dash-nav-alerts',
-    title: 'Cek Alerts',
-    body: 'Alerts memberi sinyal perubahan penting pada produk yang sedang kamu pantau.',
-    pos: 'right',
-    onNext: () => switchDashView('alerts'),
   },
   {
     sel: '#dash-nav-credits',
@@ -31781,7 +31699,7 @@ async function cohortPlannerGcalImportSelected() {
     <button class="mbn-sheet-item" onclick="switchDashView('deepdive');mbnCloseMore()">
       <span class="mbn-sheet-icon" style="background:#FFF0ED;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E8442A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span><span>Deep Dive</span>
     </button>
-    <button class="mbn-sheet-item" onclick="switchDashView('alerts');mbnCloseMore()">
+    <button class="mbn-sheet-item" onclick="switchDashView('tracker');mbnCloseMore()">
       <span class="mbn-sheet-icon" style="background:#EEF2FF;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span><span>Alerts</span>
     </button>
     <button class="mbn-sheet-item" onclick="switchDashView('credits');mbnCloseMore()">
