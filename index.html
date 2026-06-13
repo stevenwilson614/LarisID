@@ -1876,8 +1876,11 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .lp-hero-intro .lp-hero-btns{justify-content:center;margin-bottom:12px;}
 .lp-hero-intro-trust{font-size:.8rem;color:#4B5563;font-weight:600;display:inline-flex;align-items:center;gap:7px;justify-content:center;}
 .lp-showcase-wrap{position:relative;margin:0 auto;overflow:visible;}
-.lp-showcase-viewport{overflow:hidden;width:100%;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 6%,#000 94%,transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 6%,#000 94%,transparent 100%);}
-.lp-showcase{display:flex;flex-wrap:nowrap;gap:20px;justify-content:flex-start;align-items:stretch;overflow:visible;padding:22px 44px 26px;will-change:transform;}
+.lp-showcase-viewport{overflow-x:auto;overflow-y:hidden;width:100%;padding:14px 0 18px;cursor:grab;-webkit-overflow-scrolling:touch;scroll-behavior:auto;scrollbar-width:none;touch-action:pan-x;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 6%,#000 94%,transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 6%,#000 94%,transparent 100%);}
+.lp-showcase-viewport::-webkit-scrollbar{display:none;}
+.lp-showcase-viewport.is-dragging{cursor:grabbing;user-select:none;}
+.lp-showcase-viewport.is-dragging .lp-showcase-card{pointer-events:none;}
+.lp-showcase{display:flex;flex-wrap:nowrap;gap:20px;justify-content:flex-start;align-items:stretch;overflow:visible;padding:8px 44px 10px;width:max-content;}
 .lp-showcase-card{flex:0 0 232px;width:232px;background:#fff;border:1px solid #EAE2D2;border-radius:16px;padding:13px;box-shadow:0 4px 16px rgba(26,26,26,.06);cursor:pointer;position:relative;text-align:left;scroll-snap-align:center;opacity:0;transform:translateX(-44px);animation:lpCardIn .6s cubic-bezier(.22,1,.36,1) forwards;transition:transform .22s cubic-bezier(.22,1,.36,1),box-shadow .22s,border-color .22s;overflow:hidden;flex-shrink:0;}
 .lp-showcase-card:hover{transform:scale(1.06);box-shadow:0 20px 46px rgba(26,26,26,.18);border-color:var(--gold);z-index:5;}
 .lp-showcase-card:focus-visible{outline:2px solid var(--orange);outline-offset:3px;}
@@ -1921,7 +1924,7 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .lp-brand-morph.is-morphed .lp-brand-morph-lockup{opacity:1;transform:translate(-50%,-50%) scale(1);transition-delay:.15s;}
 .lp-brand-morph.is-morphed .lp-brand-morph-tag{opacity:1;transform:translateY(0);transition-delay:.55s;}
 @media(max-width:1100px){.lp-showcase-card{flex-basis:214px;width:214px;}}
-@media(max-width:640px){.lp-showcase{padding:18px 20px 22px;}.lp-showcase-card{flex:0 0 192px;width:192px;}.lp-showcase-card:hover{transform:scale(1.04);}}
+@media(max-width:640px){.lp-showcase{padding:8px 20px 10px;}.lp-showcase-card{flex:0 0 192px;width:192px;}.lp-showcase-card:hover{transform:scale(1.04);}}
 @media(prefers-reduced-motion:reduce){
   .lp-showcase-card{animation:none;opacity:1;transform:none;}
   .lp-vs-prog{transition:none;}
@@ -4236,9 +4239,6 @@ html,body{overflow-x:clip;max-width:100%;}
         <!-- intro band (copy) — now below the cards -->
         <div class="lp-hero-intro">
           <div class="lp-hero-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" style="flex-shrink:0;" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="8 12 11 15 16 9"/></svg> 100% Gratis &middot; Selamanya</div>
-          <div style="font-family:var(--font-brand);color:#C9974B;font-size:1.05rem;letter-spacing:.05em;margin:0 0 10px;">DARI PENJUAL, UNTUK PENJUAL</div>
-          <h1>Riset Produk Shopee<br>dengan <span class="lp-hero-accent">Data Nyata</span></h1>
-          <p class="lp-hero-sub">Platform riset produk Shopee untuk seller Indonesia — 60.000+ listing, Viability Score, Deep Dive &amp; AI. 100% gratis, tanpa langganan ~Rp 300rb/bulan.</p>
           <div class="lp-hero-btns">
             <button class="lp-hero-btn-primary" onclick="openAuthModal('signup','hero')">Temukan Produk Terlaris
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:6px;vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
@@ -4305,38 +4305,100 @@ html,body{overflow-x:clip;max-width:100%;}
                 }, i * 280 + 300);
               });
             }
-            // slow continuous slide right → left (transform marquee), pauses on hover
-            if(row && !reduce){
-              var paused = false;
+            // slow continuous slide right → left; also drag, wheel, and touch scroll
+            if(row && viewport && !reduce){
+              var userActive = false;
+              var resumeTimer = null;
               var speed = 0.22;
-              var carouselX = 0;
+              var scrollPos = 0;
               var loopW = 0;
+              var syncing = false;
+              var drag = { active: false, startX: 0, startScroll: 0, moved: false };
               function measure(){
                 loopW = row.scrollWidth / 2;
-                if(!loopW || loopW <= row.clientWidth){
+                if(!loopW || loopW <= viewport.clientWidth){
                   var card = row.querySelector('.lp-showcase-card');
                   var gap = 20;
                   var w = card ? card.offsetWidth + gap : 252;
                   loopW = w * (originalCount || 10);
                 }
               }
+              function normalizeScroll(){
+                if(loopW <= 0) return;
+                var sl = viewport.scrollLeft;
+                if(sl >= loopW){
+                  syncing = true;
+                  sl -= loopW;
+                  viewport.scrollLeft = sl;
+                  scrollPos = sl;
+                  syncing = false;
+                }
+              }
+              function markUserScroll(){
+                userActive = true;
+                clearTimeout(resumeTimer);
+                resumeTimer = setTimeout(function(){ userActive = false; scrollPos = viewport.scrollLeft; }, 2800);
+              }
               measure();
               window.addEventListener('resize', measure, { passive: true });
-              function pause(){ paused = true; row.classList.add('is-paused'); }
-              function resume(){ paused = false; row.classList.remove('is-paused'); }
-              if(viewport){
-                viewport.addEventListener('mouseenter', pause);
-                viewport.addEventListener('mouseleave', resume);
-                viewport.addEventListener('focusin', pause);
-                viewport.addEventListener('focusout', function(e){
-                  if(!viewport.contains(e.relatedTarget)) resume();
-                });
+              viewport.addEventListener('scroll', function(){
+                if(syncing || drag.active) return;
+                scrollPos = viewport.scrollLeft;
+                normalizeScroll();
+                markUserScroll();
+              }, { passive: true });
+              viewport.addEventListener('wheel', function(e){
+                if(Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+                e.preventDefault();
+                syncing = true;
+                viewport.scrollLeft += e.deltaY;
+                syncing = false;
+                scrollPos = viewport.scrollLeft;
+                normalizeScroll();
+                markUserScroll();
+              }, { passive: false });
+              viewport.addEventListener('pointerdown', function(e){
+                if(e.button !== 0) return;
+                drag.active = true;
+                drag.moved = false;
+                drag.startX = e.clientX;
+                drag.startScroll = viewport.scrollLeft;
+                viewport.setPointerCapture(e.pointerId);
+                viewport.classList.add('is-dragging');
+              });
+              viewport.addEventListener('pointermove', function(e){
+                if(!drag.active) return;
+                var dx = e.clientX - drag.startX;
+                if(Math.abs(dx) > 4) drag.moved = true;
+                syncing = true;
+                viewport.scrollLeft = drag.startScroll - dx;
+                syncing = false;
+                scrollPos = viewport.scrollLeft;
+                normalizeScroll();
+              });
+              function endDrag(e){
+                if(!drag.active) return;
+                drag.active = false;
+                viewport.releasePointerCapture(e.pointerId);
+                viewport.classList.remove('is-dragging');
+                scrollPos = viewport.scrollLeft;
+                if(drag.moved) markUserScroll();
               }
+              viewport.addEventListener('pointerup', endDrag);
+              viewport.addEventListener('pointercancel', endDrag);
+              row.addEventListener('click', function(e){
+                if(!drag.moved) return;
+                e.preventDefault();
+                e.stopPropagation();
+                drag.moved = false;
+              }, true);
               (function tick(){
-                if(!paused && loopW > 0){
-                  carouselX -= speed;
-                  if(carouselX <= -loopW) carouselX += loopW;
-                  row.style.transform = 'translate3d(' + carouselX + 'px,0,0)';
+                if(!userActive && !drag.active && loopW > 0){
+                  scrollPos += speed;
+                  if(scrollPos >= loopW) scrollPos -= loopW;
+                  syncing = true;
+                  viewport.scrollLeft = scrollPos;
+                  syncing = false;
                 }
                 requestAnimationFrame(tick);
               })();
