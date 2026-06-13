@@ -1876,9 +1876,11 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .lp-hero-intro .lp-hero-btns{justify-content:center;margin-bottom:12px;}
 .lp-hero-intro-trust{font-size:.8rem;color:#4B5563;font-weight:600;display:inline-flex;align-items:center;gap:7px;justify-content:center;}
 .lp-showcase-wrap{position:relative;margin:0 auto;will-change:opacity,filter;}
-.lp-showcase{display:flex;flex-wrap:nowrap;gap:18px;justify-content:flex-start;align-items:stretch;overflow-x:auto;overflow-y:visible;padding:20px 44px 24px;scroll-snap-type:x proximity;scrollbar-width:none;-ms-overflow-style:none;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 7%,#000 90%,transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 7%,#000 90%,transparent 100%);will-change:transform;}
+.lp-showcase-viewport{overflow:hidden;width:100%;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 6%,#000 94%,transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 6%,#000 94%,transparent 100%);}
+.lp-showcase{display:flex;flex-wrap:nowrap;gap:20px;justify-content:flex-start;align-items:stretch;overflow-x:auto;overflow-y:visible;padding:22px 44px 26px;scroll-snap-type:x proximity;scrollbar-width:none;-ms-overflow-style:none;will-change:scroll-position;}
 .lp-showcase::-webkit-scrollbar{display:none;}
-.lp-showcase-card{flex:0 0 210px;width:210px;background:#fff;border:1px solid #EAE2D2;border-radius:16px;padding:12px;box-shadow:0 4px 16px rgba(26,26,26,.06);cursor:pointer;position:relative;text-align:left;scroll-snap-align:center;opacity:0;transform:translateX(-44px);animation:lpCardIn .6s cubic-bezier(.22,1,.36,1) forwards;transition:transform .22s cubic-bezier(.22,1,.36,1),box-shadow .22s,border-color .22s;overflow:hidden;}
+.lp-showcase.is-paused{scroll-snap-type:none;}
+.lp-showcase-card{flex:0 0 232px;width:232px;background:#fff;border:1px solid #EAE2D2;border-radius:16px;padding:13px;box-shadow:0 4px 16px rgba(26,26,26,.06);cursor:pointer;position:relative;text-align:left;scroll-snap-align:center;opacity:0;transform:translateX(-44px);animation:lpCardIn .6s cubic-bezier(.22,1,.36,1) forwards;transition:transform .22s cubic-bezier(.22,1,.36,1),box-shadow .22s,border-color .22s;overflow:hidden;flex-shrink:0;}
 .lp-showcase-card:hover{transform:scale(1.06);box-shadow:0 20px 46px rgba(26,26,26,.18);border-color:var(--gold);z-index:5;}
 .lp-showcase-card:focus-visible{outline:2px solid var(--orange);outline-offset:3px;}
 @keyframes lpCardIn{to{opacity:1;transform:none;}}
@@ -1906,16 +1908,29 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .lp-showcase-peek{position:absolute;inset:0;background:rgba(26,26,26,.48);opacity:0;transition:opacity .2s ease;display:flex;align-items:center;justify-content:center;border-radius:16px;pointer-events:none;z-index:6;}
 .lp-showcase-card:hover .lp-showcase-peek,.lp-showcase-card:focus-visible .lp-showcase-peek{opacity:1;}
 .lp-showcase-peek-pill{background:#fff;color:#1A1A1A;font-size:.72rem;font-weight:800;padding:8px 16px;border-radius:999px;box-shadow:0 4px 16px rgba(0,0,0,.18);letter-spacing:.01em;}
-.lp-showcase-headline{font-family:var(--font-display);font-size:clamp(1.45rem,3.8vw,2.35rem);font-weight:800;color:#1A1A1A;text-align:center;line-height:1.25;margin:4px auto 0;padding:0 28px;max-width:920px;letter-spacing:-.02em;opacity:0;transform:translateY(18px);transition:opacity .75s ease,transform .75s ease;}
+.lp-showcase-headline{font-family:var(--font-display);font-size:clamp(1.45rem,3.8vw,2.35rem);font-weight:800;color:#1A1A1A;text-align:center;line-height:1.25;margin:8px auto 0;padding:0 28px;max-width:920px;letter-spacing:-.02em;opacity:0;transform:translateY(18px);transition:opacity .75s ease,transform .75s ease;}
 .lp-showcase-headline.is-visible{opacity:1;transform:translateY(0);}
 .lp-showcase-headline .lp-showcase-accent{background:linear-gradient(90deg,#B5202A 0%,#C9974B 50%,#B5202A 100%);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:lpShowcaseShimmer 3.2s linear infinite;}
 @keyframes lpShowcaseShimmer{to{background-position:200% center;}}
-@media(max-width:1100px){.lp-showcase-card{flex-basis:196px;width:196px;}}
-@media(max-width:640px){.lp-showcase{padding:16px 20px 20px;}.lp-showcase-card{flex:0 0 176px;width:176px;}.lp-showcase-card:hover{transform:scale(1.04);}}
+.lp-brand-morph{margin:20px auto 0;display:flex;flex-direction:column;align-items:center;gap:8px;min-height:72px;opacity:0;transform:translateY(12px);transition:opacity .7s ease .15s,transform .7s ease .15s;}
+.lp-showcase-wrap.is-visible .lp-brand-morph{opacity:1;transform:translateY(0);}
+.lp-brand-morph-stage{position:relative;width:min(240px,72vw);height:52px;display:flex;align-items:center;justify-content:center;}
+.lp-brand-morph-icon,.lp-brand-morph-lockup{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);transition:opacity 1.1s ease,transform 1.1s cubic-bezier(.22,1,.36,1);}
+.lp-brand-morph-icon{height:46px;width:auto;opacity:1;transform:translate(-50%,-50%) scale(1);}
+.lp-brand-morph-lockup{height:34px;width:auto;max-width:min(220px,68vw);opacity:0;transform:translate(-50%,-50%) scale(.88);}
+.lp-brand-morph-tag{font-family:var(--font-brand);color:#C9974B;font-size:clamp(.62rem,2vw,.74rem);letter-spacing:.09em;text-transform:uppercase;opacity:0;transform:translateY(6px);transition:opacity .65s ease,transform .65s ease;}
+.lp-brand-morph.is-morphed .lp-brand-morph-icon{opacity:0;transform:translate(-50%,-50%) scale(1.15);}
+.lp-brand-morph.is-morphed .lp-brand-morph-lockup{opacity:1;transform:translate(-50%,-50%) scale(1);transition-delay:.15s;}
+.lp-brand-morph.is-morphed .lp-brand-morph-tag{opacity:1;transform:translateY(0);transition-delay:.55s;}
+@media(max-width:1100px){.lp-showcase-card{flex-basis:214px;width:214px;}}
+@media(max-width:640px){.lp-showcase{padding:18px 20px 22px;}.lp-showcase-card{flex:0 0 192px;width:192px;}.lp-showcase-card:hover{transform:scale(1.04);}}
 @media(prefers-reduced-motion:reduce){
   .lp-showcase-card{animation:none;opacity:1;transform:none;}
   .lp-vs-prog{transition:none;}
   .lp-showcase-headline .lp-showcase-accent{animation:none;}
+  .lp-brand-morph-icon,.lp-brand-morph-lockup,.lp-brand-morph-tag{transition:none;}
+  .lp-brand-morph.is-morphed .lp-brand-morph-icon{opacity:0;}
+  .lp-brand-morph.is-morphed .lp-brand-morph-lockup,.lp-brand-morph.is-morphed .lp-brand-morph-tag{opacity:1;transform:none;}
 }
 /* Trust bar */
 .lp-trust-bar{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 80px;border-bottom:1px solid #F0EDE8;background:#F5EFE0;flex-wrap:wrap;}
@@ -4075,6 +4090,7 @@ html,body{overflow-x:clip;max-width:100%;}
 
         <!-- showcase: animated REAL product cards (replaces person photo) -->
         <div class="lp-showcase-wrap">
+          <div class="lp-showcase-viewport">
           <div class="lp-showcase" id="lp-showcase">
 
             <div class="lp-showcase-card" data-score="91" role="button" tabindex="0" onclick="openAuthModal('signup','hero_showcase')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openAuthModal('signup','hero_showcase');}">
@@ -4208,7 +4224,15 @@ html,body{overflow-x:clip;max-width:100%;}
             </div>
 
           </div>
-          <p class="lp-showcase-headline" id="lp-showcase-headline">Satu-satunya <span class="lp-showcase-accent">sumber data Shopee gratis</span> di Indonesia</p>
+          </div>
+          <p class="lp-showcase-headline" id="lp-showcase-headline">Satu-satunya <span class="lp-showcase-accent">sumber data e-commerce gratis</span> di Indonesia</p>
+          <div class="lp-brand-morph" id="lp-brand-morph" aria-hidden="true">
+            <div class="lp-brand-morph-stage">
+              <img class="lp-brand-morph-icon" src="/images/brand/appicon-red.png" alt="" width="46" height="46" decoding="async">
+              <img class="lp-brand-morph-lockup" src="/images/brand/logo-horizontal-red.png" alt="Laris" width="180" height="30" decoding="async">
+            </div>
+            <div class="lp-brand-morph-tag">Dari penjual, untuk penjual</div>
+          </div>
         </div>
 
         <!-- intro band (copy) — now below the cards -->
@@ -4235,6 +4259,13 @@ html,body{overflow-x:clip;max-width:100%;}
         (function(){
           var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
           function lpInitShowcase(){
+            var row = document.getElementById('lp-showcase');
+            var viewport = row && row.parentElement;
+            // duplicate cards for seamless slow auto-scroll loop
+            if(row && !reduce){
+              var originals = row.querySelectorAll('.lp-showcase-card');
+              originals.forEach(function(card){ row.appendChild(card.cloneNode(true)); });
+            }
             var cards = document.querySelectorAll('#lp-showcase .lp-showcase-card');
             if(cards.length){
               var C = 2 * Math.PI * 20; // ring circumference (r=20)
@@ -4265,9 +4296,34 @@ html,body{overflow-x:clip;max-width:100%;}
                 }, i * 70 + 300);
               });
             }
+            // slow auto-scroll — pauses on hover / focus
+            if(row && !reduce){
+              var paused = false;
+              var speed = 0.28;
+              var half = 0;
+              function measure(){ half = row.scrollWidth / 2; }
+              measure();
+              window.addEventListener('resize', measure, { passive: true });
+              function pause(){ paused = true; row.classList.add('is-paused'); }
+              function resume(){ paused = false; row.classList.remove('is-paused'); }
+              if(viewport){
+                viewport.addEventListener('mouseenter', pause);
+                viewport.addEventListener('mouseleave', resume);
+                viewport.addEventListener('focusin', pause);
+                viewport.addEventListener('focusout', function(e){
+                  if(!viewport.contains(e.relatedTarget)) resume();
+                });
+              }
+              (function tick(){
+                if(!paused && half > row.clientWidth){
+                  row.scrollLeft += speed;
+                  if(row.scrollLeft >= half - 1) row.scrollLeft -= half;
+                }
+                requestAnimationFrame(tick);
+              })();
+            }
             // scroll-driven fade — cards dissolve & drift, alluding to many more products
             var wrap = document.querySelector('#page-landing .lp-showcase-wrap');
-            var row = document.getElementById('lp-showcase');
             if(wrap){
               var ticking = false;
               function apply(){
@@ -4275,13 +4331,36 @@ html,body{overflow-x:clip;max-width:100%;}
                 var vh = window.innerHeight || 800;
                 var p = Math.min(Math.max(window.scrollY / (vh * 0.6), 0), 1);
                 wrap.style.opacity = String(Math.max(1 - p * 1.12, 0));
-                if(!reduce){
-                  if(row) row.style.transform = 'translateX(' + (-p * 240) + 'px)';
+                if(!reduce && row){
+                  row.style.transform = 'translateX(' + (-p * 240) + 'px)';
                   wrap.style.filter = p > 0.01 ? 'blur(' + (p * 3.2).toFixed(2) + 'px)' : '';
                 }
               }
               window.addEventListener('scroll', function(){ if(!ticking){ ticking = true; requestAnimationFrame(apply); } }, { passive: true });
               apply();
+            }
+            // phoenix mark → full lockup morph (after showcase enters view)
+            var morph = document.getElementById('lp-brand-morph');
+            if(morph && wrap && 'IntersectionObserver' in window){
+              var morphObs = new IntersectionObserver(function(entries){
+                entries.forEach(function(e){
+                  if(!e.isIntersecting) return;
+                  wrap.classList.add('is-visible');
+                  document.getElementById('lp-showcase-headline')?.classList.add('is-visible');
+                  morph.removeAttribute('aria-hidden');
+                  if(!reduce){
+                    setTimeout(function(){ morph.classList.add('is-morphed'); }, 900);
+                  } else {
+                    morph.classList.add('is-morphed');
+                  }
+                  morphObs.disconnect();
+                });
+              }, { threshold: 0.15 });
+              morphObs.observe(wrap);
+            } else if(wrap) {
+              wrap.classList.add('is-visible');
+              document.getElementById('lp-showcase-headline')?.classList.add('is-visible');
+              if(morph) morph.classList.add('is-morphed');
             }
           }
           if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', lpInitShowcase);
@@ -30167,19 +30246,7 @@ document.addEventListener('DOMContentLoaded', function(){
     }, { passive: true });
   }
 
-  // Showcase headline — reveal when hero showcase scrolls into view
-  const lpShowWrap = document.querySelector('.lp-showcase-wrap');
-  const lpShowHeadline = document.getElementById('lp-showcase-headline');
-  if (lpShowWrap && lpShowHeadline && 'IntersectionObserver' in window) {
-    const obs = new IntersectionObserver(function(entries) {
-      entries.forEach(function(e) {
-        if (e.isIntersecting) { lpShowHeadline.classList.add('is-visible'); obs.disconnect(); }
-      });
-    }, { threshold: 0.12 });
-    obs.observe(lpShowWrap);
-  } else if (lpShowHeadline) {
-    lpShowHeadline.classList.add('is-visible');
-  }
+  // Showcase headline + brand morph handled in lpInitShowcase (hero inline script)
 
   // Landing-page scroll-depth milestones (25/50/75/100%) → Clarity. Each fires once per load.
   (function() {
