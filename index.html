@@ -4305,14 +4305,13 @@ html,body{overflow-x:clip;max-width:100%;}
                 }, i * 280 + 300);
               });
             }
-            // slow continuous slide right → left; also drag, wheel, and touch scroll
+            // slow continuous slide right → left; manual drag/wheel/touch scroll too
             if(row && viewport && !reduce){
-              var userActive = false;
-              var resumeTimer = null;
               var speed = 0.22;
               var scrollPos = 0;
               var loopW = 0;
-              var syncing = false;
+              var suppressScrollUntil = 0;
+              var touchPause = false;
               var drag = { active: false, startX: 0, startScroll: 0, moved: false };
               function measure(){
                 loopW = row.scrollWidth / 2;
@@ -4323,42 +4322,47 @@ html,body{overflow-x:clip;max-width:100%;}
                   loopW = w * (originalCount || 10);
                 }
               }
+              function suppressScroll(ms){
+                suppressScrollUntil = performance.now() + (ms || 80);
+              }
+              function isAutoScroll(){
+                return performance.now() < suppressScrollUntil;
+              }
               function normalizeScroll(){
                 if(loopW <= 0) return;
                 var sl = viewport.scrollLeft;
                 if(sl >= loopW){
-                  syncing = true;
-                  sl -= loopW;
-                  viewport.scrollLeft = sl;
-                  scrollPos = sl;
-                  syncing = false;
+                  suppressScroll(80);
+                  viewport.scrollLeft = sl - loopW;
+                  scrollPos = viewport.scrollLeft;
                 }
-              }
-              function markUserScroll(){
-                userActive = true;
-                clearTimeout(resumeTimer);
-                resumeTimer = setTimeout(function(){ userActive = false; scrollPos = viewport.scrollLeft; }, 2800);
               }
               measure();
               window.addEventListener('resize', measure, { passive: true });
               viewport.addEventListener('scroll', function(){
-                if(syncing || drag.active) return;
+                if(isAutoScroll() || drag.active) return;
                 scrollPos = viewport.scrollLeft;
                 normalizeScroll();
-                markUserScroll();
               }, { passive: true });
               viewport.addEventListener('wheel', function(e){
                 if(Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
                 e.preventDefault();
-                syncing = true;
                 viewport.scrollLeft += e.deltaY;
-                syncing = false;
                 scrollPos = viewport.scrollLeft;
                 normalizeScroll();
-                markUserScroll();
               }, { passive: false });
+              viewport.addEventListener('touchstart', function(){ touchPause = true; }, { passive: true });
+              viewport.addEventListener('touchend', function(){
+                touchPause = false;
+                scrollPos = viewport.scrollLeft;
+                normalizeScroll();
+              }, { passive: true });
+              viewport.addEventListener('touchcancel', function(){
+                touchPause = false;
+                scrollPos = viewport.scrollLeft;
+              }, { passive: true });
               viewport.addEventListener('pointerdown', function(e){
-                if(e.button !== 0) return;
+                if(e.button !== 0 || e.pointerType === 'touch') return;
                 drag.active = true;
                 drag.moved = false;
                 drag.startX = e.clientX;
@@ -4370,9 +4374,7 @@ html,body{overflow-x:clip;max-width:100%;}
                 if(!drag.active) return;
                 var dx = e.clientX - drag.startX;
                 if(Math.abs(dx) > 4) drag.moved = true;
-                syncing = true;
                 viewport.scrollLeft = drag.startScroll - dx;
-                syncing = false;
                 scrollPos = viewport.scrollLeft;
                 normalizeScroll();
               });
@@ -4382,7 +4384,7 @@ html,body{overflow-x:clip;max-width:100%;}
                 viewport.releasePointerCapture(e.pointerId);
                 viewport.classList.remove('is-dragging');
                 scrollPos = viewport.scrollLeft;
-                if(drag.moved) markUserScroll();
+                normalizeScroll();
               }
               viewport.addEventListener('pointerup', endDrag);
               viewport.addEventListener('pointercancel', endDrag);
@@ -4393,12 +4395,11 @@ html,body{overflow-x:clip;max-width:100%;}
                 drag.moved = false;
               }, true);
               (function tick(){
-                if(!userActive && !drag.active && loopW > 0){
+                if(!drag.active && !touchPause && loopW > 0){
                   scrollPos += speed;
                   if(scrollPos >= loopW) scrollPos -= loopW;
-                  syncing = true;
+                  suppressScroll(80);
                   viewport.scrollLeft = scrollPos;
-                  syncing = false;
                 }
                 requestAnimationFrame(tick);
               })();
