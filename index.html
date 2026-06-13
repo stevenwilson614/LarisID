@@ -1876,13 +1876,10 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .lp-hero-intro .lp-hero-btns{justify-content:center;margin-bottom:12px;}
 .lp-hero-intro-trust{font-size:.8rem;color:#4B5563;font-weight:600;display:inline-flex;align-items:center;gap:7px;justify-content:center;}
 .lp-showcase-wrap{position:relative;margin:0 auto;will-change:opacity,filter;}
-.lp-showcase-eyebrow{font-size:.72rem;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.07em;margin-bottom:18px;display:flex;align-items:center;justify-content:center;gap:8px;}
-.lp-showcase-live-dot{width:8px;height:8px;border-radius:50%;background:var(--orange);animation:lpLivePulse 1.8s infinite;}
-@keyframes lpLivePulse{0%{box-shadow:0 0 0 0 rgba(181,32,42,.45);}70%{box-shadow:0 0 0 8px rgba(181,32,42,0);}100%{box-shadow:0 0 0 0 rgba(181,32,42,0);}}
-.lp-showcase{display:flex;flex-wrap:nowrap;gap:16px;justify-content:flex-start;align-items:stretch;overflow-x:auto;overflow-y:visible;padding:10px 44px 18px;scroll-snap-type:x proximity;scrollbar-width:none;-ms-overflow-style:none;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 7%,#000 90%,transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 7%,#000 90%,transparent 100%);will-change:transform;}
+.lp-showcase{display:flex;flex-wrap:nowrap;gap:18px;justify-content:flex-start;align-items:stretch;overflow-x:auto;overflow-y:visible;padding:20px 44px 24px;scroll-snap-type:x proximity;scrollbar-width:none;-ms-overflow-style:none;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 7%,#000 90%,transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 7%,#000 90%,transparent 100%);will-change:transform;}
 .lp-showcase::-webkit-scrollbar{display:none;}
-.lp-showcase-card{flex:0 0 178px;width:178px;background:#fff;border:1px solid #EAE2D2;border-radius:16px;padding:12px;box-shadow:0 4px 16px rgba(26,26,26,.06);cursor:pointer;position:relative;text-align:left;scroll-snap-align:center;opacity:0;transform:translateX(-44px);animation:lpCardIn .6s cubic-bezier(.22,1,.36,1) forwards;transition:transform .22s cubic-bezier(.22,1,.36,1),box-shadow .22s,border-color .22s;}
-.lp-showcase-card:hover{transform:scale(1.06) translateY(-4px);box-shadow:0 20px 46px rgba(26,26,26,.18);border-color:var(--gold);z-index:5;}
+.lp-showcase-card{flex:0 0 210px;width:210px;background:#fff;border:1px solid #EAE2D2;border-radius:16px;padding:12px;box-shadow:0 4px 16px rgba(26,26,26,.06);cursor:pointer;position:relative;text-align:left;scroll-snap-align:center;opacity:0;transform:translateX(-44px);animation:lpCardIn .6s cubic-bezier(.22,1,.36,1) forwards;transition:transform .22s cubic-bezier(.22,1,.36,1),box-shadow .22s,border-color .22s;overflow:hidden;}
+.lp-showcase-card:hover{transform:scale(1.06);box-shadow:0 20px 46px rgba(26,26,26,.18);border-color:var(--gold);z-index:5;}
 .lp-showcase-card:focus-visible{outline:2px solid var(--orange);outline-offset:3px;}
 @keyframes lpCardIn{to{opacity:1;transform:none;}}
 .lp-showcase-card:nth-child(1){animation-delay:.04s;}
@@ -1897,26 +1894,28 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .lp-showcase-card:nth-child(10){animation-delay:.58s;}
 .lp-showcase-img{position:relative;width:100%;aspect-ratio:1;border-radius:11px;overflow:hidden;background:#F5EFE0;margin-bottom:11px;}
 .lp-showcase-img img{width:100%;height:100%;object-fit:cover;display:block;}
-.lp-showcase-name{font-size:.8rem;font-weight:700;color:#1A1A1A;line-height:1.3;margin-bottom:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:30px;}
+.lp-showcase-name{font-size:.84rem;font-weight:700;color:#1A1A1A;line-height:1.3;margin-bottom:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:32px;}
 .lp-showcase-meta{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;}
-.lp-showcase-price{font-size:.86rem;font-weight:800;color:#1A1A1A;font-family:var(--font-display);}
+.lp-showcase-price{font-size:.88rem;font-weight:800;color:#1A1A1A;font-family:var(--font-display);}
 .lp-showcase-sold{font-size:.6rem;color:#9CA3AF;margin-top:3px;}
 .lp-vs-ring{position:relative;width:44px;height:44px;flex-shrink:0;}
 .lp-vs-ring svg{transform:rotate(-90deg);width:44px;height:44px;display:block;}
 .lp-vs-track{fill:none;stroke:#EAE2D2;stroke-width:5;}
 .lp-vs-prog{fill:none;stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset 1.1s cubic-bezier(.22,1,.36,1);}
 .lp-vs-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:.82rem;font-weight:800;color:#1A1A1A;}
-.lp-showcase-peek{position:absolute;left:50%;top:-13px;transform:translate(-50%,6px);background:#1A1A1A;color:#fff;font-size:.7rem;font-weight:700;padding:7px 13px;border-radius:9px;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;box-shadow:0 8px 24px rgba(26,26,26,.28);opacity:0;pointer-events:none;transition:opacity .2s ease .12s,transform .2s cubic-bezier(.22,1,.36,1) .12s;z-index:6;}
-.lp-showcase-peek::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1A1A1A;}
-.lp-showcase-card:hover .lp-showcase-peek,.lp-showcase-card:focus-visible .lp-showcase-peek{opacity:1;transform:translate(-50%,0);}
-.lp-showcase-note{font-size:.74rem;color:#8A7E6B;font-weight:600;margin-top:10px;display:inline-flex;align-items:center;gap:6px;}
-.lp-showcase-note svg{color:var(--gold);}
-@media(max-width:1100px){.lp-showcase-card{flex-basis:166px;width:166px;}}
-@media(max-width:640px){.lp-showcase{padding:10px 20px 16px;}.lp-showcase-card{flex:0 0 150px;width:150px;}.lp-showcase-card:hover{transform:scale(1.02);}}
+.lp-showcase-peek{position:absolute;inset:0;background:rgba(26,26,26,.48);opacity:0;transition:opacity .2s ease;display:flex;align-items:center;justify-content:center;border-radius:16px;pointer-events:none;z-index:6;}
+.lp-showcase-card:hover .lp-showcase-peek,.lp-showcase-card:focus-visible .lp-showcase-peek{opacity:1;}
+.lp-showcase-peek-pill{background:#fff;color:#1A1A1A;font-size:.72rem;font-weight:800;padding:8px 16px;border-radius:999px;box-shadow:0 4px 16px rgba(0,0,0,.18);letter-spacing:.01em;}
+.lp-showcase-headline{font-family:var(--font-display);font-size:clamp(1.45rem,3.8vw,2.35rem);font-weight:800;color:#1A1A1A;text-align:center;line-height:1.25;margin:4px auto 0;padding:0 28px;max-width:920px;letter-spacing:-.02em;opacity:0;transform:translateY(18px);transition:opacity .75s ease,transform .75s ease;}
+.lp-showcase-headline.is-visible{opacity:1;transform:translateY(0);}
+.lp-showcase-headline .lp-showcase-accent{background:linear-gradient(90deg,#B5202A 0%,#C9974B 50%,#B5202A 100%);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:lpShowcaseShimmer 3.2s linear infinite;}
+@keyframes lpShowcaseShimmer{to{background-position:200% center;}}
+@media(max-width:1100px){.lp-showcase-card{flex-basis:196px;width:196px;}}
+@media(max-width:640px){.lp-showcase{padding:16px 20px 20px;}.lp-showcase-card{flex:0 0 176px;width:176px;}.lp-showcase-card:hover{transform:scale(1.04);}}
 @media(prefers-reduced-motion:reduce){
   .lp-showcase-card{animation:none;opacity:1;transform:none;}
   .lp-vs-prog{transition:none;}
-  .lp-showcase-live-dot{animation:none;}
+  .lp-showcase-headline .lp-showcase-accent{animation:none;}
 }
 /* Trust bar */
 .lp-trust-bar{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 80px;border-bottom:1px solid #F0EDE8;background:#F5EFE0;flex-wrap:wrap;}
@@ -4076,11 +4075,10 @@ html,body{overflow-x:clip;max-width:100%;}
 
         <!-- showcase: animated REAL product cards (replaces person photo) -->
         <div class="lp-showcase-wrap">
-          <div class="lp-showcase-eyebrow"><span class="lp-showcase-live-dot"></span> Produk Potensial &middot; Data Nyata Shopee</div>
           <div class="lp-showcase" id="lp-showcase">
 
             <div class="lp-showcase-card" data-score="91" role="button" tabindex="0" onclick="openAuthModal('signup','hero_showcase')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openAuthModal('signup','hero_showcase');}">
-              <div class="lp-showcase-peek"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg> Lihat Deep Dive</div>
+              <div class="lp-showcase-peek"><span class="lp-showcase-peek-pill">Lihat Deep Dive</span></div>
               <div class="lp-showcase-img"><img src="https://cf.shopee.co.id/file/id-11134207-7r98q-luq6qqbb1aiy31" alt="Kaos Polos Premium Cotton Combed 30s" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>
               <div class="lp-showcase-name">Kaos Polos Premium Cotton Combed 30s</div>
               <div class="lp-showcase-meta">
@@ -4093,7 +4091,7 @@ html,body{overflow-x:clip;max-width:100%;}
             </div>
 
             <div class="lp-showcase-card" data-score="89" role="button" tabindex="0" onclick="openAuthModal('signup','hero_showcase')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openAuthModal('signup','hero_showcase');}">
-              <div class="lp-showcase-peek"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg> Lihat Deep Dive</div>
+              <div class="lp-showcase-peek"><span class="lp-showcase-peek-pill">Lihat Deep Dive</span></div>
               <div class="lp-showcase-img"><img src="https://cf.shopee.co.id/file/id-11134207-7ra0j-mcq8twdvmdyf47" alt="Nuvo Family Sabun Mandi Cair 800ml" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>
               <div class="lp-showcase-name">Nuvo Family Sabun Mandi Cair 800ml</div>
               <div class="lp-showcase-meta">
@@ -4106,7 +4104,7 @@ html,body{overflow-x:clip;max-width:100%;}
             </div>
 
             <div class="lp-showcase-card" data-score="88" role="button" tabindex="0" onclick="openAuthModal('signup','hero_showcase')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openAuthModal('signup','hero_showcase');}">
-              <div class="lp-showcase-peek"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg> Lihat Deep Dive</div>
+              <div class="lp-showcase-peek"><span class="lp-showcase-peek-pill">Lihat Deep Dive</span></div>
               <div class="lp-showcase-img"><img src="https://cf.shopee.co.id/file/id-11134207-7r992-lwxpz7fl47xq0d" alt="Logitech M330 Mouse Wireless Silent" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>
               <div class="lp-showcase-name">Logitech M330 Mouse Wireless Silent</div>
               <div class="lp-showcase-meta">
@@ -4119,7 +4117,7 @@ html,body{overflow-x:clip;max-width:100%;}
             </div>
 
             <div class="lp-showcase-card" data-score="85" role="button" tabindex="0" onclick="openAuthModal('signup','hero_showcase')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openAuthModal('signup','hero_showcase');}">
-              <div class="lp-showcase-peek"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg> Lihat Deep Dive</div>
+              <div class="lp-showcase-peek"><span class="lp-showcase-peek-pill">Lihat Deep Dive</span></div>
               <div class="lp-showcase-img"><img src="https://cf.shopee.co.id/file/sg-11134201-821g1-mgrq5bemshzde4" alt="Goto NBR Yoga Mat 10mm Anti Slip" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>
               <div class="lp-showcase-name">Goto NBR Yoga Mat 10mm Anti Slip</div>
               <div class="lp-showcase-meta">
@@ -4132,7 +4130,7 @@ html,body{overflow-x:clip;max-width:100%;}
             </div>
 
             <div class="lp-showcase-card" data-score="83" role="button" tabindex="0" onclick="openAuthModal('signup','hero_showcase')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openAuthModal('signup','hero_showcase');}">
-              <div class="lp-showcase-peek"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg> Lihat Deep Dive</div>
+              <div class="lp-showcase-peek"><span class="lp-showcase-peek-pill">Lihat Deep Dive</span></div>
               <div class="lp-showcase-img"><img src="https://cf.shopee.co.id/file/sg-11134201-7reo5-m8va8ygv4giq0d" alt="Timbangan Dapur Digital 10kg" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>
               <div class="lp-showcase-name">Timbangan Dapur Digital 10kg</div>
               <div class="lp-showcase-meta">
@@ -4145,7 +4143,7 @@ html,body{overflow-x:clip;max-width:100%;}
             </div>
 
             <div class="lp-showcase-card" data-score="82" role="button" tabindex="0" onclick="openAuthModal('signup','hero_showcase')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openAuthModal('signup','hero_showcase');}">
-              <div class="lp-showcase-peek"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg> Lihat Deep Dive</div>
+              <div class="lp-showcase-peek"><span class="lp-showcase-peek-pill">Lihat Deep Dive</span></div>
               <div class="lp-showcase-img"><img src="https://cf.shopee.co.id/file/53bf3e5216fe6e89cf9877d3f5798eeb" alt="Business File Folio 6pcs" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>
               <div class="lp-showcase-name">Business File Folio (6 pcs)</div>
               <div class="lp-showcase-meta">
@@ -4158,7 +4156,7 @@ html,body{overflow-x:clip;max-width:100%;}
             </div>
 
             <div class="lp-showcase-card" data-score="80" role="button" tabindex="0" onclick="openAuthModal('signup','hero_showcase')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openAuthModal('signup','hero_showcase');}">
-              <div class="lp-showcase-peek"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg> Lihat Deep Dive</div>
+              <div class="lp-showcase-peek"><span class="lp-showcase-peek-pill">Lihat Deep Dive</span></div>
               <div class="lp-showcase-img"><img src="https://cf.shopee.co.id/file/id-11134207-7r98u-lw2o3cp78k225a" alt="Rak Cuci Piring Plastik" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>
               <div class="lp-showcase-name">Rak Cuci Piring Plastik</div>
               <div class="lp-showcase-meta">
@@ -4171,7 +4169,7 @@ html,body{overflow-x:clip;max-width:100%;}
             </div>
 
             <div class="lp-showcase-card" data-score="78" role="button" tabindex="0" onclick="openAuthModal('signup','hero_showcase')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openAuthModal('signup','hero_showcase');}">
-              <div class="lp-showcase-peek"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg> Lihat Deep Dive</div>
+              <div class="lp-showcase-peek"><span class="lp-showcase-peek-pill">Lihat Deep Dive</span></div>
               <div class="lp-showcase-img"><img src="https://cf.shopee.co.id/file/9bc634acaf8b3805cbc8fbbd9cf7e163" alt="Selimut Bulu Dewasa 150x200 cm" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>
               <div class="lp-showcase-name">Selimut Bulu Dewasa 150×200 cm</div>
               <div class="lp-showcase-meta">
@@ -4184,7 +4182,7 @@ html,body{overflow-x:clip;max-width:100%;}
             </div>
 
             <div class="lp-showcase-card" data-score="76" role="button" tabindex="0" onclick="openAuthModal('signup','hero_showcase')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openAuthModal('signup','hero_showcase');}">
-              <div class="lp-showcase-peek"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg> Lihat Deep Dive</div>
+              <div class="lp-showcase-peek"><span class="lp-showcase-peek-pill">Lihat Deep Dive</span></div>
               <div class="lp-showcase-img"><img src="https://cf.shopee.co.id/file/77a00716bbd4f63be033dc5ba62505d4" alt="Lampu Depan Sepeda USB Rechargeable" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>
               <div class="lp-showcase-name">Lampu Depan Sepeda USB Rechargeable</div>
               <div class="lp-showcase-meta">
@@ -4197,7 +4195,7 @@ html,body{overflow-x:clip;max-width:100%;}
             </div>
 
             <div class="lp-showcase-card" data-score="74" role="button" tabindex="0" onclick="openAuthModal('signup','hero_showcase')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openAuthModal('signup','hero_showcase');}">
-              <div class="lp-showcase-peek"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg> Lihat Deep Dive</div>
+              <div class="lp-showcase-peek"><span class="lp-showcase-peek-pill">Lihat Deep Dive</span></div>
               <div class="lp-showcase-img"><img src="https://cf.shopee.co.id/file/id-11134207-7ra0i-mccjv1e1ew5j68" alt="Sarung Bantal dan Guling Katun 1 Set" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>
               <div class="lp-showcase-name">Sarung Bantal &amp; Guling Katun 1 Set</div>
               <div class="lp-showcase-meta">
@@ -4210,7 +4208,7 @@ html,body{overflow-x:clip;max-width:100%;}
             </div>
 
           </div>
-          <div class="lp-showcase-note"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> Geser &mdash; 60.000+ produk potensial lainnya menunggu</div>
+          <p class="lp-showcase-headline" id="lp-showcase-headline">Satu-satunya <span class="lp-showcase-accent">sumber data Shopee gratis</span> di Indonesia</p>
         </div>
 
         <!-- intro band (copy) — now below the cards -->
@@ -30167,6 +30165,20 @@ document.addEventListener('DOMContentLoaded', function(){
     window.addEventListener('scroll', function() {
       lpNav.classList.toggle('lp-nav-scrolled', window.scrollY > 20);
     }, { passive: true });
+  }
+
+  // Showcase headline — reveal when hero showcase scrolls into view
+  const lpShowWrap = document.querySelector('.lp-showcase-wrap');
+  const lpShowHeadline = document.getElementById('lp-showcase-headline');
+  if (lpShowWrap && lpShowHeadline && 'IntersectionObserver' in window) {
+    const obs = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        if (e.isIntersecting) { lpShowHeadline.classList.add('is-visible'); obs.disconnect(); }
+      });
+    }, { threshold: 0.12 });
+    obs.observe(lpShowWrap);
+  } else if (lpShowHeadline) {
+    lpShowHeadline.classList.add('is-visible');
   }
 
   // Landing-page scroll-depth milestones (25/50/75/100%) → Clarity. Each fires once per load.
