@@ -3533,16 +3533,27 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dsc-journey-filter-btn{display:none;margin-left:8px;padding:7px 12px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;font-size:.72rem;font-weight:700;color:#374151;cursor:pointer;font-family:inherit;}
 .dsc-layout:not(.dsc-journey-beginner) .dsc-journey-filter-btn{display:none!important;}
 .dsc-layout.dsc-journey-tier1 .dsc-journey-filter-btn{display:inline-flex!important;align-items:center;gap:6px;}
-#dd-beginner-panel{display:none;background:#F9EAE4;border:1px solid #FBBCB2;border-radius:14px;padding:18px 20px;margin-bottom:16px;}
+#dd-beginner-panel{display:none;background:#fff;border:1px solid #EFE3DF;border-radius:16px;padding:26px 26px 22px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
 #dd-beginner-panel.show{display:block;}
-#dd-beginner-verdict{font-size:1.05rem;font-weight:800;color:#1A1A1A;line-height:1.35;margin-bottom:10px;}
-#dd-beginner-bullets{margin:0 0 14px;padding-left:18px;color:#374151;font-size:.8rem;line-height:1.55;}
-#dd-beginner-bullets li{margin-bottom:6px;}
+.dd-verdict-eyebrow{font-size:.7rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;}
+.dd-verdict-badge{display:inline-block;font-size:1.15rem;font-weight:800;line-height:1.2;padding:8px 18px;border-radius:999px;border:1.5px solid transparent;margin-bottom:12px;}
+.dd-verdict-headline{font-size:1.05rem;font-weight:700;color:#1A1A1A;line-height:1.45;margin-bottom:18px;max-width:640px;}
+.dd-verdict-chips{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
+@media(max-width:680px){.dd-verdict-chips{grid-template-columns:repeat(2,1fr);}}
+.dd-vchip{background:#F9FAFB;border:1px solid #F0F1F3;border-radius:12px;padding:11px 13px;}
+.dd-vchip-l{font-size:.64rem;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;}
+.dd-vchip-v{font-size:1rem;font-weight:800;color:#1A1A1A;}
 .dd-beginner-actions{display:flex;flex-wrap:wrap;gap:10px;}
-.dd-beginner-cta{background:#B5202A;color:#fff;border:none;border-radius:10px;padding:11px 18px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;}
-.dd-beginner-ghost{background:#fff;color:#374151;border:1.5px solid #E5E7EB;border-radius:10px;padding:11px 16px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;}
-#dd-tab-ringkasan.dd-beginner-simple .dd-row3,#dd-tab-ringkasan.dd-beginner-simple .dd-row2{display:none;}
-#dd-tabs.dd-beginner-tabs .dd-tab[data-tab]:not([data-tab="ringkasan"]):not([data-tab="kompetitor"]){opacity:.45;}
+.dd-beginner-cta{background:#B5202A;color:#fff;border:none;border-radius:10px;padding:12px 22px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;}
+.dd-beginner-ghost{background:#fff;color:#374151;border:1.5px solid #E5E7EB;border-radius:10px;padding:12px 20px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;}
+.dd-verdict-foot{font-size:.68rem;color:#9CA3AF;margin:14px 0 0;line-height:1.45;}
+/* Verdict-first ("simple") mode: hide the heavy data, leave a slim hero + verdict card */
+#dd-main-content.dd-simple #dd-fee-strip,
+#dd-main-content.dd-simple #dd-tabs,
+#dd-main-content.dd-simple .dd-hero-cards,
+#dd-main-content.dd-simple #dd-tab-ringkasan .dd-row3,
+#dd-main-content.dd-simple #dd-tab-ringkasan .dd-row2,
+#dd-main-content.dd-simple #dd-tab-ringkasan .dd-row2b{display:none!important;}
 #dash-nav-journey-more{display:none;}
 body.journey-beginner #dash-nav-journey-more{display:flex;}
 body.journey-beginner #dash-nav-research-tools,
@@ -7366,13 +7377,15 @@ html,body{overflow-x:clip;max-width:100%;}
             <!-- ── TAB: RINGKASAN ── -->
             <div id="dd-tab-ringkasan" class="dd-tab-panel">
               <div id="dd-beginner-panel">
-                <div id="dd-beginner-verdict">—</div>
-                <ul id="dd-beginner-bullets"></ul>
+                <div class="dd-verdict-eyebrow">Seberapa mudah dijual?</div>
+                <div id="dd-verdict-badge" class="dd-verdict-badge">—</div>
+                <div id="dd-verdict-headline" class="dd-verdict-headline">—</div>
+                <div id="dd-verdict-chips" class="dd-verdict-chips"></div>
                 <div class="dd-beginner-actions">
-                  <button type="button" class="dd-beginner-cta" onclick="ddSwitchTab('kompetitor')">Lihat kompetitor</button>
-                  <button type="button" class="dd-beginner-ghost" onclick="journeyUnlockFullDeepDive()">Analisis lengkap</button>
+                  <button type="button" class="dd-beginner-cta" onclick="ddStartSelling()">Mulai Berjualan</button>
+                  <button type="button" class="dd-beginner-ghost" onclick="ddExpandFull()">Lihat Data Lengkap</button>
                 </div>
-                <p style="font-size:.68rem;color:#9CA3AF;margin:12px 0 0;line-height:1.45;">Data pasar diperbarui secara berkala — cek lagi nanti untuk tren terbaru.</p>
+                <p class="dd-verdict-foot">Data pasar diperbarui secara berkala — cek lagi nanti untuk tren terbaru.</p>
               </div>
               <!-- row 1: trend chart | price range | insight AI -->
               <div class="dd-row3">
@@ -18164,6 +18177,7 @@ function dscOpenDeepDive(key) {
   _ddKwRows = []; _ddKwListing = null; _ddKwTotal = 0; _analisa_pending = false; _tren_pending = false;
   _ddTrendCache = null;
   _ddCurrentP = p;
+  _ddExpanded = false; // every Deep Dive opens to the verdict-first screen
 
   // Switch view first so canvases are visible when Chart.js measures them
   switchDashView('deepdive');
@@ -18194,6 +18208,7 @@ function dscOpenDeepDive(key) {
 }
 
 let _ddCurrentP = null;
+let _ddExpanded = false;
 
 // ── KALKULATOR ────────────────────────────────────────────────────────────────
 const _KALC_MARKETPLACES = {
@@ -18629,6 +18644,7 @@ async function ddLoadKeywordContext(listing) {
     const _lbl = listingScoreLabel(_ls.total);
     const numEl = document.getElementById('dd-score-num');
     const tagEl = document.getElementById('dd-score-tag');
+    if (_ddCurrentP) _ddCurrentP.score = _ls.total; // keep verdict in sync with real score
     if (numEl) numEl.textContent = _ls.total;
     if (tagEl) {
       tagEl.textContent = _lbl.lbl;
@@ -18644,6 +18660,8 @@ async function ddLoadKeywordContext(listing) {
     }
     ddRenderKompetitor();
     ddUpdateRingkasanFromKw(rows, totalSold, listing);
+    // Refresh the verdict-first card now that score, komp & omset reflect real keyword data
+    if (typeof ddRenderBeginnerVerdict === 'function') ddRenderBeginnerVerdict(_ddCurrentP);
     // Rebuild Listing tab competitor table now that _ddKwRows is populated
     _ddCompAll = rows.slice(0, 15).map((r, i) => ({
       rank: i + 1,
@@ -22653,7 +22671,7 @@ function mlsExpandPicker() {
   if (cards) cards.style.display = '';
 }
 
-async function mlsSelectProduct(val) {
+async function mlsSelectProduct(val, fallbackListing) {
   // Highlight the selected card
   document.querySelectorAll('#mls-product-cards .mls-pcard').forEach(c => {
     c.classList.toggle('active', c.dataset.key === val);
@@ -22668,8 +22686,22 @@ async function mlsSelectProduct(val) {
       image_url: found.image_url, category: found.category,
       price: found.price, total_sold: found.total_sold, keyword: found.keyword };
   }
+  // Fallback: product handed off from Deep Dive that isn't tracked/saved yet
+  if (!t && fallbackListing && fallbackListing.item_id != null) {
+    const f = fallbackListing;
+    t = { key: val, item_id: f.item_id, shop_id: f.shop_id,
+      product_name: f.product_name, store_name: f.store_name,
+      image_url: f.image_url, category: f.category,
+      price: f.price, total_sold: f.total_sold, keyword: f.keyword };
+  }
   const heroEl = document.getElementById('mls-hero');
   if (!t) { if (heroEl) heroEl.style.display = 'none'; return; }
+
+  // Ensure the main content is visible (mlsInit hides it when there are no tracked picks)
+  const mlsEmpty = document.getElementById('mls-empty-state');
+  const mlsMain  = document.getElementById('mls-main-content');
+  if (mlsEmpty) mlsEmpty.style.display = 'none';
+  if (mlsMain)  mlsMain.style.display  = '';
 
   _mlsContext = { keyword: t.keyword, product: t };
   _mlsAiResetThread();
@@ -28049,6 +28081,23 @@ function journeyUnlockFullDeepDive() {
   if (_ddCurrentP && typeof ddRefreshRingkasan === 'function') ddRefreshRingkasan();
 }
 
+// "Lihat Data Lengkap" — reveal the full Deep Dive for this open only (resets on next product).
+function ddExpandFull() {
+  _ddExpanded = true;
+  journeyApplyDeepDiveChrome();
+  if (_ddCurrentP && typeof ddRefreshRingkasan === 'function') ddRefreshRingkasan();
+}
+
+// "Mulai Berjualan" — jump to the AI selling surface scoped to the current product.
+function ddStartSelling() {
+  const p = _ddCurrentP;
+  const listing = p && (p._listing || p);
+  switchDashView('ai');
+  if (listing && listing.item_id != null && typeof mlsSelectProduct === 'function') {
+    mlsSelectProduct(`${listing.item_id}_${listing.shop_id}`, listing);
+  }
+}
+
 function journeyOpenMoreTools() {
   const sub = document.getElementById('dash-sub-research-tools');
   const nav = document.getElementById('dash-nav-research-tools');
@@ -28089,38 +28138,52 @@ function journeyApplyDiscoverChrome() {
 }
 
 function journeyApplyDeepDiveChrome() {
-  const j = journeyLoad();
-  const beginner = isJourneyBeginner() && !journeyBypassGating() && !j.fullDeepDive;
+  // Verdict-first is the default for everyone, every open. Admins/leaders skip
+  // straight to the full view. "Lihat Data Lengkap" sets _ddExpanded for this open.
+  const simple = !_ddExpanded && !journeyBypassGating();
   const panel = document.getElementById('dd-beginner-panel');
-  const ringkasan = document.getElementById('dd-tab-ringkasan');
-  const tabs = document.getElementById('dd-tabs');
+  const main  = document.getElementById('dd-main-content');
   const trackBtn = document.getElementById('dd-track-btn');
-  if (panel) panel.classList.toggle('show', beginner);
-  if (ringkasan) ringkasan.classList.toggle('dd-beginner-simple', beginner);
-  if (tabs) tabs.classList.toggle('dd-beginner-tabs', beginner);
-  if (trackBtn) trackBtn.style.display = (beginner && userJourneyTier() === 0) ? 'none' : '';
+  if (panel) panel.classList.toggle('show', simple);
+  if (main)  main.classList.toggle('dd-simple', simple);
+  if (trackBtn) trackBtn.style.display = '';
 }
 
 function ddRenderBeginnerVerdict(p) {
-  const verdictEl = document.getElementById('dd-beginner-verdict');
-  const bulletsEl = document.getElementById('dd-beginner-bullets');
-  if (!verdictEl || !bulletsEl || !p) return;
+  const badgeEl = document.getElementById('dd-verdict-badge');
+  const headEl  = document.getElementById('dd-verdict-headline');
+  const chipsEl = document.getElementById('dd-verdict-chips');
+  if (!badgeEl || !p) return;
   const listing = p._listing || {};
   const price = listing.price || p.medianPrice || 0;
-  const score = Math.round(p.score || 0);
+  // Prefer the live score shown in the hero (real keyword data); fall back to p.score.
+  const heroNum = parseInt((document.getElementById('dd-score-num')?.textContent || '').replace(/[^\d]/g, ''), 10);
+  const score = Math.round(Number.isFinite(heroNum) ? heroNum : (p.score || 0));
   const lslbl = listingScoreLabel(score);
-  verdictEl.textContent = lslbl.lbl;
-  const tip = score >= 75
-    ? 'Peluang bagus — pasar masih terbuka untuk pemula.'
-    : score >= 55
-      ? 'Bisa dijual dengan strategi harga dan positioning yang tepat.'
-      : 'Perlu riset kompetitor lebih dalam sebelum keluarkan modal.';
-  const bullets = [
-    price > 0 ? `Harga jual: Rp ${Math.round(price).toLocaleString('id-ID')}` : 'Harga: data sedang dimuat',
-    `Skor produk: ${score || '—'}/100`,
-    tip,
-  ];
-  bulletsEl.innerHTML = bullets.map(t => `<li>${t}</li>`).join('');
+  badgeEl.textContent = lslbl.lbl;
+  badgeEl.style.background  = lslbl.bg;
+  badgeEl.style.color       = lslbl.clr;
+  badgeEl.style.borderColor = lslbl.border;
+  if (headEl) {
+    headEl.textContent = score >= 75
+      ? 'Produk ini relatif mudah dijual — pasar masih terbuka untuk pemula.'
+      : score >= 55
+        ? 'Cukup menjanjikan — bisa dijual dengan strategi harga & positioning yang tepat.'
+        : score >= 35
+          ? 'Perlu strategi — riset kompetitor dulu sebelum keluarkan modal.'
+          : 'Pasar sangat kompetitif — masuk hanya kalau punya diferensiasi yang kuat.';
+  }
+  if (chipsEl) {
+    const omsetTxt = document.getElementById('dd-h-omset')?.textContent || '—';
+    const kompTxt  = document.getElementById('dd-h-komp')?.textContent  || '—';
+    const priceTxt = price > 0 ? `Rp ${Math.round(price).toLocaleString('id-ID')}` : '—';
+    const chip = (l, v) => `<div class="dd-vchip"><div class="dd-vchip-l">${l}</div><div class="dd-vchip-v">${v}</div></div>`;
+    chipsEl.innerHTML =
+      chip('Skor Produk', `${score || '—'}/100`) +
+      chip('Omset / Bulan', omsetTxt) +
+      chip('Kompetisi', kompTxt) +
+      chip('Harga', priceTxt);
+  }
 }
 
 let _dscStarterKey = null;
