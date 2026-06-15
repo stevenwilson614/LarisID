@@ -18186,7 +18186,8 @@ function dscOpenDeepDive(key) {
   journeyApplyNavGating();
   void cohortLogActivity('deepdive_open', {
     item_id: listing.item_id, shop_id: listing.shop_id, product_name: listing.product_name || '',
-    ...(_fromOnb ? { source: 'onboarding' } : {}),
+    source: _fromOnb ? 'onboarding' : 'discover',
+    journey_tier: userJourneyTier(),
   });
   /* WS-D: badge for first deep dive (idempotent) */
   awardAchievement('first_deep_dive');
@@ -27890,12 +27891,9 @@ function journeyMarkDeepDiveOpen(source, listing) {
     lastDeepDiveKey: listing ? `${listing.item_id}__${listing.shop_id}` : null,
   });
   journeyRecordSeenProduct(listing);
-  journeyLog('deepdive_open', {
-    source: source || 'discover',
-    item_id: listing?.item_id,
-    shop_id: listing?.shop_id,
-    product_name: listing?.product_name || '',
-  });
+  // NB: the deepdive_open funnel/feed row is emitted once by the caller via
+  // cohortLogActivity (which carries cohort_id + journey_tier + source), so we
+  // deliberately do NOT log a second row here.
 }
 
 function journeySeenProducts() {
@@ -28826,6 +28824,7 @@ function closeWelcomeVideo() {
 //  Prefs → user_onboarding_prefs · funnel → activity_events
 // ════════════════════════════════════════════════════════════
 const NU_ONB_LS_KEY = 'larisid_onboard_v1';
+const NU_ONB_DONE_KEY = 'larisid_onboard_completed_v1'; // set only on first full completion
 const NU_ONB_CATS = ['Alat Tulis','Bayi & Anak','Dapur','Elektronik','Fashion','Hewan Peliharaan',
   'Hobi & Kerajinan','HP & Gadget','Kamar Mandi','Keamanan','Kecantikan','Kesehatan',
   'Motor & Mobil','Olahraga','Outdoor & Camping','Rumah','Sepeda','Taman','Tanaman'];
@@ -28866,9 +28865,31 @@ const NU_ONB_SELLER_OPTS = [
 let _nuOnb = { step: 1, cats: [], budget: -1, sellerStatus: '', visible: false, payoff: false };
 let _nuOnbRichKey = null, _nuOnbRichBusy = false;
 
+// Short-window guard so re-renders / double-invokes don't write duplicate funnel
+// rows (e.g. discover_view firing on every Discover re-entry, or the return strip
+// rendering 3× on load). Identical event + identity within 2s collapses to one row.
+const _funnelDedup = new Map();
+function _funnelIsDup(eventType, metadata) {
+  try {
+    const m = metadata && typeof metadata === 'object' ? metadata : {};
+    // Stable identity: product when present, otherwise the full payload. journey_tier
+    // is kept in the fingerprint so a genuine tier change is never swallowed.
+    const id = m.item_id != null ? `${m.item_id}__${m.shop_id}` : JSON.stringify(m);
+    const key = `${eventType}|${id}`;
+    const now = Date.now();
+    const last = _funnelDedup.get(key);
+    _funnelDedup.set(key, now);
+    if (_funnelDedup.size > 300) {
+      for (const [k, t] of _funnelDedup) { if (now - t > 10000) _funnelDedup.delete(k); }
+    }
+    return last != null && (now - last) < 2000;
+  } catch (_) { return false; }
+}
+
 // Personal (cohort-less) funnel event — RLS allows self-owned rows with null cohort.
 async function logUserEvent(eventType, metadata) {
   if (!_supabase || !currentUser) return;
+  if (_funnelIsDup(eventType, metadata)) return;
   try {
     await _supabase.from('activity_events').insert({
       user_id: currentUser.id,
@@ -28887,6 +28908,7 @@ async function nuOnbCheckNeeded() {
       .select('completed_at,skipped_at').eq('user_id', currentUser.id).maybeSingle();
     if (data && (data.completed_at || data.skipped_at)) {
       try { localStorage.setItem(NU_ONB_LS_KEY, '1'); } catch (_) {}
+      if (data.completed_at) { try { localStorage.setItem(NU_ONB_DONE_KEY, '1'); } catch (_) {} }
       return false;
     }
   } catch (_) {}
@@ -29013,8 +29035,14 @@ function nuOnbNext() {
 function nuOnbFinish() {
   if (_nuOnb.budget < 0 || !_nuOnb.sellerStatus) return;
   const b = NU_ONB_BUDGETS[_nuOnb.budget];
+  // onboarding_complete is the one-time conversion event. Re-running the picker to
+  // tweak prefs logs onboarding_edit instead, so the funnel isn't double-counted.
+  let _firstComplete = true;
+  try { _firstComplete = !localStorage.getItem(NU_ONB_DONE_KEY); } catch (_) {}
   void logUserEvent('onboarding_seller', { seller_status: _nuOnb.sellerStatus });
-  void logUserEvent('onboarding_complete', { categories: _nuOnb.cats, budget: b.label, seller_status: _nuOnb.sellerStatus });
+  void logUserEvent(_firstComplete ? 'onboarding_complete' : 'onboarding_edit',
+    { categories: _nuOnb.cats, budget: b.label, seller_status: _nuOnb.sellerStatus });
+  try { localStorage.setItem(NU_ONB_DONE_KEY, '1'); } catch (_) {}
   try { localStorage.setItem(NU_ONB_LS_KEY, '1'); } catch (_) {}
   void nuOnbPersist(true);
   nuOnbHideInPage();
