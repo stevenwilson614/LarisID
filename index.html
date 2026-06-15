@@ -3494,8 +3494,7 @@ body.in-dashboard .mobile-menu{display:none!important;}
 /* compact empty-state (dashboard) — shorter so recommendations sit closer */
 .nu-empty-compact{padding:26px 24px;margin-bottom:14px;}
 .nu-empty-compact .nu-empty-icon{width:44px;height:44px;margin-bottom:10px;}
-.nu-empty-compact h3{margin-bottom:6px;}
-.nu-empty-compact p{margin-bottom:14px;}
+.nu-empty-compact h3{margin-bottom:14px;}
 /* Journey funnel — curated Discover / simplified Deep Dive */
 .dsc-layout.dsc-journey-beginner .dsc-filter-panel{display:none;}
 .dsc-layout.dsc-journey-beginner .dsc-table-area{grid-column:1/-1;}
@@ -4312,7 +4311,7 @@ html,body{overflow-x:clip;max-width:100%;}
               var loopW = 0;
               var suppressScrollUntil = 0;
               var touchPause = false;
-              var drag = { active: false, startX: 0, startScroll: 0, moved: false };
+              var drag = { pending: false, active: false, startX: 0, startScroll: 0, moved: false };
               function measure(){
                 loopW = row.scrollWidth / 2;
                 if(!loopW || loopW <= viewport.clientWidth){
@@ -4363,26 +4362,34 @@ html,body{overflow-x:clip;max-width:100%;}
               }, { passive: true });
               viewport.addEventListener('pointerdown', function(e){
                 if(e.button !== 0 || e.pointerType === 'touch') return;
-                drag.active = true;
+                drag.pending = true;
+                drag.active = false;
                 drag.moved = false;
                 drag.startX = e.clientX;
                 drag.startScroll = viewport.scrollLeft;
-                viewport.setPointerCapture(e.pointerId);
-                viewport.classList.add('is-dragging');
               });
               viewport.addEventListener('pointermove', function(e){
-                if(!drag.active) return;
+                if(!drag.pending && !drag.active) return;
                 var dx = e.clientX - drag.startX;
-                if(Math.abs(dx) > 4) drag.moved = true;
+                if(!drag.active){
+                  if(Math.abs(dx) <= 4) return;
+                  drag.active = true;
+                  drag.moved = true;
+                  viewport.setPointerCapture(e.pointerId);
+                  viewport.classList.add('is-dragging');
+                }
                 viewport.scrollLeft = drag.startScroll - dx;
                 scrollPos = viewport.scrollLeft;
                 normalizeScroll();
               });
               function endDrag(e){
-                if(!drag.active) return;
+                if(!drag.pending && !drag.active) return;
+                if(drag.active){
+                  try { viewport.releasePointerCapture(e.pointerId); } catch (_) {}
+                  viewport.classList.remove('is-dragging');
+                }
+                drag.pending = false;
                 drag.active = false;
-                viewport.releasePointerCapture(e.pointerId);
-                viewport.classList.remove('is-dragging');
                 scrollPos = viewport.scrollLeft;
                 normalizeScroll();
               }
@@ -5361,7 +5368,13 @@ html,body{overflow-x:clip;max-width:100%;}
       <div class="dash-sidebar-logo"><img class="dash-logo-icon" src="/images/brand/logo-icon-light.png" alt="Laris"><img class="dash-logo-word" src="/images/brand/logo-word-light.png" alt=""><span class="dash-logo-beta">BETA</span></div>
       <nav class="dash-sidebar-nav">
 
-        <div class="dash-nav-item active" id="dash-nav-dashboard" onclick="switchDashView('dashboard')">
+        <div class="dash-nav-item dash-nav-discover-featured" id="dash-nav-discover" onclick="switchDashView('discover')">
+          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+          <span>Discover</span>
+          <span class="dash-nav-discover-kicker">Utama</span>
+        </div>
+
+        <div class="dash-nav-item" id="dash-nav-dashboard" onclick="switchDashView('dashboard')">
           <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
           <span>Dashboard</span>
         </div>
@@ -5372,7 +5385,6 @@ html,body{overflow-x:clip;max-width:100%;}
           <span class="dash-nav-arrow" id="dash-nav-rt-arrow">&#9654;</span>
         </div>
         <div class="dash-nav-sub" id="dash-sub-research-tools">
-          <div class="dash-nav-sub-item" id="dash-nav-discover" onclick="switchDashView('discover')">Discover</div>
           <div class="dash-nav-sub-item" id="dash-nav-deepdive" onclick="switchDashView('deepdive')">Deep Dive</div>
           <div class="dash-nav-sub-item" id="dash-nav-tracker" onclick="switchDashView('tracker')">Alerts</div>
           <div class="dash-nav-sub-item" id="dash-nav-ai" onclick="switchDashView('ai')">Mulai Berjualan</div>
@@ -5381,10 +5393,6 @@ html,body{overflow-x:clip;max-width:100%;}
 
         <!-- Flat nav items shown for student/independent roles instead of collapsed group -->
         <div id="dash-nav-flat-tools" style="display:none;">
-          <div class="dash-nav-item" id="dash-nav-flat-discover" onclick="switchDashView('discover')">
-            <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-            <span>Discover</span>
-          </div>
           <div class="dash-nav-item" id="dash-nav-flat-deepdive" onclick="switchDashView('deepdive')">
             <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
             <span>Deep Dive</span>
@@ -6726,7 +6734,6 @@ html,body{overflow-x:clip;max-width:100%;}
             <div id="hbd-new-user-panel" class="nu-empty nu-empty-compact" style="display:none;">
               <div class="nu-empty-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
               <h3>Mulai dengan mencari produk</h3>
-              <p>Belum ada produk terpantau. Cari produk di Discover, pilih yang menarik, lalu lacak untuk melihat ringkasan di sini.</p>
               <button type="button" class="nu-empty-btn" onclick="switchDashView('discover')">Cari Produk di Discover</button>
             </div>
 
@@ -16686,9 +16693,14 @@ let _dscPrevMap     = {};   // "itemId_shopId" -> prev total_sold (from earlier 
 let _dscKwTrendMap  = {};   // keyword -> pct change in total keyword sold vs prev scrape
 let _dscCompMap     = {};   // keyword -> "Rendah"|"Sedang"|"Tinggi"
 let _dscFiltered    = [];
+let _dscMatchCount  = 0;   // matches before fallback padding (for scrape panel)
+let _dscSearchNoMatch = false;
+let _dscBrowsePool  = [];  // unfiltered browse rows for recommendations / empty search
+let _dscBrowsePoolGen = 0;
 let _dscPage        = 1;
 let _dscLoaded      = false;
 const DSC_PER_PAGE  = 60;
+const DSC_SEARCH_MIN_PER_PAGE = 30;
 const DSC_DEFAULT_PRICE_MIN = 15000;
 const DSC_DEFAULT_PRICE_MAX = 150000;
 const DSC_DEFAULT_MIN_SCOR  = 45;
@@ -16884,6 +16896,84 @@ function _dscShuffleInPlace(arr) {
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
+}
+
+function _dscRowKey(r) {
+  return `${r.item_id}_${r.shop_id}`;
+}
+
+function _dscProductSig(p) {
+  return _dscNormStr(p.product_name || p.keyword || '');
+}
+
+/** Reorder so identical product names are not shown side-by-side. */
+function _dscSpreadSameNames(list) {
+  if (!list || list.length <= 1) return list || [];
+  const buckets = new Map();
+  list.forEach(p => {
+    const sig = _dscProductSig(p) || _dscRowKey(p);
+    if (!buckets.has(sig)) buckets.set(sig, []);
+    buckets.get(sig).push(p);
+  });
+  if (buckets.size === list.length) return list.slice();
+  const queues = [...buckets.values()].sort((a, b) => b.length - a.length);
+  const out = [];
+  let lastSig = '';
+  while (out.length < list.length) {
+    let picked = -1;
+    for (let i = 0; i < queues.length; i++) {
+      if (!queues[i].length) continue;
+      const sig = _dscProductSig(queues[i][0]) || _dscRowKey(queues[i][0]);
+      if (sig !== lastSig) { picked = i; break; }
+    }
+    if (picked < 0) {
+      for (let i = 0; i < queues.length; i++) {
+        if (queues[i].length) { picked = i; break; }
+      }
+    }
+    const item = queues[picked].shift();
+    out.push(item);
+    lastSig = _dscProductSig(item) || _dscRowKey(item);
+    queues.sort((a, b) => b.length - a.length);
+  }
+  return out;
+}
+
+function _dscMergeBrowsePool(rows) {
+  if (!rows?.length) return;
+  const seen = new Set(_dscBrowsePool.map(_dscRowKey));
+  rows.forEach(r => {
+    const k = _dscRowKey(r);
+    if (!seen.has(k)) { seen.add(k); _dscBrowsePool.push(r); }
+  });
+  if (_dscBrowsePool.length > 800) _dscBrowsePool = _dscBrowsePool.slice(-800);
+}
+
+function _dscFallbackCatalog() {
+  const pool = _dscBrowsePool.length ? _dscBrowsePool : _dscAllListings;
+  if (!pool.length) return [];
+  const copy = [...pool];
+  _dscShuffleInPlace(copy);
+  return _dscSpreadSameNames(copy);
+}
+
+function _dscPickFallback(count, exclude) {
+  const pool = _dscBrowsePool.length ? _dscBrowsePool : _dscAllListings;
+  const ex = exclude || new Set();
+  const candidates = pool.filter(r => !ex.has(_dscRowKey(r)));
+  _dscShuffleInPlace(candidates);
+  return _dscSpreadSameNames(candidates).slice(0, count);
+}
+
+async function _dscEnsureBrowsePool(min = 60) {
+  if (_dscBrowsePool.length >= min || !_supabase) return false;
+  const gen = ++_dscBrowsePoolGen;
+  try {
+    const rows = await dscFetchPage(0, { search: '', priceMin: 0, priceMax: Infinity });
+    if (gen !== _dscBrowsePoolGen) return false;
+    _dscMergeBrowsePool(rows);
+    return _dscBrowsePool.length > 0;
+  } catch (_) { return false; }
 }
 
 function _dscSnapAppliedFromUI() {
@@ -17244,6 +17334,7 @@ async function dscLoadListings() {
         _dscAllListings = cached;
         _dscOffset = cached.length;
         _dscLoaded = true;
+        _dscMergeBrowsePool(cached);
         const newKws = [...new Set(cached.map(r => r.keyword).filter(Boolean))].filter(k => !_dscCompMap[k]);
         newKws.forEach(kw => { _dscCompMap[kw] = _dscCalcComp(kw); });
         const cats = [...new Set(cached.map(r => r.category).filter(Boolean))].sort();
@@ -17265,6 +17356,7 @@ async function dscLoadListings() {
     const fresh = rows.filter(r => { const k = `${r.item_id}_${r.shop_id}`; if (seen.has(k)) return false; seen.add(k); return true; });
     _dscAllListings.push(...fresh);
     _dscOffset += rows.length;
+    if (_cacheable) _dscMergeBrowsePool(fresh);
 
     // Compute competition for new keywords
     const newKws = [...new Set(fresh.map(r => r.keyword).filter(Boolean))].filter(k => !_dscCompMap[k]);
@@ -17478,7 +17570,7 @@ function dscUpdateScrapeRequestPanel() {
   if (!panel) return;
 
   const q = (document.getElementById('dsc-search')?.value || '').trim();
-  const total = _dscFiltered?.length ?? 0;
+  const total = _dscMatchCount ?? 0;
   const show = !!q && q.length >= 2 && _dscLoaded && !_dscLoading && total < DSC_SCRAPE_MIN_RESULTS;
 
   if (!show) {
@@ -17536,7 +17628,7 @@ async function dscSubmitScrapeRequest() {
   if (btn) { btn.disabled = true; btn.textContent = 'Mengirim...'; }
   if (status) { status.className = 'dsc-scrape-request-status'; status.textContent = ''; }
   try {
-    const resultCount = _dscFiltered?.length ?? 0;
+    const resultCount = _dscMatchCount ?? 0;
     const { error } = await _supabase.from('keyword_scrape_requests').insert({
       user_id: currentUser.id,
       keyword,
@@ -17708,6 +17800,7 @@ function dscApplyFilters(resetPage = true) {
   const srvKey = JSON.stringify({ priceMin, priceMax: priceMax === Infinity ? 500000 : priceMax, search: q, cat: srvCatKey });
   if (_dscLastSrvFilters !== null && _dscLastSrvFilters !== srvKey) {
     if (q) try { sessionStorage.removeItem(DSC_CACHE_KEY); } catch (_) {}
+    if (_dscAllListings.length) _dscMergeBrowsePool(_dscAllListings);
     _dscLoadGen++;
     _dscAllListings = [];
     _dscOffset = 0;
@@ -17770,7 +17863,18 @@ function dscApplyFilters(resetPage = true) {
     });
   }
 
-  _dscFiltered = list;
+  _dscMatchCount = list.length;
+  _dscSearchNoMatch = !!(q && list.length === 0);
+
+  if (_dscSearchNoMatch) {
+    list = _dscFallbackCatalog();
+    if (!list.length) void _dscEnsureBrowsePool(60).then(ok => { if (ok) dscApplyFilters(false); });
+  } else if (!list.length) {
+    list = _dscFallbackCatalog();
+    if (!list.length) void _dscEnsureBrowsePool(60).then(ok => { if (ok) dscApplyFilters(false); });
+  }
+
+  _dscFiltered = _dscSpreadSameNames(list);
   if (resetPage) { _dscPage = 1; _dscStarterKey = null; }
   dscRenderTable();
 }
@@ -28511,28 +28615,27 @@ const NU_ONB_BUDGETS = [
   { label: '> Rp 150rb',      sub: 'Produk premium, margin besar',  min: 150000, max: null },
   { label: 'Bebas',           sub: 'Tampilkan semua rentang harga', min: 0,      max: null },
 ];
-const _NU_ONB_SVG = (inner) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+const _NU_ONB_IMG = (slug, alt) => `<img class="nu-onb-cat-icon" src="/images/onboarding/categories/${slug}.png" alt="${alt.replace(/"/g, '&quot;')}" width="48" height="48" loading="lazy" decoding="async">`;
 const NU_ONB_ICONS = {
-  'Alat Tulis':        _NU_ONB_SVG('<path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>'),
-  'Bayi & Anak':       _NU_ONB_SVG('<circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>'),
-  'Dapur':             _NU_ONB_SVG('<path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>'),
-  'Elektronik':        _NU_ONB_SVG('<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>'),
-  'Fashion':           _NU_ONB_SVG('<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>'),
-  'Hewan Peliharaan':  _NU_ONB_SVG('<circle cx="4.5" cy="9.5" r="2"/><circle cx="9" cy="5.5" r="2"/><circle cx="15" cy="5.5" r="2"/><circle cx="19.5" cy="9.5" r="2"/><path d="M12 11c-2.5 0-5.5 3.2-5.5 5.7 0 1.9 1.4 2.8 3 2.8 1 0 1.7-.5 2.5-.5s1.5.5 2.5.5c1.6 0 3-.9 3-2.8 0-2.5-3-5.7-5.5-5.7z"/>'),
-  'Hobi & Kerajinan':  _NU_ONB_SVG('<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/>'),
-  'HP & Gadget':       _NU_ONB_SVG('<rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>'),
-  'Kamar Mandi':       _NU_ONB_SVG('<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>'),
-  'Keamanan':          _NU_ONB_SVG('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'),
-  'Kecantikan':        _NU_ONB_SVG('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'),
-  'Kesehatan':         _NU_ONB_SVG('<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>'),
-  'Motor & Mobil':     _NU_ONB_SVG('<rect x="1" y="6" width="15" height="10"/><polygon points="16 9 20 9 23 12 23 16 16 16 16 9"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>'),
-  'Olahraga':          _NU_ONB_SVG('<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'),
-  'Outdoor & Camping': _NU_ONB_SVG('<path d="M3 20L12 4l9 16H3z"/><path d="M12 13v7"/>'),
-  'Rumah':             _NU_ONB_SVG('<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>'),
-  'Sepeda':            _NU_ONB_SVG('<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M6 17.5L10 7h6"/><path d="M10 7l3 10.5L18.5 17.5"/>'),
-  'Taman':             _NU_ONB_SVG('<circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/>'),
-  'Tanaman':           _NU_ONB_SVG('<path d="M12 22V8"/><path d="M12 8C12 4 9 2 5 2c0 4 3 6 7 6z"/><path d="M12 12c0-4 3-6 7-6 0 4-3 6-7 6z"/>'),
-  '__default__':       _NU_ONB_SVG('<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>'),
+  'Alat Tulis':        _NU_ONB_IMG('alat-tulis', 'Alat Tulis'),
+  'Bayi & Anak':       _NU_ONB_IMG('bayi-anak', 'Bayi & Anak'),
+  'Dapur':             _NU_ONB_IMG('dapur', 'Dapur'),
+  'Elektronik':        _NU_ONB_IMG('elektronik', 'Elektronik'),
+  'Fashion':           _NU_ONB_IMG('fashion', 'Fashion'),
+  'Hewan Peliharaan':  _NU_ONB_IMG('hewan-peliharaan', 'Hewan Peliharaan'),
+  'Hobi & Kerajinan':  _NU_ONB_IMG('hobi-kerajinan', 'Hobi & Kerajinan'),
+  'HP & Gadget':       _NU_ONB_IMG('hp-gadget', 'HP & Gadget'),
+  'Kamar Mandi':       _NU_ONB_IMG('kamar-mandi', 'Kamar Mandi'),
+  'Keamanan':          _NU_ONB_IMG('keamanan', 'Keamanan'),
+  'Kecantikan':        _NU_ONB_IMG('kecantikan', 'Kecantikan'),
+  'Kesehatan':         _NU_ONB_IMG('kesehatan', 'Kesehatan'),
+  'Motor & Mobil':     _NU_ONB_IMG('motor-mobil', 'Motor & Mobil'),
+  'Olahraga':          _NU_ONB_IMG('olahraga', 'Olahraga'),
+  'Outdoor & Camping': _NU_ONB_IMG('outdoor-camping', 'Outdoor & Camping'),
+  'Rumah':             _NU_ONB_IMG('rumah', 'Rumah'),
+  'Sepeda':            _NU_ONB_IMG('sepeda', 'Sepeda'),
+  'Taman':             _NU_ONB_IMG('taman', 'Taman'),
+  'Tanaman':           _NU_ONB_IMG('tanaman', 'Tanaman'),
 };
 const NU_ONB_MIN_CATS = 3;
 const NU_ONB_SELLER_OPTS = [
@@ -28615,7 +28718,7 @@ function nuOnbRender() {
       <div class="nu-onb-sub">Pilih minimal ${NU_ONB_MIN_CATS} kategori — produk yang kami tampilkan bakal disesuaikan sama minat kamu. <strong>${n}/${NU_ONB_MIN_CATS}</strong> dipilih.</div>
       <div class="nu-onb-cats">${NU_ONB_CATS.map((c, i) => `
         <div class="nu-onb-cat${_nuOnb.cats.includes(c) ? ' sel' : ''}" role="button" tabindex="0" aria-pressed="${_nuOnb.cats.includes(c)}" onclick="nuOnbToggleCat(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nuOnbToggleCat(${i});}">
-          ${NU_ONB_ICONS[c] || NU_ONB_ICONS.__default__}
+          ${NU_ONB_ICONS[c] || ''}
           <span>${esc(c)}</span>
         </div>`).join('')}
       </div>
@@ -31969,8 +32072,8 @@ async function cohortPlannerGcalImportSelected() {
 .nu-onb-title{font-size:1.25rem;font-weight:800;color:#1A1A1A;line-height:1.3;margin-bottom:6px;}
 .nu-onb-sub{font-size:.8rem;color:#6B7280;line-height:1.55;margin-bottom:18px;}
 .nu-onb-cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;margin-bottom:18px;}
-.nu-onb-cat{display:flex;flex-direction:column;align-items:center;gap:7px;padding:12px 6px 10px;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;cursor:pointer;user-select:none;transition:border-color .12s,background .12s;text-align:center;color:#6B7280;}
-.nu-onb-cat svg{width:26px;height:26px;flex-shrink:0;}
+.nu-onb-cat{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 6px 8px;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;cursor:pointer;user-select:none;transition:border-color .12s,background .12s;text-align:center;color:#6B7280;}
+.nu-onb-cat-icon{width:48px;height:48px;object-fit:contain;flex-shrink:0;display:block;}
 .nu-onb-cat span{font-size:.68rem;font-weight:700;color:#374151;line-height:1.25;}
 .nu-onb-cat.sel{border-color:#B5202A;background:#F9EAE4;color:#B5202A;}
 .nu-onb-cat.sel span{color:#B5202A;}
@@ -32014,13 +32117,13 @@ async function cohortPlannerGcalImportSelected() {
 
 <!-- ══ MOBILE BOTTOM NAVIGATION (only shown body.in-dashboard ≤768px) ══ -->
 <nav id="mobile-bottom-nav" aria-label="Navigasi utama">
+  <button class="mbn-item mbn-discover-featured" id="mbn-discover" onclick="switchDashView('discover')">
+    <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+    <span class="mbn-label">Discover</span>
+  </button>
   <button class="mbn-item" id="mbn-dashboard" onclick="switchDashView('dashboard')">
     <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
     <span class="mbn-label">Beranda</span>
-  </button>
-  <button class="mbn-item" id="mbn-discover" onclick="switchDashView('discover')">
-    <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-    <span class="mbn-label">Discover</span>
   </button>
   <button class="mbn-item" id="mbn-mytoko" onclick="switchDashView('mytoko')">
     <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
