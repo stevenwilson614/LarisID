@@ -135,14 +135,27 @@
           setTimeout(function(){ try { document.documentElement.classList.remove('oauth-returning'); } catch(_) {} }, 8000);
         }
       }
+      // Returning logged-in user (page refresh): hide landing until session is restored or cleared.
+      if (!window.__larisOAuthReturning) {
+        try {
+          var auth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
+          if (auth && auth.access_token) {
+            document.documentElement.classList.add('session-restoring');
+            setTimeout(function(){ try { document.documentElement.classList.remove('session-restoring'); } catch(_) {} }, 8000);
+          }
+        } catch(_) {}
+      }
     } catch(_) {}
   })();
 </script>
 <style>
-  /* OAuth-return loader — full-screen cover + spinner while the Google session is established. */
-  html.oauth-returning #page-landing { display: none !important; }
-  html.oauth-returning::before { content: ""; position: fixed; inset: 0; background: #F5EFE0; z-index: 99998; }
-  html.oauth-returning::after { content: ""; position: fixed; top: 50%; left: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; border: 4px solid #E5E7EB; border-top-color: #B5202A; border-radius: 50%; animation: oauthReturnSpin .7s linear infinite; z-index: 99999; }
+  /* OAuth-return + session-restore loaders — hide landing flash while auth is established. */
+  html.oauth-returning #page-landing,
+  html.session-restoring #page-landing { display: none !important; }
+  html.oauth-returning::before,
+  html.session-restoring::before { content: ""; position: fixed; inset: 0; background: #F5EFE0; z-index: 99998; }
+  html.oauth-returning::after,
+  html.session-restoring::after { content: ""; position: fixed; top: 50%; left: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; border: 4px solid #E5E7EB; border-top-color: #B5202A; border-radius: 50%; animation: oauthReturnSpin .7s linear infinite; z-index: 99999; }
   @keyframes oauthReturnSpin { to { transform: rotate(360deg); } }
 </style>
 
@@ -1073,7 +1086,21 @@ body.cohort-themed.in-dashboard .dash-topbar-cohort-chip{
 .dash-nav-sub-item:hover{color:#fff;background:rgba(255,255,255,.06);}
 .dash-nav-sub-item.active{color:var(--cohort-secondary,#B5202A);font-weight:700;}
 .dash-nav-divider{height:1px;background:rgba(255,255,255,.07);margin:6px 4px;}
-/* sidebar overlay (mobile) */
+#dash-nav-discover{color:#FCA5A5;font-weight:700;}
+#dash-nav-discover:hover{color:#FECDD3;background:rgba(255,255,255,.06);}
+#dash-nav-discover.active{color:#fff;background:rgba(181,32,42,.2);}
+#dash-nav-discover.active::before{background:#FCA5A5;}
+#mbn-discover{color:#B5202A;}
+#mbn-discover .mbn-label{font-weight:700;}
+#mbn-discover.active{color:#B5202A;}
+.dsc-for-you{margin-bottom:20px;}
+.dsc-for-you-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:0 16px;}
+.dsc-for-you-title{font-size:.85rem;font-weight:800;color:#1A1A1A;}
+.dsc-for-you-sub{font-size:.72rem;color:#9CA3AF;}
+.dsc-for-you-reset{margin-left:auto;font-size:.65rem;color:#9CA3AF;background:none;border:none;cursor:pointer;text-decoration:underline;font-family:inherit;}
+.dsc-for-you-row{display:flex;gap:14px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;padding:0 16px 6px;scrollbar-width:thin;}
+.dsc-for-you-row .dsc-card{flex:0 0 160px;width:160px;min-width:160px;scroll-snap-align:start;}
+@media(max-width:768px){.dsc-for-you-row .dsc-card{flex:0 0 calc((100vw - 32px - 28px) / 3);width:calc((100vw - 32px - 28px) / 3);min-width:calc((100vw - 32px - 28px) / 3);}}
 .sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99;}
 .sidebar-overlay.open{display:block;}
 
@@ -11258,34 +11285,43 @@ async function pendingCohortJoinIfAny() {
 }
 
 async function _authOnSignIn(session) {
-  currentUser = session.user;
-  // Inject access token into Supabase JS client so database queries are authenticated
-  if (_supabase) {
-    try {
-      await _supabase.auth.setSession({ access_token: session.access_token, refresh_token: session.refresh_token });
-    } catch (_) {}
+  currentUser = session.user || _decodeJwtUser(session.access_token);
+  if (!currentUser) { _clearSessionRestoring(); return; }
+  if (!session.user) {
+    session.user = currentUser;
+    _authSave(session);
   }
-  // Track signup vs return visit for analytics
-  if (_supabase && session.user) {
-    const isNew = !!session.user.created_at && session.user.created_at === session.user.last_sign_in_at;
-    _supabase.from('user_sessions').insert({ user_id: session.user.id, is_new_user: isNew }).then(() => {});
-  }
-  await loadCurrentAccess().catch(() => {});
-  void journeyHydrateFromRemote();
-  updateAuthUI();
-  loadSavedProducts();
-  checkMentorApplication();
-  const onLanding = document.getElementById('page-landing')?.classList.contains('active');
-  if (onLanding) void openProfile();
-  renderHomeGrid();
-  if (currentProduct) renderDetail(currentProduct);
-  setTimeout(() => { pendingCohortJoinIfAny().catch(() => {}); }, 400);
-  setTimeout(() => { cohortLoadLightForTheme().catch(() => {}); }, 600);
-  if (document.body.classList.contains('in-dashboard') && typeof _dashActiveView !== 'undefined' && _dashActiveView === 'cohort') {
-    queueMicrotask(() => { cohortInit().catch(() => {}); });
-  }
-  if (document.body.classList.contains('in-dashboard') && typeof _dashActiveView !== 'undefined' && _dashActiveView === 'discover') {
-    void dscLoadScrapeRequests();
+  // Route away from marketing/landing immediately on refresh — never wait on network calls first.
+  if (!document.body.classList.contains('in-dashboard')) void openProfile();
+  try {
+    // Inject access token into Supabase JS client so database queries are authenticated
+    if (_supabase) {
+      try {
+        await _supabase.auth.setSession({ access_token: session.access_token, refresh_token: session.refresh_token });
+      } catch (_) {}
+    }
+    // Track signup vs return visit for analytics
+    if (_supabase && currentUser) {
+      const isNew = !!currentUser.created_at && currentUser.created_at === currentUser.last_sign_in_at;
+      _supabase.from('user_sessions').insert({ user_id: currentUser.id, is_new_user: isNew }).then(() => {});
+    }
+    await loadCurrentAccess().catch(() => {});
+    void journeyHydrateFromRemote();
+    updateAuthUI();
+    loadSavedProducts();
+    checkMentorApplication();
+    renderHomeGrid();
+    if (currentProduct) renderDetail(currentProduct);
+    setTimeout(() => { pendingCohortJoinIfAny().catch(() => {}); }, 400);
+    setTimeout(() => { cohortLoadLightForTheme().catch(() => {}); }, 600);
+    if (document.body.classList.contains('in-dashboard') && typeof _dashActiveView !== 'undefined' && _dashActiveView === 'cohort') {
+      queueMicrotask(() => { cohortInit().catch(() => {}); });
+    }
+    if (document.body.classList.contains('in-dashboard') && typeof _dashActiveView !== 'undefined' && _dashActiveView === 'discover') {
+      void dscLoadScrapeRequests();
+    }
+  } finally {
+    _clearSessionRestoring();
   }
 }
 
@@ -11322,6 +11358,7 @@ function _authOnSignOut() {
   currentUser = null;
   _accessState = { loaded: false, role: 'student', isAdmin: false, isLeader: false };
   _authClear();
+  _clearSessionRestoring();
   updateAuthUI();
   savedProducts.clear();
   try { renderProfileSaved(); } catch (_) {}
@@ -11346,16 +11383,21 @@ function initSupabase() {
   // Restore session from localStorage (bypasses JS-client auth which returns 204 for sb_publishable keys)
   const stored = _authLoad();
   if (stored?.access_token) {
-    if (stored.expires_at > Date.now() + 30000) {
-      void _authOnSignIn(stored).catch(() => {});
+    const tokenFresh = stored.expires_at && stored.expires_at > Date.now() + 30000;
+    if (tokenFresh) {
+      void _authOnSignIn(stored).catch(() => { _authClear(); _clearSessionRestoring(); });
     } else if (stored.refresh_token) {
       _authRefresh(stored.refresh_token).then(s => {
-        if (!s) { _authClear(); return; }
-        if (!_authLoad()) return;
+        if (!s) { _authClear(); _clearSessionRestoring(); return; }
         _authSave(s);
-        void _authOnSignIn(s).catch(() => {});
+        void _authOnSignIn(s).catch(() => { _authClear(); _clearSessionRestoring(); });
       });
+    } else {
+      _authClear();
+      _clearSessionRestoring();
     }
+  } else {
+    _clearSessionRestoring();
   }
   // Watch for OAuth sign-ins (Google) via JS client.
   // ONLY handle SIGNED_IN, not INITIAL_SESSION — session restoration is done above via _authLoad().
@@ -11432,6 +11474,7 @@ function updateAuthUI() {
 let _authMode = 'login'; // 'login', 'signup', or 'reset'
 
 function openAuthModal(mode, source) {
+  if (currentUser) { void openProfile(); return; }
   if (window.clarity && mode === 'signup') {
     try { clarity('event', 'cta_signup_click'); clarity('set', 'signup_cta_source', source || 'unknown'); } catch (_) {}
   }
@@ -11577,6 +11620,10 @@ function handleRecoveryHash() {
 function _clearOAuthReturning() {
   window.__larisOAuthReturning = false;
   try { document.documentElement.classList.remove('oauth-returning'); } catch (_) {}
+}
+
+function _clearSessionRestoring() {
+  try { document.documentElement.classList.remove('session-restoring'); } catch (_) {}
 }
 
 // Decode the user claims straight from the access_token JWT (no network round-trip).
@@ -13509,6 +13556,8 @@ async function openProfile() {
   clearCompare();
   // switch page immediately — don't let background async calls block navigation
   document.body.classList.add('in-dashboard');
+  document.body.classList.remove('on-landing');
+  _clearSessionRestoring();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-profile').classList.add('active');
   window.scrollTo(0, 0);
@@ -17356,7 +17405,7 @@ async function dscLoadListings() {
     const fresh = rows.filter(r => { const k = `${r.item_id}_${r.shop_id}`; if (seen.has(k)) return false; seen.add(k); return true; });
     _dscAllListings.push(...fresh);
     _dscOffset += rows.length;
-    if (_cacheable) _dscMergeBrowsePool(fresh);
+    if (!hasSearch && fresh.length) _dscMergeBrowsePool(fresh);
 
     // Compute competition for new keywords
     const newKws = [...new Set(fresh.map(r => r.keyword).filter(Boolean))].filter(k => !_dscCompMap[k]);
@@ -17883,13 +17932,37 @@ function dscRenderTable() {
   journeyApplyDiscoverChrome();
   const beginner = isJourneyBeginner() && !journeyBypassGating();
   const tier0Cap = beginner && userJourneyTier() === 0;
-  const perPage = tier0Cap ? JOURNEY_BEGINNER_DISCOVER_CAP : DSC_PER_PAGE;
+  const _dscQ = (document.getElementById('dsc-search')?.value || '').trim();
+  const searchActive = !!_dscQ && !tier0Cap;
+  const perPage = _dscPerPage();
   const cappedList = tier0Cap ? _dscFiltered.slice(0, JOURNEY_BEGINNER_DISCOVER_CAP) : _dscFiltered;
   const total = cappedList.length;
   const pages = Math.max(1, Math.ceil(total / perPage));
   _dscPage = Math.min(_dscPage, pages);
   const start = (_dscPage - 1) * perPage;
-  const slice = cappedList.slice(start, start + perPage);
+  let slice = cappedList.slice(start, start + perPage);
+
+  if (searchActive && slice.length > 0 && slice.length < DSC_SEARCH_MIN_PER_PAGE) {
+    const exclude = new Set(cappedList.map(_dscRowKey));
+    const extra = _dscPickFallback(DSC_SEARCH_MIN_PER_PAGE - slice.length + 24, exclude);
+    slice = _dscSpreadSameNames([...slice, ...extra]).slice(0, DSC_SEARCH_MIN_PER_PAGE);
+  }
+
+  const _dscEsc = s => String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const noMatchBanner = _dscSearchNoMatch && _dscQ
+    ? `<div style="grid-column:1/-1;text-align:center;padding:20px 16px 10px;color:#6B7280;font-size:.85rem;">
+        <div style="font-weight:600;color:#374151;margin-bottom:4px;">Maaf, tidak ada yang mendekati &ldquo;${_dscEsc(_dscQ)}&rdquo;</div>
+        <div style="font-size:.78rem;color:#9CA3AF;">Ini beberapa rekomendasi acak untuk kamu jelajahi:</div>
+      </div>`
+    : '';
+  const noMatchBannerTable = _dscSearchNoMatch && _dscQ
+    ? `<tr><td colspan="8"><div style="text-align:center;padding:20px 16px 10px;color:#6B7280;font-size:.85rem;">
+        <div style="font-weight:600;color:#374151;margin-bottom:4px;">Maaf, tidak ada yang mendekati &ldquo;${_dscEsc(_dscQ)}&rdquo;</div>
+        <div style="font-size:.78rem;color:#9CA3AF;">Ini beberapa rekomendasi acak untuk kamu jelajahi:</div>
+      </div></td></tr>`
+    : '';
+  const loadingHtml = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Memuat rekomendasi produk...</div>';
+  const loadingRow = `<tr><td colspan="8" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Memuat rekomendasi produk...</td></tr>`;
 
   // Show/hide correct view container
   const cardGrid  = document.getElementById('dsc-card-grid');
@@ -17912,20 +17985,16 @@ function dscRenderTable() {
     return `<span style="color:#9CA3AF;font-size:.8rem;">0</span>`;
   };
 
-  const _dscQ = (document.getElementById('dsc-search')?.value || '').trim();
-  const emptyHtml = _dscQ
-    ? `<div style="text-align:center;padding:32px 16px 24px;color:#9CA3AF;font-size:.85rem;">Tidak ada hasil untuk &ldquo;${_dscQ.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}&rdquo; di database.<br><span style="font-size:.78rem;">Gunakan formulir di atas untuk minta scrape, atau longgarkan filter.</span></div>`
-    : '<div style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Tidak ada produk ditemukan untuk kategori dan harga ini. Coba perluas filter atau ubah kata kunci pencarian.</div>';
-
   // ── CARD VIEW ──
   if (_dscViewMode === 'card' && cardGrid) {
     if (!slice.length) {
-      cardGrid.innerHTML = emptyHtml;
+      cardGrid.innerHTML = loadingHtml;
+      if (!_dscLoading) void _dscEnsureBrowsePool(60).then(ok => { if (ok) dscApplyFilters(false); });
     } else {
       const _cardKwMap = {};
       _dscAllListings.forEach(r => { const k = r.keyword||'__'; if (!_cardKwMap[k]) _cardKwMap[k]=[]; _cardKwMap[k].push(r); });
       const _fmtRp = v => 'Rp' + Math.round(v).toLocaleString('id-ID');
-      cardGrid.innerHTML = slice.map(p => {
+      cardGrid.innerHTML = noMatchBanner + slice.map(p => {
         const omset = _dscOmset(p);
         const delta = _dscTrendDelta(p);
         const imgHtml = p.image_url
@@ -17967,12 +18036,13 @@ function dscRenderTable() {
   const tbody = document.getElementById('dsc-tbody');
   if (_dscViewMode === 'table' && tbody) {
     if (!slice.length) {
-      tbody.innerHTML = `<tr><td colspan="8">${emptyHtml}</td></tr>`;
+      tbody.innerHTML = loadingRow;
+      if (!_dscLoading) void _dscEnsureBrowsePool(60).then(ok => { if (ok) dscApplyFilters(false); });
     } else {
       // Group all loaded listings by keyword for peer-context scoring
       const _dscKwMap = {};
       _dscAllListings.forEach(r => { const k = r.keyword||'__'; if (!_dscKwMap[k]) _dscKwMap[k]=[]; _dscKwMap[k].push(r); });
-      tbody.innerHTML = slice.map(p => {
+      tbody.innerHTML = noMatchBannerTable + slice.map(p => {
         const imgHtml = p.image_url
           ? `<div class="dsc-prod-img"><img src="${p.image_url}" alt="" loading="lazy" onerror="this.style.display='none'"></div>`
           : `<div class="dsc-prod-img">${wIcon('box', 18, '#9CA3AF')}</div>`;
@@ -18009,13 +18079,22 @@ function dscRenderTable() {
   }
 
   const countEl = document.getElementById('dsc-count');
-  if (countEl) countEl.textContent = `${total.toLocaleString('id-ID')} listing`;
+  if (countEl) {
+    if (_dscSearchNoMatch) countEl.textContent = 'Rekomendasi';
+    else if (searchActive && _dscMatchCount > 0) countEl.textContent = `${_dscMatchCount.toLocaleString('id-ID')} cocok`;
+    else countEl.textContent = `${total.toLocaleString('id-ID')} listing`;
+  }
 
   // If there's more data on the server, show one extra page button beyond what's loaded
   const visiblePages = _dscHasMore ? pages + 1 : pages;
 
   const infoEl = document.getElementById('dsc-page-info');
-  if (infoEl) infoEl.textContent = total ? `${start + 1}–${Math.min(start + DSC_PER_PAGE, total)} dari ${total}${_dscHasMore ? '+' : ''}` : '';
+  if (infoEl) {
+    if (total) {
+      const end = Math.min(start + perPage, total);
+      infoEl.textContent = `${start + 1}–${end} dari ${total}${_dscHasMore ? '+' : ''}`;
+    } else infoEl.textContent = '';
+  }
 
   const btnsEl = document.getElementById('dsc-page-btns');
   if (btnsEl) {
@@ -18044,7 +18123,8 @@ function dscSetView(mode) {
 
 function dscOpenDeepDive(key) {
   const [itemId, shopId] = String(key).split('__');
-  const listing = _dscAllListings.find(r => String(r.item_id) === itemId && String(r.shop_id) === shopId);
+  const match = r => String(r.item_id) === itemId && String(r.shop_id) === shopId;
+  const listing = _dscAllListings.find(match) || _dscBrowsePool.find(match) || _dscFiltered.find(match);
   if (!listing) return;
   journeyMarkDiscoverClick(key);
   const omset = _dscOmset(listing);
@@ -20093,8 +20173,18 @@ function apRenderStrategy() {
     </div>`).join('');
 }
 
+function _dscPerPage() {
+  const beginner = isJourneyBeginner() && !journeyBypassGating();
+  const tier0Cap = beginner && userJourneyTier() === 0;
+  const q = (document.getElementById('dsc-search')?.value || '').trim();
+  if (tier0Cap) return JOURNEY_BEGINNER_DISCOVER_CAP;
+  if (q) return Math.max(DSC_SEARCH_MIN_PER_PAGE, DSC_PER_PAGE);
+  return DSC_PER_PAGE;
+}
+
 function dscGoPage(n) {
-  const pages = Math.ceil(_dscFiltered.length / DSC_PER_PAGE);
+  const perPage = _dscPerPage();
+  const pages = Math.ceil(_dscFiltered.length / perPage);
   if (n < 1) return;
   if (n > pages && !_dscHasMore) return;
   _dscPage = n;
