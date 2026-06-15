@@ -29240,20 +29240,30 @@ async function myTokoConnect() {
   try {
     // Use find_shop_by_name RPC — has a server-side timeout and avoids full table scans
     const { data: rpcData, error: rpcErr } = await _supabase.rpc('find_shop_by_name', { p_store_name: name });
-    let match = rpcData?.[0] || null;
+    if (rpcErr) {
+      const msg = (rpcErr.message || '').toLowerCase();
+      _mytErr(msg.includes('timeout') || msg.includes('canceling statement')
+        ? 'Pencarian toko terlalu lama. Coba lagi sebentar.'
+        : 'Terjadi kesalahan saat mencari toko. Coba lagi.');
+      return;
+    }
+    const match = rpcData?.[0] || null;
     if (!match) {
       _mytErr('Toko tidak ditemukan dalam database LarisID. Pastikan nama toko sama persis seperti di Shopee (contoh: "TokoBaju123"). Toko baru muncul setelah kami scrape keyword yang relevan.');
-      btn.disabled = false; btn.textContent = 'Hubungkan'; return;
+      return;
     }
     _mytShopId    = match.shop_id;
     _mytStoreName = match.store_name;
-    // Persist connection to Supabase
-    await _supabase.from('user_store_profiles').upsert({
+    const { error: saveErr } = await _supabase.from('user_store_profiles').upsert({
       user_id: currentUser.id,
       shopee_store_name: match.store_name,
       shopee_shop_id:    match.shop_id,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
+    if (saveErr) {
+      _mytErr('Gagal menyimpan koneksi toko. Coba lagi.');
+      return;
+    }
     _mytShowDashboard();
     await _mytLoadDashboard();
   } catch (e) {
