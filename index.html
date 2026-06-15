@@ -5395,10 +5395,9 @@ html,body{overflow-x:clip;max-width:100%;}
       <div class="dash-sidebar-logo"><img class="dash-logo-icon" src="/images/brand/logo-icon-light.png" alt="Laris"><img class="dash-logo-word" src="/images/brand/logo-word-light.png" alt=""><span class="dash-logo-beta">BETA</span></div>
       <nav class="dash-sidebar-nav">
 
-        <div class="dash-nav-item dash-nav-discover-featured" id="dash-nav-discover" onclick="switchDashView('discover')">
+        <div class="dash-nav-item" id="dash-nav-discover" onclick="switchDashView('discover')">
           <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
           <span>Discover</span>
-          <span class="dash-nav-discover-kicker">Utama</span>
         </div>
 
         <div class="dash-nav-item" id="dash-nav-dashboard" onclick="switchDashView('dashboard')">
@@ -13510,24 +13509,34 @@ function getTopCats(n = 3) {
 
 function renderForYou() {
   const topCats = getTopCats(3);
-  if (!topCats.length || !allProducts.length) return;
-  const pool = allProducts.filter(p => topCats.includes(p.category)).slice(0,8);
+  const source = _dscAllListings.length ? _dscAllListings : _dscBrowsePool;
+  if (!topCats.length || !source.length) return;
+  const seen = new Set();
+  const pool = source.filter(p => {
+    if (!p.category || !topCats.includes(p.category)) return false;
+    const key = `${p.item_id}_${p.shop_id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 12);
   if (!pool.length) return;
   const existingForYou = document.getElementById('discover-for-you');
   if (existingForYou) existingForYou.remove();
   const layout = document.querySelector('#dash-view-discover .dsc-layout');
   if (!layout || !layout.parentElement) return;
+  const kwMap = {};
+  source.forEach(r => { const k = r.keyword || '__'; if (!kwMap[k]) kwMap[k] = []; kwMap[k].push(r); });
   const section = document.createElement('div');
   section.id = 'discover-for-you';
-  section.style.cssText = 'margin-bottom:24px;';
+  section.className = 'dsc-for-you';
   section.innerHTML = `
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-      <div style="font-size:.85rem;font-weight:800;color:#1A1A1A;">Untuk Kamu</div>
-      <div style="font-size:.72rem;color:#9CA3AF;">Berdasarkan produk yang kamu lihat</div>
-      <button onclick="clearViewHistory()" style="margin-left:auto;font-size:.65rem;color:#9CA3AF;background:none;border:none;cursor:pointer;text-decoration:underline;">Reset</button>
+    <div class="dsc-for-you-head">
+      <div class="dsc-for-you-title">Untuk Kamu</div>
+      <div class="dsc-for-you-sub">Berdasarkan produk yang kamu lihat</div>
+      <button type="button" class="dsc-for-you-reset" onclick="clearViewHistory()">Reset</button>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;" id="for-you-grid">
-      ${pool.map(p => cardHTML(p)).join('')}
+    <div class="dsc-for-you-row" id="for-you-grid">
+      ${pool.map(p => dscCardHtml(p, kwMap)).join('')}
     </div>`;
   layout.parentElement.insertBefore(section, layout);
 }
@@ -17390,6 +17399,7 @@ async function dscLoadListings() {
         dscBuildCatChecks(cats);
         if (_dscLastSrvFilters === null) _dscLastSrvFilters = JSON.stringify({ priceMin: 0, priceMax: 10000000, search: '' });
         dscApplyFilters();
+        renderForYou();
         return; // serve from cache; next open will re-check TTL
       }
       dscShowLoadingScreen();
@@ -17431,6 +17441,7 @@ async function dscLoadListings() {
     if (hasSearch) void dscCheckScrapeRequestFulfillment();
     // Load trend data in background (non-blocking) after first batch
     if (_dscOffset <= DSC_FETCH * 2) dscLoadTrendData();
+    renderForYou();
 
   } catch(e) {
     if (loadGen === _dscLoadGen) console.error('dscLoadListings:', e);
@@ -32207,7 +32218,7 @@ async function cohortPlannerGcalImportSelected() {
 
 <!-- ══ MOBILE BOTTOM NAVIGATION (only shown body.in-dashboard ≤768px) ══ -->
 <nav id="mobile-bottom-nav" aria-label="Navigasi utama">
-  <button class="mbn-item mbn-discover-featured" id="mbn-discover" onclick="switchDashView('discover')">
+  <button class="mbn-item" id="mbn-discover" onclick="switchDashView('discover')">
     <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
     <span class="mbn-label">Discover</span>
   </button>
