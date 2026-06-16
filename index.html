@@ -19957,8 +19957,12 @@ function _apDedupeByDay(rows) {
 }
 function _apUnitSeriesAndDeltas(dbRows, category, opts = {}) {
   const peerWeeklyRate = opts.peerWeeklyRate || 0;
-  const listing = { category };
-  const { corrDeltas, isEstimated } = ddTrendComputeDeltas(dbRows, listing, { peerWeeklyRate });
+  const listing = { category, total_sold: dbRows[dbRows.length - 1]?.total_sold };
+  let { corrDeltas, isEstimated } = ddTrendComputeDeltas(dbRows, listing);
+  const selfWeeklyRate = ddTrendSelfWeeklyRateFromDeltas(dbRows, corrDeltas);
+  if (ddTrendFillZeroDeltas(dbRows, corrDeltas, listing, { peerWeeklyRate, selfWeeklyRate })) {
+    isEstimated = true;
+  }
   return { corrDeltas, isEstimated };
 }
 function _apNewWeekBucket(date) {
@@ -20036,7 +20040,7 @@ async function apLoadKeywordDemand(kw, category) {
   try {
     const { data, error } = await _supabase
       .from('listings')
-      .select('item_id,shop_id,scraped_at,total_sold,price,reviews,category')
+      .select('item_id,shop_id,scraped_at,total_sold,price,reviews,category,est_sold,sold_tier')
       .eq('keyword', kw)
       .gte('scraped_at', `${AP_SCRAPE_START}T00:00:00`)
       .order('scraped_at', { ascending: true })
@@ -21380,6 +21384,54 @@ const DD_TREND_CAT_MULT = { 'Rumah':2.94,'Fashion':2.77,'Dapur':3.41,'Kamar Mand
 function ddTrendCatMult(category) {
   return DD_TREND_CAT_MULT[category] || DD_TREND_CAT_MULT['__default__'];
 }
+function ddTrendSoldIsBucket(sold, soldTier) {
+  const s = sold ?? 0;
+  if (soldTier != null && soldTier > 0 && soldTier === s) return true;
+  if (s >= 10000) return true;
+  return [1, 2, 5, 10, 50, 100, 500, 1000, 2000, 3000, 5000, 7000, 8000, 9000].includes(s);
+}
+function ddTrendBucketFloor(sold, soldTier) {
+  const s = sold ?? 0;
+  if (soldTier != null && soldTier > 0) return soldTier;
+  if (s >= 1000000) return 1000000;
+  if (s >= 100000) return Math.floor(s / 1000);
+  if (s >= 10000) return 10000;
+  return s;
+}
+function ddTrendListingHasSales(listing, dbRows) {
+  const last = dbRows?.[dbRows.length - 1];
+  const sold = listing?.total_sold ?? last?.total_sold ?? 0;
+  const reviews = listing?.reviews ?? last?.reviews ?? 0;
+  const estSold = last?.est_sold;
+  return sold > 0 || reviews > 0 || (estSold ?? 0) > 0;
+}
+function ddTrendSelfWeeklyRateFromDeltas(dbRows, corrDeltas) {
+  const rates = [];
+  for (let i = 0; i < (corrDeltas?.length || 0); i++) {
+    if ((corrDeltas[i] ?? 0) <= 0) continue;
+    const gapDays = Math.max(1, (new Date(dbRows[i + 1].scraped_at) - new Date(dbRows[i].scraped_at)) / 86400000);
+    rates.push(corrDeltas[i] / (gapDays / 7));
+  }
+  return ddTrendMedianRate(rates);
+}
+function ddTrendSoldImpliedWeeklyRate(sold) {
+  if (!sold || sold <= 0) return 0;
+  return Math.max(1, Math.round(sold / 13));
+}
+function ddTrendFillZeroDeltas(dbRows, corrDeltas, listing, opts = {}) {
+  const { peerWeeklyRate = 0, selfWeeklyRate = 0 } = opts;
+  if (!ddTrendListingHasSales(listing, dbRows)) return false;
+  const sold = listing?.total_sold ?? dbRows[dbRows.length - 1]?.total_sold ?? 0;
+  const fallbackRate = peerWeeklyRate || selfWeeklyRate || ddTrendSoldImpliedWeeklyRate(sold);
+  let filled = false;
+  for (let i = 0; i < corrDeltas.length; i++) {
+    if ((corrDeltas[i] ?? 0) > 0) continue;
+    const gapDays = Math.max(1, (new Date(dbRows[i + 1].scraped_at) - new Date(dbRows[i].scraped_at)) / 86400000);
+    corrDeltas[i] = Math.max(1, Math.round(fallbackRate * gapDays / 7));
+    filled = true;
+  }
+  return filled;
+}
 function ddTrendHasReviewMovement(rows) {
   for (let i = 1; i < rows.length; i++) {
     if ((rows[i].reviews ?? 0) > (rows[i - 1].reviews ?? 0)) return true;
@@ -21450,12 +21502,16 @@ function ddTrendListingWeeklyRate(rows, category) {
   const rawDelta = Math.max(0, (last.total_sold || 0) - (first.total_sold || 0));
   const revDelta = Math.max(0, (last.reviews || 0) - (first.reviews || 0));
   const reviewEst = Math.round(revDelta * mult);
-  const atCeil = rows.every(r => (r.total_sold ?? 0) >= 10000);
+  const atCeil = rows.every(r => ddTrendSoldIsBucket(r.total_sold, r.sold_tier));
   let delta = 0;
   if (atCeil && revDelta > 0) delta = reviewEst;
   else if (rawDelta > 0 && reviewEst > 0 && rawDelta > reviewEst * 5) delta = reviewEst;
   else if (rawDelta === 0 && revDelta > 0) delta = reviewEst;
   else if (rawDelta > 0) delta = rawDelta;
+  else {
+    const est0 = first.est_sold, est1 = last.est_sold;
+    if (est0 != null && est1 != null && est1 > est0) delta = est1 - est0;
+  }
   if (!delta) return 0;
   return delta / (days / 7);
 }
@@ -21474,7 +21530,7 @@ async function ddTrendFetchScrapeRows(listing, { since, limit = 80 } = {}) {
   let dbRows = [];
   const baseQ = () => _supabase
     .from('listings')
-    .select('scraped_at,total_sold,price,reviews,category')
+    .select('scraped_at,total_sold,price,reviews,category,est_sold,sold_tier')
     .eq('item_id', listing.item_id)
     .eq('shop_id', listing.shop_id)
     .order('scraped_at', { ascending: false })
@@ -21484,7 +21540,7 @@ async function ddTrendFetchScrapeRows(listing, { since, limit = 80 } = {}) {
   if (!dbRows.length) {
     let q2 = _supabase
       .from('listings')
-      .select('scraped_at,total_sold,price,reviews,category')
+      .select('scraped_at,total_sold,price,reviews,category,est_sold,sold_tier')
       .eq('item_id', String(listing.item_id))
       .eq('shop_id', String(listing.shop_id))
       .order('scraped_at', { ascending: false })
@@ -21496,38 +21552,46 @@ async function ddTrendFetchScrapeRows(listing, { since, limit = 80 } = {}) {
   return ddTrendDedupeRows(dbRows);
 }
 function ddTrendComputeDeltas(dbRows, listing, opts = {}) {
-  const { peerWeeklyRate = 0, isPeerEstimated = false } = opts;
+  const { isPeerEstimated = false } = opts;
   const category = listing?.category || dbRows[dbRows.length - 1]?.category;
   const mult = ddTrendCatMult(category);
-  const atCeiling = dbRows.every(r => (r.total_sold ?? 0) >= 10000);
+  const atBucket = dbRows.every(r => ddTrendSoldIsBucket(r.total_sold, r.sold_tier));
   const hasReviews = dbRows.some(r => (r.reviews ?? 0) > 0);
   let unitData, isEstimated = false, trendCeilingNote = null;
-  if (atCeiling && hasReviews && !isPeerEstimated) {
+  if (atBucket && hasReviews && !isPeerEstimated) {
     isEstimated = true;
-    let base = 10000;
+    let base = ddTrendBucketFloor(dbRows[0].total_sold, dbRows[0].sold_tier);
     unitData = [base];
     for (let i = 1; i < dbRows.length; i++) {
       const revDelta = Math.max(0, (dbRows[i].reviews || 0) - (dbRows[i - 1].reviews || 0));
       base += Math.round(revDelta * mult);
       unitData.push(base);
     }
-  } else if (atCeiling && !hasReviews) {
+  } else if (atBucket && !hasReviews) {
     isEstimated = true;
-    unitData = dbRows.map(r => r.total_sold ?? 10000);
-    trendCeilingNote = 'Penjualan 10.000+ (batas Shopee) — grafik menunjukkan minimum, garis putus = estimasi.';
+    unitData = dbRows.map(r => ddTrendBucketFloor(r.total_sold, r.sold_tier));
+    trendCeilingNote = 'Penjualan bucket Shopee (mis. 7rb+, 10rb+) — grafik menunjukkan minimum, garis putus = estimasi.';
   } else {
     unitData = dbRows.map(r => r.total_sold ?? 0);
   }
   const corrDeltas = [];
   for (let i = 0; i < dbRows.length - 1; i++) {
+    const s0raw = dbRows[i].total_sold ?? 0, s1raw = dbRows[i + 1].total_sold ?? 0;
     const s0 = unitData[i] ?? 0, s1 = unitData[i + 1] ?? 0;
-    const rawDelta = Math.max(0, s1 - s0);
+    const bucket0 = ddTrendSoldIsBucket(s0raw, dbRows[i].sold_tier);
+    const bucket1 = ddTrendSoldIsBucket(s1raw, dbRows[i + 1].sold_tier);
+    const rawDelta = bucket0 && bucket1 && s1raw === s0raw ? 0 : Math.max(0, s1 - s0);
     const revDelta = Math.max(0, (dbRows[i + 1].reviews ?? 0) - (dbRows[i].reviews ?? 0));
     const reviewEst = Math.round(revDelta * mult);
-    if (s0 < 10000 && s1 >= 10000) {
+    const est0 = dbRows[i].est_sold, est1 = dbRows[i + 1].est_sold;
+    const estDelta = (est0 != null && est1 != null && est1 > est0) ? est1 - est0 : 0;
+    if (s0raw < 10000 && s1raw >= 10000) {
       isEstimated = true;
       corrDeltas.push(reviewEst);
-    } else if (s0 >= 10000 && s1 >= 10000 && !atCeiling) {
+    } else if (bucket0 && bucket1 && rawDelta === 0 && revDelta > 0) {
+      isEstimated = true;
+      corrDeltas.push(reviewEst);
+    } else if (s0raw >= 10000 && s1raw >= 10000 && !atBucket) {
       isEstimated = true;
       corrDeltas.push(reviewEst);
     } else if (rawDelta > 0 && reviewEst > 0 && rawDelta > reviewEst * 5) {
@@ -21536,15 +21600,16 @@ function ddTrendComputeDeltas(dbRows, listing, opts = {}) {
     } else if (rawDelta === 0 && revDelta > 0) {
       isEstimated = true;
       corrDeltas.push(reviewEst);
-    } else if (rawDelta === 0 && revDelta === 0 && peerWeeklyRate > 0) {
-      const gapDays = Math.max(1, (new Date(dbRows[i + 1].scraped_at) - new Date(dbRows[i].scraped_at)) / 86400000);
-      corrDeltas.push(Math.round(peerWeeklyRate * gapDays / 7));
-      isEstimated = true;
-    } else {
+    } else if (rawDelta > 0) {
       corrDeltas.push(rawDelta);
+    } else if (estDelta > 0) {
+      isEstimated = true;
+      corrDeltas.push(estDelta);
+    } else {
+      corrDeltas.push(0);
     }
   }
-  return { unitData, corrDeltas, isEstimated, trendCeilingNote, mult, atCeiling };
+  return { unitData, corrDeltas, isEstimated, trendCeilingNote, mult, atCeiling: atBucket };
 }
 function ddTrendBuildWeeklyRows(dbRows, corrDeltas, fallbackPrice, opts = {}) {
   const { epochMon = null, dayCounter = 'days' } = opts;
@@ -21660,16 +21725,15 @@ async function ddTrendComputeWeekly(listing, opts = {}) {
     }
   }
 
-  if (!state.peerWeeklyRate && (state.isEstimated || ddTrendHasReviewMovement(dbRows))) {
+  if (!state.peerWeeklyRate && (state.isEstimated || ddTrendHasReviewMovement(dbRows) || corrDeltas.some(d => d === 0))) {
     await ensurePeerTrend();
   }
-  if (state.peerWeeklyRate > 0 && !state.isPeerEstimated) {
-    ({ corrDeltas, isEstimated, trendCeilingNote } = ddTrendComputeDeltas(dbRows, listing, {
-      isPeerEstimated: false,
-      peerWeeklyRate: state.peerWeeklyRate,
-    }));
-    if (isEstimated) state.isEstimated = true;
-    if (trendCeilingNote) state.trendCeilingNote = trendCeilingNote;
+  const selfWeeklyRate = ddTrendSelfWeeklyRateFromDeltas(dbRows, corrDeltas);
+  if (ddTrendFillZeroDeltas(dbRows, corrDeltas, listing, {
+    peerWeeklyRate: state.peerWeeklyRate,
+    selfWeeklyRate,
+  })) {
+    state.isEstimated = true;
   }
 
   const fallbackPrice = listing.price || dbRows[dbRows.length - 1]?.price || 0;
@@ -21707,7 +21771,6 @@ async function ddEstimateTrendFromPeers(listing, peerRowsOverride) {
   if (!peerPool || peerPool.length < 2) return null;
 
   const target = listing.total_sold;
-  const CAT_MULT = DD_TREND_CAT_MULT;
 
   function _peers(lo, hi) {
     return peerPool.filter(r =>
@@ -21722,7 +21785,7 @@ async function ddEstimateTrendFromPeers(listing, peerRowsOverride) {
 
   const { data: peerHistory } = await _supabase
     .from('listings')
-    .select('item_id,shop_id,scraped_at,total_sold,reviews,category')
+    .select('item_id,shop_id,scraped_at,total_sold,reviews,category,est_sold,sold_tier')
     .in('item_id', peers.map(r => r.item_id))
     .order('scraped_at', { ascending: false })
     .limit(300);
@@ -21741,7 +21804,18 @@ async function ddEstimateTrendFromPeers(listing, peerRowsOverride) {
     if (rate > 0) weeklyRates.push(rate);
   }
 
-  if (weeklyRates.length < 2) return null;
+  if (weeklyRates.length < 1) {
+    const soldVals = peers.map(r => r.total_sold || 0).filter(v => v > 0);
+    if (!soldVals.length) return null;
+    const implied = ddTrendSoldImpliedWeeklyRate(ddTrendMedianRate(soldVals));
+    return {
+      medianRate: implied,
+      weeklyRates: [implied],
+      peerCount: peers.length,
+      soldMin: Math.min(...soldVals),
+      soldMax: Math.max(...soldVals),
+    };
+  }
 
   const medianRate = ddTrendMedianRate(weeklyRates);
   const soldVals = peers.map(r => r.total_sold || 0).filter(v => v > 0);
