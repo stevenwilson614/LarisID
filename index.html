@@ -3841,8 +3841,8 @@ body.in-dashboard .mobile-menu{display:none!important;}
 }
 .dd-smetric-tip:hover .dd-smetric-tip-text{visibility:visible;opacity:1;}
 .dd-smetric-value{font-size:1.55rem;font-weight:900;color:#1A1A1A;line-height:1.15;margin-bottom:10px;letter-spacing:-.02em;}
-.dd-smetric-value.score{color:#8B1A1A;}
-.dd-smetric-value.score span{font-size:.95rem;font-weight:700;color:#9CA3AF;}
+.dd-smetric-value.score #dd-s-score-num{color:#B5202A;font-weight:900;font-size:1.55rem;}
+.dd-smetric-value.score > span:not(#dd-s-score-num){font-size:.95rem;font-weight:700;color:#9CA3AF;}
 .dd-smetric-value.komp-low{color:#C4884A;}
 .dd-smetric-value.komp-med{color:#D97706;}
 .dd-smetric-value.komp-high{color:#B5202A;}
@@ -3871,18 +3871,27 @@ body.in-dashboard .mobile-menu{display:none!important;}
   cursor:pointer;font-family:inherit;text-align:left;transition:box-shadow .15s,transform .15s;
   border:none;width:100%;
 }
-.dd-sact-sell:hover,.dd-sact-full:hover{box-shadow:0 6px 20px rgba(0,0,0,.1);transform:translateY(-1px);}
+.dd-sact-sell:hover{box-shadow:0 6px 20px rgba(0,0,0,.1);transform:translateY(-1px);}
 .dd-sact-sell{background:#fff;border:1px solid #EDE8E4;box-shadow:0 2px 12px rgba(0,0,0,.05);}
 .dd-sact-full{
+  position:relative;overflow:hidden;
   background:linear-gradient(145deg,#8B1A1A 0%,#4A0A10 55%,#2D0608 100%);
   color:#fff;box-shadow:0 6px 24px rgba(139,26,26,.35);
-  animation:ddCtaPulse 2.4s ease-in-out infinite;
 }
-@keyframes ddCtaPulse{
-  0%,100%{box-shadow:0 6px 24px rgba(139,26,26,.35),0 0 0 0 rgba(181,32,42,0);}
-  50%{box-shadow:0 8px 32px rgba(139,26,26,.55),0 0 0 10px rgba(181,32,42,.14);}
+.dd-sact-full::before{
+  content:'';position:absolute;top:0;left:-120%;width:80%;height:100%;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,180,180,.08) 25%,rgba(255,220,220,.32) 50%,rgba(255,180,180,.08) 75%,transparent 100%);
+  animation:ddCtaShine 2.8s ease-in-out infinite;pointer-events:none;z-index:0;
 }
-.dd-sact-full:hover{animation:none;box-shadow:0 10px 36px rgba(139,26,26,.55),0 0 0 6px rgba(181,32,42,.18)!important;}
+.dd-sact-full > *{position:relative;z-index:1;}
+@keyframes ddCtaShine{
+  0%{left:-120%;opacity:0;}
+  15%{opacity:1;}
+  85%{opacity:1;}
+  100%{left:140%;opacity:0;}
+}
+.dd-sact-full:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(139,26,26,.45);}
+.dd-sact-full:hover::before{animation-duration:1.6s;}
 .dd-sact-icon{
   width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
 }
@@ -7844,7 +7853,7 @@ html,body{overflow-x:clip;max-width:100%;}
           <div class="dd-wrap" id="dd-main-content">
             <!-- topbar -->
             <div class="dd-topbar" style="display:flex;align-items:center;justify-content:space-between;">
-              <div class="dd-back-btn" onclick="switchDashView('discover')">
+              <div class="dd-back-btn" onclick="_navBack('discover')">
                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
                 Kembali ke Daftar Produk
               </div>
@@ -11158,9 +11167,19 @@ function _applyImage(p, url) {
 let _navFromPopstate = false;
 let _navSilence = 0;
 let _navLastSerialized = '';
+let _navLastUrl = '';
 
 function _navStateFromUrl() {
   try {
+    const hash = window.location.hash || '';
+    const hm = hash.match(/^#\/([a-z0-9-]+)(?:\/(.+))?$/i);
+    if (hm) {
+      return {
+        page: 'profile',
+        view: hm[1],
+        product: hm[2] ? decodeURIComponent(hm[2]) : null,
+      };
+    }
     const u = new URLSearchParams(window.location.search || '');
     const view = u.get('view');
     if (view) return { page: 'profile', view, product: u.get('product') || null };
@@ -11168,8 +11187,13 @@ function _navStateFromUrl() {
   return { page: 'landing' };
 }
 
+function _navOnProfile() {
+  return document.body.classList.contains('in-dashboard')
+    || !!document.getElementById('page-profile')?.classList.contains('active');
+}
+
 function _navCurrentState() {
-  if (document.body.classList.contains('in-dashboard')) {
+  if (_navOnProfile()) {
     const state = { page: 'profile', view: (typeof _dashActiveView !== 'undefined' ? _dashActiveView : null) || 'dashboard' };
     if (state.view === 'deepdive' && typeof _ddCurrentP !== 'undefined' && _ddCurrentP?._listing) {
       const l = _ddCurrentP._listing;
@@ -11181,16 +11205,22 @@ function _navCurrentState() {
   return { page: active ? active.id.replace('page-', '') : 'landing' };
 }
 
-function _navUrlFromState(state) {
+function _navBasePath() {
   const u = new URLSearchParams(window.location.search || '');
   u.delete('view');
   u.delete('product');
-  if (state.page === 'profile' && state.view) {
-    u.set('view', state.view);
-    if (state.product) u.set('product', state.product);
-  }
   const qs = u.toString();
   return window.location.pathname + (qs ? '?' + qs : '');
+}
+
+function _navUrlFromState(state) {
+  const base = _navBasePath();
+  if (state.page === 'profile' && state.view) {
+    let hash = '#/' + state.view;
+    if (state.product) hash += '/' + encodeURIComponent(state.product);
+    return base + hash;
+  }
+  return base;
 }
 
 function _navSerialize(state) { return JSON.stringify(state); }
@@ -11198,25 +11228,31 @@ function _navSerialize(state) { return JSON.stringify(state); }
 function _navPush() {
   if (_navFromPopstate || _navSilence > 0) return;
   const state = _navCurrentState();
-  const ser = _navSerialize(state);
-  if (ser === _navLastSerialized) return;
-  _navLastSerialized = ser;
-  history.pushState(state, '', _navUrlFromState(state));
+  const url = _navUrlFromState(state);
+  const curUrl = window.location.pathname + window.location.search + window.location.hash;
+  if (url === _navLastUrl && url === curUrl) return;
+  _navLastUrl = url;
+  _navLastSerialized = _navSerialize(state);
+  if (url === curUrl) history.replaceState(state, '', url);
+  else history.pushState(state, '', url);
 }
 
 function _navReplace() {
   if (_navFromPopstate) return;
   const state = _navCurrentState();
+  const url = _navUrlFromState(state);
+  _navLastUrl = url;
   _navLastSerialized = _navSerialize(state);
-  history.replaceState(state, '', _navUrlFromState(state));
+  history.replaceState(state, '', url);
 }
 
 function _navRestore(state) {
-  if (!state) state = _navStateFromUrl();
+  if (!state || !state.page) state = _navStateFromUrl();
   _navFromPopstate = true;
   _navSilence++;
   try {
     _navLastSerialized = _navSerialize(state);
+    _navLastUrl = _navUrlFromState(state);
     if (state.page === 'profile') {
       if (!document.body.classList.contains('in-dashboard')) {
         if (currentUser) {
@@ -11251,6 +11287,14 @@ function _navRestore(state) {
 }
 
 window.addEventListener('popstate', (e) => { _navRestore(e.state); });
+
+function _navBack(fallbackView) {
+  if (window.history.length > 1) {
+    history.back();
+    return;
+  }
+  if (fallbackView) switchDashView(fallbackView);
+}
 
 function showPage(name) {
   // Logged-in users go to dashboard instead of home/landing (not when restoring browser history)
@@ -12136,6 +12180,8 @@ function _authOnSignOut() {
   savedProducts.clear();
   try { renderProfileSaved(); } catch (_) {}
   cohortClearDashboardTheme();
+  _navLastUrl = '';
+  _navLastSerialized = '';
   _navSilence++;
   showPage('landing');
   _navReplace();
@@ -29763,8 +29809,11 @@ if (document.getElementById('page-landing')?.classList.contains('active')) {
 
 loadData();
 captureInviteFromUrl();
-_navReplace();
 initSupabase();
+// Seed history after auth/session restore has had a tick to open the dashboard.
+setTimeout(function () {
+  if (!_navLastUrl) _navReplace();
+}, 0);
 // If the user arrived via a password-recovery email link, show the
 // set-new-password screen (handles #access_token=...&type=recovery).
 try { handleRecoveryHash(); } catch (_) {}
