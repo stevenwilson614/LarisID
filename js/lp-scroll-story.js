@@ -116,6 +116,7 @@
 
     tl.fromTo(ROOT + ' .choose-scroll', { y: -40 }, { y: -225, duration: 1.7 }, 0);
     tl.fromTo(ROOT + ' .cap--choose', { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 0.55 }, 0.15);
+    tl.to(ROOT + ' .scroll-hint', { autoAlpha: 0, duration: 0.25 }, 0.2);
 
     tl.to(ROOT + ' .cap--choose', { autoAlpha: 0, duration: 0.3 }, 1.7);
     tl.add(function () { placeWatchOnCard(); }, 1.72);
@@ -155,8 +156,7 @@
     tl.to(ROOT + ' .hero-watch-inner', { scale: 0.98, duration: 1.7, ease: 'power1.out' }, 4.1);
     tl.fromTo(ROOT + ' .c-band', { autoAlpha: 0, x: -16 }, { autoAlpha: 1, x: 0, duration: 0.4, ease: 'back.out(1.6)' }, 4.25);
     tl.fromTo(ROOT + ' .c-cuaca', { autoAlpha: 0, x: 16 }, { autoAlpha: 1, x: 0, duration: 0.4, ease: 'back.out(1.6)' }, 4.55);
-    tl.fromTo(ROOT + ' .c-skor', { autoAlpha: 0, x: -16 }, { autoAlpha: 1, x: 0, duration: 0.4, ease: 'back.out(1.6)' }, 4.85);
-    tl.to([ROOT + ' .c-band', ROOT + ' .c-cuaca', ROOT + ' .c-skor'], { autoAlpha: 0, duration: 0.3 }, 5.65);
+    tl.to([ROOT + ' .c-band', ROOT + ' .c-cuaca'], { autoAlpha: 0, duration: 0.3 }, 5.65);
     tl.to(ROOT + ' .scene--features', { autoAlpha: 0, duration: 0.4 }, 5.75);
     tl.to(ROOT + ' .caption-scrim', { autoAlpha: 1, duration: 0.3 }, 5.75);
 
