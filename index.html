@@ -1961,6 +1961,85 @@ body.in-dashboard .mobile-menu{display:none!important;}
   .lp-brand-morph.is-morphed .lp-brand-morph-icon{opacity:0;}
   .lp-brand-morph.is-morphed .lp-brand-morph-lockup,.lp-brand-morph.is-morphed .lp-brand-morph-tag{opacity:1;transform:none;}
 }
+/* ── FLOW: Riset → Sourcing → Jualan (scroll-scrub) ── */
+.lp-flow{background:#1A1A1A;position:relative;height:340vh;}
+.lp-flow::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.04) 1px,transparent 1px);background-size:28px 28px;pointer-events:none;z-index:0;}
+.lp-flow::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 50% at 50% 60%,rgba(181,32,42,.12) 0%,transparent 70%);pointer-events:none;z-index:0;}
+.lp-flow-sticky{position:sticky;top:0;height:100vh;overflow:hidden;padding-top:64px;box-sizing:border-box;z-index:1;display:flex;flex-direction:column;}
+.lp-flow-inner{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;max-width:960px;margin:0 auto;padding:0 28px 28px;width:100%;box-sizing:border-box;min-height:0;}
+.lp-flow-header{text-align:center;flex-shrink:0;margin-bottom:16px;}
+.lp-flow-eyebrow{font-size:.72rem;font-weight:700;color:#C9974B;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px;}
+.lp-flow-title{font-family:var(--font-display);font-size:clamp(1.45rem,3.5vw,2rem);font-weight:800;color:#fff;line-height:1.2;letter-spacing:-.02em;margin:0;}
+.lp-flow-title span{background:linear-gradient(90deg,#B5202A,#C9974B);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.lp-flow-rail-wrap{flex-shrink:0;max-width:560px;margin:0 auto 16px;width:100%;padding:0 8px;position:relative;}
+.lp-flow-rail{height:3px;background:rgba(255,255,255,.1);border-radius:3px;position:relative;overflow:visible;}
+.lp-flow-rail-fill{height:100%;width:0;background:linear-gradient(90deg,#B5202A 0%,#C9974B 100%);border-radius:3px;box-shadow:0 0 14px rgba(181,32,42,.55),0 0 28px rgba(201,151,75,.25);will-change:width;}
+.lp-flow-rail-pulse{position:absolute;top:50%;width:10px;height:10px;border-radius:50%;background:#C9974B;transform:translate(-50%,-50%);box-shadow:0 0 18px rgba(201,151,75,.9),0 0 36px rgba(181,32,42,.4);opacity:.7;pointer-events:none;will-change:left;}
+.lp-flow-dots{display:flex;justify-content:space-between;margin-top:14px;position:relative;}
+.lp-flow-dot{display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:none;cursor:default;padding:0;font-family:inherit;flex:1;max-width:120px;}
+.lp-flow-dot-icon{width:40px;height:40px;border-radius:50%;border:2px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.4);transition:border-color .25s,background .25s,color .25s,box-shadow .25s;}
+.lp-flow-dot-label{font-size:.62rem;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;transition:color .25s;}
+.lp-flow-dot.is-active .lp-flow-dot-icon{border-color:#C9974B;background:rgba(201,151,75,.12);color:#C9974B;box-shadow:0 0 20px rgba(201,151,75,.35);}
+.lp-flow-dot.is-active .lp-flow-dot-label{color:#fff;}
+.lp-flow-dot.is-past .lp-flow-dot-icon{border-color:#B5202A;color:#B5202A;}
+.lp-flow-stage{position:relative;flex:1;display:flex;align-items:center;justify-content:center;perspective:1200px;min-height:0;margin:8px 0;}
+.lp-flow-glow{position:absolute;width:min(380px,75vw);height:min(380px,75vw);border-radius:50%;background:radial-gradient(circle,rgba(181,32,42,.2) 0%,rgba(201,151,75,.06) 40%,transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:0;}
+.lp-flow-obj{position:absolute;z-index:2;will-change:transform,opacity;transform-style:preserve-3d;backface-visibility:hidden;}
+.lp-flow-card{width:260px;background:#fff;border:1px solid #EAE2D2;border-radius:16px;padding:14px;box-shadow:0 20px 60px rgba(0,0,0,.35),0 0 40px rgba(181,32,42,.08);position:relative;overflow:hidden;text-align:left;}
+.lp-flow-card .lp-showcase-img{margin-bottom:12px;}
+.lp-flow-card .lp-flow-ring{width:52px;height:52px;}
+.lp-flow-card .lp-flow-ring svg{width:52px;height:52px;}
+.lp-flow-card .lp-flow-ring .lp-vs-num{font-size:.9rem;}
+.lp-flow-scan{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(201,151,75,.85),transparent);top:0;opacity:0;z-index:10;pointer-events:none;}
+.lp-flow-scan.is-active{animation:lpFlowScan 2.2s ease-in-out infinite;}
+@keyframes lpFlowScan{0%{top:0;opacity:0;}8%{opacity:1;}92%{opacity:1;}100%{top:calc(100% - 2px);opacity:0;}}
+.lp-flow-sourcing-box{width:272px;background:linear-gradient(180deg,#2e2e2e 0%,#1c1c1c 100%);border-radius:16px;padding:18px 18px 22px;position:relative;border:1px solid rgba(201,151,75,.22);box-shadow:0 28px 72px rgba(0,0,0,.45),0 0 48px rgba(181,32,42,.12);}
+.lp-flow-sourcing-lid{position:absolute;top:-10px;left:14px;right:14px;height:22px;background:linear-gradient(180deg,#404040,#2e2e2e);border-radius:3px 3px 0 0;border:1px solid rgba(255,255,255,.07);transform:rotateX(-28deg);transform-origin:bottom center;}
+.lp-flow-sourcing-product{border-radius:12px;overflow:hidden;background:#F5EFE0;aspect-ratio:1;}
+.lp-flow-sourcing-product img{width:100%;height:100%;object-fit:cover;display:block;}
+.lp-flow-sourcing-tag{position:absolute;top:10px;right:-6px;background:#1A7A46;color:#fff;font-size:.66rem;font-weight:700;padding:5px 11px;border-radius:20px;display:flex;align-items:center;gap:5px;box-shadow:0 4px 14px rgba(26,122,70,.45);}
+.lp-flow-sale{display:flex;flex-direction:column;align-items:center;gap:20px;}
+.lp-flow-toast{display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:14px 18px;box-shadow:0 16px 48px rgba(0,0,0,.35),0 0 32px rgba(238,77,45,.15);min-width:260px;border:1px solid #F0EDE8;}
+.lp-flow-toast img{width:22px;height:22px;flex-shrink:0;object-fit:contain;}
+.lp-flow-toast-label{font-size:.62rem;font-weight:700;color:#EE4D2D;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px;}
+.lp-flow-toast-item{font-size:.82rem;font-weight:700;color:#1A1A1A;line-height:1.3;}
+.lp-flow-revenue{text-align:center;}
+.lp-flow-revenue-label{font-size:.68rem;font-weight:600;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+.lp-flow-revenue-value{font-family:var(--font-display);font-size:clamp(2rem,5vw,2.8rem);font-weight:800;color:#C9974B;line-height:1;text-shadow:0 0 40px rgba(201,151,75,.35);}
+.lp-flow-caption-wrap{flex-shrink:0;text-align:center;min-height:52px;display:flex;align-items:center;justify-content:center;position:relative;}
+.lp-flow-caption{position:absolute;left:0;right:0;opacity:0;transform:translateY(8px);transition:opacity .35s ease,transform .35s ease;pointer-events:none;}
+.lp-flow-caption.is-active{opacity:1;transform:translateY(0);position:relative;}
+.lp-flow-caption-title{font-family:var(--font-display);font-size:1rem;font-weight:800;color:#fff;margin:0 0 4px;}
+.lp-flow-caption-sub{font-size:.82rem;color:rgba(255,255,255,.55);line-height:1.5;margin:0;max-width:480px;margin-left:auto;margin-right:auto;}
+.lp-flow-cta{flex-shrink:0;text-align:center;margin-top:12px;}
+.lp-flow-cta .lp-hero-btn-primary{box-shadow:0 4px 24px rgba(181,32,42,.45);}
+.lp-flow-mobile{display:none;}
+@media(max-width:760px){
+  .lp-flow{height:auto!important;}
+  .lp-flow-sticky{position:static!important;height:auto!important;padding:0;overflow:visible;}
+  .lp-flow-inner{display:none;}
+  .lp-flow-mobile{display:flex;flex-direction:column;gap:28px;position:relative;z-index:2;padding:56px 20px 48px;}
+  .lp-flow-mobile-header{text-align:center;margin-bottom:8px;}
+  .lp-flow-mobile-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px 20px;text-align:center;}
+  .lp-flow-mobile-card .lp-flow-card,.lp-flow-mobile-card .lp-flow-sourcing-box,.lp-flow-mobile-card .lp-flow-sale{margin:0 auto 16px;}
+  .lp-flow-mobile-stage{font-size:.62rem;font-weight:700;color:#C9974B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .lp-flow-mobile-stage svg{flex-shrink:0;}
+  .lp-flow-mobile-caption{font-size:.84rem;color:rgba(255,255,255,.65);line-height:1.55;margin:0;}
+  .lp-flow-mobile-card{animation:lpFlowMobileIn .65s cubic-bezier(.22,1,.36,1) both;}
+  .lp-flow-mobile-card[data-stage="1"]{animation-delay:.14s;}
+  .lp-flow-mobile-card[data-stage="2"]{animation-delay:.28s;}
+  .lp-flow-mobile-card[data-stage="0"] .lp-flow-scan{opacity:1;animation:lpFlowScan 2.2s ease-in-out infinite;}
+}
+@keyframes lpFlowMobileIn{from{opacity:0;transform:translateY(22px);}to{opacity:1;transform:translateY(0);}}
+@media(prefers-reduced-motion:reduce){
+  .lp-flow{height:auto;}
+  .lp-flow-sticky{position:static;height:auto;padding:0;overflow:visible;}
+  .lp-flow-inner{display:none;}
+  .lp-flow-mobile{display:flex;flex-direction:column;gap:28px;}
+  .lp-flow-mobile-card{opacity:1!important;transform:none!important;animation:none!important;}
+  .lp-flow-scan{display:none;}
+  .lp-flow-rail-pulse{display:none;}
+}
 /* Trust bar */
 .lp-trust-bar{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 80px;border-bottom:1px solid #F0EDE8;background:#F5EFE0;flex-wrap:wrap;}
 @media(max-width:900px){.lp-trust-bar{padding:20px 28px;}}
@@ -1998,20 +2077,6 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .lp-solution-mockup{background:#F5EFE0;border-radius:8px;padding:12px;margin-bottom:14px;min-height:90px;display:flex;flex-direction:column;justify-content:center;}
 .lp-solution-card h4{font-size:.82rem;font-weight:700;color:#1A1A1A;margin-bottom:5px;}
 .lp-solution-card p{font-size:.72rem;color:#6B7280;line-height:1.5;margin:0;}
-/* Steps / How it works */
-.lp-steps-section{padding:80px 80px;background:#fff;text-align:center;}
-@media(max-width:900px){.lp-steps-section{padding:56px 28px;}}
-.lp-steps-grid{display:flex;gap:8px;margin-top:48px;align-items:flex-start;max-width:900px;margin-left:auto;margin-right:auto;}
-@media(max-width:700px){.lp-steps-grid{flex-direction:column;align-items:center;gap:32px;margin-top:32px;}}
-.lp-step{flex:1;display:flex;flex-direction:column;align-items:center;position:relative;padding:0 8px;}
-.lp-step-arrow{flex-shrink:0;width:28px;display:flex;align-items:center;justify-content:center;color:#B5202A;font-weight:700;font-size:1.1rem;margin-top:36px;}
-@media(max-width:700px){.lp-step-arrow{margin-top:0;transform:rotate(90deg);}}
-.lp-step-num{width:32px;height:32px;border-radius:50%;background:#B5202A;color:#fff;font-weight:800;font-size:.82rem;display:flex;align-items:center;justify-content:center;margin-bottom:12px;}
-.lp-step-icon{width:68px;height:68px;background:#F9EAE4;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:14px;color:#B5202A;}
-.lp-step h4{font-size:.8rem;font-weight:700;color:#1A1A1A;margin-bottom:6px;line-height:1.3;}
-.lp-step p{font-size:.7rem;color:#6B7280;line-height:1.5;}
-/* How-it-works: circular "journey" nodes to differentiate from solution cards */
-.lp-step-icon{box-shadow:0 0 0 6px #FFF5F2,0 8px 20px rgba(181,32,42,.12);}
 /* ── DEEP DIVE TEASER (lifts the sample analysis higher in the flow) ── */
 .lp-dd-teaser-section{background:#F5EFE0;padding:64px 80px;}
 @media(max-width:1100px){.lp-dd-teaser-section{padding:48px 28px;}}
@@ -2183,7 +2248,7 @@ body.in-dashboard .mobile-menu{display:none!important;}
   /* Simplify hero floating cards: keep one (score), hide the rest */
   .lp-hero-float-top,.lp-hero-float-trend,.lp-hero-float-badge{display:none;}
   /* Tighten section padding to reduce scroll depth */
-  .lp-problem-section,.lp-solution-section,.lp-steps-section,.lp-community-section,.lp-cta-section{padding:44px 20px;}
+  .lp-problem-section,.lp-solution-section,.lp-flow-mobile,.lp-community-section,.lp-cta-section{padding:44px 20px;}
   .lp-fitur-wrap{padding:40px 18px;}
 }
 .lp-plan-badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:#B5202A;color:#fff;font-size:.7rem;font-weight:800;padding:4px 18px;border-radius:20px;white-space:nowrap;letter-spacing:.03em;}
@@ -4283,7 +4348,7 @@ html,body{overflow-x:clip;max-width:100%;}
             <button class="lp-hero-btn-primary" onclick="openAuthModal('signup','hero')">Temukan Produk Terlaris
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:6px;vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             </button>
-            <button class="lp-hero-btn-secondary" onclick="document.getElementById('lp-steps').scrollIntoView({behavior:'smooth'})">Lihat Cara Kerjanya
+            <button class="lp-hero-btn-secondary" onclick="document.getElementById('lp-flow').scrollIntoView({behavior:'smooth'})">Lihat Cara Kerjanya
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:5px;vertical-align:middle;"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
             </button>
           </div>
@@ -4483,6 +4548,342 @@ html,body{overflow-x:clip;max-width:100%;}
       </div>
     </div>
 
+    <!-- ── FLOW: Riset → Sourcing → Jualan (scroll-scrub) ── -->
+    <section class="lp-flow" id="lp-flow" aria-labelledby="lp-flow-title">
+      <div class="lp-flow-sticky">
+        <div class="lp-flow-inner">
+          <header class="lp-flow-header">
+            <p class="lp-flow-eyebrow">Cara Kerja LarisID</p>
+            <h2 class="lp-flow-title" id="lp-flow-title">Dari riset sampai jualan, <span>satu alur.</span></h2>
+          </header>
+
+          <div class="lp-flow-rail-wrap" aria-hidden="true">
+            <div class="lp-flow-rail">
+              <div class="lp-flow-rail-fill" id="lp-flow-rail-fill"></div>
+              <div class="lp-flow-rail-pulse" id="lp-flow-rail-pulse"></div>
+            </div>
+            <div class="lp-flow-dots" id="lp-flow-dots">
+              <div class="lp-flow-dot is-active" data-stage="0">
+                <div class="lp-flow-dot-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
+                <span class="lp-flow-dot-label">Riset</span>
+              </div>
+              <div class="lp-flow-dot" data-stage="1">
+                <div class="lp-flow-dot-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
+                <span class="lp-flow-dot-label">Sourcing</span>
+              </div>
+              <div class="lp-flow-dot" data-stage="2">
+                <div class="lp-flow-dot-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>
+                <span class="lp-flow-dot-label">Jualan</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="lp-flow-stage">
+            <div class="lp-flow-glow" aria-hidden="true"></div>
+
+            <div class="lp-flow-obj lp-flow-obj--riset" id="lp-flow-riset">
+              <div class="lp-flow-card">
+                <div class="lp-flow-scan" aria-hidden="true"></div>
+                <div class="lp-showcase-img"><img src="/images/tas-selempang-hero.webp" alt="Tas Selempang Pria Premium" loading="lazy" decoding="async"></div>
+                <div class="lp-showcase-name">Tas Selempang Pria Premium</div>
+                <div class="lp-showcase-meta">
+                  <div>
+                    <div class="lp-showcase-price">Rp 15,3 jt</div>
+                    <div class="lp-showcase-sold">omset/bln estimasi</div>
+                  </div>
+                  <div class="lp-vs-ring lp-flow-ring">
+                    <svg viewBox="0 0 56 56"><circle class="lp-vs-track" cx="28" cy="28" r="26"/><circle class="lp-vs-prog" id="lp-flow-ring-prog" cx="28" cy="28" r="26"/></svg>
+                    <div class="lp-vs-num" id="lp-flow-ring-num">0</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="lp-flow-obj lp-flow-obj--sourcing" id="lp-flow-sourcing">
+              <div class="lp-flow-sourcing-box">
+                <div class="lp-flow-sourcing-lid" aria-hidden="true"></div>
+                <div class="lp-flow-sourcing-product"><img src="/images/tas-selempang-hero.webp" alt="Tas Selempang Pria Premium" loading="lazy" decoding="async"></div>
+                <div class="lp-flow-sourcing-tag"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> Stok siap</div>
+              </div>
+            </div>
+
+            <div class="lp-flow-obj lp-flow-obj--jualan" id="lp-flow-jualan">
+              <div class="lp-flow-sale">
+                <div class="lp-flow-toast">
+                  <img src="/images/shopee-logo.png" alt="Shopee" width="22" height="22" decoding="async">
+                  <div>
+                    <div class="lp-flow-toast-label">Pesanan Baru</div>
+                    <div class="lp-flow-toast-item">Tas Selempang Pria Premium</div>
+                  </div>
+                </div>
+                <div class="lp-flow-revenue">
+                  <div class="lp-flow-revenue-label">Omset bulan ini</div>
+                  <div class="lp-flow-revenue-value" id="lp-flow-revenue">Rp 0</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="lp-flow-caption-wrap" id="lp-flow-captions">
+            <div class="lp-flow-caption is-active" data-stage="0">
+              <p class="lp-flow-caption-title">Riset produk yang layak jual</p>
+              <p class="lp-flow-caption-sub">Scan ribuan produk Shopee dan lihat skor kelayakan sebelum kamu keluarkan modal.</p>
+            </div>
+            <div class="lp-flow-caption" data-stage="1">
+              <p class="lp-flow-caption-title">Sourcing dengan data yang sama</p>
+              <p class="lp-flow-caption-sub">Temukan supplier terpercaya dan siapkan stok berdasarkan angka yang sudah kamu validasi.</p>
+            </div>
+            <div class="lp-flow-caption" data-stage="2">
+              <p class="lp-flow-caption-title">Jualan online, pantau hasilnya</p>
+              <p class="lp-flow-caption-sub">Pasang di toko Shopee dan pantau pesanan masuk serta omset dari satu tempat.</p>
+            </div>
+          </div>
+
+          <div class="lp-flow-cta">
+            <button class="lp-hero-btn-primary" onclick="openAuthModal('signup','flow')">Mulai riset gratis
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:6px;vertical-align:middle;" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="lp-flow-mobile">
+          <header class="lp-flow-mobile-header">
+            <p class="lp-flow-eyebrow">Cara Kerja LarisID</p>
+            <h2 class="lp-flow-title">Dari riset sampai jualan, <span>satu alur.</span></h2>
+          </header>
+          <div class="lp-flow-mobile-card" data-stage="0">
+            <div class="lp-flow-mobile-stage"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Riset</div>
+            <div class="lp-flow-card">
+              <div class="lp-flow-scan" aria-hidden="true"></div>
+              <div class="lp-showcase-img"><img src="/images/tas-selempang-hero.webp" alt="Tas Selempang Pria Premium" loading="lazy" decoding="async"></div>
+              <div class="lp-showcase-name">Tas Selempang Pria Premium</div>
+              <div class="lp-showcase-meta">
+                <div>
+                  <div class="lp-showcase-price">Rp 15,3 jt</div>
+                  <div class="lp-showcase-sold">omset/bln estimasi</div>
+                </div>
+                <div class="lp-vs-ring lp-flow-ring">
+                  <svg viewBox="0 0 56 56"><circle class="lp-vs-track" cx="28" cy="28" r="26"/><circle class="lp-vs-prog" style="stroke:#1A7A46;stroke-dasharray:163.36;stroke-dashoffset:21.24;" cx="28" cy="28" r="26"/></svg>
+                  <div class="lp-vs-num" style="color:#1A7A46;">87</div>
+                </div>
+              </div>
+            </div>
+            <p class="lp-flow-mobile-caption">Scan ribuan produk Shopee dan lihat skor kelayakan sebelum kamu keluarkan modal.</p>
+          </div>
+          <div class="lp-flow-mobile-card" data-stage="1">
+            <div class="lp-flow-mobile-stage"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> Sourcing</div>
+            <div class="lp-flow-sourcing-box">
+              <div class="lp-flow-sourcing-lid" aria-hidden="true"></div>
+              <div class="lp-flow-sourcing-product"><img src="/images/tas-selempang-hero.webp" alt="Tas Selempang Pria Premium" loading="lazy" decoding="async"></div>
+              <div class="lp-flow-sourcing-tag"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> Stok siap</div>
+            </div>
+            <p class="lp-flow-mobile-caption">Temukan supplier terpercaya dan siapkan stok berdasarkan angka yang sudah kamu validasi.</p>
+          </div>
+          <div class="lp-flow-mobile-card" data-stage="2">
+            <div class="lp-flow-mobile-stage"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg> Jualan</div>
+            <div class="lp-flow-sale">
+              <div class="lp-flow-toast">
+                <img src="/images/shopee-logo.png" alt="Shopee" width="22" height="22" decoding="async">
+                <div>
+                  <div class="lp-flow-toast-label">Pesanan Baru</div>
+                  <div class="lp-flow-toast-item">Tas Selempang Pria Premium</div>
+                </div>
+              </div>
+              <div class="lp-flow-revenue">
+                <div class="lp-flow-revenue-label">Omset bulan ini</div>
+                <div class="lp-flow-revenue-value">Rp 15,3 jt</div>
+              </div>
+            </div>
+            <p class="lp-flow-mobile-caption">Pasang di toko Shopee dan pantau pesanan masuk serta omset dari satu tempat.</p>
+          </div>
+          <div style="text-align:center;margin-top:8px;">
+            <button class="lp-hero-btn-primary" onclick="openAuthModal('signup','flow')">Mulai riset gratis
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:6px;vertical-align:middle;" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <script>
+    (function(){
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var mobileMq = window.matchMedia('(max-width: 760px)');
+      var SCORE = 87;
+      var REVENUE_JT = 15.3;
+      var C = 2 * Math.PI * 26;
+
+      function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+      function lerp(a, b, t){ return a + (b - a) * t; }
+      function easeIO(t){ return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+      function morphT(p, a, b){
+        if(p <= a) return 0;
+        if(p >= b) return 1;
+        return easeIO((p - a) / (b - a));
+      }
+      function formatRev(jt){
+        if(jt <= 0) return 'Rp 0';
+        return 'Rp ' + jt.toFixed(1).replace('.', ',') + ' jt';
+      }
+
+      function lpInitFlow(){
+        var section = document.getElementById('lp-flow');
+        if(!section) return;
+
+        var riset = document.getElementById('lp-flow-riset');
+        var sourcing = document.getElementById('lp-flow-sourcing');
+        var jualan = document.getElementById('lp-flow-jualan');
+        var railFill = document.getElementById('lp-flow-rail-fill');
+        var railPulse = document.getElementById('lp-flow-rail-pulse');
+        var dots = section.querySelectorAll('.lp-flow-dot');
+        var captions = section.querySelectorAll('.lp-flow-caption');
+        var ring = document.getElementById('lp-flow-ring-prog');
+        var ringNum = document.getElementById('lp-flow-ring-num');
+        var revEl = document.getElementById('lp-flow-revenue');
+        var scan = section.querySelector('.lp-flow-scan');
+
+        if(ring){
+          ring.style.stroke = '#1A7A46';
+          ring.style.strokeDasharray = C;
+          ring.style.strokeDashoffset = C;
+        }
+        if(ringNum) ringNum.style.color = '#1A7A46';
+
+        function applyObj(el, op, scale, rotY){
+          if(!el) return;
+          el.style.opacity = String(op);
+          el.style.transform = 'translate3d(0,0,0) scale(' + scale + ') rotateY(' + rotY + 'deg)';
+          el.style.pointerEvents = op > 0.4 ? 'auto' : 'none';
+        }
+
+        function setDots(stage){
+          dots.forEach(function(d, i){
+            d.classList.toggle('is-active', i === stage);
+            d.classList.toggle('is-past', i < stage);
+          });
+        }
+
+        function setCaptions(stage){
+          captions.forEach(function(c, i){
+            c.classList.toggle('is-active', i === stage);
+          });
+        }
+
+        function setFinal(){
+          if(ring) ring.style.strokeDashoffset = C * (1 - SCORE / 100);
+          if(ringNum) ringNum.textContent = String(SCORE);
+          if(revEl) revEl.textContent = formatRev(REVENUE_JT);
+          applyObj(riset, 0, 1, 0);
+          applyObj(sourcing, 0, 1, 0);
+          applyObj(jualan, 1, 1, 0);
+          if(railFill) railFill.style.width = '100%';
+          if(railPulse) railPulse.style.left = '100%';
+          setDots(2);
+          setCaptions(2);
+        }
+
+        if(reduce){
+          setFinal();
+          return;
+        }
+
+        if(mobileMq.matches) return;
+
+        if(riset) applyObj(riset, 1, 1, 0);
+        if(sourcing) applyObj(sourcing, 0, 0.88, 18);
+        if(jualan) applyObj(jualan, 0, 0.88, 18);
+
+        var active = false;
+        var ticking = false;
+
+        function update(){
+          ticking = false;
+          if(mobileMq.matches) return;
+          var vh = window.innerHeight;
+          var sectionHeight = section.offsetHeight;
+          var track = Math.max(sectionHeight - vh, 1);
+          var progress = clamp(-section.getBoundingClientRect().top / track, 0, 1);
+
+          var m12 = morphT(progress, 0.15, 0.45);
+          var m23 = morphT(progress, 0.6, 0.9);
+
+          var s1Op, s1Scale, s1Rot;
+          var s2Op, s2Scale, s2Rot;
+          var s3Op, s3Scale, s3Rot;
+
+          if(progress < 0.15){
+            s1Op = 1; s1Scale = 1; s1Rot = 0;
+          } else if(progress < 0.45){
+            s1Op = 1 - m12; s1Scale = lerp(1, 0.88, m12); s1Rot = lerp(0, -18, m12);
+          } else {
+            s1Op = 0; s1Scale = 0.88; s1Rot = -18;
+          }
+
+          if(progress < 0.15){
+            s2Op = 0; s2Scale = 0.88; s2Rot = 18;
+          } else if(progress < 0.45){
+            s2Op = m12; s2Scale = lerp(0.88, 1, m12); s2Rot = lerp(18, 0, m12);
+          } else if(progress < 0.9){
+            s2Op = 1; s2Scale = 1; s2Rot = 0;
+          } else {
+            s2Op = 1 - m23; s2Scale = lerp(1, 0.88, m23); s2Rot = lerp(0, -18, m23);
+          }
+
+          if(progress < 0.6){
+            s3Op = 0; s3Scale = 0.88; s3Rot = 18;
+          } else if(progress < 0.9){
+            s3Op = m23; s3Scale = lerp(0.88, 1, m23); s3Rot = lerp(18, 0, m23);
+          } else {
+            s3Op = 1; s3Scale = 1; s3Rot = 0;
+          }
+
+          applyObj(riset, s1Op, s1Scale, s1Rot);
+          applyObj(sourcing, s2Op, s2Scale, s2Rot);
+          applyObj(jualan, s3Op, s3Scale, s3Rot);
+
+          var ringP = clamp(progress / 0.15, 0, 1);
+          if(ring) ring.style.strokeDashoffset = C * (1 - ringP * SCORE / 100);
+          if(ringNum) ringNum.textContent = String(Math.round(ringP * SCORE));
+
+          var revP = clamp((progress - 0.9) / 0.1, 0, 1);
+          if(revEl) revEl.textContent = formatRev(revP * REVENUE_JT);
+
+          if(railFill) railFill.style.width = (progress * 100) + '%';
+          if(railPulse){
+            railPulse.style.left = (progress * 100) + '%';
+            railPulse.style.opacity = String(0.55 + 0.45 * Math.max(Math.sin(m12 * Math.PI), Math.sin(m23 * Math.PI)));
+          }
+
+          var stage = progress < 0.3 ? 0 : (progress < 0.75 ? 1 : 2);
+          setDots(stage);
+          setCaptions(stage);
+
+          if(scan) scan.classList.toggle('is-active', progress < 0.15);
+        }
+
+        if('IntersectionObserver' in window){
+          var obs = new IntersectionObserver(function(entries){
+            active = entries.some(function(e){ return e.isIntersecting; });
+            if(active && !ticking){ ticking = true; requestAnimationFrame(update); }
+          }, { threshold: 0 });
+          obs.observe(section);
+        } else {
+          active = true;
+        }
+
+        window.addEventListener('scroll', function(){
+          if(!active) return;
+          if(!ticking){ ticking = true; requestAnimationFrame(update); }
+        }, { passive: true });
+
+        update();
+      }
+
+      if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', lpInitFlow);
+      else lpInitFlow();
+    })();
+    </script>
+
     <!-- ── PROBLEM SECTION ── -->
     <div class="lp-problem-section">
       <div class="lp-problem-headline">Banyak Pemula Gagal Bukan Karena Malas.</div>
@@ -4583,49 +4984,6 @@ html,body{overflow-x:clip;max-width:100%;}
           </div>
           <h4>Pantau Tren Pasar</h4>
           <p>Pantau tren produk setiap hari dan temukan peluang sebelum orang lain.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── HOW IT WORKS ── -->
-    <div class="lp-steps-section" id="lp-steps">
-      <div class="lp-section-eyebrow">Cara Kerja LarisID</div>
-      <div class="lp-section-title">Bisnis Pertamamu Dimulai dari Sini.</div>
-      <div class="lp-steps-grid">
-        <div class="lp-step">
-          <div class="lp-step-num">1</div>
-          <div class="lp-step-icon">
-            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          </div>
-          <h4>Pilih produk yang kamu minati</h4>
-          <p>Cari ide produk sesuai minat dan budget kamu.</p>
-        </div>
-        <div class="lp-step-arrow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
-        <div class="lp-step">
-          <div class="lp-step-num">2</div>
-          <div class="lp-step-icon">
-            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          </div>
-          <h4>Lihat tren di Shopee</h4>
-          <p>Lihat produk yang sedang banyak dicari di Shopee.</p>
-        </div>
-        <div class="lp-step-arrow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
-        <div class="lp-step">
-          <div class="lp-step-num">3</div>
-          <div class="lp-step-icon">
-            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          </div>
-          <h4>Validasi permintaan &amp; kompetisi</h4>
-          <p>Pastikan produk punya permintaan dan peluang nyata.</p>
-        </div>
-        <div class="lp-step-arrow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
-        <div class="lp-step">
-          <div class="lp-step-num">4</div>
-          <div class="lp-step-icon">
-            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
-          </div>
-          <h4>Mulai jual dengan percaya diri</h4>
-          <p>Mulai jual dan bangun bisnis pertamamu!</p>
         </div>
       </div>
     </div>
@@ -18748,9 +19106,7 @@ function ddUpdateRingkasanFromKw(rows, totalSold, listing) {
 
   ddUpdateShopAgeChart(rows);
 
-  // Update listing count in category perf card
-  const tokoEl = document.getElementById('dd-catperf-toko');
-  if (tokoEl) tokoEl.textContent = rows.length.toLocaleString('id-ID');
+  void ddLoadCatPerfChart(listing, rows);
 
   // AI insights from real data
   const medianPrice = prices.length ? prices[Math.floor(prices.length / 2)] : 0;
@@ -18762,6 +19118,126 @@ function ddUpdateRingkasanFromKw(rows, totalSold, listing) {
   ];
   const aiList = document.getElementById('dd-ai-list');
   if (aiList) aiList.innerHTML = insights.map(t => `<div class="dd-ai-item"><div class="dd-ai-check">✓</div><div>${t}</div></div>`).join('');
+}
+
+function ddSetCatPerfDelta(id, pct) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (pct == null || !Number.isFinite(pct)) {
+    el.textContent = '—';
+    el.style.color = '#9CA3AF';
+    return;
+  }
+  el.textContent = (pct >= 0 ? '+' : '') + pct + '%';
+  el.style.color = pct >= 0 ? '#10B981' : '#DC2626';
+}
+
+function ddInitCatPerfChart(p) {
+  _ddCatPerfGen++;
+  const category = p?.category || 'Umum';
+  const catLabel = document.getElementById('dd-cat-label');
+  if (catLabel) catLabel.textContent = `${category} · memuat tren keyword…`;
+  document.getElementById('dd-catperf-stats').innerHTML = `
+    <div><div class="dd-catperf-stat-label">Omset/Minggu</div><div class="dd-catperf-stat-value" id="dd-catperf-omset-v">—</div><div class="dd-catperf-stat-delta" id="dd-catperf-omset-d">—</div></div>
+    <div><div class="dd-catperf-stat-label">Unit/Minggu</div><div class="dd-catperf-stat-value" id="dd-catperf-unit-v">—</div><div class="dd-catperf-stat-delta" id="dd-catperf-unit-d">—</div></div>
+    <div><div class="dd-catperf-stat-label">Listing di Keyword</div><div class="dd-catperf-stat-value" id="dd-catperf-toko">—</div><div class="dd-catperf-stat-delta" id="dd-catperf-toko-d"></div></div>
+  `;
+  if (_ddChartCatperf) _ddChartCatperf.destroy();
+  _ddChartCatperf = new Chart(document.getElementById('dd-chart-catperf'), {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [{
+        data: [],
+        borderColor: '#B5202A',
+        backgroundColor: 'rgba(181,32,42,.08)',
+        borderWidth: 2,
+        tension: 0.35,
+        pointRadius: 3,
+        pointBackgroundColor: '#B5202A',
+        fill: true,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 4, right: 4, bottom: 0, left: 0 } },
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { font: { size: 8 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 5 } },
+        y: { display: false, grace: '12%' },
+      },
+      animation: { duration: 400 },
+    },
+  });
+}
+
+async function ddLoadCatPerfChart(listing, rows) {
+  const gen = ++_ddCatPerfGen;
+  const kw = listing?.keyword || '';
+  const category = listing?.category || 'Umum';
+  const catLabel = document.getElementById('dd-cat-label');
+  const nListings = rows?.length || 0;
+  const tokoEl = document.getElementById('dd-catperf-toko');
+  if (tokoEl) tokoEl.textContent = nListings ? nListings.toLocaleString('id-ID') : '—';
+
+  if (!kw || !nListings) {
+    if (catLabel) catLabel.textContent = `${category} · belum ada data keyword`;
+    if (_ddChartCatperf) {
+      _ddChartCatperf.data.labels = [];
+      _ddChartCatperf.data.datasets[0].data = [];
+      _ddChartCatperf.update('none');
+    }
+    return;
+  }
+
+  const demand = await apLoadKeywordDemand(kw, category);
+  if (gen !== _ddCatPerfGen) return;
+
+  const weeks = (demand.weeks || []).filter(w => (w.omset ?? 0) > 0 || (w.units ?? 0) > 0).slice(-5);
+  const isEst = !!demand.meta?.anyEstimated;
+  const fmtOmset = v => v >= 1e9 ? 'Rp ' + (v / 1e9).toFixed(1) + 'M' : v >= 1e6 ? 'Rp ' + (v / 1e6).toFixed(1) + 'jt' : 'Rp ' + Math.round(v / 1e3) + 'rb';
+
+  if (catLabel) {
+    catLabel.textContent = `"${kw}" · ${category}${isEst ? ' · estimasi scrape' : ''}`;
+  }
+
+  if (!weeks.length) {
+    if (catLabel) catLabel.textContent = `"${kw}" · ${category} · belum cukup data mingguan`;
+    const omsetVEl = document.getElementById('dd-catperf-omset-v');
+    const unitVEl = document.getElementById('dd-catperf-unit-v');
+    if (omsetVEl) omsetVEl.textContent = '—';
+    if (unitVEl) unitVEl.textContent = '—';
+    ddSetCatPerfDelta('dd-catperf-omset-d', null);
+    ddSetCatPerfDelta('dd-catperf-unit-d', null);
+    if (_ddChartCatperf) {
+      _ddChartCatperf.data.labels = [];
+      _ddChartCatperf.data.datasets[0].data = [];
+      _ddChartCatperf.data.datasets[0].borderDash = [];
+      _ddChartCatperf.update('none');
+    }
+    return;
+  }
+
+  const nW = weeks.length;
+  const avgOmset = Math.round(weeks.reduce((s, w) => s + w.omset, 0) / nW);
+  const avgUnits = Math.round(weeks.reduce((s, w) => s + w.units, 0) / nW);
+  const omsetPct = weeks[0].omset > 0 ? Math.round((weeks[nW - 1].omset - weeks[0].omset) / weeks[0].omset * 100) : null;
+  const unitPct = weeks[0].units > 0 ? Math.round((weeks[nW - 1].units - weeks[0].units) / weeks[0].units * 100) : null;
+
+  const omsetVEl = document.getElementById('dd-catperf-omset-v');
+  const unitVEl = document.getElementById('dd-catperf-unit-v');
+  if (omsetVEl) omsetVEl.textContent = fmtOmset(avgOmset);
+  if (unitVEl) unitVEl.textContent = avgUnits.toLocaleString('id-ID');
+  ddSetCatPerfDelta('dd-catperf-omset-d', omsetPct);
+  ddSetCatPerfDelta('dd-catperf-unit-d', unitPct);
+
+  if (_ddChartCatperf) {
+    _ddChartCatperf.data.labels = weeks.map(w => w.label);
+    _ddChartCatperf.data.datasets[0].data = weeks.map(w => w.omset);
+    _ddChartCatperf.data.datasets[0].borderDash = isEst ? [3, 3] : [];
+    _ddChartCatperf.update();
+  }
 }
 
 // ── COMPETITOR TAB ─────────────────────────────────────────────────────────────
@@ -19222,188 +19698,30 @@ async function ddRenderTren() {
   if (insEl) insEl.innerHTML = '<div style="font-size:.68rem;color:#9CA3AF;padding:8px 0;">Memuat data...</div>';
 
   try {
-    let dbRows = [];
-    if (_supabase) {
-      const { data } = await _supabase
-        .from('listings')
-        .select('scraped_at,total_sold,price,reviews')
-        .eq('item_id', listing.item_id)
-        .eq('shop_id', listing.shop_id)
-        .gte('scraped_at', `${LARIS_SCRAPE_START}T00:00:00`)
-        .order('scraped_at', { ascending: false })
-        .limit(80);
-      dbRows = (data || []).slice().sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
-      if (!dbRows.length) {
-        const { data: d2 } = await _supabase
-          .from('listings')
-          .select('scraped_at,total_sold,price,reviews')
-          .eq('item_id', String(listing.item_id))
-          .eq('shop_id', String(listing.shop_id))
-          .gte('scraped_at', `${LARIS_SCRAPE_START}T00:00:00`)
-          .order('scraped_at', { ascending: false })
-          .limit(80);
-        dbRows = (d2 || []).slice().sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
-      }
-      { const seenTs = new Set(); dbRows = dbRows.filter(r => { if (seenTs.has(r.scraped_at)) return false; seenTs.add(r.scraped_at); return true; }); }
-      {
-        const dayMap = new Map();
-        for (const r of dbRows) {
-          const day = r.scraped_at?.slice(0, 10);
-          if (!day) continue;
-          const cur = dayMap.get(day);
-          if (!cur || (r.total_sold ?? 0) > (cur.total_sold ?? 0)) dayMap.set(day, r);
-        }
-        dbRows = [...dayMap.values()].sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
-      }
-    }
-
-    if (dbRows.length < 2) {
-      const prevKey  = `${listing.item_id}_${listing.shop_id}`;
-      const prevSold = _dscPrevMap[prevKey];
-      const currDate = listing.scraped_at ? new Date(listing.scraped_at) : new Date();
-      const currRow  = { scraped_at: currDate.toISOString(), total_sold: listing.total_sold, price: listing.price, reviews: listing.reviews };
-      if (dbRows.length === 1) {
-        const dbDate = new Date(dbRows[0].scraped_at);
-        dbRows = dbDate < currDate ? [dbRows[0], currRow] : [currRow, dbRows[0]];
-      } else if (prevSold != null) {
-        const prevDate = new Date(currDate.getTime() - 7 * 86400000);
-        dbRows = [{ scraped_at: prevDate.toISOString(), total_sold: prevSold, price: listing.price, reviews: null }, currRow];
-      } else {
-        const emptyEl = document.getElementById('tren-empty-state');
-        const gridEl  = document.getElementById('tren-content-grid');
-        if (emptyEl) emptyEl.style.display = '';
-        if (gridEl)  gridEl.style.display  = 'none';
-        if (insEl) insEl.innerHTML = '';
-        return;
-      }
-    }
-
-    // Data is sufficient — show content, hide empty state
-    const _trenEmptyEl = document.getElementById('tren-empty-state');
-    const _trenGridEl  = document.getElementById('tren-content-grid');
-    if (_trenEmptyEl) _trenEmptyEl.style.display = 'none';
-    if (_trenGridEl)  _trenGridEl.style.display  = '';
-
-    const fallbackPrice = listing.price || 0;
-    const _CAT_MULT = { 'Rumah':2.94,'Fashion':2.77,'Dapur':3.41,'Kamar Mandi':4.21,'Keamanan':3.40,
-      'Kecantikan':2.70,'Motor & Mobil':2.96,'Elektronik':3.10,'HP & Gadget':3.40,
-      'Hewan Peliharaan':3.95,'Sepeda':2.58,'Taman':3.50,'Olahraga':2.68,'Bayi & Anak':4.12,
-      'Hobi & Kerajinan':2.48,'Kesehatan':2.38,'Tanaman':3.63,'Alat Tulis':2.87,
-      'Outdoor & Camping':2.67,'__default__':3.20 };
-    const mult = _CAT_MULT[listing.category] || _CAT_MULT['__default__'];
-    const atCeiling = dbRows.every(r => (r.total_sold ?? 0) >= 10000);
-    const hasReviews = dbRows.some(r => r.reviews > 0);
-
-    let unitData, isEstimated = false;
-    if (atCeiling && hasReviews) {
-      isEstimated = true;
-      let base = 10000;
-      unitData = [base];
-      for (let i = 1; i < dbRows.length; i++) {
-        const revDelta = Math.max(0, (dbRows[i].reviews || 0) - (dbRows[i-1].reviews || 0));
-        base += Math.round(revDelta * mult);
-        unitData.push(base);
-      }
-    } else {
-      unitData = dbRows.map(r => r.total_sold ?? 0);
-    }
-
-    // Per-interval sanity: detect Shopee display recalibrations (e.g. 3k→90k jump that
-    // isn't real sales) and implausible spikes vs review growth. Use review model for those.
-    const correctedDeltas = [];
-    for (let i = 0; i < dbRows.length - 1; i++) {
-      const s0 = unitData[i] ?? 0, s1 = unitData[i+1] ?? 0;
-      const rawDelta = Math.max(0, s1 - s0);
-      const revDelta = Math.max(0, (dbRows[i+1].reviews ?? 0) - (dbRows[i].reviews ?? 0));
-      const reviewEst = Math.round(revDelta * mult);
-      if (s0 < 10000 && s1 >= 10000) {
-        // Shopee recalibrated total_sold (bucketed-small → real number) — not genuine sales
-        isEstimated = true;
-        correctedDeltas.push(reviewEst);
-      } else if (s0 >= 10000 && s1 >= 10000 && !atCeiling) {
-        // Both ceiling but atCeiling path didn't apply (mixed rows) — use review model
-        isEstimated = true;
-        correctedDeltas.push(reviewEst);
-      } else if (rawDelta > 0 && reviewEst > 0 && rawDelta > reviewEst * 5) {
-        // Delta > 5× what review growth implies — treat as data artifact
-        isEstimated = true;
-        correctedDeltas.push(reviewEst);
-      } else if (rawDelta === 0 && revDelta > 0) {
-        // total_sold unchanged but reviews grew — product is inside a Shopee display bucket
-        // that didn't cross a threshold boundary; use review model to capture real sales
-        isEstimated = true;
-        correctedDeltas.push(reviewEst);
-      } else {
-        correctedDeltas.push(rawDelta);
-      }
-    }
-
-    const _MO = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-    // Monday-anchored week helpers — labels show the actual Monday date ("13 Apr", "20 Apr"...)
-    function _mondayOf(d) {
-      const date = new Date(+d);
-      const day = date.getDay(); // 0=Sun,1=Mon,...6=Sat
-      date.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
-      date.setHours(0, 0, 0, 0);
-      return date;
-    }
-    function _wKey(d)   { return _mondayOf(d).toISOString().slice(0, 10); }
-    function _wLabel(d) { const m = _mondayOf(d); return `${m.getDate()} ${_MO[m.getMonth()]}`; }
-
-    const epochMon = _mondayOf(new Date(LARIS_SCRAPE_START + 'T12:00:00'));
-    const weekMap = new Map();
-    for (const r of dbRows) {
-      const key = _wKey(new Date(r.scraped_at));
-      if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(new Date(r.scraped_at)), units: 0, omset: 0, days: 0, firstDate: _mondayOf(new Date(r.scraped_at)) });
-    }
-    for (let i = 0; i < dbRows.length - 1; i++) {
-      const t0 = new Date(dbRows[i].scraped_at), t1 = new Date(dbRows[i+1].scraped_at);
-      const p0 = dbRows[i].price || fallbackPrice, p1 = dbRows[i+1].price || fallbackPrice;
-      const delta = correctedDeltas[i] ?? 0;
-      const daysDiff = Math.max(1, (t1 - t0) / 86400000);
-      const dUnit = delta / daysDiff;
-      for (let d = 1; d <= Math.ceil(daysDiff); d++) {
-        const date = new Date(t0.getTime() + d * 86400000);
-        if (date > t1) break;
-        const frac = d / daysDiff;
-        const key  = _wKey(date);
-        if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(date), units: 0, omset: 0, days: 0, firstDate: _mondayOf(date) });
-        const wk = weekMap.get(key);
-        wk.units += dUnit;
-        wk.omset += dUnit * (p0 + (p1 - p0) * frac);
-        wk.days  += 1;
-      }
-    }
-    const weeks = [...weekMap.values()]
-      .filter(w => w.firstDate >= epochMon)
-      .sort((a, b) => a.firstDate - b.firstDate)
-      .map(w => {
-        const scale = w.days > 0 && w.days < 7 ? 7 / w.days : 1;
-        return { label: w.label, units: Math.round(w.units * scale), omset: Math.round(w.omset * scale), firstDate: w.firstDate };
-      });
-
-    const totalUnitsRaw = weeks.reduce((s, w) => s + w.units, 0);
-    if (!weeks.length || totalUnitsRaw === 0) {
-      // Zero-delta: scrape data exists but total_sold and reviews showed no change between sessions.
-      // This happens when the product is inside a Shopee display bucket that didn't cross a threshold
-      // (e.g. always shows "1.000+" across multiple scrapes). Show empty state with explanation.
+    const trend = await ddTrendComputeWeekly(listing, { since: LARIS_SCRAPE_START, limit: 80 });
+    if (!trend || !trend.ok || !trend.weeks?.length || trend.totalUnitsRaw === 0) {
       const emptyEl = document.getElementById('tren-empty-state');
       const gridEl  = document.getElementById('tren-content-grid');
       if (emptyEl) emptyEl.style.display = '';
       if (gridEl)  gridEl.style.display  = 'none';
-      const nSessions = [...new Set(dbRows.map(r => r.scraped_at?.slice(0, 10)))].length;
+      const nSessions = trend?.dbRows ? [...new Set(trend.dbRows.map(r => r.scraped_at?.slice(0, 10)))].length : 0;
       if (insEl) insEl.innerHTML = `<div style="font-size:.68rem;color:#9CA3AF;padding:8px 0;">
-        Data ${nSessions} sesi scrape tidak menunjukkan perubahan penjualan yang terdeteksi.<br>
+        Data ${nSessions || 'scrape'} tidak menunjukkan perubahan penjualan yang terdeteksi.<br>
         Tren mingguan akan muncul setelah ada selisih data antar scrape (perubahan total terjual atau ulasan).
       </div>`;
       return;
     }
 
-    _trenData = { weeks, listing, category: listing.category || 'Umum', isEstimated, dbRows };
+    const _trenEmptyEl = document.getElementById('tren-empty-state');
+    const _trenGridEl  = document.getElementById('tren-content-grid');
+    if (_trenEmptyEl) _trenEmptyEl.style.display = 'none';
+    if (_trenGridEl)  _trenGridEl.style.display  = '';
 
-    // Stat cards from weekly data
+    const { weeks, dbRows, isEstimated, isPeerEstimated } = trend;
+    _trenData = { weeks, listing, category: listing.category || 'Umum', isEstimated, isPeerEstimated, dbRows, trendMeta: trend };
+
     const nW = weeks.length;
-    const totalUnits = totalUnitsRaw;
+    const totalUnits = trend.totalUnitsRaw;
     const avgUnits   = Math.round(totalUnits / nW);
     const maxW = weeks.reduce((a,b) => b.units > a.units ? b : a);
     const minW = weeks.reduce((a,b) => b.units < a.units ? b : a);
@@ -19427,18 +19745,19 @@ async function ddRenderTren() {
     const sgEl = document.getElementById('tren-sum-growth');
     if (sgEl) sgEl.style.color = (growthPct ?? 0) >= 0 ? '#16A34A' : '#DC2626';
 
+    const estNote = isPeerEstimated ? ' · estimasi peer' : isEstimated ? ' · sebagian diestimasi dari ulasan' : '';
     const subEl = document.getElementById('tren-chart-subtitle');
-    if (subEl) subEl.textContent = `${nW} minggu scrape · sejak 9 Apr 2026${isEstimated ? ' · sebagian diestimasi dari ulasan' : ''}`;
+    if (subEl) subEl.textContent = `${nW} minggu scrape · sejak 9 Apr 2026${estNote}`;
 
-    // Insights from real data
     if (insEl) {
       const peakWeek = maxW.label;
       const lowWeek  = minW.label;
       const nScrapes = dbRows.length;
+      const estSub = isPeerEstimated ? 'estimasi peer + pasar' : isEstimated ? 'estimasi dari ulasan (bucket Shopee)' : 'berdasarkan total_sold langsung';
       const tips = [
-        { color:'#16A34A', title:`Puncak penjualan di ${peakWeek}`, sub:`${maxW.units.toLocaleString('id-ID')} unit/minggu${isEstimated ? ' (estimasi dari ulasan)' : ''}` },
+        { color:'#16A34A', title:`Puncak penjualan di ${peakWeek}`, sub:`${maxW.units.toLocaleString('id-ID')} unit/minggu${isEstimated ? ' (estimasi)' : ''}` },
         { color:'#DC2626', title:`Terendah di ${lowWeek}`, sub:`${minW.units.toLocaleString('id-ID')} unit/minggu` },
-        { color:'#3B82F6', title:`Data dari ${nScrapes} scrape`, sub:`${nW} minggu data · ${isEstimated ? 'estimasi dari ulasan (10k+ ceiling)' : 'berdasarkan total_sold langsung'}` },
+        { color:'#3B82F6', title:`Data dari ${nScrapes} scrape`, sub:`${nW} minggu data · ${estSub}` },
         { color:'#F97316', title:`Rata-rata ${avgUnits.toLocaleString('id-ID')} unit/minggu`, sub:`Setara ${Math.round(avgUnits*4).toLocaleString('id-ID')} unit/bulan estimasi` },
       ];
       const icons = [
@@ -19464,7 +19783,7 @@ async function ddRenderTren() {
 function trenRender() {
   if (!_trenData) return;
   const rows = _trenData.weeks || [];
-  const isEst = _trenData.isEstimated;
+  const isEst = _trenData.isEstimated || _trenData.isPeerEstimated;
   const _MO = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 
   if (_trenMainChart) { _trenMainChart.destroy(); _trenMainChart = null; }
@@ -19632,36 +19951,10 @@ function _apDedupeByDay(rows) {
   }
   return [...dayMap.values()].sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
 }
-function _apUnitSeriesAndDeltas(dbRows, category) {
-  const mult = _apCatMult(category);
-  const atCeiling = dbRows.every(r => (r.total_sold ?? 0) >= 10000);
-  const hasReviews = dbRows.some(r => (r.reviews ?? 0) > 0);
-  let unitData, isEstimated = false;
-  if (atCeiling && hasReviews) {
-    isEstimated = true;
-    let base = 10000;
-    unitData = [base];
-    for (let i = 1; i < dbRows.length; i++) {
-      const revDelta = Math.max(0, (dbRows[i].reviews || 0) - (dbRows[i - 1].reviews || 0));
-      base += Math.round(revDelta * mult);
-      unitData.push(base);
-    }
-  } else {
-    unitData = dbRows.map(r => r.total_sold ?? 0);
-  }
-  const corrDeltas = [];
-  for (let i = 0; i < dbRows.length - 1; i++) {
-    const s0 = unitData[i] ?? 0, s1 = unitData[i + 1] ?? 0;
-    const rawDelta = Math.max(0, s1 - s0);
-    const revDelta = Math.max(0, (dbRows[i + 1].reviews ?? 0) - (dbRows[i].reviews ?? 0));
-    const reviewEst = Math.round(revDelta * mult);
-    if (s0 < 10000 && s1 >= 10000) corrDeltas.push(reviewEst);
-    else if (s0 >= 10000 && s1 >= 10000 && !atCeiling) corrDeltas.push(reviewEst);
-    else if (rawDelta > 0 && reviewEst > 0 && rawDelta > reviewEst * 5) corrDeltas.push(reviewEst);
-    else if (rawDelta === 0 && revDelta > 0) corrDeltas.push(reviewEst);
-    else corrDeltas.push(rawDelta);
-  }
-  if (corrDeltas.some((d, i) => d !== Math.max(0, (unitData[i + 1] ?? 0) - (unitData[i] ?? 0)))) isEstimated = true;
+function _apUnitSeriesAndDeltas(dbRows, category, opts = {}) {
+  const peerWeeklyRate = opts.peerWeeklyRate || 0;
+  const listing = { category };
+  const { corrDeltas, isEstimated } = ddTrendComputeDeltas(dbRows, listing, { peerWeeklyRate });
   return { corrDeltas, isEstimated };
 }
 function _apNewWeekBucket(date) {
@@ -19701,12 +19994,14 @@ function apAggregateKeywordWeekly(historyRows, defaultCategory) {
   const weekMap = new Map();
   let anyEstimated = false;
   let listingCount = 0;
-  for (const [, rawRows] of byListing) {
+  for (const [listingKey, rawRows] of byListing) {
     const dbRows = _apDedupeByDay(rawRows);
     if (dbRows.length < 3) continue; // need ≥3 scrapes after skipping warmup interval
     listingCount++;
     const cat = dbRows[dbRows.length - 1].category || defaultCategory;
-    const { corrDeltas, isEstimated } = _apUnitSeriesAndDeltas(dbRows, cat);
+    const cohortRates = ddTrendPeerRatesFromHistory(byListing, listingKey, cat);
+    const peerWeeklyRate = ddTrendMedianRate(cohortRates);
+    const { corrDeltas, isEstimated } = _apUnitSeriesAndDeltas(dbRows, cat, { peerWeeklyRate });
     if (isEstimated) anyEstimated = true;
     const fallbackPrice = dbRows[dbRows.length - 1].price || 0;
     _apAccumulateListingWeeks(weekMap, dbRows, corrDeltas, fallbackPrice, { skipFirstInterval: true });
@@ -20525,6 +20820,7 @@ function ddUpdateTrackBtn(listing) {
 
 // ── DEEP DIVE ──────────────────────────────────────────────────
 let _ddChartTrend = null, _ddChartDist = null, _ddChartShopAge = null, _ddChartCatperf = null;
+let _ddCatPerfGen = 0;
 const DD_SHOP_AGE_LABELS = ['< 6 bln', '6 bln – 1 th', '1 – 2 th', '2 – 5 th', '> 5 th'];
 const DD_SHOP_AGE_COLORS = ['#1E3A8A', '#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE'];
 const _ddDistImagePlugin = {
@@ -21024,34 +21320,10 @@ function ddRender(p) {
   });
   ddUpdateShopAgeChart(_ddKwRows);
 
-  // category performance mini chart — uses real keyword peer data when available
-  const catOmset = Math.round(omset / 1000000);  // in juta
-  const catUnits = sales;
-  const catToko  = _ddKwRows.length || '—';
-  document.getElementById('dd-cat-label').textContent = p.category || 'Umum';
-  document.getElementById('dd-catperf-stats').innerHTML = `
-    <div><div class="dd-catperf-stat-label">Est. Omset</div><div class="dd-catperf-stat-value">Rp ${catOmset >= 1000 ? (catOmset/1000).toFixed(1)+'M' : catOmset+'jt'}</div><div class="dd-catperf-stat-delta" id="dd-catperf-omset-d">—</div></div>
-    <div><div class="dd-catperf-stat-label">Unit Terjual</div><div class="dd-catperf-stat-value">${typeof catUnits==='number'?(catUnits/1000).toFixed(1)+'rb':'—'}</div><div class="dd-catperf-stat-delta" id="dd-catperf-unit-d">—</div></div>
-    <div><div class="dd-catperf-stat-label">Listing di Keyword</div><div class="dd-catperf-stat-value" id="dd-catperf-toko">${typeof catToko==='number'?catToko.toLocaleString('id-ID'):catToko}</div><div class="dd-catperf-stat-delta" id="dd-catperf-toko-d"></div></div>
-  `;
-  const catPerfDates = ['20 Apr','27 Apr','4 Mei','11 Mei','18 Mei'];
-  const catPerfData  = catPerfDates.map((_,i) => Math.round(omset * (0.6 + i*0.11)));
-  if (_ddChartCatperf) _ddChartCatperf.destroy();
-  _ddChartCatperf = new Chart(document.getElementById('dd-chart-catperf'), {
-    type: 'line',
-    data: { labels:catPerfDates, datasets:[{ data:catPerfData, borderColor:'#B5202A', backgroundColor:'rgba(181,32,42,.08)', borderWidth:2, tension:0.4, pointRadius:3, pointBackgroundColor:'#B5202A', fill:true }] },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      layout: { padding: { top: 4, right: 4, bottom: 0, left: 0 } },
-      plugins:{ legend:{ display:false } },
-      scales:{
-        x:{ ticks:{ font:{ size:8 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 5 } },
-        y:{ display:false, grace: '12%' },
-      },
-      animation:{ duration:400 },
-    },
-  });
+  ddInitCatPerfChart(p);
+  if (_ddKwRows?.length && (p._listing || _ddKwListing)) {
+    void ddLoadCatPerfChart(p._listing || _ddKwListing, _ddKwRows);
+  }
 
   // competitor table — built from real peer listings (_ddKwRows populated by ddLoadKeywordContext)
   _ddCompAll = (_ddKwRows || []).slice(0, 15).map((r, i) => ({
@@ -21096,19 +21368,345 @@ function ddRender(p) {
   return _trendRestored;
 }
 
-async function ddEstimateTrendFromPeers(listing) {
+const DD_TREND_CAT_MULT = { 'Rumah':2.94,'Fashion':2.77,'Dapur':3.41,'Kamar Mandi':4.21,'Keamanan':3.40,
+  'Kecantikan':2.70,'Motor & Mobil':2.96,'Elektronik':3.10,'HP & Gadget':3.40,
+  'Hewan Peliharaan':3.95,'Sepeda':2.58,'Taman':3.50,'Olahraga':2.68,'Bayi & Anak':4.12,
+  'Hobi & Kerajinan':2.48,'Kesehatan':2.38,'Tanaman':3.63,'Alat Tulis':2.87,
+  'Outdoor & Camping':2.67,'__default__':3.20 };
+function ddTrendCatMult(category) {
+  return DD_TREND_CAT_MULT[category] || DD_TREND_CAT_MULT['__default__'];
+}
+function ddTrendHasReviewMovement(rows) {
+  for (let i = 1; i < rows.length; i++) {
+    if ((rows[i].reviews ?? 0) > (rows[i - 1].reviews ?? 0)) return true;
+  }
+  return false;
+}
+function ddTrendPeerSyntheticRows(listing, rates, anchorDate, anchorSold) {
+  const rateList = (Array.isArray(rates) ? rates : [rates]).filter(r => r > 0);
+  const fallback = rateList.length ? ddTrendMedianRate(rateList) : (typeof rates === 'number' ? rates : 0);
+  const pick = i => rateList.length ? (rateList[((i % rateList.length) + rateList.length) % rateList.length]) : fallback;
+  const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
+  const anchor = anchorDate || (listing.scraped_at ? new Date(listing.scraped_at) : new Date());
+  const sold0 = anchorSold ?? listing.total_sold ?? 0;
+  const offsets = [-3, -2, -1, 0, 1];
+  const soldByOff = { 0: sold0 };
+  let back = sold0;
+  for (let o = -1; o >= -3; o--) {
+    back = Math.max(0, Math.round(back - pick(o + 3)));
+    soldByOff[o] = back;
+  }
+  let fwd = sold0;
+  for (let o = 1; o <= 1; o++) {
+    fwd = Math.round(fwd + pick(o + 3));
+    soldByOff[o] = fwd;
+  }
+  return offsets.map(off => ({
+    scraped_at: new Date(anchor.getTime() + off * MS_WEEK).toISOString(),
+    total_sold: soldByOff[off],
+    price: listing.price,
+    reviews: null,
+  }));
+}
+
+const DD_TREND_MO = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+function ddTrendMedianRate(rates) {
+  if (!rates?.length) return 0;
+  const sorted = [...rates].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+function ddTrendDedupeRows(dbRows) {
+  let rows = dbRows || [];
+  { const seenTs = new Set(); rows = rows.filter(r => { if (seenTs.has(r.scraped_at)) return false; seenTs.add(r.scraped_at); return true; }); }
+  const dayMap = new Map();
+  for (const r of rows) {
+    const day = r.scraped_at?.slice(0, 10);
+    if (!day) continue;
+    const cur = dayMap.get(day);
+    if (!cur || (r.total_sold ?? 0) > (cur.total_sold ?? 0)) dayMap.set(day, r);
+  }
+  return [...dayMap.values()].sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
+}
+function ddTrendMondayOf(d) {
+  const date = new Date(+d);
+  const day = date.getDay();
+  date.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+function ddTrendWKey(d) { return ddTrendMondayOf(d).toISOString().slice(0, 10); }
+function ddTrendWLabel(d) { const m = ddTrendMondayOf(d); return `${m.getDate()} ${DD_TREND_MO[m.getMonth()]}`; }
+function ddTrendListingWeeklyRate(rows, category) {
+  if (!rows || rows.length < 2) return 0;
+  const mult = ddTrendCatMult(category);
+  const first = rows[0], last = rows[rows.length - 1];
+  const days = (new Date(last.scraped_at) - new Date(first.scraped_at)) / 86400000;
+  if (days < 1) return 0;
+  const rawDelta = Math.max(0, (last.total_sold || 0) - (first.total_sold || 0));
+  const revDelta = Math.max(0, (last.reviews || 0) - (first.reviews || 0));
+  const reviewEst = Math.round(revDelta * mult);
+  const atCeil = rows.every(r => (r.total_sold ?? 0) >= 10000);
+  let delta = 0;
+  if (atCeil && revDelta > 0) delta = reviewEst;
+  else if (rawDelta > 0 && reviewEst > 0 && rawDelta > reviewEst * 5) delta = reviewEst;
+  else if (rawDelta === 0 && revDelta > 0) delta = reviewEst;
+  else if (rawDelta > 0) delta = rawDelta;
+  if (!delta) return 0;
+  return delta / (days / 7);
+}
+function ddTrendPeerRatesFromHistory(byListing, excludeKey, category) {
+  const rates = [];
+  for (const [k, rawRows] of byListing) {
+    if (k === excludeKey) continue;
+    const rows = ddTrendDedupeRows(rawRows);
+    const rate = ddTrendListingWeeklyRate(rows, rawRows[rawRows.length - 1]?.category || category);
+    if (rate > 0) rates.push(rate);
+  }
+  return rates;
+}
+async function ddTrendFetchScrapeRows(listing, { since, limit = 80 } = {}) {
+  if (!_supabase || !listing?.item_id) return [];
+  let dbRows = [];
+  const baseQ = () => _supabase
+    .from('listings')
+    .select('scraped_at,total_sold,price,reviews,category')
+    .eq('item_id', listing.item_id)
+    .eq('shop_id', listing.shop_id)
+    .order('scraped_at', { ascending: false })
+    .limit(limit);
+  let { data } = await (since ? baseQ().gte('scraped_at', `${since}T00:00:00`) : baseQ());
+  dbRows = (data || []).slice().sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
+  if (!dbRows.length) {
+    let q2 = _supabase
+      .from('listings')
+      .select('scraped_at,total_sold,price,reviews,category')
+      .eq('item_id', String(listing.item_id))
+      .eq('shop_id', String(listing.shop_id))
+      .order('scraped_at', { ascending: false })
+      .limit(limit);
+    if (since) q2 = q2.gte('scraped_at', `${since}T00:00:00`);
+    const { data: d2 } = await q2;
+    dbRows = (d2 || []).slice().sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
+  }
+  return ddTrendDedupeRows(dbRows);
+}
+function ddTrendComputeDeltas(dbRows, listing, opts = {}) {
+  const { peerWeeklyRate = 0, isPeerEstimated = false } = opts;
+  const category = listing?.category || dbRows[dbRows.length - 1]?.category;
+  const mult = ddTrendCatMult(category);
+  const atCeiling = dbRows.every(r => (r.total_sold ?? 0) >= 10000);
+  const hasReviews = dbRows.some(r => (r.reviews ?? 0) > 0);
+  let unitData, isEstimated = false, trendCeilingNote = null;
+  if (atCeiling && hasReviews && !isPeerEstimated) {
+    isEstimated = true;
+    let base = 10000;
+    unitData = [base];
+    for (let i = 1; i < dbRows.length; i++) {
+      const revDelta = Math.max(0, (dbRows[i].reviews || 0) - (dbRows[i - 1].reviews || 0));
+      base += Math.round(revDelta * mult);
+      unitData.push(base);
+    }
+  } else if (atCeiling && !hasReviews) {
+    isEstimated = true;
+    unitData = dbRows.map(r => r.total_sold ?? 10000);
+    trendCeilingNote = 'Penjualan 10.000+ (batas Shopee) — grafik menunjukkan minimum, garis putus = estimasi.';
+  } else {
+    unitData = dbRows.map(r => r.total_sold ?? 0);
+  }
+  const corrDeltas = [];
+  for (let i = 0; i < dbRows.length - 1; i++) {
+    const s0 = unitData[i] ?? 0, s1 = unitData[i + 1] ?? 0;
+    const rawDelta = Math.max(0, s1 - s0);
+    const revDelta = Math.max(0, (dbRows[i + 1].reviews ?? 0) - (dbRows[i].reviews ?? 0));
+    const reviewEst = Math.round(revDelta * mult);
+    if (s0 < 10000 && s1 >= 10000) {
+      isEstimated = true;
+      corrDeltas.push(reviewEst);
+    } else if (s0 >= 10000 && s1 >= 10000 && !atCeiling) {
+      isEstimated = true;
+      corrDeltas.push(reviewEst);
+    } else if (rawDelta > 0 && reviewEst > 0 && rawDelta > reviewEst * 5) {
+      isEstimated = true;
+      corrDeltas.push(reviewEst);
+    } else if (rawDelta === 0 && revDelta > 0) {
+      isEstimated = true;
+      corrDeltas.push(reviewEst);
+    } else if (rawDelta === 0 && revDelta === 0 && peerWeeklyRate > 0) {
+      const gapDays = Math.max(1, (new Date(dbRows[i + 1].scraped_at) - new Date(dbRows[i].scraped_at)) / 86400000);
+      corrDeltas.push(Math.round(peerWeeklyRate * gapDays / 7));
+      isEstimated = true;
+    } else {
+      corrDeltas.push(rawDelta);
+    }
+  }
+  return { unitData, corrDeltas, isEstimated, trendCeilingNote, mult, atCeiling };
+}
+function ddTrendBuildWeeklyRows(dbRows, corrDeltas, fallbackPrice, opts = {}) {
+  const { epochMon = null, dayCounter = 'days' } = opts;
+  const weekMap = new Map();
+  for (const r of dbRows) {
+    const key = ddTrendWKey(new Date(r.scraped_at));
+    if (!weekMap.has(key)) weekMap.set(key, { label: ddTrendWLabel(new Date(r.scraped_at)), units: 0, omset: 0, days: 0, calendarDays: new Set(), firstDate: ddTrendMondayOf(new Date(r.scraped_at)) });
+  }
+  for (let i = 0; i < dbRows.length - 1; i++) {
+    const t0 = new Date(dbRows[i].scraped_at), t1 = new Date(dbRows[i + 1].scraped_at);
+    const p0 = dbRows[i].price || fallbackPrice, p1 = dbRows[i + 1].price || fallbackPrice;
+    const delta = corrDeltas[i] ?? 0;
+    const daysDiff = Math.max(1, (t1 - t0) / 86400000);
+    const dUnit = delta / daysDiff;
+    for (let d = 1; d <= Math.ceil(daysDiff); d++) {
+      const date = new Date(t0.getTime() + d * 86400000);
+      if (date > t1) break;
+      const frac = d / daysDiff;
+      const key = ddTrendWKey(date);
+      const dayStr = date.toISOString().slice(0, 10);
+      if (!weekMap.has(key)) weekMap.set(key, { label: ddTrendWLabel(date), units: 0, omset: 0, days: 0, calendarDays: new Set(), firstDate: ddTrendMondayOf(date) });
+      const wk = weekMap.get(key);
+      wk.units += dUnit;
+      wk.omset += dUnit * (p0 + (p1 - p0) * frac);
+      if (dayCounter === 'calendarDays') wk.calendarDays.add(dayStr);
+      else wk.days += 1;
+    }
+  }
+  let weeks = [...weekMap.values()]
+    .sort((a, b) => a.firstDate - b.firstDate)
+    .map(w => {
+      const nDays = dayCounter === 'calendarDays' ? w.calendarDays.size : w.days;
+      const scale = nDays > 0 && nDays < 7 ? 7 / nDays : 1;
+      return { label: w.label, units: Math.round(w.units * scale), omset: Math.round(w.omset * scale), firstDate: w.firstDate };
+    });
+  if (epochMon) weeks = weeks.filter(w => w.firstDate >= epochMon);
+  return weeks;
+}
+async function ddTrendComputeWeekly(listing, opts = {}) {
+  const { since = null, limit = 80, minRows = 2, peerRowsOverride = null, cohortByListing = null } = opts;
+  if (!listing?.item_id) return null;
+
+  let dbRows = cohortByListing
+    ? ddTrendDedupeRows(cohortByListing)
+    : await ddTrendFetchScrapeRows(listing, { since, limit });
+
+  const state = {
+    isPeerEstimated: false,
+    isEstimated: false,
+    peerWeeklyRate: 0,
+    peerWeeklyRates: [],
+    peerCount: 0,
+    peerSoldMin: 0,
+    peerSoldMax: 0,
+    trendCeilingNote: null,
+  };
+  let peerResult = null;
+  async function ensurePeerTrend() {
+    if (peerResult !== null) return peerResult;
+    peerResult = await ddEstimateTrendFromPeers(listing, peerRowsOverride);
+    state.peerWeeklyRate = peerResult?.medianRate ?? 0;
+    state.peerWeeklyRates = peerResult?.weeklyRates || (state.peerWeeklyRate > 0 ? [state.peerWeeklyRate] : []);
+    if (peerResult) {
+      state.peerCount = peerResult.peerCount;
+      state.peerSoldMin = peerResult.soldMin;
+      state.peerSoldMax = peerResult.soldMax;
+    }
+    return peerResult;
+  }
+  function applyPeerSyntheticRows(rateOrRates, anchorDate) {
+    state.isPeerEstimated = true;
+    state.isEstimated = true;
+    const rates = Array.isArray(rateOrRates) ? rateOrRates : (state.peerWeeklyRates.length ? state.peerWeeklyRates : [rateOrRates]);
+    dbRows = ddTrendPeerSyntheticRows(listing, rates, anchorDate, listing.total_sold || 0);
+  }
+
+  if (!cohortByListing && dbRows.length < minRows) {
+    const prevKey = `${listing.item_id}_${listing.shop_id}`;
+    const prevSold = _dscPrevMap[prevKey];
+    const currDate = listing.scraped_at ? new Date(listing.scraped_at) : new Date();
+    const currRow = { scraped_at: currDate.toISOString(), total_sold: listing.total_sold, price: listing.price, reviews: listing.reviews, category: listing.category };
+    if (dbRows.length === 1) {
+      const dbDate = new Date(dbRows[0].scraped_at);
+      dbRows = dbDate < currDate ? [dbRows[0], currRow] : [currRow, dbRows[0]];
+    } else if (prevSold != null) {
+      const prevDate = new Date(currDate.getTime() - 7 * 86400000);
+      dbRows = [{ scraped_at: prevDate.toISOString(), total_sold: prevSold, price: listing.price, reviews: null, category: listing.category }, currRow];
+    }
+    if (dbRows.length < minRows) {
+      const gotPeer = await ensurePeerTrend();
+      if (gotPeer && state.peerWeeklyRate > 0) applyPeerSyntheticRows(state.peerWeeklyRates, currDate);
+      else if (dbRows.length < minRows) return { ok: false, reason: 'insufficient_rows', dbRows };
+    }
+  }
+
+  let { unitData, corrDeltas, isEstimated, trendCeilingNote, mult, atCeiling } = ddTrendComputeDeltas(dbRows, listing, { isPeerEstimated: state.isPeerEstimated });
+  state.isEstimated = isEstimated;
+  state.trendCeilingNote = trendCeilingNote;
+
+  if (!state.isPeerEstimated && (listing.total_sold ?? 0) > 0) {
+    const allSameSold = unitData.length >= 2 && unitData.every(v => v === unitData[0]);
+    const hasRevMove = ddTrendHasReviewMovement(dbRows);
+    if (allSameSold && !hasRevMove) {
+      const gotPeer = await ensurePeerTrend();
+      if (gotPeer && state.peerWeeklyRate > 0) {
+        applyPeerSyntheticRows(state.peerWeeklyRates, listing.scraped_at ? new Date(listing.scraped_at) : new Date());
+        ({ unitData, corrDeltas, isEstimated, trendCeilingNote } = ddTrendComputeDeltas(dbRows, listing, { isPeerEstimated: true }));
+        state.isEstimated = true;
+        state.trendCeilingNote = trendCeilingNote;
+      }
+    } else if (allSameSold && hasRevMove) {
+      state.isEstimated = true;
+    }
+  }
+
+  if (!state.peerWeeklyRate && (state.isEstimated || ddTrendHasReviewMovement(dbRows))) {
+    await ensurePeerTrend();
+  }
+  if (state.peerWeeklyRate > 0 && !state.isPeerEstimated) {
+    ({ corrDeltas, isEstimated, trendCeilingNote } = ddTrendComputeDeltas(dbRows, listing, {
+      isPeerEstimated: false,
+      peerWeeklyRate: state.peerWeeklyRate,
+    }));
+    if (isEstimated) state.isEstimated = true;
+    if (trendCeilingNote) state.trendCeilingNote = trendCeilingNote;
+  }
+
+  const fallbackPrice = listing.price || dbRows[dbRows.length - 1]?.price || 0;
+  const epochMon = since ? ddTrendMondayOf(new Date(since + 'T12:00:00')) : null;
+  const weeks = ddTrendBuildWeeklyRows(dbRows, corrDeltas, fallbackPrice, {
+    epochMon,
+    dayCounter: since ? 'calendarDays' : 'days',
+  });
+  const totalUnitsRaw = weeks.reduce((s, w) => s + w.units, 0);
+
+  return {
+    ok: totalUnitsRaw > 0 || weeks.length > 0,
+    dbRows,
+    weeks,
+    totalUnitsRaw,
+    ...state,
+    mult,
+    atCeiling,
+  };
+}
+
+async function ddEstimateTrendFromPeers(listing, peerRowsOverride) {
   if (!_supabase || !listing?.item_id || !(listing.total_sold > 0)) return null;
-  if (!_ddKwRows || _ddKwRows.length < 2) return null;
+
+  let peerPool = peerRowsOverride || _ddKwRows;
+  if ((!peerPool || peerPool.length < 2) && listing.keyword) {
+    const { data } = await _supabase
+      .from('listings')
+      .select('item_id,shop_id,total_sold,product_name,store_name,category,keyword')
+      .eq('keyword', listing.keyword)
+      .order('total_sold', { ascending: false })
+      .limit(80);
+    peerPool = data || [];
+  }
+  if (!peerPool || peerPool.length < 2) return null;
 
   const target = listing.total_sold;
-  const CAT_MULT = { 'Rumah':2.94,'Fashion':2.77,'Dapur':3.41,'Kamar Mandi':4.21,'Keamanan':3.40,
-    'Kecantikan':2.70,'Motor & Mobil':2.96,'Elektronik':3.10,'HP & Gadget':3.40,
-    'Hewan Peliharaan':3.95,'Sepeda':2.58,'Taman':3.50,'Olahraga':2.68,'Bayi & Anak':4.12,
-    'Hobi & Kerajinan':2.48,'Kesehatan':2.38,'Tanaman':3.63,'Alat Tulis':2.87,
-    'Outdoor & Camping':2.67,'__default__':3.20 };
+  const CAT_MULT = DD_TREND_CAT_MULT;
 
   function _peers(lo, hi) {
-    return _ddKwRows.filter(r =>
+    return peerPool.filter(r =>
       !(String(r.item_id) === String(listing.item_id) && String(r.shop_id) === String(listing.shop_id)) &&
       (r.total_sold || 0) >= lo && (r.total_sold || 0) <= hi
     );
@@ -21122,7 +21720,6 @@ async function ddEstimateTrendFromPeers(listing) {
     .from('listings')
     .select('item_id,shop_id,scraped_at,total_sold,reviews,category')
     .in('item_id', peers.map(r => r.item_id))
-    // Pull most recent history window first, then sort per peer below.
     .order('scraped_at', { ascending: false })
     .limit(300);
 
@@ -21135,34 +21732,17 @@ async function ddEstimateTrendFromPeers(listing) {
 
   const weeklyRates = [];
   for (const [, rows] of peerMap) {
-    rows.sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
-    if (rows.length < 2) continue;
-    const first = rows[0], last = rows[rows.length - 1];
-    const days = (new Date(last.scraped_at) - new Date(first.scraped_at)) / 86400000;
-    if (days < 1) continue;
-    const mult = CAT_MULT[last.category || listing.category] || CAT_MULT['__default__'];
-    const atCeil = rows.every(r => (r.total_sold ?? 0) >= 10000);
-    let delta;
-    if (atCeil && (last.reviews || 0) > (first.reviews || 0)) {
-      delta = Math.round(Math.max(0, (last.reviews || 0) - (first.reviews || 0)) * mult);
-    } else if (atCeil) {
-      continue;
-    } else {
-      delta = Math.max(0, (last.total_sold || 0) - (first.total_sold || 0));
-    }
-    if (delta === 0) continue;
-    weeklyRates.push(delta / (days / 7));
+    const deduped = ddTrendDedupeRows(rows);
+    const rate = ddTrendListingWeeklyRate(deduped, listing.category || deduped[deduped.length - 1]?.category);
+    if (rate > 0) weeklyRates.push(rate);
   }
 
   if (weeklyRates.length < 2) return null;
 
-  const sorted = [...weeklyRates].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  const medianRate = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-
+  const medianRate = ddTrendMedianRate(weeklyRates);
   const soldVals = peers.map(r => r.total_sold || 0).filter(v => v > 0);
   console.log('[ddPeerTrend] medianRate/week:', Math.round(medianRate), 'peers:', weeklyRates.length);
-  return { medianRate, peerCount: weeklyRates.length, soldMin: Math.min(...soldVals), soldMax: Math.max(...soldVals) };
+  return { medianRate, weeklyRates, peerCount: weeklyRates.length, soldMin: Math.min(...soldVals), soldMax: Math.max(...soldVals) };
 }
 
 // Fetches up to 20 scrape points, interpolates deltas day-by-day between consecutive
@@ -21192,276 +21772,41 @@ async function ddLoadTrendHistory(listing) {
   document.getElementById('dd-trend-peernote')?.remove();
 
   try {
-    let dbRows = [];
-    console.log('[ddTrend] start item_id:', listing?.item_id, 'shop_id:', listing?.shop_id, 'sold:', listing?.total_sold, 'reviews:', listing?.reviews, 'price:', listing?.price);
-    if (_supabase) {
-      const { data } = await _supabase
-        .from('listings')
-        .select('scraped_at,total_sold,price,reviews')
-        .eq('item_id', listing.item_id)
-        .eq('shop_id', listing.shop_id)
-        // Use latest scrapes (not oldest), then re-sort ascending for chart logic.
-        .order('scraped_at', { ascending: false })
-        .limit(20);
-      dbRows = (data || []).slice().sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
-      console.log('[ddTrend] DB rows (int):', dbRows.length, dbRows);
-      if (!dbRows.length) {
-        const { data: d2 } = await _supabase
-          .from('listings')
-          .select('scraped_at,total_sold,price,reviews')
-          .eq('item_id', String(listing.item_id))
-          .eq('shop_id', String(listing.shop_id))
-          .order('scraped_at', { ascending: false })
-          .limit(20);
-        dbRows = (d2 || []).slice().sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
-        console.log('[ddTrend] DB rows (str):', dbRows.length, dbRows);
-      }
+    console.log('[ddTrend] start item_id:', listing?.item_id, 'shop_id:', listing?.shop_id, 'sold:', listing?.total_sold, 'reviews:', listing?.reviews);
+    const trend = await ddTrendComputeWeekly(listing, { limit: 20 });
+    if (!trend || trend.reason === 'insufficient_rows') {
+      _noDataMsg('Belum cukup data scrape untuk menampilkan tren.<br>Data akan muncul setelah 2+ scrape.');
+      return;
     }
 
-    // Deduplicate by exact scraped_at timestamp (multiple push-runs create identical rows)
-    { const seenTs = new Set(); dbRows = dbRows.filter(r => { if (seenTs.has(r.scraped_at)) return false; seenTs.add(r.scraped_at); return true; }); }
-    // Deduplicate to one row per calendar date — the scraper runs the same product
-    // across multiple keywords per day, producing many rows with near-identical timestamps
-    // but the same total_sold. Keeping one row per day gives clean inter-scrape deltas.
-    {
-      const dayMap = new Map();
-      for (const r of dbRows) {
-        const day = r.scraped_at.slice(0, 10);
-        const cur = dayMap.get(day);
-        // Keep the row with the highest total_sold for that day (most up-to-date value)
-        if (!cur || (r.total_sold ?? 0) > (cur.total_sold ?? 0)) dayMap.set(day, r);
-      }
-      dbRows = [...dayMap.values()].sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
-    }
-    console.log('[ddTrend] deduplicated rows (by date):', dbRows.length, dbRows.map(r => r.scraped_at.slice(0,10) + ' sold=' + r.total_sold));
+    const { dbRows, weeks: weeklyRowsAll, isEstimated, isPeerEstimated, peerWeeklyRate, peerCount, peerSoldMin, peerSoldMax, trendCeilingNote } = trend;
+    const weeklyRows = weeklyRowsAll || [];
 
-    // Augment to reach 2 rows
-    let isPeerEstimated = false, peerCount = 0, peerSoldMin = 0, peerSoldMax = 0;
-    if (dbRows.length < 2) {
-      const prevKey  = `${listing.item_id}_${listing.shop_id}`;
-      const prevSold = _dscPrevMap[prevKey];
-      const currDate = listing.scraped_at ? new Date(listing.scraped_at) : new Date();
-      const currRow  = { scraped_at: currDate.toISOString(), total_sold: listing.total_sold, price: listing.price, reviews: listing.reviews };
-
-      // Always try peer estimation first — gives meaningful deltas even for 1-row products
-      const peerResult = await ddEstimateTrendFromPeers(listing);
-      if (peerResult && peerResult.medianRate > 0) {
-        isPeerEstimated = true;
-        peerCount = peerResult.peerCount;
-        peerSoldMin = peerResult.soldMin;
-        peerSoldMax = peerResult.soldMax;
-        const rate = peerResult.medianRate;
-        const anchor = currDate;
-        const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
-        const anchorSold = listing.total_sold || 0;
-        function _synRow(weekOffset) {
-          return {
-            scraped_at: new Date(anchor.getTime() + weekOffset * MS_WEEK).toISOString(),
-            total_sold: Math.max(0, Math.round(anchorSold + rate * weekOffset)),
-            price: listing.price,
-            reviews: null,
-          };
-        }
-        dbRows = [_synRow(-3), _synRow(-2), _synRow(-1), _synRow(0), _synRow(1)];
-        console.log('[ddTrend] peer-estimated rows, rate/week:', Math.round(rate), 'peers:', peerCount);
-      } else if (dbRows.length === 1) {
-        // Pair the 1 DB row (historical) with current listing
-        const dbDate = new Date(dbRows[0].scraped_at);
-        if (dbDate < currDate) {
-          dbRows = [dbRows[0], currRow];
-        } else {
-          dbRows = [currRow, dbRows[0]];
-        }
-      } else if (prevSold != null) {
-        // No DB rows but _dscPrevMap has previous sold — synthesise prev point
-        const prevDate = new Date(currDate.getTime() - 7 * 24 * 60 * 60 * 1000);
-        dbRows = [
-          { scraped_at: prevDate.toISOString(), total_sold: prevSold, price: listing.price, reviews: null },
-          currRow,
-        ];
-      } else {
-        _noDataMsg('Belum cukup data scrape untuk menampilkan tren.<br>Data akan muncul setelah 2+ scrape.');
-        return;
-      }
-    }
-
-    console.log('[ddTrend] augmented rows:', dbRows.length, dbRows.map(r => ({date:r.scraped_at?.slice(0,10), sold:r.total_sold, rev:r.reviews, price:r.price})));
-
-    const fallbackPrice = listing.price || 0;
-
-    // Category multipliers (calibrated 2026-05-04)
-    const _CAT_MULT = { 'Rumah':2.94,'Fashion':2.77,'Dapur':3.41,'Kamar Mandi':4.21,'Keamanan':3.40,
-      'Kecantikan':2.70,'Motor & Mobil':2.96,'Elektronik':3.10,'HP & Gadget':3.40,
-      'Hewan Peliharaan':3.95,'Sepeda':2.58,'Taman':3.50,'Olahraga':2.68,'Bayi & Anak':4.12,
-      'Hobi & Kerajinan':2.48,'Kesehatan':2.38,'Tanaman':3.63,'Alat Tulis':2.87,
-      'Outdoor & Camping':2.67,'__default__':3.20 };
-    const mult = _CAT_MULT[listing.category] || _CAT_MULT['__default__'];
-
-    // 10k+ ceiling: total_sold is capped — use review delta × multiplier instead
-    const atCeiling = dbRows.every(r => (r.total_sold ?? 0) >= 10000);
-    const hasReviews = dbRows.some(r => r.reviews > 0);
-    console.log('[ddTrend] atCeiling:', atCeiling, 'hasReviews:', hasReviews, 'mult:', mult);
-
-    let unitData, isEstimated = false, trendCeilingNote = null;
-    if (atCeiling && hasReviews && !isPeerEstimated) {
-      isEstimated = true;
-      let base = 10000;
-      unitData = [base];
-      for (let i = 1; i < dbRows.length; i++) {
-        const revDelta = Math.max(0, (dbRows[i].reviews || 0) - (dbRows[i-1].reviews || 0));
-        base += Math.round(revDelta * mult);
-        unitData.push(base);
-      }
-    } else if (atCeiling && !hasReviews) {
-      // At 10k+ ceiling with no reviews — show raw scraped values as a floor line
-      isEstimated = true;
-      unitData = dbRows.map(r => r.total_sold ?? 10000);
-      trendCeilingNote = 'Penjualan 10.000+ (batas Shopee) — grafik menunjukkan minimum, garis putus = estimasi.';
-    } else {
-      unitData = dbRows.map(r => r.total_sold ?? 0);
-    }
-
-    // Shopee buckets like "4000 sold" never increment within the bucket, so multiple
-    // scrapes produce identical total_sold values → rawDelta=0, reviewDelta=0 → chart
-    // would show 0 across all dates. Fall back to peer estimation in that case.
-    if (!isPeerEstimated && (listing.total_sold ?? 0) > 0) {
-      const allSameSold = unitData.length >= 2 && unitData.every(v => v === unitData[0]);
-      if (allSameSold) {
-        const peerResult = await ddEstimateTrendFromPeers(listing);
-        if (peerResult && peerResult.medianRate > 0) {
-          isPeerEstimated = true;
-          peerCount = peerResult.peerCount;
-          peerSoldMin = peerResult.soldMin;
-          peerSoldMax = peerResult.soldMax;
-          const rate = peerResult.medianRate;
-          const anchor = listing.scraped_at ? new Date(listing.scraped_at) : new Date();
-          const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
-          const anchorSold = listing.total_sold || 0;
-          const _pSyn = off => ({
-            scraped_at: new Date(anchor.getTime() + off * MS_WEEK).toISOString(),
-            total_sold: Math.max(0, Math.round(anchorSold + rate * off)),
-            price: listing.price,
-            reviews: null,
-          });
-          dbRows = [_pSyn(-3), _pSyn(-2), _pSyn(-1), _pSyn(0), _pSyn(1)];
-          unitData = dbRows.map(r => r.total_sold ?? 0);
-          isEstimated = true;
-        }
-      }
-    }
-
-    // ── Interpolate scrape deltas into Monday-anchored calendar weeks ──────────
-    // Between each pair of scrapes, distribute the sold delta uniformly across days,
-    // then bucket each day into the Monday-week it belongs to.
-    // Labels: actual Monday dates ("13 Apr", "20 Apr", "27 Apr", "4 Mei"...)
-    const _MO = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-    function _mondayOf(d) {
-      const date = new Date(+d);
-      const day = date.getDay(); // 0=Sun,1=Mon,...6=Sat
-      date.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
-      date.setHours(0, 0, 0, 0);
-      return date;
-    }
-    function _wKey(d)   { return _mondayOf(d).toISOString().slice(0, 10); }
-    function _wLabel(d) { const m = _mondayOf(d); return `${m.getDate()} ${_MO[m.getMonth()]}`; }
-
-    // Also bucket every individual scrape row so same-date pairs still produce an entry
-    const weekMap = new Map();
-    for (const r of dbRows) {
-      const key = _wKey(new Date(r.scraped_at));
-      if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(new Date(r.scraped_at)), units: 0, omset: 0, days: 0, firstDate: _mondayOf(new Date(r.scraped_at)) });
-    }
-    // Pre-compute corrected per-interval deltas: detect Shopee recalibration artifacts
-    // (e.g. total_sold jumping from 427 → 100,000 is not real sales, it's a display change)
-    // and implausible spikes vs review growth. Same logic as ddRenderTren().
-    const _corrDeltas = [];
-    for (let i = 0; i < dbRows.length - 1; i++) {
-      const s0 = unitData[i] ?? 0, s1 = unitData[i+1] ?? 0;
-      const rawDelta  = Math.max(0, s1 - s0);
-      const revDelta  = Math.max(0, (dbRows[i+1].reviews ?? 0) - (dbRows[i].reviews ?? 0));
-      const reviewEst = Math.round(revDelta * mult);
-      if (s0 < 10000 && s1 >= 10000) {
-        // Shopee switched from exact to bucketed display — not genuine new sales
-        _corrDeltas.push(reviewEst);
-      } else if (s0 >= 10000 && s1 >= 10000 && !atCeiling) {
-        // Both at ceiling but atCeiling path not taken (mixed rows) — use review model
-        _corrDeltas.push(reviewEst);
-      } else if (rawDelta > 0 && reviewEst > 0 && rawDelta > reviewEst * 5) {
-        // Delta > 5× what review growth implies — treat as data artifact
-        _corrDeltas.push(reviewEst);
-      } else if (rawDelta === 0 && revDelta > 0) {
-        // total_sold unchanged but reviews grew — product is inside a Shopee display bucket
-        // that didn't cross a threshold boundary; use review model to capture real sales
-        _corrDeltas.push(reviewEst);
-      } else {
-        _corrDeltas.push(rawDelta);
-      }
-    }
-
-    // Now fill each week's delta via inter-scrape interpolation
-    for (let i = 0; i < dbRows.length - 1; i++) {
-      const t0 = new Date(dbRows[i].scraped_at), t1 = new Date(dbRows[i+1].scraped_at);
-      const p0 = dbRows[i].price || fallbackPrice, p1 = dbRows[i+1].price || fallbackPrice;
-      const delta = _corrDeltas[i] ?? 0;
-      const daysDiff = Math.max(1, (t1 - t0) / 86400000);
-      const dUnit = delta / daysDiff;
-      for (let d = 1; d <= Math.ceil(daysDiff); d++) {
-        const date = new Date(t0.getTime() + d * 86400000);
-        if (date > t1) break;
-        const frac = d / daysDiff;
-        const key  = _wKey(date);
-        if (!weekMap.has(key)) weekMap.set(key, { label: _wLabel(date), units: 0, omset: 0, days: 0, firstDate: _mondayOf(date) });
-        const wk = weekMap.get(key);
-        wk.units += dUnit;
-        wk.omset += dUnit * (p0 + (p1 - p0) * frac);
-        wk.days  += 1;
-      }
-    }
-    // Scale every week to a full 7 days so partial weeks don't look artificially small
-    const weeklyRows = [...weekMap.values()]
-      .sort((a, b) => a.firstDate - b.firstDate)
-      .map(w => {
-        const scale = w.days > 0 && w.days < 7 ? 7 / w.days : 1;
-        return { label: w.label, units: Math.round(w.units * scale), omset: Math.round(w.omset * scale), firstDate: w.firstDate };
-      });
-
-    if (!weeklyRows.length) {
-      // Zero-delta fallback: scrapes exist but total_sold didn't change between them
-      // (single scrape or same-date pair). Build Monday-anchored snapshot from raw rows.
+    if (!weeklyRows.length || trend.totalUnitsRaw === 0) {
       const snapMap = new Map();
       for (const r of dbRows) {
-        const key = _wKey(new Date(r.scraped_at));
-        if (!snapMap.has(key)) {
-          const mon = _mondayOf(new Date(r.scraped_at));
-          // Use 0 for units/omset — we have no delta, so showing lifetime total_sold as period revenue is wrong
-          snapMap.set(key, { label: _wLabel(new Date(r.scraped_at)), units: 0, omset: 0, firstDate: mon });
-        }
+        const key = ddTrendWKey(new Date(r.scraped_at));
+        if (!snapMap.has(key)) snapMap.set(key, { label: ddTrendWLabel(new Date(r.scraped_at)), units: 0, omset: 0, firstDate: ddTrendMondayOf(new Date(r.scraped_at)) });
       }
       const snapRows = [...snapMap.values()].sort((a, b) => a.firstDate - b.firstDate);
-
       if (!snapRows.length) {
         _noDataMsg('Belum ada data scrape untuk produk ini.');
         return;
       }
-
-      // Ringkasan chart: last 4 scrape-weeks + 1 forecast
       const snapRowsDisplay = snapRows.slice(-4);
-
-      // Add one forecast Monday based on average units of available snaps
       const avgUnits = Math.round(snapRowsDisplay.reduce((s, r) => s + r.units, 0) / snapRowsDisplay.length);
       const avgOmset = Math.round(snapRowsDisplay.reduce((s, r) => s + r.omset, 0) / snapRowsDisplay.length);
-      const lastMon  = snapRowsDisplay[snapRowsDisplay.length - 1].firstDate;
-      const nextMon  = new Date(lastMon.getTime() + 7 * 86400000);
-      const snapLabels    = [...snapRowsDisplay.map(r => r.label), `${nextMon.getDate()} ${_MO[nextMon.getMonth()]} ▶`];
-      const snapUnits     = [...snapRowsDisplay.map(r => r.units), null];
-      const snapOmset     = [...snapRowsDisplay.map(r => r.omset), null];
-      const fcSnapUnits   = new Array(snapLabels.length).fill(null);
-      const fcSnapOmset   = new Array(snapLabels.length).fill(null);
+      const lastMon = snapRowsDisplay[snapRowsDisplay.length - 1].firstDate;
+      const nextMon = new Date(lastMon.getTime() + 7 * 86400000);
+      const snapLabels = [...snapRowsDisplay.map(r => r.label), `${nextMon.getDate()} ${DD_TREND_MO[nextMon.getMonth()]} ▶`];
+      const snapUnits = [...snapRowsDisplay.map(r => r.units), null];
+      const snapOmset = [...snapRowsDisplay.map(r => r.omset), null];
+      const fcSnapUnits = new Array(snapLabels.length).fill(null);
+      const fcSnapOmset = new Array(snapLabels.length).fill(null);
       fcSnapUnits[snapRowsDisplay.length - 1] = snapRowsDisplay[snapRowsDisplay.length - 1].units;
       fcSnapOmset[snapRowsDisplay.length - 1] = snapRowsDisplay[snapRowsDisplay.length - 1].omset;
-      fcSnapUnits[snapRowsDisplay.length]     = avgUnits;
-      fcSnapOmset[snapRowsDisplay.length]     = avgOmset;
-
+      fcSnapUnits[snapRowsDisplay.length] = avgUnits;
+      fcSnapOmset[snapRowsDisplay.length] = avgOmset;
       const snapDatasets = [
         { label:'Omset (snapshot)', data:snapOmset, borderColor:'#B5202A', backgroundColor:'rgba(181,32,42,.06)', borderWidth:2.5, fill:true, tension:0.3, pointRadius:5, pointBackgroundColor:'#B5202A', yAxisID:'y', borderDash:[4,4], spanGaps:false },
         { label:'Unit Terjual', data:snapUnits, borderColor:'#4F46E5', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:4, pointBackgroundColor:'#4F46E5', yAxisID:'y2', borderDash:[4,4], spanGaps:false },
@@ -21472,58 +21817,58 @@ async function ddLoadTrendHistory(listing) {
       const _snapLastScrape = dbRows.length ? dbRows[dbRows.length - 1].scraped_at : null;
       if (_snapLastScrape) {
         const _sld = new Date(_snapLastScrape);
-        snapExtras.lastUpdated = `Data terakhir: ${_sld.getDate()} ${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][_sld.getMonth()]} ${_sld.getFullYear()}`;
+        snapExtras.lastUpdated = `Data terakhir: ${_sld.getDate()} ${DD_TREND_MO[_sld.getMonth()]} ${_sld.getFullYear()}`;
       }
       ddCommitTrendChart(listing, snapLabels, snapDatasets, { extras: snapExtras });
       return;
     }
 
-    // Ringkasan chart: last 4 scrape-weeks only (+ 1 forecast below) — no gap back/forward fill.
     const weeklyRowsFilled = weeklyRows.slice(-4);
-
-    const labels        = weeklyRowsFilled.map(w => w.label);
+    const labels = weeklyRowsFilled.map(w => w.label);
     const chartUnitData = weeklyRowsFilled.map(w => w.units);
-    const chartOmsetData= weeklyRowsFilled.map(w => w.omset);
-
-    // Forecast: avg of last 2 weeks (or last 1) projected 1 week ahead
+    const chartOmsetData = weeklyRowsFilled.map(w => w.omset);
     const nW = weeklyRowsFilled.length;
     const slice2 = weeklyRowsFilled.slice(-2);
-    const fcUnit  = Math.round(slice2.reduce((s,w) => s+w.units, 0) / slice2.length);
-    const fcOmset = Math.round(slice2.reduce((s,w) => s+w.omset, 0) / slice2.length);
-    // nextWeek is the Monday 7 days after the last data Monday → e.g. "12 Mei"
-    const nextWeek = new Date(weeklyRowsFilled[nW-1].firstDate.getTime() + 7*86400000);
-    labels.push(_wLabel(nextWeek) + ' ▶');
+    const fcUnit = Math.round(slice2.reduce((s, w) => s + w.units, 0) / slice2.length);
+    const fcOmset = Math.round(slice2.reduce((s, w) => s + w.omset, 0) / slice2.length);
+    const nextWeek = new Date(weeklyRowsFilled[nW - 1].firstDate.getTime() + 7 * 86400000);
+    labels.push(ddTrendWLabel(nextWeek) + ' ▶');
     chartUnitData.push(null);
     chartOmsetData.push(null);
-    const fUnitW  = new Array(labels.length).fill(null);
+    const fUnitW = new Array(labels.length).fill(null);
     const fOmsetW = new Array(labels.length).fill(null);
-    fUnitW[nW-1]  = weeklyRowsFilled[nW-1].units;
-    fOmsetW[nW-1] = weeklyRowsFilled[nW-1].omset;
-    fUnitW[nW]    = fcUnit;
-    fOmsetW[nW]   = fcOmset;
+    fUnitW[nW - 1] = weeklyRowsFilled[nW - 1].units;
+    fOmsetW[nW - 1] = weeklyRowsFilled[nW - 1].omset;
+    fUnitW[nW] = fcUnit;
+    fOmsetW[nW] = fcOmset;
 
     const trendDatasets = [
-      { label: isEstimated ? 'Omset Est./Minggu' : 'Omset/Minggu',  data:chartOmsetData, borderColor:'#B5202A', backgroundColor:'rgba(181,32,42,.06)', borderWidth:2.5, fill:true,  tension:0.3, pointRadius:4, pointBackgroundColor:'#B5202A', yAxisID:'y',  spanGaps:false, borderDash: isEstimated ? [3,3] : [] },
-      { label: isEstimated ? 'Unit Est./Minggu'  : 'Unit/Minggu',   data:chartUnitData,  borderColor:'#4F46E5', backgroundColor:'transparent',         borderWidth:2,   fill:false, tension:0.3, pointRadius:3, pointBackgroundColor:'#4F46E5', yAxisID:'y2', spanGaps:false, borderDash: isEstimated ? [3,3] : [] },
-      { label:'Forecast Omset', data:fOmsetW, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y',  borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
-      { label:'Forecast Unit',  data:fUnitW,  borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
+      { label: isEstimated ? 'Omset Est./Minggu' : 'Omset/Minggu', data:chartOmsetData, borderColor:'#B5202A', backgroundColor:'rgba(181,32,42,.06)', borderWidth:2.5, fill:true, tension:0.3, pointRadius:4, pointBackgroundColor:'#B5202A', yAxisID:'y', spanGaps:false, borderDash: isEstimated ? [3,3] : [] },
+      { label: isEstimated ? 'Unit Est./Minggu' : 'Unit/Minggu', data:chartUnitData, borderColor:'#4F46E5', backgroundColor:'transparent', borderWidth:2, fill:false, tension:0.3, pointRadius:3, pointBackgroundColor:'#4F46E5', yAxisID:'y2', spanGaps:false, borderDash: isEstimated ? [3,3] : [] },
+      { label:'Forecast Omset', data:fOmsetW, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
+      { label:'Forecast Unit', data:fUnitW, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
     ];
     const totalUnits = weeklyRowsFilled.reduce((s, w) => s + w.units, 0);
     const totalOmset = weeklyRowsFilled.reduce((s, w) => s + w.omset, 0);
     const monthlyUnits = Math.round(totalUnits / nW * (30 / 7));
     const monthlyOmset = Math.round(totalOmset / nW * (30 / 7));
-    const wowUnitPct  = weeklyRowsFilled[0].units  > 0 ? Math.round((weeklyRowsFilled[nW-1].units  - weeklyRowsFilled[0].units)  / weeklyRowsFilled[0].units  * 100) : null;
-    const wowOmsetPct = weeklyRowsFilled[0].omset  > 0 ? Math.round((weeklyRowsFilled[nW-1].omset  - weeklyRowsFilled[0].omset)  / weeklyRowsFilled[0].omset  * 100) : null;
-    const periodNote = isPeerEstimated ? `peer est. · ${nW} minggu` : isEstimated ? `est. · ${nW} minggu` : `${nW} minggu · ${dbRows.length} scrape`;
+    const wowUnitPct = weeklyRowsFilled[0].units > 0 ? Math.round((weeklyRowsFilled[nW - 1].units - weeklyRowsFilled[0].units) / weeklyRowsFilled[0].units * 100) : null;
+    const wowOmsetPct = weeklyRowsFilled[0].omset > 0 ? Math.round((weeklyRowsFilled[nW - 1].omset - weeklyRowsFilled[0].omset) / weeklyRowsFilled[0].omset * 100) : null;
+    const periodNote = isPeerEstimated ? `peer est. · ${nW} minggu` : isEstimated ? `est. ulasan${peerWeeklyRate ? '+peer' : ''} · ${nW} minggu` : `${nW} minggu · ${dbRows.length} scrape`;
     const trendExtras = {};
     const _lastScrape = dbRows.length ? dbRows[dbRows.length - 1].scraped_at : null;
     if (_lastScrape) {
       const _lsDate = new Date(_lastScrape);
-      trendExtras.lastUpdated = `Data terakhir: ${_lsDate.getDate()} ${['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][_lsDate.getMonth()]} ${_lsDate.getFullYear()}`;
+      trendExtras.lastUpdated = `Data terakhir: ${_lsDate.getDate()} ${DD_TREND_MO[_lsDate.getMonth()]} ${_lsDate.getFullYear()}`;
     }
     if (isPeerEstimated) {
       const _fmtS = v => v >= 1e6 ? (v/1e6).toFixed(1)+'jt' : v >= 1000 ? Math.round(v/1000)+'rb' : String(v);
       trendExtras.peerNote = `Estimasi dari ${peerCount} produk serupa (${_fmtS(peerSoldMin)}–${_fmtS(peerSoldMax)} terjual) — bukan data nyata.`;
+    } else if (isEstimated && peerWeeklyRate > 0) {
+      const _fmtS = v => v >= 1e6 ? (v/1e6).toFixed(1)+'jt' : v >= 1000 ? Math.round(v/1000)+'rb' : String(v);
+      trendExtras.peerNote = `Penjualan diestimasi dari perubahan ulasan; celah tanpa sinyal diisi dari ${peerCount} produk serupa (${_fmtS(peerSoldMin)}–${_fmtS(peerSoldMax)} terjual).`;
+    } else if (isEstimated) {
+      trendExtras.peerNote = 'Penjualan diestimasi dari perubahan ulasan (total terjual Shopee dalam bucket).';
     }
     if (trendCeilingNote) trendExtras.ceilingNote = trendCeilingNote;
     ddCommitTrendChart(listing, labels, trendDatasets, {
