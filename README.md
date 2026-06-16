@@ -30,6 +30,7 @@ It defines **what we are building, why, how, who is involved, and what we will n
 | [seo.md](./docs/seo.md) | Public titles, comparisons, `llms.txt`, static marketing pages |
 | [pricing-research.md](./docs/pricing-research.md) | Competitor pricing facts (must stay accurate on site) |
 | [SCRAPER_TODO.md](./docs/SCRAPER_TODO.md) | Listing ingest / `total_sold` scraper work |
+| [BRAND_V2_PHOENIX.md](./docs/BRAND_V2_PHOENIX.md) | Logo lockups, color schemes, paint text, voice |
 
 ## Supabase
 
@@ -43,4 +44,4 @@ See [supabase/README.md](./supabase/README.md) for cohort setup, invites, and mi
 
 ## Brand & copy
 
-Visual and voice guidelines: `LARISID_BRAND_GUIDE.md` (maintained separately). Mission and ethics: **always [MISSION.md](./MISSION.md)**.
+Visual and voice guidelines: **[docs/BRAND_V2_PHOENIX.md](./docs/BRAND_V2_PHOENIX.md)**. Mission and ethics: **always [MISSION.md](./MISSION.md)**.

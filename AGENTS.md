@@ -4,7 +4,7 @@ Before making product, copy, pricing, or policy changes, read **[MISSION.md](./M
 
 If a task would violate LarisID’s non-negotiables (access for all, honesty, no exploitation, philanthropic intent), **stop and flag it** instead of implementing it.
 
-For UI and marketing copy, also follow the LarisID brand guide when available.
+For UI and marketing copy, follow **[docs/BRAND_V2_PHOENIX.md](./docs/BRAND_V2_PHOENIX.md)** (logo lockups, four color schemes, paint text, voice).
 
 ## Dashboard SPA: onboarding & journey funnel
 
