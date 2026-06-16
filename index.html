@@ -18551,6 +18551,7 @@ function dscOpenDeepDive(key) {
     if (!restored) ddLoadTrendHistory(listing);
     nuRefreshView('deepdive');
     nuScheduleHint('deepdive');
+    journeyApplyDeepDiveChrome();
   }, 0);
   const _fromOnb = _nuOnb.payoff;
   if (_fromOnb) _nuOnb.payoff = false;
@@ -28483,14 +28484,32 @@ function journeyApplyDiscoverChrome() {
 }
 
 function journeyApplyDeepDiveChrome() {
-  // Verdict-first is the default for everyone, every open. Admins/leaders skip
-  // straight to the full view. "Lihat Data Lengkap" sets _ddExpanded for this open.
-  const simple = !_ddExpanded && !journeyBypassGating();
+  // Verdict-first for every user on every open — including platform admins.
+  // journeyBypassGating() only affects Discover caps / nav, not this screen.
+  const simple = !_ddExpanded;
   const panel = document.getElementById('dd-beginner-panel');
   const main  = document.getElementById('dd-main-content');
   const trackBtn = document.getElementById('dd-track-btn');
-  if (panel) panel.classList.toggle('show', simple);
-  if (main)  main.classList.toggle('dd-simple', simple);
+  const feeStrip = document.getElementById('dd-fee-strip');
+  const tabs = document.getElementById('dd-tabs');
+  const heroCards = main?.querySelector('.dd-hero-cards');
+  const ringkasan = document.getElementById('dd-tab-ringkasan');
+
+  if (panel) {
+    panel.classList.toggle('show', simple);
+    panel.style.display = simple ? 'block' : 'none';
+  }
+  if (main) main.classList.toggle('dd-simple', simple);
+
+  const hide = simple ? 'none' : '';
+  if (feeStrip) feeStrip.style.display = hide;
+  if (tabs) tabs.style.display = hide;
+  if (heroCards) heroCards.style.display = hide;
+  if (ringkasan) {
+    ringkasan.querySelectorAll('.dd-row2, .dd-row2b, .dd-row3').forEach(el => {
+      el.style.display = hide;
+    });
+  }
   if (trackBtn) trackBtn.style.display = '';
 }
 
