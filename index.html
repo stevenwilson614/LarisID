@@ -1822,6 +1822,8 @@ body.in-dashboard .mobile-menu{display:none!important;}
   width:2.75rem;height:1px;background:linear-gradient(90deg,transparent,var(--lp-accent) 20%,var(--lp-accent) 80%,transparent);
 }
 .lp-section-eyebrow--left::after{left:0;transform:none;}
+.lp-section-eyebrow--light{color:rgba(255,255,255,.88);}
+.lp-section-eyebrow--light::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.55) 20%,rgba(255,255,255,.55) 80%,transparent);}
 .lp-section-title{
   font-family:var(--font-display);font-size:var(--lp-headline-size);font-weight:800;color:var(--lp-text);
   line-height:1;letter-spacing:-.04em;margin:0 0 1.5rem;
@@ -1863,18 +1865,16 @@ body.in-dashboard .mobile-menu{display:none!important;}
 /* keep old lp-tool-icon for compat */
 .lp-tool-icon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:14px;}
 
-/* ── CTA SECTION ── */
-.lp-cta-section{background:#1A1A1A;padding:80px 80px;text-align:center;position:relative;overflow:hidden;}
+.lp-cta-section{background:#B5202A;padding:var(--lp-section-y) var(--lp-section-x);text-align:center;position:relative;overflow:hidden;}
 .lp-cta-section::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.03) 1px,transparent 1px);background-size:28px 28px;}
-@media(max-width:900px){.lp-cta-section{padding:56px 28px;}}
-.lp-cta-section h2{font-family:var(--font-display);font-size:2.2rem;font-weight:800;color:#fff;margin:0 0 14px;letter-spacing:-.01em;}
-@media(max-width:700px){.lp-cta-section h2{font-size:1.6rem;}}
-@media(max-width:700px){.lp-cta-section h2{font-size:1.4rem;}}
-.lp-cta-section p{font-size:.95rem;color:rgba(255,255,255,.75);margin:0 0 28px;}
+@media(max-width:900px){.lp-cta-section{padding:calc(var(--lp-section-y) * .82) var(--lp-section-x);}}
+.lp-cta-section h2{font-family:var(--font-display);font-size:var(--lp-headline-size);font-weight:800;color:#fff;margin:0 0 1.25rem;letter-spacing:-.04em;line-height:1;}
+.lp-cta-section p{font-size:var(--lp-body-size);font-weight:500;color:rgba(255,255,255,.88);line-height:1.7;margin:0 auto 2rem;max-width:620px;}
 .lp-cta-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
-.lp-cta-btn-main{font-size:.9rem;font-weight:700;padding:13px 28px;border-radius:10px;background:#B5202A;color:#fff;border:none;cursor:pointer;font-family:inherit;}
-.lp-cta-btn-main:hover{background:#c73520;}
-.lp-cta-btn-ghost{font-size:.9rem;font-weight:600;padding:13px 28px;border-radius:10px;background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.35);cursor:pointer;font-family:inherit;}
+.lp-cta-btn-main{font-size:.9rem;font-weight:800;padding:13px 28px;border-radius:10px;background:#fff;color:#B5202A;border:none;cursor:pointer;font-family:inherit;}
+.lp-cta-btn-main:hover{background:#F5EFE0;}
+.lp-cta-btn-ghost{font-size:.9rem;font-weight:600;padding:13px 28px;border-radius:10px;background:transparent;color:rgba(255,255,255,.9);border:1.5px solid rgba(255,255,255,.4);cursor:pointer;font-family:inherit;}
+.lp-cta-btn-ghost:hover{border-color:#fff;color:#fff;}
 .lp-footer{background:#1A1A1A;padding:32px 80px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
 @media(max-width:700px){.lp-footer{padding:24px;flex-direction:column;text-align:center;}}
 .lp-footer-brand{font-size:1.1rem;font-weight:900;color:#fff;}
@@ -1908,8 +1908,8 @@ body.in-dashboard .mobile-menu{display:none!important;}
 @media(max-width:900px){.lp-banner-cta{margin:0 20px;grid-template-columns:1fr;}}
 .lp-banner-cta-left{padding:32px 48px;position:relative;z-index:2;}
 @media(max-width:900px){.lp-banner-cta-left{padding:28px 28px 20px;}}
-.lp-banner-cta-title{font-family:var(--font-display);font-size:1.7rem;font-weight:800;color:#fff;line-height:1.2;margin-bottom:20px;letter-spacing:-.01em;}
-@media(max-width:700px){.lp-banner-cta-title{font-size:1.35rem;}}
+.lp-banner-cta-title{font-family:var(--font-display);font-size:clamp(1.75rem,3vw,2.25rem);font-weight:800;color:#fff;line-height:1.05;margin-bottom:1.25rem;letter-spacing:-.03em;}
+@media(max-width:700px){.lp-banner-cta-title{font-size:clamp(1.5rem,5vw,1.75rem);}}
 .lp-banner-cta-btn{display:inline-flex;align-items:center;gap:8px;background:#fff;color:#B5202A;font-weight:800;font-size:.88rem;padding:11px 24px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;transition:background .15s;}
 .lp-banner-cta-btn:hover{background:#F5EFE0;}
 .lp-banner-cta-note{font-size:.7rem;color:rgba(255,255,255,.7);margin-top:8px;}
@@ -1997,85 +1997,184 @@ body.in-dashboard .mobile-menu{display:none!important;}
   .lp-brand-morph.is-morphed .lp-brand-morph-icon{opacity:0;}
   .lp-brand-morph.is-morphed .lp-brand-morph-lockup,.lp-brand-morph.is-morphed .lp-brand-morph-tag{opacity:1;transform:none;}
 }
-/* ── FLOW: Riset → Sourcing → Jualan (scroll-scrub) ── */
-.lp-flow{background:#1A1A1A;position:relative;height:340vh;}
-.lp-flow::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.04) 1px,transparent 1px);background-size:28px 28px;pointer-events:none;z-index:0;}
-.lp-flow::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 50% at 50% 60%,rgba(181,32,42,.12) 0%,transparent 70%);pointer-events:none;z-index:0;}
-.lp-flow-sticky{position:sticky;top:0;height:100vh;overflow:hidden;padding-top:64px;box-sizing:border-box;z-index:1;display:flex;flex-direction:column;}
-.lp-flow-inner{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;max-width:960px;margin:0 auto;padding:0 28px 28px;width:100%;box-sizing:border-box;min-height:0;}
-.lp-flow-header{text-align:center;flex-shrink:0;margin-bottom:clamp(1.25rem,2.5vw,2rem);}
-.lp-flow-eyebrow{font-size:var(--lp-label-size);font-weight:600;color:#C9974B;text-transform:uppercase;letter-spacing:.28em;margin:0 0 1rem;}
-.lp-flow-title{font-family:var(--font-display);font-size:clamp(2rem,4.2vw,3.25rem);font-weight:800;color:#fff;line-height:1;letter-spacing:-.04em;margin:0;}
-.lp-flow-title span{background:linear-gradient(90deg,#B5202A,#C9974B);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
-.lp-flow-rail-wrap{flex-shrink:0;max-width:560px;margin:0 auto 16px;width:100%;padding:0 8px;position:relative;}
-.lp-flow-rail{height:3px;background:rgba(255,255,255,.1);border-radius:3px;position:relative;overflow:visible;}
-.lp-flow-rail-fill{height:100%;width:0;background:linear-gradient(90deg,#B5202A 0%,#C9974B 100%);border-radius:3px;box-shadow:0 0 14px rgba(181,32,42,.55),0 0 28px rgba(201,151,75,.25);will-change:width;}
-.lp-flow-rail-pulse{position:absolute;top:50%;width:10px;height:10px;border-radius:50%;background:#C9974B;transform:translate(-50%,-50%);box-shadow:0 0 18px rgba(201,151,75,.9),0 0 36px rgba(181,32,42,.4);opacity:.7;pointer-events:none;will-change:left;}
-.lp-flow-dots{display:flex;justify-content:space-between;margin-top:14px;position:relative;}
-.lp-flow-dot{display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:none;cursor:default;padding:0;font-family:inherit;flex:1;max-width:120px;}
-.lp-flow-dot-icon{width:40px;height:40px;border-radius:50%;border:2px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.4);transition:border-color .25s,background .25s,color .25s,box-shadow .25s;}
-.lp-flow-dot-label{font-size:.62rem;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;transition:color .25s;}
-.lp-flow-dot.is-active .lp-flow-dot-icon{border-color:#C9974B;background:rgba(201,151,75,.12);color:#C9974B;box-shadow:0 0 20px rgba(201,151,75,.35);}
-.lp-flow-dot.is-active .lp-flow-dot-label{color:#fff;}
-.lp-flow-dot.is-past .lp-flow-dot-icon{border-color:#B5202A;color:#B5202A;}
-.lp-flow-stage{position:relative;flex:1;display:flex;align-items:center;justify-content:center;perspective:1200px;min-height:0;margin:8px 0;}
-.lp-flow-glow{position:absolute;width:min(380px,75vw);height:min(380px,75vw);border-radius:50%;background:radial-gradient(circle,rgba(181,32,42,.2) 0%,rgba(201,151,75,.06) 40%,transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:0;}
-.lp-flow-obj{position:absolute;z-index:2;will-change:transform,opacity;transform-style:preserve-3d;backface-visibility:hidden;}
-.lp-flow-card{width:260px;background:#fff;border:1px solid #EAE2D2;border-radius:16px;padding:14px;box-shadow:0 20px 60px rgba(0,0,0,.35),0 0 40px rgba(181,32,42,.08);position:relative;overflow:hidden;text-align:left;}
-.lp-flow-card .lp-showcase-img{margin-bottom:12px;}
-.lp-flow-card .lp-flow-ring{width:52px;height:52px;}
-.lp-flow-card .lp-flow-ring svg{width:52px;height:52px;}
-.lp-flow-card .lp-flow-ring .lp-vs-num{font-size:.9rem;}
-.lp-flow-scan{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(201,151,75,.85),transparent);top:0;opacity:0;z-index:10;pointer-events:none;}
-.lp-flow-scan.is-active{animation:lpFlowScan 2.2s ease-in-out infinite;}
-@keyframes lpFlowScan{0%{top:0;opacity:0;}8%{opacity:1;}92%{opacity:1;}100%{top:calc(100% - 2px);opacity:0;}}
-.lp-flow-sourcing-box{width:272px;background:linear-gradient(180deg,#2e2e2e 0%,#1c1c1c 100%);border-radius:16px;padding:18px 18px 22px;position:relative;border:1px solid rgba(201,151,75,.22);box-shadow:0 28px 72px rgba(0,0,0,.45),0 0 48px rgba(181,32,42,.12);}
-.lp-flow-sourcing-lid{position:absolute;top:-10px;left:14px;right:14px;height:22px;background:linear-gradient(180deg,#404040,#2e2e2e);border-radius:3px 3px 0 0;border:1px solid rgba(255,255,255,.07);transform:rotateX(-28deg);transform-origin:bottom center;}
-.lp-flow-sourcing-product{border-radius:12px;overflow:hidden;background:#F5EFE0;aspect-ratio:1;}
-.lp-flow-sourcing-product img{width:100%;height:100%;object-fit:cover;display:block;}
-.lp-flow-sourcing-tag{position:absolute;top:10px;right:-6px;background:#1A7A46;color:#fff;font-size:.66rem;font-weight:700;padding:5px 11px;border-radius:20px;display:flex;align-items:center;gap:5px;box-shadow:0 4px 14px rgba(26,122,70,.45);}
-.lp-flow-sale{display:flex;flex-direction:column;align-items:center;gap:20px;}
-.lp-flow-toast{display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:14px 18px;box-shadow:0 16px 48px rgba(0,0,0,.35),0 0 32px rgba(238,77,45,.15);min-width:260px;border:1px solid #F0EDE8;}
-.lp-flow-toast img{width:22px;height:22px;flex-shrink:0;object-fit:contain;}
-.lp-flow-toast-label{font-size:.62rem;font-weight:700;color:#EE4D2D;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px;}
-.lp-flow-toast-item{font-size:.82rem;font-weight:700;color:#1A1A1A;line-height:1.3;}
-.lp-flow-revenue{text-align:center;}
-.lp-flow-revenue-label{font-size:.68rem;font-weight:600;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
-.lp-flow-revenue-value{font-family:var(--font-display);font-size:clamp(2rem,5vw,2.8rem);font-weight:800;color:#C9974B;line-height:1;text-shadow:0 0 40px rgba(201,151,75,.35);}
-.lp-flow-caption-wrap{flex-shrink:0;text-align:center;min-height:52px;display:flex;align-items:center;justify-content:center;position:relative;}
-.lp-flow-caption{position:absolute;left:0;right:0;opacity:0;transform:translateY(8px);transition:opacity .35s ease,transform .35s ease;pointer-events:none;}
-.lp-flow-caption.is-active{opacity:1;transform:translateY(0);position:relative;}
-.lp-flow-caption-title{font-family:var(--font-display);font-size:clamp(1.125rem,2vw,1.35rem);font-weight:800;color:#fff;margin:0 0 6px;letter-spacing:-.02em;}
-.lp-flow-caption-sub{font-size:clamp(1rem,1.5vw,1.125rem);font-weight:500;color:rgba(255,255,255,.62);line-height:1.7;margin:0;max-width:620px;margin-left:auto;margin-right:auto;}
-.lp-flow-cta{flex-shrink:0;text-align:center;margin-top:12px;}
-.lp-flow-cta .lp-hero-btn-primary{box-shadow:0 4px 24px rgba(181,32,42,.45);}
-.lp-flow-mobile{display:none;}
+/* ── SCROLL STORY (pinned GSAP — below hero cards) ── */
+  /* ── STORY ─────────────────────────────────────────── */
+  #lp-flow.lp-story{height:620vh;position:relative;}
+  #lp-flow .story-pin{height:100vh;width:100%;overflow:hidden;position:relative;
+    background:
+      radial-gradient(120% 80% at 50% 0%, #fff 0%, #F5EFE0 55%, #efe6d2 100%);}
+
+  /* subtle dotted grid like the hero */
+  #lp-flow .story-pin::before{content:'';position:absolute;inset:0;
+    background-image:radial-gradient(circle, rgba(26,26,26,.05) 1px, transparent 1px);
+    background-size:30px 30px;pointer-events:none;}
+
+  #lp-flow .stage{position:absolute;inset:0;perspective:1400px;}
+
+  /* progress dots */
+  #lp-flow .story-progress{position:absolute;top:26px;left:50%;transform:translateX(-50%);
+    display:flex;gap:10px;z-index:40;}
+  #lp-flow .story-progress .dot{width:34px;height:4px;border-radius:3px;background:rgba(26,26,26,.14);transition:background .2s;}
+  #lp-flow .story-progress .dot.on{background:var(--lp-accent,#B53A35);}
+
+  /* caption block */
+  #lp-flow .story-caption{position:absolute;left:0;right:0;bottom:28px;text-align:center;z-index:40;pointer-events:none;padding:0 24px;}
+  #lp-flow .cap{position:absolute;left:0;right:0;bottom:0;opacity:0;}
+  #lp-flow .cap .step{display:inline-block;font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--lp-accent,#B53A35);margin-bottom:10px;}
+  #lp-flow .cap h3{font-size:clamp(1.5rem,3.4vw,2.4rem);font-weight:800;letter-spacing:-.02em;margin:0 0 8px;line-height:1.12;}
+  #lp-flow .cap p{display:none;}
+
+  #lp-flow .scene{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;z-index:10;}
+  #lp-flow .scene--sell{z-index:32;}
+  #lp-flow .scene svg{display:block;}
+
+  /* photoreal scene cards (trader desk / delivery) */
+  #lp-flow .photo-frame{position:relative;border-radius:20px;overflow:hidden;box-shadow:0 40px 90px rgba(26,26,26,.34);}
+  #lp-flow .scene-photo{display:block;width:100%;height:auto;}
+  #lp-flow .photo-frame--trader{width:min(900px,88vw);margin-top:-30px;}
+  /* center monitor image placeholder — matches research.png */
+  #lp-flow .monitor-slot{position:absolute;left:36.4%;top:29.8%;width:12.8%;height:34.5%;pointer-events:none;}
+  #lp-flow .box-slot{position:absolute;left:42%;top:58.5%;width:16%;height:12%;pointer-events:none;}
+  #lp-flow .photo-frame--delivery{width:min(620px,78vw);margin-top:-20px;position:relative;}
+  /* animated chart overlays on research.png side monitors + center analysis bars */
+  #lp-flow .tchart{position:absolute;overflow:hidden;border-radius:2px;pointer-events:none;}
+  #lp-flow .tchart svg{width:100%;height:100%;display:block;}
+  #lp-flow .tchart--l{left:8.2%;top:calc(28.6% + 50px);width:24.8%;height:21%;transform:perspective(520px) rotateY(13deg) rotateX(1deg);transform-origin:right center;}
+  #lp-flow .tchart--r{left:66.8%;top:calc(28.6% + 50px);width:24.8%;height:21%;transform:perspective(520px) rotateY(-13deg) rotateX(1deg);transform-origin:left center;}
+  #lp-flow .tchart--l, #lp-flow .tchart--r{opacity:.6;}
+  /* Pilih: real Discover screenshot inside a browser window */
+  #lp-flow .lp-monitor{width:min(880px,90vw);background:#1A1A1A;border-radius:16px;padding:12px 12px 12px;
+    box-shadow:0 40px 90px rgba(26,26,26,.34);}
+  #lp-flow .lp-monitor-bar{display:flex;gap:7px;padding:2px 4px 10px;}
+  #lp-flow .lp-monitor-bar span{width:10px;height:10px;border-radius:50%;background:#3a3a3a;}
+  #lp-flow .lp-monitor-screen{position:relative;width:100%;height:clamp(300px,46vh,430px);overflow:hidden;border-radius:7px;background:#F3F4F6;}
+  /* scroll layer: screenshot + watch product card move together */
+  #lp-flow .choose-scroll{position:absolute;top:0;left:0;width:100%;}
+  #lp-flow .choose-shot{width:100%;display:block;}
+  /* watch card slot — row 3 col 1 in discover.png */
+  #lp-flow .choose-unit{position:absolute;left:23%;top:68.8%;width:12.3%;height:24.8%;z-index:5;transform-origin:50% 38%;pointer-events:none;}
+  /* white patch hides baked-in watch when floating frame takes over */
+  #lp-flow .choose-watch-cover{position:absolute;left:5%;top:14%;width:68%;height:52%;background:#fff;border-radius:6px;opacity:0;}
+
+  /* the persistent watch sits above the scenes */
+  #lp-flow .hero-watch{position:absolute;z-index:30;width:300px;will-change:transform;transform-style:preserve-3d;}
+  #lp-flow .hero-watch-inner{transform-style:preserve-3d;will-change:transform;filter:drop-shadow(0 18px 36px rgba(26,26,26,.2));backface-visibility:hidden;}
+  #lp-flow .hero-watch-img{width:100%;height:auto;display:block;}
+  #lp-flow .hero-watch-svg{display:none;}
+
+  /* ── SCENE 3: OPTIMALKAN dashboard ── */
+  #lp-flow .scene--features{align-items:flex-start;padding:clamp(48px,7vh,72px) 20px 20px;}
+  #lp-flow .feat-board{width:min(1080px,96vw);margin:0 auto;position:relative;}
+  #lp-flow .feat-head{margin-bottom:14px;opacity:0;}
+  #lp-flow .feat-head .step{display:block;font-size:.68rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#C9974B;margin-bottom:6px;}
+  #lp-flow .feat-head h3{
+    font-size:clamp(1.35rem,2.8vw,1.85rem);font-weight:800;letter-spacing:-.02em;margin:0 0 6px;line-height:1.1;
+    background:linear-gradient(118deg, #8E191F 0%, var(--lp-accent,#B53A35) 28%, #C9974B 72%, #E8B86D 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  #lp-flow .feat-head p{display:none;}
+  #lp-flow .feat-main{display:grid;grid-template-columns:minmax(0,1fr) minmax(200px,280px);gap:clamp(10px,1.6vw,18px);align-items:start;margin-bottom:0;}
+  #lp-flow .feat-col-right, .feat-bottom{display:none !important;}
+  #lp-flow .feat-panel{background:#fff;border:1px solid #E5E7EB;border-radius:14px;box-shadow:0 8px 28px rgba(26,26,26,.06);opacity:0;}
+  #lp-flow .feat-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px;margin-bottom:10px;}
+  #lp-flow .feat-tab{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;}
+  #lp-flow .feat-tab .ic{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem;}
+  #lp-flow .feat-tab span{font-size:.58rem;font-weight:700;color:var(--lp-text-muted,#6E675F);line-height:1.2;}
+  #lp-flow .feat-score{display:flex;align-items:center;gap:12px;padding:12px 14px;}
+  #lp-flow .feat-donut{width:72px;height:72px;flex-shrink:0;}
+  #lp-flow .feat-donut-ring{stroke:#3B82F6;}
+  #lp-flow .feat-score-copy b{display:block;font-size:.95rem;font-weight:800;color:#1D4ED8;margin-bottom:3px;}
+  #lp-flow .feat-score-copy p{display:none;}
+  #lp-flow .feat-metrics{padding:12px 12px 12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px;position:relative;}
+  #lp-flow .feat-metric label{display:block;font-size:.58rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--lp-text-muted,#6E675F);margin-bottom:4px;}
+  #lp-flow .feat-metric b{font-size:.84rem;font-weight:800;color:var(--lp-text,#111111);line-height:1.2;}
+  #lp-flow .feat-metric--omset{position:relative;left:-200px;padding-right:0;padding-left:2px;}
+  #lp-flow .feat-metric--omset b{font-size:.78rem;letter-spacing:-.02em;color:var(--lp-accent,#B53A35);}
+  #lp-flow .feat-center{min-height:clamp(220px,32vh,300px);}
+  #lp-flow .feat-specs{padding:12px 14px;}
+  #lp-flow .feat-specs h4{font-size:.62rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--lp-text-muted,#6E675F);margin:0 0 8px;}
+  #lp-flow .feat-spec{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid #F3F4F6;}
+  #lp-flow .feat-spec:last-child{border-bottom:0;}
+  #lp-flow .feat-spec .ic{width:28px;height:28px;border-radius:8px;background:#F9FAFB;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.75rem;}
+  #lp-flow .feat-spec b{display:block;font-size:.72rem;font-weight:800;line-height:1.25;}
+  #lp-flow .feat-spec span{font-size:.64rem;color:var(--lp-text-muted,#6E675F);font-weight:600;}
+  #lp-flow .feat-dura{margin-top:10px;padding:10px 12px;}
+  #lp-flow .feat-dura h4{font-size:.6rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--lp-text-muted,#6E675F);margin:0 0 8px;}
+  #lp-flow .feat-dura-row{display:flex;justify-content:space-between;gap:6px;}
+  #lp-flow .feat-dura-item{flex:1;text-align:center;}
+  #lp-flow .feat-dura-item .ic{font-size:1rem;margin-bottom:2px;}
+  #lp-flow .feat-dura-item b{display:block;font-size:.68rem;font-weight:800;}
+  #lp-flow .feat-bottom{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;opacity:0;}
+  #lp-flow .feat-fcard{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:10px 12px;box-shadow:0 6px 20px rgba(26,26,26,.05);opacity:0;}
+  #lp-flow .feat-fcard .ic{font-size:1.1rem;margin-bottom:4px;}
+  #lp-flow .feat-fcard b{display:block;font-size:.72rem;font-weight:800;margin-bottom:2px;}
+  #lp-flow .feat-fcard span{font-size:.62rem;color:var(--lp-text-muted,#6E675F);font-weight:600;line-height:1.35;}
+
+  /* feature callouts — leader lines point at watch (center ~50% / 60%) */
+  #lp-flow .callout{position:absolute;z-index:35;display:flex;align-items:center;gap:8px;
+    background:#fff;border:1px solid #E5E7EB;border-radius:30px;padding:7px 14px 7px 10px;
+    box-shadow:0 12px 30px rgba(26,26,26,.14);opacity:0;white-space:nowrap;}
+  #lp-flow .callout::after{content:'';position:absolute;background:#D1D5DB;pointer-events:none;}
+  #lp-flow .callout .ic{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  #lp-flow .callout b{font-size:.82rem;font-weight:800;}
+  #lp-flow .callout span{display:none;}
+  #lp-flow .c-band{top:54%;left:calc(50% - 292px);}
+  #lp-flow .c-band::after{width:52px;height:1px;right:-52px;top:58%;transform:rotate(12deg);transform-origin:left center;}
+  #lp-flow .c-cuaca{top:57%;left:calc(50% + 152px);}
+  #lp-flow .c-cuaca::after{width:52px;height:1px;left:-52px;top:42%;transform:rotate(-10deg);transform-origin:right center;}
+  #lp-flow .c-skor{top:66%;left:calc(50% - 272px);}
+  #lp-flow .c-skor::after{width:48px;height:1px;right:-48px;top:35%;transform:rotate(22deg);transform-origin:left center;}
+
+  /* cream scrim so captions stay legible over the dark photo scenes (above scenes z10, below watch z30) */
+  #lp-flow .caption-scrim{position:absolute;left:0;right:0;bottom:0;height:27%;z-index:20;pointer-events:none;
+    background:linear-gradient(to top, #F5EFE0 14%, rgba(245,239,224,.92) 40%, rgba(245,239,224,0) 100%);}
+
+  /* sold badge — hidden (delivery photo is self-explanatory) */
+  #lp-flow .sold-badge{display:none !important;}
+
+  #lp-flow .scroll-hint{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:40;
+    font-size:.7rem;color:var(--lp-text-muted,#6E675F);font-weight:600;letter-spacing:.08em;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:6px;}
+  #lp-flow .scroll-hint svg{animation:bob 1.6s ease-in-out infinite;}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(5px)}}
+
+  @media(max-width:900px){
+    #lp-flow .feat-main{grid-template-columns:1fr 1fr;}
+    #lp-flow .feat-center{grid-column:1/-1;order:-1;min-height:180px;}
+    #lp-flow .feat-bottom{grid-template-columns:1fr 1fr;}
+  }
+  @media(max-width:680px){
+    #lp-flow .hero-watch{width:210px;}
+    #lp-flow .c-band{left:calc(50% - 210px);} .c-cuaca{left:calc(50% + 72px);} .c-skor{left:calc(50% - 200px);}
+    #lp-flow .feat-metric--omset{left:-80px;}
+    #lp-flow .feat-bottom{grid-template-columns:1fr;}
+  }
+
+
+#lp-flow .cap .step{display:inline-block;font-size:var(--lp-label-size);font-weight:600;letter-spacing:.28em;text-transform:uppercase;color:var(--lp-accent);margin-bottom:1rem;}
+#lp-flow .cap h3{font-family:var(--font-display);font-size:clamp(1.75rem,3.2vw,2.5rem);font-weight:800;letter-spacing:-.04em;margin:0;line-height:1;color:var(--lp-text);}
+#lp-flow .photo-frame{border-radius:var(--lp-media-radius,32px);box-shadow:var(--lp-media-shadow,0 30px 80px rgba(0,0,0,.08));}
+#lp-flow .lp-monitor{border-radius:var(--lp-media-radius,32px);box-shadow:var(--lp-media-shadow,0 30px 80px rgba(0,0,0,.08));}
+#lp-flow .scroll-hint{color:var(--lp-text-muted);}
+/* mobile + reduced-motion fallback */
+#lp-flow .lp-story-mobile{display:none;}
 @media(max-width:760px){
-  .lp-flow{height:auto!important;}
-  .lp-flow-sticky{position:static!important;height:auto!important;padding:0;overflow:visible;}
-  .lp-flow-inner{display:none;}
-  .lp-flow-mobile{display:flex;flex-direction:column;gap:28px;position:relative;z-index:2;padding:56px 20px 48px;}
-  .lp-flow-mobile-header{text-align:center;margin-bottom:8px;}
-  .lp-flow-mobile-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px 20px;text-align:center;}
-  .lp-flow-mobile-card .lp-flow-card,.lp-flow-mobile-card .lp-flow-sourcing-box,.lp-flow-mobile-card .lp-flow-sale{margin:0 auto 16px;}
-  .lp-flow-mobile-stage{font-size:.62rem;font-weight:700;color:#C9974B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:6px;}
-  .lp-flow-mobile-stage svg{flex-shrink:0;}
-  .lp-flow-mobile-caption{font-size:.84rem;color:rgba(255,255,255,.65);line-height:1.55;margin:0;}
-  .lp-flow-mobile-card{animation:lpFlowMobileIn .65s cubic-bezier(.22,1,.36,1) both;}
-  .lp-flow-mobile-card[data-stage="1"]{animation-delay:.14s;}
-  .lp-flow-mobile-card[data-stage="2"]{animation-delay:.28s;}
-  .lp-flow-mobile-card[data-stage="0"] .lp-flow-scan{opacity:1;animation:lpFlowScan 2.2s ease-in-out infinite;}
+  #lp-flow.lp-story{height:auto!important;}
+  #lp-flow .story-pin{display:none!important;}
+  #lp-flow .lp-story-mobile{display:block;padding:calc(var(--lp-section-y) * .82) var(--lp-section-x);background:#F5EFE0;}
+  #lp-flow .lp-story-mobile-header{text-align:center;margin-bottom:clamp(2rem,4vw,2.5rem);}
+  #lp-flow .lp-story-mobile-card{background:#fff;border:1px solid #F0EDE8;border-radius:var(--lp-media-radius,32px);padding:clamp(1.25rem,3vw,1.75rem);box-shadow:var(--lp-media-shadow,0 30px 80px rgba(0,0,0,.08));margin-bottom:1.25rem;}
+  #lp-flow .lp-story-mobile-card img{width:100%;border-radius:16px;display:block;margin-bottom:1rem;}
+  #lp-flow .lp-story-mobile-step{font-size:var(--lp-label-size);font-weight:600;color:var(--lp-accent);text-transform:uppercase;letter-spacing:.28em;margin-bottom:.75rem;}
+  #lp-flow .lp-story-mobile-title{font-family:var(--font-display);font-size:clamp(1.35rem,4vw,1.75rem);font-weight:800;color:var(--lp-text);letter-spacing:-.03em;line-height:1.1;margin:0 0 .5rem;}
+  #lp-flow .lp-story-mobile-sub{font-size:var(--lp-body-size);font-weight:500;color:var(--lp-text-muted);line-height:1.7;margin:0;}
+  #lp-flow .lp-story-mobile-cta{text-align:center;margin-top:1.5rem;}
 }
-@keyframes lpFlowMobileIn{from{opacity:0;transform:translateY(22px);}to{opacity:1;transform:translateY(0);}}
 @media(prefers-reduced-motion:reduce){
-  .lp-flow{height:auto;}
-  .lp-flow-sticky{position:static;height:auto;padding:0;overflow:visible;}
-  .lp-flow-inner{display:none;}
-  .lp-flow-mobile{display:flex;flex-direction:column;gap:28px;}
-  .lp-flow-mobile-card{opacity:1!important;transform:none!important;animation:none!important;}
-  .lp-flow-scan{display:none;}
-  .lp-flow-rail-pulse{display:none;}
+  #lp-flow.lp-story{height:auto!important;}
+  #lp-flow .story-pin{display:none!important;}
+  #lp-flow .lp-story-mobile{display:block;padding:calc(var(--lp-section-y) * .82) var(--lp-section-x);background:#F5EFE0;}
 }
+
 /* Trust bar */
 .lp-trust-bar{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:24px 80px;border-bottom:1px solid #F0EDE8;background:#F5EFE0;flex-wrap:wrap;}
 @media(max-width:900px){.lp-trust-bar{padding:20px 28px;}}
@@ -2090,39 +2189,37 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .lp-trust-stat-num{font-family:var(--font-display);font-size:1.15rem;font-weight:800;color:#1A1A1A;line-height:1;}
 .lp-trust-stat-lbl{font-size:.6rem;color:#6B7280;text-align:center;line-height:1.3;}
 /* Problem section */
-.lp-problem-section{padding:80px 80px;background:#fff;text-align:center;max-width:none;}
-@media(max-width:900px){.lp-problem-section{padding:56px 28px;}}
-.lp-problem-headline{font-family:var(--font-display);font-size:2rem;font-weight:800;color:#1A1A1A;margin-bottom:6px;letter-spacing:-.01em;}
-.lp-problem-headline-sub{font-size:1.5rem;font-weight:700;color:#B5202A;margin-bottom:40px;line-height:1.3;}
-@media(max-width:700px){.lp-problem-headline{font-size:1.5rem;}.lp-problem-headline-sub{font-size:1.1rem;}}
-.lp-problem-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1000px;margin:0 auto;}
+.lp-problem-section{padding:var(--lp-section-y) var(--lp-section-x);background:#fff;text-align:center;max-width:none;}
+@media(max-width:900px){.lp-problem-section{padding:calc(var(--lp-section-y) * .82) var(--lp-section-x);}}
+.lp-problem-headline{font-family:var(--font-display);font-size:var(--lp-headline-size);font-weight:800;color:var(--lp-text);margin:0 auto 1.25rem;letter-spacing:-.04em;line-height:1;}
+.lp-problem-headline-sub{font-size:var(--lp-body-size);font-weight:500;color:var(--lp-text-muted);margin:0 auto 3rem;line-height:1.7;max-width:620px;}
+.lp-problem-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(1.25rem,2.5vw,1.75rem);max-width:1080px;margin:0 auto;}
 @media(max-width:700px){.lp-problem-grid{grid-template-columns:1fr;}}
 .lp-problem-card{background:#F5EFE0;border-radius:16px;padding:28px 24px;text-align:left;}
 .lp-problem-illus{width:64px;height:64px;background:#fff;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06);}
-.lp-problem-card h4{font-size:.88rem;font-weight:700;color:#1A1A1A;margin-bottom:6px;}
-.lp-problem-card p{font-size:.78rem;color:#6B7280;line-height:1.55;margin:0;}
+.lp-problem-card h4{font-size:1.05rem;font-weight:700;color:var(--lp-text);margin-bottom:8px;}
+.lp-problem-card p{font-size:1rem;font-weight:500;color:var(--lp-text-muted);line-height:1.65;margin:0;}
 /* Solution section */
-.lp-solution-section{padding:80px 80px;background:#F5EFE0;text-align:center;}
-@media(max-width:900px){.lp-solution-section{padding:56px 28px;}}
-.lp-solution-section .lp-section-title{max-width:600px;margin:0 auto 10px;}
-.lp-solution-section .lp-section-sub{max-width:560px;margin:0 auto;}
-.lp-solution-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:40px;}
+.lp-solution-section{padding:var(--lp-section-y) var(--lp-section-x);background:#F5EFE0;text-align:center;}
+@media(max-width:900px){.lp-solution-section{padding:calc(var(--lp-section-y) * .82) var(--lp-section-x);}}
+.lp-solution-section .lp-section-title{max-width:14ch;margin-left:auto;margin-right:auto;}
+.lp-solution-section .lp-section-sub{margin-left:auto;margin-right:auto;}
+.lp-solution-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(1rem,2vw,1.25rem);margin-top:clamp(2.5rem,5vw,3.5rem);}
 @media(max-width:1024px){.lp-solution-grid{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:480px){.lp-solution-grid{grid-template-columns:1fr;}}
 .lp-solution-card{background:#fff;border-radius:16px;padding:18px;border:1px solid #F0EDE8;text-align:left;}
 .lp-solution-mockup{background:#F5EFE0;border-radius:8px;padding:12px;margin-bottom:14px;min-height:90px;display:flex;flex-direction:column;justify-content:center;}
-.lp-solution-card h4{font-size:.82rem;font-weight:700;color:#1A1A1A;margin-bottom:5px;}
-.lp-solution-card p{font-size:.72rem;color:#6B7280;line-height:1.5;margin:0;}
+.lp-solution-card h4{font-size:1rem;font-weight:700;color:var(--lp-text);margin-bottom:6px;}
+.lp-solution-card p{font-size:.95rem;font-weight:500;color:var(--lp-text-muted);line-height:1.65;margin:0;}
 /* ── DEEP DIVE TEASER (lifts the sample analysis higher in the flow) ── */
-.lp-dd-teaser-section{background:#F5EFE0;padding:64px 80px;}
-@media(max-width:1100px){.lp-dd-teaser-section{padding:48px 28px;}}
-@media(max-width:700px){.lp-dd-teaser-section{padding:44px 20px;}}
-.lp-dd-teaser{max-width:1060px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;}
-@media(max-width:1100px){.lp-dd-teaser{grid-template-columns:1fr;gap:28px;}}
-.lp-dd-teaser-title{font-family:var(--font-display);font-size:1.8rem;font-weight:800;color:#1A1A1A;line-height:1.2;margin:0 0 12px;letter-spacing:-.01em;}
-@media(max-width:700px){.lp-dd-teaser-title{font-size:1.4rem;}}
-.lp-dd-teaser-sub{font-size:.92rem;color:#6B7280;line-height:1.65;margin:0 0 22px;max-width:460px;}
-.lp-dd-teaser-card{background:#fff;border:1px solid #F0EDE8;border-radius:16px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.06);}
+.lp-dd-teaser-section{background:#F5EFE0;padding:var(--lp-section-y) var(--lp-section-x);}
+@media(max-width:1100px){.lp-dd-teaser-section{padding:calc(var(--lp-section-y) * .82) var(--lp-section-x);}}
+.lp-dd-teaser{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:1fr 1.05fr;gap:clamp(2.5rem,6vw,4.5rem);align-items:center;}
+@media(max-width:1100px){.lp-dd-teaser{grid-template-columns:1fr;gap:2rem;}}
+.lp-dd-teaser-copy .lp-section-eyebrow::after{left:0;transform:none;}
+.lp-dd-teaser-title{font-family:var(--font-display);font-size:clamp(2rem,3.8vw,3rem);font-weight:800;color:var(--lp-text);line-height:1;letter-spacing:-.04em;margin:0 0 1.25rem;}
+.lp-dd-teaser-sub{font-size:var(--lp-body-size);font-weight:500;color:var(--lp-text-muted);line-height:1.7;margin:0 0 1.75rem;max-width:620px;}
+.lp-dd-teaser-card{background:#fff;border:1px solid #F0EDE8;border-radius:var(--lp-media-radius);padding:clamp(1.25rem,2vw,1.5rem);box-shadow:var(--lp-media-shadow);}
 .lp-dd-teaser-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px;}
 .lp-dd-teaser-name{font-size:.95rem;font-weight:800;color:#1A1A1A;line-height:1.25;}
 .lp-dd-teaser-cat{font-size:.74rem;color:#9CA3AF;margin-top:3px;}
@@ -2137,19 +2234,19 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .lp-dd-teaser-note{font-size:.74rem;color:#1A7A46;font-weight:600;}
 /* Features: compact spacing on mobile to reduce scroll depth */
 @media(max-width:700px){
-  .lp-feature-row{margin-bottom:40px;gap:18px;}
+  .lp-feature-row{margin-bottom:clamp(3rem,8vw,4rem);gap:clamp(1.75rem,5vw,2.5rem);}
   .lp-phone{width:184px;}
 }
 /* Community section */
-.lp-community-section{background:#B5202A;padding:80px 80px;overflow:hidden;}
-@media(max-width:900px){.lp-community-section{padding:56px 28px;}}
-.lp-community-inner{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;}
-@media(max-width:1100px){.lp-community-inner{grid-template-columns:1fr;gap:36px;}}
-.lp-community-left h2{font-family:var(--font-display);font-size:2.4rem;font-weight:800;color:#fff;margin-bottom:16px;letter-spacing:-.01em;line-height:1.15;}
-@media(max-width:700px){.lp-community-left h2{font-size:1.8rem;}}
-.lp-community-left p{color:rgba(255,255,255,.85);line-height:1.65;margin-bottom:28px;font-size:.95rem;}
+.lp-community-section{background:#B5202A;padding:var(--lp-section-y) var(--lp-section-x);overflow:hidden;}
+@media(max-width:900px){.lp-community-section{padding:calc(var(--lp-section-y) * .82) var(--lp-section-x);}}
+.lp-community-inner{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:clamp(2.5rem,6vw,4.5rem);align-items:center;}
+@media(max-width:1100px){.lp-community-inner{grid-template-columns:1fr;gap:2.25rem;}}
+.lp-community-left h2{font-family:var(--font-display);font-size:var(--lp-headline-size);font-weight:800;color:#fff;margin:0 0 1.25rem;letter-spacing:-.04em;line-height:1;}
+.lp-community-left .lp-title-accent{color:#fff;}
+.lp-community-left p{color:rgba(255,255,255,.88);line-height:1.7;margin-bottom:2rem;font-size:var(--lp-body-size);font-weight:500;max-width:620px;}
 .lp-community-features{display:flex;flex-direction:column;gap:14px;}
-.lp-community-feat{display:flex;align-items:center;gap:12px;font-size:.85rem;color:rgba(255,255,255,.95);font-weight:600;}
+.lp-community-feat{display:flex;align-items:center;gap:12px;font-size:clamp(1rem,1.1vw,1.05rem);color:rgba(255,255,255,.95);font-weight:500;line-height:1.5;}
 .lp-community-feat-icon{width:36px;height:36px;background:rgba(255,255,255,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .lp-comm-card{background:rgba(0,0,0,.2);border-radius:16px;padding:18px;margin-bottom:12px;color:#fff;}
 .lp-comm-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
@@ -2193,64 +2290,76 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .lp-footer-nl-btn{padding:9px 14px;background:#B5202A;color:#fff;border:none;border-radius:0 6px 6px 0;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
 .lp-footer-nl-btn:hover{background:#c73520;}
 .lp-footer-bottom-new{border-top:1px solid rgba(255,255,255,.1);padding-top:20px;font-size:.7rem;color:rgba(255,255,255,.3);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
-/* CTA override to orange */
-.lp-cta-section{background:#B5202A;}
-.lp-cta-section h2{color:#fff;}
-.lp-cta-section p{color:rgba(255,255,255,.85);}
-.lp-cta-btn-main{background:#fff;color:#B5202A;font-weight:800;}
-.lp-cta-btn-main:hover{background:#F5EFE0;}
-.lp-cta-btn-ghost{border-color:rgba(255,255,255,.4);color:rgba(255,255,255,.9);}
-.lp-cta-btn-ghost:hover{border-color:#fff;color:#fff;}
-
 /* ── FITUR SECTION ── */
 #lp-fitur{background:#fff;}
-.lp-fitur-wrap{padding:80px 40px;max-width:1200px;margin:0 auto;}
-@media(max-width:860px){.lp-fitur-wrap{padding:48px 20px;}}
-.lp-fitur-hero{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;margin-bottom:72px;}
-@media(max-width:1100px){.lp-fitur-hero{grid-template-columns:1fr;gap:32px;}}
-.lp-fitur-eyebrow{display:inline-flex;align-items:center;gap:6px;background:#F9EAE4;color:#B5202A;font-size:.72rem;font-weight:700;padding:4px 12px;border-radius:20px;margin-bottom:14px;}
-.lp-fitur-hero-title{font-size:2rem;font-weight:900;color:#1A1A1A;line-height:1.22;margin-bottom:12px;}
-.lp-fitur-hero-title span{color:#B5202A;}
-.lp-fitur-hero-sub{font-size:.88rem;color:#6B7280;line-height:1.65;margin-bottom:20px;}
+.lp-fitur-wrap{padding:var(--lp-section-y) var(--lp-section-x);max-width:1240px;margin:0 auto;}
+@media(max-width:860px){.lp-fitur-wrap{padding:calc(var(--lp-section-y) * .82) var(--lp-section-x);}}
+.lp-fitur-hero{display:grid;grid-template-columns:1fr 1.08fr;gap:clamp(2.5rem,6vw,4.5rem);align-items:center;margin-bottom:clamp(4rem,8vw,6rem);}
+@media(max-width:1100px){.lp-fitur-hero{grid-template-columns:1fr;gap:2rem;}}
+.lp-fitur-eyebrow{
+  display:inline-block;font-size:var(--lp-label-size);font-weight:600;color:var(--lp-accent);
+  text-transform:uppercase;letter-spacing:.28em;margin:0 0 1.25rem;padding-bottom:1rem;position:relative;
+  background:transparent;border:none;padding-left:0;padding-right:0;
+}
+.lp-fitur-eyebrow::after{
+  content:'';position:absolute;left:0;bottom:0;width:2.75rem;height:1px;
+  background:linear-gradient(90deg,var(--lp-accent),transparent);
+}
+.lp-fitur-eyebrow svg{display:none;}
+.lp-fitur-hero-title{font-family:var(--font-display);font-size:clamp(2rem,3.8vw,3rem);font-weight:800;color:var(--lp-text);line-height:1;letter-spacing:-.04em;margin:0 0 1.25rem;}
+.lp-fitur-hero-title span{color:var(--lp-accent);}
+.lp-fitur-hero-sub{font-size:var(--lp-body-size);font-weight:500;color:var(--lp-text-muted);line-height:1.7;margin-bottom:1.5rem;max-width:620px;}
 .lp-fitur-badges{display:flex;gap:20px;flex-wrap:wrap;}
 .lp-fitur-badge{display:flex;align-items:center;gap:6px;font-size:.78rem;color:#374151;font-weight:600;}
 /* Section title */
-.lp-feat-section-title{font-size:1.5rem;font-weight:900;color:#1A1A1A;text-align:center;margin-bottom:52px;}
+.lp-feat-section-head{text-align:center;margin-bottom:clamp(3rem,6vw,4.5rem);}
+.lp-feat-section-title{
+  font-family:var(--font-display);font-size:clamp(1.75rem,3vw,2.25rem);font-weight:800;color:var(--lp-text);
+  text-align:center;letter-spacing:-.03em;line-height:1.05;margin:0;
+}
 /* Feature rows */
-.lp-feature-row{display:grid;grid-template-columns:1fr 1fr;gap:52px;align-items:center;margin-bottom:64px;}
+.lp-feature-row{display:grid;grid-template-columns:1fr 1fr;gap:clamp(2.5rem,6vw,5rem);align-items:center;margin-bottom:clamp(4.5rem,9vw,7rem);}
 .lp-feature-row:last-child{margin-bottom:0;}
-@media(max-width:1100px){.lp-feature-row{grid-template-columns:1fr;gap:24px;}}
+@media(max-width:1100px){.lp-feature-row{grid-template-columns:1fr;gap:clamp(2rem,5vw,3rem);}}
 .lp-feature-row.rev{direction:rtl;}
 .lp-feature-row.rev>*{direction:ltr;}
 @media(max-width:1100px){.lp-feature-row.rev{direction:ltr;}}
-.lp-feat-num{width:32px;height:32px;border-radius:50%;background:#F9EAE4;color:#B5202A;font-size:.75rem;font-weight:900;display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
-.lp-feat-icon-bg{width:50px;height:50px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:1.4rem;}
-.lp-feat-title{font-size:1.1rem;font-weight:900;color:#1A1A1A;margin-bottom:7px;}
-.lp-feat-desc{font-size:.84rem;color:#6B7280;line-height:1.65;margin-bottom:14px;}
-.lp-feat-bullets{display:flex;flex-direction:column;gap:7px;}
-.lp-feat-bullet{display:flex;align-items:center;gap:8px;font-size:.81rem;color:#374151;}
-.lp-feat-bullet::before{content:'';width:5px;height:5px;border-radius:50%;background:#B5202A;flex-shrink:0;}
+.lp-feat-num{width:32px;height:32px;border-radius:50%;background:rgba(181,58,53,.1);color:var(--lp-accent);font-size:.75rem;font-weight:800;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;}
+.lp-feat-icon-bg{width:50px;height:50px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;font-size:1.4rem;}
+.lp-feat-title{
+  font-family:var(--font-display);font-size:clamp(1.5rem,2.2vw,1.85rem);font-weight:800;color:var(--lp-text);
+  letter-spacing:-.03em;line-height:1.1;margin-bottom:1rem;
+}
+.lp-feat-desc{font-size:var(--lp-body-size);font-weight:500;color:var(--lp-text-muted);line-height:1.7;margin-bottom:1.5rem;max-width:520px;}
+.lp-feat-bullets{display:flex;flex-direction:column;gap:10px;}
+.lp-feat-bullet{display:flex;align-items:center;gap:10px;font-size:clamp(1rem,1.1vw,1.05rem);font-weight:500;color:var(--lp-text-muted);line-height:1.5;}
+.lp-feat-bullet::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--lp-accent);flex-shrink:0;}
 /* Phone frame */
 .lp-phone-wrap{display:flex;justify-content:center;}
 .lp-phone{background:#111827;border-radius:36px;padding:12px 8px;box-shadow:0 20px 60px rgba(0,0,0,.28);width:220px;flex-shrink:0;}
 .lp-phone-notch{width:70px;height:6px;background:#374151;border-radius:3px;margin:0 auto 10px;}
 .lp-phone-screen{border-radius:24px;overflow:hidden;background:#F4F6F9;}
 /* Browser frame */
-.lp-browser{border-radius:12px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.14);border:1px solid #E5E7EB;}
+.lp-browser{border-radius:var(--lp-media-radius,32px);overflow:hidden;box-shadow:var(--lp-media-shadow,0 30px 80px rgba(0,0,0,.08));border:1px solid #E5E7EB;}
 .lp-browser-bar{background:#F3F4F6;padding:8px 12px;display:flex;align-items:center;gap:5px;border-bottom:1px solid #E5E7EB;}
 .lp-browser-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 .lp-browser-url{flex:1;background:#fff;border-radius:4px;height:16px;margin-left:6px;opacity:.7;}
 .lp-browser-body{background:#F4F6F9;}
 /* White card frame */
-.lp-card-frame{background:#fff;border:1.5px solid #E5E7EB;border-radius:14px;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,.08);}
+.lp-card-frame{background:#fff;border:1.5px solid #E5E7EB;border-radius:var(--lp-media-radius,32px);overflow:hidden;box-shadow:var(--lp-media-shadow,0 30px 80px rgba(0,0,0,.08));}
 
 /* ── PRICING SECTION ── */
-#lp-harga{background:#F5EFE0;padding:80px 40px;}
-@media(max-width:860px){#lp-harga{padding:48px 20px;}}
-.lp-pricing-head{text-align:center;max-width:640px;margin:0 auto 36px;}
-.lp-pricing-title{font-family:var(--font-display);font-size:2rem;font-weight:800;color:#1A1A1A;line-height:1.2;margin:12px 0 10px;letter-spacing:-.01em;}
-@media(max-width:700px){.lp-pricing-title{font-size:1.5rem;}}
-.lp-pricing-sub{font-size:.9rem;color:#6B7280;line-height:1.6;margin-bottom:20px;}
+#lp-harga{background:#F5EFE0;padding:var(--lp-section-y) var(--lp-section-x);}
+@media(max-width:860px){#lp-harga{padding:calc(var(--lp-section-y) * .82) var(--lp-section-x);}}
+.lp-pricing-head{text-align:center;max-width:720px;margin:0 auto 2.5rem;}
+.lp-pricing-title{font-family:var(--font-display);font-size:var(--lp-headline-size);font-weight:800;color:var(--lp-text);line-height:1;letter-spacing:-.04em;margin:1rem 0;}
+.lp-pricing-sub{font-size:var(--lp-body-size);font-weight:500;color:var(--lp-text-muted);line-height:1.7;margin-bottom:1.75rem;max-width:620px;margin-left:auto;margin-right:auto;}
+.lp-preview-section{background:#F5EFE0;padding:var(--lp-section-y) var(--lp-section-x);}
+@media(max-width:900px){.lp-preview-section{padding:calc(var(--lp-section-y) * .82) var(--lp-section-x);}}
+.lp-preview-inner{max-width:1200px;margin:0 auto;}
+.lp-preview-head{text-align:center;margin-bottom:clamp(2rem,4vw,3rem);}
+.lp-preview-title{font-family:var(--font-display);font-size:clamp(1.75rem,3vw,2.25rem);font-weight:800;color:var(--lp-text);line-height:1;letter-spacing:-.03em;margin:0 0 1rem;}
+.lp-preview-sub{font-size:var(--lp-body-size);font-weight:500;color:var(--lp-text-muted);line-height:1.7;margin:0 auto;max-width:620px;}
 .lp-pricing-trust{display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin-bottom:28px;}
 .lp-trust-item{display:flex;align-items:center;gap:6px;font-size:.79rem;color:#374151;font-weight:600;}
 .lp-billing-wrap{text-align:center;margin-bottom:36px;}
@@ -2284,8 +2393,11 @@ body.in-dashboard .mobile-menu{display:none!important;}
   /* Simplify hero floating cards: keep one (score), hide the rest */
   .lp-hero-float-top,.lp-hero-float-trend,.lp-hero-float-badge{display:none;}
   /* Tighten section padding to reduce scroll depth */
-  .lp-problem-section,.lp-solution-section,.lp-flow-mobile,.lp-community-section,.lp-cta-section{padding:44px 20px;}
-  .lp-fitur-wrap{padding:40px 18px;}
+  .lp-problem-section,.lp-solution-section,.lp-story-mobile,.lp-community-section,.lp-cta-section{padding:calc(var(--lp-section-y) * .75) var(--lp-section-x);}
+  .lp-fitur-wrap{padding:calc(var(--lp-section-y) * .75) var(--lp-section-x);}
+  .lp-dd-teaser-section{padding:calc(var(--lp-section-y) * .75) var(--lp-section-x);}
+  #lp-harga{padding:calc(var(--lp-section-y) * .75) var(--lp-section-x);}
+  .lp-preview-section{padding:calc(var(--lp-section-y) * .75) var(--lp-section-x);}
 }
 .lp-plan-badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:#B5202A;color:#fff;font-size:.7rem;font-weight:800;padding:4px 18px;border-radius:20px;white-space:nowrap;letter-spacing:.03em;}
 .lp-plan-name{font-size:1.1rem;font-weight:900;color:#1A1A1A;margin-bottom:3px;}
@@ -3646,9 +3758,10 @@ body.in-dashboard .mobile-menu{display:none!important;}
   background:#FDF8F5;min-height:calc(100vh - 56px);box-sizing:border-box;
 }
 #dd-main-content.dd-simple.dd-wrap::before{
-  content:'';position:absolute;right:-40px;top:40px;width:min(420px,48vw);height:min(420px,48vw);
-  background:url('/images/brand/logo-icon-light.png') center/contain no-repeat;
-  opacity:.07;pointer-events:none;z-index:0;
+  content:'';position:absolute;right:-20px;top:20px;width:min(480px,52vw);height:min(480px,52vw);
+  background:url('/images/brand/logo-primary.png') center/contain no-repeat;
+  opacity:.2;pointer-events:none;z-index:0;
+  filter:drop-shadow(0 0 40px rgba(139,26,26,.08));
 }
 #dd-main-content.dd-simple > *{position:relative;z-index:1;}
 #dd-main-content.dd-simple .dd-topbar{margin-bottom:22px;}
@@ -3670,10 +3783,6 @@ body.in-dashboard .mobile-menu{display:none!important;}
   box-shadow:0 4px 20px rgba(0,0,0,.08);
 }
 #dd-main-content.dd-simple .dd-hero-img img{border-radius:20px;}
-#dd-main-content.dd-simple .dd-hero-img-brand{
-  position:absolute;top:12px;left:12px;width:34px;height:34px;border-radius:50%;
-  box-shadow:0 2px 8px rgba(0,0,0,.15);pointer-events:none;
-}
 #dd-main-content.dd-simple .dd-hero-img-count{
   position:absolute;bottom:12px;left:12px;background:rgba(26,26,26,.72);color:#fff;
   font-size:.68rem;font-weight:700;padding:4px 10px;border-radius:999px;letter-spacing:.02em;
@@ -3708,15 +3817,27 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dd-smetric{
   background:#fff;border-radius:18px;padding:18px 18px 14px;
   box-shadow:0 2px 14px rgba(0,0,0,.05);border:1px solid rgba(237,232,228,.8);
-  display:flex;flex-direction:column;min-height:148px;
+  display:flex;flex-direction:column;min-height:148px;position:relative;
 }
 .dd-smetric-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px;}
 .dd-smetric-label{font-size:.64rem;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;}
+.dd-smetric-tip{position:relative;display:inline-flex;align-items:center;z-index:2;}
 .dd-smetric-info{
   width:15px;height:15px;border-radius:50%;border:1.5px solid #D1D5DB;color:#9CA3AF;
   font-size:.58rem;font-weight:800;display:flex;align-items:center;justify-content:center;
-  cursor:help;flex-shrink:0;line-height:1;
+  cursor:help;flex-shrink:0;line-height:1;transition:border-color .15s,color .15s;
 }
+.dd-smetric-tip:hover .dd-smetric-info{border-color:#B5202A;color:#B5202A;}
+.dd-smetric-tip-text{
+  visibility:hidden;opacity:0;position:absolute;bottom:calc(100% + 8px);right:0;
+  background:#1A1A1A;color:#fff;font-size:.68rem;font-weight:500;padding:9px 11px;border-radius:8px;
+  pointer-events:none;transition:opacity .15s,visibility .15s;z-index:120;width:210px;
+  white-space:normal;line-height:1.45;text-align:left;box-shadow:0 6px 20px rgba(0,0,0,.18);
+}
+.dd-smetric-tip-text::after{
+  content:'';position:absolute;top:100%;right:8px;border:5px solid transparent;border-top-color:#1A1A1A;
+}
+.dd-smetric-tip:hover .dd-smetric-tip-text{visibility:visible;opacity:1;}
 .dd-smetric-value{font-size:1.55rem;font-weight:900;color:#1A1A1A;line-height:1.15;margin-bottom:10px;letter-spacing:-.02em;}
 .dd-smetric-value.score{color:#8B1A1A;}
 .dd-smetric-value.score span{font-size:.95rem;font-weight:700;color:#9CA3AF;}
@@ -3753,7 +3874,13 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dd-sact-full{
   background:linear-gradient(145deg,#8B1A1A 0%,#4A0A10 55%,#2D0608 100%);
   color:#fff;box-shadow:0 6px 24px rgba(139,26,26,.35);
+  animation:ddCtaPulse 2.4s ease-in-out infinite;
 }
+@keyframes ddCtaPulse{
+  0%,100%{box-shadow:0 6px 24px rgba(139,26,26,.35),0 0 0 0 rgba(181,32,42,0);}
+  50%{box-shadow:0 8px 32px rgba(139,26,26,.55),0 0 0 10px rgba(181,32,42,.14);}
+}
+.dd-sact-full:hover{animation:none;box-shadow:0 10px 36px rgba(139,26,26,.55),0 0 0 6px rgba(181,32,42,.18)!important;}
 .dd-sact-icon{
   width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
 }
@@ -3777,7 +3904,7 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dd-sact-note p{font-size:.68rem;color:#6B7280;line-height:1.5;margin:0;}
 @media(max-width:768px){
   #dd-main-content.dd-simple.dd-wrap{padding:14px 14px 88px;}
-  #dd-main-content.dd-simple.dd-wrap::before{right:-60px;top:80px;opacity:.05;}
+  #dd-main-content.dd-simple.dd-wrap::before{right:-40px;top:60px;opacity:.16;}
   #dd-main-content.dd-simple .dd-hero{flex-direction:column;gap:16px;}
   #dd-main-content.dd-simple .dd-hero-img-wrap{width:100%;}
   #dd-main-content.dd-simple .dd-hero-img{width:100%;height:auto;aspect-ratio:1;}
@@ -3790,7 +3917,6 @@ body.in-dashboard .mobile-menu{display:none!important;}
 #dd-main-content:not(.dd-simple) .dd-track-pill.tracked{
   background:#FEF2F0;border-color:#B5202A;color:#B5202A;
 }
-#dd-main-content:not(.dd-simple) .dd-hero-img-brand,
 #dd-main-content:not(.dd-simple) .dd-hero-img-count,
 #dd-main-content:not(.dd-simple) .dd-hero-comp-badge{display:none!important;}
 #dd-main-content:not(.dd-simple) .dd-hero-img-wrap{display:contents;}
@@ -4735,346 +4861,247 @@ html,body{overflow-x:clip;max-width:100%;}
       </div>
     </div>
 
-    <!-- ── FLOW: Riset → Sourcing → Jualan (scroll-scrub) ── -->
-    <section class="lp-flow" id="lp-flow" aria-labelledby="lp-flow-title">
-      <div class="lp-flow-sticky">
-        <div class="lp-flow-inner">
-          <header class="lp-flow-header">
-            <p class="lp-flow-eyebrow">Cara Kerja LarisID</p>
-            <h2 class="lp-flow-title" id="lp-flow-title">Dari riset sampai jualan, <span>satu alur.</span></h2>
-          </header>
+    <!-- ── SCROLL STORY: Pilih → Riset → Optimalkan → Jual ── -->
+<section id="lp-flow" class="lp-story" aria-label="Cara kerja LarisID">
+    <div class="story-pin">
+      <div class="stage">
 
-          <div class="lp-flow-rail-wrap" aria-hidden="true">
-            <div class="lp-flow-rail">
-              <div class="lp-flow-rail-fill" id="lp-flow-rail-fill"></div>
-              <div class="lp-flow-rail-pulse" id="lp-flow-rail-pulse"></div>
-            </div>
-            <div class="lp-flow-dots" id="lp-flow-dots">
-              <div class="lp-flow-dot is-active" data-stage="0">
-                <div class="lp-flow-dot-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div>
-                <span class="lp-flow-dot-label">Riset</span>
-              </div>
-              <div class="lp-flow-dot" data-stage="1">
-                <div class="lp-flow-dot-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
-                <span class="lp-flow-dot-label">Sourcing</span>
-              </div>
-              <div class="lp-flow-dot" data-stage="2">
-                <div class="lp-flow-dot-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>
-                <span class="lp-flow-dot-label">Jualan</span>
-              </div>
-            </div>
-          </div>
+        <!-- progress -->
+        <div class="story-progress" aria-hidden="true">
+          <div class="dot" data-step="0"></div>
+          <div class="dot" data-step="1"></div>
+          <div class="dot" data-step="2"></div>
+          <div class="dot" data-step="3"></div>
+        </div>
 
-          <div class="lp-flow-stage">
-            <div class="lp-flow-glow" aria-hidden="true"></div>
-
-            <div class="lp-flow-obj lp-flow-obj--riset" id="lp-flow-riset">
-              <div class="lp-flow-card">
-                <div class="lp-flow-scan" aria-hidden="true"></div>
-                <div class="lp-showcase-img"><img src="/images/tas-selempang-hero.webp" alt="Tas Selempang Pria Premium" loading="lazy" decoding="async"></div>
-                <div class="lp-showcase-name">Tas Selempang Pria Premium</div>
-                <div class="lp-showcase-meta">
-                  <div>
-                    <div class="lp-showcase-price">Rp 15,3 jt</div>
-                    <div class="lp-showcase-sold">omset/bln estimasi</div>
-                  </div>
-                  <div class="lp-vs-ring lp-flow-ring">
-                    <svg viewBox="0 0 56 56"><circle class="lp-vs-track" cx="28" cy="28" r="26"/><circle class="lp-vs-prog" id="lp-flow-ring-prog" cx="28" cy="28" r="26"/></svg>
-                    <div class="lp-vs-num" id="lp-flow-ring-num">0</div>
-                  </div>
+        <!-- ── SCENE 1: CHOOSE (real LarisID Discover screenshot, scrolling) ── -->
+        <div class="scene scene--choose">
+          <div class="lp-monitor">
+            <div class="lp-monitor-bar"><span></span><span></span><span></span></div>
+            <div class="lp-monitor-screen">
+              <div class="choose-scroll">
+                <img class="choose-shot" src="/images/story/discover.png?v=3" alt="LarisID Discover" decoding="async">
+                <div class="choose-unit">
+                  <div class="choose-watch-cover" aria-hidden="true"></div>
                 </div>
               </div>
             </div>
-
-            <div class="lp-flow-obj lp-flow-obj--sourcing" id="lp-flow-sourcing">
-              <div class="lp-flow-sourcing-box">
-                <div class="lp-flow-sourcing-lid" aria-hidden="true"></div>
-                <div class="lp-flow-sourcing-product"><img src="/images/tas-selempang-hero.webp" alt="Tas Selempang Pria Premium" loading="lazy" decoding="async"></div>
-                <div class="lp-flow-sourcing-tag"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> Stok siap</div>
-              </div>
-            </div>
-
-            <div class="lp-flow-obj lp-flow-obj--jualan" id="lp-flow-jualan">
-              <div class="lp-flow-sale">
-                <div class="lp-flow-toast">
-                  <img src="/images/shopee-logo.png" alt="Shopee" width="22" height="22" decoding="async">
-                  <div>
-                    <div class="lp-flow-toast-label">Pesanan Baru</div>
-                    <div class="lp-flow-toast-item">Tas Selempang Pria Premium</div>
-                  </div>
-                </div>
-                <div class="lp-flow-revenue">
-                  <div class="lp-flow-revenue-label">Omset bulan ini</div>
-                  <div class="lp-flow-revenue-value" id="lp-flow-revenue">Rp 0</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="lp-flow-caption-wrap" id="lp-flow-captions">
-            <div class="lp-flow-caption is-active" data-stage="0">
-              <p class="lp-flow-caption-title">Riset produk yang layak jual</p>
-              <p class="lp-flow-caption-sub">Scan ribuan produk Shopee dan lihat skor kelayakan sebelum kamu keluarkan modal.</p>
-            </div>
-            <div class="lp-flow-caption" data-stage="1">
-              <p class="lp-flow-caption-title">Sourcing dengan data yang sama</p>
-              <p class="lp-flow-caption-sub">Temukan supplier terpercaya dan siapkan stok berdasarkan angka yang sudah kamu validasi.</p>
-            </div>
-            <div class="lp-flow-caption" data-stage="2">
-              <p class="lp-flow-caption-title">Jualan online, pantau hasilnya</p>
-              <p class="lp-flow-caption-sub">Pasang di toko Shopee dan pantau pesanan masuk serta omset dari satu tempat.</p>
-            </div>
-          </div>
-
-          <div class="lp-flow-cta">
-            <button class="lp-hero-btn-primary" onclick="openAuthModal('signup','flow')">Mulai riset gratis
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:6px;vertical-align:middle;" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-            </button>
           </div>
         </div>
 
-        <div class="lp-flow-mobile">
-          <header class="lp-flow-mobile-header">
-            <p class="lp-flow-eyebrow">Cara Kerja LarisID</p>
-            <h2 class="lp-flow-title">Dari riset sampai jualan, <span>satu alur.</span></h2>
-          </header>
-          <div class="lp-flow-mobile-card" data-stage="0">
-            <div class="lp-flow-mobile-stage"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Riset</div>
-            <div class="lp-flow-card">
-              <div class="lp-flow-scan" aria-hidden="true"></div>
-              <div class="lp-showcase-img"><img src="/images/tas-selempang-hero.webp" alt="Tas Selempang Pria Premium" loading="lazy" decoding="async"></div>
-              <div class="lp-showcase-name">Tas Selempang Pria Premium</div>
-              <div class="lp-showcase-meta">
-                <div>
-                  <div class="lp-showcase-price">Rp 15,3 jt</div>
-                  <div class="lp-showcase-sold">omset/bln estimasi</div>
-                </div>
-                <div class="lp-vs-ring lp-flow-ring">
-                  <svg viewBox="0 0 56 56"><circle class="lp-vs-track" cx="28" cy="28" r="26"/><circle class="lp-vs-prog" style="stroke:#1A7A46;stroke-dasharray:163.36;stroke-dashoffset:21.24;" cx="28" cy="28" r="26"/></svg>
-                  <div class="lp-vs-num" style="color:#1A7A46;">87</div>
-                </div>
-              </div>
+        <!-- ── SCENE 2: RESEARCH (trader desk + watch on center screen) ── -->
+        <div class="scene scene--research">
+          <div class="photo-frame photo-frame--trader">
+            <img class="scene-photo" src="/images/story/research.png?v=4" alt="" decoding="async">
+            <div class="monitor-slot" aria-hidden="true"></div>
+            <!-- LEFT monitor: line chart grows -->
+            <div class="tchart tchart--l">
+              <svg viewBox="0 0 120 80" preserveAspectRatio="none">
+                <path class="area area--l" d="M4,66 L24,58 L44,60 L64,40 L84,46 L116,18 L116,80 L4,80 Z" fill="rgba(34,197,94,.22)" opacity="0"/>
+                <polyline class="line line--l" points="4,66 24,58 44,60 64,40 84,46 116,18" fill="none" stroke="#22C55E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <g class="grow-up grow-up--l" transform-origin="60 80">
+                  <rect x="10" y="52" width="5" height="18" fill="#22C55E" opacity=".7"/>
+                  <rect x="22" y="48" width="5" height="22" fill="#EF4444" opacity=".7"/>
+                  <rect x="34" y="50" width="5" height="20" fill="#22C55E" opacity=".7"/>
+                  <rect x="46" y="44" width="5" height="26" fill="#22C55E" opacity=".7"/>
+                  <rect x="58" y="40" width="5" height="30" fill="#EF4444" opacity=".7"/>
+                  <rect x="70" y="36" width="5" height="34" fill="#22C55E" opacity=".7"/>
+                  <rect x="82" y="32" width="5" height="38" fill="#22C55E" opacity=".7"/>
+                  <rect x="94" y="28" width="5" height="42" fill="#22C55E" opacity=".7"/>
+                </g>
+              </svg>
             </div>
-            <p class="lp-flow-mobile-caption">Scan ribuan produk Shopee dan lihat skor kelayakan sebelum kamu keluarkan modal.</p>
-          </div>
-          <div class="lp-flow-mobile-card" data-stage="1">
-            <div class="lp-flow-mobile-stage"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> Sourcing</div>
-            <div class="lp-flow-sourcing-box">
-              <div class="lp-flow-sourcing-lid" aria-hidden="true"></div>
-              <div class="lp-flow-sourcing-product"><img src="/images/tas-selempang-hero.webp" alt="Tas Selempang Pria Premium" loading="lazy" decoding="async"></div>
-              <div class="lp-flow-sourcing-tag"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg> Stok siap</div>
+            <!-- RIGHT monitor: line chart grows -->
+            <div class="tchart tchart--r">
+              <svg viewBox="0 0 120 80" preserveAspectRatio="none">
+                <path class="area area--r" d="M4,68 L24,62 L44,58 L64,44 L84,38 L116,16 L116,80 L4,80 Z" fill="rgba(34,197,94,.22)" opacity="0"/>
+                <polyline class="line line--r" points="4,68 24,62 44,58 64,44 84,38 116,16" fill="none" stroke="#22C55E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <g class="grow-up grow-up--r" transform-origin="60 80">
+                  <rect x="10" y="54" width="5" height="16" fill="#22C55E" opacity=".7"/>
+                  <rect x="22" y="50" width="5" height="20" fill="#EF4444" opacity=".7"/>
+                  <rect x="34" y="46" width="5" height="24" fill="#22C55E" opacity=".7"/>
+                  <rect x="46" y="42" width="5" height="28" fill="#22C55E" opacity=".7"/>
+                  <rect x="58" y="36" width="5" height="34" fill="#22C55E" opacity=".7"/>
+                  <rect x="70" y="30" width="5" height="40" fill="#22C55E" opacity=".7"/>
+                  <rect x="82" y="26" width="5" height="44" fill="#22C55E" opacity=".7"/>
+                  <rect x="94" y="22" width="5" height="48" fill="#22C55E" opacity=".7"/>
+                </g>
+              </svg>
             </div>
-            <p class="lp-flow-mobile-caption">Temukan supplier terpercaya dan siapkan stok berdasarkan angka yang sudah kamu validasi.</p>
-          </div>
-          <div class="lp-flow-mobile-card" data-stage="2">
-            <div class="lp-flow-mobile-stage"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg> Jualan</div>
-            <div class="lp-flow-sale">
-              <div class="lp-flow-toast">
-                <img src="/images/shopee-logo.png" alt="Shopee" width="22" height="22" decoding="async">
-                <div>
-                  <div class="lp-flow-toast-label">Pesanan Baru</div>
-                  <div class="lp-flow-toast-item">Tas Selempang Pria Premium</div>
-                </div>
-              </div>
-              <div class="lp-flow-revenue">
-                <div class="lp-flow-revenue-label">Omset bulan ini</div>
-                <div class="lp-flow-revenue-value">Rp 15,3 jt</div>
-              </div>
-            </div>
-            <p class="lp-flow-mobile-caption">Pasang di toko Shopee dan pantau pesanan masuk serta omset dari satu tempat.</p>
-          </div>
-          <div style="text-align:center;margin-top:8px;">
-            <button class="lp-hero-btn-primary" onclick="openAuthModal('signup','flow')">Mulai riset gratis
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:6px;vertical-align:middle;" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-            </button>
           </div>
         </div>
+
+        <!-- ── SCENE 3: OPTIMALKAN — product deep-dive dashboard ── -->
+        <div class="scene scene--features">
+          <div class="feat-board">
+            <header class="feat-head">
+              <span class="step">03 — Optimalkan</span>
+              <h3>Harga pas, omset yang bikin pede</h3>
+              <p>Band, fitur unggulan, dan skor kelayakan — semua terlihat jelas sebelum kamu listing.</p>
+            </header>
+            <div class="feat-main">
+              <div class="feat-col-left">
+                <div class="feat-panel feat-panel--tabs">
+                  <div class="feat-tabs">
+                    <div class="feat-tab"><div class="ic" style="background:#FEF3C7">🎯</div><span>Skor<br>Kelayakan</span></div>
+                    <div class="feat-tab"><div class="ic" style="background:#DBEAFE">🏷️</div><span>Fitur<br>Unggulan</span></div>
+                    <div class="feat-tab"><div class="ic" style="background:#EDE9FE">📊</div><span>Harga<br>Optimal</span></div>
+                    <div class="feat-tab"><div class="ic" style="background:#D1FAE5">✓</div><span>Semua<br>Sekilas</span></div>
+                  </div>
+                </div>
+                <div class="feat-panel feat-panel--score">
+                  <div class="feat-score">
+                    <svg class="feat-donut" viewBox="0 0 80 80">
+                      <circle cx="40" cy="40" r="30" fill="none" stroke="#E5E7EB" stroke-width="7"/>
+                      <circle class="feat-donut-ring" cx="40" cy="40" r="30" fill="none" stroke-width="7" stroke-linecap="round" transform="rotate(-90 40 40)"/>
+                      <text x="40" y="44" text-anchor="middle" font-family="Plus Jakarta Sans" font-size="13" font-weight="800" fill="#1A1A1A">87/100</text>
+                    </svg>
+                    <div class="feat-score-copy">
+                      <b>SANGAT LAYAK</b>
+                      <p>Rekomendasi: Listing sekarang 🚀</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="feat-panel feat-panel--metrics">
+                  <div class="feat-metrics">
+                    <div class="feat-metric">
+                      <label>Harga jual</label>
+                      <b>Rp 6.499.000</b>
+                    </div>
+                    <div class="feat-metric feat-metric--omset">
+                      <label>Omset / bulan</label>
+                      <b>Rp399,8 jt</b>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="feat-center" aria-hidden="true"></div>
+              <div class="feat-col-right">
+                <div class="feat-panel feat-panel--specs">
+                  <div class="feat-specs">
+                    <h4>Spesifikasi</h4>
+                    <div class="feat-spec"><div class="ic">📱</div><div><b>Layar</b><span>1.5" Super AMOLED, 480×480 px</span></div></div>
+                    <div class="feat-spec"><div class="ic">⚙️</div><div><b>Material</b><span>Titanium Grade 4</span></div></div>
+                    <div class="feat-spec"><div class="ic">🔋</div><div><b>Baterai</b><span>Up to 60 Jam</span></div></div>
+                    <div class="feat-spec"><div class="ic">💧</div><div><b>Ketahanan Air</b><span>10 ATM / 100 Meter</span></div></div>
+                    <div class="feat-spec"><div class="ic">📍</div><div><b>GPS</b><span>Dual-Frequency GPS</span></div></div>
+                    <div class="feat-spec"><div class="ic">⚖️</div><div><b>Berat</b><span>60.5 g</span></div></div>
+                  </div>
+                </div>
+                <div class="feat-panel feat-panel--dura">
+                  <div class="feat-dura">
+                    <h4>Tahan di Segala Kondisi</h4>
+                    <div class="feat-dura-row">
+                      <div class="feat-dura-item"><div class="ic">💧</div><b>10 ATM</b></div>
+                      <div class="feat-dura-item"><div class="ic">☀️</div><b>IP68</b></div>
+                      <div class="feat-dura-item"><div class="ic">🌡️</div><b>-20°C ~ 55°C</b></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="feat-bottom">
+              <div class="feat-fcard"><div class="ic">🏃</div><b>100+ Mode Olahraga</b><span>Lacak aktivitasmu dengan akurat.</span></div>
+              <div class="feat-fcard"><div class="ic">❤️</div><b>Monitor Kesehatan</b><span>Detak jantung, SpO2, stres, dan tidur.</span></div>
+              <div class="feat-fcard"><div class="ic">📲</div><b>Notifikasi Pintar</b><span>Panggilan, pesan, dan aplikasi penting.</span></div>
+              <div class="feat-fcard"><div class="ic">⚡</div><b>Fast Charging</b><span>Isi cepat, pakai lebih lama.</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── SCENE 4: SELL (delivery photo; watch printed on box) ── -->
+        <div class="scene scene--sell">
+          <div class="photo-frame photo-frame--delivery">
+            <img class="scene-photo" src="/images/story/delivery.png" alt="" decoding="async">
+            <div class="box-slot" aria-hidden="true"></div>
+          </div>
+        </div>
+
+        <!-- cream scrim for caption legibility over dark photos -->
+        <div class="caption-scrim"></div>
+
+        <!-- Pilih: watch card lives inside the Discover scroll layer (see .choose-unit above) -->
+
+        <!-- ── PERSISTENT WATCH (always in view) ── -->
+        <!-- Drop your transparent-bg watch photo at /images/story/watch.png and reload; it appears automatically. -->
+        <div class="hero-watch">
+          <div class="hero-watch-inner">
+            <img class="hero-watch-img" src="/images/story/watch-frames-nobg/frame_001.png" alt="">
+          </div>
+        </div>
+
+        <!-- feature callouts (scene 3: watch rotates, features highlight) -->
+        <div class="callout c-band">
+          <div class="ic" style="background:#E8EEF8"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2"><rect x="4" y="8" width="16" height="10" rx="3"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/></svg></div>
+          <div><b>Band biru</b></div>
+        </div>
+        <div class="callout c-cuaca">
+          <div class="ic" style="background:#FDF1DA"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C9974B" stroke-width="2.2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></div>
+          <div><b>Cuaca &amp; UV</b></div>
+        </div>
+        <div class="callout c-skor">
+          <div class="ic" style="background:var(--merah-tint)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B5202A" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg></div>
+          <div><b>87 / 100</b></div>
+        </div>
+
+        <!-- sold badge removed -->
+
+        <!-- captions -->
+        <div class="story-caption">
+          <div class="cap cap--choose"><span class="step">01 — Pilih</span><h3>Pilih produk yang tepat</h3><p>Dari ribuan produk Shopee, LarisID tunjukkan mana yang benar-benar laku — bukan tebak-tebakan.</p></div>
+          <div class="cap cap--research"><span class="step">02 — Riset</span><h3>Riset pasarnya sampai dalam</h3><p>Tren omset, kompetitor, dan permintaan — semua datanya di depan mata sebelum kamu keluarkan modal.</p></div>
+          <div class="cap cap--sell"><span class="step">04 — Jual</span><h3>Jual dengan percaya diri</h3><p>Keputusan berbasis data, bukan harapan. Mulai jualan yang benar-benar laku. 100% gratis.</p></div>
+        </div>
+
+        <div class="scroll-hint" aria-hidden="true">
+          <span>Scroll</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+
       </div>
+    </div>
+  
+    <div class="lp-story-mobile">
+      <header class="lp-story-mobile-header">
+        <div class="lp-section-eyebrow">Cara Kerja LarisID</div>
+        <h2 class="lp-section-title" style="text-align:center;max-width:16ch;margin-left:auto;margin-right:auto;">Dari pilih sampai jual<span class="lp-title-accent">.</span></h2>
+      </header>
+      <div class="lp-story-mobile-card">
+        <div class="lp-story-mobile-step">01 — Pilih</div>
+        <img src="/images/story/discover.png?v=3" alt="Discover LarisID" loading="lazy" decoding="async">
+        <h3 class="lp-story-mobile-title">Pilih produk yang tepat</h3>
+        <p class="lp-story-mobile-sub">Dari ribuan produk Shopee, LarisID tunjukkan mana yang benar-benar laku.</p>
+      </div>
+      <div class="lp-story-mobile-card">
+        <div class="lp-story-mobile-step">02 — Riset</div>
+        <img src="/images/story/research.png?v=4" alt="Riset pasar" loading="lazy" decoding="async">
+        <h3 class="lp-story-mobile-title">Riset pasarnya sampai dalam</h3>
+        <p class="lp-story-mobile-sub">Tren omset, kompetitor, dan permintaan — sebelum kamu keluarkan modal.</p>
+      </div>
+      <div class="lp-story-mobile-card">
+        <div class="lp-story-mobile-step">03 — Optimalkan</div>
+        <h3 class="lp-story-mobile-title">Harga pas, omset yang bikin pede</h3>
+        <p class="lp-story-mobile-sub">Skor kelayakan, harga jual optimal, dan omset estimasi dalam satu dashboard.</p>
+      </div>
+      <div class="lp-story-mobile-card">
+        <div class="lp-story-mobile-step">04 — Jual</div>
+        <img src="/images/story/delivery.png" alt="Pengiriman produk" loading="lazy" decoding="async">
+        <h3 class="lp-story-mobile-title">Jual dengan percaya diri</h3>
+        <p class="lp-story-mobile-sub">Keputusan berbasis data, bukan harapan. 100% gratis.</p>
+      </div>
+      <div class="lp-story-mobile-cta">
+        <button class="lp-hero-btn-primary" onclick="openAuthModal('signup','flow')">Mulai riset gratis</button>
+      </div>
+    </div>
+    <script src="/js/lp-scroll-story.js" defer></script>
+
     </section>
-
-    <script>
-    (function(){
-      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      var mobileMq = window.matchMedia('(max-width: 760px)');
-      var SCORE = 87;
-      var REVENUE_JT = 15.3;
-      var C = 2 * Math.PI * 26;
-
-      function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
-      function lerp(a, b, t){ return a + (b - a) * t; }
-      function easeIO(t){ return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
-      function morphT(p, a, b){
-        if(p <= a) return 0;
-        if(p >= b) return 1;
-        return easeIO((p - a) / (b - a));
-      }
-      function formatRev(jt){
-        if(jt <= 0) return 'Rp 0';
-        return 'Rp ' + jt.toFixed(1).replace('.', ',') + ' jt';
-      }
-
-      function lpInitFlow(){
-        var section = document.getElementById('lp-flow');
-        if(!section) return;
-
-        var riset = document.getElementById('lp-flow-riset');
-        var sourcing = document.getElementById('lp-flow-sourcing');
-        var jualan = document.getElementById('lp-flow-jualan');
-        var railFill = document.getElementById('lp-flow-rail-fill');
-        var railPulse = document.getElementById('lp-flow-rail-pulse');
-        var dots = section.querySelectorAll('.lp-flow-dot');
-        var captions = section.querySelectorAll('.lp-flow-caption');
-        var ring = document.getElementById('lp-flow-ring-prog');
-        var ringNum = document.getElementById('lp-flow-ring-num');
-        var revEl = document.getElementById('lp-flow-revenue');
-        var scan = section.querySelector('.lp-flow-scan');
-
-        if(ring){
-          ring.style.stroke = '#1A7A46';
-          ring.style.strokeDasharray = C;
-          ring.style.strokeDashoffset = C;
-        }
-        if(ringNum) ringNum.style.color = '#1A7A46';
-
-        function applyObj(el, op, scale, rotY){
-          if(!el) return;
-          el.style.opacity = String(op);
-          el.style.transform = 'translate3d(0,0,0) scale(' + scale + ') rotateY(' + rotY + 'deg)';
-          el.style.pointerEvents = op > 0.4 ? 'auto' : 'none';
-        }
-
-        function setDots(stage){
-          dots.forEach(function(d, i){
-            d.classList.toggle('is-active', i === stage);
-            d.classList.toggle('is-past', i < stage);
-          });
-        }
-
-        function setCaptions(stage){
-          captions.forEach(function(c, i){
-            c.classList.toggle('is-active', i === stage);
-          });
-        }
-
-        function setFinal(){
-          if(ring) ring.style.strokeDashoffset = C * (1 - SCORE / 100);
-          if(ringNum) ringNum.textContent = String(SCORE);
-          if(revEl) revEl.textContent = formatRev(REVENUE_JT);
-          applyObj(riset, 0, 1, 0);
-          applyObj(sourcing, 0, 1, 0);
-          applyObj(jualan, 1, 1, 0);
-          if(railFill) railFill.style.width = '100%';
-          if(railPulse) railPulse.style.left = '100%';
-          setDots(2);
-          setCaptions(2);
-        }
-
-        if(reduce){
-          setFinal();
-          return;
-        }
-
-        if(mobileMq.matches) return;
-
-        if(riset) applyObj(riset, 1, 1, 0);
-        if(sourcing) applyObj(sourcing, 0, 0.88, 18);
-        if(jualan) applyObj(jualan, 0, 0.88, 18);
-
-        var active = false;
-        var ticking = false;
-
-        function update(){
-          ticking = false;
-          if(mobileMq.matches) return;
-          var vh = window.innerHeight;
-          var sectionHeight = section.offsetHeight;
-          var track = Math.max(sectionHeight - vh, 1);
-          var progress = clamp(-section.getBoundingClientRect().top / track, 0, 1);
-
-          var m12 = morphT(progress, 0.15, 0.45);
-          var m23 = morphT(progress, 0.6, 0.9);
-
-          var s1Op, s1Scale, s1Rot;
-          var s2Op, s2Scale, s2Rot;
-          var s3Op, s3Scale, s3Rot;
-
-          if(progress < 0.15){
-            s1Op = 1; s1Scale = 1; s1Rot = 0;
-          } else if(progress < 0.45){
-            s1Op = 1 - m12; s1Scale = lerp(1, 0.88, m12); s1Rot = lerp(0, -18, m12);
-          } else {
-            s1Op = 0; s1Scale = 0.88; s1Rot = -18;
-          }
-
-          if(progress < 0.15){
-            s2Op = 0; s2Scale = 0.88; s2Rot = 18;
-          } else if(progress < 0.45){
-            s2Op = m12; s2Scale = lerp(0.88, 1, m12); s2Rot = lerp(18, 0, m12);
-          } else if(progress < 0.9){
-            s2Op = 1; s2Scale = 1; s2Rot = 0;
-          } else {
-            s2Op = 1 - m23; s2Scale = lerp(1, 0.88, m23); s2Rot = lerp(0, -18, m23);
-          }
-
-          if(progress < 0.6){
-            s3Op = 0; s3Scale = 0.88; s3Rot = 18;
-          } else if(progress < 0.9){
-            s3Op = m23; s3Scale = lerp(0.88, 1, m23); s3Rot = lerp(18, 0, m23);
-          } else {
-            s3Op = 1; s3Scale = 1; s3Rot = 0;
-          }
-
-          applyObj(riset, s1Op, s1Scale, s1Rot);
-          applyObj(sourcing, s2Op, s2Scale, s2Rot);
-          applyObj(jualan, s3Op, s3Scale, s3Rot);
-
-          var ringP = clamp(progress / 0.15, 0, 1);
-          if(ring) ring.style.strokeDashoffset = C * (1 - ringP * SCORE / 100);
-          if(ringNum) ringNum.textContent = String(Math.round(ringP * SCORE));
-
-          var revP = clamp((progress - 0.9) / 0.1, 0, 1);
-          if(revEl) revEl.textContent = formatRev(revP * REVENUE_JT);
-
-          if(railFill) railFill.style.width = (progress * 100) + '%';
-          if(railPulse){
-            railPulse.style.left = (progress * 100) + '%';
-            railPulse.style.opacity = String(0.55 + 0.45 * Math.max(Math.sin(m12 * Math.PI), Math.sin(m23 * Math.PI)));
-          }
-
-          var stage = progress < 0.3 ? 0 : (progress < 0.75 ? 1 : 2);
-          setDots(stage);
-          setCaptions(stage);
-
-          if(scan) scan.classList.toggle('is-active', progress < 0.15);
-        }
-
-        if('IntersectionObserver' in window){
-          var obs = new IntersectionObserver(function(entries){
-            active = entries.some(function(e){ return e.isIntersecting; });
-            if(active && !ticking){ ticking = true; requestAnimationFrame(update); }
-          }, { threshold: 0 });
-          obs.observe(section);
-        } else {
-          active = true;
-        }
-
-        window.addEventListener('scroll', function(){
-          if(!active) return;
-          if(!ticking){ ticking = true; requestAnimationFrame(update); }
-        }, { passive: true });
-
-        update();
-      }
-
-      if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', lpInitFlow);
-      else lpInitFlow();
-    })();
-    </script>
 
     <!-- ── PROBLEM SECTION ── -->
     <div class="lp-problem-section">
-      <div class="lp-problem-headline">Banyak Pemula Gagal Bukan Karena Malas.</div>
-      <div class="lp-problem-headline-sub">Mereka Gagal Karena Tidak Tahu Produk Apa yang Harus Dijual.</div>
+      <div class="lp-section-eyebrow">Kenapa Banyak Gagal</div>
+      <h2 class="lp-problem-headline">Bukan karena malas<span class="lp-title-accent">.</span></h2>
+      <p class="lp-problem-headline-sub">Mereka gagal karena tidak tahu produk apa yang harus dijual.</p>
       <div class="lp-problem-grid">
         <div class="lp-problem-card">
           <div class="lp-problem-illus">
@@ -5103,8 +5130,8 @@ html,body{overflow-x:clip;max-width:100%;}
     <!-- ── SOLUTION SECTION ── -->
     <div class="lp-solution-section">
       <div class="lp-section-eyebrow">Solusi LarisID</div>
-      <div class="lp-section-title">LarisID Bantu Kamu Jualan<br>dengan Percaya Diri.</div>
-      <div class="lp-section-sub">Gunakan data Shopee untuk membuat keputusan yang lebih tepat sebelum keluarkan modal.</div>
+      <div class="lp-section-title">LarisID bantu kamu jualan<br>dengan percaya diri<span class="lp-title-accent">.</span></div>
+      <div class="lp-section-sub lp-section-sub--center">Gunakan data Shopee untuk membuat keputusan yang lebih tepat sebelum keluarkan modal.</div>
       <div class="lp-solution-grid">
         <!-- Card 1: Find opportunities -->
         <div class="lp-solution-card">
@@ -5179,7 +5206,7 @@ html,body{overflow-x:clip;max-width:100%;}
     <div class="lp-dd-teaser-section">
       <div class="lp-dd-teaser">
         <div class="lp-dd-teaser-copy">
-          <div class="lp-section-eyebrow">Contoh Nyata</div>
+          <div class="lp-section-eyebrow lp-section-eyebrow--left">Contoh Nyata</div>
           <h3 class="lp-dd-teaser-title">Lihat satu produk, lengkap dengan datanya.</h3>
           <p class="lp-dd-teaser-sub">Setiap produk punya halaman Deep Dive: skor kelayakan, tren omset, kompetitor, rentang harga optimal, dan rekomendasi AI &mdash; ditampilkan apa adanya, bukan janji hasil pasti.</p>
           <button class="lp-hero-btn-primary" style="background:#1A1A1A;box-shadow:none;" onclick="document.getElementById('lp-preview-section').scrollIntoView({behavior:'smooth'})">Lihat contoh analisis &rarr;</button>
@@ -5287,7 +5314,10 @@ html,body{overflow-x:clip;max-width:100%;}
         </div>
 
         <!-- Section title -->
-        <div class="lp-feat-section-title">Fitur Unggulan LarisID</div>
+        <div class="lp-feat-section-head">
+          <div class="lp-section-eyebrow">Fitur Unggulan</div>
+          <h3 class="lp-feat-section-title">Semua alat dalam satu platform</h3>
+        </div>
 
         <!-- ── Feature 01: Temukan Produk Laris (text left, phone right) ── -->
         <div class="lp-feature-row">
@@ -5592,7 +5622,8 @@ html,body{overflow-x:clip;max-width:100%;}
       <div class="lp-community-inner">
         <!-- LEFT -->
         <div class="lp-community-left">
-          <h2>Kamu Tidak Jualan Sendirian.</h2>
+          <div class="lp-section-eyebrow lp-section-eyebrow--left lp-section-eyebrow--light">Komunitas Seller</div>
+          <h2>Kamu tidak jualan sendirian<span class="lp-title-accent">.</span></h2>
           <p>Bergabung dengan komunitas seller Indonesia yang terus belajar dan berkembang bersama. Dari mahasiswa hingga profesional — semua mulai dari nol.</p>
           <div class="lp-community-features">
             <div class="lp-community-feat">
@@ -5654,8 +5685,8 @@ html,body{overflow-x:clip;max-width:100%;}
     <!-- HARGA SECTION -->
     <section id="lp-harga">
       <div class="lp-pricing-head">
-        <div class="lp-section-eyebrow" style="display:inline-block;padding:4px 14px;border-radius:20px;">100% Gratis</div>
-        <div class="lp-pricing-title">Gratis Dipakai — Kredit yang Bisa Kamu Dapatkan</div>
+        <div class="lp-section-eyebrow">100% Gratis</div>
+        <div class="lp-pricing-title">Gratis dipakai — kredit yang bisa kamu dapatkan<span class="lp-title-accent">.</span></div>
         <p class="lp-pricing-sub">Setiap akun dapat 20 kredit gratis tiap bulan. Butuh lebih? Tambah kredit gratis lewat Extension — tanpa biaya, tanpa kartu kredit, tanpa langganan.</p>
         <div class="lp-pricing-trust">
           <span class="lp-trust-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B5202A" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>20 kredit gratis / bulan</span>
@@ -5764,12 +5795,12 @@ html,body{overflow-x:clip;max-width:100%;}
     </section>
 
     <!-- embedded product preview -->
-    <div id="lp-preview-section" style="background:#F5EFE0;padding:48px 0;">
-      <div style="max-width:1200px;margin:0 auto;padding:0 40px;">
-        <div style="text-align:center;margin-bottom:28px;">
+    <div id="lp-preview-section" class="lp-preview-section">
+      <div class="lp-preview-inner">
+        <div class="lp-preview-head">
           <div class="lp-section-eyebrow">Contoh Analisis Produk</div>
-          <div class="lp-section-title" style="font-size:1.5rem;">Ini yang kamu dapatkan di setiap produk</div>
-          <p style="font-size:.88rem;color:#6B7280;margin-top:8px;">Data lengkap, tren, kompetitor, dan rekomendasi AI — semuanya dalam satu halaman.</p>
+          <h3 class="lp-preview-title">Ini yang kamu dapatkan di setiap produk</h3>
+          <p class="lp-preview-sub">Data lengkap, tren, kompetitor, dan rekomendasi AI — semuanya dalam satu halaman.</p>
         </div>
         <!-- mini deep dive embedded -->
         <div id="lp-dd-wrap" style="background:#F4F6F9;">
@@ -7825,7 +7856,6 @@ html,body{overflow-x:clip;max-width:100%;}
             <div class="dd-hero">
               <div class="dd-hero-img-wrap">
                 <div class="dd-hero-img" id="dd-hero-img"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
-                <img class="dd-hero-img-brand" src="/images/brand/appicon-red.png" alt="" aria-hidden="true" width="34" height="34">
                 <span class="dd-hero-img-count" id="dd-hero-img-count">1 / 1</span>
               </div>
               <div class="dd-hero-right">
@@ -7934,7 +7964,10 @@ html,body{overflow-x:clip;max-width:100%;}
                   <div class="dd-smetric">
                     <div class="dd-smetric-head">
                       <span class="dd-smetric-label">Skor Produk</span>
-                      <span class="dd-smetric-info" title="Skor kelayakan produk berdasarkan data pasar">i</span>
+                      <span class="dd-smetric-tip">
+                        <span class="dd-smetric-info" aria-label="Info Skor Produk">i</span>
+                        <span class="dd-smetric-tip-text">Skor 0–100 yang menilai seberapa layak produk ini dijual, dari penjualan, omset, tren, dan tingkat persaingan di keyword yang sama.</span>
+                      </span>
                     </div>
                     <div class="dd-smetric-value score" id="dd-s-score"><span id="dd-s-score-num">—</span><span>/100</span></div>
                     <div class="dd-smetric-visual"><div class="dd-smetric-bar"><div class="dd-smetric-bar-fill" id="dd-s-score-bar" style="width:0%"></div></div></div>
@@ -7946,7 +7979,10 @@ html,body{overflow-x:clip;max-width:100%;}
                   <div class="dd-smetric">
                     <div class="dd-smetric-head">
                       <span class="dd-smetric-label">Omset / Bulan</span>
-                      <span class="dd-smetric-info" title="Estimasi omset bulanan dari data penjualan">i</span>
+                      <span class="dd-smetric-tip">
+                        <span class="dd-smetric-info" aria-label="Info Omset">i</span>
+                        <span class="dd-smetric-tip-text">Estimasi total omset bulanan di pasar untuk keyword ini — dihitung dari harga × penjualan listing yang kami lacak.</span>
+                      </span>
                     </div>
                     <div class="dd-smetric-value" id="dd-s-omset">—</div>
                     <div class="dd-smetric-visual">
@@ -7960,7 +7996,10 @@ html,body{overflow-x:clip;max-width:100%;}
                   <div class="dd-smetric">
                     <div class="dd-smetric-head">
                       <span class="dd-smetric-label">Kompetisi</span>
-                      <span class="dd-smetric-info" title="Tingkat persaingan di keyword ini">i</span>
+                      <span class="dd-smetric-tip">
+                        <span class="dd-smetric-info" aria-label="Info Kompetisi">i</span>
+                        <span class="dd-smetric-tip-text">Seberapa ketat persaingan di keyword ini — dari jumlah penjual aktif dan seberapa besar pangsa penjualan yang dikuasai top 3.</span>
+                      </span>
                     </div>
                     <div class="dd-smetric-value" id="dd-s-komp">—</div>
                     <div class="dd-smetric-visual"><div class="dd-smetric-dots" id="dd-s-komp-dots"></div></div>
@@ -7972,7 +8011,10 @@ html,body{overflow-x:clip;max-width:100%;}
                   <div class="dd-smetric">
                     <div class="dd-smetric-head">
                       <span class="dd-smetric-label">Harga</span>
-                      <span class="dd-smetric-info" title="Harga produk dibanding rentang pasar">i</span>
+                      <span class="dd-smetric-tip">
+                        <span class="dd-smetric-info" aria-label="Info Harga">i</span>
+                        <span class="dd-smetric-tip-text">Harga listing ini dibanding rentang harga penjual aktif di keyword yang sama. Titik merah di garis menunjukkan posisi relatifmu.</span>
+                      </span>
                     </div>
                     <div class="dd-smetric-value" id="dd-s-price">—</div>
                     <div class="dd-smetric-visual">
@@ -9266,7 +9308,7 @@ html,body{overflow-x:clip;max-width:100%;}
 
             <!-- Back button -->
             <div style="text-align:center;">
-              <button onclick="history.back();switchDashView('dashboard')" style="background:#1A1A1A;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;">
+              <button onclick="switchDashView('dashboard')" style="background:#1A1A1A;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;">
                 Kembali ke Dashboard
               </button>
             </div>
@@ -11109,9 +11151,108 @@ function _applyImage(p, url) {
 // ════════════════════════════════════════════════════════════
 //  NAVIGATION
 // ════════════════════════════════════════════════════════════
+
+// Browser history — keeps Chrome back/forward inside Laris instead of leaving the site.
+let _navFromPopstate = false;
+let _navSilence = 0;
+let _navLastSerialized = '';
+
+function _navStateFromUrl() {
+  try {
+    const u = new URLSearchParams(window.location.search || '');
+    const view = u.get('view');
+    if (view) return { page: 'profile', view, product: u.get('product') || null };
+  } catch (_) {}
+  return { page: 'landing' };
+}
+
+function _navCurrentState() {
+  if (document.body.classList.contains('in-dashboard')) {
+    const state = { page: 'profile', view: (typeof _dashActiveView !== 'undefined' ? _dashActiveView : null) || 'dashboard' };
+    if (state.view === 'deepdive' && typeof _ddCurrentP !== 'undefined' && _ddCurrentP?._listing) {
+      const l = _ddCurrentP._listing;
+      state.product = `${l.item_id}__${l.shop_id}`;
+    }
+    return state;
+  }
+  const active = document.querySelector('.page.active');
+  return { page: active ? active.id.replace('page-', '') : 'landing' };
+}
+
+function _navUrlFromState(state) {
+  const u = new URLSearchParams(window.location.search || '');
+  u.delete('view');
+  u.delete('product');
+  if (state.page === 'profile' && state.view) {
+    u.set('view', state.view);
+    if (state.product) u.set('product', state.product);
+  }
+  const qs = u.toString();
+  return window.location.pathname + (qs ? '?' + qs : '');
+}
+
+function _navSerialize(state) { return JSON.stringify(state); }
+
+function _navPush() {
+  if (_navFromPopstate || _navSilence > 0) return;
+  const state = _navCurrentState();
+  const ser = _navSerialize(state);
+  if (ser === _navLastSerialized) return;
+  _navLastSerialized = ser;
+  history.pushState(state, '', _navUrlFromState(state));
+}
+
+function _navReplace() {
+  if (_navFromPopstate) return;
+  const state = _navCurrentState();
+  _navLastSerialized = _navSerialize(state);
+  history.replaceState(state, '', _navUrlFromState(state));
+}
+
+function _navRestore(state) {
+  if (!state) state = _navStateFromUrl();
+  _navFromPopstate = true;
+  _navSilence++;
+  try {
+    _navLastSerialized = _navSerialize(state);
+    if (state.page === 'profile') {
+      if (!document.body.classList.contains('in-dashboard')) {
+        if (currentUser) {
+          document.body.classList.add('in-dashboard');
+          document.body.classList.remove('on-landing');
+          document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+          document.getElementById('page-profile')?.classList.add('active');
+        } else {
+          showPage('landing');
+          return;
+        }
+      }
+      const targetView = state.view || 'dashboard';
+      if (state.view === 'deepdive' && state.product) {
+        const curKey = (_ddCurrentP?._listing)
+          ? `${_ddCurrentP._listing.item_id}__${_ddCurrentP._listing.shop_id}` : null;
+        if (_dashActiveView !== 'deepdive' || curKey !== state.product) {
+          dscOpenDeepDive(state.product, true);
+          return;
+        }
+      } else if (targetView !== _dashActiveView) {
+        switchDashView(targetView);
+      }
+    } else {
+      document.body.classList.remove('in-dashboard');
+      showPage(state.page || 'landing');
+    }
+  } finally {
+    _navSilence--;
+    _navFromPopstate = false;
+  }
+}
+
+window.addEventListener('popstate', (e) => { _navRestore(e.state); });
+
 function showPage(name) {
-  // Logged-in users go to dashboard instead of home/landing
-  if ((name === 'home' || name === 'landing') && currentUser) { openProfile(); return; }
+  // Logged-in users go to dashboard instead of home/landing (not when restoring browser history)
+  if ((name === 'home' || name === 'landing') && currentUser && !_navFromPopstate) { openProfile(); return; }
   // Logged-out users hitting 'home' go to landing page
   if (name === 'home' && !currentUser) { name = 'landing'; }
   const prev = document.querySelector('.page.active');
@@ -11124,6 +11265,7 @@ function showPage(name) {
   document.body.classList.toggle('on-landing',   name === 'landing');
 
   closeMobileMenu();
+  _navPush();
 }
 function goBack() { showPage(prevPage === 'detail' ? 'discover' : prevPage); }
 function toggleMobileMenu() {
@@ -11992,7 +12134,10 @@ function _authOnSignOut() {
   savedProducts.clear();
   try { renderProfileSaved(); } catch (_) {}
   cohortClearDashboardTheme();
+  _navSilence++;
   showPage('landing');
+  _navReplace();
+  _navSilence--;
   renderHomeGrid();
   dismissLogoutChrome();
 }
@@ -14201,12 +14346,30 @@ async function openProfile() {
   document.getElementById('page-profile').classList.add('active');
   window.scrollTo(0, 0);
   const needsOnb = await nuOnbCheckNeeded();
-  if (needsOnb) {
-    switchDashView('discover');
-    nuOnbShowInPage(true);
-  } else {
-    switchDashView('dashboard');
-    setTimeout(() => nuScheduleHint('dashboard'), 3000);
+  _navSilence++;
+  try {
+    const u = new URLSearchParams(window.location.search || '');
+    if (needsOnb) {
+      switchDashView('discover');
+      nuOnbShowInPage(true);
+      _navReplace();
+    } else {
+      const urlView = u.get('view');
+      const product = u.get('product');
+      if (urlView === 'deepdive' && product) {
+        switchDashView('deepdive');
+        setTimeout(() => { dscOpenDeepDive(product, true); _navReplace(); }, 50);
+      } else if (urlView && typeof PDB_VIEWS !== 'undefined' && PDB_VIEWS.includes(urlView)) {
+        switchDashView(urlView);
+        _navReplace();
+      } else {
+        switchDashView('dashboard');
+        _navReplace();
+      }
+      setTimeout(() => nuScheduleHint('dashboard'), 3000);
+    }
+  } finally {
+    _navSilence--;
   }
   // load data in background after page is visible
   try { await loadAllPlans(); } catch(_) {}
@@ -14216,7 +14379,6 @@ async function openProfile() {
   try { await loadUserProfile(); } catch(_) {}
   try {
     const u = new URLSearchParams(window.location.search || '');
-    if (!needsOnb && u.get('view') === 'cohort') setTimeout(() => switchDashView('cohort'), 80);
     const pv = u.get('preview');
     if (pv === 'student' || pv === 'leader') {
       try { sessionStorage.setItem('larisid_admin_cohort_shell', pv); } catch (_) {}
@@ -14372,6 +14534,7 @@ function switchDashView(view) {
   if (isPlatformAdmin() && _adminViewMode !== 'admin' && view !== 'dashboard' && view !== 'admin') {
     _hbdApplyLeaderMode(_adminViewMode === 'leader');
   }
+  _navPush();
 }
 
 // ── MOBILE BOTTOM NAV ──────────────────────────────────────────
@@ -18768,7 +18931,7 @@ function dscSetView(mode) {
   dscRenderTable();
 }
 
-function dscOpenDeepDive(key) {
+function dscOpenDeepDive(key, skipNav) {
   const [itemId, shopId] = String(key).split('__');
   const match = r => String(r.item_id) === itemId && String(r.shop_id) === shopId;
   const listing = _dscAllListings.find(match) || _dscBrowsePool.find(match) || _dscFiltered.find(match);
@@ -18794,6 +18957,7 @@ function dscOpenDeepDive(key) {
   _ddExpanded = false; // every Deep Dive opens to the verdict-first screen
 
   // Switch view first so canvases are visible when Chart.js measures them
+  if (!skipNav) _navSilence++;
   switchDashView('deepdive');
   ddSwitchTab('ringkasan');
 
@@ -18808,6 +18972,7 @@ function dscOpenDeepDive(key) {
     nuRefreshView('deepdive');
     nuScheduleHint('deepdive');
     journeyApplyDeepDiveChrome();
+    if (!skipNav) { _navSilence--; _navPush(); }
   }, 0);
   const _fromOnb = _nuOnb.payoff;
   if (_fromOnb) _nuOnb.payoff = false;
@@ -29596,6 +29761,7 @@ if (document.getElementById('page-landing')?.classList.contains('active')) {
 
 loadData();
 captureInviteFromUrl();
+_navReplace();
 initSupabase();
 // If the user arrived via a password-recovery email link, show the
 // set-new-password screen (handles #access_token=...&type=recovery).
