@@ -3046,12 +3046,15 @@ body.in-dashboard .mobile-menu{display:none!important;}
   .dash-main{margin-left:64px;}
   .dash-nav-item{white-space:nowrap;}
   .dash-sidebar-logo{padding:18px 12px 14px;justify-content:center;gap:0;transition:padding .22s ease,gap .22s ease;}
+  .dash-sidebar:not(:hover):not(:focus-within) .dash-sidebar-logo{padding:18px 8px 14px;}
   .dash-sidebar:hover .dash-sidebar-logo,.dash-sidebar:focus-within .dash-sidebar-logo{padding:20px 20px 16px;justify-content:flex-start;gap:10px;}
-  .dash-logo-word,.dash-logo-beta{opacity:0;max-width:0;overflow:hidden;transition:opacity .15s ease,max-width .22s ease;}
+  .dash-logo-word,.dash-logo-beta{opacity:0;max-width:0;min-width:0;width:0;flex:0 0 0;overflow:hidden;transition:opacity .15s ease,max-width .22s ease,width .22s ease;}
+  .dash-sidebar:not(:hover):not(:focus-within) .dash-logo-beta{padding:0;border-width:0;}
+  .dash-sidebar:not(:hover):not(:focus-within) .dash-logo-icon{height:32px;transition:height .22s ease;}
   .dash-nav-item span:not(.dash-nav-icon),
   .dash-user-meta,.dash-logout-btn,.dash-tour-btn{opacity:0;transition:opacity .15s ease;}
   .dash-sidebar:hover .dash-logo-word,.dash-sidebar:focus-within .dash-logo-word,
-  .dash-sidebar:hover .dash-logo-beta,.dash-sidebar:focus-within .dash-logo-beta{opacity:1;max-width:160px;}
+  .dash-sidebar:hover .dash-logo-beta,.dash-sidebar:focus-within .dash-logo-beta{opacity:1;max-width:160px;width:auto;flex:0 0 auto;}
   .dash-sidebar:hover .dash-nav-item span:not(.dash-nav-icon),.dash-sidebar:focus-within .dash-nav-item span:not(.dash-nav-icon),
   .dash-sidebar:hover .dash-user-meta,.dash-sidebar:focus-within .dash-user-meta,
   .dash-sidebar:hover .dash-logout-btn,.dash-sidebar:focus-within .dash-logout-btn,
