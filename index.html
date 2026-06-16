@@ -2074,7 +2074,7 @@ body.in-dashboard .mobile-menu{display:none!important;}
   }
   #lp-flow .feat-head p{display:none;}
   #lp-flow .feat-main{display:grid;grid-template-columns:minmax(0,1fr) minmax(200px,280px);gap:clamp(10px,1.6vw,18px);align-items:start;margin-bottom:0;}
-  #lp-flow .feat-col-right, .feat-bottom{display:none !important;}
+  #lp-flow .feat-col-right, #lp-flow .feat-bottom{display:none !important;}
   #lp-flow .feat-panel{background:#fff;border:1px solid #E5E7EB;border-radius:14px;box-shadow:0 8px 28px rgba(26,26,26,.06);opacity:0;}
   #lp-flow .feat-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px;margin-bottom:10px;}
   #lp-flow .feat-tab{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;}
@@ -2144,7 +2144,9 @@ body.in-dashboard .mobile-menu{display:none!important;}
   }
   @media(max-width:680px){
     #lp-flow .hero-watch{width:210px;}
-    #lp-flow .c-band{left:calc(50% - 210px);} .c-cuaca{left:calc(50% + 72px);} .c-skor{left:calc(50% - 200px);}
+    #lp-flow .c-band{left:calc(50% - 210px);}
+    #lp-flow .c-cuaca{left:calc(50% + 72px);}
+    #lp-flow .c-skor{left:calc(50% - 200px);}
     #lp-flow .feat-metric--omset{left:-80px;}
     #lp-flow .feat-bottom{grid-template-columns:1fr;}
   }
@@ -4862,7 +4864,7 @@ html,body{overflow-x:clip;max-width:100%;}
     </div>
 
     <!-- ── SCROLL STORY: Pilih → Riset → Optimalkan → Jual ── -->
-<section id="lp-flow" class="lp-story" aria-label="Cara kerja LarisID">
+    <section id="lp-flow" class="lp-story" aria-label="Cara kerja LarisID">
     <div class="story-pin">
       <div class="stage">
 
