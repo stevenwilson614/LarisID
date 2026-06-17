@@ -8194,22 +8194,17 @@ html,body{overflow-x:clip;max-width:100%;}
 
                   <!-- Permintaan Pasar chart -->
                   <div class="dd-card fb-flaggable" style="padding:18px;" data-fb-element="Permintaan Pasar" data-fb-section="Analisis Pasar">
-                    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-                      <div>
-                        <div style="font-size:.82rem;font-weight:700;color:#111827;">Permintaan Pasar</div>
-                        <div style="font-size:.7rem;color:#6B7280;margin-top:2px;" id="ap-demand-subtitle">Omset &amp; unit terjual mingguan — semua toko di keyword</div>
-                      </div>
-                      <div style="display:flex;gap:0;background:#F3F4F6;border-radius:7px;padding:3px;">
-                        <button class="ap-gran-btn active" data-g="minggu" onclick="apSetGran('minggu')" style="padding:4px 12px;border:none;border-radius:5px;font-size:.68rem;font-weight:600;cursor:pointer;background:#fff;color:#B5202A;box-shadow:0 1px 3px rgba(0,0,0,.1);">Mingguan</button>
-                        <button class="ap-gran-btn" data-g="bulan" onclick="apSetGran('bulan')" style="padding:4px 12px;border:none;border-radius:5px;font-size:.68rem;font-weight:600;cursor:pointer;background:transparent;color:#6B7280;">Bulanan</button>
-                      </div>
+                    <div style="margin-bottom:12px;">
+                      <div style="font-size:.82rem;font-weight:700;color:#111827;">Permintaan Pasar</div>
+                      <div style="font-size:.7rem;color:#6B7280;margin-top:2px;" id="ap-demand-subtitle">4 minggu terakhir + prediksi 1 minggu — semua toko di keyword</div>
                     </div>
                     <div class="dd-chart-legend" style="margin-bottom:8px;">
                       <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#B5202A;"></div>Omset pasar (Rp)</div>
                       <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#4F46E5;"></div>Unit terjual</div>
+                      <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#10B981;border-style:dashed;height:0;border-top:2.5px dashed #10B981;background:transparent;"></div>Forecast</div>
                     </div>
                     <div style="position:relative;height:240px;"><canvas id="ap-demand-chart"></canvas></div>
-                    <div style="margin-top:10px;font-size:.68rem;color:#9CA3AF;display:flex;align-items:center;gap:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg><span id="ap-demand-note">Data scrape mingguan sejak 9 Apr 2026 — agregat semua listing di keyword</span></div>
+                    <div style="margin-top:10px;font-size:.68rem;color:#9CA3AF;display:flex;align-items:center;gap:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg><span id="ap-demand-note">4 minggu terakhir + prediksi 1 minggu — agregat semua listing di keyword</span></div>
                   </div>
 
                   <!-- Bottom row: Competition + Top Products -->
@@ -20452,7 +20447,6 @@ function trenRender() {
 // ── Analisa Pasar ─────────────────────────────────────────────────────────────
 
 let _apDemandChart = null;
-let _apGran = 'minggu';
 let _apData = null;
 let _apDemandGen = 0;
 
@@ -20714,7 +20708,7 @@ function ddRenderAnalisa() {
   document.getElementById('ap-s5b').textContent  = 'Potensi ' + d.potensiLabel.toLowerCase();
 
   const sub = document.getElementById('ap-demand-subtitle');
-  if (sub) sub.textContent = 'Memuat tren mingguan semua toko di keyword…';
+  if (sub) sub.textContent = 'Memuat 4 minggu terakhir + prediksi semua toko di keyword…';
 
   apRenderDemand(true);
   apRenderCompDonut();
@@ -20734,7 +20728,7 @@ function ddRenderAnalisa() {
     if (sub) {
       const nW = demand.weeks.length;
       sub.textContent = nW
-        ? `Agregat ${demand.meta.listingCount || 0} listing · ${nW} minggu scrape sejak 9 Apr 2026`
+        ? `4 minggu terakhir + prediksi · agregat ${demand.meta.listingCount || 0} listing di keyword`
         : 'Belum cukup data scrape mingguan untuk keyword ini';
     }
     apRenderDemand();
@@ -20743,20 +20737,15 @@ function ddRenderAnalisa() {
 
 function apRenderDemand(loading) {
   if (!_apData) return;
-  const weekly  = _apData.demandWeekly || [];
-  const monthly = _apData.demandMonthly || [];
-  const src     = _apGran === 'minggu' ? weekly : monthly;
-  const labels  = src.map(m => m.label);
-  const omset   = src.map(m => m.omset ?? 0);
-  const units   = src.map(m => m.units ?? 0);
-  const meta    = _apData.demandMeta;
-  const isEst   = !!meta?.anyEstimated;
+  const weekly = _apData.demandWeekly || [];
+  const meta   = _apData.demandMeta;
+  const isEst  = !!meta?.anyEstimated;
 
   if (_apDemandChart) { _apDemandChart.destroy(); _apDemandChart = null; }
   const canvas = document.getElementById('ap-demand-chart');
   if (!canvas) return;
 
-  if (loading || (!weekly.length && !monthly.length)) {
+  if (loading || !weekly.length) {
     const ctx = canvas.getContext('2d');
     _apDemandChart = new Chart(ctx, {
       type: 'line',
@@ -20770,6 +20759,30 @@ function apRenderDemand(loading) {
     return;
   }
 
+  const weeklyRowsFilled = weekly.slice(-4);
+  const labels = weeklyRowsFilled.map(w => w.label);
+  const chartOmsetData = weeklyRowsFilled.map(w => w.omset ?? 0);
+  const chartUnitData  = weeklyRowsFilled.map(w => w.units ?? 0);
+  const nW = weeklyRowsFilled.length;
+  const slice2 = weeklyRowsFilled.slice(-2);
+  const fcUnit  = slice2.length ? Math.round(slice2.reduce((s, w) => s + w.units, 0) / slice2.length) : 0;
+  const fcOmset = slice2.length ? Math.round(slice2.reduce((s, w) => s + w.omset, 0) / slice2.length) : 0;
+  const lastWeek = weeklyRowsFilled[nW - 1];
+  const nextWeek = lastWeek?.firstDate
+    ? new Date(lastWeek.firstDate.getTime() + 7 * 86400000)
+    : new Date();
+  labels.push(_apWLabel(nextWeek) + ' ▶');
+  chartUnitData.push(null);
+  chartOmsetData.push(null);
+  const fUnitW  = new Array(labels.length).fill(null);
+  const fOmsetW = new Array(labels.length).fill(null);
+  if (nW > 0) {
+    fUnitW[nW - 1]  = weeklyRowsFilled[nW - 1].units;
+    fOmsetW[nW - 1] = weeklyRowsFilled[nW - 1].omset;
+    fUnitW[nW]  = fcUnit;
+    fOmsetW[nW] = fcOmset;
+  }
+
   const grad = canvas.getContext('2d').createLinearGradient(0, 0, 0, 200);
   grad.addColorStop(0, 'rgba(181,32,42,0.18)');
   grad.addColorStop(1, 'rgba(181,32,42,0)');
@@ -20781,29 +20794,59 @@ function apRenderDemand(loading) {
       datasets: [
         {
           label: isEst ? 'Omset est./minggu' : 'Omset/minggu',
-          data: omset,
+          data: chartOmsetData,
           borderColor: '#B5202A',
           backgroundColor: grad,
           fill: true,
           tension: 0.3,
-          pointRadius: labels.length > 16 ? 2 : 4,
+          pointRadius: 4,
           pointBackgroundColor: '#B5202A',
           borderWidth: 2.5,
           yAxisID: 'y',
           borderDash: isEst ? [3, 3] : [],
+          spanGaps: false,
         },
         {
           label: isEst ? 'Unit est./minggu' : 'Unit/minggu',
-          data: units,
+          data: chartUnitData,
           borderColor: '#4F46E5',
           backgroundColor: 'transparent',
           fill: false,
           tension: 0.3,
-          pointRadius: labels.length > 16 ? 2 : 3,
+          pointRadius: 3,
           pointBackgroundColor: '#4F46E5',
           borderWidth: 2,
           yAxisID: 'y2',
           borderDash: isEst ? [3, 3] : [],
+          spanGaps: false,
+        },
+        {
+          label: 'Forecast Omset',
+          data: fOmsetW,
+          borderColor: '#10B981',
+          backgroundColor: 'transparent',
+          fill: false,
+          tension: 0.3,
+          pointRadius: 5,
+          pointBackgroundColor: '#10B981',
+          yAxisID: 'y',
+          borderDash: [5, 4],
+          spanGaps: false,
+          pointStyle: 'triangle',
+        },
+        {
+          label: 'Forecast Unit',
+          data: fUnitW,
+          borderColor: '#10B981',
+          backgroundColor: 'transparent',
+          fill: false,
+          tension: 0.3,
+          pointRadius: 5,
+          pointBackgroundColor: '#10B981',
+          yAxisID: 'y2',
+          borderDash: [5, 4],
+          spanGaps: false,
+          pointStyle: 'triangle',
         },
       ],
     },
@@ -20817,14 +20860,16 @@ function apRenderDemand(loading) {
             label(ctx) {
               const v = ctx.parsed.y;
               if (v == null) return '';
-              if (ctx.dataset.yAxisID === 'y') return ` Omset: Rp ${Math.round(v).toLocaleString('id-ID')}`;
-              return ` Unit: ${Math.round(v).toLocaleString('id-ID')}`;
+              const isFc = ctx.dataset.label?.startsWith('Forecast');
+              const prefix = isFc ? ' Prediksi' : '';
+              if (ctx.dataset.yAxisID === 'y') return `${prefix} Omset: Rp ${Math.round(v).toLocaleString('id-ID')}`;
+              return `${prefix} Unit: ${Math.round(v).toLocaleString('id-ID')}`;
             },
           },
         },
       },
       scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 8 }, color: '#9CA3AF', maxRotation: 45, maxTicksLimit: 14 } },
+        x: { grid: { display: false }, ticks: { font: { size: 8 }, color: '#9CA3AF', maxRotation: 45, maxTicksLimit: 6 } },
         y: {
           display: true, position: 'left', min: 0,
           grid: { color: '#F9FAFB' },
@@ -20841,22 +20886,10 @@ function apRenderDemand(loading) {
 
   const noteEl = document.getElementById('ap-demand-note');
   if (noteEl) {
-    const granLbl = _apGran === 'minggu' ? 'mingguan' : 'bulanan (agregat minggu)';
     const estNote = isEst ? ' · sebagian unit diestimasi dari ulasan (bucket Shopee 10rb+)' : '';
     const nList = meta?.listingCount ? `${meta.listingCount} listing` : 'semua listing';
-    noteEl.textContent = `Permintaan pasar ${granLbl} · ${nList} di keyword · scrape sejak 9 Apr 2026${estNote}`;
+    noteEl.textContent = `4 minggu terakhir + prediksi 1 minggu · ${nList} di keyword · forecast = rata-rata 2 minggu terakhir${estNote}`;
   }
-}
-
-function apSetGran(g) {
-  _apGran = g;
-  document.querySelectorAll('.ap-gran-btn').forEach(b => {
-    const active = b.dataset.g === g;
-    b.style.background    = active ? '#fff' : 'transparent';
-    b.style.color         = active ? '#B5202A' : '#6B7280';
-    b.style.boxShadow     = active ? '0 1px 3px rgba(0,0,0,.1)' : 'none';
-  });
-  apRenderDemand();
 }
 
 function apRenderCompDonut() {
@@ -21528,7 +21561,7 @@ function ddApplyTrendHeroStats(hero) {
   const unitSubEl  = document.getElementById('dd-h-unit-sub');
   const omsetSubEl = document.getElementById('dd-h-omset-sub');
   if (unitEl)  unitEl.textContent  = hero.monthlyUnits > 0 ? hero.monthlyUnits.toLocaleString('id-ID') : '—';
-  if (omsetEl) omsetEl.textContent = hero.monthlyOmset > 0 ? _fmtV(hero.monthlyOmset) : '—';
+  if (omsetEl) { omsetEl.textContent = hero.monthlyOmset > 0 ? _fmtV(hero.monthlyOmset) : '—'; omsetEl.dataset.omsetRaw = hero.monthlyOmset > 0 ? hero.monthlyOmset : 0; }
   if (unitDEl)  { unitDEl.textContent  = _fmtDelta(hero.wowUnitPct);  unitDEl.style.color  = (hero.wowUnitPct  ?? 0) >= 0 ? '#10B981' : '#B5202A'; }
   if (omsetDEl) { omsetDEl.textContent = _fmtDelta(hero.wowOmsetPct); omsetDEl.style.color = (hero.wowOmsetPct ?? 0) >= 0 ? '#10B981' : '#B5202A'; }
   if (unitSubEl)  unitSubEl.textContent  = `Est. unit / bulan · ${hero.periodNote || ''}`;
@@ -29296,10 +29329,53 @@ function journeyApplyDeepDiveChrome() {
   if (trackBtn) trackBtn.style.display = '';
 }
 
+// Smoothly counts a Deep Dive simple-view metric from its current value to a
+// new target instead of snapping. `fromZero` (set on first render of a new
+// product) starts the count at 0; later streamed corrections glide from the
+// value already on screen. Honors prefers-reduced-motion. `fmt` formats each
+// frame's value into display text; optional `onFrame` mirrors the value onto a
+// companion visual (e.g. the score bar). Pass target=null for non-numeric "—".
+function ddAnimateNum(el, target, fmt, fromZero, onFrame) {
+  if (!el) return;
+  if (el._cuRaf) { cancelAnimationFrame(el._cuRaf); el._cuRaf = null; }
+  if (target == null || !Number.isFinite(target)) {
+    el._cuVal = null;
+    el.textContent = fmt(target);
+    if (onFrame) onFrame(0);
+    return;
+  }
+  const start = fromZero ? 0 : (Number.isFinite(el._cuVal) ? el._cuVal : 0);
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (start === target || reduce) {
+    el._cuVal = target;
+    el.textContent = fmt(target);
+    if (onFrame) onFrame(target);
+    return;
+  }
+  const dur = 750, t0 = performance.now();
+  const ease = t => 1 - Math.pow(1 - t, 3); // easeOutCubic
+  const step = now => {
+    const t = Math.min(1, (now - t0) / dur);
+    const v = start + (target - start) * ease(t);
+    el._cuVal = v;
+    el.textContent = fmt(v);
+    if (onFrame) onFrame(v);
+    if (t < 1) { el._cuRaf = requestAnimationFrame(step); }
+    else { el._cuVal = target; el.textContent = fmt(target); if (onFrame) onFrame(target); el._cuRaf = null; }
+  };
+  el._cuRaf = requestAnimationFrame(step);
+}
+
+let _ddVerdictKey = null; // identifies the product whose verdict is on screen
+
 function ddRenderBeginnerVerdict(p) {
   if (!p) return;
   const listing = p._listing || {};
   const price = listing.price || p.medianPrice || 0;
+  // New product → count metrics up from 0; same product (streamed update) → glide from current value.
+  const _vKey = (p.id != null) ? p.id : (p.name || null);
+  const _fromZero = _vKey !== _ddVerdictKey;
+  _ddVerdictKey = _vKey;
   const heroNum = parseInt((document.getElementById('dd-score-num')?.textContent || '').replace(/[^\d]/g, ''), 10);
   const score = Math.round(Number.isFinite(heroNum) ? heroNum : (p.score || 0));
   const lslbl = listingScoreLabel(score);
@@ -29321,8 +29397,10 @@ function ddRenderBeginnerVerdict(p) {
   const sNum = document.getElementById('dd-s-score-num');
   const sBar = document.getElementById('dd-s-score-bar');
   const sHint = document.getElementById('dd-s-score-hint');
-  if (sNum) sNum.textContent = score || '—';
-  if (sBar) sBar.style.width = Math.min(100, Math.max(0, score || 0)) + '%';
+  ddAnimateNum(sNum, score > 0 ? score : null,
+    v => v == null ? '—' : String(Math.round(v)),
+    _fromZero,
+    v => { if (sBar) sBar.style.width = Math.min(100, Math.max(0, Math.round(v || 0))) + '%'; });
   if (sHint) {
     sHint.textContent = score >= 75
       ? 'Peluang tinggi — pasar masih terbuka'
@@ -29333,11 +29411,21 @@ function ddRenderBeginnerVerdict(p) {
           : 'Pasar sangat kompetitif — butuh diferensiasi';
   }
 
-  const omsetTxt = document.getElementById('dd-h-omset')?.textContent || '—';
+  const omsetEl = document.getElementById('dd-h-omset');
+  const omsetTxt = omsetEl?.textContent || '—';
   const omsetSub = document.getElementById('dd-h-omset-sub')?.textContent || '';
   const sOmset = document.getElementById('dd-s-omset');
   const sOmsetHint = document.getElementById('dd-s-omset-hint');
-  if (sOmset) sOmset.textContent = omsetTxt;
+  const _omsetRaw = omsetEl?.dataset.omsetRaw;
+  const _fmtOmsetV = v => v >= 1e9 ? 'Rp ' + (v / 1e9).toFixed(1) + 'M' : v >= 1e6 ? 'Rp ' + (v / 1e6).toFixed(1) + 'jt' : 'Rp ' + (v / 1e3).toFixed(0) + 'rb';
+  if (sOmset) {
+    if (_omsetRaw != null && _omsetRaw !== '') {
+      const omsetTarget = parseFloat(_omsetRaw);
+      ddAnimateNum(sOmset, omsetTarget > 0 ? omsetTarget : null, v => v == null ? '—' : _fmtOmsetV(v), _fromZero);
+    } else {
+      sOmset.textContent = omsetTxt; // no raw value available → show hero text as-is
+    }
+  }
   if (sOmsetHint && omsetSub && omsetSub !== '—' && omsetSub !== 'Total estimasi omset') {
     sOmsetHint.textContent = omsetSub;
   }
@@ -29361,10 +29449,11 @@ function ddRenderBeginnerVerdict(p) {
   }
   if (sKompHint && kompSub && kompSub !== 'Memuat data…') sKompHint.textContent = kompSub;
 
-  const priceTxt = price > 0 ? `Rp ${Math.round(price).toLocaleString('id-ID')}` : '—';
   const sPrice = document.getElementById('dd-s-price');
   const sThumb = document.getElementById('dd-s-price-thumb');
-  if (sPrice) sPrice.textContent = priceTxt;
+  ddAnimateNum(sPrice, price > 0 ? price : null,
+    v => v == null ? '—' : `Rp ${Math.round(v).toLocaleString('id-ID')}`,
+    _fromZero);
   if (sThumb) {
     let left = 50;
     const prices = (_ddKwRows || []).map(r => r.price || 0).filter(v => v > 0).sort((a, b) => a - b);
