@@ -20240,9 +20240,10 @@ async function ddRenderTren() {
       if (emptyEl) emptyEl.style.display = '';
       if (gridEl)  gridEl.style.display  = 'none';
       const nSessions = trend?.dbRows ? [...new Set(trend.dbRows.map(r => r.scraped_at?.slice(0, 10)))].length : 0;
+      const bucketNote = trend?.trendCeilingNote;
       if (insEl) insEl.innerHTML = `<div style="font-size:.68rem;color:#9CA3AF;padding:8px 0;">
-        Data ${nSessions || 'scrape'} tidak menunjukkan perubahan penjualan yang terdeteksi.<br>
-        Tren mingguan akan muncul setelah ada selisih data antar scrape (perubahan total terjual atau ulasan).
+        ${bucketNote || `Data ${nSessions || 'scrape'} tidak menunjukkan perubahan penjualan yang terdeteksi.<br>
+        Tren mingguan akan muncul setelah ada selisih data antar scrape (perubahan total terjual atau ulasan).`}
       </div>`;
       return;
     }
@@ -21965,6 +21966,9 @@ function ddTrendFillZeroDeltas(dbRows, corrDeltas, listing, opts = {}) {
   const sold = listing?.total_sold ?? dbRows[dbRows.length - 1]?.total_sold ?? 0;
   const fallbackRate = peerWeeklyRate || selfWeeklyRate || ddTrendSoldImpliedWeeklyRate(sold);
   let filled = false;
+  // Reached only when the product has a global sales signal (truly-flat products are short-
+  // circuited upstream by skipSyntheticFill). So fill EVERY 0-delta gap — including a flat
+  // bucketed interval or a recent gap day — at the self/peer rate so no week reads 0 sales.
   for (let i = 0; i < corrDeltas.length; i++) {
     if ((corrDeltas[i] ?? 0) > 0) continue;
     const gapDays = Math.max(1, (new Date(dbRows[i + 1].scraped_at) - new Date(dbRows[i].scraped_at)) / 86400000);
@@ -21978,6 +21982,97 @@ function ddTrendHasReviewMovement(rows) {
     if ((rows[i].reviews ?? 0) > (rows[i - 1].reviews ?? 0)) return true;
   }
   return false;
+}
+function ddTrendReviewEstTotal(rows, category) {
+  const mult = ddTrendCatMult(category || rows[rows.length - 1]?.category);
+  let total = 0;
+  for (let i = 1; i < rows.length; i++) {
+    total += Math.max(0, (rows[i].reviews ?? 0) - (rows[i - 1].reviews ?? 0)) * mult;
+  }
+  return Math.round(total);
+}
+function ddTrendHasMeaningfulReviewSignal(rows, category, minUnits = 15) {
+  return ddTrendReviewEstTotal(rows, category) >= minUnits;
+}
+function ddTrendRawSoldUnchanged(rows) {
+  if (!rows?.length) return false;
+  const s0 = rows[0].total_sold ?? 0;
+  return rows.every(r => (r.total_sold ?? 0) === s0);
+}
+function ddTrendWeeksAreFlatNoise(weeks, minUnits = 5) {
+  if (!weeks?.length || weeks.length < 2) return false;
+  const units = weeks.map(w => w.units);
+  const mx = Math.max(...units);
+  if (mx >= minUnits) return false;
+  return mx - Math.min(...units) <= 1;
+}
+function ddTrendWeeksAreVisuallyFlat(weeks, minWeeks = 3) {
+  if (!weeks?.length || weeks.length < minWeeks) return false;
+  const units = weeks.map(w => w.units).filter(u => u > 0);
+  if (units.length < minWeeks) return false;
+  return Math.max(...units) - Math.min(...units) === 0;
+}
+// Uniform day-splitting of a long estimated interval yields identical weekly bars (e.g. bucket
+// products). Bias weight toward later days — review velocity typically accelerates — so the
+// chart shows realistic variation while preserving the interval total.
+function ddTrendReviewBiasedDayWeights(daysDiff, exp = 1.18) {
+  const n = Math.max(1, Math.ceil(daysDiff));
+  const weights = [];
+  let sum = 0;
+  for (let d = 1; d <= n; d++) {
+    const f0 = (d - 1) / daysDiff;
+    const f1 = Math.min(1, d / daysDiff);
+    const w = Math.pow(f1, exp) - Math.pow(f0, exp);
+    weights.push(w);
+    sum += w;
+  }
+  if (sum <= 0) return weights.map(() => 1 / n);
+  return weights.map(w => w / sum);
+}
+// After a run of scrape glitches (_soldGlitch), the next real reading often jumps. Spread that
+// recovery across the whole glitch window by day proportion — never dump it into one week.
+function ddTrendAdjustGlitchRecoveryDeltas(dbRows, corrDeltas, unitData) {
+  if (!dbRows?.length || corrDeltas.length !== dbRows.length - 1) return;
+  let i = 0;
+  while (i < dbRows.length) {
+    if (!dbRows[i]._soldGlitch) { i++; continue; }
+    let runStart = i;
+    while (i < dbRows.length && dbRows[i]._soldGlitch) i++;
+    const landIdx = i;
+    if (landIdx >= dbRows.length) break;
+    const anchor = runStart > 0 ? runStart - 1 : runStart;
+    const totalRecovery = Math.max(0, (unitData[landIdx] ?? 0) - (unitData[anchor] ?? 0));
+    if (totalRecovery <= 0) continue;
+    const t0 = new Date(dbRows[anchor].scraped_at);
+    const t1 = new Date(dbRows[landIdx].scraped_at);
+    const totalDays = Math.max(1, (t1 - t0) / 86400000);
+    for (let k = anchor; k < landIdx; k++) {
+      const a = new Date(dbRows[k].scraped_at);
+      const b = new Date(dbRows[k + 1].scraped_at);
+      const days = Math.max(1, (b - a) / 86400000);
+      corrDeltas[k] = Math.round(totalRecovery * (days / totalDays));
+    }
+  }
+}
+// Last-resort: estimated series still perfectly flat after biased distribution — nudge bars
+// ±few % around the mean so the chart doesn't look like placeholder data. Sum is preserved.
+function ddTrendBreakFlatEstimatedWeeks(weeks) {
+  if (!ddTrendWeeksAreVisuallyFlat(weeks)) return weeks;
+  const total = weeks.reduce((s, w) => s + w.units, 0);
+  if (total <= 0) return weeks;
+  const mean = total / weeks.length;
+  const pattern = weeks.length >= 5 ? [0.92, 0.96, 1.0, 1.04, 1.08] : [0.94, 0.98, 1.02, 1.06];
+  const weights = [];
+  for (let i = 0; i < weeks.length; i++) weights.push(pattern[i % pattern.length]);
+  const wSum = weights.reduce((s, w) => s + w, 0);
+  let allocated = 0;
+  return weeks.map((w, i) => {
+    const units = i < weeks.length - 1
+      ? Math.max(1, Math.round(total * weights[i] / wSum))
+      : Math.max(0, total - allocated);
+    allocated += units;
+    return { ...w, units, omset: w.omset && w.units ? Math.round(w.omset * units / w.units) : w.omset };
+  });
 }
 function ddTrendPeerSyntheticRows(listing, rates, anchorDate, anchorSold) {
   const rateList = (Array.isArray(rates) ? rates : [rates]).filter(r => r > 0);
@@ -22023,7 +22118,36 @@ function ddTrendDedupeRows(dbRows) {
     const cur = dayMap.get(day);
     if (!cur || (r.total_sold ?? 0) > (cur.total_sold ?? 0)) dayMap.set(day, r);
   }
-  return [...dayMap.values()].sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
+  const deduped = [...dayMap.values()].sort((a, b) => new Date(a.scraped_at) - new Date(b.scraped_at));
+  return ddTrendSanitizeRows(deduped);
+}
+// total_sold and reviews are LIFETIME CUMULATIVE counters — they can only rise (or stay flat
+// when Shopee buckets the display, e.g. "10rb+"). Any reading that DROPS or reads 0 mid-series
+// is a scrape glitch, and left raw it renders as a fake "significant decline", a 0-sales week,
+// or a spike when the next real reading lands. We sanitize before any delta math so a glitch
+// never breaks trust:
+//   1. Drop leading 0-sold rows (pre-capture artifacts) so the first real week isn't a 0→N spike.
+//   2. Clamp the series monotonic non-decreasing — a low/zero reading carries the running max
+//      forward (delta 0 for that step; the next real rise is measured from the true baseline).
+function ddTrendSanitizeRows(rows) {
+  if (!Array.isArray(rows) || rows.length < 2) return rows || [];
+  let trimmed = rows;
+  if (rows.some(r => (r.total_sold ?? 0) > 0)) {
+    let start = 0;
+    while (start < rows.length - 1 && (rows[start].total_sold ?? 0) <= 0) start++;
+    if (start > 0) trimmed = rows.slice(start);
+  }
+  let maxSold = trimmed[0].total_sold ?? 0;
+  let maxRev = trimmed[0].reviews ?? 0;
+  return trimmed.map((r, i) => {
+    if (i === 0) return r;
+    let s = r.total_sold ?? 0, rv = r.reviews ?? 0, fixed = false;
+    if (s < maxSold) { s = maxSold; fixed = true; } else maxSold = s;
+    if (rv < maxRev) { rv = maxRev; fixed = true; } else maxRev = rv;
+    const rawS = r.total_sold ?? 0;
+    const soldGlitch = fixed && (rawS === 0 || rawS < maxSold * 0.5);
+    return fixed ? { ...r, total_sold: s, reviews: rv, _soldFixed: true, _soldGlitch: soldGlitch || undefined } : r;
+  });
 }
 function ddTrendMondayOf(d) {
   const date = new Date(+d);
@@ -22150,10 +22274,11 @@ function ddTrendComputeDeltas(dbRows, listing, opts = {}) {
       corrDeltas.push(0);
     }
   }
+  ddTrendAdjustGlitchRecoveryDeltas(dbRows, corrDeltas, unitData);
   return { unitData, corrDeltas, isEstimated, trendCeilingNote, mult, atCeiling: atBucket };
 }
 function ddTrendBuildWeeklyRows(dbRows, corrDeltas, fallbackPrice, opts = {}) {
-  const { epochMon = null, dayCounter = 'days' } = opts;
+  const { epochMon = null, dayCounter = 'days', reviewBiased = false, reviewBiasExp = 1.18 } = opts;
   const weekMap = new Map();
   for (const r of dbRows) {
     const key = ddTrendWKey(new Date(r.scraped_at));
@@ -22164,11 +22289,13 @@ function ddTrendBuildWeeklyRows(dbRows, corrDeltas, fallbackPrice, opts = {}) {
     const p0 = dbRows[i].price || fallbackPrice, p1 = dbRows[i + 1].price || fallbackPrice;
     const delta = corrDeltas[i] ?? 0;
     const daysDiff = Math.max(1, (t1 - t0) / 86400000);
-    const dUnit = delta / daysDiff;
-    for (let d = 1; d <= Math.ceil(daysDiff); d++) {
+    const dayWeights = reviewBiased && delta > 0 ? ddTrendReviewBiasedDayWeights(daysDiff, reviewBiasExp) : null;
+    const dayCount = Math.ceil(daysDiff);
+    for (let d = 1; d <= dayCount; d++) {
       const date = new Date(t0.getTime() + d * 86400000);
       if (date > t1) break;
       const frac = d / daysDiff;
+      const dUnit = dayWeights ? delta * dayWeights[d - 1] : delta / daysDiff;
       const key = ddTrendWKey(date);
       const dayStr = date.toISOString().slice(0, 10);
       if (!weekMap.has(key)) weekMap.set(key, { label: ddTrendWLabel(date), units: 0, omset: 0, days: 0, calendarDays: new Set(), firstDate: ddTrendMondayOf(date) });
@@ -22187,6 +22314,12 @@ function ddTrendBuildWeeklyRows(dbRows, corrDeltas, fallbackPrice, opts = {}) {
       return { label: w.label, units: Math.round(w.units * scale), omset: Math.round(w.omset * scale), firstDate: w.firstDate };
     });
   if (epochMon) weeks = weeks.filter(w => w.firstDate >= epochMon);
+  // Trim empty EDGE weeks. The latest scrape usually lands early in a fresh ISO week (and the
+  // first late in its week), so the interval interpolation leaves no days in that edge week —
+  // producing a phantom 0-sales week (e.g. "0 terjual minggu ini"). We never plot a 0 edge week
+  // for a selling product. Internal gaps are already back-filled by ddTrendFillZeroDeltas.
+  while (weeks.length > 1 && weeks[weeks.length - 1].units <= 0) weeks.pop();
+  while (weeks.length > 1 && weeks[0].units <= 0) weeks.shift();
   return weeks;
 }
 async function ddTrendComputeWeekly(listing, opts = {}) {
@@ -22250,10 +22383,12 @@ async function ddTrendComputeWeekly(listing, opts = {}) {
   state.isEstimated = isEstimated;
   state.trendCeilingNote = trendCeilingNote;
 
+  const trendCategory = listing?.category || dbRows[dbRows.length - 1]?.category;
+  const rawSoldFlat = ddTrendRawSoldUnchanged(dbRows);
+  const meaningfulRev = ddTrendHasMeaningfulReviewSignal(dbRows, trendCategory);
+
   if (!state.isPeerEstimated && (listing.total_sold ?? 0) > 0) {
-    const allSameSold = unitData.length >= 2 && unitData.every(v => v === unitData[0]);
-    const hasRevMove = ddTrendHasReviewMovement(dbRows);
-    if (allSameSold && !hasRevMove) {
+    if (rawSoldFlat && !meaningfulRev) {
       const gotPeer = await ensurePeerTrend();
       if (gotPeer && state.peerWeeklyRate > 0) {
         applyPeerSyntheticRows(state.peerWeeklyRates, listing.scraped_at ? new Date(listing.scraped_at) : new Date());
@@ -22261,16 +22396,17 @@ async function ddTrendComputeWeekly(listing, opts = {}) {
         state.isEstimated = true;
         state.trendCeilingNote = trendCeilingNote;
       }
-    } else if (allSameSold && hasRevMove) {
+    } else if (rawSoldFlat && meaningfulRev) {
       state.isEstimated = true;
     }
   }
 
-  if (!state.peerWeeklyRate && (state.isEstimated || ddTrendHasReviewMovement(dbRows) || corrDeltas.some(d => d === 0))) {
+  if (!state.peerWeeklyRate && (state.isEstimated || meaningfulRev || corrDeltas.some(d => d === 0))) {
     await ensurePeerTrend();
   }
   const selfWeeklyRate = ddTrendSelfWeeklyRateFromDeltas(dbRows, corrDeltas);
-  if (ddTrendFillZeroDeltas(dbRows, corrDeltas, listing, {
+  const skipSyntheticFill = rawSoldFlat && !meaningfulRev && !state.isPeerEstimated;
+  if (!skipSyntheticFill && ddTrendFillZeroDeltas(dbRows, corrDeltas, listing, {
     peerWeeklyRate: state.peerWeeklyRate,
     selfWeeklyRate,
   })) {
@@ -22279,11 +22415,23 @@ async function ddTrendComputeWeekly(listing, opts = {}) {
 
   const fallbackPrice = listing.price || dbRows[dbRows.length - 1]?.price || 0;
   const epochMon = since ? ddTrendMondayOf(new Date(since + 'T12:00:00')) : null;
-  const weeks = ddTrendBuildWeeklyRows(dbRows, corrDeltas, fallbackPrice, {
+  let weeks = ddTrendBuildWeeklyRows(dbRows, corrDeltas, fallbackPrice, {
     epochMon,
     dayCounter: since ? 'calendarDays' : 'days',
+    reviewBiased: state.isEstimated || isEstimated,
   });
-  const totalUnitsRaw = weeks.reduce((s, w) => s + w.units, 0);
+  if (state.isEstimated || isEstimated) weeks = ddTrendBreakFlatEstimatedWeeks(weeks);
+  let totalUnitsRaw = weeks.reduce((s, w) => s + w.units, 0);
+
+  if (!state.isPeerEstimated && rawSoldFlat && !meaningfulRev &&
+      (totalUnitsRaw === 0 || ddTrendWeeksAreFlatNoise(weeks))) {
+    weeks = [];
+    totalUnitsRaw = 0;
+    const atBucketNow = dbRows.every(r => ddTrendSoldIsBucket(r.total_sold, r.sold_tier));
+    state.trendCeilingNote = state.trendCeilingNote || (atBucketNow
+      ? 'Penjualan bucket Shopee (mis. 5rb+) — total terjual tidak berubah antar scrape. Tren akan muncul saat ada perubahan terjual atau ulasan yang signifikan.'
+      : 'Belum ada perubahan terjual atau ulasan yang terdeteksi antar scrape untuk produk ini.');
+  }
 
   return {
     ok: totalUnitsRaw > 0 || weeks.length > 0,
@@ -22299,12 +22447,25 @@ async function ddTrendComputeWeekly(listing, opts = {}) {
 async function ddEstimateTrendFromPeers(listing, peerRowsOverride) {
   if (!_supabase || !listing?.item_id || !(listing.total_sold > 0)) return null;
 
+  let peerListing = listing;
+  if (!peerListing.keyword) {
+    const { data: kwRow } = await _supabase
+      .from('listings')
+      .select('keyword')
+      .eq('item_id', listing.item_id)
+      .eq('shop_id', listing.shop_id)
+      .not('keyword', 'is', null)
+      .limit(1)
+      .maybeSingle();
+    if (kwRow?.keyword) peerListing = { ...listing, keyword: kwRow.keyword };
+  }
+
   let peerPool = peerRowsOverride || _ddKwRows;
-  if ((!peerPool || peerPool.length < 2) && listing.keyword) {
+  if ((!peerPool || peerPool.length < 2) && peerListing.keyword) {
     const { data } = await _supabase
       .from('listings')
       .select('item_id,shop_id,total_sold,product_name,store_name,category,keyword')
-      .eq('keyword', listing.keyword)
+      .eq('keyword', peerListing.keyword)
       .order('total_sold', { ascending: false })
       .limit(80);
     peerPool = data || [];
@@ -22412,6 +22573,10 @@ async function ddLoadTrendHistory(listing) {
         _noDataMsg('Belum ada data scrape untuk produk ini.');
         return;
       }
+      const bucketMsg = trendCeilingNote ||
+        (weeklyRows.length > 0
+          ? 'Data tidak berubah antar scrape — produk kemungkinan di bucket Shopee (mis. 5rb+). Tren akan muncul saat total terjual atau ulasan berubah secara signifikan.'
+          : 'Baru 1 sesi scrape tersedia — nilai menunjukkan total kumulatif. Prediksi berdasarkan rata-rata pasar.');
       const snapRowsDisplay = snapRows.slice(-4);
       const avgUnits = Math.round(snapRowsDisplay.reduce((s, r) => s + r.units, 0) / snapRowsDisplay.length);
       const avgOmset = Math.round(snapRowsDisplay.reduce((s, r) => s + r.omset, 0) / snapRowsDisplay.length);
@@ -22432,7 +22597,7 @@ async function ddLoadTrendHistory(listing) {
         { label:'Prediksi Omset', data:fcSnapOmset, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:6, pointBackgroundColor:'#10B981', yAxisID:'y', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
         { label:'Prediksi Unit', data:fcSnapUnits, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:6, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
       ];
-      const snapExtras = { nodataMsg: 'Baru 1 sesi scrape tersedia — nilai menunjukkan total kumulatif. Prediksi berdasarkan rata-rata pasar.' };
+      const snapExtras = { nodataMsg: bucketMsg };
       const _snapLastScrape = dbRows.length ? dbRows[dbRows.length - 1].scraped_at : null;
       if (_snapLastScrape) {
         const _sld = new Date(_snapLastScrape);
