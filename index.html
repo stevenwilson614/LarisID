@@ -8094,6 +8094,21 @@ html,body{overflow-x:clip;max-width:100%;}
                       <span id="dd-s-odds-hint">Menghitung peluang…</span>
                     </div>
                   </div>
+                  <div class="dd-smetric">
+                    <div class="dd-smetric-head">
+                      <span class="dd-smetric-label">Dinding Ulasan</span>
+                      <span class="dd-smetric-tip">
+                        <span class="dd-smetric-info" aria-label="Info Dinding Ulasan">i</span>
+                        <span class="dd-smetric-tip-text">Jumlah ulasan yang biasanya dimiliki produk pemenang di niche ini. Separuh produk baru tak pernah dapat satu ulasan pun — menembus ~50 ulasan pertama adalah rintangan terbesar. Rating tinggi saja tidak cukup; jumlah ulasan (bukti sosial) yang membedakan pemenang dari yang gagal.</span>
+                      </span>
+                    </div>
+                    <div class="dd-smetric-value"><span id="dd-s-wall">—</span> <span style="font-size:.95rem;font-weight:700;color:#9CA3AF;">ulasan</span></div>
+                    <div class="dd-smetric-visual"><div class="dd-smetric-bar"><div class="dd-smetric-bar-fill" id="dd-s-wall-bar" style="width:0%"></div></div></div>
+                    <div class="dd-smetric-foot" id="dd-s-wall-foot">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                      <span id="dd-s-wall-hint">Bukti sosial penentu utama</span>
+                    </div>
+                  </div>
                 </div>
                 <div class="dd-simple-actions">
                   <button type="button" class="dd-sact-sell" onclick="ddStartSelling()">
@@ -24763,6 +24778,44 @@ async function ddRenderOddsTile(p) {
   }
 }
 
+// ── Review wall ───────────────────────────────────────────────────────────────
+// The first ~50 reviews are the real wall: in our data winners carry a median of
+// ~64 reviews while flops sit at 1, and half of new listings never get a single
+// review — yet star ratings are near-identical (~4.8) for winners and flops. So
+// review COUNT (social proof / momentum), not rating, is what separates them.
+function calcReviewWall(reviews, niche) {
+  const med = (niche && niche.median_winner_reviews != null && niche.median_winner_reviews > 0)
+    ? Number(niche.median_winner_reviews) : 50;
+  const r = reviews || 0;
+  const pct = Math.min(100, Math.round(r / Math.max(med, 1) * 100));
+  const cleared = r >= med;
+  return { wall: med, reviews: r, pct, cleared,
+           fill: cleared ? '#059669' : pct >= 40 ? '#D97706' : '#9CA3AF' };
+}
+
+async function ddRenderReviewWallTile(p) {
+  const valEl = document.getElementById('dd-s-wall');
+  if (!valEl || !p) return;
+  const barEl  = document.getElementById('dd-s-wall-bar');
+  const hintEl = document.getElementById('dd-s-wall-hint');
+  const listing = p._listing || {};
+  const reviews = listing.reviews || listing.review_count || p.reviews || 0;
+  const kw = p.keyword || listing.keyword || null;
+  let niche = kw ? _nicheStatsCache[kw] : null;
+  const paint = (w) => {
+    valEl.textContent = '≈' + w.wall.toLocaleString('id-ID');
+    if (barEl) { barEl.style.width = w.pct + '%'; barEl.style.background = w.fill; }
+    if (hintEl) hintEl.textContent = w.cleared
+      ? 'Produk ini sudah lewat dinding ulasan'
+      : 'Separuh produk baru mati di 0 ulasan — kejar 50+ cepat';
+  };
+  paint(calcReviewWall(reviews, niche || null));
+  if (kw && _nicheStatsCache[kw] === undefined) {
+    niche = await _loadNicheStats(kw);
+    if (document.getElementById('dd-s-wall') === valEl) paint(calcReviewWall(reviews, niche || null));
+  }
+}
+
 async function loadProductDatabase() {
   if (!_supabase) return;
   const st = document.getElementById('pdb-status');
@@ -29648,6 +29701,7 @@ function ddRenderBeginnerVerdict(p) {
   const lslbl = listingScoreLabel(score);
 
   ddRenderOddsTile(p);
+  ddRenderReviewWallTile(p);
 
   const compBadge = document.getElementById('dd-hero-comp-badge');
   const compLbl = document.getElementById('dd-hero-comp-label');
