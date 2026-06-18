@@ -1480,6 +1480,26 @@ body.cohort-themed.in-dashboard .dash-topbar-cohort-chip{
 .ta-btn.primary{background:linear-gradient(135deg,#B5202A,#8E191F);color:#fff;}
 .ta-btn.secondary{background:#F3F4F6;color:#374151;}
 .ta-btn:hover{opacity:.9;}
+/* tracker product action modal */
+.pa-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:615;display:flex;align-items:center;justify-content:center;padding:20px;}
+.pa-modal{background:#fff;border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2);}
+.pa-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;}
+.pa-icon{flex-shrink:0;width:44px;height:44px;border-radius:12px;background:#F9EAE4;display:flex;align-items:center;justify-content:center;color:#B5202A;}
+.pa-title{font-size:1rem;font-weight:800;color:#111;line-height:1.3;}
+.pa-sub{font-size:.76rem;color:#6B7280;line-height:1.5;margin-top:4px;}
+.pa-product{font-size:.72rem;color:#374151;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:8px 10px;margin-bottom:16px;line-height:1.4;}
+.pa-product strong{color:#111;}
+.pa-actions{display:flex;flex-direction:column;gap:10px;}
+.pa-action-btn{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:1.5px solid #E5E7EB;border-radius:12px;background:#fff;cursor:pointer;font-family:inherit;text-align:left;transition:border-color .15s,background .15s,box-shadow .15s;}
+.pa-action-btn:hover{border-color:#B5202A;background:#FFF7F5;box-shadow:0 4px 14px rgba(181,32,42,.08);}
+.pa-action-btn.primary{border-color:#B5202A;background:linear-gradient(135deg,#FFF7F5,#FFF);}
+.pa-action-icon{flex-shrink:0;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;}
+.pa-action-icon.deep{background:#EFF6FF;color:#1D4ED8;}
+.pa-action-icon.sell{background:#ECFDF5;color:#059669;}
+.pa-action-label{font-size:.82rem;font-weight:800;color:#111;line-height:1.3;}
+.pa-action-hint{font-size:.68rem;color:#9CA3AF;margin-top:2px;line-height:1.35;}
+.pa-cancel{display:block;width:100%;margin-top:14px;padding:8px;border:none;background:none;font-size:.74rem;font-weight:600;color:#9CA3AF;cursor:pointer;font-family:inherit;text-align:center;}
+.pa-cancel:hover{color:#6B7280;}
 
 /* ── DASHBOARD LAYOUT ── */
 .dashboard-layout{display:flex;min-height:100vh;}
@@ -3864,7 +3884,7 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dd-smetric-value.komp-high{color:#B5202A;}
 .dd-smetric-visual{flex:1;display:flex;align-items:center;min-height:28px;margin-bottom:8px;}
 .dd-smetric-bar{height:7px;background:#F3ECE6;border-radius:999px;width:100%;overflow:hidden;}
-.dd-smetric-bar-fill{height:100%;background:linear-gradient(90deg,#B5202A,#8B1A1A);border-radius:999px;transition:width .4s ease;}
+.dd-smetric-bar-fill{height:100%;background:linear-gradient(90deg,#B5202A,#8B1A1A);border-radius:999px;}
 .dd-smetric-wave{width:100%;height:32px;}
 .dd-smetric-dots{display:flex;gap:6px;align-items:center;}
 .dd-smetric-dot{width:9px;height:9px;border-radius:50%;background:#E8E0D8;}
@@ -3875,7 +3895,9 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dd-smetric-price-thumb{
   position:absolute;top:50%;transform:translate(-50%,-50%);width:12px;height:12px;
   border-radius:50%;background:#B5202A;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.2);
+  transition:left .6s cubic-bezier(.22,1,.36,1);
 }
+@media(prefers-reduced-motion:reduce){.dd-smetric-price-thumb{transition:none;}}
 .dd-smetric-foot{
   display:flex;align-items:center;gap:5px;font-size:.66rem;color:#9CA3AF;line-height:1.35;margin-top:auto;
 }
@@ -10289,6 +10311,43 @@ html,body{overflow-x:clip;max-width:100%;}
             <button type="button" class="ta-btn secondary" onclick="ddTrackWithDefaultAlerts()">Nanti (email saja)</button>
             <button type="button" class="ta-btn primary" id="ta-confirm-btn" onclick="ddConfirmTrackAlert()">Aktifkan &amp; ke Tracker</button>
           </div>
+        </div>
+      </div>
+
+      <!-- Tracker product action modal -->
+      <div class="pa-overlay" id="pa-overlay" style="display:none;" onclick="if(event.target===this)trkCloseProductAction()">
+        <div class="pa-modal" role="dialog" aria-labelledby="pa-title" aria-modal="true">
+          <div class="pa-head">
+            <div class="pa-icon" aria-hidden="true">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            </div>
+            <div>
+              <div class="pa-title" id="pa-title">Mau lanjut ke mana?</div>
+              <p class="pa-sub">Pilih langkah berikutnya untuk produk ini.</p>
+            </div>
+          </div>
+          <div class="pa-product" id="pa-product-context">—</div>
+          <div class="pa-actions">
+            <button type="button" class="pa-action-btn" onclick="trkProductActionDeepDive()">
+              <span class="pa-action-icon deep" aria-hidden="true">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              </span>
+              <span>
+                <div class="pa-action-label">Lihat Deep Dive</div>
+                <div class="pa-action-hint">Analisis lengkap pasar, kompetitor, dan tren</div>
+              </span>
+            </button>
+            <button type="button" class="pa-action-btn primary" onclick="trkProductActionSelling()">
+              <span class="pa-action-icon sell" aria-hidden="true">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              </span>
+              <span>
+                <div class="pa-action-label">Mulai Jual &amp; Sourcing</div>
+                <div class="pa-action-hint">Buka Mulai Berjualan dengan produk ini</div>
+              </span>
+            </button>
+          </div>
+          <button type="button" class="pa-cancel" onclick="trkProductActionAlerts()">Lihat alert saja</button>
         </div>
       </div>
 
@@ -21796,7 +21855,9 @@ function ddRender(p) {
 
   // hero stats — omset/unit show lifetime totals; deltas updated async by ddLoadTrendHistory
   const _fmtOmset = v => v >= 1e9 ? 'Rp '+(v/1e9).toFixed(1)+'M' : v >= 1e6 ? 'Rp '+(v/1e6).toFixed(1)+'jt' : 'Rp '+(v/1e3).toFixed(0)+'rb';
-  document.getElementById('dd-h-omset').textContent = sales > 0 ? _fmtOmset(omset) : '—';
+  const _ddHOmsetEl = document.getElementById('dd-h-omset');
+  _ddHOmsetEl.textContent = sales > 0 ? _fmtOmset(omset) : '—';
+  _ddHOmsetEl.dataset.omsetRaw = sales > 0 ? omset : 0;
   document.getElementById('dd-h-omset-d').textContent = '—';
   document.getElementById('dd-h-omset-sub').textContent = 'Total estimasi omset';
   document.getElementById('dd-h-unit').textContent = sales > 0 ? sales.toLocaleString('id-ID') : '—';
@@ -22949,7 +23010,7 @@ function trkRenderProductCards() {
       : wIcon('box', 32, '#9CA3AF');
     const sellKey = `${p.item_id}_${p.shop_id}`;
     const isSelling = _trkSellingSet.has(sellKey);
-    return `<div class="trk-prod-card${selected ? ' selected' : ''}" onclick="trkSelectProduct('${p.key}')">
+    return `<div class="trk-prod-card${selected ? ' selected' : ''}" onclick="trkShowProductAction('${p.key}')">
       <div class="trk-prod-img">${badge}${imgHtml}</div>
       <div class="trk-prod-body">
         <div class="trk-prod-name">${wsdEsc(p.product_name || '—')}</div>
@@ -23001,6 +23062,52 @@ function trkAlertFilter(btn, type) {
   if (btn) btn.classList.add('active');
   _trkAlertFilter = type;
   trkRenderAlertFeed();
+}
+
+let _trkActionKey = null;
+
+function trkShowProductAction(key) {
+  const tracked = _trkEnriched.find(p => p.key === key);
+  if (!tracked) return;
+  _trkActionKey = key;
+  const ctx = document.getElementById('pa-product-context');
+  if (ctx) {
+    const name = wsdEsc(tracked.product_name || 'Produk');
+    const store = tracked.store_name ? ' · ' + wsdEsc(tracked.store_name) : '';
+    ctx.innerHTML = `<strong>${name}</strong>${store}`;
+  }
+  const overlay = document.getElementById('pa-overlay');
+  if (overlay) overlay.style.display = 'flex';
+}
+
+function trkCloseProductAction() {
+  _trkActionKey = null;
+  const overlay = document.getElementById('pa-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+function trkProductActionDeepDive() {
+  const p = _trkEnriched.find(x => x.key === _trkActionKey);
+  trkCloseProductAction();
+  if (p) trkOpenDeepDive(p.item_id, p.shop_id);
+}
+
+function trkProductActionSelling() {
+  const p = _trkEnriched.find(x => x.key === _trkActionKey);
+  trkCloseProductAction();
+  if (p) trkOpenMulaiBerjualan(p.item_id, p.shop_id, p);
+}
+
+function trkProductActionAlerts() {
+  const key = _trkActionKey;
+  trkCloseProductAction();
+  if (key) trkSelectProduct(key);
+}
+
+function trkOpenMulaiBerjualan(itemId, shopId, listing) {
+  const key = `${itemId}_${shopId}`;
+  switchDashView('ai');
+  if (typeof mlsSelectProduct === 'function') mlsSelectProduct(key, listing);
 }
 
 async function trkSelectProduct(key) {
