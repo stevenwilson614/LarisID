@@ -444,6 +444,12 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .card-body{padding:7px 9px 9px;}
 .card-name{font-family:'Plus Jakarta Sans', sans-serif;font-weight:700;font-size:.85rem;color:var(--td);line-height:1.3;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .card-cat{font-size:.7rem;color:var(--orange);font-weight:500;}
+.card-odds{font-size:.65rem;font-weight:700;margin-top:7px;display:none;align-items:center;gap:5px;letter-spacing:.01em;}
+.card-odds.on{display:inline-flex;}
+.card-odds .od-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:currentColor;}
+.card-odds.odds-high{color:#059669;}
+.card-odds.odds-med{color:#D97706;}
+.card-odds.odds-low{color:#6B7280;}
 
 /* ── DISCOVER ── */
 .disc-hero{background:var(--grad);padding:12px 22px 18px;}
@@ -11721,6 +11727,7 @@ function renderDiscGrid() {
   g.innerHTML = filtered.length
     ? filtered.map((p, i) => cardHTML(p, i)).join('')
     : `<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--tl)">No products found.</div>`;
+  if (filtered.length) decorateDiscoverOdds('#disc-grid');
 }
 
 // ════════════════════════════════════════════════════════════
@@ -11998,8 +12005,47 @@ function cardHTML(p, idx) {
     <div class="card-body">
       <div class="card-name">${p.name}</div>
       <div style="display:flex;align-items:center;gap:5px;"><div class="card-cat">${p.category}</div><img src="images/shopee-logo.png" alt="Shopee" style="width:14px;height:14px;flex-shrink:0;"></div>
+      <div class="card-odds" data-kw="${(p.keyword||'').replace(/"/g,'&quot;')}" data-price="${p.medianPrice||p.price||0}"></div>
     </div>
   </div>`;
+}
+
+// Reality-check chip on Discover cards: "Pemula: 1 dari N tembus" — the honest
+// base rate of NEW products reaching 100+ sold in that niche (mv_niche_breakout).
+// Batched per render; best-effort enrichment (cards work fine without it).
+async function decorateDiscoverOdds(sel) {
+  try {
+    const cont = document.querySelector(sel);
+    if (!cont || !_supabase) return;
+    const chips = Array.from(cont.querySelectorAll('.card-odds'));
+    if (!chips.length) return;
+    const kws = [...new Set(chips.map(c => c.dataset.kw).filter(Boolean))];
+    const need = kws.filter(k => _nicheStatsCache[k] === undefined);
+    if (need.length) {
+      need.forEach(k => { _nicheStatsCache[k] = null; });
+      for (let i = 0; i < need.length; i += 200) {
+        const chunk = need.slice(i, i + 200);
+        const { data } = await _supabase
+          .from('mv_niche_breakout')
+          .select('keyword,new_items,breakouts,breakout_rate,median_new_sold,median_winner_price,median_winner_reviews')
+          .in('keyword', chunk);
+        (data || []).forEach(row => { _nicheStatsCache[row.keyword] = row; });
+      }
+    }
+    chips.forEach(chip => {
+      const kw = chip.dataset.kw;
+      const niche = kw ? _nicheStatsCache[kw] : null;
+      if (!niche || (niche.new_items || 0) < 15 || niche.breakout_rate == null) {
+        chip.className = 'card-odds'; chip.innerHTML = ''; return;
+      }
+      const rate = Number(niche.breakout_rate);
+      const n = Math.max(2, Math.round(100 / Math.max(rate, 1)));
+      const o = calcBreakoutOdds(Number(chip.dataset.price) || 0, niche);
+      chip.className = 'card-odds on ' + o.cls;
+      chip.title = `~${o.pct}% produk baru di niche ini tembus 100+ terjual · median produk baru: ${niche.median_new_sold} terjual`;
+      chip.innerHTML = `<span class="od-dot"></span>Pemula: 1 dari ${n} tembus`;
+    });
+  } catch (e) { /* enrichment is best-effort */ }
 }
 
 // ════════════════════════════════════════════════════════════
