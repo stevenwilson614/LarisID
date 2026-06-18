@@ -2059,6 +2059,8 @@ body.in-dashboard .mobile-menu{display:none!important;}
   #lp-flow .cap-cta small{font-size:.78rem;color:var(--lp-text-muted,#6E675F);font-weight:600;}
 
   #lp-flow .scene{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;z-index:10;padding:clamp(66px,9vh,88px) 18px clamp(200px,28vh,250px);}
+  /* Progressive enhancement: first scene visible before GSAP boots (prevents blank section). */
+  #lp-flow .scene--choose{opacity:1;visibility:visible;}
   #lp-flow .scene--sell{z-index:32;}
   #lp-flow .scene svg{display:block;}
 
@@ -2193,6 +2195,10 @@ body.in-dashboard .mobile-menu{display:none!important;}
 #lp-flow .scroll-hint{color:var(--lp-text-muted);}
 /* mobile + reduced-motion fallback */
 #lp-flow .lp-story-mobile{display:none;}
+/* Desktop fallback when GSAP fails to load or init throws */
+#lp-flow.lp-story-fallback{height:auto!important;}
+#lp-flow.lp-story-fallback .story-pin{display:none!important;}
+#lp-flow.lp-story-fallback .lp-story-mobile{display:block;padding:calc(var(--lp-section-y) * .82) var(--lp-section-x);background:var(--bg);}
 @media(max-width:760px){
   #lp-flow.lp-story{height:auto!important;}
   #lp-flow .story-pin{display:none!important;}
@@ -5137,9 +5143,10 @@ html,body{overflow-x:clip;max-width:100%;}
         <button class="lp-hero-btn-primary" onclick="openAuthModal('signup','flow')">Mulai riset gratis</button>
       </div>
     </div>
-    <script src="/js/lp-scroll-story.js" defer></script>
-
     </section>
+    <script defer src="/js/vendor/gsap.min.js"></script>
+    <script defer src="/js/vendor/ScrollTrigger.min.js"></script>
+    <script defer src="/js/lp-scroll-story.js"></script>
 
     <!-- ── PROBLEM SECTION ── -->
     <div class="lp-problem-section">
