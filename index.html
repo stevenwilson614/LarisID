@@ -450,6 +450,21 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .card-odds.odds-high{color:#059669;}
 .card-odds.odds-med{color:#D97706;}
 .card-odds.odds-low{color:#6B7280;}
+/* ── Yang Laku dari Kotamu ── */
+.ylk-card{background:#fff;border:1px solid #F0E7DC;border-radius:14px;padding:16px 18px;margin-bottom:18px;box-shadow:0 6px 20px rgba(26,26,26,.04);}
+.ylk-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
+.ylk-title{font-size:.95rem;font-weight:800;color:#1A1A1A;letter-spacing:-.01em;}
+.ylk-sub{font-size:.72rem;color:#9CA3AF;margin-top:2px;max-width:520px;line-height:1.4;}
+.ylk-select{font-family:inherit;font-size:.78rem;font-weight:700;color:#1A1A1A;background:#F9EAE4;border:1px solid #F0CFC4;border-radius:8px;padding:7px 10px;cursor:pointer;max-width:200px;}
+.ylk-cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+.ylk-cat{border:1px solid #F0E7DC;border-radius:10px;padding:10px 12px;}
+.ylk-cat-top{display:flex;align-items:baseline;justify-content:space-between;gap:6px;margin-bottom:6px;}
+.ylk-cat-name{font-size:.78rem;font-weight:800;color:#1A1A1A;}
+.ylk-cat-rate{font-size:.78rem;font-weight:800;}
+.ylk-cat-bar{height:6px;background:#F3ECE6;border-radius:999px;overflow:hidden;margin-bottom:6px;}
+.ylk-cat-bar-fill{height:100%;border-radius:999px;}
+.ylk-cat-price{font-size:.66rem;color:#6B7280;font-weight:600;}
+.ylk-empty{font-size:.74rem;color:#9CA3AF;padding:6px 0;}
 
 /* ── DISCOVER ── */
 .disc-hero{background:var(--grad);padding:12px 22px 18px;}
@@ -7706,6 +7721,20 @@ html,body{overflow-x:clip;max-width:100%;}
               </div>
             </div>
 
+            <!-- Yang Laku dari Kotamu -->
+            <div class="ylk-card" id="ylk-card" style="display:none;">
+              <div class="ylk-head">
+                <div class="ylk-head-text">
+                  <div class="ylk-title">Yang Laku dari Kotamu</div>
+                  <div class="ylk-sub" id="ylk-sub">Kategori yang paling sering tembus untuk penjual baru di daerahmu.</div>
+                </div>
+                <select id="ylk-region" class="ylk-select" onchange="ylkOnRegionChange()" aria-label="Pilih kota">
+                  <option value="">Pilih kotamu…</option>
+                </select>
+              </div>
+              <div class="ylk-cats" id="ylk-cats"></div>
+            </div>
+
             <!-- Filter + Table -->
             <div class="dsc-layout">
 
@@ -11728,6 +11757,7 @@ function renderDiscGrid() {
     ? filtered.map((p, i) => cardHTML(p, i)).join('')
     : `<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--tl)">No products found.</div>`;
   if (filtered.length) decorateDiscoverOdds('#disc-grid');
+  ylkInit();
 }
 
 // ════════════════════════════════════════════════════════════
@@ -12046,6 +12076,87 @@ async function decorateDiscoverOdds(sel) {
       chip.innerHTML = `<span class="od-dot"></span>Pemula: 1 dari ${n} tembus`;
     });
   } catch (e) { /* enrichment is best-effort */ }
+}
+
+// ── Yang Laku dari Kotamu ─────────────────────────────────────────────────────
+// Regions specialize: Surabaya/Sidoarjo win cheap kitchenware, Bandung/Jkt-Utara
+// fashion, Jkt-Pusat electronics, Tangerang home goods. Steer sellers to the
+// category their city actually wins, from mv_region_category. Free for everyone.
+const YLK_LS_KEY = 'larisid_region_v1';
+let _ylkInited = false;
+let _ylkRegions = null;
+
+async function ylkInit() {
+  if (_ylkInited) return;
+  const card = document.getElementById('ylk-card');
+  const sel = document.getElementById('ylk-region');
+  if (!card || !sel || !_supabase) return; // not ready — allow a later retry
+  _ylkInited = true;
+  try {
+    const { data } = await _supabase
+      .from('mv_region_category')
+      .select('location,breakouts')
+      .order('breakouts', { ascending: false })
+      .limit(1000);
+    const totals = {};
+    (data || []).forEach(r => { totals[r.location] = (totals[r.location] || 0) + (r.breakouts || 0); });
+    _ylkRegions = Object.entries(totals)
+      .filter(([, n]) => n >= 30)
+      .sort((a, b) => b[1] - a[1])
+      .map(([loc]) => loc);
+    if (!_ylkRegions.length) { _ylkInited = false; return; }
+    const saved = localStorage.getItem(YLK_LS_KEY) || '';
+    sel.innerHTML = '<option value="">Pilih kotamu…</option>' +
+      _ylkRegions.map(loc => `<option value="${loc.replace(/"/g, '&quot;')}"${loc === saved ? ' selected' : ''}>${loc}</option>`).join('');
+    card.style.display = '';
+    if (saved && _ylkRegions.includes(saved)) ylkRender(saved);
+  } catch (e) { _ylkInited = false; }
+}
+
+async function ylkOnRegionChange() {
+  const sel = document.getElementById('ylk-region');
+  const region = sel ? sel.value : '';
+  try { region ? localStorage.setItem(YLK_LS_KEY, region) : localStorage.removeItem(YLK_LS_KEY); } catch (_) {}
+  ylkPersistRegion(region);
+  if (region) ylkRender(region);
+  else { const c = document.getElementById('ylk-cats'); if (c) c.innerHTML = ''; }
+}
+
+async function ylkPersistRegion(region) {
+  if (!_supabase || !currentUser || !region) return;
+  try { await _supabase.from('user_onboarding_prefs').update({ region }).eq('user_id', currentUser.id); } catch (_) {}
+}
+
+async function ylkRender(region) {
+  const wrap = document.getElementById('ylk-cats');
+  const subEl = document.getElementById('ylk-sub');
+  if (!wrap || !_supabase) return;
+  wrap.innerHTML = '<div class="ylk-empty">Memuat…</div>';
+  try {
+    const { data } = await _supabase
+      .from('mv_region_category')
+      .select('category,breakouts,breakout_rate,median_winner_price,new_items')
+      .eq('location', region)
+      .order('breakouts', { ascending: false })
+      .limit(6);
+    const rows = (data || []).filter(r => (r.new_items || 0) >= 10);
+    if (!rows.length) { wrap.innerHTML = '<div class="ylk-empty">Belum cukup data untuk daerah ini.</div>'; return; }
+    const top = rows[0];
+    if (subEl) subEl.textContent =
+      `Di ${region}, kategori ${top.category} paling sering tembus untuk penjual baru (~${top.breakout_rate}% produk baru laku 100+, median harga pemenang Rp ${Number(top.median_winner_price || 0).toLocaleString('id-ID')}).`;
+    const maxRate = Math.max(...rows.map(r => Number(r.breakout_rate) || 0), 1);
+    wrap.innerHTML = rows.map(r => {
+      const rate = Number(r.breakout_rate) || 0;
+      const clr = rate >= 18 ? '#059669' : rate >= 11 ? '#D97706' : '#9CA3AF';
+      const w = Math.round(rate / maxRate * 100);
+      const price = Number(r.median_winner_price || 0);
+      return `<div class="ylk-cat">
+        <div class="ylk-cat-top"><span class="ylk-cat-name">${r.category}</span><span class="ylk-cat-rate" style="color:${clr}">${rate}%</span></div>
+        <div class="ylk-cat-bar"><div class="ylk-cat-bar-fill" style="width:${w}%;background:${clr}"></div></div>
+        <div class="ylk-cat-price">Median harga pemenang: Rp ${price.toLocaleString('id-ID')}</div>
+      </div>`;
+    }).join('');
+  } catch (e) { wrap.innerHTML = '<div class="ylk-empty">Gagal memuat data.</div>'; }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -30508,6 +30619,7 @@ try { handleRecoveryHash(); } catch (_) {}
 try { consumeOAuthHash().catch(() => {}); } catch (_) {}
 // Trigger discover data load after Supabase is ready
 setTimeout(() => { if (typeof dscInit === 'function') dscInit(); }, 300);
+setTimeout(() => { if (typeof ylkInit === 'function') ylkInit(); }, 700);
 initFreshnessBadge();
 initTopbarDate();
 
