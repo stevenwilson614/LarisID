@@ -14606,6 +14606,10 @@ function switchDashView(view) {
   if (prevView === 'discover' && view !== 'discover') {
     _dscScrollTop = document.getElementById('dash-content')?.scrollTop || 0;
     _dscHideLoadingUi();
+    // Persist loaded listings so returning to Discover is instant
+    if (_dscAllListings.length) {
+      try { dscSaveCache(_dscAllListings.slice(0, DSC_PAGE_SIZE)); } catch (_) {}
+    }
   }
   _dashActiveView = view;
   journeyApplyNavGating();
@@ -18215,8 +18219,8 @@ async function dscFetchPage(offset, filters = {}) {
   return fb || [];
 }
 
-const DSC_CACHE_KEY = 'larisid_dsc_cache_v6';
-const DSC_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const DSC_CACHE_KEY = 'larisid_dsc_cache_v7';
+const DSC_CACHE_TTL = 30 * 60 * 1000; // 30 minutes — instant restore when returning to Discover
 
 let _dscLoadTimer = null;
 const DSC_TIPS = [
@@ -18316,7 +18320,12 @@ function dscShowSkeleton() {
 
 function dscSaveCache(rows) {
   try {
-    sessionStorage.setItem(DSC_CACHE_KEY, JSON.stringify({ ts: Date.now(), rows }));
+    const payload = {
+      ts: Date.now(),
+      rows,
+      browse: _dscBrowsePool.length ? _dscBrowsePool.slice(0, DSC_PAGE_SIZE) : null,
+    };
+    sessionStorage.setItem(DSC_CACHE_KEY, JSON.stringify(payload));
   } catch(e) {}
 }
 
@@ -18324,10 +18333,33 @@ function dscLoadCache() {
   try {
     const raw = sessionStorage.getItem(DSC_CACHE_KEY);
     if (!raw) return null;
-    const { ts, rows } = JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    const { ts, rows, browse } = parsed;
     if (Date.now() - ts > DSC_CACHE_TTL) { sessionStorage.removeItem(DSC_CACHE_KEY); return null; }
+    if (browse?.length) _dscMergeBrowsePool(browse);
     return rows;
   } catch(e) { return null; }
+}
+
+/** Hydrate in-memory Discover state from an unfiltered listing batch (session or network). */
+function _dscApplyCachedRows(cached) {
+  if (!cached?.length) return false;
+  _dscAllListings = cached;
+  _dscOffset = cached.length;
+  _dscLoaded = true;
+  _dscMergeBrowsePool(cached);
+  const newKws = [...new Set(cached.map(r => r.keyword).filter(Boolean))].filter(k => !_dscCompMap[k]);
+  newKws.forEach(kw => { _dscCompMap[kw] = _dscCalcComp(kw); });
+  const cats = [...new Set(cached.map(r => r.category).filter(Boolean))].sort();
+  dscBuildCatChecks(cats);
+  return true;
+}
+
+/** Restore Discover listings from sessionStorage (ignores active client-side filters). */
+function _dscTryRestoreSessionCache() {
+  if (_dscAllListings.length) return false;
+  const cached = dscLoadCache();
+  return _dscApplyCachedRows(cached);
 }
 
 async function dscLoadListings() {
@@ -18341,29 +18373,20 @@ async function dscLoadListings() {
   try {
     const filters = _dscCurrentFilters();
     const hasSearch = !!(filters.search || '').trim();
-    // Cache holds UNFILTERED top sellers — only valid when no search, no
-    // category filter (single OR multi), and no price filter is active.
     const _catFilterOn = !!_dscCurrentCatFilter || !!(_dscCurrentCatFilters && _dscCurrentCatFilters.length);
-    const _priceFilterOn = (filters.priceMin || 0) > 0 || filters.priceMax !== Infinity;
-    const _cacheable = !hasSearch && !_catFilterOn && !_priceFilterOn;
+    // Cache holds UNFILTERED top sellers — restore instantly on cold start; client filters apply after.
+    const _cacheableWrite = !hasSearch && !_catFilterOn;
 
-    if (_cacheable && !_dscAllListings.length && _dscOffset === 0) {
+    if (!_dscAllListings.length && _dscOffset === 0 && !hasSearch) {
       const cached = dscLoadCache();
-      if (cached && cached.length) {
+      if (cached?.length && _dscApplyCachedRows(cached)) {
         if (loadGen !== _dscLoadGen) return;
-        _dscAllListings = cached;
-        _dscOffset = cached.length;
-        _dscLoaded = true;
-        _dscMergeBrowsePool(cached);
-        const newKws = [...new Set(cached.map(r => r.keyword).filter(Boolean))].filter(k => !_dscCompMap[k]);
-        newKws.forEach(kw => { _dscCompMap[kw] = _dscCalcComp(kw); });
-        const cats = [...new Set(cached.map(r => r.category).filter(Boolean))].sort();
-        dscBuildCatChecks(cats);
-        dscApplyFilters();
+        _dscHideLoadingUi();
+        dscApplyFilters(false);
         renderForYou();
-        return; // serve from cache; next open will re-check TTL
+        return;
       }
-      dscShowLoadingScreen();
+      if (!hasSearch) dscShowLoadingScreen();
     }
 
     const rows = await dscFetchPage(_dscOffset, filters);
@@ -18389,9 +18412,8 @@ async function dscLoadListings() {
     }
 
     _dscLoaded = true;
-    // Cache the first batch for instant reload (unfiltered browse mode only —
-    // never persist search results or category/price-filtered rows)
-    if (_cacheable && _dscOffset <= DSC_PAGE_SIZE) dscSaveCache(_dscAllListings.slice(0, DSC_PAGE_SIZE));
+    // Cache the first unfiltered batch for instant restore (client-side filters apply on read).
+    if (_cacheableWrite && _dscOffset <= DSC_PAGE_SIZE) dscSaveCache(_dscAllListings.slice(0, DSC_PAGE_SIZE));
     dscHideLoadingScreen();
     dscApplyFilters(false);
     if (hasSearch) void dscCheckScrapeRequestFulfillment();
@@ -18510,7 +18532,6 @@ function _dscCurrentFilters() {
 }
 
 function dscInit() {
-  _dscSnapAppliedFromUI();
   dscUpdateDualRange('price');
   dscUpdateDualRange('omset');
   // Pre-populate all known categories immediately so filters are usable before data loads
@@ -18519,15 +18540,42 @@ function dscInit() {
     'Motor & Mobil','Olahraga','Outdoor & Camping','Rumah','Sepeda','Taman','Tanaman']);
   void dscLoadScrapeRequests();
 
-  // Already loaded — re-render from in-memory cache (no network round-trip)
-  if (_dscLoaded && (_dscAllListings.length || _dscFiltered.length)) {
+  const _dscInitSearch = (document.getElementById('dsc-search')?.value || '').trim();
+
+  // Session cache (survives tab switches and view changes; filters applied client-side)
+  if (!_dscInitSearch && !_dscAllListings.length && !_dscFiltered.length) {
+    _dscTryRestoreSessionCache();
+  }
+
+  _dscSnapAppliedFromUI();
+
+  // Warm in-memory state — re-render instantly (no loading flash)
+  if (_dscFiltered.length) {
     _dscHideLoadingUi();
     dscRenderTable();
     return;
   }
+  if (_dscAllListings.length) {
+    _dscHideLoadingUi();
+    dscApplyFilters(false);
+    return;
+  }
 
-  if (_dscLoading && !_dscAllListings.length) _dscLoading = false;
-  if (!_dscLoaded) dscLoadListings();
+  // Browse pool from a prior partial load — show recommendations immediately
+  if (_dscBrowsePool.length) {
+    _dscHideLoadingUi();
+    dscApplyFilters(false);
+    return;
+  }
+
+  // Fetch already in flight — keep skeleton, don't restart or flash empty state
+  if (_dscLoading) {
+    _dscHideLoadingUi();
+    return;
+  }
+
+  // Cold load from network
+  dscLoadListings();
 }
 
 function _dscNormKw(kw) {
@@ -18970,6 +19018,12 @@ function dscRenderTable() {
     slice = _dscSpreadSameNames([...slice, ...extra]).slice(0, DSC_SEARCH_MIN_PER_PAGE);
   }
 
+  // When filters/page math yield nothing but we have a browse pool, show those immediately
+  if (!slice.length && !searchActive) {
+    const instant = _dscFallbackCatalog().slice(0, perPage);
+    if (instant.length) slice = instant;
+  }
+
   const _dscEsc = s => String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const noMatchBanner = _dscSearchNoMatch && _dscQ
     ? `<div style="grid-column:1/-1;text-align:center;padding:20px 16px 10px;color:#6B7280;font-size:.85rem;">
@@ -19005,8 +19059,10 @@ function dscRenderTable() {
   // ── CARD VIEW ──
   if (_dscViewMode === 'card' && cardGrid) {
     if (!slice.length) {
-      cardGrid.innerHTML = loadingHtml;
-      if (!_dscLoading) void _dscEnsureBrowsePool(60).then(ok => { if (ok) dscApplyFilters(false); });
+      if (_dscLoading || (!_dscLoaded && !_dscBrowsePool.length)) {
+        cardGrid.innerHTML = loadingHtml;
+      }
+      if (!_dscLoading && !_dscAllListings.length) void _dscEnsureBrowsePool(60).then(ok => { if (ok) dscApplyFilters(false); });
     } else {
       const _cardKwMap = {};
       _dscAllListings.forEach(r => { const k = r.keyword||'__'; if (!_cardKwMap[k]) _cardKwMap[k]=[]; _cardKwMap[k].push(r); });
@@ -19018,8 +19074,10 @@ function dscRenderTable() {
   const tbody = document.getElementById('dsc-tbody');
   if (_dscViewMode === 'table' && tbody) {
     if (!slice.length) {
-      tbody.innerHTML = loadingRow;
-      if (!_dscLoading) void _dscEnsureBrowsePool(60).then(ok => { if (ok) dscApplyFilters(false); });
+      if (_dscLoading || (!_dscLoaded && !_dscBrowsePool.length)) {
+        tbody.innerHTML = loadingRow;
+      }
+      if (!_dscLoading && !_dscAllListings.length) void _dscEnsureBrowsePool(60).then(ok => { if (ok) dscApplyFilters(false); });
     } else {
       // Group all loaded listings by keyword for peer-context scoring
       const _dscKwMap = {};
