@@ -3855,7 +3855,7 @@ body.in-dashboard .mobile-menu{display:none!important;}
 }
 #dd-main-content.dd-simple .dd-hero-cat-pill strong{color:#8B1A1A;font-weight:700;}
 #dd-main-content.dd-simple .dd-hero-cat-pill svg{flex-shrink:0;opacity:.55;}
-.dd-simple-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px;}
+.dd-simple-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:16px;}
 @media(max-width:900px){.dd-simple-metrics{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:520px){.dd-simple-metrics{grid-template-columns:1fr;}}
 .dd-smetric{
@@ -3888,6 +3888,9 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dd-smetric-value.komp-low{color:#C4884A;}
 .dd-smetric-value.komp-med{color:#D97706;}
 .dd-smetric-value.komp-high{color:#B5202A;}
+.dd-smetric-value.odds-high{color:#059669;}
+.dd-smetric-value.odds-med{color:#D97706;}
+.dd-smetric-value.odds-low{color:#6B7280;}
 .dd-smetric-visual{flex:1;display:flex;align-items:center;min-height:28px;margin-bottom:8px;}
 .dd-smetric-bar{height:7px;background:#F3ECE6;border-radius:999px;width:100%;overflow:hidden;}
 .dd-smetric-bar-fill{height:100%;background:linear-gradient(90deg,#B5202A,#8B1A1A);border-radius:999px;}
@@ -8074,6 +8077,21 @@ html,body{overflow-x:clip;max-width:100%;}
                     <div class="dd-smetric-foot" id="dd-s-price-foot">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
                       <span id="dd-s-price-hint">Dibanding median pasar</span>
+                    </div>
+                  </div>
+                  <div class="dd-smetric">
+                    <div class="dd-smetric-head">
+                      <span class="dd-smetric-label">Peluang Pemula</span>
+                      <span class="dd-smetric-tip">
+                        <span class="dd-smetric-info" aria-label="Info Peluang Pemula">i</span>
+                        <span class="dd-smetric-tip-text">Perkiraan peluang produk BARU di niche ini menembus 100+ terjual — dari rentang harga dan rekam jejak penjual baru di keyword yang sama. Bukan jaminan, tapi gambaran realistis untuk pemula.</span>
+                      </span>
+                    </div>
+                    <div class="dd-smetric-value" id="dd-s-odds">—</div>
+                    <div class="dd-smetric-visual"><div class="dd-smetric-bar"><div class="dd-smetric-bar-fill" id="dd-s-odds-bar" style="width:0%"></div></div></div>
+                    <div class="dd-smetric-foot" id="dd-s-odds-foot">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg>
+                      <span id="dd-s-odds-hint">Menghitung peluang…</span>
                     </div>
                   </div>
                 </div>
@@ -24668,6 +24686,83 @@ function listingScoreLabel(score) {
   return               { lbl: 'Sangat Kompetitif',   bg: '#F3F4F6', clr: '#6B7280', border: '#E5E7EB' };
 }
 
+// ── Newcomer breakout odds ────────────────────────────────────────────────────
+// Honest estimate of a NEW product's chance of reaching 100+ sold, from two
+// empirical signals in our data: (1) price band — cheaper breaks out far more
+// often (<10k ≈ 27%, 250k+ ≈ 3%); (2) the niche's own new-listing breakout rate
+// from mv_niche_breakout. Not a guarantee — a realistic baseline for beginners.
+function calcBreakoutOdds(price, niche) {
+  const p = price || 0;
+  const priceOdds = p <= 0 ? 12
+    : p < 10000  ? 27
+    : p < 25000  ? 19
+    : p < 50000  ? 14
+    : p < 100000 ? 9
+    : p < 250000 ? 6
+    : 3;
+  let pct = priceOdds, src = 'harga';
+  if (niche && niche.breakout_rate != null && (niche.new_items || 0) >= 15) {
+    pct = Math.round(priceOdds * 0.45 + Number(niche.breakout_rate) * 0.55);
+    src = 'niche';
+  }
+  pct = Math.max(1, Math.min(60, pct));
+  const tier = pct >= 20 ? 'Tinggi' : pct >= 10 ? 'Sedang' : 'Rendah';
+  const cls  = pct >= 20 ? 'odds-high' : pct >= 10 ? 'odds-med' : 'odds-low';
+  const fill = pct >= 20 ? '#059669' : pct >= 10 ? '#D97706' : '#9CA3AF';
+  const hint = src === 'niche'
+    ? `~${pct}% produk baru di niche ini tembus 100+ terjual`
+    : (p > 0 ? `Berdasarkan harga — peluang ${tier.toLowerCase()} untuk pemula`
+             : 'Menunggu data harga pasar');
+  return { pct, tier, cls, fill, hint, src };
+}
+
+// Cache of mv_niche_breakout rows by keyword. undefined = not fetched, null = no row.
+const _nicheStatsCache = {};
+async function _loadNicheStats(keyword) {
+  if (!keyword) return null;
+  if (_nicheStatsCache[keyword] !== undefined) return _nicheStatsCache[keyword];
+  _nicheStatsCache[keyword] = null; // mark in-flight to avoid duplicate fetches
+  try {
+    if (_supabase) {
+      const { data } = await _supabase
+        .from('mv_niche_breakout')
+        .select('keyword,new_items,breakouts,breakout_rate,median_new_sold,median_winner_price,median_winner_reviews')
+        .eq('keyword', keyword)
+        .maybeSingle();
+      _nicheStatsCache[keyword] = data || null;
+    }
+  } catch (e) { _nicheStatsCache[keyword] = null; }
+  return _nicheStatsCache[keyword];
+}
+
+// Renders the "Peluang Pemula" tile in the beginner verdict panel. Shows a
+// price-based estimate immediately, then refines with niche data when it loads.
+async function ddRenderOddsTile(p) {
+  const valEl  = document.getElementById('dd-s-odds');
+  if (!valEl || !p) return;
+  const barEl  = document.getElementById('dd-s-odds-bar');
+  const hintEl = document.getElementById('dd-s-odds-hint');
+  const listing = p._listing || {};
+  const price = listing.price || p.medianPrice || 0;
+  const kw = p.keyword || listing.keyword || null;
+  let niche = kw ? _nicheStatsCache[kw] : null;
+  const paint = (o) => {
+    valEl.textContent = o.tier;
+    valEl.className = 'dd-smetric-value ' + o.cls;
+    if (barEl) { barEl.style.width = Math.min(100, o.pct * 2) + '%'; barEl.style.background = o.fill; }
+    if (hintEl) hintEl.textContent = o.hint;
+  };
+  paint(calcBreakoutOdds(price, niche || null));
+  if (kw && _nicheStatsCache[kw] === undefined) {
+    niche = await _loadNicheStats(kw);
+    // Re-check the tile still belongs to this product before repainting
+    const stillSame = (p._listing || {}).keyword === kw || p.keyword === kw;
+    if (stillSame && document.getElementById('dd-s-odds') === valEl) {
+      paint(calcBreakoutOdds(price, niche || null));
+    }
+  }
+}
+
 async function loadProductDatabase() {
   if (!_supabase) return;
   const st = document.getElementById('pdb-status');
@@ -29551,6 +29646,8 @@ function ddRenderBeginnerVerdict(p) {
   const heroNum = parseInt((document.getElementById('dd-score-num')?.textContent || '').replace(/[^\d]/g, ''), 10);
   const score = Math.round(Number.isFinite(heroNum) ? heroNum : (p.score || 0));
   const lslbl = listingScoreLabel(score);
+
+  ddRenderOddsTile(p);
 
   const compBadge = document.getElementById('dd-hero-comp-badge');
   const compLbl = document.getElementById('dd-hero-comp-label');
