@@ -24826,14 +24826,24 @@ function lpRenderPreview(p) {
   });
 }
 
+// kebab-case category slug matching /images/onboarding/categories/*.png
+function _catSlug(c) {
+  return (c || '').toLowerCase().replace(/\s*&\s*/g, '-').replace(/\s+/g, '-');
+}
+function _catIconImg(c) {
+  return `<img src="/images/onboarding/categories/${_catSlug(c)}.png" alt="" width="18" height="18" decoding="async" style="flex-shrink:0;object-fit:contain;" onerror="this.style.display='none'">`;
+}
+
+// Idempotent: re-renders whenever the grid is present but empty. Switching the
+// preview-as role re-creates the dashboard DOM, so a one-time flag would leave
+// the fresh grid blank — guard on actual content instead.
 function _initPdbCats() {
-  if (_pdbCatsInited) return;
-  _pdbCatsInited = true;
   const grid = document.getElementById('pdb-cats-grid');
-  if (!grid) return;
+  if (!grid || grid.querySelector('.pdb-cat-cb')) return;
+  _pdbCatsInited = true;
   grid.innerHTML = PDB_CATS.map(c => `
     <label class="pdb-cat-label">
-      <input type="checkbox" class="pdb-cat-cb" value="${c}" checked> ${c}
+      <input type="checkbox" class="pdb-cat-cb" value="${c}" checked>${_catIconImg(c)} ${c}
     </label>`).join('');
 }
 
@@ -26237,13 +26247,12 @@ const OF_COMPETITION_LABELS = ['','Sangat Rendah','Rendah','Sedang','Tinggi','Sa
 const OF_COMPETITION_MAX    = [0, 50, 150, 400, 1000, Infinity];
 
 function _initOfCats() {
-  if (_ofCatsInited) return;
-  _ofCatsInited = true;
   const grid = document.getElementById('of-cats-grid');
-  if (!grid) return;
+  if (!grid || grid.querySelector('.of-cat-cb')) return;
+  _ofCatsInited = true;
   grid.innerHTML = PDB_CATS.map(c => `
     <label class="pdb-cat-label">
-      <input type="checkbox" class="of-cat-cb" value="${c}" checked> ${c}
+      <input type="checkbox" class="of-cat-cb" value="${c}" checked>${_catIconImg(c)} ${c}
     </label>`).join('');
 }
 
