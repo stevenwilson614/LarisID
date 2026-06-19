@@ -18461,8 +18461,18 @@ async function dscFetchPage(offset, filters = {}) {
       price_max: priceMax,
     });
     if (!error) {
-      const day = filters.panelDate;
-      return (data || []).filter(r => !day || (r.scraped_at && r.scraped_at.slice(0, 10) === day));
+      // search_listings ranks matches across the FULL listings history, so a
+      // product's most recent scrape is rarely the global "panel date". Pinning
+      // results to that single day wiped out nearly every match. Instead collapse
+      // to one row per item (freshest scrape) while keeping the RPC's relevance
+      // order — the first time we see an item fixes its position.
+      const best = new Map();
+      for (const r of (data || [])) {
+        const k = `${r.item_id}_${r.shop_id}`;
+        const cur = best.get(k);
+        if (!cur || (r.scraped_at || '') > (cur.scraped_at || '')) best.set(k, r);
+      }
+      return Array.from(best.values());
     }
     console.warn('search_listings RPC failed, falling back:', error.message);
     return [];
@@ -32704,7 +32714,8 @@ function _mlsRenderDots() {
 
 document.addEventListener('DOMContentLoaded', function(){
   if (typeof Chart !== 'undefined') lpRenderPreview(_LP_DEMO);
-  setInterval(function(){ if (typeof goToSlide === 'function') goToSlide((bannerSlide + 1) % bannerTotal); }, 3000);
+  // (removed dead banner-carousel timer: goToSlide/bannerSlide/bannerTotal no longer exist;
+  //  it was the source of ~88% of historical Clarity JS errors, harmless but pointless.)
 
   // Sticky nav shadow on scroll
   const lpNav = document.querySelector('.lp-nav');
