@@ -465,6 +465,25 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .ylk-cat-bar-fill{height:100%;border-radius:999px;}
 .ylk-cat-price{font-size:.66rem;color:#6B7280;font-weight:600;}
 .ylk-empty{font-size:.74rem;color:#9CA3AF;padding:6px 0;}
+/* ── Naik Daun ── */
+.nd-card{background:linear-gradient(180deg,#FFFDF8,#fff);border:1px solid #F0E7DC;border-radius:14px;padding:16px 0 16px 18px;margin-bottom:18px;box-shadow:0 6px 20px rgba(26,26,26,.04);}
+.nd-head{padding-right:18px;margin-bottom:12px;}
+.nd-title{font-size:.95rem;font-weight:800;color:#1A1A1A;display:flex;align-items:center;gap:8px;letter-spacing:-.01em;}
+.nd-title::before{content:"";width:8px;height:8px;border-radius:50%;background:#059669;box-shadow:0 0 0 4px #ECFDF5;flex-shrink:0;}
+.nd-sub{font-size:.72rem;color:#9CA3AF;margin-top:3px;max-width:560px;line-height:1.4;}
+.nd-strip{display:flex;gap:12px;overflow-x:auto;padding:4px 18px 6px 0;scroll-snap-type:x mandatory;}
+.nd-strip::-webkit-scrollbar{height:6px;}
+.nd-strip::-webkit-scrollbar-thumb{background:#E8E0D8;border-radius:999px;}
+.nd-item{flex:0 0 150px;width:150px;border:1px solid #F0E7DC;border-radius:12px;overflow:hidden;cursor:pointer;background:#fff;scroll-snap-align:start;transition:transform .15s,box-shadow .15s;}
+.nd-item:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(26,26,26,.08);}
+.nd-item-img{position:relative;width:100%;height:110px;background:#F7F2EC;}
+.nd-item-img img{width:100%;height:100%;object-fit:cover;}
+.nd-vel{position:absolute;left:7px;bottom:7px;background:#059669;color:#fff;font-size:.6rem;font-weight:800;padding:2px 7px;border-radius:6px;letter-spacing:.02em;}
+.nd-item-body{padding:8px 9px 10px;}
+.nd-item-name{font-size:.72rem;font-weight:700;color:#1A1A1A;line-height:1.25;height:2.5em;overflow:hidden;}
+.nd-item-meta{display:flex;align-items:center;justify-content:space-between;margin-top:6px;gap:6px;}
+.nd-item-price{font-size:.72rem;font-weight:800;color:#B5202A;white-space:nowrap;}
+.nd-item-age{font-size:.58rem;color:#9CA3AF;white-space:nowrap;}
 
 /* ── DISCOVER ── */
 .disc-hero{background:var(--grad);padding:12px 22px 18px;}
@@ -7735,6 +7754,15 @@ html,body{overflow-x:clip;max-width:100%;}
               <div class="ylk-cats" id="ylk-cats"></div>
             </div>
 
+            <!-- Naik Daun -->
+            <div class="nd-card" id="nd-card" style="display:none;">
+              <div class="nd-head">
+                <div class="nd-title">Naik Daun</div>
+                <div class="nd-sub">Produk baru yang penjualannya melesat — peluang buat kamu jadi pemain cepat sebelum pasarnya ramai.</div>
+              </div>
+              <div class="nd-strip" id="nd-strip"></div>
+            </div>
+
             <!-- Filter + Table -->
             <div class="dsc-layout">
 
@@ -11768,6 +11796,7 @@ function renderDiscGrid() {
     : `<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--tl)">No products found.</div>`;
   if (filtered.length) decorateDiscoverOdds('#disc-grid');
   ylkInit();
+  naikDaunInit();
 }
 
 // ════════════════════════════════════════════════════════════
@@ -12167,6 +12196,63 @@ async function ylkRender(region) {
       </div>`;
     }).join('');
   } catch (e) { wrap.innerHTML = '<div class="ylk-empty">Gagal memuat data.</div>'; }
+}
+
+// ── Naik Daun ─────────────────────────────────────────────────────────────────
+// Young products (listed <120d) already selling fast — be a fast second. Velocity
+// is sales-since-listing (true weekly momentum needs the listing_deltas pipeline
+// revived). Lightly personalised by onboarding category/budget.
+const _naikDaun = { rows: null, inited: false };
+async function naikDaunInit() {
+  if (_naikDaun.inited) return;
+  const card = document.getElementById('nd-card');
+  const strip = document.getElementById('nd-strip');
+  if (!card || !strip || !_supabase) return;
+  _naikDaun.inited = true;
+  try {
+    const { data } = await _supabase.from('mv_naik_daun')
+      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,age_days,sold_per_day')
+      .order('sold_per_day', { ascending: false }).limit(200);
+    _naikDaun.rows = data || [];
+    if (!_naikDaun.rows.length) { _naikDaun.inited = false; return; }
+    naikDaunRender();
+    card.style.display = '';
+  } catch (e) { _naikDaun.inited = false; }
+}
+function naikDaunRender() {
+  const strip = document.getElementById('nd-strip');
+  if (!strip) return;
+  let rows = _naikDaun.rows || [];
+  try {
+    const cats = (typeof _nuOnb !== 'undefined' && _nuOnb && _nuOnb.cats) ? _nuOnb.cats : [];
+    if (cats && cats.length >= 3) { const f = rows.filter(r => cats.includes(r.category)); if (f.length >= 6) rows = f; }
+    const b = (typeof _nuOnb !== 'undefined' && _nuOnb && _nuOnb.budget >= 0 && typeof NU_ONB_BUDGETS !== 'undefined') ? NU_ONB_BUDGETS[_nuOnb.budget] : null;
+    if (b) { const f = rows.filter(r => (r.price || 0) >= (b.min || 0) && (b.max == null || (r.price || 0) <= b.max)); if (f.length >= 6) rows = f; }
+  } catch (_) {}
+  rows = rows.slice(0, 12);
+  strip.innerHTML = rows.map(r => {
+    const img = r.image_url ? `<img src="${r.image_url}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'">` : '';
+    const vel = r.sold_per_day >= 1 ? `≈${_supFmtSold(r.sold_per_day)}/hari` : '';
+    return `<div class="nd-item" onclick="naikDaunOpen('${r.item_id}')">
+      <div class="nd-item-img">${img}<span class="nd-vel">${vel}</span></div>
+      <div class="nd-item-body">
+        <div class="nd-item-name">${r.product_name || '—'}</div>
+        <div class="nd-item-meta"><span class="nd-item-price">Rp ${Number(r.price || 0).toLocaleString('id-ID')}</span><span class="nd-item-age">${r.age_days}h · ${_supFmtSold(r.total_sold)} terjual</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function naikDaunOpen(itemId) {
+  const r = (_naikDaun.rows || []).find(x => String(x.item_id) === String(itemId));
+  if (!r) return;
+  const p = {
+    id: r.item_id, name: r.product_name || '—', category: r.category || 'Umum',
+    image: r.image_url || null, keyword: r.keyword || null, medianPrice: r.price || 0,
+    price: r.price || 0, score: 65, total_sold: r.total_sold || 0, reviews: r.reviews || 0,
+    item_id: r.item_id, shop_id: r.shop_id, _listing: r,
+  };
+  try { if (typeof allProducts !== 'undefined' && !allProducts.find(x => x.id === p.id)) allProducts.push(p); } catch (_) {}
+  if (typeof openDetail === 'function') openDetail(p.id);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -30697,6 +30783,7 @@ try { consumeOAuthHash().catch(() => {}); } catch (_) {}
 // Trigger discover data load after Supabase is ready
 setTimeout(() => { if (typeof dscInit === 'function') dscInit(); }, 300);
 setTimeout(() => { if (typeof ylkInit === 'function') ylkInit(); }, 700);
+setTimeout(() => { if (typeof naikDaunInit === 'function') naikDaunInit(); }, 800);
 initFreshnessBadge();
 initTopbarDate();
 
