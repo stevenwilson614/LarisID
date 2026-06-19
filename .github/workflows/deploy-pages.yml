@@ -30,7 +30,7 @@ jobs:
       - name: Assemble site
         run: |
           mkdir -p _site
-          cp index.html CNAME robots.txt sitemap.xml llms.txt BingSiteAuth.xml _site/
+          cp index.html CNAME robots.txt sitemap.xml llms.txt BingSiteAuth.xml 55677968d982482614b7ad24398e836c.txt _site/
           cp -r images styles js privacy perbandingan harga tentang cara-kerja riset _site/
 
       - name: Configure Pages
@@ -44,3 +44,19 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      # Tell Bing (IndexNow) about every URL in the sitemap as soon as we deploy.
+      - name: Ping IndexNow (Bing)
+        run: |
+          KEY=55677968d982482614b7ad24398e836c
+          URLS=$(grep -oE '<loc>[^<]+</loc>' sitemap.xml | sed -E 's#</?loc>##g')
+          JSON=$(jq -n \
+            --arg host "larisid.com" \
+            --arg key "$KEY" \
+            --arg keyloc "https://larisid.com/$KEY.txt" \
+            --argjson urls "$(printf '%s\n' $URLS | jq -R . | jq -s .)" \
+            '{host:$host,key:$key,keyLocation:$keyloc,urlList:$urls}')
+          echo "Submitting $(echo "$URLS" | wc -l | tr -d ' ') URLs to IndexNow..."
+          curl -sS -X POST "https://api.indexnow.org/indexnow" \
+            -H "Content-Type: application/json; charset=utf-8" \
+            -d "$JSON" -w "\nIndexNow HTTP %{http_code}\n" || true

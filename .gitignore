@@ -13,6 +13,9 @@ dist/
 
 # Programmatic SEO build cache (raw rows fetched by scripts/fetch-seo-raw.sh)
 scripts/_seo_raw/
+
+# IndexNow key helper (the public <key>.txt at root is committed; this copy is just for scripts)
+.indexnow-key
 .preview-onboarding.html
 .venv-img/
 scroll-story-prototype.html
