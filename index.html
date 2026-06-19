@@ -8508,6 +8508,16 @@ html,body{overflow-x:clip;max-width:100%;}
                     <a href="#" onclick="ddSwitchTab('kalkulator');return false;" style="font-size:.68rem;color:#B5202A;font-weight:600;text-decoration:none;">Lihat Strategi Harga →</a>
                   </div>
 
+                  <!-- Winner benchmark + supplier leaderboard -->
+                  <div class="dd-card" style="padding:16px;">
+                    <div style="font-size:.78rem;font-weight:700;color:#111827;margin-bottom:3px;">Patokan Pemenang</div>
+                    <div style="font-size:.65rem;color:#6B7280;margin-bottom:10px;">Profil penjual baru yang berhasil di niche ini — patokanmu kalau mau ikut masuk.</div>
+                    <div id="sup-benchmark" style="display:flex;flex-direction:column;gap:9px;margin-bottom:14px;"><div style="font-size:.66rem;color:#9CA3AF;">Memuat…</div></div>
+                    <div style="font-size:.7rem;font-weight:700;color:#111827;margin:4px 0 8px;">Toko Teratas di Niche</div>
+                    <div style="font-size:.6rem;color:#9CA3AF;margin-bottom:8px;line-height:1.4;">Pola pemenang: toko kecil dengan 1 produk jagoan. Itu yang bisa kamu tiru.</div>
+                    <div id="sup-leaderboard" style="display:flex;flex-direction:column;gap:9px;"><div style="font-size:.68rem;color:#9CA3AF;">Memuat…</div></div>
+                  </div>
+
                 </div>
               </div>
             </div>
@@ -20204,6 +20214,73 @@ function ddRenderKompetitor() {
   _kompFiltered = rows;
   _kompShowing  = 10;
   kompFilter();
+
+  if (typeof ddRenderSupplier === 'function') ddRenderSupplier(_ddCurrentP);
+}
+
+// ── Winner benchmark + supplier leaderboard (Kompetitor tab) ──────────────────
+// The winning pattern in our data is a SMALL shop (<=30 SKUs) with one hero SKU.
+// Surface that template plus the niche's winner profile (price/reviews medians
+// from mv_niche_breakout) and the top shops from mv_supplier_leaderboard, so a
+// new seller sees a realistic benchmark — not the unreachable mega-stores.
+function _supFmtSold(n) {
+  n = Number(n) || 0;
+  return n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace('.0','') + 'jt'
+       : n >= 1e3 ? Math.round(n / 1e3) + 'rb' : String(n);
+}
+function _supBenchRow(label, val, note) {
+  return `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
+    <span style="font-size:.66rem;color:#6B7280;">${label}</span>
+    <span style="font-size:.74rem;font-weight:800;color:#111827;text-align:right;">${val}${note ? `<div style="font-size:.56rem;color:#9CA3AF;font-weight:600;">${note}</div>` : ''}</span>
+  </div>`;
+}
+async function ddRenderSupplier(p) {
+  const benchEl = document.getElementById('sup-benchmark');
+  const lbEl = document.getElementById('sup-leaderboard');
+  if (!benchEl || !lbEl || !p) return;
+  const listing = p._listing || {};
+  const kw = p.keyword || listing.keyword || null;
+  const price = listing.price || p.medianPrice || 0;
+  const reviews = listing.reviews || listing.review_count || p.reviews || 0;
+
+  let niche = kw ? _nicheStatsCache[kw] : null;
+  if (kw && _nicheStatsCache[kw] === undefined) niche = await _loadNicheStats(kw);
+  if (niche) {
+    const wp = Number(niche.median_winner_price || 0);
+    const wr = Number(niche.median_winner_reviews || 0);
+    const pricePos = (price > 0 && wp > 0) ? (price <= wp ? 'di bawah patokan' : 'di atas patokan') : '';
+    benchEl.innerHTML =
+      _supBenchRow('Harga pemenang', `Rp ${wp.toLocaleString('id-ID')}`,
+        price > 0 ? `Produk ini: Rp ${Math.round(price).toLocaleString('id-ID')} (${pricePos})` : '') +
+      _supBenchRow('Ulasan pemenang', `≈${wr.toLocaleString('id-ID')}`,
+        reviews > 0 ? `Produk ini: ${Number(reviews).toLocaleString('id-ID')} ulasan` : '') +
+      _supBenchRow('Median produk baru', `${Number(niche.median_new_sold || 0).toLocaleString('id-ID')} terjual`,
+        `${niche.breakout_rate}% tembus 100+`);
+  } else {
+    benchEl.innerHTML = '<div style="font-size:.66rem;color:#9CA3AF;">Data niche belum tersedia.</div>';
+  }
+
+  if (!kw || !_supabase) { lbEl.innerHTML = ''; return; }
+  try {
+    const { data } = await _supabase.from('mv_supplier_leaderboard')
+      .select('store_name,location,hero_sold,catalog_items,has_new_listing,rnk')
+      .eq('keyword', kw).order('rnk').limit(6);
+    if (!data || !data.length) { lbEl.innerHTML = '<div style="font-size:.66rem;color:#9CA3AF;">Belum ada data toko.</div>'; return; }
+    lbEl.innerHTML = data.map(s => {
+      const small = (s.catalog_items || 999) <= 30;
+      const tag = small
+        ? '<span style="font-size:.54rem;font-weight:700;color:#059669;background:#ECFDF5;padding:1px 5px;border-radius:4px;margin-left:5px;">toko kecil · 1 jagoan</span>' : '';
+      const fresh = s.has_new_listing
+        ? '<span style="font-size:.54rem;font-weight:700;color:#B5202A;background:#F9EAE4;padding:1px 5px;border-radius:4px;margin-left:5px;">baru</span>' : '';
+      return `<div style="display:flex;align-items:center;gap:8px;">
+        <div style="font-size:.66rem;font-weight:800;color:#9CA3AF;width:14px;flex-shrink:0;">${s.rnk}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:.68rem;font-weight:700;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.store_name || '—'}${tag}${fresh}</div>
+          <div style="font-size:.58rem;color:#9CA3AF;">${_supFmtSold(s.hero_sold)} jagoan · ${Number(s.catalog_items || 0).toLocaleString('id-ID')} produk</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) { lbEl.innerHTML = ''; }
 }
 
 function kompFilter() {
