@@ -186,3 +186,54 @@ table.compare .note { font-size: .75rem; color: var(--tm); display: block; margi
   font-style: italic;
   margin-top: 12px;
 }
+
+/* Programmatic SEO data pages (/riset/) */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 18px 0 8px;
+}
+.stat {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: #fff;
+}
+.stat-num { font-size: 1.3rem; font-weight: 800; color: var(--navy); line-height: 1.2; }
+.stat-label { font-size: .74rem; color: var(--tm); text-transform: uppercase; letter-spacing: .03em; margin-top: 4px; }
+.stat-sub { font-size: .76rem; color: #374151; margin-top: 2px; }
+
+.bar-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; font-size: .82rem; }
+.bar-label { flex: 0 0 132px; color: var(--navy); font-weight: 600; }
+.bar-track { flex: 1; background: #F3F4F6; border-radius: 6px; height: 16px; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--orange); border-radius: 6px; }
+.bar-val { flex: 0 0 64px; text-align: right; color: var(--tm); }
+
+.prod-name { font-weight: 600; color: var(--navy); }
+.muted { color: var(--tm); }
+
+.riset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
+  gap: 14px;
+  margin: 18px 0;
+}
+.riset-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  background: #fff;
+  display: block;
+  text-decoration: none !important;
+  transition: box-shadow .15s, border-color .15s;
+}
+.riset-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.08); border-color: var(--orange); }
+.riset-card .rk { font-weight: 700; color: var(--navy); font-size: .95rem; }
+.riset-card .rm { color: var(--tm); font-size: .8rem; margin-top: 6px; }
+.cat-pill {
+  display: inline-block; font-size: .68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .03em; color: var(--orange); background: #F9EAE4; border-radius: 999px;
+  padding: 2px 9px; margin-bottom: 8px;
+}
+.cat-head { font-size: 1rem; font-weight: 800; color: var(--navy); margin: 22px 0 4px; }

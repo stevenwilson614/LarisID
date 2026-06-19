@@ -10,6 +10,9 @@ supabase/.temp/
 node_modules/
 dist/
 .astro/
+
+# Programmatic SEO build cache (raw rows fetched by scripts/fetch-seo-raw.sh)
+scripts/_seo_raw/
 .preview-onboarding.html
 .venv-img/
 scroll-story-prototype.html
