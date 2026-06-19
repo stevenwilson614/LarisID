@@ -18813,7 +18813,7 @@ function _dscCurrentFilters() {
     cat:      _dscCurrentCatFilter, // empty = all; set when exactly 1 category selected
     priceMin: parseFloat(document.getElementById('dsc-price-min')?.value) || 0,
     priceMax: priceMaxRaw >= 500000 ? Infinity : priceMaxRaw,
-    search:   document.getElementById('dsc-search')?.value?.trim() || '',
+    search:   _dscCommittedQ,
   };
 }
 
@@ -18826,7 +18826,7 @@ function dscInit() {
     'Motor & Mobil','Olahraga','Outdoor & Camping','Rumah','Sepeda','Taman','Tanaman']);
   void dscLoadScrapeRequests();
 
-  const _dscInitSearch = (document.getElementById('dsc-search')?.value || '').trim();
+  const _dscInitSearch = _dscCommittedQ;
 
   // Session cache (survives tab switches and view changes; filters applied client-side)
   if (!_dscInitSearch && !_dscAllListings.length && !_dscFiltered.length) {
@@ -18928,7 +18928,7 @@ function dscUpdateScrapeRequestPanel() {
   const btn = document.getElementById('dsc-scrape-submit-btn');
   if (!panel) return;
 
-  const q = (document.getElementById('dsc-search')?.value || '').trim();
+  const q = _dscCommittedQ;
   const total = _dscMatchCount ?? 0;
   const show = !!q && q.length >= 2 && _dscLoaded && !_dscLoading && total < DSC_SCRAPE_MIN_RESULTS;
 
@@ -19029,6 +19029,7 @@ async function dscSubmitScrapeRequest() {
 let _dscSuggIdx = -1;
 let _dscSearchDebounce = null;
 let _dscSuggFetchGen = 0;
+let _dscCommittedQ = ''; // committed Discover search query — source of truth, decoupled from the input box
 
 function dscHideSuggestions() {
   const box = document.getElementById('dsc-search-suggestions');
@@ -19038,6 +19039,7 @@ function dscHideSuggestions() {
 
 function dscOnSearchInput() {
   const q = (document.getElementById('dsc-search')?.value || '').trim();
+  _dscCommittedQ = q; // live search as you type
   const scrapeInput = document.getElementById('dsc-scrape-keyword');
   if (scrapeInput) scrapeInput.dataset.userEdited = '';
   dscShowSuggestions(q);
@@ -19076,8 +19078,9 @@ function dscOnSearchKey(e) {
 }
 
 function dscSelectSuggestion(text) {
+  _dscCommittedQ = (text || '').trim();
   const input = document.getElementById('dsc-search');
-  if (input) input.value = text;
+  if (input) input.value = ''; // clear the box after picking a suggestion
   dscHideSuggestions();
   clearTimeout(_dscSearchDebounce);
   dscApplyFilters();
@@ -19147,7 +19150,7 @@ async function dscShowSuggestions(q) {
 
 function dscApplyFilters(resetPage = true) {
   if (!_dscLoaded) return;
-  const q        = (document.getElementById('dsc-search')?.value || '').trim();
+  const q        = _dscCommittedQ;
   const selectedCats = _dscApplied.cats;
   const priceMin = _dscApplied.priceMin;
   const priceMax = _dscApplied.priceMax;
@@ -19288,7 +19291,7 @@ function dscRenderTable() {
   journeyApplyDiscoverChrome();
   const beginner = isJourneyBeginner() && !journeyBypassGating();
   const tier0Cap = beginner && userJourneyTier() === 0;
-  const _dscQ = (document.getElementById('dsc-search')?.value || '').trim();
+  const _dscQ = _dscCommittedQ;
   const searchActive = !!_dscQ && !tier0Cap;
   const perPage = _dscPerPage();
   const cappedList = tier0Cap ? _dscFiltered.slice(0, JOURNEY_BEGINNER_DISCOVER_CAP) : _dscFiltered;
@@ -21569,7 +21572,7 @@ function apRenderStrategy() {
 function _dscPerPage() {
   const beginner = isJourneyBeginner() && !journeyBypassGating();
   const tier0Cap = beginner && userJourneyTier() === 0;
-  const q = (document.getElementById('dsc-search')?.value || '').trim();
+  const q = _dscCommittedQ;
   if (tier0Cap) return JOURNEY_BEGINNER_DISCOVER_CAP;
   if (q) return Math.max(DSC_SEARCH_MIN_PER_PAGE, DSC_PER_PAGE);
   return DSC_PER_PAGE;
@@ -21622,6 +21625,7 @@ function dscResetFilters() {
   try { sessionStorage.removeItem(_DSC_CAT_SS_KEY); } catch {}
   document.querySelectorAll('#dsc-cat-checks input[type=checkbox]').forEach(c => c.checked = true);
   if (g('dsc-search'))     g('dsc-search').value     = '';
+  _dscCommittedQ = '';
   dscHideSuggestions();
   if (g('dsc-price-min'))  g('dsc-price-min').value  = DSC_DEFAULT_PRICE_MIN;
   if (g('dsc-price-max'))  g('dsc-price-max').value  = DSC_DEFAULT_PRICE_MAX;
