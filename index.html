@@ -1626,6 +1626,7 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dsc-sugg-item:hover,.dsc-sugg-item.active{background:#F9EAE4;}
 .dsc-sugg-item mark{background:none;color:#B5202A;font-weight:700;}
 .dsc-sugg-cat{font-size:.62rem;color:#9CA3AF;white-space:nowrap;flex-shrink:0;}
+.dsc-sugg-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .dsc-sort-select{border:1.5px solid #E5E7EB;border-radius:8px;padding:8px 10px;font-size:.78rem;font-family:inherit;outline:none;color:#374151;background:#fff;cursor:pointer;-webkit-appearance:none;}
 .dsc-count{font-size:.78rem;color:#6B7280;white-space:nowrap;margin-left:auto;}
 
@@ -19086,23 +19087,51 @@ function dscSelectSuggestion(text) {
   dscApplyFilters();
 }
 
+// Word-boundary match score — like Google, only matches where the query is a
+// prefix of the whole string or of a word. Mid-word substrings (e.g. "san" in
+// "hiasan") score 0 and are dropped, so the list stays clean and on-topic.
+function _dscWordPrefixScore(name, q) {
+  const n = (name || '').toLowerCase().trim();
+  const ql = (q || '').toLowerCase().trim();
+  if (!n || !ql) return 0;
+  if (n === ql) return 1000;
+  if (n.startsWith(ql)) return 900;
+  if (n.split(/\s+/).some(w => w.startsWith(ql))) return 700;
+  return 0;
+}
+
+function _dscEsc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+// Bold the matched prefix at its word boundary (string start, or after a space).
+function _dscHighlight(name, q) {
+  const n = String(name || '');
+  const lo = n.toLowerCase();
+  const ql = (q || '').toLowerCase().trim();
+  if (!ql) return _dscEsc(n);
+  let idx = lo.startsWith(ql) ? 0 : lo.indexOf(' ' + ql);
+  if (idx > 0) idx += 1; // step over the leading space
+  if (idx < 0) return _dscEsc(n);
+  return _dscEsc(n.slice(0, idx)) + '<mark>' + _dscEsc(n.slice(idx, idx + ql.length)) + '</mark>' + _dscEsc(n.slice(idx + ql.length));
+}
+
 function _dscRenderSuggestions(items, q) {
   const box = document.getElementById('dsc-search-suggestions');
   if (!box) return;
   _dscSuggIdx = -1;
   if (!items.length) { box.classList.remove('show'); return; }
-  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   box.innerHTML = items.map(it => {
-    const label = highlightMatch(it.name, q);
-    const cat = it.category ? `<span class="dsc-sugg-cat">${esc(it.category)}</span>` : '';
-    return `<div class="dsc-sugg-item" onmousedown="dscSelectSuggestion(${JSON.stringify(it.name)})">${label}${cat}</div>`;
+    const name = `<span class="dsc-sugg-name">${_dscHighlight(it.name, q)}</span>`;
+    const cat = it.category ? `<span class="dsc-sugg-cat">${_dscEsc(it.category)}</span>` : '';
+    return `<div class="dsc-sugg-item" onmousedown="dscSelectSuggestion(${JSON.stringify(it.name)})">${name}${cat}</div>`;
   }).join('');
   box.classList.add('show');
 }
 
 function _dscLocalSuggestions(q) {
   const scored = (allProducts || [])
-    .map(p => ({ name: p.name, category: p.category || '', score: scoreProduct(p.name, q) }))
+    .map(p => ({ name: p.name, category: p.category || '', score: _dscWordPrefixScore(p.name, q) }))
     .filter(x => x.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 10);
@@ -19122,7 +19151,7 @@ async function dscShowSuggestions(q) {
     const { data } = await _supabase
       .from('listings')
       .select('keyword, category')
-      .or(`keyword.ilike.%${tok}%,product_name.ilike.%${tok}%`)
+      .or(`keyword.ilike.${tok}%,keyword.ilike.% ${tok}%`)
       .gt('total_sold', 0)
       .order('total_sold', { ascending: false })
       .limit(80);
@@ -19139,12 +19168,13 @@ async function dscShowSuggestions(q) {
     };
     _dscLocalSuggestions(q).forEach(x => add(x.name, x.category, x.score));
     for (const r of (data || [])) {
-      if (r.keyword) add(r.keyword, r.category, scoreProduct(r.keyword, q));
-      else if (r.product_name) add(r.product_name, r.category, scoreProduct(r.product_name, q) - 50);
-      if (merged.length >= 12) break;
+      const s = _dscWordPrefixScore(r.keyword, q);
+      if (r.keyword && s > 0) add(r.keyword, r.category, s);
+      if (merged.length >= 30) break;
     }
-    merged.sort((a, b) => b.score - a.score);
-    _dscRenderSuggestions(merged.slice(0, 10), q);
+    // Higher score first (exact > prefix > word-prefix); shorter names first as tiebreak.
+    merged.sort((a, b) => (b.score - a.score) || (String(a.name).length - String(b.name).length));
+    _dscRenderSuggestions(merged.slice(0, 8), q);
   } catch (_) {}
 }
 
