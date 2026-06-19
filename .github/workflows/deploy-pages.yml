@@ -30,7 +30,7 @@ jobs:
       - name: Assemble site
         run: |
           mkdir -p _site
-          cp index.html CNAME robots.txt sitemap.xml llms.txt _site/
+          cp index.html CNAME robots.txt sitemap.xml llms.txt BingSiteAuth.xml _site/
           cp -r images styles js privacy perbandingan harga tentang cara-kerja riset _site/
 
       - name: Configure Pages
