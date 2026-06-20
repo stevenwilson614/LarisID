@@ -61,7 +61,21 @@
       "url": "https://larisid.com/",
       "logo": "https://larisid.com/images/brand/appicon-red.png",
       "description": "Membantu orang Indonesia memulai bisnis e-commerce yang bertahan dengan data jujur dan terjangkau.",
-      "sameAs": ["https://larisid.com/tentang/"]
+      "email": "steven@larisid.com",
+      "founder": {
+        "@type": "Person",
+        "name": "Steven Wilson",
+        "url": "https://larisid.com/tentang/"
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "email": "steven@larisid.com",
+        "contactType": "customer support",
+        "areaServed": "ID",
+        "availableLanguage": ["id", "en"]
+      },
+      "areaServed": "ID",
+      "knowsAbout": ["Riset produk Shopee", "Data e-commerce Indonesia", "Analisis kompetitor marketplace", "Viability Score produk"]
     },
     {
       "@type": "FAQPage",
@@ -111,7 +125,7 @@
   ]
 }
 </script>
-<link rel="icon" type="image/png" href="/images/brand/appicon-red.png">
+<link rel="icon" type="image/png" href="/images/brand/appicon-bird.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Protest+Revolution&display=swap" rel="stylesheet">
@@ -1122,6 +1136,11 @@ body.cohort-themed.in-dashboard .dash-topbar-cohort-chip{
 .dash-nav-item.open .dash-nav-arrow{transform:rotate(90deg);}
 .dash-nav-sub{display:none;flex-direction:column;gap:1px;padding:2px 0 4px 38px;}
 .dash-nav-sub.open{display:flex;}
+/* Flat-tools mode shows Deep Dive/Alerts/etc. as flat items, so the grouped
+   "Research Tools" sub-list must stay hidden — even on mobile where
+   `.dash-nav-sub{display:block!important}` would otherwise force it open and
+   duplicate every item. */
+body.dash-flat-tools #dash-sub-research-tools{display:none!important;}
 .dash-nav-sub-item{padding:7px 10px;border-radius:6px;font-size:.77rem;font-weight:500;color:rgba(255,255,255,.4);cursor:pointer;transition:color .15s,background .15s;}
 .dash-nav-sub-item:hover{color:#fff;background:rgba(255,255,255,.06);}
 .dash-nav-sub-item.active{color:var(--cohort-secondary,#B5202A);font-weight:700;}
@@ -6238,6 +6257,8 @@ html,body{overflow-x:clip;max-width:100%;}
           <button class="apb-btn"        id="apb-leader"      onclick="setAdminViewMode('leader')">Leader</button>
         </div>
         <span class="apb-mode-badge" id="apb-mode-badge">Mode: Admin</span>
+        <button class="apb-btn" id="apb-sim-enter" onclick="admSimEnter()" style="margin-left:10px;">Simulasikan Pengguna Baru</button>
+        <button class="apb-btn" id="apb-sim-exit" onclick="admSimExit()" style="display:none;background:#7C2D12;">Keluar Simulasi</button>
         <div style="margin-left:auto;font-size:.6rem;color:rgba(255,255,255,.25);">Hanya terlihat oleh admin</div>
       </div>
 
@@ -8202,7 +8223,6 @@ html,body{overflow-x:clip;max-width:100%;}
                   <div class="dd-chart-legend">
                     <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#B5202A;"></div>Omset (Rp)</div>
                     <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#4F46E5;"></div>Unit Terjual</div>
-                    <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#10B981;border-style:dashed;height:0;border-top:2.5px dashed #10B981;background:transparent;"></div>Forecast</div>
                   </div>
                   <canvas id="dd-chart-trend" height="140"></canvas>
                 </div>
@@ -8326,15 +8346,14 @@ html,body{overflow-x:clip;max-width:100%;}
                   <div class="dd-card fb-flaggable" style="padding:18px;" data-fb-element="Permintaan Pasar" data-fb-section="Analisis Pasar">
                     <div style="margin-bottom:12px;">
                       <div style="font-size:.82rem;font-weight:700;color:#111827;">Permintaan Pasar</div>
-                      <div style="font-size:.7rem;color:#6B7280;margin-top:2px;" id="ap-demand-subtitle">4 minggu terakhir + prediksi 1 minggu — semua toko di keyword</div>
+                      <div style="font-size:.7rem;color:#6B7280;margin-top:2px;" id="ap-demand-subtitle">4 minggu terakhir — semua toko di keyword</div>
                     </div>
                     <div class="dd-chart-legend" style="margin-bottom:8px;">
                       <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#B5202A;"></div>Omset pasar (Rp)</div>
                       <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#4F46E5;"></div>Unit terjual</div>
-                      <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#10B981;border-style:dashed;height:0;border-top:2.5px dashed #10B981;background:transparent;"></div>Forecast</div>
                     </div>
                     <div style="position:relative;height:240px;"><canvas id="ap-demand-chart"></canvas></div>
-                    <div style="margin-top:10px;font-size:.68rem;color:#9CA3AF;display:flex;align-items:center;gap:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg><span id="ap-demand-note">4 minggu terakhir + prediksi 1 minggu — agregat semua listing di keyword</span></div>
+                    <div style="margin-top:10px;font-size:.68rem;color:#9CA3AF;display:flex;align-items:center;gap:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg><span id="ap-demand-note">4 minggu terakhir — agregat semua listing di keyword</span></div>
                   </div>
 
                   <!-- Bottom row: Competition + Top Products -->
@@ -8675,7 +8694,6 @@ html,body{overflow-x:clip;max-width:100%;}
                     <div class="dd-chart-legend" style="margin-bottom:8px;">
                       <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#B5202A;"></div>Omset (Rp)</div>
                       <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#4F46E5;"></div>Unit Terjual</div>
-                      <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#10B981;border-style:dashed;height:0;border-top:2.5px dashed #10B981;background:transparent;"></div>Forecast</div>
                     </div>
                     <div style="position:relative;height:240px;">
                       <canvas id="tren-main-chart"></canvas>
@@ -10639,6 +10657,12 @@ html,body{overflow-x:clip;max-width:100%;}
   </div>
 </div>
 
+<!-- ── ADMIN NEW-USER SIMULATION STRIP (visible outside the dashboard shell, e.g. on the landing page / auth modal) ── -->
+<div id="admin-sim-bar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:300;background:#0F172A;color:#fff;text-align:center;font-size:.74rem;font-weight:700;padding:8px 14px;letter-spacing:.02em;">
+  Simulasi Pengguna Baru aktif — melihat sebagai pengunjung baru
+  <button onclick="admSimExit()" style="margin-left:12px;background:rgba(255,255,255,.18);border:none;border-radius:5px;color:#fff;font-size:.7rem;font-weight:700;padding:4px 10px;cursor:pointer;">Keluar Simulasi</button>
+</div>
+
 <!-- ── ADMIN FLOATING WIDGET (platform admin only) ── -->
 <div id="admin-float-widget" style="display:none;position:fixed;bottom:20px;right:20px;z-index:9999;font-family:'Plus Jakarta Sans',sans-serif;">
   <div id="admin-preview-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:10000;background:#B5202A;color:#fff;text-align:center;font-size:.72rem;font-weight:700;padding:5px 12px;letter-spacing:.06em;">
@@ -11483,7 +11507,7 @@ function _navBack(fallbackView) {
 
 function showPage(name) {
   // Logged-in users go to dashboard instead of home/landing (not when restoring browser history)
-  if ((name === 'home' || name === 'landing') && currentUser && !_navFromPopstate) { openProfile(); return; }
+  if ((name === 'home' || name === 'landing') && currentUser && !_navFromPopstate && !_admSimulateNewUser) { openProfile(); return; }
   // Logged-out users hitting 'home' go to landing page
   if (name === 'home' && !currentUser) { name = 'landing'; }
   const prev = document.querySelector('.page.active');
@@ -12661,7 +12685,7 @@ function updateAuthUI() {
 let _authMode = 'login'; // 'login', 'signup', or 'reset'
 
 function openAuthModal(mode, source) {
-  if (currentUser) { void openProfile(); return; }
+  if (currentUser && !_admSimulateNewUser) { void openProfile(); return; }
   if (window.clarity && mode === 'signup') {
     try { clarity('event', 'cta_signup_click'); clarity('set', 'signup_cta_source', source || 'unknown'); } catch (_) {}
   }
@@ -12706,6 +12730,7 @@ function _authErrMsg(msg) {
 }
 
 async function submitAuth() {
+  if (_admSimulateNewUser) { admSimCompleteAuth(); return; }
   const errEl = document.getElementById('auth-error');
   const btn   = document.getElementById('auth-submit-btn');
   const email = document.getElementById('auth-email').value.trim();
@@ -14903,14 +14928,20 @@ function switchDashView(view) {
     }
   }
   _dashActiveView = view;
-  journeyApplyNavGating();
+  try { journeyApplyNavGating(); } catch (_) {}
   PDB_VIEWS.forEach(v => {
     const el = document.getElementById(`dash-view-${v}`);
     if (el) el.style.display = (v === view) ? '' : 'none';
   });
 
+  // Populate the filter category grids right after the view is shown — before any
+  // cosmetic nav code below that could throw — so categories never end up blank
+  // while the (static) filter panel is visible.
+  if (view === 'product-database') { try { _initPdbCats(); } catch (_) {} }
+  if (view === 'opportunity-finder') { try { _initOfCats(); } catch (_) {} }
+
   // Update topbar title
-  cohortSyncDashTopbarTitle(view);
+  try { cohortSyncDashTopbarTitle(view); } catch (_) {}
 
   // New sidebar nav: highlight correct item
   const _rtViews = new Set(['discover','deepdive','tracker','ai']);
@@ -14987,6 +15018,14 @@ function switchDashView(view) {
   // For non-dashboard views when in student/leader preview, update nav chrome
   if (isPlatformAdmin() && _adminViewMode !== 'admin' && view !== 'dashboard' && view !== 'admin') {
     _hbdApplyLeaderMode(_adminViewMode === 'leader');
+  }
+  // Always open a freshly-navigated view scrolled to the top. The window is the
+  // scroll container on mobile and .dash-content on desktop, so reset both.
+  // Discover restores its own saved position above, so skip the reset there.
+  if (!(view === 'discover' && _dscScrollTop)) {
+    const _dcTop = document.getElementById('dash-content');
+    if (_dcTop) _dcTop.scrollTop = 0;
+    window.scrollTo(0, 0);
   }
   _navPush();
 }
@@ -20855,7 +20894,6 @@ function trenRender() {
   if (!_trenData) return;
   const rows = _trenData.weeks || [];
   const isEst = _trenData.isEstimated || _trenData.isPeerEstimated;
-  const _MO = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 
   if (_trenMainChart) { _trenMainChart.destroy(); _trenMainChart = null; }
   const canvas = document.getElementById('tren-main-chart');
@@ -20864,21 +20902,6 @@ function trenRender() {
   const labels = rows.map(r => r.label);
   const chartUnitData = rows.map(r => r.units);
   const chartOmsetData = rows.map(r => r.omset);
-
-  const nW = rows.length;
-  const slice2 = rows.slice(-2);
-  const fcUnit  = Math.round(slice2.reduce((s, w) => s + w.units, 0) / slice2.length);
-  const fcOmset = Math.round(slice2.reduce((s, w) => s + w.omset, 0) / slice2.length);
-  const nextWeek = new Date(rows[nW - 1].firstDate.getTime() + 7 * 86400000);
-  labels.push(`${nextWeek.getDate()} ${_MO[nextWeek.getMonth()]} ▶`);
-  chartUnitData.push(null);
-  chartOmsetData.push(null);
-  const fUnitW  = new Array(labels.length).fill(null);
-  const fOmsetW = new Array(labels.length).fill(null);
-  fUnitW[nW - 1]  = rows[nW - 1].units;
-  fOmsetW[nW - 1] = rows[nW - 1].omset;
-  fUnitW[nW]      = fcUnit;
-  fOmsetW[nW]     = fcOmset;
 
   const grad = canvas.getContext('2d').createLinearGradient(0, 0, 0, 200);
   grad.addColorStop(0, 'rgba(181,32,42,0.18)');
@@ -20916,36 +20939,6 @@ function trenRender() {
           yAxisID: 'y2',
           spanGaps: false,
           borderDash: isEst ? [3, 3] : [],
-        },
-        {
-          label: 'Forecast Omset',
-          data: fOmsetW,
-          borderColor: '#10B981',
-          backgroundColor: 'transparent',
-          borderWidth: 2,
-          fill: false,
-          tension: 0.3,
-          pointRadius: 5,
-          pointBackgroundColor: '#10B981',
-          yAxisID: 'y',
-          borderDash: [5, 4],
-          spanGaps: false,
-          pointStyle: 'triangle',
-        },
-        {
-          label: 'Forecast Unit',
-          data: fUnitW,
-          borderColor: '#10B981',
-          backgroundColor: 'transparent',
-          borderWidth: 2,
-          fill: false,
-          tension: 0.3,
-          pointRadius: 5,
-          pointBackgroundColor: '#10B981',
-          yAxisID: 'y2',
-          borderDash: [5, 4],
-          spanGaps: false,
-          pointStyle: 'triangle',
         },
       ],
     },
@@ -21248,7 +21241,7 @@ function ddRenderAnalisa() {
   document.getElementById('ap-s5b').textContent  = 'Potensi ' + d.potensiLabel.toLowerCase();
 
   const sub = document.getElementById('ap-demand-subtitle');
-  if (sub) sub.textContent = 'Memuat 4 minggu terakhir + prediksi semua toko di keyword…';
+  if (sub) sub.textContent = 'Memuat 4 minggu terakhir semua toko di keyword…';
 
   apRenderDemand(true);
   apRenderCompDonut();
@@ -21268,7 +21261,7 @@ function ddRenderAnalisa() {
     if (sub) {
       const nW = demand.weeks.length;
       sub.textContent = nW
-        ? `4 minggu terakhir + prediksi · agregat ${demand.meta.listingCount || 0} listing di keyword`
+        ? `4 minggu terakhir · agregat ${demand.meta.listingCount || 0} listing di keyword`
         : 'Belum cukup data scrape mingguan untuk keyword ini';
     }
     apRenderDemand();
@@ -21303,25 +21296,6 @@ function apRenderDemand(loading) {
   const labels = weeklyRowsFilled.map(w => w.label);
   const chartOmsetData = weeklyRowsFilled.map(w => w.omset ?? 0);
   const chartUnitData  = weeklyRowsFilled.map(w => w.units ?? 0);
-  const nW = weeklyRowsFilled.length;
-  const slice2 = weeklyRowsFilled.slice(-2);
-  const fcUnit  = slice2.length ? Math.round(slice2.reduce((s, w) => s + w.units, 0) / slice2.length) : 0;
-  const fcOmset = slice2.length ? Math.round(slice2.reduce((s, w) => s + w.omset, 0) / slice2.length) : 0;
-  const lastWeek = weeklyRowsFilled[nW - 1];
-  const nextWeek = lastWeek?.firstDate
-    ? new Date(lastWeek.firstDate.getTime() + 7 * 86400000)
-    : new Date();
-  labels.push(_apWLabel(nextWeek) + ' ▶');
-  chartUnitData.push(null);
-  chartOmsetData.push(null);
-  const fUnitW  = new Array(labels.length).fill(null);
-  const fOmsetW = new Array(labels.length).fill(null);
-  if (nW > 0) {
-    fUnitW[nW - 1]  = weeklyRowsFilled[nW - 1].units;
-    fOmsetW[nW - 1] = weeklyRowsFilled[nW - 1].omset;
-    fUnitW[nW]  = fcUnit;
-    fOmsetW[nW] = fcOmset;
-  }
 
   const grad = canvas.getContext('2d').createLinearGradient(0, 0, 0, 200);
   grad.addColorStop(0, 'rgba(181,32,42,0.18)');
@@ -21360,34 +21334,6 @@ function apRenderDemand(loading) {
           borderDash: isEst ? [3, 3] : [],
           spanGaps: false,
         },
-        {
-          label: 'Forecast Omset',
-          data: fOmsetW,
-          borderColor: '#10B981',
-          backgroundColor: 'transparent',
-          fill: false,
-          tension: 0.3,
-          pointRadius: 5,
-          pointBackgroundColor: '#10B981',
-          yAxisID: 'y',
-          borderDash: [5, 4],
-          spanGaps: false,
-          pointStyle: 'triangle',
-        },
-        {
-          label: 'Forecast Unit',
-          data: fUnitW,
-          borderColor: '#10B981',
-          backgroundColor: 'transparent',
-          fill: false,
-          tension: 0.3,
-          pointRadius: 5,
-          pointBackgroundColor: '#10B981',
-          yAxisID: 'y2',
-          borderDash: [5, 4],
-          spanGaps: false,
-          pointStyle: 'triangle',
-        },
       ],
     },
     options: {
@@ -21400,10 +21346,8 @@ function apRenderDemand(loading) {
             label(ctx) {
               const v = ctx.parsed.y;
               if (v == null) return '';
-              const isFc = ctx.dataset.label?.startsWith('Forecast');
-              const prefix = isFc ? ' Prediksi' : '';
-              if (ctx.dataset.yAxisID === 'y') return `${prefix} Omset: Rp ${Math.round(v).toLocaleString('id-ID')}`;
-              return `${prefix} Unit: ${Math.round(v).toLocaleString('id-ID')}`;
+              if (ctx.dataset.yAxisID === 'y') return ` Omset: Rp ${Math.round(v).toLocaleString('id-ID')}`;
+              return ` Unit: ${Math.round(v).toLocaleString('id-ID')}`;
             },
           },
         },
@@ -21428,7 +21372,7 @@ function apRenderDemand(loading) {
   if (noteEl) {
     const estNote = isEst ? ' · sebagian unit diestimasi dari ulasan (bucket Shopee 10rb+)' : '';
     const nList = meta?.listingCount ? `${meta.listingCount} listing` : 'semua listing';
-    noteEl.textContent = `4 minggu terakhir + prediksi 1 minggu · ${nList} di keyword · forecast = rata-rata 2 minggu terakhir${estNote}`;
+    noteEl.textContent = `4 minggu terakhir · ${nList} di keyword${estNote}`;
   }
 }
 
@@ -23103,7 +23047,9 @@ async function ddEstimateTrendFromPeers(listing, peerRowsOverride) {
 
 // Fetches up to 20 scrape points, interpolates deltas day-by-day between consecutive
 // scrapes, and buckets into ISO calendar weeks. Shows weekly units + weekly omset so
-// even sparse scrapes produce a smooth weekly view. Forecast = avg of last 2 weeks.
+// even sparse scrapes produce a smooth weekly view. Only past, fully-scraped weeks
+// are ever plotted — never append a projected/future week here (see incident where
+// an upcoming Monday was mislabeled as already-processed data).
 async function ddLoadTrendHistory(listing) {
   if (!listing?.item_id) return;
   const loadKey = ddTrendProductKey(listing);
@@ -23152,26 +23098,14 @@ async function ddLoadTrendHistory(listing) {
       const bucketMsg = trendCeilingNote ||
         (weeklyRows.length > 0
           ? 'Data tidak berubah antar scrape — produk kemungkinan di bucket Shopee (mis. 5rb+). Tren akan muncul saat total terjual atau ulasan berubah secara signifikan.'
-          : 'Baru 1 sesi scrape tersedia — nilai menunjukkan total kumulatif. Prediksi berdasarkan rata-rata pasar.');
+          : 'Baru 1 sesi scrape tersedia — nilai menunjukkan total kumulatif. Tren akan muncul setelah scrape berikutnya.');
       const snapRowsDisplay = snapRows.slice(-4);
-      const avgUnits = Math.round(snapRowsDisplay.reduce((s, r) => s + r.units, 0) / snapRowsDisplay.length);
-      const avgOmset = Math.round(snapRowsDisplay.reduce((s, r) => s + r.omset, 0) / snapRowsDisplay.length);
-      const lastMon = snapRowsDisplay[snapRowsDisplay.length - 1].firstDate;
-      const nextMon = new Date(lastMon.getTime() + 7 * 86400000);
-      const snapLabels = [...snapRowsDisplay.map(r => r.label), `${nextMon.getDate()} ${DD_TREND_MO[nextMon.getMonth()]} ▶`];
-      const snapUnits = [...snapRowsDisplay.map(r => r.units), null];
-      const snapOmset = [...snapRowsDisplay.map(r => r.omset), null];
-      const fcSnapUnits = new Array(snapLabels.length).fill(null);
-      const fcSnapOmset = new Array(snapLabels.length).fill(null);
-      fcSnapUnits[snapRowsDisplay.length - 1] = snapRowsDisplay[snapRowsDisplay.length - 1].units;
-      fcSnapOmset[snapRowsDisplay.length - 1] = snapRowsDisplay[snapRowsDisplay.length - 1].omset;
-      fcSnapUnits[snapRowsDisplay.length] = avgUnits;
-      fcSnapOmset[snapRowsDisplay.length] = avgOmset;
+      const snapLabels = snapRowsDisplay.map(r => r.label);
+      const snapUnits = snapRowsDisplay.map(r => r.units);
+      const snapOmset = snapRowsDisplay.map(r => r.omset);
       const snapDatasets = [
         { label:'Omset (snapshot)', data:snapOmset, borderColor:'#B5202A', backgroundColor:'rgba(181,32,42,.06)', borderWidth:2.5, fill:true, tension:0.3, pointRadius:5, pointBackgroundColor:'#B5202A', yAxisID:'y', borderDash:[4,4], spanGaps:false },
         { label:'Unit Terjual', data:snapUnits, borderColor:'#4F46E5', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:4, pointBackgroundColor:'#4F46E5', yAxisID:'y2', borderDash:[4,4], spanGaps:false },
-        { label:'Prediksi Omset', data:fcSnapOmset, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:6, pointBackgroundColor:'#10B981', yAxisID:'y', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
-        { label:'Prediksi Unit', data:fcSnapUnits, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:6, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
       ];
       const snapExtras = { nodataMsg: bucketMsg };
       const _snapLastScrape = dbRows.length ? dbRows[dbRows.length - 1].scraped_at : null;
@@ -23188,25 +23122,10 @@ async function ddLoadTrendHistory(listing) {
     const chartUnitData = weeklyRowsFilled.map(w => w.units);
     const chartOmsetData = weeklyRowsFilled.map(w => w.omset);
     const nW = weeklyRowsFilled.length;
-    const slice2 = weeklyRowsFilled.slice(-2);
-    const fcUnit = Math.round(slice2.reduce((s, w) => s + w.units, 0) / slice2.length);
-    const fcOmset = Math.round(slice2.reduce((s, w) => s + w.omset, 0) / slice2.length);
-    const nextWeek = new Date(weeklyRowsFilled[nW - 1].firstDate.getTime() + 7 * 86400000);
-    labels.push(ddTrendWLabel(nextWeek) + ' ▶');
-    chartUnitData.push(null);
-    chartOmsetData.push(null);
-    const fUnitW = new Array(labels.length).fill(null);
-    const fOmsetW = new Array(labels.length).fill(null);
-    fUnitW[nW - 1] = weeklyRowsFilled[nW - 1].units;
-    fOmsetW[nW - 1] = weeklyRowsFilled[nW - 1].omset;
-    fUnitW[nW] = fcUnit;
-    fOmsetW[nW] = fcOmset;
 
     const trendDatasets = [
       { label: isEstimated ? 'Omset Est./Minggu' : 'Omset/Minggu', data:chartOmsetData, borderColor:'#B5202A', backgroundColor:'rgba(181,32,42,.06)', borderWidth:2.5, fill:true, tension:0.3, pointRadius:4, pointBackgroundColor:'#B5202A', yAxisID:'y', spanGaps:false, borderDash: isEstimated ? [3,3] : [] },
       { label: isEstimated ? 'Unit Est./Minggu' : 'Unit/Minggu', data:chartUnitData, borderColor:'#4F46E5', backgroundColor:'transparent', borderWidth:2, fill:false, tension:0.3, pointRadius:3, pointBackgroundColor:'#4F46E5', yAxisID:'y2', spanGaps:false, borderDash: isEstimated ? [3,3] : [] },
-      { label:'Forecast Omset', data:fOmsetW, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
-      { label:'Forecast Unit', data:fUnitW, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
     ];
     const totalUnits = weeklyRowsFilled.reduce((s, w) => s + w.units, 0);
     const totalOmset = weeklyRowsFilled.reduce((s, w) => s + w.omset, 0);
@@ -29626,10 +29545,17 @@ const JOURNEY_HINT_SESSION_KEY = 'larisid_journey_hint_sess';
 const JOURNEY_BEGINNER_DISCOVER_CAP = 6;
 
 function journeyLoad() {
+  // Simulation gets a true blank-slate journey, independent of the admin's
+  // real Deep Dive/tracking history, instead of reading real localStorage.
+  if (_admSimulateNewUser) return _admSimShadowJourney || (_admSimShadowJourney = {});
   try { return JSON.parse(localStorage.getItem(JOURNEY_LS_KEY) || '{}'); } catch { return {}; }
 }
 
 function journeySave(patch) {
+  if (_admSimulateNewUser) {
+    _admSimShadowJourney = { ..._admSimShadowJourney, ...patch, updatedAt: Date.now() };
+    return _admSimShadowJourney;
+  }
   const next = { ...journeyLoad(), ...patch, updatedAt: Date.now() };
   try { localStorage.setItem(JOURNEY_LS_KEY, JSON.stringify(next)); } catch (_) {}
   void journeySyncRemote(next);
@@ -29637,6 +29563,10 @@ function journeySave(patch) {
 }
 
 function journeyBypassGating() {
+  // SIMULATION ONLY — do not change admin/leader bypass outside this flag.
+  // A simulated new user must go through real journey-tier gating so the
+  // beginner hints/progressive disclosure actually fire for the admin.
+  if (_admSimulateNewUser) return false;
   if (typeof isPlatformAdmin === 'function' && isPlatformAdmin()) return true;
   if (typeof _effectiveLeaderMode === 'function' && _effectiveLeaderMode()) return true;
   return false;
@@ -30860,6 +30790,19 @@ setTimeout(() => { if (typeof naikDaunInit === 'function') naikDaunInit(); }, 80
 initFreshnessBadge();
 initTopbarDate();
 
+// Categories come from the static PDB_CATS constant, so seed the Product Database
+// and Opportunity Finder filter grids up front. This guarantees the category list
+// is present even if a later switchDashView() step throws or the view is opened via
+// an alternate path — the category picker must never render blank.
+(function _seedFilterCatGrids(){
+  const run = () => {
+    try { _initPdbCats(); } catch (_) {}
+    try { _initOfCats(); } catch (_) {}
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+  else run();
+})();
+
 
 
 // Always show hamburger, hide inline nav links
@@ -30934,7 +30877,17 @@ const NU_ONB_SELLER_OPTS = [
   { id: 'existing',   label: 'Sudah punya toko', sub: 'Saya sudah berjualan di Shopee atau marketplace lain' },
   { id: 'first_time', label: 'Baru mulai',       sub: 'Belum pernah jual online atau masih persiapan pertama' },
 ];
-let _nuOnb = { step: 1, cats: [], budget: -1, sellerStatus: '', visible: false, payoff: false };
+// Location options for the onboarding "Di mana lokasi kamu?" step. Major Indonesian
+// e-commerce hubs (matches the city granularity used by "Yang Laku dari Kotamu"),
+// plus a free-text "Lainnya" fallback for anywhere not listed.
+const NU_ONB_LOCATIONS = [
+  'Jakarta', 'Bekasi', 'Depok', 'Tangerang', 'Bogor', 'Bandung',
+  'Semarang', 'Yogyakarta', 'Surabaya', 'Sidoarjo', 'Medan',
+  'Makassar', 'Palembang', 'Denpasar',
+];
+const NU_ONB_TOTAL = 4; // location + categories + budget + seller status
+let _nuOnbGeoTried = false; // best-effort IP geolocation runs once per fresh onboarding
+let _nuOnb = { step: 1, cats: [], budget: -1, sellerStatus: '', location: '', locationOther: '', locationSource: '', visible: false, payoff: false };
 let _nuOnbRichKey = null, _nuOnbRichBusy = false;
 
 // Short-window guard so re-renders / double-invokes don't write duplicate funnel
@@ -30960,6 +30913,7 @@ function _funnelIsDup(eventType, metadata) {
 
 // Personal (cohort-less) funnel event — RLS allows self-owned rows with null cohort.
 async function logUserEvent(eventType, metadata) {
+  if (_admSimulateNewUser) return; // never log real analytics for a simulated session
   if (!_supabase || !currentUser) return;
   if (_funnelIsDup(eventType, metadata)) return;
   try {
@@ -31001,12 +30955,50 @@ function nuOnbShowInPage(fresh) {
     _nuOnb.cats = [];
     _nuOnb.budget = -1;
     _nuOnb.sellerStatus = '';
+    _nuOnb.location = '';
+    _nuOnb.locationOther = '';
+    _nuOnb.locationSource = '';
+    _nuOnbGeoTried = false;
     void logUserEvent('onboarding_start', {});
+    void nuOnbDetectLocation();
   }
   _nuOnb.visible = true;
   nuOnbRender();
   nuOnbSyncDiscoverLayout();
   document.getElementById('dash-content')?.scrollTo(0, 0);
+}
+
+// Best-effort IP geolocation to pre-fill the location step. Uses a free HTTPS
+// endpoint (no key); pre-selects the matching option, or drops the detected
+// city/region into "Lainnya". Always overridable by the user. Never blocks.
+async function nuOnbDetectLocation() {
+  if (_nuOnbGeoTried) return;
+  _nuOnbGeoTried = true;
+  try {
+    const res = await fetch('https://ipwho.is/?fields=success,city,region,country_code');
+    const j = await res.json();
+    if (!j || j.success === false) return;
+    if (_nuOnb.location) return; // user already picked while the request was in flight
+    const city = String(j.city || '').trim();
+    const region = String(j.region || '').trim();
+    const norm = s => s.toLowerCase();
+    const hay = [city, region].filter(Boolean).map(norm);
+    const match = NU_ONB_LOCATIONS.find(loc => {
+      const l = norm(loc);
+      return hay.some(h => h === l || h.includes(l) || l.includes(h));
+    });
+    if (match) {
+      _nuOnb.location = match;
+      _nuOnb.locationSource = 'ip';
+    } else if (city || region) {
+      _nuOnb.location = '__other__';
+      _nuOnb.locationOther = city || region;
+      _nuOnb.locationSource = 'ip';
+    } else {
+      return;
+    }
+    if (_nuOnb.visible && _nuOnb.step === 1) nuOnbRender();
+  } catch (_) { /* geolocation is best-effort */ }
 }
 
 function nuOnbHideInPage() {
@@ -31023,12 +31015,28 @@ function nuOnbRender() {
   const el = document.getElementById('nu-onb-body');
   if (!el) return;
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-  const dots = (n) => [1, 2, 3].map(i => `<div class="nu-onb-dot${i === n ? ' on' : ''}"></div>`).join('');
+  const dots = (n) => [1, 2, 3, 4].map(i => `<div class="nu-onb-dot${i === n ? ' on' : ''}"></div>`).join('');
   if (_nuOnb.step === 1) {
+    const isOther = _nuOnb.location === '__other__';
+    const detected = _nuOnb.locationSource === 'ip' && !!_nuOnb.location;
+    el.innerHTML = `
+      <div class="nu-onb-step-lbl">Langkah 1 dari ${NU_ONB_TOTAL}</div>
+      <div class="nu-onb-title">Di mana lokasi kamu?</div>
+      <div class="nu-onb-sub">${detected
+        ? 'Kami coba tebak dari koneksi internet kamu — pastikan sudah benar, atau ganti kalau meleset.'
+        : 'Bantu kami sesuaikan rekomendasi dan insight pasar dengan daerahmu.'}</div>
+      <div class="nu-onb-locs">${NU_ONB_LOCATIONS.map((loc, i) => `
+        <div class="nu-onb-loc${_nuOnb.location === loc ? ' sel' : ''}" role="button" tabindex="0" aria-pressed="${_nuOnb.location === loc}" onclick="nuOnbPickLoc(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nuOnbPickLoc(${i});}">${esc(loc)}</div>`).join('')}
+        <div class="nu-onb-loc${isOther ? ' sel' : ''}" role="button" tabindex="0" aria-pressed="${isOther}" onclick="nuOnbPickLoc(-1)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nuOnbPickLoc(-1);}">Lainnya</div>
+      </div>
+      ${isOther ? `<input id="nu-onb-loc-other" class="nu-onb-loc-input" type="text" maxlength="60" placeholder="Tulis kota atau provinsi kamu" value="${esc(_nuOnb.locationOther).replace(/"/g, '&quot;')}" oninput="nuOnbLocOther(this.value)">` : ''}
+      <button type="button" class="nu-onb-cta" onclick="nuOnbNext()" ${nuOnbLocationReady() ? '' : 'disabled'}>Lanjut</button>
+      <div class="nu-onb-dots">${dots(1)}</div>`;
+  } else if (_nuOnb.step === 2) {
     const n = _nuOnb.cats.length;
     const ready = n >= NU_ONB_MIN_CATS;
     el.innerHTML = `
-      <div class="nu-onb-step-lbl">Langkah 1 dari 3</div>
+      <div class="nu-onb-step-lbl">Langkah 2 dari ${NU_ONB_TOTAL}</div>
       <div class="nu-onb-title">Kategori apa yang menarik buat kamu?</div>
       <div class="nu-onb-sub">Pilih minimal ${NU_ONB_MIN_CATS} kategori — produk yang kami tampilkan bakal disesuaikan sama minat kamu. <strong>${n}/${NU_ONB_MIN_CATS}</strong> dipilih.</div>
       <div class="nu-onb-cats">${NU_ONB_CATS.map((c, i) => `
@@ -31038,10 +31046,11 @@ function nuOnbRender() {
         </div>`).join('')}
       </div>
       <button type="button" class="nu-onb-cta" onclick="nuOnbNext()" ${ready ? '' : 'disabled'}>Lanjut</button>
-      <div class="nu-onb-dots">${dots(1)}</div>`;
-  } else if (_nuOnb.step === 2) {
+      <button type="button" class="nu-onb-back" onclick="_nuOnb.step=1;nuOnbRender();">Kembali</button>
+      <div class="nu-onb-dots">${dots(2)}</div>`;
+  } else if (_nuOnb.step === 3) {
     el.innerHTML = `
-      <div class="nu-onb-step-lbl">Langkah 2 dari 3</div>
+      <div class="nu-onb-step-lbl">Langkah 3 dari ${NU_ONB_TOTAL}</div>
       <div class="nu-onb-title">Berapa harga produk yang ingin kamu jual?</div>
       <div class="nu-onb-sub">Kami tampilkan produk dengan harga jual yang pas sama budget kamu.</div>
       <div class="nu-onb-budgets">${NU_ONB_BUDGETS.map((b, i) => `
@@ -31051,11 +31060,11 @@ function nuOnbRender() {
         </div>`).join('')}
       </div>
       <button type="button" class="nu-onb-cta" onclick="nuOnbNext()" ${_nuOnb.budget >= 0 ? '' : 'disabled'}>Lanjut</button>
-      <button type="button" class="nu-onb-back" onclick="_nuOnb.step=1;nuOnbRender();">Kembali</button>
-      <div class="nu-onb-dots">${dots(2)}</div>`;
+      <button type="button" class="nu-onb-back" onclick="_nuOnb.step=2;nuOnbRender();">Kembali</button>
+      <div class="nu-onb-dots">${dots(3)}</div>`;
   } else {
     el.innerHTML = `
-      <div class="nu-onb-step-lbl">Langkah 3 dari 3</div>
+      <div class="nu-onb-step-lbl">Langkah 4 dari ${NU_ONB_TOTAL}</div>
       <div class="nu-onb-title">Kamu sudah jualan atau baru mulai?</div>
       <div class="nu-onb-sub">Biar rekomendasi produk lebih relevan sama tahap kamu sekarang.</div>
       <div class="nu-onb-budgets">${NU_ONB_SELLER_OPTS.map(o => `
@@ -31065,9 +31074,40 @@ function nuOnbRender() {
         </div>`).join('')}
       </div>
       <button type="button" class="nu-onb-cta" onclick="nuOnbFinish()" ${_nuOnb.sellerStatus ? '' : 'disabled'}>Lihat Produk Untukmu</button>
-      <button type="button" class="nu-onb-back" onclick="_nuOnb.step=2;nuOnbRender();">Kembali</button>
-      <div class="nu-onb-dots">${dots(3)}</div>`;
+      <button type="button" class="nu-onb-back" onclick="_nuOnb.step=3;nuOnbRender();">Kembali</button>
+      <div class="nu-onb-dots">${dots(4)}</div>`;
   }
+}
+
+function nuOnbPickLoc(i) {
+  if (i < 0) {
+    _nuOnb.location = '__other__';
+  } else {
+    _nuOnb.location = NU_ONB_LOCATIONS[i];
+    _nuOnb.locationOther = '';
+  }
+  _nuOnb.locationSource = 'manual';
+  nuOnbRender();
+  if (i < 0) document.getElementById('nu-onb-loc-other')?.focus();
+}
+
+// Live-update the CTA without re-rendering (which would steal input focus).
+function nuOnbLocOther(v) {
+  _nuOnb.locationOther = v;
+  const cta = document.querySelector('#nu-onb-body .nu-onb-cta');
+  if (cta) cta.disabled = !nuOnbLocationReady();
+}
+
+function nuOnbLocationReady() {
+  if (!_nuOnb.location) return false;
+  if (_nuOnb.location === '__other__') return _nuOnb.locationOther.trim().length > 0;
+  return true;
+}
+
+function nuOnbResolvedLocation() {
+  if (!_nuOnb.location) return '';
+  if (_nuOnb.location === '__other__') return _nuOnb.locationOther.trim();
+  return _nuOnb.location;
 }
 
 function nuOnbToggleCat(i) {
@@ -31089,17 +31129,24 @@ function nuOnbPickSeller(id) {
 
 function nuOnbNext() {
   if (_nuOnb.step === 1) {
-    if (_nuOnb.cats.length < NU_ONB_MIN_CATS) return;
-    void logUserEvent('onboarding_cats', { categories: _nuOnb.cats });
+    if (!nuOnbLocationReady()) return;
+    void logUserEvent('onboarding_location', { location: nuOnbResolvedLocation(), source: _nuOnb.locationSource || 'manual' });
     _nuOnb.step = 2;
     nuOnbRender();
     return;
   }
   if (_nuOnb.step === 2) {
+    if (_nuOnb.cats.length < NU_ONB_MIN_CATS) return;
+    void logUserEvent('onboarding_cats', { categories: _nuOnb.cats });
+    _nuOnb.step = 3;
+    nuOnbRender();
+    return;
+  }
+  if (_nuOnb.step === 3) {
     if (_nuOnb.budget < 0) return;
     const b = NU_ONB_BUDGETS[_nuOnb.budget];
     void logUserEvent('onboarding_budget', { budget: b.label, min: b.min, max: b.max });
-    _nuOnb.step = 3;
+    _nuOnb.step = 4;
     nuOnbRender();
   }
 }
@@ -31113,7 +31160,7 @@ function nuOnbFinish() {
   try { _firstComplete = !localStorage.getItem(NU_ONB_DONE_KEY); } catch (_) {}
   void logUserEvent('onboarding_seller', { seller_status: _nuOnb.sellerStatus });
   void logUserEvent(_firstComplete ? 'onboarding_complete' : 'onboarding_edit',
-    { categories: _nuOnb.cats, budget: b.label, seller_status: _nuOnb.sellerStatus });
+    { categories: _nuOnb.cats, budget: b.label, seller_status: _nuOnb.sellerStatus, location: nuOnbResolvedLocation() });
   try { localStorage.setItem(NU_ONB_DONE_KEY, '1'); } catch (_) {}
   try { localStorage.setItem(NU_ONB_LS_KEY, '1'); } catch (_) {}
   void nuOnbPersist(true);
@@ -31141,6 +31188,12 @@ async function nuOnbPersist(completed) {
     updated_at: now,
   };
   if (_nuOnb.sellerStatus) payload.seller_status = _nuOnb.sellerStatus;
+  const loc = nuOnbResolvedLocation();
+  if (loc) {
+    payload.region = loc;
+    // Keep "Yang Laku dari Kotamu" in sync so it pre-selects the same city.
+    try { localStorage.setItem(YLK_LS_KEY, loc); } catch (_) {}
+  }
   // Omitted columns are left untouched on conflict, so a later "Lewati" from
   // the re-run picker never erases an earlier completed_at.
   if (completed) { payload.completed_at = now; payload.skipped_at = null; }
@@ -32369,6 +32422,16 @@ function _mytRenderCompTable(rows, keyword) {
 const _ADM_VIEW_KEY = 'larisid_admin_view_mode';
 let _adminViewMode = 'admin';
 
+// ════════════════════════════════════════════════════════════
+//  ADMIN NEW-USER SIMULATION (walk the real landing → signup →
+//  onboarding → first-hints journey as a true first-time visitor,
+//  without touching the admin's real account/analytics data)
+// ════════════════════════════════════════════════════════════
+const _ADM_SIM_KEY = 'larisid_admin_sim_new_user';
+let _admSimulateNewUser = false;
+let _admSimPrevView = null;
+let _admSimShadowJourney = null; // in-memory blank-slate journey state while simulating
+
 function _adminViewModeInit() {
   if (!isPlatformAdmin()) return;
   try { _adminViewMode = sessionStorage.getItem(_ADM_VIEW_KEY) || 'admin'; } catch (_) {}
@@ -32394,6 +32457,62 @@ function _admSyncButtons(mode) {
   });
   const badge = document.getElementById('apb-mode-badge');
   if (badge) badge.textContent = `Mode: ${mode.charAt(0).toUpperCase() + mode.slice(1)}`;
+}
+
+// ── New-user simulation: walk the real landing → signup → onboarding →
+// first-hints journey as admin, without creating a real account or writing
+// any real data. Layers on top of whichever role tab is selected above. ──
+
+function _admSimSyncUI() {
+  const enterBtn = document.getElementById('apb-sim-enter');
+  const exitBtn  = document.getElementById('apb-sim-exit');
+  if (enterBtn) enterBtn.style.display = _admSimulateNewUser ? 'none' : '';
+  if (exitBtn)  exitBtn.style.display  = _admSimulateNewUser ? '' : 'none';
+  const simBar = document.getElementById('admin-sim-bar');
+  // Only show the fixed top strip outside the dashboard shell — inside the
+  // dashboard, #admin-preview-bar's own "Keluar Simulasi" button is visible.
+  if (simBar) simBar.style.display = (_admSimulateNewUser && !document.body.classList.contains('in-dashboard')) ? 'flex' : 'none';
+}
+
+function admSimEnter() {
+  if (!isPlatformAdmin()) return;
+  _admSimPrevView = _dashActiveView;
+  _admSimulateNewUser = true;
+  _admSimShadowJourney = {};
+  try { sessionStorage.setItem(_ADM_SIM_KEY, '1'); } catch (_) {}
+  try { sessionStorage.removeItem(JOURNEY_HINT_SESSION_KEY); } catch (_) {}
+  showPage('landing');
+  _admSimSyncUI();
+}
+
+// Called from submitAuth() instead of hitting the real Supabase signup/login
+// network call while simulating — jumps straight into the in-page onboarding
+// wizard inside Discover, exactly where a real new user lands post-signup.
+function admSimCompleteAuth() {
+  closeAuthModal();
+  document.body.classList.add('in-dashboard');
+  document.body.classList.remove('on-landing');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-profile').classList.add('active');
+  window.scrollTo(0, 0);
+  switchDashView('discover');
+  nuOnbShowInPage(true);
+  _admSimSyncUI();
+  applyAdminViewMode(_adminViewMode);
+}
+
+function admSimExit() {
+  _admSimulateNewUser = false;
+  _admSimShadowJourney = null;
+  try { sessionStorage.removeItem(_ADM_SIM_KEY); } catch (_) {}
+  _admSimSyncUI();
+  if (_nuOnb.visible) nuOnbHideInPage();
+  document.body.classList.add('in-dashboard');
+  document.body.classList.remove('on-landing');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-profile').classList.add('active');
+  switchDashView(_admSimPrevView || 'dashboard');
+  applyAdminViewMode(_adminViewMode);
 }
 
 // Returns true if the current effective view should show leader UI —
@@ -32517,8 +32636,9 @@ function _setFlatToolsNav(flat) {
   const groupedSub = document.getElementById('dash-sub-research-tools');
   const flatTools = document.getElementById('dash-nav-flat-tools');
   if (grouped) grouped.style.display = flat ? 'none' : '';
-  if (groupedSub) groupedSub.style.display = 'none';
+  if (groupedSub) { groupedSub.style.display = 'none'; if (flat) groupedSub.classList.remove('open'); }
   if (flatTools) flatTools.style.display = flat ? '' : 'none';
+  document.body.classList.toggle('dash-flat-tools', !!flat);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -34409,6 +34529,11 @@ async function cohortPlannerGcalImportSelected() {
 .nu-onb-cat span{font-size:.68rem;font-weight:700;color:#374151;line-height:1.25;}
 .nu-onb-cat.sel{border-color:#B5202A;background:#F9EAE4;color:#B5202A;}
 .nu-onb-cat.sel span{color:#B5202A;}
+.nu-onb-locs{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px;margin-bottom:14px;}
+.nu-onb-loc{padding:11px 10px;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;cursor:pointer;user-select:none;transition:border-color .12s,background .12s;text-align:center;font-size:.78rem;font-weight:700;color:#374151;}
+.nu-onb-loc.sel{border-color:#B5202A;background:#F9EAE4;color:#B5202A;}
+.nu-onb-loc-input{width:100%;padding:11px 14px;border:1.5px solid #E5E7EB;border-radius:12px;font-family:inherit;font-size:.84rem;color:#1A1A1A;margin-bottom:18px;}
+.nu-onb-loc-input:focus{outline:none;border-color:#B5202A;}
 .nu-onb-budgets{display:flex;flex-direction:column;gap:9px;margin-bottom:18px;}
 .nu-onb-budget{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;cursor:pointer;user-select:none;transition:border-color .12s,background .12s;}
 .nu-onb-budget .nb-l{font-size:.84rem;font-weight:700;color:#1A1A1A;}
