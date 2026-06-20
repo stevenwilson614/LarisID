@@ -19494,11 +19494,27 @@ function dscSetView(mode) {
   dscRenderTable();
 }
 
-function dscOpenDeepDive(key, skipNav) {
+async function dscOpenDeepDive(key, skipNav) {
   const [itemId, shopId] = String(key).split('__');
   const match = r => String(r.item_id) === itemId && String(r.shop_id) === shopId;
-  const listing = _dscAllListings.find(match) || _dscBrowsePool.find(match) || _dscFiltered.find(match);
-  if (!listing) return;
+  let listing = _dscAllListings.find(match) || _dscBrowsePool.find(match) || _dscFiltered.find(match);
+  if (!listing) {
+    // Not in the in-memory Discover caches yet (e.g. opened straight from a
+    // recommended-product card before any Discover search ran this session)
+    // — fall back to fetching the listing directly from Supabase.
+    if (!_supabase) { showCompareToast('Data produk belum dimuat — coba buka Discover dulu'); return; }
+    try {
+      const { data } = await _supabase.from('listings')
+        .select('item_id,shop_id,product_name,keyword,price,total_sold,store_name,category,image_url,url,rating,reviews,location,listing_date,scraped_at')
+        .eq('item_id', itemId).eq('shop_id', shopId).order('scraped_at', { ascending: false }).limit(1);
+      if (data && data.length) {
+        listing = data[0];
+        if (!window._dscAllListings) window._dscAllListings = [];
+        _dscAllListings.push(listing);
+      }
+    } catch (_) { /* fall through to not-found toast below */ }
+    if (!listing) { showCompareToast('Data produk belum tersedia di database'); return; }
+  }
   journeyMarkDiscoverClick(key);
   const omset = _dscOmset(listing);
   const monthlyUnits = listing.price > 0 ? Math.round(omset / listing.price) : 0;
