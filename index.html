@@ -485,6 +485,7 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .ylk-hl-cta{font-size:.68rem;font-weight:700;color:#B5202A;background:none;border:none;cursor:pointer;padding:0;text-align:left;}
 .ylk-allcats{border-top:1px solid #F0E7DC;padding-top:12px;}
 .ylk-allcats-label{display:block;font-size:.72rem;font-weight:700;color:#6B7280;margin-bottom:6px;}
+.ylk-cat-iconname{display:flex;align-items:center;gap:6px;}
 /* ── Naik Daun ── */
 .nd-card{background:linear-gradient(180deg,#FFFDF8,#fff);border:1px solid #F0E7DC;border-radius:14px;padding:16px 0 16px 18px;margin-bottom:18px;box-shadow:0 6px 20px rgba(26,26,26,.04);}
 .nd-head{padding-right:18px;margin-bottom:12px;}
@@ -10673,11 +10674,6 @@ html,body{overflow-x:clip;max-width:100%;}
   </div>
 </div>
 
-<!-- ── ADMIN NEW-USER SIMULATION STRIP (visible outside the dashboard shell, e.g. on the landing page / auth modal) ── -->
-<div id="admin-sim-bar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:300;background:#0F172A;color:#fff;text-align:center;font-size:.74rem;font-weight:700;padding:8px 14px;letter-spacing:.02em;">
-  Simulasi Pengguna Baru aktif — melihat sebagai pengunjung baru
-  <button onclick="admSimExit()" style="margin-left:12px;background:rgba(255,255,255,.18);border:none;border-radius:5px;color:#fff;font-size:.7rem;font-weight:700;padding:4px 10px;cursor:pointer;">Keluar Simulasi</button>
-</div>
 
 <!-- ── ADMIN FLOATING WIDGET (platform admin only) ── -->
 <div id="admin-float-widget" style="display:none;position:fixed;bottom:20px;right:20px;z-index:9999;font-family:'Plus Jakarta Sans',sans-serif;">
@@ -11523,7 +11519,7 @@ function _navBack(fallbackView) {
 
 function showPage(name) {
   // Logged-in users go to dashboard instead of home/landing (not when restoring browser history)
-  if ((name === 'home' || name === 'landing') && currentUser && !_navFromPopstate && !_admSimulateNewUser) { openProfile(); return; }
+  if ((name === 'home' || name === 'landing') && currentUser && !_navFromPopstate) { openProfile(); return; }
   // Logged-out users hitting 'home' go to landing page
   if (name === 'home' && !currentUser) { name = 'landing'; }
   const prev = document.querySelector('.page.active');
@@ -12272,7 +12268,7 @@ function _ylkHlCard(badge, row, kind) {
     ? `<div class="ylk-cat-price">Naik ${Number(row.trend_delta).toFixed(1)} poin dalam 45 hari terakhir</div>` : '';
   return `<div class="ylk-hl-card">
     <div class="ylk-hl-badge" style="color:${clr}">${badge}</div>
-    <div class="ylk-cat-top">${_catIconImg(row.category)}<span class="ylk-cat-name">${row.category}</span></div>
+    <div class="ylk-cat-iconname">${_catIconImg(row.category)}<span class="ylk-cat-name">${row.category}</span></div>
     <div class="ylk-cat-rate" style="color:${clr}">${rate}% penjual baru tembus</div>
     ${trendNote}
     <button class="ylk-hl-cta" onclick="ylkSeeItems('${row.category.replace(/'/g, "\\'")}')">Lihat Produk →</button>
@@ -12299,7 +12295,7 @@ function ylkOnCatSelectChange() {
   if (!row) { detail.innerHTML = '<div class="ylk-empty">Data tidak tersedia.</div>'; return; }
   const rate = Number(row.breakout_rate) || 0;
   detail.innerHTML = `<div class="ylk-cat">
-    <div class="ylk-cat-top">${_catIconImg(row.category)}<span class="ylk-cat-name">${row.category}</span><span class="ylk-cat-rate">${rate}%</span></div>
+    <div class="ylk-cat-top"><div class="ylk-cat-iconname">${_catIconImg(row.category)}<span class="ylk-cat-name">${row.category}</span></div><span class="ylk-cat-rate">${rate}%</span></div>
     <div class="ylk-cat-price">${row.new_items} produk baru dianalisis · median harga pemenang Rp ${Number(row.median_winner_price || 0).toLocaleString('id-ID')}</div>
     <button class="ylk-hl-cta" onclick="ylkSeeItems('${cat.replace(/'/g, "\\'")}')">Lihat Produk →</button>
   </div>`;
@@ -12793,7 +12789,7 @@ function updateAuthUI() {
 let _authMode = 'login'; // 'login', 'signup', or 'reset'
 
 function openAuthModal(mode, source) {
-  if (currentUser && !_admSimulateNewUser) { void openProfile(); return; }
+  if (currentUser) { void openProfile(); return; }
   if (window.clarity && mode === 'signup') {
     try { clarity('event', 'cta_signup_click'); clarity('set', 'signup_cta_source', source || 'unknown'); } catch (_) {}
   }
@@ -12838,7 +12834,6 @@ function _authErrMsg(msg) {
 }
 
 async function submitAuth() {
-  if (_admSimulateNewUser) { admSimCompleteAuth(); return; }
   const errEl = document.getElementById('auth-error');
   const btn   = document.getElementById('auth-submit-btn');
   const email = document.getElementById('auth-email').value.trim();
@@ -13760,7 +13755,7 @@ async function loadDashSourcingGuide(pid) {
   }
   try {
     const resp = await fetch(
-      `${SUPA_URL}/rest/v1/listings?select=product_name,store_name,location,price,total_sold,rating,reviews,image_url,item_id,shop_id&eq.keyword=${encodeURIComponent(p.keyword)}&order=total_sold.desc&limit=30`,
+      `${SUPA_URL}/rest/v1/listings?select=product_name,store_name,location,price,total_sold,rating,reviews,image_url,item_id,shop_id&keyword=eq.${encodeURIComponent(p.keyword)}&order=total_sold.desc&limit=30`,
       { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } }
     );
     const rows = resp.ok ? await resp.json() : [];
@@ -31168,7 +31163,7 @@ async function logUserEvent(eventType, metadata) {
 }
 
 async function nuOnbCheckNeeded() {
-  if (_admSimulateNewUser) return true; // defensive — admSimCompleteAuth() opens the wizard directly
+  if (_admSimulateNewUser) return true; // defensive — admSimEnter() opens the wizard directly
   if (!currentUser || !_supabase) return false;
   if (localStorage.getItem(NU_ONB_LS_KEY)) return false;
   if ((window.location.hash || '').includes('type=recovery')) return false;
@@ -32716,12 +32711,11 @@ function _admSimSyncUI() {
   const exitBtn  = document.getElementById('apb-sim-exit');
   if (enterBtn) enterBtn.style.display = _admSimulateNewUser ? 'none' : '';
   if (exitBtn)  exitBtn.style.display  = _admSimulateNewUser ? '' : 'none';
-  const simBar = document.getElementById('admin-sim-bar');
-  // Only show the fixed top strip outside the dashboard shell — inside the
-  // dashboard, #admin-preview-bar's own "Keluar Simulasi" button is visible.
-  if (simBar) simBar.style.display = (_admSimulateNewUser && !document.body.classList.contains('in-dashboard')) ? 'flex' : 'none';
 }
 
+// Skips the landing page / signup form entirely — starts straight from the
+// moment a brand-new user has just signed in: in-page Discover onboarding
+// wizard open, journey tier reset to a blank slate, first-time hints armed.
 function admSimEnter() {
   if (!isPlatformAdmin()) return;
   _admSimPrevView = _dashActiveView;
@@ -32729,15 +32723,6 @@ function admSimEnter() {
   _admSimShadowJourney = {};
   try { sessionStorage.setItem(_ADM_SIM_KEY, '1'); } catch (_) {}
   try { sessionStorage.removeItem(JOURNEY_HINT_SESSION_KEY); } catch (_) {}
-  showPage('landing');
-  _admSimSyncUI();
-}
-
-// Called from submitAuth() instead of hitting the real Supabase signup/login
-// network call while simulating — jumps straight into the in-page onboarding
-// wizard inside Discover, exactly where a real new user lands post-signup.
-function admSimCompleteAuth() {
-  closeAuthModal();
   document.body.classList.add('in-dashboard');
   document.body.classList.remove('on-landing');
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
