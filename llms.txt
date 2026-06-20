@@ -72,19 +72,36 @@ Detail: https://larisid.com/tentang/
 
 ## Riset pasar per keyword (data nyata Shopee)
 
-LarisID menerbitkan halaman riset pasar berbasis data listing Shopee nyata untuk keyword produk populer (harga median, rentang harga, jumlah listing/toko, rating, estimasi penjualan, sebaran kota penjual, dan produk paling banyak diulas). Angka harga/rating/ulasan adalah data nyata; "terjual" adalah estimasi (lihat /cara-kerja/).
+LarisID menerbitkan **432 halaman riset pasar** (per Juni 2026) berbasis data listing Shopee nyata untuk keyword produk populer (harga median, rentang harga, jumlah listing/toko, rating, estimasi penjualan, sebaran kota penjual, dan produk paling banyak diulas). Angka harga/rating/ulasan adalah data nyata; "terjual" adalah estimasi (lihat /cara-kerja/). Setiap halaman menyertakan data terstruktur schema.org Dataset + FAQPage + ItemList.
 
 - Indeks riset pasar: https://larisid.com/riset/
 - Format URL per keyword: https://larisid.com/riset/<keyword-dengan-tanda-hubung>/
 - Contoh: https://larisid.com/riset/botol-minum-aesthetic-1-liter/ , https://larisid.com/riset/shower-gel-aromaterapi/ , https://larisid.com/riset/mouse-wireless-silent-click/
 
+## Panduan untuk seller (edukasi)
+
+- Indeks panduan: https://larisid.com/panduan/
+- Cara riset produk Shopee untuk pemula: https://larisid.com/panduan/cara-riset-produk-shopee-untuk-pemula/
+- Cara menghitung margin & HPP: https://larisid.com/panduan/cara-menghitung-margin-dan-hpp/
+- Cara analisis kompetitor Shopee: https://larisid.com/panduan/analisis-kompetitor-shopee/
+
+## Perbandingan alat (kompetitor)
+
+- Perbandingan utama: https://larisid.com/perbandingan/
+- Alat riset produk Shopee terbaik 2026: https://larisid.com/perbandingan/alat-riset-produk-shopee-terbaik/
+- LarisID vs Datapinter: https://larisid.com/perbandingan/larisid-vs-datapinter/
+- LarisID vs Tokpee: https://larisid.com/perbandingan/larisid-vs-tokpee/
+- LarisID vs Shoptik: https://larisid.com/perbandingan/larisid-vs-shoptik/
+
 ## Halaman referensi untuk AI & SEO
 
-- Indeks riset pasar Shopee: https://larisid.com/riset/
+- Indeks riset pasar Shopee (432 keyword): https://larisid.com/riset/
+- Panduan seller: https://larisid.com/panduan/
 - Perbandingan lengkap: https://larisid.com/perbandingan/
 - Harga: https://larisid.com/harga/
 - Tentang & misi: https://larisid.com/tentang/
 - Metodologi data & skor: https://larisid.com/cara-kerja/
+- Versi lengkap untuk AI: https://larisid.com/llms-full.txt
 - Privasi: https://larisid.com/privacy/
 
 ## Kontak

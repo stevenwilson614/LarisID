@@ -45,16 +45,19 @@ From `docs/pricing-research.md` (verify periodically):
 | **Datapinter** | ~Rp 299.000/mo | Closest feature-equivalent; subscription |
 | **Tokpee** | ~Rp 50.000/mo (annual) | Chrome extension; Shopee + Tokopedia; narrower |
 | **Shoptik** | Not published | Shopee research; promo-heavy |
-| **LarisID** | Rp 0 + packs Rp 25k / Rp 40k | Credits, no mandatory subscription |
+| **LarisID** | Rp 0 (100% gratis) | 20 free credits/mo + earn more free via extension; no subscription, no packs |
 
 Tagline “kompetitor bayar 300rb/bulan” is accurate vs **Datapinter**, not Tokpee.
 
-Do **not** trash competitors; state trade-offs. Do **not** claim “100% gratis selamanya” if paid packs exist — say “gratis untuk mulai” + credit depth.
+Do **not** trash competitors; state trade-offs. Current public model is **100% gratis** (matches
+`llms.txt` + homepage schema): say so consistently. If pricing ever changes back to paid packs,
+update `llms.txt`, homepage JSON-LD, `/harga/`, and this doc **together** — inconsistent prices
+across pages confuse both search and AI.
 
 ## Messaging rules
 
-- **Free tier:** 5 credits/month, Finder, 7-day history, community, extension earn-credits
-- **Paid:** depth only (historical data, more Deep Dive / AI) — never gate honesty or basic viability truth
+- **Free tier (the whole product):** 20 credits/month, Finder, 7-day history, community, extension earn-credits
+- **More depth** (historical data, more Deep Dive / AI) comes from **earning more free credits** (extension), not paying — never gate honesty or basic viability truth
 - Avoid unverifiable social proof (e.g. fake member counts)
 
 ## Analytics (landing)
@@ -80,31 +83,111 @@ seller-region breakdown — plus an honest "what this means for you" read and FA
   labelled as such on every page (links to `/cara-kerja/`).
 - No hype ("dijamin laku"), no fake scarcity. State competition honestly.
 
+**Data inputs (both committed, both produced by SQL via the Supabase MCP — no curl needed):**
+- `scripts/seo-keywords.json` — headline stats per keyword. **Append-only**: array index maps to
+  page order; never reorder. Rating on appended rows is **review-weighted** avg (honest, ~4.x).
+- `scripts/seo-detail.json` — per-keyword detail keyed by keyword string (top-8 products, top-6
+  regions, 4 price buckets, store count, sold total, concentration). Computed over ALL listings.
+
 **Pipeline (re-run after a scrape refresh):**
-1. Curated keyword list + headline stats (computed over ALL listings per keyword via SQL) live in
-   `scripts/seo-keywords.json`. To add/scale keywords, widen the SQL `LIMIT` (see file header /
-   the query in this repo's chat history) and paste the new rows.
-2. `bash scripts/fetch-seo-raw.sh` *(or* the inline `curl` loop — the sandbox blocks Node's
-   `fetch` but allows `curl)*` downloads top-1000-by-sales rows per keyword into
-   `scripts/_seo_raw/` (gitignored). Commands are emitted to `scripts/_seo_raw/cmds.txt`.
-3. `node scripts/build-seo-pages.mjs` reads the cache offline and writes:
-   - `riset/<slug>/index.html` (one per keyword) with BreadcrumbList + FAQPage + ItemList JSON-LD
-   - `riset/index.html` (hub, grouped by category, with CollectionPage JSON-LD)
-   - regenerated `sitemap.xml` (static URLs + all `/riset/` pages)
+1. Pull expanded keyword aggregates (review-weighted rating, dedup latest row per item):
+   ```sql
+   WITH latest AS (SELECT DISTINCT ON (item_id) item_id, keyword, category, price, est_sold, rating, reviews
+     FROM listings WHERE price>0 AND price<1e8 AND keyword IS NOT NULL AND category IS NOT NULL AND category<>''
+     ORDER BY item_id, scraped_at DESC)
+   SELECT json_agg(row_to_json(a)) FROM (
+     SELECT keyword, mode() WITHIN GROUP (ORDER BY category) category, count(*)::int n,
+       round(avg(price))::bigint "avgPrice", round(percentile_cont(0.5) WITHIN GROUP (ORDER BY price))::bigint "medPrice",
+       min(price)::bigint "minPrice", round(percentile_cont(0.9) WITHIN GROUP (ORDER BY price))::bigint "p90Price",
+       sum(est_sold)::bigint "estSold", sum(reviews)::bigint reviews,
+       round((sum(rating*reviews) FILTER (WHERE reviews>0 AND rating>0)/nullif(sum(reviews) FILTER (WHERE reviews>0 AND rating>0),0))::numeric,2)::float rating
+     FROM latest WHERE array_length(regexp_split_to_array(btrim(keyword),'\s+'),1)>=3
+     GROUP BY keyword HAVING count(*)>=100 AND sum(est_sold)>200000 ORDER BY sum(est_sold) DESC) a;
+   ```
+   Then `node scripts/merge-seo-keywords.mjs <pull.json>` (append-only merge into seo-keywords.json).
+2. Pull per-keyword detail with the detail query (see git history / chat) → save to
+   `scripts/seo-detail.json` (object keyed by keyword: stores, sampleItems, soldTotal,
+   concentration, top[], regions[], buckets[]).
+3. `node scripts/build-seo-pages.mjs` reads both JSON files offline and writes:
+   - `riset/<slug>/index.html` — BreadcrumbList + FAQPage + ItemList + **Dataset** JSON-LD,
+     per-page `og:image` + Twitter card + `article:modified_time`, related-keyword internal links.
+   - `riset/index.html` (hub, grouped by category, CollectionPage JSON-LD)
+   - regenerated `sitemap.xml` (static URLs + all `/riset/` pages, per-URL `lastmod`)
 4. Bump `SNAPSHOT` / `SNAPSHOT_HUMAN` in `build-seo-pages.mjs` when refreshing.
 
 Shared styles for these pages live in `styles/seo-pages.css` (stat grid, bars, riset cards).
 Internal links: nav + footer on every static page and the landing point to `/riset/`.
 
-Current batch: **90 keywords** (filters: ≥100 distinct items, category present, est_sold > 200k,
-≥3-word keyword). ~1,100 keywords qualify in total — room to scale.
+Current batch: **432 keywords** (filters: ≥100 distinct items, category present, est_sold > 200k,
+≥3-word keyword) — the full qualifying set as of the June 2026 snapshot. Re-run the queries as the
+scrape DB grows to add more.
+
+## GEO / AEO additions (shipped June 2026)
+
+To increase organic traffic **and** citations from AI answer engines (ChatGPT, Perplexity,
+Gemini, Google AI Overviews):
+
+- **Dataset schema** on all 432 `/riset/` pages — the pages are genuine datasets; this is the
+  format AI/Google Dataset Search preferentially cite.
+- **Freshness signals** — `dateModified` / `article:modified_time` + visible snapshot date; per-URL
+  `lastmod` in sitemap.
+- **Per-page `og:image` + Twitter cards** on riset/guide/comparison pages (currently the shared
+  `images/Banner.jpg`; see "dynamic OG cards" below to upgrade).
+- **`/panduan/` guides** (`scripts/build-guides.mjs`) — Article + FAQPage + author (E-E-A-T).
+- **Dedicated comparison pages + listicle** (`scripts/build-comparisons.mjs`) — "X vs Y" and
+  "best tools" are the highest-intent, most-quoted query shapes.
+- **Entity signals** — homepage `Organization` has `founder` (Person), `contactPoint`, `knowsAbout`.
+- **AI crawlers** — `robots.txt` explicitly allows GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot,
+  Google-Extended, Applebot-Extended, CCBot, etc. Plus `llms.txt` + expanded `llms-full.txt`.
+
+## Manual / off-platform tasks (high ROI, need a human)
+
+These move the needle most for AI recommendations but can't be done from the repo:
+
+1. **Create real entity profiles, then add them to `Organization.sameAs`** in `index.html`
+   (currently omitted to avoid inventing URLs): LinkedIn company page, Crunchbase, Product Hunt
+   profile, X/Instagram/TikTok. Knowledge-graph presence is what makes LLMs "know" the brand.
+2. **Wikidata item** for LarisID — feeds the knowledge graphs LLMs train on.
+3. **List on G2 / Capterra / SaaSHub** — these are AI's go-to sources for "best [tool]" answers.
+4. **Digital PR / data study** — publish "Laporan Tren Produk Shopee 2026" from scraper data; it's
+   the most back-linkable, most-cited asset type and nobody else has the data.
+5. **Submit sitemap** in Google Search Console + Bing Webmaster after deploy.
+
+## Core Web Vitals plan
+
+`index.html` is a ~34k-line SPA; the landing's LCP/JS payload is the main risk (static SEO pages
+are already light). Priorities when optimizing:
+
+- Defer/lazy-load the logged-in app bundle so the landing paints without it (biggest win).
+- Ensure the LCP hero image/text is in the initial HTML (it is) and not blocked by fonts — consider
+  `font-display: swap` (already via Google Fonts `&display=swap`) and preloading the hero image.
+- Audit with PageSpeed Insights / Lighthouse on the live homepage; target LCP < 2.5s, INP < 200ms,
+  CLS < 0.1. The `/riset/`, `/panduan/`, `/perbandingan/` static pages should already pass.
+
+## AI-referral tracking
+
+Measure GEO wins so effort is data-driven. In analytics (Clarity / Cloudflare), segment referrers:
+`chat.openai.com`, `chatgpt.com`, `perplexity.ai`, `gemini.google.com`, `copilot.microsoft.com`,
+`bing.com` (Copilot). Watch for these as `document.referrer` on landing; rising AI referrals =
+the schema/llms/entity work is paying off.
+
+## Dynamic OG cards (future upgrade)
+
+Per-page OG images currently fall back to `images/Banner.jpg`. To generate a unique data card per
+riset page (keyword + median price + rating), add a build step using `satori` + `resvg` (SVG→PNG)
+in `build-seo-pages.mjs` writing `riset/<slug>/og.png`, then point `og:image` at it.
 
 ## When editing SEO
 
-1. Update **both** the relevant static page and `llms.txt` if facts change (prices, credits, competitor public pricing).
-2. Bump `lastmod` in `sitemap.xml` for changed URLs.
-3. Keep `deploy-pages.yml` `cp` list in sync if adding new top-level static dirs.
-4. Re-read `MISSION.md` before comparison copy.
+1. Update **all** of: relevant static page, `llms.txt`, AND `llms-full.txt` if facts change
+   (prices, credits, competitor public pricing, page counts).
+2. Bump `lastmod` in `sitemap.xml` for changed URLs (the builder does this for generated pages).
+3. Keep `deploy-pages.yml` `cp` list in sync if adding new top-level static dirs/files
+   (already includes `riset panduan` dirs and `llms-full.txt`).
+4. Re-read `MISSION.md` before comparison copy. Never invent competitor prices or `sameAs` URLs.
+5. Generators: `build-seo-pages.mjs` (riset + sitemap), `build-guides.mjs` (/panduan/),
+   `build-comparisons.mjs` (/perbandingan/ subpages). Sitemap is owned by `build-seo-pages.mjs` —
+   add new static URLs to its `staticUrls` array.
 
 ## Related docs
 
@@ -115,7 +198,9 @@ Current batch: **90 keywords** (filters: ≥100 distinct items, category present
 
 ## Post-deploy checklist
 
-1. Push to `main` → GitHub Pages deploy
-2. Verify: `/perbandingan/`, `/harga/`, `/llms.txt`
-3. Google Search Console → submit sitemap
-4. Request indexing for `/perbandingan/`
+1. Push to `main` → GitHub Pages deploy (IndexNow ping fires automatically for all sitemap URLs)
+2. Verify: `/riset/`, `/panduan/`, `/perbandingan/alat-riset-produk-shopee-terbaik/`,
+   `/llms.txt`, `/llms-full.txt`
+3. Google Search Console → submit `sitemap.xml` (now 447 URLs)
+4. Bing Webmaster → confirm sitemap; spot-check a few `/riset/` pages in URL Inspection
+5. Request indexing for the new `/panduan/` and `/perbandingan/` hub pages

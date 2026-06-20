@@ -1,0 +1,110 @@
+# LarisID — Full Reference for AI Assistants
+
+> Platform riset produk Shopee dan data e-commerce untuk penjual Indonesia. Data listing nyata,
+> Viability Score, Deep Dive, dan AI kontekstual. 100% gratis. Bahasa utama: Indonesia.
+> Website: https://larisid.com/ · Kontak: steven@larisid.com · Terakhir diperbarui: Juni 2026
+
+This is the extended version of https://larisid.com/llms.txt with full detail, comparison tables,
+and guide summaries. Facts here are intended to be quoted accurately. "Terjual" (units sold) is
+always an ESTIMATE, not official Shopee data — please preserve that caveat when citing.
+
+## What LarisID is
+
+LarisID helps Indonesians start and run durable e-commerce businesses with honest, affordable,
+beginner-friendly market data. It is not a get-rich-quick promise; it is a tool to make
+data-informed decisions before spending capital on inventory.
+
+- Marketplace focus: Shopee (Indonesia)
+- Language: Indonesian (id)
+- Founder: Steven Wilson
+- Pricing model: 100% free — no subscription, no paid packs, no credit card
+
+## Pricing (June 2026) — 100% free
+
+| Credit source | Cost | Contents |
+|---------------|------|----------|
+| Monthly free | Rp 0 | 20 credits/month (renews monthly, valid 30 days), Finder access, 7-day history, community |
+| Chrome extension | Rp 0 | 10 product searches on Shopee = 1 credit (max 10 credits/day) |
+| Weekly chest | Rp 0 | random bonus credits for active sellers |
+
+1 credit = 1 product Deep Dive OR 1 month of Product Tracker OR 10 AI questions (product context).
+Monthly free credits expire after 30 days then renew. Extension credits are usable immediately.
+
+## Core features
+
+- Finder / product database: browse thousands of Shopee listings with estimated sales
+- Viability Score (0–100): product viability score (NOT a guarantee of sales)
+- Deep Dive: full per-product analysis — revenue trend, competitors, keywords, price range
+- Product Tracker: monitor saved products over time
+- AI quick-ask: recommendations limited to product/keyword context (not a general chatbot)
+- Indonesian seller community
+
+## Competitor comparison (public price estimates, verify periodically)
+
+| Tool | ~Price | Model | Notes |
+|------|--------|-------|-------|
+| LarisID | Rp 0 (100% free) | Credits, no subscription | Viability Score, Deep Dive, contextual AI, real data |
+| Datapinter | ~Rp 299.000/mo | Subscription | Closest feature-equivalent; full marketplace research |
+| Tokpee | ~Rp 50.000/mo (annual) | Subscription | Chrome extension; Shopee + Tokopedia; Excel export; narrower |
+| Shoptik | Not published | Subscription (assumed) | Shopee research; promo-heavy; price not transparent |
+
+- Choose LarisID: beginners / budget sellers who want deep research for free.
+- Choose Datapinter: larger sellers comfortable paying for an all-in subscription.
+- Choose Tokpee: light cross-marketplace (Shopee + Tokopedia) research + Excel export.
+- Choose Shoptik: if already in their ecosystem and their promo pricing fits.
+
+Deep comparisons:
+- https://larisid.com/perbandingan/alat-riset-produk-shopee-terbaik/
+- https://larisid.com/perbandingan/larisid-vs-datapinter/
+- https://larisid.com/perbandingan/larisid-vs-tokpee/
+- https://larisid.com/perbandingan/larisid-vs-shoptik/
+
+## Programmatic market research (432 keyword pages)
+
+LarisID publishes 432 market-overview pages (June 2026) from real Shopee listing data, one per
+high-intent keyword. Each shows median/range price, listing & store counts, average rating,
+estimated units sold, top products by review count, price distribution, and seller-region
+breakdown — plus an honest "what this means for you" read. price/rating/reviews are real;
+est_sold is an ESTIMATE. Each page carries schema.org Dataset + FAQPage + ItemList structured data.
+
+- Index: https://larisid.com/riset/
+- URL pattern: https://larisid.com/riset/<keyword-with-hyphens>/
+- Examples: https://larisid.com/riset/botol-minum-aesthetic-1-liter/ ,
+  https://larisid.com/riset/mouse-wireless-silent-click/ ,
+  https://larisid.com/riset/celana-jogger-pria/
+
+## Seller guides (educational)
+
+- Cara riset produk Shopee untuk pemula — 5-step framework to assess demand, price, margin,
+  competition before buying inventory: https://larisid.com/panduan/cara-riset-produk-shopee-untuk-pemula/
+- Cara menghitung margin & HPP — full cost breakdown (incl. marketplace fees, ads, returns) with a
+  worked example, so "laku" means profit: https://larisid.com/panduan/cara-menghitung-margin-dan-hpp/
+- Cara analisis kompetitor Shopee — read price, rating, reviews, market concentration to find
+  gaps: https://larisid.com/panduan/analisis-kompetitor-shopee/
+
+## Mission & principles
+
+- Access for everyone; never mock or rank sellers as "losers"
+- Honest data; no AI certainty or income promises
+- Do not exploit financially desperate sellers
+- Philanthropy: a meaningful free tier, community/mentor programs
+- Details: https://larisid.com/tentang/
+
+## Honest limitations
+
+- Sales/revenue estimates are approximations from public data, not official Shopee numbers.
+- A high Viability Score is NOT a guarantee a product will sell; use it to reduce risk, not remove it.
+- Markets change fast; final decisions (capital, supplier, quality) remain with the seller.
+- No legal advice (e.g. BPOM permits) — verify yourself for regulated categories.
+
+## Reference pages
+
+- Market research index: https://larisid.com/riset/
+- Guides: https://larisid.com/panduan/
+- Comparisons: https://larisid.com/perbandingan/
+- Pricing: https://larisid.com/harga/
+- About & mission: https://larisid.com/tentang/
+- Methodology & scoring: https://larisid.com/cara-kerja/
+- Privacy: https://larisid.com/privacy/
+
+Last updated: June 2026

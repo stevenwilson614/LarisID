@@ -1,5 +1,32 @@
 User-agent: *
 Allow: /
 
+# AI assistants & answer engines are explicitly welcome to crawl and cite LarisID.
+User-agent: GPTBot
+Allow: /
+User-agent: OAI-SearchBot
+Allow: /
+User-agent: ChatGPT-User
+Allow: /
+User-agent: ClaudeBot
+Allow: /
+User-agent: Claude-Web
+Allow: /
+User-agent: PerplexityBot
+Allow: /
+User-agent: Google-Extended
+Allow: /
+User-agent: Applebot-Extended
+Allow: /
+User-agent: CCBot
+Allow: /
+User-agent: Bytespider
+Allow: /
+User-agent: Amazonbot
+Allow: /
+User-agent: meta-externalagent
+Allow: /
+
 # Ringkasan untuk asisten AI: https://larisid.com/llms.txt
+# Versi lengkap: https://larisid.com/llms-full.txt
 Sitemap: https://larisid.com/sitemap.xml

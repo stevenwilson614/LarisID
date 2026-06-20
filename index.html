@@ -479,6 +479,12 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .ylk-cat-bar-fill{height:100%;border-radius:999px;}
 .ylk-cat-price{font-size:.66rem;color:#6B7280;font-weight:600;}
 .ylk-empty{font-size:.74rem;color:#9CA3AF;padding:6px 0;}
+.ylk-highlights{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:14px;}
+.ylk-hl-card{border:1px solid #F0E7DC;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px;}
+.ylk-hl-badge{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.02em;}
+.ylk-hl-cta{font-size:.68rem;font-weight:700;color:#B5202A;background:none;border:none;cursor:pointer;padding:0;text-align:left;}
+.ylk-allcats{border-top:1px solid #F0E7DC;padding-top:12px;}
+.ylk-allcats-label{display:block;font-size:.72rem;font-weight:700;color:#6B7280;margin-bottom:6px;}
 /* ── Naik Daun ── */
 .nd-card{background:linear-gradient(180deg,#FFFDF8,#fff);border:1px solid #F0E7DC;border-radius:14px;padding:16px 0 16px 18px;margin-bottom:18px;box-shadow:0 6px 20px rgba(26,26,26,.04);}
 .nd-head{padding-right:18px;margin-bottom:12px;}
@@ -7777,7 +7783,15 @@ html,body{overflow-x:clip;max-width:100%;}
                   <option value="">Pilih kotamu…</option>
                 </select>
               </div>
-              <div class="ylk-cats" id="ylk-cats"></div>
+              <div class="ylk-highlights" id="ylk-highlights"></div>
+              <div class="ylk-allcats" id="ylk-allcats" style="display:none;">
+                <label class="ylk-allcats-label" for="ylk-cat-select">Lihat kategori lain di kota ini</label>
+                <select id="ylk-cat-select" class="ylk-select" onchange="ylkOnCatSelectChange()" aria-label="Pilih kategori">
+                  <option value="">Pilih kategori…</option>
+                </select>
+                <div id="ylk-cat-detail"></div>
+              </div>
+              <div class="ylk-empty" id="ylk-empty" style="display:none;"></div>
             </div>
 
             <!-- Naik Daun -->
@@ -8346,14 +8360,15 @@ html,body{overflow-x:clip;max-width:100%;}
                   <div class="dd-card fb-flaggable" style="padding:18px;" data-fb-element="Permintaan Pasar" data-fb-section="Analisis Pasar">
                     <div style="margin-bottom:12px;">
                       <div style="font-size:.82rem;font-weight:700;color:#111827;">Permintaan Pasar</div>
-                      <div style="font-size:.7rem;color:#6B7280;margin-top:2px;" id="ap-demand-subtitle">4 minggu terakhir — semua toko di keyword</div>
+                      <div style="font-size:.7rem;color:#6B7280;margin-top:2px;" id="ap-demand-subtitle">4 minggu terakhir + prediksi 1 minggu — semua toko di keyword</div>
                     </div>
                     <div class="dd-chart-legend" style="margin-bottom:8px;">
                       <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#B5202A;"></div>Omset pasar (Rp)</div>
                       <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#4F46E5;"></div>Unit terjual</div>
+                      <div class="dd-chart-legend-item"><div class="dd-chart-legend-dot" style="background:#10B981;border-style:dashed;height:0;border-top:2.5px dashed #10B981;background:transparent;"></div>Forecast</div>
                     </div>
                     <div style="position:relative;height:240px;"><canvas id="ap-demand-chart"></canvas></div>
-                    <div style="margin-top:10px;font-size:.68rem;color:#9CA3AF;display:flex;align-items:center;gap:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg><span id="ap-demand-note">4 minggu terakhir — agregat semua listing di keyword</span></div>
+                    <div style="margin-top:10px;font-size:.68rem;color:#9CA3AF;display:flex;align-items:center;gap:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg><span id="ap-demand-note">4 minggu terakhir + prediksi 1 minggu — agregat semua listing di keyword</span></div>
                   </div>
 
                   <!-- Bottom row: Competition + Top Products -->
@@ -12153,6 +12168,7 @@ async function decorateDiscoverOdds(sel) {
 const YLK_LS_KEY = 'larisid_region_v1';
 let _ylkInited = false;
 let _ylkRegions = null;
+let _ylkCurrentRows = [];
 
 async function ylkInit() {
   if (_ylkInited) return;
@@ -12187,7 +12203,11 @@ async function ylkOnRegionChange() {
   try { region ? localStorage.setItem(YLK_LS_KEY, region) : localStorage.removeItem(YLK_LS_KEY); } catch (_) {}
   ylkPersistRegion(region);
   if (region) ylkRender(region);
-  else { const c = document.getElementById('ylk-cats'); if (c) c.innerHTML = ''; }
+  else {
+    const hl = document.getElementById('ylk-highlights'); if (hl) hl.innerHTML = '';
+    const allcats = document.getElementById('ylk-allcats'); if (allcats) allcats.style.display = 'none';
+    const emptyEl = document.getElementById('ylk-empty'); if (emptyEl) emptyEl.style.display = 'none';
+  }
 }
 
 async function ylkPersistRegion(region) {
@@ -12196,35 +12216,119 @@ async function ylkPersistRegion(region) {
 }
 
 async function ylkRender(region) {
-  const wrap = document.getElementById('ylk-cats');
+  const hl = document.getElementById('ylk-highlights');
+  const allcats = document.getElementById('ylk-allcats');
+  const emptyEl = document.getElementById('ylk-empty');
   const subEl = document.getElementById('ylk-sub');
-  if (!wrap || !_supabase) return;
-  wrap.innerHTML = '<div class="ylk-empty">Memuat…</div>';
+  if (!hl || !allcats || !emptyEl || !_supabase) return;
+  hl.innerHTML = '<div class="ylk-empty">Memuat…</div>';
+  allcats.style.display = 'none';
+  emptyEl.style.display = 'none';
   try {
     const { data } = await _supabase
       .from('mv_region_category')
-      .select('category,breakouts,breakout_rate,median_winner_price,new_items')
-      .eq('location', region)
-      .order('breakouts', { ascending: false })
-      .limit(6);
-    const rows = (data || []).filter(r => (r.new_items || 0) >= 10);
-    if (!rows.length) { wrap.innerHTML = '<div class="ylk-empty">Belum cukup data untuk daerah ini.</div>'; return; }
-    const top = rows[0];
+      .select('category,new_items,breakouts,breakout_rate,median_winner_price,price_p25_breakout,price_p75_breakout,new_items_recent,new_items_prior,breakout_rate_recent,breakout_rate_prior,trend_delta')
+      .eq('location', region);
+    const all = data || [];
+    if (!all.length) {
+      hl.innerHTML = '';
+      emptyEl.textContent = `Belum ada data untuk ${region}. Kami terus menambah kota — coba lagi nanti, atau pilih kota lain.`;
+      emptyEl.style.display = '';
+      return;
+    }
+    const qualified = all.filter(r => (r.new_items || 0) >= 10);
+    if (!qualified.length) {
+      hl.innerHTML = '';
+      emptyEl.textContent = `Data ${region} masih sedikit untuk ditampilkan per kategori. Coba lagi nanti setelah datanya lebih banyak.`;
+      emptyEl.style.display = '';
+      return;
+    }
+    _ylkCurrentRows = qualified;
+    const best = [...qualified].sort((a, b) => (b.breakout_rate || 0) - (a.breakout_rate || 0))[0];
+    const worst = [...qualified].sort((a, b) => (a.breakout_rate || 0) - (b.breakout_rate || 0))[0];
+    const risingCands = qualified.filter(r => r.trend_delta != null && r.trend_delta > 0);
+    const rising = risingCands.length ? risingCands.sort((a, b) => b.trend_delta - a.trend_delta)[0] : null;
     if (subEl) subEl.textContent =
-      `Di ${region}, kategori ${top.category} paling sering tembus untuk penjual baru (~${top.breakout_rate}% produk baru laku 100+, median harga pemenang Rp ${Number(top.median_winner_price || 0).toLocaleString('id-ID')}).`;
-    const maxRate = Math.max(...rows.map(r => Number(r.breakout_rate) || 0), 1);
-    wrap.innerHTML = rows.map(r => {
-      const rate = Number(r.breakout_rate) || 0;
-      const clr = rate >= 18 ? '#059669' : rate >= 11 ? '#D97706' : '#9CA3AF';
-      const w = Math.round(rate / maxRate * 100);
-      const price = Number(r.median_winner_price || 0);
-      return `<div class="ylk-cat">
-        <div class="ylk-cat-top"><span class="ylk-cat-name">${r.category}</span><span class="ylk-cat-rate" style="color:${clr}">${rate}%</span></div>
-        <div class="ylk-cat-bar"><div class="ylk-cat-bar-fill" style="width:${w}%;background:${clr}"></div></div>
-        <div class="ylk-cat-price">Median harga pemenang: Rp ${price.toLocaleString('id-ID')}</div>
-      </div>`;
-    }).join('');
-  } catch (e) { wrap.innerHTML = '<div class="ylk-empty">Gagal memuat data.</div>'; }
+      `Di ${region}, kategori ${best.category} paling sering tembus untuk penjual baru (~${best.breakout_rate}% produk baru laku 100+).`;
+    hl.innerHTML = [
+      _ylkHlCard('TERLARIS', best, 'success'),
+      rising ? _ylkHlCard('NAIK DAUN', rising, 'rising')
+             : '<div class="ylk-hl-card"><div class="ylk-hl-badge" style="color:#9CA3AF">NAIK DAUN</div><div class="ylk-empty">Belum ada kategori dengan tren naik yang jelas di kota ini.</div></div>',
+      (worst.category !== best.category) ? _ylkHlCard('PALING MENANTANG', worst, 'challenging') : ''
+    ].join('');
+    _ylkPopulateCatSelect(qualified);
+    allcats.style.display = '';
+  } catch (e) { hl.innerHTML = '<div class="ylk-empty">Gagal memuat data.</div>'; }
+}
+
+function _ylkHlCard(badge, row, kind) {
+  const rate = Number(row.breakout_rate) || 0;
+  const clr = kind === 'success' ? '#059669' : kind === 'rising' ? '#2563EB' : '#D97706';
+  const trendNote = (kind === 'rising' && row.trend_delta != null)
+    ? `<div class="ylk-cat-price">Naik ${Number(row.trend_delta).toFixed(1)} poin dalam 45 hari terakhir</div>` : '';
+  return `<div class="ylk-hl-card">
+    <div class="ylk-hl-badge" style="color:${clr}">${badge}</div>
+    <div class="ylk-cat-top">${_catIconImg(row.category)}<span class="ylk-cat-name">${row.category}</span></div>
+    <div class="ylk-cat-rate" style="color:${clr}">${rate}% penjual baru tembus</div>
+    ${trendNote}
+    <button class="ylk-hl-cta" onclick="ylkSeeItems('${row.category.replace(/'/g, "\\'")}')">Lihat Produk →</button>
+  </div>`;
+}
+
+function _ylkPopulateCatSelect(rows) {
+  const sel = document.getElementById('ylk-cat-select');
+  const detail = document.getElementById('ylk-cat-detail');
+  if (!sel) return;
+  const sorted = [...rows].sort((a, b) => a.category.localeCompare(b.category));
+  sel.innerHTML = '<option value="">Pilih kategori…</option>' +
+    sorted.map(r => `<option value="${r.category.replace(/"/g, '&quot;')}">${r.category} — ${r.breakout_rate}%</option>`).join('');
+  if (detail) detail.innerHTML = '';
+}
+
+function ylkOnCatSelectChange() {
+  const sel = document.getElementById('ylk-cat-select');
+  const detail = document.getElementById('ylk-cat-detail');
+  if (!sel || !detail) return;
+  const cat = sel.value;
+  if (!cat) { detail.innerHTML = ''; return; }
+  const row = (_ylkCurrentRows || []).find(r => r.category === cat);
+  if (!row) { detail.innerHTML = '<div class="ylk-empty">Data tidak tersedia.</div>'; return; }
+  const rate = Number(row.breakout_rate) || 0;
+  detail.innerHTML = `<div class="ylk-cat">
+    <div class="ylk-cat-top">${_catIconImg(row.category)}<span class="ylk-cat-name">${row.category}</span><span class="ylk-cat-rate">${rate}%</span></div>
+    <div class="ylk-cat-price">${row.new_items} produk baru dianalisis · median harga pemenang Rp ${Number(row.median_winner_price || 0).toLocaleString('id-ID')}</div>
+    <button class="ylk-hl-cta" onclick="ylkSeeItems('${cat.replace(/'/g, "\\'")}')">Lihat Produk →</button>
+  </div>`;
+}
+
+// Mirrors nuOnbApplyToDiscover()'s proven pre-filter pattern: check one category,
+// pre-fill the price slider to the band where this region+category actually
+// breaks out (so the seller browses the realistic price zone, not the catalog).
+function ylkSeeItems(category) {
+  const row = (_ylkCurrentRows || []).find(r => r.category === category);
+  switchDashView('discover');
+  dscBuildCatChecks([category]); // ensures a checkbox exists even for raw scrape categories outside the curated 19
+  document.querySelectorAll('#dsc-cat-checks input[type=checkbox]').forEach(cb => {
+    cb.checked = (cb.value === category);
+  });
+  _dscSaveCatState();
+  let min, max;
+  if (row && row.price_p25_breakout != null && row.price_p75_breakout != null) {
+    min = row.price_p25_breakout; max = row.price_p75_breakout;
+  } else if (row && row.median_winner_price != null) {
+    min = Math.round(row.median_winner_price * 0.6);
+    max = Math.round(row.median_winner_price * 1.4);
+  } else {
+    min = 15000; max = 150000;
+  }
+  const clamp = v => Math.max(0, Math.min(500000, Math.round(v / 5000) * 5000));
+  const minEl = document.getElementById('dsc-price-min');
+  const maxEl = document.getElementById('dsc-price-max');
+  if (minEl) minEl.value = String(clamp(min));
+  if (maxEl) maxEl.value = String(clamp(max));
+  dscUpdateDualRange('price');
+  dscTerapkanFilter();
+  void logUserEvent('ylk_see_items', { category, region: document.getElementById('ylk-region')?.value });
 }
 
 // ── Naik Daun ─────────────────────────────────────────────────────────────────
@@ -13652,13 +13756,13 @@ async function loadDashSourcingGuide(pid) {
   }
   try {
     const resp = await fetch(
-      `${SUPA_URL}/rest/v1/listings?select=product_name,store_name,price,total_sold,rating,reviews,image_url,item_id,shop_id&eq.keyword=${encodeURIComponent(p.keyword)}&order=total_sold.desc&limit=30`,
+      `${SUPA_URL}/rest/v1/listings?select=product_name,store_name,location,price,total_sold,rating,reviews,image_url,item_id,shop_id&eq.keyword=${encodeURIComponent(p.keyword)}&order=total_sold.desc&limit=30`,
       { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } }
     );
     const rows = resp.ok ? await resp.json() : [];
     const totalRev = rows.reduce((s,r) => s+(r.price||0)*(r.total_sold||0),0);
     const qualified = rows.map((r,i) => ({
-      rank: i+1, name: r.store_name||'', location: '', brand: '', slug: '', listingDate: '',
+      rank: i+1, name: r.store_name||'', location: r.location||'', brand: '', slug: '', listingDate: '',
       price: r.price||0, revenue30: (r.price||0)*(r.total_sold||0)/12,
       newRevenue: (r.price||0)*(r.total_sold||0)/12,
       rating: r.rating||0, reviews: r.reviews||0, image: r.image_url||'', url: '#',
@@ -20899,9 +21003,25 @@ function trenRender() {
   const canvas = document.getElementById('tren-main-chart');
   if (!canvas || !rows.length) return;
 
+  const _MO = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
   const labels = rows.map(r => r.label);
+  // Real series arrays are deliberately left SHORTER than `labels` (no trailing
+  // null) — Chart.js then has nothing to plot at the forecast index, so the red/
+  // blue "actual" lines can never bleed a point onto a future date.
   const chartUnitData = rows.map(r => r.units);
   const chartOmsetData = rows.map(r => r.omset);
+  const nW = rows.length;
+  const slice2 = rows.slice(-2);
+  const fcUnit = Math.round(slice2.reduce((s, w) => s + w.units, 0) / slice2.length);
+  const fcOmset = Math.round(slice2.reduce((s, w) => s + w.omset, 0) / slice2.length);
+  const nextWeek = new Date(rows[nW - 1].firstDate.getTime() + 7 * 86400000);
+  labels.push(`${nextWeek.getDate()} ${_MO[nextWeek.getMonth()]} ▶`);
+  const fUnitW = new Array(labels.length).fill(null);
+  const fOmsetW = new Array(labels.length).fill(null);
+  fUnitW[nW - 1] = rows[nW - 1].units;
+  fOmsetW[nW - 1] = rows[nW - 1].omset;
+  fUnitW[nW] = fcUnit;
+  fOmsetW[nW] = fcOmset;
 
   const grad = canvas.getContext('2d').createLinearGradient(0, 0, 0, 200);
   grad.addColorStop(0, 'rgba(181,32,42,0.18)');
@@ -20940,6 +21060,36 @@ function trenRender() {
           spanGaps: false,
           borderDash: isEst ? [3, 3] : [],
         },
+        {
+          label: 'Forecast Omset',
+          data: fOmsetW,
+          borderColor: '#10B981',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          fill: false,
+          tension: 0.3,
+          pointRadius: 5,
+          pointBackgroundColor: '#10B981',
+          yAxisID: 'y',
+          borderDash: [5, 4],
+          spanGaps: false,
+          pointStyle: 'triangle',
+        },
+        {
+          label: 'Forecast Unit',
+          data: fUnitW,
+          borderColor: '#10B981',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          fill: false,
+          tension: 0.3,
+          pointRadius: 5,
+          pointBackgroundColor: '#10B981',
+          yAxisID: 'y2',
+          borderDash: [5, 4],
+          spanGaps: false,
+          pointStyle: 'triangle',
+        },
       ],
     },
     options: {
@@ -20954,8 +21104,10 @@ function trenRender() {
             label(ctx) {
               const v = ctx.parsed.y;
               if (v == null) return '';
-              if (ctx.dataset.yAxisID === 'y') return ` Omset: Rp ${Math.round(v).toLocaleString('id-ID')}${isEst ? ' (est.)' : ''}`;
-              return ` Unit: ${Math.round(v).toLocaleString('id-ID')}${isEst ? ' (est.)' : ''}`;
+              const isFc = ctx.dataset.label?.startsWith('Forecast');
+              const prefix = isFc ? ' Prediksi' : '';
+              if (ctx.dataset.yAxisID === 'y') return `${prefix} Omset: Rp ${Math.round(v).toLocaleString('id-ID')}${isEst ? ' (est.)' : ''}`;
+              return `${prefix} Unit: ${Math.round(v).toLocaleString('id-ID')}${isEst ? ' (est.)' : ''}`;
             },
           },
         },
@@ -21241,7 +21393,7 @@ function ddRenderAnalisa() {
   document.getElementById('ap-s5b').textContent  = 'Potensi ' + d.potensiLabel.toLowerCase();
 
   const sub = document.getElementById('ap-demand-subtitle');
-  if (sub) sub.textContent = 'Memuat 4 minggu terakhir semua toko di keyword…';
+  if (sub) sub.textContent = 'Memuat 4 minggu terakhir + prediksi semua toko di keyword…';
 
   apRenderDemand(true);
   apRenderCompDonut();
@@ -21261,7 +21413,7 @@ function ddRenderAnalisa() {
     if (sub) {
       const nW = demand.weeks.length;
       sub.textContent = nW
-        ? `4 minggu terakhir · agregat ${demand.meta.listingCount || 0} listing di keyword`
+        ? `4 minggu terakhir + prediksi · agregat ${demand.meta.listingCount || 0} listing di keyword`
         : 'Belum cukup data scrape mingguan untuk keyword ini';
     }
     apRenderDemand();
@@ -21294,8 +21446,27 @@ function apRenderDemand(loading) {
 
   const weeklyRowsFilled = weekly.slice(-4);
   const labels = weeklyRowsFilled.map(w => w.label);
+  // Real series arrays stay SHORTER than `labels` (no trailing null) so the
+  // red/blue "actual" lines have nothing to plot at the forecast index.
   const chartOmsetData = weeklyRowsFilled.map(w => w.omset ?? 0);
   const chartUnitData  = weeklyRowsFilled.map(w => w.units ?? 0);
+  const nW = weeklyRowsFilled.length;
+  const slice2 = weeklyRowsFilled.slice(-2);
+  const fcUnit  = slice2.length ? Math.round(slice2.reduce((s, w) => s + w.units, 0) / slice2.length) : 0;
+  const fcOmset = slice2.length ? Math.round(slice2.reduce((s, w) => s + w.omset, 0) / slice2.length) : 0;
+  const lastWeek = weeklyRowsFilled[nW - 1];
+  const nextWeek = lastWeek?.firstDate
+    ? new Date(lastWeek.firstDate.getTime() + 7 * 86400000)
+    : new Date();
+  labels.push(_apWLabel(nextWeek) + ' ▶');
+  const fUnitW  = new Array(labels.length).fill(null);
+  const fOmsetW = new Array(labels.length).fill(null);
+  if (nW > 0) {
+    fUnitW[nW - 1]  = weeklyRowsFilled[nW - 1].units;
+    fOmsetW[nW - 1] = weeklyRowsFilled[nW - 1].omset;
+    fUnitW[nW]  = fcUnit;
+    fOmsetW[nW] = fcOmset;
+  }
 
   const grad = canvas.getContext('2d').createLinearGradient(0, 0, 0, 200);
   grad.addColorStop(0, 'rgba(181,32,42,0.18)');
@@ -21334,6 +21505,34 @@ function apRenderDemand(loading) {
           borderDash: isEst ? [3, 3] : [],
           spanGaps: false,
         },
+        {
+          label: 'Forecast Omset',
+          data: fOmsetW,
+          borderColor: '#10B981',
+          backgroundColor: 'transparent',
+          fill: false,
+          tension: 0.3,
+          pointRadius: 5,
+          pointBackgroundColor: '#10B981',
+          yAxisID: 'y',
+          borderDash: [5, 4],
+          spanGaps: false,
+          pointStyle: 'triangle',
+        },
+        {
+          label: 'Forecast Unit',
+          data: fUnitW,
+          borderColor: '#10B981',
+          backgroundColor: 'transparent',
+          fill: false,
+          tension: 0.3,
+          pointRadius: 5,
+          pointBackgroundColor: '#10B981',
+          yAxisID: 'y2',
+          borderDash: [5, 4],
+          spanGaps: false,
+          pointStyle: 'triangle',
+        },
       ],
     },
     options: {
@@ -21346,8 +21545,10 @@ function apRenderDemand(loading) {
             label(ctx) {
               const v = ctx.parsed.y;
               if (v == null) return '';
-              if (ctx.dataset.yAxisID === 'y') return ` Omset: Rp ${Math.round(v).toLocaleString('id-ID')}`;
-              return ` Unit: ${Math.round(v).toLocaleString('id-ID')}`;
+              const isFc = ctx.dataset.label?.startsWith('Forecast');
+              const prefix = isFc ? ' Prediksi' : '';
+              if (ctx.dataset.yAxisID === 'y') return `${prefix} Omset: Rp ${Math.round(v).toLocaleString('id-ID')}`;
+              return `${prefix} Unit: ${Math.round(v).toLocaleString('id-ID')}`;
             },
           },
         },
@@ -21372,7 +21573,7 @@ function apRenderDemand(loading) {
   if (noteEl) {
     const estNote = isEst ? ' · sebagian unit diestimasi dari ulasan (bucket Shopee 10rb+)' : '';
     const nList = meta?.listingCount ? `${meta.listingCount} listing` : 'semua listing';
-    noteEl.textContent = `4 minggu terakhir · ${nList} di keyword${estNote}`;
+    noteEl.textContent = `4 minggu terakhir + prediksi 1 minggu · ${nList} di keyword · forecast = rata-rata 2 minggu terakhir${estNote}`;
   }
 }
 
@@ -30180,11 +30381,13 @@ function _nuHints() {
 }
 
 function nuHintMark(key) {
+  if (_admSimulateNewUser) return; // never mark hints seen on the admin's real account
   const h = _nuHints(); h[key] = true;
   try { localStorage.setItem(NU_HINT_KEY, JSON.stringify(h)); } catch (_) {}
 }
 
 function nuHintSeen(key) {
+  if (_admSimulateNewUser) return false; // hints always replay during simulation
   return !!_nuHints()[key];
 }
 
@@ -30926,6 +31129,7 @@ async function logUserEvent(eventType, metadata) {
 }
 
 async function nuOnbCheckNeeded() {
+  if (_admSimulateNewUser) return true; // defensive — admSimCompleteAuth() opens the wizard directly
   if (!currentUser || !_supabase) return false;
   if (localStorage.getItem(NU_ONB_LS_KEY)) return false;
   if ((window.location.hash || '').includes('type=recovery')) return false;
@@ -31161,8 +31365,10 @@ function nuOnbFinish() {
   void logUserEvent('onboarding_seller', { seller_status: _nuOnb.sellerStatus });
   void logUserEvent(_firstComplete ? 'onboarding_complete' : 'onboarding_edit',
     { categories: _nuOnb.cats, budget: b.label, seller_status: _nuOnb.sellerStatus, location: nuOnbResolvedLocation() });
-  try { localStorage.setItem(NU_ONB_DONE_KEY, '1'); } catch (_) {}
-  try { localStorage.setItem(NU_ONB_LS_KEY, '1'); } catch (_) {}
+  if (!_admSimulateNewUser) {
+    try { localStorage.setItem(NU_ONB_DONE_KEY, '1'); } catch (_) {}
+    try { localStorage.setItem(NU_ONB_LS_KEY, '1'); } catch (_) {}
+  }
   void nuOnbPersist(true);
   nuOnbHideInPage();
   nuOnbApplyToDiscover();
@@ -31170,13 +31376,16 @@ function nuOnbFinish() {
 
 function nuOnbSkip() {
   void logUserEvent('onboarding_skip', { step: _nuOnb.step });
-  try { localStorage.setItem(NU_ONB_LS_KEY, '1'); } catch (_) {}
+  if (!_admSimulateNewUser) {
+    try { localStorage.setItem(NU_ONB_LS_KEY, '1'); } catch (_) {}
+  }
   void nuOnbPersist(false);
   nuOnbHideInPage();
   switchDashView('dashboard');
 }
 
 async function nuOnbPersist(completed) {
+  if (_admSimulateNewUser) return; // never write real Supabase rows for a simulated session
   if (!_supabase || !currentUser) return;
   const b = _nuOnb.budget >= 0 ? NU_ONB_BUDGETS[_nuOnb.budget] : null;
   const now = new Date().toISOString();
@@ -32498,7 +32707,10 @@ function admSimCompleteAuth() {
   switchDashView('discover');
   nuOnbShowInPage(true);
   _admSimSyncUI();
-  applyAdminViewMode(_adminViewMode);
+  // Layout-only re-apply — NOT applyAdminViewMode(), which would force the
+  // admin tab back open via switchDashView('admin') when mode === 'admin'
+  // and stomp the Discover/onboarding screen we just opened.
+  _admApplyPreviewDashboardLayout(_adminViewMode);
 }
 
 function admSimExit() {

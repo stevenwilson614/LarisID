@@ -10,13 +10,19 @@
  * from the LarisID scraper DB. "Terjual" (units sold) is an ESTIMATE and is labelled
  * as such on every page.
  *
- * Curated keyword list + headline stats (computed over ALL listings per keyword in SQL):
- *   scripts/seo-keywords.json
- * Per-page detail (top products, regions, price spread) is fetched at build time from
- * the Supabase REST API using the public read key (same pattern as scripts/trend-sweep.mjs).
+ * Inputs (both committed, both produced by SQL over the scraper DB — see docs/seo.md):
+ *   scripts/seo-keywords.json  headline stats per keyword (median/range price, rating,
+ *                              review total, estimated units). Append-only to keep order
+ *                              stable; merge new pulls with scripts/merge-seo-keywords.mjs.
+ *   scripts/seo-detail.json    per-keyword detail keyed by keyword string: top-8 products,
+ *                              top-6 seller regions, 4 price buckets, store count, etc.,
+ *                              all computed over ALL listings per keyword in one query.
+ *
+ * Per MISSION.md we do not ship thin doorway pages: every page is backed by real prices,
+ * ratings and review counts. "Terjual" (units sold) is an ESTIMATE, labelled as such.
  *
  * Run after a scrape refresh:   node scripts/build-seo-pages.mjs
- * Scale up:                     widen the SQL `limit` that produced seo-keywords.json.
+ * Scale up:                     re-run the keyword + detail SQL (docs/seo.md), merge, rebuild.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -27,11 +33,16 @@ const ROOT = path.resolve(__dirname, '..');
 const OUT_DIR = path.join(ROOT, 'riset');
 
 const SITE = 'https://larisid.com';
-const SNAPSHOT = '2026-06-18';
-const SNAPSHOT_HUMAN = '18 Juni 2026';
+const SNAPSHOT = '2026-06-19';
+const SNAPSHOT_HUMAN = '19 Juni 2026';
+const OG_IMAGE = `${SITE}/images/Banner.jpg`;
 
 const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'seo-keywords.json'), 'utf8'));
 const KEYWORDS = data.keywords;
+// Per-keyword detail (top products, regions, price buckets, store counts) precomputed
+// in SQL over ALL listings per keyword — see scripts/seo-detail.json (regenerate via the
+// detail query when refreshing data). Replaces the old curl-based _seo_raw cache.
+const DETAIL = JSON.parse(fs.readFileSync(path.join(__dirname, 'seo-detail.json'), 'utf8'));
 
 // ---------- helpers ----------
 const idNum = new Intl.NumberFormat('id-ID');
@@ -58,65 +69,29 @@ function kfmt(n) {
   return num(n);
 }
 
-const RAW_DIR = path.join(__dirname, '_seo_raw');
+/** Shape precomputed SQL detail (scripts/seo-detail.json) into what the page template
+ *  expects. Detail is computed over ALL listings per keyword in the DB, so store counts,
+ *  region shares and price buckets reflect the full market — not a fetched sample. */
+function getDetail(kw) {
+  const raw = DETAIL[kw.keyword];
+  if (!raw || !Array.isArray(raw.top) || !raw.top.length) return null;
 
-/** Load cached rows (fetched by fetch-seo-raw.sh via curl) and reduce to one record
- *  per item_id: latest snapshot, with est_sold backfilled to its max across history. */
-function fetchItems(index) {
-  let rows = [];
-  for (const page of [0, 1]) {
-    const fp = path.join(RAW_DIR, `${String(index).padStart(3, '0')}.p${page}.json`);
-    if (!fs.existsSync(fp)) continue;
-    let parsed;
-    try { parsed = JSON.parse(fs.readFileSync(fp, 'utf8')); } catch { parsed = null; }
-    if (Array.isArray(parsed)) rows = rows.concat(parsed);
-  }
-  const map = new Map();
-  for (const r of rows) {
-    if (!r.item_id) continue;
-    const cur = map.get(r.item_id);
-    if (!cur) {
-      map.set(r.item_id, { ...r, est_sold_max: r.est_sold ?? 0 });
-    } else {
-      // rows arrive newest-first; keep first as latest, but track max est_sold across history
-      if ((r.est_sold ?? 0) > (cur.est_sold_max ?? 0)) cur.est_sold_max = r.est_sold;
-    }
-  }
-  return [...map.values()];
-}
-
-function buildDetail(kw, items) {
-  // Top products by real review count (honest demand proxy), tiebreak est_sold.
-  const ranked = [...items].sort((a, b) =>
-    (b.reviews || 0) - (a.reviews || 0) || (b.est_sold_max || 0) - (a.est_sold_max || 0));
-  const top = ranked.slice(0, 8).map((r) => ({
-    name: truncate(r.product_name, 70),
-    store: truncate(r.store_name, 28),
-    price: r.price,
-    rating: r.rating,
-    reviews: r.reviews || 0,
-    location: r.location || '\u2014',
+  const top = raw.top.map((p) => ({
+    name: truncate(p.name, 70),
+    store: truncate(p.store, 28),
+    price: p.price,
+    rating: p.rating,
+    reviews: p.reviews || 0,
+    location: p.location || '\u2014',
   }));
 
-  // Region breakdown by estimated sales share (within sample).
-  const locMap = new Map();
-  let soldTotal = 0;
-  for (const r of items) {
-    const loc = (r.location || '').trim();
-    if (!loc) continue;
-    const sold = r.est_sold_max || 0;
-    soldTotal += sold;
-    const e = locMap.get(loc) || { loc, sold: 0, count: 0 };
-    e.sold += sold; e.count += 1;
-    locMap.set(loc, e);
-  }
-  const regions = [...locMap.values()]
-    .sort((a, b) => b.sold - a.sold || b.count - a.count)
-    .slice(0, 6)
-    .map((e) => ({ ...e, share: soldTotal > 0 ? e.sold / soldTotal : 0 }));
+  const soldTotal = Number(raw.soldTotal) || 0;
+  const regions = (raw.regions || []).map((r) => ({
+    loc: r.loc,
+    share: soldTotal > 0 ? (Number(r.sold) || 0) / soldTotal : 0,
+  }));
 
-  // Price spread buckets around the real median / p90.
-  const prices = items.map((r) => r.price).filter((p) => p > 0).sort((a, b) => a - b);
+  // Bucket counts come from SQL; labels are derived from the keyword's median / p90.
   const edges = [0, kw.medPrice * 0.5, kw.medPrice, kw.p90Price, Infinity];
   const labels = [
     `< ${rp(edges[1])}`,
@@ -124,18 +99,19 @@ function buildDetail(kw, items) {
     `${rp(edges[2])}\u2013${rp(edges[3])}`,
     `> ${rp(edges[3])}`,
   ];
-  const buckets = labels.map((l) => ({ label: l, count: 0 }));
-  for (const p of prices) {
-    let i = 0; while (i < 3 && p >= edges[i + 1]) i++;
-    buckets[i].count++;
-  }
+  const counts = Array.isArray(raw.buckets) ? raw.buckets : [0, 0, 0, 0];
+  const buckets = labels.map((l, i) => ({ label: l, count: counts[i] || 0 }));
   const bucketMax = Math.max(1, ...buckets.map((b) => b.count));
 
-  const stores = new Set(items.map((r) => (r.store_name || '').trim()).filter(Boolean));
-  const top8Sold = ranked.slice(0, 8).reduce((s, r) => s + (r.est_sold_max || 0), 0);
-  const concentration = soldTotal > 0 ? top8Sold / soldTotal : 0;
-
-  return { top, regions, buckets, bucketMax, stores: stores.size, sampleItems: items.length, concentration };
+  return {
+    top,
+    regions,
+    buckets,
+    bucketMax,
+    stores: raw.stores || 0,
+    sampleItems: raw.sampleItems || 0,
+    concentration: Number(raw.concentration) || 0,
+  };
 }
 
 // ---------- page template ----------
@@ -148,6 +124,7 @@ function competitionWord(items) {
 function navHtml() {
   return `<nav class="site-nav">
     <a href="/riset/">Riset Pasar</a>
+    <a href="/panduan/">Panduan</a>
     <a href="/perbandingan/">Perbandingan</a>
     <a href="/harga/">Harga</a>
     <a href="/cara-kerja/">Cara Kerja</a>
@@ -236,6 +213,31 @@ ${related.map((r) => `      <a class="riset-card" href="/riset/${slugify(r.keywo
         numberOfItems: d.top.length,
         itemListElement: d.top.map((p, i) => ({ '@type': 'ListItem', position: i + 1, name: jsonText(p.name) })),
       },
+      {
+        '@type': 'Dataset',
+        name: jsonText(`Data pasar ${k} di Shopee (${SNAPSHOT_HUMAN})`),
+        description: jsonText(`Dataset riset pasar untuk "${k}" di Shopee Indonesia: harga median ${rp(kw.medPrice)} (rentang ${rp(kw.minPrice)}\u2013${rp(kw.p90Price)}), ${num(kw.n)} listing dari ${num(d.stores)} toko, rating rata-rata ${kw.rating}, dan estimasi penjualan. Angka harga, rating, dan ulasan adalah data nyata Shopee; "terjual" adalah estimasi.`),
+        url,
+        identifier: url,
+        keywords: [k, kw.category, 'Shopee', 'riset produk', 'e-commerce Indonesia'],
+        inLanguage: 'id',
+        isAccessibleForFree: true,
+        license: `${SITE}/cara-kerja/`,
+        datePublished: SNAPSHOT,
+        dateModified: SNAPSHOT,
+        temporalCoverage: SNAPSHOT,
+        creator: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/` },
+        publisher: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/` },
+        variableMeasured: [
+          { '@type': 'PropertyValue', name: 'Harga median', value: Math.round(kw.medPrice), unitText: 'IDR' },
+          { '@type': 'PropertyValue', name: 'Harga terendah', value: Math.round(kw.minPrice), unitText: 'IDR' },
+          { '@type': 'PropertyValue', name: 'Harga persentil ke-90', value: Math.round(kw.p90Price), unitText: 'IDR' },
+          { '@type': 'PropertyValue', name: 'Rating rata-rata', value: kw.rating, maxValue: 5 },
+          { '@type': 'PropertyValue', name: 'Jumlah listing dipantau', value: kw.n },
+          { '@type': 'PropertyValue', name: 'Jumlah toko', value: d.stores },
+          { '@type': 'PropertyValue', name: 'Estimasi unit terjual', value: Math.round(kw.estSold), description: 'Estimasi, bukan angka resmi Shopee' },
+        ],
+      },
     ],
   };
 
@@ -252,6 +254,16 @@ ${related.map((r) => `      <a class="riset-card" href="/riset/${slugify(r.keywo
 <meta property="og:description" content="${esc(`Harga median ${rp(kw.medPrice)}, ${num(kw.n)} listing, rating ${kw.rating}. Riset pasar ${k} berbasis data nyata.`)}">
 <meta property="og:url" content="${url}">
 <meta property="og:type" content="article">
+<meta property="og:image" content="${OG_IMAGE}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="id_ID">
+<meta property="og:site_name" content="LarisID">
+<meta property="article:modified_time" content="${SNAPSHOT}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${esc(kTitle)} di Shopee \u2014 Data Harga & Penjualan">
+<meta name="twitter:description" content="${esc(`Harga median ${rp(kw.medPrice)}, ${num(kw.n)} listing, rating ${kw.rating}. Riset pasar ${k}.`)}">
+<meta name="twitter:image" content="${OG_IMAGE}">
 <link rel="icon" type="image/png" href="/images/brand/appicon-red.png">
 <link rel="alternate" href="${SITE}/llms.txt">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -401,6 +413,15 @@ ${items.map((e) => `    <a class="riset-card" href="/riset/${slugify(e.keyword)}
 <meta property="og:description" content="Data harga, penjualan, dan persaingan untuk ${entries.length} keyword produk populer di Shopee Indonesia.">
 <meta property="og:url" content="${url}">
 <meta property="og:type" content="website">
+<meta property="og:image" content="${OG_IMAGE}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="id_ID">
+<meta property="og:site_name" content="LarisID">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Riset Pasar Produk Shopee \u2014 LarisID">
+<meta name="twitter:description" content="Data harga, penjualan, dan persaingan untuk ${entries.length} keyword produk Shopee.">
+<meta name="twitter:image" content="${OG_IMAGE}">
 <link rel="icon" type="image/png" href="/images/brand/appicon-red.png">
 <link rel="alternate" href="${SITE}/llms.txt">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -449,7 +470,15 @@ function buildSitemap(entries) {
   const staticUrls = [
     { loc: `${SITE}/`, freq: 'weekly', pri: '1.0', mod: '2026-05-30' },
     { loc: `${SITE}/riset/`, freq: 'weekly', pri: '0.9', mod: SNAPSHOT },
+    { loc: `${SITE}/panduan/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
+    { loc: `${SITE}/panduan/cara-riset-produk-shopee-untuk-pemula/`, freq: 'monthly', pri: '0.7', mod: SNAPSHOT },
+    { loc: `${SITE}/panduan/cara-menghitung-margin-dan-hpp/`, freq: 'monthly', pri: '0.7', mod: SNAPSHOT },
+    { loc: `${SITE}/panduan/analisis-kompetitor-shopee/`, freq: 'monthly', pri: '0.7', mod: SNAPSHOT },
     { loc: `${SITE}/perbandingan/`, freq: 'monthly', pri: '0.9', mod: '2026-05-30' },
+    { loc: `${SITE}/perbandingan/alat-riset-produk-shopee-terbaik/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
+    { loc: `${SITE}/perbandingan/larisid-vs-datapinter/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
+    { loc: `${SITE}/perbandingan/larisid-vs-tokpee/`, freq: 'monthly', pri: '0.75', mod: SNAPSHOT },
+    { loc: `${SITE}/perbandingan/larisid-vs-shoptik/`, freq: 'monthly', pri: '0.75', mod: SNAPSHOT },
     { loc: `${SITE}/harga/`, freq: 'monthly', pri: '0.85', mod: '2026-05-30' },
     { loc: `${SITE}/tentang/`, freq: 'monthly', pri: '0.8', mod: '2026-05-30' },
     { loc: `${SITE}/cara-kerja/`, freq: 'monthly', pri: '0.8', mod: '2026-05-30' },
@@ -480,9 +509,8 @@ async function main() {
   for (const kw of KEYWORDS) {
     i++;
     process.stdout.write(`[${i}/${KEYWORDS.length}] ${kw.keyword} ... `);
-    const items = fetchItems(i);
-    if (!items.length) { console.log('SKIP (no cached rows \u2014 run scripts/fetch-seo-raw.sh first)'); continue; }
-    const d = buildDetail(kw, items);
+    const d = getDetail(kw);
+    if (!d) { console.log('SKIP (no detail in seo-detail.json)'); continue; }
     const related = KEYWORDS
       .filter((o) => o.category === kw.category && o.keyword !== kw.keyword)
       .sort((a, b) => b.estSold - a.estSold)
@@ -492,7 +520,7 @@ async function main() {
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'index.html'), pageHtml(kw, d, related));
     built.push(kw);
-    console.log(`ok (${items.length} items, ${d.stores} stores)`);
+    console.log(`ok (${d.sampleItems} items, ${d.stores} stores)`);
   }
 
   fs.writeFileSync(path.join(OUT_DIR, 'index.html'), hubHtml(built));
