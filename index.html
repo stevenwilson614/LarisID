@@ -8980,6 +8980,7 @@ html,body{overflow-x:clip;max-width:100%;}
               <!-- Tabs: Informasi Pasar (default) | Kalkulator -->
               <div class="dd-tabs" id="mls-tabs" style="margin-bottom:18px;">
                 <div class="dd-tab active" onclick="mlsSwitchTab('pasar')" data-tab="pasar">Informasi Pasar</div>
+                <div class="dd-tab" onclick="mlsSwitchTab('paths')" data-tab="paths">Strategi &amp; Foto</div>
                 <div class="dd-tab" onclick="mlsSwitchTab('kalc')" data-tab="kalc">Kalkulator</div>
               </div>
 
@@ -9190,6 +9191,42 @@ html,body{overflow-x:clip;max-width:100%;}
                   </div>
                   <!-- Card view (hidden by default) -->
                   <div id="mls-comp-cards" class="mls-seller-grid" style="display:none;"></div>
+                </div>
+              </div>
+
+              <!-- TAB: Strategi (Reseller / Creator) + Foto → Copy (Workstream C) -->
+              <div id="mls-tab-paths" style="display:none;">
+                <div class="dd-card" style="padding:18px;margin-bottom:16px;">
+                  <div style="font-size:.9rem;font-weight:800;color:#111;margin-bottom:4px;">Mau jual produk ini bagaimana?</div>
+                  <div style="font-size:.76rem;color:#6B7280;margin-bottom:14px;">Pilih jalurmu — rekomendasi kami sesuaikan. (≈2 kredit per rekomendasi)</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <button type="button" id="mls-path-resell" onclick="mlsPickPath('resell')" style="text-align:left;border:1.5px solid #EDE8E4;background:#fff;border-radius:14px;padding:16px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;gap:8px;transition:border-color .15s,box-shadow .15s;">
+                      <span style="width:40px;height:40px;border-radius:11px;background:#F9EAE4;color:#B5202A;display:flex;align-items:center;justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></span>
+                      <span style="font-size:.85rem;font-weight:800;color:#1A1A1A;">Jual Ulang (Reseller)</span>
+                      <span style="font-size:.7rem;color:#6B7280;line-height:1.4;">Cari supplier &amp; jual produk yang sudah ada</span>
+                    </button>
+                    <button type="button" id="mls-path-create" onclick="mlsPickPath('create')" style="text-align:left;border:1.5px solid #EDE8E4;background:#fff;border-radius:14px;padding:16px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;gap:8px;transition:border-color .15s,box-shadow .15s;">
+                      <span style="width:40px;height:40px;border-radius:11px;background:#FFFBEB;color:#C9974B;display:flex;align-items:center;justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z"/></svg></span>
+                      <span style="font-size:.85rem;font-weight:800;color:#1A1A1A;">Bikin Sendiri (Creator)</span>
+                      <span style="font-size:.7rem;color:#6B7280;line-height:1.4;">Buat produk unik versi kamu sendiri</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- AI recommendations (reseller sourcing / creator ideas) -->
+                <div id="mls-path-recs" style="display:none;margin-bottom:16px;"></div>
+
+                <!-- Foto → judul/deskripsi/harga -->
+                <div class="dd-card" id="mls-photo-tool" style="padding:18px;margin-bottom:16px;display:none;">
+                  <div style="font-size:.86rem;font-weight:800;color:#111;margin-bottom:4px;">Foto Produk → Judul, Deskripsi &amp; Harga</div>
+                  <div style="font-size:.74rem;color:#6B7280;margin-bottom:12px;">Upload foto produkmu — AI bikin judul SEO, deskripsi jualan, dan saran harga. (≈3 kredit)</div>
+                  <label for="mls-photo-input" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:1.5px dashed #D6CDBF;border-radius:12px;padding:22px;cursor:pointer;text-align:center;background:#FCFAF7;">
+                    <input type="file" accept="image/*" id="mls-photo-input" onchange="mlsPhotoUpload(event)" style="display:none;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B5202A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <span id="mls-photo-droptext" style="font-size:.78rem;font-weight:700;color:#374151;">Ketuk untuk pilih foto (JPG/PNG)</span>
+                    <img id="mls-photo-preview" alt="" style="display:none;max-width:150px;max-height:150px;border-radius:10px;margin-top:6px;object-fit:contain;">
+                  </label>
+                  <div id="mls-photo-result" style="margin-top:14px;"></div>
                 </div>
               </div>
 
@@ -9620,6 +9657,27 @@ html,body{overflow-x:clip;max-width:100%;}
                 </div>
                 <div class="cr-free-exp" id="cr-free-exp">Berlaku 30 hari</div>
               </div>
+            </div>
+
+            <!-- B6: Ajak Teman (referral) -->
+            <div class="cr-section" id="cr-referral-card">
+              <div class="cr-section-title">Ajak Teman · Dapat 50 Kredit</div>
+              <div class="cr-section-sub">Bagikan link kamu. Setiap teman yang daftar lewat link ini, kamu langsung dapat <strong>50 kredit</strong> gratis.</div>
+              <div style="display:flex;gap:8px;margin:12px 0;flex-wrap:wrap;">
+                <input id="cr-ref-link" readonly value="" placeholder="Memuat link…" style="flex:1;min-width:180px;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:.78rem;font-family:inherit;background:#F9FAFB;color:#374151;box-sizing:border-box;">
+                <button id="cr-ref-copy" onclick="crCopyRefLink()" style="background:#1A1A1A;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;">Salin</button>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button onclick="crShareRefWA()" style="flex:1;min-width:140px;display:flex;align-items:center;justify-content:center;gap:7px;background:#1FA855;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg>
+                  WhatsApp
+                </button>
+                <button onclick="crShareRefEmail()" style="flex:1;min-width:140px;display:flex;align-items:center;justify-content:center;gap:7px;background:#fff;color:#B5202A;border:1.5px solid #F0CFC4;border-radius:8px;padding:9px 14px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  Email
+                </button>
+              </div>
+              <div style="margin-top:12px;font-size:.74rem;color:#6B7280;">Teman yang sudah daftar lewat kamu: <strong id="cr-ref-count" style="color:#B5202A;">0</strong></div>
             </div>
 
             <!-- How to earn -->
@@ -10484,6 +10542,41 @@ html,body{overflow-x:clip;max-width:100%;}
           </div>
           <div style="margin-top:12px;font-size:.72rem;color:#9CA3AF;">Saldo: <span id="cg-balance-display" style="font-weight:700;color:#f97316;">—</span> kredit • <a onclick="switchDashView('credits');cgClose()" style="color:#B5202A;cursor:pointer;text-decoration:underline;">Dapat kredit gratis</a></div>
           <div id="cg-earn-note" style="display:none;margin-top:8px;padding:8px 10px;background:#FFF7ED;border-radius:8px;font-size:.68rem;color:#92400E;line-height:1.5;text-align:center;"></div>
+        </div>
+      </div>
+
+      <!-- B3: Deep Dive full-data unlock — per page (1 kredit) or whole product 7 hari (5 kredit) -->
+      <div class="cg-overlay" id="ddu-overlay" style="display:none;" onclick="if(event.target===this)dduClose()">
+        <div class="cg-modal">
+          <div class="cg-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#c05000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+          <div class="cg-title">Buka <span id="ddu-tab-label">Data</span></div>
+          <div class="cg-sub">Data lengkap produk ini terkunci. Pilih cara membukanya:</div>
+          <div class="cg-btns" style="flex-direction:column;gap:10px;margin-top:4px;">
+            <button class="cg-btn primary" id="ddu-btn-tab" onclick="dduChoose('tab')" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+              <span>Buka halaman ini</span><span style="font-weight:800;white-space:nowrap;">1 kredit</span>
+            </button>
+            <button class="cg-btn primary" id="ddu-btn-full" onclick="dduChoose('full')" style="width:100%;background:linear-gradient(135deg,#B5202A,#8E191F);display:flex;justify-content:space-between;align-items:center;gap:10px;">
+              <span>Buka semua data · 7 hari</span><span style="font-weight:800;white-space:nowrap;">5 kredit</span>
+            </button>
+            <button class="cg-btn secondary" onclick="dduClose()" style="width:100%;">Batal</button>
+          </div>
+          <div style="margin-top:12px;font-size:.72rem;color:#9CA3AF;">Saldo: <span id="ddu-bal" style="font-weight:700;color:#f97316;">—</span> kredit · Biaya E-commerce selalu gratis</div>
+        </div>
+      </div>
+
+      <!-- B4: out-of-credits earn popup (Chrome extension + referral) -->
+      <div class="cg-overlay" id="cr-earn-popup" style="display:none;" onclick="if(event.target===this)crCloseEarnPopup()">
+        <div class="cg-modal">
+          <div class="cg-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#c05000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+          <div class="cg-title">Kredit kamu habis</div>
+          <div class="cg-sub">Tenang — kamu bisa dapat lebih banyak kredit gratis, tanpa bayar:</div>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
+            <a class="cg-btn primary" href="https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae" target="_blank" rel="noopener" onclick="crCloseEarnPopup()" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;line-height:1.3;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg>
+              Pasang Extension Chrome · 10 pencarian = 1 kredit
+            </a>
+            <button class="cg-btn secondary" onclick="crCloseEarnPopup();switchDashView('credits');setTimeout(crScrollReferral,150)" style="width:100%;">Ajak teman · dapat 50 kredit</button>
+          </div>
         </div>
       </div>
 
@@ -14480,7 +14573,7 @@ function cgClose() {
 async function cgConfirm() {
   const _isPriv = currentUser && (isPlatformAdmin() || _accessState.isLeader);
   if (!_isPriv && (_creditBalance ?? 0) < 1) {
-    switchDashView('credits'); cgClose(); return;
+    cgClose(); crOutOfCredits(); return;
   }
   if (_isPriv) { cgClose(); if (_cgCallback) { _cgCallback(); _cgCallback = null; } return; }
   const btn = document.getElementById('cg-confirm-btn');
@@ -14501,13 +14594,267 @@ async function cgConfirm() {
 }
 
 function gateDeepDive() {
+  // B1: the simple Deep Dive summary is now FREE — credits are only spent when
+  // unlocking the full-data tabs (Listing, Analisa Pasar, etc.) or the calculator.
   if (!currentUser) { openAuthModal('login'); return; }
-  cgShow(
-    'Deep Dive Produk',
-    'Gunakan 1 kredit untuk melihat analisis mendalam produk ini — harga historis, tren pesaing & peluang pasar.',
-    () => switchDashView('deepdive'),
-    'deepdive'
-  );
+  switchDashView('deepdive');
+}
+
+// ── PRODUCT UNLOCKS (per-tab / whole-product, credit-gated) ──────────────────
+// Free: ringkasan (simple summary) + Biaya E-commerce. Gated: each full-data tab
+// = 1 credit, OR 5 credits unlocks all tabs + the calculator for 7 days.
+let _ddUnlockKey = null;
+let _ddUnlockScopes = new Set();
+const DD_FREE_TABS = new Set(['ringkasan', 'biaya']);
+const DD_TAB_SCOPE = { listing:'tab:listing', analisa:'tab:analisa', kompetitor:'tab:kompetitor', keyword:'tab:keyword', tren:'tab:tren', kalkulator:'calc' };
+const DD_TAB_LABEL = { listing:'Listing', analisa:'Analisa Pasar', kompetitor:'Kompetitor', keyword:'Keyword', tren:'Tren Historis', kalkulator:'Kalkulator' };
+const DD_FULL_PRICE = 5, DD_TAB_PRICE = 1, DD_UNLOCK_DAYS = 7;
+
+function _isCreditPrivileged() { return !!(currentUser && (isPlatformAdmin() || _accessState.isLeader)); }
+function _ddProductKey(listing) {
+  const l = listing || _ddCurrentP?._listing || _ddKwListing || _ddCurrentP || {};
+  return (l.item_id != null) ? `item:${l.item_id}` : (l.keyword ? `kw:${l.keyword}` : null);
+}
+async function ddLoadUnlocks(listing) {
+  const key = _ddProductKey(listing);
+  _ddUnlockKey = key; _ddUnlockScopes = new Set();
+  if (!key || !_supabase || !currentUser || _isCreditPrivileged()) return;
+  try {
+    const { data, error } = await _supabase.rpc('get_product_unlocks', { p_product_key: key });
+    if (!error && Array.isArray(data)) data.forEach(r => _ddUnlockScopes.add(r.scope));
+  } catch (_) {}
+}
+function ddScopeUnlocked(scope) {
+  if (_isCreditPrivileged()) return true;
+  return _ddUnlockScopes.has('full') || _ddUnlockScopes.has(scope);
+}
+function ddTabUnlocked(tab) {
+  if (_isCreditPrivileged() || DD_FREE_TABS.has(tab)) return true;
+  const scope = DD_TAB_SCOPE[tab];
+  if (!scope) return true; // unknown tab → don't gate
+  return ddScopeUnlocked(scope);
+}
+
+let _dduTab = null, _dduOnDone = null, _dduKey = null;
+function ddUnlockModal(tab, onDone, productKey) {
+  _dduTab = tab; _dduOnDone = onDone || null; _dduKey = productKey || _ddProductKey();
+  document.getElementById('ddu-tab-label').textContent = DD_TAB_LABEL[tab] || 'Data';
+  document.getElementById('ddu-bal').textContent = (_creditBalance ?? 0);
+  document.getElementById('ddu-overlay').style.display = 'flex';
+}
+function dduClose() { document.getElementById('ddu-overlay').style.display = 'none'; _dduTab = null; _dduOnDone = null; _dduKey = null; }
+async function dduChoose(mode) {
+  const tab = _dduTab, onDone = _dduOnDone;
+  if (!tab) return;
+  const key = _dduKey || _ddProductKey();
+  if (!key) { dduClose(); return; }
+  const scope  = mode === 'full' ? 'full' : DD_TAB_SCOPE[tab];
+  const amount = mode === 'full' ? DD_FULL_PRICE : DD_TAB_PRICE;
+  if (!_isCreditPrivileged() && (_creditBalance ?? 0) < amount) { dduClose(); crOutOfCredits(); return; }
+  const btn = document.getElementById(`ddu-btn-${mode}`);
+  const prev = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.style.opacity = '.6'; }
+  try {
+    const { data, error } = await _supabase.rpc('unlock_product', { p_product_key: key, p_scope: scope, p_amount: amount, p_days: DD_UNLOCK_DAYS });
+    if (error) {
+      if (String(error.message || '').includes('insufficient_credits')) { dduClose(); crOutOfCredits(); return; }
+      throw error;
+    }
+    if (data && data.balance != null) { _creditBalance = data.balance; renderCreditUI(); }
+    _ddUnlockScopes.add(mode === 'full' ? 'full' : scope);
+    try { cohortLogActivity('credit_spent', { action: 'unlock_' + scope }); } catch (_) {}
+    dduClose();
+    if (onDone) onDone(); else ddSwitchTab(tab);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.innerHTML = prev; }
+    dduClose();
+  }
+}
+
+// B4: out of credits → credits page + earn popup (Chrome extension + referral).
+function crOutOfCredits() { switchDashView('credits'); setTimeout(crShowEarnPopup, 120); }
+function crShowEarnPopup() { const m = document.getElementById('cr-earn-popup'); if (m) m.style.display = 'flex'; }
+function crCloseEarnPopup() { const m = document.getElementById('cr-earn-popup'); if (m) m.style.display = 'none'; }
+function crScrollReferral() { document.getElementById('cr-referral-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+
+// Calculator (Mulai Berjualan) is gated at 1 credit per product — covered by the
+// product's 5-credit "full" unlock. Uses the same product_unlocks ledger.
+let _mlsUnlockKey = null, _mlsUnlockScopes = new Set();
+function _mlsProductKey() {
+  const t = _mlsContext && _mlsContext.product;
+  if (!t) return null;
+  return (t.item_id != null) ? `item:${t.item_id}` : (t.keyword ? `kw:${t.keyword}` : null);
+}
+async function mlsLoadUnlocks() {
+  const key = _mlsProductKey();
+  _mlsUnlockKey = key; _mlsUnlockScopes = new Set();
+  if (!key || !_supabase || !currentUser || _isCreditPrivileged()) return;
+  try {
+    const { data, error } = await _supabase.rpc('get_product_unlocks', { p_product_key: key });
+    if (!error && Array.isArray(data)) data.forEach(r => _mlsUnlockScopes.add(r.scope));
+  } catch (_) {}
+}
+function mlsCalcUnlocked() {
+  if (_isCreditPrivileged()) return true;
+  return _mlsUnlockScopes.has('full') || _mlsUnlockScopes.has('calc');
+}
+function mlsGateCalc(onUnlocked) {
+  if (mlsCalcUnlocked()) { onUnlocked(); return; }
+  const key = _mlsProductKey();
+  if (!key) { onUnlocked(); return; } // no product context → don't block
+  ddUnlockModal('kalkulator', () => { _ddUnlockScopes.forEach(s => _mlsUnlockScopes.add(s)); onUnlocked(); }, key);
+}
+
+// ── B6: REFERRALS ────────────────────────────────────────────────────────────
+// Capture ?ref= on landing, redeem it after signup (referrer earns 50 credits),
+// and power the "Ajak Teman" card on the credits page (share via WhatsApp/email).
+(function _captureRef() {
+  try {
+    const m = new URLSearchParams(location.search).get('ref');
+    if (m && m.trim()) localStorage.setItem('larisid_ref', m.trim().toUpperCase());
+  } catch (_) {}
+})();
+
+async function redeemPendingReferral() {
+  if (!_supabase || !currentUser) return;
+  let code; try { code = localStorage.getItem('larisid_ref'); } catch (_) {}
+  if (!code) return;
+  try {
+    const { error } = await _supabase.rpc('redeem_referral', { p_code: code });
+    // Clear whether redeemed or rejected (invalid/self/already/not-new) so we don't retry forever.
+    if (!error) { try { localStorage.removeItem('larisid_ref'); } catch (_) {} }
+  } catch (_) {}
+}
+
+let _crRefCode = null;
+function crRefUrl() { return `${location.origin}${location.pathname}?ref=${_crRefCode || ''}`; }
+async function crLoadReferral() {
+  const linkEl = document.getElementById('cr-ref-link');
+  if (!linkEl || !_supabase || !currentUser) return;
+  try {
+    if (!_crRefCode) {
+      const { data, error } = await _supabase.rpc('get_or_create_my_referral_code');
+      if (!error && data) _crRefCode = data;
+    }
+    if (_crRefCode) linkEl.value = crRefUrl();
+    const { count } = await _supabase.from('referrals').select('id', { count: 'exact', head: true });
+    const cntEl = document.getElementById('cr-ref-count');
+    if (cntEl && typeof count === 'number') cntEl.textContent = count;
+  } catch (_) {}
+}
+function crCopyRefLink() {
+  const el = document.getElementById('cr-ref-link');
+  if (!el || !el.value) return;
+  el.select();
+  try { navigator.clipboard.writeText(el.value); } catch (_) { try { document.execCommand('copy'); } catch (_) {} }
+  const btn = document.getElementById('cr-ref-copy');
+  if (btn) { const t = btn.textContent; btn.textContent = 'Tersalin!'; setTimeout(() => { btn.textContent = t; }, 1500); }
+}
+function crShareRefWA() {
+  const msg = `Aku pakai LarisID buat riset produk Shopee — 100% gratis. Daftar lewat link aku ya: ${crRefUrl()}`;
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+}
+function crShareRefEmail() {
+  const subj = 'Coba LarisID — riset produk Shopee gratis';
+  const body = `Hai! Aku pakai LarisID buat riset produk Shopee, 100% gratis. Daftar lewat link aku ya:\n\n${crRefUrl()}`;
+  window.location.href = `mailto:?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+}
+
+// ── C: RESELLER / CREATOR PATHS + PHOTO → COPY ───────────────────────────────
+// Spend credits for an AI action (recommendations / photo analysis). Respects
+// admin/leader bypass, balance, and the per-day AI credit cap.
+async function mlsSpendAi(amount, action) {
+  if (_isCreditPrivileged()) return true;
+  if (!_supabase || !currentUser) { try { openAuthModal('login'); } catch (_) {} return false; }
+  if ((_creditBalance ?? 0) < amount) { crOutOfCredits(); return false; }
+  if (_mlsAiCreditsToday() >= MLS_AI_DAILY_CREDIT_CAP) return false;
+  try {
+    const { data, error } = await _supabase.rpc('spend_credit', { p_keyword: action, p_amount: amount });
+    if (error) { if (String(error.message || '').includes('insufficient_credits')) crOutOfCredits(); return false; }
+    if (data != null) { _creditBalance = data; renderCreditUI(); _mlsAiUpdateCounter(); _mlsAiAddCreditsToday(amount); }
+    return true;
+  } catch (_) { return false; }
+}
+
+// Raw AI completion via the same routing as the chat (claude-proxy, or the user's
+// own OpenAI key for text). `forceClaude` is used for image/vision prompts.
+async function _mlsAIRaw(system, messages, opts = {}) {
+  const userOpenAiKey = !opts.forceClaude && localStorage.getItem('larisid_openai_key');
+  const userModel = localStorage.getItem('larisid_anthropic_model') || 'claude-haiku-4-5-20251001';
+  if (userOpenAiKey) {
+    const flat = messages.map(m => ({ role: m.role, content: typeof m.content === 'string' ? m.content : m.content.filter(c => c.type === 'text').map(c => c.text).join('\n') }));
+    const res = await fetch('https://api.openai.com/v1/chat/completions', { method: 'POST', headers: { 'Authorization': `Bearer ${userOpenAiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'gpt-4o', max_tokens: 600, messages: [{ role: 'system', content: system }, ...flat] }) });
+    const d = await res.json();
+    return d.choices?.[0]?.message?.content || d.error?.message || 'Tidak ada respons.';
+  }
+  const session = _supabase ? (await _supabase.auth.getSession()).data?.session : null;
+  if (!session) return 'Login untuk pakai fitur AI.';
+  const res = await fetch(`${SUPA_URL}/functions/v1/claude-proxy`, { method: 'POST', headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: userModel, max_tokens: 700, system, messages }) });
+  if (res.status === 429) return 'Batas penggunaan AI hari ini sudah tercapai (10 permintaan/hari).';
+  const d = await res.json();
+  return d.content?.[0]?.text || d.error?.message || 'Tidak ada respons.';
+}
+
+let _mlsPath = null;
+function mlsPickPath(path) {
+  _mlsPath = path;
+  const rc = document.getElementById('mls-path-resell'), cc = document.getElementById('mls-path-create');
+  if (rc) { rc.style.borderColor = path === 'resell' ? '#B5202A' : '#EDE8E4'; rc.style.boxShadow = path === 'resell' ? '0 4px 14px rgba(181,32,42,.15)' : ''; }
+  if (cc) { cc.style.borderColor = path === 'create' ? '#C9974B' : '#EDE8E4'; cc.style.boxShadow = path === 'create' ? '0 4px 14px rgba(201,151,75,.18)' : ''; }
+  const tool = document.getElementById('mls-photo-tool');
+  if (tool) tool.style.display = '';
+  mlsGenRecs(path);
+}
+
+async function mlsGenRecs(path) {
+  const out = document.getElementById('mls-path-recs');
+  if (!out) return;
+  out.style.display = '';
+  const ctx = _mlsContext || {}, p = ctx.product || {};
+  const name = p.product_name || p.name || ctx.keyword || 'produk ini';
+  const kw = ctx.keyword || p.keyword || '';
+  const med = ctx.medianPrice ? `Rp ${Math.round(ctx.medianPrice).toLocaleString('id-ID')}` : '—';
+  out.innerHTML = `<div class="dd-card" style="padding:16px;"><div style="font-size:.8rem;color:#6B7280;">AI sedang menyiapkan rekomendasi…</div></div>`;
+  if (!(await mlsSpendAi(2, 'ai_path_' + path))) { out.innerHTML = ''; return; }
+  const system = `Kamu konsultan jualan Shopee Indonesia. Jawab ringkas dan praktis dalam Bahasa Indonesia ("kamu"), pakai poin bernomor. Tanpa basa-basi.`;
+  const prompt = path === 'resell'
+    ? `Saya mau JUAL ULANG (reseller) produk "${name}" (keyword "${kw}", median harga pasar ${med}). Beri rekomendasi sourcing: (1) apa yang harus dicek saat memilih supplier, (2) target harga beli ideal supaya margin sehat, (3) bahan/spesifikasi penting yang harus diperhatikan, (4) 2 tips menang vs kompetitor. Maks 6 poin.`
+    : `Saya mau BIKIN SENDIRI (creator) produk di niche "${kw}" (acuan "${name}", median harga pasar ${med}). Beri rekomendasi: (1) ide produk/variasi yang belum digarap kompetitor, (2) estimasi biaya produksi ideal & target harga jual, (3) 2-3 ide diferensiasi unik. Maks 6 poin.`;
+  let reply;
+  try { reply = await _mlsAIRaw(system, [{ role: 'user', content: prompt }]); }
+  catch (_) { reply = 'Gagal memuat rekomendasi. Coba lagi.'; }
+  out.innerHTML = `<div class="dd-card" style="padding:16px;">
+    <div style="font-size:.8rem;font-weight:800;color:#111;margin-bottom:8px;">${path === 'resell' ? 'Rekomendasi Sourcing (Reseller)' : 'Rekomendasi Bikin Produk (Creator)'}</div>
+    <div style="font-size:.8rem;color:#374151;line-height:1.6;white-space:pre-wrap;">${_mlsEsc(reply)}</div>
+  </div>`;
+}
+
+async function mlsPhotoUpload(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { alert('Foto terlalu besar (maks 5 MB).'); event.target.value = ''; return; }
+  const preview = document.getElementById('mls-photo-preview');
+  const result = document.getElementById('mls-photo-result');
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const dataUrl = String(reader.result || '');
+    if (preview) { preview.src = dataUrl; preview.style.display = ''; }
+    const m = /^data:(image\/[\w.+-]+);base64,(.+)$/.exec(dataUrl);
+    if (!m) { if (result) result.innerHTML = '<div style="font-size:.78rem;color:#B5202A;">Format foto tidak didukung.</div>'; return; }
+    const mime = m[1], b64 = m[2];
+    if (result) result.innerHTML = '<div style="font-size:.8rem;color:#6B7280;">AI sedang menganalisis foto…</div>';
+    if (!(await mlsSpendAi(3, 'ai_photo'))) { if (result) result.innerHTML = ''; return; }
+    const ctx = _mlsContext || {}, kw = ctx.keyword || '';
+    const med = ctx.medianPrice ? `Rp ${Math.round(ctx.medianPrice).toLocaleString('id-ID')}` : '—';
+    const system = `Kamu asisten jualan Shopee Indonesia. Dari foto produk, buat materi jualan dalam Bahasa Indonesia. Jawab PERSIS dengan format:\nJudul: <judul SEO maks 70 karakter>\nDeskripsi: <2-3 kalimat jualan>\nHarga: <rentang harga jual dalam Rp>`;
+    const userPrompt = `Konteks pasar: keyword "${kw}", median harga ${med}. Buat judul, deskripsi, dan saran harga untuk produk di foto ini.`;
+    let reply;
+    try {
+      reply = await _mlsAIRaw(system, [{ role: 'user', content: [ { type: 'image', source: { type: 'base64', media_type: mime, data: b64 } }, { type: 'text', text: userPrompt } ] }], { forceClaude: true });
+    } catch (_) { reply = 'Gagal menganalisis foto. Coba lagi.'; }
+    if (result) result.innerHTML = `<div style="background:#F8FAFC;border:1px solid #E5E7EB;border-radius:10px;padding:14px;font-size:.8rem;color:#374151;line-height:1.6;white-space:pre-wrap;">${_mlsEsc(reply)}</div>`;
+  };
+  reader.readAsDataURL(file);
 }
 
 // ── MULAI BERJUALAN — updated JS ─────────────────────────
@@ -14582,14 +14929,31 @@ function _mlsAiCounterInc() {
 function _mlsAiUpdateCounter() {
   const el = document.getElementById('mls-ai-counter');
   if (!el) return;
-  if (currentUser && isPlatformAdmin()) {
+  if (currentUser && (isPlatformAdmin() || _accessState.isLeader)) {
     el.textContent = 'Tanya tanpa batas';
     return;
   }
-  const total = _mlsAiCounter();
-  const usedInBlock = total % MLS_AI_PER_CREDIT;
-  const remaining = usedInBlock === 0 ? MLS_AI_PER_CREDIT : MLS_AI_PER_CREDIT - usedInBlock;
-  el.textContent = `${remaining}/${MLS_AI_PER_CREDIT} tanya tersisa`;
+  el.textContent = `${_creditBalance ?? 0} kredit · biaya 1–3 per jawaban`;
+}
+
+// B5: dynamic AI credit cost — charged by the detail of the answer (1–3 credits),
+// with anti-bypass limits: a per-day AI credit cap, session dedupe (re-asking the
+// same question is free), a minimum question length, and the server's 10-req/day
+// hard cap. Heavier analysis/strategy questions cost more than quick facts.
+const MLS_AI_MAX_TIER = 3, MLS_AI_DAILY_CREDIT_CAP = 12;
+let _mlsAiAskedSet = new Set();
+function _mlsAiNorm(q) { return String(q || '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+function _mlsAiDayKey() { return 'larisid_ai_cr_' + new Date().toISOString().slice(0, 10); }
+function _mlsAiCreditsToday() { return parseInt(localStorage.getItem(_mlsAiDayKey()) || '0', 10); }
+function _mlsAiAddCreditsToday(n) { try { localStorage.setItem(_mlsAiDayKey(), String(_mlsAiCreditsToday() + n)); } catch (_) {} }
+function _mlsAiCostTier(question, reply) {
+  const text = String(reply || ''), len = text.length, q = String(question || '');
+  const hasNum = /\d/.test(text), hasStat = /%|persen|\brb\b|\bjt\b|rp/i.test(text);
+  const heavy = /(bandingk|analis|strategi|rekomendasi|saran|hitung|proyeksi|forecast|untung|margin|kalkulasi|breakdown|kenapa|mengapa|sebaikny)/i.test(q);
+  let tier = 1;
+  if (len > 150 || (hasNum && hasStat) || heavy || q.length > 90) tier = 2;
+  if (len > 280 || (heavy && hasNum && hasStat)) tier = 3;
+  return Math.min(MLS_AI_MAX_TIER, Math.max(1, tier));
 }
 
 // Conversation history for the Mulai Berjualan AI chat (reset per product)
@@ -14621,6 +14985,7 @@ function mlsAiEnableAttention() {
 
 function _mlsAiResetThread() {
   _mlsAiHistory = [];
+  _mlsAiAskedSet = new Set();
   _mlsAiAttentionOff = false;
   const respEl = document.getElementById('mls-ai-response');
   if (respEl) { respEl.style.display = 'none'; respEl.innerHTML = ''; }
@@ -14755,23 +15120,29 @@ async function mlsAiAsk(prompt) {
     return;
   }
 
-  // Credit gate: every MLS_AI_PER_CREDIT prompts costs 1 credit (at the start of each new block)
-  // Admin and leader are exempt from credit spending
+  // B5: dynamic credit cost (charged after generation by answer detail). Pre-check
+  // balance + anti-bypass here; admin/leader are exempt, and re-asking the same
+  // question this session is free.
   const _isPrivileged = currentUser && (isPlatformAdmin() || _accessState.isLeader);
-  const used = _mlsAiCounter();
-  if (!_isPrivileged && used % MLS_AI_PER_CREDIT === 0) {  // 0, 10, 20... → start of a new block
-    // Need to spend a credit before this block of 10
-    if ((_creditBalance ?? 0) < 1) {
-      _mlsAiHistory.push({ role: 'assistant', content: 'Kredit habis. Cari lebih banyak produk di Shopee untuk mendapatkan kredit gratis (10 pencarian = 1 kredit).' });
+  const _qNorm = _mlsAiNorm(q) + '|' + (kw || '');
+  const _isRepeat = _mlsAiAskedSet.has(_qNorm);
+  if (!_isPrivileged && !_isRepeat) {
+    if (q.length < 4) {
+      _mlsAiHistory.push({ role: 'assistant', content: 'Coba tanya yang lebih spesifik ya — misalnya soal harga, bahan, atau strategi jualan produk ini.' });
       _mlsAiRenderThread();
       return;
     }
-    try {
-      if (_supabase && currentUser) {
-        const { data, error } = await _supabase.rpc('spend_credit', { p_keyword: 'ai_mls', p_amount: 1 });
-        if (!error && data != null) { _creditBalance = data; renderCreditUI(); cohortLogActivity('credit_spent', { action: 'ai_mls' }); }
-      }
-    } catch (_) {}
+    if ((_creditBalance ?? 0) < 1) {
+      _mlsAiHistory.push({ role: 'assistant', content: 'Kredit habis. Dapat kredit gratis lewat ekstensi Chrome (10 pencarian = 1 kredit) atau ajak teman (+50 kredit).' });
+      _mlsAiRenderThread();
+      crOutOfCredits();
+      return;
+    }
+    if (_mlsAiCreditsToday() >= MLS_AI_DAILY_CREDIT_CAP) {
+      _mlsAiHistory.push({ role: 'assistant', content: `Batas pemakaian AI hari ini sudah tercapai (${MLS_AI_DAILY_CREDIT_CAP} kredit). Lanjut lagi besok ya.` });
+      _mlsAiRenderThread();
+      return;
+    }
   }
 
   // Ensure market rows are loaded (handles race if user asks before fetch completes)
@@ -14856,6 +15227,24 @@ async function mlsAiAsk(prompt) {
     _mlsAiHistory.push({ role: 'assistant', content: reply });
     _mlsAiRenderThread();
     _mlsAiCounterInc();
+    // B5: charge by answer detail (1–3 credits). Skipped for admin/leader and for
+    // a question already asked this session. Charges at most the current balance
+    // so a low-balance user is never trapped mid-answer.
+    if (!_isPrivileged && !_isRepeat && _supabase && currentUser) {
+      const tier = _mlsAiCostTier(q, reply);
+      const charge = Math.min(tier, _creditBalance ?? 0);
+      if (charge > 0) {
+        try {
+          const { data, error } = await _supabase.rpc('spend_credit', { p_keyword: 'ai_mls', p_amount: charge });
+          if (!error && data != null) {
+            _creditBalance = data; renderCreditUI(); _mlsAiUpdateCounter();
+            _mlsAiAddCreditsToday(charge);
+            try { cohortLogActivity('credit_spent', { action: 'ai_mls', amount: charge }); } catch (_) {}
+          }
+        } catch (_) {}
+      }
+      _mlsAiAskedSet.add(_qNorm);
+    }
   } catch (e) {
     _mlsAiHistory.push({ role: 'assistant', content: 'Gagal menghubungi AI. Coba lagi.' });
     _mlsAiRenderThread();
@@ -15024,6 +15413,7 @@ async function openProfile() {
   try { renderProfileSaved(); } catch(_) {}
   try { loadDashboardData(); } catch(_) {}
   try { loadCreditData(); } catch(_) {}
+  try { redeemPendingReferral(); } catch(_) {} // B6: credit the referrer if signed up via ?ref=
   try { await loadUserProfile(); } catch(_) {}
   try {
     const u = new URLSearchParams(window.location.search || '');
@@ -15151,6 +15541,7 @@ function switchDashView(view) {
   if (view === 'opportunity-finder') { try { _initOfCats(); } catch (_) {} }
   // YLK ("Yang Laku dari Kotamu") now lives on the Dashboard — init it when shown.
   if (view === 'dashboard') { try { if (typeof ylkInit === 'function') ylkInit(); } catch (_) {} }
+  if (view === 'credits') { try { crLoadReferral(); } catch (_) {} }
 
   // Update topbar title
   try { cohortSyncDashTopbarTitle(view); } catch (_) {}
@@ -20080,6 +20471,9 @@ function kalcCalc() {
 
 function ddSwitchTab(tab) {
   document.getElementById('dash-content')?.scrollTo(0, 0);
+  // B3: gate full-data tabs (free: ringkasan, biaya). Opens the unlock modal and
+  // returns; on successful unlock dduChoose() re-invokes ddSwitchTab(tab).
+  if (!ddTabUnlocked(tab)) { ddUnlockModal(tab); return; }
   const tabs = ['listing','ringkasan','analisa','kompetitor','keyword','tren','kalkulator','biaya'];
   tabs.forEach(t => {
     const panel = document.getElementById(`dd-tab-${t}`);
@@ -22612,6 +23006,8 @@ function ddRenderFees(){
 
 function ddRender(p) {
   _ddCurrentP = p;
+  // B3: refresh this product's unlock state (per-tab / full) for credit gating.
+  try { ddLoadUnlocks(p._listing || p); } catch (_) {}
   const rng = _ddRng(p.id * 31337);
   const price = p.medianPrice || 85000;
   const score = Math.round(p.score);
@@ -24741,6 +25137,8 @@ function mlsInit() {
 }
 
 function mlsSwitchTab(tab) {
+  // B3: the calculator costs 1 credit per product (covered by a 5-credit full unlock).
+  if (tab === 'kalc' && !mlsCalcUnlocked()) { mlsGateCalc(() => mlsSwitchTab('kalc')); return; }
   document.querySelectorAll('#mls-tabs .dd-tab').forEach(el => {
     el.classList.toggle('active', el.dataset.tab === tab);
   });
@@ -24790,6 +25188,7 @@ async function mlsSelectProduct(val, fallbackListing) {
 
   _mlsContext = { keyword: t.keyword, product: t };
   _mlsAiResetThread();
+  try { mlsLoadUnlocks(); } catch (_) {}
   if (heroEl) heroEl.style.display = 'block';
 
   const compact = document.getElementById('mls-picker-compact');
