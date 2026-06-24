@@ -1741,6 +1741,22 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dsc-view-btn.active{background:#1A1A1A;color:#fff;}
 .dsc-view-btn:hover:not(.active){background:#F9FAFB;color:#374151;}
 
+/* Empty-state category picker */
+.dsc-empty-pick{padding:28px 20px 32px;text-align:center;background:linear-gradient(180deg,#FFFBF8 0%,#fff 100%);border-bottom:1px solid #F3F4F6;}
+.dsc-empty-pick-head h3{font-size:1.05rem;font-weight:800;color:#111827;margin:0 0 6px;}
+.dsc-empty-pick-head p{font-size:.8rem;color:#6B7280;margin:0 0 20px;line-height:1.45;}
+.dsc-cat-icons{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px;margin-bottom:22px;max-width:720px;margin-left:auto;margin-right:auto;}
+.dsc-cat-icon-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 6px 8px;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;cursor:pointer;user-select:none;transition:border-color .12s,background .12s,transform .1s;font-family:inherit;text-align:center;}
+.dsc-cat-icon-btn:hover{border-color:#B5202A;background:#F9EAE4;transform:translateY(-1px);}
+.dsc-cat-icon-btn span{font-size:.64rem;font-weight:700;color:#374151;line-height:1.2;}
+.dsc-cat-icon-btn img{width:40px;height:40px;object-fit:contain;}
+.dsc-lucky-btn{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#B5202A 0%,#D43840 100%);color:#fff;border:none;border-radius:12px;padding:12px 22px;font-size:.88rem;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(181,32,42,.28);transition:transform .12s,box-shadow .12s;}
+.dsc-lucky-btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(181,32,42,.34);}
+.dsc-lucky-sub{font-size:.72rem;color:#9CA3AF;margin:10px 0 0;}
+.dsc-table-wrap.dsc-show-empty .dsc-card-grid,
+.dsc-table-wrap.dsc-show-empty #dsc-table-inner,
+.dsc-table-wrap.dsc-show-empty .dsc-pagination{display:none!important;}
+
 /* Keyword context section inside deep dive */
 .dd-kw-context{margin-bottom:16px;}
 .dd-kw-ctx-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:14px 0 18px;}
@@ -7968,6 +7984,19 @@ html,body{overflow-x:clip;max-width:100%;}
                     <button type="button" class="dsc-scrape-submit" id="dsc-scrape-submit-btn" onclick="dscSubmitScrapeRequest()">Minta scrape &amp; kabari saya</button>
                   </div>
                   <div id="dsc-scrape-request-status" class="dsc-scrape-request-status"></div>
+                </div>
+
+                <div id="dsc-empty-pick" class="dsc-empty-pick" style="display:none;" aria-label="Pilih kategori atau coba keberuntungan">
+                  <div class="dsc-empty-pick-head">
+                    <h3>Mulai jelajahi produk</h3>
+                    <p>Pilih kategori untuk filter produk, atau coba keberuntungan untuk 60 produk acak.</p>
+                  </div>
+                  <div id="dsc-cat-icons" class="dsc-cat-icons"></div>
+                  <button type="button" class="dsc-lucky-btn" onclick="dscCobaKeberuntungan()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor" stroke="none"/></svg>
+                    Coba Keberuntungan!
+                  </button>
+                  <p class="dsc-lucky-sub">Tampilkan 60 produk acak dari semua kategori</p>
                 </div>
 
                 <div class="dsc-table-wrap" style="position:relative;">
@@ -18651,6 +18680,9 @@ const DSC_SEARCH_MIN_PER_PAGE = 30;
 const DSC_DEFAULT_PRICE_MIN = 15000;
 const DSC_DEFAULT_PRICE_MAX = 150000;
 const DSC_DEFAULT_MIN_SCOR  = 45;
+const DSC_ALL_CATS = ['Alat Tulis','Bayi & Anak','Dapur','Elektronik','Fashion','Hewan Peliharaan',
+  'Hobi & Kerajinan','HP & Gadget','Kamar Mandi','Keamanan','Kecantikan','Kesehatan',
+  'Motor & Mobil','Olahraga','Outdoor & Camping','Rumah','Sepeda','Taman','Tanaman'];
 
 // fmt helpers
 const _dscFmt = v => v >= 1000000 ? `Rp ${(v/1000000).toFixed(1)} jt` : v >= 1000 ? `Rp ${(v/1000).toFixed(0)} rb` : `Rp ${Math.round(v)}`;
@@ -19306,7 +19338,11 @@ function _dscTryRestoreSessionCache() {
 }
 
 async function dscLoadListings() {
-  if (!_supabase) return;
+  if (!_supabase) {
+    _dscLoaded = true;
+    dscSyncEmptyPick();
+    return;
+  }
   // Prior fetch may have been abandoned when user switched views — release stuck guard
   if (_dscLoading && !_dscAllListings.length && !_dscLoaded) _dscLoading = false;
   if (_dscLoading) return;
@@ -19366,7 +19402,12 @@ async function dscLoadListings() {
 
   } catch(e) {
     if (loadGen === _dscLoadGen) console.error('dscLoadListings:', e);
-    if (loadGen === _dscLoadGen) dscHideLoadingScreen();
+    if (loadGen === _dscLoadGen) {
+      dscHideLoadingScreen();
+      _dscLoaded = true;
+      dscApplyFilters(false);
+      dscSyncEmptyPick();
+    }
   } finally {
     if (loadGen === _dscLoadGen) _dscLoading = false;
   }
@@ -19434,14 +19475,86 @@ function _dscSaveCatState() {
   try { sessionStorage.setItem(_DSC_CAT_SS_KEY, JSON.stringify(unchecked)); } catch {}
 }
 
+function dscBuildCatIcons() {
+  const el = document.getElementById('dsc-cat-icons');
+  if (!el || el.dataset.built) return;
+  el.dataset.built = '1';
+  el.innerHTML = DSC_ALL_CATS.map(c => `
+    <button type="button" class="dsc-cat-icon-btn" data-cat="${c.replace(/"/g, '&quot;')}" title="${c.replace(/"/g, '&quot;')}">
+      ${_catIconImg(c, 40)}
+      <span>${c}</span>
+    </button>`).join('');
+  el.addEventListener('click', e => {
+    const btn = e.target.closest('.dsc-cat-icon-btn');
+    if (btn?.dataset.cat) dscPickCategory(btn.dataset.cat);
+  });
+}
+
+function dscPickCategory(cat) {
+  document.querySelectorAll('#dsc-cat-checks input[type=checkbox]').forEach(cb => {
+    cb.checked = cb.value === cat;
+  });
+  _dscSaveCatState();
+  const skor = document.getElementById('dsc-skor-min');
+  if (skor) {
+    skor.value = 0;
+    const lbl = document.getElementById('dsc-skor-min-lbl');
+    if (lbl) lbl.textContent = '0';
+  }
+  const pick = document.getElementById('dsc-empty-pick');
+  if (pick) pick.style.display = 'none';
+  dscTerapkanFilter();
+}
+
+function dscCobaKeberuntungan() {
+  try { sessionStorage.removeItem(_DSC_CAT_SS_KEY); } catch {}
+  document.querySelectorAll('#dsc-cat-checks input[type=checkbox]').forEach(c => { c.checked = true; });
+  const g = id => document.getElementById(id);
+  if (g('dsc-search')) g('dsc-search').value = '';
+  _dscCommittedQ = '';
+  dscHideSuggestions();
+  if (g('dsc-price-min')) g('dsc-price-min').value = 0;
+  if (g('dsc-price-max')) g('dsc-price-max').value = 500000;
+  if (g('dsc-omset-min')) g('dsc-omset-min').value = 0;
+  if (g('dsc-omset-max')) g('dsc-omset-max').value = 500000000;
+  if (g('dsc-skor-min')) {
+    g('dsc-skor-min').value = 0;
+    const lbl = g('dsc-skor-min-lbl');
+    if (lbl) lbl.textContent = '0';
+  }
+  if (g('dsc-sort')) g('dsc-sort').value = 'random';
+  _dscCurrentCatFilter = '';
+  _dscCurrentCatFilters = null;
+  dscUpdateDualRange('price');
+  dscUpdateDualRange('omset');
+  const pick = document.getElementById('dsc-empty-pick');
+  if (pick) pick.style.display = 'none';
+  dscTerapkanFilter();
+}
+
+function dscSyncEmptyPick() {
+  const pick = document.getElementById('dsc-empty-pick');
+  const wrap = document.querySelector('#dash-view-discover .dsc-table-wrap');
+  if (!pick || _dashActiveView !== 'discover') return;
+  const perPage = _dscPerPage();
+  const tier0Cap = isJourneyBeginner() && !journeyBypassGating() && userJourneyTier() === 0;
+  const cappedTotal = tier0Cap ? Math.min(_dscFiltered.length, JOURNEY_BEGINNER_DISCOVER_CAP) : _dscFiltered.length;
+  const show = !_dscLoading && _dscLoaded && cappedTotal === 0 && !_dscCommittedQ;
+  pick.style.display = show ? '' : 'none';
+  if (wrap) wrap.classList.toggle('dsc-show-empty', show);
+  if (show) {
+    const cardGrid = document.getElementById('dsc-card-grid');
+    if (cardGrid) cardGrid.innerHTML = '';
+    const tbody = document.getElementById('dsc-tbody');
+    if (tbody) tbody.innerHTML = '';
+  }
+}
+
 function dscBuildCatChecks(cats) {
   const el = document.getElementById('dsc-cat-checks');
   if (!el) return;
   // Always include all 19 known categories; merge any extras from loaded data
-  const ALL_CATS = ['Alat Tulis','Bayi & Anak','Dapur','Elektronik','Fashion','Hewan Peliharaan',
-    'Hobi & Kerajinan','HP & Gadget','Kamar Mandi','Keamanan','Kecantikan','Kesehatan',
-    'Motor & Mobil','Olahraga','Outdoor & Camping','Rumah','Sepeda','Taman','Tanaman'];
-  const merged = [...new Set([...ALL_CATS, ...cats])].sort();
+  const merged = [...new Set([...DSC_ALL_CATS, ...cats])].sort();
   const newKey = merged.join(',');
   if (el.dataset.built === newKey) return;
   // Restore from sessionStorage (survives tab switches) then also read current DOM
@@ -19477,11 +19590,16 @@ function _dscCurrentFilters() {
 function dscInit() {
   dscUpdateDualRange('price');
   dscUpdateDualRange('omset');
+  dscBuildCatIcons();
   // Pre-populate all known categories immediately so filters are usable before data loads
-  dscBuildCatChecks(['Alat Tulis','Bayi & Anak','Dapur','Elektronik','Fashion','Hewan Peliharaan',
-    'Hobi & Kerajinan','HP & Gadget','Kamar Mandi','Keamanan','Kecantikan','Kesehatan',
-    'Motor & Mobil','Olahraga','Outdoor & Camping','Rumah','Sepeda','Taman','Tanaman']);
+  dscBuildCatChecks(DSC_ALL_CATS);
   void dscLoadScrapeRequests();
+
+  if (!_supabase) {
+    _dscLoaded = true;
+    dscSyncEmptyPick();
+    return;
+  }
 
   const _dscInitSearch = _dscCommittedQ;
 
@@ -19517,7 +19635,14 @@ function dscInit() {
     return;
   }
 
-  // Cold load from network
+  // Cold start with no cached data — show category picker instead of a blank grid
+  if (!_dscInitSearch && !_dscAllListings.length && !_dscFiltered.length && !_dscBrowsePool.length) {
+    _dscHideLoadingUi();
+    _dscLoaded = true;
+    dscSyncEmptyPick();
+    return;
+  }
+
   dscLoadListings();
 }
 
@@ -20036,8 +20161,12 @@ function dscRenderTable() {
     if (!slice.length) {
       if (_dscLoading || (!_dscLoaded && !_dscBrowsePool.length)) {
         cardGrid.innerHTML = loadingHtml;
+      } else {
+        cardGrid.innerHTML = '';
+        if (!_dscAllListings.length && !_dscBrowsePool.length) {
+          void _dscEnsureBrowsePool(60).then(ok => { if (ok) dscApplyFilters(false); else dscSyncEmptyPick(); });
+        }
       }
-      if (!_dscLoading && !_dscAllListings.length) void _dscEnsureBrowsePool(60).then(ok => { if (ok) dscApplyFilters(false); });
     } else {
       const _cardKwMap = {};
       _dscAllListings.forEach(r => { const k = r.keyword||'__'; if (!_cardKwMap[k]) _cardKwMap[k]=[]; _cardKwMap[k].push(r); });
@@ -20051,8 +20180,12 @@ function dscRenderTable() {
     if (!slice.length) {
       if (_dscLoading || (!_dscLoaded && !_dscBrowsePool.length)) {
         tbody.innerHTML = loadingRow;
+      } else {
+        tbody.innerHTML = '';
+        if (!_dscAllListings.length && !_dscBrowsePool.length) {
+          void _dscEnsureBrowsePool(60).then(ok => { if (ok) dscApplyFilters(false); else dscSyncEmptyPick(); });
+        }
       }
-      if (!_dscLoading && !_dscAllListings.length) void _dscEnsureBrowsePool(60).then(ok => { if (ok) dscApplyFilters(false); });
     } else {
       // Group all loaded listings by keyword for peer-context scoring
       const _dscKwMap = {};
@@ -20127,6 +20260,7 @@ function dscRenderTable() {
   if (_nuOnb.payoff) setTimeout(() => { nuOnbDecorateFirst().catch(() => {}); }, 0);
   else if (beginner) setTimeout(() => dscHighlightStarterCard(), 0);
   dscUpdateScrapeRequestPanel();
+  dscSyncEmptyPick();
 }
 
 function dscSetView(mode) {
