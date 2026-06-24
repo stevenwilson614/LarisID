@@ -485,7 +485,10 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .ylk-hl-cta{font-size:.68rem;font-weight:700;color:#B5202A;background:none;border:none;cursor:pointer;padding:0;text-align:left;}
 .ylk-allcats{border-top:1px solid #F0E7DC;padding-top:12px;}
 .ylk-allcats-label{display:block;font-size:.72rem;font-weight:700;color:#6B7280;margin-bottom:6px;}
-.ylk-cat-iconname{display:flex;align-items:center;gap:6px;}
+.ylk-cat-iconname{display:flex;align-items:center;gap:8px;}
+/* YLK icons enlarged as the focus (moved to Dashboard) */
+.ylk-hl-iconwrap{width:60px;height:60px;border-radius:16px;background:#F9EAE4;display:flex;align-items:center;justify-content:center;margin:2px 0 4px;}
+.ylk-hl-name{font-size:.9rem;font-weight:800;color:#1A1A1A;line-height:1.2;}
 /* ── Naik Daun ── */
 .nd-card{background:linear-gradient(180deg,#FFFDF8,#fff);border:1px solid #F0E7DC;border-radius:14px;padding:16px 0 16px 18px;margin-bottom:18px;box-shadow:0 6px 20px rgba(26,26,26,.04);}
 .nd-head{padding-right:18px;margin-bottom:12px;}
@@ -3886,6 +3889,9 @@ body.in-dashboard .mobile-menu{display:none!important;}
 }
 #dd-main-content.dd-simple .dd-track-pill:hover{box-shadow:0 4px 16px rgba(0,0,0,.1);transform:translateY(-1px);}
 #dd-main-content.dd-simple .dd-track-pill.tracked{color:#B5202A;}
+/* A6: repurposed top-right pill is now the "Next: Mulai Berjualan" primary CTA */
+.dd-track-pill--next,#dd-main-content.dd-simple .dd-track-pill--next{background:#B5202A;color:#fff;box-shadow:0 4px 14px rgba(181,32,42,.3);}
+.dd-track-pill--next:hover,#dd-main-content.dd-simple .dd-track-pill--next:hover{background:#8E191F;box-shadow:0 6px 20px rgba(181,32,42,.42);}
 #dd-main-content.dd-simple .dd-hero{align-items:flex-start;gap:28px;margin-bottom:22px;flex-wrap:nowrap;}
 #dd-main-content.dd-simple .dd-hero-img-wrap{position:relative;flex-shrink:0;width:248px;}
 #dd-main-content.dd-simple .dd-hero-img{
@@ -3974,6 +3980,22 @@ body.in-dashboard .mobile-menu{display:none!important;}
   transition:left .6s cubic-bezier(.22,1,.36,1);
 }
 @media(prefers-reduced-motion:reduce){.dd-smetric-price-thumb{transition:none;}}
+/* A3: staggered "loading" reveal — boxes start blank, then count up one at a time
+   left-to-right; the visual under each number grows + wiggles while it counts. */
+.dd-smetric{transition:opacity .35s ease;}
+.dd-smetric .dd-smetric-visual,.dd-smetric .dd-smetric-foot{transition:opacity .4s ease;}
+.dd-smetric--pending{opacity:.65;}
+.dd-smetric--pending .dd-smetric-value{color:transparent !important;}
+.dd-smetric--pending .dd-smetric-visual,.dd-smetric--pending .dd-smetric-foot{opacity:0;}
+.dd-smetric--pending .dd-smetric-bar-fill{width:0 !important;}
+.dd-smetric--counting .dd-smetric-visual{animation:ddMetricWiggle .5s ease-in-out infinite;transform-origin:left center;}
+@keyframes ddMetricWiggle{0%,100%{transform:scale(1);}50%{transform:scale(1.045);}}
+@media(prefers-reduced-motion:reduce){
+  .dd-smetric--pending{opacity:1;}
+  .dd-smetric--pending .dd-smetric-value{color:inherit !important;}
+  .dd-smetric--pending .dd-smetric-visual,.dd-smetric--pending .dd-smetric-foot{opacity:1;}
+  .dd-smetric--counting .dd-smetric-visual{animation:none;}
+}
 .dd-smetric-foot{
   display:flex;align-items:center;gap:5px;font-size:.66rem;color:#9CA3AF;line-height:1.35;margin-top:auto;
 }
@@ -6216,9 +6238,25 @@ html,body{overflow-x:clip;max-width:100%;}
         <span class="dash-topbar-title is-page-title-img" id="dash-topbar-title"><img class="page-title-img page-title-img--topbar" src="/images/titles/dashboard.png" alt="Dashboard" decoding="async"></span>
         <div style="flex:1"></div>
         <span class="dash-topbar-date" id="dash-topbar-date"></span>
-        <button class="dash-topbar-icon-btn" title="Notifikasi">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-        </button>
+        <div style="position:relative;" id="dash-notif-wrap">
+          <button class="dash-topbar-icon-btn" title="Notifikasi" onclick="event.stopPropagation();toggleNotifMenu()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          </button>
+          <div class="dash-topbar-menu" id="dash-notif-menu" style="width:248px;" onclick="event.stopPropagation()">
+            <div class="dash-topbar-menu-item" style="font-weight:700;color:#111;pointer-events:none;font-size:.8rem;">Notifikasi</div>
+            <div class="dash-topbar-divider"></div>
+            <div id="dash-notif-list" style="max-height:240px;overflow:auto;"></div>
+            <div class="dash-topbar-divider"></div>
+            <div class="dash-topbar-menu-item" onclick="switchDashView('tracker');toggleNotifMenu(false)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+              Produk yang kamu lacak
+            </div>
+            <div class="dash-topbar-menu-item" onclick="toggleNotifMenu(false);mlsForceNotifyPopup()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              Aktifkan update WhatsApp &amp; Email
+            </div>
+          </div>
+        </div>
         <div class="dash-credit-pill" id="dash-topbar-credit-pill" onclick="switchDashView('credits')" title="Kredit kamu">
           <svg class="dash-credit-pill-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           <span class="dash-credit-pill-val" id="dash-credit-pill-val">—</span>
@@ -6313,6 +6351,25 @@ html,body{overflow-x:clip;max-width:100%;}
             <button type="submit" style="width:100%;background:#B5202A;color:#fff;border:none;border-radius:8px;padding:10px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;">Daftar Sekarang</button>
           </form>
           <div id="dash-email-success" style="display:none;text-align:center;padding:10px 0;font-size:.8rem;color:#1A7A46;font-weight:700;">Berhasil! Cek inbox kamu.</div>
+        </div>
+      </div>
+
+      <!-- Mulai Berjualan: one-time WhatsApp/email update opt-in popup (A6) -->
+      <div id="mls-notify-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:520;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)mlsCloseNotifyPopup()">
+        <div style="background:#fff;border-radius:16px;padding:26px 24px 20px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.22);">
+          <div style="font-size:1.02rem;font-weight:800;color:#111;margin-bottom:6px;">Mau dikabari update produk?</div>
+          <div style="font-size:.8rem;color:#6B7280;margin-bottom:18px;line-height:1.5;">Kami kirim ringkasan produk berpotensi tinggi &amp; perubahan pasar penting lewat WhatsApp atau email.</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <a href="https://chat.whatsapp.com/larisid" target="_blank" rel="noopener" onclick="mlsCloseNotifyPopup()" style="display:flex;align-items:center;justify-content:center;gap:8px;background:#1FA855;color:#fff;border-radius:10px;padding:11px;font-size:.85rem;font-weight:700;text-decoration:none;font-family:inherit;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg>
+              Gabung Grup WhatsApp
+            </a>
+            <button onclick="mlsCloseNotifyPopup();document.getElementById('dash-email-modal').style.display='flex'" style="display:flex;align-items:center;justify-content:center;gap:8px;background:#fff;color:#B5202A;border:1.5px solid #F0CFC4;border-radius:10px;padding:11px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              Update via Email
+            </button>
+            <button onclick="mlsCloseNotifyPopup()" style="background:none;border:none;color:#9CA3AF;font-size:.78rem;font-weight:600;cursor:pointer;padding:4px;font-family:inherit;margin-top:2px;">Nanti saja</button>
+          </div>
         </div>
       </div>
 
@@ -7473,6 +7530,28 @@ html,body{overflow-x:clip;max-width:100%;}
               <p id="hbd-subtitle">Selamat datang kembali — berikut ringkasan produk kamu hari ini.</p>
             </div>
 
+            <!-- Yang Laku dari Kotamu (moved from Discover — icons enlarged as the focus) -->
+            <div class="ylk-card" id="ylk-card" style="display:none;">
+              <div class="ylk-head">
+                <div class="ylk-head-text">
+                  <div class="ylk-title">Yang Laku dari Kotamu</div>
+                  <div class="ylk-sub" id="ylk-sub">Kategori yang paling sering tembus untuk penjual baru di daerahmu.</div>
+                </div>
+                <select id="ylk-region" class="ylk-select" onchange="ylkOnRegionChange()" aria-label="Pilih kota">
+                  <option value="">Pilih kotamu…</option>
+                </select>
+              </div>
+              <div class="ylk-highlights" id="ylk-highlights"></div>
+              <div class="ylk-allcats" id="ylk-allcats" style="display:none;">
+                <label class="ylk-allcats-label" for="ylk-cat-select">Lihat kategori lain di kota ini</label>
+                <select id="ylk-cat-select" class="ylk-select" onchange="ylkOnCatSelectChange()" aria-label="Pilih kategori">
+                  <option value="">Pilih kategori…</option>
+                </select>
+                <div id="ylk-cat-detail"></div>
+              </div>
+              <div class="ylk-empty" id="ylk-empty" style="display:none;"></div>
+            </div>
+
             <!-- New user: start here -->
             <div id="hbd-new-user-panel" class="nu-empty nu-empty-compact" style="display:none;">
               <div class="nu-empty-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
@@ -7773,28 +7852,6 @@ html,body{overflow-x:clip;max-width:100%;}
               </div>
             </div>
 
-            <!-- Yang Laku dari Kotamu -->
-            <div class="ylk-card" id="ylk-card" style="display:none;">
-              <div class="ylk-head">
-                <div class="ylk-head-text">
-                  <div class="ylk-title">Yang Laku dari Kotamu</div>
-                  <div class="ylk-sub" id="ylk-sub">Kategori yang paling sering tembus untuk penjual baru di daerahmu.</div>
-                </div>
-                <select id="ylk-region" class="ylk-select" onchange="ylkOnRegionChange()" aria-label="Pilih kota">
-                  <option value="">Pilih kotamu…</option>
-                </select>
-              </div>
-              <div class="ylk-highlights" id="ylk-highlights"></div>
-              <div class="ylk-allcats" id="ylk-allcats" style="display:none;">
-                <label class="ylk-allcats-label" for="ylk-cat-select">Lihat kategori lain di kota ini</label>
-                <select id="ylk-cat-select" class="ylk-select" onchange="ylkOnCatSelectChange()" aria-label="Pilih kategori">
-                  <option value="">Pilih kategori…</option>
-                </select>
-                <div id="ylk-cat-detail"></div>
-              </div>
-              <div class="ylk-empty" id="ylk-empty" style="display:none;"></div>
-            </div>
-
             <!-- Naik Daun -->
             <div class="nd-card" id="nd-card" style="display:none;">
               <div class="nd-head">
@@ -8004,9 +8061,9 @@ html,body{overflow-x:clip;max-width:100%;}
                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
                 Kembali ke Daftar Produk
               </div>
-              <button id="dd-track-btn" class="dd-track-pill" onclick="ddToggleTrack()">
-                <svg id="dd-track-icon" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
-                <span id="dd-track-label">Lacak Produk</span>
+              <button id="dd-track-btn" class="dd-track-pill dd-track-pill--next" onclick="ddStartSelling()">
+                <svg id="dd-track-icon" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                <span id="dd-track-label">Next: Mulai Berjualan</span>
               </button>
             </div>
 
@@ -8215,14 +8272,14 @@ html,body{overflow-x:clip;max-width:100%;}
                   </div>
                 </div>
                 <div class="dd-simple-actions">
-                  <button type="button" class="dd-sact-sell" onclick="ddStartSelling()">
-                    <span class="dd-sact-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
-                    <span class="dd-sact-text"><div class="dd-sact-title">Mulai Berjualan</div><div class="dd-sact-sub">Siap sourcing &amp; jual produk ini</div></span>
-                    <span class="dd-sact-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
-                  </button>
                   <button type="button" class="dd-sact-full" onclick="ddExpandFull()">
                     <span class="dd-sact-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
                     <span class="dd-sact-text"><div class="dd-sact-title">Lihat Data Lengkap</div><div class="dd-sact-sub">Tren, kompetitor, keyword &amp; biaya</div></span>
+                    <span class="dd-sact-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+                  </button>
+                  <button type="button" class="dd-sact-sell" onclick="ddStartSelling()">
+                    <span class="dd-sact-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+                    <span class="dd-sact-text"><div class="dd-sact-title">Mulai Berjualan</div><div class="dd-sact-sub">Siap sourcing &amp; jual produk ini</div></span>
                     <span class="dd-sact-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
                   </button>
                   <div class="dd-sact-note">
@@ -9395,7 +9452,7 @@ html,body{overflow-x:clip;max-width:100%;}
               <div style="flex:1;min-width:220px;">
                 <div style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:900;font-size:1.55rem;color:#1A1A1A;line-height:1.2;margin-bottom:10px;">Tentang LarisID</div>
                 <div style="font-size:.9rem;color:#374151;line-height:1.75;margin-bottom:14px;">
-                  Saya pindah ke Bandung tahun 2023 dan langsung jatuh cinta dengan semangat wirausaha di sini. Tapi saya sadar satu hal — banyak penjual Shopee yang kesulitan membaca data dan menentukan produk mana yang benar-benar akan laku.
+                  Halo namaku Steven, Saya Asli Amerika.
                 </div>
                 <div style="font-size:.9rem;color:#374151;line-height:1.75;margin-bottom:14px;">
                   LarisID lahir dari masalah itu. Platform ini dirancang untuk membuat riset produk jadi mudah, cepat, dan terjangkau — sehingga siapa pun, dari penjual baru hingga yang sudah berpengalaman, bisa mengambil keputusan berbasis data.
@@ -12268,7 +12325,8 @@ function _ylkHlCard(badge, row, kind) {
     ? `<div class="ylk-cat-price">Naik ${Number(row.trend_delta).toFixed(1)} poin dalam 45 hari terakhir</div>` : '';
   return `<div class="ylk-hl-card">
     <div class="ylk-hl-badge" style="color:${clr}">${badge}</div>
-    <div class="ylk-cat-iconname">${_catIconImg(row.category)}<span class="ylk-cat-name">${row.category}</span></div>
+    <div class="ylk-hl-iconwrap">${_catIconImg(row.category, 40)}</div>
+    <div class="ylk-cat-name ylk-hl-name">${row.category}</div>
     <div class="ylk-cat-rate" style="color:${clr}">${rate}% penjual baru tembus</div>
     ${trendNote}
     <button class="ylk-hl-cta" onclick="ylkSeeItems('${row.category.replace(/'/g, "\\'")}')">Lihat Produk →</button>
@@ -12295,7 +12353,7 @@ function ylkOnCatSelectChange() {
   if (!row) { detail.innerHTML = '<div class="ylk-empty">Data tidak tersedia.</div>'; return; }
   const rate = Number(row.breakout_rate) || 0;
   detail.innerHTML = `<div class="ylk-cat">
-    <div class="ylk-cat-top"><div class="ylk-cat-iconname">${_catIconImg(row.category)}<span class="ylk-cat-name">${row.category}</span></div><span class="ylk-cat-rate">${rate}%</span></div>
+    <div class="ylk-cat-top"><div class="ylk-cat-iconname">${_catIconImg(row.category, 26)}<span class="ylk-cat-name">${row.category}</span></div><span class="ylk-cat-rate">${rate}%</span></div>
     <div class="ylk-cat-price">${row.new_items} produk baru dianalisis · median harga pemenang Rp ${Number(row.median_winner_price || 0).toLocaleString('id-ID')}</div>
     <button class="ylk-hl-cta" onclick="ylkSeeItems('${cat.replace(/'/g, "\\'")}')">Lihat Produk →</button>
   </div>`;
@@ -14874,7 +14932,56 @@ function initTopbarDate() {
 document.addEventListener('click', () => {
   const m = document.getElementById('dash-topbar-menu');
   if (m) m.classList.remove('open');
+  const n = document.getElementById('dash-notif-menu');
+  if (n) n.classList.remove('open');
 });
+
+// A8: notifications bell — was a dead placeholder. Opens a small dropdown that
+// shows recent credit activity + shortcuts to tracked products and the
+// WhatsApp/Email update opt-in.
+function toggleNotifMenu(force) {
+  const m = document.getElementById('dash-notif-menu');
+  if (!m) return;
+  const willOpen = (typeof force === 'boolean') ? force : !m.classList.contains('open');
+  document.getElementById('dash-topbar-menu')?.classList.remove('open');
+  m.classList.toggle('open', willOpen);
+  if (willOpen) renderNotifMenu();
+}
+async function renderNotifMenu() {
+  const list = document.getElementById('dash-notif-list');
+  if (!list) return;
+  list.innerHTML = '<div style="padding:10px 14px;font-size:.74rem;color:#9CA3AF;">Memuat…</div>';
+  let rows = [];
+  try {
+    if (_supabase && currentUser) {
+      const { data } = await _supabase.from('credit_events')
+        .select('type,amount,keyword,created_at').order('created_at', { ascending: false }).limit(6);
+      rows = data || [];
+    }
+  } catch (_) {}
+  if (!rows.length) {
+    list.innerHTML = '<div style="padding:10px 14px;font-size:.74rem;color:#9CA3AF;">Belum ada notifikasi baru.</div>';
+    return;
+  }
+  const descOf = ev => ev.type === 'earn_monthly' ? 'Kredit bulanan diberikan'
+    : ev.type === 'earn_search' ? 'Kredit dari pencarian extension'
+    : ev.type === 'earn_referral' ? 'Bonus ajak teman'
+    : ev.type === 'earn_chest' ? 'Hadiah peti mingguan'
+    : (ev.type || '').startsWith('spend') ? `Buka data ${ev.keyword || 'produk'}`
+    : (ev.type || 'Aktivitas');
+  list.innerHTML = rows.map(ev => {
+    const earn = (ev.amount || 0) > 0;
+    const amt = `${earn ? '+' : ''}${ev.amount} kredit`;
+    return `<div class="dash-topbar-menu-item" style="justify-content:space-between;cursor:default;">
+      <span style="font-size:.74rem;color:#374151;">${descOf(ev)}</span>
+      <span style="font-size:.72rem;font-weight:700;color:${earn ? '#059669' : '#B5202A'};white-space:nowrap;">${amt}</span>
+    </div>`;
+  }).join('');
+}
+function mlsForceNotifyPopup() {
+  try { localStorage.removeItem('larisid_mls_notify_v1'); } catch (_) {}
+  mlsMaybeShowNotifyPopup();
+}
 
 async function openProfile() {
   if (!currentUser) { openAuthModal('login'); return; }
@@ -15042,6 +15149,8 @@ function switchDashView(view) {
   // while the (static) filter panel is visible.
   if (view === 'product-database') { try { _initPdbCats(); } catch (_) {} }
   if (view === 'opportunity-finder') { try { _initOfCats(); } catch (_) {} }
+  // YLK ("Yang Laku dari Kotamu") now lives on the Dashboard — init it when shown.
+  if (view === 'dashboard') { try { if (typeof ylkInit === 'function') ylkInit(); } catch (_) {} }
 
   // Update topbar title
   try { cohortSyncDashTopbarTitle(view); } catch (_) {}
@@ -21245,6 +21354,37 @@ function apAggregateKeywordWeekly(historyRows, defaultCategory) {
   const months = [...monthMap.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([, v]) => v);
   return { weeks, months, meta: { anyEstimated, listingCount, scrapeStart: AP_SCRAPE_START } };
 }
+// A7: market-size fallback for Permintaan Pasar. Per-listing week-over-week deltas
+// need ≥3 scrape days, but most listings only have 1-2 (the weekly scrape pipeline
+// is sparse), so the delta path is usually empty and the chart looked broken. This
+// aggregates total market omset/units per Monday-week from the latest scrape of each
+// listing that week — a cumulative demand-level proxy. Flagged meta.snapshot=true.
+function _apSnapshotWeekly(historyRows) {
+  const seen = new Map(); // week|listing -> latest row that week
+  for (const r of historyRows) {
+    if (!r.scraped_at) continue;
+    const wk = _apWKey(new Date(r.scraped_at));
+    const lk = `${wk}|${r.item_id}_${r.shop_id}`;
+    const cur = seen.get(lk);
+    if (!cur || new Date(r.scraped_at) > new Date(cur.scraped_at)) seen.set(lk, r);
+  }
+  const weekMap = new Map();
+  for (const r of seen.values()) {
+    const d = new Date(r.scraped_at);
+    const key = _apWKey(d);
+    if (!weekMap.has(key)) weekMap.set(key, { label: _apWLabel(d), units: 0, omset: 0, firstDate: _apMondayOf(d) });
+    const wk = weekMap.get(key);
+    const sold = r.total_sold || 0;
+    wk.units += sold;
+    wk.omset += sold * (r.price || 0);
+  }
+  const epochMon = _apMondayOf(new Date(AP_SCRAPE_START + 'T12:00:00'));
+  return [...weekMap.values()]
+    .filter(w => w.firstDate >= epochMon)
+    .sort((a, b) => a.firstDate - b.firstDate)
+    .map(w => ({ label: w.label, units: Math.round(w.units), omset: Math.round(w.omset), firstDate: w.firstDate }));
+}
+
 async function apLoadKeywordDemand(kw, category) {
   if (!_supabase || !kw) return { weeks: [], months: [], meta: {} };
   try {
@@ -21256,7 +21396,15 @@ async function apLoadKeywordDemand(kw, category) {
       .order('scraped_at', { ascending: true })
       .limit(12000);
     if (error) throw error;
-    return apAggregateKeywordWeekly(data || [], category);
+    const agg = apAggregateKeywordWeekly(data || [], category);
+    if (agg.weeks && agg.weeks.length >= 2) return agg;
+    // Delta data too thin → fall back to a cumulative market-size snapshot.
+    const snap = _apSnapshotWeekly(data || []);
+    if (snap.length > (agg.weeks ? agg.weeks.length : 0)) {
+      const listingCount = new Set((data || []).map(r => `${r.item_id}_${r.shop_id}`)).size;
+      return { weeks: snap, months: [], meta: { snapshot: true, listingCount, scrapeStart: AP_SCRAPE_START } };
+    }
+    return agg;
   } catch (e) {
     console.warn('apLoadKeywordDemand:', e);
     return { weeks: [], months: [], meta: {} };
@@ -21412,7 +21560,9 @@ function ddRenderAnalisa() {
     if (sub) {
       const nW = demand.weeks.length;
       sub.textContent = nW
-        ? `4 minggu terakhir + prediksi · agregat ${demand.meta.listingCount || 0} listing di keyword`
+        ? (demand.meta.snapshot
+            ? `Ukuran pasar per minggu (kumulatif) · ${demand.meta.listingCount || 0} listing di keyword`
+            : `4 minggu terakhir + prediksi · agregat ${demand.meta.listingCount || 0} listing di keyword`)
         : 'Belum cukup data scrape mingguan untuk keyword ini';
     }
     apRenderDemand();
@@ -21443,7 +21593,19 @@ function apRenderDemand(loading) {
     return;
   }
 
-  const weeklyRowsFilled = weekly.slice(-4);
+  // A5/A7: anchor to the current Monday so the window rolls forward weekly
+  // (this Monday + previous 3), falling back to the last 4 available weeks.
+  const _winEnd = _apMondayOf(new Date());
+  const _winMondays = [3, 2, 1, 0].map(i => new Date(_winEnd.getTime() - i * 7 * 86400000));
+  const _byWk = new Map(weekly.map(w => [_apWKey(w.firstDate), w]));
+  const _anchored = _winMondays.map(m => {
+    const hit = _byWk.get(_apWKey(m));
+    return hit ? { ...hit, firstDate: m, label: _apWLabel(m) }
+               : { label: _apWLabel(m), units: 0, omset: 0, firstDate: m };
+  });
+  const weeklyRowsFilled = _anchored.some(w => _byWk.has(_apWKey(w.firstDate)))
+    ? _anchored
+    : weekly.slice(-4);
   const labels = weeklyRowsFilled.map(w => w.label);
   // Real series arrays stay SHORTER than `labels` (no trailing null) so the
   // red/blue "actual" lines have nothing to plot at the forecast index.
@@ -22054,6 +22216,10 @@ function ddToggleTrack() {
 }
 
 function ddUpdateTrackBtn(listing) {
+  // A6: the Deep Dive top-right pill was repurposed into the "Next: Mulai Berjualan"
+  // CTA — it no longer reflects tracking state. Tracking lives in My Toko now.
+  return;
+  // eslint-disable-next-line no-unreachable
   const btn   = document.getElementById('dd-track-btn');
   const label = document.getElementById('dd-track-label');
   const icon  = document.getElementById('dd-track-icon');
@@ -23336,7 +23502,21 @@ async function ddLoadTrendHistory(listing) {
       return;
     }
 
-    const weeklyRowsFilled = weeklyRows.slice(-4);
+    // A5: anchor the window to the CURRENT Monday so the chart rolls forward every
+    // week — show this Monday + the previous 3 Mondays (gaps render as 0), then a
+    // next-Monday forecast point below. Falls back to the last 4 data weeks if the
+    // current 4-week window has no scrape data at all (pipeline lag).
+    const _winEnd = ddTrendMondayOf(new Date());
+    const _winMondays = [3, 2, 1, 0].map(i => new Date(_winEnd.getTime() - i * 7 * 86400000));
+    const _byWk = new Map(weeklyRows.map(w => [ddTrendWKey(w.firstDate), w]));
+    const _anchored = _winMondays.map(m => {
+      const hit = _byWk.get(ddTrendWKey(m));
+      return hit ? { ...hit, firstDate: m, label: ddTrendWLabel(m) }
+                 : { label: ddTrendWLabel(m), units: 0, omset: 0, firstDate: m };
+    });
+    const weeklyRowsFilled = _anchored.some(w => _byWk.has(ddTrendWKey(w.firstDate)))
+      ? _anchored
+      : weeklyRows.slice(-4);
     const labels = weeklyRowsFilled.map(w => w.label);
     // Real series arrays stay SHORTER than `labels` (no trailing null) so the
     // red/blue "actual" lines have nothing to plot at the forecast index — only the
@@ -25048,8 +25228,9 @@ function lpRenderPreview(p) {
 function _catSlug(c) {
   return (c || '').toLowerCase().replace(/\s*&\s*/g, '-').replace(/\s+/g, '-');
 }
-function _catIconImg(c) {
-  return `<img src="/images/onboarding/categories/${_catSlug(c)}.png" alt="" width="18" height="18" decoding="async" style="flex-shrink:0;object-fit:contain;" onerror="this.style.display='none'">`;
+function _catIconImg(c, size) {
+  const s = size || 18;
+  return `<img src="/images/onboarding/categories/${_catSlug(c)}.png" alt="" width="${s}" height="${s}" decoding="async" style="flex-shrink:0;object-fit:contain;" onerror="this.style.display='none'">`;
 }
 
 // Idempotent: re-renders whenever the grid is present but empty. Switching the
@@ -30136,6 +30317,22 @@ function ddStartSelling() {
   if (listing && listing.item_id != null && typeof mlsSelectProduct === 'function') {
     mlsSelectProduct(`${listing.item_id}_${listing.shop_id}`, listing);
   }
+  try { mlsMaybeShowNotifyPopup(); } catch (_) {}
+}
+
+// A6: one-time WhatsApp/email update opt-in popup, shown the first time a user
+// reaches "Mulai Berjualan". Guarded once-per-browser via localStorage.
+function mlsCloseNotifyPopup() {
+  const m = document.getElementById('mls-notify-modal');
+  if (m) m.style.display = 'none';
+}
+function mlsMaybeShowNotifyPopup() {
+  try {
+    if (localStorage.getItem('larisid_mls_notify_v1')) return;
+    localStorage.setItem('larisid_mls_notify_v1', '1');
+  } catch (_) {}
+  const m = document.getElementById('mls-notify-modal');
+  if (m) setTimeout(() => { m.style.display = 'flex'; }, 600);
 }
 
 function journeyOpenMoreTools() {
@@ -30213,13 +30410,17 @@ function journeyApplyDeepDiveChrome() {
 // value already on screen. Honors prefers-reduced-motion. `fmt` formats each
 // frame's value into display text; optional `onFrame` mirrors the value onto a
 // companion visual (e.g. the score bar). Pass target=null for non-numeric "—".
-function ddAnimateNum(el, target, fmt, fromZero, onFrame) {
+function ddAnimateNum(el, target, fmt, fromZero, onFrame, delay) {
   if (!el) return;
   if (el._cuRaf) { cancelAnimationFrame(el._cuRaf); el._cuRaf = null; }
+  if (el._cuDelay) { clearTimeout(el._cuDelay); el._cuDelay = null; }
+  const box = el.closest ? el.closest('.dd-smetric') : null;
+  const clearBoxState = () => { if (box) box.classList.remove('dd-smetric--pending', 'dd-smetric--counting'); };
   if (target == null || !Number.isFinite(target)) {
     el._cuVal = null;
     el.textContent = fmt(target);
     if (onFrame) onFrame(0);
+    clearBoxState();
     return;
   }
   const start = fromZero ? 0 : (Number.isFinite(el._cuVal) ? el._cuVal : 0);
@@ -30228,23 +30429,48 @@ function ddAnimateNum(el, target, fmt, fromZero, onFrame) {
     el._cuVal = target;
     el.textContent = fmt(target);
     if (onFrame) onFrame(target);
+    clearBoxState();
     return;
   }
-  const dur = 750, t0 = performance.now();
-  const ease = t => 1 - Math.pow(1 - t, 3); // easeOutCubic
-  const step = now => {
-    const t = Math.min(1, (now - t0) / dur);
-    const v = start + (target - start) * ease(t);
-    el._cuVal = v;
-    el.textContent = fmt(v);
-    if (onFrame) onFrame(v);
-    if (t < 1) { el._cuRaf = requestAnimationFrame(step); }
-    else { el._cuVal = target; el.textContent = fmt(target); if (onFrame) onFrame(target); el._cuRaf = null; }
+  const runCount = () => {
+    if (box) { box.classList.remove('dd-smetric--pending'); box.classList.add('dd-smetric--counting'); }
+    const dur = 750, t0 = performance.now();
+    const ease = t => 1 - Math.pow(1 - t, 3); // easeOutCubic
+    const step = now => {
+      const t = Math.min(1, (now - t0) / dur);
+      const v = start + (target - start) * ease(t);
+      el._cuVal = v;
+      el.textContent = fmt(v);
+      if (onFrame) onFrame(v);
+      if (t < 1) { el._cuRaf = requestAnimationFrame(step); }
+      else { el._cuVal = target; el.textContent = fmt(target); if (onFrame) onFrame(target); el._cuRaf = null; if (box) box.classList.remove('dd-smetric--counting'); }
+    };
+    el._cuRaf = requestAnimationFrame(step);
   };
-  el._cuRaf = requestAnimationFrame(step);
+  // A3: stagger — start blank (box pending) and begin counting after `delay` ms.
+  if (delay && delay > 0) {
+    el.textContent = '';
+    if (onFrame) onFrame(0);
+    if (box) box.classList.add('dd-smetric--pending');
+    el._cuDelay = setTimeout(() => { el._cuDelay = null; runCount(); }, delay);
+  } else {
+    runCount();
+  }
 }
 
 let _ddVerdictKey = null; // identifies the product whose verdict is on screen
+
+// A3: reveal a non-counting metric box (komp dots, peluang bar, review wall) on the
+// same left-to-right stagger as the counting numbers. `fn` populates the box.
+function _ddRevealMetric(box, delay, stagger, fn) {
+  if (!stagger) { fn(); return; }
+  if (box) box.classList.add('dd-smetric--pending');
+  setTimeout(() => {
+    if (box) { box.classList.remove('dd-smetric--pending'); box.classList.add('dd-smetric--counting'); }
+    fn();
+    setTimeout(() => { if (box) box.classList.remove('dd-smetric--counting'); }, 750);
+  }, delay);
+}
 
 function ddRenderBeginnerVerdict(p) {
   if (!p) return;
@@ -30254,12 +30480,24 @@ function ddRenderBeginnerVerdict(p) {
   const _vKey = (p.id != null) ? p.id : (p.name || null);
   const _fromZero = _vKey !== _ddVerdictKey;
   _ddVerdictKey = _vKey;
+  // A3: on a fresh product open, reveal the 6 metric boxes one at a time
+  // left-to-right (~250ms apart, ~2s total). Streamed updates glide live.
+  const _SD = 250;
+  const _reduceM = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const _stagger = _fromZero && !_reduceM;
+  const _dly = i => _stagger ? i * _SD : 0;
+  if (_stagger) {
+    document.querySelectorAll('#dd-simple-metrics .dd-smetric').forEach(b => {
+      b.classList.add('dd-smetric--pending');
+      b.classList.remove('dd-smetric--counting');
+    });
+  }
   const heroNum = parseInt((document.getElementById('dd-score-num')?.textContent || '').replace(/[^\d]/g, ''), 10);
   const score = Math.round(Number.isFinite(heroNum) ? heroNum : (p.score || 0));
   const lslbl = listingScoreLabel(score);
 
-  ddRenderOddsTile(p);
-  ddRenderReviewWallTile(p);
+  _ddRevealMetric(document.getElementById('dd-s-odds')?.closest('.dd-smetric'), _dly(4), _stagger, () => ddRenderOddsTile(p));
+  _ddRevealMetric(document.getElementById('dd-s-wall')?.closest('.dd-smetric'), _dly(5), _stagger, () => ddRenderReviewWallTile(p));
 
   const compBadge = document.getElementById('dd-hero-comp-badge');
   const compLbl = document.getElementById('dd-hero-comp-label');
@@ -30281,7 +30519,8 @@ function ddRenderBeginnerVerdict(p) {
   ddAnimateNum(sNum, score > 0 ? score : null,
     v => v == null ? '—' : String(Math.round(v)),
     _fromZero,
-    v => { if (sBar) sBar.style.width = Math.min(100, Math.max(0, Math.round(v || 0))) + '%'; });
+    v => { if (sBar) sBar.style.width = Math.min(100, Math.max(0, Math.round(v || 0))) + '%'; },
+    _dly(0));
   if (sHint) {
     sHint.textContent = score >= 75
       ? 'Peluang tinggi — pasar masih terbuka'
@@ -30302,7 +30541,7 @@ function ddRenderBeginnerVerdict(p) {
   if (sOmset) {
     if (_omsetRaw != null && _omsetRaw !== '') {
       const omsetTarget = parseFloat(_omsetRaw);
-      ddAnimateNum(sOmset, omsetTarget > 0 ? omsetTarget : null, v => v == null ? '—' : _fmtOmsetV(v), _fromZero);
+      ddAnimateNum(sOmset, omsetTarget > 0 ? omsetTarget : null, v => v == null ? '—' : _fmtOmsetV(v), _fromZero, null, _dly(1));
     } else {
       sOmset.textContent = omsetTxt; // no raw value available → show hero text as-is
     }
@@ -30316,25 +30555,27 @@ function ddRenderBeginnerVerdict(p) {
   const sKomp = document.getElementById('dd-s-komp');
   const sKompDots = document.getElementById('dd-s-komp-dots');
   const sKompHint = document.getElementById('dd-s-komp-hint');
-  if (sKomp) {
-    sKomp.textContent = kompTxt;
-    sKomp.className = 'dd-smetric-value' + (
-      kompTxt === 'Rendah' ? ' komp-low' : kompTxt === 'Sedang' ? ' komp-med' : kompTxt === 'Tinggi' ? ' komp-high' : ''
-    );
-  }
-  if (sKompDots) {
-    const filled = kompTxt === 'Rendah' ? 2 : kompTxt === 'Sedang' ? 3 : kompTxt === 'Tinggi' ? 4 : 0;
-    sKompDots.innerHTML = Array.from({ length: 5 }, (_, i) =>
-      `<span class="dd-smetric-dot${i < filled ? ' on' : ''}"></span>`
-    ).join('');
-  }
-  if (sKompHint && kompSub && kompSub !== 'Memuat data…') sKompHint.textContent = kompSub;
+  _ddRevealMetric(sKomp?.closest('.dd-smetric'), _dly(2), _stagger, () => {
+    if (sKomp) {
+      sKomp.textContent = kompTxt;
+      sKomp.className = 'dd-smetric-value' + (
+        kompTxt === 'Rendah' ? ' komp-low' : kompTxt === 'Sedang' ? ' komp-med' : kompTxt === 'Tinggi' ? ' komp-high' : ''
+      );
+    }
+    if (sKompDots) {
+      const filled = kompTxt === 'Rendah' ? 2 : kompTxt === 'Sedang' ? 3 : kompTxt === 'Tinggi' ? 4 : 0;
+      sKompDots.innerHTML = Array.from({ length: 5 }, (_, i) =>
+        `<span class="dd-smetric-dot${i < filled ? ' on' : ''}"></span>`
+      ).join('');
+    }
+    if (sKompHint && kompSub && kompSub !== 'Memuat data…') sKompHint.textContent = kompSub;
+  });
 
   const sPrice = document.getElementById('dd-s-price');
   const sThumb = document.getElementById('dd-s-price-thumb');
   ddAnimateNum(sPrice, price > 0 ? price : null,
     v => v == null ? '—' : `Rp ${Math.round(v).toLocaleString('id-ID')}`,
-    _fromZero);
+    _fromZero, null, _dly(3));
   if (sThumb) {
     let left = 50;
     const prices = (_ddKwRows || []).map(r => r.price || 0).filter(v => v > 0).sort((a, b) => a - b);
@@ -30456,7 +30697,9 @@ function nuScheduleHint(view) {
   if (_nuOnb.visible || _nuOnb.payoff) return;
   if (!journeyHintAllowed()) return;
   clearTimeout(_nuHintTimer);
-  const delays = { dashboard: 3000, discover: 2500, deepdive: 4000 };
+  // Deep-dive popup hints intentionally removed for new users (A2): omit 'deepdive'
+  // so no hint timer is scheduled when landing on the Deep Dive simple page.
+  const delays = { dashboard: 3000, discover: 2500 };
   const delay = delays[view];
   if (!delay) return;
   _nuHintTimer = setTimeout(() => {
