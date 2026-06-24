@@ -14947,12 +14947,12 @@ function _mlsAiDayKey() { return 'larisid_ai_cr_' + new Date().toISOString().sli
 function _mlsAiCreditsToday() { return parseInt(localStorage.getItem(_mlsAiDayKey()) || '0', 10); }
 function _mlsAiAddCreditsToday(n) { try { localStorage.setItem(_mlsAiDayKey(), String(_mlsAiCreditsToday() + n)); } catch (_) {} }
 function _mlsAiCostTier(question, reply) {
-  const text = String(reply || ''), len = text.length, q = String(question || '');
-  const hasNum = /\d/.test(text), hasStat = /%|persen|\brb\b|\bjt\b|rp/i.test(text);
+  const len = String(reply || '').length, q = String(question || '');
+  // Heavier = analysis/strategy/comparison questions (more thought than a quick fact).
   const heavy = /(bandingk|analis|strategi|rekomendasi|saran|hitung|proyeksi|forecast|untung|margin|kalkulasi|breakdown|kenapa|mengapa|sebaikny)/i.test(q);
-  let tier = 1;
-  if (len > 150 || (hasNum && hasStat) || heavy || q.length > 90) tier = 2;
-  if (len > 280 || (heavy && hasNum && hasStat)) tier = 3;
+  let tier = 1;                                 // short factual answer
+  if (len > 140 || heavy || q.length > 90) tier = 2;   // longer / analytical
+  if (len > 260 || (heavy && len > 140)) tier = 3;      // deep multi-factor answer
   return Math.min(MLS_AI_MAX_TIER, Math.max(1, tier));
 }
 

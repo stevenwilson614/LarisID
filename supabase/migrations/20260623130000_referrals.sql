@@ -44,7 +44,7 @@ begin
   select code into v_code from public.referral_codes where user_id = auth.uid();
   if v_code is not null then return v_code; end if;
   loop
-    v_code := upper(substr(translate(encode(gen_random_bytes(6), 'base64'), '+/=', 'XYZ'), 1, 7));
+    v_code := upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8));
     begin
       insert into public.referral_codes(user_id, code) values (auth.uid(), v_code);
       return v_code;
