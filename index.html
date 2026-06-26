@@ -23287,8 +23287,14 @@ function ddRender(p) {
   ddUpdateShopAgeChart(_ddKwRows);
 
   ddInitCatPerfChart(p);
+  // When the keyword context is already loaded (e.g. ddRender re-runs on the "Lihat
+  // Data Lengkap" expand, which destroys + recreates the price-distribution chart as
+  // an empty scatter), re-apply the peer-derived data so Distribusi Harga, the price
+  // range bar, shop-age, category performance and AI insights repopulate instead of
+  // staying blank. On a fresh open _ddKwRows is [] so this is skipped, and
+  // ddLoadKeywordContext fills everything once the Supabase fetch resolves.
   if (_ddKwRows?.length && (p._listing || _ddKwListing)) {
-    void ddLoadCatPerfChart(p._listing || _ddKwListing, _ddKwRows);
+    ddUpdateRingkasanFromKw(_ddKwRows, _ddKwTotal, p._listing || _ddKwListing);
   }
 
   // competitor table — built from real peer listings (_ddKwRows populated by ddLoadKeywordContext)
@@ -30840,6 +30846,12 @@ function ddExpandFull() {
   _ddExpanded = true;
   journeyApplyDeepDiveChrome();
   if (_ddCurrentP && typeof ddRefreshRingkasan === 'function') ddRefreshRingkasan();
+  // Expanding reveals the hero cards, tabs and data rows above the button, so the
+  // viewport would otherwise stay parked mid-page where the button was. Jump back to
+  // the top of the freshly-expanded deep dive (covers the desktop .dash-content
+  // scroller and the mobile window scroller).
+  document.getElementById('dash-content')?.scrollTo(0, 0);
+  window.scrollTo(0, 0);
 }
 
 // "Mulai Berjualan" — jump to the AI selling surface scoped to the current product.
@@ -30934,7 +30946,10 @@ function journeyApplyDeepDiveChrome() {
       el.style.display = hide;
     });
   }
-  if (trackBtn) trackBtn.style.display = '';
+  // Hide the "Next: Mulai Berjualan" pill on the quick (simple/verdict) deep-dive
+  // page — it duplicates the big "Mulai Berjualan" action button shown there. Keep
+  // it on the full-data view as the forward CTA.
+  if (trackBtn) trackBtn.style.display = simple ? 'none' : '';
 }
 
 // Smoothly counts a Deep Dive simple-view metric from its current value to a
