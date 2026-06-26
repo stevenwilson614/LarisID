@@ -12781,6 +12781,20 @@ async function _authOnSignIn(session) {
     session.user = currentUser;
     _authSave(session);
   }
+  // Clarity: tie session replays to this user_id (enables per-signup replay/funnels), and count
+  // new signups from ANY auth path incl. Google OAuth (email/pass path also fires at submit time;
+  // the sessionStorage flag dedupes so a single signup is never counted twice).
+  if (window.clarity) {
+    try {
+      clarity('identify', currentUser.id, undefined, undefined, currentUser.email || undefined);
+      const isNewSignup = !!currentUser.created_at && currentUser.created_at === currentUser.last_sign_in_at;
+      if (isNewSignup && !sessionStorage.getItem('_lid_signup_evt')) {
+        sessionStorage.setItem('_lid_signup_evt', '1');
+        clarity('event', 'signup_success');
+        clarity('set', 'signed_up', 'true');
+      }
+    } catch (_) {}
+  }
   // Route away from marketing/landing immediately on refresh — never wait on network calls first.
   if (!document.body.classList.contains('in-dashboard')) void openProfile();
   try {
@@ -13052,7 +13066,7 @@ async function submitAuth() {
       if (!r.ok || d.error_code || d.error || d.code) { showErr(d.msg || d.error_description || d.error || 'Daftar gagal. Coba lagi.'); return; }
       // Existing-email signups return 200 with an empty identities array (enumeration guard).
       if (Array.isArray(d.identities) && d.identities.length === 0) { showErr('Email sudah terdaftar. Coba login.'); return; }
-      if (window.clarity) { try { clarity('event', 'signup_success'); clarity('set', 'signed_up', 'true'); } catch (_) {} }
+      if (window.clarity) { try { sessionStorage.setItem('_lid_signup_evt', '1'); clarity('event', 'signup_success'); clarity('set', 'signed_up', 'true'); } catch (_) {} }
       // Email confirmations OFF → Supabase returns a session immediately; log the user straight in.
       if (d.access_token) { _authSave(d); closeAuthModal(); void _authOnSignIn(d).catch(() => {}); return; }
       // Otherwise a confirmation email was sent.
