@@ -1,0 +1,19 @@
+{
+  "name": "LarisID — Riset Produk Shopee",
+  "short_name": "LarisID",
+  "description": "Riset produk Shopee 100% gratis untuk seller Indonesia: data pasar nyata, Viability Score, Deep Dive & AI.",
+  "lang": "id",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#B5202A",
+  "icons": [
+    {
+      "src": "/images/brand/appicon-bird.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

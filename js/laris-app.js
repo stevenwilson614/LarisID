@@ -4673,7 +4673,7 @@ function renderPageTitleEl(el, view, forceText) {
   const alt = VIEW_TITLES[view] || view || forceText || '';
   if (slug) {
     const topbar = el.classList.contains('dash-topbar-title') || el.classList.contains('dash-topbar-view-page');
-    el.innerHTML = `<img class="page-title-img${topbar ? ' page-title-img--topbar' : ''}" src="/images/titles/${slug}.png" alt="${alt.replace(/"/g, '&quot;')}" decoding="async">`;
+    el.innerHTML = `<img class="page-title-img${topbar ? ' page-title-img--topbar' : ''}" src="/images/titles/${slug}.webp" alt="${alt.replace(/"/g, '&quot;')}" decoding="async">`;
     el.classList.add('is-page-title-img');
   } else {
     el.textContent = forceText || alt;

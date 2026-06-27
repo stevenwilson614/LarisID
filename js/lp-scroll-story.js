@@ -41,7 +41,7 @@
       var WATCH_FRAME_COUNT = 24;
       var WATCH_FRAMES = [];
       for (var fi = 1; fi <= WATCH_FRAME_COUNT; fi++) {
-        WATCH_FRAMES.push('/images/story/watch-frames-nobg/frame_' + String(fi).padStart(3, '0') + '.png');
+        WATCH_FRAMES.push('/images/story/watch-frames-nobg/frame_' + String(fi).padStart(3, '0') + '.webp');
       }
       var watchImg = qs('.hero-watch-img');
       var spinStart = 2.15;
