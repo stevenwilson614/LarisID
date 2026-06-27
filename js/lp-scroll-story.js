@@ -52,7 +52,16 @@
         if (!watchImg) return;
         watchImg.src = WATCH_FRAMES[Math.max(0, Math.min(WATCH_FRAME_COUNT - 1, idx))];
       }
-      WATCH_FRAMES.forEach(function (src) { var im = new Image(); im.src = src; });
+      var _watchLoaded = {};
+      function preloadWatchFrame(idx) {
+        var i = Math.max(0, Math.min(WATCH_FRAME_COUNT - 1, idx));
+        if (_watchLoaded[i]) return;
+        _watchLoaded[i] = true;
+        var im = new Image();
+        im.src = WATCH_FRAMES[i];
+      }
+      preloadWatchFrame(0);
+      preloadWatchFrame(1);
 
       gsap.set(ROOT + ' .hero-watch', { left: '50%', top: '50%', xPercent: -50, yPercent: -50, autoAlpha: 0 });
       gsap.set(ROOT + ' .hero-watch-inner', { scale: 0.26, rotateY: 0, rotateX: 0, transformOrigin: '50% 50%' });
@@ -114,10 +123,12 @@
       }
 
       function updateWatchFrame(time) {
-        if (time < spinStart) { setWatchFrame(0); return; }
+        if (time < spinStart) { setWatchFrame(0); preloadWatchFrame(1); return; }
         if (time > spinEnd) { setWatchFrame(WATCH_FRAME_COUNT - 1); return; }
         var p = (time - spinStart) / (spinEnd - spinStart);
-        setWatchFrame(Math.min(WATCH_FRAME_COUNT - 1, Math.floor(p * WATCH_FRAME_COUNT)));
+        var frameIdx = Math.min(WATCH_FRAME_COUNT - 1, Math.floor(p * WATCH_FRAME_COUNT));
+        setWatchFrame(frameIdx);
+        preloadWatchFrame(frameIdx + 1);
       }
 
       placeWatchOnCard();
