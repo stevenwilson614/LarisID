@@ -130,7 +130,19 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#B5202A">
 <link rel="preload" href="/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="/js/laris-app.js" as="script">
+<script>
+  // Preload the ~1.2MB app bundle only for returning signed-in users. First-time
+  // visitors (60% mobile) need that bandwidth for the landing LCP instead; the
+  // deferred <script> at the end of <body> still loads it for everyone.
+  try {
+    var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
+    if (_lidAuth && _lidAuth.access_token) {
+      var _lidPre = document.createElement('link');
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js';
+      document.head.appendChild(_lidPre);
+    }
+  } catch (_) {}
+</script>
 <link rel="stylesheet" href="/fonts/laris-fonts.css">
 <script src="/js/perf-loader.js"></script>
 
@@ -186,6 +198,10 @@
 
 <!-- Microsoft Clarity — deferred until after load to protect LCP/INP -->
 <script type="text/javascript">
+  // The queue stub exists from parse time so early events (identify + signup_success
+  // on the OAuth return fire well before load+idle) are queued, never dropped;
+  // the network tag below drains the queue when it finally loads.
+  window.clarity = window.clarity || function () { (window.clarity.q = window.clarity.q || []).push(arguments); };
   window.addEventListener('load', function () {
     var startClarity = function () {
       (function(c,l,a,r,i,t,y){

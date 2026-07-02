@@ -7,6 +7,41 @@
 //  GRANT EXECUTE ON FUNCTION public.get_product_catalog() TO anon, authenticated;
 // ════════════════════════════════════════════════════════════
 
+// Clarity is network-deferred until load+idle to protect LCP, so window.clarity
+// may not exist yet when early code (e.g. the OAuth-return sign-in path) fires
+// events. This ensures the official queue stub exists first — the real tag
+// drains .q when it arrives — so events are queued instead of dropped.
+// (Launch week Jul 2026: only 2 of 27 real signups reached Clarity this way.)
+function _clarity() {
+  const w = window;
+  if (!w.clarity) w.clarity = function () { (w.clarity.q = w.clarity.q || []).push(arguments); };
+  try { w.clarity.apply(w, arguments); } catch (_) {}
+}
+
+// First-touch acquisition attribution, captured at script eval BEFORE any OAuth
+// round-trip rewrites document.referrer to accounts.google.com (which hid the
+// true source for most of the launch cohort). Read back in _authOnSignIn and
+// attached to the signup event (Clarity tag + activity_events row).
+(function _lidCaptureAttribution() {
+  try {
+    const KEY = '_lid_attr_v1';
+    if (localStorage.getItem(KEY)) return; // first touch wins
+    const ref = document.referrer || '';
+    if (/accounts\.google\.com/.test(ref)) return; // OAuth bounce, not a source
+    const q = new URLSearchParams(location.search);
+    const attr = {
+      referrer: ref || '(direct)',
+      utm_source: q.get('utm_source') || '',
+      utm_medium: q.get('utm_medium') || '',
+      utm_campaign: q.get('utm_campaign') || '',
+      ref_code: q.get('ref') || '',
+      landing: location.pathname + location.search,
+      ts: new Date().toISOString(),
+    };
+    localStorage.setItem(KEY, JSON.stringify(attr));
+  } catch (_) {}
+})();
+
 async function larisEnsureChart() {
   if (typeof Chart !== 'undefined') return;
   if (typeof ensureChartJs === 'function') await ensureChartJs();
@@ -1907,17 +1942,28 @@ async function _authOnSignIn(session) {
   // Clarity: tie session replays to this user_id (enables per-signup replay/funnels), and count
   // new signups from ANY auth path incl. Google OAuth (email/pass path also fires at submit time;
   // the sessionStorage flag dedupes so a single signup is never counted twice).
-  if (window.clarity) {
-    try {
-      clarity('identify', currentUser.id, undefined, undefined, currentUser.email || undefined);
-      const isNewSignup = !!currentUser.created_at && currentUser.created_at === currentUser.last_sign_in_at;
-      if (isNewSignup && !sessionStorage.getItem('_lid_signup_evt')) {
-        sessionStorage.setItem('_lid_signup_evt', '1');
-        clarity('event', 'signup_success');
-        clarity('set', 'signed_up', 'true');
+  // _clarity() queues through the stub, so this works even before the deferred tag loads.
+  try {
+    _clarity('identify', currentUser.id, undefined, undefined, currentUser.email || undefined);
+    const isNewSignup = !!currentUser.created_at && currentUser.created_at === currentUser.last_sign_in_at;
+    if (isNewSignup && !sessionStorage.getItem('_lid_signup_evt')) {
+      sessionStorage.setItem('_lid_signup_evt', '1');
+      _clarity('event', 'signup_success');
+      _clarity('set', 'signed_up', 'true');
+      // True acquisition source captured pre-OAuth (see _lidCaptureAttribution).
+      // Logged to activity_events too, so source attribution no longer depends
+      // on Clarity at all.
+      let attr = null;
+      try { attr = JSON.parse(localStorage.getItem('_lid_attr_v1') || 'null'); } catch (_) {}
+      if (attr) {
+        const src = attr.utm_source || (attr.ref_code && 'referral') || attr.referrer || '(direct)';
+        _clarity('set', 'signup_source', String(src).slice(0, 120));
+        // Deferred: the Supabase client only gets this session via setSession()
+        // a few lines below, and an unauthed insert would fail RLS.
+        setTimeout(() => { void logUserEvent('signup_attribution', attr); }, 2500);
       }
-    } catch (_) {}
-  }
+    }
+  } catch (_) {}
   // Route away from marketing/landing immediately on refresh — never wait on network calls first.
   if (!document.body.classList.contains('in-dashboard')) void openProfile();
   try {
@@ -2191,7 +2237,7 @@ async function submitAuth() {
       if (!r.ok || d.error_code || d.error || d.code) { showErr(d.msg || d.error_description || d.error || 'Daftar gagal. Coba lagi.'); return; }
       // Existing-email signups return 200 with an empty identities array (enumeration guard).
       if (Array.isArray(d.identities) && d.identities.length === 0) { showErr('Email sudah terdaftar. Coba login.'); return; }
-      if (window.clarity) { try { sessionStorage.setItem('_lid_signup_evt', '1'); clarity('event', 'signup_success'); clarity('set', 'signed_up', 'true'); } catch (_) {} }
+      try { sessionStorage.setItem('_lid_signup_evt', '1'); _clarity('event', 'signup_success'); _clarity('set', 'signed_up', 'true'); } catch (_) {}
       // Email confirmations OFF → Supabase returns a session immediately; log the user straight in.
       if (d.access_token) { _authSave(d); closeAuthModal(); void _authOnSignIn(d).catch(() => {}); return; }
       // Otherwise a confirmation email was sent.
@@ -9503,7 +9549,23 @@ async function dscOpenDeepDive(key, skipNav) {
   });
   /* WS-D: badge for first deep dive (idempotent) */
   awardAchievement('first_deep_dive');
+  // Return-loop: offer the WA/email opt-in shortly after the FIRST deep dive —
+  // peak interest — instead of only on "Mulai Berjualan", which most of the
+  // launch cohort never reached. mlsMaybeShowNotifyPopup() self-guards to once
+  // per browser, so the old trigger stays as a fallback for users who get
+  // there first.
+  if (!_ddNotifyTimer) {
+    let alreadyOpted = false;
+    try { alreadyOpted = !!localStorage.getItem('larisid_mls_notify_v1'); } catch (_) {}
+    if (!alreadyOpted) {
+      _ddNotifyTimer = setTimeout(() => {
+        if (!document.body.classList.contains('in-dashboard')) return;
+        try { mlsMaybeShowNotifyPopup(); } catch (_) {}
+      }, 45000);
+    }
+  }
 }
+let _ddNotifyTimer = null;
 
 let _ddCurrentP = null;
 let _ddExpanded = false;
@@ -21381,6 +21443,10 @@ function nuOnbFinish() {
   void logUserEvent('onboarding_seller', { seller_status: _nuOnb.sellerStatus });
   void logUserEvent(_firstComplete ? 'onboarding_complete' : 'onboarding_edit',
     { categories: _nuOnb.cats, budget: b.label, seller_status: _nuOnb.sellerStatus, location: nuOnbResolvedLocation() });
+  // First completion only: don't stop at highlighting a card — open its Deep Dive
+  // for them. Launch-cohort data (Jul 2026): 9 of 19 new users browsed Discover
+  // without ever clicking into a Deep Dive, and none of those 9 returned.
+  _nuOnb.autoOpen = _firstComplete;
   if (!_admSimulateNewUser) {
     try { localStorage.setItem(NU_ONB_DONE_KEY, '1'); } catch (_) {}
     try { localStorage.setItem(NU_ONB_LS_KEY, '1'); } catch (_) {}
@@ -21523,6 +21589,21 @@ async function nuOnbDecorateFirst() {
   if (!_nuOnb.payoff) return;
   const idx = page.findIndex(p => _nuOnbKeyOf(p) === _nuOnbRichKey);
   const el = cards[idx >= 0 ? idx : 0];
+  // Payoff push: on the very first onboarding completion, open the highlighted
+  // product's Deep Dive automatically after a beat (long enough to see the
+  // filtered grid, short enough that they can't wander off). Runs before the
+  // decoration guard so a re-render can't swallow the pending auto-open.
+  if (_nuOnb.autoOpen && el) {
+    _nuOnb.autoOpen = false;
+    const key = idx >= 0 ? _nuOnbRichKey : _nuOnbKeyOf(page[0]);
+    void logUserEvent('onboarding_auto_deepdive', { item_key: key });
+    try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+    setTimeout(() => {
+      // Bail if they already navigated elsewhere or opened one themselves.
+      if (_dashActiveView !== 'discover' || !_nuOnb.payoff) return;
+      dscOpenDeepDive(key);
+    }, 1400);
+  }
   if (!el || el.querySelector('.nu-onb-tag')) return;
   el.style.outline = '2.5px solid #B5202A';
   el.style.outlineOffset = '2px';

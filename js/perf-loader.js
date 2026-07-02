@@ -62,7 +62,9 @@
   };
 
   w.larisClarityEvent = function () {
-    if (!w.clarity) return;
+    // Never drop events: if the deferred Clarity tag hasn't arrived yet, create
+    // the official queue stub — the real tag drains .q when it loads.
+    if (!w.clarity) w.clarity = function () { (w.clarity.q = w.clarity.q || []).push(arguments); };
     var args = arguments;
     w.larisIdle(function () {
       try { w.clarity.apply(w, args); } catch (_) {}
