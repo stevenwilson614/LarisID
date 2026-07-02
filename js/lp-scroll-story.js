@@ -38,9 +38,10 @@
     function updateFromScroll() {
       var rect = section.getBoundingClientRect();
       var vh = window.innerHeight || document.documentElement.clientHeight;
-      var start = vh * 0.9;
-      var end = vh * 0.15;
-      var progress = (start - rect.top) / (start - end);
+      var sectionHeight = section.offsetHeight || rect.height;
+      // 0 when section enters viewport bottom → 1 when section fully scrolls past top
+      var scrollRange = vh + sectionHeight;
+      var progress = (vh - rect.top) / scrollRange;
       progress = Math.max(0, Math.min(1, progress));
       var frameIdx = Math.round(progress * (WATCH_FRAME_COUNT - 1));
       setFrame(frameIdx);
