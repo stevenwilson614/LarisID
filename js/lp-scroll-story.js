@@ -28,7 +28,7 @@
     var section = document.getElementById('lp-flow');
     if (!section) return;
 
-    if (isMobileStory() || prefersReducedMotion()) return;
+    if (prefersReducedMotion()) return; // CSS shows the static-card fallback
 
     if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') {
       showStaticFallback(section);
@@ -37,6 +37,7 @@
 
     try {
       gsap.registerPlugin(ScrollTrigger);
+      ScrollTrigger.config({ ignoreMobileResize: true });
 
       var WATCH_FRAME_COUNT = 24;
       var WATCH_FRAMES = [];
@@ -46,7 +47,28 @@
       var watchImg = qs('.hero-watch-img');
       var spinStart = 2.15;
       var spinEnd = 5.75;
-      var WATCH_CARD_NUDGE_X = -50;
+
+      // all layout values derive from live rects so the story scales to any viewport
+      function watchBase() {
+        var el = qs('.hero-watch');
+        return (el && el.offsetWidth) || 300;
+      }
+      // scroll span for the Discover screenshot: from a slight offset to its bottom edge
+      function shotSpan() {
+        var img = qs('.choose-shot');
+        var scr = qs('.lp-monitor-screen');
+        if (!img || !scr) return { from: -40, to: -225 };
+        var h = img.getBoundingClientRect().height;
+        var sh = scr.getBoundingClientRect().height;
+        var span = Math.max(0, h - sh);
+        return { from: -Math.min(40, span * 0.15), to: -span };
+      }
+      function cardScale() {
+        var unit = qs('.choose-unit');
+        if (!unit) return 0.36;
+        var w = unit.getBoundingClientRect().width;
+        return w > 0 ? (w / watchBase()) * 1.03 : 0.36;
+      }
 
       function setWatchFrame(idx) {
         if (!watchImg) return;
@@ -65,7 +87,7 @@
 
       gsap.set(ROOT + ' .hero-watch', { left: '50%', top: '50%', xPercent: -50, yPercent: -50, autoAlpha: 0 });
       gsap.set(ROOT + ' .hero-watch-inner', { scale: 0.26, rotateY: 0, rotateX: 0, transformOrigin: '50% 50%' });
-      gsap.set(ROOT + ' .choose-scroll', { y: -40 });
+      gsap.set(ROOT + ' .choose-scroll', { y: function () { return shotSpan().from; } });
       gsap.set(ROOT + ' .scene--choose', { autoAlpha: 1 });
       gsap.set(ROOT + ' .choose-unit', { scale: 1, autoAlpha: 1 });
       gsap.set(ROOT + ' .feat-head, ' + ROOT + ' .feat-panel--tabs, ' + ROOT + ' .feat-panel--score, ' + ROOT + ' .feat-panel--metrics', { autoAlpha: 0 });
@@ -90,7 +112,7 @@
         var ur = unit.getBoundingClientRect();
         var sr = stage.getBoundingClientRect();
         gsap.set(ROOT + ' .hero-watch', {
-          left: ur.left - sr.left + ur.width * 0.38 + WATCH_CARD_NUDGE_X,
+          left: ur.left - sr.left - ur.width * 0.096,
           top: ur.top - sr.top + ur.height * 0.38,
           xPercent: -50, yPercent: -50
         });
@@ -105,7 +127,7 @@
         return {
           left: mr.left - sr.left + mr.width * 0.46,
           top: mr.top - sr.top + mr.height * 0.52,
-          scale: (mr.width / 300) * 1.05
+          scale: (mr.width / watchBase()) * 1.05
         };
       }
 
@@ -118,7 +140,7 @@
         return {
           left: br.left - sr.left + br.width * 0.5,
           top: br.top - sr.top + br.height * 0.55,
-          scale: (br.width / 300) * 0.85
+          scale: (br.width / watchBase()) * 0.85
         };
       }
 
@@ -156,18 +178,24 @@
         }
       });
 
-      tl.fromTo(ROOT + ' .choose-scroll', { y: -40 }, { y: -225, duration: 1.7 }, 0);
+      tl.fromTo(ROOT + ' .lp-monitor', { scale: 0.965 }, { scale: 1, duration: 0.7, ease: 'power2.out' }, 0);
+      tl.fromTo(ROOT + ' .choose-scroll',
+        { y: function () { return shotSpan().from; } },
+        { y: function () { return shotSpan().to; }, duration: 1.7 }, 0);
       tl.fromTo(ROOT + ' .cap--choose', { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 0.55 }, 0.15);
       tl.to(ROOT + ' .scroll-hint', { autoAlpha: 0, duration: 0.25 }, 0.2);
 
-      tl.to(ROOT + ' .cap--choose', { autoAlpha: 0, duration: 0.3 }, 1.7);
+      tl.to(ROOT + ' .cap--choose', { autoAlpha: 0, y: -14, duration: 0.3 }, 1.7);
       tl.add(function () { placeWatchOnCard(); }, 1.72);
       tl.set(ROOT + ' .hero-watch', { autoAlpha: 1 }, 1.72);
       tl.to(ROOT + ' .choose-watch-cover', { autoAlpha: 1, duration: 0.2 }, 1.72);
-      tl.fromTo(ROOT + ' .hero-watch-inner', { scale: 0.11 }, { scale: 0.36, duration: 0.85, ease: 'power2.out' }, 1.73);
+      tl.fromTo(ROOT + ' .hero-watch-inner',
+        { scale: function () { return cardScale() * 0.3; } },
+        { scale: function () { return cardScale(); }, duration: 0.85, ease: 'power2.out' }, 1.73);
       tl.to(ROOT + ' .scene--choose', { autoAlpha: 0, duration: 0.4 }, 2.05);
 
       tl.to(ROOT + ' .scene--research', { autoAlpha: 1, duration: 0.55 }, 2.1);
+      tl.fromTo(ROOT + ' .scene--research .photo-frame', { scale: 0.96 }, { scale: 1, duration: 0.65, ease: 'power2.out', immediateRender: false }, 2.1);
       tl.to(ROOT + ' .hero-watch', {
         left: function () { var c = monitorCoords(); return c ? c.left : '50%'; },
         top: function () { var c = monitorCoords(); return c ? c.top : '50%'; },
@@ -185,12 +213,16 @@
       tl.to(ROOT + ' .grow-up--r', { scaleY: 1, duration: 1.0, stagger: 0.04, ease: 'power2.out' }, 2.7);
       tl.to(ROOT + ' .area--l', { autoAlpha: 1, duration: 0.6 }, 3.0);
       tl.to(ROOT + ' .area--r', { autoAlpha: 1, duration: 0.6 }, 3.1);
-      tl.to(ROOT + ' .cap--research', { autoAlpha: 0, duration: 0.3 }, 3.75);
+      tl.to(ROOT + ' .cap--research', { autoAlpha: 0, y: -14, duration: 0.3 }, 3.75);
       tl.to(ROOT + ' .scene--research', { autoAlpha: 0, duration: 0.45 }, 3.8);
 
       tl.to(ROOT + ' .scene--features', { autoAlpha: 1, duration: 0.5 }, 3.85);
       tl.to(ROOT + ' .caption-scrim', { autoAlpha: 0, duration: 0.35 }, 3.85);
-      tl.to(ROOT + ' .hero-watch', { left: '50%', top: '60%', xPercent: -50, yPercent: -50, duration: 0.55, ease: 'power2.inOut' }, 3.85);
+      tl.to(ROOT + ' .hero-watch', {
+        left: '50%',
+        top: function () { return isMobileStory() ? '66%' : '60%'; },
+        xPercent: -50, yPercent: -50, duration: 0.55, ease: 'power2.inOut'
+      }, 3.85);
       tl.to(ROOT + ' .hero-watch-inner', { scale: 0.68, filter: 'drop-shadow(0 24px 44px rgba(26,26,26,.22))', duration: 0.55, ease: 'power2.inOut' }, 3.85);
       tl.fromTo(ROOT + ' .feat-head', { autoAlpha: 0, y: 14 }, { autoAlpha: 1, y: 0, duration: 0.45 }, 3.9);
       tl.fromTo(ROOT + ' .feat-panel--tabs, ' + ROOT + ' .feat-panel--score, ' + ROOT + ' .feat-panel--metrics', { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.4, stagger: 0.08, ease: 'power2.out' }, 3.95);
@@ -213,6 +245,7 @@
         duration: 1.15, ease: 'power2.inOut'
       }, 5.75);
       tl.to(ROOT + ' .scene--sell', { autoAlpha: 1, duration: 0.75 }, 5.95);
+      tl.fromTo(ROOT + ' .scene--sell .photo-frame', { scale: 0.96 }, { scale: 1, duration: 0.65, ease: 'power2.out', immediateRender: false }, 5.95);
       tl.to(ROOT + ' .hero-watch', { autoAlpha: 0, duration: 0.45 }, 6.65);
       tl.fromTo(ROOT + ' .cap--sell', { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 0.5 }, 6.15);
 
