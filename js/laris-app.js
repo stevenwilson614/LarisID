@@ -3355,9 +3355,36 @@ function adminFloatInit() {
 }
 
 // ── Admin Analytics ──────────────────────────────────────────
+let _adminPanel = 'overview';
+let _adminUsers = [];
+let _adminUserFilter = 'all';
+
+function adminSwitchPanel(panel) {
+  _adminPanel = panel || 'overview';
+  ['overview', 'users', 'cohorts', 'comms'].forEach(p => {
+    const tab = document.getElementById(`adm-tab-${p}`);
+    const el = document.getElementById(`adm-panel-${p}`);
+    if (tab) tab.classList.toggle('active', p === _adminPanel);
+    if (el) el.classList.toggle('active', p === _adminPanel);
+  });
+  adminRefreshCurrentPanel();
+}
+
+function adminRefreshCurrentPanel() {
+  if (!_supabase || !currentUser || !isPlatformAdmin()) return;
+  if (_adminPanel === 'overview') loadAdminOverview();
+  else if (_adminPanel === 'users') adminLoadUserDirectory();
+  else if (_adminPanel === 'cohorts') { loadAdminCohortOverview(); adminLoadCohortOptions(); }
+  else if (_adminPanel === 'comms') { loadAdminFeedback(); admBcLoadUsers(); }
+}
+
 async function loadAdminStats() {
-  if (!_supabase || !currentUser) return;
-  if (!isPlatformAdmin()) return;
+  if (!_supabase || !currentUser || !isPlatformAdmin()) return;
+  adminSwitchPanel(_adminPanel || 'overview');
+}
+
+async function loadAdminOverview() {
+  if (!_supabase || !currentUser || !isPlatformAdmin()) return;
   const preview = adminIsPreviewMode();
   const params = preview ? { exclude_user_id: currentUser.id } : {};
   try {
@@ -3365,12 +3392,9 @@ async function loadAdminStats() {
     if (!error && data) {
       const s = data;
       const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ?? '—'; };
-      // Signup metrics
       set('adm-total', s.total_signups);
       set('adm-7d',    s.signups_last_7d);
       set('adm-30d',   s.signups_last_30d);
-
-      // New: session / people metrics
       const returnRate = s.return_rate != null ? s.return_rate + '%' : '—';
       set('adm-return-rate', returnRate);
       const totalSess = s.total_sessions;
@@ -3380,41 +3404,16 @@ async function loadAdminStats() {
       set('adm-leaders', s.active_leaders ?? '—');
       set('adm-cohorts', s.active_cohorts ?? '—');
 
-      // Sessions chart (DAU from user_sessions)
       const dauEl = document.getElementById('adm-dau-chart');
       if (dauEl && s.dau_last_30d?.length) {
         const maxDAU = Math.max(...s.dau_last_30d.map(r => r.active_users)) || 1;
         dauEl.innerHTML = s.dau_last_30d.map(r => {
           const h = Math.round((r.active_users / maxDAU) * 68) + 4;
-          const d = (r.day || r.date || '').slice(5); // MM-DD
+          const d = (r.day || r.date || '').slice(5);
           return `<div title="${d}: ${r.active_users} sesi" style="flex:1;min-width:5px;max-width:20px;background:#B5202A;border-radius:3px 3px 0 0;height:${h}px;opacity:.85;cursor:default;"></div>`;
         }).join('');
       }
 
-      // Cohort overview table
-      const cohortBody = document.getElementById('adm-cohorts-body');
-      if (cohortBody) {
-        const cohorts = s.cohorts_overview || [];
-        cohortBody.innerHTML = cohorts.length
-          ? cohorts.map(c => {
-              const activity = c.last_activity ? c.last_activity.slice(0,10) : '—';
-              const barW = Math.min(100, Math.round((c.student_count || 0) / Math.max(...cohorts.map(x => x.student_count||0), 1) * 100));
-              return `<tr>
-                <td style="font-weight:700;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_cohortEsc(c.name || '—')}</td>
-                <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#6B7280;font-size:.68rem;">${_cohortEsc(c.leader_email || '—')}</td>
-                <td>
-                  <div style="display:flex;align-items:center;gap:6px;">
-                    <span style="font-weight:700;">${c.student_count || 0}</span>
-                    <div class="adm-cohort-bar" style="flex:1;"><div class="adm-cohort-bar-fill" style="width:${barW}%;"></div></div>
-                  </div>
-                </td>
-                <td style="color:#9CA3AF;font-size:.68rem;">${activity}</td>
-              </tr>`;
-            }).join('')
-          : '<tr><td colspan="4" style="text-align:center;padding:20px;color:#9CA3AF;">Belum ada kohort aktif.</td></tr>';
-      }
-
-      // Recent signups table
       const signupsBody = document.getElementById('adm-signups-body');
       if (signupsBody) {
         const signups = s.recent_signups || [];
@@ -3434,10 +3433,170 @@ async function loadAdminStats() {
           : '<tr><td colspan="3" style="text-align:center;padding:20px;color:#9CA3AF;">Belum ada data pendaftar.</td></tr>';
       }
     }
-  } catch(e) { console.warn('loadAdminStats', e); }
-  await adminLoadCohortOptions();
-  await adminLoadUserDirectory();
-  loadAdminFeedback();
+  } catch(e) { console.warn('loadAdminOverview', e); }
+}
+
+async function loadAdminCohortOverview() {
+  if (!_supabase || !currentUser || !isPlatformAdmin()) return;
+  const preview = adminIsPreviewMode();
+  const params = preview ? { exclude_user_id: currentUser.id } : {};
+  try {
+    const { data, error } = await _supabase.rpc('admin_stats', params);
+    if (error || !data) return;
+    const cohortBody = document.getElementById('adm-cohorts-body');
+    if (!cohortBody) return;
+    const cohorts = data.cohorts_overview || [];
+    cohortBody.innerHTML = cohorts.length
+      ? cohorts.map(c => {
+          const activity = c.last_activity ? c.last_activity.slice(0,10) : '—';
+          const barW = Math.min(100, Math.round((c.student_count || 0) / Math.max(...cohorts.map(x => x.student_count||0), 1) * 100));
+          return `<tr>
+            <td style="font-weight:700;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_cohortEsc(c.name || '—')}</td>
+            <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#6B7280;font-size:.68rem;">${_cohortEsc(c.leader_email || '—')}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-weight:700;">${c.student_count || 0}</span>
+                <div class="adm-cohort-bar" style="flex:1;"><div class="adm-cohort-bar-fill" style="width:${barW}%;"></div></div>
+              </div>
+            </td>
+            <td style="color:#9CA3AF;font-size:.68rem;">${activity}</td>
+          </tr>`;
+        }).join('')
+      : '<tr><td colspan="4" style="text-align:center;padding:20px;color:#9CA3AF;">Belum ada kohort aktif.</td></tr>';
+  } catch(e) { console.warn('loadAdminCohortOverview', e); }
+}
+
+function adminSetUserFilter(filter) {
+  _adminUserFilter = filter || 'all';
+  ['all', 'independent', 'new_seller', 'existing_seller'].forEach(f => {
+    const btn = document.getElementById(`adm-users-filter-${f === 'new_seller' ? 'new' : f === 'existing_seller' ? 'existing' : f}`);
+    if (btn) btn.classList.toggle('active', f === _adminUserFilter);
+  });
+  adminFilterUserDirectory();
+}
+
+function adminSellerLabel(status) {
+  if (status === 'first_time') return '<span class="adm-user-badge new-seller">Penjual Baru</span>';
+  if (status === 'existing') return '<span class="adm-user-badge existing-seller">Sudah Jualan</span>';
+  return '<span class="cohort-muted">—</span>';
+}
+
+function adminUserMatchesFilter(r) {
+  const isIndep = !r.cohort_count && !r.led_cohort_count;
+  if (_adminUserFilter === 'independent') return isIndep;
+  if (_adminUserFilter === 'new_seller') return r.seller_status === 'first_time';
+  if (_adminUserFilter === 'existing_seller') return r.seller_status === 'existing';
+  return true;
+}
+
+function adminFilterUserDirectory() {
+  const q = (document.getElementById('adm-users-search')?.value || '').trim().toLowerCase();
+  const rows = (_adminUsers || []).filter(r => {
+    if (!adminUserMatchesFilter(r)) return false;
+    if (!q) return true;
+    const hay = [r.display_name, r.email, r.region, r.city, ...(r.categories || [])].join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+  adminRenderUserDirectory(rows);
+}
+
+function adminRenderUserDirectory(rows) {
+  const el = document.getElementById('adm-user-directory');
+  const countEl = document.getElementById('adm-user-count');
+  if (!el) return;
+  if (countEl) countEl.textContent = `${rows.length} pengguna ditampilkan`;
+  if (!rows.length) {
+    el.innerHTML = '<div class="cohort-muted">Tidak ada user yang cocok.</div>';
+    return;
+  }
+  el.innerHTML = `<table style="width:100%;font-size:.72rem;border-collapse:collapse;min-width:860px;">
+    <thead><tr style="text-align:left;color:#9CA3AF;border-bottom:1px solid #F3F4F6;">
+      <th style="padding:7px 4px;">User</th><th>Lokasi</th><th>Status Penjual</th><th>Kategori</th><th>Role</th><th>Daftar</th><th>Terakhir Aktif</th><th></th>
+    </tr></thead>
+    <tbody>${rows.map(r => {
+      const role = r.app_role || 'student';
+      const roleColor = role === 'admin' ? '#B5202A' : (role === 'leader' ? '#B45309' : '#1A7A46');
+      const location = r.region || r.city || '—';
+      const cats = (r.categories || []).slice(0, 2).join(', ') + ((r.categories || []).length > 2 ? '…' : '');
+      const uid = r.user_id || '';
+      return `<tr style="border-bottom:1px solid #F9FAFB;">
+        <td style="padding:8px 4px;cursor:pointer;" onclick="adminOpenUserDrawer('${_cohortEsc(uid)}')"><strong>${_cohortEsc(r.display_name || r.email || 'User')}</strong><br><span class="cohort-muted">${_cohortEsc(r.email || '')}</span></td>
+        <td>${_cohortEsc(location)}</td>
+        <td>${adminSellerLabel(r.seller_status)}</td>
+        <td class="cohort-muted" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_cohortEsc(cats || '—')}</td>
+        <td><span style="color:${roleColor};font-weight:800;">${_cohortEsc(role)}</span></td>
+        <td class="cohort-muted">${r.created_at ? _cohortEsc(r.created_at.slice(0, 10)) : '—'}</td>
+        <td class="cohort-muted">${r.last_activity_at ? _cohortEsc(r.last_activity_at.slice(0, 16).replace('T', ' ')) : '—'}</td>
+        <td><button type="button" class="cohort-btn secondary" style="padding:4px 8px;font-size:.62rem;" onclick="event.stopPropagation();adminPrefillRole('${_cohortEsc(r.email || '')}','${_cohortEsc(role)}')">Edit</button></td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+async function adminLoadUserDirectory() {
+  const el = document.getElementById('adm-user-directory');
+  if (!el || !_supabase || !isPlatformAdmin()) return;
+  el.innerHTML = '<div class="cohort-muted">Memuat users...</div>';
+  try {
+    const { data, error } = await _supabase.rpc('admin_user_directory');
+    if (error) { el.textContent = error.message || 'Gagal memuat user.'; return; }
+    _adminUsers = data || [];
+    adminFilterUserDirectory();
+  } catch(e) {
+    el.textContent = 'Gagal memuat user.';
+  }
+}
+
+function adminOpenUserDrawer(userId) {
+  const drawer = document.getElementById('admin-user-drawer');
+  const body = document.getElementById('admin-drawer-body');
+  const title = document.getElementById('admin-drawer-title');
+  if (!drawer || !body) return;
+  const r = (_adminUsers || []).find(u => u.user_id === userId);
+  if (!r) return;
+  if (title) title.textContent = r.display_name || r.email || 'User';
+  const location = [r.region, r.city].filter(Boolean).join(' · ') || '—';
+  const cats = (r.categories || []).length ? r.categories.join(', ') : '—';
+  const onboard = r.onboarding_completed ? 'Selesai' : 'Belum / dilewati';
+  const deepdives = r.deepdive_count ?? 0;
+  const lastDiscover = r.last_discover_at ? r.last_discover_at.slice(0, 16).replace('T', ' ') : '—';
+  const isIndep = !r.cohort_count && !r.led_cohort_count;
+  body.innerHTML = `
+    <div style="margin-bottom:14px;">
+      <div style="font-weight:800;color:#1A1A1A;">${_cohortEsc(r.display_name || 'User')}</div>
+      <div class="cohort-muted">${_cohortEsc(r.email || '')}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+      <div style="background:#F9FAFB;border-radius:8px;padding:10px;">
+        <div style="font-size:.58rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;">Lokasi</div>
+        <div style="font-weight:700;margin-top:4px;">${_cohortEsc(location)}</div>
+      </div>
+      <div style="background:#F9FAFB;border-radius:8px;padding:10px;">
+        <div style="font-size:.58rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;">Status Penjual</div>
+        <div style="margin-top:4px;">${adminSellerLabel(r.seller_status)}</div>
+      </div>
+      <div style="background:#F9FAFB;border-radius:8px;padding:10px;">
+        <div style="font-size:.58rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;">Onboarding</div>
+        <div style="font-weight:700;margin-top:4px;">${onboard}</div>
+      </div>
+      <div style="background:#F9FAFB;border-radius:8px;padding:10px;">
+        <div style="font-size:.58rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;">Deep Dive</div>
+        <div style="font-weight:700;margin-top:4px;">${deepdives}×</div>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;"><strong>Kategori minat:</strong> ${_cohortEsc(cats)}</div>
+    <div style="margin-bottom:12px;"><strong>Terakhir Discover:</strong> ${lastDiscover}</div>
+    <div style="margin-bottom:12px;"><strong>Daftar:</strong> ${r.created_at ? r.created_at.slice(0, 10) : '—'}</div>
+    <div style="margin-bottom:12px;"><strong>Login terakhir:</strong> ${r.last_sign_in_at ? r.last_sign_in_at.slice(0, 16).replace('T', ' ') : '—'}</div>
+    <div style="margin-bottom:12px;"><strong>Role:</strong> ${_cohortEsc(r.app_role || 'student')}</div>
+    <div style="margin-bottom:16px;"><strong>Tipe:</strong> ${isIndep ? '<span class="adm-user-badge independent">Independent</span>' : '<span class="adm-user-badge in-cohort">Dalam Kohort</span> <span class="cohort-muted" style="font-size:.65rem;">(kelola di tab Kohort)</span>'}</div>
+    <button type="button" class="cohort-btn secondary" style="width:100%;" onclick="adminPrefillRole('${_cohortEsc(r.email || '')}','${_cohortEsc(r.app_role || 'student')}');adminCloseUserDrawer();adminSwitchPanel('users');">Edit role</button>
+  `;
+  drawer.classList.add('open');
+}
+
+function adminCloseUserDrawer() {
+  const drawer = document.getElementById('admin-user-drawer');
+  if (drawer) drawer.classList.remove('open');
 }
 
 let _adminCohorts = [];
@@ -3453,36 +3612,6 @@ async function adminLoadCohortOptions() {
   sel.innerHTML = _adminCohorts.length
     ? _adminCohorts.map(c => `<option value="${_cohortEsc(c.id)}">${_cohortEsc(c.name || c.slug || c.invite_code || 'Kohort')}</option>`).join('')
     : '<option value="">Belum ada kohort</option>';
-}
-
-async function adminLoadUserDirectory() {
-  const el = document.getElementById('adm-user-directory');
-  if (!el || !_supabase || !isPlatformAdmin()) return;
-  el.innerHTML = '<div class="cohort-muted">Memuat users...</div>';
-  try {
-    const { data, error } = await _supabase.rpc('admin_user_directory');
-    if (error) { el.textContent = error.message || 'Gagal memuat user.'; return; }
-    const rows = data || [];
-    if (!rows.length) { el.innerHTML = '<div class="cohort-muted">Belum ada user.</div>'; return; }
-    el.innerHTML = `<table style="width:100%;font-size:.72rem;border-collapse:collapse;min-width:760px;">
-      <thead><tr style="text-align:left;color:#9CA3AF;border-bottom:1px solid #F3F4F6;"><th style="padding:7px 4px;">User</th><th>Role</th><th>Cohorts</th><th>Leads</th><th>Created</th><th>Last activity</th><th></th></tr></thead>
-      <tbody>${rows.map(r => {
-        const role = r.app_role || 'student';
-        const roleColor = role === 'admin' ? '#B5202A' : (role === 'leader' ? '#B45309' : '#1A7A46');
-        const isIndep = !r.cohort_count && !r.led_cohort_count;
-        return `<tr style="border-bottom:1px solid #F9FAFB;">
-          <td style="padding:8px 4px;cursor:pointer;" onclick="cohortOpenStudentDrawer('${_cohortEsc(r.user_id || '')}','${_cohortEsc(r.display_name || '')}','${_cohortEsc(r.email || '')}')"><strong>${_cohortEsc(r.display_name || r.email || 'User')}</strong><br><span class="cohort-muted">${_cohortEsc(r.email || '')}</span></td>
-          <td><span style="color:${roleColor};font-weight:800;">${_cohortEsc(role)}</span></td>
-          <td>${isIndep ? '<span style="background:#F3F4F6;color:#6B7280;font-size:.62rem;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.04em;">Independent</span>' : (r.cohort_count || 0)}</td>
-          <td>${isIndep ? '' : (r.led_cohort_count || 0)}</td>
-          <td class="cohort-muted">${r.created_at ? _cohortEsc(r.created_at.slice(0, 10)) : '—'}</td>
-          <td class="cohort-muted">${r.last_activity_at ? _cohortEsc(r.last_activity_at.slice(0, 16).replace('T', ' ')) : '—'}</td>
-          <td><button type="button" class="cohort-btn secondary" style="padding:4px 8px;font-size:.62rem;" onclick="adminPrefillRole('${_cohortEsc(r.email || '')}','${_cohortEsc(role)}')">Edit</button></td>
-        </tr>`;
-      }).join('')}</tbody></table>`;
-  } catch(e) {
-    el.textContent = 'Gagal memuat user.';
-  }
 }
 
 function adminPrefillRole(email, role) {
@@ -3528,6 +3657,7 @@ async function adminAssignLeader() {
     return;
   }
   if (st) st.textContent = 'Leader tersimpan untuk kohort.';
+  await loadAdminCohortOverview();
   await adminLoadUserDirectory();
 }
 
@@ -10796,14 +10926,21 @@ async function ddRenderTren() {
     if (_trenGridEl)  _trenGridEl.style.display  = '';
 
     const { weeks, dbRows, isEstimated, isPeerEstimated } = trend;
-    _trenData = { weeks, listing, category: listing.category || 'Umum', isEstimated, isPeerEstimated, dbRows, trendMeta: trend };
+    const weeksFilled = larisTrendAnchorMondayWindow(weeks, {
+      mondayOf: ddTrendMondayOf, wKey: ddTrendWKey, wLabel: ddTrendWLabel,
+    });
+    const gapEstimated = weeksFilled.some(w => w.gapEstimated);
+    _trenData = {
+      weeks: weeksFilled, listing, category: listing.category || 'Umum',
+      isEstimated: isEstimated || gapEstimated, isPeerEstimated, dbRows, trendMeta: trend,
+    };
 
-    const nW = weeks.length;
-    const totalUnits = trend.totalUnitsRaw;
+    const nW = weeksFilled.length;
+    const totalUnits = weeksFilled.reduce((s, w) => s + (w.units ?? 0), 0);
     const avgUnits   = Math.round(totalUnits / nW);
-    const maxW = weeks.reduce((a,b) => b.units > a.units ? b : a);
-    const minW = weeks.reduce((a,b) => b.units < a.units ? b : a);
-    const growthPct = weeks[0].units > 0 ? Math.round((weeks[nW-1].units - weeks[0].units) / weeks[0].units * 100) : null;
+    const maxW = weeksFilled.reduce((a,b) => b.units > a.units ? b : a);
+    const minW = weeksFilled.reduce((a,b) => b.units < a.units ? b : a);
+    const growthPct = weeksFilled[0].units > 0 ? Math.round((weeksFilled[nW-1].units - weeksFilled[0].units) / weeksFilled[0].units * 100) : null;
     const growthStr = growthPct == null ? '—' : (growthPct >= 0 ? '+' : '') + growthPct + '%';
 
     set('tren-avg',       avgUnits.toLocaleString('id-ID') + ' unit');
@@ -11334,7 +11471,7 @@ function apRenderDemand(loading) {
   if (!_apData) return;
   const weekly = _apData.demandWeekly || [];
   const meta   = _apData.demandMeta;
-  const isEst  = !!meta?.anyEstimated;
+  let isEst  = !!meta?.anyEstimated;
 
   if (_apDemandChart) { _apDemandChart.destroy(); _apDemandChart = null; }
   const canvas = document.getElementById('ap-demand-chart');
@@ -11354,19 +11491,11 @@ function apRenderDemand(loading) {
     return;
   }
 
-  // A5/A7: anchor to the current Monday so the window rolls forward weekly
-  // (this Monday + previous 3), falling back to the last 4 available weeks.
-  const _winEnd = _apMondayOf(new Date());
-  const _winMondays = [3, 2, 1, 0].map(i => new Date(_winEnd.getTime() - i * 7 * 86400000));
-  const _byWk = new Map(weekly.map(w => [_apWKey(w.firstDate), w]));
-  const _anchored = _winMondays.map(m => {
-    const hit = _byWk.get(_apWKey(m));
-    return hit ? { ...hit, firstDate: m, label: _apWLabel(m) }
-               : { label: _apWLabel(m), units: 0, omset: 0, firstDate: m };
+  // A5/A7: anchor to the current Monday (this + previous 3); gap weeks use prior scrape avg.
+  const weeklyRowsFilled = larisTrendAnchorMondayWindow(weekly, {
+    mondayOf: _apMondayOf, wKey: _apWKey, wLabel: _apWLabel,
   });
-  const weeklyRowsFilled = _anchored.some(w => _byWk.has(_apWKey(w.firstDate)))
-    ? _anchored
-    : weekly.slice(-4);
+  if (weeklyRowsFilled.some(w => w.gapEstimated)) isEst = true;
   const labels = weeklyRowsFilled.map(w => w.label);
   // Real series arrays stay SHORTER than `labels` (no trailing null) so the
   // red/blue "actual" lines have nothing to plot at the forecast index.
@@ -12823,6 +12952,44 @@ function ddTrendMondayOf(d) {
 }
 function ddTrendWKey(d) { return ddTrendMondayOf(d).toISOString().slice(0, 10); }
 function ddTrendWLabel(d) { const m = ddTrendMondayOf(d); return `${m.getDate()} ${DD_TREND_MO[m.getMonth()]}`; }
+/** Avg of the last 2 scrape-backed weeks — used to fill incomplete/gap Mondays. */
+function larisTrendAvgRecentWeeks(weeks) {
+  const recent = (weeks || []).filter(w => (w.units ?? 0) > 0 || (w.omset ?? 0) > 0).slice(-2);
+  if (!recent.length) return null;
+  return {
+    units: Math.max(1, Math.round(recent.reduce((s, w) => s + (w.units ?? 0), 0) / recent.length)),
+    omset: Math.max(1, Math.round(recent.reduce((s, w) => s + (w.omset ?? 0), 0) / recent.length)),
+  };
+}
+/** Replace zero weeks with rolling estimates from prior scrape weeks (never plot 0). */
+function larisTrendFillZeroWeeks(weeks, fallbackRows = []) {
+  const fb = (fallbackRows || []).filter(w => (w.units ?? 0) > 0 || (w.omset ?? 0) > 0);
+  const out = [];
+  for (const w of weeks) {
+    if ((w.units ?? 0) > 0 || (w.omset ?? 0) > 0) {
+      out.push(w);
+      continue;
+    }
+    const est = larisTrendAvgRecentWeeks(out) || larisTrendAvgRecentWeeks(fb);
+    if (!est) { out.push(w); continue; }
+    out.push({ ...w, units: est.units, omset: est.omset, gapEstimated: true });
+  }
+  return out;
+}
+/** Anchor to current Monday + previous 3; gap weeks inherit avg of recent scrape weeks. */
+function larisTrendAnchorMondayWindow(weeklyRows, { mondayOf, wKey, wLabel }) {
+  const winEnd = mondayOf(new Date());
+  const winMondays = [3, 2, 1, 0].map(i => new Date(winEnd.getTime() - i * 7 * 86400000));
+  const byWk = new Map((weeklyRows || []).map(w => [wKey(w.firstDate), w]));
+  const anchored = winMondays.map(m => {
+    const hit = byWk.get(wKey(m));
+    return hit ? { ...hit, firstDate: m, label: wLabel(m) }
+               : { label: wLabel(m), units: 0, omset: 0, firstDate: m };
+  });
+  const useAnchored = anchored.some(w => byWk.has(wKey(w.firstDate)));
+  const base = useAnchored ? anchored : (weeklyRows || []).slice(-4);
+  return larisTrendFillZeroWeeks(base, weeklyRows);
+}
 function ddTrendListingWeeklyRate(rows, category) {
   if (!rows || rows.length < 2) return 0;
   const mult = ddTrendCatMult(category);
@@ -13230,7 +13397,8 @@ async function ddLoadTrendHistory(listing) {
       return;
     }
 
-    const { dbRows, weeks: weeklyRowsAll, isEstimated, isPeerEstimated, peerWeeklyRate, peerCount, peerSoldMin, peerSoldMax, trendCeilingNote } = trend;
+    const { dbRows, weeks: weeklyRowsAll, isPeerEstimated, peerWeeklyRate, peerCount, peerSoldMin, peerSoldMax, trendCeilingNote } = trend;
+    let isEstimated = !!trend.isEstimated;
     const weeklyRows = weeklyRowsAll || [];
 
     if (!weeklyRows.length || trend.totalUnitsRaw === 0) {
@@ -13248,7 +13416,7 @@ async function ddLoadTrendHistory(listing) {
         (weeklyRows.length > 0
           ? 'Data tidak berubah antar scrape — produk kemungkinan di bucket Shopee (mis. 5rb+). Tren akan muncul saat total terjual atau ulasan berubah secara signifikan.'
           : 'Baru 1 sesi scrape tersedia — nilai menunjukkan total kumulatif. Prediksi berdasarkan rata-rata pasar.');
-      const snapRowsDisplay = snapRows.slice(-4);
+      const snapRowsDisplay = larisTrendFillZeroWeeks(snapRows.slice(-4), snapRows);
       // Real series arrays stay SHORTER than `snapLabels` (no trailing null) so the
       // red/blue "actual" lines have nothing to plot at the forecast index — only the
       // separate green dashed "Prediksi" series may touch the future label.
@@ -13281,21 +13449,11 @@ async function ddLoadTrendHistory(listing) {
       return;
     }
 
-    // A5: anchor the window to the CURRENT Monday so the chart rolls forward every
-    // week — show this Monday + the previous 3 Mondays (gaps render as 0), then a
-    // next-Monday forecast point below. Falls back to the last 4 data weeks if the
-    // current 4-week window has no scrape data at all (pipeline lag).
-    const _winEnd = ddTrendMondayOf(new Date());
-    const _winMondays = [3, 2, 1, 0].map(i => new Date(_winEnd.getTime() - i * 7 * 86400000));
-    const _byWk = new Map(weeklyRows.map(w => [ddTrendWKey(w.firstDate), w]));
-    const _anchored = _winMondays.map(m => {
-      const hit = _byWk.get(ddTrendWKey(m));
-      return hit ? { ...hit, firstDate: m, label: ddTrendWLabel(m) }
-                 : { label: ddTrendWLabel(m), units: 0, omset: 0, firstDate: m };
+    // A5: anchor to current Monday + previous 3; incomplete weeks inherit prior scrape avg.
+    let weeklyRowsFilled = larisTrendAnchorMondayWindow(weeklyRows, {
+      mondayOf: ddTrendMondayOf, wKey: ddTrendWKey, wLabel: ddTrendWLabel,
     });
-    const weeklyRowsFilled = _anchored.some(w => _byWk.has(ddTrendWKey(w.firstDate)))
-      ? _anchored
-      : weeklyRows.slice(-4);
+    if (weeklyRowsFilled.some(w => w.gapEstimated)) isEstimated = true;
     const labels = weeklyRowsFilled.map(w => w.label);
     // Real series arrays stay SHORTER than `labels` (no trailing null) so the
     // red/blue "actual" lines have nothing to plot at the forecast index — only the
