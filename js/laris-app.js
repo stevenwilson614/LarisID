@@ -15184,6 +15184,7 @@ function lpToggleFaq(item) {
 }
 
 function lpRenderPreview(p) {
+  if (!document.getElementById('lp-preview-section')) return;
   void (async function () {
   await larisEnsureChart();
   const rng = (function(seed){ let s=seed; return function(){ s=(s*1664525+1013904223)&0xffffffff; return (s>>>0)/0xffffffff; }; })(p.id * 31337);
