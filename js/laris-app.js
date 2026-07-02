@@ -1523,7 +1523,17 @@ async function ylkInit() {
       .sort((a, b) => b[1] - a[1])
       .map(([loc]) => loc);
     if (!_ylkRegions.length) { _ylkInited = false; return; }
-    const saved = localStorage.getItem(YLK_LS_KEY) || '';
+    let saved = localStorage.getItem(YLK_LS_KEY) || '';
+    if (!saved && currentUser) {
+      try {
+        const { data: prefs } = await _supabase.from('user_onboarding_prefs')
+          .select('region').eq('user_id', currentUser.id).maybeSingle();
+        if (prefs?.region) {
+          saved = prefs.region;
+          try { localStorage.setItem(YLK_LS_KEY, saved); } catch (_) {}
+        }
+      } catch (_) {}
+    }
     sel.innerHTML = '<option value="">Pilih kotamu…</option>' +
       _ylkRegions.map(loc => `<option value="${loc.replace(/"/g, '&quot;')}"${loc === saved ? ' selected' : ''}>${loc}</option>`).join('');
     card.style.display = '';
@@ -1979,6 +1989,9 @@ async function _authOnSignIn(session) {
       const isNew = !!currentUser.created_at && currentUser.created_at === currentUser.last_sign_in_at;
       _supabase.from('user_sessions').insert({ user_id: currentUser.id, is_new_user: isNew }).then(() => {});
     }
+    // Best-effort IP region backfill for users without a saved location (onboarding
+    // skip, legacy accounts, or users who never finished step 1).
+    setTimeout(() => { void backfillUserRegionIfMissing(); }, 1200);
     await loadCurrentAccess().catch(() => {});
     void journeyHydrateFromRemote();
     updateAuthUI();
@@ -21408,37 +21421,82 @@ function nuOnbShowInPage(fresh) {
   document.getElementById('dash-content')?.scrollTo(0, 0);
 }
 
+// Best-effort IP geolocation → known city or free-text region string.
+function resolveRegionFromGeo(city, regionName) {
+  const c = String(city || '').trim();
+  const r = String(regionName || '').trim();
+  const norm = s => s.toLowerCase();
+  const hay = [c, r].filter(Boolean).map(norm);
+  const match = NU_ONB_LOCATIONS.find(loc => {
+    const l = norm(loc);
+    return hay.some(h => h === l || h.includes(l) || l.includes(h));
+  });
+  if (match) return { region: match, inList: true };
+  if (c || r) return { region: c || r, inList: false };
+  return null;
+}
+
+async function fetchRegionFromIp() {
+  try {
+    const res = await fetch('https://ipwho.is/?fields=success,city,region,country_code');
+    const j = await res.json();
+    if (!j || j.success === false) return null;
+    return resolveRegionFromGeo(j.city, j.region);
+  } catch (_) {
+    return null;
+  }
+}
+
+// On every login, fill region when missing — never overwrite a user-set value.
+async function backfillUserRegionIfMissing() {
+  if (_admSimulateNewUser || !_supabase || !currentUser) return;
+  const uid = currentUser.id;
+  const ssKey = `_lid_geo_bf_${uid}`;
+  try { if (sessionStorage.getItem(ssKey)) return; } catch (_) {}
+  try { sessionStorage.setItem(ssKey, '1'); } catch (_) {}
+  try {
+    const { data } = await _supabase.from('user_onboarding_prefs')
+      .select('region').eq('user_id', uid).maybeSingle();
+    if ((data?.region || '').trim()) return;
+
+    let resolved = null;
+    const saved = (localStorage.getItem(YLK_LS_KEY) || '').trim();
+    if (saved) {
+      resolved = { region: saved, inList: NU_ONB_LOCATIONS.includes(saved) };
+    } else {
+      resolved = await fetchRegionFromIp();
+    }
+    if (!resolved?.region) return;
+
+    const now = new Date().toISOString();
+    await _supabase.from('user_onboarding_prefs').upsert({
+      user_id: uid,
+      region: resolved.region,
+      updated_at: now,
+    }, { onConflict: 'user_id' });
+    try { localStorage.setItem(YLK_LS_KEY, resolved.region); } catch (_) {}
+    void logUserEvent('location_auto_detected', { region: resolved.region, source: saved ? 'local' : 'ip' });
+  } catch (_) {}
+}
+
 // Best-effort IP geolocation to pre-fill the location step. Uses a free HTTPS
 // endpoint (no key); pre-selects the matching option, or drops the detected
 // city/region into "Lainnya". Always overridable by the user. Never blocks.
 async function nuOnbDetectLocation() {
   if (_nuOnbGeoTried) return;
   _nuOnbGeoTried = true;
-  try {
-    const res = await fetch('https://ipwho.is/?fields=success,city,region,country_code');
-    const j = await res.json();
-    if (!j || j.success === false) return;
-    if (_nuOnb.location) return; // user already picked while the request was in flight
-    const city = String(j.city || '').trim();
-    const region = String(j.region || '').trim();
-    const norm = s => s.toLowerCase();
-    const hay = [city, region].filter(Boolean).map(norm);
-    const match = NU_ONB_LOCATIONS.find(loc => {
-      const l = norm(loc);
-      return hay.some(h => h === l || h.includes(l) || l.includes(h));
-    });
-    if (match) {
-      _nuOnb.location = match;
-      _nuOnb.locationSource = 'ip';
-    } else if (city || region) {
-      _nuOnb.location = '__other__';
-      _nuOnb.locationOther = city || region;
-      _nuOnb.locationSource = 'ip';
-    } else {
-      return;
-    }
-    if (_nuOnb.visible && _nuOnb.step === 1) nuOnbRender();
-  } catch (_) { /* geolocation is best-effort */ }
+  if (_nuOnb.location) return;
+  const resolved = await fetchRegionFromIp();
+  if (!resolved || _nuOnb.location) return;
+  if (resolved.inList) {
+    _nuOnb.location = resolved.region;
+    _nuOnb.locationSource = 'ip';
+  } else {
+    _nuOnb.location = '__other__';
+    _nuOnb.locationOther = resolved.region;
+    _nuOnb.locationSource = 'ip';
+  }
+  if (_nuOnb.visible && _nuOnb.step === 1) nuOnbRender();
 }
 
 function nuOnbHideInPage() {
