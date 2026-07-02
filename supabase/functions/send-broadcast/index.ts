@@ -68,11 +68,11 @@ serve(async (req) => {
         targets = (users || []).filter((u: any) => u.app_role === 'leader').map((u: any) => u.email).filter(Boolean)
       } else if (segment === 'students') {
         targets = (users || [])
-          .filter((u: any) => u.app_role === 'student' && (u.cohort_count || 0) > 0)
+          .filter((u: any) => u.app_role === 'student')
           .map((u: any) => u.email).filter(Boolean)
       } else if (segment === 'independents') {
         targets = (users || [])
-          .filter((u: any) => u.app_role === 'student' && (u.cohort_count || 0) === 0)
+          .filter((u: any) => u.app_role === 'independent')
           .map((u: any) => u.email).filter(Boolean)
       }
     }

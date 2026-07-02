@@ -18,6 +18,37 @@ function _clarity() {
   try { w.clarity.apply(w, arguments); } catch (_) {}
 }
 
+const _LID_SIGNUP_EVT_KEY = '_lid_signup_evt';
+const _LID_OAUTH_SIGNUP_INTENT_KEY = '_lid_oauth_signup_intent';
+const _LID_SIGNUP_CTA_KEY = '_lid_signup_cta_source';
+
+function _lidIsNewSignup(user) {
+  if (!user) return false;
+  try { if (sessionStorage.getItem(_LID_OAUTH_SIGNUP_INTENT_KEY) === '1') return true; } catch (_) {}
+  const created = user.created_at;
+  const lastIn = user.last_sign_in_at;
+  if (created && lastIn) {
+    if (created === lastIn) return true;
+    const cMs = Date.parse(created);
+    const lMs = Date.parse(lastIn);
+    if (!Number.isNaN(cMs) && !Number.isNaN(lMs) && Math.abs(lMs - cMs) < 120000) return true;
+    if (!Number.isNaN(cMs) && Date.now() - cMs < 300000) return true;
+  }
+  return false;
+}
+
+function _lidFireSignupSuccess() {
+  try {
+    if (sessionStorage.getItem(_LID_SIGNUP_EVT_KEY)) return;
+    sessionStorage.setItem(_LID_SIGNUP_EVT_KEY, '1');
+    sessionStorage.removeItem(_LID_OAUTH_SIGNUP_INTENT_KEY);
+    _clarity('event', 'signup_success');
+    _clarity('set', 'signed_up', 'true');
+    const ctaSrc = sessionStorage.getItem(_LID_SIGNUP_CTA_KEY);
+    if (ctaSrc) _clarity('set', 'signup_cta_source', ctaSrc);
+  } catch (_) {}
+}
+
 // First-touch acquisition attribution, captured at script eval BEFORE any OAuth
 // round-trip rewrites document.referrer to accounts.google.com (which hid the
 // true source for most of the launch cohort). Read back in _authOnSignIn and
@@ -172,7 +203,20 @@ function profileRoleLabel(role) {
   if (r === 'admin') return 'Admin';
   if (r === 'leader') return 'Leader';
   if (r === 'student' || r === 'mentor') return 'Student';
-  return 'Individual';
+  if (r === 'independent') return 'Independent';
+  return 'Independent';
+}
+
+function adminRoleLabel(role) {
+  return profileRoleLabel(role);
+}
+
+function adminRoleColor(role) {
+  const r = String(role || '').toLowerCase();
+  if (r === 'admin') return '#B5202A';
+  if (r === 'leader') return '#B45309';
+  if (r === 'student') return '#1A7A46';
+  return '#6B7280';
 }
 
 function scoreColor(n) {
@@ -1779,7 +1823,7 @@ const SUPA_HDR = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'C
 const PLATFORM_ADMIN_EMAILS = ['stevenwilson614@gmail.com'];
 const BOOTSTRAP_LEADER_EMAILS = ['stevenfwilson1@gmail.com'];
 const BOOTSTRAP_STUDENT_EMAILS = ['olivia.melia.park@gmail.com'];
-let _accessState = { loaded: false, role: 'student', isAdmin: false, isLeader: false };
+let _accessState = { loaded: false, role: 'independent', isAdmin: false, isLeader: false };
 function isPlatformAdmin() {
   const email = String(currentUser?.email || '').toLowerCase();
   return !!(currentUser && (_accessState.isAdmin || PLATFORM_ADMIN_EMAILS.includes(email)));
@@ -1790,11 +1834,11 @@ function isBootstrapLeader() {
 }
 async function loadCurrentAccess() {
   if (!_supabase || !currentUser) {
-    _accessState = { loaded: false, role: 'student', isAdmin: false, isLeader: false };
+    _accessState = { loaded: false, role: 'independent', isAdmin: false, isLeader: false };
     return _accessState;
   }
   const email = String(currentUser.email || '').toLowerCase();
-  const fallbackRole = PLATFORM_ADMIN_EMAILS.includes(email) ? 'admin' : (BOOTSTRAP_LEADER_EMAILS.includes(email) ? 'leader' : 'student');
+  const fallbackRole = PLATFORM_ADMIN_EMAILS.includes(email) ? 'admin' : (BOOTSTRAP_LEADER_EMAILS.includes(email) ? 'leader' : 'independent');
   let role = fallbackRole;
   try {
     const { data, error } = await _supabase.rpc('current_app_role');
@@ -1807,6 +1851,7 @@ async function loadCurrentAccess() {
     isLeader: role === 'leader' || BOOTSTRAP_LEADER_EMAILS.includes(email),
   };
   updateAuthUI();
+  try { _syncDashboardRoleLayout(); } catch (_) {}
   return _accessState;
 }
 
@@ -1953,13 +1998,12 @@ async function _authOnSignIn(session) {
   // new signups from ANY auth path incl. Google OAuth (email/pass path also fires at submit time;
   // the sessionStorage flag dedupes so a single signup is never counted twice).
   // _clarity() queues through the stub, so this works even before the deferred tag loads.
+  let isNewSignup = false;
   try {
     _clarity('identify', currentUser.id, undefined, undefined, currentUser.email || undefined);
-    const isNewSignup = !!currentUser.created_at && currentUser.created_at === currentUser.last_sign_in_at;
-    if (isNewSignup && !sessionStorage.getItem('_lid_signup_evt')) {
-      sessionStorage.setItem('_lid_signup_evt', '1');
-      _clarity('event', 'signup_success');
-      _clarity('set', 'signed_up', 'true');
+    isNewSignup = _lidIsNewSignup(currentUser);
+    if (isNewSignup) {
+      _lidFireSignupSuccess();
       // True acquisition source captured pre-OAuth (see _lidCaptureAttribution).
       // Logged to activity_events too, so source attribution no longer depends
       // on Clarity at all.
@@ -1986,8 +2030,8 @@ async function _authOnSignIn(session) {
     }
     // Track signup vs return visit for analytics
     if (_supabase && currentUser) {
-      const isNew = !!currentUser.created_at && currentUser.created_at === currentUser.last_sign_in_at;
-      _supabase.from('user_sessions').insert({ user_id: currentUser.id, is_new_user: isNew }).then(() => {});
+      const isNewUser = isNewSignup || _lidIsNewSignup(currentUser);
+      _supabase.from('user_sessions').insert({ user_id: currentUser.id, is_new_user: isNewUser }).then(() => {});
     }
     // Best-effort IP region backfill for users without a saved location (onboarding
     // skip, legacy accounts, or users who never finished step 1).
@@ -2043,7 +2087,7 @@ function dismissLogoutChrome() {
 
 function _authOnSignOut() {
   currentUser = null;
-  _accessState = { loaded: false, role: 'student', isAdmin: false, isLeader: false };
+  _accessState = { loaded: false, role: 'independent', isAdmin: false, isLeader: false };
   _authClear();
   _clearSessionRestoring();
   updateAuthUI();
@@ -2164,18 +2208,31 @@ function updateAuthUI() {
 }
 
 let _authMode = 'login'; // 'login', 'signup', or 'reset'
+let _authInviteExpanded = false;
 
 function openAuthModal(mode, source) {
   if (currentUser) { void openProfile(); return; }
-  if (mode === 'signup' && typeof larisClarityEvent === 'function') {
-    larisClarityEvent('event', 'cta_signup_click');
-    larisClarityEvent('set', 'signup_cta_source', source || 'unknown');
+  if (mode === 'signup') {
+    try { sessionStorage.setItem(_LID_SIGNUP_CTA_KEY, source || 'unknown'); } catch (_) {}
+    if (typeof larisClarityEvent === 'function') {
+      larisClarityEvent('event', 'cta_signup_click');
+      larisClarityEvent('set', 'signup_cta_source', source || 'unknown');
+    }
   }
   _authMode = mode || 'login';
+  if (_authMode !== 'signup') _authInviteExpanded = false;
   document.getElementById('auth-overlay').style.display = 'flex';
   renderAuthModal();
   const inv = document.getElementById('auth-invite-code');
   if (inv) inv.value = getPendingInvite();
+}
+
+function toggleAuthInviteField() {
+  _authInviteExpanded = !_authInviteExpanded;
+  const wrap = document.getElementById('auth-invite-wrap');
+  const toggle = document.getElementById('auth-invite-toggle');
+  if (wrap) wrap.style.display = _authInviteExpanded ? '' : 'none';
+  if (toggle) toggle.textContent = _authInviteExpanded ? 'Sembunyikan kode kohort' : 'Punya kode kohort?';
 }
 
 function closeAuthModal() {
@@ -2189,14 +2246,16 @@ function renderAuthModal() {
   el = document.getElementById('auth-tabs-wrap'); if(el) el.style.display = m==='reset'?'none':'';
   if(m !== 'reset') _authTabSwitch('email');
   el = document.getElementById('auth-title');      if(el) el.textContent = m==='reset'?'Reset Password':m==='signup'?'Buat Akun Gratis':'Masuk ke LarisID';
-  el = document.getElementById('auth-subtitle');   if(el) el.textContent = m==='reset'?'Masukkan email kamu dan kami kirim link reset.':m==='signup'?'Gratis 20 kredit/bulan — riset produk & simpan favorit':'Login untuk melihat produk trending & simpan favorit kamu';
-  el = document.getElementById('auth-submit-btn'); if(el) el.textContent = m==='reset'?'Kirim Link Reset':m==='signup'?'Daftar':'Masuk';
+  el = document.getElementById('auth-subtitle');   if(el) el.textContent = m==='reset'?'Masukkan email kamu dan kami kirim link reset.':m==='signup'?'Paling cepat: lanjutkan dengan Google. Gratis 20 kredit/bulan.':'Login untuk melihat produk trending & simpan favorit kamu';
+  el = document.getElementById('auth-submit-btn'); if(el) el.textContent = m==='reset'?'Kirim Link Reset':m==='signup'?'Daftar dengan Email':'Masuk';
   el = document.getElementById('auth-toggle-text');if(el) el.innerHTML = m==='reset'?'<a onclick="_authMode=\'login\';renderAuthModal()">Kembali ke Login</a>':m==='signup'?'Sudah punya akun? <a onclick="_authMode=\'login\';renderAuthModal()">Masuk</a>':'Belum punya akun? <a onclick="_authMode=\'signup\';renderAuthModal()">Daftar</a>';
   el = document.getElementById('auth-name-wrap');  if(el) el.style.display = m==='signup'?'':'none';
   el = document.getElementById('auth-pass-wrap');  if(el) el.style.display = m==='reset'?'none':'';
   el = document.getElementById('auth-forgot-wrap');if(el) el.style.display = m==='login'?'':'none';
   el = document.getElementById('auth-social-wrap');if(el) el.style.display = m==='reset'?'none':'';
-  el = document.getElementById('auth-invite-wrap'); if (el) el.style.display = m === 'reset' ? 'none' : '';
+  el = document.getElementById('auth-invite-wrap'); if (el) el.style.display = (m === 'reset' || ((m === 'signup' || m === 'login') && !_authInviteExpanded && !getPendingInvite())) ? 'none' : '';
+  el = document.getElementById('auth-invite-toggle'); if (el) el.style.display = ((m === 'signup' || m === 'login') && !getPendingInvite()) ? '' : 'none';
+  el = document.getElementById('auth-google-btn'); if (el) el.classList.toggle('social-btn--primary', m === 'signup');
   el = document.getElementById('auth-error');      if(el) el.style.display = 'none';
 }
 
@@ -2250,7 +2309,7 @@ async function submitAuth() {
       if (!r.ok || d.error_code || d.error || d.code) { showErr(d.msg || d.error_description || d.error || 'Daftar gagal. Coba lagi.'); return; }
       // Existing-email signups return 200 with an empty identities array (enumeration guard).
       if (Array.isArray(d.identities) && d.identities.length === 0) { showErr('Email sudah terdaftar. Coba login.'); return; }
-      try { sessionStorage.setItem('_lid_signup_evt', '1'); _clarity('event', 'signup_success'); _clarity('set', 'signed_up', 'true'); } catch (_) {}
+      _lidFireSignupSuccess();
       // Email confirmations OFF → Supabase returns a session immediately; log the user straight in.
       if (d.access_token) { _authSave(d); closeAuthModal(); void _authOnSignIn(d).catch(() => {}); return; }
       // Otherwise a confirmation email was sent.
@@ -2347,14 +2406,12 @@ async function consumeOAuthHash() {
   const refresh_token = params.get('refresh_token') || '';
   const expires_in = parseInt(params.get('expires_in') || '3600', 10);
   try {
-    // Fast path: build the user from the JWT locally. Only hit the network if decode fails.
     let user = _decodeJwtUser(access_token);
-    if (!user) {
-      try {
-        const r = await fetch(`${SUPA_URL}/auth/v1/user`, { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${access_token}` } });
-        if (r.ok) user = await r.json();
-      } catch (_) {}
-    }
+    // Always fetch full user so created_at / last_sign_in_at are available for signup analytics.
+    try {
+      const r = await fetch(`${SUPA_URL}/auth/v1/user`, { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${access_token}` } });
+      if (r.ok) user = await r.json();
+    } catch (_) {}
     const sess = { access_token, refresh_token, expires_in, user };
     _authSave(sess);
     await _authOnSignIn(sess).catch(() => {});
@@ -2412,6 +2469,7 @@ async function signInWithProvider(provider) {
   try {
     const invEl = document.getElementById('auth-invite-code');
     if (invEl && invEl.value.trim()) setPendingInvite(invEl.value);
+    if (_authMode === 'signup') sessionStorage.setItem(_LID_OAUTH_SIGNUP_INTENT_KEY, '1');
   } catch (_) {}
   // Pending invite is in sessionStorage (?invite= on load or typed in modal); OAuth redirect does not need to carry the code.
   const { error } = await _supabase.auth.signInWithOAuth({ provider, options:{ redirectTo:'https://larisid.com' } });
@@ -3495,8 +3553,8 @@ function adminSellerLabel(status) {
 }
 
 function adminUserMatchesFilter(r) {
-  const isIndep = !r.cohort_count && !r.led_cohort_count;
-  if (_adminUserFilter === 'independent') return isIndep;
+  const role = r.app_role || 'independent';
+  if (_adminUserFilter === 'independent') return role === 'independent';
   if (_adminUserFilter === 'new_seller') return r.seller_status === 'first_time';
   if (_adminUserFilter === 'existing_seller') return r.seller_status === 'existing';
   return true;
@@ -3524,23 +3582,24 @@ function adminRenderUserDirectory(rows) {
   }
   el.innerHTML = `<table style="width:100%;font-size:.72rem;border-collapse:collapse;min-width:860px;">
     <thead><tr style="text-align:left;color:#9CA3AF;border-bottom:1px solid #F3F4F6;">
-      <th style="padding:7px 4px;">User</th><th>Lokasi</th><th>Status Penjual</th><th>Kategori</th><th>Role</th><th>Daftar</th><th>Terakhir Aktif</th><th></th>
+      <th style="padding:7px 4px;">User</th><th>Lokasi</th><th>Status Penjual</th><th>Kategori</th><th>Tipe</th><th>Daftar</th><th>Terakhir Aktif</th><th></th>
     </tr></thead>
     <tbody>${rows.map(r => {
-      const role = r.app_role || 'student';
-      const roleColor = role === 'admin' ? '#B5202A' : (role === 'leader' ? '#B45309' : '#1A7A46');
+      const role = r.app_role || 'independent';
+      const roleColor = adminRoleColor(role);
       const location = r.region || r.city || '—';
       const cats = (r.categories || []).slice(0, 2).join(', ') + ((r.categories || []).length > 2 ? '…' : '');
       const uid = r.user_id || '';
+      const cohortRole = role === 'student' || role === 'leader';
       return `<tr style="border-bottom:1px solid #F9FAFB;">
         <td style="padding:8px 4px;cursor:pointer;" onclick="adminOpenUserDrawer('${_cohortEsc(uid)}')"><strong>${_cohortEsc(r.display_name || r.email || 'User')}</strong><br><span class="cohort-muted">${_cohortEsc(r.email || '')}</span></td>
         <td>${_cohortEsc(location)}</td>
         <td>${adminSellerLabel(r.seller_status)}</td>
         <td class="cohort-muted" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_cohortEsc(cats || '—')}</td>
-        <td><span style="color:${roleColor};font-weight:800;">${_cohortEsc(role)}</span></td>
+        <td><span style="color:${roleColor};font-weight:800;">${_cohortEsc(adminRoleLabel(role))}</span></td>
         <td class="cohort-muted">${r.created_at ? _cohortEsc(r.created_at.slice(0, 10)) : '—'}</td>
         <td class="cohort-muted">${r.last_activity_at ? _cohortEsc(r.last_activity_at.slice(0, 16).replace('T', ' ')) : '—'}</td>
-        <td><button type="button" class="cohort-btn secondary" style="padding:4px 8px;font-size:.62rem;" onclick="event.stopPropagation();adminPrefillRole('${_cohortEsc(r.email || '')}','${_cohortEsc(role)}')">Edit</button></td>
+        <td>${cohortRole ? '<span class="cohort-muted" style="font-size:.6rem;">Kohort</span>' : `<button type="button" class="cohort-btn secondary" style="padding:4px 8px;font-size:.62rem;" onclick="event.stopPropagation();adminPrefillRole('${_cohortEsc(r.email || '')}','${_cohortEsc(role)}')">Edit</button>`}</td>
       </tr>`;
     }).join('')}</tbody></table>`;
 }
@@ -3572,7 +3631,8 @@ function adminOpenUserDrawer(userId) {
   const onboard = r.onboarding_completed ? 'Selesai' : 'Belum / dilewati';
   const deepdives = r.deepdive_count ?? 0;
   const lastDiscover = r.last_discover_at ? r.last_discover_at.slice(0, 16).replace('T', ' ') : '—';
-  const isIndep = !r.cohort_count && !r.led_cohort_count;
+  const role = r.app_role || 'independent';
+  const isCohort = role === 'student' || role === 'leader';
   body.innerHTML = `
     <div style="margin-bottom:14px;">
       <div style="font-weight:800;color:#1A1A1A;">${_cohortEsc(r.display_name || 'User')}</div>
@@ -3600,9 +3660,8 @@ function adminOpenUserDrawer(userId) {
     <div style="margin-bottom:12px;"><strong>Terakhir Discover:</strong> ${lastDiscover}</div>
     <div style="margin-bottom:12px;"><strong>Daftar:</strong> ${r.created_at ? r.created_at.slice(0, 10) : '—'}</div>
     <div style="margin-bottom:12px;"><strong>Login terakhir:</strong> ${r.last_sign_in_at ? r.last_sign_in_at.slice(0, 16).replace('T', ' ') : '—'}</div>
-    <div style="margin-bottom:12px;"><strong>Role:</strong> ${_cohortEsc(r.app_role || 'student')}</div>
-    <div style="margin-bottom:16px;"><strong>Tipe:</strong> ${isIndep ? '<span class="adm-user-badge independent">Independent</span>' : '<span class="adm-user-badge in-cohort">Dalam Kohort</span> <span class="cohort-muted" style="font-size:.65rem;">(kelola di tab Kohort)</span>'}</div>
-    <button type="button" class="cohort-btn secondary" style="width:100%;" onclick="adminPrefillRole('${_cohortEsc(r.email || '')}','${_cohortEsc(r.app_role || 'student')}');adminCloseUserDrawer();adminSwitchPanel('users');">Edit role</button>
+    <div style="margin-bottom:12px;"><strong>Tipe:</strong> <span style="color:${adminRoleColor(role)};font-weight:800;">${_cohortEsc(adminRoleLabel(role))}</span></div>
+    ${isCohort ? '<div class="cohort-muted" style="margin-bottom:16px;font-size:.68rem;">Siswa/leader dikelola di tab Kohort — bukan pengaturan platform user.</div>' : `<button type="button" class="cohort-btn secondary" style="width:100%;" onclick="adminPrefillRole('${_cohortEsc(r.email || '')}','${_cohortEsc(role)}');adminCloseUserDrawer();adminSwitchPanel('users');">Edit tipe platform</button>`}
   `;
   drawer.classList.add('open');
 }
@@ -3633,12 +3692,12 @@ function adminPrefillRole(email, role) {
   const r = document.getElementById('adm-role-select');
   if (e) e.value = email || '';
   if (le) le.value = email || '';
-  if (r && role) r.value = role;
+  if (r) r.value = role === 'admin' ? 'admin' : 'independent';
 }
 
 async function adminAssignRole() {
   const email = (document.getElementById('adm-role-email')?.value || '').trim();
-  const role = document.getElementById('adm-role-select')?.value || 'student';
+  const role = document.getElementById('adm-role-select')?.value || 'independent';
   const st = document.getElementById('adm-role-status');
   if (!email || !_supabase || !isPlatformAdmin()) return;
   if (st) st.textContent = 'Menyimpan role...';
@@ -3651,7 +3710,7 @@ async function adminAssignRole() {
     if (st) st.textContent = error.message || 'Gagal menyimpan role.';
     return;
   }
-  if (st) st.textContent = 'Role tersimpan.';
+  if (st) st.textContent = 'Tipe tersimpan.';
   await adminLoadUserDirectory();
 }
 
@@ -23114,9 +23173,17 @@ function _admApplyPreviewDashboardLayout(mode) {
 function _syncDashboardRoleLayout() {
   if (isPlatformAdmin() && _adminViewMode !== 'admin') {
     _admApplyPreviewDashboardLayout(_adminViewMode);
-  } else {
-    _hbdApplyLeaderMode(_effectiveLeaderMode());
+    return;
   }
+  if (_effectiveIndependentMode()) {
+    _admApplyPreviewDashboardLayout('independent');
+    return;
+  }
+  if (_effectiveLeaderMode()) {
+    _hbdApplyLeaderMode(true);
+    return;
+  }
+  _admApplyPreviewDashboardLayout('student');
 }
 
 function applyAdminViewMode(mode) {
