@@ -6,6 +6,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "4321"],
       "port": 4321
+    },
+    {
+      "name": "larisid-static-alt",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "4329"],
+      "port": 4329
     }
   ]
 }
