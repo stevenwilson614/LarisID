@@ -17,13 +17,25 @@ function fmtShort(n: number): string {
 }
 
 serve(async (req) => {
-  // service-role only (cron), never browsable
-  const auth = (req.headers.get('Authorization') || '').replace('Bearer ', '')
-  if (auth !== Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) {
+  // Service-role only (cron). verify_jwt=on means the platform has already
+  // validated the signature — we additionally require the service_role claim
+  // (an anon/user JWT must never trigger a send).
+  const token = (req.headers.get('Authorization') || '').replace('Bearer ', '')
+  let role = ''
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    role = payload.role || ''
+  } catch (_) { /* not a JWT */ }
+  if (role !== 'service_role') {
     return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 })
   }
   const RESEND_KEY = Deno.env.get('RESEND_API_KEY')
   if (!RESEND_KEY) return new Response(JSON.stringify({ error: 'RESEND_API_KEY missing' }), { status: 500 })
+
+  // { dry_run: true }  → compose everything, send nothing, return the plan.
+  // { test_to: "a@b" } → send every composed email to this address instead.
+  let opts: { dry_run?: boolean; test_to?: string } = {}
+  try { opts = await req.json() } catch (_) { /* empty body = real run */ }
 
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
@@ -72,6 +84,7 @@ serve(async (req) => {
   // 4. compose + send per user
   let sent = 0
   const errors: string[] = []
+  const plan: { email: string; products: number }[] = []
   for (const uid of userIds) {
     try {
       const { data: userRes } = await db.auth.admin.getUserById(uid)
@@ -108,24 +121,28 @@ serve(async (req) => {
           <p style="font-size:11.5px;color:#9CA3AF;">Kamu menerima email ini karena melacak produk di LarisID. Balas dengan "STOP" untuk berhenti menerima ringkasan mingguan.</p>
         </div>`
 
+      plan.push({ email, products: items.length })
+      if (opts.dry_run) continue
+
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_KEY}` },
         body: JSON.stringify({
           from: FROM_EMAIL,
-          to: email,
-          subject: 'Produk lacakanmu minggu ini — ringkasan LarisID',
+          to: opts.test_to || email,
+          subject: 'Produk lacakanmu minggu ini — ringkasan LarisID' + (opts.test_to ? ` [TEST utk ${email}]` : ''),
           html,
         }),
       })
       if (res.ok) sent++
-      else errors.push(`${uid}: ${res.status}`)
+      else errors.push(`${uid}: ${res.status} ${await res.text().catch(() => '')}`)
+      await new Promise(r => setTimeout(r, 600)) // Resend caps at 2 req/s
     } catch (e) {
       errors.push(`${uid}: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
 
-  return new Response(JSON.stringify({ sent, audience: userIds.length, errors }), {
+  return new Response(JSON.stringify({ sent, audience: userIds.length, dry_run: !!opts.dry_run, test_to: opts.test_to || null, plan, errors }), {
     headers: { 'Content-Type': 'application/json' },
   })
 })
