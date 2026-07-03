@@ -493,27 +493,43 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .card-odds.odds-med{color:#D97706;}
 .card-odds.odds-low{color:#6B7280;}
 /* ── Yang Laku dari Kotamu ── */
-.ylk-card{background:#fff;border:1px solid #F0E7DC;border-radius:14px;padding:16px 18px;margin-bottom:18px;box-shadow:0 6px 20px rgba(26,26,26,.04);}
-.ylk-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
-.ylk-title{font-size:.95rem;font-weight:800;color:#1A1A1A;letter-spacing:-.01em;}
-.ylk-sub{font-size:.72rem;color:#9CA3AF;margin-top:2px;max-width:520px;line-height:1.4;}
-.ylk-select{font-family:inherit;font-size:.78rem;font-weight:700;color:#1A1A1A;background:#F9EAE4;border:1px solid #F0CFC4;border-radius:8px;padding:7px 10px;cursor:pointer;max-width:200px;}
-.ylk-cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
-.ylk-cat{border:1px solid #F0E7DC;border-radius:10px;padding:10px 12px;}
-.ylk-cat-top{display:flex;align-items:baseline;justify-content:space-between;gap:6px;margin-bottom:6px;}
-.ylk-cat-name{font-size:.78rem;font-weight:800;color:#1A1A1A;}
-.ylk-cat-rate{font-size:.78rem;font-weight:800;}
-.ylk-cat-bar{height:6px;background:#F3ECE6;border-radius:999px;overflow:hidden;margin-bottom:6px;}
+.ylk-card{background:linear-gradient(160deg,#fff 55%,#FBF5E9);border:1px solid #F0E7DC;border-radius:16px;padding:18px 20px;margin-bottom:18px;box-shadow:0 6px 20px rgba(26,26,26,.05);}
+.ylk-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+.ylk-title{font-size:.98rem;font-weight:800;color:#1A1A1A;letter-spacing:-.01em;display:flex;align-items:center;gap:7px;}
+.ylk-sub{font-size:.74rem;color:#8B8375;margin-top:3px;max-width:520px;line-height:1.45;}
+.ylk-region-wrap{position:relative;display:inline-flex;align-items:center;}
+.ylk-region-wrap svg{position:absolute;left:11px;pointer-events:none;}
+.ylk-select{font-family:inherit;font-size:.78rem;font-weight:700;color:#1A1A1A;background:#fff;border:1.5px solid #EADFC9;border-radius:999px;padding:8px 12px 8px 29px;cursor:pointer;max-width:210px;transition:border-color .15s,box-shadow .15s;}
+.ylk-select:hover,.ylk-select:focus{border-color:rgba(181,32,42,.45);box-shadow:0 2px 10px rgba(181,32,42,.08);outline:none;}
+.ylk-cat-bar{height:6px;background:#F3ECE6;border-radius:999px;overflow:hidden;}
 .ylk-cat-bar-fill{height:100%;border-radius:999px;}
-.ylk-cat-price{font-size:.66rem;color:#6B7280;font-weight:600;}
-.ylk-empty{font-size:.74rem;color:#9CA3AF;padding:6px 0;}
-.ylk-highlights{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:14px;}
-.ylk-hl-card{border:1px solid #F0E7DC;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px;}
-.ylk-hl-badge{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.02em;}
-.ylk-hl-cta{font-size:.68rem;font-weight:700;color:#B5202A;background:none;border:none;cursor:pointer;padding:0;text-align:left;}
+.ylk-empty{font-size:.76rem;color:#8B8375;padding:8px 0;line-height:1.5;}
+.ylk-highlights{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px;}
+.ylk-hl-card{position:relative;background:#fff;border:1px solid #F0E7DC;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:transform .16s,box-shadow .16s,border-color .16s;}
+.ylk-hl-card:hover,.ylk-hl-card:focus-visible{transform:translateY(-3px);box-shadow:0 12px 28px rgba(26,26,26,.1);border-color:rgba(181,32,42,.35);outline:none;}
+.ylk-hl-badge{display:inline-flex;align-items:center;gap:5px;font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:4px 10px;border-radius:999px;width:max-content;}
+.ylk-hl-main{display:flex;align-items:center;gap:12px;}
+.ylk-hl-info{min-width:0;}
+.ylk-hl-stat{font-size:.74rem;font-weight:600;color:#6B7280;margin-top:3px;line-height:1.35;}
+.ylk-hl-stat b{font-weight:800;}
+.ylk-hl-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;}
+.ylk-hl-note{font-size:.66rem;color:#9CA3AF;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ylk-hl-go{font-size:.7rem;font-weight:800;color:#B5202A;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0;}
+.ylk-hl-go svg{transition:transform .15s;}
+.ylk-hl-card:hover .ylk-hl-go svg{transform:translateX(3px);}
 .ylk-allcats{border-top:1px solid #F0E7DC;padding-top:12px;}
-.ylk-allcats-label{display:block;font-size:.72rem;font-weight:700;color:#6B7280;margin-bottom:6px;}
-.ylk-cat-iconname{display:flex;align-items:center;gap:8px;}
+.ylk-allcats-label{display:block;font-size:.7rem;font-weight:700;color:#8B8375;margin-bottom:8px;}
+.ylk-ic-fallback{align-items:center;justify-content:center;font-weight:800;color:#B5202A;}
+.ylk-hl-iconwrap .ylk-ic-fallback{width:100%;height:100%;font-size:1.35rem;}
+.ylk-chip .ylk-ic-fallback{width:18px;height:18px;font-size:.68rem;border-radius:6px;background:#F9EAE4;flex-shrink:0;}
+.ylk-chips{display:flex;gap:8px;flex-wrap:wrap;}
+.ylk-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid #EADFC9;background:#fff;border-radius:999px;padding:6px 12px 6px 8px;font-family:inherit;font-size:.72rem;font-weight:700;color:#1A1A1A;cursor:pointer;transition:border-color .15s,background .15s,transform .15s;}
+.ylk-chip:hover{border-color:rgba(181,32,42,.45);background:#F9EAE4;transform:translateY(-1px);}
+.ylk-chip .rate{color:#1A7A46;font-weight:800;}
+.ylk-pick{display:flex;align-items:center;gap:12px;background:#fff;border:1.5px dashed #EADFC9;border-radius:14px;padding:16px;grid-column:1/-1;}
+.ylk-pick-icon{width:42px;height:42px;border-radius:12px;background:#F9EAE4;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ylk-pick-title{font-size:.82rem;font-weight:800;color:#1A1A1A;}
+.ylk-pick-sub{font-size:.72rem;color:#8B8375;margin-top:2px;}
 /* YLK icons enlarged as the focus (moved to Dashboard) */
 .ylk-hl-iconwrap{width:60px;height:60px;border-radius:16px;background:#F9EAE4;display:flex;align-items:center;justify-content:center;margin:2px 0 4px;}
 .ylk-hl-name{font-size:.9rem;font-weight:800;color:#1A1A1A;line-height:1.2;}
@@ -6528,24 +6544,27 @@ html,body{overflow-x:clip;max-width:100%;}
               <div id="hbd-nu-reco-cards" class="hbd-nu-reco-grid"></div>
             </div>
 
-            <!-- Yang Laku dari Kotamu (moved from Discover — icons enlarged as the focus) -->
+            <!-- Yang Laku dari Kotamu — clickable breakout tiles per city -->
             <div class="ylk-card" id="ylk-card" style="display:none;">
               <div class="ylk-head">
                 <div class="ylk-head-text">
-                  <div class="ylk-title">Yang Laku dari Kotamu</div>
+                  <div class="ylk-title">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B5202A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+                    Yang Laku dari Kotamu
+                  </div>
                   <div class="ylk-sub" id="ylk-sub">Kategori yang paling sering tembus untuk penjual baru di daerahmu.</div>
                 </div>
-                <select id="ylk-region" class="ylk-select" onchange="ylkOnRegionChange()" aria-label="Pilih kota">
-                  <option value="">Pilih kotamu…</option>
-                </select>
+                <label class="ylk-region-wrap">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#B5202A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+                  <select id="ylk-region" class="ylk-select" onchange="ylkOnRegionChange()" aria-label="Pilih kota">
+                    <option value="">Pilih kotamu…</option>
+                  </select>
+                </label>
               </div>
               <div class="ylk-highlights" id="ylk-highlights"></div>
               <div class="ylk-allcats" id="ylk-allcats" style="display:none;">
-                <label class="ylk-allcats-label" for="ylk-cat-select">Lihat kategori lain di kota ini</label>
-                <select id="ylk-cat-select" class="ylk-select" onchange="ylkOnCatSelectChange()" aria-label="Pilih kategori">
-                  <option value="">Pilih kategori…</option>
-                </select>
-                <div id="ylk-cat-detail"></div>
+                <span class="ylk-allcats-label">Kategori lain di kotamu — ketuk untuk lihat produknya</span>
+                <div class="ylk-chips" id="ylk-chips"></div>
               </div>
               <div class="ylk-empty" id="ylk-empty" style="display:none;"></div>
             </div>

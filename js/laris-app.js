@@ -1585,6 +1585,16 @@ async function ylkInit() {
     // (below the >=30 aggregated-breakouts threshold) should still get an
     // explicit "no data yet" message from ylkRender, not silence.
     if (saved) ylkRender(saved);
+    else {
+      const hl = document.getElementById('ylk-highlights');
+      if (hl) hl.innerHTML = `<div class="ylk-pick">
+        <div class="ylk-pick-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B5202A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg></div>
+        <div>
+          <div class="ylk-pick-title">Pilih kotamu dulu</div>
+          <div class="ylk-pick-sub">Kami tunjukkan kategori apa yang paling sering tembus untuk penjual baru di daerahmu.</div>
+        </div>
+      </div>`;
+    }
   } catch (e) { _ylkInited = false; }
 }
 
@@ -1647,50 +1657,75 @@ async function ylkRender(region) {
              : '<div class="ylk-hl-card"><div class="ylk-hl-badge" style="color:#9CA3AF">NAIK DAUN</div><div class="ylk-empty">Belum ada kategori dengan tren naik yang jelas di kota ini.</div></div>',
       (worst.category !== best.category) ? _ylkHlCard('PALING MENANTANG', worst, 'challenging') : ''
     ].join('');
-    _ylkPopulateCatSelect(qualified);
-    allcats.style.display = '';
+    _ylkPopulateChips(qualified, [best.category, rising && rising.category, worst.category]);
   } catch (e) { hl.innerHTML = '<div class="ylk-empty">Gagal memuat data.</div>'; }
+}
+
+/** Category icon with a brand-letter fallback (raw scrape categories like
+ *  "Laundry" have no PNG in onboarding/categories — never show an empty box). */
+function _ylkIcon(cat, size) {
+  const s = size || 40;
+  const initial = (cat || '?').trim().charAt(0).toUpperCase();
+  return `<img src="/images/onboarding/categories/${_catSlug(cat)}.png" alt="" width="${s}" height="${s}" decoding="async" style="flex-shrink:0;object-fit:contain;" onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='flex';">`
+    + `<span class="ylk-ic-fallback" style="display:none;">${initial}</span>`;
 }
 
 function _ylkHlCard(badge, row, kind) {
   const rate = Number(row.breakout_rate) || 0;
-  const clr = kind === 'success' ? '#059669' : kind === 'rising' ? '#2563EB' : '#D97706';
-  const trendNote = (kind === 'rising' && row.trend_delta != null)
-    ? `<div class="ylk-cat-price">Naik ${Number(row.trend_delta).toFixed(1)} poin dalam 45 hari terakhir</div>` : '';
-  return `<div class="ylk-hl-card">
-    <div class="ylk-hl-badge" style="color:${clr}">${badge}</div>
-    <div class="ylk-hl-iconwrap">${_catIconImg(row.category, 40)}</div>
-    <div class="ylk-cat-name ylk-hl-name">${row.category}</div>
-    <div class="ylk-cat-rate" style="color:${clr}">${rate}% penjual baru tembus</div>
-    ${trendNote}
-    <button class="ylk-hl-cta" onclick="ylkSeeItems('${row.category.replace(/'/g, "\\'")}')">Lihat Produk →</button>
+  const cfg = kind === 'success'
+    ? { clr: '#1A7A46', bg: '#EAF7F0', icon: '<path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.2-6.3-4.5-6.3 4.5L8 13.6l-6-4.4h7.6z"/>' }
+    : kind === 'rising'
+    ? { clr: '#A87B36', bg: '#FBF3E4', icon: '<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>' }
+    : { clr: '#B45309', bg: '#FFF7E6', icon: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>' };
+  const oneIn = rate > 0 ? Math.max(1, Math.round(100 / rate)) : null;
+  const stat = (oneIn && oneIn > 1)
+    ? `<b>1 dari ${oneIn}</b> penjual baru tembus 100+ terjual`
+    : `<b>${rate}%</b> penjual baru tembus 100+ terjual`;
+  const price = row.median_winner_price
+    ? `Harga pemenang ± Rp ${Number(row.median_winner_price).toLocaleString('id-ID')}` : '';
+  const note = (kind === 'rising' && row.trend_delta != null)
+    ? `Naik ${Number(row.trend_delta).toFixed(1)} poin · 45 hari terakhir` : price;
+  const cat = row.category.replace(/'/g, "\\'");
+  return `<div class="ylk-hl-card" role="button" tabindex="0"
+      onclick="ylkSeeItems('${cat}')"
+      onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();ylkSeeItems('${cat}');}">
+    <span class="ylk-hl-badge" style="color:${cfg.clr};background:${cfg.bg};">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${cfg.icon}</svg>
+      ${badge}
+    </span>
+    <div class="ylk-hl-main">
+      <div class="ylk-hl-iconwrap">${_ylkIcon(row.category, 40)}</div>
+      <div class="ylk-hl-info">
+        <div class="ylk-hl-name">${row.category}</div>
+        <div class="ylk-hl-stat">${stat}</div>
+      </div>
+    </div>
+    <div class="ylk-cat-bar"><div class="ylk-cat-bar-fill" style="width:${Math.min(100, Math.max(4, rate))}%;background:${cfg.clr};"></div></div>
+    <div class="ylk-hl-foot">
+      <span class="ylk-hl-note">${note}</span>
+      <span class="ylk-hl-go">Lihat Produk
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </span>
+    </div>
   </div>`;
 }
 
-function _ylkPopulateCatSelect(rows) {
-  const sel = document.getElementById('ylk-cat-select');
-  const detail = document.getElementById('ylk-cat-detail');
-  if (!sel) return;
-  const sorted = [...rows].sort((a, b) => a.category.localeCompare(b.category));
-  sel.innerHTML = '<option value="">Pilih kategori…</option>' +
-    sorted.map(r => `<option value="${r.category.replace(/"/g, '&quot;')}">${r.category} — ${r.breakout_rate}%</option>`).join('');
-  if (detail) detail.innerHTML = '';
-}
-
-function ylkOnCatSelectChange() {
-  const sel = document.getElementById('ylk-cat-select');
-  const detail = document.getElementById('ylk-cat-detail');
-  if (!sel || !detail) return;
-  const cat = sel.value;
-  if (!cat) { detail.innerHTML = ''; return; }
-  const row = (_ylkCurrentRows || []).find(r => r.category === cat);
-  if (!row) { detail.innerHTML = '<div class="ylk-empty">Data tidak tersedia.</div>'; return; }
-  const rate = Number(row.breakout_rate) || 0;
-  detail.innerHTML = `<div class="ylk-cat">
-    <div class="ylk-cat-top"><div class="ylk-cat-iconname">${_catIconImg(row.category, 26)}<span class="ylk-cat-name">${row.category}</span></div><span class="ylk-cat-rate">${rate}%</span></div>
-    <div class="ylk-cat-price">${row.new_items} produk baru dianalisis · median harga pemenang Rp ${Number(row.median_winner_price || 0).toLocaleString('id-ID')}</div>
-    <button class="ylk-hl-cta" onclick="ylkSeeItems('${cat.replace(/'/g, "\\'")}')">Lihat Produk →</button>
-  </div>`;
+/** One-tap chips for the remaining categories (replaces the old two-step
+ *  select + detail flow — every category is now a single click to products). */
+function _ylkPopulateChips(rows, excludeCats) {
+  const wrap = document.getElementById('ylk-chips');
+  const allcats = document.getElementById('ylk-allcats');
+  if (!wrap || !allcats) return;
+  const ex = new Set((excludeCats || []).filter(Boolean));
+  const rest = rows.filter(r => !ex.has(r.category))
+    .sort((a, b) => (b.breakout_rate || 0) - (a.breakout_rate || 0))
+    .slice(0, 8);
+  if (!rest.length) { allcats.style.display = 'none'; wrap.innerHTML = ''; return; }
+  wrap.innerHTML = rest.map(r =>
+    `<button type="button" class="ylk-chip" onclick="ylkSeeItems('${r.category.replace(/'/g, "\\'")}')">
+      ${_ylkIcon(r.category, 18)}<span>${r.category}</span><span class="rate">${r.breakout_rate}%</span>
+    </button>`).join('');
+  allcats.style.display = '';
 }
 
 // Mirrors nuOnbApplyToDiscover()'s proven pre-filter pattern: check one category,
