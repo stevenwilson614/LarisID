@@ -5226,6 +5226,7 @@ html,body{overflow-x:clip;max-width:100%;}
           <button class="dash-topbar-icon-btn" title="Notifikasi" onclick="event.stopPropagation();toggleNotifMenu()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           </button>
+          <span id="dash-notif-dot" style="position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#B5202A;border:1.5px solid #fff;display:none;pointer-events:none;"></span>
           <div class="dash-topbar-menu" id="dash-notif-menu" style="width:248px;" onclick="event.stopPropagation()">
             <div class="dash-topbar-menu-item" style="font-weight:700;color:#111;pointer-events:none;font-size:.8rem;">Notifikasi</div>
             <div class="dash-topbar-divider"></div>
@@ -6514,6 +6515,19 @@ html,body{overflow-x:clip;max-width:100%;}
               <p id="hbd-subtitle">Selamat datang kembali — berikut ringkasan produk kamu hari ini.</p>
             </div>
 
+            <!-- "what changed since last visit" strip — top slot for returning users -->
+            <div id="hbd-alerts-strip" style="display:none;margin-bottom:16px;"></div>
+
+            <!-- Recommended products (daily-random) — first thing returning users see -->
+            <div id="hbd-nu-reco" style="display:none;margin-bottom:20px;">
+              <div class="hbd-nu-reco-head">
+                <div class="hbd-nu-reco-title" id="hbd-nu-reco-title">Produk Pilihan Hari Ini</div>
+                <a class="hbd-nu-reco-link" onclick="switchDashView('discover')">Lihat semua &rarr;</a>
+              </div>
+              <p class="hbd-nu-reco-msg">Ini cuplikan produk berpotensi hari ini — set baru setiap hari, cek lagi besok. Buka <a onclick="switchDashView('discover')">Discover</a> untuk riset lebih banyak keyword, filter pasar, dan lacak produk yang menarik.</p>
+              <div id="hbd-nu-reco-cards" class="hbd-nu-reco-grid"></div>
+            </div>
+
             <!-- Yang Laku dari Kotamu (moved from Discover — icons enlarged as the focus) -->
             <div class="ylk-card" id="ylk-card" style="display:none;">
               <div class="ylk-head">
@@ -6543,18 +6557,6 @@ html,body{overflow-x:clip;max-width:100%;}
               <button type="button" class="nu-empty-btn" onclick="switchDashView('discover')">Cari Produk di Discover</button>
             </div>
 
-            <!-- Recommended products (daily-random, student/independent) -->
-            <div id="hbd-nu-reco" style="display:none;margin-bottom:20px;">
-              <div class="hbd-nu-reco-head">
-                <div class="hbd-nu-reco-title" id="hbd-nu-reco-title">Rekomendasi produk untuk kamu</div>
-                <a class="hbd-nu-reco-link" onclick="switchDashView('discover')">Lihat semua &rarr;</a>
-              </div>
-              <p class="hbd-nu-reco-msg">Ini cuplikan produk berpotensi hari ini. Buka <a onclick="switchDashView('discover')">Discover</a> untuk riset lebih banyak keyword, filter pasar, dan lacak produk yang menarik.</p>
-              <div id="hbd-nu-reco-cards" class="hbd-nu-reco-grid"></div>
-            </div>
-
-            <!-- price-change alert strip -->
-            <div id="hbd-alerts-strip" style="display:none;margin-bottom:16px;"></div>
 
             <!-- mentor cohort overview (shown when user leads a cohort) -->
             <div id="hbd-mentor-wrap" style="display:none;margin-bottom:20px;">
@@ -6832,7 +6834,7 @@ html,body{overflow-x:clip;max-width:100%;}
             <div class="dsc-header">
               <div>
                 <h2 class="dsc-title is-page-title-img"><img class="page-title-img page-title-img--page" src="/images/titles/discover.webp" alt="Discover" decoding="async"></h2>
-                <p class="dsc-subtitle" id="dsc-subtitle">Temukan peluang produk berpotensi tinggi berdasarkan data pasar terkini</p>
+                <p class="dsc-subtitle" id="dsc-subtitle">Temukan peluang produk berpotensi tinggi berdasarkan data pasar terkini<span id="dsc-freshness" style="display:block;font-size:.72rem;color:#8B8375;margin-top:2px;"></span></p>
               </div>
             </div>
 

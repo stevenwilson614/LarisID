@@ -4757,24 +4757,37 @@ async function renderNotifMenu() {
   if (!list) return;
   list.innerHTML = '<div style="padding:10px 14px;font-size:.74rem;color:#9CA3AF;">Memuat…</div>';
   let rows = [];
+  let deltas = [];
   try {
     if (_supabase && currentUser) {
-      const { data } = await _supabase.from('credit_events')
-        .select('type,amount,keyword,created_at').order('created_at', { ascending: false }).limit(6);
-      rows = data || [];
+      const [evRes, dl] = await Promise.all([
+        _supabase.from('credit_events')
+          .select('type,amount,keyword,created_at')
+          .eq('user_id', currentUser.id)
+          .order('created_at', { ascending: false }).limit(6),
+        (typeof trkFetchDeltas === 'function' ? trkFetchDeltas() : Promise.resolve([])),
+      ]);
+      rows = evRes.data || [];
+      deltas = dl || [];
     }
   } catch (_) {}
-  if (!rows.length) {
+  if (!rows.length && !deltas.length) {
     list.innerHTML = '<div style="padding:10px 14px;font-size:.74rem;color:#9CA3AF;">Belum ada notifikasi baru.</div>';
     return;
   }
   const descOf = ev => ev.type === 'earn_monthly' ? 'Kredit bulanan diberikan'
+    : ev.type === 'earn_welcome' ? 'Kredit selamat datang'
     : ev.type === 'earn_search' ? 'Kredit dari pencarian extension'
     : ev.type === 'earn_referral' ? 'Bonus ajak teman'
     : ev.type === 'earn_chest' ? 'Hadiah peti mingguan'
     : (ev.type || '').startsWith('spend') ? `Buka data ${ev.keyword || 'produk'}`
     : (ev.type || 'Aktivitas');
-  list.innerHTML = rows.map(ev => {
+  const deltaHtml = deltas.slice(0, 3).map(d => `
+    <div class="dash-topbar-menu-item" style="justify-content:space-between;gap:8px;" onclick="switchDashView('tracker');toggleNotifMenu(false)">
+      <span style="font-size:.74rem;color:#374151;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><strong>${d.name}</strong></span>
+      <span style="font-size:.7rem;font-weight:700;color:${d.soldDelta > 0 ? '#059669' : '#B45309'};white-space:nowrap;">${d.soldDelta > 0 ? `+${trkUnits(d.soldDelta)} terjual` : (d.priceDelta > 0 ? 'harga naik' : 'harga turun')}</span>
+    </div>`).join('');
+  const evHtml = rows.map(ev => {
     const earn = (ev.amount || 0) > 0;
     const amt = `${earn ? '+' : ''}${ev.amount} kredit`;
     return `<div class="dash-topbar-menu-item" style="justify-content:space-between;cursor:default;">
@@ -4782,6 +4795,7 @@ async function renderNotifMenu() {
       <span style="font-size:.72rem;font-weight:700;color:${earn ? '#059669' : '#B5202A'};white-space:nowrap;">${amt}</span>
     </div>`;
   }).join('');
+  list.innerHTML = deltaHtml + evHtml;
 }
 function mlsForceNotifyPopup() {
   try { localStorage.removeItem('larisid_mls_notify_v1'); } catch (_) {}
@@ -11986,6 +12000,84 @@ function trkSave(arr) {
 function trkKey(listing) { return `${listing.item_id}_${listing.shop_id}`; }
 function trkIsTracked(listing) { return trkLoad().some(t => t.key === trkKey(listing)); }
 
+// ── Tracked-product deltas: "what changed since you last checked" ────────────
+// Baseline = last acknowledged snapshot (localStorage); current = listings_latest.
+// Cached per session so the bell and the return strip agree.
+const _TRK_SEEN_SNAP_KEY = 'larisid_trk_seen_snap_v1';
+let _trkDeltasCache = null;
+
+function _trkSeenSnap() { try { return JSON.parse(localStorage.getItem(_TRK_SEEN_SNAP_KEY) || '{}'); } catch { return {}; } }
+function _trkSeenSnapSave(m) { try { localStorage.setItem(_TRK_SEEN_SNAP_KEY, JSON.stringify(m)); } catch (_) {} }
+
+async function trkFetchDeltas() {
+  if (_trkDeltasCache) return _trkDeltasCache;
+  const tracked = trkLoad();
+  if (!tracked.length || !_supabase) return (_trkDeltasCache = []);
+  const ids = [...new Set(tracked.map(t => Number(t.item_id)).filter(Boolean))].slice(0, 20);
+  if (!ids.length) return (_trkDeltasCache = []);
+  let rows = [];
+  try {
+    const { data, error } = await _supabase
+      .from('listings_latest')
+      .select('item_id,shop_id,price,total_sold,scraped_at')
+      .in('item_id', ids);
+    if (error) return (_trkDeltasCache = []);
+    rows = data || [];
+  } catch (_) { return (_trkDeltasCache = []); }
+  const latest = {};
+  rows.forEach(r => { latest[`${r.item_id}_${r.shop_id}`] = r; });
+  const snap = _trkSeenSnap();
+  const deltas = [];
+  tracked.forEach(t => {
+    const k = trkKey(t);
+    const curr = latest[k];
+    if (!curr) return;
+    const base = snap[k] || { price: t.price || 0, total_sold: t.total_sold || 0 };
+    const soldDelta  = (curr.total_sold || 0) - (base.total_sold || 0);
+    const priceDelta = (curr.price || 0) - (base.price || 0);
+    const priceMoved = Math.abs(priceDelta) >= Math.max(500, (base.price || 0) * 0.02);
+    if (soldDelta > 0 || priceMoved) {
+      deltas.push({
+        key: k, item_id: t.item_id, shop_id: t.shop_id,
+        name: t.product_name || t.keyword || 'Produk',
+        image: t.image_url || '',
+        soldDelta, priceDelta,
+        currPrice: curr.price || 0, currSold: curr.total_sold || 0,
+      });
+    }
+  });
+  _trkDeltasCache = deltas;
+  trkUpdateNotifDot();
+  return deltas;
+}
+
+// Move the baseline forward once the user has actually seen the changes.
+function trkAckDeltas() {
+  if (!_trkDeltasCache || !_trkDeltasCache.length) return;
+  const snap = _trkSeenSnap();
+  _trkDeltasCache.forEach(d => { snap[d.key] = { price: d.currPrice, total_sold: d.currSold }; });
+  _trkSeenSnapSave(snap);
+}
+
+function trkUnits(n) {
+  n = Math.round(n || 0);
+  if (n >= 1e6) return (n / 1e6).toFixed(1).replace('.', ',') + 'jt';
+  if (n >= 1e3) return (n / 1e3).toFixed(1).replace('.', ',').replace(',0', '') + 'rb';
+  return String(n);
+}
+
+function trkDeltaMsg(d) {
+  const parts = [];
+  if (d.soldDelta > 0) parts.push(`terjual +${trkUnits(d.soldDelta)}`);
+  if (Math.abs(d.priceDelta) >= 500) parts.push(`harga ${d.priceDelta > 0 ? 'naik' : 'turun'} ${fmtShort(Math.abs(d.priceDelta))}`);
+  return parts.join(' · ') + ' sejak terakhir kamu cek';
+}
+
+function trkUpdateNotifDot() {
+  const dot = document.getElementById('dash-notif-dot');
+  if (dot) dot.style.display = (_trkDeltasCache && _trkDeltasCache.length) ? '' : 'none';
+}
+
 // ── Supabase sync helpers ────────────────────────────────────
 let _trkSellingSet = new Set(); // set of "itemId_shopId" marked is_selling
 
@@ -18093,41 +18185,42 @@ let _dashChartInstance = null;
 
 async function loadDashboardData() {
   if (!_supabase || !currentUser) return;
-  const saved = allProducts.filter(p => savedProducts.has(p.id));
-  if (!saved.length) return;
+  // Weekly movement for the user's TRACKED products, computed live from raw
+  // `listings` (fresh daily). weekly_snapshots is frozen (last 2026-06-08) and
+  // is intentionally no longer read here.
+  const tracked = trkLoad();
+  if (!tracked.length) return;
+  const ids = [...new Set(tracked.map(t => Number(t.item_id)).filter(Boolean))].slice(0, 20);
+  if (!ids.length) return;
 
-  // Build list of product names to query
-  const names = saved.map(p => p.name).filter(Boolean);
-  if (!names.length) return;
+  const since = new Date(Date.now() - 8 * 864e5).toISOString();
+  const { data: rows, error } = await _supabase
+    .from('listings')
+    .select('item_id,shop_id,product_name,price,total_sold,scraped_at')
+    .in('item_id', ids)
+    .gte('scraped_at', since)
+    .order('scraped_at', { ascending: true });
+  if (error || !rows?.length) return;
 
-  // Fetch last 3 weeks of snapshots for these products
-  const { data: snaps, error } = await _supabase
-    .from('weekly_snapshots')
-    .select('product_name,week_date,combined_total_sold,seller_count,weekly_delta_revenue')
-    .in('product_name', names)
-    .order('week_date', { ascending: false })
-    .limit(names.length * 3);
+  const byItem = {};
+  rows.forEach(r => { const k = `${r.item_id}_${r.shop_id}`; (byItem[k] = byItem[k] || []).push(r); });
 
-  if (error || !snaps?.length) return;
-
-  // Group by product_name, pick latest 2 weeks each
-  const byProduct = {};
-  snaps.forEach(s => {
-    if (!byProduct[s.product_name]) byProduct[s.product_name] = [];
-    if (byProduct[s.product_name].length < 2) byProduct[s.product_name].push(s);
-  });
-
-  // Build deltas
+  // Earliest vs latest scrape in the window → units moved this week
   const deltas = [];
-  Object.entries(byProduct).forEach(([name, weeks]) => {
-    const curr = weeks[0];
-    const prev = weeks[1];
-    const revDelta = curr.weekly_delta_revenue || 0;
-    const sellerDelta = prev ? (curr.seller_count || 0) - (prev.seller_count || 0) : null;
-    const totalSoldDelta = prev
-      ? (curr.combined_total_sold || 0) - (prev.combined_total_sold || 0)
-      : null;
-    deltas.push({ name, revDelta, sellerDelta, totalSoldDelta, curr, prev });
+  tracked.forEach(t => {
+    const pts = byItem[trkKey(t)];
+    if (!pts || pts.length < 2) return;
+    const first = pts[0], last = pts[pts.length - 1];
+    const soldDelta = Math.max(0, (last.total_sold || 0) - (first.total_sold || 0));
+    const revDelta = soldDelta * (last.price || t.price || 0);
+    deltas.push({
+      name: t.product_name || last.product_name || t.keyword || 'Produk',
+      revDelta,
+      sellerDelta: null,
+      totalSoldDelta: soldDelta,
+      curr: { combined_total_sold: last.total_sold || 0, seller_count: null },
+      prev: first,
+    });
   });
 
   if (!deltas.length) return;
@@ -20057,6 +20150,28 @@ function journeyLog(eventType, metadata) {
 function journeyMarkDiscoverView() {
   journeySave({ lastDiscoverAt: new Date().toISOString() });
   journeyLog('discover_view', {});
+  refreshDataFreshnessStamp();
+}
+
+// "Data pasar discan X" stamp — our data is fresh daily; say so (habit anchor).
+async function refreshDataFreshnessStamp() {
+  const el = document.getElementById('dsc-freshness');
+  if (!el || el.dataset.loaded || !_supabase) return;
+  el.dataset.loaded = '1';
+  try {
+    const { data } = await _supabase
+      .from('listings_latest')
+      .select('scraped_at')
+      .order('scraped_at', { ascending: false })
+      .limit(1);
+    const at = data && data[0] && data[0].scraped_at;
+    if (!at) return;
+    const d = new Date(at);
+    const hrs = Math.max(1, Math.round((Date.now() - d.getTime()) / 36e5));
+    el.textContent = hrs <= 36
+      ? `Data pasar terakhir discan ${hrs} jam lalu · di-update tiap hari`
+      : `Data pasar terakhir discan ${d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} · di-update tiap hari`;
+  } catch (_) {}
 }
 
 function journeyNormCardKey(key) {
@@ -20274,7 +20389,6 @@ async function journeyRenderReturnStrip() {
   if (!strip) return;
   if (typeof _effectiveLeaderMode === 'function' && _effectiveLeaderMode()) return;
   if (journeyBypassGating()) return;
-  if (userHasTrackedProducts()) return;
   if (userJourneyTier() < 1) {
     strip.style.display = 'none';
     strip.innerHTML = '';
@@ -20284,8 +20398,21 @@ async function journeyRenderReturnStrip() {
   const items = [];
   const isReturnDay = journeyIsNewDaySinceLastBeranda();
   const seenKeys = Object.keys(journeySeenProducts());
+  const isTracker = userHasTrackedProducts();
 
-  if (isReturnDay && seenKeys.length) {
+  if (isTracker) {
+    // Trackers get the strongest payoff: what changed on THEIR products.
+    const trkDeltas = await trkFetchDeltas();
+    trkDeltas.slice(0, 2).forEach(d => items.push({
+      type: d.soldDelta > 0 ? 'sold' : 'price',
+      name: d.name,
+      image: d.image,
+      msg: trkDeltaMsg(d),
+      cta: 'Lihat produkmu',
+      onclick: "switchDashView('tracker')",
+    }));
+    if (trkDeltas.length) { trkAckDeltas(); }
+  } else if (isReturnDay && seenKeys.length) {
     const deltas = await journeyCompareSeenProducts();
     items.push(...deltas.slice(0, 2));
   }
@@ -20819,10 +20946,10 @@ function nuRefreshView(view) {
           ? 'Selamat datang kembali — ada update sejak kunjungan terakhir.'
           : 'Ini produk pilihan untukmu hari ini — ketuk untuk analisis lengkap.';
       } else if (sub && !lobby) sub.textContent = 'Selamat datang kembali — berikut ringkasan produk kamu hari ini.';
-      if (recoTitle && lobby) recoTitle.textContent = journeyIsReturningUser() ? 'Produk untukmu hari ini' : 'Rekomendasi produk untuk kamu';
+      if (recoTitle && lobby) recoTitle.textContent = journeyIsReturningUser() ? 'Produk Pilihan Hari Ini' : 'Rekomendasi produk untuk kamu';
       const recoMsg = document.querySelector('#hbd-nu-reco .hbd-nu-reco-msg');
       if (recoMsg && lobby && journeyIsReturningUser()) {
-        recoMsg.innerHTML = 'Set baru setiap hari — ketuk produk untuk analisis, atau buka <a onclick="switchDashView(\'discover\')">Discover</a> untuk riset lebih lanjut.';
+        recoMsg.innerHTML = 'Set baru setiap hari — cek lagi besok. Ketuk produk untuk analisis, atau buka <a onclick="switchDashView(\'discover\')">Discover</a> untuk riset lebih lanjut.';
       }
       if (lobby) void journeyRenderReturnStrip();
     }
