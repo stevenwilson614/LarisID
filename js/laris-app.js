@@ -1770,6 +1770,14 @@ function naikDaunRender() {
 function naikDaunOpen(itemId) {
   const r = (_naikDaun.rows || []).find(x => String(x.item_id) === String(itemId));
   if (!r) return;
+  // The strip lives inside the dashboard Discover view — open the Deep Dive.
+  // (openDetail() is the legacy public detail page and dead-ends from here;
+  // dscOpenDeepDive resolves the freshest listing itself, incl. a DB fetch.)
+  if (typeof dscOpenDeepDive === 'function' && r.shop_id != null) {
+    void dscOpenDeepDive(`${r.item_id}__${r.shop_id}`);
+    return;
+  }
+  // Legacy fallback (public detail page) if the deep-dive flow is unavailable.
   const p = {
     id: r.item_id, name: r.product_name || '—', category: r.category || 'Umum',
     image: r.image_url || null, keyword: r.keyword || null, medianPrice: r.price || 0,
