@@ -8090,6 +8090,7 @@ let _dscCompMap     = {};   // keyword -> "Rendah"|"Sedang"|"Tinggi"
 let _dscFiltered    = [];
 let _dscMatchCount  = 0;   // matches before fallback padding (for scrape panel)
 let _dscSearchNoMatch = false;
+let _dscFilterNoMatch = false; // active filters matched 0 rows → fallback shown
 let _dscBrowsePool  = [];  // unfiltered browse rows for recommendations / empty search
 let _dscBrowsePoolGen = 0;
 let _dscPage        = 1;
@@ -8338,6 +8339,17 @@ function _dscSpreadSameNames(list) {
   return out;
 }
 
+/** Collapse multi-day rows to one per item, keeping the freshest scrape. */
+function _dscDedupeFreshest(rows) {
+  const best = new Map();
+  for (const r of (rows || [])) {
+    const k = `${r.item_id}_${r.shop_id}`;
+    const cur = best.get(k);
+    if (!cur || (r.scraped_at || '') > (cur.scraped_at || '')) best.set(k, r);
+  }
+  return Array.from(best.values());
+}
+
 function _dscMergeBrowsePool(rows) {
   if (!rows?.length) return;
   const seen = new Set(_dscBrowsePool.map(_dscRowKey));
@@ -8368,9 +8380,17 @@ async function _dscEnsureBrowsePool(min = 60) {
   if (_dscBrowsePool.length >= min || !_supabase) return false;
   const gen = ++_dscBrowsePoolGen;
   try {
-    const rows = await dscFetchPage(0, { search: '', priceMin: 0, priceMax: Infinity });
+    // Last-resort pool must be TRULY unfiltered — a plain top-sellers query
+    // (idx_listings_total_sold), not dscFetchPage, which re-applies whatever
+    // category/panel filters are active and can fail the same way they did.
+    const { data } = await _supabase
+      .from('listings')
+      .select('item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews')
+      .gt('total_sold', 0)
+      .order('total_sold', { ascending: false })
+      .limit(Math.max(min, 60));
     if (gen !== _dscBrowsePoolGen) return false;
-    _dscMergeBrowsePool(rows);
+    _dscMergeBrowsePool(_dscDedupeFreshest(data || []));
     return _dscBrowsePool.length > 0;
   } catch (_) { return false; }
 }
@@ -8504,29 +8524,34 @@ function _applyPanelDateFilter(q, panelDate) {
   return q.gte('scraped_at', `${panelDate}T00:00:00`).lt('scraped_at', `${_nextCalendarDay(panelDate)}T00:00:00`);
 }
 
-/** Pick the calendar day with the most rows in the last 7 days (not bare MAX scraped_at). */
+/** Pick the FRESHEST substantial scrape day of the last 7 (not the biggest).
+ *  One dsc_panel_dates() RPC (capped counts, index-backed) replaces the old
+ *  7 exact-count queries that could blow the anon 3s statement timeout —
+ *  and the old "most rows wins" rule that ignored yesterday's smaller scrape. */
 async function _getLatestPanelDate() {
   if (_panelDateCache.date && Date.now() - _panelDateCache.ts < PANEL_DATE_TTL_MS) return _panelDateCache;
   if (!_supabase) return { date: null, prev: null, ts: 0 };
-  const days = [];
-  const today = new Date();
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    days.push(d.toISOString().slice(0, 10));
+  let counts = [];
+  try {
+    const { data, error } = await _supabase.rpc('dsc_panel_dates');
+    if (!error && data?.length) counts = data.map(r => ({ day: String(r.day).slice(0, 10), count: r.n || 0 }));
+  } catch (_) {}
+  if (!counts.length) {
+    // RPC unavailable — single cheap fallback: newest scrape row's day.
+    try {
+      const { data } = await _supabase.from('listings')
+        .select('scraped_at').order('scraped_at', { ascending: false }).limit(1);
+      const day = data?.[0]?.scraped_at ? String(data[0].scraped_at).slice(0, 10) : null;
+      _panelDateCache = { date: day, prev: null, ts: Date.now() };
+      return _panelDateCache;
+    } catch (_) { return { date: null, prev: null, ts: 0 }; }
   }
-  const counts = await Promise.all(days.map(async day => {
-    const { count, error } = await _supabase.from('listings')
-      .select('*', { count: 'exact', head: true })
-      .gte('scraped_at', `${day}T00:00:00`)
-      .lt('scraped_at', `${_nextCalendarDay(day)}T00:00:00`);
-    return { day, count: error ? 0 : (count || 0) };
-  }));
-  const substantial = counts.filter(c => c.count >= 10000);
-  const ranked = (substantial.length ? substantial : counts).sort((a, b) => b.count - a.count);
-  const best = ranked[0]?.day || days[0];
-  const prev = counts.filter(c => c.day < best && c.count >= 10000).sort((a, b) => b.day.localeCompare(a.day))[0]?.day
-    || counts.filter(c => c.day < best).sort((a, b) => b.count - a.count)[0]?.day || null;
+  const MIN_ROWS = 1000; // a real scrape, not a stray test row
+  const substantial = counts.filter(c => c.count >= MIN_ROWS).sort((a, b) => b.day.localeCompare(a.day));
+  const best = substantial[0]?.day
+    || counts.slice().sort((a, b) => b.count - a.count)[0]?.day
+    || null;
+  const prev = substantial.filter(c => c.day < best)[0]?.day || null;
   _panelDateCache = { date: best, prev, ts: Date.now() };
   return _panelDateCache;
 }
@@ -8581,22 +8606,38 @@ async function dscFetchPage(offset, filters = {}) {
   const multiCats = (_dscCurrentCatFilters && _dscCurrentCatFilters.length > 1) ? _dscCurrentCatFilters : null;
   if (multiCats) {
     const need = offset + DSC_PAGE_SIZE; // global top-N needed to slice this page
-    const results = await Promise.all(multiCats.map(cat =>
-      _dscBuildListingsQuery(0, filters, { singleCat: cat, rangeFrom: 0, rangeTo: need - 1 })
-    ));
-    const failed = results.find(r => r.error);
-    if (failed) console.warn('dscFetchPage(multi):', failed.error.message);
-    const merged = [];
-    for (const r of results) if (r.data) merged.push(...r.data);
+    const runMulti = async (f) => {
+      const results = await Promise.all(multiCats.map(cat =>
+        _dscBuildListingsQuery(0, f, { singleCat: cat, rangeFrom: 0, rangeTo: need - 1 })
+      ));
+      const failed = results.find(r => r.error);
+      if (failed) console.warn('dscFetchPage(multi):', failed.error.message);
+      const merged = [];
+      for (const r of results) if (r.data) merged.push(...r.data);
+      return merged;
+    };
+    let merged = await runMulti(filters);
+    if (!merged.length && filters.panelDate) {
+      // Day-window query failed or that day misses these categories — never
+      // strand the user: refetch without the window, keep freshest per item.
+      merged = _dscDedupeFreshest(await runMulti({ ...filters, panelDate: null }));
+    }
     merged.sort((a, b) => (b.total_sold || 0) - (a.total_sold || 0));
     return merged.slice(offset, offset + DSC_PAGE_SIZE);
   }
 
   const { data, error } = await _dscBuildListingsQuery(offset, filters);
-  if (!error) return data || [];
+  if (!error && (data || []).length) return data;
+  if (error) console.warn('dscFetchPage:', error.message);
 
-  console.warn('dscFetchPage:', error.message);
-  if (!filters.search) return [];
+  if (!filters.search) {
+    // Same no-panel rescue for single/no-category fetches.
+    if (filters.panelDate) {
+      const { data: nf, error: nfErr } = await _dscBuildListingsQuery(offset, { ...filters, panelDate: null });
+      if (!nfErr && (nf || []).length) return _dscDedupeFreshest(nf);
+    }
+    return [];
+  }
 
   // Fallback: keyword-only ilike (some OR shapes fail on wide tables)
   const tok = _dscIlikeToken((filters.search || '').trim().split(/\s+/)[0]);
@@ -8768,6 +8809,17 @@ async function dscLoadListings() {
   _dscLoading = true;
   const loadGen = _dscLoadGen;
 
+  // Never leave the user on a spinner: if the fetch is still in flight after
+  // 3s, paint popular products from the pool while it finishes in background.
+  const watchdog = setTimeout(async () => {
+    if (loadGen !== _dscLoadGen || _dscLoaded) return;
+    if (!_dscBrowsePool.length) await _dscEnsureBrowsePool(60);
+    if (loadGen !== _dscLoadGen || _dscLoaded || !_dscBrowsePool.length) return;
+    _dscHideLoadingUi();
+    dscHideLoadingScreen();
+    _dscRenderInterim();
+  }, 3000);
+
   try {
     const filters = _dscCurrentFilters();
     const hasSearch = !!(filters.search || '').trim();
@@ -8810,6 +8862,7 @@ async function dscLoadListings() {
     }
 
     _dscLoaded = true;
+    _dscLoading = false; // BEFORE re-render — a truthy flag here froze the UI on "Memuat..."
     // Cache the first unfiltered batch for instant restore (client-side filters apply on read).
     if (_cacheableWrite && _dscOffset <= DSC_PAGE_SIZE) dscSaveCache(_dscAllListings.slice(0, DSC_PAGE_SIZE));
     dscHideLoadingScreen();
@@ -8824,11 +8877,31 @@ async function dscLoadListings() {
     if (loadGen === _dscLoadGen) {
       dscHideLoadingScreen();
       _dscLoaded = true;
+      _dscLoading = false; // same ordering rule as the success path
       dscApplyFilters(false);
       dscSyncEmptyPick();
     }
   } finally {
+    clearTimeout(watchdog);
     if (loadGen === _dscLoadGen) _dscLoading = false;
+  }
+}
+
+/** Watchdog paint: show shuffled popular products (DOM only — no state) while
+ *  a slow fetch finishes. The real result re-renders over this when it lands. */
+function _dscRenderInterim() {
+  const rows = _dscPickFallback(24);
+  if (!rows.length) return;
+  const note = `<div style="grid-column:1/-1;text-align:center;padding:10px 16px;color:#6B7280;font-size:.78rem;">Masih memuat hasil filter &mdash; sementara itu, produk populer:</div>`;
+  const cardGrid = document.getElementById('dsc-card-grid');
+  const tbody = document.getElementById('dsc-tbody');
+  if (_dscViewMode === 'card' && cardGrid) {
+    const kwMap = {};
+    rows.forEach(r => { const k = r.keyword || '__'; (kwMap[k] = kwMap[k] || []).push(r); });
+    cardGrid.innerHTML = note + rows.map(p => dscCardHtml(p, kwMap)).join('');
+  } else if (tbody) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:10px;color:#6B7280;font-size:.78rem;">Masih memuat hasil filter &mdash; sementara itu, produk populer di bawah.</td></tr>`
+      + rows.map(p => `<tr style="cursor:pointer" onclick="dscOpenDeepDive('${p.item_id}__${p.shop_id}')"><td colspan="8"><div class="dsc-prod-cell" style="padding:6px 0;">${p.image_url ? `<div class="dsc-prod-img"><img src="${p.image_url}" alt="" loading="lazy" onerror="this.style.display='none'"></div>` : ''}<div><div class="dsc-prod-name">${(p.product_name || '').slice(0, 60)}</div><div style="color:#6B7280;font-size:.72rem;">${p.store_name || ''} &middot; ${fmtShort(p.price || 0)}</div></div></div></td></tr>`).join('');
   }
 }
 
@@ -9463,11 +9536,15 @@ function dscApplyFilters(resetPage = true) {
 
   _dscMatchCount = list.length;
   _dscSearchNoMatch = !!(q && list.length === 0);
+  _dscFilterNoMatch = false;
 
   if (_dscSearchNoMatch) {
     list = _dscFallbackCatalog();
     if (!list.length) void _dscEnsureBrowsePool(60).then(ok => { if (ok) dscApplyFilters(false); });
   } else if (!list.length) {
+    // Filters matched nothing — never show an empty page. Fall back to popular
+    // products and say so honestly (banner rendered when this flag is set).
+    _dscFilterNoMatch = _dscLoaded && !_dscLoading;
     list = _dscFallbackCatalog();
     if (!list.length) void _dscEnsureBrowsePool(60).then(ok => { if (ok) dscApplyFilters(false); });
   }
@@ -9564,6 +9641,18 @@ function dscRenderTable() {
     : '';
   const loadingHtml = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Memuat rekomendasi produk...</div>';
   const loadingRow = `<tr><td colspan="8" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Memuat rekomendasi produk...</td></tr>`;
+  const filterNoMatchBanner = _dscFilterNoMatch
+    ? `<div style="grid-column:1/-1;text-align:center;padding:20px 16px 10px;color:#6B7280;font-size:.85rem;">
+        <div style="font-weight:600;color:#374151;margin-bottom:4px;">Tidak ada produk yang cocok dengan kombinasi filter ini</div>
+        <div style="font-size:.78rem;color:#9CA3AF;">Coba longgarkan filternya &mdash; sementara ini beberapa produk populer:</div>
+      </div>`
+    : '';
+  const filterNoMatchBannerTable = _dscFilterNoMatch
+    ? `<tr><td colspan="8"><div style="text-align:center;padding:20px 16px 10px;color:#6B7280;font-size:.85rem;">
+        <div style="font-weight:600;color:#374151;margin-bottom:4px;">Tidak ada produk yang cocok dengan kombinasi filter ini</div>
+        <div style="font-size:.78rem;color:#9CA3AF;">Coba longgarkan filternya &mdash; sementara ini beberapa produk populer:</div>
+      </div></td></tr>`
+    : '';
 
   // Show/hide correct view container
   const cardGrid  = document.getElementById('dsc-card-grid');
@@ -9595,7 +9684,7 @@ function dscRenderTable() {
     } else {
       const _cardKwMap = {};
       _dscAllListings.forEach(r => { const k = r.keyword||'__'; if (!_cardKwMap[k]) _cardKwMap[k]=[]; _cardKwMap[k].push(r); });
-      cardGrid.innerHTML = noMatchBanner + slice.map(p => dscCardHtml(p, _cardKwMap)).join('');
+      cardGrid.innerHTML = noMatchBanner + filterNoMatchBanner + slice.map(p => dscCardHtml(p, _cardKwMap)).join('');
     }
   }
 
@@ -9615,7 +9704,7 @@ function dscRenderTable() {
       // Group all loaded listings by keyword for peer-context scoring
       const _dscKwMap = {};
       _dscAllListings.forEach(r => { const k = r.keyword||'__'; if (!_dscKwMap[k]) _dscKwMap[k]=[]; _dscKwMap[k].push(r); });
-      tbody.innerHTML = noMatchBannerTable + slice.map(p => {
+      tbody.innerHTML = noMatchBannerTable + filterNoMatchBannerTable + slice.map(p => {
         const imgHtml = p.image_url
           ? `<div class="dsc-prod-img"><img src="${p.image_url}" alt="" loading="lazy" onerror="this.style.display='none'"></div>`
           : `<div class="dsc-prod-img">${wIcon('box', 18, '#9CA3AF')}</div>`;
