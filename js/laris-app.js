@@ -37,6 +37,22 @@ function _lidIsNewSignup(user) {
   return false;
 }
 
+// Durable per-user "signup already recorded" marker. sessionStorage dedupe is
+// not enough: session restores keep created_at === last_sign_in_at, and mobile
+// tabs live for days — so returns re-fired signup_success + signup_attribution
+// (observed 3x same session and again on a day-2 return, Jul 2026).
+const _LID_SIGNUP_DONE_KEY = '_lid_signup_done_v1';
+function _lidSignupAlreadyRecorded(userId) {
+  try { return !!(JSON.parse(localStorage.getItem(_LID_SIGNUP_DONE_KEY) || '{}')[userId]); } catch (_) { return false; }
+}
+function _lidMarkSignupRecorded(userId) {
+  try {
+    const m = JSON.parse(localStorage.getItem(_LID_SIGNUP_DONE_KEY) || '{}');
+    m[userId] = 1;
+    localStorage.setItem(_LID_SIGNUP_DONE_KEY, JSON.stringify(m));
+  } catch (_) {}
+}
+
 function _lidFireSignupSuccess() {
   try {
     if (sessionStorage.getItem(_LID_SIGNUP_EVT_KEY)) return;
@@ -2044,8 +2060,9 @@ async function _authOnSignIn(session) {
   let isNewSignup = false;
   try {
     _clarity('identify', currentUser.id, undefined, undefined, currentUser.email || undefined);
-    isNewSignup = _lidIsNewSignup(currentUser);
+    isNewSignup = _lidIsNewSignup(currentUser) && !_lidSignupAlreadyRecorded(currentUser.id);
     if (isNewSignup) {
+      _lidMarkSignupRecorded(currentUser.id);
       _lidFireSignupSuccess();
       // True acquisition source captured pre-OAuth (see _lidCaptureAttribution).
       // Logged to activity_events too, so source attribution no longer depends
@@ -4124,10 +4141,35 @@ async function dduChoose(mode) {
     try { cohortLogActivity('credit_spent', { action: 'unlock_' + scope }); } catch (_) {}
     dduClose();
     if (onDone) onDone(); else ddSwitchTab(tab);
+    setTimeout(_ddMaybeTrackNudge, 1200); // unlock = peak interest → invite tracking
   } catch (e) {
     if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.innerHTML = prev; }
     dduClose();
   }
+}
+
+// After a paid unlock the user has proven interest — nudge them to track the
+// product (the strongest retention hook: deltas feed the bell + return strip).
+// One nudge per product per session; auto-dismisses; never for privileged users.
+let _ddTrackNudgedKeys = new Set();
+function _ddMaybeTrackNudge() {
+  try {
+    const listing = _ddKwListing || _ddCurrentP?._listing;
+    if (!listing || _isCreditPrivileged() || trkIsTracked(listing)) return;
+    const k = trkKey(listing);
+    if (_ddTrackNudgedKeys.has(k)) return;
+    _ddTrackNudgedKeys.add(k);
+    const old = document.getElementById('dd-track-nudge');
+    if (old) old.remove();
+    const el = document.createElement('div');
+    el.id = 'dd-track-nudge';
+    el.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:24px;z-index:9000;background:#1A1A1A;color:#fff;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:14px;box-shadow:0 12px 34px rgba(0,0,0,.3);max-width:min(92vw,480px);';
+    el.innerHTML = `<span style="font-size:.8rem;line-height:1.45;">Sudah kebuka. <strong>Lacak produk ini</strong> biar kamu tahu tiap perubahan harga &amp; penjualannya.</span>
+      <button onclick="document.getElementById('dd-track-nudge').remove();ddToggleTrack();" style="flex-shrink:0;background:#B5202A;color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:.78rem;font-weight:800;padding:9px 14px;cursor:pointer;">Lacak Produk</button>
+      <button onclick="document.getElementById('dd-track-nudge').remove()" aria-label="Tutup" style="flex-shrink:0;background:none;border:none;color:rgba(255,255,255,.6);font-size:1.05rem;cursor:pointer;padding:2px;line-height:1;">&times;</button>`;
+    document.body.appendChild(el);
+    setTimeout(() => { const n = document.getElementById('dd-track-nudge'); if (n) n.remove(); }, 12000);
+  } catch (_) {}
 }
 
 // B4: out of credits → credits page + earn popup (Chrome extension + referral).
@@ -20453,7 +20495,10 @@ function journeyIsReturningUser() {
 
 function journeyIsNewDaySinceLastBeranda() {
   const j = journeyLoad();
-  if (!j.lastBerandaAt) return true;
+  // Never visited = a FIRST visit, not a return (callers that want to include
+  // first visits already OR with !lastBerandaAt explicitly). Returning true
+  // here logged journey_return_strip{return_day:true} minutes after signup.
+  if (!j.lastBerandaAt) return false;
   return j.lastBerandaAt.slice(0, 10) !== journeyTodayKey();
 }
 

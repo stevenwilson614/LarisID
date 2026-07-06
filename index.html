@@ -9596,6 +9596,29 @@ html,body{overflow-x:clip;max-width:100%;}
           <div class="cg-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#c05000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
           <div class="cg-title">Buka <span id="ddu-tab-label">Data</span></div>
           <div class="cg-sub">Data lengkap produk ini terkunci. Pilih cara membukanya:</div>
+          <!-- blurred SAMPLE preview (static mock — real data stays server-side until unlocked) -->
+          <div style="position:relative;margin:12px 0 6px;border:1px solid #F0E7DC;border-radius:10px;overflow:hidden;background:#FDFBF6;" aria-hidden="true">
+            <div style="filter:blur(3px);opacity:.8;pointer-events:none;padding:12px 14px;">
+              <div style="display:flex;align-items:flex-end;gap:5px;height:44px;margin-bottom:10px;">
+                <span style="flex:1;background:#B5202A;border-radius:3px 3px 0 0;height:35%;"></span>
+                <span style="flex:1;background:#C9974B;border-radius:3px 3px 0 0;height:55%;"></span>
+                <span style="flex:1;background:#B5202A;border-radius:3px 3px 0 0;height:48%;"></span>
+                <span style="flex:1;background:#C9974B;border-radius:3px 3px 0 0;height:70%;"></span>
+                <span style="flex:1;background:#B5202A;border-radius:3px 3px 0 0;height:62%;"></span>
+                <span style="flex:1;background:#C9974B;border-radius:3px 3px 0 0;height:88%;"></span>
+                <span style="flex:1;background:#B5202A;border-radius:3px 3px 0 0;height:100%;"></span>
+              </div>
+              <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:6px;">
+                <span style="height:9px;flex:2;background:#E5DCC8;border-radius:4px;"></span>
+                <span style="height:9px;flex:1;background:#1A7A46;border-radius:4px;opacity:.55;"></span>
+              </div>
+              <div style="display:flex;justify-content:space-between;gap:10px;">
+                <span style="height:9px;flex:1.4;background:#E5DCC8;border-radius:4px;"></span>
+                <span style="height:9px;flex:1;background:#B45309;border-radius:4px;opacity:.5;"></span>
+              </div>
+            </div>
+            <span style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(26,26,26,.85);color:#fff;font-size:.62rem;font-weight:700;letter-spacing:.04em;padding:5px 12px;border-radius:999px;white-space:nowrap;">Contoh isi — data asli setelah dibuka</span>
+          </div>
           <div class="cg-btns" style="flex-direction:column;gap:10px;margin-top:4px;">
             <button class="cg-btn primary" id="ddu-btn-tab" onclick="dduChoose('tab')" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;">
               <span>Buka halaman ini</span><span style="font-weight:800;white-space:nowrap;">1 kredit</span>
