@@ -39,9 +39,23 @@ payload="$(jq -n \
   }')"
 
 echo "Applying Indonesian email templates to project $REF ..."
-curl -sS -X PATCH "https://api.supabase.com/v1/projects/$REF/config/auth" \
+resp="$(curl -sS -X PATCH "https://api.supabase.com/v1/projects/$REF/config/auth" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   --data "$payload" \
-  -o /dev/null -w "HTTP %{http_code}\n"
-echo "Done. Send yourself a test signup to confirm."
+  -w $'\n%{http_code}')"
+code="$(printf '%s' "$resp" | tail -n1)"
+body="$(printf '%s' "$resp" | sed '$d')"
+
+if [ "$code" = "200" ]; then
+  echo "OK (HTTP 200). Templates applied. Send yourself a test signup to confirm."
+elif [ "$code" = "401" ]; then
+  echo "HTTP 401 - the token is invalid/expired for the Management API."
+  echo "Fix: create a token at https://supabase.com/dashboard/account/tokens then run:"
+  echo "  export SUPABASE_ACCESS_TOKEN=sbp_xxx && bash \"$0\""
+  exit 1
+else
+  echo "HTTP $code - failed. Response:"
+  echo "$body"
+  exit 1
+fi
