@@ -1562,7 +1562,6 @@ async function decorateDiscoverOdds(sel) {
 const YLK_LS_KEY = 'larisid_region_v1';
 let _ylkInited = false;
 let _ylkRegions = null;
-let _ylkCurrentRows = [];
 
 async function ylkInit() {
   if (_ylkInited) return;
@@ -1607,7 +1606,7 @@ async function ylkInit() {
         <div class="ylk-pick-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B5202A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg></div>
         <div>
           <div class="ylk-pick-title">Pilih kotamu dulu</div>
-          <div class="ylk-pick-sub">Kami tunjukkan kategori apa yang paling sering tembus untuk penjual baru di daerahmu.</div>
+          <div class="ylk-pick-sub">Kami tunjukkan produk terlaris dari kotamu & sekitarnya, sesuai minat & pencarianmu.</div>
         </div>
       </div>`;
     }
@@ -1637,141 +1636,131 @@ async function ylkRender(region) {
   const allcats = document.getElementById('ylk-allcats');
   const emptyEl = document.getElementById('ylk-empty');
   const subEl = document.getElementById('ylk-sub');
-  if (!hl || !allcats || !emptyEl || !_supabase) return;
+  if (!hl || !_supabase) return;
   hl.innerHTML = '<div class="ylk-empty">Memuat…</div>';
-  allcats.style.display = 'none';
-  emptyEl.style.display = 'none';
+  if (allcats) allcats.style.display = 'none';
+  if (emptyEl) emptyEl.style.display = 'none';
   try {
-    const { data } = await _supabase
-      .from('mv_region_category')
-      .select('category,new_items,breakouts,breakout_rate,median_winner_price,price_p25_breakout,price_p75_breakout,new_items_recent,new_items_prior,breakout_rate_recent,breakout_rate_prior,trend_delta')
-      .eq('location', region);
-    const all = data || [];
-    if (!all.length) {
+    // What to match against: onboarding interest categories + recently searched keywords.
+    const prefCats = (typeof _nuOnb !== 'undefined' && _nuOnb && Array.isArray(_nuOnb.cats)) ? _nuOnb.cats.filter(Boolean) : [];
+    let recentKw = [];
+    try { recentKw = await searchHistoryRecentKeywordsRemote(12); } catch (_) { recentKw = searchHistoryRecentKeywords(12); }
+    const kwSet  = new Set(recentKw.map(k => String(k).toLowerCase()).filter(Boolean));
+    const catSet = new Set(prefCats);
+
+    // "From their region or near their region": pull the metro cluster, fall back to region-only.
+    const regions = _ylkNearbyRegions(region);
+    let cands = await _ylkFetchRegionProducts(regions);
+    if (!cands.length && regions.length > 1) cands = await _ylkFetchRegionProducts([region]);
+
+    if (!cands.length) {
       hl.innerHTML = '';
-      emptyEl.textContent = `Belum ada data untuk ${region}. Kami terus menambah kota — coba lagi nanti, atau pilih kota lain.`;
-      emptyEl.style.display = '';
+      if (emptyEl) { emptyEl.textContent = `Belum ada data produk untuk ${region}. Kami terus menambah kota — coba lagi nanti, atau pilih kota lain.`; emptyEl.style.display = ''; }
       return;
     }
-    const qualified = all.filter(r => (r.new_items || 0) >= 10);
-    if (!qualified.length) {
-      hl.innerHTML = '';
-      emptyEl.textContent = `Data ${region} masih sedikit untuk ditampilkan per kategori. Coba lagi nanti setelah datanya lebih banyak.`;
-      emptyEl.style.display = '';
-      return;
+
+    // Score by interest/search match: +2 for a chosen category, +1 for a recent-search hit.
+    const scored = cands.map(r => {
+      let s = 0;
+      if (catSet.size && catSet.has(r.category)) s += 2;
+      if (kwSet.size) {
+        const hay = ((r.product_name || '') + ' ' + (r.keyword || '')).toLowerCase();
+        for (const kw of kwSet) { if (kw && hay.includes(kw)) { s += 1; break; } }
+      }
+      return { r, s };
+    });
+    const matched = scored.filter(x => x.s > 0);
+    let picks, personalized;
+    if (matched.length) {
+      picks = matched.sort((a, b) => b.s - a.s || (b.r.total_sold || 0) - (a.r.total_sold || 0)).slice(0, 5).map(x => x.r);
+      if (picks.length < 5) { // top up with the region's best sellers so the row stays full
+        const have = new Set(picks.map(r => r.item_id));
+        for (const c of cands) { if (picks.length >= 5) break; if (!have.has(c.item_id)) { picks.push(c); have.add(c.item_id); } }
+      }
+      personalized = true;
+    } else {
+      // No interest/search signal yet → random products from their region.
+      picks = _ylkSample(cands, 5);
+      personalized = false;
     }
-    _ylkCurrentRows = qualified;
-    const best = [...qualified].sort((a, b) => (b.breakout_rate || 0) - (a.breakout_rate || 0))[0];
-    const worst = [...qualified].sort((a, b) => (a.breakout_rate || 0) - (b.breakout_rate || 0))[0];
-    const risingCands = qualified.filter(r => r.trend_delta != null && r.trend_delta > 0);
-    const rising = risingCands.length ? risingCands.sort((a, b) => b.trend_delta - a.trend_delta)[0] : null;
-    if (subEl) subEl.textContent =
-      `Di ${region}, kategori ${best.category} paling sering tembus untuk penjual baru (~${best.breakout_rate}% produk baru laku 100+).`;
-    hl.innerHTML = [
-      _ylkHlCard('TERLARIS', best, 'success'),
-      rising ? _ylkHlCard('NAIK DAUN', rising, 'rising')
-             : '<div class="ylk-hl-card"><div class="ylk-hl-badge" style="color:#9CA3AF">NAIK DAUN</div><div class="ylk-empty">Belum ada kategori dengan tren naik yang jelas di kota ini.</div></div>',
-      (worst.category !== best.category) ? _ylkHlCard('PALING MENANTANG', worst, 'challenging') : ''
-    ].join('');
-    _ylkPopulateChips(qualified, [best.category, rising && rising.category, worst.category]);
+
+    if (subEl) subEl.textContent = personalized
+      ? `Produk terlaris dari ${region} & sekitarnya, dipilih dari kategori & pencarianmu.`
+      : `Produk populer dari ${region} & sekitarnya. Pilih kategori minatmu di Discover biar makin pas.`;
+    hl.innerHTML = picks.map(_ylkProductCard).join('');
   } catch (e) { hl.innerHTML = '<div class="ylk-empty">Gagal memuat data.</div>'; }
 }
 
-/** Category icon with a brand-letter fallback (raw scrape categories like
- *  "Laundry" have no PNG in onboarding/categories — never show an empty box). */
-function _ylkIcon(cat, size) {
-  const s = size || 40;
-  const initial = (cat || '?').trim().charAt(0).toUpperCase();
-  return `<img src="/images/onboarding/categories/${_catSlug(cat)}.png" alt="" width="${s}" height="${s}" decoding="async" style="flex-shrink:0;object-fit:contain;" onerror="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='flex';">`
-    + `<span class="ylk-ic-fallback" style="display:none;">${initial}</span>`;
+// Metro clusters so "near your region" also pulls neighbouring kota/kabupaten.
+const YLK_CLUSTERS = [
+  ['Jakarta Barat', 'Jakarta Timur', 'Jakarta Selatan', 'Jakarta Utara', 'Jakarta Pusat', 'Kota Tangerang', 'Tangerang Selatan', 'Kab. Tangerang', 'Kota Bekasi', 'Kab. Bekasi', 'Kota Depok', 'Depok', 'Kota Bogor', 'Kab. Bogor'],
+  ['Bandung', 'Kota Bandung', 'Kab. Bandung', 'Kab. Bandung Barat', 'Cimahi', 'Kota Cimahi'],
+  ['Surabaya', 'Sidoarjo', 'Kab. Sidoarjo', 'Gresik', 'Kab. Gresik'],
+  ['Semarang', 'Kota Semarang', 'Kab. Semarang'],
+  ['Yogyakarta', 'Kota Yogyakarta', 'Sleman', 'Kab. Sleman', 'Bantul', 'Kab. Bantul'],
+  ['Medan', 'Kota Medan', 'Kab. Deli Serdang'],
+  ['Makassar', 'Kota Makassar'],
+];
+function _ylkNearbyRegions(region) {
+  const cluster = YLK_CLUSTERS.find(c => c.includes(region));
+  return cluster ? cluster.slice() : [region];
 }
 
-function _ylkHlCard(badge, row, kind) {
-  const rate = Number(row.breakout_rate) || 0;
-  const cfg = kind === 'success'
-    ? { clr: '#1A7A46', bg: '#EAF7F0', icon: '<path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.2-6.3-4.5-6.3 4.5L8 13.6l-6-4.4h7.6z"/>' }
-    : kind === 'rising'
-    ? { clr: '#A87B36', bg: '#FBF3E4', icon: '<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>' }
-    : { clr: '#B45309', bg: '#FFF7E6', icon: '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>' };
-  const oneIn = rate > 0 ? Math.max(1, Math.round(100 / rate)) : null;
-  const stat = (oneIn && oneIn > 1)
-    ? `<b>1 dari ${oneIn}</b> penjual baru tembus 100+ terjual`
-    : `<b>${rate}%</b> penjual baru tembus 100+ terjual`;
-  const price = row.median_winner_price
-    ? `Harga pemenang ± Rp ${Number(row.median_winner_price).toLocaleString('id-ID')}` : '';
-  const note = (kind === 'rising' && row.trend_delta != null)
-    ? `Naik ${Number(row.trend_delta).toFixed(1)} poin · 45 hari terakhir` : price;
-  const cat = row.category.replace(/'/g, "\\'");
-  return `<div class="ylk-hl-card" role="button" tabindex="0"
-      onclick="ylkSeeItems('${cat}')"
-      onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();ylkSeeItems('${cat}');}">
-    <span class="ylk-hl-badge" style="color:${cfg.clr};background:${cfg.bg};">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${cfg.icon}</svg>
-      ${badge}
-    </span>
-    <div class="ylk-hl-main">
-      <div class="ylk-hl-iconwrap">${_ylkIcon(row.category, 40)}</div>
-      <div class="ylk-hl-info">
-        <div class="ylk-hl-name">${row.category}</div>
-        <div class="ylk-hl-stat">${stat}</div>
+// Top-selling products for the given region(s), deduped by item, real sellers only.
+async function _ylkFetchRegionProducts(regions) {
+  if (!regions || !regions.length || !_supabase) return [];
+  try {
+    let q = _supabase.from('listings_deduped')
+      .select('item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,keyword,location,rating,reviews')
+      .order('total_sold', { ascending: false })
+      .limit(200);
+    q = regions.length === 1 ? q.eq('location', regions[0]) : q.in('location', regions);
+    const { data } = await q;
+    const seen = new Set();
+    const out = [];
+    for (const r of (data || [])) {
+      if (r.item_id == null || seen.has(r.item_id)) continue;
+      seen.add(r.item_id);
+      if ((r.total_sold || 0) > 0) out.push(r);
+    }
+    return out;
+  } catch (_) { return []; }
+}
+
+function _ylkSample(arr, n) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a.slice(0, n);
+}
+
+function _ylkProductCard(r) {
+  const img = r.image_url
+    ? `<img src="${r.image_url}" alt="" loading="lazy" referrerpolicy="no-referrer" style="width:100%;height:120px;object-fit:cover;display:block;" onerror="this.style.display='none'">`
+    : '';
+  const sold = (typeof _supFmtSold === 'function') ? _supFmtSold(r.total_sold) : (r.total_sold || 0);
+  const loc  = r.location || '';
+  const cat  = r.category || '';
+  const sid  = r.shop_id == null ? '' : r.shop_id;
+  return `<div class="ylk-hl-card" style="padding:0;overflow:hidden;" role="button" tabindex="0"
+      onclick="ylkOpenProduct('${r.item_id}','${sid}')"
+      onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();ylkOpenProduct('${r.item_id}','${sid}');}">
+    <div style="position:relative;background:#F3ECE6;min-height:120px;">${img}${cat ? `<span style="position:absolute;top:8px;left:8px;background:rgba(255,255,255,.92);color:#B5202A;font-size:.6rem;font-weight:800;padding:3px 8px;border-radius:999px;">${cat}</span>` : ''}</div>
+    <div style="padding:12px 13px 14px;">
+      <div style="font-size:.8rem;font-weight:700;color:#1A1A1A;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.1em;">${(r.product_name || '—').slice(0, 70)}</div>
+      <div style="font-size:.92rem;font-weight:800;color:#B5202A;margin-top:6px;">Rp ${Number(r.price || 0).toLocaleString('id-ID')}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;font-size:.66rem;color:#6B7280;font-weight:600;">
+        <span style="display:inline-flex;align-items:center;gap:3px;min-width:0;overflow:hidden;">${loc ? wIcon('map-pin', 10) : ''}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${loc}</span></span>
+        <span style="white-space:nowrap;flex-shrink:0;">${sold} terjual</span>
       </div>
-    </div>
-    <div class="ylk-cat-bar"><div class="ylk-cat-bar-fill" style="width:${Math.min(100, Math.max(4, rate))}%;background:${cfg.clr};"></div></div>
-    <div class="ylk-hl-foot">
-      <span class="ylk-hl-note">${note}</span>
-      <span class="ylk-hl-go">Lihat Produk
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-      </span>
     </div>
   </div>`;
 }
 
-/** One-tap chips for the remaining categories (replaces the old two-step
- *  select + detail flow — every category is now a single click to products). */
-function _ylkPopulateChips(rows, excludeCats) {
-  const wrap = document.getElementById('ylk-chips');
-  const allcats = document.getElementById('ylk-allcats');
-  if (!wrap || !allcats) return;
-  const ex = new Set((excludeCats || []).filter(Boolean));
-  const rest = rows.filter(r => !ex.has(r.category))
-    .sort((a, b) => (b.breakout_rate || 0) - (a.breakout_rate || 0))
-    .slice(0, 8);
-  if (!rest.length) { allcats.style.display = 'none'; wrap.innerHTML = ''; return; }
-  wrap.innerHTML = rest.map(r =>
-    `<button type="button" class="ylk-chip" onclick="ylkSeeItems('${r.category.replace(/'/g, "\\'")}')">
-      ${_ylkIcon(r.category, 18)}<span>${r.category}</span><span class="rate">${r.breakout_rate}%</span>
-    </button>`).join('');
-  allcats.style.display = '';
-}
-
-// Mirrors nuOnbApplyToDiscover()'s proven pre-filter pattern: check one category,
-// pre-fill the price slider to the band where this region+category actually
-// breaks out (so the seller browses the realistic price zone, not the catalog).
-function ylkSeeItems(category) {
-  const row = (_ylkCurrentRows || []).find(r => r.category === category);
-  switchDashView('discover');
-  dscBuildCatChecks([category]); // ensures a checkbox exists even for raw scrape categories outside the curated 19
-  document.querySelectorAll('#dsc-cat-checks input[type=checkbox]').forEach(cb => {
-    cb.checked = (cb.value === category);
-  });
-  _dscSaveCatState();
-  let min, max;
-  if (row && row.price_p25_breakout != null && row.price_p75_breakout != null) {
-    min = row.price_p25_breakout; max = row.price_p75_breakout;
-  } else if (row && row.median_winner_price != null) {
-    min = Math.round(row.median_winner_price * 0.6);
-    max = Math.round(row.median_winner_price * 1.4);
-  } else {
-    min = 15000; max = 150000;
+function ylkOpenProduct(itemId, shopId) {
+  try { logUserEvent('ylk_open_product', { item_id: itemId, region: document.getElementById('ylk-region')?.value }); } catch (_) {}
+  if (typeof dscOpenDeepDive === 'function' && shopId && shopId !== 'null') {
+    void dscOpenDeepDive(`${itemId}__${shopId}`);
   }
-  const clamp = v => Math.max(0, Math.min(500000, Math.round(v / 5000) * 5000));
-  const minEl = document.getElementById('dsc-price-min');
-  const maxEl = document.getElementById('dsc-price-max');
-  if (minEl) minEl.value = String(clamp(min));
-  if (maxEl) maxEl.value = String(clamp(max));
-  dscUpdateDualRange('price');
-  dscTerapkanFilter();
-  void logUserEvent('ylk_see_items', { category, region: document.getElementById('ylk-region')?.value });
 }
 
 // ── Naik Daun ─────────────────────────────────────────────────────────────────
@@ -10290,7 +10279,7 @@ async function ddLoadKeywordContext(listing) {
   }
   const g = id => document.getElementById(id);
   if (g('dd-listing-mini-name'))  g('dd-listing-mini-name').textContent  = listing.product_name || '—';
-  if (g('dd-listing-mini-store')) g('dd-listing-mini-store').textContent = listing.store_name || '—';
+  if (g('dd-listing-mini-store')) g('dd-listing-mini-store').textContent = (listing.store_name || '—') + (listing.location ? ' · ' + listing.location : '');
   if (g('dd-listing-mini-price')) g('dd-listing-mini-price').textContent = _dscFmtRpFull(listing.price || 0);
   if (g('dd-listing-mini-sold'))  g('dd-listing-mini-sold').textContent  = _dscFmtSold(listing.total_sold, listing.reviews, listing.category);
 
@@ -10364,7 +10353,7 @@ async function ddLoadKeywordContext(listing) {
               ${r.image_url ? `<img src="${r.image_url}" style="width:32px;height:32px;border-radius:6px;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">` : ''}
               <div>
                 <div style="font-size:.76rem;font-weight:600;line-height:1.3;">${(r.product_name||'').slice(0,44)}${isThis ? '<span class="dd-kw-this-tag">Ini</span>' : ''}</div>
-                <div style="font-size:.64rem;color:#9CA3AF;">${r.store_name||''}</div>
+                <div style="font-size:.64rem;color:#9CA3AF;">${r.store_name||''}${r.location?` · ${r.location}`:''}</div>
               </div>
             </div>
           </td>
@@ -10427,6 +10416,9 @@ async function ddLoadKeywordContext(listing) {
       price:        r.price        || 0,
       total_sold:   r.total_sold   || 0,
       rating:       r.rating       || 0,
+      reviews:      r.reviews      || 0,
+      location:     r.location     || '',
+      listing_date: r.listing_date || null,
     }));
     ddRenderCompetitors();
 
@@ -10450,10 +10442,14 @@ function ddUpdateRingkasanFromKw(rows, totalSold, listing) {
   const kompDiff   = Math.round(concScore * 0.6 + sellScore * 0.4);
   const kompLbl    = kompDiff >= 65 ? 'Tinggi' : kompDiff >= 40 ? 'Sedang' : 'Rendah';
   const kompClr    = kompDiff >= 65 ? '#B5202A' : kompDiff >= 40 ? '#D97706' : '#10B981';
+  // Tile now shows this listing's store location. (kompDiff/kompLbl kept below for the AI insights.)
+  const selfRow  = rows.find(r => String(r.item_id) === String(listing.item_id) && String(r.shop_id) === String(listing.shop_id));
+  const storeLoc = listing.location || (selfRow && selfRow.location) || '—';
+  const sameLoc  = (storeLoc && storeLoc !== '—') ? rows.filter(r => (r.location || '') === storeLoc).length : 0;
   const kompEl = document.getElementById('dd-h-komp');
-  if (kompEl) { kompEl.textContent = kompLbl; kompEl.style.color = kompClr; }
+  if (kompEl) { kompEl.textContent = storeLoc; kompEl.style.color = '#1A1A1A'; }
   const kompSubEl = document.getElementById('dd-h-komp-sub');
-  if (kompSubEl) kompSubEl.textContent = `Skor: ${kompDiff}/100 · ${nSellers} penjual`;
+  if (kompSubEl) kompSubEl.textContent = sameLoc > 1 ? `${sameLoc} penjual dari kota ini` : 'Lokasi toko penjual';
 
   // Price range bar from real peer prices (p25–p75 sweet spot)
   const prices = rows.map(r => r.price || 0).filter(p => p > 0).sort((a, b) => a - b);
@@ -13018,6 +13014,9 @@ function ddRender(p) {
     price:        r.price        || 0,
     total_sold:   r.total_sold   || 0,
     rating:       r.rating       || 0,
+    reviews:      r.reviews      || 0,
+    location:     r.location     || '',
+    listing_date: r.listing_date || null,
   }));
   _ddCompShowing = 5;
   ddRenderCompetitors();
