@@ -3890,6 +3890,8 @@ function renderCreditUI() {
         if (crLbl)  crLbl.textContent  = `${done}/10 pencarian`;
       });
   }
+  // Low-credit nudge to invite friends (once/day; guards for admin/leader, balance, onboarding inside)
+  try { _maybeShowLowCreditRefer(); } catch (_) {}
 }
 
 function scrollToCreditCard() {
@@ -4196,24 +4198,100 @@ function mlsGateCalc(onUnlocked) {
 }
 
 // ── B6: REFERRALS ────────────────────────────────────────────────────────────
-// Capture ?ref= on landing, redeem it after signup (referrer earns 50 credits),
-// and power the "Ajak Teman" card on the credits page (share via WhatsApp/email).
+// Capture ?ref= on landing, redeem it after signup (referrer earns 25 credits,
+// max 5 friends/month), and power the "Ajak Teman" card + low-credit popup
+// (share via WhatsApp/email). The code is persisted in BOTH localStorage and a
+// 90-day cookie, so a friend who opens the link now but signs up weeks later
+// still credits the referrer.
+const _REF_KEY = 'larisid_ref';
+const _REF_COOKIE_DAYS = 90;
+const REF_PER_INVITE = 25;
+const REF_MONTHLY_CAP = 5;
+const REF_LOW_CREDIT_THRESHOLD = 5;
+
+function _setRefCookie(code) {
+  try { document.cookie = `${_REF_KEY}=${encodeURIComponent(code)}; Max-Age=${_REF_COOKIE_DAYS * 86400}; Path=/; SameSite=Lax`; } catch (_) {}
+}
+function _getRefCookie() {
+  try {
+    const m = document.cookie.match(new RegExp('(?:^|; )' + _REF_KEY + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : null;
+  } catch (_) { return null; }
+}
+function _clearRefCode() {
+  try { localStorage.removeItem(_REF_KEY); } catch (_) {}
+  try { document.cookie = `${_REF_KEY}=; Max-Age=0; Path=/; SameSite=Lax`; } catch (_) {}
+}
+function _getPendingRef() {
+  let code = null;
+  try { code = localStorage.getItem(_REF_KEY); } catch (_) {}
+  if (!code) code = _getRefCookie();
+  return code ? code.trim().toUpperCase() : null;
+}
 (function _captureRef() {
   try {
     const m = new URLSearchParams(location.search).get('ref');
-    if (m && m.trim()) localStorage.setItem('larisid_ref', m.trim().toUpperCase());
+    if (m && m.trim()) {
+      const code = m.trim().toUpperCase();
+      try { localStorage.setItem(_REF_KEY, code); } catch (_) {}
+      _setRefCookie(code); // long-lived: survives until the friend eventually signs up
+    }
   } catch (_) {}
 })();
 
 async function redeemPendingReferral() {
   if (!_supabase || !currentUser) return;
-  let code; try { code = localStorage.getItem('larisid_ref'); } catch (_) {}
+  const code = _getPendingRef();
   if (!code) return;
   try {
     const { error } = await _supabase.rpc('redeem_referral', { p_code: code });
-    // Clear whether redeemed or rejected (invalid/self/already/not-new) so we don't retry forever.
-    if (!error) { try { localStorage.removeItem('larisid_ref'); } catch (_) {} }
+    // Clear whether redeemed or rejected (invalid/self/already/not-new/capped) so we don't retry forever.
+    if (!error) _clearRefCode();
   } catch (_) {}
+}
+
+// Popup nudging low-credit users to invite friends (fires once/day when balance
+// drops to REF_LOW_CREDIT_THRESHOLD or below, but is still above 0).
+function _maybeShowLowCreditRefer() {
+  try {
+    if (!currentUser || !_supabase) return;
+    if (isPlatformAdmin() || _accessState.isLeader) return; // unlimited users never see it
+    const bal = _creditBalance;
+    if (bal == null || bal <= 0 || bal > REF_LOW_CREDIT_THRESHOLD) return;
+    const today = new Date().toISOString().slice(0, 10);
+    if (localStorage.getItem('larisid_lowcredit_refer_v1') === today) return; // once/day
+    // Don't interrupt onboarding.
+    const onb = document.getElementById('nu-onb-overlay');
+    if (onb && onb.style.display === 'flex') return;
+    localStorage.setItem('larisid_lowcredit_refer_v1', today);
+    setTimeout(() => { try { crShowReferPopup(bal); } catch (_) {} }, 700);
+  } catch (_) {}
+}
+
+async function crShowReferPopup(bal) {
+  const m = document.getElementById('cr-refer-popup');
+  if (!m || !_supabase || !currentUser) return;
+  let month = 0;
+  try {
+    const { data } = await _supabase.rpc('my_referral_stats');
+    if (data) { _crRefCode = data.code || _crRefCode; month = data.month_count || 0; }
+  } catch (_) {}
+  const balEl = document.getElementById('cr-refer-bal');
+  if (balEl && typeof bal === 'number') balEl.textContent = bal;
+  const remEl = document.getElementById('cr-refer-remaining');
+  if (remEl) remEl.textContent = Math.max(0, REF_MONTHLY_CAP - month);
+  const linkEl = document.getElementById('cr-refer-link');
+  if (linkEl) linkEl.value = crRefUrl();
+  m.style.display = 'flex';
+}
+function crCloseReferPopup() { const m = document.getElementById('cr-refer-popup'); if (m) m.style.display = 'none'; }
+function crCopyReferPopupLink() {
+  const el = document.getElementById('cr-refer-link');
+  if (!el || !el.value) return;
+  el.select();
+  try { navigator.clipboard.writeText(el.value); } catch (_) { try { document.execCommand('copy'); } catch (_) {} }
+  const btn = document.getElementById('cr-refer-copy');
+  if (btn) { const t = btn.textContent; btn.textContent = 'Tersalin!'; setTimeout(() => { btn.textContent = t; }, 1500); }
 }
 
 let _crRefCode = null;
@@ -4623,7 +4701,7 @@ async function mlsAiAsk(prompt) {
       return;
     }
     if ((_creditBalance ?? 0) < 1) {
-      _mlsAiHistory.push({ role: 'assistant', content: 'Kredit habis. Dapat kredit gratis lewat ekstensi Chrome (10 pencarian = 1 kredit) atau ajak teman (+50 kredit).' });
+      _mlsAiHistory.push({ role: 'assistant', content: 'Kredit habis. Dapat kredit gratis lewat ekstensi Chrome (10 pencarian = 1 kredit) atau ajak teman (+25 kredit).' });
       _mlsAiRenderThread();
       crOutOfCredits();
       return;
