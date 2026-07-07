@@ -14436,12 +14436,7 @@ async function hbdInit() {
   document.getElementById('hbd-s4').textContent = nUp;
   document.getElementById('hbd-s4-sub').textContent = 'produk tren naik';
 
-  // Tracked product list as insight
-  document.getElementById('hbd-ai-list').innerHTML = enriched.slice(0,5).map(p => {
-    const arrow = p.delta > 0 ? '<span style="color:#16A34A;">▲</span>' : '<span style="color:#9CA3AF;">–</span>';
-    const name  = (p.product_name||'').split(' ').slice(0,4).join(' ') || p.keyword;
-    return `<div class="hbd-ai-item"><div class="hbd-ai-dot ${p.delta>0?'green':'blue'}"></div><div>${arrow} <strong>${name}</strong> — ${p.curr_sold?.toLocaleString('id-ID')||'—'} unit terjual, harga Rp ${(p.curr_price||0).toLocaleString('id-ID')}</div></div>`;
-  }).join('');
+  // (Insight AI card removed from dashboard — no hbd-ai-list to populate)
 
   // Recent tracked products as activity
   document.getElementById('hbd-activity-list').innerHTML = enriched.slice(0,6).map(p => {

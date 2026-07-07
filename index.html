@@ -504,7 +504,11 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .ylk-cat-bar{height:6px;background:#F3ECE6;border-radius:999px;overflow:hidden;}
 .ylk-cat-bar-fill{height:100%;border-radius:999px;}
 .ylk-empty{font-size:.76rem;color:#8B8375;padding:8px 0;line-height:1.5;}
-.ylk-highlights{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px;}
+.ylk-highlights{display:flex;flex-wrap:nowrap;gap:12px;margin-bottom:14px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;padding-bottom:6px;scrollbar-width:thin;scrollbar-color:#EADFC9 transparent;}
+.ylk-highlights::-webkit-scrollbar{height:6px;}
+.ylk-highlights::-webkit-scrollbar-thumb{background:#EADFC9;border-radius:999px;}
+.ylk-highlights::-webkit-scrollbar-track{background:transparent;}
+.ylk-highlights>.ylk-hl-card{flex:0 0 200px;scroll-snap-align:start;}
 .ylk-hl-card{position:relative;background:#fff;border:1px solid #F0E7DC;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:transform .16s,box-shadow .16s,border-color .16s;}
 .ylk-hl-card:hover,.ylk-hl-card:focus-visible{transform:translateY(-3px);box-shadow:0 12px 28px rgba(26,26,26,.1);border-color:rgba(181,32,42,.35);outline:none;}
 .ylk-hl-badge{display:inline-flex;align-items:center;gap:5px;font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:4px 10px;border-radius:999px;width:max-content;}
@@ -6763,26 +6767,7 @@ html,body{overflow-x:clip;max-width:100%;}
 
             <!-- Credits & Peti Mingguan moved to Kredit page -->
 
-            <!-- chart + insight removed from dashboard -->
-            <div class="hbd-two-col" id="hbd-product-chart-col" style="display:none !important;">
-              <div class="hbd-card">
-                <div class="hbd-card-title">Performa Terbaik</div>
-                <div class="hbd-card-sub">Tren produk pilihan 12 minggu terakhir</div>
-                <div class="hbd-chart-tabs">
-                  <button class="hbd-tab active" onclick="hbdSetTab(this,'growth')">Pertumbuhan</button>
-                  <button class="hbd-tab" onclick="hbdSetTab(this,'price')">Harga</button>
-                  <button class="hbd-tab" onclick="hbdSetTab(this,'competition')">Kompetisi</button>
-                </div>
-                <div style="position:relative;height:150px;"><canvas id="hbd-chart-perf"></canvas></div>
-                <div class="trk-legend" id="hbd-legend" style="margin-top:10px;"></div>
-              </div>
-              <div class="hbd-card">
-                <div class="hbd-card-title">Insight AI</div>
-                <div class="hbd-card-sub">Analisis otomatis minggu ini</div>
-                <div class="hbd-ai-list" id="hbd-ai-list"></div>
-                <a class="hbd-see-more" onclick="switchDashView('discover')">Lihat lengkap →</a>
-              </div>
-            </div>
+            <!-- "Performa Terbaik" chart + "Insight AI" card removed from dashboard -->
 
             <!-- activity + opportunities -->
             <div class="hbd-three-col" id="hbd-product-opp-col">
