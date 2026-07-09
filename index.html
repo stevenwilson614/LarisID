@@ -9295,6 +9295,24 @@ html,body{overflow-x:clip;max-width:100%;}
               <div id="adm-dau-chart" style="display:flex;align-items:flex-end;gap:3px;height:80px;overflow-x:auto;"></div>
             </div>
 
+            <!-- Signup locations map -->
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:18px;margin-bottom:20px;">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                <div>
+                  <div class="adm-section-title" style="margin-bottom:2px;">Lokasi Pendaftar</div>
+                  <div style="font-size:.7rem;color:#9CA3AF;" id="adm-map-note">Memuat data lokasi...</div>
+                </div>
+                <div style="display:flex;gap:6px;">
+                  <button type="button" class="adm-seg-btn active" id="adm-map-range-all" onclick="adminSetMapRange('all')">Semua waktu</button>
+                  <button type="button" class="adm-seg-btn" id="adm-map-range-30" onclick="adminSetMapRange('30')">30 hari</button>
+                </div>
+              </div>
+              <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;margin-top:14px;">
+                <div style="flex:2 1 380px;min-width:280px;"><svg id="adm-map-svg" viewBox="0 0 800 306" role="img" aria-label="Peta lokasi pendaftar" style="width:100%;display:block;"></svg></div>
+                <div id="adm-map-list" style="flex:1 1 200px;min-width:180px;"></div>
+              </div>
+            </div>
+
             <!-- Recent signups -->
             <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:18px;margin-bottom:20px;">
               <div class="adm-section-title">Pendaftar Terbaru</div>
