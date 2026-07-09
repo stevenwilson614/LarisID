@@ -1766,7 +1766,7 @@ function ylkOpenProduct(itemId, shopId) {
 // ── Naik Daun ─────────────────────────────────────────────────────────────────
 // Young products (listed <120d) already selling fast — be a fast second. Velocity
 // is sales-since-listing (true weekly momentum needs the listing_deltas pipeline
-// revived). Lightly personalised by onboarding category/budget.
+// revived). Lightly personalised by onboarding category.
 const _naikDaun = { rows: null, inited: false };
 async function naikDaunInit() {
   if (_naikDaun.inited) return;
@@ -1791,8 +1791,6 @@ function naikDaunRender() {
   try {
     const cats = (typeof _nuOnb !== 'undefined' && _nuOnb && _nuOnb.cats) ? _nuOnb.cats : [];
     if (cats && cats.length >= 3) { const f = rows.filter(r => cats.includes(r.category)); if (f.length >= 6) rows = f; }
-    const b = (typeof _nuOnb !== 'undefined' && _nuOnb && _nuOnb.budget >= 0 && typeof NU_ONB_BUDGETS !== 'undefined') ? NU_ONB_BUDGETS[_nuOnb.budget] : null;
-    if (b) { const f = rows.filter(r => (r.price || 0) >= (b.min || 0) && (b.max == null || (r.price || 0) <= b.max)); if (f.length >= 6) rows = f; }
   } catch (_) {}
   rows = rows.slice(0, 12);
   strip.innerHTML = rows.map(r => {
@@ -21723,13 +21721,6 @@ const NU_ONB_DONE_KEY = 'larisid_onboard_completed_v1'; // set only on first ful
 const NU_ONB_CATS = ['Alat Tulis','Bayi & Anak','Dapur','Elektronik','Fashion','Hewan Peliharaan',
   'Hobi & Kerajinan','HP & Gadget','Kamar Mandi','Keamanan','Kecantikan','Kesehatan',
   'Motor & Mobil','Olahraga','Outdoor & Camping','Rumah','Sepeda','Taman','Tanaman'];
-// budget max null = no upper bound (slider treats 500000 as "no max")
-const NU_ONB_BUDGETS = [
-  { label: '< Rp 50rb',       sub: 'Modal kecil, mulai santai',     min: 0,      max: 50000 },
-  { label: 'Rp 50rb – 150rb', sub: 'Paling umum buat pemula',       min: 50000,  max: 150000 },
-  { label: '> Rp 150rb',      sub: 'Produk premium, margin besar',  min: 150000, max: null },
-  { label: 'Bebas',           sub: 'Tampilkan semua rentang harga', min: 0,      max: null },
-];
 const _NU_ONB_IMG = (slug, alt) => `<img class="nu-onb-cat-icon" src="/images/onboarding/categories/${slug}.png" alt="${alt.replace(/"/g, '&quot;')}" width="48" height="48" loading="lazy" decoding="async">`;
 const NU_ONB_ICONS = {
   'Alat Tulis':        _NU_ONB_IMG('alat-tulis', 'Alat Tulis'),
@@ -21753,10 +21744,6 @@ const NU_ONB_ICONS = {
   'Tanaman':           _NU_ONB_IMG('tanaman', 'Tanaman'),
 };
 const NU_ONB_MIN_CATS = 3;
-const NU_ONB_SELLER_OPTS = [
-  { id: 'existing',   label: 'Sudah punya toko', sub: 'Saya sudah berjualan di Shopee atau marketplace lain' },
-  { id: 'first_time', label: 'Baru mulai',       sub: 'Belum pernah jual online atau masih persiapan pertama' },
-];
 // Location options for the onboarding "Di mana lokasi kamu?" step. Major Indonesian
 // e-commerce hubs (matches the city granularity used by "Yang Laku dari Kotamu"),
 // plus a free-text "Lainnya" fallback for anywhere not listed.
@@ -21765,9 +21752,14 @@ const NU_ONB_LOCATIONS = [
   'Semarang', 'Yogyakarta', 'Surabaya', 'Sidoarjo', 'Medan',
   'Makassar', 'Palembang', 'Denpasar',
 ];
-const NU_ONB_TOTAL = 4; // location + categories + budget + seller status
+// Two steps only: location + categories. The budget step was cut 2026-07-09 —
+// it was the #1 skip point (17 skips/30d, 3 of the last 4 real signups bailed
+// there), likely because "Berapa harga produk yang ingin kamu jual?" right
+// after signup reads like a payment question. Seller-status went with it so
+// completion (and the auto-Deep-Dive payoff) comes one tap after categories.
+const NU_ONB_TOTAL = 2;
 let _nuOnbGeoTried = false; // best-effort IP geolocation runs once per fresh onboarding
-let _nuOnb = { step: 1, cats: [], budget: -1, sellerStatus: '', location: '', locationOther: '', locationSource: '', visible: false, payoff: false };
+let _nuOnb = { step: 1, cats: [], location: '', locationOther: '', locationSource: '', visible: false, payoff: false };
 let _nuOnbRichKey = null, _nuOnbRichBusy = false;
 
 // Short-window guard so re-renders / double-invokes don't write duplicate funnel
@@ -21842,8 +21834,6 @@ function nuOnbShowInPage(fresh) {
   if (fresh && !_nuOnb.visible) {
     _nuOnb.step = 1;
     _nuOnb.cats = [];
-    _nuOnb.budget = -1;
-    _nuOnb.sellerStatus = '';
     _nuOnb.location = '';
     _nuOnb.locationOther = '';
     _nuOnb.locationSource = '';
@@ -21949,7 +21939,7 @@ function nuOnbRender() {
   const el = document.getElementById('nu-onb-body');
   if (!el) return;
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-  const dots = (n) => [1, 2, 3, 4].map(i => `<div class="nu-onb-dot${i === n ? ' on' : ''}"></div>`).join('');
+  const dots = (n) => [1, 2].map(i => `<div class="nu-onb-dot${i === n ? ' on' : ''}"></div>`).join('');
   if (_nuOnb.step === 1) {
     const isOther = _nuOnb.location === '__other__';
     const detected = _nuOnb.locationSource === 'ip' && !!_nuOnb.location;
@@ -21966,7 +21956,7 @@ function nuOnbRender() {
       ${isOther ? `<input id="nu-onb-loc-other" class="nu-onb-loc-input" type="text" maxlength="60" placeholder="Tulis kota atau provinsi kamu" value="${esc(_nuOnb.locationOther).replace(/"/g, '&quot;')}" oninput="nuOnbLocOther(this.value)">` : ''}
       <button type="button" class="nu-onb-cta" onclick="nuOnbNext()" ${nuOnbLocationReady() ? '' : 'disabled'}>Lanjut</button>
       <div class="nu-onb-dots">${dots(1)}</div>`;
-  } else if (_nuOnb.step === 2) {
+  } else {
     const n = _nuOnb.cats.length;
     const ready = n >= NU_ONB_MIN_CATS;
     el.innerHTML = `
@@ -21979,37 +21969,9 @@ function nuOnbRender() {
           <span>${esc(c)}</span>
         </div>`).join('')}
       </div>
-      <button type="button" class="nu-onb-cta" onclick="nuOnbNext()" ${ready ? '' : 'disabled'}>Lanjut</button>
+      <button type="button" class="nu-onb-cta" onclick="nuOnbNext()" ${ready ? '' : 'disabled'}>Lihat Produk Untukmu</button>
       <button type="button" class="nu-onb-back" onclick="_nuOnb.step=1;nuOnbRender();">Kembali</button>
       <div class="nu-onb-dots">${dots(2)}</div>`;
-  } else if (_nuOnb.step === 3) {
-    el.innerHTML = `
-      <div class="nu-onb-step-lbl">Langkah 3 dari ${NU_ONB_TOTAL}</div>
-      <div class="nu-onb-title">Berapa harga produk yang ingin kamu jual?</div>
-      <div class="nu-onb-sub">Kami tampilkan produk dengan harga jual yang pas sama budget kamu.</div>
-      <div class="nu-onb-budgets">${NU_ONB_BUDGETS.map((b, i) => `
-        <div class="nu-onb-budget${_nuOnb.budget === i ? ' sel' : ''}" role="button" tabindex="0" aria-pressed="${_nuOnb.budget === i}" onclick="nuOnbPickBudget(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nuOnbPickBudget(${i});}">
-          <div><div class="nb-l">${b.label}</div><div class="nb-s">${b.sub}</div></div>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${_nuOnb.budget === i ? '#B5202A' : '#D1D5DB'}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>`).join('')}
-      </div>
-      <button type="button" class="nu-onb-cta" onclick="nuOnbNext()" ${_nuOnb.budget >= 0 ? '' : 'disabled'}>Lanjut</button>
-      <button type="button" class="nu-onb-back" onclick="_nuOnb.step=2;nuOnbRender();">Kembali</button>
-      <div class="nu-onb-dots">${dots(3)}</div>`;
-  } else {
-    el.innerHTML = `
-      <div class="nu-onb-step-lbl">Langkah 4 dari ${NU_ONB_TOTAL}</div>
-      <div class="nu-onb-title">Kamu sudah jualan atau baru mulai?</div>
-      <div class="nu-onb-sub">Biar rekomendasi produk lebih relevan sama tahap kamu sekarang.</div>
-      <div class="nu-onb-budgets">${NU_ONB_SELLER_OPTS.map(o => `
-        <div class="nu-onb-budget${_nuOnb.sellerStatus === o.id ? ' sel' : ''}" role="button" tabindex="0" aria-pressed="${_nuOnb.sellerStatus === o.id}" onclick="nuOnbPickSeller('${o.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nuOnbPickSeller('${o.id}');}">
-          <div><div class="nb-l">${o.label}</div><div class="nb-s">${o.sub}</div></div>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${_nuOnb.sellerStatus === o.id ? '#B5202A' : '#D1D5DB'}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>`).join('')}
-      </div>
-      <button type="button" class="nu-onb-cta" onclick="nuOnbFinish()" ${_nuOnb.sellerStatus ? '' : 'disabled'}>Lihat Produk Untukmu</button>
-      <button type="button" class="nu-onb-back" onclick="_nuOnb.step=3;nuOnbRender();">Kembali</button>
-      <div class="nu-onb-dots">${dots(4)}</div>`;
   }
 }
 
@@ -22051,16 +22013,6 @@ function nuOnbToggleCat(i) {
   nuOnbRender();
 }
 
-function nuOnbPickBudget(i) {
-  _nuOnb.budget = i;
-  nuOnbRender();
-}
-
-function nuOnbPickSeller(id) {
-  _nuOnb.sellerStatus = id;
-  nuOnbRender();
-}
-
 function nuOnbNext() {
   if (_nuOnb.step === 1) {
     if (!nuOnbLocationReady()) return;
@@ -22072,29 +22024,18 @@ function nuOnbNext() {
   if (_nuOnb.step === 2) {
     if (_nuOnb.cats.length < NU_ONB_MIN_CATS) return;
     void logUserEvent('onboarding_cats', { categories: _nuOnb.cats });
-    _nuOnb.step = 3;
-    nuOnbRender();
-    return;
-  }
-  if (_nuOnb.step === 3) {
-    if (_nuOnb.budget < 0) return;
-    const b = NU_ONB_BUDGETS[_nuOnb.budget];
-    void logUserEvent('onboarding_budget', { budget: b.label, min: b.min, max: b.max });
-    _nuOnb.step = 4;
-    nuOnbRender();
+    nuOnbFinish();
   }
 }
 
 function nuOnbFinish() {
-  if (_nuOnb.budget < 0 || !_nuOnb.sellerStatus) return;
-  const b = NU_ONB_BUDGETS[_nuOnb.budget];
+  if (_nuOnb.cats.length < NU_ONB_MIN_CATS) return;
   // onboarding_complete is the one-time conversion event. Re-running the picker to
   // tweak prefs logs onboarding_edit instead, so the funnel isn't double-counted.
   let _firstComplete = true;
   try { _firstComplete = !localStorage.getItem(NU_ONB_DONE_KEY); } catch (_) {}
-  void logUserEvent('onboarding_seller', { seller_status: _nuOnb.sellerStatus });
   void logUserEvent(_firstComplete ? 'onboarding_complete' : 'onboarding_edit',
-    { categories: _nuOnb.cats, budget: b.label, seller_status: _nuOnb.sellerStatus, location: nuOnbResolvedLocation() });
+    { categories: _nuOnb.cats, location: nuOnbResolvedLocation() });
   // First completion only: don't stop at highlighting a card — open its Deep Dive
   // for them. Launch-cohort data (Jul 2026): 9 of 19 new users browsed Discover
   // without ever clicking into a Deep Dive, and none of those 9 returned.
@@ -22121,16 +22062,14 @@ function nuOnbSkip() {
 async function nuOnbPersist(completed) {
   if (_admSimulateNewUser) return; // never write real Supabase rows for a simulated session
   if (!_supabase || !currentUser) return;
-  const b = _nuOnb.budget >= 0 ? NU_ONB_BUDGETS[_nuOnb.budget] : null;
   const now = new Date().toISOString();
+  // budget_min/budget_max/seller_status columns are no longer collected (steps
+  // removed 2026-07-09); omitting them preserves values older users already set.
   const payload = {
     user_id: currentUser.id,
     categories: _nuOnb.cats,
-    budget_min: b ? b.min : null,
-    budget_max: b ? b.max : null,
     updated_at: now,
   };
-  if (_nuOnb.sellerStatus) payload.seller_status = _nuOnb.sellerStatus;
   const loc = nuOnbResolvedLocation();
   if (loc) {
     payload.region = loc;
@@ -22143,13 +22082,6 @@ async function nuOnbPersist(completed) {
   else payload.skipped_at = now;
   try {
     await _supabase.from('user_onboarding_prefs').upsert(payload, { onConflict: 'user_id' });
-    if (completed && _nuOnb.sellerStatus) {
-      await _supabase.from('user_profiles').upsert({
-        user_id: currentUser.id,
-        seller_status: _nuOnb.sellerStatus,
-        updated_at: now,
-      }, { onConflict: 'user_id' });
-    }
   } catch (_) {}
 }
 
@@ -22163,25 +22095,14 @@ function nuOnbApplyToDiscover() {
     cb.checked = _nuOnb.cats.includes(cb.value);
   });
   _dscSaveCatState();
-  const b = NU_ONB_BUDGETS[_nuOnb.budget] || { min: 0, max: null };
   const minEl = document.getElementById('dsc-price-min');
   const maxEl = document.getElementById('dsc-price-max');
-  if (minEl) minEl.value = String(b.min || 0);
-  if (maxEl) maxEl.value = String(b.max == null ? 500000 : b.max);
+  if (minEl) minEl.value = '0';
+  if (maxEl) maxEl.value = '500000'; // slider treats 500000 as "no max"
   dscUpdateDualRange('price');
-  const sortEl = document.getElementById('dsc-sort');
-  const skorEl = document.getElementById('dsc-skor-min');
-  const skorLbl = document.getElementById('dsc-skor-min-lbl');
-  if (_nuOnb.sellerStatus === 'first_time') {
-    if (sortEl) sortEl.value = 'score-desc';
-    if (skorEl) { skorEl.value = 45; if (skorLbl) skorLbl.textContent = '45'; }
-  } else if (_nuOnb.sellerStatus === 'existing') {
-    if (sortEl) sortEl.value = 'tren-desc';
-    if (skorEl) { skorEl.value = 0; if (skorLbl) skorLbl.textContent = '0'; }
-  }
   nuOnbShowBanner();
   dscTerapkanFilter();
-  void logUserEvent('onboarding_results', { categories: _nuOnb.cats, seller_status: _nuOnb.sellerStatus });
+  void logUserEvent('onboarding_results', { categories: _nuOnb.cats });
 }
 
 function nuOnbShowBanner() {
@@ -22205,8 +22126,7 @@ function nuOnbBannerText() {
   const sub = document.getElementById('nu-onb-banner-sub');
   if (!sub) return;
   const n = _nuOnb.cats.length;
-  const b = _nuOnb.budget >= 0 ? NU_ONB_BUDGETS[_nuOnb.budget].label : null;
-  sub.textContent = `Berdasarkan ${n} kategori${b ? ' dan modal ' + b : ''} yang kamu pilih. Klik kartu untuk buka Deep Dive.`;
+  sub.textContent = `Berdasarkan ${n} kategori yang kamu pilih. Klik kartu untuk buka Deep Dive.`;
 }
 
 function _nuOnbKeyOf(p) { return `${p.item_id}__${p.shop_id}`; }
