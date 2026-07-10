@@ -3953,6 +3953,21 @@ body.in-dashboard .mobile-menu{display:none!important;}
   100%{left:140%;opacity:0;}
 }
 .dd-sact-full:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(139,26,26,.45);}
+#dd-sact-track.tracked{border-color:#B5202A;background:#F9EAE4;}
+#dd-sact-track.tracked .dd-sact-title{color:#B5202A;}
+/* Simple-view teaser: names what's behind "Lihat Data Lengkap" + the credit price */
+.dd-teaser-strip{margin-top:2px;padding:12px 14px;background:#FDFBF6;border:1px solid #F0E7DC;border-radius:12px;}
+.dd-teaser-head{font-size:.66rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#9CA3AF;margin-bottom:8px;}
+.dd-teaser-row{display:flex;align-items:center;gap:9px;padding:7px 2px;font-size:.78rem;color:#4B5563;cursor:pointer;border-radius:8px;transition:background .12s;}
+.dd-teaser-row:hover{background:#F9EAE4;}
+.dd-teaser-row svg{flex-shrink:0;color:#C9974B;}
+.dd-teaser-row span:first-of-type{flex:1;min-width:0;}
+.dd-teaser-row strong{color:#1A1A1A;font-weight:700;}
+.dd-teaser-price{flex-shrink:0;font-size:.66rem;font-weight:800;color:#B5202A;background:#F9EAE4;border:1px solid #FBBCB2;border-radius:999px;padding:2px 9px;white-space:nowrap;}
+.dd-teaser-foot{margin-top:7px;font-size:.68rem;color:#9CA3AF;}
+/* Lock chip appended to gated Deep Dive tabs (JS: ddSyncTabLocks) */
+.dd-tab-lock{display:inline-flex;align-items:center;gap:3px;margin-left:6px;font-size:.6rem;font-weight:800;color:#B5202A;background:#F9EAE4;border:1px solid #FBBCB2;border-radius:999px;padding:1px 7px;vertical-align:1px;white-space:nowrap;}
+.dd-tab.active .dd-tab-lock{opacity:.85;}
 .dd-sact-full:hover::before{animation-duration:1.6s;}
 .dd-sact-icon{
   width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
@@ -7065,10 +7080,16 @@ html,body{overflow-x:clip;max-width:100%;}
                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
                 Kembali ke Daftar Produk
               </div>
-              <button id="dd-track-btn" class="dd-track-pill dd-track-pill--next" onclick="ddStartSelling()">
-                <svg id="dd-track-icon" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                <span id="dd-track-label">Next: Mulai Berjualan</span>
-              </button>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+                <button id="dd-track-btn2" class="dd-track-pill" onclick="ddToggleTrack()" style="display:none;">
+                  <svg id="dd-track2-icon" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  <span id="dd-track2-label">Lacak Produk</span>
+                </button>
+                <button id="dd-track-btn" class="dd-track-pill dd-track-pill--next" onclick="ddStartSelling()">
+                  <svg id="dd-track-icon" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  <span id="dd-track-label">Next: Mulai Berjualan</span>
+                </button>
+              </div>
             </div>
 
             <!-- hero -->
@@ -7286,6 +7307,30 @@ html,body{overflow-x:clip;max-width:100%;}
                     <span class="dd-sact-text"><div class="dd-sact-title">Mulai Berjualan</div><div class="dd-sact-sub">Siap sourcing &amp; jual produk ini</div></span>
                     <span class="dd-sact-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
                   </button>
+                  <button type="button" class="dd-sact-sell" id="dd-sact-track" onclick="ddToggleTrack()">
+                    <span class="dd-sact-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
+                    <span class="dd-sact-text"><div class="dd-sact-title" id="dd-sact-track-title">Lacak Produk</div><div class="dd-sact-sub" id="dd-sact-track-sub">Kabari aku tiap harga atau penjualannya berubah</div></span>
+                    <span class="dd-sact-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+                  </button>
+                  <div class="dd-teaser-strip" id="dd-teaser-strip">
+                    <div class="dd-teaser-head">Masih terkunci di Data Lengkap</div>
+                    <div class="dd-teaser-row" role="button" tabindex="0" onclick="ddTeaserOpen('analisa')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();ddTeaserOpen('analisa');}">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      <span><strong>Analisa Pasar</strong> &mdash; permintaan &amp; benchmark pasar</span>
+                      <span class="dd-teaser-price">1 kredit</span>
+                    </div>
+                    <div class="dd-teaser-row" role="button" tabindex="0" onclick="ddTeaserOpen('tren')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();ddTeaserOpen('tren');}">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      <span><strong>Tren Historis</strong> &mdash; omset &amp; unit 4 minggu terakhir</span>
+                      <span class="dd-teaser-price">1 kredit</span>
+                    </div>
+                    <div class="dd-teaser-row" role="button" tabindex="0" onclick="ddTeaserOpen('kompetitor')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();ddTeaserOpen('kompetitor');}">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      <span><strong>Kompetitor</strong> &mdash; toko teratas di keyword ini</span>
+                      <span class="dd-teaser-price">1 kredit</span>
+                    </div>
+                    <div class="dd-teaser-foot">Punya 20 kredit gratis tiap bulan &middot; 5 kredit = semua data 7 hari</div>
+                  </div>
                   <div class="dd-sact-note">
                     <span class="dd-sact-note-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/><path d="M19 15l.6 1.8L21 17.4l-1.4.6L19 20l-.6-1.8L17 17.4l1.4-.6z"/></svg></span>
                     <p>Data pasar diperbarui secara berkala — cek lagi nanti untuk tren terbaru.</p>
@@ -9633,6 +9678,7 @@ html,body{overflow-x:clip;max-width:100%;}
             <button class="cg-btn secondary" onclick="dduClose()" style="width:100%;">Batal</button>
           </div>
           <div style="margin-top:12px;font-size:.72rem;color:#9CA3AF;">Saldo: <span id="ddu-bal" style="font-weight:700;color:#f97316;">—</span> kredit · Biaya E-commerce selalu gratis</div>
+          <div style="margin-top:4px;font-size:.7rem;color:#9CA3AF;">Kredit gratis 20/bulan — tidak bisa dibeli, cuma bisa dipakai.</div>
         </div>
       </div>
 

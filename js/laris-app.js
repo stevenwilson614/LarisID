@@ -4199,11 +4199,31 @@ function _ddProductKey(listing) {
 async function ddLoadUnlocks(listing) {
   const key = _ddProductKey(listing);
   _ddUnlockKey = key; _ddUnlockScopes = new Set();
-  if (!key || !_supabase || !currentUser || _isCreditPrivileged()) return;
+  if (!key || !_supabase || !currentUser || _isCreditPrivileged()) { ddSyncTabLocks(); return; }
   try {
     const { data, error } = await _supabase.rpc('get_product_unlocks', { p_product_key: key });
     if (!error && Array.isArray(data)) data.forEach(r => _ddUnlockScopes.add(r.scope));
   } catch (_) {}
+  ddSyncTabLocks();
+}
+
+// Lock + price chips on the gated Deep Dive tabs, so the credit model is
+// visible BEFORE a click instead of springing the unlock modal as a surprise.
+// Scoped to #dd-tabs only — .dd-tab is reused by the Mulai Berjualan tabs.
+function ddSyncTabLocks() {
+  document.querySelectorAll('#dd-tabs .dd-tab[data-tab]').forEach(el => {
+    const tab = el.dataset.tab;
+    const locked = !!DD_TAB_SCOPE[tab] && !ddTabUnlocked(tab);
+    const chip = el.querySelector('.dd-tab-lock');
+    if (locked && !chip) {
+      const s = document.createElement('span');
+      s.className = 'dd-tab-lock';
+      s.innerHTML = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>${DD_TAB_PRICE} kredit`;
+      el.appendChild(s);
+    } else if (!locked && chip) {
+      chip.remove();
+    }
+  });
 }
 function ddScopeUnlocked(scope) {
   if (_isCreditPrivileged()) return true;
@@ -4216,14 +4236,22 @@ function ddTabUnlocked(tab) {
   return ddScopeUnlocked(scope);
 }
 
-let _dduTab = null, _dduOnDone = null, _dduKey = null;
+let _dduTab = null, _dduOnDone = null, _dduKey = null, _dduPurchased = false;
 function ddUnlockModal(tab, onDone, productKey) {
   _dduTab = tab; _dduOnDone = onDone || null; _dduKey = productKey || _ddProductKey();
+  _dduPurchased = false;
   document.getElementById('ddu-tab-label').textContent = DD_TAB_LABEL[tab] || 'Data';
   document.getElementById('ddu-bal').textContent = (_creditBalance ?? 0);
   document.getElementById('ddu-overlay').style.display = 'flex';
+  void logUserEvent('unlock_modal_shown', { tab, balance: _creditBalance ?? null });
 }
-function dduClose() { document.getElementById('ddu-overlay').style.display = 'none'; _dduTab = null; _dduOnDone = null; _dduKey = null; }
+function dduClose() {
+  // Dismissed without buying = the exact moment a user balked at the gate —
+  // the signal that separates a discovery problem from a price/value problem.
+  if (_dduTab && !_dduPurchased) void logUserEvent('unlock_modal_dismissed', { tab: _dduTab });
+  document.getElementById('ddu-overlay').style.display = 'none';
+  _dduTab = null; _dduOnDone = null; _dduKey = null; _dduPurchased = false;
+}
 async function dduChoose(mode) {
   const tab = _dduTab, onDone = _dduOnDone;
   if (!tab) return;
@@ -4243,8 +4271,10 @@ async function dduChoose(mode) {
     }
     if (data && data.balance != null) { _creditBalance = data.balance; renderCreditUI(); }
     _ddUnlockScopes.add(mode === 'full' ? 'full' : scope);
+    _dduPurchased = true;
     try { cohortLogActivity('credit_spent', { action: 'unlock_' + scope }); } catch (_) {}
     dduClose();
+    ddSyncTabLocks();
     if (onDone) onDone(); else ddSwitchTab(tab);
     setTimeout(_ddMaybeTrackNudge, 1200); // unlock = peak interest → invite tracking
   } catch (e) {
@@ -12675,6 +12705,7 @@ function ddToggleTrack() {
   const key = trkKey(listing);
   let arr = trkLoad();
   const idx = arr.findIndex(t => t.key === key);
+  void logUserEvent('track_toggle', { on: idx < 0, source: 'deepdive', item_id: listing.item_id ?? null });
   if (idx >= 0) {
     // Remove from tracker — no credit refund
     arr.splice(idx, 1);
@@ -12697,31 +12728,33 @@ function ddToggleTrack() {
   }
 }
 
+// Syncs the two deep-dive tracking affordances (revived 2026-07-10: the Jun 23
+// "tracking lives in My Toko only" change left ddToggleTrack reachable only via
+// the post-unlock nudge, and deliberate tracking went to zero — starving the
+// bell / return strip / weekly digest): the full-view topbar pill
+// (#dd-track-btn2) and the simple-view action button (#dd-sact-track).
 function ddUpdateTrackBtn(listing) {
-  // A6: the Deep Dive top-right pill was repurposed into the "Next: Mulai Berjualan"
-  // CTA — it no longer reflects tracking state. Tracking lives in My Toko now.
-  return;
-  // eslint-disable-next-line no-unreachable
-  const btn   = document.getElementById('dd-track-btn');
-  const label = document.getElementById('dd-track-label');
-  const icon  = document.getElementById('dd-track-icon');
-  if (!btn || !label || !icon) return;
-  const tracked = listing ? trkIsTracked(listing) : false;
-  btn.classList.toggle('tracked', tracked);
-  if (tracked) {
-    btn.style.background   = '';
-    btn.style.borderColor  = '';
-    btn.style.color        = '';
-    label.textContent      = 'Dilacak';
-    icon.setAttribute('fill', '#B5202A');
-    icon.setAttribute('stroke', '#B5202A');
-  } else {
-    btn.style.background   = '';
-    btn.style.borderColor  = '';
-    btn.style.color        = '';
-    label.textContent      = 'Lacak Produk';
-    icon.setAttribute('fill', 'none');
-    icon.setAttribute('stroke', 'currentColor');
+  const l = listing || _ddKwListing || _ddCurrentP?._listing || null;
+  const tracked = l ? trkIsTracked(l) : false;
+  const pill  = document.getElementById('dd-track-btn2');
+  if (pill) {
+    pill.classList.toggle('tracked', tracked);
+    const lbl = document.getElementById('dd-track2-label');
+    if (lbl) lbl.textContent = tracked ? 'Dilacak' : 'Lacak Produk';
+    const ic = document.getElementById('dd-track2-icon');
+    if (ic) ic.setAttribute('fill', tracked ? 'currentColor' : 'none');
+  }
+  const act = document.getElementById('dd-sact-track');
+  if (act) {
+    act.classList.toggle('tracked', tracked);
+    const t = document.getElementById('dd-sact-track-title');
+    if (t) t.textContent = tracked ? 'Dilacak' : 'Lacak Produk';
+    const s = document.getElementById('dd-sact-track-sub');
+    if (s) s.textContent = tracked
+      ? 'Update harga & penjualan masuk ke lonceng notifikasi'
+      : 'Kabari aku tiap harga atau penjualannya berubah';
+    const ic2 = act.querySelector('.dd-sact-icon svg');
+    if (ic2) ic2.setAttribute('fill', tracked ? 'currentColor' : 'none');
   }
 }
 
@@ -20881,6 +20914,10 @@ function journeyUnlockFullDeepDive() {
 // "Lihat Data Lengkap" — reveal the full Deep Dive for this open only (resets on next product).
 function ddExpandFull() {
   _ddExpanded = true;
+  void logUserEvent('deepdive_expand', {
+    item_id: _ddCurrentP?._listing?.item_id ?? _ddKwListing?.item_id ?? null,
+    score: _ddCurrentP?.score ?? null,
+  });
   journeyApplyDeepDiveChrome();
   if (_ddCurrentP && typeof ddRefreshRingkasan === 'function') ddRefreshRingkasan();
   // Expanding reveals the hero cards, tabs and data rows above the button, so the
@@ -20889,6 +20926,15 @@ function ddExpandFull() {
   // scroller and the mobile window scroller).
   document.getElementById('dash-content')?.scrollTo(0, 0);
   window.scrollTo(0, 0);
+}
+
+// Simple-view teaser row → expand the full view and go straight to that tab.
+// ddSwitchTab raises the (instrumented) unlock modal if the tab is gated —
+// discovery is free, the charge only happens on an explicit modal choice.
+function ddTeaserOpen(tab) {
+  void logUserEvent('deepdive_teaser_click', { tab });
+  ddExpandFull();
+  ddSwitchTab(tab);
 }
 
 // "Mulai Berjualan" — jump to the AI selling surface scoped to the current product.
@@ -20987,6 +21033,12 @@ function journeyApplyDeepDiveChrome() {
   // page — it duplicates the big "Mulai Berjualan" action button shown there. Keep
   // it on the full-data view as the forward CTA.
   if (trackBtn) trackBtn.style.display = simple ? 'none' : '';
+  // Real "Lacak" pill lives on the full view only (simple view has its own
+  // action button); keep its state + the tab lock chips in sync on every apply.
+  const trackPill = document.getElementById('dd-track-btn2');
+  if (trackPill) trackPill.style.display = simple ? 'none' : '';
+  try { ddUpdateTrackBtn(); } catch (_) {}
+  if (!simple) { try { ddSyncTabLocks(); } catch (_) {} }
 }
 
 // Smoothly counts a Deep Dive simple-view metric from its current value to a
