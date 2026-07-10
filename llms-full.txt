@@ -130,6 +130,18 @@ data and is publicly accessible without login.
   https://larisid.com/riset/mouse-wireless-silent-click/ ,
   https://larisid.com/riset/celana-jogger-pria/
 
+## City market pages (public, no login)
+
+LarisID also publishes 100 city pages (July 2026) for the top seller cities/regencies on Java,
+one per city: top-selling products from local Shopee sellers, active-seller and item counts,
+median price, strongest categories, and an honest local read. Price/rating/reviews are real;
+"terjual" is an ESTIMATE. Each page carries schema.org Dataset + FAQPage + ItemList data.
+
+- Index: https://larisid.com/kota/
+- URL pattern: https://larisid.com/kota/<city-with-hyphens>/
+- Examples: https://larisid.com/kota/surabaya/ , https://larisid.com/kota/kab-cilacap/ ,
+  https://larisid.com/kota/bandung/
+
 ## Seller guides (educational)
 
 - Cara riset produk Shopee untuk pemula — 5-step framework to assess demand, price, margin,

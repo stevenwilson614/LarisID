@@ -4442,6 +4442,61 @@ function crShareRefEmail() {
   window.location.href = `mailto:?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
 }
 
+// After a GOOD deep dive — a strong product (score >= 70) or one the user spent
+// credits to open up — leaving the view is the "just got value" beat. That's
+// when a seller thinks of the friend who's also trying to jualan, so the
+// referral invite fires here instead of only at low balance. Sellers know
+// sellers in their own town: this is the organic city-spread channel.
+// Caps: min 30s dwell, once/day, 3 lifetime; never for privileged users; never
+// stacked on the notify popup, track nudge, refer popup, or onboarding.
+let _ddEnterTs = 0;
+const _REF_DIVE_DAY_KEY = 'larisid_gooddive_refer_v1';
+const _REF_DIVE_COUNT_KEY = 'larisid_gooddive_refer_n';
+async function _refMaybeGoodDiveNudge() {
+  try {
+    const dwellMs = _ddEnterTs ? Date.now() - _ddEnterTs : 0;
+    _ddEnterTs = 0;
+    if (!currentUser || !_supabase || _isCreditPrivileged()) return;
+    if (dwellMs < 30000) return; // a skim, not a real dive
+    const score = Number(_ddCurrentP?.score);
+    const unlocked = typeof _ddUnlockScopes !== 'undefined' && _ddUnlockScopes && _ddUnlockScopes.size > 0;
+    if (!(score >= 70 || unlocked)) return;
+    const today = new Date().toISOString().slice(0, 10);
+    if (localStorage.getItem(_REF_DIVE_DAY_KEY) === today) return;
+    const shown = parseInt(localStorage.getItem(_REF_DIVE_COUNT_KEY) || '0', 10);
+    if (shown >= 3) return;
+    if (document.getElementById('dd-track-nudge')) return;
+    const notif = document.getElementById('mls-notify-modal');
+    if (notif && notif.style.display === 'flex') return;
+    const refer = document.getElementById('cr-refer-popup');
+    if (refer && refer.style.display === 'flex') return;
+    if (typeof _nuOnb !== 'undefined' && _nuOnb.visible) return;
+    if (!_crRefCode) {
+      const { data, error } = await _supabase.rpc('get_or_create_my_referral_code');
+      if (error || !data) return;
+      _crRefCode = data;
+    }
+    localStorage.setItem(_REF_DIVE_DAY_KEY, today);
+    localStorage.setItem(_REF_DIVE_COUNT_KEY, String(shown + 1));
+    document.getElementById('ref-dive-nudge')?.remove();
+    const el = document.createElement('div');
+    el.id = 'ref-dive-nudge';
+    el.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:24px;z-index:9000;background:#1A1A1A;color:#fff;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:14px;box-shadow:0 12px 34px rgba(0,0,0,.3);max-width:min(92vw,500px);';
+    el.innerHTML = `<span style="font-size:.8rem;line-height:1.45;">Nemu produk menjanjikan? <strong>Ajak teman jualanmu</strong> riset bareng &mdash; kamu dapat ${REF_PER_INVITE} kredit tiap teman yang gabung.</span>
+      <button onclick="_refDiveShareWA()" style="flex-shrink:0;background:#B5202A;color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:.78rem;font-weight:800;padding:9px 14px;cursor:pointer;">Ajak via WA</button>
+      <button onclick="document.getElementById('ref-dive-nudge').remove()" aria-label="Tutup" style="flex-shrink:0;background:none;border:none;color:rgba(255,255,255,.6);font-size:1.05rem;cursor:pointer;padding:2px;line-height:1;">&times;</button>`;
+    document.body.appendChild(el);
+    setTimeout(() => { document.getElementById('ref-dive-nudge')?.remove(); }, 15000);
+    void logUserEvent('referral_nudge', { trigger: 'good_deepdive', score: isNaN(score) ? null : score, unlocked, dwell_s: Math.round(dwellMs / 1000) });
+  } catch (_) {}
+}
+function _refDiveShareWA() {
+  document.getElementById('ref-dive-nudge')?.remove();
+  void logUserEvent('referral_nudge_share', { trigger: 'good_deepdive', channel: 'wa' });
+  const msg = `Aku lagi riset produk jualan di LarisID — datanya asli Shopee dan 100% gratis. Daftar lewat link aku ya: ${crRefUrl()}`;
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+}
+
 // ── C: RESELLER / CREATOR PATHS + PHOTO → COPY ───────────────────────────────
 // Spend credits for an AI action (recommendations / photo analysis). Respects
 // admin/leader bypass, balance, and the per-day AI credit cap.
@@ -5239,6 +5294,9 @@ function switchDashView(view) {
       try { dscSaveCache(_dscAllListings.slice(0, DSC_PAGE_SIZE)); } catch (_) {}
     }
   }
+  if (prevView === 'deepdive' && view !== 'deepdive') {
+    try { void _refMaybeGoodDiveNudge(); } catch (_) {}
+  }
   _dashActiveView = view;
   try { journeyApplyNavGating(); } catch (_) {}
   PDB_VIEWS.forEach(v => {
@@ -5317,6 +5375,7 @@ function switchDashView(view) {
     }
   }
   if (view === 'deepdive') {
+    if (prevView !== 'deepdive') _ddEnterTs = Date.now();
     journeyApplyDeepDiveChrome();
     requestAnimationFrame(ddResizeActiveCharts);
   }

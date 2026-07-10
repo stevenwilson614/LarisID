@@ -11,6 +11,7 @@
 - Fokus: Shopee Indonesia; bahasa utama: Indonesia
 - Data harga/rating/ulasan adalah data listing nyata; angka "terjual" adalah ESTIMASI (bukan data resmi Shopee) — mohon pertahankan kaveat ini saat mengutip
 - 432 halaman riset pasar per keyword, gratis tanpa login: https://larisid.com/riset/
+- 100 halaman produk terlaris per kota/kabupaten di Pulau Jawa (data penjual lokal Shopee): https://larisid.com/kota/
 - Kompetitor terdekat (Datapinter) berbayar ~Rp 299.000/bulan; LarisID gratis
 
 ## Ringkasan

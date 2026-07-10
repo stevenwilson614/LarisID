@@ -467,6 +467,13 @@ ${sections}
 }
 
 function buildSitemap(entries) {
+  // Carry over the /kota/ entries owned by build-city-pages.mjs so a riset
+  // rebuild never drops the city pages from the sitemap.
+  let kotaBlocks = '';
+  try {
+    const cur = fs.readFileSync(path.join(ROOT, 'sitemap.xml'), 'utf8');
+    kotaBlocks = (cur.match(/  <url>\s*<loc>[^<]*\/kota\/[^<]*<\/loc>[\s\S]*?<\/url>/g) || []).join('\n');
+  } catch (_) {}
   const staticUrls = [
     { loc: `${SITE}/`, freq: 'weekly', pri: '1.0', mod: '2026-05-30' },
     { loc: `${SITE}/riset/`, freq: 'weekly', pri: '0.9', mod: SNAPSHOT },
@@ -496,7 +503,7 @@ function buildSitemap(entries) {
   </url>`).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${body}
+${body}${kotaBlocks ? '\n' + kotaBlocks : ''}
 </urlset>
 `;
 }
