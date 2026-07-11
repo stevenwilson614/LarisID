@@ -130,7 +130,10 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#B5202A">
 <link rel="preload" href="/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" as="image" href="https://cf.shopee.co.id/file/id-11134207-7r98q-luq6qqbb1aiy31" crossorigin referrerpolicy="no-referrer">
+<link rel="preload" as="image" href="/images/landing/hero/id-11134207-822wm-mnvbjis7ozcy72.webp">
+<link rel="preload" as="image" href="/images/landing/hero/id-11134207-7r990-lu62fqhiafcb0c.webp">
+<link rel="preload" as="image" href="/images/landing/hero/id-11134207-7r990-lp8ujdqfejdtda.webp">
+<link rel="preload" as="image" href="/images/landing/hero/id-11134207-8224r-miq3b2ebzhu057.webp">
 <script>
   // Preload the ~1.2MB app bundle only for returning signed-in users. First-time
   // visitors (60% mobile) need that bandwidth for the landing LCP instead; the
@@ -2132,6 +2135,10 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .lp-hero-grid-wrap{max-width:1120px;margin:0 auto;padding:0 clamp(1rem,4vw,2.5rem);}
 .lp-hero-grid-hint{font-size:.72rem;color:#9CA3AF;text-align:center;margin:0 auto 12px;line-height:1.45;}
 .lp-hero-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(12px,2vw,18px);}
+.lp-hero-skel{background:#fff;border:1px solid #EAE2D2;border-radius:16px;padding:13px;}
+.lp-hero-skel-img{width:100%;aspect-ratio:1;border-radius:11px;background:#F0E9DA;margin-bottom:10px;}
+.lp-hero-skel-line{height:10px;border-radius:5px;background:#F0E9DA;margin-bottom:8px;}
+.lp-hero-skel-line.short{width:55%;margin-bottom:0;}
 .lp-hero-card{background:#fff;border:1px solid #EAE2D2;border-radius:16px;padding:13px;box-shadow:0 4px 16px rgba(26,26,26,.06);text-align:left;opacity:0;transform:translateY(12px);animation:lpCardIn .55s cubic-bezier(.22,1,.36,1) forwards;cursor:pointer;transition:transform .22s cubic-bezier(.22,1,.36,1),box-shadow .22s,border-color .22s;}
 .lp-hero-card:hover{transform:scale(1.05);box-shadow:0 16px 40px rgba(26,26,26,.12);border-color:#C9974B;z-index:2;position:relative;}
 @media(prefers-reduced-motion:reduce){.lp-hero-card:hover{transform:none;}}
@@ -4610,7 +4617,9 @@ html,body{overflow-x:clip;max-width:100%;}
         <!-- 8-product grid -->
         <div class="lp-hero-grid-wrap">
           <p class="lp-hero-grid-hint">Contoh data produk Shopee nyata dari platform kami</p>
-          <div class="lp-hero-grid" id="lp-hero-grid" role="tabpanel"></div>
+          <!-- Skeleton cards reserve the grid's height until the JS-rendered cards
+               land, so content below doesn't jump (CLS was 0.39 with an empty grid). -->
+          <div class="lp-hero-grid" id="lp-hero-grid" role="tabpanel"><div class="lp-hero-skel"><div class="lp-hero-skel-img"></div><div class="lp-hero-skel-line"></div><div class="lp-hero-skel-line"></div><div class="lp-hero-skel-line short"></div></div><div class="lp-hero-skel"><div class="lp-hero-skel-img"></div><div class="lp-hero-skel-line"></div><div class="lp-hero-skel-line"></div><div class="lp-hero-skel-line short"></div></div><div class="lp-hero-skel"><div class="lp-hero-skel-img"></div><div class="lp-hero-skel-line"></div><div class="lp-hero-skel-line"></div><div class="lp-hero-skel-line short"></div></div><div class="lp-hero-skel"><div class="lp-hero-skel-img"></div><div class="lp-hero-skel-line"></div><div class="lp-hero-skel-line"></div><div class="lp-hero-skel-line short"></div></div><div class="lp-hero-skel"><div class="lp-hero-skel-img"></div><div class="lp-hero-skel-line"></div><div class="lp-hero-skel-line"></div><div class="lp-hero-skel-line short"></div></div><div class="lp-hero-skel"><div class="lp-hero-skel-img"></div><div class="lp-hero-skel-line"></div><div class="lp-hero-skel-line"></div><div class="lp-hero-skel-line short"></div></div><div class="lp-hero-skel"><div class="lp-hero-skel-img"></div><div class="lp-hero-skel-line"></div><div class="lp-hero-skel-line"></div><div class="lp-hero-skel-line short"></div></div><div class="lp-hero-skel"><div class="lp-hero-skel-img"></div><div class="lp-hero-skel-line"></div><div class="lp-hero-skel-line"></div><div class="lp-hero-skel-line short"></div></div></div>
         </div>
 
         <!-- CTA block kept below grid for analytics -->
@@ -4638,54 +4647,54 @@ html,body{overflow-x:clip;max-width:100%;}
           var LP_HERO_CATS = ['Outdoor & Camping','Elektronik','Fashion','Dapur','Kecantikan'];
           var LP_HERO_PRODUCTS = {
             'Outdoor & Camping': [
-              {name:'AOKI Senter Kepala Cahaya Maksimal Plus RechargePro USB-C',store:'Aoki Official Shop',price:98000,omset:120834000,skor:96,img:'https://cf.shopee.co.id/file/id-11134207-822wm-mnvbjis7ozcy72'},
-              {name:'Matras Yoga Camping Outdoor Alas Olahraga',store:'Naila Store',price:45000,omset:22500000,skor:92,img:'https://cf.shopee.co.id/file/id-11134207-7r990-lu62fqhiafcb0c'},
-              {name:'Tas Bekal Lunch Bag Thermal Cooler Bag',store:'Paus Biru Medan',price:19100,omset:10676900,skor:92,img:'https://cf.shopee.co.id/file/id-11134207-7r990-lp8ujdqfejdtda'},
-              {name:'OMICKO Kompor Portable Gas Camping 1 Tungku',store:'MEGAH JAYA ELEKTRONIK',price:115500,omset:103488000,skor:91,img:'https://cf.shopee.co.id/file/id-11134207-8224r-miq3b2ebzhu057'},
-              {name:'Alat Panggangan BBQ Grill Pan Korean Anti Lengket',store:'Smallsun',price:41800,omset:78249600,skor:92,img:'https://cf.shopee.co.id/file/sg-11134201-7qvg3-ljxxfbq62zv6d6'},
-              {name:'Lampu Lentera LED Camping Tent Rechargeable',store:'TrailTop Store',price:54000,omset:49734000,skor:95,img:'https://cf.shopee.co.id/file/id-11134207-7qula-lh73t4x8iqos42'},
-              {name:'Karpet Busa Lipat Waterproof 95×140cm',store:'Arizona Carpet Official',price:137400,omset:77493600,skor:92,img:'https://cf.shopee.co.id/file/id-11134207-822wn-mmik1r5ms4jlf0'},
-              {name:'Tabung Gas Portable Hi-Cook 230 Gram',store:'BelanjaElektronik',price:21200,omset:12253600,skor:93,img:'https://cf.shopee.co.id/file/sg-11134201-824il-meqxdnp6q29va0'},
+              {name:'AOKI Senter Kepala Cahaya Maksimal Plus RechargePro USB-C',store:'Aoki Official Shop',price:98000,omset:120834000,skor:96,img:'/images/landing/hero/id-11134207-822wm-mnvbjis7ozcy72.webp'},
+              {name:'Matras Yoga Camping Outdoor Alas Olahraga',store:'Naila Store',price:45000,omset:22500000,skor:92,img:'/images/landing/hero/id-11134207-7r990-lu62fqhiafcb0c.webp'},
+              {name:'Tas Bekal Lunch Bag Thermal Cooler Bag',store:'Paus Biru Medan',price:19100,omset:10676900,skor:92,img:'/images/landing/hero/id-11134207-7r990-lp8ujdqfejdtda.webp'},
+              {name:'OMICKO Kompor Portable Gas Camping 1 Tungku',store:'MEGAH JAYA ELEKTRONIK',price:115500,omset:103488000,skor:91,img:'/images/landing/hero/id-11134207-8224r-miq3b2ebzhu057.webp'},
+              {name:'Alat Panggangan BBQ Grill Pan Korean Anti Lengket',store:'Smallsun',price:41800,omset:78249600,skor:92,img:'/images/landing/hero/sg-11134201-7qvg3-ljxxfbq62zv6d6.webp'},
+              {name:'Lampu Lentera LED Camping Tent Rechargeable',store:'TrailTop Store',price:54000,omset:49734000,skor:95,img:'/images/landing/hero/id-11134207-7qula-lh73t4x8iqos42.webp'},
+              {name:'Karpet Busa Lipat Waterproof 95×140cm',store:'Arizona Carpet Official',price:137400,omset:77493600,skor:92,img:'/images/landing/hero/id-11134207-822wn-mmik1r5ms4jlf0.webp'},
+              {name:'Tabung Gas Portable Hi-Cook 230 Gram',store:'BelanjaElektronik',price:21200,omset:12253600,skor:93,img:'/images/landing/hero/sg-11134201-824il-meqxdnp6q29va0.webp'},
             ],
             'Elektronik': [
-              {name:'Stop Kontak + Kabel 3 Lubang 3M SNI',store:'HAO-onlineshop',price:27866,omset:61305200,skor:99,img:'https://cf.shopee.co.id/file/id-11134207-82252-mjzanegrsc9173'},
-              {name:'ROBOT Power Bank RT180S 10000mAh Fast Charge',store:'Robot Official Shop',price:125999,omset:249100023,skor:98,img:'https://cf.shopee.co.id/file/id-11134207-822wm-mn5di1fhh3b499'},
-              {name:'Logitech B175 Mouse Wireless Silent',store:'Logitech Official Shop',price:145000,omset:256650000,skor:99,img:'https://cf.shopee.co.id/file/76a0969b7d64065bc13493bf55df1849'},
-              {name:'Ultrapods TWS Bluetooth 5.3 Earphone Bass',store:'Toko Hoki 87',price:25497,omset:32865633,skor:90,img:'https://cf.shopee.co.id/file/id-11134207-7r98s-lzrdjvzqzvvsbe'},
-              {name:'Lampu LED Strip RGB 5M Remote Kamar Aesthetic',store:'ANEKA.LISTRIK',price:95000,omset:172045000,skor:94,img:'https://cf.shopee.co.id/file/ea3c3b6ca183d4068b4ccfded61ca410'},
-              {name:'Bluetooth Mini Speaker Portable Bass Wireless',store:'CHINDO DIGITAL',price:66000,omset:70752000,skor:92,img:'https://cf.shopee.co.id/file/id-11134207-7r98z-lxc2uttcx3krfe'},
-              {name:'Lampu Emergency Magic LED 15W Rechargeable',store:'HAO-onlineshop',price:27666,omset:24982398,skor:91,img:'https://cf.shopee.co.id/file/id-11134207-7r98p-lqy6wy9c985555'},
-              {name:'Senter Kepala LED Rechargeable Super Terang',store:'ANEKA.LISTRIK',price:16500,omset:9009000,skor:89,img:'https://cf.shopee.co.id/file/c2f5c996f66119db5f7ed18290b07988'},
+              {name:'Stop Kontak + Kabel 3 Lubang 3M SNI',store:'HAO-onlineshop',price:27866,omset:61305200,skor:99,img:'/images/landing/hero/id-11134207-82252-mjzanegrsc9173.webp'},
+              {name:'ROBOT Power Bank RT180S 10000mAh Fast Charge',store:'Robot Official Shop',price:125999,omset:249100023,skor:98,img:'/images/landing/hero/id-11134207-822wm-mn5di1fhh3b499.webp'},
+              {name:'Logitech B175 Mouse Wireless Silent',store:'Logitech Official Shop',price:145000,omset:256650000,skor:99,img:'/images/landing/hero/76a0969b7d64065bc13493bf55df1849.webp'},
+              {name:'Ultrapods TWS Bluetooth 5.3 Earphone Bass',store:'Toko Hoki 87',price:25497,omset:32865633,skor:90,img:'/images/landing/hero/id-11134207-7r98s-lzrdjvzqzvvsbe.webp'},
+              {name:'Lampu LED Strip RGB 5M Remote Kamar Aesthetic',store:'ANEKA.LISTRIK',price:95000,omset:172045000,skor:94,img:'/images/landing/hero/ea3c3b6ca183d4068b4ccfded61ca410.webp'},
+              {name:'Bluetooth Mini Speaker Portable Bass Wireless',store:'CHINDO DIGITAL',price:66000,omset:70752000,skor:92,img:'/images/landing/hero/id-11134207-7r98z-lxc2uttcx3krfe.webp'},
+              {name:'Lampu Emergency Magic LED 15W Rechargeable',store:'HAO-onlineshop',price:27666,omset:24982398,skor:91,img:'/images/landing/hero/id-11134207-7r98p-lqy6wy9c985555.webp'},
+              {name:'Senter Kepala LED Rechargeable Super Terang',store:'ANEKA.LISTRIK',price:16500,omset:9009000,skor:89,img:'/images/landing/hero/c2f5c996f66119db5f7ed18290b07988.webp'},
             ],
             'Fashion': [
-              {name:'Celana Hommy Kallyoutfit Rayon Adem',store:'kallyoutfit',price:36500,omset:70956000,skor:97,img:'https://cf.shopee.co.id/file/id-11134207-7r992-lmfq5eq1zyq4bb'},
-              {name:'Jam Tangan Korea Sport Chrono Quartz',store:'Toko Pencinta Waktu',price:14500,omset:31900000,skor:97,img:'https://cf.shopee.co.id/file/sg-11134201-7rbkm-lnnx46cezay939'},
-              {name:'Kaos Polos Lengan Pendek Cotton Combed 30S',store:'PT KAOS ONLINE INDONESIA',price:28900,omset:63580000,skor:99,img:'https://cf.shopee.co.id/file/156d69d498f597c163ac0540ea7f9da7'},
-              {name:'Celana Cutbray Scuba Highwaist Stretch',store:'Al Wahhab Collection',price:28614,omset:62950800,skor:91,img:'https://cf.shopee.co.id/file/id-11134207-7rasc-m0pjp32u3ec6bb'},
-              {name:'Korset Stagen Pengecil Perut Buncit',store:'Rafashop Surabaya Official',price:19200,omset:34003200,skor:96,img:'https://cf.shopee.co.id/file/sg-11134201-821ff-mgnigbu3ec5qc4'},
-              {name:'PVN Haechan Sneakers Sport Shoes Wanita',store:'PVN Official Shop',price:166599,omset:212413725,skor:97,img:'https://cf.shopee.co.id/file/id-11134207-8224w-mhit8r3dleyq4d'},
-              {name:'Kaos Polos Wanita Cotton Combed 30S',store:'PT KAOS ONLINE INDONESIA',price:35900,omset:78980000,skor:99,img:'https://cf.shopee.co.id/file/156d69d498f597c163ac0540ea7f9da7'},
-              {name:'Celana Chino Pendek Pria Slimfit Katun',store:'Zainal fashion',price:39900,omset:49476000,skor:88,img:'https://cf.shopee.co.id/file/92d9aab59985b64b021be5eda008d46c'},
+              {name:'Celana Hommy Kallyoutfit Rayon Adem',store:'kallyoutfit',price:36500,omset:70956000,skor:97,img:'/images/landing/hero/id-11134207-7r992-lmfq5eq1zyq4bb.webp'},
+              {name:'Jam Tangan Korea Sport Chrono Quartz',store:'Toko Pencinta Waktu',price:14500,omset:31900000,skor:97,img:'/images/landing/hero/sg-11134201-7rbkm-lnnx46cezay939.webp'},
+              {name:'Kaos Polos Lengan Pendek Cotton Combed 30S',store:'PT KAOS ONLINE INDONESIA',price:28900,omset:63580000,skor:99,img:'/images/landing/hero/156d69d498f597c163ac0540ea7f9da7.webp'},
+              {name:'Celana Cutbray Scuba Highwaist Stretch',store:'Al Wahhab Collection',price:28614,omset:62950800,skor:91,img:'/images/landing/hero/id-11134207-7rasc-m0pjp32u3ec6bb.webp'},
+              {name:'Korset Stagen Pengecil Perut Buncit',store:'Rafashop Surabaya Official',price:19200,omset:34003200,skor:96,img:'/images/landing/hero/sg-11134201-821ff-mgnigbu3ec5qc4.webp'},
+              {name:'PVN Haechan Sneakers Sport Shoes Wanita',store:'PVN Official Shop',price:166599,omset:212413725,skor:97,img:'/images/landing/hero/id-11134207-8224w-mhit8r3dleyq4d.webp'},
+              {name:'Kaos Polos Wanita Cotton Combed 30S',store:'PT KAOS ONLINE INDONESIA',price:35900,omset:78980000,skor:99,img:'/images/landing/hero/156d69d498f597c163ac0540ea7f9da7.webp'},
+              {name:'Celana Chino Pendek Pria Slimfit Katun',store:'Zainal fashion',price:39900,omset:49476000,skor:88,img:'/images/landing/hero/92d9aab59985b64b021be5eda008d46c.webp'},
             ],
             'Dapur': [
-              {name:'Keset Kamar Mandi Menyerap Air Cepat Kering',store:'Dejavu Official Shop',price:15326,omset:23556062,skor:95,img:'https://cf.shopee.co.id/file/55370166368e9985e864726eb9c75027'},
-              {name:'Tempat Beras Anti Kutu 15KG Rice Dispenser',store:'Angolala Official Store',price:119000,omset:126973000,skor:95,img:'https://cf.shopee.co.id/file/id-11134207-7r98v-lubmihcbywej7a'},
-              {name:'Set Pisau Dapur 6 in 1 Stainless Anti Lengket',store:'lisalautner665',price:18599,omset:30855741,skor:95,img:'https://cf.shopee.co.id/file/sg-11134201-7rav9-mab47yda3kqm57'},
-              {name:'Panci Listrik Elektrik Cooker Stainless Steel',store:'jos Jakarta Online Shope',price:52900,omset:52529700,skor:92,img:'https://cf.shopee.co.id/file/id-11134201-23030-vj05xp96dyov5d'},
-              {name:'Saringan Wastafel Stainless Steel 304 Dapur',store:'MARKETSTORE888',price:15500,omset:5440500,skor:91,img:'https://cf.shopee.co.id/file/id-11134207-7qukw-lh0g8ffy8jar28'},
-              {name:'Calista Oita Toples Set isi 10pcs',store:'Calista Official Shop',price:46900,omset:36206800,skor:93,img:'https://cf.shopee.co.id/file/387d3b6516955859bfb1555a17a071c3'},
-              {name:'JIB Spatula Silikon Tahan Panas Set Dapur',store:'JIB Official Shop',price:24300,omset:18370800,skor:95,img:'https://cf.shopee.co.id/file/id-11134207-822wi-mo57ztmuzsated'},
-              {name:'Rice Cooker Mini Multifungsi 1.8L Listrik',store:'MAIMEITE Official Store',price:129000,omset:139449000,skor:92,img:'https://cf.shopee.co.id/file/id-11134201-23030-vj05xp96dyov5d'},
+              {name:'Keset Kamar Mandi Menyerap Air Cepat Kering',store:'Dejavu Official Shop',price:15326,omset:23556062,skor:95,img:'/images/landing/hero/55370166368e9985e864726eb9c75027.webp'},
+              {name:'Tempat Beras Anti Kutu 15KG Rice Dispenser',store:'Angolala Official Store',price:119000,omset:126973000,skor:95,img:'/images/landing/hero/id-11134207-7r98v-lubmihcbywej7a.webp'},
+              {name:'Set Pisau Dapur 6 in 1 Stainless Anti Lengket',store:'lisalautner665',price:18599,omset:30855741,skor:95,img:'/images/landing/hero/sg-11134201-7rav9-mab47yda3kqm57.webp'},
+              {name:'Panci Listrik Elektrik Cooker Stainless Steel',store:'jos Jakarta Online Shope',price:52900,omset:52529700,skor:92,img:'/images/landing/hero/id-11134201-23030-vj05xp96dyov5d.webp'},
+              {name:'Saringan Wastafel Stainless Steel 304 Dapur',store:'MARKETSTORE888',price:15500,omset:5440500,skor:91,img:'/images/landing/hero/id-11134207-7qukw-lh0g8ffy8jar28.webp'},
+              {name:'Calista Oita Toples Set isi 10pcs',store:'Calista Official Shop',price:46900,omset:36206800,skor:93,img:'/images/landing/hero/387d3b6516955859bfb1555a17a071c3.webp'},
+              {name:'JIB Spatula Silikon Tahan Panas Set Dapur',store:'JIB Official Shop',price:24300,omset:18370800,skor:95,img:'/images/landing/hero/id-11134207-822wi-mo57ztmuzsated.webp'},
+              {name:'Rice Cooker Mini Multifungsi 1.8L Listrik',store:'MAIMEITE Official Store',price:129000,omset:139449000,skor:92,img:'/images/landing/hero/id-11134201-23030-vj05xp96dyov5d.webp'},
             ],
             'Kecantikan': [
-              {name:'Ikat Rambut Karet Jepang Korean Style 500 pcs',store:'Biefun',price:1950,omset:3036150,skor:91,img:'https://cf.shopee.co.id/file/6a091647e16c3418e9a38072e0b823b1'},
-              {name:'HAN RIVER Mesin Cukur Rambut Elektrik Portable',store:'HAN RIVER Official Shop',price:198000,omset:435600000,skor:99,img:'https://cf.shopee.co.id/file/id-11134207-822wi-mnaurv1f0c1s2d'},
-              {name:'Gunting Kuku Set 19 in 1 Manicure Lengkap',store:'SerbaSerbiku.jkt',price:39050,omset:27295950,skor:93,img:'https://cf.shopee.co.id/file/id-11134207-7r98u-lra1y99hlrd99d'},
-              {name:'Jepit Rambut Bintang Pentagram Warna Permen',store:'Bocyn Bag',price:495,omset:298485,skor:91,img:'https://cf.shopee.co.id/file/id-11134207-7r98w-llg47ogp5bg12f'},
-              {name:'Bando Wanita Fluffy Cloud Headband Polos',store:'HERMANCOLLECTION',price:13998,omset:8160834,skor:92,img:'https://cf.shopee.co.id/file/id-11134207-7r98q-lp1pdcs5gqyi45'},
-              {name:'NVMEE Libra Hair Styler Catokan Keriting Otomatis',store:'NVMEE Official Shop',price:342000,omset:235980000,skor:95,img:'https://cf.shopee.co.id/file/id-11134207-822wl-mq1r6uczql1df0'},
-              {name:'ENCHEN Mini Shaver Alat Cukur Jenggot IPX7',store:'Enchen Official Shop',price:145000,omset:231275000,skor:98,img:'https://cf.shopee.co.id/file/id-11134207-822wi-mnaurv1f0c1s2d'},
-              {name:'Alat Penyedot Komedo Jerawat Vakum Wajah',store:'DSkin Glow',price:34300,omset:75460000,skor:98,img:'https://cf.shopee.co.id/file/id-11134207-822wk-mp5cidibzhu400'},
+              {name:'Ikat Rambut Karet Jepang Korean Style 500 pcs',store:'Biefun',price:1950,omset:3036150,skor:91,img:'/images/landing/hero/6a091647e16c3418e9a38072e0b823b1.webp'},
+              {name:'HAN RIVER Mesin Cukur Rambut Elektrik Portable',store:'HAN RIVER Official Shop',price:198000,omset:435600000,skor:99,img:'/images/landing/hero/id-11134207-822wi-mnaurv1f0c1s2d.webp'},
+              {name:'Gunting Kuku Set 19 in 1 Manicure Lengkap',store:'SerbaSerbiku.jkt',price:39050,omset:27295950,skor:93,img:'/images/landing/hero/id-11134207-7r98u-lra1y99hlrd99d.webp'},
+              {name:'Jepit Rambut Bintang Pentagram Warna Permen',store:'Bocyn Bag',price:495,omset:298485,skor:91,img:'/images/landing/hero/id-11134207-7r98w-llg47ogp5bg12f.webp'},
+              {name:'Bando Wanita Fluffy Cloud Headband Polos',store:'HERMANCOLLECTION',price:13998,omset:8160834,skor:92,img:'/images/landing/hero/id-11134207-7r98q-lp1pdcs5gqyi45.webp'},
+              {name:'NVMEE Libra Hair Styler Catokan Keriting Otomatis',store:'NVMEE Official Shop',price:342000,omset:235980000,skor:95,img:'/images/landing/hero/id-11134207-822wl-mq1r6uczql1df0.webp'},
+              {name:'ENCHEN Mini Shaver Alat Cukur Jenggot IPX7',store:'Enchen Official Shop',price:145000,omset:231275000,skor:98,img:'/images/landing/hero/id-11134207-822wi-mnaurv1f0c1s2d.webp'},
+              {name:'Alat Penyedot Komedo Jerawat Vakum Wajah',store:'DSkin Glow',price:34300,omset:75460000,skor:98,img:'/images/landing/hero/id-11134207-822wk-mp5cidibzhu400.webp'},
             ]
           };
           var activeCat = LP_HERO_CATS[0];
@@ -4702,7 +4711,7 @@ html,body{overflow-x:clip;max-width:100%;}
             var delay = reduce ? 0 : (i * 0.06);
             var skor = heroSkor(p);
             return '<div class="lp-hero-card" style="animation-delay:' + delay + 's" onclick="openAuthModal(\'signup\',\'hero_card\')" role="button" tabindex="0" aria-label="Lihat ' + p.name.replace(/"/g,'') + ' — daftar gratis">'
-              + '<div class="lp-hero-card-img"><img src="' + p.img + '" alt="' + p.name.replace(/"/g,'') + '" loading="' + (i < 4 ? 'eager' : 'lazy') + '" decoding="async" referrerpolicy="no-referrer">'
+              + '<div class="lp-hero-card-img"><img src="' + p.img + '" alt="' + p.name.replace(/"/g,'') + '" loading="' + (i < 4 ? 'eager' : 'lazy') + '"' + (i < 2 ? ' fetchpriority="high"' : '') + ' decoding="async" width="320" height="320">'
               + '<div class="lp-hero-card-skor" style="--skor-clr:' + skorColor(skor) + '"><span class="lp-hero-card-skor-label">SKOR</span><span class="lp-hero-card-skor-val">' + skor + '</span></div></div>'
               + '<div class="lp-hero-card-name">' + p.name + '</div>'
               + '<div class="lp-hero-card-store">' + p.store + '</div>'
