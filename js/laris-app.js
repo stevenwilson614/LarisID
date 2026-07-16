@@ -2291,7 +2291,7 @@ function renderAuthModal() {
   el = document.getElementById('auth-tabs-wrap'); if(el) el.style.display = m==='reset'?'none':'';
   if(m !== 'reset') _authTabSwitch('email');
   el = document.getElementById('auth-title');      if(el) el.textContent = m==='reset'?'Reset Password':m==='signup'?'Buat Akun Gratis':'Masuk ke LarisID';
-  el = document.getElementById('auth-subtitle');   if(el) el.textContent = m==='reset'?'Masukkan email kamu dan kami kirim link reset.':m==='signup'?'Paling cepat: lanjutkan dengan Google. Gratis 20 kredit/bulan.':'Login untuk melihat produk trending & simpan favorit kamu';
+  el = document.getElementById('auth-subtitle');   if(el) el.textContent = m==='reset'?'Masukkan email kamu dan kami kirim link reset.':m==='signup'?'Paling cepat: lanjutkan dengan Google. Gratis 3 deep dive tiap hari.':'Login untuk melihat produk trending & simpan favorit kamu';
   el = document.getElementById('auth-submit-btn'); if(el) el.textContent = m==='reset'?'Kirim Link Reset':m==='signup'?'Daftar dengan Email':'Masuk';
   el = document.getElementById('auth-toggle-text');if(el) el.innerHTML = m==='reset'?'<a onclick="_authMode=\'login\';renderAuthModal()">Kembali ke Login</a>':m==='signup'?'Sudah punya akun? <a onclick="_authMode=\'login\';renderAuthModal()">Masuk</a>':'Belum punya akun? <a onclick="_authMode=\'signup\';renderAuthModal()">Daftar</a>';
   el = document.getElementById('auth-name-wrap');  if(el) el.style.display = m==='signup'?'':'none';
@@ -4012,10 +4012,6 @@ async function _useAi(action) {
   } catch (_) { return false; }
 }
 
-function scrollToCreditCard() {
-  switchDashView('credits');
-}
-
 // ── PENGGUNAAN PAGE ──────────────────────────────────────
 async function creditsInit() {
   await loadUsage();
@@ -4202,7 +4198,7 @@ function crShareRefEmail() {
 }
 
 // After a GOOD deep dive — a strong product (score >= 70) or one the user spent
-// credits to open up — leaving the view is the "just got value" beat. That's
+// one worth a daily dive — leaving the view is the "just got value" beat. That's
 // when a seller thinks of the friend who's also trying to jualan, so the
 // referral invite fires here instead of only at low balance. Sellers know
 // sellers in their own town: this is the organic city-spread channel.
@@ -4404,7 +4400,6 @@ function mlsUpdateModelBadge() {
 }
 
 const _MLS_AI_CTR_KEY = 'larisid_mls_ai_used';
-const MLS_AI_PER_CREDIT = 10;
 
 function _mlsAiCounter() {
   return parseInt(localStorage.getItem(_MLS_AI_CTR_KEY) || '0', 10);
@@ -4942,7 +4937,7 @@ const PDB_SUB_MAP = {'product-database':'research','product-tracker':'research',
 // View titles for topbar
 const VIEW_TITLES = {
   'dashboard':'Dashboard','discover':'Discover','tracker':'Alerts',
-  'deepdive':'Deep Dive','ai':'Mulai Berjualan','credits':'Kredit Saya','cohort':'Kohort',
+  'deepdive':'Deep Dive','ai':'Mulai Berjualan','credits':'Penggunaan','cohort':'Kohort',
   'home':'Home Dashboard','product-database':'Product Database',
   'product-tracker':'Product Tracker','opportunity-finder':'Opportunity Finder',
   'saved':'Produk Tersimpan','education':'Edukasi','mytoko':'My Toko','about':'Tentang',
@@ -4955,7 +4950,6 @@ const VIEW_TITLE_IMG = {
   tracker: 'alerts',
   deepdive: 'deep-dive',
   ai: 'mulai-berjualan',
-  credits: 'kredit',
   mytoko: 'my-toko',
   extension: 'chrome-extension',
 };
@@ -12401,7 +12395,7 @@ function ddToggleTrack() {
   const idx = arr.findIndex(t => t.key === key);
   void logUserEvent('track_toggle', { on: idx < 0, source: 'deepdive', item_id: listing.item_id ?? null });
   if (idx >= 0) {
-    // Remove from tracker — no credit refund
+    // Remove from tracker
     arr.splice(idx, 1);
     trkSave(arr);
     ddUpdateTrackBtn(listing);
@@ -12813,7 +12807,7 @@ function ddRender(p) {
   void (async function () {
   await larisEnsureChart();
   _ddCurrentP = p;
-  // B3: refresh this product's unlock state (per-tab / full) for credit gating.
+  // Sweep any stale tab-lock chips from the pre-2026-07-16 gated UI.
   try { ddLoadUnlocks(p._listing || p); } catch (_) {}
   const rng = _ddRng(p.id * 31337);
   const price = p.medianPrice || 85000;
@@ -16329,23 +16323,12 @@ async function openKwDetail(keyword) {
     </details>
   `;
 
-  // Category revenue history chart (async) — gated: only unlocked keywords show full history
+  // Category revenue history chart (async) — free since 2026-07-16 (the old
+  // 1-credit unlock button called cgOpenFor, which no longer even existed).
   (async () => {
     const el = document.getElementById('kd-cat-chart');
     if (!el) return;
-    // Check if this keyword is unlocked (in keyword_library)
-    let historyUnlocked = false;
-    if (currentUser && _supabase) {
-      const { data: lib } = await _supabase.from('keyword_library').select('id').eq('user_id', currentUser.id).eq('keyword', keyword).limit(1);
-      historyUnlocked = lib?.length > 0;
-    }
-    if (!historyUnlocked) {
-      el.innerHTML = `<div style="text-align:center;padding:14px 10px;">
-        <div style="font-size:.72rem;color:#9CA3AF;margin-bottom:8px;">Riwayat data tersembunyi</div>
-        <button onclick="cgOpenFor('${keyword.replace(/'/g, "\\'")}', 'history')" style="background:#B5202A;color:#fff;border:none;border-radius:7px;padding:6px 14px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;">Buka Riwayat 30 Hari — 1 Kredit</button>
-      </div>`;
-      return;
-    }
+    if (!currentUser || !_supabase) return;
     const { data: hist } = await _supabase.from('listings').select('scraped_at,price,total_sold').eq('keyword',keyword).order('scraped_at',{ascending:true}).limit(600);
     if (!hist?.length) { el.innerHTML='<div style="color:#9CA3AF;font-size:.7rem;">Belum ada data</div>'; return; }
     const allRevs = hist.map(r => (r.price||0)*(r.total_sold||0)/12);
@@ -21240,8 +21223,8 @@ const DASHBOARD_TOUR_STEPS = [
   },
   {
     sel: '#dash-nav-credits',
-    title: 'Pahami Sistem Kredit',
-    body: 'Kredit dipakai untuk fitur premium seperti Deep Dive, AI, dan tracking. Kamu bisa dapat kredit gratis dari Extension.',
+    title: 'Pahami Jatah Harianmu',
+    body: 'Setiap hari kamu dapat 3 deep dive dan 5 poin AI, gratis. Satu deep dive membuka semua data produk itu selama 7 hari. Tambah jatah lewat Extension atau ajak teman.',
     pos: 'right',
     onNext: () => switchDashView('credits'),
   },
