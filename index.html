@@ -142,7 +142,7 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260716c';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260716d';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
@@ -4509,8 +4509,8 @@ html,body{overflow-x:clip;max-width:100%;}
   </a>
   <div class="nav-search-wrap">
   <div class="nav-search">
-    <input type="text" id="search-input" placeholder="Search products..." oninput="onSearch(this.value)" onblur="setTimeout(hideSuggestions,150)" onkeydown="onSearchKey(event)">
-    <button class="nav-search-btn" onclick="hideSuggestions()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></button>
+    <input type="text" id="search-input" placeholder="Cari produk atau keyword…" oninput="onSearch(this.value)" onblur="setTimeout(hideSuggestions,150)" onkeydown="onSearchKey(event)">
+    <button class="nav-search-btn" onclick="navSearchSubmit()" aria-label="Cari"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></button>
   </div>
   <div class="search-suggestions" id="search-suggestions"></div>
   </div>
@@ -9846,7 +9846,7 @@ html,body{overflow-x:clip;max-width:100%;}
      SITE FOOTER
 ════════════════════════════════════ -->
 
-<script defer src="/js/laris-app.js?v=20260716c"></script>
+<script defer src="/js/laris-app.js?v=20260716d"></script>
 
   <!-- ── CONTEXTUAL ONBOARDING HINTS ── -->
   <div id="hint-overlay" aria-hidden="true" onclick="if(event.target===this)nuHintDismiss()">

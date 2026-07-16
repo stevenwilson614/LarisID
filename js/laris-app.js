@@ -1078,10 +1078,33 @@ function renderPills() {
 
 function filterCat(c) { activeCat = c; applyFilters(); renderPills(); }
 
+// Navbar search is a Discover launcher: typing only drives the suggestions
+// dropdown (no home-grid re-render underneath — that read as a broken page),
+// and committing (suggestion pick / Enter / magnifier) hands off to the
+// Discover search pipeline in ONE navigation.
 function onSearch(q) {
-  searchQ = q.toLowerCase();
-  applyFilters();
   showSuggestions(q);
+}
+
+function _searchGoDiscover(q, how) {
+  const query = (q || '').trim();
+  if (!query) return;
+  logSearchHistory(query, null, how);
+  void logUserEvent('search_query', { query, source: 'landing', how });
+  openProfile();
+  setTimeout(() => {
+    switchDashView('discover');
+    const inp = document.getElementById('dsc-search');
+    if (inp) inp.value = query;
+    _dscCommittedQ = query;
+    clearTimeout(_dscSearchDebounce);
+    dscApplyFilters();
+  }, 60);
+}
+
+function navSearchSubmit() {
+  _searchGoDiscover(document.getElementById('search-input')?.value, 'button');
+  hideSuggestions();
 }
 
 // ── FUZZY SEARCH SUGGESTIONS ────────────────────────────────
@@ -1153,17 +1176,26 @@ function hideSuggestions() {
 
 function selectSuggestion(name) {
   const input = document.getElementById('search-input');
-  input.value = name;
+  if (input) input.value = name;
   hideSuggestions();
-  searchQ = name.toLowerCase();
-  logSearchHistory(name, null, 'suggestion');
-  applyFilters();
-  openProfile(); setTimeout(()=>switchDashView('discover'),50);
+  _searchGoDiscover(name, 'suggestion');
 }
 
 function onSearchKey(e) {
   const box = document.getElementById('search-suggestions');
   const items = box.querySelectorAll('.sugg-item');
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if (suggActiveIdx >= 0 && items[suggActiveIdx]) {
+      items[suggActiveIdx].dispatchEvent(new MouseEvent('mousedown'));
+      return;
+    }
+    // No suggestion picked: search the raw query anyway. (Before, Enter with
+    // no matching suggestion did NOTHING — the "search is broken" experience.)
+    hideSuggestions();
+    _searchGoDiscover(e.target?.value, 'enter');
+    return;
+  }
   if (!items.length) return;
   if (e.key === 'ArrowDown') {
     e.preventDefault();
@@ -1171,10 +1203,6 @@ function onSearchKey(e) {
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
     suggActiveIdx = Math.max(suggActiveIdx - 1, -1);
-  } else if (e.key === 'Enter' && suggActiveIdx >= 0) {
-    e.preventDefault();
-    items[suggActiveIdx].dispatchEvent(new MouseEvent('mousedown'));
-    return;
   } else if (e.key === 'Escape') {
     hideSuggestions(); return;
   } else { return; }
@@ -9340,6 +9368,20 @@ let _dscSearchDebounce = null;
 let _dscSuggFetchGen = 0;
 let _dscCommittedQ = ''; // committed Discover search query — source of truth, decoupled from the input box
 
+// C1: every typed search becomes a search_query event (joinable to the user's
+// region via user_onboarding_prefs). Debounced past the filter pass so
+// results_count reflects what the user actually saw; dedupes repeats.
+let _dscSearchLogTimer = null, _dscLastLoggedQ = '';
+function _dscLogSearch(how) {
+  const query = (_dscCommittedQ || '').trim();
+  if (!query || query === _dscLastLoggedQ) return;
+  _dscLastLoggedQ = query;
+  void logUserEvent('search_query', {
+    query, source: 'discover', how,
+    results_count: Array.isArray(_dscFiltered) ? _dscFiltered.length : null,
+  });
+}
+
 function dscHideSuggestions() {
   const box = document.getElementById('dsc-search-suggestions');
   if (box) box.classList.remove('show');
@@ -9354,6 +9396,8 @@ function dscOnSearchInput() {
   dscShowSuggestions(q);
   clearTimeout(_dscSearchDebounce);
   _dscSearchDebounce = setTimeout(() => dscApplyFilters(), 320);
+  clearTimeout(_dscSearchLogTimer);
+  _dscSearchLogTimer = setTimeout(() => _dscLogSearch('typed'), 1600);
 }
 
 function dscOnSearchKey(e) {
@@ -9361,7 +9405,11 @@ function dscOnSearchKey(e) {
   if (!box) return;
   const items = box.querySelectorAll('.dsc-sugg-item');
   if (!items.length) {
-    if (e.key === 'Enter') { clearTimeout(_dscSearchDebounce); dscApplyFilters(); }
+    if (e.key === 'Enter') {
+      clearTimeout(_dscSearchDebounce); dscApplyFilters();
+      clearTimeout(_dscSearchLogTimer);
+      _dscSearchLogTimer = setTimeout(() => _dscLogSearch('enter'), 600);
+    }
     return;
   }
   if (e.key === 'ArrowDown') {
@@ -9381,6 +9429,8 @@ function dscOnSearchKey(e) {
     clearTimeout(_dscSearchDebounce);
     dscHideSuggestions();
     dscApplyFilters();
+    clearTimeout(_dscSearchLogTimer);
+    _dscSearchLogTimer = setTimeout(() => _dscLogSearch('enter'), 600);
     return;
   } else { return; }
   items.forEach((el, i) => el.classList.toggle('active', i === _dscSuggIdx));
@@ -9393,6 +9443,8 @@ function dscSelectSuggestion(text) {
   dscHideSuggestions();
   clearTimeout(_dscSearchDebounce);
   dscApplyFilters();
+  clearTimeout(_dscSearchLogTimer);
+  _dscSearchLogTimer = setTimeout(() => _dscLogSearch('suggestion'), 600);
 }
 
 // Word-boundary match score — like Google, only matches where the query is a
