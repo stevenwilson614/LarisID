@@ -4290,6 +4290,65 @@ function crShareRefEmail() {
 // Caps: min 30s dwell, once/day, 3 lifetime; never for privileged users; never
 // stacked on the notify popup, track nudge, refer popup, or onboarding.
 let _ddEnterTs = 0;
+
+// ── C2: time-on-product analytics ────────────────────────────────────────────
+// product_dwell {item_id, shop_id, dwell_s, tabs_visited, how} logged when the
+// user leaves a deep dive — via in-app nav ('nav') or tab hide/close ('hidden',
+// sent with fetch keepalive because supabase-js won't survive unload). If they
+// come back after a hide, the timer restarts and the next exit logs a fresh
+// segment. Joins to region via user_onboarding_prefs.
+let _ddTabsVisited = new Set();
+let _ddDwellLogged = false;
+
+function _supaAccessTokenSync() {
+  try {
+    const raw = localStorage.getItem('sb-bzmvlraziqevqdyotvgy-auth-token');
+    if (!raw) return null;
+    const j = JSON.parse(raw);
+    return j?.access_token || j?.currentSession?.access_token || null;
+  } catch (_) { return null; }
+}
+
+function _ddLogDwell(how) {
+  try {
+    if (_ddDwellLogged || !_ddEnterTs || !currentUser) return;
+    const dwellS = Math.round((Date.now() - _ddEnterTs) / 1000);
+    if (dwellS < 2) return; // bounce noise, not a view
+    const l = _ddCurrentP?._listing || _ddKwListing || {};
+    const metadata = {
+      item_id: l.item_id ?? null,
+      shop_id: l.shop_id ?? null,
+      dwell_s: dwellS,
+      tabs_visited: Array.from(_ddTabsVisited),
+      how,
+    };
+    _ddDwellLogged = true;
+    if (how === 'hidden') {
+      const token = _supaAccessTokenSync();
+      if (!token) return;
+      fetch(`${SUPA_URL}/rest/v1/activity_events`, {
+        method: 'POST',
+        keepalive: true,
+        headers: { apikey: SUPA_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ user_id: currentUser.id, event_type: 'product_dwell', metadata }),
+      }).catch(() => {});
+    } else {
+      void logUserEvent('product_dwell', metadata);
+    }
+  } catch (_) {}
+}
+
+document.addEventListener('visibilitychange', () => {
+  try {
+    if (document.visibilityState === 'hidden') {
+      if (_dashActiveView === 'deepdive') _ddLogDwell('hidden');
+    } else if (_dashActiveView === 'deepdive' && _ddDwellLogged) {
+      // Back from a hide while still on the deep dive: measure the next segment.
+      _ddEnterTs = Date.now();
+      _ddDwellLogged = false;
+    }
+  } catch (_) {}
+});
 const _REF_DIVE_DAY_KEY = 'larisid_gooddive_refer_v1';
 const _REF_DIVE_COUNT_KEY = 'larisid_gooddive_refer_n';
 async function _refMaybeGoodDiveNudge() {
@@ -5087,6 +5146,8 @@ function switchDashView(view) {
     }
   }
   if (prevView === 'deepdive' && view !== 'deepdive') {
+    // Order matters: _refMaybeGoodDiveNudge zeroes _ddEnterTs, so dwell logs first.
+    try { _ddLogDwell('nav'); } catch (_) {}
     try { void _refMaybeGoodDiveNudge(); } catch (_) {}
   }
   _dashActiveView = view;
@@ -9971,6 +10032,8 @@ async function dscOpenDeepDive(key, skipNav) {
   _ddTrendCache = null;
   _ddCurrentP = p;
   _ddExpanded = true; // deep dive lands on the full (lengkap) view; verdict panel stays on top as the summary
+  _ddTabsVisited = new Set(['ringkasan']); // C2: fresh dwell segment per product
+  _ddDwellLogged = false;
 
   // Switch view first so canvases are visible when Chart.js measures them
   if (!skipNav) _navSilence++;
@@ -10282,6 +10345,7 @@ function kalcCalc() {
 
 function ddSwitchTab(tab) {
   document.getElementById('dash-content')?.scrollTo(0, 0);
+  try { _ddTabsVisited.add(tab); } catch (_) {}
   const tabs = ['listing','ringkasan','analisa','kompetitor','keyword','tren','kalkulator','biaya'];
   tabs.forEach(t => {
     const panel = document.getElementById(`dd-tab-${t}`);
