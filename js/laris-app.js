@@ -1647,6 +1647,42 @@ async function ylkInit() {
   } catch (e) { _ylkInited = false; }
 }
 
+// B5: make sure YLK shows products WITHOUT a manual pick. ylkInit often runs
+// at boot before the auth session resolves (currentUser null), renders the
+// "Pilih kotamu dulu" prompt and never retries — this resolves the region
+// after login (localStorage → onboarding location → IP), syncs the dropdown,
+// and renders.
+async function ylkEnsureRegion() {
+  try {
+    if (!_ylkInited) await ylkInit();
+    const sel = document.getElementById('ylk-region');
+    if (!sel || sel.value || !sel.options.length) return;
+    let region = '';
+    try { region = (localStorage.getItem(YLK_LS_KEY) || '').trim(); } catch (_) {}
+    if (!region && currentUser && _supabase) {
+      try {
+        const { data: prefs } = await _supabase.from('user_onboarding_prefs')
+          .select('region').eq('user_id', currentUser.id).maybeSingle();
+        region = (prefs?.region || '').trim();
+      } catch (_) {}
+    }
+    if (!region && typeof _nuOnb !== 'undefined' && _nuOnb.location && _nuOnb.location !== '__other__') region = _nuOnb.location;
+    if (!region) { const r = await fetchRegionFromIp(); region = (r?.region || '').trim(); }
+    if (!region) return;
+    // The dropdown holds listing-location names (e.g. "Kota Bekasi") — match
+    // the city loosely against them.
+    const opts = Array.from(sel.options).map(o => o.value).filter(Boolean);
+    const rl = region.toLowerCase();
+    const match = opts.find(o => o === region)
+      || opts.find(o => o.toLowerCase() === rl)
+      || opts.find(o => o.toLowerCase().includes(rl) || rl.includes(o.toLowerCase()));
+    if (!match) return;
+    sel.value = match;
+    try { localStorage.setItem(YLK_LS_KEY, match); } catch (_) {}
+    ylkRender(match);
+  } catch (_) {}
+}
+
 async function ylkOnRegionChange() {
   const sel = document.getElementById('ylk-region');
   const region = sel ? sel.value : '';
@@ -1823,8 +1859,15 @@ function naikDaunRender() {
   if (!strip) return;
   let rows = _naikDaun.rows || [];
   try {
-    const cats = (typeof _nuOnb !== 'undefined' && _nuOnb && _nuOnb.cats) ? _nuOnb.cats : [];
-    if (cats && cats.length >= 3) { const f = rows.filter(r => cats.includes(r.category)); if (f.length >= 6) rows = f; }
+    // B6: prefer-then-fill — products in the user's onboarding categories come
+    // first (any number of picks), global movers keep the strip full. The old
+    // rule (>=3 cats AND >=6 matches, else silently global) meant a Dapur
+    // picker still saw mobil items up top.
+    const cats = (typeof _nuOnb !== 'undefined' && _nuOnb && Array.isArray(_nuOnb.cats)) ? _nuOnb.cats.filter(Boolean) : [];
+    if (cats.length) {
+      const matched = rows.filter(r => cats.includes(r.category));
+      if (matched.length) rows = matched.concat(rows.filter(r => !cats.includes(r.category)));
+    }
   } catch (_) {}
   rows = rows.slice(0, 12);
   strip.innerHTML = rows.map(r => {
@@ -4929,6 +4972,9 @@ async function openProfile() {
   try { loadUsage(); } catch(_) {}
   try { redeemPendingReferral(); } catch(_) {} // B6: credit the referrer if signed up via ?ref=
   try { await loadUserProfile(); } catch(_) {}
+  // Personalization needs the saved category/region picks (write-only until
+  // 2026-07-16): hydrate, then re-rank Naik Daun and make sure YLK rendered.
+  try { await nuOnbHydratePrefs(); naikDaunRender(); void ylkEnsureRegion(); } catch(_) {}
   try {
     const u = new URLSearchParams(window.location.search || '');
     const pv = u.get('preview');
@@ -5056,7 +5102,7 @@ function switchDashView(view) {
   if (view === 'product-database') { try { _initPdbCats(); } catch (_) {} }
   if (view === 'opportunity-finder') { try { _initOfCats(); } catch (_) {} }
   // YLK ("Yang Laku dari Kotamu") now lives on the Dashboard — init it when shown.
-  if (view === 'dashboard') { try { if (typeof ylkInit === 'function') ylkInit(); } catch (_) {} }
+  if (view === 'dashboard') { try { if (typeof ylkInit === 'function') { ylkInit(); void ylkEnsureRegion(); } } catch (_) {} }
   if (view === 'credits') { try { crLoadReferral(); } catch (_) {} }
 
   // Update topbar title
@@ -21995,6 +22041,27 @@ function nuOnbSkip() {
   void nuOnbPersist(false);
   nuOnbHideInPage();
   switchDashView('dashboard');
+}
+
+// B6: hydrate _nuOnb from user_onboarding_prefs on returning sessions so the
+// personalized surfaces (Naik Daun, YLK, Discover cat pre-checks) actually
+// know the user's picks — before this, categories were write-only.
+let _nuOnbHydrated = false;
+async function nuOnbHydratePrefs() {
+  if (_nuOnbHydrated || _admSimulateNewUser || !_supabase || !currentUser) return;
+  _nuOnbHydrated = true;
+  try {
+    const { data } = await _supabase.from('user_onboarding_prefs')
+      .select('categories,region').eq('user_id', currentUser.id).maybeSingle();
+    if (!data) return;
+    if (Array.isArray(data.categories) && data.categories.length && !_nuOnb.cats.length) {
+      _nuOnb.cats = data.categories.filter(Boolean);
+    }
+    if (data.region && !_nuOnb.location) {
+      _nuOnb.location = data.region;
+      _nuOnb.locationSource = 'db';
+    }
+  } catch (_) { _nuOnbHydrated = false; }
 }
 
 async function nuOnbPersist(completed) {
