@@ -20,7 +20,7 @@
 <meta name="twitter:image" content="https://larisid.com/images/Banner.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="LarisID — Riset Produk Shopee Indonesia">
-<meta name="twitter:description" content="Data riset produk Shopee, Viability Score, Deep Dive. Gratis 20 kredit/bulan. Perbandingan vs Datapinter, Tokpee, Shoptik.">
+<meta name="twitter:description" content="Data riset produk Shopee, Viability Score, Deep Dive. Gratis 3 deep dive tiap hari. Perbandingan vs Datapinter, Tokpee, Shoptik.">
 <meta name="keywords" content="riset produk shopee, riset produk e-commerce indonesia, data penjualan shopee, alat riset produk seller, viability score, larisid vs datapinter, alternatif datapinter, product research indonesia, analisis kompetitor shopee">
 <script type="application/ld+json">
 {
@@ -44,7 +44,7 @@
         "@type": "Offer",
         "price": "0",
         "priceCurrency": "IDR",
-        "description": "Gratis 20 kredit setiap bulan, tanpa biaya"
+        "description": "Gratis 3 deep dive produk setiap hari, tanpa biaya"
       },
       "featureList": [
         "Riset produk Shopee dengan data penjualan nyata",
@@ -52,7 +52,7 @@
         "Deep Dive dan analisis kompetitor",
         "AI terikat konteks produk",
         "Product Tracker",
-        "Model kredit tanpa langganan wajib"
+        "Jatah harian gratis tanpa langganan"
       ]
     },
     {
@@ -85,7 +85,7 @@
           "name": "Apakah LarisID gratis?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Ya, 100% gratis: setiap akun mendapat 20 kredit gratis per bulan, akses Finder, histori 7 hari, dan komunitas. Deep Dive, histori panjang, dan lebih banyak AI memakai kredit yang bisa kamu dapatkan gratis lewat ekstensi Shopee — tanpa biaya sama sekali."
+            "text": "Ya, 100% gratis: setiap akun mendapat 3 deep dive produk per hari (satu deep dive membuka semua data produk itu selama 7 hari) plus jatah AI harian. Pasang ekstensi Chrome LarisID untuk menambah 3 deep dive per hari — tanpa biaya sama sekali."
           }
         },
         {
@@ -93,7 +93,7 @@
           "name": "Apa bedanya LarisID dan Datapinter?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Datapinter memakai langganan sekitar Rp 299.000 per bulan dengan fitur riset marketplace lengkap. LarisID 100% gratis tanpa langganan dan tanpa biaya apa pun — kamu dapat 20 kredit gratis setiap bulan dan bisa menambah kredit gratis lewat ekstensi."
+            "text": "Datapinter memakai langganan sekitar Rp 299.000 per bulan dengan fitur riset marketplace lengkap. LarisID 100% gratis tanpa langganan dan tanpa biaya apa pun — kamu dapat 3 deep dive gratis setiap hari dan bisa menambah jatah lewat ekstensi Chrome."
           }
         },
         {
@@ -114,10 +114,10 @@
         },
         {
           "@type": "Question",
-          "name": "Bagaimana cara dapat kredit gratis tambahan?",
+          "name": "Bagaimana cara menambah jatah deep dive harian?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Pasang Extension LarisID di Chrome, lakukan 10 pencarian produk di Shopee untuk mendapat 1 kredit, hingga 10 kredit per hari."
+            "text": "Pasang Extension LarisID di Chrome dan hubungkan akunmu untuk menambah 3 deep dive per hari. Setiap teman yang daftar lewat link ajakanmu juga menambah 1 deep dive harian secara permanen (maksimal +5)."
           }
         }
       ]
@@ -142,7 +142,7 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260716a';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260716b';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
@@ -5070,7 +5070,7 @@ html,body{overflow-x:clip;max-width:100%;}
               Mulai Gratis
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
             </button>
-            <div class="lp-banner-cta-note">Tanpa pengalaman, tanpa kartu kredit &mdash; gratis 20 kredit tiap bulan.</div>
+            <div class="lp-banner-cta-note">Tanpa pengalaman, tanpa kartu kredit &mdash; gratis 3 deep dive tiap hari.</div>
           </div>
         </div>
         <!-- Right: person photo + Shopee bag -->
@@ -5138,7 +5138,7 @@ html,body{overflow-x:clip;max-width:100%;}
     <div class="lp-mobile-cta">
       <div class="lp-mobile-cta-info">
         <b>Mulai gratis hari ini</b>
-        <span>20 kredit/bulan &middot; tanpa kartu kredit</span>
+        <span>3 deep dive gratis/hari &middot; tanpa kartu kredit</span>
       </div>
       <button class="lp-mobile-cta-btn" onclick="openAuthModal('signup','mobile_sticky')">Mulai Gratis</button>
     </div>
@@ -6512,7 +6512,7 @@ html,body{overflow-x:clip;max-width:100%;}
                 Apakah LarisID benar-benar gratis?
                 <svg class="edu-faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
               </div>
-              <div class="edu-faq-a">Ya, 100% gratis: 20 kredit/bulan, akses Finder, dan histori 7 hari — tanpa kartu kredit. Fitur mendalam (Deep Dive, histori panjang) memakai kredit yang bisa kamu dapatkan gratis lewat ekstensi. Kami percaya riset produk harus bisa diakses semua seller, bukan hanya yang mampu langganan ~Rp 300rb/bulan.</div>
+              <div class="edu-faq-a">Ya, 100% gratis: 3 deep dive per hari (satu deep dive membuka semua data produk itu selama 7 hari), akses Finder, dan jatah AI harian — tanpa kartu kredit. Pasang ekstensi Chrome untuk menambah 3 deep dive per hari. Kami percaya riset produk harus bisa diakses semua seller, bukan hanya yang mampu langganan ~Rp 300rb/bulan.</div>
             </div>
             <div class="edu-faq-item">
               <div class="edu-faq-q" onclick="eduToggleFaq(this)">
@@ -7987,7 +7987,7 @@ html,body{overflow-x:clip;max-width:100%;}
                       <button onclick="mlsToggleApiSettings()" style="font-size:.68rem;color:#B5202A;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;display:inline-flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Hubungkan API kamu</button>
                     </div>
                     <div id="mls-api-settings" style="display:none;margin-top:10px;padding:12px;background:#F9FAFB;border-radius:8px;border:1px solid #E5E7EB;">
-                      <div style="font-size:.72rem;font-weight:700;color:#374151;margin-bottom:4px;">Hubungkan API sendiri — tetap menggunakan kredit, tapi pakai model lebih kuat</div>
+                      <div style="font-size:.72rem;font-weight:700;color:#374151;margin-bottom:4px;">Hubungkan API sendiri — pakai model lebih kuat dengan kunci API-mu</div>
                       <div style="font-size:.65rem;color:#9CA3AF;margin-bottom:8px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-1px;"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> API kamu hanya mendapat akses ke konteks produk yang dipilih, bukan seluruh database.</div>
                       <div style="margin-bottom:8px;">
                         <label style="font-size:.7rem;color:#6B7280;display:block;margin-bottom:3px;">Anthropic API Key (claude.ai)</label>
@@ -8234,7 +8234,7 @@ html,body{overflow-x:clip;max-width:100%;}
               <div id="mls-tab-paths" style="display:none;">
                 <div class="dd-card" style="padding:18px;margin-bottom:16px;">
                   <div style="font-size:.9rem;font-weight:800;color:#111;margin-bottom:4px;">Mau jual produk ini bagaimana?</div>
-                  <div style="font-size:.76rem;color:#6B7280;margin-bottom:14px;">Pilih jalurmu — rekomendasi kami sesuaikan. (≈2 kredit per rekomendasi)</div>
+                  <div style="font-size:.76rem;color:#6B7280;margin-bottom:14px;">Pilih jalurmu — rekomendasi kami sesuaikan. (2 poin AI per rekomendasi)</div>
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <button type="button" id="mls-path-resell" onclick="mlsPickPath('resell')" style="text-align:left;border:1.5px solid #EDE8E4;background:#fff;border-radius:14px;padding:16px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;gap:8px;transition:border-color .15s,box-shadow .15s;">
                       <span style="width:40px;height:40px;border-radius:11px;background:#F9EAE4;color:#B5202A;display:flex;align-items:center;justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></span>
@@ -8255,7 +8255,7 @@ html,body{overflow-x:clip;max-width:100%;}
                 <!-- Foto → judul/deskripsi/harga -->
                 <div class="dd-card" id="mls-photo-tool" style="padding:18px;margin-bottom:16px;display:none;">
                   <div style="font-size:.86rem;font-weight:800;color:#111;margin-bottom:4px;">Foto Produk → Judul, Deskripsi &amp; Harga</div>
-                  <div style="font-size:.74rem;color:#6B7280;margin-bottom:12px;">Upload foto produkmu — AI bikin judul SEO, deskripsi jualan, dan saran harga. (≈3 kredit)</div>
+                  <div style="font-size:.74rem;color:#6B7280;margin-bottom:12px;">Upload foto produkmu — AI bikin judul SEO, deskripsi jualan, dan saran harga. (3 poin AI)</div>
                   <label for="mls-photo-input" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:1.5px dashed #D6CDBF;border-radius:12px;padding:22px;cursor:pointer;text-align:center;background:#FCFAF7;">
                     <input type="file" accept="image/*" id="mls-photo-input" onchange="mlsPhotoUpload(event)" style="display:none;">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#B5202A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -8559,7 +8559,7 @@ html,body{overflow-x:clip;max-width:100%;}
                     </div>
                     <div>
                       <div style="font-size:.8rem;font-weight:700;color:#111;">Gratis untuk Semua</div>
-                      <div style="font-size:.73rem;color:#6B7280;line-height:1.5;">100% gratis selamanya. 20 kredit tiap bulan plus tambahan lewat ekstensi — tanpa biaya sama sekali, tanpa kartu kredit.</div>
+                      <div style="font-size:.73rem;color:#6B7280;line-height:1.5;">100% gratis selamanya. 3 deep dive tiap hari plus tambahan lewat ekstensi — tanpa biaya sama sekali, tanpa kartu kredit.</div>
                     </div>
                   </div>
                 </div>
@@ -8644,61 +8644,33 @@ html,body{overflow-x:clip;max-width:100%;}
         <div id="dash-view-credits" style="display:none;">
           <div class="cr-wrap">
 
-            <!-- Header with balance -->
+            <!-- Header: daily usage meters -->
             <div class="cr-header">
-              <div class="cr-balance-block">
-                <div class="cr-balance-num" id="cr-balance-num">—</div>
-                <div class="cr-balance-lbl">Kredit</div>
-              </div>
               <div class="cr-header-info">
-                <div class="cr-header-title is-page-title-img"><img class="page-title-img page-title-img--page" src="/images/titles/kredit.webp" alt="Kredit LarisID" decoding="async" style="filter:brightness(1.2);"></div>
-                <div class="cr-header-sub">Gunakan kredit untuk membuka fitur premium: Deep Dive, simpan produk, dan AI Strategist. Dapatkan kredit gratis setiap bulan atau dengan menggunakan Extension.</div>
+                <div class="cr-header-title">Penggunaan Harian</div>
+                <div class="cr-header-sub">Setiap hari kamu dapat jatah deep dive dan poin AI. Buka satu produk = akses penuh semua datanya (tren, kompetitor, keyword, kalkulator, Mulai Berjualan) selama 7 hari.</div>
+                <div class="cr-earn-bar" style="margin-bottom:10px;">
+                  <div class="cr-earn-bar-label">
+                    <span>Deep dive <span id="usg-dive-sub" style="opacity:.7;"></span></span>
+                    <span id="usg-dive-label">—</span>
+                  </div>
+                  <div class="cr-earn-bar-track"><div class="cr-earn-bar-fill" id="usg-dive-fill" style="width:0%"></div></div>
+                </div>
                 <div class="cr-earn-bar">
                   <div class="cr-earn-bar-label">
-                    <span>Progress hari ini (10 pencarian = 1 kredit)</span>
-                    <span id="cr-prog-text">—</span>
+                    <span>Poin AI (chat 1 &middot; rekomendasi 2 &middot; foto 3)</span>
+                    <span id="usg-ai-label">—</span>
                   </div>
-                  <div class="cr-earn-bar-track"><div class="cr-earn-bar-fill" id="cr-prog-fill" style="width:0%"></div></div>
+                  <div class="cr-earn-bar-track"><div class="cr-earn-bar-fill" id="usg-ai-fill" style="width:0%"></div></div>
                 </div>
-              </div>
-            </div>
-
-            <!-- Peti Mingguan (moved from dashboard) -->
-            <div class="cr-section">
-              <div class="cr-section-title">Peti Mingguan</div>
-              <div class="cr-section-sub">Selesaikan 5 pencarian di Shopee via Extension minggu ini untuk membuka hadiah kredit bonus.</div>
-              <div id="weekly-chest-card" style="background:linear-gradient(135deg,#1a0a00,#2d1400);border-radius:14px;padding:18px 20px;display:flex;align-items:center;gap:16px;">
-                <div style="width:44px;height:44px;flex-shrink:0;background:rgba(251,191,36,.15);border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fbbf24;" id="chest-icon-wrap"><svg id="chest-icon-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8V5a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v3"/><path d="M3 12h18"/></svg></div>
-                <div style="flex:1;min-width:0;">
-                  <div style="font-size:.82rem;font-weight:800;color:#fbbf24;margin-bottom:3px;">Peti Mingguan</div>
-                  <div style="font-size:.72rem;color:rgba(255,255,255,.6);margin-bottom:8px;" id="chest-desc">Selesaikan 5 pencarian minggu ini untuk membuka hadiah kredit</div>
-                  <div style="background:rgba(255,255,255,.1);border-radius:999px;height:6px;overflow:hidden;margin-bottom:6px;">
-                    <div id="chest-prog-fill" style="height:100%;background:linear-gradient(90deg,#f97316,#fbbf24);border-radius:999px;width:0%;transition:width .4s;"></div>
-                  </div>
-                  <div style="font-size:.68rem;color:rgba(255,255,255,.5);" id="chest-prog-label">0 / 5 pencarian</div>
-                </div>
-                <button id="chest-btn" onclick="claimChest()" disabled style="background:#f97316;color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:.78rem;font-weight:800;cursor:not-allowed;opacity:.4;font-family:inherit;flex-shrink:0;">Buka</button>
-              </div>
-            </div>
-
-            <!-- Free credits -->
-            <div class="cr-section">
-              <div class="cr-section-title">Kredit Gratis Bulanan</div>
-              <div class="cr-section-sub">20 kredit gratis diperbarui setiap bulan pada tanggal kamu mendaftar. Kredit berlaku selama 30 hari sejak diberikan.</div>
-              <div class="cr-free-row">
-                <div class="cr-free-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
-                <div class="cr-free-info">
-                  <div class="cr-free-count" id="cr-free-count">20 kredit gratis</div>
-                  <div class="cr-free-sub" id="cr-free-sub">Diperbarui otomatis setiap bulan pada tanggal pendaftaran</div>
-                </div>
-                <div class="cr-free-exp" id="cr-free-exp">Berlaku 30 hari</div>
+                <div id="usg-reset" style="margin-top:10px;font-size:.72rem;color:rgba(255,255,255,.5);"></div>
               </div>
             </div>
 
             <!-- B6: Ajak Teman (referral) -->
             <div class="cr-section" id="cr-referral-card">
-              <div class="cr-section-title">Ajak Teman · Dapat 25 Kredit</div>
-              <div class="cr-section-sub">Bagikan link kamu. Setiap teman yang daftar lewat link ini, kamu langsung dapat <strong>25 kredit</strong> gratis (maks 5 teman/bulan).</div>
+              <div class="cr-section-title">Ajak Teman &middot; +1 Deep Dive Harian</div>
+              <div class="cr-section-sub">Bagikan link kamu. Setiap teman yang daftar lewat link ini <strong>menambah 1 deep dive harianmu, permanen</strong> (maks +5). Bonus aktif kamu: <strong id="cr-ref-bonus" style="color:#B5202A;">+0/5</strong>.</div>
               <div style="display:flex;gap:8px;margin:12px 0;flex-wrap:wrap;">
                 <input id="cr-ref-link" readonly value="" placeholder="Memuat link…" style="flex:1;min-width:180px;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:.78rem;font-family:inherit;background:#F9FAFB;color:#374151;box-sizing:border-box;">
                 <button id="cr-ref-copy" onclick="crCopyRefLink()" style="background:#1A1A1A;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;">Salin</button>
@@ -8716,15 +8688,15 @@ html,body{overflow-x:clip;max-width:100%;}
               <div style="margin-top:12px;font-size:.74rem;color:#6B7280;">Teman yang sudah daftar lewat kamu: <strong id="cr-ref-count" style="color:#B5202A;">0</strong></div>
             </div>
 
-            <!-- How to earn -->
+            <!-- Extension bonus -->
             <div class="cr-section">
-              <div class="cr-section-title">Dapat Kredit Gratis via Extension</div>
-              <div class="cr-section-sub">Install Extension LarisID di Chrome, lalu lakukan pencarian di Shopee. Setiap 10 pencarian yang selesai (min. 2 halaman per keyword) = 1 kredit. Maks 10 kredit/hari.</div>
+              <div class="cr-section-title">Tambah 3 Deep Dive per Hari via Extension</div>
+              <div class="cr-section-sub">Pasang Extension LarisID di Chrome dan hubungkan akunmu — jatah deep dive harianmu langsung bertambah 3, selamanya.</div>
               <div class="cr-earn-step">
                 <div class="cr-earn-step-num">1</div>
                 <div class="cr-earn-step-text">
                   <div class="cr-earn-step-title">Install Extension LarisID</div>
-                  <div class="cr-earn-step-sub">Tambahkan ke Chrome, lalu hubungkan akun kamu dari dashboard ini (menu avatar → Hubungkan Extension).</div>
+                  <div class="cr-earn-step-sub">Tambahkan ke Chrome lewat tombol di bawah.</div>
                   <a href="https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:.78rem;font-weight:700;color:#B5202A;text-decoration:none;border:1.5px solid #B5202A;border-radius:8px;padding:7px 14px;transition:background .15s;">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                     Pasang di Chrome
@@ -8734,49 +8706,42 @@ html,body{overflow-x:clip;max-width:100%;}
               <div class="cr-earn-step">
                 <div class="cr-earn-step-num">2</div>
                 <div class="cr-earn-step-text">
-                  <div class="cr-earn-step-title">Cari produk di Shopee — buka minimal 2 halaman</div>
-                  <div class="cr-earn-step-sub">Extension akan otomatis mencatat setiap keyword yang kamu telusuri hingga halaman 2.</div>
+                  <div class="cr-earn-step-title">Hubungkan akun kamu</div>
+                  <div class="cr-earn-step-sub">Dari dashboard ini: menu Chrome Extension &rarr; Hubungkan Extension. Sekali hubung, bonus aktif selamanya.</div>
                 </div>
               </div>
               <div class="cr-earn-step">
                 <div class="cr-earn-step-num">3</div>
                 <div class="cr-earn-step-text">
-                  <div class="cr-earn-step-title">Dapatkan 1 kredit setiap 10 pencarian</div>
-                  <div class="cr-earn-step-sub">Kredit langsung masuk ke akunmu dan bisa digunakan segera. Maks 10 kredit/hari.</div>
+                  <div class="cr-earn-step-title">Jatah harianmu jadi 6 deep dive</div>
+                  <div class="cr-earn-step-sub">3 dasar + 3 dari extension, di-reset tiap tengah malam.</div>
                 </div>
               </div>
             </div>
 
-            <!-- What credits buy -->
+            <!-- What a dive gets you -->
             <div class="cr-section">
-              <div class="cr-section-title">Gunakan Kredit Untuk</div>
-              <div class="cr-section-sub">Kredit membuka fitur analisis mendalam untuk membantu kamu menemukan dan menjual produk laris.</div>
+              <div class="cr-section-title">Apa yang Kamu Dapat dari 1 Deep Dive</div>
+              <div class="cr-section-sub">Satu deep dive membuka SEMUA data produk itu selama 7 hari — buka lagi kapan pun tanpa mengurangi jatah.</div>
               <div class="cr-usage-item">
-                <div class="cr-usage-cost">1</div>
+                <div class="cr-usage-cost">7h</div>
                 <div class="cr-usage-info">
-                  <div class="cr-usage-title">Buka Deep Dive produk</div>
-                  <div class="cr-usage-sub">Akses analisis lengkap: tren historis, kompetitor, keyword, review AI, dan lebih banyak data untuk satu produk.</div>
+                  <div class="cr-usage-title">Analisis lengkap produk</div>
+                  <div class="cr-usage-sub">Tren historis, kompetitor, keyword, analisa pasar, listing, dan biaya e-commerce.</div>
                 </div>
               </div>
               <div class="cr-usage-item">
-                <div class="cr-usage-cost">1</div>
+                <div class="cr-usage-cost">7h</div>
                 <div class="cr-usage-info">
-                  <div class="cr-usage-title">Simpan &amp; lacak produk di Mulai Berjualan</div>
-                  <div class="cr-usage-sub">Tambahkan produk ke tracker untuk analisis pasar, kalkulator profit, dan pantau kompetitor.</div>
+                  <div class="cr-usage-title">Mulai Berjualan + kalkulator profit</div>
+                  <div class="cr-usage-sub">Rencana jualan, kalkulator profit per marketplace, dan AI Strategist untuk produk itu.</div>
                 </div>
               </div>
               <div class="cr-usage-item">
-                <div class="cr-usage-cost">1</div>
+                <div class="cr-usage-cost">0</div>
                 <div class="cr-usage-info">
-                  <div class="cr-usage-title">Pertahankan tracking tiap bulan</div>
-                  <div class="cr-usage-sub">Produk yang dilacak membutuhkan 1 kredit per bulan untuk tetap mendapatkan update data dan alerts.</div>
-                </div>
-              </div>
-              <div class="cr-usage-item">
-                <div class="cr-usage-cost">1</div>
-                <div class="cr-usage-info">
-                  <div class="cr-usage-title">10 pertanyaan AI Strategist</div>
-                  <div class="cr-usage-sub">Tanya AI tentang strategi jualan, analisis produk, sourcing, dan peluang pasar di halaman Mulai Berjualan.</div>
+                  <div class="cr-usage-title">Lacak produk — gratis</div>
+                  <div class="cr-usage-sub">Pantau harga &amp; penjualan produk apa pun tanpa mengurangi jatah harianmu.</div>
                 </div>
               </div>
             </div>
@@ -9498,7 +9463,7 @@ html,body{overflow-x:clip;max-width:100%;}
             <div style="margin-bottom:36px;">
               <div class="is-page-title-img" style="margin-bottom:12px;"><img class="page-title-img page-title-img--hero" src="/images/titles/chrome-extension.webp" alt="Chrome Extension" decoding="async"></div>
               <h2 style="font-size:1.75rem;font-weight:800;color:#1A1A1A;margin:0 0 10px;letter-spacing:-.01em;">LarisID untuk Chrome</h2>
-              <p style="font-size:.95rem;color:#6B7280;line-height:1.65;max-width:560px;margin:0;">Riset produk langsung saat kamu browsing Shopee — tanpa buka tab baru. Sekaligus dapat kredit gratis setiap hari.</p>
+              <p style="font-size:.95rem;color:#6B7280;line-height:1.65;max-width:560px;margin:0;">Riset produk langsung saat kamu browsing Shopee — tanpa buka tab baru. Sekaligus nambah jatah deep dive harianmu.</p>
             </div>
 
             <!-- Install CTA card -->
@@ -9514,7 +9479,7 @@ html,body{overflow-x:clip;max-width:100%;}
                     <div style="font-size:.78rem;color:rgba(255,255,255,.5);margin-top:2px;">Gratis · Tidak perlu daftar ulang</div>
                   </div>
                 </div>
-                <p style="font-size:.82rem;color:rgba(255,255,255,.6);line-height:1.6;margin:0;max-width:420px;">Tersedia di Chrome Web Store. Setelah terpasang, hubungkan ke akun LarisID kamu untuk mulai dapat kredit dari setiap pencarian di Shopee.</p>
+                <p style="font-size:.82rem;color:rgba(255,255,255,.6);line-height:1.6;margin:0;max-width:420px;">Tersedia di Chrome Web Store. Setelah terpasang, hubungkan ke akun LarisID kamu — jatah deep dive harianmu langsung bertambah 3, selamanya.</p>
               </div>
               <a href="https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae" target="_blank" rel="noopener" style="position:relative;flex-shrink:0;display:inline-flex;align-items:center;gap:8px;background:#B5202A;color:#fff;font-size:.9rem;font-weight:700;padding:13px 24px;border-radius:10px;text-decoration:none;box-shadow:0 4px 20px rgba(181,32,42,.4);transition:background .15s;" onmouseover="this.style.background='#c73520'" onmouseout="this.style.background='#B5202A'">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -9526,8 +9491,8 @@ html,body{overflow-x:clip;max-width:100%;}
             <div style="background:#F9EAE4;border:1.5px solid #F5C5BB;border-radius:12px;padding:18px 22px;display:flex;gap:14px;align-items:flex-start;margin-bottom:24px;">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B5202A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
               <div>
-                <div style="font-size:.9rem;font-weight:800;color:#1A1A1A;margin-bottom:4px;">Cara Dapat Kredit Gratis</div>
-                <div style="font-size:.82rem;color:#92400E;line-height:1.6;"><strong>10 pencarian di Shopee</strong> (min. 2 halaman per keyword) = <strong>1 kredit</strong>. Bisa diulang hingga <strong>10 kredit per hari</strong>. Sambil riset, sambil dapat kredit gratis.</div>
+                <div style="font-size:.9rem;font-weight:800;color:#1A1A1A;margin-bottom:4px;">Bonus Deep Dive Harian</div>
+                <div style="font-size:.82rem;color:#92400E;line-height:1.6;">Pasang extension dan hubungkan akunmu &mdash; jatah deep dive kamu naik dari <strong>3 jadi 6 per hari</strong>, selamanya. Sekali hubung, bonus aktif terus.</div>
               </div>
             </div>
 
@@ -9544,8 +9509,8 @@ html,body{overflow-x:clip;max-width:100%;}
                 <div style="width:36px;height:36px;background:#F9EAE4;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B5202A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                 </div>
-                <div style="font-size:.88rem;font-weight:700;color:#1A1A1A;margin-bottom:6px;">Dapat Kredit Gratis Tiap Hari</div>
-                <div style="font-size:.8rem;color:#6B7280;line-height:1.55;">Setiap 10 pencarian di Shopee (min. 2 halaman) = 1 kredit otomatis. Maksimal 10 kredit per hari — sambil riset, sambil dapat kredit.</div>
+                <div style="font-size:.88rem;font-weight:700;color:#1A1A1A;margin-bottom:6px;">+3 Deep Dive Tiap Hari</div>
+                <div style="font-size:.8rem;color:#6B7280;line-height:1.55;">Akun yang terhubung ke extension dapat 3 deep dive tambahan setiap hari — jatah harianmu jadi 6.</div>
               </div>
               <div style="background:#fff;border-radius:12px;padding:20px;border:1px solid #E5E7EB;">
                 <div style="width:36px;height:36px;background:#F9EAE4;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
@@ -9588,8 +9553,8 @@ html,body{overflow-x:clip;max-width:100%;}
                 <div style="display:flex;gap:16px;padding-top:20px;">
                   <div style="width:32px;height:32px;border-radius:50%;background:#B5202A;color:#fff;font-size:.8rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">3</div>
                   <div>
-                    <div style="font-size:.88rem;font-weight:700;color:#1A1A1A;margin-bottom:4px;">Cari Produk di Shopee — Kredit Mengalir Otomatis</div>
-                    <div style="font-size:.8rem;color:#6B7280;line-height:1.55;">Setiap 10 pencarian yang kamu buka hingga halaman 2 = 1 kredit langsung masuk ke akunmu. Tidak perlu klik apa-apa. Maks 10 kredit/hari.</div>
+                    <div style="font-size:.88rem;font-weight:700;color:#1A1A1A;margin-bottom:4px;">Selesai — Jatah Harianmu Jadi 6</div>
+                    <div style="font-size:.8rem;color:#6B7280;line-height:1.55;">Begitu akun terhubung, bonus +3 deep dive per hari langsung aktif dan berlaku selamanya. Riset di Shopee seperti biasa.</div>
                   </div>
                 </div>
 
@@ -9600,8 +9565,8 @@ html,body{overflow-x:clip;max-width:100%;}
             <div style="background:#F9EAE4;border:1.5px solid #F5C5BB;border-radius:12px;padding:20px 24px;display:flex;gap:16px;align-items:flex-start;">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B5202A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
               <div>
-                <div style="font-size:.88rem;font-weight:700;color:#1A1A1A;margin-bottom:4px;">Rumus Kredit Gratis</div>
-                <div style="font-size:.8rem;color:#92400E;line-height:1.6;">10 pencarian di Shopee (min. 2 halaman per keyword) = <strong>1 kredit</strong>. Bisa diulang hingga <strong>10 kredit per hari</strong>. Kredit langsung bisa dipakai untuk Deep Dive, AI Strategist, dan fitur premium lainnya.</div>
+                <div style="font-size:.88rem;font-weight:700;color:#1A1A1A;margin-bottom:4px;">Rumus Bonusnya Sederhana</div>
+                <div style="font-size:.8rem;color:#92400E;line-height:1.6;">Extension terhubung = <strong>+3 deep dive per hari</strong>, permanen. Ditambah ajak teman (+1 per teman, maks +5), jatah harianmu bisa sampai <strong>11 deep dive</strong>.</div>
               </div>
             </div>
 
@@ -9629,29 +9594,6 @@ html,body{overflow-x:clip;max-width:100%;}
       </div>
 
       <!-- Low-credit "Ajak Teman" nudge (fires once/day when balance drops to 5 or below) -->
-      <div class="cg-overlay" id="cr-refer-popup" style="display:none;" onclick="if(event.target===this)crCloseReferPopup()">
-        <div class="cg-modal">
-          <div class="cg-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#B5202A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg></div>
-          <div class="cg-title">Kredit kamu tinggal <span id="cr-refer-bal">0</span></div>
-          <div class="cg-sub">Ajak teman dan dapat <strong>25 kredit gratis</strong> tiap teman yang daftar lewat link kamu. Sisa <strong id="cr-refer-remaining">5</strong> ajakan berkredit bulan ini.</div>
-          <div style="display:flex;gap:8px;margin:14px 0 8px;flex-wrap:wrap;">
-            <input id="cr-refer-link" readonly value="" placeholder="Memuat link&hellip;" style="flex:1;min-width:170px;border:1.5px solid #E5E7EB;border-radius:8px;padding:9px 12px;font-size:.78rem;font-family:inherit;background:#F9FAFB;color:#374151;box-sizing:border-box;">
-            <button id="cr-refer-copy" onclick="crCopyReferPopupLink()" style="background:#1A1A1A;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;">Salin</button>
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-            <button onclick="crShareRefWA()" style="flex:1;min-width:130px;display:flex;align-items:center;justify-content:center;gap:7px;background:#1FA855;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg>
-              WhatsApp
-            </button>
-            <button onclick="crShareRefEmail()" style="flex:1;min-width:130px;display:flex;align-items:center;justify-content:center;gap:7px;background:#fff;color:#B5202A;border:1.5px solid #F0CFC4;border-radius:8px;padding:9px 14px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              Email
-            </button>
-          </div>
-          <button class="cg-btn secondary" onclick="crCloseReferPopup()" style="width:100%;">Nanti saja</button>
-        </div>
-      </div>
-
       <!-- Track alert preferences modal -->
       <div class="ta-overlay" id="ta-overlay" style="display:none;" onclick="if(event.target===this)ddCloseTrackAlertModal()">
         <div class="ta-modal" role="dialog" aria-labelledby="ta-title" aria-modal="true">
@@ -9949,7 +9891,7 @@ html,body{overflow-x:clip;max-width:100%;}
      SITE FOOTER
 ════════════════════════════════════ -->
 
-<script defer src="/js/laris-app.js?v=20260716a"></script>
+<script defer src="/js/laris-app.js?v=20260716b"></script>
 
   <!-- ── CONTEXTUAL ONBOARDING HINTS ── -->
   <div id="hint-overlay" aria-hidden="true" onclick="if(event.target===this)nuHintDismiss()">
@@ -9961,15 +9903,6 @@ html,body{overflow-x:clip;max-width:100%;}
         <button type="button" class="hint-btn-ghost" id="hint-dismiss-btn" onclick="nuHintDismiss()">Nanti saja</button>
         <button type="button" class="hint-btn-primary" id="hint-cta-btn"></button>
       </div>
-    </div>
-  </div>
-
-  <!-- Chest reward modal (global) -->
-  <div id="chest-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:20px;padding:32px 28px;text-align:center;max-width:320px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3);">
-      <div id="chest-modal-title" style="font-size:1.2rem;font-weight:900;color:#1A1A1A;margin-bottom:6px;">Selamat!</div>
-      <div id="chest-modal-msg" style="font-size:.85rem;color:#6B7280;margin-bottom:20px;"></div>
-      <button onclick="document.getElementById('chest-modal').style.display='none'" style="background:#B5202A;color:#fff;border:none;border-radius:10px;padding:10px 24px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;">Tutup</button>
     </div>
   </div>
 
@@ -10182,7 +10115,7 @@ html,body{overflow-x:clip;max-width:100%;}
       <span class="mbn-sheet-icon" style="background:#EEF2FF;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span><span>Alerts</span>
     </button>
     <button class="mbn-sheet-item" onclick="switchDashView('credits');mbnCloseMore()">
-      <span class="mbn-sheet-icon" style="background:#FFFBEB;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span><span>Kredit</span>
+      <span class="mbn-sheet-icon" style="background:#FFFBEB;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span><span>Penggunaan</span>
     </button>
     <button class="mbn-sheet-item" onclick="switchDashView('product-database');mbnCloseMore()">
       <span class="mbn-sheet-icon" style="background:#ECFDF5;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span><span>Database</span>

@@ -7,7 +7,7 @@
 - LarisID adalah alat riset produk Shopee berbahasa Indonesia: https://larisid.com/
 - Harga: 100% gratis — tanpa langganan, tanpa paket berbayar, tanpa kartu kredit
 - Ringkasan Deep Dive (verdict layak/tidak per produk) selalu gratis
-- Setiap pengguna mendapat 20 kredit gratis per bulan untuk data lanjutan
+- Setiap pengguna mendapat 3 deep dive gratis per hari (satu deep dive = akses penuh data produk itu selama 7 hari)
 - Fokus: Shopee Indonesia; bahasa utama: Indonesia
 - Data harga/rating/ulasan adalah data listing nyata; angka "terjual" adalah ESTIMASI (bukan data resmi Shopee) — mohon pertahankan kaveat ini saat mengutip
 - 432 halaman riset pasar per keyword, gratis tanpa login: https://larisid.com/riset/
@@ -23,19 +23,18 @@ LarisID membantu orang Indonesia memulai dan menjalankan bisnis e-commerce yang 
 - Marketplace fokus: Shopee (Indonesia)
 - Model harga: 100% gratis — tanpa langganan, tanpa biaya, tanpa kartu kredit
 
-## Harga & kredit (Juli 2026)
+## Harga & jatah harian (Juli 2026)
 
-LarisID 100% gratis. Tidak ada langganan, paket berbayar, atau pembelian apa pun. Kredit hanya bisa DIPEROLEH gratis, tidak pernah dibeli.
+LarisID 100% gratis. Tidak ada langganan, paket berbayar, atau pembelian apa pun. Jatah harian hanya bisa DITAMBAH gratis, tidak pernah dibeli.
 
-| Sumber kredit | Biaya | Isi |
+| Jatah harian | Biaya | Isi |
 |-------|-------|-----|
-| Gratis bulanan | Rp 0 | 20 kredit/bulan (diperbarui tiap bulan, berlaku 30 hari) |
-| Extension Chrome | Rp 0 | 10 pencarian produk di Shopee = 1 kredit (maks. 10 kredit/hari) |
-| Ajak teman (referral) | Rp 0 | +50 kredit per teman yang mendaftar |
-| Chest mingguan | Rp 0 | bonus kredit acak untuk seller aktif |
+| Deep dive | Rp 0 | 3 produk/hari; satu deep dive membuka SEMUA data produk itu (tren, kompetitor, keyword, kalkulator, Mulai Berjualan) selama 7 hari; membuka ulang produk yang sama gratis |
+| Poin AI | Rp 0 | 5 poin/hari (chat 1 poin, rekomendasi jalur 2, analisis foto 3) |
+| Extension Chrome | Rp 0 | akun terhubung = +3 deep dive/hari, permanen |
+| Ajak teman (referral) | Rp 0 | +1 deep dive harian per teman yang mendaftar, permanen (maks +5) |
 
-Yang gratis tanpa kredit: Discover (jelajah produk), Ringkasan Deep Dive (verdict per produk), tab Biaya E-commerce, halaman riset pasar /riset/.
-Yang memakai kredit: tab data lengkap Deep Dive (1 kredit/tab, atau 5 kredit = semua tab + kalkulator selama 7 hari), pertanyaan AI (1–3 kredit per jawaban sesuai detail).
+Jatah di-reset setiap tengah malam WIB. Yang gratis tanpa jatah: Discover (jelajah produk), lacak produk, halaman riset pasar /riset/ dan /kota/.
 
 ## Fitur utama
 

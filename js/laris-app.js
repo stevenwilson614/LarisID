@@ -2123,8 +2123,6 @@ function dismissLogoutChrome() {
     if (xm) xm.style.display = 'none';
     const cg = document.getElementById('cg-overlay');
     if (cg) cg.style.display = 'none';
-    const ch = document.getElementById('chest-modal');
-    if (ch) ch.style.display = 'none';
     const lo = document.getElementById('loading-overlay');
     if (lo) lo.style.display = 'none';
   } catch (_) {}
@@ -3902,63 +3900,6 @@ async function adminAssignLeader() {
   await adminLoadUserDirectory();
 }
 
-// ── Weekly Treasure Chest ─────────────────────────────────────
-async function loadChestState() {
-  if (!_supabase || !currentUser) return;
-  try {
-    const monday = new Date();
-    monday.setDate(monday.getDate() - (monday.getDay() === 0 ? 6 : monday.getDay() - 1));
-    const weekStart = monday.toISOString().slice(0,10);
-
-    const [searchRes, chestRes] = await Promise.all([
-      _supabase.from('search_completions').select('keyword', {count:'exact',head:true}).eq('user_id', currentUser.id).gte('completed_date', weekStart),
-      _supabase.from('chest_history').select('id').eq('user_id', currentUser.id).eq('week_start', weekStart).limit(1),
-    ]);
-    const searches = searchRes.count;
-    const claimed  = chestRes.error ? [] : (chestRes.data || []);
-
-    const done      = Math.min(searches || 0, 5);
-    const alreadyGot = claimed?.length > 0;
-    const unlocked  = done >= 5 && !alreadyGot;
-
-    const fill  = document.getElementById('chest-prog-fill');
-    const label = document.getElementById('chest-prog-label');
-    const btn   = document.getElementById('chest-btn');
-    const desc  = document.getElementById('chest-desc');
-
-    if (fill)  fill.style.width = (done / 5 * 100) + '%';
-    if (label) label.textContent = alreadyGot ? 'Sudah diklaim minggu ini — kembali Senin depan' : `${done} / 5 pencarian`;
-    if (btn) { btn.disabled = !unlocked; btn.style.opacity = unlocked ? '1' : '.4'; btn.style.cursor = unlocked ? 'pointer' : 'not-allowed'; }
-    const iconWrap = document.getElementById('chest-icon-wrap');
-    if (iconWrap) iconWrap.style.color = alreadyGot ? '#10B981' : unlocked ? '#fbbf24' : 'rgba(255,255,255,.45)';
-    if (desc) desc.textContent = alreadyGot ? 'Sudah diklaim minggu ini — kembali Senin depan' : unlocked ? 'Peti terbuka! Klik untuk klaim hadiahmu.' : 'Selesaikan 5 pencarian minggu ini untuk membuka hadiah kredit';
-  } catch(e) { console.warn('loadChestState', e); }
-}
-
-async function claimChest() {
-  if (!_supabase || !currentUser) return;
-  const btn = document.getElementById('chest-btn');
-  if (btn) { btn.disabled = true; btn.textContent = '...'; }
-  try {
-    const { data, error } = await _supabase.rpc('claim_weekly_chest');
-    const modal     = document.getElementById('chest-modal');
-    const modalTitle= document.getElementById('chest-modal-title');
-    const modalMsg  = document.getElementById('chest-modal-msg');
-    if (error || !data) throw new Error(error?.message || 'Gagal');
-    if (data.error === 'already_claimed') { if (btn) btn.textContent = 'Sudah'; return; }
-    if (data.needed) { if (btn) { btn.disabled = true; btn.style.opacity = '.4'; btn.textContent = 'Buka'; } return; }
-    const reward = data.reward;
-    if (modalTitle) modalTitle.textContent = `+${reward} Kredit!`;
-    if (modalMsg)  modalMsg.textContent = `Kamu mendapat ${reward} kredit dari Peti Mingguan. Saldo baru: ${data.balance} kredit.`;
-    if (modal) modal.style.display = 'flex';
-    loadChestState();
-    loadUsage();
-  } catch(e) {
-    if (btn) { btn.disabled = false; btn.textContent = 'Buka'; }
-    console.warn('claimChest', e);
-  }
-}
-
 async function loadUsage() {
   if (!_supabase || !currentUser) return;
   try {
@@ -4075,112 +4016,33 @@ function scrollToCreditCard() {
   switchDashView('credits');
 }
 
-// ── Monthly free credits: renewal on signup anniversary (not calendar month) ──
-function _nextBillingAnniversaryDate(signupIso) {
-  if (!signupIso) return null;
-  const anchorDay = new Date(signupIso).getDate();
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  let cursor = new Date(today);
-  for (let i = 0; i < 400; i++) {
-    const lastDay = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate();
-    const effective = Math.min(anchorDay, lastDay);
-    if (cursor.getDate() === effective && cursor > today) return cursor;
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  return null;
-}
-
-function _fmtIdDate(d) {
-  if (!d) return '';
-  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long' });
-}
-
-async function _renderMonthlyCreditSchedule() {
-  const subEl = document.getElementById('cr-free-sub');
-  const expEl = document.getElementById('cr-free-exp');
-  if (!subEl && !expEl) return;
-
-  let daysUntilGrant = null;
-  let daysUntilExpiry = null;
-  let nextGrantAt = null;
-
-  if (_supabase && currentUser) {
-    try {
-      const { data } = await _supabase.rpc('get_my_monthly_credit_status');
-      if (data && !data.error) {
-        daysUntilGrant = data.days_until_grant;
-        daysUntilExpiry = data.days_until_expiry;
-        if (data.next_grant_at) nextGrantAt = new Date(data.next_grant_at + 'T12:00:00');
-      }
-    } catch (_) {}
-  }
-
-  if (daysUntilGrant == null && currentUser?.created_at) {
-    const anchorDay = new Date(currentUser.created_at).getDate();
-    const now = new Date();
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    if (now.getDate() === Math.min(anchorDay, lastDay)) {
-      nextGrantAt = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      daysUntilGrant = 0;
-    } else {
-      nextGrantAt = _nextBillingAnniversaryDate(currentUser.created_at);
-      if (nextGrantAt) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        daysUntilGrant = Math.max(0, Math.round((nextGrantAt - today) / 86400000));
-      }
-    }
-  }
-
-  if (subEl) {
-    if (nextGrantAt) {
-      subEl.textContent = daysUntilGrant === 0
-        ? '20 kredit baru tersedia hari ini'
-        : `Kredit berikutnya: ${_fmtIdDate(nextGrantAt)} (${daysUntilGrant} hari lagi)`;
-    } else {
-      subEl.textContent = 'Diperbarui otomatis setiap bulan pada tanggal pendaftaran';
-    }
-  }
-
-  if (expEl) {
-    if (daysUntilExpiry != null) {
-      expEl.textContent = daysUntilExpiry === 0
-        ? 'Masa berlaku berakhir hari ini'
-        : `Berlaku ${daysUntilExpiry} hari lagi`;
-    } else {
-      expEl.textContent = 'Berlaku 30 hari sejak diberikan';
-    }
-  }
-}
-
-// ── CREDITS PAGE (interim: shows daily usage; full "Penggunaan" rebuild follows) ──
+// ── PENGGUNAAN PAGE ──────────────────────────────────────
 async function creditsInit() {
-  loadChestState();
   await loadUsage();
-  const numEl = document.getElementById('cr-balance-num');
-  if (numEl) numEl.textContent = (_usage && _usage.unlimited) ? '∞' : `${(_usage?.dive_limit ?? 3) - (_usage?.dives_used ?? 0)}`;
+  usageRenderPage();
+}
 
-  // Progress bar from search_completions
-  if (_supabase && currentUser) {
-    const today = new Date().toISOString().slice(0, 10);
-    const { count } = await _supabase
-      .from('search_completions')
-      .select('keyword', { count: 'exact', head: true })
-      .eq('user_id', currentUser.id)
-      .eq('completed_date', today);
-    const done = count ?? 0;
-    const pct  = Math.min(100, Math.round((done / 10) * 100));
-    const fill = document.getElementById('cr-prog-fill');
-    const txt  = document.getElementById('cr-prog-text');
-    if (fill) fill.style.width = pct + '%';
-    if (txt)  txt.textContent  = `${done}/10 pencarian`;
-  }
-
-  const freeEl = document.getElementById('cr-free-count');
-  if (freeEl) freeEl.textContent = '20 kredit gratis / bulan';
-
-  await _renderMonthlyCreditSchedule();
+// Fills the Penggunaan page meters from the cached _usage snapshot. Also called
+// from renderUsageUI so the page stays live while open.
+function usageRenderPage() {
+  if (!document.getElementById('usg-dive-fill')) return;
+  const unlimited = (_usage && _usage.unlimited) || (currentUser && (isPlatformAdmin() || _accessState.isLeader));
+  const diveUsed = _usage?.dives_used ?? 0, diveLim = _usage?.dive_limit ?? 3;
+  const aiUsed = _usage?.ai_used ?? 0, aiLim = _usage?.ai_limit ?? 5;
+  const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  const bar = (id, used, lim) => {
+    const el = document.getElementById(id);
+    if (el) el.style.width = unlimited ? '100%' : Math.min(100, Math.round(used / Math.max(1, lim) * 100)) + '%';
+  };
+  set('usg-dive-label', unlimited ? 'Tanpa batas' : `${diveUsed}/${diveLim} dipakai`);
+  set('usg-ai-label', unlimited ? 'Tanpa batas' : `${aiUsed}/${aiLim} poin dipakai`);
+  bar('usg-dive-fill', diveUsed, diveLim);
+  bar('usg-ai-fill', aiUsed, aiLim);
+  set('usg-reset', unlimited ? 'Akun kamu punya akses penuh.' : (_usage ? `Reset dalam ${_usageResetLabel()}` : ''));
+  const extB = _usage?.extension_bonus ?? 0, refB = _usage?.referral_bonus ?? 0;
+  set('usg-dive-sub', unlimited ? '' : `3 dasar${extB > 0 ? ' + 3 extension' : ''}${refB > 0 ? ` + ${refB} ajak teman` : ''} per hari`);
+  const bonusEl = document.getElementById('cr-ref-bonus');
+  if (bonusEl) bonusEl.textContent = `+${refB}/5`;
 }
 
 // ── DAILY LIMIT MODAL (reuses #cg-overlay) ───────────────
@@ -4254,16 +4116,14 @@ function _ddMaybeTrackNudge() {
 function crScrollReferral() { document.getElementById('cr-referral-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
 
 // ── B6: REFERRALS ────────────────────────────────────────────────────────────
-// Capture ?ref= on landing, redeem it after signup (referrer earns 25 credits,
-// max 5 friends/month), and power the "Ajak Teman" card + low-credit popup
-// (share via WhatsApp/email). The code is persisted in BOTH localStorage and a
-// 90-day cookie, so a friend who opens the link now but signs up weeks later
-// still credits the referrer.
+// Capture ?ref= on landing, redeem it after signup, and power the "Ajak Teman"
+// card (share via WhatsApp/email). Each credited friend permanently raises the
+// referrer's daily dive limit by 1, capped at +5. The code is persisted in BOTH
+// localStorage and a 90-day cookie, so a friend who opens the link now but
+// signs up weeks later still credits the referrer.
 const _REF_KEY = 'larisid_ref';
 const _REF_COOKIE_DAYS = 90;
-const REF_PER_INVITE = 25;
-const REF_MONTHLY_CAP = 5;
-const REF_LOW_CREDIT_THRESHOLD = 5;
+const REF_BONUS_CAP = 5;
 
 function _setRefCookie(code) {
   try { document.cookie = `${_REF_KEY}=${encodeURIComponent(code)}; Max-Age=${_REF_COOKIE_DAYS * 86400}; Path=/; SameSite=Lax`; } catch (_) {}
@@ -4306,64 +4166,21 @@ async function redeemPendingReferral() {
   } catch (_) {}
 }
 
-// Popup nudging low-credit users to invite friends (fires once/day when balance
-// drops to REF_LOW_CREDIT_THRESHOLD or below, but is still above 0).
-function _maybeShowLowCreditRefer() {
-  try {
-    if (!currentUser || !_supabase) return;
-    if (isPlatformAdmin() || _accessState.isLeader) return; // unlimited users never see it
-    const bal = _creditBalance;
-    if (bal == null || bal <= 0 || bal > REF_LOW_CREDIT_THRESHOLD) return;
-    const today = new Date().toISOString().slice(0, 10);
-    if (localStorage.getItem('larisid_lowcredit_refer_v1') === today) return; // once/day
-    // Don't interrupt onboarding.
-    const onb = document.getElementById('nu-onb-overlay');
-    if (onb && onb.style.display === 'flex') return;
-    localStorage.setItem('larisid_lowcredit_refer_v1', today);
-    setTimeout(() => { try { crShowReferPopup(bal); } catch (_) {} }, 700);
-  } catch (_) {}
-}
-
-async function crShowReferPopup(bal) {
-  const m = document.getElementById('cr-refer-popup');
-  if (!m || !_supabase || !currentUser) return;
-  let month = 0;
-  try {
-    const { data } = await _supabase.rpc('my_referral_stats');
-    if (data) { _crRefCode = data.code || _crRefCode; month = data.month_count || 0; }
-  } catch (_) {}
-  const balEl = document.getElementById('cr-refer-bal');
-  if (balEl && typeof bal === 'number') balEl.textContent = bal;
-  const remEl = document.getElementById('cr-refer-remaining');
-  if (remEl) remEl.textContent = Math.max(0, REF_MONTHLY_CAP - month);
-  const linkEl = document.getElementById('cr-refer-link');
-  if (linkEl) linkEl.value = crRefUrl();
-  m.style.display = 'flex';
-}
-function crCloseReferPopup() { const m = document.getElementById('cr-refer-popup'); if (m) m.style.display = 'none'; }
-function crCopyReferPopupLink() {
-  const el = document.getElementById('cr-refer-link');
-  if (!el || !el.value) return;
-  el.select();
-  try { navigator.clipboard.writeText(el.value); } catch (_) { try { document.execCommand('copy'); } catch (_) {} }
-  const btn = document.getElementById('cr-refer-copy');
-  if (btn) { const t = btn.textContent; btn.textContent = 'Tersalin!'; setTimeout(() => { btn.textContent = t; }, 1500); }
-}
-
 let _crRefCode = null;
 function crRefUrl() { return `${location.origin}${location.pathname}?ref=${_crRefCode || ''}`; }
 async function crLoadReferral() {
   const linkEl = document.getElementById('cr-ref-link');
   if (!linkEl || !_supabase || !currentUser) return;
   try {
-    if (!_crRefCode) {
-      const { data, error } = await _supabase.rpc('get_or_create_my_referral_code');
-      if (!error && data) _crRefCode = data;
+    const { data } = await _supabase.rpc('my_referral_stats');
+    if (data) {
+      _crRefCode = data.code || _crRefCode;
+      const cntEl = document.getElementById('cr-ref-count');
+      if (cntEl && typeof data.total === 'number') cntEl.textContent = data.total;
+      const bonusEl = document.getElementById('cr-ref-bonus');
+      if (bonusEl) bonusEl.textContent = `+${data.bonus_active ?? 0}/${REF_BONUS_CAP}`;
     }
     if (_crRefCode) linkEl.value = crRefUrl();
-    const { count } = await _supabase.from('referrals').select('id', { count: 'exact', head: true });
-    const cntEl = document.getElementById('cr-ref-count');
-    if (cntEl && typeof count === 'number') cntEl.textContent = count;
   } catch (_) {}
 }
 function crCopyRefLink() {
@@ -4401,8 +4218,7 @@ async function _refMaybeGoodDiveNudge() {
     if (!currentUser || !_supabase || _isCreditPrivileged()) return;
     if (dwellMs < 30000) return; // a skim, not a real dive
     const score = Number(_ddCurrentP?.score);
-    const unlocked = typeof _ddUnlockScopes !== 'undefined' && _ddUnlockScopes && _ddUnlockScopes.size > 0;
-    if (!(score >= 70 || unlocked)) return;
+    if (!(score >= 70)) return;
     const today = new Date().toISOString().slice(0, 10);
     if (localStorage.getItem(_REF_DIVE_DAY_KEY) === today) return;
     const shown = parseInt(localStorage.getItem(_REF_DIVE_COUNT_KEY) || '0', 10);
@@ -4410,8 +4226,6 @@ async function _refMaybeGoodDiveNudge() {
     if (document.getElementById('dd-track-nudge')) return;
     const notif = document.getElementById('mls-notify-modal');
     if (notif && notif.style.display === 'flex') return;
-    const refer = document.getElementById('cr-refer-popup');
-    if (refer && refer.style.display === 'flex') return;
     if (typeof _nuOnb !== 'undefined' && _nuOnb.visible) return;
     if (!_crRefCode) {
       const { data, error } = await _supabase.rpc('get_or_create_my_referral_code');
@@ -4424,7 +4238,7 @@ async function _refMaybeGoodDiveNudge() {
     const el = document.createElement('div');
     el.id = 'ref-dive-nudge';
     el.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:24px;z-index:9000;background:#1A1A1A;color:#fff;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:14px;box-shadow:0 12px 34px rgba(0,0,0,.3);max-width:min(92vw,500px);';
-    el.innerHTML = `<span style="font-size:.8rem;line-height:1.45;">Nemu produk menjanjikan? <strong>Ajak teman jualanmu</strong> riset bareng &mdash; kamu dapat ${REF_PER_INVITE} kredit tiap teman yang gabung.</span>
+    el.innerHTML = `<span style="font-size:.8rem;line-height:1.45;">Nemu produk menjanjikan? <strong>Ajak teman jualanmu</strong> riset bareng &mdash; tiap teman yang gabung nambah 1 deep dive harianmu, permanen.</span>
       <button onclick="_refDiveShareWA()" style="flex-shrink:0;background:#B5202A;color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:.78rem;font-weight:800;padding:9px 14px;cursor:pointer;">Ajak via WA</button>
       <button onclick="document.getElementById('ref-dive-nudge').remove()" aria-label="Tutup" style="flex-shrink:0;background:none;border:none;color:rgba(255,255,255,.6);font-size:1.05rem;cursor:pointer;padding:2px;line-height:1;">&times;</button>`;
     document.body.appendChild(el);
@@ -4981,8 +4795,8 @@ async function renderNotifMenu() {
   try {
     if (_supabase && currentUser) {
       const [evRes, dl] = await Promise.all([
-        _supabase.from('credit_events')
-          .select('type,amount,keyword,created_at')
+        _supabase.from('usage_events')
+          .select('kind,action,weight,product_key,created_at')
           .eq('user_id', currentUser.id)
           .order('created_at', { ascending: false }).limit(6),
         (typeof trkFetchDeltas === 'function' ? trkFetchDeltas() : Promise.resolve([])),
@@ -4995,24 +4809,21 @@ async function renderNotifMenu() {
     list.innerHTML = '<div style="padding:10px 14px;font-size:.74rem;color:#9CA3AF;">Belum ada notifikasi baru.</div>';
     return;
   }
-  const descOf = ev => ev.type === 'earn_monthly' ? 'Kredit bulanan diberikan'
-    : ev.type === 'earn_welcome' ? 'Kredit selamat datang'
-    : ev.type === 'earn_search' ? 'Kredit dari pencarian extension'
-    : ev.type === 'earn_referral' ? 'Bonus ajak teman'
-    : ev.type === 'earn_chest' ? 'Hadiah peti mingguan'
-    : (ev.type || '').startsWith('spend') ? `Buka data ${ev.keyword || 'produk'}`
-    : (ev.type || 'Aktivitas');
+  const descOf = ev => ev.kind === 'dive' ? 'Deep dive dibuka'
+    : ev.action === 'mls_chat' ? 'Tanya AI'
+    : ev.action === 'path' ? 'Rekomendasi jalur AI'
+    : ev.action === 'photo' ? 'Analisis foto AI'
+    : 'Aktivitas';
   const deltaHtml = deltas.slice(0, 3).map(d => `
     <div class="dash-topbar-menu-item" style="justify-content:space-between;gap:8px;" onclick="switchDashView('tracker');toggleNotifMenu(false)">
       <span style="font-size:.74rem;color:#374151;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><strong>${d.name}</strong></span>
       <span style="font-size:.7rem;font-weight:700;color:${d.soldDelta > 0 ? '#059669' : '#B45309'};white-space:nowrap;">${d.soldDelta > 0 ? `+${trkUnits(d.soldDelta)} terjual` : (d.priceDelta > 0 ? 'harga naik' : 'harga turun')}</span>
     </div>`).join('');
   const evHtml = rows.map(ev => {
-    const earn = (ev.amount || 0) > 0;
-    const amt = `${earn ? '+' : ''}${ev.amount} kredit`;
+    const amt = ev.kind === 'dive' ? '1 dive' : `${ev.weight ?? 1} poin AI`;
     return `<div class="dash-topbar-menu-item" style="justify-content:space-between;cursor:default;">
       <span style="font-size:.74rem;color:#374151;">${descOf(ev)}</span>
-      <span style="font-size:.72rem;font-weight:700;color:${earn ? '#059669' : '#B5202A'};white-space:nowrap;">${amt}</span>
+      <span style="font-size:.72rem;font-weight:700;color:#6B7280;white-space:nowrap;">${amt}</span>
     </div>`;
   }).join('');
   list.innerHTML = deltaHtml + evHtml;
