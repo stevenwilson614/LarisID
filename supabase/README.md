@@ -143,3 +143,16 @@ Lightweight funnel counters synced from the client (`larisid_journey_v1` in loca
 RLS: users read/write **own row only** (`auth.uid() = user_id`).
 
 Product snapshots and Beranda return-loop timing (`seenProducts`, `lastBerandaAt`) stay **client-only** for now — not in this table.
+
+## LARISgpt A/B (`migrations/20260716140000_gpt_chats.sql`)
+
+Chat sessions for variant B (`/gpt/`): `gpt_chats`, `gpt_messages`, RPC `gpt_new_chat` (3 new chats/day, WIB midnight). Analysis queries: **[docs/AB_TEST.sql](../docs/AB_TEST.sql)**.
+
+### Auth redirect URLs (manual — required before flip)
+
+In Supabase Dashboard → **Authentication → URL Configuration → Redirect URLs**, add:
+
+- `https://larisid.com/gpt/`
+- `http://localhost:8000/gpt/` (local testing)
+
+Without these, Google OAuth from `/gpt/` fails to return to B (hash-forwarder on `/` is the safety net only).

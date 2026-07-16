@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /gpt/
 
 # AI assistants & answer engines are explicitly welcome to crawl and cite LarisID.
 User-agent: GPTBot

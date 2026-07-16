@@ -31,7 +31,7 @@ jobs:
         run: |
           mkdir -p _site
           cp index.html CNAME robots.txt sitemap.xml manifest.webmanifest llms.txt llms-full.txt BingSiteAuth.xml 55677968d982482614b7ad24398e836c.txt _site/
-          cp -r images styles js privacy perbandingan harga tentang cara-kerja riset panduan kota _site/
+          cp -r images styles js fonts gpt privacy perbandingan harga tentang cara-kerja riset panduan kota _site/
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
