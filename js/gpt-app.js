@@ -225,6 +225,8 @@ const state = {
 
   dirPage: 1,
   dirCat: null,
+  dirCity: '',   // ephemeral directory filter (not persisted)
+  dirSort: 'terlaris',
   dirRows: [],
   cityFilter: '',
   searchOpen: false,
@@ -1864,27 +1866,83 @@ async function handleComposerSubmit(text) {
 }
 
 // ── Directory ────────────────────────────────────────────────────────────
+function sortDirRows(rows, mode) {
+  const out = (rows || []).slice();
+  if (mode === 'termurah') out.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+  else if (mode === 'termahal') out.sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+  else if (mode === 'naik_daun') out.sort((a, b) => (Number(b.sold_per_day) || 0) - (Number(a.sold_per_day) || 0));
+  else out.sort((a, b) => (Number(b.total_sold) || 0) - (Number(a.total_sold) || 0)); // terlaris
+  return out;
+}
+
+function _dirApplyDefaultsOnce() {
+  if (state._dirDefaultsApplied) return;
+  state._dirDefaultsApplied = true;
+  const o = state.onboarding || {};
+  if (!state.dirCat && o.categories?.length) state.dirCat = o.categories[0];
+  if (!state.dirCity && o.city) state.dirCity = o.city;
+}
+
 async function openDirectory() {
   setView('directory');
+  _dirApplyDefaultsOnce();
+
   const cats = $('dir-cats');
   if (cats && !cats.dataset.ready) {
     cats.dataset.ready = '1';
-    cats.innerHTML = `<button type="button" class="chip selected" data-dcat="">Semua</button>` +
+    cats.innerHTML = `<button type="button" class="chip" data-dcat="">Semua</button>` +
       NU_ONB_CATS.map(c => `<button type="button" class="chip" data-dcat="${esc(c)}">${esc(c)}</button>`).join('');
     cats.querySelectorAll('[data-dcat]').forEach(btn => {
       btn.addEventListener('click', () => {
+        // Category filter is free for anonymous (page 2+ / deep-dive stay gated).
         const cat = btn.getAttribute('data-dcat');
-        if (cat && !currentUser) {
-          openAuthModal('signup', 'gpt_gate_directory');
-          return;
-        }
         state.dirCat = cat || null;
         state.dirPage = 1;
         cats.querySelectorAll('.chip').forEach(c => c.classList.toggle('selected', c === btn));
+        void logUserEvent('dir_filter', { ui: 'gpt', kind: 'category', value: state.dirCat || '' });
         void renderDirectory();
       });
     });
   }
+  if (cats) {
+    cats.querySelectorAll('[data-dcat]').forEach(c => {
+      const v = c.getAttribute('data-dcat') || '';
+      c.classList.toggle('selected', (state.dirCat || '') === v);
+    });
+  }
+
+  const citySel = $('dir-city');
+  if (citySel && !citySel.dataset.ready) {
+    citySel.dataset.ready = '1';
+    citySel.innerHTML = `<option value="">Semua kota</option>` +
+      NU_ONB_LOCATIONS.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    citySel.addEventListener('change', () => {
+      state.dirCity = citySel.value || '';
+      state.dirPage = 1;
+      void logUserEvent('dir_filter', { ui: 'gpt', kind: 'city', value: state.dirCity });
+      void renderDirectory();
+    });
+  }
+  if (citySel) citySel.value = state.dirCity || '';
+
+  const sortSel = $('dir-sort');
+  if (sortSel && !sortSel.dataset.ready) {
+    sortSel.dataset.ready = '1';
+    sortSel.addEventListener('change', () => {
+      state.dirSort = sortSel.value || 'terlaris';
+      state.dirPage = 1;
+      void logUserEvent('dir_filter', { ui: 'gpt', kind: 'sort', value: state.dirSort });
+      void renderDirectory();
+    });
+  }
+  if (sortSel) sortSel.value = state.dirSort || 'terlaris';
+
+  const note = $('dir-note');
+  if (note) {
+    const tailored = !!(state.onboarding?.city || state.onboarding?.categories?.length);
+    note.hidden = !tailored;
+  }
+
   await renderDirectory();
 }
 
@@ -1893,20 +1951,30 @@ async function renderDirectory() {
   const pager = $('dir-pager');
   if (!grid) return;
   grid.innerHTML = '<p class="dd-sub">Memuat…</p>';
-  let rows = mergePool([], await fetchNaikDaunGlobal(200)); // dedupe cross-keyword repeats
-  if (state.dirCat) {
-    const c = state.dirCat.toLowerCase();
-    rows = rows.filter(r => (r.category || '').toLowerCase().includes(c.slice(0, 5)));
+
+  const cat = state.dirCat || null;
+  const city = state.dirCity || '';
+  let rows = [];
+  if (city) {
+    const locs = expandCityLocations(city);
+    rows = await fetchListingsCityCat(locs, cat ? [cat] : [], 200);
+  } else {
+    rows = mergePool([], await fetchNaikDaunGlobal(200));
+    if (cat) {
+      const c = cat.toLowerCase();
+      rows = rows.filter(r => catMatches(r.category, [cat]) || (r.category || '').toLowerCase().includes(c.slice(0, 5)));
+    }
   }
+  rows = sortDirRows(rows, state.dirSort || 'terlaris');
   state.dirRows = rows;
-  const page = state.dirPage;
-  if (page > 1 && !currentUser) {
+
+  if (state.dirPage > 1 && !currentUser) {
     openAuthModal('signup', 'gpt_gate_directory');
     state.dirPage = 1;
   }
   const start = (state.dirPage - 1) * PAGE_SIZE;
   const slice = rows.slice(start, start + PAGE_SIZE);
-  grid.innerHTML = slice.map((p, i) => productCardHtml(p, i % 3)).join('') || '<p class="dd-sub">Tidak ada produk.</p>';
+  grid.innerHTML = slice.map((p, i) => productCardHtml(p, i % 3)).join('') || '<p class="dd-sub">Tidak ada produk untuk filter ini.</p>';
   bindProductCards(grid);
   if (pager) {
     const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));

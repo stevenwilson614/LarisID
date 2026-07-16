@@ -716,10 +716,22 @@ html.session-restoring body::after {
         </div>
         <div class="view" id="view-directory">
           <div class="dir-head">
-            <h2>Produk naik daun</h2>
-            <p class="dd-sub">Data dari Shopee — dipilih dari tren penjualan terbaru. Bukan hasil AI.</p>
+            <h2>Produk</h2>
+            <p class="dd-sub">Data dari Shopee — bukan hasil AI. Filter bebas; halaman 2+ dan Deep Dive perlu login.</p>
           </div>
           <div class="dir-cats" id="dir-cats"></div>
+          <div class="dir-filters" id="dir-filters">
+            <label class="dd-sub" for="dir-city" style="margin:0">Kota</label>
+            <select id="dir-city" aria-label="Filter kota"></select>
+            <label class="dd-sub" for="dir-sort" style="margin:0">Urutkan</label>
+            <select id="dir-sort" aria-label="Urutkan">
+              <option value="terlaris">Terlaris</option>
+              <option value="naik_daun">Naik daun</option>
+              <option value="termurah">Termurah</option>
+              <option value="termahal">Termahal</option>
+            </select>
+          </div>
+          <p class="dir-note" id="dir-note" hidden>Disesuaikan dari profil kamu</p>
           <div class="dir-grid" id="dir-grid"></div>
           <div class="dir-pager" id="dir-pager"></div>
         </div>
