@@ -16,6 +16,12 @@ const _LID_SIGNUP_DONE_KEY = '_lid_signup_done_v1';
 const GPT_STATE_KEY = '_lid_gpt_state_v1';
 const ANON_LIMIT_KEY = '_lid_gpt_anon_searches_v1';
 const PAGE_SIZE = 60;
+const COMPOSER_EXAMPLES = [
+  'Cari produk kayu buat dijual dari Semarang',
+  'Tunjukkan 3 produk yang cocok buat aku jual',
+  'Produk apa yang lagi naik daun?',
+  'Tanya tentang produk… atau ketik pencarian baru',
+];
 let _admSample = null; // admin sample view: { mode: 'user'|'new', label }
 let _onboardingBackup = null;
 let _adminUsers = [];
@@ -778,7 +784,7 @@ function renderOnboardingStep() {
 
   if (o.step === 'city') {
     appendBubble('assistant', `
-      <p>Hai! Aku bantu kamu riset produk Shopee dari data LarisID — gratis, data asli, bukan tebakan AI.</p>
+      <p>Hai! Aku bantu kamu riset produk buat jualan di Shopee, Tokopedia, atau TikTok Shop — gratis, dari data Shopee asli, bukan tebakan AI.</p>
       <p><strong>Kamu jualan dari kota mana?</strong></p>
       <input class="city-search" id="city-search" type="search" placeholder="Cari kota…" value="${esc(state.cityFilter)}">
       <div class="chips" id="city-chips"></div>
@@ -1034,6 +1040,45 @@ async function fetchNaikDaunGlobal(limit = 60) {
     .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,age_days,sold_per_day')
     .order('sold_per_day', { ascending: false }).limit(limit);
   return data || [];
+}
+
+// ── Free-text search (composer + onboarding freeText bias) ──────────────
+const SEARCH_STOPWORDS = new Set(['cari','carikan','tolong','coba','tunjukkan','tampilkan','produk','barang',
+  'buat','untuk','dijual','jual','jualan','yang','dong','aku','saya','mau','bisa','lagi','dan','apa','the']);
+
+function _searchTerms(text) {
+  return String(text || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/)
+    .filter(w => w.length >= 3 && !SEARCH_STOPWORDS.has(w));
+}
+
+function parseCityFromQuery(text) {
+  const names = [...new Set([...NU_ONB_LOCATIONS, ...Object.keys(CITY_LOCATIONS)])];
+  for (const name of names) {
+    const re = new RegExp(`\\bdari\\s+(kota\\s+)?${name}\\b`, 'i');
+    if (re.test(text)) {
+      return { city: name, cleaned: text.replace(re, ' ').replace(/\s+/g, ' ').trim() };
+    }
+  }
+  return { city: '', cleaned: text };
+}
+
+async function searchListings(q, locations = [], limit = 30) {
+  if (!_supabase) return [];
+  // PostgREST .or() treats , ( ) % as syntax — strip them from user input.
+  const clean = String(q || '').replace(/[,()%]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!clean) return [];
+  try {
+    let query = _supabase.from('listings_deduped')
+      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url')
+      .or(`product_name.ilike.%${clean}%,keyword.ilike.%${clean}%`)
+      .gt('total_sold', 0)
+      .order('total_sold', { ascending: false })
+      .limit(limit);
+    if (locations.length) query = query.in('location', locations);
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data || []).map(asListingProduct);
+  } catch (_) { return []; }
 }
 
 function scoreProduct(row, o, locations) {
@@ -1572,8 +1617,17 @@ async function handleComposerSubmit(text) {
     return;
   }
 
+  const inProductCtx = state.view === 'deepdive' || activeChat()?.context?.product || activeChat()?.context?.keyword;
+
+  // "Recommend me something" intent — only outside a product conversation.
+  if (!inProductCtx && /tunjukkan|rekomendasi|jual apa|produk apa|cocok buat|mulai jual/.test(lower)) {
+    clarityEvt('gpt_intent_rec', {});
+    await startRecommendationChat(false);
+    return;
+  }
+
   // Free-text AI about product requires login
-  if (state.view === 'deepdive' || activeChat()?.context?.product || activeChat()?.context?.keyword) {
+  if (inProductCtx) {
     if (!currentUser) {
       openAuthModal('signup', 'gpt_gate_ai');
       return;
@@ -1600,15 +1654,20 @@ async function handleComposerSubmit(text) {
     // No product context — try to treat as keyword search → new recommendation-ish fetch
     if (!(await ensureSearchAllowed())) return;
     const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari di data…</p>`);
-    const rows = mergePool([], await fetchNaikDaunGlobal(200)); // dedupe: same item can sit under 2 keywords
-    const q = lower;
-    const hits = rows.filter(r =>
-      (r.product_name || '').toLowerCase().includes(q) ||
-      (r.keyword || '').toLowerCase().includes(q) ||
-      (r.category || '').toLowerCase().includes(q)
-    ).slice(0, 3);
+    const { city, cleaned } = parseCityFromQuery(text);
+    const terms = _searchTerms(cleaned);
+    const q = terms.join(' ');
+    const locations = city ? expandCityLocations(city) : [];
+    let hits = q ? await searchListings(q, locations, 30) : [];
+    if (!hits.length && terms.length > 1) hits = await searchListings(terms[0], locations, 30);
+    hits = mergePool([], hits).slice(0, 3);
     const usedFallback = !hits.length;
-    state.recommendations = hits.length ? hits : rows.slice(0, 3);
+    if (usedFallback) {
+      const rows = mergePool([], await fetchNaikDaunGlobal(200));
+      state.recommendations = rows.slice(0, 3);
+    } else {
+      state.recommendations = hits;
+    }
     if (currentUser && _supabase && !chat.id) {
       const { data } = await _supabase.rpc('gpt_new_chat', { p_title: text.slice(0, 60), p_context: { kind: 'search', q: text } });
       if (data?.allowed === false) {
@@ -1625,7 +1684,7 @@ async function handleComposerSubmit(text) {
     }
     const lead = usedFallback
       ? `Belum ketemu yang cocok persis untuk “${esc(text)}” — ini yang lagi naik daun dari data LarisID:`
-      : `Hasil dari data LarisID untuk “${esc(text)}”:`;
+      : `Hasil dari data LarisID untuk “${esc(q)}”${city ? ` dari seller sekitar <strong>${esc(city)}</strong>` : ''}:`;
     const html = state.recommendations.length
       ? `<p>${lead}</p><div class="card-grid">${state.recommendations.map((p, i) => productCardHtml(p, i)).join('')}</div>`
       : `<p>Belum ketemu. Coba kata kunci lain atau buka Produk.</p>`;
@@ -1780,7 +1839,7 @@ function goHome(e) {
     renderOnboardingStep();
     return;
   }
-  appendBubble('assistant', `<p>Beranda LARISgpt. Mulai <strong>Chat Baru</strong> untuk rekomendasi, atau tanya di kotak bawah.</p>
+  appendBubble('assistant', `<p>Beranda LARISgpt — riset produk buat jualan di Shopee, Tokopedia, atau TikTok Shop. Mulai <strong>Chat Baru</strong> untuk rekomendasi, atau tanya di kotak bawah.</p>
     <button type="button" class="btn-primary" id="welcome-new">Chat Baru</button>`);
   $('welcome-new')?.addEventListener('click', () => void newChatFlow());
   renderChatList();
@@ -1955,8 +2014,20 @@ function adminExitSample() {
   else goHome();
 }
 
+function startPlaceholderRotation() {
+  const input = $('composer-input');
+  if (!input) return;
+  let i = 0;
+  setInterval(() => {
+    if (document.activeElement === input || input.value) return;
+    i = (i + 1) % COMPOSER_EXAMPLES.length;
+    input.placeholder = COMPOSER_EXAMPLES[i];
+  }, 5000);
+}
+
 // ── Wire DOM ─────────────────────────────────────────────────────────────
 function wireUi() {
+  startPlaceholderRotation();
   $('btn-menu')?.addEventListener('click', openSidebar);
   $('sidebar-backdrop')?.addEventListener('click', closeSidebar);
   $('btn-home')?.addEventListener('click', goHome);
