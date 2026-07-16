@@ -142,7 +142,7 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260716a';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
@@ -5214,8 +5214,8 @@ html,body{overflow-x:clip;max-width:100%;}
         </div>
 
         <div class="dash-nav-item" id="dash-nav-credits" onclick="switchDashView('credits')" style="margin-top:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:12px;">
-          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
-          <span>Kredit</span>
+          <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span>
+          <span>Penggunaan</span>
           <span id="dash-nav-credit-badge" style="margin-left:auto;background:#f97316;color:#fff;font-size:.6rem;font-weight:800;border-radius:999px;padding:1px 7px;display:none;"></span>
         </div>
 
@@ -5287,10 +5287,12 @@ html,body{overflow-x:clip;max-width:100%;}
             </div>
           </div>
         </div>
-        <div class="dash-credit-pill" id="dash-topbar-credit-pill" onclick="switchDashView('credits')" title="Kredit kamu">
-          <svg class="dash-credit-pill-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          <span class="dash-credit-pill-val" id="dash-credit-pill-val">—</span>
-          <span class="dash-credit-pill-lbl">kredit</span>
+        <div class="dash-credit-pill" id="dash-topbar-credit-pill" onclick="switchDashView('credits')" title="Jatah harian kamu">
+          <svg class="dash-credit-pill-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          <span class="dash-credit-pill-val" id="dash-usage-dive">—</span>
+          <span class="dash-credit-pill-lbl">dive</span>
+          <span class="dash-credit-pill-val" id="dash-usage-ai" style="margin-left:6px;">—</span>
+          <span class="dash-credit-pill-lbl">AI</span>
         </div>
         <div id="dash-topbar-cohort-chip" class="dash-topbar-cohort-chip" style="display:none;" aria-label="Kohort"></div>
         <div class="dash-topbar-avatar" id="dash-topbar-av" onclick="event.stopPropagation();document.getElementById('dash-topbar-menu').classList.toggle('open')">
@@ -7306,11 +7308,6 @@ html,body{overflow-x:clip;max-width:100%;}
                   </div>
                 </div>
                 <div class="dd-simple-actions">
-                  <button type="button" class="dd-sact-full" onclick="ddExpandFull()">
-                    <span class="dd-sact-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
-                    <span class="dd-sact-text"><div class="dd-sact-title">Lihat Data Lengkap</div><div class="dd-sact-sub">Tren, kompetitor, keyword &amp; biaya</div></span>
-                    <span class="dd-sact-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
-                  </button>
                   <button type="button" class="dd-sact-sell" onclick="ddStartSelling()">
                     <span class="dd-sact-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
                     <span class="dd-sact-text"><div class="dd-sact-title">Mulai Berjualan</div><div class="dd-sact-sub">Siap sourcing &amp; jual produk ini</div></span>
@@ -7321,25 +7318,6 @@ html,body{overflow-x:clip;max-width:100%;}
                     <span class="dd-sact-text"><div class="dd-sact-title" id="dd-sact-track-title">Lacak Produk</div><div class="dd-sact-sub" id="dd-sact-track-sub">Kabari aku tiap harga atau penjualannya berubah</div></span>
                     <span class="dd-sact-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
                   </button>
-                  <div class="dd-teaser-strip" id="dd-teaser-strip">
-                    <div class="dd-teaser-head">Masih terkunci di Data Lengkap</div>
-                    <div class="dd-teaser-row" role="button" tabindex="0" onclick="ddTeaserOpen('analisa')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();ddTeaserOpen('analisa');}">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                      <span><strong>Analisa Pasar</strong> &mdash; permintaan &amp; benchmark pasar</span>
-                      <span class="dd-teaser-price">1 kredit</span>
-                    </div>
-                    <div class="dd-teaser-row" role="button" tabindex="0" onclick="ddTeaserOpen('tren')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();ddTeaserOpen('tren');}">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                      <span><strong>Tren Historis</strong> &mdash; omset &amp; unit 4 minggu terakhir</span>
-                      <span class="dd-teaser-price">1 kredit</span>
-                    </div>
-                    <div class="dd-teaser-row" role="button" tabindex="0" onclick="ddTeaserOpen('kompetitor')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();ddTeaserOpen('kompetitor');}">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                      <span><strong>Kompetitor</strong> &mdash; toko teratas di keyword ini</span>
-                      <span class="dd-teaser-price">1 kredit</span>
-                    </div>
-                    <div class="dd-teaser-foot">Punya 20 kredit gratis tiap bulan &middot; 5 kredit = semua data 7 hari</div>
-                  </div>
                   <div class="dd-sact-note">
                     <span class="dd-sact-note-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/><path d="M19 15l.6 1.8L21 17.4l-1.4.6L19 20l-.6-1.8L17 17.4l1.4-.6z"/></svg></span>
                     <p>Data pasar diperbarui secara berkala — cek lagi nanti untuk tren terbaru.</p>
@@ -9632,77 +9610,20 @@ html,body{overflow-x:clip;max-width:100%;}
 
       </main>
 
-      <!-- Credit gate modal -->
+      <!-- Daily usage limit modal -->
       <div class="cg-overlay" id="cg-overlay" style="display:none;" onclick="if(event.target===this)cgClose()">
         <div class="cg-modal">
-          <div class="cg-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#c05000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
-          <div class="cg-title" id="cg-title">Fitur Premium</div>
-          <div class="cg-sub" id="cg-sub">Gunakan 1 kredit untuk mengakses fitur ini.</div>
-          <div class="cg-cost"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c05000" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>1 kredit akan digunakan</div>
-          <div class="cg-btns">
-            <button class="cg-btn secondary" onclick="cgClose()">Batal</button>
-            <button class="cg-btn primary" id="cg-confirm-btn" onclick="cgConfirm()">Gunakan Kredit</button>
-          </div>
-          <div style="margin-top:12px;font-size:.72rem;color:#9CA3AF;">Saldo: <span id="cg-balance-display" style="font-weight:700;color:#f97316;">—</span> kredit • <a onclick="switchDashView('credits');cgClose()" style="color:#B5202A;cursor:pointer;text-decoration:underline;">Dapat kredit gratis</a></div>
-          <div id="cg-earn-note" style="display:none;margin-top:8px;padding:8px 10px;background:#FFF7ED;border-radius:8px;font-size:.68rem;color:#92400E;line-height:1.5;text-align:center;"></div>
-        </div>
-      </div>
-
-      <!-- B3: Deep Dive full-data unlock — per page (1 kredit) or whole product 7 hari (5 kredit) -->
-      <div class="cg-overlay" id="ddu-overlay" style="display:none;" onclick="if(event.target===this)dduClose()">
-        <div class="cg-modal">
-          <div class="cg-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#c05000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-          <div class="cg-title">Buka <span id="ddu-tab-label">Data</span></div>
-          <div class="cg-sub">Data lengkap produk ini terkunci. Pilih cara membukanya:</div>
-          <!-- blurred SAMPLE preview (static mock — real data stays server-side until unlocked) -->
-          <div style="position:relative;margin:12px 0 6px;border:1px solid #F0E7DC;border-radius:10px;overflow:hidden;background:#FDFBF6;" aria-hidden="true">
-            <div style="filter:blur(3px);opacity:.8;pointer-events:none;padding:12px 14px;">
-              <div style="display:flex;align-items:flex-end;gap:5px;height:44px;margin-bottom:10px;">
-                <span style="flex:1;background:#B5202A;border-radius:3px 3px 0 0;height:35%;"></span>
-                <span style="flex:1;background:#C9974B;border-radius:3px 3px 0 0;height:55%;"></span>
-                <span style="flex:1;background:#B5202A;border-radius:3px 3px 0 0;height:48%;"></span>
-                <span style="flex:1;background:#C9974B;border-radius:3px 3px 0 0;height:70%;"></span>
-                <span style="flex:1;background:#B5202A;border-radius:3px 3px 0 0;height:62%;"></span>
-                <span style="flex:1;background:#C9974B;border-radius:3px 3px 0 0;height:88%;"></span>
-                <span style="flex:1;background:#B5202A;border-radius:3px 3px 0 0;height:100%;"></span>
-              </div>
-              <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:6px;">
-                <span style="height:9px;flex:2;background:#E5DCC8;border-radius:4px;"></span>
-                <span style="height:9px;flex:1;background:#1A7A46;border-radius:4px;opacity:.55;"></span>
-              </div>
-              <div style="display:flex;justify-content:space-between;gap:10px;">
-                <span style="height:9px;flex:1.4;background:#E5DCC8;border-radius:4px;"></span>
-                <span style="height:9px;flex:1;background:#B45309;border-radius:4px;opacity:.5;"></span>
-              </div>
-            </div>
-            <span style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(26,26,26,.85);color:#fff;font-size:.62rem;font-weight:700;letter-spacing:.04em;padding:5px 12px;border-radius:999px;white-space:nowrap;">Contoh isi — data asli setelah dibuka</span>
-          </div>
-          <div class="cg-btns" style="flex-direction:column;gap:10px;margin-top:4px;">
-            <button class="cg-btn primary" id="ddu-btn-tab" onclick="dduChoose('tab')" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;">
-              <span>Buka halaman ini</span><span style="font-weight:800;white-space:nowrap;">1 kredit</span>
-            </button>
-            <button class="cg-btn primary" id="ddu-btn-full" onclick="dduChoose('full')" style="width:100%;background:linear-gradient(135deg,#B5202A,#8E191F);display:flex;justify-content:space-between;align-items:center;gap:10px;">
-              <span>Buka semua data · 7 hari</span><span style="font-weight:800;white-space:nowrap;">5 kredit</span>
-            </button>
-            <button class="cg-btn secondary" onclick="dduClose()" style="width:100%;">Batal</button>
-          </div>
-          <div style="margin-top:12px;font-size:.72rem;color:#9CA3AF;">Saldo: <span id="ddu-bal" style="font-weight:700;color:#f97316;">—</span> kredit · Biaya E-commerce selalu gratis</div>
-          <div style="margin-top:4px;font-size:.7rem;color:#9CA3AF;">Kredit gratis 20/bulan — tidak bisa dibeli, cuma bisa dipakai.</div>
-        </div>
-      </div>
-
-      <!-- B4: out-of-credits earn popup (Chrome extension + referral) -->
-      <div class="cg-overlay" id="cr-earn-popup" style="display:none;" onclick="if(event.target===this)crCloseEarnPopup()">
-        <div class="cg-modal">
-          <div class="cg-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#c05000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
-          <div class="cg-title">Kredit kamu habis</div>
-          <div class="cg-sub">Tenang — kamu bisa dapat lebih banyak kredit gratis, tanpa bayar:</div>
-          <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
-            <a class="cg-btn primary" href="https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae" target="_blank" rel="noopener" onclick="crCloseEarnPopup()" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;line-height:1.3;">
+          <div class="cg-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#c05000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+          <div class="cg-title" id="cg-title">Batas hari ini tercapai</div>
+          <div class="cg-sub" id="cg-sub">Jatah harian kamu sudah terpakai.</div>
+          <div class="cg-cost" id="cg-reset-line">Jatah baru tersedia besok.</div>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">
+            <a class="cg-btn primary" href="https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae" target="_blank" rel="noopener" onclick="cgClose()" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;line-height:1.3;">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg>
-              Pasang Extension Chrome · 10 pencarian = 1 kredit
+              Pasang Extension Chrome &middot; tambah 3 dive per hari
             </a>
-            <button class="cg-btn secondary" onclick="crCloseEarnPopup();switchDashView('credits');setTimeout(crScrollReferral,150)" style="width:100%;">Ajak teman · dapat 25 kredit</button>
+            <button class="cg-btn secondary" onclick="cgClose();switchDashView('credits');setTimeout(crScrollReferral,150)" style="width:100%;">Ajak teman &middot; +1 dive harian per teman (maks +5)</button>
+            <button class="cg-btn secondary" onclick="cgClose()" style="width:100%;">Tutup</button>
           </div>
         </div>
       </div>
@@ -10028,7 +9949,7 @@ html,body{overflow-x:clip;max-width:100%;}
      SITE FOOTER
 ════════════════════════════════════ -->
 
-<script defer src="/js/laris-app.js"></script>
+<script defer src="/js/laris-app.js?v=20260716a"></script>
 
   <!-- ── CONTEXTUAL ONBOARDING HINTS ── -->
   <div id="hint-overlay" aria-hidden="true" onclick="if(event.target===this)nuHintDismiss()">

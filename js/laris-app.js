@@ -3401,9 +3401,15 @@ function closeSidebar() {
   if (overlay) overlay.classList.remove('open');
 }
 
-// ── CREDITS ───────────────────────────────────────────────
-let _creditBalance = null;
-let _creditProgress = 0; // searches completed today toward next credit
+// ── DAILY USAGE (replaces credits, 2026-07-16) ────────────
+// Server-enforced: 3 deep dives/day (a dive = 7-day full access to that
+// product) + weighted AI pool 5/day. Extension paired +3 dives, referrals
+// +1 each (max +5). Resets at midnight WIB; the countdown always derives
+// from the server's seconds_until_reset, never the client clock.
+let _usage = null;          // last get_my_usage() payload
+let _usageFetchedAt = 0;    // Date.now() when _usage was fetched
+let _usageTicker = null;    // countdown re-render interval
+let _diveFailOpen = 0;      // dives granted without server ack (network hiccup), max 3/session
 
 // ── Admin floating widget ────────────────────────────────────────────────────
 const PREVIEW_MODE_KEY = 'larisid_preview_mode';
@@ -3946,66 +3952,123 @@ async function claimChest() {
     if (modalMsg)  modalMsg.textContent = `Kamu mendapat ${reward} kredit dari Peti Mingguan. Saldo baru: ${data.balance} kredit.`;
     if (modal) modal.style.display = 'flex';
     loadChestState();
-    loadCreditData();
+    loadUsage();
   } catch(e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Buka'; }
     console.warn('claimChest', e);
   }
 }
 
-async function loadCreditData() {
+async function loadUsage() {
   if (!_supabase || !currentUser) return;
   try {
-    const { data, error } = await _supabase
-      .from('user_credits')
-      .select('balance')
-      .eq('user_id', currentUser.id)
-      .single();
-    // PGRST116 = no row yet (user hasn't earned credits); treat as 0
-    _creditBalance = (!error && data) ? (data.balance ?? 0) : 0;
-    renderCreditUI();
+    const { data, error } = await _supabase.rpc('get_my_usage');
+    if (!error && data) {
+      _usage = data;
+      _usageFetchedAt = Date.now();
+      renderUsageUI();
+    }
   } catch (_) {}
 }
 
-function renderCreditUI() {
-  const unlimited = currentUser && (isPlatformAdmin() || _accessState.isLeader);
-  const bal = _creditBalance ?? 0;
-  // Sidebar badge — hide for unlimited users
-  const badge = document.getElementById('dash-nav-credit-badge');
-  if (badge) { badge.textContent = bal; badge.style.display = (!unlimited && bal > 0) ? '' : 'none'; }
-  // Topbar pill
-  const pillVal = document.getElementById('dash-credit-pill-val');
-  if (pillVal) pillVal.textContent = unlimited ? '∞' : bal;
-  // Card balance (legacy dashboard card removed)
-  const cardNum = document.getElementById('hcc-balance-num');
-  if (cardNum) cardNum.textContent = unlimited ? '∞' : bal;
-  const crNum = document.getElementById('cr-balance-num');
-  if (crNum) crNum.textContent = unlimited ? '∞' : bal;
-  // Progress bar — fetch today's completions from search_completions table
-  if (_supabase && currentUser) {
-    const today = new Date().toISOString().slice(0, 10);
-    _supabase
-      .from('search_completions')
-      .select('keyword', { count: 'exact', head: true })
-      .eq('user_id', currentUser.id)
-      .eq('completed_date', today)
-      .then(({ count, error }) => {
-        if (error) return;
-        const done = count ?? 0;
-        const max  = 10;
-        const pct  = Math.min(100, Math.round((done / max) * 100));
-        const fill = document.getElementById('hcc-prog-fill');
-        const lbl  = document.getElementById('hcc-prog-label');
-        const crFill = document.getElementById('cr-prog-fill');
-        const crLbl  = document.getElementById('cr-prog-text');
-        if (fill) fill.style.width = pct + '%';
-        if (lbl)  lbl.textContent  = `${done}/${max} pencarian hari ini`;
-        if (crFill) crFill.style.width = pct + '%';
-        if (crLbl)  crLbl.textContent  = `${done}/10 pencarian`;
-      });
+function _usageSecondsLeft() {
+  if (!_usage) return null;
+  const elapsed = Math.floor((Date.now() - _usageFetchedAt) / 1000);
+  return Math.max(0, (_usage.seconds_until_reset || 0) - elapsed);
+}
+
+// "5 j 12 m" — the wait until the daily quota resets (midnight WIB, server-computed)
+function _usageResetLabel() {
+  const s = _usageSecondsLeft();
+  if (s == null) return '';
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  return h > 0 ? `${h} j ${m} m` : `${Math.max(1, m)} m`;
+}
+
+function _usageApply(data) {
+  // Merge a use_dive/use_ai response into the cached usage snapshot
+  if (!data || data.unlimited) return;
+  _usage = _usage || {};
+  if (data.dives_used != null) _usage.dives_used = data.dives_used;
+  if (data.dive_limit != null) _usage.dive_limit = data.dive_limit;
+  if (data.ai_used != null) _usage.ai_used = data.ai_used;
+  if (data.ai_limit != null) _usage.ai_limit = data.ai_limit;
+  if (data.seconds_until_reset != null) {
+    _usage.seconds_until_reset = data.seconds_until_reset;
+    _usageFetchedAt = Date.now();
   }
-  // Low-credit nudge to invite friends (once/day; guards for admin/leader, balance, onboarding inside)
-  try { _maybeShowLowCreditRefer(); } catch (_) {}
+  renderUsageUI();
+}
+
+function renderUsageUI() {
+  const unlimited = (_usage && _usage.unlimited) || (currentUser && (isPlatformAdmin() || _accessState.isLeader));
+  const pill = document.getElementById('dash-topbar-credit-pill');
+  const dEl = document.getElementById('dash-usage-dive');
+  const aEl = document.getElementById('dash-usage-ai');
+  const badge = document.getElementById('dash-nav-credit-badge');
+  if (badge) badge.style.display = 'none';
+  if (unlimited) {
+    if (dEl) dEl.textContent = '∞';
+    if (aEl) aEl.textContent = '∞';
+    if (pill) pill.title = 'Akses tanpa batas';
+  } else if (_usage) {
+    if (dEl) dEl.textContent = `${_usage.dives_used ?? 0}/${_usage.dive_limit ?? 3}`;
+    if (aEl) aEl.textContent = `${_usage.ai_used ?? 0}/${_usage.ai_limit ?? 5}`;
+    if (pill) pill.title = `Jatah harian — reset dalam ${_usageResetLabel()}`;
+  }
+  const resetLine = document.getElementById('cg-reset-line');
+  if (resetLine && _usage) resetLine.textContent = `Jatah baru tersedia dalam ${_usageResetLabel()}.`;
+  try { _mlsAiUpdateCounter(); } catch (_) {}
+  try { if (typeof usageRenderPage === 'function') usageRenderPage(); } catch (_) {}
+  // Keep the countdown ticking; refresh from the server once the day rolls over
+  if (!_usageTicker) {
+    _usageTicker = setInterval(() => {
+      if (!_usage) return;
+      if (_usageSecondsLeft() <= 0) { loadUsage(); return; }
+      renderUsageUI();
+    }, 60000);
+  }
+}
+
+// Consume 1 daily dive for a product (idempotent server-side: re-opening an
+// already-accessed product is free). Returns true when the deep dive may open.
+// Network errors fail OPEN with a small session cap so a blip never bricks the
+// app — real enforcement is the server counter.
+async function _useDive(productKey) {
+  if (!currentUser) { try { openAuthModal('login'); } catch (_) {} return false; }
+  if (!_supabase || !productKey) return true;
+  try {
+    const { data, error } = await _supabase.rpc('use_dive', { p_product_key: productKey });
+    if (error) throw error;
+    if (data && data.allowed === false) {
+      _usageApply(data);
+      usageLimitShow('dive');
+      return false;
+    }
+    _usageApply(data);
+    if (data && !data.unlimited && data.already_accessed === false) {
+      setTimeout(_ddMaybeTrackNudge, 8000); // fresh dive = peak interest → invite tracking
+    }
+    return true;
+  } catch (_) {
+    if (_diveFailOpen >= 3) { usageLimitShow('dive'); return false; }
+    _diveFailOpen++;
+    return true;
+  }
+}
+
+// Consume from the daily AI pool (chat 1 · path 2 · photo 3 — weighted server-side).
+// Fails CLOSED: AI calls cost real money, so no ack means no generation.
+async function _useAi(action) {
+  if (_isCreditPrivileged()) return true;
+  if (!_supabase || !currentUser) { try { openAuthModal('login'); } catch (_) {} return false; }
+  try {
+    const { data, error } = await _supabase.rpc('use_ai', { p_action: action });
+    if (error) throw error;
+    if (data && data.allowed === false) { _usageApply(data); return false; }
+    _usageApply(data);
+    return true;
+  } catch (_) { return false; }
 }
 
 function scrollToCreditCard() {
@@ -4091,17 +4154,12 @@ async function _renderMonthlyCreditSchedule() {
   }
 }
 
-// ── CREDITS PAGE ─────────────────────────────────────────
+// ── CREDITS PAGE (interim: shows daily usage; full "Penggunaan" rebuild follows) ──
 async function creditsInit() {
   loadChestState();
-  const badge = document.getElementById('dash-nav-credit-badge');
-  if (badge && _creditBalance !== null) {
-    badge.textContent = _creditBalance;
-    badge.style.display = _creditBalance > 0 ? '' : 'none';
-  }
-  // Update header balance
+  await loadUsage();
   const numEl = document.getElementById('cr-balance-num');
-  if (numEl) numEl.textContent = _creditBalance ?? '—';
+  if (numEl) numEl.textContent = (_usage && _usage.unlimited) ? '∞' : `${(_usage?.dive_limit ?? 3) - (_usage?.dives_used ?? 0)}`;
 
   // Progress bar from search_completions
   if (_supabase && currentUser) {
@@ -4125,163 +4183,49 @@ async function creditsInit() {
   await _renderMonthlyCreditSchedule();
 }
 
-// ── CREDIT GATE ──────────────────────────────────────────
-let _cgCallback = null;
-let _cgAction   = 'deepdive'; // track action type for spend_credit RPC
-
-function cgShow(title, sub, callback, action) {
-  // Admin and leader bypass — no credit gate
-  if (currentUser && (isPlatformAdmin() || _accessState.isLeader)) {
-    if (callback) callback();
-    return;
+// ── DAILY LIMIT MODAL (reuses #cg-overlay) ───────────────
+function usageLimitShow(kind) {
+  const isAi = kind === 'ai';
+  const title = document.getElementById('cg-title');
+  const sub = document.getElementById('cg-sub');
+  if (title) title.textContent = isAi ? 'Batas AI hari ini tercapai' : 'Batas deep dive hari ini tercapai';
+  if (sub) {
+    const used = isAi ? (_usage?.ai_used ?? 5) : (_usage?.dives_used ?? 3);
+    const limit = isAi ? (_usage?.ai_limit ?? 5) : (_usage?.dive_limit ?? 3);
+    sub.textContent = isAi
+      ? `Kamu sudah pakai ${used}/${limit} poin AI hari ini.`
+      : `Kamu sudah pakai ${used}/${limit} deep dive hari ini.`;
   }
-  document.getElementById('cg-title').textContent = title;
-  document.getElementById('cg-sub').textContent   = sub;
-  const balEl = document.getElementById('cg-balance-display');
-  if (balEl) balEl.textContent = (_creditBalance ?? 0) + ' kredit';
-  _cgCallback = callback;
-  _cgAction   = action || 'deepdive';
+  const resetLine = document.getElementById('cg-reset-line');
+  if (resetLine) resetLine.textContent = _usage ? `Jatah baru tersedia dalam ${_usageResetLabel()}.` : 'Jatah baru tersedia besok.';
   document.getElementById('cg-overlay').style.display = 'flex';
+  void logUserEvent('usage_limit_shown', { kind });
 }
 
 function cgClose() {
   document.getElementById('cg-overlay').style.display = 'none';
-  _cgCallback = null;
-  const earnNote = document.getElementById('cg-earn-note');
-  if (earnNote) earnNote.style.display = 'none';
-}
-
-async function cgConfirm() {
-  const _isPriv = currentUser && (isPlatformAdmin() || _accessState.isLeader);
-  if (!_isPriv && (_creditBalance ?? 0) < 1) {
-    cgClose(); crOutOfCredits(); return;
-  }
-  if (_isPriv) { cgClose(); if (_cgCallback) { _cgCallback(); _cgCallback = null; } return; }
-  const btn = document.getElementById('cg-confirm-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
-  try {
-    if (_supabase && currentUser) {
-      const { data, error } = await _supabase.rpc('spend_credit', { p_keyword: _cgAction, p_amount: 1 });
-      if (!error && data != null) {
-        _creditBalance = data;
-        renderCreditUI();
-        cohortLogActivity('credit_spent', { action: _cgAction || 'unknown' });
-      }
-    }
-  } catch (_) {}
-  if (btn) { btn.disabled = false; btn.textContent = 'Gunakan Kredit'; }
-  cgClose();
-  if (_cgCallback) { _cgCallback(); _cgCallback = null; }
 }
 
 function gateDeepDive() {
-  // B1: the simple Deep Dive summary is now FREE — credits are only spent when
-  // unlocking the full-data tabs (Listing, Analisa Pasar, etc.) or the calculator.
   if (!currentUser) { openAuthModal('login'); return; }
   switchDashView('deepdive');
 }
 
-// ── PRODUCT UNLOCKS (per-tab / whole-product, credit-gated) ──────────────────
-// Free: ringkasan (simple summary) + Biaya E-commerce. Gated: each full-data tab
-// = 1 credit, OR 5 credits unlocks all tabs + the calculator for 7 days.
-let _ddUnlockKey = null;
-let _ddUnlockScopes = new Set();
-const DD_FREE_TABS = new Set(['ringkasan', 'biaya']);
-const DD_TAB_SCOPE = { listing:'tab:listing', analisa:'tab:analisa', kompetitor:'tab:kompetitor', keyword:'tab:keyword', tren:'tab:tren', kalkulator:'calc' };
-const DD_TAB_LABEL = { listing:'Listing', analisa:'Analisa Pasar', kompetitor:'Kompetitor', keyword:'Keyword', tren:'Tren Historis', kalkulator:'Kalkulator' };
-const DD_FULL_PRICE = 5, DD_TAB_PRICE = 1, DD_UNLOCK_DAYS = 7;
-
+// ── PRODUCT ACCESS ───────────────────────────────────────────────────────────
+// A deep dive grants full access to the product (all tabs + Mulai Berjualan)
+// for 7 days — consumed via use_dive() at open time. Nothing inside the deep
+// dive is gated anymore.
 function _isCreditPrivileged() { return !!(currentUser && (isPlatformAdmin() || _accessState.isLeader)); }
 function _ddProductKey(listing) {
   const l = listing || _ddCurrentP?._listing || _ddKwListing || _ddCurrentP || {};
   return (l.item_id != null) ? `item:${l.item_id}` : (l.keyword ? `kw:${l.keyword}` : null);
 }
-async function ddLoadUnlocks(listing) {
-  const key = _ddProductKey(listing);
-  _ddUnlockKey = key; _ddUnlockScopes = new Set();
-  if (!key || !_supabase || !currentUser || _isCreditPrivileged()) { ddSyncTabLocks(); return; }
-  try {
-    const { data, error } = await _supabase.rpc('get_product_unlocks', { p_product_key: key });
-    if (!error && Array.isArray(data)) data.forEach(r => _ddUnlockScopes.add(r.scope));
-  } catch (_) {}
-  ddSyncTabLocks();
-}
-
-// Lock + price chips on the gated Deep Dive tabs, so the credit model is
-// visible BEFORE a click instead of springing the unlock modal as a surprise.
-// Scoped to #dd-tabs only — .dd-tab is reused by the Mulai Berjualan tabs.
+function ddLoadUnlocks() { ddSyncTabLocks(); }
 function ddSyncTabLocks() {
-  document.querySelectorAll('#dd-tabs .dd-tab[data-tab]').forEach(el => {
-    const tab = el.dataset.tab;
-    const locked = !!DD_TAB_SCOPE[tab] && !ddTabUnlocked(tab);
-    const chip = el.querySelector('.dd-tab-lock');
-    if (locked && !chip) {
-      const s = document.createElement('span');
-      s.className = 'dd-tab-lock';
-      s.innerHTML = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>${DD_TAB_PRICE} kredit`;
-      el.appendChild(s);
-    } else if (!locked && chip) {
-      chip.remove();
-    }
-  });
+  // Sweep any lock chips a stale render might have left behind
+  document.querySelectorAll('#dd-tabs .dd-tab-lock').forEach(el => el.remove());
 }
-function ddScopeUnlocked(scope) {
-  if (_isCreditPrivileged()) return true;
-  return _ddUnlockScopes.has('full') || _ddUnlockScopes.has(scope);
-}
-function ddTabUnlocked(tab) {
-  if (_isCreditPrivileged() || DD_FREE_TABS.has(tab)) return true;
-  const scope = DD_TAB_SCOPE[tab];
-  if (!scope) return true; // unknown tab → don't gate
-  return ddScopeUnlocked(scope);
-}
-
-let _dduTab = null, _dduOnDone = null, _dduKey = null, _dduPurchased = false;
-function ddUnlockModal(tab, onDone, productKey) {
-  _dduTab = tab; _dduOnDone = onDone || null; _dduKey = productKey || _ddProductKey();
-  _dduPurchased = false;
-  document.getElementById('ddu-tab-label').textContent = DD_TAB_LABEL[tab] || 'Data';
-  document.getElementById('ddu-bal').textContent = (_creditBalance ?? 0);
-  document.getElementById('ddu-overlay').style.display = 'flex';
-  void logUserEvent('unlock_modal_shown', { tab, balance: _creditBalance ?? null });
-}
-function dduClose() {
-  // Dismissed without buying = the exact moment a user balked at the gate —
-  // the signal that separates a discovery problem from a price/value problem.
-  if (_dduTab && !_dduPurchased) void logUserEvent('unlock_modal_dismissed', { tab: _dduTab });
-  document.getElementById('ddu-overlay').style.display = 'none';
-  _dduTab = null; _dduOnDone = null; _dduKey = null; _dduPurchased = false;
-}
-async function dduChoose(mode) {
-  const tab = _dduTab, onDone = _dduOnDone;
-  if (!tab) return;
-  const key = _dduKey || _ddProductKey();
-  if (!key) { dduClose(); return; }
-  const scope  = mode === 'full' ? 'full' : DD_TAB_SCOPE[tab];
-  const amount = mode === 'full' ? DD_FULL_PRICE : DD_TAB_PRICE;
-  if (!_isCreditPrivileged() && (_creditBalance ?? 0) < amount) { dduClose(); crOutOfCredits(); return; }
-  const btn = document.getElementById(`ddu-btn-${mode}`);
-  const prev = btn ? btn.innerHTML : '';
-  if (btn) { btn.disabled = true; btn.style.opacity = '.6'; }
-  try {
-    const { data, error } = await _supabase.rpc('unlock_product', { p_product_key: key, p_scope: scope, p_amount: amount, p_days: DD_UNLOCK_DAYS });
-    if (error) {
-      if (String(error.message || '').includes('insufficient_credits')) { dduClose(); crOutOfCredits(); return; }
-      throw error;
-    }
-    if (data && data.balance != null) { _creditBalance = data.balance; renderCreditUI(); }
-    _ddUnlockScopes.add(mode === 'full' ? 'full' : scope);
-    _dduPurchased = true;
-    try { cohortLogActivity('credit_spent', { action: 'unlock_' + scope }); } catch (_) {}
-    dduClose();
-    ddSyncTabLocks();
-    if (onDone) onDone(); else ddSwitchTab(tab);
-    setTimeout(_ddMaybeTrackNudge, 1200); // unlock = peak interest → invite tracking
-  } catch (e) {
-    if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.innerHTML = prev; }
-    dduClose();
-  }
-}
+function ddTabUnlocked() { return true; }
 
 // After a paid unlock the user has proven interest — nudge them to track the
 // product (the strongest retention hook: deltas feed the bell + return strip).
@@ -4307,39 +4251,7 @@ function _ddMaybeTrackNudge() {
   } catch (_) {}
 }
 
-// B4: out of credits → credits page + earn popup (Chrome extension + referral).
-function crOutOfCredits() { switchDashView('credits'); setTimeout(crShowEarnPopup, 120); }
-function crShowEarnPopup() { const m = document.getElementById('cr-earn-popup'); if (m) m.style.display = 'flex'; }
-function crCloseEarnPopup() { const m = document.getElementById('cr-earn-popup'); if (m) m.style.display = 'none'; }
 function crScrollReferral() { document.getElementById('cr-referral-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-
-// Calculator (Mulai Berjualan) is gated at 1 credit per product — covered by the
-// product's 5-credit "full" unlock. Uses the same product_unlocks ledger.
-let _mlsUnlockKey = null, _mlsUnlockScopes = new Set();
-function _mlsProductKey() {
-  const t = _mlsContext && _mlsContext.product;
-  if (!t) return null;
-  return (t.item_id != null) ? `item:${t.item_id}` : (t.keyword ? `kw:${t.keyword}` : null);
-}
-async function mlsLoadUnlocks() {
-  const key = _mlsProductKey();
-  _mlsUnlockKey = key; _mlsUnlockScopes = new Set();
-  if (!key || !_supabase || !currentUser || _isCreditPrivileged()) return;
-  try {
-    const { data, error } = await _supabase.rpc('get_product_unlocks', { p_product_key: key });
-    if (!error && Array.isArray(data)) data.forEach(r => _mlsUnlockScopes.add(r.scope));
-  } catch (_) {}
-}
-function mlsCalcUnlocked() {
-  if (_isCreditPrivileged()) return true;
-  return _mlsUnlockScopes.has('full') || _mlsUnlockScopes.has('calc');
-}
-function mlsGateCalc(onUnlocked) {
-  if (mlsCalcUnlocked()) { onUnlocked(); return; }
-  const key = _mlsProductKey();
-  if (!key) { onUnlocked(); return; } // no product context → don't block
-  ddUnlockModal('kalkulator', () => { _ddUnlockScopes.forEach(s => _mlsUnlockScopes.add(s)); onUnlocked(); }, key);
-}
 
 // ── B6: REFERRALS ────────────────────────────────────────────────────────────
 // Capture ?ref= on landing, redeem it after signup (referrer earns 25 credits,
@@ -4528,19 +4440,14 @@ function _refDiveShareWA() {
 }
 
 // ── C: RESELLER / CREATOR PATHS + PHOTO → COPY ───────────────────────────────
-// Spend credits for an AI action (recommendations / photo analysis). Respects
-// admin/leader bypass, balance, and the per-day AI credit cap.
+// Consume the daily AI pool for a non-chat AI action (path recommendations = 2
+// points, photo analysis = 3). Signature kept from the credit era so call
+// sites stay unchanged; the weight is decided server-side from the action.
 async function mlsSpendAi(amount, action) {
-  if (_isCreditPrivileged()) return true;
-  if (!_supabase || !currentUser) { try { openAuthModal('login'); } catch (_) {} return false; }
-  if ((_creditBalance ?? 0) < amount) { crOutOfCredits(); return false; }
-  if (_mlsAiCreditsToday() >= MLS_AI_DAILY_CREDIT_CAP) return false;
-  try {
-    const { data, error } = await _supabase.rpc('spend_credit', { p_keyword: action, p_amount: amount });
-    if (error) { if (String(error.message || '').includes('insufficient_credits')) crOutOfCredits(); return false; }
-    if (data != null) { _creditBalance = data; renderCreditUI(); _mlsAiUpdateCounter(); _mlsAiAddCreditsToday(amount); }
-    return true;
-  } catch (_) { return false; }
+  const kind = /photo/.test(action) ? 'photo' : (/path/.test(action) ? 'path' : 'mls_chat');
+  const ok = await _useAi(kind);
+  if (!ok && currentUser) usageLimitShow('ai');
+  return ok;
 }
 
 // Raw AI completion via the same routing as the chat (claude-proxy, or the user's
@@ -4696,32 +4603,17 @@ function _mlsAiCounterInc() {
 function _mlsAiUpdateCounter() {
   const el = document.getElementById('mls-ai-counter');
   if (!el) return;
-  if (currentUser && (isPlatformAdmin() || _accessState.isLeader)) {
+  if ((_usage && _usage.unlimited) || (currentUser && (isPlatformAdmin() || _accessState.isLeader))) {
     el.textContent = 'Tanya tanpa batas';
     return;
   }
-  el.textContent = `${_creditBalance ?? 0} kredit · biaya 1–3 per jawaban`;
+  el.textContent = `AI hari ini: ${_usage?.ai_used ?? 0}/${_usage?.ai_limit ?? 5}`;
 }
 
-// B5: dynamic AI credit cost — charged by the detail of the answer (1–3 credits),
-// with anti-bypass limits: a per-day AI credit cap, session dedupe (re-asking the
-// same question is free), a minimum question length, and the server's 10-req/day
-// hard cap. Heavier analysis/strategy questions cost more than quick facts.
-const MLS_AI_MAX_TIER = 3, MLS_AI_DAILY_CREDIT_CAP = 12;
+// Session dedupe: re-asking the same question is free (the answer is already in
+// the thread). The daily pool itself is enforced server-side by use_ai().
 let _mlsAiAskedSet = new Set();
 function _mlsAiNorm(q) { return String(q || '').toLowerCase().replace(/\s+/g, ' ').trim(); }
-function _mlsAiDayKey() { return 'larisid_ai_cr_' + new Date().toISOString().slice(0, 10); }
-function _mlsAiCreditsToday() { return parseInt(localStorage.getItem(_mlsAiDayKey()) || '0', 10); }
-function _mlsAiAddCreditsToday(n) { try { localStorage.setItem(_mlsAiDayKey(), String(_mlsAiCreditsToday() + n)); } catch (_) {} }
-function _mlsAiCostTier(question, reply) {
-  const len = String(reply || '').length, q = String(question || '');
-  // Heavier = analysis/strategy/comparison questions (more thought than a quick fact).
-  const heavy = /(bandingk|analis|strategi|rekomendasi|saran|hitung|proyeksi|forecast|untung|margin|kalkulasi|breakdown|kenapa|mengapa|sebaikny)/i.test(q);
-  let tier = 1;                                 // short factual answer
-  if (len > 140 || heavy || q.length > 90) tier = 2;   // longer / analytical
-  if (len > 260 || (heavy && len > 140)) tier = 3;      // deep multi-factor answer
-  return Math.min(MLS_AI_MAX_TIER, Math.max(1, tier));
-}
 
 // Conversation history for the Mulai Berjualan AI chat (reset per product)
 let _mlsAiHistory = [];
@@ -4887,8 +4779,8 @@ async function mlsAiAsk(prompt) {
     return;
   }
 
-  // B5: dynamic credit cost (charged after generation by answer detail). Pre-check
-  // balance + anti-bypass here; admin/leader are exempt, and re-asking the same
+  // Daily AI pool: charged up-front (1 poin per chat question) so a generated
+  // answer is never clawed back. Admin/leader exempt; re-asking the same
   // question this session is free.
   const _isPrivileged = currentUser && (isPlatformAdmin() || _accessState.isLeader);
   const _qNorm = _mlsAiNorm(q) + '|' + (kw || '');
@@ -4899,14 +4791,8 @@ async function mlsAiAsk(prompt) {
       _mlsAiRenderThread();
       return;
     }
-    if ((_creditBalance ?? 0) < 1) {
-      _mlsAiHistory.push({ role: 'assistant', content: 'Kredit habis. Dapat kredit gratis lewat ekstensi Chrome (10 pencarian = 1 kredit) atau ajak teman (+25 kredit).' });
-      _mlsAiRenderThread();
-      crOutOfCredits();
-      return;
-    }
-    if (_mlsAiCreditsToday() >= MLS_AI_DAILY_CREDIT_CAP) {
-      _mlsAiHistory.push({ role: 'assistant', content: `Batas pemakaian AI hari ini sudah tercapai (${MLS_AI_DAILY_CREDIT_CAP} kredit). Lanjut lagi besok ya.` });
+    if (!(await _useAi('mls_chat'))) {
+      _mlsAiHistory.push({ role: 'assistant', content: `Jatah AI kamu hari ini sudah habis. Jatah baru tersedia dalam ${_usageResetLabel() || 'beberapa jam'}.` });
       _mlsAiRenderThread();
       return;
     }
@@ -4994,24 +4880,7 @@ async function mlsAiAsk(prompt) {
     _mlsAiHistory.push({ role: 'assistant', content: reply });
     _mlsAiRenderThread();
     _mlsAiCounterInc();
-    // B5: charge by answer detail (1–3 credits). Skipped for admin/leader and for
-    // a question already asked this session. Charges at most the current balance
-    // so a low-balance user is never trapped mid-answer.
-    if (!_isPrivileged && !_isRepeat && _supabase && currentUser) {
-      const tier = _mlsAiCostTier(q, reply);
-      const charge = Math.min(tier, _creditBalance ?? 0);
-      if (charge > 0) {
-        try {
-          const { data, error } = await _supabase.rpc('spend_credit', { p_keyword: 'ai_mls', p_amount: charge });
-          if (!error && data != null) {
-            _creditBalance = data; renderCreditUI(); _mlsAiUpdateCounter();
-            _mlsAiAddCreditsToday(charge);
-            try { cohortLogActivity('credit_spent', { action: 'ai_mls', amount: charge }); } catch (_) {}
-          }
-        } catch (_) {}
-      }
-      _mlsAiAskedSet.add(_qNorm);
-    }
+    if (!_isPrivileged && !_isRepeat) _mlsAiAskedSet.add(_qNorm);
   } catch (e) {
     _mlsAiHistory.push({ role: 'assistant', content: 'Gagal menghubungi AI. Coba lagi.' });
     _mlsAiRenderThread();
@@ -5209,7 +5078,7 @@ async function openProfile() {
   try { await loadAllPlans(); } catch(_) {}
   try { renderProfileSaved(); } catch(_) {}
   try { loadDashboardData(); } catch(_) {}
-  try { loadCreditData(); } catch(_) {}
+  try { loadUsage(); } catch(_) {}
   try { redeemPendingReferral(); } catch(_) {} // B6: credit the referrer if signed up via ?ref=
   try { await loadUserProfile(); } catch(_) {}
   try {
@@ -10160,6 +10029,9 @@ async function dscOpenDeepDive(key, skipNav) {
     } catch (_) { /* fall through to not-found toast below */ }
     if (!listing) { showCompareToast('Data produk belum tersedia di database'); return; }
   }
+  // Daily dive limit: 1 dive = full access to this product for 7 days.
+  // Re-opening an accessed product is free (use_dive is idempotent server-side).
+  if (!(await _useDive(_ddProductKey(listing)))) return;
   journeyMarkDiscoverClick(key);
   const omset = _dscOmset(listing);
   const monthlyUnits = listing.price > 0 ? Math.round(omset / listing.price) : 0;
@@ -10178,7 +10050,7 @@ async function dscOpenDeepDive(key, skipNav) {
   _ddKwRows = []; _ddKwListing = null; _ddKwTotal = 0; _analisa_pending = false; _tren_pending = false;
   _ddTrendCache = null;
   _ddCurrentP = p;
-  _ddExpanded = false; // every Deep Dive opens to the verdict-first screen
+  _ddExpanded = true; // deep dive lands on the full (lengkap) view; verdict panel stays on top as the summary
 
   // Switch view first so canvases are visible when Chart.js measures them
   if (!skipNav) _navSilence++;
@@ -10490,9 +10362,6 @@ function kalcCalc() {
 
 function ddSwitchTab(tab) {
   document.getElementById('dash-content')?.scrollTo(0, 0);
-  // B3: gate full-data tabs (free: ringkasan, biaya). Opens the unlock modal and
-  // returns; on successful unlock dduChoose() re-invokes ddSwitchTab(tab).
-  if (!ddTabUnlocked(tab)) { ddUnlockModal(tab); return; }
   const tabs = ['listing','ringkasan','analisa','kompetitor','keyword','tren','kalkulator','biaya'];
   tabs.forEach(t => {
     const panel = document.getElementById(`dd-tab-${t}`);
@@ -10584,7 +10453,7 @@ async function ddLoadKeywordContext(listing) {
       .limit(120);
 
     if (error || !data || !data.length) {
-      if (loadEl) loadEl.textContent = 'Data keyword tidak tersedia.';
+      _ddKwUnavailable('Data pasar belum tersedia untuk produk ini.');
       return;
     }
 
@@ -10705,8 +10574,22 @@ async function ddLoadKeywordContext(listing) {
 
   } catch(e) {
     console.error('ddLoadKeywordContext:', e);
-    if (loadEl) loadEl.textContent = 'Gagal memuat data.';
+    _ddKwUnavailable('Gagal memuat data pasar. Muat ulang halaman untuk coba lagi.');
   }
+}
+
+// Market (keyword) data failed or came back empty: resolve every surface that
+// was waiting on it with a VISIBLE state instead of an eternal spinner —
+// this was the "charts never appear" bug (analisa stuck on "Memuat data
+// pasar...", keyword tab silently blank).
+function _ddKwUnavailable(msg) {
+  const note = `<span style="font-size:.75rem;color:#6B7280;">${msg}</span>`;
+  const loadEl = document.getElementById('dd-kw-sellers-loading');
+  if (loadEl) { loadEl.style.display = ''; loadEl.textContent = msg; }
+  const s1 = document.getElementById('ap-s1');
+  if (s1) s1.innerHTML = note;
+  _analisa_pending = false;
+  if (_tren_pending) { _tren_pending = false; try { ddRenderTren(); } catch (_) {} }
 }
 
 // Updates Ringkasan stat cards and charts using real keyword peer data from Supabase.
@@ -12713,19 +12596,9 @@ function ddToggleTrack() {
     ddUpdateTrackBtn(listing);
     return;
   }
-  // Adding to tracker — require 1 credit, then alert prefs
+  // Adding to tracker — free (retention hook: deltas feed the bell + return strip)
   if (!currentUser) { openAuthModal('login'); return; }
-  cgShow(
-    'Tambah ke Tracker',
-    'Gunakan 1 kredit untuk melacak produk ini setiap bulan — update harga & penjualan otomatis.',
-    () => ddShowTrackAlertModal(listing),
-    'tracker'
-  );
-  const earnNote = document.getElementById('cg-earn-note');
-  if (earnNote) {
-    earnNote.innerHTML = 'Belum punya kredit? <a href="https://shopee.co.id" target="_blank" style="color:#92400E;font-weight:700;text-decoration:underline;">Cari produk di Shopee pakai Extension →</a><br>10 pencarian = 1 kredit gratis';
-    earnNote.style.display = 'block';
-  }
+  ddShowTrackAlertModal(listing);
 }
 
 // Syncs the two deep-dive tracking affordances (revived 2026-07-10: the Jun 23
@@ -15299,8 +15172,6 @@ function mlsInit() {
 }
 
 function mlsSwitchTab(tab) {
-  // B3: the calculator costs 1 credit per product (covered by a 5-credit full unlock).
-  if (tab === 'kalc' && !mlsCalcUnlocked()) { mlsGateCalc(() => mlsSwitchTab('kalc')); return; }
   document.querySelectorAll('#mls-tabs .dd-tab').forEach(el => {
     el.classList.toggle('active', el.dataset.tab === tab);
   });
@@ -15350,7 +15221,6 @@ async function mlsSelectProduct(val, fallbackListing) {
 
   _mlsContext = { keyword: t.keyword, product: t };
   _mlsAiResetThread();
-  try { mlsLoadUnlocks(); } catch (_) {}
   if (heroEl) heroEl.style.display = 'block';
 
   const compact = document.getElementById('mls-picker-compact');
@@ -20911,30 +20781,12 @@ function journeyUnlockFullDeepDive() {
   if (_ddCurrentP && typeof ddRefreshRingkasan === 'function') ddRefreshRingkasan();
 }
 
-// "Lihat Data Lengkap" — reveal the full Deep Dive for this open only (resets on next product).
+// Deep dives land on the full view since 2026-07-16; kept as a safe alias for
+// any stale cached HTML that still calls it.
 function ddExpandFull() {
   _ddExpanded = true;
-  void logUserEvent('deepdive_expand', {
-    item_id: _ddCurrentP?._listing?.item_id ?? _ddKwListing?.item_id ?? null,
-    score: _ddCurrentP?.score ?? null,
-  });
   journeyApplyDeepDiveChrome();
   if (_ddCurrentP && typeof ddRefreshRingkasan === 'function') ddRefreshRingkasan();
-  // Expanding reveals the hero cards, tabs and data rows above the button, so the
-  // viewport would otherwise stay parked mid-page where the button was. Jump back to
-  // the top of the freshly-expanded deep dive (covers the desktop .dash-content
-  // scroller and the mobile window scroller).
-  document.getElementById('dash-content')?.scrollTo(0, 0);
-  window.scrollTo(0, 0);
-}
-
-// Simple-view teaser row → expand the full view and go straight to that tab.
-// ddSwitchTab raises the (instrumented) unlock modal if the tab is gated —
-// discovery is free, the charge only happens on an explicit modal choice.
-function ddTeaserOpen(tab) {
-  void logUserEvent('deepdive_teaser_click', { tab });
-  ddExpandFull();
-  ddSwitchTab(tab);
 }
 
 // "Mulai Berjualan" — jump to the AI selling surface scoped to the current product.
@@ -21003,42 +20855,28 @@ function journeyApplyDiscoverChrome() {
 }
 
 function journeyApplyDeepDiveChrome() {
-  // Verdict-first for every user on every open — including platform admins.
-  // journeyBypassGating() only affects Discover caps / nav, not this screen.
-  const simple = !_ddExpanded;
+  // The deep dive always shows the full (lengkap) view: the verdict panel stays
+  // visible on top as the summary, with tabs/charts/data below it.
   const panel = document.getElementById('dd-beginner-panel');
   const main  = document.getElementById('dd-main-content');
-  const trackBtn = document.getElementById('dd-track-btn');
+  if (panel) { panel.classList.add('show'); panel.style.display = 'block'; }
+  if (main) main.classList.remove('dd-simple');
   const feeStrip = document.getElementById('dd-fee-strip');
   const tabs = document.getElementById('dd-tabs');
+  if (feeStrip) feeStrip.style.display = '';
+  if (tabs) tabs.style.display = '';
   const heroCards = main?.querySelector('.dd-hero-cards');
+  if (heroCards) heroCards.style.display = '';
   const ringkasan = document.getElementById('dd-tab-ringkasan');
-
-  if (panel) {
-    panel.classList.toggle('show', simple);
-    panel.style.display = simple ? 'block' : 'none';
-  }
-  if (main) main.classList.toggle('dd-simple', simple);
-
-  const hide = simple ? 'none' : '';
-  if (feeStrip) feeStrip.style.display = hide;
-  if (tabs) tabs.style.display = hide;
-  if (heroCards) heroCards.style.display = hide;
   if (ringkasan) {
-    ringkasan.querySelectorAll('.dd-row2, .dd-row2b, .dd-row3').forEach(el => {
-      el.style.display = hide;
-    });
+    ringkasan.querySelectorAll('.dd-row2, .dd-row2b, .dd-row3').forEach(el => { el.style.display = ''; });
   }
-  // Hide the "Next: Mulai Berjualan" pill on the quick (simple/verdict) deep-dive
-  // page — it duplicates the big "Mulai Berjualan" action button shown there. Keep
-  // it on the full-data view as the forward CTA.
-  if (trackBtn) trackBtn.style.display = simple ? 'none' : '';
-  // Real "Lacak" pill lives on the full view only (simple view has its own
-  // action button); keep its state + the tab lock chips in sync on every apply.
+  const trackBtn = document.getElementById('dd-track-btn');
+  if (trackBtn) trackBtn.style.display = '';
   const trackPill = document.getElementById('dd-track-btn2');
-  if (trackPill) trackPill.style.display = simple ? 'none' : '';
+  if (trackPill) trackPill.style.display = '';
   try { ddUpdateTrackBtn(); } catch (_) {}
-  if (!simple) { try { ddSyncTabLocks(); } catch (_) {} }
+  try { ddSyncTabLocks(); } catch (_) {}
 }
 
 // Smoothly counts a Deep Dive simple-view metric from its current value to a
