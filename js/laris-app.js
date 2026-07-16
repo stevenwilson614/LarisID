@@ -5158,6 +5158,9 @@ function switchDashView(view) {
       dscInit();
       renderForYou();
     }
+    // B8: never re-enter Discover with the filter drawer stuck half-open from
+    // a previous visit (drawer state lives in classes that survive view swaps).
+    try { dscCloseFilter(); } catch (_) {}
     nuOnbSyncDiscoverLayout();
     journeyApplyDiscoverChrome();
     journeyMarkDiscoverView();
@@ -20755,9 +20758,11 @@ function journeyApplyDiscoverChrome() {
       sub.textContent = 'Temukan peluang produk berpotensi tinggi berdasarkan data pasar terkini';
     }
   }
+  // B8: the filter button is ALWAYS visible. Hiding it for journey tier-0
+  // beginners left brand-new users with no way to open filters at all — the
+  // "no filter visible" Clarity session.
   const filterBtn = document.querySelector('.dsc-filter-btn');
-  if (filterBtn && beginner && tier === 0) filterBtn.style.display = 'none';
-  else if (filterBtn) filterBtn.style.display = '';
+  if (filterBtn) filterBtn.style.display = '';
 }
 
 function journeyApplyDeepDiveChrome() {

@@ -177,7 +177,7 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260716f';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260716g';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
@@ -4526,6 +4526,19 @@ html,body{overflow-x:clip;max-width:100%;}
 @media(hover:none){.fb-flag-btn{opacity:.55;}}
 .fb-ctx-banner{display:none;background:#F9EAE4;border:1px solid #FECACA;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:.75rem;color:#1A1A1A;align-items:center;gap:8px;}
 .fb-ctx-banner svg{flex-shrink:0;stroke:#B5202A;}
+
+/* B7: wide-monitor tiers — dashboard surfaces grow past the 1200px cap instead
+   of leaving a sea of whitespace on 1440p/4K screens. Kept at the END of this
+   style block so the overrides win the cascade at equal specificity. */
+@media(min-width:1440px){
+  .disc-main,.det-main,.det-topbar-inner,.det-recs,.mls-wrap,.dsc-page,.myt-wrap,.adm-wrap{max-width:1360px;}
+  .disc-grid{grid-template-columns:repeat(7,1fr);}
+  .det-layout{grid-template-columns:460px 1fr;}
+}
+@media(min-width:1720px){
+  .disc-main,.det-main,.det-topbar-inner,.det-recs,.mls-wrap,.dsc-page,.myt-wrap,.adm-wrap{max-width:1560px;}
+  .disc-grid{grid-template-columns:repeat(8,1fr);}
+}
 </style>
 </head>
 <body>
@@ -9881,7 +9894,7 @@ html,body{overflow-x:clip;max-width:100%;}
      SITE FOOTER
 ════════════════════════════════════ -->
 
-<script defer src="/js/laris-app.js?v=20260716f"></script>
+<script defer src="/js/laris-app.js?v=20260716g"></script>
 
   <!-- ── CONTEXTUAL ONBOARDING HINTS ── -->
   <div id="hint-overlay" aria-hidden="true" onclick="if(event.target===this)nuHintDismiss()">
