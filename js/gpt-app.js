@@ -214,6 +214,7 @@ const state = {
     pairingMode: '', // pairing | new
     pairingCategory: '',
     notes: '',
+    freeText: '', // "produk kayu" — biases recommendations
   },
   chats: [], // { id, title, context, messages[], localId? }
   activeChatId: null,
@@ -233,6 +234,8 @@ function loadLocalState() {
     const raw = JSON.parse(localStorage.getItem(GPT_STATE_KEY) || 'null');
     if (!raw) return;
     if (raw.onboarding) Object.assign(state.onboarding, raw.onboarding);
+    // Legacy steps from the 5-screen flow land on the combined optional screen.
+    if (state.onboarding.step === 'pairing' || state.onboarding.step === 'pairing_cat') state.onboarding.step = 'notes';
     if (Array.isArray(raw.chats)) state.chats = raw.chats;
     if (raw.activeChatId) state.activeChatId = raw.activeChatId;
     if (raw.pendingDeepdive) state.pendingDeepdive = raw.pendingDeepdive;
@@ -797,86 +800,99 @@ function renderOnboardingStep() {
   } else if (o.step === 'category') {
     appendBubble('assistant', `
       <p>Oke, <strong>${esc(o.city)}</strong>.</p>
-      <p><strong>Kategori apa yang menarik buat kamu?</strong> (pilih 1–3)</p>
+      <p><strong>Produk apa yang mau kamu jual?</strong> (pilih kategori, boleh 1–3)</p>
       <div class="chips" id="cat-chips"></div>
-      <button type="button" class="btn-primary" id="cat-next" ${o.categories.length ? '' : 'disabled'}>Lanjut</button>
+      <input class="city-search" id="onb-free" type="text" placeholder="Atau ketik spesifik — misal: produk kayu, perlengkapan mancing…" value="${esc(o.freeText || '')}" style="margin-top:14px;max-width:100%">
+      <button type="button" class="btn-primary" id="cat-next" ${o.categories.length || (o.freeText || '').trim() ? '' : 'disabled'}>Lanjut</button>
     `, { skipScroll: true });
     renderCatChips();
+    $('onb-free')?.addEventListener('input', e => {
+      o.freeText = e.target.value;
+      const next = $('cat-next');
+      if (next) next.disabled = !(o.categories.length || o.freeText.trim());
+    });
     $('cat-next')?.addEventListener('click', () => {
-      if (!o.categories.length) return;
+      o.freeText = ($('onb-free')?.value || '').trim();
+      if (!o.categories.length && !o.freeText) return;
       o.step = 'experience';
       saveLocalState();
       renderOnboardingStep();
     });
   } else if (o.step === 'experience') {
+    // Fork: straight to results, or one optional detail screen ('notes').
+    appendBubble('assistant', `
+      <p><strong>Mau langsung lihat hasil, atau tambah sedikit info biar rekomendasinya makin pas?</strong></p>
+      <button type="button" class="btn-primary" id="onb-results-now">Langsung lihat hasil</button>
+      <button type="button" class="btn-ghost" id="onb-more-info">Tambah info biar makin pas</button>
+    `, { skipScroll: true });
+    $('onb-results-now')?.addEventListener('click', () => { void finishOnboarding(); });
+    $('onb-more-info')?.addEventListener('click', () => {
+      o.step = 'notes';
+      saveLocalState();
+      renderOnboardingStep();
+    });
+  } else if (o.step === 'notes') {
+    // Combined optional screen: experience → (pairing + current category) → notes.
     appendBubble('assistant', `
       <p><strong>Kamu penjual baru atau sudah berpengalaman?</strong></p>
-      <div class="chips">
-        <button type="button" class="chip" data-exp="first_time">Penjual baru</button>
-        <button type="button" class="chip" data-exp="existing">Sudah berpengalaman</button>
+      <div class="chips" id="exp-chips">
+        <button type="button" class="chip${o.experience === 'first_time' ? ' selected' : ''}" data-exp="first_time">Penjual baru</button>
+        <button type="button" class="chip${o.experience === 'existing' ? ' selected' : ''}" data-exp="existing">Sudah berpengalaman</button>
       </div>
-    `, { skipScroll: true });
-    thread.querySelectorAll('[data-exp]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        o.experience = btn.getAttribute('data-exp');
-        o.step = o.experience === 'existing' ? 'pairing' : 'notes';
-        saveLocalState();
-        renderOnboardingStep();
-      });
-    });
-  } else if (o.step === 'pairing') {
-    appendBubble('assistant', `
-      <p><strong>Mau produk yang cocok dipasangkan dengan produk kamu sekarang, atau coba yang benar-benar baru?</strong></p>
-      <div class="chips">
-        <button type="button" class="chip" data-pair="pairing">Pasangkan dengan yang sekarang</button>
-        <button type="button" class="chip" data-pair="new">Coba yang benar-benar baru</button>
+      <div id="onb-pairing-wrap" style="display:${o.experience === 'existing' ? '' : 'none'}">
+        <p style="margin-top:14px"><strong>Mau produk yang cocok dipasangkan dengan produk kamu sekarang, atau coba yang benar-benar baru?</strong></p>
+        <div class="chips" id="pair-chips">
+          <button type="button" class="chip${o.pairingMode === 'pairing' ? ' selected' : ''}" data-pair="pairing">Pasangkan dengan yang sekarang</button>
+          <button type="button" class="chip${o.pairingMode === 'new' ? ' selected' : ''}" data-pair="new">Coba yang benar-benar baru</button>
+        </div>
+        <div id="onb-paircat-wrap" style="display:${o.pairingMode === 'pairing' ? '' : 'none'}">
+          <p style="margin-top:14px"><strong>Produk kamu sekarang di kategori mana?</strong></p>
+          <div class="chips" id="pair-cat-chips"></div>
+        </div>
       </div>
+      <p style="margin-top:14px"><strong>Ada info lain tentang kamu?</strong> (opsional)</p>
+      <textarea class="free-text" id="onb-notes" placeholder="Misal: modal kecil, kirim dari kos, mau dropship…">${esc(o.notes)}</textarea>
+      <button type="button" class="btn-primary" id="onb-finish">Lihat rekomendasi</button>
     `, { skipScroll: true });
-    thread.querySelectorAll('[data-pair]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        o.pairingMode = btn.getAttribute('data-pair');
-        if (o.pairingMode === 'pairing') {
-          o.step = 'pairing_cat';
-        } else {
-          o.step = 'notes';
-        }
-        saveLocalState();
-        renderOnboardingStep();
-      });
-    });
-  } else if (o.step === 'pairing_cat') {
-    appendBubble('assistant', `
-      <p><strong>Produk kamu sekarang di kategori mana?</strong></p>
-      <div class="chips" id="pair-cat-chips"></div>
-    `, { skipScroll: true });
-    const wrap = $('pair-cat-chips');
-    if (wrap) {
+    const pairingWrap = $('onb-pairing-wrap');
+    const paircatWrap = $('onb-paircat-wrap');
+    const renderPairCats = () => {
+      const wrap = $('pair-cat-chips');
+      if (!wrap || wrap.dataset.ready) return;
+      wrap.dataset.ready = '1';
       wrap.innerHTML = NU_ONB_CATS.map(c => {
         const slug = CAT_SLUG[c];
-        return `<button type="button" class="chip cat" data-pcat="${esc(c)}"><img src="/images/onboarding/categories/${slug}.png" alt="" width="28" height="28">${esc(c)}</button>`;
+        const sel = o.pairingCategory === c ? ' selected' : '';
+        return `<button type="button" class="chip cat${sel}" data-pcat="${esc(c)}"><img src="/images/onboarding/categories/${slug}.png" alt="" width="28" height="28">${esc(c)}</button>`;
       }).join('');
       wrap.querySelectorAll('[data-pcat]').forEach(btn => {
         btn.addEventListener('click', () => {
           o.pairingCategory = btn.getAttribute('data-pcat');
-          o.step = 'notes';
+          wrap.querySelectorAll('.chip').forEach(c => c.classList.toggle('selected', c === btn));
           saveLocalState();
-          renderOnboardingStep();
         });
       });
-    }
-  } else if (o.step === 'notes') {
-    appendBubble('assistant', `
-      <p><strong>Ada info lain tentang kamu?</strong> (opsional)</p>
-      <textarea class="free-text" id="onb-notes" placeholder="Misal: modal kecil, kirim dari kos, mau dropship…">${esc(o.notes)}</textarea>
-      <button type="button" class="btn-primary" id="onb-finish">Lihat rekomendasi</button>
-      <button type="button" class="btn-ghost" id="onb-skip">Lewati</button>
-    `, { skipScroll: true });
-    $('onb-finish')?.addEventListener('click', () => {
-      o.notes = $('onb-notes')?.value.trim() || '';
-      void finishOnboarding();
+    };
+    if (o.pairingMode === 'pairing') renderPairCats();
+    thread.querySelectorAll('#exp-chips [data-exp]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        o.experience = btn.getAttribute('data-exp');
+        $('exp-chips').querySelectorAll('.chip').forEach(c => c.classList.toggle('selected', c === btn));
+        if (pairingWrap) pairingWrap.style.display = o.experience === 'existing' ? '' : 'none';
+        saveLocalState();
+      });
     });
-    $('onb-skip')?.addEventListener('click', () => {
-      o.notes = '';
+    thread.querySelectorAll('#pair-chips [data-pair]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        o.pairingMode = btn.getAttribute('data-pair');
+        $('pair-chips').querySelectorAll('.chip').forEach(c => c.classList.toggle('selected', c === btn));
+        if (paircatWrap) paircatWrap.style.display = o.pairingMode === 'pairing' ? '' : 'none';
+        if (o.pairingMode === 'pairing') renderPairCats();
+        saveLocalState();
+      });
+    });
+    $('onb-finish')?.addEventListener('click', () => {
+      o.notes = ($('onb-notes')?.value || '').trim();
       void finishOnboarding();
     });
   }
@@ -928,7 +944,7 @@ async function finishOnboarding() {
   state.onboarding.step = 'done';
   saveLocalState();
   await persistOnboardingPrefs();
-  void logUserEvent('onboarding_complete', { ui: 'gpt', region: state.onboarding.city, categories: state.onboarding.categories, seller_status: state.onboarding.experience });
+  void logUserEvent('onboarding_complete', { ui: 'gpt', region: state.onboarding.city, categories: state.onboarding.categories, seller_status: state.onboarding.experience, free_text: (state.onboarding.freeText || '').slice(0, 80) });
   clarityEvt('onboarding_complete', { ui: 'gpt' });
   await startRecommendationChat(true);
 }
@@ -1081,11 +1097,16 @@ async function searchListings(q, locations = [], limit = 30) {
   } catch (_) { return []; }
 }
 
-function scoreProduct(row, o, locations) {
+function scoreProduct(row, o, locations, ftTerms) {
   const cats = o.categories || [];
   const spd = Number(row.sold_per_day) || 0;
   const sold = Number(row.total_sold) || 0;
   let s = spd * 12 + Math.log10(sold + 1) * 8;
+
+  if (ftTerms && ftTerms.length) {
+    const hay = `${row.product_name || ''} ${row.keyword || ''}`.toLowerCase();
+    if (ftTerms.some(t => hay.includes(t))) s += 150;
+  }
 
   const inCat = catMatches(row.category, cats);
   const inCity = locMatches(row.location, locations);
@@ -1122,6 +1143,15 @@ async function pickRecommendations() {
   let pool = [];
   let tier = 'empty';
 
+  // Tier 0: explicit free-text interest ("produk kayu") — strongest signal
+  const ftTerms = _searchTerms(o.freeText || '');
+  if (ftTerms.length) {
+    let ft = await searchListings(ftTerms.join(' '), locations, 60);
+    if (!ft.length) ft = await searchListings(ftTerms[0], [], 40);
+    mergePool(pool, ft);
+    if (pool.length) tier = 'free_text';
+  }
+
   // Tier 1: top sellers in seller’s metro + chosen categories (primary signal)
   if (locations.length && cats.length) {
     const cityCat = await fetchListingsCityCat(locations, cats, 100);
@@ -1150,7 +1180,7 @@ async function pickRecommendations() {
     if (tier === 'empty') tier = 'global';
   }
 
-  const scored = pool.map(r => ({ r, s: scoreProduct(r, o, locations) })).sort((a, b) => b.s - a.s);
+  const scored = pool.map(r => ({ r, s: scoreProduct(r, o, locations, ftTerms) })).sort((a, b) => b.s - a.s);
   const seen = new Set();
   const out = [];
   for (const { r } of scored) {
@@ -1253,6 +1283,7 @@ async function startRecommendationChat(fromOnboarding) {
     pairingMode: state.onboarding.pairingMode,
     pairingCategory: state.onboarding.pairingCategory,
     notes: state.onboarding.notes,
+    freeText: state.onboarding.freeText || '',
     kind: 'recommendation',
   };
 
@@ -1294,9 +1325,12 @@ async function startRecommendationChat(fromOnboarding) {
   if (thread) thread.innerHTML = '';
 
   const catsLabel = (state.onboarding.categories || []).slice(0, 2).join(', ');
+  const ft = (state.onboarding.freeText || '').trim();
   const frame = state.onboarding.pairingMode === 'pairing'
     ? `Berdasarkan data tren (naik daun) di kategori yang berdekatan dengan <strong>${esc(state.onboarding.pairingCategory || '')}</strong> — ini rekomendasi berbasis data, bukan tebakan AI.`
-    : `Produk terlaris${catsLabel ? ` di <strong>${esc(catsLabel)}</strong>` : ''}${state.onboarding.city ? ` dari seller sekitar <strong>${esc(state.onboarding.city)}</strong>` : ''} — dari data Shopee LarisID, bukan tebakan AI.`;
+    : ft
+      ? `Produk sesuai “<strong>${esc(ft)}</strong>”${state.onboarding.city ? ` dari seller sekitar <strong>${esc(state.onboarding.city)}</strong>` : ''} — dari data Shopee LarisID, bukan tebakan AI.`
+      : `Produk terlaris${catsLabel ? ` di <strong>${esc(catsLabel)}</strong>` : ''}${state.onboarding.city ? ` dari seller sekitar <strong>${esc(state.onboarding.city)}</strong>` : ''} — dari data Shopee LarisID, bukan tebakan AI.`;
 
   appendBubble('assistant', `<p>${fromOnboarding ? 'Siap. ' : ''}${frame}</p><p style="opacity:.7;animation:pulseSoft 1.2s infinite">Memuat rekomendasi…</p>`);
 
@@ -1792,6 +1826,7 @@ function cloneOnboarding(o) {
     pairingMode: o.pairingMode,
     pairingCategory: o.pairingCategory,
     notes: o.notes,
+    freeText: o.freeText || '',
   };
 }
 
@@ -1968,6 +2003,7 @@ function adminSampleAsUser(row) {
     pairingMode: '',
     pairingCategory: '',
     notes: '',
+    freeText: '',
   };
   _admSample = {
     mode: 'user',
@@ -1991,6 +2027,7 @@ function adminSampleNewUser() {
     pairingMode: '',
     pairingCategory: '',
     notes: '',
+    freeText: '',
   };
   state.activeChatId = null;
   _admSample = { mode: 'new', label: 'user baru' };
