@@ -16,6 +16,9 @@ const _LID_SIGNUP_DONE_KEY = '_lid_signup_done_v1';
 const GPT_STATE_KEY = '_lid_gpt_state_v1';
 const ANON_LIMIT_KEY = '_lid_gpt_anon_searches_v1';
 const PAGE_SIZE = 60;
+let _admSample = null; // admin sample view: { mode: 'user'|'new', label }
+let _onboardingBackup = null;
+let _adminUsers = [];
 
 function _lidIsNewSignup(user) {
   if (!user) return false;
@@ -159,7 +162,7 @@ function _funnelIsDup(eventType, metadata) {
 }
 
 async function logUserEvent(eventType, metadata) {
-  if (!_supabase || !currentUser) return;
+  if (!_supabase || !currentUser || _admSample) return;
   if (_funnelIsDup(eventType, metadata)) return;
   try {
     await _supabase.from('activity_events').insert({
@@ -210,6 +213,8 @@ const state = {
   activeChatId: null,
   recommendations: [],
   deepdiveProduct: null,
+  pendingDeepdive: null, // product clicked behind the login gate; opened after sign-in
+
   dirPage: 1,
   dirCat: null,
   dirRows: [],
@@ -224,6 +229,7 @@ function loadLocalState() {
     if (raw.onboarding) Object.assign(state.onboarding, raw.onboarding);
     if (Array.isArray(raw.chats)) state.chats = raw.chats;
     if (raw.activeChatId) state.activeChatId = raw.activeChatId;
+    if (raw.pendingDeepdive) state.pendingDeepdive = raw.pendingDeepdive;
   } catch (_) {}
 }
 function saveLocalState() {
@@ -232,6 +238,7 @@ function saveLocalState() {
       onboarding: state.onboarding,
       chats: state.chats,
       activeChatId: state.activeChatId,
+      pendingDeepdive: state.pendingDeepdive || null,
       ts: Date.now(),
     }));
   } catch (_) {}
@@ -304,14 +311,17 @@ function $(id) { return document.getElementById(id); }
 
 function setView(name) {
   state.view = name;
-  ['chat', 'deepdive', 'directory', 'harga'].forEach(v => {
+  ['chat', 'deepdive', 'directory', 'harga', 'admin'].forEach(v => {
     const el = $(`view-${v}`);
     if (el) el.classList.toggle('active', v === name);
   });
-  ['btn-produk', 'btn-harga'].forEach(id => {
+  ['btn-produk', 'btn-harga', 'btn-admin'].forEach(id => {
     const el = $(id);
     if (!el) return;
-    el.classList.toggle('active', (id === 'btn-produk' && name === 'directory') || (id === 'btn-harga' && name === 'harga'));
+    el.classList.toggle('active',
+      (id === 'btn-produk' && name === 'directory') ||
+      (id === 'btn-harga' && name === 'harga') ||
+      (id === 'btn-admin' && name === 'admin'));
   });
   closeSidebar();
 }
@@ -323,6 +333,30 @@ function openSidebar() {
 function closeSidebar() {
   $('sidebar')?.classList.remove('open');
   $('sidebar-backdrop')?.classList.remove('open');
+}
+
+const PLATFORM_ADMIN_EMAILS = ['stevenwilson614@gmail.com'];
+let _accessState = { loaded: false, isAdmin: false };
+
+function isPlatformAdmin() {
+  const email = String(currentUser?.email || '').toLowerCase();
+  return !!(currentUser && (_accessState.isAdmin || PLATFORM_ADMIN_EMAILS.includes(email)));
+}
+
+async function loadCurrentAccess() {
+  if (!_supabase || !currentUser) {
+    _accessState = { loaded: false, isAdmin: false };
+    return;
+  }
+  const email = String(currentUser.email || '').toLowerCase();
+  let isAdmin = PLATFORM_ADMIN_EMAILS.includes(email);
+  try {
+    const { data, error } = await _supabase.rpc('current_app_role');
+    if (!error && data === 'admin') isAdmin = true;
+  } catch (_) {}
+  _accessState = { loaded: true, isAdmin };
+  const btn = $('btn-admin');
+  if (btn) btn.style.display = isAdmin ? '' : 'none';
 }
 
 function updateAccountUI() {
@@ -341,7 +375,10 @@ function updateAccountUI() {
     if (authH) authH.hidden = false;
     if (userH) userH.hidden = true;
   }
+  const btn = $('btn-admin');
+  if (btn) btn.style.display = isPlatformAdmin() ? '' : 'none';
   renderChatList();
+  renderAdminSampleBanner();
 }
 
 function renderChatList() {
@@ -524,6 +561,17 @@ async function _authOnSignIn(session) {
       _clarity('set', 'signup_source', String(src).slice(0, 120));
       _clarity('set', 'ab_variant_at_signup', String(attr.ab_variant || 'B'));
       setTimeout(() => { void logUserEvent('signup_attribution', attr); }, 2500);
+      // Funnel parity with A: on B, onboarding and the first recommendations
+      // happen BEFORE signup (RLS blocks anon writes), so replay those stages
+      // into activity_events once the session can write.
+      setTimeout(() => {
+        if (state.onboarding.step === 'done') {
+          void logUserEvent('onboarding_complete', { ui: 'gpt', retro: true, region: state.onboarding.city, categories: state.onboarding.categories, seller_status: state.onboarding.experience });
+        }
+        if (state.chats.length || state.recommendations.length) {
+          void logUserEvent('discover_view', { ui: 'gpt', retro: true });
+        }
+      }, 3000);
     }
   } catch (_) {}
 
@@ -539,9 +587,18 @@ async function _authOnSignIn(session) {
 
   _clearSessionRestoring();
   updateAccountUI();
+  await loadCurrentAccess();
   await persistOnboardingPrefs();
   await migrateLocalChatsToDb();
   saveLocalState();
+
+  // Continue where the login gate interrupted: open the product they clicked.
+  if (state.pendingDeepdive) {
+    const p = state.pendingDeepdive;
+    state.pendingDeepdive = null;
+    saveLocalState();
+    void openDeepDive(p);
+  }
 }
 
 async function initSupabase() {
@@ -589,7 +646,7 @@ async function signOut() {
 
 // ── Persist onboarding ───────────────────────────────────────────────────
 async function persistOnboardingPrefs() {
-  if (!currentUser || !_supabase) return;
+  if (!currentUser || !_supabase || _admSample) return;
   const o = state.onboarding;
   if (!o.city && !o.categories.length) return;
   try {
@@ -870,8 +927,108 @@ async function finishOnboarding() {
   await startRecommendationChat(true);
 }
 
-// ── Recommendations ──────────────────────────────────────────────────────
-async function fetchNaikDaun(limit = 200) {
+// ── Recommendations (city + category first) ──────────────────────────────
+// Exact Shopee location strings (same clusters as A’s YLK) so `.in('location', …)` hits.
+const CITY_LOCATIONS = {
+  Jakarta: [
+    'Jakarta Barat', 'Jakarta Timur', 'Jakarta Selatan', 'Jakarta Utara', 'Jakarta Pusat',
+    'Kota Tangerang', 'Tangerang Selatan', 'Kab. Tangerang', 'Tangerang',
+    'Kota Bekasi', 'Kab. Bekasi', 'Bekasi',
+    'Kota Depok', 'Depok', 'Kota Bogor', 'Kab. Bogor', 'Bogor',
+  ],
+  Bekasi: ['Kota Bekasi', 'Kab. Bekasi', 'Bekasi', 'Jakarta Timur', 'Jakarta Utara', 'Cikarang'],
+  Depok: ['Kota Depok', 'Depok', 'Jakarta Selatan', 'Bogor', 'Kota Bogor', 'Kab. Bogor'],
+  Tangerang: ['Kota Tangerang', 'Tangerang Selatan', 'Kab. Tangerang', 'Tangerang', 'Jakarta Barat'],
+  Bogor: ['Kota Bogor', 'Kab. Bogor', 'Bogor', 'Depok', 'Kota Depok'],
+  Bandung: ['Bandung', 'Kota Bandung', 'Kab. Bandung', 'Kab. Bandung Barat', 'Cimahi', 'Kota Cimahi'],
+  Semarang: ['Semarang', 'Kota Semarang', 'Kab. Semarang'],
+  Yogyakarta: ['Yogyakarta', 'Kota Yogyakarta', 'Sleman', 'Kab. Sleman', 'Bantul', 'Kab. Bantul'],
+  Surabaya: ['Surabaya', 'Sidoarjo', 'Kab. Sidoarjo', 'Gresik', 'Kab. Gresik'],
+  Sidoarjo: ['Sidoarjo', 'Kab. Sidoarjo', 'Surabaya', 'Gresik', 'Kab. Gresik'],
+  Medan: ['Medan', 'Kota Medan', 'Kab. Deli Serdang'],
+  Makassar: ['Makassar', 'Kota Makassar'],
+  Palembang: ['Palembang', 'Kota Palembang'],
+  Denpasar: ['Denpasar', 'Kota Denpasar', 'Badung', 'Kab. Badung'],
+};
+
+function expandCityLocations(city) {
+  if (!city) return [];
+  return CITY_LOCATIONS[city] || [city];
+}
+
+function locMatches(loc, locations) {
+  const l = String(loc || '').toLowerCase();
+  if (!l || !locations.length) return false;
+  return locations.some(h => l.includes(String(h).toLowerCase()) || String(h).toLowerCase().includes(l));
+}
+
+function catMatches(cat, cats) {
+  const c = String(cat || '').toLowerCase().trim();
+  if (!c || !cats?.length) return false;
+  return cats.some(wanted => {
+    const w = String(wanted).toLowerCase().trim();
+    if (!w) return false;
+    if (c === w) return true;
+    if (c.includes(w) || w.includes(c)) return true;
+    const w0 = w.split(/[\s&/]+/)[0];
+    const c0 = c.split(/[\s&/]+/)[0];
+    return w0 && c0 && (c0 === w0 || c.includes(w0));
+  });
+}
+
+function asListingProduct(r) {
+  return {
+    ...r,
+    sold_per_day: Number(r.sold_per_day) > 0
+      ? Number(r.sold_per_day)
+      : Math.max(0.1, (Number(r.total_sold) || 0) / 90),
+    age_days: r.age_days != null ? r.age_days : 90,
+  };
+}
+
+async function fetchListingsCityCat(locations, cats, limit = 80) {
+  if (!_supabase || !locations.length) return [];
+  try {
+    let q = _supabase.from('listings_deduped')
+      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url')
+      .in('location', locations)
+      .order('total_sold', { ascending: false })
+      .limit(limit);
+    if (cats.length) q = q.in('category', cats);
+    const { data, error } = await q;
+    if (error) throw error;
+    return (data || []).map(asListingProduct);
+  } catch (_) { return []; }
+}
+
+async function fetchNaikDaunCityCat(locations, cats, limit = 80) {
+  if (!_supabase) return [];
+  try {
+    let q = _supabase.from('mv_naik_daun')
+      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,age_days,sold_per_day')
+      .order('sold_per_day', { ascending: false })
+      .limit(limit);
+    if (locations.length) q = q.in('location', locations);
+    if (cats.length) q = q.in('category', cats);
+    const { data, error } = await q;
+    if (error) throw error;
+    return data || [];
+  } catch (_) { return []; }
+}
+
+async function fetchNaikDaunByCat(cats, limit = 120) {
+  if (!_supabase || !cats.length) return [];
+  try {
+    const { data } = await _supabase.from('mv_naik_daun')
+      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,age_days,sold_per_day')
+      .in('category', cats)
+      .order('sold_per_day', { ascending: false })
+      .limit(limit);
+    return data || [];
+  } catch (_) { return []; }
+}
+
+async function fetchNaikDaunGlobal(limit = 60) {
   if (!_supabase) return [];
   const { data } = await _supabase.from('mv_naik_daun')
     .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,age_days,sold_per_day')
@@ -879,38 +1036,89 @@ async function fetchNaikDaun(limit = 200) {
   return data || [];
 }
 
-function scoreProduct(row, o) {
-  let s = Number(row.sold_per_day) || 0;
+function scoreProduct(row, o, locations) {
   const cats = o.categories || [];
-  if (cats.length && cats.some(c => (row.category || '').toLowerCase().includes(c.toLowerCase().slice(0, 5)))) s += 50;
-  if (o.city && (row.location || '').toLowerCase().includes(o.city.toLowerCase())) s += 20;
+  const spd = Number(row.sold_per_day) || 0;
+  const sold = Number(row.total_sold) || 0;
+  let s = spd * 12 + Math.log10(sold + 1) * 8;
+
+  const inCat = catMatches(row.category, cats);
+  const inCity = locMatches(row.location, locations);
+
+  if (inCat && inCity) s += 250;
+  else if (inCat) s += 120;
+  else if (inCity) s += 50;
+
+  if (o.city && String(row.location || '').toLowerCase().includes(String(o.city).toLowerCase())) s += 50;
+
   if (o.pairingMode === 'pairing' && o.pairingCategory) {
-    const pc = o.pairingCategory.toLowerCase();
-    if ((row.category || '').toLowerCase().includes(pc.slice(0, 5))) s += 40;
-  }
-  if (o.pairingMode === 'new' && cats.length) {
-    // Prefer rising outside exact category match slightly less — still allow
-    if (!cats.some(c => (row.category || '').toLowerCase().includes(c.toLowerCase().slice(0, 5)))) s += 15;
+    if (catMatches(row.category, [o.pairingCategory])) s += 90;
+  } else if (o.pairingMode === 'new' && inCat) {
+    s += 25;
   }
   return s;
 }
 
+function mergePool(pool, rows) {
+  const have = new Set(pool.map(r => `${r.item_id}_${r.shop_id}`));
+  for (const r of rows || []) {
+    const key = `${r.item_id}_${r.shop_id}`;
+    if (have.has(key)) continue;
+    pool.push(r);
+    have.add(key);
+  }
+  return pool;
+}
+
 async function pickRecommendations() {
-  const rows = await fetchNaikDaun(200);
   const o = state.onboarding;
-  const scored = rows.map(r => ({ r, s: scoreProduct(r, o) })).sort((a, b) => b.s - a.s);
+  const cats = (o.categories || []).slice();
+  const locations = expandCityLocations(o.city);
+  let pool = [];
+  let tier = 'empty';
+
+  // Tier 1: top sellers in seller’s metro + chosen categories (primary signal)
+  if (locations.length && cats.length) {
+    const cityCat = await fetchListingsCityCat(locations, cats, 100);
+    const naikCityCat = await fetchNaikDaunCityCat(locations, cats, 60);
+    pool = mergePool(mergePool([], naikCityCat), cityCat);
+    if (pool.length) tier = 'city_category';
+  }
+
+  // Tier 2: rising products in category anywhere
+  if (pool.length < 3 && cats.length) {
+    const catOnly = await fetchNaikDaunByCat(cats, 120);
+    mergePool(pool, catOnly);
+    if (pool.length >= 3) tier = tier === 'empty' ? 'category' : tier;
+  }
+
+  // Tier 3: best sellers in city (any category) — still local competition signal
+  if (pool.length < 3 && locations.length) {
+    const cityOnly = await fetchListingsCityCat(locations, [], 80);
+    mergePool(pool, cityOnly);
+    if (cityOnly.length) tier = tier === 'empty' ? 'city' : tier;
+  }
+
+  // Tier 4: global rising fallback
+  if (pool.length < 3) {
+    mergePool(pool, await fetchNaikDaunGlobal(60));
+    if (tier === 'empty') tier = 'global';
+  }
+
+  const scored = pool.map(r => ({ r, s: scoreProduct(r, o, locations) })).sort((a, b) => b.s - a.s);
   const seen = new Set();
   const out = [];
   for (const { r } of scored) {
     const key = `${r.item_id}_${r.shop_id}`;
     if (seen.has(key)) continue;
     seen.add(key);
+    r._recTier = tier;
     out.push(r);
     if (out.length >= 3) break;
   }
-  // Enrich with niche breakout when possible
+
   for (const p of out) {
-    if (!p.keyword) continue;
+    if (!p.keyword || !_supabase) continue;
     try {
       const { data } = await _supabase.from('mv_niche_breakout')
         .select('keyword,breakout_rate,new_items,breakouts')
@@ -941,10 +1149,12 @@ function productCardHtml(p, i) {
   const name = p.product_name || p.keyword || 'Produk';
   const key = `${p.item_id}|${p.shop_id}`;
   const omset = estOmsetBulan(p);
+  const loc = p.location ? `<div class="prod-card-loc">${esc(p.location)}</div>` : '';
   return `<button type="button" class="prod-card" data-prod="${esc(key)}" style="animation-delay:${i * 0.06}s">
     ${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : '<div class="prod-card-ph"></div>'}
     <div class="prod-card-body">
       <div class="prod-card-name">${esc(name)}</div>
+      ${loc}
       <div class="prod-card-stats">
         <div class="prod-stat">
           <span class="prod-stat-lbl">Harga</span>
@@ -1038,9 +1248,10 @@ async function startRecommendationChat(fromOnboarding) {
   const thread = $('chat-thread');
   if (thread) thread.innerHTML = '';
 
+  const catsLabel = (state.onboarding.categories || []).slice(0, 2).join(', ');
   const frame = state.onboarding.pairingMode === 'pairing'
     ? `Berdasarkan data tren (naik daun) di kategori yang berdekatan dengan <strong>${esc(state.onboarding.pairingCategory || '')}</strong> — ini rekomendasi berbasis data, bukan tebakan AI.`
-    : `Berdasarkan data tren penjualan Shopee yang difilter ke minat kamu${state.onboarding.city ? ` di sekitar <strong>${esc(state.onboarding.city)}</strong>` : ''} — rekomendasi berbasis data, bukan tebakan AI.`;
+    : `Produk terlaris${catsLabel ? ` di <strong>${esc(catsLabel)}</strong>` : ''}${state.onboarding.city ? ` dari seller sekitar <strong>${esc(state.onboarding.city)}</strong>` : ''} — dari data Shopee LarisID, bukan tebakan AI.`;
 
   appendBubble('assistant', `<p>${fromOnboarding ? 'Siap. ' : ''}${frame}</p><p style="opacity:.7;animation:pulseSoft 1.2s infinite">Memuat rekomendasi…</p>`);
 
@@ -1103,9 +1314,14 @@ async function newChatFlow() {
 // ── Deep dive ────────────────────────────────────────────────────────────
 async function openDeepDive(product) {
   if (!currentUser) {
+    // Remember the clicked product (survives the OAuth reload) so signup lands
+    // the user on the deep dive they asked for, not back at the start.
+    state.pendingDeepdive = product;
+    saveLocalState();
     openAuthModal('signup', 'gpt_gate_deepdive');
     return;
   }
+  if (state.pendingDeepdive) { state.pendingDeepdive = null; saveLocalState(); }
   state.deepdiveProduct = product;
   setView('deepdive');
   const root = $('deepdive-root');
@@ -1157,11 +1373,12 @@ async function openDeepDive(product) {
         p_context: { kind: 'product', keyword: kw, item_id: product.item_id, shop_id: product.shop_id },
       });
       if (data?.allowed === false) {
-        showToast(`Batas harian tercapai — reset dalam ${formatCountdown(data.reset_at || wibMidnightReset())}`);
-        setView('chat');
-        return;
-      }
-      if (data?.chat) {
+        // The daily cap is on NEW searches — viewing a product must never be
+        // walled (MISSION: no trapping). Keep the session local, keep going.
+        chat = { localId: 'local_' + Date.now(), title, context: { kind: 'product', keyword: kw, item_id: product.item_id, shop_id: product.shop_id }, messages: [], created_at: Date.now() };
+        state.chats.unshift(chat);
+        state.activeChatId = chat.localId;
+      } else if (data?.chat) {
         chat = { id: data.chat.id, title, context: data.chat.context, messages: [], created_at: Date.now() };
         state.chats.unshift(chat);
         state.activeChatId = chat.id;
@@ -1382,31 +1599,38 @@ async function handleComposerSubmit(text) {
   if (!product) {
     // No product context — try to treat as keyword search → new recommendation-ish fetch
     if (!(await ensureSearchAllowed())) return;
-    appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari di data…</p>`);
-    const rows = await fetchNaikDaun(200);
+    const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari di data…</p>`);
+    const rows = mergePool([], await fetchNaikDaunGlobal(200)); // dedupe: same item can sit under 2 keywords
     const q = lower;
     const hits = rows.filter(r =>
       (r.product_name || '').toLowerCase().includes(q) ||
       (r.keyword || '').toLowerCase().includes(q) ||
       (r.category || '').toLowerCase().includes(q)
     ).slice(0, 3);
+    const usedFallback = !hits.length;
     state.recommendations = hits.length ? hits : rows.slice(0, 3);
     if (currentUser && _supabase && !chat.id) {
       const { data } = await _supabase.rpc('gpt_new_chat', { p_title: text.slice(0, 60), p_context: { kind: 'search', q: text } });
       if (data?.allowed === false) {
-        showToast(`Batas harian tercapai — reset dalam ${formatCountdown(data.reset_at || wibMidnightReset())}`);
+        const msg = `Batas pencarian harian tercapai — reset dalam ${formatCountdown(data.reset_at || wibMidnightReset())}.`;
+        if (loading) loading.querySelector('.msg-bubble').innerHTML = `<p>${esc(msg)}</p>`;
+        showToast(msg);
+        clarityEvt('gpt_limit_hit', {});
+        void logUserEvent('gpt_limit_hit', { ui: 'gpt' });
         return;
       }
       if (data?.chat) { chat.id = data.chat.id; delete chat.localId; state.activeChatId = chat.id; }
     } else if (!currentUser) {
       bumpAnonSearch();
     }
+    const lead = usedFallback
+      ? `Belum ketemu yang cocok persis untuk “${esc(text)}” — ini yang lagi naik daun dari data LarisID:`
+      : `Hasil dari data LarisID untuk “${esc(text)}”:`;
     const html = state.recommendations.length
-      ? `<p>Hasil dari data LarisID untuk “${esc(text)}”:</p><div class="card-grid">${state.recommendations.map((p, i) => productCardHtml(p, i)).join('')}</div>`
+      ? `<p>${lead}</p><div class="card-grid">${state.recommendations.map((p, i) => productCardHtml(p, i)).join('')}</div>`
       : `<p>Belum ketemu. Coba kata kunci lain atau buka Produk.</p>`;
-    const thread = $('chat-thread');
-    // replace loading: re-render last path simply by appending
-    appendBubble('assistant', html);
+    if (loading) { loading.querySelector('.msg-bubble').innerHTML = html; scrollChatToBottom(); }
+    else appendBubble('assistant', html);
     pushMessage(chat, 'assistant', { text: 'Hasil pencarian', q: text }, html);
     bindProductCards();
     void logUserEvent('discover_view', { ui: 'gpt', q: text });
@@ -1454,7 +1678,7 @@ async function renderDirectory() {
   const pager = $('dir-pager');
   if (!grid) return;
   grid.innerHTML = '<p class="dd-sub">Memuat…</p>';
-  let rows = await fetchNaikDaun(200);
+  let rows = mergePool([], await fetchNaikDaunGlobal(200)); // dedupe cross-keyword repeats
   if (state.dirCat) {
     const c = state.dirCat.toLowerCase();
     rows = rows.filter(r => (r.category || '').toLowerCase().includes(c.slice(0, 5)));
@@ -1495,13 +1719,248 @@ function optOutToClassic() {
   } catch (_) {}
   clarityEvt('gpt_optout', {});
   void logUserEvent('gpt_optout', { ui: 'gpt' });
-  location.href = '/';
+  // Give the event inserts a beat before navigation cancels them.
+  setTimeout(() => { location.href = '/'; }, 250);
+}
+
+// ── Admin (signups / locations / sample view) ────────────────────────────
+function cloneOnboarding(o) {
+  return {
+    step: o.step,
+    city: o.city,
+    categories: (o.categories || []).slice(),
+    experience: o.experience,
+    pairingMode: o.pairingMode,
+    pairingCategory: o.pairingCategory,
+    notes: o.notes,
+  };
+}
+
+function renderAdminSampleBanner() {
+  const banner = $('admin-sample-banner');
+  const exitBtn = $('admin-sample-exit');
+  const strip = $('sample-strip');
+  const stripText = $('sample-strip-text');
+  if (exitBtn) exitBtn.style.display = _admSample ? '' : 'none';
+  if (strip) {
+    if (_admSample) {
+      strip.hidden = false;
+      strip.classList.add('open');
+      if (stripText) {
+        stripText.textContent = _admSample.mode === 'new'
+          ? 'Sample: user baru (onboarding tidak disimpan)'
+          : `Sample: ${_admSample.label || 'user'}`;
+      }
+    } else {
+      strip.hidden = true;
+      strip.classList.remove('open');
+    }
+  }
+  if (!banner) return;
+  if (!_admSample) {
+    banner.hidden = true;
+    banner.textContent = '';
+    return;
+  }
+  banner.hidden = false;
+  banner.textContent = _admSample.mode === 'new'
+    ? 'Mode sample: user baru (onboarding tidak disimpan ke akunmu).'
+    : `Mode sample: ${_admSample.label || 'user'} — rekomendasi mengikuti lokasi/kategori mereka.`;
+}
+
+function goHome(e) {
+  if (e) e.preventDefault();
+  closeSidebar();
+  setView('chat');
+  state.activeChatId = null;
+  saveLocalState();
+  const thread = $('chat-thread');
+  if (thread) thread.innerHTML = '';
+  if (state.onboarding.step !== 'done') {
+    renderOnboardingStep();
+    return;
+  }
+  appendBubble('assistant', `<p>Beranda LARISgpt. Mulai <strong>Chat Baru</strong> untuk rekomendasi, atau tanya di kotak bawah.</p>
+    <button type="button" class="btn-primary" id="welcome-new">Chat Baru</button>`);
+  $('welcome-new')?.addEventListener('click', () => void newChatFlow());
+  renderChatList();
+}
+
+function fmtAdminDate(iso) {
+  if (!iso) return '—';
+  try { return String(iso).slice(0, 10); } catch (_) { return '—'; }
+}
+
+function renderAdminLocations(users) {
+  const el = $('admin-locations');
+  if (!el) return;
+  const counts = {};
+  let withLoc = 0;
+  (users || []).forEach(u => {
+    const loc = (u.region || u.city || '').trim();
+    if (!loc) return;
+    withLoc++;
+    counts[loc] = (counts[loc] || 0) + 1;
+  });
+  const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  if (!ranked.length) {
+    el.textContent = 'Belum ada data lokasi onboarding.';
+    return;
+  }
+  const max = ranked[0][1] || 1;
+  el.innerHTML = `<p class="dd-sub" style="margin-bottom:10px">${withLoc} dari ${users.length} punya lokasi</p>` +
+    ranked.slice(0, 12).map(([city, n]) => `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span style="flex:0 0 110px;font-size:.78rem;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(city)}</span>
+        <div style="flex:1;height:6px;background:#eee;border-radius:99px;overflow:hidden">
+          <div style="height:100%;width:${Math.round(n / max * 100)}%;background:var(--ink)"></div>
+        </div>
+        <span style="font-size:.75rem;font-weight:700;min-width:24px;text-align:right">${n}</span>
+      </div>`).join('');
+}
+
+function renderAdminStats(users) {
+  const el = $('admin-stats');
+  if (!el) return;
+  const total = users.length;
+  const withOnb = users.filter(u => u.onboarding_completed || (u.region || u.city)).length;
+  const last7 = users.filter(u => {
+    if (!u.created_at) return false;
+    return Date.now() - Date.parse(u.created_at) < 7 * 864e5;
+  }).length;
+  el.innerHTML = `
+    <div class="dd-metric"><div class="val">${total}</div><div class="lbl">Total signup</div></div>
+    <div class="dd-metric"><div class="val">${last7}</div><div class="lbl">7 hari terakhir</div></div>
+    <div class="dd-metric"><div class="val">${withOnb}</div><div class="lbl">Punya onboarding</div></div>`;
+}
+
+function renderAdminUsers(users) {
+  const body = $('admin-users-body');
+  if (!body) return;
+  if (!users.length) {
+    body.innerHTML = '<tr><td colspan="6" class="dd-sub">Belum ada user.</td></tr>';
+    return;
+  }
+  body.innerHTML = users.slice(0, 80).map((u, i) => {
+    const loc = u.region || u.city || '—';
+    const cats = (u.categories || []).slice(0, 2).join(', ') || '—';
+    const name = u.display_name || u.email || 'User';
+    return `<tr>
+      <td><strong>${esc(name)}</strong></td>
+      <td class="dd-sub">${esc(u.email || '')}</td>
+      <td>${esc(loc)}</td>
+      <td class="dd-sub">${esc(cats)}</td>
+      <td class="dd-sub">${fmtAdminDate(u.created_at)}</td>
+      <td><button type="button" class="admin-sample-btn" data-sample-idx="${i}">Sample view</button></td>
+    </tr>`;
+  }).join('');
+  body.querySelectorAll('[data-sample-idx]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = Number(btn.getAttribute('data-sample-idx'));
+      const row = users[idx];
+      if (row) adminSampleAsUser(row);
+    });
+  });
+}
+
+async function loadAdminDirectory() {
+  if (!isPlatformAdmin() || !_supabase) {
+    const body = $('admin-users-body');
+    if (body) body.innerHTML = '<tr><td colspan="6" class="dd-sub">Login sebagai admin dulu.</td></tr>';
+    return;
+  }
+  const body = $('admin-users-body');
+  if (body) body.innerHTML = '<tr><td colspan="6" class="dd-sub">Memuat…</td></tr>';
+  try {
+    const { data, error } = await _supabase.rpc('admin_user_directory');
+    if (error) throw error;
+    _adminUsers = data || [];
+    renderAdminStats(_adminUsers);
+    renderAdminLocations(_adminUsers);
+    renderAdminUsers(_adminUsers);
+  } catch (e) {
+    if (body) body.innerHTML = `<tr><td colspan="6" class="dd-sub">${esc(e.message || 'Gagal memuat.')}</td></tr>`;
+  }
+}
+
+function openAdminView() {
+  if (!isPlatformAdmin()) {
+    showToast('Admin only.');
+    return;
+  }
+  setView('admin');
+  void loadAdminDirectory();
+}
+
+function adminSampleAsUser(row) {
+  if (!isPlatformAdmin() || !row) return;
+  if (!_onboardingBackup) _onboardingBackup = cloneOnboarding(state.onboarding);
+  const region = (row.region || row.city || '').trim();
+  // Map free-text region to onboarding city chip when possible
+  const city = NU_ONB_LOCATIONS.find(c => region.toLowerCase().includes(c.toLowerCase()) || c.toLowerCase().includes(region.toLowerCase()))
+    || region
+    || '';
+  const cats = (row.categories || []).filter(c => NU_ONB_CATS.includes(c));
+  state.onboarding = {
+    step: 'done',
+    city,
+    categories: cats.length ? cats : (row.categories || []).slice(0, 3),
+    experience: row.seller_status || 'first_time',
+    pairingMode: '',
+    pairingCategory: '',
+    notes: '',
+  };
+  _admSample = {
+    mode: 'user',
+    label: row.display_name || row.email || 'user',
+  };
+  renderAdminSampleBanner();
+  saveLocalState();
+  showToast(`Sample: ${ _admSample.label }${city ? ` · ${city}` : ''}`);
+  setView('chat');
+  void startRecommendationChat(true);
+}
+
+function adminSampleNewUser() {
+  if (!isPlatformAdmin()) return;
+  if (!_onboardingBackup) _onboardingBackup = cloneOnboarding(state.onboarding);
+  state.onboarding = {
+    step: 'city',
+    city: '',
+    categories: [],
+    experience: '',
+    pairingMode: '',
+    pairingCategory: '',
+    notes: '',
+  };
+  state.activeChatId = null;
+  _admSample = { mode: 'new', label: 'user baru' };
+  renderAdminSampleBanner();
+  saveLocalState();
+  setView('chat');
+  renderOnboardingStep();
+  showToast('Sample sebagai user baru — onboarding tidak ditulis ke akunmu.');
+}
+
+function adminExitSample() {
+  if (_onboardingBackup) {
+    state.onboarding = cloneOnboarding(_onboardingBackup);
+    _onboardingBackup = null;
+  }
+  _admSample = null;
+  renderAdminSampleBanner();
+  saveLocalState();
+  showToast('Keluar dari mode sample.');
+  if (isPlatformAdmin()) openAdminView();
+  else goHome();
 }
 
 // ── Wire DOM ─────────────────────────────────────────────────────────────
 function wireUi() {
   $('btn-menu')?.addEventListener('click', openSidebar);
   $('sidebar-backdrop')?.addEventListener('click', closeSidebar);
+  $('btn-home')?.addEventListener('click', goHome);
+  $('btn-home-mobile')?.addEventListener('click', goHome);
   $('btn-new-chat')?.addEventListener('click', () => void newChatFlow());
   $('btn-search-chats')?.addEventListener('click', () => {
     if (!currentUser) { openAuthModal('signup', 'gpt_gate_history'); return; }
@@ -1514,6 +1973,11 @@ function wireUi() {
   });
   $('btn-produk')?.addEventListener('click', () => void openDirectory());
   $('btn-harga')?.addEventListener('click', () => setView('harga'));
+  $('btn-admin')?.addEventListener('click', () => openAdminView());
+  $('admin-refresh')?.addEventListener('click', () => void loadAdminDirectory());
+  $('admin-sample-new')?.addEventListener('click', () => adminSampleNewUser());
+  $('admin-sample-exit')?.addEventListener('click', () => adminExitSample());
+  $('sample-strip-exit')?.addEventListener('click', () => adminExitSample());
   $('btn-login')?.addEventListener('click', () => openAuthModal('login', 'gpt_header_login'));
   $('btn-signup')?.addEventListener('click', () => openAuthModal('signup', 'gpt_header_signup'));
   $('btn-user')?.addEventListener('click', () => {

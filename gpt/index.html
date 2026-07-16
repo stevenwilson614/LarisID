@@ -123,14 +123,19 @@ html.session-restoring body::after {
 .sidebar-brand {
   display: flex; align-items: flex-end; gap: 6px;
   padding: 12px 12px 16px;
+  text-decoration: none; color: inherit;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background .12s;
 }
+.sidebar-brand:hover { background: var(--bg-hover); }
 .brand-lockup {
   height: 36px; width: auto; display: block;
   filter: brightness(0);
 }
-.brand-gpt {
-  font-size: .7rem; font-weight: 500; color: var(--muted);
-  letter-spacing: .04em;
+.brand-beta {
+  font-size: .7rem; font-weight: 600; color: var(--muted);
+  letter-spacing: .04em; text-transform: uppercase;
   padding-bottom: 2px;
 }
 
@@ -353,6 +358,10 @@ html.session-restoring body::after {
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   min-height: 2.7em;
 }
+.prod-card-loc {
+  font-size: .68rem; color: var(--muted); margin-top: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .prod-card-stats {
   display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
   margin-top: 10px; padding-top: 10px;
@@ -431,6 +440,42 @@ html.session-restoring body::after {
 .harga-price { font-size: 2.25rem; font-weight: 650; color: var(--ink); margin: 14px 0; letter-spacing: -.03em; }
 .harga-price span { font-size: .9rem; font-weight: 500; color: var(--muted); }
 .harga-card ul { margin: 0; padding-left: 1.1em; line-height: 1.7; font-size: .9rem; color: var(--ink-soft); }
+
+/* Admin */
+.admin-banner {
+  background: var(--bg-user); border: 1px solid var(--line);
+  border-radius: 12px; padding: 10px 14px; margin-bottom: 14px;
+  font-size: .84rem; font-weight: 550;
+}
+.admin-table-wrap { overflow-x: auto; }
+.admin-table {
+  width: 100%; border-collapse: collapse; font-size: .78rem;
+}
+.admin-table th {
+  text-align: left; font-weight: 650; color: var(--muted);
+  padding: 8px 10px; border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.admin-table td {
+  padding: 10px; border-bottom: 1px solid var(--line);
+  vertical-align: top; color: var(--ink);
+}
+.admin-table tr:hover td { background: #fafafa; }
+.admin-sample-btn {
+  padding: 6px 10px; border-radius: 999px; font-size: .72rem; font-weight: 600;
+  border: 1px solid var(--line); white-space: nowrap;
+}
+.admin-sample-btn:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
+.sample-strip {
+  display: none; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 16px; background: #111; color: #fff; font-size: .78rem; font-weight: 550;
+}
+.sample-strip.open { display: flex; }
+.sample-strip button {
+  border: 1px solid rgba(255,255,255,.35); color: #fff; background: transparent;
+  border-radius: 999px; padding: 4px 10px; font-size: .72rem; font-weight: 600;
+}
+.sample-strip button:hover { background: #fff; color: #111; }
 
 /* Composer — floating pill like Gemini */
 .composer-dock {
@@ -546,10 +591,10 @@ html.session-restoring body::after {
 <div class="backdrop" id="sidebar-backdrop"></div>
 <div class="app">
   <aside class="sidebar" id="sidebar">
-    <div class="sidebar-brand">
+    <a class="sidebar-brand" href="/gpt/" id="btn-home" title="Beranda LARISgpt">
       <img class="brand-lockup" src="/images/brand/logo-horizontal-light.png" alt="LARIS" height="36">
-      <span class="brand-gpt">gpt</span>
-    </div>
+      <span class="brand-beta">Beta</span>
+    </a>
     <button type="button" class="side-btn" id="btn-new-chat" title="Chat Baru">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
       Chat Baru
@@ -571,19 +616,27 @@ html.session-restoring body::after {
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M17 8c0-2-2-3.5-5-3.5S7 6 7 8s2 3 5 3.5 5 1.5 5 3.5-2 3.5-5 3.5"/></svg>
         Harga
       </button>
+      <button type="button" class="side-btn" id="btn-admin" style="display:none">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4z"/></svg>
+        Admin
+      </button>
       <button type="button" class="optout" id="btn-optout">Tampilan klasik</button>
     </div>
   </aside>
 
   <div class="main">
+    <div class="sample-strip" id="sample-strip" hidden>
+      <span id="sample-strip-text">Mode sample</span>
+      <button type="button" id="sample-strip-exit">Keluar sample</button>
+    </div>
     <header class="main-top">
       <div class="main-top-left">
         <button type="button" class="menu-btn" id="btn-menu" aria-label="Menu">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
         </button>
-        <div class="topbar-mobile-brand">
+        <a class="topbar-mobile-brand" href="/gpt/" id="btn-home-mobile" title="Beranda">
           <img class="brand-lockup" src="/images/brand/logo-horizontal-light.png" alt="LARIS" height="28" style="height:28px">
-        </div>
+        </a>
       </div>
       <div class="main-top-auth" id="auth-header">
         <button type="button" class="btn-login" id="btn-login">Login</button>
@@ -625,6 +678,43 @@ html.session-restoring body::after {
               <li>Tanya AI tentang produk — dari data LarisID</li>
               <li>Reset setiap tengah malam WIB</li>
             </ul>
+          </div>
+        </div>
+        <div class="view" id="view-admin">
+          <div class="dir-head">
+            <h2>Admin · LARISgpt</h2>
+            <p class="dd-sub">Signups, lokasi onboarding, dan sample view seperti user.</p>
+          </div>
+          <div id="admin-sample-banner" class="admin-banner" hidden></div>
+          <div class="admin-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+            <button type="button" class="btn-ghost" id="admin-refresh" style="margin:0">Refresh data</button>
+            <button type="button" class="btn-ghost" id="admin-sample-new" style="margin:0">Sample sebagai user baru</button>
+            <button type="button" class="btn-ghost" id="admin-sample-exit" style="margin:0;display:none">Keluar sample</button>
+          </div>
+          <div class="dd-metrics" id="admin-stats" style="margin-top:0"></div>
+          <div class="dd-section" style="border-top:none;padding-top:0">
+            <h3>Lokasi (onboarding region)</h3>
+            <div id="admin-locations" class="dd-sub">Memuat…</div>
+          </div>
+          <div class="dd-section">
+            <h3>Signups terbaru</h3>
+            <div class="admin-table-wrap">
+              <table class="admin-table" id="admin-users-table">
+                <thead>
+                  <tr>
+                    <th>Nama</th>
+                    <th>Email</th>
+                    <th>Lokasi</th>
+                    <th>Kategori</th>
+                    <th>Daftar</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="admin-users-body">
+                  <tr><td colspan="6" class="dd-sub">Memuat…</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>

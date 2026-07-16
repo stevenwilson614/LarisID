@@ -136,7 +136,8 @@ select
   count(distinct c.id) as users,
   count(e.id) as events,
   round(count(e.id)::numeric / nullif(count(distinct c.id), 0), 1) as events_per_user,
-  count(distinct (e.created_at at time zone 'Asia/Jakarta')::date) as active_user_days
+  round(count(distinct (e.user_id, (e.created_at at time zone 'Asia/Jakarta')::date))::numeric
+        / nullif(count(distinct c.id), 0), 1) as active_days_per_user
 from cohort c
 left join activity_events e on e.user_id = c.id
 group by c.ab_variant
