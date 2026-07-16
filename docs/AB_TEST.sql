@@ -30,7 +30,7 @@
 -- ----------------------------------------------------------------------------
 with params as (
   -- >>> EDIT: deploy timestamp of RAMP_B=0.5 flip (WIB) <<<
-  select timestamptz '2026-08-01 00:00:00+07' as flip_at,
+  select timestamptz '2026-07-17 06:00:00+07' as flip_at,
          timestamptz '2026-10-01 00:00:00+07' as end_at
 ),
 attr as (
@@ -87,7 +87,7 @@ order by c.ab_variant;
 -- QUERY B — Daily signups per variant (assignment health ~50/50 after flip)
 -- ----------------------------------------------------------------------------
 with params as (
-  select timestamptz '2026-08-01 00:00:00+07' as flip_at
+  select timestamptz '2026-07-17 06:00:00+07' as flip_at
 ),
 attr as (
   select distinct on (e.user_id)
@@ -113,7 +113,7 @@ order by 1, 2;
 -- QUERY C — Engagement (events/user, active days) per variant
 -- ----------------------------------------------------------------------------
 with params as (
-  select timestamptz '2026-08-01 00:00:00+07' as flip_at,
+  select timestamptz '2026-07-17 06:00:00+07' as flip_at,
          timestamptz '2026-10-01 00:00:00+07' as end_at
 ),
 attr as (
@@ -148,7 +148,7 @@ order by c.ab_variant;
 -- QUERY D — B extras: chats/user, limit hits, opt-outs
 -- ----------------------------------------------------------------------------
 with params as (
-  select timestamptz '2026-08-01 00:00:00+07' as flip_at
+  select timestamptz '2026-07-17 06:00:00+07' as flip_at
 ),
 b_users as (
   select distinct e.user_id
@@ -176,7 +176,7 @@ select
 -- QUERY E — Ads segment (utm_source=google) funnel by variant
 -- ----------------------------------------------------------------------------
 with params as (
-  select timestamptz '2026-08-01 00:00:00+07' as flip_at,
+  select timestamptz '2026-07-17 06:00:00+07' as flip_at,
          timestamptz '2026-10-01 00:00:00+07' as end_at
 ),
 attr as (
