@@ -162,14 +162,35 @@ html.session-restoring body::after {
   overflow-y: auto; flex: 1; min-height: 0;
   display: flex; flex-direction: column; gap: 1px;
 }
+.chat-row {
+  display: flex; align-items: center; gap: 2px;
+  border-radius: 999px; min-width: 0;
+}
+.chat-row:hover, .chat-row.active { background: var(--bg-hover); }
+.chat-row.active { background: #fff; }
 .chat-item {
-  display: block; width: 100%; text-align: left;
-  padding: 8px 12px; border-radius: 999px;
+  flex: 1; min-width: 0; text-align: left;
+  padding: 8px 10px 8px 12px; border-radius: 999px;
   font-size: .8125rem; color: var(--ink-soft);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.chat-item:hover { background: var(--bg-hover); color: var(--ink); }
-.chat-item.active { background: #fff; color: var(--ink); font-weight: 550; }
+.chat-row:hover .chat-item, .chat-row.active .chat-item { color: var(--ink); }
+.chat-row.active .chat-item { font-weight: 550; }
+.chat-rename-btn {
+  flex-shrink: 0; width: 28px; height: 28px; border-radius: 999px;
+  display: none; align-items: center; justify-content: center;
+  color: var(--muted); margin-right: 4px;
+}
+.chat-row:hover .chat-rename-btn, .chat-row.active .chat-rename-btn { display: inline-flex; }
+.chat-rename-btn:hover { background: var(--bg-user); color: var(--ink); }
+.chat-rename-btn svg { display: block; }
+.chat-rename-input {
+  flex: 1; min-width: 0; margin: 4px 8px;
+  padding: 6px 10px; border-radius: 999px;
+  border: 1px solid var(--line); background: #fff;
+  font: inherit; font-size: .8125rem; color: var(--ink);
+}
+.chat-rename-input:focus { outline: none; border-color: var(--ink-soft); }
 .chat-empty { padding: 8px 12px; font-size: .75rem; color: var(--muted); }
 .sidebar-foot {
   padding-top: 8px;

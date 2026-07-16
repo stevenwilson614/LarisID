@@ -404,11 +404,61 @@ function renderChatList() {
   list.innerHTML = chats.map(c => {
     const id = c.id || c.localId;
     const active = id === state.activeChatId ? ' active' : '';
-    return `<button type="button" class="chat-item${active}" data-chat="${esc(id)}">${esc(c.title || 'Chat')}</button>`;
+    return `<div class="chat-row${active}" data-chat-row="${esc(id)}">
+      <button type="button" class="chat-item" data-chat="${esc(id)}">${esc(c.title || 'Chat')}</button>
+      <button type="button" class="chat-rename-btn" data-rename="${esc(id)}" title="Ubah nama" aria-label="Ubah nama chat">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      </button>
+    </div>`;
   }).join('');
   list.querySelectorAll('[data-chat]').forEach(btn => {
     btn.addEventListener('click', () => openChat(btn.getAttribute('data-chat')));
   });
+  list.querySelectorAll('[data-rename]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      beginChatRename(btn.getAttribute('data-rename'));
+    });
+  });
+}
+
+function beginChatRename(id) {
+  const chat = state.chats.find(c => (c.id || c.localId) === id);
+  const row = document.querySelector(`[data-chat-row="${CSS.escape(id)}"]`);
+  if (!chat || !row) return;
+  const prev = chat.title || 'Chat';
+  row.innerHTML = `<input class="chat-rename-input" type="text" maxlength="60" value="${esc(prev)}" aria-label="Nama chat">`;
+  const input = row.querySelector('input');
+  if (!input) return;
+  input.focus();
+  input.select();
+  let done = false;
+  const finish = (commit) => {
+    if (done) return;
+    done = true;
+    if (commit) void commitChatRename(chat, input.value);
+    else renderChatList();
+  };
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+  });
+  input.addEventListener('blur', () => finish(true));
+}
+
+async function commitChatRename(chat, title) {
+  const next = String(title || '').trim().slice(0, 60) || 'Chat';
+  if (next === (chat.title || 'Chat')) { renderChatList(); return; }
+  chat.title = next;
+  saveLocalState();
+  renderChatList();
+  if (chat.id && currentUser && _supabase) {
+    try {
+      await _supabase.from('gpt_chats').update({ title: next }).eq('id', chat.id);
+    } catch (_) {}
+  }
+  void logUserEvent('gpt_chat_rename', { ui: 'gpt', chat_id: chat.id || chat.localId || '' });
+  clarityEvt('gpt_chat_rename', {});
 }
 
 // ── Auth modal ───────────────────────────────────────────────────────────
