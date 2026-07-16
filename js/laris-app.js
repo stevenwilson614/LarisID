@@ -76,6 +76,11 @@ function _lidFireSignupSuccess() {
     const ref = document.referrer || '';
     if (/accounts\.google\.com/.test(ref)) return; // OAuth bounce, not a source
     const q = new URLSearchParams(location.search);
+    let abVariant = 'A';
+    try {
+      const ab = JSON.parse(localStorage.getItem('_lid_ab_v1') || 'null');
+      if (ab && (ab.v === 'A' || ab.v === 'B' || ab.v === 'X')) abVariant = ab.v;
+    } catch (_) {}
     const attr = {
       referrer: ref || '(direct)',
       utm_source: q.get('utm_source') || '',
@@ -83,6 +88,7 @@ function _lidFireSignupSuccess() {
       utm_campaign: q.get('utm_campaign') || '',
       ref_code: q.get('ref') || '',
       landing: location.pathname + location.search,
+      ab_variant: abVariant,
       ts: new Date().toISOString(),
     };
     localStorage.setItem(KEY, JSON.stringify(attr));
@@ -2084,13 +2090,21 @@ async function _authOnSignIn(session) {
       // on Clarity at all.
       let attr = null;
       try { attr = JSON.parse(localStorage.getItem('_lid_attr_v1') || 'null'); } catch (_) {}
-      if (attr) {
-        const src = attr.utm_source || (attr.ref_code && 'referral') || attr.referrer || '(direct)';
-        _clarity('set', 'signup_source', String(src).slice(0, 120));
-        // Deferred: the Supabase client only gets this session via setSession()
-        // a few lines below, and an unauthed insert would fail RLS.
-        setTimeout(() => { void logUserEvent('signup_attribution', attr); }, 2500);
+      if (!attr) attr = {};
+      try {
+        const ab = JSON.parse(localStorage.getItem('_lid_ab_v1') || 'null');
+        if (ab && (ab.v === 'A' || ab.v === 'B' || ab.v === 'X')) attr.ab_variant = ab.v;
+        else if (!attr.ab_variant) attr.ab_variant = 'X';
+      } catch (_) {
+        if (!attr.ab_variant) attr.ab_variant = 'X';
       }
+      try { localStorage.setItem('_lid_attr_v1', JSON.stringify(attr)); } catch (_) {}
+      const src = attr.utm_source || (attr.ref_code && 'referral') || attr.referrer || '(direct)';
+      _clarity('set', 'signup_source', String(src).slice(0, 120));
+      _clarity('set', 'ab_variant_at_signup', String(attr.ab_variant || 'X'));
+      // Deferred: the Supabase client only gets this session via setSession()
+      // a few lines below, and an unauthed insert would fail RLS.
+      setTimeout(() => { void logUserEvent('signup_attribution', attr); }, 2500);
     }
   } catch (_) {}
   // Route away from marketing/landing immediately on refresh — never wait on network calls first.
@@ -21663,6 +21677,8 @@ const NU_ONB_LOCATIONS = [
   'Semarang', 'Yogyakarta', 'Surabaya', 'Sidoarjo', 'Medan',
   'Makassar', 'Palembang', 'Denpasar',
 ];
+// B4: rendered as large tiles above the compact grid — where most users live.
+const NU_ONB_POP_LOCS = ['Jakarta', 'Surabaya', 'Bandung', 'Bekasi'];
 // Two steps only: location + categories. The budget step was cut 2026-07-09 —
 // it was the #1 skip point (17 skips/30d, 3 of the last 4 real signups bailed
 // there), likely because "Berapa harga produk yang ingin kamu jual?" right
@@ -21854,14 +21870,18 @@ function nuOnbRender() {
   if (_nuOnb.step === 1) {
     const isOther = _nuOnb.location === '__other__';
     const detected = _nuOnb.locationSource === 'ip' && !!_nuOnb.location;
+    // B4: the biggest seller hubs get large tiles so most users find their city
+    // in one glance; everything else stays in the compact grid below.
+    const locTile = (loc, i, pop) => `
+        <div class="nu-onb-loc${pop ? ' pop' : ''}${_nuOnb.location === loc ? ' sel' : ''}" role="button" tabindex="0" aria-pressed="${_nuOnb.location === loc}" onclick="nuOnbPickLoc(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nuOnbPickLoc(${i});}">${esc(loc)}</div>`;
     el.innerHTML = `
       <div class="nu-onb-step-lbl">Langkah 1 dari ${NU_ONB_TOTAL}</div>
       <div class="nu-onb-title">Di mana lokasi kamu?</div>
       <div class="nu-onb-sub">${detected
         ? 'Kami coba tebak dari koneksi internet kamu — pastikan sudah benar, atau ganti kalau meleset.'
         : 'Bantu kami sesuaikan rekomendasi dan insight pasar dengan daerahmu.'}</div>
-      <div class="nu-onb-locs">${NU_ONB_LOCATIONS.map((loc, i) => `
-        <div class="nu-onb-loc${_nuOnb.location === loc ? ' sel' : ''}" role="button" tabindex="0" aria-pressed="${_nuOnb.location === loc}" onclick="nuOnbPickLoc(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nuOnbPickLoc(${i});}">${esc(loc)}</div>`).join('')}
+      <div class="nu-onb-locs-pop">${NU_ONB_LOCATIONS.map((loc, i) => NU_ONB_POP_LOCS.includes(loc) ? locTile(loc, i, true) : '').join('')}</div>
+      <div class="nu-onb-locs">${NU_ONB_LOCATIONS.map((loc, i) => NU_ONB_POP_LOCS.includes(loc) ? '' : locTile(loc, i, false)).join('')}
         <div class="nu-onb-loc${isOther ? ' sel' : ''}" role="button" tabindex="0" aria-pressed="${isOther}" onclick="nuOnbPickLoc(-1)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nuOnbPickLoc(-1);}">Lainnya</div>
       </div>
       ${isOther ? `<input id="nu-onb-loc-other" class="nu-onb-loc-input" type="text" maxlength="60" placeholder="Tulis kota atau provinsi kamu" value="${esc(_nuOnb.locationOther).replace(/"/g, '&quot;')}" oninput="nuOnbLocOther(this.value)">` : ''}
@@ -21870,17 +21890,24 @@ function nuOnbRender() {
   } else {
     const n = _nuOnb.cats.length;
     const ready = n >= NU_ONB_MIN_CATS;
+    // B3: the CTA itself counts down ("Pilih 2 lagi") and selected cards carry
+    // their pick order, so the minimum-3 rule is impossible to miss.
+    const ctaLabel = ready ? 'Lihat Produk Untukmu' : `Pilih ${NU_ONB_MIN_CATS - n} lagi`;
     el.innerHTML = `
       <div class="nu-onb-step-lbl">Langkah 2 dari ${NU_ONB_TOTAL}</div>
       <div class="nu-onb-title">Kategori apa yang menarik buat kamu?</div>
       <div class="nu-onb-sub">Pilih minimal ${NU_ONB_MIN_CATS} kategori — produk yang kami tampilkan bakal disesuaikan sama minat kamu. <strong>${n}/${NU_ONB_MIN_CATS}</strong> dipilih.</div>
-      <div class="nu-onb-cats">${NU_ONB_CATS.map((c, i) => `
-        <div class="nu-onb-cat${_nuOnb.cats.includes(c) ? ' sel' : ''}" role="button" tabindex="0" aria-pressed="${_nuOnb.cats.includes(c)}" onclick="nuOnbToggleCat(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nuOnbToggleCat(${i});}">
+      <div class="nu-onb-cats">${NU_ONB_CATS.map((c, i) => {
+        const ord = _nuOnb.cats.indexOf(c);
+        return `
+        <div class="nu-onb-cat${ord >= 0 ? ' sel' : ''}" role="button" tabindex="0" aria-pressed="${ord >= 0}" onclick="nuOnbToggleCat(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nuOnbToggleCat(${i});}">
+          ${ord >= 0 ? `<span class="nu-onb-cat-num">${ord + 1}</span>` : ''}
           ${NU_ONB_ICONS[c] || ''}
           <span>${esc(c)}</span>
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
       </div>
-      <button type="button" class="nu-onb-cta" onclick="nuOnbNext()" ${ready ? '' : 'disabled'}>Lihat Produk Untukmu</button>
+      <button type="button" class="nu-onb-cta" onclick="nuOnbNext()" ${ready ? '' : 'disabled'}>${ctaLabel}</button>
       <button type="button" class="nu-onb-back" onclick="_nuOnb.step=1;nuOnbRender();">Kembali</button>
       <div class="nu-onb-dots">${dots(2)}</div>`;
   }
