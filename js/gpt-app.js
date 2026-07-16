@@ -103,6 +103,7 @@ let currentUser = null;
 let _authMode = 'signup';
 let _gateSource = '';
 let _trendChart = null;
+let _dd = null; // current deep dive: { product, peers, niche, suppliers, stats, open:Set }
 
 function _authSave(session) {
   try {
@@ -1391,6 +1392,167 @@ async function newChatFlow() {
 }
 
 // ── Deep dive ────────────────────────────────────────────────────────────
+// A-parity formulas, ported from laris-app.js (calcBreakoutOdds ~15857,
+// calcReviewWall ~15934) — same numbers as site A, monochrome presentation.
+function calcBreakoutOdds(price, niche) {
+  const p = price || 0;
+  const priceOdds = p <= 0 ? 12
+    : p < 10000  ? 27
+    : p < 25000  ? 19
+    : p < 50000  ? 14
+    : p < 100000 ? 9
+    : p < 250000 ? 6
+    : 3;
+  let pct = priceOdds, src = 'harga';
+  if (niche && niche.breakout_rate != null && (niche.new_items || 0) >= 15) {
+    pct = Math.round(priceOdds * 0.45 + Number(niche.breakout_rate) * 0.55);
+    src = 'niche';
+  }
+  pct = Math.max(1, Math.min(60, pct));
+  const tier = pct >= 20 ? 'Tinggi' : pct >= 10 ? 'Sedang' : 'Rendah';
+  const hint = src === 'niche'
+    ? `~${pct}% produk baru di niche ini tembus 100+ terjual`
+    : (p > 0 ? `Berdasarkan harga — peluang ${tier.toLowerCase()} untuk pemula` : 'Menunggu data harga pasar');
+  return { pct, tier, hint, src };
+}
+
+function calcReviewWall(reviews, niche) {
+  const med = (niche && niche.median_winner_reviews != null && niche.median_winner_reviews > 0)
+    ? Number(niche.median_winner_reviews) : 50;
+  const r = reviews || 0;
+  const pct = Math.min(100, Math.round(r / Math.max(med, 1) * 100));
+  return { wall: med, reviews: r, pct, cleared: r >= med };
+}
+
+function ddStats(peers) {
+  const prices = peers.map(p => Number(p.price) || 0).filter(Boolean).sort((a, b) => a - b);
+  const n = prices.length;
+  const pick = f => n ? prices[Math.min(n - 1, Math.floor(n * f))] : 0;
+  const totalSold = peers.reduce((s, p) => s + (Number(p.total_sold) || 0), 0);
+  const top3 = peers.slice(0, 3).reduce((s, p) => s + (Number(p.total_sold) || 0), 0);
+  const top3Share = totalSold ? top3 / totalSold : 0;
+  return {
+    prices, n,
+    median: n ? prices[Math.floor(n / 2)] : 0,
+    p25: pick(0.25), p75: pick(0.75),
+    p35: pick(0.35), p65: pick(0.65),
+    min: n ? prices[0] : 0, max: n ? prices[n - 1] : 0,
+    totalSold, top3Share,
+    komp: top3Share > 0.6 ? 'Tinggi' : top3Share > 0.35 ? 'Sedang' : 'Rendah',
+  };
+}
+
+function ddMetricBoxesHtml(product, stats, niche) {
+  const price = Number(product.price) || 0;
+  const thumbPos = stats.max > stats.min ? Math.round((price - stats.min) / (stats.max - stats.min) * 100) : 50;
+  const odds = calcBreakoutOdds(price, niche);
+  const wall = calcReviewWall(Number(product.reviews) || 0, niche);
+  const omset = estOmsetBulan(product);
+  return `
+    <div class="dd-metrics">
+      <div class="dd-metric"><div class="lbl">Harga</div><div class="val">${fmtRp(price)}</div>
+        ${stats.n >= 4
+          ? `<div class="dd-thumb-track"><div class="dd-thumb" style="left:${Math.min(97, Math.max(2, thumbPos))}%"></div></div><div class="sub">${fmtRp(stats.min)} – ${fmtRp(stats.max)} di keyword ini</div>`
+          : `<div class="sub">Belum cukup data peer</div>`}
+      </div>
+      <div class="dd-metric"><div class="lbl">Omset / bulan</div><div class="val">${omset ? fmtOmset(omset) : '—'}</div><div class="sub">Estimasi dari kecepatan jual</div></div>
+      <div class="dd-metric"><div class="lbl">Kompetisi</div><div class="val">${stats.n ? stats.komp : '—'}</div><div class="sub">${stats.n ? `Top 3 kuasai ${Math.round(stats.top3Share * 100)}% penjualan keyword` : 'Belum ada data peer'}</div></div>
+      <div class="dd-metric"><div class="lbl">Terjual</div><div class="val">${fmtSold(product.total_sold)}</div><div class="sub">≈${fmtSold(product.sold_per_day)} / hari</div></div>
+      <div class="dd-metric"><div class="lbl">Peluang pemula</div><div class="val">${odds.tier}</div><div class="sub">${esc(odds.hint)}</div></div>
+      <div class="dd-metric"><div class="lbl">Dinding ulasan</div><div class="val">≈${wall.wall.toLocaleString('id-ID')}</div><div class="sub">${wall.cleared ? 'Produk ini sudah lewat dinding ulasan' : 'Separuh produk baru mati di 0 ulasan — kejar ulasan cepat'}</div></div>
+    </div>`;
+}
+
+function _ddDistBarsHtml() {
+  const prices = _dd.stats.prices;
+  const buckets = [
+    { label: '< 100rb', fn: p => p < 100000 },
+    { label: '100–150rb', fn: p => p >= 100000 && p < 150000 },
+    { label: '150–200rb', fn: p => p >= 150000 && p < 200000 },
+    { label: '200–300rb', fn: p => p >= 200000 && p < 300000 },
+    { label: '> 300rb', fn: p => p >= 300000 },
+  ].map(b => ({ ...b, count: prices.filter(b.fn).length }));
+  const maxB = Math.max(...buckets.map(b => b.count), 1);
+  return buckets.map(b => {
+    const pct = prices.length ? Math.round(b.count / prices.length * 100) : 0;
+    return `<div class="dist-bar"><div style="width:88px;color:var(--muted)">${esc(b.label)}</div><div class="track"><div class="fill" style="width:${Math.round(b.count / maxB * 100)}%"></div></div><div style="width:36px;text-align:right">${pct}%</div></div>`;
+  }).join('') || '<p class="dd-sub">Belum ada data harga peer.</p>';
+}
+
+function ddSectionKompetitor() {
+  const { peers, stats } = _dd;
+  if (!peers.length) return '<h3>Top kompetitor</h3><p class="dd-sub">Kompetitor belum tersedia untuk keyword ini.</p>';
+  const rows = peers.slice(0, 15).map((r, i) => {
+    const omset = Math.round((Number(r.total_sold) || 0) / 6 * (Number(r.price) || 0));
+    const share = stats.totalSold ? Math.round((Number(r.total_sold) || 0) / stats.totalSold * 100) : 0;
+    return `<div class="komp-row">
+      <span class="komp-rank">#${i + 1}</span>
+      ${r.image_url ? `<img class="comp-img" src="${esc(r.image_url)}" alt="" loading="lazy">` : '<span class="comp-img"></span>'}
+      <span class="komp-name"><strong>${esc((r.product_name || '').slice(0, 48))}</strong><br><span class="dd-sub">${esc((r.store_name || '').slice(0, 24))}${r.rating ? ` · ★${Number(r.rating).toFixed(1)}` : ''}</span></span>
+      <span class="komp-nums">${fmtRp(r.price)}<br><span class="dd-sub">${omset ? fmtOmset(omset) : '—'} · ${fmtSold(r.total_sold)} terjual</span>
+        <span class="share-track"><span class="share-fill" style="width:${share}%"></span></span>
+      </span>
+    </div>`;
+  }).join('');
+  return `<h3>15 kompetitor teratas</h3><span class="data-badge">Data Shopee — bukan jawaban AI</span>${rows}`;
+}
+
+function ddSectionHarga() {
+  const { stats, niche, product } = _dd;
+  if (stats.n < 4) return '<h3>Harga kompetitif</h3><p class="dd-sub">Belum cukup data harga peer untuk keyword ini.</p>';
+  const price = Number(product.price) || 0;
+  const patokan = niche && niche.median_winner_price ? Number(niche.median_winner_price) : 0;
+  return `<h3>Harga kompetitif</h3><span class="data-badge">Data Shopee — bukan jawaban AI</span>
+    <div class="comp-row"><span>Median pasar</span><span><strong>${fmtRp(stats.median)}</strong></span></div>
+    <div class="comp-row"><span>Rentang optimal</span><span><strong>${fmtRp(stats.p25)} – ${fmtRp(stats.p75)}</strong></span></div>
+    <div class="comp-row"><span>Rekomendasi masuk pasar</span><span><strong>${fmtRp(stats.p35)} – ${fmtRp(stats.p65)}</strong></span></div>
+    ${patokan ? `<div class="comp-row"><span>Patokan harga pemenang</span><span><strong>${fmtRp(patokan)}</strong> · produk ini ${price <= patokan ? 'di bawah' : 'di atas'} patokan</span></div>` : ''}
+    <p class="dd-sub" style="margin-top:10px">Rentang dari ${stats.n} listing di keyword ini.</p>
+    <h3 style="margin-top:18px">Distribusi harga</h3>
+    ${_ddDistBarsHtml()}`;
+}
+
+function ddSectionTren() {
+  return `<h3>Tren penjualan (estimasi)</h3><span class="data-badge">Data Shopee — bukan jawaban AI</span>
+    <div class="dd-chart-wrap"><canvas id="dd-trend-canvas"></canvas></div>
+    <p class="dd-sub" style="margin-top:8px">Jangkar Senin minggu ini. Estimasi sederhana dari kecepatan jual — bukan omset absolut panel scrape penuh.</p>`;
+}
+
+function ddSectionSupplier() {
+  const { suppliers } = _dd;
+  if (!suppliers.length) return '<h3>Toko pemasok</h3><p class="dd-sub">Belum ada data leaderboard untuk keyword ini.</p>';
+  return `<h3>Toko pemasok (leaderboard)</h3><span class="data-badge">Data Shopee — bukan jawaban AI</span>` +
+    suppliers.map(s => `<div class="comp-row"><span>${esc(s.store_name)}</span><span>${fmtSold(s.hero_sold)} hero · ${esc(s.location || '')}</span></div>`).join('');
+}
+
+const DD_SECTIONS = {
+  kompetitor: { label: 'Lihat 15 kompetitor teratas', render: ddSectionKompetitor },
+  harga: { label: 'Berapa harga kompetitif?', render: ddSectionHarga },
+  tren: { label: 'Tren penjualan', render: ddSectionTren },
+  supplier: { label: 'Toko pemasok', render: ddSectionSupplier },
+};
+
+async function ddOpenSection(name) {
+  if (!_dd || !DD_SECTIONS[name]) return;
+  if (_dd.open.has(name)) {
+    document.getElementById(`dd-sec-${name}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  _dd.open.add(name);
+  document.querySelector(`#dd-chips [data-sec="${name}"]`)?.classList.add('selected');
+  const wrap = $('dd-sections');
+  if (!wrap) return;
+  const sec = document.createElement('div');
+  sec.className = 'dd-section';
+  sec.id = `dd-sec-${name}`;
+  sec.innerHTML = DD_SECTIONS[name].render();
+  wrap.appendChild(sec);
+  if (name === 'tren') { await larisEnsureChart(); renderTrendChart(_dd.product); }
+  void logUserEvent('deepdive_section', { ui: 'gpt', section: name, keyword: _dd.product.keyword || '' });
+  clarityEvt('deepdive_section', { section: name });
+  sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 async function openDeepDive(product) {
   if (!currentUser) {
     // Remember the clicked product (survives the OAuth reload) so signup lands
@@ -1474,73 +1636,33 @@ async function openDeepDive(product) {
   void logUserEvent('deepdive_open', { ui: 'gpt', keyword: kw, item_id: product.item_id, shop_id: product.shop_id });
   clarityEvt('deepdive_open', { keyword: kw });
 
-  const prices = peers.map(p => Number(p.price) || 0).filter(Boolean);
-  const buckets = [
-    { label: '< 100rb', fn: p => p < 100000 },
-    { label: '100–150rb', fn: p => p >= 100000 && p < 150000 },
-    { label: '150–200rb', fn: p => p >= 150000 && p < 200000 },
-    { label: '200–300rb', fn: p => p >= 200000 && p < 300000 },
-    { label: '> 300rb', fn: p => p >= 300000 },
-  ].map(b => ({ ...b, count: prices.filter(b.fn).length }));
-  const maxB = Math.max(...buckets.map(b => b.count), 1);
+  const stats = ddStats(peers);
+  _dd = { product, peers, niche, suppliers, stats, open: new Set() };
+  if (_trendChart) { try { _trendChart.destroy(); } catch (_) {} _trendChart = null; }
 
-  const breakoutHtml = niche && niche.breakout_rate != null
-    ? `<div class="dd-section"><h3>Peluang breakout</h3>
-        <p style="margin:0;font-size:.9rem;line-height:1.5">Dari <strong>${esc(niche.new_items)}</strong> listing baru di keyword ini, <strong>${esc(niche.breakouts)}</strong> tembus 100+ terjual (<strong>${Number(niche.breakout_rate).toFixed(1)}%</strong>). Median harga pemenang: ${fmtRp(niche.median_winner_price)}.</p>
-        <p style="margin:8px 0 0;font-size:.78rem;color:var(--muted)">Angka dari data historis LarisID — bukan prediksi AI.</p></div>`
-    : '';
-
-  const comps = peers.slice(0, 8).map((r, i) =>
-    `<div class="comp-row"><span><strong>#${i + 1}</strong> ${esc((r.product_name || '').slice(0, 42))}</span><span>${fmtSold(r.total_sold)} · ${fmtRp(r.price)}</span></div>`
-  ).join('') || '<p class="dd-sub">Kompetitor belum tersedia untuk keyword ini.</p>';
-
-  const reviews = peers.filter(p => p.reviews > 0).slice(0, 8)
-    .map(p => `<span class="review-pill">${esc((p.store_name || 'Toko').slice(0, 18))} · ${fmtSold(p.reviews)} ulasan · ★${Number(p.rating || 0).toFixed(1)}</span>`)
-    .join('');
-
-  const supplierHtml = suppliers.length
-    ? `<div class="dd-section"><h3>Toko pemasok (leaderboard)</h3>${suppliers.map(s =>
-        `<div class="comp-row"><span>${esc(s.store_name)}</span><span>${fmtSold(s.hero_sold)} hero · ${esc(s.location || '')}</span></div>`
-      ).join('')}</div>`
-    : '';
+  const chips = Object.entries(DD_SECTIONS).map(([key, s]) =>
+    `<button type="button" class="chip dd-chip" data-sec="${esc(key)}">${esc(s.label)}</button>`
+  ).join('');
 
   root.innerHTML = `
     <div class="dd-head">
       <button type="button" class="btn-ghost" id="dd-back" style="margin:0 0 10px">Kembali ke chat</button>
       <h1 class="dd-title">${esc(product.product_name || product.keyword || 'Produk')}</h1>
       <p class="dd-sub">${esc(product.category || '')} · ${esc(product.location || '')} · keyword: ${esc(kw || '—')}</p>
-      <span class="data-badge">Deep Dive data · composer tetap aktif di bawah</span>
+      <span class="data-badge">Ringkasan dari data Shopee · composer di bawah untuk tanya AI</span>
     </div>
-    <div class="dd-metrics">
-      <div class="dd-metric"><div class="lbl">Harga</div><div class="val">${fmtRp(product.price)}</div></div>
-      <div class="dd-metric"><div class="lbl">Terjual</div><div class="val">${fmtSold(product.total_sold)}</div></div>
-      <div class="dd-metric"><div class="lbl">/ hari</div><div class="val">${fmtSold(product.sold_per_day)}</div></div>
-      <div class="dd-metric"><div class="lbl">Ulasan</div><div class="val">${fmtSold(product.reviews)} · ★${Number(product.rating || 0).toFixed(1)}</div></div>
-    </div>
-    <div class="dd-section">
-      <h3>Distribusi harga (keyword)</h3>
-      <div id="dd-dist">${buckets.map(b => {
-        const pct = prices.length ? Math.round(b.count / prices.length * 100) : 0;
-        return `<div class="dist-bar"><div style="width:88px;color:var(--muted)">${esc(b.label)}</div><div class="track"><div class="fill" style="width:${Math.round(b.count / maxB * 100)}%"></div></div><div style="width:36px;text-align:right">${pct}%</div></div>`;
-      }).join('') || '<p class="dd-sub">Belum ada data harga peer.</p>'}</div>
-    </div>
-    <div class="dd-section">
-      <h3>Tren mingguan (estimasi dari sold/hari)</h3>
-      <div class="dd-chart-wrap"><canvas id="dd-trend-canvas"></canvas></div>
-      <p class="dd-sub" style="margin-top:8px">Jangkar Senin minggu ini. Estimasi sederhana dari kecepatan jual — bukan omset absolut panel scrape penuh.</p>
-    </div>
-    <div class="dd-section"><h3>Top kompetitor</h3>${comps}</div>
-    ${breakoutHtml}
-    ${supplierHtml}
-    <div class="dd-section"><h3>Dinding ulasan (peer)</h3><div class="review-wall">${reviews || '<span class="dd-sub">Belum ada data ulasan.</span>'}</div></div>
+    ${ddMetricBoxesHtml(product, stats, niche)}
+    <div class="dd-chips" id="dd-chips">${chips}</div>
+    <p class="dd-sub" style="margin:4px 0 0">Chip di atas = data langsung (gratis). Ketik pertanyaan di bawah = AI (perlu login).</p>
+    <div id="dd-sections"></div>
     <button type="button" class="btn-ghost" id="btn-more-from-dd">Tampilkan produk lain</button>
   `;
 
   $('dd-back')?.addEventListener('click', () => { setView('chat'); renderChatThread(); });
   $('btn-more-from-dd')?.addEventListener('click', () => void startRecommendationChat(false));
-
-  await larisEnsureChart();
-  renderTrendChart(product);
+  $('dd-chips')?.querySelectorAll('[data-sec]').forEach(btn => {
+    btn.addEventListener('click', () => void ddOpenSection(btn.getAttribute('data-sec')));
+  });
 }
 
 function mondayOfWeek(d = new Date()) {
