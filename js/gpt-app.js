@@ -195,7 +195,6 @@ const ICONS = {
   search: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
   scale: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M8 21h8M6 7l-3 6a3.5 3.5 0 0 0 6 0L6 7zM18 7l-3 6a3.5 3.5 0 0 0 6 0l-3-6zM4 7h16"/></svg>',
   calc: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/></svg>',
-  truck: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>',
   wallet: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 15h.01"/></svg>',
   target: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.2"/></svg>',
   box: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linejoin="round"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>',
@@ -220,7 +219,6 @@ const HOME_CHIPS = [
   { id: 'trending', label: 'Produk Trending', icon: 'flame', prompt: 'Produk apa yang lagi trending minggu ini?' },
   { id: 'bandingkan', label: 'Bandingkan Produk', icon: 'scale', prompt: 'Bandingkan 2 produk' },
   { id: 'profit', label: 'Hitung Profit', icon: 'calc', prompt: 'Hitung estimasi profit' },
-  { id: 'supplier', label: 'Cari Supplier', icon: 'truck', prompt: 'Cari supplier termurah' },
   { id: 'modal500', label: 'Modal Rp500rb', icon: 'wallet', prompt: 'Cari produk modal Rp500rb' },
   { id: 'lowcomp', label: 'Kompetisi Rendah', icon: 'target', prompt: 'Produk dengan kompetisi rendah' },
 ];
@@ -241,7 +239,6 @@ const TRENDING_CHIPS = [
 ];
 const DD_CHIPS = [
   { id: 'bandingkan', label: 'Bandingkan dengan produk lain', icon: 'scale', prompt: 'Bandingkan dengan produk lain yang mirip' },
-  { id: 'supplier', label: 'Cari supplier termurah', icon: 'truck', prompt: 'Cari supplier termurah' },
   { id: 'launch', label: 'Buat rencana launch', icon: 'spark', prompt: 'Buat rencana launch untuk produk ini' },
   { id: 'profit', label: 'Estimasi profit', icon: 'calc', prompt: 'Hitung estimasi profit' },
   { id: 'konten', label: 'Ide konten produk', icon: 'bulb', prompt: 'Kasih ide konten untuk produk ini' },
@@ -2009,7 +2006,6 @@ function bindTrendingCards(root) {
 function detectIntent(lower) {
   if (/trending|naik daun|lagi (rame|ramai)|produk (yang )?(lagi )?naik|lagi naik/.test(lower)) return 'trending';
   if (/kompetisi rendah|persaingan rendah|belum banyak (penjual|saingan)|cari niche/.test(lower)) return 'lowcomp';
-  if (/supplier|pemasok|grosir/.test(lower)) return 'supplier';
   if (/(hitung|estimasi|berapa).{0,24}(profit|untung|margin)|^profit\b/.test(lower)) return 'profit';
   if (/modal\s*(rp\.?\s*)?[\d]|modal (kecil|terbatas)/.test(lower)) return 'modal';
   if (/bandingkan|\bvs\b|dibanding/.test(lower)) return 'bandingkan';
@@ -2085,7 +2081,6 @@ async function handleIntent(intent, text) {
 
   if (intent === 'trending') return handleTrendingIntent(chat);
   if (intent === 'modal') return handleModalIntent(chat, text);
-  if (intent === 'supplier') return handleSupplierIntent(chat, text);
   if (intent === 'lowcomp') return handleLowcompIntent(chat);
   if (intent === 'profit') return handleProfitIntent(chat, text);
   if (intent === 'bandingkan') return handleBandingkanIntent(chat, text);
@@ -2156,40 +2151,6 @@ async function handleModalIntent(chat, text) {
   await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', { text: 'Hasil modal', budget, products: top.map(productSnapshot).filter(Boolean) }, html);
   bindProductCards();
-  scrollChatToBottom();
-}
-
-async function handleSupplierIntent(chat, text) {
-  const product = state.deepdiveProduct || activeChat()?.context?.product;
-  let term = product?.keyword || '';
-  if (!term) {
-    term = _searchTerms(String(text).toLowerCase().replace(/supplier|pemasok|grosir|termurah|murah/g, ' ')).join(' ');
-  }
-  if (!term) {
-    const html = `<p>Supplier untuk produk apa? Contoh: <strong>“Cari supplier vas keramik”</strong>.</p>`;
-    await appendAssistantStream(html);
-    pushMessage(chat, 'assistant', { text: 'Tanya supplier' }, html);
-    return;
-  }
-  const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari supplier di data…</p>`);
-  let rows = [];
-  try {
-    const { data } = await _supabase.from('mv_supplier_leaderboard')
-      .select('keyword,store_name,location,hero_sold,catalog_items,rnk')
-      .ilike('keyword', `%${term.slice(0, 40)}%`)
-      .order('hero_sold', { ascending: false })
-      .limit(8);
-    rows = data || [];
-  } catch (_) {}
-  const html = rows.length
-    ? `<p>Toko dengan penjualan terbesar untuk “<strong>${esc(term)}</strong>” — kandidat supplier/benchmark dari data Shopee:</p>
-       <div class="ans-panel" style="margin-top:12px"><div class="ans-table-wrap"><table class="tr-table">
-       <thead><tr><th>#</th><th>Toko</th><th>Lokasi</th><th>Produk hero terjual</th><th>Katalog</th></tr></thead>
-       <tbody>${rows.map((s, i) => `<tr><td class="tr-rank">${i + 1}</td><td><strong>${esc(s.store_name || '')}</strong></td><td>${esc(s.location || '—')}</td><td>${fmtSold(s.hero_sold)}</td><td>${s.catalog_items ?? '—'}</td></tr>`).join('')}</tbody>
-       </table></div></div>`
-    : `<p>Belum ada data leaderboard untuk “${esc(term)}”. Coba kata kunci lain.</p>`;
-  await revealAssistant(loading, html);
-  pushMessage(chat, 'assistant', { text: 'Supplier', term }, html);
   scrollChatToBottom();
 }
 
@@ -4045,11 +4006,11 @@ async function handleComposerSubmit(text) {
   }
 
   // Data-backed intents (home/trending/DD chips + free text). In a product
-  // conversation only profit & supplier are intercepted (they use the
-  // product's own data); everything else there goes to AI as before.
+  // conversation only profit is intercepted (it uses the product's own data);
+  // everything else there goes to AI as before.
   // Bandingkan with explicit “A vs B” is also allowed in product context.
   const intent = detectIntent(lower);
-  if (intent && (!inProductCtx || intent === 'profit' || intent === 'supplier' || intent === 'bandingkan')) {
+  if (intent && (!inProductCtx || intent === 'profit' || intent === 'bandingkan')) {
     await handleIntent(intent, text);
     return;
   }
