@@ -1487,6 +1487,16 @@ body.calc-resizing .calc-resize::before { background: var(--accent); }
 .calc-body .side-komp-lead {
   margin: 0 0 12px; font-size: .76rem; color: var(--muted); line-height: 1.45;
 }
+.calc-body .side-serupa-grid {
+  margin-top: 0;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 400px) {
+  .calc-body .side-serupa-grid { grid-template-columns: 1fr 1fr; }
+}
+.calc-body .side-serupa-grid .prod-card { border-radius: 12px; }
+.calc-body .side-serupa-grid .prod-card-body { padding: 10px; }
+.calc-body .side-serupa-grid .prod-card-name { font-size: .75rem; min-height: 2.4em; }
 .ddr-sec-head {
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
   margin-bottom: 10px;
@@ -1497,6 +1507,9 @@ body.calc-resizing .calc-resize::before { background: var(--accent); }
   text-decoration: none;
 }
 .ddr-panel-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+.ddr-dd-actions {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;
+}
 body.calc-resizing { cursor: col-resize; user-select: none; }
 
 @media (max-width: 860px) {
@@ -1740,6 +1753,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
         <div class="side-tabs" role="tablist" aria-label="Mode panel">
           <button type="button" class="side-tab active" role="tab" id="side-tab-kalc" data-side-mode="kalkulator" aria-selected="true">Kalkulator</button>
           <button type="button" class="side-tab" role="tab" id="side-tab-komp" data-side-mode="kompetitor" aria-selected="false">Kompetitor</button>
+          <button type="button" class="side-tab" role="tab" id="side-tab-serupa" data-side-mode="serupa" aria-selected="false">Serupa</button>
         </div>
       </div>
       <button type="button" class="calc-close" id="calc-close" aria-label="Tutup panel" title="Tutup (Esc)">
@@ -1749,6 +1763,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
     <span class="calc-context" id="calc-context" hidden></span>
     <div class="calc-body" id="side-body-kalc"></div>
     <div class="calc-body" id="side-body-komp" hidden></div>
+    <div class="calc-body" id="side-body-serupa" hidden></div>
   </aside>
 </div>
 
@@ -1760,6 +1775,10 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   <button type="button" class="side-rail-btn" id="komp-rail" aria-expanded="false" aria-controls="calc-panel" title="Buka Kompetitor">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     <span class="side-rail-label">Kompetitor</span>
+  </button>
+  <button type="button" class="side-rail-btn" id="serupa-rail" aria-expanded="false" aria-controls="calc-panel" title="Buka produk serupa">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    <span class="side-rail-label">Serupa</span>
   </button>
 </div>
 
@@ -1825,6 +1844,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260717x" defer></script>
+<script src="/js/gpt-app.js?v=20260717y" defer></script>
 </body>
 </html>

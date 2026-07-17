@@ -1566,13 +1566,26 @@ function wirePrefsDrawer() {
   });
 }
 
-// ── Side panel (Cursor-style): Kalkulator | Kompetitor ─────────────────────
+// ── Side panel (Cursor-style): Kalkulator | Kompetitor | Serupa ─────────────
 const SIDE_PREFS_KEY = 'gpt_side_panel_v1';
 const CALC_PREFS_KEY_LEGACY = 'gpt_calc_panel_v1';
-let _sideMode = 'kalkulator'; // 'kalkulator' | 'kompetitor'
+let _sideMode = 'kalkulator'; // 'kalkulator' | 'kompetitor' | 'serupa'
 let _calcFilled = false;
 let _calcProductKey = null; // item_id|shop_id of last calc prefill
 let _kompFetchToken = 0;
+let _serupaFetchToken = 0;
+
+function normalizeSideMode(mode) {
+  if (mode === 'kompetitor' || mode === 'serupa') return mode;
+  return 'kalkulator';
+}
+
+function sideModeLabel(mode) {
+  const m = normalizeSideMode(mode);
+  if (m === 'kompetitor') return 'Kompetitor';
+  if (m === 'serupa') return 'Produk serupa';
+  return 'Kalkulator profit';
+}
 
 function loadSidePrefs() {
   try {
@@ -1598,7 +1611,7 @@ function setCalcWidth(px) {
 }
 
 function setSideModeUi(mode) {
-  _sideMode = mode === 'kompetitor' ? 'kompetitor' : 'kalkulator';
+  _sideMode = normalizeSideMode(mode);
   document.querySelectorAll('.side-tab').forEach(tab => {
     const on = tab.getAttribute('data-side-mode') === _sideMode;
     tab.classList.toggle('active', on);
@@ -1607,14 +1620,15 @@ function setSideModeUi(mode) {
   const open = document.body.classList.contains('calc-open');
   $('calc-rail')?.setAttribute('aria-expanded', open && _sideMode === 'kalkulator' ? 'true' : 'false');
   $('komp-rail')?.setAttribute('aria-expanded', open && _sideMode === 'kompetitor' ? 'true' : 'false');
+  $('serupa-rail')?.setAttribute('aria-expanded', open && _sideMode === 'serupa' ? 'true' : 'false');
   const panel = $('calc-panel');
-  if (panel) {
-    panel.setAttribute('aria-label', _sideMode === 'kompetitor' ? 'Kompetitor' : 'Kalkulator profit');
-  }
+  if (panel) panel.setAttribute('aria-label', sideModeLabel(_sideMode));
   const kalcBody = $('side-body-kalc');
   const kompBody = $('side-body-komp');
+  const serupaBody = $('side-body-serupa');
   if (kalcBody) kalcBody.hidden = _sideMode !== 'kalkulator';
   if (kompBody) kompBody.hidden = _sideMode !== 'kompetitor';
+  if (serupaBody) serupaBody.hidden = _sideMode !== 'serupa';
 }
 
 function setSideContext(text) {
@@ -1746,16 +1760,68 @@ async function fillKompContent(opts = {}) {
   wireKompPanelBody(body, peers || []);
 }
 
+function similarPeersForProduct(product, peers) {
+  const selfKey = sideProductKey(product);
+  const cat = (product?.category || '').trim().toLowerCase();
+  let list = (peers || [])
+    .map(p => asListingProduct(p))
+    .filter(p => sideProductKey(p) && sideProductKey(p) !== selfKey);
+  if (cat) {
+    const sameCat = list.filter(p => (p.category || '').trim().toLowerCase() === cat);
+    if (sameCat.length >= 4) list = sameCat;
+  }
+  return list
+    .sort((a, b) => (Number(b.total_sold) || 0) - (Number(a.total_sold) || 0))
+    .slice(0, 24);
+}
+
+async function fillSerupaContent(opts = {}) {
+  const body = $('side-body-serupa');
+  if (!body) return;
+  const product = opts.product || resolveSideProduct();
+  if (!product) {
+    setSideContext('');
+    body.innerHTML = '<p class="side-empty">Buka produk dulu untuk lihat item serupa.</p>';
+    return;
+  }
+  const label = (product.product_name || product.keyword || '').slice(0, 80);
+  setSideContext(label);
+
+  let peers = opts.peers || resolveSidePeers(product);
+  if (!peers?.length) {
+    const token = ++_serupaFetchToken;
+    body.innerHTML = '<p class="side-empty">Memuat produk serupa…</p>';
+    peers = await fetchSidePeers(product);
+    if (token !== _serupaFetchToken || _sideMode !== 'serupa') return;
+  }
+
+  const items = similarPeersForProduct(product, peers);
+  const kw = product.keyword || '—';
+  if (!items.length) {
+    body.innerHTML = `
+      <p class="side-komp-lead">Produk serupa di keyword “${esc(kw)}”.</p>
+      <p class="side-empty">Belum ada listing serupa untuk keyword ini.</p>
+    `;
+    return;
+  }
+  body.innerHTML = `
+    <p class="side-komp-lead">${items.length} produk serupa di keyword “${esc(kw)}” — urut terjual. Klik untuk Deep Dive.</p>
+    <div class="card-grid side-serupa-grid">${items.map((p, i) => productCardHtml(p, i)).join('')}</div>
+  `;
+  bindProductCards(body);
+}
+
 function refreshOpenSidePanel(opts = {}) {
   if (!document.body.classList.contains('calc-open')) return;
   if (_sideMode === 'kompetitor') void fillKompContent(opts);
+  else if (_sideMode === 'serupa') void fillSerupaContent(opts);
   else fillCalcContent({ ...opts, force: true });
 }
 
 function openSidePanel(mode, opts = {}) {
   const panel = $('calc-panel');
-  if (!panel || !$('side-body-kalc') || !$('side-body-komp')) return;
-  const next = mode === 'kompetitor' ? 'kompetitor' : 'kalkulator';
+  if (!panel || !$('side-body-kalc') || !$('side-body-komp') || !$('side-body-serupa')) return;
+  const next = normalizeSideMode(mode);
   const wasOpen = document.body.classList.contains('calc-open');
   const switching = wasOpen && _sideMode !== next;
 
@@ -1764,6 +1830,7 @@ function openSidePanel(mode, opts = {}) {
   setSideModeUi(next);
 
   if (next === 'kalkulator') fillCalcContent(opts);
+  else if (next === 'serupa') void fillSerupaContent(opts);
   else void fillKompContent(opts);
 
   saveSidePrefs({ open: true, mode: next });
@@ -1780,12 +1847,14 @@ function openSidePanel(mode, opts = {}) {
 
 function openCalcPanel(opts = {}) { openSidePanel('kalkulator', opts); }
 function openKompPanel(opts = {}) { openSidePanel('kompetitor', opts); }
+function openSerupaPanel(opts = {}) { openSidePanel('serupa', opts); }
 
 function closeCalcPanel() {
   document.body.classList.remove('calc-open');
   $('calc-panel')?.setAttribute('aria-hidden', 'true');
   $('calc-rail')?.setAttribute('aria-expanded', 'false');
   $('komp-rail')?.setAttribute('aria-expanded', 'false');
+  $('serupa-rail')?.setAttribute('aria-expanded', 'false');
   saveSidePrefs({ open: false, mode: _sideMode });
 }
 
@@ -1795,11 +1864,12 @@ function wireCalcPanel() {
 
   const prefs = loadSidePrefs();
   if (prefs.width) setCalcWidth(prefs.width);
-  if (prefs.mode === 'kompetitor') _sideMode = 'kompetitor';
+  _sideMode = normalizeSideMode(prefs.mode);
   setSideModeUi(_sideMode);
 
   $('calc-rail')?.addEventListener('click', () => openCalcPanel({ via: 'rail' }));
   $('komp-rail')?.addEventListener('click', () => openKompPanel({ via: 'rail' }));
+  $('serupa-rail')?.addEventListener('click', () => openSerupaPanel({ via: 'rail' }));
   $('calc-close')?.addEventListener('click', closeCalcPanel);
   document.querySelectorAll('.side-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -1852,7 +1922,7 @@ function wireCalcPanel() {
     }
   });
 
-  if (prefs.open) openSidePanel(prefs.mode === 'kompetitor' ? 'kompetitor' : 'kalkulator', { via: 'restore' });
+  if (prefs.open) openSidePanel(_sideMode, { via: 'restore' });
 }
 
 // ── Recommendations (city + category first) ──────────────────────────────
@@ -3881,12 +3951,19 @@ async function openDeepDive(product) {
         <button type="button" class="btn-primary" id="ddr-profit-btn" style="margin:0">Buka Kalkulator →</button>
       </div>
     </div>
-    <button type="button" class="btn-ghost" id="btn-more-from-dd">Tampilkan produk lain</button>
+    <div class="ddr-dd-actions">
+      <button type="button" class="btn-ghost" id="btn-serupa-from-dd">Lihat produk serupa</button>
+      <button type="button" class="btn-ghost" id="btn-more-from-dd">Tampilkan produk lain</button>
+    </div>
     <p class="ddr-caption" style="margin-top:10px">Semua angka dari data Shopee via LarisID — bukan tebakan AI. Ketik pertanyaan di bawah untuk tanya AI tentang produk ini.</p>
   `;
 
   $('dd-back')?.addEventListener('click', () => { setView('chat'); renderChatThread(); });
   $('btn-more-from-dd')?.addEventListener('click', () => void openMoreProductsDirectory());
+  $('btn-serupa-from-dd')?.addEventListener('click', () => {
+    void logUserEvent('deepdive_section', { ui: 'gpt', section: 'serupa_panel', via: 'click', keyword: kw || '' });
+    openSerupaPanel({ product, peers, via: 'deepdive' });
+  });
   $('ddr-profit-btn')?.addEventListener('click', () => {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'profit_cta', via: 'click', keyword: kw || '' });
     openCalcPanel({
