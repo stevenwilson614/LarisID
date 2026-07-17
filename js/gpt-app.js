@@ -3197,18 +3197,40 @@ async function openDeepDive(product) {
     }
   } catch (_) {}
 
-  // Scrape history for the product + top peers → real weekly trend + sparklines.
+  // Keyword scrape history → market weekly trend + sparklines.
+  // Top-N peers by lifetime sold often appear in only 1–2 waves (bucket
+  // leaders), so item_id IN (peers) + limit 1000 collapses Tren Omzet to a
+  // handful of early weeks even when the keyword has many later scrapes.
   let history = [];
   try {
-    const ids = [...new Set([product.item_id, ...peers.map(p => p.item_id)])]
-      .filter(x => x != null).slice(0, 30);
-    if (ids.length) {
-      const { data } = await _supabase.from('listings')
-        .select('item_id,shop_id,keyword,price,total_sold,reviews,scraped_at')
-        .in('item_id', ids)
-        .order('scraped_at', { ascending: false })
-        .limit(1000);
-      history = (data || []).reverse();
+    const histCols = 'item_id,shop_id,keyword,price,total_sold,reviews,scraped_at';
+    if (kw) {
+      const pageSize = 1000;
+      const maxRows = 5000;
+      const pages = [];
+      for (let from = 0; from < maxRows; from += pageSize) {
+        const { data, error } = await _supabase.from('listings')
+          .select(histCols)
+          .eq('keyword', kw)
+          .order('scraped_at', { ascending: true })
+          .range(from, from + pageSize - 1);
+        if (error || !data?.length) break;
+        pages.push(...data);
+        if (data.length < pageSize) break;
+      }
+      history = pages;
+    }
+    if (!history.length) {
+      const ids = [...new Set([product.item_id, ...peers.map(p => p.item_id)])]
+        .filter(x => x != null).slice(0, 30);
+      if (ids.length) {
+        const { data } = await _supabase.from('listings')
+          .select(histCols)
+          .in('item_id', ids)
+          .order('scraped_at', { ascending: false })
+          .limit(1000);
+        history = (data || []).reverse();
+      }
     }
   } catch (_) {}
 
