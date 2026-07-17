@@ -113,6 +113,9 @@ function _authSave(session) {
       expires_at: Date.now() + (session.expires_in || 3600) * 1000,
       user: session.user,
     }));
+    if (typeof gtag !== 'undefined') {
+      gtag('event', 'conversion', {'send_to': 'AW-862519971/XEK0CKrjqtEcEKOFpJsD'});
+    }
   } catch (_) {}
 }
 function _authClear() { try { localStorage.removeItem(_AUTH_SK); } catch (_) {} }
@@ -187,6 +190,99 @@ function clarityEvt(name, props) {
   } catch (_) {}
 }
 
+// ── Wire SVG icons (no emojis, ever) ─────────────────────────────────────
+const ICONS = {
+  flame: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c4.4 0 7-2.8 7-6.5 0-2.5-1.4-4.6-3-6.5-.6 1.2-1.4 2-2.5 2.5C13.9 9 13 5.5 9.5 2c.3 3-.5 4.6-2 6.5C6 10.4 5 12.3 5 15.5 5 19.2 7.6 22 12 22z"/></svg>',
+  search: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+  scale: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M8 21h8M6 7l-3 6a3.5 3.5 0 0 0 6 0L6 7zM18 7l-3 6a3.5 3.5 0 0 0 6 0l-3-6zM4 7h16"/></svg>',
+  calc: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/></svg>',
+  truck: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>',
+  wallet: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 15h.01"/></svg>',
+  target: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.2"/></svg>',
+  box: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linejoin="round"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>',
+  trendUp: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>',
+  arrowUp: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
+  spark: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/></svg>',
+  users: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14.5c2.6.3 4 2.2 4 4.5"/></svg>',
+  store: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linejoin="round"><path d="M4 9l1-5h14l1 5M4 9v11h16V9M4 9h16M9 20v-6h6v6"/></svg>',
+  pin: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 21s-7-5.4-7-11a7 7 0 1 1 14 0c0 5.6-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  tag: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linejoin="round"><path d="M3 12V3h9l9 9-9 9-9-9z"/><circle cx="8" cy="8" r="1.5"/></svg>',
+  bulb: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 1 3.5 10.9c-.8.6-1.5 1.2-1.5 2.1h-4c0-.9-.7-1.5-1.5-2.1A6 6 0 0 1 12 3z"/></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 11v5"/></svg>',
+};
+function ico(name, size = 16) {
+  const svg = ICONS[name] || ICONS.spark;
+  return svg.replace('<svg ', `<svg width="${size}" height="${size}" stroke="currentColor" `);
+}
+
+// ── Composer chip sets ───────────────────────────────────────────────────
+const HOME_CHIPS = [
+  { id: 'trending', label: 'Produk Trending', icon: 'flame', prompt: 'Produk apa yang lagi trending minggu ini?' },
+  { id: 'bandingkan', label: 'Bandingkan Produk', icon: 'scale', prompt: 'Bandingkan 2 produk' },
+  { id: 'profit', label: 'Hitung Profit', icon: 'calc', prompt: 'Hitung estimasi profit' },
+  { id: 'supplier', label: 'Cari Supplier', icon: 'truck', prompt: 'Cari supplier termurah' },
+  { id: 'modal500', label: 'Modal Rp500rb', icon: 'wallet', prompt: 'Cari produk modal Rp500rb' },
+  { id: 'lowcomp', label: 'Kompetisi Rendah', icon: 'target', prompt: 'Produk dengan kompetisi rendah' },
+];
+const HOME_PROMPT_CARDS = [
+  { icon: 'search', t: 'Cari produk', d: 'Temukan peluang produk yang layak dijual', q: 'Cari produk dekorasi rumah yang laris' },
+  { icon: 'scale', t: 'Bandingkan produk', d: 'Bandingkan 2 produk atau lebih', q: 'Bandingkan tumbler vs botol minum' },
+  { icon: 'calc', t: 'Hitung profit', d: 'Estimasi keuntungan sebelum jualan', q: 'Hitung profit jual tumbler 500ml' },
+  { icon: 'trendUp', t: 'Produk yang naik', d: 'Lihat produk yang sedang naik', q: 'Produk apa yang naik minggu ini?' },
+  { icon: 'target', t: 'Cari niche', d: 'Temukan niche dengan kompetisi rendah', q: 'Produk dengan kompetisi rendah' },
+  { icon: 'box', t: 'Modal terbatas', d: 'Cari produk sesuai modal kamu', q: 'Cari produk modal 500 ribu' },
+];
+const TRENDING_CHIPS = [
+  { id: 'bandingkan', label: 'Bandingkan 2 produk', icon: 'scale', prompt: 'Bandingkan 2 produk' },
+  { id: 'modal', label: 'Cari produk modal < 500rb', icon: 'wallet', prompt: 'Cari produk modal Rp500rb' },
+  { id: 'lowcomp', label: 'Produk dengan kompetisi rendah', icon: 'target', prompt: 'Produk dengan kompetisi rendah' },
+  { id: 'profit', label: 'Hitung estimasi profit', icon: 'calc', prompt: 'Hitung estimasi profit' },
+  { id: 'rencana', label: 'Buat rencana jualan', icon: 'spark', prompt: 'Buat rencana jualan' },
+];
+const DD_CHIPS = [
+  { id: 'bandingkan', label: 'Bandingkan dengan produk lain', icon: 'scale', prompt: 'Bandingkan dengan produk lain yang mirip' },
+  { id: 'supplier', label: 'Cari supplier termurah', icon: 'truck', prompt: 'Cari supplier termurah' },
+  { id: 'launch', label: 'Buat rencana launch', icon: 'spark', prompt: 'Buat rencana launch untuk produk ini' },
+  { id: 'profit', label: 'Estimasi profit', icon: 'calc', prompt: 'Hitung estimasi profit' },
+  { id: 'konten', label: 'Ide konten produk', icon: 'bulb', prompt: 'Kasih ide konten untuk produk ini' },
+];
+
+function setComposerChips(list, surface) {
+  const wrap = $('composer-chips');
+  if (!wrap) return;
+  if (!list || !list.length) { wrap.hidden = true; wrap.innerHTML = ''; return; }
+  wrap.hidden = false;
+  wrap.innerHTML = list.map(c =>
+    `<button type="button" class="chip" data-cchip="${esc(c.id)}" data-prompt="${esc(c.prompt)}"><span class="chip-ico">${ico(c.icon, 15)}</span>${esc(c.label)}</button>`
+  ).join('');
+  wrap.querySelectorAll('[data-cchip]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      void logUserEvent('gpt_chip_click', { ui: 'gpt', chip: btn.getAttribute('data-cchip'), surface: surface || state.view });
+      clarityEvt('gpt_chip_click', { chip: btn.getAttribute('data-cchip') });
+      void handleComposerSubmit(btn.getAttribute('data-prompt'));
+    });
+  });
+}
+
+// ── Chart.js lifecycle (multiple instances per deep dive) ────────────────
+const _charts = new Map();
+let _ddObserver = null;
+function makeChart(canvasId, cfg) {
+  const el = $(canvasId);
+  if (!el || typeof Chart === 'undefined') return null;
+  const prev = _charts.get(canvasId);
+  if (prev) { try { prev.destroy(); } catch (_) {} }
+  const c = new Chart(el, cfg);
+  _charts.set(canvasId, c);
+  return c;
+}
+function destroyAllCharts() {
+  _charts.forEach(c => { try { c.destroy(); } catch (_) {} });
+  _charts.clear();
+  if (_ddObserver) { try { _ddObserver.disconnect(); } catch (_) {} _ddObserver = null; }
+}
+
 // ── Onboarding lists (mirror A) ──────────────────────────────────────────
 const NU_ONB_CATS = ['Alat Tulis','Bayi & Anak','Dapur','Elektronik','Fashion','Hewan Peliharaan',
   'Hobi & Kerajinan','HP & Gadget','Kamar Mandi','Keamanan','Kecantikan','Kesehatan',
@@ -208,7 +304,10 @@ const NU_ONB_LOCATIONS = [
 const state = {
   view: 'chat',
   onboarding: {
-    step: 'city', // city | category | experience | pairing | notes | done
+    // idle = not started (landing is the default surface; onboarding is
+    // opt-in via the sidebar "Set lokasi" card or the one-time post-sign-in
+    // prompt). Mid-flow steps: city | category | experience | notes. done = finished.
+    step: 'idle',
     city: '',
     categories: [],
     experience: '', // first_time | existing
@@ -216,6 +315,8 @@ const state = {
     pairingCategory: '',
     notes: '',
     freeText: '', // "produk kayu" — biases recommendations
+    promptedPostSignin: false, // one-time post-sign-in onboarding offer shown
+    completedAnon: false,      // finished onboarding while logged out (needs retro replay)
   },
   chats: [], // { id, title, context, messages[], localId? }
   activeChatId: null,
@@ -237,8 +338,9 @@ function loadLocalState() {
     const raw = JSON.parse(localStorage.getItem(GPT_STATE_KEY) || 'null');
     if (!raw) return;
     if (raw.onboarding) Object.assign(state.onboarding, raw.onboarding);
-    // Legacy steps from the 5-screen flow land on the combined optional screen.
-    if (state.onboarding.step === 'pairing' || state.onboarding.step === 'pairing_cat') state.onboarding.step = 'notes';
+    // Legacy: onboarding used to auto-start pre-login. Anyone stuck mid-flow
+    // resumes from the landing instead ('idle'); only 'done' is preserved.
+    if (state.onboarding.step !== 'done' && state.onboarding.step !== 'idle') state.onboarding.step = 'idle';
     if (Array.isArray(raw.chats)) state.chats = raw.chats;
     if (raw.activeChatId) state.activeChatId = raw.activeChatId;
     if (raw.pendingDeepdive) state.pendingDeepdive = raw.pendingDeepdive;
@@ -322,11 +424,15 @@ function anonLimitHit() {
 function $(id) { return document.getElementById(id); }
 
 function setView(name) {
+  const leaving = state.view;
   state.view = name;
-  ['chat', 'deepdive', 'directory', 'harga', 'admin'].forEach(v => {
+  ['home', 'chat', 'deepdive', 'directory', 'harga', 'admin'].forEach(v => {
     const el = $(`view-${v}`);
     if (el) el.classList.toggle('active', v === name);
+    document.body.classList.toggle(`view-${v}`, v === name);
   });
+  if (leaving === 'deepdive' && name !== 'deepdive') destroyAllCharts();
+  if (name === 'home' || name === 'directory' || name === 'harga' || name === 'admin') setComposerChips(null);
   ['btn-produk', 'btn-harga', 'btn-admin'].forEach(id => {
     const el = $(id);
     if (!el) return;
@@ -623,11 +729,13 @@ async function _authOnSignIn(session) {
       _clarity('set', 'signup_source', String(src).slice(0, 120));
       _clarity('set', 'ab_variant_at_signup', String(attr.ab_variant || 'B'));
       setTimeout(() => { void logUserEvent('signup_attribution', attr); }, 2500);
-      // Funnel parity with A: on B, onboarding and the first recommendations
-      // happen BEFORE signup (RLS blocks anon writes), so replay those stages
-      // into activity_events once the session can write.
+      // Funnel parity with A: stages that happened while logged out (RLS
+      // blocks anon writes) are replayed once the session can write. With
+      // onboarding now post-sign-in, only anon-completed onboarding (via the
+      // "Set lokasi" card before signup) still needs the retro replay —
+      // post-login completions write directly and must not double count.
       setTimeout(() => {
-        if (state.onboarding.step === 'done') {
+        if (state.onboarding.step === 'done' && state.onboarding.completedAnon) {
           void logUserEvent('onboarding_complete', { ui: 'gpt', retro: true, region: state.onboarding.city, categories: state.onboarding.categories, seller_status: state.onboarding.experience });
         }
         if (state.chats.length || state.recommendations.length) {
@@ -654,12 +762,24 @@ async function _authOnSignIn(session) {
   await migrateLocalChatsToDb();
   saveLocalState();
 
+  renderSidebarLocCard();
+
   // Continue where the login gate interrupted: open the product they clicked.
+  const hadPending = !!state.pendingDeepdive;
   if (state.pendingDeepdive) {
     const p = state.pendingDeepdive;
     state.pendingDeepdive = null;
     saveLocalState();
     void openDeepDive(p);
+  }
+
+  // One-time, skippable post-sign-in onboarding offer (decided with Steven:
+  // location/kategori now live AFTER sign-in). Never interrupts a pending
+  // deep dive; the "Set lokasi" sidebar card remains the anytime entry.
+  if (!hadPending && state.onboarding.step !== 'done' && !state.onboarding.promptedPostSignin) {
+    state.onboarding.promptedPostSignin = true;
+    saveLocalState();
+    offerOnboardingAfterSignin();
   }
 }
 
@@ -809,14 +929,111 @@ function renderChatThread() {
     }
     // Re-bind cards
     bindProductCards(thread);
+    bindTrendingCards(thread);
+    updateThreadWide();
     scrollChatToBottom();
     return;
   }
-  if (state.onboarding.step !== 'done') {
-    renderOnboardingStep();
-  } else {
-    appendBubble('assistant', `<p>Hai! Ketik nama produk atau kategori yang mau kamu riset — atau mulai Chat Baru untuk rekomendasi baru.</p>`);
+  updateThreadWide();
+  appendBubble('assistant', `<p>Hai! Ketik nama produk atau kategori yang mau kamu riset — atau mulai Chat Baru untuk rekomendasi baru.</p>`);
+}
+
+// ── Landing (home) ───────────────────────────────────────────────────────
+let _offerActive = false; // post-sign-in onboarding offer currently on screen
+
+function submitFromHome(text) {
+  setView('chat');
+  void handleComposerSubmit(text);
+}
+
+function renderHome() {
+  _offerActive = false;
+  setView('home');
+  state.activeChatId = null;
+  saveLocalState();
+  renderChatList();
+
+  const chipsWrap = $('home-chips');
+  if (chipsWrap && !chipsWrap.dataset.ready) {
+    chipsWrap.dataset.ready = '1';
+    chipsWrap.innerHTML = HOME_CHIPS.map(c =>
+      `<button type="button" class="chip" data-hchip="${esc(c.id)}" data-prompt="${esc(c.prompt)}"><span class="chip-ico">${ico(c.icon, 15)}</span>${esc(c.label)}</button>`
+    ).join('');
+    chipsWrap.querySelectorAll('[data-hchip]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        void logUserEvent('gpt_chip_click', { ui: 'gpt', chip: btn.getAttribute('data-hchip'), surface: 'home' });
+        clarityEvt('gpt_chip_click', { chip: btn.getAttribute('data-hchip') });
+        submitFromHome(btn.getAttribute('data-prompt'));
+      });
+    });
   }
+
+  const grid = $('prompt-grid');
+  if (grid && !grid.dataset.ready) {
+    grid.dataset.ready = '1';
+    grid.innerHTML = HOME_PROMPT_CARDS.map(c => `
+      <button type="button" class="prompt-card" data-prompt="${esc(c.q)}">
+        <span class="pc-ico">${ico(c.icon, 26)}</span>
+        <span class="t">${esc(c.t)}</span>
+        <span class="d">${esc(c.d)}</span>
+        <span class="prompt-quote">“${esc(c.q)}”</span>
+      </button>`).join('');
+    grid.querySelectorAll('.prompt-card').forEach(btn => {
+      btn.addEventListener('click', () => {
+        void logUserEvent('gpt_chip_click', { ui: 'gpt', chip: 'prompt_card', surface: 'home' });
+        clarityEvt('gpt_chip_click', { chip: 'prompt_card' });
+        submitFromHome(btn.getAttribute('data-prompt'));
+      });
+    });
+  }
+
+  if (!renderHome._seen) {
+    renderHome._seen = true;
+    void logUserEvent('gpt_landing_view', { ui: 'gpt' });
+    clarityEvt('gpt_landing_view', {});
+  }
+}
+
+function renderSidebarLocCard() {
+  const label = $('side-loc-label');
+  const action = $('side-loc-action');
+  if (!label) return;
+  const o = state.onboarding;
+  if (o.step === 'done' && (o.city || (o.categories || []).length)) {
+    label.textContent = [o.city, (o.categories || [])[0]].filter(Boolean).join(' · ');
+    if (action) action.textContent = 'Ubah lokasi & kategori';
+  } else {
+    label.textContent = 'Lokasi belum dipilih';
+    if (action) action.textContent = 'Set lokasi';
+  }
+}
+
+function startOnboarding(source) {
+  _offerActive = false;
+  const o = state.onboarding;
+  if (o.step === 'idle' || o.step === 'done') o.step = 'city';
+  saveLocalState();
+  setView('chat');
+  state.activeChatId = null;
+  renderChatList();
+  clarityEvt('gpt_onboarding_start', { source: source || '' });
+  renderOnboardingStep();
+}
+
+function offerOnboardingAfterSignin() {
+  _offerActive = true;
+  setView('chat');
+  state.activeChatId = null;
+  renderChatList();
+  const thread = $('chat-thread');
+  if (thread) thread.innerHTML = '';
+  updateThreadWide();
+  appendBubble('assistant', `
+    <p>Mau atur <strong>lokasi &amp; kategori</strong> dulu biar rekomendasinya lebih pas? Bisa dilewati kok.</p>
+    <button type="button" class="btn-primary" id="onb-offer-yes">Atur sekarang</button>
+    <button type="button" class="btn-ghost" id="onb-offer-later" style="margin-left:8px">Nanti saja</button>`);
+  $('onb-offer-yes')?.addEventListener('click', () => startOnboarding('post_signin'));
+  $('onb-offer-later')?.addEventListener('click', () => renderHome());
 }
 
 function pushMessage(chat, role, content, html) {
@@ -949,6 +1166,23 @@ function renderOnboardingStep() {
       void finishOnboarding();
     });
   }
+  // Onboarding is optional now — every step can bail back to the landing.
+  const lastBubble = thread.querySelector('.msg:last-child .msg-bubble');
+  if (lastBubble && !lastBubble.querySelector('#onb-skip')) {
+    const skip = document.createElement('button');
+    skip.type = 'button';
+    skip.className = 'btn-ghost';
+    skip.id = 'onb-skip';
+    skip.style.marginLeft = '8px';
+    skip.textContent = 'Lewati';
+    lastBubble.appendChild(skip);
+    skip.addEventListener('click', () => {
+      state.onboarding.step = 'idle';
+      saveLocalState();
+      clarityEvt('gpt_onboarding_skip', {});
+      renderHome();
+    });
+  }
   const panel = $('panel');
   if (panel) scrollChatToBottom();
 }
@@ -995,7 +1229,9 @@ function renderCatChips() {
 
 async function finishOnboarding() {
   state.onboarding.step = 'done';
+  state.onboarding.completedAnon = !currentUser;
   saveLocalState();
+  renderSidebarLocCard();
   await persistOnboardingPrefs();
   void logUserEvent('onboarding_complete', { ui: 'gpt', region: state.onboarding.city, categories: state.onboarding.categories, seller_status: state.onboarding.experience, free_text: (state.onboarding.freeText || '').slice(0, 80) });
   clarityEvt('onboarding_complete', { ui: 'gpt' });
@@ -1435,12 +1671,8 @@ async function openChat(id) {
 }
 
 async function newChatFlow() {
-  setView('chat');
-  if (state.onboarding.step !== 'done') {
-    renderOnboardingStep();
-    return;
-  }
-  await startRecommendationChat(false);
+  // Chat Baru = the landing: search, chips, and example prompts live there.
+  renderHome();
 }
 
 // ── Deep dive ────────────────────────────────────────────────────────────
@@ -2105,19 +2337,7 @@ function renderAdminSampleBanner() {
 function goHome(e) {
   if (e) e.preventDefault();
   closeSidebar();
-  setView('chat');
-  state.activeChatId = null;
-  saveLocalState();
-  const thread = $('chat-thread');
-  if (thread) thread.innerHTML = '';
-  if (state.onboarding.step !== 'done') {
-    renderOnboardingStep();
-    return;
-  }
-  appendBubble('assistant', `<p>Beranda LARISgpt — riset produk buat jualan di Shopee, Tokopedia, atau TikTok Shop. Mulai <strong>Chat Baru</strong> untuk rekomendasi, atau tanya di kotak bawah.</p>
-    <button type="button" class="btn-primary" id="welcome-new">Chat Baru</button>`);
-  $('welcome-new')?.addEventListener('click', () => void newChatFlow());
-  renderChatList();
+  renderHome();
 }
 
 function fmtAdminDate(iso) {
@@ -2355,6 +2575,35 @@ function wireUi() {
       form?.requestSubmit();
     }
   });
+
+  const heroForm = $('hero-form');
+  const heroInput = $('hero-input');
+  heroForm?.addEventListener('submit', e => {
+    e.preventDefault();
+    const t = (heroInput?.value || '').trim();
+    if (!t) return;
+    heroInput.value = '';
+    submitFromHome(t);
+  });
+  heroInput?.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      heroForm?.requestSubmit();
+    }
+  });
+
+  $('btn-set-lokasi')?.addEventListener('click', () => {
+    closeSidebar();
+    startOnboarding('sidebar');
+  });
+
+  document.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && String(e.key).toLowerCase() === 'k') {
+      e.preventDefault();
+      renderHome();
+      $('hero-input')?.focus();
+    }
+  });
 }
 
 async function boot() {
@@ -2374,25 +2623,17 @@ async function boot() {
   await initSupabase();
   try { await consumeOAuthHash(); } catch (_) {}
 
-  if (state.onboarding.step !== 'done') {
-    setView('chat');
-    renderOnboardingStep();
-  } else if (state.activeChatId && activeChat()) {
-    setView('chat');
-    renderChatThread();
-  } else {
-    setView('chat');
-    renderOnboardingStep();
-    // If onboarding done but no chat, show prompt
-    if (state.onboarding.step === 'done') {
-      const thread = $('chat-thread');
-      if (thread) thread.innerHTML = '';
-      appendBubble('assistant', `<p>Selamat datang kembali. Mulai <strong>Chat Baru</strong> untuk rekomendasi, atau tanya di kotak bawah.</p>
-        <button type="button" class="btn-primary" id="welcome-new">Chat Baru</button>`);
-      $('welcome-new')?.addEventListener('click', () => void newChatFlow());
+  // Landing is the default surface; onboarding never auto-starts.
+  if (!_offerActive) {
+    if (state.activeChatId && activeChat()) {
+      setView('chat');
+      renderChatThread();
+    } else {
+      renderHome();
     }
   }
   renderChatList();
+  renderSidebarLocCard();
 }
 
 boot();
