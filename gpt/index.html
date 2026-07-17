@@ -525,6 +525,51 @@ html.session-restoring body::after {
   text-transform: uppercase; color: var(--muted);
 }
 
+/* Deep Dive entry kept in chat scroll history */
+.dd-chat-card {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px;
+  background: var(--bg);
+}
+.dd-chat-card-top {
+  display: flex; gap: 12px; align-items: flex-start;
+}
+.dd-chat-card-top img,
+.dd-chat-card-ph {
+  width: 64px; height: 64px; border-radius: 12px; object-fit: cover;
+  background: var(--bg-user); flex-shrink: 0; display: block;
+}
+.dd-chat-card-main { min-width: 0; flex: 1; }
+.dd-chat-card-eyebrow {
+  font-size: .62rem; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--accent); margin-bottom: 4px;
+}
+.dd-chat-card-name {
+  font-size: .9rem; font-weight: 650; line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.dd-chat-card-meta {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin-top: 8px; font-size: .72rem; color: var(--muted);
+}
+.dd-chat-card-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);
+}
+.dd-chat-card-stats .lbl {
+  display: block; font-size: .62rem; font-weight: 550; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .03em;
+}
+.dd-chat-card-stats .val {
+  display: block; margin-top: 2px; font-size: .8125rem; font-weight: 650;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dd-chat-card .dd-chat-open {
+  margin-top: 12px; width: 100%; justify-content: center;
+}
+
 /* Deep dive */
 .dd-head { margin-bottom: 20px; }
 .dd-title { font-size: 1.35rem; font-weight: 650; margin: 0 0 6px; line-height: 1.3; letter-spacing: -.02em; }
@@ -1727,6 +1772,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260717u" defer></script>
+<script src="/js/gpt-app.js?v=20260717v" defer></script>
 </body>
 </html>

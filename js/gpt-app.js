@@ -1302,6 +1302,7 @@ function renderChatThread() {
     }
     // Re-bind cards
     bindProductCards(thread);
+    bindDeepDiveCards(thread);
     bindTrendingCards(thread);
     bindGptKalc(thread);
     updateThreadWide();
@@ -2835,6 +2836,97 @@ function bindProductCards(root) {
   });
 }
 
+/** Compact Deep Dive summary kept in the chat thread so scrolling history still reaches it. */
+function deepDiveChatCardHtml(product, scoreInfo, stats) {
+  const snap = productSnapshot(product);
+  const encoded = snap ? encodeURIComponent(JSON.stringify(snap)) : '';
+  const key = prodKey(product);
+  const omset = estOmsetBulan(product);
+  const img = product.image_url || '';
+  const name = product.product_name || product.keyword || 'Produk';
+  const komp = stats?.komp || '—';
+  return `<div class="dd-chat-card" data-dd-card="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''}>
+    <div class="dd-chat-card-top">
+      ${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : '<span class="dd-chat-card-ph"></span>'}
+      <div class="dd-chat-card-main">
+        <div class="dd-chat-card-eyebrow">Deep Dive</div>
+        <div class="dd-chat-card-name">${esc(name)}</div>
+        <div class="dd-chat-card-meta">
+          <span class="badge ${esc(scoreInfo.cls)}">${esc(scoreInfo.label)}</span>
+          <span>Skor ${scoreInfo.score}/100</span>
+        </div>
+      </div>
+    </div>
+    <div class="dd-chat-card-stats">
+      <div><span class="lbl">Harga</span><span class="val">${fmtRp(product.price)}</span></div>
+      <div><span class="lbl">Omzet/bln</span><span class="val">${omset ? fmtOmset(omset) : '—'}</span></div>
+      <div><span class="lbl">Kompetisi</span><span class="val">${esc(komp)}</span></div>
+    </div>
+    <button type="button" class="btn-primary dd-chat-open" data-dd-open="${esc(key)}">Lihat analisis lengkap →</button>
+  </div>`;
+}
+
+function upsertDeepDiveChatMessage(chat, product, scoreInfo, stats) {
+  if (!chat || !product || product.item_id == null || product.shop_id == null) return;
+  rememberProducts([product]);
+  const snap = productSnapshot(product);
+  if (!snap) return;
+  const card = deepDiveChatCardHtml(product, scoreInfo, stats);
+  const html = `<p>Deep Dive untuk <strong>${esc(product.product_name || product.keyword || 'produk')}</strong> — ringkasan dari data LarisID:</p>${card}`;
+  const content = {
+    text: 'Deep Dive',
+    kind: 'deepdive',
+    item_id: product.item_id,
+    shop_id: product.shop_id,
+    products: [snap],
+    score: scoreInfo?.score,
+    html,
+  };
+  if (!chat.messages) chat.messages = [];
+  const idx = chat.messages.findIndex(m =>
+    m.role === 'assistant' &&
+    m.content?.kind === 'deepdive' &&
+    String(m.content?.item_id) === String(product.item_id) &&
+    String(m.content?.shop_id) === String(product.shop_id)
+  );
+  const key = prodKey(product);
+  if (idx >= 0) {
+    chat.messages[idx] = { ...chat.messages[idx], content, html, ts: Date.now() };
+    saveLocalState();
+    return;
+  }
+  pushMessage(chat, 'assistant', content, html);
+  // Keep the live thread in sync even while Deep Dive view is showing, so
+  // leaving via composer (no full re-render) still has the card in history.
+  const thread = $('chat-thread');
+  const alreadyInDom = thread && [...thread.querySelectorAll('[data-dd-card]')]
+    .some(el => el.getAttribute('data-dd-card') === key);
+  if (thread && !alreadyInDom) {
+    appendBubble('assistant', html, { skipScroll: true });
+    bindDeepDiveCards(thread);
+  }
+}
+
+function bindDeepDiveCards(root) {
+  (root || document).querySelectorAll('[data-dd-open]').forEach(btn => {
+    if (btn.dataset.boundDd) return;
+    btn.dataset.boundDd = '1';
+    btn.addEventListener('click', () => {
+      const key = btn.getAttribute('data-dd-open');
+      const [item_id, shop_id] = (key || '').split('|');
+      const card = btn.closest('[data-dd-card]');
+      void (async () => {
+        const p = await resolveProduct(item_id, shop_id, card);
+        if (!p) {
+          showToast('Produk tidak ditemukan — coba buka lagi dari rekomendasi');
+          return;
+        }
+        void openDeepDive(p);
+      })();
+    });
+  });
+}
+
 async function ensureSearchAllowed() {
   if (currentUser && _supabase) {
     // Limit enforced when creating chat via RPC
@@ -3497,6 +3589,10 @@ async function openDeepDive(product) {
   const kwRows = ddKeywordRows(peers);
   _dd = { product, peers, niche, stats, history, series };
 
+  // Persist a Deep Dive entry in the chat thread so scrolling history always
+  // reaches it (DD itself is a separate view, not part of the message list).
+  if (chat) upsertDeepDiveChatMessage(chat, product, scoreInfo, stats);
+
   const lastScrape = history.length ? history[history.length - 1].scraped_at : null;
   const price = Number(product.price) || 0;
   const hasTrend = series.length >= 3;
@@ -4030,6 +4126,7 @@ async function handleComposerSubmit(text) {
     }
   }
 
+  const leavingDeepdive = state.view === 'deepdive';
   setView('chat');
   let chat = activeChat();
   if (!chat) {
@@ -4039,6 +4136,10 @@ async function handleComposerSubmit(text) {
     state.activeChatId = chat.localId;
     renderChatList();
   }
+
+  // Rebuild thread when leaving DD so the Deep Dive chat card is visible
+  // before the new user turn (composer leave does not call dd-back).
+  if (leavingDeepdive) renderChatThread();
 
   appendBubble('user', `<p>${esc(text)}</p>`);
   pushMessage(chat, 'user', text);
