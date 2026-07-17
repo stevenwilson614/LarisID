@@ -3224,7 +3224,9 @@ function ddWeeklySeries(history) {
   // Keep a lone week (e.g. first-interval credited to ending scrape) so 2-scrape
   // series are not wiped when the second scrape falls early in its Monday week.
   if (out.length > 1 && maxT - out[out.length - 1].ts < 3.5 * 864e5) out = out.slice(0, -1);
-  return out;
+  // Hide mid-April first-scrape baseline noise; chart starts Monday of week containing 27 Apr 2026 (WIB).
+  const fromTs = mondayOfWeek(new Date(Date.UTC(2026, 3, 27, 4, 0, 0))).getTime();
+  return out.filter(w => w.ts >= fromTs);
 }
 
 function ddShareData(peers) {
@@ -3584,7 +3586,7 @@ async function openDeepDive(product) {
                <span class="row"><span class="swatch" style="background:#16A34A"></span>Forecast</span>
              </div>`
           : `<p class="dd-sub">Belum cukup riwayat scrape untuk tren mingguan keyword ini — butuh beberapa gelombang panel. Bagian lain tetap dari data asli.</p>`}
-        <p class="ddr-caption">Estimasi mingguan pasar keyword “${esc(kw || '—')}” dari selisih scrape berurutan (snapshot pertama = baseline, bukan omzet) ${history.length ? `· ${new Set(history.map(r => String(r.item_id))).size} listing` : ''} · scrape terakhir ${esc(fmtAnchorDate(lastScrape))}.</p>
+        <p class="ddr-caption">Estimasi mingguan pasar keyword “${esc(kw || '—')}” dari selisih scrape berurutan (snapshot pertama = baseline, bukan omzet)${hasTrend ? ' · tampilan dari 27 Apr 2026' : ''} ${history.length ? `· ${new Set(history.map(r => String(r.item_id))).size} listing` : ''} · scrape terakhir ${esc(fmtAnchorDate(lastScrape))}.</p>
       </div>
       <div class="ddr-card" data-dd-sec="harga">
         <h3>Rentang Harga Optimal</h3>
