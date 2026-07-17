@@ -322,6 +322,8 @@ const state = {
   recommendations: [],
   deepdiveProduct: null,
   pendingDeepdive: null, // product clicked behind the login gate; opened after sign-in
+  pendingCompare: null, // { a, b } clicked behind login gate; opened after sign-in
+  comparePick: null, // { source } — directory is in “pick a product to compare” mode
 
   dirPage: 1,
   dirCat: null,
@@ -343,6 +345,7 @@ function loadLocalState() {
     if (Array.isArray(raw.chats)) state.chats = raw.chats;
     if (raw.activeChatId) state.activeChatId = raw.activeChatId;
     if (raw.pendingDeepdive) state.pendingDeepdive = raw.pendingDeepdive;
+    if (raw.pendingCompare) state.pendingCompare = raw.pendingCompare;
   } catch (_) {}
 }
 function saveLocalState() {
@@ -352,6 +355,7 @@ function saveLocalState() {
       chats: state.chats,
       activeChatId: state.activeChatId,
       pendingDeepdive: state.pendingDeepdive || null,
+      pendingCompare: state.pendingCompare || null,
       ts: Date.now(),
     }));
   } catch (_) {}
@@ -666,12 +670,90 @@ function updateAccountUI() {
   void refreshGptUsage();
 }
 
+function chatMessageSearchText(m) {
+  const c = m?.content;
+  if (!c) return '';
+  if (typeof c === 'string') return c;
+  const bits = [c.text, c.q, c.term, c.a, c.b, c.keyword];
+  if (Array.isArray(c.products)) {
+    for (const p of c.products) bits.push(p?.product_name, p?.keyword);
+  }
+  return bits.filter(Boolean).join(' ');
+}
+
+function chatContentSearchText(chat) {
+  const ctx = chat.context || {};
+  const bits = [
+    ctx.keyword,
+    ctx.q,
+    ctx.product?.product_name,
+    ctx.product?.keyword,
+    ctx.product?.store_name,
+  ];
+  if (Array.isArray(ctx.peers)) {
+    for (const p of ctx.peers) bits.push(p?.product_name, p?.keyword);
+  }
+  for (const m of (chat.messages || [])) bits.push(chatMessageSearchText(m));
+  return bits.filter(Boolean).join(' ');
+}
+
+/** Higher = better. Title matches outrank content; prefix/word-start beats substring. */
+function scoreChatMatch(chat, q) {
+  const qq = String(q || '').trim().toLowerCase();
+  if (!qq) return 0;
+  const title = String(chat.title || '').toLowerCase();
+  if (title) {
+    if (title === qq) return 1000;
+    if (title.startsWith(qq)) return 900;
+    if (title.split(/[\s\-_/]+/).some(w => w.startsWith(qq))) return 850;
+    if (title.includes(qq)) return 800;
+  }
+  const hay = chatContentSearchText(chat).toLowerCase();
+  if (!hay) return 0;
+  if (hay.split(/[\s\-_/]+/).some(w => w.startsWith(qq))) return 400;
+  if (hay.includes(qq)) return 300;
+  return 0;
+}
+
+function filteredChatsForList() {
+  const q = String($('chat-search-input')?.value || '').trim();
+  const chats = state.chats.slice();
+  if (!q) return chats.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+  return chats
+    .map(c => ({ c, score: scoreChatMatch(c, q) }))
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score || (b.c.created_at || 0) - (a.c.created_at || 0))
+    .map(x => x.c);
+}
+
+function openChatSearch() {
+  if (!currentUser) { openAuthModal('signup', 'gpt_gate_history'); return; }
+  const wrap = $('chat-search');
+  const input = $('chat-search-input');
+  wrap?.classList.add('open');
+  input?.focus();
+  input?.select();
+}
+
+function closeChatSearch() {
+  const wrap = $('chat-search');
+  const input = $('chat-search-input');
+  wrap?.classList.remove('open');
+  if (input) input.value = '';
+  renderChatList();
+}
+
 function renderChatList() {
   const list = $('chat-list');
   if (!list) return;
-  const chats = state.chats.slice().sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
-  if (!chats.length) {
+  const q = String($('chat-search-input')?.value || '').trim();
+  const chats = filteredChatsForList();
+  if (!state.chats.length) {
     list.innerHTML = '<div class="chat-empty">Belum ada pencarian</div>';
+    return;
+  }
+  if (!chats.length) {
+    list.innerHTML = `<div class="chat-empty">${q ? 'Tidak ketemu chat itu.' : 'Belum ada pencarian'}</div>`;
     return;
   }
   list.innerHTML = chats.map(c => {
@@ -933,8 +1015,14 @@ async function _authOnSignIn(session) {
   renderSidebarLocCard();
 
   // Continue where the login gate interrupted: open the product they clicked.
-  const hadPending = !!state.pendingDeepdive;
-  if (state.pendingDeepdive) {
+  const hadPending = !!(state.pendingDeepdive || state.pendingCompare);
+  if (state.pendingCompare) {
+    const pair = state.pendingCompare;
+    state.pendingCompare = null;
+    state.pendingDeepdive = null;
+    saveLocalState();
+    void openProductCompare(pair.a, pair.b);
+  } else if (state.pendingDeepdive) {
     const p = state.pendingDeepdive;
     state.pendingDeepdive = null;
     saveLocalState();
@@ -2280,10 +2368,21 @@ async function handleProfitIntent(chat, text) {
 }
 
 async function handleBandingkanIntent(chat, text) {
-  const cleaned = String(text).toLowerCase().replace(/bandingkan|dibandingkan|dibanding|dengan produk|dengan/g, ' ');
+  const lower = String(text).toLowerCase();
+  const product = state.deepdiveProduct || activeChat()?.context?.product;
+  // “Bandingkan dengan produk lain” → pick from Produk directory (not keyword search).
+  if (product && (/produk lain|yang mirip|mirip/.test(lower) || !/\bvs\.?\b/.test(lower))) {
+    await startComparePick(product);
+    return;
+  }
+  const cleaned = lower.replace(/bandingkan|dibandingkan|dibanding|dengan produk|dengan/g, ' ');
   const parts = cleaned.split(/\bvs\.?\b|\bdan\b|,|\batau\b/).map(s => _searchTerms(s).join(' ')).filter(Boolean).slice(0, 2);
   if (parts.length < 2) {
-    const html = `<p>Sebutkan dua produk yang mau dibandingkan — contoh: <strong>“Bandingkan tumbler vs botol minum”</strong>.</p>`;
+    if (product) {
+      await startComparePick(product);
+      return;
+    }
+    const html = `<p>Sebutkan dua produk yang mau dibandingkan — contoh: <strong>“Bandingkan tumbler vs botol minum”</strong> — atau buka Deep Dive dulu lalu ketuk <strong>Bandingkan dengan produk lain</strong>.</p>`;
     await appendAssistantStream(html);
     pushMessage(chat, 'assistant', { text: 'Tanya bandingkan' }, html);
     return;
@@ -2511,6 +2610,10 @@ function productCardHtml(p, i) {
   </button>`;
 }
 
+function prodKey(p) {
+  return `${p?.item_id}|${p?.shop_id}`;
+}
+
 function bindProductCards(root) {
   (root || document).querySelectorAll('[data-prod]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -2518,7 +2621,19 @@ function bindProductCards(root) {
       const [item_id, shop_id] = key.split('|');
       const pool = state.recommendations.concat(state.dirRows);
       const p = pool.find(x => String(x.item_id) === String(item_id) && String(x.shop_id) === String(shop_id));
-      if (p) void openDeepDive(p);
+      if (!p) return;
+      if (state.comparePick?.source) {
+        const src = state.comparePick.source;
+        if (prodKey(src) === prodKey(p)) {
+          showToast('Pilih produk lain — bukan yang sedang dibuka');
+          return;
+        }
+        state.comparePick = null;
+        updateDirCompareBanner();
+        void openProductCompare(src, p);
+        return;
+      }
+      void openDeepDive(p);
     });
   });
   (root || document).querySelectorAll('#btn-more-products').forEach(btn => {
@@ -4138,15 +4253,12 @@ function wireUi() {
   $('btn-home')?.addEventListener('click', goHome);
   $('btn-home-mobile')?.addEventListener('click', goHome);
   $('btn-new-chat')?.addEventListener('click', () => void newChatFlow());
-  $('btn-search-chats')?.addEventListener('click', () => {
-    if (!currentUser) { openAuthModal('signup', 'gpt_gate_history'); return; }
-    const q = prompt('Cari chat (judul / keyword):');
-    if (!q) return;
-    const qq = q.toLowerCase();
-    const hit = state.chats.find(c => (c.title || '').toLowerCase().includes(qq) || (c.context?.keyword || '').toLowerCase().includes(qq));
-    if (hit) openChat(hit.id || hit.localId);
-    else showToast('Tidak ketemu chat itu.');
+  $('btn-search-chats')?.addEventListener('click', () => openChatSearch());
+  $('chat-search-input')?.addEventListener('input', () => renderChatList());
+  $('chat-search-input')?.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.preventDefault(); closeChatSearch(); }
   });
+  $('chat-search-clear')?.addEventListener('click', () => closeChatSearch());
   $('btn-produk')?.addEventListener('click', () => void openDirectory());
   $('btn-harga')?.addEventListener('click', () => setView('harga'));
   $('btn-admin')?.addEventListener('click', () => openAdminView());

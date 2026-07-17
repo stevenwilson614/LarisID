@@ -201,6 +201,30 @@ html.session-restoring body::after {
 }
 .chat-rename-input:focus { outline: none; border-color: var(--ink-soft); }
 .chat-empty { padding: 8px 12px; font-size: .75rem; color: var(--muted); }
+.chat-search {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  margin: 0 4px 8px;
+  padding: 0 4px 0 10px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--line);
+}
+.chat-search.open { display: flex; }
+.chat-search input {
+  flex: 1; min-width: 0;
+  border: none; background: transparent;
+  padding: 8px 0; font-size: .8125rem; color: var(--ink);
+}
+.chat-search input::placeholder { color: var(--muted); }
+.chat-search input:focus { outline: none; }
+.chat-search-clear {
+  flex-shrink: 0; width: 28px; height: 28px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--muted); font-size: 1rem; line-height: 1;
+}
+.chat-search-clear:hover { background: var(--bg-hover); color: var(--ink); }
 .sidebar-foot {
   padding-top: 8px;
   display: flex; flex-direction: column; gap: 2px;
@@ -1266,6 +1290,10 @@ body.thread-wide .composer-chips { max-width: 1080px; }
     </button>
     <div class="side-section">
       <div class="side-label">Riwayat</div>
+      <div class="chat-search" id="chat-search" role="search">
+        <input type="search" id="chat-search-input" placeholder="Cari chat…" autocomplete="off" enterkeyhint="search" aria-label="Cari chat">
+        <button type="button" class="chat-search-clear" id="chat-search-clear" title="Tutup" aria-label="Tutup pencarian">×</button>
+      </div>
       <div class="chat-list" id="chat-list"><div class="chat-empty">Belum ada pencarian</div></div>
     </div>
     <button type="button" class="side-loc-card" id="btn-set-lokasi">
@@ -1523,6 +1551,6 @@ body.thread-wide .composer-chips { max-width: 1080px; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260717k" defer></script>
+<script src="/js/gpt-app.js?v=20260717l" defer></script>
 </body>
 </html>
