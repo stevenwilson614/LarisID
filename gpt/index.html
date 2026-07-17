@@ -80,7 +80,7 @@
   --line: #e5e5e5;
   --putih: #ffffff;
   --sidebar-w: 288px;
-  --composer-h: 118px;
+  --composer-h: 124px;
   --font: "Plus Jakarta Sans", system-ui, sans-serif;
   --ease: cubic-bezier(.22,1,.36,1);
   --radius: 24px;
@@ -258,11 +258,14 @@ html.session-restoring body::after {
   font-size: .75rem; font-weight: 650;
 }
 
-/* Daily limit ring — sits under composer send (Cursor-style) */
-.composer-end {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  flex-shrink: 0; align-self: flex-end;
+/* Daily limit ring — under the search bar (outside the composer pill) */
+.composer-under {
+  max-width: 720px; margin: 6px auto 0;
+  display: flex; justify-content: flex-end; align-items: center;
+  padding: 0 12px 0 18px;
+  position: relative;
 }
+.home-composer .composer-under { max-width: 100%; }
 .usage-pill {
   position: relative;
   display: flex; align-items: center; justify-content: center;
@@ -684,7 +687,7 @@ html.session-restoring body::after {
 .composer-send:hover { opacity: .85; }
 .composer-send:disabled { opacity: .25; cursor: not-allowed; }
 .composer-hint {
-  max-width: 720px; margin: 8px auto 0;
+  max-width: 720px; margin: 6px auto 0;
   font-size: .7rem; color: var(--muted); text-align: center;
 }
 
@@ -1324,24 +1327,24 @@ body.thread-wide .composer-chips { max-width: 1080px; }
             <form class="home-composer" id="hero-form">
               <div class="composer">
                 <textarea id="hero-input" rows="1" placeholder="Cari &quot;vas keramik&quot; atau &quot;produk modal 1jt&quot; atau tanya apa saja..."></textarea>
-                <div class="composer-end">
-                  <button type="submit" class="composer-send" aria-label="Kirim">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 17L17 7M9 7h8v8"/></svg>
-                  </button>
-                  <button type="button" class="usage-pill" data-usage-pill aria-expanded="false" aria-haspopup="true" title="Jatah harian">
-                    <span class="usage-ring-wrap" data-tone="ok">
-                      <svg class="usage-ring" viewBox="0 0 36 36" aria-hidden="true">
-                        <circle class="track" cx="18" cy="18" r="15"></circle>
-                        <circle class="prog" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="0"></circle>
-                      </svg>
-                      <span class="usage-ring-num">3</span>
-                    </span>
-                    <div class="usage-pop" role="dialog" aria-label="Jatah harian">
-                      <p class="usage-pop-title">0 dari 3 produk hari ini</p>
-                      <p class="usage-pop-sub">Batas harian reset dalam —.</p>
-                    </div>
-                  </button>
-                </div>
+                <button type="submit" class="composer-send" aria-label="Kirim">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 17L17 7M9 7h8v8"/></svg>
+                </button>
+              </div>
+              <div class="composer-under">
+                <button type="button" class="usage-pill" data-usage-pill aria-expanded="false" aria-haspopup="true" title="Jatah harian">
+                  <span class="usage-ring-wrap" data-tone="ok">
+                    <svg class="usage-ring" viewBox="0 0 36 36" aria-hidden="true">
+                      <circle class="track" cx="18" cy="18" r="15"></circle>
+                      <circle class="prog" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="0"></circle>
+                    </svg>
+                    <span class="usage-ring-num">3</span>
+                  </span>
+                  <div class="usage-pop" role="dialog" aria-label="Jatah harian">
+                    <p class="usage-pop-title">0 dari 3 produk hari ini</p>
+                    <p class="usage-pop-sub">Batas harian reset dalam —.</p>
+                  </div>
+                </button>
               </div>
             </form>
             <div class="chip-row" id="home-chips"></div>
@@ -1434,25 +1437,25 @@ body.thread-wide .composer-chips { max-width: 1080px; }
       <div class="composer-chips" id="composer-chips" hidden></div>
       <form class="composer" id="composer-form">
         <textarea id="composer-input" rows="1" placeholder="Tanya tentang produk… atau ketik pencarian baru"></textarea>
-        <div class="composer-end">
-          <button type="submit" class="composer-send" id="composer-send" aria-label="Kirim">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-          </button>
-          <button type="button" class="usage-pill" data-usage-pill aria-expanded="false" aria-haspopup="true" title="Jatah harian">
-            <span class="usage-ring-wrap" data-tone="ok">
-              <svg class="usage-ring" viewBox="0 0 36 36" aria-hidden="true">
-                <circle class="track" cx="18" cy="18" r="15"></circle>
-                <circle class="prog" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="0"></circle>
-              </svg>
-              <span class="usage-ring-num">3</span>
-            </span>
-            <div class="usage-pop" role="dialog" aria-label="Jatah harian">
-              <p class="usage-pop-title">0 dari 3 produk hari ini</p>
-              <p class="usage-pop-sub">Batas harian reset dalam —.</p>
-            </div>
-          </button>
-        </div>
+        <button type="submit" class="composer-send" id="composer-send" aria-label="Kirim">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
       </form>
+      <div class="composer-under">
+        <button type="button" class="usage-pill" data-usage-pill aria-expanded="false" aria-haspopup="true" title="Jatah harian">
+          <span class="usage-ring-wrap" data-tone="ok">
+            <svg class="usage-ring" viewBox="0 0 36 36" aria-hidden="true">
+              <circle class="track" cx="18" cy="18" r="15"></circle>
+              <circle class="prog" cx="18" cy="18" r="15" stroke-dasharray="94.2" stroke-dashoffset="0"></circle>
+            </svg>
+            <span class="usage-ring-num">3</span>
+          </span>
+          <div class="usage-pop" role="dialog" aria-label="Jatah harian">
+            <p class="usage-pop-title">0 dari 3 produk hari ini</p>
+            <p class="usage-pop-sub">Batas harian reset dalam —.</p>
+          </div>
+        </button>
+      </div>
       <div class="composer-hint" id="composer-hint">Data dari Shopee via LarisID — jawaban dari data asli, bukan tebakan AI</div>
     </div>
   </div>
@@ -1520,6 +1523,6 @@ body.thread-wide .composer-chips { max-width: 1080px; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260717i" defer></script>
+<script src="/js/gpt-app.js?v=20260717j" defer></script>
 </body>
 </html>
