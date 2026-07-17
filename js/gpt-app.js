@@ -3764,13 +3764,25 @@ async function handleComposerSubmit(text) {
     return;
   }
 
-  const inProductCtx = state.view === 'deepdive' || activeChat()?.context?.product || activeChat()?.context?.keyword;
+  const productCtx = state.deepdiveProduct || activeChat()?.context?.product || null;
+  const inProductCtx = state.view === 'deepdive' || !!activeChat()?.context?.product || !!activeChat()?.context?.keyword;
+
+  // Product-context “bandingkan …” → pick another listing (directory), unless
+  // the user typed an explicit “A vs B” keyword compare.
+  if (productCtx && /bandingkan|dibanding/.test(lower)) {
+    const explicitVs = /\bvs\.?\b/.test(lower) && !/produk lain|yang mirip/.test(lower);
+    if (!explicitVs) {
+      await startComparePick(productCtx);
+      return;
+    }
+  }
 
   // Data-backed intents (home/trending/DD chips + free text). In a product
   // conversation only profit & supplier are intercepted (they use the
   // product's own data); everything else there goes to AI as before.
+  // Bandingkan with explicit “A vs B” is also allowed in product context.
   const intent = detectIntent(lower);
-  if (intent && (!inProductCtx || intent === 'profit' || intent === 'supplier')) {
+  if (intent && (!inProductCtx || intent === 'profit' || intent === 'supplier' || intent === 'bandingkan')) {
     await handleIntent(intent, text);
     return;
   }
@@ -3881,7 +3893,207 @@ function _dirApplyDefaultsOnce() {
   syncDirectoryFromOnboarding();
 }
 
+function matchDirCatFromProduct(product) {
+  const cat = String(product?.category || '').toLowerCase();
+  if (!cat) return null;
+  return NU_ONB_CATS.find(c => {
+    const cl = c.toLowerCase();
+    return cat.includes(cl) || cl.includes(cat.slice(0, Math.min(8, cat.length)));
+  }) || null;
+}
+
+function updateDirCompareBanner() {
+  const banner = $('dir-compare-banner');
+  if (!banner) return;
+  const src = state.comparePick?.source;
+  if (!src) {
+    banner.hidden = true;
+    banner.innerHTML = '';
+    return;
+  }
+  const name = (src.product_name || src.keyword || 'produk ini').slice(0, 72);
+  banner.hidden = false;
+  banner.innerHTML = `
+    <div class="dir-compare-inner">
+      <div class="dir-compare-text">
+        <strong>Mode bandingkan</strong>
+        <span>Pilih produk di bawah untuk dibandingin dengan <em>${esc(name)}</em></span>
+      </div>
+      <button type="button" class="btn-ghost" id="dir-compare-cancel" style="margin:0">Batal</button>
+    </div>`;
+  $('dir-compare-cancel')?.addEventListener('click', () => cancelComparePick());
+}
+
+function cancelComparePick() {
+  const src = state.comparePick?.source;
+  state.comparePick = null;
+  updateDirCompareBanner();
+  if (src) void openDeepDive(src);
+  else setView('chat');
+}
+
+async function startComparePick(source) {
+  if (!source) {
+    showToast('Buka produk dulu untuk membandingkan');
+    return;
+  }
+  state.comparePick = { source };
+  state.dirPage = 1;
+  const match = matchDirCatFromProduct(source);
+  if (match) state.dirCat = match;
+  void logUserEvent('gpt_compare_pick', { ui: 'gpt', keyword: source.keyword || '', item_id: source.item_id });
+  clarityEvt('gpt_compare_pick', {});
+  await openDirectory();
+  updateDirCompareBanner();
+}
+
+async function fetchPeersForCompare(product) {
+  const kw = product?.keyword || '';
+  let peers = [];
+  let niche = product?._niche || null;
+  if (!_supabase || !kw) return { peers, niche, stats: ddStats([]), score: ddScore(product || {}, ddStats([]), niche) };
+  try {
+    const { data } = await _supabase.from('listings_deduped')
+      .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date')
+      .gt('total_sold', 0)
+      .ilike('keyword', `%${kw.slice(0, 40)}%`)
+      .order('total_sold', { ascending: false })
+      .limit(60);
+    peers = data || [];
+  } catch (_) {}
+  try {
+    if (!niche) {
+      const { data } = await _supabase.from('mv_niche_breakout')
+        .select('keyword,new_items,breakouts,breakout_rate,median_new_sold,median_winner_price,median_winner_reviews')
+        .eq('keyword', kw).maybeSingle();
+      niche = data;
+    }
+  } catch (_) {}
+  const stats = ddStats(peers);
+  return { peers, niche, stats, score: ddScore(product, stats, niche) };
+}
+
+function compareCellBetter(kind, va, vb) {
+  const a = Number(va) || 0;
+  const b = Number(vb) || 0;
+  if (a === b) return '';
+  if (kind === 'lower') return a < b ? 'cmp-win' : '';
+  return a > b ? 'cmp-win' : '';
+}
+
+function productCompareSideHtml(p, meta, label) {
+  const omset = estOmsetBulan(p);
+  const score = meta?.score;
+  return `
+    <div class="cmp2-side">
+      <div class="cmp2-label">${esc(label)}</div>
+      ${p.image_url ? `<img class="cmp2-img" src="${esc(p.image_url)}" alt="">` : '<div class="cmp2-img ph"></div>'}
+      <h3 class="cmp2-name">${esc(p.product_name || p.keyword || 'Produk')}</h3>
+      <p class="cmp2-store dd-sub">${esc(p.store_name || '—')}</p>
+      ${score ? `<div class="cmp2-score"><span class="badge ${score.cls}">${score.label}</span><strong>${score.score}</strong><span>/100</span></div>` : ''}
+      <button type="button" class="btn-ghost cmp2-open" data-cmp-open="${esc(prodKey(p))}" style="margin:10px 0 0;width:100%">Lihat Deep Dive</button>
+    </div>`;
+}
+
+function productCompareRowsHtml(a, b, metaA, metaB) {
+  const rows = [
+    { lbl: 'Harga', va: fmtRp(a.price), vb: fmtRp(b.price), ca: compareCellBetter('lower', a.price, b.price), cb: compareCellBetter('lower', b.price, a.price) },
+    { lbl: 'Terjual', va: fmtSold(a.total_sold), vb: fmtSold(b.total_sold), ca: compareCellBetter('higher', a.total_sold, b.total_sold), cb: compareCellBetter('higher', b.total_sold, a.total_sold) },
+    { lbl: 'Est. omset / bulan', va: estOmsetBulan(a) ? fmtOmset(estOmsetBulan(a)) : '—', vb: estOmsetBulan(b) ? fmtOmset(estOmsetBulan(b)) : '—', ca: compareCellBetter('higher', estOmsetBulan(a), estOmsetBulan(b)), cb: compareCellBetter('higher', estOmsetBulan(b), estOmsetBulan(a)) },
+    { lbl: 'Rating', va: a.rating != null ? String(a.rating) : '—', vb: b.rating != null ? String(b.rating) : '—', ca: compareCellBetter('higher', a.rating, b.rating), cb: compareCellBetter('higher', b.rating, a.rating) },
+    { lbl: 'Ulasan', va: fmtSold(a.reviews || 0), vb: fmtSold(b.reviews || 0), ca: compareCellBetter('higher', a.reviews, b.reviews), cb: compareCellBetter('higher', b.reviews, a.reviews) },
+    { lbl: 'Lokasi', va: a.location || '—', vb: b.location || '—' },
+    { lbl: 'Keyword', va: a.keyword || '—', vb: b.keyword || '—' },
+    { lbl: 'Kategori', va: a.category || '—', vb: b.category || '—' },
+    { lbl: 'Skor peluang', va: metaA?.score ? String(metaA.score.score) : '—', vb: metaB?.score ? String(metaB.score.score) : '—', ca: compareCellBetter('higher', metaA?.score?.score, metaB?.score?.score), cb: compareCellBetter('higher', metaB?.score?.score, metaA?.score?.score) },
+    { lbl: 'Kompetisi niche', va: metaA?.stats?.komp || '—', vb: metaB?.stats?.komp || '—' },
+    { lbl: 'Peer di keyword', va: metaA?.stats?.n != null ? String(metaA.stats.n) : '—', vb: metaB?.stats?.n != null ? String(metaB.stats.n) : '—' },
+  ];
+  return `<div class="cmp2-table" role="table">
+    ${rows.map(r => `
+      <div class="cmp2-row" role="row">
+        <div class="cmp2-cell cmp2-metric" role="cell">${esc(r.lbl)}</div>
+        <div class="cmp2-cell ${r.ca || ''}" role="cell">${esc(r.va)}</div>
+        <div class="cmp2-cell ${r.cb || ''}" role="cell">${esc(r.vb)}</div>
+      </div>`).join('')}
+  </div>`;
+}
+
+async function openProductCompare(a, b) {
+  if (!currentUser) {
+    state.pendingCompare = { a, b };
+    saveLocalState();
+    openAuthModal('signup', 'gpt_gate_compare');
+    return;
+  }
+  if (state.pendingCompare) { state.pendingCompare = null; saveLocalState(); }
+  state.comparePick = null;
+  updateDirCompareBanner();
+  state.deepdiveProduct = a;
+  setView('deepdive');
+  const root = $('deepdive-root');
+  if (!root) return;
+  root.innerHTML = `<p class="dd-sub">Menyiapkan perbandingan…</p>`;
+
+  const [metaA, metaB] = await Promise.all([fetchPeersForCompare(a), fetchPeersForCompare(b)]);
+
+  let chat = activeChat();
+  if (chat) {
+    chat.context = { ...(chat.context || {}), product: a, keyword: a.keyword || chat.context?.keyword, compareWith: { item_id: b.item_id, shop_id: b.shop_id } };
+    chat.title = `Bandingkan: ${(a.product_name || a.keyword || 'A').slice(0, 28)} vs ${(b.product_name || b.keyword || 'B').slice(0, 28)}`;
+    saveLocalState();
+    renderChatList();
+  }
+
+  void logUserEvent('gpt_product_compare', {
+    ui: 'gpt',
+    a_item: a.item_id, b_item: b.item_id,
+    a_kw: a.keyword || '', b_kw: b.keyword || '',
+  });
+  clarityEvt('gpt_product_compare', {});
+
+  const scoreA = metaA.score?.score || 0;
+  const scoreB = metaB.score?.score || 0;
+  let verdict = '';
+  if (scoreA || scoreB) {
+    if (scoreA === scoreB) verdict = 'Skor peluang keduanya mirip — lihat harga, terjual, dan kompetisi niche di tabel.';
+    else if (scoreA > scoreB) verdict = `Dari sinyal data (harga peer, kompetisi, velocity), <strong>${esc((a.product_name || 'Produk kiri').slice(0, 40))}</strong> unggul tipis di skor peluang.`;
+    else verdict = `Dari sinyal data (harga peer, kompetisi, velocity), <strong>${esc((b.product_name || 'Produk kanan').slice(0, 40))}</strong> unggul tipis di skor peluang.`;
+  }
+
+  root.innerHTML = `
+    <div class="dd-head" style="margin-bottom:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+      <button type="button" class="btn-ghost" id="cmp2-back" style="margin:0">Kembali</button>
+      <button type="button" class="btn-ghost" id="cmp2-again" style="margin:0">Bandingkan produk lain</button>
+    </div>
+    <h2 class="dd-title" style="margin-bottom:4px">Perbandingan produk</h2>
+    <p class="dd-sub" style="margin-bottom:16px">Angka dari data Shopee via LarisID — bukan tebakan AI.</p>
+    <div class="cmp2-heads">
+      ${productCompareSideHtml(a, metaA, 'Produk saat ini')}
+      ${productCompareSideHtml(b, metaB, 'Dipilih')}
+    </div>
+    ${productCompareRowsHtml(a, b, metaA, metaB)}
+    ${verdict ? `<p class="cmp2-verdict">${verdict}</p>` : ''}
+    <p class="ddr-caption" style="margin-top:14px">Skor peluang memakai peer keyword masing-masing produk (kompetisi top 3, volume pasar, velocity). Klik Deep Dive untuk analisis lengkap satu produk.</p>
+  `;
+
+  $('cmp2-back')?.addEventListener('click', () => {
+    void openDeepDive(a);
+  });
+  $('cmp2-again')?.addEventListener('click', () => void startComparePick(a));
+  root.querySelectorAll('[data-cmp-open]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.getAttribute('data-cmp-open');
+      const p = prodKey(a) === key ? a : b;
+      void openDeepDive(p);
+    });
+  });
+  setComposerChips(DD_CHIPS, 'compare');
+}
+
 async function openMoreProductsDirectory() {
+  state.comparePick = null;
+  updateDirCompareBanner();
   syncDirectoryFromOnboarding();
   state.dirPage = 1;
   void logUserEvent('dir_open', { ui: 'gpt', via: 'more_products' });
@@ -3892,6 +4104,7 @@ async function openMoreProductsDirectory() {
 async function openDirectory() {
   setView('directory');
   _dirApplyDefaultsOnce();
+  updateDirCompareBanner();
 
   const cats = $('dir-cats');
   if (cats && !cats.dataset.ready) {
@@ -3946,7 +4159,7 @@ async function openDirectory() {
   const note = $('dir-note');
   if (note) {
     const tailored = !!(state.onboarding?.city || state.onboarding?.categories?.length);
-    note.hidden = !tailored;
+    note.hidden = !tailored || !!state.comparePick;
   }
 
   await renderDirectory();
@@ -4259,7 +4472,11 @@ function wireUi() {
     if (e.key === 'Escape') { e.preventDefault(); closeChatSearch(); }
   });
   $('chat-search-clear')?.addEventListener('click', () => closeChatSearch());
-  $('btn-produk')?.addEventListener('click', () => void openDirectory());
+  $('btn-produk')?.addEventListener('click', () => {
+    state.comparePick = null;
+    updateDirCompareBanner();
+    void openDirectory();
+  });
   $('btn-harga')?.addEventListener('click', () => setView('harga'));
   $('btn-admin')?.addEventListener('click', () => openAdminView());
   $('admin-refresh')?.addEventListener('click', () => void loadAdminDirectory());

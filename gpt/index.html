@@ -606,7 +606,78 @@ html.session-restoring body::after {
 /* Directory */
 .dir-head { margin-bottom: 16px; }
 .dir-head h2 { margin: 0 0 6px; font-size: 1.35rem; font-weight: 650; letter-spacing: -.02em; }
+.dir-compare-banner {
+  margin: 0 0 14px; padding: 12px 14px;
+  border: 1px solid var(--line); border-radius: 14px;
+  background: var(--bg-user);
+}
+.dir-compare-inner {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+}
+.dir-compare-text {
+  display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1;
+  font-size: .8125rem; color: var(--ink-soft); line-height: 1.4;
+}
+.dir-compare-text strong { color: var(--ink); font-weight: 650; }
+.dir-compare-text em { font-style: normal; font-weight: 600; color: var(--ink); }
 .dir-cats { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 10px; }
+/* Side-by-side product compare */
+.cmp2-heads {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;
+}
+.cmp2-side {
+  border: 1px solid var(--line); border-radius: 16px; padding: 14px; min-width: 0;
+  background: var(--bg);
+}
+.cmp2-label {
+  font-size: .62rem; font-weight: 650; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted); margin-bottom: 10px;
+}
+.cmp2-img {
+  width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px;
+  background: #f0f0f0; display: block;
+}
+.cmp2-img.ph { min-height: 120px; }
+.cmp2-name {
+  margin: 10px 0 4px; font-size: .9rem; font-weight: 650; line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.cmp2-store { margin: 0; }
+.cmp2-score {
+  display: flex; align-items: center; gap: 8px; margin-top: 10px;
+  font-size: .8125rem;
+}
+.cmp2-score strong { font-size: 1.1rem; font-weight: 750; letter-spacing: -.02em; }
+.cmp2-score span:last-child { color: var(--muted); font-size: .7rem; }
+.cmp2-table {
+  border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+}
+.cmp2-row {
+  display: grid; grid-template-columns: minmax(96px, 1.1fr) 1fr 1fr;
+  gap: 0; border-bottom: 1px solid var(--line);
+  font-size: .8125rem;
+}
+.cmp2-row:last-child { border-bottom: none; }
+.cmp2-cell {
+  padding: 10px 12px; min-width: 0;
+  word-break: break-word;
+}
+.cmp2-metric {
+  font-size: .68rem; font-weight: 650; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .03em;
+  background: var(--bg-user);
+}
+.cmp2-cell.cmp-win { font-weight: 700; color: var(--green); }
+.cmp2-verdict {
+  margin: 14px 0 0; padding: 12px 14px;
+  border-radius: 12px; background: var(--bg-user);
+  font-size: .875rem; line-height: 1.5; color: var(--ink-soft);
+}
+@media (max-width: 560px) {
+  .cmp2-heads { grid-template-columns: 1fr; }
+  .cmp2-row { grid-template-columns: 1fr; }
+  .cmp2-metric { border-bottom: 1px solid var(--line); }
+}
 .dir-filters {
   display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
   margin: 0 0 14px;
@@ -1392,6 +1463,7 @@ body.thread-wide .composer-chips { max-width: 1080px; }
             <h2>Produk</h2>
             <p class="dd-sub">Data dari Shopee — bukan hasil AI. Filter bebas; halaman 2+ dan Deep Dive perlu login.</p>
           </div>
+          <div class="dir-compare-banner" id="dir-compare-banner" hidden></div>
           <div class="dir-cats" id="dir-cats"></div>
           <div class="dir-filters" id="dir-filters">
             <label class="dd-sub" for="dir-city" style="margin:0">Kota</label>
@@ -1551,6 +1623,6 @@ body.thread-wide .composer-chips { max-width: 1080px; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260717l" defer></script>
+<script src="/js/gpt-app.js?v=20260717m" defer></script>
 </body>
 </html>
