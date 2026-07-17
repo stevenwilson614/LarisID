@@ -1209,7 +1209,7 @@ async function _typeTextNode(textNode, fullText, gen, cps) {
     const ch = text[i];
     if (ch === ' ' || ch === '\n') n = 1;
     else if (/[.,;:!?…]/.test(ch)) n = 1;
-    else n = Math.min(3, text.length - i);
+    else n = Math.min(5, text.length - i);
     i += n;
     textNode.textContent = text.slice(0, i);
     sinceScroll += n;
@@ -1217,8 +1217,8 @@ async function _typeTextNode(textNode, fullText, gen, cps) {
       sinceScroll = 0;
       scrollChatToBottom();
     }
-    const pause = /[.]/.test(text[i - 1]) ? 2.6
-      : /[,;:!?]/.test(text[i - 1]) ? 1.7
+    const pause = /[.]/.test(text[i - 1]) ? 1.8
+      : /[,;:!?]/.test(text[i - 1]) ? 1.3
       : 1;
     await _sleep((1000 / cps) * n * pause);
   }
@@ -1239,7 +1239,7 @@ async function _streamNode(parent, srcNode, gen, cps) {
     clone.classList.add('stream-pop');
     parent.appendChild(clone);
     scrollChatToBottom();
-    await _sleep(90);
+    await _sleep(60);
     return;
   }
 
@@ -1262,7 +1262,7 @@ async function streamHtmlInto(bubble, html, opts = {}) {
     return;
   }
   const gen = ++_streamGen;
-  const cps = Math.max(28, Math.min(90, Number(opts.cps) || 58));
+  const cps = Math.max(40, Math.min(160, Number(opts.cps) || 100));
   bubble.classList.add('is-streaming');
   bubble.innerHTML = '';
   const source = document.createElement('div');
