@@ -1568,6 +1568,124 @@ function wirePrefsDrawer() {
   });
 }
 
+// ── Kalkulator side panel (Cursor-style resizable right window) ───────────
+const CALC_PREFS_KEY = 'gpt_calc_panel_v1';
+let _calcFilled = false;
+
+function loadCalcPrefs() {
+  try { return JSON.parse(localStorage.getItem(CALC_PREFS_KEY) || '{}') || {}; }
+  catch (_) { return {}; }
+}
+function saveCalcPrefs(patch) {
+  try { localStorage.setItem(CALC_PREFS_KEY, JSON.stringify({ ...loadCalcPrefs(), ...patch })); }
+  catch (_) {}
+}
+
+function setCalcWidth(px) {
+  const min = 320;
+  const max = Math.max(min, Math.min(window.innerWidth * 0.7, window.innerWidth - 360));
+  const w = Math.round(Math.max(min, Math.min(px, max)));
+  document.documentElement.style.setProperty('--calc-w', w + 'px');
+  return w;
+}
+
+function openCalcPanel(opts = {}) {
+  const panel = $('calc-panel');
+  const body = $('calc-body-inner');
+  if (!panel || !body) return;
+  // (Re)build kalkulator when product defaults are passed, or on first open.
+  if (opts.price != null || !_calcFilled) {
+    const kalcOpts = {};
+    if (opts.price != null && Number(opts.price) > 0) kalcOpts.price = Math.round(Number(opts.price));
+    if (opts.cogs != null && Number(opts.cogs) > 0) kalcOpts.cogs = Math.round(Number(opts.cogs));
+    body.innerHTML = gptKalcHtml(kalcOpts);
+    _calcFilled = true;
+  }
+  const ctx = $('calc-context');
+  if (ctx) {
+    const name = (opts.name || '').trim();
+    if (name) { ctx.textContent = name; ctx.hidden = false; }
+    else { ctx.textContent = ''; ctx.hidden = true; }
+  }
+  bindGptKalc(body);
+  document.body.classList.add('calc-open');
+  panel.setAttribute('aria-hidden', 'false');
+  $('calc-rail')?.setAttribute('aria-expanded', 'true');
+  saveCalcPrefs({ open: true });
+  if (opts.via !== 'restore') {
+    void logUserEvent('gpt_calc_panel', { ui: 'gpt', action: 'open', via: opts.via || 'rail', has_product: opts.price != null });
+  }
+}
+
+function closeCalcPanel() {
+  document.body.classList.remove('calc-open');
+  $('calc-panel')?.setAttribute('aria-hidden', 'true');
+  $('calc-rail')?.setAttribute('aria-expanded', 'false');
+  saveCalcPrefs({ open: false });
+}
+
+function toggleCalcPanel(opts) {
+  if (document.body.classList.contains('calc-open')) closeCalcPanel();
+  else openCalcPanel(opts);
+}
+
+function wireCalcPanel() {
+  if (wireCalcPanel._ready) return;
+  wireCalcPanel._ready = true;
+
+  const prefs = loadCalcPrefs();
+  if (prefs.width) setCalcWidth(prefs.width);
+
+  $('calc-rail')?.addEventListener('click', () => openCalcPanel({ via: 'rail' }));
+  $('calc-close')?.addEventListener('click', closeCalcPanel);
+
+  const handle = $('calc-resize');
+  if (handle) {
+    let dragging = false, startX = 0, startW = 0;
+    const clientX = (e) => (e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX);
+    const onMove = (e) => {
+      if (!dragging) return;
+      // Panel is on the right: dragging left (smaller clientX) widens it.
+      setCalcWidth(startW + (startX - clientX(e)));
+      if (e.cancelable) e.preventDefault();
+    };
+    const onUp = () => {
+      if (!dragging) return;
+      dragging = false;
+      document.body.classList.remove('calc-resizing');
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+      const cur = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--calc-w'), 10) || 420;
+      saveCalcPrefs({ width: cur });
+    };
+    const onDown = (e) => {
+      if (window.innerWidth <= 860) return;
+      dragging = true;
+      startX = clientX(e);
+      startW = $('calc-panel')?.getBoundingClientRect().width || 420;
+      document.body.classList.add('calc-resizing');
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+      window.addEventListener('touchmove', onMove, { passive: false });
+      window.addEventListener('touchend', onUp);
+      if (e.cancelable) e.preventDefault();
+    };
+    handle.addEventListener('mousedown', onDown);
+    handle.addEventListener('touchstart', onDown, { passive: false });
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.body.classList.contains('calc-open')) {
+      e.preventDefault();
+      closeCalcPanel();
+    }
+  });
+
+  if (prefs.open) openCalcPanel({ via: 'restore' });
+}
+
 // ── Recommendations (city + category first) ──────────────────────────────
 // Exact Shopee location strings (same clusters as A’s YLK) so `.in('location', …)` hits.
 const CITY_LOCATIONS = {
@@ -3543,11 +3661,12 @@ async function openDeepDive(product) {
   $('btn-more-from-dd')?.addEventListener('click', () => void openMoreProductsDirectory());
   $('ddr-profit-btn')?.addEventListener('click', () => {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'profit_cta', via: 'click', keyword: kw || '' });
-    const anchor = $('ddr-kalc-anchor');
-    if (anchor) {
-      anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      requestAnimationFrame(() => anchor.querySelector('[data-k="cogs"]')?.focus());
-    }
+    openCalcPanel({
+      price,
+      cogs: Math.round(price * 0.33),
+      name: (product.product_name || product.keyword || '').slice(0, 80),
+      via: 'deepdive',
+    });
   });
   bindGptKalc(root);
   const kompMore = $('ddr-komp-more');
@@ -4702,6 +4821,7 @@ function wireUi() {
   });
 
   wirePrefsDrawer();
+  wireCalcPanel();
   wireUsagePill();
 
   document.addEventListener('keydown', e => {
