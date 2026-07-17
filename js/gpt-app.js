@@ -3647,13 +3647,10 @@ async function openDeepDive(product) {
         <h3>Rekomendasi Strategi</h3>
         ${ddStrategyHtml(product, stats, niche, kwRows)}
       </div>
-      <div class="ddr-side-cta">
+      <div class="ddr-side-cta" data-dd-sec="profit">
         <p style="margin:0">Ingin hitung estimasi profit dengan angka kamu sendiri?</p>
         <button type="button" class="btn-primary" id="ddr-profit-btn" style="margin:0">Buka Kalkulator →</button>
       </div>
-    </div>
-    <div class="ddr-card" data-dd-sec="profit" id="ddr-kalc-anchor" style="margin-top:14px;padding:0;border:none;background:transparent">
-      ${gptKalcHtml({ price, cogs: Math.round(price * 0.33) })}
     </div>
     <button type="button" class="btn-ghost" id="btn-more-from-dd">Tampilkan produk lain</button>
     <p class="ddr-caption" style="margin-top:10px">Semua angka dari data Shopee via LarisID — bukan tebakan AI. Ketik pertanyaan di bawah untuk tanya AI tentang produk ini.</p>
@@ -3670,7 +3667,6 @@ async function openDeepDive(product) {
       via: 'deepdive',
     });
   });
-  bindGptKalc(root);
   const kompMore = $('ddr-komp-more');
   kompMore?.addEventListener('click', () => {
     root.querySelectorAll('[data-komp-extra]').forEach(tr => { tr.hidden = false; });
