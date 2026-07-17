@@ -921,6 +921,122 @@ function appendBubble(role, html, opts = {}) {
   return div;
 }
 
+// ── Assistant type-out (ChatGPT / Cursor style) ───────────────────────────
+let _streamGen = 0;
+
+function abortAssistantStream() {
+  _streamGen += 1;
+}
+
+function _sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+function _bubbleOf(msgOrBubble) {
+  if (!msgOrBubble) return null;
+  return msgOrBubble.classList?.contains('msg-bubble')
+    ? msgOrBubble
+    : msgOrBubble.querySelector?.('.msg-bubble') || null;
+}
+
+function _isAtomicStreamBlock(el) {
+  if (!el || el.nodeType !== 1) return false;
+  return el.matches?.(
+    '.card-grid, .ans-panel, .trending-card, .product-card, table, thead, tbody, tr, button, .chips, .chip, img, canvas, svg, pre, code'
+  );
+}
+
+async function _typeTextNode(textNode, fullText, gen, cps) {
+  const text = String(fullText || '');
+  if (!text) return;
+  let i = 0;
+  let sinceScroll = 0;
+  while (i < text.length) {
+    if (gen !== _streamGen) return;
+    // Chunk a few chars; pause a beat after sentence punctuation.
+    let n = 1;
+    const ch = text[i];
+    if (ch === ' ' || ch === '\n') n = 1;
+    else if (/[.,;:!?…]/.test(ch)) n = 1;
+    else n = Math.min(3, text.length - i);
+    i += n;
+    textNode.textContent = text.slice(0, i);
+    sinceScroll += n;
+    if (sinceScroll >= 28) {
+      sinceScroll = 0;
+      scrollChatToBottom();
+    }
+    const pause = /[.]/.test(text[i - 1]) ? 2.6
+      : /[,;:!?]/.test(text[i - 1]) ? 1.7
+      : 1;
+    await _sleep((1000 / cps) * n * pause);
+  }
+}
+
+async function _streamNode(parent, srcNode, gen, cps) {
+  if (gen !== _streamGen) return;
+  if (srcNode.nodeType === Node.TEXT_NODE) {
+    const tn = document.createTextNode('');
+    parent.appendChild(tn);
+    await _typeTextNode(tn, srcNode.textContent, gen, cps);
+    return;
+  }
+  if (srcNode.nodeType !== Node.ELEMENT_NODE) return;
+
+  if (_isAtomicStreamBlock(srcNode)) {
+    const clone = srcNode.cloneNode(true);
+    clone.classList.add('stream-pop');
+    parent.appendChild(clone);
+    scrollChatToBottom();
+    await _sleep(90);
+    return;
+  }
+
+  const el = srcNode.cloneNode(false);
+  parent.appendChild(el);
+  for (const child of [...srcNode.childNodes]) {
+    if (gen !== _streamGen) return;
+    await _streamNode(el, child, gen, cps);
+  }
+}
+
+/** Type assistant HTML into a bubble like ChatGPT/Cursor. Historical loads use instant. */
+async function streamHtmlInto(bubble, html, opts = {}) {
+  if (!bubble) return;
+  const instant = opts.instant
+    || (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  if (instant) {
+    bubble.classList.remove('is-streaming');
+    bubble.innerHTML = html;
+    return;
+  }
+  const gen = ++_streamGen;
+  const cps = Math.max(28, Math.min(90, Number(opts.cps) || 58));
+  bubble.classList.add('is-streaming');
+  bubble.innerHTML = '';
+  const source = document.createElement('div');
+  source.innerHTML = html;
+  for (const child of [...source.childNodes]) {
+    if (gen !== _streamGen) break;
+    await _streamNode(bubble, child, gen, cps);
+  }
+  if (gen === _streamGen) bubble.classList.remove('is-streaming');
+  scrollChatToBottom();
+}
+
+async function revealAssistant(msgOrBubble, html, opts = {}) {
+  const bubble = _bubbleOf(msgOrBubble);
+  if (!bubble) return null;
+  await streamHtmlInto(bubble, html, opts);
+  return bubble;
+}
+
+async function appendAssistantStream(html, opts = {}) {
+  const div = appendBubble('assistant', '', opts);
+  await revealAssistant(div, html, opts);
+  return div;
+}
+
 function renderChatThread() {
   const thread = $('chat-thread');
   if (!thread) return;
@@ -1013,32 +1129,135 @@ function renderSidebarLocCard() {
   }
 }
 
-function startOnboarding(source) {
-  _offerActive = false;
+function syncDirectoryFromOnboarding() {
+  const o = state.onboarding || {};
+  if (o.step !== 'done') return;
+  if (o.city) state.dirCity = o.city;
+  if (o.categories?.length) state.dirCat = o.categories[0];
+}
+
+// ── Lokasi & kategori side drawer (does not interrupt the open chat) ──────
+let _prefsDraft = { city: '', categories: [], freeText: '', cityFilter: '' };
+let _prefsSource = '';
+
+function openPrefsDrawer(source) {
+  _prefsSource = source || 'sidebar';
+  const o = state.onboarding || {};
+  _prefsDraft = {
+    city: o.city || '',
+    categories: [...(o.categories || [])],
+    freeText: o.freeText || '',
+    cityFilter: '',
+  };
+  closeSidebar();
+  const drawer = $('prefs-drawer');
+  const backdrop = $('prefs-backdrop');
+  if (!drawer || !backdrop) return;
+  drawer.hidden = false;
+  backdrop.hidden = false;
+  requestAnimationFrame(() => {
+    drawer.classList.add('open');
+    backdrop.classList.add('open');
+  });
+  drawer.setAttribute('aria-hidden', 'false');
+  const search = $('prefs-city-search');
+  if (search) search.value = '';
+  const free = $('prefs-free');
+  if (free) free.value = _prefsDraft.freeText;
+  renderPrefsCityChips();
+  renderPrefsCatChips();
+  clarityEvt('gpt_prefs_open', { source: _prefsSource });
+  void logUserEvent('gpt_prefs_open', { ui: 'gpt', source: _prefsSource });
+}
+
+function closePrefsDrawer() {
+  const drawer = $('prefs-drawer');
+  const backdrop = $('prefs-backdrop');
+  if (drawer) {
+    drawer.classList.remove('open');
+    drawer.setAttribute('aria-hidden', 'true');
+    setTimeout(() => { drawer.hidden = true; }, 280);
+  }
+  if (backdrop) {
+    backdrop.classList.remove('open');
+    setTimeout(() => { backdrop.hidden = true; }, 280);
+  }
+}
+
+function renderPrefsCityChips() {
+  const wrap = $('prefs-city-chips');
+  if (!wrap) return;
+  const q = (_prefsDraft.cityFilter || '').toLowerCase();
+  const locs = NU_ONB_LOCATIONS.filter(l => !q || l.toLowerCase().includes(q));
+  wrap.innerHTML = locs.map(l => {
+    const sel = _prefsDraft.city === l ? ' selected' : '';
+    return `<button type="button" class="chip${sel}" data-prefs-city="${esc(l)}">${esc(l)}</button>`;
+  }).join('');
+}
+
+function renderPrefsCatChips() {
+  const wrap = $('prefs-cat-chips');
+  if (!wrap) return;
+  const selected = new Set(_prefsDraft.categories);
+  wrap.innerHTML = NU_ONB_CATS.map(c => {
+    const slug = CAT_SLUG[c];
+    const sel = selected.has(c) ? ' selected' : '';
+    return `<button type="button" class="chip cat${sel}" data-prefs-cat="${esc(c)}"><img src="/images/onboarding/categories/${slug}.png" alt="" width="22" height="22">${esc(c)}</button>`;
+  }).join('');
+}
+
+async function savePrefsDrawer() {
   const o = state.onboarding;
-  if (o.step === 'idle' || o.step === 'done') o.step = 'city';
+  const wasDone = o.step === 'done';
+  o.city = _prefsDraft.city || '';
+  o.categories = [..._prefsDraft.categories];
+  o.freeText = ($('prefs-free')?.value || _prefsDraft.freeText || '').trim();
+  if (!o.city && !o.categories.length && !o.freeText) {
+    showToast('Pilih kota atau kategori dulu.');
+    return;
+  }
+  o.step = 'done';
+  o.completedAnon = !currentUser;
   saveLocalState();
-  setView('chat');
-  state.activeChatId = null;
-  renderChatList();
-  clarityEvt('gpt_onboarding_start', { source: source || '' });
-  renderOnboardingStep();
+  syncDirectoryFromOnboarding();
+  state._dirDefaultsApplied = true;
+  renderSidebarLocCard();
+  await persistOnboardingPrefs();
+  closePrefsDrawer();
+  showToast([o.city, o.categories[0]].filter(Boolean).join(' · ') || 'Preferensi disimpan');
+  void logUserEvent('onboarding_complete', {
+    ui: 'gpt',
+    region: o.city,
+    categories: o.categories,
+    seller_status: o.experience,
+    free_text: (o.freeText || '').slice(0, 80),
+    source: _prefsSource,
+    update: wasDone,
+  });
+  clarityEvt(wasDone ? 'gpt_prefs_update' : 'onboarding_complete', { ui: 'gpt' });
+
+  if (state.view === 'directory') {
+    const cats = $('dir-cats');
+    if (cats) {
+      cats.querySelectorAll('[data-dcat]').forEach(c => {
+        const v = c.getAttribute('data-dcat') || '';
+        c.classList.toggle('selected', (state.dirCat || '') === v);
+      });
+    }
+    const citySel = $('dir-city');
+    if (citySel) citySel.value = state.dirCity || '';
+    await renderDirectory();
+  }
+}
+
+function startOnboarding(source) {
+  // Side drawer — keeps the current chat / view intact.
+  openPrefsDrawer(source || 'sidebar');
 }
 
 function offerOnboardingAfterSignin() {
-  _offerActive = true;
-  setView('chat');
-  state.activeChatId = null;
-  renderChatList();
-  const thread = $('chat-thread');
-  if (thread) thread.innerHTML = '';
-  updateThreadWide();
-  appendBubble('assistant', `
-    <p>Mau atur <strong>lokasi &amp; kategori</strong> dulu biar rekomendasinya lebih pas? Bisa dilewati kok.</p>
-    <button type="button" class="btn-primary" id="onb-offer-yes">Atur sekarang</button>
-    <button type="button" class="btn-ghost" id="onb-offer-later" style="margin-left:8px">Nanti saja</button>`);
-  $('onb-offer-yes')?.addEventListener('click', () => startOnboarding('post_signin'));
-  $('onb-offer-later')?.addEventListener('click', () => renderHome());
+  _offerActive = false;
+  openPrefsDrawer('post_signin');
 }
 
 function pushMessage(chat, role, content, html) {
@@ -1054,193 +1273,43 @@ function pushMessage(chat, role, content, html) {
   }
 }
 
-function renderOnboardingStep() {
-  const o = state.onboarding;
-  const thread = $('chat-thread');
-  if (!thread) return;
-  thread.innerHTML = '';
-
-  if (o.step === 'city') {
-    appendBubble('assistant', `
-      <p>Hai! Aku bantu kamu riset produk buat jualan di Shopee, Tokopedia, atau TikTok Shop — gratis, dari data Shopee asli, bukan tebakan AI.</p>
-      <p><strong>Kamu jualan dari kota mana?</strong></p>
-      <input class="city-search" id="city-search" type="search" placeholder="Cari kota…" value="${esc(state.cityFilter)}">
-      <div class="chips" id="city-chips"></div>
-    `, { skipScroll: true });
-    renderCityChips();
-    $('city-search')?.addEventListener('input', e => {
-      state.cityFilter = e.target.value;
-      renderCityChips();
-    });
-  } else if (o.step === 'category') {
-    appendBubble('assistant', `
-      <p>Oke, <strong>${esc(o.city)}</strong>.</p>
-      <p><strong>Produk apa yang mau kamu jual?</strong> (pilih kategori, boleh 1–3)</p>
-      <div class="chips" id="cat-chips"></div>
-      <input class="city-search" id="onb-free" type="text" placeholder="Atau ketik spesifik — misal: produk kayu, perlengkapan mancing…" value="${esc(o.freeText || '')}" style="margin-top:14px;max-width:100%">
-      <button type="button" class="btn-primary" id="cat-next" ${o.categories.length || (o.freeText || '').trim() ? '' : 'disabled'}>Lanjut</button>
-    `, { skipScroll: true });
-    renderCatChips();
-    $('onb-free')?.addEventListener('input', e => {
-      o.freeText = e.target.value;
-      const next = $('cat-next');
-      if (next) next.disabled = !(o.categories.length || o.freeText.trim());
-    });
-    $('cat-next')?.addEventListener('click', () => {
-      o.freeText = ($('onb-free')?.value || '').trim();
-      if (!o.categories.length && !o.freeText) return;
-      o.step = 'experience';
-      saveLocalState();
-      renderOnboardingStep();
-    });
-  } else if (o.step === 'experience') {
-    // Fork: straight to results, or one optional detail screen ('notes').
-    appendBubble('assistant', `
-      <p><strong>Mau langsung lihat hasil, atau tambah sedikit info biar rekomendasinya makin pas?</strong></p>
-      <button type="button" class="btn-primary" id="onb-results-now">Langsung lihat hasil</button>
-      <button type="button" class="btn-ghost" id="onb-more-info">Tambah info biar makin pas</button>
-    `, { skipScroll: true });
-    $('onb-results-now')?.addEventListener('click', () => { void finishOnboarding(); });
-    $('onb-more-info')?.addEventListener('click', () => {
-      o.step = 'notes';
-      saveLocalState();
-      renderOnboardingStep();
-    });
-  } else if (o.step === 'notes') {
-    // Combined optional screen: experience → (pairing + current category) → notes.
-    appendBubble('assistant', `
-      <p><strong>Kamu penjual baru atau sudah berpengalaman?</strong></p>
-      <div class="chips" id="exp-chips">
-        <button type="button" class="chip${o.experience === 'first_time' ? ' selected' : ''}" data-exp="first_time">Penjual baru</button>
-        <button type="button" class="chip${o.experience === 'existing' ? ' selected' : ''}" data-exp="existing">Sudah berpengalaman</button>
-      </div>
-      <div id="onb-pairing-wrap" style="display:${o.experience === 'existing' ? '' : 'none'}">
-        <p style="margin-top:14px"><strong>Mau produk yang cocok dipasangkan dengan produk kamu sekarang, atau coba yang benar-benar baru?</strong></p>
-        <div class="chips" id="pair-chips">
-          <button type="button" class="chip${o.pairingMode === 'pairing' ? ' selected' : ''}" data-pair="pairing">Pasangkan dengan yang sekarang</button>
-          <button type="button" class="chip${o.pairingMode === 'new' ? ' selected' : ''}" data-pair="new">Coba yang benar-benar baru</button>
-        </div>
-        <div id="onb-paircat-wrap" style="display:${o.pairingMode === 'pairing' ? '' : 'none'}">
-          <p style="margin-top:14px"><strong>Produk kamu sekarang di kategori mana?</strong></p>
-          <div class="chips" id="pair-cat-chips"></div>
-        </div>
-      </div>
-      <p style="margin-top:14px"><strong>Ada info lain tentang kamu?</strong> (opsional)</p>
-      <textarea class="free-text" id="onb-notes" placeholder="Misal: modal kecil, kirim dari kos, mau dropship…">${esc(o.notes)}</textarea>
-      <button type="button" class="btn-primary" id="onb-finish">Lihat rekomendasi</button>
-    `, { skipScroll: true });
-    const pairingWrap = $('onb-pairing-wrap');
-    const paircatWrap = $('onb-paircat-wrap');
-    const renderPairCats = () => {
-      const wrap = $('pair-cat-chips');
-      if (!wrap || wrap.dataset.ready) return;
-      wrap.dataset.ready = '1';
-      wrap.innerHTML = NU_ONB_CATS.map(c => {
-        const slug = CAT_SLUG[c];
-        const sel = o.pairingCategory === c ? ' selected' : '';
-        return `<button type="button" class="chip cat${sel}" data-pcat="${esc(c)}"><img src="/images/onboarding/categories/${slug}.png" alt="" width="28" height="28">${esc(c)}</button>`;
-      }).join('');
-      wrap.querySelectorAll('[data-pcat]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          o.pairingCategory = btn.getAttribute('data-pcat');
-          wrap.querySelectorAll('.chip').forEach(c => c.classList.toggle('selected', c === btn));
-          saveLocalState();
-        });
-      });
-    };
-    if (o.pairingMode === 'pairing') renderPairCats();
-    thread.querySelectorAll('#exp-chips [data-exp]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        o.experience = btn.getAttribute('data-exp');
-        $('exp-chips').querySelectorAll('.chip').forEach(c => c.classList.toggle('selected', c === btn));
-        if (pairingWrap) pairingWrap.style.display = o.experience === 'existing' ? '' : 'none';
-        saveLocalState();
-      });
-    });
-    thread.querySelectorAll('#pair-chips [data-pair]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        o.pairingMode = btn.getAttribute('data-pair');
-        $('pair-chips').querySelectorAll('.chip').forEach(c => c.classList.toggle('selected', c === btn));
-        if (paircatWrap) paircatWrap.style.display = o.pairingMode === 'pairing' ? '' : 'none';
-        if (o.pairingMode === 'pairing') renderPairCats();
-        saveLocalState();
-      });
-    });
-    $('onb-finish')?.addEventListener('click', () => {
-      o.notes = ($('onb-notes')?.value || '').trim();
-      void finishOnboarding();
-    });
-  }
-  // Onboarding is optional now — every step can bail back to the landing.
-  const lastBubble = thread.querySelector('.msg:last-child .msg-bubble');
-  if (lastBubble && !lastBubble.querySelector('#onb-skip')) {
-    const skip = document.createElement('button');
-    skip.type = 'button';
-    skip.className = 'btn-ghost';
-    skip.id = 'onb-skip';
-    skip.style.marginLeft = '8px';
-    skip.textContent = 'Lewati';
-    lastBubble.appendChild(skip);
-    skip.addEventListener('click', () => {
-      state.onboarding.step = 'idle';
-      saveLocalState();
-      clarityEvt('gpt_onboarding_skip', {});
-      renderHome();
-    });
-  }
-  const panel = $('panel');
-  if (panel) scrollChatToBottom();
-}
-
-function renderCityChips() {
-  const wrap = $('city-chips');
-  if (!wrap) return;
-  const q = (state.cityFilter || '').toLowerCase();
-  const locs = NU_ONB_LOCATIONS.filter(l => !q || l.toLowerCase().includes(q));
-  wrap.innerHTML = locs.map(l => `<button type="button" class="chip" data-city="${esc(l)}">${esc(l)}</button>`).join('');
-  wrap.querySelectorAll('[data-city]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      state.onboarding.city = btn.getAttribute('data-city');
-      state.onboarding.step = 'category';
-      saveLocalState();
-      renderOnboardingStep();
-    });
+function wirePrefsDrawer() {
+  if (wirePrefsDrawer._ready) return;
+  wirePrefsDrawer._ready = true;
+  $('prefs-close')?.addEventListener('click', closePrefsDrawer);
+  $('prefs-cancel')?.addEventListener('click', closePrefsDrawer);
+  $('prefs-backdrop')?.addEventListener('click', closePrefsDrawer);
+  $('prefs-save')?.addEventListener('click', () => void savePrefsDrawer());
+  $('prefs-city-search')?.addEventListener('input', e => {
+    _prefsDraft.cityFilter = e.target.value || '';
+    renderPrefsCityChips();
   });
-}
-
-function renderCatChips() {
-  const wrap = $('cat-chips');
-  if (!wrap) return;
-  const selected = new Set(state.onboarding.categories);
-  wrap.innerHTML = NU_ONB_CATS.map(c => {
-    const slug = CAT_SLUG[c];
-    const sel = selected.has(c) ? ' selected' : '';
-    return `<button type="button" class="chip cat${sel}" data-cat="${esc(c)}"><img src="/images/onboarding/categories/${slug}.png" alt="" width="28" height="28">${esc(c)}</button>`;
-  }).join('');
-  wrap.querySelectorAll('[data-cat]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const c = btn.getAttribute('data-cat');
-      const arr = state.onboarding.categories;
+  $('prefs-free')?.addEventListener('input', e => {
+    _prefsDraft.freeText = e.target.value || '';
+  });
+  $('prefs-drawer')?.addEventListener('click', e => {
+    const cityBtn = e.target.closest?.('[data-prefs-city]');
+    if (cityBtn) {
+      _prefsDraft.city = cityBtn.getAttribute('data-prefs-city') || '';
+      renderPrefsCityChips();
+      return;
+    }
+    const catBtn = e.target.closest?.('[data-prefs-cat]');
+    if (catBtn) {
+      const c = catBtn.getAttribute('data-prefs-cat');
+      const arr = _prefsDraft.categories;
       const i = arr.indexOf(c);
       if (i >= 0) arr.splice(i, 1);
       else if (arr.length < 3) arr.push(c);
-      saveLocalState();
-      renderCatChips();
-      const next = $('cat-next');
-      if (next) next.disabled = !arr.length;
-    });
+      renderPrefsCatChips();
+    }
   });
-}
-
-async function finishOnboarding() {
-  state.onboarding.step = 'done';
-  state.onboarding.completedAnon = !currentUser;
-  saveLocalState();
-  renderSidebarLocCard();
-  await persistOnboardingPrefs();
-  void logUserEvent('onboarding_complete', { ui: 'gpt', region: state.onboarding.city, categories: state.onboarding.categories, seller_status: state.onboarding.experience, free_text: (state.onboarding.freeText || '').slice(0, 80) });
-  clarityEvt('onboarding_complete', { ui: 'gpt' });
-  await startRecommendationChat(true);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && $('prefs-drawer')?.classList.contains('open')) {
+      e.preventDefault();
+      closePrefsDrawer();
+    }
+  });
 }
 
 // ── Recommendations (city + category first) ──────────────────────────────
@@ -1589,7 +1658,7 @@ async function ensureIntentChat(chat, title, context) {
 
 function limitReply(loading, resetAt) {
   const msg = `Batas pencarian harian tercapai — reset dalam ${formatCountdown(resetAt || wibMidnightReset())}.`;
-  if (loading) loading.querySelector('.msg-bubble').innerHTML = `<p>${esc(msg)}</p>`;
+  if (loading) void revealAssistant(loading, `<p>${esc(msg)}</p>`, { instant: true });
   showToast(msg);
   clarityEvt('gpt_limit_hit', {});
   void logUserEvent('gpt_limit_hit', { ui: 'gpt' });
@@ -1623,6 +1692,7 @@ function parseBudget(text) {
 }
 
 async function handleIntent(intent, text) {
+  abortAssistantStream();
   setView('chat');
   let chat = activeChat();
   if (!chat) {
@@ -1664,7 +1734,7 @@ async function handleTrendingIntent(chat) {
     const view = computeTrendingView(rows, '7d');
     html = `<p>Berikut produk yang sedang trending di Shopee berdasarkan peningkatan penjualan — dari data scrape LarisID, bukan tebakan AI.</p>${trendingCardHtml(view)}`;
   }
-  loading.querySelector('.msg-bubble').innerHTML = html;
+  await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', { text: 'Produk trending', kind: 'trending' }, html);
   bindProductCards();
   bindTrendingCards();
@@ -1679,7 +1749,7 @@ async function handleModalIntent(chat, text) {
   const budget = parseBudget(text);
   if (!budget) {
     const html = `<p>Berapa modal kamu per unit? Contoh: <strong>“Cari produk modal 50rb”</strong> atau <strong>“produk modal 1jt”</strong>.</p>`;
-    appendBubble('assistant', html);
+    await appendAssistantStream(html);
     pushMessage(chat, 'assistant', { text: 'Tanya modal' }, html);
     return;
   }
@@ -1702,7 +1772,7 @@ async function handleModalIntent(chat, text) {
   const html = top.length
     ? `<p>Produk laris dengan harga di bawah <strong>${fmtRp(budget)}</strong> — dari data Shopee LarisID:</p><div class="card-grid">${top.map((p, i) => productCardHtml(p, i)).join('')}</div>`
     : `<p>Belum ketemu produk laris di bawah ${fmtRp(budget)}. Coba angka lain.</p>`;
-  loading.querySelector('.msg-bubble').innerHTML = html;
+  await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', { text: 'Hasil modal', budget }, html);
   bindProductCards();
   scrollChatToBottom();
@@ -1716,7 +1786,7 @@ async function handleSupplierIntent(chat, text) {
   }
   if (!term) {
     const html = `<p>Supplier untuk produk apa? Contoh: <strong>“Cari supplier vas keramik”</strong>.</p>`;
-    appendBubble('assistant', html);
+    await appendAssistantStream(html);
     pushMessage(chat, 'assistant', { text: 'Tanya supplier' }, html);
     return;
   }
@@ -1737,7 +1807,7 @@ async function handleSupplierIntent(chat, text) {
        <tbody>${rows.map((s, i) => `<tr><td class="tr-rank">${i + 1}</td><td><strong>${esc(s.store_name || '')}</strong></td><td>${esc(s.location || '—')}</td><td>${fmtSold(s.hero_sold)}</td><td>${s.catalog_items ?? '—'}</td></tr>`).join('')}</tbody>
        </table></div></div>`
     : `<p>Belum ada data leaderboard untuk “${esc(term)}”. Coba kata kunci lain.</p>`;
-  loading.querySelector('.msg-bubble').innerHTML = html;
+  await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', { text: 'Supplier', term }, html);
   scrollChatToBottom();
 }
@@ -1763,7 +1833,7 @@ async function handleLowcompIntent(chat) {
        <tbody>${rows.map(r => `<tr><td><strong>${esc(r.keyword)}</strong></td><td><span class="pct-up">${Math.round(Number(r.breakout_rate) || 0)}%</span></td><td>${r.new_items}</td><td>${r.median_winner_price ? fmtRp(r.median_winner_price) : '—'}</td><td><button type="button" class="btn-outline" data-kwsearch="${esc(r.keyword)}">Lihat produk</button></td></tr>`).join('')}</tbody>
        </table></div></div>`
     : `<p>Belum ada data niche. Coba lagi nanti.</p>`;
-  loading.querySelector('.msg-bubble').innerHTML = html;
+  await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', { text: 'Niche kompetisi rendah', kind: 'lowcomp' }, html);
   loading.querySelectorAll('[data-kwsearch]').forEach(btn => {
     btn.addEventListener('click', () => void handleComposerSubmit(`Cari produk ${btn.getAttribute('data-kwsearch')}`));
@@ -1800,7 +1870,7 @@ async function handleProfitIntent(chat, text) {
   } else {
     html = `<p>Sebutkan modal dan harga jual per unit — contoh: <strong>“Hitung profit modal 20rb jual 35rb”</strong>. Atau buka salah satu produk dulu, nanti aku hitung dari harganya.</p>`;
   }
-  appendBubble('assistant', html);
+  await appendAssistantStream(html);
   pushMessage(chat, 'assistant', { text: 'Estimasi profit' }, html);
   scrollChatToBottom();
 }
@@ -1810,7 +1880,7 @@ async function handleBandingkanIntent(chat, text) {
   const parts = cleaned.split(/\bvs\.?\b|\bdan\b|,|\batau\b/).map(s => _searchTerms(s).join(' ')).filter(Boolean).slice(0, 2);
   if (parts.length < 2) {
     const html = `<p>Sebutkan dua produk yang mau dibandingkan — contoh: <strong>“Bandingkan tumbler vs botol minum”</strong>.</p>`;
-    appendBubble('assistant', html);
+    await appendAssistantStream(html);
     pushMessage(chat, 'assistant', { text: 'Tanya bandingkan' }, html);
     return;
   }
@@ -1838,7 +1908,7 @@ async function handleBandingkanIntent(chat, text) {
     verdict = `<p style="margin-top:12px">Dari total penjualan yang terpantau, <strong>${esc(win)}</strong> lebih laris. Klik produk untuk analisis lengkap.</p>`;
   }
   const html = `<p>Perbandingan “<strong>${esc(parts[0])}</strong>” vs “<strong>${esc(parts[1])}</strong>” dari data Shopee LarisID:</p>${side(parts[0], sa)}${side(parts[1], sb)}${verdict}`;
-  loading.querySelector('.msg-bubble').innerHTML = html;
+  await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', { text: 'Bandingkan', a: parts[0], b: parts[1] }, html);
   bindProductCards();
   scrollChatToBottom();
@@ -1846,7 +1916,7 @@ async function handleBandingkanIntent(chat, text) {
 
 async function handleRencanaIntent(chat) {
   const html = `<p>Buka salah satu produk dulu (klik <strong>Lihat Analisis</strong>), lalu minta rencana jualan — aku susun dari data produknya.</p>`;
-  appendBubble('assistant', html);
+  await appendAssistantStream(html);
   pushMessage(chat, 'assistant', { text: 'Rencana perlu produk' }, html);
   scrollChatToBottom();
 }
@@ -2065,6 +2135,7 @@ async function ensureSearchAllowed() {
 }
 
 async function startRecommendationChat(fromOnboarding) {
+  abortAssistantStream();
   if (!(await ensureSearchAllowed())) return;
 
   let chat = null;
@@ -2138,10 +2209,10 @@ async function startRecommendationChat(fromOnboarding) {
   const html = `<p>${frame}</p><p>Ini <strong>3 produk</strong> dari data LarisID buat kamu cek:</p>${cards}`;
   const thread2 = $('chat-thread');
   if (thread2) thread2.innerHTML = '';
-  appendBubble('assistant', html);
+  const msg = await appendAssistantStream(html);
   pushMessage(chat, 'assistant', { text: 'Rekomendasi 3 produk', products: recs.map(p => ({ item_id: p.item_id, shop_id: p.shop_id, keyword: p.keyword })) }, html);
   bindProductCards();
-  $('btn-more-products')?.addEventListener('click', () => void startRecommendationChat(false));
+  (msg || document).querySelector('#btn-more-products')?.addEventListener('click', () => void startRecommendationChat(false));
 
   void logUserEvent('discover_view', { ui: 'gpt', count: recs.length });
   clarityEvt('discover_view', { ui: 'gpt' });
@@ -2150,6 +2221,7 @@ async function startRecommendationChat(fromOnboarding) {
 }
 
 async function openChat(id) {
+  abortAssistantStream();
   state.activeChatId = id;
   saveLocalState();
   renderChatList();
@@ -2175,6 +2247,7 @@ async function openChat(id) {
 }
 
 async function newChatFlow() {
+  abortAssistantStream();
   // Chat Baru = the landing: search, chips, and example prompts live there.
   renderHome();
 }
@@ -2933,6 +3006,7 @@ Kartu data di UI BUKAN output AI — jangan klaim begitu.`;
 async function handleComposerSubmit(text) {
   text = (text || '').trim();
   if (!text) return;
+  abortAssistantStream();
 
   const lower = text.toLowerCase();
   if (/tampilkan produk lain|produk lain|rekomendasi baru/.test(lower)) {
@@ -3004,7 +3078,7 @@ async function handleComposerSubmit(text) {
       const { data } = await _supabase.rpc('gpt_new_chat', { p_title: text.slice(0, 60), p_context: { kind: 'search', q: text } });
       if (data?.allowed === false) {
         const msg = `Batas pencarian harian tercapai — reset dalam ${formatCountdown(data.reset_at || wibMidnightReset())}.`;
-        if (loading) loading.querySelector('.msg-bubble').innerHTML = `<p>${esc(msg)}</p>`;
+        if (loading) await revealAssistant(loading, `<p>${esc(msg)}</p>`, { instant: true });
         showToast(msg);
         clarityEvt('gpt_limit_hit', {});
         void logUserEvent('gpt_limit_hit', { ui: 'gpt' });
@@ -3020,8 +3094,8 @@ async function handleComposerSubmit(text) {
     const html = state.recommendations.length
       ? `<p>${lead}</p><div class="card-grid">${state.recommendations.map((p, i) => productCardHtml(p, i)).join('')}</div>`
       : `<p>Belum ketemu. Coba kata kunci lain atau buka Produk.</p>`;
-    if (loading) { loading.querySelector('.msg-bubble').innerHTML = html; scrollChatToBottom(); }
-    else appendBubble('assistant', html);
+    if (loading) await revealAssistant(loading, html);
+    else await appendAssistantStream(html);
     pushMessage(chat, 'assistant', { text: 'Hasil pencarian', q: text }, html);
     bindProductCards();
     void logUserEvent('discover_view', { ui: 'gpt', q: text });
@@ -3033,7 +3107,7 @@ async function handleComposerSubmit(text) {
   const system = buildProductSystemPrompt(product);
   const reply = await _mlsAIRaw(system, [{ role: 'user', content: text }]);
   const html = `<p>${esc(reply).replace(/\n/g, '</p><p>')}</p>`;
-  if (loading) loading.querySelector('.msg-bubble').innerHTML = html;
+  if (loading) await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', { text: reply }, html);
   void logUserEvent('gpt_ai_reply', { ui: 'gpt', keyword: product.keyword });
   clarityEvt('gpt_ai_reply', {});
@@ -3052,9 +3126,7 @@ function sortDirRows(rows, mode) {
 function _dirApplyDefaultsOnce() {
   if (state._dirDefaultsApplied) return;
   state._dirDefaultsApplied = true;
-  const o = state.onboarding || {};
-  if (!state.dirCat && o.categories?.length) state.dirCat = o.categories[0];
-  if (!state.dirCity && o.city) state.dirCity = o.city;
+  syncDirectoryFromOnboarding();
 }
 
 async function openDirectory() {
@@ -3385,8 +3457,7 @@ function adminSampleNewUser() {
   _admSample = { mode: 'new', label: 'user baru' };
   renderAdminSampleBanner();
   saveLocalState();
-  setView('chat');
-  renderOnboardingStep();
+  openPrefsDrawer('admin_sample');
   showToast('Sample sebagai user baru — onboarding tidak ditulis ke akunmu.');
 }
 
@@ -3486,8 +3557,10 @@ function wireUi() {
 
   $('btn-set-lokasi')?.addEventListener('click', () => {
     closeSidebar();
-    startOnboarding('sidebar');
+    openPrefsDrawer('sidebar');
   });
+
+  wirePrefsDrawer();
 
   document.addEventListener('keydown', e => {
     if ((e.metaKey || e.ctrlKey) && String(e.key).toLowerCase() === 'k') {

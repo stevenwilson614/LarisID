@@ -314,6 +314,31 @@ html.session-restoring body::after {
 .msg-bubble p:last-child { margin-bottom: 0; }
 .msg.assistant .msg-bubble p { font-size: 1rem; }
 
+/* ChatGPT/Cursor-style streaming caret */
+.msg-bubble.is-streaming {
+  min-height: 1.4em;
+}
+.msg-bubble.is-streaming::after {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: -0.15em;
+  background: var(--ink);
+  animation: caretBlink 1.05s step-end infinite;
+}
+@keyframes caretBlink {
+  50% { opacity: 0; }
+}
+.stream-pop {
+  animation: fadeUp .32s var(--ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .msg-bubble.is-streaming::after { display: none; }
+  .stream-pop { animation: none; }
+}
+
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .chip {
   padding: 10px 16px; border-radius: 999px;
@@ -692,6 +717,8 @@ body.view-home .panel-inner,
 body.view-deepdive .panel-inner,
 body.thread-wide .panel-inner { max-width: 1080px; }
 body.view-home .composer-dock { display: none; }
+body.onboarding-active .composer-dock { display: none; }
+body.onboarding-active .panel { padding-bottom: 28px; }
 
 /* Landing */
 .home-hero {
@@ -981,6 +1008,62 @@ body.thread-wide .composer-chips { max-width: 1080px; }
   margin-left: auto; font-size: .64rem; color: var(--muted);
   border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px;
 }
+
+/* Lokasi & kategori side drawer — overlays without wiping the chat */
+.prefs-backdrop {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.28); z-index: 45;
+}
+.prefs-backdrop.open { display: block; }
+.prefs-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: min(400px, 100vw);
+  background: #fff; z-index: 50;
+  display: flex; flex-direction: column;
+  box-shadow: -12px 0 40px rgba(0,0,0,.12);
+  transform: translateX(105%);
+  transition: transform .28s var(--ease);
+}
+.prefs-drawer.open { transform: none; }
+.prefs-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 18px 18px 12px; border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.prefs-head h2 {
+  margin: 0; font-size: 1.05rem; font-weight: 700; letter-spacing: -.02em;
+}
+.prefs-close {
+  width: 36px; height: 36px; border-radius: 999px;
+  display: grid; place-items: center; color: var(--ink-soft);
+}
+.prefs-close:hover { background: var(--bg-user); }
+.prefs-body {
+  flex: 1; min-height: 0; overflow-y: auto;
+  padding: 16px 18px 24px;
+  -webkit-overflow-scrolling: touch;
+}
+.prefs-section { margin-bottom: 22px; }
+.prefs-label {
+  display: block; font-size: .72rem; font-weight: 650;
+  color: var(--muted); text-transform: uppercase; letter-spacing: .04em;
+  margin-bottom: 10px;
+}
+.prefs-hint { font-size: .8rem; color: var(--muted); margin: 0 0 10px; line-height: 1.45; }
+.prefs-body .chips { margin-top: 0; }
+.prefs-body .city-search { max-width: 100%; margin-bottom: 10px; }
+.prefs-body .chip.cat { padding: 7px 12px 7px 7px; font-size: .8rem; }
+.prefs-body .chip.cat img { width: 22px; height: 22px; }
+.prefs-foot {
+  flex-shrink: 0; display: flex; gap: 10px; justify-content: flex-end;
+  padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line); background: #fff;
+}
+.prefs-foot .btn-ghost { margin: 0; }
+.prefs-foot .btn-primary { margin: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .prefs-drawer { transition: none; }
+}
 </style>
 </head>
 <body>
@@ -1198,6 +1281,37 @@ body.thread-wide .composer-chips { max-width: 1080px; }
 
 <div class="toast" id="toast" role="status"></div>
 
-<script src="/js/gpt-app.js" defer></script>
+<div class="prefs-backdrop" id="prefs-backdrop" hidden></div>
+<aside class="prefs-drawer" id="prefs-drawer" hidden aria-hidden="true" aria-labelledby="prefs-title">
+  <div class="prefs-head">
+    <h2 id="prefs-title">Lokasi &amp; kategori</h2>
+    <button type="button" class="prefs-close" id="prefs-close" aria-label="Tutup">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <div class="prefs-body">
+    <div class="prefs-section">
+      <span class="prefs-label">Kota</span>
+      <p class="prefs-hint">Seller sekitar kota ini dipakai untuk rekomendasi &amp; filter Produk.</p>
+      <input class="city-search" id="prefs-city-search" type="search" placeholder="Cari kota…" autocomplete="off">
+      <div class="chips" id="prefs-city-chips"></div>
+    </div>
+    <div class="prefs-section">
+      <span class="prefs-label">Kategori</span>
+      <p class="prefs-hint">Pilih 1–3 minat produk.</p>
+      <div class="chips" id="prefs-cat-chips"></div>
+    </div>
+    <div class="prefs-section">
+      <span class="prefs-label">Lebih spesifik (opsional)</span>
+      <input class="city-search" id="prefs-free" type="text" placeholder="Misal: produk kayu, perlengkapan mancing…" style="margin-bottom:0;max-width:100%">
+    </div>
+  </div>
+  <div class="prefs-foot">
+    <button type="button" class="btn-ghost" id="prefs-cancel">Batal</button>
+    <button type="button" class="btn-primary" id="prefs-save">Simpan</button>
+  </div>
+</aside>
+
+<script src="/js/gpt-app.js?v=20260717c" defer></script>
 </body>
 </html>
