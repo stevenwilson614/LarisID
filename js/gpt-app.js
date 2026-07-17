@@ -102,8 +102,7 @@ let _supabase = null;
 let currentUser = null;
 let _authMode = 'signup';
 let _gateSource = '';
-let _trendChart = null;
-let _dd = null; // current deep dive: { product, peers, niche, suppliers, stats, open:Set }
+let _dd = null; // current deep dive: { product, peers, niche, stats, history, series }
 
 function _authSave(session) {
   try {
@@ -431,7 +430,13 @@ function setView(name) {
     if (el) el.classList.toggle('active', v === name);
     document.body.classList.toggle(`view-${v}`, v === name);
   });
-  if (leaving === 'deepdive' && name !== 'deepdive') destroyAllCharts();
+  if (leaving === 'deepdive' && name !== 'deepdive') {
+    destroyAllCharts();
+    // A product is only "in context" while its deep dive (or its chat) is
+    // open — a stale deepdiveProduct must not hijack later searches into
+    // the product-AI path.
+    state.deepdiveProduct = null;
+  }
   if (name === 'home' || name === 'directory' || name === 'harga' || name === 'admin') setComposerChips(null);
   ['btn-produk', 'btn-harga', 'btn-admin'].forEach(id => {
     const el = $(id);
@@ -1347,6 +1352,505 @@ async function fetchNaikDaunGlobal(limit = 60) {
   return data || [];
 }
 
+// ── Trending (mv_trending: real WoW sold deltas from listings history) ───
+// listing_deltas is stale (pipeline stopped Jun 10) — mv_trending computes
+// deltas straight from listings scrape snapshots, anchored to the last scrape.
+let _trendingRows = null;
+let _trendingAnchor = null;
+
+async function fetchTrending() {
+  if (_trendingRows) return _trendingRows;
+  if (!_supabase) return [];
+  try {
+    const { data, error } = await _supabase.from('mv_trending')
+      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,delta_7d,delta_prev_7d,delta_14d,delta_prev_14d,delta_30d,anchor_at')
+      .order('delta_7d', { ascending: false })
+      .limit(300);
+    if (error) throw error;
+    _trendingRows = data || [];
+    _trendingAnchor = _trendingRows[0]?.anchor_at || null;
+    return _trendingRows;
+  } catch (_) { return []; }
+}
+
+function fmtAnchorDate(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
+  } catch (_) { return String(iso).slice(0, 10); }
+}
+
+const TREND_RANGES = {
+  '7d':  { label: 'Minggu Ini',        delta: 'delta_7d'  },
+  '14d': { label: '2 Minggu Terakhir', delta: 'delta_14d' },
+  '30d': { label: '1 Bulan Terakhir',  delta: 'delta_30d' },
+};
+
+// Scrape cadence is too sparse for true prev-week comparisons (most items
+// lack a snapshot in BOTH adjacent weeks), so "kenaikan" = growth of total
+// sold within the period vs the cumulative baseline before it. Real and
+// computable for every row; labeled as such in the card footnote.
+function trendGrowthPct(row, deltaKey) {
+  const d = Number(row[deltaKey]) || 0;
+  if (d <= 0) return null;
+  const base = (Number(row.total_sold) || 0) - d;
+  if (base < 50) return Infinity; // essentially a brand-new listing → "Baru"
+  return Math.round(d / base * 100);
+}
+
+function pctHtml(pct) {
+  if (pct == null) return '<span class="pct-flat">—</span>';
+  if (pct === Infinity) return '<span class="pct-up">Baru</span>';
+  if (pct <= 0) return `<span class="pct-flat">${pct}%</span>`;
+  return `<span class="pct-up">${ico('arrowUp', 11)} ${pct}%</span>`;
+}
+
+function computeTrendingView(rows, range) {
+  const cfg = TREND_RANGES[range];
+  const active = rows.filter(r => (Number(r[cfg.delta]) || 0) > 0);
+  const items = active.slice()
+    .sort((a, b) => (Number(b[cfg.delta]) || 0) - (Number(a[cfg.delta]) || 0))
+    .slice(0, 20)
+    .map(r => ({ ...r, _delta: Number(r[cfg.delta]) || 0, _pct: trendGrowthPct(r, cfg.delta) }));
+
+  const catD = new Map(), catB = new Map();
+  for (const r of active) {
+    const c = (r.category || 'Lainnya').trim() || 'Lainnya';
+    const d = Number(r[cfg.delta]) || 0;
+    catD.set(c, (catD.get(c) || 0) + d);
+    catB.set(c, (catB.get(c) || 0) + Math.max(0, (Number(r.total_sold) || 0) - d));
+  }
+  const cats = [...catD.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, d]) => {
+    const base = catB.get(name) || 0;
+    const pct = base >= 50 ? Math.round(d / base * 100) : (d > 0 ? Infinity : null);
+    return { name, delta: d, pct };
+  });
+  const maxCat = Math.max(...cats.map(c => c.delta), 1);
+  cats.forEach(c => { c.bar = Math.max(4, Math.round(c.delta / maxCat * 100)); });
+
+  const pcts = items.map(i => i._pct).filter(v => v != null && isFinite(v)).sort((a, b) => a - b);
+  return {
+    range, cfg, items, cats,
+    tiles: {
+      medPct: pcts.length ? pcts[Math.floor(pcts.length / 2)] : null,
+      rising: active.length,
+      catsMoving: catD.size,
+      shops: new Set(active.map(r => String(r.shop_id))).size,
+      units: active.reduce((s, r) => s + (Number(r[cfg.delta]) || 0), 0),
+    },
+  };
+}
+
+function trendingInsights(view) {
+  const out = [];
+  if (view.cats[0]) {
+    const c2 = view.cats[1] ? ` dan ${view.cats[1].name.toLowerCase()}` : '';
+    out.push(`Produk ${view.cats[0].name.toLowerCase()}${c2} mendominasi kenaikan penjualan periode ini.`);
+  }
+  const top = view.items[0];
+  if (top) out.push(`${(top.product_name || '').slice(0, 48)} naik paling kencang: +${fmtSold(top._delta)} unit terjual.`);
+  const prices = view.items.map(i => Number(i.price) || 0).filter(Boolean).sort((a, b) => a - b);
+  if (prices.length >= 5) {
+    const lo = prices[Math.floor(prices.length * 0.25)], hi = prices[Math.floor(prices.length * 0.75)];
+    out.push(`Sebagian besar produk trending ada di rentang harga ${fmtRp(lo)} – ${fmtRp(hi)}.`);
+  }
+  return out;
+}
+
+function trendingRowHtml(r, i) {
+  return `<tr>
+    <td class="tr-rank">${i + 1}</td>
+    <td><div class="tr-prod">${r.image_url ? `<img src="${esc(r.image_url)}" alt="" loading="lazy">` : '<span class="ph"></span>'}<div><div class="tr-prod-name">${esc((r.product_name || '').slice(0, 60))}</div><div class="tr-prod-cat">${esc(r.category || '')}</div></div></div></td>
+    <td>${pctHtml(r._pct)}</td>
+    <td><span class="pct-up">${ico('arrowUp', 11)} ${fmtSold(r._delta)}</span></td>
+    <td>${fmtRp(r.price)}</td>
+    <td><button type="button" class="btn-outline" data-titem="${esc(r.item_id)}|${esc(r.shop_id)}">Lihat Analisis</button></td>
+  </tr>`;
+}
+
+function trendingBodyHtml(view, expanded) {
+  const t = view.tiles;
+  const shown = expanded ? view.items : view.items.slice(0, 5);
+  const insights = trendingInsights(view);
+  return `
+    <div class="stat-tiles">
+      <div class="stat-tile"><span class="stat-ico green">${ico('trendUp', 15)}</span><span class="stat-val">${t.medPct != null ? `+${t.medPct}%` : '—'}</span><span class="stat-lbl">Median kenaikan penjualan produk trending</span></div>
+      <div class="stat-tile"><span class="stat-ico blue">${ico('arrowUp', 15)}</span><span class="stat-val">${t.rising.toLocaleString('id-ID')}</span><span class="stat-lbl">Produk dengan penjualan naik</span></div>
+      <div class="stat-tile"><span class="stat-ico violet">${ico('box', 15)}</span><span class="stat-val">${t.catsMoving.toLocaleString('id-ID')}</span><span class="stat-lbl">Kategori ikut bergerak</span></div>
+      <div class="stat-tile"><span class="stat-ico amber">${ico('store', 15)}</span><span class="stat-val">${t.shops.toLocaleString('id-ID')}</span><span class="stat-lbl">Toko aktif ikut menjual</span></div>
+      <div class="stat-tile"><span class="stat-ico pink">${ico('users', 15)}</span><span class="stat-val">${fmtSold(t.units)}</span><span class="stat-lbl">Unit terjual periode ini (est.)</span></div>
+    </div>
+    <div class="ans-cols">
+      <div class="ans-panel">
+        <h4>Top ${shown.length} Produk Trending</h4>
+        <div class="ans-table-wrap"><table class="tr-table">
+          <thead><tr><th>#</th><th>Produk</th><th>Kenaikan Penjualan</th><th>Unit Terjual</th><th>Harga</th><th>Aksi</th></tr></thead>
+          <tbody>${shown.map((r, i) => trendingRowHtml(r, i)).join('')}</tbody>
+        </table></div>
+        ${view.items.length > 5 && !expanded ? `<button type="button" class="ans-cta" data-expand-trending>Lihat Semua ${view.items.length} Produk Trending</button>` : ''}
+      </div>
+      <div>
+        <div class="ans-panel">
+          <h4>Kategori Paling Trending</h4>
+          ${view.cats.map((c, i) => `<div class="cat-row"><span class="tr-rank">${i + 1}</span><span class="nm">${esc(c.name)}</span>${pctHtml(c.pct)}<div class="mini-track"><div class="mini-fill" style="width:${c.bar}%"></div></div></div>`).join('') || '<p class="dd-sub">Belum ada data kategori.</p>'}
+        </div>
+        <div class="insight-card">
+          <h4>${ico('spark', 15)} Insight LarisID</h4>
+          <ul>${insights.map(s => `<li>${ico('spark', 12)}<span>${esc(s)}</span></li>`).join('')}</ul>
+        </div>
+      </div>
+    </div>
+    <div class="ans-foot">Kenaikan = tambahan penjualan periode ini dibanding total penjualan sebelumnya · dihitung dari panel scrape LarisID</div>`;
+}
+
+function trendingCardHtml(view) {
+  return `<div class="ans-card" data-trend-card data-range="${view.range}" data-expanded="0">
+    <div class="ans-head">
+      <span class="ans-head-ico">${ico('flame', 18)}</span>
+      <div>
+        <div class="ans-title">Produk Trending — ${esc(view.cfg.label)}</div>
+        <div class="ans-sub">Data diambil dari Shopee Indonesia • Update: ${esc(fmtAnchorDate(_trendingAnchor))}</div>
+      </div>
+    </div>
+    <div class="ans-tabs">${Object.entries(TREND_RANGES).map(([k, c]) => `<button type="button" class="ans-tab${k === view.range ? ' active' : ''}" data-trange="${k}">${esc(c.label)}</button>`).join('')}</div>
+    <div data-trend-body>${trendingBodyHtml(view, false)}</div>
+  </div>`;
+}
+
+function updateThreadWide() {
+  document.body.classList.toggle('thread-wide', !!document.querySelector('#chat-thread .ans-card'));
+}
+
+function bindTrendingBody(card) {
+  card.querySelector('[data-expand-trending]')?.addEventListener('click', () => {
+    void card.__rerender(card.dataset.range, true);
+  });
+  card.querySelectorAll('[data-titem]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const [item_id, shop_id] = btn.getAttribute('data-titem').split('|');
+      const rows = await fetchTrending();
+      const r = rows.find(x => String(x.item_id) === String(item_id) && String(x.shop_id) === String(shop_id));
+      if (!r) return;
+      void openDeepDive(asListingProduct({ ...r, sold_per_day: Math.max(0.1, (Number(r.delta_7d) || 0) / 7) }));
+    });
+  });
+}
+
+function bindTrendingCards(root) {
+  (root || document).querySelectorAll('[data-trend-card]').forEach(card => {
+    if (card.dataset.bound) return;
+    card.dataset.bound = '1';
+    card.__rerender = async (range, expanded) => {
+      const rows = await fetchTrending();
+      if (!rows.length) return;
+      const view = computeTrendingView(rows, range);
+      card.dataset.range = range;
+      card.dataset.expanded = expanded ? '1' : '0';
+      const title = card.querySelector('.ans-title');
+      if (title) title.textContent = `Produk Trending — ${view.cfg.label}`;
+      card.querySelectorAll('[data-trange]').forEach(b => b.classList.toggle('active', b.getAttribute('data-trange') === range));
+      const body = card.querySelector('[data-trend-body]');
+      if (body) { body.innerHTML = trendingBodyHtml(view, expanded); bindTrendingBody(card); }
+    };
+    card.querySelectorAll('[data-trange]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        clarityEvt('gpt_trending_tab', { range: btn.getAttribute('data-trange') });
+        void card.__rerender(btn.getAttribute('data-trange'), false);
+      });
+    });
+    bindTrendingBody(card);
+  });
+}
+
+// ── Intent routing (chips + free text → data-backed answers) ─────────────
+function detectIntent(lower) {
+  if (/trending|naik daun|lagi (rame|ramai)|produk (yang )?(lagi )?naik|lagi naik/.test(lower)) return 'trending';
+  if (/kompetisi rendah|persaingan rendah|belum banyak (penjual|saingan)|cari niche/.test(lower)) return 'lowcomp';
+  if (/supplier|pemasok|grosir/.test(lower)) return 'supplier';
+  if (/(hitung|estimasi|berapa).{0,24}(profit|untung|margin)|^profit\b/.test(lower)) return 'profit';
+  if (/modal\s*(rp\.?\s*)?[\d]|modal (kecil|terbatas)/.test(lower)) return 'modal';
+  if (/bandingkan|\bvs\b|dibanding/.test(lower)) return 'bandingkan';
+  if (/rencana (jualan|launch)/.test(lower)) return 'rencana';
+  return null;
+}
+
+// Same daily-limit rules as the search path: server RPC when signed in,
+// anon localStorage bump otherwise.
+async function ensureIntentChat(chat, title, context) {
+  if (currentUser && _supabase && !chat.id) {
+    const { data } = await _supabase.rpc('gpt_new_chat', { p_title: String(title).slice(0, 60), p_context: context });
+    if (data?.allowed === false) return { ok: false, resetAt: data.reset_at };
+    if (data?.chat) { chat.id = data.chat.id; delete chat.localId; state.activeChatId = chat.id; }
+  } else if (!currentUser) {
+    bumpAnonSearch();
+  }
+  return { ok: true };
+}
+
+function limitReply(loading, resetAt) {
+  const msg = `Batas pencarian harian tercapai — reset dalam ${formatCountdown(resetAt || wibMidnightReset())}.`;
+  if (loading) loading.querySelector('.msg-bubble').innerHTML = `<p>${esc(msg)}</p>`;
+  showToast(msg);
+  clarityEvt('gpt_limit_hit', {});
+  void logUserEvent('gpt_limit_hit', { ui: 'gpt' });
+}
+
+function extractMoney(text) {
+  const out = [];
+  const re = /([\d][\d.,]*)\s*(rb|ribu|k|jt|juta)?/g;
+  let m;
+  while ((m = re.exec(String(text).toLowerCase()))) {
+    let n = parseFloat(m[1].replace(/\./g, '').replace(',', '.'));
+    if (!isFinite(n) || n <= 0) continue;
+    const u = m[2] || '';
+    if (u === 'rb' || u === 'ribu' || u === 'k') n *= 1e3;
+    else if (u === 'jt' || u === 'juta') n *= 1e6;
+    out.push(Math.round(n));
+  }
+  return out;
+}
+
+function parseBudget(text) {
+  const m = String(text).toLowerCase().match(/modal[^0-9]{0,12}([\d.,]+)\s*(rb|ribu|k|jt|juta)?/);
+  if (!m) return 0;
+  let n = parseFloat(m[1].replace(/\./g, '').replace(',', '.'));
+  if (!isFinite(n) || n <= 0) return 0;
+  const unit = m[2] || '';
+  if (unit === 'rb' || unit === 'ribu' || unit === 'k') n *= 1e3;
+  else if (unit === 'jt' || unit === 'juta') n *= 1e6;
+  else if (n < 1000) n *= 1e3; // "modal 500" → 500rb
+  return Math.round(n);
+}
+
+async function handleIntent(intent, text) {
+  setView('chat');
+  let chat = activeChat();
+  if (!chat) {
+    chat = { localId: 'local_' + Date.now(), title: text.slice(0, 40), context: {}, messages: [], created_at: Date.now() };
+    state.chats.unshift(chat);
+    state.activeChatId = chat.localId;
+    renderChatList();
+  }
+  appendBubble('user', `<p>${esc(text)}</p>`);
+  pushMessage(chat, 'user', text);
+  void logUserEvent('gpt_message_sent', { ui: 'gpt' });
+  clarityEvt('gpt_message_sent', {});
+  void logUserEvent('gpt_intent', { ui: 'gpt', intent });
+  clarityEvt('gpt_intent', { intent });
+
+  if (intent === 'trending') return handleTrendingIntent(chat);
+  if (intent === 'modal') return handleModalIntent(chat, text);
+  if (intent === 'supplier') return handleSupplierIntent(chat, text);
+  if (intent === 'lowcomp') return handleLowcompIntent(chat);
+  if (intent === 'profit') return handleProfitIntent(chat, text);
+  if (intent === 'bandingkan') return handleBandingkanIntent(chat, text);
+  if (intent === 'rencana') return handleRencanaIntent(chat);
+}
+
+async function handleTrendingIntent(chat) {
+  if (!(await ensureSearchAllowed())) return;
+  const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Menghitung tren dari data scrape…</p>`);
+  const rows = await fetchTrending();
+  const gate = await ensureIntentChat(chat, 'Produk Trending', { kind: 'trending' });
+  if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
+  let html;
+  if (!rows.length) {
+    const nd = mergePool([], await fetchNaikDaunGlobal(60)).slice(0, 3);
+    state.recommendations = nd;
+    html = nd.length
+      ? `<p>Data tren mingguan belum tersedia — ini produk yang lagi naik daun dari data LarisID:</p><div class="card-grid">${nd.map((p, i) => productCardHtml(p, i)).join('')}</div>`
+      : `<p>Data tren belum tersedia. Coba lagi nanti.</p>`;
+  } else {
+    const view = computeTrendingView(rows, '7d');
+    html = `<p>Berikut produk yang sedang trending di Shopee berdasarkan peningkatan penjualan — dari data scrape LarisID, bukan tebakan AI.</p>${trendingCardHtml(view)}`;
+  }
+  loading.querySelector('.msg-bubble').innerHTML = html;
+  pushMessage(chat, 'assistant', { text: 'Produk trending', kind: 'trending' }, html);
+  bindProductCards();
+  bindTrendingCards();
+  updateThreadWide();
+  scrollChatToBottom();
+  setComposerChips(TRENDING_CHIPS, 'trending');
+  void logUserEvent('discover_view', { ui: 'gpt', kind: 'trending' });
+  clarityEvt('gpt_trending_view', {});
+}
+
+async function handleModalIntent(chat, text) {
+  const budget = parseBudget(text);
+  if (!budget) {
+    const html = `<p>Berapa modal kamu per unit? Contoh: <strong>“Cari produk modal 50rb”</strong> atau <strong>“produk modal 1jt”</strong>.</p>`;
+    appendBubble('assistant', html);
+    pushMessage(chat, 'assistant', { text: 'Tanya modal' }, html);
+    return;
+  }
+  if (!(await ensureSearchAllowed())) return;
+  const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari produk laris di bawah ${fmtRp(budget)}…</p>`);
+  let rows = [];
+  try {
+    const { data } = await _supabase.from('listings_deduped')
+      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url')
+      .gte('price', 1000).lte('price', budget)
+      .gt('total_sold', 100)
+      .order('total_sold', { ascending: false })
+      .limit(30);
+    rows = (data || []).map(asListingProduct);
+  } catch (_) {}
+  const gate = await ensureIntentChat(chat, `Modal ${fmtRp(budget)}`, { kind: 'modal', budget });
+  if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
+  const top = mergePool([], rows).slice(0, 3);
+  state.recommendations = top;
+  const html = top.length
+    ? `<p>Produk laris dengan harga di bawah <strong>${fmtRp(budget)}</strong> — dari data Shopee LarisID:</p><div class="card-grid">${top.map((p, i) => productCardHtml(p, i)).join('')}</div>`
+    : `<p>Belum ketemu produk laris di bawah ${fmtRp(budget)}. Coba angka lain.</p>`;
+  loading.querySelector('.msg-bubble').innerHTML = html;
+  pushMessage(chat, 'assistant', { text: 'Hasil modal', budget }, html);
+  bindProductCards();
+  scrollChatToBottom();
+}
+
+async function handleSupplierIntent(chat, text) {
+  const product = state.deepdiveProduct || activeChat()?.context?.product;
+  let term = product?.keyword || '';
+  if (!term) {
+    term = _searchTerms(String(text).toLowerCase().replace(/supplier|pemasok|grosir|termurah|murah/g, ' ')).join(' ');
+  }
+  if (!term) {
+    const html = `<p>Supplier untuk produk apa? Contoh: <strong>“Cari supplier vas keramik”</strong>.</p>`;
+    appendBubble('assistant', html);
+    pushMessage(chat, 'assistant', { text: 'Tanya supplier' }, html);
+    return;
+  }
+  const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari supplier di data…</p>`);
+  let rows = [];
+  try {
+    const { data } = await _supabase.from('mv_supplier_leaderboard')
+      .select('keyword,store_name,location,hero_sold,catalog_items,rnk')
+      .ilike('keyword', `%${term.slice(0, 40)}%`)
+      .order('hero_sold', { ascending: false })
+      .limit(8);
+    rows = data || [];
+  } catch (_) {}
+  const html = rows.length
+    ? `<p>Toko dengan penjualan terbesar untuk “<strong>${esc(term)}</strong>” — kandidat supplier/benchmark dari data Shopee:</p>
+       <div class="ans-panel" style="margin-top:12px"><div class="ans-table-wrap"><table class="tr-table">
+       <thead><tr><th>#</th><th>Toko</th><th>Lokasi</th><th>Produk hero terjual</th><th>Katalog</th></tr></thead>
+       <tbody>${rows.map((s, i) => `<tr><td class="tr-rank">${i + 1}</td><td><strong>${esc(s.store_name || '')}</strong></td><td>${esc(s.location || '—')}</td><td>${fmtSold(s.hero_sold)}</td><td>${s.catalog_items ?? '—'}</td></tr>`).join('')}</tbody>
+       </table></div></div>`
+    : `<p>Belum ada data leaderboard untuk “${esc(term)}”. Coba kata kunci lain.</p>`;
+  loading.querySelector('.msg-bubble').innerHTML = html;
+  pushMessage(chat, 'assistant', { text: 'Supplier', term }, html);
+  scrollChatToBottom();
+}
+
+async function handleLowcompIntent(chat) {
+  if (!(await ensureSearchAllowed())) return;
+  const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari niche kompetisi rendah…</p>`);
+  let rows = [];
+  try {
+    const { data } = await _supabase.from('mv_niche_breakout')
+      .select('keyword,new_items,breakouts,breakout_rate,median_winner_price')
+      .gte('new_items', 15).lte('new_items', 60)
+      .order('breakout_rate', { ascending: false })
+      .limit(8);
+    rows = data || [];
+  } catch (_) {}
+  const gate = await ensureIntentChat(chat, 'Kompetisi rendah', { kind: 'lowcomp' });
+  if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
+  const html = rows.length
+    ? `<p>Niche dengan kompetisi relatif rendah tapi peluang tembus tinggi — dari data breakout LarisID:</p>
+       <div class="ans-panel" style="margin-top:12px"><div class="ans-table-wrap"><table class="tr-table">
+       <thead><tr><th>Keyword</th><th>Peluang tembus</th><th>Produk baru</th><th>Harga pemenang</th><th></th></tr></thead>
+       <tbody>${rows.map(r => `<tr><td><strong>${esc(r.keyword)}</strong></td><td><span class="pct-up">${Math.round(Number(r.breakout_rate) || 0)}%</span></td><td>${r.new_items}</td><td>${r.median_winner_price ? fmtRp(r.median_winner_price) : '—'}</td><td><button type="button" class="btn-outline" data-kwsearch="${esc(r.keyword)}">Lihat produk</button></td></tr>`).join('')}</tbody>
+       </table></div></div>`
+    : `<p>Belum ada data niche. Coba lagi nanti.</p>`;
+  loading.querySelector('.msg-bubble').innerHTML = html;
+  pushMessage(chat, 'assistant', { text: 'Niche kompetisi rendah', kind: 'lowcomp' }, html);
+  loading.querySelectorAll('[data-kwsearch]').forEach(btn => {
+    btn.addEventListener('click', () => void handleComposerSubmit(`Cari produk ${btn.getAttribute('data-kwsearch')}`));
+  });
+  scrollChatToBottom();
+}
+
+const MARKETPLACE_FEE = 0.08; // asumsi biaya marketplace, dilabel di UI
+
+function profitTableHtml(rows) {
+  return `<div class="ans-panel" style="margin-top:12px"><div class="ans-table-wrap"><table class="tr-table">
+    <thead><tr><th>Modal / unit</th><th>Harga jual</th><th>Biaya marketplace ~8%</th><th>Profit / unit</th><th>Margin</th></tr></thead>
+    <tbody>${rows.map(r => {
+      const fee = Math.round(r.jual * MARKETPLACE_FEE);
+      const profit = r.jual - fee - r.modal;
+      const mg = r.jual ? Math.round(profit / r.jual * 100) : 0;
+      return `<tr><td>${fmtRp(r.modal)}</td><td>${fmtRp(r.jual)}</td><td>${fmtRp(fee)}</td><td><strong style="color:${profit >= 0 ? 'var(--green)' : 'var(--accent)'}">${fmtRp(profit)}</strong></td><td>${mg}%</td></tr>`;
+    }).join('')}</tbody>
+  </table></div></div>
+  <p class="dd-sub" style="margin-top:8px">Hitungan sederhana: harga jual − biaya marketplace (asumsi 8%) − modal. Ongkir/packing belum termasuk.</p>`;
+}
+
+async function handleProfitIntent(chat, text) {
+  const product = state.deepdiveProduct || activeChat()?.context?.product;
+  const nums = extractMoney(text).filter(n => n >= 500);
+  let html;
+  if (nums.length >= 2) {
+    const [modal, jual] = nums[0] <= nums[1] ? [nums[0], nums[1]] : [nums[1], nums[0]];
+    html = `<p>Estimasi profit per unit:</p>${profitTableHtml([{ modal, jual }])}`;
+  } else if (product && Number(product.price) > 0) {
+    const jual = Number(product.price);
+    html = `<p>Skenario profit untuk <strong>${esc((product.product_name || '').slice(0, 48))}</strong> di harga jual ${fmtRp(jual)} — tiga asumsi modal (60/70/80% dari harga jual):</p>`
+      + profitTableHtml([0.6, 0.7, 0.8].map(f => ({ modal: Math.round(jual * f), jual })));
+  } else {
+    html = `<p>Sebutkan modal dan harga jual per unit — contoh: <strong>“Hitung profit modal 20rb jual 35rb”</strong>. Atau buka salah satu produk dulu, nanti aku hitung dari harganya.</p>`;
+  }
+  appendBubble('assistant', html);
+  pushMessage(chat, 'assistant', { text: 'Estimasi profit' }, html);
+  scrollChatToBottom();
+}
+
+async function handleBandingkanIntent(chat, text) {
+  const cleaned = String(text).toLowerCase().replace(/bandingkan|dibandingkan|dibanding|dengan produk|dengan/g, ' ');
+  const parts = cleaned.split(/\bvs\.?\b|\bdan\b|,|\batau\b/).map(s => _searchTerms(s).join(' ')).filter(Boolean).slice(0, 2);
+  if (parts.length < 2) {
+    const html = `<p>Sebutkan dua produk yang mau dibandingkan — contoh: <strong>“Bandingkan tumbler vs botol minum”</strong>.</p>`;
+    appendBubble('assistant', html);
+    pushMessage(chat, 'assistant', { text: 'Tanya bandingkan' }, html);
+    return;
+  }
+  if (!(await ensureSearchAllowed())) return;
+  const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Membandingkan dari data…</p>`);
+  const [a, b] = await Promise.all([searchListings(parts[0], [], 20), searchListings(parts[1], [], 20)]);
+  const gate = await ensureIntentChat(chat, `Bandingkan: ${parts[0]} vs ${parts[1]}`, { kind: 'bandingkan', a: parts[0], b: parts[1] });
+  if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
+  const summarize = rows => {
+    if (!rows.length) return null;
+    const sold = rows.reduce((s, r) => s + (Number(r.total_sold) || 0), 0);
+    const prices = rows.map(r => Number(r.price) || 0).filter(Boolean).sort((x, y) => x - y);
+    return { sold, median: prices.length ? prices[Math.floor(prices.length / 2)] : 0, n: rows.length, top: rows.slice(0, 3) };
+  };
+  const sa = summarize(a), sb = summarize(b);
+  state.recommendations = mergePool([], [...(sa?.top || []), ...(sb?.top || [])]);
+  const side = (label, s) => s
+    ? `<div class="ans-panel" style="margin-top:12px"><h4>${esc(label)}</h4>
+       <p class="dd-sub" style="margin:0 0 10px">${s.n} listing terpantau · median harga ${fmtRp(s.median)} · total ${fmtSold(s.sold)} terjual</p>
+       <div class="card-grid">${s.top.map((p, i) => productCardHtml(p, i)).join('')}</div></div>`
+    : `<div class="ans-panel" style="margin-top:12px"><h4>${esc(label)}</h4><p class="dd-sub">Tidak ketemu di data.</p></div>`;
+  let verdict = '';
+  if (sa && sb) {
+    const win = sa.sold >= sb.sold ? parts[0] : parts[1];
+    verdict = `<p style="margin-top:12px">Dari total penjualan yang terpantau, <strong>${esc(win)}</strong> lebih laris. Klik produk untuk analisis lengkap.</p>`;
+  }
+  const html = `<p>Perbandingan “<strong>${esc(parts[0])}</strong>” vs “<strong>${esc(parts[1])}</strong>” dari data Shopee LarisID:</p>${side(parts[0], sa)}${side(parts[1], sb)}${verdict}`;
+  loading.querySelector('.msg-bubble').innerHTML = html;
+  pushMessage(chat, 'assistant', { text: 'Bandingkan', a: parts[0], b: parts[1] }, html);
+  bindProductCards();
+  scrollChatToBottom();
+}
+
+async function handleRencanaIntent(chat) {
+  const html = `<p>Buka salah satu produk dulu (klik <strong>Lihat Analisis</strong>), lalu minta rencana jualan — aku susun dari data produknya.</p>`;
+  appendBubble('assistant', html);
+  pushMessage(chat, 'assistant', { text: 'Rencana perlu produk' }, html);
+  scrollChatToBottom();
+}
+
 // ── Free-text search (composer + onboarding freeText bias) ──────────────
 const SEARCH_STOPWORDS = new Set(['cari','carikan','tolong','coba','tunjukkan','tampilkan','produk','barang',
   'buat','untuk','dijual','jual','jualan','yang','dong','aku','saya','mau','bisa','lagi','dan','apa','the']);
@@ -1726,116 +2230,289 @@ function ddStats(peers) {
   };
 }
 
-function ddMetricBoxesHtml(product, stats, niche) {
-  const price = Number(product.price) || 0;
-  const thumbPos = stats.max > stats.min ? Math.round((price - stats.min) / (stats.max - stats.min) * 100) : 50;
-  const odds = calcBreakoutOdds(price, niche);
-  const wall = calcReviewWall(Number(product.reviews) || 0, niche);
+// ── Deep-dive report builders (always-expanded analysis) ─────────────────
+function fmtRpShort(n) {
+  n = Number(n) || 0;
+  if (n >= 1e9) return 'Rp ' + (n / 1e9).toFixed(1).replace('.0', '') + ' M';
+  if (n >= 1e6) return 'Rp ' + (n / 1e6).toFixed(n >= 1e8 ? 0 : 1).replace('.0', '') + ' jt';
+  if (n >= 1e3) return 'Rp ' + Math.round(n / 1e3) + 'rb';
+  return fmtRp(n);
+}
+
+// Deterministic 0–100 score from real signals only.
+function ddScore(product, stats, niche) {
+  const odds = calcBreakoutOdds(Number(product.price) || 0, niche);
+  let s = 35 * (odds.pct / 60);
+  s += stats.komp === 'Rendah' ? 25 : stats.komp === 'Sedang' ? 15 : 6;
+  s += Math.min(20, Math.log10((stats.totalSold || 0) + 1) * 3.4);
+  s += Math.min(10, Number(product.sold_per_day) || 0);
+  s += stats.n >= 20 ? 10 : stats.n >= 8 ? 6 : 2;
+  s = Math.round(Math.max(5, Math.min(95, s)));
+  const badge = s >= 70 ? { cls: 'badge-tinggi', label: 'Peluang Tinggi' }
+    : s >= 45 ? { cls: 'badge-sedang', label: 'Peluang Sedang' }
+    : { cls: 'badge-rendah', label: 'Peluang Rendah' };
+  return { score: s, ...badge, odds };
+}
+
+function ddSummaryText(stats, niche, scoreInfo) {
+  const bits = [];
+  if (scoreInfo.score >= 70) bits.push('Saya cukup optimis dengan niche ini.');
+  else if (scoreInfo.score >= 45) bits.push('Niche ini masuk akal untuk dicoba, dengan catatan.');
+  else bits.push('Niche ini berat untuk pemula — pertimbangkan matang-matang.');
+  if (stats.n) bits.push(`Kompetisi ${stats.komp.toLowerCase()}: top 3 toko menguasai ${Math.round(stats.top3Share * 100)}% penjualan di keyword ini.`);
+  if (niche?.breakout_rate != null && (niche.new_items || 0) >= 15) bits.push(`${Math.round(niche.breakout_rate)}% produk baru di niche ini tembus 100+ terjual.`);
+  return bits.join(' ');
+}
+
+// Weekly market series from real scrape snapshots: per item, the sold delta
+// between consecutive snapshots is spread as a daily rate onto the Monday-
+// anchored weeks it overlaps. No synthetic curves — thin data shows a note.
+function ddWeeklySeries(history) {
+  const byItem = new Map();
+  for (const r of history) {
+    const k = `${r.item_id}_${r.shop_id}`;
+    if (!byItem.has(k)) byItem.set(k, []);
+    byItem.get(k).push(r);
+  }
+  const weekMs = 7 * 864e5;
+  const weekOf = ts => mondayOfWeek(new Date(ts)).getTime();
+  const weeks = new Map();
+  let maxT = 0;
+  for (const rows of byItem.values()) {
+    rows.sort((a, b) => Date.parse(a.scraped_at) - Date.parse(b.scraped_at));
+    for (let i = 1; i < rows.length; i++) {
+      const t0 = Date.parse(rows[i - 1].scraped_at), t1 = Date.parse(rows[i].scraped_at);
+      const d = (Number(rows[i].total_sold) || 0) - (Number(rows[i - 1].total_sold) || 0);
+      if (!(t1 > t0) || d <= 0) continue;
+      maxT = Math.max(maxT, t1);
+      const price = Number(rows[i].price) || 0;
+      const rate = d / (t1 - t0);
+      let cur = weekOf(t0);
+      while (cur < t1) {
+        const overlap = Math.min(t1, cur + weekMs) - Math.max(t0, cur);
+        if (overlap > 0) {
+          const w = weeks.get(cur) || { units: 0, omset: 0, items: new Set() };
+          const u = rate * overlap;
+          w.units += u;
+          w.omset += u * price;
+          w.items.add(String(rows[i].item_id));
+          weeks.set(cur, w);
+        }
+        cur += weekMs;
+      }
+    }
+  }
+  let out = [...weeks.entries()].sort((a, b) => a[0] - b[0])
+    .map(([ts, w]) => ({ ts, units: Math.round(w.units), omset: Math.round(w.omset), items: w.items.size }));
+  // Trailing week with <3.5 days of observation undercounts — drop it.
+  if (out.length && maxT - out[out.length - 1].ts < 3.5 * 864e5) out = out.slice(0, -1);
+  return out;
+}
+
+function ddShareData(peers) {
+  const byShop = new Map();
+  for (const p of peers) {
+    const k = String(p.shop_id);
+    const omzet = (Number(p.total_sold) || 0) * (Number(p.price) || 0);
+    const cur = byShop.get(k) || { name: p.store_name || 'Toko', img: p.image_url || '', omzet: 0, sold: 0, sample: p };
+    cur.omzet += omzet;
+    cur.sold += Number(p.total_sold) || 0;
+    if (!cur.img && p.image_url) cur.img = p.image_url;
+    byShop.set(k, cur);
+  }
+  const shops = [...byShop.values()].sort((a, b) => b.omzet - a.omzet);
+  const seg = (from, to) => shops.slice(from, to).reduce((s, x) => s + x.omzet, 0);
+  const total = seg(0, shops.length) || 1;
+  shops.forEach(s => { s.share = Math.round(s.omzet / total * 100); });
+  return { shops, top3: seg(0, 3), mid: seg(3, 10), tail: seg(10, 30), rest: seg(30, shops.length), total };
+}
+
+// Shop age proxy: oldest listing_date seen per shop in the scraped panel.
+function ddShopAgeBuckets(peers) {
+  const oldest = new Map();
+  for (const p of peers) {
+    if (!p.listing_date) continue;
+    const t = Date.parse(p.listing_date);
+    if (!isFinite(t)) continue;
+    const k = String(p.shop_id);
+    if (!oldest.has(k) || t < oldest.get(k)) oldest.set(k, t);
+  }
+  const now = Date.now();
+  const b = { young: 0, mid: 0, old: 0 };
+  oldest.forEach(t => {
+    const yrs = (now - t) / (365.25 * 864e5);
+    if (yrs < 2) b.young++; else if (yrs < 5) b.mid++; else b.old++;
+  });
+  return { ...b, total: oldest.size };
+}
+
+function ddKeywordRows(peers) {
+  const byKw = new Map();
+  for (const p of peers) {
+    const key = (p.keyword || '').trim().toLowerCase();
+    if (!key) continue;
+    const cur = byKw.get(key) || { kw: (p.keyword || '').trim(), n: 0, sold: 0 };
+    cur.n++;
+    cur.sold += Number(p.total_sold) || 0;
+    byKw.set(key, cur);
+  }
+  return [...byKw.values()].sort((a, b) => b.sold - a.sold).slice(0, 6)
+    .map(r => ({ ...r, comp: r.n >= 25 ? 'Tinggi' : r.n >= 10 ? 'Sedang' : 'Rendah' }));
+}
+
+function ddTilesHtml(product, stats, peers, series) {
   const omset = estOmsetBulan(product);
-  return `
-    <div class="dd-metrics">
-      <div class="dd-metric"><div class="lbl">Harga</div><div class="val">${fmtRp(price)}</div>
-        ${stats.n >= 4
-          ? `<div class="dd-thumb-track"><div class="dd-thumb" style="left:${Math.min(97, Math.max(2, thumbPos))}%"></div></div><div class="sub">${fmtRp(stats.min)} – ${fmtRp(stats.max)} di keyword ini</div>`
-          : `<div class="sub">Belum cukup data peer</div>`}
-      </div>
-      <div class="dd-metric"><div class="lbl">Omset / bulan</div><div class="val">${omset ? fmtOmset(omset) : '—'}</div><div class="sub">Estimasi dari kecepatan jual</div></div>
-      <div class="dd-metric"><div class="lbl">Kompetisi</div><div class="val">${stats.n ? stats.komp : '—'}</div><div class="sub">${stats.n ? `Top 3 kuasai ${Math.round(stats.top3Share * 100)}% penjualan keyword` : 'Belum ada data peer'}</div></div>
-      <div class="dd-metric"><div class="lbl">Terjual</div><div class="val">${fmtSold(product.total_sold)}</div><div class="sub">≈${fmtSold(product.sold_per_day)} / hari</div></div>
-      <div class="dd-metric"><div class="lbl">Peluang pemula</div><div class="val">${odds.tier}</div><div class="sub">${esc(odds.hint)}</div></div>
-      <div class="dd-metric"><div class="lbl">Dinding ulasan</div><div class="val">≈${wall.wall.toLocaleString('id-ID')}</div><div class="sub">${wall.cleared ? 'Produk ini sudah lewat dinding ulasan' : 'Separuh produk baru mati di 0 ulasan — kejar ulasan cepat'}</div></div>
-    </div>`;
-}
-
-function _ddDistBarsHtml() {
-  const prices = _dd.stats.prices;
-  const buckets = [
-    { label: '< 100rb', fn: p => p < 100000 },
-    { label: '100–150rb', fn: p => p >= 100000 && p < 150000 },
-    { label: '150–200rb', fn: p => p >= 150000 && p < 200000 },
-    { label: '200–300rb', fn: p => p >= 200000 && p < 300000 },
-    { label: '> 300rb', fn: p => p >= 300000 },
-  ].map(b => ({ ...b, count: prices.filter(b.fn).length }));
-  const maxB = Math.max(...buckets.map(b => b.count), 1);
-  return buckets.map(b => {
-    const pct = prices.length ? Math.round(b.count / prices.length * 100) : 0;
-    return `<div class="dist-bar"><div style="width:88px;color:var(--muted)">${esc(b.label)}</div><div class="track"><div class="fill" style="width:${Math.round(b.count / maxB * 100)}%"></div></div><div style="width:36px;text-align:right">${pct}%</div></div>`;
-  }).join('') || '<p class="dd-sub">Belum ada data harga peer.</p>';
-}
-
-function ddSectionKompetitor() {
-  const { peers, stats } = _dd;
-  if (!peers.length) return '<h3>Top kompetitor</h3><p class="dd-sub">Kompetitor belum tersedia untuk keyword ini.</p>';
-  const rows = peers.slice(0, 15).map((r, i) => {
-    const omset = Math.round((Number(r.total_sold) || 0) / 6 * (Number(r.price) || 0));
-    const share = stats.totalSold ? Math.round((Number(r.total_sold) || 0) / stats.totalSold * 100) : 0;
-    return `<div class="komp-row">
-      <span class="komp-rank">#${i + 1}</span>
-      ${r.image_url ? `<img class="comp-img" src="${esc(r.image_url)}" alt="" loading="lazy">` : '<span class="comp-img"></span>'}
-      <span class="komp-name"><strong>${esc((r.product_name || '').slice(0, 48))}</strong><br><span class="dd-sub">${esc((r.store_name || '').slice(0, 24))}${r.rating ? ` · ★${Number(r.rating).toFixed(1)}` : ''}</span></span>
-      <span class="komp-nums">${fmtRp(r.price)}<br><span class="dd-sub">${omset ? fmtOmset(omset) : '—'} · ${fmtSold(r.total_sold)} terjual</span>
-        <span class="share-track"><span class="share-fill" style="width:${share}%"></span></span>
-      </span>
-    </div>`;
-  }).join('');
-  return `<h3>15 kompetitor teratas</h3><span class="data-badge">Data Shopee — bukan jawaban AI</span>${rows}`;
-}
-
-function ddSectionHarga() {
-  const { stats, niche, product } = _dd;
-  if (stats.n < 4) return '<h3>Harga kompetitif</h3><p class="dd-sub">Belum cukup data harga peer untuk keyword ini.</p>';
+  const unitMo = Math.round((Number(product.sold_per_day) || 0) * 30);
   const price = Number(product.price) || 0;
-  const patokan = niche && niche.median_winner_price ? Number(niche.median_winner_price) : 0;
-  return `<h3>Harga kompetitif</h3><span class="data-badge">Data Shopee — bukan jawaban AI</span>
-    <div class="comp-row"><span>Median pasar</span><span><strong>${fmtRp(stats.median)}</strong></span></div>
-    <div class="comp-row"><span>Rentang optimal</span><span><strong>${fmtRp(stats.p25)} – ${fmtRp(stats.p75)}</strong></span></div>
-    <div class="comp-row"><span>Rekomendasi masuk pasar</span><span><strong>${fmtRp(stats.p35)} – ${fmtRp(stats.p65)}</strong></span></div>
-    ${patokan ? `<div class="comp-row"><span>Patokan harga pemenang</span><span><strong>${fmtRp(patokan)}</strong> · produk ini ${price <= patokan ? 'di bawah' : 'di atas'} patokan</span></div>` : ''}
-    <p class="dd-sub" style="margin-top:10px">Rentang dari ${stats.n} listing di keyword ini.</p>
-    <h3 style="margin-top:18px">Distribusi harga</h3>
-    ${_ddDistBarsHtml()}`;
+  const vsMed = stats.median ? Math.round((price - stats.median) / stats.median * 100) : null;
+  const locCount = new Map();
+  peers.forEach(p => { const l = (p.location || '').trim(); if (l) locCount.set(l, (locCount.get(l) || 0) + 1); });
+  const topLoc = [...locCount.entries()].sort((a, b) => b[1] - a[1])[0];
+  const shopN = new Set(peers.map(p => String(p.shop_id))).size;
+  // Market momentum from the real weekly series (last 2 complete weeks).
+  let delta = null;
+  if (series && series.length >= 2) {
+    const a = series[series.length - 1], b = series[series.length - 2];
+    if (b && b.units > 0) delta = Math.round((a.units - b.units) / b.units * 100);
+  }
+  const deltaHtml = delta == null
+    ? '<div class="sub">Estimasi dari kecepatan jual</div>'
+    : `<span class="tile-delta ${delta >= 0 ? 'up' : 'down'}">${ico('arrowUp', 10)} ${delta >= 0 ? '+' : ''}${delta}% pasar vs minggu sebelumnya</span>`;
+  return `<div class="ddr-tiles">
+    <div class="ddr-tile"><span class="ico" style="background:var(--green-bg);color:var(--green)">${ico('trendUp', 14)}</span><div class="lbl">Est. Omzet / Bulan</div><div class="val">${omset ? fmtRpShort(omset) : '—'}</div>${deltaHtml}</div>
+    <div class="ddr-tile"><span class="ico" style="background:var(--blue-bg);color:var(--blue)">${ico('box', 14)}</span><div class="lbl">Est. Penjualan / Bulan</div><div class="val">${unitMo ? unitMo.toLocaleString('id-ID') + ' unit' : '—'}</div><div class="sub">Dari kecepatan jual terpantau</div></div>
+    <div class="ddr-tile"><span class="ico" style="background:var(--amber-bg);color:var(--amber)">${ico('tag', 14)}</span><div class="lbl">Harga Produk</div><div class="val">${fmtRp(price)}</div><div class="sub">${vsMed == null ? 'Median pasar belum ada' : vsMed === 0 ? 'Sama dengan median pasar' : `${Math.abs(vsMed)}% ${vsMed > 0 ? 'di atas' : 'di bawah'} median pasar`}</div></div>
+    <div class="ddr-tile"><span class="ico" style="background:var(--violet-bg);color:var(--violet)">${ico('pin', 14)}</span><div class="lbl">Lokasi Terbanyak</div><div class="val">${topLoc ? esc(topLoc[0]) : '—'}</div><div class="sub">${topLoc ? `${topLoc[1]} penjual dari kota ini` : 'Belum ada data lokasi'}</div></div>
+    <div class="ddr-tile"><span class="ico" style="background:var(--red-bg);color:var(--accent)">${ico('users', 14)}</span><div class="lbl">Kompetitor Aktif</div><div class="val">~${shopN} toko</div><div class="sub">Kompetisi ${esc(stats.komp || '—')}</div></div>
+  </div>`;
 }
 
-function ddSectionTren() {
-  return `<h3>Tren penjualan (estimasi)</h3><span class="data-badge">Data Shopee — bukan jawaban AI</span>
-    <div class="dd-chart-wrap"><canvas id="dd-trend-canvas"></canvas></div>
-    <p class="dd-sub" style="margin-top:8px">Jangkar Senin minggu ini. Estimasi sederhana dari kecepatan jual — bukan omset absolut panel scrape penuh.</p>`;
+function ddWhyHtml(product, stats, niche) {
+  const items = [];
+  items.push(stats.n >= 8
+    ? `Permintaan terpantau di ${stats.n} listing keyword ini — total ${fmtSold(stats.totalSold)} terjual.`
+    : `Baru ${stats.n} listing terpantau di keyword ini — data masih tipis, hati-hati baca angkanya.`);
+  items.push(stats.top3Share <= 0.35
+    ? `Pasar tidak didominasi satu toko — top 3 hanya menguasai ${Math.round(stats.top3Share * 100)}% penjualan.`
+    : stats.top3Share <= 0.6
+      ? `Top 3 toko menguasai ${Math.round(stats.top3Share * 100)}% penjualan — masih ada ruang untuk bersaing.`
+      : `Top 3 toko menguasai ${Math.round(stats.top3Share * 100)}% penjualan — dominasi tinggi, masuk lebih sulit.`);
+  if (niche?.breakout_rate != null && (niche.new_items || 0) >= 15) {
+    items.push(`${Math.round(niche.breakout_rate)}% produk baru di niche ini berhasil tembus 100+ terjual.`);
+  }
+  const wall = calcReviewWall(Number(product.reviews) || 0, niche);
+  items.push(`Dinding ulasan ±${wall.wall.toLocaleString('id-ID')} — target ulasan minimum supaya masuk radar pembeli.`);
+  if (stats.n >= 4) {
+    const inZone = Number(product.price) >= stats.p25 && Number(product.price) <= stats.p75;
+    items.push(`Rentang harga sehat ${fmtRp(stats.p25)} – ${fmtRp(stats.p75)}; produk ini ${inZone ? 'ada di dalam' : 'di luar'} zona itu.`);
+  }
+  return `<ul class="check-list">${items.map(s => `<li>${ico('check', 15)}<span>${esc(s)}</span></li>`).join('')}</ul>`;
 }
 
-function ddSectionSupplier() {
-  const { suppliers } = _dd;
-  if (!suppliers.length) return '<h3>Toko pemasok</h3><p class="dd-sub">Belum ada data leaderboard untuk keyword ini.</p>';
-  return `<h3>Toko pemasok (leaderboard)</h3><span class="data-badge">Data Shopee — bukan jawaban AI</span>` +
-    suppliers.map(s => `<div class="comp-row"><span>${esc(s.store_name)}</span><span>${fmtSold(s.hero_sold)} hero · ${esc(s.location || '')}</span></div>`).join('');
+function ddKompetitorTableHtml(share) {
+  if (!share.shops.length) return '<p class="dd-sub">Kompetitor belum tersedia untuk keyword ini.</p>';
+  const rows = share.shops.slice(0, 15).map((s, i) => {
+    const omsetMo = Math.round(s.sold / 6) * Math.round(s.omzet / Math.max(1, s.sold)); // ≈ sold/6 × avg price
+    return `<tr${i >= 5 ? ' data-komp-extra hidden' : ''}>
+      <td class="tr-rank">${i + 1}</td>
+      <td><div class="tr-prod" style="min-width:140px"><span class="comp-av">${s.img ? `<img src="${esc(s.img)}" alt="" loading="lazy">` : esc((s.name || 'T').charAt(0).toUpperCase())}</span><div class="tr-prod-name">${esc((s.name || 'Toko').slice(0, 28))}</div></div></td>
+      <td>${omsetMo ? fmtRpShort(omsetMo) : '—'}</td>
+      <td>${s.share}%</td>
+      <td><button type="button" class="btn-outline" data-kshop="${esc(String(s.sample.item_id))}|${esc(String(s.sample.shop_id))}">Lihat</button></td>
+    </tr>`;
+  }).join('');
+  return `<div class="ddr-table-wrap"><table class="ddr-table">
+    <thead><tr><th>#</th><th>Toko</th><th>Omzet / Bln (est.)</th><th>Market Share</th><th>Aksi</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>
+    ${share.shops.length > 5 ? `<button type="button" class="ans-cta" id="ddr-komp-more">Lihat Semua ${Math.min(15, share.shops.length)} Kompetitor</button>` : ''}`;
 }
 
-const DD_SECTIONS = {
-  kompetitor: { label: 'Lihat 15 kompetitor teratas', render: ddSectionKompetitor },
-  harga: { label: 'Berapa harga kompetitif?', render: ddSectionHarga },
-  tren: { label: 'Tren penjualan', render: ddSectionTren },
-  supplier: { label: 'Toko pemasok', render: ddSectionSupplier },
-};
+function ddKeywordTableHtml(kwRows, sampleN) {
+  if (!kwRows.length) return '<p class="dd-sub">Belum ada variasi keyword terpantau.</p>';
+  return `<div class="ddr-table-wrap"><table class="ddr-table">
+    <thead><tr><th>Keyword</th><th>Listing</th><th>Terjual</th><th>Kompetisi</th><th>Tren</th></tr></thead>
+    <tbody>${kwRows.map(r => `<tr>
+      <td><strong>${esc(r.kw.slice(0, 32))}</strong></td>
+      <td>${r.n}</td>
+      <td>${fmtSold(r.sold)}</td>
+      <td><span class="badge badge-comp-${r.comp.toLowerCase()}">${r.comp}</span></td>
+      <td><canvas class="spark" data-spark="${esc(r.kw)}"></canvas></td>
+    </tr>`).join('')}</tbody></table></div>
+    <p class="ddr-caption">Dari sampel ${sampleN} listing teratas keyword ini — jumlah listing = tingkat kompetisi, bukan volume pencarian.</p>`;
+}
 
-async function ddOpenSection(name) {
-  if (!_dd || !DD_SECTIONS[name]) return;
-  if (_dd.open.has(name)) {
-    document.getElementById(`dd-sec-${name}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+function ddStrategyHtml(product, stats, niche, kwRows) {
+  const steps = [];
+  if (stats.n >= 4) steps.push(`Masuk di harga ${fmtRp(stats.p35)} – ${fmtRp(stats.p65)} untuk bersaing di zona pasar paling aktif.`);
+  else steps.push(`Data harga peer masih tipis — pakai ${fmtRp(Number(product.price) || 0)} (harga produk acuan) sebagai patokan awal.`);
+  steps.push('Fokus pada kualitas foto & variasi produk — itu pembeda utama di antara listing teratas.');
+  const lowKws = kwRows.filter(k => k.comp !== 'Tinggi').slice(0, 2).map(k => k.kw);
+  if (lowKws.length) steps.push(`Prioritaskan keyword dengan kompetisi lebih rendah: ${lowKws.join(', ')}.`);
+  const wall = calcReviewWall(0, niche);
+  steps.push(`Kejar ${Math.min(wall.wall, 50).toLocaleString('id-ID')} ulasan pertama secepatnya — dinding ulasan niche ini ±${wall.wall.toLocaleString('id-ID')}.`);
+  steps.push('Pertimbangkan bundling 2–3 pcs untuk menaikkan nilai order rata-rata.');
+  return `<ol class="ddr-steps">${steps.map((s, i) => `<li><span class="step-num">${i + 1}</span><span>${esc(s)}</span></li>`).join('')}</ol>`;
+}
+
+function drawSpark(canvas, values) {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const w = canvas.width = 52, h = canvas.height = 20;
+  ctx.clearRect(0, 0, w, h);
+  if (!values || values.length < 2) {
+    ctx.strokeStyle = '#d4d4d4';
+    ctx.beginPath(); ctx.moveTo(2, h / 2); ctx.lineTo(w - 2, h / 2); ctx.stroke();
     return;
   }
-  _dd.open.add(name);
-  document.querySelector(`#dd-chips [data-sec="${name}"]`)?.classList.add('selected');
-  const wrap = $('dd-sections');
-  if (!wrap) return;
-  const sec = document.createElement('div');
-  sec.className = 'dd-section';
-  sec.id = `dd-sec-${name}`;
-  sec.innerHTML = DD_SECTIONS[name].render();
-  wrap.appendChild(sec);
-  if (name === 'tren') { await larisEnsureChart(); renderTrendChart(_dd.product); }
-  void logUserEvent('deepdive_section', { ui: 'gpt', section: name, keyword: _dd.product.keyword || '' });
-  clarityEvt('deepdive_section', { section: name });
-  sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const max = Math.max(...values, 1), min = Math.min(...values, 0);
+  ctx.beginPath();
+  values.forEach((v, i) => {
+    const x = i / (values.length - 1) * (w - 2) + 1;
+    const y = h - 2 - (v - min) / Math.max(1, max - min) * (h - 4);
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  });
+  ctx.strokeStyle = values[values.length - 1] >= values[0] ? '#16A34A' : '#B5202A';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
 }
+
+const _ddCenterTextPlugin = {
+  id: 'ddCenterText',
+  afterDraw(chart) {
+    const txt = chart.options && chart.options._centerText;
+    if (!txt) return;
+    const { ctx, chartArea } = chart;
+    if (!chartArea) return;
+    const cx = (chartArea.left + chartArea.right) / 2;
+    const cy = (chartArea.top + chartArea.bottom) / 2;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '600 10px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = '#8e8e8e';
+    ctx.fillText('Total omzet', cx, cy - 9);
+    ctx.font = '750 13px "Plus Jakarta Sans", sans-serif';
+    ctx.fillStyle = '#1f1f1f';
+    ctx.fillText(txt, cx, cy + 8);
+    ctx.restore();
+  },
+};
+
+const _ddBandPlugin = {
+  id: 'ddPriceBand',
+  beforeDatasetsDraw(chart) {
+    const b = chart.options && chart.options._band;
+    if (!b) return;
+    const { ctx, chartArea, scales } = chart;
+    if (!chartArea || !scales.x) return;
+    const x1 = scales.x.getPixelForValue(b[0]);
+    const x2 = scales.x.getPixelForValue(b[1]);
+    ctx.save();
+    ctx.fillStyle = 'rgba(181,32,42,.07)';
+    ctx.fillRect(x1, chartArea.top, x2 - x1, chartArea.bottom - chartArea.top);
+    ctx.restore();
+  },
+};
 
 async function openDeepDive(product) {
   if (!currentUser) {
@@ -1856,16 +2533,17 @@ async function openDeepDive(product) {
   const kw = product.keyword || '';
   let peers = [];
   let niche = product._niche || null;
-  let suppliers = [];
 
   try {
     if (kw) {
-      const { data } = await _supabase.from('listings')
-        .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category')
+      // listings_deduped: trgm-indexed, deduped, and carries listing_date
+      // (shop-age proxy) since migration 20260717120000.
+      const { data } = await _supabase.from('listings_deduped')
+        .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date')
         .gt('total_sold', 0)
         .ilike('keyword', `%${kw.slice(0, 40)}%`)
         .order('total_sold', { ascending: false })
-        .limit(40);
+        .limit(60);
       peers = data || [];
     }
   } catch (_) {}
@@ -1879,12 +2557,18 @@ async function openDeepDive(product) {
     }
   } catch (_) {}
 
+  // Scrape history for the product + top peers → real weekly trend + sparklines.
+  let history = [];
   try {
-    if (kw) {
-      const { data } = await _supabase.from('mv_supplier_leaderboard')
-        .select('store_name,location,hero_sold,catalog_items,has_new_listing,rnk')
-        .eq('keyword', kw).order('rnk').limit(6);
-      suppliers = data || [];
+    const ids = [...new Set([product.item_id, ...peers.map(p => p.item_id)])]
+      .filter(x => x != null).slice(0, 30);
+    if (ids.length) {
+      const { data } = await _supabase.from('listings')
+        .select('item_id,shop_id,keyword,price,total_sold,scraped_at')
+        .in('item_id', ids)
+        .order('scraped_at', { ascending: false })
+        .limit(1000);
+      history = (data || []).reverse();
     }
   } catch (_) {}
 
@@ -1921,31 +2605,235 @@ async function openDeepDive(product) {
   clarityEvt('deepdive_open', { keyword: kw });
 
   const stats = ddStats(peers);
-  _dd = { product, peers, niche, suppliers, stats, open: new Set() };
-  if (_trendChart) { try { _trendChart.destroy(); } catch (_) {} _trendChart = null; }
+  const series = ddWeeklySeries(history);
+  const scoreInfo = ddScore(product, stats, niche);
+  const share = ddShareData(peers);
+  const age = ddShopAgeBuckets(peers);
+  const kwRows = ddKeywordRows(peers);
+  _dd = { product, peers, niche, stats, history, series };
 
-  const chips = Object.entries(DD_SECTIONS).map(([key, s]) =>
-    `<button type="button" class="chip dd-chip" data-sec="${esc(key)}">${esc(s.label)}</button>`
-  ).join('');
+  const lastScrape = history.length ? history[history.length - 1].scraped_at : null;
+  const price = Number(product.price) || 0;
+  const hasTrend = series.length >= 3;
+  const bandLo = stats.p25, bandHi = stats.p75;
+  const segLeft = stats.max > stats.min ? Math.round((bandLo - stats.min) / (stats.max - stats.min) * 100) : 0;
+  const segWidth = stats.max > stats.min ? Math.max(4, Math.round((bandHi - bandLo) / (stats.max - stats.min) * 100)) : 100;
+  const agePct = k => age.total ? Math.round(age[k] / age.total * 100) : 0;
 
   root.innerHTML = `
-    <div class="dd-head">
-      <button type="button" class="btn-ghost" id="dd-back" style="margin:0 0 10px">Kembali ke chat</button>
-      <h1 class="dd-title">${esc(product.product_name || product.keyword || 'Produk')}</h1>
-      <p class="dd-sub">${esc(product.category || '')} · ${esc(product.location || '')} · keyword: ${esc(kw || '—')}</p>
-      <span class="data-badge">Ringkasan dari data Shopee · composer di bawah untuk tanya AI</span>
+    <div class="dd-head" style="margin-bottom:12px">
+      <button type="button" class="btn-ghost" id="dd-back" style="margin:0">Kembali ke chat</button>
     </div>
-    ${ddMetricBoxesHtml(product, stats, niche)}
-    <div class="dd-chips" id="dd-chips">${chips}</div>
-    <p class="dd-sub" style="margin:4px 0 0">Chip di atas = data langsung (gratis). Ketik pertanyaan di bawah = AI (perlu login).</p>
-    <div id="dd-sections"></div>
+    <div class="ddr-header" data-dd-sec="skor">
+      ${product.image_url ? `<img src="${esc(product.image_url)}" alt="">` : '<span class="ph"></span>'}
+      <div class="ddr-head-main">
+        <div class="ddr-title-row">
+          <h1>${esc(product.product_name || kw || 'Produk')}</h1>
+          <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
+        </div>
+        <p class="ddr-summary">${esc(ddSummaryText(stats, niche, scoreInfo))}</p>
+        <p class="ddr-cat">Kategori: ${esc(product.category || '—')} · Lokasi: ${esc(product.location || '—')} · Keyword: ${esc(kw || '—')}</p>
+      </div>
+      <div class="ddr-score">
+        <div class="lbl">Skor Produk</div>
+        <div class="num">${scoreInfo.score}<span>/100</span></div>
+        <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
+      </div>
+    </div>
+    ${ddTilesHtml(product, stats, peers, series)}
+    <div class="ddr-2col">
+      <div class="ddr-card" data-dd-sec="why">
+        <h3>${scoreInfo.score >= 60 ? 'Kenapa saya yakin ini peluang bagus?' : 'Yang perlu kamu tahu sebelum masuk'}</h3>
+        ${ddWhyHtml(product, stats, niche)}
+      </div>
+      <div class="ddr-card">
+        <h3>Insight LarisID</h3>
+        <p class="dd-sub" style="margin:0;line-height:1.6">${esc(scoreInfo.odds.hint)}. ${stats.n ? esc(`Kompetisi ${stats.komp.toLowerCase()} dengan ${new Set(peers.map(p => String(p.shop_id))).size} toko aktif di keyword ini.`) : ''}</p>
+        <p class="ddr-caption">Dihitung dari data Shopee — bukan tebakan AI.</p>
+      </div>
+    </div>
+    <div class="ddr-2col">
+      <div class="ddr-card" data-dd-sec="tren">
+        <h3>Tren Omzet &amp; Unit Terjual</h3>
+        ${hasTrend
+          ? `<div class="ddr-chart-wrap"><canvas id="ddr-trend-canvas"></canvas></div>
+             <div class="chart-legend" style="flex-direction:row;gap:14px">
+               <span class="row"><span class="swatch" style="background:#B5202A"></span>Omset (Rp)</span>
+               <span class="row"><span class="swatch" style="background:#2563EB"></span>Unit Terjual</span>
+               <span class="row"><span class="swatch" style="background:#16A34A"></span>Forecast</span>
+             </div>`
+          : `<p class="dd-sub">Belum cukup riwayat scrape untuk tren mingguan keyword ini — butuh beberapa gelombang panel. Bagian lain tetap dari data asli.</p>`}
+        <p class="ddr-caption">Estimasi mingguan pasar keyword “${esc(kw || '—')}” dari riwayat scrape ${history.length ? `(${new Set(history.map(r => String(r.item_id))).size} listing)` : ''} · scrape terakhir ${esc(fmtAnchorDate(lastScrape))}.</p>
+      </div>
+      <div class="ddr-card" data-dd-sec="harga">
+        <h3>Rentang Harga Optimal</h3>
+        ${stats.n >= 4 ? `
+          <div class="range-big">${fmtRp(bandLo)} – ${fmtRp(bandHi)}</div>
+          <div class="range-bar"><div class="range-seg" style="left:${segLeft}%;width:${segWidth}%"></div></div>
+          <div class="range-ticks"><span>${fmtRpShort(stats.min)}</span><span>${fmtRpShort(stats.median)}</span><span>${fmtRpShort(stats.max)}</span></div>
+          <div class="range-note">${ico('info', 13)}<span>Rentang harga dari ${stats.n} listing di keyword ini. Rekomendasi masuk pasar: ${fmtRp(stats.p35)} – ${fmtRp(stats.p65)}.</span></div>`
+          : '<p class="dd-sub">Belum cukup data harga peer untuk keyword ini.</p>'}
+      </div>
+    </div>
+    <div class="ddr-3col">
+      <div class="ddr-card" data-dd-sec="pangsa">
+        <h3>Distribusi Pangsa Pasar</h3>
+        ${share.shops.length >= 4 ? `
+          <div class="ddr-chart-wrap sm"><canvas id="ddr-share-canvas"></canvas></div>
+          <div class="chart-legend">
+            <span class="row"><span class="swatch" style="background:#B5202A"></span>Top 3 Toko · ${Math.round(share.top3 / share.total * 100)}%</span>
+            <span class="row"><span class="swatch" style="background:#2563EB"></span>Peringkat 4–10 · ${Math.round(share.mid / share.total * 100)}%</span>
+            <span class="row"><span class="swatch" style="background:#93c5fd"></span>Peringkat 11–30 · ${Math.round(share.tail / share.total * 100)}%</span>
+            <span class="row"><span class="swatch" style="background:#e5e7eb"></span>Lainnya · ${Math.round(share.rest / share.total * 100)}%</span>
+          </div>
+          <p class="ddr-caption">${share.top3 / share.total <= 0.5 ? 'Pasar tidak didominasi satu toko — masih ada ruang untuk bersaing.' : 'Pasar cukup terkonsentrasi di toko-toko teratas.'}</p>`
+          : '<p class="dd-sub">Belum cukup data toko untuk memetakan pangsa pasar.</p>'}
+      </div>
+      <div class="ddr-card" data-dd-sec="usia_toko">
+        <h3>Usia Toko Kompetitor</h3>
+        ${age.total >= 4 ? `
+          <div class="ddr-chart-wrap" style="height:56px"><canvas id="ddr-age-canvas"></canvas></div>
+          <div class="chart-legend">
+            <span class="row"><span class="swatch" style="background:#2563EB"></span>0 – 2 th · ${agePct('young')}%</span>
+            <span class="row"><span class="swatch" style="background:#93c5fd"></span>2 – 5 th · ${agePct('mid')}%</span>
+            <span class="row"><span class="swatch" style="background:#dbeafe"></span>&gt; 5 th · ${agePct('old')}%</span>
+          </div>
+          <p class="ddr-caption">${agePct('young') + agePct('mid') >= 50 ? `${agePct('young') + agePct('mid')}% toko di keyword ini berusia di bawah 5 tahun — tanda pasar masih terbuka.` : 'Mayoritas toko sudah lama — pasar matang.'} Usia = proxy dari listing tertua yang terpantau.</p>`
+          : '<p class="dd-sub">Belum cukup data tanggal listing untuk memetakan usia toko.</p>'}
+      </div>
+      <div class="ddr-card" data-dd-sec="distribusi">
+        <h3>Distribusi Harga</h3>
+        ${stats.n >= 6 ? `
+          <div class="ddr-chart-wrap sm"><canvas id="ddr-dist-canvas"></canvas></div>
+          <p class="ddr-caption">Titik = listing (harga × terjual). Zona merah muda = rentang ${fmtRpShort(bandLo)} – ${fmtRpShort(bandHi)} tempat sebagian besar penjualan terjadi.</p>`
+          : '<p class="dd-sub">Belum cukup listing untuk memetakan distribusi harga.</p>'}
+      </div>
+    </div>
+    <div class="ddr-2col">
+      <div class="ddr-card" data-dd-sec="kompetitor">
+        <h3>Top Kompetitor</h3>
+        ${ddKompetitorTableHtml(share)}
+      </div>
+      <div class="ddr-card" data-dd-sec="keyword">
+        <h3>Top Keyword</h3>
+        ${ddKeywordTableHtml(kwRows, peers.length)}
+      </div>
+    </div>
+    <div class="ddr-2col">
+      <div class="ddr-card" data-dd-sec="strategi">
+        <h3>Rekomendasi Strategi</h3>
+        ${ddStrategyHtml(product, stats, niche, kwRows)}
+      </div>
+      <div class="ddr-side-cta">
+        <p style="margin:0">Ingin saya bantu cari supplier atau hitung estimasi profit untuk produk ini?</p>
+        <button type="button" class="btn-primary" id="ddr-profit-btn" style="margin:0">Hitung Profit →</button>
+      </div>
+    </div>
     <button type="button" class="btn-ghost" id="btn-more-from-dd">Tampilkan produk lain</button>
+    <p class="ddr-caption" style="margin-top:10px">Semua angka dari data Shopee via LarisID — bukan tebakan AI. Ketik pertanyaan di bawah untuk tanya AI tentang produk ini.</p>
   `;
 
   $('dd-back')?.addEventListener('click', () => { setView('chat'); renderChatThread(); });
   $('btn-more-from-dd')?.addEventListener('click', () => void startRecommendationChat(false));
-  $('dd-chips')?.querySelectorAll('[data-sec]').forEach(btn => {
-    btn.addEventListener('click', () => void ddOpenSection(btn.getAttribute('data-sec')));
+  $('ddr-profit-btn')?.addEventListener('click', () => {
+    void logUserEvent('deepdive_section', { ui: 'gpt', section: 'profit_cta', via: 'click', keyword: kw || '' });
+    void handleComposerSubmit('Hitung estimasi profit');
+  });
+  const kompMore = $('ddr-komp-more');
+  kompMore?.addEventListener('click', () => {
+    root.querySelectorAll('[data-komp-extra]').forEach(tr => { tr.hidden = false; });
+    kompMore.remove();
+    void logUserEvent('deepdive_section', { ui: 'gpt', section: 'kompetitor', via: 'click', keyword: kw || '' });
+  });
+  root.querySelectorAll('[data-kshop]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const [iid, sid] = btn.getAttribute('data-kshop').split('|');
+      const p = peers.find(x => String(x.item_id) === iid && String(x.shop_id) === sid);
+      if (p) void openDeepDive(asListingProduct(p));
+    });
+  });
+
+  // Scroll telemetry — keeps the old deepdive_section funnel signal alive.
+  const seenSecs = new Set();
+  _ddObserver = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+      if (!en.isIntersecting) return;
+      const sec = en.target.getAttribute('data-dd-sec');
+      if (!sec || seenSecs.has(sec)) return;
+      seenSecs.add(sec);
+      void logUserEvent('deepdive_section', { ui: 'gpt', section: sec, via: 'scroll', keyword: kw || '' });
+      clarityEvt('deepdive_section', { section: sec });
+    });
+  }, { root: $('panel'), threshold: 0.35 });
+  root.querySelectorAll('[data-dd-sec]').forEach(el => _ddObserver.observe(el));
+
+  setComposerChips(DD_CHIPS, 'deepdive');
+
+  // Charts + sparklines (Chart.js lazy; sparklines are raw canvas).
+  await larisEnsureChart();
+  if (hasTrend) ddRenderTrendChart(series);
+  if (share.shops.length >= 4) {
+    makeChart('ddr-share-canvas', {
+      type: 'doughnut',
+      data: {
+        labels: ['Top 3 Toko', 'Peringkat 4–10', 'Peringkat 11–30', 'Lainnya'],
+        datasets: [{
+          data: [share.top3, share.mid, share.tail, share.rest],
+          backgroundColor: ['#B5202A', '#2563EB', '#93c5fd', '#e5e7eb'],
+          borderWidth: 2, borderColor: '#fff',
+        }],
+      },
+      options: {
+        maintainAspectRatio: false, cutout: '68%',
+        _centerText: fmtRpShort(share.total),
+        plugins: { legend: { display: false } },
+      },
+      plugins: [_ddCenterTextPlugin],
+    });
+  }
+  if (age.total >= 4) {
+    makeChart('ddr-age-canvas', {
+      type: 'bar',
+      data: {
+        labels: [''],
+        datasets: [
+          { label: '0–2 th', data: [age.young], backgroundColor: '#2563EB', borderRadius: 4 },
+          { label: '2–5 th', data: [age.mid], backgroundColor: '#93c5fd', borderRadius: 4 },
+          { label: '> 5 th', data: [age.old], backgroundColor: '#dbeafe', borderRadius: 4 },
+        ],
+      },
+      options: {
+        indexAxis: 'y', maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { x: { stacked: true, display: false }, y: { stacked: true, display: false } },
+      },
+    });
+  }
+  if (stats.n >= 6) {
+    makeChart('ddr-dist-canvas', {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          data: peers.map(p => ({ x: Number(p.price) || 0, y: Number(p.total_sold) || 0 })),
+          backgroundColor: 'rgba(37,99,235,.55)', pointRadius: 3.5,
+        }],
+      },
+      options: {
+        maintainAspectRatio: false,
+        _band: [bandLo, bandHi],
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { callback: v => v >= 1e6 ? (v / 1e6) + 'jt' : Math.round(v / 1e3) + 'rb', maxTicksLimit: 6 } },
+          y: { type: 'logarithmic', ticks: { callback: v => fmtSold(v), maxTicksLimit: 5 } },
+        },
+      },
+      plugins: [_ddBandPlugin],
+    });
+  }
+  root.querySelectorAll('canvas[data-spark]').forEach(cv => {
+    const kwName = (cv.getAttribute('data-spark') || '').toLowerCase();
+    const s = ddWeeklySeries(history.filter(r => (r.keyword || '').trim().toLowerCase() === kwName));
+    drawSpark(cv, s.map(w => w.units));
   });
 }
 
@@ -1961,39 +2849,34 @@ function mondayOfWeek(d = new Date()) {
   return mon;
 }
 
-function renderTrendChart(product) {
-  const canvas = $('dd-trend-canvas');
-  if (!canvas || typeof Chart === 'undefined') return;
-  if (_trendChart) { try { _trendChart.destroy(); } catch (_) {} }
-  const spd = Number(product.sold_per_day) || 0;
-  const price = Number(product.price) || 0;
-  const mon = mondayOfWeek();
-  const labels = [];
-  const units = [];
-  const omset = [];
-  for (let i = 3; i >= 0; i--) {
-    const d = new Date(mon);
-    d.setUTCDate(d.getUTCDate() - i * 7);
-    labels.push(d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', timeZone: 'UTC' }));
-    // Soft variation around sold_per_day * 7 for illustrative weekly estimate
-    const u = Math.max(0, Math.round(spd * 7 * (0.75 + (3 - i) * 0.08)));
-    units.push(u);
-    omset.push(u * price);
-  }
-  _trendChart = new Chart(canvas, {
+// Real weekly market trend from scrape history. Rule kept from site A: the
+// real series stays SHORTER than the labels — only Forecast touches the
+// future label. Never draws a synthetic curve.
+function ddRenderTrendChart(series) {
+  if (typeof Chart === 'undefined' || series.length < 3) return;
+  const fmtWk = ts => new Date(ts).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  const labels = series.map(w => fmtWk(w.ts));
+  labels.push(fmtWk(series[series.length - 1].ts + 7 * 864e5));
+  const omset = series.map(w => w.omset);
+  const units = series.map(w => w.units);
+  const last2 = arr => Math.round((arr[arr.length - 1] + (arr[arr.length - 2] ?? arr[arr.length - 1])) / 2);
+  const forecast = Array(series.length - 1).fill(null).concat([omset[omset.length - 1], last2(omset)]);
+  makeChart('ddr-trend-canvas', {
     type: 'line',
     data: {
       labels,
       datasets: [
-        { label: 'Omset est.', data: omset, borderColor: '#1f1f1f', backgroundColor: 'rgba(31,31,31,.05)', borderWidth: 2, fill: true, tension: 0.3, yAxisID: 'y' },
-        { label: 'Unit est.', data: units, borderColor: '#8e8e8e', backgroundColor: 'transparent', borderWidth: 2, tension: 0.3, yAxisID: 'y2' },
+        { label: 'Omset (Rp)', data: omset, borderColor: '#B5202A', backgroundColor: 'rgba(181,32,42,.06)', borderWidth: 2, fill: true, tension: .35, yAxisID: 'y', pointRadius: 3 },
+        { label: 'Unit Terjual', data: units, borderColor: '#2563EB', borderWidth: 2, tension: .35, yAxisID: 'y2', pointRadius: 3 },
+        { label: 'Forecast', data: forecast, borderColor: '#16A34A', borderDash: [5, 5], borderWidth: 2, tension: .35, yAxisID: 'y', pointRadius: 3 },
       ],
     },
     options: {
+      maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
-        y: { position: 'left', ticks: { callback: v => v >= 1e6 ? (v / 1e6).toFixed(1) + 'jt' : v >= 1e3 ? Math.round(v / 1e3) + 'rb' : v } },
-        y2: { position: 'right', grid: { drawOnChartArea: false } },
+        y: { position: 'left', ticks: { callback: v => v >= 1e9 ? (v / 1e9).toFixed(1) + 'M' : v >= 1e6 ? Math.round(v / 1e6) + 'jt' : v >= 1e3 ? Math.round(v / 1e3) + 'rb' : v, maxTicksLimit: 6 } },
+        y2: { position: 'right', grid: { drawOnChartArea: false }, ticks: { maxTicksLimit: 5 } },
       },
     },
   });
@@ -2059,6 +2942,15 @@ async function handleComposerSubmit(text) {
 
   const inProductCtx = state.view === 'deepdive' || activeChat()?.context?.product || activeChat()?.context?.keyword;
 
+  // Data-backed intents (home/trending/DD chips + free text). In a product
+  // conversation only profit & supplier are intercepted (they use the
+  // product's own data); everything else there goes to AI as before.
+  const intent = detectIntent(lower);
+  if (intent && (!inProductCtx || intent === 'profit' || intent === 'supplier')) {
+    await handleIntent(intent, text);
+    return;
+  }
+
   // "Recommend me something" intent — only outside a product conversation.
   if (!inProductCtx && /tunjukkan|rekomendasi|jual apa|produk apa|cocok buat|mulai jual/.test(lower)) {
     clarityEvt('gpt_intent_rec', {});
@@ -2089,7 +2981,7 @@ async function handleComposerSubmit(text) {
   void logUserEvent('gpt_message_sent', { ui: 'gpt' });
   clarityEvt('gpt_message_sent', {});
 
-  const product = state.deepdiveProduct || chat.context?.product;
+  const product = chat.context?.product || (state.view === 'deepdive' ? state.deepdiveProduct : null);
   if (!product) {
     // No product context — try to treat as keyword search → new recommendation-ish fetch
     if (!(await ensureSearchAllowed())) return;
