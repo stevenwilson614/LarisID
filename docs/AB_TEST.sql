@@ -22,6 +22,17 @@
 --
 -- Cohort MUST start at flip_at — dark-period signups are all force-A and
 -- must not enter the experiment cohort.
+--
+-- REDESIGN RESET (2026-07-17 17:15 WIB): B was redesigned (landing hero +
+-- trending answer + full deep-dive report; pre-login onboarding removed).
+-- flip_at moved to the redesign deploy — the ~11h of old-B cohort (from the
+-- 06:00 flip) is discarded. Semantics changes from this date:
+--   * B's reached_onboarding = OPTIONAL post-sign-in onboarding (skippable,
+--     one-time offer + "Set lokasi" sidebar card). Expect it to drop vs A by
+--     design; it is no longer a comparable funnel stage.
+--   * did_discover on B now also counts trending-card views
+--     (discover_view metadata kind='trending').
+--   * New B events: gpt_landing_view, gpt_chip_click, gpt_intent.
 -- ============================================================================
 
 
@@ -30,7 +41,7 @@
 -- ----------------------------------------------------------------------------
 with params as (
   -- >>> EDIT: deploy timestamp of RAMP_B=0.5 flip (WIB) <<<
-  select timestamptz '2026-07-17 06:00:00+07' as flip_at,
+  select timestamptz '2026-07-17 17:15:00+07' as flip_at,
          timestamptz '2026-10-01 00:00:00+07' as end_at
 ),
 attr as (
@@ -87,7 +98,7 @@ order by c.ab_variant;
 -- QUERY B — Daily signups per variant (assignment health ~50/50 after flip)
 -- ----------------------------------------------------------------------------
 with params as (
-  select timestamptz '2026-07-17 06:00:00+07' as flip_at
+  select timestamptz '2026-07-17 17:15:00+07' as flip_at
 ),
 attr as (
   select distinct on (e.user_id)
@@ -113,7 +124,7 @@ order by 1, 2;
 -- QUERY C — Engagement (events/user, active days) per variant
 -- ----------------------------------------------------------------------------
 with params as (
-  select timestamptz '2026-07-17 06:00:00+07' as flip_at,
+  select timestamptz '2026-07-17 17:15:00+07' as flip_at,
          timestamptz '2026-10-01 00:00:00+07' as end_at
 ),
 attr as (
@@ -148,7 +159,7 @@ order by c.ab_variant;
 -- QUERY D — B extras: chats/user, limit hits, opt-outs
 -- ----------------------------------------------------------------------------
 with params as (
-  select timestamptz '2026-07-17 06:00:00+07' as flip_at
+  select timestamptz '2026-07-17 17:15:00+07' as flip_at
 ),
 b_users as (
   select distinct e.user_id
@@ -176,7 +187,7 @@ select
 -- QUERY E — Ads segment (utm_source=google) funnel by variant
 -- ----------------------------------------------------------------------------
 with params as (
-  select timestamptz '2026-07-17 06:00:00+07' as flip_at,
+  select timestamptz '2026-07-17 17:15:00+07' as flip_at,
          timestamptz '2026-10-01 00:00:00+07' as end_at
 ),
 attr as (
