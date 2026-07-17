@@ -139,7 +139,8 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#B5202A">
 <script>
-/* LarisID A/B: Regular (A) vs LARISgpt (B). Sticky; RAMP_B=0 = dark (all A). */
+/* LarisID A/B: Regular (A) vs LARISgpt (B). Sticky; RAMP_B=0 = dark (all A).
+   via=random = experiment cohort; existing_auth=X excluded; B redirects preserve UTMs. */
 (function () {
   try {
     var KEY = '_lid_ab_v1';
@@ -147,6 +148,7 @@
     var KILL = false;
     var raw = localStorage.getItem(KEY);
     var ab = null;
+    var freshlyAssigned = false;
     try { ab = raw ? JSON.parse(raw) : null; } catch (_) { ab = null; }
     if (!ab || (ab.v !== 'A' && ab.v !== 'B' && ab.v !== 'X')) {
       var hasAuth = false;
@@ -155,12 +157,20 @@
         hasAuth = !!(auth && auth.access_token);
       } catch (_) {}
       var v = hasAuth ? 'X' : (Math.random() < RAMP_B ? 'B' : 'A');
-      ab = { v: v, ts: Date.now() };
+      ab = { v: v, ts: Date.now(), via: hasAuth ? 'existing_auth' : 'random' };
       localStorage.setItem(KEY, JSON.stringify(ab));
+      freshlyAssigned = true;
     }
     if (KILL && ab.v === 'B') {
-      ab = { v: 'A', ts: Date.now(), killed: 1 };
+      ab = { v: 'A', ts: Date.now(), via: 'kill', killed: 1 };
       localStorage.setItem(KEY, JSON.stringify(ab));
+      freshlyAssigned = true;
+    }
+    // Survives B→/gpt/ redirect so Clarity can fire ab_assigned after the tag loads.
+    if (freshlyAssigned) {
+      try {
+        sessionStorage.setItem('_lid_ab_just_assigned', JSON.stringify({ v: ab.v, via: ab.via || 'random' }));
+      } catch (_) {}
     }
     var hash = location.hash || '';
     var isRecovery = hash.indexOf('type=recovery') !== -1;
@@ -170,6 +180,7 @@
     }
     window.clarity = window.clarity || function () { (window.clarity.q = window.clarity.q || []).push(arguments); };
     window.clarity('set', 'ab_variant', ab.v);
+    if (ab.via) window.clarity('set', 'ab_via', String(ab.via));
   } catch (_) {}
 })();
 </script>
@@ -186,7 +197,7 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260716h';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260717z';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
@@ -9903,7 +9914,7 @@ html,body{overflow-x:clip;max-width:100%;}
      SITE FOOTER
 ════════════════════════════════════ -->
 
-<script defer src="/js/laris-app.js?v=20260716h"></script>
+<script defer src="/js/laris-app.js?v=20260717z"></script>
 
   <!-- ── CONTEXTUAL ONBOARDING HINTS ── -->
   <div id="hint-overlay" aria-hidden="true" onclick="if(event.target===this)nuHintDismiss()">

@@ -46,10 +46,19 @@
 })();
 </script>
 
-<!-- Microsoft Clarity — tag ab_variant=B at parse time -->
+<!-- Microsoft Clarity — tag ab_variant from sticky (default B on /gpt/) -->
 <script type="text/javascript">
   window.clarity = window.clarity || function () { (window.clarity.q = window.clarity.q || []).push(arguments); };
-  window.clarity('set', 'ab_variant', 'B');
+  (function () {
+    var v = 'B', via = '';
+    try {
+      var ab = JSON.parse(localStorage.getItem('_lid_ab_v1') || 'null');
+      if (ab && (ab.v === 'A' || ab.v === 'B' || ab.v === 'X')) v = ab.v;
+      if (ab && ab.via) via = String(ab.via);
+    } catch (_) {}
+    window.clarity('set', 'ab_variant', v);
+    if (via) window.clarity('set', 'ab_via', via);
+  })();
   window.addEventListener('load', function () {
     var startClarity = function () {
       (function(c,l,a,r,i,t,y){
@@ -1844,6 +1853,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260717y" defer></script>
+<script src="/js/gpt-app.js?v=20260717z" defer></script>
 </body>
 </html>

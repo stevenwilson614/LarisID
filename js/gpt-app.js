@@ -9,6 +9,31 @@ function _clarity() {
   try { w.clarity.apply(w, arguments); } catch (_) {}
 }
 
+(function _lidClarityAbAssigned() {
+  try {
+    const raw = sessionStorage.getItem('_lid_ab_just_assigned');
+    if (!raw) return;
+    sessionStorage.removeItem('_lid_ab_just_assigned');
+    const info = JSON.parse(raw) || {};
+    _clarity('event', 'ab_assigned');
+    if (info.v) _clarity('set', 'ab_variant', String(info.v));
+    if (info.via) _clarity('set', 'ab_via', String(info.via));
+  } catch (_) {}
+})();
+
+function _lidAbStamp(metadata) {
+  const m = metadata && typeof metadata === 'object' ? { ...metadata } : {};
+  if (m.ab_variant) return m;
+  try {
+    const ab = JSON.parse(localStorage.getItem('_lid_ab_v1') || 'null');
+    if (ab && (ab.v === 'A' || ab.v === 'B' || ab.v === 'X')) {
+      m.ab_variant = ab.v;
+      if (ab.via) m.ab_via = ab.via;
+    }
+  } catch (_) {}
+  return m;
+}
+
 const _LID_SIGNUP_EVT_KEY = '_lid_signup_evt';
 const _LID_OAUTH_SIGNUP_INTENT_KEY = '_lid_oauth_signup_intent';
 const _LID_SIGNUP_CTA_KEY = '_lid_signup_cta_source';
@@ -70,10 +95,18 @@ function _lidFireSignupSuccess() {
     if (/accounts\.google\.com/.test(ref)) return;
     const q = new URLSearchParams(location.search);
     let abVariant = 'B';
+    let abVia = 'random';
     try {
       const ab = JSON.parse(localStorage.getItem('_lid_ab_v1') || 'null');
-      if (ab && (ab.v === 'A' || ab.v === 'B' || ab.v === 'X')) abVariant = ab.v;
-    } catch (_) {}
+      if (ab && (ab.v === 'A' || ab.v === 'B' || ab.v === 'X')) {
+        abVariant = ab.v;
+        abVia = ab.via || 'random';
+      } else {
+        abVia = 'direct_gpt'; // sticky not set yet — boot will stamp via=direct_gpt
+      }
+    } catch (_) {
+      abVia = 'direct_gpt';
+    }
     localStorage.setItem(KEY, JSON.stringify({
       referrer: ref || '(direct)',
       utm_source: q.get('utm_source') || '',
@@ -82,6 +115,7 @@ function _lidFireSignupSuccess() {
       ref_code: q.get('ref') || '',
       landing: location.pathname + location.search,
       ab_variant: abVariant,
+      ab_via: abVia,
       ts: new Date().toISOString(),
     }));
   } catch (_) {}
@@ -177,7 +211,7 @@ async function logUserEvent(eventType, metadata) {
     await _supabase.from('activity_events').insert({
       user_id: currentUser.id,
       event_type: eventType,
-      metadata: metadata && typeof metadata === 'object' ? metadata : {},
+      metadata: _lidAbStamp(metadata),
     });
   } catch (_) {}
 }
@@ -966,8 +1000,12 @@ async function _authOnSignIn(session) {
       if (!attr) attr = {};
       try {
         const ab = JSON.parse(localStorage.getItem('_lid_ab_v1') || 'null');
-        if (ab && (ab.v === 'A' || ab.v === 'B' || ab.v === 'X')) attr.ab_variant = ab.v;
-        else if (!attr.ab_variant) attr.ab_variant = 'B';
+        if (ab && (ab.v === 'A' || ab.v === 'B' || ab.v === 'X')) {
+          attr.ab_variant = ab.v;
+          if (ab.via) attr.ab_via = ab.via;
+        } else if (!attr.ab_variant) {
+          attr.ab_variant = 'B';
+        }
       } catch (_) {
         if (!attr.ab_variant) attr.ab_variant = 'B';
       }
@@ -976,6 +1014,7 @@ async function _authOnSignIn(session) {
       const src = attr.utm_source || (attr.ref_code && 'referral') || attr.referrer || '(direct)';
       _clarity('set', 'signup_source', String(src).slice(0, 120));
       _clarity('set', 'ab_variant_at_signup', String(attr.ab_variant || 'B'));
+      if (attr.ab_via) _clarity('set', 'ab_via', String(attr.ab_via));
       setTimeout(() => { void logUserEvent('signup_attribution', attr); }, 2500);
       // Funnel parity with A: stages that happened while logged out (RLS
       // blocks anon writes) are replayed once the session can write. With
@@ -5148,11 +5187,15 @@ function wireUi() {
 
 async function boot() {
   loadLocalState();
-  // Ensure sticky AB is B when visiting /gpt/ directly
+  // Sticky AB: direct /gpt/ visits (not via / split) are marked via=direct_gpt
+  // so they can be excluded from the random 50/50 cohort in AB_TEST.sql.
   try {
     const ab = JSON.parse(localStorage.getItem('_lid_ab_v1') || 'null');
     if (!ab || (ab.v !== 'A' && ab.v !== 'B' && ab.v !== 'X')) {
-      localStorage.setItem('_lid_ab_v1', JSON.stringify({ v: 'B', ts: Date.now() }));
+      localStorage.setItem('_lid_ab_v1', JSON.stringify({ v: 'B', ts: Date.now(), via: 'direct_gpt' }));
+      _clarity('event', 'ab_assigned');
+      _clarity('set', 'ab_variant', 'B');
+      _clarity('set', 'ab_via', 'direct_gpt');
     }
   } catch (_) {}
 
