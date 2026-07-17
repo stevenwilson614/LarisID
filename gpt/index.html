@@ -1384,14 +1384,21 @@ body.thread-wide .composer-chips { max-width: 1080px; }
 @media (prefers-reduced-motion: reduce) {
   .prefs-drawer { transition: none; }
 }
-/* ══ Kalkulator side panel — Cursor-style resizable right window ══ */
+/* ══ Side panel — Cursor-style resizable right window (Kalkulator | Kompetitor) ══ */
 :root { --calc-w: 420px; }
 
-/* Collapsed rail: floating vertical handle on the right edge */
-.calc-rail {
+/* Collapsed rail: stacked Kalkulator + Kompetitor on the right edge */
+.side-rail {
   position: fixed; right: 0; top: 50%;
   transform: translateY(-50%);
   z-index: 44;
+  display: flex; flex-direction: column; gap: 6px;
+  transition: transform .24s var(--ease), opacity .2s;
+}
+body.calc-open .side-rail {
+  opacity: 0; pointer-events: none; transform: translateY(-50%) translateX(110%);
+}
+.side-rail-btn {
   display: flex; flex-direction: column; align-items: center; gap: 8px;
   padding: 14px 8px;
   background: #fff; color: var(--ink);
@@ -1399,14 +1406,11 @@ body.thread-wide .composer-chips { max-width: 1080px; }
   border-radius: 12px 0 0 12px;
   box-shadow: -5px 0 20px rgba(0,0,0,.07);
   font: inherit; font-size: .72rem; font-weight: 700; letter-spacing: .01em;
-  transition: background .12s, transform .24s var(--ease), opacity .2s;
+  transition: background .12s;
 }
-.calc-rail:hover { background: var(--bg-user); }
-.calc-rail svg { width: 18px; height: 18px; stroke: var(--accent); flex-shrink: 0; }
-.calc-rail-label { writing-mode: vertical-rl; text-orientation: mixed; }
-body.calc-open .calc-rail {
-  opacity: 0; pointer-events: none; transform: translateY(-50%) translateX(110%);
-}
+.side-rail-btn:hover { background: var(--bg-user); }
+.side-rail-btn svg { width: 18px; height: 18px; stroke: var(--accent); flex-shrink: 0; }
+.side-rail-label { writing-mode: vertical-rl; text-orientation: mixed; }
 
 /* Expanded panel: flex sibling so .main shrinks (Cursor-style split) */
 .calc-panel {
@@ -1434,15 +1438,31 @@ body.calc-open .calc-panel { display: flex; animation: calcIn .24s var(--ease); 
 body.calc-resizing .calc-resize::before { background: var(--accent); }
 .calc-head {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; padding: 16px 16px 12px; border-bottom: 1px solid var(--line);
+  gap: 12px; padding: 12px 12px 10px; border-bottom: 1px solid var(--line);
   flex-shrink: 0;
 }
-.calc-head-txt { min-width: 0; }
-.calc-head h2 { margin: 0; font-size: 1rem; font-weight: 700; letter-spacing: -.02em; }
-.calc-context {
-  display: block; margin-top: 2px; font-size: .72rem; color: var(--muted);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+.calc-head-txt { min-width: 0; flex: 1; }
+.side-tabs {
+  display: flex; gap: 4px; min-width: 0;
+  background: var(--bg-user); border-radius: 10px; padding: 3px;
 }
+.side-tab {
+  flex: 1; min-width: 0; padding: 7px 10px;
+  border-radius: 8px; font: inherit; font-size: .78rem; font-weight: 650;
+  color: var(--ink-soft); white-space: nowrap;
+}
+.side-tab:hover { color: var(--ink); }
+.side-tab.active {
+  background: #fff; color: var(--ink);
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+.calc-context {
+  display: block; margin: 0 12px; padding: 8px 4px 0;
+  font-size: .72rem; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+  flex-shrink: 0;
+}
+.calc-context[hidden] { display: none !important; }
 .calc-close {
   flex-shrink: 0; width: 34px; height: 34px; border-radius: 999px;
   display: grid; place-items: center; color: var(--ink-soft);
@@ -1453,7 +1473,25 @@ body.calc-resizing .calc-resize::before { background: var(--accent); }
   padding: 14px 16px calc(20px + env(safe-area-inset-bottom));
   -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
 }
+.calc-body[hidden] { display: none !important; }
 .calc-body .gpt-kalc { margin-top: 0; border: none; padding: 0; background: transparent; }
+.calc-body .ddr-table { min-width: 280px; font-size: .72rem; }
+.calc-body .side-empty {
+  margin: 28px 4px; font-size: .88rem; color: var(--ink-soft); line-height: 1.5; text-align: center;
+}
+.calc-body .side-komp-lead {
+  margin: 0 0 12px; font-size: .76rem; color: var(--muted); line-height: 1.45;
+}
+.ddr-sec-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  margin-bottom: 10px;
+}
+.ddr-sec-head h3 { margin: 0; }
+.ddr-panel-link {
+  flex-shrink: 0; font-size: .72rem; font-weight: 650; color: var(--accent);
+  text-decoration: none;
+}
+.ddr-panel-link:hover { text-decoration: underline; text-underline-offset: 2px; }
 body.calc-resizing { cursor: col-resize; user-select: none; }
 
 @media (max-width: 860px) {
@@ -1463,12 +1501,12 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
     z-index: 60;
   }
   .calc-resize { display: none; }
-  .calc-rail { top: auto; bottom: 96px; transform: none; }
-  body.calc-open .calc-rail { transform: translateX(110%); }
+  .side-rail { top: auto; bottom: 96px; transform: none; }
+  body.calc-open .side-rail { transform: translateX(110%); }
 }
 @media (prefers-reduced-motion: reduce) {
   body.calc-open .calc-panel { animation: none; }
-  .calc-rail { transition: none; }
+  .side-rail { transition: none; }
 }
 </style>
 </head>
@@ -1690,25 +1728,35 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
     </div>
   </div>
 
-  <aside class="calc-panel" id="calc-panel" aria-hidden="true" aria-label="Kalkulator profit">
+  <aside class="calc-panel" id="calc-panel" aria-hidden="true" aria-label="Panel samping">
     <div class="calc-resize" id="calc-resize" role="separator" aria-orientation="vertical" title="Geser untuk ubah lebar"></div>
     <div class="calc-head">
       <div class="calc-head-txt">
-        <h2>Kalkulator Profit</h2>
-        <span class="calc-context" id="calc-context" hidden></span>
+        <div class="side-tabs" role="tablist" aria-label="Mode panel">
+          <button type="button" class="side-tab active" role="tab" id="side-tab-kalc" data-side-mode="kalkulator" aria-selected="true">Kalkulator</button>
+          <button type="button" class="side-tab" role="tab" id="side-tab-komp" data-side-mode="kompetitor" aria-selected="false">Kompetitor</button>
+        </div>
       </div>
-      <button type="button" class="calc-close" id="calc-close" aria-label="Tutup kalkulator" title="Tutup (Esc)">
+      <button type="button" class="calc-close" id="calc-close" aria-label="Tutup panel" title="Tutup (Esc)">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
       </button>
     </div>
-    <div class="calc-body" id="calc-body-inner"></div>
+    <span class="calc-context" id="calc-context" hidden></span>
+    <div class="calc-body" id="side-body-kalc"></div>
+    <div class="calc-body" id="side-body-komp" hidden></div>
   </aside>
 </div>
 
-<button type="button" class="calc-rail" id="calc-rail" aria-expanded="false" aria-controls="calc-panel" title="Buka Kalkulator">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h2M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h2v4h-2zM8 18h2"/></svg>
-  <span class="calc-rail-label">Kalkulator</span>
-</button>
+<div class="side-rail" id="side-rail">
+  <button type="button" class="side-rail-btn" id="calc-rail" aria-expanded="false" aria-controls="calc-panel" title="Buka Kalkulator">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h2M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h2v4h-2zM8 18h2"/></svg>
+    <span class="side-rail-label">Kalkulator</span>
+  </button>
+  <button type="button" class="side-rail-btn" id="komp-rail" aria-expanded="false" aria-controls="calc-panel" title="Buka Kompetitor">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span class="side-rail-label">Kompetitor</span>
+  </button>
+</div>
 
 <div class="modal-overlay" id="auth-overlay">
   <div class="modal" role="dialog" aria-labelledby="auth-title">
@@ -1772,6 +1820,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260717v" defer></script>
+<script src="/js/gpt-app.js?v=20260717w" defer></script>
 </body>
 </html>

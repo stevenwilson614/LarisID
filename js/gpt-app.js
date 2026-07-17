@@ -1566,16 +1566,25 @@ function wirePrefsDrawer() {
   });
 }
 
-// ── Kalkulator side panel (Cursor-style resizable right window) ───────────
-const CALC_PREFS_KEY = 'gpt_calc_panel_v1';
+// ── Side panel (Cursor-style): Kalkulator | Kompetitor ─────────────────────
+const SIDE_PREFS_KEY = 'gpt_side_panel_v1';
+const CALC_PREFS_KEY_LEGACY = 'gpt_calc_panel_v1';
+let _sideMode = 'kalkulator'; // 'kalkulator' | 'kompetitor'
 let _calcFilled = false;
+let _kompFetchToken = 0;
 
-function loadCalcPrefs() {
-  try { return JSON.parse(localStorage.getItem(CALC_PREFS_KEY) || '{}') || {}; }
-  catch (_) { return {}; }
+function loadSidePrefs() {
+  try {
+    const cur = JSON.parse(localStorage.getItem(SIDE_PREFS_KEY) || 'null');
+    if (cur && typeof cur === 'object') return cur;
+  } catch (_) {}
+  try {
+    const legacy = JSON.parse(localStorage.getItem(CALC_PREFS_KEY_LEGACY) || '{}') || {};
+    return { open: !!legacy.open, width: legacy.width, mode: 'kalkulator' };
+  } catch (_) { return {}; }
 }
-function saveCalcPrefs(patch) {
-  try { localStorage.setItem(CALC_PREFS_KEY, JSON.stringify({ ...loadCalcPrefs(), ...patch })); }
+function saveSidePrefs(patch) {
+  try { localStorage.setItem(SIDE_PREFS_KEY, JSON.stringify({ ...loadSidePrefs(), ...patch })); }
   catch (_) {}
 }
 
@@ -1587,10 +1596,74 @@ function setCalcWidth(px) {
   return w;
 }
 
-function openCalcPanel(opts = {}) {
+function setSideModeUi(mode) {
+  _sideMode = mode === 'kompetitor' ? 'kompetitor' : 'kalkulator';
+  document.querySelectorAll('.side-tab').forEach(tab => {
+    const on = tab.getAttribute('data-side-mode') === _sideMode;
+    tab.classList.toggle('active', on);
+    tab.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  const open = document.body.classList.contains('calc-open');
+  $('calc-rail')?.setAttribute('aria-expanded', open && _sideMode === 'kalkulator' ? 'true' : 'false');
+  $('komp-rail')?.setAttribute('aria-expanded', open && _sideMode === 'kompetitor' ? 'true' : 'false');
   const panel = $('calc-panel');
-  const body = $('calc-body-inner');
-  if (!panel || !body) return;
+  if (panel) {
+    panel.setAttribute('aria-label', _sideMode === 'kompetitor' ? 'Kompetitor' : 'Kalkulator profit');
+  }
+  const kalcBody = $('side-body-kalc');
+  const kompBody = $('side-body-komp');
+  if (kalcBody) kalcBody.hidden = _sideMode !== 'kalkulator';
+  if (kompBody) kompBody.hidden = _sideMode !== 'kompetitor';
+}
+
+function setSideContext(text) {
+  const ctx = $('calc-context');
+  if (!ctx) return;
+  const name = (text || '').trim();
+  if (name) { ctx.textContent = name; ctx.hidden = false; }
+  else { ctx.textContent = ''; ctx.hidden = true; }
+}
+
+function resolveSideProduct() {
+  if (_dd?.product) return _dd.product;
+  if (state.deepdiveProduct) return state.deepdiveProduct;
+  const chat = activeChat();
+  if (chat?.context?.product) return chat.context.product;
+  return null;
+}
+
+function resolveSidePeers(product) {
+  if (_dd?.peers?.length) {
+    const same =
+      String(_dd.product?.item_id) === String(product?.item_id)
+      && String(_dd.product?.shop_id) === String(product?.shop_id);
+    const sameKw = product?.keyword && _dd.product?.keyword === product.keyword;
+    if (same || sameKw) return _dd.peers;
+  }
+  const cached = activeChat()?.context?.peers;
+  if (cached?.length) return cached;
+  return null;
+}
+
+async function fetchSidePeers(product) {
+  const kw = product?.keyword || '';
+  if (!_supabase || !kw) return [];
+  try {
+    const { data } = await _supabase.from('listings_deduped')
+      .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date')
+      .gt('total_sold', 0)
+      .ilike('keyword', `%${kw.slice(0, 40)}%`)
+      .order('total_sold', { ascending: false })
+      .limit(60);
+    return data || [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function fillCalcContent(opts = {}) {
+  const body = $('side-body-kalc');
+  if (!body) return;
   // (Re)build kalkulator when product defaults are passed, or on first open.
   if (opts.price != null || !_calcFilled) {
     const kalcOpts = {};
@@ -1599,43 +1672,110 @@ function openCalcPanel(opts = {}) {
     body.innerHTML = gptKalcHtml(kalcOpts);
     _calcFilled = true;
   }
-  const ctx = $('calc-context');
-  if (ctx) {
-    const name = (opts.name || '').trim();
-    if (name) { ctx.textContent = name; ctx.hidden = false; }
-    else { ctx.textContent = ''; ctx.hidden = true; }
-  }
+  const name = (opts.name || resolveSideProduct()?.product_name || '').trim();
+  setSideContext(name);
   bindGptKalc(body);
+}
+
+function wireKompPanelBody(body, peers) {
+  const more = body.querySelector('#side-komp-more');
+  more?.addEventListener('click', () => {
+    body.querySelectorAll('[data-komp-extra]').forEach(tr => { tr.hidden = false; });
+    more.remove();
+  });
+  body.querySelectorAll('[data-kshop]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const [iid, sid] = (btn.getAttribute('data-kshop') || '').split('|');
+      const p = (peers || []).find(x => String(x.item_id) === iid && String(x.shop_id) === sid);
+      if (p) void openDeepDive(asListingProduct(p));
+    });
+  });
+}
+
+async function fillKompContent(opts = {}) {
+  const body = $('side-body-komp');
+  if (!body) return;
+  const product = opts.product || resolveSideProduct();
+  if (!product) {
+    setSideContext('');
+    body.innerHTML = '<p class="side-empty">Buka produk dulu untuk lihat kompetitor.</p>';
+    return;
+  }
+  const label = (product.product_name || product.keyword || '').slice(0, 80);
+  setSideContext(label);
+
+  let peers = opts.peers || resolveSidePeers(product);
+  if (!peers?.length) {
+    const token = ++_kompFetchToken;
+    body.innerHTML = '<p class="side-empty">Memuat kompetitor…</p>';
+    peers = await fetchSidePeers(product);
+    if (token !== _kompFetchToken || _sideMode !== 'kompetitor') return;
+  }
+
+  const share = ddShareData(peers || []);
+  const kw = product.keyword || '—';
+  body.innerHTML = `
+    <p class="side-komp-lead">Toko kompetitor di keyword “${esc(kw)}” — urut estimasi omzet.</p>
+    ${ddKompetitorTableHtml(share, { moreId: 'side-komp-more' })}
+  `;
+  wireKompPanelBody(body, peers || []);
+}
+
+function openSidePanel(mode, opts = {}) {
+  const panel = $('calc-panel');
+  if (!panel || !$('side-body-kalc') || !$('side-body-komp')) return;
+  const next = mode === 'kompetitor' ? 'kompetitor' : 'kalkulator';
+  const wasOpen = document.body.classList.contains('calc-open');
+  const switching = wasOpen && _sideMode !== next;
+
   document.body.classList.add('calc-open');
   panel.setAttribute('aria-hidden', 'false');
-  $('calc-rail')?.setAttribute('aria-expanded', 'true');
-  saveCalcPrefs({ open: true });
-  if (opts.via !== 'restore') {
-    void logUserEvent('gpt_calc_panel', { ui: 'gpt', action: 'open', via: opts.via || 'rail', has_product: opts.price != null });
+  setSideModeUi(next);
+
+  if (next === 'kalkulator') fillCalcContent(opts);
+  else void fillKompContent(opts);
+
+  saveSidePrefs({ open: true, mode: next });
+  if (opts.via !== 'restore' && (!wasOpen || switching)) {
+    void logUserEvent('gpt_side_panel', {
+      ui: 'gpt',
+      action: wasOpen ? 'switch' : 'open',
+      mode: next,
+      via: opts.via || 'rail',
+      has_product: !!(opts.price != null || opts.product || resolveSideProduct()),
+    });
   }
 }
+
+function openCalcPanel(opts = {}) { openSidePanel('kalkulator', opts); }
+function openKompPanel(opts = {}) { openSidePanel('kompetitor', opts); }
 
 function closeCalcPanel() {
   document.body.classList.remove('calc-open');
   $('calc-panel')?.setAttribute('aria-hidden', 'true');
   $('calc-rail')?.setAttribute('aria-expanded', 'false');
-  saveCalcPrefs({ open: false });
-}
-
-function toggleCalcPanel(opts) {
-  if (document.body.classList.contains('calc-open')) closeCalcPanel();
-  else openCalcPanel(opts);
+  $('komp-rail')?.setAttribute('aria-expanded', 'false');
+  saveSidePrefs({ open: false, mode: _sideMode });
 }
 
 function wireCalcPanel() {
   if (wireCalcPanel._ready) return;
   wireCalcPanel._ready = true;
 
-  const prefs = loadCalcPrefs();
+  const prefs = loadSidePrefs();
   if (prefs.width) setCalcWidth(prefs.width);
+  if (prefs.mode === 'kompetitor') _sideMode = 'kompetitor';
+  setSideModeUi(_sideMode);
 
   $('calc-rail')?.addEventListener('click', () => openCalcPanel({ via: 'rail' }));
+  $('komp-rail')?.addEventListener('click', () => openKompPanel({ via: 'rail' }));
   $('calc-close')?.addEventListener('click', closeCalcPanel);
+  document.querySelectorAll('.side-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const mode = tab.getAttribute('data-side-mode');
+      openSidePanel(mode, { via: 'tab' });
+    });
+  });
 
   const handle = $('calc-resize');
   if (handle) {
@@ -1656,7 +1796,7 @@ function wireCalcPanel() {
       window.removeEventListener('touchmove', onMove);
       window.removeEventListener('touchend', onUp);
       const cur = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--calc-w'), 10) || 420;
-      saveCalcPrefs({ width: cur });
+      saveSidePrefs({ width: cur });
     };
     const onDown = (e) => {
       if (window.innerWidth <= 860) return;
@@ -1681,7 +1821,7 @@ function wireCalcPanel() {
     }
   });
 
-  if (prefs.open) openCalcPanel({ via: 'restore' });
+  if (prefs.open) openSidePanel(prefs.mode === 'kompetitor' ? 'kompetitor' : 'kalkulator', { via: 'restore' });
 }
 
 // ── Recommendations (city + category first) ──────────────────────────────
@@ -3350,8 +3490,9 @@ function ddTilesHtml(product, stats, peers, series) {
   </div>`;
 }
 
-function ddKompetitorTableHtml(share) {
+function ddKompetitorTableHtml(share, opts = {}) {
   if (!share.shops.length) return '<p class="dd-sub">Kompetitor belum tersedia untuk keyword ini.</p>';
+  const moreId = opts.moreId || 'ddr-komp-more';
   const rows = share.shops.slice(0, 15).map((s, i) => {
     const omsetMo = Math.round(s.sold / 6) * Math.round(s.omzet / Math.max(1, s.sold)); // ≈ sold/6 × avg price
     return `<tr${i >= 5 ? ' data-komp-extra hidden' : ''}>
@@ -3365,7 +3506,7 @@ function ddKompetitorTableHtml(share) {
   return `<div class="ddr-table-wrap"><table class="ddr-table">
     <thead><tr><th>#</th><th>Toko</th><th>Omzet / Bln (est.)</th><th>Market Share</th><th>Aksi</th></tr></thead>
     <tbody>${rows}</tbody></table></div>
-    ${share.shops.length > 5 ? `<button type="button" class="ans-cta" id="ddr-komp-more">Lihat Semua ${Math.min(15, share.shops.length)} Kompetitor</button>` : ''}`;
+    ${share.shops.length > 5 ? `<button type="button" class="ans-cta" id="${esc(moreId)}">Lihat Semua ${Math.min(15, share.shops.length)} Kompetitor</button>` : ''}`;
 }
 
 function ddKeywordTableHtml(kwRows, sampleN) {
@@ -3588,6 +3729,9 @@ async function openDeepDive(product) {
   const age = ddShopAgeBuckets(peers);
   const kwRows = ddKeywordRows(peers);
   _dd = { product, peers, niche, stats, history, series };
+  if (document.body.classList.contains('calc-open') && _sideMode === 'kompetitor') {
+    void fillKompContent({ product, peers });
+  }
 
   // Persist a Deep Dive entry in the chat thread so scrolling history always
   // reaches it (DD itself is a separate view, not part of the message list).
@@ -3680,7 +3824,10 @@ async function openDeepDive(product) {
     </div>
     <div class="ddr-2col">
       <div class="ddr-card" data-dd-sec="kompetitor">
-        <h3>Top Kompetitor</h3>
+        <div class="ddr-sec-head">
+          <h3>Top Kompetitor</h3>
+          <button type="button" class="ddr-panel-link" id="ddr-komp-panel">Lihat di panel</button>
+        </div>
         ${ddKompetitorTableHtml(share)}
       </div>
       <div class="ddr-card" data-dd-sec="keyword">
@@ -3712,6 +3859,10 @@ async function openDeepDive(product) {
       name: (product.product_name || product.keyword || '').slice(0, 80),
       via: 'deepdive',
     });
+  });
+  $('ddr-komp-panel')?.addEventListener('click', () => {
+    void logUserEvent('deepdive_section', { ui: 'gpt', section: 'kompetitor_panel', via: 'click', keyword: kw || '' });
+    openKompPanel({ product, peers, via: 'deepdive' });
   });
   const kompMore = $('ddr-komp-more');
   kompMore?.addEventListener('click', () => {
