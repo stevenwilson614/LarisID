@@ -2747,6 +2747,59 @@ function ddSummaryText(stats, niche, scoreInfo) {
 // Weekly market series from real scrape snapshots: per item, the sold delta
 // between consecutive snapshots is spread as a daily rate onto the Monday-
 // anchored weeks it overlaps. No synthetic curves — thin data shows a note.
+//
+// April/May spikes came from naive deltas on Shopee *display buckets*
+// (10rb+, 100rb+, 1jt+, …) and scrape glitches — e.g. 200k → 7jt in 9 days.
+// Those look like real sales but are UI tier jumps. We mirror site A's
+// correction: prefer review-based estimates when the raw jump is absurd.
+const DD_SOLD_BUCKETS = new Set([1, 2, 5, 10, 50, 100, 500, 1000, 2000, 3000, 5000, 7000, 8000, 9000]);
+const DD_MAX_SOLD_PER_DAY = 500; // sustained panel rate; higher is almost always a bucket/glitch
+const DD_REVIEW_TO_SOLD = 3.2;   // ~median category multiplier from site A
+
+function ddSoldIsBucket(sold) {
+  const s = Number(sold) || 0;
+  if (s >= 10000) return true;
+  return DD_SOLD_BUCKETS.has(s);
+}
+
+/** Correct one interval's unit delta so bucket/glitch jumps don't inflate weekly omset. */
+function ddCorrectSoldDelta(prev, next, spanMs) {
+  const s0 = Number(prev.total_sold) || 0;
+  const s1 = Number(next.total_sold) || 0;
+  const raw = Math.max(0, s1 - s0);
+  if (raw <= 0) return 0;
+
+  const days = Math.max(spanMs / 864e5, 1 / 24);
+  const rate = raw / days;
+  const rev0 = Number(prev.reviews) || 0;
+  const rev1 = Number(next.reviews) || 0;
+  const reviewEst = Math.max(0, Math.round((rev1 - rev0) * DD_REVIEW_TO_SOLD));
+  const bucket0 = ddSoldIsBucket(s0);
+  const bucket1 = ddSoldIsBucket(s1);
+  const tierJump = s0 > 0 && s1 / s0 >= 3 && raw >= 10000;
+
+  // Same display bucket twice → no real sold change; use reviews if any.
+  if (bucket0 && bucket1 && s0 === s1) return reviewEst;
+
+  // Crossing into / within 10rb+ display tiers: raw delta is a floor jump, not sales.
+  if ((s0 < 10000 && s1 >= 10000) || (s0 >= 10000 && s1 >= 10000 && (bucket0 || bucket1))) {
+    if (reviewEst > 0) return reviewEst;
+    // No reviews — cap to a plausible daily rate instead of dumping the tier gap.
+    return Math.min(raw, Math.round(DD_MAX_SOLD_PER_DAY * days));
+  }
+
+  // Absurd rate or 3×+ jump vs previous reading.
+  if (rate > DD_MAX_SOLD_PER_DAY || tierJump) {
+    if (reviewEst > 0) return Math.min(raw, Math.max(reviewEst, Math.round(DD_MAX_SOLD_PER_DAY * days)));
+    return Math.min(raw, Math.round(DD_MAX_SOLD_PER_DAY * days));
+  }
+
+  // Raw jump wildly above review-implied sales.
+  if (reviewEst > 0 && raw > reviewEst * 5) return reviewEst;
+
+  return raw;
+}
+
 function ddWeeklySeries(history) {
   const byItem = new Map();
   for (const r of history) {
@@ -2760,12 +2813,26 @@ function ddWeeklySeries(history) {
   let maxT = 0;
   for (const rows of byItem.values()) {
     rows.sort((a, b) => Date.parse(a.scraped_at) - Date.parse(b.scraped_at));
-    for (let i = 1; i < rows.length; i++) {
-      const t0 = Date.parse(rows[i - 1].scraped_at), t1 = Date.parse(rows[i].scraped_at);
-      const d = (Number(rows[i].total_sold) || 0) - (Number(rows[i - 1].total_sold) || 0);
-      if (!(t1 > t0) || d <= 0) continue;
+    // Lifetime counters only rise — clamp scrape glitches that drop mid-series.
+    let maxSold = Number(rows[0]?.total_sold) || 0;
+    let maxRev = Number(rows[0]?.reviews) || 0;
+    const clean = rows.map((r, i) => {
+      if (i === 0) return r;
+      let s = Number(r.total_sold) || 0;
+      let rv = Number(r.reviews) || 0;
+      if (s < maxSold) s = maxSold; else maxSold = s;
+      if (rv < maxRev) rv = maxRev; else maxRev = rv;
+      return (s === Number(r.total_sold) && rv === Number(r.reviews))
+        ? r
+        : { ...r, total_sold: s, reviews: rv };
+    });
+    for (let i = 1; i < clean.length; i++) {
+      const t0 = Date.parse(clean[i - 1].scraped_at), t1 = Date.parse(clean[i].scraped_at);
+      if (!(t1 > t0)) continue;
+      const d = ddCorrectSoldDelta(clean[i - 1], clean[i], t1 - t0);
+      if (d <= 0) continue;
       maxT = Math.max(maxT, t1);
-      const price = Number(rows[i].price) || 0;
+      const price = Number(clean[i].price) || 0;
       const rate = d / (t1 - t0);
       let cur = weekOf(t0);
       while (cur < t1) {
@@ -2775,7 +2842,7 @@ function ddWeeklySeries(history) {
           const u = rate * overlap;
           w.units += u;
           w.omset += u * price;
-          w.items.add(String(rows[i].item_id));
+          w.items.add(String(clean[i].item_id));
           weeks.set(cur, w);
         }
         cur += weekMs;
@@ -3022,7 +3089,7 @@ async function openDeepDive(product) {
       .filter(x => x != null).slice(0, 30);
     if (ids.length) {
       const { data } = await _supabase.from('listings')
-        .select('item_id,shop_id,keyword,price,total_sold,scraped_at')
+        .select('item_id,shop_id,keyword,price,total_sold,reviews,scraped_at')
         .in('item_id', ids)
         .order('scraped_at', { ascending: false })
         .limit(1000);
