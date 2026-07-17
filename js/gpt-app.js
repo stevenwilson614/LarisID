@@ -3090,16 +3090,6 @@ function ddScore(product, stats, niche) {
   return { score: s, ...badge, odds };
 }
 
-function ddSummaryText(stats, niche, scoreInfo) {
-  const bits = [];
-  if (scoreInfo.score >= 70) bits.push('Saya cukup optimis dengan niche ini.');
-  else if (scoreInfo.score >= 45) bits.push('Niche ini masuk akal untuk dicoba, dengan catatan.');
-  else bits.push('Niche ini berat untuk pemula — pertimbangkan matang-matang.');
-  if (stats.n) bits.push(`Kompetisi ${stats.komp.toLowerCase()}: top 3 toko menguasai ${Math.round(stats.top3Share * 100)}% penjualan di keyword ini.`);
-  if (niche?.breakout_rate != null && (niche.new_items || 0) >= 15) bits.push(`${Math.round(niche.breakout_rate)}% produk baru di niche ini tembus 100+ terjual.`);
-  return bits.join(' ');
-}
-
 // Weekly market series from real scrape snapshots: per item, only consecutive
 // positive sold deltas are used — the first snapshot is a baseline (never
 // lifetime total_sold as "sales"). Later intervals spread their delta as a
@@ -3565,7 +3555,6 @@ async function openDeepDive(product) {
           <h1>${esc(product.product_name || kw || 'Produk')}</h1>
           <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
         </div>
-        <p class="ddr-summary">${esc(ddSummaryText(stats, niche, scoreInfo))}</p>
         <p class="ddr-cat">Kategori: ${esc(product.category || '—')} · Lokasi: ${esc(product.location || '—')} · Keyword: ${esc(kw || '—')}</p>
       </div>
       <div class="ddr-score">
