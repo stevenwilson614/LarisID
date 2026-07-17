@@ -1081,8 +1081,13 @@ body.onboarding-active .panel { padding-bottom: 28px; }
   border-radius: 18px; padding: 18px; flex-wrap: wrap;
 }
 .ddr-header > img, .ddr-header .ph {
-  width: 96px; height: 96px; border-radius: 14px; object-fit: cover;
+  width: 160px; height: 160px; border-radius: 16px; object-fit: cover;
   background: var(--bg-user); flex-shrink: 0; display: block;
+}
+@media (max-width: 560px) {
+  .ddr-header > img, .ddr-header .ph {
+    width: 128px; height: 128px; border-radius: 14px;
+  }
 }
 .ddr-head-main { flex: 1; min-width: 220px; }
 .ddr-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -1820,6 +1825,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260717w" defer></script>
+<script src="/js/gpt-app.js?v=20260717x" defer></script>
 </body>
 </html>
