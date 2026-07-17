@@ -387,6 +387,13 @@ function formatCountdown(resetAt) {
   if (h >= 1) return `${h} jam ${m} menit`;
   return `${m} menit`;
 }
+function formatCountdownShort(resetAt) {
+  const ms = Math.max(0, (resetAt instanceof Date ? resetAt.getTime() : Date.parse(resetAt)) - Date.now());
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  if (h >= 1) return `${h} jam`;
+  return `${Math.max(1, m)} mnt`;
+}
 
 function showToast(msg) {
   const el = document.getElementById('toast');
@@ -397,7 +404,17 @@ function showToast(msg) {
   showToast._t = setTimeout(() => el.classList.remove('show'), 4200);
 }
 
-// ── Anon daily search soft-limit ─────────────────────────────────────────
+// ── Daily product/search limit (3 / WIB day) ─────────────────────────────
+const GPT_DAILY_LIMIT = 3;
+const USAGE_RING_C = 2 * Math.PI * 15; // r=15 → ~94.2
+let _gptUsage = {
+  used: 0,
+  limit: GPT_DAILY_LIMIT,
+  resetAt: null,
+  unlimited: false,
+};
+let _usageTicker = null;
+
 function anonSearchDay() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
@@ -413,10 +430,145 @@ function bumpAnonSearch() {
   o.count = (o.count || 0) + 1;
   o.day = anonSearchDay();
   localStorage.setItem(ANON_LIMIT_KEY, JSON.stringify(o));
+  noteGptUsage({ used: o.count, limit: GPT_DAILY_LIMIT, reset_at: wibMidnightReset() });
   return o.count;
 }
 function anonLimitHit() {
-  return getAnonSearches().count >= 3;
+  return getAnonSearches().count >= GPT_DAILY_LIMIT;
+}
+
+function noteGptUsage(data) {
+  if (!data || typeof data !== 'object') return;
+  if (data.unlimited) {
+    _gptUsage.unlimited = true;
+  } else if (data.unlimited === false) {
+    _gptUsage.unlimited = false;
+  }
+  if (data.used != null) _gptUsage.used = Math.max(0, Number(data.used) || 0);
+  if (data.limit != null) _gptUsage.limit = Math.max(1, Number(data.limit) || GPT_DAILY_LIMIT);
+  if (data.reset_at) {
+    const t = data.reset_at instanceof Date ? data.reset_at : new Date(data.reset_at);
+    if (!Number.isNaN(t.getTime())) _gptUsage.resetAt = t;
+  }
+  if (!_gptUsage.resetAt) _gptUsage.resetAt = wibMidnightReset();
+  if (isPlatformAdmin()) _gptUsage.unlimited = true;
+  renderGptUsage();
+}
+
+function renderGptUsage() {
+  const pill = $('usage-pill');
+  if (!pill) return;
+  const unlimited = !!_gptUsage.unlimited || isPlatformAdmin();
+  const limit = unlimited ? GPT_DAILY_LIMIT : (_gptUsage.limit || GPT_DAILY_LIMIT);
+  const used = unlimited ? 0 : Math.min(limit, Math.max(0, _gptUsage.used || 0));
+  const left = unlimited ? limit : Math.max(0, limit - used);
+  const resetAt = _gptUsage.resetAt || wibMidnightReset();
+  const resetLabel = formatCountdown(resetAt);
+  const resetShort = formatCountdownShort(resetAt);
+
+  const frac = $('usage-frac');
+  const resetEl = $('usage-reset');
+  const numEl = $('usage-ring-num');
+  const prog = $('usage-ring-prog');
+  const wrap = $('usage-ring-wrap');
+  const popTitle = $('usage-pop-title');
+  const popSub = $('usage-pop-sub');
+
+  if (unlimited) {
+    if (numEl) numEl.textContent = '∞';
+    if (frac) frac.textContent = 'Tanpa batas';
+    if (resetEl) resetEl.textContent = 'admin';
+    if (popTitle) popTitle.textContent = 'Akses tanpa batas';
+    if (popSub) popSub.textContent = 'Akun admin/leader tidak dibatasi jatah harian.';
+    if (prog) prog.setAttribute('stroke-dashoffset', '0');
+    if (wrap) wrap.dataset.tone = 'inf';
+    pill.title = 'Akses tanpa batas';
+  } else {
+    if (numEl) numEl.textContent = String(left);
+    if (frac) frac.textContent = `${used}/${limit} produk`;
+    if (resetEl) resetEl.textContent = `reset ${resetShort}`;
+    if (popTitle) popTitle.textContent = `${used} dari ${limit} produk hari ini`;
+    if (popSub) {
+      popSub.textContent = left > 0
+        ? `${left} tersisa. Batas harian reset dalam ${resetLabel}.`
+        : `Batas tercapai. Reset dalam ${resetLabel}.`;
+    }
+    const remainingFrac = limit > 0 ? left / limit : 0;
+    if (prog) {
+      prog.setAttribute('stroke-dasharray', String(USAGE_RING_C));
+      prog.setAttribute('stroke-dashoffset', String(USAGE_RING_C * (1 - remainingFrac)));
+    }
+    if (wrap) {
+      wrap.dataset.tone = left <= 0 ? 'bad' : left === 1 ? 'warn' : 'ok';
+    }
+    pill.title = `${used}/${limit} produk · reset dalam ${resetLabel}`;
+  }
+
+  if (!_usageTicker) {
+    _usageTicker = setInterval(() => {
+      if (_gptUsage.resetAt && _gptUsage.resetAt.getTime() <= Date.now()) {
+        void refreshGptUsage();
+        return;
+      }
+      renderGptUsage();
+    }, 60000);
+  }
+}
+
+function setUsagePopOpen(open) {
+  const pill = $('usage-pill');
+  if (!pill) return;
+  pill.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+function wireUsagePill() {
+  const pill = $('usage-pill');
+  if (!pill || pill.dataset.ready) return;
+  pill.dataset.ready = '1';
+  pill.addEventListener('click', e => {
+    e.stopPropagation();
+    const open = pill.getAttribute('aria-expanded') === 'true';
+    setUsagePopOpen(!open);
+  });
+  document.addEventListener('click', () => setUsagePopOpen(false));
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') setUsagePopOpen(false);
+  });
+}
+
+async function refreshGptUsage() {
+  const resetAt = wibMidnightReset();
+  if (!currentUser || !_supabase) {
+    const used = getAnonSearches().count || 0;
+    noteGptUsage({ used, limit: GPT_DAILY_LIMIT, reset_at: resetAt, unlimited: false });
+    return;
+  }
+  if (isPlatformAdmin()) {
+    noteGptUsage({ used: 0, limit: GPT_DAILY_LIMIT, reset_at: resetAt, unlimited: true });
+    return;
+  }
+  try {
+    const dayStart = new Date(resetAt.getTime() - 86400000);
+    const { count, error } = await _supabase
+      .from('gpt_chats')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id)
+      .gte('created_at', dayStart.toISOString());
+    if (error) throw error;
+    noteGptUsage({
+      used: count || 0,
+      limit: GPT_DAILY_LIMIT,
+      reset_at: resetAt,
+      unlimited: false,
+    });
+  } catch (_) {
+    noteGptUsage({
+      used: _gptUsage.used || 0,
+      limit: GPT_DAILY_LIMIT,
+      reset_at: resetAt,
+      unlimited: false,
+    });
+  }
 }
 
 // ── Views / UI shell ─────────────────────────────────────────────────────
@@ -502,6 +654,7 @@ function updateAccountUI() {
   if (btn) btn.style.display = isPlatformAdmin() ? '' : 'none';
   renderChatList();
   renderAdminSampleBanner();
+  void refreshGptUsage();
 }
 
 function renderChatList() {
@@ -763,6 +916,7 @@ async function _authOnSignIn(session) {
   _clearSessionRestoring();
   updateAccountUI();
   await loadCurrentAccess();
+  void refreshGptUsage();
   await persistOnboardingPrefs();
   await migrateLocalChatsToDb();
   saveLocalState();
@@ -857,6 +1011,7 @@ async function migrateLocalChatsToDb() {
         p_title: chat.title || 'Chat',
         p_context: chat.context || {},
       });
+      if (data) noteGptUsage(data);
       if (data && data.allowed === false) break;
       if (data?.chat?.id) {
         chat.id = data.chat.id;
@@ -942,7 +1097,7 @@ function _bubbleOf(msgOrBubble) {
 function _isAtomicStreamBlock(el) {
   if (!el || el.nodeType !== 1) return false;
   return el.matches?.(
-    '.card-grid, .ans-panel, .trending-card, .product-card, table, thead, tbody, tr, button, .chips, .chip, img, canvas, svg, pre, code'
+    '.card-grid, .ans-panel, .gpt-kalc, .trending-card, .product-card, table, thead, tbody, tr, button, .chips, .chip, img, canvas, svg, pre, code'
   );
 }
 
@@ -1051,6 +1206,7 @@ function renderChatThread() {
     // Re-bind cards
     bindProductCards(thread);
     bindTrendingCards(thread);
+    bindGptKalc(thread);
     updateThreadWide();
     scrollChatToBottom();
     return;
@@ -1648,6 +1804,7 @@ function detectIntent(lower) {
 async function ensureIntentChat(chat, title, context) {
   if (currentUser && _supabase && !chat.id) {
     const { data } = await _supabase.rpc('gpt_new_chat', { p_title: String(title).slice(0, 60), p_context: context });
+    if (data) noteGptUsage(data);
     if (data?.allowed === false) return { ok: false, resetAt: data.reset_at };
     if (data?.chat) { chat.id = data.chat.id; delete chat.localId; state.activeChatId = chat.id; }
   } else if (!currentUser) {
@@ -1843,6 +2000,238 @@ async function handleLowcompIntent(chat) {
 
 const MARKETPLACE_FEE = 0.08; // asumsi biaya marketplace, dilabel di UI
 
+// ── Kalkulator profit (sama rumus Mulai Berjualan) ────────────────────────
+const GPT_KALC_MPS = {
+  shopee_fashion:     { label: 'Shopee Fashion',    comm: 0.10,   svc: 0.02, tax: 0.005, freeship: 1,   ship: 9000 },
+  shopee_electronics: { label: 'Shopee Elektronik', comm: 0.095,  svc: 0.02, tax: 0.005, freeship: 0.5, ship: 12000 },
+  shopee_fmcg:        { label: 'Shopee FMCG',       comm: 0.0675, svc: 0.02, tax: 0.005, freeship: 1,   ship: 8000 },
+  tokopedia:          { label: 'Tokopedia',         comm: 0.02,   svc: 0.01, tax: 0.005, freeship: 0,   ship: 10000 },
+  tiktok:             { label: 'TikTok Shop',       comm: 0.028,  svc: 0.01, tax: 0.005, freeship: 0.5, ship: 9000 },
+};
+
+function gptKalcCompute(inp) {
+  const PROC_FEE = 1250;
+  const pctSum = inp.comm + inp.svc + inp.tax + inp.ret;
+  const commAmt = inp.price * inp.comm;
+  const svcAmt = inp.price * inp.svc;
+  const taxAmt = inp.price * inp.tax;
+  const retAmt = inp.price * inp.ret;
+  const shipCost = inp.shipping * inp.freeship;
+  const fixedCost = inp.cogs + shipCost + inp.packing + inp.opex + inp.ads + PROC_FEE;
+  const totalCost = fixedCost + commAmt + svcAmt + taxAmt + retAmt;
+  const profit = inp.price - totalCost;
+  const margin = inp.price > 0 ? (profit / inp.price * 100) : 0;
+  return { ...inp, PROC_FEE, pctSum, commAmt, svcAmt, taxAmt, retAmt, shipCost, fixedCost, totalCost, profit, margin };
+}
+
+function gptKalcPriceForMargin(targetMarginPct, fixedCost, pctSum) {
+  const denom = 1 - pctSum - targetMarginPct / 100;
+  return denom > 0 ? fixedCost / denom : fixedCost;
+}
+
+function gptKalcBepPrice(fixedCost, pctSum) {
+  return pctSum < 1 ? fixedCost / (1 - pctSum) : fixedCost;
+}
+
+function gptKalcDefaults(opts = {}) {
+  const price = Math.round(Number(opts.price) || 0);
+  const cogs = Math.round(Number(opts.cogs) || (price ? price * 0.33 : 0));
+  const mp = GPT_KALC_MPS.shopee_fashion;
+  return {
+    price: price || 50000,
+    cogs: cogs || 20000,
+    shipping: mp.ship,
+    packing: 2000,
+    opex: 1000,
+    ads: Math.max(750, Math.round((price || 50000) * 0.05)),
+    adsOn: true,
+    marketplace: 'shopee_fashion',
+  };
+}
+
+function gptKalcHtml(opts = {}) {
+  const d = gptKalcDefaults(opts);
+  const mpOpts = Object.entries(GPT_KALC_MPS).map(([k, v]) =>
+    `<option value="${esc(k)}"${k === d.marketplace ? ' selected' : ''}>${esc(v.label)}</option>`
+  ).join('');
+  return `
+  <div class="gpt-kalc" data-kalc>
+    <div class="gpt-kalc-head">
+      <h4>Kalkulator Profit</h4>
+      <p>Sesuaikan angka di bawah — biaya marketplace, packing, dan iklan ikut terhitung otomatis.</p>
+    </div>
+    <div class="gpt-kalc-grid">
+      <div class="gpt-kalc-field">
+        <label>Harga jual</label>
+        <div class="gpt-kalc-rp"><span>Rp</span><input type="number" min="0" data-k="price" value="${d.price}"></div>
+        <div class="hint">Harga yang kamu tetapkan</div>
+      </div>
+      <div class="gpt-kalc-field">
+        <label>Modal produk</label>
+        <div class="gpt-kalc-rp"><span>Rp</span><input type="number" min="0" data-k="cogs" value="${d.cogs}"></div>
+        <div class="hint">≈ 33% harga jual (bisa diubah)</div>
+      </div>
+      <div class="gpt-kalc-field">
+        <label>Marketplace</label>
+        <select data-k="marketplace">${mpOpts}</select>
+        <div class="hint">Biaya admin terisi otomatis</div>
+      </div>
+    </div>
+    <div class="gpt-kalc-ads">
+      <div class="meta"><strong>Biaya iklan</strong><span>Opsional — per pesanan</span></div>
+      <label class="gpt-kalc-tog" title="Aktifkan biaya iklan"><input type="checkbox" data-k="adsOn"${d.adsOn ? ' checked' : ''}><i></i></label>
+      <div class="gpt-kalc-rp"><span>Rp</span><input type="number" min="0" data-k="ads" value="${d.ads}"></div>
+    </div>
+    <div class="gpt-kalc-hero">
+      <div>
+        <div class="eyebrow">Uang yang kamu dapat</div>
+        <div class="profit" data-out="profit">—</div>
+        <span class="margin-pill" data-out="margin-pill">—</span>
+        <p class="sent" data-out="sent">—</p>
+      </div>
+      <div class="gpt-kalc-bd">
+        <div><span>Omzet / pesanan</span><span data-out="omzet">—</span></div>
+        <div class="cost"><span>Total biaya</span><span data-out="cost">—</span></div>
+        <div><span>Laba bersih</span><span data-out="profit2">—</span></div>
+        <div><span>Margin</span><span data-out="margin">—</span></div>
+      </div>
+    </div>
+    <div class="gpt-kalc-recs">
+      <div class="gpt-kalc-rec bep"><div class="lbl">Break even</div><div class="sub">Tidak rugi, impas</div><div class="price" data-out="bep">—</div></div>
+      <div class="gpt-kalc-rec good"><div class="lbl">Good profit</div><div class="sub">Keuntungan yang baik</div><div class="price" data-out="good">—</div></div>
+      <div class="gpt-kalc-rec healthy"><div class="lbl">Healthy margin</div><div class="sub">Margin sehat</div><div class="price" data-out="healthy">—</div></div>
+    </div>
+    <button type="button" class="gpt-kalc-detail-tog" data-kalc-detail-tog>
+      <span data-out="detail-title">Rincian biaya</span>
+      <span data-out="detail-chev">▼ Lihat detail</span>
+    </button>
+    <div class="gpt-kalc-detail" data-kalc-detail>
+      <div class="gpt-kalc-items" data-out="items"></div>
+      <div class="gpt-kalc-detail-grid">
+        <div class="gpt-kalc-field">
+          <label>Ongkir (subsidi)</label>
+          <div class="gpt-kalc-rp"><span>Rp</span><input type="number" min="0" data-k="shipping" value="${d.shipping}"></div>
+        </div>
+        <div class="gpt-kalc-field">
+          <label>Packing</label>
+          <div class="gpt-kalc-rp"><span>Rp</span><input type="number" min="0" data-k="packing" value="${d.packing}"></div>
+        </div>
+        <div class="gpt-kalc-field">
+          <label>Operasional</label>
+          <div class="gpt-kalc-rp"><span>Rp</span><input type="number" min="0" data-k="opex" value="${d.opex}"></div>
+        </div>
+      </div>
+      <p class="gpt-kalc-note">Estimasi saja — biaya bisa berubah sesuai kebijakan platform. Belum termasuk pajak pribadi.</p>
+    </div>
+  </div>`;
+}
+
+function _gptKalcRead(root) {
+  const num = (k) => parseFloat(root.querySelector(`[data-k="${k}"]`)?.value) || 0;
+  const mpKey = root.querySelector('[data-k="marketplace"]')?.value || 'shopee_fashion';
+  const mp = GPT_KALC_MPS[mpKey] || GPT_KALC_MPS.shopee_fashion;
+  const adsOn = root.querySelector('[data-k="adsOn"]')?.checked !== false;
+  return {
+    price: num('price'),
+    cogs: num('cogs'),
+    shipping: num('shipping'),
+    packing: num('packing'),
+    opex: num('opex'),
+    ads: adsOn ? num('ads') : 0,
+    adsOn,
+    mpKey,
+    comm: mp.comm,
+    svc: mp.svc,
+    tax: mp.tax,
+    freeship: mp.freeship,
+    ret: 0.01,
+  };
+}
+
+function gptKalcRefresh(root) {
+  if (!root) return;
+  const inp = _gptKalcRead(root);
+  const r = gptKalcCompute(inp);
+  const set = (k, v) => { const el = root.querySelector(`[data-out="${k}"]`); if (el) el.textContent = v; };
+  const profitEl = root.querySelector('[data-out="profit"]');
+  const pill = root.querySelector('[data-out="margin-pill"]');
+  if (profitEl) {
+    profitEl.textContent = fmtRp(r.profit);
+    profitEl.classList.toggle('is-neg', r.profit < 0);
+  }
+  if (pill) {
+    pill.textContent = `${r.margin.toFixed(1).replace('.', ',')}% margin`;
+    pill.classList.toggle('is-neg', r.profit < 0);
+  }
+  set('sent', r.profit >= 0
+    ? `Dari setiap penjualan, ${fmtRp(r.profit)} bersih masuk ke kantong kamu.`
+    : `Estimasi rugi ${fmtRp(Math.abs(r.profit))} per pesanan — cek biaya atau naikkan harga.`);
+  set('omzet', fmtRp(r.price));
+  set('cost', fmtRp(r.totalCost));
+  set('profit2', fmtRp(r.profit));
+  set('margin', `${r.margin.toFixed(1).replace('.', ',')}%`);
+  set('bep', fmtRp(gptKalcBepPrice(r.fixedCost, r.pctSum)));
+  set('good', fmtRp(gptKalcPriceForMargin(18, r.fixedCost, r.pctSum)));
+  set('healthy', fmtRp(gptKalcPriceForMargin(28, r.fixedCost, r.pctSum)));
+
+  const mp = GPT_KALC_MPS[inp.mpKey] || GPT_KALC_MPS.shopee_fashion;
+  set('detail-title', `Rincian biaya di ${mp.label}`);
+  const adminPct = ((r.comm + r.svc) * 100).toFixed(1).replace('.', ',');
+  const items = [
+    { lbl: `Admin & layanan (${adminPct}%)`, val: r.commAmt + r.svcAmt },
+    { lbl: 'Gratis ongkir (subsidi)', val: r.shipCost },
+    { lbl: 'Proses pesanan', val: r.PROC_FEE },
+    { lbl: 'Pajak (PPh final)', val: r.taxAmt },
+    { lbl: 'Return / refund', val: r.retAmt },
+    { lbl: 'Packing & operasional', val: r.packing + r.opex },
+  ];
+  if (r.ads > 0) items.push({ lbl: 'Iklan', val: r.ads });
+  const itemsEl = root.querySelector('[data-out="items"]');
+  if (itemsEl) {
+    itemsEl.innerHTML = items.filter(d => d.val > 0).map(d =>
+      `<div class="gpt-kalc-item"><div class="lbl">${esc(d.lbl)}</div><div class="val">${fmtRp(d.val)}</div></div>`
+    ).join('');
+  }
+  const adsInp = root.querySelector('[data-k="ads"]');
+  if (adsInp) adsInp.disabled = !inp.adsOn;
+}
+
+function bindGptKalc(root) {
+  (root || document).querySelectorAll('[data-kalc]').forEach(panel => {
+    if (panel.dataset.bound === '1') {
+      gptKalcRefresh(panel);
+      return;
+    }
+    panel.dataset.bound = '1';
+    const onMp = () => {
+      const key = panel.querySelector('[data-k="marketplace"]')?.value || 'shopee_fashion';
+      const mp = GPT_KALC_MPS[key] || GPT_KALC_MPS.shopee_fashion;
+      const ship = panel.querySelector('[data-k="shipping"]');
+      if (ship && !ship.dataset.touched) ship.value = String(mp.ship);
+      gptKalcRefresh(panel);
+    };
+    panel.querySelectorAll('input, select').forEach(el => {
+      el.addEventListener('input', () => {
+        if (el.getAttribute('data-k') === 'shipping') el.dataset.touched = '1';
+        if (el.getAttribute('data-k') === 'marketplace') onMp();
+        else gptKalcRefresh(panel);
+      });
+      el.addEventListener('change', () => {
+        if (el.getAttribute('data-k') === 'marketplace') onMp();
+        else gptKalcRefresh(panel);
+      });
+    });
+    panel.querySelector('[data-kalc-detail-tog]')?.addEventListener('click', () => {
+      const body = panel.querySelector('[data-kalc-detail]');
+      const chev = panel.querySelector('[data-out="detail-chev"]');
+      if (!body) return;
+      const open = body.classList.toggle('open');
+      if (chev) chev.textContent = open ? '▲ Tutup' : '▼ Lihat detail';
+    });
+    gptKalcRefresh(panel);
+  });
+}
+
 function profitTableHtml(rows) {
   return `<div class="ans-panel" style="margin-top:12px"><div class="ans-table-wrap"><table class="tr-table">
     <thead><tr><th>Modal / unit</th><th>Harga jual</th><th>Biaya marketplace ~8%</th><th>Profit / unit</th><th>Margin</th></tr></thead>
@@ -1853,26 +2242,32 @@ function profitTableHtml(rows) {
       return `<tr><td>${fmtRp(r.modal)}</td><td>${fmtRp(r.jual)}</td><td>${fmtRp(fee)}</td><td><strong style="color:${profit >= 0 ? 'var(--green)' : 'var(--accent)'}">${fmtRp(profit)}</strong></td><td>${mg}%</td></tr>`;
     }).join('')}</tbody>
   </table></div></div>
-  <p class="dd-sub" style="margin-top:8px">Hitungan sederhana: harga jual − biaya marketplace (asumsi 8%) − modal. Ongkir/packing belum termasuk.</p>`;
+  <p class="dd-sub" style="margin-top:8px">Hitungan cepat: harga jual − biaya marketplace (asumsi 8%) − modal. Ongkir/packing belum termasuk — pakai kalkulator di bawah untuk angka yang lebih lengkap.</p>`;
 }
 
 async function handleProfitIntent(chat, text) {
   const product = state.deepdiveProduct || activeChat()?.context?.product;
   const nums = extractMoney(text).filter(n => n >= 500);
   let html;
+  let kalcOpts = {};
   if (nums.length >= 2) {
     const [modal, jual] = nums[0] <= nums[1] ? [nums[0], nums[1]] : [nums[1], nums[0]];
     html = `<p>Estimasi profit per unit:</p>${profitTableHtml([{ modal, jual }])}`;
+    kalcOpts = { price: jual, cogs: modal };
   } else if (product && Number(product.price) > 0) {
     const jual = Number(product.price);
     html = `<p>Skenario profit untuk <strong>${esc((product.product_name || '').slice(0, 48))}</strong> di harga jual ${fmtRp(jual)} — tiga asumsi modal (60/70/80% dari harga jual):</p>`
       + profitTableHtml([0.6, 0.7, 0.8].map(f => ({ modal: Math.round(jual * f), jual })));
+    kalcOpts = { price: jual, cogs: Math.round(jual * 0.33) };
   } else {
-    html = `<p>Sebutkan modal dan harga jual per unit — contoh: <strong>“Hitung profit modal 20rb jual 35rb”</strong>. Atau buka salah satu produk dulu, nanti aku hitung dari harganya.</p>`;
+    html = `<p>Isi kalkulator di bawah, atau sebutkan modal dan harga jual — contoh: <strong>“Hitung profit modal 20rb jual 35rb”</strong>.</p>`;
   }
-  await appendAssistantStream(html);
+  html += gptKalcHtml(kalcOpts);
+  const msg = await appendAssistantStream(html);
   pushMessage(chat, 'assistant', { text: 'Estimasi profit' }, html);
+  bindGptKalc(msg || document);
   scrollChatToBottom();
+  void logUserEvent('gpt_profit_calc', { ui: 'gpt', has_product: !!product });
 }
 
 async function handleBandingkanIntent(chat, text) {
@@ -2117,6 +2512,9 @@ function bindProductCards(root) {
       if (p) void openDeepDive(p);
     });
   });
+  (root || document).querySelectorAll('#btn-more-products').forEach(btn => {
+    btn.addEventListener('click', () => void openMoreProductsDirectory());
+  });
 }
 
 async function ensureSearchAllowed() {
@@ -2154,6 +2552,7 @@ async function startRecommendationChat(fromOnboarding) {
   if (currentUser && _supabase) {
     const { data, error } = await _supabase.rpc('gpt_new_chat', { p_title: title, p_context: context });
     if (error) { showToast('Gagal membuat chat. Coba lagi.'); return; }
+    if (data) noteGptUsage(data);
     if (data && data.allowed === false) {
       const resetAt = data.reset_at || wibMidnightReset();
       showToast(`Batas harian tercapai — reset dalam ${formatCountdown(resetAt)}`);
@@ -2212,7 +2611,6 @@ async function startRecommendationChat(fromOnboarding) {
   const msg = await appendAssistantStream(html);
   pushMessage(chat, 'assistant', { text: 'Rekomendasi 3 produk', products: recs.map(p => ({ item_id: p.item_id, shop_id: p.shop_id, keyword: p.keyword })) }, html);
   bindProductCards();
-  (msg || document).querySelector('#btn-more-products')?.addEventListener('click', () => void startRecommendationChat(false));
 
   void logUserEvent('discover_view', { ui: 'gpt', count: recs.length });
   clarityEvt('discover_view', { ui: 'gpt' });
@@ -2654,6 +3052,7 @@ async function openDeepDive(product) {
         p_title: title,
         p_context: { kind: 'product', keyword: kw, item_id: product.item_id, shop_id: product.shop_id },
       });
+      if (data) noteGptUsage(data);
       if (data?.allowed === false) {
         // The daily cap is on NEW searches — viewing a product must never be
         // walled (MISSION: no trapping). Keep the session local, keep going.
@@ -2798,20 +3197,28 @@ async function openDeepDive(product) {
         ${ddStrategyHtml(product, stats, niche, kwRows)}
       </div>
       <div class="ddr-side-cta">
-        <p style="margin:0">Ingin saya bantu cari supplier atau hitung estimasi profit untuk produk ini?</p>
-        <button type="button" class="btn-primary" id="ddr-profit-btn" style="margin:0">Hitung Profit →</button>
+        <p style="margin:0">Ingin hitung estimasi profit dengan angka kamu sendiri?</p>
+        <button type="button" class="btn-primary" id="ddr-profit-btn" style="margin:0">Buka Kalkulator →</button>
       </div>
+    </div>
+    <div class="ddr-card" data-dd-sec="profit" id="ddr-kalc-anchor" style="margin-top:14px;padding:0;border:none;background:transparent">
+      ${gptKalcHtml({ price, cogs: Math.round(price * 0.33) })}
     </div>
     <button type="button" class="btn-ghost" id="btn-more-from-dd">Tampilkan produk lain</button>
     <p class="ddr-caption" style="margin-top:10px">Semua angka dari data Shopee via LarisID — bukan tebakan AI. Ketik pertanyaan di bawah untuk tanya AI tentang produk ini.</p>
   `;
 
   $('dd-back')?.addEventListener('click', () => { setView('chat'); renderChatThread(); });
-  $('btn-more-from-dd')?.addEventListener('click', () => void startRecommendationChat(false));
+  $('btn-more-from-dd')?.addEventListener('click', () => void openMoreProductsDirectory());
   $('ddr-profit-btn')?.addEventListener('click', () => {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'profit_cta', via: 'click', keyword: kw || '' });
-    void handleComposerSubmit('Hitung estimasi profit');
+    const anchor = $('ddr-kalc-anchor');
+    if (anchor) {
+      anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      requestAnimationFrame(() => anchor.querySelector('[data-k="cogs"]')?.focus());
+    }
   });
+  bindGptKalc(root);
   const kompMore = $('ddr-komp-more');
   kompMore?.addEventListener('click', () => {
     root.querySelectorAll('[data-komp-extra]').forEach(tr => { tr.hidden = false; });
@@ -3009,8 +3416,8 @@ async function handleComposerSubmit(text) {
   abortAssistantStream();
 
   const lower = text.toLowerCase();
-  if (/tampilkan produk lain|produk lain|rekomendasi baru/.test(lower)) {
-    await startRecommendationChat(false);
+  if (/tampilkan produk lain/.test(lower) || /^produk lain$/.test(lower) || /^rekomendasi baru$/.test(lower)) {
+    await openMoreProductsDirectory();
     return;
   }
 
@@ -3076,6 +3483,7 @@ async function handleComposerSubmit(text) {
     }
     if (currentUser && _supabase && !chat.id) {
       const { data } = await _supabase.rpc('gpt_new_chat', { p_title: text.slice(0, 60), p_context: { kind: 'search', q: text } });
+      if (data) noteGptUsage(data);
       if (data?.allowed === false) {
         const msg = `Batas pencarian harian tercapai — reset dalam ${formatCountdown(data.reset_at || wibMidnightReset())}.`;
         if (loading) await revealAssistant(loading, `<p>${esc(msg)}</p>`, { instant: true });
@@ -3127,6 +3535,14 @@ function _dirApplyDefaultsOnce() {
   if (state._dirDefaultsApplied) return;
   state._dirDefaultsApplied = true;
   syncDirectoryFromOnboarding();
+}
+
+async function openMoreProductsDirectory() {
+  syncDirectoryFromOnboarding();
+  state.dirPage = 1;
+  void logUserEvent('dir_open', { ui: 'gpt', via: 'more_products' });
+  clarityEvt('dir_open', { via: 'more_products' });
+  await openDirectory();
 }
 
 async function openDirectory() {
@@ -3561,6 +3977,7 @@ function wireUi() {
   });
 
   wirePrefsDrawer();
+  wireUsagePill();
 
   document.addEventListener('keydown', e => {
     if ((e.metaKey || e.ctrlKey) && String(e.key).toLowerCase() === 'k') {
@@ -3583,10 +4000,12 @@ async function boot() {
 
   wireUi();
   updateAccountUI();
+  renderGptUsage();
 
   if (typeof ensureSupabase === 'function') await ensureSupabase();
   await initSupabase();
   try { await consumeOAuthHash(); } catch (_) {}
+  void refreshGptUsage();
 
   // Landing is the default surface; onboarding never auto-starts.
   if (!_offerActive) {

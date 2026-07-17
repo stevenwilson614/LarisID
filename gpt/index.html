@@ -218,7 +218,7 @@ html.session-restoring body::after {
 }
 .main-top {
   flex-shrink: 0;
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center;
   gap: 12px;
   padding: 10px 18px 8px;
   min-height: 52px;
@@ -229,8 +229,10 @@ html.session-restoring body::after {
 }
 .main-top-auth,
 .main-top-user {
-  display: flex; align-items: center; gap: 8px; margin-left: auto;
+  display: flex; align-items: center; gap: 8px;
 }
+.usage-pill { margin-left: auto; }
+.main-top-auth, .main-top-user { margin-left: 8px; }
 .main-top-auth[hidden],
 .main-top-user[hidden] {
   display: none !important;
@@ -257,6 +259,72 @@ html.session-restoring body::after {
   background: var(--bg-side); display: grid; place-items: center;
   font-size: .75rem; font-weight: 650;
 }
+
+/* Daily limit ring (Cursor / Anthropic style) */
+.usage-pill {
+  position: relative;
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 10px 4px 4px; border-radius: 999px;
+  border: 1px solid var(--line); background: #fff;
+  cursor: pointer; font: inherit; color: var(--ink);
+  transition: background .12s, border-color .12s;
+}
+.usage-pill:hover, .usage-pill[aria-expanded="true"] {
+  background: var(--bg-user); border-color: #e5e5e5;
+}
+.usage-ring-wrap {
+  position: relative; width: 28px; height: 28px; flex-shrink: 0;
+}
+.usage-ring { width: 28px; height: 28px; transform: rotate(-90deg); }
+.usage-ring .track {
+  fill: none; stroke: #ececec; stroke-width: 3.2;
+}
+.usage-ring .prog {
+  fill: none; stroke: var(--accent); stroke-width: 3.2;
+  stroke-linecap: round;
+  transition: stroke-dashoffset .35s var(--ease), stroke .2s;
+}
+.usage-ring-wrap[data-tone="ok"] .prog { stroke: #16a34a; }
+.usage-ring-wrap[data-tone="warn"] .prog { stroke: #d97706; }
+.usage-ring-wrap[data-tone="bad"] .prog { stroke: var(--accent); }
+.usage-ring-wrap[data-tone="inf"] .prog { stroke: #2563eb; }
+.usage-ring-num {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  font-size: .58rem; font-weight: 750; letter-spacing: -.02em;
+  color: var(--ink); line-height: 1;
+  pointer-events: none;
+}
+.usage-meta {
+  display: flex; flex-direction: column; align-items: flex-start;
+  min-width: 0; line-height: 1.15; padding-right: 2px;
+}
+.usage-meta strong {
+  font-size: .72rem; font-weight: 650; white-space: nowrap;
+}
+.usage-meta span {
+  font-size: .6rem; color: var(--muted); white-space: nowrap;
+}
+.usage-pop {
+  display: none; position: absolute; top: calc(100% + 8px); right: 0;
+  width: min(260px, calc(100vw - 24px));
+  padding: 12px 14px; border-radius: 12px;
+  background: #fff; border: 1px solid var(--line);
+  box-shadow: 0 12px 32px rgba(0,0,0,.12);
+  text-align: left; z-index: 30;
+}
+.usage-pill[aria-expanded="true"] .usage-pop { display: block; }
+.usage-pop-title {
+  margin: 0 0 4px; font-size: .8rem; font-weight: 700;
+}
+.usage-pop-sub {
+  margin: 0; font-size: .72rem; color: var(--muted); line-height: 1.45;
+}
+@media (max-width: 720px) {
+  .usage-meta { display: none; }
+  .usage-pill { padding: 3px; }
+}
+
 .topbar-mobile-brand { display: none; align-items: center; gap: 8px; }
 .menu-btn {
   width: 40px; height: 40px; border-radius: 999px;
@@ -1009,6 +1077,125 @@ body.thread-wide .composer-chips { max-width: 1080px; }
   border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px;
 }
 
+/* Kalkulator profit (inline in chat / Deep Dive) */
+.gpt-kalc {
+  margin-top: 14px; border: 1px solid var(--line); border-radius: 16px;
+  padding: 16px; background: linear-gradient(180deg, #fff 0%, #fafafa 100%);
+}
+.gpt-kalc-head { margin-bottom: 14px; }
+.gpt-kalc-head h4 { margin: 0 0 4px; font-size: .92rem; font-weight: 750; letter-spacing: -.01em; }
+.gpt-kalc-head p { margin: 0; font-size: .76rem; color: var(--muted); line-height: 1.45; }
+.gpt-kalc-grid {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 640px) { .gpt-kalc-grid { grid-template-columns: 1fr; } }
+.gpt-kalc-field {
+  border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: #fff;
+}
+.gpt-kalc-field label {
+  display: block; font-size: .66rem; font-weight: 650; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .03em; margin-bottom: 6px;
+}
+.gpt-kalc-field .hint { font-size: .62rem; color: var(--muted); margin-top: 5px; }
+.gpt-kalc-rp { position: relative; }
+.gpt-kalc-rp span {
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  font-size: .72rem; color: var(--muted); pointer-events: none;
+}
+.gpt-kalc-rp input, .gpt-kalc-field select {
+  width: 100%; border: 1px solid var(--line); border-radius: 8px;
+  padding: 8px 10px; font: inherit; font-size: .84rem; font-weight: 600;
+  background: #fff; color: var(--ink); outline: none;
+}
+.gpt-kalc-rp input { padding-left: 30px; }
+.gpt-kalc-rp input:focus, .gpt-kalc-field select:focus { border-color: var(--accent); }
+.gpt-kalc-ads {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-top: 10px; padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: 12px; background: #fff;
+}
+.gpt-kalc-ads .meta { flex: 1; min-width: 120px; }
+.gpt-kalc-ads .meta strong { display: block; font-size: .78rem; }
+.gpt-kalc-ads .meta span { font-size: .66rem; color: var(--muted); }
+.gpt-kalc-ads .gpt-kalc-rp { width: 128px; }
+.gpt-kalc-tog {
+  position: relative; width: 40px; height: 22px; flex-shrink: 0;
+}
+.gpt-kalc-tog input { opacity: 0; width: 0; height: 0; }
+.gpt-kalc-tog i {
+  position: absolute; inset: 0; background: #d1d5db; border-radius: 22px;
+  transition: .2s; cursor: pointer;
+}
+.gpt-kalc-tog i:before {
+  content: ''; position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px;
+  background: #fff; border-radius: 50%; transition: .2s;
+}
+.gpt-kalc-tog input:checked + i { background: #10b981; }
+.gpt-kalc-tog input:checked + i:before { transform: translateX(18px); }
+.gpt-kalc-hero {
+  margin-top: 12px; display: grid; gap: 14px;
+  grid-template-columns: 1.2fr 1fr;
+  padding: 16px 18px; border-radius: 14px;
+  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+  border: 1.5px solid #86efac;
+}
+@media (max-width: 640px) { .gpt-kalc-hero { grid-template-columns: 1fr; } }
+.gpt-kalc-hero .eyebrow { font-size: .68rem; font-weight: 700; color: #059669; margin-bottom: 4px; }
+.gpt-kalc-hero .profit {
+  font-size: 1.65rem; font-weight: 800; letter-spacing: -.02em;
+  color: #059669; line-height: 1.1; margin: 2px 0 6px;
+}
+.gpt-kalc-hero .profit.is-neg { color: var(--accent); }
+.gpt-kalc-hero .margin-pill {
+  display: inline-block; background: #dcfce7; color: #16a34a;
+  font-size: .7rem; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+}
+.gpt-kalc-hero .margin-pill.is-neg { background: #fee2e2; color: var(--accent); }
+.gpt-kalc-hero .sent { font-size: .76rem; color: var(--ink-soft); line-height: 1.45; margin: 8px 0 0; }
+.gpt-kalc-bd { display: flex; flex-direction: column; gap: 7px; font-size: .74rem; }
+.gpt-kalc-bd div { display: flex; justify-content: space-between; gap: 8px; }
+.gpt-kalc-bd span:first-child { color: var(--muted); }
+.gpt-kalc-bd span:last-child { font-weight: 700; }
+.gpt-kalc-bd .cost span:last-child { color: #dc2626; }
+.gpt-kalc-recs {
+  display: grid; gap: 8px; margin-top: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 640px) { .gpt-kalc-recs { grid-template-columns: 1fr; } }
+.gpt-kalc-rec {
+  border-radius: 12px; padding: 12px; border: 1.5px solid var(--line); background: #fff;
+}
+.gpt-kalc-rec.bep { border-color: #fca5a5; background: #fef2f2; }
+.gpt-kalc-rec.good { border-color: #fdba74; background: #fff7ed; }
+.gpt-kalc-rec.healthy { border-color: #86efac; background: #f0fdf4; }
+.gpt-kalc-rec .lbl { font-size: .66rem; font-weight: 650; color: var(--muted); }
+.gpt-kalc-rec .sub { font-size: .6rem; color: var(--muted); margin: 2px 0 6px; }
+.gpt-kalc-rec .price { font-size: .95rem; font-weight: 800; }
+.gpt-kalc-detail-tog {
+  margin-top: 12px; width: 100%; display: flex; justify-content: space-between;
+  align-items: center; gap: 8px; padding: 10px 0 0; border: none; background: none;
+  font: inherit; font-size: .78rem; font-weight: 650; color: var(--ink-soft); cursor: pointer;
+  border-top: 1px solid var(--line);
+}
+.gpt-kalc-detail { display: none; margin-top: 12px; }
+.gpt-kalc-detail.open { display: block; }
+.gpt-kalc-detail-grid {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 640px) { .gpt-kalc-detail-grid { grid-template-columns: 1fr; } }
+.gpt-kalc-items {
+  display: grid; gap: 8px; margin-bottom: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+.gpt-kalc-item {
+  background: var(--bg-user); border-radius: 8px; padding: 9px 10px; font-size: .66rem;
+}
+.gpt-kalc-item .lbl { color: var(--muted); margin-bottom: 3px; }
+.gpt-kalc-item .val { font-weight: 700; }
+.gpt-kalc-note { margin: 10px 0 0; font-size: .68rem; color: var(--muted); line-height: 1.4; }
+
 /* Lokasi & kategori side drawer — overlays without wiping the chat */
 .prefs-backdrop {
   display: none; position: fixed; inset: 0;
@@ -1125,6 +1312,24 @@ body.thread-wide .composer-chips { max-width: 1080px; }
           <img class="brand-lockup" src="/images/brand/logo-horizontal-light.png" alt="LARIS" height="28" style="height:28px">
         </a>
       </div>
+      <button type="button" class="usage-pill" id="usage-pill" aria-expanded="false" aria-haspopup="true" title="Jatah harian">
+        <span class="usage-ring-wrap" data-tone="ok" id="usage-ring-wrap">
+          <svg class="usage-ring" viewBox="0 0 36 36" aria-hidden="true">
+            <circle class="track" cx="18" cy="18" r="15"></circle>
+            <circle class="prog" id="usage-ring-prog" cx="18" cy="18" r="15"
+              stroke-dasharray="94.2" stroke-dashoffset="0"></circle>
+          </svg>
+          <span class="usage-ring-num" id="usage-ring-num">3</span>
+        </span>
+        <span class="usage-meta">
+          <strong id="usage-frac">0/3 produk</strong>
+          <span id="usage-reset">reset —</span>
+        </span>
+        <div class="usage-pop" id="usage-pop" role="dialog" aria-label="Jatah harian">
+          <p class="usage-pop-title" id="usage-pop-title">0 dari 3 produk hari ini</p>
+          <p class="usage-pop-sub" id="usage-pop-sub">Batas harian reset dalam —.</p>
+        </div>
+      </button>
       <div class="main-top-auth" id="auth-header">
         <button type="button" class="btn-login" id="btn-login">Login</button>
         <button type="button" class="btn-daftar" id="btn-signup">Daftar Gratis</button>
@@ -1312,6 +1517,6 @@ body.thread-wide .composer-chips { max-width: 1080px; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260717c" defer></script>
+<script src="/js/gpt-app.js?v=20260717f" defer></script>
 </body>
 </html>
