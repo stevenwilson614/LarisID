@@ -1571,6 +1571,7 @@ const SIDE_PREFS_KEY = 'gpt_side_panel_v1';
 const CALC_PREFS_KEY_LEGACY = 'gpt_calc_panel_v1';
 let _sideMode = 'kalkulator'; // 'kalkulator' | 'kompetitor'
 let _calcFilled = false;
+let _calcProductKey = null; // item_id|shop_id of last calc prefill
 let _kompFetchToken = 0;
 
 function loadSidePrefs() {
@@ -1625,11 +1626,20 @@ function setSideContext(text) {
 }
 
 function resolveSideProduct() {
-  if (_dd?.product) return _dd.product;
+  // Prefer live Deep Dive → active product chat → last-rendered DD payload.
   if (state.deepdiveProduct) return state.deepdiveProduct;
   const chat = activeChat();
   if (chat?.context?.product) return chat.context.product;
+  if (_dd?.product) return _dd.product;
   return null;
+}
+
+function sideProductKey(product) {
+  if (!product) return null;
+  const iid = product.item_id;
+  const sid = product.shop_id;
+  if (iid == null && sid == null) return null;
+  return `${iid ?? ''}|${sid ?? ''}`;
 }
 
 function resolveSidePeers(product) {
@@ -1664,15 +1674,30 @@ async function fetchSidePeers(product) {
 function fillCalcContent(opts = {}) {
   const body = $('side-body-kalc');
   if (!body) return;
-  // (Re)build kalkulator when product defaults are passed, or on first open.
-  if (opts.price != null || !_calcFilled) {
-    const kalcOpts = {};
-    if (opts.price != null && Number(opts.price) > 0) kalcOpts.price = Math.round(Number(opts.price));
-    if (opts.cogs != null && Number(opts.cogs) > 0) kalcOpts.cogs = Math.round(Number(opts.cogs));
-    body.innerHTML = gptKalcHtml(kalcOpts);
-    _calcFilled = true;
+  const product = opts.product || resolveSideProduct();
+  if (!product) {
+    setSideContext('');
+    body.innerHTML = '<p class="side-empty">Buka produk dulu untuk pakai kalkulator.</p>';
+    _calcFilled = false;
+    _calcProductKey = null;
+    return;
   }
-  const name = (opts.name || resolveSideProduct()?.product_name || '').trim();
+
+  const priceRaw = opts.price != null ? Number(opts.price) : Number(product.price);
+  const price = Number.isFinite(priceRaw) && priceRaw > 0 ? Math.round(priceRaw) : 0;
+  const cogs = opts.cogs != null && Number(opts.cogs) > 0
+    ? Math.round(Number(opts.cogs))
+    : (price ? Math.round(price * 0.33) : 0);
+  const nextKey = sideProductKey(product);
+  const shouldRebuild = opts.force || opts.price != null || !_calcFilled || nextKey !== _calcProductKey;
+
+  if (shouldRebuild) {
+    body.innerHTML = gptKalcHtml({ price, cogs });
+    _calcFilled = true;
+    _calcProductKey = nextKey;
+  }
+
+  const name = (opts.name || product.product_name || product.keyword || '').trim().slice(0, 80);
   setSideContext(name);
   bindGptKalc(body);
 }
@@ -1719,6 +1744,12 @@ async function fillKompContent(opts = {}) {
     ${ddKompetitorTableHtml(share, { moreId: 'side-komp-more' })}
   `;
   wireKompPanelBody(body, peers || []);
+}
+
+function refreshOpenSidePanel(opts = {}) {
+  if (!document.body.classList.contains('calc-open')) return;
+  if (_sideMode === 'kompetitor') void fillKompContent(opts);
+  else fillCalcContent({ ...opts, force: true });
 }
 
 function openSidePanel(mode, opts = {}) {
@@ -3729,9 +3760,14 @@ async function openDeepDive(product) {
   const age = ddShopAgeBuckets(peers);
   const kwRows = ddKeywordRows(peers);
   _dd = { product, peers, niche, stats, history, series };
-  if (document.body.classList.contains('calc-open') && _sideMode === 'kompetitor') {
-    void fillKompContent({ product, peers });
-  }
+  // Live-refresh open side panel when switching products in Deep Dive.
+  refreshOpenSidePanel({
+    product,
+    peers,
+    price: Number(product.price) || 0,
+    cogs: Math.round((Number(product.price) || 0) * 0.33) || undefined,
+    name: (product.product_name || product.keyword || '').slice(0, 80),
+  });
 
   // Persist a Deep Dive entry in the chat thread so scrolling history always
   // reaches it (DD itself is a separate view, not part of the message list).
