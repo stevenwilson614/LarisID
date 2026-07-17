@@ -456,53 +456,57 @@ function noteGptUsage(data) {
 }
 
 function renderGptUsage() {
-  const pill = $('usage-pill');
-  if (!pill) return;
+  const pills = document.querySelectorAll('[data-usage-pill]');
+  if (!pills.length) return;
   const unlimited = !!_gptUsage.unlimited || isPlatformAdmin();
   const limit = unlimited ? GPT_DAILY_LIMIT : (_gptUsage.limit || GPT_DAILY_LIMIT);
   const used = unlimited ? 0 : Math.min(limit, Math.max(0, _gptUsage.used || 0));
   const left = unlimited ? limit : Math.max(0, limit - used);
   const resetAt = _gptUsage.resetAt || wibMidnightReset();
   const resetLabel = formatCountdown(resetAt);
-  const resetShort = formatCountdownShort(resetAt);
 
-  const frac = $('usage-frac');
-  const resetEl = $('usage-reset');
-  const numEl = $('usage-ring-num');
-  const prog = $('usage-ring-prog');
-  const wrap = $('usage-ring-wrap');
-  const popTitle = $('usage-pop-title');
-  const popSub = $('usage-pop-sub');
+  let title;
+  let popTitle;
+  let popSub;
+  let tone;
+  let numText;
+  let dashOffset;
 
   if (unlimited) {
-    if (numEl) numEl.textContent = '∞';
-    if (frac) frac.textContent = 'Tanpa batas';
-    if (resetEl) resetEl.textContent = 'admin';
-    if (popTitle) popTitle.textContent = 'Akses tanpa batas';
-    if (popSub) popSub.textContent = 'Akun admin/leader tidak dibatasi jatah harian.';
-    if (prog) prog.setAttribute('stroke-dashoffset', '0');
-    if (wrap) wrap.dataset.tone = 'inf';
-    pill.title = 'Akses tanpa batas';
+    numText = '∞';
+    title = 'Akses tanpa batas';
+    popTitle = 'Akses tanpa batas';
+    popSub = 'Akun admin/leader tidak dibatasi jatah harian.';
+    tone = 'inf';
+    dashOffset = 0;
   } else {
-    if (numEl) numEl.textContent = String(left);
-    if (frac) frac.textContent = `${used}/${limit} produk`;
-    if (resetEl) resetEl.textContent = `reset ${resetShort}`;
-    if (popTitle) popTitle.textContent = `${used} dari ${limit} produk hari ini`;
-    if (popSub) {
-      popSub.textContent = left > 0
-        ? `${left} tersisa. Batas harian reset dalam ${resetLabel}.`
-        : `Batas tercapai. Reset dalam ${resetLabel}.`;
-    }
+    numText = String(left);
+    title = `${used}/${limit} produk · reset dalam ${resetLabel}`;
+    popTitle = `${used} dari ${limit} produk hari ini`;
+    popSub = left > 0
+      ? `${left} tersisa. Batas harian reset dalam ${resetLabel}.`
+      : `Batas tercapai. Reset dalam ${resetLabel}.`;
+    tone = left <= 0 ? 'bad' : left === 1 ? 'warn' : 'ok';
     const remainingFrac = limit > 0 ? left / limit : 0;
+    dashOffset = USAGE_RING_C * (1 - remainingFrac);
+  }
+
+  pills.forEach(pill => {
+    pill.title = title;
+    const wrap = pill.querySelector('.usage-ring-wrap');
+    const prog = pill.querySelector('.prog');
+    const numEl = pill.querySelector('.usage-ring-num');
+    const popTitleEl = pill.querySelector('.usage-pop-title');
+    const popSubEl = pill.querySelector('.usage-pop-sub');
+    if (numEl) numEl.textContent = numText;
+    if (wrap) wrap.dataset.tone = tone;
     if (prog) {
       prog.setAttribute('stroke-dasharray', String(USAGE_RING_C));
-      prog.setAttribute('stroke-dashoffset', String(USAGE_RING_C * (1 - remainingFrac)));
+      prog.setAttribute('stroke-dashoffset', String(dashOffset));
     }
-    if (wrap) {
-      wrap.dataset.tone = left <= 0 ? 'bad' : left === 1 ? 'warn' : 'ok';
-    }
-    pill.title = `${used}/${limit} produk · reset dalam ${resetLabel}`;
-  }
+    if (popTitleEl) popTitleEl.textContent = popTitle;
+    if (popSubEl) popSubEl.textContent = popSub;
+  });
 
   if (!_usageTicker) {
     _usageTicker = setInterval(() => {
@@ -515,25 +519,30 @@ function renderGptUsage() {
   }
 }
 
-function setUsagePopOpen(open) {
-  const pill = $('usage-pill');
-  if (!pill) return;
-  pill.setAttribute('aria-expanded', open ? 'true' : 'false');
+function setUsagePopOpen(pill, open) {
+  document.querySelectorAll('[data-usage-pill]').forEach(p => {
+    p.setAttribute('aria-expanded', p === pill && open ? 'true' : 'false');
+  });
 }
 
 function wireUsagePill() {
-  const pill = $('usage-pill');
-  if (!pill || pill.dataset.ready) return;
-  pill.dataset.ready = '1';
-  pill.addEventListener('click', e => {
-    e.stopPropagation();
-    const open = pill.getAttribute('aria-expanded') === 'true';
-    setUsagePopOpen(!open);
+  document.querySelectorAll('[data-usage-pill]').forEach(pill => {
+    if (pill.dataset.ready) return;
+    pill.dataset.ready = '1';
+    pill.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const open = pill.getAttribute('aria-expanded') === 'true';
+      setUsagePopOpen(pill, !open);
+    });
   });
-  document.addEventListener('click', () => setUsagePopOpen(false));
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') setUsagePopOpen(false);
-  });
+  if (!wireUsagePill._doc) {
+    wireUsagePill._doc = true;
+    document.addEventListener('click', () => setUsagePopOpen(null, false));
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') setUsagePopOpen(null, false);
+    });
+  }
 }
 
 async function refreshGptUsage() {
@@ -2858,28 +2867,6 @@ function ddTilesHtml(product, stats, peers, series) {
   </div>`;
 }
 
-function ddWhyHtml(product, stats, niche) {
-  const items = [];
-  items.push(stats.n >= 8
-    ? `Permintaan terpantau di ${stats.n} listing keyword ini — total ${fmtSold(stats.totalSold)} terjual.`
-    : `Baru ${stats.n} listing terpantau di keyword ini — data masih tipis, hati-hati baca angkanya.`);
-  items.push(stats.top3Share <= 0.35
-    ? `Pasar tidak didominasi satu toko — top 3 hanya menguasai ${Math.round(stats.top3Share * 100)}% penjualan.`
-    : stats.top3Share <= 0.6
-      ? `Top 3 toko menguasai ${Math.round(stats.top3Share * 100)}% penjualan — masih ada ruang untuk bersaing.`
-      : `Top 3 toko menguasai ${Math.round(stats.top3Share * 100)}% penjualan — dominasi tinggi, masuk lebih sulit.`);
-  if (niche?.breakout_rate != null && (niche.new_items || 0) >= 15) {
-    items.push(`${Math.round(niche.breakout_rate)}% produk baru di niche ini berhasil tembus 100+ terjual.`);
-  }
-  const wall = calcReviewWall(Number(product.reviews) || 0, niche);
-  items.push(`Dinding ulasan ±${wall.wall.toLocaleString('id-ID')} — target ulasan minimum supaya masuk radar pembeli.`);
-  if (stats.n >= 4) {
-    const inZone = Number(product.price) >= stats.p25 && Number(product.price) <= stats.p75;
-    items.push(`Rentang harga sehat ${fmtRp(stats.p25)} – ${fmtRp(stats.p75)}; produk ini ${inZone ? 'ada di dalam' : 'di luar'} zona itu.`);
-  }
-  return `<ul class="check-list">${items.map(s => `<li>${ico('check', 15)}<span>${esc(s)}</span></li>`).join('')}</ul>`;
-}
-
 function ddKompetitorTableHtml(share) {
   if (!share.shops.length) return '<p class="dd-sub">Kompetitor belum tersedia untuk keyword ini.</p>';
   const rows = share.shops.slice(0, 15).map((s, i) => {
@@ -3067,7 +3054,19 @@ async function openDeepDive(product) {
     }
   }
   if (chat) {
-    chat.context = { ...(chat.context || {}), product, keyword: kw };
+    chat.context = {
+      ...(chat.context || {}),
+      product,
+      keyword: kw,
+      peers: (peers || []).slice(0, 50).map(r => ({
+        product_name: r.product_name,
+        store_name: r.store_name,
+        price: r.price,
+        total_sold: r.total_sold,
+        item_id: r.item_id,
+        shop_id: r.shop_id,
+      })),
+    };
     chat.title = (product.product_name || kw || chat.title || 'Produk').slice(0, 60);
     saveLocalState();
     renderChatList();
@@ -3113,17 +3112,6 @@ async function openDeepDive(product) {
       </div>
     </div>
     ${ddTilesHtml(product, stats, peers, series)}
-    <div class="ddr-2col">
-      <div class="ddr-card" data-dd-sec="why">
-        <h3>${scoreInfo.score >= 60 ? 'Kenapa saya yakin ini peluang bagus?' : 'Yang perlu kamu tahu sebelum masuk'}</h3>
-        ${ddWhyHtml(product, stats, niche)}
-      </div>
-      <div class="ddr-card">
-        <h3>Insight LarisID</h3>
-        <p class="dd-sub" style="margin:0;line-height:1.6">${esc(scoreInfo.odds.hint)}. ${stats.n ? esc(`Kompetisi ${stats.komp.toLowerCase()} dengan ${new Set(peers.map(p => String(p.shop_id))).size} toko aktif di keyword ini.`) : ''}</p>
-        <p class="ddr-caption">Dihitung dari data Shopee — bukan tebakan AI.</p>
-      </div>
-    </div>
     <div class="ddr-2col">
       <div class="ddr-card" data-dd-sec="tren">
         <h3>Tren Omzet &amp; Unit Terjual</h3>
@@ -3376,6 +3364,199 @@ async function _useAi(action) {
   } catch (_) { return false; }
 }
 
+function buildProductSystemPrompt(p, question, peers) {
+  const niche = p._niche || _dd?.niche;
+  const rows = (peers || []).slice().sort((a, b) => (Number(b.total_sold) || 0) - (Number(a.total_sold) || 0));
+  const top10 = rows.slice(0, 10).map((r, i) =>
+    `${i + 1}. ${(r.product_name || '').slice(0, 70)} — Rp ${Math.round(Number(r.price) || 0).toLocaleString('id-ID')}, terjual ${(Number(r.total_sold) || 0).toLocaleString('id-ID')}`
+  ).join('\n');
+  const nameSample = rows.slice(0, 40).map((r, i) =>
+    `${i + 1}. ${(r.product_name || '').slice(0, 80)}`
+  ).join('\n');
+  const specStats = _gptBuildSpecStats(rows, question);
+  const pocketStats = _gptPocketStats(rows);
+  const n = rows.length;
+
+  return `Kamu adalah asisten riset produk LarisID (LARISgpt). Jawab dalam Bahasa Indonesia informal ("kamu").
+PENTING:
+- Angka penjualan/harga/rating HARUS dari data berikut. Jangan mengarang statistik pasar.
+- Untuk pertanyaan desain/spesifikasi (kantong/pocket, bahan, warna, model, ukuran, fitur): WAJIB sift dari SAMPLE NAMA PRODUK + TOP PENJUAL di bawah. Hitung pola yang paling umum — terutama di listing terlaris. Jangan bilang "aku nggak punya info" kalau ada nama produk di bawah.
+- Kalau STATISTIK SPESIFIKASI atau KANTONG ada, pakai angka itu dulu. Contoh: "Dari 40 listing sejenis, kebanyakan sebut 2 kantong; di top 10 terlaris yang menyebut jumlah, mayoritas 2–4 kantong."
+- Jangan arahkan ke "tanya toko" sebagai jawaban utama kalau data pasar sudah bisa menjawab. Boleh sebut konfirmasi ke toko hanya sebagai catatan sekunder.
+- Knowledge umum OK hanya sebagai pelengkap singkat, dan label jelas kalau bukan dari data.
+- Jangan bilang kamu "melihat" produk — kamu membaca data.
+- Jawaban singkat, langsung ke poin (2–5 kalimat). Hindari emoji berlebihan.
+
+DATA PRODUK YANG DILIHAT:
+- Nama: ${p.product_name || '—'}
+- Kategori: ${p.category || '—'}
+- Keyword: ${p.keyword || '—'}
+- Harga: ${p.price}
+- Total terjual: ${p.total_sold}
+- Sold/hari: ${p.sold_per_day}
+- Ulasan: ${p.reviews}, rating: ${p.rating}
+- Lokasi: ${p.location || '—'}
+- Toko: ${p.store_name || '—'}
+${niche ? `- Niche breakout_rate: ${niche.breakout_rate}%, new_items: ${niche.new_items}, breakouts: ${niche.breakouts}` : ''}
+
+DATA PASAR — keyword "${p.keyword || '—'}" (${n} listing kompetitor/sejenis di LarisID):
+${pocketStats}
+${specStats}
+${top10 ? `TOP 10 PENJUAL (urut terjual):\n${top10}` : 'Belum ada listing kompetitor.'}
+${nameSample ? `\nSAMPLE NAMA PRODUK (sift spesifikasi dari sini):\n${nameSample}` : ''}
+
+Kartu data di UI BUKAN output AI — jangan klaim begitu.`;
+}
+
+async function ensurePeerRowsForAi(product) {
+  if (_dd?.peers?.length) {
+    const same =
+      String(_dd.product?.item_id) === String(product.item_id)
+      && String(_dd.product?.shop_id) === String(product.shop_id);
+    if (same || (_dd.product?.keyword && _dd.product.keyword === product.keyword)) {
+      return _dd.peers;
+    }
+  }
+  const cached = activeChat()?.context?.peers;
+  if (cached?.length) return cached;
+  const kw = product.keyword;
+  if (!kw || !_supabase) return [];
+  try {
+    const { data } = await _supabase
+      .from('listings')
+      .select('product_name,store_name,price,total_sold,reviews,rating,location,item_id,shop_id,keyword')
+      .eq('keyword', kw)
+      .order('total_sold', { ascending: false })
+      .limit(80);
+    return data || [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function _gptAiMedian(arr) {
+  const s = (arr || []).filter(n => n > 0).sort((a, b) => a - b);
+  return s.length ? s[Math.floor(s.length / 2)] : 0;
+}
+
+const GPT_SPEC_GROUPS = [
+  { label: 'plastik/plastic', terms: ['plastik', 'plastic', 'tritan', 'pp ', 'pet '] },
+  { label: 'kaca/glass', terms: ['kaca', 'glass', 'borosilicate', 'tempered'] },
+  { label: 'stainless', terms: ['stainless', '304', '316'] },
+  { label: 'silikon/silicone', terms: ['silikon', 'silicone'] },
+  { label: 'kayu/bamboo', terms: ['kayu', 'bamboo', 'bambu'] },
+  { label: 'keramik', terms: ['keramik', 'ceramic', 'porcelain'] },
+  { label: 'LED', terms: ['led ', 'lumen', ' watt'] },
+  { label: 'rechargeable/USB', terms: ['recharge', 'usb', 'type-c', 'type c', 'cas '] },
+  { label: 'cargo', terms: ['cargo'] },
+  { label: 'training/jogger', terms: ['training', 'jogger', 'trackpant', 'track pant', 'celana olahraga'] },
+  { label: 'loose/gombrong', terms: ['loose', 'gombrong', 'oversized', 'baggy'] },
+  { label: 'slim/skinny', terms: ['slim', 'skinny', 'pensil'] },
+  { label: 'katun/cotton', terms: ['katun', 'cotton', 'combed'] },
+  { label: 'drifit/polyester', terms: ['drifit', 'dryfit', 'dri-fit', 'polyester', 'spandex'] },
+];
+
+function _gptBuildSpecStats(rows, question) {
+  if (!rows?.length) return '';
+  const total = rows.length;
+  const qLower = String(question || '').toLowerCase();
+  const groups = [];
+  for (const g of GPT_SPEC_GROUPS) {
+    const matched = rows.filter(r => g.terms.some(t => (r.product_name || '').toLowerCase().includes(t)));
+    if (matched.length < 2) continue;
+    const prices = matched.map(r => Number(r.price) || 0).filter(v => v > 0);
+    const solds = matched.map(r => Number(r.total_sold) || 0).filter(v => v > 0);
+    groups.push({
+      ...g,
+      matched,
+      pct: Math.round(matched.length / total * 100),
+      medPrice: _gptAiMedian(prices),
+      medSold: _gptAiMedian(solds),
+      qHit: g.terms.some(t => qLower.includes(t.trim())),
+    });
+  }
+  if (!groups.length) return '';
+  groups.sort((a, b) => {
+    if (a.qHit !== b.qHit) return a.qHit ? -1 : 1;
+    return b.matched.length - a.matched.length;
+  });
+  const lines = groups.slice(0, 8).map(g =>
+    `${g.label}: ${g.pct}% listing (${g.matched.length}/${total}), median harga Rp ${Math.round(g.medPrice).toLocaleString('id-ID')}, median terjual ${Math.round(g.medSold).toLocaleString('id-ID')}`
+  );
+  return 'STATISTIK SPESIFIKASI (dari nama produk):\n' + lines.join('\n');
+}
+
+/** Mine pocket counts from competitor titles (kantong / pocket / saku). */
+function _gptPocketStats(rows) {
+  if (!rows?.length) return '';
+  const byCount = new Map(); // n -> { listings, sold, topNames }
+  let mentioned = 0;
+  let cargoN = 0;
+  let softN = 0;
+  const top = rows.slice().sort((a, b) => (Number(b.total_sold) || 0) - (Number(a.total_sold) || 0));
+  for (const r of top) {
+    const name = String(r.product_name || '').toLowerCase();
+    const softHit = /kantong|pocket|saku|cargo/.test(name);
+    if (softHit) softN += 1;
+    if (/\bcargo\b/.test(name) && !/\bnon\s*cargo\b/.test(name)) cargoN += 1;
+    let n = null;
+    const m = name.match(/(\d+)\s*(?:kantong|pocket|saku)\b/)
+      || name.match(/\b(?:kantong|pocket|saku)\s*(\d+)/)
+      || name.match(/\b(\d+)\s*pkt\b/)
+      || name.match(/\b(dua|tiga|empat|lima|enam)\s*(?:kantong|pocket|saku)\b/);
+    if (m) {
+      const word = { dua: 2, tiga: 3, empat: 4, lima: 5, enam: 6 };
+      n = word[m[1]] || parseInt(m[1], 10);
+    }
+    if (n == null || !Number.isFinite(n) || n < 1 || n > 20) continue;
+    mentioned += 1;
+    const slot = byCount.get(n) || { listings: 0, sold: 0, topNames: [] };
+    slot.listings += 1;
+    slot.sold += Number(r.total_sold) || 0;
+    if (slot.topNames.length < 3) slot.topNames.push((r.product_name || '').slice(0, 55));
+    byCount.set(n, slot);
+  }
+  if (!mentioned && !softN) return '';
+  if (!mentioned) {
+    return [
+      `KANTONG/POCKET: ${softN}/${top.length} listing menyebut kantong/pocket/saku/cargo di nama, tapi jarang tulis jumlah angka.`,
+      cargoN ? `${cargoN} listing bertipe cargo (biasanya multi-kantong) — bandingkan top names cargo vs training/jogger untuk tipikal.` : '',
+      'Sift SAMPLE NAMA PRODUK + TOP 10: sebut model yang paling laris lalu estimasi tipikal berdasarkan model itu (tanpa mengarang angka penjualan).',
+    ].filter(Boolean).join('\n');
+  }
+  const ranked = [...byCount.entries()]
+    .map(([n, s]) => ({ n, ...s }))
+    .sort((a, b) => b.listings - a.listings || b.sold - a.sold);
+  const lines = ranked.map(r =>
+    `${r.n} kantong: ${r.listings} listing (total terjual ${r.sold.toLocaleString('id-ID')})${r.topNames[0] ? ` — contoh: "${r.topNames[0]}"` : ''}`
+  );
+  const mode = ranked[0];
+  const topMentioned = top.filter(r => {
+    const name = String(r.product_name || '').toLowerCase();
+    return /(\d+|dua|tiga|empat|lima|enam)\s*(?:kantong|pocket|saku)|(?:kantong|pocket|saku)\s*\d+/.test(name);
+  }).slice(0, 15);
+  const topModeMap = new Map();
+  for (const r of topMentioned) {
+    const name = String(r.product_name || '').toLowerCase();
+    const m = name.match(/(\d+)\s*(?:kantong|pocket|saku)/)
+      || name.match(/(?:kantong|pocket|saku)\s*(\d+)/)
+      || name.match(/\b(dua|tiga|empat|lima|enam)\s*(?:kantong|pocket|saku)\b/);
+    if (!m) continue;
+    const word = { dua: 2, tiga: 3, empat: 4, lima: 5, enam: 6 };
+    const n = word[m[1]] || parseInt(m[1], 10);
+    if (!n) continue;
+    topModeMap.set(n, (topModeMap.get(n) || 0) + 1);
+  }
+  const topMode = [...topModeMap.entries()].sort((a, b) => b[1] - a[1])[0];
+  return [
+    `KANTONG/POCKET (diekstrak dari nama ${mentioned} listing):`,
+    ...lines,
+    mode ? `Paling sering disebut di pasar: ${mode.n} kantong (${mode.listings}/${mentioned} yang menyebut jumlah).` : '',
+    topMode ? `Di listing terlaris yang menyebut jumlah: paling umum ${topMode[0]} kantong.` : '',
+    cargoN ? `${cargoN}/${top.length} listing bertipe cargo.` : '',
+  ].filter(Boolean).join('\n');
+}
+
 async function _mlsAIRaw(system, messages) {
   const session = _supabase ? (await _supabase.auth.getSession()).data?.session : null;
   if (!session) return 'Login untuk pakai fitur AI.';
@@ -3388,26 +3569,6 @@ async function _mlsAIRaw(system, messages) {
   if (!res.ok) return 'AI sedang sibuk. Coba lagi sebentar.';
   const d = await res.json().catch(() => ({}));
   return d?.content?.[0]?.text || d?.text || d?.message || 'Tidak ada jawaban.';
-}
-
-function buildProductSystemPrompt(p) {
-  const niche = p._niche;
-  return `Kamu adalah asisten riset produk LarisID (LARISgpt). Jawab dalam Bahasa Indonesia informal ("kamu").
-PENTING: Angka spesifik tentang produk/keyword HARUS dari data berikut. Jangan mengarang statistik. Knowledge umum OK untuk konteks (cara jual, packing), tapi label dengan jelas kalau bukan dari data kami. Jangan bilang kamu "melihat" produk — kamu membaca data.
-
-DATA PRODUK:
-- Nama: ${p.product_name || '—'}
-- Kategori: ${p.category || '—'}
-- Keyword: ${p.keyword || '—'}
-- Harga: ${p.price}
-- Total terjual: ${p.total_sold}
-- Sold/hari: ${p.sold_per_day}
-- Ulasan: ${p.reviews}, rating: ${p.rating}
-- Lokasi: ${p.location || '—'}
-- Toko: ${p.store_name || '—'}
-${niche ? `- Niche breakout_rate: ${niche.breakout_rate}%, new_items: ${niche.new_items}, breakouts: ${niche.breakouts}` : ''}
-
-Kartu data di UI BUKAN output AI — jangan klaim begitu.`;
 }
 
 async function handleComposerSubmit(text) {
@@ -3512,7 +3673,8 @@ async function handleComposerSubmit(text) {
 
   if (!(await _useAi('mls_chat'))) return;
   const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Menjawab dari data produk…</p>`);
-  const system = buildProductSystemPrompt(product);
+  const peers = await ensurePeerRowsForAi(product);
+  const system = buildProductSystemPrompt(product, text, peers);
   const reply = await _mlsAIRaw(system, [{ role: 'user', content: text }]);
   const html = `<p>${esc(reply).replace(/\n/g, '</p><p>')}</p>`;
   if (loading) await revealAssistant(loading, html);

@@ -1,0 +1,21 @@
+---
+description: Automatically commit and push after making changes
+alwaysApply: true
+---
+
+# Auto commit & push
+
+After finishing a set of code/doc changes in this repo, **commit and push to the current branch without waiting to be asked**.
+
+Follow the existing git safety protocol:
+
+- Never update git config
+- Never force-push to main/master
+- Never use `--amend` unless the usual amend conditions are met
+- Never skip hooks
+- Do not commit secrets (`.env`, credentials, tokens)
+- Prefer excluding unrelated untracked folders (e.g. `google-ads-assets/` unless the user asked for them)
+- Use a concise commit message focused on why
+- Push with `git push` (set upstream if needed)
+
+If there is nothing to commit, skip. If push fails, report the error and stop.
