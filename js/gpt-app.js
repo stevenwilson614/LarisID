@@ -2982,11 +2982,18 @@ function ddSummaryText(stats, niche, scoreInfo) {
   return bits.join(' ');
 }
 
-// Weekly market series from real scrape snapshots: per item, the sold delta
-// between consecutive snapshots is spread as a daily rate onto the Monday-
-// anchored weeks it overlaps. No synthetic curves — thin data shows a note.
+// Weekly market series from real scrape snapshots: per item, only consecutive
+// positive sold deltas are used — the first snapshot is a baseline (never
+// lifetime total_sold as "sales"). Later intervals spread their delta as a
+// daily rate onto Monday-anchored weeks overlapping [t0, t1].
 //
-// April/May spikes came from naive deltas on Shopee *display buckets*
+// The *first* measured interval is attributed entirely to the ending scrape's
+// week (weekOf(t1)), not spread back onto the baseline week. Otherwise the
+// chart's first point lands on the initial panel week (e.g. 13 Apr) and looks
+// like cumulative stock was period sales. Site A's analisa pasar skips that
+// warmup interval entirely; we keep the delta but credit the observation week.
+//
+// April/May spikes also came from naive deltas on Shopee *display buckets*
 // (10rb+, 100rb+, 1jt+, …) and scrape glitches — e.g. 200k → 7jt in 9 days.
 // Those look like real sales but are UI tier jumps. We mirror site A's
 // correction: prefer review-based estimates when the raw jump is absurd.
@@ -3071,18 +3078,24 @@ function ddWeeklySeries(history) {
       if (d <= 0) continue;
       maxT = Math.max(maxT, t1);
       const price = Number(clean[i].price) || 0;
+      const addToWeek = (ts, u) => {
+        if (u <= 0) return;
+        const w = weeks.get(ts) || { units: 0, omset: 0, items: new Set() };
+        w.units += u;
+        w.omset += u * price;
+        w.items.add(String(clean[i].item_id));
+        weeks.set(ts, w);
+      };
+      // First interval: credit ending scrape week only (baseline week is observation-only).
+      if (i === 1) {
+        addToWeek(weekOf(t1), d);
+        continue;
+      }
       const rate = d / (t1 - t0);
       let cur = weekOf(t0);
       while (cur < t1) {
         const overlap = Math.min(t1, cur + weekMs) - Math.max(t0, cur);
-        if (overlap > 0) {
-          const w = weeks.get(cur) || { units: 0, omset: 0, items: new Set() };
-          const u = rate * overlap;
-          w.units += u;
-          w.omset += u * price;
-          w.items.add(String(clean[i].item_id));
-          weeks.set(cur, w);
-        }
+        if (overlap > 0) addToWeek(cur, rate * overlap);
         cur += weekMs;
       }
     }
@@ -3090,7 +3103,9 @@ function ddWeeklySeries(history) {
   let out = [...weeks.entries()].sort((a, b) => a[0] - b[0])
     .map(([ts, w]) => ({ ts, units: Math.round(w.units), omset: Math.round(w.omset), items: w.items.size }));
   // Trailing week with <3.5 days of observation undercounts — drop it.
-  if (out.length && maxT - out[out.length - 1].ts < 3.5 * 864e5) out = out.slice(0, -1);
+  // Keep a lone week (e.g. first-interval credited to ending scrape) so 2-scrape
+  // series are not wiped when the second scrape falls early in its Monday week.
+  if (out.length > 1 && maxT - out[out.length - 1].ts < 3.5 * 864e5) out = out.slice(0, -1);
   return out;
 }
 
@@ -3451,7 +3466,7 @@ async function openDeepDive(product) {
                <span class="row"><span class="swatch" style="background:#16A34A"></span>Forecast</span>
              </div>`
           : `<p class="dd-sub">Belum cukup riwayat scrape untuk tren mingguan keyword ini — butuh beberapa gelombang panel. Bagian lain tetap dari data asli.</p>`}
-        <p class="ddr-caption">Estimasi mingguan pasar keyword “${esc(kw || '—')}” dari riwayat scrape ${history.length ? `(${new Set(history.map(r => String(r.item_id))).size} listing)` : ''} · scrape terakhir ${esc(fmtAnchorDate(lastScrape))}.</p>
+        <p class="ddr-caption">Estimasi mingguan pasar keyword “${esc(kw || '—')}” dari selisih scrape berurutan (snapshot pertama = baseline, bukan omzet) ${history.length ? `· ${new Set(history.map(r => String(r.item_id))).size} listing` : ''} · scrape terakhir ${esc(fmtAnchorDate(lastScrape))}.</p>
       </div>
       <div class="ddr-card" data-dd-sec="harga">
         <h3>Rentang Harga Optimal</h3>
