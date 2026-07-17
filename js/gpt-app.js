@@ -324,6 +324,8 @@ const state = {
   pendingDeepdive: null, // product clicked behind the login gate; opened after sign-in
   pendingCompare: null, // { a, b } clicked behind login gate; opened after sign-in
   comparePick: null, // { source } — directory is in “pick a product to compare” mode
+  // Survives recommendation wipes so chat product cards can reopen Deep Dive.
+  productByKey: Object.create(null),
 
   dirPage: 1,
   dirCat: null,
@@ -1294,6 +1296,7 @@ function renderChatThread() {
   if (!thread) return;
   thread.innerHTML = '';
   const chat = activeChat();
+  seedProductsFromChat(chat);
   if (chat?.messages?.length) {
     for (const m of chat.messages) {
       if (m.role === 'user') appendBubble('user', `<p>${esc(m.content?.text || m.content || '')}</p>`, { skipScroll: true });
@@ -1981,6 +1984,7 @@ async function handleTrendingIntent(chat) {
   if (!rows.length) {
     const nd = mergePool([], await fetchNaikDaunGlobal(60)).slice(0, 3);
     state.recommendations = nd;
+    rememberProducts(nd);
     html = nd.length
       ? `<p>Data tren mingguan belum tersedia — ini produk yang lagi naik daun dari data LarisID:</p><div class="card-grid">${nd.map((p, i) => productCardHtml(p, i)).join('')}</div>`
       : `<p>Data tren belum tersedia. Coba lagi nanti.</p>`;
@@ -1989,7 +1993,11 @@ async function handleTrendingIntent(chat) {
     html = `<p>Berikut produk yang sedang trending di Shopee berdasarkan peningkatan penjualan — dari data scrape LarisID, bukan tebakan AI.</p>${trendingCardHtml(view)}`;
   }
   await revealAssistant(loading, html);
-  pushMessage(chat, 'assistant', { text: 'Produk trending', kind: 'trending' }, html);
+  pushMessage(chat, 'assistant', {
+    text: 'Produk trending',
+    kind: 'trending',
+    products: (state.recommendations || []).map(productSnapshot).filter(Boolean),
+  }, html);
   bindProductCards();
   bindTrendingCards();
   updateThreadWide();
@@ -2023,11 +2031,12 @@ async function handleModalIntent(chat, text) {
   if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
   const top = mergePool([], rows).slice(0, 3);
   state.recommendations = top;
+  rememberProducts(top);
   const html = top.length
     ? `<p>Produk laris dengan harga di bawah <strong>${fmtRp(budget)}</strong> — dari data Shopee LarisID:</p><div class="card-grid">${top.map((p, i) => productCardHtml(p, i)).join('')}</div>`
     : `<p>Belum ketemu produk laris di bawah ${fmtRp(budget)}. Coba angka lain.</p>`;
   await revealAssistant(loading, html);
-  pushMessage(chat, 'assistant', { text: 'Hasil modal', budget }, html);
+  pushMessage(chat, 'assistant', { text: 'Hasil modal', budget, products: top.map(productSnapshot).filter(Boolean) }, html);
   bindProductCards();
   scrollChatToBottom();
 }
@@ -2400,6 +2409,7 @@ async function handleBandingkanIntent(chat, text) {
   };
   const sa = summarize(a), sb = summarize(b);
   state.recommendations = mergePool([], [...(sa?.top || []), ...(sb?.top || [])]);
+  rememberProducts(state.recommendations);
   const side = (label, s) => s
     ? `<div class="ans-panel" style="margin-top:12px"><h4>${esc(label)}</h4>
        <p class="dd-sub" style="margin:0 0 10px">${s.n} listing terpantau · median harga ${fmtRp(s.median)} · total ${fmtSold(s.sold)} terjual</p>
@@ -2412,7 +2422,12 @@ async function handleBandingkanIntent(chat, text) {
   }
   const html = `<p>Perbandingan “<strong>${esc(parts[0])}</strong>” vs “<strong>${esc(parts[1])}</strong>” dari data Shopee LarisID:</p>${side(parts[0], sa)}${side(parts[1], sb)}${verdict}`;
   await revealAssistant(loading, html);
-  pushMessage(chat, 'assistant', { text: 'Bandingkan', a: parts[0], b: parts[1] }, html);
+  pushMessage(chat, 'assistant', {
+    text: 'Bandingkan',
+    a: parts[0],
+    b: parts[1],
+    products: state.recommendations.map(productSnapshot).filter(Boolean),
+  }, html);
   bindProductCards();
   scrollChatToBottom();
 }
@@ -2585,13 +2600,107 @@ function estOmsetBulan(p) {
   return 0;
 }
 
+function productSnapshot(p) {
+  if (!p || p.item_id == null || p.shop_id == null) return null;
+  return {
+    item_id: p.item_id,
+    shop_id: p.shop_id,
+    product_name: p.product_name || null,
+    store_name: p.store_name || null,
+    price: p.price,
+    total_sold: p.total_sold,
+    reviews: p.reviews,
+    rating: p.rating,
+    location: p.location || null,
+    image_url: p.image_url || null,
+    keyword: p.keyword || null,
+    category: p.category || null,
+    url: p.url || null,
+    sold_per_day: p.sold_per_day,
+    age_days: p.age_days,
+    listing_date: p.listing_date || null,
+  };
+}
+
+function rememberProducts(list) {
+  for (const p of list || []) {
+    const snap = productSnapshot(p);
+    if (!snap) continue;
+    state.productByKey[prodKey(snap)] = { ...(state.productByKey[prodKey(snap)] || {}), ...snap };
+  }
+}
+
+function seedProductsFromChat(chat) {
+  if (!chat) return;
+  if (chat.context?.product) rememberProducts([chat.context.product]);
+  if (Array.isArray(chat.context?.peers)) rememberProducts(chat.context.peers);
+  for (const m of chat.messages || []) {
+    if (Array.isArray(m.content?.products)) rememberProducts(m.content.products);
+  }
+}
+
+function findProduct(item_id, shop_id) {
+  const key = `${item_id}|${shop_id}`;
+  const match = x => String(x?.item_id) === String(item_id) && String(x?.shop_id) === String(shop_id);
+  const chat = activeChat();
+  if (chat?.context?.product && match(chat.context.product)) return chat.context.product;
+  const cached = state.productByKey[key];
+  if (cached) return cached;
+  const fromRec = state.recommendations.find(match);
+  if (fromRec) return fromRec;
+  const fromDir = state.dirRows.find(match);
+  if (fromDir) return fromDir;
+  if (Array.isArray(chat?.context?.peers)) {
+    const peer = chat.context.peers.find(match);
+    if (peer) return peer;
+  }
+  for (const m of chat?.messages || []) {
+    const hit = (m.content?.products || []).find(match);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+async function resolveProduct(item_id, shop_id, btn) {
+  const attr = btn?.getAttribute?.('data-product');
+  if (attr) {
+    try {
+      const decoded = JSON.parse(decodeURIComponent(attr));
+      if (decoded?.item_id != null) {
+        rememberProducts([decoded]);
+        return asListingProduct(decoded);
+      }
+    } catch (_) {}
+  }
+  const found = findProduct(item_id, shop_id);
+  if (found) return asListingProduct(found);
+  if (_supabase && item_id != null && shop_id != null) {
+    try {
+      const { data } = await _supabase.from('listings_deduped')
+        .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date')
+        .eq('item_id', item_id)
+        .eq('shop_id', shop_id)
+        .maybeSingle();
+      if (data) {
+        const prod = asListingProduct(data);
+        rememberProducts([prod]);
+        return prod;
+      }
+    } catch (_) {}
+  }
+  return null;
+}
+
 function productCardHtml(p, i) {
+  rememberProducts([p]);
   const img = p.image_url || '';
   const name = p.product_name || p.keyword || 'Produk';
   const key = `${p.item_id}|${p.shop_id}`;
+  const snap = productSnapshot(p);
+  const encoded = snap ? encodeURIComponent(JSON.stringify(snap)) : '';
   const omset = estOmsetBulan(p);
   const loc = p.location ? `<div class="prod-card-loc">${esc(p.location)}</div>` : '';
-  return `<button type="button" class="prod-card" data-prod="${esc(key)}" style="animation-delay:${i * 0.06}s">
+  return `<button type="button" class="prod-card" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} style="animation-delay:${i * 0.06}s">
     ${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : '<div class="prod-card-ph"></div>'}
     <div class="prod-card-body">
       <div class="prod-card-name">${esc(name)}</div>
@@ -2616,24 +2725,30 @@ function prodKey(p) {
 
 function bindProductCards(root) {
   (root || document).querySelectorAll('[data-prod]').forEach(btn => {
+    if (btn.dataset.boundProd) return;
+    btn.dataset.boundProd = '1';
     btn.addEventListener('click', () => {
       const key = btn.getAttribute('data-prod');
       const [item_id, shop_id] = key.split('|');
-      const pool = state.recommendations.concat(state.dirRows);
-      const p = pool.find(x => String(x.item_id) === String(item_id) && String(x.shop_id) === String(shop_id));
-      if (!p) return;
-      if (state.comparePick?.source) {
-        const src = state.comparePick.source;
-        if (prodKey(src) === prodKey(p)) {
-          showToast('Pilih produk lain — bukan yang sedang dibuka');
+      void (async () => {
+        const p = await resolveProduct(item_id, shop_id, btn);
+        if (!p) {
+          showToast('Produk tidak ditemukan — coba cari lagi');
           return;
         }
-        state.comparePick = null;
-        updateDirCompareBanner();
-        void openProductCompare(src, p);
-        return;
-      }
-      void openDeepDive(p);
+        if (state.comparePick?.source) {
+          const src = state.comparePick.source;
+          if (prodKey(src) === prodKey(p)) {
+            showToast('Pilih produk lain — bukan yang sedang dibuka');
+            return;
+          }
+          state.comparePick = null;
+          updateDirCompareBanner();
+          void openProductCompare(src, p);
+          return;
+        }
+        void openDeepDive(p);
+      })();
     });
   });
   (root || document).querySelectorAll('#btn-more-products').forEach(btn => {
@@ -2723,6 +2838,7 @@ async function startRecommendationChat(fromOnboarding) {
 
   const recs = await pickRecommendations();
   state.recommendations = recs;
+  rememberProducts(recs);
 
   const cards = recs.length
     ? `<div class="card-grid">${recs.map((p, i) => productCardHtml(p, i)).join('')}</div>
@@ -2733,7 +2849,7 @@ async function startRecommendationChat(fromOnboarding) {
   const thread2 = $('chat-thread');
   if (thread2) thread2.innerHTML = '';
   const msg = await appendAssistantStream(html);
-  pushMessage(chat, 'assistant', { text: 'Rekomendasi 3 produk', products: recs.map(p => ({ item_id: p.item_id, shop_id: p.shop_id, keyword: p.keyword })) }, html);
+  pushMessage(chat, 'assistant', { text: 'Rekomendasi 3 produk', products: recs.map(productSnapshot).filter(Boolean) }, html);
   bindProductCards();
 
   void logUserEvent('discover_view', { ui: 'gpt', count: recs.length });
@@ -2749,6 +2865,7 @@ async function openChat(id) {
   renderChatList();
   setView('chat');
   const chat = activeChat();
+  seedProductsFromChat(chat);
   if (chat && currentUser && chat.id && (!chat.messages || !chat.messages.length) && _supabase) {
     try {
       const { data } = await _supabase.from('gpt_messages')
@@ -2760,11 +2877,17 @@ async function openChat(id) {
         content: m.content,
         html: m.content?.html || null,
       }));
+      seedProductsFromChat(chat);
     } catch (_) {}
   }
   renderChatThread();
-  if (chat?.context?.product) {
-    // stay in chat; deepdive opened separately
+  // Product / deep-dive chats keep analysis reachable — reopen Deep Dive
+  // from the persisted context so it never "disappears" from the chat.
+  // Login gate stays inside openDeepDive; skip auto-restore when logged out
+  // so opening history doesn't spam the auth modal.
+  if (chat?.context?.product && currentUser) {
+    rememberProducts([chat.context.product]);
+    void openDeepDive(chat.context.product);
   }
 }
 
@@ -3164,6 +3287,7 @@ async function openDeepDive(product) {
     return;
   }
   if (state.pendingDeepdive) { state.pendingDeepdive = null; saveLocalState(); }
+  rememberProducts([product]);
   state.deepdiveProduct = product;
   setView('deepdive');
   const root = $('deepdive-root');
@@ -3858,6 +3982,7 @@ async function handleComposerSubmit(text) {
     } else {
       state.recommendations = hits;
     }
+    rememberProducts(state.recommendations);
     if (currentUser && _supabase && !chat.id) {
       const { data } = await _supabase.rpc('gpt_new_chat', { p_title: text.slice(0, 60), p_context: { kind: 'search', q: text } });
       if (data) noteGptUsage(data);
@@ -3881,7 +4006,11 @@ async function handleComposerSubmit(text) {
       : `<p>Belum ketemu. Coba kata kunci lain atau buka Produk.</p>`;
     if (loading) await revealAssistant(loading, html);
     else await appendAssistantStream(html);
-    pushMessage(chat, 'assistant', { text: 'Hasil pencarian', q: text }, html);
+    pushMessage(chat, 'assistant', {
+      text: 'Hasil pencarian',
+      q: text,
+      products: state.recommendations.map(productSnapshot).filter(Boolean),
+    }, html);
     bindProductCards();
     void logUserEvent('discover_view', { ui: 'gpt', q: text });
     return;
@@ -4208,6 +4337,7 @@ async function renderDirectory() {
   }
   rows = sortDirRows(rows, state.dirSort || 'terlaris');
   state.dirRows = rows;
+  rememberProducts(rows);
 
   if (state.dirPage > 1 && !currentUser) {
     openAuthModal('signup', 'gpt_gate_directory');
