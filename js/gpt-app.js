@@ -1573,6 +1573,72 @@ function renderHome() {
     void logUserEvent('gpt_landing_view', { ui: 'gpt' });
     clarityEvt('gpt_landing_view', {});
   }
+
+  void renderDailyRecs();
+}
+
+// ── Daily recommendations: 3 stable picks per WIB day on the landing ─────
+const DAILY_RECS_KEY = '_lid_gpt_daily_recs_v1';
+
+function wibToday() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+}
+
+async function renderDailyRecs() {
+  const box = $('daily-recs');
+  const rowsEl = $('daily-recs-rows');
+  if (!box || !rowsEl) return;
+  if (renderDailyRecs._busy) return;
+  renderDailyRecs._busy = true;
+  try {
+    const today = wibToday();
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem(DAILY_RECS_KEY) || 'null'); } catch (_) {}
+    let items = (cached && cached.date === today && Array.isArray(cached.items) && cached.items.length)
+      ? cached.items : null;
+    if (!items) {
+      if (!_supabase) return; // data layer not up yet; boot calls again
+      let recs = [];
+      try { recs = await pickRecommendations(); } catch (_) {}
+      items = (recs || []).slice(0, 3).map(productSnapshot).filter(Boolean);
+      if (!items.length) { box.hidden = true; return; }
+      try { localStorage.setItem(DAILY_RECS_KEY, JSON.stringify({ date: today, items })); } catch (_) {}
+      void logUserEvent('gpt_daily_recs_view', { ui: 'gpt', count: items.length });
+      clarityEvt('gpt_daily_recs_view', {});
+    }
+    rememberProducts(items);
+    const label = $('daily-recs-label');
+    if (label) label.innerHTML = `${ico('trendUp', 14)} Rekomendasi hari ini — layak kamu riset`;
+    rowsEl.innerHTML = items.map((p, i) => {
+      const img = p.image_url
+        ? `<img src="${esc(p.image_url)}" alt="" loading="lazy">`
+        : '<span class="daily-rec-ph"></span>';
+      const bits = [];
+      const price = Number(p.price);
+      const sold = Number(p.total_sold);
+      if (Number.isFinite(price) && price > 0) bits.push(fmtRp(price));
+      if (Number.isFinite(sold) && sold > 0) bits.push(`terjual ${fmtSold(sold)}`);
+      return `<button type="button" class="daily-rec-row" data-daily-rec="${i}">
+        ${img}
+        <div class="daily-rec-main">
+          <div class="daily-rec-name">${esc(p.product_name || p.keyword || 'Produk')}</div>
+          <div class="daily-rec-meta">${esc(bits.join(' · '))}</div>
+        </div>
+      </button>`;
+    }).join('');
+    rowsEl.querySelectorAll('[data-daily-rec]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const p = items[Number(btn.getAttribute('data-daily-rec'))];
+        if (!p) return;
+        void logUserEvent('gpt_daily_recs_click', { ui: 'gpt', item_id: p.item_id });
+        clarityEvt('gpt_daily_recs_click', {});
+        void openDeepDive(p);
+      });
+    });
+    box.hidden = false;
+  } finally {
+    renderDailyRecs._busy = false;
+  }
 }
 
 function renderSidebarLocCard() {
