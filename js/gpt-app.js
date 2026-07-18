@@ -672,6 +672,7 @@ function setView(name) {
       (id === 'btn-admin' && name === 'admin'));
   });
   closeSidebar();
+  updateSideRailVisibility();
 }
 
 function openSidebar() {
@@ -1714,6 +1715,20 @@ function resolveSideProduct() {
   return null;
 }
 
+// The rail/panel exist only while a product is actually on screen (deep dive
+// or a product chat) — not merely remembered from an earlier view.
+function sideProductActive() {
+  if (state.view === 'deepdive') return !!(state.deepdiveProduct || _dd?.product);
+  if (state.view === 'chat') return !!activeChat()?.context?.product;
+  return false;
+}
+
+function updateSideRailVisibility() {
+  const active = sideProductActive();
+  document.body.classList.toggle('has-side-product', active);
+  if (!active && document.body.classList.contains('calc-open')) closeCalcPanel();
+}
+
 function sideProductKey(product) {
   if (!product) return null;
   const iid = product.item_id;
@@ -1894,6 +1909,12 @@ function openSidePanel(mode, opts = {}) {
   document.body.classList.add('calc-open');
   panel.setAttribute('aria-hidden', 'false');
   setSideModeUi(next);
+  // Mobile sheet: explicit opens always expand; boot restore honors last state.
+  if (opts.via === 'restore' && window.innerWidth <= 860 && loadSidePrefs().collapsed) {
+    panel.classList.add('sheet-collapsed');
+  } else {
+    panel.classList.remove('sheet-collapsed');
+  }
 
   if (next === 'kalkulator') fillCalcContent(opts);
   else if (next === 'serupa') void fillSerupaContent(opts);
@@ -1937,6 +1958,31 @@ function wireCalcPanel() {
   $('komp-rail')?.addEventListener('click', () => openKompPanel({ via: 'rail' }));
   $('serupa-rail')?.addEventListener('click', () => openSerupaPanel({ via: 'rail' }));
   $('calc-close')?.addEventListener('click', closeCalcPanel);
+
+  // Mobile bottom-sheet grab: tap toggles collapse, swipe down collapses then
+  // closes, swipe up expands.
+  const grab = $('sheet-grab');
+  if (grab) {
+    const isSheet = () => window.innerWidth <= 860;
+    const setCollapsed = (on) => {
+      $('calc-panel')?.classList.toggle('sheet-collapsed', on);
+      saveSidePrefs({ collapsed: on });
+    };
+    grab.addEventListener('click', () => {
+      if (!isSheet()) return;
+      setCollapsed(!$('calc-panel')?.classList.contains('sheet-collapsed'));
+    });
+    let touchY = null;
+    grab.addEventListener('touchstart', (e) => { touchY = e.touches[0]?.clientY ?? null; }, { passive: true });
+    grab.addEventListener('touchend', (e) => {
+      if (touchY == null || !isSheet()) { touchY = null; return; }
+      const dy = (e.changedTouches[0]?.clientY ?? touchY) - touchY;
+      touchY = null;
+      const collapsed = $('calc-panel')?.classList.contains('sheet-collapsed');
+      if (dy > 40) collapsed ? closeCalcPanel() : setCollapsed(true);
+      else if (dy < -40) setCollapsed(false);
+    }, { passive: true });
+  }
   document.querySelectorAll('.side-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       const mode = tab.getAttribute('data-side-mode');
@@ -1988,7 +2034,7 @@ function wireCalcPanel() {
     }
   });
 
-  if (prefs.open) openSidePanel(_sideMode, { via: 'restore' });
+  if (prefs.open && sideProductActive()) openSidePanel(_sideMode, { via: 'restore' });
 }
 
 // ── Recommendations (city + category first) ──────────────────────────────

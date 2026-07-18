@@ -1452,14 +1452,16 @@ body.thread-wide .composer-chips { max-width: 1080px; }
 /* ══ Side panel — Cursor-style resizable right window (Kalkulator | Kompetitor) ══ */
 :root { --calc-w: 420px; }
 
-/* Collapsed rail: stacked Kalkulator + Kompetitor on the right edge */
+/* Collapsed rail: stacked Kalkulator + Kompetitor on the right edge.
+   Only rendered while a product is in context (body.has-side-product). */
 .side-rail {
   position: fixed; right: 0; top: 50%;
   transform: translateY(-50%);
   z-index: 44;
-  display: flex; flex-direction: column; gap: 6px;
+  display: none; flex-direction: column; gap: 6px;
   transition: transform .24s var(--ease), opacity .2s;
 }
+body.has-side-product .side-rail { display: flex; }
 body.calc-open .side-rail {
   opacity: 0; pointer-events: none; transform: translateY(-50%) translateX(110%);
 }
@@ -1501,6 +1503,14 @@ body.calc-open .calc-panel { display: flex; animation: calcIn .24s var(--ease); 
 }
 .calc-resize:hover::before,
 body.calc-resizing .calc-resize::before { background: var(--accent); }
+.sheet-grab {
+  display: none; align-items: center; justify-content: center;
+  width: 100%; padding: 9px 0 5px; flex-shrink: 0;
+  background: transparent; border: none; cursor: grab;
+}
+.sheet-grab span {
+  width: 42px; height: 5px; border-radius: 999px; background: var(--line);
+}
 .calc-head {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; padding: 12px 12px 10px; border-bottom: 1px solid var(--line);
@@ -1573,15 +1583,27 @@ body.calc-resizing .calc-resize::before { background: var(--accent); }
 body.calc-resizing { cursor: col-resize; user-select: none; }
 
 @media (max-width: 860px) {
+  /* Bottom sheet instead of full-screen overlay */
   .calc-panel {
-    position: fixed; inset: 0; left: 0;
+    position: fixed; left: 0; right: 0; bottom: 0; top: auto;
     width: 100vw !important; max-width: none; min-width: 0; flex: none;
+    height: 62dvh;
     z-index: 60;
+    border-left: none; border-top: 1px solid var(--line);
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -12px 40px rgba(0,0,0,.16);
+    transition: height .22s var(--ease);
   }
+  body.calc-open .calc-panel { animation: sheetIn .22s var(--ease); }
+  .sheet-grab { display: flex; }
+  .calc-panel.sheet-collapsed { height: 96px; }
+  .calc-panel.sheet-collapsed .calc-body,
+  .calc-panel.sheet-collapsed .calc-context { display: none !important; }
   .calc-resize { display: none; }
   .side-rail { top: auto; bottom: 96px; transform: none; }
   body.calc-open .side-rail { transform: translateX(110%); }
 }
+@keyframes sheetIn { from { transform: translateY(30%); opacity: .6; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   body.calc-open .calc-panel { animation: none; }
   .side-rail { transition: none; }
@@ -1808,6 +1830,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 
   <aside class="calc-panel" id="calc-panel" aria-hidden="true" aria-label="Panel samping">
     <div class="calc-resize" id="calc-resize" role="separator" aria-orientation="vertical" title="Geser untuk ubah lebar"></div>
+    <button type="button" class="sheet-grab" id="sheet-grab" aria-label="Kecilkan atau besarkan panel"><span></span></button>
     <div class="calc-head">
       <div class="calc-head-txt">
         <div class="side-tabs" role="tablist" aria-label="Mode panel">
