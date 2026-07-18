@@ -2966,6 +2966,50 @@ function _searchTerms(text) {
     .filter(w => w.length >= 3 && !SEARCH_STOPWORDS.has(w));
 }
 
+// ── Topic-change routing (leave a product chat when the user changes subject) ──
+function cityMentionedIn(lower) {
+  for (const c of Object.keys(CITY_LOCATIONS)) {
+    const re = new RegExp(`\\b(di|dari|kota|daerah|sekitar)\\s+(kota\\s+)?${c.toLowerCase()}\\b`);
+    if (re.test(lower)) return c;
+  }
+  return null;
+}
+
+// Inside a product chat: detect asks that are really about the MARKET, not the
+// open product — a city product-list ask or a generic "what should I sell".
+function detectTopicChange(lower) {
+  const listWords = /(produk|jualan|barang)\s+apa|apa yang (bagus|laris|laku|cocok)(\s+(di)?jual)?|rekomendasi (produk|jualan)|cari (produk|barang)|(produk|jualan|barang)\s+(yang\s+)?(bagus|laris|laku|lagi naik|naik daun|trending)/;
+  const city = cityMentionedIn(lower);
+  if (city && listWords.test(lower)) return { kind: 'city_list', city };
+  if (!city && /^(produk|jualan|barang)\s+apa\b|rekomendasi (produk|jualan)|(produk|jualan)\s+(yang\s+)?lagi\s+(naik daun|trending|rame|ramai)/.test(lower)) {
+    return { kind: 'list' };
+  }
+  return null;
+}
+
+// "gimana dibanding kalau aku jual tas ransel" → "tas ransel"
+function extractCompareTerm(lower) {
+  const m = lower.match(/(?:dibanding(?:kan)?|bandingkan(?:\s+(?:dengan|sama|dgn))?|\bvs\.?)\s+(.{3,60})$/);
+  if (!m) return '';
+  let t = m[1];
+  t = t.replace(/\b(kalau|jika|misal(nya)?|seandainya|aku|saya|gua|gue|mau|pengen|ingin|jual(an)?|berjualan|produk|barang|sebuah|sama|dengan|dgn|yang|itu|ini|gimana|bagaimana|lebih|bagus|untung)\b/g, ' ');
+  t = t.replace(/[?!.,]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return t.length >= 3 ? t : '';
+}
+
+async function openDirectoryForCity(city) {
+  state.comparePick = null;
+  updateDirCompareBanner();
+  state.dirCity = city || '';
+  state.dirPage = 1;
+  state._dirDefaultsApplied = true; // routed city wins over onboarding defaults
+  void logUserEvent('dir_open', { ui: 'gpt', via: 'topic_change', city });
+  clarityEvt('dir_open', { via: 'topic_change' });
+  await openDirectory();
+  const citySel = $('dir-city');
+  if (citySel) citySel.value = state.dirCity || '';
+}
+
 function parseCityFromQuery(text) {
   const names = [...new Set([...NU_ONB_LOCATIONS, ...Object.keys(CITY_LOCATIONS)])];
   for (const name of names) {
@@ -4557,12 +4601,48 @@ async function handleComposerSubmit(text) {
   const productCtx = state.deepdiveProduct || activeChat()?.context?.product || null;
   const inProductCtx = state.view === 'deepdive' || !!activeChat()?.context?.product || !!activeChat()?.context?.keyword;
 
-  // Product-context “bandingkan …” → pick another listing (directory), unless
-  // the user typed an explicit “A vs B” keyword compare.
+  // Product-context “bandingkan …”: if the message NAMES the other product
+  // (“dibanding kalau jual tas ransel”), find it and open the compare
+  // directly; otherwise fall back to the manual directory pick — unless the
+  // user typed an explicit “A vs B” keyword compare.
   if (productCtx && /bandingkan|dibanding/.test(lower)) {
+    const term = extractCompareTerm(lower);
+    if (term) {
+      const hits = await searchListings(term, [], 10);
+      const other = hits && hits[0] ? asListingProduct(hits[0]) : null;
+      if (other) {
+        void logUserEvent('gpt_intent', { ui: 'gpt', intent: 'auto_compare', term });
+        clarityEvt('gpt_intent', { intent: 'auto_compare' });
+        await openProductCompare(productCtx, other);
+        return;
+      }
+    }
     const explicitVs = /\bvs\.?\b/.test(lower) && !/produk lain|yang mirip/.test(lower);
     if (!explicitVs) {
       await startComparePick(productCtx);
+      return;
+    }
+  }
+
+  // Topic change inside a product chat: market-level asks leave the chat.
+  // A city list ask opens the Produk directory filtered to that city; a
+  // generic “what should I sell” re-enters as a fresh, context-free message.
+  if (inProductCtx) {
+    const route = detectTopicChange(lower);
+    if (route) {
+      void logUserEvent('gpt_intent', { ui: 'gpt', intent: 'topic_change', kind: route.kind, city: route.city || '' });
+      clarityEvt('gpt_intent', { intent: 'topic_change' });
+      state.activeChatId = null;
+      state.deepdiveProduct = null;
+      saveLocalState();
+      renderChatList();
+      if (route.kind === 'city_list') {
+        await openDirectoryForCity(route.city);
+        showToast(`Produk dari seller sekitar ${route.city}`);
+      } else {
+        setView('chat');
+        await handleComposerSubmit(text);
+      }
       return;
     }
   }
