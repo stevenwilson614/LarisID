@@ -406,7 +406,12 @@ const state = {
     freeText: '', // "produk kayu" — biases recommendations
     promptedPostSignin: false, // one-time post-sign-in onboarding offer shown
     completedAnon: false,      // finished onboarding while logged out (needs retro replay)
+    learnedCategories: [],     // derived from browsing behavior (see affinity)
+    dismissedLearned: [],      // learned categories the user removed — never re-add
   },
+  // Behavioral affinity: { [category]: { s: seconds, n: opens, t: lastTs } }.
+  // 14-day rolling window; feeds learnedCategories.
+  affinity: Object.create(null),
   chats: [], // { id, title, context, messages[], localId? }
   activeChatId: null,
   recommendations: [],
@@ -438,6 +443,9 @@ function loadLocalState() {
     if (raw.activeChatId) state.activeChatId = raw.activeChatId;
     if (raw.pendingDeepdive) state.pendingDeepdive = raw.pendingDeepdive;
     if (raw.pendingCompare) state.pendingCompare = raw.pendingCompare;
+    if (raw.affinity && typeof raw.affinity === 'object') state.affinity = raw.affinity;
+    if (!Array.isArray(state.onboarding.learnedCategories)) state.onboarding.learnedCategories = [];
+    if (!Array.isArray(state.onboarding.dismissedLearned)) state.onboarding.dismissedLearned = [];
   } catch (_) {}
 }
 function saveLocalState() {
@@ -448,9 +456,78 @@ function saveLocalState() {
       activeChatId: state.activeChatId,
       pendingDeepdive: state.pendingDeepdive || null,
       pendingCompare: state.pendingCompare || null,
+      affinity: state.affinity || {},
       ts: Date.now(),
     }));
   } catch (_) {}
+}
+
+// ── Behavioral preference learning ───────────────────────────────────────
+// Time spent + opens per category over a 14-day window. Categories the user
+// keeps exploring (but did not pick in onboarding) become "learned interests":
+// they get a smaller recommendation bonus and appear as removable chips in the
+// prefs drawer. Explicit preferences are never overwritten.
+const AFFINITY_WINDOW_MS = 14 * 864e5;
+const LEARN_MIN_OPENS = 3;
+const LEARN_MIN_SECONDS = 300;
+let _dwell = null; // { cat, start }
+
+function dwellStart(category) {
+  dwellStop();
+  const cat = (category || '').trim();
+  if (!cat) return;
+  _dwell = { cat, start: Date.now() };
+}
+
+function dwellStop() {
+  if (!_dwell) return;
+  const secs = Math.round((Date.now() - _dwell.start) / 1000);
+  const cat = _dwell.cat;
+  _dwell = null;
+  if (secs < 3 || secs > 3600) return; // ignore blips and abandoned tabs
+  const a = state.affinity[cat] || { s: 0, n: 0, t: 0 };
+  a.s += secs;
+  a.t = Date.now();
+  state.affinity[cat] = a;
+  recomputeLearnedCategories();
+  saveLocalState();
+  void logUserEvent('gpt_dwell', { ui: 'gpt', category: cat, seconds: secs });
+}
+
+function noteCategoryOpen(category) {
+  const cat = (category || '').trim();
+  if (!cat) return;
+  const a = state.affinity[cat] || { s: 0, n: 0, t: 0 };
+  a.n += 1;
+  a.t = Date.now();
+  state.affinity[cat] = a;
+  recomputeLearnedCategories();
+  saveLocalState();
+}
+
+function pruneAffinity() {
+  const cut = Date.now() - AFFINITY_WINDOW_MS;
+  for (const k of Object.keys(state.affinity || {})) {
+    if (!state.affinity[k] || (state.affinity[k].t || 0) < cut) delete state.affinity[k];
+  }
+}
+
+function recomputeLearnedCategories() {
+  pruneAffinity();
+  const o = state.onboarding;
+  const explicit = new Set(o.categories || []);
+  const dismissed = new Set(o.dismissedLearned || []);
+  const learned = Object.entries(state.affinity || {})
+    .filter(([cat, a]) => !explicit.has(cat) && !dismissed.has(cat)
+      && ((a.n || 0) >= LEARN_MIN_OPENS || (a.s || 0) >= LEARN_MIN_SECONDS))
+    .sort((x, y) => ((y[1].s || 0) + (y[1].n || 0) * 60) - ((x[1].s || 0) + (x[1].n || 0) * 60))
+    .slice(0, 3)
+    .map(([cat]) => cat);
+  const prev = (o.learnedCategories || []).join('|');
+  o.learnedCategories = learned;
+  if (prev !== learned.join('|')) {
+    void logUserEvent('gpt_learned_prefs', { ui: 'gpt', learned });
+  }
 }
 
 function fmtRp(n) {
@@ -716,6 +793,7 @@ function setView(name) {
     document.body.classList.toggle(`view-${v}`, v === name);
   });
   if (leaving === 'deepdive' && name !== 'deepdive') {
+    dwellStop();
     destroyAllCharts();
     // A product is only "in context" while its deep dive (or its chat) is
     // open — a stale deepdiveProduct must not hijack later searches into
@@ -1550,6 +1628,7 @@ function openPrefsDrawer(source) {
   renderPrefsCityChips();
   renderPrefsCatChips();
   renderPrefsExpChips();
+  renderPrefsLearnedChips();
   clarityEvt('gpt_prefs_open', { source: _prefsSource });
   void logUserEvent('gpt_prefs_open', { ui: 'gpt', source: _prefsSource });
 }
@@ -1560,6 +1639,18 @@ function renderPrefsExpChips() {
   wrap.querySelectorAll('[data-prefs-exp]').forEach(btn => {
     btn.classList.toggle('selected', btn.getAttribute('data-prefs-exp') === _prefsDraft.experience);
   });
+}
+
+function renderPrefsLearnedChips() {
+  const sec = $('prefs-learned-section');
+  const wrap = $('prefs-learned-chips');
+  if (!sec || !wrap) return;
+  recomputeLearnedCategories();
+  const learned = state.onboarding.learnedCategories || [];
+  sec.hidden = !learned.length;
+  wrap.innerHTML = learned.map(c =>
+    `<button type="button" class="chip selected" data-prefs-learned="${esc(c)}" title="Hapus dari minat">${esc(c)} ×</button>`
+  ).join('');
 }
 
 function closePrefsDrawer() {
@@ -1708,6 +1799,17 @@ function wirePrefsDrawer() {
       const v = expBtn.getAttribute('data-prefs-exp') || '';
       _prefsDraft.experience = _prefsDraft.experience === v ? '' : v;
       renderPrefsExpChips();
+      return;
+    }
+    const learnedBtn = e.target.closest?.('[data-prefs-learned]');
+    if (learnedBtn) {
+      const c = learnedBtn.getAttribute('data-prefs-learned') || '';
+      const o = state.onboarding;
+      if (!o.dismissedLearned.includes(c)) o.dismissedLearned.push(c);
+      recomputeLearnedCategories();
+      saveLocalState();
+      renderPrefsLearnedChips();
+      void logUserEvent('gpt_learned_prefs', { ui: 'gpt', removed: c });
     }
   });
   document.addEventListener('keydown', e => {
@@ -3058,6 +3160,10 @@ function scoreProduct(row, o, locations, ftTerms) {
   else if (inCat) s += 120;
   else if (inCity) s += 50;
 
+  // Learned interests (behavioral): smaller bonus than explicit picks.
+  const learned = o.learnedCategories || [];
+  if (!inCat && learned.length && catMatches(row.category, learned)) s += 70;
+
   if (o.city && String(row.location || '').toLowerCase().includes(String(o.city).toLowerCase())) s += 50;
 
   if (o.pairingMode === 'pairing' && o.pairingCategory) {
@@ -3952,6 +4058,8 @@ async function openDeepDive(product) {
   rememberProducts([product]);
   state.deepdiveProduct = product;
   setView('deepdive');
+  noteCategoryOpen(product.category);
+  dwellStart(product.category);
   const root = $('deepdive-root');
   if (!root) return;
   root.innerHTML = `<p class="dd-sub">Memuat data Deep Dive…</p>`;
@@ -5345,6 +5453,13 @@ function startPlaceholderRotation() {
 function wireUi() {
   startPlaceholderRotation();
 
+  // Dwell tracking lifecycle: pause when the tab hides, resume in deep dive.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) dwellStop();
+    else if (state.view === 'deepdive' && state.deepdiveProduct) dwellStart(state.deepdiveProduct.category);
+  });
+  window.addEventListener('pagehide', () => dwellStop());
+
   // Post-login profile nudge → prefs drawer (or dismiss until next sign-in).
   $('profile-nudge-go')?.addEventListener('click', () => {
     closeProfileNudge();
@@ -5465,6 +5580,7 @@ function wireUi() {
 
 async function boot() {
   loadLocalState();
+  recomputeLearnedCategories();
   // Sticky AB: direct /gpt/ visits (not via / split) are marked via=direct_gpt
   // so they can be excluded from the random 50/50 cohort in AB_TEST.sql.
   try {
