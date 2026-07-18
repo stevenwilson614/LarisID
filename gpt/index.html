@@ -904,6 +904,45 @@ html.session-restoring body::after {
 }
 .backdrop.open { display: block; }
 
+/* Pinned product bar: the chat/deep-dive subject stays visible while scrolling */
+.product-pin {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 16px; border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  flex-shrink: 0;
+  animation: fadeUp .18s var(--ease);
+}
+.product-pin[hidden] { display: none; }
+.product-pin img, .product-pin-ph {
+  width: 36px; height: 36px; border-radius: 8px; object-fit: cover;
+  background: var(--bg-user); cursor: zoom-in; flex-shrink: 0; border: 1px solid var(--line);
+}
+.product-pin-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.product-pin-name {
+  font-size: .84rem; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.product-pin-meta {
+  font-size: .72rem; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.product-pin-open { flex-shrink: 0; }
+
+/* Image lightbox */
+.img-lightbox {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(10,10,12,.82);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 24px; cursor: zoom-out;
+}
+.img-lightbox[hidden] { display: none; }
+.img-lightbox img {
+  max-width: min(92vw, 720px); max-height: 76vh;
+  border-radius: 14px; object-fit: contain; background: #fff;
+  animation: fadeUp .2s var(--ease);
+}
+.img-lightbox-cap { color: #fff; font-size: .85rem; text-align: center; max-width: 92vw; opacity: .9; }
+
 @media (max-width: 860px) {
   .sidebar {
     position: fixed; top: 0; left: 0; bottom: 0;
@@ -1612,6 +1651,10 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 </head>
 <body>
 <div class="backdrop" id="sidebar-backdrop"></div>
+<div class="img-lightbox" id="img-lightbox" hidden>
+  <img id="img-lightbox-img" alt="">
+  <div class="img-lightbox-cap" id="img-lightbox-cap"></div>
+</div>
 <div class="app">
   <aside class="sidebar" id="sidebar">
     <a class="sidebar-brand" href="/gpt/" id="btn-home" title="Beranda LARISgpt">
@@ -1684,6 +1727,16 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
         </button>
       </div>
     </header>
+
+    <div class="product-pin" id="product-pin" hidden>
+      <img id="product-pin-img" alt="" hidden>
+      <span class="product-pin-ph" id="product-pin-ph" hidden></span>
+      <div class="product-pin-main">
+        <span class="product-pin-name" id="product-pin-name"></span>
+        <span class="product-pin-meta" id="product-pin-meta"></span>
+      </div>
+      <button type="button" class="btn-ghost product-pin-open" id="product-pin-open" hidden>Analisa</button>
+    </div>
 
     <div class="panel" id="panel">
       <div class="panel-inner">

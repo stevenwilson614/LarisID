@@ -310,6 +310,66 @@ function destroyAllCharts() {
   _charts.forEach(c => { try { c.destroy(); } catch (_) {} });
   _charts.clear();
   if (_ddObserver) { try { _ddObserver.disconnect(); } catch (_) {} _ddObserver = null; }
+  if (_pinIO) { try { _pinIO.disconnect(); } catch (_) {} _pinIO = null; }
+  _pinHeaderVisible = true;
+}
+
+// ── Pinned product bar + image lightbox ──────────────────────────────────
+let _pinIO = null;            // IntersectionObserver on the deep-dive header
+let _pinHeaderVisible = true; // big .ddr-header currently on screen
+
+function updateProductPin() {
+  const pin = $('product-pin');
+  if (!pin) return;
+  let product = null;
+  let showOpen = false;
+  if (state.view === 'chat') {
+    product = activeChat()?.context?.product || null;
+    showOpen = !!product;
+  } else if (state.view === 'deepdive') {
+    product = state.deepdiveProduct || _dd?.product || null;
+    if (_pinHeaderVisible) product = null; // big header still on screen
+  }
+  if (!product) { pin.hidden = true; return; }
+  const img = $('product-pin-img');
+  const ph = $('product-pin-ph');
+  if (product.image_url) { img.src = product.image_url; img.hidden = false; ph.hidden = true; }
+  else { img.removeAttribute('src'); img.hidden = true; ph.hidden = false; }
+  $('product-pin-name').textContent = product.product_name || product.keyword || 'Produk';
+  const bits = [];
+  const price = Number(product.price);
+  const sold = Number(product.total_sold);
+  if (Number.isFinite(price) && price > 0) bits.push(fmtRp(price));
+  if (Number.isFinite(sold) && sold > 0) bits.push(`terjual ${sold.toLocaleString('id-ID')}`);
+  $('product-pin-meta').textContent = bits.join(' · ');
+  const openBtn = $('product-pin-open');
+  if (openBtn) openBtn.hidden = !showOpen;
+  pin.hidden = false;
+}
+
+function watchDeepDiveHeaderForPin(root) {
+  if (_pinIO) { try { _pinIO.disconnect(); } catch (_) {} _pinIO = null; }
+  _pinHeaderVisible = true;
+  const hdr = root?.querySelector?.('.ddr-header');
+  if (!hdr || !('IntersectionObserver' in window)) return;
+  _pinIO = new IntersectionObserver((entries) => {
+    _pinHeaderVisible = entries[0] ? entries[0].isIntersecting : true;
+    updateProductPin();
+  }, { root: $('panel'), threshold: 0.01 });
+  _pinIO.observe(hdr);
+}
+
+function openLightbox(src, caption) {
+  const lb = $('img-lightbox');
+  if (!lb || !src) return;
+  $('img-lightbox-img').src = src;
+  $('img-lightbox-cap').textContent = caption || '';
+  lb.hidden = false;
+}
+
+function closeLightbox() {
+  const lb = $('img-lightbox');
+  if (lb) lb.hidden = true;
 }
 
 // ── Onboarding lists (mirror A) ──────────────────────────────────────────
@@ -673,6 +733,7 @@ function setView(name) {
   });
   closeSidebar();
   updateSideRailVisibility();
+  updateProductPin();
 }
 
 function openSidebar() {
@@ -3405,6 +3466,7 @@ async function openChat(id) {
     } catch (_) {}
   }
   renderChatThread();
+  updateProductPin();
   // Product / deep-dive chats keep analysis reachable — reopen Deep Dive
   // from the persisted context so it never "disappears" from the chat.
   // Login gate stays inside openDeepDive; skip auto-restore when logged out
@@ -4116,6 +4178,10 @@ async function openDeepDive(product) {
     });
   }, { root: $('panel'), threshold: 0.35 });
   root.querySelectorAll('[data-dd-sec]').forEach(el => _ddObserver.observe(el));
+
+  // Pinned bar appears once the big header scrolls out of view.
+  watchDeepDiveHeaderForPin(root);
+  updateProductPin();
 
   setComposerChips(DD_CHIPS, 'deepdive');
 
@@ -5174,6 +5240,25 @@ function startPlaceholderRotation() {
 // ── Wire DOM ─────────────────────────────────────────────────────────────
 function wireUi() {
   startPlaceholderRotation();
+
+  // Pinned product bar → reopen the analysis; images → lightbox.
+  $('product-pin-open')?.addEventListener('click', () => {
+    const p = activeChat()?.context?.product;
+    if (p) void openDeepDive(p);
+  });
+  $('img-lightbox')?.addEventListener('click', closeLightbox);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !$('img-lightbox')?.hidden) { e.preventDefault(); closeLightbox(); }
+  });
+  document.addEventListener('click', (e) => {
+    const img = e.target?.closest?.('#product-pin-img, .ddr-header img, .dd-chat-card-top img');
+    if (!img || !img.getAttribute('src')) return;
+    const scope = img.closest('.product-pin, .ddr-header, .dd-chat-card');
+    const cap = scope?.querySelector('.product-pin-name, h1, .dd-chat-card-name')?.textContent || '';
+    e.preventDefault();
+    e.stopPropagation();
+    openLightbox(img.getAttribute('src'), cap);
+  }, true);
   $('btn-menu')?.addEventListener('click', openSidebar);
   $('sidebar-backdrop')?.addEventListener('click', closeSidebar);
   $('btn-home')?.addEventListener('click', goHome);
