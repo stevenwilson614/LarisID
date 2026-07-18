@@ -406,6 +406,34 @@ function fmtSold(n) {
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
+// Minimal safe markdown → HTML for AI replies. Escapes everything first, then
+// only re-introduces tags we generate ourselves (no raw HTML passthrough).
+function mdToHtml(raw) {
+  const text = String(raw == null ? '' : raw).replace(/\r\n?/g, '\n').trim();
+  if (!text) return '';
+  const inline = (s) => s
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,!?:;]|$)/g, '$1<em>$2</em>')
+    .replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  const out = [];
+  let list = null;   // 'ul' | 'ol' currently open
+  let para = [];
+  const flushPara = () => { if (para.length) { out.push(`<p>${inline(para.join('<br>'))}</p>`); para = []; } };
+  const flushList = () => { if (list) { out.push(`</${list}>`); list = null; } };
+  for (const rawLine of text.split('\n')) {
+    const line = esc(rawLine.trim());
+    if (!line) { flushPara(); flushList(); continue; }
+    const h  = line.match(/^#{1,4}\s+(.*)$/);
+    const ul = line.match(/^[-•*]\s+(.*)$/);
+    const ol = line.match(/^\d{1,2}[.)]\s+(.*)$/);
+    if (h)  { flushPara(); flushList(); out.push(`<h4>${inline(h[1])}</h4>`); continue; }
+    if (ul) { flushPara(); if (list !== 'ul') { flushList(); out.push('<ul>'); list = 'ul'; } out.push(`<li>${inline(ul[1])}</li>`); continue; }
+    if (ol) { flushPara(); if (list !== 'ol') { flushList(); out.push('<ol>'); list = 'ol'; } out.push(`<li>${inline(ol[1])}</li>`); continue; }
+    flushList(); para.push(line);
+  }
+  flushPara(); flushList();
+  return out.join('');
+}
 function wibMidnightReset() {
   // Next midnight Asia/Jakarta = today's WIB date at 17:00 UTC (WIB = UTC+7).
   const day = new Intl.DateTimeFormat('en-CA', {
@@ -1336,7 +1364,7 @@ function renderChatThread() {
     for (const m of chat.messages) {
       if (m.role === 'user') appendBubble('user', `<p>${esc(m.content?.text || m.content || '')}</p>`, { skipScroll: true });
       else if (m.html) appendBubble('assistant', m.html, { skipScroll: true });
-      else appendBubble('assistant', `<p>${esc(m.content?.text || m.content || '')}</p>`, { skipScroll: true });
+      else appendBubble('assistant', mdToHtml(m.content?.text || m.content || '') || '<p>—</p>', { skipScroll: true });
     }
     // Re-bind cards
     bindProductCards(thread);
@@ -4193,7 +4221,7 @@ PENTING:
 - Jangan arahkan ke "tanya toko" sebagai jawaban utama kalau data pasar sudah bisa menjawab. Boleh sebut konfirmasi ke toko hanya sebagai catatan sekunder.
 - Knowledge umum OK hanya sebagai pelengkap singkat, dan label jelas kalau bukan dari data.
 - Jangan bilang kamu "melihat" produk — kamu membaca data.
-- Jawaban singkat, langsung ke poin (2–5 kalimat). Hindari emoji berlebihan.
+- Jawaban singkat, langsung ke poin. Pertanyaan sederhana: 2–5 kalimat biasa. Jawaban yang butuh struktur boleh pakai markdown ringan: **bold untuk angka/kesimpulan penting**, bullet list pendek (- item), dan sub-judul (## Judul) hanya untuk jawaban panjang. Tanpa emoji.
 
 DATA PRODUK YANG DILIHAT:
 - Nama: ${p.product_name || '—'}
@@ -4506,7 +4534,7 @@ async function handleComposerSubmit(text) {
   const peers = await ensurePeerRowsForAi(product);
   const system = buildProductSystemPrompt(product, text, peers);
   const reply = await _mlsAIRaw(system, [{ role: 'user', content: text }]);
-  const html = `<p>${esc(reply).replace(/\n/g, '</p><p>')}</p>`;
+  const html = mdToHtml(reply) || `<p>${esc(reply)}</p>`;
   if (loading) await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', { text: reply }, html);
   void logUserEvent('gpt_ai_reply', { ui: 'gpt', keyword: product.keyword });

@@ -408,6 +408,13 @@ html.session-restoring body::after {
 .msg-bubble p { margin: 0 0 .7em; line-height: 1.65; font-size: .975rem; color: var(--ink); }
 .msg-bubble p:last-child { margin-bottom: 0; }
 .msg.assistant .msg-bubble p { font-size: 1rem; }
+.msg-bubble h4 { margin: 1.05em 0 .45em; font-size: .95rem; font-weight: 700; letter-spacing: -.01em; }
+.msg-bubble h4:first-child { margin-top: 0; }
+.msg-bubble ul, .msg-bubble ol { margin: 0 0 .7em; padding-left: 1.3em; }
+.msg-bubble ul:last-child, .msg-bubble ol:last-child { margin-bottom: 0; }
+.msg-bubble li { margin: .3em 0; line-height: 1.6; font-size: .975rem; }
+.msg.assistant .msg-bubble li { font-size: 1rem; }
+.msg-bubble code { background: var(--bg-user); border-radius: 6px; padding: .1em .4em; font-size: .88em; }
 
 /* ChatGPT/Cursor-style streaming caret */
 .msg-bubble.is-streaming {
