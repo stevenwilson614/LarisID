@@ -847,6 +847,12 @@ html.session-restoring body::after {
   font-size: .7rem; color: var(--muted); text-align: center;
 }
 
+/* Post-login profile nudge */
+.nudge-title { margin: 0 0 10px; font-size: 1.15rem; font-weight: 750; letter-spacing: -.02em; }
+.nudge-sub { margin: 0 0 18px; font-size: .9rem; line-height: 1.6; color: var(--ink-soft); }
+.nudge-actions { display: flex; gap: 10px; }
+.nudge-actions .btn-primary { flex: 1; }
+
 /* Auth modal */
 .modal-overlay {
   display: none; position: fixed; inset: 0; z-index: 100;
@@ -1950,6 +1956,17 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <div class="toast" id="toast" role="status"></div>
 
 <div class="prefs-backdrop" id="prefs-backdrop" hidden></div>
+<div class="modal-overlay" id="profile-nudge">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="profile-nudge-title">
+    <h3 id="profile-nudge-title" class="nudge-title">Biar jualanmu sukses</h3>
+    <p class="nudge-sub">Supaya rekomendasi produknya tepat sasaran, isi dulu info singkat: <strong>lokasi jualan</strong>, <strong>kategori yang kamu minati</strong>, dan <strong>pengalaman jualanmu</strong>. Kurang dari 1 menit.</p>
+    <div class="nudge-actions">
+      <button type="button" class="btn-primary" id="profile-nudge-go">Isi sekarang</button>
+      <button type="button" class="btn-ghost" id="profile-nudge-later">Nanti dulu</button>
+    </div>
+  </div>
+</div>
+
 <aside class="prefs-drawer" id="prefs-drawer" hidden aria-hidden="true" aria-labelledby="prefs-title">
   <div class="prefs-head">
     <h2 id="prefs-title">Lokasi &amp; kategori</h2>
@@ -1968,6 +1985,14 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
       <span class="prefs-label">Kategori</span>
       <p class="prefs-hint">Pilih 1–3 minat produk.</p>
       <div class="chips" id="prefs-cat-chips"></div>
+    </div>
+    <div class="prefs-section">
+      <span class="prefs-label">Pengalaman jualan</span>
+      <p class="prefs-hint">Biar saran dan rekomendasinya pas untuk level kamu.</p>
+      <div class="chips" id="prefs-exp-chips">
+        <button type="button" class="chip" data-prefs-exp="baru">Baru mulai</button>
+        <button type="button" class="chip" data-prefs-exp="berpengalaman">Sudah pernah jualan</button>
+      </div>
     </div>
     <div class="prefs-section">
       <span class="prefs-label">Lebih spesifik (opsional)</span>

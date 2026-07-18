@@ -1156,10 +1156,10 @@ async function _authOnSignIn(session) {
     void openDeepDive(p);
   }
 
-  // One-time, skippable post-sign-in onboarding offer (decided with Steven:
-  // location/kategori now live AFTER sign-in). Never interrupts a pending
+  // Skippable post-sign-in profile nudge — re-offered on every sign-in until
+  // preferences are complete (step === 'done'). Never interrupts a pending
   // deep dive; the "Set lokasi" sidebar card remains the anytime entry.
-  if (!hadPending && state.onboarding.step !== 'done' && !state.onboarding.promptedPostSignin) {
+  if (!hadPending && state.onboarding.step !== 'done') {
     state.onboarding.promptedPostSignin = true;
     saveLocalState();
     offerOnboardingAfterSignin();
@@ -1519,7 +1519,7 @@ function syncDirectoryFromOnboarding() {
 }
 
 // ── Lokasi & kategori side drawer (does not interrupt the open chat) ──────
-let _prefsDraft = { city: '', categories: [], freeText: '', cityFilter: '' };
+let _prefsDraft = { city: '', categories: [], freeText: '', cityFilter: '', experience: '' };
 let _prefsSource = '';
 
 function openPrefsDrawer(source) {
@@ -1530,6 +1530,7 @@ function openPrefsDrawer(source) {
     categories: [...(o.categories || [])],
     freeText: o.freeText || '',
     cityFilter: '',
+    experience: o.experience || '',
   };
   closeSidebar();
   const drawer = $('prefs-drawer');
@@ -1548,8 +1549,17 @@ function openPrefsDrawer(source) {
   if (free) free.value = _prefsDraft.freeText;
   renderPrefsCityChips();
   renderPrefsCatChips();
+  renderPrefsExpChips();
   clarityEvt('gpt_prefs_open', { source: _prefsSource });
   void logUserEvent('gpt_prefs_open', { ui: 'gpt', source: _prefsSource });
+}
+
+function renderPrefsExpChips() {
+  const wrap = $('prefs-exp-chips');
+  if (!wrap) return;
+  wrap.querySelectorAll('[data-prefs-exp]').forEach(btn => {
+    btn.classList.toggle('selected', btn.getAttribute('data-prefs-exp') === _prefsDraft.experience);
+  });
 }
 
 function closePrefsDrawer() {
@@ -1593,6 +1603,7 @@ async function savePrefsDrawer() {
   const wasDone = o.step === 'done';
   o.city = _prefsDraft.city || '';
   o.categories = [..._prefsDraft.categories];
+  o.experience = _prefsDraft.experience || '';
   o.freeText = ($('prefs-free')?.value || _prefsDraft.freeText || '').trim();
   if (!o.city && !o.categories.length && !o.freeText) {
     showToast('Pilih kota atau kategori dulu.');
@@ -1639,8 +1650,14 @@ function startOnboarding(source) {
 
 function offerOnboardingAfterSignin() {
   _offerActive = false;
-  openPrefsDrawer('post_signin');
+  const overlay = $('profile-nudge');
+  if (!overlay) { openPrefsDrawer('post_signin'); return; }
+  overlay.classList.add('open');
+  void logUserEvent('gpt_profile_nudge', { ui: 'gpt', action: 'shown' });
+  clarityEvt('gpt_profile_nudge', { action: 'shown' });
 }
+
+function closeProfileNudge() { $('profile-nudge')?.classList.remove('open'); }
 
 function pushMessage(chat, role, content, html) {
   if (!chat.messages) chat.messages = [];
@@ -1684,6 +1701,13 @@ function wirePrefsDrawer() {
       if (i >= 0) arr.splice(i, 1);
       else if (arr.length < 3) arr.push(c);
       renderPrefsCatChips();
+      return;
+    }
+    const expBtn = e.target.closest?.('[data-prefs-exp]');
+    if (expBtn) {
+      const v = expBtn.getAttribute('data-prefs-exp') || '';
+      _prefsDraft.experience = _prefsDraft.experience === v ? '' : v;
+      renderPrefsExpChips();
     }
   });
   document.addEventListener('keydown', e => {
@@ -5240,6 +5264,20 @@ function startPlaceholderRotation() {
 // ── Wire DOM ─────────────────────────────────────────────────────────────
 function wireUi() {
   startPlaceholderRotation();
+
+  // Post-login profile nudge → prefs drawer (or dismiss until next sign-in).
+  $('profile-nudge-go')?.addEventListener('click', () => {
+    closeProfileNudge();
+    void logUserEvent('gpt_profile_nudge', { ui: 'gpt', action: 'accept' });
+    openPrefsDrawer('post_signin');
+  });
+  $('profile-nudge-later')?.addEventListener('click', () => {
+    closeProfileNudge();
+    void logUserEvent('gpt_profile_nudge', { ui: 'gpt', action: 'later' });
+  });
+  $('profile-nudge')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeProfileNudge();
+  });
 
   // Pinned product bar → reopen the analysis; images → lightbox.
   $('product-pin-open')?.addEventListener('click', () => {
