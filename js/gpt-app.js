@@ -42,10 +42,10 @@ const GPT_STATE_KEY = '_lid_gpt_state_v1';
 const ANON_LIMIT_KEY = '_lid_gpt_anon_searches_v1';
 const PAGE_SIZE = 60;
 const COMPOSER_EXAMPLES = [
-  'Cari produk kayu buat dijual dari Semarang',
-  'Tunjukkan 3 produk yang cocok buat aku jual',
-  'Produk apa yang lagi naik daun?',
-  'Tanya tentang produk… atau ketik pencarian baru',
+  'Cari produk kayu dari Semarang',
+  '3 produk yang cocok buat aku',
+  'Produk yang lagi naik daun?',
+  'Produk modal 500rb yang laris',
 ];
 let _admSample = null; // admin sample view: { mode: 'user'|'new', label }
 let _onboardingBackup = null;
@@ -129,7 +129,6 @@ async function larisEnsureChart() {
 // ── Supabase ─────────────────────────────────────────────────────────────
 const SUPA_URL = 'https://bzmvlraziqevqdyotvgy.supabase.co';
 const SUPA_KEY = 'sb_publishable_KDSWIJJLckser1e1hk7bbA_yMChRPog';
-const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6bXZscmF6aXFldnFkeW90dmd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0MDU1MjUsImV4cCI6MjA4OTk4MTUyNX0.nppVtaxoT4z4slUOTvZo5stmP26bb5qoJXkswHVw9EE';
 
 const _AUTH_SK = 'laris_auth_v1';
 let _supabase = null;
@@ -1038,7 +1037,7 @@ async function _authOnSignIn(session) {
         await _supabase.auth.setSession({ access_token: session.access_token, refresh_token: session.refresh_token });
       } catch (_) {}
       const isNewUser = isNewSignup || _lidIsNewSignup(currentUser);
-      _supabase.from('user_sessions').insert({ user_id: currentUser.id, is_new_user: isNewUser }).then(() => {});
+      _supabase.from('user_sessions').insert({ user_id: currentUser.id, is_new_user: isNewUser }).then(() => {}, () => {});
     }
   } catch (_) {}
 
@@ -5086,13 +5085,15 @@ function adminExitSample() {
 }
 
 function startPlaceholderRotation() {
-  const input = $('composer-input');
-  if (!input) return;
+  const inputs = [$('composer-input'), $('hero-input')].filter(Boolean);
+  if (!inputs.length) return;
   let i = 0;
   setInterval(() => {
-    if (document.activeElement === input || input.value) return;
     i = (i + 1) % COMPOSER_EXAMPLES.length;
-    input.placeholder = COMPOSER_EXAMPLES[i];
+    inputs.forEach((input) => {
+      if (document.activeElement === input || input.value) return;
+      input.placeholder = COMPOSER_EXAMPLES[i];
+    });
   }, 5000);
 }
 

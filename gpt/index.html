@@ -928,6 +928,7 @@ body.view-home .panel-inner,
 body.view-deepdive .panel-inner,
 body.thread-wide .panel-inner { max-width: 1080px; }
 body.view-home .composer-dock { display: none; }
+body.view-home .panel { padding-bottom: 28px; } /* dock hidden on home — drop its reserved space */
 body.onboarding-active .composer-dock { display: none; }
 body.onboarding-active .panel { padding-bottom: 28px; }
 
@@ -984,6 +985,49 @@ body.onboarding-active .panel { padding-bottom: 28px; }
   padding: 7px 10px; line-height: 1.35; margin-top: auto;
 }
 .home-foot { margin-top: 44px; font-size: .7rem; color: var(--muted); }
+
+/* ── Mobile landing: one screen, no scroll, composer docked at bottom ── */
+@media (max-width: 860px) {
+  .composer-hint { display: none; }
+  body.view-home .panel { padding: 0 14px 0; }
+  body.view-home .panel-inner,
+  body.view-home #view-home,
+  body.view-home .home-hero { height: 100%; }
+  .home-hero {
+    box-sizing: border-box;
+    padding: 10px 0 max(10px, env(safe-area-inset-bottom));
+    justify-content: flex-start;
+  }
+  .home-title { font-size: clamp(1.35rem, 6.2vw, 1.7rem); margin-bottom: 6px; }
+  .home-sub { font-size: .86rem; margin-bottom: 10px; }
+  .chip-row {
+    order: 3; margin-top: 4px; gap: 6px;
+    flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start;
+    max-width: 100%; padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .chip-row::-webkit-scrollbar { display: none; }
+  .chip-row .chip { font-size: .72rem; padding: 7px 11px; white-space: nowrap; flex-shrink: 0; }
+  .home-examples-label { order: 4; margin: 10px 0 8px; }
+  .prompt-grid { order: 5; grid-template-columns: 1fr; gap: 6px; }
+  .prompt-card {
+    flex-direction: row; align-items: center; text-align: left;
+    gap: 10px; padding: 8px 12px; border-radius: 12px;
+  }
+  .prompt-card .pc-ico { flex-shrink: 0; display: inline-flex; }
+  .prompt-card .pc-ico svg { width: 17px; height: 17px; }
+  .prompt-card .t { font-size: .78rem; white-space: nowrap; }
+  .prompt-card .d { display: none; }
+  .prompt-card .prompt-quote {
+    margin: 0 0 0 auto; border: none; padding: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 48%;
+  }
+  .home-composer { order: 9; margin-top: auto; padding-top: 8px; }
+  .home-composer .composer { padding: 10px 8px 10px 14px; }
+  .home-composer textarea { min-height: 44px; }
+  .home-foot { display: none; }
+}
 
 /* Answer card (trending) */
 .ans-card {
@@ -1620,7 +1664,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
             <p class="home-sub">Cari produk, kategori, atau tanya apa saja.</p>
             <form class="home-composer" id="hero-form">
               <div class="composer">
-                <textarea id="hero-input" rows="1" placeholder="Cari &quot;vas keramik&quot; atau &quot;produk modal 1jt&quot; atau tanya apa saja..."></textarea>
+                <textarea id="hero-input" rows="1" placeholder="Cari produk atau tanya apa saja..."></textarea>
                 <button type="submit" class="composer-send" aria-label="Kirim">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M7 17L17 7M9 7h8v8"/></svg>
                 </button>
@@ -1853,6 +1897,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260717z" defer></script>
+<script src="/js/gpt-app.js?v=20260718a" defer></script>
 </body>
 </html>
