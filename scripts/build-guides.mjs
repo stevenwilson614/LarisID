@@ -470,6 +470,192 @@ const GUIDES = [
         }
       ]
     }
+  },
+  {
+    slug: 'cara-jualan-di-shopee-untuk-pemula',
+    title: 'Cara Jualan di Shopee untuk Pemula: Panduan Lengkap dari Nol (2026)',
+    desc: 'Cara jualan di Shopee untuk pemula dari nol: buka toko, pilih produk yang benar-benar dicari, bikin listing yang menjual, dan hitung untung sebelum kulakan — pakai data, bukan tebakan.',
+    h1: 'Cara Jualan di Shopee untuk Pemula (dari Nol)',
+    cardNote: 'Dari buka toko sampai produk pertama laku — langkah demi langkah',
+    lead: 'Buka toko di Shopee itu gratis dan cuma butuh sekitar 10 menit. Yang menentukan toko kamu bertahan atau tidak bukan cara daftarnya, tapi <strong>keputusan sebelum kulakan</strong>. Ini panduan lengkap dari nol — dengan langkah yang bisa kamu mulai hari ini.',
+    datePublished: '2026-07-19', dateModified: '2026-07-19', updatedHuman: '19 Juli 2026',
+    howto: {
+      name: 'Cara Jualan di Shopee untuk Pemula',
+      description: 'Langkah memulai jualan di Shopee dari nol: buka toko, pilih produk berdasarkan permintaan nyata, hitung untung, bikin listing yang menjual, dan kelola pesanan.',
+      step: [
+        { name: 'Buka toko Shopee', text: 'Daftar akun Shopee, lengkapi profil toko, alamat, dan rekening pencairan. Gratis dan tidak perlu badan usaha untuk mulai.' },
+        { name: 'Pilih produk dari permintaan nyata', text: 'Jangan mulai dari "lagi viral apa". Cek permintaan lewat jumlah ulasan produk teratas dan estimasi penjualan di keyword incaranmu, lalu pastikan persaingannya masih bisa dimasuki.' },
+        { name: 'Hitung untung sebelum kulakan', text: 'Jumlahkan HPP: modal barang, ongkir masuk, packaging, biaya admin marketplace, dan iklan. Pastikan harga jual di kisaran harga median pasar masih menyisakan margin sehat.' },
+        { name: 'Bikin listing yang menjual', text: 'Foto terang dengan latar bersih, judul memuat kata kunci yang dicari orang, deskripsi menjawab keraguan pembeli, dan harga wajar dibanding kompetitor.' },
+        { name: 'Kelola pesanan dan kumpulkan ulasan', text: 'Balas chat cepat, kirim tepat waktu, dan minta ulasan dengan sopan. Ulasan awal adalah penghalang terbesar sebelum produk dipercaya pembeli baru.' },
+      ],
+    },
+    body: `    <p>Banyak pemula terjebak mengurus hal yang salah lebih dulu: nama toko, logo, atau ikut-ikutan produk viral. Padahal yang paling menentukan adalah <strong>apakah produkmu benar-benar dicari</strong> dan <strong>apakah masih ada untung</strong> setelah semua biaya. Berikut alurnya dari nol.</p>
+
+    <h2>1. Buka toko Shopee (gratis, ~10 menit)</h2>
+    <p>Daftar akun, lengkapi profil toko, alamat pengambilan, dan rekening untuk pencairan dana. Kamu tidak butuh badan usaha atau modal besar untuk mulai. Bagian ini mudah — jangan habiskan energi di sini. Energi terbesarmu harus di langkah memilih produk.</p>
+
+    <h2>2. Pilih produk dari permintaan nyata, bukan tebakan</h2>
+    <p>Ini langkah yang paling sering dilewati dan paling mahal kalau salah. Jangan mulai dari "lagi viral apa" — saat sebuah produk viral, pasarnya sudah penuh dan harga sudah perang. Mulai dari kategori yang kamu pahami, lalu ukur permintaannya.</p>
+    <p>Angka "terjual" di marketplace adalah <strong>estimasi</strong>, bukan data resmi — jangan dijadikan patokan tunggal. Sinyal yang lebih jujur adalah <strong>jumlah ulasan</strong> pada produk teratas, karena ulasan hanya muncul setelah pembelian nyata. Buka <a href="/riset/">halaman riset pasar LarisID</a> untuk keyword incaranmu: harga median, rentang harga, jumlah toko, rating, dan estimasi penjualan — semuanya dari listing Shopee nyata. Detail langkahnya ada di <a href="/panduan/cara-riset-produk-shopee-untuk-pemula/">cara riset produk Shopee untuk pemula</a>.</p>
+
+    <h2>3. Hitung untung sebelum keluar modal</h2>
+    <p>Produk yang "laku" belum tentu bikin untung. Hitung HPP lengkap: modal barang, ongkir masuk, packaging, biaya admin marketplace, dan alokasi iklan. Kalau harga jual di kisaran <strong>harga median pasar</strong> tidak menyisakan margin sehat, cari produk lain atau cara menekan biaya. Panduan lengkap: <a href="/panduan/cara-menghitung-margin-dan-hpp/">cara menghitung margin &amp; HPP</a> dan <a href="/panduan/cara-menentukan-harga-jual-produk/">cara menentukan harga jual</a>.</p>
+
+    <h2>4. Bikin listing yang menjual</h2>
+    <ul>
+      <li><strong>Foto:</strong> terang, latar bersih, tunjukkan produk dari beberapa sisi. Foto pertama menentukan orang klik atau tidak.</li>
+      <li><strong>Judul:</strong> masukkan kata kunci yang benar-benar diketik pembeli (mis. "botol minum aesthetic 1 liter"), bukan istilah internal.</li>
+      <li><strong>Deskripsi:</strong> jawab keraguan pembeli — ukuran, bahan, garansi, estimasi pengiriman.</li>
+      <li><strong>Harga:</strong> wajar dibanding kompetitor. Termurah bukan selalu menang; sering justru berarti margin negatif.</li>
+    </ul>
+
+    <h2>5. Kelola pesanan dan kumpulkan ulasan awal</h2>
+    <p>Balas chat cepat, kirim tepat waktu, dan kemas rapi. Minta ulasan dengan sopan setelah barang sampai. <strong>Ulasan awal adalah penghalang terbesar</strong>: produk dengan sedikit ulasan sulit dipercaya pembeli baru, sementara produk pemenang biasanya sudah punya puluhan ulasan. Fokus melewati ~50 ulasan pertama dengan pelayanan yang bikin orang mau mengulas.</p>
+
+    <h2>Kesalahan pemula yang paling menguras modal</h2>
+    <ul>
+      <li>Kulakan banyak sebelum uji pasar. Mulai stok kecil, validasi, baru skalakan.</li>
+      <li>Ikut produk viral saat pasarnya sudah penuh dan harga sudah perang.</li>
+      <li>Hanya melihat angka "terjual" (itu estimasi) tanpa cek ulasan, rating, dan margin.</li>
+      <li>Tidak menghitung biaya tersembunyi: admin, iklan, retur.</li>
+    </ul>
+
+    <h2>Butuh ide produk dulu?</h2>
+    <p>Kalau kamu belum tahu mau jual apa, mulai dari <a href="/panduan/ide-jualan-online-modal-kecil/">ide jualan online modal kecil</a> lalu validasi dengan <a href="/panduan/produk-laris-shopee/">cara menemukan produk laris</a>. Semua bisa kamu lakukan gratis sebelum keluar modal.</p>`,
+    faqs: [
+      { q: 'Apakah jualan di Shopee gratis?', a: 'Ya, membuka toko dan meng-upload produk gratis. Biaya baru muncul saat ada penjualan (biaya admin/komisi marketplace) atau jika kamu memasang iklan. Karena itu penting menghitung biaya-biaya ini sebelum menentukan harga.' },
+      { q: 'Berapa modal minimal untuk mulai jualan di Shopee?', a: 'Tergantung produk. Kamu bisa mulai dengan stok kecil untuk uji pasar, atau tanpa stok lewat sistem reseller/dropship. Yang penting HPP per unit dan marginnya sudah kamu hitung sebelum kulakan. Riset pasarnya bisa kamu lakukan gratis dulu di LarisID.' },
+      { q: 'Produk apa yang cocok untuk penjual pemula?', a: 'Produk dengan permintaan nyata (banyak ulasan pada produk teratas), margin sehat di harga median, dan persaingan yang masih bisa kamu masuki dengan pembeda. Hindari produk yang sedang viral karena pasarnya biasanya sudah penuh.' },
+      { q: 'Berapa lama sampai ada penjualan pertama?', a: 'Bervariasi dan tidak ada jaminan — tergantung produk, listing, harga, dan pelayanan. Fokus pada hal yang bisa kamu kendalikan: pilih produk yang dicari, listing yang jelas, harga wajar, dan pelayanan yang menghasilkan ulasan awal.' },
+    ],
+  },
+  {
+    slug: 'cara-cari-supplier-dan-tempat-kulakan',
+    title: 'Cara Cari Supplier & Tempat Kulakan Murah untuk Jualan Online (2026)',
+    desc: 'Cara cari supplier dan tempat kulakan murah yang aman: bedakan tangan pertama vs reseller, cara cek harga wajar pakai data pasar, dan cara nego tanpa tertipu.',
+    h1: 'Cara Cari Supplier & Tempat Kulakan Murah',
+    cardNote: 'Tangan pertama vs reseller, cek harga wajar & cara nego aman',
+    lead: 'Untung sebuah produk sering ditentukan di harga beli, bukan harga jual. Ini cara menemukan supplier atau tempat kulakan yang <strong>benar-benar murah dan aman</strong> — dan cara tahu harga kulakan itu wajar sebelum ambil stok.',
+    datePublished: '2026-07-19', dateModified: '2026-07-19', updatedHuman: '19 Juli 2026',
+    body: `    <p>Banyak seller sibuk menaikkan harga jual padahal untung sebenarnya lebih mudah didapat dari <strong>harga beli yang lebih rendah</strong>. Masalahnya, mencari supplier itu rawan: banyak "distributor" yang sebenarnya reseller, dan banyak harga "grosir" yang tidak benar-benar grosir. Berikut cara menyaringnya.</p>
+
+    <h2>1. Bedakan tangan pertama vs reseller berlapis</h2>
+    <p>Semakin panjang rantainya (pabrik → distributor → reseller → kamu), semakin tipis marginmu. Ciri tangan pertama: harga turun signifikan saat kuantitas naik, punya varian/stok yang dalam, dan bisa menunjukkan bukti produksi atau keagenan. Kalau harga "grosir" nyaris sama dengan harga eceran marketplace, itu tanda kamu sedang beli dari reseller.</p>
+
+    <h2>2. Tahu dulu harga pasar sebelum nego</h2>
+    <p>Nego tanpa data itu menebak. Sebelum menghubungi supplier, cek <strong>harga median dan rentang harga</strong> produk itu di <a href="/riset/">data pasar LarisID</a>. Kalau harga jual median di marketplace Rp 50.000, kamu tahu harga kulakan harus cukup di bawah itu supaya ada ruang untuk biaya admin, iklan, dan margin. Angka ini juga jadi patokan menilai apakah penawaran supplier benar-benar murah.</p>
+
+    <h2>3. Tempat mencari supplier (dan risikonya)</h2>
+    <ul>
+      <li><strong>Marketplace grosir &amp; menu grosir di marketplace umum:</strong> paling mudah diakses; cek harga per tier kuantitas dan reputasi toko (ulasan, lama berjualan).</li>
+      <li><strong>Sentra produksi / pasar induk:</strong> sering paling murah untuk kategori tertentu (fashion, makanan kering, kerajinan), tapi butuh usaha datang dan nego langsung.</li>
+      <li><strong>Pameran dagang &amp; komunitas seller:</strong> jalan menemukan produsen langsung dan membangun relasi jangka panjang.</li>
+      <li><strong>Supplier luar negeri:</strong> harga satuan bisa murah, tapi hitung ongkir, bea, waktu tunggu, dan risiko kualitas — semuanya masuk HPP.</li>
+    </ul>
+
+    <h2>4. Uji dulu sebelum ambil stok besar</h2>
+    <p>Pesan sampel atau kuantitas kecil untuk mengecek kualitas, konsistensi, dan kecepatan kirim supplier. Supplier termurah tidak berguna kalau barangnya sering cacat atau telat — itu berujung retur dan rating buruk yang menggerus penjualanmu.</p>
+
+    <h2>5. Hitung total HPP, bukan cuma harga barang</h2>
+    <p>Harga kulakan hanyalah satu komponen. Tambahkan ongkir masuk, packaging, biaya admin marketplace, dan iklan untuk tahu untung sebenarnya. Pakai <a href="/panduan/cara-menghitung-margin-dan-hpp/">panduan margin &amp; HPP</a> supaya "murah" benar-benar berarti untung.</p>
+
+    <h2>Tanda supplier yang perlu diwaspadai</h2>
+    <ul>
+      <li>Minta transfer penuh di muka tanpa rekening bisnis atau reputasi yang bisa dicek.</li>
+      <li>Harga jauh di bawah pasar tanpa alasan jelas (bisa barang KW, stok lama, atau penipuan).</li>
+      <li>Tidak mau kirim sampel atau tidak bisa menunjukkan stok nyata.</li>
+    </ul>`,
+    faqs: [
+      { q: 'Bagaimana cara tahu harga kulakan sudah benar-benar murah?', a: 'Bandingkan dengan harga median pasar produk itu. Kalau harga jual median di marketplace jauh di atas harga kulakan plus semua biaya (admin, ongkir, iklan), berarti ada ruang margin yang sehat. Data harga median bisa kamu cek gratis di halaman riset pasar LarisID.' },
+      { q: 'Lebih baik supplier lokal atau impor?', a: 'Tergantung total HPP dan risiko. Supplier lokal biasanya lebih cepat, mudah retur, dan modal tertahannya kecil. Impor bisa lebih murah per unit tapi tambahkan ongkir, bea, waktu tunggu, dan risiko kualitas ke dalam perhitungan sebelum memutuskan.' },
+      { q: 'Bagaimana menghindari supplier tipu-tipu?', a: 'Mulai dari kuantitas kecil atau sampel, cek reputasi dan lama berjualan, hindari yang menolak menunjukkan stok nyata, dan waspadai harga yang jauh di bawah pasar tanpa alasan jelas.' },
+    ],
+  },
+  {
+    slug: 'dropship-shopee-cara-kerja-dan-risiko',
+    title: 'Dropship Shopee: Cara Kerja, Modal, dan Risiko yang Jujur (2026)',
+    desc: 'Dropship Shopee dijelaskan jujur: cara kerja, berapa modal sebenarnya, kenapa marginnya tipis, dan risiko stok/pengiriman — plus cara memvalidasi produk sebelum mulai.',
+    h1: 'Dropship Shopee: Cara Kerja & Risiko (Penjelasan Jujur)',
+    cardNote: 'Cara kerja, modal sebenarnya, margin & risiko — tanpa hype',
+    lead: 'Dropship sering dijual sebagai "jualan tanpa modal, tanpa risiko". Kenyataannya lebih bernuansa. Ini penjelasan jujur soal cara kerjanya, di mana untungnya, dan risiko yang jarang disebut — supaya kamu masuk dengan mata terbuka.',
+    datePublished: '2026-07-19', dateModified: '2026-07-19', updatedHuman: '19 Juli 2026',
+    body: `    <p>Dropship adalah model di mana kamu menjual produk tanpa menyimpan stok: saat ada pesanan, supplier yang mengemas dan mengirim langsung ke pembeli atas nama tokomu. Menarik karena modal awalnya kecil — tapi "kecil modal" bukan berarti "tanpa risiko". Mari jujur soal keduanya.</p>
+
+    <h2>Cara kerjanya (singkat)</h2>
+    <ol>
+      <li>Kamu pasang produk supplier di tokomu dengan harga jualmu.</li>
+      <li>Pembeli memesan dan membayar ke tokomu.</li>
+      <li>Kamu teruskan pesanan ke supplier dan bayar harga kulakan.</li>
+      <li>Supplier mengirim langsung ke pembeli; selisih harga jadi marginmu.</li>
+    </ol>
+
+    <h2>Kelebihan yang nyata</h2>
+    <ul>
+      <li><strong>Modal awal kecil:</strong> tidak perlu beli stok di muka.</li>
+      <li><strong>Risiko stok mati rendah:</strong> kamu tidak menanggung barang yang tidak laku.</li>
+      <li><strong>Bisa uji banyak produk:</strong> cocok untuk memvalidasi permintaan sebelum berkomitmen ke stok sendiri.</li>
+    </ul>
+
+    <h2>Risiko yang jarang disebut</h2>
+    <ul>
+      <li><strong>Margin tipis.</strong> Karena kamu beli satuan (bukan grosir), selisihnya kecil. Setelah biaya admin marketplace dan iklan, untung bersih bisa sangat tipis.</li>
+      <li><strong>Kamu menanggung reputasi, supplier mengendalikan mutu.</strong> Kalau supplier telat, salah kirim, atau kemasannya buruk, rating dan komplain jatuh ke tokomu.</li>
+      <li><strong>Perang harga.</strong> Produk dropship yang sama dijual banyak orang, mudah saling banting harga.</li>
+      <li><strong>Ketergantungan stok supplier.</strong> Kalau supplier kehabisan stok, kamu harus batalkan pesanan — penalti buat toko.</li>
+    </ul>
+
+    <h2>Kunci sukses: pilih produk seperti seller serius</h2>
+    <p>Modal kecil bukan alasan untuk asal pilih produk. Justru karena marginnya tipis, pemilihan produk harus lebih tajam. Cari produk dengan <strong>permintaan nyata</strong> (banyak ulasan di produk teratas) tapi <strong>persaingan yang belum jenuh</strong>, dan pastikan selisih harga jual median dengan harga kulakan cukup untuk menutup biaya. Cek dulu di <a href="/riset/">data pasar LarisID</a> dan ikuti kerangkanya di <a href="/panduan/cara-riset-produk-shopee-untuk-pemula/">cara riset produk</a>.</p>
+
+    <h2>Dropship vs stok sendiri</h2>
+    <p>Banyak seller memakai dropship untuk <strong>menguji</strong> produk mana yang laku, lalu beralih ke <strong>stok sendiri</strong> (kulakan grosir) untuk produk pemenang agar marginnya jauh lebih sehat. Saat siap beralih, baca <a href="/panduan/cara-cari-supplier-dan-tempat-kulakan/">cara cari supplier &amp; tempat kulakan</a>.</p>
+
+    <p>Intinya: dropship adalah alat uji pasar yang bagus dan pintu masuk berisiko-rendah, bukan mesin uang instan. Perlakukan seperti bisnis — hitung angkanya, jaga pelayanan — dan ia bisa jadi langkah pertama yang masuk akal.</p>`,
+    faqs: [
+      { q: 'Apakah dropship Shopee benar-benar tanpa modal?', a: 'Modal barangnya memang tidak dibayar di muka, tapi tetap ada biaya: iklan agar produkmu terlihat, dan waktu untuk riset serta melayani pembeli. "Tanpa modal" tidak berarti "tanpa usaha" atau "tanpa risiko".' },
+      { q: 'Kenapa untung dropship sering tipis?', a: 'Karena kamu membeli satuan (bukan harga grosir), selisih dengan harga jual kecil. Setelah dipotong biaya admin marketplace dan iklan, margin bersihnya bisa sangat tipis. Karena itu pemilihan produk dan harga harus lebih cermat.' },
+      { q: 'Lebih baik dropship atau stok sendiri?', a: 'Dropship bagus untuk menguji produk mana yang laku dengan risiko rendah. Setelah menemukan produk pemenang, beralih ke stok sendiri (kulakan grosir) biasanya memberi margin jauh lebih sehat. Banyak seller memakai keduanya secara bertahap.' },
+    ],
+  },
+  {
+    slug: 'cara-meningkatkan-penjualan-di-shopee',
+    title: 'Cara Meningkatkan Penjualan di Shopee: 7 Cara Berbasis Data (2026)',
+    desc: 'Cara meningkatkan penjualan di Shopee tanpa asal bakar iklan: perbaiki listing, harga, dan ulasan, lalu fokus ke produk yang memang naik — berdasarkan data, bukan tebakan.',
+    h1: 'Cara Meningkatkan Penjualan di Shopee',
+    cardNote: '7 cara menaikkan penjualan tanpa asal bakar iklan',
+    lead: 'Kalau penjualan mandek, jawabannya jarang "iklan lebih banyak". Biasanya ada kebocoran di listing, harga, atau pilihan produk. Ini 7 cara menaikkan penjualan yang bisa kamu perbaiki dengan data — sebelum menambah anggaran iklan.',
+    datePublished: '2026-07-19', dateModified: '2026-07-19', updatedHuman: '19 Juli 2026',
+    body: `    <p>Menambah anggaran iklan di atas listing yang bocor cuma membuang uang lebih cepat. Perbaiki dulu fondasinya. Berikut tujuh cara yang berdampak, dari yang paling murah.</p>
+
+    <h2>1. Perbaiki foto dan judul (klik dulu, baru beli)</h2>
+    <p>Kalau orang tidak klik, tidak akan ada penjualan. Foto pertama yang terang dan jelas menaikkan rasio klik. Judul harus memuat <strong>kata kunci yang benar-benar diketik pembeli</strong> — lihat istilah apa yang dipakai di produk-produk teratas keyword-mu.</p>
+
+    <h2>2. Sesuaikan harga dengan data pasar</h2>
+    <p>Harga terlalu tinggi mematikan konversi; terlalu rendah membakar margin. Cek <strong>harga median dan rentang harga</strong> keyword-mu di <a href="/riset/">data pasar LarisID</a> dan posisikan harga secara sadar. Panduan: <a href="/panduan/cara-menentukan-harga-jual-produk/">cara menentukan harga jual</a>.</p>
+
+    <h2>3. Kejar ulasan awal</h2>
+    <p>Produk dengan sedikit ulasan sulit dipercaya. Ulasan hanya datang dari pembelian nyata, jadi maksimalkan setiap pesanan awal: kemasan rapi, pengiriman cepat, dan permintaan ulasan yang sopan. Melewati ~50 ulasan pertama sering jadi titik balik.</p>
+
+    <h2>4. Tulis deskripsi yang menjawab keraguan</h2>
+    <p>Setiap pertanyaan yang tak terjawab adalah calon pembeli yang pergi. Cantumkan ukuran, bahan, cara pakai, garansi, dan estimasi pengiriman. Deskripsi yang lengkap juga mengurangi komplain dan retur.</p>
+
+    <h2>5. Pelajari kompetitor untuk temukan celah</h2>
+    <p>Lihat apa yang sudah dilakukan pemain teratas — dan apa yang belum. Rating mereka rendah? Menang di layanan. Foto mereka seadanya? Menang di konten. Baca <a href="/panduan/analisis-kompetitor-shopee/">cara analisis kompetitor Shopee</a>.</p>
+
+    <h2>6. Fokus ke produk yang memang sedang naik</h2>
+    <p>Sebagian penjualan datang dari memilih arus yang benar. Produk yang <strong>sedang naik</strong> lebih mudah didorong daripada yang sudah jenuh. Gunakan sinyal tren dari data untuk menaruh energi di produk yang momentumnya sedang bagus — dan pertimbangkan menambah varian di sekitar produk pemenangmu.</p>
+
+    <h2>7. Baru pasang iklan setelah fondasi benar</h2>
+    <p>Iklan memperbesar apa pun yang sudah ada. Kalau listing dan harga sudah kuat, iklan mempercepat penjualan. Kalau belum, iklan hanya mempercepat kerugian. Mulai kecil, ukur, dan naikkan hanya pada produk yang sudah terbukti konversinya.</p>
+
+    <h2>Catatan jujur</h2>
+    <p>Tidak ada trik yang menjamin penjualan naik — pasar berubah dan keputusan akhir tetap di tanganmu. Yang bisa kamu kendalikan adalah kualitas listing, kewajaran harga, pelayanan, dan pemilihan produk berbasis data. Perbaiki itu dulu, konsisten, dan ukur hasilnya.</p>`,
+    faqs: [
+      { q: 'Kenapa produk saya tidak laku padahal sudah pasang iklan?', a: 'Iklan memperbesar listing yang sudah ada. Kalau foto, judul, harga, atau ulasan masih lemah, iklan hanya mendatangkan klik yang tidak berujung beli. Perbaiki dulu fondasinya, baru iklan akan terasa dampaknya.' },
+      { q: 'Bagaimana cara menaikkan penjualan tanpa iklan?', a: 'Perbaiki foto dan judul agar orang mengklik, sesuaikan harga dengan data pasar, kejar ulasan awal lewat pelayanan yang baik, lengkapi deskripsi, dan fokus ke produk yang memang sedang naik. Semua ini tidak butuh anggaran iklan.' },
+      { q: 'Apakah menurunkan harga selalu menaikkan penjualan?', a: 'Tidak. Harga terlalu rendah bisa menaikkan penjualan tapi menghapus margin, dan memicu perang harga. Lebih baik memposisikan harga di sekitar median pasar dengan pembeda yang jelas daripada jadi yang termurah.' },
+    ],
   }
 ];
 

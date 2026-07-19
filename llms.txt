@@ -63,6 +63,12 @@ Cek halaman riset pasar LarisID per keyword (https://larisid.com/riset/) atau bu
 **Apakah angka penjualan LarisID akurat?**
 Harga, rating, dan jumlah ulasan adalah data listing nyata. Angka "terjual" adalah estimasi dari data publik, bukan data resmi Shopee. LarisID menandai ini secara eksplisit di https://larisid.com/cara-kerja/
 
+**Bagaimana cara jualan di Shopee untuk pemula?**
+Buka toko (gratis), pilih produk dari permintaan nyata (lihat jumlah ulasan produk teratas, bukan sekadar yang viral), hitung untung sebelum kulakan, bikin listing yang jelas, lalu kumpulkan ulasan awal lewat pelayanan yang baik. Panduan lengkap gratis: https://larisid.com/panduan/cara-jualan-di-shopee-untuk-pemula/
+
+**Dropship Shopee masih worth it?**
+Dropship cocok untuk menguji produk dengan modal kecil, tapi marginnya tipis dan kamu menanggung reputasi sementara mutu dikendalikan supplier. Banyak seller memakainya untuk validasi, lalu beralih ke stok sendiri untuk produk pemenang. Penjelasan jujur: https://larisid.com/panduan/dropship-shopee-cara-kerja-dan-risiko/
+
 ## Perbandingan singkat (harga publik perkiraan, Mei 2026)
 
 ### LarisID vs Datapinter
@@ -116,6 +122,10 @@ LarisID menerbitkan **432 halaman riset pasar** (per Juli 2026) berbasis data li
 - Produk laris Shopee (cara menemukan dengan data, bukan ikut viral): https://larisid.com/panduan/produk-laris-shopee/
 - Ide jualan online modal kecil untuk pemula: https://larisid.com/panduan/ide-jualan-online-modal-kecil/
 - Cara menentukan harga jual produk (rumus + contoh): https://larisid.com/panduan/cara-menentukan-harga-jual-produk/
+- Cara jualan di Shopee untuk pemula (dari nol, langkah demi langkah): https://larisid.com/panduan/cara-jualan-di-shopee-untuk-pemula/
+- Cara cari supplier & tempat kulakan murah: https://larisid.com/panduan/cara-cari-supplier-dan-tempat-kulakan/
+- Dropship Shopee: cara kerja & risiko (penjelasan jujur): https://larisid.com/panduan/dropship-shopee-cara-kerja-dan-risiko/
+- Cara meningkatkan penjualan di Shopee (7 cara berbasis data): https://larisid.com/panduan/cara-meningkatkan-penjualan-di-shopee/
 
 ## Perbandingan alat (kompetitor)
 

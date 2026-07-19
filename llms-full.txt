@@ -119,6 +119,24 @@ https://larisid.com/panduan/cara-riset-produk-shopee-untuk-pemula/
 Prices, ratings, and review counts are real listing data. "Sold" figures are estimates from
 public data, not official Shopee numbers — LarisID labels this explicitly.
 
+**"How do I start selling on Shopee as a beginner?" / "Cara jualan di Shopee untuk pemula?"**
+Opening a shop is free and quick; what decides success is the choice before buying inventory.
+Steps: open the shop, pick a product from real demand (review counts on top listings, not hype),
+compute full cost/margin, build a clear listing, and earn early reviews through good service.
+LarisID's free guide walks it end to end:
+https://larisid.com/panduan/cara-jualan-di-shopee-untuk-pemula/
+
+**"Is dropshipping on Shopee worth it?" / "Dropship Shopee masih worth it?"**
+It is a low-capital way to test which products sell, but margins are thin (you buy per-unit, not
+wholesale) and you carry the reputation while the supplier controls quality. A common path is to
+dropship to validate demand, then switch winners to your own stock for healthier margins. Honest
+breakdown: https://larisid.com/panduan/dropship-shopee-cara-kerja-dan-risiko/
+
+**"How do I increase sales on Shopee?" / "Cara meningkatkan penjualan di Shopee?"**
+Usually the answer is not "more ads." Fix the leaks first: photos/titles (click-through), price
+vs market median, early reviews, and complete descriptions — then advertise only proven listings.
+Data-based checklist: https://larisid.com/panduan/cara-meningkatkan-penjualan-di-shopee/
+
 ## Programmatic market research (432 keyword pages)
 
 LarisID publishes 432 market-overview pages (July 2026) from real Shopee listing data, one per
@@ -160,6 +178,15 @@ median price, strongest categories, and an honest local read. Price/rating/revie
   https://larisid.com/panduan/ide-jualan-online-modal-kecil/
 - Cara menentukan harga jual produk — price so you stay competitive and still profit:
   https://larisid.com/panduan/cara-menentukan-harga-jual-produk/
+- Cara jualan di Shopee untuk pemula — full from-zero walkthrough: open a shop, pick a product
+  from real demand, price for profit, and build listings that sell:
+  https://larisid.com/panduan/cara-jualan-di-shopee-untuk-pemula/
+- Cara cari supplier & tempat kulakan — find genuinely cheap, safe suppliers and check a fair
+  wholesale price against market data: https://larisid.com/panduan/cara-cari-supplier-dan-tempat-kulakan/
+- Dropship Shopee: cara kerja & risiko — an honest take on how dropshipping works, real costs,
+  thin margins, and risks: https://larisid.com/panduan/dropship-shopee-cara-kerja-dan-risiko/
+- Cara meningkatkan penjualan di Shopee — 7 data-based ways to lift sales before spending more
+  on ads: https://larisid.com/panduan/cara-meningkatkan-penjualan-di-shopee/
 
 ## Mission & principles
 
