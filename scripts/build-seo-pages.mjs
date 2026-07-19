@@ -37,6 +37,18 @@ const SNAPSHOT = '2026-06-19';
 const SNAPSHOT_HUMAN = '19 Juni 2026';
 const OG_IMAGE = `${SITE}/images/Banner.jpg`;
 
+// Google Ads tag — lives on the /riset/ hub (parity with the committed hub; kept
+// here so regenerating the hub does not strip conversion tracking). Leaf pages stay gtag-free.
+const GTAG = `<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-862519971"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'AW-862519971');
+</script>`;
+
 const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'seo-keywords.json'), 'utf8'));
 const KEYWORDS = data.keywords;
 // Per-keyword detail (top products, regions, price buckets, store counts) precomputed
@@ -403,6 +415,7 @@ ${items.map((e) => `    <a class="riset-card" href="/riset/${slugify(e.keyword)}
   return `<!DOCTYPE html>
 <html lang="id">
 <head>
+${GTAG}
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Riset Pasar Produk Shopee \u2014 Harga, Penjualan &amp; Tren | LarisID</title>
@@ -493,6 +506,9 @@ function buildSitemap(entries) {
     { loc: `${SITE}/perbandingan/larisid-vs-datapinter/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
     { loc: `${SITE}/perbandingan/larisid-vs-tokpee/`, freq: 'monthly', pri: '0.75', mod: SNAPSHOT },
     { loc: `${SITE}/perbandingan/larisid-vs-shoptik/`, freq: 'monthly', pri: '0.75', mod: SNAPSHOT },
+    { loc: `${SITE}/perbandingan/aplikasi-cek-produk-terlaris-shopee/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
+    { loc: `${SITE}/perbandingan/riset-produk-shopee-gratis-vs-berbayar/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
+    { loc: `${SITE}/perbandingan/alternatif-datapinter-gratis/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
     { loc: `${SITE}/harga/`, freq: 'monthly', pri: '0.85', mod: '2026-05-30' },
     { loc: `${SITE}/tentang/`, freq: 'monthly', pri: '0.8', mod: '2026-05-30' },
     { loc: `${SITE}/cara-kerja/`, freq: 'monthly', pri: '0.8', mod: '2026-05-30' },
