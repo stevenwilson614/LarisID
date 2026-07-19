@@ -682,6 +682,13 @@ html.session-restoring body::after {
 .dir-compare-text strong { color: var(--ink); font-weight: 650; }
 .dir-compare-text em { font-style: normal; font-weight: 600; color: var(--ink); }
 .dir-cats { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 10px; }
+.dir-cat-bar { margin: 14px 0 10px; }
+.dir-cat-bar .dir-cats { margin: 0; }
+.dir-cat-bar .dir-subcats { margin-top: 8px; }
+.dir-subcats .chip { padding: 8px 13px; font-size: .82rem; }
+.chip.chip-back { font-weight: 600; }
+.dir-cat-bar:not(.collapsed) .chip-back { display: none; }
+.dir-cat-bar.collapsed #dir-cats .chip:not(.selected):not(.chip-back) { display: none; }
 /* Side-by-side product compare */
 .cmp2-heads {
   display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;
@@ -842,10 +849,6 @@ html.session-restoring body::after {
 }
 .composer-send:hover { opacity: .85; }
 .composer-send:disabled { opacity: .25; cursor: not-allowed; }
-.composer-hint {
-  max-width: 720px; margin: 6px auto 0;
-  font-size: .7rem; color: var(--muted); text-align: center;
-}
 
 /* Post-login profile nudge */
 .nudge-title { margin: 0 0 10px; font-size: 1.15rem; font-weight: 750; letter-spacing: -.02em; }
@@ -1063,7 +1066,6 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 
 /* ── Mobile landing: one screen, no scroll, composer docked at bottom ── */
 @media (max-width: 860px) {
-  .composer-hint { display: none; }
   body.view-home .panel { padding: 0 14px 0; }
   body.view-home .panel-inner,
   body.view-home #view-home,
@@ -1824,7 +1826,10 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
             <p class="dd-sub">Data dari Shopee — bukan hasil AI. Filter bebas; halaman 2+ dan Deep Dive perlu login.</p>
           </div>
           <div class="dir-compare-banner" id="dir-compare-banner" hidden></div>
-          <div class="dir-cats" id="dir-cats"></div>
+          <div class="dir-cat-bar" id="dir-cat-bar">
+            <div class="dir-cats" id="dir-cats"></div>
+            <div class="dir-cats dir-subcats" id="dir-subcats" hidden></div>
+          </div>
           <div class="dir-filters" id="dir-filters">
             <label class="dd-sub" for="dir-city" style="margin:0">Kota</label>
             <select id="dir-city" aria-label="Filter kota"></select>
@@ -1916,7 +1921,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
           </div>
         </button>
       </div>
-      <div class="composer-hint" id="composer-hint">Data dari Shopee via LarisID — jawaban dari data asli, bukan tebakan AI</div>
     </div>
   </div>
 
@@ -2043,6 +2047,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260719a" defer></script>
+<script src="/js/gpt-app.js?v=20260719b" defer></script>
 </body>
 </html>

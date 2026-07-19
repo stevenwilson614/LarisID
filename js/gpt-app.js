@@ -383,6 +383,133 @@ const CAT_SLUG = {
   'Kesehatan':'kesehatan','Motor & Mobil':'motor-mobil','Olahraga':'olahraga',
   'Outdoor & Camping':'outdoor-camping','Rumah':'rumah','Sepeda':'sepeda','Taman':'taman','Tanaman':'tanaman',
 };
+// Sub-groups per category. `match` = lowercase substrings tested against
+// (keyword + " " + product_name) via subgroupMatches(). Clusters derived from
+// the real scrape keywords in listings_deduped. First directory chip is an
+// implicit "Semua {cat}" (clears the sub-filter).
+const CAT_SUBGROUPS = {
+  'Alat Tulis': [
+    { label: 'Pulpen & Pensil', match: ['pena','pulpen','pensil','stabilo','spidol','penghapus','gel'] },
+    { label: 'Buku & Catatan', match: ['buku','catatan','notebook','bookmark','penanda'] },
+    { label: 'Organizer & File', match: ['tempat pensil','organizer','holder','folder','map','file','clipboard','dokumen'] },
+    { label: 'Papan Tulis', match: ['papan tulis','whiteboard','magnet'] },
+    { label: 'Label & Stiker', match: ['stiker','label'] },
+  ],
+  'Bayi & Anak': [
+    { label: 'Mainan Edukasi', match: ['mainan','edukasi','edukatif','puzzle','balok','montessori','kartu'] },
+    { label: 'Perlengkapan Bayi', match: ['bayi','celemek','bak mandi','popok','botol'] },
+    { label: 'Furniture & Belajar', match: ['meja belajar','kursi','rak'] },
+    { label: 'Penyimpanan Mainan', match: ['organizer mainan','box mainan','keranjang mainan','rak mainan'] },
+    { label: 'Aksesoris Anak', match: ['aksesoris rambut','sepatu anak','baju anak'] },
+  ],
+  'Dapur': [
+    { label: 'Pisau & Alat Potong', match: ['pisau','gunting','talenan','parut','iris','kupas','potong','pengiris'] },
+    { label: 'Peralatan Masak', match: ['kompor','panci','wajan','rice cooker','blender','toaster','kettle','pemanas','grill','oven','pemasak'] },
+    { label: 'Penyimpanan', match: ['toples','wadah','container','tempat','rak','kotak','box','organizer','beras','kedap'] },
+    { label: 'Baking & Kue', match: ['loyang','cetakan','cookies','kue','baking','spatula'] },
+    { label: 'Aksesoris Dapur', match: ['lap','penjepit','filter','saring','sendok','garpu','pembuka','celemek','bumbu'] },
+  ],
+  'Elektronik': [
+    { label: 'Charging & Power', match: ['power bank','charger','kabel','stop kontak','adaptor','usb'] },
+    { label: 'Audio', match: ['earphone','headset','speaker','tws','bluetooth'] },
+    { label: 'Cahaya & Lampu', match: ['lampu','senter','led','emergency'] },
+    { label: 'Kipas & Udara', match: ['kipas','humidifier','diffuser'] },
+    { label: 'Komputer & HP', match: ['mouse','keyboard','flashdisk','memory'] },
+  ],
+  'Fashion': [
+    { label: 'Tas', match: ['tas','koper','dompet','pouch'] },
+    { label: 'Baju Wanita', match: ['kaos wanita','celana wanita','baju wanita','dress','rok','blouse','wanita'] },
+    { label: 'Baju Pria', match: ['celana pria','kaos pria','jaket','hoodie','pria','kemeja'] },
+    { label: 'Sepatu & Sandal', match: ['sepatu','sandal','sneakers'] },
+    { label: 'Aksesoris', match: ['gelang','topi','kacamata','sabuk','ikat pinggang','jam tangan','kalung'] },
+  ],
+  'Hewan Peliharaan': [
+    { label: 'Makan & Minum', match: ['tempat makan','dispenser','mangkuk','minum','pakan','botol minum'] },
+    { label: 'Grooming', match: ['sisir','grooming','gunting kuku','bulu'] },
+    { label: 'Kandang & Tempat Tidur', match: ['kandang','rumah','tempat tidur','tas transport','tas'] },
+    { label: 'Mainan', match: ['mainan','gigitan','bola'] },
+    { label: 'Pasir & Kebersihan', match: ['pasir','litter'] },
+  ],
+  'Hobi & Kerajinan': [
+    { label: 'Jahit', match: ['jahit','jarum','benang','mesin jahit'] },
+    { label: 'Board Game & Puzzle', match: ['board game','puzzle','game','kartu'] },
+    { label: 'Kerajinan', match: ['kerajinan','craft','lem','manik','rajut'] },
+  ],
+  'HP & Gadget': [
+    { label: 'Holder & Stand', match: ['holder','stand','tripod','bracket','gorillapod'] },
+    { label: 'Aksesoris Laptop', match: ['laptop','cooling','mouse','alas','pendingin'] },
+    { label: 'Lighting & Selfie', match: ['ring light','selfie','cermin','led'] },
+  ],
+  'Kamar Mandi': [
+    { label: 'Sabun & Sanitasi', match: ['sabun','shower gel','antiseptik','dispenser','cuci tangan'] },
+    { label: 'Perlengkapan', match: ['gayung','ember','keset','tirai shower'] },
+    { label: 'Penyimpanan', match: ['tempat sikat','tempat sabun','holder','rak'] },
+    { label: 'Pembersih Toilet', match: ['sikat toilet','pembersih toilet','wc'] },
+  ],
+  'Keamanan': [
+    { label: 'CCTV & Kamera', match: ['cctv','kamera'] },
+    { label: 'Kunci & Gembok', match: ['kunci','gembok','smart lock','sidik jari'] },
+    { label: 'Alarm & Sensor', match: ['alarm','sensor'] },
+    { label: 'Pelacak GPS', match: ['gps','tracker','pelacak'] },
+  ],
+  'Kecantikan': [
+    { label: 'Rambut', match: ['rambut','jepit','catok','scrunchie','headband','ikat rambut'] },
+    { label: 'Perawatan Wajah', match: ['wajah','facial','komedo','steamer'] },
+    { label: 'Kuku', match: ['kuku','gunting kuku'] },
+    { label: 'Gigi', match: ['gigi','flosser','sikat gigi elektrik'] },
+    { label: 'Makeup & Organizer', match: ['makeup','organizer','kosmetik'] },
+  ],
+  'Kesehatan': [
+    { label: 'Alat Pijat', match: ['pijat','massage'] },
+    { label: 'Timbangan & Ukur', match: ['timbangan','alat ukur','termometer','tensi'] },
+    { label: 'Obat & Vitamin', match: ['obat','p3k','vitamin','pill'] },
+    { label: 'Bantal & Postur', match: ['bantal','sandaran','punggung','postur'] },
+  ],
+  'Motor & Mobil': [
+    { label: 'Aksesoris Interior', match: ['holder','parfum','tempat tisu','tempat sampah','gantungan','tisu'] },
+    { label: 'Pembersih & Perawatan', match: ['pembersih','poles','vacuum','gel','slime','cuci'] },
+    { label: 'Ban & Pompa', match: ['ban','pompa','kompresor'] },
+    { label: 'Charger & Elektronik', match: ['charger','kamera mundur','usb'] },
+    { label: 'Cover & Jas Hujan', match: ['cover','jas hujan','sarung tangan','sarung'] },
+  ],
+  'Olahraga': [
+    { label: 'Yoga & Pilates', match: ['yoga','pilates','matras','blok','strap'] },
+    { label: 'Fitness & Beban', match: ['dumbbell','fitness','resistance','roller','beban','skipping'] },
+    { label: 'Tas Olahraga', match: ['tas'] },
+    { label: 'Botol & Handuk', match: ['botol','handuk'] },
+    { label: 'Pakaian', match: ['celana','sarung tangan','baju','training'] },
+  ],
+  'Outdoor & Camping': [
+    { label: 'Masak & Kompor', match: ['kompor','gas','masak'] },
+    { label: 'Lampu & Senter', match: ['lampu','senter','headlamp'] },
+    { label: 'Cooler & Pendingin', match: ['cooler','cool box','kotak es','pendingin','tas pendingin'] },
+    { label: 'Matras & Tikar', match: ['matras','tikar','alas'] },
+    { label: 'Tenda & Ember', match: ['tenda','ember'] },
+  ],
+  'Rumah': [
+    { label: 'Dekorasi', match: ['dekorasi','wall decor','bunga','lukisan','stiker','kanvas','hiasan'] },
+    { label: 'Tirai & Jendela', match: ['tirai','gorden','jendela'] },
+    { label: 'Pembersih', match: ['pembersih','sikat','pel','sapu'] },
+    { label: 'Sampah', match: ['sampah','kantong plastik'] },
+    { label: 'Penyimpanan & Rak', match: ['rak','gantungan','organizer','laci'] },
+  ],
+  'Sepeda': [
+    { label: 'Tas & Holder', match: ['tas','holder','botol'] },
+    { label: 'Lampu & Bel', match: ['lampu','bel','spion'] },
+    { label: 'Kunci & Pompa', match: ['kunci','pompa'] },
+  ],
+  'Taman': [
+    { label: 'Lampu Taman', match: ['lampu','solar','tenaga surya','hias'] },
+    { label: 'Penyiraman', match: ['selang','nozzle','sprayer','semprot','siram'] },
+    { label: 'Alat Berkebun', match: ['gunting','sekop','cabut','gulma','sarung tangan','berkebun'] },
+    { label: 'Rak & Jaring', match: ['rak','jaring','label'] },
+  ],
+  'Tanaman': [
+    { label: 'Pot & Wadah', match: ['pot','gantung','wadah'] },
+    { label: 'Penyiraman', match: ['siram','spray','semprot','penyiram','timer'] },
+    { label: 'Tanaman Hias', match: ['artificial','hiasan','tanaman'] },
+  ],
+};
 const NU_ONB_LOCATIONS = [
   'Jakarta', 'Bekasi', 'Depok', 'Tangerang', 'Bogor', 'Bandung',
   'Semarang', 'Yogyakarta', 'Surabaya', 'Sidoarjo', 'Medan',
@@ -424,6 +551,7 @@ const state = {
 
   dirPage: 1,
   dirCat: null,
+  dirSub: null,  // selected sub-group {label, match} within dirCat
   dirCity: '',   // ephemeral directory filter (not persisted)
   dirSort: 'terlaris',
   dirRows: [],
@@ -2377,6 +2505,14 @@ function catMatches(cat, cats) {
     const c0 = c.split(/[\s&/]+/)[0];
     return w0 && c0 && (c0 === w0 || c.includes(w0));
   });
+}
+
+// True when a listing belongs to a category sub-group — matches its scrape
+// keyword or product name against the sub-group's term list.
+function subgroupMatches(row, terms) {
+  if (!terms?.length) return true;
+  const hay = ((row.keyword || '') + ' ' + (row.product_name || '')).toLowerCase();
+  return terms.some(t => hay.includes(t));
 }
 
 function asListingProduct(r) {
@@ -5200,6 +5336,51 @@ async function openMoreProductsDirectory() {
   await openDirectory();
 }
 
+// Sync the category bar to state: collapse it once a category is chosen (so the
+// product grid shows without scrolling past 20 chips), highlight the active
+// chip, and render that category's sub-groups.
+function applyDirCatUi() {
+  const catBar = $('dir-cat-bar');
+  const cats = $('dir-cats');
+  if (catBar) catBar.classList.toggle('collapsed', !!state.dirCat);
+  if (cats) {
+    cats.querySelectorAll('[data-dcat]').forEach(c => {
+      if (c.classList.contains('chip-back')) return;
+      const v = c.getAttribute('data-dcat') || '';
+      c.classList.toggle('selected', (state.dirCat || '') === v);
+    });
+  }
+  renderSubcats(state.dirCat);
+}
+
+// Build the sub-group chip row for the selected category (hidden when the
+// category has no sub-groups). Selecting one narrows the grid by keyword.
+function renderSubcats(cat) {
+  const wrap = $('dir-subcats');
+  if (!wrap) return;
+  const groups = cat ? CAT_SUBGROUPS[cat] : null;
+  if (!groups || !groups.length) {
+    wrap.hidden = true;
+    wrap.innerHTML = '';
+    return;
+  }
+  wrap.hidden = false;
+  const selIdx = state.dirSub ? groups.indexOf(state.dirSub) : -1;
+  wrap.innerHTML =
+    `<button type="button" class="chip${selIdx < 0 ? ' selected' : ''}" data-dsub="-1">Semua ${esc(cat)}</button>` +
+    groups.map((g, i) => `<button type="button" class="chip${i === selIdx ? ' selected' : ''}" data-dsub="${i}">${esc(g.label)}</button>`).join('');
+  wrap.querySelectorAll('[data-dsub]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.getAttribute('data-dsub'), 10);
+      state.dirSub = idx >= 0 ? groups[idx] : null;
+      state.dirPage = 1;
+      wrap.querySelectorAll('.chip').forEach(c => c.classList.toggle('selected', c === btn));
+      void logUserEvent('dir_filter', { ui: 'gpt', kind: 'subgroup', value: state.dirSub ? state.dirSub.label : '' });
+      void renderDirectory();
+    });
+  });
+}
+
 async function openDirectory() {
   setView('directory');
   _dirApplyDefaultsOnce();
@@ -5208,26 +5389,25 @@ async function openDirectory() {
   const cats = $('dir-cats');
   if (cats && !cats.dataset.ready) {
     cats.dataset.ready = '1';
-    cats.innerHTML = `<button type="button" class="chip" data-dcat="">Semua</button>` +
+    cats.innerHTML =
+      `<button type="button" class="chip chip-back" data-dcat="" aria-label="Kembali ke semua kategori">‹ Semua</button>` +
+      `<button type="button" class="chip" data-dcat="">Semua</button>` +
       NU_ONB_CATS.map(c => `<button type="button" class="chip" data-dcat="${esc(c)}">${esc(c)}</button>`).join('');
     cats.querySelectorAll('[data-dcat]').forEach(btn => {
       btn.addEventListener('click', () => {
         // Category filter is free for anonymous (page 2+ / deep-dive stay gated).
+        // Picking a category collapses the menu to reveal results right away.
         const cat = btn.getAttribute('data-dcat');
         state.dirCat = cat || null;
+        state.dirSub = null;
         state.dirPage = 1;
-        cats.querySelectorAll('.chip').forEach(c => c.classList.toggle('selected', c === btn));
+        applyDirCatUi();
         void logUserEvent('dir_filter', { ui: 'gpt', kind: 'category', value: state.dirCat || '' });
         void renderDirectory();
       });
     });
   }
-  if (cats) {
-    cats.querySelectorAll('[data-dcat]').forEach(c => {
-      const v = c.getAttribute('data-dcat') || '';
-      c.classList.toggle('selected', (state.dirCat || '') === v);
-    });
-  }
+  applyDirCatUi();
 
   const citySel = $('dir-city');
   if (citySel && !citySel.dataset.ready) {
@@ -5272,16 +5452,20 @@ async function renderDirectory() {
 
   const cat = state.dirCat || null;
   const city = state.dirCity || '';
+  const poolLimit = state.dirSub ? 400 : 200;  // widen pool so narrow sub-groups still fill a page
   let rows = [];
   if (city) {
     const locs = expandCityLocations(city);
-    rows = await fetchListingsCityCat(locs, cat ? [cat] : [], 200);
+    rows = await fetchListingsCityCat(locs, cat ? [cat] : [], poolLimit);
   } else {
-    rows = mergePool([], await fetchNaikDaunGlobal(200));
+    rows = mergePool([], await fetchNaikDaunGlobal(poolLimit));
     if (cat) {
       const c = cat.toLowerCase();
       rows = rows.filter(r => catMatches(r.category, [cat]) || (r.category || '').toLowerCase().includes(c.slice(0, 5)));
     }
+  }
+  if (state.dirSub) {
+    rows = rows.filter(r => subgroupMatches(r, state.dirSub.match));
   }
   rows = sortDirRows(rows, state.dirSort || 'terlaris');
   state.dirRows = rows;
