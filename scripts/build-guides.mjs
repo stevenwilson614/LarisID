@@ -18,6 +18,18 @@ const SITE = 'https://larisid.com';
 const OG_IMAGE = `${SITE}/images/Banner.jpg`;
 const AUTHOR = 'Steven Wilson';
 
+// Google Ads tag — lives on the section hub pages (parity with the committed
+// hubs; injected here so regenerating the hub does not strip conversion tracking).
+const GTAG = `<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-862519971"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'AW-862519971');
+</script>`;
+
 function esc(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -54,7 +66,13 @@ function articlePage(g) {
           { '@type': 'ListItem', position: 3, name: g.h1, item: url },
         ],
       },
-      {
+      g.howto ? {
+        '@type': 'HowTo',
+        name: jt(g.howto.name),
+        description: jt(g.howto.description),
+        inLanguage: 'id',
+        step: g.howto.step.map((s, i) => ({ '@type': 'HowToStep', position: i + 1, name: jt(s.name), text: jt(s.text) })),
+      } : {
         '@type': 'Article',
         headline: jt(g.title),
         description: jt(g.desc),
@@ -164,6 +182,7 @@ function hubPage(guides) {
   return `<!DOCTYPE html>
 <html lang="id">
 <head>
+${GTAG}
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Panduan Riset & Bisnis Shopee untuk Seller Indonesia | LarisID</title>
@@ -356,6 +375,102 @@ const GUIDES = [
       { q: 'Apa metrik kompetitor yang paling jujur?', a: 'Jumlah ulasan dan rating rata-rata. Ulasan hanya muncul dari pembelian nyata, sementara angka "terjual" hanyalah estimasi.' },
     ],
   },
+  {
+    "slug": "produk-laris-shopee",
+    "title": "Produk yang Laris di Shopee 2026: Cara Menemukannya dengan Data",
+    "desc": "Cara menemukan produk yang laris di Shopee 2026 pakai data nyata — bukan sekadar ikut tren viral. Baca permintaan, margin, dan persaingan sebelum kulakan.",
+    "h1": "Produk yang Laris di Shopee 2026: Cara Menemukannya",
+    "cardNote": "Cara menemukan produk laris & untung dengan data — bukan ikut viral",
+    "lead": "Setiap orang mencari \"daftar produk terlaris\". Masalahnya, begitu sebuah produk masuk daftar viral, pasarnya sudah penuh. Panduan ini soal cara <strong>menemukan sendiri</strong> produk yang laris <em>dan</em> masih menguntungkan — pakai data, bukan tebakan.",
+    "datePublished": "2026-07-07",
+    "dateModified": "2026-07-07",
+    "updatedHuman": "7 Juli 2026",
+    "body": "    <p>\"Produk apa yang lagi laris di Shopee?\" adalah pertanyaan yang salah kalau berhenti di situ. Produk yang laris untuk toko besar dengan budget iklan puluhan juta belum tentu laris — apalagi untung — untuk toko baru. Pertanyaan yang benar: <strong>di keyword mana ada permintaan nyata, margin masih sehat, dan persaingan masih bisa saya masuki?</strong></p>\n\n    <h2>Kenapa \"ikut yang viral\" hampir selalu telat</h2>\n    <p>Siklusnya selalu sama: sebuah produk mulai ramai → muncul di konten TikTok/daftar \"produk terlaris\" → ribuan seller ikut kulakan → harga perang → margin habis. Saat kamu membaca daftar itu, kamu masuk di titik paling tidak menguntungkan. Yang menang bukan yang ikut paling ramai, tapi yang menemukan permintaan <strong>sebelum</strong> semua orang.</p>\n\n    <h2>4 sinyal bahwa sebuah produk benar-benar laris</h2>\n    <h3>1. Ulasan banyak, bukan cuma \"terjual\" tinggi</h3>\n    <p>Angka \"terjual\" di Shopee adalah <strong>estimasi</strong>, bukan data resmi. Sinyal yang lebih jujur adalah <strong>jumlah ulasan</strong> pada produk-produk teratas — ulasan hanya muncul setelah ada pembelian nyata. Kalau produk teratas di sebuah keyword punya puluhan ribu ulasan, permintaan jelas ada dan konsisten.</p>\n    <h3>2. Permintaan tersebar, bukan cuma di 1–2 toko</h3>\n    <p>Kalau penjualan sebuah keyword hanya dikuasai satu-dua toko raksasa, itu bukan pasar yang mudah dimasuki — mereka sudah mengunci harga dan kepercayaan. Pasar yang sehat untuk pemain baru punya <strong>banyak toko yang sama-sama berhasil jualan</strong>.</p>\n    <h3>3. Margin masih sehat di harga median</h3>\n    <p>Produk boleh laris, tapi kalau harga median-nya sudah perang sampai margin tipis, \"laku\" cuma berarti sibuk tanpa untung. Hitung dulu HPP-mu (modal, ongkir, packaging, admin marketplace, iklan) terhadap harga median. Pelajari di <a href=\"/panduan/cara-menghitung-margin-dan-hpp/\">cara menghitung margin &amp; HPP</a>.</p>\n    <h3>4. Permintaan stabil, bukan lonjakan sesaat</h3>\n    <p>Produk musiman atau hype sesaat bisa terlihat laris minggu ini dan mati bulan depan. Permintaan yang bisa diandalkan adalah yang stabil dari waktu ke waktu — lebih membosankan, tapi lebih aman untuk stok dan modal.</p>\n\n    <h2>Kategori yang konsisten kuat di marketplace Indonesia</h2>\n    <p>Alih-alih daftar produk spesifik yang cepat basi, mulai dari kategori yang permintaannya terbukti tahan lama, lalu turunkan ke keyword spesifik:</p>\n    <ul>\n      <li><strong>Kebutuhan rumah tangga &amp; dapur</strong> — dibeli berulang, permintaan stabil sepanjang tahun.</li>\n      <li><strong>Fashion &amp; aksesoris sehari-hari</strong> — volume besar, tapi persaingan ketat; menang di foto, ukuran, dan niche.</li>\n      <li><strong>Perawatan diri &amp; kecantikan</strong> — margin bisa bagus; hati-hati kategori yang butuh izin BPOM.</li>\n      <li><strong>Perlengkapan bayi &amp; ibu</strong> — pembeli loyal dan tidak terlalu sensitif harga jika percaya kualitas.</li>\n      <li><strong>Aksesoris HP &amp; gadget kecil</strong> — pembelian impulsif, cocok untuk uji pasar modal kecil.</li>\n      <li><strong>Hobi &amp; perlengkapan olahraga</strong> — niche dengan pembeli yang paham nilai, persaingan harga lebih longgar.</li>\n    </ul>\n    <p>Kategori hanya titik awal. Yang menentukan tetap keyword spesifik di dalamnya — dan itu harus divalidasi dengan data.</p>\n\n    <h2>Cara memvalidasi dengan data (gratis)</h2>\n    <p>Setelah punya kandidat keyword, buka <a href=\"/riset/\">halaman riset pasar LarisID</a> dan cek angkanya: harga median, rentang harga, jumlah listing &amp; toko, rating rata-rata, dan estimasi penjualan — semuanya dari listing Shopee nyata, bukan tebakan. <a href=\"/\">Viability Score 0–100</a> merangkum seberapa mudah pasar itu dimasuki. Contoh halaman riset: <a href=\"/riset/botol-minum-aesthetic-1-liter/\">botol minum aesthetic 1 liter</a> atau <a href=\"/riset/tray-dapur-plastik-serbaguna/\">tray dapur plastik serbaguna</a>.</p>\n    <p>Alurnya lengkap ada di <a href=\"/panduan/cara-riset-produk-shopee-untuk-pemula/\">cara riset produk Shopee untuk pemula</a>.</p>\n\n    <h2>Kesalahan yang bikin modal habis</h2>\n    <ul>\n      <li><strong>Ikut daftar \"produk terlaris\" mentah-mentah.</strong> Saat kamu baca, pasarnya sudah penuh.</li>\n      <li><strong>Percaya angka \"terjual\" saja.</strong> Itu estimasi — silang-cek dengan ulasan dan rating.</li>\n      <li><strong>Mengejar harga termurah.</strong> Termurah sering berarti margin negatif atau kualitas seadanya.</li>\n      <li><strong>Lupa biaya tersembunyi.</strong> Admin marketplace, iklan, dan retur menggerus untung yang kelihatannya besar.</li>\n    </ul>",
+    "faqs": [
+      {
+        "q": "Apa produk yang paling laris di Shopee sekarang?",
+        "a": "Tidak ada satu daftar \"produk terlaris\" yang berlaku untuk semua seller. Yang laris untuk toko besar dengan modal iklan besar belum tentu menguntungkan untukmu. Yang perlu kamu cari adalah keyword dengan permintaan nyata, margin sehat di harga median, dan persaingan yang masih bisa dimasuki — ini bisa berbeda tiap kategori dan tiap bulan."
+      },
+      {
+        "q": "Apakah ikut produk viral itu strategi yang bagus?",
+        "a": "Biasanya tidak. Saat sebuah produk sudah viral, pasarnya sudah penuh, harga sudah perang, dan margin sudah tipis. Pendatang baru masuk di titik paling tidak menguntungkan. Lebih aman menemukan permintaan yang stabil sebelum ramai daripada ikut saat sudah puncak."
+      },
+      {
+        "q": "Bagaimana cara tahu sebuah produk benar-benar laris, bukan cuma kelihatan ramai?",
+        "a": "Cek jumlah ulasan pada produk teratas (ulasan hanya muncul setelah pembelian nyata), bukan hanya angka \"terjual\" yang merupakan estimasi. Lalu lihat berapa banyak toko yang berhasil menjual produk serupa — kalau hanya 1–2 toko yang menguasai, itu bukan pasar yang mudah dimasuki."
+      }
+    ]
+  },
+  {
+    "slug": "ide-jualan-online-modal-kecil",
+    "title": "Ide Jualan Online Modal Kecil untuk Pemula (2026)",
+    "desc": "Ide jualan online modal kecil yang realistis untuk pemula: cara pilih produk berisiko rendah, uji pasar tanpa boros stok, dan validasi permintaan pakai data gratis.",
+    "h1": "Ide Jualan Online Modal Kecil untuk Pemula",
+    "cardNote": "Pilih produk berisiko rendah & uji pasar tanpa boros modal",
+    "lead": "Modal kecil bukan halangan — asal dipakai untuk <strong>menguji pasar</strong>, bukan menebak. Panduan ini soal cara memilih produk berisiko rendah dan memvalidasi permintaan sebelum uang habis di stok yang tidak laku.",
+    "datePublished": "2026-07-07",
+    "dateModified": "2026-07-07",
+    "updatedHuman": "7 Juli 2026",
+    "body": "    <p>Kesalahan paling umum dengan modal kecil bukan \"salah pilih produk\", tapi <strong>menghabiskan seluruh modal untuk stok sebelum tahu barangnya laku</strong>. Dengan modal terbatas, tujuan pertamamu bukan untung besar — tapi mengumpulkan bukti dengan risiko sekecil mungkin.</p>\n\n    <h2>Prinsip modal kecil: uji dulu, skalakan kemudian</h2>\n    <p>Anggap modal awalmu sebagai \"biaya riset\", bukan \"biaya stok\". Belanjakan sedikit untuk membuktikan sebuah produk laku, baru gandakan setelah ada pesanan nyata. Ini membalik urutan yang biasa bikin pemula rugi: kulakan banyak → baru cari pembeli.</p>\n\n    <h2>Ciri produk yang cocok untuk modal kecil</h2>\n    <ul>\n      <li><strong>Ringan &amp; murah ongkir.</strong> Biaya kirim yang mahal memakan margin dan bikin calon pembeli mundur.</li>\n      <li><strong>Harga satuan terjangkau.</strong> Barang murah = pembelian impulsif, uji pasar lebih cepat dapat data.</li>\n      <li><strong>Tidak mudah rusak / tidak kedaluwarsa.</strong> Mengurangi risiko rugi kalau stok tidak langsung habis.</li>\n      <li><strong>Tidak butuh banyak varian.</strong> Ukuran/warna yang banyak mengunci modal di stok mati.</li>\n      <li><strong>Bukan kategori yang butuh izin khusus</strong> (mis. kosmetik/obat butuh BPOM) kecuali kamu sudah siap mengurusnya.</li>\n    </ul>\n\n    <h2>Kategori ide jualan modal kecil</h2>\n    <p>Gunakan ini sebagai titik awal, lalu validasi keyword spesifiknya dengan data:</p>\n    <ul>\n      <li><strong>Aksesoris HP &amp; gadget kecil</strong> — ringan, murah kirim, pembelian impulsif.</li>\n      <li><strong>Perlengkapan dapur &amp; rumah tangga kecil</strong> — permintaan stabil, dibeli berulang.</li>\n      <li><strong>Aksesoris fashion</strong> (jepit, kaus kaki, tas kecil) — modal per unit rendah.</li>\n      <li><strong>Alat tulis &amp; perlengkapan hobi</strong> — niche dengan pembeli yang loyal.</li>\n      <li><strong>Perlengkapan hewan peliharaan</strong> — pasar tumbuh, pembeli tidak terlalu sensitif harga.</li>\n      <li><strong>Produk digital</strong> (template, e-book, jasa desain) — nyaris tanpa modal stok, margin tinggi.</li>\n    </ul>\n\n    <h2>Dropship, pre-order, atau stok sendiri?</h2>\n    <p>Untuk modal kecil di awal, <strong>dropship atau pre-order</strong> lebih aman karena tidak mengunci uang di stok yang belum tentu laku. Konsekuensinya: margin lebih tipis dan kontrol kualitas/pengiriman lebih rendah. Begitu sebuah produk terbukti laku, beralih ke <strong>stok sendiri</strong> biasanya menaikkan margin dan kecepatan kirim. Perlakukan fase dropship sebagai uji pasar, bukan model akhir.</p>\n\n    <h2>Validasi sebelum keluar modal (gratis)</h2>\n    <p>Sebelum kulakan apa pun, buka <a href=\"/riset/\">halaman riset pasar LarisID</a> untuk keyword incaranmu dan cek: harga median, rentang harga, jumlah listing &amp; toko, rating rata-rata, dan estimasi penjualan — dari listing Shopee nyata. Tiga hal yang wajib kamu pastikan:</p>\n    <ol>\n      <li><strong>Ada permintaan?</strong> Lihat jumlah ulasan pada produk teratas — ulasan hanya muncul setelah pembelian nyata.</li>\n      <li><strong>Margin masih sehat?</strong> Hitung HPP terhadap harga median. Panduan: <a href=\"/panduan/cara-menghitung-margin-dan-hpp/\">cara menghitung margin &amp; HPP</a> dan <a href=\"/panduan/cara-menentukan-harga-jual-produk/\">cara menentukan harga jual</a>.</li>\n      <li><strong>Persaingan bisa dimasuki?</strong> Cek konsentrasi pasar: <a href=\"/panduan/analisis-kompetitor-shopee/\">analisis kompetitor</a>.</li>\n    </ol>\n    <p>Alur riset lengkap ada di <a href=\"/panduan/cara-riset-produk-shopee-untuk-pemula/\">cara riset produk Shopee untuk pemula</a>.</p>\n\n    <h2>Checklist modal kecil</h2>\n    <ul>\n      <li>Modal awal dipakai untuk uji pasar, bukan borong stok.</li>\n      <li>Produk ringan, murah kirim, tidak mudah rusak.</li>\n      <li>Permintaan sudah divalidasi dengan data, bukan asumsi.</li>\n      <li>Margin di harga median masih sehat setelah semua biaya.</li>\n      <li>Rencana skala-up jelas begitu ada bukti penjualan.</li>\n    </ul>",
+    "faqs": [
+      {
+        "q": "Jualan online modal 100 ribu bisa apa?",
+        "a": "Modal kecil paling aman dipakai untuk menguji pasar, bukan langsung stok banyak. Pilih produk ringan dan murah kirim (aksesoris, perlengkapan kecil), ambil stok awal sedikit atau pakai sistem pre-order/dropship untuk memvalidasi permintaan dulu, baru skalakan setelah ada bukti penjualan. Riset pasarnya sendiri bisa dilakukan gratis."
+      },
+      {
+        "q": "Lebih baik dropship atau stok sendiri untuk pemula?",
+        "a": "Untuk modal kecil, dropship atau pre-order lebih aman di awal karena tidak mengunci modal di stok yang belum tentu laku. Kekurangannya margin lebih tipis dan kontrol kualitas/pengiriman lebih rendah. Begitu sebuah produk terbukti laku, beralih ke stok sendiri biasanya menaikkan margin."
+      },
+      {
+        "q": "Bagaimana cara memilih produk agar modal kecil tidak hangus?",
+        "a": "Validasi permintaan sebelum kulakan: cek apakah ada permintaan nyata (jumlah ulasan pada produk teratas), apakah margin masih sehat di harga median, dan apakah persaingan masih bisa dimasuki. Mulai dari stok kecil untuk uji pasar, jangan langsung besar."
+      }
+    ]
+  },
+  {
+    "slug": "cara-menentukan-harga-jual-produk",
+    "title": "Cara Menentukan Harga Jual Produk (dengan Contoh Perhitungan)",
+    "desc": "Cara menentukan harga jual produk online yang untung: rumus markup & margin, contoh perhitungan lengkap dengan biaya marketplace, dan cara cek harga median pasar.",
+    "h1": "Cara Menentukan Harga Jual Produk",
+    "cardNote": "Rumus markup vs margin + contoh hitungan sampai harga median",
+    "lead": "Salah menentukan harga bikin dua hal buruk: terlalu murah dan rugi diam-diam, atau terlalu mahal dan tidak ada yang beli. Ini cara menetapkan harga jual yang <strong>untung sekaligus kompetitif</strong> — lengkap dengan contoh hitungan.",
+    "datePublished": "2026-07-07",
+    "dateModified": "2026-07-07",
+    "updatedHuman": "7 Juli 2026",
+    "body": "    <p>Menentukan harga bukan menebak \"kira-kira segini\". Ada tiga langkah: hitung HPP lengkap, tetapkan target margin, lalu selaraskan dengan harga median pasar. Kalau ketiganya tidak ketemu, itu sinyal produknya perlu ditekan biayanya atau ditambah nilainya — bukan dipaksa dijual rugi.</p>\n\n    <h2>Langkah 1 — Hitung HPP yang sebenarnya</h2>\n    <p>HPP (Harga Pokok Penjualan) bukan cuma modal barang. Yang sering lupa dihitung pemula: biaya admin marketplace, iklan, dan retur. Jumlahkan <strong>per unit</strong>:</p>\n    <ul>\n      <li>Modal barang / biaya produksi</li>\n      <li>Ongkir masuk (dari supplier ke kamu)</li>\n      <li>Packaging (kardus, bubble wrap, label)</li>\n      <li>Biaya admin &amp; layanan marketplace (persentase per transaksi)</li>\n      <li>Alokasi iklan per unit (budget iklan ÷ perkiraan unit terjual)</li>\n    </ul>\n    <p>Rincian lengkap: <a href=\"/panduan/cara-menghitung-margin-dan-hpp/\">cara menghitung margin &amp; HPP</a>.</p>\n\n    <h2>Langkah 2 — Markup vs margin (jangan tertukar)</h2>\n    <p>Ini kesalahan klasik. <strong>Markup</strong> dihitung dari HPP; <strong>margin</strong> dihitung dari harga jual. Markup 50% ≠ margin 50%.</p>\n    <ul>\n      <li><strong>Rumus markup:</strong> Harga jual = HPP × (1 + markup)</li>\n      <li><strong>Rumus dari target margin:</strong> Harga jual = HPP ÷ (1 − margin)</li>\n    </ul>\n    <p>Kalau kamu mau <strong>margin 30%</strong>, jangan kalikan HPP dengan 1,3 — itu markup 30% yang hanya menghasilkan margin ~23%. Pakai rumus margin: HPP ÷ (1 − 0,3).</p>\n\n    <h2>Contoh perhitungan</h2>\n    <p>Misal kamu jual botol minum. HPP per unit:</p>\n    <ul>\n      <li>Modal barang: Rp 18.000</li>\n      <li>Ongkir masuk (dialokasikan): Rp 1.500</li>\n      <li>Packaging: Rp 1.000</li>\n      <li>Admin marketplace (~5% dari harga jual, estimasi): Rp 1.500</li>\n      <li>Alokasi iklan: Rp 2.000</li>\n    </ul>\n    <p><strong>Total HPP ≈ Rp 24.000.</strong></p>\n    <p>Target margin 30% → Harga jual = 24.000 ÷ (1 − 0,3) = 24.000 ÷ 0,7 ≈ <strong>Rp 34.300</strong>. Bulatkan ke <strong>Rp 34.900</strong> (harga psikologis).</p>\n    <p>Untung per unit ≈ Rp 34.900 − Rp 24.000 = <strong>Rp 10.900</strong> (margin ~31%). Kalau harga median pasar untuk botol serupa ternyata Rp 29.000, harga kamu kemahalan — kamu harus menekan HPP (nego supplier, kurangi iklan) atau menambah nilai (bundling, kualitas, foto) agar layak di harga itu.</p>\n\n    <h2>Langkah 3 — Selaraskan dengan harga median pasar</h2>\n    <p>Harga hasil hitunganmu harus diuji melawan kenyataan pasar. Buka <a href=\"/riset/\">halaman riset pasar LarisID</a> untuk keyword produkmu dan lihat <strong>harga median</strong> serta rentang harga (terendah sampai persentil atas) dari listing Shopee nyata. Harga median adalah titik aman untuk uji pasar:</p>\n    <ul>\n      <li>Harga hitunganmu <strong>di sekitar median</strong> → aman, lanjut.</li>\n      <li>Harga hitunganmu <strong>jauh di atas median</strong> → tekan HPP atau tambah nilai; jangan paksa jual mahal tanpa pembeda.</li>\n      <li>Harga hitunganmu <strong>di bawah median tapi margin sehat</strong> → peluang bagus, tapi pastikan bukan karena kamu lupa suatu biaya.</li>\n    </ul>\n    <p>Contoh halaman riset: <a href=\"/riset/botol-minum-aesthetic-1-liter/\">botol minum aesthetic 1 liter</a>.</p>\n\n    <h2>Kenapa jangan asal ikut termurah</h2>\n    <p>Menjadi yang termurah adalah lomba yang tidak bisa kamu menangkan melawan pemain bermodal besar — mereka bisa menahan margin nol lebih lama. Perang harga menggerus untung semua orang. Lebih baik menargetkan sekitar median dengan <strong>pembeda yang jelas</strong>: foto yang lebih baik, bundling, kualitas, kecepatan kirim, atau layanan. Cara membaca posisi kompetitor: <a href=\"/panduan/analisis-kompetitor-shopee/\">analisis kompetitor Shopee</a>.</p>\n\n    <h2>Checklist sebelum pasang harga</h2>\n    <ul>\n      <li>HPP sudah termasuk admin marketplace, iklan, dan packaging?</li>\n      <li>Pakai rumus margin yang benar (bukan markup yang disamakan dengan margin)?</li>\n      <li>Harga sudah dibandingkan dengan harga median pasar nyata?</li>\n      <li>Kalau di atas median, ada pembeda yang membenarkan harga itu?</li>\n    </ul>",
+    "faqs": [
+      {
+        "q": "Berapa markup yang wajar untuk jualan online?",
+        "a": "Tidak ada satu angka yang benar untuk semua produk. Markup wajar bergantung pada kategori, biaya marketplace, dan harga median pasar. Yang penting bukan markup terbesar, tapi harga yang tetap kompetitif di harga median sambil menyisakan margin sehat setelah semua biaya (admin, ongkir, iklan, retur)."
+      },
+      {
+        "q": "Apa bedanya markup dan margin?",
+        "a": "Markup dihitung dari HPP (harga jual = HPP + persentase dari HPP), sedangkan margin dihitung dari harga jual (untung dibagi harga jual). Markup 50% tidak sama dengan margin 50%. Contoh: HPP Rp 10.000 dengan markup 50% menghasilkan harga Rp 15.000, tapi marginnya hanya sekitar 33%."
+      },
+      {
+        "q": "Haruskah saya ikut harga termurah di marketplace?",
+        "a": "Tidak. Harga termurah sering berarti margin negatif atau kualitas seadanya, dan memicu perang harga yang tidak bisa kamu menangkan melawan pemain bermodal besar. Lebih baik menargetkan sekitar harga median dengan pembeda yang jelas (foto, bundling, kualitas, layanan) daripada jadi yang termurah."
+      }
+    ],
+    "howto": {
+      "name": "Cara Menentukan Harga Jual Produk",
+      "description": "Langkah menentukan harga jual produk online yang untung: hitung HPP lengkap, tetapkan target margin, dan sesuaikan dengan harga median pasar.",
+      "step": [
+        {
+          "name": "Hitung HPP lengkap",
+          "text": "Jumlahkan semua biaya per unit: modal barang, ongkir masuk, packaging, biaya admin marketplace, dan alokasi iklan."
+        },
+        {
+          "name": "Tetapkan target margin",
+          "text": "Tentukan margin yang kamu mau (mis. 30%), lalu hitung harga jual dari HPP menggunakan rumus margin."
+        },
+        {
+          "name": "Bandingkan dengan harga median pasar",
+          "text": "Cek harga median dan rentang harga di keyword produk itu. Kalau harga hasil hitungan jauh di atas median, cari cara menekan HPP atau tambah nilai, bukan asal ikut termurah."
+        }
+      ]
+    }
+  }
 ];
 
 // ---------- run ----------
