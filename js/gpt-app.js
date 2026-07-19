@@ -1318,13 +1318,7 @@ async function migrateLocalChatsToDb() {
       if (data?.chat?.id) {
         chat.id = data.chat.id;
         delete chat.localId;
-        for (const m of (chat.messages || [])) {
-          await _supabase.from('gpt_messages').insert({
-            chat_id: chat.id,
-            role: m.role,
-            content: typeof m.content === 'object' ? m.content : { text: m.content },
-          });
-        }
+        flushChatMessages(chat);
       }
     } catch (_) {}
   }
@@ -1816,17 +1810,63 @@ function offerOnboardingAfterSignin() {
 
 function closeProfileNudge() { $('profile-nudge')?.classList.remove('open'); }
 
+// Persist a single in-memory message to gpt_messages. Idempotent via the
+// client-only `_saved` flag; only chat_id/role/content are sent to the DB.
+async function persistMessage(chat, m) {
+  if (!currentUser || !_supabase || !chat || !chat.id || !m || m._saved) return;
+  try {
+    const { error } = await _supabase.from('gpt_messages').insert({
+      chat_id: chat.id,
+      role: m.role,
+      content: typeof m.content === 'object' ? m.content : { text: m.content },
+    });
+    if (error) { console.warn('[gpt] message persist failed:', error.message); return; }
+    m._saved = true;
+    saveLocalState();
+  } catch (e) { console.warn('[gpt] message persist error:', e); }
+}
+
+// Backfill any messages pushed before the chat had a remote id. Call right
+// after chat.id is assigned from gpt_new_chat.
+function flushChatMessages(chat) {
+  if (!chat || !chat.id) return;
+  for (const m of (chat.messages || [])) { if (!m._saved) void persistMessage(chat, m); }
+}
+
+// Assign chat.id via gpt_new_chat when the user is under their daily cap, then
+// backfill. On cap or error the chat stays local — deep dives / product chats
+// must never be walled (MISSION). Returns true if the chat is (now) persisted.
+async function ensureChatPersisted(chat, title, context) {
+  if (!chat) return false;
+  if (chat.id) { flushChatMessages(chat); return true; }
+  if (!currentUser || !_supabase) return false;
+  try {
+    const { data, error } = await _supabase.rpc('gpt_new_chat', {
+      p_title: String(title || chat.title || 'Chat').slice(0, 60),
+      p_context: context || chat.context || {},
+    });
+    if (error) { console.warn('[gpt] gpt_new_chat failed:', error.message); return false; }
+    if (data) noteGptUsage(data);
+    if (data?.chat) {
+      const wasActive = state.activeChatId === chat.localId;
+      chat.id = data.chat.id;
+      delete chat.localId;
+      if (wasActive) state.activeChatId = chat.id;
+      flushChatMessages(chat);
+      saveLocalState();
+      return true;
+    }
+  } catch (e) { console.warn('[gpt] ensureChatPersisted error:', e); }
+  return false; // over cap or no data — stay local, never wall
+}
+
 function pushMessage(chat, role, content, html) {
   if (!chat.messages) chat.messages = [];
-  chat.messages.push({ role, content: typeof content === 'object' ? content : { text: content }, html, ts: Date.now() });
+  const m = { role, content: typeof content === 'object' ? content : { text: content }, html, ts: Date.now() };
+  chat.messages.push(m);
   saveLocalState();
-  if (currentUser && chat.id && _supabase) {
-    void _supabase.from('gpt_messages').insert({
-      chat_id: chat.id,
-      role,
-      content: typeof content === 'object' ? content : { text: content },
-    });
-  }
+  if (currentUser && chat.id && _supabase) void persistMessage(chat, m);
+  return m;
 }
 
 function wirePrefsDrawer() {
@@ -2627,7 +2667,7 @@ async function ensureIntentChat(chat, title, context) {
     const { data } = await _supabase.rpc('gpt_new_chat', { p_title: String(title).slice(0, 60), p_context: context });
     if (data) noteGptUsage(data);
     if (data?.allowed === false) return { ok: false, resetAt: data.reset_at };
-    if (data?.chat) { chat.id = data.chat.id; delete chat.localId; state.activeChatId = chat.id; }
+    if (data?.chat) { chat.id = data.chat.id; delete chat.localId; state.activeChatId = chat.id; flushChatMessages(chat); }
   } else if (!currentUser) {
     bumpAnonSearch();
   }
@@ -4897,7 +4937,7 @@ async function handleComposerSubmit(text) {
         void logUserEvent('gpt_limit_hit', { ui: 'gpt' });
         return;
       }
-      if (data?.chat) { chat.id = data.chat.id; delete chat.localId; state.activeChatId = chat.id; }
+      if (data?.chat) { chat.id = data.chat.id; delete chat.localId; state.activeChatId = chat.id; flushChatMessages(chat); }
     } else if (!currentUser) {
       bumpAnonSearch();
     }
@@ -4919,6 +4959,11 @@ async function handleComposerSubmit(text) {
     return;
   }
 
+  // Persist the thread before the AI turn so both the question and the reply
+  // are saved. Stays local (never walls) if the daily cap is already hit.
+  await ensureChatPersisted(chat, (product.product_name || product.keyword || text).slice(0, 60), {
+    kind: 'product', item_id: product.item_id, shop_id: product.shop_id, keyword: product.keyword,
+  });
   if (!(await _useAi('mls_chat'))) return;
   const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Menjawab dari data produk…</p>`);
   const peers = await ensurePeerRowsForAi(product);
