@@ -40,6 +40,7 @@ const _LID_SIGNUP_CTA_KEY = '_lid_signup_cta_source';
 const _LID_SIGNUP_DONE_KEY = '_lid_signup_done_v1';
 const GPT_STATE_KEY = '_lid_gpt_state_v1';
 const ANON_LIMIT_KEY = '_lid_gpt_anon_searches_v1';
+const ANON_DD_KEY = '_lid_gpt_anon_deepdive_v1'; // first product an anon user viewed free
 const PAGE_SIZE = 60;
 const COMPOSER_EXAMPLES = [
   'Cari produk kayu dari Semarang',
@@ -1167,7 +1168,7 @@ function renderAuthModal() {
   if (title) title.textContent = signup ? 'Buat Akun Gratis' : 'Masuk ke LarisID';
   if (sub) {
     const map = {
-      gpt_gate_deepdive: 'Login untuk membuka Deep Dive produk.',
+      gpt_gate_deepdive: 'Kamu sudah lihat 1 analisa gratis. Daftar gratis untuk buka analisa produk lain sepuasnya.',
       gpt_gate_ai: 'Login untuk tanya AI tentang produk (butuh sesi aman).',
       gpt_gate_directory: 'Login untuk lihat lebih banyak produk & filter kategori.',
       gpt_gate_history: 'Login untuk cari & simpan riwayat chat.',
@@ -1696,71 +1697,6 @@ function renderHome() {
     clarityEvt('gpt_landing_view', {});
   }
 
-  void renderDailyRecs();
-}
-
-// ── Daily recommendations: 3 stable picks per WIB day on the landing ─────
-const DAILY_RECS_KEY = '_lid_gpt_daily_recs_v1';
-
-function wibToday() {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
-}
-
-async function renderDailyRecs() {
-  const box = $('daily-recs');
-  const rowsEl = $('daily-recs-rows');
-  if (!box || !rowsEl) return;
-  if (renderDailyRecs._busy) return;
-  renderDailyRecs._busy = true;
-  try {
-    const today = wibToday();
-    let cached = null;
-    try { cached = JSON.parse(localStorage.getItem(DAILY_RECS_KEY) || 'null'); } catch (_) {}
-    let items = (cached && cached.date === today && Array.isArray(cached.items) && cached.items.length)
-      ? cached.items : null;
-    if (!items) {
-      if (!_supabase) return; // data layer not up yet; boot calls again
-      let recs = [];
-      try { recs = await pickRecommendations(); } catch (_) {}
-      items = (recs || []).slice(0, 3).map(productSnapshot).filter(Boolean);
-      if (!items.length) { box.hidden = true; return; }
-      try { localStorage.setItem(DAILY_RECS_KEY, JSON.stringify({ date: today, items })); } catch (_) {}
-      void logUserEvent('gpt_daily_recs_view', { ui: 'gpt', count: items.length });
-      clarityEvt('gpt_daily_recs_view', {});
-    }
-    rememberProducts(items);
-    const label = $('daily-recs-label');
-    if (label) label.innerHTML = `${ico('trendUp', 14)} Rekomendasi hari ini — layak kamu riset`;
-    rowsEl.innerHTML = items.map((p, i) => {
-      const img = p.image_url
-        ? `<img src="${esc(p.image_url)}" alt="" loading="lazy">`
-        : '<span class="daily-rec-ph"></span>';
-      const bits = [];
-      const price = Number(p.price);
-      const sold = Number(p.total_sold);
-      if (Number.isFinite(price) && price > 0) bits.push(fmtRp(price));
-      if (Number.isFinite(sold) && sold > 0) bits.push(`terjual ${fmtSold(sold)}`);
-      return `<button type="button" class="daily-rec-row" data-daily-rec="${i}">
-        ${img}
-        <div class="daily-rec-main">
-          <div class="daily-rec-name">${esc(p.product_name || p.keyword || 'Produk')}</div>
-          <div class="daily-rec-meta">${esc(bits.join(' · '))}</div>
-        </div>
-      </button>`;
-    }).join('');
-    rowsEl.querySelectorAll('[data-daily-rec]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const p = items[Number(btn.getAttribute('data-daily-rec'))];
-        if (!p) return;
-        void logUserEvent('gpt_daily_recs_click', { ui: 'gpt', item_id: p.item_id });
-        clarityEvt('gpt_daily_recs_click', {});
-        void openDeepDive(p);
-      });
-    });
-    box.hidden = false;
-  } finally {
-    renderDailyRecs._busy = false;
-  }
 }
 
 function renderSidebarLocCard() {
@@ -2516,9 +2452,10 @@ function subgroupMatches(row, terms) {
 }
 
 function asListingProduct(r) {
-  // Only keep a real period rate (naik_daun / trending / scrape delta).
-  // Never invent sold_per_day from lifetime total_sold/90 — that lied on
-  // Deep Dive omzet tiles and product cards for bucketed listings.
+  // Only keep a real period rate (naik_daun / trending / scrape delta) on
+  // sold_per_day — it drives sorting, scoring and "sold/hari". Never invent one
+  // from lifetime totals here. Omset gets a labelled *estimate* separately via
+  // estOmsetBulan()/soldPerDayEst() so it can fill in for bucketed listings.
   const spd = Number(r.sold_per_day);
   return {
     ...r,
@@ -2531,7 +2468,7 @@ async function fetchListingsCityCat(locations, cats, limit = 80) {
   if (!_supabase || !locations.length) return [];
   try {
     let q = _supabase.from('listings_deduped')
-      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url')
+      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date')
       .in('location', locations)
       .order('total_sold', { ascending: false })
       .limit(limit);
@@ -2757,6 +2694,8 @@ function bindTrendingBody(card) {
       const r = rows.find(x => String(x.item_id) === String(item_id) && String(x.shop_id) === String(shop_id));
       if (!r) return;
       // Cap absurd raw matview deltas (bucket floor jumps) before using as period rate.
+      // soldPerDayEst also derives this from delta_7d for card omset; set it here so
+      // deep-dive tiles / sold-per-day labels see the same period rate.
       const d7 = Math.max(0, Number(r.delta_7d) || 0);
       const spd = d7 > 0 ? Math.min(d7 / 7, DD_MAX_SOLD_PER_DAY) : null;
       void openDeepDive(asListingProduct({ ...r, sold_per_day: spd }));
@@ -2921,7 +2860,7 @@ async function handleModalIntent(chat, text) {
   let rows = [];
   try {
     const { data } = await _supabase.from('listings_deduped')
-      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url')
+      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date')
       .gte('price', 1000).lte('price', budget)
       .gt('total_sold', 100)
       .order('total_sold', { ascending: false })
@@ -3377,7 +3316,7 @@ async function searchListings(q, locations = [], limit = 30) {
   if (!clean) return [];
   try {
     let query = _supabase.from('listings_deduped')
-      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url')
+      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date')
       .or(`product_name.ilike.%${clean}%,keyword.ilike.%${clean}%`)
       .gt('total_sold', 0)
       .order('total_sold', { ascending: false })
@@ -3508,9 +3447,32 @@ function fmtOmset(n) {
   return fmtRp(n) + '/bln';
 }
 
+// Best daily sold-rate for an OMSET estimate: a real period rate if the row has
+// one (naik_daun/trending/scrape delta), otherwise an estimate from listing age
+// (sold-since-listing ÷ days-listed), capped by DD_MAX_SOLD_PER_DAY. This fills
+// omset for listings_deduped rows that carry no real rate, without polluting the
+// row's own sold_per_day (which feeds sorting/scoring/"sold/hari").
+function soldPerDayEst(p) {
+  const spd = Number(p.sold_per_day);
+  if (Number.isFinite(spd) && spd > 0) return Math.min(spd, DD_MAX_SOLD_PER_DAY);
+  // mv_trending rows: period rate from 7d delta (same formula as deep-dive open).
+  const d7 = Number(p.delta_7d);
+  if (Number.isFinite(d7) && d7 > 0) return Math.min(d7 / 7, DD_MAX_SOLD_PER_DAY);
+  let age = p.age_days != null ? Number(p.age_days) : null;
+  if ((age == null || !(age > 0)) && p.listing_date) {
+    const d = new Date(p.listing_date).getTime();
+    if (Number.isFinite(d)) age = Math.max(1, Math.round((Date.now() - d) / 86400000));
+  }
+  const total = Number(p.total_sold);
+  if (Number.isFinite(total) && total > 0 && age != null && age > 0) {
+    return Math.min(total / age, DD_MAX_SOLD_PER_DAY);
+  }
+  return 0;
+}
+
 function estOmsetBulan(p) {
   const price = Number(p.price) || 0;
-  const spd = Number(p.sold_per_day) || 0;
+  const spd = soldPerDayEst(p);
   if (price > 0 && spd > 0) return Math.round(price * spd * 30);
   return 0;
 }
@@ -3534,6 +3496,7 @@ function productSnapshot(p) {
     sold_per_day: p.sold_per_day,
     age_days: p.age_days,
     listing_date: p.listing_date || null,
+    delta_7d: p.delta_7d != null ? p.delta_7d : null,
   };
 }
 
@@ -4343,12 +4306,22 @@ const _ddBandPlugin = {
 
 async function openDeepDive(product) {
   if (!currentUser) {
-    // Remember the clicked product (survives the OAuth reload) so signup lands
-    // the user on the deep dive they asked for, not back at the start.
-    state.pendingDeepdive = product;
-    saveLocalState();
-    openAuthModal('signup', 'gpt_gate_deepdive');
-    return;
+    // Anon users get ONE free deep dive. The first product they open is
+    // remembered by item_id; re-opening that same product stays free, but a
+    // second, different product triggers the (free) signup prompt.
+    const id = String(product.item_id ?? '');
+    let seen = null;
+    try { seen = localStorage.getItem(ANON_DD_KEY); } catch (_) {}
+    if (seen && seen !== id) {
+      // Remember the clicked product (survives the OAuth reload) so signup lands
+      // the user on the deep dive they asked for, not back at the start.
+      state.pendingDeepdive = product;
+      saveLocalState();
+      openAuthModal('signup', 'gpt_gate_deepdive');
+      return;
+    }
+    if (!seen && id) { try { localStorage.setItem(ANON_DD_KEY, id); } catch (_) {} }
+    // fall through — render this one free deep dive
   }
   if (state.pendingDeepdive) { state.pendingDeepdive = null; saveLocalState(); }
   rememberProducts([product]);
