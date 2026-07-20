@@ -40,8 +40,9 @@ const _LID_SIGNUP_CTA_KEY = '_lid_signup_cta_source';
 const _LID_SIGNUP_DONE_KEY = '_lid_signup_done_v1';
 const GPT_STATE_KEY = '_lid_gpt_state_v1';
 const ANON_LIMIT_KEY = '_lid_gpt_anon_searches_v2';
-const ANON_DD_KEY = '_lid_gpt_anon_deepdive_v1'; // first product an anon user viewed free
-try { localStorage.removeItem('_lid_gpt_anon_searches_v1'); } catch (_) {} // drop stale v1 counters
+const ANON_DD_KEY = '_lid_gpt_anon_deepdive_v2'; // first product an anon user viewed free
+try { localStorage.removeItem('_lid_gpt_anon_searches_v1'); } catch (_) {}
+try { localStorage.removeItem('_lid_gpt_anon_deepdive_v1'); } catch (_) {} // reset stale 1-free gate
 const PAGE_SIZE = 60;
 const COMPOSER_EXAMPLES = [
   'Cari produk kayu dari Semarang',
@@ -4697,10 +4698,10 @@ async function openDeepDive(product) {
     // Anon users get ONE free deep dive. The first product they open is
     // remembered by item_id; re-opening that same product stays free, but a
     // second, different product triggers the (free) signup prompt.
-    const id = String(product.item_id ?? '');
-    let seen = null;
-    try { seen = localStorage.getItem(ANON_DD_KEY); } catch (_) {}
-    if (seen && seen !== id) {
+    const id = String(product?.item_id ?? '').trim();
+    let seen = '';
+    try { seen = String(localStorage.getItem(ANON_DD_KEY) || '').trim(); } catch (_) {}
+    if (id && seen && seen !== id) {
       // Remember the clicked product (survives the OAuth reload) so signup lands
       // the user on the deep dive they asked for, not back at the start.
       state.pendingDeepdive = product;
@@ -4708,8 +4709,10 @@ async function openDeepDive(product) {
       openAuthModal('signup', 'gpt_gate_deepdive');
       return;
     }
-    if (!seen && id) { try { localStorage.setItem(ANON_DD_KEY, id); } catch (_) {} }
-    // fall through — render this one free deep dive
+    // First free view (or same product again, or missing id) — allow through.
+    if (id && !seen) {
+      try { localStorage.setItem(ANON_DD_KEY, id); } catch (_) {}
+    }
   }
   if (state.pendingDeepdive) { state.pendingDeepdive = null; saveLocalState(); }
   rememberProducts([product]);
