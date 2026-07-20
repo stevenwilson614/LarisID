@@ -9921,6 +9921,13 @@ function dscApplyFilters(resetPage = true) {
   }
 
   _dscFiltered = _dscSpreadSameNames(list);
+  // Onboarding payoff: put the user's first-picked categories at the front so
+  // the 6-card beginner grid (and auto-deepdive) match what they just chose —
+  // not a random Alat Tulis card buried in an 11-cat mix.
+  if (_nuOnb.payoff && Array.isArray(_nuOnb.cats) && _nuOnb.cats.length) {
+    _dscFiltered.sort((a, b) => _nuOnbCatRank(a.category) - _nuOnbCatRank(b.category)
+      || (_dscOmset(b) || 0) - (_dscOmset(a) || 0));
+  }
   if (resetPage) { _dscPage = 1; _dscStarterKey = null; }
   dscRenderTable();
 }
@@ -22387,16 +22394,63 @@ function nuOnbShowBanner() {
 function nuOnbBannerText() {
   const sub = document.getElementById('nu-onb-banner-sub');
   if (!sub) return;
+  const primary = _nuOnbPrimaryCats();
   const n = _nuOnb.cats.length;
-  sub.textContent = `Berdasarkan ${n} kategori yang kamu pilih. Klik kartu untuk buka Deep Dive.`;
+  if (primary.length) {
+    sub.textContent = n > primary.length
+      ? `Prioritas: ${primary.join(', ')} (+${n - primary.length} kategori lain). Kartu Deep Dive mengikuti pilihan pertamamu.`
+      : `Berdasarkan ${primary.join(', ')}. Klik kartu untuk buka Deep Dive.`;
+  } else {
+    sub.textContent = `Berdasarkan ${n} kategori yang kamu pilih. Klik kartu untuk buka Deep Dive.`;
+  }
 }
 
 function _nuOnbKeyOf(p) { return `${p.item_id}__${p.shop_id}`; }
 
-// Highlight the first card whose product has a rich scrape history (>= 3
-// scrape dates), so the user's first Deep Dive lands on a real chart.
+// Click-order ranks categories: first picks are the user's real intent. When
+// someone taps many chips, auto-deepdive used to open whatever rich product
+// landed first after a random shuffle (e.g. Alat Tulis gel pen after
+// Kesehatan was tapped first) — Jul 2026 live session.
+function _nuOnbCatRank(category) {
+  const i = (_nuOnb.cats || []).indexOf(category);
+  return i < 0 ? 999 : i;
+}
+function _nuOnbPrimaryCats() {
+  return (_nuOnb.cats || []).filter(Boolean).slice(0, NU_ONB_MIN_CATS);
+}
+function _nuOnbPickBestProduct(candidates, datesByItem) {
+  const selected = new Set((_nuOnb.cats || []).filter(Boolean));
+  const primary = new Set(_nuOnbPrimaryCats());
+  const pool = candidates.filter(p => selected.has(p.category));
+  if (!pool.length) return null;
+  let best = null;
+  let bestScore = -Infinity;
+  for (const p of pool) {
+    const rich = datesByItem?.[p.item_id]?.size || 0;
+    const primaryHit = primary.has(p.category) ? 1 : 0;
+    const catRank = _nuOnbCatRank(p.category);
+    const omset = (typeof _dscOmset === 'function' ? _dscOmset(p) : 0) || 0;
+    // primary cats >> earlier selection >> scrape richness >> omset
+    const score = primaryHit * 1e12
+      - catRank * 1e9
+      + Math.min(rich, 10) * 1e6
+      + Math.log10(omset + 1) * 1e3;
+    if (score > bestScore) { bestScore = score; best = p; }
+  }
+  return best;
+}
+
+// Highlight + auto-open a product that matches the user's primary categories
+// (first NU_ONB_MIN_CATS picks), preferring rich scrape history so Deep Dive
+// charts aren't empty — never open a fallback / off-category card.
 async function nuOnbDecorateFirst() {
   if (!_nuOnb.payoff || _dscViewMode !== 'card') return;
+  // Filter-no-match falls back to popular products outside the user's cats —
+  // highlighting/auto-opening those teaches the wrong lesson.
+  if (_dscFilterNoMatch) {
+    _nuOnb.autoOpen = false;
+    return;
+  }
   const grid = document.getElementById('dsc-card-grid');
   if (!grid) return;
   const cards = [...grid.querySelectorAll('.dsc-card')];
@@ -22404,33 +22458,63 @@ async function nuOnbDecorateFirst() {
   const start = (_dscPage - 1) * DSC_PER_PAGE;
   const page = _dscFiltered.slice(start, start + cards.length);
   if (!page.length) return;
+  // Search beyond the visible page so a Kesehatan pick isn't buried under
+  // random Alat Tulis cards on page 1.
+  const searchPool = _dscFiltered.slice(0, Math.min(_dscFiltered.length, 120));
   if (_nuOnbRichKey == null) {
     if (_nuOnbRichBusy || !_supabase) return;
     _nuOnbRichBusy = true;
-    let key = _nuOnbKeyOf(page[0]);
+    let key = null;
     try {
-      const ids = [...new Set(page.slice(0, 24).map(p => p.item_id))];
-      const { data } = await _supabase.from('listings')
-        .select('item_id,scraped_at').in('item_id', ids).limit(1000);
+      const ids = [...new Set(searchPool.map(p => p.item_id))];
       const dates = {};
-      (data || []).forEach(r => { (dates[r.item_id] = dates[r.item_id] || new Set()).add(String(r.scraped_at).slice(0, 10)); });
-      const found = page.find(p => (dates[p.item_id]?.size || 0) >= 3);
-      if (found) key = _nuOnbKeyOf(found);
+      for (let i = 0; i < ids.length; i += 40) {
+        const chunk = ids.slice(i, i + 40);
+        const { data } = await _supabase.from('listings')
+          .select('item_id,scraped_at').in('item_id', chunk).limit(1000);
+        (data || []).forEach(r => {
+          (dates[r.item_id] = dates[r.item_id] || new Set()).add(String(r.scraped_at).slice(0, 10));
+        });
+      }
+      const best = _nuOnbPickBestProduct(searchPool, dates);
+      if (best) key = _nuOnbKeyOf(best);
     } catch (_) {}
+    if (!key) {
+      const best = _nuOnbPickBestProduct(searchPool, null) || _nuOnbPickBestProduct(page, null);
+      if (best) key = _nuOnbKeyOf(best);
+    }
     _nuOnbRichKey = key;
     _nuOnbRichBusy = false;
   }
-  if (!_nuOnb.payoff) return;
-  const idx = page.findIndex(p => _nuOnbKeyOf(p) === _nuOnbRichKey);
-  const el = cards[idx >= 0 ? idx : 0];
+  if (!_nuOnb.payoff || !_nuOnbRichKey) return;
+  let idx = page.findIndex(p => _nuOnbKeyOf(p) === _nuOnbRichKey);
+  // Winner is off this page — jump Discover to the page that holds it so the
+  // outline + auto-open land on the right card.
+  if (idx < 0) {
+    const globalIdx = _dscFiltered.findIndex(p => _nuOnbKeyOf(p) === _nuOnbRichKey);
+    if (globalIdx >= 0) {
+      const targetPage = Math.floor(globalIdx / DSC_PER_PAGE) + 1;
+      if (targetPage !== _dscPage) {
+        _dscPage = targetPage;
+        dscRenderTable();
+        return; // re-enter via render → nuOnbDecorateFirst
+      }
+    }
+  }
+  const el = cards[idx >= 0 ? idx : -1];
   // Payoff push: on the very first onboarding completion, open the highlighted
   // product's Deep Dive automatically after a beat (long enough to see the
   // filtered grid, short enough that they can't wander off). Runs before the
   // decoration guard so a re-render can't swallow the pending auto-open.
-  if (_nuOnb.autoOpen && el) {
+  if (_nuOnb.autoOpen && el && _nuOnbRichKey) {
     _nuOnb.autoOpen = false;
-    const key = idx >= 0 ? _nuOnbRichKey : _nuOnbKeyOf(page[0]);
-    void logUserEvent('onboarding_auto_deepdive', { item_key: key });
+    const key = _nuOnbRichKey;
+    const picked = _dscFiltered.find(p => _nuOnbKeyOf(p) === key);
+    void logUserEvent('onboarding_auto_deepdive', {
+      item_key: key,
+      category: picked?.category || null,
+      primary_cats: _nuOnbPrimaryCats(),
+    });
     try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
     setTimeout(() => {
       // Bail if they already navigated elsewhere or opened one themselves.
