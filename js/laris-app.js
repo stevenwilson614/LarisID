@@ -3693,7 +3693,8 @@ async function loadAdminOverview() {
       const fmtNum = (n) => (n == null ? '—' : Number(n).toLocaleString('id-ID'));
       set('adm-landing-30d', fmtNum(s.landing_views_30d));
       const landingSub = document.getElementById('adm-landing-sub');
-      if (landingSub) landingSub.textContent = `30 hari · 7 hari ${fmtNum(s.landing_views_7d)}`;
+      // Tracking started 20 Jul 2026 — this is NOT comparable to all-time signups yet.
+      if (landingSub) landingSub.textContent = `sejak 20 Jul · 7 hari ${fmtNum(s.landing_views_7d)}`;
       set('adm-uniq-30d', fmtNum(s.unique_visitors_30d));
       const uniqSub = document.getElementById('adm-uniq-sub');
       if (uniqSub) uniqSub.textContent = `30 hari · 7 hari ${fmtNum(s.unique_visitors_7d)}`;
