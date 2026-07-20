@@ -3093,6 +3093,9 @@ function bindTrendingCards(root) {
 
 // ── Intent routing (chips + free text → data-backed answers) ─────────────
 function detectIntent(lower) {
+  // Category-scoped discovery (“fashion trending”, “skincare terlaris”) should
+  // not be swallowed by the global trending chip — those go to DB product cards.
+  if (detectCategoryFromText(lower) && isProductDiscoveryAsk(lower)) return null;
   if (/trending|naik daun|lagi (rame|ramai)|produk (yang )?(lagi )?naik|lagi naik/.test(lower)) return 'trending';
   if (/kompetisi rendah|persaingan rendah|belum banyak (penjual|saingan)|cari niche/.test(lower)) return 'lowcomp';
   if (/(hitung|estimasi|berapa).{0,24}(profit|untung|margin)|^profit\b/.test(lower)) return 'profit';
@@ -3609,7 +3612,41 @@ async function handleRencanaIntent(chat) {
 
 // ── Free-text search (composer + onboarding freeText bias) ──────────────
 const SEARCH_STOPWORDS = new Set(['cari','carikan','tolong','coba','tunjukkan','tampilkan','produk','barang',
-  'buat','untuk','dijual','jual','jualan','yang','dong','aku','saya','mau','bisa','lagi','dan','apa','the']);
+  'buat','untuk','dijual','jual','jualan','yang','dong','aku','saya','mau','bisa','lagi','dan','apa','the',
+  'terlaris','laris','trending','kompetisi','rendah','persaingan','niche','bagus','laku']);
+
+// Natural-language → LarisID category. Used so “cari skincare” / “fashion trending”
+// hit the product tables instead of refusing inside a Deep Dive AI turn.
+const CAT_ALIASES = [
+  { cat: 'Kecantikan', terms: ['skincare', 'skin care', 'kecantikan', 'beauty', 'makeup', 'kosmetik', 'serum', 'moisturizer', 'facial', 'sunscreen'] },
+  { cat: 'Fashion', terms: ['fashion', 'baju', 'pakaian', 'kaos', 'celana', 'dress', 'hijab', 'sepatu', 'sandal', 'tas wanita', 'jaket'] },
+  { cat: 'Dapur', terms: ['dapur', 'kitchen', 'masak', 'peralatan dapur'] },
+  { cat: 'Elektronik', terms: ['elektronik', 'gadget', 'charger', 'earphone', 'headset'] },
+  { cat: 'HP & Gadget', terms: ['hp', 'handphone', 'smartphone', 'aksesoris hp'] },
+  { cat: 'Bayi & Anak', terms: ['bayi', 'anak', 'balita', 'mainan anak', 'baby'] },
+  { cat: 'Kesehatan', terms: ['kesehatan', 'herbal', 'obat', 'vitamin', 'suplemen'] },
+  { cat: 'Olahraga', terms: ['olahraga', 'sport', 'fitness', 'gym', 'yoga'] },
+  { cat: 'Rumah', terms: ['rumah', 'dekorasi', 'home decor', 'perabot', 'furniture'] },
+  { cat: 'Alat Tulis', terms: ['alat tulis', 'pulpen', 'pensil', 'stationery', 'buku tulis'] },
+  { cat: 'Outdoor & Camping', terms: ['outdoor', 'camping', 'tenda', 'cooler bag'] },
+  { cat: 'Motor & Mobil', terms: ['motor', 'mobil', 'otomotif', 'aksesoris mobil'] },
+];
+
+function detectCategoryFromText(lower) {
+  const s = String(lower || '').toLowerCase();
+  for (const a of CAT_ALIASES) {
+    if (a.terms.some(t => s.includes(t))) return a.cat;
+  }
+  for (const c of NU_ONB_CATS) {
+    const cl = c.toLowerCase();
+    if (s.includes(cl)) return c;
+  }
+  return null;
+}
+
+function isProductDiscoveryAsk(lower) {
+  return /(cari|carikan|tunjukkan|tampilkan|rekomendasi|terlaris|laris|trending|naik daun|kompetisi rendah|persaingan rendah|produk|jual|niche)\b/.test(lower);
+}
 
 function _searchTerms(text) {
   return String(text || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/)
@@ -3626,13 +3663,19 @@ function cityMentionedIn(lower) {
 }
 
 // Inside a product chat: detect asks that are really about the MARKET, not the
-// open product — a city product-list ask or a generic "what should I sell".
+// open product — a city product-list ask, category discovery (“cari skincare”),
+// or a generic "what should I sell".
 function detectTopicChange(lower) {
   const listWords = /(produk|jualan|barang)\s+apa|apa yang (bagus|laris|laku|cocok)(\s+(di)?jual)?|rekomendasi (produk|jualan)|cari (produk|barang)|(produk|jualan|barang)\s+(yang\s+)?(bagus|laris|laku|lagi naik|naik daun|trending)/;
   const city = cityMentionedIn(lower);
   if (city && listWords.test(lower)) return { kind: 'city_list', city };
   if (!city && /^(produk|jualan|barang)\s+apa\b|rekomendasi (produk|jualan)|(produk|jualan)\s+(yang\s+)?lagi\s+(naik daun|trending|rame|ramai)/.test(lower)) {
     return { kind: 'list' };
+  }
+  // “Cari skincare terlaris”, “produk fashion trending…” — leave Deep Dive AI
+  // and answer from the product database instead.
+  if (detectCategoryFromText(lower) && isProductDiscoveryAsk(lower)) {
+    return { kind: 'category_list' };
   }
   return null;
 }
@@ -3688,6 +3731,55 @@ async function searchListings(q, locations = [], limit = 30) {
     if (error) throw error;
     return (data || []).map(asListingProduct);
   } catch (_) { return []; }
+}
+
+/** Showcase products for a category ask (skincare, fashion trending, …). */
+async function fetchCategoryShowcase(cat, limit = 12) {
+  let pool = [];
+  mergePool(pool, await fetchNaikDaunByCat([cat], Math.max(limit * 2, 40)));
+  if (pool.length < limit) {
+    // Fill from city-agnostic listings via keyword/category search on the cat name
+    const extra = await searchListings(cat, [], Math.max(limit * 2, 40));
+    mergePool(pool, extra.filter(p => catMatches(p.category, [cat])));
+  }
+  if (pool.length < limit) {
+    mergePool(pool, await fetchNaikDaunGlobal(120));
+    pool = pool.filter(p => catMatches(p.category, [cat])).concat(
+      pool.filter(p => !catMatches(p.category, [cat]))
+    );
+  }
+  // Prefer rising + sold
+  pool.sort((a, b) => {
+    const sa = (Number(a.sold_per_day) || 0) * 10 + Math.log10((Number(a.total_sold) || 0) + 1);
+    const sb = (Number(b.sold_per_day) || 0) * 10 + Math.log10((Number(b.total_sold) || 0) + 1);
+    return sb - sa;
+  });
+  return mergePool([], pool).slice(0, limit).map(asListingProduct);
+}
+
+async function replyWithCategoryProducts(chat, text, cat) {
+  if (!(await ensureSearchAllowed())) return;
+  const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari produk ${esc(cat)} dari data LarisID…</p>`);
+  const products = await fetchCategoryShowcase(cat, 12);
+  const gate = await ensureIntentChat(chat, text.slice(0, 60), { kind: 'category_search', category: cat, q: text });
+  if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
+  state.recommendations = products;
+  rememberProducts(products);
+  const html = products.length
+    ? `<p>${products.length} produk <strong>${esc(cat)}</strong> dari data Shopee LarisID — klik kartu untuk Deep Dive:</p>
+       <div class="card-grid">${products.map((p, i) => productCardHtml(p, i % 3)).join('')}</div>`
+    : `<p>Belum ketemu produk di kategori <strong>${esc(cat)}</strong>. Coba kata kunci lain atau buka Produk.</p>`;
+  await revealAssistant(loading, html);
+  pushMessage(chat, 'assistant', {
+    text: 'Hasil kategori',
+    q: text,
+    category: cat,
+    products: products.map(productSnapshot).filter(Boolean),
+  }, html);
+  bindProductCards();
+  scrollChatToBottom();
+  void logUserEvent('discover_view', { ui: 'gpt', q: text, category: cat, count: products.length });
+  clarityEvt('gpt_category_search', { category: cat });
 }
 
 function scoreProduct(row, o, locations, ftTerms) {
@@ -5176,6 +5268,8 @@ PENTING:
 - Untuk pertanyaan desain/spesifikasi (kantong/pocket, bahan, warna, model, ukuran, fitur): WAJIB sift dari SAMPLE NAMA PRODUK + TOP PENJUAL di bawah. Hitung pola yang paling umum — terutama di listing terlaris. Jangan bilang "aku nggak punya info" kalau ada nama produk di bawah.
 - Kalau STATISTIK SPESIFIKASI atau KANTONG ada, pakai angka itu dulu. Contoh: "Dari 40 listing sejenis, kebanyakan sebut 2 kantong; di top 10 terlaris yang menyebut jumlah, mayoritas 2–4 kantong."
 - Jangan arahkan ke "tanya toko" sebagai jawaban utama kalau data pasar sudah bisa menjawab. Boleh sebut konfirmasi ke toko hanya sebagai catatan sekunder.
+- Kalau user tanya cara buka/masuk link toko, link Shopee, kunjungi toko, atau "gimana masuk link toko": JELASKAN bahwa link toko & produk ada di Deep Dive produk ini — buka Deep Dive, lalu pakai tombol/link ke Shopee atau nama toko di halaman analisa. Jangan bilang kamu tidak bisa bantu, dan jangan suruh user "cari di LarisID" secara umum tanpa menyebut Deep Dive.
+- Kalau user minta kategori lain (skincare, fashion, dll.) yang BUKAN produk yang sedang dibuka: bilang singkat bahwa itu pencarian baru — mereka bisa ketik ulang di kotak chat (sistem akan menampilkan produk dari data). Jangan mengarang daftar skincare dari knowledge umum.
 - Knowledge umum OK hanya sebagai pelengkap singkat, dan label jelas kalau bukan dari data.
 - Jangan bilang kamu "melihat" produk — kamu membaca data.
 - Jawaban singkat, langsung ke poin. Pertanyaan sederhana: 2–5 kalimat biasa. Jawaban yang butuh struktur boleh pakai markdown ringan: **bold untuk angka/kesimpulan penting**, bullet list pendek (- item), dan sub-judul (## Judul) hanya untuk jawaban panjang. Tanpa emoji.
@@ -5403,7 +5497,8 @@ async function handleComposerSubmit(text) {
 
   // Topic change inside a product chat: market-level asks leave the chat.
   // A city list ask opens the Produk directory filtered to that city; a
-  // generic “what should I sell” re-enters as a fresh, context-free message.
+  // category discovery ask (“cari skincare”) or generic “what should I sell”
+  // re-enters as a fresh, context-free message.
   if (inProductCtx) {
     const route = detectTopicChange(lower);
     if (route) {
@@ -5422,6 +5517,29 @@ async function handleComposerSubmit(text) {
       }
       return;
     }
+  }
+
+  // Category showcase (“cari skincare terlaris”, “fashion trending kompetisi rendah”)
+  // — answer from the product DB with a card grid, not the global trending table
+  // and not Deep Dive AI.
+  const catAsk = detectCategoryFromText(lower);
+  if (!inProductCtx && catAsk && isProductDiscoveryAsk(lower)) {
+    setView('chat');
+    let chat = activeChat();
+    if (!chat) {
+      chat = { localId: 'local_' + Date.now(), title: text.slice(0, 40), context: {}, messages: [], created_at: Date.now() };
+      state.chats.unshift(chat);
+      state.activeChatId = chat.localId;
+      renderChatList();
+    }
+    appendBubble('user', `<p>${esc(text)}</p>`);
+    pushMessage(chat, 'user', text);
+    void logUserEvent('gpt_message_sent', { ui: 'gpt' });
+    clarityEvt('gpt_message_sent', {});
+    void logUserEvent('gpt_intent', { ui: 'gpt', intent: 'category_search', category: catAsk });
+    clarityEvt('gpt_intent', { intent: 'category_search' });
+    await replyWithCategoryProducts(chat, text, catAsk);
+    return;
   }
 
   // Data-backed intents (home/trending/DD chips + free text). In a product
@@ -5471,20 +5589,43 @@ async function handleComposerSubmit(text) {
 
   const product = chat.context?.product || (state.view === 'deepdive' ? state.deepdiveProduct : null);
   if (!product) {
-    // No product context — try to treat as keyword search → new recommendation-ish fetch
+    // No product context — try category showcase first, else keyword search
     if (!(await ensureSearchAllowed())) return;
     const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari di data…</p>`);
+    const catFallback = detectCategoryFromText(text.toLowerCase());
+    if (catFallback) {
+      const products = await fetchCategoryShowcase(catFallback, 12);
+      const gate = await ensureIntentChat(chat, text.slice(0, 60), { kind: 'category_search', category: catFallback, q: text });
+      if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
+      state.recommendations = products;
+      rememberProducts(products);
+      const html = products.length
+        ? `<p>${products.length} produk <strong>${esc(catFallback)}</strong> dari data Shopee LarisID — klik kartu untuk Deep Dive:</p>
+           <div class="card-grid">${products.map((p, i) => productCardHtml(p, i % 3)).join('')}</div>`
+        : `<p>Belum ketemu produk di kategori <strong>${esc(catFallback)}</strong>. Coba kata kunci lain atau buka Produk.</p>`;
+      if (loading) await revealAssistant(loading, html);
+      else await appendAssistantStream(html);
+      pushMessage(chat, 'assistant', {
+        text: 'Hasil kategori',
+        q: text,
+        category: catFallback,
+        products: products.map(productSnapshot).filter(Boolean),
+      }, html);
+      bindProductCards();
+      void logUserEvent('discover_view', { ui: 'gpt', q: text, category: catFallback, count: products.length });
+      return;
+    }
     const { city, cleaned } = parseCityFromQuery(text);
     const terms = _searchTerms(cleaned);
     const q = terms.join(' ');
     const locations = city ? expandCityLocations(city) : [];
     let hits = q ? await searchListings(q, locations, 30) : [];
     if (!hits.length && terms.length > 1) hits = await searchListings(terms[0], locations, 30);
-    hits = mergePool([], hits).slice(0, 3);
+    hits = mergePool([], hits).slice(0, 12);
     const usedFallback = !hits.length;
     if (usedFallback) {
       const rows = mergePool([], await fetchNaikDaunGlobal(200));
-      state.recommendations = rows.slice(0, 3);
+      state.recommendations = rows.slice(0, 12);
     } else {
       state.recommendations = hits;
     }
