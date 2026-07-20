@@ -530,10 +530,9 @@ const FINDER_CAT_CHIPS = [
   { label: 'Bayi', cat: 'Bayi & Anak' },
 ];
 const FINDER_BUDGETS = [
-  { id: 'lt250', label: '< Rp250k', min: 0, max: 250000 },
-  { id: '250_500', label: 'Rp250k – 500k', min: 250000, max: 500000 },
-  { id: '500_1jt', label: 'Rp500k – 1jt', min: 500000, max: 1000000 },
-  { id: '1jt_plus', label: '1jt+', min: 1000000, max: Infinity },
+  { id: 'lt1jt', label: '<1jt', min: 0, max: 1000000 },
+  { id: '1jt_10jt', label: '1jt – 10jt', min: 1000000, max: 10000000 },
+  { id: '10jt_plus', label: '10jt+', min: 10000000, max: Infinity },
 ];
 const FINDER_XP = [
   { id: 'first_time', label: 'Penjual baru' },
@@ -544,7 +543,7 @@ let _finderGeoTried = false;
 let _finder = {
   city: FINDER_DEFAULT_CITY,
   category: FINDER_DEFAULT_CAT,
-  budget: '1jt_plus',
+  budget: '1jt_10jt',
   experience: 'first_time',
 };
 
@@ -1702,7 +1701,7 @@ function loadFinderState() {
     if (cur && typeof cur === 'object') {
       if (cur.city) _finder.city = cur.city;
       if (cur.category) _finder.category = cur.category;
-      if (cur.budget) _finder.budget = cur.budget;
+      if (cur.budget && FINDER_BUDGETS.some(b => b.id === cur.budget)) _finder.budget = cur.budget;
       if (cur.experience) _finder.experience = cur.experience;
     }
   } catch (_) {}
