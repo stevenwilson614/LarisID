@@ -125,6 +125,47 @@ function _lidFireSignupSuccess() {
   } catch (_) {}
 })();
 
+// Anonymous landing/page-view logging → public.page_views via the log_page_view
+// RPC (anon-executable). Powers the admin overview "Landing Views / Unique
+// Visitors / Returning Visitors" cards. Fires once per browser session (per tab
+// load); visitor_id persists in localStorage so a visitor returning on a later
+// day is counted as a returning visitor. Fire-and-forget; never blocks boot.
+function _lidVisitorId() {
+  try {
+    let id = localStorage.getItem('_lid_vid');
+    if (!id) {
+      id = (window.crypto?.randomUUID?.() || ('v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10)));
+      localStorage.setItem('_lid_vid', id);
+    }
+    return id;
+  } catch (_) { return null; }
+}
+function _lidLogPageView() {
+  try {
+    if (!_supabase) return;
+    // Once per tab session.
+    if (sessionStorage.getItem('_lid_pv_sent')) return;
+    let sid = sessionStorage.getItem('_lid_sid');
+    const isNewSession = !sid;
+    if (!sid) {
+      sid = (window.crypto?.randomUUID?.() || ('s' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8)));
+      sessionStorage.setItem('_lid_sid', sid);
+    }
+    const vid = _lidVisitorId();
+    if (!vid) return;
+    sessionStorage.setItem('_lid_pv_sent', '1');
+    const q = new URLSearchParams(location.search);
+    _supabase.rpc('log_page_view', {
+      p_visitor_id: vid,
+      p_session_id: sid,
+      p_path: location.pathname,
+      p_referrer: (document.referrer || '(direct)').slice(0, 300),
+      p_utm_source: q.get('utm_source') || '',
+      p_is_new_session: isNewSession,
+    }).then(() => {}, () => {});
+  } catch (_) {}
+}
+
 async function larisEnsureChart() {
   if (typeof Chart !== 'undefined') return;
   if (typeof ensureChartJs === 'function') await ensureChartJs();
@@ -2311,6 +2352,8 @@ function initSupabase() {
       }
     });
   }
+  // Log this visit (anonymous-friendly) for the admin landing-view metrics.
+  _lidLogPageView();
 }
 
 function updateAuthUI() {
@@ -3645,6 +3688,40 @@ async function loadAdminOverview() {
       if (sessSubEl && totalSess != null) sessSubEl.textContent = `${retUsers ?? '—'} dari ${totalSess} sesi`;
       set('adm-leaders', s.active_leaders ?? '—');
       set('adm-cohorts', s.active_cohorts ?? '—');
+
+      // ── Landing views + visitor metrics ──
+      const fmtNum = (n) => (n == null ? '—' : Number(n).toLocaleString('id-ID'));
+      set('adm-landing-30d', fmtNum(s.landing_views_30d));
+      const landingSub = document.getElementById('adm-landing-sub');
+      if (landingSub) landingSub.textContent = `30 hari · 7 hari ${fmtNum(s.landing_views_7d)}`;
+      set('adm-uniq-30d', fmtNum(s.unique_visitors_30d));
+      const uniqSub = document.getElementById('adm-uniq-sub');
+      if (uniqSub) uniqSub.textContent = `30 hari · 7 hari ${fmtNum(s.unique_visitors_7d)}`;
+      set('adm-ret-visitors', fmtNum(s.returning_visitors));
+      const retVisSub = document.getElementById('adm-ret-visitors-sub');
+      if (retVisSub) {
+        const rate = s.visitor_return_rate != null ? s.visitor_return_rate + '%' : '—';
+        retVisSub.textContent = `${rate} dari ${fmtNum(s.visitors_total)} pengunjung`;
+      }
+
+      const lvEl = document.getElementById('adm-landing-chart');
+      const lvEmpty = document.getElementById('adm-landing-empty');
+      const lvDaily = s.landing_views_daily || [];
+      if (lvEl) {
+        if (lvDaily.length) {
+          if (lvEmpty) lvEmpty.style.display = 'none';
+          lvEl.style.display = 'flex';
+          const maxV = Math.max(...lvDaily.map(r => r.views)) || 1;
+          lvEl.innerHTML = lvDaily.map(r => {
+            const h = Math.round((r.views / maxV) * 68) + 4;
+            const d = (r.day || '').slice(5);
+            return `<div title="${d}: ${r.views} tampilan · ${r.visitors} pengunjung" style="flex:1;min-width:5px;max-width:20px;background:#B5202A;border-radius:3px 3px 0 0;height:${h}px;opacity:.85;cursor:default;"></div>`;
+          }).join('');
+        } else {
+          lvEl.style.display = 'none';
+          if (lvEmpty) lvEmpty.style.display = 'block';
+        }
+      }
 
       const dauEl = document.getElementById('adm-dau-chart');
       if (dauEl && s.dau_last_30d?.length) {
@@ -8300,7 +8377,7 @@ async function cohortMentorAddMilestone() {
 //  DISCOVER PAGE  — individual listings from Supabase
 // ════════════════════════════════════════════════════════════
 let _dscAllListings = [];   // deduplicated listing objects
-let _dscPrevMap     = {};   // "itemId_shopId" -> prev total_sold (from earlier scrape)
+let _dscPrevMap     = {};   // "itemId_shopId" -> prev scrape fields {total_sold,reviews,sold_tier,est_sold,scraped_at} (legacy: number)
 let _dscKwTrendMap  = {};   // keyword -> pct change in total keyword sold vs prev scrape
 let _dscCompMap     = {};   // keyword -> "Rendah"|"Sedang"|"Tinggi"
 let _dscFiltered    = [];
@@ -8441,13 +8518,60 @@ async function _fetchPeerVelocity(category, price) {
   finally { _peerVelocityFetching.delete(bucket); }
 }
 
-function _dscOmset(listing) {
+function _dscPrevSoldNum(prev) {
+  if (prev == null) return null;
+  if (typeof prev === 'number') return prev;
+  return prev.total_sold ?? null;
+}
+
+/** Corrected units gained since prev scrape (bucket/review/est_sold aware). */
+function _dscCorrectedUnitDelta(listing) {
   const key = `${listing.item_id}_${listing.shop_id}`;
   const prev = _dscPrevMap[key];
+  if (prev == null) return null;
+  const prevSold = _dscPrevSoldNum(prev);
+  if (prevSold == null) return null;
+  const prevRow = (typeof prev === 'object' && prev)
+    ? {
+        scraped_at: prev.scraped_at || '2026-01-01T00:00:00Z',
+        total_sold: prev.total_sold ?? 0,
+        reviews: prev.reviews,
+        sold_tier: prev.sold_tier,
+        est_sold: prev.est_sold,
+        category: listing.category,
+        price: listing.price,
+      }
+    : {
+        scraped_at: '2026-01-01T00:00:00Z',
+        total_sold: prevSold,
+        reviews: null,
+        sold_tier: null,
+        est_sold: null,
+        category: listing.category,
+        price: listing.price,
+      };
+  const currRow = {
+    scraped_at: listing.scraped_at || new Date().toISOString(),
+    total_sold: listing.total_sold ?? 0,
+    reviews: listing.reviews,
+    sold_tier: listing.sold_tier,
+    est_sold: listing.est_sold,
+    category: listing.category,
+    price: listing.price,
+  };
+  // ddTrendComputeDeltas is defined later in this file; safe at call time.
+  if (typeof ddTrendComputeDeltas === 'function') {
+    const { corrDeltas } = ddTrendComputeDeltas([prevRow, currRow], listing);
+    return corrDeltas[0] ?? 0;
+  }
+  return Math.max(0, (listing.total_sold || 0) - prevSold);
+}
+
+function _dscOmset(listing) {
   const price = listing.price || 0;
-  if (prev != null) {
-    const delta = Math.max(0, (listing.total_sold || 0) - prev);
-    return price * delta * 4;  // ~4 weeks in a month
+  const delta = _dscCorrectedUnitDelta(listing);
+  if (delta != null) {
+    return price * Math.max(0, delta) * 4;  // ~4 weeks in a month
   }
   // Check if we have a peer velocity cached for this category+price
   if (price > 0 && listing.category) {
@@ -8472,20 +8596,20 @@ function _dscOmset(listing) {
   return 0;  // No delta and no peer data — cannot estimate period revenue
 }
 
-// Trend delta (units gained since last scrape)
+// Trend delta (units gained since last scrape) — corrected, not raw bucket jump
 function _dscTrendDelta(listing) {
-  const key = `${listing.item_id}_${listing.shop_id}`;
-  const prev = _dscPrevMap[key];
-  if (prev == null) return null;
-  return (listing.total_sold || 0) - prev;
+  return _dscCorrectedUnitDelta(listing);
 }
 
 // Listing trend as % change vs previous scrape (null if no prev data)
 function _dscListingTrendPct(listing) {
   const key  = `${listing.item_id}_${listing.shop_id}`;
   const prev = _dscPrevMap[key];
-  if (prev == null || prev === 0) return null;
-  return Math.round(((listing.total_sold || 0) - prev) / prev * 100);
+  const prevSold = _dscPrevSoldNum(prev);
+  if (prevSold == null || prevSold === 0) return null;
+  const delta = _dscCorrectedUnitDelta(listing);
+  if (delta == null) return null;
+  return Math.round(delta / prevSold * 100);
 }
 
 let _dscOffset      = 0;
@@ -8601,7 +8725,7 @@ async function _dscEnsureBrowsePool(min = 60) {
     // category/panel filters are active and can fail the same way they did.
     const { data } = await _supabase
       .from('listings')
-      .select('item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews')
+      .select('item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews,est_sold,sold_tier')
       .gt('total_sold', 0)
       .order('total_sold', { ascending: false })
       .limit(Math.max(min, 60));
@@ -8676,7 +8800,7 @@ function _dscApplySearchFilter(q, query) {
 }
 
 function _dscBuildListingsQuery(offset, filters, opts = {}) {
-  const FIELDS = 'item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews';
+  const FIELDS = 'item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews,est_sold,sold_tier';
   const rangeFrom = opts.rangeFrom != null ? opts.rangeFrom : offset;
   const rangeTo   = opts.rangeTo   != null ? opts.rangeTo   : offset + DSC_PAGE_SIZE - 1;
   let q = _supabase
@@ -8860,7 +8984,7 @@ async function dscFetchPage(offset, filters = {}) {
   if (!tok) return [];
   let qf = _supabase
     .from('listings')
-    .select('item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews')
+    .select('item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews,est_sold,sold_tier')
     .gt('total_sold', 0)
     .ilike('keyword', `%${tok}%`)
     .order('total_sold', { ascending: false })
@@ -9135,17 +9259,23 @@ async function dscLoadTrendData() {
     const keywords = [...new Set(_dscAllListings.map(r => r.keyword).filter(Boolean))];
     const { data: prevRows } = await _supabase
       .from('listings')
-      .select('item_id,shop_id,total_sold,keyword')
+      .select('item_id,shop_id,total_sold,reviews,est_sold,sold_tier,keyword,scraped_at')
       .gte('scraped_at', `${prevDate}T00:00:00`)
       .lt('scraped_at', `${_nextCalendarDay(prevDate)}T00:00:00`)
       .limit(3000);
 
     if (!prevRows?.length) return;
 
-    // Populate per-listing prev map
+    // Populate per-listing prev map (full fields for bucket/review correction)
     const kwPrev = {}, kwCurr = {};
     prevRows.forEach(r => {
-      _dscPrevMap[`${r.item_id}_${r.shop_id}`] = r.total_sold || 0;
+      _dscPrevMap[`${r.item_id}_${r.shop_id}`] = {
+        total_sold: r.total_sold || 0,
+        reviews: r.reviews,
+        est_sold: r.est_sold,
+        sold_tier: r.sold_tier,
+        scraped_at: r.scraped_at,
+      };
       kwPrev[r.keyword] = (kwPrev[r.keyword] || 0) + (r.total_sold || 0);
     });
 
@@ -13707,15 +13837,37 @@ async function ddTrendComputeWeekly(listing, opts = {}) {
 
   if (!cohortByListing && dbRows.length < minRows) {
     const prevKey = `${listing.item_id}_${listing.shop_id}`;
-    const prevSold = _dscPrevMap[prevKey];
+    const prevSnap = _dscPrevMap[prevKey];
+    const prevSold = typeof prevSnap === 'object' && prevSnap != null
+      ? (prevSnap.total_sold ?? null)
+      : prevSnap;
     const currDate = listing.scraped_at ? new Date(listing.scraped_at) : new Date();
-    const currRow = { scraped_at: currDate.toISOString(), total_sold: listing.total_sold, price: listing.price, reviews: listing.reviews, category: listing.category };
+    const currRow = {
+      scraped_at: currDate.toISOString(),
+      total_sold: listing.total_sold,
+      price: listing.price,
+      reviews: listing.reviews,
+      category: listing.category,
+      est_sold: listing.est_sold,
+      sold_tier: listing.sold_tier,
+    };
     if (dbRows.length === 1) {
       const dbDate = new Date(dbRows[0].scraped_at);
       dbRows = dbDate < currDate ? [dbRows[0], currRow] : [currRow, dbRows[0]];
     } else if (prevSold != null) {
       const prevDate = new Date(currDate.getTime() - 7 * 86400000);
-      dbRows = [{ scraped_at: prevDate.toISOString(), total_sold: prevSold, price: listing.price, reviews: null, category: listing.category }, currRow];
+      const prevRow = (typeof prevSnap === 'object' && prevSnap != null)
+        ? {
+            scraped_at: prevSnap.scraped_at || prevDate.toISOString(),
+            total_sold: prevSold,
+            price: listing.price,
+            reviews: prevSnap.reviews,
+            category: listing.category,
+            est_sold: prevSnap.est_sold,
+            sold_tier: prevSnap.sold_tier,
+          }
+        : { scraped_at: prevDate.toISOString(), total_sold: prevSold, price: listing.price, reviews: null, category: listing.category };
+      dbRows = [prevRow, currRow];
     }
     if (dbRows.length < minRows) {
       const gotPeer = await ensurePeerTrend();

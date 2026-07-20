@@ -2516,12 +2516,14 @@ function subgroupMatches(row, terms) {
 }
 
 function asListingProduct(r) {
+  // Only keep a real period rate (naik_daun / trending / scrape delta).
+  // Never invent sold_per_day from lifetime total_sold/90 — that lied on
+  // Deep Dive omzet tiles and product cards for bucketed listings.
+  const spd = Number(r.sold_per_day);
   return {
     ...r,
-    sold_per_day: Number(r.sold_per_day) > 0
-      ? Number(r.sold_per_day)
-      : Math.max(0.1, (Number(r.total_sold) || 0) / 90),
-    age_days: r.age_days != null ? r.age_days : 90,
+    sold_per_day: Number.isFinite(spd) && spd > 0 ? spd : null,
+    age_days: r.age_days != null ? r.age_days : null,
   };
 }
 
@@ -2754,7 +2756,10 @@ function bindTrendingBody(card) {
       const rows = await fetchTrending();
       const r = rows.find(x => String(x.item_id) === String(item_id) && String(x.shop_id) === String(shop_id));
       if (!r) return;
-      void openDeepDive(asListingProduct({ ...r, sold_per_day: Math.max(0.1, (Number(r.delta_7d) || 0) / 7) }));
+      // Cap absurd raw matview deltas (bucket floor jumps) before using as period rate.
+      const d7 = Math.max(0, Number(r.delta_7d) || 0);
+      const spd = d7 > 0 ? Math.min(d7 / 7, DD_MAX_SOLD_PER_DAY) : null;
+      void openDeepDive(asListingProduct({ ...r, sold_per_day: spd }));
     });
   });
 }
@@ -3987,14 +3992,27 @@ function ddScore(product, stats, niche) {
 //
 // April/May spikes also came from naive deltas on Shopee *display buckets*
 // (10rb+, 100rb+, 1jt+, …) and scrape glitches — e.g. 200k → 7jt in 9 days.
-// Those look like real sales but are UI tier jumps. We mirror site A's
-// correction: prefer review-based estimates when the raw jump is absurd.
+// Those look like real sales but are UI tier jumps. Mirror Site A:
+// sold_tier / est_sold / category review multipliers when the raw jump is absurd.
 const DD_SOLD_BUCKETS = new Set([1, 2, 5, 10, 50, 100, 500, 1000, 2000, 3000, 5000, 7000, 8000, 9000]);
 const DD_MAX_SOLD_PER_DAY = 500; // sustained panel rate; higher is almost always a bucket/glitch
-const DD_REVIEW_TO_SOLD = 3.2;   // ~median category multiplier from site A
+const DD_REVIEW_TO_SOLD = 3.2;   // default when category unknown
+const DD_CAT_MULT = {
+  'Alat Tulis': 2.87, 'Bayi & Anak': 4.12, 'Dapur': 3.4, 'Elektronik': 2.9,
+  'Fashion': 3.5, 'Hewan Peliharaan': 3.95, 'Hobi & Kerajinan': 2.48,
+  'HP & Gadget': 2.9, 'Kamar Mandi': 3.3, 'Keamanan': 2.7, 'Kecantikan': 3.1,
+  'Kesehatan': 2.38, 'Motor & Mobil': 2.6, 'Olahraga': 2.68,
+  'Outdoor & Camping': 2.67, 'Rumah': 3.4, 'Sepeda': 2.58, 'Taman': 3.50,
+  'Tanaman': 3.63, '__default__': DD_REVIEW_TO_SOLD,
+};
 
-function ddSoldIsBucket(sold) {
+function ddCatMult(category) {
+  return DD_CAT_MULT[category] || DD_CAT_MULT.__default__;
+}
+
+function ddSoldIsBucket(sold, soldTier) {
   const s = Number(sold) || 0;
+  if (soldTier != null && soldTier > 0 && soldTier === s) return true;
   if (s >= 10000) return true;
   return DD_SOLD_BUCKETS.has(s);
 }
@@ -4003,31 +4021,36 @@ function ddSoldIsBucket(sold) {
 function ddCorrectSoldDelta(prev, next, spanMs) {
   const s0 = Number(prev.total_sold) || 0;
   const s1 = Number(next.total_sold) || 0;
-  const raw = Math.max(0, s1 - s0);
-  if (raw <= 0) return 0;
-
   const days = Math.max(spanMs / 864e5, 1 / 24);
-  const rate = raw / days;
   const rev0 = Number(prev.reviews) || 0;
   const rev1 = Number(next.reviews) || 0;
-  const reviewEst = Math.max(0, Math.round((rev1 - rev0) * DD_REVIEW_TO_SOLD));
-  const bucket0 = ddSoldIsBucket(s0);
-  const bucket1 = ddSoldIsBucket(s1);
+  const mult = ddCatMult(next.category || prev.category);
+  const reviewEst = Math.max(0, Math.round((rev1 - rev0) * mult));
+  const est0 = prev.est_sold != null ? Number(prev.est_sold) : null;
+  const est1 = next.est_sold != null ? Number(next.est_sold) : null;
+  const estDelta = (est0 != null && est1 != null && est1 > est0) ? (est1 - est0) : 0;
+  const bucket0 = ddSoldIsBucket(s0, prev.sold_tier);
+  const bucket1 = ddSoldIsBucket(s1, next.sold_tier);
+  const raw = (bucket0 && bucket1 && s0 === s1) ? 0 : Math.max(0, s1 - s0);
   const tierJump = s0 > 0 && s1 / s0 >= 3 && raw >= 10000;
+  const rate = raw > 0 ? raw / days : 0;
 
-  // Same display bucket twice → no real sold change; use reviews if any.
-  if (bucket0 && bucket1 && s0 === s1) return reviewEst;
+  // Same display bucket twice → no real sold change; prefer reviews, then est_sold.
+  if (bucket0 && bucket1 && s0 === s1) return reviewEst || estDelta;
 
   // Crossing into / within 10rb+ display tiers: raw delta is a floor jump, not sales.
   if ((s0 < 10000 && s1 >= 10000) || (s0 >= 10000 && s1 >= 10000 && (bucket0 || bucket1))) {
     if (reviewEst > 0) return reviewEst;
-    // No reviews — cap to a plausible daily rate instead of dumping the tier gap.
-    return Math.min(raw, Math.round(DD_MAX_SOLD_PER_DAY * days));
+    if (estDelta > 0) return estDelta;
+    return raw > 0 ? Math.min(raw, Math.round(DD_MAX_SOLD_PER_DAY * days)) : 0;
   }
+
+  if (raw <= 0) return reviewEst || estDelta;
 
   // Absurd rate or 3×+ jump vs previous reading.
   if (rate > DD_MAX_SOLD_PER_DAY || tierJump) {
     if (reviewEst > 0) return Math.min(raw, Math.max(reviewEst, Math.round(DD_MAX_SOLD_PER_DAY * days)));
+    if (estDelta > 0) return Math.min(raw, estDelta);
     return Math.min(raw, Math.round(DD_MAX_SOLD_PER_DAY * days));
   }
 
@@ -4035,6 +4058,33 @@ function ddCorrectSoldDelta(prev, next, spanMs) {
   if (reviewEst > 0 && raw > reviewEst * 5) return reviewEst;
 
   return raw;
+}
+
+/** Period sold/day for one product from its own corrected scrape intervals. */
+function ddProductSoldPerDay(history, product) {
+  if (!product?.item_id || !history?.length) return null;
+  const rows = history
+    .filter(r => String(r.item_id) === String(product.item_id)
+      && String(r.shop_id) === String(product.shop_id))
+    .slice()
+    .sort((a, b) => Date.parse(a.scraped_at) - Date.parse(b.scraped_at));
+  if (rows.length < 2) return null;
+  let units = 0;
+  const t0 = Date.parse(rows[0].scraped_at);
+  const t1 = Date.parse(rows[rows.length - 1].scraped_at);
+  if (!(t1 > t0)) return null;
+  for (let i = 1; i < rows.length; i++) {
+    const a = rows[i - 1], b = rows[i];
+    const span = Date.parse(b.scraped_at) - Date.parse(a.scraped_at);
+    if (span <= 0) continue;
+    units += ddCorrectSoldDelta(
+      { ...a, category: a.category || product.category },
+      { ...b, category: b.category || product.category },
+      span,
+    );
+  }
+  if (units <= 0) return null;
+  return units / Math.max(1, (t1 - t0) / 864e5);
 }
 
 function ddWeeklySeries(history) {
@@ -4156,7 +4206,8 @@ function ddKeywordRows(peers) {
 
 function ddTilesHtml(product, stats, peers, series) {
   const omset = estOmsetBulan(product);
-  const unitMo = Math.round((Number(product.sold_per_day) || 0) * 30);
+  const spd = Number(product.sold_per_day);
+  const unitMo = Number.isFinite(spd) && spd > 0 ? Math.round(spd * 30) : 0;
   const price = Number(product.price) || 0;
   const vsMed = stats.median ? Math.round((price - stats.median) / stats.median * 100) : null;
   const locCount = new Map();
@@ -4169,12 +4220,15 @@ function ddTilesHtml(product, stats, peers, series) {
     const a = series[series.length - 1], b = series[series.length - 2];
     if (b && b.units > 0) delta = Math.round((a.units - b.units) / b.units * 100);
   }
+  const rateSub = unitMo
+    ? 'Dari selisih scrape produk (terkoreksi bucket/ulasan)'
+    : 'Belum ada delta scrape — bukan estimasi dari total terjual';
   const deltaHtml = delta == null
-    ? '<div class="sub">Estimasi dari kecepatan jual</div>'
+    ? `<div class="sub">${rateSub}</div>`
     : `<span class="tile-delta ${delta >= 0 ? 'up' : 'down'}">${ico('arrowUp', 10)} ${delta >= 0 ? '+' : ''}${delta}% pasar vs minggu sebelumnya</span>`;
   return `<div class="ddr-tiles">
     <div class="ddr-tile"><span class="ico" style="background:var(--green-bg);color:var(--green)">${ico('trendUp', 14)}</span><div class="lbl">Est. Omzet / Bulan</div><div class="val">${omset ? fmtRpShort(omset) : '—'}</div>${deltaHtml}</div>
-    <div class="ddr-tile"><span class="ico" style="background:var(--blue-bg);color:var(--blue)">${ico('box', 14)}</span><div class="lbl">Est. Penjualan / Bulan</div><div class="val">${unitMo ? unitMo.toLocaleString('id-ID') + ' unit' : '—'}</div><div class="sub">Dari kecepatan jual terpantau</div></div>
+    <div class="ddr-tile"><span class="ico" style="background:var(--blue-bg);color:var(--blue)">${ico('box', 14)}</span><div class="lbl">Est. Penjualan / Bulan</div><div class="val">${unitMo ? unitMo.toLocaleString('id-ID') + ' unit' : '—'}</div><div class="sub">${rateSub}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--amber-bg);color:var(--amber)">${ico('tag', 14)}</span><div class="lbl">Harga Produk</div><div class="val">${fmtRp(price)}</div><div class="sub">${vsMed == null ? 'Median pasar belum ada' : vsMed === 0 ? 'Sama dengan median pasar' : `${Math.abs(vsMed)}% ${vsMed > 0 ? 'di atas' : 'di bawah'} median pasar`}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--violet-bg);color:var(--violet)">${ico('pin', 14)}</span><div class="lbl">Lokasi Terbanyak</div><div class="val">${topLoc ? esc(topLoc[0]) : '—'}</div><div class="sub">${topLoc ? `${topLoc[1]} penjual dari kota ini` : 'Belum ada data lokasi'}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--red-bg);color:var(--accent)">${ico('users', 14)}</span><div class="lbl">Kompetitor Aktif</div><div class="val">~${shopN} toko</div><div class="sub">Kompetisi ${esc(stats.komp || '—')}</div></div>
@@ -4339,7 +4393,8 @@ async function openDeepDive(product) {
   // handful of early weeks even when the keyword has many later scrapes.
   let history = [];
   try {
-    const histCols = 'item_id,shop_id,keyword,price,total_sold,reviews,scraped_at';
+    // category/est_sold/sold_tier required for Site-A-parity delta correction
+    const histCols = 'item_id,shop_id,keyword,category,price,total_sold,reviews,est_sold,sold_tier,scraped_at';
     if (kw) {
       const pageSize = 1000;
       const maxRows = 5000;
@@ -4369,6 +4424,13 @@ async function openDeepDive(product) {
       }
     }
   } catch (_) {}
+
+  // Prefer corrected scrape-interval rate for this product over invented lifetime/90.
+  const scrapeSpd = ddProductSoldPerDay(history, product);
+  if (scrapeSpd != null && scrapeSpd > 0) {
+    product = { ...product, sold_per_day: scrapeSpd };
+    state.deepdiveProduct = product;
+  }
 
   // Attach to active chat session
   let chat = activeChat();

@@ -197,7 +197,7 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260717z';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260720b';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
@@ -9293,9 +9293,24 @@ html,body{overflow-x:clip;max-width:100%;}
                 <div class="adm-stat-sub">pendaftar baru</div>
               </div>
               <div class="adm-stat-card">
-                <div class="adm-stat-lbl">Return Rate</div>
+                <div class="adm-stat-lbl">Kunjungan Landing</div>
+                <div class="adm-stat-val" style="color:#B5202A;" id="adm-landing-30d">—</div>
+                <div class="adm-stat-sub" id="adm-landing-sub">30 hari · 7 hari —</div>
+              </div>
+              <div class="adm-stat-card">
+                <div class="adm-stat-lbl">Pengunjung Unik</div>
+                <div class="adm-stat-val" style="color:#1A1A1A;" id="adm-uniq-30d">—</div>
+                <div class="adm-stat-sub" id="adm-uniq-sub">30 hari</div>
+              </div>
+              <div class="adm-stat-card">
+                <div class="adm-stat-lbl">Pengunjung Kembali</div>
+                <div class="adm-stat-val" style="color:#1A7A46;" id="adm-ret-visitors">—</div>
+                <div class="adm-stat-sub" id="adm-ret-visitors-sub">sesi ulang di hari lain</div>
+              </div>
+              <div class="adm-stat-card">
+                <div class="adm-stat-lbl">Return Rate (login)</div>
                 <div class="adm-stat-val" style="color:#1A7A46;" id="adm-return-rate">—</div>
-                <div class="adm-stat-sub" id="adm-sessions-sub">kembali ke platform</div>
+                <div class="adm-stat-sub" id="adm-sessions-sub">user login kembali</div>
               </div>
               <div class="adm-stat-card">
                 <div class="adm-stat-lbl">Active Leaders</div>
@@ -9314,6 +9329,14 @@ html,body{overflow-x:clip;max-width:100%;}
               <div class="adm-section-title">Sesi Harian — 30 Hari Terakhir</div>
               <div style="font-size:.7rem;color:#9CA3AF;margin-bottom:12px;">Jumlah login unik per hari (dari user_sessions)</div>
               <div id="adm-dau-chart" style="display:flex;align-items:flex-end;gap:3px;height:80px;overflow-x:auto;"></div>
+            </div>
+
+            <!-- Section 2b: Landing views chart -->
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:18px;margin-bottom:20px;">
+              <div class="adm-section-title">Kunjungan Landing — 30 Hari Terakhir</div>
+              <div style="font-size:.7rem;color:#9CA3AF;margin-bottom:12px;">Total tampilan halaman (bar) &middot; pengunjung unik per hari (angka di tooltip). Mulai terisi sejak fitur ini live.</div>
+              <div id="adm-landing-chart" style="display:flex;align-items:flex-end;gap:3px;height:80px;overflow-x:auto;"></div>
+              <div id="adm-landing-empty" style="display:none;font-size:.72rem;color:#9CA3AF;padding:8px 0;">Belum ada data kunjungan — mulai terekam setelah deploy.</div>
             </div>
 
             <!-- Signup locations map -->
@@ -9914,7 +9937,7 @@ html,body{overflow-x:clip;max-width:100%;}
      SITE FOOTER
 ════════════════════════════════════ -->
 
-<script defer src="/js/laris-app.js?v=20260717z"></script>
+<script defer src="/js/laris-app.js?v=20260720b"></script>
 
   <!-- ── CONTEXTUAL ONBOARDING HINTS ── -->
   <div id="hint-overlay" aria-hidden="true" onclick="if(event.target===this)nuHintDismiss()">
