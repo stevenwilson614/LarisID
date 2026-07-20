@@ -3622,11 +3622,11 @@ async function adminLoadFloatStats() {
     const { data, error } = await _supabase.rpc('admin_stats', params);
     if (!error && data) {
       const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v ?? '—'; };
-      set('af-total',    data.total_signups);
-      set('af-new7d',    data.signups_last_7d);
-      set('af-active7d', data.active_users_7d);
+      set('af-total',     data.total_signups);
+      set('af-landing7d', data.landing_views_7d);          // anonymous landing-page views (7d)
+      set('af-returned',  data.returning_users);           // signed up AND >1 session (not repeat landing)
       const lbl = document.getElementById('admin-float-label');
-      if (lbl) lbl.textContent = `${data.total_signups ?? '?'} users · ${data.active_users_7d ?? '?'} aktif`;
+      if (lbl) lbl.textContent = `${data.landing_views_7d ?? '?'} view · ${data.returning_users ?? '?'} kembali`;
     }
   } catch(e) { console.warn('adminLoadFloatStats', e); }
 }

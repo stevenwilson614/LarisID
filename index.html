@@ -197,7 +197,7 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260720b';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260720c';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
@@ -9917,12 +9917,12 @@ html,body{overflow-x:clip;max-width:100%;}
         <div id="af-total" style="font-size:1.4rem;font-weight:900;color:#fff;">—</div>
       </div>
       <div style="background:rgba(255,255,255,.08);border-radius:8px;padding:10px 8px;text-align:center;">
-        <div style="font-size:.58rem;color:rgba(255,255,255,.5);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Daftar 7d</div>
-        <div id="af-new7d" style="font-size:1.4rem;font-weight:900;color:#B5202A;">—</div>
+        <div style="font-size:.58rem;color:rgba(255,255,255,.5);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Landing 7d</div>
+        <div id="af-landing7d" style="font-size:1.4rem;font-weight:900;color:#B5202A;">—</div>
       </div>
       <div style="background:rgba(255,255,255,.08);border-radius:8px;padding:10px 8px;text-align:center;">
-        <div style="font-size:.58rem;color:rgba(255,255,255,.5);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Aktif 7d</div>
-        <div id="af-active7d" style="font-size:1.4rem;font-weight:900;color:#C9974B;">—</div>
+        <div style="font-size:.58rem;color:rgba(255,255,255,.5);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Kembali</div>
+        <div id="af-returned" style="font-size:1.4rem;font-weight:900;color:#C9974B;">—</div>
       </div>
     </div>
     <div style="display:flex;gap:8px;">
@@ -9937,7 +9937,7 @@ html,body{overflow-x:clip;max-width:100%;}
      SITE FOOTER
 ════════════════════════════════════ -->
 
-<script defer src="/js/laris-app.js?v=20260720b"></script>
+<script defer src="/js/laris-app.js?v=20260720c"></script>
 
   <!-- ── CONTEXTUAL ONBOARDING HINTS ── -->
   <div id="hint-overlay" aria-hidden="true" onclick="if(event.target===this)nuHintDismiss()">
