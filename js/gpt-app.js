@@ -39,8 +39,9 @@ const _LID_OAUTH_SIGNUP_INTENT_KEY = '_lid_oauth_signup_intent';
 const _LID_SIGNUP_CTA_KEY = '_lid_signup_cta_source';
 const _LID_SIGNUP_DONE_KEY = '_lid_signup_done_v1';
 const GPT_STATE_KEY = '_lid_gpt_state_v1';
-const ANON_LIMIT_KEY = '_lid_gpt_anon_searches_v1';
+const ANON_LIMIT_KEY = '_lid_gpt_anon_searches_v2';
 const ANON_DD_KEY = '_lid_gpt_anon_deepdive_v1'; // first product an anon user viewed free
+try { localStorage.removeItem('_lid_gpt_anon_searches_v1'); } catch (_) {} // drop stale v1 counters
 const PAGE_SIZE = 60;
 const COMPOSER_EXAMPLES = [
   'Cari produk kayu dari Semarang',
@@ -1919,7 +1920,8 @@ async function runFinderSearch() {
   const go = $('finder-go');
   if (go) go.disabled = true;
   try {
-    if (!(await ensureSearchAllowed())) return;
+    // Landing finder is the primary CTA — never wall it behind the anon daily
+    // search cap. Free-text searches still use ensureSearchAllowed().
 
     // Persist into onboarding so directory / recs stay aligned
     state.onboarding.city = _finder.city;
@@ -1967,7 +1969,7 @@ async function runFinderSearch() {
       city: _finder.city,
       category: _finder.category,
       budget: _finder.budget,
-    });
+    }, { skipAnonBump: true });
     if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
 
     const html = products.length
@@ -3101,14 +3103,14 @@ function detectIntent(lower) {
 }
 
 // Same daily-limit rules as the search path: server RPC when signed in,
-// anon localStorage bump otherwise.
-async function ensureIntentChat(chat, title, context) {
+// anon localStorage bump otherwise. Pass skipAnonBump for free landing-finder runs.
+async function ensureIntentChat(chat, title, context, opts = {}) {
   if (currentUser && _supabase && !chat.id) {
     const { data } = await _supabase.rpc('gpt_new_chat', { p_title: String(title).slice(0, 60), p_context: context });
     if (data) noteGptUsage(data);
     if (data?.allowed === false) return { ok: false, resetAt: data.reset_at };
     if (data?.chat) { chat.id = data.chat.id; delete chat.localId; state.activeChatId = chat.id; flushChatMessages(chat); }
-  } else if (!currentUser) {
+  } else if (!currentUser && !opts.skipAnonBump) {
     bumpAnonSearch();
   }
   return { ok: true };

@@ -1027,8 +1027,8 @@ body.onboarding-active .panel { padding-bottom: 28px; }
   display: grid; place-items: center;
   background: var(--merah-tint); color: var(--accent);
   flex-shrink: 0;
+  font-size: .85rem; font-weight: 800; letter-spacing: -.02em;
 }
-.finder-ico svg { width: 16px; height: 16px; }
 .finder-body { min-width: 0; padding-top: 2px; }
 .finder-title {
   margin: 0 0 2px; font-size: .95rem; font-weight: 700; letter-spacing: -.01em;
@@ -1046,11 +1046,6 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 }
 .finder-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(181,32,42,.12); }
 .finder-select-wrap { position: relative; }
-.finder-select-wrap .finder-lead-ico {
-  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-  color: var(--accent); pointer-events: none; display: grid;
-}
-.finder-select-wrap .finder-select { padding-left: 38px; }
 .finder-pills {
   display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;
 }
@@ -1064,18 +1059,30 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 .finder-pill.on {
   background: var(--merah-tint); border-color: var(--accent); color: var(--accent);
 }
-.finder-pill-ico { display: inline-flex; margin-right: 5px; vertical-align: -2px; }
-.finder-pill-ico svg { width: 13px; height: 13px; }
 .finder-cta {
   display: flex; align-items: center; justify-content: center; gap: 8px;
   width: 100%; margin-top: 8px; padding: 14px 18px; border-radius: 999px;
   background: var(--grad-accent); color: #fff;
   font: inherit; font-size: .95rem; font-weight: 700; letter-spacing: -.01em;
-  box-shadow: 0 8px 24px rgba(181,32,42,.22);
+  box-shadow: 0 0 0 0 rgba(181,32,42,.4), 0 8px 24px rgba(181,32,42,.22);
   transition: opacity .12s, transform .12s;
+  animation: finderGlow 1.8s ease-in-out infinite;
 }
-.finder-cta:hover { opacity: .94; }
-.finder-cta:disabled { opacity: .45; cursor: not-allowed; }
+@keyframes finderGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(181,32,42,.42), 0 8px 24px rgba(181,32,42,.22);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(181,32,42,0), 0 10px 28px rgba(181,32,42,.38);
+    transform: scale(1.025);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .finder-cta { animation: none; }
+}
+.finder-cta:hover { opacity: .96; }
+.finder-cta:disabled { opacity: .45; cursor: not-allowed; animation: none; transform: none; }
 .finder-note {
   margin: 10px 0 0; text-align: center; font-size: .72rem; color: var(--muted);
 }
@@ -1126,32 +1133,61 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 
 /* ── Mobile landing: one screen, no scroll, composer docked at bottom ── */
 @media (max-width: 860px) {
-  body.view-home .panel { padding: 0 14px 0; }
+  body.view-home .panel {
+    padding: 0 12px 0;
+    overflow: hidden;
+  }
   body.view-home .panel-inner,
   body.view-home #view-home,
-  body.view-home .home-hero { height: 100%; }
+  body.view-home .home-hero {
+    height: 100%;
+    min-height: 0;
+  }
   .home-hero {
     box-sizing: border-box;
-    padding: 10px 0 max(10px, env(safe-area-inset-bottom));
+    padding: 6px 0 max(8px, env(safe-area-inset-bottom));
     justify-content: flex-start;
+    overflow: hidden;
   }
-  .home-title { font-size: clamp(1.35rem, 6.2vw, 1.7rem); margin-bottom: 6px; }
-  .home-sub { font-size: .86rem; margin-bottom: 10px; }
-  /* Finder form is taller than the old prompt cards — allow scroll on home */
-  body.view-home .panel-inner,
-  body.view-home #view-home,
-  body.view-home .home-hero { height: auto; min-height: 100%; }
-  body.view-home .panel { overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  .home-finder { order: 3; margin-bottom: 12px; }
-  .finder-step { padding-bottom: 16px; }
-  .finder-title { font-size: .88rem; }
-  .finder-sub { font-size: .7rem; margin-bottom: 8px; }
-  .finder-pill { padding: 7px 11px; font-size: .72rem; }
-  .finder-cta { padding: 12px 16px; font-size: .88rem; }
-  .finder-atau { order: 8; margin: 4px 0 10px; }
-  .home-composer { order: 9; margin-top: 0; padding-top: 0; }
-  .home-composer .composer { padding: 10px 8px 10px 14px; }
-  .home-composer textarea { min-height: 44px; }
+  .home-title {
+    font-size: clamp(1.15rem, 5.2vw, 1.45rem);
+    margin-bottom: 2px;
+    line-height: 1.15;
+  }
+  .home-title br { display: none; } /* one line on mobile */
+  .home-sub { display: none; }
+  .home-finder {
+    order: 3; flex: 1; min-height: 0;
+    margin: 4px 0 0; display: flex; flex-direction: column;
+    justify-content: space-between;
+  }
+  .finder-step {
+    padding-bottom: 8px;
+    grid-template-columns: 26px 1fr;
+    gap: 0 10px;
+  }
+  .finder-step::before { left: 12px; top: 28px; }
+  .finder-ico {
+    width: 26px; height: 26px; font-size: .72rem;
+  }
+  .finder-title { font-size: .78rem; margin: 0; }
+  .finder-sub { display: none; }
+  .finder-select {
+    padding: 8px 32px 8px 11px; border-radius: 11px; font-size: .8rem;
+  }
+  .finder-pills { gap: 5px; margin-top: 6px; }
+  .finder-pill { padding: 5px 9px; font-size: .66rem; }
+  #finder-cat-pills { display: none; } /* dropdown enough on mobile */
+  .finder-cta {
+    margin-top: 6px; padding: 11px 14px; font-size: .84rem;
+    flex-shrink: 0;
+  }
+  .finder-note { display: none; }
+  .finder-atau { order: 8; margin: 6px 0 6px; font-size: .68rem; }
+  .home-composer { order: 9; margin-top: 0; padding-top: 0; flex-shrink: 0; }
+  .home-composer .composer { padding: 8px 6px 8px 12px; }
+  .home-composer textarea { min-height: 38px; font-size: .85rem; }
+  .home-composer .composer-under { display: none; } /* hide usage ring on home mobile */
   .home-foot { display: none; }
 }
 
@@ -1832,24 +1868,22 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 
             <div class="home-finder" id="home-finder">
               <div class="finder-step">
-                <div class="finder-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-4.5 7-11a7 7 0 10-14 0c0 6.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
+                <div class="finder-ico" aria-hidden="true">1</div>
                 <div class="finder-body">
                   <div class="finder-title">Saya dari</div>
                   <p class="finder-sub">Digunakan untuk hitung ongkir, kompetisi, dan supplier terdekat.</p>
                   <div class="finder-select-wrap">
-                    <span class="finder-lead-ico" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-4.5 7-11a7 7 0 10-14 0c0 6.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
                     <select class="finder-select" id="finder-city" aria-label="Kota"></select>
                   </div>
                 </div>
               </div>
 
               <div class="finder-step">
-                <div class="finder-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.6 13.4L12 22l-8.6-8.6a5 5 0 017.1-7.1L12 8l1.5-1.5a5 5 0 017.1 7.1z"/></svg></div>
+                <div class="finder-ico" aria-hidden="true">2</div>
                 <div class="finder-body">
                   <div class="finder-title">Saya ingin jual produk di kategori</div>
                   <p class="finder-sub">Pilih kategori yang ingin kamu fokuskan.</p>
                   <div class="finder-select-wrap">
-                    <span class="finder-lead-ico" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.6 13.4L12 22l-8.6-8.6a5 5 0 017.1-7.1L12 8l1.5-1.5a5 5 0 017.1 7.1z"/></svg></span>
                     <select class="finder-select" id="finder-cat" aria-label="Kategori"></select>
                   </div>
                   <div class="finder-pills" id="finder-cat-pills"></div>
@@ -1857,7 +1891,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
               </div>
 
               <div class="finder-step">
-                <div class="finder-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg></div>
+                <div class="finder-ico" aria-hidden="true">3</div>
                 <div class="finder-body">
                   <div class="finder-title">Modal awal saya</div>
                   <p class="finder-sub">Berapa modal yang siap kamu gunakan?</p>
@@ -1866,7 +1900,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
               </div>
 
               <div class="finder-step">
-                <div class="finder-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0116 0"/></svg></div>
+                <div class="finder-ico" aria-hidden="true">4</div>
                 <div class="finder-body">
                   <div class="finder-title">Saya penjual baru atau berpengalaman?</div>
                   <p class="finder-sub">Biar saran dan rekomendasinya pas untuk level kamu.</p>
@@ -2139,6 +2173,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260720d" defer></script>
+<script src="/js/gpt-app.js?v=20260720e" defer></script>
 </body>
 </html>
