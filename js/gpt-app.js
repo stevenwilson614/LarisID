@@ -517,6 +517,35 @@ const NU_ONB_LOCATIONS = [
   'Makassar', 'Palembang', 'Denpasar',
 ];
 
+// Landing finder defaults / quick chips
+const FINDER_DEFAULT_CITY = 'Bandung';
+const FINDER_DEFAULT_CAT = 'Olahraga';
+const FINDER_CAT_CHIPS = [
+  { label: 'Olahraga', cat: 'Olahraga' },
+  { label: 'Rumah', cat: 'Rumah' },
+  { label: 'Kecantikan', cat: 'Kecantikan' },
+  { label: 'Dapur', cat: 'Dapur' },
+  { label: 'Bayi', cat: 'Bayi & Anak' },
+];
+const FINDER_BUDGETS = [
+  { id: 'lt250', label: '< Rp250k', min: 0, max: 250000 },
+  { id: '250_500', label: 'Rp250k – 500k', min: 250000, max: 500000 },
+  { id: '500_1jt', label: 'Rp500k – 1jt', min: 500000, max: 1000000 },
+  { id: '1jt_plus', label: '1jt+', min: 1000000, max: Infinity },
+];
+const FINDER_XP = [
+  { id: 'first_time', label: 'Penjual baru' },
+  { id: 'existing', label: 'Berpengalaman' },
+];
+const FINDER_STATE_KEY = '_lid_gpt_finder_v1';
+let _finderGeoTried = false;
+let _finder = {
+  city: FINDER_DEFAULT_CITY,
+  category: FINDER_DEFAULT_CAT,
+  budget: '1jt_plus',
+  experience: 'first_time',
+};
+
 // ── App state ────────────────────────────────────────────────────────────
 const state = {
   view: 'chat',
@@ -1656,47 +1685,309 @@ function renderHome() {
   state.activeChatId = null;
   saveLocalState();
   renderChatList();
-
-  const chipsWrap = $('home-chips');
-  if (chipsWrap && !chipsWrap.dataset.ready) {
-    chipsWrap.dataset.ready = '1';
-    chipsWrap.innerHTML = HOME_CHIPS.map(c =>
-      `<button type="button" class="chip" data-hchip="${esc(c.id)}" data-prompt="${esc(c.prompt)}"><span class="chip-ico">${ico(c.icon, 15)}</span>${esc(c.label)}</button>`
-    ).join('');
-    chipsWrap.querySelectorAll('[data-hchip]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        void logUserEvent('gpt_chip_click', { ui: 'gpt', chip: btn.getAttribute('data-hchip'), surface: 'home' });
-        clarityEvt('gpt_chip_click', { chip: btn.getAttribute('data-hchip') });
-        submitFromHome(btn.getAttribute('data-prompt'));
-      });
-    });
-  }
-
-  const grid = $('prompt-grid');
-  if (grid && !grid.dataset.ready) {
-    grid.dataset.ready = '1';
-    grid.innerHTML = HOME_PROMPT_CARDS.map(c => `
-      <button type="button" class="prompt-card" data-prompt="${esc(c.q)}">
-        <span class="pc-ico">${ico(c.icon, 26)}</span>
-        <span class="t">${esc(c.t)}</span>
-        <span class="d">${esc(c.d)}</span>
-        <span class="prompt-quote">“${esc(c.q)}”</span>
-      </button>`).join('');
-    grid.querySelectorAll('.prompt-card').forEach(btn => {
-      btn.addEventListener('click', () => {
-        void logUserEvent('gpt_chip_click', { ui: 'gpt', chip: 'prompt_card', surface: 'home' });
-        clarityEvt('gpt_chip_click', { chip: 'prompt_card' });
-        submitFromHome(btn.getAttribute('data-prompt'));
-      });
-    });
-  }
+  wireHomeFinder();
 
   if (!renderHome._seen) {
     renderHome._seen = true;
     void logUserEvent('gpt_landing_view', { ui: 'gpt' });
     clarityEvt('gpt_landing_view', {});
   }
+}
 
+function loadFinderState() {
+  try {
+    const cur = JSON.parse(localStorage.getItem(FINDER_STATE_KEY) || 'null');
+    if (cur && typeof cur === 'object') {
+      if (cur.city) _finder.city = cur.city;
+      if (cur.category) _finder.category = cur.category;
+      if (cur.budget) _finder.budget = cur.budget;
+      if (cur.experience) _finder.experience = cur.experience;
+    }
+  } catch (_) {}
+  // Prefer completed onboarding prefs when present
+  const o = state.onboarding || {};
+  if (o.city) _finder.city = o.city;
+  if (o.categories?.[0]) _finder.category = o.categories[0];
+  if (o.experience) _finder.experience = o.experience;
+}
+
+function saveFinderState() {
+  try { localStorage.setItem(FINDER_STATE_KEY, JSON.stringify(_finder)); } catch (_) {}
+}
+
+function resolveRegionFromGeo(city, regionName) {
+  const c = String(city || '').trim();
+  const r = String(regionName || '').trim();
+  const norm = s => s.toLowerCase();
+  const hay = [c, r].filter(Boolean).map(norm);
+  const match = NU_ONB_LOCATIONS.find(loc => {
+    const l = norm(loc);
+    return hay.some(h => h === l || h.includes(l) || l.includes(h));
+  });
+  if (match) return { region: match, inList: true };
+  if (c || r) return { region: c || r, inList: false };
+  return null;
+}
+
+async function fetchRegionFromIp() {
+  try {
+    const res = await fetch('https://ipwho.is/?fields=success,city,region,country_code');
+    const j = await res.json();
+    if (!j || j.success === false) return null;
+    return resolveRegionFromGeo(j.city, j.region);
+  } catch (_) {
+    return null;
+  }
+}
+
+function finderBudgetCfg(id) {
+  return FINDER_BUDGETS.find(b => b.id === id) || FINDER_BUDGETS[FINDER_BUDGETS.length - 1];
+}
+
+function syncFinderUi() {
+  const citySel = $('finder-city');
+  const catSel = $('finder-cat');
+  if (citySel) citySel.value = NU_ONB_LOCATIONS.includes(_finder.city) ? _finder.city : FINDER_DEFAULT_CITY;
+  if (catSel) catSel.value = NU_ONB_CATS.includes(_finder.category) ? _finder.category : FINDER_DEFAULT_CAT;
+  document.querySelectorAll('#finder-cat-pills .finder-pill').forEach(btn => {
+    btn.classList.toggle('on', btn.getAttribute('data-cat') === _finder.category);
+  });
+  document.querySelectorAll('#finder-budget-pills .finder-pill').forEach(btn => {
+    btn.classList.toggle('on', btn.getAttribute('data-budget') === _finder.budget);
+  });
+  document.querySelectorAll('#finder-xp-pills .finder-pill').forEach(btn => {
+    btn.classList.toggle('on', btn.getAttribute('data-xp') === _finder.experience);
+  });
+}
+
+function wireHomeFinder() {
+  const root = $('home-finder');
+  if (!root) return;
+  loadFinderState();
+
+  const citySel = $('finder-city');
+  if (citySel && !citySel.dataset.ready) {
+    citySel.dataset.ready = '1';
+    citySel.innerHTML = NU_ONB_LOCATIONS.map(c =>
+      `<option value="${esc(c)}">${esc(c)}</option>`
+    ).join('');
+    citySel.addEventListener('change', () => {
+      _finder.city = citySel.value || FINDER_DEFAULT_CITY;
+      saveFinderState();
+    });
+  }
+
+  const catSel = $('finder-cat');
+  if (catSel && !catSel.dataset.ready) {
+    catSel.dataset.ready = '1';
+    catSel.innerHTML = NU_ONB_CATS.map(c =>
+      `<option value="${esc(c)}">${esc(c)}</option>`
+    ).join('');
+    catSel.addEventListener('change', () => {
+      _finder.category = catSel.value || FINDER_DEFAULT_CAT;
+      saveFinderState();
+      syncFinderUi();
+    });
+  }
+
+  const catPills = $('finder-cat-pills');
+  if (catPills && !catPills.dataset.ready) {
+    catPills.dataset.ready = '1';
+    catPills.innerHTML = FINDER_CAT_CHIPS.map(c =>
+      `<button type="button" class="finder-pill" data-cat="${esc(c.cat)}">${esc(c.label)}</button>`
+    ).join('');
+    catPills.querySelectorAll('[data-cat]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        _finder.category = btn.getAttribute('data-cat');
+        saveFinderState();
+        syncFinderUi();
+      });
+    });
+  }
+
+  const budPills = $('finder-budget-pills');
+  if (budPills && !budPills.dataset.ready) {
+    budPills.dataset.ready = '1';
+    budPills.innerHTML = FINDER_BUDGETS.map(b =>
+      `<button type="button" class="finder-pill" data-budget="${esc(b.id)}">${esc(b.label)}</button>`
+    ).join('');
+    budPills.querySelectorAll('[data-budget]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        _finder.budget = btn.getAttribute('data-budget');
+        saveFinderState();
+        syncFinderUi();
+      });
+    });
+  }
+
+  const xpPills = $('finder-xp-pills');
+  if (xpPills && !xpPills.dataset.ready) {
+    xpPills.dataset.ready = '1';
+    xpPills.innerHTML = FINDER_XP.map(x =>
+      `<button type="button" class="finder-pill" data-xp="${esc(x.id)}">${esc(x.label)}</button>`
+    ).join('');
+    xpPills.querySelectorAll('[data-xp]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        _finder.experience = btn.getAttribute('data-xp');
+        saveFinderState();
+        syncFinderUi();
+      });
+    });
+  }
+
+  const go = $('finder-go');
+  if (go && !go.dataset.ready) {
+    go.dataset.ready = '1';
+    go.addEventListener('click', () => { void runFinderSearch(); });
+  }
+
+  syncFinderUi();
+  void detectFinderCityFromIp();
+}
+
+async function detectFinderCityFromIp() {
+  if (_finderGeoTried) return;
+  _finderGeoTried = true;
+  // Don't override a city the user already saved / set via onboarding
+  const saved = (() => {
+    try { return JSON.parse(localStorage.getItem(FINDER_STATE_KEY) || 'null'); } catch (_) { return null; }
+  })();
+  if (saved?.city || state.onboarding?.city) return;
+  const resolved = await fetchRegionFromIp();
+  if (!resolved?.region) {
+    _finder.city = FINDER_DEFAULT_CITY;
+    syncFinderUi();
+    return;
+  }
+  _finder.city = resolved.inList ? resolved.region : FINDER_DEFAULT_CITY;
+  saveFinderState();
+  syncFinderUi();
+}
+
+function priceInBudget(p, bud) {
+  const price = Number(p.price) || 0;
+  if (!(price > 0)) return false;
+  if (bud.max != null && Number.isFinite(bud.max) && price > bud.max) return false;
+  if (bud.min != null && price < bud.min) return false;
+  return true;
+}
+
+async function collectFinderProducts({ city, category, budgetId, limit = 60 }) {
+  const locs = expandCityLocations(city);
+  const cats = category ? [category] : [];
+  const bud = finderBudgetCfg(budgetId);
+  let pool = [];
+
+  // Prefer rising products in city+cat, then city listings, then cat-only, then global.
+  if (locs.length && cats.length) {
+    mergePool(pool, await fetchNaikDaunCityCat(locs, cats, 120));
+    mergePool(pool, await fetchListingsCityCat(locs, cats, 120));
+  }
+  let matched = pool.filter(p => priceInBudget(p, bud));
+  if (matched.length < limit && cats.length) {
+    mergePool(pool, await fetchNaikDaunByCat(cats, 200));
+    matched = pool.filter(p => priceInBudget(p, bud));
+  }
+  if (matched.length < limit && locs.length) {
+    mergePool(pool, await fetchListingsCityCat(locs, [], 120));
+    matched = pool.filter(p => priceInBudget(p, bud));
+  }
+  // Broaden: drop budget, keep city+cat
+  if (matched.length < limit) {
+    matched = pool.slice();
+  }
+  // Broaden: category anywhere
+  if (matched.length < limit && cats.length) {
+    mergePool(pool, await fetchNaikDaunByCat(cats, 200));
+    matched = pool.slice();
+  }
+  // Broaden: global rising
+  if (matched.length < limit) {
+    mergePool(pool, await fetchNaikDaunGlobal(200));
+    matched = pool.slice();
+  }
+  // Prefer budget matches first, then fill with near-misses
+  const inBand = [];
+  const near = [];
+  for (const p of matched) {
+    (priceInBudget(p, bud) ? inBand : near).push(p);
+  }
+  return mergePool([], inBand.concat(near)).slice(0, limit);
+}
+
+async function runFinderSearch() {
+  const go = $('finder-go');
+  if (go) go.disabled = true;
+  try {
+    if (!(await ensureSearchAllowed())) return;
+
+    // Persist into onboarding so directory / recs stay aligned
+    state.onboarding.city = _finder.city;
+    state.onboarding.categories = [_finder.category];
+    state.onboarding.experience = _finder.experience;
+    state.onboarding.step = 'done';
+    state.onboarding.completedAnon = !currentUser;
+    saveLocalState();
+    saveFinderState();
+    syncDirectoryFromOnboarding();
+    renderSidebarLocCard();
+
+    const bud = finderBudgetCfg(_finder.budget);
+    const label = [
+      _finder.city,
+      _finder.category,
+      bud.label,
+      _finder.experience === 'existing' ? 'berpengalaman' : 'penjual baru',
+    ].join(' · ');
+
+    setView('chat');
+    let chat = activeChat();
+    if (!chat) {
+      chat = { localId: 'local_' + Date.now(), title: `Produk: ${_finder.category}`, context: {}, messages: [], created_at: Date.now() };
+      state.chats.unshift(chat);
+      state.activeChatId = chat.localId;
+      renderChatList();
+    }
+    appendBubble('user', `<p>Temukan produk: ${esc(label)}</p>`);
+    pushMessage(chat, 'user', `Temukan produk: ${label}`);
+    const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari produk yang cocok…</p>`);
+
+    const rows = await collectFinderProducts({
+      city: _finder.city,
+      category: _finder.category,
+      budgetId: _finder.budget,
+      limit: 60,
+    });
+    const products = rows.map(asListingProduct);
+    state.recommendations = products;
+    rememberProducts(products);
+
+    const gate = await ensureIntentChat(chat, `Produk: ${_finder.category}`, {
+      kind: 'finder',
+      city: _finder.city,
+      category: _finder.category,
+      budget: _finder.budget,
+    });
+    if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
+
+    const html = products.length
+      ? `<p>${products.length} produk untuk <strong>${esc(_finder.category)}</strong> di sekitar <strong>${esc(_finder.city)}</strong> (modal ${esc(bud.label)}). Klik kartu untuk Deep Dive.</p>
+         <div class="card-grid">${products.map((p, i) => productCardHtml(p, i % 3)).join('')}</div>`
+      : `<p>Belum ketemu produk yang cocok. Coba ganti kategori atau kota, atau ketik pencarian di bawah.</p>`;
+    await revealAssistant(loading, html, { instant: true });
+    bindProductCards($('chat-thread'));
+    void logUserEvent('gpt_finder_search', {
+      ui: 'gpt',
+      city: _finder.city,
+      category: _finder.category,
+      budget: _finder.budget,
+      experience: _finder.experience,
+      count: products.length,
+    });
+    clarityEvt('gpt_finder_search', { category: _finder.category });
+  } finally {
+    if (go) go.disabled = false;
+  }
 }
 
 function renderSidebarLocCard() {
@@ -2034,6 +2325,13 @@ function setCalcWidth(px) {
   return w;
 }
 
+function setSheetHeight(pct) {
+  // pct = fraction of viewport height (0.15–0.95). Default open is 0.80.
+  const p = Math.max(0.15, Math.min(0.95, Number(pct) || 0.8));
+  document.documentElement.style.setProperty('--sheet-h', `${Math.round(p * 1000) / 10}dvh`);
+  return p;
+}
+
 function setSideModeUi(mode) {
   _sideMode = normalizeSideMode(mode);
   document.querySelectorAll('.side-tab').forEach(tab => {
@@ -2316,8 +2614,8 @@ function wireCalcPanel() {
   $('serupa-rail')?.addEventListener('click', () => openSerupaPanel({ via: 'rail' }));
   $('calc-close')?.addEventListener('click', closeCalcPanel);
 
-  // Mobile bottom-sheet grab: tap toggles collapse, swipe down collapses then
-  // closes, swipe up expands.
+  // Mobile bottom-sheet grab: drag to resize height; <10% viewport auto-collapses.
+  // Tap (tiny movement) still toggles collapse. Swipe-down-when-collapsed closes.
   const grab = $('sheet-grab');
   if (grab) {
     const isSheet = () => window.innerWidth <= 860;
@@ -2325,20 +2623,69 @@ function wireCalcPanel() {
       $('calc-panel')?.classList.toggle('sheet-collapsed', on);
       saveSidePrefs({ collapsed: on });
     };
-    grab.addEventListener('click', () => {
-      if (!isSheet()) return;
-      setCollapsed(!$('calc-panel')?.classList.contains('sheet-collapsed'));
-    });
-    let touchY = null;
-    grab.addEventListener('touchstart', (e) => { touchY = e.touches[0]?.clientY ?? null; }, { passive: true });
-    grab.addEventListener('touchend', (e) => {
-      if (touchY == null || !isSheet()) { touchY = null; return; }
-      const dy = (e.changedTouches[0]?.clientY ?? touchY) - touchY;
-      touchY = null;
+    if (prefs.sheetPct) setSheetHeight(prefs.sheetPct);
+    else setSheetHeight(0.8);
+
+    let drag = null; // { startY, startH, moved }
+    const clientY = (e) => (e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY);
+    const onMove = (e) => {
+      if (!drag || !isSheet()) return;
+      const dy = clientY(e) - drag.startY;
+      if (Math.abs(dy) > 4) drag.moved = true;
+      const vh = window.innerHeight || 1;
+      const nextH = drag.startH - dy; // drag up → taller
+      const pct = nextH / vh;
+      if (pct < 0.10) {
+        setCollapsed(true);
+        return;
+      }
+      setCollapsed(false);
+      setSheetHeight(pct);
+      if (e.cancelable) e.preventDefault();
+    };
+    const onUp = () => {
+      if (!drag) return;
+      const moved = drag.moved;
       const collapsed = $('calc-panel')?.classList.contains('sheet-collapsed');
-      if (dy > 40) collapsed ? closeCalcPanel() : setCollapsed(true);
-      else if (dy < -40) setCollapsed(false);
-    }, { passive: true });
+      drag = null;
+      document.body.classList.remove('sheet-resizing');
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+      if (!moved) {
+        // Tap: toggle collapse
+        setCollapsed(!collapsed);
+        return;
+      }
+      if (collapsed) return;
+      const panel = $('calc-panel');
+      const h = panel?.getBoundingClientRect().height || 0;
+      const pct = h / (window.innerHeight || 1);
+      if (pct < 0.10) setCollapsed(true);
+      else saveSidePrefs({ sheetPct: setSheetHeight(pct), collapsed: false });
+    };
+    const onDown = (e) => {
+      if (!isSheet()) return;
+      const panel = $('calc-panel');
+      if (!panel) return;
+      // If collapsed, a downward flick after expand-path still handled in onUp tap;
+      // start measuring from current (collapsed) height so drag-up expands.
+      drag = {
+        startY: clientY(e),
+        startH: panel.classList.contains('sheet-collapsed')
+          ? Math.round(window.innerHeight * (loadSidePrefs().sheetPct || 0.8))
+          : panel.getBoundingClientRect().height,
+        moved: false,
+      };
+      document.body.classList.add('sheet-resizing');
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+      window.addEventListener('touchmove', onMove, { passive: false });
+      window.addEventListener('touchend', onUp);
+    };
+    grab.addEventListener('mousedown', onDown);
+    grab.addEventListener('touchstart', onDown, { passive: true });
   }
   document.querySelectorAll('.side-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -2620,13 +2967,14 @@ function trendingInsights(view) {
 }
 
 function trendingRowHtml(r, i) {
-  return `<tr>
+  const key = `${esc(r.item_id)}|${esc(r.shop_id)}`;
+  return `<tr data-titem="${key}" tabindex="0" role="button" aria-label="Lihat analisa ${(r.product_name || 'produk').slice(0, 40)}">
     <td class="tr-rank">${i + 1}</td>
     <td><div class="tr-prod">${r.image_url ? `<img src="${esc(r.image_url)}" alt="" loading="lazy">` : '<span class="ph"></span>'}<div><div class="tr-prod-name">${esc((r.product_name || '').slice(0, 60))}</div><div class="tr-prod-cat">${esc(r.category || '')}</div></div></div></td>
     <td>${pctHtml(r._pct)}</td>
     <td><span class="pct-up">${ico('arrowUp', 11)} ${fmtSold(r._delta)}</span></td>
     <td>${fmtRp(r.price)}</td>
-    <td><button type="button" class="btn-outline" data-titem="${esc(r.item_id)}|${esc(r.shop_id)}">Lihat Analisis</button></td>
+    <td><button type="button" class="btn-outline" data-titem="${key}">Lihat Analisis</button></td>
   </tr>`;
 }
 
@@ -2687,18 +3035,30 @@ function bindTrendingBody(card) {
   card.querySelector('[data-expand-trending]')?.addEventListener('click', () => {
     void card.__rerender(card.dataset.range, true);
   });
-  card.querySelectorAll('[data-titem]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const [item_id, shop_id] = btn.getAttribute('data-titem').split('|');
-      const rows = await fetchTrending();
-      const r = rows.find(x => String(x.item_id) === String(item_id) && String(x.shop_id) === String(shop_id));
-      if (!r) return;
-      // Cap absurd raw matview deltas (bucket floor jumps) before using as period rate.
-      // soldPerDayEst also derives this from delta_7d for card omset; set it here so
-      // deep-dive tiles / sold-per-day labels see the same period rate.
-      const d7 = Math.max(0, Number(r.delta_7d) || 0);
-      const spd = d7 > 0 ? Math.min(d7 / 7, DD_MAX_SOLD_PER_DAY) : null;
-      void openDeepDive(asListingProduct({ ...r, sold_per_day: spd }));
+  const openTrendItem = async (key) => {
+    if (!key) return;
+    const [item_id, shop_id] = key.split('|');
+    const rows = await fetchTrending();
+    const r = rows.find(x => String(x.item_id) === String(item_id) && String(x.shop_id) === String(shop_id));
+    if (!r) return;
+    // Cap absurd raw matview deltas (bucket floor jumps) before using as period rate.
+    // soldPerDayEst also derives this from delta_7d for card omset; set it here so
+    // deep-dive tiles / sold-per-day labels see the same period rate.
+    const d7 = Math.max(0, Number(r.delta_7d) || 0);
+    const spd = d7 > 0 ? Math.min(d7 / 7, DD_MAX_SOLD_PER_DAY) : null;
+    void openDeepDive(asListingProduct({ ...r, sold_per_day: spd }));
+  };
+  card.querySelectorAll('tr[data-titem]').forEach(tr => {
+    tr.addEventListener('click', (e) => {
+      // Button inside the row also has data-titem — either path opens the same item.
+      const key = e.target.closest('[data-titem]')?.getAttribute('data-titem') || tr.getAttribute('data-titem');
+      void openTrendItem(key);
+    });
+    tr.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        void openTrendItem(tr.getAttribute('data-titem'));
+      }
     });
   });
 }
@@ -4116,6 +4476,32 @@ function ddWeeklySeries(history) {
   return out.filter(w => w.ts >= fromTs);
 }
 
+/** Roll weekly market points into calendar-month averages for chart display. */
+function ddMonthlySeries(weekly) {
+  const byMo = new Map();
+  for (const w of weekly || []) {
+    const d = new Date(w.ts);
+    const key = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
+    const cur = byMo.get(key) || { ts: key, units: 0, omset: 0, items: 0, n: 0 };
+    cur.units += Number(w.units) || 0;
+    cur.omset += Number(w.omset) || 0;
+    cur.items = Math.max(cur.items, Number(w.items) || 0);
+    cur.n += 1;
+    byMo.set(key, cur);
+  }
+  return [...byMo.values()]
+    .sort((a, b) => a.ts - b.ts)
+    .map(m => ({
+      ts: m.ts,
+      // Average weekly rate within the month, scaled to a ~4.3-week month so
+      // bars stay comparable when a month only has 1–2 observed weeks.
+      units: Math.round((m.units / Math.max(1, m.n)) * Math.min(4.3, Math.max(1, m.n))),
+      omset: Math.round((m.omset / Math.max(1, m.n)) * Math.min(4.3, Math.max(1, m.n))),
+      items: m.items,
+      weeks: m.n,
+    }));
+}
+
 function ddShareData(peers) {
   const byShop = new Map();
   for (const p of peers) {
@@ -4177,7 +4563,7 @@ function ddTilesHtml(product, stats, peers, series) {
   peers.forEach(p => { const l = (p.location || '').trim(); if (l) locCount.set(l, (locCount.get(l) || 0) + 1); });
   const topLoc = [...locCount.entries()].sort((a, b) => b[1] - a[1])[0];
   const shopN = new Set(peers.map(p => String(p.shop_id))).size;
-  // Market momentum from the real weekly series (last 2 complete weeks).
+  // Market momentum from the real monthly series (last 2 complete months).
   let delta = null;
   if (series && series.length >= 2) {
     const a = series[series.length - 1], b = series[series.length - 2];
@@ -4188,7 +4574,7 @@ function ddTilesHtml(product, stats, peers, series) {
     : 'Belum ada delta scrape — bukan estimasi dari total terjual';
   const deltaHtml = delta == null
     ? `<div class="sub">${rateSub}</div>`
-    : `<span class="tile-delta ${delta >= 0 ? 'up' : 'down'}">${ico('arrowUp', 10)} ${delta >= 0 ? '+' : ''}${delta}% pasar vs minggu sebelumnya</span>`;
+    : `<span class="tile-delta ${delta >= 0 ? 'up' : 'down'}">${ico('arrowUp', 10)} ${delta >= 0 ? '+' : ''}${delta}% pasar vs bulan sebelumnya</span>`;
   return `<div class="ddr-tiles">
     <div class="ddr-tile"><span class="ico" style="background:var(--green-bg);color:var(--green)">${ico('trendUp', 14)}</span><div class="lbl">Est. Omzet / Bulan</div><div class="val">${omset ? fmtRpShort(omset) : '—'}</div>${deltaHtml}</div>
     <div class="ddr-tile"><span class="ico" style="background:var(--blue-bg);color:var(--blue)">${ico('box', 14)}</span><div class="lbl">Est. Penjualan / Bulan</div><div class="val">${unitMo ? unitMo.toLocaleString('id-ID') + ' unit' : '—'}</div><div class="sub">${rateSub}</div></div>
@@ -4451,7 +4837,8 @@ async function openDeepDive(product) {
   clarityEvt('deepdive_open', { keyword: kw });
 
   const stats = ddStats(peers);
-  const series = ddWeeklySeries(history);
+  const weekly = ddWeeklySeries(history);
+  const series = ddMonthlySeries(weekly);
   const scoreInfo = ddScore(product, stats, niche);
   const share = ddShareData(peers);
   const age = ddShopAgeBuckets(peers);
@@ -4472,7 +4859,7 @@ async function openDeepDive(product) {
 
   const lastScrape = history.length ? history[history.length - 1].scraped_at : null;
   const price = Number(product.price) || 0;
-  const hasTrend = series.length >= 3;
+  const hasTrend = series.length >= 2;
   const bandLo = stats.p25, bandHi = stats.p75;
   const segLeft = stats.max > stats.min ? Math.round((bandLo - stats.min) / (stats.max - stats.min) * 100) : 0;
   const segWidth = stats.max > stats.min ? Math.max(4, Math.round((bandHi - bandLo) / (stats.max - stats.min) * 100)) : 100;
@@ -4504,12 +4891,12 @@ async function openDeepDive(product) {
         ${hasTrend
           ? `<div class="ddr-chart-wrap"><canvas id="ddr-trend-canvas"></canvas></div>
              <div class="chart-legend" style="flex-direction:row;gap:14px">
-               <span class="row"><span class="swatch" style="background:#B5202A"></span>Omset (Rp)</span>
-               <span class="row"><span class="swatch" style="background:#2563EB"></span>Unit Terjual</span>
+               <span class="row"><span class="swatch" style="background:#B5202A"></span>Omset / bln (Rp)</span>
+               <span class="row"><span class="swatch" style="background:#2563EB"></span>Unit / bln</span>
                <span class="row"><span class="swatch" style="background:#16A34A"></span>Forecast</span>
              </div>`
-          : `<p class="dd-sub">Belum cukup riwayat scrape untuk tren mingguan keyword ini — butuh beberapa gelombang panel. Bagian lain tetap dari data asli.</p>`}
-        <p class="ddr-caption">Estimasi mingguan pasar keyword “${esc(kw || '—')}” dari selisih scrape berurutan (snapshot pertama = baseline, bukan omzet)${hasTrend ? ' · tampilan dari 27 Apr 2026' : ''} ${history.length ? `· ${new Set(history.map(r => String(r.item_id))).size} listing` : ''} · scrape terakhir ${esc(fmtAnchorDate(lastScrape))}.</p>
+          : `<p class="dd-sub">Belum cukup riwayat scrape untuk tren bulanan keyword ini — butuh beberapa gelombang panel. Bagian lain tetap dari data asli.</p>`}
+        <p class="ddr-caption">Estimasi bulanan pasar keyword “${esc(kw || '—')}” (rata-rata minggu dalam setiap bulan, dari selisih scrape berurutan; snapshot pertama = baseline, bukan omzet)${hasTrend ? ' · tampilan dari 27 Apr 2026' : ''} ${history.length ? `· ${new Set(history.map(r => String(r.item_id))).size} listing` : ''} · scrape terakhir ${esc(fmtAnchorDate(lastScrape))}.</p>
       </div>
       <div class="ddr-card" data-dd-sec="harga">
         <h3>Rentang Harga Optimal</h3>
@@ -4718,14 +5105,15 @@ function mondayOfWeek(d = new Date()) {
   return mon;
 }
 
-// Real weekly market trend from scrape history. Rule kept from site A: the
-// real series stays SHORTER than the labels — only Forecast touches the
-// future label. Never draws a synthetic curve.
+// Monthly market trend from scrape history (weekly series rolled into months).
+// Real series stays SHORTER than the labels — only Forecast touches the future
+// month. Never draws a synthetic curve.
 function ddRenderTrendChart(series) {
-  if (typeof Chart === 'undefined' || series.length < 3) return;
-  const fmtWk = ts => new Date(ts).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', timeZone: 'UTC' });
-  const labels = series.map(w => fmtWk(w.ts));
-  labels.push(fmtWk(series[series.length - 1].ts + 7 * 864e5));
+  if (typeof Chart === 'undefined' || series.length < 2) return;
+  const fmtMo = ts => new Date(ts).toLocaleDateString('id-ID', { month: 'short', year: '2-digit', timeZone: 'UTC' });
+  const labels = series.map(w => fmtMo(w.ts));
+  const last = new Date(series[series.length - 1].ts);
+  labels.push(fmtMo(Date.UTC(last.getUTCFullYear(), last.getUTCMonth() + 1, 1)));
   const omset = series.map(w => w.omset);
   const units = series.map(w => w.units);
   const last2 = arr => Math.round((arr[arr.length - 1] + (arr[arr.length - 2] ?? arr[arr.length - 1])) / 2);
@@ -4735,8 +5123,8 @@ function ddRenderTrendChart(series) {
     data: {
       labels,
       datasets: [
-        { label: 'Omset (Rp)', data: omset, borderColor: '#B5202A', backgroundColor: 'rgba(181,32,42,.06)', borderWidth: 2, fill: true, tension: .35, yAxisID: 'y', pointRadius: 3 },
-        { label: 'Unit Terjual', data: units, borderColor: '#2563EB', borderWidth: 2, tension: .35, yAxisID: 'y2', pointRadius: 3 },
+        { label: 'Omset / bln (Rp)', data: omset, borderColor: '#B5202A', backgroundColor: 'rgba(181,32,42,.06)', borderWidth: 2, fill: true, tension: .35, yAxisID: 'y', pointRadius: 3 },
+        { label: 'Unit / bln', data: units, borderColor: '#2563EB', borderWidth: 2, tension: .35, yAxisID: 'y2', pointRadius: 3 },
         { label: 'Forecast', data: forecast, borderColor: '#16A34A', borderDash: [5, 5], borderWidth: 2, tension: .35, yAxisID: 'y', pointRadius: 3 },
       ],
     },

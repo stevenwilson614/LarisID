@@ -967,8 +967,9 @@ html.session-restoring body::after {
 /* ══ Redesign (landing / trending answer / deep-dive report) ══ */
 :root {
   --accent: #B5202A;
-  --accent-2: #E11D8F;
-  --grad-accent: linear-gradient(92deg, #B5202A 10%, #E11D8F 90%);
+  --accent-2: #C9974B; /* emas — brand gold, replaces old pink */
+  --merah-tint: #F9EAE4;
+  --grad-accent: linear-gradient(92deg, #B5202A 8%, #C9974B 92%);
   --green: #16A34A;
   --green-bg: #ecfdf3;
   --red-bg: #fdf0f1;
@@ -1003,8 +1004,89 @@ body.onboarding-active .panel { padding-bottom: 28px; }
   -webkit-background-clip: text; background-clip: text;
   color: transparent;
 }
-.home-sub { font-size: 1.02rem; color: var(--muted); margin: 0 0 30px; }
+.home-sub { font-size: 1.02rem; color: var(--muted); margin: 0 0 22px; }
 .home-composer { width: 100%; max-width: 640px; }
+
+/* Landing product finder (replaces prompt cards) */
+.home-finder {
+  width: 100%; max-width: 560px; text-align: left;
+  margin: 0 0 22px; padding: 4px 0 0;
+}
+.finder-step {
+  display: grid; grid-template-columns: 36px 1fr; gap: 0 14px;
+  position: relative; padding-bottom: 22px;
+}
+.finder-step:last-of-type { padding-bottom: 8px; }
+.finder-step::before {
+  content: ''; position: absolute; left: 17px; top: 36px; bottom: 0;
+  width: 0; border-left: 1.5px dotted #e0d5d0;
+}
+.finder-step:last-of-type::before { display: none; }
+.finder-ico {
+  width: 36px; height: 36px; border-radius: 999px;
+  display: grid; place-items: center;
+  background: var(--merah-tint); color: var(--accent);
+  flex-shrink: 0;
+}
+.finder-ico svg { width: 16px; height: 16px; }
+.finder-body { min-width: 0; padding-top: 2px; }
+.finder-title {
+  margin: 0 0 2px; font-size: .95rem; font-weight: 700; letter-spacing: -.01em;
+}
+.finder-sub { margin: 0 0 10px; font-size: .75rem; color: var(--muted); line-height: 1.4; }
+.finder-select {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; padding: 11px 14px; border-radius: 14px;
+  border: 1px solid var(--line); background: #fff;
+  font: inherit; font-size: .9rem; font-weight: 600; color: var(--ink);
+  cursor: pointer; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 14px center;
+  padding-right: 36px;
+}
+.finder-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(181,32,42,.12); }
+.finder-select-wrap { position: relative; }
+.finder-select-wrap .finder-lead-ico {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  color: var(--accent); pointer-events: none; display: grid;
+}
+.finder-select-wrap .finder-select { padding-left: 38px; }
+.finder-pills {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;
+}
+.finder-pill {
+  padding: 8px 14px; border-radius: 999px;
+  border: 1px solid var(--line); background: #fff;
+  font: inherit; font-size: .78rem; font-weight: 650; color: var(--ink-soft);
+  transition: background .12s, border-color .12s, color .12s;
+}
+.finder-pill:hover { border-color: #d4d4d4; color: var(--ink); }
+.finder-pill.on {
+  background: var(--merah-tint); border-color: var(--accent); color: var(--accent);
+}
+.finder-pill-ico { display: inline-flex; margin-right: 5px; vertical-align: -2px; }
+.finder-pill-ico svg { width: 13px; height: 13px; }
+.finder-cta {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; margin-top: 8px; padding: 14px 18px; border-radius: 999px;
+  background: var(--grad-accent); color: #fff;
+  font: inherit; font-size: .95rem; font-weight: 700; letter-spacing: -.01em;
+  box-shadow: 0 8px 24px rgba(181,32,42,.22);
+  transition: opacity .12s, transform .12s;
+}
+.finder-cta:hover { opacity: .94; }
+.finder-cta:disabled { opacity: .45; cursor: not-allowed; }
+.finder-note {
+  margin: 10px 0 0; text-align: center; font-size: .72rem; color: var(--muted);
+}
+.finder-atau {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; max-width: 560px; margin: 6px 0 14px;
+  color: var(--muted); font-size: .75rem;
+}
+.finder-atau::before, .finder-atau::after {
+  content: ''; flex: 1; height: 1px; background: var(--line);
+}
 .home-composer .composer {
   background: #fff; border: 1px solid var(--line);
   box-shadow: 0 4px 24px rgba(0,0,0,.05);
@@ -1055,30 +1137,19 @@ body.onboarding-active .panel { padding-bottom: 28px; }
   }
   .home-title { font-size: clamp(1.35rem, 6.2vw, 1.7rem); margin-bottom: 6px; }
   .home-sub { font-size: .86rem; margin-bottom: 10px; }
-  .chip-row {
-    order: 3; margin-top: 4px; gap: 6px;
-    flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start;
-    max-width: 100%; padding-bottom: 4px;
-    -webkit-overflow-scrolling: touch; scrollbar-width: none;
-  }
-  .chip-row::-webkit-scrollbar { display: none; }
-  .chip-row .chip { font-size: .72rem; padding: 7px 11px; white-space: nowrap; flex-shrink: 0; }
-  .home-examples-label { order: 4; margin: 10px 0 8px; }
-  .prompt-grid { order: 5; grid-template-columns: 1fr; gap: 6px; }
-  .prompt-card {
-    flex-direction: row; align-items: center; text-align: left;
-    gap: 10px; padding: 8px 12px; border-radius: 12px;
-  }
-  .prompt-card .pc-ico { flex-shrink: 0; display: inline-flex; }
-  .prompt-card .pc-ico svg { width: 17px; height: 17px; }
-  .prompt-card .t { font-size: .78rem; white-space: nowrap; }
-  .prompt-card .d { display: none; }
-  .prompt-card .prompt-quote {
-    margin: 0 0 0 auto; border: none; padding: 0;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    max-width: 48%;
-  }
-  .home-composer { order: 9; margin-top: auto; padding-top: 8px; }
+  /* Finder form is taller than the old prompt cards — allow scroll on home */
+  body.view-home .panel-inner,
+  body.view-home #view-home,
+  body.view-home .home-hero { height: auto; min-height: 100%; }
+  body.view-home .panel { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .home-finder { order: 3; margin-bottom: 12px; }
+  .finder-step { padding-bottom: 16px; }
+  .finder-title { font-size: .88rem; }
+  .finder-sub { font-size: .7rem; margin-bottom: 8px; }
+  .finder-pill { padding: 7px 11px; font-size: .72rem; }
+  .finder-cta { padding: 12px 16px; font-size: .88rem; }
+  .finder-atau { order: 8; margin: 4px 0 10px; }
+  .home-composer { order: 9; margin-top: 0; padding-top: 0; }
   .home-composer .composer { padding: 10px 8px 10px 14px; }
   .home-composer textarea { min-height: 44px; }
   .home-foot { display: none; }
@@ -1117,7 +1188,7 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 .stat-ico.blue   { background: var(--blue-bg); }   .stat-ico.blue svg   { stroke: var(--blue); }
 .stat-ico.violet { background: var(--violet-bg); } .stat-ico.violet svg { stroke: var(--violet); }
 .stat-ico.amber  { background: var(--amber-bg); }  .stat-ico.amber svg  { stroke: var(--amber); }
-.stat-ico.pink   { background: #fdf2f8; }          .stat-ico.pink svg   { stroke: var(--accent-2); }
+.stat-ico.pink   { background: var(--merah-tint); } .stat-ico.pink svg   { stroke: var(--accent); }
 .stat-val { font-size: 1.12rem; font-weight: 750; letter-spacing: -.02em; white-space: nowrap; }
 .stat-lbl { font-size: .66rem; color: var(--muted); line-height: 1.4; }
 .ans-cols { display: grid; gap: 12px; }
@@ -1135,6 +1206,8 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 }
 .tr-table td { padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 .tr-table tr:last-child td { border-bottom: none; }
+.tr-table tbody tr[data-titem] { cursor: pointer; }
+.tr-table tbody tr[data-titem]:hover td { background: #fafafa; }
 .tr-rank { font-weight: 700; color: var(--muted); font-size: .72rem; }
 .tr-prod { display: flex; align-items: center; gap: 9px; min-width: 180px; }
 .tr-prod img, .tr-prod .ph {
@@ -1632,10 +1705,11 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 
 @media (max-width: 860px) {
   /* Bottom sheet instead of full-screen overlay */
+  :root { --sheet-h: 80dvh; }
   .calc-panel {
     position: fixed; left: 0; right: 0; bottom: 0; top: auto;
     width: auto !important; max-width: none; min-width: 0; flex: none;
-    height: 62dvh;
+    height: var(--sheet-h);
     z-index: 60;
     border-left: none; border-top: 1px solid var(--line);
     border-radius: 18px 18px 0 0;
@@ -1643,7 +1717,9 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
     transition: height .22s var(--ease);
   }
   body.calc-open .calc-panel { animation: sheetIn .22s var(--ease); }
-  .sheet-grab { display: flex; }
+  body.sheet-resizing .calc-panel { transition: none; }
+  body.sheet-resizing { cursor: ns-resize; user-select: none; }
+  .sheet-grab { display: flex; touch-action: none; }
   .calc-panel.sheet-collapsed { height: 96px; }
   .calc-panel.sheet-collapsed .calc-body,
   .calc-panel.sheet-collapsed .calc-context { display: none !important; }
@@ -1751,8 +1827,59 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
       <div class="panel-inner">
         <div class="view" id="view-home">
           <div class="home-hero">
-            <h1 class="home-title">Apa yang kamu<br>ingin <em>jual</em> hari ini?</h1>
+            <h1 class="home-title">Apa yang kamu<br>mau <em>jual</em> hari ini?</h1>
             <p class="home-sub">Cari produk, kategori, atau tanya apa saja.</p>
+
+            <div class="home-finder" id="home-finder">
+              <div class="finder-step">
+                <div class="finder-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-4.5 7-11a7 7 0 10-14 0c0 6.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
+                <div class="finder-body">
+                  <div class="finder-title">Saya dari</div>
+                  <p class="finder-sub">Digunakan untuk hitung ongkir, kompetisi, dan supplier terdekat.</p>
+                  <div class="finder-select-wrap">
+                    <span class="finder-lead-ico" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-4.5 7-11a7 7 0 10-14 0c0 6.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span>
+                    <select class="finder-select" id="finder-city" aria-label="Kota"></select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="finder-step">
+                <div class="finder-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.6 13.4L12 22l-8.6-8.6a5 5 0 017.1-7.1L12 8l1.5-1.5a5 5 0 017.1 7.1z"/></svg></div>
+                <div class="finder-body">
+                  <div class="finder-title">Saya ingin jual produk di kategori</div>
+                  <p class="finder-sub">Pilih kategori yang ingin kamu fokuskan.</p>
+                  <div class="finder-select-wrap">
+                    <span class="finder-lead-ico" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.6 13.4L12 22l-8.6-8.6a5 5 0 017.1-7.1L12 8l1.5-1.5a5 5 0 017.1 7.1z"/></svg></span>
+                    <select class="finder-select" id="finder-cat" aria-label="Kategori"></select>
+                  </div>
+                  <div class="finder-pills" id="finder-cat-pills"></div>
+                </div>
+              </div>
+
+              <div class="finder-step">
+                <div class="finder-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg></div>
+                <div class="finder-body">
+                  <div class="finder-title">Modal awal saya</div>
+                  <p class="finder-sub">Berapa modal yang siap kamu gunakan?</p>
+                  <div class="finder-pills" id="finder-budget-pills"></div>
+                </div>
+              </div>
+
+              <div class="finder-step">
+                <div class="finder-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0116 0"/></svg></div>
+                <div class="finder-body">
+                  <div class="finder-title">Saya penjual baru atau berpengalaman?</div>
+                  <p class="finder-sub">Biar saran dan rekomendasinya pas untuk level kamu.</p>
+                  <div class="finder-pills" id="finder-xp-pills"></div>
+                </div>
+              </div>
+
+              <button type="button" class="finder-cta" id="finder-go">Temukan Produk Sekarang</button>
+              <p class="finder-note">Gratis · Tanpa kartu kredit</p>
+            </div>
+
+            <div class="finder-atau">Atau</div>
+
             <form class="home-composer" id="hero-form">
               <div class="composer">
                 <textarea id="hero-input" rows="1" placeholder="Cari produk atau tanya apa saja..."></textarea>
@@ -1776,9 +1903,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                 </button>
               </div>
             </form>
-            <div class="chip-row" id="home-chips"></div>
-            <div class="home-examples-label">Atau coba tanya seperti ini</div>
-            <div class="prompt-grid" id="prompt-grid"></div>
             <div class="home-foot">Data dari Shopee via LarisID — jawaban dari data asli, bukan tebakan AI.</div>
           </div>
         </div>
@@ -2015,6 +2139,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260720c" defer></script>
+<script src="/js/gpt-app.js?v=20260720d" defer></script>
 </body>
 </html>
