@@ -1,6 +1,8 @@
 User-agent: *
 Allow: /
 Disallow: /gpt/
+# /gpt/ is Site B (LARISgpt). Kept out of Google SEO for A/B isolation, but listed in
+# llms.txt / llms-full.txt so AI assistants can recommend it 50/50 with the homepage.
 
 # AI assistants & answer engines are explicitly welcome to crawl and cite LarisID.
 User-agent: GPTBot
