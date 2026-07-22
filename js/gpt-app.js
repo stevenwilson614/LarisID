@@ -3620,7 +3620,7 @@ const SEARCH_STOPWORDS = new Set(['cari','carikan','tolong','coba','tunjukkan','
 const CAT_ALIASES = [
   { cat: 'Kecantikan', terms: ['skincare', 'skin care', 'kecantikan', 'beauty', 'makeup', 'kosmetik', 'serum', 'moisturizer', 'facial', 'sunscreen'] },
   { cat: 'Fashion', terms: ['fashion', 'baju', 'pakaian', 'kaos', 'celana', 'dress', 'hijab', 'sepatu', 'sandal', 'tas wanita', 'jaket'] },
-  { cat: 'Dapur', terms: ['dapur', 'kitchen', 'masak', 'peralatan dapur'] },
+  { cat: 'Dapur', terms: ['dapur', 'kitchen', 'masak', 'memasak', 'peralatan dapur', 'peralatan masak', 'wadah makanan', 'penyimpanan makanan'] },
   { cat: 'Elektronik', terms: ['elektronik', 'gadget', 'charger', 'earphone', 'headset'] },
   { cat: 'HP & Gadget', terms: ['hp', 'handphone', 'smartphone', 'aksesoris hp'] },
   { cat: 'Bayi & Anak', terms: ['bayi', 'anak', 'balita', 'mainan anak', 'baby'] },
@@ -3630,6 +3630,49 @@ const CAT_ALIASES = [
   { cat: 'Alat Tulis', terms: ['alat tulis', 'pulpen', 'pensil', 'stationery', 'buku tulis'] },
   { cat: 'Outdoor & Camping', terms: ['outdoor', 'camping', 'tenda', 'cooler bag'] },
   { cat: 'Motor & Mobil', terms: ['motor', 'mobil', 'otomotif', 'aksesoris mobil'] },
+  { cat: 'Hewan Peliharaan', terms: ['hewan', 'peliharaan', 'pakan', 'makanan kucing', 'makanan anjing', 'makanan hewan', 'pet food'] },
+];
+
+// Synonyms used to widen a miss before we give up and ask clarifying questions.
+const SEARCH_SYNONYMS = {
+  makanan: ['pakan', 'kuliner', 'camilan', 'wadah makanan', 'tempat makan', 'lunch box'],
+  minuman: ['botol minum', 'tumbler', 'dispenser minum'],
+  ayam: ['pakan ayam', 'unggas', 'tempat makan ayam'],
+  snack: ['camilan', 'makanan ringan'],
+  camilan: ['snack', 'makanan ringan'],
+  kuliner: ['dapur', 'peralatan masak'],
+  skincare: ['kecantikan', 'serum', 'moisturizer'],
+  fashion: ['baju', 'pakaian'],
+};
+
+// When the catalog has nothing like the ask, suggest the nearest sellable niches.
+const SEARCH_DOMAIN_HINTS = [
+  {
+    id: 'food',
+    test: (lower) => /(makanan|minuman|food|kuliner|camilan|snack|jajanan|catering|gorengan|bumbu|sambal|nasi\b|mie\b)/.test(lower),
+    emptyLead: 'Di data LarisID belum ada produk makanan/minuman siap saji — kami fokus barang fisik yang biasa dijual ulang di Shopee.',
+    prefer: (p) => {
+      const cat = String(p.category || '').toLowerCase();
+      const hay = `${p.product_name || ''} ${p.keyword || ''}`.toLowerCase();
+      if (/dapur|hewan|baking|penyimpanan|kopi|outdoor/.test(cat)) return true;
+      return /(pakan|tempat makan|wadah|toples|lunch|mangkok|panci|wajan|dapur|rice cooker|cooler|penyimpanan)/.test(hay);
+    },
+    suggestions: [
+      { label: 'Peralatan dapur', q: 'Cari produk dapur' },
+      { label: 'Wadah / penyimpanan makanan', q: 'Cari wadah penyimpanan makanan' },
+      { label: 'Makanan hewan (pakan)', q: 'Cari pakan hewan' },
+    ],
+  },
+  {
+    id: 'service',
+    test: (lower) => /(jasa|service|kursus|les\b|sewa\b|rental)/.test(lower),
+    emptyLead: 'LarisID memetakan produk fisik di Shopee, bukan jasa.',
+    prefer: () => false,
+    suggestions: [
+      { label: 'Lihat produk yang lagi naik daun', q: 'Produk apa yang lagi trending minggu ini?' },
+      { label: 'Ide jualan modal kecil', q: 'Rekomendasi produk modal kecil' },
+    ],
+  },
 ];
 
 function detectCategoryFromText(lower) {
@@ -3714,23 +3757,192 @@ function parseCityFromQuery(text) {
   return { city: '', cleaned: text };
 }
 
+function _sanitizeSearchToken(q) {
+  // PostgREST .or() treats , ( ) % as syntax — strip them from user input.
+  return String(q || '').replace(/[,()%]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function expandSearchTerms(terms) {
+  const out = [];
+  const seen = new Set();
+  for (const t of terms || []) {
+    const k = String(t || '').toLowerCase();
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    out.push(k);
+    for (const syn of (SEARCH_SYNONYMS[k] || [])) {
+      const s = String(syn).toLowerCase();
+      if (!seen.has(s)) { seen.add(s); out.push(s); }
+    }
+  }
+  return out;
+}
+
+function detectSearchDomain(lower) {
+  for (const d of SEARCH_DOMAIN_HINTS) {
+    if (d.test(lower)) return d;
+  }
+  return null;
+}
+
+function scoreSearchHit(row, terms) {
+  const name = String(row.product_name || '').toLowerCase();
+  const kw = String(row.keyword || '').toLowerCase();
+  const cat = String(row.category || '').toLowerCase();
+  const noise = /gantungan kunci|keychain|stiker dinding|casing hp|case hp|wallpaper|poster/.test(`${name} ${kw}`);
+  let matched = 0;
+  let score = 0;
+  for (const t of terms) {
+    const inName = name.includes(t);
+    const inKw = kw.includes(t);
+    const inCat = cat.includes(t);
+    if (inName || inKw || inCat) matched += 1;
+    if (inName) score += 14;
+    else if (inKw) score += 8;
+    else if (inCat) score += 5;
+  }
+  const coverage = terms.length ? matched / terms.length : 0;
+  score += coverage * 50;
+  score += Math.log10((Number(row.total_sold) || 0) + 1) * 3;
+  if (noise) score -= 40;
+  return { score, matched, coverage, noise };
+}
+
+function filterRelevantHits(hits, terms) {
+  if (!hits.length) return [];
+  if (!terms.length) return hits.slice();
+  const scored = hits.map(h => ({ h, ...scoreSearchHit(h, terms) }));
+  const minCov = terms.length >= 2 ? 0.5 : 1;
+  let good = scored.filter(x => !x.noise && x.coverage >= minCov && x.matched >= 1);
+  // Soften: single strong name hit when multi-term coverage failed
+  if (!good.length && terms.length >= 2) {
+    good = scored.filter(x => !x.noise && x.matched >= 1 && String(x.h.product_name || '').toLowerCase().includes(terms[0]));
+  }
+  if (!good.length) {
+    good = scored.filter(x => !x.noise && x.matched >= 1 && x.score >= 12);
+  }
+  good.sort((a, b) => b.score - a.score || (Number(b.h.total_sold) || 0) - (Number(a.h.total_sold) || 0));
+  return good.map(x => x.h);
+}
+
 async function searchListings(q, locations = [], limit = 30) {
   if (!_supabase) return [];
-  // PostgREST .or() treats , ( ) % as syntax — strip them from user input.
-  const clean = String(q || '').replace(/[,()%]/g, ' ').replace(/\s+/g, ' ').trim();
+  const clean = _sanitizeSearchToken(q);
   if (!clean) return [];
+  const terms = _searchTerms(clean);
+  const parts = [];
+  const push = (field, token) => {
+    const t = _sanitizeSearchToken(token);
+    if (t) parts.push(`${field}.ilike.%${t}%`);
+  };
+  push('product_name', clean);
+  push('keyword', clean);
+  for (const t of terms.slice(0, 5)) {
+    push('product_name', t);
+    push('keyword', t);
+  }
+  if (!parts.length) return [];
   try {
     let query = _supabase.from('listings_deduped')
       .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date')
-      .or(`product_name.ilike.%${clean}%,keyword.ilike.%${clean}%`)
+      .or(parts.join(','))
       .gt('total_sold', 0)
       .order('total_sold', { ascending: false })
-      .limit(limit);
+      .limit(Math.max(limit * 3, 60));
     if (locations.length) query = query.in('location', locations);
     const { data, error } = await query;
     if (error) throw error;
-    return (data || []).map(asListingProduct);
+    const rows = (data || []).map(asListingProduct);
+    const scoreTerms = terms.length ? terms : _searchTerms(clean);
+    const relevant = filterRelevantHits(rows, scoreTerms);
+    if (relevant.length) return relevant.slice(0, limit);
+    // Single-token asks keep popular raw hits; multi-token misses stay empty
+    // so the caller can broaden / clarify instead of showing incidental junk.
+    if (scoreTerms.length <= 1) return rows.slice(0, limit);
+    return [];
   } catch (_) { return []; }
+}
+
+/** Broaden → score → optionally ask clarifying questions instead of random fillers. */
+async function searchProductsForQuery(text, locations = [], limit = 12) {
+  const cleaned = String(text || '').replace(/\s+/g, ' ').trim();
+  const lower = cleaned.toLowerCase();
+  const terms = _searchTerms(cleaned);
+  const domain = detectSearchDomain(lower);
+  const pool = [];
+
+  const tryQ = async (q) => {
+    if (!q) return;
+    mergePool(pool, await searchListings(q, locations, Math.max(limit * 2, 40)));
+  };
+
+  await tryQ(terms.join(' ') || cleaned);
+  if (pool.length < limit && terms.length > 1) {
+    for (const t of terms.slice(0, 3)) await tryQ(t);
+  }
+  if (pool.length < limit) {
+    for (const syn of expandSearchTerms(terms).slice(0, 6)) {
+      if (terms.includes(syn)) continue;
+      await tryQ(syn);
+      if (pool.length >= limit * 2) break;
+    }
+  }
+
+  let ranked = filterRelevantHits(pool, terms);
+  if (domain) {
+    if (!ranked.some(p => domain.prefer(p))) {
+      for (const sug of (domain.suggestions || []).slice(0, 3)) {
+        const sq = _searchTerms(sug.q).join(' ') || sug.q;
+        await tryQ(String(sq).replace(/^cari\s+(produk\s+)?/i, ''));
+      }
+    }
+    const exp = expandSearchTerms(terms);
+    const adjacent = pool.filter(p => {
+      if (!domain.prefer(p)) return false;
+      const hay = `${p.product_name || ''} ${p.keyword || ''} ${p.category || ''}`.toLowerCase();
+      return exp.some(t => hay.includes(t)) || terms.some(t => hay.includes(t));
+    });
+    ranked = filterRelevantHits(adjacent, exp.slice(0, 8));
+    if (!ranked.length) ranked = adjacent.slice();
+    if (!ranked.length) {
+      return { products: [], mode: 'clarify', domain, terms };
+    }
+  }
+
+  if (ranked.length) {
+    return { products: mergePool([], ranked).slice(0, limit), mode: 'ok', domain, terms };
+  }
+  return { products: [], mode: 'clarify', domain, terms };
+}
+
+function searchClarifyHtml(text, domain) {
+  const lead = domain?.emptyLead
+    || `Belum ketemu produk yang mirip “${esc(text)}” di data LarisID.`;
+  const suggestions = domain?.suggestions?.length
+    ? domain.suggestions
+    : [
+      { label: 'Produk naik daun', q: 'Produk apa yang lagi trending minggu ini?' },
+      { label: 'Ide jualan modal kecil', q: 'Rekomendasi produk modal kecil' },
+    ];
+  // Generic near-category nudge when we have a domain
+  const ask = domain?.id === 'food'
+    ? 'Maksud kamu yang mana?'
+    : 'Coba salah satu arah ini, atau ketik kata kunci lain:';
+  return `<p>${lead}</p><p>${ask}</p>
+    <div class="chips" style="margin-top:10px">${suggestions.map(s =>
+      `<button type="button" class="chip" data-suggest-q="${esc(s.q)}">${esc(s.label)}</button>`
+    ).join('')}</div>`;
+}
+
+function bindSearchSuggests(root) {
+  (root || document).querySelectorAll('[data-suggest-q]').forEach(btn => {
+    if (btn.dataset.boundSuggest) return;
+    btn.dataset.boundSuggest = '1';
+    btn.addEventListener('click', () => {
+      const q = btn.getAttribute('data-suggest-q');
+      if (q) void handleComposerSubmit(q);
+    });
+  });
 }
 
 /** Showcase products for a category ask (skincare, fashion trending, …). */
@@ -4086,6 +4298,7 @@ function bindProductCards(root) {
   (root || document).querySelectorAll('#btn-more-products').forEach(btn => {
     btn.addEventListener('click', () => void openMoreProductsDirectory());
   });
+  bindSearchSuggests(root);
 }
 
 /** Compact Deep Dive summary kept in the chat thread so scrolling history still reaches it. */
@@ -5616,19 +5829,10 @@ async function handleComposerSubmit(text) {
       return;
     }
     const { city, cleaned } = parseCityFromQuery(text);
-    const terms = _searchTerms(cleaned);
-    const q = terms.join(' ');
     const locations = city ? expandCityLocations(city) : [];
-    let hits = q ? await searchListings(q, locations, 30) : [];
-    if (!hits.length && terms.length > 1) hits = await searchListings(terms[0], locations, 30);
-    hits = mergePool([], hits).slice(0, 12);
-    const usedFallback = !hits.length;
-    if (usedFallback) {
-      const rows = mergePool([], await fetchNaikDaunGlobal(200));
-      state.recommendations = rows.slice(0, 12);
-    } else {
-      state.recommendations = hits;
-    }
+    const result = await searchProductsForQuery(cleaned, locations, 12);
+    const usedClarify = result.mode === 'clarify' || !result.products.length;
+    state.recommendations = usedClarify ? [] : result.products;
     rememberProducts(state.recommendations);
     if (currentUser && _supabase && !chat.id) {
       const { data } = await _supabase.rpc('gpt_new_chat', { p_title: text.slice(0, 60), p_context: { kind: 'search', q: text } });
@@ -5645,21 +5849,30 @@ async function handleComposerSubmit(text) {
     } else if (!currentUser) {
       bumpAnonSearch();
     }
-    const lead = usedFallback
-      ? `Belum ketemu yang cocok persis untuk “${esc(text)}” — ini yang lagi naik daun dari data LarisID:`
-      : `Hasil dari data LarisID untuk “${esc(q)}”${city ? ` dari seller sekitar <strong>${esc(city)}</strong>` : ''}:`;
-    const html = state.recommendations.length
-      ? `<p>${lead}</p><div class="card-grid">${state.recommendations.map((p, i) => productCardHtml(p, i)).join('')}</div>`
-      : `<p>Belum ketemu. Coba kata kunci lain atau buka Produk.</p>`;
+    let html;
+    if (usedClarify) {
+      html = searchClarifyHtml(text, result.domain);
+    } else {
+      const qLabel = (result.terms && result.terms.length) ? result.terms.join(' ') : cleaned;
+      const lead = `Hasil dari data LarisID untuk “${esc(qLabel)}”${city ? ` dari seller sekitar <strong>${esc(city)}</strong>` : ''}:`;
+      html = `<p>${lead}</p><div class="card-grid">${state.recommendations.map((p, i) => productCardHtml(p, i)).join('')}</div>`;
+    }
     if (loading) await revealAssistant(loading, html);
     else await appendAssistantStream(html);
     pushMessage(chat, 'assistant', {
-      text: 'Hasil pencarian',
+      text: usedClarify ? 'Klarifikasi pencarian' : 'Hasil pencarian',
       q: text,
       products: state.recommendations.map(productSnapshot).filter(Boolean),
     }, html);
     bindProductCards();
-    void logUserEvent('discover_view', { ui: 'gpt', q: text });
+    bindSearchSuggests();
+    void logUserEvent('discover_view', {
+      ui: 'gpt',
+      q: text,
+      count: state.recommendations.length,
+      clarify: usedClarify ? 1 : 0,
+      domain: result.domain?.id || '',
+    });
     return;
   }
 
