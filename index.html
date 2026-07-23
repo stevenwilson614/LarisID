@@ -197,7 +197,7 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260720e';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260723a';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
@@ -9937,7 +9937,7 @@ html,body{overflow-x:clip;max-width:100%;}
      SITE FOOTER
 ════════════════════════════════════ -->
 
-<script defer src="/js/laris-app.js?v=20260720e"></script>
+<script defer src="/js/laris-app.js?v=20260723a"></script>
 
   <!-- ── CONTEXTUAL ONBOARDING HINTS ── -->
   <div id="hint-overlay" aria-hidden="true" onclick="if(event.target===this)nuHintDismiss()">
@@ -10009,9 +10009,11 @@ html,body{overflow-x:clip;max-width:100%;}
       <div id="auth-name-wrap" style="display:none;">
         <input class="auth-input" id="auth-name" type="text" placeholder="Nama lengkap (opsional)">
       </div>
-      <input class="auth-input" id="auth-email" type="email" placeholder="Email" autocomplete="email">
+      <input class="auth-input" id="auth-email" type="email" placeholder="Email" autocomplete="email"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('auth-pass')?.focus()}">
       <div id="auth-pass-wrap">
-        <input class="auth-input" id="auth-pass" type="password" placeholder="Password" autocomplete="current-password">
+        <input class="auth-input" id="auth-pass" type="password" placeholder="Password" autocomplete="current-password"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();submitAuth()}">
       </div>
       <a class="auth-invite-toggle" id="auth-invite-toggle" style="display:none;" onclick="toggleAuthInviteField()">Punya kode kohort?</a>
       <div id="auth-invite-wrap" style="display:none;">

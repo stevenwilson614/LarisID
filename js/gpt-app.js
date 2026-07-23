@@ -132,6 +132,7 @@ async function larisEnsureChart() {
 // ── Supabase ─────────────────────────────────────────────────────────────
 const SUPA_URL = 'https://bzmvlraziqevqdyotvgy.supabase.co';
 const SUPA_KEY = 'sb_publishable_KDSWIJJLckser1e1hk7bbA_yMChRPog';
+const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6bXZscmF6aXFldnFkeW90dmd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0MDU1MjUsImV4cCI6MjA4OTk4MTUyNX0.nppVtaxoT4z4slUOTvZo5stmP26bb5qoJXkswHVw9EE';
 
 const _AUTH_SK = 'laris_auth_v1';
 let _supabase = null;
@@ -1237,20 +1238,26 @@ async function submitAuth() {
   const hdrs = { apikey: SUPA_KEY, 'Content-Type': 'application/json' };
   const showErr = msg => { if (errEl) { errEl.style.color = '#c0392b'; errEl.textContent = _authErrMsg(msg); errEl.style.display = ''; } };
   if (!email || !pass) { showErr('Email dan password wajib diisi.'); return; }
+  if (pass.length < 6) { showErr('Password minimal 6 karakter.'); return; }
   btn.disabled = true;
   try {
     if (_authMode === 'signup') {
-      const r = await fetch(`${SUPA_URL}/auth/v1/signup`, {
-        method: 'POST', headers: hdrs,
-        body: JSON.stringify({ email, password: pass, data: { full_name: name } }),
+      // Auto-confirm via edge function so non-Gmail addresses can register
+      // without waiting on often-undelivered confirmation emails.
+      const r = await fetch(`${SUPA_URL}/functions/v1/email-signup`, {
+        method: 'POST',
+        headers: { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: pass, full_name: name }),
       });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok || d.error_code || d.error || d.code) { showErr(d.msg || d.error_description || d.error || 'Daftar gagal.'); return; }
-      if (Array.isArray(d.identities) && d.identities.length === 0) { showErr('Email sudah terdaftar. Coba login.'); return; }
-      _lidFireSignupSuccess();
-      if (d.access_token) { _authSave(d); closeAuthModal(); await _authOnSignIn(d); return; }
-      showErr('Cek email kamu untuk konfirmasi akun!');
-      errEl.style.color = 'var(--hijau, #1E6B3C)';
+      if (!r.ok || !d.access_token) {
+        showErr(d.error || d.msg || d.error_description || 'Daftar gagal.');
+        return;
+      }
+      if (d.is_new_user !== false) _lidFireSignupSuccess();
+      _authSave(d);
+      closeAuthModal();
+      await _authOnSignIn(d);
       return;
     }
     const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {

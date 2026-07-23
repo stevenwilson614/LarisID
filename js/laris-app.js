@@ -2481,13 +2481,14 @@ function _authErrMsg(msg) {
 async function submitAuth() {
   const errEl = document.getElementById('auth-error');
   const btn   = document.getElementById('auth-submit-btn');
-  const email = document.getElementById('auth-email').value.trim();
-  const pass  = document.getElementById('auth-pass').value;
-  const name  = document.getElementById('auth-name').value.trim();
+  const email = (document.getElementById('auth-email')?.value || '').trim();
+  const pass  = document.getElementById('auth-pass')?.value || '';
+  const name  = (document.getElementById('auth-name')?.value || '').trim();
   const hdrs  = { apikey: SUPA_KEY, 'Content-Type': 'application/json' };
 
-  const showErr = msg => { errEl.style.color='#e74c3c'; errEl.textContent=_authErrMsg(msg); errEl.style.display=''; };
-  const showOk  = msg => { errEl.style.color='var(--green)'; errEl.textContent=msg; errEl.style.display=''; };
+  const showErr = msg => { if (!errEl) return; errEl.style.color='#e74c3c'; errEl.textContent=_authErrMsg(msg); errEl.style.display=''; };
+  const showOk  = msg => { if (!errEl) return; errEl.style.color='var(--green)'; errEl.textContent=msg; errEl.style.display=''; };
+  const btnLabel = () => _authMode === 'reset' ? 'Kirim Link Reset' : _authMode === 'signup' ? 'Daftar dengan Email' : 'Masuk';
 
   const netErr = 'Gagal terhubung ke server. Cek koneksi internet kamu dan coba lagi.';
 
@@ -2500,32 +2501,39 @@ async function submitAuth() {
     } catch (_) {
       showErr(netErr);
     } finally {
-      btn.textContent='Kirim Link Reset'; btn.disabled=false;
+      btn.textContent=btnLabel(); btn.disabled=false;
     }
     return;
   }
 
   if (!email || !pass) { showErr('Email dan password wajib diisi.'); return; }
+  if (pass.length < 6) { showErr('Password minimal 6 karakter.'); return; }
 
   if (_authMode === 'signup') {
     const invEl = document.getElementById('auth-invite-code');
     if (invEl && invEl.value.trim()) setPendingInvite(invEl.value);
     btn.textContent='...'; btn.disabled=true;
     try {
-      const r = await fetch(`${SUPA_URL}/auth/v1/signup`, { method:'POST', headers:hdrs, body:JSON.stringify({ email, password:pass, data:{ full_name:name } }) });
+      // Auto-confirm via edge function so Yahoo/Outlook/etc. can register without
+      // waiting on often-undelivered Supabase confirmation emails.
+      const r = await fetch(`${SUPA_URL}/functions/v1/email-signup`, {
+        method: 'POST',
+        headers: { apikey: SUPA_ANON, Authorization: 'Bearer ' + SUPA_ANON, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: pass, full_name: name }),
+      });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok || d.error_code || d.error || d.code) { showErr(d.msg || d.error_description || d.error || 'Daftar gagal. Coba lagi.'); return; }
-      // Existing-email signups return 200 with an empty identities array (enumeration guard).
-      if (Array.isArray(d.identities) && d.identities.length === 0) { showErr('Email sudah terdaftar. Coba login.'); return; }
-      _lidFireSignupSuccess();
-      // Email confirmations OFF → Supabase returns a session immediately; log the user straight in.
-      if (d.access_token) { _authSave(d); closeAuthModal(); void _authOnSignIn(d).catch(() => {}); return; }
-      // Otherwise a confirmation email was sent.
-      showOk('Cek email kamu untuk konfirmasi akun!');
+      if (!r.ok || !d.access_token) {
+        showErr(d.error || d.msg || d.error_description || 'Daftar gagal. Coba lagi.');
+        return;
+      }
+      if (d.is_new_user !== false) _lidFireSignupSuccess();
+      _authSave(d);
+      closeAuthModal();
+      void _authOnSignIn(d).catch(() => {});
     } catch (_) {
       showErr(netErr);
     } finally {
-      btn.textContent='Daftar'; btn.disabled=false;
+      btn.textContent=btnLabel(); btn.disabled=false;
     }
     return;
   }
@@ -2544,7 +2552,7 @@ async function submitAuth() {
   } catch (_) {
     showErr(netErr);
   } finally {
-    btn.textContent='Masuk'; btn.disabled=false;
+    btn.textContent=btnLabel(); btn.disabled=false;
   }
 }
 
