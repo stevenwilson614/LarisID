@@ -14875,14 +14875,18 @@ async function hbdInit() {
   }
 
   // ── Trending for you from allProducts ─────────────────────
+  // Must open Deep Dive (hbdNuRecoOpenById) — openDetail targets the removed
+  // legacy #page-detail and looks like a dead click inside the dashboard.
   const trendingCards = document.getElementById('hbd-trending-cards');
   if (!leaderMode && trendingCards && allProducts.length) {
-    const trending = [...allProducts].sort((a,b) => (b.avgTrend||0) - (a.avgTrend||0)).slice(0, 6);
+    const trending = [...allProducts]
+      .sort((a, b) => (b.avgTrend || 0) - (a.avgTrend || 0) || (b.score || 0) - (a.score || 0) || (b.total_sold || 0) - (a.total_sold || 0))
+      .slice(0, 6);
     trendingCards.innerHTML = trending.map(p => {
       const scoreColor = p.score >= 70 ? '#16A34A' : p.score >= 45 ? '#B45309' : '#C0392B';
-      return `<div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden;cursor:pointer;" onclick="openDetail(${p.id})">
+      return `<div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden;cursor:pointer;" role="button" tabindex="0" onclick="hbdNuRecoOpenById(${p.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();hbdNuRecoOpenById(${p.id});}">
         <div style="height:80px;background:#F3F4F6;position:relative;overflow:hidden;">
-          <img src="${p.image||''}" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover;">
+          <img src="${p.image||''}" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover;" alt="">
           <span style="position:absolute;top:6px;right:6px;background:${scoreColor};color:#fff;font-size:.6rem;font-weight:800;padding:2px 6px;border-radius:8px;">${p.score}</span>
         </div>
         <div style="padding:8px;">
@@ -15203,7 +15207,7 @@ async function hbdRenderCohortDigest() {
     recHtml = top.map(p => {
       const name = (p.name || p.keyword || 'Produk').split(' ').slice(0, 5).join(' ') || 'Produk';
       const sc = p.score >= 70 ? 'hot' : 'ok';
-      return `<div class="hbd-opp-item" onclick="openDetail(${p.id})">
+      return `<div class="hbd-opp-item" role="button" tabindex="0" style="cursor:pointer;" onclick="hbdNuRecoOpenById(${p.id})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();hbdNuRecoOpenById(${p.id});}">
         <div class="hbd-opp-emoji">${wIcon('trending-up', 18, '#B5202A')}</div>
         <div class="hbd-opp-body">
           <div class="hbd-opp-name">${_cohortEsc(name)}</div>
