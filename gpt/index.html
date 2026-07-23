@@ -541,6 +541,32 @@ html.session-restoring body::after {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .prod-card-meta { margin-top: 6px; font-size: .7rem; color: var(--muted); }
+/* Product-type card: collage of the type's top listing images */
+.ptype-collage {
+  position: relative; display: grid; aspect-ratio: 1; gap: 2px;
+  grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr);
+  background: #f0f0f0;
+}
+.ptype-collage img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ptype-collage .prod-card-ph { grid-area: 1 / 1 / 7 / 7; aspect-ratio: auto; }
+.ptype-collage.n1 img { grid-area: 1 / 1 / 7 / 7; }
+.ptype-collage.n2 img:nth-child(1) { grid-area: 1 / 1 / 7 / 4; }
+.ptype-collage.n2 img:nth-child(2) { grid-area: 1 / 4 / 7 / 7; }
+.ptype-collage.n3 img:nth-child(1) { grid-area: 1 / 1 / 7 / 5; }
+.ptype-collage.n3 img:nth-child(2) { grid-area: 1 / 5 / 4 / 7; }
+.ptype-collage.n3 img:nth-child(3) { grid-area: 4 / 5 / 7 / 7; }
+.ptype-collage.n4 img:nth-child(1) { grid-area: 1 / 1 / 4 / 4; }
+.ptype-collage.n4 img:nth-child(2) { grid-area: 1 / 4 / 4 / 7; }
+.ptype-collage.n4 img:nth-child(3) { grid-area: 4 / 1 / 7 / 4; }
+.ptype-collage.n4 img:nth-child(4) { grid-area: 4 / 4 / 7 / 7; }
+.ptype-collage.n5 img:nth-child(1) { grid-area: 1 / 1 / 5 / 5; }
+.ptype-collage.n5 img:nth-child(2) { grid-area: 1 / 5 / 3 / 7; }
+.ptype-collage.n5 img:nth-child(3) { grid-area: 3 / 5 / 5 / 7; }
+.ptype-collage.n5 img:nth-child(4) { grid-area: 5 / 1 / 7 / 4; }
+.ptype-collage.n5 img:nth-child(5) { grid-area: 5 / 4 / 7 / 7; }
+.ptype-badge { position: absolute; left: 8px; top: 8px; z-index: 1; }
+.ptype-meta { margin-top: 8px; font-size: .68rem; color: var(--muted); }
+.ptype-trend { color: var(--green); font-weight: 600; }
 .prod-card-price { margin-top: 6px; font-size: .875rem; font-weight: 650; color: var(--ink); }
 .data-badge {
   display: inline-block; margin-top: 8px;
@@ -1985,8 +2011,8 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
         </div>
         <div class="view" id="view-directory">
           <div class="dir-head">
-            <h2>Produk</h2>
-            <p class="dd-sub">Data dari Shopee — bukan hasil AI. Filter bebas; halaman 2+ dan Deep Dive perlu login.</p>
+            <h2>Tipe Produk</h2>
+            <p class="dd-sub">Satu kartu = satu jenis produk, dirangkum dari seluruh penjualnya di Shopee — bukan hasil AI. Filter bebas; halaman 2+ dan Deep Dive perlu login.</p>
           </div>
           <div class="dir-compare-banner" id="dir-compare-banner" hidden></div>
           <div class="dir-cat-bar" id="dir-cat-bar">
@@ -1994,6 +2020,8 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
             <div class="dir-cats dir-subcats" id="dir-subcats" hidden></div>
           </div>
           <div class="dir-filters" id="dir-filters">
+            <label class="dd-sub" for="dir-prov" style="margin:0">Provinsi</label>
+            <select id="dir-prov" aria-label="Filter provinsi"></select>
             <label class="dd-sub" for="dir-city" style="margin:0">Kota</label>
             <select id="dir-city" aria-label="Filter kota"></select>
             <label class="dd-sub" for="dir-sort" style="margin:0">Urutkan</label>
@@ -2210,6 +2238,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260723f" defer></script>
+<script src="/js/gpt-app.js?v=20260723g" defer></script>
 </body>
 </html>

@@ -519,6 +519,20 @@ const NU_ONB_LOCATIONS = [
   'Semarang', 'Yogyakarta', 'Surabaya', 'Sidoarjo', 'Medan',
   'Makassar', 'Palembang', 'Denpasar',
 ];
+// Directory Provinsi step: narrows the Kota select (flow: Provinsi → Kota →
+// Kategori → Tipe Produk). Keys ordered west→east like the city list.
+const PROVINCE_CITIES = {
+  'DKI Jakarta': ['Jakarta'],
+  'Banten': ['Tangerang'],
+  'Jawa Barat': ['Bekasi', 'Depok', 'Bogor', 'Bandung'],
+  'Jawa Tengah': ['Semarang'],
+  'DI Yogyakarta': ['Yogyakarta'],
+  'Jawa Timur': ['Surabaya', 'Sidoarjo'],
+  'Sumatera Utara': ['Medan'],
+  'Sumatera Selatan': ['Palembang'],
+  'Sulawesi Selatan': ['Makassar'],
+  'Bali': ['Denpasar'],
+};
 
 // Landing finder defaults / quick chips
 const FINDER_DEFAULT_CITY = 'Bandung';
@@ -584,9 +598,11 @@ const state = {
   dirPage: 1,
   dirCat: null,
   dirSub: null,  // selected sub-group {label, match} within dirCat
+  dirProv: '',   // Provinsi filter — narrows the Kota select
   dirCity: '',   // ephemeral directory filter (not persisted)
   dirSort: 'terlaris',
   dirRows: [],
+  dirTypes: [],  // product-type rows currently shown in the directory
   cityFilter: '',
   searchOpen: false,
 };
@@ -5029,10 +5045,13 @@ function ddKeywordRows(peers) {
 }
 
 function ddTilesHtml(product, stats, peers, series) {
-  const omset = estOmsetBulan(product);
+  // Opened from a Product Type card → tiles describe the TYPE's market
+  // (top-15-seller omset, median price band), not the anchor listing.
+  const t = product._ptype || null;
+  const omset = t?.omset_top15 ? Number(t.omset_top15) : estOmsetBulan(product);
   const spd = Number(product.sold_per_day);
   const unitMo = Number.isFinite(spd) && spd > 0 ? Math.round(spd * 30) : 0;
-  const price = Number(product.price) || 0;
+  const price = t ? Number(t.price_median) || 0 : Number(product.price) || 0;
   const vsMed = stats.median ? Math.round((price - stats.median) / stats.median * 100) : null;
   const locCount = new Map();
   peers.forEach(p => { const l = (p.location || '').trim(); if (l) locCount.set(l, (locCount.get(l) || 0) + 1); });
@@ -5050,10 +5069,16 @@ function ddTilesHtml(product, stats, peers, series) {
   const deltaHtml = delta == null
     ? `<div class="sub">${rateSub}</div>`
     : `<span class="tile-delta ${delta >= 0 ? 'up' : 'down'}">${ico('arrowUp', 10)} ${delta >= 0 ? '+' : ''}${delta}% pasar vs bulan sebelumnya</span>`;
+  const omsetSub = t ? '<div class="sub">Est. dari 15 penjual teratas tipe ini</div>' : deltaHtml;
+  const unitVal = t
+    ? (Number(t.avg_sold) || 0) ? (Number(t.avg_sold)).toLocaleString('id-ID') + ' unit' : '—'
+    : unitMo ? unitMo.toLocaleString('id-ID') + ' unit' : '—';
+  const unitLbl = t ? 'Rata² Terjual / Listing' : 'Est. Penjualan / Bulan';
+  const unitSub = t ? 'Rata-rata unit terjual per listing tipe ini' : rateSub;
   return `<div class="ddr-tiles">
-    <div class="ddr-tile"><span class="ico" style="background:var(--green-bg);color:var(--green)">${ico('trendUp', 14)}</span><div class="lbl">Est. Omzet / Bulan</div><div class="val">${omset ? fmtRpShort(omset) : '—'}</div>${deltaHtml}</div>
-    <div class="ddr-tile"><span class="ico" style="background:var(--blue-bg);color:var(--blue)">${ico('box', 14)}</span><div class="lbl">Est. Penjualan / Bulan</div><div class="val">${unitMo ? unitMo.toLocaleString('id-ID') + ' unit' : '—'}</div><div class="sub">${rateSub}</div></div>
-    <div class="ddr-tile"><span class="ico" style="background:var(--amber-bg);color:var(--amber)">${ico('tag', 14)}</span><div class="lbl">Harga Produk</div><div class="val">${fmtRp(price)}</div><div class="sub">${vsMed == null ? 'Median pasar belum ada' : vsMed === 0 ? 'Sama dengan median pasar' : `${Math.abs(vsMed)}% ${vsMed > 0 ? 'di atas' : 'di bawah'} median pasar`}</div></div>
+    <div class="ddr-tile"><span class="ico" style="background:var(--green-bg);color:var(--green)">${ico('trendUp', 14)}</span><div class="lbl">Est. Omzet / Bulan</div><div class="val">${omset ? fmtRpShort(omset) : '—'}</div>${t ? omsetSub + (deltaHtml.startsWith('<span') ? deltaHtml : '') : deltaHtml}</div>
+    <div class="ddr-tile"><span class="ico" style="background:var(--blue-bg);color:var(--blue)">${ico('box', 14)}</span><div class="lbl">${unitLbl}</div><div class="val">${unitVal}</div><div class="sub">${unitSub}</div></div>
+    <div class="ddr-tile"><span class="ico" style="background:var(--amber-bg);color:var(--amber)">${ico('tag', 14)}</span><div class="lbl">${t ? 'Harga Umum' : 'Harga Produk'}</div><div class="val">${fmtRp(price)}</div><div class="sub">${t ? `Rentang pasar ${fmtRpShort(t.price_min)} – ${fmtRpShort(t.price_max)}` : vsMed == null ? 'Median pasar belum ada' : vsMed === 0 ? 'Sama dengan median pasar' : `${Math.abs(vsMed)}% ${vsMed > 0 ? 'di atas' : 'di bawah'} median pasar`}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--violet-bg);color:var(--violet)">${ico('pin', 14)}</span><div class="lbl">Lokasi Terbanyak</div><div class="val">${topLoc ? esc(topLoc[0]) : '—'}</div><div class="sub">${topLoc ? `${topLoc[1]} penjual dari kota ini` : 'Belum ada data lokasi'}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--red-bg);color:var(--accent)">${ico('users', 14)}</span><div class="lbl">Kompetitor Aktif</div><div class="val">~${shopN} toko</div><div class="sub">Kompetisi ${esc(stats.komp || '—')}</div></div>
   </div>`;
@@ -5334,7 +5359,7 @@ async function openDeepDive(product) {
     chat = null;
     state.activeChatId = null;
   }
-  const title = (product.product_name || product.keyword || 'Produk').slice(0, 60);
+  const title = (product._ptype ? typeTitle(kw) : (product.product_name || product.keyword || 'Produk')).slice(0, 60);
   const baseCtx = {
     kind: 'product',
     keyword: kw,
@@ -5431,10 +5456,12 @@ async function openDeepDive(product) {
       ${product.image_url ? `<img src="${esc(product.image_url)}" alt="">` : '<span class="ph"></span>'}
       <div class="ddr-head-main">
         <div class="ddr-title-row">
-          <h1>${esc(product.product_name || kw || 'Produk')}</h1>
+          <h1>${esc(product._ptype ? typeTitle(kw) : (product.product_name || kw || 'Produk'))}</h1>
           <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
         </div>
-        <p class="ddr-cat">Kategori: ${esc(product.category || '—')} · Lokasi: ${esc(product.location || '—')} · Keyword: ${esc(kw || '—')}</p>
+        <p class="ddr-cat">${product._ptype
+          ? `Tipe produk · Kategori: ${esc(product.category || '—')} · ${product._ptype.n_sellers} penjual · ${product._ptype.n_listings} listing · Produk teratas: ${esc((product.product_name || '—').slice(0, 60))}`
+          : `Kategori: ${esc(product.category || '—')} · Lokasi: ${esc(product.location || '—')} · Keyword: ${esc(kw || '—')}`}</p>
       </div>
       <div class="ddr-score">
         <div class="lbl">Skor Produk</div>
@@ -6137,6 +6164,126 @@ async function handleComposerSubmit(text) {
 }
 
 // ── Directory ────────────────────────────────────────────────────────────
+// ── Product Types (mv_product_types) ─────────────────────────────────────
+// The directory shows one card per PRODUCT TYPE (= the scrape keyword, which
+// the panel curated at exactly "one supplier could make this" granularity)
+// instead of individual listings. Aggregates are precomputed server-side per
+// (keyword, city bucket) — omset from top-15 sellers, price band, seller
+// count, top-5 images — so the whole grid is one indexed query.
+const _ptypeCache = Object.create(null);
+
+async function fetchProductTypes(city, cat, limit = 1000) {
+  if (!_supabase) return [];
+  const bucket = city || 'ALL';
+  const key = `${bucket}|${cat || ''}`;
+  if (_ptypeCache[key]) return _ptypeCache[key];
+  try {
+    let q = _supabase.from('mv_product_types')
+      .select('keyword,city,category,n_listings,n_sellers,price_min,price_median,price_max,avg_sold,total_sold_sum,omset_top15,sold_top3_share,images,rep_item_id,rep_shop_id,rep_product_name,rep_store_name,rep_price,rep_total_sold,rep_reviews,rep_rating,rep_location,rep_image_url,rep_url,rep_listing_date,trend_delta_30d,breakout_rate,niche_new_items,median_winner_price,median_winner_reviews')
+      .eq('city', bucket)
+      .gte('n_listings', 3)
+      .order('omset_top15', { ascending: false, nullsFirst: false })
+      .limit(limit);
+    if (cat) q = q.eq('category', cat);
+    const { data, error } = await q;
+    if (error) throw error;
+    _ptypeCache[key] = data || [];
+    return _ptypeCache[key];
+  } catch (_) { return []; }
+}
+
+function typeTitle(kw) {
+  return String(kw || '').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function typeNiche(t) {
+  if (t.breakout_rate == null) return null;
+  return {
+    keyword: t.keyword,
+    breakout_rate: t.breakout_rate,
+    new_items: t.niche_new_items,
+    median_winner_price: t.median_winner_price,
+    median_winner_reviews: t.median_winner_reviews,
+  };
+}
+
+// The type's top listing anchors the existing Deep Dive (which already
+// computes peers/price band/share/trend at keyword level = the whole type).
+function typeRepProduct(t) {
+  const p = asListingProduct({
+    item_id: t.rep_item_id, shop_id: t.rep_shop_id,
+    product_name: t.rep_product_name, store_name: t.rep_store_name,
+    price: t.rep_price, total_sold: t.rep_total_sold,
+    reviews: t.rep_reviews, rating: t.rep_rating,
+    location: t.rep_location, image_url: t.rep_image_url, url: t.rep_url,
+    keyword: t.keyword, category: t.category, listing_date: t.rep_listing_date,
+  });
+  p._ptype = t;
+  const niche = typeNiche(t);
+  if (niche) p._niche = niche;
+  return p;
+}
+
+function typeCardHtml(t, absIdx, animIdx) {
+  const imgs = (t.images || []).filter(Boolean).slice(0, 5);
+  const odds = calcBreakoutOdds(Number(t.price_median) || 0, typeNiche(t));
+  const badgeCls = odds.tier === 'Tinggi' ? 'badge-tinggi' : odds.tier === 'Sedang' ? 'badge-sedang' : 'badge-rendah';
+  const trend = Number(t.trend_delta_30d) || 0;
+  return `<button type="button" class="prod-card ptype-card" data-ptype="${absIdx}" style="animation-delay:${(animIdx % 3) * 0.06}s">
+    <div class="ptype-collage n${imgs.length || 1}">
+      ${imgs.map(u => `<img src="${esc(u)}" alt="" loading="lazy">`).join('') || '<div class="prod-card-ph"></div>'}
+      <span class="ptype-badge badge ${badgeCls}">Peluang ${esc(odds.tier)}</span>
+    </div>
+    <div class="prod-card-body">
+      <div class="prod-card-name">${esc(typeTitle(t.keyword))}</div>
+      <div class="prod-card-loc">${t.n_sellers} penjual · ${t.n_listings} listing</div>
+      <div class="prod-card-stats">
+        <div class="prod-stat">
+          <span class="prod-stat-lbl">Omset/bulan</span>
+          <span class="prod-stat-val">${t.omset_top15 ? fmtRpShort(t.omset_top15) : '—'}</span>
+        </div>
+        <div class="prod-stat">
+          <span class="prod-stat-lbl">Harga umum</span>
+          <span class="prod-stat-val">${fmtRpShort(t.price_median)}</span>
+        </div>
+        <div class="prod-stat">
+          <span class="prod-stat-lbl">Rata² terjual</span>
+          <span class="prod-stat-val">${(Number(t.avg_sold) || 0).toLocaleString('id-ID')}</span>
+        </div>
+        <div class="prod-stat">
+          <span class="prod-stat-lbl">Rentang harga</span>
+          <span class="prod-stat-val">${fmtRpShort(t.price_min)}–${fmtRpShort(t.price_max)}</span>
+        </div>
+      </div>
+      ${trend > 0 ? `<div class="ptype-meta ptype-trend">+${trend.toLocaleString('id-ID')} terjual dalam 30 hari terakhir</div>` : ''}
+    </div>
+  </button>`;
+}
+
+function bindTypeCards(root) {
+  (root || document).querySelectorAll('[data-ptype]').forEach(btn => {
+    if (btn.dataset.boundPtype) return;
+    btn.dataset.boundPtype = '1';
+    btn.addEventListener('click', () => {
+      const t = state.dirTypes[Number(btn.getAttribute('data-ptype'))];
+      if (!t) return;
+      const p = typeRepProduct(t);
+      rememberProducts([p]);
+      void logUserEvent('ptype_open', { ui: 'gpt', keyword: t.keyword, city: state.dirCity || 'ALL' });
+      void openDeepDive(p);
+    });
+  });
+}
+
+function sortTypeRows(rows, mode) {
+  const out = (rows || []).slice();
+  if (mode === 'termurah') out.sort((a, b) => (Number(a.price_median) || 0) - (Number(b.price_median) || 0));
+  else if (mode === 'termahal') out.sort((a, b) => (Number(b.price_median) || 0) - (Number(a.price_median) || 0));
+  else if (mode === 'naik_daun') out.sort((a, b) => (Number(b.trend_delta_30d) || 0) - (Number(a.trend_delta_30d) || 0));
+  else out.sort((a, b) => (Number(b.omset_top15) || 0) - (Number(a.omset_top15) || 0)); // terlaris
+  return out;
+}
+
 function sortDirRows(rows, mode) {
   const out = (rows || []).slice();
   if (mode === 'termurah') out.sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
@@ -6405,6 +6552,16 @@ function renderSubcats(cat) {
   });
 }
 
+// Rebuild the Kota options from the active Provinsi (all cities when none).
+function fillDirCityOptions() {
+  const citySel = $('dir-city');
+  if (!citySel) return;
+  const cities = state.dirProv ? PROVINCE_CITIES[state.dirProv] || [] : NU_ONB_LOCATIONS;
+  citySel.innerHTML = `<option value="">Semua kota</option>` +
+    cities.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  citySel.value = state.dirCity || '';
+}
+
 async function openDirectory() {
   setView('directory');
   _dirApplyDefaultsOnce();
@@ -6433,17 +6590,35 @@ async function openDirectory() {
   }
   applyDirCatUi();
 
+  const provSel = $('dir-prov');
+  if (provSel && !provSel.dataset.ready) {
+    provSel.dataset.ready = '1';
+    provSel.innerHTML = `<option value="">Semua provinsi</option>` +
+      Object.keys(PROVINCE_CITIES).map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+    provSel.addEventListener('change', () => {
+      state.dirProv = provSel.value || '';
+      const allowed = state.dirProv ? PROVINCE_CITIES[state.dirProv] || [] : NU_ONB_LOCATIONS;
+      if (state.dirCity && !allowed.includes(state.dirCity)) state.dirCity = '';
+      fillDirCityOptions();
+      state.dirPage = 1;
+      void logUserEvent('dir_filter', { ui: 'gpt', kind: 'province', value: state.dirProv });
+      void renderDirectory();
+    });
+  }
+  if (provSel) provSel.value = state.dirProv || '';
+
   const citySel = $('dir-city');
   if (citySel && !citySel.dataset.ready) {
     citySel.dataset.ready = '1';
-    citySel.innerHTML = `<option value="">Semua kota</option>` +
-      NU_ONB_LOCATIONS.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    fillDirCityOptions();
     citySel.addEventListener('change', () => {
       state.dirCity = citySel.value || '';
       state.dirPage = 1;
       void logUserEvent('dir_filter', { ui: 'gpt', kind: 'city', value: state.dirCity });
       void renderDirectory();
     });
+  } else {
+    fillDirCityOptions();
   }
   if (citySel) citySel.value = state.dirCity || '';
 
@@ -6469,6 +6644,58 @@ async function openDirectory() {
 }
 
 async function renderDirectory() {
+  // Compare-pick needs a specific LISTING (not a type) — keep the old grid there.
+  if (state.comparePick) return renderDirectoryListings();
+  const grid = $('dir-grid');
+  const pager = $('dir-pager');
+  if (!grid) return;
+  grid.innerHTML = '<p class="dd-sub">Memuat…</p>';
+
+  const cat = state.dirCat || null;
+  const city = state.dirCity || '';
+  let types = await fetchProductTypes(city, cat);
+  if (state.dirSub) {
+    types = types.filter(t => subgroupMatches({ keyword: t.keyword, product_name: t.rep_product_name }, state.dirSub.match));
+  }
+  // mv missing/empty (e.g. refresh failed) → degrade to the old listing grid.
+  if (!types.length && !state.dirSub) return renderDirectoryListings();
+  types = sortTypeRows(types, state.dirSort || 'terlaris');
+  state.dirTypes = types;
+
+  if (state.dirPage > 1 && !currentUser) {
+    openAuthModal('signup', 'gpt_gate_directory');
+    state.dirPage = 1;
+  }
+  const start = (state.dirPage - 1) * PAGE_SIZE;
+  const slice = types.slice(start, start + PAGE_SIZE);
+  grid.innerHTML = slice.map((t, i) => typeCardHtml(t, start + i, i)).join('')
+    || '<p class="dd-sub">Tidak ada tipe produk untuk filter ini.</p>';
+  bindTypeCards(grid);
+  scrollPanelToTop();
+  renderDirPager(pager, types.length);
+}
+
+// Shared pager for both directory modes (types + legacy listings).
+function renderDirPager(pager, total) {
+  if (!pager) return;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  pager.innerHTML = `
+    <button type="button" class="btn-ghost" id="dir-prev" ${state.dirPage <= 1 ? 'disabled' : ''}>Sebelumnya</button>
+    <span class="dd-sub">Halaman ${state.dirPage} / ${totalPages}</span>
+    <button type="button" class="btn-ghost" id="dir-next" ${state.dirPage >= totalPages ? 'disabled' : ''}>Berikutnya</button>
+  `;
+  $('dir-prev')?.addEventListener('click', () => { state.dirPage--; void renderDirectory(); });
+  $('dir-next')?.addEventListener('click', () => {
+    if (!currentUser && state.dirPage >= 1) {
+      openAuthModal('signup', 'gpt_gate_directory');
+      return;
+    }
+    state.dirPage++;
+    void renderDirectory();
+  });
+}
+
+async function renderDirectoryListings() {
   const grid = $('dir-grid');
   const pager = $('dir-pager');
   if (!grid) return;
@@ -6504,23 +6731,7 @@ async function renderDirectory() {
   grid.innerHTML = slice.map((p, i) => productCardHtml(p, i % 3)).join('') || '<p class="dd-sub">Tidak ada produk untuk filter ini.</p>';
   bindProductCards(grid);
   scrollPanelToTop();
-  if (pager) {
-    const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-    pager.innerHTML = `
-      <button type="button" class="btn-ghost" id="dir-prev" ${state.dirPage <= 1 ? 'disabled' : ''}>Sebelumnya</button>
-      <span class="dd-sub">Halaman ${state.dirPage} / ${totalPages}</span>
-      <button type="button" class="btn-ghost" id="dir-next" ${state.dirPage >= totalPages ? 'disabled' : ''}>Berikutnya</button>
-    `;
-    $('dir-prev')?.addEventListener('click', () => { state.dirPage--; void renderDirectory(); });
-    $('dir-next')?.addEventListener('click', () => {
-      if (!currentUser && state.dirPage >= 1) {
-        openAuthModal('signup', 'gpt_gate_directory');
-        return;
-      }
-      state.dirPage++;
-      void renderDirectory();
-    });
-  }
+  renderDirPager(pager, rows.length);
 }
 
 // ── Opt-out ──────────────────────────────────────────────────────────────
