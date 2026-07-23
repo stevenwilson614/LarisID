@@ -2032,7 +2032,7 @@ function openPrefsDrawer(source) {
     categories: [...(o.categories || [])],
     freeText: o.freeText || '',
     cityFilter: '',
-    experience: o.experience || '',
+    experience: normalizeExperience(o.experience),
   };
   closeSidebar();
   const drawer = $('prefs-drawer');
@@ -2113,48 +2113,79 @@ function renderPrefsCatChips() {
   }).join('');
 }
 
+function normalizeExperience(v) {
+  if (v === 'baru' || v === 'first_time') return 'first_time';
+  if (v === 'berpengalaman' || v === 'existing') return 'existing';
+  return v || '';
+}
+
 async function savePrefsDrawer() {
   const o = state.onboarding;
   const wasDone = o.step === 'done';
+  const saveBtn = $('prefs-save');
   o.city = _prefsDraft.city || '';
   o.categories = [..._prefsDraft.categories];
-  o.experience = _prefsDraft.experience || '';
+  o.experience = normalizeExperience(_prefsDraft.experience);
   o.freeText = ($('prefs-free')?.value || _prefsDraft.freeText || '').trim();
+
+  // First-time / post-sign-in path needs city + minat so we can show fitting products.
+  const wantsProducts = !wasDone || _prefsSource === 'post_signin' || state.view === 'home';
+  if (wantsProducts && (!o.city || !o.categories.length)) {
+    showToast('Pilih kota dan minimal 1 kategori dulu.');
+    return;
+  }
   if (!o.city && !o.categories.length && !o.freeText) {
     showToast('Pilih kota atau kategori dulu.');
     return;
   }
+
   o.step = 'done';
   o.completedAnon = !currentUser;
+  // Keep landing finder aligned with what they just saved.
+  if (o.city) _finder.city = o.city;
+  if (o.categories[0]) _finder.category = o.categories[0];
+  if (o.experience) _finder.experience = o.experience;
+  saveFinderState();
   saveLocalState();
   syncDirectoryFromOnboarding();
   state._dirDefaultsApplied = true;
   renderSidebarLocCard();
-  await persistOnboardingPrefs();
-  closePrefsDrawer();
-  showToast([o.city, o.categories[0]].filter(Boolean).join(' · ') || 'Preferensi disimpan');
-  void logUserEvent('onboarding_complete', {
-    ui: 'gpt',
-    region: o.city,
-    categories: o.categories,
-    seller_status: o.experience,
-    free_text: (o.freeText || '').slice(0, 80),
-    source: _prefsSource,
-    update: wasDone,
-  });
-  clarityEvt(wasDone ? 'gpt_prefs_update' : 'onboarding_complete', { ui: 'gpt' });
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Menyimpan…'; }
+  try {
+    await persistOnboardingPrefs();
+    closePrefsDrawer();
+    showToast([o.city, o.categories[0]].filter(Boolean).join(' · ') || 'Preferensi disimpan');
+    void logUserEvent('onboarding_complete', {
+      ui: 'gpt',
+      region: o.city,
+      categories: o.categories,
+      seller_status: o.experience,
+      free_text: (o.freeText || '').slice(0, 80),
+      source: _prefsSource,
+      update: wasDone,
+    });
+    clarityEvt(wasDone ? 'gpt_prefs_update' : 'onboarding_complete', { ui: 'gpt' });
 
-  if (state.view === 'directory') {
-    const cats = $('dir-cats');
-    if (cats) {
-      cats.querySelectorAll('[data-dcat]').forEach(c => {
-        const v = c.getAttribute('data-dcat') || '';
-        c.classList.toggle('selected', (state.dirCat || '') === v);
-      });
+    if (wantsProducts) {
+      // Leave the opening questions and show products that match city + minat.
+      await startRecommendationChat(true);
+      return;
     }
-    const citySel = $('dir-city');
-    if (citySel) citySel.value = state.dirCity || '';
-    await renderDirectory();
+
+    if (state.view === 'directory') {
+      const cats = $('dir-cats');
+      if (cats) {
+        cats.querySelectorAll('[data-dcat]').forEach(c => {
+          const v = c.getAttribute('data-dcat') || '';
+          c.classList.toggle('selected', (state.dirCat || '') === v);
+        });
+      }
+      const citySel = $('dir-city');
+      if (citySel) citySel.value = state.dirCity || '';
+      await renderDirectory();
+    }
+  } finally {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Simpan'; }
   }
 }
 
@@ -4044,10 +4075,11 @@ function mergePool(pool, rows) {
   return pool;
 }
 
-async function pickRecommendations() {
+async function pickRecommendations(limit = 3) {
   const o = state.onboarding;
   const cats = (o.categories || []).slice();
   const locations = expandCityLocations(o.city);
+  const want = Math.max(3, Math.min(24, Number(limit) || 3));
   let pool = [];
   let tier = 'empty';
 
@@ -4069,21 +4101,21 @@ async function pickRecommendations() {
   }
 
   // Tier 2: rising products in category anywhere
-  if (pool.length < 3 && cats.length) {
+  if (pool.length < want && cats.length) {
     const catOnly = await fetchNaikDaunByCat(cats, 120);
     mergePool(pool, catOnly);
     if (pool.length >= 3) tier = tier === 'empty' ? 'category' : tier;
   }
 
   // Tier 3: best sellers in city (any category) — still local competition signal
-  if (pool.length < 3 && locations.length) {
+  if (pool.length < want && locations.length) {
     const cityOnly = await fetchListingsCityCat(locations, [], 80);
     mergePool(pool, cityOnly);
     if (cityOnly.length) tier = tier === 'empty' ? 'city' : tier;
   }
 
   // Tier 4: global rising fallback
-  if (pool.length < 3) {
+  if (pool.length < want) {
     mergePool(pool, await fetchNaikDaunGlobal(60));
     if (tier === 'empty') tier = 'global';
   }
@@ -4097,7 +4129,7 @@ async function pickRecommendations() {
     seen.add(key);
     r._recTier = tier;
     out.push(r);
-    if (out.length >= 3) break;
+    if (out.length >= want) break;
   }
 
   for (const p of out) {
@@ -4479,7 +4511,8 @@ async function startRecommendationChat(fromOnboarding) {
 
   appendBubble('assistant', `<p>${fromOnboarding ? 'Siap. ' : ''}${frame}</p><p style="opacity:.7;animation:pulseSoft 1.2s infinite">Memuat rekomendasi…</p>`);
 
-  const recs = await pickRecommendations();
+  const recLimit = fromOnboarding ? 9 : 3;
+  const recs = await pickRecommendations(recLimit);
   state.recommendations = recs;
   rememberProducts(recs);
 
@@ -4488,11 +4521,11 @@ async function startRecommendationChat(fromOnboarding) {
        <button type="button" class="btn-ghost" id="btn-more-products">Tampilkan produk lain</button>`
     : `<p>Belum ketemu produk yang cocok. Coba Chat Baru atau buka <strong>Produk</strong> di sidebar.</p>`;
 
-  const html = `<p>${frame}</p><p>Ini <strong>3 produk</strong> dari data LarisID buat kamu cek:</p>${cards}`;
+  const html = `<p>${frame}</p><p>Ini <strong>${recs.length || recLimit} produk</strong> dari data LarisID buat kamu cek:</p>${cards}`;
   const thread2 = $('chat-thread');
   if (thread2) thread2.innerHTML = '';
   const msg = await appendAssistantStream(html);
-  pushMessage(chat, 'assistant', { text: 'Rekomendasi 3 produk', products: recs.map(productSnapshot).filter(Boolean) }, html);
+  pushMessage(chat, 'assistant', { text: `Rekomendasi ${recs.length} produk`, products: recs.map(productSnapshot).filter(Boolean) }, html);
   bindProductCards();
 
   void logUserEvent('discover_view', { ui: 'gpt', count: recs.length });
