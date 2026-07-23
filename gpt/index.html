@@ -1395,6 +1395,19 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 }
 .ddr-table td { padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 .ddr-table tr:last-child td { border-bottom: none; }
+.ddr-komp-table tbody tr.komp-click-row {
+  cursor: pointer;
+  transition: background .12s;
+}
+.ddr-komp-table tbody tr.komp-click-row:hover td,
+.ddr-komp-table tbody tr.komp-click-row:focus-visible td {
+  background: #fafafa;
+}
+.ddr-komp-table tbody tr.komp-click-row:active td { background: #f3f3f3; }
+.komp-open-hint {
+  font-size: .72rem; font-weight: 650; color: var(--accent, #B5202A);
+  white-space: nowrap;
+}
 .spark { width: 52px; height: 20px; display: block; }
 .badge-comp-tinggi { background: var(--red-bg); color: var(--accent); }
 .badge-comp-sedang { background: var(--amber-bg); color: var(--amber); }
@@ -2197,6 +2210,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260723c" defer></script>
+<script src="/js/gpt-app.js?v=20260723d" defer></script>
 </body>
 </html>

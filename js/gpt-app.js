@@ -2549,18 +2549,7 @@ function fillCalcContent(opts = {}) {
 }
 
 function wireKompPanelBody(body, peers) {
-  const more = body.querySelector('#side-komp-more');
-  more?.addEventListener('click', () => {
-    body.querySelectorAll('[data-komp-extra]').forEach(tr => { tr.hidden = false; });
-    more.remove();
-  });
-  body.querySelectorAll('[data-kshop]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const [iid, sid] = (btn.getAttribute('data-kshop') || '').split('|');
-      const p = (peers || []).find(x => String(x.item_id) === iid && String(x.shop_id) === sid);
-      if (p) void openDeepDive(asListingProduct(p));
-    });
-  });
+  wireKompClicks(body, peers);
 }
 
 async function fillKompContent(opts = {}) {
@@ -4985,19 +4974,75 @@ function ddKompetitorTableHtml(share, opts = {}) {
   if (!share.shops.length) return '<p class="dd-sub">Kompetitor belum tersedia untuk keyword ini.</p>';
   const moreId = opts.moreId || 'ddr-komp-more';
   const rows = share.shops.slice(0, 15).map((s, i) => {
+    const sample = s.sample || {};
+    const iid = sample.item_id;
+    const sid = sample.shop_id;
+    if (iid == null || sid == null) return '';
+    const key = `${iid}|${sid}`;
+    const snap = productSnapshot(asListingProduct(sample));
+    const encoded = snap ? encodeURIComponent(JSON.stringify(snap)) : '';
     const omsetMo = Math.round(s.sold / 6) * Math.round(s.omzet / Math.max(1, s.sold)); // ≈ sold/6 × avg price
-    return `<tr${i >= 5 ? ' data-komp-extra hidden' : ''}>
+    // Whole row is clickable — users tap the tok name, not just the tiny "Lihat" button.
+    return `<tr class="komp-click-row"${i >= 5 ? ' data-komp-extra hidden' : ''} data-kshop="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} role="link" tabindex="0" aria-label="Buka Deep Dive ${esc((s.name || 'kompetitor').slice(0, 40))}">
       <td class="tr-rank">${i + 1}</td>
       <td><div class="tr-prod" style="min-width:140px"><span class="comp-av">${s.img ? `<img src="${esc(s.img)}" alt="" loading="lazy">` : esc((s.name || 'T').charAt(0).toUpperCase())}</span><div class="tr-prod-name">${esc((s.name || 'Toko').slice(0, 28))}</div></div></td>
       <td>${omsetMo ? fmtRpShort(omsetMo) : '—'}</td>
       <td>${s.share}%</td>
-      <td><button type="button" class="btn-outline" data-kshop="${esc(String(s.sample.item_id))}|${esc(String(s.sample.shop_id))}">Lihat</button></td>
+      <td><span class="komp-open-hint">Deep Dive →</span></td>
     </tr>`;
   }).join('');
-  return `<div class="ddr-table-wrap"><table class="ddr-table">
-    <thead><tr><th>#</th><th>Toko</th><th>Omzet / Bln (est.)</th><th>Market Share</th><th>Aksi</th></tr></thead>
+  return `<div class="ddr-table-wrap"><table class="ddr-table ddr-komp-table">
+    <thead><tr><th>#</th><th>Toko</th><th>Omzet / Bln (est.)</th><th>Market Share</th><th></th></tr></thead>
     <tbody>${rows}</tbody></table></div>
     ${share.shops.length > 5 ? `<button type="button" class="ans-cta" id="${esc(moreId)}">Lihat Semua ${Math.min(15, share.shops.length)} Kompetitor</button>` : ''}`;
+}
+
+function openKompetitorDeepDive(el, peers) {
+  const hit = el?.closest?.('[data-kshop]');
+  if (!hit) return false;
+  const encoded = hit.getAttribute('data-product');
+  if (encoded) {
+    try {
+      const p = JSON.parse(decodeURIComponent(encoded));
+      if (p?.item_id != null && p?.shop_id != null) {
+        void openDeepDive(asListingProduct(p));
+        return true;
+      }
+    } catch (_) {}
+  }
+  const [iid, sid] = (hit.getAttribute('data-kshop') || '').split('|');
+  if (!iid || !sid) return false;
+  const p = (peers || []).find(x => String(x.item_id) === iid && String(x.shop_id) === sid);
+  if (!p) return false;
+  void openDeepDive(asListingProduct(p));
+  return true;
+}
+
+function wireKompClicks(root, peers) {
+  if (!root) return;
+  const more = root.querySelector('#ddr-komp-more, #side-komp-more');
+  more?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    root.querySelectorAll('[data-komp-extra]').forEach(tr => { tr.hidden = false; });
+    more.remove();
+  });
+  root.querySelectorAll('.ddr-komp-table').forEach(table => {
+    if (table.dataset.kompWired === '1') return;
+    table.dataset.kompWired = '1';
+    table.addEventListener('click', (e) => {
+      const hit = e.target.closest?.('[data-kshop]');
+      if (!hit || !table.contains(hit)) return;
+      e.preventDefault();
+      openKompetitorDeepDive(hit, peers);
+    });
+    table.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const hit = e.target.closest?.('tr[data-kshop]');
+      if (!hit || !table.contains(hit)) return;
+      e.preventDefault();
+      openKompetitorDeepDive(hit, peers);
+    });
+  });
 }
 
 function ddKeywordTableHtml(kwRows, sampleN) {
@@ -5392,18 +5437,9 @@ async function openDeepDive(product) {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'kompetitor_panel', via: 'click', keyword: kw || '' });
     openKompPanel({ product, peers, via: 'deepdive' });
   });
-  const kompMore = $('ddr-komp-more');
-  kompMore?.addEventListener('click', () => {
-    root.querySelectorAll('[data-komp-extra]').forEach(tr => { tr.hidden = false; });
-    kompMore.remove();
+  wireKompClicks(root, peers);
+  $('ddr-komp-more')?.addEventListener('click', () => {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'kompetitor', via: 'click', keyword: kw || '' });
-  });
-  root.querySelectorAll('[data-kshop]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const [iid, sid] = btn.getAttribute('data-kshop').split('|');
-      const p = peers.find(x => String(x.item_id) === iid && String(x.shop_id) === sid);
-      if (p) void openDeepDive(asListingProduct(p));
-    });
   });
 
   // Scroll telemetry — keeps the old deepdive_section funnel signal alive.
