@@ -9938,6 +9938,17 @@ function dscApplyFilters(resetPage = true) {
   }
   if (resetPage) { _dscPage = 1; _dscStarterKey = null; }
   dscRenderTable();
+  // New result set — pin to top so users scroll down through products (mobile + desktop).
+  if (resetPage) scrollResultsToTop();
+}
+
+/** Reset both scroll containers used by the dashboard (window on mobile, .dash-content on desktop). */
+function scrollResultsToTop() {
+  try {
+    const dc = document.getElementById('dash-content');
+    if (dc) dc.scrollTop = 0;
+    window.scrollTo(0, 0);
+  } catch (_) {}
 }
 
 function _dscTrendHtml(delta) {
@@ -12447,7 +12458,7 @@ function dscGoPage(n) {
   } else {
     dscRenderTable();
   }
-  document.getElementById('dash-content')?.scrollTo(0, 0);
+  scrollResultsToTop();
 }
 
 function dscTerapkanFilter() {
@@ -22379,6 +22390,7 @@ function nuOnbApplyToDiscover() {
   dscUpdateDualRange('price');
   nuOnbShowBanner();
   dscTerapkanFilter();
+  scrollResultsToTop();
   void logUserEvent('onboarding_results', { categories: _nuOnb.cats });
 }
 

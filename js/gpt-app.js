@@ -972,6 +972,8 @@ function setView(name) {
   closeSidebar();
   updateSideRailVisibility();
   updateProductPin();
+  // Fresh surface — always start at the top so populated content scrolls down.
+  if (name !== leaving) scrollPanelToTop();
 }
 
 function openSidebar() {
@@ -1519,12 +1521,51 @@ function activeChat() {
   return state.chats.find(c => (c.id || c.localId) === state.activeChatId) || null;
 }
 
+function scrollPanelToTop() {
+  const panel = $('panel');
+  if (!panel) return;
+  requestAnimationFrame(() => { panel.scrollTop = 0; });
+}
+
 function scrollChatToBottom() {
   const panel = $('panel');
   if (!panel) return;
   requestAnimationFrame(() => {
     panel.scrollTop = panel.scrollHeight;
   });
+}
+
+/** Pin a message (or the panel) to the top so long result grids scroll downward. */
+function scrollToContentStart(el) {
+  const panel = $('panel');
+  if (!panel) return;
+  const target = el?.closest?.('.msg') || el;
+  requestAnimationFrame(() => {
+    if (!target || !panel.contains(target)) {
+      panel.scrollTop = 0;
+      return;
+    }
+    panel.scrollTop = Math.max(0, target.offsetTop - 8);
+  });
+}
+
+function contentLooksLikeResults(htmlOrEl) {
+  if (!htmlOrEl) return false;
+  if (typeof htmlOrEl === 'string') {
+    return /card-grid|prod-card|ans-panel|trending-card|ans-table|deepdive-card|gpt-kalc/.test(htmlOrEl);
+  }
+  return !!htmlOrEl.querySelector?.(
+    '.card-grid, .prod-card, .ans-panel, .trending-card, .ans-table-wrap, .gpt-kalc'
+  );
+}
+
+/** After content populates: results stay at the top; short replies stay pinned to the end. */
+function scrollAfterPopulate(anchor, html) {
+  if (contentLooksLikeResults(html) || contentLooksLikeResults(anchor)) {
+    scrollToContentStart(anchor);
+  } else {
+    scrollChatToBottom();
+  }
 }
 
 function appendBubble(role, html, opts = {}) {
@@ -1534,7 +1575,10 @@ function appendBubble(role, html, opts = {}) {
   div.className = `msg ${role}`;
   div.innerHTML = `<div class="msg-role">${role === 'user' ? 'Kamu' : 'LARISgpt'}</div><div class="msg-bubble">${html}</div>`;
   thread.appendChild(div);
-  if (!opts.skipScroll) scrollChatToBottom();
+  if (!opts.skipScroll) {
+    if (role === 'assistant' && contentLooksLikeResults(html)) scrollToContentStart(div);
+    else scrollChatToBottom();
+  }
   return div;
 }
 
@@ -1563,11 +1607,12 @@ function _isAtomicStreamBlock(el) {
   );
 }
 
-async function _typeTextNode(textNode, fullText, gen, cps) {
+async function _typeTextNode(textNode, fullText, gen, cps, scrollFn) {
   const text = String(fullText || '');
   if (!text) return;
   let i = 0;
   let sinceScroll = 0;
+  const tickScroll = typeof scrollFn === 'function' ? scrollFn : scrollChatToBottom;
   while (i < text.length) {
     if (gen !== _streamGen) return;
     // Chunk a few chars; pause a beat after sentence punctuation.
@@ -1581,7 +1626,7 @@ async function _typeTextNode(textNode, fullText, gen, cps) {
     sinceScroll += n;
     if (sinceScroll >= 28) {
       sinceScroll = 0;
-      scrollChatToBottom();
+      tickScroll();
     }
     const pause = /[.]/.test(text[i - 1]) ? 1.8
       : /[,;:!?]/.test(text[i - 1]) ? 1.3
@@ -1590,12 +1635,12 @@ async function _typeTextNode(textNode, fullText, gen, cps) {
   }
 }
 
-async function _streamNode(parent, srcNode, gen, cps) {
+async function _streamNode(parent, srcNode, gen, cps, scrollFn) {
   if (gen !== _streamGen) return;
   if (srcNode.nodeType === Node.TEXT_NODE) {
     const tn = document.createTextNode('');
     parent.appendChild(tn);
-    await _typeTextNode(tn, srcNode.textContent, gen, cps);
+    await _typeTextNode(tn, srcNode.textContent, gen, cps, scrollFn);
     return;
   }
   if (srcNode.nodeType !== Node.ELEMENT_NODE) return;
@@ -1604,7 +1649,9 @@ async function _streamNode(parent, srcNode, gen, cps) {
     const clone = srcNode.cloneNode(true);
     clone.classList.add('stream-pop');
     parent.appendChild(clone);
-    scrollChatToBottom();
+    // Result blocks (product grids, etc.) stay pinned to the top of the message.
+    if (contentLooksLikeResults(clone.outerHTML || '')) scrollFn?.();
+    else scrollChatToBottom();
     await _sleep(60);
     return;
   }
@@ -1613,7 +1660,7 @@ async function _streamNode(parent, srcNode, gen, cps) {
   parent.appendChild(el);
   for (const child of [...srcNode.childNodes]) {
     if (gen !== _streamGen) return;
-    await _streamNode(el, child, gen, cps);
+    await _streamNode(el, child, gen, cps, scrollFn);
   }
 }
 
@@ -1622,9 +1669,12 @@ async function streamHtmlInto(bubble, html, opts = {}) {
   if (!bubble) return;
   const instant = opts.instant
     || (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const isResults = contentLooksLikeResults(html);
+  const keepTop = () => scrollToContentStart(bubble);
   if (instant) {
     bubble.classList.remove('is-streaming');
     bubble.innerHTML = html;
+    if (!opts.skipScroll) scrollAfterPopulate(bubble, html);
     return;
   }
   const gen = ++_streamGen;
@@ -1633,12 +1683,15 @@ async function streamHtmlInto(bubble, html, opts = {}) {
   bubble.innerHTML = '';
   const source = document.createElement('div');
   source.innerHTML = html;
+  // For result payloads, pin to the message start while content grows — never chase the bottom.
+  const scrollFn = isResults ? keepTop : scrollChatToBottom;
+  if (isResults) keepTop();
   for (const child of [...source.childNodes]) {
     if (gen !== _streamGen) break;
-    await _streamNode(bubble, child, gen, cps);
+    await _streamNode(bubble, child, gen, cps, scrollFn);
   }
   if (gen === _streamGen) bubble.classList.remove('is-streaming');
-  scrollChatToBottom();
+  if (!opts.skipScroll) scrollAfterPopulate(bubble, html);
 }
 
 async function revealAssistant(msgOrBubble, html, opts = {}) {
@@ -1672,7 +1725,9 @@ function renderChatThread() {
     bindTrendingCards(thread);
     bindGptKalc(thread);
     updateThreadWide();
-    scrollChatToBottom();
+    // Opening a thread that already has product results: start at the top.
+    if (thread.querySelector('.card-grid, .prod-card, .ans-panel')) scrollPanelToTop();
+    else scrollChatToBottom();
     return;
   }
   updateThreadWide();
@@ -1985,6 +2040,7 @@ async function runFinderSearch() {
       : `<p>Belum ketemu produk yang cocok. Coba ganti kategori atau kota, atau ketik pencarian di bawah.</p>`;
     await revealAssistant(loading, html, { instant: true });
     bindProductCards($('chat-thread'));
+    scrollPanelToTop();
     void logUserEvent('gpt_finder_search', {
       ui: 'gpt',
       city: _finder.city,
@@ -3244,7 +3300,6 @@ async function handleTrendingIntent(chat) {
   bindProductCards();
   bindTrendingCards();
   updateThreadWide();
-  scrollChatToBottom();
   setComposerChips(TRENDING_CHIPS, 'trending');
   void logUserEvent('discover_view', { ui: 'gpt', kind: 'trending' });
   clarityEvt('gpt_trending_view', {});
@@ -3281,7 +3336,6 @@ async function handleModalIntent(chat, text) {
   await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', { text: 'Hasil modal', budget, products: top.map(productSnapshot).filter(Boolean) }, html);
   bindProductCards();
-  scrollChatToBottom();
 }
 
 async function handleLowcompIntent(chat) {
@@ -3310,7 +3364,6 @@ async function handleLowcompIntent(chat) {
   loading.querySelectorAll('[data-kwsearch]').forEach(btn => {
     btn.addEventListener('click', () => void handleComposerSubmit(`Cari produk ${btn.getAttribute('data-kwsearch')}`));
   });
-  scrollChatToBottom();
 }
 
 const MARKETPLACE_FEE = 0.08; // asumsi biaya marketplace, dilabel di UI
@@ -3581,7 +3634,6 @@ async function handleProfitIntent(chat, text) {
   const msg = await appendAssistantStream(html);
   pushMessage(chat, 'assistant', { text: 'Estimasi profit' }, html);
   bindGptKalc(msg || document);
-  scrollChatToBottom();
   void logUserEvent('gpt_profit_calc', { ui: 'gpt', has_product: !!product });
 }
 
@@ -3638,14 +3690,12 @@ async function handleBandingkanIntent(chat, text) {
     products: state.recommendations.map(productSnapshot).filter(Boolean),
   }, html);
   bindProductCards();
-  scrollChatToBottom();
 }
 
 async function handleRencanaIntent(chat) {
   const html = `<p>Buka salah satu produk dulu (klik <strong>Lihat Analisis</strong>), lalu minta rencana jualan — aku susun dari data produknya.</p>`;
   await appendAssistantStream(html);
   pushMessage(chat, 'assistant', { text: 'Rencana perlu produk' }, html);
-  scrollChatToBottom();
 }
 
 // ── Free-text search (composer + onboarding freeText bias) ──────────────
@@ -4027,7 +4077,6 @@ async function replyWithCategoryProducts(chat, text, cat) {
     products: products.map(productSnapshot).filter(Boolean),
   }, html);
   bindProductCards();
-  scrollChatToBottom();
   void logUserEvent('discover_view', { ui: 'gpt', q: text, category: cat, count: products.length });
   clarityEvt('gpt_category_search', { category: cat });
 }
@@ -4527,6 +4576,7 @@ async function startRecommendationChat(fromOnboarding) {
   const msg = await appendAssistantStream(html);
   pushMessage(chat, 'assistant', { text: `Rekomendasi ${recs.length} produk`, products: recs.map(productSnapshot).filter(Boolean) }, html);
   bindProductCards();
+  scrollPanelToTop();
 
   void logUserEvent('discover_view', { ui: 'gpt', count: recs.length });
   clarityEvt('discover_view', { ui: 'gpt' });
@@ -5062,11 +5112,13 @@ async function openDeepDive(product) {
   rememberProducts([product]);
   state.deepdiveProduct = product;
   setView('deepdive');
+  scrollPanelToTop();
   noteCategoryOpen(product.category);
   dwellStart(product.category);
   const root = $('deepdive-root');
   if (!root) return;
   root.innerHTML = `<p class="dd-sub">Memuat data Deep Dive…</p>`;
+  scrollPanelToTop();
 
   const kw = product.keyword || '';
   let peers = [];
@@ -5371,6 +5423,8 @@ async function openDeepDive(product) {
   // Pinned bar appears once the big header scrolls out of view.
   watchDeepDiveHeaderForPin(root);
   updateProductPin();
+  // Deep Dive HTML just populated — stay at the top (don't land mid-page).
+  scrollPanelToTop();
 
   setComposerChips(DD_CHIPS, 'deepdive');
 
@@ -6300,6 +6354,7 @@ async function renderDirectory() {
   const slice = rows.slice(start, start + PAGE_SIZE);
   grid.innerHTML = slice.map((p, i) => productCardHtml(p, i % 3)).join('') || '<p class="dd-sub">Tidak ada produk untuk filter ini.</p>';
   bindProductCards(grid);
+  scrollPanelToTop();
   if (pager) {
     const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
     pager.innerHTML = `
