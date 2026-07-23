@@ -1521,6 +1521,57 @@ function activeChat() {
   return state.chats.find(c => (c.id || c.localId) === state.activeChatId) || null;
 }
 
+function sameProductRef(a, b) {
+  if (!a || !b || a.item_id == null || b.item_id == null) return false;
+  return String(a.item_id) === String(b.item_id) && String(a.shop_id) === String(b.shop_id);
+}
+
+/** True when this chat is dedicated to the given product Deep Dive. */
+function chatIsForProduct(chat, product) {
+  if (!chat || !product) return false;
+  if (sameProductRef(chat.context?.product, product)) return true;
+  if (chat.context?.kind === 'product'
+    && String(chat.context.item_id) === String(product.item_id)
+    && String(chat.context.shop_id) === String(product.shop_id)) return true;
+  return false;
+}
+
+/** Prefer context.product; else recover from the latest Deep Dive message in the thread. */
+function resolveChatProduct(chat) {
+  if (!chat) return null;
+  if (chat.context?.product?.item_id != null) return asListingProduct(chat.context.product);
+  if (chat.context?.kind === 'product' && chat.context.item_id != null) {
+    return asListingProduct({
+      item_id: chat.context.item_id,
+      shop_id: chat.context.shop_id,
+      keyword: chat.context.keyword || '',
+      product_name: chat.title || '',
+    });
+  }
+  const msgs = chat.messages || [];
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const m = msgs[i];
+    if (m?.role !== 'assistant' || m.content?.kind !== 'deepdive') continue;
+    const snap = m.content?.products?.[0];
+    if (snap?.item_id != null) return asListingProduct(snap);
+    if (m.content?.item_id != null) {
+      return asListingProduct({
+        item_id: m.content.item_id,
+        shop_id: m.content.shop_id,
+        product_name: chat.title || '',
+      });
+    }
+  }
+  return null;
+}
+
+function beginFreshChat() {
+  state.activeChatId = null;
+  state.deepdiveProduct = null;
+  saveLocalState();
+  renderChatList();
+}
+
 function scrollPanelToTop() {
   const panel = $('panel');
   if (!panel) return;
@@ -1725,9 +1776,17 @@ function renderChatThread() {
     bindTrendingCards(thread);
     bindGptKalc(thread);
     updateThreadWide();
-    // Opening a thread that already has product results: start at the top.
-    if (thread.querySelector('.card-grid, .prod-card, .ans-panel')) scrollPanelToTop();
-    else scrollChatToBottom();
+    // Product threads: land on the Deep Dive card. Search threads: top of results.
+    const product = resolveChatProduct(chat);
+    if (product) {
+      const card = thread.querySelector(`[data-dd-card="${prodKey(product)}"]`);
+      if (card) scrollToContentStart(card);
+      else scrollPanelToTop();
+    } else if (thread.querySelector('.card-grid, .prod-card, .ans-panel')) {
+      scrollPanelToTop();
+    } else {
+      scrollChatToBottom();
+    }
     return;
   }
   updateThreadWide();
@@ -2005,9 +2064,20 @@ async function runFinderSearch() {
     ].join(' · ');
 
     setView('chat');
+    // Finder is a new search — don't append onto an open product Deep Dive chat.
     let chat = activeChat();
+    if (chat?.context?.product || chat?.context?.kind === 'product') {
+      beginFreshChat();
+      chat = null;
+    }
     if (!chat) {
-      chat = { localId: 'local_' + Date.now(), title: `Produk: ${_finder.category}`, context: {}, messages: [], created_at: Date.now() };
+      chat = {
+        localId: 'local_' + Date.now(),
+        title: `Produk: ${_finder.category}`,
+        context: { kind: 'finder', city: _finder.city, category: _finder.category, budget: _finder.budget },
+        messages: [],
+        created_at: Date.now(),
+      };
       state.chats.unshift(chat);
       state.activeChatId = chat.localId;
       renderChatList();
@@ -3240,7 +3310,12 @@ function parseBudget(text) {
 async function handleIntent(intent, text) {
   abortAssistantStream();
   setView('chat');
+  // Market intents never belong inside a product Deep Dive thread.
   let chat = activeChat();
+  if (chat?.context?.product || chat?.context?.kind === 'product') {
+    beginFreshChat();
+    chat = null;
+  }
   if (!chat) {
     chat = { localId: 'local_' + Date.now(), title: text.slice(0, 40), context: {}, messages: [], created_at: Date.now() };
     state.chats.unshift(chat);
@@ -3784,7 +3859,7 @@ function cityMentionedIn(lower) {
 
 // Inside a product chat: detect asks that are really about the MARKET, not the
 // open product — a city product-list ask, category discovery (“cari skincare”),
-// or a generic "what should I sell".
+// a fresh “cari X” keyword search, or a generic "what should I sell".
 function detectTopicChange(lower) {
   const listWords = /(produk|jualan|barang)\s+apa|apa yang (bagus|laris|laku|cocok)(\s+(di)?jual)?|rekomendasi (produk|jualan)|cari (produk|barang)|(produk|jualan|barang)\s+(yang\s+)?(bagus|laris|laku|lagi naik|naik daun|trending)/;
   const city = cityMentionedIn(lower);
@@ -3796,6 +3871,10 @@ function detectTopicChange(lower) {
   // and answer from the product database instead.
   if (detectCategoryFromText(lower) && isProductDiscoveryAsk(lower)) {
     return { kind: 'category_list' };
+  }
+  // “Cari tumbler / carikan sepatu…” — new product search, not Q&A on this Deep Dive.
+  if (/^(cari|carikan|tunjukkan|tampilkan)\b/.test(lower) && !/bandingkan|dibanding/.test(lower)) {
+    return { kind: 'keyword_search' };
   }
   return null;
 }
@@ -4578,7 +4657,6 @@ async function openChat(id) {
   state.activeChatId = id;
   saveLocalState();
   renderChatList();
-  setView('chat');
   const chat = activeChat();
   seedProductsFromChat(chat);
   if (chat && currentUser && chat.id && (!chat.messages || !chat.messages.length) && _supabase) {
@@ -4595,16 +4673,27 @@ async function openChat(id) {
       seedProductsFromChat(chat);
     } catch (_) {}
   }
+
+  // Product Deep Dive threads reopen on the analysis — chat scrolls are behind it.
+  const product = resolveChatProduct(chat);
+  if (product) {
+    rememberProducts([product]);
+    chat.context = {
+      ...(chat.context || {}),
+      kind: 'product',
+      product,
+      item_id: product.item_id,
+      shop_id: product.shop_id,
+      keyword: product.keyword || chat.context?.keyword || '',
+    };
+    saveLocalState();
+    await openDeepDive(product);
+    return;
+  }
+
+  setView('chat');
   renderChatThread();
   updateProductPin();
-  // Product / deep-dive chats keep analysis reachable — reopen Deep Dive
-  // from the persisted context so it never "disappears" from the chat.
-  // Login gate stays inside openDeepDive; skip auto-restore when logged out
-  // so opening history doesn't spam the auth modal.
-  if (chat?.context?.product && currentUser) {
-    rememberProducts([chat.context.product]);
-    void openDeepDive(chat.context.product);
-  }
 }
 
 async function newChatFlow() {
@@ -5237,10 +5326,23 @@ async function openDeepDive(product) {
     state.deepdiveProduct = product;
   }
 
-  // Attach to active chat session
+  // One product Deep Dive = one chat. Reuse only when this thread is already
+  // for the same product; never append another Deep Dive onto a search thread
+  // or a different product's chat.
   let chat = activeChat();
+  if (chat && !chatIsForProduct(chat, product)) {
+    chat = null;
+    state.activeChatId = null;
+  }
+  const title = (product.product_name || product.keyword || 'Produk').slice(0, 60);
+  const baseCtx = {
+    kind: 'product',
+    keyword: kw,
+    item_id: product.item_id,
+    shop_id: product.shop_id,
+    product,
+  };
   if (!chat) {
-    const title = (product.product_name || product.keyword || 'Produk').slice(0, 60);
     if (currentUser && _supabase) {
       const { data } = await _supabase.rpc('gpt_new_chat', {
         p_title: title,
@@ -5250,21 +5352,31 @@ async function openDeepDive(product) {
       if (data?.allowed === false) {
         // The daily cap is on NEW searches — viewing a product must never be
         // walled (MISSION: no trapping). Keep the session local, keep going.
-        chat = { localId: 'local_' + Date.now(), title, context: { kind: 'product', keyword: kw, item_id: product.item_id, shop_id: product.shop_id }, messages: [], created_at: Date.now() };
+        chat = { localId: 'local_' + Date.now(), title, context: { ...baseCtx }, messages: [], created_at: Date.now() };
         state.chats.unshift(chat);
         state.activeChatId = chat.localId;
       } else if (data?.chat) {
-        chat = { id: data.chat.id, title, context: data.chat.context, messages: [], created_at: Date.now() };
+        chat = {
+          id: data.chat.id,
+          title,
+          context: { ...(data.chat.context || {}), ...baseCtx },
+          messages: [],
+          created_at: Date.now(),
+        };
         state.chats.unshift(chat);
         state.activeChatId = chat.id;
       }
+    }
+    if (!chat) {
+      chat = { localId: 'local_' + Date.now(), title, context: { ...baseCtx }, messages: [], created_at: Date.now() };
+      state.chats.unshift(chat);
+      state.activeChatId = chat.localId;
     }
   }
   if (chat) {
     chat.context = {
       ...(chat.context || {}),
-      product,
-      keyword: kw,
+      ...baseCtx,
       peers: (peers || []).slice(0, 50).map(r => ({
         product_name: r.product_name,
         store_name: r.store_name,
@@ -5274,7 +5386,7 @@ async function openDeepDive(product) {
         shop_id: r.shop_id,
       })),
     };
-    chat.title = (product.product_name || kw || chat.title || 'Produk').slice(0, 60);
+    chat.title = title;
     saveLocalState();
     renderChatList();
   }
@@ -5418,7 +5530,13 @@ async function openDeepDive(product) {
     <p class="ddr-caption" style="margin-top:10px">Semua angka dari data Shopee via LarisID — bukan tebakan AI. Ketik pertanyaan di bawah untuk tanya AI tentang produk ini.</p>
   `;
 
-  $('dd-back')?.addEventListener('click', () => { setView('chat'); renderChatThread(); });
+  $('dd-back')?.addEventListener('click', () => {
+    setView('chat');
+    renderChatThread();
+    const card = document.querySelector(`#chat-thread [data-dd-card="${prodKey(product)}"]`);
+    if (card) scrollToContentStart(card);
+    else scrollPanelToTop();
+  });
   $('btn-more-from-dd')?.addEventListener('click', () => void openMoreProductsDirectory());
   $('btn-serupa-from-dd')?.addEventListener('click', () => {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'serupa_panel', via: 'click', keyword: kw || '' });
@@ -5838,19 +5956,14 @@ async function handleComposerSubmit(text) {
     }
   }
 
-  // Topic change inside a product chat: market-level asks leave the chat.
-  // A city list ask opens the Produk directory filtered to that city; a
-  // category discovery ask (“cari skincare”) or generic “what should I sell”
-  // re-enters as a fresh, context-free message.
+  // Topic change inside a product chat: market-level / new-search asks leave
+  // this Deep Dive thread so each product stays organized in its own chat.
   if (inProductCtx) {
     const route = detectTopicChange(lower);
     if (route) {
       void logUserEvent('gpt_intent', { ui: 'gpt', intent: 'topic_change', kind: route.kind, city: route.city || '' });
       clarityEvt('gpt_intent', { intent: 'topic_change' });
-      state.activeChatId = null;
-      state.deepdiveProduct = null;
-      saveLocalState();
-      renderChatList();
+      beginFreshChat();
       if (route.kind === 'city_list') {
         await openDirectoryForCity(route.city);
         showToast(`Produk dari seller sekitar ${route.city}`);
