@@ -2347,7 +2347,7 @@ function wirePrefsDrawer() {
       const arr = _prefsDraft.categories;
       const i = arr.indexOf(c);
       if (i >= 0) arr.splice(i, 1);
-      else if (arr.length < 3) arr.push(c);
+      else arr.push(c);
       renderPrefsCatChips();
       return;
     }
