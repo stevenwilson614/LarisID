@@ -6,12 +6,14 @@ serve(async (req) => {
     const record = payload.record ?? payload   // works for both webhook and direct call
 
     const typeLabel: Record<string, string> = {
+      product:      'Request Produk',
+      idea:         'Ide',
       bug:          'Bug / Error',
       feature:      'Saran Fitur',
       wrong_data:   'Data Salah',
       not_working:  'Tidak Berfungsi',
       request_edit: 'Minta Edit',
-      other:        'Lainnya',
+      other:        'Feedback',
     }
     const label = typeLabel[record.type] ?? record.type
     const ctx = record.element_context as { element?: string; section?: string; value?: string } | null
@@ -25,10 +27,10 @@ serve(async (req) => {
       body: JSON.stringify({
         from: Deno.env.get('RESEND_FROM_EMAIL') || 'Steven <steven@larisid.com>',
         to: 'stevenwilson614@gmail.com',
-        subject: `[${label}] Masukan baru dari LarisID`,
+        subject: `[${label}] Pesan baru untuk Steven`,
         html: `
           <div style="font-family:sans-serif;max-width:500px;">
-            <h2 style="color:#1A1F3C;margin-bottom:4px;">Masukan Baru</h2>
+            <h2 style="color:#1A1F3C;margin-bottom:4px;">Pesan Baru untuk Steven</h2>
             <p style="margin:0 0 16px;font-size:13px;color:#6B7280;">LarisID · ${new Date().toLocaleString('id-ID')}</p>
             <table style="width:100%;border-collapse:collapse;font-size:14px;">
               <tr><td style="padding:8px 0;font-weight:700;color:#374151;width:100px;">Tipe</td><td style="padding:8px 0;color:#1A1F3C;">${label}</td></tr>

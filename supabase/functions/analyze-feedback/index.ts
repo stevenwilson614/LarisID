@@ -57,7 +57,7 @@ personal-preference: subjective opinion, no technical component
 ━━━ APP CONTEXT ━━━
 Charts: sales trends (dd-chart-trend), price distribution (dd-chart-dist), competitor donut, category performance, market demand (ap-demand-chart), keyword trend (tren-main-chart), comparison trend (tren-cmp-chart), weekly tracking (trk-chart-weekly), keyword revenue (kd-cat-chart), keyword top-15 trend (kd-trend-chart).
 Data pipeline: Shopee scraper → Supabase (weekly_snapshots, keyword_intelligence, listings_deduped, listing_deltas, scrape_runs).
-Feedback types: bug, feature, other (general) | wrong_data, not_working, request_edit (element-specific).`
+Feedback types: product, idea, feature, other, bug (general) | wrong_data, not_working, request_edit (element-specific).`
 
 const AI_MODEL = 'deepseek-v4-pro'
 const DEEPSEEK_MESSAGES_URL = 'https://api.deepseek.com/anthropic/v1/messages'
@@ -172,7 +172,7 @@ async function analyzeRow(
   }
 
   const typeMap: Record<string, string> = {
-    bug: 'Bug / Error', feature: 'Feature Request', other: 'Other',
+    product: 'Product Request', idea: 'Idea', bug: 'Bug / Error', feature: 'Feature Request', other: 'Feedback',
     wrong_data: 'Wrong Data', not_working: 'Not Working', request_edit: 'Request Edit',
   }
   const prompt = `Feedback to analyze:

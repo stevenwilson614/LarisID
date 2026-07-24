@@ -4929,14 +4929,19 @@ function _mlsAiMedian(arr) {
   return s.length ? s[Math.floor(s.length / 2)] : 0;
 }
 
-function _toMonthly(r) { return (r.price || 0) * (r.total_sold || 0) / 6; }
+function _toMonthly(r) {
+  // Prefer the stored scale-aware omset estimate (real delta or cohort-imputed);
+  // fall back to the crude lifetime/6 heuristic only when it's missing.
+  if (r.est_omset_monthly != null && r.est_omset_monthly >= 0) return r.est_omset_monthly;
+  return (r.price || 0) * (r.total_sold || 0) / 6;
+}
 
 async function _mlsFetchKeywordMarket(keyword) {
   const empty = { rows: [], mPrice: 0, mSold: 0, totalOmset: 0, sigSellers: [], top5: [] };
   if (!keyword || !_supabase) return empty;
   const { data: rawData } = await _supabase
     .from('listings')
-    .select('product_name, store_name, image_url, price, total_sold, reviews, location, item_id, shop_id, keyword, url')
+    .select('product_name, store_name, image_url, price, total_sold, reviews, location, item_id, shop_id, keyword, url, est_omset_monthly')
     .eq('keyword', keyword)
     .order('total_sold', { ascending: false })
     .limit(300);
@@ -8761,9 +8766,17 @@ function _dscOmset(listing) {
   const price = listing.price || 0;
   const delta = _dscCorrectedUnitDelta(listing);
   if (delta != null) {
-    return price * Math.max(0, delta) * 4;  // ~4 weeks in a month
+    return price * Math.max(0, delta) * 4;  // ~4 weeks in a month (real per-item delta)
   }
-  // Check if we have a peer velocity cached for this category+price
+  // Server-side scale-aware cohort estimate (est_omset_monthly). Stored per row by
+  // refresh_omset_estimates: real delta where available, else category×scale peer
+  // median. This is the primary path for first-scrape products (no client prev row)
+  // and supersedes the scale-blind client peer fetch + the lifetime/6 fallback below.
+  if (listing.est_omset_monthly != null && listing.est_omset_monthly >= 0) {
+    return listing.est_omset_monthly;
+  }
+  // Legacy fallback (only if the stored estimate is missing) —
+  // check if we have a peer velocity cached for this category+price
   if (price > 0 && listing.category) {
     const bucket = `${listing.category}|${Math.round(price / 20000) * 20000}`;
     const peerVel = _peerVelocityCache[bucket];
@@ -8915,7 +8928,7 @@ async function _dscEnsureBrowsePool(min = 60) {
     // category/panel filters are active and can fail the same way they did.
     const { data } = await _supabase
       .from('listings')
-      .select('item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews,est_sold,sold_tier')
+      .select('item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews,est_sold,sold_tier,est_omset_monthly,omset_confidence')
       .gt('total_sold', 0)
       .order('total_sold', { ascending: false })
       .limit(Math.max(min, 60));
@@ -8990,7 +9003,7 @@ function _dscApplySearchFilter(q, query) {
 }
 
 function _dscBuildListingsQuery(offset, filters, opts = {}) {
-  const FIELDS = 'item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews,est_sold,sold_tier';
+  const FIELDS = 'item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews,est_sold,sold_tier,est_omset_monthly,omset_confidence';
   const rangeFrom = opts.rangeFrom != null ? opts.rangeFrom : offset;
   const rangeTo   = opts.rangeTo   != null ? opts.rangeTo   : offset + DSC_PAGE_SIZE - 1;
   let q = _supabase
@@ -19709,7 +19722,7 @@ function openFeedback() { openFeedbackModal(); }
 
 // ── Native Feedback Modal ─────────────────────────────────────────────────────
 
-let _fbType = 'bug';
+let _fbType = 'product';
 let _fbElementCtx = null; // { element, section, value } when opened from a flag button
 
 function openFeedbackModal(ctx) {
@@ -19721,10 +19734,10 @@ function openFeedbackModal(ctx) {
   // title + subtitle
   const title = document.getElementById('fb-modal-title');
   const sub = document.getElementById('fb-modal-sub');
-  if (title) title.textContent = isElement ? 'Laporkan Masalah' : 'Beri Masukan';
+  if (title) title.textContent = isElement ? 'Laporkan Masalah' : 'Pesan ke Steven';
   if (sub) sub.textContent = isElement
     ? 'Pilih jenis masalah dan tambahkan catatan jika perlu.'
-    : 'Bantu kami tingkatkan LarisID. Setiap masukan dibaca langsung oleh tim kami.';
+    : 'Steven (founder LarisID) baca setiap pesan. Minta produk, ide, fitur, atau kasih feedback — langsung ketik saja.';
 
   // element context banner
   const banner = document.getElementById('fb-ctx-banner');
@@ -19738,7 +19751,7 @@ function openFeedbackModal(ctx) {
   if (gChips) gChips.style.display = isElement ? 'none' : 'flex';
   if (eChips) eChips.style.display = isElement ? 'flex' : 'none';
 
-  const defaultType = isElement ? 'wrong_data' : 'bug';
+  const defaultType = isElement ? 'wrong_data' : 'product';
   _fbType = defaultType;
   fbSetType(defaultType);
 
@@ -19748,12 +19761,12 @@ function openFeedbackModal(ctx) {
     msg.style.borderColor = '#E5E7EB';
     msg.placeholder = isElement
       ? 'Opsional — jelaskan lebih lanjut apa yang terlihat salah...'
-      : 'Ceritakan apa yang terjadi atau apa yang kamu inginkan...';
+      : 'Tulis pesanmu untuk Steven…';
   }
   const status = document.getElementById('fb-submit-status');
   if (status) { status.textContent = ''; status.style.color = ''; }
   const btn = document.getElementById('fb-submit-btn');
-  if (btn) { btn.disabled = false; btn.textContent = 'Kirim Masukan'; }
+  if (btn) { btn.disabled = false; btn.textContent = 'Kirim ke Steven'; }
   overlay.style.display = 'flex';
 }
 
@@ -19765,7 +19778,7 @@ function closeFeedbackModal() {
 
 function fbSetType(type) {
   _fbType = type;
-  const allChips = ['bug','feature','other','wrong_data','not_working','request_edit','other2'];
+  const allChips = ['product','idea','feature','other','wrong_data','not_working','request_edit','other2','bug'];
   allChips.forEach(t => {
     const chip = document.getElementById('fb-chip-' + t);
     if (!chip) return;
@@ -19832,12 +19845,12 @@ async function submitFeedback() {
         if (error) console.warn('analyze-feedback invoke:', error.message);
         else if (data?.errors?.length) console.warn('analyze-feedback errors:', data.errors);
       });
-    if (status) { status.textContent = 'Terkirim! Terima kasih.'; status.style.color = '#16A34A'; }
+    if (status) { status.textContent = 'Terkirim! Steven akan baca pesanmu.'; status.style.color = '#16A34A'; }
     if (btn) { btn.textContent = 'Terkirim'; }
     setTimeout(closeFeedbackModal, 1800);
   } catch (err) {
     if (status) { status.textContent = 'Gagal mengirim. Coba lagi.'; status.style.color = '#B5202A'; }
-    if (btn) { btn.disabled = false; btn.textContent = 'Kirim Masukan'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Kirim ke Steven'; }
   }
 }
 
@@ -19855,12 +19868,14 @@ function admFbSetView(view) {
 function renderFeedbackCard(row, opts = {}) {
   const inVault = opts.inVault === true;
   const badge = {
+    product:      ['#FFEDD5','#C2410C','Produk'],
+    idea:         ['#EDE9FE','#6D28D9','Ide'],
     bug:          ['#FEE2E2','#DC2626','Bug'],
     feature:      ['#DBEAFE','#1D4ED8','Fitur'],
     wrong_data:   ['#FEF9C3','#B45309','Data Salah'],
     not_working:  ['#FEE2E2','#DC2626','Tidak Berfungsi'],
     request_edit: ['#DCFCE7','#15803D','Minta Edit'],
-    other:        ['#F3F4F6','#6B7280','Lainnya'],
+    other:        ['#F3F4F6','#6B7280','Feedback'],
   };
   const statOpts = ['new','reviewing','done','dismissed'];
   const [bg, fg, lbl] = badge[row.type] || badge.other;
