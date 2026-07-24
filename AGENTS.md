@@ -27,3 +27,14 @@ Before changing titles, competitor comparisons, pricing copy on the public site,
 ## Supabase CLI
 
 For `supabase db push` and other CLI commands, load credentials from **`supabase/.env.local`** (`SUPABASE_ACCESS_TOKEN`). See **`supabase/README.md`**. Never commit tokens or paste them into tracked files.
+
+## Shopee scraper (separate repo)
+
+Scrapes run on Macs and push to self-host `https://api.larisid.com` (Contabo).
+Canonical docs and dual-laptop agent rules live in the private scraper repo — **not** here:
+
+- https://github.com/stevenwilson614/shopee_scraper  
+- Start at `README.md` → `docs/AGENTS.md` → `docs/ARCHITECTURE.md`  
+- Dual-host day4: `docs/DUAL_LAPTOP.md` (A = batches 1–25, B = 26–50)
+
+After scraper code/doc changes: commit + push that repo; on the other laptop run `git pull` before scraping. Do not run Chrome CDP scrapes on the Contabo VPS by default.
