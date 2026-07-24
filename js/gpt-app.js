@@ -5073,15 +5073,13 @@ function ddHeaderMediaHtml(product, peers) {
   }
   return `<div class="ddr-gallery" data-ddr-carousel role="region" aria-roledescription="carousel" aria-label="Foto top ${imgs.length} produk tipe ini">
     <div class="ddr-gallery-main">
-      <div class="ddr-carousel-track">
-        ${imgs.map((u, i) => `<img src="${esc(u)}" alt="" loading="${i ? 'lazy' : 'eager'}" data-idx="${i}" data-ddr-main${i ? ' hidden' : ''}>`).join('')}
-      </div>
+      <img src="${esc(imgs[0])}" alt="" data-ddr-main>
       <button type="button" class="ddr-carousel-btn prev" data-ddr-prev aria-label="Foto sebelumnya">‹</button>
       <button type="button" class="ddr-carousel-btn next" data-ddr-next aria-label="Foto berikutnya">›</button>
       <div class="ddr-carousel-count"><span data-ddr-count>1</span>/${imgs.length}</div>
     </div>
     <div class="ddr-gallery-thumbs" role="tablist" aria-label="Pilih foto" style="grid-template-columns:repeat(${imgs.length},1fr)">
-      ${imgs.map((u, i) => `<button type="button" class="ddr-gallery-thumb${i === 0 ? ' on' : ''}" data-ddr-dot="${i}" aria-label="Foto ${i + 1}" aria-selected="${i === 0 ? 'true' : 'false'}">
+      ${imgs.map((u, i) => `<button type="button" class="ddr-gallery-thumb${i === 0 ? ' on' : ''}" data-ddr-dot="${i}" data-ddr-src="${esc(u)}" aria-label="Foto ${i + 1}" aria-selected="${i === 0 ? 'true' : 'false'}">
         <img src="${esc(u)}" alt="" loading="lazy" draggable="false">
       </button>`).join('')}
     </div>
@@ -5091,14 +5089,15 @@ function ddHeaderMediaHtml(product, peers) {
 function bindDdrCarousel(root) {
   const car = root?.querySelector?.('[data-ddr-carousel]');
   if (!car) return;
-  const imgs = [...car.querySelectorAll('[data-ddr-main]')];
+  const main = car.querySelector('[data-ddr-main]');
   const thumbs = [...car.querySelectorAll('[data-ddr-dot]')];
+  const srcs = thumbs.map((t) => t.getAttribute('data-ddr-src') || t.querySelector('img')?.getAttribute('src') || '').filter(Boolean);
   const countEl = car.querySelector('[data-ddr-count]');
-  if (imgs.length < 2) return;
+  if (!main || srcs.length < 2) return;
   let i = 0;
   const show = (n) => {
-    i = ((n % imgs.length) + imgs.length) % imgs.length;
-    imgs.forEach((img, idx) => { img.hidden = idx !== i; });
+    i = ((n % srcs.length) + srcs.length) % srcs.length;
+    main.src = srcs[i];
     thumbs.forEach((t, idx) => {
       const on = idx === i;
       t.classList.toggle('on', on);
