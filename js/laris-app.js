@@ -2007,9 +2007,9 @@ async function openDetail(id) {
 
 // ── SELLER ACCURACY VOTING ────────────────────────────────────
 // CLAUDE_KEY removed — AI calls now go through the claude-proxy Edge Function.
-const SUPA_URL = 'https://bzmvlraziqevqdyotvgy.supabase.co';
+const SUPA_URL = 'https://api.larisid.com';
 const SUPA_KEY = 'sb_publishable_KDSWIJJLckser1e1hk7bbA_yMChRPog';
-const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6bXZscmF6aXFldnFkeW90dmd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0MDU1MjUsImV4cCI6MjA4OTk4MTUyNX0.nppVtaxoT4z4slUOTvZo5stmP26bb5qoJXkswHVw9EE';
+const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg0MzM2Njc5LCJleHAiOjI0MTUwNTY2Nzl9.IuuxcLjM-ljEyrn2lInAqzESImYfMXlBBTZI2i671Ec';
 const SUPA_HDR = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' };
 
 // Bootstrap roles. Database-backed role RPCs are the source of truth when available.
@@ -25247,7 +25247,7 @@ function _wsaGCalLink(s) {
 function _wsaCalFeedUrl() {
   const c = _cohortState && _cohortState.primaryMentorCohort;
   if (!c || !c.id || !c.calendar_token) return '';
-  return `webcal://bzmvlraziqevqdyotvgy.supabase.co/functions/v1/cohort-calendar-ics?cohort=${encodeURIComponent(c.id)}&token=${encodeURIComponent(c.calendar_token)}`;
+  return `webcal://api.larisid.com/functions/v1/cohort-calendar-ics?cohort=${encodeURIComponent(c.id)}&token=${encodeURIComponent(c.calendar_token)}`;
 }
 
 async function _wsaCopyText(text) {
