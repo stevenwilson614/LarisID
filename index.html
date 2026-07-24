@@ -197,7 +197,7 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260723d';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260724a';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
@@ -9324,6 +9324,16 @@ html,body{overflow-x:clip;max-width:100%;}
               </div>
             </div>
 
+            <!-- Section 1b: Monthly signups + landing views -->
+            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:18px;margin-bottom:20px;">
+              <div class="adm-section-title">Sign-ups &amp; Kunjungan Landing — per Bulan</div>
+              <div style="font-size:.7rem;color:#9CA3AF;margin-bottom:12px;">Line chart bulanan · sumbu kiri = sign-ups · sumbu kanan = tampilan landing (tracking landing sejak ~20 Jul 2026)</div>
+              <div id="adm-monthly-chart-wrap" style="position:relative;height:240px;">
+                <canvas id="adm-monthly-chart" aria-label="Grafik bulanan sign-ups dan kunjungan landing"></canvas>
+              </div>
+              <div id="adm-monthly-empty" style="display:none;font-size:.72rem;color:#9CA3AF;padding:8px 0;">Belum ada data bulanan.</div>
+            </div>
+
             <!-- Section 2: Sessions chart -->
             <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:18px;margin-bottom:20px;">
               <div class="adm-section-title">Sesi Harian — 30 Hari Terakhir</div>
@@ -9937,7 +9947,7 @@ html,body{overflow-x:clip;max-width:100%;}
      SITE FOOTER
 ════════════════════════════════════ -->
 
-<script defer src="/js/laris-app.js?v=20260723d"></script>
+<script defer src="/js/laris-app.js?v=20260724a"></script>
 
   <!-- ── CONTEXTUAL ONBOARDING HINTS ── -->
   <div id="hint-overlay" aria-hidden="true" onclick="if(event.target===this)nuHintDismiss()">

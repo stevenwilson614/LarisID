@@ -3651,6 +3651,138 @@ function adminFloatInit() {
 let _adminPanel = 'overview';
 let _adminUsers = [];
 let _adminUserFilter = 'all';
+let _admMonthlyChart = null;
+
+function _admMonthKey(v) {
+  return String(v || '').slice(0, 7); // YYYY-MM from date / timestamptz
+}
+
+function _admMonthLabels(keys) {
+  const names = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+  return keys.map((k) => {
+    const [y, mo] = k.split('-');
+    const i = Number(mo) - 1;
+    return `${names[i] || mo} ${String(y || '').slice(2)}`;
+  });
+}
+
+/** Continuous YYYY-MM keys from first to last month present in either series. */
+function _admFillMonthKeys(signups, views) {
+  const raw = [
+    ...signups.map((r) => _admMonthKey(r.month)),
+    ...views.map((r) => _admMonthKey(r.month)),
+  ].filter((k) => /^\d{4}-\d{2}$/.test(k)).sort();
+  if (!raw.length) return [];
+  const out = [];
+  const [ys, ms] = raw[0].split('-').map(Number);
+  const [ye, me] = raw[raw.length - 1].split('-').map(Number);
+  let y = ys, m = ms;
+  while (y < ye || (y === ye && m <= me)) {
+    out.push(`${y}-${String(m).padStart(2, '0')}`);
+    m += 1;
+    if (m > 12) { m = 1; y += 1; }
+  }
+  return out;
+}
+
+async function adminRenderMonthlyChart(s) {
+  const wrap = document.getElementById('adm-monthly-chart-wrap');
+  const canvas = document.getElementById('adm-monthly-chart');
+  const empty = document.getElementById('adm-monthly-empty');
+  if (!canvas) return;
+  const signups = s.signups_monthly || [];
+  const views = s.landing_views_monthly || [];
+  const keys = _admFillMonthKeys(signups, views);
+  if (!keys.length) {
+    if (wrap) wrap.style.display = 'none';
+    if (empty) empty.style.display = 'block';
+    if (_admMonthlyChart) { try { _admMonthlyChart.destroy(); } catch (_) {} _admMonthlyChart = null; }
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  if (wrap) wrap.style.display = '';
+
+  await larisEnsureChart();
+  if (typeof Chart === 'undefined') return;
+
+  const suMap = Object.fromEntries(signups.map((r) => [_admMonthKey(r.month), Number(r.signups) || 0]));
+  const vwMap = Object.fromEntries(views.map((r) => [_admMonthKey(r.month), Number(r.views) || 0]));
+  const suData = keys.map((k) => suMap[k] || 0);
+  const vwData = keys.map((k) => vwMap[k] || 0);
+  const labels = _admMonthLabels(keys);
+
+  if (_admMonthlyChart) { try { _admMonthlyChart.destroy(); } catch (_) {} _admMonthlyChart = null; }
+  _admMonthlyChart = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Sign-ups',
+          data: suData,
+          borderColor: '#B5202A',
+          backgroundColor: 'rgba(181,32,42,.1)',
+          tension: 0.25,
+          fill: false,
+          yAxisID: 'y',
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+        },
+        {
+          label: 'Landing views',
+          data: vwData,
+          borderColor: '#2563EB',
+          backgroundColor: 'rgba(37,99,235,.1)',
+          tension: 0.25,
+          fill: false,
+          yAxisID: 'y1',
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          borderWidth: 2,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { boxWidth: 12, font: { size: 11 }, usePointStyle: true },
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.dataset.label}: ${Number(ctx.raw || 0).toLocaleString('id-ID')}`,
+          },
+        },
+      },
+      scales: {
+        y: {
+          type: 'linear',
+          position: 'left',
+          beginAtZero: true,
+          title: { display: true, text: 'Sign-ups', color: '#B5202A', font: { size: 10, weight: '600' } },
+          ticks: { precision: 0, color: '#6B7280', font: { size: 10 } },
+          grid: { color: 'rgba(0,0,0,.05)' },
+        },
+        y1: {
+          type: 'linear',
+          position: 'right',
+          beginAtZero: true,
+          grid: { drawOnChartArea: false },
+          title: { display: true, text: 'Landing views', color: '#2563EB', font: { size: 10, weight: '600' } },
+          ticks: { precision: 0, color: '#6B7280', font: { size: 10 } },
+        },
+        x: {
+          ticks: { color: '#6B7280', font: { size: 10 }, maxRotation: 0 },
+          grid: { display: false },
+        },
+      },
+    },
+  });
+}
 
 function adminSwitchPanel(panel) {
   _adminPanel = panel || 'overview';
@@ -3731,6 +3863,8 @@ async function loadAdminOverview() {
           if (lvEmpty) lvEmpty.style.display = 'block';
         }
       }
+
+      void adminRenderMonthlyChart(s);
 
       const dauEl = document.getElementById('adm-dau-chart');
       if (dauEl && s.dau_last_30d?.length) {
