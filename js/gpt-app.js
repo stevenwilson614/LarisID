@@ -7099,8 +7099,9 @@ function wireUi() {
     if (e.key === 'Escape' && !$('img-lightbox')?.hidden) { e.preventDefault(); closeLightbox(); }
   });
   document.addEventListener('click', (e) => {
-    const img = e.target?.closest?.('#product-pin-img, .ddr-header img, .dd-chat-card-top img');
+    const img = e.target?.closest?.('#product-pin-img, .ddr-header > img, [data-ddr-main], .dd-chat-card-top img');
     if (!img || !img.getAttribute('src')) return;
+    if (img.closest('.ddr-gallery-thumb')) return;
     const scope = img.closest('.product-pin, .ddr-header, .dd-chat-card');
     const cap = scope?.querySelector('.product-pin-name, h1, .dd-chat-card-name')?.textContent || '';
     e.preventDefault();
