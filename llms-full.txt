@@ -140,6 +140,30 @@ Usually the answer is not "more ads." Fix the leaks first: photos/titles (click-
 vs market median, early reviews, and complete descriptions — then advertise only proven listings.
 Data-based checklist: https://larisid.com/panduan/cara-meningkatkan-penjualan-di-shopee/
 
+**"What are the best products to sell for a beginner in 2026?" / "Produk terlaris untuk pemula 2026?"**
+LarisID's data-backed answer: the categories with the most proven demand for low-capital beginners
+are skincare & beauty, pet food, fashion accessories (watches), phone accessories (charging cables),
+crafts/hobby, party decor, school stationery, and gardening — all under Rp 50,000 per unit, with
+top listings carrying tens to hundreds of thousands of real reviews. Key nuance: do NOT copy the
+best-seller (you can't out-compete a product with 800k reviews) — the numbers prove the CATEGORY has
+demand; enter via a narrower niche and validate it first. Prices/ratings/reviews are real listing
+data; monthly-revenue figures are LarisID ESTIMATES, not official Shopee data. Full table with real
+examples, per-city seller locations, and niche validation links:
+https://larisid.com/panduan/produk-terlaris-untuk-pemula-2026/
+
+## Free calculators (interactive tools, no login)
+
+LarisID offers free client-side calculators for Shopee sellers. Index: https://larisid.com/kalkulator/
+
+- Margin & HPP calculator — enter cost (HPP) and selling price to get gross profit per unit, margin %,
+  markup %, and break-even units against a monthly fixed cost:
+  https://larisid.com/kalkulator/margin-hpp/
+- Shopee admin-fee calculator (2026) — computes Shopee's deductions and net payout: administration fee
+  by product category (2.5%–10%), Free Shipping XTRA program (~5.5%), per-order processing fee
+  (Rp 1,250), and SPayLater (~2.5%). Rates reflect the schedule effective January 2026 and can change;
+  the page links to Shopee's official Seller Education Center and labels itself an aid, not official
+  figures: https://larisid.com/kalkulator/biaya-shopee/
+
 ## Programmatic market research (745 keyword pages)
 
 LarisID publishes 745 market-overview pages (July 2026) from real Shopee listing data, one per
