@@ -30,53 +30,10 @@ serve(async (req) => {
   }
 
   try {
-    // Require a valid Supabase JWT
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'unauthorized' }), {
-        status: 401,
-        headers: { ...CORS, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
-
-    // Resolve caller identity from JWT
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-    if (authErr || !user) {
-      return new Response(JSON.stringify({ error: 'invalid_token' }), {
-        status: 401,
-        headers: { ...CORS, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const userId = user.id;
-    const today = new Date().toISOString().slice(0, 10);
-    const isAdmin = ADMIN_EMAILS.includes((user.email ?? '').toLowerCase());
-
-    // Rate limit: max MAX_CALLS_PER_DAY per user per UTC day (admins exempt)
-    if (!isAdmin) {
-      const { count } = await supabase
-        .from('ai_usage')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('date', today);
-
-      if ((count ?? 0) >= MAX_CALLS_PER_DAY) {
-        return new Response(
-          JSON.stringify({ error: 'rate_limit_exceeded', limit: MAX_CALLS_PER_DAY }),
-          { status: 429, headers: { ...CORS, 'Content-Type': 'application/json' } },
-        );
-      }
-    }
-
-    // Parse request body
+    // Parse the body first — the lightweight `search_plan` query-planner route is
+    // intentionally open (anon + logged-in), so we branch on purpose before auth.
     const body = await req.json();
-    const { messages, model, system } = body;
+    const { messages, model, system, purpose } = body;
     const maxTokens = Number(body.max_tokens);
     if (!messages || !Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: 'bad_request' }), {
@@ -84,6 +41,41 @@ serve(async (req) => {
         headers: { ...CORS, 'Content-Type': 'application/json' },
       });
     }
+
+    const isSearchPlan = purpose === 'search_plan';
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+
+    // Auth: search_plan is unauthenticated so logged-out visitors get smart queries
+    // too. Every other purpose (chat) still requires a valid Supabase JWT.
+    let userId: string | null = null;
+    let isAdmin = false;
+    if (!isSearchPlan) {
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader) {
+        return new Response(JSON.stringify({ error: 'unauthorized' }), {
+          status: 401,
+          headers: { ...CORS, 'Content-Type': 'application/json' },
+        });
+      }
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+      if (authErr || !user) {
+        return new Response(JSON.stringify({ error: 'invalid_token' }), {
+          status: 401,
+          headers: { ...CORS, 'Content-Type': 'application/json' },
+        });
+      }
+      userId = user.id;
+      isAdmin = ADMIN_EMAILS.includes((user.email ?? '').toLowerCase());
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    // NOTE: the daily AI cap (MAX_CALLS_PER_DAY) is disabled for now — unlimited
+    // DeepSeek. Successful calls are still logged to ai_usage below for analytics.
 
     const apiKey = Deno.env.get('DEEPSEEK_API_KEY') || Deno.env.get('ANTHROPIC_API_KEY');
     if (!apiKey) {
@@ -104,7 +96,11 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: resolveModel(model),
-        max_tokens: Number.isFinite(maxTokens) && maxTokens > 0 ? Math.min(maxTokens, 4096) : 700,
+        // search_plan returns a tiny JSON blob — clamp it hard so even a direct
+        // (unauthenticated) hit on that open route stays cheap.
+        max_tokens: isSearchPlan
+          ? Math.min(Number.isFinite(maxTokens) && maxTokens > 0 ? maxTokens : 300, 400)
+          : (Number.isFinite(maxTokens) && maxTokens > 0 ? Math.min(maxTokens, 4096) : 700),
         system: system ?? '',
         thinking: { type: 'disabled' },
         messages,
@@ -129,8 +125,9 @@ serve(async (req) => {
       }
     }
 
-    // Log successful call for rate limiting (skip for admins — they're unlimited)
-    if (!isAdmin) {
+    // Log successful authenticated calls for analytics (anon search_plan has no
+    // user_id; admins are unlimited and not tracked).
+    if (userId && !isAdmin) {
       await supabase.from('ai_usage').insert({ user_id: userId, date: today });
     }
 

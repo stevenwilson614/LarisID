@@ -8826,6 +8826,7 @@ let _dscCurrentCatFilters = null; // full selected-cat array for multi-cat serve
 let _dscViewMode    = 'card';
 const DSC_FETCH  = 60;
 const DSC_PAGE_SIZE = 400; // rows per Supabase request (search scans full listings table)
+let _dscSearchCache = { query: null, ranked: [] }; // page-0 expanded+ranked search list
 const DSC_SCRAPE_MIN_RESULTS = 5;
 let _dscScrapePending = [];
 let _dscScrapePendingNorm = new Set();
@@ -9053,6 +9054,162 @@ function _dscSearchScore(product, query) {
   return score;
 }
 
+// ── Multilingual query planning for Discover (mirrors /gpt/ planSearch) ────────
+const DSC_STOPWORDS = new Set(['cari', 'carikan', 'tolong', 'coba', 'produk', 'barang', 'buat',
+  'untuk', 'yang', 'dan', 'apa', 'the', 'jual', 'jualan', 'terlaris', 'laris']);
+
+const DSC_SEARCH_SYNONYMS = {
+  kayu: ['wood', 'wooden', 'bambu', 'kerajinan kayu'],
+  wood: ['kayu', 'wooden', 'bambu'], wooden: ['kayu', 'wood', 'bambu'],
+  bambu: ['bamboo', 'kayu'], bamboo: ['bambu', 'kayu'], rotan: ['rattan'], rattan: ['rotan'],
+  // Craft / embroidery — English queries must reach ID catalog keywords
+  cross: ['kristik', 'kruistik', 'kruissteek', 'sulam', 'tusuk silang'],
+  stitch: ['kristik', 'sulam', 'tusuk silang', 'kruissteek', 'strimin'],
+  kristik: ['cross stitch', 'kruissteek', 'kruistik', 'sulam', 'tusuk silang', 'pola kristik', 'benang sulam', 'strimin'],
+  kruistik: ['kristik', 'cross stitch', 'kruissteek', 'sulam'],
+  kruissteek: ['kristik', 'cross stitch', 'sulam', 'strimin'],
+  sulam: ['kristik', 'embroidery', 'cross stitch', 'benang sulam', 'bordir', 'tusuk silang'],
+  bordir: ['sulam', 'embroidery', 'kristik'],
+  embroidery: ['sulam', 'kristik', 'cross stitch', 'bordir', 'benang sulam'],
+  strimin: ['kristik', 'kruissteek', 'kanvas kristik', 'cross stitch'],
+  silang: ['tusuk silang', 'kristik', 'setik silang'],
+  benang: ['benang sulam', 'benang dmc', 'benang rajut'],
+  dmc: ['benang sulam', 'benang dmc', 'embroidery floss', 'cross stitch'],
+};
+const DSC_PHRASE_SYNONYMS = {
+  'cross stitch': ['kristik', 'kruissteek', 'kruistik', 'sulam', 'benang sulam', 'pola kristik', 'tusuk silang', 'strimin', 'embroidery'],
+  'crosstitch': ['kristik', 'kruissteek', 'sulam', 'tusuk silang', 'cross stitch'],
+  'tusuk silang': ['kristik', 'kruissteek', 'cross stitch', 'setik silang', 'sulam'],
+  'setik silang': ['kristik', 'tusuk silang', 'cross stitch', 'kruissteek'],
+  'punch needle': ['tusuk jarum', 'sulam', 'embroidery', 'kristik'],
+  'hand embroidery': ['sulam tangan', 'sulam', 'bordir', 'benang sulam'],
+  'benang sulam': ['benang dmc', 'sulam', 'kristik', 'embroidery floss'],
+  'pola kristik': ['kristik', 'pola sulam', 'kruissteek', 'cross stitch'],
+  'kristick': ['kristik', 'cross stitch', 'kruissteek'],
+  'sulaman': ['sulam', 'kristik', 'bordir', 'benang sulam'],
+};
+
+function _dscTerms(text) {
+  return String(text || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/)
+    .filter(w => w.length >= 3 && !DSC_STOPWORDS.has(w));
+}
+
+const DSC_SYN_CACHE_KEY = '_lid_syn_cache_v1'; // shared with /gpt/
+function _dscSynCacheGet(key) {
+  try { const o = JSON.parse(localStorage.getItem(DSC_SYN_CACHE_KEY) || '{}'); return o[key] || null; }
+  catch (_) { return null; }
+}
+function _dscSynCacheSet(key, plan) {
+  try {
+    const o = JSON.parse(localStorage.getItem(DSC_SYN_CACHE_KEY) || '{}');
+    o[key] = plan;
+    const keys = Object.keys(o);
+    if (keys.length > 300) delete o[keys[0]];
+    localStorage.setItem(DSC_SYN_CACHE_KEY, JSON.stringify(o));
+  } catch (_) {}
+}
+
+function _dscStaticPlan(cleaned) {
+  const lower = cleaned.toLowerCase();
+  const terms = _dscTerms(cleaned);
+  const queries = [];
+  const add = (q) => { const s = String(q || '').trim(); if (s && !queries.includes(s)) queries.push(s); };
+  for (const ph of Object.keys(DSC_PHRASE_SYNONYMS)) {
+    if (lower.includes(ph)) DSC_PHRASE_SYNONYMS[ph].forEach(add);
+  }
+  for (const t of terms) (DSC_SEARCH_SYNONYMS[t] || []).forEach(add);
+  return { queries, exclude: [], category: null };
+}
+
+async function _dscDeepseekPlan(query) {
+  try {
+    const system = 'You are a product-search query planner for an Indonesian marketplace research tool. '
+      + 'Given a shopper search text, reply with ONLY strict minified JSON, no prose: '
+      + '{"queries":["short ID/EN keywords or phrases for the SAME product niche — include local '
+      + 'Indonesian synonyms, English equivalents and common misspellings, max 8"],'
+      + '"exclude":["lowercase words that would pull in UNRELATED products sharing a token, max 10"]}. '
+      + 'Return real search terms only. Never invent product names, brands, prices or descriptions.';
+    const res = await fetch(`${SUPA_URL}/functions/v1/claude-proxy`, {
+      method: 'POST',
+      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        purpose: 'search_plan', model: 'deepseek-v4-pro', max_tokens: 400, system,
+        messages: [{ role: 'user', content: `Search text: "${String(query).slice(0, 120)}"` }],
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const blocks = Array.isArray(data?.content) ? data.content : [];
+    const text = (blocks.find(b => b?.type === 'text') || blocks[0] || {}).text || '';
+    const m = text.match(/\{[\s\S]*\}/);
+    if (!m) return null;
+    const parsed = JSON.parse(m[0]);
+    const clean = (arr, n) => Array.isArray(arr)
+      ? arr.map(s => String(s || '').trim()).filter(Boolean).slice(0, n) : [];
+    return { queries: clean(parsed.queries, 8), exclude: clean(parsed.exclude, 10).map(s => s.toLowerCase()) };
+  } catch (_) { return null; }
+}
+
+async function dscPlanSearch(text) {
+  const cleaned = String(text || '').replace(/\s+/g, ' ').trim();
+  const key = cleaned.toLowerCase();
+  if (!key) return { queries: [], exclude: [], category: null };
+  const cached = _dscSynCacheGet(key);
+  if (cached) return cached;
+  const seed = _dscStaticPlan(cleaned);
+  const ai = await _dscDeepseekPlan(cleaned);
+  if (!ai) return seed;
+  const uniq = (arr, n) => Array.from(new Set(arr.filter(Boolean))).slice(0, n);
+  const plan = {
+    queries: uniq([...ai.queries, ...seed.queries], 10),
+    exclude: uniq([...ai.exclude, ...seed.exclude], 12),
+    category: seed.category,
+  };
+  _dscSynCacheSet(key, plan);
+  return plan;
+}
+
+function _dscPlanSynonymTerms(terms, planQueries) {
+  const set = new Set();
+  const add = (t) => { const s = String(t || '').toLowerCase().trim(); if (s.length >= 3 && !DSC_STOPWORDS.has(s)) set.add(s); };
+  for (const q of planQueries) {
+    const s = String(q || '').toLowerCase().trim();
+    if (s.length >= 3) set.add(s);
+    for (const tok of _dscTerms(s)) add(tok);
+  }
+  for (const t of terms) set.delete(t);
+  return Array.from(set);
+}
+
+const DSC_NOISE_RE = /gantungan kunci|keychain|stiker dinding|casing hp|case hp|wallpaper|poster|crossbody|cross.?country|crosspalm|nbcross/;
+
+// Relevance score against original query + expansion synonyms; token-collision
+// junk (crossbody, crosspalm) and plan `exclude` words are pushed below 0 (dropped)
+// unless the shopper literally typed that word.
+function _dscExpandedScore(product, query, synonyms, exclude) {
+  const qn = _dscNormStr(query);
+  const name = _dscNormStr(product.product_name);
+  const kw = _dscNormStr(product.keyword);
+  const cat = _dscNormStr(product.category);
+  const hay = `${name} ${kw}`;
+  const base = _dscSearchScore(product, query);
+  let syn = 0, synScore = 0;
+  for (const s of synonyms) {
+    if (!s || s.length < 3) continue;
+    const ns = _dscNormStr(s);
+    if (name.includes(ns)) { syn += 1; synScore += 60; }
+    else if (kw.includes(ns)) { syn += 1; synScore += 45; }
+    else if (cat.includes(ns)) { synScore += 10; }
+  }
+  if (base <= 0 && syn === 0) return 0; // not relevant to query or any synonym
+  let score = base + synScore + Math.log10((Number(product.total_sold) || 0) + 1) * 4;
+  if (DSC_NOISE_RE.test(hay) && !DSC_NOISE_RE.test(qn)) score -= 400;
+  for (const x of exclude) {
+    if (x && x.length >= 3 && !qn.includes(x) && hay.includes(_dscNormStr(x))) { score -= 400; break; }
+  }
+  return score;
+}
+
 let _panelDateCache = { date: null, prev: null, ts: 0 };
 const PANEL_DATE_TTL_MS = 5 * 60 * 1000;
 
@@ -9117,20 +9274,55 @@ async function dscFetchPage(offset, filters = {}) {
     const cats = null;
     const priceMax = (filters.priceMax && filters.priceMax !== Infinity && filters.priceMax < 500000)
       ? filters.priceMax : null;
+    const q0 = String(filters.search).trim();
+    const qKey = q0.toLowerCase();
+
+    // Page 2+ of the same search — slice the ranked list built on page 0.
+    if (offset > 0 && _dscSearchCache.query === qKey && _dscSearchCache.ranked.length) {
+      return _dscSearchCache.ranked.slice(offset, offset + DSC_PAGE_SIZE);
+    }
+
+    // Page 0: plan (DeepSeek + static craft map) → fetch original + synonym
+    // queries in parallel → merge freshest-per-item → rank by relevance + niche
+    // synonym match, dropping token-collision junk. Cache the ranked list.
+    const runRpc = async (qq) => {
+      const { data, error } = await _supabase.rpc('search_listings', {
+        q: qq, lim: DSC_PAGE_SIZE, off: 0, cats, price_min: filters.priceMin || null, price_max: priceMax,
+      });
+      return error ? [] : (data || []);
+    };
+    try {
+      const plan = await dscPlanSearch(q0);
+      const planQueries = (plan.queries || []).filter(Boolean);
+      const exclude = plan.exclude || [];
+      const synonyms = _dscPlanSynonymTerms(_dscTerms(q0), planQueries);
+      const queries = Array.from(new Set([q0, ...planQueries]
+        .map(s => String(s).trim().toLowerCase()).filter(Boolean))).slice(0, 8);
+      const all = (await Promise.all(queries.map(runRpc))).flat();
+      if (all.length) {
+        const best = new Map();
+        for (const r of all) {
+          const k = `${r.item_id}_${r.shop_id}`;
+          const cur = best.get(k);
+          if (!cur || (r.scraped_at || '') > (cur.scraped_at || '')) best.set(k, r);
+        }
+        const scored = Array.from(best.values())
+          .map(p => ({ p, s: _dscExpandedScore(p, q0, synonyms, exclude) }))
+          .filter(x => x.s > 0);
+        scored.sort((a, b) => b.s - a.s || (Number(b.p.total_sold) || 0) - (Number(a.p.total_sold) || 0));
+        const ranked = scored.map(x => x.p);
+        if (ranked.length) {
+          _dscSearchCache = { query: qKey, ranked };
+          return ranked.slice(offset, offset + DSC_PAGE_SIZE);
+        }
+      }
+    } catch (e) { console.warn('dsc expanded search failed, falling back:', e && e.message); }
+
+    // Fallback: original single-call RPC (freshest per item).
     const { data, error } = await _supabase.rpc('search_listings', {
-      q:         filters.search,
-      lim:       DSC_PAGE_SIZE,
-      off:       offset,
-      cats:      cats,
-      price_min: filters.priceMin || null,
-      price_max: priceMax,
+      q: filters.search, lim: DSC_PAGE_SIZE, off: offset, cats, price_min: filters.priceMin || null, price_max: priceMax,
     });
     if (!error) {
-      // search_listings ranks matches across the FULL listings history, so a
-      // product's most recent scrape is rarely the global "panel date". Pinning
-      // results to that single day wiped out nearly every match. Instead collapse
-      // to one row per item (freshest scrape) while keeping the RPC's relevance
-      // order — the first time we see an item fixes its position.
       const best = new Map();
       for (const r of (data || [])) {
         const k = `${r.item_id}_${r.shop_id}`;
