@@ -4874,6 +4874,56 @@ function _mlsAiRenderThread(typing) {
   respEl.scrollTop = respEl.scrollHeight;
 }
 
+/** Pick reply language from the user's message. Mixed → most prevalent markers. */
+function detectReplyLanguage(text) {
+  const raw = String(text || '').toLowerCase();
+  const tokens = raw.match(/[a-zà-ÿ]+/g) || [];
+  const idWords = new Set([
+    'yang', 'dan', 'untuk', 'dengan', 'apa', 'berapa', 'bagaimana', 'kenapa', 'mengapa',
+    'ini', 'itu', 'harga', 'jual', 'jualan', 'produk', 'saya', 'aku', 'kah', 'tidak',
+    'adalah', 'gimana', 'bisa', 'kalau', 'kalo', 'sama', 'dari', 'juga', 'sudah', 'udah',
+    'belum', 'mau', 'akan', 'karena', 'jadi', 'lebih', 'kurang', 'banyak', 'sedikit',
+    'bagus', 'laris', 'toko', 'penjual', 'kompetitor', 'omzet', 'modal', 'untung',
+    'apakah', 'dimana', 'di mana', 'kapan', 'siapa', 'kok', 'dong', 'sih', 'nya', 'lah',
+    'pun', 'tapi', 'atau', 'nggak', 'gak', 'ga', 'aja', 'banget', 'nih', 'deh', 'buat',
+    'punya', 'masih', 'harus', 'boleh', 'tolong', 'dong', 'nih', 'juga', 'sekali',
+    'bagusan', 'lebih', 'cocok', 'layak', 'jualannya', 'penjualannya',
+  ]);
+  const enWords = new Set([
+    'the', 'and', 'for', 'with', 'what', 'how', 'why', 'this', 'that', 'price', 'sell',
+    'selling', 'product', 'products', 'my', 'is', 'are', 'can', 'if', 'same', 'from',
+    'also', 'already', 'not', 'will', 'because', 'so', 'more', 'less', 'many', 'good',
+    'shop', 'seller', 'competitor', 'profit', 'capital', 'when', 'where', 'who', 'which',
+    'should', 'would', 'could', 'about', 'into', 'than', 'then', 'just', 'only', 'really',
+    'please', 'thanks', 'hello', 'does', 'do', 'did', 'have', 'has', 'been', 'being',
+    'their', 'there', 'these', 'those', 'your', 'you', 'me', 'we', 'our', 'of', 'to',
+    'in', 'on', 'at', 'by', 'or', 'but', 'as', 'an', 'be', 'it', 'its', 'was', 'were',
+    'best', 'better', 'worth', 'market', 'margin', 'cost', 'compare', 'versus', 'vs',
+  ]);
+  let id = 0, en = 0;
+  for (const w of tokens) {
+    if (idWords.has(w)) id += 1;
+    if (enWords.has(w)) en += 1;
+  }
+  // Strong Indo particles even if sparse token list
+  if (/\b(nggak|gak|gimana|berapa|dong|sih|banget|kah|lah|kok|udah|kalo)\b/.test(raw)) id += 2;
+  // Strong English question openers
+  if (/^(what|how|why|should|could|would|is|are|does|do|can|which|where|when)\b/.test(raw.trim())) en += 2;
+  if (en > id) return 'en';
+  if (id > en) return 'id';
+  // Exact tie / no markers: prefer English if the message has no Indo particles
+  // and looks like Latin English prose; otherwise Bahasa (default product locale).
+  if (en === 0 && id === 0 && /\b[a-z]{3,}\b/.test(raw) && !/\b(yang|dan|untuk|dengan|apa|ini|itu)\b/.test(raw)) {
+    const asciiLetters = (raw.match(/[a-z]/g) || []).length;
+    if (asciiLetters >= 8) return 'en';
+  }
+  return 'id';
+}
+
+function replyLanguageLabel(code) {
+  return code === 'en' ? 'English' : 'Bahasa Indonesia';
+}
+
 function _mlsAiMedian(arr) {
   const s = [...arr].sort((a, b) => a - b);
   return s.length ? s[Math.floor(s.length / 2)] : 0;
@@ -5027,10 +5077,7 @@ async function mlsAiAsk(prompt) {
   ).join('\n');
   const specStats = _mlsAiBuildSpecStats(allRows, q);
 
-  const _idWords = ['yang','dan','untuk','dengan','apa','berapa','bagaimana','kenapa','mengapa','ini','itu','harga','jual','jualan','produk','saya','kah','tidak','adalah','gimana','bisa','kalau','sama','plastik','kaca','biasanya','typical'];
-  const _qLower = ' ' + q.toLowerCase() + ' ';
-  const _idHits = _idWords.reduce((n, w) => n + (_qLower.includes(' ' + w + ' ') ? 1 : 0), 0);
-  const replyLang = _idHits >= 1 ? 'Bahasa Indonesia' : 'English';
+  const replyLang = replyLanguageLabel(detectReplyLanguage(q));
 
   const systemCtx = [
     `You are LarisID's selling assistant for Shopee Indonesia. The user already selected keyword "${kw}" — NEVER ask what product they mean or ask clarifying questions.`,
@@ -15838,7 +15885,8 @@ async function mlsChatSend() {
   }
 
   // Build system prompt with product context
-  let systemPrompt = 'Kamu adalah AI strategist untuk platform Larisid, membantu penjual memulai berjualan di Shopee Indonesia. Jawab dalam Bahasa Indonesia, singkat dan praktis.';
+  const _mlsChatLang = replyLanguageLabel(detectReplyLanguage(text));
+  let systemPrompt = `You are LarisID's AI strategist helping sellers start selling on Shopee Indonesia. Write ONLY in ${_mlsChatLang}. Keep answers short and practical. If the user mixed languages, use the most prevalent one.`;
   if (_mlsContext?.keyword) {
     systemPrompt += ` Konteks: pengguna tertarik pada keyword "${_mlsContext.keyword}".`;
     if (_mlsContext.medianPrice) systemPrompt += ` Median harga produk: Rp ${Math.round(_mlsContext.medianPrice).toLocaleString('id-ID')}.`;

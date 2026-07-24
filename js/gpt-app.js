@@ -5807,6 +5807,56 @@ function ddRenderTrendChart(series) {
 }
 
 // ── AI ask ───────────────────────────────────────────────────────────────
+/** Pick reply language from the user's message. Mixed → most prevalent markers. */
+function detectReplyLanguage(text) {
+  const raw = String(text || '').toLowerCase();
+  const tokens = raw.match(/[a-zà-ÿ]+/g) || [];
+  const idWords = new Set([
+    'yang', 'dan', 'untuk', 'dengan', 'apa', 'berapa', 'bagaimana', 'kenapa', 'mengapa',
+    'ini', 'itu', 'harga', 'jual', 'jualan', 'produk', 'saya', 'aku', 'kah', 'tidak',
+    'adalah', 'gimana', 'bisa', 'kalau', 'kalo', 'sama', 'dari', 'juga', 'sudah', 'udah',
+    'belum', 'mau', 'akan', 'karena', 'jadi', 'lebih', 'kurang', 'banyak', 'sedikit',
+    'bagus', 'laris', 'toko', 'penjual', 'kompetitor', 'omzet', 'modal', 'untung',
+    'apakah', 'dimana', 'di mana', 'kapan', 'siapa', 'kok', 'dong', 'sih', 'nya', 'lah',
+    'pun', 'tapi', 'atau', 'nggak', 'gak', 'ga', 'aja', 'banget', 'nih', 'deh', 'buat',
+    'punya', 'masih', 'harus', 'boleh', 'tolong', 'dong', 'nih', 'juga', 'sekali',
+    'bagusan', 'lebih', 'cocok', 'layak', 'jualannya', 'penjualannya',
+  ]);
+  const enWords = new Set([
+    'the', 'and', 'for', 'with', 'what', 'how', 'why', 'this', 'that', 'price', 'sell',
+    'selling', 'product', 'products', 'my', 'is', 'are', 'can', 'if', 'same', 'from',
+    'also', 'already', 'not', 'will', 'because', 'so', 'more', 'less', 'many', 'good',
+    'shop', 'seller', 'competitor', 'profit', 'capital', 'when', 'where', 'who', 'which',
+    'should', 'would', 'could', 'about', 'into', 'than', 'then', 'just', 'only', 'really',
+    'please', 'thanks', 'hello', 'does', 'do', 'did', 'have', 'has', 'been', 'being',
+    'their', 'there', 'these', 'those', 'your', 'you', 'me', 'we', 'our', 'of', 'to',
+    'in', 'on', 'at', 'by', 'or', 'but', 'as', 'an', 'be', 'it', 'its', 'was', 'were',
+    'best', 'better', 'worth', 'market', 'margin', 'cost', 'compare', 'versus', 'vs',
+  ]);
+  let id = 0, en = 0;
+  for (const w of tokens) {
+    if (idWords.has(w)) id += 1;
+    if (enWords.has(w)) en += 1;
+  }
+  // Strong Indo particles even if sparse token list
+  if (/\b(nggak|gak|gimana|berapa|dong|sih|banget|kah|lah|kok|udah|kalo)\b/.test(raw)) id += 2;
+  // Strong English question openers
+  if (/^(what|how|why|should|could|would|is|are|does|do|can|which|where|when)\b/.test(raw.trim())) en += 2;
+  if (en > id) return 'en';
+  if (id > en) return 'id';
+  // Exact tie / no markers: prefer English if the message has no Indo particles
+  // and looks like Latin English prose; otherwise Bahasa (default product locale).
+  if (en === 0 && id === 0 && /\b[a-z]{3,}\b/.test(raw) && !/\b(yang|dan|untuk|dengan|apa|ini|itu)\b/.test(raw)) {
+    const asciiLetters = (raw.match(/[a-z]/g) || []).length;
+    if (asciiLetters >= 8) return 'en';
+  }
+  return 'id';
+}
+
+function replyLanguageLabel(code) {
+  return code === 'en' ? 'English' : 'Bahasa Indonesia';
+}
+
 async function _useAi(action) {
   if (!_supabase || !currentUser) { openAuthModal('signup', 'gpt_gate_ai'); return false; }
   try {
@@ -5832,8 +5882,14 @@ function buildProductSystemPrompt(p, question, peers) {
   const specStats = _gptBuildSpecStats(rows, question);
   const pocketStats = _gptPocketStats(rows);
   const n = rows.length;
+  const lang = detectReplyLanguage(question);
+  const langLabel = replyLanguageLabel(lang);
+  const voice = lang === 'en'
+    ? 'Reply in clear English (informal professional "you").'
+    : 'Jawab dalam Bahasa Indonesia informal ("kamu").';
 
-  return `Kamu adalah asisten riset produk LarisID (LARISgpt). Jawab dalam Bahasa Indonesia informal ("kamu").
+  return `You are LarisID's product research assistant (LARISgpt). ${voice}
+LANGUAGE: Write ONLY in ${langLabel}. If the user mixed languages, use the language that is most prevalent in their message — never answer in Bahasa Indonesia when they primarily wrote in English.
 PENTING:
 - Angka penjualan/harga/rating HARUS dari data berikut. Jangan mengarang statistik pasar.
 - Untuk pertanyaan desain/spesifikasi (kantong/pocket, bahan, warna, model, ukuran, fitur): WAJIB sift dari SAMPLE NAMA PRODUK + TOP PENJUAL di bawah. Hitung pola yang paling umum — terutama di listing terlaris. Jangan bilang "aku nggak punya info" kalau ada nama produk di bawah.
@@ -5843,7 +5899,7 @@ PENTING:
 - Kalau user minta kategori lain (skincare, fashion, dll.) yang BUKAN produk yang sedang dibuka: bilang singkat bahwa itu pencarian baru — mereka bisa ketik ulang di kotak chat (sistem akan menampilkan produk dari data). Jangan mengarang daftar skincare dari knowledge umum.
 - Knowledge umum OK hanya sebagai pelengkap singkat, dan label jelas kalau bukan dari data.
 - Jangan bilang kamu "melihat" produk — kamu membaca data.
-- Jawaban singkat, langsung ke poin. Pertanyaan sederhana: 2–5 kalimat biasa. Jawaban yang butuh struktur boleh pakai markdown ringan: **bold untuk angka/kesimpulan penting**, bullet list pendek (- item), dan sub-judul (## Judul) hanya untuk jawaban panjang. Tanpa emoji.
+- Keep answers short and direct. Simple questions: 2–5 plain sentences. Longer answers may use light markdown: **bold for key numbers/conclusions**, short bullet lists (- item), and ## headings only when needed. No emoji. Always stay in ${langLabel}.
 
 DATA PRODUK YANG DILIHAT:
 - Nama: ${p.product_name || '—'}
