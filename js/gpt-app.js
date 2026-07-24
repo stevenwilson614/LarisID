@@ -3950,6 +3950,12 @@ const SEARCH_SYNONYMS = {
   bamboo: ['bambu', 'kayu'],
   rotan: ['rattan'],
   rattan: ['rotan'],
+  // Craft / embroidery — English queries must reach ID catalog keywords
+  cross: ['kristik', 'kruistik', 'kruissteek', 'sulam', 'embroidery'],
+  stitch: ['kristik', 'sulam', 'embroidery', 'jahit', 'tusuk'],
+  kristik: ['cross stitch', 'sulam', 'kruissteek', 'embroidery'],
+  sulam: ['kristik', 'embroidery', 'cross stitch', 'benang sulam'],
+  embroidery: ['sulam', 'kristik', 'cross stitch'],
 };
 
 // When the catalog has nothing like the ask, suggest the nearest sellable niches.
@@ -4100,11 +4106,11 @@ function detectSearchDomain(lower) {
   return null;
 }
 
-function scoreSearchHit(row, terms) {
+function scoreSearchHit(row, terms, phrase = '') {
   const name = String(row.product_name || '').toLowerCase();
   const kw = String(row.keyword || '').toLowerCase();
   const cat = String(row.category || '').toLowerCase();
-  const noise = /gantungan kunci|keychain|stiker dinding|casing hp|case hp|wallpaper|poster/.test(`${name} ${kw}`);
+  const noise = /gantungan kunci|keychain|stiker dinding|casing hp|case hp|wallpaper|poster|crossbody|cross.?country|crosspalm|nbcross/.test(`${name} ${kw}`);
   let matched = 0;
   let score = 0;
   for (const t of terms) {
@@ -4118,17 +4124,30 @@ function scoreSearchHit(row, terms) {
   }
   const coverage = terms.length ? matched / terms.length : 0;
   score += coverage * 50;
+  // Contiguous phrase in the title beats incidental single-token hits
+  // ("cross stitch" embroidery >> "crossbody" bags / "stitch" markers).
+  if (phrase && phrase.length >= 5) {
+    if (name.includes(phrase)) score += 80;
+    else if (kw.includes(phrase)) score += 40;
+  }
   score += Math.log10((Number(row.total_sold) || 0) + 1) * 3;
   if (noise) score -= 40;
   return { score, matched, coverage, noise };
 }
 
-function filterRelevantHits(hits, terms) {
+function filterRelevantHits(hits, terms, phrase = '') {
   if (!hits.length) return [];
   if (!terms.length) return hits.slice();
-  const scored = hits.map(h => ({ h, ...scoreSearchHit(h, terms) }));
-  const minCov = terms.length >= 2 ? 0.5 : 1;
-  let good = scored.filter(x => !x.noise && x.coverage >= minCov && x.matched >= 1);
+  const scored = hits.map(h => ({ h, ...scoreSearchHit(h, terms, phrase) }));
+  // Prefer full multi-term coverage first; only soften if that yields nothing.
+  let good = [];
+  if (terms.length >= 2) {
+    good = scored.filter(x => !x.noise && x.coverage >= 1);
+  }
+  if (!good.length) {
+    const minCov = terms.length >= 2 ? 0.5 : 1;
+    good = scored.filter(x => !x.noise && x.coverage >= minCov && x.matched >= 1);
+  }
   // Soften: single strong name hit when multi-term coverage failed
   if (!good.length && terms.length >= 2) {
     good = scored.filter(x => !x.noise && x.matched >= 1 && String(x.h.product_name || '').toLowerCase().includes(terms[0]));
@@ -4140,39 +4159,45 @@ function filterRelevantHits(hits, terms) {
   return good.map(x => x.h);
 }
 
+/**
+ * Product keyword search. Prefer the trigram-backed search_listings RPC —
+ * raw listings_deduped `.or(ilike…)` hits the anon statement_timeout (~3s)
+ * on multi-token queries like "cross stitch" and silently returns [].
+ */
 async function searchListings(q, locations = [], limit = 30) {
   if (!_supabase) return [];
   const clean = _sanitizeSearchToken(q);
   if (!clean) return [];
   const terms = _searchTerms(clean);
-  const parts = [];
-  const push = (field, token) => {
-    const t = _sanitizeSearchToken(token);
-    if (t) parts.push(`${field}.ilike.%${t}%`);
-  };
-  push('product_name', clean);
-  push('keyword', clean);
-  for (const t of terms.slice(0, 5)) {
-    push('product_name', t);
-    push('keyword', t);
-  }
-  if (!parts.length) return [];
+  const scoreTerms = terms.length ? terms : _searchTerms(clean);
+  const phrase = clean.toLowerCase();
+  const fetchLim = Math.max(limit * 4, 40);
+
   try {
-    let query = _supabase.from('listings_deduped')
-      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date')
-      .or(parts.join(','))
-      .gt('total_sold', 0)
-      .order('total_sold', { ascending: false })
-      .limit(Math.max(limit * 3, 60));
-    if (locations.length) query = query.in('location', locations);
-    const { data, error } = await query;
+    const { data, error } = await _supabase.rpc('search_listings', {
+      q: clean,
+      lim: fetchLim,
+      off: 0,
+      cats: null,
+      price_min: null,
+      price_max: null,
+    });
     if (error) throw error;
-    const rows = (data || []).map(asListingProduct);
-    const scoreTerms = terms.length ? terms : _searchTerms(clean);
-    const relevant = filterRelevantHits(rows, scoreTerms);
+
+    // RPC ranks across scrape history — collapse to one row per listing,
+    // keeping RPC order (first sighting wins).
+    const best = new Map();
+    for (const r of (data || [])) {
+      const key = `${r.item_id}_${r.shop_id}`;
+      if (!best.has(key)) best.set(key, asListingProduct(r));
+    }
+    let rows = Array.from(best.values());
+    if (locations.length) {
+      const locFiltered = rows.filter(r => locMatches(r.location, locations));
+      if (locFiltered.length) rows = locFiltered;
+    }
+    const relevant = filterRelevantHits(rows, scoreTerms, phrase);
     if (relevant.length) return relevant.slice(0, limit);
-    // Single-token asks keep popular raw hits; multi-token misses stay empty
-    // so the caller can broaden / clarify instead of showing incidental junk.
     if (scoreTerms.length <= 1) return rows.slice(0, limit);
     return [];
   } catch (_) { return []; }
@@ -4203,7 +4228,8 @@ async function searchProductsForQuery(text, locations = [], limit = 12) {
     }
   }
 
-  let ranked = filterRelevantHits(pool, terms);
+  const phrase = cleaned.toLowerCase();
+  let ranked = filterRelevantHits(pool, terms, phrase);
   if (domain) {
     if (!ranked.some(p => domain.prefer(p))) {
       for (const sug of (domain.suggestions || []).slice(0, 3)) {
@@ -4217,7 +4243,7 @@ async function searchProductsForQuery(text, locations = [], limit = 12) {
       const hay = `${p.product_name || ''} ${p.keyword || ''} ${p.category || ''}`.toLowerCase();
       return exp.some(t => hay.includes(t)) || terms.some(t => hay.includes(t));
     });
-    ranked = filterRelevantHits(adjacent, exp.slice(0, 8));
+    ranked = filterRelevantHits(adjacent, exp.slice(0, 8), phrase);
     if (!ranked.length) ranked = adjacent.slice();
     if (!ranked.length) {
       return { products: [], mode: 'clarify', domain, terms };

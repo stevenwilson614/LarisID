@@ -9112,9 +9112,9 @@ async function dscFetchPage(offset, filters = {}) {
   //   tier 2 – keyword contains query  |  tier 3 – product_name only
   // Within each tier items are ordered by total_sold DESC.
   if (filters.search) {
-    const cats = (_dscCurrentCatFilters && _dscCurrentCatFilters.length)
-      ? _dscCurrentCatFilters
-      : (filters.cat ? [filters.cat] : null);
+    // Explicit text search must ignore interest-category chips — otherwise
+    // "cross stitch" with Olahraga selected returns 0 and looks broken.
+    const cats = null;
     const priceMax = (filters.priceMax && filters.priceMax !== Infinity && filters.priceMax < 500000)
       ? filters.priceMax : null;
     const { data, error } = await _supabase.rpc('search_listings', {
@@ -10076,7 +10076,8 @@ function dscApplyFilters(resetPage = true) {
   const _scoreOf = p => calcListingScore(p, _kwMapForSort[p.keyword||'__'], _dscListingTrendPct(p), _dscKwTrendMap[p.keyword]??null).total;
 
   let list = _dscAllListings.filter(p => {
-    if (selectedCats && !selectedCats.includes(p.category)) return false;
+    // Category chips only apply to browse — never hide keyword-search hits.
+    if (!q && selectedCats && !selectedCats.includes(p.category)) return false;
     const price = p.price || 0;
     if (price < priceMin || price > priceMax) return false;
     const omset = _dscOmset(p);
