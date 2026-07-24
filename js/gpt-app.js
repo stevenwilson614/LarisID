@@ -5044,6 +5044,89 @@ function ddKeywordRows(peers) {
     .map(r => ({ ...r, comp: r.n >= 25 ? 'Tinggi' : r.n >= 10 ? 'Sedang' : 'Rendah' }));
 }
 
+/** Top photos for a Product Type Deep Dive — matview images, else peers by sold. */
+function ddHeaderImageList(product, peers) {
+  const list = [];
+  const seen = new Set();
+  const push = (u) => {
+    const s = String(u || '').trim();
+    if (!s || seen.has(s)) return;
+    seen.add(s);
+    list.push(s);
+  };
+  (product?._ptype?.images || []).forEach(push);
+  if (product?.image_url) push(product.image_url);
+  if (list.length < 5 && peers?.length) {
+    [...peers]
+      .sort((a, b) => (Number(b.total_sold) || 0) - (Number(a.total_sold) || 0))
+      .forEach((p) => { if (list.length < 5) push(p.image_url); });
+  }
+  return list.slice(0, 5);
+}
+
+/** Product-type Deep Dive → Shopee-style gallery (main + thumbs); listing → one image. */
+function ddHeaderMediaHtml(product, peers) {
+  const imgs = ddHeaderImageList(product, peers);
+  if (!imgs.length) return '<span class="ph" aria-hidden="true"></span>';
+  if (!product._ptype || imgs.length === 1) {
+    return `<img src="${esc(imgs[0])}" alt="">`;
+  }
+  return `<div class="ddr-gallery" data-ddr-carousel role="region" aria-roledescription="carousel" aria-label="Foto top ${imgs.length} produk tipe ini">
+    <div class="ddr-gallery-main">
+      <div class="ddr-carousel-track">
+        ${imgs.map((u, i) => `<img src="${esc(u)}" alt="" loading="${i ? 'lazy' : 'eager'}" data-idx="${i}" data-ddr-main${i ? ' hidden' : ''}>`).join('')}
+      </div>
+      <button type="button" class="ddr-carousel-btn prev" data-ddr-prev aria-label="Foto sebelumnya">‹</button>
+      <button type="button" class="ddr-carousel-btn next" data-ddr-next aria-label="Foto berikutnya">›</button>
+      <div class="ddr-carousel-count"><span data-ddr-count>1</span>/${imgs.length}</div>
+    </div>
+    <div class="ddr-gallery-thumbs" role="tablist" aria-label="Pilih foto" style="grid-template-columns:repeat(${imgs.length},1fr)">
+      ${imgs.map((u, i) => `<button type="button" class="ddr-gallery-thumb${i === 0 ? ' on' : ''}" data-ddr-dot="${i}" aria-label="Foto ${i + 1}" aria-selected="${i === 0 ? 'true' : 'false'}">
+        <img src="${esc(u)}" alt="" loading="lazy" draggable="false">
+      </button>`).join('')}
+    </div>
+  </div>`;
+}
+
+function bindDdrCarousel(root) {
+  const car = root?.querySelector?.('[data-ddr-carousel]');
+  if (!car) return;
+  const imgs = [...car.querySelectorAll('[data-ddr-main]')];
+  const thumbs = [...car.querySelectorAll('[data-ddr-dot]')];
+  const countEl = car.querySelector('[data-ddr-count]');
+  if (imgs.length < 2) return;
+  let i = 0;
+  const show = (n) => {
+    i = ((n % imgs.length) + imgs.length) % imgs.length;
+    imgs.forEach((img, idx) => { img.hidden = idx !== i; });
+    thumbs.forEach((t, idx) => {
+      const on = idx === i;
+      t.classList.toggle('on', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    if (countEl) countEl.textContent = String(i + 1);
+  };
+  car.querySelector('[data-ddr-prev]')?.addEventListener('click', (e) => {
+    e.preventDefault(); e.stopPropagation(); show(i - 1);
+  });
+  car.querySelector('[data-ddr-next]')?.addEventListener('click', (e) => {
+    e.preventDefault(); e.stopPropagation(); show(i + 1);
+  });
+  thumbs.forEach((t) => t.addEventListener('click', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    show(Number(t.dataset.ddrDot) || 0);
+  }));
+  let sx = 0;
+  car.querySelector('.ddr-gallery-main')?.addEventListener('touchstart', (e) => {
+    sx = e.changedTouches?.[0]?.clientX || 0;
+  }, { passive: true });
+  car.querySelector('.ddr-gallery-main')?.addEventListener('touchend', (e) => {
+    const dx = (e.changedTouches?.[0]?.clientX || 0) - sx;
+    if (Math.abs(dx) < 40) return;
+    show(i + (dx < 0 ? 1 : -1));
+  }, { passive: true });
+}
+
 function ddTilesHtml(product, stats, peers, series) {
   // Opened from a Product Type card → tiles describe the TYPE's market
   // (top-15-seller omset, median price band), not the anchor listing.
@@ -5453,7 +5536,7 @@ async function openDeepDive(product) {
       <button type="button" class="btn-ghost" id="dd-back" style="margin:0">Kembali ke chat</button>
     </div>
     <div class="ddr-header" data-dd-sec="skor">
-      ${product.image_url ? `<img src="${esc(product.image_url)}" alt="">` : '<span class="ph"></span>'}
+      ${ddHeaderMediaHtml(product, peers)}
       <div class="ddr-head-main">
         <div class="ddr-title-row">
           <h1>${esc(product._ptype ? typeTitle(kw) : (product.product_name || kw || 'Produk'))}</h1>
@@ -5583,6 +5666,7 @@ async function openDeepDive(product) {
     openKompPanel({ product, peers, via: 'deepdive' });
   });
   wireKompClicks(root, peers);
+  bindDdrCarousel(root);
   $('ddr-komp-more')?.addEventListener('click', () => {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'kompetitor', via: 'click', keyword: kw || '' });
   });
