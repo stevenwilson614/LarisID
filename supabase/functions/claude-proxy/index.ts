@@ -7,9 +7,22 @@ const CORS = {
 };
 
 const MAX_CALLS_PER_DAY = 10;
+const DEFAULT_MODEL = 'deepseek-v4-pro';
+// DeepSeek Anthropic-compatible Messages API (same response shape clients already parse).
+const DEEPSEEK_MESSAGES_URL = 'https://api.deepseek.com/anthropic/v1/messages';
 
 // Platform admins are exempt from the daily AI rate limit (mirrors PLATFORM_ADMIN_EMAILS client-side)
 const ADMIN_EMAILS = ['stevenwilson614@gmail.com'];
+
+/** Map legacy Claude model ids from Site A/B clients → DeepSeek V4 Pro. */
+function resolveModel(model?: string): string {
+  const m = String(model || '').trim();
+  if (!m || m.startsWith('claude-') || m === 'deepseek-chat' || m === 'deepseek-reasoner') {
+    return DEFAULT_MODEL;
+  }
+  if (m === 'deepseek-v4-flash' || m === 'deepseek-v4-pro') return m;
+  return DEFAULT_MODEL;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -62,7 +75,9 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { messages, model, system } = await req.json();
+    const body = await req.json();
+    const { messages, model, system } = body;
+    const maxTokens = Number(body.max_tokens);
     if (!messages || !Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: 'bad_request' }), {
         status: 400,
@@ -70,29 +85,48 @@ serve(async (req) => {
       });
     }
 
-    // Forward to Anthropic using the server-side secret key
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+    const apiKey = Deno.env.get('DEEPSEEK_API_KEY') || Deno.env.get('ANTHROPIC_API_KEY');
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: 'missing_api_key' }), {
+        status: 500,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Forward to DeepSeek (Anthropic-compatible). Thinking off so content[0].text
+    // is always the reply Site A/B already expect.
+    const upstream = await fetch(DEEPSEEK_MESSAGES_URL, {
       method: 'POST',
       headers: {
-        'x-api-key': Deno.env.get('ANTHROPIC_API_KEY')!,
+        'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: model ?? 'claude-haiku-4-5-20251001',
-        max_tokens: 500,
+        model: resolveModel(model),
+        max_tokens: Number.isFinite(maxTokens) && maxTokens > 0 ? Math.min(maxTokens, 4096) : 700,
         system: system ?? '',
+        thinking: { type: 'disabled' },
         messages,
       }),
     });
 
-    const result = await anthropicRes.json();
+    const result = await upstream.json();
 
-    if (!anthropicRes.ok) {
+    if (!upstream.ok) {
       return new Response(JSON.stringify(result), {
-        status: anthropicRes.status,
+        status: upstream.status,
         headers: { ...CORS, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Normalize: prefer first text block (skip any residual thinking blocks).
+    if (Array.isArray(result?.content)) {
+      const textBlock = result.content.find((b: { type?: string }) => b?.type === 'text')
+        || result.content.find((b: { text?: string }) => typeof b?.text === 'string');
+      if (textBlock && result.content[0] !== textBlock) {
+        result.content = [textBlock, ...result.content.filter((b: unknown) => b !== textBlock)];
+      }
     }
 
     // Log successful call for rate limiting (skip for admins — they're unlimited)

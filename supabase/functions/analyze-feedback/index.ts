@@ -59,7 +59,8 @@ Charts: sales trends (dd-chart-trend), price distribution (dd-chart-dist), compe
 Data pipeline: Shopee scraper → Supabase (weekly_snapshots, keyword_intelligence, listings_deduped, listing_deltas, scrape_runs).
 Feedback types: bug, feature, other (general) | wrong_data, not_working, request_edit (element-specific).`
 
-const HAIKU_MODEL = 'claude-haiku-4-5-20251001'
+const AI_MODEL = 'deepseek-v4-pro'
+const DEEPSEEK_MESSAGES_URL = 'https://api.deepseek.com/anthropic/v1/messages'
 
 // ── Main handler ─────────────────────────────────────────────────────────────
 serve(async (req) => {
@@ -182,10 +183,10 @@ User: ${row.user_email || 'anonymous'}
 Page: ${row.page || '—'}
 ${patternContext}`
 
-  const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY secret not set on Supabase project')
+  const apiKey = Deno.env.get('DEEPSEEK_API_KEY') || Deno.env.get('ANTHROPIC_API_KEY')
+  if (!apiKey) throw new Error('DEEPSEEK_API_KEY secret not set on Supabase project')
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch(DEEPSEEK_MESSAGES_URL, {
     method: 'POST',
     headers: {
       'x-api-key': apiKey,
@@ -193,20 +194,24 @@ ${patternContext}`
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: HAIKU_MODEL,
+      model: AI_MODEL,
       max_tokens: 350,
       system: SYSTEM_PROMPT,
+      thinking: { type: 'disabled' },
       messages: [{ role: 'user', content: prompt }],
     }),
   })
 
   if (!res.ok) {
     const errBody = await res.text()
-    throw new Error(`Anthropic ${res.status}: ${errBody.slice(0, 500)}`)
+    throw new Error(`DeepSeek ${res.status}: ${errBody.slice(0, 500)}`)
   }
 
   const result = await res.json()
-  const text: string = result.content?.[0]?.text ?? ''
+  const textBlock = Array.isArray(result.content)
+    ? (result.content.find((b: { type?: string }) => b?.type === 'text') || result.content[0])
+    : null
+  const text: string = textBlock?.text ?? ''
 
   let analysis: Record<string, string> = {}
   const match = text.match(/\{[\s\S]*\}/)
