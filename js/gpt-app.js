@@ -4434,6 +4434,9 @@ function fmtOmset(n) {
 // omset for listings_deduped rows that carry no real rate, without polluting the
 // row's own sold_per_day (which feeds sorting/scoring/"sold/hari").
 function soldPerDayEst(p) {
+  // Prefer the stored scale-aware velocity (refresh_omset_estimates) when present.
+  const ev = Number(p.est_velocity_daily);
+  if (Number.isFinite(ev) && ev > 0) return Math.min(ev, DD_MAX_SOLD_PER_DAY);
   const spd = Number(p.sold_per_day);
   if (Number.isFinite(spd) && spd > 0) return Math.min(spd, DD_MAX_SOLD_PER_DAY);
   // mv_trending rows: period rate from 7d delta (same formula as deep-dive open).
@@ -4452,6 +4455,9 @@ function soldPerDayEst(p) {
 }
 
 function estOmsetBulan(p) {
+  // Prefer the stored monthly omset estimate when present (real delta or cohort).
+  const eo = Number(p.est_omset_monthly);
+  if (Number.isFinite(eo) && eo >= 0 && (p.est_omset_monthly != null)) return eo;
   const price = Number(p.price) || 0;
   const spd = soldPerDayEst(p);
   if (price > 0 && spd > 0) return Math.round(price * spd * 30);
