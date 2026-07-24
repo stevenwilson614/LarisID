@@ -3951,11 +3951,33 @@ const SEARCH_SYNONYMS = {
   rotan: ['rattan'],
   rattan: ['rotan'],
   // Craft / embroidery — English queries must reach ID catalog keywords
-  cross: ['kristik', 'kruistik', 'kruissteek', 'sulam', 'embroidery'],
-  stitch: ['kristik', 'sulam', 'embroidery', 'jahit', 'tusuk'],
-  kristik: ['cross stitch', 'sulam', 'kruissteek', 'embroidery'],
-  sulam: ['kristik', 'embroidery', 'cross stitch', 'benang sulam'],
-  embroidery: ['sulam', 'kristik', 'cross stitch'],
+  cross: ['kristik', 'kruistik', 'kruissteek', 'sulam', 'tusuk silang'],
+  stitch: ['kristik', 'sulam', 'tusuk silang', 'kruissteek', 'strimin'],
+  kristik: ['cross stitch', 'kruissteek', 'kruistik', 'sulam', 'tusuk silang', 'pola kristik', 'benang sulam', 'strimin'],
+  kruistik: ['kristik', 'cross stitch', 'kruissteek', 'sulam'],
+  kruissteek: ['kristik', 'cross stitch', 'sulam', 'strimin'],
+  sulam: ['kristik', 'embroidery', 'cross stitch', 'benang sulam', 'bordir', 'tusuk silang'],
+  bordir: ['sulam', 'embroidery', 'kristik'],
+  embroidery: ['sulam', 'kristik', 'cross stitch', 'bordir', 'benang sulam'],
+  strimin: ['kristik', 'kruissteek', 'kanvas kristik', 'cross stitch'],
+  silang: ['tusuk silang', 'kristik', 'setik silang'],
+  benang: ['benang sulam', 'benang dmc', 'benang rajut'],
+  dmc: ['benang sulam', 'benang dmc', 'embroidery floss', 'cross stitch'],
+};
+
+// Multi-word phrase → craft cluster. Single-token expansion can't express
+// "cross stitch" as a unit, so these run when the whole phrase appears.
+const PHRASE_SYNONYMS = {
+  'cross stitch': ['kristik', 'kruissteek', 'kruistik', 'sulam', 'benang sulam', 'pola kristik', 'tusuk silang', 'strimin', 'embroidery'],
+  'crosstitch': ['kristik', 'kruissteek', 'sulam', 'tusuk silang', 'cross stitch'],
+  'tusuk silang': ['kristik', 'kruissteek', 'cross stitch', 'setik silang', 'sulam'],
+  'setik silang': ['kristik', 'tusuk silang', 'cross stitch', 'kruissteek'],
+  'punch needle': ['tusuk jarum', 'sulam', 'embroidery', 'kristik'],
+  'hand embroidery': ['sulam tangan', 'sulam', 'bordir', 'benang sulam'],
+  'benang sulam': ['benang dmc', 'sulam', 'kristik', 'embroidery floss'],
+  'pola kristik': ['kristik', 'pola sulam', 'kruissteek', 'cross stitch'],
+  'kristick': ['kristik', 'cross stitch', 'kruissteek'],
+  'sulaman': ['sulam', 'kristik', 'bordir', 'benang sulam'],
 };
 
 // When the catalog has nothing like the ask, suggest the nearest sellable niches.
@@ -4106,11 +4128,19 @@ function detectSearchDomain(lower) {
   return null;
 }
 
-function scoreSearchHit(row, terms, phrase = '') {
+// opts: { synonyms: [expansion terms], exclude: [noise terms] }. Synonyms let a
+// product reached via a translation ("kristik" for "cross stitch") count as relevant
+// even when the original tokens are absent; exclude down-ranks token-collision junk.
+function scoreSearchHit(row, terms, phrase = '', opts = {}) {
+  const synonyms = opts.synonyms || [];
+  const exclude = opts.exclude || [];
   const name = String(row.product_name || '').toLowerCase();
   const kw = String(row.keyword || '').toLowerCase();
   const cat = String(row.category || '').toLowerCase();
-  const noise = /gantungan kunci|keychain|stiker dinding|casing hp|case hp|wallpaper|poster|crossbody|cross.?country|crosspalm|nbcross/.test(`${name} ${kw}`);
+  const hay = `${name} ${kw}`;
+  const baseNoise = /gantungan kunci|keychain|stiker dinding|casing hp|case hp|wallpaper|poster|crossbody|cross.?country|crosspalm|nbcross/.test(hay);
+  const excludeHit = exclude.some(x => x && x.length >= 3 && !name.includes(phrase) && hay.includes(x));
+  const noise = baseNoise || excludeHit;
   let matched = 0;
   let score = 0;
   for (const t of terms) {
@@ -4124,6 +4154,15 @@ function scoreSearchHit(row, terms, phrase = '') {
   }
   const coverage = terms.length ? matched / terms.length : 0;
   score += coverage * 50;
+  // Niche/synonym signals — a product fetched via an expansion term ("kristik",
+  // "benang sulam") is relevant even without the original English tokens.
+  let synMatched = 0;
+  for (const s of synonyms) {
+    if (!s || s.length < 3) continue;
+    if (name.includes(s)) { synMatched += 1; score += 12; }
+    else if (kw.includes(s)) { synMatched += 1; score += 9; }
+    else if (cat.includes(s)) { score += 3; }
+  }
   // Contiguous phrase in the title beats incidental single-token hits
   // ("cross stitch" embroidery >> "crossbody" bags / "stitch" markers).
   if (phrase && phrase.length >= 5) {
@@ -4131,29 +4170,33 @@ function scoreSearchHit(row, terms, phrase = '') {
     else if (kw.includes(phrase)) score += 40;
   }
   score += Math.log10((Number(row.total_sold) || 0) + 1) * 3;
-  if (noise) score -= 40;
-  return { score, matched, coverage, noise };
+  if (noise) score -= 60;
+  return { score, matched, coverage, noise, synMatched };
 }
 
-function filterRelevantHits(hits, terms, phrase = '') {
+function filterRelevantHits(hits, terms, phrase = '', opts = {}) {
   if (!hits.length) return [];
-  if (!terms.length) return hits.slice();
-  const scored = hits.map(h => ({ h, ...scoreSearchHit(h, terms, phrase) }));
-  // Prefer full multi-term coverage first; only soften if that yields nothing.
-  let good = [];
-  if (terms.length >= 2) {
-    good = scored.filter(x => !x.noise && x.coverage >= 1);
-  }
+  const synonyms = opts.synonyms || [];
+  if (!terms.length && !synonyms.length) return hits.slice();
+  const scored = hits.map(h => ({ h, ...scoreSearchHit(h, terms, phrase, opts) }));
+  const phraseHit = (x) => {
+    if (!phrase || phrase.length < 5) return false;
+    return String(x.h.product_name || '').toLowerCase().includes(phrase)
+      || String(x.h.keyword || '').toLowerCase().includes(phrase);
+  };
+  const nonNoise = scored.filter(x => !x.noise);
+  // Relevant = full original coverage, OR a niche synonym match, OR the contiguous phrase.
+  let good = nonNoise.filter(x => x.coverage >= 1 || x.synMatched >= 1 || phraseHit(x));
+  // Soften only if the strict pass found nothing.
   if (!good.length) {
     const minCov = terms.length >= 2 ? 0.5 : 1;
-    good = scored.filter(x => !x.noise && x.coverage >= minCov && x.matched >= 1);
+    good = nonNoise.filter(x => x.coverage >= minCov && x.matched >= 1);
   }
-  // Soften: single strong name hit when multi-term coverage failed
   if (!good.length && terms.length >= 2) {
-    good = scored.filter(x => !x.noise && x.matched >= 1 && String(x.h.product_name || '').toLowerCase().includes(terms[0]));
+    good = nonNoise.filter(x => x.matched >= 1 && String(x.h.product_name || '').toLowerCase().includes(terms[0]));
   }
   if (!good.length) {
-    good = scored.filter(x => !x.noise && x.matched >= 1 && x.score >= 12);
+    good = nonNoise.filter(x => x.matched >= 1 && x.score >= 12);
   }
   good.sort((a, b) => b.score - a.score || (Number(b.h.total_sold) || 0) - (Number(a.h.total_sold) || 0));
   return good.map(x => x.h);
@@ -4203,47 +4246,147 @@ async function searchListings(q, locations = [], limit = 30) {
   } catch (_) { return []; }
 }
 
-/** Broaden → score → optionally ask clarifying questions instead of random fillers. */
+// ── Smart query planning: static craft map + DeepSeek V4 Pro, cached ──────────
+const SYN_CACHE_KEY = '_lid_syn_cache_v1';
+
+function _synCacheGet(key) {
+  try { const o = JSON.parse(localStorage.getItem(SYN_CACHE_KEY) || '{}'); return o[key] || null; }
+  catch (_) { return null; }
+}
+function _synCacheSet(key, plan) {
+  try {
+    const o = JSON.parse(localStorage.getItem(SYN_CACHE_KEY) || '{}');
+    o[key] = plan;
+    const keys = Object.keys(o);
+    if (keys.length > 300) delete o[keys[0]]; // bound the cache
+    localStorage.setItem(SYN_CACHE_KEY, JSON.stringify(o));
+  } catch (_) {}
+}
+
+// Instant, offline seed from the curated craft/commerce synonym maps.
+function _staticPlan(cleaned) {
+  const lower = cleaned.toLowerCase();
+  const terms = _searchTerms(cleaned);
+  const queries = [];
+  const add = (q) => { const s = String(q || '').trim(); if (s && !queries.includes(s)) queries.push(s); };
+  for (const ph of Object.keys(PHRASE_SYNONYMS)) {
+    if (lower.includes(ph)) PHRASE_SYNONYMS[ph].forEach(add);
+  }
+  for (const t of terms) (SEARCH_SYNONYMS[t] || []).forEach(add);
+  return { queries, exclude: [], category: null };
+}
+
+// DeepSeek V4 Pro query planner via the unauthenticated `search_plan` proxy route
+// (works for anon + logged-in). Returns ONLY search terms — never product names.
+async function _deepseekPlan(query) {
+  try {
+    const system = 'You are a product-search query planner for an Indonesian marketplace research tool. '
+      + 'Given a shopper search text, reply with ONLY strict minified JSON, no prose: '
+      + '{"queries":["short ID/EN keywords or phrases for the SAME product niche — include local '
+      + 'Indonesian synonyms, English equivalents and common misspellings, max 8"],'
+      + '"exclude":["lowercase words that would pull in UNRELATED products sharing a token, max 10"]}. '
+      + 'Return real search terms only. Never invent product names, brands, prices or descriptions.';
+    const res = await fetch(`${SUPA_URL}/functions/v1/claude-proxy`, {
+      method: 'POST',
+      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        purpose: 'search_plan',
+        model: 'deepseek-v4-pro',
+        max_tokens: 400,
+        system,
+        messages: [{ role: 'user', content: `Search text: "${String(query).slice(0, 120)}"` }],
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const blocks = Array.isArray(data?.content) ? data.content : [];
+    const text = (blocks.find(b => b?.type === 'text') || blocks[0] || {}).text || '';
+    const m = text.match(/\{[\s\S]*\}/);
+    if (!m) return null;
+    const parsed = JSON.parse(m[0]);
+    const clean = (arr, n) => Array.isArray(arr)
+      ? arr.map(s => String(s || '').trim()).filter(Boolean).slice(0, n) : [];
+    return { queries: clean(parsed.queries, 8), exclude: clean(parsed.exclude, 10).map(s => s.toLowerCase()) };
+  } catch (_) { return null; }
+}
+
+// Combine static seed + DeepSeek plan, cached per normalized query. On AI failure
+// return the static seed WITHOUT caching so a later search can still reach the model.
+async function planSearch(text) {
+  const cleaned = String(text || '').replace(/\s+/g, ' ').trim();
+  const key = cleaned.toLowerCase();
+  if (!key) return { queries: [], exclude: [], category: null };
+  const cached = _synCacheGet(key);
+  if (cached) return cached;
+  const seed = _staticPlan(cleaned);
+  const ai = await _deepseekPlan(cleaned);
+  if (!ai) return seed;
+  const uniq = (arr, n) => Array.from(new Set(arr.filter(Boolean))).slice(0, n);
+  const plan = {
+    queries: uniq([...ai.queries, ...seed.queries], 10),
+    exclude: uniq([...ai.exclude, ...seed.exclude], 12),
+    category: seed.category,
+  };
+  _synCacheSet(key, plan);
+  return plan;
+}
+
+// Expansion term set used for RANKING so synonym-fetched niche products survive.
+function _planSynonymTerms(terms, planQueries) {
+  const set = new Set();
+  const add = (t) => { const s = String(t || '').toLowerCase().trim(); if (s.length >= 3 && !SEARCH_STOPWORDS.has(s)) set.add(s); };
+  for (const q of planQueries) {
+    const s = String(q || '').toLowerCase().trim();
+    if (s.length >= 3) set.add(s);            // whole phrase, e.g. "benang sulam"
+    for (const tok of _searchTerms(s)) add(tok);
+  }
+  for (const t of terms) set.delete(t);       // originals live in `terms`, not synonyms
+  return Array.from(set);
+}
+
+/** Plan (DeepSeek + static) → broad parallel fetch → rank against expanded terms. */
 async function searchProductsForQuery(text, locations = [], limit = 12) {
   const cleaned = String(text || '').replace(/\s+/g, ' ').trim();
   const lower = cleaned.toLowerCase();
   const terms = _searchTerms(cleaned);
   const domain = detectSearchDomain(lower);
+  const phrase = lower;
+
+  // Smart, multilingual query plan (curated craft map + DeepSeek, cached).
+  const plan = await planSearch(cleaned);
+  const planQueries = (plan.queries || []).filter(Boolean);
+  const exclude = plan.exclude || [];
+  const synonyms = _planSynonymTerms(terms, planQueries);
+  const opts = { synonyms, exclude };
+
+  // Fetch the original phrase + every planned query in PARALLEL, merge + dedupe.
   const pool = [];
-
-  const tryQ = async (q) => {
-    if (!q) return;
-    mergePool(pool, await searchListings(q, locations, Math.max(limit * 2, 40)));
+  const seenQ = new Set();
+  const runQ = async (q) => {
+    const qq = _sanitizeSearchToken(q);
+    if (!qq || seenQ.has(qq.toLowerCase())) return [];
+    seenQ.add(qq.toLowerCase());
+    return searchListings(qq, locations, Math.max(limit * 2, 40));
   };
+  const queries = [cleaned, ...planQueries].slice(0, 9);
+  const results = await Promise.all(queries.map(runQ));
+  for (const r of results) mergePool(pool, r);
 
-  await tryQ(terms.join(' ') || cleaned);
-  if (pool.length < limit && terms.length > 1) {
-    for (const t of terms.slice(0, 3)) await tryQ(t);
-  }
-  if (pool.length < limit) {
-    for (const syn of expandSearchTerms(terms).slice(0, 6)) {
-      if (terms.includes(syn)) continue;
-      await tryQ(syn);
-      if (pool.length >= limit * 2) break;
-    }
-  }
-
-  const phrase = cleaned.toLowerCase();
-  let ranked = filterRelevantHits(pool, terms, phrase);
+  let ranked = filterRelevantHits(pool, terms, phrase, opts);
   if (domain) {
     if (!ranked.some(p => domain.prefer(p))) {
-      for (const sug of (domain.suggestions || []).slice(0, 3)) {
+      const extra = await Promise.all((domain.suggestions || []).slice(0, 3).map(sug => {
         const sq = _searchTerms(sug.q).join(' ') || sug.q;
-        await tryQ(String(sq).replace(/^cari\s+(produk\s+)?/i, ''));
-      }
+        return runQ(String(sq).replace(/^cari\s+(produk\s+)?/i, ''));
+      }));
+      for (const r of extra) mergePool(pool, r);
     }
-    const exp = expandSearchTerms(terms);
     const adjacent = pool.filter(p => {
       if (!domain.prefer(p)) return false;
       const hay = `${p.product_name || ''} ${p.keyword || ''} ${p.category || ''}`.toLowerCase();
-      return exp.some(t => hay.includes(t)) || terms.some(t => hay.includes(t));
+      return synonyms.some(t => hay.includes(t)) || terms.some(t => hay.includes(t));
     });
-    ranked = filterRelevantHits(adjacent, exp.slice(0, 8), phrase);
+    ranked = filterRelevantHits(adjacent, terms, phrase, opts);
     if (!ranked.length) ranked = adjacent.slice();
     if (!ranked.length) {
       return { products: [], mode: 'clarify', domain, terms };
