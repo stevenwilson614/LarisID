@@ -2941,6 +2941,138 @@ function expandCityLocations(city) {
   return CITY_LOCATIONS[city] || [city];
 }
 
+// Province / English region → city buckets → exact Shopee location strings.
+const REGION_ALIASES = {
+  'jawa barat': { label: 'Jawa Barat', cities: ['Bekasi', 'Depok', 'Bogor', 'Bandung'] },
+  'west java': { label: 'Jawa Barat', cities: ['Bekasi', 'Depok', 'Bogor', 'Bandung'] },
+  'jawa tengah': { label: 'Jawa Tengah', cities: ['Semarang'] },
+  'central java': { label: 'Jawa Tengah', cities: ['Semarang'] },
+  'jawa timur': { label: 'Jawa Timur', cities: ['Surabaya', 'Sidoarjo'] },
+  'east java': { label: 'Jawa Timur', cities: ['Surabaya', 'Sidoarjo'] },
+  'di yogyakarta': { label: 'DI Yogyakarta', cities: ['Yogyakarta'] },
+  'yogyakarta': { label: 'DI Yogyakarta', cities: ['Yogyakarta'] },
+  'dki jakarta': { label: 'DKI Jakarta', cities: ['Jakarta'] },
+  'sumatera utara': { label: 'Sumatera Utara', cities: ['Medan'] },
+  'north sumatra': { label: 'Sumatera Utara', cities: ['Medan'] },
+  'sumatera selatan': { label: 'Sumatera Selatan', cities: ['Palembang'] },
+  'sulawesi selatan': { label: 'Sulawesi Selatan', cities: ['Makassar'] },
+  'bali': { label: 'Bali', cities: ['Denpasar'] },
+};
+
+function expandRegionLocations(aliasKey) {
+  const meta = REGION_ALIASES[aliasKey];
+  if (!meta) return [];
+  const out = [];
+  const seen = new Set();
+  for (const city of meta.cities) {
+    for (const loc of expandCityLocations(city)) {
+      const k = String(loc).toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(loc);
+    }
+  }
+  return out;
+}
+
+/** Rewrite English material words to catalog-friendly Indonesian terms. */
+function normalizeMaterialQuery(text) {
+  let t = String(text || '');
+  const pairs = [
+    [/\bwooden\b/gi, 'kayu'],
+    [/\bwood\b/gi, 'kayu'],
+    [/\bbamboo\b/gi, 'bambu'],
+    [/\brattan\b/gi, 'rotan'],
+    [/\bglass\b/gi, 'kaca'],
+    [/\bplastic\b/gi, 'plastik'],
+  ];
+  for (const [re, rep] of pairs) t = t.replace(re, rep);
+  return t.replace(/[^a-zA-Z0-9\u00C0-\u024F\s]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Pull city OR province from free text (EN/ID), return locations for .in()
+ * plus a cleaned search string (region phrases stripped, materials normalized).
+ */
+function parsePlaceFromQuery(text) {
+  let working = String(text || '');
+  const lower = working.toLowerCase();
+  // Longer region aliases first
+  const aliases = Object.keys(REGION_ALIASES).sort((a, b) => b.length - a.length);
+  for (const alias of aliases) {
+    const esc = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+    const re = new RegExp(`\\b(?:di|dari|kota|daerah|sekitar|buatan|asal|made\\s+in|from|in)\\s+${esc}\\b|\\b${esc}\\b`, 'i');
+    if (!re.test(lower)) continue;
+    working = working.replace(re, ' ');
+    working = working.replace(/\b(made\s+in|from|buatan|asal)\b/gi, ' ');
+    const cleaned = normalizeMaterialQuery(
+      working
+        .replace(/\b(how about|what about|what if|bagaimana kalau|gimana kalau|alternatif|instead|rather than|a|an|the|product|produk|barang|please|maybe|mungkin|yang|dengan)\b/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+    );
+    return {
+      label: REGION_ALIASES[alias].label,
+      city: '',
+      locations: expandRegionLocations(alias),
+      cleaned: cleaned || normalizeMaterialQuery(text),
+    };
+  }
+  // City via existing helpers
+  const cityHit = cityMentionedIn(lower);
+  if (cityHit) {
+    const re = new RegExp(`\\b(?:di|dari|kota|daerah|sekitar|made\\s+in|from|in)\\s+(kota\\s+)?${cityHit.toLowerCase()}\\b|\\b${cityHit.toLowerCase()}\\b`, 'i');
+    working = working.replace(re, ' ');
+    const cleaned = normalizeMaterialQuery(
+      working
+        .replace(/\b(how about|what about|what if|bagaimana kalau|gimana kalau|alternatif|instead|a|an|the|product|produk|barang|please|maybe|mungkin)\b/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+    );
+    return {
+      label: cityHit,
+      city: cityHit,
+      locations: expandCityLocations(cityHit),
+      cleaned: cleaned || normalizeMaterialQuery(text),
+    };
+  }
+  const legacy = parseCityFromQuery(text);
+  if (legacy.city) {
+    return {
+      label: legacy.city,
+      city: legacy.city,
+      locations: expandCityLocations(legacy.city),
+      cleaned: normalizeMaterialQuery(legacy.cleaned),
+    };
+  }
+  return {
+    label: '',
+    city: '',
+    locations: [],
+    cleaned: normalizeMaterialQuery(text),
+  };
+}
+
+/**
+ * User is exploring an ALTERNATIVE product (material / region / "how about…"),
+ * not asking a material Q about the open Deep Dive listing.
+ */
+function isAltProductAsk(lower) {
+  const s = String(lower || '');
+  if (/\b(how about|what about|what if|instead(?:\s+of)?|rather than|alternatif|bagaimana kalau|gimana kalau|kalau (?:jual|pakai|pake|bikin)|coba yang|mungkin yang|bagaimana dengan|gimana dengan)\b/.test(s)) {
+    return true;
+  }
+  // "wood product from West Java" / "produk kayu dari Bandung" — new candidate, not "is THIS wood?"
+  const asksOtherProduct = /\b(produk|product|barang|jualan)\b/.test(s)
+    && !/\b(ini|this|that|bahannya|material(?:nya)?|terbuat|made of|is it)\b/.test(s);
+  const hasMaterial = /\b(kayu|wood|wooden|bambu|bamboo|rotan|rattan|kaca|glass|plastik|plastic|stainless|besi)\b/.test(s);
+  const hasPlace = !!cityMentionedIn(s)
+    || Object.keys(REGION_ALIASES).some((a) => new RegExp(`\\b${a.replace(/\s+/g, '\\s+')}\\b`).test(s));
+  if (asksOtherProduct && (hasMaterial || hasPlace)) return true;
+  if (hasMaterial && hasPlace && !/\b(ini|this|bahannya|material(?:nya)?|terbuat|made of)\b/.test(s)) return true;
+  return false;
+}
+
 function locMatches(loc, locations) {
   const l = String(loc || '').toLowerCase();
   if (!l || !locations.length) return false;
@@ -3811,6 +3943,13 @@ const SEARCH_SYNONYMS = {
   kuliner: ['dapur', 'peralatan masak'],
   skincare: ['kecantikan', 'serum', 'moisturizer'],
   fashion: ['baju', 'pakaian'],
+  kayu: ['wood', 'wooden', 'bambu', 'bamboo', 'kerajinan kayu', 'furniture kayu'],
+  wood: ['kayu', 'wooden', 'bambu', 'kerajinan kayu'],
+  wooden: ['kayu', 'wood', 'bambu'],
+  bambu: ['bamboo', 'kayu'],
+  bamboo: ['bambu', 'kayu'],
+  rotan: ['rattan'],
+  rattan: ['rotan'],
 };
 
 // When the catalog has nothing like the ask, suggest the nearest sellable niches.
@@ -3891,6 +4030,10 @@ function detectTopicChange(lower) {
   // “Cari tumbler / carikan sepatu…” — new product search, not Q&A on this Deep Dive.
   if (/^(cari|carikan|tunjukkan|tampilkan)\b/.test(lower) && !/bandingkan|dibanding/.test(lower)) {
     return { kind: 'keyword_search' };
+  }
+  // “How about a wood product made in West Java?” — alternative candidate → DB search.
+  if (isAltProductAsk(lower)) {
+    return { kind: 'alt_search' };
   }
   return null;
 }
@@ -5896,7 +6039,7 @@ PENTING:
 - Kalau STATISTIK SPESIFIKASI atau KANTONG ada, pakai angka itu dulu. Contoh: "Dari 40 listing sejenis, kebanyakan sebut 2 kantong; di top 10 terlaris yang menyebut jumlah, mayoritas 2–4 kantong."
 - Jangan arahkan ke "tanya toko" sebagai jawaban utama kalau data pasar sudah bisa menjawab. Boleh sebut konfirmasi ke toko hanya sebagai catatan sekunder.
 - Kalau user tanya cara buka/masuk link toko, link Shopee, kunjungi toko, atau "gimana masuk link toko": JELASKAN bahwa link toko & produk ada di Deep Dive produk ini — buka Deep Dive, lalu pakai tombol/link ke Shopee atau nama toko di halaman analisa. Jangan bilang kamu tidak bisa bantu, dan jangan suruh user "cari di LarisID" secara umum tanpa menyebut Deep Dive.
-- Kalau user minta kategori lain (skincare, fashion, dll.) yang BUKAN produk yang sedang dibuka: bilang singkat bahwa itu pencarian baru — mereka bisa ketik ulang di kotak chat (sistem akan menampilkan produk dari data). Jangan mengarang daftar skincare dari knowledge umum.
+- Kalau user minta alternatif / produk lain (bahan lain, daerah lain, "how about…", "bagaimana kalau…"): sistem akan otomatis mencari di database — JANGAN menyuruh mereka ketik ulang, dan JANGAN mengarang daftar produk. Jawab singkat bahwa kamu akan cari data, atau fokus ke data produk yang sedang dibuka kalau pertanyaan masih tentang produk ini.
 - Knowledge umum OK hanya sebagai pelengkap singkat, dan label jelas kalau bukan dari data.
 - Jangan bilang kamu "melihat" produk — kamu membaca data.
 - Keep answers short and direct. Simple questions: 2–5 plain sentences. Longer answers may use light markdown: **bold for key numbers/conclusions**, short bullet lists (- item), and ## headings only when needed. No emoji. Always stay in ${langLabel}.
@@ -6237,8 +6380,10 @@ async function handleComposerSubmit(text) {
       void logUserEvent('discover_view', { ui: 'gpt', q: text, category: catFallback, count: products.length });
       return;
     }
-    const { city, cleaned } = parseCityFromQuery(text);
-    const locations = city ? expandCityLocations(city) : [];
+    const place = parsePlaceFromQuery(text);
+    const locations = place.locations || [];
+    const cleaned = place.cleaned || text;
+    const placeLabel = place.label || place.city || '';
     const result = await searchProductsForQuery(cleaned, locations, 12);
     const usedClarify = result.mode === 'clarify' || !result.products.length;
     state.recommendations = usedClarify ? [] : result.products;
@@ -6263,7 +6408,18 @@ async function handleComposerSubmit(text) {
       html = searchClarifyHtml(text, result.domain);
     } else {
       const qLabel = (result.terms && result.terms.length) ? result.terms.join(' ') : cleaned;
-      const lead = `Hasil dari data LarisID untuk “${esc(qLabel)}”${city ? ` dari seller sekitar <strong>${esc(city)}</strong>` : ''}:`;
+      const en = detectReplyLanguage(text) === 'en';
+      const alt = isAltProductAsk(text.toLowerCase());
+      let lead;
+      if (alt && en) {
+        lead = `Looking for alternatives matching “${esc(qLabel)}”${placeLabel ? ` from sellers around <strong>${esc(placeLabel)}</strong>` : ''} — here are listings from LarisID data:`;
+      } else if (alt) {
+        lead = `Mencari alternatif “${esc(qLabel)}”${placeLabel ? ` dari seller sekitar <strong>${esc(placeLabel)}</strong>` : ''} — hasil dari data LarisID:`;
+      } else {
+        lead = en
+          ? `Results from LarisID data for “${esc(qLabel)}”${placeLabel ? ` near <strong>${esc(placeLabel)}</strong>` : ''}:`
+          : `Hasil dari data LarisID untuk “${esc(qLabel)}”${placeLabel ? ` dari seller sekitar <strong>${esc(placeLabel)}</strong>` : ''}:`;
+      }
       html = `<p>${lead}</p><div class="card-grid">${state.recommendations.map((p, i) => productCardHtml(p, i)).join('')}</div>`;
     }
     if (loading) await revealAssistant(loading, html);
