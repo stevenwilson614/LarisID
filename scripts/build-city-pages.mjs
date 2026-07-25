@@ -97,6 +97,7 @@ function navHtml() {
     <a href="/kota/">Per Kota</a>
     <a href="/riset/">Riset Pasar</a>
     <a href="/panduan/">Panduan</a>
+    <a href="/kalkulator/">Kalkulator</a>
     <a href="/cara-kerja/">Cara Kerja</a>
     <a href="/" class="nav-cta">Mulai Gratis</a>
   </nav>`;

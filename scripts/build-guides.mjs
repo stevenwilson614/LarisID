@@ -42,6 +42,7 @@ function nav(active) {
   return `<nav class="site-nav">
     <a href="/riset/">Riset Pasar</a>
     ${link('/panduan/', 'Panduan')}
+    <a href="/kalkulator/">Kalkulator</a>
     <a href="/perbandingan/">Perbandingan</a>
     <a href="/harga/">Harga</a>
     <a href="/cara-kerja/">Cara Kerja</a>
