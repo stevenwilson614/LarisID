@@ -923,6 +923,65 @@ function noteGptUsage(data) {
   if (!_gptUsage.resetAt) _gptUsage.resetAt = wibMidnightReset();
   if (isPlatformAdmin()) _gptUsage.unlimited = true;
   renderGptUsage();
+  spinMaybeOffer();
+}
+
+// ── Daily spin ────────────────────────────────────────────────────────────
+// Offered after the 2nd search of the day, before the wall — research found the
+// limit is the LAST thing several users ever saw, so meeting them once already
+// blocked is too late. The bonus is shared with arm A: spin_daily_bonus() writes
+// daily_usage.bonus_dives, which raises both the dive cap and _gpt_chat_limit().
+let _spinBusy = false;
+let _spinOffered = false;
+
+function spinShow() {
+  const ov = document.getElementById('spin-modal');
+  if (!ov) return;
+  ov.classList.add('open');
+  void logUserEvent('spin_shown', { ui: 'gpt', used: _gptUsage.used });
+  clarityEvt('spin_shown', {});
+}
+
+function spinClose() {
+  document.getElementById('spin-modal')?.classList.remove('open');
+}
+
+function spinMaybeOffer() {
+  try {
+    if (_spinOffered || !currentUser || _gptUsage.unlimited) return;
+    if ((_gptUsage.used || 0) !== 2) return;
+    _spinOffered = true;
+    setTimeout(spinShow, 900);
+  } catch (_) {}
+}
+
+async function spinDo() {
+  if (_spinBusy || !_supabase) return;
+  _spinBusy = true;
+  const go = document.getElementById('spin-modal-go');
+  if (go) { go.disabled = true; go.textContent = 'Memutar…'; }
+  try {
+    const { data, error } = await _supabase.rpc('spin_daily_bonus');
+    if (error) throw error;
+    if (data && data.allowed === false) {
+      showToast(data.reason === 'already_spun'
+        ? 'Kamu sudah putar hari ini. Balik lagi besok ya.'
+        : 'Putaran belum bisa dipakai sekarang.');
+    } else if (data) {
+      // dive_limit is the arm A cap; arm B's own limit comes back on the next
+      // gpt_new_chat, so bump the local view by the award rather than guessing.
+      noteGptUsage({ limit: (_gptUsage.limit || GPT_DAILY_LIMIT) + data.award });
+      showToast(`Dapat +${data.award} pencarian buat hari ini!`);
+      void logUserEvent('spin_awarded', { ui: 'gpt', award: data.award });
+      clarityEvt('spin_awarded', { award: String(data.award) });
+    }
+  } catch (_) {
+    showToast('Gagal memutar. Coba lagi nanti.');
+  } finally {
+    _spinBusy = false;
+    if (go) { go.disabled = false; go.textContent = 'Putar sekarang'; }
+    spinClose();
+  }
 }
 
 function renderGptUsage() {
@@ -1912,6 +1971,48 @@ function submitFromHome(text) {
   void handleComposerSubmit(text);
 }
 
+// ── Rekomendasi Steven ────────────────────────────────────────────────────
+// Weekly, shared-per-city picks of products new sellers are actually succeeding
+// with, from mv_city_weekly_recs. Same list for everyone in a city — that is
+// what makes it "Steven's pick" rather than a personalised feed.
+let _stevenRecsCity = null;
+
+async function renderStevenRecs() {
+  const sec = document.getElementById('steven-recs');
+  const grid = document.getElementById('steven-recs-grid');
+  if (!sec || !grid || !_supabase) return;
+
+  // CITY_LOCATIONS keys are the canonical buckets, matching city_location_map.
+  const city = _finder.city && CITY_LOCATIONS[_finder.city] ? _finder.city : null;
+  if (!city) { sec.style.display = 'none'; return; }
+  if (_stevenRecsCity === city && grid.children.length) { sec.style.display = ''; return; }
+
+  try {
+    const { data } = await _supabase.from('mv_city_weekly_recs')
+      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,age_days,sold_per_day,rn,week_start')
+      .eq('city', city)
+      .order('rn', { ascending: true })
+      .limit(20);
+    const rows = data || [];
+    if (!rows.length) { sec.style.display = 'none'; return; }
+
+    _stevenRecsCity = city;
+    const title = document.getElementById('steven-recs-title');
+    const sub = document.getElementById('steven-recs-sub');
+    if (title) title.textContent = `Rekomendasi Steven · ${city}`;
+    if (sub) {
+      sub.textContent = `${rows.length} produk yang lagi jalan buat penjual baru di ${city} — listing baru (di bawah 4 bulan) yang sudah tembus 100+ terjual. Daftar ini ganti tiap minggu.`;
+    }
+    grid.innerHTML = rows.map((p, i) => productCardHtml(p, i)).join('');
+    bindProductCards(grid);
+    sec.style.display = '';
+    void logUserEvent('steven_recs_view', { ui: 'gpt', city, count: rows.length });
+    clarityEvt('steven_recs_view', { city });
+  } catch (_) {
+    sec.style.display = 'none';
+  }
+}
+
 function renderHome() {
   _offerActive = false;
   setView('home');
@@ -1919,6 +2020,7 @@ function renderHome() {
   saveLocalState();
   renderChatList();
   wireHomeFinder();
+  void renderStevenRecs();
 
   if (!renderHome._seen) {
     renderHome._seen = true;
@@ -7691,6 +7793,8 @@ async function boot() {
   } catch (_) {}
 
   wireUi();
+  document.getElementById('spin-modal-go')?.addEventListener('click', () => { void spinDo(); });
+  document.getElementById('spin-modal-later')?.addEventListener('click', spinClose);
   _lidInitScrollDepth();
   updateAccountUI();
   renderGptUsage();

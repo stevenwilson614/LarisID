@@ -1123,6 +1123,29 @@ body.onboarding-active .panel { padding-bottom: 28px; }
   width: 100%; max-width: 560px; margin: 6px 0 14px;
   color: var(--muted); font-size: .75rem;
 }
+.steven-recs {
+  width: 100%; max-width: 560px; margin: 18px 0 4px;
+}
+.steven-recs-head {
+  display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px;
+}
+.steven-recs-av {
+  width: 32px; height: 32px; border-radius: 50%;
+  object-fit: cover; object-position: center top; flex-shrink: 0;
+}
+.steven-recs-title {
+  margin: 0; font-size: .92rem; font-weight: 700; line-height: 1.2;
+}
+.steven-recs-sub {
+  margin: 3px 0 0; font-size: .72rem; color: var(--muted); line-height: 1.45;
+}
+.steven-recs-grid {
+  display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px;
+  scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+}
+.steven-recs-grid > * {
+  flex: 0 0 158px; scroll-snap-align: start;
+}
 .finder-atau::before, .finder-atau::after {
   content: ''; flex: 1; height: 1px; background: var(--line);
 }
@@ -2020,6 +2043,18 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
               <p class="finder-note">Gratis · Tanpa kartu kredit</p>
             </div>
 
+            <!-- Rekomendasi Steven: weekly, shared per city. Hidden until it has rows. -->
+            <section class="steven-recs" id="steven-recs" style="display:none;">
+              <div class="steven-recs-head">
+                <img class="steven-recs-av" id="steven-recs-av" src="/images/steven-avatar.webp" alt="" width="32" height="32" loading="lazy" onerror="this.style.display='none'">
+                <div>
+                  <h3 class="steven-recs-title" id="steven-recs-title">Rekomendasi Steven</h3>
+                  <p class="steven-recs-sub" id="steven-recs-sub"></p>
+                </div>
+              </div>
+              <div class="card-grid steven-recs-grid" id="steven-recs-grid"></div>
+            </section>
+
             <div class="finder-atau">Atau</div>
 
             <form class="home-composer" id="hero-form">
@@ -2236,6 +2271,17 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
     <div class="nudge-actions">
       <button type="button" class="btn-primary" id="profile-nudge-go">Isi sekarang</button>
       <button type="button" class="btn-ghost" id="profile-nudge-later">Nanti dulu</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="spin-modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="spin-modal-title">
+    <h3 id="spin-modal-title" class="nudge-title">Putaran harian kamu</h3>
+    <p class="nudge-sub" id="spin-modal-sub">Putar sekali tiap hari buat nambah jatah riset — bisa dapat <strong>+1</strong>, <strong>+2</strong>, atau <strong>+5</strong> pencarian.</p>
+    <div class="nudge-actions">
+      <button type="button" class="btn-primary" id="spin-modal-go">Putar sekarang</button>
+      <button type="button" class="btn-ghost" id="spin-modal-later">Nanti dulu</button>
     </div>
   </div>
 </div>
