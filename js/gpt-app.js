@@ -21,6 +21,99 @@ function _clarity() {
   } catch (_) {}
 })();
 
+// ── Anonymous page-view logging ──────────────────────────────────────────
+// Port of _lidVisitorId/_lidLogPageView from js/laris-app.js:133-167. Arm B was
+// invisible in public.page_views because that logger only ships in laris-app.js,
+// which /gpt/ never loads — so the admin landing-view cards counted arm A only.
+// p_path is location.pathname, so rows land as '/gpt/' and the arms separate in
+// admin_stats. The _lid_pv_sent guard cannot collide with arm A: the A/B redirect
+// runs in index.html's head, before laris-app.js loads.
+function _lidVisitorId() {
+  try {
+    let id = localStorage.getItem('_lid_vid');
+    if (!id) {
+      id = (window.crypto?.randomUUID?.() || ('v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10)));
+      localStorage.setItem('_lid_vid', id);
+    }
+    return id;
+  } catch (_) { return null; }
+}
+
+function _lidLogPageView() {
+  try {
+    if (!_supabase) return;
+    // Once per tab session.
+    if (sessionStorage.getItem('_lid_pv_sent')) return;
+    let sid = sessionStorage.getItem('_lid_sid');
+    const isNewSession = !sid;
+    if (!sid) {
+      sid = (window.crypto?.randomUUID?.() || ('s' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8)));
+      sessionStorage.setItem('_lid_sid', sid);
+    }
+    const vid = _lidVisitorId();
+    if (!vid) return;
+    sessionStorage.setItem('_lid_pv_sent', '1');
+    const q = new URLSearchParams(location.search);
+    _supabase.rpc('log_page_view', {
+      p_visitor_id: vid,
+      p_session_id: sid,
+      p_path: location.pathname,
+      p_referrer: (document.referrer || '(direct)').slice(0, 300),
+      p_utm_source: q.get('utm_source') || '',
+      p_is_new_session: isNewSession,
+    }).then(() => {}, () => {});
+  } catch (_) {}
+}
+
+// Scroll-depth milestones (25/50/75/100%) → Clarity, mirroring
+// js/laris-app.js:24516-24537 so arm B is comparable to arm A. Fires once per load.
+//
+// Arm A's version listens on window and measures document.documentElement, which
+// would be a silent no-op here: /gpt/ is a fixed-height app shell (documentElement
+// scrollHeight === innerHeight) and the scrolling happens inside #panel. So bind to
+// that container and fall back to the window only if it is missing.
+//
+// Two caveats when comparing arms. Arm A defers through larisClarityEvent's idle
+// queue while _clarity here is synchronous, so sub-second timing differs. And depth
+// on a chat surface means "how far down this thread", not "how far down a marketing
+// page" — the two are not the same quantity even though they share an event name.
+function _lidInitScrollDepth() {
+  const fired = {};
+  const marks = [25, 50, 75, 100];
+  let scrollTick = 0;
+
+  function measure(el) {
+    if (el) {
+      const max = el.scrollHeight - el.clientHeight;
+      if (max <= 0) return 0;
+      return (el.scrollTop + el.clientHeight) / el.scrollHeight * 100;
+    }
+    const doc = document.documentElement;
+    if (!doc.scrollHeight) return 0;
+    return (window.scrollY + window.innerHeight) / doc.scrollHeight * 100;
+  }
+
+  function onScroll(el) {
+    return function () {
+      const now = Date.now();
+      if (now - scrollTick < 200) return;
+      scrollTick = now;
+      const scrolled = measure(el);
+      marks.forEach(function (m) {
+        if (!fired[m] && scrolled >= m) {
+          fired[m] = true;
+          _clarity('event', 'scroll_depth_' + m);
+          _clarity('set', 'max_scroll', String(m));
+        }
+      });
+    };
+  }
+
+  const panel = document.getElementById('panel');
+  if (panel) panel.addEventListener('scroll', onScroll(panel), { passive: true });
+  else window.addEventListener('scroll', onScroll(null), { passive: true });
+}
+
 function _lidAbStamp(metadata) {
   const m = metadata && typeof metadata === 'object' ? { ...metadata } : {};
   if (m.ab_variant) return m;
@@ -1461,6 +1554,8 @@ async function initSupabase() {
       }
     });
   }
+  // Log this visit (anonymous-friendly) for the admin landing-view metrics.
+  _lidLogPageView();
 }
 
 async function signOut() {
@@ -7596,6 +7691,7 @@ async function boot() {
   } catch (_) {}
 
   wireUi();
+  _lidInitScrollDepth();
   updateAccountUI();
   renderGptUsage();
 

@@ -22250,12 +22250,26 @@ function dashboardTourHandleTrackClick() {
   let toastShown = false;
   let floatShown = false;
 
+  /* ── Gate: signed-in dashboard only ──
+     These used to fire on every page load, which put the "Pesan Steven" banner and
+     float on the marketing landing for logged-out visitors who have nothing to give
+     feedback about. Clarity's tap heatmap for / then ranked the banner's ✕ as the
+     single most-clicked element on the page (28 taps vs 18 for the primary CTA), and
+     on mobile the banner (z-index 1100) covers .lp-mobile-cta (z-index 300).
+     Checked at fire time, not schedule time, so session restore has a chance to land. */
+  function fbAllowed() {
+    try {
+      return !!currentUser && document.body.classList.contains('in-dashboard');
+    } catch (_) { return false; }
+  }
+
   /* ── Floating button: show after 30s ── */
   setTimeout(() => showFloat(), 30000);
 
   /* ── First-visit banner: show after 3s, auto-dismiss 10s ── */
   if (!localStorage.getItem('ps_banner_seen')) {
     setTimeout(() => {
+      if (!fbAllowed()) return; // retries next load — ps_banner_seen is only set on dismissal
       const el = document.getElementById('fb-banner');
       if (el) el.classList.add('show');
       setTimeout(() => dismissBanner(), 10000);
@@ -22286,6 +22300,7 @@ function dashboardTourHandleTrackClick() {
 
   function showFloat() {
     if (floatShown) return;
+    if (!fbAllowed()) return;
     floatShown = true;
     const el = document.getElementById('fb-float');
     if (el) el.classList.add('show');
