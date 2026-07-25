@@ -116,6 +116,7 @@ LarisID menerbitkan **745 halaman riset pasar** (per Juli 2026) berbasis data li
 ## Panduan untuk seller (edukasi)
 
 - Indeks panduan: https://larisid.com/panduan/
+- Produk terlaris untuk pemula 2026 (8 kategori + bukti data listing Shopee: harga, rating, ulasan nyata; angka omzet adalah ESTIMASI): https://larisid.com/panduan/produk-terlaris-untuk-pemula-2026/
 - Cara riset produk Shopee untuk pemula: https://larisid.com/panduan/cara-riset-produk-shopee-untuk-pemula/
 - Cara menghitung margin & HPP: https://larisid.com/panduan/cara-menghitung-margin-dan-hpp/
 - Cara analisis kompetitor Shopee: https://larisid.com/panduan/analisis-kompetitor-shopee/
@@ -126,6 +127,12 @@ LarisID menerbitkan **745 halaman riset pasar** (per Juli 2026) berbasis data li
 - Cara cari supplier & tempat kulakan murah: https://larisid.com/panduan/cara-cari-supplier-dan-tempat-kulakan/
 - Dropship Shopee: cara kerja & risiko (penjelasan jujur): https://larisid.com/panduan/dropship-shopee-cara-kerja-dan-risiko/
 - Cara meningkatkan penjualan di Shopee (7 cara berbasis data): https://larisid.com/panduan/cara-meningkatkan-penjualan-di-shopee/
+
+## Kalkulator gratis (alat interaktif, tanpa login)
+
+- Indeks kalkulator: https://larisid.com/kalkulator/
+- Kalkulator Margin & HPP (laba per unit, margin %, markup, BEP): https://larisid.com/kalkulator/margin-hpp/
+- Kalkulator Biaya Admin Shopee 2026 (potongan admin per kategori 2,5%–10%, Gratis Ongkir XTRA ~5,5%, biaya proses pesanan Rp 1.250, SPayLater ~2,5% → dana bersih diterima; tarif per Januari 2026, dapat berubah — verifikasi di Pusat Edukasi Penjual Shopee): https://larisid.com/kalkulator/biaya-shopee/
 
 ## Perbandingan alat (kompetitor)
 

@@ -42,6 +42,7 @@ function nav(active) {
   return `<nav class="site-nav">
     <a href="/riset/">Riset Pasar</a>
     ${link('/panduan/', 'Panduan')}
+    <a href="/kalkulator/">Kalkulator</a>
     <a href="/perbandingan/">Perbandingan</a>
     <a href="/harga/">Harga</a>
     <a href="/cara-kerja/">Cara Kerja</a>
@@ -240,6 +241,72 @@ ${cards}
 
 // ---------- guide content (hand-written) ----------
 const GUIDES = [
+  {
+    slug: 'produk-terlaris-untuk-pemula-2026',
+    title: 'Produk Terlaris untuk Pemula 2026: 8 Kategori + Bukti Data Shopee',
+    desc: '8 kategori produk terlaris untuk pemula 2026 dengan bukti nyata dari listing Shopee — harga, rating, dan puluhan ribu ulasan. Plus cara memilih niche yang belum sesak.',
+    h1: 'Produk Terlaris untuk Pemula 2026 (dengan Bukti Data)',
+    cardNote: '8 kategori modal kecil + bukti ulasan nyata & cara masuk niche',
+    lead: 'Produk terlaris untuk pemula bukan yang paling viral, tapi yang punya <strong>permintaan terbukti</strong> dan <strong>modal terjangkau</strong>. Berikut 8 kategori dengan bukti nyata dari listing Shopee — harga, rating, dan jumlah ulasan — plus cara memilih titik masuk yang belum sesak.',
+    datePublished: '2026-07-24', dateModified: '2026-07-24', updatedHuman: '24 Juli 2026',
+    body: `    <div class="summary-box">
+      <p>Untuk pemula di 2026, kategori dengan permintaan paling <strong>terbukti</strong> di Shopee Indonesia adalah <strong>skincare, makanan hewan peliharaan, aksesoris fashion (jam tangan), aksesoris HP (kabel data), kerajinan/hobi, perlengkapan pesta, alat tulis sekolah, dan pertanian/berkebun</strong> — semuanya bermodal di bawah Rp 50.000 per unit, dengan produk teratas yang mengumpulkan puluhan sampai ratusan ribu ulasan nyata. Kuncinya: jangan meniru produk terlaris, tapi masuk ke <strong>niche yang lebih spesifik</strong> di dalam kategori itu.</p>
+    </div>
+
+    <p>Daftar "produk laris" yang beredar biasanya sekadar tebakan atau daftar barang viral yang pasarnya sudah penuh. Halaman ini berbeda: setiap kategori di bawah dipilih dari <strong>listing Shopee nyata</strong> dan disertai <strong>bukti permintaan</strong> yang bisa kamu cek sendiri — jumlah ulasan pada produk teratasnya.</p>
+
+    <div class="disclaimer">
+      <p><strong>Cara membaca data ini (penting).</strong> <strong>Harga, rating, dan jumlah ulasan</strong> di tabel adalah data <strong>nyata</strong> dari listing Shopee. Kolom <strong>estimasi omzet/bulan</strong> adalah <strong>estimasi LarisID</strong> (dihitung dari estimasi kecepatan penjualan × harga), <em>bukan data resmi Shopee</em> — angka "terjual" di Shopee sendiri adalah estimasi. Gunakan omzet estimasi untuk membaca skala pasar, bukan angka pasti. Metodologinya kami jelaskan terbuka di <a href="/cara-kerja/">cara kerja</a>.</p>
+    </div>
+
+    <h2>Cara kami memilih 8 kategori ini</h2>
+    <p>Bukan berdasarkan feeling atau tren TikTok, tapi tiga syarat yang cocok untuk pemula:</p>
+    <ul>
+      <li><strong>Permintaan terbukti.</strong> Produk teratas di kategori ini punya <strong>puluhan ribu ulasan</strong>. Ulasan hanya muncul setelah pembelian nyata — ini bukti demand yang paling jujur, jauh lebih jujur daripada angka "terjual".</li>
+      <li><strong>Modal terjangkau.</strong> Harga jual di bawah Rp 80.000 (sebagian besar di bawah Rp 50.000), jadi kamu bisa mulai dengan stok kecil untuk uji pasar.</li>
+      <li><strong>Mudah dikirim &amp; tahan lama.</strong> Barang kecil, tidak mudah rusak, ongkir ringan — minim risiko untuk pemula.</li>
+    </ul>
+
+    <h2>8 kategori produk terlaris untuk pemula 2026</h2>
+    <div class="compare-wrap">
+    <table class="compare">
+      <thead>
+        <tr><th>Kategori</th><th>Contoh produk teratas (bukti)</th><th>Harga</th><th>Rating</th><th>Ulasan nyata</th><th>Estimasi omzet/bln*</th><th>Validasi niche</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Skincare &amp; Kecantikan</td><td class="prod-name">The Originote Hyalucera Moisturizer Gel 50ml</td><td>Rp 42.000</td><td>4,89</td><td>810.254</td><td>±Rp 122 jt</td><td><a href="/riset/roller-wajah-es-batu-silikon/">roller wajah es batu</a></td></tr>
+        <tr><td>Hewan Peliharaan</td><td class="prod-name">BOLT Makanan Kucing Kering (dry food)</td><td>Rp 21.000</td><td>4,93</td><td>182.213</td><td>±Rp 100 jt</td><td><a href="/riset/pasir-kucing-wangi-gumpal/">pasir kucing wangi</a></td></tr>
+        <tr><td>Aksesoris Fashion</td><td class="prod-name">Jam Tangan Casual Wanita Analog</td><td>Rp 14.500</td><td>4,74</td><td>182.202</td><td>±Rp 36 jt</td><td><a href="/riset/jam-tangan-fashion-wanita/">jam tangan fashion wanita</a></td></tr>
+        <tr><td>HP &amp; Gadget</td><td class="prod-name">AMINO Kabel Data 4A Fast Charging</td><td>Rp 17.900</td><td>4,87</td><td>135.597</td><td>±Rp 24 jt</td><td><a href="/riset/kabel-charger-3-in-1-fast-charging/">kabel charger 3-in-1</a></td></tr>
+        <tr><td>Kerajinan &amp; Hobi</td><td class="prod-name">SKYE DYE Pewarna Kain / Tie Dye</td><td>Rp 18.599</td><td>4,81</td><td>129.492</td><td>±Rp 51 jt</td><td><a href="/riset/kuas-lukis-set/">kuas lukis set</a></td></tr>
+        <tr><td>Pesta &amp; Dekorasi</td><td class="prod-name">Tirai Foil Backdrop Ulang Tahun</td><td>Rp 7.399</td><td>4,86</td><td>62.184</td><td>±Rp 17 jt</td><td><a href="/riset/bunga-palsu-dekorasi-rumah/">bunga palsu dekorasi</a></td></tr>
+        <tr><td>Sekolah &amp; ATK</td><td class="prod-name">Sampul Buku Stiker PVC (10 lembar)</td><td>Rp 14.490</td><td>4,93</td><td>56.278</td><td>±Rp 23 jt</td><td><a href="/riset/cover-buku-transparan/">cover buku transparan</a></td></tr>
+        <tr><td>Pertanian &amp; Berkebun</td><td class="prod-name">Pupuk NPK Mutiara 16-16-16 1Kg</td><td>Rp 37.500</td><td>4,90</td><td>53.498</td><td>±Rp 83 jt</td><td><a href="/riset/alat-siram-tanaman-kecil/">alat siram tanaman</a></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="muted">*Estimasi omzet/bulan adalah perkiraan LarisID dari satu listing teratas (estimasi kecepatan penjualan × harga), bukan data resmi Shopee. Harga, rating, dan jumlah ulasan adalah data listing nyata per Juli 2026.</p>
+
+    <h2>Jangan tiru produk terlaris — masuk lewat niche-nya</h2>
+    <p>The Originote punya 810 ribu ulasan; sebagai pemula kamu tidak akan menang head-to-head melawan brand sebesar itu. Angka-angka di atas fungsinya <strong>membuktikan kategorinya punya permintaan besar</strong> — bukan mengajak kamu jual barang yang sama. Strategi yang benar: pilih <strong>sub-niche yang lebih spesifik</strong> di dalam kategori yang sudah terbukti, tempat persaingannya belum sesak. Itu sebabnya kolom "validasi niche" mengarah ke halaman <a href="/riset/">riset pasar</a> untuk keyword yang lebih sempit — di sana kamu bisa lihat harga median, jumlah toko, dan estimasi penjualan sebelum keluar modal.</p>
+
+    <h2>Produk laris ini tersebar di kota mana?</h2>
+    <p>Permintaan Shopee tidak merata — penjual dan pembeli terkuat sering terkonsentrasi di kota tertentu. Contoh dari data di atas: penjual skincare teratas berbasis di <a href="/kota/kab-bogor/">Kab. Bogor</a>, makanan kucing di <a href="/kota/jakarta-selatan/">Jakarta Selatan</a>, jam tangan fashion di <a href="/kota/tangerang/">Tangerang</a>, dan kerajinan tie-dye di <a href="/kota/kab-bandung/">Kab. Bandung</a>. Kalau kamu ingin tahu <strong>produk apa yang paling laris di kotamu sendiri</strong>, LarisID punya halaman data penjual per kota untuk 100 kota/kabupaten di Pulau Jawa — mulai dari <a href="/kota/bandung/">Bandung</a>, <a href="/kota/surabaya/">Surabaya</a>, sampai <a href="/kota/bekasi/">Bekasi</a>. Lihat semuanya di <a href="/kota/">data produk terlaris per kota</a>.</p>
+
+    <h2>Hitung untung sebelum kulakan</h2>
+    <p>"Laris" tidak otomatis "untung". Sebelum ambil salah satu kategori di atas, pastikan marginnya sehat setelah dipotong biaya Shopee. Pakai dua alat gratis ini:</p>
+    <ul>
+      <li><strong><a href="/kalkulator/margin-hpp/">Kalkulator Margin &amp; HPP</a></strong> — masukkan modal dan harga jual, langsung tahu laba per unit, margin %, dan titik impas (BEP).</li>
+      <li><strong><a href="/kalkulator/biaya-shopee/">Kalkulator Biaya Shopee</a></strong> — hitung potongan biaya admin/layanan Shopee supaya kamu tahu berapa yang benar-benar kamu terima.</li>
+    </ul>
+    <p>Kalau ingin memahami komponennya lebih dalam, baca <a href="/panduan/cara-menghitung-margin-dan-hpp/">cara menghitung margin &amp; HPP</a> dan <a href="/panduan/cara-riset-produk-shopee-untuk-pemula/">cara riset produk Shopee untuk pemula</a>.</p>`,
+    faqs: [
+      { q: 'Apa produk yang paling laris untuk pemula di 2026?', a: 'Kategori dengan permintaan paling terbukti untuk pemula bermodal kecil di 2026 adalah <strong>skincare, makanan hewan peliharaan, aksesoris fashion (jam tangan), aksesoris HP (kabel data), kerajinan/hobi, perlengkapan pesta, alat tulis sekolah, dan pertanian/berkebun</strong> — semuanya di bawah Rp 50.000 per unit dengan produk teratas beromzet puluhan ribu ulasan nyata. Bukti datanya ada di <a href="/riset/">halaman riset pasar</a>.' },
+      { q: 'Berapa modal untuk mulai jualan produk-produk ini?', a: 'Sebagian besar kategori di atas punya harga jual di bawah Rp 50.000 per unit, jadi kamu bisa mulai dengan stok kecil untuk uji pasar. Hitung dulu HPP dan margin dengan <a href="/kalkulator/margin-hpp/">kalkulator margin</a> sebelum menentukan jumlah kulakan.' },
+      { q: 'Apakah aman meniru produk terlaris seperti The Originote?', a: 'Tidak disarankan. Produk dengan ratusan ribu ulasan berarti sudah ada pemain sangat kuat dan perang harga. Gunakan angka itu sebagai bukti bahwa <strong>kategorinya</strong> punya permintaan, lalu masuk lewat sub-niche yang lebih spesifik dan belum sesak — validasi dulu di <a href="/riset/">riset pasar</a>.' },
+      { q: 'Angka "terjual" dan omzet di sini dari mana?', a: 'Harga, rating, dan jumlah ulasan adalah data listing Shopee <strong>nyata</strong>. Estimasi omzet adalah perkiraan LarisID (estimasi kecepatan penjualan × harga), <strong>bukan data resmi Shopee</strong> — angka "terjual" Shopee sendiri pun estimasi. Kami jelaskan metodologinya di <a href="/cara-kerja/">cara kerja</a>.' },
+    ],
+  },
   {
     slug: 'cara-riset-produk-shopee-untuk-pemula',
     title: 'Cara Riset Produk Shopee untuk Pemula (Panduan 2026)',

@@ -35,6 +35,12 @@ const OUT_DIR = path.join(ROOT, 'riset');
 const SITE = 'https://larisid.com';
 const SNAPSHOT = '2026-06-19';
 const SNAPSHOT_HUMAN = '19 Juni 2026';
+// Publish date of the beginner-products guide + free calculators. Distinct from SNAPSHOT:
+// SNAPSHOT is "when the Shopee data was scraped" and only belongs on data-driven pages
+// (/riset/, /kota/). Using it as <lastmod> for pages authored later reports a change date
+// BEFORE the page existed, which suppresses recrawl priority and contradicts the page's
+// own Article schema. Give hand-authored pages their real publish date instead.
+const CONTENT_2026_07 = '2026-07-24';
 const OG_IMAGE = `${SITE}/images/Banner.jpg`;
 
 // Google Ads tag — lives on the /riset/ hub (parity with the committed hub; kept
@@ -137,6 +143,7 @@ function navHtml() {
   return `<nav class="site-nav">
     <a href="/riset/">Riset Pasar</a>
     <a href="/panduan/">Panduan</a>
+    <a href="/kalkulator/">Kalkulator</a>
     <a href="/perbandingan/">Perbandingan</a>
     <a href="/harga/">Harga</a>
     <a href="/cara-kerja/">Cara Kerja</a>
@@ -490,7 +497,8 @@ function buildSitemap(entries) {
   const staticUrls = [
     { loc: `${SITE}/`, freq: 'weekly', pri: '1.0', mod: '2026-05-30' },
     { loc: `${SITE}/riset/`, freq: 'weekly', pri: '0.9', mod: SNAPSHOT },
-    { loc: `${SITE}/panduan/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
+    { loc: `${SITE}/panduan/`, freq: 'monthly', pri: '0.8', mod: CONTENT_2026_07 },
+    { loc: `${SITE}/panduan/produk-terlaris-untuk-pemula-2026/`, freq: 'monthly', pri: '0.8', mod: CONTENT_2026_07 },
     { loc: `${SITE}/panduan/cara-riset-produk-shopee-untuk-pemula/`, freq: 'monthly', pri: '0.7', mod: SNAPSHOT },
     { loc: `${SITE}/panduan/cara-menghitung-margin-dan-hpp/`, freq: 'monthly', pri: '0.7', mod: SNAPSHOT },
     { loc: `${SITE}/panduan/analisis-kompetitor-shopee/`, freq: 'monthly', pri: '0.7', mod: SNAPSHOT },
@@ -501,6 +509,9 @@ function buildSitemap(entries) {
     { loc: `${SITE}/panduan/cara-cari-supplier-dan-tempat-kulakan/`, freq: 'monthly', pri: '0.7', mod: SNAPSHOT },
     { loc: `${SITE}/panduan/dropship-shopee-cara-kerja-dan-risiko/`, freq: 'monthly', pri: '0.7', mod: SNAPSHOT },
     { loc: `${SITE}/panduan/cara-meningkatkan-penjualan-di-shopee/`, freq: 'monthly', pri: '0.7', mod: SNAPSHOT },
+    { loc: `${SITE}/kalkulator/`, freq: 'monthly', pri: '0.8', mod: CONTENT_2026_07 },
+    { loc: `${SITE}/kalkulator/margin-hpp/`, freq: 'monthly', pri: '0.75', mod: CONTENT_2026_07 },
+    { loc: `${SITE}/kalkulator/biaya-shopee/`, freq: 'monthly', pri: '0.75', mod: CONTENT_2026_07 },
     { loc: `${SITE}/perbandingan/`, freq: 'monthly', pri: '0.9', mod: '2026-05-30' },
     { loc: `${SITE}/perbandingan/alat-riset-produk-shopee-terbaik/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
     { loc: `${SITE}/perbandingan/larisid-vs-datapinter/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
