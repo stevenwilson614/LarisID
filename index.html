@@ -5800,22 +5800,24 @@ html,body{overflow-x:clip;max-width:100%;}
                   </div>
                 </div>
 
-                <!-- Stock -->
+                <!-- Availability (Shopee hides real qty; we only know in_stock) -->
                 <div class="pdb-range-group">
                   <div class="pdb-range-label-row">
                     <span class="pdb-range-label-text">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><path d="M8 7V5a2 2 0 0 0-4 0v2"/></svg>
-                      Stok
+                      Ketersediaan
                     </span>
                     <span class="pdb-tooltip">
                       <span class="pdb-tooltip-icon">?</span>
-                      <span class="pdb-tooltip-text">Sisa stok produk saat ini di toko penjual.</span>
+                      <span class="pdb-tooltip-text">Shopee menyembunyikan jumlah stok. Ini hanya tersedia / tidak (bukan kuantitas).</span>
                     </span>
                   </div>
                   <div class="pdb-range-inputs">
-                    <input class="pdb-range-input" id="pdb-min-stock" type="number" placeholder="min">
-                    <span class="pdb-range-sep">—</span>
-                    <input class="pdb-range-input" id="pdb-max-stock" type="number" placeholder="max">
+                    <select class="pdb-range-input" id="pdb-in-stock" style="width:100%;">
+                      <option value="">Semua</option>
+                      <option value="1">Tersedia</option>
+                      <option value="0">Habis</option>
+                    </select>
                   </div>
                 </div>
 
@@ -5828,7 +5830,7 @@ html,body{overflow-x:clip;max-width:100%;}
                     </span>
                     <span class="pdb-tooltip">
                       <span class="pdb-tooltip-icon">?</span>
-                      <span class="pdb-tooltip-text">Skor kelayakan 0–100 berdasarkan penjualan, stok, dan rating. Hijau ≥70, kuning ≥45.</span>
+                      <span class="pdb-tooltip-text">Skor kelayakan 0–100 berdasarkan penjualan, ketersediaan, dan rating. Hijau ≥70, kuning ≥45.</span>
                     </span>
                   </div>
                   <div class="pdb-range-inputs">
@@ -5875,7 +5877,7 @@ html,body{overflow-x:clip;max-width:100%;}
                   <th onclick="pdbSort('total_sold')">Terjual ↕</th>
                   <th onclick="pdbSort('rating')">Rating ↕</th>
                   <th onclick="pdbSort('reviews')">Ulasan ↕</th>
-                  <th onclick="pdbSort('stock')">Stok ↕</th>
+                  <th onclick="pdbSort('in_stock')">Tersedia ↕</th>
                   <th onclick="pdbSort('score')">Score ↕</th>
                   <th></th>
                 </tr>

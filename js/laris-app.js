@@ -16277,12 +16277,14 @@ function pdbSelectAll(checked) {
 
 function pdbResetFilters() {
   document.querySelectorAll('.pdb-cat-cb').forEach(cb => cb.checked = true);
-  ['price','rating','sold','reviews','stock','score'].forEach(f => {
+  ['price','rating','sold','reviews','score'].forEach(f => {
     const mn = document.getElementById(`pdb-min-${f}`);
     const mx = document.getElementById(`pdb-max-${f}`);
     if (mn) mn.value = '';
     if (mx) mx.value = '';
   });
+  const inStock = document.getElementById('pdb-in-stock');
+  if (inStock) inStock.value = '';
   _pdbRows = [];
   const tbody = document.getElementById('pdb-tbody');
   if (tbody) tbody.innerHTML = '';
@@ -16306,13 +16308,15 @@ function pdbLoadFilter() {
     const f = JSON.parse(saved);
     _initPdbCats();
     document.querySelectorAll('.pdb-cat-cb').forEach(cb => cb.checked = f.cats?.includes(cb.value) ?? true);
-    const fields = ['price','rating','sold','reviews','stock','score'];
+    const fields = ['price','rating','sold','reviews','score'];
     fields.forEach(field => {
       const mn = document.getElementById(`pdb-min-${field}`);
       const mx = document.getElementById(`pdb-max-${field}`);
       if (mn && f[`min_${field}`] != null) mn.value = f[`min_${field}`];
       if (mx && f[`max_${field}`] != null) mx.value = f[`max_${field}`];
     });
+    const inStock = document.getElementById('pdb-in-stock');
+    if (inStock && f.in_stock != null && f.in_stock !== '') inStock.value = String(f.in_stock);
   } catch(e) {}
 }
 
@@ -16325,15 +16329,17 @@ function _pdbGetFilters() {
     min_rating:  gv('pdb-min-rating'),  max_rating:  gv('pdb-max-rating'),
     min_sold:    gv('pdb-min-sold'),     max_sold:    gv('pdb-max-sold'),
     min_reviews: gv('pdb-min-reviews'), max_reviews: gv('pdb-max-reviews'),
-    min_stock:   gv('pdb-min-stock'),    max_stock:   gv('pdb-max-stock'),
+    in_stock:    (() => { const el = document.getElementById('pdb-in-stock'); return el?.value === '' ? null : el?.value; })(),
     min_score:   gv('pdb-min-score'),    max_score:   gv('pdb-max-score'),
   };
 }
 
 function _pdbViabilityScore(r) {
   const soldScore  = Math.min((r.total_sold || 0) / 500 * 40, 40);
-  const stock      = r.stock || 0;
-  const stockScore = stock < 100 ? 30 : stock < 500 ? 20 : 10;
+  // Shopee hides quantity; only availability is honest. Prefer in_stock when set.
+  const stockScore = r.in_stock === true || r.in_stock === 1 ? 30
+    : r.in_stock === false || r.in_stock === 0 ? 5
+    : 15;
   const ratingScore = ((r.rating || 0) / 5) * 30;
   return Math.round(soldScore + stockScore + ratingScore);
 }
@@ -16590,7 +16596,7 @@ async function loadProductDatabase() {
   const f = _pdbGetFilters();
   let query = _supabase
     .from('listings')
-    .select('keyword,category,product_name,store_name,price,original_price,total_sold,rating,reviews,stock,image_url,url,item_id,shop_id,scraped_at');
+    .select('keyword,category,product_name,store_name,price,original_price,total_sold,rating,reviews,in_stock,image_url,url,item_id,shop_id,scraped_at');
   query = _applyPanelDateFilter(query, latestDate);
   query = query
     .order('total_sold', { ascending: false })
@@ -16607,8 +16613,8 @@ async function loadProductDatabase() {
   if (f.max_sold    != null) query = query.lte('total_sold', f.max_sold);
   if (f.min_reviews != null) query = query.gte('reviews',  f.min_reviews);
   if (f.max_reviews != null) query = query.lte('reviews',  f.max_reviews);
-  if (f.min_stock   != null) query = query.gte('stock',    f.min_stock);
-  if (f.max_stock   != null) query = query.lte('stock',    f.max_stock);
+  if (f.in_stock === '1') query = query.eq('in_stock', true);
+  if (f.in_stock === '0') query = query.eq('in_stock', false);
 
   const { data, error } = await query;
   if (error) {
@@ -16685,7 +16691,7 @@ function _pdbRenderTable() {
       <td style="font-size:.72rem;font-weight:600;">${fmtNum(r.total_sold)}</td>
       <td style="font-size:.72rem;">${r.rating ? r.rating.toFixed(1) : '—'}</td>
       <td style="font-size:.72rem;">${fmtNum(r.reviews)}</td>
-      <td style="font-size:.72rem;">${fmtNum(r.stock)}</td>
+      <td style="font-size:.72rem;">${r.in_stock === true || r.in_stock === 1 ? 'Ya' : r.in_stock === false || r.in_stock === 0 ? 'Tidak' : '—'}</td>
       <td>${scoreEl}</td>
       <td>${saveBtn}</td>
     </tr>`;
