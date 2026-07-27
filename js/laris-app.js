@@ -679,7 +679,7 @@ async function _fetchListingsPage(offset, limit = 1000) {
   const t = setTimeout(() => ctrl.abort(), 8000);
   try {
     const resp = await fetch(
-      `${SUPA_URL}/rest/v1/listings?select=keyword,product_name,price,total_sold,image_url,category,rating,reviews,item_id,shop_id&order=scraped_at.desc,total_sold.desc`,
+      `${SUPA_URL}/rest/v1/listings_deduped?select=keyword,product_name,price,total_sold,image_url,category,rating,reviews,item_id,shop_id&order=total_sold.desc`,
       { signal: ctrl.signal, headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, Range: `${offset}-${offset + limit - 1}` } }
     );
     clearTimeout(t);
@@ -3407,7 +3407,7 @@ async function loadDashSourcingGuide(pid) {
   }
   try {
     const resp = await fetch(
-      `${SUPA_URL}/rest/v1/listings?select=product_name,store_name,location,price,total_sold,rating,reviews,image_url,item_id,shop_id&keyword=eq.${encodeURIComponent(p.keyword)}&order=total_sold.desc&limit=30`,
+      `${SUPA_URL}/rest/v1/listings_deduped?select=product_name,store_name,location,price,total_sold,rating,reviews,image_url,item_id,shop_id&keyword=eq.${encodeURIComponent(p.keyword)}&order=total_sold.desc&limit=30`,
       { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } }
     );
     const rows = resp.ok ? await resp.json() : [];
@@ -4940,7 +4940,7 @@ async function _mlsFetchKeywordMarket(keyword) {
   const empty = { rows: [], mPrice: 0, mSold: 0, totalOmset: 0, sigSellers: [], top5: [] };
   if (!keyword || !_supabase) return empty;
   const { data: rawData } = await _supabase
-    .from('listings')
+    .from('listings_deduped')
     .select('product_name, store_name, image_url, price, total_sold, reviews, location, item_id, shop_id, keyword, url, est_omset_monthly')
     .eq('keyword', keyword)
     .order('total_sold', { ascending: false })
@@ -8928,7 +8928,7 @@ async function _dscEnsureBrowsePool(min = 60) {
     // (idx_listings_total_sold), not dscFetchPage, which re-applies whatever
     // category/panel filters are active and can fail the same way they did.
     const { data } = await _supabase
-      .from('listings')
+      .from('listings_deduped')
       .select('item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews,est_sold,sold_tier,est_omset_monthly,omset_confidence')
       .gt('total_sold', 0)
       .order('total_sold', { ascending: false })
@@ -9008,7 +9008,7 @@ function _dscBuildListingsQuery(offset, filters, opts = {}) {
   const rangeFrom = opts.rangeFrom != null ? opts.rangeFrom : offset;
   const rangeTo   = opts.rangeTo   != null ? opts.rangeTo   : offset + DSC_PAGE_SIZE - 1;
   let q = _supabase
-    .from('listings')
+    .from('listings_deduped')
     .select(FIELDS)
     .gt('total_sold', 0)
     .order('total_sold', { ascending: false })
@@ -16595,7 +16595,7 @@ async function loadProductDatabase() {
 
   const f = _pdbGetFilters();
   let query = _supabase
-    .from('listings')
+    .from('listings_deduped')
     .select('keyword,category,product_name,store_name,price,original_price,total_sold,rating,reviews,in_stock,image_url,url,item_id,shop_id,scraped_at');
   query = _applyPanelDateFilter(query, latestDate);
   query = query
