@@ -366,10 +366,77 @@ const ICONS = {
   tag: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linejoin="round"><path d="M3 12V3h9l9 9-9 9-9-9z"/><circle cx="8" cy="8" r="1.5"/></svg>',
   bulb: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 1 3.5 10.9c-.8.6-1.5 1.2-1.5 2.1h-4c0-.9-.7-1.5-1.5-2.1A6 6 0 0 1 12 3z"/></svg>',
   info: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 11v5"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
 };
 function ico(name, size = 16) {
   const svg = ICONS[name] || ICONS.spark;
   return svg.replace('<svg ', `<svg width="${size}" height="${size}" stroke="currentColor" `);
+}
+
+// ── Year-to-date unique Laris Deep Dive viewers ─────────────────────────
+const _viewCountsYtdCache = new Map();
+
+function viewCountKey(itemId, shopId) {
+  return `${itemId ?? ''}__${shopId ?? ''}`;
+}
+
+function viewersYtdCached(itemId, shopId) {
+  const k = viewCountKey(itemId, shopId);
+  return _viewCountsYtdCache.has(k) ? (_viewCountsYtdCache.get(k) || 0) : 0;
+}
+
+async function fetchProductViewCountsYtd(pairs) {
+  if (!_supabase || !currentUser) return _viewCountsYtdCache;
+  const list = [];
+  const seen = new Set();
+  (pairs || []).forEach(p => {
+    const item_id = p?.item_id != null ? String(p.item_id) : '';
+    const shop_id = p?.shop_id != null ? String(p.shop_id) : '';
+    if (!item_id || !shop_id) return;
+    const k = viewCountKey(item_id, shop_id);
+    if (seen.has(k)) return;
+    seen.add(k);
+    list.push({ item_id, shop_id });
+  });
+  if (!list.length) return _viewCountsYtdCache;
+  list.forEach(({ item_id, shop_id }) => {
+    const k = viewCountKey(item_id, shop_id);
+    if (!_viewCountsYtdCache.has(k)) _viewCountsYtdCache.set(k, 0);
+  });
+  try {
+    const { data, error } = await _supabase.rpc('product_view_counts_ytd', { pairs: list.slice(0, 200) });
+    if (error) throw error;
+    (data || []).forEach(row => {
+      _viewCountsYtdCache.set(viewCountKey(row.item_id, row.shop_id), Number(row.viewers) || 0);
+    });
+  } catch (e) {
+    console.warn('[viewCountsYtd]', e?.message || e);
+  }
+  return _viewCountsYtdCache;
+}
+
+function patchViewCountBadges(root) {
+  (root || document).querySelectorAll('[data-view-key]').forEach(el => {
+    const n = _viewCountsYtdCache.get(el.getAttribute('data-view-key')) ?? 0;
+    const num = el.querySelector('[data-view-num]');
+    if (num) num.textContent = Number(n).toLocaleString('id-ID');
+    else if (el.classList.contains('ddr-tile-views-val') || el.hasAttribute('data-view-num-self')) {
+      el.textContent = Number(n).toLocaleString('id-ID');
+    }
+  });
+}
+
+async function hydrateProdCardsIn(root) {
+  if (!currentUser) return;
+  const scope = root || document;
+  const pairs = [];
+  scope.querySelectorAll('[data-prod]').forEach(btn => {
+    const [item_id, shop_id] = (btn.getAttribute('data-prod') || '').split('|');
+    if (item_id && shop_id) pairs.push({ item_id, shop_id });
+  });
+  if (!pairs.length) return;
+  await fetchProductViewCountsYtd(pairs);
+  patchViewCountBadges(scope);
 }
 
 // ── Composer chip sets ───────────────────────────────────────────────────
@@ -5134,8 +5201,13 @@ function productCardHtml(p, i) {
   const encoded = snap ? encodeURIComponent(JSON.stringify(snap)) : '';
   const omset = estOmsetBulan(p);
   const loc = p.location ? `<div class="prod-card-loc">${esc(p.location)}</div>` : '';
+  const vk = viewCountKey(p.item_id, p.shop_id);
+  const viewers = viewersYtdCached(p.item_id, p.shop_id);
   return `<button type="button" class="prod-card" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} style="animation-delay:${i * 0.06}s">
-    ${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : '<div class="prod-card-ph"></div>'}
+    <div class="prod-card-media">
+      ${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : '<div class="prod-card-ph"></div>'}
+      <span class="prod-card-views" data-view-key="${esc(vk)}" title="Penjual Laris yang membuka Deep Dive tahun ini">${ico('eye', 11)}<span data-view-num>${viewers.toLocaleString('id-ID')}</span></span>
+    </div>
     <div class="prod-card-body">
       <div class="prod-card-name">${esc(name)}</div>
       ${loc}
@@ -5189,6 +5261,7 @@ function bindProductCards(root) {
     btn.addEventListener('click', () => void openMoreProductsDirectory());
   });
   bindSearchSuggests(root);
+  void hydrateProdCardsIn(root);
 }
 
 /** Compact Deep Dive summary kept in the chat thread so scrolling history still reaches it. */
@@ -5843,7 +5916,7 @@ function bindDdrCarousel(root) {
   }, { passive: true });
 }
 
-function ddTilesHtml(product, stats, peers, series) {
+function ddTilesHtml(product, stats, peers, series, viewersYtd) {
   // Opened from a Product Type card → tiles describe the TYPE's market
   // (top-15-seller omset, median price band), not the anchor listing.
   const t = product._ptype || null;
@@ -5874,12 +5947,17 @@ function ddTilesHtml(product, stats, peers, series) {
     : unitMo ? unitMo.toLocaleString('id-ID') + ' unit' : '—';
   const unitLbl = t ? 'Rata² Terjual / Listing' : 'Est. Penjualan / Bulan';
   const unitSub = t ? 'Rata-rata unit terjual per listing tipe ini' : rateSub;
+  const n = Number(viewersYtd) || viewersYtdCached(product.item_id, product.shop_id) || 0;
+  const viewsHint = n === 1
+    ? '1 penjual membuka Deep Dive tahun ini'
+    : `${n.toLocaleString('id-ID')} penjual membuka Deep Dive tahun ini`;
   return `<div class="ddr-tiles">
     <div class="ddr-tile"><span class="ico" style="background:var(--green-bg);color:var(--green)">${ico('trendUp', 14)}</span><div class="lbl">Est. Omzet / Bulan</div><div class="val">${omset ? fmtRpShort(omset) : '—'}</div>${t ? omsetSub + (deltaHtml.startsWith('<span') ? deltaHtml : '') : deltaHtml}</div>
     <div class="ddr-tile"><span class="ico" style="background:var(--blue-bg);color:var(--blue)">${ico('box', 14)}</span><div class="lbl">${unitLbl}</div><div class="val">${unitVal}</div><div class="sub">${unitSub}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--amber-bg);color:var(--amber)">${ico('tag', 14)}</span><div class="lbl">${t ? 'Harga Umum' : 'Harga Produk'}</div><div class="val">${fmtRp(price)}</div><div class="sub">${t ? `Rentang pasar ${fmtRpShort(t.price_min)} – ${fmtRpShort(t.price_max)}` : vsMed == null ? 'Median pasar belum ada' : vsMed === 0 ? 'Sama dengan median pasar' : `${Math.abs(vsMed)}% ${vsMed > 0 ? 'di atas' : 'di bawah'} median pasar`}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--violet-bg);color:var(--violet)">${ico('pin', 14)}</span><div class="lbl">Lokasi Terbanyak</div><div class="val">${topLoc ? esc(topLoc[0]) : '—'}</div><div class="sub">${topLoc ? `${topLoc[1]} penjual dari kota ini` : 'Belum ada data lokasi'}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--red-bg);color:var(--accent)">${ico('users', 14)}</span><div class="lbl">Kompetitor Aktif</div><div class="val">~${shopN} toko</div><div class="sub">Kompetisi ${esc(stats.komp || '—')}</div></div>
+    <div class="ddr-tile"><span class="ico" style="background:#EEF2FF;color:#4F46E5">${ico('eye', 14)}</span><div class="lbl">Dilihat di Laris</div><div class="val ddr-tile-views-val" data-view-key="${esc(viewCountKey(product.item_id, product.shop_id))}" data-view-num-self>${n.toLocaleString('id-ID')}</div><div class="sub">${esc(viewsHint)}</div></div>
   </div>`;
 }
 
@@ -6249,6 +6327,12 @@ async function openDeepDive(product) {
   const segWidth = stats.max > stats.min ? Math.max(4, Math.round((bandHi - bandLo) / (stats.max - stats.min) * 100)) : 100;
   const agePct = k => age.total ? Math.round(age[k] / age.total * 100) : 0;
 
+  let viewersYtd = 0;
+  try {
+    await fetchProductViewCountsYtd([product]);
+    viewersYtd = viewersYtdCached(product.item_id, product.shop_id);
+  } catch (_) {}
+
   root.innerHTML = `
     <div class="dd-head" style="margin-bottom:12px">
       <button type="button" class="btn-ghost" id="dd-back" style="margin:0">Kembali ke chat</button>
@@ -6270,7 +6354,7 @@ async function openDeepDive(product) {
         <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
       </div>
     </div>
-    ${ddTilesHtml(product, stats, peers, series)}
+    ${ddTilesHtml(product, stats, peers, series, viewersYtd)}
     <div class="ddr-2col">
       <div class="ddr-card" data-dd-sec="tren">
         <h3>Tren Omzet &amp; Unit Terjual</h3>
@@ -6408,6 +6492,20 @@ async function openDeepDive(product) {
   updateProductPin();
   // Deep Dive HTML just populated — stay at the top (don't land mid-page).
   scrollPanelToTop();
+  // Re-fetch YTD viewers shortly after deepdive_open lands so this user is counted.
+  setTimeout(async () => {
+    try {
+      await fetchProductViewCountsYtd([product]);
+      patchViewCountBadges(root);
+      const n = viewersYtdCached(product.item_id, product.shop_id);
+      const sub = root.querySelector('.ddr-tile .val.ddr-tile-views-val')?.closest('.ddr-tile')?.querySelector('.sub');
+      if (sub) {
+        sub.textContent = n === 1
+          ? '1 penjual membuka Deep Dive tahun ini'
+          : `${n.toLocaleString('id-ID')} penjual membuka Deep Dive tahun ini`;
+      }
+    } catch (_) {}
+  }, 1200);
 
   setComposerChips(DD_CHIPS, 'deepdive');
 

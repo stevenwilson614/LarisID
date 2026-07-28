@@ -222,6 +222,7 @@ const WIRE_ICONS = {
   'check-circle':   '<circle cx="12" cy="12" r="10"/><polyline points="8 12 11 15 16 9"/>',
   'circle':         '<circle cx="12" cy="12" r="9"/>',
   'edit':           '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  'eye':            '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
   'file':           '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
   'file-text':      '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
   'flag':           '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>',
@@ -243,6 +244,106 @@ const WIRE_ICONS = {
 };
 function wIcon(name, size, color) {
   return `<svg width="${size || 14}" height="${size || 14}" viewBox="0 0 24 24" fill="none" stroke="${color || 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0;vertical-align:-2px;">${WIRE_ICONS[name] || WIRE_ICONS.box}</svg>`;
+}
+
+// ── Year-to-date unique Laris Deep Dive viewers (product_view_counts_ytd) ──
+const _viewCountsYtdCache = new Map(); // key: "item_id:shop_id" → number
+
+function viewCountKey(itemId, shopId) {
+  return `${itemId ?? ''}__${shopId ?? ''}`;
+}
+
+function viewersYtdCached(itemId, shopId) {
+  const k = viewCountKey(itemId, shopId);
+  return _viewCountsYtdCache.has(k) ? (_viewCountsYtdCache.get(k) || 0) : 0;
+}
+
+/** Batch-fetch unique Laris users who opened Deep Dive this calendar year. */
+async function fetchProductViewCountsYtd(pairs) {
+  if (!_supabase || !currentUser) return _viewCountsYtdCache;
+  const list = [];
+  const seen = new Set();
+  (pairs || []).forEach(p => {
+    const item_id = p?.item_id != null ? String(p.item_id) : '';
+    const shop_id = p?.shop_id != null ? String(p.shop_id) : '';
+    if (!item_id || !shop_id) return;
+    const k = viewCountKey(item_id, shop_id);
+    if (seen.has(k)) return;
+    seen.add(k);
+    list.push({ item_id, shop_id });
+  });
+  if (!list.length) return _viewCountsYtdCache;
+  // Mark missing as 0 so UI can show honest empty signal while we fetch.
+  list.forEach(({ item_id, shop_id }) => {
+    const k = viewCountKey(item_id, shop_id);
+    if (!_viewCountsYtdCache.has(k)) _viewCountsYtdCache.set(k, 0);
+  });
+  try {
+    const { data, error } = await _supabase.rpc('product_view_counts_ytd', { pairs: list.slice(0, 200) });
+    if (error) throw error;
+    (data || []).forEach(row => {
+      const k = viewCountKey(row.item_id, row.shop_id);
+      _viewCountsYtdCache.set(k, Number(row.viewers) || 0);
+    });
+  } catch (e) {
+    console.warn('[viewCountsYtd]', e?.message || e);
+  }
+  return _viewCountsYtdCache;
+}
+
+function patchViewCountBadges(root) {
+  const scope = root || document;
+  scope.querySelectorAll('[data-view-key]').forEach(el => {
+    const n = _viewCountsYtdCache.get(el.getAttribute('data-view-key')) ?? 0;
+    const num = el.querySelector('[data-view-num]');
+    if (num) num.textContent = Number(n).toLocaleString('id-ID');
+  });
+}
+
+function dscViewBadgeHtml(itemId, shopId) {
+  const k = viewCountKey(itemId, shopId);
+  const n = viewersYtdCached(itemId, shopId);
+  return `<span class="dsc-card-views" data-view-key="${k}" title="Penjual Laris yang membuka Deep Dive tahun ini">${wIcon('eye', 11, '#fff')}<span data-view-num>${n.toLocaleString('id-ID')}</span></span>`;
+}
+
+/** Fetch YTD viewers for listings then patch any visible eye badges. */
+async function hydrateViewCountsForListings(listings, root) {
+  if (!listings?.length || !currentUser) return;
+  await fetchProductViewCountsYtd(listings);
+  patchViewCountBadges(root);
+}
+
+/** Fill Deep Dive “Dilihat di Laris” tile for one listing (refetch after open). */
+async function ddHydrateViewCount(listing) {
+  if (!listing?.item_id || !listing?.shop_id) return;
+  const el = document.getElementById('dd-s-views');
+  const hint = document.getElementById('dd-s-views-hint');
+  const k = viewCountKey(listing.item_id, listing.shop_id);
+  if (el) el.setAttribute('data-view-key', k);
+  // Optimistic: include current user in the local count if they just opened.
+  if (currentUser) {
+    const prev = viewersYtdCached(listing.item_id, listing.shop_id);
+    // Ensure key exists; bump only after RPC if we want accuracy — show cached first.
+    if (el) el.textContent = prev.toLocaleString('id-ID');
+  }
+  await fetchProductViewCountsYtd([listing]);
+  // After this open is logged, re-fetch once more shortly so the current user is counted.
+  const apply = () => {
+    const n = viewersYtdCached(listing.item_id, listing.shop_id);
+    if (el) el.textContent = n.toLocaleString('id-ID');
+    if (hint) {
+      hint.textContent = n === 1
+        ? '1 penjual membuka Deep Dive produk ini tahun ini'
+        : `${n.toLocaleString('id-ID')} penjual membuka Deep Dive produk ini tahun ini`;
+    }
+    patchViewCountBadges(document.getElementById('dsc-card-grid'));
+    patchViewCountBadges(document.getElementById('discover-for-you'));
+  };
+  apply();
+  setTimeout(async () => {
+    await fetchProductViewCountsYtd([listing]);
+    apply();
+  }, 1200);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -5358,6 +5459,7 @@ function renderForYou() {
       ${pool.map(p => dscCardHtml(p, kwMap)).join('')}
     </div>`;
   layout.parentElement.insertBefore(section, layout);
+  void hydrateViewCountsForListings(pool, section);
 }
 
 function clearViewHistory() {
@@ -9794,6 +9896,7 @@ function _dscRenderInterim() {
     const kwMap = {};
     rows.forEach(r => { const k = r.keyword || '__'; (kwMap[k] = kwMap[k] || []).push(r); });
     cardGrid.innerHTML = note + rows.map(p => dscCardHtml(p, kwMap)).join('');
+    void hydrateViewCountsForListings(rows, cardGrid);
   } else if (tbody) {
     tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:10px;color:#6B7280;font-size:.78rem;">Masih memuat hasil filter &mdash; sementara itu, produk populer di bawah.</td></tr>`
       + rows.map(p => `<tr style="cursor:pointer" onclick="dscOpenDeepDive('${p.item_id}__${p.shop_id}')"><td colspan="8"><div class="dsc-prod-cell" style="padding:6px 0;">${p.image_url ? `<div class="dsc-prod-img"><img src="${p.image_url}" alt="" loading="lazy" onerror="this.style.display='none'"></div>` : ''}<div><div class="dsc-prod-name">${(p.product_name || '').slice(0, 60)}</div><div style="color:#6B7280;font-size:.72rem;">${p.store_name || ''} &middot; ${fmtShort(p.price || 0)}</div></div></div></td></tr>`).join('');
@@ -10517,10 +10620,12 @@ function dscCardHtml(p, kwMap) {
   const peers = (kwMap && kwMap[p.keyword || '__']) || [];
   const ls = calcListingScore(p, peers, _dscListingTrendPct(p), _dscKwTrendMap[p.keyword] ?? null);
   const lslbl = listingScoreLabel(ls.total);
+  const viewsBadge = dscViewBadgeHtml(p.item_id, p.shop_id);
   if (beginner) {
     return `<div class="dsc-card" onclick="dscOpenDeepDive('${key}')">
       <div class="dsc-card-img" style="position:relative;">${imgHtml}
         <div style="position:absolute;top:6px;left:6px;background:${lslbl.bg};color:${lslbl.clr};border:1px solid ${lslbl.border};border-radius:8px;padding:3px 9px;font-size:.66rem;font-weight:800;line-height:1.3;">${lslbl.lbl}</div>
+        ${viewsBadge}
       </div>
       <div class="dsc-card-body">
         <div class="dsc-card-name">${(p.product_name || '').slice(0, 70)}</div>
@@ -10531,6 +10636,7 @@ function dscCardHtml(p, kwMap) {
   return `<div class="dsc-card" onclick="dscOpenDeepDive('${key}')">
     <div class="dsc-card-img" style="position:relative;">${imgHtml}
       <div style="position:absolute;top:6px;left:6px;background:${lslbl.clr};color:#fff;border-radius:8px;padding:3px 9px;font-size:.82rem;font-weight:800;line-height:1.4;box-shadow:0 1px 4px rgba(0,0,0,.22);">${ls.total}</div>
+      ${viewsBadge}
     </div>
     <div class="dsc-card-body">
       <div class="dsc-card-name">${(p.product_name || '').slice(0, 70)}</div>
@@ -10629,6 +10735,7 @@ function dscRenderTable() {
       const _cardKwMap = {};
       _dscAllListings.forEach(r => { const k = r.keyword||'__'; if (!_cardKwMap[k]) _cardKwMap[k]=[]; _cardKwMap[k].push(r); });
       cardGrid.innerHTML = noMatchBanner + filterNoMatchBanner + slice.map(p => dscCardHtml(p, _cardKwMap)).join('');
+      void hydrateViewCountsForListings(slice, cardGrid);
     }
   }
 
@@ -10801,6 +10908,7 @@ async function dscOpenDeepDive(key, skipNav) {
     source: _fromOnb ? 'onboarding' : 'discover',
     journey_tier: userJourneyTier(),
   });
+  void ddHydrateViewCount(listing);
   /* WS-D: badge for first deep dive (idempotent) */
   awardAchievement('first_deep_dive');
   // Return-loop: offer the WA/email opt-in shortly after the FIRST deep dive —
@@ -13774,6 +13882,8 @@ function ddRender(p) {
   document.getElementById('dd-h-komp').style.color = '#9CA3AF';
   document.getElementById('dd-h-komp-sub').textContent = 'Memuat data…';
   // margin stat removed from hero (only 4 cards shown)
+
+  void ddHydrateViewCount(listing);
 
   // e-commerce fee mini comparison strip (top of page)
   ddRenderFeeStrip(p);
@@ -21715,8 +21825,8 @@ function ddRenderBeginnerVerdict(p) {
   const _vKey = (p.id != null) ? p.id : (p.name || null);
   const _fromZero = _vKey !== _ddVerdictKey;
   _ddVerdictKey = _vKey;
-  // A3: on a fresh product open, reveal the 6 metric boxes one at a time
-  // left-to-right (~250ms apart, ~2s total). Streamed updates glide live.
+  // A3: on a fresh product open, reveal the 7 metric boxes one at a time
+  // left-to-right (~250ms apart). Streamed updates glide live.
   const _SD = 250;
   const _reduceM = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const _stagger = _fromZero && !_reduceM;
@@ -21733,6 +21843,21 @@ function ddRenderBeginnerVerdict(p) {
 
   _ddRevealMetric(document.getElementById('dd-s-odds')?.closest('.dd-smetric'), _dly(4), _stagger, () => ddRenderOddsTile(p));
   _ddRevealMetric(document.getElementById('dd-s-wall')?.closest('.dd-smetric'), _dly(5), _stagger, () => ddRenderReviewWallTile(p));
+  _ddRevealMetric(document.getElementById('dd-s-views')?.closest('.dd-smetric'), _dly(6), _stagger, () => {
+    const listing = p._listing || {};
+    const n = viewersYtdCached(listing.item_id, listing.shop_id);
+    const el = document.getElementById('dd-s-views');
+    const hint = document.getElementById('dd-s-views-hint');
+    if (el) {
+      el.setAttribute('data-view-key', viewCountKey(listing.item_id, listing.shop_id));
+      el.textContent = n.toLocaleString('id-ID');
+    }
+    if (hint) {
+      hint.textContent = n === 1
+        ? '1 penjual membuka Deep Dive produk ini tahun ini'
+        : `${n.toLocaleString('id-ID')} penjual membuka Deep Dive produk ini tahun ini`;
+    }
+  });
 
   const compBadge = document.getElementById('dd-hero-comp-badge');
   const compLbl = document.getElementById('dd-hero-comp-label');

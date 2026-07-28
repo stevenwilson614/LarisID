@@ -516,6 +516,16 @@ html.session-restoring body::after {
 .prod-card-ph {
   width: 100%; aspect-ratio: 1; object-fit: cover; background: #f0f0f0; display: block;
 }
+.prod-card-media { position: relative; }
+.prod-card-views {
+  position: absolute; bottom: 6px; right: 6px;
+  display: inline-flex; align-items: center; gap: 3px;
+  background: rgba(17,24,39,.72); color: #fff;
+  border-radius: 999px; padding: 3px 7px;
+  font-size: .62rem; font-weight: 700; line-height: 1;
+  pointer-events: none; z-index: 1;
+}
+.prod-card-views svg { display: block; width: 11px; height: 11px; stroke: currentColor; }
 .prod-card-body { padding: 12px; }
 .prod-card-name {
   font-size: .8125rem; font-weight: 600; line-height: 1.35;
@@ -1440,7 +1450,7 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 .ddr-score .num { font-size: 2.2rem; font-weight: 800; color: var(--accent); letter-spacing: -.03em; line-height: 1.15; }
 .ddr-score .num span { font-size: .9rem; color: var(--muted); font-weight: 600; }
 .ddr-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 12px 0; }
-@media (min-width: 880px) { .ddr-tiles { grid-template-columns: repeat(5, 1fr); } }
+@media (min-width: 880px) { .ddr-tiles { grid-template-columns: repeat(3, 1fr); } }
 .ddr-tile { border: 1px solid var(--line); border-radius: 14px; padding: 12px; min-width: 0; }
 .ddr-tile .ico { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; margin-bottom: 8px; }
 .ddr-tile .ico svg { width: 14px; height: 14px; }
@@ -2358,6 +2368,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260728a" defer></script>
+<script src="/js/gpt-app.js?v=20260728b" defer></script>
 </body>
 </html>
