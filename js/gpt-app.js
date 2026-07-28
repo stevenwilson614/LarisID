@@ -319,6 +319,34 @@ function clarityEvt(name, props) {
   } catch (_) {}
 }
 
+// ── Step-parity funnel ───────────────────────────────────────────────────────
+// Identical event names to arm A (js/laris-app.js) so the two arms can be
+// compared step by step — only `ui` differs. Post-signup steps only:
+// activity_events RLS needs a self-owned row, so landing and signup are
+// measured from page_views + signup_attribution instead.
+const FUNNEL_STEPS = ['first_search', 'first_dive', 'second_dive', 'return'];
+
+function funnelStep(step, extra) {
+  try {
+    if (!FUNNEL_STEPS.includes(step)) return;
+    const key = `_lid_funnel_${step}`;
+    if (sessionStorage.getItem(key)) return; // once per session per step
+    sessionStorage.setItem(key, '1');
+    void logUserEvent('funnel_step', { step, ui: 'gpt', ...(extra || {}) });
+    _clarity('event', `funnel_${step}`);
+  } catch (_) {}
+}
+
+const FUNNEL_LAST_DAY_KEY = '_lid_funnel_last_day';
+function funnelNoteActiveDay() {
+  try {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+    const prev = localStorage.getItem(FUNNEL_LAST_DAY_KEY);
+    if (prev && prev !== today) funnelStep('return', { prev_day: prev });
+    localStorage.setItem(FUNNEL_LAST_DAY_KEY, today);
+  } catch (_) {}
+}
+
 // ── Wire SVG icons (no emojis, ever) ─────────────────────────────────────
 const ICONS = {
   flame: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c4.4 0 7-2.8 7-6.5 0-2.5-1.4-4.6-3-6.5-.6 1.2-1.4 2-2.5 2.5C13.9 9 13 5.5 9.5 2c.3 3-.5 4.6-2 6.5C6 10.4 5 12.3 5 15.5 5 19.2 7.6 22 12 22z"/></svg>',
@@ -916,6 +944,8 @@ function noteGptUsage(data) {
   }
   if (data.used != null) _gptUsage.used = Math.max(0, Number(data.used) || 0);
   if (data.limit != null) _gptUsage.limit = Math.max(1, Number(data.limit) || GPT_DAILY_LIMIT);
+  if (data.can_spin != null) _gptUsage.canSpin = data.can_spin;
+  if (data.can_claim_feedback != null) _gptUsage.canClaimFeedback = data.can_claim_feedback;
   if (data.reset_at) {
     const t = data.reset_at instanceof Date ? data.reset_at : new Date(data.reset_at);
     if (!Number.isNaN(t.getTime())) _gptUsage.resetAt = t;
@@ -949,9 +979,21 @@ function spinClose() {
 function spinMaybeOffer() {
   try {
     if (_spinOffered || !currentUser || _gptUsage.unlimited) return;
+    if (_gptUsage.canSpin === false) return;
     if ((_gptUsage.used || 0) !== 2) return;
     _spinOffered = true;
     setTimeout(spinShow, 900);
+  } catch (_) {}
+}
+
+// gpt_new_chat returns used/limit but not the earned-bonus flags, so seed them
+// once from get_my_usage — otherwise a reload at used===2 re-offers a spin the
+// server will only reject as already_spun.
+async function gptSeedUsageFlags() {
+  if (!_supabase || !currentUser) return;
+  try {
+    const { data, error } = await _supabase.rpc('get_my_usage');
+    if (!error && data) noteGptUsage(data);
   } catch (_) {}
 }
 
@@ -982,6 +1024,161 @@ async function spinDo() {
     if (go) { go.disabled = false; go.textContent = 'Putar sekarang'; }
     spinClose();
   }
+}
+
+// ── Journey stats parity with arm A ───────────────────────────────────────
+// user_journey_stats was only ever written by the classic arm, so every arm B
+// user reported deepdive_count 0 and any dashboard reading that column silently
+// under-counted B to zero. Mirror arm A's journeySyncRemote() shape here.
+let _gptJourney = { deepdiveCount: 0, firstDeepDiveAt: null, loaded: false };
+let _gptDiveSeen = 0; // dives this session, for first_dive / second_dive steps
+
+async function gptJourneyLoad() {
+  if (_gptJourney.loaded || !_supabase || !currentUser) return;
+  _gptJourney.loaded = true;
+  try {
+    const { data } = await _supabase.from('user_journey_stats')
+      .select('deepdive_count,first_deepdive_at').eq('user_id', currentUser.id).maybeSingle();
+    if (data) {
+      _gptJourney.deepdiveCount = data.deepdive_count || 0;
+      _gptJourney.firstDeepDiveAt = data.first_deepdive_at || null;
+    }
+  } catch (_) {}
+}
+
+async function gptJourneyNoteDeepDive() {
+  if (!_supabase || !currentUser) return;
+  await gptJourneyLoad();
+  const now = new Date().toISOString();
+  _gptJourney.deepdiveCount += 1;
+  if (!_gptJourney.firstDeepDiveAt) _gptJourney.firstDeepDiveAt = now;
+  try {
+    await _supabase.from('user_journey_stats').upsert({
+      user_id: currentUser.id,
+      deepdive_count: _gptJourney.deepdiveCount,
+      first_deepdive_at: _gptJourney.firstDeepDiveAt,
+      last_discover_at: now,
+      updated_at: now,
+    }, { onConflict: 'user_id' });
+  } catch (_) {}
+}
+
+// ── Daily wall + feedback bonus ───────────────────────────────────────────
+// Arm A has offered feedback-for-+3 since the earn-extra-dives migration; arm B
+// had no feedback path at all, so A could reach a higher effective daily ceiling
+// than B. That is a confound on the very metric the A/B split measures, so the
+// mechanics are mirrored here. claim_feedback_bonus() is the same RPC arm A
+// calls — it re-checks ownership, same WIB day and a >=10 character message, so
+// the client is only the trigger, never the authority.
+let _fbBonusPending = false;
+let _fbBusy = false;
+
+// Single entry point for every "you are out of searches" site, so the wall is
+// instrumented and offers the same relief no matter which path hit it.
+function gptLimitHit(opts = {}) {
+  clarityEvt('gpt_limit_hit', opts.anon ? { anon: '1' } : {});
+  void logUserEvent('gpt_limit_hit', { ui: 'gpt', ...(opts.anon ? { anon: true } : {}) });
+  if (opts.anon || !currentUser) return; // anon users get the toast + sign-in path
+  const sub = document.getElementById('gpt-limit-sub');
+  if (sub) {
+    const reset = opts.resetAt || _gptUsage.resetAt || wibMidnightReset();
+    sub.textContent = `Jatah baru tersedia dalam ${formatCountdown(reset)}.`;
+  }
+  const fbBtn = document.getElementById('gpt-limit-feedback');
+  if (fbBtn) fbBtn.style.display = _gptUsage.canClaimFeedback === false ? 'none' : '';
+  document.getElementById('gpt-limit-modal')?.classList.add('open');
+}
+
+function gptLimitClose() { document.getElementById('gpt-limit-modal')?.classList.remove('open'); }
+
+function gptOpenFeedbackForBonus() {
+  _fbBonusPending = true;
+  gptLimitClose();
+  const msg = document.getElementById('gpt-fb-message');
+  if (msg) msg.value = '';
+  const st = document.getElementById('gpt-fb-status');
+  if (st) { st.textContent = ''; st.style.color = ''; }
+  const btn = document.getElementById('gpt-fb-submit');
+  if (btn) { btn.disabled = false; btn.textContent = 'Kirim ke Steven'; }
+  document.getElementById('gpt-feedback-modal')?.classList.add('open');
+}
+
+function gptFeedbackClose() {
+  document.getElementById('gpt-feedback-modal')?.classList.remove('open');
+  _fbBonusPending = false;
+}
+
+async function gptSubmitFeedback() {
+  if (_fbBusy || !_supabase) return;
+  const msg = (document.getElementById('gpt-fb-message')?.value || '').trim();
+  const st = document.getElementById('gpt-fb-status');
+  const btn = document.getElementById('gpt-fb-submit');
+  if (msg.length < 10) {
+    if (st) { st.textContent = 'Tulis minimal 10 karakter ya.'; st.style.color = '#B5202A'; }
+    return;
+  }
+  _fbBusy = true;
+  if (btn) { btn.disabled = true; btn.textContent = 'Mengirim...'; }
+  if (st) { st.textContent = ''; st.style.color = ''; }
+  try {
+    const record = {
+      user_id:    currentUser?.id    || null,
+      user_email: currentUser?.email || null,
+      type:       'product',
+      message:    msg,
+      page:       'gpt',
+    };
+    const { data: inserted, error } = await _supabase
+      .from('feedback').insert(record).select('id').single();
+    if (error) throw error;
+    const recordWithId = { ...record, id: inserted?.id };
+    // fire-and-forget, same as arm A
+    _supabase.functions.invoke('notify-feedback',  { body: { record: recordWithId } })
+      .then(({ error }) => { if (error) console.warn('notify-feedback:', error.message); });
+    _supabase.functions.invoke('analyze-feedback', { body: { record: recordWithId } })
+      .then(({ error }) => { if (error) console.warn('analyze-feedback:', error.message); });
+    void logUserEvent('feedback_submitted', { ui: 'gpt', from_wall: _fbBonusPending });
+    // Only promise the bonus if the grant actually landed — otherwise the user
+    // is told they earned searches they did not get.
+    let awarded = 0;
+    if (_fbBonusPending && inserted?.id) {
+      _fbBonusPending = false;
+      awarded = await gptClaimFeedbackBonus(inserted.id);
+    }
+    if (st) {
+      st.textContent = awarded
+        ? `Terkirim! +${awarded} pencarian buat hari ini.`
+        : 'Terkirim! Steven akan baca pesanmu.';
+      st.style.color = '#16A34A';
+    }
+    if (btn) btn.textContent = 'Terkirim';
+    setTimeout(gptFeedbackClose, 1800);
+  } catch (_) {
+    if (st) { st.textContent = 'Gagal mengirim. Coba lagi.'; st.style.color = '#B5202A'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Kirim ke Steven'; }
+  } finally {
+    _fbBusy = false;
+  }
+}
+
+// Returns the number of searches actually granted (0 if the grant was refused).
+async function gptClaimFeedbackBonus(feedbackId) {
+  if (!_supabase || !feedbackId) return 0;
+  try {
+    const { data, error } = await _supabase.rpc('claim_feedback_bonus', { p_feedback_id: feedbackId });
+    if (error) throw error;
+    if (data && data.allowed) {
+      // dive_limit is arm A's cap; arm B's own limit comes back on the next
+      // gpt_new_chat, so bump the local view by the award rather than guessing.
+      noteGptUsage({ limit: (_gptUsage.limit || GPT_DAILY_LIMIT) + data.award });
+      _gptUsage.canClaimFeedback = false;
+      showToast(`Dapat +${data.award} pencarian buat hari ini!`);
+      void logUserEvent('feedback_bonus_awarded', { ui: 'gpt', award: data.award });
+      clarityEvt('feedback_bonus_awarded', { award: String(data.award) });
+      return data.award || 0;
+    }
+  } catch (_) {}
+  return 0;
 }
 
 function renderGptUsage() {
@@ -1615,6 +1812,9 @@ async function initSupabase() {
   }
   // Log this visit (anonymous-friendly) for the admin landing-view metrics.
   _lidLogPageView();
+  // Seed can_spin / can_claim_feedback once the session has actually landed.
+  void gptSeedUsageFlags();
+  if (currentUser) funnelNoteActiveDay();
 }
 
 async function signOut() {
@@ -2069,6 +2269,9 @@ async function fetchRegionFromIp() {
     const res = await fetch('https://ipwho.is/?fields=success,city,region,country_code');
     const j = await res.json();
     if (!j || j.success === false) return null;
+    // Same gate as arm A: country_code was requested but never read, so foreign
+    // visitors got their city written into user_onboarding_prefs.region.
+    if (j.country_code && j.country_code !== 'ID') return null;
     return resolveRegionFromGeo(j.city, j.region);
   } catch (_) {
     return null;
@@ -2333,6 +2536,7 @@ async function runFinderSearch() {
       count: products.length,
     });
     clarityEvt('gpt_finder_search', { category: _finder.category });
+    funnelStep('first_search', { source: 'finder' });
   } finally {
     if (go) go.disabled = false;
   }
@@ -3621,8 +3825,7 @@ function limitReply(loading, resetAt) {
   const msg = `Batas pencarian harian tercapai — reset dalam ${formatCountdown(resetAt || wibMidnightReset())}.`;
   if (loading) void revealAssistant(loading, `<p>${esc(msg)}</p>`, { instant: true });
   showToast(msg);
-  clarityEvt('gpt_limit_hit', {});
-  void logUserEvent('gpt_limit_hit', { ui: 'gpt' });
+  gptLimitHit({ resetAt });
 }
 
 function extractMoney(text) {
@@ -5087,8 +5290,7 @@ async function ensureSearchAllowed() {
   if (anonLimitHit()) {
     const reset = wibMidnightReset();
     showToast(`Batas harian tercapai — reset dalam ${formatCountdown(reset)}`);
-    clarityEvt('gpt_limit_hit', { anon: 1 });
-    void logUserEvent('gpt_limit_hit', { ui: 'gpt', anon: true });
+    gptLimitHit({ anon: true, resetAt: reset });
     return false;
   }
   return true;
@@ -5118,8 +5320,7 @@ async function startRecommendationChat(fromOnboarding) {
     if (data && data.allowed === false) {
       const resetAt = data.reset_at || wibMidnightReset();
       showToast(`Batas harian tercapai — reset dalam ${formatCountdown(resetAt)}`);
-      clarityEvt('gpt_limit_hit', {});
-      void logUserEvent('gpt_limit_hit', { ui: 'gpt' });
+      gptLimitHit({ resetAt });
       return;
     }
     chat = {
@@ -5129,6 +5330,7 @@ async function startRecommendationChat(fromOnboarding) {
       messages: [],
       created_at: Date.now(),
     };
+    funnelStep('first_search', { source: 'recommendation' });
   } else {
     bumpAnonSearch();
     chat = {
@@ -6015,6 +6217,8 @@ async function openDeepDive(product) {
 
   void logUserEvent('deepdive_open', { ui: 'gpt', keyword: kw, item_id: product.item_id, shop_id: product.shop_id });
   clarityEvt('deepdive_open', { keyword: kw });
+  void gptJourneyNoteDeepDive();
+  funnelStep(_gptDiveSeen++ === 0 ? 'first_dive' : 'second_dive');
 
   const stats = ddStats(peers);
   const weekly = ddWeeklySeries(history);
@@ -6767,11 +6971,11 @@ async function handleComposerSubmit(text) {
         const msg = `Batas pencarian harian tercapai — reset dalam ${formatCountdown(data.reset_at || wibMidnightReset())}.`;
         if (loading) await revealAssistant(loading, `<p>${esc(msg)}</p>`, { instant: true });
         showToast(msg);
-        clarityEvt('gpt_limit_hit', {});
-        void logUserEvent('gpt_limit_hit', { ui: 'gpt' });
+        gptLimitHit({ resetAt: data.reset_at });
         return;
       }
       if (data?.chat) { chat.id = data.chat.id; delete chat.localId; state.activeChatId = chat.id; flushChatMessages(chat); }
+      funnelStep('first_search', { source: 'text' });
     } else if (!currentUser) {
       bumpAnonSearch();
     }
@@ -7795,6 +7999,11 @@ async function boot() {
   wireUi();
   document.getElementById('spin-modal-go')?.addEventListener('click', () => { void spinDo(); });
   document.getElementById('spin-modal-later')?.addEventListener('click', spinClose);
+  document.getElementById('gpt-limit-close')?.addEventListener('click', gptLimitClose);
+  document.getElementById('gpt-limit-feedback')?.addEventListener('click', gptOpenFeedbackForBonus);
+  document.getElementById('gpt-limit-ext')?.addEventListener('click', gptLimitClose);
+  document.getElementById('gpt-fb-submit')?.addEventListener('click', () => { void gptSubmitFeedback(); });
+  document.getElementById('gpt-fb-close')?.addEventListener('click', gptFeedbackClose);
   _lidInitScrollDepth();
   updateAccountUI();
   renderGptUsage();

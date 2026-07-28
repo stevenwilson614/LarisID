@@ -2298,6 +2298,7 @@ async function _authOnSignIn(session) {
     // Best-effort IP region backfill for users without a saved location (onboarding
     // skip, legacy accounts, or users who never finished step 1).
     setTimeout(() => { void backfillUserRegionIfMissing(); }, 1200);
+    funnelNoteActiveDay();
     await loadCurrentAccess().catch(() => {});
     void journeyHydrateFromRemote();
     updateAuthUI();
@@ -21222,8 +21223,11 @@ function journeyLog(eventType, metadata) {
   void logUserEvent(eventType, { journey_tier: userJourneyTier(), ...(metadata || {}) });
 }
 
+let _lidDiveSeen = 0; // dives this session, for first_dive / second_dive steps
+
 function journeyMarkDiscoverView() {
   journeySave({ lastDiscoverAt: new Date().toISOString() });
+  funnelStep('first_search', { source: 'discover' });
   journeyLog('discover_view', {});
   refreshDataFreshnessStamp();
 }
@@ -21361,6 +21365,7 @@ function journeyMarkDeepDiveOpen(source, listing) {
     lastDeepDiveKey: listing ? `${listing.item_id}__${listing.shop_id}` : null,
   });
   journeyRecordSeenProduct(listing);
+  funnelStep(_lidDiveSeen++ === 0 ? 'first_dive' : 'second_dive');
   // NB: the deepdive_open funnel/feed row is emitted once by the caller via
   // cohortLogActivity (which carries cohort_id + journey_tier + source), so we
   // deliberately do NOT log a second row here.
@@ -22620,6 +22625,39 @@ function _funnelIsDup(eventType, metadata) {
   } catch (_) { return false; }
 }
 
+// ── Step-parity funnel ───────────────────────────────────────────────────────
+// The two arms name the same user intent differently (discover_view vs
+// gpt_finder_search), so they could not be compared step by step. funnelStep()
+// emits one event with an identical name from both arms, which is what lets a
+// small paid cohort still show WHERE each arm loses people.
+//
+// Only the post-signup steps live here: activity_events RLS requires a
+// self-owned row, so the landing and signup steps have no user_id to write and
+// are measured from page_views + signup_attribution instead.
+const FUNNEL_STEPS = ['first_search', 'first_dive', 'second_dive', 'return'];
+
+function funnelStep(step, extra) {
+  try {
+    if (!FUNNEL_STEPS.includes(step)) return;
+    const key = `_lid_funnel_${step}`;
+    if (sessionStorage.getItem(key)) return; // once per session per step
+    sessionStorage.setItem(key, '1');
+    void logUserEvent('funnel_step', { step, ui: 'classic', ...(extra || {}) });
+    _clarity('event', `funnel_${step}`);
+  } catch (_) {}
+}
+
+// Fires once per session when the user was last active on an earlier WIB day.
+const FUNNEL_LAST_DAY_KEY = '_lid_funnel_last_day';
+function funnelNoteActiveDay() {
+  try {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+    const prev = localStorage.getItem(FUNNEL_LAST_DAY_KEY);
+    if (prev && prev !== today) funnelStep('return', { prev_day: prev });
+    localStorage.setItem(FUNNEL_LAST_DAY_KEY, today);
+  } catch (_) {}
+}
+
 // Personal (cohort-less) funnel event — RLS allows self-owned rows with null cohort.
 async function logUserEvent(eventType, metadata) {
   if (_admSimulateNewUser) return; // never log real analytics for a simulated session
@@ -22704,6 +22742,11 @@ async function fetchRegionFromIp() {
     const res = await fetch('https://ipwho.is/?fields=success,city,region,country_code');
     const j = await res.json();
     if (!j || j.success === false) return null;
+    // country_code was already requested but never read, so foreign visitors had
+    // their city written straight into user_onboarding_prefs.region — "Algiers",
+    // "Chindrieux". Those match no Indonesian listing location, so the region is
+    // useless for filtering and only pollutes the admin user list.
+    if (j.country_code && j.country_code !== 'ID') return null;
     return resolveRegionFromGeo(j.city, j.region);
   } catch (_) {
     return null;

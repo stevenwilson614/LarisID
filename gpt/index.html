@@ -2286,6 +2286,35 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </div>
 
+<!-- Daily wall. Arm A shows the same earn options at its limit modal; keeping the
+     two arms' earn mechanics identical is what makes the A/B contrast readable. -->
+<div class="modal-overlay" id="gpt-limit-modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="gpt-limit-title">
+    <h3 id="gpt-limit-title" class="nudge-title">Batas pencarian hari ini tercapai</h3>
+    <p class="nudge-sub" id="gpt-limit-sub">Jatah baru tersedia besok.</p>
+    <div class="nudge-actions" style="flex-direction:column;">
+      <a class="btn-primary" id="gpt-limit-ext" href="https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae" target="_blank" rel="noopener" style="text-decoration:none;text-align:center;">Pasang Extension Chrome · tambah 3 per hari</a>
+      <button type="button" class="btn-ghost" id="gpt-limit-feedback" style="width:100%;">Kasih masukan ke Steven · +3 hari ini</button>
+      <button type="button" class="btn-ghost" id="gpt-limit-close" style="width:100%;">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="gpt-feedback-modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="gpt-fb-title">
+    <h3 id="gpt-fb-title" class="nudge-title">Pesan ke Steven</h3>
+    <p class="nudge-sub">Steven (founder LarisID) baca setiap pesan. Minta produk, ide, fitur, atau kasih masukan — langsung ketik saja.</p>
+    <div class="field">
+      <textarea id="gpt-fb-message" rows="4" placeholder="Tulis pesanmu untuk Steven…" style="width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;resize:vertical;"></textarea>
+    </div>
+    <p class="nudge-sub" id="gpt-fb-status" style="margin:0 0 12px;min-height:1.2em;"></p>
+    <div class="nudge-actions">
+      <button type="button" class="btn-primary" id="gpt-fb-submit">Kirim ke Steven</button>
+      <button type="button" class="btn-ghost" id="gpt-fb-close">Tutup</button>
+    </div>
+  </div>
+</div>
+
 <aside class="prefs-drawer" id="prefs-drawer" hidden aria-hidden="true" aria-labelledby="prefs-title">
   <div class="prefs-head">
     <h2 id="prefs-title">Lokasi &amp; kategori</h2>
@@ -2329,6 +2358,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260725a" defer></script>
+<script src="/js/gpt-app.js?v=20260728a" defer></script>
 </body>
 </html>
