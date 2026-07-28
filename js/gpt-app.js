@@ -21,6 +21,99 @@ function _clarity() {
   } catch (_) {}
 })();
 
+// ── Anonymous page-view logging ──────────────────────────────────────────
+// Port of _lidVisitorId/_lidLogPageView from js/laris-app.js:133-167. Arm B was
+// invisible in public.page_views because that logger only ships in laris-app.js,
+// which /gpt/ never loads — so the admin landing-view cards counted arm A only.
+// p_path is location.pathname, so rows land as '/gpt/' and the arms separate in
+// admin_stats. The _lid_pv_sent guard cannot collide with arm A: the A/B redirect
+// runs in index.html's head, before laris-app.js loads.
+function _lidVisitorId() {
+  try {
+    let id = localStorage.getItem('_lid_vid');
+    if (!id) {
+      id = (window.crypto?.randomUUID?.() || ('v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10)));
+      localStorage.setItem('_lid_vid', id);
+    }
+    return id;
+  } catch (_) { return null; }
+}
+
+function _lidLogPageView() {
+  try {
+    if (!_supabase) return;
+    // Once per tab session.
+    if (sessionStorage.getItem('_lid_pv_sent')) return;
+    let sid = sessionStorage.getItem('_lid_sid');
+    const isNewSession = !sid;
+    if (!sid) {
+      sid = (window.crypto?.randomUUID?.() || ('s' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8)));
+      sessionStorage.setItem('_lid_sid', sid);
+    }
+    const vid = _lidVisitorId();
+    if (!vid) return;
+    sessionStorage.setItem('_lid_pv_sent', '1');
+    const q = new URLSearchParams(location.search);
+    _supabase.rpc('log_page_view', {
+      p_visitor_id: vid,
+      p_session_id: sid,
+      p_path: location.pathname,
+      p_referrer: (document.referrer || '(direct)').slice(0, 300),
+      p_utm_source: q.get('utm_source') || '',
+      p_is_new_session: isNewSession,
+    }).then(() => {}, () => {});
+  } catch (_) {}
+}
+
+// Scroll-depth milestones (25/50/75/100%) → Clarity, mirroring
+// js/laris-app.js:24516-24537 so arm B is comparable to arm A. Fires once per load.
+//
+// Arm A's version listens on window and measures document.documentElement, which
+// would be a silent no-op here: /gpt/ is a fixed-height app shell (documentElement
+// scrollHeight === innerHeight) and the scrolling happens inside #panel. So bind to
+// that container and fall back to the window only if it is missing.
+//
+// Two caveats when comparing arms. Arm A defers through larisClarityEvent's idle
+// queue while _clarity here is synchronous, so sub-second timing differs. And depth
+// on a chat surface means "how far down this thread", not "how far down a marketing
+// page" — the two are not the same quantity even though they share an event name.
+function _lidInitScrollDepth() {
+  const fired = {};
+  const marks = [25, 50, 75, 100];
+  let scrollTick = 0;
+
+  function measure(el) {
+    if (el) {
+      const max = el.scrollHeight - el.clientHeight;
+      if (max <= 0) return 0;
+      return (el.scrollTop + el.clientHeight) / el.scrollHeight * 100;
+    }
+    const doc = document.documentElement;
+    if (!doc.scrollHeight) return 0;
+    return (window.scrollY + window.innerHeight) / doc.scrollHeight * 100;
+  }
+
+  function onScroll(el) {
+    return function () {
+      const now = Date.now();
+      if (now - scrollTick < 200) return;
+      scrollTick = now;
+      const scrolled = measure(el);
+      marks.forEach(function (m) {
+        if (!fired[m] && scrolled >= m) {
+          fired[m] = true;
+          _clarity('event', 'scroll_depth_' + m);
+          _clarity('set', 'max_scroll', String(m));
+        }
+      });
+    };
+  }
+
+  const panel = document.getElementById('panel');
+  if (panel) panel.addEventListener('scroll', onScroll(panel), { passive: true });
+  else window.addEventListener('scroll', onScroll(null), { passive: true });
+}
+
 function _lidAbStamp(metadata) {
   const m = metadata && typeof metadata === 'object' ? { ...metadata } : {};
   if (m.ab_variant) return m;
@@ -830,6 +923,65 @@ function noteGptUsage(data) {
   if (!_gptUsage.resetAt) _gptUsage.resetAt = wibMidnightReset();
   if (isPlatformAdmin()) _gptUsage.unlimited = true;
   renderGptUsage();
+  spinMaybeOffer();
+}
+
+// ── Daily spin ────────────────────────────────────────────────────────────
+// Offered after the 2nd search of the day, before the wall — research found the
+// limit is the LAST thing several users ever saw, so meeting them once already
+// blocked is too late. The bonus is shared with arm A: spin_daily_bonus() writes
+// daily_usage.bonus_dives, which raises both the dive cap and _gpt_chat_limit().
+let _spinBusy = false;
+let _spinOffered = false;
+
+function spinShow() {
+  const ov = document.getElementById('spin-modal');
+  if (!ov) return;
+  ov.classList.add('open');
+  void logUserEvent('spin_shown', { ui: 'gpt', used: _gptUsage.used });
+  clarityEvt('spin_shown', {});
+}
+
+function spinClose() {
+  document.getElementById('spin-modal')?.classList.remove('open');
+}
+
+function spinMaybeOffer() {
+  try {
+    if (_spinOffered || !currentUser || _gptUsage.unlimited) return;
+    if ((_gptUsage.used || 0) !== 2) return;
+    _spinOffered = true;
+    setTimeout(spinShow, 900);
+  } catch (_) {}
+}
+
+async function spinDo() {
+  if (_spinBusy || !_supabase) return;
+  _spinBusy = true;
+  const go = document.getElementById('spin-modal-go');
+  if (go) { go.disabled = true; go.textContent = 'Memutar…'; }
+  try {
+    const { data, error } = await _supabase.rpc('spin_daily_bonus');
+    if (error) throw error;
+    if (data && data.allowed === false) {
+      showToast(data.reason === 'already_spun'
+        ? 'Kamu sudah putar hari ini. Balik lagi besok ya.'
+        : 'Putaran belum bisa dipakai sekarang.');
+    } else if (data) {
+      // dive_limit is the arm A cap; arm B's own limit comes back on the next
+      // gpt_new_chat, so bump the local view by the award rather than guessing.
+      noteGptUsage({ limit: (_gptUsage.limit || GPT_DAILY_LIMIT) + data.award });
+      showToast(`Dapat +${data.award} pencarian buat hari ini!`);
+      void logUserEvent('spin_awarded', { ui: 'gpt', award: data.award });
+      clarityEvt('spin_awarded', { award: String(data.award) });
+    }
+  } catch (_) {
+    showToast('Gagal memutar. Coba lagi nanti.');
+  } finally {
+    _spinBusy = false;
+    if (go) { go.disabled = false; go.textContent = 'Putar sekarang'; }
+    spinClose();
+  }
 }
 
 function renderGptUsage() {
@@ -1461,6 +1613,8 @@ async function initSupabase() {
       }
     });
   }
+  // Log this visit (anonymous-friendly) for the admin landing-view metrics.
+  _lidLogPageView();
 }
 
 async function signOut() {
@@ -1817,6 +1971,48 @@ function submitFromHome(text) {
   void handleComposerSubmit(text);
 }
 
+// ── Rekomendasi Steven ────────────────────────────────────────────────────
+// Weekly, shared-per-city picks of products new sellers are actually succeeding
+// with, from mv_city_weekly_recs. Same list for everyone in a city — that is
+// what makes it "Steven's pick" rather than a personalised feed.
+let _stevenRecsCity = null;
+
+async function renderStevenRecs() {
+  const sec = document.getElementById('steven-recs');
+  const grid = document.getElementById('steven-recs-grid');
+  if (!sec || !grid || !_supabase) return;
+
+  // CITY_LOCATIONS keys are the canonical buckets, matching city_location_map.
+  const city = _finder.city && CITY_LOCATIONS[_finder.city] ? _finder.city : null;
+  if (!city) { sec.style.display = 'none'; return; }
+  if (_stevenRecsCity === city && grid.children.length) { sec.style.display = ''; return; }
+
+  try {
+    const { data } = await _supabase.from('mv_city_weekly_recs')
+      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,age_days,sold_per_day,rn,week_start')
+      .eq('city', city)
+      .order('rn', { ascending: true })
+      .limit(20);
+    const rows = data || [];
+    if (!rows.length) { sec.style.display = 'none'; return; }
+
+    _stevenRecsCity = city;
+    const title = document.getElementById('steven-recs-title');
+    const sub = document.getElementById('steven-recs-sub');
+    if (title) title.textContent = `Rekomendasi Steven · ${city}`;
+    if (sub) {
+      sub.textContent = `${rows.length} produk yang lagi jalan buat penjual baru di ${city} — listing baru (di bawah 4 bulan) yang sudah tembus 100+ terjual. Daftar ini ganti tiap minggu.`;
+    }
+    grid.innerHTML = rows.map((p, i) => productCardHtml(p, i)).join('');
+    bindProductCards(grid);
+    sec.style.display = '';
+    void logUserEvent('steven_recs_view', { ui: 'gpt', city, count: rows.length });
+    clarityEvt('steven_recs_view', { city });
+  } catch (_) {
+    sec.style.display = 'none';
+  }
+}
+
 function renderHome() {
   _offerActive = false;
   setView('home');
@@ -1824,6 +2020,7 @@ function renderHome() {
   saveLocalState();
   renderChatList();
   wireHomeFinder();
+  void renderStevenRecs();
 
   if (!renderHome._seen) {
     renderHome._seen = true;
@@ -7596,6 +7793,9 @@ async function boot() {
   } catch (_) {}
 
   wireUi();
+  document.getElementById('spin-modal-go')?.addEventListener('click', () => { void spinDo(); });
+  document.getElementById('spin-modal-later')?.addEventListener('click', spinClose);
+  _lidInitScrollDepth();
   updateAccountUI();
   renderGptUsage();
 

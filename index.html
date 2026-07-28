@@ -197,7 +197,7 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260724f';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260725a';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
@@ -9647,8 +9647,23 @@ html,body{overflow-x:clip;max-width:100%;}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg>
               Pasang Extension Chrome &middot; tambah 3 dive per hari
             </a>
+            <button class="cg-btn secondary" id="cg-feedback-btn" onclick="spinOpenFeedbackForBonus()" style="width:100%;display:none;">Kasih masukan ke Steven &middot; +3 dive hari ini</button>
             <button class="cg-btn secondary" onclick="cgClose();switchDashView('credits');setTimeout(crScrollReferral,150)" style="width:100%;">Ajak teman &middot; +1 dive harian per teman (maks +5)</button>
             <button class="cg-btn secondary" onclick="cgClose()" style="width:100%;">Tutup</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Daily spin: offered after the 2nd dive of the day, before the wall -->
+      <div class="cg-overlay" id="spin-overlay" style="display:none;" onclick="if(event.target===this)spinClose()">
+        <div class="cg-modal">
+          <div class="cg-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#c05000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="2.5"/></svg></div>
+          <div class="cg-title" id="spin-title">Putaran harian kamu</div>
+          <div class="cg-sub" id="spin-sub">Putar sekali tiap hari buat nambah jatah riset — bisa dapat +1, +2, atau +5 dive.</div>
+          <div class="cg-cost" id="spin-result" style="display:none;"></div>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">
+            <button class="cg-btn primary" id="spin-go" onclick="spinDo()" style="width:100%;">Putar sekarang</button>
+            <button class="cg-btn secondary" id="spin-close" onclick="spinClose()" style="width:100%;">Nanti dulu</button>
           </div>
         </div>
       </div>
@@ -9952,7 +9967,7 @@ html,body{overflow-x:clip;max-width:100%;}
      SITE FOOTER
 ════════════════════════════════════ -->
 
-<script defer src="/js/laris-app.js?v=20260724f"></script>
+<script defer src="/js/laris-app.js?v=20260725a"></script>
 
   <!-- ── CONTEXTUAL ONBOARDING HINTS ── -->
   <div id="hint-overlay" aria-hidden="true" onclick="if(event.target===this)nuHintDismiss()">

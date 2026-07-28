@@ -1789,6 +1789,17 @@ async function ylkRender(region) {
     const kwSet  = new Set(recentKw.map(k => String(k).toLowerCase()).filter(Boolean));
     const catSet = new Set(prefCats);
 
+    // Rekomendasi Steven: the same weekly, shared-per-city list for everyone in
+    // this city, sourced from mv_city_weekly_recs (young listings already past
+    // 100 sales, ranked by sales-per-day). Preferred over the raw
+    // `order by total_sold desc` fallback below, which surfaces old mega-sellers
+    // no new seller can realistically enter against.
+    const steven = await _ylkFetchStevenPicks(region);
+    if (steven.length) {
+      _ylkRenderSteven(region, steven, subEl, hl, emptyEl);
+      return;
+    }
+
     // "From their region or near their region": pull the metro cluster, fall back to region-only.
     const regions = _ylkNearbyRegions(region);
     let cands = await _ylkFetchRegionProducts(regions);
@@ -1866,6 +1877,49 @@ async function _ylkFetchRegionProducts(regions) {
     }
     return out;
   } catch (_) { return []; }
+}
+
+// Map the user's free-text region onto a canonical city bucket. region is
+// genuinely unconstrained — five writers produce "Jakarta", "Jakarta Pusat" and
+// lowercase "kediri" — so reuse the normaliser that already handles the
+// Kota/Kab. prefixes and aliases rather than string-matching here.
+function _ylkCanonicalCity(region) {
+  try {
+    if (typeof _admMapCanonical === 'function') {
+      const c = _admMapCanonical(region);
+      if (c) return c;
+    }
+  } catch (_) {}
+  return region;
+}
+
+async function _ylkFetchStevenPicks(region) {
+  if (!_supabase) return [];
+  try {
+    const city = _ylkCanonicalCity(region);
+    const { data } = await _supabase.from('mv_city_weekly_recs')
+      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,age_days,sold_per_day,rn,week_start')
+      .eq('city', city)
+      .order('rn', { ascending: true })
+      .limit(20);
+    return data || [];
+  } catch (_) { return []; }
+}
+
+function _ylkRenderSteven(region, rows, subEl, hl, emptyEl) {
+  const city = _ylkCanonicalCity(region);
+  if (emptyEl) emptyEl.style.display = 'none';
+  const titleEl = document.querySelector('#ylk-card .ylk-title');
+  if (titleEl) {
+    titleEl.innerHTML = `<img src="/images/steven-avatar.webp" alt="" width="24" height="24" loading="lazy"
+        style="width:24px;height:24px;border-radius:50%;object-fit:cover;object-position:center top;vertical-align:-6px;margin-right:8px;"
+        onerror="this.style.display='none'">Rekomendasi Steven &middot; ${city}`;
+  }
+  if (subEl) {
+    subEl.textContent = `${rows.length} produk yang lagi jalan buat penjual baru di ${city} — listing baru (di bawah 4 bulan) yang sudah tembus 100+ terjual. Daftar ini ganti tiap minggu.`;
+  }
+  hl.innerHTML = rows.map(_ylkProductCard).join('');
+  try { logUserEvent('steven_recs_view', { city, count: rows.length, week_start: rows[0]?.week_start || null }); } catch (_) {}
 }
 
 function _ylkSample(arr, n) {
@@ -4274,11 +4328,111 @@ function _usageApply(data) {
   if (data.dive_limit != null) _usage.dive_limit = data.dive_limit;
   if (data.ai_used != null) _usage.ai_used = data.ai_used;
   if (data.ai_limit != null) _usage.ai_limit = data.ai_limit;
+  if (data.bonus_dives != null) _usage.bonus_dives = data.bonus_dives;
+  if (data.can_spin != null) _usage.can_spin = data.can_spin;
+  if (data.can_claim_feedback != null) _usage.can_claim_feedback = data.can_claim_feedback;
   if (data.seconds_until_reset != null) {
     _usage.seconds_until_reset = data.seconds_until_reset;
     _usageFetchedAt = Date.now();
   }
   renderUsageUI();
+}
+
+// ── Daily spin ────────────────────────────────────────────────────────────
+// Offered after the user's 2nd dive of the day rather than at the wall: the
+// research found 4 of 30 users' LAST action was a limit event, so meeting them
+// only once they are already blocked is too late. Copy says "harian" everywhere
+// so the once-a-day shape is obvious before they spend the spin.
+let _spinBusy = false;
+
+function spinShow() {
+  const ov = document.getElementById('spin-overlay');
+  if (!ov) return;
+  const res = document.getElementById('spin-result');
+  const go = document.getElementById('spin-go');
+  const closeBtn = document.getElementById('spin-close');
+  if (res) { res.style.display = 'none'; res.textContent = ''; }
+  if (go) { go.style.display = ''; go.disabled = false; go.textContent = 'Putar sekarang'; }
+  if (closeBtn) closeBtn.textContent = 'Nanti dulu';
+  ov.style.display = 'flex';
+  void logUserEvent('spin_shown', { dives_used: _usage?.dives_used ?? null });
+}
+
+function spinClose() {
+  const ov = document.getElementById('spin-overlay');
+  if (ov) ov.style.display = 'none';
+}
+
+// Fires once per day, right after the 2nd dive lands.
+function spinMaybeOffer() {
+  try {
+    if (!currentUser || !_usage || _usage.unlimited) return;
+    if (_usage.can_spin === false) return;
+    if ((_usage.dives_used ?? 0) !== 2) return;
+    setTimeout(spinShow, 900); // let the deep dive paint first
+  } catch (_) {}
+}
+
+async function spinDo() {
+  if (_spinBusy || !_supabase) return;
+  _spinBusy = true;
+  const go = document.getElementById('spin-go');
+  const res = document.getElementById('spin-result');
+  if (go) { go.disabled = true; go.textContent = 'Memutar…'; }
+  try {
+    const { data, error } = await _supabase.rpc('spin_daily_bonus');
+    if (error) throw error;
+    if (data && data.allowed === false) {
+      if (res) {
+        res.style.display = '';
+        res.textContent = data.reason === 'already_spun'
+          ? 'Kamu sudah putar hari ini. Balik lagi besok ya.'
+          : 'Putaran belum bisa dipakai sekarang.';
+      }
+      if (go) go.style.display = 'none';
+      _usageApply({ ...data, can_spin: false });
+    } else if (data) {
+      _usageApply({ ...data, can_spin: false });
+      if (res) {
+        res.style.display = '';
+        res.textContent = `Dapat +${data.award} dive! Jatah hari ini jadi ${data.dive_limit}.`;
+      }
+      if (go) go.style.display = 'none';
+      void logUserEvent('spin_awarded', { award: data.award, dive_limit: data.dive_limit });
+    }
+  } catch (_) {
+    if (res) { res.style.display = ''; res.textContent = 'Gagal memutar. Coba lagi nanti.'; }
+    if (go) { go.disabled = false; go.textContent = 'Putar sekarang'; }
+  } finally {
+    _spinBusy = false;
+    const closeBtn = document.getElementById('spin-close');
+    if (closeBtn) closeBtn.textContent = 'Tutup';
+  }
+}
+
+// From the limit modal: send the user to the feedback form, then grant +3 once
+// they actually submit something real (server checks ownership, same-day and a
+// 10-character message).
+function spinOpenFeedbackForBonus() {
+  try {
+    _fbBonusPending = true;
+    cgClose();
+    openFeedback();
+  } catch (_) {}
+}
+
+let _fbBonusPending = false;
+
+async function spinClaimFeedbackBonus(feedbackId) {
+  if (!_supabase || !feedbackId) return;
+  try {
+    const { data, error } = await _supabase.rpc('claim_feedback_bonus', { p_feedback_id: feedbackId });
+    if (error) throw error;
+    if (data && data.allowed) {
+      _usageApply({ ...data, can_claim_feedback: false });
+      void logUserEvent('feedback_bonus_awarded', { award: data.award, dive_limit: data.dive_limit });
+    }
+  } catch (_) {}
 }
 
 function renderUsageUI() {
@@ -4329,6 +4483,7 @@ async function _useDive(productKey) {
     _usageApply(data);
     if (data && !data.unlimited && data.already_accessed === false) {
       setTimeout(_ddMaybeTrackNudge, 8000); // fresh dive = peak interest → invite tracking
+      spinMaybeOffer(); // offer the daily spin after dive 2, before they hit the wall
     }
     return true;
   } catch (_) {
@@ -4396,6 +4551,10 @@ function usageLimitShow(kind) {
   }
   const resetLine = document.getElementById('cg-reset-line');
   if (resetLine) resetLine.textContent = _usage ? `Jatah baru tersedia dalam ${_usageResetLabel()}.` : 'Jatah baru tersedia besok.';
+  // Feedback-for-dives is the second stage of limit relief: only offered here,
+  // once the (already spun-up) limit is actually exhausted, and only for dives.
+  const fbBtn = document.getElementById('cg-feedback-btn');
+  if (fbBtn) fbBtn.style.display = (!isAi && _usage?.can_claim_feedback !== false) ? '' : 'none';
   document.getElementById('cg-overlay').style.display = 'flex';
   void logUserEvent('usage_limit_shown', { kind });
 }
@@ -20044,7 +20203,14 @@ async function submitFeedback() {
         if (error) console.warn('analyze-feedback invoke:', error.message);
         else if (data?.errors?.length) console.warn('analyze-feedback errors:', data.errors);
       });
-    if (status) { status.textContent = 'Terkirim! Steven akan baca pesanmu.'; status.style.color = '#16A34A'; }
+    // Grant the +3 dive bonus when this submission came from the limit modal.
+    // The server re-checks ownership, same WIB day and a real message, so this
+    // is only the trigger, not the authority.
+    if (_fbBonusPending && inserted?.id) {
+      _fbBonusPending = false;
+      void spinClaimFeedbackBonus(inserted.id);
+      if (status) { status.textContent = 'Terkirim! +3 dive buat hari ini.'; status.style.color = '#16A34A'; }
+    } else if (status) { status.textContent = 'Terkirim! Steven akan baca pesanmu.'; status.style.color = '#16A34A'; }
     if (btn) { btn.textContent = 'Terkirim'; }
     setTimeout(closeFeedbackModal, 1800);
   } catch (err) {
@@ -22256,12 +22422,26 @@ function dashboardTourHandleTrackClick() {
   let toastShown = false;
   let floatShown = false;
 
+  /* ── Gate: signed-in dashboard only ──
+     These used to fire on every page load, which put the "Pesan Steven" banner and
+     float on the marketing landing for logged-out visitors who have nothing to give
+     feedback about. Clarity's tap heatmap for / then ranked the banner's ✕ as the
+     single most-clicked element on the page (28 taps vs 18 for the primary CTA), and
+     on mobile the banner (z-index 1100) covers .lp-mobile-cta (z-index 300).
+     Checked at fire time, not schedule time, so session restore has a chance to land. */
+  function fbAllowed() {
+    try {
+      return !!currentUser && document.body.classList.contains('in-dashboard');
+    } catch (_) { return false; }
+  }
+
   /* ── Floating button: show after 30s ── */
   setTimeout(() => showFloat(), 30000);
 
   /* ── First-visit banner: show after 3s, auto-dismiss 10s ── */
   if (!localStorage.getItem('ps_banner_seen')) {
     setTimeout(() => {
+      if (!fbAllowed()) return; // retries next load — ps_banner_seen is only set on dismissal
       const el = document.getElementById('fb-banner');
       if (el) el.classList.add('show');
       setTimeout(() => dismissBanner(), 10000);
@@ -22292,6 +22472,7 @@ function dashboardTourHandleTrackClick() {
 
   function showFloat() {
     if (floatShown) return;
+    if (!fbAllowed()) return;
     floatShown = true;
     const el = document.getElementById('fb-float');
     if (el) el.classList.add('show');
