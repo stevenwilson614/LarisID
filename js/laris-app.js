@@ -10193,7 +10193,7 @@ async function dscShowSuggestions(q) {
   if (!tok) return;
   try {
     const { data } = await _supabase
-      .from('listings')
+      .from('listings_deduped')
       .select('keyword, category')
       .or(`keyword.ilike.${tok}%,keyword.ilike.% ${tok}%`)
       .gt('total_sold', 0)
@@ -10578,9 +10578,9 @@ async function dscOpenDeepDive(key, skipNav) {
     // — fall back to fetching the listing directly from Supabase.
     if (!_supabase) { showCompareToast('Data produk belum dimuat — coba buka Discover dulu'); return; }
     try {
-      const { data } = await _supabase.from('listings')
+      const { data } = await _supabase.from('listings_deduped')
         .select('item_id,shop_id,product_name,keyword,price,total_sold,store_name,category,image_url,url,rating,reviews,location,listing_date,scraped_at')
-        .eq('item_id', itemId).eq('shop_id', shopId).order('scraped_at', { ascending: false }).limit(1);
+        .eq('item_id', itemId).eq('shop_id', shopId).limit(1);
       if (data && data.length) {
         listing = data[0];
         if (!window._dscAllListings) window._dscAllListings = [];
