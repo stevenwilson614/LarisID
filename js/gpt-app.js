@@ -2627,7 +2627,7 @@ function syncDirectoryFromOnboarding() {
   const o = state.onboarding || {};
   if (o.step !== 'done') return;
   if (o.city) state.dirCity = o.city;
-  if (o.categories?.length) state.dirCat = o.categories[0];
+  if (o.categories?.length) state.dirCat = toCanonicalCat(o.categories[0]) || null;
 }
 
 // ── Lokasi & kategori side drawer (does not interrupt the open chat) ──────
@@ -7148,7 +7148,90 @@ async function handleComposerSubmit(text) {
 }
 
 // ── Directory ────────────────────────────────────────────────────────────
-// ── Product Types (mv_product_types) ─────────────────────────────────────
+// ── Canonical taxonomy (category_map / keyword_subgroup) ─────────────────
+// The 19-category hardcoded list reached only 32.6% of product types: the DB
+// carries 84 raw category strings (Fashion alone was split across nine) plus a
+// large uncategorised bucket. category_map collapses them into canonical
+// buckets and keyword_subgroup holds data-derived sub-groups, both rebuilt by
+// refresh_breakout_matviews(). Loading them from the DB instead of hardcoding
+// is what stops the taxonomy drifting between Site A, Site B and SQL again.
+let CANON_CATS = [];
+let CAT_CANON_MAP = Object.create(null); // raw category string -> canonical bucket
+const _subgroupCache = Object.create(null);
+
+async function loadCanonicalCats() {
+  if (CANON_CATS.length) return CANON_CATS;
+  try {
+    const cached = JSON.parse(localStorage.getItem('_lid_canon_cats_v1') || 'null');
+    if (cached?.ts && Date.now() - cached.ts < 864e5 && Array.isArray(cached.cats) && cached.cats.length) {
+      CANON_CATS = cached.cats;
+      if (cached.map) CAT_CANON_MAP = cached.map;
+    }
+  } catch (_) {}
+  try {
+    if (!_supabase) return CANON_CATS;
+    const { data } = await _supabase.from('category_map')
+      .select('raw_category,canonical,sort_order').order('sort_order', { ascending: true });
+    const seen = new Set();
+    const cats = [];
+    const map = Object.create(null);
+    (data || []).forEach(r => {
+      if (!r.canonical) return;
+      if (r.raw_category) map[r.raw_category] = r.canonical;
+      if (!seen.has(r.canonical)) { seen.add(r.canonical); cats.push(r.canonical); }
+    });
+    if (cats.length) {
+      CANON_CATS = cats;
+      CAT_CANON_MAP = map;
+      try { localStorage.setItem('_lid_canon_cats_v1', JSON.stringify({ ts: Date.now(), cats, map })); } catch (_) {}
+    }
+  } catch (_) {}
+  return CANON_CATS;
+}
+
+/** Keywords belonging to one sub-group — used by the legacy listing grid,
+ *  which filters listing rows rather than product-type rows. */
+const _sgKeywordCache = Object.create(null);
+async function subgroupKeywords(cat, sub) {
+  if (!cat || !sub || !_supabase) return new Set();
+  const key = `${cat}|${sub}`;
+  if (_sgKeywordCache[key]) return _sgKeywordCache[key];
+  try {
+    const { data } = await _supabase.from('keyword_subgroup')
+      .select('keyword').eq('canonical', cat).eq('subgroup', sub).limit(4000);
+    const set = new Set((data || []).map(r => String(r.keyword || '').trim()).filter(Boolean));
+    _sgKeywordCache[key] = set;
+    return set;
+  } catch (_) { return new Set(); }
+}
+
+/** Old/raw category name -> canonical bucket. Stored onboarding prefs and the
+ *  finder chips still hold pre-taxonomy names like "Bayi & Anak". */
+function toCanonicalCat(raw) {
+  const c = String(raw || '').trim();
+  if (!c) return null;
+  if (CANON_CATS.includes(c)) return c;
+  return CAT_CANON_MAP[c] || null;
+}
+
+/** Sub-groups that actually have products in this canonical bucket. */
+async function loadSubgroups(cat) {
+  if (!cat || !_supabase) return [];
+  if (_subgroupCache[cat]) return _subgroupCache[cat];
+  try {
+    const { data } = await _supabase.from('keyword_subgroup')
+      .select('subgroup').eq('canonical', cat).limit(4000);
+    const counts = Object.create(null);
+    (data || []).forEach(r => { if (r.subgroup) counts[r.subgroup] = (counts[r.subgroup] || 0) + 1; });
+    // 'Lainnya' sorts last so real product groups lead.
+    const groups = Object.keys(counts)
+      .sort((a, b) => (a === 'Lainnya') - (b === 'Lainnya') || counts[b] - counts[a]);
+    _subgroupCache[cat] = groups;
+    return groups;
+  } catch (_) { return []; }
+}
+
+// ── Product Types (product_types_v) ──────────────────────────────────────
 // The directory shows one card per PRODUCT TYPE (= the scrape keyword, which
 // the panel curated at exactly "one supplier could make this" granularity)
 // instead of individual listings. Aggregates are precomputed server-side per
@@ -7156,19 +7239,25 @@ async function handleComposerSubmit(text) {
 // count, top-5 images — so the whole grid is one indexed query.
 const _ptypeCache = Object.create(null);
 
-async function fetchProductTypes(city, cat, limit = 1000) {
+const PTYPE_COLS = 'keyword,city,category,category_canonical,subgroup,n_listings,n_sellers,price_min,price_median,price_max,avg_sold,total_sold_sum,omset_top15,sold_top3_share,images,rep_item_id,rep_shop_id,rep_product_name,rep_store_name,rep_price,rep_total_sold,rep_reviews,rep_rating,rep_location,rep_image_url,rep_url,rep_listing_date,trend_delta_30d,breakout_rate,niche_new_items,median_winner_price,median_winner_reviews';
+
+async function fetchProductTypes(city, cat, limit = 1000, sub = null) {
   if (!_supabase) return [];
   const bucket = city || 'ALL';
-  const key = `${bucket}|${cat || ''}`;
+  const key = `${bucket}|${cat || ''}|${sub || ''}`;
   if (_ptypeCache[key]) return _ptypeCache[key];
   try {
-    let q = _supabase.from('mv_product_types')
-      .select('keyword,city,category,n_listings,n_sellers,price_min,price_median,price_max,avg_sold,total_sold_sum,omset_top15,sold_top3_share,images,rep_item_id,rep_shop_id,rep_product_name,rep_store_name,rep_price,rep_total_sold,rep_reviews,rep_rating,rep_location,rep_image_url,rep_url,rep_listing_date,trend_delta_30d,breakout_rate,niche_new_items,median_winner_price,median_winner_reviews')
+    let q = _supabase.from('product_types_v')
+      .select(PTYPE_COLS)
       .eq('city', bucket)
       .gte('n_listings', 3)
       .order('omset_top15', { ascending: false, nullsFirst: false })
       .limit(limit);
-    if (cat) q = q.eq('category', cat);
+    // Canonical bucket + server-side subgroup: the old client-side keyword
+    // substring test could not see the 67% of types whose raw category string
+    // was not one of the 19 hardcoded chips.
+    if (cat) q = q.eq('category_canonical', cat);
+    if (sub) q = q.eq('subgroup', sub);
     const { data, error } = await q;
     if (error) throw error;
     const rows = data || [];
@@ -7352,7 +7441,7 @@ async function startComparePick(source) {
   state.comparePick = { source };
   state.dirPage = 1;
   const match = matchDirCatFromProduct(source);
-  if (match) state.dirCat = match;
+  if (match) state.dirCat = toCanonicalCat(match) || null;
   void logUserEvent('gpt_compare_pick', { ui: 'gpt', keyword: source.keyword || '', item_id: source.item_id });
   clarityEvt('gpt_compare_pick', {});
   await openDirectory();
@@ -7527,32 +7616,30 @@ function applyDirCatUi() {
       c.classList.toggle('selected', (state.dirCat || '') === v);
     });
   }
-  renderSubcats(state.dirCat);
+  void renderSubcats(state.dirCat);
 }
 
 // Build the sub-group chip row for the selected category (hidden when the
 // category has no sub-groups). Selecting one narrows the grid by keyword.
-function renderSubcats(cat) {
+async function renderSubcats(cat) {
   const wrap = $('dir-subcats');
   if (!wrap) return;
-  const groups = cat ? CAT_SUBGROUPS[cat] : null;
-  if (!groups || !groups.length) {
-    wrap.hidden = true;
-    wrap.innerHTML = '';
-    return;
-  }
+  if (!cat) { wrap.hidden = true; wrap.innerHTML = ''; return; }
+  // Sub-groups come from keyword_subgroup, which only ever contains groups that
+  // have products behind them — so a chip can no longer outlive its products.
+  const groups = await loadSubgroups(cat);
+  if (!groups.length) { wrap.hidden = true; wrap.innerHTML = ''; return; }
   wrap.hidden = false;
-  const selIdx = state.dirSub ? groups.indexOf(state.dirSub) : -1;
+  const sel = state.dirSub || null;
   wrap.innerHTML =
-    `<button type="button" class="chip${selIdx < 0 ? ' selected' : ''}" data-dsub="-1">Semua ${esc(cat)}</button>` +
-    groups.map((g, i) => `<button type="button" class="chip${i === selIdx ? ' selected' : ''}" data-dsub="${i}">${esc(g.label)}</button>`).join('');
+    `<button type="button" class="chip${!sel ? ' selected' : ''}" data-dsub="">Semua ${esc(cat)}</button>` +
+    groups.map(g => `<button type="button" class="chip${g === sel ? ' selected' : ''}" data-dsub="${esc(g)}">${esc(g)}</button>`).join('');
   wrap.querySelectorAll('[data-dsub]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const idx = parseInt(btn.getAttribute('data-dsub'), 10);
-      state.dirSub = idx >= 0 ? groups[idx] : null;
+      state.dirSub = btn.getAttribute('data-dsub') || null;
       state.dirPage = 1;
       wrap.querySelectorAll('.chip').forEach(c => c.classList.toggle('selected', c === btn));
-      void logUserEvent('dir_filter', { ui: 'gpt', kind: 'subgroup', value: state.dirSub ? state.dirSub.label : '' });
+      void logUserEvent('dir_filter', { ui: 'gpt', kind: 'subgroup', value: state.dirSub || '' });
       void renderDirectory();
     });
   });
@@ -7576,10 +7663,11 @@ async function openDirectory() {
   const cats = $('dir-cats');
   if (cats && !cats.dataset.ready) {
     cats.dataset.ready = '1';
+    const canon = await loadCanonicalCats();
     cats.innerHTML =
       `<button type="button" class="chip chip-back" data-dcat="" aria-label="Kembali ke semua kategori">‹ Semua</button>` +
       `<button type="button" class="chip" data-dcat="">Semua</button>` +
-      NU_ONB_CATS.map(c => `<button type="button" class="chip" data-dcat="${esc(c)}">${esc(c)}</button>`).join('');
+      (canon.length ? canon : NU_ONB_CATS).map(c => `<button type="button" class="chip" data-dcat="${esc(c)}">${esc(c)}</button>`).join('');
     cats.querySelectorAll('[data-dcat]').forEach(btn => {
       btn.addEventListener('click', () => {
         // Category filter is free for anonymous (page 2+ / deep-dive stay gated).
@@ -7659,10 +7747,9 @@ async function renderDirectory() {
 
   const cat = state.dirCat || null;
   const city = state.dirCity || '';
-  let types = await fetchProductTypes(city, cat);
-  if (state.dirSub) {
-    types = types.filter(t => subgroupMatches({ keyword: t.keyword, product_name: t.rep_product_name }, state.dirSub.match));
-  }
+  // Subgroup is filtered server-side against keyword_subgroup now, not by a
+  // client-side keyword substring test.
+  let types = await fetchProductTypes(city, cat, 1000, state.dirSub || null);
   // mv missing/empty (e.g. refresh failed) → degrade to the old listing grid.
   if (!types.length && !state.dirSub) return renderDirectoryListings();
   types = sortTypeRows(types, state.dirSort || 'terlaris');
@@ -7722,7 +7809,10 @@ async function renderDirectoryListings() {
     }
   }
   if (state.dirSub) {
-    rows = rows.filter(r => subgroupMatches(r, state.dirSub.match));
+    // Legacy fallback grid: dirSub is a subgroup NAME now, so resolve the
+    // keywords in it rather than substring-testing the old match[] array.
+    const kws = await subgroupKeywords(state.dirCat, state.dirSub);
+    if (kws.size) rows = rows.filter(r => kws.has(String(r.keyword || '').trim()));
   }
   rows = sortDirRows(rows, state.dirSort || 'terlaris');
   state.dirRows = rows;
