@@ -386,7 +386,10 @@ function viewersYtdCached(itemId, shopId) {
 }
 
 async function fetchProductViewCountsYtd(pairs) {
-  if (!_supabase || !currentUser) return _viewCountsYtdCache;
+  // Anon included on purpose: the RPC is SECURITY DEFINER and returns only
+  // aggregate counts (no user ids), and most Site B traffic is logged out.
+  // Gating it on currentUser meant anonymous visitors saw "0" on every card.
+  if (!_supabase) return _viewCountsYtdCache;
   const list = [];
   const seen = new Set();
   (pairs || []).forEach(p => {
@@ -418,6 +421,13 @@ async function fetchProductViewCountsYtd(pairs) {
 function patchViewCountBadges(root) {
   (root || document).querySelectorAll('[data-view-key]').forEach(el => {
     const n = _viewCountsYtdCache.get(el.getAttribute('data-view-key')) ?? 0;
+    // Never show a zero: "0 orang melihat" reads as "nobody wants this" and is
+    // usually just a product nobody has opened on Laris yet, not a signal.
+    const hideable = el.closest('.prod-card-views, .ddr-views') || el;
+    if (hideable && hideable.classList?.contains) {
+      if (Number(n) > 0) hideable.removeAttribute('hidden');
+      else hideable.setAttribute('hidden', '');
+    }
     const num = el.querySelector('[data-view-num]');
     if (num) num.textContent = Number(n).toLocaleString('id-ID');
     else if (el.classList.contains('ddr-tile-views-val') || el.hasAttribute('data-view-num-self')) {
@@ -427,7 +437,8 @@ function patchViewCountBadges(root) {
 }
 
 async function hydrateProdCardsIn(root) {
-  if (!currentUser) return;
+  // No currentUser gate: view counts are public aggregates and most Site B
+  // traffic is logged out (see fetchProductViewCountsYtd).
   const scope = root || document;
   const pairs = [];
   scope.querySelectorAll('[data-prod]').forEach(btn => {
@@ -5236,7 +5247,7 @@ function productCardHtml(p, i, marketStats) {
     <div class="prod-card-body">
       <div class="prod-card-name-row">
         <div class="prod-card-name">${esc(name)}</div>
-        <span class="prod-card-views" data-view-key="${esc(vk)}" title="Penjual Laris yang membuka Deep Dive tahun ini">${ico('eye', 11)}<span data-view-num>${viewers.toLocaleString('id-ID')}</span></span>
+        <span class="prod-card-views" hidden data-view-key="${esc(vk)}" title="Penjual Laris yang membuka Deep Dive tahun ini">${ico('eye', 11)}<span data-view-num>${viewers.toLocaleString('id-ID')}</span></span>
       </div>
       ${loc}
       ${statsHtml}
@@ -6363,7 +6374,7 @@ async function openDeepDive(product) {
       <div class="ddr-head-main">
         <div class="ddr-title-row">
           <h1>${esc(product._ptype ? typeTitle(kw) : (product.product_name || kw || 'Produk'))}</h1>
-          <span class="ddr-views" data-view-key="${esc(viewCountKey(product.item_id, product.shop_id))}" title="Penjual Laris yang membuka Deep Dive tahun ini">${ico('eye', 13)}<span class="ddr-views-num" data-view-num-self>${viewersYtd.toLocaleString('id-ID')}</span><span class="ddr-views-lbl">tahun ini</span></span>
+          <span class="ddr-views" hidden data-view-key="${esc(viewCountKey(product.item_id, product.shop_id))}" title="Penjual Laris yang membuka Deep Dive tahun ini">${ico('eye', 13)}<span class="ddr-views-num" data-view-num-self>${viewersYtd.toLocaleString('id-ID')}</span><span class="ddr-views-lbl">orang lihat produk ini tahun ini</span></span>
           <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
         </div>
         <p class="ddr-cat">${product._ptype
