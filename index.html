@@ -197,7 +197,7 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260728c';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260728d';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
@@ -1834,10 +1834,23 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dsc-skel-line.short{width:55%;}
 .dsc-card{background:#fff;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;transition:box-shadow .15s,transform .1s;}
 .dsc-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.09);transform:translateY(-2px);}
-.dsc-card-img{width:100%;aspect-ratio:1/1;background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-size:2.2rem;overflow:hidden;flex-shrink:0;position:relative;}
+.dsc-card-img{width:100%;aspect-ratio:1/1;background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-size:2.2rem;overflow:hidden;flex-shrink:0;}
 .dsc-card-img img{width:100%;height:100%;object-fit:cover;}
-.dsc-card-views{position:absolute;bottom:6px;right:6px;display:inline-flex;align-items:center;gap:3px;background:rgba(17,24,39,.72);color:#fff;border-radius:999px;padding:3px 7px;font-size:.62rem;font-weight:700;line-height:1;backdrop-filter:blur(4px);z-index:1;pointer-events:none;}
-.dsc-card-views svg{display:block;}
+.dsc-card-name-row{display:flex;align-items:flex-start;gap:6px;justify-content:space-between;}
+.dsc-card-name-row .dsc-card-name{flex:1;min-width:0;}
+.dsc-card-views,.dsc-prod-views{display:inline-flex;align-items:center;gap:3px;color:#6B7280;font-size:.62rem;font-weight:700;line-height:1.2;flex-shrink:0;white-space:nowrap;margin-top:2px;}
+.dsc-card-views svg,.dsc-prod-views svg{display:block;flex-shrink:0;}
+.dsc-prod-name-row{display:flex;align-items:flex-start;gap:6px;justify-content:space-between;}
+.dsc-prod-name-row .dsc-prod-name{flex:1;min-width:0;}
+.dd-hero-name-row{display:flex;align-items:flex-start;gap:10px;justify-content:space-between;margin-bottom:2px;}
+.dd-hero-name-row .dd-hero-name{flex:1;min-width:0;margin-bottom:0;}
+.dd-hero-views{display:inline-flex;align-items:center;gap:5px;flex-shrink:0;padding:5px 10px;border-radius:999px;background:#F3F4F6;border:1px solid #E5E7EB;color:#374151;font-size:.72rem;font-weight:700;line-height:1;white-space:nowrap;margin-top:2px;}
+.dd-hero-views svg{flex-shrink:0;}
+.dd-hero-views-num{font-size:.82rem;font-weight:800;color:#1A1A1A;}
+.dd-hero-views-lbl{font-size:.62rem;font-weight:600;color:#6B7280;}
+.dd-hstat-views{display:flex;align-items:center;gap:4px;margin-top:6px;font-size:.68rem;font-weight:600;color:#6B7280;}
+.dd-hstat-views svg{flex-shrink:0;}
+.dd-hstat-views strong{color:#1A1A1A;font-weight:800;}
 .dsc-card-body{padding:11px 12px;flex:1;display:flex;flex-direction:column;gap:5px;}
 .dsc-card-name{font-size:.78rem;font-weight:700;color:#111;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
 .dsc-card-store{font-size:.66rem;color:#9CA3AF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -7151,7 +7164,14 @@ html,body{overflow-x:clip;max-width:100%;}
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                     <span id="dd-hero-comp-label">—</span>
                   </div>
-                  <div class="dd-hero-name" id="dd-hero-name">—</div>
+                  <div class="dd-hero-name-row">
+                    <div class="dd-hero-name" id="dd-hero-name">—</div>
+                    <div class="dd-hero-views" id="dd-hero-views" data-view-key="" title="Jumlah unik penjual Laris yang membuka Deep Dive produk ini tahun ini">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      <span class="dd-hero-views-num" id="dd-s-views" data-view-num>—</span>
+                      <span class="dd-hero-views-lbl">tahun ini</span>
+                    </div>
+                  </div>
                   <div class="dd-hero-price" id="dd-hero-price">—</div>
                   <div class="dd-hero-cats" id="dd-hero-cats">—</div>
                 </div>
@@ -7340,24 +7360,6 @@ html,body{overflow-x:clip;max-width:100%;}
                     <div class="dd-smetric-foot" id="dd-s-wall-foot">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
                       <span id="dd-s-wall-hint">Bukti sosial penentu utama</span>
-                    </div>
-                  </div>
-                  <div class="dd-smetric">
-                    <div class="dd-smetric-head">
-                      <span class="dd-smetric-label">Dilihat di Laris</span>
-                      <span class="dd-smetric-tip">
-                        <span class="dd-smetric-info" aria-label="Info Dilihat di Laris">i</span>
-                        <span class="dd-smetric-tip-text">Jumlah unik penjual Laris yang membuka Deep Dive produk ini tahun ini. Bukan pengunjung Shopee, dan bukan orang yang sedang melihat sekarang.</span>
-                      </span>
-                    </div>
-                    <div class="dd-smetric-value" id="dd-s-views" data-view-key="">—</div>
-                    <div class="dd-smetric-visual" style="display:flex;align-items:center;gap:6px;color:#6B7280;">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                      <span style="font-size:.72rem;font-weight:600;">tahun ini</span>
-                    </div>
-                    <div class="dd-smetric-foot" id="dd-s-views-foot">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                      <span id="dd-s-views-hint">Penjual Laris yang membuka Deep Dive</span>
                     </div>
                   </div>
                 </div>
@@ -9998,7 +10000,7 @@ html,body{overflow-x:clip;max-width:100%;}
      SITE FOOTER
 ════════════════════════════════════ -->
 
-<script defer src="/js/laris-app.js?v=20260728c"></script>
+<script defer src="/js/laris-app.js?v=20260728d"></script>
 
   <!-- ── CONTEXTUAL ONBOARDING HINTS ── -->
   <div id="hint-overlay" aria-hidden="true" onclick="if(event.target===this)nuHintDismiss()">

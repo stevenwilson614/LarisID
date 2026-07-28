@@ -5204,12 +5204,12 @@ function productCardHtml(p, i) {
   const vk = viewCountKey(p.item_id, p.shop_id);
   const viewers = viewersYtdCached(p.item_id, p.shop_id);
   return `<button type="button" class="prod-card" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} style="animation-delay:${i * 0.06}s">
-    <div class="prod-card-media">
-      ${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : '<div class="prod-card-ph"></div>'}
-      <span class="prod-card-views" data-view-key="${esc(vk)}" title="Penjual Laris yang membuka Deep Dive tahun ini">${ico('eye', 11)}<span data-view-num>${viewers.toLocaleString('id-ID')}</span></span>
-    </div>
+    ${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : '<div class="prod-card-ph"></div>'}
     <div class="prod-card-body">
-      <div class="prod-card-name">${esc(name)}</div>
+      <div class="prod-card-name-row">
+        <div class="prod-card-name">${esc(name)}</div>
+        <span class="prod-card-views" data-view-key="${esc(vk)}" title="Penjual Laris yang membuka Deep Dive tahun ini">${ico('eye', 11)}<span data-view-num>${viewers.toLocaleString('id-ID')}</span></span>
+      </div>
       ${loc}
       <div class="prod-card-stats">
         <div class="prod-stat">
@@ -5916,7 +5916,7 @@ function bindDdrCarousel(root) {
   }, { passive: true });
 }
 
-function ddTilesHtml(product, stats, peers, series, viewersYtd) {
+function ddTilesHtml(product, stats, peers, series) {
   // Opened from a Product Type card → tiles describe the TYPE's market
   // (top-15-seller omset, median price band), not the anchor listing.
   const t = product._ptype || null;
@@ -5947,17 +5947,12 @@ function ddTilesHtml(product, stats, peers, series, viewersYtd) {
     : unitMo ? unitMo.toLocaleString('id-ID') + ' unit' : '—';
   const unitLbl = t ? 'Rata² Terjual / Listing' : 'Est. Penjualan / Bulan';
   const unitSub = t ? 'Rata-rata unit terjual per listing tipe ini' : rateSub;
-  const n = Number(viewersYtd) || viewersYtdCached(product.item_id, product.shop_id) || 0;
-  const viewsHint = n === 1
-    ? '1 penjual membuka Deep Dive tahun ini'
-    : `${n.toLocaleString('id-ID')} penjual membuka Deep Dive tahun ini`;
   return `<div class="ddr-tiles">
     <div class="ddr-tile"><span class="ico" style="background:var(--green-bg);color:var(--green)">${ico('trendUp', 14)}</span><div class="lbl">Est. Omzet / Bulan</div><div class="val">${omset ? fmtRpShort(omset) : '—'}</div>${t ? omsetSub + (deltaHtml.startsWith('<span') ? deltaHtml : '') : deltaHtml}</div>
     <div class="ddr-tile"><span class="ico" style="background:var(--blue-bg);color:var(--blue)">${ico('box', 14)}</span><div class="lbl">${unitLbl}</div><div class="val">${unitVal}</div><div class="sub">${unitSub}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--amber-bg);color:var(--amber)">${ico('tag', 14)}</span><div class="lbl">${t ? 'Harga Umum' : 'Harga Produk'}</div><div class="val">${fmtRp(price)}</div><div class="sub">${t ? `Rentang pasar ${fmtRpShort(t.price_min)} – ${fmtRpShort(t.price_max)}` : vsMed == null ? 'Median pasar belum ada' : vsMed === 0 ? 'Sama dengan median pasar' : `${Math.abs(vsMed)}% ${vsMed > 0 ? 'di atas' : 'di bawah'} median pasar`}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--violet-bg);color:var(--violet)">${ico('pin', 14)}</span><div class="lbl">Lokasi Terbanyak</div><div class="val">${topLoc ? esc(topLoc[0]) : '—'}</div><div class="sub">${topLoc ? `${topLoc[1]} penjual dari kota ini` : 'Belum ada data lokasi'}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--red-bg);color:var(--accent)">${ico('users', 14)}</span><div class="lbl">Kompetitor Aktif</div><div class="val">~${shopN} toko</div><div class="sub">Kompetisi ${esc(stats.komp || '—')}</div></div>
-    <div class="ddr-tile"><span class="ico" style="background:#EEF2FF;color:#4F46E5">${ico('eye', 14)}</span><div class="lbl">Dilihat di Laris</div><div class="val ddr-tile-views-val" data-view-key="${esc(viewCountKey(product.item_id, product.shop_id))}" data-view-num-self>${n.toLocaleString('id-ID')}</div><div class="sub">${esc(viewsHint)}</div></div>
   </div>`;
 }
 
@@ -6342,6 +6337,7 @@ async function openDeepDive(product) {
       <div class="ddr-head-main">
         <div class="ddr-title-row">
           <h1>${esc(product._ptype ? typeTitle(kw) : (product.product_name || kw || 'Produk'))}</h1>
+          <span class="ddr-views" data-view-key="${esc(viewCountKey(product.item_id, product.shop_id))}" title="Penjual Laris yang membuka Deep Dive tahun ini">${ico('eye', 13)}<span class="ddr-views-num" data-view-num-self>${viewersYtd.toLocaleString('id-ID')}</span><span class="ddr-views-lbl">tahun ini</span></span>
           <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
         </div>
         <p class="ddr-cat">${product._ptype
@@ -6354,7 +6350,7 @@ async function openDeepDive(product) {
         <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
       </div>
     </div>
-    ${ddTilesHtml(product, stats, peers, series, viewersYtd)}
+    ${ddTilesHtml(product, stats, peers, series)}
     <div class="ddr-2col">
       <div class="ddr-card" data-dd-sec="tren">
         <h3>Tren Omzet &amp; Unit Terjual</h3>
@@ -6497,13 +6493,6 @@ async function openDeepDive(product) {
     try {
       await fetchProductViewCountsYtd([product]);
       patchViewCountBadges(root);
-      const n = viewersYtdCached(product.item_id, product.shop_id);
-      const sub = root.querySelector('.ddr-tile .val.ddr-tile-views-val')?.closest('.ddr-tile')?.querySelector('.sub');
-      if (sub) {
-        sub.textContent = n === 1
-          ? '1 penjual membuka Deep Dive tahun ini'
-          : `${n.toLocaleString('id-ID')} penjual membuka Deep Dive tahun ini`;
-      }
     } catch (_) {}
   }, 1200);
 

@@ -300,10 +300,10 @@ function patchViewCountBadges(root) {
   });
 }
 
-function dscViewBadgeHtml(itemId, shopId) {
+function dscViewBadgeHtml(itemId, shopId, cls) {
   const k = viewCountKey(itemId, shopId);
   const n = viewersYtdCached(itemId, shopId);
-  return `<span class="dsc-card-views" data-view-key="${k}" title="Penjual Laris yang membuka Deep Dive tahun ini">${wIcon('eye', 11, '#fff')}<span data-view-num>${n.toLocaleString('id-ID')}</span></span>`;
+  return `<span class="${cls || 'dsc-card-views'}" data-view-key="${k}" title="Penjual Laris yang membuka Deep Dive tahun ini">${wIcon('eye', 11, '#6B7280')}<span data-view-num>${n.toLocaleString('id-ID')}</span></span>`;
 }
 
 /** Fetch YTD viewers for listings then patch any visible eye badges. */
@@ -313,30 +313,29 @@ async function hydrateViewCountsForListings(listings, root) {
   patchViewCountBadges(root);
 }
 
-/** Fill Deep Dive “Dilihat di Laris” tile for one listing (refetch after open). */
+/** Fill Deep Dive hero “Dilihat di Laris” chip (refetch after open). */
 async function ddHydrateViewCount(listing) {
   if (!listing?.item_id || !listing?.shop_id) return;
   const el = document.getElementById('dd-s-views');
-  const hint = document.getElementById('dd-s-views-hint');
+  const wrap = document.getElementById('dd-hero-views');
   const k = viewCountKey(listing.item_id, listing.shop_id);
+  if (wrap) wrap.setAttribute('data-view-key', k);
   if (el) el.setAttribute('data-view-key', k);
-  // Optimistic: include current user in the local count if they just opened.
   if (currentUser) {
     const prev = viewersYtdCached(listing.item_id, listing.shop_id);
-    // Ensure key exists; bump only after RPC if we want accuracy — show cached first.
     if (el) el.textContent = prev.toLocaleString('id-ID');
   }
   await fetchProductViewCountsYtd([listing]);
-  // After this open is logged, re-fetch once more shortly so the current user is counted.
   const apply = () => {
     const n = viewersYtdCached(listing.item_id, listing.shop_id);
     if (el) el.textContent = n.toLocaleString('id-ID');
-    if (hint) {
-      hint.textContent = n === 1
-        ? '1 penjual membuka Deep Dive produk ini tahun ini'
-        : `${n.toLocaleString('id-ID')} penjual membuka Deep Dive produk ini tahun ini`;
+    if (wrap) {
+      wrap.title = n === 1
+        ? '1 penjual Laris membuka Deep Dive produk ini tahun ini'
+        : `${n.toLocaleString('id-ID')} penjual Laris membuka Deep Dive produk ini tahun ini`;
     }
     patchViewCountBadges(document.getElementById('dsc-card-grid'));
+    patchViewCountBadges(document.getElementById('dsc-tbody'));
     patchViewCountBadges(document.getElementById('discover-for-you'));
   };
   apply();
@@ -10625,10 +10624,12 @@ function dscCardHtml(p, kwMap) {
     return `<div class="dsc-card" onclick="dscOpenDeepDive('${key}')">
       <div class="dsc-card-img" style="position:relative;">${imgHtml}
         <div style="position:absolute;top:6px;left:6px;background:${lslbl.bg};color:${lslbl.clr};border:1px solid ${lslbl.border};border-radius:8px;padding:3px 9px;font-size:.66rem;font-weight:800;line-height:1.3;">${lslbl.lbl}</div>
-        ${viewsBadge}
       </div>
       <div class="dsc-card-body">
-        <div class="dsc-card-name">${(p.product_name || '').slice(0, 70)}</div>
+        <div class="dsc-card-name-row">
+          <div class="dsc-card-name">${(p.product_name || '').slice(0, 70)}</div>
+          ${viewsBadge}
+        </div>
         <div class="dsc-card-price" style="margin-top:8px;">${_fmtRp(p.price || 0)}</div>
       </div>
     </div>`;
@@ -10636,10 +10637,12 @@ function dscCardHtml(p, kwMap) {
   return `<div class="dsc-card" onclick="dscOpenDeepDive('${key}')">
     <div class="dsc-card-img" style="position:relative;">${imgHtml}
       <div style="position:absolute;top:6px;left:6px;background:${lslbl.clr};color:#fff;border-radius:8px;padding:3px 9px;font-size:.82rem;font-weight:800;line-height:1.4;box-shadow:0 1px 4px rgba(0,0,0,.22);">${ls.total}</div>
-      ${viewsBadge}
     </div>
     <div class="dsc-card-body">
-      <div class="dsc-card-name">${(p.product_name || '').slice(0, 70)}</div>
+      <div class="dsc-card-name-row">
+        <div class="dsc-card-name">${(p.product_name || '').slice(0, 70)}</div>
+        ${viewsBadge}
+      </div>
       <div class="dsc-card-store">${p.store_name || ''}</div>
       <div style="margin-top:8px;">
         <div class="dsc-card-price">${_fmtRp(p.price || 0)}</div>
@@ -10774,7 +10777,10 @@ function dscRenderTable() {
             <div class="dsc-prod-cell">
               ${imgHtml}
               <div>
-                <div class="dsc-prod-name">${(p.product_name||'').slice(0,60)}</div>
+                <div class="dsc-prod-name-row">
+                  <div class="dsc-prod-name">${(p.product_name||'').slice(0,60)}</div>
+                  ${dscViewBadgeHtml(p.item_id, p.shop_id, 'dsc-prod-views')}
+                </div>
                 <div class="dsc-prod-cat" style="color:#6B7280;font-size:.72rem;">${p.store_name||''}</div>
               </div>
             </div>
@@ -10788,6 +10794,7 @@ function dscRenderTable() {
           <td onclick="event.stopPropagation()"><button class="dsc-analyse-btn" onclick="dscOpenDeepDive('${key}')">Analisis</button></td>
         </tr>`;
       }).join('');
+      void hydrateViewCountsForListings(slice, tbody);
     }
   }
 
@@ -21825,7 +21832,7 @@ function ddRenderBeginnerVerdict(p) {
   const _vKey = (p.id != null) ? p.id : (p.name || null);
   const _fromZero = _vKey !== _ddVerdictKey;
   _ddVerdictKey = _vKey;
-  // A3: on a fresh product open, reveal the 7 metric boxes one at a time
+  // A3: on a fresh product open, reveal the 6 metric boxes one at a time
   // left-to-right (~250ms apart). Streamed updates glide live.
   const _SD = 250;
   const _reduceM = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -21843,21 +21850,6 @@ function ddRenderBeginnerVerdict(p) {
 
   _ddRevealMetric(document.getElementById('dd-s-odds')?.closest('.dd-smetric'), _dly(4), _stagger, () => ddRenderOddsTile(p));
   _ddRevealMetric(document.getElementById('dd-s-wall')?.closest('.dd-smetric'), _dly(5), _stagger, () => ddRenderReviewWallTile(p));
-  _ddRevealMetric(document.getElementById('dd-s-views')?.closest('.dd-smetric'), _dly(6), _stagger, () => {
-    const listing = p._listing || {};
-    const n = viewersYtdCached(listing.item_id, listing.shop_id);
-    const el = document.getElementById('dd-s-views');
-    const hint = document.getElementById('dd-s-views-hint');
-    if (el) {
-      el.setAttribute('data-view-key', viewCountKey(listing.item_id, listing.shop_id));
-      el.textContent = n.toLocaleString('id-ID');
-    }
-    if (hint) {
-      hint.textContent = n === 1
-        ? '1 penjual membuka Deep Dive produk ini tahun ini'
-        : `${n.toLocaleString('id-ID')} penjual membuka Deep Dive produk ini tahun ini`;
-    }
-  });
 
   const compBadge = document.getElementById('dd-hero-comp-badge');
   const compLbl = document.getElementById('dd-hero-comp-label');
