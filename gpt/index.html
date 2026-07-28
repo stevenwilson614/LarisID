@@ -551,6 +551,26 @@ html.session-restoring body::after {
   margin-top: 10px; padding-top: 10px;
   border-top: 1px solid var(--line);
 }
+.prod-card-stats--slim {
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+.prod-card-stats--slim .prod-stat {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  align-items: baseline;
+  gap: 8px;
+}
+.prod-card-stats--slim .prod-stat-lbl {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: .68rem;
+  font-weight: 600;
+}
+.prod-card-stats--slim .prod-stat-val {
+  font-size: .84rem;
+  text-align: right;
+}
 .prod-stat { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .prod-stat-lbl {
   font-size: .62rem; font-weight: 550; color: var(--muted);
@@ -2378,6 +2398,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260728d" defer></script>
+<script src="/js/gpt-app.js?v=20260728e" defer></script>
 </body>
 </html>

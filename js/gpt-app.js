@@ -2270,7 +2270,7 @@ async function renderStevenRecs() {
     if (sub) {
       sub.textContent = `${rows.length} produk yang lagi jalan buat penjual baru di ${city} — listing baru (di bawah 4 bulan) yang sudah tembus 100+ terjual. Daftar ini ganti tiap minggu.`;
     }
-    grid.innerHTML = rows.map((p, i) => productCardHtml(p, i)).join('');
+    grid.innerHTML = productCardsHtml(rows);
     bindProductCards(grid);
     sec.style.display = '';
     void logUserEvent('steven_recs_view', { ui: 'gpt', city, count: rows.length });
@@ -2589,7 +2589,7 @@ async function runFinderSearch() {
 
     const html = products.length
       ? `<p>${products.length} produk untuk <strong>${esc(_finder.category)}</strong> di sekitar <strong>${esc(_finder.city)}</strong> (modal ${esc(bud.label)}). Klik kartu untuk Deep Dive.</p>
-         <div class="card-grid">${products.map((p, i) => productCardHtml(p, i % 3)).join('')}</div>`
+         <div class="card-grid">${productCardsHtml(products)}</div>`
       : `<p>Belum ketemu produk yang cocok. Coba ganti kategori atau kota, atau ketik pencarian di bawah.</p>`;
     await revealAssistant(loading, html, { instant: true });
     bindProductCards($('chat-thread'));
@@ -3181,7 +3181,7 @@ async function fillSerupaContent(opts = {}) {
   }
   body.innerHTML = `
     <p class="side-komp-lead">${items.length} produk serupa di keyword “${esc(kw)}” — urut terjual. Klik untuk Deep Dive.</p>
-    <div class="card-grid side-serupa-grid">${items.map((p, i) => productCardHtml(p, i)).join('')}</div>
+    <div class="card-grid side-serupa-grid">${productCardsHtml(items)}</div>
   `;
   bindProductCards(body);
 }
@@ -3964,7 +3964,7 @@ async function handleTrendingIntent(chat) {
     state.recommendations = nd;
     rememberProducts(nd);
     html = nd.length
-      ? `<p>Data tren mingguan belum tersedia — ini produk yang lagi naik daun dari data LarisID:</p><div class="card-grid">${nd.map((p, i) => productCardHtml(p, i)).join('')}</div>`
+      ? `<p>Data tren mingguan belum tersedia — ini produk yang lagi naik daun dari data LarisID:</p><div class="card-grid">${productCardsHtml(nd)}</div>`
       : `<p>Data tren belum tersedia. Coba lagi nanti.</p>`;
   } else {
     const view = computeTrendingView(rows, '7d');
@@ -4010,7 +4010,7 @@ async function handleModalIntent(chat, text) {
   state.recommendations = top;
   rememberProducts(top);
   const html = top.length
-    ? `<p>Produk laris dengan harga di bawah <strong>${fmtRp(budget)}</strong> — dari data Shopee LarisID:</p><div class="card-grid">${top.map((p, i) => productCardHtml(p, i)).join('')}</div>`
+    ? `<p>Produk laris dengan harga di bawah <strong>${fmtRp(budget)}</strong> — dari data Shopee LarisID:</p><div class="card-grid">${productCardsHtml(top)}</div>`
     : `<p>Belum ketemu produk laris di bawah ${fmtRp(budget)}. Coba angka lain.</p>`;
   await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', { text: 'Hasil modal', budget, products: top.map(productSnapshot).filter(Boolean) }, html);
@@ -4353,7 +4353,7 @@ async function handleBandingkanIntent(chat, text) {
   const side = (label, s) => s
     ? `<div class="ans-panel" style="margin-top:12px"><h4>${esc(label)}</h4>
        <p class="dd-sub" style="margin:0 0 10px">${s.n} listing terpantau · median harga ${fmtRp(s.median)} · total ${fmtSold(s.sold)} terjual</p>
-       <div class="card-grid">${s.top.map((p, i) => productCardHtml(p, i)).join('')}</div></div>`
+       <div class="card-grid">${productCardsHtml(s.top)}</div></div>`
     : `<div class="ans-panel" style="margin-top:12px"><h4>${esc(label)}</h4><p class="dd-sub">Tidak ketemu di data.</p></div>`;
   let verdict = '';
   if (sa && sb) {
@@ -4930,7 +4930,7 @@ async function replyWithCategoryProducts(chat, text, cat) {
   rememberProducts(products);
   const html = products.length
     ? `<p>${products.length} produk <strong>${esc(cat)}</strong> dari data Shopee LarisID — klik kartu untuk Deep Dive:</p>
-       <div class="card-grid">${products.map((p, i) => productCardHtml(p, i % 3)).join('')}</div>`
+       <div class="card-grid">${productCardsHtml(products)}</div>`
     : `<p>Belum ketemu produk di kategori <strong>${esc(cat)}</strong>. Coba kata kunci lain atau buka Produk.</p>`;
   await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', {
@@ -5192,7 +5192,7 @@ async function resolveProduct(item_id, shop_id, btn) {
   return null;
 }
 
-function productCardHtml(p, i) {
+function productCardHtml(p, i, marketStats) {
   rememberProducts([p]);
   const img = p.image_url || '';
   const name = p.product_name || p.keyword || 'Produk';
@@ -5203,6 +5203,34 @@ function productCardHtml(p, i) {
   const loc = p.location ? `<div class="prod-card-loc">${esc(p.location)}</div>` : '';
   const vk = viewCountKey(p.item_id, p.shop_id);
   const viewers = viewersYtdCached(p.item_id, p.shop_id);
+  const st = marketStats && marketStats.n >= 4 ? marketStats : null;
+  const qLo = st ? (st.p25 || st.min) : 0;
+  const qHi = st ? (st.p75 || st.max) : 0;
+  const statsHtml = st
+    ? `<div class="prod-card-stats prod-card-stats--slim">
+        <div class="prod-stat">
+          <span class="prod-stat-lbl">Omset/bulan</span>
+          <span class="prod-stat-val">${omset ? fmtOmset(omset) : '—'}</span>
+        </div>
+        <div class="prod-stat">
+          <span class="prod-stat-lbl">Median</span>
+          <span class="prod-stat-val">${fmtRpShort(st.median)}</span>
+        </div>
+        <div class="prod-stat">
+          <span class="prod-stat-lbl">Q1–Q3</span>
+          <span class="prod-stat-val">${fmtRpShort(qLo)}–${fmtRpShort(qHi)}</span>
+        </div>
+      </div>`
+    : `<div class="prod-card-stats prod-card-stats--slim">
+        <div class="prod-stat">
+          <span class="prod-stat-lbl">Omset/bulan</span>
+          <span class="prod-stat-val">${omset ? fmtOmset(omset) : '—'}</span>
+        </div>
+        <div class="prod-stat">
+          <span class="prod-stat-lbl">Harga</span>
+          <span class="prod-stat-val">${fmtRp(p.price)}</span>
+        </div>
+      </div>`;
   return `<button type="button" class="prod-card" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} style="animation-delay:${i * 0.06}s">
     ${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : '<div class="prod-card-ph"></div>'}
     <div class="prod-card-body">
@@ -5211,18 +5239,16 @@ function productCardHtml(p, i) {
         <span class="prod-card-views" data-view-key="${esc(vk)}" title="Penjual Laris yang membuka Deep Dive tahun ini">${ico('eye', 11)}<span data-view-num>${viewers.toLocaleString('id-ID')}</span></span>
       </div>
       ${loc}
-      <div class="prod-card-stats">
-        <div class="prod-stat">
-          <span class="prod-stat-lbl">Harga</span>
-          <span class="prod-stat-val">${fmtRp(p.price)}</span>
-        </div>
-        <div class="prod-stat">
-          <span class="prod-stat-lbl">Omset/bulan</span>
-          <span class="prod-stat-val">${omset ? fmtOmset(omset) : '—'}</span>
-        </div>
-      </div>
+      ${statsHtml}
     </div>
   </button>`;
+}
+
+/** Render a product card grid with shared market median / Q1–Q3 from the peer set. */
+function productCardsHtml(products) {
+  const list = products || [];
+  const stats = list.length >= 4 ? ddStats(list) : null;
+  return list.map((p, i) => productCardHtml(p, i, stats)).join('');
 }
 
 function prodKey(p) {
@@ -5440,7 +5466,7 @@ async function startRecommendationChat(fromOnboarding) {
   rememberProducts(recs);
 
   const cards = recs.length
-    ? `<div class="card-grid">${recs.map((p, i) => productCardHtml(p, i)).join('')}</div>
+    ? `<div class="card-grid">${productCardsHtml(recs)}</div>
        <button type="button" class="btn-ghost" id="btn-more-products">Tampilkan produk lain</button>`
     : `<p>Belum ketemu produk yang cocok. Coba Chat Baru atau buka <strong>Produk</strong> di sidebar.</p>`;
 
@@ -7029,7 +7055,7 @@ async function handleComposerSubmit(text) {
       rememberProducts(products);
       const html = products.length
         ? `<p>${products.length} produk <strong>${esc(catFallback)}</strong> dari data Shopee LarisID — klik kartu untuk Deep Dive:</p>
-           <div class="card-grid">${products.map((p, i) => productCardHtml(p, i % 3)).join('')}</div>`
+           <div class="card-grid">${productCardsHtml(products)}</div>`
         : `<p>Belum ketemu produk di kategori <strong>${esc(catFallback)}</strong>. Coba kata kunci lain atau buka Produk.</p>`;
       if (loading) await revealAssistant(loading, html);
       else await appendAssistantStream(html);
@@ -7083,7 +7109,7 @@ async function handleComposerSubmit(text) {
           ? `Results from LarisID data for “${esc(qLabel)}”${placeLabel ? ` near <strong>${esc(placeLabel)}</strong>` : ''}:`
           : `Hasil dari data LarisID untuk “${esc(qLabel)}”${placeLabel ? ` dari seller sekitar <strong>${esc(placeLabel)}</strong>` : ''}:`;
       }
-      html = `<p>${lead}</p><div class="card-grid">${state.recommendations.map((p, i) => productCardHtml(p, i)).join('')}</div>`;
+      html = `<p>${lead}</p><div class="card-grid">${productCardsHtml(state.recommendations)}</div>`;
     }
     if (loading) await revealAssistant(loading, html);
     else await appendAssistantStream(html);
@@ -7145,9 +7171,32 @@ async function fetchProductTypes(city, cat, limit = 1000) {
     if (cat) q = q.eq('category', cat);
     const { data, error } = await q;
     if (error) throw error;
-    _ptypeCache[key] = data || [];
-    return _ptypeCache[key];
+    const rows = data || [];
+    await attachTypeQuartiles(rows);
+    _ptypeCache[key] = rows;
+    return rows;
   } catch (_) { return []; }
+}
+
+/** Attach Q1/Q3 price band from listings_deduped (RPC) onto type rows. */
+async function attachTypeQuartiles(rows) {
+  if (!_supabase || !rows?.length) return rows;
+  const kws = [...new Set(rows.map(r => r.keyword).filter(Boolean))];
+  if (!kws.length) return rows;
+  try {
+    const { data, error } = await _supabase.rpc('product_type_quartiles', { p_keywords: kws });
+    if (error) throw error;
+    const map = new Map((data || []).map(r => [r.keyword, r]));
+    rows.forEach(r => {
+      const q = map.get(r.keyword);
+      if (!q) return;
+      r.price_p25 = Number(q.price_p25) || null;
+      r.price_p75 = Number(q.price_p75) || null;
+    });
+  } catch (e) {
+    console.warn('[typeQuartiles]', e?.message || e);
+  }
+  return rows;
 }
 
 function typeTitle(kw) {
@@ -7187,6 +7236,9 @@ function typeCardHtml(t, absIdx, animIdx) {
   const odds = calcBreakoutOdds(Number(t.price_median) || 0, typeNiche(t));
   const badgeCls = odds.tier === 'Tinggi' ? 'badge-tinggi' : odds.tier === 'Sedang' ? 'badge-sedang' : 'badge-rendah';
   const trend = Number(t.trend_delta_30d) || 0;
+  const qLo = Number(t.price_p25) || Number(t.price_min) || 0;
+  const qHi = Number(t.price_p75) || Number(t.price_max) || 0;
+  const hasQ = Number(t.price_p25) > 0 && Number(t.price_p75) > 0;
   return `<button type="button" class="prod-card ptype-card" data-ptype="${absIdx}" style="animation-delay:${(animIdx % 3) * 0.06}s">
     <div class="ptype-collage n${imgs.length || 1}">
       ${imgs.map(u => `<img src="${esc(u)}" alt="" loading="lazy">`).join('') || '<div class="prod-card-ph"></div>'}
@@ -7195,22 +7247,18 @@ function typeCardHtml(t, absIdx, animIdx) {
     <div class="prod-card-body">
       <div class="prod-card-name">${esc(typeTitle(t.keyword))}</div>
       <div class="prod-card-loc">${t.n_sellers} penjual · ${t.n_listings} listing</div>
-      <div class="prod-card-stats">
+      <div class="prod-card-stats prod-card-stats--slim">
         <div class="prod-stat">
           <span class="prod-stat-lbl">Omset/bulan</span>
           <span class="prod-stat-val">${t.omset_top15 ? fmtRpShort(t.omset_top15) : '—'}</span>
         </div>
         <div class="prod-stat">
-          <span class="prod-stat-lbl">Harga umum</span>
+          <span class="prod-stat-lbl">Median</span>
           <span class="prod-stat-val">${fmtRpShort(t.price_median)}</span>
         </div>
         <div class="prod-stat">
-          <span class="prod-stat-lbl">Rata² terjual</span>
-          <span class="prod-stat-val">${(Number(t.avg_sold) || 0).toLocaleString('id-ID')}</span>
-        </div>
-        <div class="prod-stat">
-          <span class="prod-stat-lbl">Rentang harga</span>
-          <span class="prod-stat-val">${fmtRpShort(t.price_min)}–${fmtRpShort(t.price_max)}</span>
+          <span class="prod-stat-lbl">${hasQ ? 'Q1–Q3' : 'Rentang'}</span>
+          <span class="prod-stat-val">${qLo && qHi ? `${fmtRpShort(qLo)}–${fmtRpShort(qHi)}` : '—'}</span>
         </div>
       </div>
       ${trend > 0 ? `<div class="ptype-meta ptype-trend">+${trend.toLocaleString('id-ID')} terjual dalam 30 hari terakhir</div>` : ''}
@@ -7686,7 +7734,7 @@ async function renderDirectoryListings() {
   }
   const start = (state.dirPage - 1) * PAGE_SIZE;
   const slice = rows.slice(start, start + PAGE_SIZE);
-  grid.innerHTML = slice.map((p, i) => productCardHtml(p, i % 3)).join('') || '<p class="dd-sub">Tidak ada produk untuk filter ini.</p>';
+  grid.innerHTML = productCardsHtml(slice) || '<p class="dd-sub">Tidak ada produk untuk filter ini.</p>';
   bindProductCards(grid);
   scrollPanelToTop();
   renderDirPager(pager, rows.length);
