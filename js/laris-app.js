@@ -23345,19 +23345,99 @@ function _mytShowDashboard() {
 }
 
 // ── Store connection ──────────────────────────────────────────
+// Sellers could not connect because find_shop_by_name matches the trimmed name
+// EXACTLY. Anything approximate ("keeone" vs "KEEONE Official Store") dead-ended.
+// Now: pull ranked candidates from find_shops_by_name, auto-connect only on a
+// single unambiguous exact hit, otherwise let the seller pick their own shop.
+function _mytHidePicker() {
+  const el = document.getElementById('myt-shop-picker');
+  if (el) el.style.display = 'none';
+}
+
+// Accepts a pasted shop URL (shopee.co.id/shop/123456 or shopee.co.id/namatoko)
+// and returns either a numeric shop_id or the shop slug to search by name.
+function _mytParseShopUrl(input) {
+  if (!/shopee\./i.test(input)) return null;
+  const byId = input.match(/\/shop\/(\d+)/i);
+  if (byId) return { shopId: Number(byId[1]) };
+  const byItem = input.match(/[./-]i\.(\d+)\.(\d+)/i);
+  if (byItem) return { shopId: Number(byItem[1]) };
+  const bySlug = input.match(/shopee\.[a-z.]+\/([^/?#]+)/i);
+  if (bySlug && !/^(product|shop|search)$/i.test(bySlug[1])) {
+    return { slug: decodeURIComponent(bySlug[1]).replace(/[-_]+/g, ' ').trim() };
+  }
+  return null;
+}
+
+let _mytShopCandidates = [];
+
+function _mytRenderShopPicker(rows) {
+  const box  = document.getElementById('myt-shop-picker');
+  const list = document.getElementById('myt-shop-picker-list');
+  if (!box || !list) return;
+  _mytShopCandidates = rows;
+  // Index-based dispatch: shop names contain quotes/apostrophes that would
+  // break an inline-JSON onclick.
+  list.innerHTML = rows.map((r, i) => {
+    const meta = [
+      `${Number(r.n_listings || 0).toLocaleString('id-ID')} produk`,
+      r.location || '',
+    ].filter(Boolean).join(' &middot; ');
+    return `<button type="button" class="myt-shop-opt" onclick="mytPickShop(${i})">
+      <span class="myt-shop-opt-name">${_dscEsc(r.store_name || '')}</span>
+      <span class="myt-shop-opt-meta">${meta}</span>
+    </button>`;
+  }).join('');
+  box.style.display = '';
+}
+
+async function mytPickShop(idx) {
+  const row = _mytShopCandidates[idx];
+  if (!row) return;
+  _mytHidePicker();
+  await _mytSaveShop(row);
+}
+
+async function _mytSaveShop(match) {
+  _mytShopId    = match.shop_id;
+  _mytStoreName = match.store_name;
+  const { error: saveErr } = await _supabase.from('user_store_profiles').upsert({
+    user_id: currentUser.id,
+    shopee_store_name: match.store_name,
+    shopee_shop_id:    match.shop_id,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'user_id' });
+  if (saveErr) { _mytErr('Gagal menyimpan koneksi toko. Coba lagi.'); return; }
+  _mytShowDashboard();
+  await _mytLoadDashboard();
+}
+
 async function myTokoConnect() {
   if (!currentUser) { openAuthModal('login'); return; }
   const inp = document.getElementById('myt-store-input');
   const btn = document.getElementById('myt-connect-btn');
   const err = document.getElementById('myt-connect-error');
-  const name = (inp?.value || '').trim();
-  if (!name) { _mytErr('Masukkan nama toko kamu terlebih dahulu.'); return; }
-  err.style.display = 'none';
+  const raw = (inp?.value || '').trim();
+  if (!raw) { _mytErr('Masukkan nama toko kamu terlebih dahulu.'); return; }
+  if (err) err.style.display = 'none';
+  _mytHidePicker();
   btn.disabled = true;
   btn.textContent = 'Mencari...';
   try {
-    // Use find_shop_by_name RPC — has a server-side timeout and avoids full table scans
-    const { data: rpcData, error: rpcErr } = await _supabase.rpc('find_shop_by_name', { p_store_name: name });
+    // A pasted shop/product link resolves straight to a shop_id.
+    const fromUrl = _mytParseShopUrl(raw);
+    if (fromUrl?.shopId) {
+      const { data: shopRow } = await _supabase
+        .from('mv_shops').select('shop_id,store_name').eq('shop_id', fromUrl.shopId).limit(1);
+      if (shopRow?.[0]) { await _mytSaveShop(shopRow[0]); return; }
+      _mytErr('Toko dari link itu belum ada di database LarisID. Toko muncul setelah kami scrape keyword yang relevan.');
+      return;
+    }
+
+    const needle = fromUrl?.slug || raw;
+    const { data: rpcData, error: rpcErr } = await _supabase.rpc('find_shops_by_name', {
+      p_q: needle, p_limit: 8,
+    });
     if (rpcErr) {
       const msg = (rpcErr.message || '').toLowerCase();
       _mytErr(msg.includes('timeout') || msg.includes('canceling statement')
@@ -23365,29 +23445,23 @@ async function myTokoConnect() {
         : 'Terjadi kesalahan saat mencari toko. Coba lagi.');
       return;
     }
-    const match = rpcData?.[0] || null;
-    if (!match) {
-      _mytErr('Toko tidak ditemukan dalam database LarisID. Pastikan nama toko sama persis seperti di Shopee (contoh: "TokoBaju123"). Toko baru muncul setelah kami scrape keyword yang relevan.');
+    const rows = rpcData || [];
+    if (!rows.length) {
+      _mytErr('Toko "' + needle + '" belum ada di database LarisID. Kami baru punya toko yang muncul di keyword yang sudah kami scrape — coba nama yang lebih pendek, tempel link toko Shopee kamu, atau minta keyword produkmu di-scrape lewat halaman Discover.');
       return;
     }
-    _mytShopId    = match.shop_id;
-    _mytStoreName = match.store_name;
-    const { error: saveErr } = await _supabase.from('user_store_profiles').upsert({
-      user_id: currentUser.id,
-      shopee_store_name: match.store_name,
-      shopee_shop_id:    match.shop_id,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' });
-    if (saveErr) {
-      _mytErr('Gagal menyimpan koneksi toko. Coba lagi.');
-      return;
-    }
-    _mytShowDashboard();
-    await _mytLoadDashboard();
+    // Auto-connect only when there is exactly one exact-name hit; anything
+    // approximate must be confirmed by the seller.
+    const exact = rows.filter(r => r.match_kind === 'exact');
+    if (exact.length === 1) { await _mytSaveShop(exact[0]); return; }
+    _mytRenderShopPicker(rows);
   } catch (e) {
     _mytErr('Terjadi kesalahan. Coba lagi.');
+    console.error('[LarisID] myTokoConnect error:', e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Hubungkan';
   }
-  btn.disabled = false; btn.textContent = 'Hubungkan';
 }
 
 function _mytErr(msg) {
@@ -23488,6 +23562,14 @@ async function myTokoAnalyzeURL() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'server_error');
 
+    // The function answers 200 with { ok:false, error } when it could not read
+    // the product (unparseable link, dead listing, platform it can't scrape).
+    // Surface that message instead of rendering an empty results card.
+    if (!data || data.ok === false) {
+      _mytaShowErr(data?.error || 'Tidak bisa mengambil data produk. Pastikan link valid dan produk masih aktif di marketplace.');
+      return;
+    }
+
     _mytaCurrentData = data;
     _mytaManualPrice = null;
     _mytaRenderResults(data);
@@ -23495,10 +23577,12 @@ async function myTokoAnalyzeURL() {
   } catch (e) {
     _mytaShowErr('Terjadi kesalahan saat menganalisis. Coba lagi atau periksa koneksi internet.');
     console.error('[LarisID] analyze-product-url error:', e);
+  } finally {
+    // Must be a finally: every early return above (no session, ok:false) would
+    // otherwise leave the button stuck on "Menganalisis...".
+    btn.disabled    = false;
+    btn.textContent = 'Analisis';
   }
-
-  btn.disabled    = false;
-  btn.textContent = 'Analisis';
 }
 
 function _mytaShowErr(msg) {

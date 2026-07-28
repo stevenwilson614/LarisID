@@ -197,7 +197,7 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260728b';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260728c';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
@@ -3449,6 +3449,13 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .myt-connect-btn:hover{background:#8E191F;}
 .myt-connect-btn:disabled{background:#9CA3AF;cursor:not-allowed;}
 .myt-connect-error{font-size:.78rem;color:#dc2626;margin-top:10px;display:none;}
+.myt-shop-picker{margin-top:14px;text-align:left;border:1px solid #EDE8E4;border-radius:10px;padding:12px;background:#fff;}
+.myt-shop-picker-title{font-size:.78rem;font-weight:700;color:#6B6560;margin-bottom:8px;}
+.myt-shop-opt{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:9px 10px;background:#FAF8F6;border:1px solid #EDE8E4;border-radius:8px;font-family:inherit;font-size:.82rem;text-align:left;cursor:pointer;margin-bottom:6px;transition:border-color .15s,background .15s;}
+.myt-shop-opt:last-child{margin-bottom:0;}
+.myt-shop-opt:hover{border-color:#B5202A;background:#fff;}
+.myt-shop-opt-name{font-weight:600;color:#231F1D;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.myt-shop-opt-meta{font-size:.74rem;color:#8A837D;white-space:nowrap;}
 .myt-connect-note{font-size:.72rem;color:#9CA3AF;margin-top:14px;line-height:1.5;}
 
 /* Dashboard header */
@@ -8346,11 +8353,15 @@ html,body{overflow-x:clip;max-width:100%;}
                 <h2>Hubungkan Toko Shopee Kamu</h2>
                 <p>Masukkan nama toko Shopee kamu untuk melihat posisi kompetitif di setiap keyword, portfolio health, dan peluang produk selanjutnya.</p>
                 <div class="myt-connect-row">
-                  <input id="myt-store-input" class="myt-connect-input" type="text" placeholder="Nama toko Shopee kamu..." autocomplete="off" onkeydown="if(event.key==='Enter')myTokoConnect()">
+                  <input id="myt-store-input" class="myt-connect-input" type="text" placeholder="Nama toko atau link toko Shopee..." autocomplete="off" onkeydown="if(event.key==='Enter')myTokoConnect()">
                   <button class="myt-connect-btn" id="myt-connect-btn" onclick="myTokoConnect()">Hubungkan</button>
                 </div>
                 <div class="myt-connect-error" id="myt-connect-error"></div>
-                <div class="myt-connect-note">Nama toko harus sama persis seperti di Shopee. Data toko kamu tidak disimpan ke server pihak ketiga.</div>
+                <div class="myt-shop-picker" id="myt-shop-picker" style="display:none;">
+                  <div class="myt-shop-picker-title">Pilih toko kamu:</div>
+                  <div id="myt-shop-picker-list"></div>
+                </div>
+                <div class="myt-connect-note">Tulis nama toko kamu &mdash; tidak harus persis. Kamu juga bisa menempel link toko Shopee. Data toko kamu tidak disimpan ke server pihak ketiga.</div>
               </div>
             </div>
 
@@ -9987,7 +9998,7 @@ html,body{overflow-x:clip;max-width:100%;}
      SITE FOOTER
 ════════════════════════════════════ -->
 
-<script defer src="/js/laris-app.js?v=20260728b"></script>
+<script defer src="/js/laris-app.js?v=20260728c"></script>
 
   <!-- ── CONTEXTUAL ONBOARDING HINTS ── -->
   <div id="hint-overlay" aria-hidden="true" onclick="if(event.target===this)nuHintDismiss()">
