@@ -4927,13 +4927,16 @@ async function handleRencanaIntent(chat) {
 // ── Free-text search (composer + onboarding freeText bias) ──────────────
 const SEARCH_STOPWORDS = new Set(['cari','carikan','tolong','coba','tunjukkan','tampilkan','produk','barang',
   'buat','untuk','dijual','jual','jualan','yang','dong','aku','saya','mau','bisa','lagi','dan','apa','the',
-  'terlaris','laris','trending','kompetisi','rendah','persaingan','niche','bagus','laku']);
+  'terlaris','laris','trending','kompetisi','rendah','persaingan','niche','bagus','laku',
+  // English discovery fillers — keep nouns like "dresses" for search.
+  'how','about','what','show','me','find','looking','for','any','some','please','a','an','with',
+  'instead','rather','than','maybe','could','would','should','can','want','need','get','like']);
 
 // Natural-language → LarisID category. Used so “cari skincare” / “fashion trending”
 // hit the product tables instead of refusing inside a Deep Dive AI turn.
 const CAT_ALIASES = [
   { cat: 'Kecantikan', terms: ['skincare', 'skin care', 'kecantikan', 'beauty', 'makeup', 'kosmetik', 'serum', 'moisturizer', 'facial', 'sunscreen'] },
-  { cat: 'Fashion', terms: ['fashion', 'baju', 'pakaian', 'kaos', 'celana', 'dress', 'hijab', 'sepatu', 'sandal', 'tas wanita', 'jaket'] },
+  { cat: 'Fashion', terms: ['fashion', 'baju', 'pakaian', 'kaos', 'celana', 'dress', 'dresses', 'hijab', 'sepatu', 'sandal', 'tas wanita', 'jaket'] },
   { cat: 'Dapur', terms: ['dapur', 'kitchen', 'masak', 'memasak', 'peralatan dapur', 'peralatan masak', 'wadah makanan', 'penyimpanan makanan'] },
   { cat: 'Elektronik', terms: ['elektronik', 'gadget', 'charger', 'earphone', 'headset'] },
   { cat: 'HP & Gadget', terms: ['hp', 'handphone', 'smartphone', 'aksesoris hp'] },
@@ -5037,7 +5040,44 @@ function detectCategoryFromText(lower) {
 }
 
 function isProductDiscoveryAsk(lower) {
-  return /(cari|carikan|tunjukkan|tampilkan|rekomendasi|terlaris|laris|trending|naik daun|kompetisi rendah|persaingan rendah|produk|jual|niche)\b/.test(lower);
+  const s = String(lower || '');
+  if (/(cari|carikan|tunjukkan|tampilkan|rekomendasi|terlaris|laris|trending|naik daun|kompetisi rendah|persaingan rendah|produk|jual|niche)\b/.test(s)) {
+    return true;
+  }
+  // English discovery phrasing (“how about dresses”, “show me tumbler”, “find skincare”)
+  if (/\b(how about|what about|what if|show me|looking for|find me|find|any|instead of|rather than)\b/.test(s)) {
+    return true;
+  }
+  return false;
+}
+
+/** Strip discovery fillers so search uses nouns (“dresses”), not “how about dresses”. */
+function cleanDiscoveryQuery(text) {
+  let s = String(text || '').toLowerCase();
+  s = s.replace(/\b(how about|what about|what if|show me|looking for|find me|instead of|rather than|cari(?:kan)?|tolong|please)\b/g, ' ');
+  s = s.replace(/[^a-z0-9\s]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const parts = s.split(/\s+/).filter((w) => w && w.length >= 2 && !SEARCH_STOPWORDS.has(w));
+  return parts.join(' ') || String(text || '').replace(/\s+/g, ' ').trim();
+}
+
+function isProductQaAsk(lower) {
+  return /\b(ini|this|that|harga(?:nya)?|price|rating|review|ulasan|omzet|profit|bagus(?:kah)?|worth|berapa|how much|is it|apakah|kenapa|mengapa|why|should i|bolehkah)\b/.test(String(lower || ''));
+}
+
+/**
+ * Short product/category keyword ask without Indonesian discovery verbs —
+ * e.g. “dresses”, “tumbler 500ml”. Not Q&A about the open listing.
+ */
+function isBareProductQuery(lower) {
+  const s = String(lower || '').trim();
+  if (!s || isProductQaAsk(s)) return false;
+  if (detectIntent(s)) return false;
+  if (/bandingkan|dibanding|\bvs\.?\b/.test(s)) return false;
+  const cleaned = cleanDiscoveryQuery(s);
+  const tokens = cleaned.split(/\s+/).filter(Boolean);
+  if (!tokens.length || tokens.length > 6) return false;
+  const terms = _searchTerms(cleaned);
+  return terms.length > 0;
 }
 
 function _searchTerms(text) {
@@ -5064,17 +5104,17 @@ function detectTopicChange(lower) {
   if (!city && /^(produk|jualan|barang)\s+apa\b|rekomendasi (produk|jualan)|(produk|jualan)\s+(yang\s+)?lagi\s+(naik daun|trending|rame|ramai)/.test(lower)) {
     return { kind: 'list' };
   }
-  // “Cari skincare terlaris”, “produk fashion trending…” — leave Deep Dive AI
-  // and answer from the product database instead.
-  if (detectCategoryFromText(lower) && isProductDiscoveryAsk(lower)) {
+  const cat = detectCategoryFromText(lower);
+  // Category / English discovery / bare “dresses” — leave Deep Dive AI for DB search.
+  if (cat && (isProductDiscoveryAsk(lower) || isBareProductQuery(lower) || isAltProductAsk(lower))) {
     return { kind: 'category_list' };
   }
-  // “Cari tumbler / carikan sepatu…” — new product search, not Q&A on this Deep Dive.
-  if (/^(cari|carikan|tunjukkan|tampilkan)\b/.test(lower) && !/bandingkan|dibanding/.test(lower)) {
+  // “Cari tumbler / carikan sepatu / show me tumbler…” — new product search.
+  if (/^(cari|carikan|tunjukkan|tampilkan|show me|find|looking for)\b/.test(lower) && !/bandingkan|dibanding/.test(lower)) {
     return { kind: 'keyword_search' };
   }
-  // “How about a wood product made in West Java?” — alternative candidate → DB search.
-  if (isAltProductAsk(lower)) {
+  // “How about a wood product…” / bare keyword — alternative candidate → DB search.
+  if (isAltProductAsk(lower) || isBareProductQuery(lower)) {
     return { kind: 'alt_search' };
   }
   return null;
@@ -5360,7 +5400,8 @@ function _planSynonymTerms(terms, planQueries) {
 
 /** Plan (DeepSeek + static) → broad parallel fetch → rank against expanded terms. */
 async function searchProductsForQuery(text, locations = [], limit = 12) {
-  const cleaned = String(text || '').replace(/\s+/g, ' ').trim();
+  const raw = String(text || '').replace(/\s+/g, ' ').trim();
+  const cleaned = cleanDiscoveryQuery(raw) || raw;
   const lower = cleaned.toLowerCase();
   const terms = _searchTerms(cleaned);
   const domain = detectSearchDomain(lower);
@@ -7466,7 +7507,7 @@ PENTING:
 - Kalau STATISTIK SPESIFIKASI atau KANTONG ada, pakai angka itu dulu. Contoh: "Dari 40 listing sejenis, kebanyakan sebut 2 kantong; di top 10 terlaris yang menyebut jumlah, mayoritas 2–4 kantong."
 - Jangan arahkan ke "tanya toko" sebagai jawaban utama kalau data pasar sudah bisa menjawab. Boleh sebut konfirmasi ke toko hanya sebagai catatan sekunder.
 - Kalau user tanya cara buka/masuk link toko, link Shopee, kunjungi toko, atau "gimana masuk link toko": JELASKAN bahwa link toko & produk ada di Deep Dive produk ini — buka Deep Dive, lalu pakai tombol/link ke Shopee atau nama toko di halaman analisa. Jangan bilang kamu tidak bisa bantu, dan jangan suruh user "cari di LarisID" secara umum tanpa menyebut Deep Dive.
-- Kalau user minta alternatif / produk lain (bahan lain, daerah lain, "how about…", "bagaimana kalau…"): sistem akan otomatis mencari di database — JANGAN menyuruh mereka ketik ulang, dan JANGAN mengarang daftar produk. Jawab singkat bahwa kamu akan cari data, atau fokus ke data produk yang sedang dibuka kalau pertanyaan masih tentang produk ini.
+- Kalau user minta alternatif / produk lain / kategori lain (bahan lain, daerah lain, "how about…", "bagaimana kalau…", "dresses", "show me tumbler"): sistem UI seharusnya sudah mencari di database. JANGAN mengarang daftar produk. JANGAN bertanya apakah mereka sudah jadi penjual Shopee / onboarding. JANGAN bilang "one moment", "sebentar", "I'll look that up", atau "aku cari dulu" seolah pencarian masih jalan — itu membuat chat macet. Kalau pertanyaan masih tentang PRODUK YANG DILIHAT, jawab dari data di bawah. Kalau jelas minta produk lain dan belum ada hasil di UI, jawab singkat: sebutkan kata kunci produk/kategori yang ingin dicari (satu kalimat), tanpa janji pencarian palsu.
 - Knowledge umum OK hanya sebagai pelengkap singkat, dan label jelas kalau bukan dari data.
 - Jangan bilang kamu "melihat" produk — kamu membaca data.
 - Keep answers short and direct. Simple questions: 2–5 plain sentences. Longer answers may use light markdown: **bold for key numbers/conclusions**, short bullet lists (- item), and ## headings only when needed. No emoji. Always stay in ${langLabel}.
@@ -7838,7 +7879,7 @@ async function handleComposerSubmit(text) {
   // — answer from the product DB with a card grid, not the global trending table
   // and not Deep Dive AI.
   const catAsk = detectCategoryFromText(lower);
-  if (!inProductCtx && catAsk && isProductDiscoveryAsk(lower)) {
+  if (!inProductCtx && catAsk && (isProductDiscoveryAsk(lower) || isBareProductQuery(lower))) {
     setView('chat');
     let chat = activeChat();
     if (!chat) {
@@ -7913,9 +7954,10 @@ async function handleComposerSubmit(text) {
       // a category ("tanaman artificial" -> Tanaman) and would otherwise show
       // 12 individual listings instead of the markets behind them.
       const place1 = parsePlaceFromQuery(text);
-      const catTypes = await searchProductTypes(place1.cleaned || text, place1.city || '', 12);
+      const q1 = cleanDiscoveryQuery(place1.cleaned || text) || (place1.cleaned || text);
+      const catTypes = await searchProductTypes(q1, place1.city || '', 12);
       if (await replyWithPasarTypes(chat, text, catTypes, {
-        loading, label: place1.cleaned || text, placeLabel: place1.label || place1.city || '',
+        loading, label: q1, placeLabel: place1.label || place1.city || '',
       })) return;
       const products = await fetchCategoryShowcase(catFallback, 12);
       const gate = await ensureIntentChat(chat, text.slice(0, 60), { kind: 'category_search', category: catFallback, q: text });
@@ -7940,7 +7982,7 @@ async function handleComposerSubmit(text) {
     }
     const place = parsePlaceFromQuery(text);
     const locations = place.locations || [];
-    const cleaned = place.cleaned || text;
+    const cleaned = cleanDiscoveryQuery(place.cleaned || text) || (place.cleaned || text);
     const placeLabel = place.label || place.city || '';
 
     // PASAR FIRST: answer with the market, not one shop's listing.
