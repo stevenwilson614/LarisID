@@ -2403,10 +2403,7 @@ function appendBubble(role, html, opts = {}) {
   if (!thread) return null;
   const div = document.createElement('div');
   div.className = `msg ${role}`;
-  const actions = role === 'assistant'
-    ? `<div class="msg-actions"><button type="button" class="msg-act" data-act="copy" title="Salin">Salin</button><button type="button" class="msg-act" data-act="regen" title="Buat ulang">Buat ulang</button></div>`
-    : '';
-  div.innerHTML = `<div class="msg-role">${role === 'user' ? 'Kamu' : 'LARISgpt'}</div><div class="msg-bubble">${html}</div>${actions}`;
+  div.innerHTML = `<div class="msg-role">${role === 'user' ? 'Kamu' : 'LARISgpt'}</div><div class="msg-bubble">${html}</div>`;
   thread.appendChild(div);
   if (!opts.skipScroll) {
     if (role === 'assistant' && contentLooksLikeResults(html)) scrollToContentStart(div);
@@ -9290,44 +9287,6 @@ function wireUi() {
     void handleComposerSubmit(t);
   });
 
-  // Per-message actions (copy / regenerate), delegated so they work for
-  // bubbles rendered later too.
-  $('chat-thread')?.addEventListener('click', async e => {
-    const btn = e.target.closest?.('.msg-act');
-    if (!btn) return;
-    const msg = btn.closest('.msg');
-    const act = btn.getAttribute('data-act');
-    if (act === 'copy') {
-      const txt = msg?.querySelector('.msg-bubble')?.innerText || '';
-      let ok = false;
-      try { await navigator.clipboard.writeText(txt); ok = true; } catch (_) {}
-      if (!ok) {
-        // navigator.clipboard needs permission/secure context; this path keeps
-        // copy working in embedded webviews where it is unavailable.
-        try {
-          const ta = document.createElement('textarea');
-          ta.value = txt;
-          ta.setAttribute('readonly', '');
-          ta.style.cssText = 'position:fixed;top:-1000px;opacity:0';
-          document.body.appendChild(ta);
-          ta.select();
-          ok = document.execCommand('copy');
-          ta.remove();
-        } catch (_) {}
-      }
-      showToast(ok ? 'Jawaban disalin' : 'Tidak bisa menyalin');
-      return;
-    }
-    if (act === 'regen') {
-      // Re-ask the previous user turn; the reply below it is replaced.
-      let prev = msg?.previousElementSibling;
-      while (prev && !prev.classList.contains('user')) prev = prev.previousElementSibling;
-      const q = prev?.querySelector('.msg-bubble')?.innerText?.trim();
-      if (!q) return;
-      msg.remove();
-      void handleComposerSubmit(q);
-    }
-  });
   input?.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
