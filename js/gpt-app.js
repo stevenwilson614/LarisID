@@ -376,8 +376,33 @@ function ico(name, size = 16) {
 // ── Year-to-date unique Laris Deep Dive viewers ─────────────────────────
 const _viewCountsYtdCache = new Map();
 
+// Below this the badge stays hidden. A product sitting at "1 orang" reads as
+// nobody wants it, when it usually just means nobody has opened it on Laris yet.
+const VIEW_COUNT_MIN = 5;
+
 function viewCountKey(itemId, shopId) {
   return `${itemId ?? ''}__${shopId ?? ''}`;
+}
+
+/** Record a product view — anonymous included, deduped per viewer/product/day
+ *  server-side. This is what makes the eyeball reflect real traffic rather
+ *  than only signed-in deep dives. */
+const _viewLogged = new Set();
+function logProductView(product) {
+  try {
+    if (!_supabase || !product) return;
+    const item_id = product.item_id != null ? String(product.item_id) : '';
+    const shop_id = product.shop_id != null ? String(product.shop_id) : '';
+    if (!item_id || !shop_id) return;
+    const k = viewCountKey(item_id, shop_id);
+    if (_viewLogged.has(k)) return;   // once per page session; DB dedupes per day
+    _viewLogged.add(k);
+    const vid = _lidVisitorId();
+    if (!vid) return;
+    _supabase.rpc('log_product_view', {
+      p_item_id: item_id, p_shop_id: shop_id, p_visitor_id: vid,
+    }).then(() => {}, () => {});
+  } catch (_) {}
 }
 
 function viewersYtdCached(itemId, shopId) {
@@ -421,11 +446,10 @@ async function fetchProductViewCountsYtd(pairs) {
 function patchViewCountBadges(root) {
   (root || document).querySelectorAll('[data-view-key]').forEach(el => {
     const n = _viewCountsYtdCache.get(el.getAttribute('data-view-key')) ?? 0;
-    // Never show a zero: "0 orang melihat" reads as "nobody wants this" and is
-    // usually just a product nobody has opened on Laris yet, not a signal.
+    // Hidden below VIEW_COUNT_MIN — a low count is noise, not a signal.
     const hideable = el.closest('.prod-card-views, .ddr-views') || el;
     if (hideable && hideable.classList?.contains) {
-      if (Number(n) > 0) hideable.removeAttribute('hidden');
+      if (Number(n) >= VIEW_COUNT_MIN) hideable.removeAttribute('hidden');
       else hideable.setAttribute('hidden', '');
     }
     const num = el.querySelector('[data-view-num]');
@@ -5247,7 +5271,7 @@ function productCardHtml(p, i, marketStats) {
     <div class="prod-card-body">
       <div class="prod-card-name-row">
         <div class="prod-card-name">${esc(name)}</div>
-        <span class="prod-card-views" hidden data-view-key="${esc(vk)}" title="Penjual Laris yang membuka Deep Dive tahun ini">${ico('eye', 11)}<span data-view-num>${viewers.toLocaleString('id-ID')}</span></span>
+        <span class="prod-card-views" hidden data-view-key="${esc(vk)}" title="Orang yang melihat produk ini di Laris tahun ini">${ico('eye', 11)}<span data-view-num>${viewers.toLocaleString('id-ID')}</span></span>
       </div>
       ${loc}
       ${statsHtml}
@@ -6359,6 +6383,9 @@ async function openDeepDive(product) {
   const segWidth = stats.max > stats.min ? Math.max(4, Math.round((bandHi - bandLo) / (stats.max - stats.min) * 100)) : 100;
   const agePct = k => age.total ? Math.round(age[k] / age.total * 100) : 0;
 
+  // Record this view (anon included) BEFORE reading the count back, so the
+  // viewer sees a number that includes themselves.
+  logProductView(product);
   let viewersYtd = 0;
   try {
     await fetchProductViewCountsYtd([product]);
@@ -6374,7 +6401,7 @@ async function openDeepDive(product) {
       <div class="ddr-head-main">
         <div class="ddr-title-row">
           <h1>${esc(product._ptype ? typeTitle(kw) : (product.product_name || kw || 'Produk'))}</h1>
-          <span class="ddr-views" hidden data-view-key="${esc(viewCountKey(product.item_id, product.shop_id))}" title="Penjual Laris yang membuka Deep Dive tahun ini">${ico('eye', 13)}<span class="ddr-views-num" data-view-num-self>${viewersYtd.toLocaleString('id-ID')}</span><span class="ddr-views-lbl">orang lihat produk ini tahun ini</span></span>
+          <span class="ddr-views" hidden data-view-key="${esc(viewCountKey(product.item_id, product.shop_id))}" title="Orang yang melihat produk ini di Laris tahun ini">${ico('eye', 13)}<span class="ddr-views-num" data-view-num-self>${viewersYtd.toLocaleString('id-ID')}</span><span class="ddr-views-lbl">orang melihat produk ini</span></span>
           <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
         </div>
         <p class="ddr-cat">${product._ptype
