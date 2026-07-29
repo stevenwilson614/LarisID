@@ -1455,10 +1455,34 @@ async function refreshGptUsage() {
 // ── Views / UI shell ─────────────────────────────────────────────────────
 function $(id) { return document.getElementById(id); }
 
+
+// ── Changelog ────────────────────────────────────────────────────────────
+function openChangelog() {
+  const modal = $('changelog-modal');
+  const body = $('changelog-body');
+  if (!modal || !body) return;
+  const log = Array.isArray(window.LARIS_CHANGELOG) ? window.LARIS_CHANGELOG : [];
+  body.innerHTML = log.length
+    ? log.map(e => `<div class="cl-entry">
+        <div class="cl-date">${esc(formatIdDate(e.date))}</div>
+        <div class="cl-title">${esc(e.title || '')}</div>
+        <ul>${(e.items || []).map(i => `<li>${esc(i)}</li>`).join('')}</ul>
+      </div>`).join('')
+    : '<p class="dd-sub">Belum ada catatan perubahan.</p>';
+  modal.hidden = false;
+  void logUserEvent('changelog_open', { ui: 'gpt' });
+}
+
+function formatIdDate(iso) {
+  const d = new Date(String(iso) + 'T00:00:00');
+  if (isNaN(d)) return String(iso || '');
+  return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
+}
+
 function setView(name) {
   const leaving = state.view;
   state.view = name;
-  ['home', 'chat', 'deepdive', 'directory', 'harga', 'admin'].forEach(v => {
+  ['home', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'tentang', 'admin'].forEach(v => {
     const el = $(`view-${v}`);
     if (el) el.classList.toggle('active', v === name);
     document.body.classList.toggle(`view-${v}`, v === name);
@@ -8780,6 +8804,15 @@ function wireUi() {
     void openDirectory();
   });
   $('btn-harga')?.addEventListener('click', () => setView('harga'));
+  $('btn-faq')?.addEventListener('click', () => { setView('faq'); void logUserEvent('view_open', { ui: 'gpt', view: 'faq' }); });
+  $('btn-tentang')?.addEventListener('click', () => { setView('tentang'); void logUserEvent('view_open', { ui: 'gpt', view: 'tentang' }); });
+  // The Beta badge was decoration; it now opens the changelog on both the
+  // desktop sidebar and the mobile topbar.
+  document.querySelectorAll('.brand-beta').forEach(el => {
+    el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openChangelog(); });
+  });
+  $('changelog-close')?.addEventListener('click', () => { const m = $('changelog-modal'); if (m) m.hidden = true; });
+  $('changelog-modal')?.addEventListener('click', e => { if (e.target.id === 'changelog-modal') e.target.hidden = true; });
   $('btn-admin')?.addEventListener('click', () => openAdminView());
   $('admin-refresh')?.addEventListener('click', () => void loadAdminDirectory());
   $('admin-sample-new')?.addEventListener('click', () => adminSampleNewUser());
