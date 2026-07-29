@@ -89,7 +89,7 @@
   --line: #e5e5e5;
   --putih: #ffffff;
   --sidebar-w: 288px;
-  --composer-h: 124px;
+  --composer-h: 88px;
   --font: "Plus Jakarta Sans", system-ui, sans-serif;
   --ease: cubic-bezier(.22,1,.36,1);
   --radius: 24px;
@@ -291,7 +291,7 @@ html.session-restoring body::after {
   font-size: .75rem; font-weight: 650;
 }
 
-/* Daily limit ring — under the search bar (outside the composer pill) */
+/* Daily limit ring — under home search; inside chat composer pill */
 .composer-under {
   max-width: 720px; margin: 6px auto 0;
   display: flex; justify-content: flex-end; align-items: center;
@@ -299,23 +299,35 @@ html.session-restoring body::after {
   position: relative;
 }
 .home-composer .composer-under { max-width: 100%; }
+.composer-dock > .composer-under { display: none; }
 .usage-pill {
   position: relative;
   display: flex; align-items: center; justify-content: center;
   padding: 0; border: none; background: transparent;
   cursor: pointer; font: inherit; color: var(--ink);
   border-radius: 999px;
+  flex-shrink: 0;
+  align-self: center;
 }
 .usage-pill:hover .usage-ring-wrap,
 .usage-pill[aria-expanded="true"] .usage-ring-wrap {
   background: rgba(0,0,0,.04);
+  opacity: 1;
 }
 .usage-ring-wrap {
   position: relative; width: 22px; height: 22px; flex-shrink: 0;
   border-radius: 999px;
-  transition: background .12s;
+  transition: background .12s, opacity .15s;
 }
-.usage-ring { width: 22px; height: 22px; transform: rotate(-90deg); display: block; }
+.composer .usage-pill .usage-ring-wrap {
+  width: 28px; height: 28px;
+  opacity: .55;
+}
+.composer .usage-pill:hover .usage-ring-wrap,
+.composer .usage-pill[aria-expanded="true"] .usage-ring-wrap {
+  opacity: 1;
+}
+.usage-ring { width: 100%; height: 100%; transform: rotate(-90deg); display: block; }
 .usage-ring .track {
   fill: none; stroke: #e5e5e5; stroke-width: 3.4;
 }
@@ -335,6 +347,7 @@ html.session-restoring body::after {
   color: var(--ink-soft); line-height: 1;
   pointer-events: none;
 }
+.composer .usage-ring-num { font-size: .58rem; }
 .usage-meta { display: none; }
 .usage-pop {
   display: none; position: absolute; bottom: calc(100% + 10px); right: 0;
@@ -1524,10 +1537,18 @@ body.onboarding-active .panel { padding-bottom: 28px; }
   user-select: none;
   -webkit-user-select: none;
 }
-.ddr-carousel-track { width: 100%; height: 100%; }
-.ddr-gallery-main > img[data-ddr-main] {
+.ddr-carousel-track {
+  display: flex; width: 100%; height: 100%;
+  transition: transform .28s var(--ease);
+  will-change: transform;
+}
+.ddr-carousel-track.is-dragging { transition: none; }
+.ddr-slide {
+  flex: 0 0 100%; width: 100%; height: 100%;
+}
+.ddr-slide img {
   width: 100%; height: 100%; object-fit: cover; display: block;
-  pointer-events: none;
+  pointer-events: none; -webkit-user-drag: none;
 }
 .ddr-carousel-count {
   position: absolute; left: 10px; bottom: 10px; top: auto; right: auto; z-index: 2;
@@ -1623,6 +1644,28 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 .tile-delta.down { color: var(--accent); }
 .ddr-2col { display: grid; gap: 12px; margin-bottom: 12px; }
 @media (min-width: 880px) { .ddr-2col { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); } }
+.ddr-hscroll { display: grid; gap: 12px; margin-bottom: 12px; }
+@media (min-width: 880px) {
+  .ddr-hscroll--graphs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ddr-hscroll--price { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ddr-hscroll--text { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 879px) {
+  .ddr-hscroll {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: 10px;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .ddr-hscroll::-webkit-scrollbar { display: none; }
+  .ddr-hscroll > .ddr-card {
+    flex: 0 0 min(85vw, 340px);
+    scroll-snap-align: start;
+  }
+}
 .ddr-card { border: 1px solid var(--line); border-radius: 16px; padding: 16px; min-width: 0; }
 .ddr-card h3 { margin: 0 0 12px; font-size: .88rem; font-weight: 700; }
 .check-list {
@@ -2382,11 +2425,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
       <div class="composer-chips" id="composer-chips" hidden></div>
       <form class="composer" id="composer-form">
         <textarea id="composer-input" rows="1" placeholder="Tanya tentang produk… atau ketik pencarian baru"></textarea>
-        <button type="submit" class="composer-send" id="composer-send" aria-label="Kirim">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        </button>
-      </form>
-      <div class="composer-under">
         <button type="button" class="usage-pill" data-usage-pill aria-expanded="false" aria-haspopup="true" title="Jatah harian">
           <span class="usage-ring-wrap" data-tone="ok">
             <svg class="usage-ring" viewBox="0 0 36 36" aria-hidden="true">
@@ -2400,7 +2438,10 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
             <p class="usage-pop-sub">Batas harian reset dalam —.</p>
           </div>
         </button>
-      </div>
+        <button type="submit" class="composer-send" id="composer-send" aria-label="Kirim">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </form>
     </div>
   </div>
 
@@ -2576,6 +2617,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 </aside>
 
 <script src="/js/changelog.js?v=20260729a" defer></script>
-<script src="/js/gpt-app.js?v=20260729p" defer></script>
+<script src="/js/gpt-app.js?v=20260729q" defer></script>
 </body>
 </html>

@@ -239,6 +239,44 @@ let currentUser = null;
 let _authMode = 'signup';
 let _gateSource = '';
 let _dd = null; // current deep dive: { product, peers, niche, stats, history, series }
+const _ddCache = new Map(); // key -> { peers, niche, history }
+const DD_CACHE_MAX = 8;
+
+function ddCacheKey(product) {
+  const id = product?.item_id ?? '';
+  const shop = product?.shop_id ?? '';
+  const kind = product?._ptype ? 'pasar' : 'produk';
+  const kw = product?.keyword || '';
+  return `${id}|${shop}|${kind}|${kw}`;
+}
+function ddCacheGet(key) {
+  if (!_ddCache.has(key)) return null;
+  const val = _ddCache.get(key);
+  // LRU: re-insert at end
+  _ddCache.delete(key);
+  _ddCache.set(key, val);
+  return val;
+}
+function ddCacheSet(key, val) {
+  if (_ddCache.has(key)) _ddCache.delete(key);
+  _ddCache.set(key, val);
+  while (_ddCache.size > DD_CACHE_MAX) {
+    const first = _ddCache.keys().next().value;
+    _ddCache.delete(first);
+  }
+}
+function ddKotaLabel(product, peers) {
+  if (!product?._ptype) {
+    return String(product?.location || '').trim() || '—';
+  }
+  const locCount = new Map();
+  (peers || []).forEach((p) => {
+    const l = String(p.location || '').trim();
+    if (l) locCount.set(l, (locCount.get(l) || 0) + 1);
+  });
+  const top = [...locCount.entries()].sort((a, b) => b[1] - a[1])[0];
+  return (top && top[0]) || String(product?.location || '').trim() || '—';
+}
 
 function _authSave(session) {
   try {
@@ -6272,14 +6310,18 @@ function ddHeaderMediaHtml(product, peers) {
   if (imgs.length === 1) {
     return `<div class="ddr-gallery ddr-gallery--single" aria-label="Foto produk">
       <div class="ddr-gallery-main">
-        <img src="${esc(imgs[0])}" alt="" data-ddr-main>
+        <div class="ddr-carousel-track" data-ddr-track>
+          <div class="ddr-slide"><img src="${esc(imgs[0])}" alt="" draggable="false"></div>
+        </div>
       </div>
     </div>`;
   }
   const srcsAttr = esc(JSON.stringify(imgs));
   return `<div class="ddr-gallery" data-ddr-carousel data-ddr-srcs="${srcsAttr}" role="region" aria-roledescription="carousel" aria-label="Foto produk (${imgs.length})">
     <div class="ddr-gallery-main">
-      <img src="${esc(imgs[0])}" alt="" data-ddr-main draggable="false">
+      <div class="ddr-carousel-track" data-ddr-track>
+        ${imgs.map((u) => `<div class="ddr-slide"><img src="${esc(u)}" alt="" loading="lazy" draggable="false"></div>`).join('')}
+      </div>
       <div class="ddr-carousel-count"><span data-ddr-count>1</span>/${imgs.length}</div>
     </div>
     <div class="ddr-gallery-thumbs" role="tablist" aria-label="Pilih foto" style="grid-template-columns:repeat(${Math.min(imgs.length, 5)},1fr)">
@@ -6293,7 +6335,8 @@ function ddHeaderMediaHtml(product, peers) {
 function bindDdrCarousel(root) {
   const car = root?.querySelector?.('[data-ddr-carousel]');
   if (!car) return;
-  const main = car.querySelector('[data-ddr-main]');
+  const track = car.querySelector('[data-ddr-track]');
+  const stage = car.querySelector('.ddr-gallery-main');
   const thumbs = [...car.querySelectorAll('[data-ddr-dot]')];
   let srcs = [];
   try { srcs = JSON.parse(car.getAttribute('data-ddr-srcs') || '[]'); } catch (_) { srcs = []; }
@@ -6301,12 +6344,22 @@ function bindDdrCarousel(root) {
     srcs = thumbs.map((t) => t.getAttribute('data-ddr-src') || t.querySelector('img')?.getAttribute('src') || '').filter(Boolean);
   }
   const countEl = car.querySelector('[data-ddr-count]');
-  const stage = car.querySelector('.ddr-gallery-main');
-  if (!main || !stage || srcs.length < 2) return;
+  if (!track || !stage || srcs.length < 2) return;
   let i = 0;
-  const show = (n) => {
+  let sx = 0;
+  let dx = 0;
+  let tracking = false;
+  let width = stage.clientWidth || 1;
+
+  const apply = (offsetPx, animate) => {
+    track.classList.toggle('is-dragging', !animate);
+    const pct = (-i * 100) + (width ? (offsetPx / width) * 100 : 0);
+    track.style.transform = `translateX(${pct}%)`;
+  };
+  const show = (n, animate = true) => {
     i = ((n % srcs.length) + srcs.length) % srcs.length;
-    main.src = srcs[i];
+    dx = 0;
+    apply(0, animate);
     thumbs.forEach((t, idx) => {
       const on = idx === i;
       t.classList.toggle('on', on);
@@ -6314,29 +6367,58 @@ function bindDdrCarousel(root) {
     });
     if (countEl) countEl.textContent = String(i + 1);
   };
+  show(0, false);
+
   thumbs.forEach((t) => t.addEventListener('click', (e) => {
     e.preventDefault(); e.stopPropagation();
-    show(Number(t.dataset.ddrDot) || 0);
+    show(Number(t.dataset.ddrDot) || 0, true);
   }));
-  let sx = 0;
-  let tracking = false;
-  const onStart = (x) => { sx = x; tracking = true; };
-  const onEnd = (x) => {
+
+  const onStart = (x) => {
+    tracking = true;
+    sx = x;
+    dx = 0;
+    width = stage.clientWidth || 1;
+    track.classList.add('is-dragging');
+  };
+  const onMove = (x) => {
+    if (!tracking) return;
+    dx = x - sx;
+    apply(dx, false);
+  };
+  const onEnd = () => {
     if (!tracking) return;
     tracking = false;
-    const dx = x - sx;
-    if (Math.abs(dx) < 40) return;
-    show(i + (dx < 0 ? 1 : -1));
+    const thresh = Math.max(40, width * 0.18);
+    if (dx <= -thresh) show(i + 1, true);
+    else if (dx >= thresh) show(i - 1, true);
+    else show(i, true);
   };
+
   stage.addEventListener('touchstart', (e) => onStart(e.changedTouches?.[0]?.clientX || 0), { passive: true });
-  stage.addEventListener('touchend', (e) => onEnd(e.changedTouches?.[0]?.clientX || 0), { passive: true });
+  stage.addEventListener('touchmove', (e) => {
+    if (!tracking) return;
+    onMove(e.changedTouches?.[0]?.clientX || 0);
+  }, { passive: true });
+  stage.addEventListener('touchend', () => onEnd(), { passive: true });
+  stage.addEventListener('touchcancel', () => onEnd(), { passive: true });
+
   stage.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'touch') return;
+    stage.setPointerCapture?.(e.pointerId);
     onStart(e.clientX);
+  });
+  stage.addEventListener('pointermove', (e) => {
+    if (e.pointerType === 'touch' || !tracking) return;
+    onMove(e.clientX);
   });
   stage.addEventListener('pointerup', (e) => {
     if (e.pointerType === 'touch') return;
-    onEnd(e.clientX);
+    onEnd();
+  });
+  stage.addEventListener('pointercancel', (e) => {
+    if (e.pointerType === 'touch') return;
+    onEnd();
   });
 }
 
@@ -6576,69 +6658,79 @@ async function openDeepDive(product, ddOpts = {}) {
   scrollPanelToTop();
 
   const kw = product.keyword || '';
+  const cacheKey = ddCacheKey(product);
+  const cached = ddCacheGet(cacheKey);
   let peers = [];
   let niche = product._niche || null;
-
-  try {
-    if (kw) {
-      // listings_deduped: trgm-indexed, deduped, and carries listing_date
-      // (shop-age proxy) since migration 20260717120000.
-      const { data } = await _supabase.from('listings_deduped')
-        .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date')
-        .gt('total_sold', 0)
-        .ilike('keyword', `%${kw.slice(0, 40)}%`)
-        .order('total_sold', { ascending: false })
-        .limit(60);
-      peers = data || [];
-    }
-  } catch (_) {}
-
-  try {
-    if (kw && !niche) {
-      const { data } = await _supabase.from('mv_niche_breakout')
-        .select('keyword,new_items,breakouts,breakout_rate,median_new_sold,median_winner_price,median_winner_reviews')
-        .eq('keyword', kw).maybeSingle();
-      niche = data;
-    }
-  } catch (_) {}
-
-  // Keyword scrape history → market weekly trend + sparklines.
-  // Top-N peers by lifetime sold often appear in only 1–2 waves (bucket
-  // leaders), so item_id IN (peers) + limit 1000 collapses Tren Omzet to a
-  // handful of early weeks even when the keyword has many later scrapes.
   let history = [];
-  try {
-    // category/est_sold/sold_tier required for Site-A-parity delta correction
-    const histCols = 'item_id,shop_id,keyword,category,price,total_sold,reviews,est_sold,sold_tier,scraped_at';
-    if (kw) {
-      const pageSize = 1000;
-      const maxRows = 5000;
-      const pages = [];
-      for (let from = 0; from < maxRows; from += pageSize) {
-        const { data, error } = await _supabase.from('listings')
-          .select(histCols)
-          .eq('keyword', kw)
-          .order('scraped_at', { ascending: true })
-          .range(from, from + pageSize - 1);
-        if (error || !data?.length) break;
-        pages.push(...data);
-        if (data.length < pageSize) break;
+
+  if (cached) {
+    peers = cached.peers || [];
+    niche = cached.niche || niche;
+    history = cached.history || [];
+  } else {
+    try {
+      if (kw) {
+        // listings_deduped: trgm-indexed, deduped, and carries listing_date
+        // (shop-age proxy) since migration 20260717120000.
+        const { data } = await _supabase.from('listings_deduped')
+          .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date')
+          .gt('total_sold', 0)
+          .ilike('keyword', `%${kw.slice(0, 40)}%`)
+          .order('total_sold', { ascending: false })
+          .limit(60);
+        peers = data || [];
       }
-      history = pages;
-    }
-    if (!history.length) {
-      const ids = [...new Set([product.item_id, ...peers.map(p => p.item_id)])]
-        .filter(x => x != null).slice(0, 30);
-      if (ids.length) {
-        const { data } = await _supabase.from('listings')
-          .select(histCols)
-          .in('item_id', ids)
-          .order('scraped_at', { ascending: false })
-          .limit(1000);
-        history = (data || []).reverse();
+    } catch (_) {}
+
+    try {
+      if (kw && !niche) {
+        const { data } = await _supabase.from('mv_niche_breakout')
+          .select('keyword,new_items,breakouts,breakout_rate,median_new_sold,median_winner_price,median_winner_reviews')
+          .eq('keyword', kw).maybeSingle();
+        niche = data;
       }
-    }
-  } catch (_) {}
+    } catch (_) {}
+
+    // Keyword scrape history → market weekly trend + sparklines.
+    // Top-N peers by lifetime sold often appear in only 1–2 waves (bucket
+    // leaders), so item_id IN (peers) + limit 1000 collapses Tren Omzet to a
+    // handful of early weeks even when the keyword has many later scrapes.
+    try {
+      // category/est_sold/sold_tier required for Site-A-parity delta correction
+      const histCols = 'item_id,shop_id,keyword,category,price,total_sold,reviews,est_sold,sold_tier,scraped_at';
+      if (kw) {
+        const pageSize = 1000;
+        const maxRows = 5000;
+        const pages = [];
+        for (let from = 0; from < maxRows; from += pageSize) {
+          const { data, error } = await _supabase.from('listings')
+            .select(histCols)
+            .eq('keyword', kw)
+            .order('scraped_at', { ascending: true })
+            .range(from, from + pageSize - 1);
+          if (error || !data?.length) break;
+          pages.push(...data);
+          if (data.length < pageSize) break;
+        }
+        history = pages;
+      }
+      if (!history.length) {
+        const ids = [...new Set([product.item_id, ...peers.map(p => p.item_id)])]
+          .filter(x => x != null).slice(0, 30);
+        if (ids.length) {
+          const { data } = await _supabase.from('listings')
+            .select(histCols)
+            .in('item_id', ids)
+            .order('scraped_at', { ascending: false })
+            .limit(1000);
+          history = (data || []).reverse();
+        }
+      }
+    } catch (_) {}
+
+    ddCacheSet(cacheKey, { peers, niche, history });
+  }
 
   // Prefer corrected scrape-interval rate for this product over invented lifetime/90.
   const scrapeSpd = ddProductSoldPerDay(history, product);
@@ -6744,7 +6836,6 @@ async function openDeepDive(product, ddOpts = {}) {
   if (chat) upsertDeepDiveChatMessage(chat, product, scoreInfo, stats);
 
   const lastScrape = history.length ? history[history.length - 1].scraped_at : null;
-  const price = Number(product.price) || 0;
   const hasTrend = series.length >= 2;
   const bandLo = stats.p25, bandHi = stats.p75;
   const segLeft = stats.max > stats.min ? Math.round((bandLo - stats.min) / (stats.max - stats.min) * 100) : 0;
@@ -6775,9 +6866,7 @@ async function openDeepDive(product, ddOpts = {}) {
           <h1>${esc(product._ptype ? typeTitle(kw) : (product.product_name || kw || 'Produk'))}</h1>
           <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
         </div>
-        <p class="ddr-cat">${product._ptype
-          ? `Tipe produk · Kategori: ${esc(product.category || '—')} · ${product._ptype.n_sellers} penjual · ${product._ptype.n_listings} listing · Produk teratas: ${esc((product.product_name || '—').slice(0, 60))}`
-          : `Kategori: ${esc(product.category || '—')} · Lokasi: ${esc(product.location || '—')} · Keyword: ${esc(kw || '—')}`}</p>
+        <p class="ddr-cat">${esc(ddKotaLabel(product, peers))}</p>
       </div>
       <div class="ddr-score">
         <div class="lbl">Skor Produk</div>
@@ -6786,7 +6875,7 @@ async function openDeepDive(product, ddOpts = {}) {
       </div>
     </div>
     ${ddTilesHtml(product, stats, peers, series)}
-    <div class="ddr-2col">
+    <div class="ddr-hscroll ddr-hscroll--graphs">
       <div class="ddr-card" data-dd-sec="tren">
         <h3>Tren Omzet &amp; Unit Terjual</h3>
         ${hasTrend
@@ -6799,17 +6888,6 @@ async function openDeepDive(product, ddOpts = {}) {
           : `<p class="dd-sub">Belum cukup riwayat scrape untuk tren bulanan keyword ini — butuh beberapa gelombang panel. Bagian lain tetap dari data asli.</p>`}
         <p class="ddr-caption">Estimasi bulanan pasar keyword “${esc(kw || '—')}” (rata-rata minggu dalam setiap bulan, dari selisih scrape berurutan; snapshot pertama = baseline, bukan omzet)${hasTrend ? ' · tampilan dari 27 Apr 2026' : ''} ${history.length ? `· ${new Set(history.map(r => String(r.item_id))).size} listing` : ''} · scrape terakhir ${esc(fmtAnchorDate(lastScrape))}.</p>
       </div>
-      <div class="ddr-card" data-dd-sec="harga">
-        <h3>Rentang Harga Optimal</h3>
-        ${stats.n >= 4 ? `
-          <div class="range-big">${fmtRp(bandLo)} – ${fmtRp(bandHi)}</div>
-          <div class="range-bar"><div class="range-seg" style="left:${segLeft}%;width:${segWidth}%"></div></div>
-          <div class="range-ticks"><span>${fmtRpShort(stats.min)}</span><span>${fmtRpShort(stats.median)}</span><span>${fmtRpShort(stats.max)}</span></div>
-          <div class="range-note">${ico('info', 13)}<span>Rentang harga dari ${stats.n} listing di keyword ini. Rekomendasi masuk pasar: ${fmtRp(stats.p35)} – ${fmtRp(stats.p65)}.</span></div>`
-          : '<p class="dd-sub">Belum cukup data harga peer untuk keyword ini.</p>'}
-      </div>
-    </div>
-    <div class="ddr-3col">
       <div class="ddr-card" data-dd-sec="pangsa">
         <h3>Distribusi Pangsa Pasar</h3>
         ${share.shops.length >= 4 ? `
@@ -6823,6 +6901,24 @@ async function openDeepDive(product, ddOpts = {}) {
           <p class="ddr-caption">${share.top3 / share.total <= 0.5 ? 'Pasar tidak didominasi satu toko — masih ada ruang untuk bersaing.' : 'Pasar cukup terkonsentrasi di toko-toko teratas.'}</p>`
           : '<p class="dd-sub">Belum cukup data toko untuk memetakan pangsa pasar.</p>'}
       </div>
+      <div class="ddr-card" data-dd-sec="distribusi">
+        <h3>Distribusi Harga</h3>
+        ${stats.n >= 6 ? `
+          <div class="ddr-chart-wrap sm"><canvas id="ddr-dist-canvas"></canvas></div>
+          <p class="ddr-caption">Titik = listing (harga × terjual). Zona merah muda = rentang ${fmtRpShort(bandLo)} – ${fmtRpShort(bandHi)} tempat sebagian besar penjualan terjadi.</p>`
+          : '<p class="dd-sub">Belum cukup listing untuk memetakan distribusi harga.</p>'}
+      </div>
+    </div>
+    <div class="ddr-hscroll ddr-hscroll--price">
+      <div class="ddr-card" data-dd-sec="harga">
+        <h3>Rentang Harga Optimal</h3>
+        ${stats.n >= 4 ? `
+          <div class="range-big">${fmtRp(bandLo)} – ${fmtRp(bandHi)}</div>
+          <div class="range-bar"><div class="range-seg" style="left:${segLeft}%;width:${segWidth}%"></div></div>
+          <div class="range-ticks"><span>${fmtRpShort(stats.min)}</span><span>${fmtRpShort(stats.median)}</span><span>${fmtRpShort(stats.max)}</span></div>
+          <div class="range-note">${ico('info', 13)}<span>Rentang harga dari ${stats.n} listing di keyword ini. Rekomendasi masuk pasar: ${fmtRp(stats.p35)} – ${fmtRp(stats.p65)}.</span></div>`
+          : '<p class="dd-sub">Belum cukup data harga peer untuk keyword ini.</p>'}
+      </div>
       <div class="ddr-card" data-dd-sec="usia_toko">
         <h3>Usia Toko Kompetitor</h3>
         ${age.total >= 4 ? `
@@ -6835,35 +6931,22 @@ async function openDeepDive(product, ddOpts = {}) {
           <p class="ddr-caption">${agePct('young') + agePct('mid') >= 50 ? `${agePct('young') + agePct('mid')}% toko di keyword ini berusia di bawah 5 tahun — tanda pasar masih terbuka.` : 'Mayoritas toko sudah lama — pasar matang.'} Usia = proxy dari listing tertua yang terpantau.</p>`
           : '<p class="dd-sub">Belum cukup data tanggal listing untuk memetakan usia toko.</p>'}
       </div>
-      <div class="ddr-card" data-dd-sec="distribusi">
-        <h3>Distribusi Harga</h3>
-        ${stats.n >= 6 ? `
-          <div class="ddr-chart-wrap sm"><canvas id="ddr-dist-canvas"></canvas></div>
-          <p class="ddr-caption">Titik = listing (harga × terjual). Zona merah muda = rentang ${fmtRpShort(bandLo)} – ${fmtRpShort(bandHi)} tempat sebagian besar penjualan terjadi.</p>`
-          : '<p class="dd-sub">Belum cukup listing untuk memetakan distribusi harga.</p>'}
-      </div>
     </div>
-    <div class="ddr-2col">
-      <div class="ddr-card" data-dd-sec="kompetitor">
-        <div class="ddr-sec-head">
-          <h3>Top Kompetitor</h3>
-          <button type="button" class="ddr-panel-link" id="ddr-komp-panel">Lihat di panel</button>
-        </div>
-        ${ddKompetitorTableHtml(share)}
+    <div class="ddr-card" data-dd-sec="kompetitor" style="margin-bottom:12px">
+      <div class="ddr-sec-head">
+        <h3>Top Kompetitor</h3>
+        <button type="button" class="ddr-panel-link" id="ddr-komp-panel">Lihat di panel</button>
       </div>
-      <div class="ddr-card" data-dd-sec="keyword">
-        <h3>Top Keyword</h3>
-        ${ddKeywordTableHtml(kwRows, peers.length)}
-      </div>
+      ${ddKompetitorTableHtml(share)}
     </div>
-    <div class="ddr-2col">
+    <div class="ddr-hscroll ddr-hscroll--text">
       <div class="ddr-card" data-dd-sec="strategi">
         <h3>Rekomendasi Strategi</h3>
         ${ddStrategyHtml(product, stats, niche, kwRows)}
       </div>
-      <div class="ddr-side-cta" data-dd-sec="profit">
-        <p style="margin:0">Ingin hitung estimasi profit dengan angka kamu sendiri?</p>
-        <button type="button" class="btn-primary" id="ddr-profit-btn" style="margin:0">Buka Kalkulator →</button>
+      <div class="ddr-card" data-dd-sec="keyword">
+        <h3>Top Keyword</h3>
+        ${ddKeywordTableHtml(kwRows, peers.length)}
       </div>
     </div>
     <div class="ddr-dd-actions">
@@ -6884,15 +6967,6 @@ async function openDeepDive(product, ddOpts = {}) {
   $('btn-serupa-from-dd')?.addEventListener('click', () => {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'serupa_panel', via: 'click', keyword: kw || '' });
     openSerupaPanel({ product, peers, via: 'deepdive' });
-  });
-  $('ddr-profit-btn')?.addEventListener('click', () => {
-    void logUserEvent('deepdive_section', { ui: 'gpt', section: 'profit_cta', via: 'click', keyword: kw || '' });
-    openCalcPanel({
-      price,
-      cogs: Math.round(price * 0.33),
-      name: (product.product_name || product.keyword || '').slice(0, 80),
-      via: 'deepdive',
-    });
   });
   $('ddr-komp-panel')?.addEventListener('click', () => {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'kompetitor_panel', via: 'click', keyword: kw || '' });
