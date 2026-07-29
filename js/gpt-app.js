@@ -841,6 +841,7 @@ const state = {
   deepdiveProduct: null,
   pendingDeepdive: null, // product clicked behind the login gate; opened after sign-in
   pendingCompare: null, // { a, b } clicked behind login gate; opened after sign-in
+  pendingFinder: null,  // landing finder answers given before signup; re-run after
   comparePick: null, // { source } — directory is in “pick a product to compare” mode
   // Survives recommendation wipes so chat product cards can reopen Deep Dive.
   productByKey: Object.create(null),
@@ -869,6 +870,7 @@ function loadLocalState() {
     if (raw.activeChatId) state.activeChatId = raw.activeChatId;
     if (raw.pendingDeepdive) state.pendingDeepdive = raw.pendingDeepdive;
     if (raw.pendingCompare) state.pendingCompare = raw.pendingCompare;
+    if (raw.pendingFinder) state.pendingFinder = raw.pendingFinder;
     if (raw.affinity && typeof raw.affinity === 'object') state.affinity = raw.affinity;
     if (!Array.isArray(state.onboarding.learnedCategories)) state.onboarding.learnedCategories = [];
     if (!Array.isArray(state.onboarding.dismissedLearned)) state.onboarding.dismissedLearned = [];
@@ -882,6 +884,7 @@ function saveLocalState() {
       activeChatId: state.activeChatId,
       pendingDeepdive: state.pendingDeepdive || null,
       pendingCompare: state.pendingCompare || null,
+      pendingFinder: state.pendingFinder || null,
       affinity: state.affinity || {},
       ts: Date.now(),
     }));
@@ -1676,6 +1679,14 @@ async function commitChatRename(chat, title) {
 function openAuthModal(mode, source) {
   _authMode = mode || 'signup';
   _gateSource = source || '';
+  // Carry the landing answers across the signup round trip (incl. the OAuth
+  // page reload) so the user lands on their products, not back at the start.
+  try {
+    if (!currentUser && finderIsComplete()) {
+      state.pendingFinder = { ...(_finder || {}) };
+      saveLocalState();
+    }
+  } catch (_) {}
   try { sessionStorage.setItem(_LID_SIGNUP_CTA_KEY, source || 'gpt'); } catch (_) {}
   clarityEvt('gpt_gate_shown', { source: _gateSource });
   clarityEvt('cta_signup_click', { source: _gateSource });
@@ -1896,14 +1907,40 @@ async function _authOnSignIn(session) {
     void openDeepDive(p);
   }
 
+  // Someone who answered the landing questions and then signed up should land
+  // on the products those answers produce, not back at the start.
+  let resumedFinder = false;
+  if (!hadPending && state.pendingFinder) {
+    const pf = state.pendingFinder;
+    state.pendingFinder = null;
+    saveLocalState();
+    resumedFinder = true;
+    void resumeFinderAfterSignin(pf);
+  }
+
   // Skippable post-sign-in profile nudge — re-offered on every sign-in until
-  // preferences are complete (step === 'done'). Never interrupts a pending
-  // deep dive; the "Set lokasi" sidebar card remains the anytime entry.
-  if (!hadPending && state.onboarding.step !== 'done') {
+  // preferences are complete. Never interrupts a pending deep dive or a
+  // resumed finder search; the "Set lokasi" sidebar card is the anytime entry.
+  // finderIsComplete() matters as well as step: the questions may have been
+  // answered without the CTA ever being pressed.
+  if (!hadPending && !resumedFinder && state.onboarding.step !== 'done' && !finderIsComplete()) {
     state.onboarding.promptedPostSignin = true;
     saveLocalState();
     offerOnboardingAfterSignin();
   }
+}
+
+/** Re-run the landing finder search the user set up before signing in. */
+async function resumeFinderAfterSignin(pf) {
+  try {
+    if (pf.city) _finder.city = pf.city;
+    if (pf.category) _finder.category = pf.category;
+    if (pf.budget) _finder.budget = pf.budget;
+    if (pf.experience) _finder.experience = pf.experience;
+    saveFinderState();
+    syncFinderUi();
+    await runFinderSearch();
+  } catch (_) {}
 }
 
 async function initSupabase() {
@@ -1959,12 +1996,17 @@ async function persistOnboardingPrefs() {
   if (!currentUser || !_supabase || _admSample) return;
   const o = state.onboarding;
   if (!o.city && !o.categories.length) return;
+  const bud = o.budget ? finderBudgetCfg(o.budget) : null;
   try {
     await _supabase.from('user_onboarding_prefs').upsert({
       user_id: currentUser.id,
       region: o.city || null,
       categories: o.categories || [],
       seller_status: o.experience || null,
+      // The finder asks for modal and the columns exist — they were simply
+      // never written, so the answer was collected and thrown away.
+      budget_min: bud ? bud.min : null,
+      budget_max: bud && Number.isFinite(bud.max) ? bud.max : null,
       completed_at: o.step === 'done' ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
@@ -2377,6 +2419,31 @@ function loadFinderState() {
 
 function saveFinderState() {
   try { localStorage.setItem(FINDER_STATE_KEY, JSON.stringify(_finder)); } catch (_) {}
+  // Promote answers into onboarding as they are given, not only when the CTA is
+  // pressed. Someone who answers all four questions and then clicks Daftar was
+  // otherwise left at step 'idle' and got asked the same questions again after
+  // signing in — the answers survived in _lid_gpt_finder_v1 but were never
+  // read across.
+  syncFinderToOnboarding();
+}
+
+/** True once every finder question has an answer. */
+function finderIsComplete() {
+  return !!(_finder && _finder.city && _finder.category && _finder.budget && _finder.experience);
+}
+
+function syncFinderToOnboarding() {
+  if (!finderIsComplete()) return;
+  const o = state.onboarding;
+  o.city = _finder.city;
+  o.categories = [_finder.category];
+  o.experience = _finder.experience;
+  o.budget = _finder.budget;
+  if (o.step !== 'done') {
+    o.step = 'done';
+    o.completedAnon = !currentUser;
+  }
+  saveLocalState();
 }
 
 function resolveRegionFromGeo(city, regionName) {
