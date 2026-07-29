@@ -34,6 +34,9 @@ serve(async (req) => {
     // intentionally open (anon + logged-in), so we branch on purpose before auth.
     const body = await req.json();
     const { messages, model, system, purpose } = body;
+    // Opt-in SSE relay. Callers that do not ask for it keep the exact
+    // JSON response shape they parse today.
+    const wantStream = body.stream === true && purpose !== 'search_plan';
     const maxTokens = Number(body.max_tokens);
     if (!messages || !Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: 'bad_request' }), {
@@ -103,9 +106,37 @@ serve(async (req) => {
           : (Number.isFinite(maxTokens) && maxTokens > 0 ? Math.min(maxTokens, 4096) : 700),
         system: system ?? '',
         thinking: { type: 'disabled' },
+        stream: wantStream,
         messages,
       }),
     });
+
+    // Stream path: relay the upstream SSE body untouched. Usage is logged up
+    // front because the response is handed to the client before it finishes.
+    if (wantStream) {
+      if (!upstream.ok || !upstream.body) {
+        const errText = await upstream.text().catch(() => '');
+        return new Response(JSON.stringify({ error: 'upstream_error', detail: errText.slice(0, 500) }), {
+          status: upstream.status || 502,
+          headers: { ...CORS, 'Content-Type': 'application/json' },
+        });
+      }
+      if (userId && !isAdmin) {
+        await supabase.from('ai_usage').insert({ user_id: userId, date: today });
+      }
+      return new Response(upstream.body, {
+        status: 200,
+        headers: {
+          ...CORS,
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-cache, no-transform',
+          'Connection': 'keep-alive',
+          // Caddy/kong sit in front of this; without it the whole stream can be
+          // buffered and delivered as one chunk, defeating the point.
+          'X-Accel-Buffering': 'no',
+        },
+      });
+    }
 
     const result = await upstream.json();
 

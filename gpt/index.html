@@ -391,6 +391,16 @@ html.session-restoring body::after {
 .msg-role {
   display: none;
 }
+/* Per-message actions — revealed on hover, always available on touch. */
+.msg-actions { display: flex; gap: 6px; margin-top: 6px; opacity: 0; transition: opacity .15s; }
+.msg:hover .msg-actions, .msg:focus-within .msg-actions { opacity: 1; }
+@media (hover: none) { .msg-actions { opacity: 1; } }
+.msg-act { font-family: inherit; font-size: .72rem; color: #6B6560; background: transparent; border: 1px solid #E3DED9; border-radius: 6px; padding: 3px 9px; cursor: pointer; }
+.msg-act:hover { color: #231F1D; border-color: #C9C2BB; background: #FAF8F6; }
+.composer-send.is-stopping { background: #8E191F; color: #fff; }
+.msg-bubble pre { background: #F5F2EF; border: 1px solid #E3DED9; border-radius: 8px; padding: 10px 12px; overflow-x: auto; margin: 8px 0; }
+.msg-bubble pre code { background: none; padding: 0; font-size: .82rem; }
+.msg-bubble a { color: #8E191F; text-decoration: underline; }
 .msg.assistant .msg-bubble {
   background: transparent;
   border: none;
@@ -2459,6 +2469,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260729h" defer></script>
+<script src="/js/gpt-app.js?v=20260729k" defer></script>
 </body>
 </html>

@@ -980,14 +980,27 @@ function mdToHtml(raw) {
   const inline = (s) => s
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,!?:;]|$)/g, '$1<em>$2</em>')
-    .replace(/`([^`\n]+)`/g, '<code>$1</code>');
+    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+    // Links: the label and href are already escaped by esc() upstream, so only
+    // http(s) can get through — no javascript: or data: URLs.
+    .replace(/\[([^\]\n]+)\]\((https?:&#x2F;&#x2F;[^)\s]+|https?:\/\/[^)\s]+)\)/g,
+             (_m, label, href) => `<a href="${href.replace(/&#x2F;/g, '/')}" target="_blank" rel="noopener noreferrer">${label}</a>`);
   const out = [];
+  let inFence = false;
+  let fence = [];
   let list = null;   // 'ul' | 'ol' currently open
   let para = [];
   const flushPara = () => { if (para.length) { out.push(`<p>${inline(para.join('<br>'))}</p>`); para = []; } };
   const flushList = () => { if (list) { out.push(`</${list}>`); list = null; } };
   for (const rawLine of text.split('\n')) {
     const line = esc(rawLine.trim());
+    // Fenced code blocks — emitted verbatim, never inline-formatted.
+    if (/^```/.test(line)) {
+      if (inFence) { out.push(`<pre><code>${fence.join('\n')}</code></pre>`); fence = []; inFence = false; }
+      else { flushPara(); flushList(); inFence = true; }
+      continue;
+    }
+    if (inFence) { fence.push(esc(rawLine)); continue; }
     if (!line) { flushPara(); flushList(); continue; }
     const h  = line.match(/^#{1,4}\s+(.*)$/);
     const ul = line.match(/^[-•*]\s+(.*)$/);
@@ -997,6 +1010,7 @@ function mdToHtml(raw) {
     if (ol) { flushPara(); if (list !== 'ol') { flushList(); out.push('<ol>'); list = 'ol'; } out.push(`<li>${inline(ol[1])}</li>`); continue; }
     flushList(); para.push(line);
   }
+  if (inFence && fence.length) out.push(`<pre><code>${fence.join('\n')}</code></pre>`);
   flushPara(); flushList();
   return out.join('');
 }
@@ -1909,6 +1923,8 @@ async function _authOnSignIn(session) {
 
   // Someone who answered the landing questions and then signed up should land
   // on the products those answers produce, not back at the start.
+  void loadAiMemory();
+
   let resumedFinder = false;
   if (!hadPending && state.pendingFinder) {
     const pf = state.pendingFinder;
@@ -1997,6 +2013,14 @@ async function persistOnboardingPrefs() {
   const o = state.onboarding;
   if (!o.city && !o.categories.length) return;
   const bud = o.budget ? finderBudgetCfg(o.budget) : null;
+  // Seed durable memory from what onboarding already knows, so the AI starts
+  // out aware of city/category/experience/modal without being told again.
+  try {
+    if (o.city) void rememberFact('kota', o.city, 'onboarding');
+    if (o.categories?.[0]) void rememberFact('kategori', o.categories[0], 'onboarding');
+    if (o.experience) void rememberFact('pengalaman', o.experience === 'existing' ? 'berpengalaman' : 'penjual baru', 'onboarding');
+    if (bud) void rememberFact('modal', bud.label, 'onboarding');
+  } catch (_) {}
   try {
     await _supabase.from('user_onboarding_prefs').upsert({
       user_id: currentUser.id,
@@ -2165,7 +2189,10 @@ function appendBubble(role, html, opts = {}) {
   if (!thread) return null;
   const div = document.createElement('div');
   div.className = `msg ${role}`;
-  div.innerHTML = `<div class="msg-role">${role === 'user' ? 'Kamu' : 'LARISgpt'}</div><div class="msg-bubble">${html}</div>`;
+  const actions = role === 'assistant'
+    ? `<div class="msg-actions"><button type="button" class="msg-act" data-act="copy" title="Salin">Salin</button><button type="button" class="msg-act" data-act="regen" title="Buat ulang">Buat ulang</button></div>`
+    : '';
+  div.innerHTML = `<div class="msg-role">${role === 'user' ? 'Kamu' : 'LARISgpt'}</div><div class="msg-bubble">${html}</div>${actions}`;
   thread.appendChild(div);
   if (!opts.skipScroll) {
     if (role === 'assistant' && contentLooksLikeResults(html)) scrollToContentStart(div);
@@ -2177,8 +2204,25 @@ function appendBubble(role, html, opts = {}) {
 // ── Assistant type-out (ChatGPT / Cursor style) ───────────────────────────
 let _streamGen = 0;
 
+let _streamAbort = null;   // AbortController for a live network stream
+
 function abortAssistantStream() {
   _streamGen += 1;
+  // The type-out counter alone cannot stop a real token stream.
+  try { _streamAbort?.abort(); } catch (_) {}
+  _streamAbort = null;
+  setComposerStopping(false);
+}
+
+/** Swap the send button to a stop button while a reply is streaming. */
+function setComposerStopping(on) {
+  const btn = $('composer-send');
+  if (!btn) return;
+  btn.classList.toggle('is-stopping', !!on);
+  btn.setAttribute('aria-label', on ? 'Hentikan' : 'Kirim');
+  btn.innerHTML = on
+    ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>'
+    : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 }
 
 function _sleep(ms) {
@@ -7092,6 +7136,129 @@ async function _mlsAIRaw(system, messages) {
   return d?.content?.[0]?.text || d?.text || d?.message || 'Tidak ada jawaban.';
 }
 
+/**
+ * Streaming variant. Calls onDelta(textChunk) as tokens arrive and resolves with
+ * the full reply. Falls back to the non-streaming call on any failure, so a
+ * proxy or network that cannot stream still produces an answer.
+ */
+async function _mlsAIStream(system, messages, onDelta, signal) {
+  const session = _supabase ? (await _supabase.auth.getSession()).data?.session : null;
+  if (!session) return 'Login untuk pakai fitur AI.';
+  let res;
+  try {
+    res = await fetch(`${SUPA_URL}/functions/v1/claude-proxy`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 700, system, messages, stream: true }),
+      signal,
+    });
+  } catch (e) {
+    if (e?.name === 'AbortError') return '';
+    return _mlsAIRaw(system, messages);
+  }
+  if (res.status === 429) return 'Batas AI harian (server) tercapai. Coba lagi setelah reset tengah malam WIB.';
+  if (!res.ok || !res.body) return _mlsAIRaw(system, messages);
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  let full = '';
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      // SSE frames are separated by a blank line; keep the trailing partial.
+      const frames = buf.split('\n\n');
+      buf = frames.pop() || '';
+      for (const frame of frames) {
+        for (const line of frame.split('\n')) {
+          if (!line.startsWith('data:')) continue;
+          const raw = line.slice(5).trim();
+          if (!raw || raw === '[DONE]') continue;
+          try {
+            const ev = JSON.parse(raw);
+            const piece = ev?.delta?.text || (ev?.type === 'content_block_delta' ? ev?.delta?.text : '') || '';
+            if (piece) { full += piece; onDelta?.(piece, full); }
+          } catch (_) { /* keep-alive or partial frame */ }
+        }
+      }
+    }
+  } catch (e) {
+    if (e?.name === 'AbortError') return full;
+    if (!full) return _mlsAIRaw(system, messages);
+  }
+  return full || 'Tidak ada jawaban.';
+}
+
+// ── Cross-chat memory ────────────────────────────────────────────────────
+// Durable facts the user has told us ("modal saya 500rb"), carried into the
+// system prompt of every later chat. Visible and deletable in the prefs
+// drawer — MISSION forbids silent profiling.
+const MEMORY_LABELS = {
+  modal: 'Modal', kota: 'Kota', kategori: 'Kategori',
+  pengalaman: 'Pengalaman', target_margin: 'Target margin',
+  platform: 'Platform', produk_fokus: 'Fokus produk',
+};
+let _aiMemory = [];
+
+async function loadAiMemory() {
+  if (!currentUser || !_supabase) { _aiMemory = []; return _aiMemory; }
+  try {
+    const { data } = await _supabase.from('user_ai_memory')
+      .select('key,value,updated_at').order('updated_at', { ascending: false }).limit(20);
+    _aiMemory = data || [];
+  } catch (_) { _aiMemory = []; }
+  return _aiMemory;
+}
+
+async function rememberFact(key, value, source = 'chat') {
+  if (!currentUser || !_supabase) return;
+  try {
+    await _supabase.rpc('upsert_my_memory', { p_key: key, p_value: String(value), p_source: source });
+    await loadAiMemory();
+  } catch (_) {}
+}
+
+async function forgetFact(key) {
+  if (!currentUser || !_supabase) return;
+  try {
+    await _supabase.rpc('forget_my_memory', { p_key: key });
+    await loadAiMemory();
+  } catch (_) {}
+}
+
+function memoryPromptBlock() {
+  if (!_aiMemory.length) return '';
+  const lines = _aiMemory
+    .map(m => `- ${MEMORY_LABELS[m.key] || m.key}: ${m.value}`)
+    .join('\n');
+  return `\n\nMEMORI PENGGUNA (dari percakapan sebelumnya — pakai kalau relevan, jangan diulang kalau tidak ditanya):\n${lines}`;
+}
+
+/** Pull durable facts out of what the user just typed. Deliberately narrow:
+ *  a few high-value patterns rather than an LLM extraction pass on every turn. */
+function extractFactsFromText(text) {
+  const out = [];
+  const t = String(text || '').toLowerCase();
+  // modal / budget: "modal 500rb", "budget 5 juta", "punya 2jt"
+  const money = t.match(/(?:modal|budget|dana|uang|punya|ada)\s*(?:sekitar|kurang lebih|kira-kira)?\s*(?:rp\.?\s*)?([\d.,]+)\s*(rb|ribu|jt|juta|k|m|miliar)?/);
+  if (money) {
+    const num = parseFloat(money[1].replace(/\./g, '').replace(',', '.'));
+    const unit = money[2] || '';
+    if (Number.isFinite(num) && num > 0) {
+      let rp = num;
+      if (/rb|ribu|k/.test(unit)) rp = num * 1e3;
+      else if (/jt|juta/.test(unit)) rp = num * 1e6;
+      else if (/m|miliar/.test(unit)) rp = num * 1e9;
+      if (rp >= 10000) out.push(['modal', 'Rp' + Math.round(rp).toLocaleString('id-ID')]);
+    }
+  }
+  const margin = t.match(/(?:margin|untung|profit)\s*(?:minimal|target|sekitar)?\s*(\d{1,3})\s*%/);
+  if (margin) out.push(['target_margin', `${margin[1]}%`]);
+  return out;
+}
+
 async function handleComposerSubmit(text) {
   text = (text || '').trim();
   if (!text) return;
@@ -7327,13 +7494,66 @@ async function handleComposerSubmit(text) {
   if (!(await _useAi('mls_chat'))) return;
   const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Menjawab dari data produk…</p>`);
   const peers = await ensurePeerRowsForAi(product);
-  const system = buildProductSystemPrompt(product, text, peers);
-  const reply = await _mlsAIRaw(system, [{ role: 'user', content: text }]);
-  const html = mdToHtml(reply) || `<p>${esc(reply)}</p>`;
-  if (loading) await revealAssistant(loading, html);
-  pushMessage(chat, 'assistant', { text: reply }, html);
+  // System prompt now carries durable facts from earlier chats, so "modal saya
+  // 500rb" said last week still shapes the answer.
+  const system = buildProductSystemPrompt(product, text, peers) + memoryPromptBlock();
+  // …and the turn carries the recent thread, so follow-ups make sense. Every
+  // turn used to be a single message with no history at all.
+  const history = chatHistoryForAi(chat, text);
+  const reply = await streamAssistantReply(loading, system, history);
+  pushMessage(chat, 'assistant', { text: reply }, mdToHtml(reply) || `<p>${esc(reply)}</p>`);
   void logUserEvent('gpt_ai_reply', { ui: 'gpt', keyword: product.keyword });
   clarityEvt('gpt_ai_reply', {});
+  // Learn from what the user said, after the reply so it never delays it.
+  extractFactsFromText(text).forEach(([k, v]) => { void rememberFact(k, v, 'chat'); });
+}
+
+/** Trailing window of the current thread, as Anthropic-style turns. */
+function chatHistoryForAi(chat, latestText) {
+  const msgs = (chat?.messages || [])
+    .filter(m => (m.role === 'user' || m.role === 'assistant'))
+    .slice(-12)
+    .map(m => {
+      const c = m.content;
+      const t = typeof c === 'string' ? c : (c?.text || '');
+      return t ? { role: m.role, content: String(t).slice(0, 4000) } : null;
+    })
+    .filter(Boolean);
+  // pushMessage already appended the current user turn; don't send it twice.
+  if (msgs.length && msgs[msgs.length - 1].role === 'user' && msgs[msgs.length - 1].content === latestText) {
+    return msgs;
+  }
+  return [...msgs, { role: 'user', content: latestText }];
+}
+
+/** Stream a reply into an existing bubble, with a working Stop button. */
+async function streamAssistantReply(loading, system, messages) {
+  const bubble = loading?.querySelector?.('.msg-bubble') || loading;
+  let acc = '';
+  let painting = false;
+  const paint = () => {
+    if (painting || !bubble) return;
+    painting = true;
+    requestAnimationFrame(() => {
+      painting = false;
+      bubble.innerHTML = mdToHtml(acc) || `<p>${esc(acc)}</p>`;
+      scrollChatToBottom();
+    });
+  };
+  _streamAbort = new AbortController();
+  setComposerStopping(true);
+  try {
+    const reply = await _mlsAIStream(system, messages, (_piece, full) => {
+      acc = full;
+      paint();
+    }, _streamAbort.signal);
+    acc = reply || acc;
+    if (bubble) bubble.innerHTML = mdToHtml(acc) || `<p>${esc(acc)}</p>`;
+    return acc;
+  } finally {
+    setComposerStopping(false);
+    _streamAbort = null;
+  }
 }
 
 // ── Directory ────────────────────────────────────────────────────────────
@@ -8424,9 +8644,50 @@ function wireUi() {
   const input = $('composer-input');
   form?.addEventListener('submit', e => {
     e.preventDefault();
+    // While a reply is streaming the same button stops it.
+    if (_streamAbort) { abortAssistantStream(); return; }
     const t = input.value;
     input.value = '';
     void handleComposerSubmit(t);
+  });
+
+  // Per-message actions (copy / regenerate), delegated so they work for
+  // bubbles rendered later too.
+  $('chat-thread')?.addEventListener('click', async e => {
+    const btn = e.target.closest?.('.msg-act');
+    if (!btn) return;
+    const msg = btn.closest('.msg');
+    const act = btn.getAttribute('data-act');
+    if (act === 'copy') {
+      const txt = msg?.querySelector('.msg-bubble')?.innerText || '';
+      let ok = false;
+      try { await navigator.clipboard.writeText(txt); ok = true; } catch (_) {}
+      if (!ok) {
+        // navigator.clipboard needs permission/secure context; this path keeps
+        // copy working in embedded webviews where it is unavailable.
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = txt;
+          ta.setAttribute('readonly', '');
+          ta.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+          document.body.appendChild(ta);
+          ta.select();
+          ok = document.execCommand('copy');
+          ta.remove();
+        } catch (_) {}
+      }
+      showToast(ok ? 'Jawaban disalin' : 'Tidak bisa menyalin');
+      return;
+    }
+    if (act === 'regen') {
+      // Re-ask the previous user turn; the reply below it is replaced.
+      let prev = msg?.previousElementSibling;
+      while (prev && !prev.classList.contains('user')) prev = prev.previousElementSibling;
+      const q = prev?.querySelector('.msg-bubble')?.innerText?.trim();
+      if (!q) return;
+      msg.remove();
+      void handleComposerSubmit(q);
+    }
   });
   input?.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) {
