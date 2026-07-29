@@ -1838,14 +1838,7 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 .composer-chips {
   max-width: 720px; margin: 0 auto 8px;
   display: flex; gap: 8px; overflow-x: auto;
-  scrollbar-width: none; padding: 10px 2px 2px;
-  position: relative;
-}
-.composer-chips:not([hidden])::before {
-  content: "";
-  position: absolute; top: 0; left: 12px; right: 12px;
-  height: 1px; background: var(--line, #e5e5e5);
-  pointer-events: none;
+  scrollbar-width: none; padding: 2px;
 }
 .composer-chips::-webkit-scrollbar { display: none; }
 .composer-chips .chip {
@@ -1854,10 +1847,6 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 }
 body.view-deepdive .composer-chips,
 body.thread-wide .composer-chips { max-width: 1080px; }
-body.view-deepdive .composer-chips:not([hidden])::before,
-body.thread-wide .composer-chips:not([hidden])::before {
-  left: 0; right: 0;
-}
 .ddr-bottom-space { height: 72px; }
 
 /* Sidebar location card */
