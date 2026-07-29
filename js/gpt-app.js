@@ -4955,9 +4955,44 @@ async function fetchCategoryShowcase(cat, limit = 12) {
   return mergePool([], pool).slice(0, limit).map(asListingProduct);
 }
 
+/**
+ * Render a pasar (market) answer. Shared by the category-showcase path and the
+ * free-text search path so both surface markets rather than single listings.
+ * Returns false when nothing matched, so callers can fall back.
+ */
+async function replyWithPasarTypes(chat, text, types, opts = {}) {
+  if (!types || !types.length) return false;
+  const loading = opts.loading || null;
+  const gate = await ensureIntentChat(chat, text.slice(0, 60), { kind: 'pasar_search', q: text });
+  if (!gate.ok) { limitReply(loading, gate.resetAt); return true; }
+  registerTypes(types);
+  const placeLabel = opts.placeLabel || '';
+  const en = detectReplyLanguage(text) === 'en';
+  const lead = en
+    ? `${types.length} market${types.length > 1 ? 's' : ''} matching \u201c${esc(opts.label || text)}\u201d${placeLabel ? ` around <strong>${esc(placeLabel)}</strong>` : ''} \u2014 each card is a whole market, not one listing:`
+    : `${types.length} pasar yang cocok dengan \u201c${esc(opts.label || text)}\u201d${placeLabel ? ` di sekitar <strong>${esc(placeLabel)}</strong>` : ''} \u2014 tiap kartu itu satu pasar, bukan satu listing:`;
+  const html = `<p>${lead}</p><div class="card-grid">${types.map((t, i) => typeCardHtml(t, i, i)).join('')}</div>`;
+  if (loading) await revealAssistant(loading, html);
+  else await appendAssistantStream(html);
+  pushMessage(chat, 'assistant', {
+    text: 'Hasil pasar', q: text, level: 'pasar', types: types.map(t => t.keyword),
+  }, html);
+  bindTypeCards();
+  void hydrateProdCardsIn();
+  void logUserEvent('discover_view', { ui: 'gpt', q: text, count: types.length, level: 'pasar' });
+  return true;
+}
+
 async function replyWithCategoryProducts(chat, text, cat) {
   if (!(await ensureSearchAllowed())) return;
   const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari produk ${esc(cat)} dari data LarisID…</p>`);
+  // Pasar first — "tanaman artificial" should answer with the markets it
+  // matches, not 12 near-identical listings from 12 different shops.
+  const place0 = parsePlaceFromQuery(text);
+  const typeHits = await searchProductTypes(place0.cleaned || text, place0.city || '', 12);
+  if (await replyWithPasarTypes(chat, text, typeHits, {
+    loading, label: place0.cleaned || text, placeLabel: place0.label || place0.city || '',
+  })) return;
   const products = await fetchCategoryShowcase(cat, 12);
   const gate = await ensureIntentChat(chat, text.slice(0, 60), { kind: 'category_search', category: cat, q: text });
   if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
@@ -6052,7 +6087,7 @@ function openKompetitorDeepDive(el, peers) {
     try {
       const p = JSON.parse(decodeURIComponent(encoded));
       if (p?.item_id != null && p?.shop_id != null) {
-        void openDeepDive(asListingProduct(p));
+        void openDeepDive(asListingProduct(p), { keepChat: true });
         return true;
       }
     } catch (_) {}
@@ -6061,7 +6096,7 @@ function openKompetitorDeepDive(el, peers) {
   if (!iid || !sid) return false;
   const p = (peers || []).find(x => String(x.item_id) === iid && String(x.shop_id) === sid);
   if (!p) return false;
-  void openDeepDive(asListingProduct(p));
+  void openDeepDive(asListingProduct(p), { keepChat: true });
   return true;
 }
 
@@ -6179,7 +6214,7 @@ const _ddBandPlugin = {
   },
 };
 
-async function openDeepDive(product) {
+async function openDeepDive(product, ddOpts = {}) {
   if (!currentUser) {
     // Anon users get ONE free deep dive. The first product they open is
     // remembered by item_id; re-opening that same product stays free, but a
@@ -6287,8 +6322,11 @@ async function openDeepDive(product) {
   // One product Deep Dive = one chat. Reuse only when this thread is already
   // for the same product; never append another Deep Dive onto a search thread
   // or a different product's chat.
+  // ddOpts.keepChat: drilling from a market into one of its sellers stays in
+  // the same thread. Without it, every Top Kompetitor click spawned a new chat
+  // and the sidebar filled with near-identical threads for one investigation.
   let chat = activeChat();
-  if (chat && !chatIsForProduct(chat, product)) {
+  if (chat && !chatIsForProduct(chat, product) && !ddOpts.keepChat) {
     chat = null;
     state.activeChatId = null;
   }
@@ -6344,7 +6382,9 @@ async function openDeepDive(product) {
         shop_id: r.shop_id,
       })),
     };
-    chat.title = title;
+    // Drilling into one of a market's sellers must not rename the thread —
+    // the conversation is still about the market, not that one listing.
+    if (!ddOpts.keepChat) chat.title = title;
     saveLocalState();
     renderChatList();
   }
@@ -6400,6 +6440,7 @@ async function openDeepDive(product) {
       ${ddHeaderMediaHtml(product, peers)}
       <div class="ddr-head-main">
         <div class="ddr-title-row">
+          <span class="ddr-level ${product._ptype ? 'ddr-level-pasar' : 'ddr-level-produk'}" title="${product._ptype ? 'Angka di halaman ini menggambarkan seluruh pasar' : 'Angka di halaman ini hanya untuk satu listing penjual'}">${product._ptype ? 'PASAR' : 'PRODUK'}</span>
           <h1>${esc(product._ptype ? typeTitle(kw) : (product.product_name || kw || 'Produk'))}</h1>
           <span class="ddr-views" hidden data-view-key="${esc(viewCountKey(product.item_id, product.shop_id))}" title="Orang yang melihat produk ini di Laris tahun ini">${ico('eye', 13)}<span class="ddr-views-num" data-view-num-self>${viewersYtd.toLocaleString('id-ID')}</span><span class="ddr-views-lbl">orang melihat produk ini</span></span>
           <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
@@ -7086,6 +7127,14 @@ async function handleComposerSubmit(text) {
     const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari di data…</p>`);
     const catFallback = detectCategoryFromText(text.toLowerCase());
     if (catFallback) {
+      // Pasar first here too: this inline branch fires for queries that map to
+      // a category ("tanaman artificial" -> Tanaman) and would otherwise show
+      // 12 individual listings instead of the markets behind them.
+      const place1 = parsePlaceFromQuery(text);
+      const catTypes = await searchProductTypes(place1.cleaned || text, place1.city || '', 12);
+      if (await replyWithPasarTypes(chat, text, catTypes, {
+        loading, label: place1.cleaned || text, placeLabel: place1.label || place1.city || '',
+      })) return;
       const products = await fetchCategoryShowcase(catFallback, 12);
       const gate = await ensureIntentChat(chat, text.slice(0, 60), { kind: 'category_search', category: catFallback, q: text });
       if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
@@ -7111,6 +7160,12 @@ async function handleComposerSubmit(text) {
     const locations = place.locations || [];
     const cleaned = place.cleaned || text;
     const placeLabel = place.label || place.city || '';
+
+    // PASAR FIRST: answer with the market, not one shop's listing.
+    const types = await searchProductTypes(cleaned, place.city || '', 12);
+    if (await replyWithPasarTypes(chat, text, types, { loading, label: cleaned, placeLabel })) return;
+
+    // No market matched — fall back to individual listings (long-tail / exact item).
     const result = await searchProductsForQuery(cleaned, locations, 12);
     const usedClarify = result.mode === 'clarify' || !result.products.length;
     state.recommendations = usedClarify ? [] : result.products;
@@ -7305,6 +7360,67 @@ async function fetchProductTypes(city, cat, limit = 1000, sub = null) {
   } catch (_) { return []; }
 }
 
+/**
+ * Pasar-level search: resolve a query to PRODUCT TYPES (markets), not listings.
+ *
+ * Searching "tanaman artificial" used to return 30 near-identical listings from
+ * 30 different shops. The market view answers the question people actually
+ * have — how big is this, how many sellers, what price band — so it leads, and
+ * the listing search stays as the fallback for long-tail / exact-item intent.
+ *
+ * Reuses planSearch() so the EN/ID synonym expansion built for listing search
+ * applies here too ("cross stitch" -> kristik) rather than being duplicated.
+ */
+async function searchProductTypes(text, city, limit = 12) {
+  if (!_supabase) return [];
+  const raw = String(text || '').trim();
+  if (raw.length < 3) return [];
+  let terms = [raw];
+  try {
+    const plan = await planSearch(raw);
+    const extra = (plan?.queries || []).filter(Boolean);
+    terms = [...new Set([raw, ...extra])].slice(0, 6);
+  } catch (_) {}
+
+  const bucket = city || 'ALL';
+  const seen = new Set();
+  const hits = [];
+  const runs = await Promise.all(terms.map(async t => {
+    try {
+      const { data } = await _supabase.from('product_types_v')
+        .select(PTYPE_COLS)
+        .eq('city', bucket)
+        .gte('n_listings', 3)
+        .ilike('keyword', `%${t.slice(0, 40)}%`)
+        .order('omset_top15', { ascending: false, nullsFirst: false })
+        .limit(limit * 2);
+      return data || [];
+    } catch (_) { return []; }
+  }));
+  runs.forEach(rows => rows.forEach(r => {
+    if (!r?.keyword || seen.has(r.keyword)) return;
+    seen.add(r.keyword);
+    hits.push(r);
+  }));
+
+  // Rank by how well the type name matches, then by market size.
+  const q = raw.toLowerCase();
+  const qTokens = q.split(/\s+/).filter(t => t.length > 2);
+  hits.forEach(h => {
+    const kw = String(h.keyword || '').toLowerCase();
+    let score = 0;
+    if (kw === q) score += 100;
+    if (kw.includes(q)) score += 40;
+    qTokens.forEach(t => { if (kw.includes(t)) score += 10; });
+    score += Math.min(10, Math.log10(Number(h.omset_top15) || 1));
+    h._score = score;
+  });
+  hits.sort((a, b) => b._score - a._score);
+  const ranked = hits.filter(h => h._score >= 10).slice(0, limit);
+  if (ranked.length) await attachTypeQuartiles(ranked);
+  return ranked;
+}
+
 /** Attach Q1/Q3 price band from listings_deduped (RPC) onto type rows. */
 async function attachTypeQuartiles(rows) {
   if (!_supabase || !rows?.length) return rows;
@@ -7366,7 +7482,7 @@ function typeCardHtml(t, absIdx, animIdx) {
   const qLo = Number(t.price_p25) || Number(t.price_min) || 0;
   const qHi = Number(t.price_p75) || Number(t.price_max) || 0;
   const hasQ = Number(t.price_p25) > 0 && Number(t.price_p75) > 0;
-  return `<button type="button" class="prod-card ptype-card" data-ptype="${absIdx}" style="animation-delay:${(animIdx % 3) * 0.06}s">
+  return `<button type="button" class="prod-card ptype-card" data-ptype="${absIdx}" data-ptype-kw="${esc(t.keyword || '')}" style="animation-delay:${(animIdx % 3) * 0.06}s">
     <div class="ptype-collage n${imgs.length || 1}">
       ${imgs.map(u => `<img src="${esc(u)}" alt="" loading="lazy">`).join('') || '<div class="prod-card-ph"></div>'}
       <span class="ptype-badge badge ${badgeCls}">Peluang ${esc(odds.tier)}</span>
@@ -7393,12 +7509,22 @@ function typeCardHtml(t, absIdx, animIdx) {
   </button>`;
 }
 
+// Types rendered anywhere (directory grid OR a chat answer), keyed by keyword.
+// Resolving by array index alone breaks as soon as another surface overwrites
+// state.dirTypes — a chat card would then open a different product.
+const _ptypeByKeyword = new Map();
+function registerTypes(rows) {
+  (rows || []).forEach(t => { if (t?.keyword) _ptypeByKeyword.set(t.keyword, t); });
+}
+
 function bindTypeCards(root) {
   (root || document).querySelectorAll('[data-ptype]').forEach(btn => {
     if (btn.dataset.boundPtype) return;
     btn.dataset.boundPtype = '1';
     btn.addEventListener('click', () => {
-      const t = state.dirTypes[Number(btn.getAttribute('data-ptype'))];
+      const kw = btn.getAttribute('data-ptype-kw');
+      const t = (kw && _ptypeByKeyword.get(kw))
+        || state.dirTypes[Number(btn.getAttribute('data-ptype'))];
       if (!t) return;
       const p = typeRepProduct(t);
       rememberProducts([p]);
@@ -7792,6 +7918,7 @@ async function renderDirectory() {
   if (!types.length && !state.dirSub) return renderDirectoryListings();
   types = sortTypeRows(types, state.dirSort || 'terlaris');
   state.dirTypes = types;
+  registerTypes(types);
 
   if (state.dirPage > 1 && !currentUser) {
     openAuthModal('signup', 'gpt_gate_directory');
