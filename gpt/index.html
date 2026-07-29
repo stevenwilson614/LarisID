@@ -756,8 +756,19 @@ html.session-restoring body::after {
 .dir-cat-bar { margin: 14px 0 10px; }
 .dir-cat-bar .dir-cats { margin: 0; }
 .dir-cat-bar .dir-subcats { margin-top: 8px; }
-.dir-subcats .chip { padding: 8px 13px; font-size: .82rem; }
-.chip.chip-back { font-weight: 600; }
+.dir-cats .chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 12px; font-size: .75rem; font-weight: 450;
+  letter-spacing: -.005em;
+}
+.dir-cats .chip.chip-cat { padding-left: 10px; }
+.dir-cats .chip-cat-ico {
+  width: 14px; height: 14px; flex-shrink: 0;
+  stroke: currentColor; opacity: .85;
+}
+.dir-cats .chip.selected .chip-cat-ico { opacity: 1; }
+.dir-subcats .chip { padding: 7px 12px; font-size: .75rem; font-weight: 450; }
+.chip.chip-back { font-weight: 550; }
 .dir-cat-bar:not(.collapsed) .chip-back { display: none; }
 .dir-cat-bar.collapsed #dir-cats .chip:not(.selected):not(.chip-back) { display: none; }
 /* Side-by-side product compare */
@@ -1068,6 +1079,11 @@ body.onboarding-active .panel { padding-bottom: 28px; }
   display: flex; flex-direction: column; align-items: center;
   text-align: center; padding: 7vh 8px 40px;
 }
+/* Desktop: transparent wrapper — mobile pins composer outside this scroll region */
+.home-scroll {
+  display: flex; flex-direction: column; align-items: center;
+  width: 100%;
+}
 .home-title {
   font-size: clamp(1.9rem, 4.6vw, 3rem); font-weight: 750;
   letter-spacing: -.03em; line-height: 1.14; margin: 0 0 14px;
@@ -1228,26 +1244,41 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 }
 .home-foot { margin-top: 44px; font-size: .7rem; color: var(--muted); }
 
-/* ── Mobile landing: scrollable questions; no clip / no overlap ── */
+/* ── Mobile landing: composer pinned; content above scrolls clear ── */
 @media (max-width: 860px) {
+  /* Fill main column; scroll lives in .home-scroll, not under the composer */
   body.view-home .panel {
-    padding: 0 14px max(12px, env(safe-area-inset-bottom));
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
+    padding: 0 14px 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
   body.view-home .panel-inner,
-  body.view-home #view-home,
+  body.view-home #view-home.active,
   body.view-home .home-hero {
-    height: auto;
+    flex: 1;
     min-height: 0;
+    height: 100%;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
   }
   .home-hero {
     box-sizing: border-box;
-    padding: 12px 0 20px;
+    padding: 12px 0 0;
     justify-content: flex-start;
-    overflow: visible;
+    overflow: hidden;
     gap: 0;
+  }
+  /* Scrollable stack: title → finder → steven → Atau */
+  .home-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-bottom: 12px;
   }
   .home-title {
     font-size: clamp(1.2rem, 5.4vw, 1.5rem);
@@ -1292,10 +1323,16 @@ body.onboarding-active .panel { padding-bottom: 28px; }
   }
   .finder-note { display: none; }
   .steven-recs { margin: 16px 0 4px; }
-  .finder-atau { margin: 14px 0 10px; font-size: .7rem; flex-shrink: 0; }
+  .finder-atau { margin: 14px 0 4px; font-size: .7rem; flex-shrink: 0; }
+  /* Pinned composer: outside .home-scroll, safe-area padded */
   .home-composer {
-    margin-top: 0; padding-top: 0; flex-shrink: 0;
+    flex: 0 0 auto;
+    margin-top: 0;
     width: 100%;
+    padding: 8px 0 max(12px, env(safe-area-inset-bottom));
+    background: var(--bg);
+    box-shadow: 0 -10px 20px -12px rgba(0,0,0,.08);
+    z-index: 2;
   }
   .home-composer .composer { padding: 10px 8px 10px 14px; }
   .home-composer textarea { min-height: 40px; font-size: 16px; } /* no iOS zoom */
@@ -2056,68 +2093,70 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
       <div class="panel-inner">
         <div class="view" id="view-home">
           <div class="home-hero">
-            <h1 class="home-title">Apa yang kamu<br>mau <em>jual</em> hari ini?</h1>
-            <p class="home-sub">Cari produk, kategori, atau tanya apa saja.</p>
+            <div class="home-scroll">
+              <h1 class="home-title">Apa yang kamu<br>mau <em>jual</em> hari ini?</h1>
+              <p class="home-sub">Cari produk, kategori, atau tanya apa saja.</p>
 
-            <div class="home-finder" id="home-finder">
-              <div class="finder-step">
-                <div class="finder-ico" aria-hidden="true">1</div>
-                <div class="finder-body">
-                  <div class="finder-title">Saya dari</div>
-                  <p class="finder-sub">Digunakan untuk hitung ongkir, kompetisi, dan supplier terdekat.</p>
-                  <div class="finder-select-wrap">
-                    <select class="finder-select" id="finder-city" aria-label="Kota"></select>
+              <div class="home-finder" id="home-finder">
+                <div class="finder-step">
+                  <div class="finder-ico" aria-hidden="true">1</div>
+                  <div class="finder-body">
+                    <div class="finder-title">Saya dari</div>
+                    <p class="finder-sub">Digunakan untuk hitung ongkir, kompetisi, dan supplier terdekat.</p>
+                    <div class="finder-select-wrap">
+                      <select class="finder-select" id="finder-city" aria-label="Kota"></select>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div class="finder-step">
-                <div class="finder-ico" aria-hidden="true">2</div>
-                <div class="finder-body">
-                  <div class="finder-title">Saya ingin jual produk di kategori</div>
-                  <p class="finder-sub">Pilih kategori yang ingin kamu fokuskan.</p>
-                  <div class="finder-select-wrap">
-                    <select class="finder-select" id="finder-cat" aria-label="Kategori"></select>
+                <div class="finder-step">
+                  <div class="finder-ico" aria-hidden="true">2</div>
+                  <div class="finder-body">
+                    <div class="finder-title">Saya ingin jual produk di kategori</div>
+                    <p class="finder-sub">Pilih kategori yang ingin kamu fokuskan.</p>
+                    <div class="finder-select-wrap">
+                      <select class="finder-select" id="finder-cat" aria-label="Kategori"></select>
+                    </div>
+                    <div class="finder-pills" id="finder-cat-pills"></div>
                   </div>
-                  <div class="finder-pills" id="finder-cat-pills"></div>
                 </div>
+
+                <div class="finder-step">
+                  <div class="finder-ico" aria-hidden="true">3</div>
+                  <div class="finder-body">
+                    <div class="finder-title">Modal awal saya</div>
+                    <p class="finder-sub">Berapa modal yang siap kamu gunakan?</p>
+                    <div class="finder-pills" id="finder-budget-pills"></div>
+                  </div>
+                </div>
+
+                <div class="finder-step">
+                  <div class="finder-ico" aria-hidden="true">4</div>
+                  <div class="finder-body">
+                    <div class="finder-title">Saya penjual baru atau berpengalaman?</div>
+                    <p class="finder-sub">Biar saran dan rekomendasinya pas untuk level kamu.</p>
+                    <div class="finder-pills" id="finder-xp-pills"></div>
+                  </div>
+                </div>
+
+                <button type="button" class="finder-cta" id="finder-go">Temukan Produk Sekarang</button>
+                <p class="finder-note">Gratis · Tanpa kartu kredit</p>
               </div>
 
-              <div class="finder-step">
-                <div class="finder-ico" aria-hidden="true">3</div>
-                <div class="finder-body">
-                  <div class="finder-title">Modal awal saya</div>
-                  <p class="finder-sub">Berapa modal yang siap kamu gunakan?</p>
-                  <div class="finder-pills" id="finder-budget-pills"></div>
+              <!-- Rekomendasi Steven: weekly, shared per city. Hidden until it has rows. -->
+              <section class="steven-recs" id="steven-recs" style="display:none;">
+                <div class="steven-recs-head">
+                  <img class="steven-recs-av" id="steven-recs-av" src="/images/steven-avatar.webp" alt="" width="32" height="32" loading="lazy" onerror="this.style.display='none'">
+                  <div>
+                    <h3 class="steven-recs-title" id="steven-recs-title">Rekomendasi Steven</h3>
+                    <p class="steven-recs-sub" id="steven-recs-sub"></p>
+                  </div>
                 </div>
-              </div>
+                <div class="card-grid steven-recs-grid" id="steven-recs-grid"></div>
+              </section>
 
-              <div class="finder-step">
-                <div class="finder-ico" aria-hidden="true">4</div>
-                <div class="finder-body">
-                  <div class="finder-title">Saya penjual baru atau berpengalaman?</div>
-                  <p class="finder-sub">Biar saran dan rekomendasinya pas untuk level kamu.</p>
-                  <div class="finder-pills" id="finder-xp-pills"></div>
-                </div>
-              </div>
-
-              <button type="button" class="finder-cta" id="finder-go">Temukan Produk Sekarang</button>
-              <p class="finder-note">Gratis · Tanpa kartu kredit</p>
+              <div class="finder-atau">Atau</div>
             </div>
-
-            <!-- Rekomendasi Steven: weekly, shared per city. Hidden until it has rows. -->
-            <section class="steven-recs" id="steven-recs" style="display:none;">
-              <div class="steven-recs-head">
-                <img class="steven-recs-av" id="steven-recs-av" src="/images/steven-avatar.webp" alt="" width="32" height="32" loading="lazy" onerror="this.style.display='none'">
-                <div>
-                  <h3 class="steven-recs-title" id="steven-recs-title">Rekomendasi Steven</h3>
-                  <p class="steven-recs-sub" id="steven-recs-sub"></p>
-                </div>
-              </div>
-              <div class="card-grid steven-recs-grid" id="steven-recs-grid"></div>
-            </section>
-
-            <div class="finder-atau">Atau</div>
 
             <form class="home-composer" id="hero-form">
               <div class="composer">
@@ -2420,6 +2459,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260729f" defer></script>
+<script src="/js/gpt-app.js?v=20260729g" defer></script>
 </body>
 </html>

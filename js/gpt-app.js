@@ -610,6 +610,33 @@ const CAT_SLUG = {
   'Kesehatan':'kesehatan','Motor & Mobil':'motor-mobil','Olahraga':'olahraga',
   'Outdoor & Camping':'outdoor-camping','Rumah':'rumah','Sepeda':'sepeda','Taman':'taman','Tanaman':'tanaman',
 };
+// Line icons for directory / prefs chips (match Site A Discover look).
+const CAT_CHIP_ICONS = {
+  'Alat Tulis': '<path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/>',
+  'Bayi & Anak': '<circle cx="12" cy="8" r="4"/><path d="M6 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M9 7.5c.8-1.5 3.2-1.5 4 0"/>',
+  'Dapur': '<path d="M6 10h12v2a6 6 0 0 1-12 0v-2z"/><path d="M8 10V6M12 10V5M16 10V6"/><path d="M9 18h6"/><path d="M12 16v2"/>',
+  'Elektronik': '<rect x="5" y="4" width="14" height="16" rx="2"/><circle cx="12" cy="16.5" r="1"/>',
+  'Fashion': '<path d="M4 8l4-4h8l4 4-3 2v10H7V10L4 8z"/><path d="M9 4c0 1.7 1.3 3 3 3s3-1.3 3-3"/>',
+  'Hewan Peliharaan': '<circle cx="11" cy="15" r="4.5"/><circle cx="6.5" cy="10" r="2"/><circle cx="15.5" cy="10" r="2"/><circle cx="9" cy="7.5" r="1.6"/><circle cx="13" cy="7.5" r="1.6"/>',
+  'Hobi & Kerajinan': '<circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/>',
+  'HP & Gadget': '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
+  'Kamar Mandi': '<path d="M4 14h12a4 4 0 0 0 4-4V6"/><path d="M14 6V4M18 6V3M16 14v2M9 14v5M6 14v3"/><path d="M4 6h10"/>',
+  'Keamanan': '<path d="M12 3l8 3v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-3z"/>',
+  'Kecantikan': '<path d="M10 3h4v4l2 2v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V9l2-2V3z"/><path d="M10 7h4"/>',
+  'Kesehatan': '<path d="M12 21s-7-4.5-7-10a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 19 11c0 5.5-7 10-7 10z"/><path d="M8.5 12h2l1.5-3 1.5 5 1.5-2H16"/>',
+  'Motor & Mobil': '<path d="M4 15l2-6h12l2 6"/><path d="M3 15h18v3a1 1 0 0 1-1 1h-1.5"/><path d="M5.5 19H4a1 1 0 0 1-1-1v-3"/><circle cx="7.5" cy="18.5" r="1.5"/><circle cx="16.5" cy="18.5" r="1.5"/>',
+  'Olahraga': '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/><path d="M4 9.5L9.5 4M14.5 20L20 14.5M4 14.5L9.5 20M14.5 4L20 9.5"/>',
+  'Outdoor & Camping': '<path d="M3 20L12 5l9 15H3z"/><path d="M12 20v-6"/>',
+  'Rumah': '<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9z"/><path d="M10 21v-7h4v7"/>',
+  'Sepeda': '<circle cx="6.5" cy="16.5" r="3.5"/><circle cx="17.5" cy="16.5" r="3.5"/><path d="M6.5 16.5L11 8h3l3.5 8.5M11 8l-2 8.5M14 8l2 4h4"/>',
+  'Taman': '<path d="M12 21V11"/><path d="M12 11c-3-4-7-4-7-1s4 4 7 1z"/><path d="M12 11c3-4 7-4 7-1s-4 4-7 1z"/>',
+  'Tanaman': '<path d="M12 21v-8"/><path d="M12 13c-4-1-6-4-5-7 4 0 6 3 5 7z"/><path d="M12 13c4-1 6-4 5-7-4 0-6 3-5 7z"/><path d="M8 21h8"/>',
+};
+function catChipIcon(name, size = 15) {
+  const paths = CAT_CHIP_ICONS[name];
+  if (!paths) return '';
+  return `<svg class="chip-cat-ico" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+}
 // Sub-groups per category. `match` = lowercase substrings tested against
 // (keyword + " " + product_name) via subgroupMatches(). Clusters derived from
 // the real scrape keywords in listings_deduped. First directory chip is an
@@ -7833,7 +7860,9 @@ async function openDirectory() {
     cats.innerHTML =
       `<button type="button" class="chip chip-back" data-dcat="" aria-label="Kembali ke semua kategori">‹ Semua</button>` +
       `<button type="button" class="chip" data-dcat="">Semua</button>` +
-      (canon.length ? canon : NU_ONB_CATS).map(c => `<button type="button" class="chip" data-dcat="${esc(c)}">${esc(c)}</button>`).join('');
+      (canon.length ? canon : NU_ONB_CATS).map(c =>
+        `<button type="button" class="chip chip-cat" data-dcat="${esc(c)}">${catChipIcon(c)}${esc(c)}</button>`
+      ).join('');
     cats.querySelectorAll('[data-dcat]').forEach(btn => {
       btn.addEventListener('click', () => {
         // Category filter is free for anonymous (page 2+ / deep-dive stay gated).
