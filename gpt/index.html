@@ -1034,6 +1034,10 @@ html.session-restoring body::after {
   .menu-btn { display: grid; }
   .topbar-mobile-brand { display: flex; }
   .main-top { padding: 8px 12px; }
+  /* Keep focused controls ≥16px so iOS Safari does not auto-zoom */
+  .composer textarea,
+  .field input,
+  .dir-filters select { font-size: 16px; }
 }
 
 /* ══ Redesign (landing / trending answer / deep-dive report) ══ */
@@ -1226,38 +1230,40 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 }
 .home-foot { margin-top: 44px; font-size: .7rem; color: var(--muted); }
 
-/* ── Mobile landing: one screen, no scroll, composer docked at bottom ── */
+/* ── Mobile landing: scrollable questions; no clip / no overlap ── */
 @media (max-width: 860px) {
   body.view-home .panel {
-    padding: 0 14px 0;
-    overflow: hidden;
+    padding: 0 14px max(12px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
   }
   body.view-home .panel-inner,
   body.view-home #view-home,
   body.view-home .home-hero {
-    height: 100%;
+    height: auto;
     min-height: 0;
   }
   .home-hero {
     box-sizing: border-box;
-    padding: 12px 0 max(10px, env(safe-area-inset-bottom));
+    padding: 12px 0 20px;
     justify-content: flex-start;
-    overflow: hidden;
+    overflow: visible;
     gap: 0;
   }
   .home-title {
     font-size: clamp(1.2rem, 5.4vw, 1.5rem);
-    margin: 4px 0 22px;
+    margin: 4px 0 18px;
     line-height: 1.2;
     flex-shrink: 0;
   }
   .home-title br { display: none; } /* one line on mobile */
   .home-sub { display: none; }
   .home-finder {
-    order: 3; flex: 1; min-height: 0;
-    margin: 0; display: flex; flex-direction: column;
+    flex: 0 0 auto;
+    margin: 0 0 8px; display: flex; flex-direction: column;
     justify-content: flex-start;
-    gap: 12px;
+    gap: 14px;
   }
   .finder-step {
     padding-bottom: 0;
@@ -1266,7 +1272,7 @@ body.onboarding-active .panel { padding-bottom: 28px; }
     align-items: start;
   }
   .finder-step::before {
-    left: 13px; top: 30px; bottom: -12px;
+    left: 13px; top: 30px; bottom: -14px;
   }
   .finder-ico {
     width: 28px; height: 28px; font-size: .75rem;
@@ -1274,22 +1280,27 @@ body.onboarding-active .panel { padding-bottom: 28px; }
   }
   .finder-title { font-size: .82rem; margin: 0 0 6px; line-height: 1.25; }
   .finder-sub { display: none; }
+  /* 16px+ on focused controls — prevents iOS Safari auto-zoom */
   .finder-select {
-    padding: 10px 34px 10px 12px; border-radius: 12px; font-size: .82rem;
+    padding: 10px 34px 10px 12px; border-radius: 12px; font-size: 16px;
   }
   .finder-pills { gap: 6px; margin-top: 8px; }
   .finder-pill { padding: 7px 11px; font-size: .7rem; }
   #finder-cat-pills { display: none; } /* dropdown enough on mobile */
   .finder-cta {
-    margin-top: auto; /* sit just above “Atau” / search */
+    margin-top: 4px;
     padding: 13px 16px; font-size: .88rem;
     flex-shrink: 0;
   }
   .finder-note { display: none; }
-  .finder-atau { order: 8; margin: 10px 0 8px; font-size: .7rem; flex-shrink: 0; }
-  .home-composer { order: 9; margin-top: 0; padding-top: 0; flex-shrink: 0; }
+  .steven-recs { margin: 16px 0 4px; }
+  .finder-atau { margin: 14px 0 10px; font-size: .7rem; flex-shrink: 0; }
+  .home-composer {
+    margin-top: 0; padding-top: 0; flex-shrink: 0;
+    width: 100%;
+  }
   .home-composer .composer { padding: 10px 8px 10px 14px; }
-  .home-composer textarea { min-height: 40px; font-size: .88rem; }
+  .home-composer textarea { min-height: 40px; font-size: 16px; } /* no iOS zoom */
   .home-composer .composer-under { display: none; } /* hide usage ring on home mobile */
   .home-foot { display: none; }
 
