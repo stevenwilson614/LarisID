@@ -150,7 +150,6 @@ html.session-restoring body::after {
 .sidebar-brand:hover { background: var(--bg-hover); }
 .brand-lockup {
   height: 36px; width: auto; display: block;
-  filter: brightness(0);
 }
 .brand-beta {
   font-size: .7rem; font-weight: 600; color: var(--muted);
@@ -392,6 +391,12 @@ html.session-restoring body::after {
   display: none;
 }
 /* Per-message actions — revealed on hover, always available on touch. */
+/* City autocomplete */
+.finder-city-wrap { position: relative; }
+.city-suggest { position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + 4px); background: #fff; border: 1px solid #E3DED9; border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.10); max-height: 240px; overflow-y: auto; }
+.city-suggest button { display: block; width: 100%; text-align: left; padding: 9px 12px; font-family: inherit; font-size: .86rem; background: none; border: 0; cursor: pointer; color: #231F1D; }
+.city-suggest button:hover, .city-suggest button.active { background: #FAF8F6; }
+.city-note { font-size: .74rem; color: #8A837D; margin-top: 4px; }
 .msg-actions { display: flex; gap: 6px; margin-top: 6px; opacity: 0; transition: opacity .15s; }
 .msg:hover .msg-actions, .msg:focus-within .msg-actions { opacity: 1; }
 @media (hover: none) { .msg-actions { opacity: 1; } }
@@ -535,6 +540,8 @@ html.session-restoring body::after {
   color: var(--muted); flex-shrink: 0; white-space: nowrap;
   font-size: .62rem; font-weight: 700; line-height: 1.2; margin-top: 2px;
 }
+.prod-card-views[hidden],
+.ddr-views[hidden] { display: none !important; }
 .prod-card-views svg { display: block; width: 11px; height: 11px; stroke: currentColor; }
 .ddr-views {
   display: inline-flex; align-items: center; gap: 4px;
@@ -1263,17 +1270,30 @@ body.onboarding-active .panel { padding-bottom: 28px; }
     display: flex;
     flex-direction: column;
   }
-  body.view-home .panel-inner,
-  body.view-home #view-home.active,
+  body.view-home .panel-inner {
+    flex: 1 1 auto;
+    min-height: 0 !important; /* override base min-height: min-content */
+    height: 100%;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+  body.view-home #view-home.active {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
+    display: flex !important; /* beat .view.active { display:block } */
+    flex-direction: column;
+  }
   body.view-home .home-hero {
-    flex: 1;
+    flex: 1 1 auto;
     min-height: 0;
     height: 100%;
     max-height: 100%;
     display: flex;
     flex-direction: column;
-  }
-  .home-hero {
     box-sizing: border-box;
     padding: 12px 0 0;
     justify-content: flex-start;
@@ -2114,7 +2134,12 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                     <div class="finder-title">Saya dari</div>
                     <p class="finder-sub">Digunakan untuk hitung ongkir, kompetisi, dan supplier terdekat.</p>
                     <div class="finder-select-wrap">
-                      <select class="finder-select" id="finder-city" aria-label="Kota"></select>
+                      <div class="finder-city-wrap">
+                        <input class="finder-select" id="finder-city" aria-label="Kota" type="text"
+                               autocomplete="off" role="combobox" aria-expanded="false"
+                               aria-controls="finder-city-list" placeholder="Ketik kota kamu…">
+                        <div class="city-suggest" id="finder-city-list" role="listbox" hidden></div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2469,6 +2494,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260729k" defer></script>
+<script src="/js/gpt-app.js?v=20260729m" defer></script>
 </body>
 </html>

@@ -2525,7 +2525,8 @@ function finderBudgetCfg(id) {
 function syncFinderUi() {
   const citySel = $('finder-city');
   const catSel = $('finder-cat');
-  if (citySel) citySel.value = NU_ONB_LOCATIONS.includes(_finder.city) ? _finder.city : FINDER_DEFAULT_CITY;
+  // Show what the user actually typed; _finder.city holds the resolved bucket.
+  if (citySel) citySel.value = _finder.cityTyped || _finder.city || FINDER_DEFAULT_CITY;
   if (catSel) catSel.value = NU_ONB_CATS.includes(_finder.category) ? _finder.category : FINDER_DEFAULT_CAT;
   document.querySelectorAll('#finder-cat-pills .finder-pill').forEach(btn => {
     btn.classList.toggle('on', btn.getAttribute('data-cat') === _finder.category);
@@ -2543,16 +2544,68 @@ function wireHomeFinder() {
   if (!root) return;
   loadFinderState();
 
-  const citySel = $('finder-city');
-  if (citySel && !citySel.dataset.ready) {
-    citySel.dataset.ready = '1';
-    citySel.innerHTML = NU_ONB_LOCATIONS.map(c =>
-      `<option value="${esc(c)}">${esc(c)}</option>`
-    ).join('');
-    citySel.addEventListener('change', () => {
-      _finder.city = citySel.value || FINDER_DEFAULT_CITY;
+  // City is a typeahead now: the old <select> offered 14 options, so anyone
+  // outside those had no way to say where they are.
+  const cityInp = $('finder-city');
+  const cityList = $('finder-city-list');
+  if (cityInp && !cityInp.dataset.ready) {
+    cityInp.dataset.ready = '1';
+    cityInp.value = _finder.city || '';
+    let hi = -1;
+    const close = () => { if (cityList) { cityList.hidden = true; cityList.innerHTML = ''; } hi = -1; cityInp.setAttribute('aria-expanded', 'false'); };
+    const commit = (name) => {
+      const picked = String(name || cityInp.value || '').trim();
+      const res = resolveNearestCityBucket(picked);
+      _finder.city = res.bucket || picked || FINDER_DEFAULT_CITY;
+      _finder.cityTyped = picked;
+      cityInp.value = picked;
       saveFinderState();
+      renderCityNote(res);
+      close();
+    };
+    const render = () => {
+      if (!cityList) return;
+      const items = suggestCities(cityInp.value, 8);
+      if (!items.length) { close(); return; }
+      cityList.innerHTML = items.map((c, i) =>
+        `<button type="button" role="option" data-city="${esc(c)}"${i === hi ? ' class="active"' : ''}>${esc(c)}</button>`).join('');
+      cityList.hidden = false;
+      cityInp.setAttribute('aria-expanded', 'true');
+    };
+    cityInp.addEventListener('input', () => { hi = -1; render(); });
+    cityInp.addEventListener('focus', render);
+    cityInp.addEventListener('blur', () => setTimeout(() => { commit(); }, 150));
+    cityInp.addEventListener('keydown', e => {
+      const opts = cityList ? [...cityList.querySelectorAll('[data-city]')] : [];
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (!opts.length) return;
+        hi = e.key === 'ArrowDown' ? Math.min(opts.length - 1, hi + 1) : Math.max(0, hi - 1);
+        opts.forEach((o, i) => o.classList.toggle('active', i === hi));
+      } else if (e.key === 'Enter') {
+        if (hi >= 0 && opts[hi]) { e.preventDefault(); commit(opts[hi].getAttribute('data-city')); }
+      } else if (e.key === 'Escape') { close(); }
     });
+    cityList?.addEventListener('mousedown', e => {
+      const b = e.target.closest?.('[data-city]');
+      if (b) { e.preventDefault(); commit(b.getAttribute('data-city')); }
+    });
+  }
+
+  function renderCityNote(res) {
+    let note = $('finder-city-note');
+    if (!note) {
+      const wrap = cityInp?.closest('.finder-city-wrap');
+      if (!wrap) return;
+      note = document.createElement('div');
+      note.id = 'finder-city-note';
+      note.className = 'city-note';
+      wrap.appendChild(note);
+    }
+    // Never pass another city's data off as local.
+    if (!res || res.exact || !res.bucket) { note.textContent = ''; return; }
+    const km = res.distanceKm ? ` (~${Math.round(res.distanceKm)} km)` : '';
+    note.textContent = `Belum ada data untuk ${res.typed} — pakai kota terdekat: ${res.bucket}${km}.`;
   }
 
   const catSel = $('finder-cat');
@@ -3555,6 +3608,113 @@ function wireCalcPanel() {
 
 // ── Recommendations (city + category first) ──────────────────────────────
 // Exact Shopee location strings (same clusters as A’s YLK) so `.in('location', …)` hits.
+// ── Indonesian cities (typeahead + nearest-city fallback) ────────────────
+// The picker offered 14 cities and nothing else, so anyone outside them had no
+// way to say where they are. This is a curated kota/kabupaten list with rough
+// centroids; a city we have no data for resolves to the NEAREST city that does,
+// and the UI says so rather than passing national data off as local.
+const ID_CITIES = [
+  ["Jakarta",-6.2088,106.8456], ["Jakarta Pusat",-6.1865,106.8343], ["Jakarta Barat",-6.1683,106.7588], ["Jakarta Selatan",-6.2615,106.8106],
+  ["Jakarta Timur",-6.225,106.9004], ["Jakarta Utara",-6.1214,106.7741], ["Bekasi",-6.2383,106.9756], ["Depok",-6.4025,106.7942],
+  ["Tangerang",-6.1783,106.6319], ["Tangerang Selatan",-6.2884,106.7179], ["Bogor",-6.595,106.8166], ["Cikarang",-6.2614,107.1526],
+  ["Bandung",-6.9175,107.6191], ["Cimahi",-6.8722,107.5425], ["Sumedang",-6.839,107.921], ["Garut",-7.2144,107.907],
+  ["Tasikmalaya",-7.3274,108.2207], ["Cirebon",-6.732,108.5523], ["Sukabumi",-6.9277,106.93], ["Cianjur",-6.8203,107.1425],
+  ["Purwakarta",-6.5569,107.4431], ["Subang",-6.5713,107.759], ["Indramayu",-6.3373,108.3247], ["Karawang",-6.3227,107.3376],
+  ["Cilegon",-6.0027,106.0113], ["Serang",-6.12,106.1503], ["Pandeglang",-6.3081,106.1064], ["Semarang",-6.9932,110.4203],
+  ["Salatiga",-7.3305,110.5084], ["Kudus",-6.8048,110.8405], ["Pekalongan",-6.8886,109.6753], ["Tegal",-6.8694,109.1402],
+  ["Magelang",-7.4797,110.2177], ["Surakarta",-7.5755,110.8243], ["Solo",-7.5755,110.8243], ["Klaten",-7.7059,110.6062],
+  ["Boyolali",-7.5325,110.5951], ["Sukoharjo",-7.6819,110.836], ["Karanganyar",-7.5989,110.9508], ["Sragen",-7.4265,111.0206],
+  ["Purwokerto",-7.4245,109.2394], ["Cilacap",-7.7266,109.0093], ["Kebumen",-7.669,109.6524], ["Purworejo",-7.7139,110.0093],
+  ["Wonosobo",-7.3606,109.9003], ["Yogyakarta",-7.7956,110.3695], ["Sleman",-7.7169,110.355], ["Bantul",-7.888,110.3288],
+  ["Kulon Progo",-7.8267,110.1644], ["Gunungkidul",-7.9656,110.6039], ["Surabaya",-7.2575,112.7521], ["Sidoarjo",-7.4478,112.7183],
+  ["Gresik",-7.1561,112.6531], ["Mojokerto",-7.4664,112.4338], ["Pasuruan",-7.6453,112.9075], ["Probolinggo",-7.7543,113.2159],
+  ["Malang",-7.9666,112.6326], ["Batu",-7.8672,112.5239], ["Kediri",-7.848,112.0178], ["Blitar",-8.0955,112.1609],
+  ["Tulungagung",-8.0657,111.9026], ["Jember",-8.1724,113.7002], ["Banyuwangi",-8.2192,114.3691], ["Madiun",-7.6298,111.5239],
+  ["Ngawi",-7.4033,111.4463], ["Bojonegoro",-7.1502,111.8817], ["Tuban",-6.8976,112.0649], ["Lamongan",-7.1204,112.4165],
+  ["Jombang",-7.546,112.2331], ["Nganjuk",-7.605,111.9028], ["Banyumas",-7.5119,109.2946], ["Denpasar",-8.6705,115.2126],
+  ["Badung",-8.582,115.178], ["Gianyar",-8.543,115.326], ["Tabanan",-8.538,115.125], ["Buleleng",-8.112,115.088],
+  ["Singaraja",-8.112,115.088], ["Mataram",-8.5833,116.1167], ["Lombok",-8.65,116.3242], ["Bima",-8.46,118.7267],
+  ["Kupang",-10.1772,123.607], ["Medan",3.5952,98.6722], ["Binjai",3.6001,98.4854], ["Deli Serdang",3.42,98.7],
+  ["Pematangsiantar",2.9595,99.0687], ["Padang",-0.9471,100.4172], ["Bukittinggi",-0.3055,100.3691], ["Payakumbuh",-0.2298,100.633],
+  ["Pekanbaru",0.5071,101.4478], ["Dumai",1.6667,101.45], ["Batam",1.0456,104.0305], ["Tanjungpinang",0.9186,104.4665],
+  ["Palembang",-2.9761,104.7754], ["Prabumulih",-3.4333,104.2333], ["Jambi",-1.6101,103.6131], ["Bengkulu",-3.7928,102.2608],
+  ["Bandar Lampung",-5.3971,105.2668], ["Metro",-5.1131,105.3068], ["Banda Aceh",5.5483,95.3238], ["Lhokseumawe",5.1801,97.1507],
+  ["Langsa",4.4683,97.9683], ["Pontianak",-0.0263,109.3425], ["Singkawang",0.906,108.985], ["Banjarmasin",-3.3194,114.5908],
+  ["Banjarbaru",-3.4572,114.8112], ["Balikpapan",-1.2379,116.8529], ["Samarinda",-0.5022,117.1536], ["Bontang",0.1327,117.49],
+  ["Tarakan",3.3273,117.5914], ["Palangkaraya",-2.2096,113.9108], ["Makassar",-5.1477,119.4327], ["Gowa",-5.3167,119.75],
+  ["Maros",-5.0089,119.5722], ["Parepare",-4.0135,119.6255], ["Palopo",-2.9925,120.197], ["Kendari",-3.9985,122.5129],
+  ["Palu",-0.8917,119.8707], ["Gorontalo",0.5435,123.0568], ["Manado",1.4748,124.8421], ["Bitung",1.44,125.12],
+  ["Tomohon",1.33,124.84], ["Ambon",-3.6954,128.1814], ["Ternate",0.79,127.3667], ["Sorong",-0.8762,131.2558],
+  ["Manokwari",-0.8615,134.062], ["Jayapura",-2.533,140.718], ["Merauke",-8.4932,140.4018], ["Timika",-4.55,136.8833]
+];
+
+const _toRad = d => d * Math.PI / 180;
+function haversineKm(aLat, aLng, bLat, bLng) {
+  const dLat = _toRad(bLat - aLat), dLng = _toRad(bLng - aLng);
+  const s = Math.sin(dLat / 2) ** 2
+    + Math.cos(_toRad(aLat)) * Math.cos(_toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
+/** Strip "Kota "/"Kab. " prefixes so "Kab. Bandung" matches "Bandung". */
+function normCityName(s) {
+  return String(s || '').trim()
+    .replace(/^(kota|kab\.?|kabupaten)\s+/i, '')
+    .trim();
+}
+
+function findCityCoords(name) {
+  const n = normCityName(name).toLowerCase();
+  if (!n) return null;
+  let hit = ID_CITIES.find(c => c[0].toLowerCase() === n);
+  if (!hit) hit = ID_CITIES.find(c => c[0].toLowerCase().startsWith(n));
+  if (!hit) hit = ID_CITIES.find(c => c[0].toLowerCase().includes(n));
+  return hit ? { name: hit[0], lat: hit[1], lng: hit[2] } : null;
+}
+
+/**
+ * Resolve any typed city to a bucket we actually hold data for.
+ * Returns { bucket, typed, nearest, distanceKm, exact } — `exact` false means
+ * the caller should tell the user whose data they are looking at.
+ */
+function resolveNearestCityBucket(typed) {
+  const buckets = NU_ONB_LOCATIONS;
+  const n = normCityName(typed);
+  if (!n) return { bucket: '', typed: '', exact: true };
+  const direct = buckets.find(b => b.toLowerCase() === n.toLowerCase());
+  if (direct) return { bucket: direct, typed: n, nearest: direct, distanceKm: 0, exact: true };
+  const alias = typeof REGION_ALIASES === 'object' && REGION_ALIASES
+    ? REGION_ALIASES[n.toLowerCase()] : null;
+  if (alias && buckets.includes(alias)) {
+    return { bucket: alias, typed: n, nearest: alias, distanceKm: 0, exact: true };
+  }
+  const src = findCityCoords(n);
+  if (!src) return { bucket: '', typed: n, exact: false };
+  let best = null;
+  buckets.forEach(b => {
+    const c = findCityCoords(b);
+    if (!c) return;
+    const d = haversineKm(src.lat, src.lng, c.lat, c.lng);
+    if (!best || d < best.distanceKm) best = { bucket: b, nearest: b, distanceKm: d };
+  });
+  if (!best) return { bucket: '', typed: n, exact: false };
+  return { ...best, typed: n, exact: false };
+}
+
+/** Cities matching a typed prefix, for the autocomplete list. */
+function suggestCities(q, limit = 8) {
+  const n = normCityName(q).toLowerCase();
+  if (!n) return ID_CITIES.slice(0, limit).map(c => c[0]);
+  const starts = [], contains = [];
+  for (const c of ID_CITIES) {
+    const l = c[0].toLowerCase();
+    if (l.startsWith(n)) starts.push(c[0]);
+    else if (l.includes(n)) contains.push(c[0]);
+    if (starts.length >= limit) break;
+  }
+  return [...starts, ...contains].slice(0, limit);
+}
+
 const CITY_LOCATIONS = {
   Jakarta: [
     'Jakarta Barat', 'Jakarta Timur', 'Jakarta Selatan', 'Jakarta Utara', 'Jakarta Pusat',
