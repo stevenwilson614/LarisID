@@ -548,6 +548,115 @@ const DD_CHIPS = [
   { id: 'konten', label: 'Ide konten produk', icon: 'bulb', prompt: 'Kasih ide konten untuk produk ini' },
 ];
 
+/** Category-flavored Deep Dive chips (launch + konten). Shared ids for analytics. */
+const DD_CHIPS_BY_CAT = {
+  'Fashion': [
+    { id: 'bandingkan', label: 'Bandingkan model mirip', icon: 'scale', prompt: 'Bandingkan dengan produk fashion lain yang mirip (harga, omzet, kompetisi)' },
+    { id: 'launch', label: 'Rencana launch fashion', icon: 'spark', prompt: 'Buat rencana launch fashion: ukuran, foto model, dan varian warna' },
+    { id: 'profit', label: 'Estimasi profit', icon: 'calc', prompt: 'Hitung estimasi profit' },
+    { id: 'konten', label: 'Ide Reels try-on', icon: 'bulb', prompt: 'Kasih ide konten fashion: Reels try-on dan size chart' },
+  ],
+  'Kecantikan': [
+    { id: 'bandingkan', label: 'Bandingkan produk mirip', icon: 'scale', prompt: 'Bandingkan dengan produk kecantikan lain yang mirip' },
+    { id: 'launch', label: 'Rencana launch beauty', icon: 'spark', prompt: 'Buat rencana launch kecantikan: klaim BPOM, before-after, dan paket' },
+    { id: 'profit', label: 'Estimasi profit', icon: 'calc', prompt: 'Hitung estimasi profit' },
+    { id: 'konten', label: 'Ide konten beauty', icon: 'bulb', prompt: 'Kasih ide konten kecantikan: tutorial pakai dan UGC' },
+  ],
+  'Elektronik': [
+    { id: 'bandingkan', label: 'Bandingkan spek mirip', icon: 'scale', prompt: 'Bandingkan dengan produk elektronik lain yang mirip (spek, harga, garansi)' },
+    { id: 'launch', label: 'Rencana launch gadget', icon: 'spark', prompt: 'Buat rencana launch elektronik: spek vs kompetitor dan garansi' },
+    { id: 'profit', label: 'Estimasi profit', icon: 'calc', prompt: 'Hitung estimasi profit' },
+    { id: 'konten', label: 'Ide unboxing', icon: 'bulb', prompt: 'Kasih ide konten elektronik: unboxing dan spek singkat' },
+  ],
+  'HP & Gadget': [
+    { id: 'bandingkan', label: 'Bandingkan spek mirip', icon: 'scale', prompt: 'Bandingkan dengan gadget lain yang mirip (spek, harga, garansi)' },
+    { id: 'launch', label: 'Rencana launch gadget', icon: 'spark', prompt: 'Buat rencana launch HP & gadget: spek vs kompetitor dan garansi' },
+    { id: 'profit', label: 'Estimasi profit', icon: 'calc', prompt: 'Hitung estimasi profit' },
+    { id: 'konten', label: 'Ide unboxing', icon: 'bulb', prompt: 'Kasih ide konten gadget: unboxing dan spek singkat' },
+  ],
+  'Dapur': [
+    { id: 'bandingkan', label: 'Bandingkan produk mirip', icon: 'scale', prompt: 'Bandingkan dengan produk dapur lain yang mirip' },
+    { id: 'launch', label: 'Rencana launch dapur', icon: 'spark', prompt: 'Buat rencana launch dapur: isi paket dan ongkir berat' },
+    { id: 'profit', label: 'Estimasi profit', icon: 'calc', prompt: 'Hitung estimasi profit' },
+    { id: 'konten', label: 'Ide demo masak', icon: 'bulb', prompt: 'Kasih ide konten dapur: demo masak singkat' },
+  ],
+  'Bayi & Anak': [
+    { id: 'bandingkan', label: 'Bandingkan produk mirip', icon: 'scale', prompt: 'Bandingkan dengan produk bayi & anak lain yang mirip' },
+    { id: 'launch', label: 'Rencana launch bayi', icon: 'spark', prompt: 'Buat rencana launch bayi & anak: keamanan dan usia pakai' },
+    { id: 'profit', label: 'Estimasi profit', icon: 'calc', prompt: 'Hitung estimasi profit' },
+    { id: 'konten', label: 'Ide testimoni ortu', icon: 'bulb', prompt: 'Kasih ide konten bayi & anak: testimoni orang tua' },
+  ],
+  'Kesehatan': [
+    { id: 'bandingkan', label: 'Bandingkan produk mirip', icon: 'scale', prompt: 'Bandingkan dengan produk kesehatan lain yang mirip' },
+    { id: 'launch', label: 'Rencana launch sehat', icon: 'spark', prompt: 'Buat rencana launch kesehatan: klaim hati-hati dan bundle (tanpa klaim medis berlebihan)' },
+    { id: 'profit', label: 'Estimasi profit', icon: 'calc', prompt: 'Hitung estimasi profit' },
+    { id: 'konten', label: 'Ide edukasi singkat', icon: 'bulb', prompt: 'Kasih ide konten kesehatan: edukasi singkat non-medis' },
+  ],
+  'Olahraga': [
+    { id: 'bandingkan', label: 'Bandingkan produk mirip', icon: 'scale', prompt: 'Bandingkan dengan produk olahraga lain yang mirip' },
+    { id: 'launch', label: 'Rencana launch sport', icon: 'spark', prompt: 'Buat rencana launch olahraga: size chart dan musim' },
+    { id: 'profit', label: 'Estimasi profit', icon: 'calc', prompt: 'Hitung estimasi profit' },
+    { id: 'konten', label: 'Ide workout clip', icon: 'bulb', prompt: 'Kasih ide konten olahraga: clip workout singkat' },
+  ],
+  'Motor & Mobil': [
+    { id: 'bandingkan', label: 'Bandingkan sparepart mirip', icon: 'scale', prompt: 'Bandingkan dengan sparepart motor/mobil lain yang mirip' },
+    { id: 'launch', label: 'Rencana launch otomotif', icon: 'spark', prompt: 'Buat rencana launch motor & mobil: kompatibilitas tipe kendaraan' },
+    { id: 'profit', label: 'Estimasi profit', icon: 'calc', prompt: 'Hitung estimasi profit' },
+    { id: 'konten', label: 'Ide pasang/pakai', icon: 'bulb', prompt: 'Kasih ide konten otomotif: clip pasang atau pakai' },
+  ],
+};
+
+function normalizeDdChipCat(product) {
+  const raw = String(
+    product?.category_canonical
+    || product?._ptype?.category_canonical
+    || product?.category
+    || product?._ptype?.category
+    || ''
+  ).trim();
+  if (!raw) return null;
+  if (DD_CHIPS_BY_CAT[raw]) return raw;
+  const lower = raw.toLowerCase();
+  for (const key of Object.keys(DD_CHIPS_BY_CAT)) {
+    if (key.toLowerCase() === lower) return key;
+    if (lower.includes(key.toLowerCase()) || key.toLowerCase().includes(lower)) return key;
+  }
+  // Soft aliases from scrapes / subgroups
+  if (/fashion|pakaian|baju|sepatu|tas/.test(lower)) return 'Fashion';
+  if (/cantik|skincare|makeup|kosmetik/.test(lower)) return 'Kecantikan';
+  if (/elektronik|lampu|kabel/.test(lower)) return 'Elektronik';
+  if (/hp|gadget|aksesoris hp/.test(lower)) return 'HP & Gadget';
+  if (/dapur|masak|piring/.test(lower)) return 'Dapur';
+  if (/bayi|anak|balita/.test(lower)) return 'Bayi & Anak';
+  if (/kesehatan|suplemen|obat/.test(lower)) return 'Kesehatan';
+  if (/olahraga|sport|fitness/.test(lower)) return 'Olahraga';
+  if (/motor|mobil|otomotif/.test(lower)) return 'Motor & Mobil';
+  return null;
+}
+
+function ddComposerChips(product) {
+  const cat = normalizeDdChipCat(product);
+  const base = (cat && DD_CHIPS_BY_CAT[cat]) ? DD_CHIPS_BY_CAT[cat] : DD_CHIPS;
+  const pasar = !!product?._ptype;
+  if (!pasar) return base.map((c) => ({ ...c }));
+  return base.map((c) => {
+    let { label, prompt } = c;
+    prompt = prompt
+      .replace(/untuk produk ini/gi, 'untuk pasar keyword ini')
+      .replace(/produk ini/gi, 'pasar keyword ini');
+    if (c.id === 'bandingkan') {
+      prompt = 'Bandingkan dengan listing lain di pasar keyword ini yang mirip';
+      label = label.replace(/produk/gi, 'pasar').replace(/model mirip/gi, 'pasar mirip');
+      if (!/pasar|listing|mirip/i.test(label)) label = 'Bandingkan di pasar ini';
+    } else if (c.id === 'launch' && !/pasar keyword/i.test(prompt)) {
+      prompt = prompt.replace(/^Buat rencana launch/i, 'Buat rencana launch untuk pasar keyword ini —');
+    } else if (c.id === 'konten' && !/pasar keyword/i.test(prompt)) {
+      prompt = `${prompt} untuk pasar keyword ini`;
+    }
+    return { ...c, label, prompt };
+  });
+}
+
 function setComposerChips(list, surface) {
   const wrap = $('composer-chips');
   if (!wrap) return;
@@ -6478,16 +6587,24 @@ function ddOmsetHeroHtml(product, peers) {
   let median = 0;
   let subHtml = '';
   let single = 0;
+
   if (t) {
     lo = Number(t.omset_p60) || 0;
     hi = Number(t.omset_p100) || 0;
     median = peerStats?.median || Number(t.omset_top15) || 0;
-    if (!(lo > 0 && hi > 0)) {
-      single = Number(t.omset_top15) || median || 0;
-      lo = hi = median = 0;
-      subHtml = single ? 'Est. dari 15 penjual teratas' : 'Belum ada estimasi omzet';
-    } else {
+    // Quartiles are only attached on directory/search loads — Deep Dive peers
+    // often still have enough omzet to show a real range when RPC fields are missing.
+    if (!(lo > 0 && hi > 0) && peerStats && peerStats.n >= 4) {
+      lo = peerStats.p25;
+      hi = peerStats.p75;
+      median = peerStats.median || median;
+      subHtml = 'P25 – median – P75 dari listing peer';
+    } else if (lo > 0 && hi > 0) {
+      if (!(median > 0)) median = Math.round((lo + hi) / 2);
       subHtml = 'P60 – median – P100';
+    } else {
+      single = Number(t.omset_top15) || median || 0;
+      subHtml = single ? 'Est. dari 15 penjual teratas' : 'Belum ada estimasi omzet';
     }
   } else {
     const own = estOmsetBulan(product);
@@ -6503,9 +6620,11 @@ function ddOmsetHeroHtml(product, peers) {
       subHtml = 'Belum ada estimasi omzet';
     }
   }
+
   let valHtml = '—';
-  if (lo > 0 && hi > 0 && median > 0) {
-    valHtml = `<span>${fmtRpShort(lo)}</span><span class="dash">–</span><span class="med">${fmtRpShort(median)}</span><span class="dash">–</span><span>${fmtRpShort(hi)}</span>`;
+  if (lo > 0 && hi > 0) {
+    if (!(median > 0)) median = Math.round((lo + hi) / 2);
+    valHtml = `<span class="lo">${fmtRpShort(lo)}</span><span class="dash">–</span><span class="med">${fmtRpShort(median)}</span><span class="dash">–</span><span class="hi">${fmtRpShort(hi)}</span>`;
   } else if (single > 0) {
     valHtml = `<span class="med">${fmtRpShort(single)}</span>`;
   }
@@ -6876,6 +6995,11 @@ async function openDeepDive(product, ddOpts = {}) {
     ddCacheSet(cacheKey, { peers, niche, history });
   }
 
+  // Ensure pasar types carry omset P60–P100 even when opened without a prior directory attach.
+  if (product._ptype && !(Number(product._ptype.omset_p60) > 0 && Number(product._ptype.omset_p100) > 0)) {
+    try { await attachTypeQuartiles([product._ptype]); } catch (_) {}
+  }
+
   // Prefer corrected scrape-interval rate for this product over invented lifetime/90.
   const scrapeSpd = ddProductSoldPerDay(history, product);
   if (scrapeSpd != null && scrapeSpd > 0) {
@@ -7153,7 +7277,7 @@ async function openDeepDive(product, ddOpts = {}) {
     } catch (_) {}
   }, 1200);
 
-  setComposerChips(DD_CHIPS, 'deepdive');
+  setComposerChips(ddComposerChips(product), 'deepdive');
 
   // Charts + sparklines (Chart.js lazy; sparklines are raw canvas).
   await larisEnsureChart();
@@ -8479,7 +8603,7 @@ async function openProductCompare(a, b) {
       void openDeepDive(p);
     });
   });
-  setComposerChips(DD_CHIPS, 'compare');
+  setComposerChips(ddComposerChips(a), 'compare');
 }
 
 async function openMoreProductsDirectory() {
