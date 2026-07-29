@@ -7088,7 +7088,6 @@ async function openDeepDive(product, ddOpts = {}) {
   const scoreInfo = ddScore(product, stats, niche);
   const share = ddShareData(peers);
   const age = ddShopAgeBuckets(peers);
-  const kwRows = ddKeywordRows(peers);
   _dd = { product, peers, niche, stats, history, series };
   // Live-refresh open side panel when switching products in Deep Dive.
   refreshOpenSidePanel({
