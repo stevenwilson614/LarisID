@@ -6927,6 +6927,64 @@ const _ddBandPlugin = {
   },
 };
 
+/** Site A parity: draw product thumbnails (or letter fallback) on Distribusi Harga points. */
+const _ddDistImagePlugin = {
+  id: 'ddDistImages',
+  afterDatasetsDraw(chart) {
+    if (chart.canvas?.id !== 'ddr-dist-canvas') return;
+    const ctx = chart.ctx;
+    const meta = chart.getDatasetMeta(0);
+    if (!meta?.data?.length) return;
+    meta.data.forEach((point, i) => {
+      const raw = chart.data.datasets[0].data[i];
+      if (!raw || raw.x == null) return;
+      const { x, y } = point.getProps(['x', 'y'], true);
+      const r = 11;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      const img = raw._img;
+      if (img?.complete && img.naturalWidth) {
+        ctx.drawImage(img, x - r, y - r, r * 2, r * 2);
+      } else {
+        ctx.fillStyle = raw._color || '#B5202A';
+        ctx.fill();
+        const letter = (raw.label || '?').trim().charAt(0).toUpperCase();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 10px system-ui,sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(letter, x, y + 0.5);
+      }
+      ctx.restore();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+  },
+};
+
+function ddPrimeDistImages(chart, points) {
+  if (!chart || !points?.length) return;
+  const palette = ['#B5202A', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
+  points.forEach((p, i) => {
+    p._color = palette[i % palette.length];
+    if (!p.image_url) return;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      if (_charts.get('ddr-dist-canvas') === chart) chart.update('none');
+    };
+    img.onerror = () => { p._img = null; };
+    img.src = p.image_url;
+    p._img = img;
+  });
+}
+
 
 function runDdrTool(tool, product, peers, via) {
   const p = product || state.deepdiveProduct || activeChat()?.context?.product || null;
@@ -7269,7 +7327,7 @@ async function openDeepDive(product, ddOpts = {}) {
         <h3>Distribusi Harga</h3>
         ${stats.n >= 6 ? `
           <div class="ddr-chart-wrap sm"><canvas id="ddr-dist-canvas"></canvas></div>
-          <p class="ddr-caption">Titik = listing (harga × terjual). Zona merah muda = rentang ${fmtRpShort(bandLo)} – ${fmtRpShort(bandHi)} tempat sebagian besar penjualan terjadi.</p>`
+          <p class="ddr-caption">Setiap thumbnail = listing (harga × terjual). Zona merah muda = rentang ${fmtRpShort(bandLo)} – ${fmtRpShort(bandHi)} tempat sebagian besar penjualan terjadi.</p>`
           : '<p class="dd-sub">Belum cukup listing untuk memetakan distribusi harga.</p>'}
       </div>
     </div>
@@ -7394,25 +7452,52 @@ async function openDeepDive(product, ddOpts = {}) {
     });
   }
   if (stats.n >= 6) {
-    makeChart('ddr-dist-canvas', {
+    const distPoints = peers
+      .filter(p => (Number(p.price) || 0) > 0 && (Number(p.total_sold) || 0) > 0)
+      .map(p => ({
+        x: Number(p.price) || 0,
+        y: Number(p.total_sold) || 0,
+        label: p.store_name || p.product_name || '',
+        image_url: p.image_url || null,
+      }));
+    const distChart = makeChart('ddr-dist-canvas', {
       type: 'scatter',
       data: {
         datasets: [{
-          data: peers.map(p => ({ x: Number(p.price) || 0, y: Number(p.total_sold) || 0 })),
-          backgroundColor: 'rgba(37,99,235,.55)', pointRadius: 3.5,
+          data: distPoints,
+          // Invisible Chart.js points — thumbnails drawn by _ddDistImagePlugin.
+          pointRadius: 0,
+          pointHoverRadius: 12,
+          hitRadius: 14,
+          backgroundColor: 'transparent',
         }],
       },
       options: {
         maintainAspectRatio: false,
         _band: [bandLo, bandHi],
-        plugins: { legend: { display: false } },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const d = ctx.raw || {};
+                return [
+                  d.label || 'Listing',
+                  `Harga: ${fmtRp(d.x)}`,
+                  `Terjual: ${fmtSold(d.y)}`,
+                ];
+              },
+            },
+          },
+        },
         scales: {
           x: { ticks: { callback: v => v >= 1e6 ? (v / 1e6) + 'jt' : Math.round(v / 1e3) + 'rb', maxTicksLimit: 6 } },
           y: { type: 'logarithmic', ticks: { callback: v => fmtSold(v), maxTicksLimit: 5 } },
         },
       },
-      plugins: [_ddBandPlugin],
+      plugins: [_ddBandPlugin, _ddDistImagePlugin],
     });
+    ddPrimeDistImages(distChart, distPoints);
   }
   root.querySelectorAll('canvas[data-spark]').forEach(cv => {
     const kwName = (cv.getAttribute('data-spark') || '').toLowerCase();
