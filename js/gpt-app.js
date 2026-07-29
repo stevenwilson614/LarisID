@@ -551,7 +551,7 @@ const DD_CHIPS = [
 /** Category-flavored Deep Dive chips (launch + konten). Shared ids for analytics. */
 const DD_CHIPS_BY_CAT = {
   'Fashion': [
-    { id: 'bandingkan', label: 'Bandingkan model mirip', icon: 'scale', prompt: 'Bandingkan dengan produk fashion lain yang mirip (harga, omzet, kompetisi)' },
+    { id: 'bandingkan', label: 'Bandingkan model mirip', icon: 'scale', prompt: 'Bandingkan dengan produk fashion lain yang mirip (harga, omset, kompetisi)' },
     { id: 'launch', label: 'Rencana launch fashion', icon: 'spark', prompt: 'Buat rencana launch fashion: ukuran, foto model, dan varian warna' },
     { id: 'profit', label: 'Estimasi profit', icon: 'calc', prompt: 'Hitung estimasi profit' },
     { id: 'konten', label: 'Ide Reels try-on', icon: 'bulb', prompt: 'Kasih ide konten fashion: Reels try-on dan size chart' },
@@ -3569,7 +3569,7 @@ async function fillKompContent(opts = {}) {
   const share = ddShareData(peers || []);
   const kw = product.keyword || '—';
   body.innerHTML = `
-    <p class="side-komp-lead">Toko kompetitor di keyword “${esc(kw)}” — urut estimasi omzet.</p>
+    <p class="side-komp-lead">Toko kompetitor di keyword “${esc(kw)}” — urut estimasi omset.</p>
     ${ddKompetitorTableHtml(share, { moreId: 'side-komp-more' })}
   `;
   wireKompPanelBody(body, peers || []);
@@ -4685,7 +4685,7 @@ function gptKalcHtml(opts = {}) {
         <p class="sent" data-out="sent">—</p>
       </div>
       <div class="gpt-kalc-bd">
-        <div><span>Omzet / pesanan</span><span data-out="omzet">—</span></div>
+        <div><span>Omset / pesanan</span><span data-out="omset">—</span></div>
         <div class="cost"><span>Total biaya</span><span data-out="cost">—</span></div>
         <div><span>Laba bersih</span><span data-out="profit2">—</span></div>
         <div><span>Margin</span><span data-out="margin">—</span></div>
@@ -4761,7 +4761,7 @@ function gptKalcRefresh(root) {
   set('sent', r.profit >= 0
     ? `Dari setiap penjualan, ${fmtRp(r.profit)} bersih masuk ke kantong kamu.`
     : `Estimasi rugi ${fmtRp(Math.abs(r.profit))} per pesanan — cek biaya atau naikkan harga.`);
-  set('omzet', fmtRp(r.price));
+  set('omset', fmtRp(r.price));
   set('cost', fmtRp(r.totalCost));
   set('profit2', fmtRp(r.profit));
   set('margin', `${r.margin.toFixed(1).replace('.', ',')}%`);
@@ -5069,7 +5069,7 @@ function cleanDiscoveryQuery(text) {
 }
 
 function isProductQaAsk(lower) {
-  return /\b(ini|this|that|harga(?:nya)?|price|rating|review|ulasan|omzet|profit|bagus(?:kah)?|worth|berapa|how much|is it|apakah|kenapa|mengapa|why|should i|bolehkah)\b/.test(String(lower || ''));
+  return /\b(ini|this|that|harga(?:nya)?|price|rating|review|ulasan|omset|omzet|profit|bagus(?:kah)?|worth|berapa|how much|is it|apakah|kenapa|mengapa|why|should i|bolehkah)\b/.test(String(lower || ''));
 }
 
 /**
@@ -5975,7 +5975,7 @@ function deepDiveChatCardHtml(product, scoreInfo, stats) {
     </div>
     <div class="dd-chat-card-stats">
       <div><span class="lbl">Harga</span><span class="val">${fmtRp(product.price)}</span></div>
-      <div><span class="lbl">Omzet/bln</span><span class="val">${omset ? fmtOmset(omset) : '—'}</span></div>
+      <div><span class="lbl">Omset/bln</span><span class="val">${omset ? fmtOmset(omset) : '—'}</span></div>
       <div><span class="lbl">Kompetisi</span><span class="val">${esc(komp)}</span></div>
     </div>
     <button type="button" class="btn-primary dd-chat-open" data-dd-open="${esc(key)}">Lihat analisis lengkap →</button>
@@ -6256,7 +6256,7 @@ function fmtRpShort(n) {
   return fmtRp(n);
 }
 
-/** Omzet hero: small Rp + tight amount (no space after Rp). */
+/** Omset hero: small Rp + tight amount (no space after Rp). */
 function fmtOmsetHeroAmt(n) {
   n = Number(n) || 0;
   let amt = '0';
@@ -6486,17 +6486,17 @@ function ddShareData(peers) {
   const byShop = new Map();
   for (const p of peers) {
     const k = String(p.shop_id);
-    const omzet = (Number(p.total_sold) || 0) * (Number(p.price) || 0);
-    const cur = byShop.get(k) || { name: p.store_name || 'Toko', img: p.image_url || '', omzet: 0, sold: 0, sample: p };
-    cur.omzet += omzet;
+    const omset = (Number(p.total_sold) || 0) * (Number(p.price) || 0);
+    const cur = byShop.get(k) || { name: p.store_name || 'Toko', img: p.image_url || '', omset: 0, sold: 0, sample: p };
+    cur.omset += omset;
     cur.sold += Number(p.total_sold) || 0;
     if (!cur.img && p.image_url) cur.img = p.image_url;
     byShop.set(k, cur);
   }
-  const shops = [...byShop.values()].sort((a, b) => b.omzet - a.omzet);
-  const seg = (from, to) => shops.slice(from, to).reduce((s, x) => s + x.omzet, 0);
+  const shops = [...byShop.values()].sort((a, b) => b.omset - a.omset);
+  const seg = (from, to) => shops.slice(from, to).reduce((s, x) => s + x.omset, 0);
   const total = seg(0, shops.length) || 1;
-  shops.forEach(s => { s.share = Math.round(s.omzet / total * 100); });
+  shops.forEach(s => { s.share = Math.round(s.omset / total * 100); });
   return { shops, top3: seg(0, 3), mid: seg(3, 10), tail: seg(10, 30), rest: seg(30, shops.length), total };
 }
 
@@ -6697,7 +6697,7 @@ function ddOmsetHeroHtml(product, peers) {
     hi = Number(t.omset_p100) || 0;
     median = peerStats?.median || Number(t.omset_top15) || 0;
     // Quartiles are only attached on directory/search loads — Deep Dive peers
-    // often still have enough omzet to show a real range when RPC fields are missing.
+    // often still have enough omset to show a real range when RPC fields are missing.
     if (!(lo > 0 && hi > 0) && peerStats && peerStats.n >= 4) {
       lo = peerStats.p25;
       hi = peerStats.p75;
@@ -6726,7 +6726,7 @@ function ddOmsetHeroHtml(product, peers) {
     valHtml = `<span class="med">${fmtOmsetHeroAmt(single)}</span>`;
   }
   return `<div class="ddr-omset-hero">
-    <div class="lbl">Omzet / Bulan</div>
+    <div class="lbl">Omset / Bulan</div>
     <div class="val">${valHtml}</div>
   </div>`;
 }
@@ -6742,7 +6742,7 @@ function ddToolPillsHtml() {
 
 function ddTilesHtml(product, stats, peers, series) {
   // Opened from a Product Type card → tiles describe the TYPE's market
-  // (median price band), not the anchor listing. Omzet lives in ddr-omset-hero.
+  // (median price band), not the anchor listing. Omset lives in ddr-omset-hero.
   const t = product._ptype || null;
   const spd = Number(product.sold_per_day);
   const unitMo = Number.isFinite(spd) && spd > 0 ? Math.round(spd * 30) : 0;
@@ -6779,7 +6779,7 @@ function ddKompetitorTableHtml(share, opts = {}) {
     const key = `${iid}|${sid}`;
     const snap = productSnapshot(asListingProduct(sample));
     const encoded = snap ? encodeURIComponent(JSON.stringify(snap)) : '';
-    const omsetMo = Math.round(s.sold / 6) * Math.round(s.omzet / Math.max(1, s.sold)); // ≈ sold/6 × avg price
+    const omsetMo = Math.round(s.sold / 6) * Math.round(s.omset / Math.max(1, s.sold)); // ≈ sold/6 × avg price
     // Whole row is clickable — users tap the tok name, not just the tiny "Lihat" button.
     return `<tr class="komp-click-row"${i >= 5 ? ' data-komp-extra hidden' : ''} data-kshop="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} role="link" tabindex="0" aria-label="Buka Deep Dive ${esc((s.name || 'kompetitor').slice(0, 40))}">
       <td class="tr-rank">${i + 1}</td>
@@ -6790,7 +6790,7 @@ function ddKompetitorTableHtml(share, opts = {}) {
     </tr>`;
   }).join('');
   return `<div class="ddr-table-wrap"><table class="ddr-table ddr-komp-table">
-    <thead><tr><th>#</th><th>Toko</th><th>Omzet / Bln (est.)</th><th>Market Share</th><th></th></tr></thead>
+    <thead><tr><th>#</th><th>Toko</th><th>Omset / Bln (est.)</th><th>Market Share</th><th></th></tr></thead>
     <tbody>${rows}</tbody></table></div>
     ${share.shops.length > 5 ? `<button type="button" class="ans-cta" id="${esc(moreId)}">Lihat Semua ${Math.min(15, share.shops.length)} Kompetitor</button>` : ''}`;
 }
@@ -6906,7 +6906,7 @@ const _ddCenterTextPlugin = {
     ctx.textBaseline = 'middle';
     ctx.font = '600 10px "Plus Jakarta Sans", sans-serif';
     ctx.fillStyle = '#8e8e8e';
-    ctx.fillText('Total omzet', cx, cy - 9);
+    ctx.fillText('Total omset', cx, cy - 9);
     ctx.font = '750 13px "Plus Jakarta Sans", sans-serif';
     ctx.fillStyle = '#1f1f1f';
     ctx.fillText(txt, cx, cy + 8);
@@ -7053,7 +7053,7 @@ async function openDeepDive(product, ddOpts = {}) {
 
     // Keyword scrape history → market weekly trend + sparklines.
     // Top-N peers by lifetime sold often appear in only 1–2 waves (bucket
-    // leaders), so item_id IN (peers) + limit 1000 collapses Tren Omzet to a
+    // leaders), so item_id IN (peers) + limit 1000 collapses Tren Omset to a
     // handful of early weeks even when the keyword has many later scrapes.
     try {
       // category/est_sold/sold_tier required for Site-A-parity delta correction
@@ -7244,7 +7244,7 @@ async function openDeepDive(product, ddOpts = {}) {
     ${ddTilesHtml(product, stats, peers, series)}
     <div class="ddr-hscroll ddr-hscroll--graphs">
       <div class="ddr-card" data-dd-sec="tren">
-        <h3>Tren Omzet &amp; Unit Terjual</h3>
+        <h3>Tren Omset &amp; Unit Terjual</h3>
         ${hasTrend
           ? `<div class="ddr-chart-wrap"><canvas id="ddr-trend-canvas"></canvas></div>
              <div class="chart-legend" style="flex-direction:row;gap:14px">
@@ -7253,7 +7253,7 @@ async function openDeepDive(product, ddOpts = {}) {
                <span class="row"><span class="swatch" style="background:#16A34A"></span>Forecast</span>
              </div>`
           : `<p class="dd-sub">Belum cukup riwayat scrape untuk tren bulanan keyword ini — butuh beberapa gelombang panel. Bagian lain tetap dari data asli.</p>`}
-        <p class="ddr-caption">Estimasi bulanan pasar keyword “${esc(kw || '—')}” (rata-rata minggu dalam setiap bulan, dari selisih scrape berurutan; snapshot pertama = baseline, bukan omzet)${hasTrend ? ' · tampilan dari 27 Apr 2026' : ''} ${history.length ? `· ${new Set(history.map(r => String(r.item_id))).size} listing` : ''} · scrape terakhir ${esc(fmtAnchorDate(lastScrape))}.</p>
+        <p class="ddr-caption">Estimasi bulanan pasar keyword “${esc(kw || '—')}” (rata-rata minggu dalam setiap bulan, dari selisih scrape berurutan; snapshot pertama = baseline, bukan omset)${hasTrend ? ' · tampilan dari 27 Apr 2026' : ''} ${history.length ? `· ${new Set(history.map(r => String(r.item_id))).size} listing` : ''} · scrape terakhir ${esc(fmtAnchorDate(lastScrape))}.</p>
       </div>
       <div class="ddr-card" data-dd-sec="pangsa">
         <h3>Distribusi Pangsa Pasar</h3>
@@ -7480,7 +7480,7 @@ function detectReplyLanguage(text) {
     'ini', 'itu', 'harga', 'jual', 'jualan', 'produk', 'saya', 'aku', 'kah', 'tidak',
     'adalah', 'gimana', 'bisa', 'kalau', 'kalo', 'sama', 'dari', 'juga', 'sudah', 'udah',
     'belum', 'mau', 'akan', 'karena', 'jadi', 'lebih', 'kurang', 'banyak', 'sedikit',
-    'bagus', 'laris', 'toko', 'penjual', 'kompetitor', 'omzet', 'modal', 'untung',
+    'bagus', 'laris', 'toko', 'penjual', 'kompetitor', 'omset', 'omzet', 'modal', 'untung',
     'apakah', 'dimana', 'di mana', 'kapan', 'siapa', 'kok', 'dong', 'sih', 'nya', 'lah',
     'pun', 'tapi', 'atau', 'nggak', 'gak', 'ga', 'aja', 'banget', 'nih', 'deh', 'buat',
     'punya', 'masih', 'harus', 'boleh', 'tolong', 'dong', 'nih', 'juga', 'sekali',

@@ -197,7 +197,7 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260729c';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260729d';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
@@ -6822,7 +6822,7 @@ html,body{overflow-x:clip;max-width:100%;}
                 <div class="hbd-stat-sub" id="hbd-s2-sub">—</div>
               </div>
               <div class="hbd-stat">
-                <div class="hbd-stat-label">Total Omzet Potensial</div>
+                <div class="hbd-stat-label">Total Omset Potensial</div>
                 <div class="hbd-stat-value" id="hbd-s3">—</div>
                 <div class="hbd-stat-sub" id="hbd-s3-sub">—</div>
               </div>
@@ -8150,7 +8150,7 @@ html,body{overflow-x:clip;max-width:100%;}
                       <p class="kalc-hero-sentence" id="kal-hero-sentence">—</p>
                     </div>
                     <div class="kalc-hero-breakdown">
-                      <div class="kalc-hero-row"><span>Omzet per Pesanan</span><span id="kal-bd-omzet">—</span></div>
+                      <div class="kalc-hero-row"><span>Omset per Pesanan</span><span id="kal-bd-omset">—</span></div>
                       <div class="kalc-hero-row cost"><span>Total Biaya</span><span id="kal-bd-cost">—</span></div>
                       <div class="kalc-hero-row"><span>Laba Bersih</span><span id="kal-bd-profit" style="color:#059669;">—</span></div>
                       <div class="kalc-hero-row"><span>Margin</span><span id="kal-bd-margin">—</span></div>
@@ -10001,7 +10001,7 @@ html,body{overflow-x:clip;max-width:100%;}
      SITE FOOTER
 ════════════════════════════════════ -->
 
-<script defer src="/js/laris-app.js?v=20260729c"></script>
+<script defer src="/js/laris-app.js?v=20260729d"></script>
 
   <!-- ── CONTEXTUAL ONBOARDING HINTS ── -->
   <div id="hint-overlay" aria-hidden="true" onclick="if(event.target===this)nuHintDismiss()">

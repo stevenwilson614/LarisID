@@ -5159,7 +5159,7 @@ function detectReplyLanguage(text) {
     'ini', 'itu', 'harga', 'jual', 'jualan', 'produk', 'saya', 'aku', 'kah', 'tidak',
     'adalah', 'gimana', 'bisa', 'kalau', 'kalo', 'sama', 'dari', 'juga', 'sudah', 'udah',
     'belum', 'mau', 'akan', 'karena', 'jadi', 'lebih', 'kurang', 'banyak', 'sedikit',
-    'bagus', 'laris', 'toko', 'penjual', 'kompetitor', 'omzet', 'modal', 'untung',
+    'bagus', 'laris', 'toko', 'penjual', 'kompetitor', 'omset', 'omzet', 'modal', 'untung',
     'apakah', 'dimana', 'di mana', 'kapan', 'siapa', 'kok', 'dong', 'sih', 'nya', 'lah',
     'pun', 'tapi', 'atau', 'nggak', 'gak', 'ga', 'aja', 'banget', 'nih', 'deh', 'buat',
     'punya', 'masih', 'harus', 'boleh', 'tolong', 'dong', 'nih', 'juga', 'sekali',
@@ -11317,7 +11317,7 @@ function kalcCalc() {
       ? `Artinya, dari setiap penjualan Anda ${kalcFmtFull(r.profit)} bersih masuk ke kantong Anda.`
       : `Perhatian: estimasi rugi ${kalcFmtFull(Math.abs(r.profit))} per pesanan — periksa biaya atau naikkan harga.`;
   }
-  set('kal-bd-omzet', kalcFmtFull(r.price));
+  set('kal-bd-omset', kalcFmtFull(r.price));
   set('kal-bd-cost', kalcFmtFull(r.totalCost));
   set('kal-bd-profit', kalcFmtFull(r.profit));
   set('kal-bd-margin', r.margin.toFixed(1).replace('.', ',') + '%');
@@ -15647,7 +15647,7 @@ async function hbdInit() {
   document.getElementById('hbd-s2').textContent = 'Rp ' + Math.round(avgPrice).toLocaleString('id-ID');
   document.getElementById('hbd-s2-sub').textContent = 'rata-rata harga produk';
   document.getElementById('hbd-s3').textContent = totalOmset >= 1e6 ? 'Rp ' + (totalOmset/1e6).toFixed(1) + ' jt' : 'Rp ' + Math.round(totalOmset).toLocaleString('id-ID');
-  document.getElementById('hbd-s3-sub').textContent = 'estimasi omzet/bln';
+  document.getElementById('hbd-s3-sub').textContent = 'estimasi omset/bln';
   document.getElementById('hbd-s4').textContent = nUp;
   document.getElementById('hbd-s4-sub').textContent = 'produk tren naik';
 
@@ -22415,7 +22415,7 @@ const TOUR_STEPS = [
   {
     sel: () => document.querySelector('#home-grid .product-card') || document.querySelector('.product-card'),
     title: 'Kartu Produk',
-    body: 'Setiap kartu menampilkan data nyata Shopee — median harga, potensi omzet per bulan, dan jumlah pesaing aktif.',
+    body: 'Setiap kartu menampilkan data nyata Shopee — median harga, potensi omset per bulan, dan jumlah pesaing aktif.',
     pos: 'right'
   },
   {
@@ -22461,7 +22461,7 @@ const DASHBOARD_TOUR_STEPS = [
       ? (document.getElementById('dsc-sort-chips') || document.querySelector('.dsc-table-controls'))
       : document.getElementById('dsc-filter-panel'),
     title: 'Ini Area Filter',
-    body: 'Di sini kamu bisa atur harga, omzet, skor, dan kategori supaya produk yang muncul lebih tepat.',
+    body: 'Di sini kamu bisa atur harga, omset, skor, dan kategori supaya produk yang muncul lebih tepat.',
     pos: 'left',
     onEnter: () => switchDashView('discover'),
   },
