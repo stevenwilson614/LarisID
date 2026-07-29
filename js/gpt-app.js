@@ -2646,7 +2646,12 @@ function renderHome() {
   saveLocalState();
   renderChatList();
   wireHomeFinder();
-  void renderStevenRecs();
+  updateHomeFinderVisibility();
+  if (shouldShowLandingFinder()) void renderStevenRecs();
+  else {
+    const steven = $('steven-recs');
+    if (steven) steven.style.display = 'none';
+  }
 
   if (!renderHome._seen) {
     renderHome._seen = true;
@@ -2694,11 +2699,28 @@ function syncFinderToOnboarding() {
   o.categories = [_finder.category];
   o.experience = _finder.experience;
   o.budget = _finder.budget;
-  if (o.step !== 'done') {
-    o.step = 'done';
-    o.completedAnon = !currentUser;
-  }
+  // Don't mark step 'done' here — that happens when they press Temukan
+  // Produk or save prefs. Premature 'done' would hide the 4 questions on
+  // Chat Baru after a single pill tap (defaults already fill all fields).
   saveLocalState();
+}
+
+/** Show the 4 landing questions until the user has completed them once. */
+function shouldShowLandingFinder() {
+  return state.onboarding?.step !== 'done';
+}
+
+function updateHomeFinderVisibility() {
+  const show = shouldShowLandingFinder();
+  document.body.classList.toggle('home-finder-done', !show);
+  const finder = $('home-finder');
+  if (finder) finder.hidden = !show;
+  const atau = document.querySelector('#view-home .finder-atau');
+  if (atau) atau.hidden = !show;
+  if (!show) {
+    const steven = $('steven-recs');
+    if (steven) steven.style.display = 'none';
+  }
 }
 
 function resolveRegionFromGeo(city, regionName) {
@@ -3197,6 +3219,7 @@ async function savePrefsDrawer() {
   syncDirectoryFromOnboarding();
   state._dirDefaultsApplied = true;
   renderSidebarLocCard();
+  updateHomeFinderVisibility();
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Menyimpan…'; }
   try {
     await persistOnboardingPrefs();
@@ -6189,7 +6212,7 @@ async function openChat(id) {
 
 async function newChatFlow() {
   abortAssistantStream();
-  // Chat Baru = the landing: search, chips, and example prompts live there.
+  // Chat Baru: 4 questions only if never completed; else empty + composer.
   renderHome();
 }
 

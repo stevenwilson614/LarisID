@@ -1142,12 +1142,14 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 /* Landing */
 .home-hero {
   display: flex; flex-direction: column; align-items: center;
-  text-align: center; padding: 7vh 8px 40px;
+  text-align: center; padding: 7vh 16px 40px;
 }
 /* Desktop: transparent wrapper — mobile pins composer outside this scroll region */
 .home-scroll {
   display: flex; flex-direction: column; align-items: center;
   width: 100%;
+  box-sizing: border-box;
+  padding: 0 4px;
 }
 .home-title {
   font-size: clamp(1.9rem, 4.6vw, 3rem); font-weight: 750;
@@ -1161,11 +1163,23 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 }
 .home-sub { font-size: 1.02rem; color: var(--muted); margin: 0 0 22px; }
 .home-composer { width: 100%; max-width: 640px; }
-
-/* Landing product finder (replaces prompt cards) */
 .home-finder {
   width: 100%; max-width: 560px; text-align: left;
-  margin: 0 0 22px; padding: 4px 0 0;
+  margin: 0 0 22px; padding: 4px 8px 0;
+  box-sizing: border-box;
+}
+/* After the 4 questions are done: Chat Baru = title + composer only */
+body.home-finder-done .home-finder,
+body.home-finder-done .finder-atau,
+body.home-finder-done .steven-recs,
+body.home-finder-done .home-sub { display: none !important; }
+body.home-finder-done .home-hero {
+  justify-content: center;
+  min-height: min(62vh, 560px);
+  padding-top: 12vh;
+}
+body.home-finder-done .home-title {
+  margin-bottom: 28px;
 }
 .finder-step {
   display: grid; grid-template-columns: 36px 1fr; gap: 0 14px;
@@ -1216,28 +1230,27 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 }
 .finder-cta {
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  width: 100%; margin-top: 8px; padding: 14px 18px; border-radius: 999px;
+  width: 100%; max-width: 100%; box-sizing: border-box;
+  margin-top: 8px; padding: 14px 18px; border-radius: 999px;
   background: var(--grad-accent); color: #fff;
   font: inherit; font-size: .95rem; font-weight: 700; letter-spacing: -.01em;
   box-shadow: 0 0 0 0 rgba(181,32,42,.4), 0 8px 24px rgba(181,32,42,.22);
-  transition: opacity .12s, transform .12s;
+  transition: opacity .12s;
   animation: finderGlow 1.8s ease-in-out infinite;
 }
 @keyframes finderGlow {
   0%, 100% {
     box-shadow: 0 0 0 0 rgba(181,32,42,.42), 0 8px 24px rgba(181,32,42,.22);
-    transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 0 12px rgba(181,32,42,0), 0 10px 28px rgba(181,32,42,.38);
-    transform: scale(1.025);
+    box-shadow: 0 0 0 10px rgba(181,32,42,0), 0 10px 28px rgba(181,32,42,.38);
   }
 }
 @media (prefers-reduced-motion: reduce) {
   .finder-cta { animation: none; }
 }
 .finder-cta:hover { opacity: .96; }
-.finder-cta:disabled { opacity: .45; cursor: not-allowed; animation: none; transform: none; }
+.finder-cta:disabled { opacity: .45; cursor: not-allowed; animation: none; }
 .finder-note {
   margin: 10px 0 0; text-align: center; font-size: .72rem; color: var(--muted);
 }
@@ -1348,7 +1361,7 @@ body.onboarding-active .panel { padding-bottom: 28px; }
   }
   .home-scroll {
     position: absolute;
-    inset: 12px 0 92px; /* top / sides / leave room for composer */
+    inset: 12px 14px 92px; /* horizontal inset so CTA doesn't kiss the edges */
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
@@ -1357,7 +1370,8 @@ body.onboarding-active .panel { padding-bottom: 28px; }
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 100%;
+    width: auto;
+    box-sizing: border-box;
   }
   .home-title {
     font-size: clamp(1.2rem, 5.4vw, 1.5rem);
@@ -1394,10 +1408,22 @@ body.onboarding-active .panel { padding-bottom: 28px; }
   .finder-pills { gap: 6px; margin-top: 8px; }
   .finder-pill { padding: 7px 11px; font-size: .7rem; }
   #finder-cat-pills { display: none; }
+  body.home-finder-done.view-home .home-hero {
+    justify-content: center;
+  }
+  body.home-finder-done .home-scroll {
+    justify-content: center;
+    inset: 12px 14px 100px;
+  }
+  body.home-finder-done .home-title {
+    margin: 0 0 20px;
+  }
   .finder-cta {
     margin-top: 4px;
     padding: 13px 16px; font-size: .88rem;
     flex-shrink: 0;
+    width: 100%;
+    max-width: 100%;
   }
   .finder-note { display: none; }
   .steven-recs { margin: 16px 0 4px; }
@@ -2716,6 +2742,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 </aside>
 
 <script src="/js/changelog.js?v=20260729a" defer></script>
-<script src="/js/gpt-app.js?v=20260729ac" defer></script>
+<script src="/js/gpt-app.js?v=20260729ad" defer></script>
 </body>
 </html>
