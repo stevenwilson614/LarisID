@@ -4409,9 +4409,10 @@ function bindTrendingCards(root) {
 
 // ── Intent routing (chips + free text → data-backed answers) ─────────────
 function detectIntent(lower) {
-  // Category-scoped discovery (“fashion trending”, “skincare terlaris”) should
-  // not be swallowed by the global trending chip — those go to DB product cards.
-  if (detectCategoryFromText(lower) && isProductDiscoveryAsk(lower)) return null;
+  // Broad category discovery (“fashion trending”) should not be swallowed by
+  // the global trending chip — specific nouns (“dresses”) still fall through.
+  if (detectCategoryFromText(lower) && isProductDiscoveryAsk(lower)
+      && isCategoryLevelAsk(lower, detectCategoryFromText(lower))) return null;
   if (/trending|naik daun|lagi (rame|ramai)|produk (yang )?(lagi )?naik|lagi naik/.test(lower)) return 'trending';
   if (/kompetisi rendah|persaingan rendah|belum banyak (penjual|saingan)|cari niche/.test(lower)) return 'lowcomp';
   if (/(hitung|estimasi|berapa).{0,24}(profit|untung|margin)|^profit\b/.test(lower)) return 'profit';
@@ -4960,6 +4961,9 @@ const SEARCH_SYNONYMS = {
   kuliner: ['dapur', 'peralatan masak'],
   skincare: ['kecantikan', 'serum', 'moisturizer'],
   fashion: ['baju', 'pakaian'],
+  dress: ['gaun', 'dresses', 'dress wanita', 'baju pesta', 'gaun pesta', 'maxi dress'],
+  dresses: ['gaun', 'dress', 'dress wanita', 'baju pesta', 'gaun pesta', 'maxi dress'],
+  gaun: ['dress', 'dresses', 'dress wanita', 'baju pesta', 'gaun pesta'],
   kayu: ['wood', 'wooden', 'bambu', 'bamboo', 'kerajinan kayu', 'furniture kayu'],
   wood: ['kayu', 'wooden', 'bambu', 'kerajinan kayu'],
   wooden: ['kayu', 'wood', 'bambu'],
@@ -4995,6 +4999,10 @@ const PHRASE_SYNONYMS = {
   'pola kristik': ['kristik', 'pola sulam', 'kruissteek', 'cross stitch'],
   'kristick': ['kristik', 'cross stitch', 'kruissteek'],
   'sulaman': ['sulam', 'kristik', 'bordir', 'benang sulam'],
+  'dress wanita': ['gaun', 'dress', 'dresses', 'baju pesta', 'maxi dress'],
+  'baju pesta': ['gaun', 'gaun pesta', 'dress', 'dress wanita'],
+  'gaun pesta': ['baju pesta', 'gaun', 'dress', 'dress wanita'],
+  'maxi dress': ['gaun', 'dress', 'dress wanita', 'gaun panjang'],
 };
 
 // When the catalog has nothing like the ask, suggest the nearest sellable niches.
@@ -5080,6 +5088,47 @@ function isBareProductQuery(lower) {
   return terms.length > 0;
 }
 
+/** Broad category labels only — not specific nouns that merely map into a category. */
+const CAT_BROAD_ALIASES = {
+  'Fashion': ['fashion', 'pakaian', 'baju'],
+  'Kecantikan': ['kecantikan', 'beauty', 'skincare', 'kosmetik', 'makeup'],
+  'Elektronik': ['elektronik', 'electronics'],
+  'HP & Gadget': ['hp', 'gadget', 'handphone', 'smartphone'],
+  'Dapur': ['dapur', 'kitchen'],
+  'Bayi & Anak': ['bayi', 'anak', 'baby'],
+  'Kesehatan': ['kesehatan', 'health'],
+  'Olahraga': ['olahraga', 'sport', 'fitness'],
+  'Rumah': ['rumah', 'home'],
+  'Alat Tulis': ['alat tulis', 'stationery'],
+  'Outdoor & Camping': ['outdoor', 'camping'],
+  'Motor & Mobil': ['motor', 'mobil', 'otomotif'],
+  'Hewan Peliharaan': ['hewan', 'peliharaan', 'pet'],
+  'Hobi & Kerajinan': ['hobi', 'kerajinan'],
+  'Kamar Mandi': ['kamar mandi'],
+  'Keamanan': ['keamanan'],
+  'Sepeda': ['sepeda'],
+  'Taman': ['taman'],
+  'Tanaman': ['tanaman'],
+};
+const CAT_LEVEL_ADJ = new Set(['terlaris', 'laris', 'trending', 'naik', 'daun', 'bagus', 'laku', 'rame', 'ramai', 'murah', 'baru']);
+
+/**
+ * True when the user asked for the whole category (e.g. “fashion”, “cari fashion
+ * trending”), not a specific product noun that only aliases into that category
+ * (“dresses”, “serum”, “tumbler”).
+ */
+function isCategoryLevelAsk(lower, cat) {
+  if (!cat) return false;
+  const cleaned = cleanDiscoveryQuery(lower);
+  if (!cleaned) return true;
+  const catLow = String(cat).toLowerCase();
+  if (cleaned === catLow) return true;
+  const broad = (CAT_BROAD_ALIASES[cat] || []).map((t) => t.toLowerCase());
+  const tokens = cleaned.split(/\s+/).filter(Boolean);
+  if (!tokens.length) return true;
+  return tokens.every((t) => broad.includes(t) || CAT_LEVEL_ADJ.has(t) || t === catLow);
+}
+
 function _searchTerms(text) {
   return String(text || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/)
     .filter(w => w.length >= 3 && !SEARCH_STOPWORDS.has(w));
@@ -5105,16 +5154,16 @@ function detectTopicChange(lower) {
     return { kind: 'list' };
   }
   const cat = detectCategoryFromText(lower);
-  // Category / English discovery / bare “dresses” — leave Deep Dive AI for DB search.
-  if (cat && (isProductDiscoveryAsk(lower) || isBareProductQuery(lower) || isAltProductAsk(lower))) {
+  // Broad category showcase only (“fashion trending”) — not “dresses”.
+  if (cat && isCategoryLevelAsk(lower, cat) && (isProductDiscoveryAsk(lower) || isBareProductQuery(lower))) {
     return { kind: 'category_list' };
   }
   // “Cari tumbler / carikan sepatu / show me tumbler…” — new product search.
   if (/^(cari|carikan|tunjukkan|tampilkan|show me|find|looking for)\b/.test(lower) && !/bandingkan|dibanding/.test(lower)) {
     return { kind: 'keyword_search' };
   }
-  // “How about a wood product…” / bare keyword — alternative candidate → DB search.
-  if (isAltProductAsk(lower) || isBareProductQuery(lower)) {
+  // Specific noun / “how about dresses” / bare keyword → planned DB search.
+  if (isAltProductAsk(lower) || isBareProductQuery(lower) || (cat && !isCategoryLevelAsk(lower, cat))) {
     return { kind: 'alt_search' };
   }
   return null;
@@ -5334,12 +5383,15 @@ function _staticPlan(cleaned) {
 // (works for anon + logged-in). Returns ONLY search terms — never product names.
 async function _deepseekPlan(query) {
   try {
-    const system = 'You are a product-search query planner for an Indonesian marketplace research tool. '
+    const system = 'You are a product-search query planner for an Indonesian Shopee marketplace research tool. '
       + 'Given a shopper search text, reply with ONLY strict minified JSON, no prose: '
-      + '{"queries":["short ID/EN keywords or phrases for the SAME product niche — include local '
-      + 'Indonesian synonyms, English equivalents and common misspellings, max 8"],'
+      + '{"queries":["short keywords for the SAME product niche — prefer specific Indonesian marketplace '
+      + 'terms first, then English equivalents and common misspellings, max 8"],'
       + '"exclude":["lowercase words that would pull in UNRELATED products sharing a token, max 10"]}. '
-      + 'Return real search terms only. Never invent product names, brands, prices or descriptions.';
+      + 'Rules: (1) Expand English product nouns into Indonesian seller keywords for THAT niche — '
+      + 'e.g. "dresses" → "gaun","dress wanita","baju pesta","gaun pesta"; "tumbler" → "tumbler","botol minum"; '
+      + '"serum" → "serum wajah","skincare serum". (2) Prefer specific product terms over broad category '
+      + 'labels like "fashion","pakaian","kecantikan". (3) Never invent product names, brands, prices or descriptions.';
     const res = await fetch(`${SUPA_URL}/functions/v1/claude-proxy`, {
       method: 'POST',
       headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json' },
@@ -5542,9 +5594,10 @@ async function replyWithCategoryProducts(chat, text, cat) {
   // Pasar first — "tanaman artificial" should answer with the markets it
   // matches, not 12 near-identical listings from 12 different shops.
   const place0 = parsePlaceFromQuery(text);
-  const typeHits = await searchProductTypes(place0.cleaned || text, place0.city || '', 12);
+  const q0 = cleanDiscoveryQuery(place0.cleaned || text) || (place0.cleaned || text);
+  const typeHits = await searchProductTypes(q0, place0.city || '', 12);
   if (await replyWithPasarTypes(chat, text, typeHits, {
-    loading, label: place0.cleaned || text, placeLabel: place0.label || place0.city || '',
+    loading, label: q0, placeLabel: place0.label || place0.city || '',
   })) return;
   const products = await fetchCategoryShowcase(cat, 12);
   const gate = await ensureIntentChat(chat, text.slice(0, 60), { kind: 'category_search', category: cat, q: text });
@@ -7875,11 +7928,11 @@ async function handleComposerSubmit(text) {
     }
   }
 
-  // Category showcase (“cari skincare terlaris”, “fashion trending kompetisi rendah”)
-  // — answer from the product DB with a card grid, not the global trending table
-  // and not Deep Dive AI.
+  // Category showcase only for broad category asks (“cari fashion”, “skincare
+  // trending”) — specific nouns (“dresses”) fall through to planned search.
   const catAsk = detectCategoryFromText(lower);
-  if (!inProductCtx && catAsk && (isProductDiscoveryAsk(lower) || isBareProductQuery(lower))) {
+  if (!inProductCtx && catAsk && isCategoryLevelAsk(lower, catAsk)
+      && (isProductDiscoveryAsk(lower) || isBareProductQuery(lower))) {
     setView('chat');
     let chat = activeChat();
     if (!chat) {
@@ -7949,7 +8002,7 @@ async function handleComposerSubmit(text) {
     if (!(await ensureSearchAllowed())) return;
     const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari di data…</p>`);
     const catFallback = detectCategoryFromText(text.toLowerCase());
-    if (catFallback) {
+    if (catFallback && isCategoryLevelAsk(text.toLowerCase(), catFallback)) {
       // Pasar first here too: this inline branch fires for queries that map to
       // a category ("tanaman artificial" -> Tanaman) and would otherwise show
       // 12 individual listings instead of the markets behind them.
@@ -8280,14 +8333,24 @@ async function searchProductTypes(text, city, limit = 12) {
     hits.push(r);
   }));
 
-  // Rank by how well the type name matches, then by market size.
+  // Rank by planned synonym match, then market size — so “dresses” ranks
+  // “gaun” / “dress wanita” hits above unrelated fashion types.
   const q = raw.toLowerCase();
+  const planTokens = [...new Set(
+    terms.flatMap(t => String(t).toLowerCase().split(/\s+/).filter(x => x.length > 2))
+  )];
   const qTokens = q.split(/\s+/).filter(t => t.length > 2);
   hits.forEach(h => {
     const kw = String(h.keyword || '').toLowerCase();
     let score = 0;
     if (kw === q) score += 100;
+    terms.forEach(t => {
+      const tl = String(t).toLowerCase();
+      if (kw === tl) score += 90;
+      else if (kw.includes(tl) || tl.includes(kw)) score += 45;
+    });
     if (kw.includes(q)) score += 40;
+    planTokens.forEach(t => { if (kw.includes(t)) score += 12; });
     qTokens.forEach(t => { if (kw.includes(t)) score += 10; });
     score += Math.min(10, Math.log10(Number(h.omset_top15) || 1));
     h._score = score;
