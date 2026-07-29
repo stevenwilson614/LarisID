@@ -153,7 +153,6 @@ function _lidLogPageView() {
     }
     const vid = _lidVisitorId();
     if (!vid) return;
-    sessionStorage.setItem('_lid_pv_sent', '1');
     const q = new URLSearchParams(location.search);
     _supabase.rpc('log_page_view', {
       p_visitor_id: vid,
@@ -162,7 +161,13 @@ function _lidLogPageView() {
       p_referrer: (document.referrer || '(direct)').slice(0, 300),
       p_utm_source: q.get('utm_source') || '',
       p_is_new_session: isNewSession,
-    }).then(() => {}, () => {});
+    }).then((res) => {
+      // Require ok:true — void/204-with-no-row used to look like success.
+      if (res?.error) return;
+      const body = res?.data;
+      if (!(body && typeof body === 'object' && body.ok === true)) return;
+      try { sessionStorage.setItem('_lid_pv_sent', '1'); } catch (_) {}
+    }, () => {});
   } catch (_) {}
 }
 
