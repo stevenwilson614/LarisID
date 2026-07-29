@@ -527,15 +527,13 @@ html.session-restoring body::after {
 }
 .prod-card-views svg { display: block; width: 11px; height: 11px; stroke: currentColor; }
 .ddr-views {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 4px 9px; border-radius: 999px;
-  background: #F3F4F6; border: 1px solid var(--line);
-  color: var(--ink); font-size: .68rem; font-weight: 700;
-  white-space: nowrap; flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 4px;
+  color: var(--muted); font-size: .72rem; font-weight: 650;
+  white-space: nowrap; flex-shrink: 0; line-height: 1.2;
 }
-.ddr-views svg { width: 13px; height: 13px; stroke: currentColor; }
-.ddr-views-num { font-weight: 800; }
-.ddr-views-lbl { font-size: .58rem; font-weight: 600; color: var(--muted); }
+.ddr-views svg { width: 13px; height: 13px; stroke: currentColor; flex-shrink: 0; }
+.ddr-views-num { font-weight: 800; color: var(--ink-soft); }
+.ddr-views-lbl { font-size: .72rem; font-weight: 600; color: var(--muted); }
 .prod-card-body { padding: 12px; }
 .prod-card-name {
   font-size: .8125rem; font-weight: 600; line-height: 1.35;
@@ -1421,10 +1419,15 @@ body.onboarding-active .panel { padding-bottom: 28px; }
   display: flex; gap: 16px; border: 1px solid var(--line);
   border-radius: 18px; padding: 18px; flex-wrap: wrap;
 }
-.ddr-header > img, .ddr-header .ph {
+.ddr-media {
+  display: flex; flex-direction: row; align-items: flex-end;
+  gap: 10px; flex-shrink: 0; min-width: 0;
+}
+.ddr-media > img, .ddr-media > .ph {
   width: 160px; height: 160px; border-radius: 16px; object-fit: cover;
   background: var(--bg-user); flex-shrink: 0; display: block;
 }
+.ddr-media > .ddr-views { margin: 0 0 4px; }
 /* Shopee-style gallery: main photo + thumbnail strip (product-type Deep Dive) */
 .ddr-gallery {
   width: 220px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px;
@@ -1468,12 +1471,16 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 .ddr-gallery-thumb:hover { border-color: rgba(181,32,42,.45); }
 .ddr-gallery-thumb.on:hover { border-color: var(--accent, #B5202A); }
 @media (max-width: 560px) {
-  .ddr-header > img, .ddr-header .ph {
+  .ddr-media {
+    width: 100%;
+  }
+  .ddr-media > img, .ddr-media > .ph {
     width: 128px; height: 128px; border-radius: 14px;
   }
-  .ddr-gallery { width: 100%; max-width: 280px; }
+  .ddr-gallery { width: auto; max-width: min(280px, calc(100% - 120px)); flex: 0 1 auto; }
   .ddr-gallery-main { border-radius: 14px; }
   .ddr-carousel-btn { width: 24px; height: 24px; font-size: .95rem; }
+  .ddr-head-main { flex: 1 1 100%; min-width: 0; }
 }
 .ddr-head-main { flex: 1; min-width: 220px; }
 .ddr-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -2413,6 +2420,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </aside>
 
-<script src="/js/gpt-app.js?v=20260729e" defer></script>
+<script src="/js/gpt-app.js?v=20260729f" defer></script>
 </body>
 </html>

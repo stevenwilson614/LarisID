@@ -452,7 +452,7 @@ function patchViewCountBadges(root) {
       if (Number(n) >= VIEW_COUNT_MIN) hideable.removeAttribute('hidden');
       else hideable.setAttribute('hidden', '');
     }
-    const num = el.querySelector('[data-view-num]');
+    const num = el.querySelector('[data-view-num], [data-view-num-self]');
     if (num) num.textContent = Number(n).toLocaleString('id-ID');
     else if (el.classList.contains('ddr-tile-views-val') || el.hasAttribute('data-view-num-self')) {
       el.textContent = Number(n).toLocaleString('id-ID');
@@ -6437,12 +6437,14 @@ async function openDeepDive(product, ddOpts = {}) {
       <button type="button" class="btn-ghost" id="dd-back" style="margin:0">Kembali ke chat</button>
     </div>
     <div class="ddr-header" data-dd-sec="skor">
-      ${ddHeaderMediaHtml(product, peers)}
+      <div class="ddr-media">
+        ${ddHeaderMediaHtml(product, peers)}
+        <span class="ddr-views" hidden data-view-key="${esc(viewCountKey(product.item_id, product.shop_id))}" title="Orang yang melihat produk ini di Laris tahun ini">${ico('eye', 13)}<span class="ddr-views-num" data-view-num-self>${viewersYtd.toLocaleString('id-ID')}</span><span class="ddr-views-lbl">sedang melihat</span></span>
+      </div>
       <div class="ddr-head-main">
         <div class="ddr-title-row">
           <span class="ddr-level ${product._ptype ? 'ddr-level-pasar' : 'ddr-level-produk'}" title="${product._ptype ? 'Angka di halaman ini menggambarkan seluruh pasar' : 'Angka di halaman ini hanya untuk satu listing penjual'}">${product._ptype ? 'PASAR' : 'PRODUK'}</span>
           <h1>${esc(product._ptype ? typeTitle(kw) : (product.product_name || kw || 'Produk'))}</h1>
-          <span class="ddr-views" hidden data-view-key="${esc(viewCountKey(product.item_id, product.shop_id))}" title="Orang yang melihat produk ini di Laris tahun ini">${ico('eye', 13)}<span class="ddr-views-num" data-view-num-self>${viewersYtd.toLocaleString('id-ID')}</span><span class="ddr-views-lbl">orang melihat produk ini</span></span>
           <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
         </div>
         <p class="ddr-cat">${product._ptype
