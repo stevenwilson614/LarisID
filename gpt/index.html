@@ -1053,7 +1053,7 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 
 /* Pinned product bar: the chat/deep-dive subject stays visible while scrolling */
 .product-pin {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: stretch; gap: 10px;
   padding: 7px 16px; border-bottom: 1px solid var(--line);
   background: var(--bg);
   flex-shrink: 0;
@@ -1061,22 +1061,24 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 }
 .product-pin[hidden] { display: none; }
 .product-pin img, .product-pin-ph {
-  width: 36px; height: 36px; border-radius: 8px; object-fit: cover;
+  width: 52px; min-height: 52px; align-self: stretch;
+  border-radius: 8px; object-fit: cover;
   background: var(--bg-user); cursor: zoom-in; flex-shrink: 0; border: 1px solid var(--line);
 }
-.product-pin-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.product-pin-body {
+  min-width: 0; flex: 1;
+  display: flex; flex-direction: column; gap: 6px;
+  justify-content: center;
+}
+.product-pin-main { min-width: 0; display: flex; flex-direction: column; gap: 0; }
 .product-pin-name {
   font-size: .84rem; font-weight: 700;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.product-pin-meta {
-  font-size: .72rem; color: var(--muted);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.product-pin-open { flex-shrink: 0; }
+.product-pin-meta { display: none; }
 .product-pin-tools {
   display: flex; align-items: center; gap: 6px;
-  flex-shrink: 0; max-width: min(58vw, 320px);
+  flex-shrink: 0; max-width: 100%;
   overflow-x: auto; scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
@@ -1668,11 +1670,18 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 .ddr-omset-hero {
   border: 1px solid var(--line); border-radius: 14px;
   padding: 14px 16px; background: #fff; min-width: 0;
+  text-align: left;
 }
 .ddr-omset-hero .lbl { font-size: .66rem; color: var(--muted); font-weight: 650; }
 .ddr-omset-hero .val {
-  margin-top: 4px; font-size: 1.35rem; font-weight: 800;
-  letter-spacing: -.02em; line-height: 1.2; color: var(--ink);
+  margin-top: 4px; font-size: .95rem; font-weight: 600;
+  letter-spacing: -.01em; line-height: 1.25; color: var(--ink-soft);
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px;
+}
+.ddr-omset-hero .val .dash { color: var(--muted); font-weight: 500; }
+.ddr-omset-hero .val .med {
+  font-size: 1.45rem; font-weight: 800; color: var(--accent);
+  letter-spacing: -.02em;
 }
 .ddr-omset-hero .sub { margin-top: 5px; font-size: .68rem; color: var(--muted); line-height: 1.35; }
 .ddr-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 12px 0; }
@@ -1707,13 +1716,31 @@ body.onboarding-active .panel { padding-bottom: 28px; }
     scrollbar-width: none;
   }
   .ddr-hscroll::-webkit-scrollbar { display: none; }
-  .ddr-hscroll > .ddr-card,
-  .ddr-hscroll--tiles > .ddr-tile {
+  .ddr-hscroll > .ddr-card {
     flex: 0 0 min(85vw, 340px);
     scroll-snap-align: start;
   }
+  .ddr-hscroll--tiles {
+    scroll-snap-type: none;
+  }
+  .ddr-hscroll--tiles > .ddr-tile {
+    flex: 0 0 148px;
+    width: 148px;
+    aspect-ratio: 1;
+    scroll-snap-align: none;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+  .ddr-hscroll--tiles > .ddr-tile .sub {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
   .ddr-score-stack { width: 100%; }
-  .ddr-omset-hero .val { font-size: 1.55rem; }
+  .ddr-omset-hero .val .med { font-size: 1.65rem; }
 }
 .ddr-card { border: 1px solid var(--line); border-radius: 16px; padding: 16px; min-width: 0; }
 .ddr-card h3 { margin: 0 0 12px; font-size: .88rem; font-weight: 700; }
@@ -2255,17 +2282,18 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
     <div class="product-pin" id="product-pin" hidden>
       <img id="product-pin-img" alt="" hidden>
       <span class="product-pin-ph" id="product-pin-ph" hidden></span>
-      <div class="product-pin-main">
-        <span class="product-pin-name" id="product-pin-name"></span>
-        <span class="product-pin-meta" id="product-pin-meta"></span>
+      <div class="product-pin-body">
+        <div class="product-pin-main">
+          <span class="product-pin-name" id="product-pin-name"></span>
+          <span class="product-pin-meta" id="product-pin-meta" hidden></span>
+        </div>
+        <div class="product-pin-tools" id="product-pin-tools" hidden>
+          <button type="button" class="ddr-tool-pill" data-pin-tool="analisa">Analisa</button>
+          <button type="button" class="ddr-tool-pill" data-pin-tool="kalkulator">Kalkulator</button>
+          <button type="button" class="ddr-tool-pill" data-pin-tool="kompetitor">Kompetitor</button>
+          <button type="button" class="ddr-tool-pill" data-pin-tool="serupa">Serupa</button>
+        </div>
       </div>
-      <div class="product-pin-tools" id="product-pin-tools" hidden>
-        <button type="button" class="ddr-tool-pill" data-pin-tool="analisa">Analisa</button>
-        <button type="button" class="ddr-tool-pill" data-pin-tool="kalkulator">Kalkulator</button>
-        <button type="button" class="ddr-tool-pill" data-pin-tool="kompetitor">Kompetitor</button>
-        <button type="button" class="ddr-tool-pill" data-pin-tool="serupa">Serupa</button>
-      </div>
-      <button type="button" class="btn-ghost product-pin-open" id="product-pin-open" hidden>Analisa</button>
     </div>
 
     <div class="panel" id="panel">
@@ -2678,6 +2706,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 </aside>
 
 <script src="/js/changelog.js?v=20260729a" defer></script>
-<script src="/js/gpt-app.js?v=20260729r" defer></script>
+<script src="/js/gpt-app.js?v=20260729s" defer></script>
 </body>
 </html>

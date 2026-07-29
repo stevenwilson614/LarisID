@@ -600,26 +600,22 @@ function updateProductPin() {
     if (_pinHeaderVisible) product = null; // big header still on screen
   }
   const tools = $('product-pin-tools');
-  const openBtn = $('product-pin-open');
   if (!product) {
     pin.hidden = true;
     if (tools) tools.hidden = true;
-    if (openBtn) openBtn.hidden = true;
     return;
   }
   const img = $('product-pin-img');
   const ph = $('product-pin-ph');
   if (product.image_url) { img.src = product.image_url; img.hidden = false; ph.hidden = true; }
   else { img.removeAttribute('src'); img.hidden = true; ph.hidden = false; }
-  $('product-pin-name').textContent = product.product_name || product.keyword || 'Produk';
-  const bits = [];
+  const title = product.product_name || product.keyword || 'Produk';
   const price = Number(product.price);
-  const sold = Number(product.total_sold);
-  if (Number.isFinite(price) && price > 0) bits.push(fmtRp(price));
-  if (Number.isFinite(sold) && sold > 0) bits.push(`terjual ${sold.toLocaleString('id-ID')}`);
-  $('product-pin-meta').textContent = bits.join(' · ');
+  const priceBit = Number.isFinite(price) && price > 0 ? fmtRp(price) : '';
+  $('product-pin-name').textContent = priceBit ? `${title} · ${priceBit}` : title;
+  const meta = $('product-pin-meta');
+  if (meta) { meta.textContent = ''; meta.hidden = true; }
   if (tools) tools.hidden = false;
-  if (openBtn) openBtn.hidden = true; // superseded by pin tool pills
   pin.hidden = false;
 }
 
@@ -6477,34 +6473,45 @@ function peerOmsetStats(peers) {
 function ddOmsetHeroHtml(product, peers) {
   const t = product._ptype || null;
   const peerStats = peerOmsetStats(peers);
-  let rangeHtml = '—';
-  let subHtml = 'Belum ada estimasi omzet';
+  let lo = 0;
+  let hi = 0;
+  let median = 0;
+  let subHtml = '';
+  let single = 0;
   if (t) {
-    const lo = Number(t.omset_p60) || 0;
-    const hi = Number(t.omset_p100) || 0;
-    const median = peerStats?.median || Number(t.omset_top15) || 0;
-    if (lo > 0 && hi > 0) {
-      rangeHtml = `${fmtRpShort(lo)} – ${fmtRpShort(hi)}`;
-      subHtml = median ? `Median ${fmtRpShort(median)}` : 'Est. dari penjual tipe ini';
-    } else if (Number(t.omset_top15)) {
-      rangeHtml = fmtRpShort(t.omset_top15);
-      subHtml = 'Est. dari 15 penjual teratas';
+    lo = Number(t.omset_p60) || 0;
+    hi = Number(t.omset_p100) || 0;
+    median = peerStats?.median || Number(t.omset_top15) || 0;
+    if (!(lo > 0 && hi > 0)) {
+      single = Number(t.omset_top15) || median || 0;
+      lo = hi = median = 0;
+      subHtml = single ? 'Est. dari 15 penjual teratas' : 'Belum ada estimasi omzet';
+    } else {
+      subHtml = 'P60 – median – P100';
     }
   } else {
     const own = estOmsetBulan(product);
     if (peerStats && peerStats.n >= 4) {
-      rangeHtml = `${fmtRpShort(peerStats.p25)} – ${fmtRpShort(peerStats.p75)}`;
-      subHtml = own
-        ? `Produk ini ${fmtRpShort(own)} · Median ${fmtRpShort(peerStats.median)}`
-        : `Median ${fmtRpShort(peerStats.median)}`;
+      lo = peerStats.p25;
+      hi = peerStats.p75;
+      median = peerStats.median;
+      subHtml = own ? `Produk ini ${fmtRpShort(own)}` : 'P25 – median – P75 peer';
     } else if (own) {
-      rangeHtml = fmtRpShort(own);
+      single = own;
       subHtml = 'Est. omzet listing ini / bulan';
+    } else {
+      subHtml = 'Belum ada estimasi omzet';
     }
+  }
+  let valHtml = '—';
+  if (lo > 0 && hi > 0 && median > 0) {
+    valHtml = `<span>${fmtRpShort(lo)}</span><span class="dash">–</span><span class="med">${fmtRpShort(median)}</span><span class="dash">–</span><span>${fmtRpShort(hi)}</span>`;
+  } else if (single > 0) {
+    valHtml = `<span class="med">${fmtRpShort(single)}</span>`;
   }
   return `<div class="ddr-omset-hero">
     <div class="lbl">Omzet / Bulan</div>
-    <div class="val">${rangeHtml}</div>
+    <div class="val">${valHtml}</div>
     <div class="sub">${subHtml}</div>
   </div>`;
 }
@@ -8999,10 +9006,6 @@ function wireUi() {
       : (activeChat()?.context?.product || null);
     const peers = _dd?.peers || activeChat()?.context?.peers || [];
     runDdrTool(tool, p, peers, 'product_pin');
-  });
-  $('product-pin-open')?.addEventListener('click', () => {
-    const p = activeChat()?.context?.product;
-    if (p) void openDeepDive(p);
   });
   $('img-lightbox')?.addEventListener('click', closeLightbox);
   document.addEventListener('keydown', (e) => {
