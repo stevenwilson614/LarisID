@@ -1513,34 +1513,27 @@ body.onboarding-active .panel { padding-bottom: 28px; }
   background: var(--bg-user); flex-shrink: 0; display: block;
 }
 .ddr-media > .ddr-views { margin: 0 0 4px; }
-/* Shopee-style gallery: main photo + thumbnail strip (product-type Deep Dive) */
+/* Shopee/Tokopedia-style gallery: main photo + optional thumbs (desktop) */
 .ddr-gallery {
   width: 220px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px;
 }
 .ddr-gallery-main {
   position: relative; width: 100%; aspect-ratio: 1;
   border-radius: 16px; overflow: hidden; background: var(--bg-user);
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .ddr-carousel-track { width: 100%; height: 100%; }
 .ddr-gallery-main > img[data-ddr-main] {
   width: 100%; height: 100%; object-fit: cover; display: block;
+  pointer-events: none;
 }
-.ddr-carousel-btn {
-  position: absolute; top: 50%; transform: translateY(-50%);
-  width: 28px; height: 28px; border-radius: 50%; border: none;
-  background: rgba(255,255,255,.94); color: #111;
-  font-size: 1.05rem; line-height: 1; cursor: pointer;
-  display: grid; place-items: center; padding: 0;
-  box-shadow: 0 1px 4px rgba(0,0,0,.16); z-index: 2;
-}
-.ddr-carousel-btn.prev { left: 6px; }
-.ddr-carousel-btn.next { right: 6px; }
-.ddr-carousel-btn:hover { background: #fff; }
 .ddr-carousel-count {
-  position: absolute; top: 8px; right: 8px; z-index: 2;
+  position: absolute; left: 10px; bottom: 10px; top: auto; right: auto; z-index: 2;
   background: rgba(0,0,0,.55); color: #fff;
-  font-size: .62rem; font-weight: 700; letter-spacing: .02em;
-  padding: 2px 7px; border-radius: 8px;
+  font-size: .68rem; font-weight: 700; letter-spacing: .02em;
+  padding: 3px 8px; border-radius: 8px;
 }
 .ddr-gallery-thumbs {
   display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px;
@@ -1555,17 +1548,47 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 .ddr-gallery-thumb.on { border-color: var(--accent, #B5202A); }
 .ddr-gallery-thumb:hover { border-color: rgba(181,32,42,.45); }
 .ddr-gallery-thumb.on:hover { border-color: var(--accent, #B5202A); }
-@media (max-width: 560px) {
-  .ddr-media {
+@media (max-width: 860px) {
+  /* Full-bleed hero photo like marketplace apps */
+  body.view-deepdive .panel {
+    padding-left: 0; padding-right: 0;
+  }
+  body.view-deepdive .dd-head {
+    padding: 0 14px; margin-bottom: 0 !important;
+  }
+  body.view-deepdive .ddr-header {
+    border: none; border-radius: 0; padding: 0;
+    flex-direction: column; gap: 0;
+  }
+  body.view-deepdive .ddr-media {
     width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
   }
-  .ddr-media > img, .ddr-media > .ph {
-    width: 128px; height: 128px; border-radius: 14px;
+  body.view-deepdive .ddr-gallery {
+    width: 100%; max-width: none;
   }
-  .ddr-gallery { width: auto; max-width: min(280px, calc(100% - 120px)); flex: 0 1 auto; }
-  .ddr-gallery-main { border-radius: 14px; }
-  .ddr-carousel-btn { width: 24px; height: 24px; font-size: .95rem; }
-  .ddr-head-main { flex: 1 1 100%; min-width: 0; }
+  body.view-deepdive .ddr-gallery-main {
+    border-radius: 0; width: 100%;
+  }
+  body.view-deepdive .ddr-gallery-thumbs { display: none; }
+  body.view-deepdive .ddr-media > .ddr-views {
+    margin: 8px 14px 0;
+    align-self: flex-start;
+  }
+  body.view-deepdive .ddr-head-main,
+  body.view-deepdive .ddr-score {
+    padding: 12px 14px 0;
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+  }
+  body.view-deepdive .ddr-score { align-self: stretch; }
+  body.view-deepdive #deepdive-root > *:not(.dd-head):not(.ddr-header) {
+    margin-left: 14px;
+    margin-right: 14px;
+  }
 }
 .ddr-head-main { flex: 1; min-width: 220px; }
 .ddr-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -2553,6 +2576,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 </aside>
 
 <script src="/js/changelog.js?v=20260729a" defer></script>
-<script src="/js/gpt-app.js?v=20260729o" defer></script>
+<script src="/js/gpt-app.js?v=20260729p" defer></script>
 </body>
 </html>

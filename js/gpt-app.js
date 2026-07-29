@@ -6245,6 +6245,7 @@ function ddKeywordRows(peers) {
 }
 
 /** Top photos for a Product Type Deep Dive — matview images, else peers by sold. */
+/** Deep Dive gallery images: product photo first, then peer/type photos for swipe. */
 function ddHeaderImageList(product, peers) {
   const list = [];
   const seen = new Set();
@@ -6254,32 +6255,35 @@ function ddHeaderImageList(product, peers) {
     seen.add(s);
     list.push(s);
   };
-  (product?._ptype?.images || []).forEach(push);
   if (product?.image_url) push(product.image_url);
-  if (list.length < 5 && peers?.length) {
+  (product?._ptype?.images || []).forEach(push);
+  if (list.length < 8 && peers?.length) {
     [...peers]
       .sort((a, b) => (Number(b.total_sold) || 0) - (Number(a.total_sold) || 0))
-      .forEach((p) => { if (list.length < 5) push(p.image_url); });
+      .forEach((p) => { if (list.length < 8) push(p.image_url); });
   }
-  return list.slice(0, 5);
+  return list.slice(0, 8);
 }
 
-/** Product-type Deep Dive → Shopee-style gallery (main + thumbs); listing → one image. */
+/** Swipeable photo gallery (Tokopedia-style on mobile). Desktop keeps thumbs. */
 function ddHeaderMediaHtml(product, peers) {
   const imgs = ddHeaderImageList(product, peers);
   if (!imgs.length) return '<span class="ph" aria-hidden="true"></span>';
-  if (!product._ptype || imgs.length === 1) {
-    return `<img src="${esc(imgs[0])}" alt="">`;
+  if (imgs.length === 1) {
+    return `<div class="ddr-gallery ddr-gallery--single" aria-label="Foto produk">
+      <div class="ddr-gallery-main">
+        <img src="${esc(imgs[0])}" alt="" data-ddr-main>
+      </div>
+    </div>`;
   }
-  return `<div class="ddr-gallery" data-ddr-carousel role="region" aria-roledescription="carousel" aria-label="Foto top ${imgs.length} produk tipe ini">
+  const srcsAttr = esc(JSON.stringify(imgs));
+  return `<div class="ddr-gallery" data-ddr-carousel data-ddr-srcs="${srcsAttr}" role="region" aria-roledescription="carousel" aria-label="Foto produk (${imgs.length})">
     <div class="ddr-gallery-main">
-      <img src="${esc(imgs[0])}" alt="" data-ddr-main>
-      <button type="button" class="ddr-carousel-btn prev" data-ddr-prev aria-label="Foto sebelumnya">‹</button>
-      <button type="button" class="ddr-carousel-btn next" data-ddr-next aria-label="Foto berikutnya">›</button>
+      <img src="${esc(imgs[0])}" alt="" data-ddr-main draggable="false">
       <div class="ddr-carousel-count"><span data-ddr-count>1</span>/${imgs.length}</div>
     </div>
-    <div class="ddr-gallery-thumbs" role="tablist" aria-label="Pilih foto" style="grid-template-columns:repeat(${imgs.length},1fr)">
-      ${imgs.map((u, i) => `<button type="button" class="ddr-gallery-thumb${i === 0 ? ' on' : ''}" data-ddr-dot="${i}" data-ddr-src="${esc(u)}" aria-label="Foto ${i + 1}" aria-selected="${i === 0 ? 'true' : 'false'}">
+    <div class="ddr-gallery-thumbs" role="tablist" aria-label="Pilih foto" style="grid-template-columns:repeat(${Math.min(imgs.length, 5)},1fr)">
+      ${imgs.slice(0, 5).map((u, i) => `<button type="button" class="ddr-gallery-thumb${i === 0 ? ' on' : ''}" data-ddr-dot="${i}" data-ddr-src="${esc(u)}" aria-label="Foto ${i + 1}" aria-selected="${i === 0 ? 'true' : 'false'}">
         <img src="${esc(u)}" alt="" loading="lazy" draggable="false">
       </button>`).join('')}
     </div>
@@ -6291,9 +6295,14 @@ function bindDdrCarousel(root) {
   if (!car) return;
   const main = car.querySelector('[data-ddr-main]');
   const thumbs = [...car.querySelectorAll('[data-ddr-dot]')];
-  const srcs = thumbs.map((t) => t.getAttribute('data-ddr-src') || t.querySelector('img')?.getAttribute('src') || '').filter(Boolean);
+  let srcs = [];
+  try { srcs = JSON.parse(car.getAttribute('data-ddr-srcs') || '[]'); } catch (_) { srcs = []; }
+  if (!srcs.length) {
+    srcs = thumbs.map((t) => t.getAttribute('data-ddr-src') || t.querySelector('img')?.getAttribute('src') || '').filter(Boolean);
+  }
   const countEl = car.querySelector('[data-ddr-count]');
-  if (!main || srcs.length < 2) return;
+  const stage = car.querySelector('.ddr-gallery-main');
+  if (!main || !stage || srcs.length < 2) return;
   let i = 0;
   const show = (n) => {
     i = ((n % srcs.length) + srcs.length) % srcs.length;
@@ -6305,25 +6314,30 @@ function bindDdrCarousel(root) {
     });
     if (countEl) countEl.textContent = String(i + 1);
   };
-  car.querySelector('[data-ddr-prev]')?.addEventListener('click', (e) => {
-    e.preventDefault(); e.stopPropagation(); show(i - 1);
-  });
-  car.querySelector('[data-ddr-next]')?.addEventListener('click', (e) => {
-    e.preventDefault(); e.stopPropagation(); show(i + 1);
-  });
   thumbs.forEach((t) => t.addEventListener('click', (e) => {
     e.preventDefault(); e.stopPropagation();
     show(Number(t.dataset.ddrDot) || 0);
   }));
   let sx = 0;
-  car.querySelector('.ddr-gallery-main')?.addEventListener('touchstart', (e) => {
-    sx = e.changedTouches?.[0]?.clientX || 0;
-  }, { passive: true });
-  car.querySelector('.ddr-gallery-main')?.addEventListener('touchend', (e) => {
-    const dx = (e.changedTouches?.[0]?.clientX || 0) - sx;
+  let tracking = false;
+  const onStart = (x) => { sx = x; tracking = true; };
+  const onEnd = (x) => {
+    if (!tracking) return;
+    tracking = false;
+    const dx = x - sx;
     if (Math.abs(dx) < 40) return;
     show(i + (dx < 0 ? 1 : -1));
-  }, { passive: true });
+  };
+  stage.addEventListener('touchstart', (e) => onStart(e.changedTouches?.[0]?.clientX || 0), { passive: true });
+  stage.addEventListener('touchend', (e) => onEnd(e.changedTouches?.[0]?.clientX || 0), { passive: true });
+  stage.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch') return;
+    onStart(e.clientX);
+  });
+  stage.addEventListener('pointerup', (e) => {
+    if (e.pointerType === 'touch') return;
+    onEnd(e.clientX);
+  });
 }
 
 function ddTilesHtml(product, stats, peers, series) {
@@ -7969,7 +7983,8 @@ function typeRepProduct(t) {
 }
 
 function typeCardHtml(t, absIdx, animIdx) {
-  const imgs = (t.images || []).filter(Boolean).slice(0, 5);
+  const imgs = (t.images || []).filter(Boolean);
+  const mainImg = imgs[0] || t.rep_image_url || '';
   const lo = Number(t.omset_p60) || 0;
   const hi = Number(t.omset_p100) || 0;
   const omsetVal = (lo > 0 && hi > 0)
@@ -7982,9 +7997,7 @@ function typeCardHtml(t, absIdx, animIdx) {
     ? `<span class="prod-card-views" hidden data-view-key="${esc(vk)}" title="Orang yang melihat produk ini di Laris tahun ini">${ico('eye', 11)}<span data-view-num>${viewers.toLocaleString('id-ID')}</span></span>`
     : '';
   return `<button type="button" class="prod-card ptype-card" data-ptype="${absIdx}" data-ptype-kw="${esc(t.keyword || '')}" style="animation-delay:${(animIdx % 3) * 0.06}s">
-    <div class="ptype-collage n${imgs.length || 1}">
-      ${imgs.map(u => `<img src="${esc(u)}" alt="" loading="lazy">`).join('') || '<div class="prod-card-ph"></div>'}
-    </div>
+    ${mainImg ? `<img src="${esc(mainImg)}" alt="" loading="lazy">` : '<div class="prod-card-ph"></div>'}
     <div class="prod-card-body">
       <div class="prod-card-name-row">
         <div class="prod-card-name">${esc(typeTitle(t.keyword))}</div>
