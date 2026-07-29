@@ -593,15 +593,20 @@ function updateProductPin() {
   const pin = $('product-pin');
   if (!pin) return;
   let product = null;
-  let showOpen = false;
   if (state.view === 'chat') {
     product = activeChat()?.context?.product || null;
-    showOpen = !!product;
   } else if (state.view === 'deepdive') {
     product = state.deepdiveProduct || _dd?.product || null;
     if (_pinHeaderVisible) product = null; // big header still on screen
   }
-  if (!product) { pin.hidden = true; return; }
+  const tools = $('product-pin-tools');
+  const openBtn = $('product-pin-open');
+  if (!product) {
+    pin.hidden = true;
+    if (tools) tools.hidden = true;
+    if (openBtn) openBtn.hidden = true;
+    return;
+  }
   const img = $('product-pin-img');
   const ph = $('product-pin-ph');
   if (product.image_url) { img.src = product.image_url; img.hidden = false; ph.hidden = true; }
@@ -613,8 +618,8 @@ function updateProductPin() {
   if (Number.isFinite(price) && price > 0) bits.push(fmtRp(price));
   if (Number.isFinite(sold) && sold > 0) bits.push(`terjual ${sold.toLocaleString('id-ID')}`);
   $('product-pin-meta').textContent = bits.join(' · ');
-  const openBtn = $('product-pin-open');
-  if (openBtn) openBtn.hidden = !showOpen;
+  if (tools) tools.hidden = false;
+  if (openBtn) openBtn.hidden = true; // superseded by pin tool pills
   pin.hidden = false;
 }
 
@@ -1409,11 +1414,12 @@ function renderGptUsage() {
 
   pills.forEach(pill => {
     pill.title = title;
+    const scope = pill.closest('[data-usage-wrap]') || pill;
     const wrap = pill.querySelector('.usage-ring-wrap');
     const prog = pill.querySelector('.prog');
     const numEl = pill.querySelector('.usage-ring-num');
-    const popTitleEl = pill.querySelector('.usage-pop-title');
-    const popSubEl = pill.querySelector('.usage-pop-sub');
+    const popTitleEl = scope.querySelector('.usage-pop-title');
+    const popSubEl = scope.querySelector('.usage-pop-sub');
     if (numEl) numEl.textContent = numText;
     if (wrap) wrap.dataset.tone = tone;
     if (prog) {
@@ -1439,6 +1445,30 @@ function setUsagePopOpen(pill, open) {
   document.querySelectorAll('[data-usage-pill]').forEach(p => {
     p.setAttribute('aria-expanded', p === pill && open ? 'true' : 'false');
   });
+  document.querySelectorAll('[data-usage-pop]').forEach(pop => {
+    pop.classList.remove('is-open');
+    pop.style.top = '';
+    pop.style.left = '';
+    pop.style.right = '';
+    pop.style.bottom = '';
+  });
+  if (!pill || !open) return;
+  const wrap = pill.closest('[data-usage-wrap]') || pill.parentElement;
+  const pop = wrap?.querySelector?.('[data-usage-pop]');
+  if (!pop) return;
+  const r = pill.getBoundingClientRect();
+  const width = Math.min(240, window.innerWidth - 32);
+  let left = Math.round(r.right - width);
+  left = Math.max(16, Math.min(left, window.innerWidth - width - 16));
+  const bottom = Math.round(window.innerHeight - r.top + 10);
+  pop.classList.add('is-open');
+  pop.style.position = 'fixed';
+  pop.style.width = `${width}px`;
+  pop.style.left = `${left}px`;
+  pop.style.right = 'auto';
+  pop.style.bottom = `${bottom}px`;
+  pop.style.top = 'auto';
+  pop.style.zIndex = '80';
 }
 
 function wireUsagePill() {
@@ -1454,7 +1484,10 @@ function wireUsagePill() {
   });
   if (!wireUsagePill._doc) {
     wireUsagePill._doc = true;
-    document.addEventListener('click', () => setUsagePopOpen(null, false));
+    document.addEventListener('click', (e) => {
+      if (e.target?.closest?.('[data-usage-pill], [data-usage-pop]')) return;
+      setUsagePopOpen(null, false);
+    });
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') setUsagePopOpen(null, false);
     });
@@ -1514,7 +1547,15 @@ function openChangelog() {
       </div>`).join('')
     : '<p class="dd-sub">Belum ada catatan perubahan.</p>';
   modal.hidden = false;
+  modal.classList.add('open');
   void logUserEvent('changelog_open', { ui: 'gpt' });
+}
+
+function closeChangelog() {
+  const modal = $('changelog-modal');
+  if (!modal) return;
+  modal.classList.remove('open');
+  modal.hidden = true;
 }
 
 function formatIdDate(iso) {
@@ -6422,11 +6463,65 @@ function bindDdrCarousel(root) {
   });
 }
 
+function peerOmsetStats(peers) {
+  const omsets = (peers || []).map(estOmsetBulan).filter(n => n > 0).sort((a, b) => a - b);
+  if (!omsets.length) return null;
+  const mid = (arr) => {
+    const i = Math.floor(arr.length / 2);
+    return arr.length % 2 ? arr[i] : Math.round((arr[i - 1] + arr[i]) / 2);
+  };
+  const at = (p) => omsets[Math.min(omsets.length - 1, Math.max(0, Math.round((omsets.length - 1) * p)))];
+  return { n: omsets.length, median: mid(omsets), p25: at(0.25), p75: at(0.75), min: omsets[0], max: omsets[omsets.length - 1] };
+}
+
+function ddOmsetHeroHtml(product, peers) {
+  const t = product._ptype || null;
+  const peerStats = peerOmsetStats(peers);
+  let rangeHtml = '—';
+  let subHtml = 'Belum ada estimasi omzet';
+  if (t) {
+    const lo = Number(t.omset_p60) || 0;
+    const hi = Number(t.omset_p100) || 0;
+    const median = peerStats?.median || Number(t.omset_top15) || 0;
+    if (lo > 0 && hi > 0) {
+      rangeHtml = `${fmtRpShort(lo)} – ${fmtRpShort(hi)}`;
+      subHtml = median ? `Median ${fmtRpShort(median)}` : 'Est. dari penjual tipe ini';
+    } else if (Number(t.omset_top15)) {
+      rangeHtml = fmtRpShort(t.omset_top15);
+      subHtml = 'Est. dari 15 penjual teratas';
+    }
+  } else {
+    const own = estOmsetBulan(product);
+    if (peerStats && peerStats.n >= 4) {
+      rangeHtml = `${fmtRpShort(peerStats.p25)} – ${fmtRpShort(peerStats.p75)}`;
+      subHtml = own
+        ? `Produk ini ${fmtRpShort(own)} · Median ${fmtRpShort(peerStats.median)}`
+        : `Median ${fmtRpShort(peerStats.median)}`;
+    } else if (own) {
+      rangeHtml = fmtRpShort(own);
+      subHtml = 'Est. omzet listing ini / bulan';
+    }
+  }
+  return `<div class="ddr-omset-hero">
+    <div class="lbl">Omzet / Bulan</div>
+    <div class="val">${rangeHtml}</div>
+    <div class="sub">${subHtml}</div>
+  </div>`;
+}
+
+function ddToolPillsHtml() {
+  return `<div class="ddr-tool-pills" role="toolbar" aria-label="Alat Deep Dive">
+    <button type="button" class="ddr-tool-pill" data-ddr-tool="analisa">Analisa</button>
+    <button type="button" class="ddr-tool-pill" data-ddr-tool="kalkulator">Kalkulator</button>
+    <button type="button" class="ddr-tool-pill" data-ddr-tool="kompetitor">Kompetitor</button>
+    <button type="button" class="ddr-tool-pill" data-ddr-tool="serupa">Serupa</button>
+  </div>`;
+}
+
 function ddTilesHtml(product, stats, peers, series) {
   // Opened from a Product Type card → tiles describe the TYPE's market
-  // (top-15-seller omset, median price band), not the anchor listing.
+  // (median price band), not the anchor listing. Omzet lives in ddr-omset-hero.
   const t = product._ptype || null;
-  const omset = t?.omset_top15 ? Number(t.omset_top15) : estOmsetBulan(product);
   const spd = Number(product.sold_per_day);
   const unitMo = Number.isFinite(spd) && spd > 0 ? Math.round(spd * 30) : 0;
   const price = t ? Number(t.price_median) || 0 : Number(product.price) || 0;
@@ -6435,26 +6530,15 @@ function ddTilesHtml(product, stats, peers, series) {
   peers.forEach(p => { const l = (p.location || '').trim(); if (l) locCount.set(l, (locCount.get(l) || 0) + 1); });
   const topLoc = [...locCount.entries()].sort((a, b) => b[1] - a[1])[0];
   const shopN = new Set(peers.map(p => String(p.shop_id))).size;
-  // Market momentum from the real monthly series (last 2 complete months).
-  let delta = null;
-  if (series && series.length >= 2) {
-    const a = series[series.length - 1], b = series[series.length - 2];
-    if (b && b.units > 0) delta = Math.round((a.units - b.units) / b.units * 100);
-  }
   const rateSub = unitMo
     ? 'Dari selisih scrape produk (terkoreksi bucket/ulasan)'
     : 'Belum ada delta scrape — bukan estimasi dari total terjual';
-  const deltaHtml = delta == null
-    ? `<div class="sub">${rateSub}</div>`
-    : `<span class="tile-delta ${delta >= 0 ? 'up' : 'down'}">${ico('arrowUp', 10)} ${delta >= 0 ? '+' : ''}${delta}% pasar vs bulan sebelumnya</span>`;
-  const omsetSub = t ? '<div class="sub">Est. dari 15 penjual teratas tipe ini</div>' : deltaHtml;
   const unitVal = t
     ? (Number(t.avg_sold) || 0) ? (Number(t.avg_sold)).toLocaleString('id-ID') + ' unit' : '—'
     : unitMo ? unitMo.toLocaleString('id-ID') + ' unit' : '—';
   const unitLbl = t ? 'Rata² Terjual / Listing' : 'Est. Penjualan / Bulan';
   const unitSub = t ? 'Rata-rata unit terjual per listing tipe ini' : rateSub;
-  return `<div class="ddr-tiles">
-    <div class="ddr-tile"><span class="ico" style="background:var(--green-bg);color:var(--green)">${ico('trendUp', 14)}</span><div class="lbl">Est. Omzet / Bulan</div><div class="val">${omset ? fmtRpShort(omset) : '—'}</div>${t ? omsetSub + (deltaHtml.startsWith('<span') ? deltaHtml : '') : deltaHtml}</div>
+  return `<div class="ddr-hscroll ddr-hscroll--tiles">
     <div class="ddr-tile"><span class="ico" style="background:var(--blue-bg);color:var(--blue)">${ico('box', 14)}</span><div class="lbl">${unitLbl}</div><div class="val">${unitVal}</div><div class="sub">${unitSub}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--amber-bg);color:var(--amber)">${ico('tag', 14)}</span><div class="lbl">${t ? 'Harga Umum' : 'Harga Produk'}</div><div class="val">${fmtRp(price)}</div><div class="sub">${t ? `Rentang pasar ${fmtRpShort(t.price_min)} – ${fmtRpShort(t.price_max)}` : vsMed == null ? 'Median pasar belum ada' : vsMed === 0 ? 'Sama dengan median pasar' : `${Math.abs(vsMed)}% ${vsMed > 0 ? 'di atas' : 'di bawah'} median pasar`}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--violet-bg);color:var(--violet)">${ico('pin', 14)}</span><div class="lbl">Lokasi Terbanyak</div><div class="val">${topLoc ? esc(topLoc[0]) : '—'}</div><div class="sub">${topLoc ? `${topLoc[1]} penjual dari kota ini` : 'Belum ada data lokasi'}</div></div>
@@ -6623,6 +6707,59 @@ const _ddBandPlugin = {
     ctx.restore();
   },
 };
+
+
+function runDdrTool(tool, product, peers, via) {
+  const p = product || state.deepdiveProduct || activeChat()?.context?.product || null;
+  const peerList = peers || _dd?.peers || [];
+  if (!p && tool !== 'analisa') return;
+  if (tool === 'analisa') {
+    if (state.view !== 'deepdive') {
+      if (p) void openDeepDive(p);
+      return;
+    }
+    const panel = $('panel');
+    const target = document.querySelector('.ddr-hscroll--graphs') || document.querySelector('[data-dd-sec="tren"]');
+    if (panel && target) {
+      const top = target.getBoundingClientRect().top - panel.getBoundingClientRect().top + panel.scrollTop - 12;
+      panel.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    }
+    void logUserEvent('deepdive_section', { ui: 'gpt', section: 'analisa', via: via || 'click', keyword: p?.keyword || '' });
+    return;
+  }
+  const price = Number(p.price) || 0;
+  if (tool === 'kalkulator') {
+    void logUserEvent('deepdive_section', { ui: 'gpt', section: 'profit_cta', via: via || 'click', keyword: p.keyword || '' });
+    openCalcPanel({
+      price,
+      cogs: Math.round(price * 0.33),
+      name: (p.product_name || p.keyword || '').slice(0, 80),
+      via: via || 'deepdive',
+    });
+    return;
+  }
+  if (tool === 'kompetitor') {
+    void logUserEvent('deepdive_section', { ui: 'gpt', section: 'kompetitor_panel', via: via || 'click', keyword: p.keyword || '' });
+    openKompPanel({ product: p, peers: peerList, via: via || 'deepdive' });
+    return;
+  }
+  if (tool === 'serupa') {
+    void logUserEvent('deepdive_section', { ui: 'gpt', section: 'serupa_panel', via: via || 'click', keyword: p.keyword || '' });
+    openSerupaPanel({ product: p, peers: peerList, via: via || 'deepdive' });
+  }
+}
+
+function wireDdrToolPills(root, product, peers) {
+  root?.querySelectorAll?.('[data-ddr-tool]')?.forEach((btn) => {
+    if (btn.dataset.boundTool) return;
+    btn.dataset.boundTool = '1';
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      runDdrTool(btn.getAttribute('data-ddr-tool'), product, peers, 'deepdive_pill');
+    });
+  });
+}
 
 async function openDeepDive(product, ddOpts = {}) {
   if (!currentUser) {
@@ -6867,11 +7004,15 @@ async function openDeepDive(product, ddOpts = {}) {
           <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
         </div>
         <p class="ddr-cat">${esc(ddKotaLabel(product, peers))}</p>
+        ${ddToolPillsHtml()}
       </div>
-      <div class="ddr-score">
-        <div class="lbl">Skor Produk</div>
-        <div class="num">${scoreInfo.score}<span>/100</span></div>
-        <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
+      <div class="ddr-score-stack">
+        <div class="ddr-score">
+          <div class="lbl">Skor Produk</div>
+          <div class="num">${scoreInfo.score}<span>/100</span></div>
+          <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
+        </div>
+        ${ddOmsetHeroHtml(product, peers)}
       </div>
     </div>
     ${ddTilesHtml(product, stats, peers, series)}
@@ -6953,7 +7094,6 @@ async function openDeepDive(product, ddOpts = {}) {
       <button type="button" class="btn-ghost" id="btn-serupa-from-dd">Lihat produk serupa</button>
       <button type="button" class="btn-ghost" id="btn-more-from-dd">Tampilkan produk lain</button>
     </div>
-    <p class="ddr-caption" style="margin-top:10px">Semua angka dari data Shopee via LarisID — bukan tebakan AI. Ketik pertanyaan di bawah untuk tanya AI tentang produk ini.</p>
   `;
 
   $('dd-back')?.addEventListener('click', () => {
@@ -6974,6 +7114,7 @@ async function openDeepDive(product, ddOpts = {}) {
   });
   wireKompClicks(root, peers);
   bindDdrCarousel(root);
+  wireDdrToolPills(root, product, peers);
   $('ddr-komp-more')?.addEventListener('click', () => {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'kompetitor', via: 'click', keyword: kw || '' });
   });
@@ -8846,7 +8987,19 @@ function wireUi() {
     if (e.target === e.currentTarget) closeProfileNudge();
   });
 
-  // Pinned product bar → reopen the analysis; images → lightbox.
+  // Pinned product bar tools (Analisa / Kalkulator / Kompetitor / Serupa).
+  $('product-pin-tools')?.addEventListener('click', (e) => {
+    const btn = e.target?.closest?.('[data-pin-tool]');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const tool = btn.getAttribute('data-pin-tool');
+    const p = state.view === 'deepdive'
+      ? (state.deepdiveProduct || _dd?.product)
+      : (activeChat()?.context?.product || null);
+    const peers = _dd?.peers || activeChat()?.context?.peers || [];
+    runDdrTool(tool, p, peers, 'product_pin');
+  });
   $('product-pin-open')?.addEventListener('click', () => {
     const p = activeChat()?.context?.product;
     if (p) void openDeepDive(p);
@@ -8889,8 +9042,8 @@ function wireUi() {
   document.querySelectorAll('.brand-beta').forEach(el => {
     el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openChangelog(); });
   });
-  $('changelog-close')?.addEventListener('click', () => { const m = $('changelog-modal'); if (m) m.hidden = true; });
-  $('changelog-modal')?.addEventListener('click', e => { if (e.target.id === 'changelog-modal') e.target.hidden = true; });
+  $('changelog-close')?.addEventListener('click', () => closeChangelog());
+  $('changelog-modal')?.addEventListener('click', e => { if (e.target.id === 'changelog-modal') closeChangelog(); });
   $('btn-admin')?.addEventListener('click', () => openAdminView());
   $('admin-refresh')?.addEventListener('click', () => void loadAdminDirectory());
   $('admin-sample-new')?.addEventListener('click', () => adminSampleNewUser());
