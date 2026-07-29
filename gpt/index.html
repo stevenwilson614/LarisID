@@ -89,7 +89,7 @@
   --line: #e5e5e5;
   --putih: #ffffff;
   --sidebar-w: 288px;
-  --composer-h: 88px;
+  --composer-h: 76px;
   --font: "Plus Jakarta Sans", system-ui, sans-serif;
   --ease: cubic-bezier(.22,1,.36,1);
   --radius: 24px;
@@ -954,7 +954,7 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 /* Composer — floating pill like Gemini */
 .composer-dock {
   position: absolute; left: 0; right: 0; bottom: 0;
-  padding: 8px 16px 20px;
+  padding: 8px 16px 10px;
   background: linear-gradient(180deg, transparent, var(--bg) 36%);
   z-index: 10;
 }
@@ -1826,7 +1826,14 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 .composer-chips {
   max-width: 720px; margin: 0 auto 8px;
   display: flex; gap: 8px; overflow-x: auto;
-  scrollbar-width: none; padding: 2px;
+  scrollbar-width: none; padding: 10px 2px 2px;
+  position: relative;
+}
+.composer-chips:not([hidden])::before {
+  content: "";
+  position: absolute; top: 0; left: 12px; right: 12px;
+  height: 1px; background: var(--line, #e5e5e5);
+  pointer-events: none;
 }
 .composer-chips::-webkit-scrollbar { display: none; }
 .composer-chips .chip {
@@ -1835,6 +1842,11 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 }
 body.view-deepdive .composer-chips,
 body.thread-wide .composer-chips { max-width: 1080px; }
+body.view-deepdive .composer-chips:not([hidden])::before,
+body.thread-wide .composer-chips:not([hidden])::before {
+  left: 0; right: 0;
+}
+.ddr-bottom-space { height: 72px; }
 
 /* Sidebar location card */
 .side-loc-card {
@@ -2708,6 +2720,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 </aside>
 
 <script src="/js/changelog.js?v=20260729a" defer></script>
-<script src="/js/gpt-app.js?v=20260729u" defer></script>
+<script src="/js/gpt-app.js?v=20260729v" defer></script>
 </body>
 </html>

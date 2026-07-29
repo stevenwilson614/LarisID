@@ -7211,20 +7211,7 @@ async function openDeepDive(product, ddOpts = {}) {
       </div>
       ${ddKompetitorTableHtml(share)}
     </div>
-    <div class="ddr-hscroll ddr-hscroll--text">
-      <div class="ddr-card" data-dd-sec="strategi">
-        <h3>Rekomendasi Strategi</h3>
-        ${ddStrategyHtml(product, stats, niche, kwRows)}
-      </div>
-      <div class="ddr-card" data-dd-sec="keyword">
-        <h3>Top Keyword</h3>
-        ${ddKeywordTableHtml(kwRows, peers.length)}
-      </div>
-    </div>
-    <div class="ddr-dd-actions">
-      <button type="button" class="btn-ghost" id="btn-serupa-from-dd">Lihat produk serupa</button>
-      <button type="button" class="btn-ghost" id="btn-more-from-dd">Tampilkan produk lain</button>
-    </div>
+    <div class="ddr-bottom-space" aria-hidden="true"></div>
   `;
 
   $('dd-back')?.addEventListener('click', () => {
@@ -7233,11 +7220,6 @@ async function openDeepDive(product, ddOpts = {}) {
     const card = document.querySelector(`#chat-thread [data-dd-card="${prodKey(product)}"]`);
     if (card) scrollToContentStart(card);
     else scrollPanelToTop();
-  });
-  $('btn-more-from-dd')?.addEventListener('click', () => void openMoreProductsDirectory());
-  $('btn-serupa-from-dd')?.addEventListener('click', () => {
-    void logUserEvent('deepdive_section', { ui: 'gpt', section: 'serupa_panel', via: 'click', keyword: kw || '' });
-    openSerupaPanel({ product, peers, via: 'deepdive' });
   });
   $('ddr-komp-panel')?.addEventListener('click', () => {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'kompetitor_panel', via: 'click', keyword: kw || '' });
