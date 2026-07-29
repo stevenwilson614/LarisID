@@ -1670,22 +1670,34 @@ body.onboarding-active .panel { padding-bottom: 28px; }
 .ddr-omset-hero {
   border: 1px solid var(--line); border-radius: 14px;
   padding: 14px 16px; background: #fff; min-width: 0;
-  text-align: left;
+  text-align: center;
 }
 .ddr-omset-hero .lbl { font-size: .66rem; color: var(--muted); font-weight: 650; }
 .ddr-omset-hero .val {
-  margin-top: 4px; font-size: 1rem; font-weight: 650;
-  letter-spacing: -.01em; line-height: 1.25; color: var(--ink);
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px;
+  margin-top: 6px; font-size: 1rem; font-weight: 650;
+  letter-spacing: -.04em; line-height: 1.2; color: var(--ink);
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 0 8px;
 }
 .ddr-omset-hero .val .lo,
-.ddr-omset-hero .val .hi { color: var(--ink-soft); font-weight: 650; }
-.ddr-omset-hero .val .dash { color: var(--muted); font-weight: 500; }
-.ddr-omset-hero .val .med {
-  font-size: 1.45rem; font-weight: 800; color: var(--accent);
-  letter-spacing: -.02em;
+.ddr-omset-hero .val .hi {
+  color: var(--ink-soft); font-weight: 650;
+  display: inline-flex; align-items: baseline; gap: 0;
 }
-.ddr-omset-hero .sub { margin-top: 5px; font-size: .68rem; color: var(--muted); line-height: 1.35; }
+.ddr-omset-hero .val .med {
+  font-size: 1.72rem; font-weight: 800; color: var(--accent);
+  letter-spacing: -.05em;
+  display: inline-flex; align-items: baseline; gap: 0;
+}
+.ddr-omset-hero .val .rp {
+  font-size: .62em; font-weight: 650; margin-right: 1px;
+  letter-spacing: 0; opacity: .85;
+}
+.ddr-omset-hero .val .amt { letter-spacing: -.06em; }
+.ddr-omset-hero .val .dash {
+  width: 1.5px; height: 1.15em; align-self: center; flex-shrink: 0;
+  background: #cfcfcf; border-radius: 1px;
+}
 .ddr-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 12px 0; }
 @media (min-width: 880px) { .ddr-tiles { grid-template-columns: repeat(5, 1fr); } }
 .ddr-tile { border: 1px solid var(--line); border-radius: 14px; padding: 12px; min-width: 0; }
@@ -1742,7 +1754,7 @@ body.onboarding-active .panel { padding-bottom: 28px; }
     overflow: hidden;
   }
   .ddr-score-stack { width: 100%; }
-  .ddr-omset-hero .val .med { font-size: 1.65rem; }
+  .ddr-omset-hero .val .med { font-size: 1.85rem; }
 }
 .ddr-card { border: 1px solid var(--line); border-radius: 16px; padding: 16px; min-width: 0; }
 .ddr-card h3 { margin: 0 0 12px; font-size: .88rem; font-weight: 700; }
@@ -2720,6 +2732,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 </aside>
 
 <script src="/js/changelog.js?v=20260729a" defer></script>
-<script src="/js/gpt-app.js?v=20260729v" defer></script>
+<script src="/js/gpt-app.js?v=20260729w" defer></script>
 </body>
 </html>

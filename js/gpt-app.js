@@ -6162,6 +6162,17 @@ function fmtRpShort(n) {
   return fmtRp(n);
 }
 
+/** Omzet hero: small Rp + tight amount (no space after Rp). */
+function fmtOmsetHeroAmt(n) {
+  n = Number(n) || 0;
+  let amt = '0';
+  if (n >= 1e9) amt = (n / 1e9).toFixed(1).replace(/\.0$/, '') + 'M';
+  else if (n >= 1e6) amt = (n / 1e6).toFixed(n >= 1e8 ? 0 : 1).replace(/\.0$/, '') + 'jt';
+  else if (n >= 1e3) amt = Math.round(n / 1e3) + 'rb';
+  else amt = String(Math.round(n));
+  return `<span class="rp">Rp</span><span class="amt">${amt}</span>`;
+}
+
 // Deterministic 0–100 score from real signals only.
 function ddScore(product, stats, niche) {
   const odds = calcBreakoutOdds(Number(product.price) || 0, niche);
@@ -6585,7 +6596,6 @@ function ddOmsetHeroHtml(product, peers) {
   let lo = 0;
   let hi = 0;
   let median = 0;
-  let subHtml = '';
   let single = 0;
 
   if (t) {
@@ -6598,13 +6608,10 @@ function ddOmsetHeroHtml(product, peers) {
       lo = peerStats.p25;
       hi = peerStats.p75;
       median = peerStats.median || median;
-      subHtml = 'P25 – median – P75 dari listing peer';
     } else if (lo > 0 && hi > 0) {
       if (!(median > 0)) median = Math.round((lo + hi) / 2);
-      subHtml = 'P60 – median – P100';
     } else {
       single = Number(t.omset_top15) || median || 0;
-      subHtml = single ? 'Est. dari 15 penjual teratas' : 'Belum ada estimasi omzet';
     }
   } else {
     const own = estOmsetBulan(product);
@@ -6612,26 +6619,21 @@ function ddOmsetHeroHtml(product, peers) {
       lo = peerStats.p25;
       hi = peerStats.p75;
       median = peerStats.median;
-      subHtml = own ? `Produk ini ${fmtRpShort(own)}` : 'P25 – median – P75 peer';
     } else if (own) {
       single = own;
-      subHtml = 'Est. omzet listing ini / bulan';
-    } else {
-      subHtml = 'Belum ada estimasi omzet';
     }
   }
 
   let valHtml = '—';
   if (lo > 0 && hi > 0) {
     if (!(median > 0)) median = Math.round((lo + hi) / 2);
-    valHtml = `<span class="lo">${fmtRpShort(lo)}</span><span class="dash">–</span><span class="med">${fmtRpShort(median)}</span><span class="dash">–</span><span class="hi">${fmtRpShort(hi)}</span>`;
+    valHtml = `<span class="lo">${fmtOmsetHeroAmt(lo)}</span><span class="dash" aria-hidden="true"></span><span class="med">${fmtOmsetHeroAmt(median)}</span><span class="dash" aria-hidden="true"></span><span class="hi">${fmtOmsetHeroAmt(hi)}</span>`;
   } else if (single > 0) {
-    valHtml = `<span class="med">${fmtRpShort(single)}</span>`;
+    valHtml = `<span class="med">${fmtOmsetHeroAmt(single)}</span>`;
   }
   return `<div class="ddr-omset-hero">
     <div class="lbl">Omzet / Bulan</div>
     <div class="val">${valHtml}</div>
-    <div class="sub">${subHtml}</div>
   </div>`;
 }
 
