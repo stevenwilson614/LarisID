@@ -5584,7 +5584,7 @@ async function resolveProduct(item_id, shop_id, btn) {
   return null;
 }
 
-function productCardHtml(p, i, marketStats) {
+function productCardHtml(p, i, omsetRange) {
   rememberProducts([p]);
   const img = p.image_url || '';
   const name = p.product_name || p.keyword || 'Produk';
@@ -5592,37 +5592,13 @@ function productCardHtml(p, i, marketStats) {
   const snap = productSnapshot(p);
   const encoded = snap ? encodeURIComponent(JSON.stringify(snap)) : '';
   const omset = estOmsetBulan(p);
-  const loc = p.location ? `<div class="prod-card-loc">${esc(p.location)}</div>` : '';
   const vk = viewCountKey(p.item_id, p.shop_id);
   const viewers = viewersYtdCached(p.item_id, p.shop_id);
-  const st = marketStats && marketStats.n >= 4 ? marketStats : null;
-  const qLo = st ? (st.p25 || st.min) : 0;
-  const qHi = st ? (st.p75 || st.max) : 0;
-  const statsHtml = st
-    ? `<div class="prod-card-stats prod-card-stats--slim">
-        <div class="prod-stat">
-          <span class="prod-stat-lbl">Omset/bulan</span>
-          <span class="prod-stat-val">${omset ? fmtOmset(omset) : '—'}</span>
-        </div>
-        <div class="prod-stat">
-          <span class="prod-stat-lbl">Median</span>
-          <span class="prod-stat-val">${fmtRpShort(st.median)}</span>
-        </div>
-        <div class="prod-stat">
-          <span class="prod-stat-lbl">Q1–Q3</span>
-          <span class="prod-stat-val">${fmtRpShort(qLo)}–${fmtRpShort(qHi)}</span>
-        </div>
-      </div>`
-    : `<div class="prod-card-stats prod-card-stats--slim">
-        <div class="prod-stat">
-          <span class="prod-stat-lbl">Omset/bulan</span>
-          <span class="prod-stat-val">${omset ? fmtOmset(omset) : '—'}</span>
-        </div>
-        <div class="prod-stat">
-          <span class="prod-stat-lbl">Harga</span>
-          <span class="prod-stat-val">${fmtRp(p.price)}</span>
-        </div>
-      </div>`;
+  const lo = omsetRange?.p60 || 0;
+  const hi = omsetRange?.p100 || 0;
+  const omsetVal = (lo > 0 && hi > 0)
+    ? `${fmtRpShort(lo)} – ${fmtRpShort(hi)}`
+    : (omset ? fmtOmset(omset) : '—');
   return `<button type="button" class="prod-card" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} style="animation-delay:${i * 0.06}s">
     ${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : '<div class="prod-card-ph"></div>'}
     <div class="prod-card-body">
@@ -5630,17 +5606,27 @@ function productCardHtml(p, i, marketStats) {
         <div class="prod-card-name">${esc(name)}</div>
         <span class="prod-card-views" hidden data-view-key="${esc(vk)}" title="Orang yang melihat produk ini di Laris tahun ini">${ico('eye', 11)}<span data-view-num>${viewers.toLocaleString('id-ID')}</span></span>
       </div>
-      ${loc}
-      ${statsHtml}
+      <div class="prod-card-stats prod-card-stats--slim">
+        <div class="prod-stat">
+          <span class="prod-stat-lbl">Omset/bulan</span>
+          <span class="prod-stat-val">${omsetVal}</span>
+        </div>
+      </div>
     </div>
   </button>`;
 }
 
-/** Render a product card grid with shared market median / Q1–Q3 from the peer set. */
+/** Render a product card grid; omset shown as peer P60–P100 when enough rows. */
 function productCardsHtml(products) {
   const list = products || [];
-  const stats = list.length >= 4 ? ddStats(list) : null;
-  return list.map((p, i) => productCardHtml(p, i, stats)).join('');
+  const omsets = list.map(estOmsetBulan).filter(n => n > 0).sort((a, b) => a - b);
+  let range = null;
+  if (omsets.length >= 4) {
+    const p60 = omsets[Math.min(omsets.length - 1, Math.floor((omsets.length - 1) * 0.6))];
+    const p100 = omsets[omsets.length - 1];
+    range = { p60, p100 };
+  }
+  return list.map((p, i) => productCardHtml(p, i, range)).join('');
 }
 
 function prodKey(p) {
@@ -7921,7 +7907,7 @@ async function searchProductTypes(text, city, limit = 12) {
   return ranked;
 }
 
-/** Attach Q1/Q3 price band from listings_deduped (RPC) onto type rows. */
+/** Attach Q1/Q3 price band + omset P60–P100 from listings_deduped (RPC) onto type rows. */
 async function attachTypeQuartiles(rows) {
   if (!_supabase || !rows?.length) return rows;
   const kws = [...new Set(rows.map(r => r.keyword).filter(Boolean))];
@@ -7935,6 +7921,8 @@ async function attachTypeQuartiles(rows) {
       if (!q) return;
       r.price_p25 = Number(q.price_p25) || null;
       r.price_p75 = Number(q.price_p75) || null;
+      r.omset_p60 = Number(q.omset_p60) || null;
+      r.omset_p100 = Number(q.omset_p100) || null;
     });
   } catch (e) {
     console.warn('[typeQuartiles]', e?.message || e);
@@ -7976,35 +7964,32 @@ function typeRepProduct(t) {
 
 function typeCardHtml(t, absIdx, animIdx) {
   const imgs = (t.images || []).filter(Boolean).slice(0, 5);
-  const odds = calcBreakoutOdds(Number(t.price_median) || 0, typeNiche(t));
-  const badgeCls = odds.tier === 'Tinggi' ? 'badge-tinggi' : odds.tier === 'Sedang' ? 'badge-sedang' : 'badge-rendah';
-  const trend = Number(t.trend_delta_30d) || 0;
-  const qLo = Number(t.price_p25) || Number(t.price_min) || 0;
-  const qHi = Number(t.price_p75) || Number(t.price_max) || 0;
-  const hasQ = Number(t.price_p25) > 0 && Number(t.price_p75) > 0;
+  const lo = Number(t.omset_p60) || 0;
+  const hi = Number(t.omset_p100) || 0;
+  const omsetVal = (lo > 0 && hi > 0)
+    ? `${fmtRpShort(lo)} – ${fmtRpShort(hi)}`
+    : (t.omset_top15 ? fmtOmset(t.omset_top15) : '—');
+  const vk = (t.rep_item_id != null && t.rep_shop_id != null)
+    ? viewCountKey(t.rep_item_id, t.rep_shop_id) : '';
+  const viewers = vk ? viewersYtdCached(t.rep_item_id, t.rep_shop_id) : 0;
+  const viewsHtml = vk
+    ? `<span class="prod-card-views" hidden data-view-key="${esc(vk)}" title="Orang yang melihat produk ini di Laris tahun ini">${ico('eye', 11)}<span data-view-num>${viewers.toLocaleString('id-ID')}</span></span>`
+    : '';
   return `<button type="button" class="prod-card ptype-card" data-ptype="${absIdx}" data-ptype-kw="${esc(t.keyword || '')}" style="animation-delay:${(animIdx % 3) * 0.06}s">
     <div class="ptype-collage n${imgs.length || 1}">
       ${imgs.map(u => `<img src="${esc(u)}" alt="" loading="lazy">`).join('') || '<div class="prod-card-ph"></div>'}
-      <span class="ptype-badge badge ${badgeCls}">Peluang ${esc(odds.tier)}</span>
     </div>
     <div class="prod-card-body">
-      <div class="prod-card-name">${esc(typeTitle(t.keyword))}</div>
-      <div class="prod-card-loc">${t.n_sellers} penjual · ${t.n_listings} listing</div>
+      <div class="prod-card-name-row">
+        <div class="prod-card-name">${esc(typeTitle(t.keyword))}</div>
+        ${viewsHtml}
+      </div>
       <div class="prod-card-stats prod-card-stats--slim">
         <div class="prod-stat">
           <span class="prod-stat-lbl">Omset/bulan</span>
-          <span class="prod-stat-val">${t.omset_top15 ? fmtRpShort(t.omset_top15) : '—'}</span>
-        </div>
-        <div class="prod-stat">
-          <span class="prod-stat-lbl">Median</span>
-          <span class="prod-stat-val">${fmtRpShort(t.price_median)}</span>
-        </div>
-        <div class="prod-stat">
-          <span class="prod-stat-lbl">${hasQ ? 'Q1–Q3' : 'Rentang'}</span>
-          <span class="prod-stat-val">${qLo && qHi ? `${fmtRpShort(qLo)}–${fmtRpShort(qHi)}` : '—'}</span>
+          <span class="prod-stat-val">${omsetVal}</span>
         </div>
       </div>
-      ${trend > 0 ? `<div class="ptype-meta ptype-trend">+${trend.toLocaleString('id-ID')} terjual dalam 30 hari terakhir</div>` : ''}
     </div>
   </button>`;
 }

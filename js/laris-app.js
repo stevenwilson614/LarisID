@@ -248,6 +248,8 @@ function wIcon(name, size, color) {
 
 // ── Year-to-date unique Laris Deep Dive viewers (product_view_counts_ytd) ──
 const _viewCountsYtdCache = new Map(); // key: "item_id:shop_id" → number
+// Below this the badge stays hidden — a low count is noise, not a signal.
+const VIEW_COUNT_MIN = 5;
 
 function viewCountKey(itemId, shopId) {
   return `${itemId ?? ''}__${shopId ?? ''}`;
@@ -295,6 +297,11 @@ function patchViewCountBadges(root) {
   const scope = root || document;
   scope.querySelectorAll('[data-view-key]').forEach(el => {
     const n = _viewCountsYtdCache.get(el.getAttribute('data-view-key')) ?? 0;
+    const hideable = el.closest('.dsc-card-views, .dsc-prod-views, .dd-hero-views') || el;
+    if (hideable && hideable.classList?.contains) {
+      if (Number(n) >= VIEW_COUNT_MIN) hideable.removeAttribute('hidden');
+      else hideable.setAttribute('hidden', '');
+    }
     const num = el.querySelector('[data-view-num]');
     if (num) num.textContent = Number(n).toLocaleString('id-ID');
   });
@@ -303,7 +310,8 @@ function patchViewCountBadges(root) {
 function dscViewBadgeHtml(itemId, shopId, cls) {
   const k = viewCountKey(itemId, shopId);
   const n = viewersYtdCached(itemId, shopId);
-  return `<span class="${cls || 'dsc-card-views'}" data-view-key="${k}" title="Penjual Laris yang membuka Deep Dive tahun ini">${wIcon('eye', 11, '#6B7280')}<span data-view-num>${n.toLocaleString('id-ID')}</span></span>`;
+  const hide = Number(n) < VIEW_COUNT_MIN ? ' hidden' : '';
+  return `<span class="${cls || 'dsc-card-views'}"${hide} data-view-key="${k}" title="Penjual Laris yang membuka Deep Dive tahun ini">${wIcon('eye', 11, '#6B7280')}<span data-view-num>${n.toLocaleString('id-ID')}</span></span>`;
 }
 
 /** Fetch YTD viewers for listings then patch any visible eye badges. */
@@ -330,6 +338,9 @@ async function ddHydrateViewCount(listing) {
     const n = viewersYtdCached(listing.item_id, listing.shop_id);
     if (el) el.textContent = n.toLocaleString('id-ID');
     if (wrap) {
+      wrap.setAttribute('data-view-key', k);
+      if (Number(n) >= VIEW_COUNT_MIN) wrap.removeAttribute('hidden');
+      else wrap.setAttribute('hidden', '');
       wrap.title = n === 1
         ? '1 penjual Laris membuka Deep Dive produk ini tahun ini'
         : `${n.toLocaleString('id-ID')} penjual Laris membuka Deep Dive produk ini tahun ini`;
