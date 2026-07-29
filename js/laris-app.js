@@ -9974,7 +9974,10 @@ function dscBuildCatIcons() {
   const el = document.getElementById('dsc-cat-icons');
   if (!el || el.dataset.built) return;
   el.dataset.built = '1';
-  el.innerHTML = DSC_ALL_CATS.map(c => `
+  // Canonical buckets, so a chip matches product_types_v.category_canonical.
+  // The legacy 19 reached only a third of the catalogue.
+  const cats = DSC_CANON_CATS.length ? DSC_CANON_CATS : DSC_ALL_CATS;
+  el.innerHTML = cats.map(c => `
     <button type="button" class="dsc-cat-icon-btn" data-cat="${c.replace(/"/g, '&quot;')}" title="${c.replace(/"/g, '&quot;')}">
       ${_catIconImg(c, 40)}
       <span>${c}</span>
@@ -10039,7 +10042,10 @@ function dscSyncEmptyPick() {
   const perPage = _dscPerPage();
   const tier0Cap = isJourneyBeginner() && !journeyBypassGating() && userJourneyTier() === 0;
   const cappedTotal = tier0Cap ? Math.min(_dscFiltered.length, JOURNEY_BEGINNER_DISCOVER_CAP) : _dscFiltered.length;
-  const show = !_dscLoading && _dscLoaded && cappedTotal === 0 && !_dscCommittedQ;
+  // The card grid shows markets, which do not come from _dscFiltered. Without
+  // this the empty-state kicks in and wipes a grid that is actually full.
+  const pasarShown = _dscViewMode === 'card' && _dscTypeRows.length > 0;
+  const show = !_dscLoading && _dscLoaded && cappedTotal === 0 && !_dscCommittedQ && !pasarShown;
   pick.style.display = show ? '' : 'none';
   if (wrap) wrap.classList.toggle('dsc-show-empty', show);
   if (show) {
@@ -10053,8 +10059,9 @@ function dscSyncEmptyPick() {
 function dscBuildCatChecks(cats) {
   const el = document.getElementById('dsc-cat-checks');
   if (!el) return;
-  // Always include all 19 known categories; merge any extras from loaded data
-  const merged = [...new Set([...DSC_ALL_CATS, ...cats])].sort();
+  // Canonical buckets first; merge anything unexpected the data still carries.
+  const base = DSC_CANON_CATS.length ? DSC_CANON_CATS : DSC_ALL_CATS;
+  const merged = DSC_CANON_CATS.length ? base.slice() : [...new Set([...base, ...cats])].sort();
   const newKey = merged.join(',');
   if (el.dataset.built === newKey) return;
   // Restore from sessionStorage (survives tab switches) then also read current DOM
@@ -10077,6 +10084,132 @@ function dscCatSelectAll() {
   _dscSaveCatState();
 }
 
+// ── Pasar (market) level Discover ────────────────────────────────────────
+// Discover used to show one card per individual listing, so "tanaman
+// artificial" filled the grid with 30 near-identical items from 30 shops.
+// The card grid now shows one card per PRODUCT TYPE — a whole market with its
+// seller count, omset and price band — the same level Site B moved to.
+// The table view stays listing-level for drilling into specific items.
+const DSC_PTYPE_COLS = 'keyword,city,category_canonical,subgroup,n_listings,n_sellers,price_min,price_median,price_max,avg_sold,total_sold_sum,omset_top15,sold_top3_share,images,rep_item_id,rep_shop_id,rep_product_name,rep_store_name,rep_price,rep_total_sold,rep_reviews,rep_rating,rep_location,rep_image_url,rep_url,rep_listing_date,trend_delta_30d,breakout_rate,niche_new_items,median_winner_price,median_winner_reviews';
+let _dscTypeRows = [];
+let _dscTypesLoading = false;
+let _dscTypesLoaded = false;
+const _dscTypeByKw = new Map();
+
+// Canonical buckets, loaded from category_map so Site A, Site B and SQL cannot
+// drift apart. Falls back to the legacy hardcoded list if the fetch fails.
+let DSC_CANON_CATS = [];
+async function dscLoadCanonicalCats() {
+  if (DSC_CANON_CATS.length) return DSC_CANON_CATS;
+  try {
+    const cached = JSON.parse(localStorage.getItem('_lid_canon_cats_v1') || 'null');
+    if (cached?.cats?.length) DSC_CANON_CATS = cached.cats;
+  } catch (_) {}
+  try {
+    if (!_supabase) return DSC_CANON_CATS;
+    const { data } = await _supabase.from('category_map')
+      .select('raw_category,canonical,sort_order').order('sort_order', { ascending: true });
+    const seen = new Set(); const cats = []; const map = Object.create(null);
+    (data || []).forEach(r => {
+      if (!r.canonical) return;
+      if (r.raw_category) map[r.raw_category] = r.canonical;
+      if (!seen.has(r.canonical)) { seen.add(r.canonical); cats.push(r.canonical); }
+    });
+    if (cats.length) {
+      DSC_CANON_CATS = cats;
+      try { localStorage.setItem('_lid_canon_cats_v1', JSON.stringify({ ts: Date.now(), cats, map })); } catch (_) {}
+    }
+  } catch (_) {}
+  return DSC_CANON_CATS;
+}
+
+/** Load product types for the current filters. One indexed query. */
+async function dscFetchTypes(filters = {}) {
+  if (!_supabase) return [];
+  _dscTypesLoading = true;
+  try {
+    let q = _supabase.from('product_types_v')
+      .select(DSC_PTYPE_COLS)
+      .eq('city', 'ALL')
+      .gte('n_listings', 3)
+      .order('omset_top15', { ascending: false, nullsFirst: false })
+      .limit(600);
+    const cats = _dscSelectedCats();
+    if (cats && cats.length === 1) q = q.eq('category_canonical', cats[0]);
+    const search = (filters.search || '').trim();
+    if (search) q = q.ilike('keyword', `%${search.slice(0, 40)}%`);
+    const { data, error } = await q;
+    if (error) throw error;
+    let rows = data || [];
+    if (cats && cats.length > 1) {
+      const set = new Set(cats);
+      rows = rows.filter(r => set.has(r.category_canonical));
+    }
+    const pMin = filters.priceMin || 0;
+    const pMax = Number.isFinite(filters.priceMax) ? filters.priceMax : Infinity;
+    if (pMin > 0 || pMax !== Infinity) {
+      rows = rows.filter(r => {
+        const m = Number(r.price_median) || 0;
+        return m >= pMin && m <= pMax;
+      });
+    }
+    rows.forEach(r => { if (r.keyword) _dscTypeByKw.set(r.keyword, r); });
+    _dscTypeRows = rows;
+    _dscTypesLoaded = true;
+    return rows;
+  } catch (e) {
+    console.warn('[dscFetchTypes]', e?.message || e);
+    return [];
+  } finally {
+    _dscTypesLoading = false;
+  }
+}
+
+/** Card for one market. Mirrors Site B: omset, median, Q1-Q3 price band. */
+function dscTypeCardHtml(t) {
+  const title = String(t.keyword || '').replace(/\b\w/g, c => c.toUpperCase());
+  const imgs = (t.images || []).filter(Boolean).slice(0, 4);
+  const img = imgs[0];
+  const imgHtml = img
+    ? `<img src="${img}" alt="" loading="lazy" onerror="this.parentElement.innerHTML=wIcon('box',36,'#9CA3AF')">`
+    : wIcon('box', 36, '#9CA3AF');
+  // fmtShort is the site's money formatter (it already prefixes Rp) — a market's
+  // omset runs to billions, so the full number is unreadable on a card.
+  const rp = v => fmtShort(Number(v) || 0);
+  const rpFull = v => 'Rp' + Math.round(v || 0).toLocaleString('id-ID');
+  const lo = Number(t.price_min) || 0;
+  const hi = Number(t.price_max) || 0;
+  const delta = Number(t.trend_delta_30d) || 0;
+  const kwAttr = String(t.keyword || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  return `<div class="dsc-card dsc-card-pasar" onclick="dscOpenTypeDeepDive('${kwAttr}')">
+    <div class="dsc-card-img" style="position:relative;">${imgHtml}
+      <div style="position:absolute;top:6px;left:6px;background:#8E191F;color:#fff;border-radius:8px;padding:3px 9px;font-size:.62rem;font-weight:800;letter-spacing:.06em;line-height:1.4;box-shadow:0 1px 4px rgba(0,0,0,.22);">PASAR</div>
+    </div>
+    <div class="dsc-card-body">
+      <div class="dsc-card-name">${_dscEscAttr(title).slice(0, 70)}</div>
+      <div class="dsc-card-store">${Number(t.n_sellers || 0).toLocaleString('id-ID')} penjual &middot; ${Number(t.n_listings || 0).toLocaleString('id-ID')} listing</div>
+      <div style="margin-top:8px;">
+        <div class="dsc-card-price">${t.omset_top15 ? rp(t.omset_top15) + '/bln' : '—'}</div>
+        <div style="font-size:.74rem;color:#6B7280;margin-top:1px;">Median ${rpFull(t.price_median)}${lo && hi ? ` &middot; ${rp(lo)}–${rp(hi)}` : ''}</div>
+      </div>
+    </div>
+    ${delta > 0 ? `<div class="dsc-card-footer" style="padding:6px 10px;font-size:.74rem;color:#059669;">+${delta.toLocaleString('id-ID')} terjual 30 hari</div>` : ''}
+  </div>`;
+}
+
+function _dscEscAttr(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+/** Open a market. Anchors on its top listing, which is what the deep dive's
+ *  keyword-level context (ddLoadKeywordContext) already aggregates around. */
+async function dscOpenTypeDeepDive(keyword) {
+  const t = _dscTypeByKw.get(keyword);
+  if (!t || t.rep_item_id == null || t.rep_shop_id == null) return;
+  try { logUserEvent('ptype_open', { ui: 'A', keyword, n_sellers: t.n_sellers }); } catch (_) {}
+  await dscOpenDeepDive(`${t.rep_item_id}__${t.rep_shop_id}`);
+}
+
 function _dscCurrentFilters() {
   const priceMaxRaw = parseFloat(document.getElementById('dsc-price-max')?.value) || 500000;
   return {
@@ -10090,9 +10223,18 @@ function _dscCurrentFilters() {
 function dscInit() {
   dscUpdateDualRange('price');
   dscUpdateDualRange('omset');
+  // Canonical buckets come from the DB. Build the chips now from whatever is
+  // cached so filters are usable immediately, then rebuild once the real list
+  // lands (dataset.built is cleared so the rebuild is not skipped).
   dscBuildCatIcons();
-  // Pre-populate all known categories immediately so filters are usable before data loads
-  dscBuildCatChecks(DSC_ALL_CATS);
+  dscBuildCatChecks(DSC_CANON_CATS.length ? DSC_CANON_CATS : DSC_ALL_CATS);
+  void dscLoadCanonicalCats().then(cats => {
+    if (!cats.length) return;
+    const icons = document.getElementById('dsc-cat-icons');
+    if (icons) delete icons.dataset.built;
+    dscBuildCatIcons();
+    dscBuildCatChecks(cats);
+  });
   void dscLoadScrapeRequests();
 
   if (!_supabase) {
@@ -10486,6 +10628,9 @@ async function dscShowSuggestions(q) {
 
 function dscApplyFilters(resetPage = true) {
   if (!_dscLoaded) return;
+  // Market cards are fetched server-side per filter set, so any filter change
+  // has to invalidate them or the grid keeps showing the previous market list.
+  if (resetPage) { _dscTypesLoaded = false; _dscTypeRows = []; }
   const q        = _dscCommittedQ;
   const selectedCats = _dscApplied.cats;
   const priceMin = _dscApplied.priceMin;
@@ -10723,9 +10868,26 @@ function dscRenderTable() {
 
   const trendHtml = _dscTrendHtml;
 
-  // ── CARD VIEW ──
+  // ── CARD VIEW (pasar level) ──
+  // Cards are markets, not listings. Falls back to listing cards when the
+  // matview has nothing for these filters, so the grid is never empty.
   if (_dscViewMode === 'card' && cardGrid) {
-    if (!slice.length) {
+    if (!_dscTypesLoaded && !_dscTypesLoading) {
+      cardGrid.innerHTML = loadingHtml;
+      void dscFetchTypes(_dscCurrentFilters()).then(() => dscRenderTable());
+      return;
+    }
+    if (_dscTypesLoading && !_dscTypeRows.length) {
+      cardGrid.innerHTML = loadingHtml;
+      return;
+    }
+    if (_dscTypeRows.length) {
+      const tPages = Math.max(1, Math.ceil(_dscTypeRows.length / perPage));
+      const tPage = Math.min(_dscPage, tPages);
+      const tStart = (tPage - 1) * perPage;
+      const tSlice = _dscTypeRows.slice(tStart, tStart + perPage);
+      cardGrid.innerHTML = filterNoMatchBanner + tSlice.map(dscTypeCardHtml).join('');
+    } else if (!slice.length) {
       if (_dscLoading || (!_dscLoaded && !_dscBrowsePool.length)) {
         cardGrid.innerHTML = loadingHtml;
       } else {
@@ -10798,21 +10960,30 @@ function dscRenderTable() {
     }
   }
 
+  // The card grid shows markets while the table shows listings, so the count
+  // and pager must follow whichever is on screen.
+  const pasarCards = _dscViewMode === 'card' && _dscTypeRows.length > 0;
+  const viewTotal  = pasarCards ? _dscTypeRows.length : total;
+  const viewPages  = Math.max(1, Math.ceil(viewTotal / perPage));
+  const viewStart  = (Math.min(_dscPage, viewPages) - 1) * perPage;
+
   const countEl = document.getElementById('dsc-count');
   if (countEl) {
-    if (_dscSearchNoMatch) countEl.textContent = 'Rekomendasi';
+    if (pasarCards) countEl.textContent = `${viewTotal.toLocaleString('id-ID')} pasar`;
+    else if (_dscSearchNoMatch) countEl.textContent = 'Rekomendasi';
     else if (searchActive && _dscMatchCount > 0) countEl.textContent = `${_dscMatchCount.toLocaleString('id-ID')} cocok`;
     else countEl.textContent = `${total.toLocaleString('id-ID')} listing`;
   }
 
-  // If there's more data on the server, show one extra page button beyond what's loaded
-  const visiblePages = _dscHasMore ? pages + 1 : pages;
+  // If there's more data on the server, show one extra page button beyond what's
+  // loaded. Markets are fetched in full, so there is never an extra page there.
+  const visiblePages = pasarCards ? viewPages : (_dscHasMore ? pages + 1 : pages);
 
   const infoEl = document.getElementById('dsc-page-info');
   if (infoEl) {
-    if (total) {
-      const end = Math.min(start + perPage, total);
-      infoEl.textContent = `${start + 1}–${end} dari ${total}${_dscHasMore ? '+' : ''}`;
+    if (viewTotal) {
+      const end = Math.min(viewStart + perPage, viewTotal);
+      infoEl.textContent = `${viewStart + 1}–${end} dari ${viewTotal}${pasarCards ? '' : (_dscHasMore ? '+' : '')}`;
     } else infoEl.textContent = '';
   }
 
@@ -13101,6 +13272,15 @@ function _dscPerPage() {
 
 function dscGoPage(n) {
   const perPage = _dscPerPage();
+  // Card grid pages over markets, table over listings.
+  if (_dscViewMode === 'card' && _dscTypeRows.length) {
+    const tPages = Math.max(1, Math.ceil(_dscTypeRows.length / perPage));
+    if (n < 1 || n > tPages) return;
+    _dscPage = n;
+    dscRenderTable();
+    document.getElementById('dsc-card-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
   const pages = Math.ceil(_dscFiltered.length / perPage);
   if (n < 1) return;
   if (n > pages && !_dscHasMore) return;
