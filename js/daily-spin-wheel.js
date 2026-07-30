@@ -7,8 +7,8 @@
 
   const SEGMENTS = [5, 2, 1, 0, 2, 1, 5, 0];
   const SEG_COLORS = [
-    '#F5C542', '#F97316', '#4ADE80', '#FB7185',
-    '#60A5FA', '#F472B6', '#FBBF24', '#FB923C'
+    '#FFE45E', '#FF9F43', '#66E08A', '#FF7A9E',
+    '#6FB7FF', '#FF8AE2', '#FFD24A', '#FFB166'
   ];
   const SEG_DEG = 360 / SEGMENTS.length;
   const SPIN_MS = 4000;
@@ -18,6 +18,7 @@
   let _busy = false;
   let _rotation = 0;
   let _built = false;
+  let _rainTimer = null;
 
   function reduceMotion() {
     try {
@@ -68,6 +69,61 @@
     }
   }
 
+  function giftSvg(size, uid) {
+    // Soft 3D cream gift + coral/orange ribbon (wheel segments)
+    const s = size || 28;
+    const id = uid || `g${Math.random().toString(36).slice(2, 7)}`;
+    return `<svg class="dsw-gift-svg" width="${s}" height="${s}" viewBox="0 0 40 40" aria-hidden="true">
+      <defs>
+        <linearGradient id="dswBox${id}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#FFFDF8"/><stop offset="100%" stop-color="#F5E6C8"/>
+        </linearGradient>
+        <linearGradient id="dswRib${id}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#FF8A4C"/><stop offset="100%" stop-color="#E8442A"/>
+        </linearGradient>
+        <filter id="dswGlow${id}" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="1.2" stdDeviation="1.2" flood-color="#fff" flood-opacity="0.95"/>
+          <feDropShadow dx="0" dy="1.5" stdDeviation="1.1" flood-color="#000" flood-opacity="0.18"/>
+        </filter>
+      </defs>
+      <g filter="url(#dswGlow${id})">
+        <rect x="8" y="16" width="24" height="18" rx="3.5" fill="url(#dswBox${id})" stroke="#E8D4A8" stroke-width="0.6"/>
+        <rect x="7.5" y="12" width="25" height="7" rx="2.2" fill="#FFF8EC" stroke="#E8D4A8" stroke-width="0.6"/>
+        <rect x="17.5" y="12" width="5" height="22" rx="1.4" fill="url(#dswRib${id})"/>
+        <path d="M20 7c-3.2-3.6-8.2-1.2-6.4 2.4 1 2 3.8 3.2 6.4 3.8 2.6-.6 5.4-1.8 6.4-3.8 1.8-3.6-3.2-6-6.4-2.4z" fill="url(#dswRib${id})"/>
+        <ellipse cx="20" cy="12.2" rx="2.1" ry="1.5" fill="#FFB07A"/>
+      </g>
+    </svg>`;
+  }
+
+  function resultGiftSvg() {
+    // Bigger white gift + red bow for win panel
+    return `<svg class="dsw-result-gift-svg" width="42" height="42" viewBox="0 0 48 48" aria-hidden="true">
+      <defs>
+        <linearGradient id="dswRBox" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#FFFFFF"/><stop offset="100%" stop-color="#F3F3F3"/>
+        </linearGradient>
+        <linearGradient id="dswRRib" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#FF5A4A"/><stop offset="100%" stop-color="#B5202A"/>
+        </linearGradient>
+        <filter id="dswRGlow" x="-40%" y="-40%" width="180%" height="180%">
+          <feDropShadow dx="0" dy="2" stdDeviation="1.6" flood-color="#000" flood-opacity="0.22"/>
+        </filter>
+      </defs>
+      <g filter="url(#dswRGlow)">
+        <path d="M10 8l4-3 4 3-4 3z" fill="#F5C542" opacity=".9"/>
+        <path d="M34 10l3-2 3 2-3 2z" fill="#60A5FA" opacity=".85"/>
+        <circle cx="38" cy="20" r="1.6" fill="#22C55E"/>
+        <circle cx="9" cy="22" r="1.4" fill="#F472B6"/>
+        <rect x="9" y="20" width="30" height="22" rx="4" fill="url(#dswRBox)" stroke="#E5E7EB" stroke-width="0.8"/>
+        <rect x="8" y="15" width="32" height="9" rx="2.5" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="0.8"/>
+        <rect x="21" y="15" width="6" height="27" rx="1.6" fill="url(#dswRRib)"/>
+        <path d="M24 7c-4.2-4.6-10.4-1.4-8.1 3.2 1.3 2.5 4.8 4 8.1 4.7 3.3-.7 6.8-2.2 8.1-4.7 2.3-4.6-3.9-7.8-8.1-3.2z" fill="url(#dswRRib)"/>
+        <ellipse cx="24" cy="14.5" rx="2.6" ry="1.8" fill="#FF8A7A"/>
+      </g>
+    </svg>`;
+  }
+
   function placeLabels(layer) {
     SEGMENTS.forEach((award, i) => {
       const lab = el('div', 'dsw-seg-label');
@@ -75,8 +131,11 @@
       lab.style.transform = `rotate(${mid}deg) translateY(calc(-1 * min(100px, 26vw)))`;
       const inner = el('div', 'dsw-seg-label-inner');
       inner.style.transform = `rotate(${-mid}deg)`;
-      inner.appendChild(el('span', 'dsw-gift'));
-      inner.appendChild(document.createTextNode(award === 0 ? '+0' : `+${award} Riset`));
+      const num = el('span', 'dsw-seg-num', { text: award === 0 ? '+0' : `+${award} Riset` });
+      inner.appendChild(num);
+      const giftWrap = el('span', 'dsw-gift');
+      giftWrap.innerHTML = giftSvg(28, `s${i}`);
+      inner.appendChild(giftWrap);
       lab.appendChild(inner);
       layer.appendChild(lab);
     });
@@ -92,6 +151,7 @@
     host.innerHTML = '';
 
     const modal = el('div', 'dsw-modal');
+    const rain = el('div', 'dsw-rain', { id: 'dsw-rain', 'aria-hidden': 'true' });
     const close = el('button', 'dsw-close', { type: 'button', 'aria-label': 'Tutup', text: '×' });
     close.addEventListener('click', () => closeWheel());
 
@@ -129,7 +189,10 @@
       <div class="dsw-burst" id="dsw-burst" aria-hidden="true"></div>
       <div class="dsw-result-inner">
         <p class="dsw-result-kicker" id="dsw-result-kicker">Selamat! Kamu dapat</p>
-        <div class="dsw-result-pill"><span class="dsw-result-gift" aria-hidden="true"></span><span id="dsw-result-award">+2 RISET</span></div>
+        <div class="dsw-result-row">
+          <span class="dsw-result-gift" aria-hidden="true">${resultGiftSvg()}</span>
+          <div class="dsw-result-pill"><span id="dsw-result-award">+2 RISET</span></div>
+        </div>
         <p class="dsw-result-sub" id="dsw-result-sub">Riset produk tambahan untuk hari ini!</p>
         <div class="dsw-actions">
           <button type="button" class="dsw-btn dsw-btn-primary" id="dsw-cta">Mulai Riset</button>
@@ -142,6 +205,7 @@
     modal.appendChild(wrap);
     modal.appendChild(msg);
     modal.appendChild(result);
+    host.appendChild(rain);
     host.appendChild(modal);
 
     host.addEventListener('click', (e) => {
@@ -154,6 +218,40 @@
     result.querySelector('#dsw-done').addEventListener('click', () => closeWheel());
 
     _built = true;
+  }
+
+  function stopConfettiRain() {
+    const rain = document.getElementById('dsw-rain');
+    if (!rain) return;
+    rain.classList.remove('show');
+    if (_rainTimer) {
+      clearTimeout(_rainTimer);
+      _rainTimer = null;
+    }
+    setTimeout(() => { rain.innerHTML = ''; }, 350);
+  }
+
+  function startConfettiRain() {
+    const rain = document.getElementById('dsw-rain');
+    if (!rain) return;
+    rain.innerHTML = '';
+    const colors = ['#F5C542', '#E8442A', '#60A5FA', '#22C55E', '#FB923C', '#FFFFFF', '#F472B6'];
+    const pieces = 72;
+    for (let i = 0; i < pieces; i++) {
+      const p = el('span', 'dsw-rain-piece');
+      p.style.left = `${10 + Math.random() * 80}%`;
+      p.style.background = colors[i % colors.length];
+      p.style.width = `${8 + Math.random() * 8}px`;
+      p.style.height = `${10 + Math.random() * 16}px`;
+      p.style.opacity = `${0.65 + Math.random() * 0.35}`;
+      p.style.animationDelay = `${Math.random() * 0.5}s`;
+      p.style.animationDuration = `${1.9 + Math.random() * 1.5}s`;
+      p.style.transform = `translateY(-12%) rotate(${Math.random() * 180}deg)`;
+      rain.appendChild(p);
+    }
+    rain.classList.add('show');
+    if (_rainTimer) clearTimeout(_rainTimer);
+    _rainTimer = setTimeout(stopConfettiRain, 2300);
   }
 
   function pickSegmentIndex(award) {
@@ -224,6 +322,8 @@
     if (cta) cta.style.display = n > 0 ? '' : 'none';
     result.classList.add('show');
     burstConfetti();
+    if (n > 0) startConfettiRain();
+    else stopConfettiRain();
     haptic(n > 0 ? [30, 40, 50] : [20]);
   }
 
@@ -235,6 +335,7 @@
     if (hub) { hub.disabled = false; hub.textContent = 'PUTAR'; }
     if (wrap) wrap.classList.remove('is-spinning');
     if (result) result.classList.remove('show');
+    stopConfettiRain();
     showMessage('');
   }
 
@@ -354,6 +455,7 @@
       _host.classList.remove('open');
       _host.style.display = 'none';
     }
+    stopConfettiRain();
     if (typeof _opts.onClose === 'function') _opts.onClose();
   }
 
