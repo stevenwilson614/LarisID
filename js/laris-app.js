@@ -4471,6 +4471,10 @@ function _usageApply(data) {
 // research found 4 of 30 users' LAST action was a limit event, so meeting them
 // only once they are already blocked is too late.
 let _spinOffered = false;
+const _spinPreviewAwards = [0, 1, 2, 5];
+function _spinPreviewPickAward() {
+  return _spinPreviewAwards[Math.floor(Math.random() * _spinPreviewAwards.length)];
+}
 
 function spinShow() {
   const api = window.LarisDailySpin;
@@ -4482,6 +4486,11 @@ function spinShow() {
       const { data, error } = await _supabase.rpc('spin_daily_bonus');
       if (error) throw error;
       if (data && data.allowed === false) {
+        // Admin/privileged users are unlimited; allow a visual spin preview
+        // without touching quota state so they can QA the experience.
+        if (data.reason === 'unlimited' && (_usage?.unlimited || isPlatformAdmin())) {
+          return { allowed: true, award: _spinPreviewPickAward(), preview: true };
+        }
         _usageApply({ ...data, can_spin: false });
         return data;
       }
@@ -4491,6 +4500,10 @@ function spinShow() {
       return data;
     },
     onAwarded: (data) => {
+      if (data?.preview) {
+        void logUserEvent('spin_preview', { award: data.award, source: 'unlimited' });
+        return;
+      }
       void logUserEvent('spin_awarded', { award: data.award, dive_limit: data.dive_limit });
     },
     onCta: () => {

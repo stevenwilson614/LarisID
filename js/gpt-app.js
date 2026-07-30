@@ -1262,6 +1262,10 @@ function noteGptUsage(data) {
 // blocked is too late. The bonus is shared with arm A: spin_daily_bonus() writes
 // daily_usage.bonus_dives, which raises both the dive cap and _gpt_chat_limit().
 let _spinOffered = false;
+const _spinPreviewAwards = [0, 1, 2, 5];
+function _spinPreviewPickAward() {
+  return _spinPreviewAwards[Math.floor(Math.random() * _spinPreviewAwards.length)];
+}
 
 function spinShow() {
   const api = window.LarisDailySpin;
@@ -1273,11 +1277,20 @@ function spinShow() {
       const { data, error } = await _supabase.rpc('spin_daily_bonus');
       if (error) throw error;
       if (data && data.allowed === false) {
+        // Privileged/unlimited users still need a way to preview wheel visuals.
+        if (data.reason === 'unlimited' && (_gptUsage.unlimited || isPlatformAdmin())) {
+          return { allowed: true, award: _spinPreviewPickAward(), preview: true };
+        }
         noteGptUsage({ can_spin: false });
       }
       return data;
     },
     onAwarded: (data) => {
+      if (data?.preview) {
+        void logUserEvent('spin_preview', { ui: 'gpt', award: data.award, source: 'unlimited' });
+        clarityEvt('spin_preview', { award: String(data.award) });
+        return;
+      }
       noteGptUsage({
         can_spin: false,
         limit: (_gptUsage.limit || GPT_DAILY_LIMIT) + (Number(data.award) || 0),

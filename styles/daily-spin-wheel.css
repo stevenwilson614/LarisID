@@ -326,9 +326,9 @@
   margin-top: auto;
   padding: 16px 18px 18px;
   background:
-    radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, 0.3), transparent 55%),
-    radial-gradient(circle at 80% 80%, rgba(245, 197, 66, 0.25), transparent 50%),
-    linear-gradient(145deg, #FF6A3D 0%, #E8442A 30%, #B5202A 68%, #8E191F 100%);
+    radial-gradient(ellipse at 30% 15%, rgba(255, 163, 109, 0.26), transparent 58%),
+    radial-gradient(circle at 78% 82%, rgba(255, 126, 94, 0.22), transparent 52%),
+    linear-gradient(180deg, #EA4530 0%, #C2242E 52%, #8E191F 100%);
   color: #fff;
   text-align: center;
   overflow: hidden;
