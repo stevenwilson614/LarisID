@@ -1256,24 +1256,53 @@ function noteGptUsage(data) {
   spinMaybeOffer();
 }
 
-// ── Daily spin ────────────────────────────────────────────────────────────
+// ── Daily spin (prize wheel) ──────────────────────────────────────────────
 // Offered after the 2nd search of the day, before the wall — research found the
 // limit is the LAST thing several users ever saw, so meeting them once already
 // blocked is too late. The bonus is shared with arm A: spin_daily_bonus() writes
 // daily_usage.bonus_dives, which raises both the dive cap and _gpt_chat_limit().
-let _spinBusy = false;
 let _spinOffered = false;
 
 function spinShow() {
-  const ov = document.getElementById('spin-modal');
-  if (!ov) return;
-  ov.classList.add('open');
+  const api = window.LarisDailySpin;
+  if (!api || typeof api.open !== 'function') return;
+  api.open({
+    hostId: 'daily-spin-root',
+    onSpin: async () => {
+      if (!_supabase) throw new Error('no_supabase');
+      const { data, error } = await _supabase.rpc('spin_daily_bonus');
+      if (error) throw error;
+      if (data && data.allowed === false) {
+        noteGptUsage({ can_spin: false });
+      }
+      return data;
+    },
+    onAwarded: (data) => {
+      noteGptUsage({
+        can_spin: false,
+        limit: (_gptUsage.limit || GPT_DAILY_LIMIT) + (Number(data.award) || 0),
+      });
+      void logUserEvent('spin_awarded', { ui: 'gpt', award: data.award });
+      clarityEvt('spin_awarded', { award: String(data.award) });
+    },
+    onCta: () => {
+      try {
+        const input = document.getElementById('composer-input');
+        input?.focus?.();
+      } catch (_) {}
+    },
+    onClose: () => {},
+  });
+  const root = document.getElementById('daily-spin-root');
+  if (root) root.setAttribute('aria-hidden', 'false');
   void logUserEvent('spin_shown', { ui: 'gpt', used: _gptUsage.used });
   clarityEvt('spin_shown', {});
 }
 
 function spinClose() {
-  document.getElementById('spin-modal')?.classList.remove('open');
+  try { window.LarisDailySpin?.close?.(); } catch (_) {}
+  const root = document.getElementById('daily-spin-root');
+  if (root) root.setAttribute('aria-hidden', 'true');
 }
 
 function spinMaybeOffer() {
@@ -1298,32 +1327,7 @@ async function gptSeedUsageFlags() {
 }
 
 async function spinDo() {
-  if (_spinBusy || !_supabase) return;
-  _spinBusy = true;
-  const go = document.getElementById('spin-modal-go');
-  if (go) { go.disabled = true; go.textContent = 'Memutar…'; }
-  try {
-    const { data, error } = await _supabase.rpc('spin_daily_bonus');
-    if (error) throw error;
-    if (data && data.allowed === false) {
-      showToast(data.reason === 'already_spun'
-        ? 'Kamu sudah putar hari ini. Balik lagi besok ya.'
-        : 'Putaran belum bisa dipakai sekarang.');
-    } else if (data) {
-      // dive_limit is the arm A cap; arm B's own limit comes back on the next
-      // gpt_new_chat, so bump the local view by the award rather than guessing.
-      noteGptUsage({ limit: (_gptUsage.limit || GPT_DAILY_LIMIT) + data.award });
-      showToast(`Dapat +${data.award} pencarian buat hari ini!`);
-      void logUserEvent('spin_awarded', { ui: 'gpt', award: data.award });
-      clarityEvt('spin_awarded', { award: String(data.award) });
-    }
-  } catch (_) {
-    showToast('Gagal memutar. Coba lagi nanti.');
-  } finally {
-    _spinBusy = false;
-    if (go) { go.disabled = false; go.textContent = 'Putar sekarang'; }
-    spinClose();
-  }
+  try { document.getElementById('dsw-hub')?.click(); } catch (_) {}
 }
 
 // ── Journey stats parity with arm A ───────────────────────────────────────
@@ -9452,8 +9456,6 @@ async function boot() {
   } catch (_) {}
 
   wireUi();
-  document.getElementById('spin-modal-go')?.addEventListener('click', () => { void spinDo(); });
-  document.getElementById('spin-modal-later')?.addEventListener('click', spinClose);
   document.getElementById('gpt-limit-close')?.addEventListener('click', gptLimitClose);
   document.getElementById('gpt-limit-feedback')?.addEventListener('click', gptOpenFeedbackForBonus);
   document.getElementById('gpt-limit-ext')?.addEventListener('click', gptLimitClose);

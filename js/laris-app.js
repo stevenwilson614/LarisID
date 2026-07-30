@@ -4455,76 +4455,63 @@ function _usageApply(data) {
   renderUsageUI();
 }
 
-// ── Daily spin ────────────────────────────────────────────────────────────
+// ── Daily spin (prize wheel) ──────────────────────────────────────────────
 // Offered after the user's 2nd dive of the day rather than at the wall: the
 // research found 4 of 30 users' LAST action was a limit event, so meeting them
-// only once they are already blocked is too late. Copy says "harian" everywhere
-// so the once-a-day shape is obvious before they spend the spin.
-let _spinBusy = false;
+// only once they are already blocked is too late.
+let _spinOffered = false;
 
 function spinShow() {
-  const ov = document.getElementById('spin-overlay');
-  if (!ov) return;
-  const res = document.getElementById('spin-result');
-  const go = document.getElementById('spin-go');
-  const closeBtn = document.getElementById('spin-close');
-  if (res) { res.style.display = 'none'; res.textContent = ''; }
-  if (go) { go.style.display = ''; go.disabled = false; go.textContent = 'Putar sekarang'; }
-  if (closeBtn) closeBtn.textContent = 'Nanti dulu';
-  ov.style.display = 'flex';
+  const api = window.LarisDailySpin;
+  if (!api || typeof api.open !== 'function') return;
+  api.open({
+    hostId: 'daily-spin-root',
+    onSpin: async () => {
+      if (!_supabase) throw new Error('no_supabase');
+      const { data, error } = await _supabase.rpc('spin_daily_bonus');
+      if (error) throw error;
+      if (data && data.allowed === false) {
+        _usageApply({ ...data, can_spin: false });
+        return data;
+      }
+      if (data) {
+        _usageApply({ ...data, can_spin: false });
+      }
+      return data;
+    },
+    onAwarded: (data) => {
+      void logUserEvent('spin_awarded', { award: data.award, dive_limit: data.dive_limit });
+    },
+    onCta: () => {
+      try { switchDashView('discover'); } catch (_) {}
+    },
+    onClose: () => {},
+  });
+  const root = document.getElementById('daily-spin-root');
+  if (root) root.setAttribute('aria-hidden', 'false');
   void logUserEvent('spin_shown', { dives_used: _usage?.dives_used ?? null });
 }
 
 function spinClose() {
-  const ov = document.getElementById('spin-overlay');
-  if (ov) ov.style.display = 'none';
+  try { window.LarisDailySpin?.close?.(); } catch (_) {}
+  const root = document.getElementById('daily-spin-root');
+  if (root) root.setAttribute('aria-hidden', 'true');
 }
 
 // Fires once per day, right after the 2nd dive lands.
 function spinMaybeOffer() {
   try {
-    if (!currentUser || !_usage || _usage.unlimited) return;
+    if (_spinOffered || !currentUser || !_usage || _usage.unlimited) return;
     if (_usage.can_spin === false) return;
     if ((_usage.dives_used ?? 0) !== 2) return;
+    _spinOffered = true;
     setTimeout(spinShow, 900); // let the deep dive paint first
   } catch (_) {}
 }
 
 async function spinDo() {
-  if (_spinBusy || !_supabase) return;
-  _spinBusy = true;
-  const go = document.getElementById('spin-go');
-  const res = document.getElementById('spin-result');
-  if (go) { go.disabled = true; go.textContent = 'Memutar…'; }
-  try {
-    const { data, error } = await _supabase.rpc('spin_daily_bonus');
-    if (error) throw error;
-    if (data && data.allowed === false) {
-      if (res) {
-        res.style.display = '';
-        res.textContent = data.reason === 'already_spun'
-          ? 'Kamu sudah putar hari ini. Balik lagi besok ya.'
-          : 'Putaran belum bisa dipakai sekarang.';
-      }
-      if (go) go.style.display = 'none';
-      _usageApply({ ...data, can_spin: false });
-    } else if (data) {
-      _usageApply({ ...data, can_spin: false });
-      if (res) {
-        res.style.display = '';
-        res.textContent = `Dapat +${data.award} dive! Jatah hari ini jadi ${data.dive_limit}.`;
-      }
-      if (go) go.style.display = 'none';
-      void logUserEvent('spin_awarded', { award: data.award, dive_limit: data.dive_limit });
-    }
-  } catch (_) {
-    if (res) { res.style.display = ''; res.textContent = 'Gagal memutar. Coba lagi nanti.'; }
-    if (go) { go.disabled = false; go.textContent = 'Putar sekarang'; }
-  } finally {
-    _spinBusy = false;
-    const closeBtn = document.getElementById('spin-close');
-    if (closeBtn) closeBtn.textContent = 'Tutup';
-  }
+  // Center hub on the shared wheel calls onSpin; kept for any legacy onclick.
+  try { document.getElementById('dsw-hub')?.click(); } catch (_) {}
 }
 
 // From the limit modal: send the user to the feedback form, then grant +3 once
