@@ -35,10 +35,17 @@ serve(async (req) => {
       )
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    )
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
+    if (!supabaseUrl || !serviceRoleKey || !anonKey) {
+      return new Response(
+        JSON.stringify({ error: 'Konfigurasi server OTP belum lengkap.' }),
+        { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey)
 
     // Fetch the most recent valid, unused, unexpired OTP row for this phone
     const { data: rows, error: fetchErr } = await supabase
@@ -70,7 +77,8 @@ serve(async (req) => {
     }
 
     // Mark OTP as used immediately to prevent replay attacks
-    await supabase.from('whatsapp_otps').update({ used: true }).eq('id', row.id)
+    const { error: markUsedErr } = await supabase.from('whatsapp_otps').update({ used: true }).eq('id', row.id)
+    if (markUsedErr) throw markUsedErr
 
     // Synthetic email identity for this phone number
     const syntheticEmail = `${phone.replace('+', '')}@wa.larisid.com`
@@ -109,10 +117,12 @@ serve(async (req) => {
     if (linkErr || !linkData) throw linkErr || new Error('generateLink failed')
 
     // Exchange the hashed token for access+refresh tokens via the REST verify endpoint
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
-    const actionUrl = new URL(linkData.properties.action_link)
-    const hashedToken = actionUrl.searchParams.get('token') || ''
+    const actionLink = linkData.properties.action_link || ''
+    const actionUrl = new URL(actionLink)
+    const hashedToken = actionUrl.searchParams.get('token')
+      || actionUrl.searchParams.get('token_hash')
+      || ''
+    if (!hashedToken) throw new Error('Magic link token missing')
 
     const verifyRes = await fetch(
       `${supabaseUrl}/auth/v1/verify?token=${encodeURIComponent(hashedToken)}&type=magiclink`,
@@ -126,7 +136,7 @@ serve(async (req) => {
     const refresh_token = params.get('refresh_token')
     const expires_in = params.get('expires_in')
 
-    if (!access_token) {
+    if (!verifyRes.ok || !access_token) {
       console.error('Token exchange failed. Location:', location)
       return new Response(
         JSON.stringify({ error: 'Gagal membuat sesi. Coba lagi.' }),

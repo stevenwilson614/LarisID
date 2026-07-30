@@ -1734,7 +1734,7 @@ function cardHTML(p, idx) {
       <div class="score-pill" style="--score-clr:${scoreColor(p.score)}">${fmtScore(p.score)}</div>
       ${p.trending ? '<div class="trend-badge">Trending</div>' : ''}
       ${savedProducts.has(p.id)
-        ? `<button class="save-btn saved" data-pid="${p.id}" onclick="event.stopPropagation();openProfile()" title="Lihat Produk Tersimpan"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>`
+        ? `<button class="save-btn saved" data-pid="${p.id}" onclick="toggleSave(event,${p.id})" title="Hapus dari simpanan"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>`
         : `<button class="save-btn" data-pid="${p.id}" onclick="toggleSave(event,${p.id})" title="Simpan produk"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B5202A" stroke-width="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></button>`
       }
     </div>
@@ -11533,6 +11533,11 @@ async function ddLoadKeywordContext(listing) {
       if (!seen.has(key) || (r.total_sold || 0) > (seen.get(key).total_sold || 0)) seen.set(key, r);
     });
     const rows = [...seen.values()].sort((a, b) => (b.total_sold || 0) - (a.total_sold || 0));
+    const heroImages = [
+      listing.image_url || '',
+      ...rows.slice(0, 10).map(r => r.image_url || ''),
+    ];
+    ddSetHeroImages(heroImages);
 
     const totalSold = rows.reduce((s, r) => s + (r.total_sold || 0), 0);
     const rank = rows.findIndex(r => String(r.item_id) === String(listing.item_id) && String(r.shop_id) === String(listing.shop_id)) + 1;
@@ -14076,6 +14081,34 @@ function ddRenderFees(){
     </div>`;
 }
 
+function ddSetHeroImages(images) {
+  const wrap = document.getElementById('dd-hero-img');
+  const countEl = document.getElementById('dd-hero-img-count');
+  if (!wrap) return;
+  const uniq = [];
+  const seen = new Set();
+  (images || []).forEach((u) => {
+    const src = String(u || '').trim();
+    if (!src || seen.has(src)) return;
+    seen.add(src);
+    uniq.push(src);
+  });
+  if (!uniq.length) {
+    wrap.innerHTML = wIcon('box', 48, '#9CA3AF');
+    if (countEl) countEl.textContent = '—';
+    return;
+  }
+  if (uniq.length === 1) {
+    wrap.innerHTML = `<img src="${uniq[0]}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.parentElement.innerHTML=wIcon('box',48,'#9CA3AF')">`;
+    if (countEl) countEl.textContent = '1 / 1';
+    return;
+  }
+  wrap.innerHTML = `<div class="dd-hero-strip">${uniq.map(src =>
+    `<div class="dd-hero-slide"><img src="${src}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentElement.style.display='none'"></div>`
+  ).join('')}</div>`;
+  if (countEl) countEl.textContent = `${uniq.length} foto`;
+}
+
 function ddRender(p) {
   void (async function () {
   await larisEnsureChart();
@@ -14090,12 +14123,7 @@ function ddRender(p) {
   const omset = sales * price;
 
   // hero
-  const _ddHeroEl = document.getElementById('dd-hero-img');
-  if (p.image) {
-    _ddHeroEl.innerHTML = `<img src="${p.image}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.parentElement.innerHTML=wIcon('box',48,'#9CA3AF')">`;
-  } else {
-    _ddHeroEl.innerHTML = wIcon('box', 48, '#9CA3AF');
-  }
+  ddSetHeroImages(p.image ? [p.image] : []);
   document.getElementById('dd-hero-name').textContent = p.name;
   const productPrice = listing.price || p.medianPrice || p.price || 0;
   const heroPriceEl = document.getElementById('dd-hero-price');
@@ -14107,8 +14135,6 @@ function ddRender(p) {
   document.getElementById('dd-hero-cats').innerHTML =
     `<span class="dd-hero-cat-pill">${_catIcon} Kategori: <strong>${cat}</strong></span>` +
     `<span class="dd-hero-cat-pill">${_tagIcon} Sub Kategori: <strong>${subCat}</strong></span>`;
-  const imgCountEl = document.getElementById('dd-hero-img-count');
-  if (imgCountEl) imgCountEl.textContent = p.image ? '1 / 1' : '—';
   ddUpdateTrackBtn(p._listing || null);
   document.getElementById('dd-score-num').textContent = score || '…';
   // Label updated to final value once ddLoadKeywordContext resolves; show placeholder for now

@@ -44,10 +44,17 @@ serve(async (req) => {
       )
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    )
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    const fonnteToken = Deno.env.get('FONNTE_API_TOKEN')
+    if (!supabaseUrl || !serviceRoleKey || !fonnteToken) {
+      return new Response(
+        JSON.stringify({ error: 'Konfigurasi server OTP belum lengkap.' }),
+        { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey)
 
     // Rate limit: max 3 OTP requests per phone per hour
     const { data: recentCount } = await supabase.rpc('whatsapp_otp_recent_count', { p_phone: phone })
@@ -70,14 +77,16 @@ serve(async (req) => {
     const otpHash = await sha256Hex(otp + salt)
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString()
 
-    const { error: insertErr } = await supabase
+    const { data: insertedRows, error: insertErr } = await supabase
       .from('whatsapp_otps')
       .insert({ phone, otp_hash: otpHash, salt, expires_at: expiresAt })
+      .select('id')
+      .limit(1)
 
     if (insertErr) throw insertErr
+    const otpRowId = insertedRows?.[0]?.id ?? null
 
     // Send via Fonnte (target uses 628xx without the + prefix)
-    const fonnteToken = Deno.env.get('FONNTE_API_TOKEN')!
     const message = `Kode OTP LarisID kamu: *${otp}*\n\nBerlaku 10 menit. Jangan bagikan ke siapapun.`
 
     const fonnteRes = await fetch('https://api.fonnte.com/send', {
@@ -95,6 +104,9 @@ serve(async (req) => {
     if (!fonnteRes.ok) {
       const body = await fonnteRes.text()
       console.error('Fonnte error:', fonnteRes.status, body)
+      if (otpRowId != null) {
+        await supabase.from('whatsapp_otps').delete().eq('id', otpRowId)
+      }
       return new Response(
         JSON.stringify({ error: 'Gagal mengirim OTP ke WhatsApp. Periksa nomor kamu.' }),
         { status: 502, headers: { ...CORS, 'Content-Type': 'application/json' } }

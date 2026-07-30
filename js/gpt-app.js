@@ -2851,10 +2851,17 @@ function wireHomeFinder() {
     catSel.innerHTML = NU_ONB_CATS.map(c =>
       `<option value="${esc(c)}">${esc(c)}</option>`
     ).join('');
+    catSel.addEventListener('focus', () => {
+      void logUserEvent('gpt_finder_category_interaction', { ui: 'gpt', action: 'focus' });
+    });
+    catSel.addEventListener('click', () => {
+      void logUserEvent('gpt_finder_category_interaction', { ui: 'gpt', action: 'open' });
+    });
     catSel.addEventListener('change', () => {
       _finder.category = catSel.value || FINDER_DEFAULT_CAT;
       saveFinderState();
       syncFinderUi();
+      void logUserEvent('gpt_finder_category_interaction', { ui: 'gpt', action: 'change', category: _finder.category });
     });
   }
 
@@ -3010,26 +3017,11 @@ async function runFinderSearch() {
     ].join(' · ');
 
     setView('chat');
-    // Finder is a new search — don't append onto an open product Deep Dive chat.
-    let chat = activeChat();
-    if (chat?.context?.product || chat?.context?.kind === 'product') {
-      beginFreshChat();
-      chat = null;
-    }
-    if (!chat) {
-      chat = {
-        localId: 'local_' + Date.now(),
-        title: `Produk: ${_finder.category}`,
-        context: { kind: 'finder', city: _finder.city, category: _finder.category, budget: _finder.budget },
-        messages: [],
-        created_at: Date.now(),
-      };
-      state.chats.unshift(chat);
-      state.activeChatId = chat.localId;
-      renderChatList();
-    }
+    // Finder answers are onboarding context, not durable chat history.
+    beginFreshChat();
+    const thread = $('chat-thread');
+    if (thread) thread.innerHTML = '';
     appendBubble('user', `<p>Temukan produk: ${esc(label)}</p>`);
-    pushMessage(chat, 'user', `Temukan produk: ${label}`);
     const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari produk yang cocok…</p>`);
 
     const rows = await collectFinderProducts({
@@ -3041,14 +3033,6 @@ async function runFinderSearch() {
     const products = rows.map(asListingProduct);
     state.recommendations = products;
     rememberProducts(products);
-
-    const gate = await ensureIntentChat(chat, `Produk: ${_finder.category}`, {
-      kind: 'finder',
-      city: _finder.city,
-      category: _finder.category,
-      budget: _finder.budget,
-    }, { skipAnonBump: true });
-    if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
 
     const html = products.length
       ? `<p>${products.length} produk untuk <strong>${esc(_finder.category)}</strong> di sekitar <strong>${esc(_finder.city)}</strong> (modal ${esc(bud.label)}). Klik kartu untuk Deep Dive.</p>
@@ -6192,6 +6176,36 @@ async function openChat(id) {
     } catch (_) {}
   }
 
+  // Legacy finder chats (4-question flow) may exist without persisted messages.
+  // Rehydrate from context so opening history never renders blank.
+  if (chat && (!chat.messages || !chat.messages.length) && chat.context?.kind === 'finder'
+    && chat.context?.city && chat.context?.category) {
+    try {
+      const rows = await collectFinderProducts({
+        city: chat.context.city,
+        category: chat.context.category,
+        budgetId: chat.context.budget || '1jt_10jt',
+        limit: 60,
+      });
+      const products = rows.map(asListingProduct);
+      state.recommendations = products;
+      rememberProducts(products);
+      const bud = finderBudgetCfg(chat.context.budget || '1jt_10jt');
+      const html = products.length
+        ? `<p>${products.length} produk untuk <strong>${esc(chat.context.category)}</strong> di sekitar <strong>${esc(chat.context.city)}</strong> (modal ${esc(bud.label)}).</p>
+           <div class="card-grid">${productCardsHtml(products)}</div>`
+        : `<p>Riwayat ini tidak punya hasil tersimpan. Coba jalankan ulang pencarian dari pertanyaan awal.</p>`;
+      setView('chat');
+      const thread = $('chat-thread');
+      if (thread) thread.innerHTML = '';
+      appendBubble('assistant', html, { skipScroll: true });
+      bindProductCards($('chat-thread'));
+      updateProductPin();
+      scrollPanelToTop();
+      return;
+    } catch (_) {}
+  }
+
   // Product Deep Dive threads reopen on the analysis — chat scrolls are behind it.
   const product = resolveChatProduct(chat);
   if (product) {
@@ -6764,6 +6778,16 @@ function ddToolPillsHtml() {
   </div>`;
 }
 
+function ddMarketplaceFeeForCategory(category) {
+  const c = String(category || '').toLowerCase();
+  let key = 'shopee_fashion';
+  if (/elektronik|gadget|hp|komputer/.test(c)) key = 'shopee_electronics';
+  else if (/dapur|rumah|bayi|anak|kecantikan|kesehatan|fmcg|food|minum/.test(c)) key = 'shopee_fmcg';
+  const cfg = GPT_KALC_MPS[key] || GPT_KALC_MPS.shopee_fashion;
+  const pct = (cfg.comm + cfg.svc + cfg.tax) * 100;
+  return { label: cfg.label, pct: pct.toFixed(1).replace('.', ',') + '%' };
+}
+
 function ddTilesHtml(product, stats, peers, series) {
   // Opened from a Product Type card → tiles describe the TYPE's market
   // (median price band), not the anchor listing. Omset lives in ddr-omset-hero.
@@ -6784,11 +6808,13 @@ function ddTilesHtml(product, stats, peers, series) {
     : unitMo ? unitMo.toLocaleString('id-ID') + ' unit' : '—';
   const unitLbl = t ? 'Rata² Terjual / Listing' : 'Est. Penjualan / Bulan';
   const unitSub = t ? 'Rata-rata unit terjual per listing tipe ini' : rateSub;
+  const fee = ddMarketplaceFeeForCategory(product.category || t?.category_canonical || '');
   return `<div class="ddr-hscroll ddr-hscroll--tiles">
     <div class="ddr-tile"><span class="ico" style="background:var(--blue-bg);color:var(--blue)">${ico('box', 14)}</span><div class="lbl">${unitLbl}</div><div class="val">${unitVal}</div><div class="sub">${unitSub}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--amber-bg);color:var(--amber)">${ico('tag', 14)}</span><div class="lbl">${t ? 'Harga Umum' : 'Harga Produk'}</div><div class="val">${fmtRp(price)}</div><div class="sub">${t ? `Rentang pasar ${fmtRpShort(t.price_min)} – ${fmtRpShort(t.price_max)}` : vsMed == null ? 'Median pasar belum ada' : vsMed === 0 ? 'Sama dengan median pasar' : `${Math.abs(vsMed)}% ${vsMed > 0 ? 'di atas' : 'di bawah'} median pasar`}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--violet-bg);color:var(--violet)">${ico('pin', 14)}</span><div class="lbl">Lokasi Terbanyak</div><div class="val">${topLoc ? esc(topLoc[0]) : '—'}</div><div class="sub">${topLoc ? `${topLoc[1]} penjual dari kota ini` : 'Belum ada data lokasi'}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--red-bg);color:var(--accent)">${ico('users', 14)}</span><div class="lbl">Kompetitor Aktif</div><div class="val">~${shopN} toko</div><div class="sub">Kompetisi ${esc(stats.komp || '—')}</div></div>
+    <div class="ddr-tile"><span class="ico" style="background:var(--green-bg);color:var(--green)">${ico('tag', 14)}</span><div class="lbl">Biaya Marketplace</div><div class="val">${fee.pct}</div><div class="sub">${esc(fee.label)} (admin + layanan + pajak)</div></div>
   </div>`;
 }
 
@@ -9333,7 +9359,7 @@ function wireUi() {
     if (e.key === 'Escape' && !$('img-lightbox')?.hidden) { e.preventDefault(); closeLightbox(); }
   });
   document.addEventListener('click', (e) => {
-    const img = e.target?.closest?.('#product-pin-img, .ddr-header > img, [data-ddr-main], .dd-chat-card-top img');
+    const img = e.target?.closest?.('#product-pin-img, .ddr-header > img, [data-ddr-main], .dd-chat-card-top img, .ddr-gallery-main img, .ddr-slide img');
     if (!img || !img.getAttribute('src')) return;
     if (img.closest('.ddr-gallery-thumb')) return;
     const scope = img.closest('.product-pin, .ddr-header, .dd-chat-card');
