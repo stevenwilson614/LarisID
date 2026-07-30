@@ -237,8 +237,8 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 78px;
-  margin-left: -39px;
+  width: 86px;
+  margin-left: -43px;
   margin-top: -28px;
   transform-origin: 50% 50%;
   font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
@@ -253,9 +253,10 @@
 }
 .dsw-seg-num {
   font-weight: 900;
-  font-size: clamp(0.68rem, 2.5vw, 0.82rem);
+  font-size: clamp(0.64rem, 2.2vw, 0.78rem);
   color: #1A1A1A;
   letter-spacing: -0.01em;
+  white-space: nowrap;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 

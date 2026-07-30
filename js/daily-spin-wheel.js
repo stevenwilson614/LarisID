@@ -128,7 +128,8 @@
     SEGMENTS.forEach((award, i) => {
       const lab = el('div', 'dsw-seg-label');
       const mid = i * SEG_DEG;
-      lab.style.transform = `rotate(${mid}deg) translateY(calc(-1 * min(100px, 26vw)))`;
+      // Keep labels inside segment bounds across narrow widths.
+      lab.style.transform = `rotate(${mid}deg) translateY(calc(-1 * min(88px, 24vw)))`;
       const inner = el('div', 'dsw-seg-label-inner');
       inner.style.transform = `rotate(${-mid}deg)`;
       const num = el('span', 'dsw-seg-num', { text: award === 0 ? '+0' : `+${award} Riset` });
@@ -285,6 +286,17 @@
     msg.classList.toggle('show', !!text);
   }
 
+  function spinErrorMessage(err) {
+    const m = String((err && (err.message || err.code || err.name)) || err || '').toLowerCase();
+    if (m.includes('no_supabase') || m.includes('not_authenticated') || m.includes('jwt') || m.includes('permission')) {
+      return 'Kamu perlu login dulu untuk pakai putaran harian.';
+    }
+    if (m.includes('network') || m.includes('failed to fetch') || m.includes('timeout')) {
+      return 'Koneksi lagi bermasalah. Coba lagi sebentar lagi.';
+    }
+    return 'Gagal memutar. Coba lagi nanti.';
+  }
+
   function burstConfetti() {
     const box = document.getElementById('dsw-burst');
     if (!box) return;
@@ -357,7 +369,7 @@
       _busy = false;
       if (hub) { hub.disabled = false; hub.textContent = 'PUTAR'; }
       if (wrap) wrap.classList.remove('is-spinning');
-      showMessage('Gagal memutar. Coba lagi nanti.');
+      showMessage(spinErrorMessage(err));
       return;
     }
 
