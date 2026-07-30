@@ -808,6 +808,11 @@ async function loadData() {
 
   const CACHE_KEY = 'laris_catalog_v4';
   const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+  const loadingMsg = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#6B7280;font-size:.85rem;">Memuat produk...</div>';
+  const homeGridEl = document.getElementById('home-grid');
+  const discGridEl = document.getElementById('disc-grid');
+  if (homeGridEl) homeGridEl.innerHTML = loadingMsg;
+  if (discGridEl) discGridEl.innerHTML = loadingMsg;
 
   let rows = null;
   try {
@@ -1284,6 +1289,12 @@ function _searchGoDiscover(q, how) {
   if (!query) return;
   logSearchHistory(query, null, how);
   void logUserEvent('search_query', { query, source: 'landing', how });
+  const dscGrid = document.getElementById('disc-grid');
+  if (dscGrid) dscGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Memuat hasil pencarian...</div>';
+  const dscTbody = document.getElementById('dsc-tbody');
+  if (dscTbody) dscTbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#9CA3AF;font-size:.85rem;">Memuat hasil pencarian...</td></tr>';
+  const dscOverlay = document.getElementById('dsc-loading-overlay');
+  if (dscOverlay) dscOverlay.style.display = 'flex';
   openProfile();
   setTimeout(() => {
     switchDashView('discover');
@@ -10486,7 +10497,7 @@ function dscOnSearchInput() {
   if (scrapeInput) scrapeInput.dataset.userEdited = '';
   dscShowSuggestions(q);
   clearTimeout(_dscSearchDebounce);
-  _dscSearchDebounce = setTimeout(() => dscApplyFilters(), 320);
+  _dscSearchDebounce = setTimeout(() => dscApplyFilters(true, false), 320);
   clearTimeout(_dscSearchLogTimer);
   _dscSearchLogTimer = setTimeout(() => _dscLogSearch('typed'), 1600);
 }
@@ -10629,13 +10640,59 @@ async function dscShowSuggestions(q) {
   } catch (_) {}
 }
 
-function dscApplyFilters(resetPage = true) {
+function _dscResolveCategoryIntent(query) {
+  const q = String(query || '').trim().toLowerCase();
+  if (!q) return '';
+  const alias = {
+    'fashion': 'Fashion',
+    'fesyen': 'Fashion',
+    'mode': 'Fashion',
+    'baju': 'Fashion',
+    'dapur': 'Dapur',
+    'kitchen': 'Dapur',
+    'elektronik': 'Elektronik',
+    'electronics': 'Elektronik',
+    'gadget': 'HP & Gadget',
+    'hp': 'HP & Gadget',
+    'bayi': 'Bayi & Anak',
+    'anak': 'Bayi & Anak',
+    'baby': 'Bayi & Anak',
+    'olahraga': 'Olahraga',
+    'sports': 'Olahraga',
+    'rumah': 'Rumah',
+    'home': 'Rumah',
+    'kecantikan': 'Kecantikan',
+    'beauty': 'Kecantikan',
+    'kesehatan': 'Kesehatan',
+    'health': 'Kesehatan',
+    'mobil': 'Motor & Mobil',
+    'motor': 'Motor & Mobil',
+    'otomotif': 'Motor & Mobil',
+    'taman': 'Taman',
+    'tanaman': 'Tanaman',
+    'hewan': 'Hewan Peliharaan',
+    'pets': 'Hewan Peliharaan',
+    'outdoor': 'Outdoor & Camping',
+    'camping': 'Outdoor & Camping',
+    'alat tulis': 'Alat Tulis',
+    'stationery': 'Alat Tulis',
+    'hobi': 'Hobi & Kerajinan',
+    'kerajinan': 'Hobi & Kerajinan',
+  };
+  if (alias[q]) return alias[q];
+  const exact = (allProducts || []).find(p => String(p.category || '').toLowerCase() === q);
+  return exact ? exact.category : '';
+}
+
+function dscApplyFilters(resetPage = true, shouldScrollTop = true) {
   if (!_dscLoaded) return;
   // Market cards are fetched server-side per filter set, so any filter change
   // has to invalidate them or the grid keeps showing the previous market list.
   if (resetPage) { _dscTypesLoaded = false; _dscTypeRows = []; }
-  const q        = _dscCommittedQ;
-  const selectedCats = _dscApplied.cats;
+  const qInput = _dscCommittedQ;
+  const categoryIntent = _dscResolveCategoryIntent(qInput);
+  const q = categoryIntent ? '' : qInput;
+  const selectedCats = categoryIntent ? [categoryIntent] : _dscApplied.cats;
   const priceMin = _dscApplied.priceMin;
   const priceMax = _dscApplied.priceMax;
   const omsetMin = _dscApplied.omsetMin;
@@ -10736,7 +10793,7 @@ function dscApplyFilters(resetPage = true) {
   if (resetPage) { _dscPage = 1; _dscStarterKey = null; }
   dscRenderTable();
   // New result set — pin to top so users scroll down through products (mobile + desktop).
-  if (resetPage) scrollResultsToTop();
+  if (resetPage && shouldScrollTop) scrollResultsToTop();
 }
 
 /** Reset both scroll containers used by the dashboard (window on mobile, .dash-content on desktop). */
