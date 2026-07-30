@@ -297,6 +297,13 @@
     return 'Gagal memutar. Coba lagi nanti.';
   }
 
+  function spinDeniedMessage(reason) {
+    const r = String(reason || '').toLowerCase();
+    if (r === 'already_spun') return 'Kamu sudah putar hari ini. Balik lagi besok ya.';
+    if (r === 'unlimited') return 'Akunmu sudah dapat akses riset unlimited, jadi spin harian tidak diperlukan.';
+    return 'Putaran belum bisa dipakai sekarang.';
+  }
+
   function burstConfetti() {
     const box = document.getElementById('dsw-burst');
     if (!box) return;
@@ -375,12 +382,9 @@
 
     if (!data || data.allowed === false) {
       _busy = false;
-      if (hub) { hub.disabled = true; hub.textContent = 'PUTAR'; }
+      if (hub) { hub.disabled = false; hub.textContent = 'PUTAR'; }
       if (wrap) wrap.classList.remove('is-spinning');
-      const reason = data && data.reason;
-      showMessage(reason === 'already_spun'
-        ? 'Kamu sudah putar hari ini. Balik lagi besok ya.'
-        : 'Putaran belum bisa dipakai sekarang.');
+      showMessage(spinDeniedMessage(data && data.reason));
       return;
     }
 
