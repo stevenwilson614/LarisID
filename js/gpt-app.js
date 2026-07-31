@@ -421,6 +421,10 @@ const ICONS = {
   bulb: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 1 3.5 10.9c-.8.6-1.5 1.2-1.5 2.1h-4c0-.9-.7-1.5-1.5-2.1A6 6 0 0 1 12 3z"/></svg>',
   info: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 11v5"/></svg>',
   eye: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+  truck: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>',
+  rocket: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>',
+  bookmark: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
 };
 function ico(name, size = 16) {
   const svg = ICONS[name] || ICONS.spark;
@@ -6963,7 +6967,8 @@ function peerOmsetStats(peers) {
   return { n: omsets.length, median: mid(omsets), p25: at(0.25), p75: at(0.75), min: omsets[0], max: omsets[omsets.length - 1] };
 }
 
-function ddOmsetHeroHtml(product, peers) {
+/** Shared omset band for hero (legacy) and quick-stat tile. */
+function ddOmsetSummary(product, peers) {
   const t = product._ptype || null;
   const peerStats = peerOmsetStats(peers);
   let lo = 0;
@@ -6975,8 +6980,6 @@ function ddOmsetHeroHtml(product, peers) {
     lo = Number(t.omset_p60) || 0;
     hi = Number(t.omset_p100) || 0;
     median = peerStats?.median || Number(t.omset_top15) || 0;
-    // Quartiles are only attached on directory/search loads — Deep Dive peers
-    // often still have enough omset to show a real range when RPC fields are missing.
     if (!(lo > 0 && hi > 0) && peerStats && peerStats.n >= 4) {
       lo = peerStats.p25;
       hi = peerStats.p75;
@@ -6996,10 +6999,14 @@ function ddOmsetHeroHtml(product, peers) {
       single = own;
     }
   }
+  if (lo > 0 && hi > 0 && !(median > 0)) median = Math.round((lo + hi) / 2);
+  return { lo, hi, median, single };
+}
 
+function ddOmsetHeroHtml(product, peers) {
+  const { lo, hi, median, single } = ddOmsetSummary(product, peers);
   let valHtml = '—';
   if (lo > 0 && hi > 0) {
-    if (!(median > 0)) median = Math.round((lo + hi) / 2);
     valHtml = `<span class="lo">${fmtOmsetHeroAmt(lo)}</span><span class="dash" aria-hidden="true"></span><span class="med">${fmtOmsetHeroAmt(median)}</span><span class="dash" aria-hidden="true"></span><span class="hi">${fmtOmsetHeroAmt(hi)}</span>`;
   } else if (single > 0) {
     valHtml = `<span class="med">${fmtOmsetHeroAmt(single)}</span>`;
@@ -7169,34 +7176,198 @@ function ddFeesSectionHtml(product) {
   </div>`;
 }
 
-function ddTilesHtml(product, stats, peers, series) {
-  // Opened from a Product Type card → tiles describe the TYPE's market
-  // (median price band), not the anchor listing. Omset lives in ddr-omset-hero.
-  const t = product._ptype || null;
-  const spd = Number(product.sold_per_day);
-  const unitMo = Number.isFinite(spd) && spd > 0 ? Math.round(spd * 30) : 0;
-  const price = t ? Number(t.price_median) || 0 : Number(product.price) || 0;
-  const vsMed = stats.median ? Math.round((price - stats.median) / stats.median * 100) : null;
-  const locCount = new Map();
-  peers.forEach(p => { const l = (p.location || '').trim(); if (l) locCount.set(l, (locCount.get(l) || 0) + 1); });
-  const topLoc = [...locCount.entries()].sort((a, b) => b[1] - a[1])[0];
-  const shopN = new Set(peers.map(p => String(p.shop_id))).size;
-  const rateSub = unitMo
-    ? 'Dari selisih scrape produk (terkoreksi bucket/ulasan)'
-    : 'Belum ada delta scrape — bukan estimasi dari total terjual';
-  const unitVal = t
-    ? (Number(t.avg_sold) || 0) ? (Number(t.avg_sold)).toLocaleString('id-ID') + ' unit' : '—'
-    : unitMo ? unitMo.toLocaleString('id-ID') + ' unit' : '—';
-  const unitLbl = t ? 'Rata² Terjual / Listing' : 'Est. Penjualan / Bulan';
-  const unitSub = t ? 'Rata-rata unit terjual per listing tipe ini' : rateSub;
-  const fee = ddMarketplaceFeeForCategory(ddFeeCategory(product));
-  return `<div class="ddr-hscroll ddr-hscroll--tiles">
-    <div class="ddr-tile"><span class="ico" style="background:var(--blue-bg);color:var(--blue)">${ico('box', 14)}</span><div class="lbl">${unitLbl}</div><div class="val">${unitVal}</div><div class="sub">${unitSub}</div></div>
-    <div class="ddr-tile"><span class="ico" style="background:var(--amber-bg);color:var(--amber)">${ico('tag', 14)}</span><div class="lbl">${t ? 'Harga Umum' : 'Harga Produk'}</div><div class="val">${fmtRp(price)}</div><div class="sub">${t ? `Rentang pasar ${fmtRpShort(t.price_min)} – ${fmtRpShort(t.price_max)}` : vsMed == null ? 'Median pasar belum ada' : vsMed === 0 ? 'Sama dengan median pasar' : `${Math.abs(vsMed)}% ${vsMed > 0 ? 'di atas' : 'di bawah'} median pasar`}</div></div>
-    <div class="ddr-tile"><span class="ico" style="background:var(--violet-bg);color:var(--violet)">${ico('pin', 14)}</span><div class="lbl">Lokasi Terbanyak</div><div class="val">${topLoc ? esc(topLoc[0]) : '—'}</div><div class="sub">${topLoc ? `${topLoc[1]} penjual dari kota ini` : 'Belum ada data lokasi'}</div></div>
-    <div class="ddr-tile"><span class="ico" style="background:var(--red-bg);color:var(--accent)">${ico('users', 14)}</span><div class="lbl">Kompetitor Aktif</div><div class="val">~${shopN} toko</div><div class="sub">Kompetisi ${esc(stats.komp || '—')}</div></div>
-    <div class="ddr-tile"><span class="ico" style="background:var(--green-bg);color:var(--green)">${ico('tag', 14)}</span><div class="lbl">Biaya Marketplace</div><div class="val">${fee.pct}</div><div class="sub">${esc(fee.label)} (komisi + program)</div></div>
+function ddAiRecLabel(scoreInfo) {
+  const s = Number(scoreInfo?.score) || 0;
+  if (s >= 70) return { title: 'Peluang Kuat', sub: 'Skor tinggi — layak diprioritaskan untuk uji jual' };
+  if (s >= 45) return { title: 'Layak Diuji', sub: scoreInfo?.odds?.hint || 'Peluang sedang — uji dengan stok kecil dulu' };
+  return { title: 'Berisiko', sub: scoreInfo?.odds?.hint || 'Skor rendah — cek kompetisi & harga sebelum masuk' };
+}
+
+function ddConfidencePct(product, peers, history) {
+  const spd = Number(product?.sold_per_day);
+  const hasSpd = Number.isFinite(spd) && spd > 0;
+  const histN = (history || []).length;
+  const peerN = (peers || []).length;
+  const pct = Math.max(1, Math.min(99, Math.round(
+    35 + Math.min(40, peerN) + (histN >= 2 ? 15 : 0) + (hasSpd ? 10 : 0)
+  )));
+  const label = pct >= 70 ? 'Tinggi' : pct >= 45 ? 'Sedang' : 'Rendah';
+  return { pct, label };
+}
+
+function ddTilesHtml(product, stats, peers, series, scoreInfo, history) {
+  const shopN = new Set((peers || []).map(p => String(p.shop_id))).size;
+  const omset = ddOmsetSummary(product, peers);
+  const omsetVal = omset.median > 0
+    ? fmtRpShort(omset.median)
+    : omset.single > 0 ? fmtRpShort(omset.single) : '—';
+  const omsetSub = omset.median > 0
+    ? 'Median pasar'
+    : omset.single > 0 ? 'Estimasi listing ini' : 'Belum cukup data omset peer';
+  const ai = ddAiRecLabel(scoreInfo || {});
+  const conf = ddConfidencePct(product, peers, history);
+  const priceLo = Number(stats.p35) || Number(stats.p25) || 0;
+  const priceHi = Number(stats.p65) || Number(stats.p75) || 0;
+  const priceVal = priceLo > 0 && priceHi > 0
+    ? `${fmtRp(priceLo)} – ${fmtRp(priceHi)}`
+    : '—';
+  const priceSub = priceLo > 0 ? 'Zona masuk pasar aktif' : 'Belum cukup data harga';
+  const kompVal = stats.komp
+    ? `${esc(stats.komp)}${shopN ? ` (~${shopN} toko)` : ''}`
+    : (shopN ? `~${shopN} toko` : '—');
+  const kompSub = stats.komp === 'Rendah' ? 'Ruang masuk masih terbuka'
+    : stats.komp === 'Tinggi' ? 'Pasar padat — bedakan listing'
+    : 'Kompetisi menengah';
+  return `<div class="ddr-hscroll ddr-hscroll--tiles" data-dd-sec="quick_stats">
+    <div class="ddr-tile"><span class="ico" style="background:var(--violet-bg);color:var(--violet)">${ico('spark', 14)}</span><div class="lbl">Rekomendasi AI</div><div class="val">${esc(ai.title)}</div><div class="sub">${esc(ai.sub)}</div></div>
+    <div class="ddr-tile"><span class="ico" style="background:var(--green-bg);color:var(--green)">${ico('wallet', 14)}</span><div class="lbl">Estimasi Omset / Bulan</div><div class="val">${omsetVal}</div><div class="sub">${esc(omsetSub)}</div></div>
+    <div class="ddr-tile"><span class="ico" style="background:var(--amber-bg);color:var(--amber)">${ico('users', 14)}</span><div class="lbl">Kompetisi</div><div class="val">${kompVal}</div><div class="sub">${esc(kompSub)}</div></div>
+    <div class="ddr-tile"><span class="ico" style="background:var(--violet-bg);color:var(--violet)">${ico('shield', 14)}</span><div class="lbl">Confidence</div><div class="val">${conf.pct}% ${esc(conf.label)}</div><div class="sub">Kekuatan sinyal dari peer &amp; riwayat scrape</div></div>
+    <div class="ddr-tile"><span class="ico" style="background:var(--blue-bg);color:var(--blue)">${ico('tag', 14)}</span><div class="lbl">Rekomendasi Harga</div><div class="val">${priceVal}</div><div class="sub">${esc(priceSub)}</div></div>
   </div>`;
+}
+
+function ddAksiCepatHtml() {
+  return `<div class="ddr-aksi" data-dd-sec="aksi_cepat" role="group" aria-label="Aksi cepat">
+    <div class="ddr-aksi-label">Aksi Cepat</div>
+    <div class="ddr-aksi-grid">
+      <button type="button" class="ddr-aksi-btn primary" data-ddr-aksi="supplier">
+        <span class="ddr-aksi-ico">${ico('truck', 18)}</span>
+        <span class="ddr-aksi-txt">Cari Supplier</span>
+      </button>
+      <button type="button" class="ddr-aksi-btn" data-ddr-aksi="launch">
+        <span class="ddr-aksi-ico">${ico('rocket', 18)}</span>
+        <span class="ddr-aksi-txt">Buat Rencana Launch</span>
+      </button>
+      <button type="button" class="ddr-aksi-btn" data-ddr-aksi="kompetitor">
+        <span class="ddr-aksi-ico">${ico('target', 18)}</span>
+        <span class="ddr-aksi-txt">Track Kompetitor</span>
+      </button>
+      <button type="button" class="ddr-aksi-btn" data-ddr-aksi="simpan">
+        <span class="ddr-aksi-ico">${ico('bookmark', 18)}</span>
+        <span class="ddr-aksi-txt">Simpan Produk</span>
+      </button>
+    </div>
+  </div>`;
+}
+
+function ddInsightBullets(product, stats, share, series, scoreInfo, age, peers) {
+  const bullets = [];
+  const shopN = new Set((peers || []).map(p => String(p.shop_id))).size || share?.shops?.length || 0;
+  if (stats.komp) {
+    bullets.push(stats.komp === 'Rendah'
+      ? `Kompetisi ${stats.komp.toLowerCase()} — masih ada ruang untuk listing baru.`
+      : stats.komp === 'Tinggi'
+        ? `Kompetisi tinggi (${shopN || 'banyak'} toko aktif) — bedakan foto, harga, atau bundling.`
+        : `Kompetisi sedang dengan ~${shopN || 'beberapa'} toko di keyword ini.`);
+  }
+  if (stats.n >= 4 && stats.p35 && stats.p65) {
+    bullets.push(`Zona harga masuk paling aktif: ${fmtRp(stats.p35)} – ${fmtRp(stats.p65)}.`);
+  }
+  const omset = ddOmsetSummary(product, peers);
+  const omsetAmt = omset.median || omset.single || 0;
+  if (omsetAmt > 0) bullets.push(`Estimasi omset pasar sekitar ${fmtRpShort(omsetAmt)} / bulan (median).`);
+  else if (scoreInfo?.score) bullets.push(`Skor produk ${scoreInfo.score}/100 (${scoreInfo.label}).`);
+  if (share?.total > 0) {
+    const top3pct = Math.round(share.top3 / share.total * 100);
+    bullets.push(top3pct <= 50
+      ? `Top 3 toko menguasai ${top3pct}% omset — pangsa belum terkonsentrasi.`
+      : `Top 3 toko menguasai ${top3pct}% omset — pasar cukup terkonsentrasi.`);
+  }
+  if (series?.length >= 2) {
+    const a = series[0]?.omset || 0;
+    const b = series[series.length - 1]?.omset || 0;
+    if (a > 0 && b > 0) {
+      const delta = Math.round((b - a) / a * 100);
+      if (Math.abs(delta) >= 5) {
+        bullets.push(delta > 0
+          ? `Tren omset naik ~${delta}% sepanjang riwayat scrape yang tersedia.`
+          : `Tren omset turun ~${Math.abs(delta)}% — cek ulang demand sebelum stok besar.`);
+      }
+    }
+  }
+  if (age?.total >= 4) {
+    const youngMid = Math.round(((age.young + age.mid) / age.total) * 100);
+    if (youngMid >= 50) bullets.push(`${youngMid}% toko berusia di bawah 5 tahun — pasar masih terbuka.`);
+  }
+  return bullets.slice(0, 4);
+}
+
+function ddKesimpulanCopy(scoreInfo, stats) {
+  const s = Number(scoreInfo?.score) || 0;
+  const label = scoreInfo?.label || 'Peluang Sedang';
+  if (s >= 70) {
+    return `Produk ini ${label.toLowerCase()} (skor ${s}/100). Kompetisi ${((stats.komp || 'sedang')).toLowerCase()} — cocok diprioritaskan untuk uji jual dengan stok terukur.`;
+  }
+  if (s >= 45) {
+    return `Produk ini layak untuk diuji jual (skor ${s}/100). Mulai dengan stok kecil, masuk di zona harga aktif, dan pantau kompetitor top sebelum scale.`;
+  }
+  return `Produk ini berisiko (skor ${s}/100). Validasi demand & bedakan listing dulu — jangan masuk dengan stok besar sebelum sinyal lebih kuat.`;
+}
+
+function ddInsightSectionHtml(product, stats, share, series, scoreInfo, age, peers) {
+  const bullets = ddInsightBullets(product, stats, share, series, scoreInfo, age, peers);
+  const kesimpulan = ddKesimpulanCopy(scoreInfo, stats);
+  const list = bullets.length
+    ? `<ul class="ddr-insight-list">${bullets.map(b => `<li>${ico('check', 15)}<span>${esc(b)}</span></li>`).join('')}</ul>`
+    : `<p class="dd-sub">Belum cukup sinyal untuk insight otomatis — cek chart &amp; kompetitor di bawah.</p>`;
+  return `<div class="ddr-insight-row" data-dd-sec="insight">
+    <div class="ddr-card ddr-insight-card">
+      <h3>Insight Utama</h3>
+      ${list}
+    </div>
+    <div class="ddr-card ddr-kesimpulan-card">
+      <h3>Kesimpulan</h3>
+      <div class="ddr-kesimpulan-box">
+        <span class="ddr-kesimpulan-ico" aria-hidden="true">${ico('spark', 16)}</span>
+        <p>${esc(kesimpulan)}</p>
+      </div>
+    </div>
+  </div>`;
+}
+
+function wireDdrAksiCepat(root, product, peers) {
+  root?.querySelectorAll?.('[data-ddr-aksi]')?.forEach((btn) => {
+    if (btn.dataset.boundAksi) return;
+    btn.dataset.boundAksi = '1';
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const aksi = btn.getAttribute('data-ddr-aksi');
+      if (aksi === 'supplier') {
+        if (!supplierProbeVisible()) {
+          showToast('Cari Supplier segera hadir');
+          return;
+        }
+        runDdrTool('supplier', product, peers, 'aksi_cepat');
+        return;
+      }
+      if (aksi === 'kompetitor') {
+        runDdrTool('kompetitor', product, peers, 'aksi_cepat');
+        return;
+      }
+      if (aksi === 'launch') {
+        const chips = ddComposerChips(product);
+        const launch = chips.find(c => c.id === 'launch') || DD_CHIPS.find(c => c.id === 'launch');
+        const prompt = launch?.prompt || 'Buat rencana launch untuk produk ini';
+        void logUserEvent('deepdive_section', { ui: 'gpt', section: 'launch_cta', via: 'aksi_cepat', keyword: product?.keyword || '' });
+        void handleComposerSubmit(prompt);
+        return;
+      }
+      if (aksi === 'simpan') {
+        void logUserEvent('deepdive_section', { ui: 'gpt', section: 'simpan_cta', via: 'aksi_cepat', keyword: product?.keyword || '' });
+        if (window.LarisTracker?.openSetup) {
+          try {
+            setView('tracker');
+            window.LarisTracker.openSetup();
+            showToast('Tambahkan keyword produk ini di Pantauan');
+            return;
+          } catch (_) {}
+        }
+        showToast('Pantauan segera hadir');
+      }
+    });
+  });
 }
 
 function ddKompetitorTableHtml(share, opts = {}) {
@@ -7752,12 +7923,12 @@ async function openDeepDive(product, ddOpts = {}) {
           <div class="num">${scoreInfo.score}<span>/100</span></div>
           <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
         </div>
-        ${ddOmsetHeroHtml(product, peers)}
       </div>
     </div>
     ${ddToolPillsHtml()}
     ${ddFeeStripHtml(product)}
-    ${ddTilesHtml(product, stats, peers, series)}
+    ${ddTilesHtml(product, stats, peers, series, scoreInfo, history)}
+    ${ddAksiCepatHtml()}
     <div class="ddr-hscroll ddr-hscroll--graphs">
       <div class="ddr-card" data-dd-sec="tren">
         <h3>Tren Omset &amp; Unit Terjual</h3>
@@ -7784,24 +7955,6 @@ async function openDeepDive(product, ddOpts = {}) {
           <p class="ddr-caption">${share.top3 / share.total <= 0.5 ? 'Pasar tidak didominasi satu toko — masih ada ruang untuk bersaing.' : 'Pasar cukup terkonsentrasi di toko-toko teratas.'}</p>`
           : '<p class="dd-sub">Belum cukup data toko untuk memetakan pangsa pasar.</p>'}
       </div>
-      <div class="ddr-card" data-dd-sec="distribusi">
-        <h3>Distribusi Harga</h3>
-        ${stats.n >= 6 ? `
-          <div class="ddr-chart-wrap sm"><canvas id="ddr-dist-canvas"></canvas></div>
-          <p class="ddr-caption">Setiap thumbnail = listing (harga × terjual). Zona merah muda = rentang ${fmtRpShort(bandLo)} – ${fmtRpShort(bandHi)} tempat sebagian besar penjualan terjadi.</p>`
-          : '<p class="dd-sub">Belum cukup listing untuk memetakan distribusi harga.</p>'}
-      </div>
-    </div>
-    <div class="ddr-hscroll ddr-hscroll--price">
-      <div class="ddr-card" data-dd-sec="harga">
-        <h3>Rentang Harga Optimal</h3>
-        ${stats.n >= 4 ? `
-          <div class="range-big">${fmtRp(bandLo)} – ${fmtRp(bandHi)}</div>
-          <div class="range-bar"><div class="range-seg" style="left:${segLeft}%;width:${segWidth}%"></div></div>
-          <div class="range-ticks"><span>${fmtRpShort(stats.min)}</span><span>${fmtRpShort(stats.median)}</span><span>${fmtRpShort(stats.max)}</span></div>
-          <div class="range-note">${ico('info', 13)}<span>Rentang harga dari ${stats.n} listing di keyword ini. Rekomendasi masuk pasar: ${fmtRp(stats.p35)} – ${fmtRp(stats.p65)}.</span></div>`
-          : '<p class="dd-sub">Belum cukup data harga peer untuk keyword ini.</p>'}
-      </div>
       <div class="ddr-card" data-dd-sec="usia_toko">
         <h3>Usia Toko Kompetitor</h3>
         ${age.total >= 4 ? `
@@ -7815,6 +7968,25 @@ async function openDeepDive(product, ddOpts = {}) {
           : '<p class="dd-sub">Belum cukup data tanggal listing untuk memetakan usia toko.</p>'}
       </div>
     </div>
+    <div class="ddr-hscroll ddr-hscroll--price">
+      <div class="ddr-card" data-dd-sec="harga">
+        <h3>Rentang Harga Optimal</h3>
+        ${stats.n >= 4 ? `
+          <div class="range-big">${fmtRp(bandLo)} – ${fmtRp(bandHi)}</div>
+          <div class="range-bar"><div class="range-seg" style="left:${segLeft}%;width:${segWidth}%"></div></div>
+          <div class="range-ticks"><span>${fmtRpShort(stats.min)}</span><span>${fmtRpShort(stats.median)}</span><span>${fmtRpShort(stats.max)}</span></div>
+          <div class="range-note">${ico('info', 13)}<span>Rentang harga dari ${stats.n} listing di keyword ini. Rekomendasi masuk pasar: ${fmtRp(stats.p35)} – ${fmtRp(stats.p65)}.</span></div>`
+          : '<p class="dd-sub">Belum cukup data harga peer untuk keyword ini.</p>'}
+      </div>
+      <div class="ddr-card" data-dd-sec="distribusi">
+        <h3>Distribusi Harga</h3>
+        ${stats.n >= 6 ? `
+          <div class="ddr-chart-wrap sm"><canvas id="ddr-dist-canvas"></canvas></div>
+          <p class="ddr-caption">Setiap thumbnail = listing (harga × terjual). Zona merah muda = rentang ${fmtRpShort(bandLo)} – ${fmtRpShort(bandHi)} tempat sebagian besar penjualan terjadi.</p>`
+          : '<p class="dd-sub">Belum cukup listing untuk memetakan distribusi harga.</p>'}
+      </div>
+    </div>
+    ${ddInsightSectionHtml(product, stats, share, series, scoreInfo, age, peers)}
     <div class="ddr-card" data-dd-sec="kompetitor" style="margin-bottom:12px">
       <div class="ddr-sec-head">
         <h3>Top Kompetitor</h3>
@@ -7840,6 +8012,7 @@ async function openDeepDive(product, ddOpts = {}) {
   wireKompClicks(root, peers);
   bindDdrCarousel(root);
   wireDdrToolPills(root, product, peers);
+  wireDdrAksiCepat(root, product, peers);
   $('ddr-komp-more')?.addEventListener('click', () => {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'kompetitor', via: 'click', keyword: kw || '' });
   });
