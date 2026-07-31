@@ -1897,8 +1897,10 @@ body.home-finder-done .home-title {
 }
 .ddr-aksi-ico svg { width: 16px; height: 16px; }
 .ddr-aksi-txt {
-  font-size: .78rem; font-weight: 700; line-height: 1.25;
-  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: .76rem; font-weight: 700; line-height: 1.25;
+  /* Wrap to a second line rather than ellipsing: "Track Kompeti…" tells the
+     user nothing, and four labels of this length never fit one line at 4-up. */
+  min-width: 0; overflow-wrap: anywhere;
 }
 .ddr-insight-row {
   display: grid; gap: 12px; margin-bottom: 12px;

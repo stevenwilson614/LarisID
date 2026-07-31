@@ -3888,7 +3888,7 @@ function openSidePanel(mode, opts = {}) {
   else if (next === 'supplier') void fillSupplierContent(opts);
   else void fillKompContent(opts);
 
-  saveSidePrefs({ open: true, mode: next });
+  saveSidePrefs({ open: true, dismissed: false, mode: next });
   if (opts.via !== 'restore' && (!wasOpen || switching)) {
     void logUserEvent('gpt_side_panel', {
       ui: 'gpt',
@@ -3912,7 +3912,9 @@ function closeCalcPanel() {
   $('calc-rail')?.setAttribute('aria-expanded', 'false');
   $('komp-rail')?.setAttribute('aria-expanded', 'false');
   $('serupa-rail')?.setAttribute('aria-expanded', 'false');
-  saveSidePrefs({ open: false, mode: _sideMode });
+  // `dismissed` records an explicit close, which is what stops the Deep Dive
+  // from re-opening the panel on every product. Re-opening it clears the flag.
+  saveSidePrefs({ open: false, dismissed: true, mode: _sideMode });
 }
 
 function wireCalcPanel() {
@@ -8095,11 +8097,14 @@ async function openDeepDive(product, ddOpts = {}) {
   // Live-refresh open side panel when switching products in Deep Dive.
   refreshOpenSidePanel(sideOpts);
   // Desktop: the AI belongs beside the report, not under it. Open it on arrival
-  // unless the user has deliberately closed the panel before (loadSidePrefs
-  // remembers that), which is why this never re-opens what they dismissed.
+  // unless the user has closed the panel themselves.
+  //
+  // The gate is `dismissed`, NOT loadSidePrefs().open — that returns
+  // `open: false` for anyone with no stored prefs (the legacy-key fallback
+  // fabricates it), so a fresh visitor would never see the panel at all.
   if (window.innerWidth > 860
       && !document.body.classList.contains('calc-open')
-      && loadSidePrefs().open !== false) {
+      && !loadSidePrefs().dismissed) {
     openAiPanel({ ...sideOpts, via: 'deepdive_auto' });
   }
 

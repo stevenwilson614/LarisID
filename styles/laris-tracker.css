@@ -41,9 +41,17 @@
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 12px; margin-bottom: 14px; flex-wrap: wrap;
 }
+.ltk-head-main { display: flex; align-items: flex-start; gap: 11px; min-width: 0; }
+.ltk-head-ico {
+  flex-shrink: 0; width: 36px; height: 36px; border-radius: 11px;
+  display: grid; place-items: center; background: #FEE2E2; color: #B5202A;
+}
 .ltk-title { font-size: 1.05rem; font-weight: 800; margin: 0 0 2px; letter-spacing: -.01em; }
 .ltk-sub { font-size: .78rem; color: #6B7280; margin: 0; line-height: 1.45; }
-.ltk-head-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.ltk-head-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+.ltk-head-actions .ltk-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+}
 
 .ltk-btn {
   font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer;
@@ -117,62 +125,6 @@
 .ltk-setup-hero { margin-bottom: 18px; }
 .ltk-setup-hero h3 { font-size: 1rem; font-weight: 800; margin: 0 0 6px; }
 .ltk-setup-hero p { font-size: .82rem; color: #6B7280; line-height: 1.55; margin: 0; }
-
-.ltk-catgrid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px;
-}
-.ltk-cat {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  font: inherit; font-size: .72rem; font-weight: 700; cursor: pointer;
-  background: #fff; border: 1px solid #E5E7EB; border-radius: var(--ltk-r);
-  padding: 14px 8px; color: #374151; text-align: center;
-  transition: border-color .15s ease, transform .15s ease;
-}
-.ltk-cat:hover { border-color: #B5202A; transform: translateY(-1px); }
-.ltk-cat.is-active { border-color: #B5202A; background: #F9EAE4; color: #8E191F; }
-.ltk-cat-ico { width: 40px; height: 40px; display: block; }
-.ltk-cat-ico img { width: 100%; height: 100%; object-fit: contain; }
-/* Category images only exist for the 19 shipped slugs; category_map can hold
-   more. A blank tile in the primary entry point is worse than an ugly one, so
-   missing art degrades to a tinted letter rather than display:none. */
-.ltk-cat-ico--letter {
-  display: flex; align-items: center; justify-content: center;
-  background: #F9EAE4; color: #B5202A; border-radius: 10px;
-  font-size: 1.1rem; font-weight: 800;
-}
-.ltk-cat-lbl { line-height: 1.3; }
-
-.ltk-pool {
-  background: #FAFAFA; border: 1px solid #E5E7EB; border-radius: var(--ltk-r);
-  padding: var(--ltk-pad); margin-bottom: 18px;
-}
-.ltk-pool-head {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 10px; margin-bottom: 12px; flex-wrap: wrap;
-}
-.ltk-pool-title { font-size: .78rem; font-weight: 700; color: #374151; }
-.ltk-pool-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.ltk-pick {
-  display: inline-flex; align-items: center; gap: 6px;
-  font: inherit; font-size: .74rem; font-weight: 600; cursor: pointer;
-  background: #fff; border: 1px solid #E5E7EB; border-radius: 999px;
-  padding: 7px 13px; color: #374151;
-}
-.ltk-pick:hover:not(:disabled) { border-color: #B5202A; color: #B5202A; }
-.ltk-pick.is-picked { background: #B5202A; border-color: #B5202A; color: #fff; }
-.ltk-pick:disabled { opacity: .45; cursor: not-allowed; }
-.ltk-pick-n { font-size: .66rem; opacity: .7; font-weight: 600; }
-
-.ltk-custom { margin-top: 14px; }
-.ltk-custom > summary {
-  font-size: .74rem; font-weight: 700; color: #6B7280; cursor: pointer;
-  list-style: none; padding: 4px 0;
-}
-.ltk-custom > summary::-webkit-details-marker { display: none; }
-.ltk-custom > summary::before { content: "+ "; }
-.ltk-custom[open] > summary::before { content: "− "; }
-.ltk-custom-row { display: flex; gap: 8px; margin-top: 10px; }
-.ltk-custom-row .ltk-input { flex: 1; min-width: 0; }
 
 /* ── Slots ─────────────────────────────────────────────────────────────── */
 .ltk-slotsec { margin-bottom: 18px; }
@@ -260,76 +212,236 @@
 .ltk-baseline-stats span { display: block; }
 .ltk-baseline-stats b { color: #1A1A1A; }
 
-/* ── Deltas ────────────────────────────────────────────────────────────── */
-.ltk-winbar {
+/* ── Rollup (the Robinhood table) ──────────────────────────────────────── */
+.ltk-rollup { display: flex; flex-direction: column; gap: 14px; }
+
+.ltk-statstrip {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+}
+.ltk-stat {
+  display: flex; align-items: flex-start; gap: 10px;
+  border: 1px solid #E5E7EB; border-radius: var(--ltk-r);
+  background: #fff; padding: 13px 14px; min-width: 0;
+}
+.ltk-stat-ico {
+  flex-shrink: 0; width: 30px; height: 30px; border-radius: 9px;
+  display: grid; place-items: center;
+}
+.ltk-stat-ico svg { width: 15px; height: 15px; }
+.ltk-stat-ico--green  { background: #DCFCE7; color: #16A34A; }
+.ltk-stat-ico--blue   { background: #DBEAFE; color: #2563EB; }
+.ltk-stat-ico--amber  { background: #FEF3C7; color: #D97706; }
+.ltk-stat-ico--violet { background: #EDE9FE; color: #7C3AED; }
+.ltk-stat-ico--red    { background: #FEE2E2; color: #DC2626; }
+.ltk-stat-ico--rose   { background: #FFE4E6; color: #E11D48; }
+.ltk-stat-body { min-width: 0; flex: 1; }
+.ltk-stat-val {
+  font-size: 1.12rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.15;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ltk-stat-lbl { font-size: .7rem; color: #6B7280; font-weight: 600; margin-top: 2px; }
+.ltk-stat-d {
+  display: flex; align-items: center; gap: 6px; margin-top: 5px;
+  font-size: .66rem; color: #9CA3AF;
+}
+.ltk-stat-d > span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Delta chip — one look for the stat strip and every table cell. */
+.ltk-d {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: .66rem; font-weight: 700; white-space: nowrap;
+}
+.ltk-d svg {
+  width: 9px; height: 9px; fill: none; stroke: currentColor;
+  stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round;
+}
+.ltk-d--up    { color: #16A34A; }
+.ltk-d--down  { color: #DC2626; }
+.ltk-d--flat  { color: #9CA3AF; }
+.ltk-d--new   { color: #B45309; background: #FEF3C7; border-radius: 999px; padding: 1px 7px; }
+
+.ltk-panel {
+  border: 1px solid #E5E7EB; border-radius: var(--ltk-r);
+  background: #fff; overflow: hidden;
+}
+.ltk-panel-head {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; margin-bottom: 10px; flex-wrap: wrap;
+  gap: 12px; padding: 14px var(--ltk-pad); border-bottom: 1px solid #F3F4F6;
+  flex-wrap: wrap;
 }
-.ltk-winbtns { display: inline-flex; background: #F3F4F6; border-radius: 999px; padding: 3px; gap: 2px; }
-.ltk-winbtn {
-  font: inherit; font-size: .72rem; font-weight: 700; cursor: pointer;
-  background: none; border: 0; border-radius: 999px; padding: 6px 13px; color: #6B7280;
+.ltk-panel-title {
+  font-size: .88rem; font-weight: 800; letter-spacing: -.01em;
+  display: flex; align-items: center; gap: 8px;
 }
-.ltk-winbtn.is-active { background: #fff; color: #1A1A1A; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-.ltk-asof { font-size: .72rem; color: #9CA3AF; }
+.ltk-count-pill {
+  font-size: .68rem; font-weight: 700; color: #6B7280;
+  background: #F3F4F6; border-radius: 999px; padding: 2px 8px;
+}
 
-/* The window framing has to survive into the boring case, so this note is
-   shared by the deltas and quiet screens. */
-.ltk-winnote {
-  font-size: .74rem; color: #6B7280; line-height: 1.55; margin: 0 0 16px;
-  background: #F9FAFB; border-left: 3px solid #E5E7EB; padding: 10px 13px;
-  border-radius: 0 8px 8px 0;
+.ltk-select {
+  font: inherit; font-size: .72rem; font-weight: 600; color: #374151;
+  border: 1px solid #E5E7EB; border-radius: 999px;
+  padding: 7px 28px 7px 12px; background: #fff; cursor: pointer;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5L6 8l3-3.5' fill='none' stroke='%236B7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; background-size: 11px;
 }
-.ltk-winnote b { color: #374151; }
+.ltk-select:hover { border-color: #D1D5DB; }
+/* Label text is for screen readers; the select already says what it does. */
+.ltk-sr { display: inline-flex; font-size: 0; }
+.ltk-winsel { display: inline-flex; }
 
-.ltk-movers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-.ltk-mover {
-  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
-  font: inherit; cursor: pointer; background: #fff; border: 0;
-  border-bottom: 1px solid #F3F4F6; padding: 12px 4px;
+.ltk-tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.ltk-table { width: 100%; border-collapse: collapse; font-size: .76rem; }
+.ltk-table thead th {
+  text-align: right; font-size: .64rem; font-weight: 700; color: #9CA3AF;
+  text-transform: uppercase; letter-spacing: .04em;
+  padding: 10px 12px; border-bottom: 1px solid #F3F4F6; white-space: nowrap;
 }
-.ltk-mover:last-child { border-bottom: 0; }
-.ltk-mover:hover { background: #FAFAFA; }
-.ltk-mover-rank {
-  flex-shrink: 0; width: 20px; text-align: center;
-  font-size: .74rem; font-weight: 800; color: #D1D5DB;
+.ltk-table thead th.ltk-th-name { text-align: left; padding-left: var(--ltk-pad); }
+.ltk-table thead th:last-child { width: 34px; }
+.ltk-row { border-bottom: 1px solid #F9FAFB; }
+.ltk-row:last-child { border-bottom: 0; }
+.ltk-row:hover { background: #FAFAFA; }
+.ltk-rowhead {
+  display: flex; align-items: center; gap: 10px; text-align: left;
+  padding: 13px 12px 13px var(--ltk-pad); font-weight: 500; min-width: 210px;
 }
-.ltk-mover-img { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: #F3F4F6; }
-.ltk-mover-main { flex: 1; min-width: 0; }
-.ltk-mover-name {
-  font-size: .82rem; font-weight: 700; line-height: 1.35;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+.ltk-row-ico {
+  flex-shrink: 0; width: 30px; height: 30px; border-radius: 9px;
+  overflow: hidden; display: grid; place-items: center; background: #F3F4F6;
 }
-.ltk-mover-src { display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
-.ltk-src {
-  display: inline-block; font-size: .66rem; font-weight: 700;
-  border-radius: 4px; padding: 2px 6px;
+.ltk-row-ico img { width: 100%; height: 100%; object-fit: cover; }
+.ltk-row-ico--letter {
+  font-size: .8rem; font-weight: 800; color: #6B7280; background: #F3F4F6;
 }
-.ltk-src--kw { background: #F3F4F6; color: #6B7280; }
-.ltk-src--store { background: #F9EAE4; color: #8E191F; }
-.ltk-mover-store {
-  font-size: .68rem; color: #9CA3AF;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;
+.ltk-rowhead-txt { min-width: 0; }
+.ltk-rowhead-name {
+  display: block; font-size: .8rem; font-weight: 700; color: #1A1A1A;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 210px;
 }
-.ltk-mover-fig { flex-shrink: 0; text-align: right; }
-.ltk-mover-num { font-size: .95rem; font-weight: 800; color: #1A7A46; white-space: nowrap; }
-.ltk-mover-unit { font-size: .7rem; font-weight: 600; color: #9CA3AF; }
+.ltk-rowhead-meta { display: block; font-size: .66rem; color: #9CA3AF; margin-top: 2px; }
+.ltk-num {
+  text-align: right; padding: 13px 12px; white-space: nowrap; vertical-align: middle;
+}
+.ltk-num b { display: block; font-size: .8rem; font-weight: 700; color: #1A1A1A; }
+.ltk-num .ltk-d { margin-top: 3px; }
+.ltk-sparkcell { padding: 13px 12px; text-align: right; width: 84px; }
+.ltk-spark { width: 68px; height: 24px; display: inline-block; vertical-align: middle; }
+.ltk-spark-empty { font-size: .64rem; color: #C4C4C4; white-space: nowrap; }
 
-.ltk-foot {
-  font-size: .72rem; color: #9CA3AF; text-align: center;
-  margin: 16px 0 0; line-height: 1.5;
+.ltk-kebabcell { position: relative; padding: 13px 10px 13px 0; width: 34px; }
+.ltk-kebab {
+  width: 26px; height: 26px; border-radius: 8px; border: 0; background: transparent;
+  cursor: pointer; display: grid; place-items: center; color: #9CA3AF;
 }
-.ltk-foot .ltk-link { font-size: .72rem; }
+.ltk-kebab:hover { background: #F3F4F6; color: #374151; }
+.ltk-kebab svg { width: 15px; height: 15px; }
+.ltk-menu {
+  position: absolute; right: 8px; top: 38px; z-index: 20; min-width: 168px;
+  background: #fff; border: 1px solid #E5E7EB; border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(16, 24, 40, .12); padding: 5px; display: grid; gap: 1px;
+}
+.ltk-menu button {
+  font: inherit; font-size: .74rem; font-weight: 600; color: #374151;
+  text-align: left; background: transparent; border: 0; border-radius: 8px;
+  padding: 8px 10px; cursor: pointer; white-space: nowrap;
+}
+.ltk-menu button:hover { background: #F3F4F6; }
+.ltk-menu .ltk-menu-danger { color: #DC2626; }
+.ltk-menu .ltk-menu-danger:hover { background: #FEF2F2; }
 
-/* ── Quiet ─────────────────────────────────────────────────────────────── */
-.ltk-quiet-msg {
-  display: flex; align-items: flex-start; gap: 14px;
-  background: #fff; border: 1px solid #E5E7EB; border-radius: var(--ltk-r);
-  padding: var(--ltk-pad); margin-bottom: 22px;
+.ltk-addrow {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 13px; border: 0; border-top: 1px dashed #E5E7EB;
+  background: #fff; cursor: pointer;
+  font: inherit; font-size: .78rem; font-weight: 700; color: #B5202A;
 }
-.ltk-quiet-ico { flex-shrink: 0; color: #9CA3AF; line-height: 1; margin-top: 2px; }
-.ltk-quiet-msg h3 { font-size: .92rem; font-weight: 800; margin: 0 0 5px; }
-.ltk-quiet-msg p { font-size: .8rem; color: #6B7280; line-height: 1.55; margin: 0 0 8px; }
+.ltk-addrow:hover { background: #FFF7F7; }
+.ltk-addrow em { font-style: normal; font-weight: 600; color: #9CA3AF; font-size: .7rem; }
+
+.ltk-insights { display: flex; flex-direction: column; gap: 10px; }
+.ltk-insights-head { font-size: .8rem; font-weight: 800; letter-spacing: -.01em; }
+.ltk-insights-head span { font-weight: 600; color: #9CA3AF; font-size: .72rem; }
+.ltk-insight-grid {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+.ltk-insight {
+  display: flex; gap: 10px; align-items: flex-start;
+  border: 1px solid #E5E7EB; border-radius: var(--ltk-r);
+  background: #fff; padding: 13px 14px;
+}
+.ltk-insight-ico {
+  flex-shrink: 0; width: 28px; height: 28px; border-radius: 9px;
+  display: grid; place-items: center;
+}
+.ltk-insight-ico svg { width: 14px; height: 14px; }
+.ltk-insight--green .ltk-insight-ico { background: #DCFCE7; color: #16A34A; }
+.ltk-insight--red   .ltk-insight-ico { background: #FEE2E2; color: #DC2626; }
+.ltk-insight--blue  .ltk-insight-ico { background: #DBEAFE; color: #2563EB; }
+.ltk-insight--amber .ltk-insight-ico { background: #FEF3C7; color: #D97706; }
+.ltk-insight-title { font-size: .76rem; font-weight: 700; line-height: 1.35; }
+.ltk-insight-body { font-size: .7rem; color: #6B7280; margin-top: 3px; line-height: 1.45; }
+
+.ltk-foot { font-size: .7rem; color: #9CA3AF; margin: 0; line-height: 1.55; }
+
+.ltk-empty { text-align: center; padding: 40px 20px; }
+.ltk-empty h3 { font-size: .95rem; font-weight: 800; margin: 0 0 6px; }
+.ltk-empty p { font-size: .78rem; color: #6B7280; margin: 0 0 16px; line-height: 1.5; }
+
+/* ── Scope tabs (Keyword | Toko) ───────────────────────────────────────── */
+.ltk-scopetabs {
+  display: flex; gap: 4px; margin-bottom: 14px;
+  background: #F3F4F6; border-radius: 999px; padding: 3px; width: fit-content; max-width: 100%;
+}
+.ltk-scopetabs:empty { display: none; }
+/* Site A already renders Keyword | Toko | Produk Dilacak in its own tab row,
+   so the module's copy would be a second, conflicting control. Site B has no
+   host row and relies on these. */
+.ltk-root[data-site="a"] .ltk-scopetabs { display: none; }
+.ltk-scopetab {
+  font: inherit; font-size: .76rem; font-weight: 700; color: #6B7280;
+  background: transparent; border: 0; border-radius: 999px;
+  padding: 7px 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  transition: background .15s ease, color .15s ease;
+}
+.ltk-scopetab:hover { color: #374151; }
+.ltk-scopetab.is-active { background: #fff; color: #1A1A1A; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.ltk-scopetab-n {
+  font-size: .64rem; font-weight: 700; color: #9CA3AF;
+  background: #E5E7EB; border-radius: 999px; padding: 1px 6px;
+}
+.ltk-scopetab.is-active .ltk-scopetab-n { background: #F3F4F6; color: #6B7280; }
+
+/* ── Typeahead suggestions ─────────────────────────────────────────────── */
+.ltk-slot--type {
+  align-items: stretch; padding: 0; border-style: dashed; background: #fff;
+}
+.ltk-slot--type .ltk-slot-plus { align-self: center; margin-left: 14px; }
+.ltk-slot-typewrap { position: relative; flex: 1; min-width: 0; }
+.ltk-slot-input {
+  width: 100%; border: 0; background: transparent; padding: 14px 14px 14px 10px;
+  font-size: .8rem;
+}
+.ltk-slot-input:focus { outline: 0; }
+.ltk-sug {
+  position: absolute; left: 0; right: 0; top: calc(100% - 4px); z-index: 30;
+  background: #fff; border: 1px solid #E5E7EB; border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(16, 24, 40, .14);
+  padding: 5px; display: grid; gap: 1px; max-height: 280px; overflow-y: auto;
+}
+.ltk-sug-note { font-size: .72rem; color: #9CA3AF; padding: 9px 10px; line-height: 1.45; }
+.ltk-sug-opt {
+  display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
+  font: inherit; text-align: left; background: transparent; border: 0;
+  border-radius: 8px; padding: 8px 10px; cursor: pointer; width: 100%;
+}
+.ltk-sug-opt:hover { background: #F3F4F6; }
+.ltk-sug-kw { font-size: .78rem; font-weight: 700; color: #1A1A1A; }
+.ltk-sug-meta { font-size: .68rem; color: #9CA3AF; }
+.ltk-catsel { margin-left: auto; }
 
 /* ── Discover fall-through (shared by collecting + quiet) ──────────────── */
 .ltk-discover-head { margin-bottom: 12px; }
@@ -376,7 +488,12 @@
 .ltk-summary-empty { font-size: .78rem; color: #9CA3AF; line-height: 1.5; }
 
 /* ── Skeleton / error ──────────────────────────────────────────────────── */
-.ltk-skel { display: flex; flex-direction: column; gap: 2px; }
+.ltk-skel { display: flex; flex-direction: column; gap: 2px; padding: 4px var(--ltk-pad) 12px; }
+.ltk-skel-stat {
+  height: 74px; border-color: #F3F4F6;
+  background: linear-gradient(90deg, #F9FAFB 25%, #F3F4F6 50%, #F9FAFB 75%);
+  background-size: 200% 100%; animation: ltk-shimmer 1.2s infinite;
+}
 .ltk-skel-row {
   display: flex; align-items: center; gap: 12px; padding: 12px 4px;
   border-bottom: 1px solid #F3F4F6;
@@ -400,14 +517,32 @@
 
 /* ── Responsive ────────────────────────────────────────────────────────── */
 @media (min-width: 760px) {
-  .ltk-catgrid { grid-template-columns: repeat(6, 1fr); }
   .ltk-disc-grid { grid-template-columns: repeat(4, 1fr); }
   .ltk-title { font-size: 1.15rem; }
 }
+@media (max-width: 720px) {
+  /* The table stays a table and scrolls sideways — stacking each row into a
+     card destroys the column-scanning the layout exists for. The name column
+     is pinned so the scroll never loses track of which row you are reading. */
+  .ltk-rowhead {
+    position: sticky; left: 0; z-index: 2; background: #fff;
+    box-shadow: 1px 0 0 #F3F4F6; min-width: 168px;
+  }
+  .ltk-row:hover .ltk-rowhead { background: #FAFAFA; }
+  .ltk-table thead th.ltk-th-name {
+    position: sticky; left: 0; z-index: 3; background: #fff;
+  }
+  .ltk-rowhead-name { max-width: 128px; }
+  .ltk-panel-head { gap: 8px; }
+  .ltk-statstrip { grid-template-columns: repeat(auto-fit, minmax(144px, 1fr)); }
+  .ltk-stat-val { font-size: 1rem; }
+}
 @media (max-width: 420px) {
-  .ltk-mover-store { max-width: 90px; }
-  .ltk-mover-img { width: 42px; height: 42px; }
   .ltk-baseline-stats { font-size: .68rem; }
+  .ltk-scopetabs { width: 100%; }
+  .ltk-scopetab { flex: 1; justify-content: center; }
+  .ltk-catsel { margin-left: 0; width: 100%; }
+  .ltk-catsel .ltk-select { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

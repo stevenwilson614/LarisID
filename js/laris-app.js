@@ -8903,6 +8903,7 @@ async function cohortMentorAddMilestone() {
 // ════════════════════════════════════════════════════════════
 let _dscAllListings = [];   // deduplicated listing objects
 let _dscPrevMap     = {};   // "itemId_shopId" -> prev scrape fields {total_sold,reviews,sold_tier,est_sold,scraped_at} (legacy: number)
+let _dscDeltaMap    = {};   // "itemId_shopId" -> server-computed delta {est,confidence,sold_prev,scraped_at}
 let _dscKwTrendMap  = {};   // keyword -> pct change in total keyword sold vs prev scrape
 let _dscCompMap     = {};   // keyword -> "Rendah"|"Sedang"|"Tinggi"
 let _dscFiltered    = [];
@@ -9129,8 +9130,13 @@ function _dscOmset(listing) {
   return 0;  // No delta and no peer data — cannot estimate period revenue
 }
 
-// Trend delta (units gained since last scrape) — corrected, not raw bucket jump
+// Trend delta (units gained since last scrape) — corrected, not raw bucket jump.
+// Prefer the server's estimate: it pairs against the item's own last observation
+// across both scrapers and applies the learned category×price-band multipliers,
+// neither of which the client can do. Falls back to the local correction.
 function _dscTrendDelta(listing) {
+  const d = _dscDeltaMap[`${listing.item_id}_${listing.shop_id}`];
+  if (d && d.est != null) return d.est;
   return _dscCorrectedUnitDelta(listing);
 }
 
@@ -9971,50 +9977,86 @@ function _dscRenderInterim() {
   }
 }
 
-// Fetch previous scrape's total_sold to compute listing + keyword trends.
-// Runs in background; re-renders table once data is ready.
+// Load per-product deltas for the listings currently on screen.
+//
+// This used to fetch a flat `.limit(3000)` of ONE prior day from `listings` and
+// hope the products matched. Two things were wrong with that: a panel day holds
+// ~107k rows, so 3,000 covered ~3% of it; and pinning to a single prior day
+// misses every product whose last sighting fell on some other day — with
+// rotating keyword sets and Shopee reshuffling results, that is most of them.
+//
+// listing_deltas is now computed server-side per item against its OWN most
+// recent prior observation (listing_deltas.sql), so ask for exactly the items
+// being displayed. It also carries `estimated_sold_delta`, which is bucket- and
+// review-model aware using learned multipliers — strictly better than the
+// client-side correction, which stays as the fallback.
+const DSC_DELTA_BATCH = 200;   // item_ids per request; keeps the URL well under limits
+
 async function dscLoadTrendData() {
   if (!_supabase || !_dscAllListings.length) return;
   try {
     const panel = await _getLatestPanelDate();
     const latestDate = panel.date;
-    const prevDate   = panel.prev;
-    if (!latestDate || !prevDate || prevDate === latestDate) return;
+    if (!latestDate) return;
 
-    // Fetch prev scrape data for all loaded listings' keywords
-    const keywords = [...new Set(_dscAllListings.map(r => r.keyword).filter(Boolean))];
-    const { data: prevRows } = await _supabase
-      .from('listings')
-      .select('item_id,shop_id,total_sold,reviews,est_sold,sold_tier,keyword,scraped_at')
-      .gte('scraped_at', `${prevDate}T00:00:00`)
-      .lt('scraped_at', `${_nextCalendarDay(prevDate)}T00:00:00`)
-      .limit(3000);
+    // Only items we don't already have a delta for — this runs again as more
+    // pages load, and re-fetching the whole set each time would be wasteful.
+    const wanted = _dscAllListings.filter(
+      r => r.item_id && _dscDeltaMap[`${r.item_id}_${r.shop_id}`] === undefined
+    );
+    if (!wanted.length) return;
 
-    if (!prevRows?.length) return;
+    const ids = [...new Set(wanted.map(r => r.item_id))];
+    const rows = [];
+    for (let i = 0; i < ids.length; i += DSC_DELTA_BATCH) {
+      const { data, error } = await _supabase
+        .from('listing_deltas')
+        .select('item_id,shop_id,sold_curr,sold_prev,review_prev,'
+              + 'estimated_sold_delta,confidence,prev_scraped_at,scraped_at,keyword')
+        .in('item_id', ids.slice(i, i + DSC_DELTA_BATCH))
+        .gte('scraped_at', `${latestDate}T00:00:00`)
+        .lt('scraped_at', `${_nextCalendarDay(latestDate)}T00:00:00`);
+      if (error) { console.warn('dscLoadTrendData batch:', error.message); continue; }
+      if (data?.length) rows.push(...data);
+    }
+    if (!rows.length) return;
 
-    // Populate per-listing prev map (full fields for bucket/review correction)
-    const kwPrev = {}, kwCurr = {};
-    prevRows.forEach(r => {
-      _dscPrevMap[`${r.item_id}_${r.shop_id}`] = {
-        total_sold: r.total_sold || 0,
-        reviews: r.reviews,
-        est_sold: r.est_sold,
-        sold_tier: r.sold_tier,
+    // Newest wins, in case a day ever carries more than one row for an item.
+    for (const r of rows) {
+      const key  = `${r.item_id}_${r.shop_id}`;
+      const seen = _dscDeltaMap[key];
+      if (seen && new Date(seen.scraped_at) >= new Date(r.scraped_at)) continue;
+      _dscDeltaMap[key] = {
+        est:        r.estimated_sold_delta,
+        confidence: r.confidence,
+        sold_prev:  r.sold_prev,
         scraped_at: r.scraped_at,
       };
-      kwPrev[r.keyword] = (kwPrev[r.keyword] || 0) + (r.total_sold || 0);
-    });
+      // Keep _dscPrevMap populated: ddTrendComputeWeekly and _dscListingTrendPct
+      // both read it, and the deep-dive chart falls back to it when an item has
+      // too few rows of its own. sold_tier/est_sold aren't carried on the delta
+      // row; ddTrendComputeDeltas already handles them being absent.
+      _dscPrevMap[key] = {
+        total_sold: r.sold_prev || 0,
+        reviews:    r.review_prev,
+        est_sold:   null,
+        sold_tier:  null,
+        scraped_at: r.prev_scraped_at,
+      };
+    }
 
-    // Compute keyword-level total sold for current scrape
-    _dscAllListings.forEach(r => {
-      kwCurr[r.keyword] = (kwCurr[r.keyword] || 0) + (r.total_sold || 0);
-    });
-
-    // Compute keyword trend %
-    keywords.forEach(kw => {
+    // Keyword trend % from the same rows — real paired products, rather than
+    // whatever happened to land in a 3,000-row sample of one day.
+    const kwPrev = {}, kwCurr = {};
+    for (const r of rows) {
+      if (!r.keyword) continue;
+      kwPrev[r.keyword] = (kwPrev[r.keyword] || 0) + (r.sold_prev || 0);
+      kwCurr[r.keyword] = (kwCurr[r.keyword] || 0) + (r.sold_curr || 0);
+    }
+    for (const kw of Object.keys(kwPrev)) {
       const prev = kwPrev[kw], curr = kwCurr[kw];
       _dscKwTrendMap[kw] = prev > 0 ? Math.round((curr - prev) / prev * 100) : null;
-    });
+    }
 
     // Re-render table and cards now that trend data is available
     dscApplyFilters(false);
@@ -15624,29 +15666,36 @@ async function trkOpenDeepDive(itemId, shopId) {
    (formatters, toast, navigation). Same split as the daily spin wheel.
    ────────────────────────────────────────────────────────────────────────── */
 
-let _trkTab = 'daily';        // 'daily' | 'products' — daily is the retention bet
+// One flat tab row: the two rollup scopes plus the legacy per-product alert
+// feed. 'keyword' and 'store' share the LarisTracker pane and differ only by
+// the scope passed into it; 'products' is the older saved-product tracker.
+let _trkTab = 'keyword';      // 'keyword' | 'store' | 'products'
 let _trkProductsInited = false;
 let _trkFreeDive = false;     // one-shot: exempt the next deep dive from _useDive
 let _trkAdapterObj = null;
 
 function trkSetTab(tab) {
-  _trkTab = (tab === 'products') ? 'products' : 'daily';
+  _trkTab = (tab === 'products' || tab === 'store') ? tab : 'keyword';
+  const isProducts = _trkTab === 'products';
   const paneDaily = document.getElementById('trk-tab-daily');
   const paneProd  = document.getElementById('trk-tab-products');
-  const btnDaily  = document.getElementById('trk-tab-btn-daily');
-  const btnProd   = document.getElementById('trk-tab-btn-products');
-  if (paneDaily) paneDaily.style.display = _trkTab === 'daily' ? '' : 'none';
-  if (paneProd)  paneProd.style.display  = _trkTab === 'products' ? '' : 'none';
-  if (btnDaily) { btnDaily.classList.toggle('is-active', _trkTab === 'daily'); btnDaily.setAttribute('aria-selected', String(_trkTab === 'daily')); }
-  if (btnProd)  { btnProd.classList.toggle('is-active', _trkTab === 'products'); btnProd.setAttribute('aria-selected', String(_trkTab === 'products')); }
+  if (paneDaily) paneDaily.style.display = isProducts ? 'none' : '';
+  if (paneProd)  paneProd.style.display  = isProducts ? '' : 'none';
+  [['keyword', 'trk-tab-btn-keyword'], ['store', 'trk-tab-btn-store'], ['products', 'trk-tab-btn-products']]
+    .forEach(([id, elId]) => {
+      const btn = document.getElementById(elId);
+      if (!btn) return;
+      btn.classList.toggle('is-active', _trkTab === id);
+      btn.setAttribute('aria-selected', String(_trkTab === id));
+    });
 
-  if (_trkTab === 'products') {
+  if (isProducts) {
     // Lazy: entering the view no longer pays for _trkLoadSellingFromSupabase
     // plus one listings query per tracked product.
     if (!_trkProductsInited) { _trkProductsInited = true; trkInit(); }
     nuRefreshView('tracker');
   } else if (window.LarisTracker) {
-    window.LarisTracker.open({ touch: true });
+    window.LarisTracker.open({ touch: true, tab: _trkTab });
   }
   try { logUserEvent('tracker_tab', { tab: _trkTab }); } catch (_) {}
 }
@@ -15710,6 +15759,10 @@ function trkAdapter() {
 
     // ── data ──────────────────────────────────────────────────────────────
     getTracking()               { return rpc('get_my_tracking'); },
+    // Reads mv_keyword_daily / mv_shop_daily, which aggregate `listings`
+    // directly. get_tracker_deltas is kept only for clients cached before this
+    // shipped — it reads listing_deltas, which the daily scrape never refreshes.
+    getRollup(days, scope)      { return rpc('get_tracker_rollup', { p_days: days, p_scope: scope || 'keyword' }); },
     getDeltas(days)             { return rpc('get_tracker_deltas', { p_days: days }); },
     touchViewed()               { return rpc('touch_tracker_viewed'); },
     addKeyword(kw, cat)         { return rpc('add_tracked_keyword', { p_keyword: kw, p_category: cat || '' }); },
@@ -15750,20 +15803,35 @@ function trkAdapter() {
       return out;
     },
 
+    // Typeahead over product types. Category is a filter, not a prerequisite —
+    // an empty category searches everything.
+    async searchKeywords(o) {
+      const q = String(o?.q || '').trim();
+      if (!_supabase || !q) return [];
+      let sel = _supabase
+        .from('product_types_v')
+        .select('keyword,category,category_canonical,n_sellers,price_median,n_listings')
+        .eq('city', 'ALL')
+        .gte('n_listings', 3)
+        .ilike('keyword', `%${q.slice(0, 40)}%`)
+        .order('omset_top15', { ascending: false, nullsFirst: false })
+        .limit(o?.limit || 8);
+      if (o?.category) sel = sel.eq('category_canonical', o.category);
+      const { data } = await sel;
+      return data || [];
+    },
+
     async searchStores(q) {
       if (!_supabase || !q) return [];
-      const { data } = await _supabase
-        .from('listings_latest')
-        .select('shop_id,store_name')
-        .ilike('store_name', `%${q}%`)
-        .limit(60);
-      const seen = {}, out = [];
-      (data || []).forEach(r => {
-        if (!r.shop_id || seen[r.shop_id]) return;
-        seen[r.shop_id] = 1;
-        out.push({ shop_id: r.shop_id, store_name: r.store_name || `Toko ${r.shop_id}` });
-      });
-      return out.slice(0, 8);
+      // find_shops_by_name is trigram-ranked over the 130k-row mv_shops; the
+      // old ilike scan of listings_latest returned 60 rows to dedupe client-side.
+      const { data, error } = await _supabase.rpc('find_shops_by_name', { p_q: q, p_limit: 8 });
+      if (error || !data) return [];
+      return (data || []).map(r => ({
+        shop_id: r.shop_id,
+        store_name: r.store_name || `Toko ${r.shop_id}`,
+        n_products: r.n_listings,
+      }));
     },
 
     async getFallbackMovers(cats, n) {

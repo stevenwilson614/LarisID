@@ -19,11 +19,19 @@
  * SCREEN SELECTION is the load-bearing logic:
  *   !configured                        -> setup
  *   configured && !has_history         -> collecting   (scraper has never run for these keywords)
- *   configured && has_history && moved -> deltas
- *   configured && has_history && !moved-> quiet        (keywords are simply flat)
- * The collecting/quiet distinction needs has_history from the RPC; without it
+ *   configured && has_history          -> rollup       (the Robinhood table)
+ * The collecting/rollup distinction needs has_history from the RPC; without it
  * both look identical and every user with flat keywords is told "come back
  * tomorrow" forever.
+ *
+ * TWO SCOPES, ONE TABLE: S.tab is 'keyword' or 'store'. Both render through
+ * renderRollup() against get_tracker_rollup(days, scope) — the columns differ
+ * but the layout, sorting and sparklines are shared.
+ *
+ * HONESTY RULE: a row whose window holds fewer than 2 snapshots gets "Baru"
+ * instead of a percentage and no sparkline. Most tracked keywords are in that
+ * state until the daily_custom scrape set has covered them for a week or two,
+ * and inventing a trend line there would be inventing data.
  */
 (function (global) {
   'use strict';
@@ -35,6 +43,8 @@
   var DEFAULT_DAYS = 7;
   var WIB_OFFSET_MIN = 7 * 60;        // Asia/Jakarta, no DST
   var SCRAPE_HOUR_WIB = 7;            // morning run lands ~07:00 WIB
+  var MIN_DAYS_FOR_TREND = 2;         // below this: "Baru", no sparkline, no %
+  var TYPEAHEAD_MS = 280;
 
   var host = null;
   var adapter = null;
@@ -44,6 +54,7 @@
 
   var S = {
     screen: 'setup',
+    tab: 'keyword',                   // 'keyword' | 'store'
     configured: false,
     paused: false,
     resumed: false,
@@ -54,18 +65,24 @@
     windowDays: DEFAULT_DAYS,
     asOf: null,
     hasHistory: false,
-    movers: [],
-    fallback: [],
+    rollup: { rows: [], totals: {}, scope: 'keyword' },
+    sort: 'omset',                    // omset | units | sku | toko | harga | nama
     baseline: [],
+    fallback: [],                     // discover cards on the collecting screen
     categories: [],
+    openRow: null,                    // keyword/shop_id whose kebab menu is open
     lastRefreshAt: 0,
   };
 
   // Uncommitted setup draft. Nothing here is persisted or sent until commit.
-  var draft = { cat: null, pool: [], picked: [], stores: [], busy: false, errors: {} };
+  // `sug` holds the live typeahead: which slot is open, the query, and results.
+  var draft = {
+    cat: null, picked: [], stores: [], busy: false, errors: {},
+    sug: { slot: -1, q: '', rows: [], busy: false, kind: 'keyword' },
+  };
 
   var inflight = null;
-  var timers = { paint: 0, abort: 0, storeSearch: 0 };
+  var timers = { paint: 0, abort: 0, storeSearch: 0, typeahead: 0 };
 
   /* ── utils ──────────────────────────────────────────────────────────── */
 
@@ -157,6 +174,84 @@
     return '<img class="' + cls + '" src="' + attr(src) + '" alt="" loading="lazy">';
   }
 
+  /* ── delta presentation ──────────────────────────────────────────────────
+     One place decides what a change looks like, so the stat strip and every
+     table cell agree. `enough` is false when the window has too few snapshots
+     to support a comparison — that prints "Baru", never 0% or a fake arrow. */
+
+  function pctChange(cur, prev) {
+    var c = Number(cur) || 0, p = Number(prev) || 0;
+    if (!p) return null;                 // no baseline -> no percentage
+    return ((c - p) / Math.abs(p)) * 100;
+  }
+  function deltaHtml(cur, prev, enough, opts) {
+    opts = opts || {};
+    if (!enough) return '<span class="ltk-d ltk-d--new">Baru</span>';
+    var pct = pctChange(cur, prev);
+    if (pct === null) return '<span class="ltk-d ltk-d--flat">—</span>';
+    var r = Math.round(pct * 10) / 10;
+    if (Math.abs(r) < 0.05) return '<span class="ltk-d ltk-d--flat">' + arrowSvg(0) + ' 0%</span>';
+    // Lower is better for price: a falling average price is not a red flag.
+    var good = opts.inverse ? r < 0 : r > 0;
+    return '<span class="ltk-d ' + (good ? 'ltk-d--up' : 'ltk-d--down') + '">' +
+      arrowSvg(r) + ' ' + Math.abs(r).toFixed(Math.abs(r) < 10 ? 1 : 0) + '%</span>';
+  }
+  function arrowSvg(v) {
+    if (!v) return '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6h8"/></svg>';
+    return v > 0
+      ? '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10V2M2.5 5.5L6 2l3.5 3.5"/></svg>'
+      : '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2v8M2.5 6.5L6 10l3.5-3.5"/></svg>';
+  }
+  function fmtRating(v) {
+    var n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n.toFixed(1) : '—';
+  }
+  function rowKey(r) {
+    return S.tab === 'store' ? String(r.shop_id) : String(r.keyword || '');
+  }
+  function rowLabel(r) {
+    return S.tab === 'store' ? (r.store_name || ('Toko ' + r.shop_id)) : (r.keyword || '—');
+  }
+  function rowHasTrend(r) {
+    return (Number(r.n_days) || 0) >= MIN_DAYS_FOR_TREND;
+  }
+
+  /* Sparkline as raw canvas — the same choice the Deep Dive competitor table
+     makes. Chart.js for a 60x22 line would be a 200KB dependency per row. */
+  function drawSpark(cv, series, up) {
+    if (!cv || !cv.getContext) return;
+    var pts = (series || []).map(function (p) { return Number(p.omset) || 0; });
+    if (pts.length < 2) return;
+    var dpr = global.devicePixelRatio || 1;
+    var w = cv.clientWidth || 68, h = cv.clientHeight || 24;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    var ctx = cv.getContext('2d');
+    ctx.scale(dpr, dpr);
+    var min = Math.min.apply(null, pts), max = Math.max.apply(null, pts);
+    var span = (max - min) || 1;
+    var pad = 3;
+    ctx.beginPath();
+    pts.forEach(function (v, i) {
+      var x = pad + (i / (pts.length - 1)) * (w - pad * 2);
+      var y = h - pad - ((v - min) / span) * (h - pad * 2);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = up ? '#16A34A' : '#DC2626';
+    ctx.lineWidth = 1.6;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+  function paintSparks() {
+    if (!host) return;
+    host.querySelectorAll('[data-ltk-spark]').forEach(function (cv) {
+      var key = cv.getAttribute('data-ltk-spark');
+      var row = (S.rollup.rows || []).filter(function (r) { return rowKey(r) === key; })[0];
+      if (!row) return;
+      drawSpark(cv, row.series, (Number(row.omset) || 0) >= (Number(row.omset_prev) || 0));
+    });
+  }
+
   /* ── shell ──────────────────────────────────────────────────────────── */
 
   function buildShell() {
@@ -166,17 +261,38 @@
       '<div data-ltk-strip></div>' +
       '<header class="ltk-head">' +
         '<div class="ltk-head-main">' +
-          '<h2 class="ltk-title">Pantauan Harian</h2>' +
-          '<p class="ltk-sub" data-ltk-sub></p>' +
+          '<span class="ltk-head-ico" aria-hidden="true">' +
+            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
+            '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>' +
+            '<path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' +
+          '</span>' +
+          '<div><h2 class="ltk-title">Pantauan</h2>' +
+          '<p class="ltk-sub" data-ltk-sub></p></div>' +
         '</div>' +
         '<div class="ltk-head-actions" data-ltk-headact></div>' +
       '</header>' +
+      '<div class="ltk-scopetabs" role="tablist" aria-label="Jenis pantauan" data-ltk-scopetabs></div>' +
       '<div class="ltk-chipbar" data-ltk-chipbar></div>' +
       '<section class="ltk-screen" data-ltk-screen="setup"></section>' +
       '<section class="ltk-screen" data-ltk-screen="collecting"></section>' +
-      '<section class="ltk-screen" data-ltk-screen="deltas"></section>' +
-      '<section class="ltk-screen" data-ltk-screen="quiet"></section>' +
+      '<section class="ltk-screen" data-ltk-screen="rollup"></section>' +
       '<section class="ltk-screen" data-ltk-screen="error"></section>';
+  }
+
+  function renderScopeTabs() {
+    var bar = $('[data-ltk-scopetabs]');
+    if (!bar) return;
+    if (!S.configured || S.screen === 'setup') { bar.innerHTML = ''; return; }
+    var tabs = [
+      { id: 'keyword', label: 'Keyword', n: S.keywords.length },
+      { id: 'store',   label: 'Toko',    n: S.stores.length },
+    ];
+    bar.innerHTML = tabs.map(function (t) {
+      return '<button type="button" role="tab" class="ltk-scopetab' + (S.tab === t.id ? ' is-active' : '') +
+        '" aria-selected="' + (S.tab === t.id) + '" data-ltk-tab="' + t.id + '">' +
+        esc(t.label) + (t.n ? '<span class="ltk-scopetab-n">' + t.n + '</span>' : '') + '</button>';
+    }).join('');
   }
 
   function showScreen(name) {
@@ -189,6 +305,7 @@
       all[i].classList.toggle('is-active', all[i].getAttribute('data-ltk-screen') === name);
     }
     renderHead();
+    renderScopeTabs();
     renderChipbar();
   }
 
@@ -210,10 +327,24 @@
       sub.textContent = txt;
     }
     if (act) {
-      act.innerHTML = S.configured
-        ? '<button type="button" class="ltk-btn ltk-btn--ghost" data-ltk-act="setup">Ubah keyword</button>'
+      act.innerHTML = S.configured && S.screen !== 'setup'
+        ? '<div class="ltk-winsel">' + winSelectHtml() + '</div>' +
+          '<button type="button" class="ltk-btn ltk-btn--ghost" data-ltk-act="setup">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/>' +
+            '<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>' +
+            'Pengaturan Pantauan</button>'
         : '';
     }
+  }
+
+  function winSelectHtml() {
+    return '<label class="ltk-sr">Rentang waktu' +
+      '<select class="ltk-select" data-ltk-winsel>' +
+      [7, 14, 30].map(function (d) {
+        return '<option value="' + d + '"' + (S.windowDays === d ? ' selected' : '') + '>' +
+          d + ' Hari Terakhir</option>';
+      }).join('') + '</select></label>';
   }
 
   function renderChipbar() {
@@ -266,65 +397,95 @@
 
   /* ── setup screen ───────────────────────────────────────────────────── */
 
+  /* Setup is now search-first. The old 19-tile category grid was the primary
+     control, which forced everyone through a taxonomy before they could name
+     the thing they actually wanted to watch. Category is still here, demoted to
+     an optional filter on the suggestions.
+
+     Three slots arrive pre-filled from seedDraft(); the remaining slots are
+     typeahead inputs, so typing one letter is enough to get somewhere. */
+
+  function slotSuggestHtml(idx) {
+    var sug = draft.sug;
+    if (sug.slot !== idx) return '';
+    if (sug.busy) return '<div class="ltk-sug"><div class="ltk-sug-note">Mencari…</div></div>';
+    if (!sug.q || sug.q.length < 1) {
+      return '<div class="ltk-sug"><div class="ltk-sug-note">Ketik minimal 1 huruf' +
+        (draft.cat ? ' — difilter ke ' + esc(draft.cat) : '') + '.</div></div>';
+    }
+    if (!sug.rows.length) {
+      return '<div class="ltk-sug"><div class="ltk-sug-note">Tidak ada yang cocok dengan "' +
+        esc(sug.q) + '". Tekan Enter untuk pantau apa adanya.</div></div>';
+    }
+    return '<div class="ltk-sug" role="listbox">' + sug.rows.map(function (r) {
+      var meta = [];
+      if (r.n_sellers) meta.push(r.n_sellers + ' penjual');
+      if (r.price_median) meta.push('median ' + fmtRp(r.price_median));
+      if (r.category) meta.push(r.category);
+      return '<button type="button" class="ltk-sug-opt" role="option" ' +
+        'data-ltk-sugpick="' + attr(r.keyword) + '" data-ltk-sugcat="' + attr(r.category || '') + '">' +
+        '<span class="ltk-sug-kw">' + esc(r.keyword) + '</span>' +
+        (meta.length ? '<span class="ltk-sug-meta">' + esc(meta.join(' · ')) + '</span>' : '') +
+        '</button>';
+    }).join('') + '</div>';
+  }
+
+  function storeSuggestHtml() {
+    var sug = draft.sug;
+    if (sug.kind !== 'store' || sug.slot !== -2) return '';
+    if (sug.busy) return '<div class="ltk-sug"><div class="ltk-sug-note">Mencari toko…</div></div>';
+    if (!sug.rows.length) {
+      return sug.q
+        ? '<div class="ltk-sug"><div class="ltk-sug-note">Toko "' + esc(sug.q) + '" tidak ketemu.</div></div>'
+        : '';
+    }
+    return '<div class="ltk-sug" role="listbox">' + sug.rows.map(function (r) {
+      return '<button type="button" class="ltk-sug-opt" role="option" data-ltk-pickstore="' +
+        attr(r.shop_id) + '" data-ltk-storename="' + attr(r.store_name) + '">' +
+        '<span class="ltk-sug-kw">' + esc(r.store_name) + '</span>' +
+        (r.n_products ? '<span class="ltk-sug-meta">' + esc(r.n_products) + ' produk</span>' : '') +
+        '</button>';
+    }).join('') + '</div>';
+  }
+
   function renderSetup() {
     var p = pane('setup');
     if (!p) return;
     var freeK = Math.max(0, S.keywordLimit - draft.picked.length);
 
-    var cats = (S.categories || []).map(function (c) {
-      return '<button type="button" class="ltk-cat' + (draft.cat === c ? ' is-active' : '') +
-             '" data-ltk-cat="' + attr(c) + '">' + catIconHtml(c, 40) +
-             '<span class="ltk-cat-lbl">' + esc(c) + '</span></button>';
-    }).join('');
-
-    var poolHtml = '';
-    if (draft.cat) {
-      var chips = draft.pool.length
-        ? draft.pool.map(function (t) {
-            var on = draft.picked.some(function (x) { return x.keyword === t.keyword; });
-            var full = !on && freeK <= 0;
-            return '<button type="button" class="ltk-pick' + (on ? ' is-picked' : '') + '"' +
-                   (full ? ' disabled' : '') + ' data-ltk-pick="' + attr(t.keyword) + '">' +
-                   esc(t.keyword) +
-                   (t.n_sellers ? '<span class="ltk-pick-n">' + esc(t.n_sellers) + '</span>' : '') +
-                   '</button>';
-          }).join('')
-        : '<span class="ltk-hint">Belum ada keyword populer di kategori ini.</span>';
-      poolHtml =
-        '<div class="ltk-pool">' +
-          '<div class="ltk-pool-head">' +
-            '<span class="ltk-pool-title">Keyword populer di <b>' + esc(draft.cat) + '</b></span>' +
-            '<button type="button" class="ltk-link" data-ltk-act="cat-back">Ganti kategori</button>' +
-          '</div>' +
-          '<div class="ltk-pool-chips">' + chips + '</div>' +
-          '<details class="ltk-custom">' +
-            '<summary>Ketik keyword sendiri</summary>' +
-            '<div class="ltk-custom-row">' +
-              '<input type="text" class="ltk-input" data-ltk-kwinput maxlength="120" ' +
-              'placeholder="mis. rak dinding kayu" autocomplete="off">' +
-              '<button type="button" class="ltk-btn ltk-btn--ghost" data-ltk-act="kw-add">Tambah</button>' +
-            '</div>' +
-            '<p class="ltk-hint">Keyword yang terlalu spesifik biasanya cuma dapat sedikit produk. ' +
-            'Pilih dari daftar di atas kalau ragu.</p>' +
-          '</details>' +
-        '</div>';
-    }
+    var catSelect =
+      '<label class="ltk-sr ltk-catsel">Kategori' +
+        '<select class="ltk-select" data-ltk-catsel>' +
+          '<option value="">Semua kategori</option>' +
+          (S.categories || []).map(function (c) {
+            return '<option value="' + attr(c) + '"' + (draft.cat === c ? ' selected' : '') + '>' +
+              esc(c) + '</option>';
+          }).join('') +
+        '</select>' +
+      '</label>';
 
     var slots = '';
-    draft.picked.forEach(function (k) {
+    draft.picked.forEach(function (k, i) {
       var err = draft.errors[k.keyword];
       slots += '<li class="ltk-slot ltk-slot--filled' + (err ? ' ltk-slot--err' : '') + '">' +
         catIconHtml(k.category, 26).replace('ltk-cat-ico', 'ltk-slot-ico') +
         '<span class="ltk-slot-body"><span class="ltk-slot-kw">' + esc(k.keyword) + '</span>' +
-        '<span class="ltk-slot-meta">' + esc(err || k.meta || k.category || '') + '</span></span>' +
+        '<span class="ltk-slot-meta">' + esc(err || k.meta || k.category || 'Dipantau tiap pagi') + '</span></span>' +
         '<button type="button" class="ltk-slot-x" data-ltk-rm="' + attr(k.keyword) + '" ' +
         'aria-label="Hapus ' + attr(k.keyword) + '">&times;</button></li>';
     });
     for (var i = 0; i < freeK; i++) {
-      slots += '<li class="ltk-slot ltk-slot--empty" data-ltk-act="focus-pool">' +
-        '<span class="ltk-slot-plus">+</span><span class="ltk-slot-body">' +
-        '<span class="ltk-slot-kw">Slot kosong</span>' +
-        '<span class="ltk-slot-meta">Tambah lagi biar pantauanmu lebih lengkap</span></span></li>';
+      var idx = draft.picked.length + i;
+      var open = draft.sug.kind === 'keyword' && draft.sug.slot === idx;
+      slots += '<li class="ltk-slot ltk-slot--type' + (open ? ' is-open' : '') + '">' +
+        '<span class="ltk-slot-plus" aria-hidden="true">+</span>' +
+        '<div class="ltk-slot-typewrap">' +
+          '<input type="text" class="ltk-input ltk-slot-input" data-ltk-slot="' + idx + '" ' +
+          'placeholder="Ketik keyword — mis. rak dinding kayu" autocomplete="off" ' +
+          'aria-label="Cari keyword untuk slot ' + (idx + 1) + '"' +
+          (open ? ' value="' + attr(draft.sug.q) + '"' : '') + '>' +
+          slotSuggestHtml(idx) +
+        '</div></li>';
     }
 
     var storeSlots = draft.stores.map(function (st) {
@@ -339,14 +500,14 @@
       '<div class="ltk-setup">' +
         '<div class="ltk-setup-hero">' +
           '<h3>Pilih yang mau kamu pantau tiap pagi</h3>' +
-          '<p>Ketuk satu kategori — kami isikan keyword yang paling ramai di sana. ' +
+          '<p>Ketik keyword yang kamu incar — kami tunjukkan yang cocok beserta jumlah penjualnya. ' +
           'Kamu bisa ganti kapan saja.</p>' +
         '</div>' +
-        '<div class="ltk-catgrid" data-ltk-cats>' + cats + '</div>' +
-        poolHtml +
         '<div class="ltk-slotsec">' +
           '<div class="ltk-slotsec-head"><span>Keyword kamu</span>' +
-          '<span class="ltk-count">' + draft.picked.length + ' / ' + S.keywordLimit + '</span></div>' +
+            catSelect +
+            '<span class="ltk-count">' + draft.picked.length + ' / ' + S.keywordLimit + '</span>' +
+          '</div>' +
           '<ul class="ltk-slots">' + slots + '</ul>' +
         '</div>' +
         '<div class="ltk-slotsec">' +
@@ -356,19 +517,27 @@
             '<input type="text" class="ltk-input" data-ltk-storeinput ' +
             'placeholder="Cari nama toko" autocomplete="off"' +
             (draft.stores.length >= S.storeLimit ? ' disabled' : '') + '>' +
-            '<div class="ltk-store-results" data-ltk-storeres style="display:none"></div>' +
+            storeSuggestHtml() +
           '</div>' +
           (storeSlots ? '<ul class="ltk-slots">' + storeSlots + '</ul>' : '') +
         '</div>' +
         '<div class="ltk-commit">' +
           '<button type="button" class="ltk-btn ltk-btn--primary" data-ltk-act="commit"' +
-          (draft.picked.length === 0 || draft.busy ? ' disabled' : '') + '>' +
-            (draft.busy ? 'Menyimpan...' : 'Mulai pantau ' + draft.picked.length + ' keyword') +
+          (draft.picked.length === 0 && draft.stores.length === 0 || draft.busy ? ' disabled' : '') + '>' +
+            (draft.busy ? 'Menyimpan...'
+              : 'Mulai pantau ' + draft.picked.length + ' keyword' +
+                (draft.stores.length ? ' + ' + draft.stores.length + ' toko' : '')) +
           '</button>' +
           '<p class="ltk-commit-note">Kami cek keyword kamu tiap pagi. ' +
           'Update pertama <b>' + esc(nextUpdateLabel()) + '</b>.</p>' +
         '</div>' +
       '</div>';
+
+    // Re-focus the slot the user was typing in — innerHTML replacement loses it.
+    if (draft.sug.kind === 'keyword' && draft.sug.slot >= 0) {
+      var el = $('[data-ltk-slot="' + draft.sug.slot + '"]');
+      if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (_) {} }
+    }
   }
 
   /* ── collecting screen ──────────────────────────────────────────────── */
@@ -412,73 +581,233 @@
       '</div>';
   }
 
-  /* ── deltas screen ──────────────────────────────────────────────────── */
+  /* ── rollup screen (the Robinhood table) ─────────────────────────────────
+     One dense row per tracked keyword or shop: what it did this window, how
+     that compares to the window before, and a sparkline. Everything the eye
+     needs in one pass, which is the whole point of the layout.
 
-  function winbarHtml() {
-    return '<div class="ltk-winbar"><div class="ltk-winbtns" role="group" aria-label="Rentang waktu">' +
-      [7, 14, 30].map(function (d) {
-        return '<button type="button" class="ltk-winbtn' + (S.windowDays === d ? ' is-active' : '') +
-               '" data-ltk-days="' + d + '">' + (d === 7 ? '7 hari terakhir' : d + ' hari') + '</button>';
-      }).join('') + '</div>' +
-      (S.asOf ? '<span class="ltk-asof">Data terakhir ' + esc(fmtDate(S.asOf)) + '</span>' : '') +
-      '</div>';
-  }
-  function winnoteHtml() {
-    return '<p class="ltk-winnote">Angka di bawah adalah <b>total ' + S.windowDays +
-      ' hari terakhir</b>, bukan penjualan kemarin.</p>';
-  }
+     Rows with too little history print "Baru" rather than a fake percentage —
+     see MIN_DAYS_FOR_TREND and the honesty rule at the top of this file.      */
 
-  function renderDeltas() {
-    var p = pane('deltas');
-    if (!p) return;
-    var rows = S.movers.map(function (m, i) {
-      var srcChip = m.source === 'store'
-        ? '<span class="ltk-src ltk-src--store">Toko</span>'
-        : '<span class="ltk-src ltk-src--kw">' + esc(m.keyword || '') + '</span>';
-      return '<li><button type="button" class="ltk-mover" data-ltk-open="' +
-          attr(m.item_id) + '|' + attr(m.shop_id) + '">' +
-        '<span class="ltk-mover-rank">' + (i + 1) + '</span>' +
-        imgOr(m.image_url, 'ltk-mover-img') +
-        '<span class="ltk-mover-main">' +
-          '<span class="ltk-mover-name">' + esc(m.product_name || '—') + '</span>' +
-          '<span class="ltk-mover-src">' + srcChip +
-          (m.store_name ? '<span class="ltk-mover-store">' + esc(m.store_name) + '</span>' : '') +
-          '</span></span>' +
-        '<span class="ltk-mover-fig"><span class="ltk-mover-num">+' + esc(fmtUnits(m.sold_window)) +
-          '<span class="ltk-mover-unit"> terjual</span></span></span>' +
-        '</button></li>';
+  function statTiles() {
+    var t = S.rollup.totals || {};
+    var enough = !!S.rollup.rows.filter(rowHasTrend).length;
+    return [
+      { lbl: (S.tab === 'store' ? 'Toko Dipantau' : 'Keyword Dipantau'), val: String(t.tracked || 0),
+        cls: 'green', note: 'Aktif', ico: 'target' },
+      { lbl: 'Total Omset', val: fmtRp(t.omset || 0), cls: 'blue',
+        d: deltaHtml(t.omset, t.omset_prev, enough), ico: 'wallet' },
+      { lbl: 'Total Unit Terjual', val: fmtUnits(t.units || 0), cls: 'amber',
+        d: deltaHtml(t.units, t.units_prev, enough), ico: 'box' },
+      { lbl: 'SKU Aktif', val: fmtUnits(t.n_listings || 0), cls: 'violet',
+        d: deltaHtml(t.n_listings, t.n_listings_prev, enough), ico: 'grid' },
+    ].concat(S.tab === 'store' ? [] : [
+      { lbl: 'Toko Aktif', val: fmtUnits(t.n_sellers || 0), cls: 'red',
+        d: deltaHtml(t.n_sellers, t.n_sellers_prev, enough), ico: 'users' },
+    ]).concat([
+      { lbl: 'Rata-rata Harga', val: fmtRp(t.avg_price || 0), cls: 'rose',
+        d: deltaHtml(t.avg_price, t.avg_price_prev, enough, { inverse: true }), ico: 'tag' },
+    ]).map(function (s) {
+      return '<div class="ltk-stat">' +
+        '<span class="ltk-stat-ico ltk-stat-ico--' + s.cls + '">' + statIco(s.ico) + '</span>' +
+        '<div class="ltk-stat-body">' +
+          '<div class="ltk-stat-val">' + esc(s.val) + '</div>' +
+          '<div class="ltk-stat-lbl">' + esc(s.lbl) + '</div>' +
+          (s.d ? '<div class="ltk-stat-d">' + s.d + '<span>vs ' + S.windowDays + ' hari sebelumnya</span></div>'
+               : '<div class="ltk-stat-d"><span class="ltk-d ltk-d--up">' + esc(s.note) + '</span></div>') +
+        '</div></div>';
     }).join('');
-
-    p.innerHTML = '<div class="ltk-deltas">' + winbarHtml() + winnoteHtml() +
-      '<ul class="ltk-movers">' + rows + '</ul>' +
-      '<p class="ltk-foot">Menampilkan ' + S.movers.length + ' produk yang paling bergerak dari keyword dan toko kamu. ' +
-      '<button type="button" class="ltk-link" data-ltk-act="how">Bagaimana angka ini dihitung?</button></p>' +
-      '</div>';
   }
 
-  /* ── quiet screen ───────────────────────────────────────────────────── */
+  function statIco(name) {
+    var paths = {
+      target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>',
+      wallet: '<path d="M3 7a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M16 12h2"/>',
+      box:    '<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/>',
+      grid:   '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+      users:  '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>',
+      tag:    '<path d="M20.6 13.4L12 22l-9-9V3h10z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
+    };
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round" stroke-linejoin="round">' + (paths[name] || paths.target) + '</svg>';
+  }
 
-  function renderQuiet() {
-    var p = pane('quiet');
+  function sortedRows() {
+    var rows = (S.rollup.rows || []).slice();
+    var by = {
+      omset: function (r) { return -(Number(r.omset) || 0); },
+      units: function (r) { return -(Number(r.units) || 0); },
+      sku:   function (r) { return -(Number(r.n_listings) || 0); },
+      toko:  function (r) { return -(Number(r.n_sellers) || 0); },
+      harga: function (r) { return -(Number(r.avg_price) || 0); },
+    }[S.sort];
+    if (S.sort === 'nama') {
+      rows.sort(function (a, b) { return rowLabel(a).localeCompare(rowLabel(b), 'id'); });
+    } else if (by) {
+      rows.sort(function (a, b) { return by(a) - by(b); });
+    }
+    return rows;
+  }
+
+  function rowHtml(r) {
+    var key = rowKey(r);
+    var trend = rowHasTrend(r);
+    var isKw = S.tab !== 'store';
+    var cells =
+      '<td class="ltk-num"><b>' + esc(fmtUnits(r.units || 0)) + '</b>' +
+        deltaHtml(r.units, r.units_prev, trend) + '</td>' +
+      '<td class="ltk-num"><b>' + esc(fmtRp(r.omset || 0)) + '</b>' +
+        deltaHtml(r.omset, r.omset_prev, trend) + '</td>' +
+      '<td class="ltk-num"><b>' + esc(fmtUnits(r.n_listings || 0)) + '</b>' +
+        deltaHtml(r.n_listings, r.n_listings_prev, trend) + '</td>' +
+      (isKw
+        ? '<td class="ltk-num"><b>' + esc(fmtUnits(r.n_sellers || 0)) + '</b>' +
+          deltaHtml(r.n_sellers, r.n_sellers_prev, trend) + '</td>'
+        : '') +
+      '<td class="ltk-num"><b>' + esc(fmtRp(r.avg_price || 0)) + '</b>' +
+        deltaHtml(r.avg_price, r.avg_price_prev, trend, { inverse: true }) + '</td>' +
+      '<td class="ltk-num"><b>' + esc(fmtRating(r.avg_rating)) + '</b>' +
+        deltaHtml(r.avg_rating, r.avg_rating_prev, trend) + '</td>' +
+      '<td class="ltk-sparkcell">' +
+        (trend
+          ? '<canvas class="ltk-spark" data-ltk-spark="' + attr(key) + '" width="68" height="24"></canvas>'
+          : '<span class="ltk-spark-empty" title="Perlu minimal 2 hari data">Belum ada tren</span>') +
+      '</td>';
+
+    return '<tr class="ltk-row" data-ltk-rowkey="' + attr(key) + '">' +
+      '<th scope="row" class="ltk-rowhead">' +
+        (isKw ? catIconHtml(r.category, 30).replace('ltk-cat-ico', 'ltk-row-ico') : storeAvatar(r)) +
+        '<span class="ltk-rowhead-txt">' +
+          '<span class="ltk-rowhead-name">' + esc(rowLabel(r)) + '</span>' +
+          '<span class="ltk-rowhead-meta">' +
+            (trend ? 'Aktif · ' + r.n_days + ' hari data' : 'Mengumpulkan data') +
+          '</span>' +
+        '</span>' +
+      '</th>' + cells +
+      '<td class="ltk-kebabcell">' +
+        '<button type="button" class="ltk-kebab" data-ltk-menu="' + attr(key) + '" ' +
+          'aria-label="Aksi untuk ' + attr(rowLabel(r)) + '" aria-expanded="' + (S.openRow === key) + '">' +
+          '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+          '<circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg>' +
+        '</button>' +
+        (S.openRow === key
+          ? '<div class="ltk-menu" role="menu">' +
+              '<button type="button" role="menuitem" data-ltk-act="setup">Ubah pantauan</button>' +
+              (isKw ? '<button type="button" role="menuitem" data-ltk-dive="' + attr(key) + '">Buka Deep Dive</button>' : '') +
+              '<button type="button" role="menuitem" class="ltk-menu-danger" data-ltk-drop="' + attr(key) + '">Hapus</button>' +
+            '</div>'
+          : '') +
+      '</td></tr>';
+  }
+
+  function storeAvatar(r) {
+    var letter = esc(String(rowLabel(r) || 'T').charAt(0).toUpperCase());
+    return '<span class="ltk-row-ico ltk-row-ico--letter">' + letter + '</span>';
+  }
+
+  function insightCards() {
+    var rows = (S.rollup.rows || []).filter(rowHasTrend);
+    if (!rows.length) return '';
+    var byChange = rows.slice().sort(function (a, b) {
+      return (pctChange(b.omset, b.omset_prev) || 0) - (pctChange(a.omset, a.omset_prev) || 0);
+    });
+    var up = byChange[0], down = byChange[byChange.length - 1];
+    var cards = [];
+    if (up && (pctChange(up.omset, up.omset_prev) || 0) > 0) {
+      cards.push({ cls: 'green', ico: 'up', title: 'Omset naik paling tinggi',
+        body: rowLabel(up) + ' — ' + Math.round(pctChange(up.omset, up.omset_prev)) + '% vs ' + S.windowDays + ' hari sebelumnya' });
+    }
+    if (down && down !== up && (pctChange(down.omset, down.omset_prev) || 0) < 0) {
+      cards.push({ cls: 'red', ico: 'down', title: 'Perlu dicek',
+        body: rowLabel(down) + ' — omset turun ' + Math.abs(Math.round(pctChange(down.omset, down.omset_prev))) + '%' });
+    }
+    var newShops = rows.reduce(function (n, r) {
+      return n + Math.max(0, (Number(r.n_sellers) || 0) - (Number(r.n_sellers_prev) || 0));
+    }, 0);
+    if (newShops > 0) {
+      cards.push({ cls: 'blue', ico: 'users', title: newShops + ' toko baru terdeteksi',
+        body: 'Masuk ke keyword yang kamu pantau di window ini' });
+    }
+    var thin = (S.rollup.rows || []).length - rows.length;
+    if (thin > 0) {
+      cards.push({ cls: 'amber', ico: 'clock', title: thin + ' baris masih mengumpulkan data',
+        body: 'Butuh minimal 2 hari scrape sebelum tren bisa dihitung' });
+    }
+    if (!cards.length) return '';
+    return '<div class="ltk-insights">' +
+      '<div class="ltk-insights-head">Insight Utama <span>(' + S.windowDays + ' hari terakhir)</span></div>' +
+      '<div class="ltk-insight-grid">' + cards.map(function (c) {
+        return '<div class="ltk-insight ltk-insight--' + c.cls + '">' +
+          '<span class="ltk-insight-ico">' + statIco(c.ico === 'users' ? 'users' : c.ico === 'clock' ? 'target' : 'wallet') + '</span>' +
+          '<div><div class="ltk-insight-title">' + esc(c.title) + '</div>' +
+          '<div class="ltk-insight-body">' + esc(c.body) + '</div></div></div>';
+      }).join('') + '</div></div>';
+  }
+
+  function renderRollup() {
+    var p = pane('rollup');
     if (!p) return;
-    var names = S.keywords.map(function (k) { return '<b>' + esc(k.keyword) + '</b>'; }).join(', ');
+    var rows = sortedRows();
+    var isKw = S.tab !== 'store';
+    var limit = isKw ? S.keywordLimit : S.storeLimit;
+    var free = Math.max(0, limit - rows.length);
+
+    if (!rows.length) {
+      p.innerHTML = '<div class="ltk-rollup">' +
+        '<div class="ltk-empty">' +
+          '<h3>Belum ada ' + (isKw ? 'keyword' : 'toko') + ' yang dipantau</h3>' +
+          '<p>Tambahkan sampai ' + limit + ' ' + (isKw ? 'keyword' : 'toko') +
+          ' — kami cek tiap pagi dan tunjukkan apa yang berubah.</p>' +
+          '<button type="button" class="ltk-btn ltk-btn--primary" data-ltk-act="setup">' +
+          'Tambah ' + (isKw ? 'Keyword' : 'Toko') + '</button>' +
+        '</div></div>';
+      return;
+    }
+
+    var head = '<tr>' +
+      '<th class="ltk-th-name">' + (isKw ? 'Keyword' : 'Toko') + '</th>' +
+      '<th>Unit Terjual</th><th>Omset (Rp)</th><th>SKU Aktif</th>' +
+      (isKw ? '<th>Toko Aktif</th>' : '') +
+      '<th>Rata-rata Harga</th><th>Rating</th><th>Tren</th><th></th></tr>';
+
     p.innerHTML =
-      '<div class="ltk-quiet">' + winbarHtml() +
-        '<div class="ltk-quiet-msg">' +
-          '<span class="ltk-quiet-ico" aria-hidden="true">' +
-            '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-            'stroke-width="1.8" stroke-linecap="round"><path d="M3 12h18"/></svg></span>' +
-          '<div><h3>Keyword kamu stabil ' + S.windowDays + ' hari ini</h3>' +
-          '<p>Tidak ada produk yang bergerak berarti di ' + names + '. ' +
-          'Itu informasi juga — pasarnya lagi tenang.</p>' +
-          (S.windowDays < 30 ? '<button type="button" class="ltk-link" data-ltk-days="30">Coba lihat 30 hari</button>' : '') +
+      '<div class="ltk-rollup">' +
+        '<div class="ltk-statstrip">' + statTiles() + '</div>' +
+        '<div class="ltk-panel">' +
+          '<div class="ltk-panel-head">' +
+            '<div class="ltk-panel-title">Ringkasan ' + (isKw ? 'Keyword' : 'Toko') +
+              ' Dipantau <span class="ltk-count-pill">' + rows.length + '</span></div>' +
+            '<label class="ltk-sr">Urutkan' +
+              '<select class="ltk-select" data-ltk-sort>' +
+              [['omset', 'Omset'], ['units', 'Unit Terjual'], ['sku', 'SKU Aktif']]
+                .concat(isKw ? [['toko', 'Toko Aktif']] : [])
+                .concat([['harga', 'Harga'], ['nama', 'Nama']])
+                .map(function (o) {
+                  return '<option value="' + o[0] + '"' + (S.sort === o[0] ? ' selected' : '') + '>' +
+                    'Urutkan: ' + o[1] + '</option>';
+                }).join('') +
+              '</select></label>' +
           '</div>' +
+          '<div class="ltk-tablewrap"><table class="ltk-table">' +
+            '<thead>' + head + '</thead>' +
+            '<tbody>' + rows.map(rowHtml).join('') + '</tbody>' +
+          '</table></div>' +
+          '<button type="button" class="ltk-addrow" data-ltk-act="setup">' +
+            '<span aria-hidden="true">+</span> Tambah Pantauan Baru' +
+            (free ? '<em>' + free + ' slot kosong</em>' : '') +
+          '</button>' +
         '</div>' +
-        discoverHtml() +
+        insightCards() +
+        '<p class="ltk-foot">Angka adalah <b>total ' + S.windowDays + ' hari terakhir</b>, bukan penjualan kemarin. ' +
+        (S.asOf ? 'Data terakhir ' + esc(fmtDate(S.asOf)) + '. ' : '') +
+        'Sumber: scrape harian LarisID. ' +
+        '<button type="button" class="ltk-link" data-ltk-act="how">Bagaimana angka ini dihitung?</button></p>' +
       '</div>';
+
+    paintSparks();
   }
 
-  /* ── discover fall-through (shared by collecting + quiet) ───────────────
+  /* ── discover fall-through (used by the collecting screen) ───────────────
      Never render "no changes". The general scrape runs over 3,712 keywords
      regardless, so there is always something to show — but it must be labelled
      as not-their-data, and each card doubles as a slot-filling control.       */
@@ -502,15 +831,18 @@
   }
 
   function renderSkeleton() {
-    var p = pane('deltas');
+    var p = pane('rollup');
     if (!p) return;
+    var tiles = '';
+    for (var t = 0; t < 5; t++) tiles += '<div class="ltk-stat ltk-skel-stat"></div>';
     var rows = '';
     for (var i = 0; i < 5; i++) {
       rows += '<div class="ltk-skel-row"><div class="ltk-skel-img"></div>' +
         '<div class="ltk-skel-lines"><div class="ltk-skel-line w60"></div>' +
         '<div class="ltk-skel-line w35"></div></div></div>';
     }
-    p.innerHTML = '<div class="ltk-deltas">' + winbarHtml() + '<div class="ltk-skel">' + rows + '</div></div>';
+    p.innerHTML = '<div class="ltk-rollup"><div class="ltk-statstrip">' + tiles + '</div>' +
+      '<div class="ltk-panel"><div class="ltk-skel">' + rows + '</div></div></div>';
   }
 
   function renderError() {
@@ -525,9 +857,12 @@
   function paint() {
     renderStrip();
     if (!S.configured) { renderSetup(); showScreen('setup'); return; }
-    if (!S.hasHistory) { renderCollecting(); showScreen('collecting'); return; }
-    if (S.movers.length) { renderDeltas(); showScreen('deltas'); return; }
-    renderQuiet(); showScreen('quiet');
+    // The rollup table can stand on its own the moment there is any history —
+    // rows without enough snapshots simply say so in place of a percentage.
+    if (!S.hasHistory && !(S.rollup.rows || []).length) {
+      renderCollecting(); showScreen('collecting'); return;
+    }
+    renderRollup(); showScreen('rollup');
   }
 
   /* ── data ───────────────────────────────────────────────────────────── */
@@ -608,11 +943,11 @@
       if (S.configured) { renderChipbar(); renderSkeleton(); showScreen('deltas'); }
     }, WATCHDOG_PAINT_MS);
 
-    // Never a dead screen: fall through to quiet + discovery.
+    // Never a dead screen: fall through to whatever we already have.
     timers.abort = setTimeout(function () {
       if (settled || gen !== refresh._gen) return;
       settled = true; inflight = null;
-      S.hasHistory = true; S.movers = [];
+      S.hasHistory = true;
       paint();
     }, WATCHDOG_ABORT_MS);
 
@@ -630,18 +965,22 @@
           S.configured = (S.keywords.length + S.stores.length) > 0;
         }
         if (!S.configured) return loadCategories().then(seedDraft);
-        return callP('getDeltas', S.windowDays).then(function (d) {
-          S.movers = (d && d.moved) || [];
+        // The active tab decides the scope, so switching tabs is a refetch
+        // rather than a client-side filter — the two scopes aggregate from
+        // different matviews and cannot be derived from one another.
+        return callP('getRollup', S.windowDays, S.tab).then(function (d) {
+          S.rollup = {
+            rows: (d && d.rows) || [],
+            totals: (d && d.totals) || {},
+            scope: (d && d.scope) || S.tab,
+          };
           S.asOf = (d && d.as_of) || null;
-          // Stopgap for clients cached before the RPC gained has_history: assume
-          // history once the oldest keyword is >40h old (one scrape cycle).
           if (d && typeof d.has_history === 'boolean') S.hasHistory = d.has_history;
           else S.hasHistory = oldestKeywordAgeMs() > 40 * 3600 * 1000;
           // A resumed tracker has provably nothing in a 7-day window (pause is
-          // 14 days), so route it to collecting rather than a bare "quiet".
+          // 14 days), so route it back to collecting.
           if (S.resumed) S.hasHistory = false;
           if (!S.hasHistory) return loadBaseline().then(loadFallback);
-          if (!S.movers.length) return loadFallback();
           return null;
         });
       })
@@ -678,7 +1017,8 @@
   /* ── commit ─────────────────────────────────────────────────────────── */
 
   function commit() {
-    if (draft.busy || !draft.picked.length) return;
+    // Stores alone are a valid config now that Toko is its own tab.
+    if (draft.busy || (!draft.picked.length && !draft.stores.length)) return;
     if (call('requireAuth') === false) return;
     draft.busy = true; draft.errors = {}; renderSetup();
 
@@ -704,7 +1044,8 @@
 
     chain.then(function () {
       draft.busy = false;
-      draft.picked = []; draft.stores = []; draft.cat = null; draft.pool = [];
+      draft.picked = []; draft.stores = []; draft.cat = null;
+      draft.sug = { slot: -1, q: '', rows: [], busy: false, kind: 'keyword' };
       call('track', 'tracker_setup_commit', { site: opts.site });
       return refresh({ force: true });
     }).catch(function (e) {
@@ -716,61 +1057,101 @@
 
   /* ── events ─────────────────────────────────────────────────────────── */
 
+  /* Category is a filter now, not a step: changing it only re-scopes whatever
+     the open typeahead is showing. It must never silently fill the user's
+     slots — that was the old grid's job and it made the picker feel decided-for. */
   function pickCategory(cat) {
-    draft.cat = cat; draft.pool = [];
-    renderSetup();
-    callP('getCategoryKeywords', cat, 24).then(function (list) {
-      if (draft.cat !== cat) return;
-      draft.pool = list || [];
-      // One tap fills the remaining slots — the "never a blank field" guarantee
-      // at its hardest case (fresh user, no history at all).
-      if (!draft.picked.length) {
-        draft.pool.slice(0, SEED_TARGET).forEach(function (t) {
-          draft.picked.push({ keyword: t.keyword, category: t.category || cat, meta: t.n_sellers ? t.n_sellers + ' penjual' : '' });
-        });
-      }
+    draft.cat = cat || null;
+    if (draft.sug.kind === 'keyword' && draft.sug.slot >= 0 && draft.sug.q) {
+      runKeywordSuggest(draft.sug.q);
+    } else {
       renderSetup();
+    }
+  }
+
+  function runKeywordSuggest(q) {
+    var query = String(q || '').trim();
+    draft.sug.q = query;
+    if (!query) { draft.sug.rows = []; draft.sug.busy = false; renderSetup(); return; }
+    draft.sug.busy = true;
+    renderSetup();
+    var slotAtStart = draft.sug.slot;
+    callP('searchKeywords', { q: query, category: draft.cat, limit: 8 }).then(function (rows) {
+      // A slower response for an older query must not overwrite a newer one.
+      if (draft.sug.slot !== slotAtStart || draft.sug.q !== query) return;
+      draft.sug.rows = (rows || []).filter(function (r) {
+        return !draft.picked.some(function (x) {
+          return String(x.keyword).toLowerCase() === String(r.keyword).toLowerCase();
+        });
+      });
+      draft.sug.busy = false;
+      renderSetup();
+    }).catch(function () {
+      if (draft.sug.q !== query) return;
+      draft.sug.rows = []; draft.sug.busy = false; renderSetup();
     });
   }
 
-  function togglePick(kw) {
-    var i = -1;
-    draft.picked.forEach(function (x, idx) { if (x.keyword === kw) i = idx; });
-    if (i >= 0) { draft.picked.splice(i, 1); }
-    else {
-      if (draft.picked.length >= S.keywordLimit) return;
-      var t = draft.pool.filter(function (x) { return x.keyword === kw; })[0] || {};
-      draft.picked.push({ keyword: kw, category: t.category || draft.cat || '', meta: t.n_sellers ? t.n_sellers + ' penjual' : '' });
-    }
-    renderSetup();
-  }
-
-  function addCustomKeyword() {
-    var el = $('[data-ltk-kwinput]');
-    if (!el) return;
-    var kw = String(el.value || '').trim();
-    if (kw.length < 2) { call('toast', 'Keyword minimal 2 karakter.'); return; }
+  function pickSuggestion(kw, cat) {
+    var name = String(kw || '').trim();
+    if (name.length < 2) { call('toast', 'Keyword minimal 2 karakter.'); return; }
     if (draft.picked.length >= S.keywordLimit) { call('toast', 'Slot keyword sudah penuh.'); return; }
-    if (draft.picked.some(function (x) { return x.keyword.toLowerCase() === kw.toLowerCase(); })) return;
-    draft.picked.push({ keyword: kw, category: draft.cat || '' });
-    el.value = '';
+    if (draft.picked.some(function (x) { return x.keyword.toLowerCase() === name.toLowerCase(); })) return;
+    var hit = draft.sug.rows.filter(function (r) { return r.keyword === name; })[0] || {};
+    draft.picked.push({
+      keyword: name,
+      category: cat || hit.category || draft.cat || '',
+      meta: hit.n_sellers ? hit.n_sellers + ' penjual' : '',
+    });
+    draft.sug = { slot: -1, q: '', rows: [], busy: false, kind: 'keyword' };
     renderSetup();
   }
 
   function searchStores(q) {
-    var box = $('[data-ltk-storeres]');
-    if (!box) return;
-    if (!q || q.length < 2) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    draft.sug = { slot: -2, q: String(q || ''), rows: draft.sug.rows, busy: true, kind: 'store' };
+    if (!q || q.length < 2) {
+      draft.sug = { slot: -1, q: '', rows: [], busy: false, kind: 'store' };
+      renderSetup();
+      return;
+    }
+    renderSetup();
+    var query = q;
     callP('searchStores', q).then(function (rows) {
-      if (!rows || !rows.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
-      box.innerHTML = rows.slice(0, 8).map(function (r) {
-        return '<button type="button" class="ltk-store-opt" data-ltk-pickstore="' + attr(r.shop_id) +
-          '" data-ltk-storename="' + attr(r.store_name) + '">' + esc(r.store_name) +
-          (r.n_products ? '<span class="ltk-store-opt-n">' + esc(r.n_products) + ' produk</span>' : '') +
-          '</button>';
-      }).join('');
-      box.style.display = '';
+      if (draft.sug.q !== query) return;
+      draft.sug.rows = rows || [];
+      draft.sug.busy = false;
+      renderSetup();
+      var el = $('[data-ltk-storeinput]');
+      if (el) { el.value = query; el.focus(); }
     });
+  }
+
+  /* ── rollup interactions ─────────────────────────────────────────────── */
+
+  function setTab(tab) {
+    var next = (tab === 'store') ? 'store' : 'keyword';
+    if (next === S.tab) return;
+    S.tab = next;
+    S.openRow = null;
+    lsWrite({ tab: next });
+    call('track', 'tracker_tab', { site: opts.site, tab: next });
+    renderScopeTabs();
+    renderSkeleton();
+    refresh({ force: true });
+  }
+
+  function dropRow(key) {
+    if (call('requireAuth') === false) return;
+    var isKw = S.tab !== 'store';
+    var rec = isKw
+      ? S.keywords.filter(function (k) { return String(k.keyword).toLowerCase() === String(key).toLowerCase(); })[0]
+      : S.stores.filter(function (s) { return String(s.shop_id) === String(key); })[0];
+    if (!rec || !rec.id) { call('toast', 'Tidak ketemu di daftar pantauan.'); return; }
+    S.openRow = null;
+    callP(isKw ? 'removeKeyword' : 'removeStore', rec.id).then(function () {
+      call('toast', (isKw ? '"' + key + '"' : 'Toko') + ' dihapus dari pantauan.');
+      return refresh({ force: true });
+    }).catch(function () { call('toast', 'Gagal menghapus. Coba lagi.'); });
   }
 
   function onClick(e) {
@@ -795,8 +1176,10 @@
     var open = t.closest && t.closest('[data-ltk-open]');
     if (open) {
       var parts = String(open.getAttribute('data-ltk-open')).split('|');
-      var row = findRow(parts[0], parts[1]);
-      call('openProduct', row || { item_id: parts[0], shop_id: parts[1] });
+      var hit = (S.fallback || []).filter(function (f) {
+        return String(f.item_id) === parts[0] && String(f.shop_id) === parts[1];
+      })[0];
+      call('openProduct', hit || { item_id: parts[0], shop_id: parts[1] });
       return;
     }
 
@@ -808,11 +1191,38 @@
       return;
     }
 
-    var cat = t.closest && t.closest('[data-ltk-cat]');
-    if (cat) { pickCategory(cat.getAttribute('data-ltk-cat')); return; }
+    var tab = t.closest && t.closest('[data-ltk-tab]');
+    if (tab) { setTab(tab.getAttribute('data-ltk-tab')); return; }
 
-    var pick = t.closest && t.closest('[data-ltk-pick]');
-    if (pick && !pick.disabled) { togglePick(pick.getAttribute('data-ltk-pick')); return; }
+    var sug = t.closest && t.closest('[data-ltk-sugpick]');
+    if (sug) {
+      pickSuggestion(sug.getAttribute('data-ltk-sugpick'), sug.getAttribute('data-ltk-sugcat'));
+      return;
+    }
+
+    var kebab = t.closest && t.closest('[data-ltk-menu]');
+    if (kebab) {
+      var mk = kebab.getAttribute('data-ltk-menu');
+      S.openRow = (S.openRow === mk) ? null : mk;
+      renderRollup();
+      return;
+    }
+
+    var drop = t.closest && t.closest('[data-ltk-drop]');
+    if (drop) { dropRow(drop.getAttribute('data-ltk-drop')); return; }
+
+    var dive = t.closest && t.closest('[data-ltk-dive]');
+    if (dive) {
+      S.openRow = null;
+      call('openDiscovery', dive.getAttribute('data-ltk-dive'));
+      return;
+    }
+
+    // Any other click inside the tracker closes an open row menu.
+    if (S.openRow && !(t.closest && t.closest('.ltk-menu'))) {
+      S.openRow = null;
+      renderRollup();
+    }
 
     var rm = t.closest && t.closest('[data-ltk-rm]');
     if (rm) {
@@ -851,13 +1261,6 @@
         draft.stores = S.stores.map(function (s) { return { shop_id: s.shop_id, store_name: s.store_name }; });
         loadCategories().then(function () { renderSetup(); showScreen('setup'); });
         break;
-      case 'cat-back': draft.cat = null; draft.pool = []; renderSetup(); break;
-      case 'kw-add': addCustomKeyword(); break;
-      case 'focus-pool': {
-        var el = $('[data-ltk-cats]');
-        if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        break;
-      }
       case 'commit': commit(); break;
       case 'retry': refresh({ force: true }); break;
       case 'strip-close': lsWrite({ resumedAckAt: Date.now() }); S.resumed = false; renderStrip(); break;
@@ -867,25 +1270,60 @@
 
   function onInput(e) {
     if (!host || !host.contains(e.target)) return;
-    if (e.target.hasAttribute && e.target.hasAttribute('data-ltk-storeinput')) {
-      var q = e.target.value;
+    var el = e.target;
+    if (!el.hasAttribute) return;
+
+    if (el.hasAttribute('data-ltk-storeinput')) {
+      var q = el.value;
       if (timers.storeSearch) clearTimeout(timers.storeSearch);
-      timers.storeSearch = setTimeout(function () { searchStores(q); }, 280);
+      timers.storeSearch = setTimeout(function () { searchStores(q); }, TYPEAHEAD_MS);
+      return;
     }
-  }
-  function onKeydown(e) {
-    if (!host || !host.contains(e.target)) return;
-    if (e.key === 'Enter' && e.target.hasAttribute && e.target.hasAttribute('data-ltk-kwinput')) {
-      e.preventDefault(); addCustomKeyword();
+    if (el.hasAttribute('data-ltk-slot')) {
+      var slot = parseInt(el.getAttribute('data-ltk-slot'), 10);
+      var v = el.value;
+      draft.sug.kind = 'keyword';
+      draft.sug.slot = slot;
+      draft.sug.q = v;              // keep in sync so the re-render restores it
+      if (timers.typeahead) clearTimeout(timers.typeahead);
+      timers.typeahead = setTimeout(function () { runKeywordSuggest(v); }, TYPEAHEAD_MS);
+      return;
+    }
+    if (el.hasAttribute('data-ltk-sort')) {
+      S.sort = el.value;
+      lsWrite({ sort: S.sort });
+      renderRollup();
+      return;
+    }
+    if (el.hasAttribute('data-ltk-winsel')) {
+      var d = parseInt(el.value, 10) || DEFAULT_DAYS;
+      lsWrite({ days: d });
+      renderSkeleton();
+      refresh({ days: d, force: true });
+      return;
+    }
+    if (el.hasAttribute('data-ltk-catsel')) {
+      pickCategory(el.value || null);
     }
   }
 
-  function findRow(itemId, shopId) {
-    var all = S.movers.concat(S.fallback);
-    for (var i = 0; i < all.length; i++) {
-      if (String(all[i].item_id) === String(itemId) && String(all[i].shop_id) === String(shopId)) return all[i];
+  function onKeydown(e) {
+    if (!host || !host.contains(e.target)) return;
+    var el = e.target;
+    if (!el.hasAttribute || !el.hasAttribute('data-ltk-slot')) return;
+    if (e.key === 'Enter') {
+      // Enter takes the top suggestion, or the raw text when nothing matched —
+      // a long-tail keyword the panel has never scraped is still trackable.
+      e.preventDefault();
+      var top = draft.sug.rows[0];
+      if (top) pickSuggestion(top.keyword, top.category);
+      else pickSuggestion(el.value, draft.cat);
+      return;
     }
-    return null;
+    if (e.key === 'Escape') {
+      draft.sug = { slot: -1, q: '', rows: [], busy: false, kind: 'keyword' };
+      renderSetup();
+    }
   }
 
   /* ── public API ─────────────────────────────────────────────────────── */
@@ -897,27 +1335,38 @@
       keywordLimit: S.keywordLimit, storeLimit: S.storeLimit,
       freeSlots: Math.max(0, S.keywordLimit - S.keywords.length),
       windowDays: S.windowDays, asOf: S.asOf, hasHistory: S.hasHistory,
-      movers: S.movers.slice(), fallback: S.fallback.slice(),
+      tab: S.tab, rows: (S.rollup.rows || []).slice(), totals: S.rollup.totals || {},
+      fallback: S.fallback.slice(),
       lastRefreshAt: S.lastRefreshAt,
     };
   }
 
   function summary() {
-    var top = S.movers[0] || null;
+    // Top row by omset change — the same thing the table sorts by, so the chat
+    // card and the full page never disagree about what is "moving".
+    var withTrend = (S.rollup.rows || []).filter(rowHasTrend);
+    var top = withTrend.slice().sort(function (a, b) {
+      return (pctChange(b.omset, b.omset_prev) || 0) - (pctChange(a.omset, a.omset_prev) || 0);
+    })[0] || null;
+    var t = S.rollup.totals || {};
     return {
       configured: S.configured,
       keywordCount: S.keywords.length,
       storeCount: S.stores.length,
       freeSlots: Math.max(0, S.keywordLimit - S.keywords.length),
       paused: S.paused,
-      moverCount: S.movers.length,
+      rowCount: (S.rollup.rows || []).length,
       windowDays: S.windowDays,
       asOf: S.asOf,
       hasHistory: S.hasHistory,
+      totalOmset: Number(t.omset) || 0,
+      totalUnits: Number(t.units) || 0,
       nextUpdateLabel: nextUpdateLabel(),
-      topMover: top ? {
-        name: top.product_name, image_url: top.image_url,
-        sold_window: top.sold_window, item_id: top.item_id, shop_id: top.shop_id,
+      topRow: top ? {
+        label: rowLabel(top),
+        omset: Number(top.omset) || 0,
+        units: Number(top.units) || 0,
+        pct: pctChange(top.omset, top.omset_prev),
       } : null,
     };
   }
@@ -933,17 +1382,20 @@
         'Mengumpulkan data untuk ' + s.keywordCount + ' keyword kamu. Update pertama ' +
         esc(s.nextUpdateLabel) + '.</span></div>';
     }
-    if (!s.topMover) {
+    if (!s.topRow) {
       return '<div class="ltk-summary"><span class="ltk-summary-empty">' +
-        'Keyword kamu stabil ' + s.windowDays + ' hari ini — tidak ada pergerakan berarti.</span></div>';
+        s.rowCount + ' keyword dipantau — belum cukup hari data untuk hitung tren.</span></div>';
     }
     return '<div class="ltk-summary">' +
-      '<div class="ltk-summary-line">Paling bergerak ' + s.windowDays + ' hari terakhir</div>' +
+      '<div class="ltk-summary-line">Omset ' + s.windowDays + ' hari terakhir · ' +
+        esc(fmtRp(s.totalOmset)) + '</div>' +
       '<div class="ltk-summary-top">' +
-        imgOr(s.topMover.image_url, 'ltk-summary-img') +
         '<div class="ltk-summary-main"><div class="ltk-summary-name">' +
-          esc(s.topMover.name || '—') + '</div></div>' +
-        '<div class="ltk-summary-num">+' + esc(fmtUnits(s.topMover.sold_window)) + '</div>' +
+          esc(s.topRow.label) + '</div></div>' +
+        '<div class="ltk-summary-num">' +
+          (s.topRow.pct === null ? esc(fmtRp(s.topRow.omset))
+            : (s.topRow.pct >= 0 ? '+' : '') + Math.round(s.topRow.pct) + '%') +
+        '</div>' +
       '</div></div>';
   }
 
@@ -955,7 +1407,7 @@
       el.addEventListener('click', function () {
         var p = String(el.getAttribute('data-ltk-open')).split('|');
         if (p[0] === 'tracker') { call('openTrackerView'); return; }
-        call('openProduct', findRow(p[0], p[1]) || { item_id: p[0], shop_id: p[1] });
+        call('openProduct', { item_id: p[0], shop_id: p[1] });
       });
     });
   }
@@ -968,11 +1420,17 @@
     if (!el) { warn('host element not found: ' + (o.hostId || 'laris-tracker-root')); return false; }
     if (mounted && host === el) return true;
     host = el;
-    S.windowDays = lsRead().days || o.defaultDays || DEFAULT_DAYS;
+    var ui = lsRead();
+    S.windowDays = ui.days || o.defaultDays || DEFAULT_DAYS;
+    S.sort = ui.sort || S.sort;
+    S.tab = (o.tab === 'store' || ui.tab === 'store') ? 'store' : 'keyword';
     buildShell();
     if (!bound) {
       global.document.addEventListener('click', onClick, true);
       global.document.addEventListener('input', onInput, true);
+      // <select> fires `change` everywhere and `input` only in newer engines —
+      // bind both so the window/sort/category pickers work on older Safari.
+      global.document.addEventListener('change', onInput, true);
       global.document.addEventListener('keydown', onKeydown, true);
       bound = true;
     }
@@ -983,7 +1441,16 @@
   function open(o) {
     o = o || {};
     if (!mount(opts && opts.hostId ? opts : o)) return Promise.resolve(null);
+    if (o.tab) setTabQuiet(o.tab);
     return refresh({ touch: o.touch !== false, force: true });
+  }
+
+  /* Host-driven tab change (Site A's outer tab row). Unlike setTab() this does
+     not refresh — open() is about to do that anyway. */
+  function setTabQuiet(tab) {
+    S.tab = (tab === 'store') ? 'store' : 'keyword';
+    S.openRow = null;
+    lsWrite({ tab: S.tab });
   }
 
   function close() { clearTimers(); refresh._gen++; inflight = null; }
@@ -993,6 +1460,7 @@
     if (bound) {
       global.document.removeEventListener('click', onClick, true);
       global.document.removeEventListener('input', onInput, true);
+      global.document.removeEventListener('change', onInput, true);
       global.document.removeEventListener('keydown', onKeydown, true);
       bound = false;
     }
@@ -1007,14 +1475,17 @@
     refresh: refresh,
     openSetup: function () {
       draft.picked = S.keywords.map(function (k) { return { keyword: k.keyword, category: k.category }; });
+      draft.stores = S.stores.map(function (s) { return { shop_id: s.shop_id, store_name: s.store_name }; });
+      draft.sug = { slot: -1, q: '', rows: [], busy: false, kind: 'keyword' };
       loadCategories().then(function () { renderSetup(); showScreen('setup'); });
     },
+    setTab: setTab,
     isConfigured: function () { return S.configured; },
     getState: getState,
     summary: summary,
     summaryCardHtml: summaryCardHtml,
     bindSummary: bindSummary,
     destroy: destroy,
-    version: '1.0.0',
+    version: '2.0.0',
   };
 })(typeof window !== 'undefined' ? window : this);
