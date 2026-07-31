@@ -2220,6 +2220,22 @@ function isBootstrapLeader() {
   const email = String(currentUser?.email || '').toLowerCase();
   return !!(currentUser && (BOOTSTRAP_LEADER_EMAILS.includes(email) || _accessState.isLeader));
 }
+
+// ── "Cari Supplier" validation probe — LAUNCH GATE ────────────────────────────
+// Flip SUPPLIER_PROBE_PUBLIC to true to launch. Do NOT delete the code path; the
+// whole point is that launch is a one-const change. Until then the nav item, the
+// Deep Dive CTA and the view itself are admin-only (dogfood).
+//
+// This is a demand PROBE, not a product. 30-day bar, measured on the
+// supplier_* events in activity_events:
+//   1. >=10% of weekly actives who SEE a CTA click >=1 supplier link
+//   2. >=40% of survey respondents contacted the supplier or found it useful
+// Raw tab opens alone are NOT success. Below the bar => do not build the
+// marketplace/omset layer; iterate the curation or drop the tab.
+const SUPPLIER_PROBE_PUBLIC = false;
+function supplierProbeVisible() {
+  return SUPPLIER_PROBE_PUBLIC || isPlatformAdmin();
+}
 async function loadCurrentAccess() {
   if (!_supabase || !currentUser) {
     _accessState = { loaded: false, role: 'independent', isAdmin: false, isLeader: false };
@@ -2585,6 +2601,8 @@ function updateAuthUI() {
     // show admin nav for owner only
     const adminNav = document.getElementById('dash-nav-admin');
     if (adminNav) adminNav.style.display = isPlatformAdmin() ? '' : 'none';
+    // supplier probe: hidden from normal users until SUPPLIER_PROBE_PUBLIC flips
+    try { supplierSyncNavVisibility(); } catch (_) {}
     // show admin preview bar + float widget and restore saved view mode
     if (isPlatformAdmin()) { _adminViewModeInit(); adminFloatInit(); }
     // topbar avatar
@@ -5696,7 +5714,7 @@ const VIEW_TITLES = {
   'home':'Home Dashboard','product-database':'Product Database',
   'product-tracker':'Product Tracker','opportunity-finder':'Opportunity Finder',
   'saved':'Produk Tersimpan','education':'Edukasi','mytoko':'My Toko','about':'Tentang',
-  'extension':'Chrome Extension',
+  'extension':'Chrome Extension','suppliers':'Cari Supplier',
 };
 
 const VIEW_TITLE_IMG = {
@@ -5744,6 +5762,9 @@ function toggleResearchToolsNav() {
 
 function switchDashView(view) {
   if (view === 'alerts') view = 'tracker';
+  // Supplier probe is hidden until launch — bounce direct hits (#/suppliers,
+  // stale history entries) instead of showing an empty shell.
+  if (view === 'suppliers' && !supplierProbeVisible()) view = 'dashboard';
   const prevView = _dashActiveView;
   if (prevView === 'discover' && view !== 'discover') {
     _dscScrollTop = document.getElementById('dash-content')?.scrollTop || 0;
@@ -5849,6 +5870,7 @@ function switchDashView(view) {
   if (view === 'mytoko'    && typeof myTokoInit  === 'function') myTokoInit();
   if (view === 'credits'   && typeof creditsInit  === 'function') creditsInit();
   if (view === 'cohort'    && typeof cohortInit   === 'function') cohortInit();
+  if (view === 'suppliers' && typeof suppliersInit === 'function') suppliersInit();
   mbnSync(view);
   // Role layout first; nuRefreshView runs last so empty-state + recommendations win.
   if (view === 'dashboard') _syncDashboardRoleLayout();
@@ -22046,6 +22068,8 @@ function journeyApplyDeepDiveChrome() {
   if (trackPill) trackPill.style.display = '';
   try { ddUpdateTrackBtn(); } catch (_) {}
   try { ddSyncTabLocks(); } catch (_) {}
+  // Supplier probe CTA re-asserts its gated visibility on every deep dive.
+  try { supplierSyncNavVisibility(); } catch (_) {}
 }
 
 // Smoothly counts a Deep Dive simple-view metric from its current value to a
@@ -26752,3 +26776,299 @@ async function cohortPlannerGcalImportSelected() {
   await cohortPlannerRender(c.id);
 }
 
+
+// ════════════════════════════════════════════════════════════
+//  CARI SUPPLIER — validation probe (admin-only until launch)
+//  Gate + success criteria: see SUPPLIER_PROBE_PUBLIC near isPlatformAdmin().
+//  Data is a static curated JSON (no Supabase table by design for v0).
+// ════════════════════════════════════════════════════════════
+
+const SUPPLIER_DATA_URL = '/js/data/suppliers-curated.json';
+const SUPPLIER_DEEPDIVE_LIMIT = 5;
+
+let _supData        = null;   // parsed JSON once loaded
+let _supLoadPromise = null;   // in-flight fetch (dedupes concurrent inits)
+let _supLoadError   = false;
+let _supFilterKeyword  = null;
+let _supFilterCategory = null;
+let _supSource      = 'tab';  // 'tab' | 'deepdive' | 'keyword'
+let _supShowAll     = false;  // "Lihat semua" pressed after a deep-dive handoff
+let _supListeners   = false;
+
+function _supEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
+function _supNum(n) {
+  return Number.isFinite(n) ? Number(n).toLocaleString('id-ID') : null;
+}
+
+/** Mirror every probe event to activity_events AND Clarity (best-effort). */
+function _supLog(eventType, props) {
+  try { void cohortLogActivity(eventType, props || {}); } catch (_) {}
+  try {
+    if (typeof larisClarityEvent === 'function') larisClarityEvent('event', eventType);
+  } catch (_) {}
+}
+
+/** Fetches the curated list once. Rejects are surfaced as an error state. */
+function supLoadData() {
+  if (_supData) return Promise.resolve(_supData);
+  if (_supLoadPromise) return _supLoadPromise;
+  _supLoadPromise = fetch(SUPPLIER_DATA_URL, { cache: 'no-cache' })
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(j => {
+      if (!j || !Array.isArray(j.suppliers)) throw new Error('bad shape');
+      _supData = j;
+      _supLoadError = false;
+      return j;
+    })
+    .catch(err => {
+      _supLoadError = true;
+      _supLoadPromise = null;   // allow a retry on the next open
+      throw err;
+    });
+  return _supLoadPromise;
+}
+
+function _supNorm(s) { return String(s == null ? '' : s).trim().toLowerCase(); }
+
+/**
+ * Picks the rows to show. Match order: exact keyword -> pilot category -> all.
+ * Returns { rows, mode } where mode drives the honesty note above the list.
+ */
+function _supSelect() {
+  const all = (_supData?.suppliers || []).filter(s => s.published);
+  const kw  = _supNorm(_supFilterKeyword);
+  const cat = _supNorm(_supFilterCategory);
+
+  if (kw) {
+    const hit = all.filter(s => (s.keywords || []).some(k => _supNorm(k) === kw));
+    if (hit.length) return { rows: hit, mode: 'keyword' };
+  }
+  if (cat) {
+    const pilotCats = (_supData?.pilot?.categories || []).map(_supNorm);
+    if (pilotCats.includes(cat)) return { rows: all, mode: 'category' };
+    return { rows: all, mode: 'offpilot' };
+  }
+  return { rows: all, mode: 'all' };
+}
+
+function _supTierRank(t) {
+  return ({ grosir: 0, pabrik: 0, konveksi: 0, import: 1 })[t] ?? 2;
+}
+
+function _supBadgeHtml(s) {
+  return (s.badges || [])
+    .map(b => `<span class="sup-badge">${_supEsc(b)}</span>`)
+    .join('');
+}
+
+function _supMetaHtml(s) {
+  const bits = [];
+  if (Number.isFinite(s.rating))  bits.push(`Rating ${_supEsc(s.rating)}`);
+  if (Number.isFinite(s.reviews)) bits.push(`${_supNum(s.reviews)} ulasan`);
+  if (Number.isFinite(s.sold))    bits.push(`${_supNum(s.sold)} terjual`);
+  if (s.city) bits.push(_supEsc(s.city));
+  return bits.length ? `<div class="sup-meta">${bits.join(' &middot; ')}</div>` : '';
+}
+
+function _supCardHtml(s) {
+  const price = Number.isFinite(s.minPrice)
+    ? `<div class="sup-price">Mulai Rp ${_supNum(s.minPrice)}</div>` : '';
+  const sample = s.sampleUrl
+    ? `<a class="sup-link-sec" href="${_supEsc(s.sampleUrl)}" target="_blank" rel="noopener"
+          onclick="supOpenLink('${_supEsc(s.id)}','sample')">Lihat contoh produk</a>` : '';
+  return `
+    <div class="sup-card">
+      <div class="sup-card-main">
+        <div class="sup-name">${_supEsc(s.name)}</div>
+        <div class="sup-badges">${_supBadgeHtml(s)}</div>
+        ${_supMetaHtml(s)}
+        ${price}
+      </div>
+      <div class="sup-card-actions">
+        <a class="sup-btn" href="${_supEsc(s.url)}" target="_blank" rel="noopener"
+           onclick="supOpenLink('${_supEsc(s.id)}','shop')">Buka toko</a>
+        ${sample}
+      </div>
+    </div>`;
+}
+
+function supRender() {
+  const listEl = document.getElementById('sup-list');
+  const noteEl = document.getElementById('sup-filter-note');
+  if (!listEl) return;
+
+  if (_supLoadError) {
+    if (noteEl) noteEl.innerHTML = '';
+    listEl.innerHTML = `<div class="dash-empty">
+      <div class="dash-empty-title">Gagal memuat daftar supplier</div>
+      <div class="dash-empty-sub">Cek koneksi kamu lalu coba lagi.</div>
+      <button type="button" class="sup-btn" style="margin-top:12px;" onclick="suppliersInit({ retry: true })">Coba lagi</button>
+    </div>`;
+    return;
+  }
+  if (!_supData) {
+    if (noteEl) noteEl.innerHTML = '';
+    listEl.innerHTML = `<div class="dash-empty"><div class="spinner" style="margin:0 auto 8px;"></div><div class="dash-empty-sub">Memuat supplier…</div></div>`;
+    return;
+  }
+
+  const { rows, mode } = _supSelect();
+  const pilotLabel = _supData?.pilot?.label || 'kategori pilot';
+
+  if (noteEl) {
+    let note = '';
+    if (mode === 'keyword') {
+      note = `Supplier untuk <strong>${_supEsc(_supFilterKeyword)}</strong>.`;
+    } else if (mode === 'offpilot') {
+      note = `Probe ini baru mencakup <strong>${_supEsc(pilotLabel)}</strong>, jadi daftar di bawah belum cocok persis dengan produk yang kamu buka.`;
+    } else if (mode === 'category') {
+      note = `Semua supplier untuk <strong>${_supEsc(pilotLabel)}</strong>.`;
+    }
+    noteEl.innerHTML = note ? `<div class="sup-note">${note}</div>` : '';
+  }
+
+  if (!rows.length) {
+    listEl.innerHTML = `<div class="dash-empty">
+      <div class="dash-empty-title">Belum ada supplier untuk filter ini</div>
+      <div class="dash-empty-sub">Kami baru mengurasi ${_supEsc(pilotLabel)}. Daftar akan bertambah.</div>
+    </div>`;
+    return;
+  }
+
+  const sorted = rows.slice().sort((a, b) => {
+    const t = _supTierRank(a.tier) - _supTierRank(b.tier);
+    if (t) return t;
+    return (b.sold || 0) - (a.sold || 0);
+  });
+
+  const capped = (_supSource === 'deepdive' && !_supShowAll)
+    ? sorted.slice(0, SUPPLIER_DEEPDIVE_LIMIT) : sorted;
+
+  let html = capped.map(_supCardHtml).join('');
+  if (capped.length < sorted.length) {
+    html += `<button type="button" class="sup-more" onclick="supShowAll()">Lihat semua ${sorted.length} supplier</button>`;
+  }
+  const src = _supData?.sourceNote;
+  if (src) html += `<div class="sup-source">${_supEsc(src)}</div>`;
+  listEl.innerHTML = html;
+}
+
+/** Entry point — called by switchDashView('suppliers') and the Deep Dive CTA. */
+function suppliersInit(opts) {
+  const o = opts || {};
+  if (o.retry) { _supLoadError = false; _supLoadPromise = null; }
+  if (!_supListeners) {
+    _supListeners = true;
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) supMaybeShowSurvey();
+    });
+    window.addEventListener('focus', supMaybeShowSurvey);
+  }
+  supRender();
+  supLoadData().then(supRender).catch(supRender);
+  _supLog('supplier_tab_open', {
+    keyword:  _supFilterKeyword || null,
+    category: _supFilterCategory || null,
+    source:   _supSource,
+  });
+  // If they clicked out and came back straight into this view, ask now.
+  supMaybeShowSurvey();
+}
+
+function supShowAll() { _supShowAll = true; supRender(); }
+
+/** Shows/hides every probe entry point. Safe to call before the DOM settles. */
+function supplierSyncNavVisibility() {
+  const on = supplierProbeVisible();
+  ['dash-nav-suppliers', 'mbn-sheet-suppliers', 'dd-sact-supplier'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = on ? '' : 'none';
+  });
+}
+
+/** Deep Dive CTA — hands the current product's keyword/category to the view. */
+function ddOpenSuppliers() {
+  if (!supplierProbeVisible()) return;
+  const l = _ddCurrentP?._listing || null;
+  _supFilterKeyword  = l?.keyword  || null;
+  _supFilterCategory = l?.category || _ddCurrentP?.category || null;
+  _supSource  = 'deepdive';
+  _supShowAll = false;
+  _supLog('supplier_cta_click', {
+    product_id: _ddCurrentP?.id || null,
+    keyword:    _supFilterKeyword,
+    category:   _supFilterCategory,
+    source:     'deepdive',
+  });
+  switchDashView('suppliers');
+}
+
+/**
+ * Outbound click. Logs, then flags the session so the return survey can fire
+ * when the user comes back to the Laris tab.
+ */
+function supOpenLink(id, which) {
+  const s = (_supData?.suppliers || []).find(x => x.id === id);
+  _supLog('supplier_link_click', {
+    supplier_id: id,
+    supplier_name: s?.name || null,
+    tier: s?.tier || null,
+    target: which || 'shop',
+    keyword:  _supFilterKeyword || null,
+    category: _supFilterCategory || null,
+    source:   _supSource,
+  });
+  try {
+    sessionStorage.setItem('_lid_sup_pending', JSON.stringify({
+      id, name: s?.name || '', at: Date.now(),
+      keyword: _supFilterKeyword || null, category: _supFilterCategory || null,
+    }));
+  } catch (_) {}
+  // The anchor's own target=_blank does the navigating — nothing to do here.
+}
+
+function _supSurveyDone() {
+  try { return !!localStorage.getItem('larisid_sup_survey_v1'); } catch (_) { return false; }
+}
+
+/** One question, once per user, only after a real outbound click. */
+function supMaybeShowSurvey() {
+  if (_supSurveyDone()) return;
+  let pending = null;
+  try { pending = JSON.parse(sessionStorage.getItem('_lid_sup_pending') || 'null'); } catch (_) {}
+  if (!pending) return;
+  // Give the click a moment to actually become a visit before we ask.
+  if (Date.now() - (pending.at || 0) < 4000) return;
+  const modal = document.getElementById('sup-survey-modal');
+  if (!modal || modal.style.display === 'flex') return;
+  const nameEl = document.getElementById('sup-survey-name');
+  if (nameEl) nameEl.textContent = pending.name || 'Supplier';
+  modal.style.display = 'flex';
+}
+
+function supSurveyAnswer(answer) {
+  let pending = null;
+  try { pending = JSON.parse(sessionStorage.getItem('_lid_sup_pending') || 'null'); } catch (_) {}
+  _supLog('supplier_survey_response', {
+    answer,
+    supplier_id: pending?.id || null,
+    keyword:  pending?.keyword  || null,
+    category: pending?.category || null,
+  });
+  try { localStorage.setItem('larisid_sup_survey_v1', String(Date.now())); } catch (_) {}
+  supCloseSurvey();
+}
+
+function supCloseSurvey() {
+  try { sessionStorage.removeItem('_lid_sup_pending'); } catch (_) {}
+  const modal = document.getElementById('sup-survey-modal');
+  if (modal) modal.style.display = 'none';
+}
