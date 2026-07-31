@@ -2249,6 +2249,39 @@ body.calc-resizing .calc-resize::before { background: var(--accent); }
 .calc-body .side-komp-lead {
   margin: 0 0 12px; font-size: .76rem; color: var(--muted); line-height: 1.45;
 }
+/* Cari Supplier (validation probe, arm B) — scoped to the side panel */
+.calc-body .sup-card {
+  border: 1px solid var(--line); border-radius: 12px;
+  padding: 12px 14px; margin-bottom: 10px; background: #fff;
+}
+.calc-body .sup-name { font-size: .85rem; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
+.calc-body .sup-badges { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 6px; }
+.calc-body .sup-badge {
+  font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  background: var(--bg-user); color: var(--muted); border-radius: 999px; padding: 3px 8px;
+}
+.calc-body .sup-meta { font-size: .72rem; color: var(--muted); line-height: 1.5; }
+.calc-body .sup-price { font-size: .74rem; color: var(--accent); font-weight: 700; margin-top: 4px; }
+.calc-body .sup-card-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.calc-body .sup-btn {
+  display: block; background: var(--accent); color: #fff; border: none; border-radius: 8px;
+  padding: 9px 14px; font: inherit; font-size: .78rem; font-weight: 700;
+  cursor: pointer; text-decoration: none; text-align: center;
+}
+.calc-body .sup-btn:hover { filter: brightness(.92); }
+.calc-body .sup-link-sec {
+  font-size: .7rem; color: var(--muted); text-decoration: underline; text-align: center;
+}
+.calc-body .sup-link-sec:hover { color: var(--accent); }
+.calc-body .sup-more {
+  width: 100%; background: #fff; border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px; font: inherit; font-size: .76rem; font-weight: 700; color: var(--ink); cursor: pointer;
+}
+.calc-body .sup-more:hover { border-color: var(--accent); color: var(--accent); }
+.calc-body .sup-source {
+  font-size: .68rem; color: var(--muted); line-height: 1.5;
+  margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line);
+}
 .calc-body .side-serupa-grid {
   margin-top: 0;
   grid-template-columns: 1fr;
@@ -2345,6 +2378,10 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
       <button type="button" class="side-btn" id="btn-produk">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         Produk
+      </button>
+      <button type="button" class="side-btn" id="btn-supplier" style="display:none">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><path d="M8 7V5a2 2 0 0 0-4 0v2"/></svg>
+        Cari Supplier
       </button>
       <button type="button" class="side-btn" id="btn-harga">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M17 8c0-2-2-3.5-5-3.5S7 6 7 8s2 3 5 3.5 5 1.5 5 3.5-2 3.5-5 3.5"/></svg>
@@ -2658,6 +2695,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
           <button type="button" class="side-tab active" role="tab" id="side-tab-kalc" data-side-mode="kalkulator" aria-selected="true">Kalkulator</button>
           <button type="button" class="side-tab" role="tab" id="side-tab-komp" data-side-mode="kompetitor" aria-selected="false">Kompetitor</button>
           <button type="button" class="side-tab" role="tab" id="side-tab-serupa" data-side-mode="serupa" aria-selected="false">Serupa</button>
+          <button type="button" class="side-tab" role="tab" id="side-tab-supplier" data-side-mode="supplier" aria-selected="false" hidden>Supplier</button>
         </div>
       </div>
       <button type="button" class="calc-close" id="calc-close" aria-label="Tutup panel" title="Tutup (Esc)">
@@ -2668,6 +2706,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
     <div class="calc-body" id="side-body-kalc"></div>
     <div class="calc-body" id="side-body-komp" hidden></div>
     <div class="calc-body" id="side-body-serupa" hidden></div>
+    <div class="calc-body" id="side-body-supplier" hidden></div>
   </aside>
 </div>
 
@@ -2753,6 +2792,20 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </div>
 
+<!-- Cari Supplier: one-question return survey (once per user, after an outbound click) -->
+<div class="modal-overlay" id="sup-survey-modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="sup-survey-title">
+    <h3 id="sup-survey-title" class="nudge-title">Sudah menghubungi supplier ini?</h3>
+    <p class="nudge-sub"><strong id="sup-survey-name"></strong> &mdash; satu pertanyaan saja, biar kami tahu daftar ini beneran kepakai atau tidak.</p>
+    <div class="nudge-actions" style="flex-direction:column;">
+      <button type="button" class="btn-primary" style="width:100%;" data-sup-act="ya">Ya, sudah saya hubungi</button>
+      <button type="button" class="btn-ghost" style="width:100%;" data-sup-act="belum">Belum, baru lihat-lihat</button>
+      <button type="button" class="btn-ghost" style="width:100%;" data-sup-act="tidak">Tidak cocok buat saya</button>
+      <button type="button" class="btn-ghost" style="width:100%;" data-sup-act="close">Nanti saja</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="gpt-feedback-modal">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="gpt-fb-title">
     <h3 id="gpt-fb-title" class="nudge-title">Pesan ke Steven</h3>
@@ -2813,6 +2866,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 
 <script src="/js/daily-spin-wheel.js?v=20260730g" defer></script>
 <script src="/js/changelog.js?v=20260729a" defer></script>
-<script src="/js/gpt-app.js?v=20260731a" defer></script>
+<script src="/js/gpt-app.js?v=20260801b" defer></script>
 </body>
 </html>

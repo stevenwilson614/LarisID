@@ -1745,6 +1745,19 @@ function isPlatformAdmin() {
   return !!(currentUser && (_accessState.isAdmin || PLATFORM_ADMIN_EMAILS.includes(email)));
 }
 
+// ── "Cari Supplier" validation probe — LAUNCH GATE (arm B) ────────────────────
+// !! FLIP THIS TOGETHER WITH THE SAME CONST IN js/laris-app.js (arm A) !!
+// Launching one arm but not the other silently breaks the probe: it halves the
+// denominator for the click-through bar AND puts a feature in one A/B arm that
+// the other lacks, confounding the arm comparison. Both files carry their own
+// const on purpose — they ship with ?v= cache-busters, whereas the shared
+// perf-loader.js does not, so a flag there could be served stale at launch.
+// Success criteria + kill bar: see the matching block in js/laris-app.js.
+const SUPPLIER_PROBE_PUBLIC = false;
+function supplierProbeVisible() {
+  return SUPPLIER_PROBE_PUBLIC || isPlatformAdmin();
+}
+
 async function loadCurrentAccess() {
   if (!_supabase || !currentUser) {
     _accessState = { loaded: false, isAdmin: false };
@@ -1779,6 +1792,7 @@ function updateAccountUI() {
   }
   const btn = $('btn-admin');
   if (btn) btn.style.display = isPlatformAdmin() ? '' : 'none';
+  try { supplierSyncNavVisibility(); } catch (_) {}
   renderChatList();
   renderAdminSampleBanner();
   void refreshGptUsage();
@@ -3422,6 +3436,9 @@ let _serupaFetchToken = 0;
 
 function normalizeSideMode(mode) {
   if (mode === 'kompetitor' || mode === 'serupa') return mode;
+  // 'supplier' is gated — never restore into it once the probe is switched off,
+  // or a saved pref could strand a normal user on a blank panel.
+  if (mode === 'supplier' && supplierProbeVisible()) return 'supplier';
   return 'kalkulator';
 }
 
@@ -3429,6 +3446,7 @@ function sideModeLabel(mode) {
   const m = normalizeSideMode(mode);
   if (m === 'kompetitor') return 'Kompetitor';
   if (m === 'serupa') return 'Produk serupa';
+  if (m === 'supplier') return 'Cari Supplier';
   return 'Kalkulator profit';
 }
 
@@ -3478,9 +3496,13 @@ function setSideModeUi(mode) {
   const kalcBody = $('side-body-kalc');
   const kompBody = $('side-body-komp');
   const serupaBody = $('side-body-serupa');
+  const supBody = $('side-body-supplier');
   if (kalcBody) kalcBody.hidden = _sideMode !== 'kalkulator';
   if (kompBody) kompBody.hidden = _sideMode !== 'kompetitor';
   if (serupaBody) serupaBody.hidden = _sideMode !== 'serupa';
+  if (supBody) supBody.hidden = _sideMode !== 'supplier';
+  const supTab = $('side-tab-supplier');
+  if (supTab) supTab.hidden = !supplierProbeVisible();
 }
 
 function setSideContext(text) {
@@ -3670,12 +3692,13 @@ function refreshOpenSidePanel(opts = {}) {
   if (!document.body.classList.contains('calc-open')) return;
   if (_sideMode === 'kompetitor') void fillKompContent(opts);
   else if (_sideMode === 'serupa') void fillSerupaContent(opts);
+  else if (_sideMode === 'supplier') void fillSupplierContent(opts);
   else fillCalcContent({ ...opts, force: true });
 }
 
 function openSidePanel(mode, opts = {}) {
   const panel = $('calc-panel');
-  if (!panel || !$('side-body-kalc') || !$('side-body-komp') || !$('side-body-serupa')) return;
+  if (!panel || !$('side-body-kalc') || !$('side-body-komp') || !$('side-body-serupa') || !$('side-body-supplier')) return;
   const next = normalizeSideMode(mode);
   const wasOpen = document.body.classList.contains('calc-open');
   const switching = wasOpen && _sideMode !== next;
@@ -3692,6 +3715,7 @@ function openSidePanel(mode, opts = {}) {
 
   if (next === 'kalkulator') fillCalcContent(opts);
   else if (next === 'serupa') void fillSerupaContent(opts);
+  else if (next === 'supplier') void fillSupplierContent(opts);
   else void fillKompContent(opts);
 
   saveSidePrefs({ open: true, mode: next });
@@ -6874,12 +6898,17 @@ function platformFeeDetail(plat, cat, vol){
 }
 
 function ddToolPillsHtml() {
+  // Pills are re-rendered per product, so the supplier probe is gated by simply
+  // omitting it rather than toggling display after the fact.
+  const supplier = supplierProbeVisible()
+    ? '<button type="button" class="ddr-tool-pill" data-ddr-tool="supplier">Supplier</button>' : '';
   return `<div class="ddr-tool-pills" role="toolbar" aria-label="Alat Deep Dive">
     <button type="button" class="ddr-tool-pill" data-ddr-tool="analisa">Analisa</button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="kalkulator">Kalkulator</button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="kompetitor">Kompetitor</button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="serupa">Serupa</button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="biaya">Biaya</button>
+    ${supplier}
   </div>`;
 }
 
@@ -7256,6 +7285,19 @@ function runDdrTool(tool, product, peers, via) {
   if (tool === 'serupa') {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'serupa_panel', via: via || 'click', keyword: p.keyword || '' });
     openSerupaPanel({ product: p, peers: peerList, via: via || 'deepdive' });
+    return;
+  }
+  if (tool === 'supplier') {
+    if (!supplierProbeVisible()) return;
+    _supFilterKeyword  = p.keyword || null;
+    _supFilterCategory = p.category || p.category_canonical || null;
+    _supSource  = 'deepdive';
+    _supShowAll = false;
+    _supLog('supplier_cta_click', {
+      ui: 'gpt', product_id: p.item_id || null,
+      keyword: _supFilterKeyword, category: _supFilterCategory, source: 'deepdive',
+    });
+    openSidePanel('supplier', { product: p, via: via || 'deepdive' });
   }
 }
 
@@ -9566,6 +9608,17 @@ function wireUi() {
     updateDirCompareBanner();
     void openDirectory();
   });
+  // Intentional entry into the supplier probe (the Deep Dive pill is the
+  // contextual one). Clears any product filter so this is the "browse" path.
+  $('btn-supplier')?.addEventListener('click', () => {
+    if (!supplierProbeVisible()) return;
+    _supFilterKeyword = null;
+    _supFilterCategory = null;
+    _supSource = 'tab';
+    _supShowAll = false;
+    closeSidebar();
+    openSidePanel('supplier', { via: 'sidebar' });
+  });
   $('btn-harga')?.addEventListener('click', () => setView('harga'));
   $('btn-faq')?.addEventListener('click', () => { setView('faq'); void logUserEvent('view_open', { ui: 'gpt', view: 'faq' }); });
   $('btn-tentang')?.addEventListener('click', () => { setView('tentang'); void logUserEvent('view_open', { ui: 'gpt', view: 'tentang' }); });
@@ -9691,5 +9744,233 @@ async function boot() {
   renderSidebarLocCard();
 }
 
+
+// ════════════════════════════════════════════════════════════
+//  CARI SUPPLIER — validation probe, arm B (side-panel mode)
+//  Same seed JSON and same event names as arm A (js/laris-app.js) so the two
+//  arms are directly comparable. Gate: SUPPLIER_PROBE_PUBLIC near isPlatformAdmin.
+//  NOTE: this file is one big IIFE — nothing here is global, so card actions use
+//  delegated data-* handlers (Site B convention), never inline onclick.
+// ════════════════════════════════════════════════════════════
+
+const SUPPLIER_DATA_URL = '/js/data/suppliers-curated.json';
+const SUPPLIER_DEEPDIVE_LIMIT = 5;
+
+let _supData        = null;
+let _supLoadPromise = null;
+let _supLoadError   = false;
+let _supShowAll     = false;
+let _supListeners   = false;
+// Assigned by runDdrTool('supplier') and the btn-supplier handler above; this
+// file is 'use strict', so they must be declared or those writes throw.
+let _supFilterKeyword  = null;
+let _supFilterCategory = null;
+let _supSource      = 'tab';
+
+function _supNum(n) {
+  return Number.isFinite(n) ? Number(n).toLocaleString('id-ID') : null;
+}
+
+/** Mirrors arm A: activity_events (AB-stamped by logUserEvent) + Clarity. */
+function _supLog(eventType, props) {
+  const meta = { ui: 'gpt', ...(props || {}) };
+  try { void logUserEvent(eventType, meta); } catch (_) {}
+  try { clarityEvt(eventType); } catch (_) {}
+}
+
+function supLoadData() {
+  if (_supData) return Promise.resolve(_supData);
+  if (_supLoadPromise) return _supLoadPromise;
+  _supLoadPromise = fetch(SUPPLIER_DATA_URL, { cache: 'no-cache' })
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(j => {
+      if (!j || !Array.isArray(j.suppliers)) throw new Error('bad shape');
+      _supData = j; _supLoadError = false; return j;
+    })
+    .catch(err => { _supLoadError = true; _supLoadPromise = null; throw err; });
+  return _supLoadPromise;
+}
+
+function _supNorm(s) { return String(s == null ? '' : s).trim().toLowerCase(); }
+
+function _supSelect() {
+  const all = (_supData?.suppliers || []).filter(s => s.published);
+  const kw  = _supNorm(_supFilterKeyword);
+  const cat = _supNorm(_supFilterCategory);
+  if (kw) {
+    const hit = all.filter(s => (s.keywords || []).some(k => _supNorm(k) === kw));
+    if (hit.length) return { rows: hit, mode: 'keyword' };
+  }
+  if (cat) {
+    const pilotCats = (_supData?.pilot?.categories || []).map(_supNorm);
+    if (pilotCats.includes(cat)) return { rows: all, mode: 'category' };
+    return { rows: all, mode: 'offpilot' };
+  }
+  return { rows: all, mode: 'all' };
+}
+
+function _supTierRank(t) { return ({ grosir: 0, pabrik: 0, konveksi: 0, import: 1 })[t] ?? 2; }
+
+function _supCardHtml(s) {
+  const badges = (s.badges || []).map(b => `<span class="sup-badge">${esc(b)}</span>`).join('');
+  const bits = [];
+  if (Number.isFinite(s.rating))  bits.push(`Rating ${esc(s.rating)}`);
+  if (Number.isFinite(s.reviews)) bits.push(`${_supNum(s.reviews)} ulasan`);
+  if (Number.isFinite(s.sold))    bits.push(`${_supNum(s.sold)} terjual`);
+  if (s.city) bits.push(esc(s.city));
+  const meta = bits.length ? `<div class="sup-meta">${bits.join(' &middot; ')}</div>` : '';
+  const price = Number.isFinite(s.minPrice) ? `<div class="sup-price">Mulai Rp ${_supNum(s.minPrice)}</div>` : '';
+  const sample = s.sampleUrl
+    ? `<a class="sup-link-sec" href="${esc(s.sampleUrl)}" target="_blank" rel="noopener"
+          data-sup-id="${esc(s.id)}" data-sup-target="sample">Lihat contoh produk</a>` : '';
+  return `<div class="sup-card">
+    <div class="sup-name">${esc(s.name)}</div>
+    <div class="sup-badges">${badges}</div>
+    ${meta}${price}
+    <div class="sup-card-actions">
+      <a class="sup-btn" href="${esc(s.url)}" target="_blank" rel="noopener"
+         data-sup-id="${esc(s.id)}" data-sup-target="shop">Buka toko</a>
+      ${sample}
+    </div>
+  </div>`;
+}
+
+/** One delegated listener for the whole panel + survey modal. */
+function _supWireDelegation() {
+  if (_supListeners) return;
+  _supListeners = true;
+  document.addEventListener('click', (e) => {
+    const link = e.target?.closest?.('[data-sup-id]');
+    if (link) { supOpenLink(link.getAttribute('data-sup-id'), link.getAttribute('data-sup-target')); return; }
+    const act = e.target?.closest?.('[data-sup-act]');
+    if (!act) return;
+    const a = act.getAttribute('data-sup-act');
+    if (a === 'more')   { _supShowAll = true; void fillSupplierContent(); }
+    else if (a === 'retry') { _supLoadError = false; _supLoadPromise = null; void fillSupplierContent(); }
+    else if (a === 'close') supCloseSurvey();
+    else supSurveyAnswer(a);   // 'ya' | 'belum' | 'tidak'
+  });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) supMaybeShowSurvey(); });
+  window.addEventListener('focus', supMaybeShowSurvey);
+}
+
+async function fillSupplierContent(opts = {}) {
+  const body = $('side-body-supplier');
+  if (!body) return;
+  if (!supplierProbeVisible()) { body.innerHTML = ''; return; }
+  _supWireDelegation();
+
+  const product = opts.product || null;
+  if (product) {
+    _supFilterKeyword  = product.keyword || _supFilterKeyword;
+    _supFilterCategory = product.category || product.category_canonical || _supFilterCategory;
+  }
+
+  if (!_supData && !_supLoadError) {
+    body.innerHTML = '<p class="side-empty">Memuat supplier…</p>';
+    try { await supLoadData(); } catch (_) { /* rendered as error below */ }
+    if (_sideMode !== 'supplier') return;
+  }
+
+  if (_supLoadError) {
+    setSideContext('');
+    body.innerHTML = `<p class="side-empty">Gagal memuat daftar supplier.<br>
+      <button type="button" class="sup-btn" style="margin-top:12px;" data-sup-act="retry">Coba lagi</button></p>`;
+    return;
+  }
+
+  const { rows, mode } = _supSelect();
+  const pilotLabel = _supData?.pilot?.label || 'kategori pilot';
+  setSideContext(mode === 'keyword' ? (_supFilterKeyword || '') : pilotLabel);
+
+  let lead;
+  if (mode === 'keyword') lead = `Supplier untuk “${esc(_supFilterKeyword)}”.`;
+  else if (mode === 'offpilot') lead = `Probe ini baru mencakup ${esc(pilotLabel)}, jadi daftar ini belum cocok persis dengan produk yang kamu buka.`;
+  else lead = `Toko grosir &amp; konveksi untuk ${esc(pilotLabel)}.`;
+
+  if (!rows.length) {
+    body.innerHTML = `<p class="side-komp-lead">${lead}</p>
+      <p class="side-empty">Belum ada supplier untuk filter ini.</p>`;
+    return;
+  }
+
+  const sorted = rows.slice().sort((a, b) => {
+    const t = _supTierRank(a.tier) - _supTierRank(b.tier);
+    return t || (b.sold || 0) - (a.sold || 0);
+  });
+  const capped = (_supSource === 'deepdive' && !_supShowAll)
+    ? sorted.slice(0, SUPPLIER_DEEPDIVE_LIMIT) : sorted;
+
+  let html = `<p class="side-komp-lead">${lead}</p>` + capped.map(_supCardHtml).join('');
+  if (capped.length < sorted.length) {
+    html += `<button type="button" class="sup-more" data-sup-act="more">Lihat semua ${sorted.length} supplier</button>`;
+  }
+  if (_supData?.sourceNote) html += `<div class="sup-source">${esc(_supData.sourceNote)}</div>`;
+  body.innerHTML = html;
+
+  _supLog('supplier_tab_open', {
+    keyword: _supFilterKeyword || null,
+    category: _supFilterCategory || null,
+    source: _supSource,
+  });
+  supMaybeShowSurvey();
+}
+
+/** Sidebar entry visibility. The Deep Dive pill gates itself in ddToolPillsHtml. */
+function supplierSyncNavVisibility() {
+  const btn = $('btn-supplier');
+  if (btn) btn.style.display = supplierProbeVisible() ? '' : 'none';
+  const tab = $('side-tab-supplier');
+  if (tab) tab.hidden = !supplierProbeVisible();
+}
+
+function supOpenLink(id, which) {
+  const s = (_supData?.suppliers || []).find(x => x.id === id);
+  _supLog('supplier_link_click', {
+    supplier_id: id, supplier_name: s?.name || null, tier: s?.tier || null,
+    target: which || 'shop',
+    keyword: _supFilterKeyword || null, category: _supFilterCategory || null,
+    source: _supSource,
+  });
+  try {
+    sessionStorage.setItem('_lid_sup_pending', JSON.stringify({
+      id, name: s?.name || '', at: Date.now(),
+      keyword: _supFilterKeyword || null, category: _supFilterCategory || null,
+    }));
+  } catch (_) {}
+}
+
+function _supSurveyDone() {
+  try { return !!localStorage.getItem('larisid_sup_survey_v1'); } catch (_) { return false; }
+}
+
+function supMaybeShowSurvey() {
+  if (_supSurveyDone()) return;
+  let pending = null;
+  try { pending = JSON.parse(sessionStorage.getItem('_lid_sup_pending') || 'null'); } catch (_) {}
+  if (!pending) return;
+  if (Date.now() - (pending.at || 0) < 4000) return;
+  const modal = $('sup-survey-modal');
+  if (!modal || modal.classList.contains('open')) return;
+  const nameEl = $('sup-survey-name');
+  if (nameEl) nameEl.textContent = pending.name || 'Supplier';
+  modal.classList.add('open');
+}
+
+function supSurveyAnswer(answer) {
+  let pending = null;
+  try { pending = JSON.parse(sessionStorage.getItem('_lid_sup_pending') || 'null'); } catch (_) {}
+  _supLog('supplier_survey_response', {
+    answer, supplier_id: pending?.id || null,
+    keyword: pending?.keyword || null, category: pending?.category || null,
+  });
+  try { localStorage.setItem('larisid_sup_survey_v1', String(Date.now())); } catch (_) {}
+  supCloseSurvey();
+}
+
+function supCloseSurvey() {
+  try { sessionStorage.removeItem('_lid_sup_pending'); } catch (_) {}
+  $('sup-survey-modal')?.classList.remove('open');
+}
 boot();
 })();

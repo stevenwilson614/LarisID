@@ -2221,10 +2221,15 @@ function isBootstrapLeader() {
   return !!(currentUser && (BOOTSTRAP_LEADER_EMAILS.includes(email) || _accessState.isLeader));
 }
 
-// ── "Cari Supplier" validation probe — LAUNCH GATE ────────────────────────────
-// Flip SUPPLIER_PROBE_PUBLIC to true to launch. Do NOT delete the code path; the
-// whole point is that launch is a one-const change. Until then the nav item, the
-// Deep Dive CTA and the view itself are admin-only (dogfood).
+// ── "Cari Supplier" validation probe — LAUNCH GATE (arm A) ────────────────────
+// !! FLIP THIS TOGETHER WITH THE SAME CONST IN js/gpt-app.js (arm B) !!
+// Launching one arm but not the other silently breaks the probe: it halves the
+// denominator for the click-through bar AND puts a feature in one A/B arm that
+// the other lacks, confounding the arm comparison. Both files carry their own
+// const on purpose — they ship with ?v= cache-busters, whereas the shared
+// perf-loader.js does not, so a flag there could be served stale at launch.
+// Do NOT delete the code path. Until launch the nav item, the Deep Dive CTA and
+// the view itself are admin-only (dogfood).
 //
 // This is a demand PROBE, not a product. 30-day bar, measured on the
 // supplier_* events in activity_events:
