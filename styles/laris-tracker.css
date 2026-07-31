@@ -1,0 +1,421 @@
+/* =============================================================================
+   laris-tracker.css — shared by Site A (laris-app) and Site B (gpt-app).
+
+   Same contract as daily-spin-wheel.css: every selector is namespaced .ltk-*,
+   there is NO :root block, and NO app design token is referenced. The two host
+   apps disagree on both the names and the values of their tokens
+   (A: --orange:#B5202A --border:#E5E7EB --r:12px
+    B: --accent:#B5202A --line:#e5e5e5  --radius:24px)
+   so anything that reached for var(--…) would render differently in each. All
+   colors below are literal.
+
+   The only per-site variance is density, driven by [data-site] on the module's
+   own root. Those custom properties are module-owned and defined inside the
+   module — they are not app tokens, so the boundary holds.
+
+   Typography inherits: both hosts load Plus Jakarta Sans via /fonts/laris-fonts.css.
+   ============================================================================= */
+
+.ltk-root {
+  --ltk-r: 12px;
+  --ltk-pad: 18px;
+  --ltk-gap: 12px;
+  font-family: inherit;
+  color: #1A1A1A;
+  -webkit-text-size-adjust: 100%;
+}
+.ltk-root[data-site="b"] {
+  --ltk-r: 18px;
+  --ltk-pad: 20px;
+  --ltk-gap: 14px;
+}
+
+.ltk-root *,
+.ltk-root *::before,
+.ltk-root *::after { box-sizing: border-box; }
+
+.ltk-hide { display: none !important; }
+
+/* ── Shell ─────────────────────────────────────────────────────────────── */
+.ltk-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; margin-bottom: 14px; flex-wrap: wrap;
+}
+.ltk-title { font-size: 1.05rem; font-weight: 800; margin: 0 0 2px; letter-spacing: -.01em; }
+.ltk-sub { font-size: .78rem; color: #6B7280; margin: 0; line-height: 1.45; }
+.ltk-head-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+.ltk-btn {
+  font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer;
+  border-radius: 999px; padding: 8px 16px; border: 1px solid transparent;
+  transition: background .15s ease, border-color .15s ease, opacity .15s ease;
+  line-height: 1.2;
+}
+.ltk-btn:disabled { opacity: .5; cursor: not-allowed; }
+.ltk-btn--primary { background: #B5202A; color: #fff; }
+.ltk-btn--primary:hover:not(:disabled) { background: #8E191F; }
+.ltk-btn--ghost { background: #fff; color: #374151; border-color: #E5E7EB; }
+.ltk-btn--ghost:hover:not(:disabled) { background: #F9FAFB; border-color: #D1D5DB; }
+
+.ltk-link {
+  font: inherit; font-size: .75rem; font-weight: 700; color: #B5202A;
+  background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.ltk-link:hover { color: #8E191F; }
+
+.ltk-input {
+  font: inherit; font-size: .82rem; width: 100%;
+  border: 1.5px solid #E5E7EB; border-radius: 10px; padding: 10px 12px;
+  background: #fff; color: #1A1A1A;
+}
+.ltk-input:focus { outline: none; border-color: #B5202A; }
+.ltk-input::placeholder { color: #9CA3AF; }
+.ltk-hint { font-size: .7rem; color: #9CA3AF; line-height: 1.5; margin: 8px 0 0; }
+
+/* ── Strips (resumed / warn / stale) ───────────────────────────────────── */
+.ltk-strip {
+  display: flex; align-items: flex-start; gap: 10px;
+  border-radius: var(--ltk-r); padding: 12px 14px; margin-bottom: 14px;
+  font-size: .78rem; line-height: 1.5;
+}
+.ltk-strip--resumed { background: #EAF7F0; border: 1px solid #A7D8BF; color: #14532D; }
+.ltk-strip--warn    { background: #FFFBEB; border: 1px solid #FDE68A; color: #92400E; }
+.ltk-strip--stale   { background: #F3F4F6; border: 1px solid #E5E7EB; color: #4B5563; }
+.ltk-strip-ico { flex-shrink: 0; line-height: 1; margin-top: 1px; }
+.ltk-strip-body { flex: 1; min-width: 0; }
+.ltk-strip-body b { display: block; margin-bottom: 2px; }
+.ltk-strip-x {
+  flex-shrink: 0; background: none; border: 0; cursor: pointer;
+  font-size: 1.1rem; line-height: 1; color: inherit; opacity: .5; padding: 0 2px;
+}
+.ltk-strip-x:hover { opacity: 1; }
+
+/* ── Chipbar (persistent "what am I tracking") ─────────────────────────── */
+.ltk-chipbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.ltk-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font: inherit; font-size: .74rem; font-weight: 600; cursor: pointer;
+  background: #fff; border: 1px solid #E5E7EB; border-radius: 999px;
+  padding: 6px 12px; color: #374151; max-width: 100%;
+}
+.ltk-chip:hover { border-color: #B5202A; color: #B5202A; }
+.ltk-chip-ico { width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0; object-fit: cover; }
+.ltk-chip-lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ltk-chip--store .ltk-chip-ico { border-radius: 50%; }
+/* The empty-slot hook. Deliberately quiet — no badge, no dot, no modal. */
+.ltk-chip--add {
+  border-style: dashed; border-color: #D1D5DB; color: #9CA3AF; font-weight: 600;
+}
+.ltk-chip--add:hover { border-color: #B5202A; color: #B5202A; }
+
+/* ── Screens ───────────────────────────────────────────────────────────── */
+.ltk-screen { display: none; }
+.ltk-screen.is-active { display: block; }
+
+/* ── Setup ─────────────────────────────────────────────────────────────── */
+.ltk-setup-hero { margin-bottom: 18px; }
+.ltk-setup-hero h3 { font-size: 1rem; font-weight: 800; margin: 0 0 6px; }
+.ltk-setup-hero p { font-size: .82rem; color: #6B7280; line-height: 1.55; margin: 0; }
+
+.ltk-catgrid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px;
+}
+.ltk-cat {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  font: inherit; font-size: .72rem; font-weight: 700; cursor: pointer;
+  background: #fff; border: 1px solid #E5E7EB; border-radius: var(--ltk-r);
+  padding: 14px 8px; color: #374151; text-align: center;
+  transition: border-color .15s ease, transform .15s ease;
+}
+.ltk-cat:hover { border-color: #B5202A; transform: translateY(-1px); }
+.ltk-cat.is-active { border-color: #B5202A; background: #F9EAE4; color: #8E191F; }
+.ltk-cat-ico { width: 40px; height: 40px; display: block; }
+.ltk-cat-ico img { width: 100%; height: 100%; object-fit: contain; }
+/* Category images only exist for the 19 shipped slugs; category_map can hold
+   more. A blank tile in the primary entry point is worse than an ugly one, so
+   missing art degrades to a tinted letter rather than display:none. */
+.ltk-cat-ico--letter {
+  display: flex; align-items: center; justify-content: center;
+  background: #F9EAE4; color: #B5202A; border-radius: 10px;
+  font-size: 1.1rem; font-weight: 800;
+}
+.ltk-cat-lbl { line-height: 1.3; }
+
+.ltk-pool {
+  background: #FAFAFA; border: 1px solid #E5E7EB; border-radius: var(--ltk-r);
+  padding: var(--ltk-pad); margin-bottom: 18px;
+}
+.ltk-pool-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin-bottom: 12px; flex-wrap: wrap;
+}
+.ltk-pool-title { font-size: .78rem; font-weight: 700; color: #374151; }
+.ltk-pool-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ltk-pick {
+  display: inline-flex; align-items: center; gap: 6px;
+  font: inherit; font-size: .74rem; font-weight: 600; cursor: pointer;
+  background: #fff; border: 1px solid #E5E7EB; border-radius: 999px;
+  padding: 7px 13px; color: #374151;
+}
+.ltk-pick:hover:not(:disabled) { border-color: #B5202A; color: #B5202A; }
+.ltk-pick.is-picked { background: #B5202A; border-color: #B5202A; color: #fff; }
+.ltk-pick:disabled { opacity: .45; cursor: not-allowed; }
+.ltk-pick-n { font-size: .66rem; opacity: .7; font-weight: 600; }
+
+.ltk-custom { margin-top: 14px; }
+.ltk-custom > summary {
+  font-size: .74rem; font-weight: 700; color: #6B7280; cursor: pointer;
+  list-style: none; padding: 4px 0;
+}
+.ltk-custom > summary::-webkit-details-marker { display: none; }
+.ltk-custom > summary::before { content: "+ "; }
+.ltk-custom[open] > summary::before { content: "− "; }
+.ltk-custom-row { display: flex; gap: 8px; margin-top: 10px; }
+.ltk-custom-row .ltk-input { flex: 1; min-width: 0; }
+
+/* ── Slots ─────────────────────────────────────────────────────────────── */
+.ltk-slotsec { margin-bottom: 18px; }
+.ltk-slotsec-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 10px; margin-bottom: 10px; font-size: .8rem; font-weight: 800;
+}
+.ltk-slotsec-head em { font-style: normal; font-weight: 600; color: #9CA3AF; font-size: .74rem; }
+.ltk-count { font-size: .74rem; font-weight: 700; color: #6B7280; }
+
+.ltk-slots { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.ltk-slot {
+  display: flex; align-items: center; gap: 10px;
+  border-radius: var(--ltk-r); padding: 11px 13px; font-size: .8rem;
+}
+.ltk-slot--filled { background: #fff; border: 1px solid #E5E7EB; }
+.ltk-slot--empty {
+  background: transparent; border: 1px dashed #D1D5DB; color: #9CA3AF; cursor: pointer;
+}
+.ltk-slot--empty:hover { border-color: #B5202A; color: #B5202A; }
+.ltk-slot--err { border-color: #FCA5A5; background: #FEF2F2; }
+.ltk-slot-ico { width: 26px; height: 26px; flex-shrink: 0; border-radius: 6px; object-fit: cover; }
+.ltk-slot-plus { width: 26px; text-align: center; font-size: 1.1rem; line-height: 1; flex-shrink: 0; }
+.ltk-slot-body { flex: 1; min-width: 0; }
+.ltk-slot-kw { display: block; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ltk-slot-meta { display: block; font-size: .7rem; color: #9CA3AF; margin-top: 2px; }
+.ltk-slot--err .ltk-slot-meta { color: #B91C1C; }
+.ltk-slot-x {
+  flex-shrink: 0; background: none; border: 0; cursor: pointer; color: #9CA3AF;
+  font-size: 1.15rem; line-height: 1; padding: 0 4px;
+}
+.ltk-slot-x:hover { color: #B91C1C; }
+
+.ltk-storefind { position: relative; margin-bottom: 10px; }
+.ltk-store-results {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20;
+  background: #fff; border: 1px solid #E5E7EB; border-radius: var(--ltk-r);
+  box-shadow: 0 4px 16px rgba(0,0,0,.08); max-height: 240px; overflow-y: auto;
+}
+.ltk-store-opt {
+  display: block; width: 100%; text-align: left; font: inherit; font-size: .78rem;
+  background: none; border: 0; padding: 10px 13px; cursor: pointer; color: #374151;
+}
+.ltk-store-opt:hover { background: #F9FAFB; }
+.ltk-store-opt-n { display: block; font-size: .7rem; color: #9CA3AF; margin-top: 2px; }
+
+.ltk-commit { margin-top: 20px; }
+.ltk-commit .ltk-btn--primary { width: 100%; padding: 13px 20px; font-size: .85rem; }
+.ltk-commit-note { font-size: .74rem; color: #6B7280; text-align: center; margin: 10px 0 0; line-height: 1.5; }
+
+/* ── Collecting (the week-one screen) ──────────────────────────────────── */
+.ltk-collect-hero {
+  display: flex; align-items: flex-start; gap: 14px;
+  background: linear-gradient(135deg, #FFF7ED 0%, #FFFBEB 100%);
+  border: 1px solid #FED7AA; border-radius: var(--ltk-r);
+  padding: var(--ltk-pad); margin-bottom: 18px;
+}
+.ltk-collect-ico { flex-shrink: 0; color: #C9974B; line-height: 1; margin-top: 2px; }
+.ltk-collect-hero h3 { font-size: .95rem; font-weight: 800; margin: 0 0 6px; color: #9A3412; }
+.ltk-collect-hero p { font-size: .8rem; color: #92400E; line-height: 1.55; margin: 0; }
+
+.ltk-baseline {
+  background: #fff; border: 1px solid #E5E7EB; border-radius: var(--ltk-r);
+  padding: var(--ltk-pad); margin-bottom: 20px;
+}
+.ltk-baseline-head { margin-bottom: 12px; }
+.ltk-baseline-head > span:first-child { display: block; font-size: .82rem; font-weight: 800; }
+.ltk-baseline-note { display: block; font-size: .72rem; color: #9CA3AF; margin-top: 3px; line-height: 1.45; }
+.ltk-baseline-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.ltk-baseline-row {
+  display: flex; align-items: center; gap: 11px;
+  padding-top: 10px; border-top: 1px solid #F3F4F6;
+}
+.ltk-baseline-row:first-child { padding-top: 0; border-top: 0; }
+.ltk-baseline-img { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: #F3F4F6; }
+.ltk-baseline-main { flex: 1; min-width: 0; }
+.ltk-baseline-kw { font-size: .82rem; font-weight: 700; }
+.ltk-baseline-top {
+  font-size: .72rem; color: #9CA3AF; margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ltk-baseline-stats {
+  flex-shrink: 0; text-align: right; font-size: .72rem; color: #6B7280; line-height: 1.5;
+}
+.ltk-baseline-stats span { display: block; }
+.ltk-baseline-stats b { color: #1A1A1A; }
+
+/* ── Deltas ────────────────────────────────────────────────────────────── */
+.ltk-winbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 10px; flex-wrap: wrap;
+}
+.ltk-winbtns { display: inline-flex; background: #F3F4F6; border-radius: 999px; padding: 3px; gap: 2px; }
+.ltk-winbtn {
+  font: inherit; font-size: .72rem; font-weight: 700; cursor: pointer;
+  background: none; border: 0; border-radius: 999px; padding: 6px 13px; color: #6B7280;
+}
+.ltk-winbtn.is-active { background: #fff; color: #1A1A1A; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.ltk-asof { font-size: .72rem; color: #9CA3AF; }
+
+/* The window framing has to survive into the boring case, so this note is
+   shared by the deltas and quiet screens. */
+.ltk-winnote {
+  font-size: .74rem; color: #6B7280; line-height: 1.55; margin: 0 0 16px;
+  background: #F9FAFB; border-left: 3px solid #E5E7EB; padding: 10px 13px;
+  border-radius: 0 8px 8px 0;
+}
+.ltk-winnote b { color: #374151; }
+
+.ltk-movers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.ltk-mover {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  font: inherit; cursor: pointer; background: #fff; border: 0;
+  border-bottom: 1px solid #F3F4F6; padding: 12px 4px;
+}
+.ltk-mover:last-child { border-bottom: 0; }
+.ltk-mover:hover { background: #FAFAFA; }
+.ltk-mover-rank {
+  flex-shrink: 0; width: 20px; text-align: center;
+  font-size: .74rem; font-weight: 800; color: #D1D5DB;
+}
+.ltk-mover-img { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: #F3F4F6; }
+.ltk-mover-main { flex: 1; min-width: 0; }
+.ltk-mover-name {
+  font-size: .82rem; font-weight: 700; line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.ltk-mover-src { display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+.ltk-src {
+  display: inline-block; font-size: .66rem; font-weight: 700;
+  border-radius: 4px; padding: 2px 6px;
+}
+.ltk-src--kw { background: #F3F4F6; color: #6B7280; }
+.ltk-src--store { background: #F9EAE4; color: #8E191F; }
+.ltk-mover-store {
+  font-size: .68rem; color: #9CA3AF;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px;
+}
+.ltk-mover-fig { flex-shrink: 0; text-align: right; }
+.ltk-mover-num { font-size: .95rem; font-weight: 800; color: #1A7A46; white-space: nowrap; }
+.ltk-mover-unit { font-size: .7rem; font-weight: 600; color: #9CA3AF; }
+
+.ltk-foot {
+  font-size: .72rem; color: #9CA3AF; text-align: center;
+  margin: 16px 0 0; line-height: 1.5;
+}
+.ltk-foot .ltk-link { font-size: .72rem; }
+
+/* ── Quiet ─────────────────────────────────────────────────────────────── */
+.ltk-quiet-msg {
+  display: flex; align-items: flex-start; gap: 14px;
+  background: #fff; border: 1px solid #E5E7EB; border-radius: var(--ltk-r);
+  padding: var(--ltk-pad); margin-bottom: 22px;
+}
+.ltk-quiet-ico { flex-shrink: 0; color: #9CA3AF; line-height: 1; margin-top: 2px; }
+.ltk-quiet-msg h3 { font-size: .92rem; font-weight: 800; margin: 0 0 5px; }
+.ltk-quiet-msg p { font-size: .8rem; color: #6B7280; line-height: 1.55; margin: 0 0 8px; }
+
+/* ── Discover fall-through (shared by collecting + quiet) ──────────────── */
+.ltk-discover-head { margin-bottom: 12px; }
+.ltk-discover-head h4 { font-size: .88rem; font-weight: 800; margin: 0 0 3px; }
+/* Provenance line — a fall-through must never masquerade as the user's data. */
+.ltk-discover-head p { font-size: .72rem; color: #9CA3AF; margin: 0; line-height: 1.45; }
+
+.ltk-disc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.ltk-disc-card {
+  display: flex; flex-direction: column; text-align: left; font: inherit;
+  background: #fff; border: 1px solid #E5E7EB; border-radius: var(--ltk-r);
+  padding: 10px; cursor: pointer; overflow: hidden;
+}
+.ltk-disc-card:hover { border-color: #B5202A; }
+.ltk-disc-card img {
+  width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px;
+  background: #F3F4F6; margin-bottom: 8px;
+}
+.ltk-disc-name {
+  font-size: .76rem; font-weight: 700; line-height: 1.35;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.ltk-disc-meta { font-size: .7rem; color: #9CA3AF; margin-top: 5px; }
+.ltk-disc-up { color: #1A7A46; font-weight: 700; }
+/* The empty state doubles as the slot-filling mechanism. */
+.ltk-disc-add {
+  display: inline-block; margin-top: 8px; font-size: .7rem; font-weight: 700;
+  color: #B5202A; border: 1px dashed #F3C6C0; border-radius: 999px;
+  padding: 4px 10px; align-self: flex-start;
+}
+.ltk-disc-add:hover { background: #F9EAE4; border-style: solid; }
+
+/* ── Summary card (Site B chat thread, Site A dashboard strip) ─────────── */
+.ltk-summary { display: flex; flex-direction: column; gap: 10px; }
+.ltk-summary-line { display: flex; align-items: center; gap: 8px; font-size: .78rem; color: #6B7280; }
+.ltk-summary-top { display: flex; align-items: center; gap: 10px; }
+.ltk-summary-img { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; background: #F3F4F6; flex-shrink: 0; }
+.ltk-summary-main { flex: 1; min-width: 0; }
+.ltk-summary-name {
+  font-size: .8rem; font-weight: 700; line-height: 1.35;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ltk-summary-num { font-size: .85rem; font-weight: 800; color: #1A7A46; white-space: nowrap; }
+.ltk-summary-empty { font-size: .78rem; color: #9CA3AF; line-height: 1.5; }
+
+/* ── Skeleton / error ──────────────────────────────────────────────────── */
+.ltk-skel { display: flex; flex-direction: column; gap: 2px; }
+.ltk-skel-row {
+  display: flex; align-items: center; gap: 12px; padding: 12px 4px;
+  border-bottom: 1px solid #F3F4F6;
+}
+.ltk-skel-img, .ltk-skel-line {
+  background: linear-gradient(90deg, #F3F4F6 25%, #E9EAEC 50%, #F3F4F6 75%);
+  background-size: 200% 100%; animation: ltk-shimmer 1.2s infinite; border-radius: 6px;
+}
+.ltk-skel-img { width: 48px; height: 48px; border-radius: 8px; flex-shrink: 0; }
+.ltk-skel-lines { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.ltk-skel-line { height: 10px; }
+.ltk-skel-line.w60 { width: 60%; }
+.ltk-skel-line.w35 { width: 35%; }
+@keyframes ltk-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+.ltk-err {
+  text-align: center; padding: 40px 24px; background: #fff;
+  border: 1px dashed #E5E7EB; border-radius: 14px;
+}
+.ltk-err p { font-size: .82rem; color: #6B7280; margin: 0 0 14px; line-height: 1.55; }
+
+/* ── Responsive ────────────────────────────────────────────────────────── */
+@media (min-width: 760px) {
+  .ltk-catgrid { grid-template-columns: repeat(6, 1fr); }
+  .ltk-disc-grid { grid-template-columns: repeat(4, 1fr); }
+  .ltk-title { font-size: 1.15rem; }
+}
+@media (max-width: 420px) {
+  .ltk-mover-store { max-width: 90px; }
+  .ltk-mover-img { width: 42px; height: 42px; }
+  .ltk-baseline-stats { font-size: .68rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ltk-root *,
+  .ltk-root *::before,
+  .ltk-root *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}

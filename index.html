@@ -197,13 +197,14 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260731a';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260801a';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
 </script>
 <link rel="stylesheet" href="/fonts/laris-fonts.css">
 <link rel="stylesheet" href="/styles/daily-spin-wheel.css?v=20260730g">
+<link rel="stylesheet" href="/styles/laris-tracker.css?v=20260801a">
 <script src="/js/perf-loader.js"></script>
 
 <!-- Auth-token URL scrubber — MUST run before any analytics (Cloudflare/Clarity).
@@ -2605,6 +2606,13 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .hbd-tip p{font-size:.8rem;line-height:1.55;color:rgba(255,255,255,.85);margin:0;}
 
 /* ── TRACKER PAGE ── */
+.trk-tabs{display:flex;gap:4px;padding:18px 28px 0;border-bottom:1px solid var(--border);max-width:1180px;}
+.trk-tab{font:inherit;font-size:.85rem;font-weight:700;cursor:pointer;background:none;border:0;border-bottom:2px solid transparent;padding:10px 14px;color:var(--tm);margin-bottom:-1px;}
+.trk-tab:hover{color:var(--td);}
+.trk-tab.is-active{color:var(--orange);border-bottom-color:var(--orange);}
+#trk-tab-count{font-weight:600;opacity:.7;margin-left:5px;}
+#trk-tab-daily{padding:24px 28px;max-width:1180px;}
+@media(max-width:640px){.trk-tabs{padding:14px 16px 0;}#trk-tab-daily{padding:18px 16px;}}
 .trk-wrap{padding:24px 28px;max-width:1180px;}
 .trk-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
 .trk-topbar-left h2{font-size:1.2rem;font-weight:800;color:#1A1A1A;margin:0 0 2px;}
@@ -5258,7 +5266,7 @@ html,body{overflow-x:clip;max-width:100%;}
         </div>
         <div class="dash-nav-sub" id="dash-sub-research-tools">
           <div class="dash-nav-sub-item" id="dash-nav-deepdive" onclick="switchDashView('deepdive')">Deep Dive</div>
-          <div class="dash-nav-sub-item" id="dash-nav-tracker" onclick="switchDashView('tracker')">Alerts</div>
+          <div class="dash-nav-sub-item" id="dash-nav-tracker" onclick="switchDashView('tracker')">Pantauan Harian</div>
           <div class="dash-nav-sub-item" id="dash-nav-ai" onclick="switchDashView('ai')">Mulai Berjualan</div>
           <div class="dash-nav-sub-item" id="dash-nav-mytoko" onclick="switchDashView('mytoko')">My Toko</div>
         </div>
@@ -5271,7 +5279,7 @@ html,body{overflow-x:clip;max-width:100%;}
           </div>
           <div class="dash-nav-item" id="dash-nav-flat-tracker" onclick="switchDashView('tracker')">
             <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
-            <span>Alerts</span>
+            <span>Pantauan Harian</span>
           </div>
           <div class="dash-nav-item" id="dash-nav-flat-ai" onclick="switchDashView('ai')">
             <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/></svg></span>
@@ -7137,6 +7145,22 @@ html,body{overflow-x:clip;max-width:100%;}
         </div>
 
         <div id="dash-view-tracker" style="display:none;">
+          <!-- Two things the user watches, one destination. The daily keyword
+               tracker is the default: it is the retention bet, and the products
+               pane's empty state used to be a dead end that sent brand-new users
+               off to Discover. -->
+          <div class="trk-tabs" role="tablist" aria-label="Jenis pantauan">
+            <button type="button" class="trk-tab is-active" id="trk-tab-btn-daily" role="tab"
+                    aria-selected="true" onclick="trkSetTab('daily')">Pantauan Harian</button>
+            <button type="button" class="trk-tab" id="trk-tab-btn-products" role="tab"
+                    aria-selected="false" onclick="trkSetTab('products')">Produk Dilacak<span id="trk-tab-count"></span></button>
+          </div>
+
+          <div class="trk-tabpane" id="trk-tab-daily">
+            <div id="laris-tracker-root" class="ltk-root" data-site="a"></div>
+          </div>
+
+          <div class="trk-tabpane" id="trk-tab-products" style="display:none;">
           <div id="trk-empty-state" class="nu-empty" style="display:none;margin:24px 28px;">
             <div class="nu-empty-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg></div>
             <h3>Belum ada produk yang dilacak</h3>
@@ -7179,6 +7203,7 @@ html,body{overflow-x:clip;max-width:100%;}
               <div id="trk-alert-feed" class="trk-alert-feed"></div>
             </div>
           </div>
+          </div><!-- /#trk-tab-products -->
         </div>
 
         <div id="dash-view-deepdive" style="display:none;">
@@ -10050,7 +10075,8 @@ html,body{overflow-x:clip;max-width:100%;}
 <div id="daily-spin-root" class="dsw-overlay" style="display:none;" aria-hidden="true"></div>
 
 <script defer src="/js/daily-spin-wheel.js?v=20260730g"></script>
-<script defer src="/js/laris-app.js?v=20260731a"></script>
+<script defer src="/js/laris-tracker.js?v=20260801a"></script>
+<script defer src="/js/laris-app.js?v=20260801a"></script>
 
   <!-- ── CONTEXTUAL ONBOARDING HINTS ── -->
   <div id="hint-overlay" aria-hidden="true" onclick="if(event.target===this)nuHintDismiss()">
@@ -10253,9 +10279,9 @@ html,body{overflow-x:clip;max-width:100%;}
     <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
     <span class="mbn-label">Beranda</span>
   </button>
-  <button class="mbn-item" id="mbn-mytoko" onclick="switchDashView('mytoko')">
-    <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
-    <span class="mbn-label">My Toko</span>
+  <button class="mbn-item" id="mbn-tracker" onclick="switchDashView('tracker')">
+    <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
+    <span class="mbn-label">Pantauan</span>
   </button>
   <button class="mbn-item" id="mbn-ai" onclick="switchDashView('ai')">
     <span class="mbn-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
@@ -10275,8 +10301,8 @@ html,body{overflow-x:clip;max-width:100%;}
     <button class="mbn-sheet-item" onclick="switchDashView('deepdive');mbnCloseMore()">
       <span class="mbn-sheet-icon" style="background:#F9EAE4;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B5202A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span><span>Deep Dive</span>
     </button>
-    <button class="mbn-sheet-item" onclick="switchDashView('tracker');mbnCloseMore()">
-      <span class="mbn-sheet-icon" style="background:#EEF2FF;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span><span>Alerts</span>
+    <button class="mbn-sheet-item" onclick="switchDashView('mytoko');mbnCloseMore()">
+      <span class="mbn-sheet-icon" style="background:#EEF2FF;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span><span>My Toko</span>
     </button>
     <button class="mbn-sheet-item" onclick="switchDashView('credits');mbnCloseMore()">
       <span class="mbn-sheet-icon" style="background:#FFFBEB;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></span><span>Penggunaan</span>
@@ -10319,7 +10345,7 @@ html,body{overflow-x:clip;max-width:100%;}
     <button type="button" class="lid-cl-close" id="lid-changelog-close">Tutup</button>
   </div>
 </div>
-<script src="/js/changelog.js?v=20260729a" defer></script>
+<script src="/js/changelog.js?v=20260801a" defer></script>
 <script>
 (function () {
   function fmt(iso){var d=new Date(String(iso)+'T00:00:00');

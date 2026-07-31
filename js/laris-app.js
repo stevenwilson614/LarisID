@@ -5869,7 +5869,7 @@ function switchDashView(view) {
     journeyApplyDeepDiveChrome();
     requestAnimationFrame(ddResizeActiveCharts);
   }
-  if (view === 'tracker'   && typeof trkInit     === 'function') trkInit();
+  if (view === 'tracker'   && typeof trkOpen     === 'function') trkOpen();
   if (view === 'dashboard' && typeof hbdInit     === 'function') hbdInit();
   if (view === 'ai'        && typeof mlsInit     === 'function') mlsInit();
   if (view === 'mytoko'    && typeof myTokoInit  === 'function') myTokoInit();
@@ -5900,7 +5900,9 @@ function switchDashView(view) {
 // ── MOBILE BOTTOM NAV ──────────────────────────────────────────
 const MBN_MAP = {
   dashboard:'mbn-dashboard', discover:'mbn-discover',
-  mytoko:'mbn-mytoko', tracker:'mbn-mytoko',
+  // tracker gets its own bottom-nav slot: mobile is where daily return happens,
+  // and it previously highlighted My Toko. My Toko moved into the More sheet.
+  tracker:'mbn-tracker', mytoko:'mbn-dashboard',
   ai:'mbn-ai', deepdive:'mbn-ai',
   credits:'mbn-dashboard', cohort:'mbn-dashboard', extension:'mbn-dashboard',
   'product-database':'mbn-discover', keywords:'mbn-discover', estimator:'mbn-discover',
@@ -11149,7 +11151,18 @@ async function dscOpenDeepDive(key, skipNav) {
   }
   // Daily dive limit: 1 dive = full access to this product for 7 days.
   // Re-opening an accessed product is free (use_dive is idempotent server-side).
-  if (!(await _useDive(_ddProductKey(listing)))) return;
+  //
+  // Products surfaced by the user's OWN tracked keywords/stores are exempt. The
+  // whole point of daily tracking is "come back every morning and see what
+  // moved" — and the top movers change daily, so metering them would spend the
+  // 3/day budget on exactly the loop the feature exists to build. The user
+  // already declared interest by tracking that keyword; don't charge them again
+  // every morning for it. Set by trkAdapter().openProduct, cleared here.
+  if (_trkFreeDive) {
+    _trkFreeDive = false;
+  } else if (!(await _useDive(_ddProductKey(listing)))) {
+    return;
+  }
   journeyMarkDiscoverClick(key);
   const omset = _dscOmset(listing);
   const monthlyUnits = listing.price > 0 ? Math.round(omset / listing.price) : 0;
@@ -15600,6 +15613,189 @@ async function trkOpenDeepDive(itemId, shopId) {
   } catch (_) {
     showCompareToast('Gagal membuka detail produk');
   }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Daily keyword/store tracking — Site A host for the shared LarisTracker module.
+
+   The module owns every pixel and all screen state. This adapter only supplies
+   data callbacks (which own the Supabase client) and app-local services
+   (formatters, toast, navigation). Same split as the daily spin wheel.
+   ────────────────────────────────────────────────────────────────────────── */
+
+let _trkTab = 'daily';        // 'daily' | 'products' — daily is the retention bet
+let _trkProductsInited = false;
+let _trkFreeDive = false;     // one-shot: exempt the next deep dive from _useDive
+let _trkAdapterObj = null;
+
+function trkSetTab(tab) {
+  _trkTab = (tab === 'products') ? 'products' : 'daily';
+  const paneDaily = document.getElementById('trk-tab-daily');
+  const paneProd  = document.getElementById('trk-tab-products');
+  const btnDaily  = document.getElementById('trk-tab-btn-daily');
+  const btnProd   = document.getElementById('trk-tab-btn-products');
+  if (paneDaily) paneDaily.style.display = _trkTab === 'daily' ? '' : 'none';
+  if (paneProd)  paneProd.style.display  = _trkTab === 'products' ? '' : 'none';
+  if (btnDaily) { btnDaily.classList.toggle('is-active', _trkTab === 'daily'); btnDaily.setAttribute('aria-selected', String(_trkTab === 'daily')); }
+  if (btnProd)  { btnProd.classList.toggle('is-active', _trkTab === 'products'); btnProd.setAttribute('aria-selected', String(_trkTab === 'products')); }
+
+  if (_trkTab === 'products') {
+    // Lazy: entering the view no longer pays for _trkLoadSellingFromSupabase
+    // plus one listings query per tracked product.
+    if (!_trkProductsInited) { _trkProductsInited = true; trkInit(); }
+    nuRefreshView('tracker');
+  } else if (window.LarisTracker) {
+    window.LarisTracker.open({ touch: true });
+  }
+  try { logUserEvent('tracker_tab', { tab: _trkTab }); } catch (_) {}
+}
+
+function trkTabCount() {
+  const el = document.getElementById('trk-tab-count');
+  if (!el) return;
+  let n = 0;
+  try { n = (trkLoad() || []).length; } catch (_) {}
+  el.textContent = n ? ` (${n})` : '';
+}
+
+// switchDashView('tracker') entry point. Replaces the old direct trkInit() call.
+function trkOpen() {
+  trkTabCount();
+  if (window.LarisTracker) {
+    window.LarisTracker.mount({ hostId: 'laris-tracker-root', site: 'a', adapter: trkAdapter() });
+  }
+  trkSetTab(_trkTab);
+}
+
+function trkAdapter() {
+  if (_trkAdapterObj) return _trkAdapterObj;
+  const rpc = async (name, params) => {
+    if (!_supabase) return null;
+    const { data, error } = await _supabase.rpc(name, params || {});
+    if (error) throw error;
+    return data;
+  };
+  _trkAdapterObj = {
+    // ── services ──────────────────────────────────────────────────────────
+    esc:        wsdEsc,
+    fmtRp:      _dscFmtRpFull,
+    fmtRpShort: fmtShort,
+    fmtUnits:   trkUnits,
+    fmtDate:    _trkFmtScrapeDate,
+    toast:      showCompareToast,
+    requireAuth() {
+      if (currentUser) return true;
+      try { openAuthModal('login'); } catch (_) {}
+      return false;
+    },
+    track(evt, props) { try { logUserEvent(evt, props || {}); } catch (_) {} },
+    onStateChange() { trkTabCount(); },
+    openProduct(row) {
+      if (!row || !row.item_id) return;
+      // Tracked-origin opens are free — see the _trkFreeDive comment in
+      // dscOpenDeepDive. Flag is consumed there, so it can never leak into an
+      // unrelated open.
+      _trkFreeDive = true;
+      try { dscOpenDeepDive(`${row.item_id}__${row.shop_id}`); }
+      catch (e) { _trkFreeDive = false; showCompareToast('Gagal membuka produk'); }
+    },
+    openDiscovery(cat) {
+      try { if (cat) dscPickCategory(cat); } catch (_) {}
+      switchDashView('discover');
+    },
+    openHowCalculated() {
+      showCompareToast('Angka di atas perkiraan dari data scrape harian kami.');
+    },
+
+    // ── data ──────────────────────────────────────────────────────────────
+    getTracking()               { return rpc('get_my_tracking'); },
+    getDeltas(days)             { return rpc('get_tracker_deltas', { p_days: days }); },
+    touchViewed()               { return rpc('touch_tracker_viewed'); },
+    addKeyword(kw, cat)         { return rpc('add_tracked_keyword', { p_keyword: kw, p_category: cat || '' }); },
+    addStore(shopId, name)      { return rpc('add_tracked_store', { p_shop_id: shopId, p_store_name: name || '' }); },
+    removeKeyword(id)           { return rpc('remove_tracked_keyword', { p_id: id }); },
+    removeStore(id)             { return rpc('remove_tracked_store', { p_id: id }); },
+
+    async getCategories() {
+      try { await dscLoadCanonicalCats(); } catch (_) {}
+      return (DSC_CANON_CATS && DSC_CANON_CATS.length) ? DSC_CANON_CATS : DSC_ALL_CATS;
+    },
+
+    async getCategoryKeywords(cat, limit) {
+      if (!_supabase) return [];
+      const { data } = await _supabase
+        .from('product_types_v')
+        .select('keyword,category,n_sellers,price_median,total_sold_sum,rep_image_url')
+        .eq('city', 'ALL').eq('category', cat)
+        .gte('n_listings', 3)
+        .order('omset_top15', { ascending: false })
+        .limit(limit || 24);
+      return data || [];
+    },
+
+    async getSeedCandidates() {
+      const out = { fromTracked: [], categories: [] };
+      if (!_supabase || !currentUser) return out;
+      try {
+        const { data } = await _supabase.from('user_tracked_products')
+          .select('keyword,category').eq('user_id', currentUser.id)
+          .order('tracked_at', { ascending: false }).limit(20);
+        (data || []).forEach(r => { if (r.keyword) out.fromTracked.push({ keyword: r.keyword, category: r.category || '' }); });
+      } catch (_) {}
+      try {
+        await nuOnbHydratePrefs();
+        if (_nuOnb && _nuOnb.cats && _nuOnb.cats.length) out.categories = _nuOnb.cats.slice(0, 4);
+      } catch (_) {}
+      return out;
+    },
+
+    async searchStores(q) {
+      if (!_supabase || !q) return [];
+      const { data } = await _supabase
+        .from('listings_latest')
+        .select('shop_id,store_name')
+        .ilike('store_name', `%${q}%`)
+        .limit(60);
+      const seen = {}, out = [];
+      (data || []).forEach(r => {
+        if (!r.shop_id || seen[r.shop_id]) return;
+        seen[r.shop_id] = 1;
+        out.push({ shop_id: r.shop_id, store_name: r.store_name || `Toko ${r.shop_id}` });
+      });
+      return out.slice(0, 8);
+    },
+
+    async getFallbackMovers(cats, n) {
+      if (!_supabase) return [];
+      let q = _supabase.from('mv_trending')
+        .select('item_id,shop_id,product_name,image_url,price,keyword,category,delta_7d,store_name')
+        .order('delta_7d', { ascending: false }).limit(n || 8);
+      if (cats && cats.length) q = q.in('category', cats);
+      const { data } = await q;
+      if (data && data.length) return data;
+      // Last resort so the fall-through is never itself empty.
+      try {
+        await _dscEnsureBrowsePool(60);
+        return (_dscPickFallback(n || 8) || []).map(l => ({
+          item_id: l.item_id, shop_id: l.shop_id, product_name: l.product_name,
+          image_url: l.image_url, price: l.price, keyword: l.keyword,
+          category: l.category, delta_7d: 0, store_name: l.store_name,
+        }));
+      } catch (_) { return []; }
+    },
+
+    async getKeywordBaseline(keywords) {
+      if (!_supabase || !keywords || !keywords.length) return [];
+      const { data } = await _supabase.from('product_types_v')
+        .select('keyword,n_sellers,price_median,rep_product_name,rep_image_url')
+        .eq('city', 'ALL').in('keyword', keywords).limit(20);
+      return (data || []).map(r => ({
+        keyword: r.keyword, n_sellers: r.n_sellers, price_median: r.price_median,
+        top_name: r.rep_product_name, top_image: r.rep_image_url,
+      }));
+    },
+  };
+  return _trkAdapterObj;
 }
 
 async function trkInit() {
@@ -22476,7 +22672,11 @@ function nuRefreshView(view) {
 
   const trkEmpty = document.getElementById('trk-empty-state');
   const trkMain  = document.getElementById('trk-main-content');
-  if (view === 'tracker') {
+  // SCOPED TO THE PRODUCTS PANE ONLY. This used to toggle the whole tracker
+  // view on hasTracked, which would now blank the Pantauan Harian tab for every
+  // user who has no tracked products — i.e. exactly the people the daily
+  // tracker exists for. The two panes have independent empty states.
+  if (view === 'tracker' && _trkTab === 'products') {
     const empty = !hasTracked;
     if (trkEmpty) trkEmpty.style.display = empty ? '' : 'none';
     if (trkMain)  trkMain.style.display  = empty ? 'none' : '';

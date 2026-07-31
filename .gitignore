@@ -23,3 +23,6 @@ scroll-story-prototype.html
 redesign-preview.html
 redesign-preview-2.html
 _site/
+
+# local-only test harnesses (never deployed)
+*.harness.html

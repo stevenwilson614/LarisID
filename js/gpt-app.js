@@ -1699,7 +1699,7 @@ function formatIdDate(iso) {
 function setView(name) {
   const leaving = state.view;
   state.view = name;
-  ['home', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'tentang', 'admin'].forEach(v => {
+  ['home', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'tentang', 'admin', 'tracker'].forEach(v => {
     const el = $(`view-${v}`);
     if (el) el.classList.toggle('active', v === name);
     document.body.classList.toggle(`view-${v}`, v === name);
@@ -1712,15 +1712,21 @@ function setView(name) {
     // the product-AI path.
     state.deepdiveProduct = null;
   }
-  if (name === 'home' || name === 'directory' || name === 'harga' || name === 'admin') setComposerChips(null);
-  ['btn-produk', 'btn-harga', 'btn-admin'].forEach(id => {
+  // The composer has nothing to say on the tracker either — it is a
+  // configuration + data surface, not a place to ask a question.
+  if (name === 'home' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker') setComposerChips(null);
+  ['btn-produk', 'btn-harga', 'btn-admin', 'btn-tracker'].forEach(id => {
     const el = $(id);
     if (!el) return;
     el.classList.toggle('active',
       (id === 'btn-produk' && name === 'directory') ||
       (id === 'btn-harga' && name === 'harga') ||
-      (id === 'btn-admin' && name === 'admin'));
+      (id === 'btn-admin' && name === 'admin') ||
+      (id === 'btn-tracker' && name === 'tracker'));
   });
+  if (leaving === 'tracker' && name !== 'tracker' && window.LarisTracker) {
+    try { window.LarisTracker.close(); } catch (_) {}
+  }
   closeSidebar();
   updateSideRailVisibility();
   updateProductPin();
@@ -2619,6 +2625,7 @@ function renderChatThread() {
     // Re-bind cards
     bindProductCards(thread);
     bindDeepDiveCards(thread);
+    bindTrackerCards(thread);
     bindTrendingCards(thread);
     bindGptKalc(thread);
     updateThreadWide();
@@ -6087,6 +6094,184 @@ function upsertDeepDiveChatMessage(chat, product, scoreInfo, stats) {
   }
 }
 
+/* ───────────────────────────────────────────────────────────────────────────
+   Daily keyword/store tracking — Site B host for the shared LarisTracker.
+
+   Two surfaces, same shape as Deep Dive: a full #view-tracker for interaction
+   (a 5-slot editor plus store search does not fit in a chat bubble), and a
+   summary card left in the thread so the surface stays part of the chat memory
+   and has a re-entry point. Site B is IIFE-scoped, so everything the module
+   needs arrives through this adapter — it can never reach in.
+   ────────────────────────────────────────────────────────────────────────── */
+
+let _trkAdapterB = null;
+
+function gptTrackerAdapter() {
+  if (_trkAdapterB) return _trkAdapterB;
+  const rpc = async (name, params) => {
+    if (!_supabase) return null;
+    const { data, error } = await _supabase.rpc(name, params || {});
+    if (error) throw error;
+    return data;
+  };
+  _trkAdapterB = {
+    esc,
+    fmtRp,
+    fmtRpShort,
+    fmtUnits:   fmtSold,
+    fmtDate:    formatIdDate,
+    toast:      showToast,
+    requireAuth() {
+      if (currentUser) return true;
+      try { openAuthModal('login', 'gpt_gate_tracker'); } catch (_) {}
+      return false;
+    },
+    track(evt, props) { try { logUserEvent(evt, { ui: 'gpt', ...(props || {}) }); } catch (_) {} },
+    onStateChange(st) {
+      // Refresh the thread card whenever the tracker's shape changes, so the
+      // bookmark in chat history never shows a stale keyword count.
+      if (st && st.configured) upsertTrackerChatMessage(activeChat());
+    },
+    openProduct(row) {
+      if (!row || !row.item_id) return;
+      try { openDeepDive(row); } catch (_) { showToast('Gagal membuka produk'); }
+    },
+    openDiscovery() { try { openDirectory(); } catch (_) {} },
+    openTrackerView() { openTrackerView(); },
+    openHowCalculated() { setView('faq'); },
+
+    getTracking()          { return rpc('get_my_tracking'); },
+    getDeltas(days)        { return rpc('get_tracker_deltas', { p_days: days }); },
+    touchViewed()          { return rpc('touch_tracker_viewed'); },
+    addKeyword(kw, cat)    { return rpc('add_tracked_keyword', { p_keyword: kw, p_category: cat || '' }); },
+    addStore(id, name)     { return rpc('add_tracked_store', { p_shop_id: id, p_store_name: name || '' }); },
+    removeKeyword(id)      { return rpc('remove_tracked_keyword', { p_id: id }); },
+    removeStore(id)        { return rpc('remove_tracked_store', { p_id: id }); },
+
+    async getCategories() {
+      try {
+        const c = await loadCanonicalCats();
+        if (c && c.length) return c;
+      } catch (_) {}
+      return CANON_CATS;
+    },
+    async getCategoryKeywords(cat, limit) {
+      if (!_supabase) return [];
+      const { data } = await _supabase.from('product_types_v')
+        .select('keyword,category,n_sellers,price_median,total_sold_sum,rep_image_url')
+        .eq('city', 'ALL').eq('category', cat).gte('n_listings', 3)
+        .order('omset_top15', { ascending: false }).limit(limit || 24);
+      return data || [];
+    },
+    async getSeedCandidates() {
+      const out = { fromTracked: [], categories: [] };
+      if (!_supabase || !currentUser) return out;
+      try {
+        const { data } = await _supabase.from('user_tracked_products')
+          .select('keyword,category').eq('user_id', currentUser.id)
+          .order('tracked_at', { ascending: false }).limit(20);
+        (data || []).forEach(r => { if (r.keyword) out.fromTracked.push({ keyword: r.keyword, category: r.category || '' }); });
+      } catch (_) {}
+      try {
+        const { data } = await _supabase.from('user_onboarding_prefs')
+          .select('categories').eq('user_id', currentUser.id).maybeSingle();
+        if (data && Array.isArray(data.categories)) out.categories = data.categories.filter(Boolean).slice(0, 4);
+      } catch (_) {}
+      return out;
+    },
+    async searchStores(q) {
+      if (!_supabase || !q) return [];
+      const { data } = await _supabase.from('listings_latest')
+        .select('shop_id,store_name').ilike('store_name', `%${q}%`).limit(60);
+      const seen = {}, out = [];
+      (data || []).forEach(r => {
+        if (!r.shop_id || seen[r.shop_id]) return;
+        seen[r.shop_id] = 1;
+        out.push({ shop_id: r.shop_id, store_name: r.store_name || `Toko ${r.shop_id}` });
+      });
+      return out.slice(0, 8);
+    },
+    async getFallbackMovers(cats, n) {
+      if (!_supabase) return [];
+      let q = _supabase.from('mv_trending')
+        .select('item_id,shop_id,product_name,image_url,price,keyword,category,delta_7d,store_name')
+        .order('delta_7d', { ascending: false }).limit(n || 8);
+      if (cats && cats.length) q = q.in('category', cats);
+      const { data } = await q;
+      return data || [];
+    },
+    async getKeywordBaseline(keywords) {
+      if (!_supabase || !keywords || !keywords.length) return [];
+      const { data } = await _supabase.from('product_types_v')
+        .select('keyword,n_sellers,price_median,rep_product_name,rep_image_url')
+        .eq('city', 'ALL').in('keyword', keywords).limit(20);
+      return (data || []).map(r => ({
+        keyword: r.keyword, n_sellers: r.n_sellers, price_median: r.price_median,
+        top_name: r.rep_product_name, top_image: r.rep_image_url,
+      }));
+    },
+  };
+  return _trkAdapterB;
+}
+
+function openTrackerView() {
+  setView('tracker');
+  if (!window.LarisTracker) return;
+  window.LarisTracker.mount({ hostId: 'laris-tracker-root', site: 'b', adapter: gptTrackerAdapter() });
+  window.LarisTracker.open({ touch: true });
+}
+
+// Native .ans-card chrome wrapping the module's own summary body, so the card
+// reads as part of the thread while the guts stay shared with Site A.
+function trackerChatCardHtml() {
+  if (!window.LarisTracker) return '';
+  const s = window.LarisTracker.summary();
+  const sub = s.configured
+    ? `${s.keywordCount} keyword${s.storeCount ? ` · ${s.storeCount} toko` : ''}`
+    : 'Belum diatur';
+  return `<div class="ans-card ltk-summary-host" data-ltk-card="tracker">
+    <div class="ans-head">
+      <span class="ans-head-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
+      <div><div class="ans-title">Pantauan Harian</div><div class="ans-sub">${esc(sub)}</div></div>
+    </div>
+    ${window.LarisTracker.summaryCardHtml()}
+    <button type="button" class="ans-cta" data-ltk-open="tracker">Buka pantauan →</button>
+  </div>`;
+}
+
+// Find-and-replace upsert, same as Deep Dive: repeat visits must leave ONE live
+// card in the thread, not a stack of stale ones.
+function upsertTrackerChatMessage(chat) {
+  if (!chat || !window.LarisTracker) return;
+  const card = trackerChatCardHtml();
+  if (!card) return;
+  const s = window.LarisTracker.summary();
+  const html = `<p>Pantauan harian kamu:</p>${card}`;
+  const content = { text: 'Pantauan Harian', kind: 'tracker', keywordCount: s.keywordCount, html };
+  if (!chat.messages) chat.messages = [];
+  const idx = chat.messages.findIndex(m => m.role === 'assistant' && m.content?.kind === 'tracker');
+  if (idx >= 0) {
+    chat.messages[idx] = { ...chat.messages[idx], content, html, ts: Date.now() };
+    saveLocalState();
+    return;
+  }
+  pushMessage(chat, 'assistant', content, html);
+  const thread = $('chat-thread');
+  if (thread && !thread.querySelector('[data-ltk-card="tracker"]')) {
+    appendBubble('assistant', html, { skipScroll: true });
+    bindTrackerCards(thread);
+  }
+}
+
+function bindTrackerCards(root) {
+  if (!root) return;
+  root.querySelectorAll('[data-ltk-open="tracker"]').forEach(el => {
+    if (el.__ltkBound) return;
+    el.__ltkBound = 1;
+    el.addEventListener('click', () => openTrackerView());
+  });
+}
+
 function bindDeepDiveCards(root) {
   (root || document).querySelectorAll('[data-dd-open]').forEach(btn => {
     if (btn.dataset.boundDd) return;
@@ -6913,7 +7098,7 @@ function ddToolPillsHtml() {
 }
 
 function ddMarketplaceFeeForCategory(category) {
-  const cat = FEE_TIER_BY_CAT[category] ? category : 'Umum';
+  const cat = FEE_TIER_BY_CAT[category] ? category : (FEE_TIER_BY_CAT[String(category || '').trim()] ? String(category).trim() : 'Umum');
   const fee = platformFeePerProduct('shopee', cat, 0);
   return { label: PLATFORM_FEES.shopee.label, pct: ecomFmtPct(fee.pctOnly) };
 }
@@ -9608,6 +9793,7 @@ function wireUi() {
     updateDirCompareBanner();
     void openDirectory();
   });
+  $('btn-tracker')?.addEventListener('click', () => { openTrackerView(); });
   // Intentional entry into the supplier probe (the Deep Dive pill is the
   // contextual one). Clears any product filter so this is the "browse" path.
   $('btn-supplier')?.addEventListener('click', () => {

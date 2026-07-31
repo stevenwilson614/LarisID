@@ -6,6 +6,16 @@
 // predictably; the UI renders them in Indonesian.
 window.LARIS_CHANGELOG = [
   {
+    date: '2026-08-01',
+    title: 'Pantauan Harian — keyword kamu, dicek tiap pagi',
+    items: [
+      'Pilih sampai 5 keyword dan 3 toko yang mau kamu pantau. Kami scrape keyword kamu SETIAP PAGI, jadi tiap hari kamu bisa lihat produk mana yang bergerak.',
+      'Setup cukup satu ketukan: pilih kategori, kami isikan keyword yang paling ramai di sana. Nggak perlu bingung mau ketik apa.',
+      'Angka yang ditampilkan adalah total 7 hari terakhir, bukan penjualan kemarin — Shopee cuma menampilkan angka pasti di bawah 1.000 terjual, jadi rentang seminggu jauh lebih bisa dipercaya.',
+      'Kalau kamu nggak buka selama 2 minggu, pantauan otomatis dijeda biar hemat. Keyword dan datamu tetap tersimpan, dan langsung jalan lagi begitu kamu buka.',
+    ],
+  },
+  {
     date: '2026-07-29',
     title: 'Riset per pasar, bukan per listing',
     items: [
