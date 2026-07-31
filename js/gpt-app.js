@@ -1679,7 +1679,11 @@ function openChangelog() {
     ? log.map(e => `<div class="cl-entry">
         <div class="cl-date">${esc(formatIdDate(e.date))}</div>
         <div class="cl-title">${esc(e.title || '')}</div>
-        <ul>${(e.items || []).map(i => `<li>${esc(i)}</li>`).join('')}</ul>
+        <ul>${(e.items || []).map(i => {
+          const text = typeof i === 'string' ? i : (i && i.text) || '';
+          const tech = typeof i === 'string' ? '' : (i && i.tech) || '';
+          return `<li>${esc(text)}${tech ? `<span class="cl-tech">${esc(tech)}</span>` : ''}</li>`;
+        }).join('')}</ul>
       </div>`).join('')
     : '<p class="dd-sub">Belum ada catatan perubahan.</p>';
   modal.hidden = false;
@@ -2458,13 +2462,19 @@ function scrollAfterPopulate(anchor, html) {
   }
 }
 
+// opts.root lets a non-chat surface (the Tanya AI side panel) reuse the whole
+// bubble + streaming pipeline instead of duplicating it.
 function appendBubble(role, html, opts = {}) {
-  const thread = $('chat-thread');
+  const thread = opts.root || $('chat-thread');
   if (!thread) return null;
   const div = document.createElement('div');
   div.className = `msg ${role}`;
   div.innerHTML = `<div class="msg-role">${role === 'user' ? 'Kamu' : 'LARISgpt'}</div><div class="msg-bubble">${html}</div>`;
   thread.appendChild(div);
+  if (opts.root) {
+    thread.scrollTop = thread.scrollHeight;
+    return div;
+  }
   if (!opts.skipScroll) {
     if (role === 'assistant' && contentLooksLikeResults(html)) scrollToContentStart(div);
     else scrollChatToBottom();
@@ -2626,8 +2636,10 @@ function renderChatThread() {
       else if (m.html) appendBubble('assistant', m.html, { skipScroll: true });
       else appendBubble('assistant', mdToHtml(m.content?.text || m.content || '') || '<p>—</p>', { skipScroll: true });
     }
-    // Re-bind cards
+    // Re-bind cards. bindTypeCards is needed for market cards stored in older
+    // threads — without it a restored pasar grid renders but does not click.
     bindProductCards(thread);
+    bindTypeCards(thread);
     bindDeepDiveCards(thread);
     bindTrackerCards(thread);
     bindTrendingCards(thread);
@@ -2683,17 +2695,20 @@ async function renderStevenRecs() {
     const rows = data || [];
     if (!rows.length) { sec.style.display = 'none'; return; }
 
+    const types = await typesForListings(rows.map(asListingProduct), city, 9);
+    if (!types.length) { sec.style.display = 'none'; return; }
+
     _stevenRecsCity = city;
     const title = document.getElementById('steven-recs-title');
     const sub = document.getElementById('steven-recs-sub');
     if (title) title.textContent = `Rekomendasi Steven · ${city}`;
     if (sub) {
-      sub.textContent = `${rows.length} produk yang lagi jalan buat penjual baru di ${city} — listing baru (di bawah 4 bulan) yang sudah tembus 100+ terjual. Daftar ini ganti tiap minggu.`;
+      sub.textContent = `${types.length} pasar yang lagi jalan buat penjual baru di ${city} — dari listing baru (di bawah 4 bulan) yang sudah tembus 100+ terjual. Daftar ini ganti tiap minggu.`;
     }
-    grid.innerHTML = productCardsHtml(rows);
-    bindProductCards(grid);
+    grid.innerHTML = marketCardsHtml(types);
+    bindTypeCards(grid);
     sec.style.display = '';
-    void logUserEvent('steven_recs_view', { ui: 'gpt', city, count: rows.length });
+    void logUserEvent('steven_recs_view', { ui: 'gpt', city, count: types.length, level: 'pasar' });
     clarityEvt('steven_recs_view', { city });
   } catch (_) {
     sec.style.display = 'none';
@@ -3088,15 +3103,15 @@ async function runFinderSearch() {
       limit: 60,
     });
     const products = rows.map(asListingProduct);
-    state.recommendations = products;
-    rememberProducts(products);
+    const types = await typesForListings(products, _finder.city || '', 12);
+    state.recommendations = [];
 
-    const html = products.length
-      ? `<p>${products.length} produk untuk <strong>${esc(_finder.category)}</strong> di sekitar <strong>${esc(_finder.city)}</strong> (modal ${esc(bud.label)}). Klik kartu untuk Deep Dive.</p>
-         <div class="card-grid">${productCardsHtml(products)}</div>`
-      : `<p>Belum ketemu produk yang cocok. Coba ganti kategori atau kota, atau ketik pencarian di bawah.</p>`;
+    const html = types.length
+      ? `<p>${types.length} pasar untuk <strong>${esc(_finder.category)}</strong> di sekitar <strong>${esc(_finder.city)}</strong> (modal ${esc(bud.label)}). Klik kartu untuk Deep Dive pasar.</p>
+         <div class="card-grid">${marketCardsHtml(types)}</div>`
+      : `<p>Belum ketemu pasar yang cocok. Coba ganti kategori atau kota, atau ketik pencarian di bawah.</p>`;
     await revealAssistant(loading, html, { instant: true });
-    bindProductCards($('chat-thread'));
+    bindTypeCards($('chat-thread'));
     scrollPanelToTop();
     void logUserEvent('gpt_finder_search', {
       ui: 'gpt',
@@ -3446,7 +3461,7 @@ let _kompFetchToken = 0;
 let _serupaFetchToken = 0;
 
 function normalizeSideMode(mode) {
-  if (mode === 'kompetitor' || mode === 'serupa') return mode;
+  if (mode === 'kompetitor' || mode === 'serupa' || mode === 'ai') return mode;
   // 'supplier' is gated — never restore into it once the probe is switched off,
   // or a saved pref could strand a normal user on a blank panel.
   if (mode === 'supplier' && supplierProbeVisible()) return 'supplier';
@@ -3455,6 +3470,7 @@ function normalizeSideMode(mode) {
 
 function sideModeLabel(mode) {
   const m = normalizeSideMode(mode);
+  if (m === 'ai') return 'Tanya AI';
   if (m === 'kompetitor') return 'Kompetitor';
   if (m === 'serupa') return 'Produk serupa';
   if (m === 'supplier') return 'Cari Supplier';
@@ -3499,15 +3515,18 @@ function setSideModeUi(mode) {
     tab.setAttribute('aria-selected', on ? 'true' : 'false');
   });
   const open = document.body.classList.contains('calc-open');
+  $('ai-rail')?.setAttribute('aria-expanded', open && _sideMode === 'ai' ? 'true' : 'false');
   $('calc-rail')?.setAttribute('aria-expanded', open && _sideMode === 'kalkulator' ? 'true' : 'false');
   $('komp-rail')?.setAttribute('aria-expanded', open && _sideMode === 'kompetitor' ? 'true' : 'false');
   $('serupa-rail')?.setAttribute('aria-expanded', open && _sideMode === 'serupa' ? 'true' : 'false');
   const panel = $('calc-panel');
   if (panel) panel.setAttribute('aria-label', sideModeLabel(_sideMode));
+  const aiBody = $('side-body-ai');
   const kalcBody = $('side-body-kalc');
   const kompBody = $('side-body-komp');
   const serupaBody = $('side-body-serupa');
   const supBody = $('side-body-supplier');
+  if (aiBody) aiBody.hidden = _sideMode !== 'ai';
   if (kalcBody) kalcBody.hidden = _sideMode !== 'kalkulator';
   if (kompBody) kompBody.hidden = _sideMode !== 'kompetitor';
   if (serupaBody) serupaBody.hidden = _sideMode !== 'serupa';
@@ -3699,9 +3718,148 @@ async function fillSerupaContent(opts = {}) {
   bindProductCards(body);
 }
 
+/* ── Tanya AI side panel ───────────────────────────────────────────────────
+   The AI used to live only in the docked composer, which on desktop competes
+   with a very long scrolling Deep Dive report. Here it sits beside the report
+   as a peer of Kalkulator / Kompetitor / Serupa.
+
+   Everything shown is derived from `_dd` — the object openDeepDive() already
+   builds ({ product, peers, niche, stats, history, series }) — so opening this
+   panel costs no extra fetch. Answers go through askProductAi(), the SAME path
+   the docked composer uses, so gpt_messages persistence and the daily use_ai
+   cap behave identically no matter which composer the user typed into.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/** First name only — "Halo Steven", not "Halo steven@gmail.com". */
+function aiGreetingName() {
+  const raw = String(currentUser?.user_metadata?.full_name || '').trim();
+  if (raw) return raw.split(/\s+/)[0].slice(0, 24);
+  return 'kamu';
+}
+
+function aiPanelSummaryHtml(product) {
+  const stats = _dd?.stats || ddStats([]);
+  const peers = _dd?.peers || [];
+  const series = _dd?.series || [];
+  const history = _dd?.history || [];
+  const scoreInfo = ddScore(product, stats, _dd?.niche);
+  const share = ddShareData(peers);
+  const age = ddShopAgeBuckets(peers);
+  const bullets = ddInsightBullets(product, stats, share, series, scoreInfo, age, peers);
+  const kesimpulan = ddKesimpulanCopy(scoreInfo, stats);
+  const list = bullets.length
+    ? `<ul class="side-ai-bullets">${bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul>`
+    : '<p class="side-ai-empty-note">Belum cukup sinyal untuk ringkasan otomatis — tanya langsung di bawah.</p>';
+  return `<div class="side-ai-summary">
+    <div class="side-ai-summary-head">${ico('spark', 15)}<span>Ringkasan AI</span></div>
+    ${list}
+    <p class="side-ai-kesimpulan">${esc(kesimpulan)}</p>
+  </div>`;
+}
+
+function fillAiContent(opts = {}) {
+  const body = $('side-body-ai');
+  if (!body) return;
+  const product = opts.product || resolveSideProduct();
+  if (!product) {
+    setSideContext('');
+    body.innerHTML = '<p class="side-empty">Buka produk atau pasar dulu untuk tanya AI tentang datanya.</p>';
+    return;
+  }
+  const label = (product._ptype ? typeTitle(product.keyword) : (product.product_name || product.keyword || '')).slice(0, 80);
+  setSideContext(label);
+
+  // Re-rendering on every product switch would wipe an in-progress conversation.
+  // Keep the thread when the panel is merely refreshed for the same product.
+  const key = prodKey(product);
+  if (body.dataset.aiKey === key && body.querySelector('#side-ai-thread')) return;
+  body.dataset.aiKey = key;
+
+  const chips = ddComposerChips(product).map(c =>
+    `<button type="button" class="side-ai-chip" data-side-ai-prompt="${esc(c.prompt)}">${ico(c.icon || 'spark', 14)}<span>${esc(c.label)}</span></button>`
+  ).join('');
+
+  body.innerHTML = `
+    <div class="side-ai-hello">
+      <div class="side-ai-hello-ico">${ico('spark', 16)}</div>
+      <div>
+        <div class="side-ai-hello-title">Halo ${esc(aiGreetingName())}</div>
+        <p>Saya sudah menganalisa ${product._ptype ? 'pasar' : 'produk'} ini dari data Shopee LarisID. Berikut ringkasannya.</p>
+      </div>
+    </div>
+    ${aiPanelSummaryHtml(product)}
+    <div class="side-ai-chips">${chips}</div>
+    <div class="side-ai-thread" id="side-ai-thread"></div>
+    <form class="side-ai-form" id="side-ai-form">
+      <textarea id="side-ai-input" rows="1" placeholder="Tanyakan apa saja tentang ${product._ptype ? 'pasar' : 'produk'} ini…"></textarea>
+      <button type="submit" class="side-ai-send" aria-label="Kirim">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </form>
+    <p class="side-ai-disclaimer">AI dapat membuat kesalahan. Angka di panel ini dari data scrape asli — verifikasi sebelum ambil keputusan.</p>
+  `;
+
+  body.querySelectorAll('[data-side-ai-prompt]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      void sideAiSubmit(btn.getAttribute('data-side-ai-prompt'));
+    });
+  });
+  const form = $('side-ai-form');
+  const input = $('side-ai-input');
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const t = String(input?.value || '').trim();
+    if (!t) return;
+    if (input) { input.value = ''; input.style.height = 'auto'; }
+    void sideAiSubmit(t);
+  });
+  input?.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = `${Math.min(input.scrollHeight, 120)}px`;
+  });
+  input?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form?.requestSubmit(); }
+  });
+}
+
+/** Panel composer → the shared product-AI turn, rendered into the panel thread. */
+async function sideAiSubmit(text) {
+  const q = String(text || '').trim();
+  if (!q) return;
+  const product = resolveSideProduct();
+  if (!product) return;
+  if (!currentUser) { openAuthModal('login', 'gpt_gate_ai_panel'); return; }
+  const root = $('side-ai-thread');
+  if (!root) return;
+  // Chips are one-shot prompts; hide them once a conversation starts so the
+  // panel reads as a thread rather than a menu.
+  $('side-body-ai')?.querySelector('.side-ai-chips')?.setAttribute('hidden', '');
+
+  // In a Deep Dive openDeepDive() has already made the thread; this local
+  // fallback only covers the rare panel-open-without-a-chat case.
+  let chat = activeChat();
+  if (!chat) {
+    chat = {
+      localId: 'local_' + Date.now(),
+      title: (product.product_name || product.keyword || q).slice(0, 60),
+      context: { kind: 'product', item_id: product.item_id, shop_id: product.shop_id, keyword: product.keyword },
+      messages: [], created_at: Date.now(),
+    };
+    state.chats.unshift(chat);
+    state.activeChatId = chat.localId;
+    renderChatList();
+  }
+  appendBubble('user', `<p>${esc(q)}</p>`, { root });
+  pushMessage(chat, 'user', q);
+  void logUserEvent('gpt_message_sent', { ui: 'gpt', via: 'side_panel' });
+  void logUserEvent('gpt_side_panel', { ui: 'gpt', action: 'ask', mode: 'ai', via: 'panel' });
+  await askProductAi(chat, product, q, { root });
+}
+
 function refreshOpenSidePanel(opts = {}) {
   if (!document.body.classList.contains('calc-open')) return;
-  if (_sideMode === 'kompetitor') void fillKompContent(opts);
+  if (_sideMode === 'ai') fillAiContent(opts);
+  else if (_sideMode === 'kompetitor') void fillKompContent(opts);
   else if (_sideMode === 'serupa') void fillSerupaContent(opts);
   else if (_sideMode === 'supplier') void fillSupplierContent(opts);
   else fillCalcContent({ ...opts, force: true });
@@ -3724,7 +3882,8 @@ function openSidePanel(mode, opts = {}) {
     panel.classList.remove('sheet-collapsed');
   }
 
-  if (next === 'kalkulator') fillCalcContent(opts);
+  if (next === 'ai') fillAiContent(opts);
+  else if (next === 'kalkulator') fillCalcContent(opts);
   else if (next === 'serupa') void fillSerupaContent(opts);
   else if (next === 'supplier') void fillSupplierContent(opts);
   else void fillKompContent(opts);
@@ -3741,6 +3900,7 @@ function openSidePanel(mode, opts = {}) {
   }
 }
 
+function openAiPanel(opts = {}) { openSidePanel('ai', opts); }
 function openCalcPanel(opts = {}) { openSidePanel('kalkulator', opts); }
 function openKompPanel(opts = {}) { openSidePanel('kompetitor', opts); }
 function openSerupaPanel(opts = {}) { openSidePanel('serupa', opts); }
@@ -3748,6 +3908,7 @@ function openSerupaPanel(opts = {}) { openSidePanel('serupa', opts); }
 function closeCalcPanel() {
   document.body.classList.remove('calc-open');
   $('calc-panel')?.setAttribute('aria-hidden', 'true');
+  $('ai-rail')?.setAttribute('aria-expanded', 'false');
   $('calc-rail')?.setAttribute('aria-expanded', 'false');
   $('komp-rail')?.setAttribute('aria-expanded', 'false');
   $('serupa-rail')?.setAttribute('aria-expanded', 'false');
@@ -3763,6 +3924,7 @@ function wireCalcPanel() {
   _sideMode = normalizeSideMode(prefs.mode);
   setSideModeUi(_sideMode);
 
+  $('ai-rail')?.addEventListener('click', () => openAiPanel({ via: 'rail' }));
   $('calc-rail')?.addEventListener('click', () => openCalcPanel({ via: 'rail' }));
   $('komp-rail')?.addEventListener('click', () => openKompPanel({ via: 'rail' }));
   $('serupa-rail')?.addEventListener('click', () => openSerupaPanel({ via: 'rail' }));
@@ -4582,12 +4744,13 @@ async function handleTrendingIntent(chat) {
   const gate = await ensureIntentChat(chat, 'Produk Trending', { kind: 'trending' });
   if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
   let html;
+  let ndTypes = [];
   if (!rows.length) {
-    const nd = mergePool([], await fetchNaikDaunGlobal(60)).slice(0, 3);
-    state.recommendations = nd;
-    rememberProducts(nd);
-    html = nd.length
-      ? `<p>Data tren mingguan belum tersedia — ini produk yang lagi naik daun dari data LarisID:</p><div class="card-grid">${productCardsHtml(nd)}</div>`
+    const nd = mergePool([], await fetchNaikDaunGlobal(60));
+    ndTypes = await typesForListings(nd, '', 6);
+    state.recommendations = [];
+    html = ndTypes.length
+      ? `<p>Data tren mingguan belum tersedia — ini pasar yang lagi naik daun dari data LarisID:</p><div class="card-grid">${marketCardsHtml(ndTypes)}</div>`
       : `<p>Data tren belum tersedia. Coba lagi nanti.</p>`;
   } else {
     const view = computeTrendingView(rows, '7d');
@@ -4597,9 +4760,9 @@ async function handleTrendingIntent(chat) {
   pushMessage(chat, 'assistant', {
     text: 'Produk trending',
     kind: 'trending',
-    products: (state.recommendations || []).map(productSnapshot).filter(Boolean),
+    types: ndTypes.map(t => t.keyword),
   }, html);
-  bindProductCards();
+  bindTypeCards();
   bindTrendingCards();
   updateThreadWide();
   setComposerChips(TRENDING_CHIPS, 'trending');
@@ -4629,15 +4792,15 @@ async function handleModalIntent(chat, text) {
   } catch (_) {}
   const gate = await ensureIntentChat(chat, `Modal ${fmtRp(budget)}`, { kind: 'modal', budget });
   if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
-  const top = mergePool([], rows).slice(0, 3);
-  state.recommendations = top;
-  rememberProducts(top);
-  const html = top.length
-    ? `<p>Produk laris dengan harga di bawah <strong>${fmtRp(budget)}</strong> — dari data Shopee LarisID:</p><div class="card-grid">${productCardsHtml(top)}</div>`
-    : `<p>Belum ketemu produk laris di bawah ${fmtRp(budget)}. Coba angka lain.</p>`;
+  const top = mergePool([], rows);
+  const types = await typesForListings(top, '', 6);
+  state.recommendations = [];
+  const html = types.length
+    ? `<p>Pasar dengan harga di bawah <strong>${fmtRp(budget)}</strong> — dari data Shopee LarisID:</p><div class="card-grid">${marketCardsHtml(types)}</div>`
+    : `<p>Belum ketemu pasar laris di bawah ${fmtRp(budget)}. Coba angka lain.</p>`;
   await revealAssistant(loading, html);
-  pushMessage(chat, 'assistant', { text: 'Hasil modal', budget, products: top.map(productSnapshot).filter(Boolean) }, html);
-  bindProductCards();
+  pushMessage(chat, 'assistant', { text: 'Hasil modal', budget, level: 'pasar', types: types.map(t => t.keyword) }, html);
+  bindTypeCards();
 }
 
 async function handleLowcompIntent(chat) {
@@ -4971,27 +5134,33 @@ async function handleBandingkanIntent(chat, text) {
     return { sold, median: prices.length ? prices[Math.floor(prices.length / 2)] : 0, n: rows.length, top: rows.slice(0, 3) };
   };
   const sa = summarize(a), sb = summarize(b);
-  state.recommendations = mergePool([], [...(sa?.top || []), ...(sb?.top || [])]);
-  rememberProducts(state.recommendations);
-  const side = (label, s) => s
+  state.recommendations = [];
+  // Each side of a compare is a market too — the numbers above the cards are
+  // already keyword-level, so listing cards under them were mixing altitudes.
+  const [ta, tb] = await Promise.all([
+    typesForListings(sa?.top || [], '', 3),
+    typesForListings(sb?.top || [], '', 3),
+  ]);
+  const side = (label, s, types) => s
     ? `<div class="ans-panel" style="margin-top:12px"><h4>${esc(label)}</h4>
        <p class="dd-sub" style="margin:0 0 10px">${s.n} listing terpantau · median harga ${fmtRp(s.median)} · total ${fmtSold(s.sold)} terjual</p>
-       <div class="card-grid">${productCardsHtml(s.top)}</div></div>`
+       ${types.length ? `<div class="card-grid">${marketCardsHtml(types)}</div>` : '<p class="dd-sub">Belum ada pasar terpetakan untuk keyword ini.</p>'}</div>`
     : `<div class="ans-panel" style="margin-top:12px"><h4>${esc(label)}</h4><p class="dd-sub">Tidak ketemu di data.</p></div>`;
   let verdict = '';
   if (sa && sb) {
     const win = sa.sold >= sb.sold ? parts[0] : parts[1];
-    verdict = `<p style="margin-top:12px">Dari total penjualan yang terpantau, <strong>${esc(win)}</strong> lebih laris. Klik produk untuk analisis lengkap.</p>`;
+    verdict = `<p style="margin-top:12px">Dari total penjualan yang terpantau, <strong>${esc(win)}</strong> lebih laris. Klik pasar untuk analisis lengkap.</p>`;
   }
-  const html = `<p>Perbandingan “<strong>${esc(parts[0])}</strong>” vs “<strong>${esc(parts[1])}</strong>” dari data Shopee LarisID:</p>${side(parts[0], sa)}${side(parts[1], sb)}${verdict}`;
+  const html = `<p>Perbandingan “<strong>${esc(parts[0])}</strong>” vs “<strong>${esc(parts[1])}</strong>” dari data Shopee LarisID:</p>${side(parts[0], sa, ta)}${side(parts[1], sb, tb)}${verdict}`;
   await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', {
     text: 'Bandingkan',
     a: parts[0],
     b: parts[1],
-    products: state.recommendations.map(productSnapshot).filter(Boolean),
+    level: 'pasar',
+    types: [...ta, ...tb].map(t => t.keyword),
   }, html);
-  bindProductCards();
+  bindTypeCards();
 }
 
 async function handleRencanaIntent(chat) {
@@ -5674,24 +5843,23 @@ async function replyWithCategoryProducts(chat, text, cat) {
   if (await replyWithPasarTypes(chat, text, typeHits, {
     loading, label: q0, placeLabel: place0.label || place0.city || '',
   })) return;
-  const products = await fetchCategoryShowcase(cat, 12);
+  // Nothing matched the query by name — answer with the markets behind this
+  // category's top listings rather than the listings themselves.
+  const showcase = await fetchCategoryShowcase(cat, 24);
+  const types = await typesForListings(showcase, place0.city || '', 12);
+  if (types.length && await replyWithPasarTypes(chat, text, types, {
+    loading, label: cat, placeLabel: place0.label || place0.city || '',
+  })) return;
+
   const gate = await ensureIntentChat(chat, text.slice(0, 60), { kind: 'category_search', category: cat, q: text });
   if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
-  state.recommendations = products;
-  rememberProducts(products);
-  const html = products.length
-    ? `<p>${products.length} produk <strong>${esc(cat)}</strong> dari data Shopee LarisID — klik kartu untuk Deep Dive:</p>
-       <div class="card-grid">${productCardsHtml(products)}</div>`
-    : `<p>Belum ketemu produk di kategori <strong>${esc(cat)}</strong>. Coba kata kunci lain atau buka Produk.</p>`;
+  state.recommendations = [];
+  const html = `<p>Belum ketemu pasar di kategori <strong>${esc(cat)}</strong>. Coba kata kunci lain atau buka Produk.</p>`;
   await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', {
-    text: 'Hasil kategori',
-    q: text,
-    category: cat,
-    products: products.map(productSnapshot).filter(Boolean),
+    text: 'Hasil kategori', q: text, category: cat, products: [],
   }, html);
-  bindProductCards();
-  void logUserEvent('discover_view', { ui: 'gpt', q: text, category: cat, count: products.length });
+  void logUserEvent('discover_view', { ui: 'gpt', q: text, category: cat, count: 0 });
   clarityEvt('gpt_category_search', { category: cat });
 }
 
@@ -6145,6 +6313,10 @@ function gptTrackerAdapter() {
     openHowCalculated() { setView('faq'); },
 
     getTracking()          { return rpc('get_my_tracking'); },
+    // Reads mv_keyword_daily / mv_shop_daily, which aggregate `listings`
+    // directly. get_tracker_deltas is kept only for clients cached before this
+    // shipped — it reads listing_deltas, which the daily scrape never refreshes.
+    getRollup(days, scope) { return rpc('get_tracker_rollup', { p_days: days, p_scope: scope || 'keyword' }); },
     getDeltas(days)        { return rpc('get_tracker_deltas', { p_days: days }); },
     touchViewed()          { return rpc('touch_tracker_viewed'); },
     addKeyword(kw, cat)    { return rpc('add_tracked_keyword', { p_keyword: kw, p_category: cat || '' }); },
@@ -6183,17 +6355,33 @@ function gptTrackerAdapter() {
       } catch (_) {}
       return out;
     },
+    // Typeahead over product types. Category is a filter, not a prerequisite —
+    // an empty category searches everything.
+    async searchKeywords(o) {
+      const q = String(o?.q || '').trim();
+      if (!_supabase || !q) return [];
+      let sel = _supabase.from('product_types_v')
+        .select('keyword,category,category_canonical,n_sellers,price_median,n_listings')
+        .eq('city', 'ALL')
+        .gte('n_listings', 3)
+        .ilike('keyword', `%${q.slice(0, 40)}%`)
+        .order('omset_top15', { ascending: false, nullsFirst: false })
+        .limit(o?.limit || 8);
+      if (o?.category) sel = sel.eq('category_canonical', o.category);
+      const { data } = await sel;
+      return data || [];
+    },
     async searchStores(q) {
       if (!_supabase || !q) return [];
-      const { data } = await _supabase.from('listings_latest')
-        .select('shop_id,store_name').ilike('store_name', `%${q}%`).limit(60);
-      const seen = {}, out = [];
-      (data || []).forEach(r => {
-        if (!r.shop_id || seen[r.shop_id]) return;
-        seen[r.shop_id] = 1;
-        out.push({ shop_id: r.shop_id, store_name: r.store_name || `Toko ${r.shop_id}` });
-      });
-      return out.slice(0, 8);
+      // find_shops_by_name is trigram-ranked over the 130k-row mv_shops; the
+      // old ilike scan of listings_latest returned 60 rows to dedupe client-side.
+      const { data, error } = await _supabase.rpc('find_shops_by_name', { p_q: q, p_limit: 8 });
+      if (error || !data) return [];
+      return (data || []).map(r => ({
+        shop_id: r.shop_id,
+        store_name: r.store_name || `Toko ${r.shop_id}`,
+        n_products: r.n_listings,
+      }));
     },
     async getFallbackMovers(cats, n) {
       if (!_supabase) return [];
@@ -6376,24 +6564,30 @@ async function startRecommendationChat(fromOnboarding) {
   appendBubble('assistant', `<p>${fromOnboarding ? 'Siap. ' : ''}${frame}</p><p style="opacity:.7;animation:pulseSoft 1.2s infinite">Memuat rekomendasi…</p>`);
 
   const recLimit = fromOnboarding ? 9 : 3;
-  const recs = await pickRecommendations(recLimit);
-  state.recommendations = recs;
-  rememberProducts(recs);
+  // Recommendations are ranked on listings but presented as markets — the user
+  // is choosing what to sell, which is a market decision, not a listing one.
+  const recs = await pickRecommendations(recLimit * 3);
+  const recTypes = await typesForListings(recs, state.onboarding.city || '', recLimit);
+  state.recommendations = [];
 
-  const cards = recs.length
-    ? `<div class="card-grid">${productCardsHtml(recs)}</div>
-       <button type="button" class="btn-ghost" id="btn-more-products">Tampilkan produk lain</button>`
-    : `<p>Belum ketemu produk yang cocok. Coba Chat Baru atau buka <strong>Produk</strong> di sidebar.</p>`;
+  const cards = recTypes.length
+    ? `<div class="card-grid">${marketCardsHtml(recTypes)}</div>
+       <button type="button" class="btn-ghost" id="btn-more-products">Tampilkan pasar lain</button>`
+    : `<p>Belum ketemu pasar yang cocok. Coba Chat Baru atau buka <strong>Produk</strong> di sidebar.</p>`;
 
-  const html = `<p>${frame}</p><p>Ini <strong>${recs.length || recLimit} produk</strong> dari data LarisID buat kamu cek:</p>${cards}`;
+  const html = `<p>${frame}</p><p>Ini <strong>${recTypes.length || recLimit} pasar</strong> dari data LarisID buat kamu cek:</p>${cards}`;
   const thread2 = $('chat-thread');
   if (thread2) thread2.innerHTML = '';
   const msg = await appendAssistantStream(html);
-  pushMessage(chat, 'assistant', { text: `Rekomendasi ${recs.length} produk`, products: recs.map(productSnapshot).filter(Boolean) }, html);
-  bindProductCards();
+  pushMessage(chat, 'assistant', {
+    text: `Rekomendasi ${recTypes.length} pasar`,
+    level: 'pasar',
+    types: recTypes.map(t => t.keyword),
+  }, html);
+  bindTypeCards();
   scrollPanelToTop();
 
-  void logUserEvent('discover_view', { ui: 'gpt', count: recs.length });
+  void logUserEvent('discover_view', { ui: 'gpt', count: recTypes.length, level: 'pasar' });
   clarityEvt('discover_view', { ui: 'gpt' });
   clarityEvt('gpt_chat_new', {});
   void logUserEvent('gpt_chat_new', { ui: 'gpt' });
@@ -6433,18 +6627,18 @@ async function openChat(id) {
         limit: 60,
       });
       const products = rows.map(asListingProduct);
-      state.recommendations = products;
-      rememberProducts(products);
+      const types = await typesForListings(products, chat.context.city || '', 12);
+      state.recommendations = [];
       const bud = finderBudgetCfg(chat.context.budget || '1jt_10jt');
-      const html = products.length
-        ? `<p>${products.length} produk untuk <strong>${esc(chat.context.category)}</strong> di sekitar <strong>${esc(chat.context.city)}</strong> (modal ${esc(bud.label)}).</p>
-           <div class="card-grid">${productCardsHtml(products)}</div>`
+      const html = types.length
+        ? `<p>${types.length} pasar untuk <strong>${esc(chat.context.category)}</strong> di sekitar <strong>${esc(chat.context.city)}</strong> (modal ${esc(bud.label)}).</p>
+           <div class="card-grid">${marketCardsHtml(types)}</div>`
         : `<p>Riwayat ini tidak punya hasil tersimpan. Coba jalankan ulang pencarian dari pertanyaan awal.</p>`;
       setView('chat');
       const thread = $('chat-thread');
       if (thread) thread.innerHTML = '';
       appendBubble('assistant', html, { skipScroll: true });
-      bindProductCards($('chat-thread'));
+      bindTypeCards($('chat-thread'));
       updateProductPin();
       scrollPanelToTop();
       return;
@@ -7097,6 +7291,7 @@ function ddToolPillsHtml(product) {
   const supplier = (supplierProbeVisible() && supplierRelevantFor(kw, cat))
     ? '<button type="button" class="ddr-tool-pill" data-ddr-tool="supplier">Supplier</button>' : '';
   return `<div class="ddr-tool-pills" role="toolbar" aria-label="Alat Deep Dive">
+    <button type="button" class="ddr-tool-pill ddr-tool-pill--ai" data-ddr-tool="ai">${ico('spark', 13)}<span>Tanya AI</span></button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="analisa">Analisa</button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="kalkulator">Kalkulator</button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="kompetitor">Kompetitor</button>
@@ -7221,7 +7416,7 @@ function ddTilesHtml(product, stats, peers, series, scoreInfo, history) {
     : stats.komp === 'Tinggi' ? 'Pasar padat — bedakan listing'
     : 'Kompetisi menengah';
   return `<div class="ddr-hscroll ddr-hscroll--tiles" data-dd-sec="quick_stats">
-    <div class="ddr-tile"><span class="ico" style="background:var(--violet-bg);color:var(--violet)">${ico('spark', 14)}</span><div class="lbl">Rekomendasi AI</div><div class="val">${esc(ai.title)}</div><div class="sub">${esc(ai.sub)}</div></div>
+    <div class="ddr-tile ddr-tile--ai"><span class="ico">${ico('spark', 14)}</span><div class="lbl">Rekomendasi AI</div><div class="val">${esc(ai.title)}</div><div class="sub">${esc(ai.sub)}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--green-bg);color:var(--green)">${ico('wallet', 14)}</span><div class="lbl">Estimasi Omset / Bulan</div><div class="val">${omsetVal}</div><div class="sub">${esc(omsetSub)}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--amber-bg);color:var(--amber)">${ico('users', 14)}</span><div class="lbl">Kompetisi</div><div class="val">${kompVal}</div><div class="sub">${esc(kompSub)}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--violet-bg);color:var(--violet)">${ico('shield', 14)}</span><div class="lbl">Confidence</div><div class="val">${conf.pct}% ${esc(conf.label)}</div><div class="sub">Kekuatan sinyal dari peer &amp; riwayat scrape</div></div>
@@ -7614,6 +7809,11 @@ function runDdrTool(tool, product, peers, via) {
   const p = product || state.deepdiveProduct || activeChat()?.context?.product || null;
   const peerList = peers || _dd?.peers || [];
   if (!p && tool !== 'analisa' && tool !== 'biaya') return;
+  if (tool === 'ai') {
+    void logUserEvent('deepdive_section', { ui: 'gpt', section: 'ai_panel', via: via || 'click', keyword: p?.keyword || '' });
+    openAiPanel({ product: p, peers: peerList, via: via || 'deepdive' });
+    return;
+  }
   if (tool === 'analisa') {
     if (state.view !== 'deepdive') {
       if (p) void openDeepDive(p);
@@ -7885,14 +8085,23 @@ async function openDeepDive(product, ddOpts = {}) {
   const share = ddShareData(peers);
   const age = ddShopAgeBuckets(peers);
   _dd = { product, peers, niche, stats, history, series };
-  // Live-refresh open side panel when switching products in Deep Dive.
-  refreshOpenSidePanel({
+  const sideOpts = {
     product,
     peers,
     price: Number(product.price) || 0,
     cogs: Math.round((Number(product.price) || 0) * 0.33) || undefined,
     name: (product.product_name || product.keyword || '').slice(0, 80),
-  });
+  };
+  // Live-refresh open side panel when switching products in Deep Dive.
+  refreshOpenSidePanel(sideOpts);
+  // Desktop: the AI belongs beside the report, not under it. Open it on arrival
+  // unless the user has deliberately closed the panel before (loadSidePrefs
+  // remembers that), which is why this never re-opens what they dismissed.
+  if (window.innerWidth > 860
+      && !document.body.classList.contains('calc-open')
+      && loadSidePrefs().open !== false) {
+    openAiPanel({ ...sideOpts, via: 'deepdive_auto' });
+  }
 
   // Persist a Deep Dive entry in the chat thread so scrolling history always
   // reaches it (DD itself is a separate view, not part of the message list).
@@ -7932,7 +8141,7 @@ async function openDeepDive(product, ddOpts = {}) {
         <p class="ddr-cat">${esc(ddKotaLabel(product, peers))}</p>
       </div>
       <div class="ddr-score-stack">
-        <div class="ddr-score">
+        <div class="ddr-score ${scoreInfo.cls}">
           <div class="lbl">Skor Produk</div>
           <div class="num">${scoreInfo.score}<span>/100</span></div>
           <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
@@ -8743,25 +8952,22 @@ async function handleComposerSubmit(text) {
       if (await replyWithPasarTypes(chat, text, catTypes, {
         loading, label: q1, placeLabel: place1.label || place1.city || '',
       })) return;
-      const products = await fetchCategoryShowcase(catFallback, 12);
+      const showcase = await fetchCategoryShowcase(catFallback, 24);
+      const showTypes = await typesForListings(showcase, place1.city || '', 12);
+      if (showTypes.length && await replyWithPasarTypes(chat, text, showTypes, {
+        loading, label: catFallback, placeLabel: place1.label || place1.city || '',
+      })) return;
+
       const gate = await ensureIntentChat(chat, text.slice(0, 60), { kind: 'category_search', category: catFallback, q: text });
       if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
-      state.recommendations = products;
-      rememberProducts(products);
-      const html = products.length
-        ? `<p>${products.length} produk <strong>${esc(catFallback)}</strong> dari data Shopee LarisID — klik kartu untuk Deep Dive:</p>
-           <div class="card-grid">${productCardsHtml(products)}</div>`
-        : `<p>Belum ketemu produk di kategori <strong>${esc(catFallback)}</strong>. Coba kata kunci lain atau buka Produk.</p>`;
+      state.recommendations = [];
+      const html = `<p>Belum ketemu pasar di kategori <strong>${esc(catFallback)}</strong>. Coba kata kunci lain atau buka Produk.</p>`;
       if (loading) await revealAssistant(loading, html);
       else await appendAssistantStream(html);
       pushMessage(chat, 'assistant', {
-        text: 'Hasil kategori',
-        q: text,
-        category: catFallback,
-        products: products.map(productSnapshot).filter(Boolean),
+        text: 'Hasil kategori', q: text, category: catFallback, products: [],
       }, html);
-      bindProductCards();
-      void logUserEvent('discover_view', { ui: 'gpt', q: text, category: catFallback, count: products.length });
+      void logUserEvent('discover_view', { ui: 'gpt', q: text, category: catFallback, count: 0 });
       return;
     }
     const place = parsePlaceFromQuery(text);
@@ -8773,11 +8979,18 @@ async function handleComposerSubmit(text) {
     const types = await searchProductTypes(cleaned, place.city || '', 12);
     if (await replyWithPasarTypes(chat, text, types, { loading, label: cleaned, placeLabel })) return;
 
-    // No market matched — fall back to individual listings (long-tail / exact item).
-    const result = await searchProductsForQuery(cleaned, locations, 12);
-    const usedClarify = result.mode === 'clarify' || !result.products.length;
-    state.recommendations = usedClarify ? [] : result.products;
-    rememberProducts(state.recommendations);
+    // No market matched by name. Widen instead of dropping to listings: run the
+    // listing search (which already applies the multilingual query plan) and
+    // lift whatever it finds back up to the markets those listings belong to.
+    // A single listing is never the answer to a top-level search — individual
+    // products live one level down, in a market's Kompetitor table.
+    const result = await searchProductsForQuery(cleaned, locations, 24);
+    const widened = await typesForListings(result.products, place.city || '', 12);
+    if (widened.length && await replyWithPasarTypes(chat, text, widened, {
+      loading, label: cleaned, placeLabel,
+    })) return;
+
+    state.recommendations = [];
     if (currentUser && _supabase && !chat.id) {
       const { data } = await _supabase.rpc('gpt_new_chat', { p_title: text.slice(0, 60), p_context: { kind: 'search', q: text } });
       if (data) noteGptUsage(data);
@@ -8793,51 +9006,44 @@ async function handleComposerSubmit(text) {
     } else if (!currentUser) {
       bumpAnonSearch();
     }
-    let html;
-    if (usedClarify) {
-      html = searchClarifyHtml(text, result.domain);
-    } else {
-      const qLabel = (result.terms && result.terms.length) ? result.terms.join(' ') : cleaned;
-      const en = detectReplyLanguage(text) === 'en';
-      const alt = isAltProductAsk(text.toLowerCase());
-      let lead;
-      if (alt && en) {
-        lead = `Looking for alternatives matching “${esc(qLabel)}”${placeLabel ? ` from sellers around <strong>${esc(placeLabel)}</strong>` : ''} — here are listings from LarisID data:`;
-      } else if (alt) {
-        lead = `Mencari alternatif “${esc(qLabel)}”${placeLabel ? ` dari seller sekitar <strong>${esc(placeLabel)}</strong>` : ''} — hasil dari data LarisID:`;
-      } else {
-        lead = en
-          ? `Results from LarisID data for “${esc(qLabel)}”${placeLabel ? ` near <strong>${esc(placeLabel)}</strong>` : ''}:`
-          : `Hasil dari data LarisID untuk “${esc(qLabel)}”${placeLabel ? ` dari seller sekitar <strong>${esc(placeLabel)}</strong>` : ''}:`;
-      }
-      html = `<p>${lead}</p><div class="card-grid">${productCardsHtml(state.recommendations)}</div>`;
-    }
+    const html = searchClarifyHtml(text, result.domain);
     if (loading) await revealAssistant(loading, html);
     else await appendAssistantStream(html);
     pushMessage(chat, 'assistant', {
-      text: usedClarify ? 'Klarifikasi pencarian' : 'Hasil pencarian',
+      text: 'Klarifikasi pencarian',
       q: text,
-      products: state.recommendations.map(productSnapshot).filter(Boolean),
+      products: [],
     }, html);
-    bindProductCards();
     bindSearchSuggests();
     void logUserEvent('discover_view', {
       ui: 'gpt',
       q: text,
-      count: state.recommendations.length,
-      clarify: usedClarify ? 1 : 0,
+      count: 0,
+      clarify: 1,
       domain: result.domain?.id || '',
     });
     return;
   }
 
+  await askProductAi(chat, product, text);
+}
+
+/**
+ * One product-AI turn. Extracted so the docked composer and the Tanya AI side
+ * panel share it verbatim — persistence (gpt_messages) and the daily use_ai cap
+ * are the two things that must never diverge between the two entry points.
+ *
+ * opts.root: render the bubbles into that element instead of #chat-thread.
+ */
+async function askProductAi(chat, product, text, opts = {}) {
+  const root = opts.root || null;
   // Persist the thread before the AI turn so both the question and the reply
   // are saved. Stays local (never walls) if the daily cap is already hit.
   await ensureChatPersisted(chat, (product.product_name || product.keyword || text).slice(0, 60), {
     kind: 'product', item_id: product.item_id, shop_id: product.shop_id, keyword: product.keyword,
   });
   if (!(await _useAi('mls_chat'))) return;
-  const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Menjawab dari data produk…</p>`);
+  const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Menjawab dari data produk…</p>`, root ? { root } : {});
   const peers = await ensurePeerRowsForAi(product);
   // System prompt now carries durable facts from earlier chats, so "modal saya
   // 500rb" said last week still shapes the answer.
@@ -8845,9 +9051,9 @@ async function handleComposerSubmit(text) {
   // …and the turn carries the recent thread, so follow-ups make sense. Every
   // turn used to be a single message with no history at all.
   const history = chatHistoryForAi(chat, text);
-  const reply = await streamAssistantReply(loading, system, history);
+  const reply = await streamAssistantReply(loading, system, history, { root });
   pushMessage(chat, 'assistant', { text: reply }, mdToHtml(reply) || `<p>${esc(reply)}</p>`);
-  void logUserEvent('gpt_ai_reply', { ui: 'gpt', keyword: product.keyword });
+  void logUserEvent('gpt_ai_reply', { ui: 'gpt', keyword: product.keyword, via: root ? 'side_panel' : 'composer' });
   clarityEvt('gpt_ai_reply', {});
   // Learn from what the user said, after the reply so it never delays it.
   extractFactsFromText(text).forEach(([k, v]) => { void rememberFact(k, v, 'chat'); });
@@ -8872,8 +9078,9 @@ function chatHistoryForAi(chat, latestText) {
 }
 
 /** Stream a reply into an existing bubble, with a working Stop button. */
-async function streamAssistantReply(loading, system, messages) {
+async function streamAssistantReply(loading, system, messages, opts = {}) {
   const bubble = loading?.querySelector?.('.msg-bubble') || loading;
+  const root = opts.root || null;
   let acc = '';
   let painting = false;
   const paint = () => {
@@ -8882,7 +9089,8 @@ async function streamAssistantReply(loading, system, messages) {
     requestAnimationFrame(() => {
       painting = false;
       bubble.innerHTML = mdToHtml(acc) || `<p>${esc(acc)}</p>`;
-      scrollChatToBottom();
+      if (root) root.scrollTop = root.scrollHeight;
+      else scrollChatToBottom();
     });
   };
   _streamAbort = new AbortController();
@@ -9184,6 +9392,50 @@ function typeCardHtml(t, absIdx, animIdx) {
 const _ptypeByKeyword = new Map();
 function registerTypes(rows) {
   (rows || []).forEach(t => { if (t?.keyword) _ptypeByKeyword.set(t.keyword, t); });
+}
+
+/**
+ * Listing rows -> the markets those listings belong to.
+ *
+ * Every top-level surface on B answers with markets now, and the ranking work
+ * (naik daun, budget, daily recs, showcase) is all done on the listing side.
+ * This lifts a ranked listing list to the market level while preserving that
+ * ordering. Keywords with no market row are DROPPED rather than falling back to
+ * a single listing — dropping is what keeps individual products at the
+ * Kompetitor level, which is the whole point of the change.
+ */
+async function typesForListings(rows, city, limit = 12) {
+  const kws = [];
+  (rows || []).forEach(r => {
+    const k = r?.keyword;
+    if (k && !kws.includes(k)) kws.push(k);
+  });
+  if (!kws.length || !_supabase) return [];
+  const missing = kws.filter(k => !_ptypeByKeyword.has(k));
+  let fetched = [];
+  if (missing.length) {
+    try {
+      const { data } = await _supabase.from('product_types_v')
+        .select(PTYPE_COLS)
+        .eq('city', city || 'ALL')
+        .in('keyword', missing.slice(0, 80))
+        .gte('n_listings', 3);
+      fetched = data || [];
+    } catch (e) { console.warn('[typesForListings]', e?.message || e); }
+  }
+  registerTypes(fetched);
+  const out = [];
+  kws.forEach(k => {
+    const t = _ptypeByKeyword.get(k);
+    if (t && out.length < limit && !out.includes(t)) out.push(t);
+  });
+  if (out.length) await attachTypeQuartiles(out);
+  return out;
+}
+
+/** Market grid markup, so call sites read the same as the old productCardsHtml. */
+function marketCardsHtml(types) {
+  return (types || []).map((t, i) => typeCardHtml(t, i, i)).join('');
 }
 
 function bindTypeCards(root) {
@@ -9585,8 +9837,15 @@ async function renderDirectory() {
   // Subgroup is filtered server-side against keyword_subgroup now, not by a
   // client-side keyword substring test.
   let types = await fetchProductTypes(city, cat, 1000, state.dirSub || null);
-  // mv missing/empty (e.g. refresh failed) → degrade to the old listing grid.
-  if (!types.length && !state.dirSub) return renderDirectoryListings();
+  // mv missing/empty (e.g. refresh failed): lift the listing pool back up to
+  // markets rather than degrading to a listing grid. The directory is a
+  // top-level surface, and single listings only belong under a market.
+  if (!types.length && !state.dirSub) {
+    const pool = city
+      ? await fetchListingsCityCat(expandCityLocations(city), cat ? [cat] : [], 200)
+      : mergePool([], await fetchNaikDaunGlobal(200));
+    types = await typesForListings(pool, city, 60);
+  }
   types = sortTypeRows(types, state.dirSort || 'terlaris');
   state.dirTypes = types;
   registerTypes(types);

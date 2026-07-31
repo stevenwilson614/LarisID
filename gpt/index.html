@@ -77,7 +77,7 @@
 <link rel="preload" href="/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/fonts/laris-fonts.css">
 <link rel="stylesheet" href="/styles/daily-spin-wheel.css?v=20260730g">
-<link rel="stylesheet" href="/styles/laris-tracker.css?v=20260801a">
+<link rel="stylesheet" href="/styles/laris-tracker.css?v=20260801b">
 
 <style>
 :root {
@@ -426,7 +426,8 @@ html.session-restoring body::after {
 .cl-date { font-size: .72rem; color: #8A837D; letter-spacing: .04em; }
 .cl-title { font-weight: 700; font-size: .95rem; margin: 2px 0 6px; }
 .cl-entry ul { margin: 0; padding-left: 18px; }
-.cl-entry li { font-size: .86rem; color: #4A443F; line-height: 1.55; margin-bottom: 5px; }
+.cl-entry li { font-size: .86rem; color: #4A443F; line-height: 1.55; margin-bottom: 9px; }
+.cl-tech { display: block; margin-top: 3px; font-size: .76rem; color: #8A837D; line-height: 1.5; border-left: 2px solid #EDE8E4; padding-left: 8px; }
 button.brand-beta { cursor: pointer; font-family: inherit; }
 /* City autocomplete */
 .finder-city-wrap { position: relative; }
@@ -1776,6 +1777,28 @@ body.home-finder-done .home-title {
 .ddr-score .num { font-size: 2.35rem; font-weight: 800; color: var(--accent); letter-spacing: -.03em; line-height: 1.1; }
 .ddr-score .num span { font-size: .9rem; color: var(--muted); font-weight: 600; }
 .ddr-score .badge { margin-top: 4px; }
+/* Score band tint. Same three thresholds ddScore() already uses for the badge
+   (70 / 45), so the card, the number and the badge can never disagree. These
+   must come AFTER `.ddr-score .num` above — equal specificity, later wins. */
+.ddr-score.badge-rendah {
+  background: linear-gradient(160deg, #FEF2F2 0%, #FEE2E2 100%);
+  border-color: #FECACA;
+}
+.ddr-score.badge-sedang {
+  background: linear-gradient(160deg, #FFFBEB 0%, #FEF3C7 100%);
+  border-color: #FDE68A;
+}
+.ddr-score.badge-tinggi {
+  background: linear-gradient(160deg, #F0FDF4 0%, #DCFCE7 100%);
+  border-color: #BBF7D0;
+}
+.ddr-score.badge-rendah .num { color: #DC2626; }
+.ddr-score.badge-sedang .num { color: #F59E0B; }
+.ddr-score.badge-tinggi .num { color: #16A34A; }
+.ddr-score.badge-rendah .lbl { color: #B91C1C; }
+.ddr-score.badge-sedang .lbl { color: #B45309; }
+.ddr-score.badge-tinggi .lbl { color: #15803D; }
+.ddr-score .num span { color: inherit; opacity: .55; }
 .ddr-omset-hero {
   border: 1px solid var(--line); border-radius: 14px;
   padding: 14px 16px; background: #fff; min-width: 0;
@@ -1825,6 +1848,20 @@ body.home-finder-done .home-title {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink);
 }
 .ddr-tile .sub { font-size: .64rem; color: var(--muted); margin-top: 4px; line-height: 1.35; }
+/* The AI tile is the one that should pop — the other four stay flat white so
+   the eye lands on the recommendation first. */
+.ddr-tile--ai {
+  background: linear-gradient(150deg, #F5F3FF 0%, #EDE9FE 100%);
+  border-color: #DDD6FE;
+}
+.ddr-tile--ai .lbl { color: #6D28D9; }
+.ddr-tile--ai .val { color: var(--violet, #7C3AED); }
+.ddr-tile--ai .sub { color: #7C6BA8; }
+.ddr-tile--ai .ico {
+  background: var(--violet, #7C3AED);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, .28);
+}
 .ddr-aksi { margin: 0 0 14px; }
 .ddr-aksi-label {
   font-size: .68rem; font-weight: 750; color: var(--muted);
@@ -1833,12 +1870,13 @@ body.home-finder-done .home-title {
 .ddr-aksi-grid {
   display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
 }
-@media (max-width: 720px) {
+/* Rows are short now, so four still fit across a tablet — only phones wrap. */
+@media (max-width: 560px) {
   .ddr-aksi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .ddr-aksi-btn {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
-  padding: 14px 14px 16px; border-radius: 16px;
+  display: flex; flex-direction: row; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: 14px;
   border: 1px solid var(--line); background: #fff;
   font: inherit; text-align: left; cursor: pointer;
   box-shadow: 0 1px 2px rgba(16, 24, 40, .03);
@@ -1850,15 +1888,18 @@ body.home-finder-done .home-title {
 }
 .ddr-aksi-btn.primary:hover { filter: brightness(.96); background: var(--accent, #B5202A); }
 .ddr-aksi-ico {
-  width: 34px; height: 34px; border-radius: 10px;
+  width: 28px; height: 28px; border-radius: 9px; flex-shrink: 0;
   display: grid; place-items: center;
   background: var(--bg-user); color: var(--ink);
 }
 .ddr-aksi-btn.primary .ddr-aksi-ico {
   background: rgba(255,255,255,.18); color: #fff;
 }
-.ddr-aksi-ico svg { width: 18px; height: 18px; }
-.ddr-aksi-txt { font-size: .78rem; font-weight: 700; line-height: 1.25; }
+.ddr-aksi-ico svg { width: 16px; height: 16px; }
+.ddr-aksi-txt {
+  font-size: .78rem; font-weight: 700; line-height: 1.25;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .ddr-insight-row {
   display: grid; gap: 12px; margin-bottom: 12px;
   grid-template-columns: 1fr;
@@ -2360,6 +2401,100 @@ body.calc-resizing .calc-resize::before { background: var(--accent); }
 }
 .calc-body .sup-meta { font-size: .72rem; color: var(--muted); line-height: 1.5; }
 .calc-body .sup-price { font-size: .74rem; color: var(--accent); font-weight: 700; margin-top: 4px; }
+
+/* ── Tanya AI panel ─────────────────────────────────────────────────────
+   The panel body is the scroll container; the composer pins to its bottom so
+   a long conversation never pushes the input out of reach. */
+#side-body-ai { display: flex; flex-direction: column; gap: 12px; }
+.side-ai-hello {
+  display: flex; gap: 10px; align-items: flex-start;
+  background: linear-gradient(150deg, #F5F3FF 0%, #EDE9FE 100%);
+  border: 1px solid #DDD6FE; border-radius: 14px; padding: 12px 14px;
+}
+.side-ai-hello-ico {
+  flex-shrink: 0; width: 30px; height: 30px; border-radius: 9px;
+  display: grid; place-items: center;
+  background: var(--violet); color: #fff;
+  box-shadow: 0 2px 6px rgba(124, 58, 237, .28);
+}
+.side-ai-hello-title { font-size: .84rem; font-weight: 750; color: #4C1D95; }
+.side-ai-hello p { margin: 3px 0 0; font-size: .73rem; line-height: 1.5; color: #6D28D9; }
+.side-ai-summary {
+  border: 1px solid #DDD6FE; border-radius: 14px; padding: 12px 14px;
+  background: linear-gradient(160deg, #FAF9FF 0%, #F3EFFE 100%);
+}
+.side-ai-summary-head {
+  display: flex; align-items: center; gap: 7px; margin-bottom: 8px;
+  font-size: .7rem; font-weight: 750; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--violet);
+}
+.side-ai-summary-head svg { stroke: var(--violet); }
+.side-ai-bullets { margin: 0; padding-left: 16px; display: grid; gap: 6px; }
+.side-ai-bullets li { font-size: .74rem; line-height: 1.5; color: var(--ink); }
+.side-ai-bullets li::marker { color: var(--violet); }
+.side-ai-empty-note { margin: 0; font-size: .73rem; color: var(--muted); line-height: 1.5; }
+.side-ai-kesimpulan {
+  margin: 10px 0 0; padding-top: 10px; border-top: 1px solid #DDD6FE;
+  font-size: .75rem; font-weight: 650; line-height: 1.5; color: #5B21B6;
+}
+.side-ai-chips { display: grid; gap: 6px; }
+.side-ai-chips[hidden] { display: none; }
+.side-ai-chip {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 9px 12px; border-radius: 12px;
+  border: 1px solid var(--line); background: #fff;
+  font: inherit; font-size: .74rem; font-weight: 600; color: var(--ink);
+  text-align: left; cursor: pointer; transition: border-color .12s, background .12s;
+}
+.side-ai-chip:hover { border-color: #C4B5FD; background: #FAF9FF; }
+.side-ai-chip svg { flex-shrink: 0; stroke: var(--violet); }
+.side-ai-chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-ai-thread { display: grid; gap: 10px; }
+.side-ai-thread:empty { display: none; }
+.side-ai-thread .msg { max-width: 100%; }
+.side-ai-thread .msg-role {
+  font-size: .6rem; font-weight: 750; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--muted); margin-bottom: 4px;
+}
+.side-ai-thread .msg-bubble {
+  font-size: .76rem; line-height: 1.6; color: var(--ink);
+  border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: #fff;
+}
+.side-ai-thread .msg.user .msg-bubble { background: var(--bg-user); }
+.side-ai-thread .msg-bubble p { margin: 0 0 8px; }
+.side-ai-thread .msg-bubble p:last-child { margin-bottom: 0; }
+.side-ai-thread .msg-bubble ul,
+.side-ai-thread .msg-bubble ol { margin: 0 0 8px; padding-left: 18px; }
+.side-ai-form {
+  position: sticky; bottom: 0; display: flex; align-items: flex-end; gap: 8px;
+  border: 1px solid var(--line); border-radius: 14px; padding: 8px 8px 8px 12px;
+  background: #fff; box-shadow: 0 -4px 12px rgba(16, 24, 40, .05);
+}
+.side-ai-form textarea {
+  flex: 1; min-width: 0; border: 0; outline: 0; resize: none;
+  font: inherit; font-size: .78rem; line-height: 1.5; color: var(--ink);
+  background: transparent; max-height: 120px;
+}
+.side-ai-send {
+  flex-shrink: 0; width: 30px; height: 30px; border-radius: 9px; border: 0;
+  display: grid; place-items: center; cursor: pointer;
+  background: var(--violet); color: #fff;
+}
+.side-ai-send:hover { filter: brightness(.94); }
+.side-ai-disclaimer { margin: 0; font-size: .64rem; color: var(--muted); line-height: 1.45; }
+.ddr-tool-pill--ai {
+  display: inline-flex; align-items: center; gap: 6px;
+  border-color: #DDD6FE; background: #F5F3FF; color: #5B21B6;
+}
+.ddr-tool-pill--ai:hover { border-color: #C4B5FD; background: #EDE9FE; }
+.ddr-tool-pill--ai svg { stroke: var(--violet); }
+
+/* Desktop Deep Dive: the AI lives in the panel, so the docked composer would
+   just be a second input for the same thing. Phones keep the docked composer —
+   there the panel is a bottom sheet and cannot host a conversation. */
+@media (min-width: 861px) {
+  body.view-deepdive.calc-open .composer-dock { display: none; }
+}
 .calc-body .sup-card-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .calc-body .sup-btn {
   display: block; background: var(--accent); color: #fff; border: none; border-radius: 8px;
@@ -2800,6 +2935,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
     <div class="calc-head">
       <div class="calc-head-txt">
         <div class="side-tabs" role="tablist" aria-label="Mode panel">
+          <button type="button" class="side-tab" role="tab" id="side-tab-ai" data-side-mode="ai" aria-selected="false">Tanya AI</button>
           <button type="button" class="side-tab active" role="tab" id="side-tab-kalc" data-side-mode="kalkulator" aria-selected="true">Kalkulator</button>
           <button type="button" class="side-tab" role="tab" id="side-tab-komp" data-side-mode="kompetitor" aria-selected="false">Kompetitor</button>
           <button type="button" class="side-tab" role="tab" id="side-tab-serupa" data-side-mode="serupa" aria-selected="false">Serupa</button>
@@ -2811,6 +2947,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
       </button>
     </div>
     <span class="calc-context" id="calc-context" hidden></span>
+    <div class="calc-body" id="side-body-ai" hidden></div>
     <div class="calc-body" id="side-body-kalc"></div>
     <div class="calc-body" id="side-body-komp" hidden></div>
     <div class="calc-body" id="side-body-serupa" hidden></div>
@@ -2819,6 +2956,10 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 </div>
 
 <div class="side-rail" id="side-rail">
+  <button type="button" class="side-rail-btn" id="ai-rail" aria-expanded="false" aria-controls="calc-panel" title="Tanya AI tentang produk ini">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M18 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>
+    <span class="side-rail-label">Tanya AI</span>
+  </button>
   <button type="button" class="side-rail-btn" id="calc-rail" aria-expanded="false" aria-controls="calc-panel" title="Buka Kalkulator">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h2M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h2v4h-2zM8 18h2"/></svg>
     <span class="side-rail-label">Kalkulator</span>
@@ -2973,8 +3114,8 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 </aside>
 
 <script src="/js/daily-spin-wheel.js?v=20260730g" defer></script>
-<script src="/js/laris-tracker.js?v=20260801a" defer></script>
-<script src="/js/changelog.js?v=20260801a" defer></script>
-<script src="/js/gpt-app.js?v=20260801e" defer></script>
+<script src="/js/laris-tracker.js?v=20260801b" defer></script>
+<script src="/js/changelog.js?v=20260731b" defer></script>
+<script src="/js/gpt-app.js?v=20260801f" defer></script>
 </body>
 </html>

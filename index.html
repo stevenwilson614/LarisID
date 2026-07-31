@@ -197,14 +197,14 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260801c';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260801d';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
 </script>
 <link rel="stylesheet" href="/fonts/laris-fonts.css">
 <link rel="stylesheet" href="/styles/daily-spin-wheel.css?v=20260730g">
-<link rel="stylesheet" href="/styles/laris-tracker.css?v=20260801a">
+<link rel="stylesheet" href="/styles/laris-tracker.css?v=20260801b">
 <script src="/js/perf-loader.js"></script>
 
 <!-- Auth-token URL scrubber — MUST run before any analytics (Cloudflare/Clarity).
@@ -7153,8 +7153,10 @@ html,body{overflow-x:clip;max-width:100%;}
                pane's empty state used to be a dead end that sent brand-new users
                off to Discover. -->
           <div class="trk-tabs" role="tablist" aria-label="Jenis pantauan">
-            <button type="button" class="trk-tab is-active" id="trk-tab-btn-daily" role="tab"
-                    aria-selected="true" onclick="trkSetTab('daily')">Pantauan Harian</button>
+            <button type="button" class="trk-tab is-active" id="trk-tab-btn-keyword" role="tab"
+                    aria-selected="true" onclick="trkSetTab('keyword')">Keyword</button>
+            <button type="button" class="trk-tab" id="trk-tab-btn-store" role="tab"
+                    aria-selected="false" onclick="trkSetTab('store')">Toko</button>
             <button type="button" class="trk-tab" id="trk-tab-btn-products" role="tab"
                     aria-selected="false" onclick="trkSetTab('products')">Produk Dilacak<span id="trk-tab-count"></span></button>
           </div>
@@ -10078,8 +10080,8 @@ html,body{overflow-x:clip;max-width:100%;}
 <div id="daily-spin-root" class="dsw-overlay" style="display:none;" aria-hidden="true"></div>
 
 <script defer src="/js/daily-spin-wheel.js?v=20260730g"></script>
-<script defer src="/js/laris-tracker.js?v=20260801a"></script>
-<script defer src="/js/laris-app.js?v=20260801c"></script>
+<script defer src="/js/laris-tracker.js?v=20260801b"></script>
+<script defer src="/js/laris-app.js?v=20260801d"></script>
 
   <!-- ── CONTEXTUAL ONBOARDING HINTS ── -->
   <div id="hint-overlay" aria-hidden="true" onclick="if(event.target===this)nuHintDismiss()">
@@ -10337,7 +10339,8 @@ html,body{overflow-x:clip;max-width:100%;}
 .lid-cl-date{font-size:.72rem;color:#8A837D;letter-spacing:.04em;}
 .lid-cl-title{font-weight:700;font-size:.95rem;margin:2px 0 6px;}
 .lid-cl-entry ul{margin:0;padding-left:18px;}
-.lid-cl-entry li{font-size:.86rem;color:#4A443F;line-height:1.55;margin-bottom:5px;}
+.lid-cl-entry li{font-size:.86rem;color:#4A443F;line-height:1.55;margin-bottom:9px;}
+.lid-cl-tech{display:block;margin-top:3px;font-size:.76rem;color:#8A837D;line-height:1.5;border-left:2px solid #EDE8E4;padding-left:8px;}
 .lid-cl-close{margin-top:16px;padding:8px 16px;border:1px solid #E3DED9;background:#fff;border-radius:8px;font-family:inherit;font-size:.85rem;cursor:pointer;}
 </style>
 <div class="lid-cl-overlay" id="lid-changelog">
@@ -10348,7 +10351,7 @@ html,body{overflow-x:clip;max-width:100%;}
     <button type="button" class="lid-cl-close" id="lid-changelog-close">Tutup</button>
   </div>
 </div>
-<script src="/js/changelog.js?v=20260801a" defer></script>
+<script src="/js/changelog.js?v=20260731b" defer></script>
 <script>
 (function () {
   function fmt(iso){var d=new Date(String(iso)+'T00:00:00');
@@ -10363,7 +10366,11 @@ html,body{overflow-x:clip;max-width:100%;}
     body.innerHTML=log.length?log.map(function(e){
       return '<div class="lid-cl-entry"><div class="lid-cl-date">'+esc(fmt(e.date))+'</div>'+
         '<div class="lid-cl-title">'+esc(e.title||'')+'</div><ul>'+
-        (e.items||[]).map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ul></div>';
+        (e.items||[]).map(function(i){
+          var text=typeof i==='string'?i:(i&&i.text)||'';
+          var tech=typeof i==='string'?'':(i&&i.tech)||'';
+          return '<li>'+esc(text)+(tech?'<span class="lid-cl-tech">'+esc(tech)+'</span>':'')+'</li>';
+        }).join('')+'</ul></div>';
     }).join(''):'<p class="lid-cl-sub">Belum ada catatan perubahan.</p>';
     ov.classList.add('open');
   }
