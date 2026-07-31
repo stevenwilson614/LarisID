@@ -7089,10 +7089,12 @@ function platformFeeDetail(plat, cat, vol){
   return { rows, pctOnly: fee.pctOnly, totalRp: fee.totalRp, note:f.note };
 }
 
-function ddToolPillsHtml() {
+function ddToolPillsHtml(product) {
   // Pills are re-rendered per product, so the supplier probe is gated by simply
   // omitting it rather than toggling display after the fact.
-  const supplier = supplierProbeVisible()
+  const kw = product?.keyword || null;
+  const cat = product?.category || product?.category_canonical || null;
+  const supplier = (supplierProbeVisible() && supplierRelevantFor(kw, cat))
     ? '<button type="button" class="ddr-tool-pill" data-ddr-tool="supplier">Supplier</button>' : '';
   return `<div class="ddr-tool-pills" role="toolbar" aria-label="Alat Deep Dive">
     <button type="button" class="ddr-tool-pill" data-ddr-tool="analisa">Analisa</button>
@@ -7227,14 +7229,20 @@ function ddTilesHtml(product, stats, peers, series, scoreInfo, history) {
   </div>`;
 }
 
-function ddAksiCepatHtml() {
+function ddAksiCepatHtml(product) {
+  const kw = product?.keyword || null;
+  const cat = product?.category || product?.category_canonical || null;
+  // Before launch: keep the button so we can toast "segera hadir" (demand signal).
+  // After/during admin dogfood: only for products in the curated niche.
+  const showSupplier = !supplierProbeVisible() || supplierRelevantFor(kw, cat);
+  const supplierBtn = showSupplier ? `<button type="button" class="ddr-aksi-btn primary" data-ddr-aksi="supplier">
+        <span class="ddr-aksi-ico">${ico('truck', 18)}</span>
+        <span class="ddr-aksi-txt">Cari Supplier</span>
+      </button>` : '';
   return `<div class="ddr-aksi" data-dd-sec="aksi_cepat" role="group" aria-label="Aksi cepat">
     <div class="ddr-aksi-label">Aksi Cepat</div>
     <div class="ddr-aksi-grid">
-      <button type="button" class="ddr-aksi-btn primary" data-ddr-aksi="supplier">
-        <span class="ddr-aksi-ico">${ico('truck', 18)}</span>
-        <span class="ddr-aksi-txt">Cari Supplier</span>
-      </button>
+      ${supplierBtn}
       <button type="button" class="ddr-aksi-btn" data-ddr-aksi="launch">
         <span class="ddr-aksi-ico">${ico('rocket', 18)}</span>
         <span class="ddr-aksi-txt">Buat Rencana Launch</span>
@@ -7335,8 +7343,10 @@ function wireDdrAksiCepat(root, product, peers) {
       e.stopPropagation();
       const aksi = btn.getAttribute('data-ddr-aksi');
       if (aksi === 'supplier') {
-        if (!supplierProbeVisible()) {
-          showToast('Cari Supplier segera hadir');
+        if (!supplierProbeVisible() || !supplierRelevantFor(product?.keyword, product?.category || product?.category_canonical)) {
+          showToast(supplierProbeVisible()
+            ? 'Cari Supplier belum ada untuk kategori produk ini'
+            : 'Cari Supplier segera hadir');
           return;
         }
         runDdrTool('supplier', product, peers, 'aksi_cepat');
@@ -7647,6 +7657,10 @@ function runDdrTool(tool, product, peers, via) {
     if (!supplierProbeVisible()) return;
     _supFilterKeyword  = p.keyword || null;
     _supFilterCategory = p.category || p.category_canonical || null;
+    if (!supplierRelevantFor(_supFilterKeyword, _supFilterCategory)) {
+      // Don't open a Fashion dump for an off-pilot product.
+      return;
+    }
     _supSource  = 'deepdive';
     _supShowAll = false;
     _supLog('supplier_cta_click', {
@@ -7925,10 +7939,10 @@ async function openDeepDive(product, ddOpts = {}) {
         </div>
       </div>
     </div>
-    ${ddToolPillsHtml()}
+    ${ddToolPillsHtml(product)}
     ${ddFeeStripHtml(product)}
     ${ddTilesHtml(product, stats, peers, series, scoreInfo, history)}
-    ${ddAksiCepatHtml()}
+    ${ddAksiCepatHtml(product)}
     <div class="ddr-hscroll ddr-hscroll--graphs">
       <div class="ddr-card" data-dd-sec="tren">
         <h3>Tren Omset &amp; Unit Terjual</h3>
@@ -10152,18 +10166,40 @@ function supLoadData() {
 
 function _supNorm(s) { return String(s == null ? '' : s).trim().toLowerCase(); }
 
+/** True when this product's keyword or category is in the curated pilot. */
+function supplierRelevantFor(keyword, category) {
+  const kw  = _supNorm(keyword);
+  const cat = _supNorm(category);
+  const pilotCats = (_supData?.pilot?.categories || ['Fashion']).map(_supNorm);
+  if (kw && _supData) {
+    const hit = (_supData.suppliers || []).some(s =>
+      s.published && (s.keywords || []).some(k => _supNorm(k) === kw));
+    if (hit) return true;
+  }
+  if (cat && pilotCats.includes(cat)) return true;
+  return false;
+}
+
+/**
+ * Match order: exact keyword -> pilot category -> browse-all.
+ * Off-pilot products return ZERO rows — never dump unrelated suppliers.
+ */
 function _supSelect() {
   const all = (_supData?.suppliers || []).filter(s => s.published);
   const kw  = _supNorm(_supFilterKeyword);
   const cat = _supNorm(_supFilterCategory);
+  const pilotCats = (_supData?.pilot?.categories || []).map(_supNorm);
+  const catInPilot = !!(cat && pilotCats.includes(cat));
+
   if (kw) {
     const hit = all.filter(s => (s.keywords || []).some(k => _supNorm(k) === kw));
     if (hit.length) return { rows: hit, mode: 'keyword' };
+    if (catInPilot) return { rows: all, mode: 'category' };
+    if (cat || _supSource === 'deepdive') return { rows: [], mode: 'offpilot' };
   }
   if (cat) {
-    const pilotCats = (_supData?.pilot?.categories || []).map(_supNorm);
-    if (pilotCats.includes(cat)) return { rows: all, mode: 'category' };
-    return { rows: all, mode: 'offpilot' };
+    if (catInPilot) return { rows: all, mode: 'category' };
+    return { rows: [], mode: 'offpilot' };
   }
   return { rows: all, mode: 'all' };
 }
@@ -10188,8 +10224,8 @@ function _supTint(id) {
 }
 
 /**
- * The seed stores the raw Shopee CDN path; the bare file is ~170 KB, which is
- * absurd for a 44px tile. `_tn.webp` is the CDN's own thumbnail (~12 KB).
+ * Shop logos are Shopee account portraits (`logo` in the seed). The bare CDN
+ * file is ~40 KB; `_tn.webp` is the CDN thumbnail (~3 KB) for a 44px tile.
  */
 function _supThumb(url) {
   const u = String(url || '');
@@ -10197,13 +10233,12 @@ function _supThumb(url) {
 }
 
 /**
- * Shopee gives us no shop avatar, so the thumbnail is the shop's own sample
- * listing photo (see sourceNote) over an initials tile. `onerror` drops the img
- * and reveals the tile, so a dead Shopee CDN link never leaves a broken frame.
+ * Real shop logo when we have one; otherwise an initials tile. `onerror` drops
+ * the img so a dead CDN link never leaves a broken frame.
  */
 function _supLogoHtml(s) {
-  const img = s.sampleImage
-    ? `<img class="sup-logo-img" src="${esc(_supThumb(s.sampleImage))}" alt="" loading="lazy"
+  const img = s.logo
+    ? `<img class="sup-logo-img" src="${esc(_supThumb(s.logo))}" alt="" loading="lazy"
            decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">` : '';
   return `<div class="sup-logo" style="background:${_supTint(s.id)}" aria-hidden="true">
       <span class="sup-logo-txt">${esc(_supInitials(s.name))}</span>${img}
@@ -10285,18 +10320,22 @@ async function fillSupplierContent(opts = {}) {
 
   const { rows, mode } = _supSelect();
   const pilotLabel = _supData?.pilot?.label || 'kategori pilot';
-  setSideContext(mode === 'keyword' ? (_supFilterKeyword || '') : pilotLabel);
-
-  let lead;
-  if (mode === 'keyword') lead = `Supplier untuk “${esc(_supFilterKeyword)}”.`;
-  else if (mode === 'offpilot') lead = `Probe ini baru mencakup ${esc(pilotLabel)}, jadi daftar ini belum cocok persis dengan produk yang kamu buka.`;
-  else lead = `Toko grosir &amp; konveksi untuk ${esc(pilotLabel)}.`;
 
   if (!rows.length) {
-    body.innerHTML = `<p class="side-komp-lead">${lead}</p>
-      <p class="side-empty">Belum ada supplier untuk filter ini.</p>`;
+    setSideContext('');
+    const off = mode === 'offpilot';
+    body.innerHTML = off
+      ? `<p class="side-empty">Belum ada supplier untuk produk ini.<br><br>
+           Cari Supplier baru mengurasi <strong>${esc(pilotLabel)}</strong>.
+           Kami tidak menampilkan supplier kategori lain supaya rekomendasinya tidak menyesatkan.</p>`
+      : `<p class="side-empty">Belum ada supplier untuk filter ini.</p>`;
     return;
   }
+
+  setSideContext(mode === 'keyword' ? (_supFilterKeyword || '') : pilotLabel);
+  const lead = mode === 'keyword'
+    ? `Supplier untuk “${esc(_supFilterKeyword)}”.`
+    : `Toko grosir &amp; konveksi untuk ${esc(pilotLabel)}.`;
 
   const sorted = rows.slice().sort((a, b) => {
     const t = _supTierRank(a.tier) - _supTierRank(b.tier);
@@ -10320,12 +10359,14 @@ async function fillSupplierContent(opts = {}) {
   supMaybeShowSurvey();
 }
 
-/** Sidebar entry visibility. The Deep Dive pill gates itself in ddToolPillsHtml. */
+/** Sidebar entry visibility. Deep Dive pill gates itself in ddToolPillsHtml. */
 function supplierSyncNavVisibility() {
+  const on = supplierProbeVisible();
   const btn = $('btn-supplier');
-  if (btn) btn.style.display = supplierProbeVisible() ? '' : 'none';
+  if (btn) btn.style.display = on ? '' : 'none';
   const tab = $('side-tab-supplier');
-  if (tab) tab.hidden = !supplierProbeVisible();
+  if (tab) tab.hidden = !on;
+  if (on) void supLoadData().catch(() => {});
 }
 
 function supOpenLink(id, which) {

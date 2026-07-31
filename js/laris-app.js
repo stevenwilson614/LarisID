@@ -14374,6 +14374,7 @@ function ddRender(p) {
 
   ddRenderBeginnerVerdict(p);
   journeyApplyDeepDiveChrome();
+  try { supplierSyncDeepDiveCta(); } catch (_) {}
   return _trendRestored;
   })();
 }
@@ -27043,24 +27044,44 @@ function supLoadData() {
 
 function _supNorm(s) { return String(s == null ? '' : s).trim().toLowerCase(); }
 
+/** True when this product's keyword or category is in the curated pilot. */
+function supplierRelevantFor(keyword, category) {
+  const kw  = _supNorm(keyword);
+  const cat = _supNorm(category);
+  const pilotCats = (_supData?.pilot?.categories || ['Fashion']).map(_supNorm);
+  if (kw && _supData) {
+    const hit = (_supData.suppliers || []).some(s =>
+      s.published && (s.keywords || []).some(k => _supNorm(k) === kw));
+    if (hit) return true;
+  }
+  if (cat && pilotCats.includes(cat)) return true;
+  return false;
+}
+
 /**
- * Picks the rows to show. Match order: exact keyword -> pilot category -> all.
- * Returns { rows, mode } where mode drives the honesty note above the list.
+ * Picks the rows to show. Match order: exact keyword -> pilot category -> browse-all.
+ * Off-pilot products (e.g. climbing while the probe is Fashion-only) return
+ * ZERO rows — never dump unrelated suppliers with a disclaimer.
  */
 function _supSelect() {
   const all = (_supData?.suppliers || []).filter(s => s.published);
   const kw  = _supNorm(_supFilterKeyword);
   const cat = _supNorm(_supFilterCategory);
+  const pilotCats = (_supData?.pilot?.categories || []).map(_supNorm);
+  const catInPilot = !!(cat && pilotCats.includes(cat));
 
   if (kw) {
     const hit = all.filter(s => (s.keywords || []).some(k => _supNorm(k) === kw));
     if (hit.length) return { rows: hit, mode: 'keyword' };
+    // Keyword set but no match: only broaden within the same pilot niche.
+    if (catInPilot) return { rows: all, mode: 'category' };
+    if (cat || _supSource === 'deepdive') return { rows: [], mode: 'offpilot' };
   }
   if (cat) {
-    const pilotCats = (_supData?.pilot?.categories || []).map(_supNorm);
-    if (pilotCats.includes(cat)) return { rows: all, mode: 'category' };
-    return { rows: all, mode: 'offpilot' };
+    if (catInPilot) return { rows: all, mode: 'category' };
+    return { rows: [], mode: 'offpilot' };
   }
+  // Intentional browse (nav / sidebar) — no product context.
   return { rows: all, mode: 'all' };
 }
 
@@ -27092,8 +27113,8 @@ function _supTint(id) {
 }
 
 /**
- * The seed stores the raw Shopee CDN path; the bare file is ~170 KB, which is
- * absurd for a 52px tile. `_tn.webp` is the CDN's own thumbnail (~12 KB).
+ * Shop logos are Shopee account portraits (`logo` in the seed). The bare CDN
+ * file is ~40 KB; `_tn.webp` is the CDN thumbnail (~3 KB) for a 52px tile.
  */
 function _supThumb(url) {
   const u = String(url || '');
@@ -27101,13 +27122,12 @@ function _supThumb(url) {
 }
 
 /**
- * Shopee gives us no shop avatar, so the thumbnail is the shop's own sample
- * listing photo (see sourceNote) over an initials tile. `onerror` drops the img
- * and reveals the tile, so a dead Shopee CDN link never leaves a broken frame.
+ * Real shop logo when we have one; otherwise an initials tile. `onerror` drops
+ * the img so a dead CDN link never leaves a broken frame.
  */
 function _supLogoHtml(s) {
-  const img = s.sampleImage
-    ? `<img class="sup-logo-img" src="${_supEsc(_supThumb(s.sampleImage))}" alt="" loading="lazy"
+  const img = s.logo
+    ? `<img class="sup-logo-img" src="${_supEsc(_supThumb(s.logo))}" alt="" loading="lazy"
            decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">` : '';
   return `<div class="sup-logo" style="background:${_supTint(s.id)}" aria-hidden="true">
       <span class="sup-logo-txt">${_supEsc(_supInitials(s.name))}</span>${img}
@@ -27173,18 +27193,22 @@ function supRender() {
     let note = '';
     if (mode === 'keyword') {
       note = `Supplier untuk <strong>${_supEsc(_supFilterKeyword)}</strong>.`;
-    } else if (mode === 'offpilot') {
-      note = `Probe ini baru mencakup <strong>${_supEsc(pilotLabel)}</strong>, jadi daftar di bawah belum cocok persis dengan produk yang kamu buka.`;
     } else if (mode === 'category') {
       note = `Semua supplier untuk <strong>${_supEsc(pilotLabel)}</strong>.`;
     }
+    // offpilot: no note above an empty state — the empty copy explains it.
     noteEl.innerHTML = note ? `<div class="sup-note">${note}</div>` : '';
   }
 
   if (!rows.length) {
+    const off = mode === 'offpilot';
     listEl.innerHTML = `<div class="dash-empty">
-      <div class="dash-empty-title">Belum ada supplier untuk filter ini</div>
-      <div class="dash-empty-sub">Kami baru mengurasi ${_supEsc(pilotLabel)}. Daftar akan bertambah.</div>
+      <div class="dash-empty-title">${off
+        ? 'Belum ada supplier untuk produk ini'
+        : 'Belum ada supplier untuk filter ini'}</div>
+      <div class="dash-empty-sub">${off
+        ? `Cari Supplier baru mengurasi <strong>${_supEsc(pilotLabel)}</strong>. Kami tidak menampilkan supplier kategori lain supaya rekomendasinya tidak menyesatkan.`
+        : `Kami baru mengurasi ${_supEsc(pilotLabel)}. Daftar akan bertambah.`}</div>
     </div>`;
     return;
   }
@@ -27234,10 +27258,36 @@ function supShowAll() { _supShowAll = true; supRender(); }
 /** Shows/hides every probe entry point. Safe to call before the DOM settles. */
 function supplierSyncNavVisibility() {
   const on = supplierProbeVisible();
-  ['dash-nav-suppliers', 'mbn-sheet-suppliers', 'dd-sact-supplier'].forEach(id => {
+  ['dash-nav-suppliers', 'mbn-sheet-suppliers'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = on ? '' : 'none';
   });
+  supplierSyncDeepDiveCta();
+  if (on) {
+    // Prefetch so relevance checks (and logos) are ready when Deep Dive opens.
+    void supLoadData().then(() => supplierSyncDeepDiveCta()).catch(() => {});
+  }
+}
+
+/** Deep Dive CTA only when the open product is in the curated niche. */
+function supplierSyncDeepDiveCta() {
+  const el = document.getElementById('dd-sact-supplier');
+  if (!el) return;
+  if (!supplierProbeVisible()) { el.style.display = 'none'; return; }
+  const l = _ddCurrentP?._listing || null;
+  const kw = l?.keyword || null;
+  const cat = l?.category || _ddCurrentP?.category || null;
+  el.style.display = supplierRelevantFor(kw, cat) ? '' : 'none';
+}
+
+/** Intentional browse from nav — clear any Deep Dive product filter. */
+function supOpenFromNav() {
+  if (!supplierProbeVisible()) return;
+  _supFilterKeyword = null;
+  _supFilterCategory = null;
+  _supSource = 'tab';
+  _supShowAll = false;
+  switchDashView('suppliers');
 }
 
 /** Deep Dive CTA — hands the current product's keyword/category to the view. */
@@ -27246,6 +27296,8 @@ function ddOpenSuppliers() {
   const l = _ddCurrentP?._listing || null;
   _supFilterKeyword  = l?.keyword  || null;
   _supFilterCategory = l?.category || _ddCurrentP?.category || null;
+  // Stale CTA / race before seed loads — never dump Fashion onto an off-pilot product.
+  if (!supplierRelevantFor(_supFilterKeyword, _supFilterCategory)) return;
   _supSource  = 'deepdive';
   _supShowAll = false;
   _supLog('supplier_cta_click', {

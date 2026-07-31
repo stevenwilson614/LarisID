@@ -197,7 +197,7 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260801b';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260801c';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
@@ -5304,7 +5304,7 @@ html,body{overflow-x:clip;max-width:100%;}
           <span>Chrome Extension</span>
         </div>
 
-        <div class="dash-nav-item" id="dash-nav-suppliers" onclick="switchDashView('suppliers')" style="display:none;">
+        <div class="dash-nav-item" id="dash-nav-suppliers" onclick="supOpenFromNav()" style="display:none;">
           <span class="dash-nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><path d="M8 7V5a2 2 0 0 0-4 0v2"/></svg></span>
           <span>Cari Supplier</span>
         </div>
@@ -6477,7 +6477,7 @@ html,body{overflow-x:clip;max-width:100%;}
                   <div class="kd-info-label" id="kd-supplier-name">Cari Supplier</div>
                   <div class="kd-info-sub">MOQ &amp; harga grosir tersedia</div>
                 </div>
-                <button style="flex-shrink:0;padding:5px 10px;border-radius:7px;background:#B5202A;color:#fff;border:none;font-size:.65rem;font-weight:700;cursor:pointer;" onclick="kdClose();switchDashView('suppliers')">Lihat</button>
+                <button style="flex-shrink:0;padding:5px 10px;border-radius:7px;background:#B5202A;color:#fff;border:none;font-size:.65rem;font-weight:700;cursor:pointer;" onclick="kdClose();supOpenFromNav()">Lihat</button>
               </div>
               <div class="kd-info-card">
                 <div class="kd-info-icon">
@@ -10079,7 +10079,7 @@ html,body{overflow-x:clip;max-width:100%;}
 
 <script defer src="/js/daily-spin-wheel.js?v=20260730g"></script>
 <script defer src="/js/laris-tracker.js?v=20260801a"></script>
-<script defer src="/js/laris-app.js?v=20260801b"></script>
+<script defer src="/js/laris-app.js?v=20260801c"></script>
 
   <!-- ── CONTEXTUAL ONBOARDING HINTS ── -->
   <div id="hint-overlay" aria-hidden="true" onclick="if(event.target===this)nuHintDismiss()">
@@ -10316,7 +10316,7 @@ html,body{overflow-x:clip;max-width:100%;}
     <button class="mbn-sheet-item" onclick="switchDashView('keywords');mbnCloseMore()">
       <span class="mbn-sheet-icon" style="background:#F5F3FF;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m3 3L22 7l-3-3"/></svg></span><span>Keyword</span>
     </button>
-    <button class="mbn-sheet-item" id="mbn-sheet-suppliers" style="display:none;" onclick="switchDashView('suppliers');mbnCloseMore()">
+    <button class="mbn-sheet-item" id="mbn-sheet-suppliers" style="display:none;" onclick="supOpenFromNav();mbnCloseMore()">
       <span class="mbn-sheet-icon" style="background:#F0FDF4;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><path d="M8 7V5a2 2 0 0 0-4 0v2"/></svg></span><span>Supplier</span>
     </button>
     <button class="mbn-sheet-item" onclick="switchDashView('estimator');mbnCloseMore()">
