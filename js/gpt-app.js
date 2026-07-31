@@ -10170,6 +10170,46 @@ function _supSelect() {
 
 function _supTierRank(t) { return ({ grosir: 0, pabrik: 0, konveksi: 0, import: 1 })[t] ?? 2; }
 
+const SUP_LOGO_TINTS = ['#B5202A', '#8E191F', '#C9974B', '#1E6B3C', '#27355C'];
+
+function _supInitials(name) {
+  const words = String(name || '').replace(/[^A-Za-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+  if (!words.length) return '?';
+  // Numeric names ("1688 — harga pabrik") read better as digits than as "1H".
+  if (/^\d+$/.test(words[0])) return words[0].slice(0, 2);
+  return (words[0][0] + (words[1] ? words[1][0] : '')).toUpperCase();
+}
+
+function _supTint(id) {
+  const key = String(id || '');
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) % 9973;
+  return SUP_LOGO_TINTS[h % SUP_LOGO_TINTS.length];
+}
+
+/**
+ * The seed stores the raw Shopee CDN path; the bare file is ~170 KB, which is
+ * absurd for a 44px tile. `_tn.webp` is the CDN's own thumbnail (~12 KB).
+ */
+function _supThumb(url) {
+  const u = String(url || '');
+  return /^https:\/\/cf\.shopee\.co\.id\/file\/[\w-]+$/.test(u) ? u + '_tn.webp' : u;
+}
+
+/**
+ * Shopee gives us no shop avatar, so the thumbnail is the shop's own sample
+ * listing photo (see sourceNote) over an initials tile. `onerror` drops the img
+ * and reveals the tile, so a dead Shopee CDN link never leaves a broken frame.
+ */
+function _supLogoHtml(s) {
+  const img = s.sampleImage
+    ? `<img class="sup-logo-img" src="${esc(_supThumb(s.sampleImage))}" alt="" loading="lazy"
+           decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">` : '';
+  return `<div class="sup-logo" style="background:${_supTint(s.id)}" aria-hidden="true">
+      <span class="sup-logo-txt">${esc(_supInitials(s.name))}</span>${img}
+    </div>`;
+}
+
 function _supCardHtml(s) {
   const badges = (s.badges || []).map(b => `<span class="sup-badge">${esc(b)}</span>`).join('');
   const bits = [];
@@ -10183,8 +10223,13 @@ function _supCardHtml(s) {
     ? `<a class="sup-link-sec" href="${esc(s.sampleUrl)}" target="_blank" rel="noopener"
           data-sup-id="${esc(s.id)}" data-sup-target="sample">Lihat contoh produk</a>` : '';
   return `<div class="sup-card">
-    <div class="sup-name">${esc(s.name)}</div>
-    <div class="sup-badges">${badges}</div>
+    <div class="sup-card-head">
+      ${_supLogoHtml(s)}
+      <div class="sup-card-headtxt">
+        <div class="sup-name">${esc(s.name)}</div>
+        <div class="sup-badges">${badges}</div>
+      </div>
+    </div>
     ${meta}${price}
     <div class="sup-card-actions">
       <a class="sup-btn" href="${esc(s.url)}" target="_blank" rel="noopener"

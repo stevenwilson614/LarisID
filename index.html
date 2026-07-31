@@ -197,7 +197,7 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260801a';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260801b';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
@@ -3163,6 +3163,9 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .sup-note{background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:10px 13px;font-size:.78rem;color:#7C2D12;line-height:1.5;margin-bottom:14px;}
 .sup-card{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
 .sup-card-main{flex:1;min-width:200px;}
+.sup-logo{position:relative;flex-shrink:0;width:52px;height:52px;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;align-self:flex-start;}
+.sup-logo-txt{font-size:.95rem;font-weight:800;color:#fff;letter-spacing:.02em;}
+.sup-logo-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .sup-name{font-size:.9rem;font-weight:700;color:#1A1A1A;margin-bottom:6px;}
 .sup-badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;}
 .sup-badge{font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:#F3F4F6;color:#4B5563;border-radius:999px;padding:3px 8px;}
@@ -10076,7 +10079,7 @@ html,body{overflow-x:clip;max-width:100%;}
 
 <script defer src="/js/daily-spin-wheel.js?v=20260730g"></script>
 <script defer src="/js/laris-tracker.js?v=20260801a"></script>
-<script defer src="/js/laris-app.js?v=20260801a"></script>
+<script defer src="/js/laris-app.js?v=20260801b"></script>
 
   <!-- ── CONTEXTUAL ONBOARDING HINTS ── -->
   <div id="hint-overlay" aria-hidden="true" onclick="if(event.target===this)nuHintDismiss()">
