@@ -53,6 +53,10 @@ function _lidLogPageView() {
     const vid = _lidVisitorId();
     if (!vid) return;
     const q = new URLSearchParams(location.search);
+    // Stamp the arm so landing counts can be sliced per variant and direct_gpt
+    // visits excluded from the cohort. Reuses the same _lid_ab_v1 read that
+    // tags activity_events, so page_views and events agree on the arm.
+    const ab = _lidAbStamp({});
     _supabase.rpc('log_page_view', {
       p_visitor_id: vid,
       p_session_id: sid,
@@ -60,6 +64,8 @@ function _lidLogPageView() {
       p_referrer: (document.referrer || '(direct)').slice(0, 300),
       p_utm_source: q.get('utm_source') || '',
       p_is_new_session: isNewSession,
+      p_ab_variant: ab.ab_variant || null,
+      p_ab_via: ab.ab_via || null,
     }).then((res) => {
       // Require ok:true from log_page_view (jsonb). Void/204-with-no-row used to
       // look like success and permanently suppress retries via _lid_pv_sent.
@@ -384,6 +390,10 @@ function funnelStep(step, extra) {
 const FUNNEL_LAST_DAY_KEY = '_lid_funnel_last_day';
 function funnelNoteActiveDay() {
   try {
+    // Only advance the marker once we actually have a user: logUserEvent drops
+    // events when currentUser is null, and consuming the day would then lose
+    // the `return` step permanently for that day.
+    if (!currentUser) return;
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
     const prev = localStorage.getItem(FUNNEL_LAST_DAY_KEY);
     if (prev && prev !== today) funnelStep('return', { prev_day: prev });
@@ -2129,6 +2139,13 @@ async function _authOnSignIn(session) {
 
   _clearSessionRestoring();
   updateAccountUI();
+  // Return-day funnel step. MUST be called from here, not from boot(): at boot
+  // the session is still restoring asynchronously, so `currentUser` is usually
+  // still null and the call was skipped — arm B recorded zero `return` steps
+  // while arm A (which calls this from its own _authOnSignIn) recorded them.
+  // Return rate is the pre-committed A/B decision metric, so the two arms have
+  // to observe it identically.
+  funnelNoteActiveDay();
   await loadCurrentAccess();
   void refreshGptUsage();
   await persistOnboardingPrefs();
@@ -2227,7 +2244,9 @@ async function initSupabase() {
   _lidLogPageView();
   // Seed can_spin / can_claim_feedback once the session has actually landed.
   void gptSeedUsageFlags();
-  if (currentUser) funnelNoteActiveDay();
+  // funnelNoteActiveDay() is NOT called here: at boot the session is still
+  // restoring, so currentUser is null and the event was silently dropped.
+  // It now runs from _authOnSignIn, mirroring arm A.
 }
 
 async function signOut() {

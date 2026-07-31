@@ -154,6 +154,10 @@ function _lidLogPageView() {
     const vid = _lidVisitorId();
     if (!vid) return;
     const q = new URLSearchParams(location.search);
+    // Stamp the arm so landing counts can be sliced per variant and direct_gpt
+    // visits excluded from the cohort. Reuses the same _lid_ab_v1 read that
+    // tags activity_events, so page_views and events agree on the arm.
+    const ab = _lidAbStamp({});
     _supabase.rpc('log_page_view', {
       p_visitor_id: vid,
       p_session_id: sid,
@@ -161,6 +165,8 @@ function _lidLogPageView() {
       p_referrer: (document.referrer || '(direct)').slice(0, 300),
       p_utm_source: q.get('utm_source') || '',
       p_is_new_session: isNewSession,
+      p_ab_variant: ab.ab_variant || null,
+      p_ab_via: ab.ab_via || null,
     }).then((res) => {
       // Require ok:true — void/204-with-no-row used to look like success.
       if (res?.error) return;
@@ -825,9 +831,16 @@ async function loadData() {
 
   if (!rows) {
     try {
-      // Try the efficient RPC function (3 s timeout — skips gracefully if not yet created)
+      // Try the efficient RPC function (skips gracefully if not yet created).
+      // get_product_catalog now reads the mv_product_catalog matview (one row
+      // per keyword, 876 today) instead of a distinct-on over 1.06M listings,
+      // so it answers in milliseconds. It previously exceeded its own 30 s
+      // server cap and NEVER beat the old 3 s abort, which silently pushed
+      // every uncached visitor onto the 5×1000-row fallback below (and that
+      // fallback itself 500s). 8 s leaves room for slow mobile links while
+      // still degrading rather than hanging.
       const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 3000);
+      const t = setTimeout(() => ctrl.abort(), 8000);
       const rpcResp = await fetch(`${SUPA_URL}/rest/v1/rpc/get_product_catalog`, {
         method: 'POST', signal: ctrl.signal,
         headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json' }, body: '{}'
@@ -23047,6 +23060,11 @@ function funnelStep(step, extra) {
 const FUNNEL_LAST_DAY_KEY = '_lid_funnel_last_day';
 function funnelNoteActiveDay() {
   try {
+    // Only advance the marker once we actually have a user: logUserEvent drops
+    // events when currentUser is null, and consuming the day would then lose
+    // the `return` step permanently for that day. Kept identical to arm B
+    // (js/gpt-app.js) so return rate — the A/B decision metric — is symmetric.
+    if (!currentUser) return;
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
     const prev = localStorage.getItem(FUNNEL_LAST_DAY_KEY);
     if (prev && prev !== today) funnelStep('return', { prev_day: prev });
