@@ -6801,23 +6801,158 @@ function ddOmsetHeroHtml(product, peers) {
   </div>`;
 }
 
+// ── E-commerce platform fee estimates (mirrored from Site A) ───────────────
+// Researched Juni 2025. Perkiraan untuk penjual non-Star/reguler dengan
+// program gratis ongkir aktif — tarif berubah & bergantung kategori spesifik.
+const ECOM_FEE_UPDATED = 'Juni 2025';
+const FEE_TIER_BY_CAT = {
+  'Fashion':'A','Elektronik':'A','Motor & Mobil':'A',
+  'Kecantikan':'B','Kesehatan':'B','Rumah':'B','Dapur':'B','Bayi & Anak':'B',
+  'Olahraga':'B','Kamar Mandi':'B',
+  'Hobi & Kerajinan':'C','Alat Tulis':'C','Tanaman':'C','Taman':'C',
+  'Outdoor & Camping':'C','Sepeda':'C','Hewan Peliharaan':'C','Keamanan':'C',
+  'HP & Gadget':'D',
+};
+const ECOM_LOGO = {
+  shopee:    `<svg viewBox="0 0 32 32" width="26" height="26" style="display:block;flex-shrink:0"><rect width="32" height="32" rx="8" fill="#EE4D2D"/><path d="M11.4 12.3a4.6 4.6 0 0 1 9.2 0" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M8.8 12h14.4l-1 11.2a1.6 1.6 0 0 1-1.6 1.45H11.4a1.6 1.6 0 0 1-1.6-1.45z" fill="#fff"/><path d="M16 15.8c-1.5 0-2.55.85-2.55 2.05 0 2.45 4.35 1.6 4.35 3.45 0 .85-.85 1.3-1.85 1.3-1 0-1.75-.4-2.2-1" fill="none" stroke="#EE4D2D" stroke-width="1.2" stroke-linecap="round"/></svg>`,
+  tiktok:    `<svg viewBox="0 0 32 32" width="26" height="26" style="display:block;flex-shrink:0"><rect width="32" height="32" rx="8" fill="#010101"/><path d="M19.3 7.4c.34 2.06 1.66 3.4 3.62 3.6v2.55c-1.18 0-2.36-.4-3.42-1.04v5.55a5.36 5.36 0 1 1-5.36-5.36c.3 0 .58.02.86.07v2.66a2.8 2.8 0 1 0 1.96 2.67V7.4z" fill="#25F4EE" transform="translate(-0.9,-0.6)"/><path d="M19.3 7.4c.34 2.06 1.66 3.4 3.62 3.6v2.55c-1.18 0-2.36-.4-3.42-1.04v5.55a5.36 5.36 0 1 1-5.36-5.36c.3 0 .58.02.86.07v2.66a2.8 2.8 0 1 0 1.96 2.67V7.4z" fill="#FE2C55" transform="translate(0.9,0.6)"/><path d="M19.3 7.4c.34 2.06 1.66 3.4 3.62 3.6v2.55c-1.18 0-2.36-.4-3.42-1.04v5.55a5.36 5.36 0 1 1-5.36-5.36c.3 0 .58.02.86.07v2.66a2.8 2.8 0 1 0 1.96 2.67V7.4z" fill="#fff"/></svg>`,
+  tokopedia: `<svg viewBox="0 0 32 32" width="26" height="26" style="display:block;flex-shrink:0"><rect width="32" height="32" rx="8" fill="#42B549"/><circle cx="12.6" cy="14" r="3.9" fill="#fff"/><circle cx="19.4" cy="14" r="3.9" fill="#fff"/><circle cx="12.6" cy="14" r="1.7" fill="#42B549"/><circle cx="19.4" cy="14" r="1.7" fill="#42B549"/><path d="M14.3 19.4h3.4L16 21.6z" fill="#fff"/></svg>`,
+  lazada:    `<svg viewBox="0 0 32 32" width="26" height="26" style="display:block;flex-shrink:0"><defs><linearGradient id="lzdg-b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF0F64"/><stop offset=".55" stop-color="#FF6A00"/><stop offset="1" stop-color="#2A1A8A"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="#0E1466"/><path d="M16 23.5s-6.2-3.6-6.2-8.1A3.55 3.55 0 0 1 16 12.6a3.55 3.55 0 0 1 6.2 2.8c0 4.5-6.2 8.1-6.2 8.1z" fill="url(#lzdg-b)"/></svg>`,
+  blibli:    `<svg viewBox="0 0 32 32" width="26" height="26" style="display:block;flex-shrink:0"><rect width="32" height="32" rx="8" fill="#0072BC"/><path d="M11.4 12.3a4.6 4.6 0 0 1 9.2 0" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M8.8 12h14.4l-1 11.2a1.6 1.6 0 0 1-1.6 1.45H11.4a1.6 1.6 0 0 1-1.6-1.45z" fill="#fff"/><circle cx="16" cy="18.4" r="2.2" fill="#0072BC"/></svg>`,
+};
+const ECOM_ICON_TROPHY = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>`;
+const PLATFORM_FEES = {
+  shopee:    { label:'Shopee',      logo:ECOM_LOGO.shopee,    comm:{A:10,  B:8.5, C:6.5, D:5,    E:2.5},  program:4.0, flat:1250, src:'seller.shopee.co.id' },
+  tiktok:    { label:'TikTok Shop', logo:ECOM_LOGO.tiktok,    comm:{A:6,   B:5,   C:4,   D:3,    E:2.5},  program:2.0, flat:1250, src:'seller-id.tokopedia.com' },
+  tokopedia: { label:'Tokopedia',   logo:ECOM_LOGO.tokopedia, comm:{A:8,   B:6.5, C:5,   D:4,    E:3.5},  program:2.5, flat:1250, src:'tokopedia.com/help' },
+  lazada:    { label:'Lazada',      logo:ECOM_LOGO.lazada,    comm:{A:8.2, B:6,   C:4,   D:2.43, E:2.43}, program:4.0, admin:1.82, flat:1250, src:'sellercenter.lazada.co.id' },
+  blibli:    { label:'Blibli',      logo:ECOM_LOGO.blibli,    comm:{A:8,   B:7,   C:6,   D:5,    E:2.5},  program:0,   flat:0, note:'Hanya komisi kategori (2–8%, tergantung kategori). Tanpa biaya program gratis ongkir atau biaya proses pesanan — biaya pengiriman terpisah.', src:'seller.blibli.com' },
+};
+function feeTierForCat(cat){ return FEE_TIER_BY_CAT[cat] || 'B'; }
+function ecomFmtPct(n){ return (Math.round(n*10)/10).toFixed(1).replace('.', ',').replace(/,0$/, '') + '%'; }
+function ecomFmtRp(v){
+  v = Math.round(v || 0);
+  if (v >= 1e9) return 'Rp ' + (v/1e9).toFixed(1).replace('.', ',') + 'M';
+  if (v >= 1e6) return 'Rp ' + (v/1e6).toFixed(1).replace('.', ',') + 'jt';
+  if (v >= 1e3) return 'Rp ' + Math.round(v/1e3) + 'rb';
+  return 'Rp ' + v.toLocaleString('id-ID');
+}
+function ddFeeCategory(product) {
+  return normalizeDdChipCat(product)
+    || product?.category
+    || product?.category_canonical
+    || product?._ptype?.category_canonical
+    || product?._ptype?.category
+    || 'Umum';
+}
+function ddFeeVolume(product) {
+  const t = product?._ptype || null;
+  const price = t ? (Number(t.price_median) || 0) : (Number(product?.price) || 0);
+  const spd = Number(product?.sold_per_day);
+  const sales = Number.isFinite(spd) && spd > 0
+    ? Math.round(spd * 30)
+    : (Number(t?.avg_sold) || Number(product?.total_sold) || 0);
+  return { price, sales, omset: sales * price };
+}
+function platformFeePerProduct(plat, cat, price){
+  const f = PLATFORM_FEES[plat], t = feeTierForCat(cat);
+  const pctOnly = +((f.comm[t]||0) + (f.program||0) + (f.admin||0)).toFixed(1);
+  const flat = f.flat || 0;
+  const pctRp = price > 0 ? price * pctOnly / 100 : 0;
+  return { pctOnly, flat, pctRp, totalRp: pctRp + flat };
+}
+function platformFeeDetail(plat, cat, vol){
+  const f = PLATFORM_FEES[plat], t = feeTierForCat(cat);
+  const { price } = vol;
+  const fee = platformFeePerProduct(plat, cat, price);
+  const rows = [];
+  if (f.admin)   rows.push({ name:'Biaya administrasi', where:'Biaya tetap platform tiap transaksi', pct:f.admin, rpPer: price*f.admin/100 });
+  rows.push({ name:'Komisi / biaya kategori', where:'Potongan platform tiap produk terjual', pct:(f.comm[t]||0), rpPer: price*(f.comm[t]||0)/100 });
+  if (f.program) rows.push({ name:'Program Gratis Ongkir & promo', where:'Subsidi ongkir / voucher untuk pembeli', pct:f.program, rpPer: price*f.program/100 });
+  if (f.flat)    rows.push({ name:'Biaya proses pesanan', where:'Rp '+f.flat.toLocaleString('id-ID')+' / order (tetap, bukan %)', pct:null, rpPer: f.flat });
+  return { rows, pctOnly: fee.pctOnly, totalRp: fee.totalRp, note:f.note };
+}
+
 function ddToolPillsHtml() {
   return `<div class="ddr-tool-pills" role="toolbar" aria-label="Alat Deep Dive">
     <button type="button" class="ddr-tool-pill" data-ddr-tool="analisa">Analisa</button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="kalkulator">Kalkulator</button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="kompetitor">Kompetitor</button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="serupa">Serupa</button>
+    <button type="button" class="ddr-tool-pill" data-ddr-tool="biaya">Biaya</button>
   </div>`;
 }
 
 function ddMarketplaceFeeForCategory(category) {
-  const c = String(category || '').toLowerCase();
-  let key = 'shopee_fashion';
-  if (/elektronik|gadget|hp|komputer/.test(c)) key = 'shopee_electronics';
-  else if (/dapur|rumah|bayi|anak|kecantikan|kesehatan|fmcg|food|minum/.test(c)) key = 'shopee_fmcg';
-  const cfg = GPT_KALC_MPS[key] || GPT_KALC_MPS.shopee_fashion;
-  const pct = (cfg.comm + cfg.svc + cfg.tax) * 100;
-  return { label: cfg.label, pct: pct.toFixed(1).replace('.', ',') + '%' };
+  const cat = FEE_TIER_BY_CAT[category] ? category : 'Umum';
+  const fee = platformFeePerProduct('shopee', cat, 0);
+  return { label: PLATFORM_FEES.shopee.label, pct: ecomFmtPct(fee.pctOnly) };
+}
+
+function ddFeeStripHtml(product) {
+  const cat = ddFeeCategory(product);
+  const { price } = ddFeeVolume(product);
+  const order = Object.keys(PLATFORM_FEES)
+    .map(plat => ({ plat, fee: platformFeePerProduct(plat, cat, price) }))
+    .sort((a, b) => price > 0 ? a.fee.totalRp - b.fee.totalRp : a.fee.pctOnly - b.fee.pctOnly);
+  const minVal = order.length ? (price > 0 ? order[0].fee.totalRp : order[0].fee.pctOnly) : 0;
+  const items = order.map(o => {
+    const f = PLATFORM_FEES[o.plat];
+    const best = price > 0 ? o.fee.totalRp === minVal : o.fee.pctOnly === minVal;
+    return `<button type="button" class="ddr-mp-item${best ? ' best' : ''}" data-ddr-tool="biaya" title="Lihat rincian biaya ${esc(f.label)}">
+      <span class="ddr-mp-brand">${f.logo}<span class="ddr-mp-name">${esc(f.label)}</span></span>
+      <span class="ddr-mp-pct">${ecomFmtPct(o.fee.pctOnly)}</span>
+    </button>`;
+  }).join('');
+  return `<div class="ddr-mp" data-dd-sec="biaya_strip" aria-label="Perbandingan biaya marketplace">
+    <div class="ddr-mp-strip">${items}</div>
+  </div>`;
+}
+
+function ddFeesSectionHtml(product) {
+  const cat = ddFeeCategory(product);
+  const vol = ddFeeVolume(product);
+  const { price } = vol;
+  const order = Object.keys(PLATFORM_FEES).sort((a, b) => {
+    const fa = platformFeePerProduct(a, cat, price), fb = platformFeePerProduct(b, cat, price);
+    return price > 0 ? fa.totalRp - fb.totalRp : fa.pctOnly - fb.pctOnly;
+  });
+  const best = order[0];
+  const cards = order.map(plat => {
+    const f = PLATFORM_FEES[plat];
+    const d = platformFeeDetail(plat, cat, vol);
+    const rowsHtml = d.rows.map(r => `<div class="ddr-fee-row">
+        <div class="ddr-fee-row-main"><div class="ddr-fee-row-name">${esc(r.name)}</div><div class="ddr-fee-row-where">${esc(r.where)}</div></div>
+        <div class="ddr-fee-row-amt">${r.pct != null ? `<div class="ddr-fee-row-pct">${ecomFmtPct(r.pct)}</div>` : ''}${price > 0 ? `<div class="ddr-fee-row-rp">${ecomFmtRp(r.rpPer)}/produk</div>` : ''}</div>
+      </div>`).join('');
+    const noteHtml = d.note ? `<div class="ddr-fee-note">${esc(d.note)}</div>` : '';
+    const badge = plat === best ? `<span class="ddr-mp-badge">${ECOM_ICON_TROPHY} Terbaik</span>` : '';
+    return `<div class="ddr-card ddr-fee-card">
+      <div class="ddr-fee-card-head">
+        <div class="ddr-mp-brand">${f.logo}<span class="ddr-mp-name">${esc(f.label)}</span>${badge}</div>
+        <div class="ddr-fee-card-total"><div class="ddr-fee-card-pct">${ecomFmtPct(d.pctOnly)}</div><div class="ddr-fee-card-sub">komisi + program</div></div>
+      </div>
+      ${rowsHtml}
+      <div class="ddr-fee-total-row">
+        <div class="ddr-fee-total-lbl">Total dibayar / produk</div>
+        <div class="ddr-fee-total-amt"><div class="ddr-fee-total-val">${price > 0 ? ecomFmtRp(d.totalRp) : '—'}</div>${price > 0 ? `<div class="ddr-fee-row-rp">per unit terjual</div>` : ''}</div>
+      </div>
+      ${noteHtml}
+      <div class="ddr-fee-src">Sumber: ${esc(f.src)}</div>
+    </div>`;
+  }).join('');
+  const basis = price > 0 ? ` · berdasarkan harga produk ${ecomFmtRp(price)}` : '';
+  return `<div class="ddr-fees-section" data-dd-sec="biaya">
+    <div class="ddr-fees-intro">
+      <div class="ddr-fees-title">Rincian Biaya per Marketplace</div>
+      <div class="ddr-fees-sub">Kategori <b>${esc(cat)}</b>${basis}. Tiap baris menunjukkan ke mana biaya kamu mengalir.</div>
+    </div>
+    <div class="ddr-fees-grid">${cards}</div>
+    <div class="ddr-fees-disclaimer">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div>Belum termasuk <b>modal produk, ongkir, biaya iklan</b>, &amp; <b>PPh Final 0,5%</b> (pajak penghasilan UMKM, berlaku di semua platform). Biaya proses pesanan (Rp/order) ditampilkan terpisah agar tidak membesar jadi persentase di produk murah. Angka adalah <b>perkiraan per ${ECOM_FEE_UPDATED}</b> — tarif tiap platform berubah sewaktu-waktu &amp; bergantung tipe penjual, kategori spesifik, dan program yang diikuti. Selalu cek halaman resmi tiap platform untuk angka final.</div>
+    </div>
+  </div>`;
 }
 
 function ddTilesHtml(product, stats, peers, series) {
@@ -6840,13 +6975,13 @@ function ddTilesHtml(product, stats, peers, series) {
     : unitMo ? unitMo.toLocaleString('id-ID') + ' unit' : '—';
   const unitLbl = t ? 'Rata² Terjual / Listing' : 'Est. Penjualan / Bulan';
   const unitSub = t ? 'Rata-rata unit terjual per listing tipe ini' : rateSub;
-  const fee = ddMarketplaceFeeForCategory(product.category || t?.category_canonical || '');
+  const fee = ddMarketplaceFeeForCategory(ddFeeCategory(product));
   return `<div class="ddr-hscroll ddr-hscroll--tiles">
     <div class="ddr-tile"><span class="ico" style="background:var(--blue-bg);color:var(--blue)">${ico('box', 14)}</span><div class="lbl">${unitLbl}</div><div class="val">${unitVal}</div><div class="sub">${unitSub}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--amber-bg);color:var(--amber)">${ico('tag', 14)}</span><div class="lbl">${t ? 'Harga Umum' : 'Harga Produk'}</div><div class="val">${fmtRp(price)}</div><div class="sub">${t ? `Rentang pasar ${fmtRpShort(t.price_min)} – ${fmtRpShort(t.price_max)}` : vsMed == null ? 'Median pasar belum ada' : vsMed === 0 ? 'Sama dengan median pasar' : `${Math.abs(vsMed)}% ${vsMed > 0 ? 'di atas' : 'di bawah'} median pasar`}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--violet-bg);color:var(--violet)">${ico('pin', 14)}</span><div class="lbl">Lokasi Terbanyak</div><div class="val">${topLoc ? esc(topLoc[0]) : '—'}</div><div class="sub">${topLoc ? `${topLoc[1]} penjual dari kota ini` : 'Belum ada data lokasi'}</div></div>
     <div class="ddr-tile"><span class="ico" style="background:var(--red-bg);color:var(--accent)">${ico('users', 14)}</span><div class="lbl">Kompetitor Aktif</div><div class="val">~${shopN} toko</div><div class="sub">Kompetisi ${esc(stats.komp || '—')}</div></div>
-    <div class="ddr-tile"><span class="ico" style="background:var(--green-bg);color:var(--green)">${ico('tag', 14)}</span><div class="lbl">Biaya Marketplace</div><div class="val">${fee.pct}</div><div class="sub">${esc(fee.label)} (admin + layanan + pajak)</div></div>
+    <div class="ddr-tile"><span class="ico" style="background:var(--green-bg);color:var(--green)">${ico('tag', 14)}</span><div class="lbl">Biaya Marketplace</div><div class="val">${fee.pct}</div><div class="sub">${esc(fee.label)} (komisi + program)</div></div>
   </div>`;
 }
 
@@ -7071,22 +7206,35 @@ function ddPrimeDistImages(chart, points) {
 }
 
 
+function scrollDdrTo(sel) {
+  const panel = $('panel');
+  const target = typeof sel === 'string' ? document.querySelector(sel) : sel;
+  if (!panel || !target) return false;
+  const top = target.getBoundingClientRect().top - panel.getBoundingClientRect().top + panel.scrollTop - 12;
+  panel.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  return true;
+}
+
 function runDdrTool(tool, product, peers, via) {
   const p = product || state.deepdiveProduct || activeChat()?.context?.product || null;
   const peerList = peers || _dd?.peers || [];
-  if (!p && tool !== 'analisa') return;
+  if (!p && tool !== 'analisa' && tool !== 'biaya') return;
   if (tool === 'analisa') {
     if (state.view !== 'deepdive') {
       if (p) void openDeepDive(p);
       return;
     }
-    const panel = $('panel');
-    const target = document.querySelector('.ddr-hscroll--graphs') || document.querySelector('[data-dd-sec="tren"]');
-    if (panel && target) {
-      const top = target.getBoundingClientRect().top - panel.getBoundingClientRect().top + panel.scrollTop - 12;
-      panel.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
-    }
+    scrollDdrTo('.ddr-hscroll--graphs') || scrollDdrTo('[data-dd-sec="tren"]');
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'analisa', via: via || 'click', keyword: p?.keyword || '' });
+    return;
+  }
+  if (tool === 'biaya') {
+    if (state.view !== 'deepdive') {
+      if (p) void openDeepDive(p);
+      return;
+    }
+    scrollDdrTo('[data-dd-sec="biaya"]') || scrollDdrTo('.ddr-mp');
+    void logUserEvent('deepdive_section', { ui: 'gpt', section: 'biaya', via: via || 'click', keyword: p?.keyword || '' });
     return;
   }
   const price = Number(p.price) || 0;
@@ -7370,7 +7518,6 @@ async function openDeepDive(product, ddOpts = {}) {
           <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
         </div>
         <p class="ddr-cat">${esc(ddKotaLabel(product, peers))}</p>
-        ${ddToolPillsHtml()}
       </div>
       <div class="ddr-score-stack">
         <div class="ddr-score">
@@ -7381,6 +7528,8 @@ async function openDeepDive(product, ddOpts = {}) {
         ${ddOmsetHeroHtml(product, peers)}
       </div>
     </div>
+    ${ddToolPillsHtml()}
+    ${ddFeeStripHtml(product)}
     ${ddTilesHtml(product, stats, peers, series)}
     <div class="ddr-hscroll ddr-hscroll--graphs">
       <div class="ddr-card" data-dd-sec="tren">
@@ -7446,6 +7595,7 @@ async function openDeepDive(product, ddOpts = {}) {
       </div>
       ${ddKompetitorTableHtml(share)}
     </div>
+    ${ddFeesSectionHtml(product)}
     <div class="ddr-bottom-space" aria-hidden="true"></div>
   `;
 

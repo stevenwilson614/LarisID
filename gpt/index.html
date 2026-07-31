@@ -1559,6 +1559,7 @@ body.home-finder-done .home-title {
 .ddr-header {
   display: flex; gap: 16px; border: 1px solid var(--line);
   border-radius: 18px; padding: 18px; flex-wrap: wrap;
+  margin-bottom: 12px;
 }
 .ddr-media {
   display: flex; flex-direction: row; align-items: flex-end;
@@ -1665,10 +1666,10 @@ body.home-finder-done .home-title {
 .badge-tinggi { background: var(--green-bg); color: var(--green); }
 .badge-sedang { background: var(--amber-bg); color: var(--amber); }
 .badge-rendah { background: var(--red-bg); color: var(--accent); }
-.ddr-cat { font-size: .72rem; color: var(--muted); margin: 0 0 8px; }
+.ddr-cat { font-size: .72rem; color: var(--muted); margin: 0; }
 .ddr-tool-pills {
   display: flex; flex-wrap: wrap; gap: 6px;
-  margin: 0 0 4px;
+  margin: 0 0 12px;
 }
 .ddr-tool-pill {
   display: inline-flex; align-items: center;
@@ -1678,6 +1679,82 @@ body.home-finder-done .home-title {
   transition: background .12s, border-color .12s;
 }
 .ddr-tool-pill:hover { background: var(--bg-user); border-color: rgba(181,32,42,.35); }
+/* Marketplace fee strip (under pills, above metric tiles) */
+.ddr-mp {
+  background: #fff; border: 1px solid var(--line); border-radius: 14px;
+  padding: 0; margin: 0 0 12px; overflow: hidden;
+}
+.ddr-mp-strip { display: flex; align-items: stretch; }
+.ddr-mp-item {
+  flex: 1; display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; min-width: 0; background: #fff; cursor: pointer;
+  border: none; border-right: 1px solid var(--line);
+  font-family: inherit; text-align: left; transition: background .15s;
+}
+.ddr-mp-item:last-child { border-right: none; }
+.ddr-mp-item:hover { background: var(--bg-user); }
+.ddr-mp-item.best { background: #F0FDF4; }
+.ddr-mp-item.best:hover { background: #DCFCE7; }
+.ddr-mp-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: #FFF7E6; border: 1px solid #C9974B; color: #B45309;
+  font-size: .6rem; font-weight: 800; padding: 3px 8px; border-radius: 6px;
+  text-transform: uppercase; letter-spacing: .02em; margin-left: 6px;
+}
+.ddr-mp-brand { display: flex; align-items: center; gap: 7px; min-width: 0; flex: 1; }
+.ddr-mp-brand svg { width: 22px; height: 22px; flex-shrink: 0; }
+.ddr-mp-name {
+  font-size: .78rem; font-weight: 700; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ddr-mp-pct { font-size: .82rem; font-weight: 800; color: var(--ink-soft); white-space: nowrap; flex-shrink: 0; }
+.ddr-mp-item.best .ddr-mp-pct { color: var(--green); }
+@media (max-width: 720px) {
+  .ddr-mp-strip { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .ddr-mp-strip::-webkit-scrollbar { display: none; }
+  .ddr-mp-item { flex: 0 0 auto; min-width: 148px; }
+}
+/* Full Biaya E-commerce breakdown */
+.ddr-fees-section { margin: 0 0 12px; }
+.ddr-fees-intro { margin-bottom: 14px; }
+.ddr-fees-title { font-size: 1rem; font-weight: 800; color: var(--ink); }
+.ddr-fees-sub { font-size: .74rem; color: var(--muted); margin-top: 3px; line-height: 1.45; }
+.ddr-fees-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;
+}
+.ddr-fee-card { padding: 16px; }
+.ddr-fee-card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-bottom: 12px;
+}
+.ddr-fee-card-total { text-align: right; }
+.ddr-fee-card-pct { font-size: 1.05rem; font-weight: 800; color: var(--accent); line-height: 1; }
+.ddr-fee-card-sub { font-size: .56rem; color: var(--muted); margin-top: 2px; }
+.ddr-fee-row {
+  display: flex; justify-content: space-between; gap: 10px;
+  padding: 7px 0; border-bottom: 1px solid var(--line);
+}
+.ddr-fee-row-main { min-width: 0; }
+.ddr-fee-row-name { font-size: .72rem; font-weight: 600; color: var(--ink-soft); }
+.ddr-fee-row-where { font-size: .6rem; color: var(--muted); }
+.ddr-fee-row-amt { text-align: right; white-space: nowrap; }
+.ddr-fee-row-pct { font-size: .72rem; font-weight: 700; color: var(--ink-soft); }
+.ddr-fee-row-rp { font-size: .6rem; color: var(--muted); }
+.ddr-fee-total-row {
+  display: flex; justify-content: space-between; gap: 10px; padding: 9px 0 6px;
+}
+.ddr-fee-total-lbl { font-size: .72rem; font-weight: 800; color: var(--ink); }
+.ddr-fee-total-amt { text-align: right; white-space: nowrap; }
+.ddr-fee-total-val { font-size: .78rem; font-weight: 800; color: var(--accent); }
+.ddr-fee-note { font-size: .62rem; color: var(--muted); margin-top: 8px; font-style: italic; line-height: 1.4; }
+.ddr-fee-src { font-size: .58rem; color: var(--muted); margin-top: 8px; }
+.ddr-fees-disclaimer {
+  display: flex; align-items: flex-start; gap: 8px;
+  background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 10px;
+  padding: 12px 14px; margin-top: 16px;
+  font-size: .68rem; color: #9A3412; line-height: 1.5;
+}
+.ddr-fees-disclaimer svg { flex-shrink: 0; margin-top: 1px; }
 .ddr-score-stack {
   display: flex; flex-direction: column; gap: 10px;
   align-self: flex-start; min-width: 160px;
@@ -2329,6 +2406,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
           <button type="button" class="ddr-tool-pill" data-pin-tool="kalkulator">Kalkulator</button>
           <button type="button" class="ddr-tool-pill" data-pin-tool="kompetitor">Kompetitor</button>
           <button type="button" class="ddr-tool-pill" data-pin-tool="serupa">Serupa</button>
+          <button type="button" class="ddr-tool-pill" data-pin-tool="biaya">Biaya</button>
         </div>
       </div>
     </div>
