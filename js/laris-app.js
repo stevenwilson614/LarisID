@@ -15769,6 +15769,16 @@ function trkAdapter() {
     addKeyword(kw, cat)         { return rpc('add_tracked_keyword', { p_keyword: kw, p_category: cat || '' }); },
     addStore(shopId, name)      { return rpc('add_tracked_store', { p_shop_id: shopId, p_store_name: name || '' }); },
     removeKeyword(id)           { return rpc('remove_tracked_keyword', { p_id: id }); },
+    setMetrics(list)            { return rpc('set_tracker_metrics', { p_metrics: list }); },
+    async getStoreInfo(shopId) {
+      if (!_supabase || shopId == null) return null;
+      // Head-count only: we want the SKU number, not the rows.
+      const { count } = await _supabase.from('listings_latest')
+        .select('item_id', { count: 'exact', head: true }).eq('shop_id', shopId);
+      const { data } = await _supabase.from('listings_latest')
+        .select('store_name').eq('shop_id', shopId).limit(1);
+      return { store_name: (data && data[0] && data[0].store_name) || '', n_products: count ?? null };
+    },
     removeStore(id)             { return rpc('remove_tracked_store', { p_id: id }); },
 
     async getCategories() {

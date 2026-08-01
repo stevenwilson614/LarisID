@@ -6325,6 +6325,15 @@ function gptTrackerAdapter() {
     addKeyword(kw, cat)    { return rpc('add_tracked_keyword', { p_keyword: kw, p_category: cat || '' }); },
     addStore(id, name)     { return rpc('add_tracked_store', { p_shop_id: id, p_store_name: name || '' }); },
     removeKeyword(id)      { return rpc('remove_tracked_keyword', { p_id: id }); },
+    setMetrics(list)       { return rpc('set_tracker_metrics', { p_metrics: list }); },
+    async getStoreInfo(shopId) {
+      if (!_supabase || shopId == null) return null;
+      const { count } = await _supabase.from('listings_latest')
+        .select('item_id', { count: 'exact', head: true }).eq('shop_id', shopId);
+      const { data } = await _supabase.from('listings_latest')
+        .select('store_name').eq('shop_id', shopId).limit(1);
+      return { store_name: (data && data[0] && data[0].store_name) || '', n_products: count ?? null };
+    },
     removeStore(id)        { return rpc('remove_tracked_store', { p_id: id }); },
 
     async getCategories() {
@@ -6409,11 +6418,18 @@ function gptTrackerAdapter() {
   return _trkAdapterB;
 }
 
-function openTrackerView() {
+function openTrackerView(seed) {
   setView('tracker');
   if (!window.LarisTracker) return;
   window.LarisTracker.mount({ hostId: 'laris-tracker-root', site: 'b', adapter: gptTrackerAdapter() });
-  window.LarisTracker.open({ touch: true });
+  const p = window.LarisTracker.open({ touch: true });
+  // Arriving from a Deep Dive: drop straight into the seeded wizard rather than
+  // the rollup, which for a first-time user would be an empty table.
+  if (seed && seed.keyword) {
+    Promise.resolve(p).then(() => {
+      try { window.LarisTracker.openSetup({ seed }); } catch (_) {}
+    });
+  }
 }
 
 // Native .ans-card chrome wrapping the module's own summary body, so the card
@@ -7560,7 +7576,13 @@ function wireDdrAksiCepat(root, product, peers) {
       }
       if (aksi === 'track') {
         void logUserEvent('deepdive_section', { ui: 'gpt', section: 'track_cta', via: 'aksi_cepat', keyword: product?.keyword || '' });
-        openTrackerView();
+        openTrackerView({
+          keyword: product?.keyword || '',
+          category: product?.category || product?.category_canonical || '',
+          shop_id: product?.shop_id ?? null,
+          store_name: product?.store_name || '',
+          item_id: product?.item_id ?? null,
+        });
         return;
       }
     });

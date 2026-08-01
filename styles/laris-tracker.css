@@ -126,6 +126,130 @@
 .ltk-setup-hero h3 { font-size: 1rem; font-weight: 800; margin: 0 0 6px; }
 .ltk-setup-hero p { font-size: .82rem; color: #6B7280; line-height: 1.55; margin: 0; }
 
+/* ── Setup wizard ──────────────────────────────────────────────────────── */
+.ltk-steps {
+  list-style: none; margin: 0 0 18px; padding: 0;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px;
+}
+.ltk-step { display: flex; align-items: center; gap: 9px; min-width: 0; position: relative; }
+.ltk-step + .ltk-step::before {
+  content: ''; position: absolute; left: -8px; top: 50%; width: 8px; height: 1px; background: #E5E7EB;
+}
+.ltk-step-n {
+  flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center; font-size: .74rem; font-weight: 800;
+  background: #F3F4F6; color: #9CA3AF; border: 1px solid #E5E7EB;
+}
+.ltk-step.is-current .ltk-step-n { background: #B5202A; color: #fff; border-color: #B5202A; }
+.ltk-step.is-done .ltk-step-n { background: #EAF7F0; color: #1A7A46; border-color: #A7D8BF; }
+.ltk-step-txt { min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+.ltk-step-txt b { font-size: .78rem; font-weight: 700; color: #9CA3AF; }
+.ltk-step-txt span { font-size: .68rem; color: #9CA3AF; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ltk-step.is-current .ltk-step-txt b { color: #1A1A1A; }
+.ltk-step.is-done .ltk-step-txt b { color: #374151; }
+
+.ltk-wizard { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+@media (min-width: 900px) { .ltk-wizard { grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; } }
+.ltk-wizmain {
+  background: #fff; border: 1px solid #E5E7EB; border-radius: var(--ltk-r); padding: var(--ltk-pad);
+}
+.ltk-stephead { margin-bottom: 16px; }
+.ltk-stephead h3 { font-size: 1rem; font-weight: 800; margin: 0 0 5px; }
+.ltk-stephead h3 em { font-style: normal; font-weight: 600; color: #9CA3AF; font-size: .82rem; }
+.ltk-stephead p { font-size: .8rem; color: #6B7280; line-height: 1.55; margin: 0; }
+
+.ltk-tips {
+  font-size: .74rem; color: #92400E; line-height: 1.5; margin: 14px 0 0;
+  background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px; padding: 10px 12px;
+}
+.ltk-tips--warn { background: #FEF2F2; border-color: #FCA5A5; color: #B91C1C; }
+/* Marks the row we pre-filled from the product they came from, so it never
+   looks like the app invented a keyword on its own. */
+.ltk-seedtag {
+  display: inline-block; margin-left: 7px; font-size: .62rem; font-weight: 700;
+  color: #8E191F; background: #F9EAE4; border-radius: 999px; padding: 2px 7px;
+  vertical-align: middle;
+}
+
+.ltk-wizfoot {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-top: 20px; padding-top: 16px; border-top: 1px solid #F3F4F6;
+}
+
+/* ── Metric picker ─────────────────────────────────────────────────────── */
+.ltk-mgrid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 560px) { .ltk-mgrid { grid-template-columns: 1fr 1fr; } }
+.ltk-mcard {
+  display: flex; align-items: flex-start; gap: 10px; text-align: left;
+  font: inherit; cursor: pointer; position: relative;
+  background: #fff; border: 1.5px solid #E5E7EB; border-radius: var(--ltk-r);
+  padding: 13px 14px; transition: border-color .15s ease, background .15s ease;
+}
+.ltk-mcard:hover { border-color: #D1D5DB; }
+.ltk-mcard.is-on { border-color: #B5202A; background: #FFF8F7; }
+.ltk-mcard-ico {
+  flex-shrink: 0; width: 30px; height: 30px; border-radius: 9px;
+  display: grid; place-items: center; background: #F3F4F6; color: #6B7280;
+}
+.ltk-mcard-ico svg { width: 16px; height: 16px; }
+.ltk-mcard.is-on .ltk-mcard-ico { background: #F9EAE4; color: #B5202A; }
+.ltk-mcard-txt { min-width: 0; display: flex; flex-direction: column; gap: 2px; padding-right: 18px; }
+.ltk-mcard-txt b { font-size: .82rem; font-weight: 700; }
+.ltk-mcard.is-on .ltk-mcard-txt b { color: #8E191F; }
+.ltk-mcard-txt span { font-size: .71rem; color: #6B7280; line-height: 1.4; }
+.ltk-mcard-tick {
+  position: absolute; top: 11px; right: 12px; width: 18px; height: 18px;
+  border-radius: 5px; display: grid; place-items: center;
+  font-size: .68rem; font-weight: 800;
+  background: #fff; border: 1.5px solid #E5E7EB; color: transparent;
+}
+.ltk-mcard.is-on .ltk-mcard-tick { background: #B5202A; border-color: #B5202A; color: #fff; }
+
+/* ── Seed-shop upsell ──────────────────────────────────────────────────── */
+.ltk-shopoffer {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap; margin-bottom: 16px;
+  background: #F9EAE4; border: 1px solid #F3C6C0; border-radius: var(--ltk-r); padding: 13px 14px;
+}
+.ltk-shopoffer-main { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.ltk-shopoffer-main b { display: block; font-size: .84rem; font-weight: 700; }
+.ltk-shopoffer-main span { display: block; font-size: .72rem; color: #8E191F; margin-top: 1px; }
+
+/* ── Preview rail ──────────────────────────────────────────────────────── */
+.ltk-preview {
+  background: #FAFAFA; border: 1px solid #E5E7EB; border-radius: var(--ltk-r);
+  padding: var(--ltk-pad); position: sticky; top: 12px;
+}
+.ltk-pvhead { font-size: .82rem; font-weight: 800; margin-bottom: 12px; }
+.ltk-pvlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.ltk-pvrow { display: flex; align-items: center; gap: 10px; min-width: 0; flex-wrap: wrap; }
+.ltk-pv-ico {
+  flex-shrink: 0; width: 30px; height: 30px; border-radius: 9px; overflow: hidden;
+  display: grid; place-items: center; background: #F3F4F6;
+}
+.ltk-pv-ico img { width: 100%; height: 100%; object-fit: cover; }
+.ltk-pv-ico--letter { font-size: .78rem; font-weight: 800; color: #6B7280; }
+.ltk-pvname {
+  flex: 1; min-width: 0; font-size: .78rem; font-weight: 700;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ltk-pvname em { display: block; font-style: normal; font-size: .68rem; font-weight: 600; color: #9CA3AF; }
+.ltk-pvchips { display: flex; flex-wrap: wrap; gap: 4px; width: 100%; }
+.ltk-pvchip {
+  font-size: .62rem; font-weight: 700; color: #6B7280;
+  background: #fff; border: 1px solid #E5E7EB; border-radius: 999px; padding: 2px 8px;
+}
+.ltk-pvchip--more { color: #B5202A; border-color: #F3C6C0; background: #F9EAE4; }
+.ltk-pvempty { font-size: .76rem; color: #9CA3AF; line-height: 1.5; margin: 0; }
+.ltk-pvfoot { font-size: .7rem; color: #9CA3AF; line-height: 1.5; margin: 14px 0 0; }
+
+@media (max-width: 620px) {
+  .ltk-steps { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .ltk-step-txt span { display: none; }
+  .ltk-step-txt b { font-size: .68rem; }
+  .ltk-step { gap: 6px; }
+}
+
 /* ── What daily tracking actually gives you ────────────────────────────── */
 .ltk-promise {
   list-style: none; margin: 0 0 12px; padding: 14px;

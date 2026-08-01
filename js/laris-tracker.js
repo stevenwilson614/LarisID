@@ -62,6 +62,8 @@
     stores: [],
     keywordLimit: 5,
     storeLimit: 3,
+    metrics: ['units', 'omset', 'sku', 'toko'],   // display selection
+    allMetrics: ['units', 'omset', 'sku', 'toko', 'harga', 'rating'],
     windowDays: DEFAULT_DAYS,
     asOf: null,
     hasHistory: false,
@@ -78,8 +80,18 @@
   // `sug` holds the live typeahead: which slot is open, the query, and results.
   var draft = {
     cat: null, picked: [], stores: [], busy: false, errors: {},
+    step: 0,                 // 0 keyword · 1 metrik · 2 toko · 3 selesai
+    metrics: [],             // display selection, seeded from S.metrics
+    seed: null,              // {keyword, category, shop_id, store_name, item_id}
+    seedShopSkus: null,      // SKU count for the seed shop, fetched lazily
     sug: { slot: -1, q: '', rows: [], busy: false, kind: 'keyword' },
   };
+  function resetDraft() {
+    draft.cat = null; draft.picked = []; draft.stores = []; draft.busy = false;
+    draft.errors = {}; draft.step = 0; draft.seed = null; draft.seedShopSkus = null;
+    draft.metrics = (S.metrics || []).slice();
+    draft.sug = { slot: -1, q: '', rows: [], busy: false, kind: 'keyword' };
+  }
 
   var inflight = null;
   var timers = { paint: 0, abort: 0, storeSearch: 0, typeahead: 0 };
@@ -453,20 +465,101 @@
     cart:  '<circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h3l2.4 12h11L21 7H6"/>',
     star:  '<path d="M12 3l2.6 5.6 6 .8-4.4 4.2 1.1 6-5.3-2.9L6.7 19.6l1.1-6L3.4 9.4l6-.8z"/>',
     users: '<circle cx="9" cy="8" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><path d="M16 5.5a3.2 3.2 0 010 5.6M18 20a6.4 6.4 0 00-2.2-4.8"/>',
+    box:   '<path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
+    tag:   '<path d="M20.6 13.4L12 22l-9-9V3h10l7.6 7.6a2 2 0 010 2.8z"/><circle cx="7.5" cy="7.5" r="1.3"/>',
   };
+  function svgIco(icon) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+      'stroke-linecap="round" stroke-linejoin="round">' + (PROMISE_ICONS[icon] || '') + '</svg>';
+  }
   function promiseItem(icon, title, sub) {
     return '<li class="ltk-promise-item">' +
-      '<span class="ltk-promise-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-      'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + PROMISE_ICONS[icon] + '</svg></span>' +
+      '<span class="ltk-promise-ico">' + svgIco(icon) + '</span>' +
       '<span class="ltk-promise-txt"><b>' + esc(title) + '</b><span>' + esc(sub) + '</span></span>' +
       '</li>';
   }
 
-  function renderSetup() {
-    var p = pane('setup');
-    if (!p) return;
-    var freeK = Math.max(0, S.keywordLimit - draft.picked.length);
+  /* ── The metric catalogue ───────────────────────────────────────────────
+     Keys map 1:1 onto columns get_tracker_rollup already returns, so choosing
+     metrics is a display decision — every one of these is collected for every
+     tracked keyword regardless. Ticking one later shows its full history
+     immediately, which is why nothing here warns about "starting to collect". */
+  var METRICS = [
+    { key: 'units',  icon: 'cart',  label: 'Units Terjual',   sub: 'Jumlah unit terjual per hari' },
+    { key: 'omset',  icon: 'trend', label: 'Omset (Rp)',      sub: 'Total pendapatan per hari' },
+    { key: 'sku',    icon: 'box',   label: 'SKU / Produk',    sub: 'Jumlah SKU aktif' },
+    { key: 'toko',   icon: 'users', label: 'Toko Aktif',      sub: 'Jumlah toko penjual' },
+    { key: 'harga',  icon: 'tag',   label: 'Harga Rata-rata', sub: 'Rata-rata harga jual' },
+    { key: 'rating', icon: 'star',  label: 'Rating & Ulasan', sub: 'Rata-rata rating & total ulasan' },
+  ];
+  function metricLabel(key) {
+    for (var i = 0; i < METRICS.length; i++) if (METRICS[i].key === key) return METRICS[i].label;
+    return key;
+  }
 
+  /* ── Wizard ─────────────────────────────────────────────────────────────
+     Most people arrive here from a Deep Dive by tapping "Pantau Produk Ini",
+     so the first thing they should see is that product ALREADY in the list,
+     not an empty form asking them to retype what they were just looking at.
+     The steps exist to make the deal legible: what we watch, what you get
+     back, and the optional store upsell — in that order, because "what data
+     do I get" is the question a seller has before "do I also want the shop". */
+  var STEPS = [
+    { key: 'keyword', label: 'Keyword',  sub: 'Apa yang dipantau' },
+    { key: 'metrik',  label: 'Metrik',   sub: 'Data yang kamu mau' },
+    { key: 'toko',    label: 'Toko',     sub: 'Opsional' },
+    { key: 'selesai', label: 'Selesai',  sub: 'Aktif tiap pagi' },
+  ];
+
+  function stepperHtml() {
+    return '<ol class="ltk-steps">' + STEPS.map(function (s, i) {
+      var state = i < draft.step ? ' is-done' : (i === draft.step ? ' is-current' : '');
+      return '<li class="ltk-step' + state + '">' +
+        '<span class="ltk-step-n">' + (i < draft.step ? '&#10003;' : (i + 1)) + '</span>' +
+        '<span class="ltk-step-txt"><b>' + esc(s.label) + '</b><span>' + esc(s.sub) + '</span></span>' +
+        '</li>';
+    }).join('') + '</ol>';
+  }
+
+  // Persistent right rail: what you will be getting, updating as they choose.
+  function previewHtml() {
+    var chips = draft.metrics.slice(0, 4).map(function (m) {
+      return '<span class="ltk-pvchip">' + esc(metricLabel(m).split(' ')[0]) + '</span>';
+    }).join('');
+    var extra = draft.metrics.length > 4
+      ? '<span class="ltk-pvchip ltk-pvchip--more">+' + (draft.metrics.length - 4) + '</span>' : '';
+
+    var rows = draft.picked.map(function (k) {
+      return '<li class="ltk-pvrow">' +
+        catIconHtml(k.category, 30).replace('ltk-cat-ico', 'ltk-pv-ico') +
+        '<span class="ltk-pvname">' + esc(k.keyword) + '</span>' +
+        '<span class="ltk-pvchips">' + chips + extra + '</span>' +
+        '</li>';
+    }).join('');
+
+    var storeRows = draft.stores.map(function (st) {
+      return '<li class="ltk-pvrow">' +
+        '<span class="ltk-pv-ico ltk-pv-ico--letter">' +
+        esc(String(st.store_name || 'T').charAt(0).toUpperCase()) + '</span>' +
+        '<span class="ltk-pvname">' + esc(st.store_name) +
+          (st.n_products ? '<em>' + esc(st.n_products) + ' SKU</em>' : '') + '</span>' +
+        '<span class="ltk-pvchips">' + chips + extra + '</span>' +
+        '</li>';
+    }).join('');
+
+    var body = (rows || storeRows)
+      ? '<ul class="ltk-pvlist">' + rows + storeRows + '</ul>'
+      : '<p class="ltk-pvempty">Belum ada yang dipilih. Tambahkan keyword di sebelah kiri.</p>';
+
+    return '<aside class="ltk-preview">' +
+      '<div class="ltk-pvhead">Preview pantauan kamu</div>' + body +
+      '<p class="ltk-pvfoot">Dilacak setiap pagi &middot; update pertama <b>' +
+        esc(nextUpdateLabel()) + '</b></p>' +
+      '</aside>';
+  }
+
+  function stepKeywordHtml() {
+    var freeK = Math.max(0, S.keywordLimit - draft.picked.length);
     var catSelect =
       '<label class="ltk-sr ltk-catsel">Kategori' +
         '<select class="ltk-select" data-ltk-catsel>' +
@@ -479,11 +572,13 @@
       '</label>';
 
     var slots = '';
-    draft.picked.forEach(function (k, i) {
+    draft.picked.forEach(function (k) {
       var err = draft.errors[k.keyword];
+      var seeded = draft.seed && String(draft.seed.keyword || '').toLowerCase() === String(k.keyword).toLowerCase();
       slots += '<li class="ltk-slot ltk-slot--filled' + (err ? ' ltk-slot--err' : '') + '">' +
         catIconHtml(k.category, 26).replace('ltk-cat-ico', 'ltk-slot-ico') +
-        '<span class="ltk-slot-body"><span class="ltk-slot-kw">' + esc(k.keyword) + '</span>' +
+        '<span class="ltk-slot-body"><span class="ltk-slot-kw">' + esc(k.keyword) +
+          (seeded ? '<span class="ltk-seedtag">dari produk yang kamu buka</span>' : '') + '</span>' +
         '<span class="ltk-slot-meta">' + esc(err || k.meta || k.category || 'Dipantau tiap pagi') + '</span></span>' +
         '<button type="button" class="ltk-slot-x" data-ltk-rm="' + attr(k.keyword) + '" ' +
         'aria-label="Hapus ' + attr(k.keyword) + '">&times;</button></li>';
@@ -502,68 +597,156 @@
         '</div></li>';
     }
 
+    return '<div class="ltk-stephead">' +
+        '<h3>Apa yang mau kamu pantau?</h3>' +
+        '<p>' + (draft.seed
+          ? 'Kami sudah masukkan produk yang barusan kamu buka. Tambah lagi kalau mau — maksimal ' + S.keywordLimit + '.'
+          : 'Ketik keyword yang kamu incar — kami tunjukkan yang cocok beserta jumlah penjualnya.') + '</p>' +
+      '</div>' +
+      '<div class="ltk-slotsec">' +
+        '<div class="ltk-slotsec-head"><span>Keyword kamu</span>' + catSelect +
+          '<span class="ltk-count">' + draft.picked.length + ' / ' + S.keywordLimit + '</span>' +
+        '</div>' +
+        '<ul class="ltk-slots">' + slots + '</ul>' +
+      '</div>' +
+      '<p class="ltk-tips"><b>Tips:</b> keyword spesifik memberi hasil lebih akurat. ' +
+      '"alat latihan tangan adjustable" lebih baik daripada "alat fitness".</p>';
+  }
+
+  function stepMetrikHtml() {
+    var cards = METRICS.map(function (m) {
+      var on = draft.metrics.indexOf(m.key) >= 0;
+      return '<button type="button" class="ltk-mcard' + (on ? ' is-on' : '') + '" ' +
+        'data-ltk-metric="' + attr(m.key) + '" aria-pressed="' + on + '">' +
+        '<span class="ltk-mcard-ico">' + svgIco(m.icon) + '</span>' +
+        '<span class="ltk-mcard-txt"><b>' + esc(m.label) + '</b><span>' + esc(m.sub) + '</span></span>' +
+        '<span class="ltk-mcard-tick" aria-hidden="true">&#10003;</span>' +
+        '</button>';
+    }).join('');
+    return '<div class="ltk-stephead">' +
+        '<h3>Data apa yang kamu mau lihat?</h3>' +
+        '<p>Kami mengukur semuanya tiap pagi — ini cuma memilih kolom mana yang tampil di tabel kamu. ' +
+        'Bisa diubah kapan saja.</p>' +
+      '</div>' +
+      '<div class="ltk-mgrid">' + cards + '</div>' +
+      (draft.metrics.length === 0
+        ? '<p class="ltk-tips ltk-tips--warn">Pilih minimal satu metrik.</p>' : '');
+  }
+
+  function stepTokoHtml() {
+    var seedShop = draft.seed && draft.seed.shop_id ? draft.seed : null;
+    var already = seedShop && draft.stores.some(function (s) {
+      return String(s.shop_id) === String(seedShop.shop_id); });
+
+    // The upsell: they were just looking at this product, so its shop is the
+    // single most likely store they care about. Show its size so "track this
+    // shop" is a decision with a number behind it, not a blind yes.
+    var offer = (seedShop && !already)
+      ? '<div class="ltk-shopoffer">' +
+          '<div class="ltk-shopoffer-main">' +
+            '<span class="ltk-pv-ico ltk-pv-ico--letter">' +
+              esc(String(seedShop.store_name || 'T').charAt(0).toUpperCase()) + '</span>' +
+            '<div><b>' + esc(seedShop.store_name || 'Toko produk ini') + '</b>' +
+            '<span>' + (draft.seedShopSkus == null
+              ? 'Toko dari produk yang kamu buka'
+              : esc(draft.seedShopSkus) + ' produk aktif di toko ini') + '</span></div>' +
+          '</div>' +
+          '<button type="button" class="ltk-btn ltk-btn--primary" data-ltk-act="add-seed-store">' +
+            'Pantau toko ini</button>' +
+        '</div>'
+      : '';
+
     var storeSlots = draft.stores.map(function (st) {
       return '<li class="ltk-slot ltk-slot--filled">' +
+        '<span class="ltk-pv-ico ltk-pv-ico--letter">' +
+          esc(String(st.store_name || 'T').charAt(0).toUpperCase()) + '</span>' +
         '<span class="ltk-slot-body"><span class="ltk-slot-kw">' + esc(st.store_name) + '</span>' +
-        '<span class="ltk-slot-meta">Toko</span></span>' +
+        '<span class="ltk-slot-meta">' + (st.n_products ? esc(st.n_products) + ' produk aktif' : 'Toko') +
+        '</span></span>' +
         '<button type="button" class="ltk-slot-x" data-ltk-rmstore="' + attr(st.shop_id) + '" ' +
         'aria-label="Hapus toko">&times;</button></li>';
     }).join('');
 
+    return '<div class="ltk-stephead">' +
+        '<h3>Mau pantau toko juga? <em>(opsional)</em></h3>' +
+        '<p>Pantau toko untuk lihat berapa SKU yang mereka jalankan, berapa yang laku, ' +
+        'dan kapan mereka menambah produk baru. Boleh dilewati.</p>' +
+      '</div>' + offer +
+      '<div class="ltk-slotsec">' +
+        '<div class="ltk-slotsec-head"><span>Toko yang dipantau</span>' +
+        '<span class="ltk-count">' + draft.stores.length + ' / ' + S.storeLimit + '</span></div>' +
+        '<div class="ltk-storefind">' +
+          '<input type="text" class="ltk-input" data-ltk-storeinput ' +
+          'placeholder="Cari nama toko" autocomplete="off"' +
+          (draft.stores.length >= S.storeLimit ? ' disabled' : '') + '>' +
+          storeSuggestHtml() +
+        '</div>' +
+        (storeSlots ? '<ul class="ltk-slots">' + storeSlots + '</ul>' : '') +
+      '</div>';
+  }
+
+  function stepSelesaiHtml() {
+    return '<div class="ltk-stephead">' +
+        '<h3>Siap dipantau</h3>' +
+        '<p>Mulai besok pagi kamu akan lihat apa yang berubah dari hari ke hari.</p>' +
+      '</div>' +
+      '<ul class="ltk-promise">' +
+        draft.metrics.map(function (k) {
+          for (var i = 0; i < METRICS.length; i++) {
+            if (METRICS[i].key === k) return promiseItem(METRICS[i].icon, METRICS[i].label, METRICS[i].sub);
+          }
+          return '';
+        }).join('') +
+      '</ul>' +
+      '<p class="ltk-promise-foot">Kami scrape keyword kamu tiap pagi dan bandingkan dengan hari ' +
+      'sebelumnya. Update pertama <b>' + esc(nextUpdateLabel()) + '</b>.</p>';
+  }
+
+  function wizFootHtml() {
+    var last = draft.step === STEPS.length - 1;
+    var nothing = draft.picked.length === 0 && draft.stores.length === 0;
+    var blocked = (draft.step === 0 && draft.picked.length === 0) ||
+                  (draft.step === 1 && draft.metrics.length === 0);
+    var nextLabel = draft.step === 0 ? 'Lanjut ke Metrik'
+                  : draft.step === 1 ? 'Lanjut ke Toko (opsional)'
+                  : 'Lanjut';
+    return '<div class="ltk-wizfoot">' +
+      (draft.step > 0
+        ? '<button type="button" class="ltk-btn ltk-btn--ghost" data-ltk-act="step-back">Kembali</button>'
+        : '<span></span>') +
+      (last
+        ? '<button type="button" class="ltk-btn ltk-btn--primary" data-ltk-act="commit"' +
+          (nothing || draft.busy ? ' disabled' : '') + '>' +
+          (draft.busy ? 'Menyimpan...' : 'Aktifkan pantauan') + '</button>'
+        : '<button type="button" class="ltk-btn ltk-btn--primary" data-ltk-act="step-next"' +
+          (blocked ? ' disabled' : '') + '>' + nextLabel + ' &rarr;</button>') +
+      '</div>';
+  }
+
+  function renderSetup() {
+    var p = pane('setup');
+    if (!p) return;
+    var stepHtml = draft.step === 0 ? stepKeywordHtml()
+                 : draft.step === 1 ? stepMetrikHtml()
+                 : draft.step === 2 ? stepTokoHtml()
+                 : stepSelesaiHtml();
+
     p.innerHTML =
       '<div class="ltk-setup">' +
-        '<div class="ltk-setup-hero">' +
-          '<h3>Pilih yang mau kamu pantau tiap pagi</h3>' +
-          '<p>Ketik keyword yang kamu incar — kami tunjukkan yang cocok beserta jumlah penjualnya. ' +
-          'Kamu bisa ganti kapan saja.</p>' +
-        '</div>' +
-        // What the user actually gets. Without this, "pantau keyword" is an
-        // abstraction — the reason to spend a setup step is that these four
-        // numbers get re-measured every morning and diffed against yesterday.
-        '<ul class="ltk-promise">' +
-          promiseItem('trend', 'Omset pasar', 'Total omset keyword ini, tiap hari') +
-          promiseItem('cart', 'Unit terjual', 'Berapa yang laku, bukan cuma harga') +
-          promiseItem('star', 'Ulasan & rating', 'Sinyal paling awal produk mulai naik') +
-          promiseItem('users', 'Penjual & listing baru', 'Kompetitor masuk atau kabur') +
-        '</ul>' +
-        '<p class="ltk-promise-foot">Kami scrape keyword kamu tiap pagi dan bandingkan dengan hari sebelumnya. ' +
-        'Update pertama <b>' + esc(nextUpdateLabel()) + '</b>.</p>' +
-        '<div class="ltk-slotsec">' +
-          '<div class="ltk-slotsec-head"><span>Keyword kamu</span>' +
-            catSelect +
-            '<span class="ltk-count">' + draft.picked.length + ' / ' + S.keywordLimit + '</span>' +
-          '</div>' +
-          '<ul class="ltk-slots">' + slots + '</ul>' +
-        '</div>' +
-        '<div class="ltk-slotsec">' +
-          '<div class="ltk-slotsec-head"><span>Toko yang dipantau <em>(opsional)</em></span>' +
-          '<span class="ltk-count">' + draft.stores.length + ' / ' + S.storeLimit + '</span></div>' +
-          '<div class="ltk-storefind">' +
-            '<input type="text" class="ltk-input" data-ltk-storeinput ' +
-            'placeholder="Cari nama toko" autocomplete="off"' +
-            (draft.stores.length >= S.storeLimit ? ' disabled' : '') + '>' +
-            storeSuggestHtml() +
-          '</div>' +
-          (storeSlots ? '<ul class="ltk-slots">' + storeSlots + '</ul>' : '') +
-        '</div>' +
-        '<div class="ltk-commit">' +
-          '<button type="button" class="ltk-btn ltk-btn--primary" data-ltk-act="commit"' +
-          (draft.picked.length === 0 && draft.stores.length === 0 || draft.busy ? ' disabled' : '') + '>' +
-            (draft.busy ? 'Menyimpan...'
-              : 'Mulai pantau ' + draft.picked.length + ' keyword' +
-                (draft.stores.length ? ' + ' + draft.stores.length + ' toko' : '')) +
-          '</button>' +
-          '<p class="ltk-commit-note">Kami cek keyword kamu tiap pagi. ' +
-          'Update pertama <b>' + esc(nextUpdateLabel()) + '</b>.</p>' +
+        stepperHtml() +
+        '<div class="ltk-wizard">' +
+          '<div class="ltk-wizmain">' + stepHtml + wizFootHtml() + '</div>' +
+          previewHtml() +
         '</div>' +
       '</div>';
 
     // Re-focus the slot the user was typing in — innerHTML replacement loses it.
-    if (draft.sug.kind === 'keyword' && draft.sug.slot >= 0) {
+    if (draft.step === 0 && draft.sug.kind === 'keyword' && draft.sug.slot >= 0) {
       var el = $('[data-ltk-slot="' + draft.sug.slot + '"]');
       if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (_) {} }
     }
   }
+
 
   /* ── collecting screen ──────────────────────────────────────────────── */
 
@@ -1019,6 +1202,19 @@
     }).catch(function () { return null; });
   }
 
+  // How many products the seed shop actually runs. Fetched only when the Toko
+  // step is reached, so a user who never gets there never pays for it.
+  function maybeLoadSeedShop() {
+    if (draft.step !== 2 || !draft.seed || !draft.seed.shop_id) return;
+    if (draft.seedShopSkus != null) return;
+    callP('getStoreInfo', draft.seed.shop_id).then(function (info) {
+      if (!info) return;
+      if (info.n_products != null) draft.seedShopSkus = info.n_products;
+      if (info.store_name && !draft.seed.store_name) draft.seed.store_name = info.store_name;
+      if (draft.step === 2) renderSetup();
+    }).catch(function () {});
+  }
+
   function clearTimers() {
     if (timers.paint) { clearTimeout(timers.paint); timers.paint = 0; }
     if (timers.abort) { clearTimeout(timers.abort); timers.abort = 0; }
@@ -1057,6 +1253,8 @@
           S.stores = tr.stores || [];
           S.keywordLimit = tr.keyword_limit || 5;
           S.storeLimit = tr.store_limit || 3;
+          if (tr.metrics && tr.metrics.length) S.metrics = tr.metrics;
+          if (tr.all_metrics && tr.all_metrics.length) S.allMetrics = tr.all_metrics;
           S.paused = !!tr.paused && !S.resumed;
           S.configured = (S.keywords.length + S.stores.length) > 0;
         }
@@ -1137,12 +1335,25 @@
     draft.stores.forEach(function (st) {
       chain = chain.then(function () { return callP('addStore', st.shop_id, st.store_name); });
     });
+    // Metrics last: a failure here costs the user a column choice, not their
+    // keywords, so it must not be able to abort the adds above.
+    chain = chain.then(function () {
+      var picked = draft.metrics.slice();
+      if (!picked.length) return null;
+      if (picked.join('|') === (S.metrics || []).join('|')) return null;  // unchanged
+      return callP('setMetrics', picked).then(function (r) {
+        if (r && r.metrics) S.metrics = r.metrics;
+      }).catch(function () { /* keep the previous selection */ });
+    });
 
     chain.then(function () {
       draft.busy = false;
-      draft.picked = []; draft.stores = []; draft.cat = null;
-      draft.sug = { slot: -1, q: '', rows: [], busy: false, kind: 'keyword' };
-      call('track', 'tracker_setup_commit', { site: opts.site });
+      var savedMetrics = draft.metrics.slice();
+      resetDraft();
+      draft.metrics = savedMetrics;
+      call('track', 'tracker_setup_commit', {
+        site: opts.site, metrics: savedMetrics.join(','),
+      });
       return refresh({ force: true });
     }).catch(function (e) {
       draft.busy = false; warn('commit failed', e);
@@ -1346,6 +1557,15 @@
       return;
     }
 
+    var mcard = t.closest && t.closest('[data-ltk-metric]');
+    if (mcard) {
+      var mk = mcard.getAttribute('data-ltk-metric');
+      var mi = draft.metrics.indexOf(mk);
+      if (mi >= 0) draft.metrics.splice(mi, 1); else draft.metrics.push(mk);
+      renderSetup();
+      return;
+    }
+
     var chipKw = t.closest && t.closest('[data-ltk-kw]');
     if (chipKw) { call('openDiscovery', chipKw.getAttribute('data-ltk-kw')); return; }
 
@@ -1359,6 +1579,23 @@
         break;
       case 'commit': commit(); break;
       case 'retry': refresh({ force: true }); break;
+      case 'step-next':
+        if (draft.step < 3) { draft.step++; renderSetup(); maybeLoadSeedShop(); }
+        break;
+      case 'step-back':
+        if (draft.step > 0) { draft.step--; renderSetup(); }
+        break;
+      case 'add-seed-store':
+        if (draft.seed && draft.seed.shop_id && draft.stores.length < S.storeLimit) {
+          draft.stores.push({
+            shop_id: draft.seed.shop_id,
+            store_name: draft.seed.store_name || ('Toko ' + draft.seed.shop_id),
+            n_products: draft.seedShopSkus || null,
+          });
+          call('track', 'tracker_seed_store_added', { site: opts.site });
+          renderSetup();
+        }
+        break;
       // requireAuth opens the host's own auth modal and returns false when
       // logged out; if it somehow returns true we already have a session, so
       // just reload the data.
@@ -1573,10 +1810,30 @@
     open: open,
     close: close,
     refresh: refresh,
-    openSetup: function () {
+    // opts.seed = { keyword, category, shop_id, store_name, item_id }
+    // Passed by the Deep Dive "Pantau Produk Ini" button so the wizard opens
+    // with that product already in the list, and its shop offered at the Toko
+    // step. Without a seed this is the plain "Ubah keyword" entry.
+    openSetup: function (o) {
+      o = o || {};
+      resetDraft();
       draft.picked = S.keywords.map(function (k) { return { keyword: k.keyword, category: k.category }; });
       draft.stores = S.stores.map(function (s) { return { shop_id: s.shop_id, store_name: s.store_name }; });
-      draft.sug = { slot: -1, q: '', rows: [], busy: false, kind: 'keyword' };
+
+      var seed = o.seed;
+      if (seed && seed.keyword) {
+        draft.seed = seed;
+        var norm = String(seed.keyword).trim().toLowerCase();
+        var dupe = draft.picked.some(function (k) {
+          return String(k.keyword).trim().toLowerCase() === norm; });
+        // Seed goes FIRST so it is the thing they see, and only if there is
+        // room — silently dropping their existing list to make space would be
+        // worse than not seeding.
+        if (!dupe && draft.picked.length < S.keywordLimit) {
+          draft.picked.unshift({ keyword: String(seed.keyword).trim(), category: seed.category || '' });
+        }
+        call('track', 'tracker_setup_seeded', { site: opts.site, keyword: seed.keyword });
+      }
       loadCategories().then(function () { renderSetup(); showScreen('setup'); });
     },
     setTab: setTab,
