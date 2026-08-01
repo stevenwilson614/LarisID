@@ -18804,64 +18804,54 @@ async function loadCategoryTrends() {
   const dateNote = document.getElementById('ct-date-note');
   if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:#6B7280;font-size:.8rem;">Memuat…</td></tr>';
 
-  // Get two latest scraped_at dates
-  const { data: dates } = await _supabase.from('listings').select('scraped_at').order('scraped_at',{ascending:false}).limit(2);
-  if (!dates?.length) return;
-  const latestDate = dates[0].scraped_at.slice(0,10);
-  const prevDate   = dates[1]?.scraped_at?.slice(0,10) || null;
-  if (dateNote) dateNote.textContent = `Data: ${latestDate}${prevDate ? ' vs '+prevDate : ''}`;
+  // Aggregated server-side by category_trend_summary(). This used to be built in
+  // the browser and was wrong in two ways that cancelled each other into silence:
+  //
+  //   - It took its two comparison days from
+  //       .from('listings').order('scraped_at',desc).limit(2)
+  //     which returns the two latest ROWS, not DAYS. A scrape day writes ~107k
+  //     rows sharing one timestamp, so both came back identical, prevDate ===
+  //     latestDate, the "previous" query became .gte(X).lt(X) -> empty, and
+  //     sold_delta was ALWAYS null. The growth column rendered an em dash
+  //     forever and looked like missing data rather than a bug.
+  //   - It aggregated each category from an unordered .limit(3000) slice of that
+  //     107k-row day (<3%), so every total and average was a sample.
+  //
+  // Growth now comes from listing_deltas — real units gained per product against
+  // each item's own previous scrape — instead of differencing two days'
+  // total_sold sums, which is meaningless when the two days cover different
+  // products, as rotating keyword sets guarantee they do.
+  const panel = await _getLatestPanelDate();
+  const { data: rows, error } = await _supabase
+    .rpc('category_trend_summary', { target_day: panel.date || null });
 
-  // Fetch current and previous data in parallel
-  const [curRes, prevRes] = await Promise.all([
-    _supabase.from('listings').select('category,keyword,price,total_sold,rating').gte('scraped_at', latestDate).limit(3000),
-    prevDate ? _supabase.from('listings').select('category,total_sold').gte('scraped_at', prevDate).lt('scraped_at', latestDate).limit(3000) : { data: [] },
-  ]);
+  if (error || !rows?.length) {
+    if (error) console.warn('category_trend_summary:', error.message);
+    if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:#6B7280;font-size:.8rem;">Belum ada data kategori.</td></tr>';
+    return;
+  }
+  if (dateNote) dateNote.textContent = `Data: ${panel.date || '—'}`;
 
-  const curData  = curRes.data  || [];
-  const prevData = prevRes.data || [];
+  const maxSold = Math.max(...rows.map(r => Number(r.total_sold) || 0), 1);
 
-  // Aggregate current by category
-  const byCat = {};
-  curData.forEach(r => {
-    const c = r.category || 'Lainnya';
-    if (!byCat[c]) byCat[c] = { category:c, keywords:new Set(), listing_count:0, total_sold:0, prices:[], ratings:[], kw_sold:{} };
-    byCat[c].keywords.add(r.keyword);
-    byCat[c].listing_count++;
-    byCat[c].total_sold += r.total_sold || 0;
-    byCat[c].prices.push(r.price || 0);
-    byCat[c].ratings.push(r.rating || 0);
-    const kw = r.keyword || '';
-    byCat[c].kw_sold[kw] = (byCat[c].kw_sold[kw] || 0) + (r.total_sold || 0);
-  });
-
-  // Aggregate previous sold by category for delta
-  const prevByCat = {};
-  prevData.forEach(r => {
-    const c = r.category || 'Lainnya';
-    prevByCat[c] = (prevByCat[c] || 0) + (r.total_sold || 0);
-  });
-
-  const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
-  const maxSold = Math.max(...Object.values(byCat).map(c=>c.total_sold), 1);
-
-  _ctRows = Object.values(byCat).map(c => {
-    const avg_price  = avg(c.prices);
-    const avg_rating = avg(c.ratings);
-    const prev_sold  = prevByCat[c.category] || 0;
-    const sold_delta = prev_sold ? Math.round((c.total_sold - prev_sold) / prev_sold * 100) : null;
-    const top_kw     = Object.entries(c.kw_sold).sort((a,b)=>b[1]-a[1])[0]?.[0] || '—';
-    const score      = Math.round(Math.min(c.total_sold/maxSold*60,60) + (avg_rating/5)*25 + Math.min(c.keywords.size/20*15,15));
+  _ctRows = rows.map(r => {
+    const total_sold = Number(r.total_sold) || 0;
+    const avg_rating = Number(r.avg_rating) || 0;
+    const kw_count   = Number(r.keyword_count) || 0;
     return {
-      category:     c.category,
-      keyword_count: c.keywords.size,
-      listing_count: c.listing_count,
-      total_sold:   c.total_sold,
-      avg_price,
+      category:      r.category,
+      keyword_count: kw_count,
+      listing_count: Number(r.listing_count) || 0,
+      total_sold,
+      avg_price:     Number(r.avg_price) || 0,
       avg_rating,
-      top_kw,
-      sold_delta,
-      score,
-      bar_pct: c.total_sold / maxSold * 100,
+      top_kw:        r.top_kw || '—',
+      sold_delta:    r.sold_delta == null ? null : Number(r.sold_delta),
+      units_gained:  Number(r.units_gained) || 0,
+      score: Math.round(Math.min(total_sold / maxSold * 60, 60)
+                      + (avg_rating / 5) * 25
+                      + Math.min(kw_count / 20 * 15, 15)),
+      bar_pct: total_sold / maxSold * 100,
     };
   });
 
