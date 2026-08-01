@@ -125,6 +125,27 @@ function _lidFireSignupSuccess() {
   } catch (_) {}
 })();
 
+// Win-back pass capture. The claim link is ?pass=<token>, but Google OAuth
+// bounces through accounts.google.com and comes back without the query string,
+// so the token is parked in localStorage BEFORE any redirect and consumed after
+// sign-in (see _winbackMaybeClaim). Last link wins — a newer campaign token
+// should replace an older unconsumed one. The param is stripped from the URL so
+// a refresh does not re-trigger and the token is not left on screen.
+const LID_PASS_KEY = '_lid_pass_token_v1';
+(function _lidCapturePassToken() {
+  try {
+    const q = new URLSearchParams(location.search);
+    const tok = q.get('pass');
+    if (!tok) return;
+    // Real tokens are uuids; anything else is not worth storing or sending.
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tok)) return;
+    localStorage.setItem(LID_PASS_KEY, tok);
+    q.delete('pass');
+    const qs = q.toString();
+    history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
+  } catch (_) {}
+})();
+
 // Anonymous landing/page-view logging → public.page_views via the log_page_view
 // RPC (anon-executable). Powers the admin overview "Landing Views / Unique
 // Visitors / Returning Visitors" cards. Fires once per browser session (per tab
@@ -2461,6 +2482,7 @@ async function _authOnSignIn(session) {
     setTimeout(() => { void backfillUserRegionIfMissing(); }, 1200);
     funnelNoteActiveDay();
     await loadCurrentAccess().catch(() => {});
+    void _winbackMaybeClaim();
     void journeyHydrateFromRemote();
     updateAuthUI();
     loadSavedProducts();
@@ -4495,6 +4517,11 @@ function _usageApply(data) {
   if (data.bonus_dives != null) _usage.bonus_dives = data.bonus_dives;
   if (data.can_spin != null) _usage.can_spin = data.can_spin;
   if (data.can_claim_feedback != null) _usage.can_claim_feedback = data.can_claim_feedback;
+  // Keep the pass window in sync, and clear it when a plain metered response
+  // arrives — otherwise a pass that expires mid-session would keep showing the
+  // infinity meter until the next full reload.
+  if (data.pass_expires_at != null) _usage.pass_expires_at = data.pass_expires_at;
+  else if (data.dive_limit != null) _usage.pass_expires_at = null;
   if (data.seconds_until_reset != null) {
     _usage.seconds_until_reset = data.seconds_until_reset;
     _usageFetchedAt = Date.now();
@@ -4599,14 +4626,56 @@ async function spinClaimFeedbackBonus(feedbackId) {
   } catch (_) {}
 }
 
+// Consume a win-back pass token after sign-in. Idempotent server-side: a second
+// claim returns already_claimed and never re-extends the window.
+async function _winbackMaybeClaim() {
+  let token = null;
+  try { token = localStorage.getItem(LID_PASS_KEY); } catch (_) {}
+  if (!token || !currentUser || !_supabase) return;
+  try {
+    const { data, error } = await _supabase.rpc('claim_comeback_pass', { p_token: token });
+    if (error) return; // keep the token; a transient failure should not burn it
+    // Only clear on a definitive answer. 'wrong_user' means this token belongs to
+    // someone else's inbox, so drop it too — retrying can never succeed.
+    if (data && (data.ok || data.reason === 'wrong_user' || data.reason === 'invalid_token')) {
+      try { localStorage.removeItem(LID_PASS_KEY); } catch (_) {}
+    }
+    if (!data || !data.ok) return;
+    await loadUsage().catch(() => {});
+    void logUserEvent('winback_claim', { reason: data.reason, expires_at: data.expires_at || null });
+    if (data.reason === 'claimed') {
+      try { showCompareToast('Akses riset tanpa batas aktif sampai ' + _winbackPassLabel(data.expires_at) + '.'); } catch (_) {}
+    }
+  } catch (_) {}
+}
+
+// "8 Agustus" — same month names the emails use.
+function _winbackPassLabel(iso) {
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const M = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+               'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    return `${d.getDate()} ${M[d.getMonth()]}`;
+  } catch (_) { return ''; }
+}
+
 function renderUsageUI() {
+  // A comeback pass lifts the DIVE cap only — the AI pool stays metered at
+  // 5/day. Showing infinity for AI would be a straight lie the server then
+  // refuses, so pass holders get the real AI counter.
+  const passUntil = _usage && _usage.pass_expires_at ? _usage.pass_expires_at : null;
   const unlimited = (_usage && _usage.unlimited) || (currentUser && (isPlatformAdmin() || _accessState.isLeader));
   const pill = document.getElementById('dash-topbar-credit-pill');
   const dEl = document.getElementById('dash-usage-dive');
   const aEl = document.getElementById('dash-usage-ai');
   const badge = document.getElementById('dash-nav-credit-badge');
   if (badge) badge.style.display = 'none';
-  if (unlimited) {
+  if (passUntil) {
+    if (dEl) dEl.textContent = '∞';
+    if (aEl) aEl.textContent = `${_usage.ai_used ?? 0}/${_usage.ai_limit ?? 5}`;
+    if (pill) pill.title = `Riset tanpa batas sampai ${_winbackPassLabel(passUntil)}`;
+  } else if (unlimited) {
     if (dEl) dEl.textContent = '∞';
     if (aEl) aEl.textContent = '∞';
     if (pill) pill.title = 'Akses tanpa batas';

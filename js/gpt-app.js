@@ -229,6 +229,40 @@ function _lidFireSignupSuccess() {
   } catch (_) {}
 })();
 
+// Win-back pass capture, mirroring arm A. The claim link is ?pass=<token>, but
+// Google OAuth returns without the query string, so the token is parked in
+// localStorage before any redirect and consumed after sign-in. Last link wins.
+const LID_PASS_KEY = '_lid_pass_token_v1';
+(function _lidCapturePassToken() {
+  try {
+    const q = new URLSearchParams(location.search);
+    const tok = q.get('pass');
+    if (!tok) return;
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tok)) return;
+    localStorage.setItem(LID_PASS_KEY, tok);
+    q.delete('pass');
+    const qs = q.toString();
+    history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
+  } catch (_) {}
+})();
+
+// Consume a win-back pass token after sign-in. Idempotent server-side.
+async function _winbackMaybeClaim() {
+  let token = null;
+  try { token = localStorage.getItem(LID_PASS_KEY); } catch (_) {}
+  if (!token || !currentUser || !_supabase) return;
+  try {
+    const { data, error } = await _supabase.rpc('claim_comeback_pass', { p_token: token });
+    if (error) return; // transient failure must not burn the token
+    if (data && (data.ok || data.reason === 'wrong_user' || data.reason === 'invalid_token')) {
+      try { localStorage.removeItem(LID_PASS_KEY); } catch (_) {}
+    }
+    if (!data || !data.ok) return;
+    void refreshGptUsage();
+    void logUserEvent('winback_claim', { ui: 'gpt', reason: data.reason, expires_at: data.expires_at || null });
+  } catch (_) {}
+}
+
 async function larisEnsureChart() {
   if (typeof Chart !== 'undefined') return;
   if (typeof ensureChartJs === 'function') await ensureChartJs();
@@ -1251,9 +1285,14 @@ function anonLimitHit() {
 
 function noteGptUsage(data) {
   if (!data || typeof data !== 'object') return;
-  if (data.unlimited) {
+  // A win-back pass lifts the DIVE cap only. get_my_usage still reports
+  // unlimited:true for pass holders, but gpt_new_chat keeps metering them, so
+  // trusting that flag here would show an infinity pill the server then refuses.
+  const onPass = !!data.pass_expires_at;
+  if (onPass) _gptUsage.passUntil = data.pass_expires_at;
+  if (data.unlimited && !onPass) {
     _gptUsage.unlimited = true;
-  } else if (data.unlimited === false) {
+  } else if (data.unlimited === false || onPass) {
     _gptUsage.unlimited = false;
   }
   if (data.used != null) _gptUsage.used = Math.max(0, Number(data.used) || 0);
@@ -2175,6 +2214,7 @@ async function _authOnSignIn(session) {
   // to observe it identically.
   funnelNoteActiveDay();
   await loadCurrentAccess();
+  void _winbackMaybeClaim();
   void refreshGptUsage();
   await persistOnboardingPrefs();
   await migrateLocalChatsToDb();
