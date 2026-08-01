@@ -15733,6 +15733,7 @@ function trkAdapter() {
     fmtUnits:   trkUnits,
     fmtDate:    _trkFmtScrapeDate,
     toast:      showCompareToast,
+    isAuthed() { return !!currentUser; },
     requireAuth() {
       if (currentUser) return true;
       try { openAuthModal('login'); } catch (_) {}

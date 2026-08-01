@@ -6295,6 +6295,7 @@ function gptTrackerAdapter() {
     fmtUnits:   fmtSold,
     fmtDate:    formatIdDate,
     toast:      showToast,
+    isAuthed() { return !!currentUser; },
     requireAuth() {
       if (currentUser) return true;
       try { openAuthModal('login', 'gpt_gate_tracker'); } catch (_) {}

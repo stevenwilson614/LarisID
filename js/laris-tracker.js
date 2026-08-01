@@ -845,9 +845,38 @@
       '<div class="ltk-panel"><div class="ltk-skel">' + rows + '</div></div></div>';
   }
 
-  function renderError() {
+  // A logged-out visitor is NOT a failure. Site B shows the tracker button in
+  // the sidebar before login, so anon users reach this surface routinely — and
+  // every tracking RPC is authenticated-only (anon gets 42501 from PostgREST,
+  // or 'not_authenticated' raised inside the function). Telling that user
+  // "gagal memuat, datanya aman" is both wrong and alarming: nothing broke and
+  // they have no data yet. Send them to sign-in instead.
+  function isAuthError(e) {
+    // Ask the host first. Parsing PostgREST codes is a fallback, not the
+    // primary test: if the user simply isn't signed in, EVERY failure on this
+    // surface is an auth failure regardless of the shape it arrives in, and
+    // that verdict shouldn't depend on us anticipating the error format.
+    if (call('isAuthed') === false) return true;
+    if (!e) return false;
+    var code = String(e.code || '');
+    var msg = String((e && e.message) || e || '').toLowerCase();
+    return code === '42501' || code === 'PGRST301' ||
+           msg.indexOf('not_authenticated') >= 0 ||
+           msg.indexOf('permission denied') >= 0 ||
+           msg.indexOf('jwt') >= 0;
+  }
+
+  function renderError(e) {
     var p = pane('error');
     if (!p) return;
+    if (isAuthError(e)) {
+      p.innerHTML = '<div class="ltk-err">' +
+        '<p>Masuk dulu untuk mulai memantau keyword kamu.<br>' +
+        'Kami cek keyword pilihanmu tiap pagi dan tunjukkan apa yang bergerak.</p>' +
+        '<button type="button" class="ltk-btn ltk-btn--primary" data-ltk-act="login">Masuk / Daftar gratis</button>' +
+        '</div>';
+      return;
+    }
     p.innerHTML = '<div class="ltk-err"><p>Gagal memuat pantauan kamu. Datanya aman — coba muat ulang.</p>' +
       '<button type="button" class="ltk-btn ltk-btn--ghost" data-ltk-act="retry">Coba lagi</button></div>';
   }
@@ -995,8 +1024,8 @@
       .catch(function (e) {
         if (gen !== refresh._gen) return S;
         settled = true; clearTimers(); inflight = null;
-        warn('refresh failed', e);
-        renderError(); showScreen('error');
+        if (!isAuthError(e)) warn('refresh failed', e);
+        renderError(e); showScreen('error');
         return S;
       });
 
@@ -1263,6 +1292,10 @@
         break;
       case 'commit': commit(); break;
       case 'retry': refresh({ force: true }); break;
+      // requireAuth opens the host's own auth modal and returns false when
+      // logged out; if it somehow returns true we already have a session, so
+      // just reload the data.
+      case 'login': if (call('requireAuth') === true) refresh({ force: true }); break;
       case 'strip-close': lsWrite({ resumedAckAt: Date.now() }); S.resumed = false; renderStrip(); break;
       case 'how': call('openHowCalculated'); break;
     }
