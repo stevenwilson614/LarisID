@@ -26,3 +26,4 @@ _site/
 
 # local-only test harnesses (never deployed)
 *.harness.html
+.aider*

@@ -1,15 +1,18 @@
 -- ==========================================================================
--- Win‑back campaign and 7‑day unlimited‑dives comeback pass
+-- Win-back campaign and 7-day unlimited-dives comeback pass
 -- ==========================================================================
 
 -- -------------------------- Part A: tables ---------------------------------
 
--- Comeback passes (token‑based one‑time activation)
+-- Comeback passes (token-based one-time activation)
 create table if not exists public.comeback_passes (
   id           uuid primary key default gen_random_uuid(),
   user_id      uuid not null references auth.users(id) on delete cascade,
   campaign     text not null,
   token        uuid not null unique default gen_random_uuid(),
+  -- How long the pass runs once claimed. The clock starts at claim time, not
+  -- grant time, so a slow opener still gets the full window.
+  days         integer not null default 7 check (days between 1 and 30),
   granted_at   timestamptz not null default now(),
   claimed_at   timestamptz,
   expires_at   timestamptz
@@ -138,7 +141,7 @@ begin
 
   update public.comeback_passes
      set claimed_at = now(),
-         expires_at = now() + interval '7 days'
+         expires_at = now() + make_interval(days => v_pass.days)
    where id = v_pass.id
   returning expires_at into v_expires;
 
@@ -168,8 +171,8 @@ begin
     raise exception 'forbidden';
   end if;
 
-  insert into public.comeback_passes (user_id, campaign)
-  values (p_user, p_campaign)
+  insert into public.comeback_passes (user_id, campaign, days)
+  values (p_user, p_campaign, p_days)
   on conflict (user_id, campaign) do nothing
   returning token into v_token;
 
@@ -381,7 +384,7 @@ begin
     );
   end if;
 
-  -- comeback‑pass branch (added)
+  -- comeback-pass branch (added)
   if public._has_comeback_pass(v_me) then
     select * into v_row from public.daily_usage
      where user_id = v_me and day = public._usage_day();
@@ -466,12 +469,15 @@ begin
   return query
   select
     u.id,
-    u.email,
+    u.email::text,
+    -- Same chain as admin_user_directory(): nullif(trim(...)) at every step so
+    -- an empty-string name falls through instead of rendering "Halo ,".
     coalesce(
-      u.raw_user_meta_data->>'display_name',
-      u.raw_user_meta_data->>'full_name',
-      split_part(u.email, '@', 1)
-    ) as display_name,
+      nullif(trim(both from coalesce(u.raw_user_meta_data ->> 'full_name', '')), ''),
+      nullif(trim(both from coalesce(up.display_name, up.first_name || ' ' || up.last_name, '')), ''),
+      split_part(u.email, '@', 1),
+      'User'
+    )::text as display_name,
     u.created_at,
     case
       when coalesce(dcnt.deepdive_count,0) >= 5 then 'C'
@@ -484,7 +490,7 @@ begin
     uop.region,
     up.city,
     uop.categories,
-    coalesce(dcnt.deepdive_count, 0) as deepdive_count,
+    coalesce(dcnt.deepdive_count, 0)::int as deepdive_count,
     act.last_activity_at,
     exists (
       select 1
@@ -518,13 +524,29 @@ begin
   where u.created_at < p_before
     and u.email not like '%stevenwilson614%'
     and u.email_confirmed_at is not null
-  order by segment, dormancy_days asc;
+  -- Warmest first: segment C leads the ramp so early positive engagement
+  -- builds sender reputation before the coldest names go out.
+  order by case
+             when coalesce(dcnt.deepdive_count, 0) >= 5 then 0
+             when coalesce(dcnt.deepdive_count, 0) between 1 and 4 then 1
+             else 2
+           end,
+           dormancy_days asc;
 end;
 $$;
 
 -- -------------------------- Part G: grants ----------------------------------
 
+-- On this self-hosted stack default privileges silently re-grant anon, so every
+-- new function is revoked from anon explicitly before anything is granted.
+revoke execute on function public._has_comeback_pass(uuid) from anon, authenticated;
+revoke execute on function public._comeback_pass_expiry(uuid) from anon, authenticated;
+revoke execute on function public.claim_comeback_pass(uuid) from anon;
+revoke execute on function public.grant_comeback_pass(uuid, integer, text) from anon;
+revoke execute on function public.winback_audience(timestamptz) from anon;
+
 grant execute on function public.claim_comeback_pass(uuid) to authenticated;
+-- These two self-gate on is_platform_admin(); a non-admin caller gets 'forbidden'.
 grant execute on function public.grant_comeback_pass(uuid, integer, text) to authenticated;
 grant execute on function public.winback_audience(timestamptz) to authenticated;
 
