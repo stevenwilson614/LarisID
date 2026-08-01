@@ -1137,6 +1137,15 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 body.view-home .panel-inner,
 body.view-deepdive .panel-inner,
 body.thread-wide .panel-inner { max-width: 1080px; }
+
+/* The tracker is a data table, not prose. The 720px reading measure that suits
+   a chat thread squeezes the rollup columns into a narrow strip with the
+   numbers — the whole point of the screen — crushed against each other. It
+   takes the full panel at every width; the columns use whatever they are given. */
+body.view-tracker .panel-inner { max-width: none; width: 100%; }
+@media (max-width: 760px) {
+  body.view-tracker .panel { padding-left: 10px; padding-right: 10px; }
+}
 body.view-home .composer-dock { display: none; }
 body.view-home .panel { padding-bottom: 28px; } /* dock hidden on home — drop its reserved space */
 body.onboarding-active .composer-dock { display: none; }
@@ -2343,13 +2352,32 @@ body.calc-resizing .calc-resize::before { background: var(--accent); }
 }
 .calc-head-txt { min-width: 0; flex: 1; }
 .side-tabs {
-  display: flex; gap: 4px; min-width: 0;
+  display: flex; gap: 3px; min-width: 0;
   background: var(--bg-user); border-radius: 10px; padding: 3px;
+  /* Tab labels size against the STRIP, not the viewport — the panel is
+     user-resizable (--calc-w, min 320px), so a viewport media query cannot
+     know how much room a tab actually has. */
+  container-type: inline-size;
+  /* Last resort when even the smallest legible label set overflows: scroll
+     rather than clip. Five 10-character labels ("Kalkulator", "Kompetitor")
+     do not fit 320px at any readable size — measured, not assumed. */
+  overflow-x: auto;
+  scrollbar-width: none; -ms-overflow-style: none;
 }
+.side-tabs::-webkit-scrollbar { display: none; }
 .side-tab {
-  flex: 1; min-width: 0; padding: 7px 10px;
-  border-radius: 8px; font: inherit; font-size: .78rem; font-weight: 650;
-  color: var(--ink-soft); white-space: nowrap;
+  /* grow to fill a wide panel, but NEVER shrink below the label — the old
+     `flex: 1; min-width: 0` let the box collapse under the text, which is
+     what cut "Kompetitor" in half. */
+  flex: 1 0 auto;
+  padding: 7px 8px;
+  border-radius: 8px; font: inherit; font-size: .7rem; font-weight: 650;
+  color: var(--ink-soft); white-space: nowrap; letter-spacing: -.015em;
+  text-align: center;
+}
+/* Shrink the type with the panel first; scrolling only kicks in past the floor. */
+@supports (container-type: inline-size) {
+  .side-tab { font-size: clamp(.62rem, 2.9cqi, .78rem); }
 }
 .side-tab:hover { color: var(--ink); }
 .side-tab.active {
@@ -2372,7 +2400,26 @@ body.calc-resizing .calc-resize::before { background: var(--accent); }
   flex: 1; min-height: 0; overflow-y: auto;
   padding: 14px 16px calc(20px + env(safe-area-inset-bottom));
   -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  container-type: inline-size;
 }
+/* The calculator's own grid collapses to one column at a 640px VIEWPORT, which
+   never fires here: the panel is ~320-500px wide while the viewport is desktop.
+   So three columns stayed packed into 320px and the input text was cut off
+   without ever shrinking. Respond to the panel width instead. */
+@supports (container-type: inline-size) {
+  @container (max-width: 460px) {
+    .calc-body .gpt-kalc-grid { grid-template-columns: 1fr; }
+  }
+  @container (max-width: 380px) {
+    .calc-body .gpt-kalc-rp input,
+    .calc-body .gpt-kalc-field select { font-size: .78rem; padding: 7px 8px; }
+    .calc-body .gpt-kalc-rp input { padding-left: 26px; }
+    .calc-body .gpt-kalc-rp span { left: 8px; font-size: .68rem; }
+  }
+}
+/* Long money strings must never be clipped mid-number. */
+.calc-body .gpt-kalc-rp input,
+.calc-body .gpt-kalc-field select { min-width: 0; text-overflow: ellipsis; }
 .calc-body[hidden] { display: none !important; }
 .calc-body .gpt-kalc { margin-top: 0; border: none; padding: 0; background: transparent; }
 .calc-body .ddr-table { min-width: 280px; font-size: .72rem; }
@@ -3118,6 +3165,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script src="/js/daily-spin-wheel.js?v=20260730g" defer></script>
 <script src="/js/laris-tracker.js?v=20260801c" defer></script>
 <script src="/js/changelog.js?v=20260731b" defer></script>
-<script src="/js/gpt-app.js?v=20260801f" defer></script>
+<script src="/js/gpt-app.js?v=20260801d" defer></script>
 </body>
 </html>

@@ -7428,30 +7428,25 @@ function ddTilesHtml(product, stats, peers, series, scoreInfo, history) {
 }
 
 function ddAksiCepatHtml(product) {
-  const kw = product?.keyword || null;
-  const cat = product?.category || product?.category_canonical || null;
-  // Before launch: keep the button so we can toast "segera hadir" (demand signal).
-  // After/during admin dogfood: only for products in the curated niche.
-  const showSupplier = !supplierProbeVisible() || supplierRelevantFor(kw, cat);
-  const supplierBtn = showSupplier ? `<button type="button" class="ddr-aksi-btn primary" data-ddr-aksi="supplier">
-        <span class="ddr-aksi-ico">${ico('truck', 18)}</span>
-        <span class="ddr-aksi-txt">Cari Supplier</span>
-      </button>` : '';
+  // Cari Supplier is ALWAYS in the row. It used to be hidden entirely for
+  // off-pilot products, which made the row's shape depend on which product you
+  // opened — and silently removed the one control that measures demand for
+  // sourcing. The click handler still tells the user when a category has no
+  // suppliers yet; a visible button that explains itself beats a missing one.
   return `<div class="ddr-aksi" data-dd-sec="aksi_cepat" role="group" aria-label="Aksi cepat">
     <div class="ddr-aksi-label">Aksi Cepat</div>
     <div class="ddr-aksi-grid">
-      ${supplierBtn}
+      <button type="button" class="ddr-aksi-btn primary" data-ddr-aksi="supplier">
+        <span class="ddr-aksi-ico">${ico('truck', 18)}</span>
+        <span class="ddr-aksi-txt">Cari Supplier</span>
+      </button>
       <button type="button" class="ddr-aksi-btn" data-ddr-aksi="launch">
         <span class="ddr-aksi-ico">${ico('rocket', 18)}</span>
         <span class="ddr-aksi-txt">Buat Rencana Launch</span>
       </button>
-      <button type="button" class="ddr-aksi-btn" data-ddr-aksi="kompetitor">
-        <span class="ddr-aksi-ico">${ico('target', 18)}</span>
-        <span class="ddr-aksi-txt">Track Kompetitor</span>
-      </button>
-      <button type="button" class="ddr-aksi-btn" data-ddr-aksi="simpan">
-        <span class="ddr-aksi-ico">${ico('bookmark', 18)}</span>
-        <span class="ddr-aksi-txt">Simpan Produk</span>
+      <button type="button" class="ddr-aksi-btn" data-ddr-aksi="track">
+        <span class="ddr-aksi-ico">${ico('eye', 18)}</span>
+        <span class="ddr-aksi-txt">Pantau Produk Ini</span>
       </button>
     </div>
   </div>`;
@@ -7550,29 +7545,23 @@ function wireDdrAksiCepat(root, product, peers) {
         runDdrTool('supplier', product, peers, 'aksi_cepat');
         return;
       }
-      if (aksi === 'kompetitor') {
-        runDdrTool('kompetitor', product, peers, 'aksi_cepat');
-        return;
-      }
       if (aksi === 'launch') {
         const chips = ddComposerChips(product);
         const launch = chips.find(c => c.id === 'launch') || DD_CHIPS.find(c => c.id === 'launch');
         const prompt = launch?.prompt || 'Buat rencana launch untuk produk ini';
         void logUserEvent('deepdive_section', { ui: 'gpt', section: 'launch_cta', via: 'aksi_cepat', keyword: product?.keyword || '' });
-        void handleComposerSubmit(prompt);
+        // Answer in the AI side panel, not the main composer. The user is
+        // reading the Deep Dive; sending them back to the chat thread throws
+        // away the context they are standing in. sideAiSubmit renders into the
+        // panel thread alongside the charts the plan refers to.
+        openAiPanel({ product, peers, via: 'aksi_cepat' });
+        void sideAiSubmit(prompt);
         return;
       }
-      if (aksi === 'simpan') {
-        void logUserEvent('deepdive_section', { ui: 'gpt', section: 'simpan_cta', via: 'aksi_cepat', keyword: product?.keyword || '' });
-        if (window.LarisTracker?.openSetup) {
-          try {
-            setView('tracker');
-            window.LarisTracker.openSetup();
-            showToast('Tambahkan keyword produk ini di Pantauan');
-            return;
-          } catch (_) {}
-        }
-        showToast('Pantauan segera hadir');
+      if (aksi === 'track') {
+        void logUserEvent('deepdive_section', { ui: 'gpt', section: 'track_cta', via: 'aksi_cepat', keyword: product?.keyword || '' });
+        openTrackerView();
+        return;
       }
     });
   });
