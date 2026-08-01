@@ -67,8 +67,8 @@ create or replace function public._has_comeback_pass(p_user uuid)
  returns boolean
  language plpgsql
  stable
- security definer
- set search_path = 'public'
+ SECURITY DEFINER
+ SET search_path TO 'public'
 as $$
 begin
   return exists (
@@ -86,8 +86,8 @@ create or replace function public._comeback_pass_expiry(p_user uuid)
  returns timestamptz
  language plpgsql
  stable
- security definer
- set search_path = 'public'
+ SECURITY DEFINER
+ SET search_path TO 'public'
 as $$
 declare
   expiry timestamptz;
@@ -106,8 +106,8 @@ $$;
 create or replace function public.claim_comeback_pass(p_token uuid)
  returns json
  language plpgsql
- security definer
- set search_path = 'public'
+ SECURITY DEFINER
+ SET search_path TO 'public'
 as $$
 declare
   v_me       uuid := auth.uid();
@@ -158,8 +158,8 @@ create or replace function public.grant_comeback_pass(
 )
  returns json
  language plpgsql
- security definer
- set search_path = 'public'
+ SECURITY DEFINER
+ SET search_path TO 'public'
 as $$
 declare
   v_token uuid;
@@ -190,8 +190,8 @@ $$;
 create or replace function public.use_dive(p_product_key text)
  returns json
  language plpgsql
- security definer
- set search_path = 'public'
+ SECURITY DEFINER
+ SET search_path TO 'public'
 as $$
 declare
   v_me      uuid := auth.uid();
@@ -352,8 +352,8 @@ create or replace function public.get_my_usage()
  returns json
  language plpgsql
  stable
- security definer
- set search_path = 'public'
+ SECURITY DEFINER
+ SET search_path TO 'public'
 as $$
 declare
   v_me    uuid := auth.uid();
@@ -455,8 +455,8 @@ create or replace function public.winback_audience(
  )
  language plpgsql
  stable
- security definer
- set search_path = 'public'
+ SECURITY DEFINER
+ SET search_path TO 'public'
 as $$
 begin
   if not public.is_platform_admin() then
