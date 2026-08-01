@@ -22,7 +22,7 @@ create unique index if not exists uq_comeback_passes_user_campaign
   on public.comeback_passes (user_id, campaign);
 
 alter table public.comeback_passes enable row level security;
-revoke all privileges on public.comeback_passes from anon, authenticated;
+revoke all privileges on table public.comeback_passes from anon, authenticated;
 
 -- Email suppressions (unsubscribe, complaint, bounce)
 create table if not exists public.email_suppressions (
@@ -35,7 +35,7 @@ create unique index if not exists uq_email_suppressions_lower_email
   on public.email_suppressions (lower(email));
 
 alter table public.email_suppressions enable row level security;
-revoke all privileges on public.email_suppressions from anon, authenticated;
+revoke all privileges on table public.email_suppressions from anon, authenticated;
 
 -- Email sends log
 create table if not exists public.email_sends (
@@ -58,7 +58,7 @@ create unique index if not exists uq_email_sends_campaign_lower_email
   on public.email_sends (campaign, lower(email));
 
 alter table public.email_sends enable row level security;
-revoke all privileges on public.email_sends from anon, authenticated;
+revoke all privileges on table public.email_sends from anon, authenticated;
 
 -- -------------------------- Part B: helpers ---------------------------------
 
@@ -68,7 +68,7 @@ create or replace function public._has_comeback_pass(p_user uuid)
  language plpgsql
  stable
  security definer
- SET search_path TO 'public'
+ set search_path = 'public'
 as $$
 begin
   return exists (
@@ -87,7 +87,7 @@ create or replace function public._comeback_pass_expiry(p_user uuid)
  language plpgsql
  stable
  security definer
- SET search_path TO 'public'
+ set search_path = 'public'
 as $$
 declare
   expiry timestamptz;
@@ -107,7 +107,7 @@ create or replace function public.claim_comeback_pass(p_token uuid)
  returns json
  language plpgsql
  security definer
- SET search_path TO 'public'
+ set search_path = 'public'
 as $$
 declare
   v_me       uuid := auth.uid();
@@ -159,7 +159,7 @@ create or replace function public.grant_comeback_pass(
  returns json
  language plpgsql
  security definer
- SET search_path TO 'public'
+ set search_path = 'public'
 as $$
 declare
   v_token uuid;
@@ -191,7 +191,7 @@ create or replace function public.use_dive(p_product_key text)
  returns json
  language plpgsql
  security definer
- SET search_path TO 'public'
+ set search_path = 'public'
 as $$
 declare
   v_me      uuid := auth.uid();
@@ -353,7 +353,7 @@ create or replace function public.get_my_usage()
  language plpgsql
  stable
  security definer
- SET search_path TO 'public'
+ set search_path = 'public'
 as $$
 declare
   v_me    uuid := auth.uid();
@@ -456,7 +456,7 @@ create or replace function public.winback_audience(
  language plpgsql
  stable
  security definer
- SET search_path TO 'public'
+ set search_path = 'public'
 as $$
 begin
   if not public.is_platform_admin() then
@@ -524,9 +524,9 @@ $$;
 
 -- -------------------------- Part G: grants ----------------------------------
 
-grant execute on function public.claim_comeback_pass to authenticated;
-grant execute on function public.grant_comeback_pass   to authenticated;
-grant execute on function public.winback_audience        to authenticated;
+grant execute on function public.claim_comeback_pass(uuid) to authenticated;
+grant execute on function public.grant_comeback_pass(uuid, integer, text) to authenticated;
+grant execute on function public.winback_audience(timestamptz) to authenticated;
 
 -- PostgREST needs a schema cache reload after this migration.
 -- Run: NOTIFY pgrst, 'reload schema';
