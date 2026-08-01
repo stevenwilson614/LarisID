@@ -1,27 +1,21 @@
+// One-click unsubscribe for win-back email. Unauthenticated by design: it is
+// opened straight from an inbox, so it must be listed in NO_VERIFY_JWT_FUNCTIONS.
+//
+// GET shows a confirm button, POST performs the suppression. That split matters:
+// mail scanners and link prefetchers follow GET links, and a GET that
+// unsubscribed on sight would silently drop people who never clicked. Gmail's
+// List-Unsubscribe-Post one-click sends a POST, so the header path still works
+// in a single step.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const SECRET = Deno.env.get('WINBACK_UNSUB_SECRET')
-if (!SECRET) throw new Error('WINBACK_UNSUB_SECRET is not set')
-
-function base64urlDecodeB64(str: string): string {
+function base64urlToBytes(str: string): Uint8Array {
   let s = str.replace(/-/g, '+').replace(/_/g, '/')
   while (s.length % 4) s += '='
-  return atob(s)
-}
-
-async function base64urlDecodeUtf8(str: string): Promise<string> {
-  const binary = base64urlDecodeB64(str)
+  const binary = atob(s)
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  return new TextDecoder().decode(bytes)
-}
-
-async function hmacSign(data: string, secret: string): Promise<ArrayBuffer> {
-  const enc = new TextEncoder()
-  const keyData = enc.encode(secret)
-  const key = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
-  return await crypto.subtle.sign('HMAC', key, enc.encode(data))
+  return bytes
 }
 
 function base64urlEncode(buf: ArrayBuffer): string {
@@ -31,114 +25,115 @@ function base64urlEncode(buf: ArrayBuffer): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
+async function hmacSign(data: string, secret: string): Promise<ArrayBuffer> {
+  const enc = new TextEncoder()
+  const key = await crypto.subtle.importKey(
+    'raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+  )
+  return await crypto.subtle.sign('HMAC', key, enc.encode(data))
+}
+
+// Length-independent comparison so a wrong token cannot be narrowed by timing.
+function timingSafeEqual(a: string, b: string): boolean {
+  const ab = new TextEncoder().encode(a)
+  const bb = new TextEncoder().encode(b)
+  let diff = ab.length ^ bb.length
+  const n = Math.max(ab.length, bb.length)
+  for (let i = 0; i < n; i++) diff |= (ab[i] ?? 0) ^ (bb[i] ?? 0)
+  return diff === 0
+}
+
 async function verifyToken(token: string): Promise<string | null> {
+  const secret = Deno.env.get('WINBACK_UNSUB_SECRET')
+  if (!secret) return null
   const parts = token.split('.')
   if (parts.length !== 2) return null
-  const [emailB64, sigB64] = parts
   try {
-    const email = await base64urlDecodeUtf8(emailB64)
-    if (!email) return null
-    const expectedSig = await hmacSign(email, SECRET)
-    const expectedB64 = base64urlEncode(expectedSig)
-    // simple constant-length compare
-    if (expectedB64 !== sigB64) return null
-    return email
+    const email = new TextDecoder().decode(base64urlToBytes(parts[0]))
+    if (!email || !email.includes('@')) return null
+    const expected = base64urlEncode(await hmacSign(email, secret))
+    return timingSafeEqual(expected, parts[1]) ? email : null
   } catch {
     return null
   }
 }
 
-const htmlPage = `<!doctype html>
-<html lang="id">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="light dark">
-<title>Unsubscribe</title>
-<style>
-  body {
-    font-family: system-ui, -apple-system, sans-serif;
-    margin: 0;
-    padding: 20px;
-    background: #F5F5F4;
-    color: #1A1A1A;
-    transition: background .3s, color .3s;
-  }
-  @media (prefers-color-scheme: dark) {
-    body { background: #0F1117; color: #E5E7EB; }
-  }
+const STYLE = `
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 20px;
+         background: #F5F5F4; color: #1A1A1A; }
+  .card { max-width: 480px; margin: 40px auto; padding: 32px; border-radius: 12px;
+          background: #FFFFFF; border: 1px solid #E5E7EB; }
+  h1 { font-size: 1.35rem; margin: 0 0 12px; }
+  p { line-height: 1.6; margin: 0 0 14px; }
   a { color: #E8442A; }
-  .card {
-    max-width: 480px;
-    margin: 40px auto;
-    padding: 32px;
-    border-radius: 12px;
-    background: #fff;
-    border: 1px solid #E5E7EB;
+  button { background: #E8442A; color: #FFFFFF; border: 0; border-radius: 8px;
+           padding: 12px 20px; font-size: 15px; font-weight: 700; cursor: pointer; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #0F1117; color: #E5E7EB; }
+    .card { background: #171A21; border-color: #2A2F3A; }
   }
-</style>
-</head>
-<body>
-<div class="card">
-  <h1 style="font-size:1.5rem;margin:0 0 12px">Berhenti berlangganan</h1>
-  <p>Email kamu sudah dihapus dari daftar. Akunmu tetap aman.</p>
-  <p><a href="https://larisid.com">Kembali ke LarisID</a></p>
-</div>
-</body>
-</html>`
+`
 
-const badHtml = `<!doctype html>
+function page(title: string, inner: string, status = 200): Response {
+  const html = `<!doctype html>
 <html lang="id">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>Invalid link</title>
-<style>
-  body {
-    font-family: system-ui, -apple-system, sans-serif;
-    margin: 0;
-    padding: 20px;
-    background: #F5F5F4;
-    color: #1A1A1A;
-  }
-  @media (prefers-color-scheme: dark) {
-    body { background: #0F1117; color: #E5E7EB; }
-  }
-</style>
+<title>${title}</title>
+<style>${STYLE}</style>
 </head>
 <body>
-<div style="max-width:480px;margin:40px auto;padding:32px;border-radius:12px;background:#fff;border:1px solid #E5E7EB">
-  <p>Link tidak valid. Pastikan url lengkap.</p>
-</div>
+  <div class="card">${inner}</div>
 </body>
 </html>`
+  return new Response(html, { status, headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+}
+
+const INVALID = `
+  <h1>Link tidak valid</h1>
+  <p>Link berhenti berlanggananmu tidak bisa dibaca. Pastikan kamu membuka url yang lengkap dari email.</p>
+  <p><a href="https://larisid.com">Kembali ke LarisID</a></p>`
 
 serve(async (req) => {
   try {
     const url = new URL(req.url)
     const token = url.searchParams.get('t') ?? ''
-    if (!token) {
-      return new Response(badHtml, { status: 400, headers: { 'Content-Type': 'text/html; charset=utf-8' } })
-    }
+    if (!token) return page('Link tidak valid', INVALID, 400)
 
     const email = await verifyToken(token)
-    if (!email) {
-      return new Response(badHtml, { status: 400, headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+    if (!email) return page('Link tidak valid', INVALID, 400)
+
+    if (req.method === 'GET') {
+      return page('Berhenti berlangganan', `
+  <h1>Berhenti terima email?</h1>
+  <p>Alamat <strong>${email.replace(/</g, '&lt;')}</strong> tidak akan menerima email dari LarisID lagi.
+     Akunmu tetap aman dan bisa dipakai kapan saja.</p>
+  <form method="POST">
+    <button type="submit">Ya, berhenti kirim email</button>
+  </form>
+  <p style="margin-top:18px"><a href="https://larisid.com">Batal, kembali ke LarisID</a></p>`)
     }
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
-
-    await supabaseAdmin.from('email_suppressions').upsert(
+    // Upsert so a second click is harmless.
+    const { error } = await supabaseAdmin.from('email_suppressions').upsert(
       { email, reason: 'unsubscribe' },
       { onConflict: 'email' },
     )
+    if (error) console.error('email-unsubscribe insert failed:', error)
 
-    return new Response(htmlPage, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+    return page('Berhenti berlangganan', `
+  <h1>Sudah berhenti</h1>
+  <p>Email kamu sudah dihapus dari daftar. Akunmu tetap aman.</p>
+  <p><a href="https://larisid.com">Kembali ke LarisID</a></p>`)
   } catch (err) {
-    return new Response(badHtml, { status: 400, headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+    console.error('email-unsubscribe error:', err)
+    return page('Link tidak valid', INVALID, 400)
   }
 })

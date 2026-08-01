@@ -1,31 +1,41 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { render, CAMPAIGNS, CAMPAIGN_SEGMENT } from './templates.ts'
-import type { Campaign, Ctx, CityRow } from './templates.ts'
+import type { Campaign, Ctx, CityRow, MarketTeardown } from './templates.ts'
 
 const ADMIN_EMAIL = 'stevenwilson614@gmail.com'
 const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'Steven <steven@larisid.com>'
 const SITE = 'https://larisid.com'
 
+// SUPABASE_URL inside the functions container is http://kong:8000, which is
+// useless in an email. Unsubscribe links must use the public API hostname.
+const PUBLIC_API = Deno.env.get('PUBLIC_API_URL') || 'https://api.larisid.com'
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+const JSON_HEADERS = { ...CORS, 'Content-Type': 'application/json' }
 
 const MONTHS = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
 ]
 
+const NATIONAL_KEY = '(nasional)'
+
 // --- helpers ---
 
+// Returns the greeting name, or '' meaning "use the neutral greeting". Real
+// display names in this cohort include "BaCoKeR Channel", "419 FATHI MUBAROK"
+// and "Plakatana Official"; sending "Halo 419," would be worse than no name.
 function nameForGreeting(displayName: string): string {
   if (!displayName) return ''
   const first = displayName.trim().split(/\s+/u)[0]
   if (!first) return ''
   if (first.length < 3) return ''
   if (/\d/.test(first)) return ''
-  if (!/^[A-Za-z'.\\-]+$/.test(first)) return ''
+  if (!/^[A-Za-z'.-]+$/.test(first)) return ''
   if (/channel|chanel|official|store|shop|olshop/i.test(displayName)) return ''
   return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
 }
@@ -39,18 +49,17 @@ function base64urlEncode(buf: ArrayBuffer): string {
 
 async function hmacSign(data: string, secret: string): Promise<ArrayBuffer> {
   const enc = new TextEncoder()
-  const keyData = enc.encode(secret)
-  const key = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+  const key = await crypto.subtle.importKey(
+    'raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+  )
   return await crypto.subtle.sign('HMAC', key, enc.encode(data))
 }
 
 async function unsubToken(email: string): Promise<string> {
   const secret = Deno.env.get('WINBACK_UNSUB_SECRET')
   if (!secret) throw new Error('WINBACK_UNSUB_SECRET is not set')
-  const emailBytes = new TextEncoder().encode(email)
-  const emailB64 = base64urlEncode(emailBytes.buffer)
-  const sigWith = await hmacSign(email, secret)
-  const sigB64 = base64urlEncode(sigWith)
+  const emailB64 = base64urlEncode(new TextEncoder().encode(email).buffer)
+  const sigB64 = base64urlEncode(await hmacSign(email, secret))
   return `${emailB64}.${sigB64}`
 }
 
@@ -64,26 +73,27 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: CORS })
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: JSON_HEADERS })
     }
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
-
     const anonClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
     )
 
     const { data: { user }, error: authErr } = await anonClient.auth.getUser(
-      authHeader.replace('Bearer ', '')
+      authHeader.replace('Bearer ', ''),
     )
     if (authErr || !user || user.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: CORS })
+      return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: JSON_HEADERS })
     }
 
+    // winback_audience() self-gates on is_platform_admin() and needs auth.uid(),
+    // so it must be called with the caller's JWT, not the service-role client.
     const userClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
@@ -96,13 +106,18 @@ serve(async (req) => {
     const test_to = body.test_to as string | undefined
     const max_sends = body.max_sends as number | undefined
     const only_user = body.only_user as string | undefined
+    const pasar = body.pasar as MarketTeardown | undefined
 
     if (!campaign || !CAMPAIGNS.includes(campaign)) {
-      return new Response(JSON.stringify({ error: 'Invalid or missing campaign' }), { status: 400, headers: CORS })
+      return new Response(JSON.stringify({ error: 'Invalid or missing campaign' }), { status: 400, headers: JSON_HEADERS })
     }
-
-    if (campaign === 'wb4_bedah') {
-      return new Response(JSON.stringify({ error: 'Bedah campaign not supported for auto-run' }), { status: 400, headers: CORS })
+    // The teardown email has no automated data source: the market and its
+    // one-line insight are chosen by hand and passed in the request.
+    if (campaign === 'wb4_bedah' && !pasar) {
+      return new Response(
+        JSON.stringify({ error: 'wb4_bedah requires a "pasar" object in the request body' }),
+        { status: 400, headers: JSON_HEADERS },
+      )
     }
 
     const { data: audience, error: audErr } = await userClient.rpc('winback_audience')
@@ -110,128 +125,132 @@ serve(async (req) => {
 
     let rows = (audience as any[]) || []
     rows = rows.filter((r: any) => !r.suppressed && r.email)
+
     const segmentFilter = CAMPAIGN_SEGMENT[campaign]
-    if (segmentFilter) {
-      rows = rows.filter((r: any) => r.segment === segmentFilter)
-    }
-    if (only_user) {
-      rows = rows.filter((r: any) => r.user_id === only_user)
-    }
+    if (segmentFilter) rows = rows.filter((r: any) => r.segment === segmentFilter)
+    if (only_user) rows = rows.filter((r: any) => r.user_id === only_user)
+
+    // campaigns_sent only aggregates successful sends, so a previously failed
+    // address is still eligible for a retry.
     rows = rows.filter((r: any) => !(Array.isArray(r.campaigns_sent) && r.campaigns_sent.includes(campaign)))
-    if (typeof max_sends === 'number' && max_sends > 0) {
-      rows = rows.slice(0, max_sends)
+
+    // Day-7 email splits on whether the pass was actually claimed.
+    if (campaign === 'wb3_pantau_a' || campaign === 'wb3_pantau_b') {
+      const { data: claimedRows } = await supabaseAdmin
+        .from('comeback_passes')
+        .select('user_id, claimed_at')
+        .eq('campaign', 'winback')
+        .not('claimed_at', 'is', null)
+      const claimed = new Set((claimedRows || []).map((c: any) => c.user_id))
+      rows = rows.filter((r: any) =>
+        campaign === 'wb3_pantau_a' ? claimed.has(r.user_id) : !claimed.has(r.user_id))
     }
+
+    if (typeof max_sends === 'number' && max_sends > 0) rows = rows.slice(0, max_sends)
 
     if (!rows.length) {
-      return new Response(JSON.stringify({ campaign, sent: 0, failed: [], total_targets: 0, note: 'No recipients after filtering' }), { headers: CORS })
+      return new Response(
+        JSON.stringify({ campaign, sent: 0, failed: [], total_targets: 0, note: 'No recipients after filtering' }),
+        { headers: JSON_HEADERS },
+      )
     }
 
-    // date of latest scrape
+    // Latest scrape date, fetched once. Never hardcode it: an email that cites a
+    // stale date is worse than one that cites none.
     let tanggalData = ''
-    const { data: lastList, error: listErr } = await supabaseAdmin
+    const { data: lastList } = await supabaseAdmin
       .from('listings')
       .select('scraped_at')
       .order('scraped_at', { ascending: false })
       .limit(1)
-    if (!listErr && lastList?.[0]?.scraped_at) {
+    if (lastList?.[0]?.scraped_at) {
       const d = new Date(lastList[0].scraped_at)
-      const day = d.getDate()
-      const monthIdx = d.getMonth()
-      const monthName = MONTHS[monthIdx] ?? 'Januari'
-      tanggalData = `${day} ${monthName}`
+      tanggalData = `${d.getDate()} ${MONTHS[d.getMonth()] ?? 'Januari'}`
     }
 
-    // city data once
+    // City picks loaded once for the whole run, ordered by rank.
     const cityMap = new Map<string, CityRow[]>()
-    let nasionalRows: CityRow[] = []
-    const { data: cityData, error: cityErr } = await supabaseAdmin
+    const { data: cityData } = await supabaseAdmin
       .from('mv_city_email_picks')
-      .select('city, product_name, price, total_sold, sellers')
-    if (!cityErr && cityData) {
-      for (const r of cityData) {
-        const c: CityRow = {
-          product_name: r.product_name,
-          price: r.price,
-          total_sold: r.total_sold,
-          sellers: r.sellers,
-        }
-        const cityKey = (r.city || '').trim().toLowerCase()
-        if (cityKey) {
-          const arr = cityMap.get(cityKey) || []
-          arr.push(c)
-          cityMap.set(cityKey, arr)
-        } else {
-          nasionalRows.push(c)
-        }
-      }
+      .select('city, rn, product_name, price, total_sold, sellers')
+      .order('city', { ascending: true })
+      .order('rn', { ascending: true })
+    for (const r of (cityData || [])) {
+      const key = String(r.city || '').trim().toLowerCase()
+      if (!key) continue
+      const arr = cityMap.get(key) || []
+      arr.push({
+        product_name: r.product_name,
+        price: r.price,
+        total_sold: r.total_sold,
+        sellers: r.sellers,
+      })
+      cityMap.set(key, arr)
     }
+    const nasionalRows = cityMap.get(NATIONAL_KEY) || []
 
-    // pass token for each recipient
     async function getPassToken(userId: string): Promise<string> {
       const { data: res, error } = await supabaseAdmin.rpc('grant_comeback_pass', {
-        p_user: userId,
-        p_days: 7,
-        p_campaign: 'winback',
+        p_user: userId, p_days: 7, p_campaign: 'winback',
       })
       if (error) throw error
       return (res as any)?.token ?? ''
     }
 
-    const sentArr: { email: string; segment: string; nama: string; kota: string; subject: string }[] = []
-    let sent = 0
+    const plan: { email: string; segment: string; nama: string; kota: string; subject: string }[] = []
     const failed: { email: string; error: string }[] = []
+    let sent = 0
+
     const RESEND_KEY = Deno.env.get('RESEND_API_KEY')
-    if (!RESEND_KEY) throw new Error('RESEND_API_KEY not set')
+    if (!RESEND_KEY && !dry_run) throw new Error('RESEND_API_KEY not set')
 
     for (const r of rows) {
+      const email = r.email as string
       try {
-        const email = r.email as string
         const nama = nameForGreeting(r.display_name)
-        const createdDate = new Date(r.created_at)
-        const bulanDaftar = MONTHS[createdDate.getMonth()] ?? 'Januari'
+        const bulanDaftar = MONTHS[new Date(r.created_at).getMonth()] ?? 'Januari'
 
-        let kota = (r.city || r.region || '').trim()
-        const cityLower = kota.toLowerCase()
-        let cityRows: CityRow[] | undefined
-        if (cityLower && cityMap.has(cityLower)) {
-          cityRows = cityMap.get(cityLower)!
+        let kota = String(r.city || r.region || '').trim()
+        const cityKey = kota.toLowerCase()
+        let cityRows: CityRow[]
+        if (cityKey && cityKey !== NATIONAL_KEY && cityMap.has(cityKey)) {
+          cityRows = cityMap.get(cityKey)!
         } else {
           kota = ''
           cityRows = nasionalRows
         }
 
+        // A dry run must never mutate: no pass is granted, so the link carries a
+        // visible placeholder instead of a real token.
         let token = ''
         if (campaign !== 'wb5_sunset') {
-          token = r.pass_token || (await getPassToken(r.user_id))
+          if (dry_run) token = r.pass_token || 'DRY-RUN-NO-TOKEN'
+          else token = r.pass_token || (await getPassToken(r.user_id))
         }
 
-        const linkKlaim = token ? `${SITE}/?pass=${token}&utm_source=winback&utm_campaign=${campaign}` : ''
+        const linkKlaim = token
+          ? `${SITE}/?pass=${token}&utm_source=winback&utm_campaign=${campaign}`
+          : `${SITE}/?utm_source=winback&utm_campaign=${campaign}`
         const linkPantau = `${SITE}/?view=tracker&utm_source=winback&utm_campaign=${campaign}`
-        const unsub = await unsubToken(email)
-        const linkUnsub = `${Deno.env.get('SUPABASE_URL')!}/functions/v1/email-unsubscribe?t=${encodeURIComponent(unsub)}`
+        const linkUnsub = `${PUBLIC_API}/functions/v1/email-unsubscribe?t=${encodeURIComponent(await unsubToken(email))}`
 
         const ctx: Ctx = {
-          nama,
-          bulanDaftar,
-          kota,
-          tanggalData,
-          linkKlaim,
-          linkPantau,
-          linkUnsub,
-          rows: cityRows ?? [],
+          nama, bulanDaftar, kota, tanggalData,
+          linkKlaim, linkPantau, linkUnsub,
+          rows: cityRows,
+          pasar,
         }
-
         const rendered = render(campaign, ctx)
 
         if (dry_run) {
-          sentArr.push({ email, segment: r.segment, nama, kota, subject: rendered.subject })
+          plan.push({ email, segment: r.segment, nama, kota, subject: rendered.subject })
           continue
         }
 
         const to = test_to || email
         const subject = test_to ? `[TEST utk ${email}] ${rendered.subject}` : rendered.subject
 
-        const resendBody: any = {
+        const resendBody: Record<string, unknown> = {
           from: FROM_EMAIL,
           reply_to: ADMIN_EMAIL,
           to,
@@ -242,9 +261,7 @@ serve(async (req) => {
             'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
           },
         }
-        if (rendered.html !== null) {
-          resendBody.html = rendered.html
-        }
+        if (rendered.html !== null) resendBody.html = rendered.html
 
         const res = await fetch('https://api.resend.com/emails', {
           method: 'POST',
@@ -252,43 +269,39 @@ serve(async (req) => {
           body: JSON.stringify(resendBody),
         })
         const resBody = await res.json().catch(() => ({}))
+
         if (res.ok && resBody?.id) {
           sent++
+          // test_to sends are rehearsals; they must not consume the campaign slot.
           if (!test_to) {
             await supabaseAdmin.from('email_sends').insert({
-              user_id: r.user_id,
-              email,
-              campaign,
-              resend_id: resBody.id,
-              status: 'sent',
+              user_id: r.user_id, email, campaign, resend_id: resBody.id, status: 'sent',
             })
           }
         } else {
           failed.push({ email, error: resBody?.message || resBody?.name || JSON.stringify(resBody) })
-          if (!test_to) {
-            await supabaseAdmin.from('email_sends').insert({
-              user_id: r.user_id,
-              email,
-              campaign,
-              status: 'failed',
-            })
-          }
         }
 
-        await new Promise(resolve => setTimeout(resolve, 600))
+        // Resend caps at 2 requests/second; without this pause it returns 429.
+        await new Promise((resolve) => setTimeout(resolve, 600))
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e)
-        failed.push({ email: r.email || '', error: msg })
+        // One bad address must not abort the wave.
+        failed.push({ email: email || '', error: e instanceof Error ? e.message : String(e) })
       }
     }
 
-    const total_targets = rows.length
     if (dry_run) {
-      return new Response(JSON.stringify({ dry_run: true, campaign, count: sentArr.length, recipients: sentArr }), { headers: CORS })
+      return new Response(
+        JSON.stringify({ dry_run: true, campaign, count: plan.length, recipients: plan }),
+        { headers: JSON_HEADERS },
+      )
     }
-
-    return new Response(JSON.stringify({ campaign, sent, failed, total_targets }), { headers: CORS })
+    return new Response(
+      JSON.stringify({ campaign, sent, failed, total_targets: rows.length }),
+      { headers: JSON_HEADERS },
+    )
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: CORS })
+    console.error('send-winback error:', err)
+    return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: JSON_HEADERS })
   }
 })
