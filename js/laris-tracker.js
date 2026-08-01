@@ -448,6 +448,20 @@
     }).join('') + '</div>';
   }
 
+  var PROMISE_ICONS = {
+    trend: '<path d="M3 17l6-6 4 4 7-7"/><path d="M14 8h6v6"/>',
+    cart:  '<circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h3l2.4 12h11L21 7H6"/>',
+    star:  '<path d="M12 3l2.6 5.6 6 .8-4.4 4.2 1.1 6-5.3-2.9L6.7 19.6l1.1-6L3.4 9.4l6-.8z"/>',
+    users: '<circle cx="9" cy="8" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><path d="M16 5.5a3.2 3.2 0 010 5.6M18 20a6.4 6.4 0 00-2.2-4.8"/>',
+  };
+  function promiseItem(icon, title, sub) {
+    return '<li class="ltk-promise-item">' +
+      '<span class="ltk-promise-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + PROMISE_ICONS[icon] + '</svg></span>' +
+      '<span class="ltk-promise-txt"><b>' + esc(title) + '</b><span>' + esc(sub) + '</span></span>' +
+      '</li>';
+  }
+
   function renderSetup() {
     var p = pane('setup');
     if (!p) return;
@@ -503,6 +517,17 @@
           '<p>Ketik keyword yang kamu incar — kami tunjukkan yang cocok beserta jumlah penjualnya. ' +
           'Kamu bisa ganti kapan saja.</p>' +
         '</div>' +
+        // What the user actually gets. Without this, "pantau keyword" is an
+        // abstraction — the reason to spend a setup step is that these four
+        // numbers get re-measured every morning and diffed against yesterday.
+        '<ul class="ltk-promise">' +
+          promiseItem('trend', 'Omset pasar', 'Total omset keyword ini, tiap hari') +
+          promiseItem('cart', 'Unit terjual', 'Berapa yang laku, bukan cuma harga') +
+          promiseItem('star', 'Ulasan & rating', 'Sinyal paling awal produk mulai naik') +
+          promiseItem('users', 'Penjual & listing baru', 'Kompetitor masuk atau kabur') +
+        '</ul>' +
+        '<p class="ltk-promise-foot">Kami scrape keyword kamu tiap pagi dan bandingkan dengan hari sebelumnya. ' +
+        'Update pertama <b>' + esc(nextUpdateLabel()) + '</b>.</p>' +
         '<div class="ltk-slotsec">' +
           '<div class="ltk-slotsec-head"><span>Keyword kamu</span>' +
             catSelect +
@@ -676,7 +701,7 @@
 
     return '<tr class="ltk-row" data-ltk-rowkey="' + attr(key) + '">' +
       '<th scope="row" class="ltk-rowhead">' +
-        (isKw ? catIconHtml(r.category, 30).replace('ltk-cat-ico', 'ltk-row-ico') : storeAvatar(r)) +
+        (isKw ? rowIconHtml(r) : storeAvatar(r)) +
         '<span class="ltk-rowhead-txt">' +
           '<span class="ltk-rowhead-name">' + esc(rowLabel(r)) + '</span>' +
           '<span class="ltk-rowhead-meta">' +
@@ -703,6 +728,19 @@
   function storeAvatar(r) {
     var letter = esc(String(rowLabel(r) || 'T').charAt(0).toUpperCase());
     return '<span class="ltk-row-ico ltk-row-ico--letter">' + letter + '</span>';
+  }
+
+  // Real product photo where we have one (merged by loadRowImages), category
+  // illustration otherwise. Falling back on error rather than leaving a broken
+  // image: a Shopee CDN URL can 404 long after we cached it.
+  function rowIconHtml(r) {
+    if (r && r.image_url) {
+      return '<span class="ltk-row-ico">' +
+        '<img src="' + attr(r.image_url) + '" alt="" loading="lazy" decoding="async" ' +
+        'referrerpolicy="no-referrer" onerror="this.remove()">' +
+        '</span>';
+    }
+    return catIconHtml(r && r.category, 38).replace('ltk-cat-ico', 'ltk-row-ico');
   }
 
   function insightCards() {
@@ -952,6 +990,35 @@
     }).catch(function () { S.baseline = []; });
   }
 
+  // Real product photos for the rollup rows.
+  //
+  // get_tracker_rollup aggregates numbers only — it has no image column. Rather
+  // than widen that function, reuse getKeywordBaseline: it already reads
+  // product_types_v and returns the representative product image, which is the
+  // SAME picture the product cards show. A generic category illustration is
+  // recognisable as a category; the actual product is recognisable as YOUR row.
+  //
+  // Best-effort and non-blocking: rows render with the category fallback if this
+  // never resolves. Keyword scope only — stores use their own avatar.
+  function loadRowImages() {
+    if (S.tab !== 'keyword') return Promise.resolve(null);
+    var rows = (S.rollup && S.rollup.rows) || [];
+    if (!rows.length) return Promise.resolve(null);
+    var kws = rows.map(function (r) { return r.keyword; }).filter(Boolean);
+    if (!kws.length) return Promise.resolve(null);
+    return callP('getKeywordBaseline', kws).then(function (list) {
+      var byKw = {};
+      (list || []).forEach(function (b) {
+        if (b && b.keyword) byKw[String(b.keyword).toLowerCase()] = b.top_image || '';
+      });
+      rows.forEach(function (r) {
+        var img = byKw[String(r.keyword || '').toLowerCase()];
+        if (img) r.image_url = img;
+      });
+      return null;
+    }).catch(function () { return null; });
+  }
+
   function clearTimers() {
     if (timers.paint) { clearTimeout(timers.paint); timers.paint = 0; }
     if (timers.abort) { clearTimeout(timers.abort); timers.abort = 0; }
@@ -1010,7 +1077,7 @@
           // 14 days), so route it back to collecting.
           if (S.resumed) S.hasHistory = false;
           if (!S.hasHistory) return loadBaseline().then(loadFallback);
-          return null;
+          return loadRowImages();
         });
       })
       .then(function () {

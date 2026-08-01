@@ -77,7 +77,7 @@
 <link rel="preload" href="/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/fonts/laris-fonts.css">
 <link rel="stylesheet" href="/styles/daily-spin-wheel.css?v=20260730g">
-<link rel="stylesheet" href="/styles/laris-tracker.css?v=20260801c">
+<link rel="stylesheet" href="/styles/laris-tracker.css?v=20260801e">
 
 <style>
 :root {
@@ -3091,6 +3091,24 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 </div>
 
 <!-- Cari Supplier: one-question return survey (once per user, after an outbound click) -->
+<!-- No supplier for this category yet. Rather than a dead-end toast, ask whether
+     they want one sourced — the yes/no split is the demand signal that decides
+     which categories to onboard suppliers for next. "Nanti saja" is recorded
+     too: a dismiss is weaker than a no, and conflating them would overstate
+     rejection. -->
+<div class="modal-overlay" id="sup-request-modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="sup-req-title">
+    <h3 id="sup-req-title" class="nudge-title">Belum ada supplier untuk produk ini</h3>
+    <p class="nudge-sub">Kami belum punya supplier di kategori <strong id="sup-req-cat">ini</strong>.
+      Mau kami carikan dan kabari kamu kalau sudah ketemu?</p>
+    <div class="nudge-actions" style="flex-direction:column;">
+      <button type="button" class="btn-primary" style="width:100%;" data-sup-req="ya">Ya, tolong carikan</button>
+      <button type="button" class="btn-ghost" style="width:100%;" data-sup-req="tidak">Tidak perlu</button>
+      <button type="button" class="btn-ghost" style="width:100%;" data-sup-req="tutup">Nanti saja</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="sup-survey-modal">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="sup-survey-title">
     <h3 id="sup-survey-title" class="nudge-title">Sudah menghubungi supplier ini?</h3>
@@ -3163,8 +3181,8 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 </aside>
 
 <script src="/js/daily-spin-wheel.js?v=20260730g" defer></script>
-<script src="/js/laris-tracker.js?v=20260801c" defer></script>
+<script src="/js/laris-tracker.js?v=20260801e" defer></script>
 <script src="/js/changelog.js?v=20260731b" defer></script>
-<script src="/js/gpt-app.js?v=20260801d" defer></script>
+<script src="/js/gpt-app.js?v=20260801f" defer></script>
 </body>
 </html>

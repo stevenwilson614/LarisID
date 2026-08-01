@@ -7537,9 +7537,9 @@ function wireDdrAksiCepat(root, product, peers) {
       const aksi = btn.getAttribute('data-ddr-aksi');
       if (aksi === 'supplier') {
         if (!supplierProbeVisible() || !supplierRelevantFor(product?.keyword, product?.category || product?.category_canonical)) {
-          showToast(supplierProbeVisible()
-            ? 'Cari Supplier belum ada untuk kategori produk ini'
-            : 'Cari Supplier segera hadir');
+          // A toast here was a dead end — it told the user no and gave them
+          // nothing to do, and gave us no signal about whether they wanted one.
+          supAskRequest(product);
           return;
         }
         runDdrTool('supplier', product, peers, 'aksi_cepat');
@@ -10535,6 +10535,13 @@ function _supWireDelegation() {
   document.addEventListener('click', (e) => {
     const link = e.target?.closest?.('[data-sup-id]');
     if (link) { supOpenLink(link.getAttribute('data-sup-id'), link.getAttribute('data-sup-target')); return; }
+    const req = e.target?.closest?.('[data-sup-req]');
+    if (req) {
+      const r = req.getAttribute('data-sup-req');
+      if (r === 'tutup') { supRequestAnswer('tutup'); }
+      else supRequestAnswer(r);   // 'ya' | 'tidak'
+      return;
+    }
     const act = e.target?.closest?.('[data-sup-act]');
     if (!act) return;
     const a = act.getAttribute('data-sup-act');
@@ -10637,6 +10644,57 @@ function supOpenLink(id, which) {
       keyword: _supFilterKeyword || null, category: _supFilterCategory || null,
     }));
   } catch (_) {}
+}
+
+/* ── "No supplier here — want us to find one?" ──────────────────────────────
+   The demand probe for categories we have not onboarded suppliers into. Each
+   answer is logged separately: `ya` is intent, `tidak` is a real no, and
+   `tutup` is a dismiss — folding dismiss into no would overstate rejection and
+   send us away from a category people actually want. */
+let _supReqCtx = null;
+
+function supAskRequest(product) {
+  const kw = product?.keyword || null;
+  const cat = product?.category || product?.category_canonical || null;
+  _supReqCtx = { keyword: kw, category: cat, item_id: product?.item_id ?? null };
+  _supLog('supplier_request_prompt', { keyword: kw, category: cat });
+  // The supplier click delegation is normally installed by fillSupplierContent,
+  // which never runs on this path — there is no supplier panel to fill. Without
+  // this the modal's buttons would be inert.
+  _supWireDelegation();
+  const modal = $('sup-request-modal');
+  if (!modal) { showToast('Belum ada supplier untuk kategori ini'); return; }
+  // Never stack on top of another dialog (the anon signup gate can already be
+  // showing). Degrade to a toast rather than burying the other modal.
+  const other = document.querySelector('.modal-overlay.open');
+  if (other && other !== modal) {
+    showToast('Belum ada supplier untuk kategori ini');
+    return;
+  }
+  const catEl = $('sup-req-cat');
+  if (catEl) catEl.textContent = cat || 'ini';
+  modal.classList.add('open');
+}
+
+function supRequestAnswer(answer) {
+  _supLog('supplier_request_response', {
+    answer,
+    keyword: _supReqCtx?.keyword || null,
+    category: _supReqCtx?.category || null,
+    item_id: _supReqCtx?.item_id ?? null,
+    logged_in: !!currentUser,
+  });
+  if (answer === 'ya') {
+    showToast(currentUser
+      ? 'Siap — kami kabari lewat email kalau suppliernya sudah ada.'
+      : 'Siap, dicatat. Masuk dulu supaya kami bisa mengabari kamu.');
+  }
+  supCloseRequest();
+}
+
+function supCloseRequest() {
+  _supReqCtx = null;
+  $('sup-request-modal')?.classList.remove('open');
 }
 
 function _supSurveyDone() {
