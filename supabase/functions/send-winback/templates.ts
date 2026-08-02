@@ -46,6 +46,10 @@ export type Ctx = {
   linkUnsub: string
   rows?: CityRow[]
   pasar?: MarketTeardown
+  // Self-hosted 1x1 open-tracking pixel. Omitted for the two PLAIN_ONLY
+  // campaigns (no HTML body to embed it in) and safe to omit anywhere else --
+  // shell() just skips the <img> tag when it's not set.
+  pixelUrl?: string
 }
 
 export type Rendered = {
@@ -107,7 +111,7 @@ const esc = (s: string) =>
 // The CTA is live text inside a table cell so it survives image blocking and
 // renders as a button everywhere including Outlook.
 // ---------------------------------------------------------------------------
-function shell(bodyHtml: string, linkUnsub: string): string {
+function shell(bodyHtml: string, linkUnsub: string, pixelUrl?: string): string {
   return `<!DOCTYPE html>
 <html lang="id">
 <head>
@@ -150,7 +154,7 @@ function shell(bodyHtml: string, linkUnsub: string): string {
 <body>
 <div class="wrap">
   <div class="card" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1F2937;">
-    <p class="brand">LarisID</p>
+    <p class="brand">Laris</p>
 ${bodyHtml}
     <p class="foot">
       Kamu menerima email ini karena pernah daftar di
@@ -159,7 +163,7 @@ ${bodyHtml}
     </p>
   </div>
 </div>
-</body>
+${pixelUrl ? `<img src="${esc(pixelUrl)}" width="1" height="1" alt="" style="display:block;border:0;outline:none;" />\n` : ''}</body>
 </html>`
 }
 
@@ -180,11 +184,11 @@ export function render(campaign: Campaign, c: Ctx): Rendered {
     // -- Day 0, segment A: never opened a Deep Dive ------------------------
     case 'wb1_a': {
       const subject = c.nama
-        ? `${c.nama}, 3 hal berubah total di LarisID sejak kamu daftar`
-        : '3 hal berubah total di LarisID sejak kamu daftar'
+        ? `${c.nama}, 3 hal berubah total di Laris sejak kamu daftar`
+        : '3 hal berubah total di Laris sejak kamu daftar'
       const text = `${greet(c.nama)}
 
-Kamu daftar LarisID sekitar ${c.bulanDaftar}, lihat sebentar, terus nggak balik lagi. Jujur saja: waktu itu produknya memang belum cukup berguna. Itu bukan salahmu.
+Kamu daftar Laris sekitar ${c.bulanDaftar}, lihat sebentar, terus nggak balik lagi. Jujur saja: waktu itu produknya memang belum cukup berguna. Itu bukan salahmu.
 
 Tiga hal berubah total sejak itu:
 
@@ -205,13 +209,13 @@ Ambil akses 7 hari: ${c.linkKlaim}
 
 Kalau setelah dicoba ternyata masih belum berguna, balas email ini dan bilang apa yang kurang. Saya baca semua.
 
-- Steven, LarisID
+- Steven, Laris
 Dari penjual, untuk penjual.
 
 Berhenti terima email: ${c.linkUnsub}`
 
       const html = shell(`    <p>${esc(greet(c.nama))}</p>
-    <p>Kamu daftar LarisID sekitar ${esc(c.bulanDaftar)}, lihat sebentar, terus nggak balik lagi. Jujur saja: waktu itu produknya memang belum cukup berguna. Itu bukan salahmu.</p>
+    <p>Kamu daftar Laris sekitar ${esc(c.bulanDaftar)}, lihat sebentar, terus nggak balik lagi. Jujur saja: waktu itu produknya memang belum cukup berguna. Itu bukan salahmu.</p>
     <p>Tiga hal berubah total sejak itu:</p>
     <p><strong>1. Cari produk sekarang menampilkan PASAR, bukan listing.</strong><br>
     Satu kartu = satu pasar: berapa penjual di dalamnya, omset per bulan, harga median, dan rentang harganya. Bukan lagi 30 listing yang isinya mirip semua.</p>
@@ -223,8 +227,8 @@ Berhenti terima email: ${c.linkUnsub}`
     <p>Karena kamu daftar duluan, kami buka <strong>riset produk tanpa batas selama 7 hari</strong>. Nggak perlu bayar, nggak perlu kartu.</p>
 ${ctaHtml('Ambil akses 7 hari', c.linkKlaim)}
     <p>Kalau setelah dicoba ternyata masih belum berguna, balas email ini dan bilang apa yang kurang. Saya baca semua.</p>
-    <p>&mdash; Steven, LarisID<br><em>Dari penjual, untuk penjual.</em></p>
-`, c.linkUnsub)
+    <p>&mdash; Steven, Laris<br><em>Dari penjual, untuk penjual.</em></p>
+`, c.linkUnsub, c.pixelUrl)
       return { subject, html, text }
     }
 
@@ -235,7 +239,7 @@ ${ctaHtml('Ambil akses 7 hari', c.linkKlaim)}
         : 'Produk yang dulu kamu cek sekarang ada angka pasarnya'
       const text = `${greet(c.nama)}
 
-Dulu kamu sempat buka beberapa produk di LarisID lalu berhenti. Masalahnya waktu itu jelas: kamu dapat angka satu listing, tapi bukan gambaran pasarnya. Satu listing laku belum tentu pasarnya masih muat buat pemain baru.
+Dulu kamu sempat buka beberapa produk di Laris lalu berhenti. Masalahnya waktu itu jelas: kamu dapat angka satu listing, tapi bukan gambaran pasarnya. Satu listing laku belum tentu pasarnya masih muat buat pemain baru.
 
 Itu yang kami perbaiki. Sekarang hasil pencarian adalah PASAR: jumlah penjual, total omset per bulan, harga median, dan sebaran harganya. Dari situ baru kelihatan mana yang ramai tapi masih longgar, dan mana yang sudah sesak.
 
@@ -245,19 +249,19 @@ Kami buka riset produk tanpa batas selama 7 hari buat kamu.
 
 Lanjut riset: ${c.linkKlaim}
 
-- Steven, LarisID
+- Steven, Laris
 Dari penjual, untuk penjual.
 
 Berhenti terima email: ${c.linkUnsub}`
 
       const html = shell(`    <p>${esc(greet(c.nama))}</p>
-    <p>Dulu kamu sempat buka beberapa produk di LarisID lalu berhenti. Masalahnya waktu itu jelas: kamu dapat angka satu listing, tapi bukan gambaran pasarnya. Satu listing laku belum tentu pasarnya masih muat buat pemain baru.</p>
+    <p>Dulu kamu sempat buka beberapa produk di Laris lalu berhenti. Masalahnya waktu itu jelas: kamu dapat angka satu listing, tapi bukan gambaran pasarnya. Satu listing laku belum tentu pasarnya masih muat buat pemain baru.</p>
     <p>Itu yang kami perbaiki. Sekarang hasil pencarian adalah <strong>pasar</strong>: jumlah penjual, total omset per bulan, harga median, dan sebaran harganya. Dari situ baru kelihatan mana yang ramai tapi masih longgar, dan mana yang sudah sesak.</p>
     <p>Tambahan yang paling sering diminta: <strong>Pantauan Harian</strong>. Pilih sampai 5 keyword, kami scrape tiap pagi, dan kamu lihat pergerakannya per hari &mdash; bukan tebakan.</p>
     <p>Kami buka <strong>riset produk tanpa batas selama 7 hari</strong> buat kamu.</p>
 ${ctaHtml('Lanjut riset', c.linkKlaim)}
-    <p>&mdash; Steven, LarisID<br><em>Dari penjual, untuk penjual.</em></p>
-`, c.linkUnsub)
+    <p>&mdash; Steven, Laris<br><em>Dari penjual, untuk penjual.</em></p>
+`, c.linkUnsub, c.pixelUrl)
       return { subject, html, text }
     }
 
@@ -266,7 +270,7 @@ ${ctaHtml('Lanjut riset', c.linkKlaim)}
       const subject = c.nama ? `Boleh minta 5 menit, ${c.nama}?` : 'Boleh minta 5 menit?'
       const text = `${greet(c.nama)}
 
-Kamu termasuk yang paling serius pakai LarisID waktu awal - kamu buka banyak produk dalam satu sesi. Terus berhenti. Saya beneran mau tahu kenapa.
+Kamu termasuk yang paling serius pakai Laris waktu awal - kamu buka banyak produk dalam satu sesi. Terus berhenti. Saya beneran mau tahu kenapa.
 
 Sejak itu produknya berubah banyak: pencarian sekarang per pasar (jumlah penjual, omset bulanan, harga median), ada Pantauan Harian yang scrape keyword pilihanmu tiap pagi, dan batas hariannya sudah bukan sistem kredit lagi.
 
@@ -275,7 +279,7 @@ Dua hal:
 1. Riset produk tanpa batas selama 7 hari, langsung aktif: ${c.linkKlaim}
 2. Kalau kamu sempat balas email ini dengan satu kalimat - apa yang bikin kamu berhenti - itu jauh lebih berharga buat saya daripada klik.
 
-- Steven, LarisID
+- Steven, Laris
 
 Kalau nggak mau terima email lagi: ${c.linkUnsub}`
       return { subject, html: null, text }
@@ -311,7 +315,7 @@ Lihat pasar lengkapnya: ${c.linkKlaim}
 
 Akses 7 harimu masih aktif dan belum dipakai.
 
-- Steven, LarisID
+- Steven, Laris
 
 Berhenti terima email: ${c.linkUnsub}`
 
@@ -332,8 +336,8 @@ ${htmlRows}
     <p>Yang biasanya menentukan itu jumlah penjualnya: pasar ramai dengan sedikit penjual jauh lebih gampang dimasuki daripada pasar ramai yang sudah sesak.</p>
 ${c.kota ? '' : '    <p>Kami belum tahu kotamu, jadi ini angka nasional. Set kotamu di aplikasi dan daftar berikutnya jadi khusus kotamu.</p>\n'}${ctaHtml('Lihat pasar lengkapnya', c.linkKlaim)}
     <p>Akses 7 harimu masih aktif dan belum dipakai.</p>
-    <p>&mdash; Steven, LarisID</p>
-`, c.linkUnsub)
+    <p>&mdash; Steven, Laris</p>
+`, c.linkUnsub, c.pixelUrl)
       return { subject, html, text }
     }
 
@@ -352,7 +356,7 @@ Atur pantauan: ${c.linkPantau}
 
 Kalau nggak dibuka 2 minggu, pantauannya otomatis dijeda biar hemat - keyword dan datamu tetap tersimpan dan jalan lagi begitu kamu buka.
 
-- Steven, LarisID
+- Steven, Laris
 
 Berhenti terima email: ${c.linkUnsub}`
 
@@ -362,8 +366,8 @@ Berhenti terima email: ${c.linkUnsub}`
     <p>Setup-nya satu ketukan: pilih kategori, kami isikan keyword yang paling ramai di sana.</p>
 ${ctaHtml('Atur pantauan', c.linkPantau)}
     <p>Kalau nggak dibuka 2 minggu, pantauannya otomatis dijeda biar hemat &mdash; keyword dan datamu tetap tersimpan dan jalan lagi begitu kamu buka.</p>
-    <p>&mdash; Steven, LarisID</p>
-`, c.linkUnsub)
+    <p>&mdash; Steven, Laris</p>
+`, c.linkUnsub, c.pixelUrl)
       return { subject, html, text }
     }
 
@@ -380,7 +384,7 @@ Ambil sekarang: ${c.linkKlaim}
 
 Ini email terakhir soal akses ini.
 
-- Steven, LarisID
+- Steven, Laris
 
 Berhenti terima email: ${c.linkUnsub}`
 
@@ -389,8 +393,8 @@ Berhenti terima email: ${c.linkUnsub}`
     <p>Yang berubah sejak terakhir kamu buka: pencarian sekarang menampilkan pasar (jumlah penjual, omset bulanan, harga median), bukan tumpukan listing. Data terakhir masuk ${esc(c.tanggalData)}.</p>
 ${ctaHtml('Ambil sekarang', c.linkKlaim)}
     <p>Ini email terakhir soal akses ini.</p>
-    <p>&mdash; Steven, LarisID</p>
-`, c.linkUnsub)
+    <p>&mdash; Steven, Laris</p>
+`, c.linkUnsub, c.pixelUrl)
       return { subject, html, text }
     }
 
@@ -407,11 +411,11 @@ ${p.nama_pasar} - ${angka(p.jumlah_penjual)} penjual, omset pasar sekitar ${rupi
 
 Yang menarik: ${p.insight}
 
-Semua angka itu dari satu layar di LarisID, gratis.
+Semua angka itu dari satu layar di Laris, gratis.
 
 Cek pasar kamu sendiri: ${c.linkKlaim}
 
-- Steven, LarisID
+- Steven, Laris
 
 Berhenti terima email: ${c.linkUnsub}`
 
@@ -419,10 +423,10 @@ Berhenti terima email: ${c.linkUnsub}`
     <p>Nggak ada tawaran di email ini. Cuma satu contoh hasil riset, biar kamu bisa nilai sendiri apakah alat ini berguna.</p>
     <p><strong>${esc(p.nama_pasar)}</strong> &mdash; ${esc(angka(p.jumlah_penjual))} penjual, omset pasar sekitar ${esc(rupiah(p.omset_bulanan))} per bulan, harga median ${esc(rupiah(p.harga_median))} (rentang ${esc(rupiah(p.harga_min))} sampai ${esc(rupiah(p.harga_max))}).</p>
     <p>Yang menarik: ${esc(p.insight)}</p>
-    <p>Semua angka itu dari satu layar di LarisID, gratis.</p>
+    <p>Semua angka itu dari satu layar di Laris, gratis.</p>
 ${ctaHtml('Cek pasar kamu sendiri', c.linkKlaim)}
-    <p>&mdash; Steven, LarisID</p>
-`, c.linkUnsub)
+    <p>&mdash; Steven, Laris</p>
+`, c.linkUnsub, c.pixelUrl)
       return { subject, html, text }
     }
 
@@ -431,14 +435,14 @@ ${ctaHtml('Cek pasar kamu sendiri', c.linkKlaim)}
       const subject = 'Terakhir dari saya - mau saya berhenti kirim email?'
       const text = `${greet(c.nama)}
 
-Ini email terakhir dari rangkaian ini. Kamu daftar LarisID beberapa bulan lalu dan sejak itu nggak pernah buka lagi, jadi wajar kalau ini sudah nggak relevan.
+Ini email terakhir dari rangkaian ini. Kamu daftar Laris beberapa bulan lalu dan sejak itu nggak pernah buka lagi, jadi wajar kalau ini sudah nggak relevan.
 
 Kalau memang begitu, berhenti di sini: ${c.linkUnsub}
 Satu klik, selesai, akunmu tetap aman kalau suatu saat mau balik.
 
 Kalau kamu masih jualan dan cuma lagi sibuk, nggak usah apa-apa. Saya akan kirim ringkasan pasar sebulan sekali, itu saja.
 
-- Steven, LarisID
+- Steven, Laris
 Dari penjual, untuk penjual.`
       return { subject, html: null, text }
     }

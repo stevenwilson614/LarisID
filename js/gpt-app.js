@@ -233,6 +233,10 @@ function _lidFireSignupSuccess() {
 // Google OAuth returns without the query string, so the token is parked in
 // localStorage before any redirect and consumed after sign-in. Last link wins.
 const LID_PASS_KEY = '_lid_pass_token_v1';
+// Which SPECIFIC template variant drove this click, for per-campaign funnel
+// stats -- separate from the "first touch wins" attribution store, which
+// every winback recipient already has a value in from their original signup.
+const LID_PASS_CAMPAIGN_KEY = '_lid_pass_campaign_v1';
 (function _lidCapturePassToken() {
   try {
     const q = new URLSearchParams(location.search);
@@ -240,6 +244,8 @@ const LID_PASS_KEY = '_lid_pass_token_v1';
     if (!tok) return;
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tok)) return;
     localStorage.setItem(LID_PASS_KEY, tok);
+    const camp = q.get('utm_campaign');
+    if (camp) localStorage.setItem(LID_PASS_CAMPAIGN_KEY, camp);
     q.delete('pass');
     const qs = q.toString();
     history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
@@ -248,18 +254,21 @@ const LID_PASS_KEY = '_lid_pass_token_v1';
 
 // Consume a win-back pass token after sign-in. Idempotent server-side.
 async function _winbackMaybeClaim() {
-  let token = null;
-  try { token = localStorage.getItem(LID_PASS_KEY); } catch (_) {}
+  let token = null, campaign = null;
+  try {
+    token = localStorage.getItem(LID_PASS_KEY);
+    campaign = localStorage.getItem(LID_PASS_CAMPAIGN_KEY);
+  } catch (_) {}
   if (!token || !currentUser || !_supabase) return;
   try {
     const { data, error } = await _supabase.rpc('claim_comeback_pass', { p_token: token });
     if (error) return; // transient failure must not burn the token
     if (data && (data.ok || data.reason === 'wrong_user' || data.reason === 'invalid_token')) {
-      try { localStorage.removeItem(LID_PASS_KEY); } catch (_) {}
+      try { localStorage.removeItem(LID_PASS_KEY); localStorage.removeItem(LID_PASS_CAMPAIGN_KEY); } catch (_) {}
     }
     if (!data || !data.ok) return;
     void refreshGptUsage();
-    void logUserEvent('winback_claim', { ui: 'gpt', reason: data.reason, expires_at: data.expires_at || null });
+    void logUserEvent('winback_claim', { ui: 'gpt', reason: data.reason, expires_at: data.expires_at || null, campaign });
   } catch (_) {}
 }
 

@@ -132,6 +132,12 @@ function _lidFireSignupSuccess() {
 // should replace an older unconsumed one. The param is stripped from the URL so
 // a refresh does not re-trigger and the token is not left on screen.
 const LID_PASS_KEY = '_lid_pass_token_v1';
+// Which SPECIFIC template variant (wb1_a vs wb1_b vs wb2_kota...) drove this
+// click, for per-campaign funnel stats. Deliberately separate from
+// _lid_attr_v1: that store is "first touch wins" and every winback recipient
+// already has an old attribution record from their original signup, so a
+// fresh utm_campaign here would otherwise be silently discarded.
+const LID_PASS_CAMPAIGN_KEY = '_lid_pass_campaign_v1';
 (function _lidCapturePassToken() {
   try {
     const q = new URLSearchParams(location.search);
@@ -140,6 +146,8 @@ const LID_PASS_KEY = '_lid_pass_token_v1';
     // Real tokens are uuids; anything else is not worth storing or sending.
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tok)) return;
     localStorage.setItem(LID_PASS_KEY, tok);
+    const camp = q.get('utm_campaign');
+    if (camp) localStorage.setItem(LID_PASS_CAMPAIGN_KEY, camp);
     q.delete('pass');
     const qs = q.toString();
     history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
@@ -4639,8 +4647,11 @@ async function spinClaimFeedbackBonus(feedbackId) {
 // Consume a win-back pass token after sign-in. Idempotent server-side: a second
 // claim returns already_claimed and never re-extends the window.
 async function _winbackMaybeClaim() {
-  let token = null;
-  try { token = localStorage.getItem(LID_PASS_KEY); } catch (_) {}
+  let token = null, campaign = null;
+  try {
+    token = localStorage.getItem(LID_PASS_KEY);
+    campaign = localStorage.getItem(LID_PASS_CAMPAIGN_KEY);
+  } catch (_) {}
   if (!token || !currentUser || !_supabase) return;
   try {
     const { data, error } = await _supabase.rpc('claim_comeback_pass', { p_token: token });
@@ -4648,11 +4659,11 @@ async function _winbackMaybeClaim() {
     // Only clear on a definitive answer. 'wrong_user' means this token belongs to
     // someone else's inbox, so drop it too — retrying can never succeed.
     if (data && (data.ok || data.reason === 'wrong_user' || data.reason === 'invalid_token')) {
-      try { localStorage.removeItem(LID_PASS_KEY); } catch (_) {}
+      try { localStorage.removeItem(LID_PASS_KEY); localStorage.removeItem(LID_PASS_CAMPAIGN_KEY); } catch (_) {}
     }
     if (!data || !data.ok) return;
     await loadUsage().catch(() => {});
-    void logUserEvent('winback_claim', { reason: data.reason, expires_at: data.expires_at || null });
+    void logUserEvent('winback_claim', { reason: data.reason, expires_at: data.expires_at || null, campaign });
     if (data.reason === 'claimed') {
       try { showCompareToast('Akses riset tanpa batas aktif sampai ' + _winbackPassLabel(data.expires_at) + '.'); } catch (_) {}
     }

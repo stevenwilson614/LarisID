@@ -1,10 +1,14 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { render, CAMPAIGNS, CAMPAIGN_SEGMENT } from './templates.ts'
+import { render, CAMPAIGNS, CAMPAIGN_SEGMENT, PLAIN_ONLY } from './templates.ts'
 import type { Campaign, Ctx, CityRow, MarketTeardown } from './templates.ts'
 
 const ADMIN_EMAIL = 'stevenwilson614@gmail.com'
-const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'Steven <steven@larisid.com>'
+// Deliberately its own env var, not RESEND_FROM_EMAIL: that one is shared by
+// weekly-digest and send-broadcast, and this campaign's sender identity
+// ("Steven dari Laris", personal and brand-dropped-the-ID) is intentionally
+// different from theirs.
+const FROM_EMAIL = Deno.env.get('WINBACK_FROM_EMAIL') || 'Steven dari Laris <steven@larisid.com>'
 const SITE = 'https://larisid.com'
 
 // SUPABASE_URL inside the functions container is http://kong:8000, which is
@@ -234,11 +238,21 @@ serve(async (req) => {
         const linkPantau = `${SITE}/?view=tracker&utm_source=winback&utm_campaign=${campaign}`
         const linkUnsub = `${PUBLIC_API}/functions/v1/email-unsubscribe?t=${encodeURIComponent(await unsubToken(email))}`
 
+        // Generated here rather than left to the DB default, so it can be
+        // embedded in the open-tracking pixel URL before the email is sent.
+        // Real sends use it as the email_sends primary key; test/dry-run
+        // sends never insert a row so the id is simply discarded.
+        const sendId = crypto.randomUUID()
+        const pixelUrl = (!dry_run && !test_to && !PLAIN_ONLY.includes(campaign))
+          ? `${PUBLIC_API}/functions/v1/email-pixel?s=${sendId}`
+          : undefined
+
         const ctx: Ctx = {
           nama, bulanDaftar, kota, tanggalData,
           linkKlaim, linkPantau, linkUnsub,
           rows: cityRows,
           pasar,
+          pixelUrl,
         }
         const rendered = render(campaign, ctx)
 
@@ -260,6 +274,10 @@ serve(async (req) => {
             'List-Unsubscribe': `<${linkUnsub}>`,
             'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
           },
+          // Echoed back on every Resend webhook event, so a payload is
+          // self-describing even before joining email_sends. Tag values are
+          // restricted by Resend to ASCII letters/digits/underscore/dash.
+          tags: [{ name: 'campaign', value: campaign }],
         }
         if (rendered.html !== null) resendBody.html = rendered.html
 
@@ -273,9 +291,11 @@ serve(async (req) => {
         if (res.ok && resBody?.id) {
           sent++
           // test_to sends are rehearsals; they must not consume the campaign slot.
+          // Uses the id generated earlier so it matches the pixel URL already
+          // baked into the HTML that was just sent.
           if (!test_to) {
             await supabaseAdmin.from('email_sends').insert({
-              user_id: r.user_id, email, campaign, resend_id: resBody.id, status: 'sent',
+              id: sendId, user_id: r.user_id, email, campaign, resend_id: resBody.id, status: 'sent',
             })
           }
         } else {

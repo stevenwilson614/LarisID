@@ -37,6 +37,12 @@
       '.wb-admin td { padding: 8px; border-bottom: 1px solid #F3F4F6; vertical-align: top; }',
       '.wb-admin .wb-err { color: #B5202A; font-weight: 700; }',
       '.wb-admin pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; }',
+      '.wb-admin .wb-hr { border: 0; border-top: 1px solid #E5E7EB; margin: 22px 0 16px; }',
+      '.wb-admin .wb-hourbar-row { display: flex; align-items: center; gap: 8px; font-size: 12px; margin: 2px 0; }',
+      '.wb-admin .wb-hourbar-label { width: 34px; color: #6B7280; flex: none; text-align: right; }',
+      '.wb-admin .wb-hourbar-track { flex: 1; background: #F5F5F4; border-radius: 3px; height: 14px; overflow: hidden; }',
+      '.wb-admin .wb-hourbar-fill { background: #E8442A; height: 100%; }',
+      '.wb-admin .wb-hourbar-count { width: 28px; flex: none; color: #6B7280; }',
     ].join('\n');
     document.head.appendChild(style);
   }
@@ -184,6 +190,78 @@
     }
   }
 
+  function fmtPct(v) { return (v == null ? '-' : escapeHtml(v) + '%'); }
+  function fmtNum(v) { return (v == null ? '-' : escapeHtml(v)); }
+  function fmtMin(v) { return (v == null ? '-' : escapeHtml(v) + ' mnt'); }
+
+  function renderStatsTable(rows) {
+    if (!rows || !rows.length) return '<p>Belum ada data terkirim.</p>';
+    var html = '<div class="wb-table-wrap"><table><thead><tr>' +
+      '<th>Kampanye</th><th>Terkirim</th><th>Delivered</th><th>Dibuka</th><th>Open rate</th>' +
+      '<th>Bounce</th><th>Komplain</th><th>Klaim</th><th>Claim rate</th><th>Rata2 buka</th>' +
+      '</tr></thead><tbody>';
+    rows.forEach(function (r) {
+      html += '<tr>' +
+        '<td>' + escapeHtml(r.campaign) + '</td>' +
+        '<td>' + fmtNum(r.sent) + '</td>' +
+        '<td>' + fmtNum(r.delivered) + '</td>' +
+        '<td>' + fmtNum(r.opened) + '</td>' +
+        '<td>' + fmtPct(r.open_rate) + '</td>' +
+        '<td>' + fmtNum(r.bounced) + '</td>' +
+        '<td>' + fmtNum(r.complained) + '</td>' +
+        '<td>' + fmtNum(r.claimed) + '</td>' +
+        '<td>' + fmtPct(r.claim_rate) + '</td>' +
+        '<td>' + fmtMin(r.avg_minutes_to_open) + '</td>' +
+        '</tr>';
+    });
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  function renderHourHistogram(rows) {
+    var byHour = {};
+    (rows || []).forEach(function (r) { byHour[r.hour_wib] = Number(r.opens) || 0; });
+    var max = 0;
+    for (var h = 0; h < 24; h++) max = Math.max(max, byHour[h] || 0);
+    if (max === 0) return '<p>Belum ada bukaan tercatat.</p>';
+    var html = '';
+    for (var i = 0; i < 24; i++) {
+      var n = byHour[i] || 0;
+      var pct = Math.round((n / max) * 100);
+      html += '<div class="wb-hourbar-row">' +
+        '<div class="wb-hourbar-label">' + String(i).padStart(2, '0') + ':00</div>' +
+        '<div class="wb-hourbar-track"><div class="wb-hourbar-fill" style="width:' + pct + '%"></div></div>' +
+        '<div class="wb-hourbar-count">' + n + '</div>' +
+        '</div>';
+    }
+    return html;
+  }
+
+  async function runStats() {
+    var out = get('wb-stats-out');
+    // _supabase is a top-level `let` in laris-app.js -- visible here as a bare
+    // identifier because classic (non-module) <script> tags share one global
+    // lexical scope, same as isPlatformAdmin()/SUPA_URL used elsewhere in this
+    // file. It is NOT a window property, so `window._supabase` would be
+    // undefined even though this same reference works.
+    if (!out || typeof _supabase === 'undefined' || !_supabase) return;
+    out.innerHTML = 'Memuat statistik...';
+    try {
+      var statsRes = await _supabase.rpc('winback_campaign_stats');
+      var histRes = await _supabase.rpc('winback_open_hour_histogram', { p_campaign: null });
+      if (statsRes.error) throw statsRes.error;
+      if (histRes.error) throw histRes.error;
+      out.innerHTML =
+        '<p style="font-weight:700;margin-bottom:8px;">Per kampanye</p>' +
+        renderStatsTable(statsRes.data) +
+        '<p style="font-weight:700;margin:18px 0 8px;">Jam buka (WIB), semua kampanye</p>' +
+        '<p style="font-size:.7rem;color:#6B7280;margin-bottom:8px;">Angka bisa meleset ke dua arah: klien yang memblokir gambar tidak pernah tercatat (undercount), dan Apple Mail Privacy Protection membuka pixel otomatis untuk semua penerima Apple Mail terlepas dibaca atau tidak (overcount). Baca sebagai arah, bukan angka pasti.</p>' +
+        renderHourHistogram(histRes.data);
+    } catch (e) {
+      out.innerHTML = '<div class="wb-err">Gagal memuat statistik: ' + escapeHtml(e.message || String(e)) + '</div>';
+    }
+  }
+
   function mount(el) {
     if (!el || !isPlatformAdmin()) return;
     ensureStyle();
@@ -229,11 +307,17 @@
         '<button type="button" id="wb-send" class="wb-btn wb-btn-send">KIRIM GELOMBANG</button>',
       '</div>',
       '<div id="wb-out" class="wb-out"></div>',
+      '<hr class="wb-hr">',
+      '<div class="wb-btn-row" style="margin-top:0;">',
+        '<button type="button" id="wb-stats-btn" class="wb-btn wb-btn-test">Lihat statistik</button>',
+      '</div>',
+      '<div id="wb-stats-out" class="wb-out"></div>',
     ].join('');
 
     get('wb-dry').addEventListener('click', function () { run('dry'); });
     get('wb-test-btn').addEventListener('click', function () { run('test'); });
     get('wb-send').addEventListener('click', function () { run('send'); });
+    get('wb-stats-btn').addEventListener('click', runStats);
     get('wb-campaign').addEventListener('change', syncPasarVisibility);
     syncPasarVisibility();
   }
