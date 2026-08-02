@@ -9585,6 +9585,9 @@ html,body{overflow-x:clip;max-width:100%;}
               </div>
             </div>
 
+            <!-- Win-back campaigns (mounted by js/winback-admin.js, admin only) -->
+            <div class="adm-card" id="adm-winback-card" style="margin-bottom:20px;"></div>
+
             <!-- Broadcast Email -->
             <div class="adm-card" style="margin-bottom:20px;">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
@@ -10082,6 +10085,8 @@ html,body{overflow-x:clip;max-width:100%;}
 <script defer src="/js/daily-spin-wheel.js?v=20260730g"></script>
 <script defer src="/js/laris-tracker.js?v=20260801h"></script>
 <script defer src="/js/laris-app.js?v=20260801h"></script>
+<!-- Admin-only; mount() is a no-op for everyone else. Must load after laris-app.js. -->
+<script defer src="/js/winback-admin.js?v=20260801h"></script>
 
   <!-- ── CONTEXTUAL ONBOARDING HINTS ── -->
   <div id="hint-overlay" aria-hidden="true" onclick="if(event.target===this)nuHintDismiss()">

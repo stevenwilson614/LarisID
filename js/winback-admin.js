@@ -16,24 +16,27 @@
     if (injectedStyle) return;
     injectedStyle = true;
     var style = document.createElement('style');
+    // Light palette to match the surrounding admin cards (#1A1A1A text, #6B7280
+    // muted, #E5E7EB borders, #E8442A brand red). The admin UI is light; a dark
+    // panel here would read as a foreign widget.
     style.textContent = [
-      '#winback-admin { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 14px; background: #1e1e1e; color: #e0e0e0; padding: 24px; border-radius: 12px; max-width: 100%; }',
-      '#winback-admin h2 { margin: 0 0 20px; color: #fff; }',
-      '#winback-admin label { display: block; font-weight: 600; margin: 12px 0 4px; color: #bbb; }',
-      '#winback-admin select, #winback-admin input { width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 6px; border: 1px solid #444; background: #2a2a2a; color: #f0f0f0; font-size: 14px; margin-bottom: 8px; }',
-      '#winback-admin select:focus, #winback-admin input:focus { outline: 2px solid #B5202A; outline-offset: 1px; }',
-      '#winback-admin .wb-btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }',
-      '#winback-admin .wb-btn { padding: 10px 18px; border-radius: 6px; border: none; font-weight: 700; cursor: pointer; font-size: 14px; color: #fff; }',
-      '#winback-admin .wb-btn:disabled { opacity: 0.4; cursor: not-allowed; }',
-      '#winback-admin .wb-btn-dry { background: #4a4a4a; }',
-      '#winback-admin .wb-btn-test { background: #2a5298; }',
-      '#winback-admin .wb-btn-send { background: #B5202A; border: 2px solid #dd3333; }',
-      '#winback-admin .wb-out { margin-top: 20px; min-height: 40px; }',
-      '#winback-admin .wb-table-wrap { overflow-x: auto; max-width: 100%; margin-top: 12px; }',
-      '#winback-admin table { width: 100%; border-collapse: collapse; font-size: 13px; }',
-      '#winback-admin th { background: #333; color: #ddd; text-align: left; padding: 8px; white-space: nowrap; }',
-      '#winback-admin td { padding: 8px; border-bottom: 1px solid #444; vertical-align: top; }',
-      '#winback-admin .wb-err { color: #ff7b7b; font-weight: 600; }',
+      '.wb-admin { font-size: 14px; color: #1A1A1A; }',
+      '.wb-admin label { display: block; font-weight: 700; margin: 12px 0 4px; color: #6B7280; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }',
+      '.wb-admin select, .wb-admin input, .wb-admin textarea { width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 6px; border: 1px solid #E5E7EB; background: #fff; color: #1A1A1A; font-size: 14px; margin-bottom: 8px; font-family: inherit; }',
+      '.wb-admin select:focus, .wb-admin input:focus, .wb-admin textarea:focus { outline: 2px solid #E8442A; outline-offset: 1px; }',
+      '.wb-admin .wb-btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }',
+      '.wb-admin .wb-btn { padding: 10px 18px; border-radius: 6px; border: 1px solid #E5E7EB; font-weight: 700; cursor: pointer; font-size: 14px; background: #fff; color: #1A1A1A; }',
+      '.wb-admin .wb-btn:disabled { opacity: .45; cursor: not-allowed; }',
+      '.wb-admin .wb-btn-test { border-color: #1A1F3C; color: #1A1F3C; }',
+      // The only irreversible button, so it is the only filled one.
+      '.wb-admin .wb-btn-send { background: #E8442A; border-color: #E8442A; color: #fff; }',
+      '.wb-admin .wb-out { margin-top: 18px; min-height: 24px; }',
+      '.wb-admin .wb-table-wrap { overflow-x: auto; max-width: 100%; margin-top: 12px; }',
+      '.wb-admin table { width: 100%; border-collapse: collapse; font-size: 13px; }',
+      '.wb-admin th { background: #F5F5F4; color: #6B7280; text-align: left; padding: 8px; white-space: nowrap; }',
+      '.wb-admin td { padding: 8px; border-bottom: 1px solid #F3F4F6; vertical-align: top; }',
+      '.wb-admin .wb-err { color: #B5202A; font-weight: 700; }',
+      '.wb-admin pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; }',
     ].join('\n');
     document.head.appendChild(style);
   }
@@ -65,7 +68,26 @@
       if (v > 200) v = 200;
       body.max_sends = v;
     }
+    // wb4_bedah has no automated data source: the market and its one-line
+    // insight are picked by hand, and send-winback rejects the campaign without
+    // them. Parse the textarea so selecting it cannot silently 400.
+    if (body.campaign === 'wb4_bedah') {
+      var raw = (get('wb-pasar') || {}).value || '';
+      if (!raw.trim()) throw new Error('Kampanye wb4_bedah butuh data pasar (JSON) di kolom bawah.');
+      try {
+        body.pasar = JSON.parse(raw);
+      } catch (e) {
+        throw new Error('Data pasar bukan JSON yang valid: ' + e.message);
+      }
+    }
     return body;
+  }
+
+  // Shown only for wb4_bedah.
+  function syncPasarVisibility() {
+    var wrap = get('wb-pasar-wrap');
+    var sel = get('wb-campaign');
+    if (wrap && sel) wrap.style.display = sel.value === 'wb4_bedah' ? '' : 'none';
   }
 
   function renderResult(data, mode, out) {
@@ -91,7 +113,8 @@
       var sent = data.sent || 0;
       var total = data.total_targets || 0;
       var failed = data.failed || [];
-      var html = '<p>Terkirim <strong>' + sent + '</strong> dari <strong>' + total + '</strong></p>';
+      var html = '<p>Terkirim <strong>' + escapeHtml(sent) + '</strong> dari <strong>' + escapeHtml(total) + '</strong></p>';
+      if (data.note) html += '<p>' + escapeHtml(data.note) + '</p>';
       if (failed.length) {
         html += '<ul>';
         failed.forEach(function(f) {
@@ -127,7 +150,15 @@
       return;
     }
 
-    var body = buildBody(mode);
+    var body;
+    try {
+      body = buildBody(mode);
+    } catch (e) {
+      out.innerHTML = '<div class="wb-err">' + escapeHtml(e.message) + '</div>';
+      setButtonsDisabled(false);
+      return;
+    }
+
     try {
       var response = await fetch(SUPA_URL + '/functions/v1/send-winback', {
         method: 'POST',
@@ -154,12 +185,15 @@
   }
 
   function mount(el) {
-    if (!isPlatformAdmin()) return;
+    if (!el || !isPlatformAdmin()) return;
     ensureStyle();
 
-    el.id = 'winback-admin';
+    // Add a class rather than overwriting el.id -- the caller's id is how the
+    // rest of the admin page finds this container.
+    el.classList.add('wb-admin');
     el.innerHTML = [
-      '<h2>Kampanye Win-back</h2>',
+      '<div class="adm-section-title" style="margin-bottom:2px;">Kampanye Win-back</div>',
+      '<div style="font-size:.7rem;color:#6B7280;margin-bottom:6px;">Selalu jalankan dry run dulu. Kirim uji ke diri sendiri sebelum gelombang asli.</div>',
       '<label for="wb-campaign">Kampanye</label>',
       '<select id="wb-campaign">',
         '<option value="wb1_a">wb1_a - Hari 0, segmen A (belum pernah deep dive)</option>',
@@ -171,14 +205,28 @@
         '<option value="wb4_bedah">wb4_bedah - Hari 21, bedah satu pasar</option>',
         '<option value="wb5_sunset">wb5_sunset - Hari 45, penutup</option>',
       '</select>',
+      '<div id="wb-pasar-wrap" style="display:none;">',
+        '<label for="wb-pasar">Data pasar (JSON, wajib untuk wb4_bedah)</label>',
+        '<textarea id="wb-pasar" rows="6" spellcheck="false">' +
+          escapeHtml(JSON.stringify({
+            nama_pasar: 'jilbab anak',
+            jumlah_penjual: 412,
+            omset_bulanan: 3120000000,
+            harga_median: 19698,
+            harga_min: 7500,
+            harga_max: 45000,
+            insight: 'ganti dengan satu kalimat temuan yang nyata dari data.',
+          }, null, 2)) +
+        '</textarea>',
+      '</div>',
       '<label for="wb-max">Batas kirim (ramp)</label>',
       '<input id="wb-max" type="number" min="1" max="200" value="20">',
       '<label for="wb-test">Kirim uji ke</label>',
       '<input id="wb-test" type="email" value="stevenwilson614@gmail.com">',
       '<div class="wb-btn-row">',
-        '<button id="wb-dry" class="wb-btn wb-btn-dry">Lihat rencana (dry run)</button>',
-        '<button id="wb-test-btn" class="wb-btn wb-btn-test">Kirim uji ke saya</button>',
-        '<button id="wb-send" class="wb-btn wb-btn-send">KIRIM GELOMBANG</button>',
+        '<button type="button" id="wb-dry" class="wb-btn wb-btn-dry">Lihat rencana (dry run)</button>',
+        '<button type="button" id="wb-test-btn" class="wb-btn wb-btn-test">Kirim uji ke saya</button>',
+        '<button type="button" id="wb-send" class="wb-btn wb-btn-send">KIRIM GELOMBANG</button>',
       '</div>',
       '<div id="wb-out" class="wb-out"></div>',
     ].join('');
@@ -186,6 +234,8 @@
     get('wb-dry').addEventListener('click', function () { run('dry'); });
     get('wb-test-btn').addEventListener('click', function () { run('test'); });
     get('wb-send').addEventListener('click', function () { run('send'); });
+    get('wb-campaign').addEventListener('change', syncPasarVisibility);
+    syncPasarVisibility();
   }
 
   window.WinbackAdmin = {

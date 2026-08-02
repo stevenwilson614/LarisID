@@ -4040,7 +4040,17 @@ function adminRefreshCurrentPanel() {
   if (_adminPanel === 'overview') loadAdminOverview();
   else if (_adminPanel === 'users') adminLoadUserDirectory();
   else if (_adminPanel === 'cohorts') { loadAdminCohortOverview(); adminLoadCohortOptions(); }
-  else if (_adminPanel === 'comms') { loadAdminFeedback(); admBcLoadUsers(); }
+  else if (_adminPanel === 'comms') { loadAdminFeedback(); admBcLoadUsers(); _winbackMountAdmin(); }
+}
+
+// The win-back campaign runner lives in its own file so the sender UI never
+// touched this one. mount() is idempotent enough to call on every panel refresh
+// and is a no-op for non-admins.
+function _winbackMountAdmin() {
+  try {
+    const el = document.getElementById('adm-winback-card');
+    if (el && window.WinbackAdmin) window.WinbackAdmin.mount(el);
+  } catch (_) {}
 }
 
 async function loadAdminStats() {
