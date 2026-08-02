@@ -86,6 +86,18 @@ const rupiah = (n: number) =>
 
 const angka = (n: number) => Math.round(n).toLocaleString('id-ID')
 
+// Shopee titles are keyword-stuffed to 150+ characters ("Saringan Minyak
+// Stainless Steel Anti Karat - Tahan Lama & Mudah Dibersihkan | Alat Tulis ...").
+// Dropped whole into an email table they wrap to five lines each and the row
+// stops being scannable, so cut at a word boundary.
+function trimNama(s: string, max = 58): string {
+  const t = String(s || '').replace(/\s+/g, ' ').trim()
+  if (t.length <= max) return t
+  const cut = t.slice(0, max)
+  const sp = cut.lastIndexOf(' ')
+  return (sp > max * 0.6 ? cut.slice(0, sp) : cut).replace(/[\s|,\-]+$/, '') + '...'
+}
+
 const esc = (s: string) =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -112,19 +124,25 @@ function shell(bodyHtml: string, linkUnsub: string): string {
   p { margin:0 0 16px; }
   .cta a { background:#E8442A; color:#FFFFFF !important; text-decoration:none;
            display:inline-block; padding:13px 22px; border-radius:8px; font-weight:700; }
-  .bare { font-size:13px; color:#6B7280; word-break:break-all; }
   .foot { font-size:12px; color:#9CA3AF; margin:24px 0 0; padding-top:16px; border-top:1px solid #E5E7EB; }
   .foot a { color:#9CA3AF; }
-  table.data { width:100%; border-collapse:collapse; font-size:14px; margin:0 0 16px; }
-  table.data th { text-align:left; font-size:12px; text-transform:uppercase;
-                  letter-spacing:.04em; color:#6B7280; border-bottom:1px solid #E5E7EB; padding:8px 6px; }
-  table.data td { padding:10px 6px; border-bottom:1px solid #F3F4F6; vertical-align:top; }
+  /* Products stack instead of sitting in a 4-column grid: on a 375px phone --
+     how most of this audience reads email -- four columns wrapped every product
+     name onto six lines and pushed one row past 300px tall. */
+  table.data { width:100%; border-collapse:collapse; font-size:14px; margin:0 0 18px; }
+  table.data td { padding:12px 0; border-bottom:1px solid #F3F4F6; vertical-align:top; }
+  td.rank { width:26px; color:#9CA3AF; font-weight:700; padding-right:8px; }
+  .pname { font-weight:600; display:block; margin:0 0 4px; }
+  .pmeta { font-size:13px; color:#6B7280; display:block; }
+  .pmeta strong { color:#1F2937; font-weight:700; }
   @media (prefers-color-scheme: dark) {
     body { background:#0F1117; }
     .card { background:#171A21; border-color:#2A2F3A; }
     .brand { color:#F5F5F4; }
     body, p, td { color:#E5E7EB; }
     table.data td { border-bottom-color:#232833; }
+    .pmeta { color:#9CA3AF; }
+    .pmeta strong { color:#E5E7EB; }
     .foot { border-top-color:#2A2F3A; }
   }
 </style>
@@ -145,9 +163,12 @@ ${bodyHtml}
 </html>`
 }
 
+// The CTA is a styled anchor, not an image, so it degrades to a plain link
+// everywhere. No duplicate bare URL underneath: it wrapped over three lines on
+// mobile and repeating the same destination twice is a mild spam signal. The
+// text/plain alternative already carries the raw link for stripped clients.
 function ctaHtml(label: string, href: string): string {
   return `    <p class="cta"><a href="${esc(href)}">${esc(label)}</a></p>
-    <p class="bare">Atau buka link ini: ${esc(href)}</p>
 `
 }
 
@@ -269,7 +290,7 @@ Kalau nggak mau terima email lagi: ${c.linkUnsub}`
       const dimana = c.kota ? `di sekitar ${c.kota}` : 'di pasar Shopee Indonesia'
 
       const textRows = rows.map((r, i) =>
-        `${i + 1}. ${r.product_name}\n   ${rupiah(r.price)} | terjual ${angka(r.total_sold)} | ${angka(r.sellers)} penjual di pasar ini`
+        `${i + 1}. ${trimNama(r.product_name)}\n   ${rupiah(r.price)} | terjual ${angka(r.total_sold)} | ${angka(r.sellers)} penjual di pasar ini`
       ).join('\n')
 
       const catatanKota = c.kota
@@ -294,17 +315,17 @@ Akses 7 harimu masih aktif dan belum dipakai.
 
 Berhenti terima email: ${c.linkUnsub}`
 
-      const htmlRows = rows.map((r) => `      <tr>
-        <td>${esc(r.product_name)}</td>
-        <td style="white-space:nowrap;">${esc(rupiah(r.price))}</td>
-        <td style="white-space:nowrap;">${esc(angka(r.total_sold))}</td>
-        <td style="white-space:nowrap;">${esc(angka(r.sellers))}</td>
+      const htmlRows = rows.map((r, i) => `      <tr>
+        <td class="rank">${i + 1}</td>
+        <td>
+          <span class="pname">${esc(trimNama(r.product_name))}</span>
+          <span class="pmeta">${esc(rupiah(r.price))} &middot; terjual <strong>${esc(angka(r.total_sold))}</strong> &middot; <strong>${esc(angka(r.sellers))}</strong> penjual</span>
+        </td>
       </tr>`).join('\n')
 
       const html = shell(`    <p>${esc(greet(c.nama))}</p>
     <p>Nggak usah baca panjang-panjang. Ini yang paling laku ${esc(dimana)} minggu ini, dari data scrape kami:</p>
     <table class="data">
-      <tr><th>Produk</th><th>Harga</th><th>Terjual 7 hari</th><th>Penjual</th></tr>
 ${htmlRows}
     </table>
     <p>Angka "terjual" itu total 7 hari terakhir, bukan penjualan kemarin &mdash; Shopee cuma menampilkan angka pasti di bawah 1.000 terjual, jadi rentang seminggu jauh lebih bisa dipercaya. Kami sengaja nggak mau kasih angka yang kelihatan meyakinkan tapi ngawur.</p>
