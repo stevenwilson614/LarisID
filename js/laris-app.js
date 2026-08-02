@@ -14824,6 +14824,37 @@ function ddTrendPeerRatesFromHistory(byListing, excludeKey, category) {
 async function ddTrendFetchScrapeRows(listing, { since, limit = 80 } = {}) {
   if (!_supabase || !listing?.item_id) return [];
   let dbRows = [];
+
+  // Authoritative source first: product_trend_history() returns one row per
+  // scrape day with the server's MEASURED units_sold attached, plus the stored
+  // est_omset_monthly. That beats re-deriving units in the browser from bucketed
+  // readings. Falls through to the raw `listings` reads below if the RPC is
+  // unavailable (older deploys) or the product has no rows.
+  try {
+    const { data: rpcRows, error: rpcErr } = await _supabase.rpc('product_trend_history', {
+      p_item_id: listing.item_id,
+      p_shop_id: listing.shop_id,
+      p_limit:   limit,
+    });
+    if (!rpcErr && rpcRows?.length) {
+      const rows = rpcRows
+        .filter(r => !since || String(r.scraped_at).slice(0, 10) >= since)
+        .map(r => ({
+          scraped_at:   r.scraped_at,
+          total_sold:   r.total_sold,
+          price:        r.price,
+          reviews:      r.reviews,
+          category:     listing.category,
+          est_sold:     null,
+          sold_tier:    null,
+          units_sold:   r.units_sold,
+          units_source: r.units_source,
+          omset_monthly: r.omset_monthly,
+        }));
+      if (rows.length) return ddTrendDedupeRows(rows);
+    }
+  } catch (_) { /* fall through to the direct reads below */ }
+
   const baseQ = () => _supabase
     .from('listings')
     .select('scraped_at,total_sold,price,reviews,category,est_sold,sold_tier')
@@ -14872,6 +14903,16 @@ function ddTrendComputeDeltas(dbRows, listing, opts = {}) {
   }
   const corrDeltas = [];
   for (let i = 0; i < dbRows.length - 1; i++) {
+    // Server-measured units win outright. product_trend_history() carries
+    // units_sold from listing_deltas, where both scrape readings were exact and
+    // the delta is a COUNT, not a model output — 120,175 products have that.
+    // Everything below this line is the client re-deriving units from bucketed
+    // readings, which is only needed when the server has no measurement.
+    const srvUnits = dbRows[i + 1]?.units_sold;
+    if (srvUnits != null && dbRows[i + 1]?.units_source === 'measured') {
+      corrDeltas.push(Math.max(0, srvUnits));
+      continue;
+    }
     const s0raw = dbRows[i].total_sold ?? 0, s1raw = dbRows[i + 1].total_sold ?? 0;
     const s0 = unitData[i] ?? 0, s1 = unitData[i + 1] ?? 0;
     const bucket0 = ddTrendSoldIsBucket(s0raw, dbRows[i].sold_tier);
@@ -18970,13 +19011,13 @@ function _ctRenderCards() {
   const total_sold = _ctRows.reduce((s,r)=>s+r.total_sold,0);
   const total_listing = _ctRows.reduce((s,r)=>s+r.listing_count,0);
   const best = [..._ctRows].sort((a,b)=>b.total_sold-a.total_sold)[0];
-  const fastest = [..._ctRows].filter(r=>r.sold_delta!=null).sort((a,b)=>b.sold_delta-a.sold_delta)[0];
+  const fastest = [..._ctRows].filter(r=>r.units_per_day>0).sort((a,b)=>b.units_per_day-a.units_per_day)[0];
   const fmtNum = v => v>=1000000 ? (v/1000000).toFixed(1)+'jt' : v>=1000 ? Math.round(v/1000)+'rb' : v.toString();
   el.innerHTML = `
     <div class="ct-card"><div class="ct-card-label">Total Kategori Aktif</div><div class="ct-card-val">${_ctRows.length}</div><div class="ct-card-sub">kategori dengan data</div></div>
     <div class="ct-card"><div class="ct-card-label">Total Listing</div><div class="ct-card-val">${fmtNum(total_listing)}</div><div class="ct-card-sub">produk terlisting</div></div>
     <div class="ct-card"><div class="ct-card-label">Total Unit Terjual</div><div class="ct-card-val">${fmtNum(total_sold)}</div><div class="ct-card-sub">gabungan semua kategori</div></div>
-    <div class="ct-card"><div class="ct-card-label">Kategori Terbaik</div><div class="ct-card-val" style="font-size:.95rem;">${best?.category||'—'}</div><div class="ct-card-sub">${fmtNum(best?.total_sold||0)} unit terjual${fastest&&fastest.sold_delta>0?' · '+fastest.category+' tumbuh +'+fastest.sold_delta+'%':''}</div></div>
+    <div class="ct-card"><div class="ct-card-label">Kategori Terbaik</div><div class="ct-card-val" style="font-size:.95rem;">${best?.category||'—'}</div><div class="ct-card-sub">${fmtNum(best?.total_sold||0)} unit terjual${fastest?' · '+fastest.category+' '+fmtNum(fastest.units_per_day)+' unit/hari':''}</div></div>
   `;
 }
 
@@ -19000,10 +19041,14 @@ function _ctRenderTable() {
   tbody.innerHTML = rows.map(r => {
     const barW = Math.round(r.total_sold/maxSold*100);
     const bar  = `<div class="ct-bar-wrap"><div class="ct-bar" style="width:${barW}px;max-width:80px;"></div><span style="font-size:.72rem;font-weight:600;">${fmtNum(r.total_sold)}</span></div>`;
-    const delta = r.sold_delta == null ? '<span class="ct-delta-flat">—</span>'
-      : r.sold_delta > 0 ? `<span class="ct-delta-up">+${r.sold_delta}%</span>`
-      : r.sold_delta < 0 ? `<span class="ct-delta-down">${r.sold_delta}%</span>`
-      : '<span class="ct-delta-flat">0%</span>';
+    // Units/day, not a growth %. The growth figure was withdrawn: which products
+    // land on a given scrape day is decided by keyword rotation, so a
+    // period-over-period comparison measured our scrape cadence rather than
+    // sales (it read -84%..+15% across categories in a single week). units/day
+    // is a straight rate off measured deltas and does not have that problem.
+    const delta = r.units_per_day > 0
+      ? `<span class="ct-delta-up">${fmtNum(r.units_per_day)}/hari</span>`
+      : '<span class="ct-delta-flat">—</span>';
     const scoreBg = r.score>=70?'#16a34a':r.score>=45?'#ca8a04':'#dc2626';
     return `<tr>
       <td style="font-size:.8rem;font-weight:700;color:#1A1A1A;">${r.category}</td>
