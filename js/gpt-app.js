@@ -1353,12 +1353,14 @@ function spinShow() {
         clarityEvt('spin_preview', { award: String(data.award) });
         return;
       }
+      const award = Number(data.award) || 0;
       noteGptUsage({
         can_spin: false,
-        limit: (_gptUsage.limit || GPT_DAILY_LIMIT) + (Number(data.award) || 0),
+        limit: (_gptUsage.limit || GPT_DAILY_LIMIT) + award,
       });
       void logUserEvent('spin_awarded', { ui: 'gpt', award: data.award });
       clarityEvt('spin_awarded', { award: String(data.award) });
+      try { gptUsageCelebrateSpin(award); } catch (_) {}
     },
     onCta: () => {
       try {
@@ -1633,6 +1635,41 @@ function renderGptUsage() {
       renderGptUsage();
     }, 60000);
   }
+}
+
+/** After a spin award: glow the ring, expand a short explainer, then collapse. */
+function gptUsageCelebrateSpin(award) {
+  const n = Number(award) || 0;
+  if (n <= 0) return;
+  renderGptUsage();
+  const pills = document.querySelectorAll('[data-usage-pill]');
+  pills.forEach(pill => {
+    pill.classList.add('usage-pill--glow');
+    const scope = pill.closest('[data-usage-wrap]') || pill.parentElement;
+    let tip = scope && scope.querySelector('.usage-spin-tip');
+    if (!tip && scope) {
+      tip = document.createElement('div');
+      tip.className = 'usage-spin-tip';
+      tip.setAttribute('role', 'status');
+      scope.appendChild(tip);
+    }
+    if (tip) {
+      tip.hidden = false;
+      tip.textContent = `Kamu dapat +${n} pencarian hari ini — ada batas harian.`;
+      tip.classList.add('usage-spin-tip--show');
+    }
+    try { pill.setAttribute('aria-expanded', 'true'); } catch (_) {}
+  });
+  setTimeout(() => {
+    document.querySelectorAll('[data-usage-pill]').forEach(pill => {
+      pill.classList.remove('usage-pill--glow');
+      try { pill.setAttribute('aria-expanded', 'false'); } catch (_) {}
+    });
+    document.querySelectorAll('.usage-spin-tip').forEach(tip => {
+      tip.classList.remove('usage-spin-tip--show');
+      tip.hidden = true;
+    });
+  }, 5500);
 }
 
 function setUsagePopOpen(pill, open) {
@@ -2852,6 +2889,8 @@ function updateHomeFinderVisibility() {
   if (finder) finder.hidden = !show;
   const atau = document.querySelector('#view-home .finder-atau');
   if (atau) atau.hidden = !show;
+  // After onboarding is done, keep Kota/category finder out of the way so
+  // people reach Produk / composer instead of re-tapping Kota.
   if (!show) {
     const steven = $('steven-recs');
     if (steven) steven.style.display = 'none';
@@ -6250,7 +6289,16 @@ function bindProductCards(root) {
     });
   });
   (root || document).querySelectorAll('#btn-more-products').forEach(btn => {
-    btn.addEventListener('click', () => void openMoreProductsDirectory());
+    btn.addEventListener('click', () => {
+      try {
+        showToast('Mau cari apa? Ketik di kotak pencarian di bawah.');
+      } catch (_) {}
+      const input = document.getElementById('composer-input');
+      if (input) {
+        input.focus();
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
   });
   bindSearchSuggests(root);
   void hydrateProdCardsIn(root);
@@ -6650,7 +6698,7 @@ async function startRecommendationChat(fromOnboarding) {
 
   const cards = recTypes.length
     ? `<div class="card-grid">${marketCardsHtml(recTypes)}</div>
-       <button type="button" class="btn-ghost" id="btn-more-products">Tampilkan pasar lain</button>`
+       <button type="button" class="btn-ghost" id="btn-more-products">Cari yang lain?</button>`
     : `<p>Belum ketemu pasar yang cocok. Coba Chat Baru atau buka <strong>Produk</strong> di sidebar.</p>`;
 
   const html = `<p>${frame}</p><p>Ini <strong>${recTypes.length || recLimit} pasar</strong> dari data LarisID buat kamu cek:</p>${cards}`;
@@ -6749,6 +6797,15 @@ async function newChatFlow() {
   abortAssistantStream();
   // Chat Baru: 4 questions only if never completed; else empty + composer.
   renderHome();
+  try {
+    const input = document.getElementById('composer-input');
+    if (input) {
+      input.placeholder = 'Ketik apa yang mau kamu cari…';
+      input.focus();
+      input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    showToast('Ketik apa yang mau kamu cari…');
+  } catch (_) {}
 }
 
 // ── Deep dive ────────────────────────────────────────────────────────────

@@ -2137,6 +2137,9 @@ async function naikDaunInit() {
   const card = document.getElementById('nd-card');
   const strip = document.getElementById('nd-strip');
   if (!card || !strip || !_supabase) return;
+  try {
+    if (journeyLoad().naikDaunDismissed) { card.style.display = 'none'; return; }
+  } catch (_) {}
   _naikDaun.inited = true;
   try {
     const { data } = await _supabase.from('mv_naik_daun')
@@ -2147,6 +2150,13 @@ async function naikDaunInit() {
     naikDaunRender();
     card.style.display = '';
   } catch (e) { _naikDaun.inited = false; }
+}
+function naikDaunDismissAfterSearch() {
+  try {
+    journeySave({ naikDaunDismissed: true });
+  } catch (_) {}
+  const card = document.getElementById('nd-card');
+  if (card) card.style.display = 'none';
 }
 function naikDaunRender() {
   const strip = document.getElementById('nd-strip');
@@ -4736,7 +4746,6 @@ async function _useDive(productKey) {
     }
     _usageApply(data);
     if (data && !data.unlimited && data.already_accessed === false) {
-      setTimeout(_ddMaybeTrackNudge, 8000); // fresh dive = peak interest → invite tracking
       spinMaybeOffer(); // offer the daily spin after dive 2, before they hit the wall
     }
     return true;
@@ -4837,30 +4846,6 @@ function ddSyncTabLocks() {
   document.querySelectorAll('#dd-tabs .dd-tab-lock').forEach(el => el.remove());
 }
 function ddTabUnlocked() { return true; }
-
-// After a paid unlock the user has proven interest — nudge them to track the
-// product (the strongest retention hook: deltas feed the bell + return strip).
-// One nudge per product per session; auto-dismisses; never for privileged users.
-let _ddTrackNudgedKeys = new Set();
-function _ddMaybeTrackNudge() {
-  try {
-    const listing = _ddKwListing || _ddCurrentP?._listing;
-    if (!listing || _isCreditPrivileged() || trkIsTracked(listing)) return;
-    const k = trkKey(listing);
-    if (_ddTrackNudgedKeys.has(k)) return;
-    _ddTrackNudgedKeys.add(k);
-    const old = document.getElementById('dd-track-nudge');
-    if (old) old.remove();
-    const el = document.createElement('div');
-    el.id = 'dd-track-nudge';
-    el.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:24px;z-index:9000;background:#1A1A1A;color:#fff;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:14px;box-shadow:0 12px 34px rgba(0,0,0,.3);max-width:min(92vw,480px);';
-    el.innerHTML = `<span style="font-size:.8rem;line-height:1.45;">Sudah kebuka. <strong>Lacak produk ini</strong> biar kamu tahu tiap perubahan harga &amp; penjualannya.</span>
-      <button onclick="document.getElementById('dd-track-nudge').remove();ddToggleTrack();" style="flex-shrink:0;background:#B5202A;color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:.78rem;font-weight:800;padding:9px 14px;cursor:pointer;">Lacak Produk</button>
-      <button onclick="document.getElementById('dd-track-nudge').remove()" aria-label="Tutup" style="flex-shrink:0;background:none;border:none;color:rgba(255,255,255,.6);font-size:1.05rem;cursor:pointer;padding:2px;line-height:1;">&times;</button>`;
-    document.body.appendChild(el);
-    setTimeout(() => { const n = document.getElementById('dd-track-nudge'); if (n) n.remove(); }, 12000);
-  } catch (_) {}
-}
 
 function crScrollReferral() { document.getElementById('cr-referral-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
 
@@ -5031,7 +5016,6 @@ async function _refMaybeGoodDiveNudge() {
     if (localStorage.getItem(_REF_DIVE_DAY_KEY) === today) return;
     const shown = parseInt(localStorage.getItem(_REF_DIVE_COUNT_KEY) || '0', 10);
     if (shown >= 3) return;
-    if (document.getElementById('dd-track-nudge')) return;
     const notif = document.getElementById('mls-notify-modal');
     if (notif && notif.style.display === 'flex') return;
     if (typeof _nuOnb !== 'undefined' && _nuOnb.visible) return;
@@ -10241,7 +10225,7 @@ function dscSyncEmptyPick() {
     return;
   }
   const perPage = _dscPerPage();
-  const tier0Cap = isJourneyBeginner() && !journeyBypassGating() && userJourneyTier() === 0;
+  const tier0Cap = isJourneyBeginner() && !journeyBypassGating() && userJourneyTier() === 0 && !(_dscCommittedQ || '').trim();
   const cappedTotal = tier0Cap ? Math.min(_dscFiltered.length, JOURNEY_BEGINNER_DISCOVER_CAP) : _dscFiltered.length;
   // The card grid shows markets, which do not come from _dscFiltered. Without
   // this the empty-state kicks in and wipes a grid that is actually full.
@@ -10369,7 +10353,11 @@ async function dscFetchTypes(filters = {}) {
 /** Card for one market. Mirrors Site B: omset, median, Q1-Q3 price band. */
 function dscTypeCardHtml(t) {
   const title = String(t.keyword || '').replace(/\b\w/g, c => c.toUpperCase());
-  const imgs = (t.images || []).filter(Boolean).slice(0, 4);
+  // Prefer rep_image_url first — images[] can include off-keyword scrapes
+  // (reported: gasoline tiles on stop-kontak markets). Durable fix is matview rebuild.
+  const imgs = [];
+  if (t.rep_image_url) imgs.push(t.rep_image_url);
+  (t.images || []).forEach(u => { if (u && !imgs.includes(u)) imgs.push(u); });
   const img = imgs[0];
   const imgHtml = img
     ? `<img src="${img}" alt="" loading="lazy" onerror="this.parentElement.innerHTML=wIcon('box',36,'#9CA3AF')">`
@@ -10877,6 +10865,9 @@ function dscApplyFilters(resetPage = true, shouldScrollTop = true) {
   // has to invalidate them or the grid keeps showing the previous market list.
   if (resetPage) { _dscTypesLoaded = false; _dscTypeRows = []; }
   const qInput = _dscCommittedQ;
+  if ((qInput || '').trim()) {
+    try { naikDaunDismissAfterSearch(); } catch (_) {}
+  }
   const categoryIntent = _dscResolveCategoryIntent(qInput);
   const q = categoryIntent ? '' : qInput;
   const selectedCats = categoryIntent ? [categoryIntent] : _dscApplied.cats;
@@ -11048,9 +11039,10 @@ function dscCardHtml(p, kwMap) {
 function dscRenderTable() {
   journeyApplyDiscoverChrome();
   const beginner = isJourneyBeginner() && !journeyBypassGating();
-  const tier0Cap = beginner && userJourneyTier() === 0;
-  const _dscQ = _dscCommittedQ;
-  const searchActive = !!_dscQ && !tier0Cap;
+  const _dscQ = (_dscCommittedQ || '').trim();
+  // Cap=6 only for tier-0 empty browse. Committed search always expands to 30–60.
+  const tier0Cap = beginner && userJourneyTier() === 0 && !_dscQ;
+  const searchActive = !!_dscQ;
   const perPage = _dscPerPage();
   const cappedList = tier0Cap ? _dscFiltered.slice(0, JOURNEY_BEGINNER_DISCOVER_CAP) : _dscFiltered;
   const total = cappedList.length;
@@ -11143,6 +11135,11 @@ function dscRenderTable() {
           void _dscEnsureBrowsePool(60).then(ok => { if (ok) dscApplyFilters(false); else dscSyncEmptyPick(); });
         }
       }
+    } else if (searchActive) {
+      // Search should stay on pasar/type cards. Only fall through to listing
+      // cards when types are truly empty after fetch (handled above).
+      cardGrid.innerHTML = filterNoMatchBanner +
+        `<div style="grid-column:1/-1;text-align:center;padding:24px 16px;color:#6B7280;font-size:.85rem;">Belum ada pasar yang cocok. Coba kata kunci lain.</div>`;
     } else {
       const _cardKwMap = {};
       _dscAllListings.forEach(r => { const k = r.keyword||'__'; if (!_cardKwMap[k]) _cardKwMap[k]=[]; _cardKwMap[k].push(r); });
@@ -11637,6 +11634,10 @@ function ddSwitchTab(tab) {
   document.querySelectorAll('#dd-tabs .dd-tab').forEach(el => {
     el.classList.toggle('active', el.dataset.tab === tab);
   });
+  document.querySelectorAll('#dd-sticky-bar .dd-sticky-pill').forEach(el => {
+    const t = el.getAttribute('data-dd-sticky-tab');
+    el.classList.toggle('active', t === tab || (tab === 'analisa' && t === 'analisa') || (tab === 'ringkasan' && t === 'ringkasan'));
+  });
   if (tab === 'ringkasan' && typeof ddRefreshRingkasan === 'function' && _ddCurrentP) {
     // Show the panel first so canvas elements have non-zero dimensions before Chart.js renders
     const _rPanel = document.getElementById('dd-tab-ringkasan');
@@ -11672,6 +11673,28 @@ function ddSwitchTab(tab) {
     }
   }
 }
+
+function ddUpdateStickyBar(p) {
+  const bar = document.getElementById('dd-sticky-bar');
+  if (!bar) return;
+  const name = (p && (p.name || p.product_name || p.keyword)) || document.getElementById('dd-hero-name')?.textContent || '—';
+  const nameEl = document.getElementById('dd-sticky-name');
+  if (nameEl) nameEl.textContent = name;
+  const thumb = document.getElementById('dd-sticky-thumb');
+  const img = (p && (p.image || p.image_url)) || document.querySelector('#dd-hero-img img')?.src || '';
+  if (thumb) {
+    if (img) { thumb.src = img; thumb.hidden = false; }
+    else { thumb.hidden = true; }
+  }
+  bar.hidden = false;
+}
+
+document.addEventListener('click', function (e) {
+  const btn = e.target && e.target.closest && e.target.closest('[data-dd-sticky-tab]');
+  if (!btn) return;
+  const tab = btn.getAttribute('data-dd-sticky-tab');
+  if (tab && typeof ddSwitchTab === 'function') ddSwitchTab(tab);
+});
 
 function ddOpenAiRecommendations() {
   ddSwitchTab('analisa');
@@ -13526,10 +13549,10 @@ function apRenderStrategy() {
 
 function _dscPerPage() {
   const beginner = isJourneyBeginner() && !journeyBypassGating();
-  const tier0Cap = beginner && userJourneyTier() === 0;
-  const q = _dscCommittedQ;
-  if (tier0Cap) return JOURNEY_BEGINNER_DISCOVER_CAP;
+  const q = (_dscCommittedQ || '').trim();
   if (q) return Math.max(DSC_SEARCH_MIN_PER_PAGE, DSC_PER_PAGE);
+  const tier0Cap = beginner && userJourneyTier() === 0;
+  if (tier0Cap) return JOURNEY_BEGINNER_DISCOVER_CAP;
   return DSC_PER_PAGE;
 }
 
@@ -14323,6 +14346,7 @@ function ddRender(p) {
   // hero
   ddSetHeroImages(p.image ? [p.image] : []);
   document.getElementById('dd-hero-name').textContent = p.name;
+  try { ddUpdateStickyBar(p); } catch (_) {}
   const productPrice = listing.price || p.medianPrice || p.price || 0;
   const heroPriceEl = document.getElementById('dd-hero-price');
   if (heroPriceEl) heroPriceEl.textContent = productPrice > 0 ? 'Rp ' + Math.round(productPrice).toLocaleString('id-ID') : '—';
@@ -22438,8 +22462,10 @@ function journeyApplyDiscoverChrome() {
   }
   const sub = document.getElementById('dsc-subtitle');
   if (sub) {
-    if (beginner && tier === 0) {
-      sub.textContent = `${JOURNEY_BEGINNER_DISCOVER_CAP} produk untukmu hari ini — ketuk satu untuk lihat apakah layak dijual.`;
+    if (beginner && tier === 0 && !(_dscCommittedQ || '').trim()) {
+      sub.textContent = `${JOURNEY_BEGINNER_DISCOVER_CAP} pasar untukmu hari ini — ketuk satu untuk lihat apakah layak dijual.`;
+    } else if ((_dscCommittedQ || '').trim()) {
+      sub.textContent = 'Hasil pencarian pasar — gulir untuk jelajahi lebih banyak.';
     } else if (beginner) {
       const prefix = journeyIsReturningUser() ? 'Diperbarui hari ini — ' : '';
       sub.textContent = prefix + 'Produk pilihan untuk kamu — ketuk kartu untuk analisis lengkap.';

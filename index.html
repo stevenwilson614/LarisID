@@ -598,24 +598,24 @@ body{font-family:'Plus Jakarta Sans', sans-serif;-webkit-font-smoothing:antialia
 .ylk-hl-iconwrap{width:60px;height:60px;border-radius:16px;background:#F9EAE4;display:flex;align-items:center;justify-content:center;margin:2px 0 4px;}
 .ylk-hl-name{font-size:.9rem;font-weight:800;color:#1A1A1A;line-height:1.2;}
 /* ── Naik Daun ── */
-.nd-card{background:linear-gradient(180deg,#FFFDF8,#fff);border:1px solid #F0E7DC;border-radius:14px;padding:16px 0 16px 18px;margin-bottom:18px;box-shadow:0 6px 20px rgba(26,26,26,.04);}
-.nd-head{padding-right:18px;margin-bottom:12px;}
-.nd-title{font-size:.95rem;font-weight:800;color:#1A1A1A;display:flex;align-items:center;gap:8px;letter-spacing:-.01em;}
-.nd-title::before{content:"";width:8px;height:8px;border-radius:50%;background:#059669;box-shadow:0 0 0 4px #ECFDF5;flex-shrink:0;}
-.nd-sub{font-size:.72rem;color:#9CA3AF;margin-top:3px;max-width:560px;line-height:1.4;}
-.nd-strip{display:flex;gap:12px;overflow-x:auto;padding:4px 18px 6px 0;scroll-snap-type:x mandatory;}
-.nd-strip::-webkit-scrollbar{height:6px;}
+.nd-card{background:linear-gradient(180deg,#FFFDF8,#fff);border:1px solid #F0E7DC;border-radius:14px;padding:10px 0 10px 14px;margin-bottom:12px;box-shadow:0 6px 20px rgba(26,26,26,.04);}
+.nd-head{padding-right:14px;margin-bottom:8px;}
+.nd-title{font-size:.85rem;font-weight:800;color:#1A1A1A;display:flex;align-items:center;gap:8px;letter-spacing:-.01em;}
+.nd-title::before{content:"";width:7px;height:7px;border-radius:50%;background:#059669;box-shadow:0 0 0 3px #ECFDF5;flex-shrink:0;}
+.nd-sub{font-size:.68rem;color:#9CA3AF;margin-top:2px;max-width:560px;line-height:1.35;}
+.nd-strip{display:flex;gap:10px;overflow-x:auto;padding:2px 14px 4px 0;scroll-snap-type:x mandatory;}
+.nd-strip::-webkit-scrollbar{height:4px;}
 .nd-strip::-webkit-scrollbar-thumb{background:#E8E0D8;border-radius:999px;}
-.nd-item{flex:0 0 150px;width:150px;border:1px solid #F0E7DC;border-radius:12px;overflow:hidden;cursor:pointer;background:#fff;scroll-snap-align:start;transition:transform .15s,box-shadow .15s;}
+.nd-item{flex:0 0 120px;width:120px;border:1px solid #F0E7DC;border-radius:10px;overflow:hidden;cursor:pointer;background:#fff;scroll-snap-align:start;transition:transform .15s,box-shadow .15s;}
 .nd-item:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(26,26,26,.08);}
-.nd-item-img{position:relative;width:100%;height:110px;background:#F7F2EC;}
+.nd-item-img{position:relative;width:100%;height:55px;background:#F7F2EC;}
 .nd-item-img img{width:100%;height:100%;object-fit:cover;}
-.nd-vel{position:absolute;left:7px;bottom:7px;background:#059669;color:#fff;font-size:.6rem;font-weight:800;padding:2px 7px;border-radius:6px;letter-spacing:.02em;}
-.nd-item-body{padding:8px 9px 10px;}
-.nd-item-name{font-size:.72rem;font-weight:700;color:#1A1A1A;line-height:1.25;height:2.5em;overflow:hidden;}
-.nd-item-meta{display:flex;align-items:center;justify-content:space-between;margin-top:6px;gap:6px;}
-.nd-item-price{font-size:.72rem;font-weight:800;color:#B5202A;white-space:nowrap;}
-.nd-item-age{font-size:.58rem;color:#9CA3AF;white-space:nowrap;}
+.nd-vel{position:absolute;left:6px;bottom:5px;background:#059669;color:#fff;font-size:.55rem;font-weight:800;padding:1px 6px;border-radius:5px;letter-spacing:.02em;}
+.nd-item-body{padding:6px 8px 8px;}
+.nd-item-name{font-size:.68rem;font-weight:700;color:#1A1A1A;line-height:1.2;height:2.4em;overflow:hidden;}
+.nd-item-meta{display:flex;align-items:center;justify-content:space-between;margin-top:4px;gap:4px;}
+.nd-item-price{font-size:.68rem;font-weight:800;color:#B5202A;white-space:nowrap;}
+.nd-item-age{font-size:.55rem;color:#9CA3AF;white-space:nowrap;}
 
 /* ── DISCOVER ── */
 .disc-hero{background:var(--grad);padding:12px 22px 18px;}
@@ -3373,14 +3373,62 @@ body.in-dashboard .mobile-menu{display:none!important;}
   .dsc-table-controls{flex-wrap:nowrap;gap:6px;}
 }
 
-/* ── Issue 2a: Deep dive image — cap height, no stretch ── */
 @media(max-width:768px){
-  .dd-hero{flex-direction:column;align-items:flex-start;gap:12px;}
-  .dd-hero-img{width:100%;height:180px;min-width:unset;max-width:unset;padding:0;overflow:hidden;border-radius:10px;display:block;}
+  #dash-content,#dash-view-deepdive,.dd-wrap{overflow-x:hidden;max-width:100%;}
+}
+.dd-sticky-bar{display:none;}
+.dd-sticky-thumb{width:36px;height:36px;border-radius:8px;object-fit:cover;background:#F3F4F6;flex-shrink:0;}
+.dd-sticky-main{flex:1;min-width:0;}
+.dd-sticky-name{font-size:.78rem;font-weight:800;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dd-sticky-pills{display:flex;gap:6px;margin-top:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.dd-sticky-pills::-webkit-scrollbar{display:none;}
+.dd-sticky-pill{
+  flex-shrink:0;border:1px solid #E5E7EB;background:#fff;border-radius:999px;
+  padding:4px 10px;font-size:.68rem;font-weight:700;color:#374151;cursor:pointer;
+}
+.dd-sticky-pill.active{background:#B5202A;border-color:#B5202A;color:#fff;}
+/* ── Issue 2a: Deep dive image — full-bleed swipe on mobile ── */
+@media(max-width:768px){
+  .dd-wrap{padding:0 0 80px;overflow-x:hidden;max-width:100vw;}
+  .dd-topbar{padding:12px 12px 0;}
+  .dd-hero{flex-direction:column;align-items:stretch;gap:0;margin:0 0 0;}
+  .dd-hero-img-wrap{width:100%;max-width:100%;}
+  .dd-hero-img{width:100%;height:auto;min-width:unset;max-width:unset;padding:0;overflow:hidden;border-radius:0;display:block;border:none;}
   .dd-hero-img img{width:100%;height:100%;object-fit:cover;}
-  .dd-hero-strip{margin-left:-12px;margin-right:-12px;padding:0 12px;}
-  .dd-hero-slide{border-radius:0;}
-  .dd-wrap{padding:12px 12px 80px;}
+  .dd-hero-strip{margin:0;padding:0;width:100vw;max-width:100vw;position:relative;left:50%;right:50%;margin-left:-50vw;margin-right:-50vw;}
+  .dd-hero-slide{border-radius:0;flex:0 0 100%;aspect-ratio:4/3;}
+  .dd-hero-right{padding:12px 12px 0;gap:8px;}
+  .dd-hero-cards{padding:0 12px;margin-top:8px;}
+  .dd-mp,#dd-fee-strip{margin-left:12px;margin-right:12px;}
+  #dd-beginner-panel{margin-left:12px;margin-right:12px;}
+  /* Sticky product bar with Ringkasan / Pasar pills — mobile only */
+  .dd-sticky-bar{
+    display:flex!important;align-items:center;gap:10px;
+    position:sticky;top:0;z-index:40;
+    background:rgba(255,255,255,.94);backdrop-filter:blur(8px);
+    border-bottom:1px solid #E5E7EB;
+    padding:8px 12px;margin:0;
+  }
+  .dd-sticky-bar[hidden]{display:none!important;}
+  .dd-sticky-thumb{width:36px;height:36px;border-radius:8px;object-fit:cover;background:#F3F4F6;flex-shrink:0;}
+  .dd-sticky-main{flex:1;min-width:0;}
+  .dd-sticky-name{font-size:.78rem;font-weight:800;color:#1A1A1A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .dd-sticky-pills{display:flex;gap:6px;margin-top:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .dd-sticky-pills::-webkit-scrollbar{display:none;}
+  .dd-sticky-pill{
+    flex-shrink:0;border:1px solid #E5E7EB;background:#fff;border-radius:999px;
+    padding:4px 10px;font-size:.68rem;font-weight:700;color:#374151;cursor:pointer;
+  }
+  .dd-sticky-pill.active{background:#B5202A;border-color:#B5202A;color:#fff;}
+  /* One column — no sideways page scroll */
+  .dd-tbl-scroll-wrap{overflow-x:visible;max-width:100%;}
+  .dd-tbl-scroll-wrap table{display:block;width:100%;}
+  .dd-tbl-scroll-wrap thead{display:none;}
+  .dd-tbl-scroll-wrap tr{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;padding:10px 0;border-bottom:1px solid #F3F4F6;}
+  .dd-tbl-scroll-wrap td{display:block;padding:0;font-size:.72rem;word-break:break-word;}
+  .dd-scroll-hint{display:none!important;}
+  #dd-tabs,#dd-main-content > .dd-card,.dd-tab-panel{padding-left:12px;padding-right:12px;box-sizing:border-box;}
+  #dd-tabs{margin-left:0;margin-right:0;padding-left:12px;}
 }
 
 /* ── Issue 2b: Title truncation ── */
@@ -4805,7 +4853,7 @@ html,body{overflow-x:clip;max-width:100%;}
               + '<div class="lp-hero-card-name">' + p.name + '</div>'
               + '<div class="lp-hero-card-store">' + p.store + '</div>'
               + '<div class="lp-hero-card-price">' + fmtRp(p.price) + '</div>'
-              + '<div class="lp-hero-card-omset">' + fmtRp(p.omset) + '/bln</div>'
+              + '<div class="lp-hero-card-omset">' + fmtRp(Math.round(p.omset * 0.6)) + ' – ' + fmtRp(p.omset) + '/bln</div>'
               + '</div>';
           }
           function lpHeroRenderGrid(cat){
@@ -7282,6 +7330,18 @@ html,body{overflow-x:clip;max-width:100%;}
                     <div class="dd-hstat-value" id="dd-h-komp">—</div>
                     <div class="dd-hstat-sub" id="dd-h-komp-sub" style="margin-left:0;font-size:.74rem;color:#6B7280;">—</div>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- sticky product bar (mobile) -->
+            <div class="dd-sticky-bar" id="dd-sticky-bar" hidden>
+              <img class="dd-sticky-thumb" id="dd-sticky-thumb" alt="" hidden>
+              <div class="dd-sticky-main">
+                <div class="dd-sticky-name" id="dd-sticky-name">—</div>
+                <div class="dd-sticky-pills" role="toolbar" aria-label="Bagian Deep Dive">
+                  <button type="button" class="dd-sticky-pill active" data-dd-sticky-tab="ringkasan">Ringkasan</button>
+                  <button type="button" class="dd-sticky-pill" data-dd-sticky-tab="analisa">Pasar</button>
                 </div>
               </div>
             </div>

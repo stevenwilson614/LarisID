@@ -350,6 +350,40 @@ html.session-restoring body::after {
   pointer-events: none;
 }
 .composer .usage-ring-num { font-size: .58rem; }
+.usage-pill--glow .usage-ring-wrap {
+  opacity: 1 !important;
+  box-shadow: 0 0 0 3px rgba(181,32,42,.18), 0 0 18px rgba(181,32,42,.35);
+  animation: usageGlowPulse 1.1s ease-in-out 2;
+}
+@keyframes usageGlowPulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(181,32,42,.12), 0 0 10px rgba(181,32,42,.2); }
+  50% { box-shadow: 0 0 0 4px rgba(181,32,42,.22), 0 0 22px rgba(181,32,42,.45); }
+}
+.usage-spin-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%) translateY(4px);
+  min-width: 220px;
+  max-width: min(320px, 70vw);
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #1A1A1A;
+  color: #fff;
+  font-size: .72rem;
+  font-weight: 650;
+  line-height: 1.35;
+  box-shadow: 0 10px 28px rgba(0,0,0,.22);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s, transform .2s;
+  z-index: 40;
+  text-align: center;
+}
+.usage-spin-tip--show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
 .usage-meta { display: none; }
 .usage-wrap {
   position: relative;
@@ -1681,9 +1715,13 @@ body.home-finder-done .home-title {
 .badge-rendah { background: var(--red-bg); color: var(--accent); }
 .ddr-cat { font-size: .72rem; color: var(--muted); margin: 6px 0 0; }
 .ddr-tool-pills {
-  display: flex; flex-wrap: wrap; gap: 8px;
+  display: flex; flex-wrap: nowrap; gap: 8px;
   margin: 0 0 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.ddr-tool-pills::-webkit-scrollbar { display: none; }
 .ddr-tool-pill {
   display: inline-flex; align-items: center;
   padding: 8px 14px; border-radius: 999px;
@@ -2728,6 +2766,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
           <span class="product-pin-meta" id="product-pin-meta" hidden></span>
         </div>
         <div class="product-pin-tools" id="product-pin-tools" hidden>
+          <button type="button" class="ddr-tool-pill ddr-tool-pill--ai" data-pin-tool="ai">Tanya AI</button>
           <button type="button" class="ddr-tool-pill" data-pin-tool="analisa">Analisa</button>
           <button type="button" class="ddr-tool-pill" data-pin-tool="kalkulator">Kalkulator</button>
           <button type="button" class="ddr-tool-pill" data-pin-tool="kompetitor">Kompetitor</button>

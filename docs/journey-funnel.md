@@ -77,7 +77,7 @@ Tier is computed client-side in `userJourneyTier()` (also synced to `user_journe
 
 | Tier | Condition | UX |
 |------|-----------|-----|
-| **0** | No Deep Dive yet | 6 Discover cards (`JOURNEY_BEGINNER_DISCOVER_CAP`), no filter panel, starter card highlight, simplified Deep Dive (no track btn) |
+| **0** | No Deep Dive yet | 6 Discover cards on empty browse (`JOURNEY_BEGINNER_DISCOVER_CAP`); **committed search lifts the cap to 30–60** pasar cards. No filter panel, starter card highlight, simplified Deep Dive (no track btn) |
 | **1** | ≥1 Deep Dive | Filter btn visible, track hint, return loops |
 | **2** | ≥1 tracked product (`trkLoad`) | Full Beranda stats, nav unlocks |
 | **3** | ≥3 Deep Dives **or** admin/leader | Full Discover + Deep Dive |
@@ -99,7 +99,7 @@ Tier is computed client-side in `userJourneyTier()` (also synced to `user_journe
 ### Discover
 
 - `journeyApplyDiscoverChrome()` — CSS classes `dsc-journey-beginner`, `dsc-journey-tier1`; subtitle copy
-- `dscRenderTable()` — caps list at 6 for tier 0; simplified cards (no omset/tren for beginners)
+- `dscRenderTable()` — caps list at 6 for tier-0 **browse only**; committed search uses 30–60 pasar/type cards
 - `dscHighlightStarterCard()` / `dscOpenStarterDeepDive()` — “Mulai di sini” CTA
 
 ### Deep Dive
