@@ -18937,7 +18937,11 @@ async function loadCategoryTrends() {
       avg_rating,
       top_kw:        r.top_kw || '—',
       sold_delta:    r.sold_delta == null ? null : Number(r.sold_delta),
-      units_gained:  Number(r.units_gained) || 0,
+      // Category-wide units/day. Replaces units_gained, which summed raw deltas
+      // measured over gaps of 1 to 120 days as though they were comparable.
+      // sold_delta is now the change in the PER-PRODUCT daily rate, so it no
+      // longer moves just because the scrape covered more of a category.
+      units_per_day: Number(r.units_per_day) || 0,
       score: Math.round(Math.min(total_sold / maxSold * 60, 60)
                       + (avg_rating / 5) * 25
                       + Math.min(kw_count / 20 * 15, 15)),
