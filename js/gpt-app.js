@@ -1503,7 +1503,13 @@ async function gptSubmitFeedback() {
     const record = {
       user_id:    currentUser?.id    || null,
       user_email: currentUser?.email || null,
-      type:       'product',
+      // MUST be one of the feedback_type_check values:
+      //   bug | feature | other | wrong_data | not_working | request_edit
+      // This said 'product', which is not in that list, so EVERY Site B
+      // feedback submission was rejected with 23514 and the user was shown
+      // "Gagal mengirim". The arm is already identified by page:'gpt', so this
+      // does not need its own type.
+      type:       'other',
       message:    msg,
       page:       'gpt',
     };
@@ -1532,7 +1538,11 @@ async function gptSubmitFeedback() {
     }
     if (btn) btn.textContent = 'Terkirim';
     setTimeout(gptFeedbackClose, 1800);
-  } catch (_) {
+  } catch (err) {
+    // Log the cause. `catch (_)` here is why a hard 23514 constraint violation
+    // sat in production silently rejecting every message — the user saw a
+    // generic retry prompt and we saw nothing at all.
+    console.error('feedback submit failed:', err?.code || '', err?.message || err);
     if (st) { st.textContent = 'Gagal mengirim. Coba lagi.'; st.style.color = '#B5202A'; }
     if (btn) { btn.disabled = false; btn.textContent = 'Kirim ke Steven'; }
   } finally {

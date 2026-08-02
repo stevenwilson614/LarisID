@@ -21056,6 +21056,7 @@ async function submitFeedback() {
     if (btn) { btn.textContent = 'Terkirim'; }
     setTimeout(closeFeedbackModal, 1800);
   } catch (err) {
+    console.error('feedback submit failed:', err?.code || '', err?.message || err);
     if (status) { status.textContent = 'Gagal mengirim. Coba lagi.'; status.style.color = '#B5202A'; }
     if (btn) { btn.disabled = false; btn.textContent = 'Kirim ke Steven'; }
   }
