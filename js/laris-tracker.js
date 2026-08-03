@@ -1305,15 +1305,6 @@
   }
   refresh._gen = 0;
 
-  function oldestKeywordAgeMs() {
-    var oldest = 0;
-    S.keywords.forEach(function (k) {
-      var t = Date.parse(k.created_at || '');
-      if (t && (!oldest || t < oldest)) oldest = t;
-    });
-    return oldest ? (Date.now() - oldest) : 0;
-  }
-
   /* ── commit ─────────────────────────────────────────────────────────── */
 
   function commit() {
