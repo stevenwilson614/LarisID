@@ -6,6 +6,30 @@
 
 @media (max-width: 768px) {
 
+  /* 0. On mobile the WINDOW scrolls, not .dash-content (see the comment on
+     scrollResultsToTop in js/laris-app.js). But .dash-content keeps its
+     desktop `overflow-y:auto` and .dash-main its `overflow:hidden`, and both
+     therefore stay scroll containers — which is what `position:sticky` pins
+     to. The sticky product bar was pinning to a container that never scrolls,
+     so it slid off the top with the page. Releasing them on mobile is what
+     makes the bar actually stick; it costs nothing because neither element is
+     the mobile scroller.
+
+     `min-width:0` is not optional here: .dash-main is a flex item, and
+     `overflow:hidden` was the only thing forcing its automatic minimum size to
+     zero. Drop the overflow without it and the item grows to its content's
+     min-content width (~811px inside a 390px viewport), pushing every card
+     off-screen. */
+  .dash-main { overflow: visible !important; min-width: 0 !important; }
+  #dash-content { overflow-y: visible !important; min-width: 0 !important; }
+
+  /* 0b. The app topbar is position:fixed, 60px tall, z-index 95. A sticky bar
+     pinned to top:0 lands underneath it and is never seen. Pin below it. */
+  .dd-sticky-bar {
+    top: 60px !important;
+    z-index: 90 !important;
+  }
+
   /* 1. Inline two‑column grids → single column.
      Override the track list, do NOT switch display to block: these containers
      carry an inline `gap`, which block layout would silently drop, collapsing
@@ -45,11 +69,16 @@
     display: none !important;                    /* no scroll gesture hint */
   }
 
-  /* 3. Page‑level overflow must not scroll horizontally */
+  /* 3. Page‑level overflow must not scroll horizontally.
+     `clip`, NOT `hidden`: overflow-x:hidden makes the element a scroll
+     container, and a scroll-container ancestor is what `position:sticky`
+     sticks to — so the sticky product bar scrolled straight off the top
+     instead of pinning. `clip` crops without creating that container.
+     html/body already carry overflow-x:clip, so this is belt and braces. */
   #dash-content,
   #dash-view-deepdive,
   .dd-wrap {
-    overflow-x: hidden !important;
+    overflow-x: clip !important;
     max-width: 100% !important;
   }
 

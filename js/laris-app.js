@@ -11740,7 +11740,7 @@ async function _ddOwnPhotos(listing) {
       .limit(30);
     const imgs = [listing.image_url || ''];
     (data || []).forEach(r => { if (r.image_url) imgs.push(r.image_url); });
-    if (imgs.filter(Boolean).length > 1) ddSetHeroImages(imgs);
+    if (imgs.filter(Boolean).length > 1) ddSetHeroImages(imgs, { key: listing.item_id });
   } catch (_) {}
 }
 
@@ -11803,7 +11803,7 @@ async function ddLoadKeywordContext(listing) {
       listing.image_url || '',
       ...rows.slice(0, 10).map(r => r.image_url || ''),
     ];
-    ddSetHeroImages(heroImages);
+    ddSetHeroImages(heroImages, { key: listing.item_id });
 
     const totalSold = rows.reduce((s, r) => s + (r.total_sold || 0), 0);
     const rank = rows.findIndex(r => String(r.item_id) === String(listing.item_id) && String(r.shop_id) === String(listing.shop_id)) + 1;
@@ -14346,10 +14346,21 @@ function ddRenderFees(){
     </div>`;
 }
 
-function ddSetHeroImages(images) {
+// Which product the strip currently shows, and how many photos are in it.
+// ddRender() seeds the strip with the product's own cover while
+// ddLoadKeywordContext() fills it with the market's photos — and ddRender's
+// body is async (it awaits Chart.js), so the seed regularly landed LAST and
+// overwrote a full gallery with a single frame. That race is why the hero never
+// swiped. Seed calls now refuse to shrink a gallery already built for the same
+// product; a different product resets it.
+let _ddHeroFor = null;
+let _ddHeroCount = 0;
+
+function ddSetHeroImages(images, opts) {
   const wrap = document.getElementById('dd-hero-img');
   const countEl = document.getElementById('dd-hero-img-count');
   if (!wrap) return;
+  const key = opts && opts.key != null ? String(opts.key) : null;
   const uniq = [];
   const seen = new Set();
   (images || []).forEach((u) => {
@@ -14358,6 +14369,11 @@ function ddSetHeroImages(images) {
     seen.add(src);
     uniq.push(src);
   });
+  // A seed must never replace a richer gallery already built for this product.
+  if (opts && opts.seed && key && key === _ddHeroFor && _ddHeroCount > uniq.length) return;
+  if (key && key !== _ddHeroFor) { _ddHeroFor = key; _ddHeroCount = 0; }
+  _ddHeroCount = uniq.length;
+
   if (!uniq.length) {
     wrap.innerHTML = wIcon('box', 48, '#9CA3AF');
     if (countEl) countEl.textContent = '—';
@@ -14400,7 +14416,7 @@ function ddRender(p) {
   const omset = sales * price;
 
   // hero
-  ddSetHeroImages(p.image ? [p.image] : []);
+  ddSetHeroImages(p.image ? [p.image] : [], { seed: true, key: p.id });
   document.getElementById('dd-hero-name').textContent = p.name;
   try { ddUpdateStickyBar(p); } catch (_) {}
   const productPrice = listing.price || p.medianPrice || p.price || 0;

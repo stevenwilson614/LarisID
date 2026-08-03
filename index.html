@@ -3375,7 +3375,9 @@ body.in-dashboard .mobile-menu{display:none!important;}
 }
 
 @media(max-width:768px){
-  #dash-content,#dash-view-deepdive,.dd-wrap{overflow-x:hidden;max-width:100%;}
+  /* clip, not hidden — hidden makes these scroll containers and position:sticky
+     then pins to them instead of the viewport. See styles/dd-mobile-a.css. */
+  #dash-content,#dash-view-deepdive,.dd-wrap{overflow-x:clip;max-width:100%;}
 }
 .dd-sticky-bar{display:none;}
 .dd-sticky-thumb{width:36px;height:36px;border-radius:8px;object-fit:cover;background:#F3F4F6;flex-shrink:0;}
@@ -3390,7 +3392,7 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dd-sticky-pill.active{background:#B5202A;border-color:#B5202A;color:#fff;}
 /* ── Issue 2a: Deep dive image — full-bleed swipe on mobile ── */
 @media(max-width:768px){
-  .dd-wrap{padding:0 0 80px;overflow-x:hidden;max-width:100vw;}
+  .dd-wrap{padding:0 0 80px;overflow-x:clip;max-width:100vw;}
   .dd-topbar{padding:12px 12px 0;}
   .dd-hero{flex-direction:column;align-items:stretch;gap:0;margin:0 0 0;}
   .dd-hero-img-wrap{width:100%;max-width:100%;}

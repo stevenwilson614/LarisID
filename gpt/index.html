@@ -1429,6 +1429,8 @@ body.home-finder-done .home-title {
     line-height: 1.2;
     flex-shrink: 0;
   }
+  /* The space before this <br> in the markup is deliberate: hiding the break
+     here would otherwise render "kamumau" as one word. */
   .home-title br { display: none; }
   .home-sub { display: none; }
   .home-finder {
@@ -2785,7 +2787,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
         <div class="view" id="view-home">
           <div class="home-hero">
             <div class="home-scroll">
-              <h1 class="home-title">Apa yang kamu<br>mau <em>jual</em> hari ini?</h1>
+              <h1 class="home-title">Apa yang kamu <br>mau <em>jual</em> hari ini?</h1>
               <p class="home-sub">Cari produk, kategori, atau tanya apa saja.</p>
 
               <div class="home-finder" id="home-finder">
