@@ -6,12 +6,15 @@
 
 @media (max-width: 768px) {
 
-  /* 1. Inline two‑column grids → single column */
+  /* 1. Inline two‑column grids → single column.
+     Override the track list, do NOT switch display to block: these containers
+     carry an inline `gap`, which block layout would silently drop, collapsing
+     the spacing between every card in the tab. */
   #dd-tab-analisa > div,
   #dd-tab-kompetitor > div,
   #dd-tab-keyword > div,
   #tren-content-grid {
-    display: block !important;
+    grid-template-columns: 1fr !important;
   }
 
   /* 2. Table scroll wrappers → no horizontal scroll, reflow tables */
@@ -63,6 +66,10 @@
   .dd-hero-img {
     width: 100% !important;
     max-width: 100% !important;
+    /* base .dd-hero-img is a 140–160px padded card; full bleed needs both the
+       padding and the fixed height gone or the photo sits in a white frame */
+    padding: 0 !important;
+    height: auto !important;
     border-radius: 0 !important;
     border: none !important;
   }

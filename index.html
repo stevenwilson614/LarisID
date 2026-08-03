@@ -197,7 +197,7 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260802a';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260803a';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
@@ -2704,6 +2704,9 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .dd-hero-strip::-webkit-scrollbar{display:none;}
 .dd-hero-slide{flex:0 0 100%;aspect-ratio:1/1;border-radius:12px;overflow:hidden;scroll-snap-align:start;background:#fff;}
 .dd-hero-slide img{width:100%;height:100%;object-fit:cover;display:block;}
+.dd-hero-dots{display:flex;justify-content:center;gap:5px;padding:6px 0 0;}
+.dd-hero-dot{width:5px;height:5px;border-radius:50%;background:#D1D5DB;transition:background .15s,width .15s;}
+.dd-hero-dot.active{background:#B5202A;width:14px;border-radius:999px;}
 .dd-hero-name{font-size:1.3rem;font-weight:800;color:#1A1A1A;margin-bottom:2px;line-height:1.25;}
 .dd-hero-price{font-size:1.15rem;font-weight:800;color:#B5202A;margin-bottom:4px;line-height:1.2;}
 .dd-hero-cats{font-size:.78rem;color:#9CA3AF;}
@@ -3420,13 +3423,10 @@ body.in-dashboard .mobile-menu{display:none!important;}
     padding:4px 10px;font-size:.68rem;font-weight:700;color:#374151;cursor:pointer;
   }
   .dd-sticky-pill.active{background:#B5202A;border-color:#B5202A;color:#fff;}
-  /* One column — no sideways page scroll */
-  .dd-tbl-scroll-wrap{overflow-x:visible;max-width:100%;}
-  .dd-tbl-scroll-wrap table{display:block;width:100%;}
-  .dd-tbl-scroll-wrap thead{display:none;}
-  .dd-tbl-scroll-wrap tr{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;padding:10px 0;border-bottom:1px solid #F3F4F6;}
-  .dd-tbl-scroll-wrap td{display:block;padding:0;font-size:.72rem;word-break:break-word;}
-  .dd-scroll-hint{display:none!important;}
+  /* One column / table reflow lives in styles/dd-mobile-a.css, which loads
+     after this block. These rules were here and LOST the cascade to
+     `.dd-tbl-scroll-wrap{overflow-x:auto}` further down the same stylesheet —
+     keeping a second copy here is how that happened. Do not re-add them. */
   #dd-tabs,#dd-main-content > .dd-card,.dd-tab-panel{padding-left:12px;padding-right:12px;box-sizing:border-box;}
   #dd-tabs{margin-left:0;margin-right:0;padding-left:12px;}
 }
@@ -4674,6 +4674,11 @@ html,body{overflow-x:clip;max-width:100%;}
   .disc-grid{grid-template-columns:repeat(8,1fr);}
 }
 </style>
+<!-- Mobile Deep Dive single-column overrides. MUST stay after the inline
+     <style> above: the rules it beats are inline style="" attributes and
+     late-declared mobile rules in that block, so load order is the whole
+     mechanism. Moving this link up with the others silently breaks it. -->
+<link rel="stylesheet" href="/styles/dd-mobile-a.css?v=20260803a">
 </head>
 <body>
 
@@ -7342,6 +7347,9 @@ html,body{overflow-x:clip;max-width:100%;}
                 <div class="dd-sticky-pills" role="toolbar" aria-label="Bagian Deep Dive">
                   <button type="button" class="dd-sticky-pill active" data-dd-sticky-tab="ringkasan">Ringkasan</button>
                   <button type="button" class="dd-sticky-pill" data-dd-sticky-tab="analisa">Pasar</button>
+                  <button type="button" class="dd-sticky-pill" data-dd-sticky-tab="kompetitor">Kompetitor</button>
+                  <button type="button" class="dd-sticky-pill" data-dd-sticky-tab="keyword">Keyword</button>
+                  <button type="button" class="dd-sticky-pill" data-dd-sticky-tab="tren">Tren</button>
                 </div>
               </div>
             </div>
@@ -10143,8 +10151,8 @@ html,body{overflow-x:clip;max-width:100%;}
 <div id="daily-spin-root" class="dsw-overlay" style="display:none;" aria-hidden="true"></div>
 
 <script defer src="/js/daily-spin-wheel.js?v=20260730g"></script>
-<script defer src="/js/laris-tracker.js?v=20260801h"></script>
-<script defer src="/js/laris-app.js?v=20260802a"></script>
+<script defer src="/js/laris-tracker.js?v=20260803a"></script>
+<script defer src="/js/laris-app.js?v=20260803a"></script>
 <!-- Admin-only; mount() is a no-op for everyone else. Must load after laris-app.js. -->
 <script defer src="/js/winback-admin.js?v=20260802a"></script>
 

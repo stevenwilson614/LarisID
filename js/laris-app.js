@@ -10338,6 +10338,31 @@ async function dscFetchTypes(filters = {}) {
         return m >= pMin && m <= pMax;
       });
     }
+    // A search only matches markets whose KEYWORD contains the query string, so
+    // a real query with no literal keyword match ("sepatu kets" when the market
+    // is "sneakers pria") used to dead-end on "Belum ada pasar yang cocok" even
+    // though listings matched. Lift those matched listings to their markets and
+    // fetch the real rows — no synthesised numbers, just a second lookup.
+    // Skip when the listing search itself found nothing: _dscFiltered then holds
+    // the popular-products fallback, and dressing those up as search results
+    // would be a lie. The honest empty state is correct in that case.
+    if (search && rows.length < DSC_SEARCH_MIN_PER_PAGE && !_dscSearchNoMatch && !_dscFilterNoMatch) {
+      const have = new Set(rows.map(r => r.keyword));
+      const kws = [];
+      (_dscFiltered || []).forEach(r => {
+        const k = r && r.keyword;
+        if (k && !have.has(k) && !kws.includes(k) && kws.length < 60) kws.push(k);
+      });
+      if (kws.length) {
+        const { data: viaListings } = await _supabase.from('product_types_v')
+          .select(DSC_PTYPE_COLS)
+          .eq('city', 'ALL')
+          .in('keyword', kws)
+          .order('omset_top15', { ascending: false, nullsFirst: false })
+          .limit(DSC_SEARCH_MIN_PER_PAGE * 2);
+        (viaListings || []).forEach(r => { if (r.keyword && !have.has(r.keyword)) { have.add(r.keyword); rows.push(r); } });
+      }
+    }
     rows.forEach(r => { if (r.keyword) _dscTypeByKw.set(r.keyword, r); });
     _dscTypeRows = rows;
     _dscTypesLoaded = true;
@@ -11635,8 +11660,7 @@ function ddSwitchTab(tab) {
     el.classList.toggle('active', el.dataset.tab === tab);
   });
   document.querySelectorAll('#dd-sticky-bar .dd-sticky-pill').forEach(el => {
-    const t = el.getAttribute('data-dd-sticky-tab');
-    el.classList.toggle('active', t === tab || (tab === 'analisa' && t === 'analisa') || (tab === 'ringkasan' && t === 'ringkasan'));
+    el.classList.toggle('active', el.getAttribute('data-dd-sticky-tab') === tab);
   });
   if (tab === 'ringkasan' && typeof ddRefreshRingkasan === 'function' && _ddCurrentP) {
     // Show the panel first so canvas elements have non-zero dimensions before Chart.js renders
@@ -11704,6 +11728,22 @@ function ddOpenAiRecommendations() {
   }, 120);
 }
 
+/** Distinct cover images this exact item has been scraped with, newest first. */
+async function _ddOwnPhotos(listing) {
+  try {
+    if (!listing || !_supabase || listing.item_id == null) return;
+    const { data } = await _supabase
+      .from('listings')
+      .select('image_url,scraped_at')
+      .eq('item_id', listing.item_id)
+      .order('scraped_at', { ascending: false })
+      .limit(30);
+    const imgs = [listing.image_url || ''];
+    (data || []).forEach(r => { if (r.image_url) imgs.push(r.image_url); });
+    if (imgs.filter(Boolean).length > 1) ddSetHeroImages(imgs);
+  } catch (_) {}
+}
+
 async function ddLoadKeywordContext(listing) {
   if (!listing || !_supabase) return;
 
@@ -11729,6 +11769,7 @@ async function ddLoadKeywordContext(listing) {
   if (tableEl) tableEl.style.display = 'none';
 
   if (!kw) {
+    void _ddOwnPhotos(listing);
     if (loadEl) loadEl.textContent = 'Keyword tidak tersedia.';
     return;
   }
@@ -11743,6 +11784,10 @@ async function ddLoadKeywordContext(listing) {
       .limit(120);
 
     if (error || !data || !data.length) {
+      // No market peers means no peer photos, but the item itself has usually
+      // been scraped more than once and Shopee rotates the cover image — those
+      // are real photos of THIS product, so the gallery is not stuck on one frame.
+      void _ddOwnPhotos(listing);
       _ddKwUnavailable('Data pasar belum tersedia untuk produk ini.');
       return;
     }
@@ -14324,10 +14369,22 @@ function ddSetHeroImages(images) {
     if (countEl) countEl.textContent = '1 / 1';
     return;
   }
+  // Dots, not just the "N foto" label: on a phone the strip is full-bleed with
+  // no visible edge of the next slide, so nothing signals that it swipes.
+  const dots = uniq.map((_, i) =>
+    `<span class="dd-hero-dot${i === 0 ? ' active' : ''}"></span>`).join('');
   wrap.innerHTML = `<div class="dd-hero-strip">${uniq.map(src =>
     `<div class="dd-hero-slide"><img src="${src}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentElement.style.display='none'"></div>`
-  ).join('')}</div>`;
+  ).join('')}</div><div class="dd-hero-dots">${dots}</div>`;
   if (countEl) countEl.textContent = `${uniq.length} foto`;
+  const strip = wrap.querySelector('.dd-hero-strip');
+  const dotEls = wrap.querySelectorAll('.dd-hero-dot');
+  if (strip && dotEls.length) {
+    strip.addEventListener('scroll', () => {
+      const i = Math.round(strip.scrollLeft / Math.max(1, strip.clientWidth));
+      dotEls.forEach((d, n) => d.classList.toggle('active', n === i));
+    }, { passive: true });
+  }
 }
 
 function ddRender(p) {
@@ -21000,6 +21057,24 @@ function closeFeedbackModal() {
   _fbElementCtx = null;
 }
 
+// The chips are UI labels; `feedback.type` is a CHECK-constrained column that
+// only accepts bug | feature | other | wrong_data | not_working | request_edit.
+// 'product' (the default chip) and 'idea' are not in that list, so every
+// general feedback message from Site A was rejected with 23514 and the user was
+// told "Gagal mengirim" — a retry prompt for something that could never
+// succeed. Same class of bug as bd7857d on Site B. Translate here, once, so a
+// future chip rename cannot silently kill submissions again.
+const FB_DB_TYPES = ['bug', 'feature', 'other', 'wrong_data', 'not_working', 'request_edit'];
+const FB_TYPE_TO_DB = {
+  product: 'feature',   // "Request Produk" — a request for coverage we don't have
+  idea: 'feature',
+  other2: 'other',
+};
+function _fbDbType(t) {
+  const mapped = FB_TYPE_TO_DB[t] || t;
+  return FB_DB_TYPES.includes(mapped) ? mapped : 'other';
+}
+
 function fbSetType(type) {
   _fbType = type;
   const allChips = ['product','idea','feature','other','wrong_data','not_working','request_edit','other2','bug'];
@@ -21052,7 +21127,7 @@ async function submitFeedback() {
     const record = {
       user_id:         currentUser?.id    || null,
       user_email:      currentUser?.email || null,
-      type:            _fbType,
+      type:            _fbDbType(_fbType),
       message:         msg,
       page:            document.title || window.location.hash || 'app',
       element_context: _fbElementCtx || null,
@@ -21081,7 +21156,10 @@ async function submitFeedback() {
     setTimeout(closeFeedbackModal, 1800);
   } catch (err) {
     console.error('feedback submit failed:', err?.code || '', err?.message || err);
-    if (status) { status.textContent = 'Gagal mengirim. Coba lagi.'; status.style.color = '#B5202A'; }
+    // Carry the code into the visible message: when someone screenshots this,
+    // that string is the only evidence we get of a failure that writes no row.
+    const code = err?.code ? ' (kode ' + err.code + ')' : '';
+    if (status) { status.textContent = 'Gagal mengirim. Coba lagi' + code + '.'; status.style.color = '#B5202A'; }
     if (btn) { btn.disabled = false; btn.textContent = 'Kirim ke Steven'; }
   }
 }
@@ -24161,13 +24239,26 @@ async function _mytSaveShop(match) {
     shopee_shop_id:    match.shop_id,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'user_id' });
-  if (saveErr) { _mytErr('Gagal menyimpan koneksi toko. Coba lagi.'); return; }
+  if (saveErr) {
+    _mytLogConnect('save_error', { code: saveErr.code || '', msg: (saveErr.message || '').slice(0, 120) });
+    _mytErr('Gagal menyimpan koneksi toko. Coba lagi.');
+    return;
+  }
+  _mytLogConnect('connected', { shop_id: match.shop_id });
   _mytShowDashboard();
   await _mytLoadDashboard();
 }
 
+// Every exit from this function logs its outcome. A seller reported "Hubungkan
+// Toko doesn't work" and there was nothing in the DB to tell apart "their shop
+// isn't in a scraped keyword yet" (expected, and the copy says so) from a real
+// RPC failure. Without this the next report is guesswork again.
+function _mytLogConnect(outcome, extra) {
+  try { logUserEvent('store_connect', Object.assign({ outcome }, extra || {})); } catch (_) {}
+}
+
 async function myTokoConnect() {
-  if (!currentUser) { openAuthModal('login'); return; }
+  if (!currentUser) { _mytLogConnect('signed_out'); openAuthModal('login'); return; }
   const inp = document.getElementById('myt-store-input');
   const btn = document.getElementById('myt-connect-btn');
   const err = document.getElementById('myt-connect-error');
@@ -24183,7 +24274,8 @@ async function myTokoConnect() {
     if (fromUrl?.shopId) {
       const { data: shopRow } = await _supabase
         .from('mv_shops').select('shop_id,store_name').eq('shop_id', fromUrl.shopId).limit(1);
-      if (shopRow?.[0]) { await _mytSaveShop(shopRow[0]); return; }
+      if (shopRow?.[0]) { _mytLogConnect('url_hit', { shop_id: fromUrl.shopId }); await _mytSaveShop(shopRow[0]); return; }
+      _mytLogConnect('url_no_match', { shop_id: fromUrl.shopId });
       _mytErr('Toko dari link itu belum ada di database LarisID. Toko muncul setelah kami scrape keyword yang relevan.');
       return;
     }
@@ -24194,22 +24286,31 @@ async function myTokoConnect() {
     });
     if (rpcErr) {
       const msg = (rpcErr.message || '').toLowerCase();
-      _mytErr(msg.includes('timeout') || msg.includes('canceling statement')
+      const timedOut = msg.includes('timeout') || msg.includes('canceling statement');
+      _mytLogConnect('rpc_error', { q: needle.slice(0, 60), code: rpcErr.code || '', timeout: timedOut });
+      _mytErr(timedOut
         ? 'Pencarian toko terlalu lama. Coba lagi sebentar.'
         : 'Terjadi kesalahan saat mencari toko. Coba lagi.');
       return;
     }
     const rows = rpcData || [];
     if (!rows.length) {
+      _mytLogConnect('no_match', { q: needle.slice(0, 60) });
       _mytErr('Toko "' + needle + '" belum ada di database LarisID. Kami baru punya toko yang muncul di keyword yang sudah kami scrape — coba nama yang lebih pendek, tempel link toko Shopee kamu, atau minta keyword produkmu di-scrape lewat halaman Discover.');
       return;
     }
     // Auto-connect only when there is exactly one exact-name hit; anything
     // approximate must be confirmed by the seller.
     const exact = rows.filter(r => r.match_kind === 'exact');
-    if (exact.length === 1) { await _mytSaveShop(exact[0]); return; }
+    if (exact.length === 1) {
+      _mytLogConnect('exact', { q: needle.slice(0, 60), shop_id: exact[0].shop_id });
+      await _mytSaveShop(exact[0]);
+      return;
+    }
+    _mytLogConnect('picker', { q: needle.slice(0, 60), n: rows.length });
     _mytRenderShopPicker(rows);
   } catch (e) {
+    _mytLogConnect('exception', { msg: String(e && e.message || e).slice(0, 120) });
     _mytErr('Terjadi kesalahan. Coba lagi.');
     console.error('[LarisID] myTokoConnect error:', e);
   } finally {
