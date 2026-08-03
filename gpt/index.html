@@ -1214,16 +1214,20 @@ body.onboarding-active .panel { padding-bottom: 28px; }
   margin: 0 0 22px; padding: 4px 8px 0;
   box-sizing: border-box;
 }
-/* After the 4 questions are done: Chat Baru = title + composer only */
+/* Once the user has engaged (onboarding done, a message sent, or a deep dive
+   opened) the Kota/kategori picker goes away and the composer is the entry
+   point. .steven-recs is deliberately NOT in this list: those are market cards
+   that open a deep dive, which is where we want people to go — they were only
+   ever collateral damage of hiding the finder. */
 body.home-finder-done .home-finder,
 body.home-finder-done .finder-atau,
-body.home-finder-done .steven-recs,
 body.home-finder-done .home-sub { display: none !important; }
 body.home-finder-done .home-hero {
   justify-content: center;
   min-height: min(62vh, 560px);
   padding-top: 12vh;
 }
+body.home-finder-done .steven-recs { margin-top: 8px; }
 body.home-finder-done .home-title {
   margin-bottom: 28px;
 }

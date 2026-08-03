@@ -2605,14 +2605,12 @@ body.in-dashboard .mobile-menu{display:none!important;}
 .hbd-tip h4{font-size:.82rem;font-weight:700;color:#FCD34D;margin-bottom:6px;}
 .hbd-tip p{font-size:.8rem;line-height:1.55;color:rgba(255,255,255,.85);margin:0;}
 
-/* ── TRACKER PAGE ── */
-.trk-tabs{display:flex;gap:4px;padding:18px 28px 0;border-bottom:1px solid var(--border);max-width:1180px;}
-.trk-tab{font:inherit;font-size:.85rem;font-weight:700;cursor:pointer;background:none;border:0;border-bottom:2px solid transparent;padding:10px 14px;color:var(--tm);margin-bottom:-1px;}
-.trk-tab:hover{color:var(--td);}
-.trk-tab.is-active{color:var(--orange);border-bottom-color:var(--orange);}
-#trk-tab-count{font-weight:600;opacity:.7;margin-left:5px;}
-#trk-tab-daily{padding:24px 28px;max-width:1180px;}
-@media(max-width:640px){.trk-tabs{padding:14px 16px 0;}#trk-tab-daily{padding:18px 16px;}}
+/* ── TRACKER PAGE ──
+   LarisTracker renders the whole view (including its own Keyword/Toko scope
+   tabs), so all this page owns is the gutter. The old .trk-tabs row and the
+   per-product alert pane it fronted were removed — see #dash-view-tracker. */
+#dash-view-tracker{padding:24px 28px;max-width:1180px;}
+@media(max-width:640px){#dash-view-tracker{padding:18px 16px;}}
 .trk-wrap{padding:24px 28px;max-width:1180px;}
 .trk-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
 .trk-topbar-left h2{font-size:1.2rem;font-weight:800;color:#1A1A1A;margin:0 0 2px;}
@@ -7201,67 +7199,11 @@ html,body{overflow-x:clip;max-width:100%;}
         </div>
 
         <div id="dash-view-tracker" style="display:none;">
-          <!-- Two things the user watches, one destination. The daily keyword
-               tracker is the default: it is the retention bet, and the products
-               pane's empty state used to be a dead end that sent brand-new users
-               off to Discover. -->
-          <div class="trk-tabs" role="tablist" aria-label="Jenis pantauan">
-            <button type="button" class="trk-tab is-active" id="trk-tab-btn-keyword" role="tab"
-                    aria-selected="true" onclick="trkSetTab('keyword')">Keyword</button>
-            <button type="button" class="trk-tab" id="trk-tab-btn-store" role="tab"
-                    aria-selected="false" onclick="trkSetTab('store')">Toko</button>
-            <button type="button" class="trk-tab" id="trk-tab-btn-products" role="tab"
-                    aria-selected="false" onclick="trkSetTab('products')">Produk Dilacak<span id="trk-tab-count"></span></button>
-          </div>
-
-          <div class="trk-tabpane" id="trk-tab-daily">
-            <div id="laris-tracker-root" class="ltk-root" data-site="a"></div>
-          </div>
-
-          <div class="trk-tabpane" id="trk-tab-products" style="display:none;">
-          <div id="trk-empty-state" class="nu-empty" style="display:none;margin:24px 28px;">
-            <div class="nu-empty-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg></div>
-            <h3>Belum ada produk yang dilacak</h3>
-            <p>Mulai dengan mencari produk di Discover, buka Deep Dive, lalu klik Lacak Produk untuk menerima alert perubahan harga, keyword, dan penjualan.</p>
-            <button type="button" class="nu-empty-btn" onclick="switchDashView('discover')">Cari Produk di Discover</button>
-          </div>
-          <div class="trk-wrap" id="trk-main-content">
-            <div class="trk-topbar">
-              <div class="trk-topbar-left">
-                <h2 class="is-page-title-img"><img class="page-title-img page-title-img--page" src="/images/titles/alerts.webp" alt="Alerts" decoding="async"></h2>
-                <p id="trk-date-range">Perubahan harga, judul listing, keyword, dan penjualan pada produk yang kamu lacak.</p>
-              </div>
-              <div class="trk-topbar-right">
-                <button class="trk-btn" onclick="trkRefresh()">
-                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-                  Refresh
-                </button>
-                <button class="trk-btn primary" onclick="switchDashView('discover')">+ Lacak Produk</button>
-              </div>
-            </div>
-
-            <div class="trk-section-title">Produk Dilacak</div>
-            <div class="trk-products-grid" id="trk-prod-grid"></div>
-
-            <div id="trk-detail-panel" class="trk-alerts-panel" style="display:none;">
-              <div class="trk-alerts-head">
-                <div>
-                  <div class="trk-section-title" style="margin-bottom:4px;" id="trk-detail-title">—</div>
-                  <p style="font-size:.72rem;color:#9CA3AF;margin:0;" id="trk-detail-sub">—</p>
-                </div>
-                <button type="button" class="trk-btn primary" onclick="trkOpenSelectedDeepDive()">Buka Deep Dive</button>
-              </div>
-              <div class="trk-filters" id="trk-alert-filters">
-                <button type="button" class="alr-filter-btn active" onclick="trkAlertFilter(this,'all')">Semua</button>
-                <button type="button" class="alr-filter-btn" onclick="trkAlertFilter(this,'price')">Harga</button>
-                <button type="button" class="alr-filter-btn" onclick="trkAlertFilter(this,'keyword')">Keyword &amp; Judul</button>
-                <button type="button" class="alr-filter-btn" onclick="trkAlertFilter(this,'sales')">Penjualan &gt;5%</button>
-              </div>
-              <div id="trk-alert-loading" style="display:none;text-align:center;padding:24px;color:#9CA3AF;font-size:.78rem;">Memuat perubahan...</div>
-              <div id="trk-alert-feed" class="trk-alert-feed"></div>
-            </div>
-          </div>
-          </div><!-- /#trk-tab-products -->
+          <!-- One pane, same as Site B. The old wrapper added an outer
+               Keyword/Toko tab row that duplicated the module's own scope tabs,
+               plus a "Produk Dilacak" alert-feed pane that predated the shared
+               tracker. Both are gone; LarisTracker owns this view now. -->
+          <div id="laris-tracker-root" class="ltk-root" data-site="a"></div>
         </div>
 
         <div id="dash-view-deepdive" style="display:none;">
@@ -9883,43 +9825,6 @@ html,body{overflow-x:clip;max-width:100%;}
             <button type="button" class="ta-btn secondary" onclick="ddTrackWithDefaultAlerts()">Nanti (email saja)</button>
             <button type="button" class="ta-btn primary" id="ta-confirm-btn" onclick="ddConfirmTrackAlert()">Aktifkan &amp; ke Tracker</button>
           </div>
-        </div>
-      </div>
-
-      <!-- Tracker product action modal -->
-      <div class="pa-overlay" id="pa-overlay" style="display:none;" onclick="if(event.target===this)trkCloseProductAction()">
-        <div class="pa-modal" role="dialog" aria-labelledby="pa-title" aria-modal="true">
-          <div class="pa-head">
-            <div class="pa-icon" aria-hidden="true">
-              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-            </div>
-            <div>
-              <div class="pa-title" id="pa-title">Mau lanjut ke mana?</div>
-              <p class="pa-sub">Pilih langkah berikutnya untuk produk ini.</p>
-            </div>
-          </div>
-          <div class="pa-product" id="pa-product-context">—</div>
-          <div class="pa-actions">
-            <button type="button" class="pa-action-btn" onclick="trkProductActionDeepDive()">
-              <span class="pa-action-icon deep" aria-hidden="true">
-                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-              </span>
-              <span>
-                <div class="pa-action-label">Lihat Deep Dive</div>
-                <div class="pa-action-hint">Analisis lengkap pasar, kompetitor, dan tren</div>
-              </span>
-            </button>
-            <button type="button" class="pa-action-btn primary" onclick="trkProductActionSelling()">
-              <span class="pa-action-icon sell" aria-hidden="true">
-                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-              </span>
-              <span>
-                <div class="pa-action-label">Mulai Jual &amp; Sourcing</div>
-                <div class="pa-action-hint">Buka Mulai Berjualan dengan produk ini</div>
-              </span>
-            </button>
-          </div>
-          <button type="button" class="pa-cancel" onclick="trkProductActionAlerts()">Lihat alert saja</button>
         </div>
       </div>
 

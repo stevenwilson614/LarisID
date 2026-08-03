@@ -2822,11 +2822,11 @@ function renderHome() {
   renderChatList();
   wireHomeFinder();
   updateHomeFinderVisibility();
-  if (shouldShowLandingFinder()) void renderStevenRecs();
-  else {
-    const steven = $('steven-recs');
-    if (steven) steven.style.display = 'none';
-  }
+  // Recs are not part of the finder. Hiding the Kota/kategori picker is about
+  // stopping people from using it as a search box; the city recommendations are
+  // cards that open a deep dive, which is exactly where we want them to go. They
+  // stay for returning users (renderStevenRecs hides itself when no city is set).
+  void renderStevenRecs();
 
   if (!renderHome._seen) {
     renderHome._seen = true;
@@ -8047,8 +8047,7 @@ async function openDeepDive(product, ddOpts = {}) {
     }
   }
   if (state.pendingDeepdive) { state.pendingDeepdive = null; saveLocalState(); }
-  state.everOpenedDeepdive = true;
-  saveLocalState();
+  if (!state.everOpenedDeepdive) { state.everOpenedDeepdive = true; saveLocalState(); }
   rememberProducts([product]);
   state.deepdiveProduct = product;
   setView('deepdive');

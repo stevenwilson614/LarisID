@@ -13924,7 +13924,6 @@ function ddConfirmTrackAlert() {
   }
   ddUpdateTrackBtn(listing);
   ddCloseTrackAlertModal();
-  if (typeof trkInit === 'function') trkInit();
   if (typeof mlsInit === 'function') mlsInit();
   nuHintMark('deepdive_track');
   switchDashView('tracker');
@@ -15528,346 +15527,11 @@ function ddToggleCompetitors() {
 // ── TRACKER (alerts hub) ───────────────────────────────────────
 const CHART_COLORS = ['#B5202A','#4F46E5','#10B981','#F59E0B','#EC4899','#06B6D4'];
 const TRK_SALES_ALERT_PCT = 5;
-let _trkEnriched = [];
-let _trkSelectedKey = null;
-let _trkAlertsByKey = {};
-let _trkAlertFilter = 'all';
-
-function _trkListingKey(r) { return `${r.item_id}_${r.shop_id}`; }
-
 function _trkFmtScrapeDate(iso) {
   if (!iso) return '—';
   try {
     return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
   } catch { return '—'; }
-}
-
-function _trkDedupeListings(rows) {
-  const seen = new Map();
-  (rows || []).forEach(r => {
-    const k = _trkListingKey(r);
-    if (!seen.has(k) || (r.total_sold || 0) > (seen.get(k).total_sold || 0)) seen.set(k, r);
-  });
-  return [...seen.values()].sort((a, b) => (b.total_sold || 0) - (a.total_sold || 0));
-}
-
-function _trkRankInMap(map, itemId, shopId) {
-  const sorted = [...map.values()].sort((a, b) => (b.total_sold || 0) - (a.total_sold || 0));
-  const idx = sorted.findIndex(r => String(r.item_id) === String(itemId) && String(r.shop_id) === String(shopId));
-  return idx >= 0 ? idx + 1 : null;
-}
-
-function _trkCompareRows(prev, curr, opts) {
-  const alerts = [];
-  if (!prev || !curr) return alerts;
-  const isMine = !!opts.isTracked;
-  const who = isMine ? 'Produk kamu' : (curr.store_name || 'Kompetitor');
-  const name = (curr.product_name || '').slice(0, 55);
-  const when = _trkFmtScrapeDate(curr.scraped_at);
-
-  const p0 = Number(prev.price), p1 = Number(curr.price);
-  if (p0 > 0 && p1 > 0 && p0 !== p1) {
-    const pct = ((p1 - p0) / p0 * 100);
-    const dir = p1 > p0 ? 'up' : 'down';
-    alerts.push({
-      type: 'price', kind: dir, isMine, sort: 10,
-      title: `${who}: harga ${dir === 'up' ? 'naik' : 'turun'} ${Math.abs(pct).toFixed(1)}%`,
-      desc: `${name} — ${_dscFmtRpFull(p0)} → ${_dscFmtRpFull(p1)}`,
-      tag: dir === 'up' ? `▲ ${Math.abs(pct).toFixed(1)}%` : `▼ ${Math.abs(pct).toFixed(1)}%`,
-      time: when,
-    });
-  }
-
-  const n0 = _dscNormStr(prev.product_name || '');
-  const n1 = _dscNormStr(curr.product_name || '');
-  if (n0 && n1 && n0 !== n1) {
-    alerts.push({
-      type: 'keyword', kind: 'info', isMine, sort: 20,
-      title: `${who}: judul listing berubah`,
-      desc: `"${wsdEsc((prev.product_name || '').slice(0, 70))}" → "${wsdEsc((curr.product_name || '').slice(0, 70))}"`,
-      tag: 'Judul', time: when,
-    });
-  }
-
-  const k0 = (prev.keyword || '').trim();
-  const k1 = (curr.keyword || '').trim();
-  if (k0 && k1 && k0.toLowerCase() !== k1.toLowerCase()) {
-    alerts.push({
-      type: 'keyword', kind: 'info', isMine, sort: 21,
-      title: `${who}: keyword scrape berubah`,
-      desc: `"${wsdEsc(k0)}" → "${wsdEsc(k1)}"`,
-      tag: 'Keyword', time: when,
-    });
-  }
-
-  if (opts.prevRank != null && opts.currRank != null && opts.prevRank !== opts.currRank) {
-    const better = opts.currRank < opts.prevRank;
-    alerts.push({
-      type: 'keyword', kind: better ? 'up' : 'down', isMine, sort: 15,
-      title: `${who}: peringkat di pencarian ${better ? 'naik' : 'turun'}`,
-      desc: `#${opts.prevRank} → #${opts.currRank}${opts.searchKw ? ` di “${wsdEsc(opts.searchKw)}”` : ''}`,
-      tag: `#${opts.currRank}`, time: when,
-    });
-  }
-
-  const s0 = Number(prev.total_sold) || 0;
-  const s1 = Number(curr.total_sold) || 0;
-  if (s0 > 0) {
-    const pct = (s1 - s0) / s0 * 100;
-    if (Math.abs(pct) >= TRK_SALES_ALERT_PCT) {
-      const dir = pct > 0 ? 'up' : 'down';
-      alerts.push({
-        type: 'sales', kind: dir, isMine, sort: 5,
-        title: `${who}: penjualan ${dir === 'up' ? 'naik' : 'turun'} ${Math.abs(pct).toFixed(1)}%`,
-        desc: `${s0.toLocaleString('id-ID')} → ${s1.toLocaleString('id-ID')} total terjual`,
-        tag: dir === 'up' ? `▲ ${Math.abs(pct).toFixed(1)}%` : `▼ ${Math.abs(pct).toFixed(1)}%`,
-        time: when,
-      });
-    }
-  }
-  return alerts;
-}
-
-async function trkFetchKeywordSnapshots(keyword) {
-  if (!_supabase || !keyword) return null;
-  try {
-    const { data: dateRows } = await _supabase.from('listings')
-      .select('scraped_at').eq('keyword', keyword)
-      .order('scraped_at', { ascending: false }).limit(40);
-    const dates = [...new Set((dateRows || []).map(r => r.scraped_at))].slice(0, 2);
-    if (!dates.length) return null;
-
-    const cols = 'item_id,shop_id,product_name,store_name,price,total_sold,image_url,scraped_at,keyword';
-    const fetchAt = async (dt) => {
-      const { data } = await _supabase.from('listings').select(cols)
-        .eq('keyword', keyword).eq('scraped_at', dt).limit(200);
-      const map = new Map();
-      _trkDedupeListings(data).forEach(r => map.set(_trkListingKey(r), { ...r, scraped_at: dt }));
-      return map;
-    };
-    const latestMap = await fetchAt(dates[0]);
-    const prevMap   = dates[1] ? await fetchAt(dates[1]) : new Map();
-    return { keyword, latestDate: dates[0], prevDate: dates[1] || null, latestMap, prevMap };
-  } catch { return null; }
-}
-
-async function trkBuildAlertsForTracked(tracked) {
-  const trackedId = _trkListingKey(tracked);
-  const kw = (tracked.keyword || '').trim();
-  const alerts = [];
-  const snap = kw ? await trkFetchKeywordSnapshots(kw) : null;
-
-  const buildFor = (itemId, shopId, isTracked) => {
-    if (snap) {
-      const k = `${itemId}_${shopId}`;
-      const curr = snap.latestMap.get(k) || null;
-      const prev = snap.prevMap.get(k) || null;
-      const prevRank = snap.prevMap.size ? _trkRankInMap(snap.prevMap, itemId, shopId) : null;
-      const currRank = snap.latestMap.size ? _trkRankInMap(snap.latestMap, itemId, shopId) : null;
-      return _trkCompareRows(prev, curr, { isTracked, prevRank, currRank, searchKw: kw });
-    }
-    return [];
-  };
-
-  if (snap) {
-    alerts.push(...buildFor(tracked.item_id, tracked.shop_id, true));
-    [...snap.latestMap.values()]
-      .filter(r => _trkListingKey(r) !== trackedId)
-      .sort((a, b) => (b.total_sold || 0) - (a.total_sold || 0))
-      .slice(0, 12)
-      .forEach(r => alerts.push(...buildFor(r.item_id, r.shop_id, false)));
-  } else if (_supabase) {
-    try {
-      const { data } = await _supabase.from('listings')
-        .select('item_id,shop_id,product_name,store_name,price,total_sold,scraped_at,keyword')
-        .eq('item_id', tracked.item_id).eq('shop_id', tracked.shop_id)
-        .order('scraped_at', { ascending: false }).limit(2);
-      if (data && data.length >= 2) {
-        alerts.push(..._trkCompareRows(data[1], data[0], { isTracked: true }));
-      }
-    } catch (_) {}
-  }
-
-  alerts.sort((a, b) => {
-    if (a.isMine !== b.isMine) return a.isMine ? -1 : 1;
-    return (a.sort || 99) - (b.sort || 99);
-  });
-  return { alerts, latestDate: snap?.latestDate, prevDate: snap?.prevDate };
-}
-
-function trkRenderProductCards() {
-  const grid = document.getElementById('trk-prod-grid');
-  if (!grid) return;
-  grid.innerHTML = _trkEnriched.map(p => {
-    const selected = p.key === _trkSelectedKey;
-    const badge = p.alertCount > 0 ? `<span class="trk-prod-badge">${p.alertCount}</span>` : '';
-    const imgHtml = p.image_url
-      ? `<img src="${p.image_url}" alt="" onerror="this.parentElement.innerHTML=wIcon('box',32,'#9CA3AF')">`
-      : wIcon('box', 32, '#9CA3AF');
-    const sellKey = `${p.item_id}_${p.shop_id}`;
-    const isSelling = _trkSellingSet.has(sellKey);
-    return `<div class="trk-prod-card${selected ? ' selected' : ''}" onclick="trkShowProductAction('${p.key}')">
-      <div class="trk-prod-img">${badge}${imgHtml}</div>
-      <div class="trk-prod-body">
-        <div class="trk-prod-name">${wsdEsc(p.product_name || '—')}</div>
-        <div class="trk-prod-cat">${wsdEsc(p.category || '')}${p.store_name ? ' · ' + wsdEsc(p.store_name) : ''}</div>
-        <div class="trk-prod-price">${_dscFmtRpFull(p.curr_price || p.price || 0)}</div>
-      </div>
-      <div class="trk-prod-footer" onclick="event.stopPropagation()">
-        <span class="trk-prod-sold">${(p.curr_sold || p.total_sold || 0).toLocaleString('id-ID')} terjual</span>
-        <label class="trk-sell-toggle">
-          <input type="checkbox" id="trk-sell-${sellKey}" ${isSelling ? 'checked' : ''} onclick="event.stopPropagation();trkToggleSelling(${p.item_id},${p.shop_id})">
-          <span class="trk-sell-toggle-lbl" style="color:${isSelling ? '#B5202A' : '#6B7280'}">Saya jual ini</span>
-        </label>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function trkRenderAlertFeed() {
-  const feed = document.getElementById('trk-alert-feed');
-  if (!feed || !_trkSelectedKey) return;
-  const all = _trkAlertsByKey[_trkSelectedKey] || [];
-  const items = _trkAlertFilter === 'all' ? all : all.filter(a => a.type === _trkAlertFilter);
-  if (!items.length) {
-    feed.innerHTML = `<div class="trk-alert-empty">${all.length ? 'Tidak ada alert untuk filter ini.' : 'Belum ada perubahan terdeteksi antara dua scrape terakhir. Cek lagi setelah scrape berikutnya.'}</div>`;
-    return;
-  }
-  const iconFor = (a) => {
-    if (a.type === 'price') return wIcon('tag', 16, a.kind === 'up' ? '#B5202A' : '#059669');
-    if (a.type === 'sales') return wIcon('trending-up', 16, a.kind === 'up' ? '#059669' : '#B5202A');
-    return wIcon('search', 16, '#4F46E5');
-  };
-  feed.innerHTML = items.map(a => `
-    <div class="trk-alert-item${a.isMine ? ' mine' : ''}">
-      <div class="trk-alert-icon ${a.type}">${iconFor(a)}</div>
-      <div class="trk-alert-body">
-        <div class="trk-alert-title">${a.title}</div>
-        <div class="trk-alert-desc">${a.desc}</div>
-      </div>
-      <div class="trk-alert-meta">
-        <span class="trk-alert-tag ${a.kind || 'info'}">${a.tag || ''}</span>
-        <div class="trk-alert-time">${a.time || ''}</div>
-      </div>
-    </div>
-  `).join('');
-}
-
-function trkAlertFilter(btn, type) {
-  document.querySelectorAll('#trk-alert-filters .alr-filter-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  _trkAlertFilter = type;
-  trkRenderAlertFeed();
-}
-
-let _trkActionKey = null;
-
-function trkShowProductAction(key) {
-  const tracked = _trkEnriched.find(p => p.key === key);
-  if (!tracked) return;
-  _trkActionKey = key;
-  const ctx = document.getElementById('pa-product-context');
-  if (ctx) {
-    const name = wsdEsc(tracked.product_name || 'Produk');
-    const store = tracked.store_name ? ' · ' + wsdEsc(tracked.store_name) : '';
-    ctx.innerHTML = `<strong>${name}</strong>${store}`;
-  }
-  const overlay = document.getElementById('pa-overlay');
-  if (overlay) overlay.style.display = 'flex';
-}
-
-function trkCloseProductAction() {
-  _trkActionKey = null;
-  const overlay = document.getElementById('pa-overlay');
-  if (overlay) overlay.style.display = 'none';
-}
-
-function trkProductActionDeepDive() {
-  const p = _trkEnriched.find(x => x.key === _trkActionKey);
-  trkCloseProductAction();
-  if (p) trkOpenDeepDive(p.item_id, p.shop_id);
-}
-
-function trkProductActionSelling() {
-  const p = _trkEnriched.find(x => x.key === _trkActionKey);
-  trkCloseProductAction();
-  if (p) trkOpenMulaiBerjualan(p.item_id, p.shop_id, p);
-}
-
-function trkProductActionAlerts() {
-  const key = _trkActionKey;
-  trkCloseProductAction();
-  if (key) trkSelectProduct(key);
-}
-
-function trkOpenMulaiBerjualan(itemId, shopId, listing) {
-  const key = `${itemId}_${shopId}`;
-  switchDashView('ai');
-  if (typeof mlsSelectProduct === 'function') mlsSelectProduct(key, listing);
-}
-
-async function trkSelectProduct(key) {
-  _trkSelectedKey = key;
-  trkRenderProductCards();
-  const panel = document.getElementById('trk-detail-panel');
-  const loading = document.getElementById('trk-alert-loading');
-  const feed = document.getElementById('trk-alert-feed');
-  const tracked = _trkEnriched.find(p => p.key === key);
-  if (!panel || !tracked) return;
-  panel.style.display = '';
-  const titleEl = document.getElementById('trk-detail-title');
-  const subEl = document.getElementById('trk-detail-sub');
-  if (titleEl) titleEl.textContent = tracked.product_name || 'Produk';
-  if (subEl) {
-    const kw = tracked.keyword ? `Keyword: ${tracked.keyword}` : 'Tanpa keyword — hanya perubahan produk ini';
-    subEl.textContent = kw + (tracked.store_name ? ` · ${tracked.store_name}` : '');
-  }
-  if (loading) loading.style.display = '';
-  if (feed) feed.innerHTML = '';
-  const result = await trkBuildAlertsForTracked(tracked);
-  _trkAlertsByKey[key] = result.alerts;
-  tracked.alertCount = result.alerts.length;
-  if (loading) loading.style.display = 'none';
-  const rangeEl = document.getElementById('trk-date-range');
-  if (rangeEl) {
-    rangeEl.textContent = result.latestDate && result.prevDate
-      ? `Membandingkan scrape ${_trkFmtScrapeDate(result.prevDate)} → ${_trkFmtScrapeDate(result.latestDate)}`
-      : result.latestDate
-        ? `Scrape terbaru ${_trkFmtScrapeDate(result.latestDate)} — butuh scrape kedua untuk mendeteksi perubahan`
-        : 'Perubahan harga, judul listing, keyword, dan penjualan pada produk yang kamu lacak.';
-  }
-  trkRenderProductCards();
-  trkRenderAlertFeed();
-}
-
-function trkOpenSelectedDeepDive() {
-  const p = _trkEnriched.find(x => x.key === _trkSelectedKey);
-  if (p) trkOpenDeepDive(p.item_id, p.shop_id);
-}
-
-async function trkOpenDeepDive(itemId, shopId) {
-  const found = (_dscAllListings || []).find(p => String(p.item_id) === String(itemId) && String(p.shop_id) === String(shopId));
-  if (found) { dscOpenDeepDive(`${found.item_id}__${found.shop_id}`); switchDashView('deepdive'); return; }
-  if (!_supabase) {
-    showCompareToast('Data produk belum dimuat — coba buka Discover dulu');
-    return;
-  }
-  try {
-    const { data } = await _supabase.from('listings')
-      .select('item_id,shop_id,product_name,keyword,price,total_sold,store_name,category,image_url,url,rating,reviews,location,listing_date,scraped_at')
-      .eq('item_id', itemId).eq('shop_id', shopId).order('scraped_at', { ascending: false }).limit(1);
-    if (data && data.length) {
-      const p = data[0];
-      if (!window._dscAllListings) window._dscAllListings = [];
-      if (!_dscAllListings.find(x => String(x.item_id) === String(itemId))) _dscAllListings.push(p);
-      dscOpenDeepDive(`${p.item_id}__${p.shop_id}`);
-      switchDashView('deepdive');
-      return;
-    }
-    showCompareToast('Data produk belum tersedia di database');
-  } catch (_) {
-    showCompareToast('Gagal membuka detail produk');
-  }
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
@@ -15878,55 +15542,19 @@ async function trkOpenDeepDive(itemId, shopId) {
    (formatters, toast, navigation). Same split as the daily spin wheel.
    ────────────────────────────────────────────────────────────────────────── */
 
-// One flat tab row: the two rollup scopes plus the legacy per-product alert
-// feed. 'keyword' and 'store' share the LarisTracker pane and differ only by
-// the scope passed into it; 'products' is the older saved-product tracker.
-let _trkTab = 'keyword';      // 'keyword' | 'store' | 'products'
-let _trkProductsInited = false;
 let _trkFreeDive = false;     // one-shot: exempt the next deep dive from _useDive
 let _trkAdapterObj = null;
 
-function trkSetTab(tab) {
-  _trkTab = (tab === 'products' || tab === 'store') ? tab : 'keyword';
-  const isProducts = _trkTab === 'products';
-  const paneDaily = document.getElementById('trk-tab-daily');
-  const paneProd  = document.getElementById('trk-tab-products');
-  if (paneDaily) paneDaily.style.display = isProducts ? 'none' : '';
-  if (paneProd)  paneProd.style.display  = isProducts ? '' : 'none';
-  [['keyword', 'trk-tab-btn-keyword'], ['store', 'trk-tab-btn-store'], ['products', 'trk-tab-btn-products']]
-    .forEach(([id, elId]) => {
-      const btn = document.getElementById(elId);
-      if (!btn) return;
-      btn.classList.toggle('is-active', _trkTab === id);
-      btn.setAttribute('aria-selected', String(_trkTab === id));
-    });
-
-  if (isProducts) {
-    // Lazy: entering the view no longer pays for _trkLoadSellingFromSupabase
-    // plus one listings query per tracked product.
-    if (!_trkProductsInited) { _trkProductsInited = true; trkInit(); }
-    nuRefreshView('tracker');
-  } else if (window.LarisTracker) {
-    window.LarisTracker.open({ touch: true, tab: _trkTab });
-  }
-  try { logUserEvent('tracker_tab', { tab: _trkTab }); } catch (_) {}
-}
-
-function trkTabCount() {
-  const el = document.getElementById('trk-tab-count');
-  if (!el) return;
-  let n = 0;
-  try { n = (trkLoad() || []).length; } catch (_) {}
-  el.textContent = n ? ` (${n})` : '';
-}
-
-// switchDashView('tracker') entry point. Replaces the old direct trkInit() call.
+// switchDashView('tracker') entry point. The module renders the whole view,
+// including its own Keyword/Toko scope tabs — Site A used to wrap it in a
+// second, outer tab row that said the same thing twice, plus a legacy
+// per-product alert pane that predated it. Both are gone; A and B now show the
+// identical tracker.
 function trkOpen() {
-  trkTabCount();
-  if (window.LarisTracker) {
-    window.LarisTracker.mount({ hostId: 'laris-tracker-root', site: 'a', adapter: trkAdapter() });
-  }
-  trkSetTab(_trkTab);
+  if (!window.LarisTracker) return;
+  window.LarisTracker.mount({ hostId: 'laris-tracker-root', site: 'a', adapter: trkAdapter() });
+  window.LarisTracker.open({ touch: true });
+  try { logUserEvent('tracker_tab', { tab: 'keyword', ui: 'A' }); } catch (_) {}
 }
 
 function trkAdapter() {
@@ -15952,7 +15580,6 @@ function trkAdapter() {
       return false;
     },
     track(evt, props) { try { logUserEvent(evt, props || {}); } catch (_) {} },
-    onStateChange() { trkTabCount(); },
     openProduct(row) {
       if (!row || !row.item_id) return;
       // Tracked-origin opens are free — see the _trkFreeDive comment in
@@ -16090,54 +15717,7 @@ function trkAdapter() {
   return _trkAdapterObj;
 }
 
-async function trkInit() {
-  await _trkLoadSellingFromSupabase();
-  const tracked = trkLoad();
-  const grid = document.getElementById('trk-prod-grid');
-  const panel = document.getElementById('trk-detail-panel');
 
-  if (!tracked.length) {
-    nuRefreshView('tracker');
-    if (grid) grid.innerHTML = '';
-    if (panel) panel.style.display = 'none';
-    _trkEnriched = [];
-    _trkSelectedKey = null;
-    return;
-  }
-
-  const trkEmpty = document.getElementById('trk-empty-state');
-  const trkMain  = document.getElementById('trk-main-content');
-  if (trkEmpty) trkEmpty.style.display = 'none';
-  if (trkMain)  trkMain.style.display  = '';
-
-  _trkEnriched = await Promise.all(tracked.map(async t => {
-    if (!_supabase) return { ...t, curr_sold: t.total_sold || 0, curr_price: t.price || 0, alertCount: _trkAlertsByKey[t.key]?.length || 0 };
-    try {
-      const { data } = await _supabase.from('listings')
-        .select('scraped_at,total_sold,price')
-        .eq('item_id', t.item_id).eq('shop_id', t.shop_id)
-        .order('scraped_at', { ascending: false }).limit(1);
-      const curr = data?.[0];
-      return {
-        ...t,
-        curr_sold: curr?.total_sold ?? t.total_sold ?? 0,
-        curr_price: curr?.price ?? t.price ?? 0,
-        alertCount: _trkAlertsByKey[t.key]?.length || 0,
-      };
-    } catch {
-      return { ...t, curr_sold: t.total_sold || 0, curr_price: t.price || 0, alertCount: 0 };
-    }
-  }));
-
-  const keepKey = _trkSelectedKey && _trkEnriched.some(p => p.key === _trkSelectedKey);
-  if (!keepKey) _trkSelectedKey = _trkEnriched[0]?.key || null;
-
-  trkRenderProductCards();
-  if (_trkSelectedKey) await trkSelectProduct(_trkSelectedKey);
-  else if (panel) panel.style.display = 'none';
-}
-
-function trkRefresh() { _trkAlertsByKey = {}; trkInit(); }
 
 // ── DASHBOARD ──────────────────────────────────────────────────
 let _hbdChartPerf = null, _hbdTab = 'growth';
@@ -22984,17 +22564,8 @@ function nuRefreshView(view) {
     if (noProd) journeyRenderEmptyReco('dd-empty-reco', 'deepdive');
   }
 
-  const trkEmpty = document.getElementById('trk-empty-state');
-  const trkMain  = document.getElementById('trk-main-content');
-  // SCOPED TO THE PRODUCTS PANE ONLY. This used to toggle the whole tracker
-  // view on hasTracked, which would now blank the Pantauan Harian tab for every
-  // user who has no tracked products — i.e. exactly the people the daily
-  // tracker exists for. The two panes have independent empty states.
-  if (view === 'tracker' && _trkTab === 'products') {
-    const empty = !hasTracked;
-    if (trkEmpty) trkEmpty.style.display = empty ? '' : 'none';
-    if (trkMain)  trkMain.style.display  = empty ? 'none' : '';
-  }
+  // The tracker view has no host-owned empty state any more: LarisTracker
+  // renders its own setup/collecting/rollup screens.
 
   const mlsEmpty = document.getElementById('mls-empty-state');
   const mlsMain  = document.getElementById('mls-main-content');
