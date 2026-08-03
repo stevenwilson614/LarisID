@@ -40,7 +40,10 @@
   var WATCHDOG_PAINT_MS = 2500;       // never leave the user on a spinner past this
   var WATCHDOG_ABORT_MS = 8000;       // never leave the user on a dead screen at all
   var SEED_TARGET = 3;                // pre-fill 3 of 5; the 2 empty slots are the hook
-  var DEFAULT_DAYS = 7;
+  // Shopee scrape days are sparse and irregular — a 7‑day window routinely
+  // contains zero scrapes for a perfectly active market, which would hide all
+  // history. 30 days gives the UI a more representative view.
+  var DEFAULT_DAYS = 30;
   var WIB_OFFSET_MIN = 7 * 60;        // Asia/Jakarta, no DST
   var SCRAPE_HOUR_WIB = 7;            // morning run lands ~07:00 WIB
   var MIN_DAYS_FOR_TREND = 2;         // below this: "Baru", no sparkline, no %
@@ -1269,8 +1272,11 @@
             scope: (d && d.scope) || S.tab,
           };
           S.asOf = (d && d.as_of) || null;
+          // If the RPC doesn’t tell us whether there is history we assume yes —
+          // a sparse scrape schedule means a 7‑day window may legitimately be
+          // empty, but the market itself still has months of data.
           if (d && typeof d.has_history === 'boolean') S.hasHistory = d.has_history;
-          else S.hasHistory = oldestKeywordAgeMs() > 40 * 3600 * 1000;
+          else S.hasHistory = true;
           // A resumed tracker has provably nothing in a 7-day window (pause is
           // 14 days), so route it back to collecting.
           if (S.resumed) S.hasHistory = false;
