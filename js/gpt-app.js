@@ -1053,6 +1053,7 @@ const state = {
   pendingDeepdive: null, // product clicked behind the login gate; opened after sign-in
   pendingCompare: null, // { a, b } clicked behind login gate; opened after sign-in
   pendingFinder: null,  // landing finder answers given before signup; re-run after
+  everOpenedDeepdive: false,
   comparePick: null, // { source } — directory is in “pick a product to compare” mode
   // Survives recommendation wipes so chat product cards can reopen Deep Dive.
   productByKey: Object.create(null),
@@ -1082,6 +1083,7 @@ function loadLocalState() {
     if (raw.pendingDeepdive) state.pendingDeepdive = raw.pendingDeepdive;
     if (raw.pendingCompare) state.pendingCompare = raw.pendingCompare;
     if (raw.pendingFinder) state.pendingFinder = raw.pendingFinder;
+    if (raw.everOpenedDeepdive != null) state.everOpenedDeepdive = !!raw.everOpenedDeepdive;
     if (raw.affinity && typeof raw.affinity === 'object') state.affinity = raw.affinity;
     if (!Array.isArray(state.onboarding.learnedCategories)) state.onboarding.learnedCategories = [];
     if (!Array.isArray(state.onboarding.dismissedLearned)) state.onboarding.dismissedLearned = [];
@@ -1096,6 +1098,7 @@ function saveLocalState() {
       pendingDeepdive: state.pendingDeepdive || null,
       pendingCompare: state.pendingCompare || null,
       pendingFinder: state.pendingFinder || null,
+      everOpenedDeepdive: state.everOpenedDeepdive || false,
       affinity: state.affinity || {},
       ts: Date.now(),
     }));
@@ -2877,9 +2880,21 @@ function syncFinderToOnboarding() {
   saveLocalState();
 }
 
-/** Show the 4 landing questions until the user has completed them once. */
+/** The finder is a first-run affordance only. Once the user has completed
+ * onboarding, sent a message, or opened a deep dive, the composer is the
+ * primary entry point and the finder is hidden for good. */
+function hasEngagedBeyondFinder() {
+  // completed onboarding
+  if (state.onboarding?.step === 'done') return true;
+  // has ever sent a message
+  if ((state.chats || []).some(c => c?.messages?.length > 0)) return true;
+  // has ever opened a deep dive
+  if (state.everOpenedDeepdive) return true;
+  return false;
+}
+
 function shouldShowLandingFinder() {
-  return state.onboarding?.step !== 'done';
+  return !hasEngagedBeyondFinder();
 }
 
 function updateHomeFinderVisibility() {
@@ -2889,12 +2904,9 @@ function updateHomeFinderVisibility() {
   if (finder) finder.hidden = !show;
   const atau = document.querySelector('#view-home .finder-atau');
   if (atau) atau.hidden = !show;
-  // After onboarding is done, keep Kota/category finder out of the way so
-  // people reach Produk / composer instead of re-tapping Kota.
-  if (!show) {
-    const steven = $('steven-recs');
-    if (steven) steven.style.display = 'none';
-  }
+  // The finder is a first-run affordance. Once the user has completed
+  // onboarding, sent a message, or opened a deep dive, the composer
+  // becomes the primary entry point — the finder stays hidden for good.
 }
 
 function resolveRegionFromGeo(city, regionName) {
@@ -8035,6 +8047,8 @@ async function openDeepDive(product, ddOpts = {}) {
     }
   }
   if (state.pendingDeepdive) { state.pendingDeepdive = null; saveLocalState(); }
+  state.everOpenedDeepdive = true;
+  saveLocalState();
   rememberProducts([product]);
   state.deepdiveProduct = product;
   setView('deepdive');
