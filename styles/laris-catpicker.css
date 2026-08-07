@@ -1,0 +1,85 @@
+/* ── Category picker (LarisCatPicker) ──────────────────────────────────────
+   Prefix every class with `.lcp-` so the module never collides with host CSS.
+   The collapse is load‑bearing: 20 expanded chips push the product grid below
+   the fold, so we hide every chip except the active one and the back button. */
+
+/* Root container */
+.lcp-root {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Main chips row */
+.lcp-cats-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  padding: 2px 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.lcp-cats-row::-webkit-scrollbar {
+  display: none;
+}
+
+/* Sub‑groups row */
+.lcp-subs-row {
+  display: none;                /* hidden by default, shown via JS */
+  gap: 8px;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  padding: 2px 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.lcp-subs-row::-webkit-scrollbar {
+  display: none;
+}
+
+/* Individual chip – pill shaped */
+.lcp-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 16px;
+  border: 1px solid var(--border, #E5E7EB);
+  border-radius: 999px;
+  background: var(--card, #fff);
+  color: var(--td, #111);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  user-select: none;
+}
+.lcp-chip:hover {
+  border-color: var(--orange, #B5202A);
+  color: var(--orange, #B5202A);
+}
+.lcp-chip.selected,
+.lcp-chip:active {
+  background: var(--orange, #B5202A);
+  border-color: var(--orange, #B5202A);
+  color: #fff;
+}
+
+/* Back chip */
+.lcp-chip-back {
+  font-weight: 700;
+}
+
+/* ── Collapse behaviour ────────────────────────────────────────────────────
+   When the bar has `.lcp-collapsed`, every `.lcp-chip` that is NOT `.selected`
+   and NOT `.lcp-chip-back` is hidden. */
+
+.lcp-cats-row.lcp-collapsed .lcp-chip:not(.selected):not(.lcp-chip-back) {
+  display: none;
+}
+.lcp-cats-row.lcp-collapsed .lcp-chip-back {
+  /* always visible when collapsed */
+  display: inline-flex;
+}

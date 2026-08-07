@@ -5920,6 +5920,7 @@ function switchDashView(view) {
   }
   // YLK ("Yang Laku dari Kotamu") now lives on the Dashboard — init it when shown.
   if (view === 'dashboard') { try { if (typeof ylkInit === 'function') { ylkInit(); void ylkEnsureRegion(); } } catch (_) {} }
+  if (view === 'discover') { try { lcpMount(); } catch (_) {} }
   if (view === 'credits') { try { crLoadReferral(); } catch (_) {} }
 
   // Update topbar title
@@ -15734,6 +15735,70 @@ function ddOpenTool(mode) {
   window.LarisSidePanel.mount({ hostId: 'laris-side-panel-root', site: 'a', adapter: lspAdapter() });
   window.LarisSidePanel.setProduct(lspAdapter().getProduct());
   window.LarisSidePanel.open(mode);
+}
+
+// ── Two-level category picker ────────────────────────────────────────────────
+// Taxonomy comes from the DB (category_map + keyword_subgroup), not a hardcoded
+// list — that is the whole point of those tables, and Site A was the one arm
+// still not reading them, so its category names could drift from Site B and SQL.
+const LCP_CANON_CACHE_KEY = '_lid_canon_cats_v1';
+let _lcpSubCache = Object.create(null);
+
+async function lcpLoadCategories() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(LCP_CANON_CACHE_KEY) || 'null');
+    if (cached && cached.ts && Date.now() - cached.ts < 864e5 && Array.isArray(cached.cats) && cached.cats.length) {
+      return cached.cats;
+    }
+  } catch (_) {}
+  if (!_supabase) return [];
+  const { data, error } = await _supabase
+    .from('category_map').select('canonical,sort_order').order('sort_order', { ascending: true });
+  if (error) return [];
+  const seen = new Set(); const cats = [];
+  (data || []).forEach(r => { if (r.canonical && !seen.has(r.canonical)) { seen.add(r.canonical); cats.push(r.canonical); } });
+  try { localStorage.setItem(LCP_CANON_CACHE_KEY, JSON.stringify({ ts: Date.now(), cats })); } catch (_) {}
+  return cats;
+}
+
+async function lcpLoadSubgroups(cat) {
+  if (!cat) return [];
+  if (_lcpSubCache[cat]) return _lcpSubCache[cat];
+  if (!_supabase) return [];
+  const { data, error } = await _supabase
+    .from('keyword_subgroup').select('subgroup').eq('canonical', cat);
+  if (error) return [];
+  const seen = new Set(); const out = [];
+  (data || []).forEach(r => { if (r.subgroup && !seen.has(r.subgroup)) { seen.add(r.subgroup); out.push(r.subgroup); } });
+  out.sort((a, b) => a.localeCompare(b, 'id'));
+  _lcpSubCache[cat] = out;
+  return out;
+}
+
+function lcpMount() {
+  if (!window.LarisCatPicker || !document.getElementById('laris-catpicker-root')) return;
+  window.LarisCatPicker.mount({
+    hostId: 'laris-catpicker-root',
+    site: 'A',
+    adapter: {
+      esc: wsdEsc,
+      track(evt, props) { try { logUserEvent(evt, props || {}); } catch (_) {} },
+      loadCategories: lcpLoadCategories,
+      loadSubgroups: lcpLoadSubgroups,
+      // Category maps onto the existing checkbox filter so one code path still
+      // owns "what is being filtered". Sub-group has no filter column behind it,
+      // so it rides the search box — which now shares arm B's query planner.
+      onChange({ category, subgroup }) {
+        try {
+          if (!category) { dscResetFilters(); return; }
+          const box = document.getElementById('dsc-search');
+          if (box) box.value = subgroup || '';
+          _dscCommittedQ = subgroup || '';
+          dscPickCategory(category);
+        } catch (_) {}
+      },
+    },
+  });
 }
 
 function trkAdapter() {

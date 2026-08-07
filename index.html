@@ -207,6 +207,7 @@
 <link rel="stylesheet" href="/styles/laris-tracker.css?v=20260801g">
 <link rel="stylesheet" href="/styles/laris-merdeka.css?v=20260807a">
 <link rel="stylesheet" href="/styles/laris-side-panel.css?v=20260807a">
+<link rel="stylesheet" href="/styles/laris-catpicker.css?v=20260807a">
 <style>
 /* Deep-dive tool pills — the entry points into the side panel. */
 .dd-tools{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;}
@@ -7138,6 +7139,10 @@ html,body{overflow-x:clip;max-width:100%;}
                   </div>
                   <span class="dsc-count" id="dsc-count"></span>
                 </div>
+                <!-- Two-level category chips. Drives the existing filter machinery
+                     rather than replacing the checkbox panel, which stays as the
+                     advanced path. 54% of Site B users touch this control. -->
+                <div id="laris-catpicker-root"></div>
                 <div id="dsc-loading-screen" style="display:none;background:#FFFBF8;border:1px solid #FDE7E2;border-radius:10px;padding:14px 14px 12px;margin-bottom:10px;">
                   <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
                     <div class="spinner" style="width:18px;height:18px;border-width:2px;flex-shrink:0;"></div>
@@ -10100,6 +10105,7 @@ html,body{overflow-x:clip;max-width:100%;}
 
 <script defer src="/js/laris-merdeka.js?v=20260807a"></script>
 <script defer src="/js/laris-side-panel.js?v=20260807a"></script>
+<script defer src="/js/laris-catpicker.js?v=20260807a"></script>
 <script defer src="/js/daily-spin-wheel.js?v=20260730g"></script>
 <script defer src="/js/laris-tracker.js?v=20260803a"></script>
 <script defer src="/js/laris-app.js?v=20260803a"></script>
