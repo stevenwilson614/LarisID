@@ -4998,6 +4998,43 @@ function _ddLogDwell(how) {
   } catch (_) {}
 }
 
+// ── Deep-dive section telemetry ──────────────────────────────────────────────
+// Arm A had no idea which parts of the deep dive get read — _ddTabsVisited only
+// says which tab was clicked, not what was actually seen. This is arm B's
+// IntersectionObserver, which showed that 19/19 of its users reach skor and tren
+// but only 3 ever reach the track CTA. Registration is pure markup: put
+// data-dd-sec="name" on anything worth measuring.
+//
+// root:null (the viewport) because arm A scrolls #dash-content, not a named
+// panel; a 0.35 threshold means "a third of it came into view", not "it exists".
+let _ddSecObserver = null;
+let _ddSecSeen = new Set();
+
+function ddObserveSections(root) {
+  ddDisconnectSections();
+  const host = root || document.getElementById('dd-main-content');
+  if (!host || typeof IntersectionObserver === 'undefined') return;
+  _ddSecSeen = new Set(); // fresh funnel per product, not per session
+  _ddSecObserver = new IntersectionObserver((entries) => {
+    entries.forEach((en) => {
+      if (!en.isIntersecting) return;
+      const sec = en.target.getAttribute('data-dd-sec');
+      if (!sec || _ddSecSeen.has(sec)) return;
+      _ddSecSeen.add(sec);
+      const kw = (_ddCurrentP && (_ddCurrentP.keyword || _ddCurrentP.product_name)) || '';
+      void logUserEvent('deepdive_section', {
+        ui: 'A', section: sec, via: 'scroll', keyword: String(kw).slice(0, 80),
+      });
+    });
+  }, { root: null, threshold: 0.35 });
+  host.querySelectorAll('[data-dd-sec]').forEach((el) => _ddSecObserver.observe(el));
+}
+
+function ddDisconnectSections() {
+  try { _ddSecObserver?.disconnect(); } catch (_) {}
+  _ddSecObserver = null;
+}
+
 document.addEventListener('visibilitychange', () => {
   try {
     if (document.visibilityState === 'hidden') {
@@ -5145,13 +5182,10 @@ async function mlsPhotoUpload(event) {
 }
 
 // ── MULAI BERJUALAN — updated JS ─────────────────────────
-function mlsSwitchTab(tab) {
-  document.querySelectorAll('#mls-tabs .dd-tab').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
-  ['pasar','kalc'].forEach(t => {
-    const el = document.getElementById(`mls-tab-${t}`);
-    if (el) el.style.display = t === tab ? '' : 'none';
-  });
-}
+// NOTE: mlsSwitchTab used to be declared twice in this file. This earlier copy
+// only toggled ['pasar','kalc'], so it could never show #mls-tab-paths; the
+// later declaration at ~16500 hoists over it and is the one that actually ran.
+// The dead copy is removed rather than left to mislead the next reader.
 
 function mlsToggleApiSettings() {
   const el = document.getElementById('mls-api-settings');
@@ -5877,6 +5911,9 @@ function switchDashView(view) {
   // while the (static) filter panel is visible.
   if (view === 'product-database') { try { _initPdbCats(); } catch (_) {} }
   if (view === 'opportunity-finder') { try { _initOfCats(); } catch (_) {} }
+  // Leaving the deep dive: drop the section observer so it doesn't keep firing
+  // against a hidden panel or leak across products.
+  if (view !== 'deepdive') { try { ddDisconnectSections(); } catch (_) {} }
   // YLK ("Yang Laku dari Kotamu") now lives on the Dashboard — init it when shown.
   if (view === 'dashboard') { try { if (typeof ylkInit === 'function') { ylkInit(); void ylkEnsureRegion(); } } catch (_) {} }
   if (view === 'credits') { try { crLoadReferral(); } catch (_) {} }
@@ -9475,9 +9512,24 @@ function _dscSearchScore(product, query) {
 const DSC_STOPWORDS = new Set(['cari', 'carikan', 'tolong', 'coba', 'produk', 'barang', 'buat',
   'untuk', 'yang', 'dan', 'apa', 'the', 'jual', 'jualan', 'terlaris', 'laris']);
 
+// Kept in sync with SEARCH_SYNONYMS in js/gpt-app.js. Arm A's copy had drifted to
+// a strict subset — 17 keys vs 33 — missing the whole food/drink, skincare and
+// dress clusters, which is a plausible contributor to A's lower measured search
+// success. If you add a cluster here, add it there too.
 const DSC_SEARCH_SYNONYMS = {
-  kayu: ['wood', 'wooden', 'bambu', 'kerajinan kayu'],
-  wood: ['kayu', 'wooden', 'bambu'], wooden: ['kayu', 'wood', 'bambu'],
+  makanan: ['pakan', 'kuliner', 'camilan', 'wadah makanan', 'tempat makan', 'lunch box'],
+  minuman: ['botol minum', 'tumbler', 'dispenser minum'],
+  ayam: ['pakan ayam', 'unggas', 'tempat makan ayam'],
+  snack: ['camilan', 'makanan ringan'],
+  camilan: ['snack', 'makanan ringan'],
+  kuliner: ['dapur', 'peralatan masak'],
+  skincare: ['kecantikan', 'serum', 'moisturizer'],
+  fashion: ['baju', 'pakaian'],
+  dress: ['gaun', 'dresses', 'dress wanita', 'baju pesta', 'gaun pesta', 'maxi dress'],
+  dresses: ['gaun', 'dress', 'dress wanita', 'baju pesta', 'gaun pesta', 'maxi dress'],
+  gaun: ['dress', 'dresses', 'dress wanita', 'baju pesta', 'gaun pesta'],
+  kayu: ['wood', 'wooden', 'bambu', 'bamboo', 'kerajinan kayu', 'furniture kayu'],
+  wood: ['kayu', 'wooden', 'bambu', 'kerajinan kayu'], wooden: ['kayu', 'wood', 'bambu'],
   bambu: ['bamboo', 'kayu'], bamboo: ['bambu', 'kayu'], rotan: ['rattan'], rattan: ['rotan'],
   // Craft / embroidery — English queries must reach ID catalog keywords
   cross: ['kristik', 'kruistik', 'kruissteek', 'sulam', 'tusuk silang'],
@@ -9504,6 +9556,10 @@ const DSC_PHRASE_SYNONYMS = {
   'pola kristik': ['kristik', 'pola sulam', 'kruissteek', 'cross stitch'],
   'kristick': ['kristik', 'cross stitch', 'kruissteek'],
   'sulaman': ['sulam', 'kristik', 'bordir', 'benang sulam'],
+  'dress wanita': ['gaun', 'dress', 'dresses', 'baju pesta', 'maxi dress'],
+  'baju pesta': ['gaun', 'gaun pesta', 'dress', 'dress wanita'],
+  'gaun pesta': ['baju pesta', 'gaun', 'dress', 'dress wanita'],
+  'maxi dress': ['gaun', 'dress', 'dress wanita', 'gaun panjang'],
 };
 
 function _dscTerms(text) {
@@ -9511,15 +9567,26 @@ function _dscTerms(text) {
     .filter(w => w.length >= 3 && !DSC_STOPWORDS.has(w));
 }
 
-const DSC_SYN_CACHE_KEY = '_lid_syn_cache_v1'; // shared with /gpt/
+// NOT shared with /gpt/ any more. Both bundles used to write '_lid_syn_cache_v1',
+// but they send DIFFERENT system prompts to the planner, so a user who visited
+// one site and then the other was served the wrong site's plan for every repeated
+// query — silently, permanently, with no version or invalidation. Each arm now
+// owns its namespace, and the value carries a prompt tag so a future prompt
+// change invalidates stale entries instead of inheriting them.
+const DSC_SYN_CACHE_KEY = '_lid_syn_cache_a_v2';
+const DSC_PLAN_PROMPT_TAG = 'a-2026-08-07';
 function _dscSynCacheGet(key) {
-  try { const o = JSON.parse(localStorage.getItem(DSC_SYN_CACHE_KEY) || '{}'); return o[key] || null; }
-  catch (_) { return null; }
+  try {
+    const o = JSON.parse(localStorage.getItem(DSC_SYN_CACHE_KEY) || '{}');
+    const hit = o[key];
+    if (!hit || hit._tag !== DSC_PLAN_PROMPT_TAG) return null; // stale prompt -> re-plan
+    return hit;
+  } catch (_) { return null; }
 }
 function _dscSynCacheSet(key, plan) {
   try {
     const o = JSON.parse(localStorage.getItem(DSC_SYN_CACHE_KEY) || '{}');
-    o[key] = plan;
+    o[key] = Object.assign({}, plan, { _tag: DSC_PLAN_PROMPT_TAG });
     const keys = Object.keys(o);
     if (keys.length > 300) delete o[keys[0]];
     localStorage.setItem(DSC_SYN_CACHE_KEY, JSON.stringify(o));
@@ -9540,12 +9607,19 @@ function _dscStaticPlan(cleaned) {
 
 async function _dscDeepseekPlan(query) {
   try {
-    const system = 'You are a product-search query planner for an Indonesian marketplace research tool. '
+    // Kept in sync with _deepseekPlan() in js/gpt-app.js. Naming Shopee, giving
+    // worked examples, and telling it to prefer specific terms over category
+    // labels all measurably tighten the plan — A was running the weaker prompt.
+    // If you change this, bump DSC_PLAN_PROMPT_TAG so cached plans invalidate.
+    const system = 'You are a product-search query planner for an Indonesian Shopee marketplace research tool. '
       + 'Given a shopper search text, reply with ONLY strict minified JSON, no prose: '
-      + '{"queries":["short ID/EN keywords or phrases for the SAME product niche — include local '
-      + 'Indonesian synonyms, English equivalents and common misspellings, max 8"],'
+      + '{"queries":["short keywords for the SAME product niche — prefer specific Indonesian marketplace '
+      + 'terms first, then English equivalents and common misspellings, max 8"],'
       + '"exclude":["lowercase words that would pull in UNRELATED products sharing a token, max 10"]}. '
-      + 'Return real search terms only. Never invent product names, brands, prices or descriptions.';
+      + 'Rules: (1) Expand English product nouns into Indonesian seller keywords for THAT niche — '
+      + 'e.g. "dresses" → "gaun","dress wanita","baju pesta","gaun pesta"; "tumbler" → "tumbler","botol minum"; '
+      + '"serum" → "serum wajah","skincare serum". (2) Prefer specific product terms over broad category '
+      + 'labels like "fashion","pakaian","kecantikan". (3) Never invent product names, brands, prices or descriptions.';
     const res = await fetch(`${SUPA_URL}/functions/v1/claude-proxy`, {
       method: 'POST',
       headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json' },
@@ -10180,7 +10254,29 @@ function dscBuildCatIcons() {
   });
 }
 
+// Browse-by-filter was completely uninstrumented until 2026-08-07: a user who
+// only ever picked categories registered as never having searched, and
+// funnel_step{first_search} could not fire for them at all. That understated
+// arm A's search participation in every A/B readout. Event shape matches arm B's
+// dir_filter so the two arms are directly comparable.
+let _dscFilterLoggedAt = 0;
+function _dscLogFilter(kind, value) {
+  try {
+    _dscFilterLoggedAt = Date.now();
+    logUserEvent('dir_filter', { ui: 'A', kind, value: String(value ?? '').slice(0, 60) });
+    if (typeof funnelStep === 'function') funnelStep('first_search', { source: 'filter' });
+  } catch (_) {}
+}
+// dscPickCategory / dscCobaKeberuntungan / dscCatSelectAll all end by calling
+// dscTerapkanFilter, so the apply-level log would double-count them. Anything
+// logged in the last tick already described the user's actual intent.
+function _dscLogApplyUnlessJustLogged() {
+  if (Date.now() - _dscFilterLoggedAt < 100) return;
+  _dscLogFilter('apply', 'terapkan');
+}
+
 function dscPickCategory(cat) {
+  _dscLogFilter('category', cat);
   document.querySelectorAll('#dsc-cat-checks input[type=checkbox]').forEach(cb => {
     cb.checked = cb.value === cat;
   });
@@ -10197,6 +10293,7 @@ function dscPickCategory(cat) {
 }
 
 function dscCobaKeberuntungan() {
+  _dscLogFilter('random', 'coba_keberuntungan');
   try { sessionStorage.removeItem(_DSC_CAT_SS_KEY); } catch {}
   document.querySelectorAll('#dsc-cat-checks input[type=checkbox]').forEach(c => { c.checked = true; });
   const g = id => document.getElementById(id);
@@ -10272,6 +10369,7 @@ function dscBuildCatChecks(cats) {
 function dscCatSelectAll() {
   const checks = document.querySelectorAll('#dsc-cat-checks input[type=checkbox]');
   const allChecked = [...checks].every(c => c.checked);
+  _dscLogFilter('select_all', allChecked ? 'clear' : 'all');
   checks.forEach(c => c.checked = !allChecked);
   _dscSaveCatState();
 }
@@ -10403,9 +10501,7 @@ function dscTypeCardHtml(t) {
   const delta = Number(t.trend_delta_30d) || 0;
   const kwAttr = String(t.keyword || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
   return `<div class="dsc-card dsc-card-pasar" onclick="dscOpenTypeDeepDive('${kwAttr}')">
-    <div class="dsc-card-img" style="position:relative;">${imgHtml}
-      <div style="position:absolute;top:6px;left:6px;background:#8E191F;color:#fff;border-radius:8px;padding:3px 9px;font-size:.62rem;font-weight:800;letter-spacing:.06em;line-height:1.4;box-shadow:0 1px 4px rgba(0,0,0,.22);">PASAR</div>
-    </div>
+    <div class="dsc-card-img" style="position:relative;">${imgHtml}</div>
     <div class="dsc-card-body">
       <div class="dsc-card-name">${_dscEscAttr(title).slice(0, 70)}</div>
       <div class="dsc-card-store">${Number(t.n_sellers || 0).toLocaleString('id-ID')} penjual &middot; ${Number(t.n_listings || 0).toLocaleString('id-ID')} listing</div>
@@ -11350,6 +11446,9 @@ async function dscOpenDeepDive(key, skipNav) {
   if (!skipNav) _navSilence++;
   switchDashView('deepdive');
   ddSwitchTab('ringkasan');
+  // Re-arm section telemetry for this product. Deferred a tick so the panels the
+  // observer needs to watch have been laid out.
+  setTimeout(() => ddObserveSections(), 0);
 
   const ctx = document.getElementById('dd-kw-context');
   if (ctx) ctx.style.display = '';
@@ -13642,6 +13741,7 @@ function dscGoPage(n) {
 }
 
 function dscTerapkanFilter() {
+  _dscLogApplyUnlessJustLogged();
   _dscSnapAppliedFromUI();
   // Force a fresh server re-fetch regardless of current load state
   _dscLoadGen++;
@@ -13658,6 +13758,7 @@ function dscTerapkanFilter() {
 }
 
 function dscResetFilters() {
+  _dscLogFilter('reset', 'reset');
   const g = id => document.getElementById(id);
   _dscCurrentCatFilter  = ''; // clear server-side category filter
   _dscCurrentCatFilters = null;

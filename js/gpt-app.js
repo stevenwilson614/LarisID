@@ -5711,7 +5711,11 @@ async function searchListings(q, locations = [], limit = 30) {
 }
 
 // ── Smart query planning: static craft map + DeepSeek V4 Pro, cached ──────────
-const SYN_CACHE_KEY = '_lid_syn_cache_v1';
+// Namespaced per arm. This used to be '_lid_syn_cache_v1' on BOTH bundles, but
+// the two send different system prompts, so cross-visiting users got the other
+// site's plan served back for any repeated query. See the matching comment in
+// js/laris-app.js.
+const SYN_CACHE_KEY = '_lid_syn_cache_gpt_v2';
 
 function _synCacheGet(key) {
   try { const o = JSON.parse(localStorage.getItem(SYN_CACHE_KEY) || '{}'); return o[key] || null; }

@@ -28,3 +28,6 @@ _site/
 *.harness.html
 .aider*
 .email-preview/
+
+# Stale pre-cutover bundle backups (Jul 24) — never commit
+*.pre-cutover.bak
