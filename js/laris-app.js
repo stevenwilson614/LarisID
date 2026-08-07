@@ -4613,15 +4613,18 @@ function spinClose() {
   if (root) root.setAttribute('aria-hidden', 'true');
 }
 
-// Fires once per day, right after the 2nd dive lands.
-function spinMaybeOffer() {
-  try {
-    if (_spinOffered || !currentUser || !_usage || _usage.unlimited) return;
-    if (_usage.can_spin === false) return;
-    if ((_usage.dives_used ?? 0) !== 2) return;
-    _spinOffered = true;
-    setTimeout(spinShow, 900); // let the deep dive paint first
-  } catch (_) {}
+// The wheel is RELIEF, not an interruption. It used to fire proactively at the
+// 2nd dive — which showed it to 19 users while only 13 ever hit the wall, and
+// only 8 of those took a prize. With the cap at 10 that trigger would fire at 20%
+// usage, which is absurd. So this is now a no-op: the only entry point is the
+// daily-limit modal (see usageLimitShow / #cg-spin-btn), where "+1 dive" actually
+// means something. Kept as a named function so existing call sites stay valid.
+function spinMaybeOffer() { /* intentionally empty — wheel is offered at the wall only */ }
+
+// Can this user still be offered a spin today? Used to decide whether the limit
+// modal shows its spin button.
+function spinCanOffer() {
+  return !!(currentUser && _usage && !_usage.unlimited && _usage.can_spin !== false);
 }
 
 async function spinDo() {
@@ -4711,7 +4714,7 @@ function renderUsageUI() {
     if (aEl) aEl.textContent = '∞';
     if (pill) pill.title = 'Akses tanpa batas';
   } else if (_usage) {
-    if (dEl) dEl.textContent = `${_usage.dives_used ?? 0}/${_usage.dive_limit ?? 3}`;
+    if (dEl) dEl.textContent = `${_usage.dives_used ?? 0}/${_usage.dive_limit ?? 10}`;
     if (aEl) aEl.textContent = `${_usage.ai_used ?? 0}/${_usage.ai_limit ?? 5}`;
     if (pill) pill.title = `Jatah harian — reset dalam ${_usageResetLabel()}`;
   }
@@ -4781,7 +4784,7 @@ async function creditsInit() {
 function usageRenderPage() {
   if (!document.getElementById('usg-dive-fill')) return;
   const unlimited = (_usage && _usage.unlimited) || (currentUser && (isPlatformAdmin() || _accessState.isLeader));
-  const diveUsed = _usage?.dives_used ?? 0, diveLim = _usage?.dive_limit ?? 3;
+  const diveUsed = _usage?.dives_used ?? 0, diveLim = _usage?.dive_limit ?? 10;
   const aiUsed = _usage?.ai_used ?? 0, aiLim = _usage?.ai_limit ?? 5;
   const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
   const bar = (id, used, lim) => {
@@ -4794,7 +4797,7 @@ function usageRenderPage() {
   bar('usg-ai-fill', aiUsed, aiLim);
   set('usg-reset', unlimited ? 'Akun kamu punya akses penuh.' : (_usage ? `Reset dalam ${_usageResetLabel()}` : ''));
   const extB = _usage?.extension_bonus ?? 0, refB = _usage?.referral_bonus ?? 0;
-  set('usg-dive-sub', unlimited ? '' : `3 dasar${extB > 0 ? ' + 3 extension' : ''}${refB > 0 ? ` + ${refB} ajak teman` : ''} per hari`);
+  set('usg-dive-sub', unlimited ? '' : `10 dasar${extB > 0 ? ' + 3 extension' : ''}${refB > 0 ? ` + ${refB} ajak teman` : ''} per hari`);
   const bonusEl = document.getElementById('cr-ref-bonus');
   if (bonusEl) bonusEl.textContent = `+${refB}/5`;
 }
@@ -4806,8 +4809,8 @@ function usageLimitShow(kind) {
   const sub = document.getElementById('cg-sub');
   if (title) title.textContent = isAi ? 'Batas AI hari ini tercapai' : 'Batas deep dive hari ini tercapai';
   if (sub) {
-    const used = isAi ? (_usage?.ai_used ?? 5) : (_usage?.dives_used ?? 3);
-    const limit = isAi ? (_usage?.ai_limit ?? 5) : (_usage?.dive_limit ?? 3);
+    const used = isAi ? (_usage?.ai_used ?? 5) : (_usage?.dives_used ?? 10);
+    const limit = isAi ? (_usage?.ai_limit ?? 5) : (_usage?.dive_limit ?? 10);
     sub.textContent = isAi
       ? `Kamu sudah pakai ${used}/${limit} poin AI hari ini.`
       : `Kamu sudah pakai ${used}/${limit} deep dive hari ini.`;
@@ -4816,6 +4819,10 @@ function usageLimitShow(kind) {
   if (resetLine) resetLine.textContent = _usage ? `Jatah baru tersedia dalam ${_usageResetLabel()}.` : 'Jatah baru tersedia besok.';
   // Feedback-for-dives is the second stage of limit relief: only offered here,
   // once the (already spun-up) limit is actually exhausted, and only for dives.
+  // Two stages of relief, both only offered here, once the cap is actually spent.
+  // The wheel comes first (instant, no work asked of the user), feedback second.
+  const spinBtn = document.getElementById('cg-spin-btn');
+  if (spinBtn) spinBtn.style.display = (!isAi && spinCanOffer()) ? 'flex' : 'none';
   const fbBtn = document.getElementById('cg-feedback-btn');
   if (fbBtn) fbBtn.style.display = (!isAi && _usage?.can_claim_feedback !== false) ? '' : 'none';
   document.getElementById('cg-overlay').style.display = 'flex';
@@ -25373,6 +25380,11 @@ function _mlsRenderDots() {
 })();
 
 document.addEventListener('DOMContentLoaded', function(){
+  // Merdeka decorations. Self-gates to August WIB and no-ops otherwise, so this
+  // call can stay in place year-round. `.lp-nav` is the landing shell and
+  // `.dash-topbar` the signed-in one — whichever is present first in the DOM wins.
+  try { window.LarisMerdeka?.mount({ site: 'a', navSelector: '.lp-nav, .dash-topbar' }); } catch (_) {}
+
   var ric = window.larisIdle || function(fn){ setTimeout(fn, 1200); };
   ric(function () {
     if (typeof ensureChartJs === 'function') {

@@ -1263,7 +1263,7 @@ function showToast(msg) {
 }
 
 // ── Daily product/search limit (3 / WIB day) ─────────────────────────────
-const GPT_DAILY_LIMIT = 3;
+const GPT_DAILY_LIMIT = 10;
 const USAGE_RING_C = 2 * Math.PI * 15; // r=15 → ~94.2
 let _gptUsage = {
   used: 0,
@@ -1385,14 +1385,15 @@ function spinClose() {
   if (root) root.setAttribute('aria-hidden', 'true');
 }
 
-function spinMaybeOffer() {
-  try {
-    if (_spinOffered || !currentUser || _gptUsage.unlimited) return;
-    if (_gptUsage.canSpin === false) return;
-    if ((_gptUsage.used || 0) !== 2) return;
-    _spinOffered = true;
-    setTimeout(spinShow, 900);
-  } catch (_) {}
+// Parity with arm A: the wheel is relief at the wall, not a mid-session popup.
+// The old `used === 2` trigger interrupted people who were not blocked (16 users
+// shown, 9 walled, 5 took a prize) and with the cap at 10 it would fire at 20%
+// usage. Only gptLimitHit() offers the wheel now. Kept as a no-op so existing
+// call sites stay valid.
+function spinMaybeOffer() { /* intentionally empty — wheel is offered at the wall only */ }
+
+function spinCanOffer() {
+  return !!(currentUser && !_gptUsage.unlimited && _gptUsage.canSpin !== false);
 }
 
 // gpt_new_chat returns used/limit but not the earned-bonus flags, so seed them
@@ -1468,6 +1469,10 @@ function gptLimitHit(opts = {}) {
     const reset = opts.resetAt || _gptUsage.resetAt || wibMidnightReset();
     sub.textContent = `Jatah baru tersedia dalam ${formatCountdown(reset)}.`;
   }
+  // Wheel first (instant), feedback second (asks for work). Both only here, at
+  // the wall — see spinMaybeOffer for why the proactive trigger was removed.
+  const spinBtn = document.getElementById('gpt-limit-spin');
+  if (spinBtn) spinBtn.style.display = spinCanOffer() ? '' : 'none';
   const fbBtn = document.getElementById('gpt-limit-feedback');
   if (fbBtn) fbBtn.style.display = _gptUsage.canClaimFeedback === false ? 'none' : '';
   document.getElementById('gpt-limit-modal')?.classList.add('open');
@@ -10482,6 +10487,8 @@ function wireUi() {
 async function boot() {
   loadLocalState();
   recomputeLearnedCategories();
+  // Merdeka decorations — self-gates to August WIB, no-ops the rest of the year.
+  try { window.LarisMerdeka?.mount({ site: 'b', navSelector: '.main-top' }); } catch (_) {}
   // Sticky AB: direct /gpt/ visits (not via / split) are marked via=direct_gpt
   // so they can be excluded from the random 50/50 cohort in AB_TEST.sql.
   try {
@@ -10496,6 +10503,7 @@ async function boot() {
 
   wireUi();
   document.getElementById('gpt-limit-close')?.addEventListener('click', gptLimitClose);
+  document.getElementById('gpt-limit-spin')?.addEventListener('click', () => { gptLimitClose(); spinShow(); });
   document.getElementById('gpt-limit-feedback')?.addEventListener('click', gptOpenFeedbackForBonus);
   document.getElementById('gpt-limit-ext')?.addEventListener('click', gptLimitClose);
   document.getElementById('gpt-fb-submit')?.addEventListener('click', () => { void gptSubmitFeedback(); });
