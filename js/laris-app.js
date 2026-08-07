@@ -5913,7 +5913,11 @@ function switchDashView(view) {
   if (view === 'opportunity-finder') { try { _initOfCats(); } catch (_) {} }
   // Leaving the deep dive: drop the section observer so it doesn't keep firing
   // against a hidden panel or leak across products.
-  if (view !== 'deepdive') { try { ddDisconnectSections(); } catch (_) {} }
+  if (view !== 'deepdive') {
+    try { ddDisconnectSections(); } catch (_) {}
+    // The rail is product-scoped; it has no meaning outside the deep dive.
+    try { window.LarisSidePanel?.close(); } catch (_) {}
+  }
   // YLK ("Yang Laku dari Kotamu") now lives on the Dashboard — init it when shown.
   if (view === 'dashboard') { try { if (typeof ylkInit === 'function') { ylkInit(); void ylkEnsureRegion(); } } catch (_) {} }
   if (view === 'credits') { try { crLoadReferral(); } catch (_) {} }
@@ -11449,6 +11453,9 @@ async function dscOpenDeepDive(key, skipNav) {
   // Re-arm section telemetry for this product. Deferred a tick so the panels the
   // observer needs to watch have been laid out.
   setTimeout(() => ddObserveSections(), 0);
+  // If the side rail is open, point it at the new product rather than leaving it
+  // showing the previous one's numbers.
+  try { window.LarisSidePanel?.setProduct(p); } catch (_) {}
 
   const ctx = document.getElementById('dd-kw-context');
   if (ctx) ctx.style.display = '';
@@ -15679,6 +15686,54 @@ function trkOpen() {
   window.LarisTracker.mount({ hostId: 'laris-tracker-root', site: 'a', adapter: trkAdapter() });
   window.LarisTracker.open({ touch: true });
   try { logUserEvent('tracker_tab', { tab: 'keyword', ui: 'A' }); } catch (_) {}
+}
+
+// ── Deep-dive side panel ─────────────────────────────────────────────────────
+// Kalkulator / Kompetitor / Serupa live in a persistent right rail instead of the
+// tab strip. Same module contract as LarisTracker: the module owns its pixels,
+// we hand it services and data through an adapter and never let it reach into
+// app globals.
+let _lspAdapterObj = null;
+
+function lspAdapter() {
+  if (_lspAdapterObj) return _lspAdapterObj;
+  _lspAdapterObj = {
+    esc: wsdEsc,
+    fmtRp: _dscFmtRpFull,
+    fmtRpShort: fmtShort,
+    fmtSold: (n) => fmtShort(n || 0),
+    toast: showCompareToast,
+    track(evt, props) { try { logUserEvent(evt, Object.assign({ ui: 'A' }, props || {})); } catch (_) {} },
+
+    getProduct() { return _ddCurrentP || _ddKwListing || null; },
+    // The deep dive has usually already loaded the keyword's peer set for the
+    // Kompetitor tab; reuse it rather than re-querying.
+    getPeers() { return Array.isArray(_ddKwRows) ? _ddKwRows : []; },
+    async fetchPeers(keyword) {
+      if (!_supabase || !keyword) return [];
+      const { data, error } = await _supabase
+        .from('listings_deduped')
+        .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date')
+        .ilike('keyword', `%${String(keyword).slice(0, 40)}%`)
+        .gt('total_sold', 0)
+        .order('total_sold', { ascending: false })
+        .limit(60);
+      if (error) throw error;
+      return data || [];
+    },
+    openProduct(p) {
+      if (!p || !p.item_id) return;
+      try { dscOpenDeepDive(`${p.item_id}__${p.shop_id}`); } catch (_) {}
+    },
+  };
+  return _lspAdapterObj;
+}
+
+function ddOpenTool(mode) {
+  if (!window.LarisSidePanel) return;
+  window.LarisSidePanel.mount({ hostId: 'laris-side-panel-root', site: 'a', adapter: lspAdapter() });
+  window.LarisSidePanel.setProduct(lspAdapter().getProduct());
+  window.LarisSidePanel.open(mode);
 }
 
 function trkAdapter() {

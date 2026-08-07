@@ -1,0 +1,379 @@
+/* LarisSidePanel — styles for the right-hand product panel */
+.lsp-panel {
+  position: fixed;
+  top: 60px;            /* below the app header */
+  right: 0;
+  bottom: 0;            /* derive height from top/bottom, never height:100% —
+                           that is 60px taller than the viewport, and it computes
+                           to 0 whenever the viewport has not been measured yet */
+  width: var(--lsp-w, 380px);
+  background: var(--card, #fff);
+  border-left: 1px solid var(--border, #E5E7EB);
+  z-index: 80;
+  display: none;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(.4,0,.2,1), height 0.1s;
+  box-shadow: -4px 0 24px rgba(0,0,0,.08);
+}
+
+.lsp-panel.lsp-open {
+  transform: translateX(0);
+}
+
+.lsp-panel.lsp-desktop {
+  display: flex;
+}
+
+.lsp-panel.lsp-mobile {
+  top: auto;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  width: 100%;
+  height: var(--lsp-h, 62vh);
+  border-left: none;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  border-top: 2px solid var(--border, #E5E7EB);
+  box-shadow: 0 -4px 24px rgba(0,0,0,.1);
+  transform: translateY(0);
+  transition: transform 0.28s cubic-bezier(.4,0,.2,1), height 0.1s;
+  display: none;
+}
+
+.lsp-panel.lsp-mobile.lsp-open {
+  display: flex;
+}
+
+.lsp-panel.lsp-collapsed.lsp-mobile {
+  height: 96px !important;
+}
+
+/* resize handle (desktop) */
+.lsp-resize-handle {
+  position: absolute;
+  left: -4px;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: col-resize;
+  background: transparent;
+  z-index: 10;
+}
+.lsp-mobile .lsp-resize-handle {
+  display: none;
+}
+
+/* grab handle (mobile) */
+.lsp-grab-handle {
+  display: none;
+}
+.lsp-mobile .lsp-grab-handle {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 20px;
+  cursor: ns-resize;
+}
+.lsp-grab-dot {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border, #D1D5DB);
+}
+
+/* header area */
+.lsp-header {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px 6px 12px;
+  border-bottom: 1px solid var(--border, #E5E7EB);
+  flex-shrink: 0;
+}
+
+/* tabs */
+.lsp-tabs {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  overflow: hidden;
+}
+.lsp-tab {
+  background: none;
+  border: none;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--tm, #6B7280);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+.lsp-tab:hover,
+.lsp-tab:focus-visible {
+  background: rgba(0,0,0,.04);
+}
+.lsp-tab.active {
+  background: var(--orange, #B5202A);
+  color: #fff;
+}
+
+.lsp-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: var(--tm, #6B7280);
+  border-radius: 50%;
+}
+.lsp-close:hover {
+  background: rgba(0,0,0,.06);
+}
+.lsp-close svg {
+  display: block;
+}
+
+/* body */
+.lsp-body {
+  flex: 1;
+  min-height: 0;   /* without this a flex child refuses to shrink and the list
+                      overflows the rail instead of scrolling inside it */
+  overflow-y: auto;
+  padding: 12px;
+}
+
+/* Kalkulator */
+.lsp-kalc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.lsp-kalc-lbl {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--td, #111);
+}
+.lsp-kalc-inputwrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.lsp-rp-prefix {
+  font-size: 0.72rem;
+  color: var(--tm, #6B7280);
+}
+.lsp-kalc-inp {
+  width: 100px;
+  padding: 6px 8px;
+  border: 1.5px solid var(--border, #E5E7EB);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.82rem;
+  text-align: right;
+  outline: none;
+  box-sizing: border-box;
+}
+.lsp-kalc-inp:focus {
+  border-color: var(--orange, #B5202A);
+}
+
+.lsp-kalc-summary {
+  margin-top: 16px;
+  border-top: 1px solid var(--border, #E5E7EB);
+  padding-top: 12px;
+}
+.lsp-kalc-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 0.82rem;
+  border-bottom: 1px solid #f5f5f5;
+}
+.lsp-kalc-item span:last-child {
+  font-weight: 700;
+  color: var(--td, #111);
+}
+.lsp-kalc-warn {
+  margin-top: 10px;
+  padding: 8px;
+  background: #FEF2F2;
+  border: 1px solid #FCA5A5;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #DC2626;
+}
+
+/* Kompetitor */
+.lsp-comp-header {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--tm, #6B7280);
+  margin-bottom: 10px;
+}
+
+.lsp-comp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lsp-comp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 10px;
+  background: var(--card, #fff);
+  border: 1px solid var(--border, #E5E7EB);
+  cursor: pointer;
+  transition: box-shadow 0.12s;
+}
+.lsp-comp-row:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+.lsp-comp-rank {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--tm, #6B7280);
+  width: 24px;
+  text-align: center;
+}
+
+.lsp-comp-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--border, #F3F4F6);
+  flex-shrink: 0;
+}
+
+.lsp-comp-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.lsp-comp-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--td, #111);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.3;
+}
+
+.lsp-comp-meta {
+  font-size: 0.68rem;
+  color: var(--tm, #6B7280);
+}
+
+.lsp-comp-stats {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: var(--td, #111);
+  font-weight: 600;
+}
+
+.lsp-comp-bar {
+  height: 4px;
+  background: #F3F4F6;
+  border-radius: 2px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+.lsp-comp-bar-fill {
+  height: 100%;
+  background: var(--orange, #B5202A);
+  border-radius: 2px;
+}
+
+.lsp-loading,
+.lsp-empty {
+  font-size: 0.8rem;
+  color: var(--tm, #6B7280);
+  padding: 8px 0;
+}
+
+/* Serupa */
+.lsp-serupa-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.lsp-serupa-card {
+  background: var(--card, #fff);
+  border: 1px solid var(--border, #E5E7EB);
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: box-shadow 0.12s;
+}
+.lsp-serupa-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+.lsp-serupa-img {
+  width: 100%;
+  aspect-ratio: 1/1;
+  object-fit: cover;
+  display: block;
+  background: var(--border, #F3F4F6);
+}
+
+.lsp-serupa-body {
+  padding: 8px;
+}
+
+.lsp-serupa-name {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--td, #111);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.3;
+}
+
+.lsp-serupa-price {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--orange, #B5202A);
+  margin-top: 4px;
+}
+
+.lsp-serupa-sold {
+  font-size: 0.68rem;
+  color: var(--tm, #6B7280);
+}
+
+/* ── mobile adjustments ────────────────────────────────────── */
+@media (max-width: 860px) {
+  .lsp-panel {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 62vh;
+    border-left: none;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    border-top: 2px solid var(--border, #E5E7EB);
+    box-shadow: 0 -4px 24px rgba(0,0,0,.1);
+  }
+  .lsp-panel.lsp-desktop { display: none; }
+  .lsp-panel.lsp-mobile.lsp-open { display: flex; }
+  .lsp-panel.lsp-collapsed.lsp-mobile { height: 96px !important; }
+}

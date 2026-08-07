@@ -29,7 +29,7 @@
 <meta name="twitter:image" content="https://larisid.com/images/Banner.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="LarisID — Riset Produk Shopee Indonesia">
-<meta name="twitter:description" content="Data riset produk Shopee, Viability Score, Deep Dive. Gratis 3 deep dive tiap hari. Perbandingan vs Datapinter, Tokpee, Shoptik.">
+<meta name="twitter:description" content="Data riset produk Shopee, Viability Score, Deep Dive. Gratis 10 deep dive tiap hari. Perbandingan vs Datapinter, Tokpee, Shoptik.">
 <meta name="keywords" content="riset produk shopee, riset produk e-commerce indonesia, data penjualan shopee, alat riset produk seller, viability score, larisid vs datapinter, alternatif datapinter, product research indonesia, analisis kompetitor shopee">
 <script type="application/ld+json">
 {
@@ -53,7 +53,7 @@
         "@type": "Offer",
         "price": "0",
         "priceCurrency": "IDR",
-        "description": "Gratis 3 deep dive produk setiap hari, tanpa biaya"
+        "description": "Gratis 10 deep dive produk setiap hari, tanpa biaya"
       },
       "featureList": [
         "Riset produk Shopee dengan data penjualan nyata",
@@ -94,7 +94,7 @@
           "name": "Apakah LarisID gratis?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Ya, 100% gratis: setiap akun mendapat 3 deep dive produk per hari (satu deep dive membuka semua data produk itu selama 7 hari) plus jatah AI harian. Pasang ekstensi Chrome LarisID untuk menambah 3 deep dive per hari — tanpa biaya sama sekali."
+            "text": "Ya, 100% gratis: setiap akun mendapat 10 deep dive produk per hari (satu deep dive membuka semua data produk itu selama 7 hari) plus jatah AI harian. Pasang ekstensi Chrome LarisID untuk menambah 3 deep dive per hari — tanpa biaya sama sekali."
           }
         },
         {
@@ -102,7 +102,7 @@
           "name": "Apa bedanya LarisID dan Datapinter?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Datapinter memakai langganan sekitar Rp 299.000 per bulan dengan fitur riset marketplace lengkap. LarisID 100% gratis tanpa langganan dan tanpa biaya apa pun — kamu dapat 3 deep dive gratis setiap hari dan bisa menambah jatah lewat ekstensi Chrome."
+            "text": "Datapinter memakai langganan sekitar Rp 299.000 per bulan dengan fitur riset marketplace lengkap. LarisID 100% gratis tanpa langganan dan tanpa biaya apa pun — kamu dapat 10 deep dive gratis setiap hari dan bisa menambah jatah lewat ekstensi Chrome."
           }
         },
         {
@@ -206,6 +206,20 @@
 <link rel="stylesheet" href="/styles/daily-spin-wheel.css?v=20260730g">
 <link rel="stylesheet" href="/styles/laris-tracker.css?v=20260801g">
 <link rel="stylesheet" href="/styles/laris-merdeka.css?v=20260807a">
+<link rel="stylesheet" href="/styles/laris-side-panel.css?v=20260807a">
+<style>
+/* Deep-dive tool pills — the entry points into the side panel. */
+.dd-tools{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;}
+.dd-tool{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border:1px solid var(--border);background:var(--card);color:var(--td);border-radius:999px;font-size:.76rem;font-weight:700;font-family:inherit;cursor:pointer;transition:border-color .15s,color .15s,box-shadow .15s;}
+.dd-tool:hover{border-color:var(--orange);color:var(--orange);box-shadow:0 1px 6px rgba(181,32,42,.1);}
+.dd-tool svg{flex-shrink:0;}
+/* When the rail is open on desktop, give the page back its right margin so the
+   deep dive is never hidden underneath it. The panel is fixed, so this padding
+   is the host's job, not the module's. */
+@media (min-width:861px){
+  body.lsp-open .dash-main{padding-right:var(--lsp-w,380px);transition:padding-right .18s ease;}
+}
+</style>
 <script src="/js/perf-loader.js"></script>
 
 <!-- Auth-token URL scrubber — MUST run before any analytics (Cloudflare/Clarity).
@@ -5213,7 +5227,7 @@ html,body{overflow-x:clip;max-width:100%;}
               Mulai Gratis
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 8 16 12 12 16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
             </button>
-            <div class="lp-banner-cta-note">Tanpa pengalaman, tanpa kartu kredit &mdash; gratis 3 deep dive tiap hari.</div>
+            <div class="lp-banner-cta-note">Tanpa pengalaman, tanpa kartu kredit &mdash; gratis 10 deep dive tiap hari.</div>
           </div>
         </div>
         <!-- Right: person photo + Shopee bag -->
@@ -5283,7 +5297,7 @@ html,body{overflow-x:clip;max-width:100%;}
     <div class="lp-mobile-cta">
       <div class="lp-mobile-cta-info">
         <b>Mulai gratis hari ini</b>
-        <span>3 deep dive gratis/hari &middot; tanpa kartu kredit</span>
+        <span>10 deep dive gratis/hari &middot; tanpa kartu kredit</span>
       </div>
       <button class="lp-mobile-cta-btn" onclick="openAuthModal('signup','mobile_sticky')">Mulai Gratis</button>
     </div>
@@ -6681,7 +6695,7 @@ html,body{overflow-x:clip;max-width:100%;}
                 Apakah LarisID benar-benar gratis?
                 <svg class="edu-faq-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
               </div>
-              <div class="edu-faq-a">Ya, 100% gratis: 3 deep dive per hari (satu deep dive membuka semua data produk itu selama 7 hari), akses Finder, dan jatah AI harian — tanpa kartu kredit. Pasang ekstensi Chrome untuk menambah 3 deep dive per hari. Kami percaya riset produk harus bisa diakses semua seller, bukan hanya yang mampu langganan ~Rp 300rb/bulan.</div>
+              <div class="edu-faq-a">Ya, 100% gratis: 10 deep dive per hari (satu deep dive membuka semua data produk itu selama 7 hari), akses Finder, dan jatah AI harian — tanpa kartu kredit. Pasang ekstensi Chrome untuk menambah 3 deep dive per hari. Kami percaya riset produk harus bisa diakses semua seller, bukan hanya yang mampu langganan ~Rp 300rb/bulan.</div>
             </div>
             <div class="edu-faq-item">
               <div class="edu-faq-q" onclick="eduToggleFaq(this)">
@@ -7301,6 +7315,24 @@ html,body{overflow-x:clip;max-width:100%;}
 
             <!-- marketplace fee comparison section -->
             <div class="dd-mp" id="dd-fee-strip" data-dd-sec="biaya_strip"></div>
+
+            <!-- Side-panel tools. These live in a persistent right rail rather than
+                 the tab strip below: the same three features measured 0% / 11% / n-a
+                 usage as buried tabs and 31% / 45% / 31% as a panel. -->
+            <div class="dd-tools" id="dd-tools" data-dd-sec="alat">
+              <button type="button" class="dd-tool" onclick="ddOpenTool('kalkulator')">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="11" x2="8" y2="11"/><line x1="12" y1="11" x2="12" y2="11"/><line x1="16" y1="11" x2="16" y2="11"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="12" y1="16" x2="12" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>
+                Kalkulator
+              </button>
+              <button type="button" class="dd-tool" onclick="ddOpenTool('kompetitor')">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                Kompetitor
+              </button>
+              <button type="button" class="dd-tool" onclick="ddOpenTool('serupa')">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                Serupa
+              </button>
+            </div>
 
             <!-- tabs -->
             <div class="dd-tabs" id="dd-tabs">
@@ -8722,7 +8754,7 @@ html,body{overflow-x:clip;max-width:100%;}
                     </div>
                     <div>
                       <div style="font-size:.8rem;font-weight:700;color:#111;">Gratis untuk Semua</div>
-                      <div style="font-size:.73rem;color:#6B7280;line-height:1.5;">100% gratis selamanya. 3 deep dive tiap hari plus tambahan lewat ekstensi — tanpa biaya sama sekali, tanpa kartu kredit.</div>
+                      <div style="font-size:.73rem;color:#6B7280;line-height:1.5;">100% gratis selamanya. 10 deep dive tiap hari plus tambahan lewat ekstensi — tanpa biaya sama sekali, tanpa kartu kredit.</div>
                     </div>
                   </div>
                 </div>
@@ -9709,7 +9741,7 @@ html,body{overflow-x:clip;max-width:100%;}
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B5202A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                 </div>
                 <div style="font-size:.88rem;font-weight:700;color:#1A1A1A;margin-bottom:6px;">+3 Deep Dive Tiap Hari</div>
-                <div style="font-size:.8rem;color:#6B7280;line-height:1.55;">Akun yang terhubung ke extension dapat 3 deep dive tambahan setiap hari — jatah harianmu jadi 6.</div>
+                <div style="font-size:.8rem;color:#6B7280;line-height:1.55;">Akun yang terhubung ke extension dapat 3 deep dive tambahan setiap hari — jatah harianmu jadi 13.</div>
               </div>
               <div style="background:#fff;border-radius:12px;padding:20px;border:1px solid #E5E7EB;">
                 <div style="width:36px;height:36px;background:#F9EAE4;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
@@ -9765,7 +9797,7 @@ html,body{overflow-x:clip;max-width:100%;}
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B5202A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
               <div>
                 <div style="font-size:.88rem;font-weight:700;color:#1A1A1A;margin-bottom:4px;">Rumus Bonusnya Sederhana</div>
-                <div style="font-size:.8rem;color:#92400E;line-height:1.6;">Extension terhubung = <strong>+3 deep dive per hari</strong>, permanen. Ditambah ajak teman (+1 per teman, maks +5), jatah harianmu bisa sampai <strong>11 deep dive</strong>.</div>
+                <div style="font-size:.8rem;color:#92400E;line-height:1.6;">Extension terhubung = <strong>+3 deep dive per hari</strong>, permanen. Ditambah ajak teman (+1 per teman, maks +5), jatah harianmu bisa sampai <strong>18 deep dive</strong>.</div>
               </div>
             </div>
 
@@ -10062,7 +10094,12 @@ html,body{overflow-x:clip;max-width:100%;}
 <!-- Daily spin wheel: offered ONLY from the daily-limit modal (outside page shells so it can overlay) -->
 <div id="daily-spin-root" class="dsw-overlay" style="display:none;" aria-hidden="true"></div>
 
+<!-- Side panel host. Outside the page shells because the panel is fixed-position
+     and must not be clipped by the deep dive's own overflow/stacking context. -->
+<div id="laris-side-panel-root"></div>
+
 <script defer src="/js/laris-merdeka.js?v=20260807a"></script>
+<script defer src="/js/laris-side-panel.js?v=20260807a"></script>
 <script defer src="/js/daily-spin-wheel.js?v=20260730g"></script>
 <script defer src="/js/laris-tracker.js?v=20260803a"></script>
 <script defer src="/js/laris-app.js?v=20260803a"></script>
