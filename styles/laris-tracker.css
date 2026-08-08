@@ -309,6 +309,55 @@
 }
 .ltk-slot-x:hover { color: #B91C1C; }
 
+/* ── Seeded keyword step: card grid + picker ─────────────────────────────
+   Product card + outlined "+" slots (see stepKeywordPickerHtml). Grid, not a
+   list, since the point is a product-card visual language — the same shape
+   ltk-disc-card already uses for the picker's own candidate cards below. */
+.ltk-pick-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: 10px; margin-bottom: 4px;
+}
+.ltk-pick-slot {
+  position: relative; display: flex; flex-direction: column; align-items: center;
+  gap: 6px; text-align: center; border-radius: var(--ltk-r);
+  padding: 14px 8px 10px; font: inherit;
+}
+.ltk-pick-slot--filled { background: #fff; border: 1px solid #E5E7EB; }
+.ltk-pick-slot--empty {
+  background: transparent; border: 1px dashed #D1D5DB; color: #9CA3AF; cursor: pointer;
+  justify-content: center; min-height: 92px;
+}
+.ltk-pick-slot--empty:hover { border-color: #B5202A; color: #B5202A; }
+.ltk-pick-slot-ico { width: 40px; height: 40px; border-radius: 9px; object-fit: cover; }
+.ltk-pick-slot-name {
+  font-size: .74rem; font-weight: 700; color: #1A1A1A; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.ltk-pick-slot-tag {
+  font-size: .6rem; font-weight: 700; color: #B5202A; background: #FEF2F2;
+  border-radius: 999px; padding: 1px 8px;
+}
+.ltk-pick-slot-x {
+  position: absolute; top: 4px; right: 4px; background: none; border: 0; cursor: pointer;
+  color: #9CA3AF; font-size: 1rem; line-height: 1; padding: 4px;
+}
+.ltk-pick-slot-x:hover { color: #B91C1C; }
+.ltk-pick-slot-plus { font-size: 1.4rem; line-height: 1; font-weight: 300; }
+.ltk-pick-slot-add-lbl { font-size: .68rem; font-weight: 700; }
+
+.ltk-picker-panel {
+  margin-top: 14px; padding-top: 14px; border-top: 1px solid #F3F4F6;
+}
+.ltk-picker-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ltk-picker-head .ltk-input { flex: 1; min-width: 0; }
+.ltk-picker-close {
+  flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid #E5E7EB; background: #fff; color: #6B7280;
+  display: grid; place-items: center; cursor: pointer; font-size: 1rem; line-height: 1;
+}
+.ltk-picker-close:hover { background: #F3F4F6; color: #374151; }
+.ltk-picker-hint { font-size: .7rem; color: #9CA3AF; margin: 0 0 10px; }
+
 .ltk-storefind { position: relative; margin-bottom: 10px; }
 .ltk-storebycat { margin-bottom: 10px; }
 .ltk-storebycat-lbl { font-size: .72rem; font-weight: 700; color: #9CA3AF; margin-bottom: 6px; }

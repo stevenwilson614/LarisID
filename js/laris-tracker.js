@@ -93,6 +93,9 @@
     // keyword step's own category filter) since the two steps browse
     // independently.
     storeCat: null, storeCatRows: [], storeCatBusy: false,
+    // Card-grid picker for the seeded (from a Deep Dive) keyword step — see
+    // stepKeywordPickerHtml(). Only ever used when `seed` is set.
+    pickerOpen: false, pickerQ: '', pickerRows: [], pickerBusy: false,
   };
   function resetDraft() {
     draft.cat = null; draft.picked = []; draft.stores = []; draft.busy = false;
@@ -100,10 +103,11 @@
     draft.metrics = (S.metrics || []).slice();
     draft.sug = { slot: -1, q: '', rows: [], busy: false, kind: 'keyword' };
     draft.storeCat = null; draft.storeCatRows = []; draft.storeCatBusy = false;
+    draft.pickerOpen = false; draft.pickerQ = ''; draft.pickerRows = []; draft.pickerBusy = false;
   }
 
   var inflight = null;
-  var timers = { paint: 0, abort: 0, storeSearch: 0, typeahead: 0 };
+  var timers = { paint: 0, abort: 0, storeSearch: 0, typeahead: 0, pickerSearch: 0 };
 
   /* ── utils ──────────────────────────────────────────────────────────── */
 
@@ -602,6 +606,13 @@
   }
 
   function stepKeywordHtml() {
+    // Arriving from a Deep Dive's "Pantau Produk Ini" gets the card-grid
+    // picker (the product you were just looking at, plus similar-category
+    // pasar cards to fill the rest of the slots) instead of the plain
+    // typeahead — a seller picking a first watchlist from a product they
+    // already care about thinks in "products like this", not raw keyword text.
+    // Editing an existing configuration (no seed) keeps the typeahead as-is.
+    if (draft.seed) return stepKeywordPickerHtml();
     var freeK = Math.max(0, S.keywordLimit - draft.picked.length);
     var catSelect =
       '<label class="ltk-sr ltk-catsel">Kategori' +
@@ -654,6 +665,141 @@
       '</div>' +
       '<p class="ltk-tips"><b>Tips:</b> keyword spesifik memberi hasil lebih akurat. ' +
       '"alat latihan tangan adjustable" lebih baik daripada "alat fitness".</p>';
+  }
+
+  /* ── Seeded keyword step: card grid + "+" similar-category picker ──────
+     draft.picked[0] is always the seed product (openSetup unshifts it before
+     this step ever renders). Slots 1..keywordLimit-1 are either an already
+     picked pasar card or an outlined "+" placeholder; tapping any placeholder
+     opens pickerPanelHtml() below the grid. */
+  function stepKeywordPickerHtml() {
+    var slots = [];
+    for (var i = 0; i < S.keywordLimit; i++) {
+      var k = draft.picked[i];
+      if (k) {
+        var err = draft.errors[k.keyword];
+        var isSeed = i === 0 && draft.seed &&
+          String(k.keyword).toLowerCase() === String(draft.seed.keyword || '').toLowerCase();
+        slots.push(
+          '<div class="ltk-pick-slot ltk-pick-slot--filled' + (err ? ' ltk-slot--err' : '') + '">' +
+            catIconHtml(k.category, 30).replace('ltk-cat-ico', 'ltk-pick-slot-ico') +
+            '<span class="ltk-pick-slot-name">' + esc(k.keyword) + '</span>' +
+            (isSeed ? '<span class="ltk-pick-slot-tag">Produk ini</span>' : '') +
+            '<button type="button" class="ltk-pick-slot-x" data-ltk-rm="' + attr(k.keyword) + '" ' +
+            'aria-label="Hapus ' + attr(k.keyword) + '">&times;</button>' +
+          '</div>'
+        );
+      } else {
+        slots.push(
+          '<button type="button" class="ltk-pick-slot ltk-pick-slot--empty" data-ltk-picker-open="1" ' +
+          'aria-label="Tambah pasar mirip">' +
+            '<span class="ltk-pick-slot-plus" aria-hidden="true">+</span>' +
+            '<span class="ltk-pick-slot-add-lbl">Tambah</span>' +
+          '</button>'
+        );
+      }
+    }
+    return '<div class="ltk-stephead">' +
+        '<h3>Apa yang mau kamu pantau?</h3>' +
+        '<p>Kami sudah masukkan produk yang barusan kamu buka. Isi slot lain dengan pasar mirip — maksimal ' +
+        S.keywordLimit + '.</p>' +
+      '</div>' +
+      '<div class="ltk-slotsec">' +
+        '<div class="ltk-slotsec-head"><span>Pasar kamu</span>' +
+          '<span class="ltk-count">' + draft.picked.length + ' / ' + S.keywordLimit + '</span>' +
+        '</div>' +
+        '<div class="ltk-pick-grid">' + slots.join('') + '</div>' +
+      '</div>' +
+      pickerPanelHtml();
+  }
+
+  function pickerCardHtml(r) {
+    var metaParts = [];
+    if (r.n_sellers) metaParts.push(fmtUnits(r.n_sellers) + ' penjual');
+    if (r.total_sold_sum) metaParts.push(fmtUnits(r.total_sold_sum) + ' terjual');
+    return '<button type="button" class="ltk-disc-card" data-ltk-picker-pick="' + attr(r.keyword) + '" ' +
+      'data-ltk-picker-cat="' + attr(r.category || '') + '">' +
+      imgOr(r.rep_image_url, '') +
+      '<span class="ltk-disc-name">' + esc(r.keyword) + '</span>' +
+      (metaParts.length ? '<span class="ltk-disc-meta">' + esc(metaParts.join(' · ')) + '</span>' : '') +
+      '</button>';
+  }
+
+  function pickerPanelHtml() {
+    if (!draft.pickerOpen) return '';
+    var seedCat = (draft.seed && draft.seed.category) || '';
+    var already = {};
+    draft.picked.forEach(function (k) { already[String(k.keyword).toLowerCase()] = 1; });
+    var visible = (draft.pickerRows || []).filter(function (r) {
+      return !already[String(r.keyword).toLowerCase()];
+    });
+    var body = draft.pickerBusy
+      ? '<p class="ltk-sug-note">Mencari…</p>'
+      : (visible.length
+          ? '<div class="ltk-disc-grid">' + visible.map(pickerCardHtml).join('') + '</div>'
+          : '<p class="ltk-sug-note">' + (draft.pickerQ ? 'Tidak ketemu "' + esc(draft.pickerQ) + '".' : 'Belum ada pasar untuk ditampilkan.') + '</p>');
+    return '<div class="ltk-picker-panel">' +
+      '<div class="ltk-picker-head">' +
+        '<input type="text" class="ltk-input" data-ltk-picker-input ' +
+        'placeholder="Cari kategori atau produk lain…" autocomplete="off" ' +
+        'aria-label="Cari pasar" value="' + attr(draft.pickerQ) + '">' +
+        '<button type="button" class="ltk-picker-close" data-ltk-picker-close aria-label="Tutup">&times;</button>' +
+      '</div>' +
+      (seedCat && !draft.pickerQ
+        ? '<p class="ltk-picker-hint">Mirip dengan kategori <b>' + esc(seedCat) + '</b></p>' : '') +
+      body +
+    '</div>';
+  }
+
+  function openPicker() {
+    draft.pickerOpen = true;
+    draft.pickerQ = '';
+    renderSetup();
+    loadPickerDefault();
+  }
+
+  function closePicker() {
+    draft.pickerOpen = false;
+    draft.pickerQ = '';
+    draft.pickerRows = [];
+    draft.pickerBusy = false;
+    renderSetup();
+  }
+
+  function loadPickerDefault() {
+    var cat = (draft.seed && draft.seed.category) || '';
+    if (!cat) { draft.pickerRows = []; renderSetup(); return; }
+    draft.pickerBusy = true;
+    renderSetup();
+    callP('getCategoryKeywords', cat, 24).then(function (rows) {
+      if (draft.pickerQ) return; // a search started while this was in flight
+      draft.pickerBusy = false;
+      draft.pickerRows = rows || [];
+      renderSetup();
+    });
+  }
+
+  function runPickerSearch(q) {
+    var query = String(q || '').trim();
+    draft.pickerQ = query;
+    if (!query) { loadPickerDefault(); return; }
+    draft.pickerBusy = true;
+    renderSetup();
+    callP('searchKeywords', { q: query, limit: 24 }).then(function (rows) {
+      if (draft.pickerQ !== query) return; // superseded by a newer keystroke
+      draft.pickerBusy = false;
+      draft.pickerRows = rows || [];
+      renderSetup();
+    });
+  }
+
+  function pickFromPicker(kw, cat) {
+    var norm = String(kw || '').trim().toLowerCase();
+    if (!norm || draft.picked.length >= S.keywordLimit) return;
+    if (draft.picked.some(function (k) { return String(k.keyword).toLowerCase() === norm; })) return;
+    draft.picked.push({ keyword: String(kw).trim(), category: cat || '' });
+    if (draft.picked.length >= S.keywordLimit) closePicker();
+    else renderSetup();
   }
 
   function stepMetrikHtml() {
@@ -795,6 +941,13 @@
     if (draft.step === 0 && draft.sug.kind === 'keyword' && draft.sug.slot >= 0) {
       var el = $('[data-ltk-slot="' + draft.sug.slot + '"]');
       if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (_) {} }
+    }
+    // Same problem for the picker's search input — every debounced keystroke
+    // re-renders the whole step, which would otherwise kick focus out after
+    // a single character.
+    if (draft.step === 0 && draft.pickerOpen) {
+      var pel = $('[data-ltk-picker-input]');
+      if (pel) { pel.focus(); try { pel.setSelectionRange(pel.value.length, pel.value.length); } catch (_) {} }
     }
   }
 
@@ -1648,6 +1801,18 @@
       renderRollup();
     }
 
+    var pickerOpenBtn = t.closest && t.closest('[data-ltk-picker-open]');
+    if (pickerOpenBtn) { openPicker(); return; }
+
+    var pickerClose = t.closest && t.closest('[data-ltk-picker-close]');
+    if (pickerClose) { closePicker(); return; }
+
+    var pickerPick = t.closest && t.closest('[data-ltk-picker-pick]');
+    if (pickerPick) {
+      pickFromPicker(pickerPick.getAttribute('data-ltk-picker-pick'), pickerPick.getAttribute('data-ltk-picker-cat'));
+      return;
+    }
+
     var rm = t.closest && t.closest('[data-ltk-rm]');
     if (rm) {
       var k = rm.getAttribute('data-ltk-rm');
@@ -1769,6 +1934,12 @@
     }
     if (el.hasAttribute('data-ltk-storecatsel')) {
       pickStoreCategory(el.value || null);
+      return;
+    }
+    if (el.hasAttribute('data-ltk-picker-input')) {
+      var pq = el.value;
+      if (timers.pickerSearch) clearTimeout(timers.pickerSearch);
+      timers.pickerSearch = setTimeout(function () { runPickerSearch(pq); }, TYPEAHEAD_MS);
     }
   }
 

@@ -1903,7 +1903,7 @@ function formatIdDate(iso) {
 function setView(name) {
   const leaving = state.view;
   state.view = name;
-  ['home', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'tentang', 'admin', 'tracker'].forEach(v => {
+  ['home', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'tentang', 'admin', 'tracker', 'community'].forEach(v => {
     const el = $(`view-${v}`);
     if (el) el.classList.toggle('active', v === name);
     document.body.classList.toggle(`view-${v}`, v === name);
@@ -1922,8 +1922,8 @@ function setView(name) {
   // .composer-dock display rule) — everywhere else now hides the bar
   // entirely rather than just clearing its chips, so this list stops
   // mattering for those views, but chips are still irrelevant on them either way.
-  if (name === 'home' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker') setComposerChips(null);
-  ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-faq', 'btn-tentang', 'btn-admin', 'btn-tracker'].forEach(id => {
+  if (name === 'home' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker' || name === 'community') setComposerChips(null);
+  ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-faq', 'btn-tentang', 'btn-admin', 'btn-tracker', 'btn-community'].forEach(id => {
     const el = $(id);
     if (!el) return;
     el.classList.toggle('active',
@@ -1933,7 +1933,8 @@ function setView(name) {
       (id === 'btn-faq' && name === 'faq') ||
       (id === 'btn-tentang' && name === 'tentang') ||
       (id === 'btn-admin' && name === 'admin') ||
-      (id === 'btn-tracker' && name === 'tracker'));
+      (id === 'btn-tracker' && name === 'tracker') ||
+      (id === 'btn-community' && name === 'community'));
   });
   if (leaving === 'tracker' && name !== 'tracker' && window.LarisTracker) {
     try { window.LarisTracker.close(); } catch (_) {}
@@ -7129,6 +7130,21 @@ function openTrackerView(seed, resumeDraft) {
   }
 }
 
+function openCommunityBoard() {
+  if (!currentUser) { openAuthModal('login', 'gpt_gate_community'); return; }
+  setView('community');
+  void logUserEvent('view_open', { ui: 'gpt', view: 'community' });
+  const root = $('community-board-root');
+  if (!root || !window.GptCommunityBoard) return;
+  window.GptCommunityBoard.mount(root, {
+    supabase: _supabase,
+    esc,
+    currentUserId: currentUser.id,
+    toast: showToast,
+    onError: (err) => { try { console.warn('[community-board]', err); } catch (_) {} },
+  });
+}
+
 // Native .ans-card chrome wrapping the module's own summary body, so the card
 // reads as part of the thread while the guts stay shared with Site A.
 function trackerChatCardHtml() {
@@ -11263,6 +11279,7 @@ function wireUi() {
     closeSidebar();
     openSidePanel('supplier', { via: 'sidebar' });
   });
+  $('btn-community')?.addEventListener('click', () => { openCommunityBoard(); });
   $('btn-harga')?.addEventListener('click', () => setView('harga'));
   $('btn-faq')?.addEventListener('click', () => { setView('faq'); void logUserEvent('view_open', { ui: 'gpt', view: 'faq' }); });
   $('btn-tentang')?.addEventListener('click', () => { setView('tentang'); void logUserEvent('view_open', { ui: 'gpt', view: 'tentang' }); });
