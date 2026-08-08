@@ -4088,11 +4088,22 @@ async function fillKeywordContent(opts = {}) {
     if (token !== _keywordFetchToken || _sideMode !== 'keyword') return;
   }
 
-  const kwRows = ddKeywordRows(peers || []);
+  const token = ++_keywordFetchToken;
+  body.innerHTML = '<p class="side-empty">Memuat variasi keyword…</p>';
+  // Prefer expanded keywords from raw listings (same products, every scrape
+  // keyword they’ve appeared under) — not just the single deduped field.
+  const samePeers = !!resolveSidePeers(product);
+  let kwRows = (_dd?.kwRows?.length > 1 && samePeers)
+    ? _dd.kwRows
+    : await fetchPeerKeywordRows(peers || []);
+  if (token !== _keywordFetchToken || _sideMode !== 'keyword') return;
+  if (_dd && samePeers) _dd.kwRows = kwRows;
+
+  const shown = kwRows.slice(0, 40);
   const kw = product.keyword || '—';
   body.innerHTML = `
-    <p class="side-komp-lead">Variasi keyword di sekitar “${esc(kw)}” — dari sampel listing yang sama.</p>
-    ${ddKeywordTableHtml(kwRows, (peers || []).length)}
+    <p class="side-komp-lead">${shown.length} keyword dipakai di antara sampel listing pasar “${esc(kw)}”.</p>
+    ${ddKeywordTableHtml(shown, (peers || []).length)}
   `;
   // ddKeywordTableHtml's sparklines need history data, which the deep dive's
   // own chart pass (drawn against #deepdive-root) never reaches — this panel
@@ -7529,7 +7540,7 @@ function ddShopAgeBuckets(peers) {
 
 function ddKeywordRows(peers) {
   const byKw = new Map();
-  for (const p of peers) {
+  for (const p of peers || []) {
     const key = (p.keyword || '').trim().toLowerCase();
     if (!key) continue;
     const cur = byKw.get(key) || { kw: (p.keyword || '').trim(), n: 0, sold: 0 };
@@ -7537,8 +7548,73 @@ function ddKeywordRows(peers) {
     cur.sold += Number(p.total_sold) || 0;
     byKw.set(key, cur);
   }
-  return [...byKw.values()].sort((a, b) => b.sold - a.sold).slice(0, 6)
+  return [...byKw.values()].sort((a, b) => b.sold - a.sold)
     .map(r => ({ ...r, comp: r.n >= 25 ? 'Tinggi' : r.n >= 10 ? 'Sedang' : 'Rendah' }));
+}
+
+/**
+ * Expand keyword variety for the side panel.
+ *
+ * `listings_deduped` keeps one row per (item_id, shop_id) — the latest scrape —
+ * so peer samples for a market almost always share a single keyword field even
+ * when those same products were historically scraped under dozens of related
+ * queries. Pull distinct (item_id, keyword) pairs from raw `listings` so the
+ * Keyword panel lists every keyword those ~60 products actually appear under.
+ */
+async function fetchPeerKeywordRows(peers) {
+  const fallback = ddKeywordRows(peers);
+  const ids = [...new Set((peers || []).map(p => p.item_id).filter(x => x != null))].slice(0, 80);
+  if (!_supabase || ids.length < 2) return fallback;
+
+  try {
+    const pageSize = 1000;
+    const maxRows = 4000;
+    const rows = [];
+    for (let from = 0; from < maxRows; from += pageSize) {
+      const { data, error } = await _supabase.from('listings')
+        .select('item_id, keyword, total_sold')
+        .in('item_id', ids)
+        .not('keyword', 'is', null)
+        .order('scraped_at', { ascending: false })
+        .range(from, from + pageSize - 1);
+      if (error || !data?.length) break;
+      rows.push(...data);
+      if (data.length < pageSize) break;
+    }
+    if (!rows.length) return fallback;
+
+    // One appearance per (item, keyword) — keep highest sold for that pair.
+    const pair = new Map();
+    for (const r of rows) {
+      const kw = String(r.keyword || '').trim();
+      if (!kw) continue;
+      const key = `${r.item_id}|${kw.toLowerCase()}`;
+      const sold = Number(r.total_sold) || 0;
+      const prev = pair.get(key);
+      if (!prev || sold > prev.sold) pair.set(key, { kw, sold });
+    }
+
+    const byKw = new Map();
+    for (const { kw, sold } of pair.values()) {
+      const k = kw.toLowerCase();
+      const cur = byKw.get(k) || { kw, n: 0, sold: 0 };
+      cur.n += 1;
+      cur.sold += sold;
+      byKw.set(k, cur);
+    }
+
+    const expanded = [...byKw.values()]
+      .sort((a, b) => b.n - a.n || b.sold - a.sold)
+      .map(r => ({
+        ...r,
+        comp: r.n >= 25 ? 'Tinggi' : r.n >= 10 ? 'Sedang' : 'Rendah',
+      }));
+
+    // Prefer the expanded set whenever it finds more than the deduped snapshot.
+    return expanded.length > fallback.length ? expanded : (expanded.length ? expanded : fallback);
+  } catch (_) {
+    return fallback;
+  }
 }
 
 /** Top photos for a Product Type Deep Dive — matview images, else peers by sold. */
@@ -8209,7 +8285,7 @@ function ddKeywordTableHtml(kwRows, sampleN) {
       <td><span class="badge badge-comp-${r.comp.toLowerCase()}">${r.comp}</span></td>
       <td><canvas class="spark" data-spark="${esc(r.kw)}"></canvas></td>
     </tr>`).join('')}</tbody></table></div>
-    <p class="ddr-caption">Dari sampel ${sampleN} listing teratas keyword ini — jumlah listing = tingkat kompetisi, bukan volume pencarian.</p>`;
+    <p class="ddr-caption">Dari sampel ${sampleN} produk — Listing = berapa dari produk itu yang pernah muncul di keyword ini (bukan volume pencarian Google/Shopee).</p>`;
 }
 
 function ddStrategyHtml(product, stats, niche, kwRows) {
