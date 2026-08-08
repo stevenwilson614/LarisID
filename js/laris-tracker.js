@@ -76,6 +76,7 @@
     fallback: [],                     // discover cards on the collecting screen
     categories: [],
     openRow: null,                    // keyword/shop_id whose kebab menu is open
+    openDetail: null,                 // keyword/shop_id whose row is expanded (mobile-friendly recap)
     lastRefreshAt: 0,
   };
 
@@ -88,12 +89,17 @@
     seed: null,              // {keyword, category, shop_id, store_name, item_id}
     seedShopSkus: null,      // SKU count for the seed shop, fetched lazily
     sug: { slot: -1, q: '', rows: [], busy: false, kind: 'keyword' },
+    // Toko step's "browse by category" list — separate from `cat` (the
+    // keyword step's own category filter) since the two steps browse
+    // independently.
+    storeCat: null, storeCatRows: [], storeCatBusy: false,
   };
   function resetDraft() {
     draft.cat = null; draft.picked = []; draft.stores = []; draft.busy = false;
     draft.errors = {}; draft.step = 0; draft.seed = null; draft.seedShopSkus = null;
     draft.metrics = (S.metrics || []).slice();
     draft.sug = { slot: -1, q: '', rows: [], busy: false, kind: 'keyword' };
+    draft.storeCat = null; draft.storeCatRows = []; draft.storeCatBusy = false;
   }
 
   var inflight = null;
@@ -300,8 +306,8 @@
     if (!bar) return;
     if (!S.configured || S.screen === 'setup') { bar.innerHTML = ''; return; }
     var tabs = [
-      { id: 'keyword', label: 'Keyword', n: S.keywords.length },
-      { id: 'store',   label: 'Toko',    n: S.stores.length },
+      { id: 'keyword', label: 'Produk', n: S.keywords.length },
+      { id: 'store',   label: 'Toko',   n: S.stores.length },
     ];
     bar.innerHTML = tabs.map(function (t) {
       return '<button type="button" role="tab" class="ltk-scopetab' + (S.tab === t.id ? ' is-active' : '') +
@@ -342,9 +348,11 @@
       sub.textContent = txt;
     }
     if (act) {
+      // The day-range picker now lives next to "Ringkasan ... Dipantau" in
+      // renderRollup()'s panel head, not up here — it reads as part of that
+      // summary, not a page-level setting.
       act.innerHTML = S.configured && S.screen !== 'setup'
-        ? '<div class="ltk-winsel">' + winSelectHtml() + '</div>' +
-          '<button type="button" class="ltk-btn ltk-btn--ghost" data-ltk-act="setup">' +
+        ? '<button type="button" class="ltk-btn ltk-btn--ghost" data-ltk-act="setup">' +
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
             'stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/>' +
             '<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>' +
@@ -356,7 +364,7 @@
   function winSelectHtml() {
     return '<label class="ltk-sr">Rentang waktu' +
       '<select class="ltk-select" data-ltk-winsel>' +
-      [7, 14, 30].map(function (d) {
+      [7, 30, 60, 90].map(function (d) {
         return '<option value="' + d + '"' + (S.windowDays === d ? ' selected' : '') + '>' +
           d + ' Hari Terakhir</option>';
       }).join('') + '</select></label>';
@@ -445,6 +453,38 @@
     }).join('') + '</div>';
   }
 
+  function storeCatSelectHtml() {
+    return '<label class="ltk-sr ltk-catsel">Kategori toko' +
+      '<select class="ltk-select" data-ltk-storecatsel' +
+        (draft.stores.length >= S.storeLimit ? ' disabled' : '') + '>' +
+        '<option value="">Pilih kategori…</option>' +
+        (S.categories || []).map(function (c) {
+          return '<option value="' + attr(c) + '"' + (draft.storeCat === c ? ' selected' : '') + '>' +
+            esc(c) + '</option>';
+        }).join('') +
+      '</select></label>';
+  }
+
+  function storeCatListHtml() {
+    if (!draft.storeCat) return '';
+    if (draft.storeCatBusy) return '<div class="ltk-sug ltk-sug--static"><div class="ltk-sug-note">Mencari toko…</div></div>';
+    var already = {};
+    draft.stores.forEach(function (s) { already[String(s.shop_id)] = true; });
+    var rows = draft.storeCatRows.filter(function (r) { return !already[String(r.shop_id)]; });
+    if (!rows.length) {
+      return '<div class="ltk-sug ltk-sug--static"><div class="ltk-sug-note">' +
+        'Belum ada toko yang cukup aktif di kategori "' + esc(draft.storeCat) + '".</div></div>';
+    }
+    return '<div class="ltk-sug ltk-sug--static" role="listbox">' + rows.map(function (r) {
+      return '<button type="button" class="ltk-sug-opt" role="option" data-ltk-pickstore="' +
+        attr(r.shop_id) + '" data-ltk-storename="' + attr(r.store_name) + '">' +
+        '<span class="ltk-sug-kw">' + esc(r.store_name) + '</span>' +
+        '<span class="ltk-sug-meta">' + esc(fmtUnits(r.total_sold || 0)) + ' terjual' +
+        (r.n_listings ? ' · ' + esc(r.n_listings) + ' produk' : '') + '</span>' +
+        '</button>';
+    }).join('') + '</div>';
+  }
+
   function storeSuggestHtml() {
     var sug = draft.sug;
     if (sug.kind !== 'store' || sug.slot !== -2) return '';
@@ -508,7 +548,7 @@
      back, and the optional store upsell — in that order, because "what data
      do I get" is the question a seller has before "do I also want the shop". */
   var STEPS = [
-    { key: 'keyword', label: 'Keyword',  sub: 'Apa yang dipantau' },
+    { key: 'keyword', label: 'Produk',   sub: 'Apa yang dipantau' },
     { key: 'metrik',  label: 'Metrik',   sub: 'Data yang kamu mau' },
     { key: 'toko',    label: 'Toko',     sub: 'Opsional' },
     { key: 'selesai', label: 'Selesai',  sub: 'Aktif tiap pagi' },
@@ -684,6 +724,10 @@
           (draft.stores.length >= S.storeLimit ? ' disabled' : '') + '>' +
           storeSuggestHtml() +
         '</div>' +
+        '<div class="ltk-storebycat">' +
+          '<div class="ltk-storebycat-lbl">Atau pilih dari kategori</div>' +
+          storeCatSelectHtml() + storeCatListHtml() +
+        '</div>' +
         (storeSlots ? '<ul class="ltk-slots">' + storeSlots + '</ul>' : '') +
       '</div>';
   }
@@ -736,7 +780,11 @@
 
     p.innerHTML =
       '<div class="ltk-setup">' +
-        stepperHtml() +
+        '<div class="ltk-setup-head">' + stepperHtml() +
+          '<button type="button" class="ltk-setup-close" data-ltk-act="cancel-setup" aria-label="Tutup pengaturan pantauan" title="Tutup">' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>' +
+          '</button>' +
+        '</div>' +
         '<div class="ltk-wizard">' +
           '<div class="ltk-wizmain">' + stepHtml + wizFootHtml() + '</div>' +
           previewHtml() +
@@ -885,7 +933,9 @@
           : '<span class="ltk-spark-empty" title="Perlu minimal 2 hari data">Belum ada tren</span>') +
       '</td>';
 
-    return '<tr class="ltk-row" data-ltk-rowkey="' + attr(key) + '">' +
+    var expanded = S.openDetail === key;
+    return '<tr class="ltk-row' + (expanded ? ' is-expanded' : '') + '" data-ltk-rowkey="' + attr(key) + '" ' +
+      'aria-expanded="' + expanded + '" tabindex="0">' +
       '<th scope="row" class="ltk-rowhead">' +
         (isKw ? rowIconHtml(r) : storeAvatar(r)) +
         '<span class="ltk-rowhead-txt">' +
@@ -894,6 +944,7 @@
             (trend ? 'Aktif · ' + r.n_days + ' hari data' : 'Mengumpulkan data') +
           '</span>' +
         '</span>' +
+        '<svg class="ltk-rowhead-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>' +
       '</th>' + cells +
       '<td class="ltk-kebabcell">' +
         '<button type="button" class="ltk-kebab" data-ltk-menu="' + attr(key) + '" ' +
@@ -908,7 +959,30 @@
               '<button type="button" role="menuitem" class="ltk-menu-danger" data-ltk-drop="' + attr(key) + '">Hapus</button>' +
             '</div>'
           : '') +
-      '</td></tr>';
+      '</td></tr>' +
+      (expanded ? rowDetailHtml(r, isKw) : '');
+  }
+
+  // Mobile-friendly recap of the same columns as the table — the table stays
+  // horizontally scrollable at narrow widths (see the 720px responsive rule),
+  // so tapping a row surfaces every stat stacked, without needing that scroll.
+  function rowDetailHtml(r, isKw) {
+    var trend = rowHasTrend(r);
+    var fields = [
+      ['Unit Terjual', fmtUnits(r.units || 0), deltaHtml(r.units, r.units_prev, trend)],
+      ['Omset (Rp)', fmtRp(r.omset || 0), deltaHtml(r.omset, r.omset_prev, trend)],
+      ['SKU Aktif', fmtUnits(r.n_listings || 0), deltaHtml(r.n_listings, r.n_listings_prev, trend)],
+    ];
+    if (isKw) fields.push(['Toko Aktif', fmtUnits(r.n_sellers || 0), deltaHtml(r.n_sellers, r.n_sellers_prev, trend)]);
+    fields.push(['Rata-rata Harga', fmtRp(r.avg_price || 0), deltaHtml(r.avg_price, r.avg_price_prev, trend, { inverse: true })]);
+    fields.push(['Rating', fmtRating(r.avg_rating), deltaHtml(r.avg_rating, r.avg_rating_prev, trend)]);
+    var colspan = isKw ? 8 : 7;
+    return '<tr class="ltk-row-detail"><td colspan="' + colspan + '"><div class="ltk-row-detail-grid">' +
+      fields.map(function (f) {
+        return '<div class="ltk-row-detail-item"><span class="ltk-row-detail-lbl">' + esc(f[0]) + '</span>' +
+          '<span class="ltk-row-detail-val">' + esc(f[1]) + f[2] + '</span></div>';
+      }).join('') +
+    '</div></td></tr>';
   }
 
   function storeAvatar(r) {
@@ -979,17 +1053,17 @@
     if (!rows.length) {
       p.innerHTML = '<div class="ltk-rollup">' +
         '<div class="ltk-empty">' +
-          '<h3>Belum ada ' + (isKw ? 'keyword' : 'toko') + ' yang dipantau</h3>' +
-          '<p>Tambahkan sampai ' + limit + ' ' + (isKw ? 'keyword' : 'toko') +
+          '<h3>Belum ada ' + (isKw ? 'produk' : 'toko') + ' yang dipantau</h3>' +
+          '<p>Tambahkan sampai ' + limit + ' ' + (isKw ? 'produk' : 'toko') +
           ' — kami cek tiap pagi dan tunjukkan apa yang berubah.</p>' +
           '<button type="button" class="ltk-btn ltk-btn--primary" data-ltk-act="setup">' +
-          'Tambah ' + (isKw ? 'Keyword' : 'Toko') + '</button>' +
+          'Tambah ' + (isKw ? 'Produk' : 'Toko') + '</button>' +
         '</div></div>';
       return;
     }
 
     var head = '<tr>' +
-      '<th class="ltk-th-name">' + (isKw ? 'Keyword' : 'Toko') + '</th>' +
+      '<th class="ltk-th-name">' + (isKw ? 'Produk' : 'Toko') + '</th>' +
       '<th>Unit Terjual</th><th>Omset (Rp)</th><th>SKU Aktif</th>' +
       (isKw ? '<th>Toko Aktif</th>' : '') +
       '<th>Rata-rata Harga</th><th>Rating</th><th>Tren</th><th></th></tr>';
@@ -999,8 +1073,9 @@
         '<div class="ltk-statstrip">' + statTiles() + '</div>' +
         '<div class="ltk-panel">' +
           '<div class="ltk-panel-head">' +
-            '<div class="ltk-panel-title">Ringkasan ' + (isKw ? 'Keyword' : 'Toko') +
+            '<div class="ltk-panel-title">Ringkasan ' + (isKw ? 'Produk' : 'Toko') +
               ' Dipantau <span class="ltk-count-pill">' + rows.length + '</span></div>' +
+            '<div class="ltk-winsel">' + winSelectHtml() + '</div>' +
             '<label class="ltk-sr">Urutkan' +
               '<select class="ltk-select" data-ltk-sort>' +
               [['omset', 'Omset'], ['units', 'Unit Terjual'], ['sku', 'SKU Aktif']]
@@ -1390,6 +1465,23 @@
     }
   }
 
+  // Toko step's "browse by category" — for a seller who doesn't know a shop's
+  // exact name (the only other way in, via storeSuggestHtml's name search).
+  function pickStoreCategory(cat) {
+    draft.storeCat = cat || null;
+    draft.storeCatRows = [];
+    if (!draft.storeCat) { draft.storeCatBusy = false; renderSetup(); return; }
+    draft.storeCatBusy = true;
+    renderSetup();
+    var catAtStart = draft.storeCat;
+    callP('getStoresByCategory', draft.storeCat).then(function (rows) {
+      if (draft.storeCat !== catAtStart) return; // superseded by a later pick
+      draft.storeCatRows = rows || [];
+      draft.storeCatBusy = false;
+      renderSetup();
+    });
+  }
+
   function runKeywordSuggest(q) {
     var query = String(q || '').trim();
     draft.sug.q = query;
@@ -1539,6 +1631,17 @@
       return;
     }
 
+    // Row body click (not the kebab/menu, handled above — both return before
+    // reaching here) toggles the mobile-friendly stacked recap.
+    var rowEl = t.closest && t.closest('[data-ltk-rowkey]');
+    if (rowEl) {
+      var rk = rowEl.getAttribute('data-ltk-rowkey');
+      S.openDetail = (S.openDetail === rk) ? null : rk;
+      S.openRow = null;
+      renderRollup();
+      return;
+    }
+
     // Any other click inside the tracker closes an open row menu.
     if (S.openRow && !(t.closest && t.closest('.ltk-menu'))) {
       S.openRow = null;
@@ -1592,6 +1695,13 @@
         loadCategories().then(function () { renderSetup(); showScreen('setup'); });
         break;
       case 'commit': commit(); break;
+      case 'cancel-setup':
+        // Discard the draft, don't commit — get back to whatever screen
+        // reflects what's actually saved (refresh() already knows: rollup if
+        // configured, setup again if this was first-time (nowhere else to go)).
+        resetDraft();
+        refresh({ force: false });
+        break;
       case 'retry': refresh({ force: true }); break;
       case 'step-next':
         if (draft.step < 3) { draft.step++; renderSetup(); maybeLoadSeedShop(); }
@@ -1655,12 +1765,24 @@
     }
     if (el.hasAttribute('data-ltk-catsel')) {
       pickCategory(el.value || null);
+      return;
+    }
+    if (el.hasAttribute('data-ltk-storecatsel')) {
+      pickStoreCategory(el.value || null);
     }
   }
 
   function onKeydown(e) {
     if (!host || !host.contains(e.target)) return;
     var el = e.target;
+    if (el.hasAttribute && el.hasAttribute('data-ltk-rowkey') && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      var rk = el.getAttribute('data-ltk-rowkey');
+      S.openDetail = (S.openDetail === rk) ? null : rk;
+      S.openRow = null;
+      renderRollup();
+      return;
+    }
     if (!el.hasAttribute || !el.hasAttribute('data-ltk-slot')) return;
     if (e.key === 'Enter') {
       // Enter takes the top suggestion, or the raw text when nothing matched —

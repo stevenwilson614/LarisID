@@ -127,10 +127,17 @@
 .ltk-setup-hero p { font-size: .82rem; color: #6B7280; line-height: 1.55; margin: 0; }
 
 /* ── Setup wizard ──────────────────────────────────────────────────────── */
+.ltk-setup-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 18px; }
 .ltk-steps {
-  list-style: none; margin: 0 0 18px; padding: 0;
+  list-style: none; margin: 0; padding: 0; flex: 1; min-width: 0;
   display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px;
 }
+.ltk-setup-close {
+  flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid #E5E7EB; background: #fff; color: #6B7280;
+  display: grid; place-items: center; cursor: pointer;
+}
+.ltk-setup-close:hover { background: #F3F4F6; color: #374151; }
 .ltk-step { display: flex; align-items: center; gap: 9px; min-width: 0; position: relative; }
 .ltk-step + .ltk-step::before {
   content: ''; position: absolute; left: -8px; top: 50%; width: 8px; height: 1px; background: #E5E7EB;
@@ -303,6 +310,13 @@
 .ltk-slot-x:hover { color: #B91C1C; }
 
 .ltk-storefind { position: relative; margin-bottom: 10px; }
+.ltk-storebycat { margin-bottom: 10px; }
+.ltk-storebycat-lbl { font-size: .72rem; font-weight: 700; color: #9CA3AF; margin-bottom: 6px; }
+.ltk-storebycat .ltk-catsel { margin-left: 0; display: block; }
+.ltk-storebycat .ltk-catsel .ltk-select { width: 100%; }
+/* Same suggestion-list look as the name-search dropdown, but sits inline
+   below the category select rather than floating over an input. */
+.ltk-sug--static { position: static; margin-top: 8px; max-height: 240px; overflow-y: auto; }
 .ltk-store-results {
   position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20;
   background: #fff; border: 1px solid #E5E7EB; border-radius: var(--ltk-r);
@@ -468,6 +482,20 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 210px;
 }
 .ltk-rowhead-meta { display: block; font-size: .66rem; color: #9CA3AF; margin-top: 2px; }
+.ltk-row { cursor: pointer; }
+.ltk-row:focus-visible { outline: 2px solid #B5202A; outline-offset: -2px; }
+.ltk-rowhead-chev {
+  flex-shrink: 0; margin-left: auto; color: #C4C4C4; transition: transform .15s ease;
+}
+.ltk-row.is-expanded .ltk-rowhead-chev { transform: rotate(180deg); color: #6B7280; }
+.ltk-row-detail td { padding: 0 12px 14px var(--ltk-pad); border-bottom: 1px solid #F9FAFB; }
+.ltk-row-detail-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px 16px;
+  background: #FAFAFA; border-radius: 10px; padding: 12px 14px;
+}
+.ltk-row-detail-item { display: flex; flex-direction: column; gap: 3px; }
+.ltk-row-detail-lbl { font-size: .64rem; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: .03em; }
+.ltk-row-detail-val { font-size: .8rem; font-weight: 700; color: #1A1A1A; display: flex; align-items: center; gap: 6px; }
 .ltk-num {
   text-align: right; padding: 13px 12px; white-space: nowrap; vertical-align: middle;
 }
@@ -682,6 +710,17 @@
   .ltk-panel-head { gap: 8px; }
   .ltk-statstrip { grid-template-columns: repeat(auto-fit, minmax(144px, 1fr)); }
   .ltk-stat-val { font-size: 1rem; }
+  /* A real product photo needs more pixels than a flat glyph to read at a
+     glance — bump it up from the 38px base at this width. */
+  .ltk-row-ico { width: 48px; height: 48px; border-radius: 11px; }
+  /* The detail row's <td> still spans every (wide) numeric column via
+     colspan, same as the table itself — pin it to the scroll origin like the
+     name column above, and cap the inner grid to the viewport, so expanding
+     a row never itself requires a sideways scroll to read. */
+  .ltk-row-detail td {
+    position: sticky; left: 0; z-index: 1; background: #fff;
+    width: calc(100vw - 2 * var(--ltk-pad)); box-sizing: border-box;
+  }
 }
 @media (max-width: 420px) {
   .ltk-baseline-stats { font-size: .68rem; }

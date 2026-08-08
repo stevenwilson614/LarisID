@@ -15974,6 +15974,7 @@ function trkAdapter() {
     touchViewed()               { return rpc('touch_tracker_viewed'); },
     addKeyword(kw, cat)         { return rpc('add_tracked_keyword', { p_keyword: kw, p_category: cat || '' }); },
     addStore(shopId, name)      { return rpc('add_tracked_store', { p_shop_id: shopId, p_store_name: name || '' }); },
+    getStoresByCategory(cat)    { return rpc('find_shops_by_category', { p_category: cat, p_limit: 30 }); },
     removeKeyword(id)           { return rpc('remove_tracked_keyword', { p_id: id }); },
     setMetrics(list)            { return rpc('set_tracker_metrics', { p_metrics: list }); },
     async getStoreInfo(shopId) {
