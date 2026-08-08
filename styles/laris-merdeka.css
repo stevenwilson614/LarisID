@@ -114,3 +114,38 @@
 .mdk-ribbon-close:focus {
   opacity: 0.8;
 }
+
+/* ---- 4. Site B August header banner ------------------------------ */
+/* Applied to .main-top (the bar right of the sidebar). Shows the top
+   decorative band of the Merdeka artwork for the whole month of August. */
+.main-top.mdk-header-bg {
+  position: relative;
+  background-color: #fff;
+  background-image: url('/images/brand/merdeka-header-aug.jpg');
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: cover;
+  border-bottom: 1px solid rgba(181, 32, 42, 0.14);
+  /* A touch taller so more of the banner art is visible without crowding. */
+  min-height: 64px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+/* Keep header controls readable over the busy banner art. */
+.main-top.mdk-header-bg .btn-login,
+.main-top.mdk-header-bg .btn-daftar,
+.main-top.mdk-header-bg .btn-user,
+.main-top.mdk-header-bg .menu-btn,
+.main-top.mdk-header-bg .usage-pill {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+@media (max-width: 640px) {
+  .main-top.mdk-header-bg {
+    min-height: 56px;
+    background-position: 70% top;
+  }
+}

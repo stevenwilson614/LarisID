@@ -1,8 +1,10 @@
 /**
  * Laris Merdeka — self‑contained Independence‑Day decoration module.
  *
- * - Renders a row of bunting, a small flag‑ribbon accent next to the logo,
- *   and a dismissable “Dirgahayu RI ke‑81” ribbon.
+ * - Renders a row of bunting and a dismissable “Dirgahayu RI ke‑81” ribbon.
+ * - Site A also adds a small flag accent next to the logo.
+ * - Site B skips the logo flag and instead paints the Merdeka banner onto
+ *   `.main-top` (header to the right of the sidebar) for August.
  * - All iconography is hand‑drawn inline SVG (no emoji, no text “×”).
  * - Date‑gated to August only, using Asia/Jakarta time (INTL, not local).
  * - Styling lives in styles/laris‑merdeka.css (everything prefixed .mdk‑).
@@ -18,10 +20,12 @@
 
   var state = {
     mounted: false,
+    site: 'a',
     navEl: null,
     buntingEl: null,
     ribbonEl: null,
     flagEl: null,
+    headerBgEl: null,
     resizeTimer: 0,
   };
 
@@ -152,7 +156,7 @@
   function onResize() {
     clearTimeout(state.resizeTimer);
     state.resizeTimer = setTimeout(function () {
-      updateBuntingTop(state.buntingEl, state.navEl);
+      if (state.buntingEl) updateBuntingTop(state.buntingEl, state.navEl);
     }, 150);
   }
 
@@ -163,12 +167,15 @@
     if (state.mounted) return true;
 
     options = options || {};
+    var site = options.site === 'b' ? 'b' : 'a';
     var navSelector = options.navSelector;
     var navEl = navSelector ? document.querySelector(navSelector) : null;
 
+    state.site = site;
+    state.navEl = navEl;
+
     var bunting = insertBunting(navEl);
     state.buntingEl = bunting;
-    state.navEl = navEl;
 
     if (navEl) {
       navEl.insertAdjacentElement('afterend', bunting);
@@ -179,8 +186,17 @@
     var ribbon = insertRibbon(bunting);
     state.ribbonEl = ribbon;
 
-    var flagEl = insertFlag();
-    state.flagEl = flagEl;
+    // Site B: no tiny logo flag — the header banner carries the Merdeka look.
+    // Site A keeps the small accent next to the wordmark.
+    if (site !== 'b') {
+      state.flagEl = insertFlag();
+    }
+
+    if (site === 'b' && navEl) {
+      navEl.classList.add('mdk-header-bg');
+      document.documentElement.classList.add('mdk-aug-b');
+      state.headerBgEl = navEl;
+    }
 
     window.addEventListener('resize', onResize);
 
@@ -201,8 +217,14 @@
       state.flagEl.remove();
       state.flagEl = null;
     }
+    if (state.headerBgEl) {
+      state.headerBgEl.classList.remove('mdk-header-bg');
+      state.headerBgEl = null;
+    }
+    document.documentElement.classList.remove('mdk-aug-b');
     window.removeEventListener('resize', onResize);
     state.navEl = null;
+    state.site = 'a';
     state.mounted = false;
   }
 
