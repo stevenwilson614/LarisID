@@ -691,11 +691,21 @@ function normalizeDdChipCat(product) {
   return null;
 }
 
+// Resell vs create-your-own is genuinely category-agnostic strategic advice
+// (unlike launch/konten, which get category-flavored copy above), so these
+// two are appended once here rather than duplicated across every entry in
+// DD_CHIPS_BY_CAT. Real products only (pasar rows get the string-substitution
+// treatment below, which doesn't fit a "should I resell or make my own" framing).
+const DD_PATH_CHIPS = [
+  { id: 'path_resell', label: 'Tips jual ulang', icon: 'spark', prompt: 'Saya mau jual ulang (reseller) produk ini. Beri rekomendasi sourcing: cek supplier, target harga beli, spesifikasi penting, dan 2 tips menang vs kompetitor.' },
+  { id: 'path_create', label: 'Tips bikin sendiri', icon: 'bulb', prompt: 'Saya mau bikin produk sendiri di niche ini. Beri rekomendasi: ide variasi belum digarap kompetitor, estimasi biaya & harga jual, dan diferensiasi.' },
+];
+
 function ddComposerChips(product) {
   const cat = normalizeDdChipCat(product);
   const base = (cat && DD_CHIPS_BY_CAT[cat]) ? DD_CHIPS_BY_CAT[cat] : DD_CHIPS;
   const pasar = !!product?._ptype;
-  if (!pasar) return base.map((c) => ({ ...c }));
+  if (!pasar) return base.map((c) => ({ ...c })).concat(DD_PATH_CHIPS.map((c) => ({ ...c })));
   return base.map((c) => {
     let { label, prompt } = c;
     prompt = prompt
@@ -1475,6 +1485,11 @@ function gptLimitHit(opts = {}) {
   if (spinBtn) spinBtn.style.display = spinCanOffer() ? '' : 'none';
   const fbBtn = document.getElementById('gpt-limit-feedback');
   if (fbBtn) fbBtn.style.display = _gptUsage.canClaimFeedback === false ? 'none' : '';
+  const refHost = document.getElementById('gpt-limit-referral');
+  if (refHost && window.GptReferral && _supabase) {
+    refHost.style.display = '';
+    window.GptReferral.mount(refHost, { supabase: _supabase });
+  }
   document.getElementById('gpt-limit-modal')?.classList.add('open');
 }
 
@@ -2236,6 +2251,13 @@ async function _authOnSignIn(session) {
         if (!attr.ab_variant) attr.ab_variant = 'B';
       }
       if (!attr.landing) attr.landing = '/gpt/';
+      // Credit the referrer if this signup came in via ?ref=. Only meaningful
+      // for a genuinely new signup (mirrors why this sits inside isNewSignup,
+      // not on every sign-in) — best-effort, GptReferral.redeemPending never
+      // rejects, so this never blocks the rest of the sign-in flow.
+      if (window.GptReferral && attr.ref_code) {
+        void window.GptReferral.redeemPending(_supabase, attr.ref_code);
+      }
       try { localStorage.setItem('_lid_attr_v1', JSON.stringify(attr)); } catch (_) {}
       const src = attr.utm_source || (attr.ref_code && 'referral') || attr.referrer || '(direct)';
       _clarity('set', 'signup_source', String(src).slice(0, 120));
@@ -3238,6 +3260,29 @@ async function runFinderSearch() {
     });
     clarityEvt('gpt_finder_search', { category: _finder.category });
     funnelStep('first_search', { source: 'finder' });
+
+    // Payoff moment, mirroring A's onboarding auto-deep-dive: don't just list
+    // results, show the single best one immediately. Gated to the first
+    // finder run this page load (state._finderAutoOpenedOnce) AND, for
+    // anonymous users, to the case where they have never viewed ANY deep dive
+    // yet (no ANON_DD_KEY set). openDeepDive() itself pops an unrequested
+    // signup modal when an anon user who already spent their one free view
+    // opens a DIFFERENT product — auto-firing that from here would be a
+    // surprise interruption, not a payoff, so this only proceeds when we are
+    // certain we're about to hit openDeepDive's "first free view" branch.
+    if (types.length && !state._finderAutoOpenedOnce) {
+      let anonSeen = '';
+      try { anonSeen = String(localStorage.getItem(ANON_DD_KEY) || '').trim(); } catch (_) {}
+      if (currentUser || !anonSeen) {
+        state._finderAutoOpenedOnce = true;
+        const best = sortTypeRows(types.slice(), 'terlaris')[0];
+        setTimeout(() => {
+          if (state.view !== 'chat') return; // user already navigated away
+          void logUserEvent('finder_auto_deepdive', { ui: 'gpt', keyword: best.keyword });
+          void openDeepDive(typeRepProduct(best));
+        }, 1400);
+      }
+    }
   } finally {
     if (go) go.disabled = false;
   }
@@ -3912,7 +3957,19 @@ function fillAiContent(opts = {}) {
       </button>
     </form>
     <p class="side-ai-disclaimer">AI dapat membuat kesalahan. Angka di panel ini dari data scrape asli — verifikasi sebelum ambil keputusan.</p>
+    ${product._ptype ? '' : '<div class="side-ai-photo" id="side-ai-photo"></div>'}
   `;
+
+  // Photo analysis only makes sense for a specific product, not a pasar/type
+  // row (there's no one photo to represent an aggregate market).
+  const photoHost = $('side-ai-photo');
+  if (photoHost && window.GptPhotoAnalyze) {
+    window.GptPhotoAnalyze.mount(photoHost, {
+      getContext: () => ({ keyword: product.keyword || '', medianPrice: Number(product.price) || null }),
+      callAi: (system, messages) => _mlsAIRaw(system, messages),
+      spendQuota: () => _useAi('photo'),
+    });
+  }
 
   body.querySelectorAll('[data-side-ai-prompt]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -9900,6 +9957,18 @@ async function openDirectory() {
   _dirApplyDefaultsOnce();
   updateDirCompareBanner();
 
+  const filtersHost = $('dir-filters-range');
+  if (filtersHost && window.LarisGptDirFilters) {
+    window.LarisGptDirFilters.renderControls(filtersHost, {
+      onApply: (f) => {
+        state.dirRangeFilters = f;
+        state.dirPage = 1;
+        void logUserEvent('dir_filter', { ui: 'gpt', kind: 'range', value: JSON.stringify(f) });
+        void renderDirectory();
+      },
+    });
+  }
+
   const cats = $('dir-cats');
   if (cats && !cats.dataset.ready) {
     cats.dataset.ready = '1';
@@ -10002,6 +10071,9 @@ async function renderDirectory() {
     types = await typesForListings(pool, city, 60);
   }
   types = sortTypeRows(types, state.dirSort || 'terlaris');
+  if (state.dirRangeFilters && window.LarisGptDirFilters) {
+    types = window.LarisGptDirFilters.applyFilters(types, state.dirRangeFilters);
+  }
   state.dirTypes = types;
   registerTypes(types);
 
@@ -10240,6 +10312,22 @@ async function loadAdminDirectory() {
   }
 }
 
+function gptMountWinback() {
+  try {
+    const el = $('adm-winback-card');
+    if (!el || !window.WinbackAdmin) return;
+    window.WinbackAdmin.mount(el, {
+      supabase: _supabase,
+      isAdmin: isPlatformAdmin,
+      supaUrl: SUPA_URL,
+      // B keeps its own session (_authLoad/_authSave, laris_auth_v1) rather
+      // than the Supabase SDK's default key, which initSupabase() deletes on
+      // boot — see the matching comment in js/winback-admin.js.
+      getToken: () => _authLoad()?.access_token || null,
+    });
+  } catch (_) {}
+}
+
 function openAdminView() {
   if (!isPlatformAdmin()) {
     showToast('Admin only.');
@@ -10247,6 +10335,7 @@ function openAdminView() {
   }
   setView('admin');
   void loadAdminDirectory();
+  gptMountWinback();
 }
 
 function adminSampleAsUser(row) {
@@ -10424,7 +10513,16 @@ function wireUi() {
   $('btn-login')?.addEventListener('click', () => openAuthModal('login', 'gpt_header_login'));
   $('btn-signup')?.addEventListener('click', () => openAuthModal('signup', 'gpt_header_signup'));
   $('btn-user')?.addEventListener('click', () => {
-    if (currentUser && confirm('Keluar dari akun?')) void signOut();
+    if (!currentUser) return;
+    if (window.GptProfile) {
+      window.GptProfile.open({
+        supabase: _supabase, userId: currentUser.id, userEmail: currentUser.email || '',
+        esc, toast: showToast,
+        onSignOut: () => { if (confirm('Keluar dari akun?')) void signOut(); },
+      });
+    } else if (confirm('Keluar dari akun?')) {
+      void signOut();
+    }
   });
   $('btn-optout')?.addEventListener('click', optOutToClassic);
   $('auth-close')?.addEventListener('click', closeAuthModal);

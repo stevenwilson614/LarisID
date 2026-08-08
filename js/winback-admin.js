@@ -11,6 +11,19 @@
       .replace(/'/g,'&#39;');
   }
 
+  // Dependency bindings, set once by mount(). Default to the bare global
+  // identifiers Site A already relies on (classic <script> tags share one
+  // lexical scope there) so A's existing no-arg `WinbackAdmin.mount(el)` call
+  // keeps working unchanged. Site B's js/gpt-app.js is wrapped in its own
+  // top-level IIFE, so those bare identifiers don't resolve inside it, and B
+  // deletes the Supabase SDK's own default auth-token localStorage key on
+  // boot -- _supaAccessTokenSync() would silently return null there. B must
+  // pass all four explicitly via the `deps` param.
+  var _supabase_ = null;
+  var _isAdmin_ = function () { return false; };
+  var _getToken_ = function () { return null; };
+  var _supaUrl_ = '';
+
   var injectedStyle = false;
   function ensureStyle() {
     if (injectedStyle) return;
@@ -149,7 +162,7 @@
     out.innerHTML = 'Menjalankan...';
     setButtonsDisabled(true);
 
-    var token = _supaAccessTokenSync();
+    var token = _getToken_();
     if (!token) {
       out.innerHTML = '<div class="wb-err">Token tidak tersedia. Sesi mungkin habis. Coba login ulang.</div>';
       setButtonsDisabled(false);
@@ -166,7 +179,7 @@
     }
 
     try {
-      var response = await fetch(SUPA_URL + '/functions/v1/send-winback', {
+      var response = await fetch(_supaUrl_ + '/functions/v1/send-winback', {
         method: 'POST',
         headers: {
           'Authorization': 'Bearer ' + token,
@@ -239,16 +252,11 @@
 
   async function runStats() {
     var out = get('wb-stats-out');
-    // _supabase is a top-level `let` in laris-app.js -- visible here as a bare
-    // identifier because classic (non-module) <script> tags share one global
-    // lexical scope, same as isPlatformAdmin()/SUPA_URL used elsewhere in this
-    // file. It is NOT a window property, so `window._supabase` would be
-    // undefined even though this same reference works.
-    if (!out || typeof _supabase === 'undefined' || !_supabase) return;
+    if (!out || !_supabase_) return;
     out.innerHTML = 'Memuat statistik...';
     try {
-      var statsRes = await _supabase.rpc('winback_campaign_stats');
-      var histRes = await _supabase.rpc('winback_open_hour_histogram', { p_campaign: null });
+      var statsRes = await _supabase_.rpc('winback_campaign_stats');
+      var histRes = await _supabase_.rpc('winback_open_hour_histogram', { p_campaign: null });
       if (statsRes.error) throw statsRes.error;
       if (histRes.error) throw histRes.error;
       out.innerHTML =
@@ -262,8 +270,17 @@
     }
   }
 
-  function mount(el) {
-    if (!el || !isPlatformAdmin()) return;
+  // mount(el) — Site A's existing call site, unchanged.
+  // mount(el, deps) — deps: { supabase, isAdmin, supaUrl, getToken }. Any key
+  // omitted falls back to the bare-global default above, so a caller can pass
+  // only what its scope actually has.
+  function mount(el, deps) {
+    _supabase_ = (deps && deps.supabase) || (typeof _supabase !== 'undefined' ? _supabase : null);
+    _isAdmin_  = (deps && deps.isAdmin)  || (typeof isPlatformAdmin === 'function' ? isPlatformAdmin : function () { return false; });
+    _getToken_ = (deps && deps.getToken) || (typeof _supaAccessTokenSync === 'function' ? _supaAccessTokenSync : function () { return null; });
+    _supaUrl_  = (deps && deps.supaUrl)  || (typeof SUPA_URL !== 'undefined' ? SUPA_URL : '');
+
+    if (!el || !_isAdmin_()) return;
     ensureStyle();
 
     // Add a class rather than overwriting el.id -- the caller's id is how the

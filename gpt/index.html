@@ -2917,6 +2917,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
               <option value="termahal">Termahal</option>
             </select>
           </div>
+          <div class="dir-filters" id="dir-filters-range"></div>
           <p class="dir-note" id="dir-note" hidden>Disesuaikan dari profil kamu</p>
           <div class="dir-grid" id="dir-grid"></div>
           <div class="dir-pager" id="dir-pager"></div>
@@ -2993,6 +2994,10 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                 </tbody>
               </table>
             </div>
+          </div>
+          <div class="dd-section">
+            <h3>Win-back</h3>
+            <div id="adm-winback-card"></div>
           </div>
         </div>
       </div>
@@ -3131,6 +3136,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
     <div class="nudge-actions" style="flex-direction:column;">
       <a class="btn-primary" id="gpt-limit-ext" href="https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae" target="_blank" rel="noopener" style="text-decoration:none;text-align:center;">Pasang Extension Chrome · tambah 3 per hari</a>
       <button type="button" class="btn-ghost" id="gpt-limit-spin" style="width:100%;display:none;">Putar roda hadiah · bisa dapat tambahan</button>
+      <div id="gpt-limit-referral" style="display:none;"></div>
       <button type="button" class="btn-ghost" id="gpt-limit-feedback" style="width:100%;">Kasih masukan ke Steven · +3 hari ini</button>
       <button type="button" class="btn-ghost" id="gpt-limit-close" style="width:100%;">Tutup</button>
     </div>
@@ -3231,6 +3237,11 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script src="/js/daily-spin-wheel.js?v=20260730g" defer></script>
 <script src="/js/laris-tracker.js?v=20260803a" defer></script>
 <script src="/js/changelog.js?v=20260731b" defer></script>
+<script defer src="/js/gpt-dir-filters.js?v=20260808a"></script>
+<script defer src="/js/gpt-photo-analyze.js?v=20260808a"></script>
+<script defer src="/js/gpt-referral.js?v=20260808a"></script>
+<script defer src="/js/gpt-profile.js?v=20260808a"></script>
 <script src="/js/gpt-app.js?v=20260803a" defer></script>
+<script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>
 </html>
