@@ -1185,15 +1185,17 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 /* ── Meta pages: Harga / FAQ / Tentang ───────────────────────────── */
 body.view-harga .panel,
 body.view-faq .panel,
-body.view-tentang .panel {
+body.view-tentang .panel,
+body.view-community .panel {
   background: #F3F3F3;
   padding-top: 16px;
   padding-bottom: 40px;
 }
 body.view-harga .panel-inner,
 body.view-faq .panel-inner,
-body.view-tentang .panel-inner {
-  max-width: 820px;
+body.view-tentang .panel-inner,
+body.view-community .panel-inner {
+  max-width: 920px;
 }
 .meta-card {
   --meta-red: #B5202A;
@@ -3811,10 +3813,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
           </article>
         </div>
         <div class="view" id="view-community">
-          <div class="dir-head">
-            <h2>Usulan Fitur</h2>
-            <p class="dd-sub">Forum singkat buat ajukan perubahan / fitur baru. Voting & komentar dari seller lain — dipisah jadi Usulan, Dipertimbangkan, dan Sudah ada.</p>
-          </div>
           <div id="community-board-root"></div>
         </div>
         <div class="view" id="view-admin">
@@ -4101,7 +4099,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script defer src="/js/gpt-photo-analyze.js?v=20260808a"></script>
 <script defer src="/js/gpt-referral.js?v=20260808a"></script>
 <script defer src="/js/gpt-profile.js?v=20260808c"></script>
-<script defer src="/js/gpt-community-board.js?v=20260808c"></script>
+<script defer src="/js/gpt-community-board.js?v=20260808d"></script>
 <script src="/js/gpt-app.js?v=20260808m" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>

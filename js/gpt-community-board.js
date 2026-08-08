@@ -4,17 +4,32 @@
   let _opts;
   let _container;
   let _listEl;
-  let _activeKind = 'feature';
-  let _activeStatus = 'open';
+  let _activeKind = 'all'; // all | feature | complaint
   let _posts = [];
   let _expandedPostIds = new Set();
   let _commentsCache = {};
 
   const STATUS_META = {
-    open: { label: 'Usulan', emptyFeature: 'Belum ada fitur yang diajukan. Jadi yang pertama!', emptyComplaint: 'Belum ada keluhan yang dilaporkan. Jadi yang pertama!' },
-    considering: { label: 'Dipertimbangkan', emptyFeature: 'Belum ada fitur yang sedang dipertimbangkan.', emptyComplaint: 'Belum ada keluhan yang sedang ditinjau.' },
-    done: { label: 'Sudah ada', emptyFeature: 'Belum ada fitur yang ditandai sudah diimplementasi.', emptyComplaint: 'Belum ada keluhan yang ditandai sudah selesai.' },
+    open: {
+      label: 'Baru',
+      cls: 'baru',
+      empty: 'Belum ada usulan. Jadi yang pertama!',
+    },
+    considering: {
+      label: 'Sedang dipertimbangkan',
+      cls: 'considering',
+      empty: 'Belum ada usulan dengan status ini.',
+    },
+    done: {
+      label: 'Ditinjau',
+      cls: 'reviewed',
+      empty: 'Belum ada usulan yang ditinjau.',
+    },
   };
+
+  const AVATAR_PALETTE = [
+    '#DBEAFE', '#FCE7F3', '#E0E7FF', '#D1FAE5', '#FEF3C7', '#FDE68A', '#FBCFE8', '#CFFAFE',
+  ];
 
   // ---------- helpers ----------
 
@@ -31,22 +46,39 @@
     }
   }
 
-  function svgHeart(liked) {
-    const fill = liked ? '#B5202A' : 'none';
-    return `<svg width="16" height="16" viewBox="0 0 24 24" fill="${fill}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.73l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+  function svgThumb(active) {
+    const fill = active ? '#B5202A' : 'none';
+    const stroke = active ? '#B5202A' : '#B5202A';
+    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="${fill}" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>`;
   }
 
   function svgComment() {
-    return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+    return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
   }
 
   function svgSend() {
     return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`;
   }
 
+  function svgSparkle() {
+    return `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.6 6.4L20 10l-6.4 1.6L12 18l-1.6-6.4L4 10l6.4-1.6L12 2z"/></svg>`;
+  }
+
+  function svgPlus() {
+    return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>`;
+  }
+
+  function svgBulb() {
+    return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>`;
+  }
+
+  function svgDots() {
+    return `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>`;
+  }
+
   function truncateBody(body, expanded) {
     if (expanded) return body;
-    if (body.length > 220) return body.substring(0, 220) + ' ...';
+    if (body.length > 220) return body.substring(0, 220) + '…';
     return body;
   }
 
@@ -54,66 +86,73 @@
     return _opts.esc(text);
   }
 
-  // "Steven - Bandung" when a city is on file, else just the name — most
-  // early submitters won't have set a city yet, so this must degrade cleanly.
-  function authorLabel(row) {
-    const name = _opts.esc(row.author_first_name || 'Pengguna LarisID');
-    const city = row.author_city ? _opts.esc(row.author_city) : '';
-    return city ? `${name} - ${city}` : name;
+  function authorDisplayName(row) {
+    return row.author_first_name || 'Pengguna LarisID';
+  }
+
+  function avatarTone(name) {
+    let h = 0;
+    const s = String(name || '?');
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return AVATAR_PALETTE[h % AVATAR_PALETTE.length];
   }
 
   function avatarHtml(row, size) {
     const px = size || 28;
+    const name = authorDisplayName(row);
+    const letter = _opts.esc(name.charAt(0).toUpperCase());
     if (row.author_headshot_url) {
-      return `<img class="author-avatar" src="${_opts.esc(row.author_headshot_url)}" alt="" width="${px}" height="${px}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'author-avatar author-avatar--letter',textContent:${JSON.stringify((row.author_first_name || '?').charAt(0).toUpperCase())}}))">`;
+      return `<img class="msb-avatar" src="${_opts.esc(row.author_headshot_url)}" alt="" width="${px}" height="${px}" loading="lazy">`;
     }
-    const letter = _opts.esc((row.author_first_name || '?').charAt(0).toUpperCase());
-    return `<span class="author-avatar author-avatar--letter" style="width:${px}px;height:${px}px">${letter}</span>`;
+    return `<span class="msb-avatar msb-avatar--letter" style="width:${px}px;height:${px}px;background:${avatarTone(name)}">${letter}</span>`;
   }
 
-  // Author name + avatar are clickable everywhere they appear on the board,
-  // opening the host's public-profile view (name/city/avatar only — the host
-  // is responsible for never surfacing contact details through this path).
   function authorTagHtml(row) {
-    if (!row.author_id) return `<span class="author-tag">${avatarHtml(row)}<span class="author-name">${authorLabel(row)}</span></span>`;
-    return `<button type="button" class="author-tag" data-action="open-profile" data-user-id="${_opts.esc(row.author_id)}">` +
-      `${avatarHtml(row)}<span class="author-name">${authorLabel(row)}</span></button>`;
+    const name = _opts.esc(authorDisplayName(row));
+    if (!row.author_id) {
+      return `<span class="msb-author">${avatarHtml(row, 22)}<span class="msb-author-name">${name}</span></span>`;
+    }
+    return `<button type="button" class="msb-author" data-action="open-profile" data-user-id="${_opts.esc(row.author_id)}">${avatarHtml(row, 22)}<span class="msb-author-name">${name}</span></button>`;
   }
 
   function statusBadgeHtml(status) {
     const meta = STATUS_META[status] || STATUS_META.open;
-    return `<span class="status-badge status-badge--${_opts.esc(status || 'open')}">${_opts.esc(meta.label)}</span>`;
+    return `<span class="msb-status msb-status--${meta.cls}">${svgSparkle()} ${_opts.esc(meta.label)}</span>`;
+  }
+
+  function kindChipHtml(kind) {
+    const label = kind === 'complaint' ? 'Keluhan' : 'Fitur';
+    const cls = kind === 'complaint' ? 'complaint' : 'feature';
+    return `<span class="msb-kind msb-kind--${cls}">${svgPlus()} ${_opts.esc(label)}</span>`;
   }
 
   function showLoading(show) {
-    const el = _container && _container.querySelector('#loading-area');
-    if (el) el.style.display = show ? 'block' : 'none';
+    const el = _container && _container.querySelector('#msb-loading');
+    if (el) el.hidden = !show;
   }
 
   function updateLikeDisplay(postId, liked, count) {
-    const btn = _listEl && _listEl.querySelector(`.like-btn[data-post-id="${postId}"]`);
+    const btn = _listEl && _listEl.querySelector(`.msb-vote[data-post-id="${postId}"]`);
     if (!btn) return;
-    btn.innerHTML = `${svgHeart(liked)} <span class="like-count">${count}</span>`;
+    btn.classList.toggle('is-liked', !!liked);
+    btn.innerHTML = `${svgThumb(!!liked)}<span class="msb-vote-count">${count}</span><span class="msb-vote-label">Dukung</span>`;
   }
 
   function updateCommentCountDisplay(postId, count) {
-    const btn = _listEl && _listEl.querySelector(`.comment-toggle-btn[data-post-id="${postId}"]`);
-    if (!btn) return;
-    const countSpan = btn.querySelector('.comment-count');
-    if (countSpan) countSpan.textContent = count;
+    const el = _listEl && _listEl.querySelector(`.msb-comments-count[data-post-id="${postId}"]`);
+    if (!el) return;
+    el.innerHTML = `${svgComment()} ${count} komentar`;
   }
 
   function renderCommentsForPost(postId) {
     const section = _listEl && _listEl.querySelector(`[data-comments-for="${postId}"]`);
     if (!section) return;
     const comments = _commentsCache[postId] || [];
-    const list = section.querySelector('.comments-list');
+    const list = section.querySelector('.msb-comments-list');
     if (!list) return;
     list.innerHTML = comments
       .map((c) => {
-        const body = _opts.esc(c.body);
-        const date = formatDate(c.created_at);
-        return `<div class="comment-item">${authorTagHtml(c)} <span class="comment-body">${body}</span> <span class="comment-date">${date}</span></div>`;
+        return `<div class="msb-comment">${authorTagHtml(c)}<span class="msb-comment-body">${_opts.esc(c.body)}</span><span class="msb-comment-date">${formatDate(c.created_at)}</span></div>`;
       })
       .join('');
   }
@@ -128,9 +167,7 @@
       .select('id, author_id, author_first_name, author_city, author_headshot_url, body, created_at')
       .eq('request_id', postId)
       .order('created_at', { ascending: true });
-    if (error) {
-      return;
-    }
+    if (error) return;
     _commentsCache[postId] = data || [];
     renderCommentsForPost(postId);
   }
@@ -139,10 +176,10 @@
     const section = _listEl && _listEl.querySelector(`[data-comments-for="${postId}"]`);
     if (!section) return;
     if (_expandedPostIds.has(postId)) {
-      section.style.display = 'none';
+      section.hidden = true;
       _expandedPostIds.delete(postId);
     } else {
-      section.style.display = 'block';
+      section.hidden = false;
       _expandedPostIds.add(postId);
       loadComments(postId);
     }
@@ -174,7 +211,7 @@
       post.liked_by_me = wasLiked;
       post.like_count = prevCount;
       updateLikeDisplay(postId, post.liked_by_me, post.like_count);
-      _opts.toast('Gagal memperbarui suka. Coba lagi.');
+      _opts.toast('Gagal memperbarui dukungan. Coba lagi.');
       if (typeof _opts.onError === 'function') _opts.onError(error);
     }
   }
@@ -212,13 +249,14 @@
     if (!_listEl) return;
     _listEl.innerHTML = '';
     showLoading(true);
-    const { data, error } = await _opts.supabase
+    let q = _opts.supabase
       .from('feature_requests_feed')
       .select('*')
-      .eq('kind', _activeKind)
-      .eq('status', _activeStatus)
+      .order('like_count', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(50);
+    if (_activeKind !== 'all') q = q.eq('kind', _activeKind);
+    const { data, error } = await q;
     showLoading(false);
     if (error) {
       _opts.toast('Gagal memuat. Coba lagi.');
@@ -234,65 +272,73 @@
     _listEl.innerHTML = '';
     if (_posts.length === 0) {
       const empty = document.createElement('div');
-      empty.className = 'empty-state';
-      const meta = STATUS_META[_activeStatus] || STATUS_META.open;
-      empty.textContent =
-        _activeKind === 'feature' ? meta.emptyFeature : meta.emptyComplaint;
+      empty.className = 'msb-empty';
+      empty.textContent = 'Belum ada usulan. Jadi yang pertama!';
       _listEl.appendChild(empty);
       return;
     }
     _posts.forEach((post) => {
-      const card = document.createElement('div');
-      card.className = 'post-card';
+      const card = document.createElement('article');
+      card.className = 'msb-card';
       card.dataset.postId = post.id;
       const isExpanded = _expandedPostIds.has(post.id);
-      const bodyText = truncateBody(post.body, isExpanded);
+      const bodyText = truncateBody(post.body || '', isExpanded);
+      const commentLabel = `${post.comment_count || 0} komentar`;
       card.innerHTML = `
-        <div class="post-header">
-          <strong class="post-title">${_opts.esc(post.title)}</strong>
-          <span class="post-meta">${statusBadgeHtml(post.status)}${authorTagHtml(post)}<span class="post-date">${formatDate(post.created_at)}</span></span>
-        </div>
-        <div class="post-body ${isExpanded ? 'expanded' : 'collapsed'}">
-          <p>${bodyHtml(bodyText)}</p>
-        </div>
-        <div class="post-footer">
-          <button class="like-btn" data-action="like" data-post-id="${post.id}">
-            ${svgHeart(post.liked_by_me)}
-            <span class="like-count">${post.like_count}</span>
-          </button>
-          <button class="comment-toggle-btn" data-action="toggle-comments" data-post-id="${post.id}">
-            ${svgComment()}
-            <span class="comment-count">${post.comment_count}</span>
-          </button>
-        </div>
-        <div class="comments-section" data-comments-for="${post.id}" style="display:${isExpanded ? 'block' : 'none'}">
-          <div class="comments-list"></div>
-          <div class="comment-form">
-            <input type="text" class="comment-input" placeholder="Tulis komentar..." data-post-id="${post.id}">
-            <button class="send-comment-btn" data-action="send-comment" data-post-id="${post.id}">${svgSend()}</button>
+        <button type="button" class="msb-vote ${post.liked_by_me ? 'is-liked' : ''}" data-action="like" data-post-id="${post.id}" aria-label="Dukung usulan">
+          ${svgThumb(!!post.liked_by_me)}
+          <span class="msb-vote-count">${post.like_count || 0}</span>
+          <span class="msb-vote-label">Dukung</span>
+        </button>
+        <div class="msb-card-main">
+          <div class="msb-card-top">
+            <h3 class="msb-title">${_opts.esc(post.title)}</h3>
+            <div class="msb-card-aside">
+              ${statusBadgeHtml(post.status)}
+              <button type="button" class="msb-more" aria-label="Opsi" tabindex="-1">${svgDots()}</button>
+            </div>
+          </div>
+          <div class="msb-meta">
+            ${authorTagHtml(post)}
+            <span class="msb-dot">·</span>
+            <span class="msb-date">${formatDate(post.created_at)}</span>
+          </div>
+          <p class="msb-body">${bodyHtml(bodyText)}</p>
+          <div class="msb-card-foot">
+            ${kindChipHtml(post.kind)}
+            <button type="button" class="msb-comments-count" data-action="toggle-comments" data-post-id="${post.id}">
+              ${svgComment()} ${commentLabel}
+            </button>
+          </div>
+          <div class="msb-comments" data-comments-for="${post.id}" ${isExpanded ? '' : 'hidden'}>
+            <div class="msb-comments-list"></div>
+            <div class="msb-comment-form">
+              <input type="text" class="msb-comment-input" placeholder="Tulis komentar…" data-post-id="${post.id}">
+              <button type="button" class="msb-comment-send" data-action="send-comment" data-post-id="${post.id}">${svgSend()}</button>
+            </div>
           </div>
         </div>
       `;
       _listEl.appendChild(card);
-      if (isExpanded) {
-        loadComments(post.id);
-      }
+      if (isExpanded) loadComments(post.id);
     });
   }
 
   async function submitPost() {
-    const titleInput = _container.querySelector('#post-title');
-    const bodyInput = _container.querySelector('#post-body');
+    const titleInput = _container.querySelector('#msb-title');
+    const bodyInput = _container.querySelector('#msb-body');
+    const kindSelect = _container.querySelector('#msb-kind');
     if (!titleInput || !bodyInput) return;
     const title = titleInput.value.trim();
     const body = bodyInput.value.trim();
+    const kind = (kindSelect && kindSelect.value) || 'feature';
     if (!title || !body) {
       _opts.toast('Judul dan deskripsi harus diisi.');
       return;
     }
     const { error } = await _opts.supabase.from('feature_requests').insert({
       author_id: _opts.currentUserId,
-      kind: _activeKind,
+      kind,
       title,
       body,
     });
@@ -304,164 +350,324 @@
     _opts.toast('Berhasil dikirim. Terima kasih!');
     titleInput.value = '';
     bodyInput.value = '';
-    const panel = _container.querySelector('#form-panel');
-    if (panel) panel.style.display = 'none';
-    // New usulan always land in open.
-    if (_activeStatus !== 'open') switchStatus('open');
-    else fetchPosts();
+    closeForm();
+    fetchPosts();
   }
 
-  function syncChrome() {
-    const addBtn = _container.querySelector('#toggle-form-btn');
-    const actions = _container.querySelector('.gpt-board-actions');
-    const formPanel = _container.querySelector('#form-panel');
-    const canSubmit = _activeStatus === 'open';
-    if (actions) actions.style.display = canSubmit ? '' : 'none';
-    if (!canSubmit && formPanel) formPanel.style.display = 'none';
-    if (addBtn)
-      addBtn.textContent = _activeKind === 'feature' ? '+ Ajukan Fitur' : '+ Laporkan Keluhan';
+  function openForm() {
+    const panel = _container.querySelector('#msb-form-panel');
+    if (panel) {
+      panel.hidden = false;
+      _container.querySelector('#msb-title')?.focus();
+    }
+  }
 
-    _container.querySelectorAll('.status-tab-btn').forEach((btn) => {
-      btn.classList.toggle('active', btn.dataset.status === _activeStatus);
-    });
-    _container.querySelectorAll('.kind-tab-btn').forEach((btn) => {
-      btn.classList.toggle('active', btn.dataset.kind === _activeKind);
-    });
+  function closeForm() {
+    const panel = _container.querySelector('#msb-form-panel');
+    if (panel) panel.hidden = true;
   }
 
   function switchKind(kind) {
     _activeKind = kind;
-    syncChrome();
+    _container.querySelectorAll('.msb-filter').forEach((btn) => {
+      btn.classList.toggle('is-active', btn.dataset.kind === kind);
+    });
     _posts = [];
     fetchPosts();
   }
 
-  function switchStatus(status) {
-    _activeStatus = status;
-    syncChrome();
-    _posts = [];
-    fetchPosts();
+  function injectStyles() {
+    if (document.getElementById('gpt-community-board-style')) {
+      document.getElementById('gpt-community-board-style').remove();
+    }
+    const style = document.createElement('style');
+    style.id = 'gpt-community-board-style';
+    style.textContent = `
+      #msb, #msb * { box-sizing: border-box; }
+      #msb {
+        --msb-red: #B5202A;
+        --msb-red-soft: #FFF1F2;
+        --msb-ink: #111827;
+        --msb-muted: #6B7280;
+        --msb-line: #E5E7EB;
+        --msb-bg: #F9FAFB;
+        color: var(--msb-ink);
+        font-family: inherit;
+        max-width: 920px;
+      }
+      .msb-banner {
+        display: flex; align-items: center; justify-content: space-between; gap: 16px;
+        background: linear-gradient(90deg, #fff7f8 0%, #fff1f2 55%, #ffe8ec 100%);
+        border: 1px solid #FDE2E4;
+        border-radius: 16px;
+        padding: 18px 20px 18px 22px;
+        margin-bottom: 22px;
+        overflow: hidden;
+        position: relative;
+      }
+      .msb-banner-copy { flex: 1; min-width: 0; z-index: 1; }
+      .msb-banner-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+      .msb-beta {
+        display: inline-flex; align-items: center; justify-content: center;
+        padding: 3px 10px; border-radius: 999px;
+        border: 1.5px solid var(--msb-red); color: var(--msb-red);
+        background: #fff; font-size: 11px; font-weight: 800; letter-spacing: .06em;
+      }
+      .msb-banner-title { margin: 0; font-size: 1rem; font-weight: 750; color: var(--msb-ink); }
+      .msb-banner-sub { margin: 0; font-size: .875rem; line-height: 1.45; color: #374151; max-width: 46rem; }
+      .msb-banner-art {
+        flex: 0 0 auto; width: min(220px, 34vw); height: 92px;
+        background: url('/images/masukan-banner-illust.png') right center / contain no-repeat;
+        pointer-events: none;
+      }
+      .msb-head { margin-bottom: 16px; }
+      .msb-head h2 {
+        margin: 0 0 6px; font-size: 1.75rem; font-weight: 800;
+        letter-spacing: -.03em; color: #0f172a;
+      }
+      .msb-head p { margin: 0; color: var(--msb-muted); font-size: .95rem; line-height: 1.45; }
+      .msb-toolbar {
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        flex-wrap: wrap; margin-bottom: 14px;
+      }
+      .msb-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+      .msb-filter {
+        border: 1px solid #D1D5DB; background: #fff; color: #374151;
+        padding: 7px 14px; border-radius: 999px; font-size: .875rem; font-weight: 600;
+        cursor: pointer;
+      }
+      .msb-filter.is-active {
+        background: var(--msb-red); border-color: var(--msb-red); color: #fff;
+      }
+      .msb-btn-primary {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: var(--msb-red); color: #fff; border: none;
+        padding: 9px 16px; border-radius: 999px; font-size: .875rem; font-weight: 700;
+        cursor: pointer; white-space: nowrap;
+      }
+      .msb-btn-primary:hover { filter: brightness(.96); }
+      .msb-form {
+        border: 1px solid var(--msb-line); border-radius: 14px; background: #fff;
+        padding: 14px; margin-bottom: 14px;
+      }
+      .msb-form input, .msb-form textarea, .msb-form select {
+        width: 100%; border: 1px solid #D1D5DB; border-radius: 10px;
+        padding: 9px 11px; font-size: .9rem; margin-bottom: 8px; font: inherit;
+      }
+      .msb-form textarea { min-height: 90px; resize: vertical; }
+      .msb-form-actions { display: flex; justify-content: flex-end; gap: 8px; }
+      .msb-btn-ghost {
+        background: #F3F4F6; color: #374151; border: none; padding: 8px 14px;
+        border-radius: 999px; cursor: pointer; font-weight: 600;
+      }
+      .msb-loading, .msb-empty {
+        text-align: center; color: var(--msb-muted); padding: 28px 12px; font-size: .95rem;
+      }
+      .msb-list { display: flex; flex-direction: column; gap: 12px; }
+      .msb-card {
+        display: grid; grid-template-columns: 72px 1fr; gap: 4px 10px;
+        background: #fff; border: 1px solid var(--msb-line); border-radius: 14px;
+        padding: 14px 14px 14px 10px;
+      }
+      .msb-vote {
+        display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+        gap: 2px; padding: 8px 4px; background: none; border: none; cursor: pointer;
+        color: var(--msb-red); min-height: 84px;
+      }
+      .msb-vote-count {
+        font-size: 1.15rem; font-weight: 800; color: var(--msb-ink); line-height: 1.1;
+      }
+      .msb-vote-label {
+        font-size: .72rem; font-weight: 700; color: var(--msb-red); letter-spacing: .01em;
+      }
+      .msb-vote.is-liked .msb-vote-count { color: var(--msb-red); }
+      .msb-card-main { min-width: 0; }
+      .msb-card-top {
+        display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+      }
+      .msb-title {
+        margin: 0; font-size: 1.02rem; font-weight: 750; color: #0f172a;
+        line-height: 1.35; flex: 1; min-width: 0;
+      }
+      .msb-card-aside { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
+      .msb-status {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 4px 10px; border-radius: 999px; font-size: .72rem; font-weight: 700;
+        white-space: nowrap;
+      }
+      .msb-status--baru { background: #DBEAFE; color: #1D4ED8; }
+      .msb-status--considering { background: #FFEDD5; color: #C2410C; }
+      .msb-status--reviewed { background: #D1FAE5; color: #047857; }
+      .msb-more {
+        border: none; background: none; color: #9CA3AF; cursor: default; padding: 2px;
+        line-height: 0;
+      }
+      .msb-meta {
+        display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+        margin-top: 8px; font-size: .8rem; color: var(--msb-muted);
+      }
+      .msb-author {
+        display: inline-flex; align-items: center; gap: 6px;
+        border: none; background: none; padding: 0; cursor: pointer;
+        font: inherit; color: #374151; font-weight: 650;
+      }
+      button.msb-author:hover .msb-author-name { text-decoration: underline; }
+      .msb-avatar {
+        border-radius: 50%; object-fit: cover; flex-shrink: 0; width: 22px; height: 22px;
+        background: #E5E7EB;
+      }
+      .msb-avatar--letter {
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 11px; font-weight: 800; color: #374151;
+      }
+      .msb-dot { color: #D1D5DB; }
+      .msb-body {
+        margin: 8px 0 0; font-size: .9rem; line-height: 1.5; color: #4B5563;
+        white-space: pre-wrap;
+      }
+      .msb-card-foot {
+        display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px;
+      }
+      .msb-kind {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 3px 9px; border-radius: 999px; font-size: .72rem; font-weight: 700;
+        background: #F3F4F6; color: #4B5563;
+      }
+      .msb-kind--feature { background: #EDE9FE; color: #6D28D9; }
+      .msb-kind--complaint { background: #FEE2E2; color: #B91C1C; }
+      .msb-comments-count {
+        display: inline-flex; align-items: center; gap: 5px;
+        border: none; background: none; color: var(--msb-muted); cursor: pointer;
+        font-size: .8rem; font-weight: 600; padding: 0;
+      }
+      .msb-comments-count:hover { color: var(--msb-ink); }
+      .msb-comments {
+        margin-top: 12px; padding-top: 10px; border-top: 1px solid #F3F4F6;
+      }
+      .msb-comment {
+        display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+        margin-bottom: 8px; font-size: .82rem; color: #374151;
+      }
+      .msb-comment-body { flex: 1 1 50%; }
+      .msb-comment-date { color: #9CA3AF; font-size: .75rem; }
+      .msb-comment-form { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+      .msb-comment-input {
+        flex: 1; border: 1px solid #D1D5DB; border-radius: 999px;
+        padding: 7px 12px; font-size: .85rem;
+      }
+      .msb-comment-send {
+        border: none; background: none; color: var(--msb-red); cursor: pointer; padding: 4px;
+      }
+      .msb-cta {
+        display: flex; align-items: center; justify-content: space-between; gap: 16px;
+        margin-top: 18px; padding: 16px 18px;
+        background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 14px;
+        flex-wrap: wrap;
+      }
+      .msb-cta-left {
+        display: flex; align-items: flex-start; gap: 12px; min-width: 0; flex: 1;
+      }
+      .msb-cta-ico {
+        width: 36px; height: 36px; border-radius: 999px; flex-shrink: 0;
+        display: grid; place-items: center; background: #FEE2E2; color: var(--msb-red);
+      }
+      .msb-cta-text { margin: 0; font-size: .875rem; line-height: 1.45; color: #374151; }
+      .msb-btn-outline {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: #fff; color: var(--msb-red); border: 1.5px solid var(--msb-red);
+        padding: 9px 14px; border-radius: 999px; font-size: .85rem; font-weight: 750;
+        cursor: pointer; white-space: nowrap;
+      }
+      .msb-btn-outline:hover { background: var(--msb-red-soft); }
+      @media (max-width: 700px) {
+        .msb-banner { padding: 14px; }
+        .msb-banner-art { width: 120px; height: 72px; }
+        .msb-banner-title { font-size: .92rem; }
+        .msb-head h2 { font-size: 1.4rem; }
+        .msb-card { grid-template-columns: 58px 1fr; padding: 12px 10px; }
+        .msb-status { font-size: .68rem; padding: 3px 8px; }
+        .msb-cta { padding: 14px; }
+      }
+    `;
+    document.head.appendChild(style);
   }
-
-  // ---------- mount ----------
 
   function mount(container, options) {
     _opts = options;
     _container = container;
 
-    if (container.dataset.communityBoardMounted === 'true') {
+    if (container.dataset.communityBoardMounted === 'msb-v2') {
       // Already built — just refresh the list instead of losing an
       // in-progress form by rebuilding the DOM from scratch.
-      _listEl = container.querySelector('#board-list');
-      syncChrome();
+      _listEl = container.querySelector('#msb-list');
       fetchPosts();
       return;
     }
-    container.dataset.communityBoardMounted = 'true';
+    container.dataset.communityBoardMounted = 'msb-v2';
+    injectStyles();
 
-    // inject style once
-    if (!document.getElementById('gpt-community-board-style')) {
-      const style = document.createElement('style');
-      style.id = 'gpt-community-board-style';
-      style.textContent = `
-        #gpt-board * { box-sizing: border-box; }
-        #gpt-board { max-width: 100%; background: transparent; }
-        .gpt-board-status-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-        .gpt-board-kind-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
-        .status-tab-btn, .kind-tab-btn { background: #f9fafb; border: 1px solid #d1d5db; color: #374151; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; }
-        .status-tab-btn.active { background: #1A1F3C; color: #fff; border-color: #1A1F3C; }
-        .kind-tab-btn.active { background: #B5202A; color: #fff; border-color: #B5202A; }
-        .btn-add { background: #B5202A; color: #fff; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; }
-        .gpt-board-form { margin: 12px 0; border: 1px solid #E5E7EB; border-radius: 12px; padding: 12px; }
-        #post-title, #post-body { width: 100%; box-sizing: border-box; margin-bottom: 8px; border: 1px solid #D1D5DB; border-radius: 8px; padding: 8px; font-size: 14px; }
-        #post-body { resize: vertical; min-height: 80px; }
-        .form-buttons { display: flex; gap: 8px; justify-content: flex-end; }
-        .btn-primary { background: #B5202A; color: #fff; border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; }
-        #cancel-form-btn { background: #E5E7EB; color: #374151; border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; }
-        .post-card { background: #fff; border: 1px solid #E5E7EB; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
-        .post-header { margin-bottom: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-        .post-title { font-size: 16px; font-weight: 600; color: #111827; width: 100%; }
-        .post-meta { font-size: 12px; color: #6B7280; display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .post-date { color: #9CA3AF; }
-        .status-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; letter-spacing: .02em; }
-        .status-badge--open { background: #F3F4F6; color: #4B5563; }
-        .status-badge--considering { background: #FEF3C7; color: #92400E; }
-        .status-badge--done { background: #D1FAE5; color: #065F46; }
-        .post-body { font-size: 14px; color: #374151; margin-top: 8px; }
-        .post-body p { margin: 0; white-space: pre-wrap; }
-        .post-footer { display: flex; align-items: center; gap: 16px; margin-top: 12px; }
-        .like-btn, .comment-toggle-btn { background: none; border: none; padding: 4px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; color: #374151; font-size:14px; }
-        .like-btn svg, .comment-toggle-btn svg { pointer-events: none; }
-        .comments-section { margin-top: 12px; padding-left: 20px; border-left: 2px solid #E5E7EB; }
-        .comment-item { margin-bottom: 8px; font-size:13px; color: #374151; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-        .comment-body { flex: 1; min-width: 60%; }
-        .comment-date { font-size: 11px; color: #9CA3AF; }
-        .author-tag {
-          display: inline-flex; align-items: center; gap: 6px; background: none; border: none;
-          padding: 0; font: inherit; font-size: 12px; font-weight: 600; color: #374151; cursor: pointer;
-        }
-        button.author-tag:hover .author-name { text-decoration: underline; }
-        .author-avatar { border-radius: 50%; object-fit: cover; flex-shrink: 0; background: #E5E7EB; }
-        .author-avatar--letter { display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #6B7280; }
-        .author-name { white-space: nowrap; }
-        .comment-form { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-        .comment-input { flex: 1; border: 1px solid #D1D5DB; border-radius: 8px; padding: 6px 8px; font-size:13px; box-sizing:border-box; }
-        .send-comment-btn { background: none; border: none; cursor: pointer; color: #B5202A; padding: 2px; }
-        .empty-state { color: #6B7280; font-size: 14px; padding: 20px; text-align: center; }
-        .gpt-loading { text-align: center; color: #6B7280; padding: 20px; }
-      `;
-      document.head.appendChild(style);
-    }
-
-    container.innerHTML = '';
     container.innerHTML = `
-      <div id="gpt-board">
-        <div class="gpt-board-status-tabs" role="tablist" aria-label="Status usulan">
-          <button type="button" class="status-tab-btn" data-status="open" id="tab-status-open">Usulan</button>
-          <button type="button" class="status-tab-btn" data-status="considering" id="tab-status-considering">Dipertimbangkan</button>
-          <button type="button" class="status-tab-btn" data-status="done" id="tab-status-done">Sudah ada</button>
+      <div id="msb">
+        <div class="msb-banner">
+          <div class="msb-banner-copy">
+            <div class="msb-banner-row">
+              <span class="msb-beta">BETA</span>
+              <p class="msb-banner-title">LarisID masih dalam tahap Beta</p>
+            </div>
+            <p class="msb-banner-sub">Masukan kamu sangat berarti! Bantu kami membuat LarisID jadi lebih baik untuk semua seller Indonesia.</p>
+          </div>
+          <div class="msb-banner-art" role="img" aria-label="Ilustrasi roket dan bendera Indonesia"></div>
         </div>
-        <div class="gpt-board-kind-tabs">
-          <button type="button" class="kind-tab-btn" data-kind="feature" id="tab-feature">Fitur</button>
-          <button type="button" class="kind-tab-btn" data-kind="complaint" id="tab-complaint">Keluhan</button>
+
+        <div class="msb-head">
+          <h2>Usulan Fitur</h2>
+          <p>Usulkan fitur atau laporkan keluhan — dibaca dan bisa disukai/dikomentari user lain.</p>
         </div>
-        <div class="gpt-board-actions">
-          <button class="btn-add" id="toggle-form-btn">+ Ajukan Fitur</button>
+
+        <div class="msb-toolbar">
+          <div class="msb-filters" role="tablist" aria-label="Filter usulan">
+            <button type="button" class="msb-filter is-active" data-kind="all">Semua</button>
+            <button type="button" class="msb-filter" data-kind="feature">Fitur</button>
+            <button type="button" class="msb-filter" data-kind="complaint">Keluhan</button>
+          </div>
+          <button type="button" class="msb-btn-primary" id="msb-open-form">${svgPlus()} Ajukan Masukan</button>
         </div>
-        <div class="gpt-board-form" style="display:none" id="form-panel">
-          <input id="post-title" type="text" placeholder="Judul" maxlength="120" required>
-          <textarea id="post-body" placeholder="Deskripsi singkat — satu fitur per poin lebih baik" maxlength="4000" required></textarea>
-          <div class="form-buttons">
-            <button id="submit-post-btn" class="btn-primary">Kirim</button>
-            <button id="cancel-form-btn">Batal</button>
+
+        <div class="msb-form" id="msb-form-panel" hidden>
+          <select id="msb-kind">
+            <option value="feature">Fitur</option>
+            <option value="complaint">Keluhan</option>
+          </select>
+          <input id="msb-title" type="text" placeholder="Judul singkat" maxlength="120" required>
+          <textarea id="msb-body" placeholder="Jelaskan singkat apa yang kamu butuhkan…" maxlength="4000" required></textarea>
+          <div class="msb-form-actions">
+            <button type="button" class="msb-btn-ghost" id="msb-cancel">Batal</button>
+            <button type="button" class="msb-btn-primary" id="msb-submit">Kirim</button>
           </div>
         </div>
-        <div class="gpt-loading" id="loading-area" style="display:none">Memuat…</div>
-        <div class="gpt-board-list" id="board-list"></div>
+
+        <div class="msb-loading" id="msb-loading" hidden>Memuat…</div>
+        <div class="msb-list" id="msb-list"></div>
+
+        <div class="msb-cta">
+          <div class="msb-cta-left">
+            <div class="msb-cta-ico">${svgBulb()}</div>
+            <p class="msb-cta-text">Punya ide atau menemukan hal yang mengganggu? Sampaikan masukanmu, komunitas akan mendukung dan tim LarisID akan meninjaunya.</p>
+          </div>
+          <button type="button" class="msb-btn-outline" id="msb-cta-open">${svgPlus()} Ajukan Masukan Sekarang</button>
+        </div>
       </div>
     `;
 
-    _listEl = container.querySelector('#board-list');
+    _listEl = container.querySelector('#msb-list');
 
-    container.querySelector('#tab-feature').addEventListener('click', () => switchKind('feature'));
-    container.querySelector('#tab-complaint').addEventListener('click', () => switchKind('complaint'));
-    container.querySelector('#tab-status-open').addEventListener('click', () => switchStatus('open'));
-    container.querySelector('#tab-status-considering').addEventListener('click', () => switchStatus('considering'));
-    container.querySelector('#tab-status-done').addEventListener('click', () => switchStatus('done'));
-
-    container.querySelector('#toggle-form-btn').addEventListener('click', () => {
-      const panel = container.querySelector('#form-panel');
-      if (panel.style.display === 'none' || panel.style.display === '') {
-        panel.style.display = 'block';
-      } else {
-        panel.style.display = 'none';
-      }
+    container.querySelectorAll('.msb-filter').forEach((btn) => {
+      btn.addEventListener('click', () => switchKind(btn.dataset.kind));
     });
-
-    container.querySelector('#submit-post-btn').addEventListener('click', submitPost);
-    container.querySelector('#cancel-form-btn').addEventListener('click', () => {
-      container.querySelector('#form-panel').style.display = 'none';
-    });
+    container.querySelector('#msb-open-form')?.addEventListener('click', openForm);
+    container.querySelector('#msb-cta-open')?.addEventListener('click', openForm);
+    container.querySelector('#msb-cancel')?.addEventListener('click', closeForm);
+    container.querySelector('#msb-submit')?.addEventListener('click', submitPost);
 
     _listEl.addEventListener('click', async (e) => {
       const actionEl = e.target.closest('[data-action]');
@@ -480,7 +686,7 @@
         toggleComments(postId);
       } else if (action === 'send-comment') {
         e.preventDefault();
-        const input = _listEl.querySelector(`.comment-input[data-post-id="${postId}"]`);
+        const input = _listEl.querySelector(`.msb-comment-input[data-post-id="${postId}"]`);
         if (input) {
           const body = input.value.trim();
           if (body) {
@@ -491,10 +697,21 @@
       }
     });
 
-    switchStatus('open');
-  }
+    _listEl.addEventListener('keydown', async (e) => {
+      if (e.key !== 'Enter') return;
+      const input = e.target.closest('.msb-comment-input');
+      if (!input) return;
+      e.preventDefault();
+      const postId = input.dataset.postId;
+      const body = input.value.trim();
+      if (body) {
+        await addComment(postId, body);
+        input.value = '';
+      }
+    });
 
-  // ---------- export ----------
+    fetchPosts();
+  }
 
   global.GptCommunityBoard = { mount: mount };
 })(window);
