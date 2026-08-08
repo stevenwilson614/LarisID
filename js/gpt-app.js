@@ -3709,9 +3709,10 @@ let _calcFilled = false;
 let _calcProductKey = null; // item_id|shop_id of last calc prefill
 let _kompFetchToken = 0;
 let _serupaFetchToken = 0;
+let _keywordFetchToken = 0;
 
 function normalizeSideMode(mode) {
-  if (mode === 'kompetitor' || mode === 'serupa' || mode === 'ai') return mode;
+  if (mode === 'kompetitor' || mode === 'serupa' || mode === 'ai' || mode === 'keyword') return mode;
   // 'supplier' is gated — never restore into it once the probe is switched off,
   // or a saved pref could strand a normal user on a blank panel.
   if (mode === 'supplier' && supplierProbeVisible()) return 'supplier';
@@ -3724,6 +3725,7 @@ function sideModeLabel(mode) {
   if (m === 'kompetitor') return 'Kompetitor';
   if (m === 'serupa') return 'Produk serupa';
   if (m === 'supplier') return 'Cari Supplier';
+  if (m === 'keyword') return 'Keyword';
   return 'Kalkulator profit';
 }
 
@@ -3776,11 +3778,13 @@ function setSideModeUi(mode) {
   const kompBody = $('side-body-komp');
   const serupaBody = $('side-body-serupa');
   const supBody = $('side-body-supplier');
+  const keywordBody = $('side-body-keyword');
   if (aiBody) aiBody.hidden = _sideMode !== 'ai';
   if (kalcBody) kalcBody.hidden = _sideMode !== 'kalkulator';
   if (kompBody) kompBody.hidden = _sideMode !== 'kompetitor';
   if (serupaBody) serupaBody.hidden = _sideMode !== 'serupa';
   if (supBody) supBody.hidden = _sideMode !== 'supplier';
+  if (keywordBody) keywordBody.hidden = _sideMode !== 'keyword';
   const supTab = $('side-tab-supplier');
   if (supTab) supTab.hidden = !supplierProbeVisible();
 }
@@ -3915,6 +3919,43 @@ async function fillKompContent(opts = {}) {
     ${ddKompetitorTableHtml(share, { moreId: 'side-komp-more' })}
   `;
   wireKompPanelBody(body, peers || []);
+}
+
+async function fillKeywordContent(opts = {}) {
+  const body = $('side-body-keyword');
+  if (!body) return;
+  const product = opts.product || resolveSideProduct();
+  if (!product) {
+    setSideContext('');
+    body.innerHTML = '<p class="side-empty">Buka produk atau pasar dulu untuk lihat data keyword.</p>';
+    return;
+  }
+  const label = (product._ptype ? typeTitle(product.keyword) : (product.product_name || product.keyword || '')).slice(0, 80);
+  setSideContext(label);
+
+  let peers = opts.peers || resolveSidePeers(product);
+  if (!peers?.length) {
+    const token = ++_keywordFetchToken;
+    body.innerHTML = '<p class="side-empty">Memuat data keyword…</p>';
+    peers = await fetchSidePeers(product);
+    if (token !== _keywordFetchToken || _sideMode !== 'keyword') return;
+  }
+
+  const kwRows = ddKeywordRows(peers || []);
+  const kw = product.keyword || '—';
+  body.innerHTML = `
+    <p class="side-komp-lead">Variasi keyword di sekitar “${esc(kw)}” — dari sampel listing yang sama.</p>
+    ${ddKeywordTableHtml(kwRows, (peers || []).length)}
+  `;
+  // ddKeywordTableHtml's sparklines need history data, which the deep dive's
+  // own chart pass (drawn against #deepdive-root) never reaches — this panel
+  // is a separate subtree, so draw them here from the same _dd.history cache.
+  const history = _dd?.history || [];
+  body.querySelectorAll('canvas[data-spark]').forEach(cv => {
+    const kwName = (cv.getAttribute('data-spark') || '').toLowerCase();
+    const s = ddWeeklySeries(history.filter(r => (r.keyword || '').trim().toLowerCase() === kwName));
+    drawSpark(cv, s.map(w => w.units));
+  });
 }
 
 function similarPeersForProduct(product, peers) {
@@ -4124,12 +4165,13 @@ function refreshOpenSidePanel(opts = {}) {
   else if (_sideMode === 'kompetitor') void fillKompContent(opts);
   else if (_sideMode === 'serupa') void fillSerupaContent(opts);
   else if (_sideMode === 'supplier') void fillSupplierContent(opts);
+  else if (_sideMode === 'keyword') void fillKeywordContent(opts);
   else fillCalcContent({ ...opts, force: true });
 }
 
 function openSidePanel(mode, opts = {}) {
   const panel = $('calc-panel');
-  if (!panel || !$('side-body-kalc') || !$('side-body-komp') || !$('side-body-serupa') || !$('side-body-supplier')) return;
+  if (!panel || !$('side-body-kalc') || !$('side-body-komp') || !$('side-body-serupa') || !$('side-body-supplier') || !$('side-body-keyword')) return;
   const next = normalizeSideMode(mode);
   const wasOpen = document.body.classList.contains('calc-open');
   const switching = wasOpen && _sideMode !== next;
@@ -4148,6 +4190,7 @@ function openSidePanel(mode, opts = {}) {
   else if (next === 'kalkulator') fillCalcContent(opts);
   else if (next === 'serupa') void fillSerupaContent(opts);
   else if (next === 'supplier') void fillSupplierContent(opts);
+  else if (next === 'keyword') void fillKeywordContent(opts);
   else void fillKompContent(opts);
 
   saveSidePrefs({ open: true, dismissed: false, mode: next });
@@ -4166,6 +4209,7 @@ function openAiPanel(opts = {}) { openSidePanel('ai', opts); }
 function openCalcPanel(opts = {}) { openSidePanel('kalkulator', opts); }
 function openKompPanel(opts = {}) { openSidePanel('kompetitor', opts); }
 function openSerupaPanel(opts = {}) { openSidePanel('serupa', opts); }
+function openKeywordPanel(opts = {}) { openSidePanel('keyword', opts); }
 
 function closeCalcPanel() {
   document.body.classList.remove('calc-open');
@@ -7621,6 +7665,7 @@ function ddToolPillsHtml(product) {
     <button type="button" class="ddr-tool-pill" data-ddr-tool="kalkulator">Kalkulator</button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="kompetitor">Kompetitor</button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="serupa">Serupa</button>
+    <button type="button" class="ddr-tool-pill" data-ddr-tool="keyword">Keyword</button>
     <button type="button" class="ddr-tool-pill" data-ddr-tool="biaya">Biaya</button>
     ${supplier}
   </div>`;
@@ -7696,6 +7741,27 @@ function ddFeesSectionHtml(product) {
       <div>Belum termasuk <b>modal produk, ongkir, biaya iklan</b>, &amp; <b>PPh Final 0,5%</b> (pajak penghasilan UMKM, berlaku di semua platform). Biaya proses pesanan (Rp/order) ditampilkan terpisah agar tidak membesar jadi persentase di produk murah. Angka adalah <b>perkiraan per ${ECOM_FEE_UPDATED}</b> — tarif tiap platform berubah sewaktu-waktu &amp; bergantung tipe penjual, kategori spesifik, dan program yang diikuti. Selalu cek halaman resmi tiap platform untuk angka final.</div>
     </div>
   </div>`;
+}
+
+/** Collapsed teaser for the full fee breakdown — the always-visible ddr-mp
+ * strip above already gives an at-a-glance comparison; this stays collapsed
+ * until clicked so the per-platform row detail doesn't dump onto every visit. */
+function ddFeesCollapsedHtml() {
+  return `<div class="ddr-fees-section" data-dd-sec="biaya">
+    <button type="button" class="ddr-fees-reveal" id="ddr-fees-reveal-btn">
+      <span>Lihat Rincian Biaya per Marketplace</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+  </div>`;
+}
+
+/** Swap the collapsed teaser for the real breakdown — idempotent (a second
+ * call after reveal is a no-op) so both the pill click and the reveal
+ * button's own click can call it safely. */
+function revealDdrFees(product) {
+  const el = document.querySelector('[data-dd-sec="biaya"].ddr-fees-section');
+  if (!el || !document.getElementById('ddr-fees-reveal-btn')) return;
+  el.outerHTML = ddFeesSectionHtml(product);
 }
 
 function ddAiRecLabel(scoreInfo) {
@@ -8148,6 +8214,7 @@ function runDdrTool(tool, product, peers, via) {
       if (p) void openDeepDive(p);
       return;
     }
+    revealDdrFees(p);
     scrollDdrTo('[data-dd-sec="biaya"]') || scrollDdrTo('.ddr-mp');
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'biaya', via: via || 'click', keyword: p?.keyword || '' });
     return;
@@ -8171,6 +8238,11 @@ function runDdrTool(tool, product, peers, via) {
   if (tool === 'serupa') {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'serupa_panel', via: via || 'click', keyword: p.keyword || '' });
     openSerupaPanel({ product: p, peers: peerList, via: via || 'deepdive' });
+    return;
+  }
+  if (tool === 'keyword') {
+    void logUserEvent('deepdive_section', { ui: 'gpt', section: 'keyword_panel', via: via || 'click', keyword: p.keyword || '' });
+    openKeywordPanel({ product: p, peers: peerList, via: via || 'deepdive' });
     return;
   }
   if (tool === 'supplier') {
@@ -8448,9 +8520,6 @@ async function openDeepDive(product, ddOpts = {}) {
   } catch (_) {}
 
   root.innerHTML = `
-    <div class="dd-head" style="margin-bottom:12px">
-      <button type="button" class="btn-ghost" id="dd-back" style="margin:0">Kembali ke chat</button>
-    </div>
     <div class="ddr-header" data-dd-sec="skor">
       <div class="ddr-media">
         ${ddHeaderMediaHtml(product, peers)}
@@ -8541,16 +8610,13 @@ async function openDeepDive(product, ddOpts = {}) {
       </div>
       ${ddKompetitorTableHtml(share)}
     </div>
-    ${ddFeesSectionHtml(product)}
+    ${ddFeesCollapsedHtml()}
     <div class="ddr-bottom-space" aria-hidden="true"></div>
   `;
 
-  $('dd-back')?.addEventListener('click', () => {
-    setView('chat');
-    renderChatThread();
-    const card = document.querySelector(`#chat-thread [data-dd-card="${prodKey(product)}"]`);
-    if (card) scrollToContentStart(card);
-    else scrollPanelToTop();
+  $('ddr-fees-reveal-btn')?.addEventListener('click', () => {
+    void logUserEvent('deepdive_section', { ui: 'gpt', section: 'biaya', via: 'click', keyword: kw || '' });
+    revealDdrFees(product);
   });
   $('ddr-komp-panel')?.addEventListener('click', () => {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'kompetitor_panel', via: 'click', keyword: kw || '' });
@@ -9275,7 +9341,8 @@ async function handleComposerSubmit(text) {
   }
 
   // Rebuild thread when leaving DD so the Deep Dive chat card is visible
-  // before the new user turn (composer leave does not call dd-back).
+  // before the new user turn (typing in the composer leaves DD without going
+  // through any explicit "back" action).
   if (leavingDeepdive) renderChatThread();
 
   appendBubble('user', `<p>${esc(text)}</p>`);

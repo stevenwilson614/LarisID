@@ -1847,6 +1847,17 @@ body.home-finder-done .home-title {
 .ddr-fee-total-amt { text-align: right; white-space: nowrap; }
 .ddr-fee-total-val { font-size: .78rem; font-weight: 800; color: var(--accent); }
 .ddr-fee-note { font-size: .62rem; color: var(--muted); margin-top: 8px; font-style: italic; line-height: 1.4; }
+/* Collapsed teaser — full breakdown only renders once clicked (see ddr-mp
+   strip above for the always-visible at-a-glance comparison). */
+.ddr-fees-reveal {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; padding: 12px 16px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--bg-side, #fff);
+  font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink);
+  cursor: pointer;
+}
+.ddr-fees-reveal svg { flex-shrink: 0; color: var(--muted); }
+.ddr-fees-reveal:hover { border-color: var(--accent, #B5202A); }
 .ddr-fee-src { font-size: .58rem; color: var(--muted); margin-top: 8px; }
 .ddr-fees-disclaimer {
   display: flex; align-items: flex-start; gap: 8px;
@@ -3094,6 +3105,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
           <button type="button" class="side-tab active" role="tab" id="side-tab-kalc" data-side-mode="kalkulator" aria-selected="true">Kalkulator</button>
           <button type="button" class="side-tab" role="tab" id="side-tab-komp" data-side-mode="kompetitor" aria-selected="false">Kompetitor</button>
           <button type="button" class="side-tab" role="tab" id="side-tab-serupa" data-side-mode="serupa" aria-selected="false">Serupa</button>
+          <button type="button" class="side-tab" role="tab" id="side-tab-keyword" data-side-mode="keyword" aria-selected="false">Keyword</button>
           <button type="button" class="side-tab" role="tab" id="side-tab-supplier" data-side-mode="supplier" aria-selected="false" hidden>Supplier</button>
         </div>
       </div>
@@ -3106,6 +3118,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
     <div class="calc-body" id="side-body-kalc"></div>
     <div class="calc-body" id="side-body-komp" hidden></div>
     <div class="calc-body" id="side-body-serupa" hidden></div>
+    <div class="calc-body" id="side-body-keyword" hidden></div>
     <div class="calc-body" id="side-body-supplier" hidden></div>
   </aside>
 </div>
