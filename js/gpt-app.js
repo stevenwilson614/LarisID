@@ -1008,13 +1008,6 @@ const PROVINCE_CITIES = {
 // Landing finder defaults / quick chips
 const FINDER_DEFAULT_CITY = 'Bandung';
 const FINDER_DEFAULT_CAT = 'Olahraga';
-const FINDER_CAT_CHIPS = [
-  { label: 'Olahraga', cat: 'Olahraga' },
-  { label: 'Rumah', cat: 'Rumah' },
-  { label: 'Kecantikan', cat: 'Kecantikan' },
-  { label: 'Dapur', cat: 'Dapur' },
-  { label: 'Bayi', cat: 'Bayi & Anak' },
-];
 const FINDER_BUDGETS = [
   { id: 'lt1jt', label: '<1jt', min: 0, max: 1000000 },
   { id: '1jt_10jt', label: '1jt – 10jt', min: 1000000, max: 10000000 },
@@ -1028,7 +1021,7 @@ const FINDER_STATE_KEY = '_lid_gpt_finder_v1';
 let _finderGeoTried = false;
 let _finder = {
   city: FINDER_DEFAULT_CITY,
-  category: FINDER_DEFAULT_CAT,
+  categories: [FINDER_DEFAULT_CAT],
   budget: '1jt_10jt',
   experience: 'first_time',
 };
@@ -2352,7 +2345,8 @@ async function _authOnSignIn(session) {
 async function resumeFinderAfterSignin(pf) {
   try {
     if (pf.city) _finder.city = pf.city;
-    if (pf.category) _finder.category = pf.category;
+    if (Array.isArray(pf.categories) && pf.categories.length) _finder.categories = pf.categories.slice();
+    else if (pf.category) _finder.categories = [pf.category];
     if (pf.budget) _finder.budget = pf.budget;
     if (pf.experience) _finder.experience = pf.experience;
     saveFinderState();
@@ -2796,51 +2790,6 @@ function submitFromHome(text) {
   void handleComposerSubmit(text);
 }
 
-// ── Rekomendasi Steven ────────────────────────────────────────────────────
-// Weekly, shared-per-city picks of products new sellers are actually succeeding
-// with, from mv_city_weekly_recs. Same list for everyone in a city — that is
-// what makes it "Steven's pick" rather than a personalised feed.
-let _stevenRecsCity = null;
-
-async function renderStevenRecs() {
-  const sec = document.getElementById('steven-recs');
-  const grid = document.getElementById('steven-recs-grid');
-  if (!sec || !grid || !_supabase) return;
-
-  // CITY_LOCATIONS keys are the canonical buckets, matching city_location_map.
-  const city = _finder.city && CITY_LOCATIONS[_finder.city] ? _finder.city : null;
-  if (!city) { sec.style.display = 'none'; return; }
-  if (_stevenRecsCity === city && grid.children.length) { sec.style.display = ''; return; }
-
-  try {
-    const { data } = await _supabase.from('mv_city_weekly_recs')
-      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,age_days,sold_per_day,rn,week_start')
-      .eq('city', city)
-      .order('rn', { ascending: true })
-      .limit(20);
-    const rows = data || [];
-    if (!rows.length) { sec.style.display = 'none'; return; }
-
-    const types = await typesForListings(rows.map(asListingProduct), city, 9);
-    if (!types.length) { sec.style.display = 'none'; return; }
-
-    _stevenRecsCity = city;
-    const title = document.getElementById('steven-recs-title');
-    const sub = document.getElementById('steven-recs-sub');
-    if (title) title.textContent = `Rekomendasi Steven · ${city}`;
-    if (sub) {
-      sub.textContent = `${types.length} pasar yang lagi jalan buat penjual baru di ${city} — dari listing baru (di bawah 4 bulan) yang sudah tembus 100+ terjual. Daftar ini ganti tiap minggu.`;
-    }
-    grid.innerHTML = marketCardsHtml(types);
-    bindTypeCards(grid);
-    sec.style.display = '';
-    void logUserEvent('steven_recs_view', { ui: 'gpt', city, count: types.length, level: 'pasar' });
-    clarityEvt('steven_recs_view', { city });
-  } catch (_) {
-    sec.style.display = 'none';
-  }
-}
-
 function renderHome() {
   _offerActive = false;
   setView('home');
@@ -2849,11 +2798,6 @@ function renderHome() {
   renderChatList();
   wireHomeFinder();
   updateHomeFinderVisibility();
-  // Recs are not part of the finder. Hiding the Kota/kategori picker is about
-  // stopping people from using it as a search box; the city recommendations are
-  // cards that open a deep dive, which is exactly where we want them to go. They
-  // stay for returning users (renderStevenRecs hides itself when no city is set).
-  void renderStevenRecs();
 
   if (!renderHome._seen) {
     renderHome._seen = true;
@@ -2867,7 +2811,11 @@ function loadFinderState() {
     const cur = JSON.parse(localStorage.getItem(FINDER_STATE_KEY) || 'null');
     if (cur && typeof cur === 'object') {
       if (cur.city) _finder.city = cur.city;
-      if (cur.category) _finder.category = cur.category;
+      // Accept both shapes: `categories` (array, current) and the older
+      // single `category` string, so a browser with a pre-existing saved
+      // finder state doesn't lose its pick after this update ships.
+      if (Array.isArray(cur.categories) && cur.categories.length) _finder.categories = cur.categories.slice();
+      else if (cur.category) _finder.categories = [cur.category];
       if (cur.budget && FINDER_BUDGETS.some(b => b.id === cur.budget)) _finder.budget = cur.budget;
       if (cur.experience) _finder.experience = cur.experience;
     }
@@ -2875,7 +2823,7 @@ function loadFinderState() {
   // Prefer completed onboarding prefs when present
   const o = state.onboarding || {};
   if (o.city) _finder.city = o.city;
-  if (o.categories?.[0]) _finder.category = o.categories[0];
+  if (o.categories?.length) _finder.categories = o.categories.slice();
   if (o.experience) _finder.experience = o.experience;
 }
 
@@ -2891,14 +2839,14 @@ function saveFinderState() {
 
 /** True once every finder question has an answer. */
 function finderIsComplete() {
-  return !!(_finder && _finder.city && _finder.category && _finder.budget && _finder.experience);
+  return !!(_finder && _finder.city && _finder.categories && _finder.categories.length && _finder.budget && _finder.experience);
 }
 
 function syncFinderToOnboarding() {
   if (!finderIsComplete()) return;
   const o = state.onboarding;
   o.city = _finder.city;
-  o.categories = [_finder.category];
+  o.categories = _finder.categories.slice();
   o.experience = _finder.experience;
   o.budget = _finder.budget;
   // Don't mark step 'done' here — that happens when they press Temukan
@@ -2968,14 +2916,21 @@ function finderBudgetCfg(id) {
   return FINDER_BUDGETS.find(b => b.id === id) || FINDER_BUDGETS[FINDER_BUDGETS.length - 1];
 }
 
+function finderCatTriggerLabel() {
+  const cats = _finder.categories || [];
+  if (!cats.length) return 'Pilih kategori';
+  if (cats.length === 1) return cats[0];
+  return `${cats[0]} +${cats.length - 1} lainnya`;
+}
+
 function syncFinderUi() {
   const citySel = $('finder-city');
-  const catSel = $('finder-cat');
   // Show what the user actually typed; _finder.city holds the resolved bucket.
   if (citySel) citySel.value = _finder.cityTyped || _finder.city || FINDER_DEFAULT_CITY;
-  if (catSel) catSel.value = NU_ONB_CATS.includes(_finder.category) ? _finder.category : FINDER_DEFAULT_CAT;
-  document.querySelectorAll('#finder-cat-pills .finder-pill').forEach(btn => {
-    btn.classList.toggle('on', btn.getAttribute('data-cat') === _finder.category);
+  const trigLabel = $('finder-cat-trigger-label');
+  if (trigLabel) trigLabel.textContent = finderCatTriggerLabel();
+  document.querySelectorAll('#finder-cat-popup-list .finder-cat-opt input[type=checkbox]').forEach(cb => {
+    cb.checked = (_finder.categories || []).includes(cb.value);
   });
   document.querySelectorAll('#finder-budget-pills .finder-pill').forEach(btn => {
     btn.classList.toggle('on', btn.getAttribute('data-budget') === _finder.budget);
@@ -3054,38 +3009,61 @@ function wireHomeFinder() {
     note.textContent = `Belum ada data untuk ${res.typed} — pakai kota terdekat: ${res.bucket}${km}.`;
   }
 
-  const catSel = $('finder-cat');
-  if (catSel && !catSel.dataset.ready) {
-    catSel.dataset.ready = '1';
-    catSel.innerHTML = NU_ONB_CATS.map(c =>
-      `<option value="${esc(c)}">${esc(c)}</option>`
-    ).join('');
-    catSel.addEventListener('focus', () => {
-      void logUserEvent('gpt_finder_category_interaction', { ui: 'gpt', action: 'focus' });
-    });
-    catSel.addEventListener('click', () => {
-      void logUserEvent('gpt_finder_category_interaction', { ui: 'gpt', action: 'open' });
-    });
-    catSel.addEventListener('change', () => {
-      _finder.category = catSel.value || FINDER_DEFAULT_CAT;
-      saveFinderState();
-      syncFinderUi();
-      void logUserEvent('gpt_finder_category_interaction', { ui: 'gpt', action: 'change', category: _finder.category });
-    });
-  }
+  // Multi-select category popup: a trigger button opens a checkbox list;
+  // closes on click-away, Escape, or the Selesai button. _finder.categories
+  // is the array of currently-checked values.
+  const catPicker = $('finder-cat-picker');
+  const catTrigger = $('finder-cat-trigger');
+  const catPopup = $('finder-cat-popup');
+  const catList = $('finder-cat-popup-list');
+  const catDone = $('finder-cat-popup-done');
+  if (catPicker && catTrigger && catPopup && !catPicker.dataset.ready) {
+    catPicker.dataset.ready = '1';
 
-  const catPills = $('finder-cat-pills');
-  if (catPills && !catPills.dataset.ready) {
-    catPills.dataset.ready = '1';
-    catPills.innerHTML = FINDER_CAT_CHIPS.map(c =>
-      `<button type="button" class="finder-pill" data-cat="${esc(c.cat)}">${esc(c.label)}</button>`
-    ).join('');
-    catPills.querySelectorAll('[data-cat]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        _finder.category = btn.getAttribute('data-cat');
-        saveFinderState();
-        syncFinderUi();
+    const openPopup = () => {
+      catPopup.hidden = false;
+      catPicker.classList.add('open');
+      catTrigger.setAttribute('aria-expanded', 'true');
+      void logUserEvent('gpt_finder_category_interaction', { ui: 'gpt', action: 'open' });
+    };
+    const closePopup = () => {
+      catPopup.hidden = true;
+      catPicker.classList.remove('open');
+      catTrigger.setAttribute('aria-expanded', 'false');
+    };
+
+    if (catList) {
+      catList.innerHTML = NU_ONB_CATS.map(c => `
+        <label class="finder-cat-opt">
+          <input type="checkbox" value="${esc(c)}">
+          <span>${esc(c)}</span>
+        </label>
+      `).join('');
+      catList.querySelectorAll('input[type=checkbox]').forEach(cb => {
+        cb.addEventListener('change', () => {
+          const set = new Set(_finder.categories || []);
+          if (cb.checked) set.add(cb.value); else set.delete(cb.value);
+          // Never allow every category to be de-selected — fall back to the
+          // default rather than leaving the finder in an unsearchable state.
+          _finder.categories = set.size ? Array.from(set) : [FINDER_DEFAULT_CAT];
+          if (!set.size) cb.checked = (cb.value === FINDER_DEFAULT_CAT);
+          saveFinderState();
+          syncFinderUi();
+          void logUserEvent('gpt_finder_category_interaction', { ui: 'gpt', action: 'change', categories: _finder.categories.join(', ') });
+        });
       });
+    }
+
+    catTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (catPopup.hidden) openPopup(); else closePopup();
+    });
+    catDone?.addEventListener('click', (e) => { e.stopPropagation(); closePopup(); });
+    document.addEventListener('click', (e) => {
+      if (!catPopup.hidden && !catPicker.contains(e.target)) closePopup();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !catPopup.hidden) closePopup();
     });
   }
 
@@ -3156,9 +3134,9 @@ function priceInBudget(p, bud) {
   return true;
 }
 
-async function collectFinderProducts({ city, category, budgetId, limit = 60 }) {
+async function collectFinderProducts({ city, categories, budgetId, limit = 60 }) {
   const locs = expandCityLocations(city);
-  const cats = category ? [category] : [];
+  const cats = Array.isArray(categories) ? categories.filter(Boolean) : (categories ? [categories] : []);
   const bud = finderBudgetCfg(budgetId);
   let pool = [];
 
@@ -3208,7 +3186,7 @@ async function runFinderSearch() {
 
     // Persist into onboarding so directory / recs stay aligned
     state.onboarding.city = _finder.city;
-    state.onboarding.categories = [_finder.category];
+    state.onboarding.categories = _finder.categories.slice();
     state.onboarding.experience = _finder.experience;
     state.onboarding.step = 'done';
     state.onboarding.completedAnon = !currentUser;
@@ -3218,9 +3196,10 @@ async function runFinderSearch() {
     renderSidebarLocCard();
 
     const bud = finderBudgetCfg(_finder.budget);
+    const catLabel = _finder.categories.join(', ');
     const label = [
       _finder.city,
-      _finder.category,
+      catLabel,
       bud.label,
       _finder.experience === 'existing' ? 'berpengalaman' : 'penjual baru',
     ].join(' · ');
@@ -3235,7 +3214,7 @@ async function runFinderSearch() {
 
     const rows = await collectFinderProducts({
       city: _finder.city,
-      category: _finder.category,
+      categories: _finder.categories,
       budgetId: _finder.budget,
       limit: 60,
     });
@@ -3244,7 +3223,7 @@ async function runFinderSearch() {
     state.recommendations = [];
 
     const html = types.length
-      ? `<p>${types.length} pasar untuk <strong>${esc(_finder.category)}</strong> di sekitar <strong>${esc(_finder.city)}</strong> (modal ${esc(bud.label)}). Klik kartu untuk Deep Dive pasar.</p>
+      ? `<p>${types.length} pasar untuk <strong>${esc(catLabel)}</strong> di sekitar <strong>${esc(_finder.city)}</strong> (modal ${esc(bud.label)}). Klik kartu untuk Deep Dive pasar.</p>
          <div class="card-grid">${marketCardsHtml(types)}</div>`
       : `<p>Belum ketemu pasar yang cocok. Coba ganti kategori atau kota, atau ketik pencarian di bawah.</p>`;
     await revealAssistant(loading, html, { instant: true });
@@ -3253,12 +3232,12 @@ async function runFinderSearch() {
     void logUserEvent('gpt_finder_search', {
       ui: 'gpt',
       city: _finder.city,
-      category: _finder.category,
+      categories: catLabel,
       budget: _finder.budget,
       experience: _finder.experience,
       count: products.length,
     });
-    clarityEvt('gpt_finder_search', { category: _finder.category });
+    clarityEvt('gpt_finder_search', { categories: catLabel });
     funnelStep('first_search', { source: 'finder' });
 
     // Payoff moment, mirroring A's onboarding auto-deep-dive: don't just list
@@ -3432,7 +3411,7 @@ async function savePrefsDrawer() {
   o.completedAnon = !currentUser;
   // Keep landing finder aligned with what they just saved.
   if (o.city) _finder.city = o.city;
-  if (o.categories[0]) _finder.category = o.categories[0];
+  if (o.categories.length) _finder.categories = o.categories.slice();
   if (o.experience) _finder.experience = o.experience;
   saveFinderState();
   saveLocalState();
@@ -6822,11 +6801,14 @@ async function openChat(id) {
   // Legacy finder chats (4-question flow) may exist without persisted messages.
   // Rehydrate from context so opening history never renders blank.
   if (chat && (!chat.messages || !chat.messages.length) && chat.context?.kind === 'finder'
-    && chat.context?.city && chat.context?.category) {
+    && chat.context?.city && (chat.context?.category || chat.context?.categories?.length)) {
     try {
+      // chat.context.category(ies): old persisted chats saved a single string
+      // under `category`; newer ones may carry `categories` (array). Accept
+      // either so history from before the multi-select finder still rehydrates.
       const rows = await collectFinderProducts({
         city: chat.context.city,
-        category: chat.context.category,
+        categories: chat.context.categories || (chat.context.category ? [chat.context.category] : []),
         budgetId: chat.context.budget || '1jt_10jt',
         limit: 60,
       });
