@@ -10213,6 +10213,34 @@ async function renderSubcats(cat) {
 }
 
 // Rebuild the Kota options from the active Provinsi (all cities when none).
+/** "Yang Laku Kotamu" quick city switcher — same state/render path as the
+ * Kota <select>, just faster to reach than opening a dropdown. */
+function renderDirCityChips() {
+  const wrap = $('dir-city-chips');
+  if (!wrap) return;
+  const cities = state.dirProv ? (PROVINCE_CITIES[state.dirProv] || []) : NU_ONB_LOCATIONS;
+  wrap.innerHTML = `<button type="button" class="chip${state.dirCity ? '' : ' selected'}" data-dcity="">Semua kota</button>` +
+    cities.map(c => `<button type="button" class="chip${state.dirCity === c ? ' selected' : ''}" data-dcity="${esc(c)}">${esc(c)}</button>`).join('');
+  wrap.querySelectorAll('[data-dcity]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.dirCity = btn.getAttribute('data-dcity') || '';
+      state.dirPage = 1;
+      const citySel = $('dir-city');
+      if (citySel) citySel.value = state.dirCity;
+      updateDirHeading();
+      renderDirCityChips();
+      void logUserEvent('dir_filter', { ui: 'gpt', kind: 'city', value: state.dirCity, via: 'chip' });
+      void renderDirectory();
+    });
+  });
+}
+
+function updateDirHeading() {
+  const h = $('dir-heading');
+  if (!h) return;
+  h.textContent = state.dirCity ? `Yang Laku di ${state.dirCity}` : 'Tipe Produk';
+}
+
 function fillDirCityOptions() {
   const citySel = $('dir-city');
   if (!citySel) return;
@@ -10275,6 +10303,8 @@ async function openDirectory() {
       const allowed = state.dirProv ? PROVINCE_CITIES[state.dirProv] || [] : NU_ONB_LOCATIONS;
       if (state.dirCity && !allowed.includes(state.dirCity)) state.dirCity = '';
       fillDirCityOptions();
+      renderDirCityChips();
+      updateDirHeading();
       state.dirPage = 1;
       void logUserEvent('dir_filter', { ui: 'gpt', kind: 'province', value: state.dirProv });
       void renderDirectory();
@@ -10289,6 +10319,8 @@ async function openDirectory() {
     citySel.addEventListener('change', () => {
       state.dirCity = citySel.value || '';
       state.dirPage = 1;
+      renderDirCityChips();
+      updateDirHeading();
       void logUserEvent('dir_filter', { ui: 'gpt', kind: 'city', value: state.dirCity });
       void renderDirectory();
     });
@@ -10296,6 +10328,8 @@ async function openDirectory() {
     fillDirCityOptions();
   }
   if (citySel) citySel.value = state.dirCity || '';
+  renderDirCityChips();
+  updateDirHeading();
 
   const sortSel = $('dir-sort');
   if (sortSel && !sortSel.dataset.ready) {

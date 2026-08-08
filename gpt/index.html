@@ -864,7 +864,12 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 }
 .dir-compare-text strong { color: var(--ink); font-weight: 650; }
 .dir-compare-text em { font-style: normal; font-weight: 600; color: var(--ink); }
-.dir-cats { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 10px; }
+.dir-cats, .dir-city-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 10px; }
+.dir-city-chips .chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 12px; font-size: .75rem; font-weight: 450;
+  letter-spacing: -.005em;
+}
 .dir-cat-bar { margin: 14px 0 10px; }
 .dir-cat-bar .dir-cats { margin: 0; }
 .dir-cat-bar .dir-subcats { margin-top: 8px; }
@@ -2962,9 +2967,10 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
         </div>
         <div class="view" id="view-directory">
           <div class="dir-head">
-            <h2>Tipe Produk</h2>
+            <h2 id="dir-heading">Tipe Produk</h2>
             <p class="dd-sub">Satu kartu = satu jenis produk, dirangkum dari seluruh penjualnya di Shopee — bukan hasil AI. Filter bebas; halaman 2+ dan Deep Dive perlu login.</p>
           </div>
+          <div class="dir-city-chips" id="dir-city-chips"></div>
           <div class="dir-compare-banner" id="dir-compare-banner" hidden></div>
           <div class="dir-cat-bar" id="dir-cat-bar">
             <div class="dir-cats" id="dir-cats"></div>
