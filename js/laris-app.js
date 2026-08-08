@@ -5922,6 +5922,7 @@ function switchDashView(view) {
   }
   // YLK ("Yang Laku dari Kotamu") now lives on the Dashboard — init it when shown.
   if (view === 'dashboard') { try { if (typeof ylkInit === 'function') { ylkInit(); void ylkEnsureRegion(); } } catch (_) {} }
+  if (view === 'dashboard') { try { ltrMount(); } catch (_) {} }
   if (view === 'discover') { try { lcpMount(); } catch (_) {} }
   if (view === 'credits') { try { crLoadReferral(); } catch (_) {} }
 
@@ -15836,6 +15837,41 @@ function lfdReplayPending() {
   let ans = null;
   try { ans = JSON.parse(localStorage.getItem(LFD_PENDING_KEY) || 'null'); } catch (_) {}
   if (ans && (ans.city || ans.category)) lfdApply(ans);
+}
+
+// ── Trending card ─────────────────────────────────────────────────────────────
+// Ported from Site B verbatim math (growth is baseline-relative, not WoW — the
+// scrape cadence can't support true week-over-week for most rows). Lives on the
+// Dashboard, right after "Yang Laku dari Kotamu".
+let _ltrAdapterObj = null;
+
+function ltrAdapter() {
+  if (_ltrAdapterObj) return _ltrAdapterObj;
+  _ltrAdapterObj = {
+    esc: wsdEsc,
+    fmtRp: _dscFmtRpFull,
+    fmtSold: (n) => fmtShort(n || 0),
+    track(evt, props) { try { logUserEvent(evt, Object.assign({ ui: 'A' }, props || {})); } catch (_) {} },
+    async fetchTrending() {
+      if (!_supabase) return [];
+      const { data, error } = await _supabase.from('mv_trending')
+        .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,delta_7d,delta_prev_7d,delta_14d,delta_prev_14d,delta_30d,anchor_at')
+        .order('delta_7d', { ascending: false })
+        .limit(300);
+      if (error) throw error;
+      return data || [];
+    },
+    openProduct(row) {
+      if (!row || !row.item_id) return;
+      try { dscOpenDeepDive(`${row.item_id}__${row.shop_id}`); } catch (_) {}
+    },
+  };
+  return _ltrAdapterObj;
+}
+
+function ltrMount() {
+  if (!window.LarisTrending || !document.getElementById('laris-trending-root')) return;
+  window.LarisTrending.mount({ hostId: 'laris-trending-root', site: 'a', adapter: ltrAdapter() });
 }
 
 function lcpMount() {

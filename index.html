@@ -209,6 +209,7 @@
 <link rel="stylesheet" href="/styles/laris-side-panel.css?v=20260807a">
 <link rel="stylesheet" href="/styles/laris-catpicker.css?v=20260807a">
 <link rel="stylesheet" href="/styles/laris-finder.css?v=20260807a">
+<link rel="stylesheet" href="/styles/laris-trending.css?v=20260808a">
 <style>
 /* Deep-dive tool pills — the entry points into the side panel. */
 .dd-tools{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;}
@@ -6788,6 +6789,11 @@ html,body{overflow-x:clip;max-width:100%;}
               <div class="ylk-empty" id="ylk-empty" style="display:none;"></div>
             </div>
 
+            <!-- Trending products, real WoW-style deltas from listings history.
+                 Ported from Site B: self-contained, one mv_trending fetch, tabs
+                 computed client-side, no re-query on tab switch. -->
+            <div id="laris-trending-root" style="margin-bottom:20px;"></div>
+
             <!-- New user: start here -->
             <div id="hbd-new-user-panel" class="nu-empty nu-empty-compact" style="display:none;">
               <div class="nu-empty-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
@@ -10111,6 +10117,7 @@ html,body{overflow-x:clip;max-width:100%;}
 <script defer src="/js/laris-side-panel.js?v=20260807a"></script>
 <script defer src="/js/laris-catpicker.js?v=20260807a"></script>
 <script defer src="/js/laris-finder.js?v=20260807a"></script>
+<script defer src="/js/laris-trending.js?v=20260808a"></script>
 <script defer src="/js/daily-spin-wheel.js?v=20260730g"></script>
 <script defer src="/js/laris-tracker.js?v=20260803a"></script>
 <script defer src="/js/laris-app.js?v=20260803a"></script>
