@@ -517,17 +517,18 @@
       return '<div class="ltk-sug"><div class="ltk-sug-note">Tidak ada yang cocok dengan "' +
         esc(sug.q) + '". Tekan Enter untuk pantau apa adanya.</div></div>';
     }
-    return '<div class="ltk-sug" role="listbox">' + sug.rows.map(function (r) {
-      var meta = [];
-      if (r.n_sellers) meta.push(r.n_sellers + ' penjual');
-      if (r.price_median) meta.push('median ' + fmtRp(r.price_median));
-      if (r.category) meta.push(r.category);
-      return '<button type="button" class="ltk-sug-opt" role="option" ' +
-        'data-ltk-sugpick="' + attr(r.keyword) + '" data-ltk-sugcat="' + attr(r.category || '') + '">' +
-        '<span class="ltk-sug-kw">' + esc(r.keyword) + '</span>' +
-        (meta.length ? '<span class="ltk-sug-meta">' + esc(meta.join(' · ')) + '</span>' : '') +
-        '</button>';
-    }).join('') + '</div>';
+    return '<div class="ltk-sug ltk-sug--cards" role="listbox">' +
+      '<div class="ltk-sug-grid">' + sug.rows.map(function (r) {
+        var meta = [];
+        if (r.n_sellers) meta.push(fmtUnits(r.n_sellers) + ' penjual');
+        if (r.price_median) meta.push('median ' + fmtRp(r.price_median));
+        return '<button type="button" class="ltk-sug-card" role="option" ' +
+          'data-ltk-sugpick="' + attr(r.keyword) + '" data-ltk-sugcat="' + attr(r.category || '') + '">' +
+          imgOr(r.rep_image_url || r.image_url || '', 'ltk-sug-card-img') +
+          '<span class="ltk-sug-kw">' + esc(r.keyword) + '</span>' +
+          (meta.length ? '<span class="ltk-sug-meta">' + esc(meta.join(' · ')) + '</span>' : '') +
+          '</button>';
+      }).join('') + '</div></div>';
   }
 
   function storeCatSelectHtml() {
@@ -702,8 +703,12 @@
     draft.picked.forEach(function (k) {
       var err = draft.errors[k.keyword];
       var seeded = draft.seed && String(draft.seed.keyword || '').toLowerCase() === String(k.keyword).toLowerCase();
+      var thumb = k.image_url
+        ? '<img class="ltk-slot-ico" src="' + attr(k.image_url) + '" alt="" loading="lazy" decoding="async" ' +
+          'referrerpolicy="no-referrer" onerror="this.remove()">'
+        : catIconHtml(k.category, 26).replace('ltk-cat-ico', 'ltk-slot-ico');
       slots += '<li class="ltk-slot ltk-slot--filled' + (err ? ' ltk-slot--err' : '') + '">' +
-        catIconHtml(k.category, 26).replace('ltk-cat-ico', 'ltk-slot-ico') +
+        thumb +
         '<span class="ltk-slot-body"><span class="ltk-slot-kw">' + esc(k.keyword) +
           (seeded ? '<span class="ltk-seedtag">dari produk yang kamu buka</span>' : '') + '</span>' +
         '<span class="ltk-slot-meta">' + esc(err || k.meta || k.category || 'Dipantau tiap pagi') + '</span></span>' +
@@ -1847,6 +1852,7 @@
     draft.picked.push({
       keyword: name,
       category: cat || hit.category || draft.cat || '',
+      image_url: hit.rep_image_url || hit.image_url || hit.top_image || '',
       meta: hit.n_sellers ? hit.n_sellers + ' penjual' : '',
     });
     draft.sug = { slot: -1, q: '', rows: [], busy: false, kind: 'keyword' };

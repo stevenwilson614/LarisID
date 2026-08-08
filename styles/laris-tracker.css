@@ -684,6 +684,12 @@
   box-shadow: 0 12px 30px rgba(16, 24, 40, .14);
   padding: 5px; display: grid; gap: 1px; max-height: 280px; overflow-y: auto;
 }
+.ltk-sug--cards {
+  padding: 8px; max-height: 340px; min-width: min(100%, 320px);
+}
+.ltk-sug-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+}
 .ltk-sug-note { font-size: .72rem; color: #9CA3AF; padding: 9px 10px; line-height: 1.45; }
 .ltk-sug-opt {
   display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
@@ -691,8 +697,23 @@
   border-radius: 8px; padding: 8px 10px; cursor: pointer; width: 100%;
 }
 .ltk-sug-opt:hover { background: #F3F4F6; }
+.ltk-sug-card {
+  display: flex; flex-direction: column; align-items: stretch; gap: 5px;
+  font: inherit; text-align: left; background: #fff; border: 1px solid #E5E7EB;
+  border-radius: 10px; padding: 8px; cursor: pointer; width: 100%; min-width: 0;
+}
+.ltk-sug-card:hover { border-color: #B5202A; background: #FFFBFB; }
+.ltk-sug-card-img {
+  width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 7px;
+  background: #F3F4F6; display: block;
+}
 .ltk-sug-kw { font-size: .78rem; font-weight: 700; color: #1A1A1A; }
+.ltk-sug-card .ltk-sug-kw {
+  font-size: .72rem; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
 .ltk-sug-meta { font-size: .68rem; color: #9CA3AF; }
+.ltk-sug-card .ltk-sug-meta { font-size: .64rem; }
 .ltk-catsel { margin-left: auto; }
 
 /* ── Discover fall-through (shared by collecting + quiet) ──────────────── */

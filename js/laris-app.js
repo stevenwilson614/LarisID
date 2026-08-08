@@ -16028,7 +16028,7 @@ function trkAdapter() {
       if (!_supabase || !q) return [];
       let sel = _supabase
         .from('product_types_v')
-        .select('keyword,category,category_canonical,n_sellers,price_median,n_listings')
+        .select('keyword,category,category_canonical,n_sellers,price_median,n_listings,rep_image_url,total_sold_sum')
         .eq('city', 'ALL')
         .gte('n_listings', 3)
         .ilike('keyword', `%${q.slice(0, 40)}%`)
