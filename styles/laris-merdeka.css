@@ -117,19 +117,41 @@
 
 /* ---- 4. Site B August header banner ------------------------------ */
 /* Applied to .main-top (the bar right of the sidebar). Shows the top
-   decorative band of the Merdeka artwork for the whole month of August. */
+   decorative band of the Merdeka artwork for the whole month of August.
+   Soft white gradient at the bottom so the art fades into the page. */
 .main-top.mdk-header-bg {
   position: relative;
+  isolation: isolate;
   background-color: #fff;
-  background-image: url('/images/brand/merdeka-header-aug.jpg');
+  background-image:
+    linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0) 42%,
+      rgba(255, 255, 255, 0.55) 72%,
+      #ffffff 100%
+    ),
+    url('/images/brand/merdeka-header-aug.jpg');
   background-repeat: no-repeat;
-  background-position: center top;
-  background-size: cover;
-  border-bottom: 1px solid rgba(181, 32, 42, 0.14);
-  /* A touch taller so more of the banner art is visible without crowding. */
-  min-height: 64px;
-  padding-top: 12px;
-  padding-bottom: 12px;
+  background-position: center top, center top;
+  background-size: cover, cover;
+  border-bottom: none;
+  min-height: 76px;
+  padding-top: 16px;
+  padding-bottom: 20px;
+}
+
+/* Extra soft spill so the fade continues a bit into the content below. */
+.main-top.mdk-header-bg::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -18px;
+  height: 28px;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0));
 }
 
 /* Keep header controls readable over the busy banner art. */
@@ -138,14 +160,25 @@
 .main-top.mdk-header-bg .btn-user,
 .main-top.mdk-header-bg .menu-btn,
 .main-top.mdk-header-bg .usage-pill {
+  position: relative;
+  z-index: 2;
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
 
+.main-top.mdk-header-bg .main-top-left,
+.main-top.mdk-header-bg .main-top-auth,
+.main-top.mdk-header-bg .main-top-user {
+  position: relative;
+  z-index: 2;
+}
+
 @media (max-width: 640px) {
   .main-top.mdk-header-bg {
-    min-height: 56px;
-    background-position: 70% top;
+    min-height: 68px;
+    padding-top: 14px;
+    padding-bottom: 16px;
+    background-position: center top, 62% top;
   }
 }
