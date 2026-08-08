@@ -275,9 +275,11 @@ html.session-restoring body::after {
   padding: 6px 18px; border-bottom: 1px solid var(--line);
   background: var(--bg-side, #fff);
   z-index: 4;
+  overflow: visible;
 }
 .results-bar[hidden] { display: none; }
 .results-bar-search {
+  position: relative;
   flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px;
   padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); background: #fff;
   color: var(--muted, #888);
@@ -285,6 +287,27 @@ html.session-restoring body::after {
 .results-bar-search input {
   flex: 1; min-width: 0; border: none; outline: none; background: none;
   font: inherit; font-size: .84rem; color: var(--ink);
+}
+.results-bar-suggestions {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30;
+  background: #fff; border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.12); overflow: hidden;
+  max-height: 280px; overflow-y: auto; display: none;
+}
+.results-bar-suggestions.show { display: block; }
+.results-bar-suggestions[hidden] { display: none !important; }
+.results-bar-sugg-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; padding: 10px 14px; border: none; background: #fff;
+  text-align: left; font: inherit; font-size: .84rem; color: var(--ink); cursor: pointer;
+}
+.results-bar-sugg-item:hover,
+.results-bar-sugg-item.active { background: var(--bg-hover, #F5F5F4); }
+.results-bar-sugg-name mark {
+  background: transparent; color: var(--accent, #B5202A); font-weight: 700; padding: 0;
+}
+.results-bar-sugg-cat {
+  flex-shrink: 0; font-size: .7rem; font-weight: 550; color: var(--muted, #888);
 }
 @media (max-width: 640px) {
   .results-bar { padding: 6px 12px; }
@@ -864,30 +887,118 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 }
 .dir-compare-text strong { color: var(--ink); font-weight: 650; }
 .dir-compare-text em { font-style: normal; font-weight: 600; color: var(--ink); }
-.dir-cats, .dir-city-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 10px; }
+.dir-city-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 10px; }
 .dir-city-chips .chip {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 7px 12px; font-size: .75rem; font-weight: 450;
   letter-spacing: -.005em;
 }
-.dir-cat-bar { margin: 14px 0 10px; }
-.dir-cat-bar .dir-cats { margin: 0; }
-.dir-cat-bar .dir-subcats { margin-top: 8px; }
-.dir-cats .chip {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 7px 12px; font-size: .75rem; font-weight: 450;
-  letter-spacing: -.005em;
+.dir-subcats {
+  display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px;
 }
-.dir-cats .chip.chip-cat { padding-left: 10px; }
-.dir-cats .chip-cat-ico {
-  width: 14px; height: 14px; flex-shrink: 0;
-  stroke: currentColor; opacity: .85;
-}
-.dir-cats .chip.selected .chip-cat-ico { opacity: 1; }
 .dir-subcats .chip { padding: 7px 12px; font-size: .75rem; font-weight: 450; }
-.chip.chip-back { font-weight: 550; }
-.dir-cat-bar:not(.collapsed) .chip-back { display: none; }
-.dir-cat-bar.collapsed #dir-cats .chip:not(.selected):not(.chip-back) { display: none; }
+
+/* Collapsible directory filter accordion (kategori + range sliders) */
+.dir-filter-panel {
+  display: flex; flex-direction: column; gap: 6px;
+  margin: 0 0 14px;
+}
+.dir-acc {
+  border: 1px solid var(--line); border-radius: 14px; background: #fff;
+  overflow: visible;
+}
+.dir-acc-sum {
+  list-style: none; display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 11px 14px; cursor: pointer; user-select: none;
+}
+.dir-acc-sum::-webkit-details-marker { display: none; }
+.dir-acc-sum-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dir-acc-label {
+  font-size: .72rem; font-weight: 700; color: var(--muted, #888);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.dir-acc-value {
+  font-size: .86rem; font-weight: 600; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dir-acc-chev { flex-shrink: 0; color: var(--muted, #888); transition: transform .15s; }
+.dir-acc[open] .dir-acc-chev { transform: rotate(180deg); }
+.dir-acc-body { padding: 0 14px 14px; }
+
+.dir-cat-picker { position: relative; }
+.dir-cat-trigger {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid var(--line); background: #fff;
+  font: inherit; font-size: .86rem; font-weight: 600; color: var(--ink);
+  cursor: pointer; text-align: left;
+}
+.dir-cat-trigger:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(181,32,42,.12); }
+.dir-cat-trigger svg { flex-shrink: 0; color: var(--muted, #888); transition: transform .15s; }
+.dir-cat-picker.open .dir-cat-trigger svg { transform: rotate(180deg); }
+.dir-cat-popup {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 25;
+  background: #fff; border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.12); padding: 8px;
+  max-height: 320px; display: flex; flex-direction: column;
+}
+.dir-cat-popup[hidden] { display: none !important; }
+.dir-cat-popup-list { overflow-y: auto; max-height: 240px; }
+.dir-cat-opt {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; border-radius: 10px; cursor: pointer;
+  font-size: .86rem; font-weight: 550; color: var(--ink);
+}
+.dir-cat-opt:hover { background: var(--bg-hover, #F5F5F4); }
+.dir-cat-opt input[type="checkbox"] { flex-shrink: 0; width: 16px; height: 16px; accent-color: var(--accent); }
+.dir-cat-popup-done {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  margin-top: 6px; padding: 10px; border-radius: 10px; border: none;
+  background: var(--accent); color: #fff; font: inherit; font-size: .84rem; font-weight: 700;
+  cursor: pointer; flex-shrink: 0;
+}
+
+.dir-dual-range { position: relative; height: 32px; margin-top: 2px; }
+.dir-dual-range input[type=range] {
+  position: absolute; width: 100%; pointer-events: none; -webkit-appearance: none;
+  height: 4px; background: transparent; top: 50%; transform: translateY(-50%); margin: 0;
+}
+.dir-dual-range input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--accent, #B5202A); border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.25); pointer-events: all; cursor: pointer;
+}
+.dir-dual-range input[type=range]::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--accent, #B5202A); border: 2px solid #fff;
+  pointer-events: all; cursor: pointer;
+}
+.dir-dual-track {
+  height: 4px; background: #E5E7EB; border-radius: 2px;
+  position: absolute; top: 50%; transform: translateY(-50%); width: 100%; left: 0;
+}
+.dir-dual-fill {
+  height: 4px; background: var(--accent, #B5202A); border-radius: 2px;
+  position: absolute; top: 50%; transform: translateY(-50%);
+}
+.dir-single-range input[type=range] {
+  width: 100%; -webkit-appearance: none; height: 4px; border-radius: 2px;
+  outline: none; cursor: pointer; margin-top: 4px; accent-color: var(--accent, #B5202A);
+  background: #E5E7EB;
+}
+.dir-single-range input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--accent, #B5202A); border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.25); cursor: pointer;
+}
+.dir-single-range input[type=range]::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--accent, #B5202A); border: 2px solid #fff; cursor: pointer;
+}
+.dir-range-vals {
+  display: flex; justify-content: space-between; gap: 8px;
+  font-size: .7rem; color: var(--muted, #888); margin-top: 4px;
+}
 /* Side-by-side product compare */
 .cmp2-heads {
   display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;
@@ -2835,9 +2946,10 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
          bottom composer is reserved for Ask Laris now — this bar is
          deliberately NOT a chat input. -->
     <div class="results-bar" id="results-bar" hidden>
-      <form class="results-bar-search" id="results-bar-form">
+      <form class="results-bar-search" id="results-bar-form" autocomplete="off">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-        <input type="search" id="results-bar-input" placeholder="Cari produk…" autocomplete="off" enterkeyhint="search" aria-label="Cari produk">
+        <input type="search" id="results-bar-input" placeholder="Cari produk…" autocomplete="off" enterkeyhint="search" aria-label="Cari produk" aria-autocomplete="list" aria-controls="results-bar-suggestions">
+        <div class="results-bar-suggestions" id="results-bar-suggestions" role="listbox" hidden></div>
       </form>
     </div>
 
@@ -2975,10 +3087,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
           </div>
           <div class="dir-city-chips" id="dir-city-chips"></div>
           <div class="dir-compare-banner" id="dir-compare-banner" hidden></div>
-          <div class="dir-cat-bar" id="dir-cat-bar">
-            <div class="dir-cats" id="dir-cats"></div>
-            <div class="dir-cats dir-subcats" id="dir-subcats" hidden></div>
-          </div>
           <div class="dir-filters" id="dir-filters">
             <label class="dd-sub" for="dir-prov" style="margin:0">Provinsi</label>
             <select id="dir-prov" aria-label="Filter provinsi"></select>
@@ -2992,7 +3100,8 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
               <option value="termahal">Termahal</option>
             </select>
           </div>
-          <div class="dir-filters" id="dir-filters-range"></div>
+          <div id="dir-filters-range"></div>
+          <div class="dir-subcats" id="dir-subcats" hidden></div>
           <p class="dir-note" id="dir-note" hidden>Disesuaikan dari profil kamu</p>
           <div class="dir-grid" id="dir-grid"></div>
           <div class="dir-pager" id="dir-pager"></div>
@@ -3314,11 +3423,11 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script src="/js/daily-spin-wheel.js?v=20260730g" defer></script>
 <script src="/js/laris-tracker.js?v=20260803a" defer></script>
 <script src="/js/changelog.js?v=20260731b" defer></script>
-<script defer src="/js/gpt-dir-filters.js?v=20260808a"></script>
+<script defer src="/js/gpt-dir-filters.js?v=20260808b"></script>
 <script defer src="/js/gpt-photo-analyze.js?v=20260808a"></script>
 <script defer src="/js/gpt-referral.js?v=20260808a"></script>
 <script defer src="/js/gpt-profile.js?v=20260808a"></script>
-<script src="/js/gpt-app.js?v=20260803a" defer></script>
+<script src="/js/gpt-app.js?v=20260808b" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>
 </html>

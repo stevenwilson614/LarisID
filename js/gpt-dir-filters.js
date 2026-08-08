@@ -61,6 +61,9 @@
     return Math.round(Math.max(0, Math.min(100, score)));
   }
 
+  var PRICE_ABS_MAX = 500000;
+  var OMSET_ABS_MAX = 500000000;
+
   /* --------------------------------------------------------------------------
    * applyFilters(rows, filters)
    *
@@ -112,98 +115,313 @@
     return (lo + hi) / 2;
   }
 
+  function fmtRp(v) {
+    var n = Number(v) || 0;
+    if (n >= 1000000) return 'Rp ' + (n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 1) + ' jt';
+    if (n >= 1000) return 'Rp ' + Math.round(n / 1000) + ' rb';
+    return 'Rp ' + Math.round(n);
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function catSummaryLabel(selected, allCount) {
+    var n = (selected || []).length;
+    if (!n || n >= allCount) return 'Semua kategori';
+    if (n === 1) return selected[0];
+    return selected[0] + ' +' + (n - 1) + ' lainnya';
+  }
+
+  function sectionSummary(label, valueText) {
+    return (
+      '<summary class="dir-acc-sum">' +
+        '<span class="dir-acc-sum-main">' +
+          '<span class="dir-acc-label">' + esc(label) + '</span>' +
+          '<span class="dir-acc-value">' + esc(valueText) + '</span>' +
+        '</span>' +
+        '<svg class="dir-acc-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>' +
+      '</summary>'
+    );
+  }
+
   /* --------------------------------------------------------------------------
-   * renderControls(container, { onApply })
+   * renderControls(container, { onApply, categories, selectedCategories })
    *
-   * Injects number inputs into an existing DOM element `container`.
-   * - Idempotent: second call with the same container is a no‑op.
-   * - Never throws when container is null/undefined.
-   * - Debounces `input` events (350 ms) and calls `onApply(filters)` with the
-   *   same filter shape used by `applyFilters`.
-   * - Empty inputs are mapped to `null` (not 0) so constraints are truly absent.
+   * Collapsible accordion filters:
+   *   - Kategori: multi-select checkbox dropdown (collapsed by default)
+   *   - Harga: dual range slider (min / max)
+   *   - Omset/bulan: single minimum slider
+   *   - Skor minimum: single slider
+   *
+   * Debounces apply (200 ms). Extreme slider positions map to null (= no bound).
    * -------------------------------------------------------------------------- */
   function renderControls(container, opts) {
     if (!container || !container.appendChild) return;
-    // Already initialised?
-    if (container.dataset.mounted === 'true') return;
+    if (container.dataset.mounted === 'true') {
+      // Already built — refresh category checks / label if provided.
+      if (opts && Array.isArray(opts.selectedCategories) && container._dirApi) {
+        container._dirApi.setCategories(opts.selectedCategories);
+      }
+      return;
+    }
     container.dataset.mounted = 'true';
+    container.classList.add('dir-filter-panel');
 
     var onApply = (opts && typeof opts.onApply === 'function') ? opts.onApply : null;
+    var allCats = (opts && Array.isArray(opts.categories)) ? opts.categories.slice() : [];
+    var selected = (opts && Array.isArray(opts.selectedCategories))
+      ? opts.selectedCategories.slice()
+      : [];
 
-    // ----- helper: create labelled number input -----
-    function createNumberInput(labelText, placeholder) {
-      var lbl = document.createElement('label');
-      lbl.textContent = labelText;
-      var inp = document.createElement('input');
-      inp.type = 'number';
-      if (placeholder !== undefined) inp.placeholder = placeholder;
-      lbl.appendChild(inp);
-      return { label: lbl, input: inp };
+    // ----- Kategori accordion + nested popup multiselect -----
+    var catDetails = document.createElement('details');
+    catDetails.className = 'dir-acc';
+    catDetails.innerHTML = sectionSummary('Kategori', catSummaryLabel(selected, allCats.length));
+
+    var catBody = document.createElement('div');
+    catBody.className = 'dir-acc-body';
+
+    var catPicker = document.createElement('div');
+    catPicker.className = 'dir-cat-picker';
+    catPicker.innerHTML =
+      '<button type="button" class="dir-cat-trigger" aria-haspopup="listbox" aria-expanded="false">' +
+        '<span class="dir-cat-trigger-label">' + esc(catSummaryLabel(selected, allCats.length)) + '</span>' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>' +
+      '</button>' +
+      '<div class="dir-cat-popup" role="listbox" aria-multiselectable="true" hidden>' +
+        '<div class="dir-cat-popup-list"></div>' +
+        '<button type="button" class="dir-cat-popup-done">' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>' +
+          'Selesai' +
+        '</button>' +
+      '</div>';
+    catBody.appendChild(catPicker);
+    catDetails.appendChild(catBody);
+
+    var catTrigger = catPicker.querySelector('.dir-cat-trigger');
+    var catTriggerLabel = catPicker.querySelector('.dir-cat-trigger-label');
+    var catPopup = catPicker.querySelector('.dir-cat-popup');
+    var catList = catPicker.querySelector('.dir-cat-popup-list');
+    var catDone = catPicker.querySelector('.dir-cat-popup-done');
+    var catValueEl = catDetails.querySelector('.dir-acc-value');
+
+    function syncCatLabels() {
+      var text = catSummaryLabel(selected, allCats.length);
+      if (catTriggerLabel) catTriggerLabel.textContent = text;
+      if (catValueEl) catValueEl.textContent = text;
     }
 
-    var hargaMin = createNumberInput('Harga min', '0');
-    var hargaMax = createNumberInput('Harga max', '');
-    var omsetMin = createNumberInput('Omset/bulan min', '');
-    var omsetMax = createNumberInput('Omset/bulan max', '');
-    var skorMin  = createNumberInput('Skor minimum', '0‑100');
-    skorMin.input.setAttribute('min', '0');
-    skorMin.input.setAttribute('max', '100');
+    function rebuildCatList() {
+      if (!catList) return;
+      catList.innerHTML = allCats.map(function (c) {
+        var on = selected.indexOf(c) >= 0;
+        return (
+          '<label class="dir-cat-opt">' +
+            '<input type="checkbox" value="' + esc(c) + '"' + (on ? ' checked' : '') + '>' +
+            '<span>' + esc(c) + '</span>' +
+          '</label>'
+        );
+      }).join('');
+      catList.querySelectorAll('input[type=checkbox]').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+          var set = {};
+          selected.forEach(function (c) { set[c] = true; });
+          if (cb.checked) set[cb.value] = true; else delete set[cb.value];
+          selected = Object.keys(set);
+          syncCatLabels();
+          debouncedEmit();
+        });
+      });
+    }
+    rebuildCatList();
 
-    // Append all pieces to a fragment so we only trigger one reflow
-    var fragment = document.createDocumentFragment();
-    fragment.appendChild(hargaMin.label);
-    fragment.appendChild(hargaMax.label);
-    fragment.appendChild(omsetMin.label);
-    fragment.appendChild(omsetMax.label);
-    fragment.appendChild(skorMin.label);
-    container.appendChild(fragment);
+    function openCatPopup() {
+      if (!catPopup || !catTrigger) return;
+      catPopup.hidden = false;
+      catPicker.classList.add('open');
+      catTrigger.setAttribute('aria-expanded', 'true');
+    }
+    function closeCatPopup() {
+      if (!catPopup || !catTrigger) return;
+      catPopup.hidden = true;
+      catPicker.classList.remove('open');
+      catTrigger.setAttribute('aria-expanded', 'false');
+    }
+    catTrigger.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (catPopup.hidden) openCatPopup(); else closeCatPopup();
+    });
+    catDone.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      closeCatPopup();
+    });
+    document.addEventListener('click', function (e) {
+      if (!catPopup.hidden && !catPicker.contains(e.target)) closeCatPopup();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !catPopup.hidden) closeCatPopup();
+    });
 
-    // Keep references for reading later
-    var inputs = {
-      hargaMin: hargaMin.input,
-      hargaMax: hargaMax.input,
-      omsetMin: omsetMin.input,
-      omsetMax: omsetMax.input,
-      skorMin:  skorMin.input
-    };
+    // ----- Harga dual slider -----
+    var priceLo = 0;
+    var priceHi = PRICE_ABS_MAX;
+    var hargaDetails = document.createElement('details');
+    hargaDetails.className = 'dir-acc';
+    hargaDetails.innerHTML = sectionSummary('Harga', fmtRp(priceLo) + ' – ' + fmtRp(priceHi) + '+');
+    var hargaBody = document.createElement('div');
+    hargaBody.className = 'dir-acc-body';
+    hargaBody.innerHTML =
+      '<div class="dir-dual-range" id="dir-price-range">' +
+        '<div class="dir-dual-track"></div>' +
+        '<div class="dir-dual-fill" data-fill></div>' +
+        '<input type="range" data-role="min" min="0" max="' + PRICE_ABS_MAX + '" step="5000" value="0">' +
+        '<input type="range" data-role="max" min="0" max="' + PRICE_ABS_MAX + '" step="5000" value="' + PRICE_ABS_MAX + '">' +
+      '</div>' +
+      '<div class="dir-range-vals"><span data-min-lbl>' + esc(fmtRp(0)) + '</span><span data-max-lbl>' + esc(fmtRp(PRICE_ABS_MAX)) + '+</span></div>';
+    hargaDetails.appendChild(hargaBody);
+    var hargaValueEl = hargaDetails.querySelector('.dir-acc-value');
+    var priceMinEl = hargaBody.querySelector('[data-role="min"]');
+    var priceMaxEl = hargaBody.querySelector('[data-role="max"]');
+    var priceFill = hargaBody.querySelector('[data-fill]');
+    var priceMinLbl = hargaBody.querySelector('[data-min-lbl]');
+    var priceMaxLbl = hargaBody.querySelector('[data-max-lbl]');
 
-    container._dirInputs = inputs;   // non‑enumerable marker, safe for debugging
-
-    // ----- read current values and build a filters object -----
-    function readFilters() {
-      function val(input) {
-        var raw = input.value.trim();
-        if (raw === '') return null;
-        var num = Number(raw);
-        return isNaN(num) ? null : num;
+    function syncPriceUi() {
+      var lo = Number(priceMinEl.value);
+      var hi = Number(priceMaxEl.value);
+      if (lo > hi) {
+        // Keep thumbs from crossing — nudge the one the user didn't just move.
+        if (priceMinEl === document.activeElement) { hi = lo; priceMaxEl.value = hi; }
+        else { lo = hi; priceMinEl.value = lo; }
       }
+      priceLo = lo;
+      priceHi = hi;
+      var max = PRICE_ABS_MAX;
+      var left = (lo / max) * 100;
+      var right = (hi / max) * 100;
+      if (priceFill) {
+        priceFill.style.left = left + '%';
+        priceFill.style.width = Math.max(0, right - left) + '%';
+      }
+      if (priceMinLbl) priceMinLbl.textContent = fmtRp(lo);
+      if (priceMaxLbl) priceMaxLbl.textContent = hi >= max ? fmtRp(hi) + '+' : fmtRp(hi);
+      if (hargaValueEl) {
+        hargaValueEl.textContent = (lo <= 0 && hi >= max)
+          ? 'Semua harga'
+          : (fmtRp(lo) + ' – ' + (hi >= max ? fmtRp(hi) + '+' : fmtRp(hi)));
+      }
+    }
+    priceMinEl.addEventListener('input', function () { syncPriceUi(); debouncedEmit(); });
+    priceMaxEl.addEventListener('input', function () { syncPriceUi(); debouncedEmit(); });
+    // Click-track to jump nearer thumb (mirrors Discover dual-range UX).
+    hargaBody.querySelector('.dir-dual-range').addEventListener('pointerdown', function (e) {
+      if (e.target.tagName === 'INPUT') return;
+      var rect = e.currentTarget.getBoundingClientRect();
+      var pct = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+      var val = Math.round((pct * PRICE_ABS_MAX) / 5000) * 5000;
+      var mid = (Number(priceMinEl.value) + Number(priceMaxEl.value)) / 2;
+      if (val <= mid) priceMinEl.value = val; else priceMaxEl.value = val;
+      syncPriceUi();
+      debouncedEmit();
+    });
+    syncPriceUi();
+
+    // ----- Omset min slider -----
+    var omsetMin = 0;
+    var omsetDetails = document.createElement('details');
+    omsetDetails.className = 'dir-acc';
+    omsetDetails.innerHTML = sectionSummary('Omset/bulan', 'Min ' + fmtRp(0));
+    var omsetBody = document.createElement('div');
+    omsetBody.className = 'dir-acc-body';
+    omsetBody.innerHTML =
+      '<div class="dir-single-range">' +
+        '<input type="range" min="0" max="' + OMSET_ABS_MAX + '" step="5000000" value="0">' +
+      '</div>' +
+      '<div class="dir-range-vals"><span>Rp 0</span><span data-omset-lbl>Min Rp 0</span><span>Rp 500 jt+</span></div>';
+    omsetDetails.appendChild(omsetBody);
+    var omsetValueEl = omsetDetails.querySelector('.dir-acc-value');
+    var omsetEl = omsetBody.querySelector('input[type=range]');
+    var omsetLbl = omsetBody.querySelector('[data-omset-lbl]');
+    function syncOmsetUi() {
+      omsetMin = Number(omsetEl.value) || 0;
+      var text = omsetMin <= 0 ? 'Semua omset' : ('Min ' + fmtRp(omsetMin));
+      if (omsetLbl) omsetLbl.textContent = text;
+      if (omsetValueEl) omsetValueEl.textContent = text;
+    }
+    omsetEl.addEventListener('input', function () { syncOmsetUi(); debouncedEmit(); });
+    syncOmsetUi();
+
+    // ----- Skor minimum slider -----
+    var skorMin = 0;
+    var skorDetails = document.createElement('details');
+    skorDetails.className = 'dir-acc';
+    skorDetails.innerHTML = sectionSummary('Skor minimum', '0');
+    var skorBody = document.createElement('div');
+    skorBody.className = 'dir-acc-body';
+    skorBody.innerHTML =
+      '<div class="dir-single-range">' +
+        '<input type="range" min="0" max="100" step="5" value="0">' +
+      '</div>' +
+      '<div class="dir-range-vals"><span>0</span><span data-skor-lbl style="font-weight:700;color:var(--accent,#B5202A)">0</span><span>100</span></div>';
+    skorDetails.appendChild(skorBody);
+    var skorValueEl = skorDetails.querySelector('.dir-acc-value');
+    var skorEl = skorBody.querySelector('input[type=range]');
+    var skorLbl = skorBody.querySelector('[data-skor-lbl]');
+    function syncSkorUi() {
+      skorMin = Number(skorEl.value) || 0;
+      if (skorLbl) skorLbl.textContent = String(skorMin);
+      if (skorValueEl) skorValueEl.textContent = skorMin <= 0 ? 'Semua skor' : String(skorMin);
+    }
+    skorEl.addEventListener('input', function () { syncSkorUi(); debouncedEmit(); });
+    syncSkorUi();
+
+    container.appendChild(catDetails);
+    container.appendChild(hargaDetails);
+    container.appendChild(omsetDetails);
+    container.appendChild(skorDetails);
+
+    function readFilters() {
+      // Extreme positions = no constraint, so default open state shows everything.
+      var pMin = priceLo <= 0 ? null : priceLo;
+      var pMax = priceHi >= PRICE_ABS_MAX ? null : priceHi;
+      var oMin = omsetMin <= 0 ? null : omsetMin;
+      var sMin = skorMin <= 0 ? null : skorMin;
       return {
-        priceMin : val(inputs.hargaMin),
-        priceMax : val(inputs.hargaMax),
-        omsetMin : val(inputs.omsetMin),
-        omsetMax : val(inputs.omsetMax),
-        skorMin  : val(inputs.skorMin)
+        priceMin: pMin,
+        priceMax: pMax,
+        omsetMin: oMin,
+        omsetMax: null,
+        skorMin: sMin,
+        categories: selected.slice()
       };
     }
 
-    function handleChange() {
-      if (onApply) {
-        onApply(readFilters());
-      }
+    function emit() {
+      if (onApply) onApply(readFilters());
     }
 
-    // ----- debounce 350 ms -----
     var debounceTimer = null;
-    function debouncedHandle() {
+    function debouncedEmit() {
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(handleChange, 350);
+      debounceTimer = setTimeout(emit, 200);
     }
 
-    // Attach listener to each input once
-    var allInputs = [inputs.hargaMin, inputs.hargaMax, inputs.omsetMin, inputs.omsetMax, inputs.skorMin];
-    for (var i = 0; i < allInputs.length; ++i) {
-      allInputs[i].addEventListener('input', debouncedHandle);
-    }
+    container._dirApi = {
+      setCategories: function (cats) {
+        selected = Array.isArray(cats) ? cats.slice() : [];
+        rebuildCatList();
+        syncCatLabels();
+      },
+      getFilters: readFilters
+    };
   }
 
   // ----- export -----

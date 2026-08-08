@@ -1114,11 +1114,12 @@ const state = {
   productByKey: Object.create(null),
 
   dirPage: 1,
-  dirCat: null,
-  dirSub: null,  // selected sub-group {label, match} within dirCat
+  dirCats: [],   // multi-select category_canonical filter (empty = all)
+  dirSub: null,  // selected sub-group within a single selected category
   dirProv: '',   // Provinsi filter — narrows the Kota select
   dirCity: '',   // ephemeral directory filter (not persisted)
   dirSort: 'terlaris',
+  dirRangeFilters: null,
   dirRows: [],
   dirTypes: [],  // product-type rows currently shown in the directory
   cityFilter: '',
@@ -3005,10 +3006,146 @@ function wireResultsBar() {
 
   const form = $('results-bar-form');
   const input = $('results-bar-input');
+  const box = $('results-bar-suggestions');
+  let suggIdx = -1;
+  let suggGen = 0;
+  let suggDebounce = null;
+
+  const hideSuggestions = () => {
+    if (!box) return;
+    box.classList.remove('show');
+    box.hidden = true;
+    box.innerHTML = '';
+    suggIdx = -1;
+  };
+
+  const wordPrefixScore = (name, q) => {
+    const n = String(name || '').toLowerCase().trim();
+    const ql = String(q || '').toLowerCase().trim();
+    if (!n || !ql) return 0;
+    if (n === ql) return 1000;
+    if (n.startsWith(ql)) return 900;
+    if (n.split(/\s+/).some(w => w.startsWith(ql))) return 700;
+    return 0;
+  };
+
+  const highlight = (name, q) => {
+    const n = String(name || '');
+    const lo = n.toLowerCase();
+    const ql = String(q || '').toLowerCase().trim();
+    if (!ql) return esc(n);
+    let idx = lo.startsWith(ql) ? 0 : lo.indexOf(' ' + ql);
+    if (idx > 0) idx += 1;
+    if (idx < 0) return esc(n);
+    return esc(n.slice(0, idx)) + '<mark>' + esc(n.slice(idx, idx + ql.length)) + '</mark>' + esc(n.slice(idx + ql.length));
+  };
+
+  const renderSuggestions = (items, q) => {
+    if (!box) return;
+    suggIdx = -1;
+    if (!items.length) { hideSuggestions(); return; }
+    box.innerHTML = items.map(it =>
+      `<button type="button" class="results-bar-sugg-item" role="option" data-sugg="${esc(it.name)}">` +
+        `<span class="results-bar-sugg-name">${highlight(it.name, q)}</span>` +
+        (it.category ? `<span class="results-bar-sugg-cat">${esc(it.category)}</span>` : '') +
+      `</button>`
+    ).join('');
+    box.hidden = false;
+    box.classList.add('show');
+    box.querySelectorAll('[data-sugg]').forEach(btn => {
+      btn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const qPick = btn.getAttribute('data-sugg') || '';
+        if (input) input.value = qPick;
+        hideSuggestions();
+        if (qPick) void runResultsBarSearch(qPick);
+      });
+    });
+  };
+
+  const showSuggestions = async (q) => {
+    const raw = String(q || '').trim();
+    if (raw.length < 2) { hideSuggestions(); return; }
+    if (!_supabase) return;
+    const gen = ++suggGen;
+    const tok = raw.split(/\s+/)[0].replace(/[%_,.()\\]/g, '').trim().slice(0, 40);
+    if (!tok) return;
+    try {
+      const city = state.dirCity || 'ALL';
+      const { data } = await _supabase.from('product_types_v')
+        .select('keyword, category_canonical, category, omset_top15')
+        .eq('city', city)
+        .gte('n_listings', 3)
+        .or(`keyword.ilike.${tok}%,keyword.ilike.% ${tok}%`)
+        .order('omset_top15', { ascending: false, nullsFirst: false })
+        .limit(40);
+      if (gen !== suggGen) return;
+      const cur = String(input?.value || '').trim();
+      if (cur.toLowerCase() !== raw.toLowerCase()) return;
+      const seen = new Set();
+      const items = [];
+      for (const r of (data || [])) {
+        const name = r.keyword;
+        if (!name || seen.has(name)) continue;
+        const score = wordPrefixScore(name, raw);
+        if (score <= 0) continue;
+        seen.add(name);
+        items.push({
+          name,
+          category: r.category_canonical || r.category || '',
+          score,
+        });
+        if (items.length >= 24) break;
+      }
+      items.sort((a, b) => (b.score - a.score) || (a.name.length - b.name.length));
+      renderSuggestions(items.slice(0, 8), raw);
+    } catch (_) {
+      if (gen === suggGen) hideSuggestions();
+    }
+  };
+
   form?.addEventListener('submit', (e) => {
     e.preventDefault();
+    hideSuggestions();
     const q = String(input?.value || '').trim();
     if (q) void runResultsBarSearch(q);
+  });
+
+  input?.addEventListener('input', () => {
+    clearTimeout(suggDebounce);
+    suggDebounce = setTimeout(() => void showSuggestions(input.value), 180);
+  });
+  input?.addEventListener('focus', () => {
+    if (String(input.value || '').trim().length >= 2) void showSuggestions(input.value);
+  });
+  input?.addEventListener('blur', () => setTimeout(hideSuggestions, 150));
+  input?.addEventListener('keydown', (e) => {
+    if (!box || box.hidden) {
+      if (e.key === 'Escape') hideSuggestions();
+      return;
+    }
+    const items = [...box.querySelectorAll('[data-sugg]')];
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      suggIdx = Math.min(items.length - 1, suggIdx + 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      suggIdx = Math.max(-1, suggIdx - 1);
+    } else if (e.key === 'Enter' && suggIdx >= 0) {
+      e.preventDefault();
+      items[suggIdx].dispatchEvent(new MouseEvent('mousedown'));
+      return;
+    } else if (e.key === 'Escape') {
+      hideSuggestions();
+      return;
+    } else {
+      return;
+    }
+    items.forEach((el, i) => el.classList.toggle('active', i === suggIdx));
+  });
+  document.addEventListener('click', (e) => {
+    if (!form?.contains(e.target)) hideSuggestions();
   });
 }
 
@@ -3404,7 +3541,11 @@ function syncDirectoryFromOnboarding() {
   const o = state.onboarding || {};
   if (o.step !== 'done') return;
   if (o.city) state.dirCity = o.city;
-  if (o.categories?.length) state.dirCat = toCanonicalCat(o.categories[0]) || null;
+  if (o.categories?.length) {
+    state.dirCats = o.categories
+      .map(c => toCanonicalCat(c) || c)
+      .filter(Boolean);
+  }
 }
 
 // ── Lokasi & kategori side drawer (does not interrupt the open chat) ──────
@@ -3561,15 +3702,11 @@ async function savePrefsDrawer() {
     }
 
     if (state.view === 'directory') {
-      const cats = $('dir-cats');
-      if (cats) {
-        cats.querySelectorAll('[data-dcat]').forEach(c => {
-          const v = c.getAttribute('data-dcat') || '';
-          c.classList.toggle('selected', (state.dirCat || '') === v);
-        });
-      }
+      const filtersHost = $('dir-filters-range');
+      if (filtersHost?._dirApi) filtersHost._dirApi.setCategories(state.dirCats || []);
       const citySel = $('dir-city');
       if (citySel) citySel.value = state.dirCity || '';
+      void renderSubcats(primaryDirCat());
       await renderDirectory();
     }
   } finally {
@@ -9686,10 +9823,12 @@ const _ptypeCache = Object.create(null);
 
 const PTYPE_COLS = 'keyword,city,category,category_canonical,subgroup,n_listings,n_sellers,price_min,price_median,price_max,avg_sold,total_sold_sum,omset_top15,sold_top3_share,images,rep_item_id,rep_shop_id,rep_product_name,rep_store_name,rep_price,rep_total_sold,rep_reviews,rep_rating,rep_location,rep_image_url,rep_url,rep_listing_date,trend_delta_30d,breakout_rate,niche_new_items,median_winner_price,median_winner_reviews';
 
-async function fetchProductTypes(city, cat, limit = 1000, sub = null) {
+async function fetchProductTypes(city, cats, limit = 1000, sub = null) {
   if (!_supabase) return [];
   const bucket = city || 'ALL';
-  const key = `${bucket}|${cat || ''}|${sub || ''}`;
+  const catList = Array.isArray(cats) ? cats.filter(Boolean) : (cats ? [cats] : []);
+  const catKey = catList.slice().sort().join(',');
+  const key = `${bucket}|${catKey}|${sub || ''}`;
   if (_ptypeCache[key]) return _ptypeCache[key];
   try {
     let q = _supabase.from('product_types_v')
@@ -9701,8 +9840,10 @@ async function fetchProductTypes(city, cat, limit = 1000, sub = null) {
     // Canonical bucket + server-side subgroup: the old client-side keyword
     // substring test could not see the 67% of types whose raw category string
     // was not one of the 19 hardcoded chips.
-    if (cat) q = q.eq('category_canonical', cat);
-    if (sub) q = q.eq('subgroup', sub);
+    if (catList.length === 1) q = q.eq('category_canonical', catList[0]);
+    else if (catList.length > 1) q = q.in('category_canonical', catList);
+    // Subgroups only make sense for a single category selection.
+    if (sub && catList.length === 1) q = q.eq('subgroup', sub);
     const { data, error } = await q;
     if (error) throw error;
     const rows = data || [];
@@ -10009,7 +10150,7 @@ async function startComparePick(source) {
   state.comparePick = { source };
   state.dirPage = 1;
   const match = matchDirCatFromProduct(source);
-  if (match) state.dirCat = toCanonicalCat(match) || null;
+  if (match) state.dirCats = [toCanonicalCat(match) || match].filter(Boolean);
   void logUserEvent('gpt_compare_pick', { ui: 'gpt', keyword: source.keyword || '', item_id: source.item_id });
   clarityEvt('gpt_compare_pick', {});
   await openDirectory();
@@ -10170,21 +10311,14 @@ async function openMoreProductsDirectory() {
   await openDirectory();
 }
 
-// Sync the category bar to state: collapse it once a category is chosen (so the
-// product grid shows without scrolling past 20 chips), highlight the active
-// chip, and render that category's sub-groups.
+/** Single selected category for subgroup chips (hidden when 0 or 2+ cats). */
+function primaryDirCat() {
+  return (state.dirCats && state.dirCats.length === 1) ? state.dirCats[0] : null;
+}
+
+// Refresh subgroup chips for the active single category (hidden for multi/all).
 function applyDirCatUi() {
-  const catBar = $('dir-cat-bar');
-  const cats = $('dir-cats');
-  if (catBar) catBar.classList.toggle('collapsed', !!state.dirCat);
-  if (cats) {
-    cats.querySelectorAll('[data-dcat]').forEach(c => {
-      if (c.classList.contains('chip-back')) return;
-      const v = c.getAttribute('data-dcat') || '';
-      c.classList.toggle('selected', (state.dirCat || '') === v);
-    });
-  }
-  void renderSubcats(state.dirCat);
+  void renderSubcats(primaryDirCat());
 }
 
 // Build the sub-group chip row for the selected category (hidden when the
@@ -10256,42 +10390,38 @@ async function openDirectory() {
   _dirApplyDefaultsOnce();
   updateDirCompareBanner();
 
+  const canon = await loadCanonicalCats();
+  const catOptions = (canon.length ? canon : NU_ONB_CATS).slice();
+
   const filtersHost = $('dir-filters-range');
   if (filtersHost && window.LarisGptDirFilters) {
     window.LarisGptDirFilters.renderControls(filtersHost, {
+      categories: catOptions,
+      selectedCategories: state.dirCats || [],
       onApply: (f) => {
-        state.dirRangeFilters = f;
+        const nextCats = Array.isArray(f.categories) ? f.categories.slice() : [];
+        const catsChanged = JSON.stringify(nextCats.slice().sort()) !== JSON.stringify((state.dirCats || []).slice().sort());
+        state.dirCats = nextCats;
+        if (catsChanged) state.dirSub = null;
+        state.dirRangeFilters = {
+          priceMin: f.priceMin,
+          priceMax: f.priceMax,
+          omsetMin: f.omsetMin,
+          omsetMax: f.omsetMax,
+          skorMin: f.skorMin,
+        };
         state.dirPage = 1;
-        void logUserEvent('dir_filter', { ui: 'gpt', kind: 'range', value: JSON.stringify(f) });
+        if (catsChanged) applyDirCatUi();
+        void logUserEvent('dir_filter', {
+          ui: 'gpt',
+          kind: catsChanged ? 'category' : 'range',
+          value: catsChanged ? (state.dirCats || []).join(', ') : JSON.stringify(state.dirRangeFilters),
+        });
         void renderDirectory();
       },
     });
   }
 
-  const cats = $('dir-cats');
-  if (cats && !cats.dataset.ready) {
-    cats.dataset.ready = '1';
-    const canon = await loadCanonicalCats();
-    cats.innerHTML =
-      `<button type="button" class="chip chip-back" data-dcat="" aria-label="Kembali ke semua kategori">‹ Semua</button>` +
-      `<button type="button" class="chip" data-dcat="">Semua</button>` +
-      (canon.length ? canon : NU_ONB_CATS).map(c =>
-        `<button type="button" class="chip chip-cat" data-dcat="${esc(c)}">${catChipIcon(c)}${esc(c)}</button>`
-      ).join('');
-    cats.querySelectorAll('[data-dcat]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        // Category filter is free for anonymous (page 2+ / deep-dive stay gated).
-        // Picking a category collapses the menu to reveal results right away.
-        const cat = btn.getAttribute('data-dcat');
-        state.dirCat = cat || null;
-        state.dirSub = null;
-        state.dirPage = 1;
-        applyDirCatUi();
-        void logUserEvent('dir_filter', { ui: 'gpt', kind: 'category', value: state.dirCat || '' });
-        void renderDirectory();
-      });
-    });
-  }
   applyDirCatUi();
 
   const provSel = $('dir-prov');
@@ -10361,17 +10491,19 @@ async function renderDirectory() {
   if (!grid) return;
   grid.innerHTML = '<p class="dd-sub">Memuat…</p>';
 
-  const cat = state.dirCat || null;
+  const cats = state.dirCats || [];
   const city = state.dirCity || '';
   // Subgroup is filtered server-side against keyword_subgroup now, not by a
-  // client-side keyword substring test.
-  let types = await fetchProductTypes(city, cat, 1000, state.dirSub || null);
+  // client-side keyword substring test. Only applied when exactly one category
+  // is selected.
+  const sub = primaryDirCat() ? (state.dirSub || null) : null;
+  let types = await fetchProductTypes(city, cats, 1000, sub);
   // mv missing/empty (e.g. refresh failed): lift the listing pool back up to
   // markets rather than degrading to a listing grid. The directory is a
   // top-level surface, and single listings only belong under a market.
-  if (!types.length && !state.dirSub) {
+  if (!types.length && !sub) {
     const pool = city
-      ? await fetchListingsCityCat(expandCityLocations(city), cat ? [cat] : [], 200)
+      ? await fetchListingsCityCat(expandCityLocations(city), cats, 200)
       : mergePool([], await fetchNaikDaunGlobal(200));
     types = await typesForListings(pool, city, 60);
   }
@@ -10421,24 +10553,28 @@ async function renderDirectoryListings() {
   if (!grid) return;
   grid.innerHTML = '<p class="dd-sub">Memuat…</p>';
 
-  const cat = state.dirCat || null;
+  const cats = state.dirCats || [];
   const city = state.dirCity || '';
-  const poolLimit = state.dirSub ? 400 : 200;  // widen pool so narrow sub-groups still fill a page
+  const oneCat = primaryDirCat();
+  const sub = oneCat ? (state.dirSub || null) : null;
+  const poolLimit = sub ? 400 : 200;  // widen pool so narrow sub-groups still fill a page
   let rows = [];
   if (city) {
     const locs = expandCityLocations(city);
-    rows = await fetchListingsCityCat(locs, cat ? [cat] : [], poolLimit);
+    rows = await fetchListingsCityCat(locs, cats, poolLimit);
   } else {
     rows = mergePool([], await fetchNaikDaunGlobal(poolLimit));
-    if (cat) {
-      const c = cat.toLowerCase();
-      rows = rows.filter(r => catMatches(r.category, [cat]) || (r.category || '').toLowerCase().includes(c.slice(0, 5)));
+    if (cats.length) {
+      rows = rows.filter(r => catMatches(r.category, cats) || cats.some(cat => {
+        const c = String(cat || '').toLowerCase();
+        return (r.category || '').toLowerCase().includes(c.slice(0, 5));
+      }));
     }
   }
-  if (state.dirSub) {
+  if (sub && oneCat) {
     // Legacy fallback grid: dirSub is a subgroup NAME now, so resolve the
     // keywords in it rather than substring-testing the old match[] array.
-    const kws = await subgroupKeywords(state.dirCat, state.dirSub);
+    const kws = await subgroupKeywords(oneCat, sub);
     if (kws.size) rows = rows.filter(r => kws.has(String(r.keyword || '').trim()));
   }
   rows = sortDirRows(rows, state.dirSort || 'terlaris');
