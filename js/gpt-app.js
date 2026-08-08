@@ -1113,7 +1113,7 @@ const state = {
   dirCities: [],   // multi-select city filter (empty = ALL / nasional)
   dirSearch: '',   // sticky Produk search query (filters the directory grid)
   dirSub: null,    // selected sub-group within a single selected category
-  dirSort: 'terlaris',
+  dirSort: 'sesuai',
   dirRangeFilters: null,
   dirRows: [],
   dirTypes: [],  // product-type rows currently shown in the directory
@@ -3072,6 +3072,73 @@ async function applyDirectoryCategory(cat, sub) {
   });
 }
 
+// Typo-tolerant token matcher — ported from Site A (js/laris-app.js
+// _dscLevenshtein/_dscTokenMatch/_dscNormStr), used as a smart-search fallback
+// only when an exact/synonym match already came back empty.
+function _rbNormStr(s) {
+  return (s || '').toLowerCase().normalize('NFD').replace(/\p{Mn}/gu, '').replace(/[^\w\s]/g, ' ');
+}
+function _rbLevenshtein(a, b) {
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = i;
+    for (let j = 1; j <= b.length; j++) {
+      const val = a[i - 1] === b[j - 1] ? row[j - 1] : Math.min(row[j] + 1, prev + 1, row[j - 1] + 1);
+      row[j - 1] = prev;
+      prev = val;
+    }
+    row[b.length] = prev;
+  }
+  return row[b.length];
+}
+function _rbTokenMatch(token, hay) {
+  if (!token) return true;
+  if (hay.includes(token)) return true;
+  const words = hay.split(/\s+/).filter(w => w.length >= 3);
+  return words.some(w => {
+    if (w.includes(token) || token.includes(w)) return true;
+    if (token.length >= 4 && w.length >= 4 && _rbLevenshtein(token, w) <= 1) return true;
+    return false;
+  });
+}
+
+// Lazily-built, cached pool of keywords for the fuzzy/typo fallback — built once
+// on first miss (not on every keystroke) and reused after.
+let _rbFuzzyPool = null;
+let _rbFuzzyPoolPromise = null;
+async function _rbFuzzyPoolGet() {
+  if (_rbFuzzyPool) return _rbFuzzyPool;
+  if (_rbFuzzyPoolPromise) return _rbFuzzyPoolPromise;
+  if (!_supabase) return [];
+  _rbFuzzyPoolPromise = _supabase.from('product_types_v')
+    .select('keyword, category_canonical, category, omset_top15')
+    .gte('n_listings', 3)
+    .order('omset_top15', { ascending: false, nullsFirst: false })
+    .limit(6000)
+    .then(({ data }) => { _rbFuzzyPool = data || []; return _rbFuzzyPool; })
+    .catch(() => { _rbFuzzyPool = []; return _rbFuzzyPool; });
+  return _rbFuzzyPoolPromise;
+}
+
+// Fuzzy fallback: normalize + token-match `raw` against the cached keyword pool.
+// Returns lean rows { keyword, category_canonical, category, omset_top15 }.
+async function _rbFuzzyMatch(raw, limit = 12) {
+  const pool = await _rbFuzzyPoolGet();
+  if (!pool.length) return [];
+  const qTokens = _rbNormStr(raw).split(/\s+/).filter(Boolean);
+  if (!qTokens.length) return [];
+  const hits = [];
+  for (const row of pool) {
+    const hay = _rbNormStr(row.keyword || '');
+    if (!hay) continue;
+    if (qTokens.every(t => _rbTokenMatch(t, hay))) hits.push(row);
+    if (hits.length >= limit * 3) break;
+  }
+  return hits.slice(0, limit);
+}
+
 function wireResultsBar() {
   const bar = $('results-bar');
   if (!bar || bar.dataset.ready) return;
@@ -3189,6 +3256,43 @@ function wireResultsBar() {
           score,
         });
         if (items.length >= 24) break;
+      }
+      // Smart fallback: exact-prefix pass found nothing — try EN/ID synonym
+      // expansion (offline, instant via _staticPlan), then typo-tolerant fuzzy
+      // matching against a cached keyword pool.
+      if (!items.length) {
+        try {
+          const plan = _staticPlan(raw);
+          const extraTerms = (plan?.queries || []).slice(0, 3);
+          for (const term of extraTerms) {
+            const t = String(term).replace(/[%_,.()\\]/g, '').trim().slice(0, 40);
+            if (!t) continue;
+            const { data: extraData } = await _supabase.from('product_types_v')
+              .select('keyword, category_canonical, category, omset_top15')
+              .gte('n_listings', 3)
+              .ilike('keyword', `%${t}%`)
+              .order('omset_top15', { ascending: false, nullsFirst: false })
+              .limit(20);
+            for (const r of (extraData || [])) {
+              const name = r.keyword;
+              if (!name || seen.has(name)) continue;
+              seen.add(name);
+              items.push({ name, category: r.category_canonical || r.category || '', score: 500 });
+            }
+            if (items.length >= 8) break;
+          }
+        } catch (_) {}
+      }
+      if (gen !== suggGen) return;
+      if (!items.length) {
+        const fuzzy = await _rbFuzzyMatch(raw, 8);
+        if (gen !== suggGen) return;
+        for (const r of fuzzy) {
+          const name = r.keyword;
+          if (!name || seen.has(name)) continue;
+          seen.add(name);
+          items.push({ name, category: r.category_canonical || r.category || '', score: 100 });
+        }
       }
       items.sort((a, b) => (b.score - a.score) || (a.name.length - b.name.length));
       renderSuggestions(items.slice(0, 8), raw);
@@ -10314,7 +10418,26 @@ async function searchProductTypes(text, cities, limit = 12) {
     h._score = score;
   });
   hits.sort((a, b) => b._score - a._score);
-  const ranked = hits.filter(h => h._score >= 10).slice(0, limit);
+  let ranked = hits.filter(h => h._score >= 10).slice(0, limit);
+  if (!ranked.length) {
+    // Nothing matched even with synonym expansion — try the typo-tolerant
+    // fuzzy fallback, then re-fetch full columns for whatever it found (the
+    // fuzzy pool only carries a lean column subset).
+    const fuzzy = await _rbFuzzyMatch(raw, limit);
+    const fuzzyKws = fuzzy.map(r => r.keyword).filter(Boolean);
+    if (fuzzyKws.length) {
+      try {
+        let fq = _supabase.from('product_types_v')
+          .select(PTYPE_COLS)
+          .gte('n_listings', 3)
+          .in('keyword', fuzzyKws);
+        if (buckets.length === 1) fq = fq.eq('city', buckets[0]);
+        else fq = fq.in('city', buckets);
+        const { data: fullRows } = await fq;
+        ranked = (fullRows || []).map(r => ({ ...r, _score: 50 }));
+      } catch (_) {}
+    }
+  }
   if (ranked.length) await attachTypeQuartiles(ranked);
   return ranked;
 }
@@ -10474,12 +10597,13 @@ function bindTypeCards(root) {
   });
 }
 
-function sortTypeRows(rows, mode) {
+function sortTypeRows(rows, mode, hasQuery) {
   const out = (rows || []).slice();
   if (mode === 'termurah') out.sort((a, b) => (Number(a.price_median) || 0) - (Number(b.price_median) || 0));
   else if (mode === 'termahal') out.sort((a, b) => (Number(b.price_median) || 0) - (Number(a.price_median) || 0));
   else if (mode === 'naik_daun') out.sort((a, b) => (Number(b.trend_delta_30d) || 0) - (Number(a.trend_delta_30d) || 0));
-  else out.sort((a, b) => (Number(b.omset_top15) || 0) - (Number(a.omset_top15) || 0)); // terlaris
+  else if (mode === 'sesuai' && hasQuery) return out; // already relevance-sorted by searchProductTypes()
+  else out.sort((a, b) => (Number(b.omset_top15) || 0) - (Number(a.omset_top15) || 0)); // sesuai (no query) / terlaris fallback
   return out;
 }
 
@@ -10723,19 +10847,49 @@ async function renderSubcats(cat) {
   if (!wrap) return;
   if (!cat) { wrap.hidden = true; wrap.innerHTML = ''; return; }
   // Sub-groups come from keyword_subgroup, which only ever contains groups that
-  // have products behind them — so a chip can no longer outlive its products.
+  // have products behind them — so a card can no longer outlive its products.
   const groups = await loadSubgroups(cat);
   if (!groups.length) { wrap.hidden = true; wrap.innerHTML = ''; return; }
   wrap.hidden = false;
   const sel = state.dirSub || null;
+
+  // Representative thumbnail per subgroup, derived from the (cache-backed)
+  // category fetch — highest-omset row per subgroup. Falls back to a line icon.
+  const imgBySubgroup = Object.create(null);
+  try {
+    const rows = await fetchProductTypes([], [cat], 1000, null);
+    rows.forEach(r => {
+      const sg = r.subgroup;
+      if (!sg) return;
+      const img = (r.images || [])[0] || r.rep_image_url || '';
+      if (!img) return;
+      const prevOmset = imgBySubgroup[sg] ? imgBySubgroup[sg]._omset : -1;
+      const curOmset = Number(r.omset_top15) || 0;
+      if (curOmset > prevOmset) imgBySubgroup[sg] = { url: img, _omset: curOmset };
+    });
+  } catch (_) {}
+
+  const fallbackIcon = catChipIcon(cat, 22);
+  const subCard = (label, dsub, selected) => {
+    const img = imgBySubgroup[label];
+    const thumb = img
+      ? `<img src="${esc(img.url)}" alt="" loading="lazy">`
+      : `<span class="dir-subcat-icon">${fallbackIcon}</span>`;
+    return `<button type="button" class="dir-subcat-card${selected ? ' selected' : ''}" data-dsub="${esc(dsub)}">` +
+      `<span class="dir-subcat-thumb">${thumb}</span>` +
+      `<span class="dir-subcat-label">${esc(label)}</span>` +
+    `</button>`;
+  };
+
   wrap.innerHTML =
-    `<button type="button" class="chip${!sel ? ' selected' : ''}" data-dsub="">Semua ${esc(cat)}</button>` +
-    groups.map(g => `<button type="button" class="chip${g === sel ? ' selected' : ''}" data-dsub="${esc(g)}">${esc(g)}</button>`).join('');
+    subCard(`Semua ${cat}`, '', !sel) +
+    groups.map(g => subCard(g, g, g === sel)).join('');
+
   wrap.querySelectorAll('[data-dsub]').forEach(btn => {
     btn.addEventListener('click', () => {
       state.dirSub = btn.getAttribute('data-dsub') || null;
       state.dirPage = 1;
-      wrap.querySelectorAll('.chip').forEach(c => c.classList.toggle('selected', c === btn));
+      wrap.querySelectorAll('.dir-subcat-card').forEach(c => c.classList.toggle('selected', c === btn));
       void logUserEvent('dir_filter', { ui: 'gpt', kind: 'subgroup', value: state.dirSub || '' });
       void renderDirectory();
     });
@@ -10744,6 +10898,13 @@ async function renderSubcats(cat) {
 
 // Rebuild the Kota options from the active Provinsi (all cities when none).
 /** Heading reflects active Produk search / category / user's home city. */
+/** Small caption under #dir-heading: "Menampilkan {shown} dari {total} produk". */
+function updateDirCount(total, shown) {
+  const el = $('dir-count');
+  if (!el) return;
+  el.textContent = total ? `Menampilkan ${shown} dari ${total} produk` : '';
+}
+
 function updateDirHeading() {
   const h = $('dir-heading');
   if (!h) return;
@@ -10772,35 +10933,14 @@ async function openDirectory() {
   // Always browse national aggregates (all cities). City UI was removed.
   state.dirCities = [];
 
-  const canon = await loadCanonicalCats();
-  const catOptions = (canon.length ? canon : NU_ONB_CATS).slice();
-
   const filtersHost = $('dir-filters-range');
   if (filtersHost && window.LarisGptDirFilters) {
     window.LarisGptDirFilters.renderControls(filtersHost, {
-      categories: catOptions,
-      selectedCategories: state.dirCats || [],
-      onApply: (f) => {
-        const nextCats = Array.isArray(f.categories) ? f.categories.slice() : [];
-        const catsChanged = JSON.stringify(nextCats.slice().sort()) !== JSON.stringify((state.dirCats || []).slice().sort());
-        state.dirCats = nextCats;
-        if (catsChanged) state.dirSub = null;
-        state.dirRangeFilters = {
-          priceMin: f.priceMin,
-          priceMax: f.priceMax,
-          omsetMin: f.omsetMin,
-          omsetMax: f.omsetMax,
-          skorMin: f.skorMin,
-        };
+      value: state.dirSort || 'sesuai',
+      onSortChange: (v) => {
+        state.dirSort = v;
         state.dirPage = 1;
-        if (catsChanged) applyDirCatUi();
-        void logUserEvent('dir_filter', {
-          ui: 'gpt',
-          kind: catsChanged ? 'category' : 'range',
-          value: catsChanged
-            ? (state.dirCats || []).join(', ')
-            : JSON.stringify(state.dirRangeFilters),
-        });
+        void logUserEvent('dir_filter', { ui: 'gpt', kind: 'sort', value: v });
         void renderDirectory();
       },
     });
@@ -10861,10 +11001,7 @@ async function renderDirectory() {
       types = await typesForListings(pool, primaryCity, 60);
     }
   }
-  types = sortTypeRows(types, state.dirSort || 'terlaris');
-  if (state.dirRangeFilters && window.LarisGptDirFilters) {
-    types = window.LarisGptDirFilters.applyFilters(types, state.dirRangeFilters);
-  }
+  types = sortTypeRows(types, state.dirSort || 'sesuai', !!q);
   state.dirTypes = types;
   registerTypes(types);
 
@@ -10881,6 +11018,7 @@ async function renderDirectory() {
   bindTypeCards(grid);
   scrollPanelToTop();
   renderDirPager(pager, types.length);
+  updateDirCount(types.length, slice.length);
 }
 
 // Shared pager for both directory modes (types + legacy listings).
