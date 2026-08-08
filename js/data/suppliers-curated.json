@@ -8,9 +8,29 @@
     "4) Angka rating/ulasan/terjual = milik toko dari scrape LarisID, BUKAN verifikasi atau endorsement LarisID."
   ],
   "pilot": {
-    "label": "Fashion — kaos, celana & sandal",
-    "note": "Probe ini baru mencakup kategori Fashion (kaos, celana, sandal) — kategori yang paling sering dibuka pengguna LarisID.",
-    "categories": ["Fashion"],
+    "label": "Semua kategori — toko terkurasi (Fashion) + pencarian Alibaba/grosir",
+    "note": "Toko Shopee/web terkurasi untuk Fashion (kaos, celana, sandal). Untuk keyword lain, Cari Supplier membuka pencarian Alibaba wholesale, Shopee grosir, dan web — bukan rekomendasi toko bernama.",
+    "categories": [
+      "Alat Tulis",
+      "Bayi & Anak",
+      "Dapur",
+      "Elektronik",
+      "Fashion",
+      "Hewan Peliharaan",
+      "Hobi & Kerajinan",
+      "HP & Gadget",
+      "Kamar Mandi",
+      "Keamanan",
+      "Kecantikan",
+      "Kesehatan",
+      "Motor & Mobil",
+      "Olahraga",
+      "Outdoor & Camping",
+      "Rumah",
+      "Sepeda",
+      "Taman",
+      "Tanaman"
+    ],
     "keywords": [
       "kaos wanita basic tee",
       "kaos pria polos cotton",
@@ -26,8 +46,8 @@
       "payung lipat otomatis"
     ]
   },
-  "updatedAt": "2026-07-31",
-  "sourceNote": "Data toko dari scrape LarisID (Juni–Juli 2026). Rating, ulasan, dan jumlah terjual adalah milik toko di Shopee — bukan hasil verifikasi LarisID. Logo toko dari foto profil Shopee toko tersebut.",
+  "updatedAt": "2026-08-08",
+  "sourceNote": "Toko Fashion terkurasi dari scrape LarisID (Juni–Juli 2026). Rating, ulasan, dan terjual milik toko di Shopee — bukan verifikasi LarisID. Di luar daftar terkurasi: tautan adalah pencarian Alibaba / Shopee grosir / web, bukan endorsement supplier tertentu.",
   "suppliers": [
     {
       "id": "sup_742094190",
@@ -44,9 +64,16 @@
       "reviews": 29117,
       "sold": 80000,
       "minPrice": 23780,
-      "badges": ["Grosir"],
-      "keywords": ["celana jogger pria"],
-      "notes": "internal: volume ulasan tertinggi di seluruh daftar"
+      "badges": [
+        "Grosir"
+      ],
+      "keywords": [
+        "celana jogger pria"
+      ],
+      "notes": "internal: volume ulasan tertinggi di seluruh daftar",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_547040532",
@@ -63,9 +90,17 @@
       "reviews": 26530,
       "sold": 50000,
       "minPrice": 52000,
-      "badges": ["Grosir", "Paket lusinan"],
-      "keywords": ["celana rumah santai"],
-      "notes": "internal: jual per-12pcs, cocok untuk reseller mulai"
+      "badges": [
+        "Grosir",
+        "Paket lusinan"
+      ],
+      "keywords": [
+        "celana rumah santai"
+      ],
+      "notes": "internal: jual per-12pcs, cocok untuk reseller mulai",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_195571370",
@@ -82,9 +117,17 @@
       "reviews": 8655,
       "sold": 30000,
       "minPrice": 55999,
-      "badges": ["Supplier", "Grosir"],
-      "keywords": ["celana wanita casual"],
-      "notes": "internal: sentra konveksi Pekalongan, kuat di kulot/jumbo"
+      "badges": [
+        "Supplier",
+        "Grosir"
+      ],
+      "keywords": [
+        "celana wanita casual"
+      ],
+      "notes": "internal: sentra konveksi Pekalongan, kuat di kulot/jumbo",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_34251491",
@@ -101,9 +144,16 @@
       "reviews": 10690,
       "sold": 22000,
       "minPrice": 21999,
-      "badges": ["Grosir"],
-      "keywords": ["celana pendek pria santai"],
-      "notes": "internal: sentra Tasikmalaya, fokus celana olahraga"
+      "badges": [
+        "Grosir"
+      ],
+      "keywords": [
+        "celana pendek pria santai"
+      ],
+      "notes": "internal: sentra Tasikmalaya, fokus celana olahraga",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_395881656",
@@ -120,9 +170,18 @@
       "reviews": 5622,
       "sold": 21000,
       "minPrice": 22500,
-      "badges": ["Grosir", "Kaos polos"],
-      "keywords": ["kaos pria polos cotton", "kaos wanita basic tee"],
-      "notes": "internal: SATU-SATUNYA sumber tier A yang menutup kedua keyword kaos — gap utama daftar ini"
+      "badges": [
+        "Grosir",
+        "Kaos polos"
+      ],
+      "keywords": [
+        "kaos pria polos cotton",
+        "kaos wanita basic tee"
+      ],
+      "notes": "internal: SATU-SATUNYA sumber tier A yang menutup kedua keyword kaos — gap utama daftar ini",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_556974085",
@@ -139,9 +198,17 @@
       "reviews": 5545,
       "sold": 20000,
       "minPrice": 50000,
-      "badges": ["Grosir", "Paket lusinan"],
-      "keywords": ["celana pendek pria santai"],
-      "notes": "internal: paket 11pcs, sentra Solo"
+      "badges": [
+        "Grosir",
+        "Paket lusinan"
+      ],
+      "keywords": [
+        "celana pendek pria santai"
+      ],
+      "notes": "internal: paket 11pcs, sentra Solo",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_270211670",
@@ -158,9 +225,18 @@
       "reviews": 7982,
       "sold": 11540,
       "minPrice": 57500,
-      "badges": ["Konveksi", "Grosir"],
-      "keywords": ["celana pendek pria santai", "celana rumah santai"],
-      "notes": "internal: konveksi sendiri, sentra Jepara"
+      "badges": [
+        "Konveksi",
+        "Grosir"
+      ],
+      "keywords": [
+        "celana pendek pria santai",
+        "celana rumah santai"
+      ],
+      "notes": "internal: konveksi sendiri, sentra Jepara",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_95892006",
@@ -177,9 +253,16 @@
       "reviews": 5229,
       "sold": 11000,
       "minPrice": 32778,
-      "badges": ["Grosir"],
-      "keywords": ["sepatu sandal wanita casual korea"],
-      "notes": "internal: rating tertinggi untuk keyword sandal korea"
+      "badges": [
+        "Grosir"
+      ],
+      "keywords": [
+        "sepatu sandal wanita casual korea"
+      ],
+      "notes": "internal: rating tertinggi untuk keyword sandal korea",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_240046378",
@@ -196,9 +279,16 @@
       "reviews": 2591,
       "sold": 10000,
       "minPrice": 22000,
-      "badges": ["Grosir"],
-      "keywords": ["celana rumah santai"],
-      "notes": "internal: sentra Jepara"
+      "badges": [
+        "Grosir"
+      ],
+      "keywords": [
+        "celana rumah santai"
+      ],
+      "notes": "internal: sentra Jepara",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_137068475",
@@ -215,9 +305,16 @@
       "reviews": 3610,
       "sold": 10000,
       "minPrice": 37253,
-      "badges": ["Grosir"],
-      "keywords": ["sepatu sandal wanita casual korea"],
-      "notes": "internal: sentra alas kaki Tasikmalaya"
+      "badges": [
+        "Grosir"
+      ],
+      "keywords": [
+        "sepatu sandal wanita casual korea"
+      ],
+      "notes": "internal: sentra alas kaki Tasikmalaya",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_1243114167",
@@ -234,9 +331,16 @@
       "reviews": 2181,
       "sold": 5000,
       "minPrice": 56987,
-      "badges": ["Grosir"],
-      "keywords": ["celana jogger pria"],
-      "notes": "internal: sentra Jepara"
+      "badges": [
+        "Grosir"
+      ],
+      "keywords": [
+        "celana jogger pria"
+      ],
+      "notes": "internal: sentra Jepara",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_1341295622",
@@ -253,9 +357,16 @@
       "reviews": 1374,
       "sold": 5000,
       "minPrice": 25963,
-      "badges": ["Pabrik"],
-      "keywords": ["sandal rumah anti slip empuk"],
-      "notes": "internal: klaim toko pabrik — konfirmasi saat curation"
+      "badges": [
+        "Pabrik"
+      ],
+      "keywords": [
+        "sandal rumah anti slip empuk"
+      ],
+      "notes": "internal: klaim toko pabrik — konfirmasi saat curation",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_1028573193",
@@ -272,9 +383,18 @@
       "reviews": 1106,
       "sold": 4065,
       "minPrice": 17500,
-      "badges": ["Grosir", "Paket lusinan"],
-      "keywords": ["celana pendek pria santai", "celana rumah santai"],
-      "notes": "internal: harga masuk termurah di daftar (Rp 17.500)"
+      "badges": [
+        "Grosir",
+        "Paket lusinan"
+      ],
+      "keywords": [
+        "celana pendek pria santai",
+        "celana rumah santai"
+      ],
+      "notes": "internal: harga masuk termurah di daftar (Rp 17.500)",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_1115813270",
@@ -291,9 +411,18 @@
       "reviews": 903,
       "sold": 2227,
       "minPrice": 35000,
-      "badges": ["Grosir"],
-      "keywords": ["celana jogger pria", "celana pendek pria santai", "celana rumah santai"],
-      "notes": "internal: cakupan keyword celana terluas (3 keyword)"
+      "badges": [
+        "Grosir"
+      ],
+      "keywords": [
+        "celana jogger pria",
+        "celana pendek pria santai",
+        "celana rumah santai"
+      ],
+      "notes": "internal: cakupan keyword celana terluas (3 keyword)",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_926534802",
@@ -310,9 +439,17 @@
       "reviews": 437,
       "sold": 1058,
       "minPrice": 87347,
-      "badges": ["Grosir"],
-      "keywords": ["celana pendek pria santai", "celana rumah santai"],
-      "notes": "internal: sentra Jepara"
+      "badges": [
+        "Grosir"
+      ],
+      "keywords": [
+        "celana pendek pria santai",
+        "celana rumah santai"
+      ],
+      "notes": "internal: sentra Jepara",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_287136275",
@@ -329,9 +466,16 @@
       "reviews": 365,
       "sold": 1000,
       "minPrice": 33900,
-      "badges": ["Distributor"],
-      "keywords": ["sandal rumah anti slip empuk"],
-      "notes": "internal: rating tertinggi di daftar (4.84)"
+      "badges": [
+        "Distributor"
+      ],
+      "keywords": [
+        "sandal rumah anti slip empuk"
+      ],
+      "notes": "internal: rating tertinggi di daftar (4.84)",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_1419721552",
@@ -348,9 +492,16 @@
       "reviews": 439,
       "sold": 1000,
       "minPrice": 20000,
-      "badges": ["Konveksi"],
-      "keywords": ["celana jogger pria"],
-      "notes": "internal: konveksi Demak — kandidat untuk order custom, tanya MOQ"
+      "badges": [
+        "Konveksi"
+      ],
+      "keywords": [
+        "celana jogger pria"
+      ],
+      "notes": "internal: konveksi Demak — kandidat untuk order custom, tanya MOQ",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_1550194613",
@@ -367,11 +518,17 @@
       "reviews": 255,
       "sold": 954,
       "minPrice": 42600,
-      "badges": ["Grosir"],
-      "keywords": ["celana rumah santai"],
-      "notes": "internal: sentra Cirebon"
+      "badges": [
+        "Grosir"
+      ],
+      "keywords": [
+        "celana rumah santai"
+      ],
+      "notes": "internal: sentra Cirebon",
+      "categories": [
+        "Fashion"
+      ]
     },
-
     {
       "id": "sup_import_kacamata_jam",
       "name": "Alibaba Indonesia — kacamata & jam tangan",
@@ -380,9 +537,19 @@
       "platform": "alibaba",
       "url": "https://indonesian.alibaba.com/g/sunglasses-and-watches.html",
       "city": "Impor (China)",
-      "badges": ["Impor", "Trade Assurance"],
-      "keywords": ["kacamata hitam fashion pria", "jam tangan kasual pria", "jam tangan analog wanita"],
-      "notes": "internal: link kategori, BUKAN rekomendasi supplier tertentu — user pilih sendiri"
+      "badges": [
+        "Impor",
+        "Trade Assurance"
+      ],
+      "keywords": [
+        "kacamata hitam fashion pria",
+        "jam tangan kasual pria",
+        "jam tangan analog wanita"
+      ],
+      "notes": "internal: link kategori, BUKAN rekomendasi supplier tertentu — user pilih sendiri",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_import_1688",
@@ -392,11 +559,19 @@
       "platform": "1688",
       "url": "https://s.1688.com/selloffer/offer_search.htm?keywords=%E5%A4%AA%E9%98%B3%E9%95%9C",
       "city": "Impor (China)",
-      "badges": ["Impor", "Harga pabrik"],
-      "keywords": ["kacamata hitam fashion pria", "payung lipat otomatis"],
-      "notes": "internal: 1688 full bahasa Mandarin, tanpa Trade Assurance, perlu forwarder/jasa impor — sudah disebut di UI"
+      "badges": [
+        "Impor",
+        "Harga pabrik"
+      ],
+      "keywords": [
+        "kacamata hitam fashion pria",
+        "payung lipat otomatis"
+      ],
+      "notes": "internal: 1688 full bahasa Mandarin, tanpa Trade Assurance, perlu forwarder/jasa impor — sudah disebut di UI",
+      "categories": [
+        "Fashion"
+      ]
     },
-
     {
       "id": "sup_konveksi_towa",
       "name": "TOWA Kaos Polos Bandung",
@@ -405,9 +580,18 @@
       "platform": "web",
       "url": "https://www.indonetwork.co.id/company/towakaospolos",
       "city": "Bandung",
-      "badges": ["Konveksi", "Custom"],
-      "keywords": ["kaos wanita basic tee", "kaos pria polos cotton"],
-      "notes": "BELUM DIVERIFIKASI — dari hasil pencarian web, tanpa data ulasan/penjualan. Hubungi dulu."
+      "badges": [
+        "Konveksi",
+        "Custom"
+      ],
+      "keywords": [
+        "kaos wanita basic tee",
+        "kaos pria polos cotton"
+      ],
+      "notes": "BELUM DIVERIFIKASI — dari hasil pencarian web, tanpa data ulasan/penjualan. Hubungi dulu.",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_konveksi_intikaos",
@@ -417,9 +601,18 @@
       "platform": "instagram",
       "url": "https://www.instagram.com/intikaosofficial/",
       "city": "Bandung",
-      "badges": ["Konveksi", "Ready stock"],
-      "keywords": ["kaos wanita basic tee", "kaos pria polos cotton"],
-      "notes": "BELUM DIVERIFIKASI — klaim ready stock dari konveksi sendiri. Cek harga + MOQ."
+      "badges": [
+        "Konveksi",
+        "Ready stock"
+      ],
+      "keywords": [
+        "kaos wanita basic tee",
+        "kaos pria polos cotton"
+      ],
+      "notes": "BELUM DIVERIFIKASI — klaim ready stock dari konveksi sendiri. Cek harga + MOQ.",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_konveksi_kaosbdg",
@@ -429,9 +622,19 @@
       "platform": "instagram",
       "url": "https://www.instagram.com/kaos.bandung/",
       "city": "Bandung",
-      "badges": ["Konveksi", "Sablon", "MOQ 12"],
-      "keywords": ["kaos wanita basic tee", "kaos pria polos cotton"],
-      "notes": "BELUM DIVERIFIKASI — klaim MOQ 12 pcs, custom sablon/bordir. Paling relevan untuk gap kaos."
+      "badges": [
+        "Konveksi",
+        "Sablon",
+        "MOQ 12"
+      ],
+      "keywords": [
+        "kaos wanita basic tee",
+        "kaos pria polos cotton"
+      ],
+      "notes": "BELUM DIVERIFIKASI — klaim MOQ 12 pcs, custom sablon/bordir. Paling relevan untuk gap kaos.",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_konveksi_ps",
@@ -441,9 +644,18 @@
       "platform": "web",
       "url": "https://www.pskonveksi.com/",
       "city": "Bandung",
-      "badges": ["Konveksi", "Custom"],
-      "keywords": ["kaos wanita basic tee", "kaos pria polos cotton"],
-      "notes": "BELUM DIVERIFIKASI — kaos custom sablon, polo, hoodie. Cek MOQ + lead time."
+      "badges": [
+        "Konveksi",
+        "Custom"
+      ],
+      "keywords": [
+        "kaos wanita basic tee",
+        "kaos pria polos cotton"
+      ],
+      "notes": "BELUM DIVERIFIKASI — kaos custom sablon, polo, hoodie. Cek MOQ + lead time.",
+      "categories": [
+        "Fashion"
+      ]
     },
     {
       "id": "sup_konveksi_kaospolosid",
@@ -453,9 +665,18 @@
       "platform": "web",
       "url": "https://kaospolos.id/konveksi-grosir-kaos-polos/",
       "city": "Bandung",
-      "badges": ["Konveksi", "Grosir"],
-      "keywords": ["kaos wanita basic tee", "kaos pria polos cotton"],
-      "notes": "BELUM DIVERIFIKASI — cotton combed 24s/30s. Cek harga grosir."
+      "badges": [
+        "Konveksi",
+        "Grosir"
+      ],
+      "keywords": [
+        "kaos wanita basic tee",
+        "kaos pria polos cotton"
+      ],
+      "notes": "BELUM DIVERIFIKASI — cotton combed 24s/30s. Cek harga grosir.",
+      "categories": [
+        "Fashion"
+      ]
     }
   ]
 }
