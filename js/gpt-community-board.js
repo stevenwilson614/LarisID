@@ -43,6 +43,32 @@
     return body;
   }
 
+  // "Steven - Bandung" when a city is on file, else just the name — most
+  // early submitters won't have set a city yet, so this must degrade cleanly.
+  function authorLabel(row) {
+    const name = _opts.esc(row.author_first_name || 'Pengguna LarisID');
+    const city = row.author_city ? _opts.esc(row.author_city) : '';
+    return city ? `${name} - ${city}` : name;
+  }
+
+  function avatarHtml(row, size) {
+    const px = size || 28;
+    if (row.author_headshot_url) {
+      return `<img class="author-avatar" src="${_opts.esc(row.author_headshot_url)}" alt="" width="${px}" height="${px}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'author-avatar author-avatar--letter',textContent:${JSON.stringify((row.author_first_name || '?').charAt(0).toUpperCase())}}))">`;
+    }
+    const letter = _opts.esc((row.author_first_name || '?').charAt(0).toUpperCase());
+    return `<span class="author-avatar author-avatar--letter" style="width:${px}px;height:${px}px">${letter}</span>`;
+  }
+
+  // Author name + avatar are clickable everywhere they appear on the board,
+  // opening the host's public-profile view (name/city/avatar only — the host
+  // is responsible for never surfacing contact details through this path).
+  function authorTagHtml(row) {
+    if (!row.author_id) return `<span class="author-tag">${avatarHtml(row)}<span class="author-name">${authorLabel(row)}</span></span>`;
+    return `<button type="button" class="author-tag" data-action="open-profile" data-user-id="${_opts.esc(row.author_id)}">` +
+      `${avatarHtml(row)}<span class="author-name">${authorLabel(row)}</span></button>`;
+  }
+
   function showLoading(show) {
     const el = _container && _container.querySelector('#loading-area');
     if (el) el.style.display = show ? 'block' : 'none';
@@ -69,10 +95,9 @@
     if (!list) return;
     list.innerHTML = comments
       .map((c) => {
-        const author = _opts.esc(c.author_first_name);
         const body = _opts.esc(c.body);
         const date = formatDate(c.created_at);
-        return `<div class="comment-item"><span class="comment-author">${author}</span>: <span>${body}</span> <span class="comment-date">${date}</span></div>`;
+        return `<div class="comment-item">${authorTagHtml(c)} <span class="comment-body">${body}</span> <span class="comment-date">${date}</span></div>`;
       })
       .join('');
   }
@@ -84,7 +109,7 @@
     }
     const { data, error } = await _opts.supabase
       .from('feature_request_comments')
-      .select('id, author_first_name, body, created_at')
+      .select('id, author_id, author_first_name, author_city, author_headshot_url, body, created_at')
       .eq('request_id', postId)
       .order('created_at', { ascending: true });
     if (error) {
@@ -150,7 +175,7 @@
         request_id: postId,
         body: body.trim(),
       })
-      .select('id, author_first_name, body, created_at')
+      .select('id, author_id, author_first_name, author_city, author_headshot_url, body, created_at')
       .single();
     if (error) {
       _opts.toast('Gagal mengirim komentar. Coba lagi.');
@@ -209,7 +234,7 @@
       card.innerHTML = `
         <div class="post-header">
           <strong class="post-title">${_opts.esc(post.title)}</strong>
-          <span class="post-meta">oleh ${_opts.esc(post.author_first_name)} · ${formatDate(post.created_at)}</span>
+          <span class="post-meta">${authorTagHtml(post)}<span class="post-date">${formatDate(post.created_at)}</span></span>
         </div>
         <div class="post-body ${isExpanded ? 'expanded' : 'collapsed'}">
           <p>${_opts.esc(bodyText)}</p>
@@ -315,17 +340,26 @@
         .btn-primary { background: #B5202A; color: #fff; border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; }
         #cancel-form-btn { background: #E5E7EB; color: #374151; border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; }
         .post-card { background: #fff; border: 1px solid #E5E7EB; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
-        .post-header { margin-bottom: 6px; }
-        .post-title { font-size: 16px; font-weight: 600; color: #111827; }
-        .post-meta { font-size: 12px; color: #6B7280; margin-left: 8px; }
+        .post-header { margin-bottom: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+        .post-title { font-size: 16px; font-weight: 600; color: #111827; width: 100%; }
+        .post-meta { font-size: 12px; color: #6B7280; display: inline-flex; align-items: center; gap: 8px; }
+        .post-date { color: #9CA3AF; }
         .post-body { font-size: 14px; color: #374151; margin-top: 8px; }
         .post-footer { display: flex; align-items: center; gap: 16px; margin-top: 12px; }
         .like-btn, .comment-toggle-btn { background: none; border: none; padding: 4px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; color: #374151; font-size:14px; }
         .like-btn svg, .comment-toggle-btn svg { pointer-events: none; }
         .comments-section { margin-top: 12px; padding-left: 20px; border-left: 2px solid #E5E7EB; }
-        .comment-item { margin-bottom: 8px; font-size:13px; color: #374151; }
-        .comment-author { font-weight: 600; margin-right: 4px; }
-        .comment-date { font-size: 11px; color: #9CA3AF; margin-left: 8px; }
+        .comment-item { margin-bottom: 8px; font-size:13px; color: #374151; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+        .comment-body { flex: 1; min-width: 60%; }
+        .comment-date { font-size: 11px; color: #9CA3AF; }
+        .author-tag {
+          display: inline-flex; align-items: center; gap: 6px; background: none; border: none;
+          padding: 0; font: inherit; font-size: 12px; font-weight: 600; color: #374151; cursor: pointer;
+        }
+        button.author-tag:hover .author-name { text-decoration: underline; }
+        .author-avatar { border-radius: 50%; object-fit: cover; flex-shrink: 0; background: #E5E7EB; }
+        .author-avatar--letter { display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #6B7280; }
+        .author-name { white-space: nowrap; }
         .comment-form { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
         .comment-input { flex: 1; border: 1px solid #D1D5DB; border-radius: 8px; padding: 6px 8px; font-size:13px; box-sizing:border-box; }
         .send-comment-btn { background: none; border: none; cursor: pointer; color: #B5202A; padding: 2px; }
@@ -382,7 +416,11 @@
       if (!actionEl) return;
       const action = actionEl.dataset.action;
       const postId = actionEl.dataset.postId;
-      if (action === 'like') {
+      if (action === 'open-profile') {
+        e.preventDefault();
+        const userId = actionEl.dataset.userId;
+        if (userId && typeof _opts.onOpenProfile === 'function') _opts.onOpenProfile(userId);
+      } else if (action === 'like') {
         e.preventDefault();
         await toggleLike(postId);
       } else if (action === 'toggle-comments') {

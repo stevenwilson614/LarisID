@@ -7130,6 +7130,28 @@ function openTrackerView(seed, resumeDraft) {
   }
 }
 
+// Single entry point for "click a name/avatar anywhere" — clicking your own
+// name opens the editable profile (GptProfile.viewPublic redirects there
+// itself when targetUserId === currentUserId); clicking anyone else's opens
+// the read-only public view (name/city/avatar/bio only — never contact info).
+function openUserProfile(userId) {
+  if (!currentUser) { openAuthModal('login', 'gpt_gate_profile'); return; }
+  if (!userId || !window.GptProfile) return;
+  window.GptProfile.viewPublic(userId, {
+    supabase: _supabase,
+    esc,
+    toast: showToast,
+    currentUserId: currentUser.id,
+    userEmail: currentUser.email || '',
+    onError: (err) => { try { console.warn('[profile]', err); } catch (_) {} },
+    selfOpenOptions: {
+      supabase: _supabase, userId: currentUser.id, userEmail: currentUser.email || '',
+      esc, toast: showToast,
+      onSignOut: () => { if (confirm('Keluar dari akun?')) void signOut(); },
+    },
+  });
+}
+
 function openCommunityBoard() {
   if (!currentUser) { openAuthModal('login', 'gpt_gate_community'); return; }
   setView('community');
@@ -7142,6 +7164,7 @@ function openCommunityBoard() {
     currentUserId: currentUser.id,
     toast: showToast,
     onError: (err) => { try { console.warn('[community-board]', err); } catch (_) {} },
+    onOpenProfile: (userId) => { openUserProfile(userId); },
   });
 }
 
@@ -11300,11 +11323,7 @@ function wireUi() {
   $('btn-user')?.addEventListener('click', () => {
     if (!currentUser) return;
     if (window.GptProfile) {
-      window.GptProfile.open({
-        supabase: _supabase, userId: currentUser.id, userEmail: currentUser.email || '',
-        esc, toast: showToast,
-        onSignOut: () => { if (confirm('Keluar dari akun?')) void signOut(); },
-      });
+      openUserProfile(currentUser.id);
     } else if (confirm('Keluar dari akun?')) {
       void signOut();
     }
