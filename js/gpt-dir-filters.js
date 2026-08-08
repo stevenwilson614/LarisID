@@ -196,14 +196,14 @@
    * renderControls(container, opts)
    *
    * One small-arrow collapsible panel containing:
-   *   Kota (multi), Kategori (multi), Harga dual slider, Omset min, Skor min.
+   *   Kategori (multi), Harga dual slider, Omset min, Skor min.
+   * City is intentionally omitted — the directory browses national (ALL) markets.
    * -------------------------------------------------------------------------- */
   function renderControls(container, opts) {
     if (!container || !container.appendChild) return;
     if (container.dataset.mounted === 'true') {
       if (container._dirApi && opts) {
         if (Array.isArray(opts.selectedCategories)) container._dirApi.setCategories(opts.selectedCategories);
-        if (Array.isArray(opts.selectedCities)) container._dirApi.setCities(opts.selectedCities);
       }
       return;
     }
@@ -212,9 +212,7 @@
 
     var onApply = (opts && typeof opts.onApply === 'function') ? opts.onApply : null;
     var allCats = (opts && Array.isArray(opts.categories)) ? opts.categories.slice() : [];
-    var allCities = (opts && Array.isArray(opts.cities)) ? opts.cities.slice() : [];
     var selectedCats = (opts && Array.isArray(opts.selectedCategories)) ? opts.selectedCategories.slice() : [];
-    var selectedCities = (opts && Array.isArray(opts.selectedCities)) ? opts.selectedCities.slice() : [];
 
     var outer = document.createElement('details');
     outer.className = 'dir-filters-shell';
@@ -226,19 +224,6 @@
 
     var body = document.createElement('div');
     body.className = 'dir-filters-body';
-
-    // ----- Kota -----
-    var cityBlock = document.createElement('div');
-    cityBlock.className = 'dir-fg';
-    cityBlock.innerHTML = '<div class="dir-fg-label">Kota</div>';
-    var cityMs = buildMultiSelect({
-      options: allCities,
-      selected: selectedCities,
-      emptyLabel: 'Semua kota',
-      onChange: function () { debouncedEmit(); }
-    });
-    cityBlock.appendChild(cityMs.el);
-    body.appendChild(cityBlock);
 
     // ----- Kategori -----
     var catBlock = document.createElement('div');
@@ -357,8 +342,7 @@
         omsetMin: oMin,
         omsetMax: null,
         skorMin: sMin,
-        categories: catMs.get(),
-        cities: cityMs.get()
+        categories: catMs.get()
       };
     }
 
@@ -374,7 +358,6 @@
 
     container._dirApi = {
       setCategories: function (cats) { catMs.set(cats); },
-      setCities: function (cities) { cityMs.set(cities); },
       getFilters: readFilters
     };
   }

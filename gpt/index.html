@@ -892,23 +892,52 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 }
 .dir-subcats .chip { padding: 7px 12px; font-size: .75rem; font-weight: 450; }
 
-/* Single collapsible filter shell (kota + kategori + sliders) */
-.dir-filter-host { margin: 0 0 14px; }
+/* Single collapsible filter shell — button stays; panel opens left + down on desktop */
+.dir-filter-host {
+  position: relative;
+  margin: 0 0 14px;
+  z-index: 12;
+}
 .dir-filters-shell {
-  border: 1px solid var(--line); border-radius: 14px; background: #fff;
-  overflow: visible; max-width: 420px;
+  display: inline-block;
+  position: relative;
+  border: 1px solid var(--line); border-radius: 999px; background: #fff;
+  overflow: visible; vertical-align: top;
 }
 .dir-filters-sum {
   list-style: none; display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 12px; cursor: pointer; user-select: none;
+  padding: 8px 14px; cursor: pointer; user-select: none;
   font-size: .78rem; font-weight: 650; color: var(--ink-soft);
 }
 .dir-filters-sum::-webkit-details-marker { display: none; }
 .dir-filters-chev { color: var(--muted, #888); transition: transform .15s; }
 .dir-filters-shell[open] .dir-filters-chev { transform: rotate(180deg); }
+.dir-filters-shell[open] {
+  border-color: var(--accent, #B5202A);
+  box-shadow: 0 0 0 3px rgba(181,32,42,.1);
+}
 .dir-filters-body {
   display: flex; flex-direction: column; gap: 14px;
-  padding: 0 14px 14px; border-top: 1px solid var(--line);
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--line);
+  background: #fff;
+}
+/* Desktop: float panel under the Filter pill, pinned left, growing downward */
+@media (min-width: 860px) {
+  .dir-filters-body {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 8px);
+    width: 300px;
+    max-height: min(70vh, 560px);
+    overflow-x: visible;
+    overflow-y: auto;
+    border: 1px solid var(--line);
+    border-top: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 12px 36px rgba(0,0,0,.14);
+    z-index: 30;
+  }
 }
 .dir-fg-label {
   font-size: .7rem; font-weight: 700; color: var(--muted, #888);
@@ -3399,11 +3428,11 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script src="/js/daily-spin-wheel.js?v=20260730g" defer></script>
 <script src="/js/laris-tracker.js?v=20260803a" defer></script>
 <script src="/js/changelog.js?v=20260731b" defer></script>
-<script defer src="/js/gpt-dir-filters.js?v=20260808c"></script>
+<script defer src="/js/gpt-dir-filters.js?v=20260808d"></script>
 <script defer src="/js/gpt-photo-analyze.js?v=20260808a"></script>
 <script defer src="/js/gpt-referral.js?v=20260808a"></script>
 <script defer src="/js/gpt-profile.js?v=20260808a"></script>
-<script src="/js/gpt-app.js?v=20260808c" defer></script>
+<script src="/js/gpt-app.js?v=20260808d" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>
 </html>

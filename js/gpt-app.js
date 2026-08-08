@@ -3540,7 +3540,8 @@ function renderSidebarLocCard() {
 function syncDirectoryFromOnboarding() {
   const o = state.onboarding || {};
   if (o.step !== 'done') return;
-  if (o.city) state.dirCities = [o.city];
+  // City is not a UI filter anymore — the grid always shows national (ALL)
+  // markets. Prefer the user's city only for soft personalization (heading/note).
   if (o.categories?.length) {
     state.dirCats = o.categories
       .map(c => toCanonicalCat(c) || c)
@@ -3705,7 +3706,6 @@ async function savePrefsDrawer() {
       const filtersHost = $('dir-filters-range');
       if (filtersHost?._dirApi) {
         filtersHost._dirApi.setCategories(state.dirCats || []);
-        filtersHost._dirApi.setCities(state.dirCities || []);
       }
       void renderSubcats(primaryDirCat());
       updateDirHeading();
@@ -5896,9 +5896,11 @@ function extractCompareTerm(lower) {
 async function openDirectoryForCity(city) {
   state.comparePick = null;
   updateDirCompareBanner();
-  state.dirCities = city ? [city] : [];
+  // National browse — city label comes from onboarding / heading, not a hard filter.
+  state.dirCities = [];
+  if (city) state.onboarding.city = city;
   state.dirPage = 1;
-  state._dirDefaultsApplied = true; // routed city wins over onboarding defaults
+  state._dirDefaultsApplied = true;
   void logUserEvent('dir_open', { ui: 'gpt', via: 'topic_change', city });
   clarityEvt('dir_open', { via: 'topic_change' });
   await openDirectory();
@@ -10363,15 +10365,13 @@ async function renderSubcats(cat) {
 }
 
 // Rebuild the Kota options from the active Provinsi (all cities when none).
-/** Heading reflects selected cities / active Produk search. */
+/** Heading reflects active Produk search / user's home city (soft label only). */
 function updateDirHeading() {
   const h = $('dir-heading');
   if (!h) return;
-  const cities = state.dirCities || [];
   const q = (state.dirSearch || '').trim();
-  let base = 'Tipe Produk';
-  if (cities.length === 1) base = `Yang Laku di ${cities[0]}`;
-  else if (cities.length > 1) base = `Yang Laku di ${cities[0]} +${cities.length - 1}`;
+  const userCity = state.onboarding?.city || '';
+  let base = userCity ? `Yang Laku di ${userCity}` : 'Tipe Produk';
   h.textContent = q ? `Hasil: ${q}` : base;
 }
 
@@ -10379,6 +10379,8 @@ async function openDirectory() {
   setView('directory');
   _dirApplyDefaultsOnce();
   updateDirCompareBanner();
+  // Always browse national aggregates (all cities). City UI was removed.
+  state.dirCities = [];
 
   const canon = await loadCanonicalCats();
   const catOptions = (canon.length ? canon : NU_ONB_CATS).slice();
@@ -10387,16 +10389,11 @@ async function openDirectory() {
   if (filtersHost && window.LarisGptDirFilters) {
     window.LarisGptDirFilters.renderControls(filtersHost, {
       categories: catOptions,
-      cities: NU_ONB_LOCATIONS.slice(),
       selectedCategories: state.dirCats || [],
-      selectedCities: state.dirCities || [],
       onApply: (f) => {
         const nextCats = Array.isArray(f.categories) ? f.categories.slice() : [];
-        const nextCities = Array.isArray(f.cities) ? f.cities.slice() : [];
         const catsChanged = JSON.stringify(nextCats.slice().sort()) !== JSON.stringify((state.dirCats || []).slice().sort());
-        const citiesChanged = JSON.stringify(nextCities.slice().sort()) !== JSON.stringify((state.dirCities || []).slice().sort());
         state.dirCats = nextCats;
-        state.dirCities = nextCities;
         if (catsChanged) state.dirSub = null;
         state.dirRangeFilters = {
           priceMin: f.priceMin,
@@ -10407,13 +10404,12 @@ async function openDirectory() {
         };
         state.dirPage = 1;
         if (catsChanged) applyDirCatUi();
-        if (citiesChanged) updateDirHeading();
         void logUserEvent('dir_filter', {
           ui: 'gpt',
-          kind: catsChanged ? 'category' : (citiesChanged ? 'city' : 'range'),
+          kind: catsChanged ? 'category' : 'range',
           value: catsChanged
             ? (state.dirCats || []).join(', ')
-            : (citiesChanged ? (state.dirCities || []).join(', ') : JSON.stringify(state.dirRangeFilters)),
+            : JSON.stringify(state.dirRangeFilters),
         });
         void renderDirectory();
       },
