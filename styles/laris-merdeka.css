@@ -116,42 +116,52 @@
 }
 
 /* ---- 4. Site B August header banner ------------------------------ */
-/* Applied to .main-top (the bar right of the sidebar). Shows the top
-   decorative band of the Merdeka artwork for the whole month of August.
-   Soft white gradient at the bottom so the art fades into the page. */
+/* Applied to .main-top (the bar right of the sidebar). Banner art sits
+   in a taller strip and fades into the page slightly below the bar. */
 .main-top.mdk-header-bg {
   position: relative;
   isolation: isolate;
+  z-index: 5;
+  overflow: visible;
   background-color: #fff;
   background-image:
     linear-gradient(
       to bottom,
       rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 0) 42%,
-      rgba(255, 255, 255, 0.55) 72%,
+      rgba(255, 255, 255, 0) 28%,
+      rgba(255, 255, 255, 0.35) 52%,
+      rgba(255, 255, 255, 0.82) 78%,
       #ffffff 100%
     ),
     url('/images/brand/merdeka-header-aug.jpg');
   background-repeat: no-repeat;
   background-position: center top, center top;
-  background-size: cover, cover;
+  background-size: 100% auto, 100% auto;
   border-bottom: none;
-  min-height: 76px;
-  padding-top: 16px;
-  padding-bottom: 20px;
+  /* Interactive row + room for the fade to continue past header chrome. */
+  min-height: 92px;
+  padding-top: 18px;
+  padding-bottom: 40px;
+  /* Pull following content up into the soft fade zone. */
+  margin-bottom: -28px;
 }
 
-/* Extra soft spill so the fade continues a bit into the content below. */
+/* Soft spill past the header edge into the page beneath. */
 .main-top.mdk-header-bg::after {
   content: "";
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -18px;
-  height: 28px;
+  bottom: -22px;
+  height: 36px;
   pointer-events: none;
   z-index: 1;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0));
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 255, 255, 0.55) 45%,
+    rgba(255, 255, 255, 0) 100%
+  );
 }
 
 /* Keep header controls readable over the busy banner art. */
@@ -174,11 +184,25 @@
   z-index: 2;
 }
 
+/* Content under the fade should sit above page bg but under header chrome. */
+html.mdk-aug-b .results-bar,
+html.mdk-aug-b .panel {
+  position: relative;
+  z-index: 1;
+}
+
 @media (max-width: 640px) {
   .main-top.mdk-header-bg {
-    min-height: 68px;
-    padding-top: 14px;
-    padding-bottom: 16px;
-    background-position: center top, 62% top;
+    min-height: 80px;
+    padding-top: 16px;
+    padding-bottom: 34px;
+    margin-bottom: -24px;
+    background-position: center top, 58% top;
+    background-size: cover, cover;
+  }
+
+  .main-top.mdk-header-bg::after {
+    bottom: -18px;
+    height: 30px;
   }
 }
