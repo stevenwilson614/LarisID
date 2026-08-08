@@ -1318,6 +1318,9 @@ body.home-finder-done .home-title {
   box-shadow: 0 8px 28px rgba(0,0,0,.12); padding: 8px;
   max-height: 320px; display: flex; flex-direction: column;
 }
+/* Author `display:flex` above would otherwise override the UA `[hidden]` rule,
+   so the popup stays visible on load and after Selesai. */
+.finder-cat-popup[hidden] { display: none !important; }
 .finder-cat-popup-list { overflow-y: auto; max-height: 260px; }
 .finder-cat-opt {
   display: flex; align-items: center; gap: 10px;
