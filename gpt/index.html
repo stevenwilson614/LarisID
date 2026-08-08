@@ -1847,7 +1847,20 @@ body.view-chat .panel { padding-bottom: calc(var(--composer-h) + 28px); }
   -webkit-background-clip: text; background-clip: text;
   color: transparent;
 }
+.home-markets {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  margin: 0 0 18px; padding: 0; list-style: none;
+}
+.home-markets li {
+  display: flex; width: 32px; height: 32px;
+}
+.home-markets svg {
+  width: 32px; height: 32px; display: block;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(28, 25, 23, .08);
+}
 .home-sub { font-size: 1.02rem; color: var(--muted); margin: 0 0 22px; }
+body.home-finder-done .home-markets { margin-bottom: 28px; }
 .home-composer { width: 100%; max-width: 640px; }
 .home-finder {
   width: 100%; max-width: 560px; text-align: left;
@@ -1866,7 +1879,7 @@ body.home-finder-done .home-hero {
   padding-top: 12vh;
 }
 body.home-finder-done .home-title {
-  margin-bottom: 28px;
+  margin-bottom: 14px;
 }
 .finder-step {
   display: grid; grid-template-columns: 36px 1fr; gap: 0 14px;
@@ -2075,13 +2088,22 @@ body.home-finder-done .home-title {
   }
   .home-title {
     font-size: clamp(1.2rem, 5.4vw, 1.5rem);
-    margin: 4px 0 18px;
+    margin: 4px 0 12px;
     line-height: 1.2;
     flex-shrink: 0;
   }
   /* The space before this <br> in the markup is deliberate: hiding the break
      here would otherwise render "kamumau" as one word. */
   .home-title br { display: none; }
+  .home-markets {
+    gap: 8px;
+    margin: 0 0 16px;
+    flex-shrink: 0;
+  }
+  .home-markets li,
+  .home-markets svg {
+    width: 28px; height: 28px;
+  }
   .home-sub { display: none; }
   .home-finder {
     flex: 0 0 auto;
@@ -2117,6 +2139,9 @@ body.home-finder-done .home-title {
     inset: 12px 14px 100px;
   }
   body.home-finder-done .home-title {
+    margin: 0 0 12px;
+  }
+  body.home-finder-done .home-markets {
     margin: 0 0 20px;
   }
   .finder-cta {
@@ -3494,6 +3519,23 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
           <div class="home-hero">
             <div class="home-scroll">
               <h1 class="home-title">Apa yang kamu <br>mau <em>jual</em> hari ini?</h1>
+              <ul class="home-markets" aria-label="Marketplace yang didukung">
+                <li title="Shopee" aria-label="Shopee">
+                  <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#EE4D2D"/><path d="M11.4 12.3a4.6 4.6 0 0 1 9.2 0" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M8.8 12h14.4l-1 11.2a1.6 1.6 0 0 1-1.6 1.45H11.4a1.6 1.6 0 0 1-1.6-1.45z" fill="#fff"/><path d="M16 15.8c-1.5 0-2.55.85-2.55 2.05 0 2.45 4.35 1.6 4.35 3.45 0 .85-.85 1.3-1.85 1.3-1 0-1.75-.4-2.2-1" fill="none" stroke="#EE4D2D" stroke-width="1.2" stroke-linecap="round"/></svg>
+                </li>
+                <li title="Tokopedia" aria-label="Tokopedia">
+                  <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#42B549"/><circle cx="12.6" cy="14" r="3.9" fill="#fff"/><circle cx="19.4" cy="14" r="3.9" fill="#fff"/><circle cx="12.6" cy="14" r="1.7" fill="#42B549"/><circle cx="19.4" cy="14" r="1.7" fill="#42B549"/><path d="M14.3 19.4h3.4L16 21.6z" fill="#fff"/></svg>
+                </li>
+                <li title="TikTok Shop" aria-label="TikTok Shop">
+                  <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#010101"/><path d="M19.3 7.4c.34 2.06 1.66 3.4 3.62 3.6v2.55c-1.18 0-2.36-.4-3.42-1.04v5.55a5.36 5.36 0 1 1-5.36-5.36c.3 0 .58.02.86.07v2.66a2.8 2.8 0 1 0 1.96 2.67V7.4z" fill="#25F4EE" transform="translate(-0.9,-0.6)"/><path d="M19.3 7.4c.34 2.06 1.66 3.4 3.62 3.6v2.55c-1.18 0-2.36-.4-3.42-1.04v5.55a5.36 5.36 0 1 1-5.36-5.36c.3 0 .58.02.86.07v2.66a2.8 2.8 0 1 0 1.96 2.67V7.4z" fill="#FE2C55" transform="translate(0.9,0.6)"/><path d="M19.3 7.4c.34 2.06 1.66 3.4 3.62 3.6v2.55c-1.18 0-2.36-.4-3.42-1.04v5.55a5.36 5.36 0 1 1-5.36-5.36c.3 0 .58.02.86.07v2.66a2.8 2.8 0 1 0 1.96 2.67V7.4z" fill="#fff"/></svg>
+                </li>
+                <li title="Lazada" aria-label="Lazada">
+                  <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><defs><linearGradient id="lzdg-home" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF0F64"/><stop offset=".55" stop-color="#FF6A00"/><stop offset="1" stop-color="#2A1A8A"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="#0E1466"/><path d="M16 23.5s-6.2-3.6-6.2-8.1A3.55 3.55 0 0 1 16 12.6a3.55 3.55 0 0 1 6.2 2.8c0 4.5-6.2 8.1-6.2 8.1z" fill="url(#lzdg-home)"/></svg>
+                </li>
+                <li title="Blibli" aria-label="Blibli">
+                  <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0072BC"/><path d="M11.4 12.3a4.6 4.6 0 0 1 9.2 0" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M8.8 12h14.4l-1 11.2a1.6 1.6 0 0 1-1.6 1.45H11.4a1.6 1.6 0 0 1-1.6-1.45z" fill="#fff"/><circle cx="16" cy="18.4" r="2.2" fill="#0072BC"/></svg>
+                </li>
+              </ul>
               <p class="home-sub">Cari produk, kategori, atau tanya apa saja.</p>
 
               <div class="home-finder" id="home-finder">
