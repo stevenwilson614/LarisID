@@ -1107,6 +1107,7 @@ const state = {
   pendingDeepdive: null, // product clicked behind the login gate; opened after sign-in
   pendingCompare: null, // { a, b } clicked behind login gate; opened after sign-in
   pendingFinder: null,  // landing finder answers given before signup; re-run after
+  pendingTracker: null, // in-progress tracker wizard draft behind the login gate; resumed after sign-in
   everOpenedDeepdive: false,
   comparePick: null, // { source } — directory is in “pick a product to compare” mode
   // Survives recommendation wipes so chat product cards can reopen Deep Dive.
@@ -1137,6 +1138,7 @@ function loadLocalState() {
     if (raw.pendingDeepdive) state.pendingDeepdive = raw.pendingDeepdive;
     if (raw.pendingCompare) state.pendingCompare = raw.pendingCompare;
     if (raw.pendingFinder) state.pendingFinder = raw.pendingFinder;
+    if (raw.pendingTracker) state.pendingTracker = raw.pendingTracker;
     if (raw.everOpenedDeepdive != null) state.everOpenedDeepdive = !!raw.everOpenedDeepdive;
     if (raw.affinity && typeof raw.affinity === 'object') state.affinity = raw.affinity;
     if (!Array.isArray(state.onboarding.learnedCategories)) state.onboarding.learnedCategories = [];
@@ -1152,6 +1154,7 @@ function saveLocalState() {
       pendingDeepdive: state.pendingDeepdive || null,
       pendingCompare: state.pendingCompare || null,
       pendingFinder: state.pendingFinder || null,
+      pendingTracker: state.pendingTracker || null,
       everOpenedDeepdive: state.everOpenedDeepdive || false,
       affinity: state.affinity || {},
       ts: Date.now(),
@@ -2359,7 +2362,7 @@ async function _authOnSignIn(session) {
   renderSidebarLocCard();
 
   // Continue where the login gate interrupted: open the product they clicked.
-  const hadPending = !!(state.pendingDeepdive || state.pendingCompare);
+  const hadPending = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker);
   if (state.pendingCompare) {
     const pair = state.pendingCompare;
     state.pendingCompare = null;
@@ -2371,6 +2374,11 @@ async function _authOnSignIn(session) {
     state.pendingDeepdive = null;
     saveLocalState();
     void openDeepDive(p);
+  } else if (state.pendingTracker) {
+    const pt = state.pendingTracker;
+    state.pendingTracker = null;
+    saveLocalState();
+    openTrackerView(null, pt);
   }
 
   // Someone who answered the landing questions and then signed up should land
@@ -6635,6 +6643,14 @@ function gptTrackerAdapter() {
       try { openAuthModal('login', 'gpt_gate_tracker'); } catch (_) {}
       return false;
     },
+    // Called by commit() right before requireAuth blocks it — the login modal
+    // (and the Google OAuth reload) is about to wipe the in-progress wizard,
+    // so stash it the same way pendingFinder/pendingDeepdive/pendingCompare
+    // already survive that round-trip. Restored in _authOnSignIn().
+    savePendingDraft(snapshot) {
+      state.pendingTracker = snapshot;
+      saveLocalState();
+    },
     track(evt, props) { try { logUserEvent(evt, { ui: 'gpt', ...(props || {}) }); } catch (_) {} },
     onStateChange(st) {
       // Refresh the thread card whenever the tracker's shape changes, so the
@@ -6752,7 +6768,7 @@ function gptTrackerAdapter() {
   return _trkAdapterB;
 }
 
-function openTrackerView(seed) {
+function openTrackerView(seed, resumeDraft) {
   setView('tracker');
   if (!window.LarisTracker) return;
   window.LarisTracker.mount({ hostId: 'laris-tracker-root', site: 'b', adapter: gptTrackerAdapter() });
@@ -6762,6 +6778,12 @@ function openTrackerView(seed) {
   if (seed && seed.keyword) {
     Promise.resolve(p).then(() => {
       try { window.LarisTracker.openSetup({ seed }); } catch (_) {}
+    });
+  } else if (resumeDraft) {
+    // Restoring a wizard draft stashed before a login interrupt — same open()
+    // race to wait out as the seed path above.
+    Promise.resolve(p).then(() => {
+      try { window.LarisTracker.resumeDraft(resumeDraft); } catch (_) {}
     });
   }
 }

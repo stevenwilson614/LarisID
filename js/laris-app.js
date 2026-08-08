@@ -2501,6 +2501,8 @@ async function _authOnSignIn(session) {
     funnelNoteActiveDay();
     // If they answered the landing finder before signing up, run it now.
     setTimeout(() => { try { lfdReplayPending(); } catch (_) {} }, 700);
+    // Same for an in-progress tracker wizard interrupted by this login.
+    setTimeout(() => { try { ltkReplayPending(); } catch (_) {} }, 700);
     await loadCurrentAccess().catch(() => {});
     void _winbackMaybeClaim();
     void journeyHydrateFromRemote();
@@ -15679,17 +15681,36 @@ function _trkFmtScrapeDate(iso) {
 
 let _trkFreeDive = false;     // one-shot: exempt the next deep dive from _useDive
 let _trkAdapterObj = null;
+// Same shape as LFD_PENDING_KEY/lfdReplayPending above — the shared tracker
+// module's commit() calls adapter.savePendingDraft() right before a login
+// gate would otherwise wipe an in-progress wizard (picked keywords/stores).
+const LTK_PENDING_KEY = '_lid_tracker_pending_v1';
 
 // switchDashView('tracker') entry point. The module renders the whole view,
 // including its own Keyword/Toko scope tabs — Site A used to wrap it in a
 // second, outer tab row that said the same thing twice, plus a legacy
 // per-product alert pane that predated it. Both are gone; A and B now show the
 // identical tracker.
-function trkOpen() {
+function trkOpen(resumeDraft) {
   if (!window.LarisTracker) return;
   window.LarisTracker.mount({ hostId: 'laris-tracker-root', site: 'a', adapter: trkAdapter() });
-  window.LarisTracker.open({ touch: true });
+  const p = window.LarisTracker.open({ touch: true });
+  if (resumeDraft) {
+    Promise.resolve(p).then(() => {
+      try { window.LarisTracker.resumeDraft(resumeDraft); } catch (_) {}
+    });
+  }
   try { logUserEvent('tracker_tab', { tab: 'keyword', ui: 'A' }); } catch (_) {}
+}
+
+function ltkReplayPending() {
+  if (!currentUser) return;
+  let draft = null;
+  try { draft = JSON.parse(localStorage.getItem(LTK_PENDING_KEY) || 'null'); } catch (_) {}
+  if (!draft) return;
+  try { localStorage.removeItem(LTK_PENDING_KEY); } catch (_) {}
+  switchDashView('tracker');
+  trkOpen(draft);
 }
 
 // ── Deep-dive side panel ─────────────────────────────────────────────────────
@@ -15921,6 +15942,9 @@ function trkAdapter() {
       if (currentUser) return true;
       try { openAuthModal('login'); } catch (_) {}
       return false;
+    },
+    savePendingDraft(snapshot) {
+      try { localStorage.setItem(LTK_PENDING_KEY, JSON.stringify(snapshot || {})); } catch (_) {}
     },
     track(evt, props) { try { logUserEvent(evt, props || {}); } catch (_) {} },
     openProduct(row) {

@@ -1307,10 +1307,27 @@
 
   /* ── commit ─────────────────────────────────────────────────────────── */
 
+  // Plain-JSON snapshot of the in-progress wizard picks — used to survive a
+  // login interrupt (see commit()'s requireAuth branch below). Excludes
+  // transient/UI-only fields (busy, errors, sug, seedShopSkus).
+  function snapshotDraft() {
+    return {
+      cat: draft.cat, picked: draft.picked.slice(), stores: draft.stores.slice(),
+      step: draft.step, metrics: draft.metrics.slice(), seed: draft.seed,
+    };
+  }
+
   function commit() {
     // Stores alone are a valid config now that Toko is its own tab.
     if (draft.busy || (!draft.picked.length && !draft.stores.length)) return;
-    if (call('requireAuth') === false) return;
+    if (call('requireAuth') === false) {
+      // The login modal is about to blow away this in-progress screen (and,
+      // for the Google OAuth path, reload the page entirely) — hand the host
+      // a snapshot so it can restore the wizard after sign-in completes,
+      // instead of silently discarding everything the user just picked.
+      call('savePendingDraft', snapshotDraft());
+      return;
+    }
     draft.busy = true; draft.errors = {}; renderSetup();
 
     // SEQUENTIAL, never Promise.all. The slot-limit trigger does select count(*)
@@ -1832,6 +1849,23 @@
         call('track', 'tracker_setup_seeded', { site: opts.site, keyword: seed.keyword });
       }
       loadCategories().then(function () { renderSetup(); showScreen('setup'); });
+    },
+    // Restores a wizard draft stashed by commit()'s requireAuth branch — the
+    // host calls this after sign-in completes, from its own pendingTracker
+    // round-trip (mirrors pendingFinder/pendingDeepdive/pendingCompare).
+    resumeDraft: function (o) {
+      if (!o) return;
+      loadCategories().then(function () {
+        draft.cat = o.cat || null;
+        draft.picked = (o.picked || []).slice();
+        draft.stores = (o.stores || []).slice();
+        draft.step = typeof o.step === 'number' ? o.step : 0;
+        draft.metrics = (o.metrics && o.metrics.length) ? o.metrics.slice() : (S.metrics || []).slice();
+        draft.seed = o.seed || null;
+        draft.busy = false; draft.errors = {};
+        renderSetup();
+        showScreen('setup');
+      });
     },
     setTab: setTab,
     isConfigured: function () { return S.configured; },
