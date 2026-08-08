@@ -314,20 +314,37 @@
    list, since the point is a product-card visual language — the same shape
    ltk-disc-card already uses for the picker's own candidate cards below. */
 .ltk-pick-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 10px; margin-bottom: 4px;
 }
 .ltk-pick-slot {
-  position: relative; display: flex; flex-direction: column; align-items: center;
-  gap: 6px; text-align: center; border-radius: var(--ltk-r);
-  padding: 14px 8px 10px; font: inherit;
+  position: relative; display: flex; flex-direction: column; align-items: stretch;
+  gap: 6px; text-align: left; border-radius: var(--ltk-r);
+  padding: 10px; font: inherit;
 }
 .ltk-pick-slot--filled { background: #fff; border: 1px solid #E5E7EB; }
 .ltk-pick-slot--empty {
   background: transparent; border: 1px dashed #D1D5DB; color: #9CA3AF; cursor: pointer;
-  justify-content: center; min-height: 92px;
+  align-items: center; justify-content: center; text-align: center; min-height: 148px;
 }
 .ltk-pick-slot--empty:hover { border-color: #B5202A; color: #B5202A; }
+.ltk-pick-slot-media {
+  display: block; width: 100%; aspect-ratio: 1; border-radius: 8px; overflow: hidden;
+  background: #F3F4F6;
+}
+.ltk-pick-slot-media img,
+.ltk-pick-slot-media .ltk-pick-slot-ico {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.ltk-pick-slot-media--cat {
+  display: grid; place-items: center;
+}
+.ltk-pick-slot-media--cat .ltk-pick-slot-ico {
+  width: 56px; height: 56px; border-radius: 12px; object-fit: contain;
+}
+.ltk-pick-slot-media--letter {
+  display: grid; place-items: center; font-size: 1.35rem; font-weight: 800; color: #6B7280;
+}
 .ltk-pick-slot-ico { width: 40px; height: 40px; border-radius: 9px; object-fit: cover; }
 .ltk-pick-slot-name {
   font-size: .74rem; font-weight: 700; color: #1A1A1A; line-height: 1.3;
@@ -335,11 +352,12 @@
 }
 .ltk-pick-slot-tag {
   font-size: .6rem; font-weight: 700; color: #B5202A; background: #FEF2F2;
-  border-radius: 999px; padding: 1px 8px;
+  border-radius: 999px; padding: 1px 8px; align-self: flex-start;
 }
 .ltk-pick-slot-x {
-  position: absolute; top: 4px; right: 4px; background: none; border: 0; cursor: pointer;
-  color: #9CA3AF; font-size: 1rem; line-height: 1; padding: 4px;
+  position: absolute; top: 6px; right: 6px; background: rgba(255,255,255,.92); border: 0;
+  cursor: pointer; color: #6B7280; font-size: 1rem; line-height: 1; padding: 4px 6px;
+  border-radius: 999px; box-shadow: 0 1px 3px rgba(16,24,40,.12);
 }
 .ltk-pick-slot-x:hover { color: #B91C1C; }
 .ltk-pick-slot-plus { font-size: 1.4rem; line-height: 1; font-weight: 300; }

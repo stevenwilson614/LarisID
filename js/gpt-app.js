@@ -8603,6 +8603,7 @@ function wireDdrAksiCepat(root, product, peers) {
           shop_id: product?.shop_id ?? null,
           store_name: product?.store_name || '',
           item_id: product?.item_id ?? null,
+          image_url: product?.image_url || '',
         });
         return;
       }

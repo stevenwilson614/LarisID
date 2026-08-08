@@ -104,6 +104,9 @@
     draft.sug = { slot: -1, q: '', rows: [], busy: false, kind: 'keyword' };
     draft.storeCat = null; draft.storeCatRows = []; draft.storeCatBusy = false;
     draft.pickerOpen = false; draft.pickerQ = ''; draft.pickerRows = []; draft.pickerBusy = false;
+    _pickedImgTried = {};
+    _pickedImgBusy = false;
+    _pickedImgGen++;
   }
 
   var inflight = null;
@@ -742,17 +745,40 @@
      this step ever renders). Slots 1..keywordLimit-1 are either an already
      picked pasar card or an outlined "+" placeholder; tapping any placeholder
      opens pickerPanelHtml() below the grid. */
+  function pickSlotMediaHtml(k) {
+    if (k && k.image_url) {
+      var letter = esc(String((k.keyword || '?')).charAt(0).toUpperCase());
+      var slug = resolveCatSlug(k.category || '');
+      return '<span class="ltk-pick-slot-media" data-cat="' + attr(slug) + '" data-letter="' + attr(letter) + '">' +
+        '<img src="' + attr(k.image_url) + '" alt="" loading="lazy" decoding="async" ' +
+        'referrerpolicy="no-referrer" ' +
+        'onerror="var p=this.parentNode;var s=p.getAttribute(\'data-cat\')||\'\';' +
+        'var L=p.getAttribute(\'data-letter\')||\'?\';this.remove();' +
+        'var i=document.createElement(\'img\');i.alt=\'\';i.loading=\'lazy\';' +
+        'i.src=\'/images/onboarding/categories/\'+s+\'.png\';' +
+        'i.onerror=function(){p.className=\'ltk-pick-slot-media ltk-pick-slot-media--letter\';p.textContent=L;};' +
+        'p.appendChild(i);">' +
+        '</span>';
+    }
+    return '<span class="ltk-pick-slot-media ltk-pick-slot-media--cat">' +
+      catIconHtml(k && k.category, 56).replace('ltk-cat-ico', 'ltk-pick-slot-ico') +
+      '</span>';
+  }
+
   function stepKeywordPickerHtml() {
+    // Best-effort: fill in product photos for any picks still on the category
+    // glyph (seed arrived without image_url, or baseline hasn't resolved yet).
+    loadPickedImages();
     var slots = [];
     for (var i = 0; i < S.keywordLimit; i++) {
       var k = draft.picked[i];
       if (k) {
         var err = draft.errors[k.keyword];
-        var isSeed = i === 0 && draft.seed &&
+        var isSeed = draft.seed &&
           String(k.keyword).toLowerCase() === String(draft.seed.keyword || '').toLowerCase();
         slots.push(
           '<div class="ltk-pick-slot ltk-pick-slot--filled' + (err ? ' ltk-slot--err' : '') + '">' +
-            catIconHtml(k.category, 30).replace('ltk-cat-ico', 'ltk-pick-slot-ico') +
+            pickSlotMediaHtml(k) +
             '<span class="ltk-pick-slot-name">' + esc(k.keyword) + '</span>' +
             (isSeed ? '<span class="ltk-pick-slot-tag">Produk ini</span>' : '') +
             '<button type="button" class="ltk-pick-slot-x" data-ltk-rm="' + attr(k.keyword) + '" ' +
@@ -867,7 +893,15 @@
     var norm = String(kw || '').trim().toLowerCase();
     if (!norm || draft.picked.length >= S.keywordLimit) return;
     if (draft.picked.some(function (k) { return String(k.keyword).toLowerCase() === norm; })) return;
-    draft.picked.push({ keyword: String(kw).trim(), category: cat || '' });
+    var hit = (draft.pickerRows || []).filter(function (r) {
+      return String(r.keyword || '').toLowerCase() === norm;
+    })[0] || {};
+    draft.picked.push({
+      keyword: String(kw).trim(),
+      category: cat || hit.category || '',
+      image_url: hit.rep_image_url || hit.image_url || hit.top_image || '',
+      meta: hit.n_sellers ? (fmtUnits(hit.n_sellers) + ' penjual') : '',
+    });
     if (draft.picked.length >= S.keywordLimit) closePicker();
     else renderSetup();
   }
@@ -1439,6 +1473,41 @@
     return callP('getKeywordBaseline', kws).then(function (rows) {
       S.baseline = rows || [];
     }).catch(function () { S.baseline = []; });
+  }
+
+  // Real product photos for the seeded setup pick slots. Same source as rollup
+  // row icons (product_types_v via getKeywordBaseline). Fetch each missing
+  // keyword at most once so renderSetup doesn't spam the network.
+  var _pickedImgGen = 0;
+  var _pickedImgBusy = false;
+  var _pickedImgTried = {};
+  function loadPickedImages() {
+    if (!draft.seed || _pickedImgBusy) return;
+    var need = draft.picked.filter(function (k) {
+      if (!k || !k.keyword || k.image_url) return false;
+      return !_pickedImgTried[String(k.keyword).toLowerCase()];
+    });
+    if (!need.length) return;
+    need.forEach(function (k) { _pickedImgTried[String(k.keyword).toLowerCase()] = 1; });
+    _pickedImgBusy = true;
+    var gen = ++_pickedImgGen;
+    var kws = need.map(function (k) { return k.keyword; });
+    callP('getKeywordBaseline', kws).then(function (list) {
+      if (gen !== _pickedImgGen) return;
+      var byKw = {};
+      (list || []).forEach(function (b) {
+        if (b && b.keyword && b.top_image) byKw[String(b.keyword).toLowerCase()] = b.top_image;
+      });
+      var changed = false;
+      draft.picked.forEach(function (k) {
+        if (!k || k.image_url) return;
+        var img = byKw[String(k.keyword || '').toLowerCase()];
+        if (img) { k.image_url = img; changed = true; }
+      });
+      if (changed && draft.step === 0 && draft.seed) renderSetup();
+    }).catch(function () {}).then(function () {
+      if (gen === _pickedImgGen) _pickedImgBusy = false;
+    });
   }
 
   // Real product photos for the rollup rows.
@@ -2248,7 +2317,11 @@
         // room — silently dropping their existing list to make space would be
         // worse than not seeding.
         if (!dupe && draft.picked.length < S.keywordLimit) {
-          draft.picked.unshift({ keyword: String(seed.keyword).trim(), category: seed.category || '' });
+          draft.picked.unshift({
+            keyword: String(seed.keyword).trim(),
+            category: seed.category || '',
+            image_url: seed.image_url || seed.rep_image_url || '',
+          });
         }
         call('track', 'tracker_setup_seeded', { site: opts.site, keyword: seed.keyword });
       }
