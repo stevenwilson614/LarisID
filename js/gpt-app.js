@@ -1541,6 +1541,10 @@ function gptLimitClose() { document.getElementById('gpt-limit-modal')?.classList
 function gptOpenFeedbackForBonus() {
   _fbBonusPending = true;
   gptLimitClose();
+  gptOpenFeedbackModal();
+}
+
+function gptOpenFeedbackModal() {
   const msg = document.getElementById('gpt-fb-message');
   if (msg) msg.value = '';
   const st = document.getElementById('gpt-fb-status');
@@ -1548,6 +1552,11 @@ function gptOpenFeedbackForBonus() {
   const btn = document.getElementById('gpt-fb-submit');
   if (btn) { btn.disabled = false; btn.textContent = 'Kirim ke Steven'; }
   document.getElementById('gpt-feedback-modal')?.classList.add('open');
+}
+
+function gptOpenFeedback() {
+  _fbBonusPending = false;
+  gptOpenFeedbackModal();
 }
 
 function gptFeedbackClose() {
@@ -1888,13 +1897,15 @@ function setView(name) {
   // entirely rather than just clearing its chips, so this list stops
   // mattering for those views, but chips are still irrelevant on them either way.
   if (name === 'home' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker') setComposerChips(null);
-  ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-admin', 'btn-tracker'].forEach(id => {
+  ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-faq', 'btn-tentang', 'btn-admin', 'btn-tracker'].forEach(id => {
     const el = $(id);
     if (!el) return;
     el.classList.toggle('active',
       (id === 'btn-ask-laris' && (name === 'home' || name === 'chat')) ||
       (id === 'btn-produk' && name === 'directory') ||
       (id === 'btn-harga' && name === 'harga') ||
+      (id === 'btn-faq' && name === 'faq') ||
+      (id === 'btn-tentang' && name === 'tentang') ||
       (id === 'btn-admin' && name === 'admin') ||
       (id === 'btn-tracker' && name === 'tracker'));
   });
@@ -11175,6 +11186,7 @@ async function boot() {
   document.getElementById('gpt-limit-close')?.addEventListener('click', gptLimitClose);
   document.getElementById('gpt-limit-spin')?.addEventListener('click', () => { gptLimitClose(); spinShow(); });
   document.getElementById('gpt-limit-feedback')?.addEventListener('click', gptOpenFeedbackForBonus);
+  document.getElementById('faq-feedback-cta')?.addEventListener('click', gptOpenFeedback);
   document.getElementById('gpt-limit-ext')?.addEventListener('click', gptLimitClose);
   document.getElementById('gpt-fb-submit')?.addEventListener('click', () => { void gptSubmitFeedback(); });
   document.getElementById('gpt-fb-close')?.addEventListener('click', gptFeedbackClose);
