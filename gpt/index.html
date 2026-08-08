@@ -887,71 +887,61 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 }
 .dir-compare-text strong { color: var(--ink); font-weight: 650; }
 .dir-compare-text em { font-style: normal; font-weight: 600; color: var(--ink); }
-.dir-city-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 10px; }
-.dir-city-chips .chip {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 7px 12px; font-size: .75rem; font-weight: 450;
-  letter-spacing: -.005em;
-}
 .dir-subcats {
   display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px;
 }
 .dir-subcats .chip { padding: 7px 12px; font-size: .75rem; font-weight: 450; }
 
-/* Collapsible directory filter accordion (kategori + range sliders) */
-.dir-filter-panel {
-  display: flex; flex-direction: column; gap: 6px;
-  margin: 0 0 14px;
-}
-.dir-acc {
+/* Single collapsible filter shell (kota + kategori + sliders) */
+.dir-filter-host { margin: 0 0 14px; }
+.dir-filters-shell {
   border: 1px solid var(--line); border-radius: 14px; background: #fff;
-  overflow: visible;
+  overflow: visible; max-width: 420px;
 }
-.dir-acc-sum {
-  list-style: none; display: flex; align-items: center; justify-content: space-between;
-  gap: 10px; padding: 11px 14px; cursor: pointer; user-select: none;
+.dir-filters-sum {
+  list-style: none; display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 12px; cursor: pointer; user-select: none;
+  font-size: .78rem; font-weight: 650; color: var(--ink-soft);
 }
-.dir-acc-sum::-webkit-details-marker { display: none; }
-.dir-acc-sum-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.dir-acc-label {
-  font-size: .72rem; font-weight: 700; color: var(--muted, #888);
-  text-transform: uppercase; letter-spacing: .04em;
+.dir-filters-sum::-webkit-details-marker { display: none; }
+.dir-filters-chev { color: var(--muted, #888); transition: transform .15s; }
+.dir-filters-shell[open] .dir-filters-chev { transform: rotate(180deg); }
+.dir-filters-body {
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 0 14px 14px; border-top: 1px solid var(--line);
 }
-.dir-acc-value {
-  font-size: .86rem; font-weight: 600; color: var(--ink);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+.dir-fg-label {
+  font-size: .7rem; font-weight: 700; color: var(--muted, #888);
+  text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px;
 }
-.dir-acc-chev { flex-shrink: 0; color: var(--muted, #888); transition: transform .15s; }
-.dir-acc[open] .dir-acc-chev { transform: rotate(180deg); }
-.dir-acc-body { padding: 0 14px 14px; }
 
-.dir-cat-picker { position: relative; }
-.dir-cat-trigger {
+.dir-ms { position: relative; }
+.dir-ms-trigger {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   width: 100%; padding: 10px 12px; border-radius: 12px;
   border: 1px solid var(--line); background: #fff;
   font: inherit; font-size: .86rem; font-weight: 600; color: var(--ink);
   cursor: pointer; text-align: left;
 }
-.dir-cat-trigger:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(181,32,42,.12); }
-.dir-cat-trigger svg { flex-shrink: 0; color: var(--muted, #888); transition: transform .15s; }
-.dir-cat-picker.open .dir-cat-trigger svg { transform: rotate(180deg); }
-.dir-cat-popup {
+.dir-ms-trigger:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(181,32,42,.12); }
+.dir-ms-trigger svg { flex-shrink: 0; color: var(--muted, #888); transition: transform .15s; }
+.dir-ms.open .dir-ms-trigger svg { transform: rotate(180deg); }
+.dir-ms-popup {
   position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 25;
   background: #fff; border: 1px solid var(--line); border-radius: 14px;
   box-shadow: 0 8px 28px rgba(0,0,0,.12); padding: 8px;
   max-height: 320px; display: flex; flex-direction: column;
 }
-.dir-cat-popup[hidden] { display: none !important; }
-.dir-cat-popup-list { overflow-y: auto; max-height: 240px; }
-.dir-cat-opt {
+.dir-ms-popup[hidden] { display: none !important; }
+.dir-ms-list { overflow-y: auto; max-height: 240px; }
+.dir-ms-opt {
   display: flex; align-items: center; gap: 10px;
   padding: 9px 10px; border-radius: 10px; cursor: pointer;
   font-size: .86rem; font-weight: 550; color: var(--ink);
 }
-.dir-cat-opt:hover { background: var(--bg-hover, #F5F5F4); }
-.dir-cat-opt input[type="checkbox"] { flex-shrink: 0; width: 16px; height: 16px; accent-color: var(--accent); }
-.dir-cat-popup-done {
+.dir-ms-opt:hover { background: var(--bg-hover, #F5F5F4); }
+.dir-ms-opt input[type="checkbox"] { flex-shrink: 0; width: 16px; height: 16px; accent-color: var(--accent); }
+.dir-ms-done {
   display: flex; align-items: center; justify-content: center; gap: 6px;
   margin-top: 6px; padding: 10px; border-radius: 10px; border: none;
   background: var(--accent); color: #fff; font: inherit; font-size: .84rem; font-weight: 700;
@@ -3085,21 +3075,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
             <h2 id="dir-heading">Tipe Produk</h2>
             <p class="dd-sub">Satu kartu = satu jenis produk, dirangkum dari seluruh penjualnya di Shopee — bukan hasil AI. Filter bebas; halaman 2+ dan Deep Dive perlu login.</p>
           </div>
-          <div class="dir-city-chips" id="dir-city-chips"></div>
           <div class="dir-compare-banner" id="dir-compare-banner" hidden></div>
-          <div class="dir-filters" id="dir-filters">
-            <label class="dd-sub" for="dir-prov" style="margin:0">Provinsi</label>
-            <select id="dir-prov" aria-label="Filter provinsi"></select>
-            <label class="dd-sub" for="dir-city" style="margin:0">Kota</label>
-            <select id="dir-city" aria-label="Filter kota"></select>
-            <label class="dd-sub" for="dir-sort" style="margin:0">Urutkan</label>
-            <select id="dir-sort" aria-label="Urutkan">
-              <option value="terlaris">Terlaris</option>
-              <option value="naik_daun">Naik daun</option>
-              <option value="termurah">Termurah</option>
-              <option value="termahal">Termahal</option>
-            </select>
-          </div>
           <div id="dir-filters-range"></div>
           <div class="dir-subcats" id="dir-subcats" hidden></div>
           <p class="dir-note" id="dir-note" hidden>Disesuaikan dari profil kamu</p>
@@ -3423,11 +3399,11 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script src="/js/daily-spin-wheel.js?v=20260730g" defer></script>
 <script src="/js/laris-tracker.js?v=20260803a" defer></script>
 <script src="/js/changelog.js?v=20260731b" defer></script>
-<script defer src="/js/gpt-dir-filters.js?v=20260808b"></script>
+<script defer src="/js/gpt-dir-filters.js?v=20260808c"></script>
 <script defer src="/js/gpt-photo-analyze.js?v=20260808a"></script>
 <script defer src="/js/gpt-referral.js?v=20260808a"></script>
 <script defer src="/js/gpt-profile.js?v=20260808a"></script>
-<script src="/js/gpt-app.js?v=20260808b" defer></script>
+<script src="/js/gpt-app.js?v=20260808c" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>
 </html>

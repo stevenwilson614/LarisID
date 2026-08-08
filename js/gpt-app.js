@@ -780,16 +780,10 @@ function renderAskLarisChips() {
   });
 }
 
-/** Sidebar "Ask Laris" entry — a fresh conversational thread + suggestions. */
+/** Sidebar "Ask Laris" entry — same landing as clicking the logo. */
 function openAskLaris() {
   abortAssistantStream();
-  beginFreshChat();
-  const thread = $('chat-thread');
-  if (thread) thread.innerHTML = '';
-  setView('chat');
-  appendBubble('assistant', `<p>Tanya apa saja soal jualan online di Shopee — rekomendasi produk, atau apakah ide jualanmu prospektif. Semua jawaban berbasis data asli LarisID.</p>`);
-  renderAskLarisChips();
-  scrollPanelToTop();
+  renderHome();
 }
 
 // ── Chart.js lifecycle (multiple instances per deep dive) ────────────────
@@ -1114,10 +1108,10 @@ const state = {
   productByKey: Object.create(null),
 
   dirPage: 1,
-  dirCats: [],   // multi-select category_canonical filter (empty = all)
-  dirSub: null,  // selected sub-group within a single selected category
-  dirProv: '',   // Provinsi filter — narrows the Kota select
-  dirCity: '',   // ephemeral directory filter (not persisted)
+  dirCats: [],     // multi-select category_canonical filter (empty = all)
+  dirCities: [],   // multi-select city filter (empty = ALL / nasional)
+  dirSearch: '',   // sticky Produk search query (filters the directory grid)
+  dirSub: null,    // selected sub-group within a single selected category
   dirSort: 'terlaris',
   dirRangeFilters: null,
   dirRows: [],
@@ -1897,7 +1891,7 @@ function setView(name) {
     const el = $(id);
     if (!el) return;
     el.classList.toggle('active',
-      (id === 'btn-ask-laris' && name === 'chat') ||
+      (id === 'btn-ask-laris' && (name === 'home' || name === 'chat')) ||
       (id === 'btn-produk' && name === 'directory') ||
       (id === 'btn-harga' && name === 'harga') ||
       (id === 'btn-admin' && name === 'admin') ||
@@ -3071,14 +3065,17 @@ function wireResultsBar() {
     const tok = raw.split(/\s+/)[0].replace(/[%_,.()\\]/g, '').trim().slice(0, 40);
     if (!tok) return;
     try {
-      const city = state.dirCity || 'ALL';
-      const { data } = await _supabase.from('product_types_v')
+      const cities = state.dirCities || [];
+      let q = _supabase.from('product_types_v')
         .select('keyword, category_canonical, category, omset_top15')
-        .eq('city', city)
         .gte('n_listings', 3)
         .or(`keyword.ilike.${tok}%,keyword.ilike.% ${tok}%`)
         .order('omset_top15', { ascending: false, nullsFirst: false })
         .limit(40);
+      if (cities.length === 1) q = q.eq('city', cities[0]);
+      else if (cities.length > 1) q = q.in('city', cities);
+      else q = q.eq('city', 'ALL');
+      const { data } = await q;
       if (gen !== suggGen) return;
       const cur = String(input?.value || '').trim();
       if (cur.toLowerCase() !== raw.toLowerCase()) return;
@@ -3113,6 +3110,13 @@ function wireResultsBar() {
 
   input?.addEventListener('input', () => {
     clearTimeout(suggDebounce);
+    const v = String(input.value || '').trim();
+    if (!v && state.dirSearch) {
+      state.dirSearch = '';
+      state.dirPage = 1;
+      updateDirHeading();
+      if (state.view === 'directory') void renderDirectory();
+    }
     suggDebounce = setTimeout(() => void showSuggestions(input.value), 180);
   });
   input?.addEventListener('focus', () => {
@@ -3149,27 +3153,23 @@ function wireResultsBar() {
   });
 }
 
-/** Free-text search from the Produk directory's sticky bar — keyword-driven,
- * parallel to the finder's city+category-driven search, sharing the same
- * rendering pipeline. Lands in a chat thread (not the directory grid itself)
- * since a keyword search returns markets, the same shape the directory's own
- * browse cards resolve into when clicked. */
+/** Free-text search from the Produk sticky bar — stays on the directory grid. */
 async function runResultsBarSearch(q) {
-  setView('chat');
-  beginFreshChat();
-  const thread = $('chat-thread');
-  if (thread) thread.innerHTML = '';
-  const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari "${esc(q)}"…</p>`);
-  const rows = await searchListings(q, [], 60);
-  const types = await typesForListings(rows.map(asListingProduct), _finder.city || '', 12);
-  const html = types.length
-    ? `<p>${types.length} pasar untuk "<strong>${esc(q)}</strong>". Klik kartu untuk Deep Dive pasar.</p>
-       <div class="card-grid">${marketCardsHtml(types)}</div>`
-    : `<p>Belum ketemu pasar untuk "${esc(q)}". Coba kata kunci lain.</p>`;
-  await revealAssistant(loading, html, { instant: true });
-  bindTypeCards($('chat-thread'));
-  scrollPanelToTop();
-  void logUserEvent('search_query', { ui: 'gpt', how: 'results_bar', query: q, results_count: rows.length });
+  const query = String(q || '').trim();
+  state.dirSearch = query;
+  state.dirPage = 1;
+  if (state.view !== 'directory') {
+    state.comparePick = null;
+    updateDirCompareBanner();
+    await openDirectory();
+  } else {
+    updateDirHeading();
+    await renderDirectory();
+  }
+  void logUserEvent('search_query', {
+    ui: 'gpt', how: 'results_bar', query,
+    results_count: Array.isArray(state.dirTypes) ? state.dirTypes.length : null,
+  });
   funnelStep('first_search', { source: 'results_bar' });
 }
 
@@ -3540,7 +3540,7 @@ function renderSidebarLocCard() {
 function syncDirectoryFromOnboarding() {
   const o = state.onboarding || {};
   if (o.step !== 'done') return;
-  if (o.city) state.dirCity = o.city;
+  if (o.city) state.dirCities = [o.city];
   if (o.categories?.length) {
     state.dirCats = o.categories
       .map(c => toCanonicalCat(c) || c)
@@ -3703,10 +3703,12 @@ async function savePrefsDrawer() {
 
     if (state.view === 'directory') {
       const filtersHost = $('dir-filters-range');
-      if (filtersHost?._dirApi) filtersHost._dirApi.setCategories(state.dirCats || []);
-      const citySel = $('dir-city');
-      if (citySel) citySel.value = state.dirCity || '';
+      if (filtersHost?._dirApi) {
+        filtersHost._dirApi.setCategories(state.dirCats || []);
+        filtersHost._dirApi.setCities(state.dirCities || []);
+      }
       void renderSubcats(primaryDirCat());
+      updateDirHeading();
       await renderDirectory();
     }
   } finally {
@@ -5894,14 +5896,12 @@ function extractCompareTerm(lower) {
 async function openDirectoryForCity(city) {
   state.comparePick = null;
   updateDirCompareBanner();
-  state.dirCity = city || '';
+  state.dirCities = city ? [city] : [];
   state.dirPage = 1;
   state._dirDefaultsApplied = true; // routed city wins over onboarding defaults
   void logUserEvent('dir_open', { ui: 'gpt', via: 'topic_change', city });
   clarityEvt('dir_open', { via: 'topic_change' });
   await openDirectory();
-  const citySel = $('dir-city');
-  if (citySel) citySel.value = state.dirCity || '';
 }
 
 function parseCityFromQuery(text) {
@@ -9823,30 +9823,42 @@ const _ptypeCache = Object.create(null);
 
 const PTYPE_COLS = 'keyword,city,category,category_canonical,subgroup,n_listings,n_sellers,price_min,price_median,price_max,avg_sold,total_sold_sum,omset_top15,sold_top3_share,images,rep_item_id,rep_shop_id,rep_product_name,rep_store_name,rep_price,rep_total_sold,rep_reviews,rep_rating,rep_location,rep_image_url,rep_url,rep_listing_date,trend_delta_30d,breakout_rate,niche_new_items,median_winner_price,median_winner_reviews';
 
-async function fetchProductTypes(city, cats, limit = 1000, sub = null) {
+async function fetchProductTypes(cities, cats, limit = 1000, sub = null) {
   if (!_supabase) return [];
-  const bucket = city || 'ALL';
+  const cityList = Array.isArray(cities) ? cities.filter(Boolean) : (cities ? [cities] : []);
+  const buckets = cityList.length ? cityList : ['ALL'];
   const catList = Array.isArray(cats) ? cats.filter(Boolean) : (cats ? [cats] : []);
   const catKey = catList.slice().sort().join(',');
-  const key = `${bucket}|${catKey}|${sub || ''}`;
+  const cityKey = buckets.slice().sort().join(',');
+  const key = `${cityKey}|${catKey}|${sub || ''}`;
   if (_ptypeCache[key]) return _ptypeCache[key];
   try {
     let q = _supabase.from('product_types_v')
       .select(PTYPE_COLS)
-      .eq('city', bucket)
       .gte('n_listings', 3)
       .order('omset_top15', { ascending: false, nullsFirst: false })
-      .limit(limit);
-    // Canonical bucket + server-side subgroup: the old client-side keyword
-    // substring test could not see the 67% of types whose raw category string
-    // was not one of the 19 hardcoded chips.
+      .limit(buckets.length > 1 ? Math.min(limit * buckets.length, 3000) : limit);
+    if (buckets.length === 1) q = q.eq('city', buckets[0]);
+    else q = q.in('city', buckets);
     if (catList.length === 1) q = q.eq('category_canonical', catList[0]);
     else if (catList.length > 1) q = q.in('category_canonical', catList);
-    // Subgroups only make sense for a single category selection.
     if (sub && catList.length === 1) q = q.eq('subgroup', sub);
     const { data, error } = await q;
     if (error) throw error;
-    const rows = data || [];
+    let rows = data || [];
+    // Multi-city OR: collapse to one card per keyword (keep largest market).
+    if (buckets.length > 1) {
+      const best = new Map();
+      rows.forEach(r => {
+        const k = r.keyword;
+        if (!k) return;
+        const prev = best.get(k);
+        if (!prev || (Number(r.omset_top15) || 0) > (Number(prev.omset_top15) || 0)) best.set(k, r);
+      });
+      rows = Array.from(best.values())
+        .sort((a, b) => (Number(b.omset_top15) || 0) - (Number(a.omset_top15) || 0))
+        .slice(0, limit);
+    }
     await attachTypeQuartiles(rows);
     _ptypeCache[key] = rows;
     return rows;
@@ -9864,10 +9876,10 @@ async function fetchProductTypes(city, cats, limit = 1000, sub = null) {
  * Reuses planSearch() so the EN/ID synonym expansion built for listing search
  * applies here too ("cross stitch" -> kristik) rather than being duplicated.
  */
-async function searchProductTypes(text, city, limit = 12) {
+async function searchProductTypes(text, cities, limit = 12) {
   if (!_supabase) return [];
   const raw = String(text || '').trim();
-  if (raw.length < 3) return [];
+  if (raw.length < 2) return [];
   let terms = [raw];
   try {
     const plan = await planSearch(raw);
@@ -9875,18 +9887,21 @@ async function searchProductTypes(text, city, limit = 12) {
     terms = [...new Set([raw, ...extra])].slice(0, 6);
   } catch (_) {}
 
-  const bucket = city || 'ALL';
+  const cityList = Array.isArray(cities) ? cities.filter(Boolean) : (cities ? [cities] : []);
+  const buckets = cityList.length ? cityList : ['ALL'];
   const seen = new Set();
   const hits = [];
   const runs = await Promise.all(terms.map(async t => {
     try {
-      const { data } = await _supabase.from('product_types_v')
+      let q = _supabase.from('product_types_v')
         .select(PTYPE_COLS)
-        .eq('city', bucket)
         .gte('n_listings', 3)
         .ilike('keyword', `%${t.slice(0, 40)}%`)
         .order('omset_top15', { ascending: false, nullsFirst: false })
         .limit(limit * 2);
+      if (buckets.length === 1) q = q.eq('city', buckets[0]);
+      else q = q.in('city', buckets);
+      const { data } = await q;
       return data || [];
     } catch (_) { return []; }
   }));
@@ -10073,7 +10088,7 @@ function bindTypeCards(root) {
       if (!t) return;
       const p = typeRepProduct(t);
       rememberProducts([p]);
-      void logUserEvent('ptype_open', { ui: 'gpt', keyword: t.keyword, city: state.dirCity || 'ALL' });
+      void logUserEvent('ptype_open', { ui: 'gpt', keyword: t.keyword, city: (state.dirCities && state.dirCities[0]) || 'ALL' });
       void openDeepDive(p);
     });
   });
@@ -10348,41 +10363,16 @@ async function renderSubcats(cat) {
 }
 
 // Rebuild the Kota options from the active Provinsi (all cities when none).
-/** "Yang Laku Kotamu" quick city switcher — same state/render path as the
- * Kota <select>, just faster to reach than opening a dropdown. */
-function renderDirCityChips() {
-  const wrap = $('dir-city-chips');
-  if (!wrap) return;
-  const cities = state.dirProv ? (PROVINCE_CITIES[state.dirProv] || []) : NU_ONB_LOCATIONS;
-  wrap.innerHTML = `<button type="button" class="chip${state.dirCity ? '' : ' selected'}" data-dcity="">Semua kota</button>` +
-    cities.map(c => `<button type="button" class="chip${state.dirCity === c ? ' selected' : ''}" data-dcity="${esc(c)}">${esc(c)}</button>`).join('');
-  wrap.querySelectorAll('[data-dcity]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      state.dirCity = btn.getAttribute('data-dcity') || '';
-      state.dirPage = 1;
-      const citySel = $('dir-city');
-      if (citySel) citySel.value = state.dirCity;
-      updateDirHeading();
-      renderDirCityChips();
-      void logUserEvent('dir_filter', { ui: 'gpt', kind: 'city', value: state.dirCity, via: 'chip' });
-      void renderDirectory();
-    });
-  });
-}
-
+/** Heading reflects selected cities / active Produk search. */
 function updateDirHeading() {
   const h = $('dir-heading');
   if (!h) return;
-  h.textContent = state.dirCity ? `Yang Laku di ${state.dirCity}` : 'Tipe Produk';
-}
-
-function fillDirCityOptions() {
-  const citySel = $('dir-city');
-  if (!citySel) return;
-  const cities = state.dirProv ? PROVINCE_CITIES[state.dirProv] || [] : NU_ONB_LOCATIONS;
-  citySel.innerHTML = `<option value="">Semua kota</option>` +
-    cities.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
-  citySel.value = state.dirCity || '';
+  const cities = state.dirCities || [];
+  const q = (state.dirSearch || '').trim();
+  let base = 'Tipe Produk';
+  if (cities.length === 1) base = `Yang Laku di ${cities[0]}`;
+  else if (cities.length > 1) base = `Yang Laku di ${cities[0]} +${cities.length - 1}`;
+  h.textContent = q ? `Hasil: ${q}` : base;
 }
 
 async function openDirectory() {
@@ -10397,11 +10387,16 @@ async function openDirectory() {
   if (filtersHost && window.LarisGptDirFilters) {
     window.LarisGptDirFilters.renderControls(filtersHost, {
       categories: catOptions,
+      cities: NU_ONB_LOCATIONS.slice(),
       selectedCategories: state.dirCats || [],
+      selectedCities: state.dirCities || [],
       onApply: (f) => {
         const nextCats = Array.isArray(f.categories) ? f.categories.slice() : [];
+        const nextCities = Array.isArray(f.cities) ? f.cities.slice() : [];
         const catsChanged = JSON.stringify(nextCats.slice().sort()) !== JSON.stringify((state.dirCats || []).slice().sort());
+        const citiesChanged = JSON.stringify(nextCities.slice().sort()) !== JSON.stringify((state.dirCities || []).slice().sort());
         state.dirCats = nextCats;
+        state.dirCities = nextCities;
         if (catsChanged) state.dirSub = null;
         state.dirRangeFilters = {
           priceMin: f.priceMin,
@@ -10412,10 +10407,13 @@ async function openDirectory() {
         };
         state.dirPage = 1;
         if (catsChanged) applyDirCatUi();
+        if (citiesChanged) updateDirHeading();
         void logUserEvent('dir_filter', {
           ui: 'gpt',
-          kind: catsChanged ? 'category' : 'range',
-          value: catsChanged ? (state.dirCats || []).join(', ') : JSON.stringify(state.dirRangeFilters),
+          kind: catsChanged ? 'category' : (citiesChanged ? 'city' : 'range'),
+          value: catsChanged
+            ? (state.dirCats || []).join(', ')
+            : (citiesChanged ? (state.dirCities || []).join(', ') : JSON.stringify(state.dirRangeFilters)),
         });
         void renderDirectory();
       },
@@ -10423,61 +10421,18 @@ async function openDirectory() {
   }
 
   applyDirCatUi();
-
-  const provSel = $('dir-prov');
-  if (provSel && !provSel.dataset.ready) {
-    provSel.dataset.ready = '1';
-    provSel.innerHTML = `<option value="">Semua provinsi</option>` +
-      Object.keys(PROVINCE_CITIES).map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
-    provSel.addEventListener('change', () => {
-      state.dirProv = provSel.value || '';
-      const allowed = state.dirProv ? PROVINCE_CITIES[state.dirProv] || [] : NU_ONB_LOCATIONS;
-      if (state.dirCity && !allowed.includes(state.dirCity)) state.dirCity = '';
-      fillDirCityOptions();
-      renderDirCityChips();
-      updateDirHeading();
-      state.dirPage = 1;
-      void logUserEvent('dir_filter', { ui: 'gpt', kind: 'province', value: state.dirProv });
-      void renderDirectory();
-    });
-  }
-  if (provSel) provSel.value = state.dirProv || '';
-
-  const citySel = $('dir-city');
-  if (citySel && !citySel.dataset.ready) {
-    citySel.dataset.ready = '1';
-    fillDirCityOptions();
-    citySel.addEventListener('change', () => {
-      state.dirCity = citySel.value || '';
-      state.dirPage = 1;
-      renderDirCityChips();
-      updateDirHeading();
-      void logUserEvent('dir_filter', { ui: 'gpt', kind: 'city', value: state.dirCity });
-      void renderDirectory();
-    });
-  } else {
-    fillDirCityOptions();
-  }
-  if (citySel) citySel.value = state.dirCity || '';
-  renderDirCityChips();
   updateDirHeading();
-
-  const sortSel = $('dir-sort');
-  if (sortSel && !sortSel.dataset.ready) {
-    sortSel.dataset.ready = '1';
-    sortSel.addEventListener('change', () => {
-      state.dirSort = sortSel.value || 'terlaris';
-      state.dirPage = 1;
-      void logUserEvent('dir_filter', { ui: 'gpt', kind: 'sort', value: state.dirSort });
-      void renderDirectory();
-    });
-  }
-  if (sortSel) sortSel.value = state.dirSort || 'terlaris';
 
   const note = $('dir-note');
   if (note) {
     const tailored = !!(state.onboarding?.city || state.onboarding?.categories?.length);
     note.hidden = !tailored || !!state.comparePick;
+  }
+
+  // Keep the sticky search bar in sync with directory search state.
+  const searchInp = $('results-bar-input');
+  if (searchInp && state.dirSearch && searchInp.value !== state.dirSearch) {
+    searchInp.value = state.dirSearch;
   }
 
   await renderDirectory();
@@ -10492,20 +10447,33 @@ async function renderDirectory() {
   grid.innerHTML = '<p class="dd-sub">Memuat…</p>';
 
   const cats = state.dirCats || [];
-  const city = state.dirCity || '';
+  const cities = state.dirCities || [];
+  const q = (state.dirSearch || '').trim();
   // Subgroup is filtered server-side against keyword_subgroup now, not by a
   // client-side keyword substring test. Only applied when exactly one category
   // is selected.
   const sub = primaryDirCat() ? (state.dirSub || null) : null;
-  let types = await fetchProductTypes(city, cats, 1000, sub);
-  // mv missing/empty (e.g. refresh failed): lift the listing pool back up to
-  // markets rather than degrading to a listing grid. The directory is a
-  // top-level surface, and single listings only belong under a market.
-  if (!types.length && !sub) {
-    const pool = city
-      ? await fetchListingsCityCat(expandCityLocations(city), cats, 200)
-      : mergePool([], await fetchNaikDaunGlobal(200));
-    types = await typesForListings(pool, city, 60);
+  let types;
+  if (q) {
+    types = await searchProductTypes(q, cities, 60);
+    // Category filter still applies client-side when searching.
+    if (cats.length) {
+      const set = new Set(cats);
+      types = types.filter(t => set.has(t.category_canonical) || set.has(t.category));
+    }
+    if (sub) types = types.filter(t => t.subgroup === sub);
+  } else {
+    types = await fetchProductTypes(cities, cats, 1000, sub);
+    // mv missing/empty (e.g. refresh failed): lift the listing pool back up to
+    // markets rather than degrading to a listing grid. The directory is a
+    // top-level surface, and single listings only belong under a market.
+    if (!types.length && !sub) {
+      const primaryCity = cities.length === 1 ? cities[0] : '';
+      const pool = primaryCity
+        ? await fetchListingsCityCat(expandCityLocations(primaryCity), cats, 200)
+        : mergePool([], await fetchNaikDaunGlobal(200));
+      types = await typesForListings(pool, primaryCity, 60);
+    }
   }
   types = sortTypeRows(types, state.dirSort || 'terlaris');
   if (state.dirRangeFilters && window.LarisGptDirFilters) {
@@ -10520,8 +10488,10 @@ async function renderDirectory() {
   }
   const start = (state.dirPage - 1) * PAGE_SIZE;
   const slice = types.slice(start, start + PAGE_SIZE);
-  grid.innerHTML = slice.map((t, i) => typeCardHtml(t, start + i, i)).join('')
-    || '<p class="dd-sub">Tidak ada tipe produk untuk filter ini.</p>';
+  const emptyMsg = q
+    ? `<p class="dd-sub">Belum ketemu pasar untuk "<strong>${esc(q)}</strong>". Coba kata kunci lain.</p>`
+    : '<p class="dd-sub">Tidak ada tipe produk untuk filter ini.</p>';
+  grid.innerHTML = slice.map((t, i) => typeCardHtml(t, start + i, i)).join('') || emptyMsg;
   bindTypeCards(grid);
   scrollPanelToTop();
   renderDirPager(pager, types.length);
@@ -10554,14 +10524,22 @@ async function renderDirectoryListings() {
   grid.innerHTML = '<p class="dd-sub">Memuat…</p>';
 
   const cats = state.dirCats || [];
-  const city = state.dirCity || '';
+  const cities = state.dirCities || [];
   const oneCat = primaryDirCat();
   const sub = oneCat ? (state.dirSub || null) : null;
   const poolLimit = sub ? 400 : 200;  // widen pool so narrow sub-groups still fill a page
   let rows = [];
-  if (city) {
-    const locs = expandCityLocations(city);
-    rows = await fetchListingsCityCat(locs, cats, poolLimit);
+  if (cities.length) {
+    const pools = await Promise.all(cities.map(c =>
+      fetchListingsCityCat(expandCityLocations(c), cats, poolLimit)
+    ));
+    const seen = new Set();
+    pools.flat().forEach(r => {
+      const k = `${r.item_id}_${r.shop_id}`;
+      if (seen.has(k)) return;
+      seen.add(k);
+      rows.push(r);
+    });
   } else {
     rows = mergePool([], await fetchNaikDaunGlobal(poolLimit));
     if (cats.length) {
