@@ -7250,6 +7250,35 @@ function gptTrackerAdapter() {
         top_name: r.rep_product_name, top_image: r.rep_image_url,
       }));
     },
+    async getShopLogoCache(shopIds) {
+      if (!_supabase || !shopIds || !shopIds.length) return [];
+      const { data } = await _supabase.from('shop_logo_cache')
+        .select('shop_id,logo_url,fetched_at')
+        .in('shop_id', shopIds);
+      return data || [];
+    },
+    async fetchShopLogo(shopId) {
+      if (!_supabase || shopId == null) return null;
+      const { data, error } = await _supabase.functions.invoke('get-shop-logo', {
+        body: { shop_id: Number(shopId) },
+      });
+      if (error) throw error;
+      return data;
+    },
+    async getStoreOldestListingDates(shopIds) {
+      if (!_supabase || !shopIds || !shopIds.length) return {};
+      const { data } = await _supabase.from('listings_deduped')
+        .select('shop_id,listing_date')
+        .in('shop_id', shopIds)
+        .not('listing_date', 'is', null);
+      const out = {};
+      (data || []).forEach(r => {
+        if (r.shop_id == null || !r.listing_date) return;
+        const key = String(r.shop_id);
+        if (!out[key] || r.listing_date < out[key]) out[key] = r.listing_date;
+      });
+      return out;
+    },
   };
   return _trkAdapterB;
 }

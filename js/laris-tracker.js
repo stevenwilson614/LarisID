@@ -180,19 +180,89 @@
     return 'besok pagi, ' + days[t.getDay()] + ' ' + t.getDate() + ' ' + mons[t.getMonth()];
   }
 
+  // Art ships for 19 onboarding category slugs. Map the long tail of DB
+  // category strings onto the nearest of those so the second fallback lands
+  // on a real PNG instead of 404 → letter.
+  var CAT_ICON_KNOWN = {
+    'alat-tulis': 1, 'bayi-anak': 1, 'dapur': 1, 'elektronik': 1, 'fashion': 1,
+    'hewan-peliharaan': 1, 'hobi-kerajinan': 1, 'hp-gadget': 1, 'kamar-mandi': 1,
+    'keamanan': 1, 'kecantikan': 1, 'kesehatan': 1, 'motor-mobil': 1, 'olahraga': 1,
+    'outdoor-camping': 1, 'rumah': 1, 'sepeda': 1, 'taman': 1, 'tanaman': 1,
+  };
+  var CAT_ICON_ALIAS = {
+    'aksesoris-fashion': 'fashion', 'aksesoris-mobil': 'motor-mobil',
+    'alat-musik': 'hobi-kerajinan', 'audio-dan-wearable': 'hp-gadget',
+    'baking': 'dapur', 'batik-dan-tenun': 'fashion', 'body-care': 'kecantikan',
+    'buku': 'alat-tulis', 'buku-dan-alat-tulis': 'alat-tulis',
+    'dekorasi': 'rumah', 'elektronik-rumah-tangga': 'elektronik',
+    'fashion-anak': 'fashion', 'fashion-muslim': 'fashion',
+    'fashion-pria': 'fashion', 'fashion-pria-dan-wanita': 'fashion',
+    'fashion-wanita': 'fashion', 'furniture': 'rumah',
+    'gaming-dan-komputer': 'elektronik', 'grooming-pria': 'kecantikan',
+    'hobi': 'hobi-kerajinan', 'ibu-dan-bayi': 'bayi-anak',
+    'jahit': 'hobi-kerajinan', 'jam': 'fashion', 'jam-tangan': 'fashion',
+    'kado-dan-hampers': 'rumah', 'kantor': 'alat-tulis',
+    'kebersihan': 'kamar-mandi', 'kendaraan-listrik': 'motor-mobil',
+    'kerajinan-dan-hobi': 'hobi-kerajinan', 'kesehatan-dan-herbal': 'kesehatan',
+    'komputer': 'elektronik', 'konveksi-dan-kaos': 'fashion', 'kopi': 'dapur',
+    'laundry': 'kamar-mandi', 'listrik-dan-elektrikal': 'elektronik',
+    'mainan': 'bayi-anak', 'makanan-dan-minuman': 'dapur', 'makeup': 'kecantikan',
+    'motor': 'motor-mobil', 'outdoor': 'outdoor-camping',
+    'pakaian-dalam': 'fashion', 'pancing': 'olahraga', 'parfum': 'kecantikan',
+    'penyimpanan-makanan': 'dapur', 'perhiasan': 'fashion',
+    'perkakas': 'rumah', 'perlengkapan-ibadah': 'rumah',
+    'perlengkapan-usaha': 'alat-tulis', 'pernikahan-dan-souvenir': 'rumah',
+    'pertanian': 'taman', 'pertanian-dan-berkebun': 'taman',
+    'pesta-dan-dekorasi': 'rumah', 'rambut': 'kecantikan',
+    'sekolah-dan-atk': 'alat-tulis', 'sembako': 'dapur',
+    'sepatu-dan-sandal': 'fashion', 'skincare': 'kecantikan',
+    'skincare-dan-kecantikan': 'kecantikan', 'sparepart-mobil': 'motor-mobil',
+    'sparepart-motor': 'motor-mobil', 'tanaman-hias': 'tanaman',
+    'tas': 'fashion', 'tekstil-rumah': 'rumah', 'travel': 'outdoor-camping',
+    'travel-dan-outdoor': 'outdoor-camping',
+  };
+  function catSlugify(cat) {
+    return String(cat || '').toLowerCase()
+      .replace(/&/g, 'dan').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  }
+  function resolveCatSlug(cat) {
+    var slug = catSlugify(cat);
+    if (CAT_ICON_KNOWN[slug]) return slug;
+    if (CAT_ICON_ALIAS[slug]) return CAT_ICON_ALIAS[slug];
+    return slug;
+  }
   function catIconHtml(cat, size) {
     var px = size || 40;
-    var slug = String(cat || '').toLowerCase()
-      .replace(/&/g, 'dan').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    var slug = resolveCatSlug(cat);
     var letter = esc(String(cat || '?').charAt(0).toUpperCase());
-    // Art exists for the 19 shipped slugs; category_map can hold more. Degrade to
-    // a tinted letter rather than a blank tile in the primary entry point.
+    // Art exists for the 19 shipped slugs; aliases cover the DB long-tail.
+    // Degrade to a tinted letter rather than a blank tile.
     return '<span class="ltk-cat-ico" style="width:' + px + 'px;height:' + px + 'px">' +
       '<img src="/images/onboarding/categories/' + attr(slug) + '.png" alt="" width="' + px + '" height="' + px + '" loading="lazy" ' +
       'onerror="this.parentNode.className=\'ltk-cat-ico ltk-cat-ico--letter\';' +
       'this.parentNode.style.width=\'' + px + 'px\';this.parentNode.style.height=\'' + px + 'px\';' +
       'this.parentNode.textContent=\'' + letter + '\';">' +
       '</span>';
+  }
+  function fmtAge(dateStr) {
+    if (!dateStr) return '—';
+    var diff = Date.now() - new Date(dateStr).getTime();
+    var days = Math.floor(diff / 86400000);
+    if (days < 0) return '—';
+    if (days >= 365) {
+      var y = Math.floor(days / 365), m = Math.floor((days % 365) / 30);
+      return m ? (y + ' thn ' + m + ' bln') : (y + ' tahun');
+    }
+    if (days >= 30) return Math.floor(days / 30) + ' bulan';
+    if (days >= 7) return Math.floor(days / 7) + ' minggu';
+    return days + ' hari';
+  }
+  function fmtDayShort(d) {
+    if (!d) return '';
+    var dt = new Date(String(d).slice(0, 10) + 'T12:00:00');
+    if (isNaN(dt.getTime())) return String(d);
+    var mons = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return dt.getDate() + ' ' + mons[dt.getMonth()];
   }
   function imgOr(src, cls) {
     if (!src) return '<div class="' + cls + '"></div>';
@@ -1001,49 +1071,6 @@
      Rows with too little history print "Baru" rather than a fake percentage —
      see MIN_DAYS_FOR_TREND and the honesty rule at the top of this file.      */
 
-  function statTiles() {
-    var t = S.rollup.totals || {};
-    var enough = !!S.rollup.rows.filter(rowHasTrend).length;
-    return [
-      { lbl: (S.tab === 'store' ? 'Toko Dipantau' : 'Keyword Dipantau'), val: String(t.tracked || 0),
-        cls: 'green', note: 'Aktif', ico: 'target' },
-      { lbl: 'Total Omset', val: fmtRp(t.omset || 0), cls: 'blue',
-        d: deltaHtml(t.omset, t.omset_prev, enough), ico: 'wallet' },
-      { lbl: 'Total Unit Terjual', val: fmtUnits(t.units || 0), cls: 'amber',
-        d: deltaHtml(t.units, t.units_prev, enough), ico: 'box' },
-      { lbl: 'SKU Aktif', val: fmtUnits(t.n_listings || 0), cls: 'violet',
-        d: deltaHtml(t.n_listings, t.n_listings_prev, enough), ico: 'grid' },
-    ].concat(S.tab === 'store' ? [] : [
-      { lbl: 'Toko Aktif', val: fmtUnits(t.n_sellers || 0), cls: 'red',
-        d: deltaHtml(t.n_sellers, t.n_sellers_prev, enough), ico: 'users' },
-    ]).concat([
-      { lbl: 'Rata-rata Harga', val: fmtRp(t.avg_price || 0), cls: 'rose',
-        d: deltaHtml(t.avg_price, t.avg_price_prev, enough, { inverse: true }), ico: 'tag' },
-    ]).map(function (s) {
-      return '<div class="ltk-stat">' +
-        '<span class="ltk-stat-ico ltk-stat-ico--' + s.cls + '">' + statIco(s.ico) + '</span>' +
-        '<div class="ltk-stat-body">' +
-          '<div class="ltk-stat-val">' + esc(s.val) + '</div>' +
-          '<div class="ltk-stat-lbl">' + esc(s.lbl) + '</div>' +
-          (s.d ? '<div class="ltk-stat-d">' + s.d + '<span>vs ' + S.windowDays + ' hari sebelumnya</span></div>'
-               : '<div class="ltk-stat-d"><span class="ltk-d ltk-d--up">' + esc(s.note) + '</span></div>') +
-        '</div></div>';
-    }).join('');
-  }
-
-  function statIco(name) {
-    var paths = {
-      target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>',
-      wallet: '<path d="M3 7a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M16 12h2"/>',
-      box:    '<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/>',
-      grid:   '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
-      users:  '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>',
-      tag:    '<path d="M20.6 13.4L12 22l-9-9V3h10z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
-    };
-    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
-      'stroke-linecap="round" stroke-linejoin="round">' + (paths[name] || paths.target) + '</svg>';
-  }
-
   function sortedRows() {
     var rows = (S.rollup.rows || []).slice();
     var by = {
@@ -1075,7 +1102,7 @@
       (isKw
         ? '<td class="ltk-num"><b>' + esc(fmtUnits(r.n_sellers || 0)) + '</b>' +
           deltaHtml(r.n_sellers, r.n_sellers_prev, trend) + '</td>'
-        : '') +
+        : '<td class="ltk-num"><b>' + esc(fmtAge(r.oldest_listing_date)) + '</b></td>') +
       '<td class="ltk-num"><b>' + esc(fmtRp(r.avg_price || 0)) + '</b>' +
         deltaHtml(r.avg_price, r.avg_price_prev, trend, { inverse: true }) + '</td>' +
       '<td class="ltk-num"><b>' + esc(fmtRating(r.avg_rating)) + '</b>' +
@@ -1116,6 +1143,44 @@
       (expanded ? rowDetailHtml(r, isKw) : '');
   }
 
+  // Day-over-day notable moves from the widened get_tracker_rollup series
+  // (avg_price / n_listings / n_sellers). Cap so the expanded row stays short.
+  function changeHistoryHtml(r, isKw) {
+    var series = (r && r.series) || [];
+    var lines = [];
+    var i, prev, cur, day, pricePrev, priceCur, pct, dSku, dSell;
+    for (i = 1; i < series.length; i++) {
+      prev = series[i - 1];
+      cur = series[i];
+      day = fmtDayShort(cur.d);
+      pricePrev = Number(prev.avg_price);
+      priceCur = Number(cur.avg_price);
+      if (Number.isFinite(pricePrev) && Number.isFinite(priceCur) && pricePrev > 0 && priceCur !== pricePrev) {
+        pct = Math.round(((priceCur - pricePrev) / pricePrev) * 100);
+        if (priceCur > pricePrev) {
+          lines.push(day + ': Harga naik ke ' + fmtRp(priceCur) + ' (+' + pct + '%)');
+        } else {
+          lines.push(day + ': Harga turun ke ' + fmtRp(priceCur) + ' (' + pct + '%)');
+        }
+      }
+      dSku = (Number(cur.n_listings) || 0) - (Number(prev.n_listings) || 0);
+      if (dSku > 0) lines.push(day + ': ' + dSku + ' SKU baru masuk');
+      else if (dSku < 0) lines.push(day + ': ' + Math.abs(dSku) + ' SKU keluar');
+      if (isKw) {
+        dSell = (Number(cur.n_sellers) || 0) - (Number(prev.n_sellers) || 0);
+        if (dSell > 0) lines.push(day + ': ' + dSell + ' toko baru masuk');
+        else if (dSell < 0) lines.push(day + ': ' + Math.abs(dSell) + ' toko keluar');
+      }
+    }
+    lines = lines.slice(-6);
+    var body = lines.length
+      ? lines.map(function (ln) { return '<li>' + esc(ln) + '</li>'; }).join('')
+      : '<li class="ltk-row-history-empty">Belum ada perubahan berarti di window ini</li>';
+    return '<div class="ltk-row-history">' +
+      '<div class="ltk-row-history-title">Riwayat Perubahan</div>' +
+      '<ul class="ltk-row-history-list">' + body + '</ul></div>';
+  }
+
   // Mobile-friendly recap of the same columns as the table — the table stays
   // horizontally scrollable at narrow widths (see the 720px responsive rule),
   // so tapping a row surfaces every stat stacked, without needing that scroll.
@@ -1127,72 +1192,52 @@
       ['SKU Aktif', fmtUnits(r.n_listings || 0), deltaHtml(r.n_listings, r.n_listings_prev, trend)],
     ];
     if (isKw) fields.push(['Toko Aktif', fmtUnits(r.n_sellers || 0), deltaHtml(r.n_sellers, r.n_sellers_prev, trend)]);
+    else fields.push(['Usia Toko', fmtAge(r.oldest_listing_date), '']);
     fields.push(['Rata-rata Harga', fmtRp(r.avg_price || 0), deltaHtml(r.avg_price, r.avg_price_prev, trend, { inverse: true })]);
     fields.push(['Rating', fmtRating(r.avg_rating), deltaHtml(r.avg_rating, r.avg_rating_prev, trend)]);
-    var colspan = isKw ? 8 : 7;
+    // Matches the non-kebab columns: name + metrics + tren (toko Aktif / Usia swap 1:1).
+    var colspan = 8;
     return '<tr class="ltk-row-detail"><td colspan="' + colspan + '"><div class="ltk-row-detail-grid">' +
       fields.map(function (f) {
         return '<div class="ltk-row-detail-item"><span class="ltk-row-detail-lbl">' + esc(f[0]) + '</span>' +
           '<span class="ltk-row-detail-val">' + esc(f[1]) + f[2] + '</span></div>';
       }).join('') +
-    '</div></td></tr>';
+    '</div>' + changeHistoryHtml(r, isKw) + '</td></tr>';
   }
 
   function storeAvatar(r) {
     var letter = esc(String(rowLabel(r) || 'T').charAt(0).toUpperCase());
+    if (r && r.image_url) {
+      return '<span class="ltk-row-ico" data-letter="' + attr(letter) + '">' +
+        '<img src="' + attr(r.image_url) + '" alt="" loading="lazy" decoding="async" ' +
+        'referrerpolicy="no-referrer" ' +
+        'onerror="var p=this.parentNode;var L=p.getAttribute(\'data-letter\')||\'T\';' +
+        'p.className=\'ltk-row-ico ltk-row-ico--letter\';p.textContent=L;">' +
+        '</span>';
+    }
     return '<span class="ltk-row-ico ltk-row-ico--letter">' + letter + '</span>';
   }
 
   // Real product photo where we have one (merged by loadRowImages), category
-  // illustration otherwise. Falling back on error rather than leaving a broken
-  // image: a Shopee CDN URL can 404 long after we cached it.
+  // illustration otherwise. Falling back on error rather than leaving a broken /
+  // blank box: a Shopee CDN URL can 404 long after we cached it.
   function rowIconHtml(r) {
+    var cat = (r && r.category) || '';
+    var slug = resolveCatSlug(cat);
+    var letter = esc(String(cat || (r && r.keyword) || '?').charAt(0).toUpperCase());
     if (r && r.image_url) {
-      return '<span class="ltk-row-ico">' +
+      return '<span class="ltk-row-ico" data-cat="' + attr(slug) + '" data-letter="' + attr(letter) + '">' +
         '<img src="' + attr(r.image_url) + '" alt="" loading="lazy" decoding="async" ' +
-        'referrerpolicy="no-referrer" onerror="this.remove()">' +
+        'referrerpolicy="no-referrer" ' +
+        'onerror="var p=this.parentNode;var s=p.getAttribute(\'data-cat\')||\'\';' +
+        'var L=p.getAttribute(\'data-letter\')||\'?\';this.remove();' +
+        'var i=document.createElement(\'img\');i.alt=\'\';i.width=46;i.height=46;' +
+        'i.loading=\'lazy\';i.src=\'/images/onboarding/categories/\'+s+\'.png\';' +
+        'i.onerror=function(){p.className=\'ltk-row-ico ltk-row-ico--letter\';p.textContent=L;};' +
+        'p.appendChild(i);">' +
         '</span>';
     }
-    return catIconHtml(r && r.category, 38).replace('ltk-cat-ico', 'ltk-row-ico');
-  }
-
-  function insightCards() {
-    var rows = (S.rollup.rows || []).filter(rowHasTrend);
-    if (!rows.length) return '';
-    var byChange = rows.slice().sort(function (a, b) {
-      return (pctChange(b.omset, b.omset_prev) || 0) - (pctChange(a.omset, a.omset_prev) || 0);
-    });
-    var up = byChange[0], down = byChange[byChange.length - 1];
-    var cards = [];
-    if (up && (pctChange(up.omset, up.omset_prev) || 0) > 0) {
-      cards.push({ cls: 'green', ico: 'up', title: 'Omset naik paling tinggi',
-        body: rowLabel(up) + ' — ' + Math.round(pctChange(up.omset, up.omset_prev)) + '% vs ' + S.windowDays + ' hari sebelumnya' });
-    }
-    if (down && down !== up && (pctChange(down.omset, down.omset_prev) || 0) < 0) {
-      cards.push({ cls: 'red', ico: 'down', title: 'Perlu dicek',
-        body: rowLabel(down) + ' — omset turun ' + Math.abs(Math.round(pctChange(down.omset, down.omset_prev))) + '%' });
-    }
-    var newShops = rows.reduce(function (n, r) {
-      return n + Math.max(0, (Number(r.n_sellers) || 0) - (Number(r.n_sellers_prev) || 0));
-    }, 0);
-    if (newShops > 0) {
-      cards.push({ cls: 'blue', ico: 'users', title: newShops + ' toko baru terdeteksi',
-        body: 'Masuk ke keyword yang kamu pantau di window ini' });
-    }
-    var thin = (S.rollup.rows || []).length - rows.length;
-    if (thin > 0) {
-      cards.push({ cls: 'amber', ico: 'clock', title: thin + ' baris masih mengumpulkan data',
-        body: 'Butuh minimal 2 hari scrape sebelum tren bisa dihitung' });
-    }
-    if (!cards.length) return '';
-    return '<div class="ltk-insights">' +
-      '<div class="ltk-insights-head">Insight Utama <span>(' + S.windowDays + ' hari terakhir)</span></div>' +
-      '<div class="ltk-insight-grid">' + cards.map(function (c) {
-        return '<div class="ltk-insight ltk-insight--' + c.cls + '">' +
-          '<span class="ltk-insight-ico">' + statIco(c.ico === 'users' ? 'users' : c.ico === 'clock' ? 'target' : 'wallet') + '</span>' +
-          '<div><div class="ltk-insight-title">' + esc(c.title) + '</div>' +
-          '<div class="ltk-insight-body">' + esc(c.body) + '</div></div></div>';
-      }).join('') + '</div></div>';
+    return catIconHtml(cat, 46).replace('ltk-cat-ico', 'ltk-row-ico');
   }
 
   function renderRollup() {
@@ -1218,12 +1263,11 @@
     var head = '<tr>' +
       '<th class="ltk-th-name">' + (isKw ? 'Produk' : 'Toko') + '</th>' +
       '<th>Unit Terjual</th><th>Omset (Rp)</th><th>SKU Aktif</th>' +
-      (isKw ? '<th>Toko Aktif</th>' : '') +
+      (isKw ? '<th>Toko Aktif</th>' : '<th>Usia Toko</th>') +
       '<th>Rata-rata Harga</th><th>Rating</th><th>Tren</th><th></th></tr>';
 
     p.innerHTML =
       '<div class="ltk-rollup">' +
-        '<div class="ltk-statstrip">' + statTiles() + '</div>' +
         '<div class="ltk-panel">' +
           '<div class="ltk-panel-head">' +
             '<div class="ltk-panel-title">Ringkasan ' + (isKw ? 'Produk' : 'Toko') +
@@ -1249,11 +1293,6 @@
             (free ? '<em>' + free + ' slot kosong</em>' : '') +
           '</button>' +
         '</div>' +
-        insightCards() +
-        '<p class="ltk-foot">Angka adalah <b>total ' + S.windowDays + ' hari terakhir</b>, bukan penjualan kemarin. ' +
-        (S.asOf ? 'Data terakhir ' + esc(fmtDate(S.asOf)) + '. ' : '') +
-        'Sumber: scrape harian LarisID. ' +
-        '<button type="button" class="ltk-link" data-ltk-act="how">Bagaimana angka ini dihitung?</button></p>' +
       '</div>';
 
     paintSparks();
@@ -1285,15 +1324,13 @@
   function renderSkeleton() {
     var p = pane('rollup');
     if (!p) return;
-    var tiles = '';
-    for (var t = 0; t < 5; t++) tiles += '<div class="ltk-stat ltk-skel-stat"></div>';
     var rows = '';
     for (var i = 0; i < 5; i++) {
       rows += '<div class="ltk-skel-row"><div class="ltk-skel-img"></div>' +
         '<div class="ltk-skel-lines"><div class="ltk-skel-line w60"></div>' +
         '<div class="ltk-skel-line w35"></div></div></div>';
     }
-    p.innerHTML = '<div class="ltk-rollup"><div class="ltk-statstrip">' + tiles + '</div>' +
+    p.innerHTML = '<div class="ltk-rollup">' +
       '<div class="ltk-panel"><div class="ltk-skel">' + rows + '</div></div></div>';
   }
 
@@ -1413,7 +1450,7 @@
   // recognisable as a category; the actual product is recognisable as YOUR row.
   //
   // Best-effort and non-blocking: rows render with the category fallback if this
-  // never resolves. Keyword scope only — stores use their own avatar.
+  // never resolves. Keyword scope only — stores use their own logo path.
   function loadRowImages() {
     if (S.tab !== 'keyword') return Promise.resolve(null);
     var rows = (S.rollup && S.rollup.rows) || [];
@@ -1431,6 +1468,80 @@
       });
       return null;
     }).catch(function () { return null; });
+  }
+
+  var LOGO_FRESH_MS = 30 * 86400000;
+
+  // Shop logos: cache table first, then get-shop-logo edge on miss/stale.
+  // Bounded by storeLimit (small). Never blocks paint on failure.
+  function loadStoreLogos() {
+    if (S.tab !== 'store') return Promise.resolve(null);
+    var rows = (S.rollup && S.rollup.rows) || [];
+    if (!rows.length) return Promise.resolve(null);
+    var ids = rows.map(function (r) { return r.shop_id; }).filter(function (id) {
+      return id != null && id !== '';
+    });
+    if (!ids.length) return Promise.resolve(null);
+
+    function applyUrl(shopId, url) {
+      if (!url) return;
+      rows.forEach(function (r) {
+        if (String(r.shop_id) === String(shopId)) r.image_url = url;
+      });
+    }
+
+    return callP('getShopLogoCache', ids).then(function (cached) {
+      var byId = {};
+      var now = Date.now();
+      (cached || []).forEach(function (c) {
+        if (!c || c.shop_id == null) return;
+        byId[String(c.shop_id)] = c;
+        var fetched = c.fetched_at ? new Date(c.fetched_at).getTime() : 0;
+        if (c.logo_url && fetched && (now - fetched) < LOGO_FRESH_MS) {
+          applyUrl(c.shop_id, c.logo_url);
+        }
+      });
+      var need = ids.filter(function (id) {
+        var hit = byId[String(id)];
+        if (!hit || !hit.logo_url) return true;
+        var fetched = hit.fetched_at ? new Date(hit.fetched_at).getTime() : 0;
+        return !fetched || (Date.now() - fetched) >= LOGO_FRESH_MS;
+      }).slice(0, 20);
+      if (!need.length) return null;
+      return Promise.all(need.map(function (id) {
+        return callP('fetchShopLogo', id).then(function (res) {
+          var url = res && (res.logo_url || res.image_url);
+          if (url) applyUrl(id, url);
+          return null;
+        }).catch(function () { return null; });
+      })).then(function () { return null; });
+    }).catch(function () { return null; });
+  }
+
+  // Oldest listing_date per shop — same shop-age proxy Deep Dive uses.
+  function loadStoreAges() {
+    if (S.tab !== 'store') return Promise.resolve(null);
+    var rows = (S.rollup && S.rollup.rows) || [];
+    if (!rows.length) return Promise.resolve(null);
+    var ids = rows.map(function (r) { return r.shop_id; }).filter(function (id) {
+      return id != null && id !== '';
+    });
+    if (!ids.length) return Promise.resolve(null);
+    return callP('getStoreOldestListingDates', ids).then(function (map) {
+      var byId = map || {};
+      rows.forEach(function (r) {
+        var d = byId[String(r.shop_id)];
+        if (d) r.oldest_listing_date = d;
+      });
+      return null;
+    }).catch(function () { return null; });
+  }
+
+  function enrichRollupRows() {
+    if (S.tab === 'store') {
+      return Promise.all([loadStoreLogos(), loadStoreAges()]).then(function () { return null; });
+    }
+    return loadRowImages();
   }
 
   // How many products the seed shop actually runs. Fetched only when the Toko
@@ -1509,7 +1620,7 @@
           // 14 days), so route it back to collecting.
           if (S.resumed) S.hasHistory = false;
           if (!S.hasHistory) return loadBaseline().then(loadFallback);
-          return loadRowImages();
+          return enrichRollupRows();
         });
       })
       .then(function () {

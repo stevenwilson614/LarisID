@@ -504,7 +504,7 @@
 .ltk-table thead th {
   text-align: right; font-size: .64rem; font-weight: 700; color: #9CA3AF;
   text-transform: uppercase; letter-spacing: .04em;
-  padding: 10px 12px; border-bottom: 1px solid #F3F4F6; white-space: nowrap;
+  padding: 13px 12px; border-bottom: 1px solid #F3F4F6; white-space: nowrap;
 }
 .ltk-table thead th.ltk-th-name { text-align: left; padding-left: var(--ltk-pad); }
 .ltk-table thead th:last-child { width: 34px; }
@@ -513,21 +513,20 @@
 .ltk-row:hover { background: #FAFAFA; }
 .ltk-rowhead {
   display: flex; align-items: center; gap: 10px; text-align: left;
-  padding: 13px 12px 13px var(--ltk-pad); font-weight: 500; min-width: 210px;
+  padding: 17px 12px 17px var(--ltk-pad); font-weight: 500; min-width: 210px;
 }
-/* 38px, not 30: this now carries a real product photo rather than a flat
-   category glyph, and a photo needs the extra pixels to be recognisable. */
+/* 46px: real product photos (and shop logos) need the extra pixels to read. */
 .ltk-row-ico {
-  flex-shrink: 0; width: 38px; height: 38px; border-radius: 10px;
+  flex-shrink: 0; width: 46px; height: 46px; border-radius: 12px;
   overflow: hidden; display: grid; place-items: center; background: #F3F4F6;
 }
 .ltk-row-ico img { width: 100%; height: 100%; object-fit: cover; }
 .ltk-row-ico--letter {
-  font-size: .8rem; font-weight: 800; color: #6B7280; background: #F3F4F6;
+  font-size: .84rem; font-weight: 800; color: #6B7280; background: #F3F4F6;
 }
 .ltk-rowhead-txt { min-width: 0; }
 .ltk-rowhead-name {
-  display: block; font-size: .8rem; font-weight: 700; color: #1A1A1A;
+  display: block; font-size: .84rem; font-weight: 700; color: #1A1A1A;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 210px;
 }
 .ltk-rowhead-meta { display: block; font-size: .66rem; color: #9CA3AF; margin-top: 2px; }
@@ -545,12 +544,24 @@
 .ltk-row-detail-item { display: flex; flex-direction: column; gap: 3px; }
 .ltk-row-detail-lbl { font-size: .64rem; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: .03em; }
 .ltk-row-detail-val { font-size: .8rem; font-weight: 700; color: #1A1A1A; display: flex; align-items: center; gap: 6px; }
+.ltk-row-history {
+  margin-top: 12px; background: #FAFAFA; border-radius: 10px; padding: 12px 14px;
+}
+.ltk-row-history-title {
+  font-size: .64rem; font-weight: 700; color: #9CA3AF; text-transform: uppercase;
+  letter-spacing: .03em; margin: 0 0 8px;
+}
+.ltk-row-history-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ltk-row-history-list li {
+  font-size: .78rem; font-weight: 600; color: #374151; line-height: 1.35;
+}
+.ltk-row-history-list li.ltk-row-history-empty { color: #9CA3AF; font-weight: 500; }
 .ltk-num {
-  text-align: right; padding: 13px 12px; white-space: nowrap; vertical-align: middle;
+  text-align: right; padding: 17px 12px; white-space: nowrap; vertical-align: middle;
 }
 .ltk-num b { display: block; font-size: .8rem; font-weight: 700; color: #1A1A1A; }
 .ltk-num .ltk-d { margin-top: 3px; }
-.ltk-sparkcell { padding: 13px 12px; text-align: right; width: 84px; }
+.ltk-sparkcell { padding: 17px 12px; text-align: right; width: 84px; }
 .ltk-spark { width: 68px; height: 24px; display: inline-block; vertical-align: middle; }
 .ltk-spark-empty { font-size: .64rem; color: #C4C4C4; white-space: nowrap; }
 
@@ -760,8 +771,8 @@
   .ltk-statstrip { grid-template-columns: repeat(auto-fit, minmax(144px, 1fr)); }
   .ltk-stat-val { font-size: 1rem; }
   /* A real product photo needs more pixels than a flat glyph to read at a
-     glance — bump it up from the 38px base at this width. */
-  .ltk-row-ico { width: 48px; height: 48px; border-radius: 11px; }
+     glance — bump it up from the 46px base at this width. */
+  .ltk-row-ico { width: 52px; height: 52px; border-radius: 12px; }
   /* The detail row's <td> still spans every (wide) numeric column via
      colspan, same as the table itself — pin it to the scroll origin like the
      name column above, and cap the inner grid to the viewport, so expanding
