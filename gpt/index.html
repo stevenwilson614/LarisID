@@ -1294,6 +1294,58 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 }
 .img-lightbox-cap { color: #fff; font-size: .85rem; text-align: center; max-width: 92vw; opacity: .9; }
 
+/* Deep Dive chart expand (Distribusi Harga, etc.) */
+.dd-chart-lightbox {
+  position: fixed; inset: 0; z-index: 210;
+  background: rgba(10,10,12,.72);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; cursor: zoom-out;
+}
+.dd-chart-lightbox[hidden] { display: none; }
+.dd-chart-lightbox-panel {
+  position: relative;
+  width: min(960px, 96vw);
+  max-height: min(90vh, 720px);
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.28);
+  padding: 18px 18px 14px;
+  display: flex; flex-direction: column; gap: 10px;
+  cursor: default;
+  animation: fadeUp .18s var(--ease);
+}
+.dd-chart-lightbox-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.dd-chart-lightbox-head h3 {
+  margin: 0; font-size: 1rem; font-weight: 700; color: var(--ink);
+}
+.dd-chart-lightbox-close {
+  display: grid; place-items: center;
+  width: 36px; height: 36px; border-radius: 999px;
+  border: 1px solid var(--line); background: #fff;
+  color: var(--ink); cursor: pointer; flex-shrink: 0;
+}
+.dd-chart-lightbox-close:hover { background: var(--bg-hover, #F5F5F4); }
+.dd-chart-lightbox-canvas-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 360px;
+  height: min(68vh, 560px);
+}
+.dd-chart-lightbox-cap {
+  margin: 0; font-size: .74rem; color: var(--muted); line-height: 1.4;
+}
+.ddr-expand-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: 999px;
+  border: 1px solid var(--line); background: #fff;
+  font: inherit; font-size: .72rem; font-weight: 650; color: var(--ink-soft);
+  cursor: pointer; flex-shrink: 0;
+}
+.ddr-expand-btn:hover { border-color: var(--ink-soft); color: var(--ink); }
+.ddr-expand-btn svg { flex-shrink: 0; }
+
 @media (max-width: 860px) {
   .sidebar {
     position: fixed; top: 0; left: 0; bottom: 0;
@@ -2856,6 +2908,20 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   <img id="img-lightbox-img" alt="">
   <div class="img-lightbox-cap" id="img-lightbox-cap"></div>
 </div>
+<div class="dd-chart-lightbox" id="dd-chart-lightbox" hidden role="dialog" aria-modal="true" aria-labelledby="dd-chart-lightbox-title">
+  <div class="dd-chart-lightbox-panel" id="dd-chart-lightbox-panel">
+    <div class="dd-chart-lightbox-head">
+      <h3 id="dd-chart-lightbox-title">Distribusi Harga</h3>
+      <button type="button" class="dd-chart-lightbox-close" id="dd-chart-lightbox-close" aria-label="Tutup tampilan besar" title="Tutup">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="dd-chart-lightbox-canvas-wrap">
+      <canvas id="ddr-dist-canvas-expanded"></canvas>
+    </div>
+    <p class="dd-chart-lightbox-cap" id="dd-chart-lightbox-cap"></p>
+  </div>
+</div>
 <div class="app">
   <aside class="sidebar" id="sidebar">
     <a class="sidebar-brand" href="/gpt/" id="btn-home" title="Beranda LARISgpt">
@@ -3432,7 +3498,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script defer src="/js/gpt-photo-analyze.js?v=20260808a"></script>
 <script defer src="/js/gpt-referral.js?v=20260808a"></script>
 <script defer src="/js/gpt-profile.js?v=20260808a"></script>
-<script src="/js/gpt-app.js?v=20260808e" defer></script>
+<script src="/js/gpt-app.js?v=20260808f" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>
 </html>

@@ -799,6 +799,7 @@ function makeChart(canvasId, cfg) {
   return c;
 }
 function destroyAllCharts() {
+  closeDistChartLightbox();
   _charts.forEach(c => { try { c.destroy(); } catch (_) {} });
   _charts.clear();
   if (_ddObserver) { try { _ddObserver.disconnect(); } catch (_) {} _ddObserver = null; }
@@ -8365,15 +8366,15 @@ const _ddBandPlugin = {
 const _ddDistImagePlugin = {
   id: 'ddDistImages',
   afterDatasetsDraw(chart) {
-    if (chart.canvas?.id !== 'ddr-dist-canvas') return;
+    if (!chart.options?._distImages) return;
     const ctx = chart.ctx;
     const meta = chart.getDatasetMeta(0);
     if (!meta?.data?.length) return;
+    const r = Number(chart.options._distImgRadius) || 11;
     meta.data.forEach((point, i) => {
       const raw = chart.data.datasets[0].data[i];
       if (!raw || raw.x == null) return;
       const { x, y } = point.getProps(['x', 'y'], true);
-      const r = 11;
       ctx.save();
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
@@ -8387,7 +8388,7 @@ const _ddDistImagePlugin = {
         ctx.fill();
         const letter = (raw.label || '?').trim().charAt(0).toUpperCase();
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 10px system-ui,sans-serif';
+        ctx.font = `bold ${Math.max(10, Math.round(r * 0.9))}px system-ui,sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(letter, x, y + 0.5);
@@ -8405,18 +8406,116 @@ const _ddDistImagePlugin = {
 function ddPrimeDistImages(chart, points) {
   if (!chart || !points?.length) return;
   const palette = ['#B5202A', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
+  const canvasId = chart.canvas?.id || '';
   points.forEach((p, i) => {
     p._color = palette[i % palette.length];
     if (!p.image_url) return;
+    // Reuse already-loaded Image objects when expanding the same points.
+    if (p._img?.complete && p._img.naturalWidth) return;
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      if (_charts.get('ddr-dist-canvas') === chart) chart.update('none');
+      if (_charts.get(canvasId) === chart) chart.update('none');
+      // Also refresh the other Dist chart if it shares these point objects.
+      const otherId = canvasId === 'ddr-dist-canvas' ? 'ddr-dist-canvas-expanded' : 'ddr-dist-canvas';
+      const other = _charts.get(otherId);
+      if (other) other.update('none');
     };
     img.onerror = () => { p._img = null; };
     img.src = p.image_url;
     p._img = img;
   });
+}
+
+function ddDistChartConfig(distPoints, bandLo, bandHi, opts = {}) {
+  const radius = Number(opts.imgRadius) || 11;
+  const tickLimitX = opts.tickLimitX || 6;
+  const tickLimitY = opts.tickLimitY || 5;
+  return {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        data: distPoints,
+        pointRadius: 0,
+        pointHoverRadius: radius + 2,
+        hitRadius: radius + 4,
+        backgroundColor: 'transparent',
+      }],
+    },
+    options: {
+      maintainAspectRatio: false,
+      _band: [bandLo, bandHi],
+      _distImages: true,
+      _distImgRadius: radius,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const d = ctx.raw || {};
+              return [
+                d.label || 'Listing',
+                `Harga: ${fmtRp(d.x)}`,
+                `Terjual: ${fmtSold(d.y)}`,
+              ];
+            },
+          },
+        },
+      },
+      scales: {
+        x: { ticks: { callback: v => v >= 1e6 ? (v / 1e6) + 'jt' : Math.round(v / 1e3) + 'rb', maxTicksLimit: tickLimitX } },
+        y: { type: 'logarithmic', ticks: { callback: v => fmtSold(v), maxTicksLimit: tickLimitY } },
+      },
+    },
+    plugins: [_ddBandPlugin, _ddDistImagePlugin],
+  };
+}
+
+function closeDistChartLightbox() {
+  const lb = $('dd-chart-lightbox');
+  if (!lb || lb.hidden) return;
+  lb.hidden = true;
+  document.body.style.overflow = '';
+  const prev = _charts.get('ddr-dist-canvas-expanded');
+  if (prev) {
+    try { prev.destroy(); } catch (_) {}
+    _charts.delete('ddr-dist-canvas-expanded');
+  }
+}
+
+async function openDistChartLightbox() {
+  const payload = _dd?.distChart;
+  const lb = $('dd-chart-lightbox');
+  if (!lb || !payload?.points?.length) return;
+  const cap = $('dd-chart-lightbox-cap');
+  if (cap) cap.textContent = payload.caption || '';
+  lb.hidden = false;
+  document.body.style.overflow = 'hidden';
+  await larisEnsureChart();
+  const chart = makeChart('ddr-dist-canvas-expanded', ddDistChartConfig(
+    payload.points,
+    payload.bandLo,
+    payload.bandHi,
+    { imgRadius: 18, tickLimitX: 10, tickLimitY: 8 }
+  ));
+  ddPrimeDistImages(chart, payload.points);
+  $('dd-chart-lightbox-close')?.focus?.();
+  void logUserEvent('deepdive_section', { ui: 'gpt', section: 'distribusi_expand', via: 'click', keyword: _dd?.product?.keyword || '' });
+}
+
+function wireDistChartLightbox() {
+  const lb = $('dd-chart-lightbox');
+  if (!lb || lb.dataset.ready) return;
+  lb.dataset.ready = '1';
+  $('dd-chart-lightbox-close')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeDistChartLightbox();
+  });
+  lb.addEventListener('click', (e) => {
+    if (e.target === lb) closeDistChartLightbox();
+  });
+  $('dd-chart-lightbox-panel')?.addEventListener('click', (e) => e.stopPropagation());
 }
 
 
@@ -8833,7 +8932,13 @@ async function openDeepDive(product, ddOpts = {}) {
           : '<p class="dd-sub">Belum cukup data harga peer untuk keyword ini.</p>'}
       </div>
       <div class="ddr-card" data-dd-sec="distribusi">
-        <h3>Distribusi Harga</h3>
+        <div class="ddr-sec-head">
+          <h3>Distribusi Harga</h3>
+          ${stats.n >= 6 ? `<button type="button" class="ddr-expand-btn" id="ddr-dist-expand" title="Perbesar grafik" aria-label="Perbesar Distribusi Harga">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+            Perbesar
+          </button>` : ''}
+        </div>
         ${stats.n >= 6 ? `
           <div class="ddr-chart-wrap sm"><canvas id="ddr-dist-canvas"></canvas></div>
           <p class="ddr-caption">Setiap thumbnail = listing (harga × terjual). Zona merah muda = rentang ${fmtRpShort(bandLo)} – ${fmtRpShort(bandHi)} tempat sebagian besar penjualan terjadi.</p>`
@@ -8946,44 +9051,13 @@ async function openDeepDive(product, ddOpts = {}) {
         label: p.store_name || p.product_name || '',
         image_url: p.image_url || null,
       }));
-    const distChart = makeChart('ddr-dist-canvas', {
-      type: 'scatter',
-      data: {
-        datasets: [{
-          data: distPoints,
-          // Invisible Chart.js points — thumbnails drawn by _ddDistImagePlugin.
-          pointRadius: 0,
-          pointHoverRadius: 12,
-          hitRadius: 14,
-          backgroundColor: 'transparent',
-        }],
-      },
-      options: {
-        maintainAspectRatio: false,
-        _band: [bandLo, bandHi],
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => {
-                const d = ctx.raw || {};
-                return [
-                  d.label || 'Listing',
-                  `Harga: ${fmtRp(d.x)}`,
-                  `Terjual: ${fmtSold(d.y)}`,
-                ];
-              },
-            },
-          },
-        },
-        scales: {
-          x: { ticks: { callback: v => v >= 1e6 ? (v / 1e6) + 'jt' : Math.round(v / 1e3) + 'rb', maxTicksLimit: 6 } },
-          y: { type: 'logarithmic', ticks: { callback: v => fmtSold(v), maxTicksLimit: 5 } },
-        },
-      },
-      plugins: [_ddBandPlugin, _ddDistImagePlugin],
-    });
+    const distCaption = `Setiap thumbnail = listing (harga × terjual). Zona merah muda = rentang ${fmtRpShort(bandLo)} – ${fmtRpShort(bandHi)} tempat sebagian besar penjualan terjadi.`;
+    if (_dd) {
+      _dd.distChart = { points: distPoints, bandLo, bandHi, caption: distCaption };
+    }
+    const distChart = makeChart('ddr-dist-canvas', ddDistChartConfig(distPoints, bandLo, bandHi, { imgRadius: 11 }));
     ddPrimeDistImages(distChart, distPoints);
+    $('ddr-dist-expand')?.addEventListener('click', () => { void openDistChartLightbox(); });
   }
   root.querySelectorAll('canvas[data-spark]').forEach(cv => {
     const kwName = (cv.getAttribute('data-spark') || '').toLowerCase();
@@ -10946,8 +11020,11 @@ function wireUi() {
   });
   $('img-lightbox')?.addEventListener('click', closeLightbox);
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !$('img-lightbox')?.hidden) { e.preventDefault(); closeLightbox(); }
+    if (e.key !== 'Escape') return;
+    if (!$('dd-chart-lightbox')?.hidden) { e.preventDefault(); closeDistChartLightbox(); return; }
+    if (!$('img-lightbox')?.hidden) { e.preventDefault(); closeLightbox(); }
   });
+  wireDistChartLightbox();
   document.addEventListener('click', (e) => {
     const img = e.target?.closest?.('#product-pin-img, .ddr-header > img, [data-ddr-main], .dd-chat-card-top img, .ddr-gallery-main img, .ddr-slide img');
     if (!img || !img.getAttribute('src')) return;
