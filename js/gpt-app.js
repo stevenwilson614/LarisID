@@ -3350,11 +3350,11 @@ function wireResultsBar() {
     if (gen !== megaGen || megaActiveCat !== cat) return;
     const head =
       `<div class="results-bar-mega-head">` +
-        `<h3 class="results-bar-mega-title">${esc(cat)}</h3>` +
+        `<button type="button" class="results-bar-mega-title" data-mega-all="${esc(cat)}">${esc(cat)}</button>` +
         `<button type="button" class="results-bar-mega-all" data-mega-all="${esc(cat)}">Lihat semua</button>` +
       `</div>`;
     if (!groups.length) {
-      megaSubs.innerHTML = head + '<p class="results-bar-mega-empty">Belum ada subkategori. Klik “Lihat semua” untuk buka produk.</p>';
+      megaSubs.innerHTML = head + '<p class="results-bar-mega-empty">Belum ada subkategori. Klik nama kategori untuk buka produk.</p>';
     } else {
       megaSubs.innerHTML = head +
         `<div class="results-bar-mega-grid">` +
@@ -3363,8 +3363,10 @@ function wireResultsBar() {
           ).join('') +
         `</div>`;
     }
-    megaSubs.querySelector('[data-mega-all]')?.addEventListener('click', () => {
-      void applyDirectoryCategory(cat, null);
+    megaSubs.querySelectorAll('[data-mega-all]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        void applyDirectoryCategory(btn.getAttribute('data-mega-all') || cat, null);
+      });
     });
     megaSubs.querySelectorAll('[data-mega-sub]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -3404,8 +3406,14 @@ function wireResultsBar() {
         megaCats.querySelectorAll('.results-bar-mega-cat').forEach(el => {
           el.classList.toggle('is-active', el === btn);
         });
-        // Touch / second click: if already previewing this cat, open products.
-        if (megaActiveCat === cat && !window.matchMedia('(hover: hover)').matches) {
+        const canHover = window.matchMedia('(hover: hover)').matches;
+        // Desktop: hover already shows subs; click selects the whole category.
+        if (canHover) {
+          void applyDirectoryCategory(cat, null);
+          return;
+        }
+        // Touch: first tap previews subs; second tap on same cat opens products.
+        if (megaActiveCat === cat) {
           void applyDirectoryCategory(cat, null);
           return;
         }
