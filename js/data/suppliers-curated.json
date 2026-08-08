@@ -549,7 +549,8 @@
       "notes": "internal: link kategori, BUKAN rekomendasi supplier tertentu — user pilih sendiri",
       "categories": [
         "Fashion"
-      ]
+      ],
+      "logo": "/images/suppliers/alibaba.svg"
     },
     {
       "id": "sup_import_1688",
@@ -570,7 +571,8 @@
       "notes": "internal: 1688 full bahasa Mandarin, tanpa Trade Assurance, perlu forwarder/jasa impor — sudah disebut di UI",
       "categories": [
         "Fashion"
-      ]
+      ],
+      "logo": "/images/suppliers/1688.svg"
     },
     {
       "id": "sup_konveksi_towa",
@@ -591,7 +593,8 @@
       "notes": "BELUM DIVERIFIKASI — dari hasil pencarian web, tanpa data ulasan/penjualan. Hubungi dulu.",
       "categories": [
         "Fashion"
-      ]
+      ],
+      "logo": "/images/suppliers/indonetwork.svg"
     },
     {
       "id": "sup_konveksi_intikaos",
@@ -612,7 +615,8 @@
       "notes": "BELUM DIVERIFIKASI — klaim ready stock dari konveksi sendiri. Cek harga + MOQ.",
       "categories": [
         "Fashion"
-      ]
+      ],
+      "logo": "/images/suppliers/instagram.svg"
     },
     {
       "id": "sup_konveksi_kaosbdg",
@@ -634,7 +638,8 @@
       "notes": "BELUM DIVERIFIKASI — klaim MOQ 12 pcs, custom sablon/bordir. Paling relevan untuk gap kaos.",
       "categories": [
         "Fashion"
-      ]
+      ],
+      "logo": "/images/suppliers/instagram.svg"
     },
     {
       "id": "sup_konveksi_ps",
@@ -655,7 +660,8 @@
       "notes": "BELUM DIVERIFIKASI — kaos custom sablon, polo, hoodie. Cek MOQ + lead time.",
       "categories": [
         "Fashion"
-      ]
+      ],
+      "logo": "/images/suppliers/pskonveksi.png"
     },
     {
       "id": "sup_konveksi_kaospolosid",
@@ -676,7 +682,8 @@
       "notes": "BELUM DIVERIFIKASI — cotton combed 24s/30s. Cek harga grosir.",
       "categories": [
         "Fashion"
-      ]
+      ],
+      "logo": "/images/suppliers/kaospolos.png"
     }
   ]
 }

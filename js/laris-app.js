@@ -27378,6 +27378,7 @@ function _supSearchFallbacks(keyword) {
       published: true,
       platform: 'alibaba',
       generated: true,
+      logo: '/images/suppliers/alibaba.svg',
       url: `https://indonesian.alibaba.com/trade/search?fsb=y&IndexArea=product_en&SearchText=${q}`,
       city: 'Impor (China)',
       badges: ['Impor', 'Wholesale', 'Pencarian'],
@@ -27390,6 +27391,7 @@ function _supSearchFallbacks(keyword) {
       published: true,
       platform: 'shopee',
       generated: true,
+      logo: '/images/suppliers/shopee.svg',
       url: `https://shopee.co.id/search?keyword=${qGrosir}`,
       city: 'Indonesia',
       badges: ['Grosir', 'Pencarian'],
@@ -27402,6 +27404,7 @@ function _supSearchFallbacks(keyword) {
       published: true,
       platform: 'web',
       generated: true,
+      logo: '/images/suppliers/google.svg',
       url: `https://www.google.com/search?q=${qWeb}`,
       badges: ['Cari', 'Wholesale'],
       keywords: [raw],
@@ -27485,7 +27488,8 @@ function _supThumb(url) {
 
 /**
  * Real shop logo when we have one; otherwise an initials tile. `onerror` drops
- * the img so a dead CDN link never leaves a broken frame.
+ * the img so a dead CDN link never leaves a broken frame. Local brand tiles
+ * under /images/suppliers/ use the same cover layout as Shopee portraits.
  */
 function _supLogoHtml(s) {
   const img = s.logo

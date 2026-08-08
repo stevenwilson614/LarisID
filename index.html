@@ -197,7 +197,7 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260808n';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260808o';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
@@ -10120,7 +10120,7 @@ html,body{overflow-x:clip;max-width:100%;}
 <script defer src="/js/laris-trending.js?v=20260808a"></script>
 <script defer src="/js/daily-spin-wheel.js?v=20260730g"></script>
 <script defer src="/js/laris-tracker.js?v=20260808n"></script>
-<script defer src="/js/laris-app.js?v=20260808n"></script>
+<script defer src="/js/laris-app.js?v=20260808o"></script>
 <!-- Admin-only; mount() is a no-op for everyone else. Must load after laris-app.js. -->
 <script defer src="/js/winback-admin.js?v=20260802a"></script>
 
