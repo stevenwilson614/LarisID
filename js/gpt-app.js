@@ -1944,7 +1944,10 @@ function setView(name) {
   updateSideRailVisibility();
   updateProductPin();
   // Fresh surface — always start at the top so populated content scrolls down.
-  if (name !== leaving) scrollPanelToTop();
+  if (name !== leaving) {
+    scrollPanelToTop();
+    void logUserEvent('view_open', { ui: 'gpt', view: name });
+  }
 }
 
 function openSidebar() {
@@ -1972,7 +1975,7 @@ function isPlatformAdmin() {
 // const on purpose — they ship with ?v= cache-busters, whereas the shared
 // perf-loader.js does not, so a flag there could be served stale at launch.
 // Success criteria + kill bar: see the matching block in js/laris-app.js.
-const SUPPLIER_PROBE_PUBLIC = false;
+const SUPPLIER_PROBE_PUBLIC = true;
 function supplierProbeVisible() {
   return SUPPLIER_PROBE_PUBLIC || isPlatformAdmin();
 }
@@ -7293,6 +7296,9 @@ function gptTrackerAdapter() {
 
 function openTrackerView(seed, resumeDraft) {
   setView('tracker');
+  // Parity with Site A trkOpen(): view_open fires from setView; this marks the
+  // pantauan entry specifically so A/B tracker_tab rates stay comparable.
+  try { void logUserEvent('tracker_tab', { tab: 'keyword', ui: 'gpt' }); } catch (_) {}
   if (!window.LarisTracker) return;
   window.LarisTracker.mount({ hostId: 'laris-tracker-root', site: 'b', adapter: gptTrackerAdapter() });
   const p = window.LarisTracker.open({ touch: true });
@@ -7345,7 +7351,6 @@ function openUserProfile(userId) {
 function openCommunityBoard() {
   if (!currentUser) { openAuthModal('login', 'gpt_gate_community'); return; }
   setView('community');
-  void logUserEvent('view_open', { ui: 'gpt', view: 'community' });
   const root = $('community-board-root');
   if (!root || !window.GptCommunityBoard) return;
   window.GptCommunityBoard.mount(root, {
@@ -11529,8 +11534,8 @@ function wireUi() {
   });
   $('btn-community')?.addEventListener('click', () => { openCommunityBoard(); });
   $('btn-harga')?.addEventListener('click', () => setView('harga'));
-  $('btn-faq')?.addEventListener('click', () => { setView('faq'); void logUserEvent('view_open', { ui: 'gpt', view: 'faq' }); });
-  $('btn-tentang')?.addEventListener('click', () => { setView('tentang'); void logUserEvent('view_open', { ui: 'gpt', view: 'tentang' }); });
+  $('btn-faq')?.addEventListener('click', () => setView('faq'));
+  $('btn-tentang')?.addEventListener('click', () => setView('tentang'));
   // The Beta badge was decoration; it now opens the changelog on both the
   // desktop sidebar and the mobile topbar.
   document.querySelectorAll('.brand-beta').forEach(el => {
@@ -11685,6 +11690,8 @@ let _supListeners   = false;
 let _supFilterKeyword  = null;
 let _supFilterCategory = null;
 let _supSource      = 'tab';
+/** Last rows shown in the panel — includes generated search fallbacks. */
+let _supRenderedRows = [];
 
 function _supNum(n) {
   return Number.isFinite(n) ? Number(n).toLocaleString('id-ID') : null;
@@ -11712,40 +11719,89 @@ function supLoadData() {
 
 function _supNorm(s) { return String(s == null ? '' : s).trim().toLowerCase(); }
 
-/** True when this product's keyword or category is in the curated pilot. */
+/**
+ * Honest discovery links when no curated shop matches the keyword.
+ * Labeled as searches — not verified MOQ/price suppliers.
+ */
+function _supSearchFallbacks(keyword) {
+  const raw = String(keyword == null ? '' : keyword).trim();
+  if (!raw) return [];
+  const q = encodeURIComponent(raw);
+  const qGrosir = encodeURIComponent(raw + ' grosir');
+  const qWeb = encodeURIComponent(raw + ' grosir supplier OR pabrik OR wholesale');
+  return [
+    {
+      id: 'sup_search_alibaba',
+      name: 'Alibaba — cari wholesale',
+      tier: 'import',
+      published: true,
+      platform: 'alibaba',
+      generated: true,
+      url: `https://indonesian.alibaba.com/trade/search?fsb=y&IndexArea=product_en&SearchText=${q}`,
+      city: 'Impor (China)',
+      badges: ['Impor', 'Wholesale', 'Pencarian'],
+      keywords: [raw],
+    },
+    {
+      id: 'sup_search_shopee_grosir',
+      name: 'Shopee — cari grosir',
+      tier: 'grosir',
+      published: true,
+      platform: 'shopee',
+      generated: true,
+      url: `https://shopee.co.id/search?keyword=${qGrosir}`,
+      city: 'Indonesia',
+      badges: ['Grosir', 'Pencarian'],
+      keywords: [raw],
+    },
+    {
+      id: 'sup_search_web_wholesale',
+      name: 'Cari supplier grosir di web',
+      tier: 'grosir',
+      published: true,
+      platform: 'web',
+      generated: true,
+      url: `https://www.google.com/search?q=${qWeb}`,
+      badges: ['Cari', 'Wholesale'],
+      keywords: [raw],
+    },
+  ];
+}
+
+function _supLookup(id) {
+  return _supRenderedRows.find(x => x.id === id)
+    || (_supData?.suppliers || []).find(x => x.id === id)
+    || null;
+}
+
+/** True when we can show curated shops and/or search fallbacks. */
 function supplierRelevantFor(keyword, category) {
-  const kw  = _supNorm(keyword);
-  const cat = _supNorm(category);
-  const pilotCats = (_supData?.pilot?.categories || ['Fashion']).map(_supNorm);
-  if (kw && _supData) {
-    const hit = (_supData.suppliers || []).some(s =>
-      s.published && (s.keywords || []).some(k => _supNorm(k) === kw));
-    if (hit) return true;
-  }
-  if (cat && pilotCats.includes(cat)) return true;
+  if (_supNorm(keyword)) return true;
+  if (_supNorm(category)) return true;
   return false;
 }
 
 /**
- * Match order: exact keyword -> pilot category -> browse-all.
- * Off-pilot products return ZERO rows — never dump unrelated suppliers.
+ * Match order: exact curated keyword -> search fallbacks -> category curated
+ * -> category search -> browse-all. Never dump unrelated curated shops.
  */
 function _supSelect() {
   const all = (_supData?.suppliers || []).filter(s => s.published);
-  const kw  = _supNorm(_supFilterKeyword);
-  const cat = _supNorm(_supFilterCategory);
-  const pilotCats = (_supData?.pilot?.categories || []).map(_supNorm);
-  const catInPilot = !!(cat && pilotCats.includes(cat));
+  const kwRaw = String(_supFilterKeyword == null ? '' : _supFilterKeyword).trim();
+  const kw = _supNorm(kwRaw);
+  const catRaw = String(_supFilterCategory == null ? '' : _supFilterCategory).trim();
+  const cat = _supNorm(catRaw);
 
   if (kw) {
     const hit = all.filter(s => (s.keywords || []).some(k => _supNorm(k) === kw));
     if (hit.length) return { rows: hit, mode: 'keyword' };
-    if (catInPilot) return { rows: all, mode: 'category' };
-    if (cat || _supSource === 'deepdive') return { rows: [], mode: 'offpilot' };
+    return { rows: _supSearchFallbacks(kwRaw), mode: 'search' };
   }
   if (cat) {
-    if (catInPilot) return { rows: all, mode: 'category' };
-    return { rows: [], mode: 'offpilot' };
+    const catRows = all.filter(s =>
+      (s.categories || []).some(c => _supNorm(c) === cat));
+    if (catRows.length) return { rows: catRows, mode: 'category' };
+    return { rows: _supSearchFallbacks(catRaw), mode: 'search' };
   }
   return { rows: all, mode: 'all' };
 }
@@ -11803,6 +11859,7 @@ function _supCardHtml(s) {
   const sample = s.sampleUrl
     ? `<a class="sup-link-sec" href="${esc(s.sampleUrl)}" target="_blank" rel="noopener"
           data-sup-id="${esc(s.id)}" data-sup-target="sample">Lihat contoh produk</a>` : '';
+  const cta = s.generated ? 'Buka pencarian' : 'Buka toko';
   return `<div class="sup-card">
     <div class="sup-card-head">
       ${_supLogoHtml(s)}
@@ -11814,7 +11871,7 @@ function _supCardHtml(s) {
     ${meta}${price}
     <div class="sup-card-actions">
       <a class="sup-btn" href="${esc(s.url)}" target="_blank" rel="noopener"
-         data-sup-id="${esc(s.id)}" data-sup-target="shop">Buka toko</a>
+         data-sup-id="${esc(s.id)}" data-sup-target="shop">${cta}</a>
       ${sample}
     </div>
   </div>`;
@@ -11873,22 +11930,29 @@ async function fillSupplierContent(opts = {}) {
 
   const { rows, mode } = _supSelect();
   const pilotLabel = _supData?.pilot?.label || 'kategori pilot';
+  _supRenderedRows = rows.slice();
 
   if (!rows.length) {
     setSideContext('');
-    const off = mode === 'offpilot';
-    body.innerHTML = off
-      ? `<p class="side-empty">Belum ada supplier untuk produk ini.<br><br>
-           Cari Supplier baru mengurasi <strong>${esc(pilotLabel)}</strong>.
-           Kami tidak menampilkan supplier kategori lain supaya rekomendasinya tidak menyesatkan.</p>`
-      : `<p class="side-empty">Belum ada supplier untuk filter ini.</p>`;
+    body.innerHTML = `<p class="side-empty">Belum ada supplier untuk filter ini.</p>`;
     return;
   }
 
-  setSideContext(mode === 'keyword' ? (_supFilterKeyword || '') : pilotLabel);
-  const lead = mode === 'keyword'
-    ? `Supplier untuk “${esc(_supFilterKeyword)}”.`
-    : `Toko grosir &amp; konveksi untuk ${esc(pilotLabel)}.`;
+  const ctxLabel = (mode === 'keyword' || mode === 'search')
+    ? (_supFilterKeyword || _supFilterCategory || '')
+    : (mode === 'category' ? (_supFilterCategory || pilotLabel) : pilotLabel);
+  setSideContext(ctxLabel);
+  let lead;
+  if (mode === 'keyword') {
+    lead = `Supplier untuk “${esc(_supFilterKeyword)}”.`;
+  } else if (mode === 'search') {
+    const q = esc(_supFilterKeyword || _supFilterCategory || '');
+    lead = `Belum ada toko terkurasi — ini pencarian grosir / wholesale untuk “${q}”.`;
+  } else if (mode === 'category') {
+    lead = `Toko terkurasi untuk ${esc(_supFilterCategory || pilotLabel)}.`;
+  } else {
+    lead = `Toko grosir &amp; konveksi terkurasi.`;
+  }
 
   const sorted = rows.slice().sort((a, b) => {
     const t = _supTierRank(a.tier) - _supTierRank(b.tier);
@@ -11896,6 +11960,7 @@ async function fillSupplierContent(opts = {}) {
   });
   const capped = (_supSource === 'deepdive' && !_supShowAll)
     ? sorted.slice(0, SUPPLIER_DEEPDIVE_LIMIT) : sorted;
+  _supRenderedRows = sorted.slice();
 
   let html = `<p class="side-komp-lead">${lead}</p>` + capped.map(_supCardHtml).join('');
   if (capped.length < sorted.length) {
@@ -11923,9 +11988,10 @@ function supplierSyncNavVisibility() {
 }
 
 function supOpenLink(id, which) {
-  const s = (_supData?.suppliers || []).find(x => x.id === id);
+  const s = _supLookup(id);
   _supLog('supplier_link_click', {
     supplier_id: id, supplier_name: s?.name || null, tier: s?.tier || null,
+    generated: !!s?.generated,
     target: which || 'shop',
     keyword: _supFilterKeyword || null, category: _supFilterCategory || null,
     source: _supSource,

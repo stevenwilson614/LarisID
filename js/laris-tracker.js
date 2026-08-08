@@ -1918,7 +1918,11 @@
       var kw = addkw.getAttribute('data-ltk-addkw');
       if (call('requireAuth') === false) return;
       callP('addKeyword', kw, '').then(function (r) {
-        if (r && r.ok) { call('toast', '"' + kw + '" ditambahkan ke pantauan.'); return refresh({ force: true }); }
+        if (r && r.ok) {
+          call('track', 'tracker_keyword_add', { site: opts.site, keyword: kw, via: 'fallback_card' });
+          call('toast', '"' + kw + '" ditambahkan ke pantauan.');
+          return refresh({ force: true });
+        }
         if (r && r.error === 'limit_reached') call('toast', 'Slot keyword sudah penuh.');
         else if (r && r.error === 'already_tracked') call('toast', 'Keyword ini sudah kamu pantau.');
       });

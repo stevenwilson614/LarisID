@@ -32,7 +32,7 @@ window.LARIS_CHANGELOG = [
       },
       {
         text: 'Cari Supplier: dari satu produk, kamu bisa langsung lihat daftar toko yang menjual barang serupa — sekarang dengan foto toko biar gampang dipindai.',
-        tech: 'Probe validasi permintaan, masih di balik feature flag (admin-only). Kandidat supplier di-match per kategori pilot dengan thumbnail toko asli; produk di luar pilot tidak lagi jatuh ke fallback Fashion.',
+        tech: 'Probe validasi permintaan, publik di kedua arm sejak 2026-08-09. Toko terkurasi tetap prioritas; kalau tidak ada match, UI menawarkan pencarian grosir/wholesale (Alibaba/Shopee/web) dengan flag generated=true pada supplier_link_click.',
       },
       {
         text: 'Deep Dive di LARISgpt sekarang tampil sama rapinya dengan versi utama — ringkasan di atas, biaya platform ikut dihitung.',

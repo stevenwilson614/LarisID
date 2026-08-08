@@ -197,7 +197,7 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260808a';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260808n';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
@@ -10119,8 +10119,8 @@ html,body{overflow-x:clip;max-width:100%;}
 <script defer src="/js/laris-finder.js?v=20260807a"></script>
 <script defer src="/js/laris-trending.js?v=20260808a"></script>
 <script defer src="/js/daily-spin-wheel.js?v=20260730g"></script>
-<script defer src="/js/laris-tracker.js?v=20260808b"></script>
-<script defer src="/js/laris-app.js?v=20260808a"></script>
+<script defer src="/js/laris-tracker.js?v=20260808n"></script>
+<script defer src="/js/laris-app.js?v=20260808n"></script>
 <!-- Admin-only; mount() is a no-op for everyone else. Must load after laris-app.js. -->
 <script defer src="/js/winback-admin.js?v=20260802a"></script>
 
@@ -10392,7 +10392,7 @@ html,body{overflow-x:clip;max-width:100%;}
     <button type="button" class="lid-cl-close" id="lid-changelog-close">Tutup</button>
   </div>
 </div>
-<script src="/js/changelog.js?v=20260731b" defer></script>
+<script src="/js/changelog.js?v=20260808n" defer></script>
 <script>
 (function () {
   function fmt(iso){var d=new Date(String(iso)+'T00:00:00');

@@ -2276,7 +2276,7 @@ function isBootstrapLeader() {
 //   2. >=40% of survey respondents contacted the supplier or found it useful
 // Raw tab opens alone are NOT success. Below the bar => do not build the
 // marketplace/omset layer; iterate the curation or drop the tab.
-const SUPPLIER_PROBE_PUBLIC = false;
+const SUPPLIER_PROBE_PUBLIC = true;
 function supplierProbeVisible() {
   return SUPPLIER_PROBE_PUBLIC || isPlatformAdmin();
 }
@@ -5890,6 +5890,9 @@ function switchDashView(view) {
   // stale history entries) instead of showing an empty shell.
   if (view === 'suppliers' && !supplierProbeVisible()) view = 'dashboard';
   const prevView = _dashActiveView;
+  if (view !== prevView) {
+    try { void logUserEvent('view_open', { ui: 'A', view }); } catch (_) {}
+  }
   if (prevView === 'discover' && view !== 'discover') {
     _dscScrollTop = document.getElementById('dash-content')?.scrollTop || 0;
     _dscHideLoadingUi();
@@ -21113,6 +21116,7 @@ async function submitFeedback() {
       .from('feedback').insert(record).select('id').single();
     if (error) throw error;
     const recordWithId = { ...record, id: inserted?.id };
+    void logUserEvent('feedback_submitted', { ui: 'classic', from_wall: _fbBonusPending });
     // fire-and-forget: email + AI analysis in parallel
     _supabase.functions.invoke('notify-feedback',  { body: { record: recordWithId } })
       .then(({ error }) => { if (error) console.warn('notify-feedback:', error.message); });
@@ -27310,6 +27314,8 @@ let _supFilterCategory = null;
 let _supSource      = 'tab';  // 'tab' | 'deepdive' | 'keyword'
 let _supShowAll     = false;  // "Lihat semua" pressed after a deep-dive handoff
 let _supListeners   = false;
+/** Last selected rows — includes generated search fallbacks for click logging. */
+let _supRenderedRows = [];
 
 function _supEsc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
@@ -27354,44 +27360,90 @@ function supLoadData() {
 
 function _supNorm(s) { return String(s == null ? '' : s).trim().toLowerCase(); }
 
-/** True when this product's keyword or category is in the curated pilot. */
+/**
+ * Honest discovery links when no curated shop matches the keyword.
+ * Labeled as searches — not verified MOQ/price suppliers.
+ */
+function _supSearchFallbacks(keyword) {
+  const raw = String(keyword == null ? '' : keyword).trim();
+  if (!raw) return [];
+  const q = encodeURIComponent(raw);
+  const qGrosir = encodeURIComponent(raw + ' grosir');
+  const qWeb = encodeURIComponent(raw + ' grosir supplier OR pabrik OR wholesale');
+  return [
+    {
+      id: 'sup_search_alibaba',
+      name: 'Alibaba — cari wholesale',
+      tier: 'import',
+      published: true,
+      platform: 'alibaba',
+      generated: true,
+      url: `https://indonesian.alibaba.com/trade/search?fsb=y&IndexArea=product_en&SearchText=${q}`,
+      city: 'Impor (China)',
+      badges: ['Impor', 'Wholesale', 'Pencarian'],
+      keywords: [raw],
+    },
+    {
+      id: 'sup_search_shopee_grosir',
+      name: 'Shopee — cari grosir',
+      tier: 'grosir',
+      published: true,
+      platform: 'shopee',
+      generated: true,
+      url: `https://shopee.co.id/search?keyword=${qGrosir}`,
+      city: 'Indonesia',
+      badges: ['Grosir', 'Pencarian'],
+      keywords: [raw],
+    },
+    {
+      id: 'sup_search_web_wholesale',
+      name: 'Cari supplier grosir di web',
+      tier: 'grosir',
+      published: true,
+      platform: 'web',
+      generated: true,
+      url: `https://www.google.com/search?q=${qWeb}`,
+      badges: ['Cari', 'Wholesale'],
+      keywords: [raw],
+    },
+  ];
+}
+
+function _supLookup(id) {
+  return _supRenderedRows.find(x => x.id === id)
+    || (_supData?.suppliers || []).find(x => x.id === id)
+    || null;
+}
+
+/** True when we can show curated shops and/or search fallbacks. */
 function supplierRelevantFor(keyword, category) {
-  const kw  = _supNorm(keyword);
-  const cat = _supNorm(category);
-  const pilotCats = (_supData?.pilot?.categories || ['Fashion']).map(_supNorm);
-  if (kw && _supData) {
-    const hit = (_supData.suppliers || []).some(s =>
-      s.published && (s.keywords || []).some(k => _supNorm(k) === kw));
-    if (hit) return true;
-  }
-  if (cat && pilotCats.includes(cat)) return true;
+  if (_supNorm(keyword)) return true;
+  if (_supNorm(category)) return true;
   return false;
 }
 
 /**
- * Picks the rows to show. Match order: exact keyword -> pilot category -> browse-all.
- * Off-pilot products (e.g. climbing while the probe is Fashion-only) return
- * ZERO rows — never dump unrelated suppliers with a disclaimer.
+ * Match order: exact curated keyword -> search fallbacks -> category curated
+ * -> category search -> browse-all. Never dump unrelated curated shops.
  */
 function _supSelect() {
   const all = (_supData?.suppliers || []).filter(s => s.published);
-  const kw  = _supNorm(_supFilterKeyword);
-  const cat = _supNorm(_supFilterCategory);
-  const pilotCats = (_supData?.pilot?.categories || []).map(_supNorm);
-  const catInPilot = !!(cat && pilotCats.includes(cat));
+  const kwRaw = String(_supFilterKeyword == null ? '' : _supFilterKeyword).trim();
+  const kw = _supNorm(kwRaw);
+  const catRaw = String(_supFilterCategory == null ? '' : _supFilterCategory).trim();
+  const cat = _supNorm(catRaw);
 
   if (kw) {
     const hit = all.filter(s => (s.keywords || []).some(k => _supNorm(k) === kw));
     if (hit.length) return { rows: hit, mode: 'keyword' };
-    // Keyword set but no match: only broaden within the same pilot niche.
-    if (catInPilot) return { rows: all, mode: 'category' };
-    if (cat || _supSource === 'deepdive') return { rows: [], mode: 'offpilot' };
+    return { rows: _supSearchFallbacks(kwRaw), mode: 'search' };
   }
   if (cat) {
-    if (catInPilot) return { rows: all, mode: 'category' };
-    return { rows: [], mode: 'offpilot' };
+    const catRows = all.filter(s =>
+      (s.categories || []).some(c => _supNorm(c) === cat));
+    if (catRows.length) return { rows: catRows, mode: 'category' };
+    return { rows: _supSearchFallbacks(catRaw), mode: 'search' };
   }
-  // Intentional browse (nav / sidebar) — no product context.
   return { rows: all, mode: 'all' };
 }
 
@@ -27459,6 +27511,7 @@ function _supCardHtml(s) {
   const sample = s.sampleUrl
     ? `<a class="sup-link-sec" href="${_supEsc(s.sampleUrl)}" target="_blank" rel="noopener"
           onclick="supOpenLink('${_supEsc(s.id)}','sample')">Lihat contoh produk</a>` : '';
+  const cta = s.generated ? 'Buka pencarian' : 'Buka toko';
   return `
     <div class="sup-card">
       ${_supLogoHtml(s)}
@@ -27470,7 +27523,7 @@ function _supCardHtml(s) {
       </div>
       <div class="sup-card-actions">
         <a class="sup-btn" href="${_supEsc(s.url)}" target="_blank" rel="noopener"
-           onclick="supOpenLink('${_supEsc(s.id)}','shop')">Buka toko</a>
+           onclick="supOpenLink('${_supEsc(s.id)}','shop')">${cta}</a>
         ${sample}
       </div>
     </div>`;
@@ -27498,27 +27551,25 @@ function supRender() {
 
   const { rows, mode } = _supSelect();
   const pilotLabel = _supData?.pilot?.label || 'kategori pilot';
+  _supRenderedRows = rows.slice();
 
   if (noteEl) {
     let note = '';
     if (mode === 'keyword') {
       note = `Supplier untuk <strong>${_supEsc(_supFilterKeyword)}</strong>.`;
+    } else if (mode === 'search') {
+      const q = _supEsc(_supFilterKeyword || _supFilterCategory || '');
+      note = `Belum ada toko terkurasi — ini pencarian grosir / wholesale untuk <strong>${q}</strong>.`;
     } else if (mode === 'category') {
-      note = `Semua supplier untuk <strong>${_supEsc(pilotLabel)}</strong>.`;
+      note = `Toko terkurasi untuk <strong>${_supEsc(_supFilterCategory || pilotLabel)}</strong>.`;
     }
-    // offpilot: no note above an empty state — the empty copy explains it.
     noteEl.innerHTML = note ? `<div class="sup-note">${note}</div>` : '';
   }
 
   if (!rows.length) {
-    const off = mode === 'offpilot';
     listEl.innerHTML = `<div class="dash-empty">
-      <div class="dash-empty-title">${off
-        ? 'Belum ada supplier untuk produk ini'
-        : 'Belum ada supplier untuk filter ini'}</div>
-      <div class="dash-empty-sub">${off
-        ? `Cari Supplier baru mengurasi <strong>${_supEsc(pilotLabel)}</strong>. Kami tidak menampilkan supplier kategori lain supaya rekomendasinya tidak menyesatkan.`
-        : `Kami baru mengurasi ${_supEsc(pilotLabel)}. Daftar akan bertambah.`}</div>
+      <div class="dash-empty-title">Belum ada supplier untuk filter ini</div>
+      <div class="dash-empty-sub">Coba buka dari Deep Dive produk, atau jelajahi semua toko terkurasi dari menu.</div>
     </div>`;
     return;
   }
@@ -27528,6 +27579,7 @@ function supRender() {
     if (t) return t;
     return (b.sold || 0) - (a.sold || 0);
   });
+  _supRenderedRows = sorted.slice();
 
   const capped = (_supSource === 'deepdive' && !_supShowAll)
     ? sorted.slice(0, SUPPLIER_DEEPDIVE_LIMIT) : sorted;
@@ -27624,11 +27676,12 @@ function ddOpenSuppliers() {
  * when the user comes back to the Laris tab.
  */
 function supOpenLink(id, which) {
-  const s = (_supData?.suppliers || []).find(x => x.id === id);
+  const s = _supLookup(id);
   _supLog('supplier_link_click', {
     supplier_id: id,
     supplier_name: s?.name || null,
     tier: s?.tier || null,
+    generated: !!s?.generated,
     target: which || 'shop',
     keyword:  _supFilterKeyword || null,
     category: _supFilterCategory || null,
