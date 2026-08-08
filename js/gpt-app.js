@@ -10956,7 +10956,7 @@ async function renderSubcats(cat) {
     });
   } catch (_) {}
 
-  const fallbackIcon = catChipIcon(cat, 22);
+  const fallbackIcon = catChipIcon(cat, 44);
   const subCard = (label, dsub, selected) => {
     const img = imgBySubgroup[label];
     const thumb = img
