@@ -1757,24 +1757,50 @@ function setUsagePopOpen(pill, open) {
     pop.style.left = '';
     pop.style.right = '';
     pop.style.bottom = '';
+    pop.style.visibility = '';
   });
   if (!pill || !open) return;
   const wrap = pill.closest('[data-usage-wrap]') || pill.parentElement;
   const pop = wrap?.querySelector?.('[data-usage-pop]');
   if (!pop) return;
   const r = pill.getBoundingClientRect();
-  const width = Math.min(240, window.innerWidth - 32);
+  const margin = 16;
+  const gap = 10;
+  const width = Math.min(240, window.innerWidth - margin * 2);
   let left = Math.round(r.right - width);
-  left = Math.max(16, Math.min(left, window.innerWidth - width - 16));
-  const bottom = Math.round(window.innerHeight - r.top + 10);
+  left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
+
+  // Measure after opening (hidden) so we can flip above/below without flashing.
   pop.classList.add('is-open');
   pop.style.position = 'fixed';
   pop.style.width = `${width}px`;
   pop.style.left = `${left}px`;
   pop.style.right = 'auto';
-  pop.style.bottom = `${bottom}px`;
-  pop.style.top = 'auto';
+  pop.style.top = '0';
+  pop.style.bottom = 'auto';
+  pop.style.visibility = 'hidden';
   pop.style.zIndex = '80';
+
+  const popH = Math.max(pop.offsetHeight || 72, 56);
+  const spaceAbove = r.top - margin;
+  const spaceBelow = window.innerHeight - r.bottom - margin;
+  // Header ring sits near the top — prefer below when above won't fit.
+  const placeBelow = spaceAbove < popH + gap
+    ? true
+    : spaceBelow < popH + gap
+      ? false
+      : spaceBelow >= spaceAbove;
+
+  let top;
+  if (placeBelow) {
+    top = Math.round(r.bottom + gap);
+  } else {
+    top = Math.round(r.top - gap - popH);
+  }
+  top = Math.max(margin, Math.min(top, window.innerHeight - popH - margin));
+  pop.style.top = `${top}px`;
+  pop.style.bottom = 'auto';
+  pop.style.visibility = '';
 }
 
 function wireUsagePill() {
