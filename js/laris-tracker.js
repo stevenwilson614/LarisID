@@ -1270,13 +1270,13 @@
         'referrerpolicy="no-referrer" ' +
         'onerror="var p=this.parentNode;var s=p.getAttribute(\'data-cat\')||\'\';' +
         'var L=p.getAttribute(\'data-letter\')||\'?\';this.remove();' +
-        'var i=document.createElement(\'img\');i.alt=\'\';i.width=46;i.height=46;' +
+        'var i=document.createElement(\'img\');i.alt=\'\';i.width=81;i.height=81;' +
         'i.loading=\'lazy\';i.src=\'/images/onboarding/categories/\'+s+\'.png\';' +
         'i.onerror=function(){p.className=\'ltk-row-ico ltk-row-ico--letter\';p.textContent=L;};' +
         'p.appendChild(i);">' +
         '</span>';
     }
-    return catIconHtml(cat, 46).replace('ltk-cat-ico', 'ltk-row-ico');
+    return catIconHtml(cat, 81).replace('ltk-cat-ico', 'ltk-row-ico');
   }
 
   function renderRollup() {

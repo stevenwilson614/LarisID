@@ -533,14 +533,14 @@
   display: flex; align-items: center; gap: 10px; text-align: left;
   padding: 17px 12px 17px var(--ltk-pad); font-weight: 500; min-width: 210px;
 }
-/* 46px: real product photos (and shop logos) need the extra pixels to read. */
+/* 81px (~75% larger than the prior 46px) so product photos read at a glance. */
 .ltk-row-ico {
-  flex-shrink: 0; width: 46px; height: 46px; border-radius: 12px;
+  flex-shrink: 0; width: 81px; height: 81px; border-radius: 14px;
   overflow: hidden; display: grid; place-items: center; background: #F3F4F6;
 }
 .ltk-row-ico img { width: 100%; height: 100%; object-fit: cover; }
 .ltk-row-ico--letter {
-  font-size: .84rem; font-weight: 800; color: #6B7280; background: #F3F4F6;
+  font-size: 1.15rem; font-weight: 800; color: #6B7280; background: #F3F4F6;
 }
 .ltk-rowhead-txt { min-width: 0; }
 .ltk-rowhead-name {
@@ -809,9 +809,8 @@
   .ltk-panel-head { gap: 8px; }
   .ltk-statstrip { grid-template-columns: repeat(auto-fit, minmax(144px, 1fr)); }
   .ltk-stat-val { font-size: 1rem; }
-  /* A real product photo needs more pixels than a flat glyph to read at a
-     glance — bump it up from the 46px base at this width. */
-  .ltk-row-ico { width: 52px; height: 52px; border-radius: 12px; }
+  /* Keep the mobile bump proportional to the larger base (~81 → ~91). */
+  .ltk-row-ico { width: 91px; height: 91px; border-radius: 16px; }
   /* The detail row's <td> still spans every (wide) numeric column via
      colspan, same as the table itself — pin it to the scroll origin like the
      name column above, and cap the inner grid to the viewport, so expanding
