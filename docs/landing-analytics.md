@@ -6,6 +6,16 @@
 
 > This is a research/spec document. No application code was changed.
 
+> **STATUS UPDATE (2026-07-25): the "short answer" above is now out of date.** The spec in
+> this document was subsequently implemented. Clarity custom tags and events are live —
+> `ab_variant` / `ab_via` (`index.html:182-183`, `js/gpt-app.js:19-20`), `signup_success`,
+> `signed_up`, `signup_cta_source` (`js/gpt-app.js:86-89`, `js/laris-app.js:88`),
+> `cta_signup_click`, and `scroll_depth_25/50/75/100` (`js/laris-app.js:24339`). Scroll and
+> CTA funnels can now be read quantitatively in Clarity, and `public.page_views` (added
+> 2026-07-20) gives server-side landing volume. Two caveats survive: `scroll_depth_*` fires
+> on the A arm only, and `page_views` never logs `/gpt/`. See
+> [user-research-jul26.md](user-research-jul26.md) for measured figures and the full gap list.
+
 ---
 
 ## 1. Current analytics inventory
