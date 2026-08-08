@@ -3028,7 +3028,47 @@ function resultsBarVisibleOn(view) {
 function renderResultsBar() {
   const bar = $('results-bar');
   if (!bar) return;
-  bar.hidden = !resultsBarVisibleOn(state.view);
+  const show = resultsBarVisibleOn(state.view);
+  bar.hidden = !show;
+  if (!show) closeResultsBarMega();
+}
+
+function closeResultsBarMega() {
+  const mega = $('results-bar-mega');
+  const btn = $('results-bar-kategori');
+  if (mega) {
+    mega.classList.remove('is-open');
+    mega.hidden = true;
+  }
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+async function applyDirectoryCategory(cat, sub) {
+  const nextCat = String(cat || '').trim();
+  const nextSub = String(sub || '').trim() || null;
+  state.dirCats = nextCat ? [nextCat] : [];
+  state.dirSub = nextCat ? nextSub : null;
+  state.dirSearch = '';
+  state.dirPage = 1;
+  const searchInp = $('results-bar-input');
+  if (searchInp) searchInp.value = '';
+  const host = $('dir-filters-range');
+  try { host?._dirApi?.setCategories?.(state.dirCats); } catch (_) {}
+  closeResultsBarMega();
+  if (state.view !== 'directory') {
+    state.comparePick = null;
+    updateDirCompareBanner();
+    await openDirectory();
+  } else {
+    applyDirCatUi();
+    updateDirHeading();
+    await renderDirectory();
+  }
+  void logUserEvent('dir_filter', {
+    ui: 'gpt',
+    kind: nextSub ? 'mega_subgroup' : 'mega_category',
+    value: nextSub ? `${nextCat} › ${nextSub}` : nextCat,
+  });
 }
 
 function wireResultsBar() {
@@ -3039,9 +3079,15 @@ function wireResultsBar() {
   const form = $('results-bar-form');
   const input = $('results-bar-input');
   const box = $('results-bar-suggestions');
+  const katBtn = $('results-bar-kategori');
+  const mega = $('results-bar-mega');
+  const megaCats = $('results-bar-mega-cats');
+  const megaSubs = $('results-bar-mega-subs');
   let suggIdx = -1;
   let suggGen = 0;
   let suggDebounce = null;
+  let megaActiveCat = null;
+  let megaGen = 0;
 
   const hideSuggestions = () => {
     if (!box) return;
@@ -3061,16 +3107,25 @@ function wireResultsBar() {
     return 0;
   };
 
+  // Tokopedia-style: keep typed prefix light, bold the completion.
   const highlight = (name, q) => {
     const n = String(name || '');
     const lo = n.toLowerCase();
     const ql = String(q || '').toLowerCase().trim();
-    if (!ql) return esc(n);
+    if (!ql) return '<strong>' + esc(n) + '</strong>';
     let idx = lo.startsWith(ql) ? 0 : lo.indexOf(' ' + ql);
     if (idx > 0) idx += 1;
-    if (idx < 0) return esc(n);
-    return esc(n.slice(0, idx)) + '<mark>' + esc(n.slice(idx, idx + ql.length)) + '</mark>' + esc(n.slice(idx + ql.length));
+    if (idx < 0) return '<strong>' + esc(n) + '</strong>';
+    const pre = n.slice(0, idx);
+    const match = n.slice(idx, idx + ql.length);
+    const rest = n.slice(idx + ql.length);
+    return esc(pre) + esc(match) + (rest ? '<strong>' + esc(rest) + '</strong>' : '');
   };
+
+  const suggIco =
+    '<span class="results-bar-sugg-ico" aria-hidden="true">' +
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
+    '</span>';
 
   const renderSuggestions = (items, q) => {
     if (!box) return;
@@ -3078,6 +3133,7 @@ function wireResultsBar() {
     if (!items.length) { hideSuggestions(); return; }
     box.innerHTML = items.map(it =>
       `<button type="button" class="results-bar-sugg-item" role="option" data-sugg="${esc(it.name)}">` +
+        suggIco +
         `<span class="results-bar-sugg-name">${highlight(it.name, q)}</span>` +
         (it.category ? `<span class="results-bar-sugg-cat">${esc(it.category)}</span>` : '') +
       `</button>`
@@ -3099,21 +3155,22 @@ function wireResultsBar() {
     const raw = String(q || '').trim();
     if (raw.length < 2) { hideSuggestions(); return; }
     if (!_supabase) return;
+    closeResultsBarMega();
     const gen = ++suggGen;
     const tok = raw.split(/\s+/)[0].replace(/[%_,.()\\]/g, '').trim().slice(0, 40);
     if (!tok) return;
     try {
       const cities = state.dirCities || [];
-      let q = _supabase.from('product_types_v')
+      let qy = _supabase.from('product_types_v')
         .select('keyword, category_canonical, category, omset_top15')
         .gte('n_listings', 3)
         .or(`keyword.ilike.${tok}%,keyword.ilike.% ${tok}%`)
         .order('omset_top15', { ascending: false, nullsFirst: false })
         .limit(40);
-      if (cities.length === 1) q = q.eq('city', cities[0]);
-      else if (cities.length > 1) q = q.in('city', cities);
-      else q = q.eq('city', 'ALL');
-      const { data } = await q;
+      if (cities.length === 1) qy = qy.eq('city', cities[0]);
+      else if (cities.length > 1) qy = qy.in('city', cities);
+      else qy = qy.eq('city', 'ALL');
+      const { data } = await qy;
       if (gen !== suggGen) return;
       const cur = String(input?.value || '').trim();
       if (cur.toLowerCase() !== raw.toLowerCase()) return;
@@ -3139,9 +3196,95 @@ function wireResultsBar() {
     }
   };
 
+  const renderMegaSubs = async (cat) => {
+    if (!megaSubs) return;
+    megaActiveCat = cat;
+    const gen = ++megaGen;
+    megaSubs.innerHTML = '<p class="results-bar-mega-empty">Memuat…</p>';
+    const groups = await loadSubgroups(cat);
+    if (gen !== megaGen || megaActiveCat !== cat) return;
+    const head =
+      `<div class="results-bar-mega-head">` +
+        `<h3 class="results-bar-mega-title">${esc(cat)}</h3>` +
+        `<button type="button" class="results-bar-mega-all" data-mega-all="${esc(cat)}">Lihat semua</button>` +
+      `</div>`;
+    if (!groups.length) {
+      megaSubs.innerHTML = head + '<p class="results-bar-mega-empty">Belum ada subkategori. Klik “Lihat semua” untuk buka produk.</p>';
+    } else {
+      megaSubs.innerHTML = head +
+        `<div class="results-bar-mega-grid">` +
+          groups.map(g =>
+            `<button type="button" class="results-bar-mega-sub" data-mega-sub="${esc(g)}" data-mega-cat="${esc(cat)}">${esc(g)}</button>`
+          ).join('') +
+        `</div>`;
+    }
+    megaSubs.querySelector('[data-mega-all]')?.addEventListener('click', () => {
+      void applyDirectoryCategory(cat, null);
+    });
+    megaSubs.querySelectorAll('[data-mega-sub]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        void applyDirectoryCategory(
+          btn.getAttribute('data-mega-cat') || cat,
+          btn.getAttribute('data-mega-sub') || null
+        );
+      });
+    });
+  };
+
+  const openMega = async () => {
+    if (!mega || !megaCats) return;
+    hideSuggestions();
+    const canon = await loadCanonicalCats();
+    const cats = (canon.length ? canon : NU_ONB_CATS).slice();
+    if (!cats.length) return;
+    const active = megaActiveCat && cats.includes(megaActiveCat)
+      ? megaActiveCat
+      : ((state.dirCats && state.dirCats.length === 1 && cats.includes(state.dirCats[0]))
+        ? state.dirCats[0]
+        : cats[0]);
+    megaCats.innerHTML = cats.map(c =>
+      `<button type="button" class="results-bar-mega-cat${c === active ? ' is-active' : ''}" role="option" data-mega-cat="${esc(c)}">${esc(c)}</button>`
+    ).join('');
+    megaCats.querySelectorAll('[data-mega-cat]').forEach(btn => {
+      const cat = btn.getAttribute('data-mega-cat') || '';
+      btn.addEventListener('mouseenter', () => {
+        if (window.matchMedia('(hover: hover)').matches) {
+          megaCats.querySelectorAll('.results-bar-mega-cat').forEach(el => {
+            el.classList.toggle('is-active', el === btn);
+          });
+          void renderMegaSubs(cat);
+        }
+      });
+      btn.addEventListener('click', () => {
+        megaCats.querySelectorAll('.results-bar-mega-cat').forEach(el => {
+          el.classList.toggle('is-active', el === btn);
+        });
+        // Touch / second click: if already previewing this cat, open products.
+        if (megaActiveCat === cat && !window.matchMedia('(hover: hover)').matches) {
+          void applyDirectoryCategory(cat, null);
+          return;
+        }
+        void renderMegaSubs(cat);
+      });
+    });
+    mega.hidden = false;
+    mega.classList.add('is-open');
+    katBtn?.setAttribute('aria-expanded', 'true');
+    await renderMegaSubs(active);
+  };
+
+  katBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const open = katBtn.getAttribute('aria-expanded') === 'true';
+    if (open) closeResultsBarMega();
+    else void openMega();
+  });
+
   form?.addEventListener('submit', (e) => {
     e.preventDefault();
     hideSuggestions();
+    closeResultsBarMega();
     const q = String(input?.value || '').trim();
     if (q) void runResultsBarSearch(q);
   });
@@ -3158,12 +3301,16 @@ function wireResultsBar() {
     suggDebounce = setTimeout(() => void showSuggestions(input.value), 180);
   });
   input?.addEventListener('focus', () => {
+    closeResultsBarMega();
     if (String(input.value || '').trim().length >= 2) void showSuggestions(input.value);
   });
   input?.addEventListener('blur', () => setTimeout(hideSuggestions, 150));
   input?.addEventListener('keydown', (e) => {
     if (!box || box.hidden) {
-      if (e.key === 'Escape') hideSuggestions();
+      if (e.key === 'Escape') {
+        hideSuggestions();
+        closeResultsBarMega();
+      }
       return;
     }
     const items = [...box.querySelectorAll('[data-sugg]')];
@@ -3188,6 +3335,10 @@ function wireResultsBar() {
   });
   document.addEventListener('click', (e) => {
     if (!form?.contains(e.target)) hideSuggestions();
+    if (!bar.contains(e.target)) closeResultsBarMega();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeResultsBarMega();
   });
 }
 
@@ -3196,6 +3347,7 @@ async function runResultsBarSearch(q) {
   const query = String(q || '').trim();
   state.dirSearch = query;
   state.dirPage = 1;
+  closeResultsBarMega();
   if (state.view !== 'directory') {
     state.comparePick = null;
     updateDirCompareBanner();
@@ -10552,14 +10704,26 @@ async function renderSubcats(cat) {
 }
 
 // Rebuild the Kota options from the active Provinsi (all cities when none).
-/** Heading reflects active Produk search / user's home city (soft label only). */
+/** Heading reflects active Produk search / category / user's home city. */
 function updateDirHeading() {
   const h = $('dir-heading');
   if (!h) return;
   const q = (state.dirSearch || '').trim();
+  if (q) {
+    h.textContent = `Hasil: ${q}`;
+    return;
+  }
+  const cat = primaryDirCat();
+  if (cat && state.dirSub) {
+    h.textContent = `${cat} · ${state.dirSub}`;
+    return;
+  }
+  if (cat) {
+    h.textContent = cat;
+    return;
+  }
   const userCity = state.onboarding?.city || '';
-  let base = userCity ? `Yang Laku di ${userCity}` : 'Tipe Produk';
-  h.textContent = q ? `Hasil: ${q}` : base;
+  h.textContent = userCity ? `Yang Laku di ${userCity}` : 'Tipe Produk';
 }
 
 async function openDirectory() {
