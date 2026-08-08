@@ -741,6 +741,57 @@ function setComposerChips(list, surface) {
   });
 }
 
+// ── Ask Laris (dedicated chat page) ───────────────────────────────────────
+// Pre-prompt chips run a dedicated action rather than free text through the
+// generic router: "kotaku"/"my city" needs the user's real onboarding city,
+// which only startRecommendationChat resolves — a generic search for the
+// literal words would silently drop the personalization.
+async function askLarisRecommend(freeText) {
+  const prevFreeText = state.onboarding.freeText;
+  state.onboarding.freeText = freeText || '';
+  try {
+    await startRecommendationChat(false);
+  } finally {
+    state.onboarding.freeText = prevFreeText;
+  }
+}
+
+const ASK_LARIS_PROMPTS = [
+  { id: 'al_terlaris', label: 'Produk terlaris kotaku', run: () => askLarisRecommend('') },
+  { id: 'al_modal', label: 'Modal 500rb, jualan apa?', run: () => askLarisRecommend('Modal 500rb, mau mulai jualan apa?') },
+  { id: 'al_evaluasi', label: 'Apakah jualan sepatu bagus?', run: () => handleComposerSubmit('Apakah jualan sepatu ide bagus?') },
+];
+
+function renderAskLarisChips() {
+  const wrap = $('composer-chips');
+  if (!wrap) return;
+  wrap.hidden = false;
+  wrap.innerHTML = ASK_LARIS_PROMPTS.map(c =>
+    `<button type="button" class="chip" data-al-chip="${esc(c.id)}">${esc(c.label)}</button>`
+  ).join('');
+  wrap.querySelectorAll('[data-al-chip]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cfg = ASK_LARIS_PROMPTS.find(c => c.id === btn.getAttribute('data-al-chip'));
+      if (!cfg) return;
+      void logUserEvent('gpt_chip_click', { ui: 'gpt', chip: cfg.id, surface: 'ask_laris' });
+      clarityEvt('gpt_chip_click', { chip: cfg.id });
+      void cfg.run();
+    });
+  });
+}
+
+/** Sidebar "Ask Laris" entry — a fresh conversational thread + suggestions. */
+function openAskLaris() {
+  abortAssistantStream();
+  beginFreshChat();
+  const thread = $('chat-thread');
+  if (thread) thread.innerHTML = '';
+  setView('chat');
+  appendBubble('assistant', `<p>Tanya apa saja soal jualan online di Shopee — rekomendasi produk, atau apakah ide jualanmu prospektif. Semua jawaban berbasis data asli LarisID.</p>`);
+  renderAskLarisChips();
+  scrollPanelToTop();
+}
+
 // ── Chart.js lifecycle (multiple instances per deep dive) ────────────────
 const _charts = new Map();
 let _ddObserver = null;
@@ -1832,12 +1883,17 @@ function setView(name) {
     state.deepdiveProduct = null;
   }
   // The composer has nothing to say on the tracker either — it is a
-  // configuration + data surface, not a place to ask a question.
+  // configuration + data surface, not a place to ask a question. The chat
+  // view is Ask Laris and keeps its own docked chat bar (see the
+  // .composer-dock display rule) — everywhere else now hides the bar
+  // entirely rather than just clearing its chips, so this list stops
+  // mattering for those views, but chips are still irrelevant on them either way.
   if (name === 'home' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker') setComposerChips(null);
-  ['btn-produk', 'btn-harga', 'btn-admin', 'btn-tracker'].forEach(id => {
+  ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-admin', 'btn-tracker'].forEach(id => {
     const el = $(id);
     if (!el) return;
     el.classList.toggle('active',
+      (id === 'btn-ask-laris' && name === 'chat') ||
       (id === 'btn-produk' && name === 'directory') ||
       (id === 'btn-harga' && name === 'harga') ||
       (id === 'btn-admin' && name === 'admin') ||
@@ -1846,6 +1902,7 @@ function setView(name) {
   if (leaving === 'tracker' && name !== 'tracker' && window.LarisTracker) {
     try { window.LarisTracker.close(); } catch (_) {}
   }
+  try { renderResultsBar(); } catch (_) {}
   closeSidebar();
   updateSideRailVisibility();
   updateProductPin();
@@ -2912,6 +2969,65 @@ async function fetchRegionFromIp() {
   }
 }
 
+// ── Sticky results search/sort bar ──────────────────────────────────────────
+// Deliberately NOT a chat input — it's the browse/search entry point that
+// replaced the always-visible composer on every view except Ask Laris. Holds
+// the most recently rendered market-card set so choosing a sort order can
+// Deliberately directory-only. Finder results land in #chat-thread, which is
+// also Ask Laris's thread — and Ask Laris keeps its own dedicated bottom
+// composer, so a second search surface on the same view would be redundant
+// with (and visually compete against) that composer. Produk/directory has no
+// composer at all, so this bar is its sole search entry point (also covers
+// the "search bar at the top" requirement for the Produk landing). No sort
+// control here — the directory's own filter panel already owns Urutkan.
+function resultsBarVisibleOn(view) {
+  return view === 'directory';
+}
+
+function renderResultsBar() {
+  const bar = $('results-bar');
+  if (!bar) return;
+  bar.hidden = !resultsBarVisibleOn(state.view);
+}
+
+function wireResultsBar() {
+  const bar = $('results-bar');
+  if (!bar || bar.dataset.ready) return;
+  bar.dataset.ready = '1';
+
+  const form = $('results-bar-form');
+  const input = $('results-bar-input');
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const q = String(input?.value || '').trim();
+    if (q) void runResultsBarSearch(q);
+  });
+}
+
+/** Free-text search from the Produk directory's sticky bar — keyword-driven,
+ * parallel to the finder's city+category-driven search, sharing the same
+ * rendering pipeline. Lands in a chat thread (not the directory grid itself)
+ * since a keyword search returns markets, the same shape the directory's own
+ * browse cards resolve into when clicked. */
+async function runResultsBarSearch(q) {
+  setView('chat');
+  beginFreshChat();
+  const thread = $('chat-thread');
+  if (thread) thread.innerHTML = '';
+  const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari "${esc(q)}"…</p>`);
+  const rows = await searchListings(q, [], 60);
+  const types = await typesForListings(rows.map(asListingProduct), _finder.city || '', 12);
+  const html = types.length
+    ? `<p>${types.length} pasar untuk "<strong>${esc(q)}</strong>". Klik kartu untuk Deep Dive pasar.</p>
+       <div class="card-grid">${marketCardsHtml(types)}</div>`
+    : `<p>Belum ketemu pasar untuk "${esc(q)}". Coba kata kunci lain.</p>`;
+  await revealAssistant(loading, html, { instant: true });
+  bindTypeCards($('chat-thread'));
+  scrollPanelToTop();
+  void logUserEvent('search_query', { ui: 'gpt', how: 'results_bar', query: q, results_count: rows.length });
+  funnelStep('first_search', { source: 'results_bar' });
+}
+
 function finderBudgetCfg(id) {
   return FINDER_BUDGETS.find(b => b.id === id) || FINDER_BUDGETS[FINDER_BUDGETS.length - 1];
 }
@@ -3197,19 +3313,14 @@ async function runFinderSearch() {
 
     const bud = finderBudgetCfg(_finder.budget);
     const catLabel = _finder.categories.join(', ');
-    const label = [
-      _finder.city,
-      catLabel,
-      bud.label,
-      _finder.experience === 'existing' ? 'berpengalaman' : 'penjual baru',
-    ].join(' · ');
 
     setView('chat');
     // Finder answers are onboarding context, not durable chat history.
     beginFreshChat();
     const thread = $('chat-thread');
     if (thread) thread.innerHTML = '';
-    appendBubble('user', `<p>Temukan produk: ${esc(label)}</p>`);
+    // No more "Temukan produk: ..." echo bubble — the result count line below
+    // is now the visible record of what was searched.
     const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari produk yang cocok…</p>`);
 
     const rows = await collectFinderProducts({
@@ -5526,6 +5637,21 @@ function isCategoryLevelAsk(lower, cat) {
   return tokens.every((t) => broad.includes(t) || CAT_LEVEL_ADJ.has(t) || t === catLow);
 }
 
+/**
+ * "Is X a good idea to sell" style asks (Ask Laris' comparative-reasoning
+ * prompt) — distinct from a plain category search/showcase ask: the user
+ * wants a judgment ("shoes are overrun, women's could work"), not a grid of
+ * cards. Caught only when paired with a resolved category (see call site).
+ */
+function isEvaluativeAsk(lower) {
+  const s = String(lower || '');
+  return /apakah.*(bagus|baik|worth|cocok|menguntungkan|prospek|laku|rame|ramai)/.test(s)
+    || /(ide|prospek) (jual|jualan|bisnis|usaha)/.test(s)
+    || /jualan .*(bagus|baik|worth it|prospek)/.test(s)
+    || /(baiknya|sebaiknya|worth it).*jual/.test(s)
+    || /jual.*(bagus (ga|gak|nggak|tidak)|worth it (ga|gak|nggak))\b/.test(s);
+}
+
 function _searchTerms(text) {
   return String(text || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/)
     .filter(w => w.length >= 3 && !SEARCH_STOPWORDS.has(w));
@@ -6781,6 +6907,10 @@ async function openChat(id) {
   state.activeChatId = id;
   saveLocalState();
   renderChatList();
+  // Ask Laris' pre-prompt chips (or a leftover deep-dive chip set) must not
+  // bleed into an unrelated resumed thread — the product/AI paths below set
+  // their own chips as needed.
+  setComposerChips(null);
   const chat = activeChat();
   seedProductsFromChat(chat);
   if (chat && currentUser && chat.id && (!chat.messages || !chat.messages.length) && _supabase) {
@@ -9065,6 +9195,29 @@ async function handleComposerSubmit(text) {
   // Category showcase only for broad category asks (“cari fashion”, “skincare
   // trending”) — specific nouns (“dresses”) fall through to planned search.
   const catAsk = detectCategoryFromText(lower);
+
+  // "Is [category] a good idea?" (Ask Laris' reasoning prompt) wants a
+  // judgment call, not a card grid — intercept before the showcase branch.
+  if (!inProductCtx && catAsk && isEvaluativeAsk(lower)) {
+    setView('chat');
+    let chat = activeChat();
+    if (!chat) {
+      chat = { localId: 'local_' + Date.now(), title: text.slice(0, 40), context: {}, messages: [], created_at: Date.now() };
+      state.chats.unshift(chat);
+      state.activeChatId = chat.localId;
+      renderChatList();
+    }
+    appendBubble('user', `<p>${esc(text)}</p>`);
+    pushMessage(chat, 'user', text);
+    void logUserEvent('gpt_message_sent', { ui: 'gpt' });
+    clarityEvt('gpt_message_sent', {});
+    void logUserEvent('gpt_intent', { ui: 'gpt', intent: 'category_evaluate', category: catAsk });
+    clarityEvt('gpt_intent', { intent: 'category_evaluate' });
+    const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Menganalisis pasar ${esc(catAsk)}…</p>`);
+    await handleAskLarisEvaluate(chat, text, catAsk, loading);
+    return;
+  }
+
   if (!inProductCtx && catAsk && isCategoryLevelAsk(lower, catAsk)
       && (isProductDiscoveryAsk(lower) || isBareProductQuery(lower))) {
     setView('chat');
@@ -9251,6 +9404,52 @@ async function askProductAi(chat, product, text, opts = {}) {
   clarityEvt('gpt_ai_reply', {});
   // Learn from what the user said, after the reply so it never delays it.
   extractFactsFromText(text).forEach(([k, v]) => { void rememberFact(k, v, 'chat'); });
+}
+
+/**
+ * "Is [category] a good idea?" system prompt — fed real aggregate pasar stats
+ * (seller counts, omset, breakout/trend) per sub-market in the category, the
+ * same fields the directory range filters already compute a score from
+ * (js/gpt-dir-filters.js skorOf), rather than a fresh live aggregation layer.
+ */
+function buildCategoryEvalSystemPrompt(category, types, question) {
+  const rows = (types || []).slice(0, 15);
+  const stats = rows.map((t, i) => {
+    const omset = Math.round(Number(t.omset_top15) || 0).toLocaleString('id-ID');
+    const trend = Number(t.trend_delta_30d) || 0;
+    return `${i + 1}. ${t.keyword} — ${t.n_sellers ?? '?'} seller, omset top15/bln ~Rp${omset}, breakout_rate ${t.breakout_rate ?? '?'}%, tren 30hr ${trend >= 0 ? '+' : ''}${trend}%`;
+  }).join('\n');
+  const lang = detectReplyLanguage(question);
+  const langLabel = replyLanguageLabel(lang);
+  const voice = lang === 'en'
+    ? 'Reply in clear English (informal professional "you").'
+    : 'Jawab dalam Bahasa Indonesia informal ("kamu").';
+
+  return `You are LarisID's product research assistant (Ask Laris). ${voice}
+LANGUAGE: Write ONLY in ${langLabel}.
+User is deciding whether "${category}" is a good category to sell in on Shopee.
+PENTING:
+- Jawab berdasarkan DATA PASAR di bawah — jangan mengarang angka.
+- Kalau data menunjukkan banyak seller + omset tinggi merata, itu artinya kompetisi tinggi/jenuh, bukan otomatis "bagus". Sebutkan sub-pasar mana yang jenuh vs mana yang masih punya breakout_rate/tren naik tinggi dengan seller lebih sedikit (peluang lebih baik untuk pemula).
+- Beri kesimpulan jujur dan spesifik: sub-kategori/niche mana yang lebih layak dicoba, dan mana yang sebaiknya dihindari karena terlalu ramai.
+- Kalau data di bawah kosong atau terlalu tipis untuk disimpulkan, katakan itu terus terang — jangan menebak.
+- Jawaban singkat: 3-6 kalimat atau bullet list singkat. Tanpa emoji.
+
+DATA PASAR — kategori "${category}" (${rows.length} sub-pasar):
+${stats || 'Belum ada data pasar yang cukup untuk kategori ini.'}`;
+}
+
+/** Ask Laris' "should I sell X category" turn — category-level, not one product. */
+async function handleAskLarisEvaluate(chat, text, category, loading) {
+  if (!(await _useAi('mls_chat'))) { loading?.remove?.(); return; }
+  const showcase = await fetchCategoryShowcase(category, 40);
+  const types = await typesForListings(showcase, '', 15);
+  const system = buildCategoryEvalSystemPrompt(category, types, text) + memoryPromptBlock();
+  const history = chatHistoryForAi(chat, text);
+  const reply = await streamAssistantReply(loading, system, history);
+  pushMessage(chat, 'assistant', { text: reply }, mdToHtml(reply) || `<p>${esc(reply)}</p>`);
+  void logUserEvent('gpt_ai_reply', { ui: 'gpt', keyword: category, via: 'ask_laris_evaluate' });
+  clarityEvt('gpt_ai_reply', {});
 }
 
 /** Trailing window of the current thread, as Anthropic-style turns. */
@@ -10453,13 +10652,12 @@ function wireUi() {
   $('sidebar-backdrop')?.addEventListener('click', closeSidebar);
   $('btn-home')?.addEventListener('click', goHome);
   $('btn-home-mobile')?.addEventListener('click', goHome);
-  $('btn-new-chat')?.addEventListener('click', () => void newChatFlow());
-  $('btn-search-chats')?.addEventListener('click', () => openChatSearch());
   $('chat-search-input')?.addEventListener('input', () => renderChatList());
   $('chat-search-input')?.addEventListener('keydown', e => {
     if (e.key === 'Escape') { e.preventDefault(); closeChatSearch(); }
   });
   $('chat-search-clear')?.addEventListener('click', () => closeChatSearch());
+  $('btn-ask-laris')?.addEventListener('click', () => { openAskLaris(); });
   $('btn-produk')?.addEventListener('click', () => {
     state.comparePick = null;
     updateDirCompareBanner();
@@ -10558,6 +10756,7 @@ function wireUi() {
   wirePrefsDrawer();
   wireCalcPanel();
   wireUsagePill();
+  wireResultsBar();
 
   document.addEventListener('keydown', e => {
     if ((e.metaKey || e.ctrlKey) && String(e.key).toLowerCase() === 'k') {
