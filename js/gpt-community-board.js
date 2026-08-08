@@ -4,10 +4,17 @@
   let _opts;
   let _container;
   let _listEl;
-  let _activeTab = 'feature';
+  let _activeKind = 'feature';
+  let _activeStatus = 'open';
   let _posts = [];
   let _expandedPostIds = new Set();
   let _commentsCache = {};
+
+  const STATUS_META = {
+    open: { label: 'Usulan', emptyFeature: 'Belum ada fitur yang diajukan. Jadi yang pertama!', emptyComplaint: 'Belum ada keluhan yang dilaporkan. Jadi yang pertama!' },
+    considering: { label: 'Dipertimbangkan', emptyFeature: 'Belum ada fitur yang sedang dipertimbangkan.', emptyComplaint: 'Belum ada keluhan yang sedang ditinjau.' },
+    done: { label: 'Sudah ada', emptyFeature: 'Belum ada fitur yang ditandai sudah diimplementasi.', emptyComplaint: 'Belum ada keluhan yang ditandai sudah selesai.' },
+  };
 
   // ---------- helpers ----------
 
@@ -39,8 +46,12 @@
 
   function truncateBody(body, expanded) {
     if (expanded) return body;
-    if (body.length > 180) return body.substring(0, 180) + ' ...';
+    if (body.length > 220) return body.substring(0, 220) + ' ...';
     return body;
+  }
+
+  function bodyHtml(text) {
+    return _opts.esc(text);
   }
 
   // "Steven - Bandung" when a city is on file, else just the name — most
@@ -67,6 +78,11 @@
     if (!row.author_id) return `<span class="author-tag">${avatarHtml(row)}<span class="author-name">${authorLabel(row)}</span></span>`;
     return `<button type="button" class="author-tag" data-action="open-profile" data-user-id="${_opts.esc(row.author_id)}">` +
       `${avatarHtml(row)}<span class="author-name">${authorLabel(row)}</span></button>`;
+  }
+
+  function statusBadgeHtml(status) {
+    const meta = STATUS_META[status] || STATUS_META.open;
+    return `<span class="status-badge status-badge--${_opts.esc(status || 'open')}">${_opts.esc(meta.label)}</span>`;
   }
 
   function showLoading(show) {
@@ -199,7 +215,8 @@
     const { data, error } = await _opts.supabase
       .from('feature_requests_feed')
       .select('*')
-      .eq('kind', _activeTab)
+      .eq('kind', _activeKind)
+      .eq('status', _activeStatus)
       .order('created_at', { ascending: false })
       .limit(50);
     showLoading(false);
@@ -218,10 +235,9 @@
     if (_posts.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'empty-state';
+      const meta = STATUS_META[_activeStatus] || STATUS_META.open;
       empty.textContent =
-        _activeTab === 'feature'
-          ? 'Belum ada fitur yang diajukan. Jadi yang pertama!'
-          : 'Belum ada keluhan yang dilaporkan. Jadi yang pertama!';
+        _activeKind === 'feature' ? meta.emptyFeature : meta.emptyComplaint;
       _listEl.appendChild(empty);
       return;
     }
@@ -234,10 +250,10 @@
       card.innerHTML = `
         <div class="post-header">
           <strong class="post-title">${_opts.esc(post.title)}</strong>
-          <span class="post-meta">${authorTagHtml(post)}<span class="post-date">${formatDate(post.created_at)}</span></span>
+          <span class="post-meta">${statusBadgeHtml(post.status)}${authorTagHtml(post)}<span class="post-date">${formatDate(post.created_at)}</span></span>
         </div>
         <div class="post-body ${isExpanded ? 'expanded' : 'collapsed'}">
-          <p>${_opts.esc(bodyText)}</p>
+          <p>${bodyHtml(bodyText)}</p>
         </div>
         <div class="post-footer">
           <button class="like-btn" data-action="like" data-post-id="${post.id}">
@@ -276,7 +292,7 @@
     }
     const { error } = await _opts.supabase.from('feature_requests').insert({
       author_id: _opts.currentUserId,
-      kind: _activeTab,
+      kind: _activeKind,
       title,
       body,
     });
@@ -290,19 +306,39 @@
     bodyInput.value = '';
     const panel = _container.querySelector('#form-panel');
     if (panel) panel.style.display = 'none';
+    // New usulan always land in open.
+    if (_activeStatus !== 'open') switchStatus('open');
+    else fetchPosts();
+  }
+
+  function syncChrome() {
+    const addBtn = _container.querySelector('#toggle-form-btn');
+    const actions = _container.querySelector('.gpt-board-actions');
+    const formPanel = _container.querySelector('#form-panel');
+    const canSubmit = _activeStatus === 'open';
+    if (actions) actions.style.display = canSubmit ? '' : 'none';
+    if (!canSubmit && formPanel) formPanel.style.display = 'none';
+    if (addBtn)
+      addBtn.textContent = _activeKind === 'feature' ? '+ Ajukan Fitur' : '+ Laporkan Keluhan';
+
+    _container.querySelectorAll('.status-tab-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.status === _activeStatus);
+    });
+    _container.querySelectorAll('.kind-tab-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.kind === _activeKind);
+    });
+  }
+
+  function switchKind(kind) {
+    _activeKind = kind;
+    syncChrome();
+    _posts = [];
     fetchPosts();
   }
 
-  function switchTab(tab) {
-    _activeTab = tab;
-    const addBtn = _container.querySelector('#toggle-form-btn');
-    if (addBtn)
-      addBtn.textContent = tab === 'feature' ? '+ Ajukan Fitur' : '+ Laporkan Keluhan';
-    const tabBtns = _container.querySelectorAll('.tab-btn');
-    tabBtns.forEach((btn) => {
-      if (btn.dataset.tab === tab) btn.classList.add('active');
-      else btn.classList.remove('active');
-    });
+  function switchStatus(status) {
+    _activeStatus = status;
+    syncChrome();
     _posts = [];
     fetchPosts();
   }
@@ -317,6 +353,7 @@
       // Already built — just refresh the list instead of losing an
       // in-progress form by rebuilding the DOM from scratch.
       _listEl = container.querySelector('#board-list');
+      syncChrome();
       fetchPosts();
       return;
     }
@@ -329,9 +366,11 @@
       style.textContent = `
         #gpt-board * { box-sizing: border-box; }
         #gpt-board { max-width: 100%; background: transparent; }
-        .gpt-board-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
-        .tab-btn { background: #f9fafb; border: 1px solid #d1d5db; color: #374151; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; }
-        .tab-btn.active { background: #B5202A; color: #fff; border-color: #B5202A; }
+        .gpt-board-status-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+        .gpt-board-kind-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+        .status-tab-btn, .kind-tab-btn { background: #f9fafb; border: 1px solid #d1d5db; color: #374151; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+        .status-tab-btn.active { background: #1A1F3C; color: #fff; border-color: #1A1F3C; }
+        .kind-tab-btn.active { background: #B5202A; color: #fff; border-color: #B5202A; }
         .btn-add { background: #B5202A; color: #fff; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; }
         .gpt-board-form { margin: 12px 0; border: 1px solid #E5E7EB; border-radius: 12px; padding: 12px; }
         #post-title, #post-body { width: 100%; box-sizing: border-box; margin-bottom: 8px; border: 1px solid #D1D5DB; border-radius: 8px; padding: 8px; font-size: 14px; }
@@ -342,9 +381,14 @@
         .post-card { background: #fff; border: 1px solid #E5E7EB; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
         .post-header { margin-bottom: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
         .post-title { font-size: 16px; font-weight: 600; color: #111827; width: 100%; }
-        .post-meta { font-size: 12px; color: #6B7280; display: inline-flex; align-items: center; gap: 8px; }
+        .post-meta { font-size: 12px; color: #6B7280; display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .post-date { color: #9CA3AF; }
+        .status-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; letter-spacing: .02em; }
+        .status-badge--open { background: #F3F4F6; color: #4B5563; }
+        .status-badge--considering { background: #FEF3C7; color: #92400E; }
+        .status-badge--done { background: #D1FAE5; color: #065F46; }
         .post-body { font-size: 14px; color: #374151; margin-top: 8px; }
+        .post-body p { margin: 0; white-space: pre-wrap; }
         .post-footer { display: flex; align-items: center; gap: 16px; margin-top: 12px; }
         .like-btn, .comment-toggle-btn { background: none; border: none; padding: 4px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; color: #374151; font-size:14px; }
         .like-btn svg, .comment-toggle-btn svg { pointer-events: none; }
@@ -372,16 +416,21 @@
     container.innerHTML = '';
     container.innerHTML = `
       <div id="gpt-board">
-        <div class="gpt-board-tabs">
-          <button class="tab-btn" data-tab="feature" id="tab-feature">Fitur</button>
-          <button class="tab-btn" data-tab="complaint" id="tab-complaint">Keluhan</button>
+        <div class="gpt-board-status-tabs" role="tablist" aria-label="Status usulan">
+          <button type="button" class="status-tab-btn" data-status="open" id="tab-status-open">Usulan</button>
+          <button type="button" class="status-tab-btn" data-status="considering" id="tab-status-considering">Dipertimbangkan</button>
+          <button type="button" class="status-tab-btn" data-status="done" id="tab-status-done">Sudah ada</button>
+        </div>
+        <div class="gpt-board-kind-tabs">
+          <button type="button" class="kind-tab-btn" data-kind="feature" id="tab-feature">Fitur</button>
+          <button type="button" class="kind-tab-btn" data-kind="complaint" id="tab-complaint">Keluhan</button>
         </div>
         <div class="gpt-board-actions">
           <button class="btn-add" id="toggle-form-btn">+ Ajukan Fitur</button>
         </div>
         <div class="gpt-board-form" style="display:none" id="form-panel">
           <input id="post-title" type="text" placeholder="Judul" maxlength="120" required>
-          <textarea id="post-body" placeholder="Deskripsi" maxlength="4000" required></textarea>
+          <textarea id="post-body" placeholder="Deskripsi singkat — satu fitur per poin lebih baik" maxlength="4000" required></textarea>
           <div class="form-buttons">
             <button id="submit-post-btn" class="btn-primary">Kirim</button>
             <button id="cancel-form-btn">Batal</button>
@@ -394,8 +443,11 @@
 
     _listEl = container.querySelector('#board-list');
 
-    container.querySelector('#tab-feature').addEventListener('click', () => switchTab('feature'));
-    container.querySelector('#tab-complaint').addEventListener('click', () => switchTab('complaint'));
+    container.querySelector('#tab-feature').addEventListener('click', () => switchKind('feature'));
+    container.querySelector('#tab-complaint').addEventListener('click', () => switchKind('complaint'));
+    container.querySelector('#tab-status-open').addEventListener('click', () => switchStatus('open'));
+    container.querySelector('#tab-status-considering').addEventListener('click', () => switchStatus('considering'));
+    container.querySelector('#tab-status-done').addEventListener('click', () => switchStatus('done'));
 
     container.querySelector('#toggle-form-btn').addEventListener('click', () => {
       const panel = container.querySelector('#form-panel');
@@ -439,7 +491,7 @@
       }
     });
 
-    switchTab('feature');
+    switchStatus('open');
   }
 
   // ---------- export ----------

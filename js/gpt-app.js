@@ -1993,6 +1993,45 @@ async function loadCurrentAccess() {
   if (btn) btn.style.display = isAdmin ? '' : 'none';
 }
 
+let _accountHeadshotUrl = null;
+
+function setHeaderAvatar(shortName) {
+  const av = $('user-av');
+  if (!av) return;
+  const letter = (shortName || '?').charAt(0).toUpperCase();
+  if (_accountHeadshotUrl) {
+    av.innerHTML = `<img src="${esc(_accountHeadshotUrl)}" alt="">`;
+    av.setAttribute('aria-hidden', 'true');
+  } else {
+    av.textContent = letter;
+    av.removeAttribute('aria-hidden');
+  }
+}
+
+async function refreshAccountHeadshot() {
+  if (!currentUser || !_supabase) {
+    _accountHeadshotUrl = null;
+    return;
+  }
+  try {
+    const { data, error } = await _supabase
+      .from('user_profiles')
+      .select('headshot_url, first_name, display_name')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+    if (error) throw error;
+    _accountHeadshotUrl = data?.headshot_url || null;
+    const name = data?.display_name || data?.first_name ||
+      currentUser.user_metadata?.full_name || currentUser.email || 'Akun';
+    const short = String(name).split(' ')[0] || 'Akun';
+    const un = $('user-name');
+    if (un) un.textContent = short;
+    setHeaderAvatar(short);
+  } catch (_) {
+    // Keep letter fallback; profile photo is nice-to-have.
+  }
+}
+
 function updateAccountUI() {
   const authH = $('auth-header');
   const userH = $('user-header');
@@ -2002,10 +2041,11 @@ function updateAccountUI() {
     const name = currentUser.user_metadata?.full_name || currentUser.email || 'Akun';
     const short = name.split(' ')[0] || 'Akun';
     const un = $('user-name');
-    const av = $('user-av');
     if (un) un.textContent = short;
-    if (av) av.textContent = short.charAt(0).toUpperCase();
+    setHeaderAvatar(short);
+    void refreshAccountHeadshot();
   } else {
+    _accountHeadshotUrl = null;
     if (authH) authH.hidden = false;
     if (userH) userH.hidden = true;
   }
@@ -7252,6 +7292,15 @@ function openUserProfile(userId) {
       supabase: _supabase, userId: currentUser.id, userEmail: currentUser.email || '',
       esc, toast: showToast,
       onSignOut: () => { if (confirm('Keluar dari akun?')) void signOut(); },
+      onProfileChanged: (row) => {
+        _accountHeadshotUrl = row?.headshot_url || null;
+        const name = row?.display_name || row?.first_name ||
+          currentUser.user_metadata?.full_name || currentUser.email || 'Akun';
+        const short = String(name).split(' ')[0] || 'Akun';
+        const un = $('user-name');
+        if (un) un.textContent = short;
+        setHeaderAvatar(short);
+      },
     },
   });
 }
