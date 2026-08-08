@@ -2499,6 +2499,8 @@ async function _authOnSignIn(session) {
     // skip, legacy accounts, or users who never finished step 1).
     setTimeout(() => { void backfillUserRegionIfMissing(); }, 1200);
     funnelNoteActiveDay();
+    // If they answered the landing finder before signing up, run it now.
+    setTimeout(() => { try { lfdReplayPending(); } catch (_) {} }, 700);
     await loadCurrentAccess().catch(() => {});
     void _winbackMaybeClaim();
     void journeyHydrateFromRemote();
@@ -15775,6 +15777,67 @@ async function lcpLoadSubgroups(cat) {
   return out;
 }
 
+// ── Landing finder ───────────────────────────────────────────────────────────
+// Four steps: kota, kategori, modal, pengalaman. Only kota + kategori gate the
+// CTA. Budget is deliberately optional: A CUT its post-signup budget step on
+// 2026-07-09 because it was the #1 skip point (17 skips/30d, 3 of the last 4
+// signups bailed there) — asking about money read like a payment question. This
+// finder is pre-signup and pre-search rather than post-signup onboarding, and B
+// sees 74% completion with it present, so it stays — but as a refinement the
+// user can walk past, never a gate.
+const LFD_PENDING_KEY = '_lid_finder_pending_v1';
+
+function lfdMount() {
+  if (!window.LarisFinder || !document.getElementById('laris-finder-root')) return;
+  window.LarisFinder.mount({
+    hostId: 'laris-finder-root',
+    site: 'A',
+    adapter: {
+      esc: wsdEsc,
+      track(evt, props) { try { logUserEvent(evt, props || {}); } catch (_) {} },
+      cities() {
+        try { return Object.keys(ADM_MAP_CITY_COORDS).sort((a, b) => a.localeCompare(b, 'id')); }
+        catch (_) { return []; }
+      },
+      categories: lcpLoadCategories,
+      onSubmit(ans) { lfdSubmit(ans); },
+    },
+  });
+}
+
+// Anonymous visitors cannot reach Discover, so park the answers and replay them
+// once they are signed in — the same shape as arm B's pendingFinder.
+function lfdSubmit(ans) {
+  try { localStorage.setItem(LFD_PENDING_KEY, JSON.stringify(ans || {})); } catch (_) {}
+  if (!currentUser) { openAuthModal('signup', 'finder'); return; }
+  lfdApply(ans);
+}
+
+function lfdApply(ans) {
+  if (!ans) return;
+  try { localStorage.removeItem(LFD_PENDING_KEY); } catch (_) {}
+  try {
+    switchDashView('discover');
+    // NOTE: the city answer is captured and logged but NOT applied as a filter —
+    // A's Discover has no location filter to apply it to (dscFetchPage filters on
+    // category, price, omset and score only). Wiring one is a separate change;
+    // silently dropping the answer here would be less honest than saying so.
+    const box = document.getElementById('dsc-search');
+    if (box) box.value = '';
+    _dscCommittedQ = '';
+    if (ans.category) dscPickCategory(ans.category);
+    else dscTerapkanFilter();
+    if (window.LarisCatPicker && ans.category) window.LarisCatPicker.setCategory(ans.category);
+  } catch (_) {}
+}
+
+function lfdReplayPending() {
+  if (!currentUser) return;
+  let ans = null;
+  try { ans = JSON.parse(localStorage.getItem(LFD_PENDING_KEY) || 'null'); } catch (_) {}
+  if (ans && (ans.city || ans.category)) lfdApply(ans);
+}
+
 function lcpMount() {
   if (!window.LarisCatPicker || !document.getElementById('laris-catpicker-root')) return;
   window.LarisCatPicker.mount({
@@ -25605,6 +25668,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // call can stay in place year-round. `.lp-nav` is the landing shell and
   // `.dash-topbar` the signed-in one — whichever is present first in the DOM wins.
   try { window.LarisMerdeka?.mount({ site: 'a', navSelector: '.lp-nav, .dash-topbar' }); } catch (_) {}
+  try { lfdMount(); } catch (_) {}
 
   var ric = window.larisIdle || function(fn){ setTimeout(fn, 1200); };
   ric(function () {

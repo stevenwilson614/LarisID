@@ -1,0 +1,144 @@
+.lfd-root,
+.lfd-root *,
+.lfd-root *::before,
+.lfd-root *::after {
+  box-sizing: border-box;
+}
+
+.lfd-card {
+  background: var(--card, #fff);
+  border: 1px solid var(--border, #E5E7EB);
+  border-radius: var(--r, 12px);
+  padding: 20px 18px 18px;
+  width: 100%;
+}
+
+.lfd-step {
+  margin-bottom: 16px;
+}
+.lfd-step:last-of-type {
+  margin-bottom: 14px;
+}
+
+.lfd-step-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.lfd-step-num {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--orange, #B5202A);
+  color: #fff;
+  font-size: .75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.lfd-step-label {
+  font-weight: 700;
+  font-size: .88rem;
+  color: var(--td, #111);
+}
+
+/* ── city input + typeahead ─────────────────────────────────── */
+.lfd-city-wrap {
+  position: relative;
+}
+
+.lfd-input {
+  width: 100%;
+  border: 1px solid var(--border, #E5E7EB);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: .88rem;
+  font-family: inherit;
+  outline: none;
+  background: var(--card, #fff);
+  color: var(--td, #111);
+  box-sizing: border-box;
+}
+.lfd-input:focus {
+  border-color: var(--orange, #B5202A);
+}
+
+.lfd-suggestions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  z-index: 10;
+  background: var(--card, #fff);
+  border: 1px solid var(--border, #E5E7EB);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  max-height: 240px;
+  overflow-y: auto;
+  margin-top: 2px;
+}
+
+.lfd-sug-item {
+  padding: 9px 12px;
+  cursor: pointer;
+  font-size: .86rem;
+  color: var(--td, #111);
+  line-height: 1.35;
+}
+.lfd-sug-item:hover,
+.lfd-sug-item.lfd-sug-item--active {
+  background: #f5f0ea;
+}
+
+/* ── pill groups ────────────────────────────────────────────── */
+.lfd-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lfd-pill {
+  display: inline-block;
+  padding: 7px 18px;
+  border: 1px solid var(--border, #E5E7EB);
+  border-radius: 999px;
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--tm, #6B7280);
+  background: var(--card, #fff);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s, color .15s, border-color .15s;
+  line-height: 1.3;
+  user-select: none;
+}
+.lfd-pill--sel {
+  background: var(--orange, #B5202A) !important;
+  border-color: var(--orange, #B5202A) !important;
+  color: #fff !important;
+}
+
+/* ── CTA ────────────────────────────────────────────────────── */
+.lfd-cta {
+  width: 100%;
+  padding: 11px;
+  border: none;
+  border-radius: 8px;
+  background: var(--orange, #B5202A);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  margin-top: 4px;
+  transition: opacity .2s;
+}
+.lfd-cta:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
