@@ -197,7 +197,7 @@
     var _lidAuth = JSON.parse(localStorage.getItem('laris_auth_v1') || 'null');
     if (_lidAuth && _lidAuth.access_token) {
       var _lidPre = document.createElement('link');
-      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260803a';
+      _lidPre.rel = 'preload'; _lidPre.as = 'script'; _lidPre.href = '/js/laris-app.js?v=20260808a';
       document.head.appendChild(_lidPre);
     }
   } catch (_) {}
@@ -205,7 +205,7 @@
 <link rel="stylesheet" href="/fonts/laris-fonts.css">
 <link rel="stylesheet" href="/styles/daily-spin-wheel.css?v=20260730g">
 <link rel="stylesheet" href="/styles/laris-tracker.css?v=20260801g">
-<link rel="stylesheet" href="/styles/laris-merdeka.css?v=20260808d">
+<link rel="stylesheet" href="/styles/laris-merdeka.css?v=20260808e">
 <link rel="stylesheet" href="/styles/laris-side-panel.css?v=20260807a">
 <link rel="stylesheet" href="/styles/laris-catpicker.css?v=20260807a">
 <link rel="stylesheet" href="/styles/laris-finder.css?v=20260807a">
@@ -10119,8 +10119,8 @@ html,body{overflow-x:clip;max-width:100%;}
 <script defer src="/js/laris-finder.js?v=20260807a"></script>
 <script defer src="/js/laris-trending.js?v=20260808a"></script>
 <script defer src="/js/daily-spin-wheel.js?v=20260730g"></script>
-<script defer src="/js/laris-tracker.js?v=20260803a"></script>
-<script defer src="/js/laris-app.js?v=20260803a"></script>
+<script defer src="/js/laris-tracker.js?v=20260808b"></script>
+<script defer src="/js/laris-app.js?v=20260808a"></script>
 <!-- Admin-only; mount() is a no-op for everyone else. Must load after laris-app.js. -->
 <script defer src="/js/winback-admin.js?v=20260802a"></script>
 

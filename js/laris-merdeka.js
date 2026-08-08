@@ -1,10 +1,9 @@
 /**
  * Laris Merdeka — self‑contained Independence‑Day decoration module.
  *
- * - Renders a row of bunting and a dismissable “Dirgahayu RI ke‑81” ribbon.
- * - Site A also adds a small flag accent next to the logo.
- * - Site B skips the logo flag and instead paints the Merdeka banner onto
- *   `.main-top` (header to the right of the sidebar) for August.
+ * - Site A: bunting pennants, dismissable “Dirgahayu RI ke‑81” ribbon,
+ *   and a small flag accent next to the logo.
+ * - Site B: ribbon only (no bunting string, no logo flag, no header banner).
  * - All iconography is hand‑drawn inline SVG (no emoji, no text “×”).
  * - Date‑gated to August only, using Asia/Jakarta time (INTL, not local).
  * - Styling lives in styles/laris‑merdeka.css (everything prefixed .mdk‑).
@@ -25,7 +24,6 @@
     buntingEl: null,
     ribbonEl: null,
     flagEl: null,
-    headerBgEl: null,
     resizeTimer: 0,
   };
 
@@ -174,31 +172,34 @@
     state.site = site;
     state.navEl = navEl;
 
-    var bunting = insertBunting(navEl);
-    state.buntingEl = bunting;
+    var insertAnchor = null;
 
-    if (navEl) {
-      navEl.insertAdjacentElement('afterend', bunting);
-    } else {
-      document.body.insertAdjacentElement('afterbegin', bunting);
+    // Site B: no pennant string under the header. Site A keeps the bunting.
+    if (site !== 'b') {
+      var bunting = insertBunting(navEl);
+      state.buntingEl = bunting;
+      if (navEl) {
+        navEl.insertAdjacentElement('afterend', bunting);
+      } else {
+        document.body.insertAdjacentElement('afterbegin', bunting);
+      }
+      insertAnchor = bunting;
+    } else if (navEl) {
+      insertAnchor = navEl;
     }
 
-    var ribbon = insertRibbon(bunting);
-    state.ribbonEl = ribbon;
+    if (insertAnchor) {
+      state.ribbonEl = insertRibbon(insertAnchor);
+    }
 
-    // Site B: no tiny logo flag — the header banner carries the Merdeka look.
-    // Site A keeps the small accent next to the wordmark.
+    // Site B: no logo flag accent. Site A keeps it next to the wordmark.
     if (site !== 'b') {
       state.flagEl = insertFlag();
     }
 
-    if (site === 'b' && navEl) {
-      navEl.classList.add('mdk-header-bg');
-      document.documentElement.classList.add('mdk-aug-b');
-      state.headerBgEl = navEl;
+    if (state.buntingEl) {
+      window.addEventListener('resize', onResize);
     }
-
-    window.addEventListener('resize', onResize);
 
     state.mounted = true;
     return true;
@@ -217,11 +218,6 @@
       state.flagEl.remove();
       state.flagEl = null;
     }
-    if (state.headerBgEl) {
-      state.headerBgEl.classList.remove('mdk-header-bg');
-      state.headerBgEl = null;
-    }
-    document.documentElement.classList.remove('mdk-aug-b');
     window.removeEventListener('resize', onResize);
     state.navEl = null;
     state.site = 'a';
