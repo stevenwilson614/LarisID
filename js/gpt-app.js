@@ -2229,12 +2229,16 @@ function closeAuthModal() {
 }
 function renderAuthModal() {
   const signup = _authMode === 'signup';
+  const reset = _authMode === 'reset';
   const title = $('auth-title');
   const sub = $('auth-subtitle');
   const nameWrap = $('auth-name-wrap');
+  const passWrap = $('auth-pass-wrap');
+  const forgotWrap = $('auth-forgot-wrap');
+  const googleBtn = $('auth-google-btn');
   const btn = $('auth-submit-btn');
   const toggle = $('auth-toggle-text');
-  if (title) title.textContent = signup ? 'Buat Akun Gratis' : 'Masuk ke LarisID';
+  if (title) title.textContent = reset ? 'Reset Password' : signup ? 'Buat Akun Gratis' : 'Masuk ke LarisID';
   if (sub) {
     const map = {
       gpt_gate_deepdive: 'Kamu sudah lihat 1 analisa gratis. Daftar gratis untuk buka analisa produk lain sepuasnya.',
@@ -2242,15 +2246,27 @@ function renderAuthModal() {
       gpt_gate_directory: 'Login untuk lihat lebih banyak produk & filter kategori.',
       gpt_gate_history: 'Login untuk cari & simpan riwayat chat.',
     };
-    sub.textContent = map[_gateSource] || (signup ? 'Gratis. Selamanya. Tidak pernah berbayar.' : 'Login untuk lanjut riset produk.');
+    sub.textContent = reset
+      ? 'Masukkan email kamu. Kami kirim link untuk mengatur password baru.'
+      : map[_gateSource] || (signup ? 'Gratis. Selamanya. Tidak pernah berbayar.' : 'Login untuk lanjut riset produk.');
   }
   if (nameWrap) nameWrap.style.display = signup ? '' : 'none';
-  if (btn) btn.textContent = signup ? 'Daftar dengan Email' : 'Masuk';
-  if (toggle) toggle.innerHTML = signup
-    ? 'Sudah punya akun? <a id="auth-toggle-link">Masuk</a>'
-    : 'Belum punya akun? <a id="auth-toggle-link">Daftar</a>';
+  // Reset only needs the email field — no password, no Google button.
+  if (passWrap) passWrap.style.display = reset ? 'none' : '';
+  if (googleBtn) googleBtn.style.display = reset ? 'none' : '';
+  if (forgotWrap) forgotWrap.style.display = _authMode === 'login' ? '' : 'none';
+  if (btn) btn.textContent = reset ? 'Kirim Link Reset' : signup ? 'Daftar dengan Email' : 'Masuk';
+  if (toggle) toggle.innerHTML = reset
+    ? 'Ingat passwordmu? <a id="auth-toggle-link">Masuk</a>'
+    : signup
+      ? 'Sudah punya akun? <a id="auth-toggle-link">Masuk</a>'
+      : 'Belum punya akun? <a id="auth-toggle-link">Daftar</a>';
   $('auth-toggle-link')?.addEventListener('click', () => {
     _authMode = signup ? 'login' : 'signup';
+    renderAuthModal();
+  });
+  $('auth-forgot-link')?.addEventListener('click', () => {
+    _authMode = 'reset';
     renderAuthModal();
   });
   const err = $('auth-error');
@@ -2275,6 +2291,31 @@ async function submitAuth() {
   const name = $('auth-name')?.value.trim();
   const hdrs = { apikey: SUPA_KEY, 'Content-Type': 'application/json' };
   const showErr = msg => { if (errEl) { errEl.style.color = '#c0392b'; errEl.textContent = _authErrMsg(msg); errEl.style.display = ''; } };
+  const showOk = msg => { if (errEl) { errEl.style.color = '#1a7f45'; errEl.textContent = msg; errEl.style.display = ''; } };
+
+  // Reset asks for the email only — GoTrue mails a #type=recovery link back to
+  // the site root, which handleRecoveryHash() picks up on the next load.
+  if (_authMode === 'reset') {
+    if (!email) { showErr('Masukkan email kamu.'); return; }
+    btn.disabled = true;
+    const orig = btn.textContent;
+    btn.textContent = '...';
+    try {
+      await fetch(`${SUPA_URL}/auth/v1/recover`, {
+        method: 'POST', headers: hdrs,
+        body: JSON.stringify({ email, redirect_to: _authRedirectTo() }),
+      });
+      // Always report success — revealing which emails exist would leak accounts.
+      showOk('Link reset sudah dikirim! Cek email kamu.');
+    } catch (_) {
+      showErr('Gagal terhubung ke server. Coba lagi.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = orig;
+    }
+    return;
+  }
+
   if (!email || !pass) { showErr('Email dan password wajib diisi.'); return; }
   if (pass.length < 6) { showErr('Password minimal 6 karakter.'); return; }
   btn.disabled = true;
@@ -2314,18 +2355,94 @@ async function submitAuth() {
   }
 }
 
+// Where GoTrue should send the user back to (OAuth return and recovery links).
+// Derived from the directory this page is served from, so the same code is
+// correct at /gpt/ (during the A/B) and at / (after the cutover), on prod and
+// on localhost alike. Both paths are in the GoTrue redirect allowlist.
+function _authRedirectTo() {
+  const dir = location.pathname.replace(/[^/]*$/, '');
+  return location.origin + (dir || '/');
+}
+
 async function signInWithProvider(provider) {
   if (!_supabase) return;
   try {
     if (_authMode === 'signup') sessionStorage.setItem(_LID_OAUTH_SIGNUP_INTENT_KEY, '1');
   } catch (_) {}
-  const redirectTo = location.origin.includes('localhost') || location.origin.includes('127.0.0.1')
-    ? `${location.origin}/gpt/`
-    : 'https://larisid.com/gpt/';
+  const redirectTo = _authRedirectTo();
   const { error } = await _supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
   if (error) {
     const errEl = $('auth-error');
     if (errEl) { errEl.textContent = 'Login dengan Google gagal. Coba lagi.'; errEl.style.display = ''; }
+  }
+}
+
+// Holds the recovery session (tokens) parsed from the email link until the
+// user sets a new password.
+let _recoverySession = null;
+
+// On load: detect a Supabase recovery link (#access_token=...&type=recovery)
+// and show the set-new-password screen. Returns true if a recovery flow started.
+// The head scrubber already moved the hash into window.__larisAuthHash, and it
+// deliberately does not set __larisOAuthReturning for recovery links.
+function handleRecoveryHash() {
+  const hash = window.__larisAuthHash || '';
+  if (!hash || hash.indexOf('access_token') === -1) return false;
+  const params = new URLSearchParams(hash.replace(/^#/, ''));
+  const accessToken = params.get('access_token');
+  // Not a recovery link — leave the stash for consumeOAuthHash().
+  if (params.get('type') !== 'recovery' || !accessToken) return false;
+  _recoverySession = {
+    access_token: accessToken,
+    refresh_token: params.get('refresh_token') || '',
+    expires_in: parseInt(params.get('expires_in') || '3600', 10),
+  };
+  window.__larisAuthHash = '';
+  $('recovery-overlay')?.classList.add('open');
+  setTimeout(() => { $('recovery-pass')?.focus(); }, 50);
+  return true;
+}
+
+async function submitRecoveryPassword() {
+  const errEl = $('recovery-error');
+  const btn = $('recovery-submit-btn');
+  const p1 = $('recovery-pass')?.value || '';
+  const p2 = $('recovery-pass2')?.value || '';
+  const showErr = msg => { if (errEl) { errEl.style.color = '#c0392b'; errEl.textContent = msg; errEl.style.display = ''; } };
+  const showOk = msg => { if (errEl) { errEl.style.color = '#1a7f45'; errEl.textContent = msg; errEl.style.display = ''; } };
+
+  if (!_recoverySession?.access_token) { showErr('Link reset sudah tidak berlaku. Minta link baru lewat "Lupa password?".'); return; }
+  if (!p1 || !p2) { showErr('Isi password baru dua kali.'); return; }
+  if (p1.length < 8) { showErr('Password minimal 8 karakter.'); return; }
+  if (p1 !== p2) { showErr('Password nggak sama. Cek lagi ya.'); return; }
+
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    const r = await fetch(`${SUPA_URL}/auth/v1/user`, {
+      method: 'PUT',
+      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${_recoverySession.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: p1 }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const raw = d.msg || d.message || d.error_description || d.error || '';
+      if (/expired|invalid|jwt|token/i.test(raw)) throw new Error('Link reset sudah kedaluwarsa. Minta link baru lewat "Lupa password?".');
+      throw new Error(_authErrMsg(raw) || 'Gagal mengganti password. Coba lagi.');
+    }
+    // Recovery succeeded — the token is a valid session, so sign the user in.
+    const sess = _recoverySession;
+    _recoverySession = null;
+    _authSave(sess);
+    showOk('Password berhasil diganti! Mengalihkan...');
+    setTimeout(() => {
+      $('recovery-overlay')?.classList.remove('open');
+      void _authOnSignIn(_authLoad()).catch(() => {});
+    }, 900);
+  } catch (e) {
+    showErr(e.message || 'Gagal mengganti password. Coba lagi.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = orig || 'Simpan Password Baru'; }
   }
 }
 
@@ -2334,6 +2451,7 @@ async function consumeOAuthHash() {
   if (!hash || hash.indexOf('access_token') === -1) { window.__larisAuthHash = ''; _clearOAuthReturning(); return false; }
   const params = new URLSearchParams(hash.replace(/^#/, ''));
   window.__larisAuthHash = '';
+  // Recovery links are consumed by handleRecoveryHash() before this runs.
   if (params.get('type') === 'recovery') { _clearOAuthReturning(); return false; }
   const access_token = params.get('access_token');
   if (!access_token) { _clearOAuthReturning(); return false; }
@@ -11562,6 +11680,7 @@ function wireUi() {
   $('auth-close')?.addEventListener('click', closeAuthModal);
   $('auth-overlay')?.addEventListener('click', e => { if (e.target === $('auth-overlay')) closeAuthModal(); });
   $('auth-submit-btn')?.addEventListener('click', () => void submitAuth());
+  $('recovery-submit-btn')?.addEventListener('click', () => void submitRecoveryPassword());
   $('auth-google-btn')?.addEventListener('click', () => void signInWithProvider('google'));
   $('auth-toggle-link')?.addEventListener('click', () => {
     _authMode = _authMode === 'signup' ? 'login' : 'signup';
@@ -11652,6 +11771,8 @@ async function boot() {
 
   if (typeof ensureSupabase === 'function') await ensureSupabase();
   await initSupabase();
+  // Recovery links must be claimed before consumeOAuthHash() clears the stash.
+  try { handleRecoveryHash(); } catch (_) {}
   try { await consumeOAuthHash(); } catch (_) {}
   void refreshGptUsage();
 
