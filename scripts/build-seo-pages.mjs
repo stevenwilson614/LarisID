@@ -495,7 +495,7 @@ function buildSitemap(entries) {
     kotaBlocks = (cur.match(/  <url>\s*<loc>[^<]*\/kota\/[^<]*<\/loc>[\s\S]*?<\/url>/g) || []).join('\n');
   } catch (_) {}
   const staticUrls = [
-    { loc: `${SITE}/`, freq: 'weekly', pri: '1.0', mod: '2026-05-30' },
+    { loc: `${SITE}/`, freq: 'weekly', pri: '1.0', mod: '2026-08-10' }, // app moved from /gpt/ to / on this date
     { loc: `${SITE}/riset/`, freq: 'weekly', pri: '0.9', mod: SNAPSHOT },
     { loc: `${SITE}/panduan/`, freq: 'monthly', pri: '0.8', mod: CONTENT_2026_07 },
     { loc: `${SITE}/panduan/produk-terlaris-untuk-pemula-2026/`, freq: 'monthly', pri: '0.8', mod: CONTENT_2026_07 },

@@ -510,6 +510,9 @@ pv_arm as (
                   case when pv.path like '/gpt%' then 'B' else 'A' end) as pv_arm
   from page_views pv
   where pv.created_at >= (select start_at from p) and pv.created_at < (select end_at from p)
+    -- The '/gpt%' = B path fallback inverts after the 2026-08-10 cutover, when
+    -- '/' itself became B. Keep this window inside the experiment.
+    and pv.created_at < timestamptz '2026-08-10'
     and coalesce(pv.ab_via,'random') <> 'direct_gpt'
 )
 select pva.pv_arm as ab_variant,

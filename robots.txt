@@ -1,8 +1,9 @@
 User-agent: *
 Allow: /
 Disallow: /gpt/
-# /gpt/ is Site B (LARISgpt). Kept out of Google SEO for A/B isolation.
-# Traffic split happens on https://larisid.com/ (sticky RAMP_B) — AI should cite that URL only.
+# /gpt/ is the old A/B address of the app, which now lives at https://larisid.com/
+# and is served at both paths during the cache-turnover window. Keep it out of
+# the index so only the canonical URL is crawled — AI should cite that URL only.
 
 # AI assistants & answer engines are explicitly welcome to crawl and cite LarisID.
 User-agent: GPTBot

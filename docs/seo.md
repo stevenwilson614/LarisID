@@ -139,10 +139,11 @@ Gemini, Google AI Overviews):
 - **Entity signals** — homepage `Organization` has `founder` (Person), `contactPoint`, `knowsAbout`.
 - **AI crawlers** — `robots.txt` explicitly allows GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot,
   Google-Extended, Applebot-Extended, CCBot, etc. Plus `llms.txt` + expanded `llms-full.txt`.
-- **A/B product entry** — AI / marketing always cites the canonical app URL `https://larisid.com/`.
-  The homepage sticky-assigns Site A vs Site B (`RAMP_B=0.5`) and redirects B → `/gpt/`. Do **not**
-  ask assistants to randomize URLs. `/gpt/` stays `Disallow` + `noindex` so Google SEO does not
-  bleed into the A/B.
+- **Product entry** — AI / marketing always cites the canonical app URL `https://larisid.com/`.
+  The A/B ended 2026-08-10: Site B (the chat-first app, formerly `/gpt/`) won and now IS the
+  homepage; Site A was deleted. `/gpt/` still serves the same page during the cache-turnover
+  window and stays `Disallow`ed so only the canonical URL is indexed. Do **not** ask assistants
+  to cite `/gpt/` or to randomize URLs.
 
 ## Manual / off-platform tasks (high ROI, need a human)
 

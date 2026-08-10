@@ -43,8 +43,8 @@ Rules:
   refactors with no behaviour change). If nothing user-visible shipped, make no
   edit at all and say so.
 - Do not use emojis. Do not touch anything else in the file.
-- If you edited the file, bump the ?v= query string on the two
-  /js/changelog.js script tags (index.html and gpt/index.html) to v=$(date +%Y%m%d)a,
+- If you edited the file, bump the ?v= query string on the /js/changelog.js
+  script tag in index.html to v=$(date +%Y%m%d)a,
   then commit with message 'Changelog: $TODAY' and push."
 
 "$CLAUDE" -p "$PROMPT" --permission-mode acceptEdits >> "$LOG" 2>&1

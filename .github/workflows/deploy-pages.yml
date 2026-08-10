@@ -31,7 +31,14 @@ jobs:
         run: |
           mkdir -p _site
           cp index.html CNAME robots.txt sitemap.xml manifest.webmanifest llms.txt llms-full.txt BingSiteAuth.xml 55677968d982482614b7ad24398e836c.txt _site/
-          cp -r images styles js fonts gpt privacy perbandingan harga tentang cara-kerja riset panduan kota kalkulator _site/
+          cp -r images styles js fonts privacy perbandingan harga tentang cara-kerja riset panduan kota kalkulator _site/
+          # The A/B ended 2026-08-10: the app moved from /gpt/ to /. Serve the
+          # same page at /gpt/ rather than redirecting — a browser still holding
+          # the cached old root would bounce / -> /gpt/ -> / forever against a
+          # redirect. Nothing here navigates back to /, so no loop can form, and
+          # OAuth returns that were already in flight to /gpt/ still resolve.
+          # Replace with a real redirect stub once caches have turned over.
+          mkdir -p _site/gpt && cp index.html _site/gpt/index.html
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

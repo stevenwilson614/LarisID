@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """A/B read-out for the LARISgpt split test.
 
-Decides between arm A (classic, /) and arm B (LARISgpt, /gpt/) — or, more
-usefully, shows WHICH STEP each arm loses people at so features can be ported
-between them rather than picking a whole-site winner.
+CLOSED 2026-08-10: arm B won and became the whole product (it now serves
+https://larisid.com/; arm A was deleted). This script is kept for reading the
+historical experiment window only — post-cutover traffic carries no arm tag,
+so anything after that date is not an arm and must not be read as one.
+
+Decided between arm A (classic, /) and arm B (LARISgpt, /gpt/) — or, more
+usefully, showed WHICH STEP each arm lost people at so features could be
+ported between them rather than picking a whole-site winner.
 
 Usage:
     python3 scripts/ab-readout.py                 # since the split launched

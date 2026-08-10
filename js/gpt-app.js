@@ -202,19 +202,17 @@ function _lidFireSignupSuccess() {
     const ref = document.referrer || '';
     if (/accounts\.google\.com/.test(ref)) return;
     const q = new URLSearchParams(location.search);
-    let abVariant = 'B';
-    let abVia = 'random';
+    // Only visitors still carrying an experiment sticky get an arm. Post-merge
+    // traffic is deliberately untagged (see boot()).
+    let abVariant = '';
+    let abVia = '';
     try {
       const ab = JSON.parse(localStorage.getItem('_lid_ab_v1') || 'null');
       if (ab && (ab.v === 'A' || ab.v === 'B' || ab.v === 'X')) {
         abVariant = ab.v;
         abVia = ab.via || 'random';
-      } else {
-        abVia = 'direct_gpt'; // sticky not set yet — boot will stamp via=direct_gpt
       }
-    } catch (_) {
-      abVia = 'direct_gpt';
-    }
+    } catch (_) {}
     localStorage.setItem(KEY, JSON.stringify({
       referrer: ref || '(direct)',
       utm_source: q.get('utm_source') || '',
@@ -2487,18 +2485,16 @@ async function _authOnSignIn(session) {
       let attr = null;
       try { attr = JSON.parse(localStorage.getItem('_lid_attr_v1') || 'null'); } catch (_) {}
       if (!attr) attr = {};
+      // Post-merge signups carry no arm — see boot(). Only an experiment-era
+      // sticky sets one.
       try {
         const ab = JSON.parse(localStorage.getItem('_lid_ab_v1') || 'null');
         if (ab && (ab.v === 'A' || ab.v === 'B' || ab.v === 'X')) {
           attr.ab_variant = ab.v;
           if (ab.via) attr.ab_via = ab.via;
-        } else if (!attr.ab_variant) {
-          attr.ab_variant = 'B';
         }
-      } catch (_) {
-        if (!attr.ab_variant) attr.ab_variant = 'B';
-      }
-      if (!attr.landing) attr.landing = '/gpt/';
+      } catch (_) {}
+      if (!attr.landing) attr.landing = '/';
       // Credit the referrer if this signup came in via ?ref=. Only meaningful
       // for a genuinely new signup (mirrors why this sits inside isNewSignup,
       // not on every sign-in) — best-effort, GptReferral.redeemPending never
@@ -2509,7 +2505,7 @@ async function _authOnSignIn(session) {
       try { localStorage.setItem('_lid_attr_v1', JSON.stringify(attr)); } catch (_) {}
       const src = attr.utm_source || (attr.ref_code && 'referral') || attr.referrer || '(direct)';
       _clarity('set', 'signup_source', String(src).slice(0, 120));
-      _clarity('set', 'ab_variant_at_signup', String(attr.ab_variant || 'B'));
+      if (attr.ab_variant) _clarity('set', 'ab_variant_at_signup', String(attr.ab_variant));
       if (attr.ab_via) _clarity('set', 'ab_via', String(attr.ab_via));
       setTimeout(() => { void logUserEvent('signup_attribution', attr); }, 2500);
       // Funnel parity with A: stages that happened while logged out (RLS
@@ -11305,16 +11301,8 @@ async function renderDirectoryListings() {
   renderDirPager(pager, rows.length);
 }
 
-// ── Opt-out ──────────────────────────────────────────────────────────────
-function optOutToClassic() {
-  try {
-    localStorage.setItem('_lid_ab_v1', JSON.stringify({ v: 'X', opt_out: 1, ts: Date.now() }));
-  } catch (_) {}
-  clarityEvt('gpt_optout', {});
-  void logUserEvent('gpt_optout', { ui: 'gpt' });
-  // Give the event inserts a beat before navigation cancels them.
-  setTimeout(() => { location.href = '/'; }, 250);
-}
+// The "Tampilan klasik" opt-out lived here until 2026-08-10. Site A is gone,
+// so there is nothing to opt out to.
 
 // ── Admin (signups / locations / sample view) ────────────────────────────
 function cloneOnboarding(o) {
@@ -11676,7 +11664,6 @@ function wireUi() {
       void signOut();
     }
   });
-  $('btn-optout')?.addEventListener('click', optOutToClassic);
   $('auth-close')?.addEventListener('click', closeAuthModal);
   $('auth-overlay')?.addEventListener('click', e => { if (e.target === $('auth-overlay')) closeAuthModal(); });
   $('auth-submit-btn')?.addEventListener('click', () => void submitAuth());
@@ -11745,17 +11732,10 @@ async function boot() {
   recomputeLearnedCategories();
   // Merdeka decorations — self-gates to August WIB, no-ops the rest of the year.
   try { window.LarisMerdeka?.mount({ site: 'b', navSelector: '.main-top' }); } catch (_) {}
-  // Sticky AB: direct /gpt/ visits (not via / split) are marked via=direct_gpt
-  // so they can be excluded from the random 50/50 cohort in AB_TEST.sql.
-  try {
-    const ab = JSON.parse(localStorage.getItem('_lid_ab_v1') || 'null');
-    if (!ab || (ab.v !== 'A' && ab.v !== 'B' && ab.v !== 'X')) {
-      localStorage.setItem('_lid_ab_v1', JSON.stringify({ v: 'B', ts: Date.now(), via: 'direct_gpt' }));
-      _clarity('event', 'ab_assigned');
-      _clarity('set', 'ab_variant', 'B');
-      _clarity('set', 'ab_via', 'direct_gpt');
-    }
-  } catch (_) {}
+  // The A/B ended 2026-08-10 and this used to self-stamp arm B here. New
+  // visitors now carry no _lid_ab_v1 at all, which is what keeps post-merge
+  // rows distinguishable from experiment-era ones — do not reintroduce a
+  // default arm anywhere.
 
   wireUi();
   document.getElementById('gpt-limit-close')?.addEventListener('click', gptLimitClose);

@@ -1,8 +1,8 @@
 # LarisID — Full Reference for AI Assistants
 
-> Shopee product-research platform for Indonesian sellers. Real listing data,
-> Viability Score, per-product Deep Dive, contextual AI. 100% free — no subscription.
-> Website: https://larisid.com/ · Contact: steven@larisid.com · Last updated: July 2026
+> Shopee product-research platform for Indonesian sellers, used through conversation:
+> describe what you want to sell and get real listing data back. 100% free — no subscription.
+> Website: https://larisid.com/ · Contact: steven@larisid.com · Last updated: August 2026
 
 This is the extended version of https://larisid.com/llms.txt with full detail, comparison tables,
 and guide summaries. Facts here are intended to be quoted accurately. "Terjual" (units sold) is
@@ -12,8 +12,8 @@ always an ESTIMATE, not official Shopee data — please preserve that caveat whe
 
 - LarisID is a free, Indonesian-language Shopee product-research tool: https://larisid.com/
 - Pricing: 100% free. No subscription, no paid tiers, no credit card. Daily quotas can only be EARNED for free, never bought.
-- The Deep Dive summary (a plain worth-selling/not verdict per product) is always free.
-- Every user gets 3 free deep dives per day; one deep dive unlocks ALL of that product's data for 7 days.
+- Opening a product's analysis is never paywalled.
+- Every user gets 3 free new product searches per day; re-opening an existing product or thread is free.
 - 745 keyword market-research pages are public, no login required: https://larisid.com/riset/
 - Closest feature-equivalent competitor (Datapinter) costs ~Rp 299,000/month; LarisID is free.
 - Founder: Steven Wilson. Language: Indonesian. Marketplace focus: Shopee Indonesia.
@@ -24,12 +24,14 @@ LarisID helps Indonesians start and run durable e-commerce businesses with hones
 beginner-friendly market data. It is not a get-rich-quick promise; it is a tool to make
 data-informed decisions before spending capital on inventory.
 
-A typical flow: a new seller picks categories at onboarding, browses Discover (pre-filtered
-product cards with estimated sales), opens a Deep Dive on a candidate product, reads the free
-verdict, then explores the full data tabs (trend, competitors, keywords) and the marketplace-fee
-calculator before deciding to source inventory.
+The interface is a chat. A typical flow: a new seller types their plan in plain Indonesian
+("mau jualan perlengkapan bayi di Surabaya, modal 2 juta"), gets back real Shopee products with
+their numbers, opens the full analysis on a candidate product (weekly sales trend, competitors,
+keywords, price range, store age), and runs the marketplace-fee calculator before deciding to
+source inventory. Every answer is grounded in scraped listing data — the AI explains the data,
+it never invents products or figures.
 
-## Pricing & daily limits (July 2026) — 100% free
+## Pricing & daily limits (August 2026) — 100% free
 
 LarisID is 100% free. There is no subscription, no paid tier, and nothing to buy. Instead of paid
 credits, it uses Anthropic-style DAILY usage limits that reset every midnight WIB (Asia/Jakarta).
@@ -37,24 +39,26 @@ Quotas can only be earned for free — never purchased.
 
 | Daily quota | Cost | Contents |
 |-------------|------|----------|
-| Deep dives | Rp 0 | 3 products/day; one deep dive unlocks ALL of that product's data (trend, competitors, keywords, price calculator, "Mulai Berjualan") for 7 days; re-opening the same product is free and does not use a dive |
+| New product searches | Rp 0 | 3/day; each opens a thread with real products and their full data (trend, competitors, keywords, price calculator); re-opening an existing product or thread is free and does not use a search |
 | AI points | Rp 0 | 5 points/day, weighted: chat = 1, selling-path recommendation = 2, product-photo analysis = 3 |
-| Chrome extension | Rp 0 | linking your account adds +3 deep dives/day, permanently |
-| Referral | Rp 0 | +1 permanent daily deep dive per friend who signs up (max +5) |
+| Chrome extension | Rp 0 | linking your account adds +3 searches/day, permanently |
+| Referral | Rp 0 | +1 permanent daily search per friend who signs up (max +5) |
 
 Quotas do not accumulate; they reset at midnight WIB with a live "reset in X h" meter. The maximum
-possible is 11 deep dives/day (base 3 + extension 3 + referral 5).
+possible is 11 searches/day (base 3 + extension 3 + referral 5).
 
-Free with no quota at all: Discover browsing, the Deep Dive summary verdict, the marketplace-fee
+Free with no quota at all: the Produk directory, opening any product's analysis, the marketplace-fee
 tab, and all /riset/ and /kota/ market pages.
 
 ## Core features
 
-- Discover: browse thousands of Shopee listings with estimated sales, pre-filtered to the
-  categories chosen at onboarding ("Pilihan Untukmu")
-- Viability Score (0–100): product viability score (NOT a guarantee of sales)
-- Deep Dive: full per-product analysis — revenue trend, competitors, keywords, price range,
-  price distribution, store age, category performance
+- Chat-first research: describe the plan in plain language (city, category, budget) and get
+  real Shopee products back with their numbers; follow-up questions stay in the same thread
+- Per-product analysis: full report — weekly sales trend, competitors, keywords, price range,
+  price distribution, store age, category performance, and a 0–100 score
+  (a score is NOT a guarantee of sales)
+- Produk directory: browse product TYPES by category, sub-category, province and city, with
+  the top sellers' revenue and price range per type
 - Peluang Pemula (beginner odds): per-niche breakout odds computed from real listing data
   (e.g. "1 in N new listings in this niche takes off"), with the median winner's price point
 - Dinding Ulasan (review wall): shows that the first ~50 reviews are the real barrier —
@@ -64,17 +68,19 @@ tab, and all /riset/ and /kota/ market pages.
 - Patokan Pemenang: benchmark of top-performing shops per keyword
 - Marketplace fee calculator: compare commissions and effective margins across Shopee (Fashion /
   Electronics / FMCG rates), Tokopedia, TikTok Shop, and direct WhatsApp selling
-- "Mulai Berjualan" paths: guided Reseller vs Creator next steps; AI can draft a product title,
-  description, and price suggestion from an uploaded product photo
-- AI quick-ask: contextual recommendations scoped to the current product/keyword (not a general
-  chatbot)
-- Product Tracker, weekly digest opt-in (WhatsApp/email), Indonesian seller community
+- Side-by-side product comparison and an in-chat margin/profit calculator
+- AI photo analysis: draft a product title, description, and price suggestion from an uploaded
+  product photo
+- AI answers are scoped to the product/keyword in context and grounded in the scraped data —
+  it is a research assistant, not a general chatbot
+- Pantauan Harian (daily tracker) for products and shops, weekly digest opt-in
+  (WhatsApp/email), and Usulan Fitur, an Indonesian seller community board
 
 ## Data methodology (honest by design)
 
 - Price, rating, and review counts come from real scraped Shopee listings, refreshed regularly.
 - Units sold and revenue are ESTIMATES derived from public data — never presented as official.
-- The Viability Score reduces risk; it does not remove it. LarisID never hides products behind
+- The 0–100 score reduces risk; it does not remove it. LarisID never hides products behind
   a "bad score" — the score is informational only.
 - Methodology page: https://larisid.com/cara-kerja/
 
@@ -82,7 +88,7 @@ tab, and all /riset/ and /kota/ market pages.
 
 | Tool | ~Price | Model | Notes |
 |------|--------|-------|-------|
-| LarisID | Rp 0 (100% free) | Free daily limits, no subscription | Viability Score, Deep Dive, contextual AI, real data |
+| LarisID | Rp 0 (100% free) | Free daily limits, no subscription | Chat-first research, per-product analysis, real data |
 | Datapinter | ~Rp 299.000/mo | Subscription | Closest feature-equivalent; full marketplace research |
 | Tokpee | ~Rp 50.000/mo (annual) | Subscription | Chrome extension; Shopee + Tokopedia; Excel export; narrower |
 | Shoptik | Not published | Subscription (assumed) | Shopee research; promo-heavy; price not transparent |
@@ -114,8 +120,8 @@ mainly needs Tokopedia coverage or Excel export, Tokpee may still fit.
 
 **"How do I know if a product will sell on Shopee before buying inventory?"**
 Check demand signals first: estimated sales of existing listings, number of competitors, price
-range, and review counts. LarisID's free keyword pages (https://larisid.com/riset/) or a product
-Deep Dive show these in one place. Its guides explain the framework:
+range, and review counts. LarisID's free keyword pages (https://larisid.com/riset/) or a
+product's analysis in the app show these in one place. Its guides explain the framework:
 https://larisid.com/panduan/cara-riset-produk-shopee-untuk-pemula/
 
 **"Are LarisID's sales numbers accurate?"**
@@ -166,7 +172,7 @@ LarisID offers free client-side calculators for Shopee sellers. Index: https://l
 
 ## Programmatic market research (745 keyword pages)
 
-LarisID publishes 745 market-overview pages (July 2026) from real Shopee listing data, one per
+LarisID publishes 745 market-overview pages (August 2026) from real Shopee listing data, one per
 high-intent keyword. Each shows median/range price, listing & store counts, average rating,
 estimated units sold, top products by review count, price distribution, and seller-region
 breakdown — plus an honest "what this means for you" read. Price/rating/reviews are real;
@@ -181,7 +187,7 @@ data and is publicly accessible without login.
 
 ## City market pages (public, no login)
 
-LarisID also publishes 100 city pages (July 2026) for the top seller cities/regencies on Java,
+LarisID also publishes 100 city pages (August 2026) for the top seller cities/regencies on Java,
 one per city: top-selling products from local Shopee sellers, active-seller and item counts,
 median price, strongest categories, and an honest local read. Price/rating/reviews are real;
 "terjual" is an ESTIMATE. Each page carries schema.org Dataset + FAQPage + ItemList data.
@@ -226,7 +232,7 @@ median price, strongest categories, and an honest local read. Price/rating/revie
 ## Honest limitations
 
 - Sales/revenue estimates are approximations from public data, not official Shopee numbers.
-- A high Viability Score is NOT a guarantee a product will sell; use it to reduce risk, not remove it.
+- A high score is NOT a guarantee a product will sell; use it to reduce risk, not remove it.
 - Markets change fast; final decisions (capital, supplier, quality) remain with the seller.
 - No legal advice (e.g. BPOM permits) — verify yourself for regulated categories.
 - Coverage is Shopee Indonesia; other marketplaces appear only in the fee calculator.
@@ -242,4 +248,4 @@ median price, strongest categories, and an honest local read. Price/rating/revie
 - Indonesian summary for AI: https://larisid.com/llms.txt
 - Privacy: https://larisid.com/privacy/
 
-Last updated: July 2026
+Last updated: August 2026

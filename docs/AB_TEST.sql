@@ -1,6 +1,13 @@
 -- ============================================================================
 -- LarisID — A/B test: Regular site (A) vs LARISgpt (B)
 --
+-- *** EXPERIMENT CLOSED 2026-08-10. *** Site B won and became the whole product:
+-- it now serves https://larisid.com/ and Site A was deleted. New visitors are
+-- deliberately left UNTAGGED (no _lid_ab_v1, no page_views.ab_variant), so
+-- every query here must stay bounded to created_at < '2026-08-10'. Rows after
+-- that date are post-merge traffic, not an arm. The path fallback below
+-- ('/gpt%' = B) INVERTS after the cutover, because '/' is now B.
+--
 -- WHERE TO RUN (updated 2026-07-31): the live DB is SELF-HOSTED on Contabo —
 --   ssh -i ~/.ssh/larisid_hetzner root@84.247.147.205 \
 --     'docker exec -i supabase-db psql -U postgres' < docs/AB_TEST.sql
@@ -66,7 +73,10 @@
 --    invisible, so ANY conversion rate spanning earlier dates divides B's
 --    signups by a near-zero denominator and overstates A. QUERY H enforces it.
 -- 2. page_views.ab_variant/ab_via exist only from migration 20260731130000.
---    Older rows are NULL — fall back to path ('/gpt/' = B), which holds because
+--    Older rows are NULL — fall back to path ('/gpt/' = B). This fallback is
+--    only valid BEFORE the 2026-08-10 cutover: after it, '/' serves B and the
+--    mapping is backwards. Every query is bounded to < '2026-08-10'.
+--    It holds for the experiment window because
 --    the A/B redirect runs in index.html's head before laris-app.js loads, so
 --    the two arms' visitor sets are near-disjoint (179/62 disjoint, 7 overlap).
 -- 3. ~17% of activity_events carry NO metadata.ab_variant (users who cleared
@@ -359,6 +369,8 @@ visits as (
     pv.visitor_id
   from page_views pv, params p
   where pv.created_at >= p.start_at
+    -- The path fallback inverts after the 2026-08-10 cutover ('/' became B).
+    and pv.created_at < timestamptz '2026-08-10'
     and coalesce(pv.ab_via, 'random') <> 'direct_gpt'
 ),
 landed as (
