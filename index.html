@@ -1341,57 +1341,45 @@ body.view-community .panel-inner {
   padding: 40px 44px 28px;
   box-shadow: 0 1px 2px rgba(0,0,0,.03);
 }
-/* Clip Garuda's waist-cut to the card floor for the 3D stand-up look. */
-.meta-harga,
-.meta-faq,
-.meta-tentang {
-  overflow: hidden;
-}
 .meta-hero {
   text-align: center;
   margin: 0 auto 22px;
   max-width: 520px;
 }
-.meta-hero-text .meta-title { margin: 0 0 10px; }
-.meta-hero-lead {
-  margin: 0 auto; max-width: 42ch; font-size: .92rem; line-height: 1.55; color: var(--meta-muted);
-}
-/* Info panel + Garuda side-by-side. Bottoms flush so the artwork's clean
-   waist-cut reads as a 3D ground plane next to the box. */
-.meta-stage {
+/* Top split: title left, Garuda right. Waist-cut sits on the top edge of
+   the info box below so the bird reads as popping up behind it. */
+.meta-hero--split {
   display: flex;
   align-items: flex-end;
-  gap: 0 6px;
-  margin: 0 0 18px;
+  justify-content: space-between;
+  gap: 12px 20px;
+  text-align: left;
+  max-width: none;
+  margin: 0 0 0;
+  position: relative;
+  z-index: 0;
 }
-.meta-stage-main {
+.meta-hero-text {
   flex: 1 1 auto;
   min-width: 0;
+  align-self: center;
+  padding-bottom: 10px;
 }
-.meta-stage .meta-price-panel,
-.meta-stage .meta-faq-list,
-.meta-stage .meta-body {
-  margin: 0;
-  max-width: none;
-}
-.meta-stage .meta-trust,
-.meta-stage .meta-faq-cta {
-  margin-top: 18px;
-  max-width: none;
-}
-/* Price panel shares the row with a ~300px mascot — 2×2 feats stay readable. */
-.meta-stage .meta-feats {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.meta-hero-text .meta-title { margin: 0 0 10px; }
+.meta-hero-lead {
+  margin: 0; max-width: 42ch; font-size: .92rem; line-height: 1.55; color: var(--meta-muted);
 }
 .meta-hero-mascot {
   flex: 0 0 auto;
   display: block;
   align-self: flex-end;
-  /* Plant the waist-cut on the card floor (padding is clipped by overflow). */
-  margin: 0 -12px -28px 0;
+  /* Hang slightly into the info box so its waist is covered → 3D cut. */
+  margin: 0 -8px -36px 0;
   line-height: 0;
   pointer-events: none;
   user-select: none;
+  position: relative;
+  z-index: 0;
 }
 .meta-hero-mascot img {
   display: block;
@@ -1400,17 +1388,26 @@ body.view-community .panel-inner {
 }
 .meta-hero-mascot--harga img { width: 304px; } /* 2× prior 152 */
 .meta-hero-mascot--tentang img { width: 296px; } /* 2× prior 148 */
+/* Opaque content sits on top of the bird's waist for the clean 3D cut. */
+.meta-harga .meta-price-panel,
+.meta-harga .meta-trust,
+.meta-faq .meta-faq-list,
+.meta-faq .meta-faq-cta,
+.meta-tentang .meta-body {
+  position: relative;
+  z-index: 1;
+  background: #fff;
+}
 @media (max-width: 760px) {
-  .meta-stage {
+  .meta-hero--split {
     flex-direction: column;
     align-items: center;
-    gap: 0;
+    text-align: center;
+    gap: 8px;
   }
-  .meta-hero-mascot {
-    order: -1;
-    align-self: center;
-    margin: 0 0 -16px;
-  }
+  .meta-hero-text { align-self: stretch; padding-bottom: 0; }
+  .meta-hero-lead { margin: 0 auto; }
+  .meta-hero-mascot { margin: 4px 0 -2px; }
   .meta-hero-mascot img { width: 200px; }
   .meta-hero-mascot--harga img { width: 220px; }
   .meta-hero-mascot--tentang img { width: 214px; }
@@ -4219,83 +4216,84 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
         </div>
         <div class="view" id="view-harga">
           <article class="meta-card meta-harga">
-            <header class="meta-hero">
-              <p class="meta-kicker">Harga</p>
-              <h2 class="meta-title">Paket sederhana, <span class="accent">hasil luar biasa</span>.</h2>
-              <p class="meta-hero-lead">LarisID akan selalu gratis untuk semua pengguna.</p>
-            </header>
-
-            <div class="meta-stage">
-              <div class="meta-stage-main">
-                <div class="meta-price-panel">
-                  <div class="meta-price-row">
-                    <div class="meta-price">Rp 0 <span>/selamanya</span></div>
-                    <span class="meta-price-badge">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-                      Tidak perlu pembayaran
-                    </span>
-                  </div>
-                  <div class="meta-feats">
-                    <div class="meta-feat">
-                      <div class="meta-feat-ico" aria-hidden="true">
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-                      </div>
-                      <p>10 pencarian produk baru per hari</p>
-                    </div>
-                    <div class="meta-feat">
-                      <div class="meta-feat-ico" aria-hidden="true">
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19V8"/></svg>
-                      </div>
-                      <p>Deep Dive data lengkap (tren, harga, kompetitor)</p>
-                    </div>
-                    <div class="meta-feat">
-                      <div class="meta-feat-ico" aria-hidden="true">
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M9.5 10h.01M12 10h.01M14.5 10h.01"/></svg>
-                      </div>
-                      <p>Tanya AI tentang produk — dari data LarisID</p>
-                    </div>
-                    <div class="meta-feat">
-                      <div class="meta-feat-ico" aria-hidden="true">
-                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-                      </div>
-                      <p>Reset setiap tengah malam WIB</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="meta-trust">
-                  <div class="meta-trust-ico" aria-hidden="true">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
-                  </div>
-                  <p>Tidak perlu kartu kredit. Tidak ada langganan. Tidak ada biaya tersembunyi. <strong>LarisID 100% gratis, selamanya.</strong></p>
-                  <svg class="meta-trust-flag" viewBox="0 0 64 48" aria-hidden="true">
-                    <rect x="6" y="4" width="2.2" height="40" rx="1" fill="#8B7355"/>
-                    <path d="M10 6c8 0 12 2 18 2s10-2 18-2v14c-8 0-12 2-18 2s-10-2-18-2V6z" fill="#B5202A"/>
-                    <path d="M10 20c8 0 12 2 18 2s10-2 18-2v14c-8 0-12 2-18 2s-10-2-18-2V20z" fill="#fff" stroke="#E5E5E5" stroke-width=".6"/>
-                    <circle cx="48" cy="10" r="1.4" fill="#B5202A"/>
-                    <circle cx="54" cy="16" r="1" fill="#B5202A"/>
-                    <circle cx="44" cy="18" r=".9" fill="#B5202A"/>
-                  </svg>
-                </div>
+            <header class="meta-hero meta-hero--split">
+              <div class="meta-hero-text">
+                <p class="meta-kicker">Harga</p>
+                <h2 class="meta-title">Paket sederhana, <span class="accent">hasil luar biasa</span>.</h2>
+                <p class="meta-hero-lead">LarisID akan selalu gratis untuk semua pengguna.</p>
               </div>
               <div class="meta-hero-mascot meta-hero-mascot--harga" aria-hidden="true">
                 <img src="/images/brand/mascot-harga.webp" width="304" height="243" alt="" loading="lazy" decoding="async">
               </div>
+            </header>
+
+            <div class="meta-price-panel">
+              <div class="meta-price-row">
+                <div class="meta-price">Rp 0 <span>/selamanya</span></div>
+                <span class="meta-price-badge">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                  Tidak perlu pembayaran
+                </span>
+              </div>
+              <div class="meta-feats">
+                <div class="meta-feat">
+                  <div class="meta-feat-ico" aria-hidden="true">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+                  </div>
+                  <p>10 pencarian produk baru per hari</p>
+                </div>
+                <div class="meta-feat">
+                  <div class="meta-feat-ico" aria-hidden="true">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19V8"/></svg>
+                  </div>
+                  <p>Deep Dive data lengkap (tren, harga, kompetitor)</p>
+                </div>
+                <div class="meta-feat">
+                  <div class="meta-feat-ico" aria-hidden="true">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M9.5 10h.01M12 10h.01M14.5 10h.01"/></svg>
+                  </div>
+                  <p>Tanya AI tentang produk — dari data LarisID</p>
+                </div>
+                <div class="meta-feat">
+                  <div class="meta-feat-ico" aria-hidden="true">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                  </div>
+                  <p>Reset setiap tengah malam WIB</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="meta-trust">
+              <div class="meta-trust-ico" aria-hidden="true">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+              </div>
+              <p>Tidak perlu kartu kredit. Tidak ada langganan. Tidak ada biaya tersembunyi. <strong>LarisID 100% gratis, selamanya.</strong></p>
+              <svg class="meta-trust-flag" viewBox="0 0 64 48" aria-hidden="true">
+                <rect x="6" y="4" width="2.2" height="40" rx="1" fill="#8B7355"/>
+                <path d="M10 6c8 0 12 2 18 2s10-2 18-2v14c-8 0-12 2-18 2s-10-2-18-2V6z" fill="#B5202A"/>
+                <path d="M10 20c8 0 12 2 18 2s10-2 18-2v14c-8 0-12 2-18 2s-10-2-18-2V20z" fill="#fff" stroke="#E5E5E5" stroke-width=".6"/>
+                <circle cx="48" cy="10" r="1.4" fill="#B5202A"/>
+                <circle cx="54" cy="16" r="1" fill="#B5202A"/>
+                <circle cx="44" cy="18" r=".9" fill="#B5202A"/>
+              </svg>
             </div>
           </article>
         </div>
 
         <div class="view" id="view-faq">
           <article class="meta-card meta-faq">
-            <header class="meta-hero">
-              <p class="meta-kicker">FAQ</p>
-              <h2 class="meta-title">Pertanyaan yang <span class="accent">sering ditanya</span>.</h2>
-              <p class="meta-hero-lead">Temukan jawaban cepat untuk pertanyaan populer.</p>
+            <header class="meta-hero meta-hero--split">
+              <div class="meta-hero-text">
+                <p class="meta-kicker">FAQ</p>
+                <h2 class="meta-title">Pertanyaan yang <span class="accent">sering ditanya</span>.</h2>
+                <p class="meta-hero-lead">Temukan jawaban cepat untuk pertanyaan populer.</p>
+              </div>
+              <div class="meta-hero-mascot meta-hero-mascot--faq" aria-hidden="true">
+                <img src="/images/brand/mascot-faq.webp" width="264" height="218" alt="" loading="lazy" decoding="async">
+              </div>
             </header>
 
-            <div class="meta-stage">
-              <div class="meta-stage-main">
-                <div class="meta-faq-list">
+            <div class="meta-faq-list">
               <details open>
                 <summary>
                   <span class="meta-faq-toggle" aria-hidden="true">
@@ -4376,35 +4374,33 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                 </summary>
                 <p>Hanya hal yang membantu memberi saran: kota, kategori, modal, pengalaman jualan. Semuanya bisa kamu lihat dan hapus di Preferensi. Kami tidak menyimpan isi chat sebagai profil.</p>
               </details>
-                </div>
-
-                <button type="button" class="meta-faq-cta" id="faq-feedback-cta">
-                  <span class="meta-faq-cta-ico" aria-hidden="true">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10c.6.6 1 1.4 1 2.2V16h6v-.8c0-.8.4-1.6 1-2.2A6 6 0 0 0 12 3z"/></svg>
-                  </span>
-                  <p><strong>Masih ada pertanyaan?</strong> Kirim masukanmu ke kami — kami akan senang membantu.</p>
-                  <span class="meta-faq-cta-send" aria-hidden="true">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-                  </span>
-                </button>
-              </div>
-              <div class="meta-hero-mascot meta-hero-mascot--faq" aria-hidden="true">
-                <img src="/images/brand/mascot-faq.webp" width="264" height="218" alt="" loading="lazy" decoding="async">
-              </div>
             </div>
+
+            <button type="button" class="meta-faq-cta" id="faq-feedback-cta">
+              <span class="meta-faq-cta-ico" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10c.6.6 1 1.4 1 2.2V16h6v-.8c0-.8.4-1.6 1-2.2A6 6 0 0 0 12 3z"/></svg>
+              </span>
+              <p><strong>Masih ada pertanyaan?</strong> Kirim masukanmu ke kami — kami akan senang membantu.</p>
+              <span class="meta-faq-cta-send" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+              </span>
+            </button>
           </article>
         </div>
 
         <div class="view" id="view-tentang">
           <article class="meta-card meta-tentang">
-            <header class="meta-hero">
-              <p class="meta-kicker">Tentang</p>
-              <h2 class="meta-title">Dibuat untuk seller Indonesia,<br><span class="accent">oleh orang Indonesia</span>.</h2>
+            <header class="meta-hero meta-hero--split">
+              <div class="meta-hero-text">
+                <p class="meta-kicker">Tentang</p>
+                <h2 class="meta-title">Dibuat untuk seller Indonesia,<br><span class="accent">oleh orang Indonesia</span>.</h2>
+              </div>
+              <div class="meta-hero-mascot meta-hero-mascot--tentang" aria-hidden="true">
+                <img src="/images/brand/mascot-ai.webp" width="296" height="197" alt="" loading="lazy" decoding="async">
+              </div>
             </header>
 
-            <div class="meta-stage">
-              <div class="meta-stage-main">
-                <div class="meta-body">
+            <div class="meta-body">
               <p>Halo, namaku Steven. Saya asli Amerika, tinggal di Indonesia, dan saya bikin LarisID karena riset produk di sini kebanyakan cuma tebak-tebakan &mdash; atau bayar mahal ke alat yang harganya ratusan ribu per bulan.</p>
 
               <div class="meta-points">
@@ -4433,11 +4429,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-6.2-3.8-8.7-7.4C1.4 11 2.1 7.6 5 6.2c1.8-.9 4-.4 5.2 1.1C11.4 5.8 13.6 5.3 15.4 6.2c2.9 1.4 3.6 4.8 1.7 7.4C18.2 17.2 12 21 12 21z"/></svg>
                 </div>
                 <p><strong>Terima kasih sudah jadi bagian dari perjalanan ini.</strong> Mari bangun alat riset produk terbaik untuk seller Indonesia, dari seller Indonesia.</p>
-              </div>
-                </div>
-              </div>
-              <div class="meta-hero-mascot meta-hero-mascot--tentang" aria-hidden="true">
-                <img src="/images/brand/mascot-ai.webp" width="296" height="197" alt="" loading="lazy" decoding="async">
               </div>
             </div>
           </article>
