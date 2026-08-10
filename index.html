@@ -1369,6 +1369,44 @@ body.view-community .panel-inner {
 .meta-hero-lead {
   margin: 0; max-width: 42ch; font-size: .92rem; line-height: 1.55; color: var(--meta-muted);
 }
+/* Living mascot rig — js/laris-mascot.js overlays a few feathered patches of
+   the Garuda render on top of the original <img> and nudges them. The <img>
+   itself is never touched, so no-JS and prefers-reduced-motion both fall back
+   to exactly the static artwork that shipped before. */
+.mrig {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0;
+  transition: opacity .45s var(--ease);
+}
+.mrig.is-ready { opacity: 1; }
+.mrig-head { position: absolute; inset: 0; }
+/* Layers live inside hosts that style their own <img> (.hl-hero-art img sets
+   width/max-width/object-fit, and so on). Those rules outrank a lone .mrig-l
+   on specificity and would silently mis-scale the rig, so the box model is
+   reset here and held with !important. Geometry itself is set inline, also
+   !important, from the generated manifest. */
+.mrig .mrig-l {
+  position: absolute !important;
+  display: block !important;
+  height: auto !important;
+  max-width: none !important;
+  max-height: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  object-fit: fill !important;
+  object-position: 50% 50% !important;
+  will-change: transform;
+}
+.mrig-lid { transform-origin: 50% 0%; transform: scaleY(0); }
+@media (prefers-reduced-motion: reduce) {
+  .mrig { display: none; }
+}
+
 .meta-hero-mascot {
   flex: 0 0 auto;
   display: block;
@@ -4026,7 +4064,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                       </li>
                     </ul>
                   </div>
-                  <div class="hl-hero-art">
+                  <div class="hl-hero-art" data-mascot="hero">
                     <img src="/images/brand/mascot-hero.webp" width="1100" height="912" alt="Maskot Laris membawa produk yang siap dijual di Shopee" fetchpriority="high" decoding="async">
                     <div class="hl-hero-chips" aria-hidden="true">
                       <div class="stat-tile hl-hero-chip">
@@ -4970,6 +5008,8 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script defer src="/js/gpt-referral.js?v=20260808a"></script>
 <script defer src="/js/gpt-profile.js?v=20260808c"></script>
 <script defer src="/js/gpt-community-board.js?v=20260810a"></script>
+<script defer src="/js/laris-mascot-rigs.js?v=20260810a"></script>
+<script defer src="/js/laris-mascot.js?v=20260810a"></script>
 <script src="/js/gpt-app.js?v=20260810a" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>

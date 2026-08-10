@@ -1918,6 +1918,10 @@ function formatIdDate(iso) {
   return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
 }
 
+// Living-mascot rig (js/laris-mascot.js). One switch kills every hook below,
+// leaving the static Garuda renders exactly as they were.
+const MASCOT_ALIVE = true;
+
 function setView(name) {
   const leaving = state.view;
   state.view = name;
@@ -1961,6 +1965,12 @@ function setView(name) {
   closeSidebar();
   updateSideRailVisibility();
   updateProductPin();
+  // Views are display:none until active, so a mascot rig cannot measure
+  // itself until its view is shown. init() is idempotent; refresh() re-places
+  // rigs that were built while their view was hidden.
+  if (MASCOT_ALIVE && window.LarisMascot) {
+    try { window.LarisMascot.init(); window.LarisMascot.refresh(); } catch (_) {}
+  }
   // Fresh surface — always start at the top so populated content scrolls down.
   if (name !== leaving) {
     scrollPanelToTop();
@@ -2993,6 +3003,7 @@ async function streamHtmlInto(bubble, html, opts = {}) {
   const gen = ++_streamGen;
   const cps = Math.max(40, Math.min(160, Number(opts.cps) || 100));
   bubble.classList.add('is-streaming');
+  if (MASCOT_ALIVE) { try { window.LarisMascot?.thinking(); } catch (_) {} }
   bubble.innerHTML = '';
   const source = document.createElement('div');
   source.innerHTML = html;
@@ -3003,7 +3014,12 @@ async function streamHtmlInto(bubble, html, opts = {}) {
     if (gen !== _streamGen) break;
     await _streamNode(bubble, child, gen, cps, scrollFn);
   }
-  if (gen === _streamGen) bubble.classList.remove('is-streaming');
+  if (gen === _streamGen) {
+    bubble.classList.remove('is-streaming');
+    // Only the run that is still current gets the nod — a superseded stream
+    // finishing late must not congratulate itself over the new answer.
+    if (MASCOT_ALIVE) { try { window.LarisMascot?.success(); } catch (_) {} }
+  }
   if (!opts.skipScroll) scrollAfterPopulate(bubble, html);
 }
 
@@ -11845,6 +11861,19 @@ function wireUi() {
       heroForm?.requestSubmit();
     }
   });
+
+  // Glance toward whichever composer the user is actually in.
+  if (MASCOT_ALIVE) {
+    [heroInput, $('composer-input')].forEach(input => {
+      if (!input) return;
+      const look = () => { try { window.LarisMascot?.typing(input); } catch (_) {} };
+      input.addEventListener('focus', look);
+      input.addEventListener('input', look);
+      input.addEventListener('blur', () => {
+        try { window.LarisMascot?.idle(); } catch (_) {}
+      });
+    });
+  }
 
   $('home-prompts')?.addEventListener('click', e => {
     const btn = e.target.closest('[data-home-prompt]');
