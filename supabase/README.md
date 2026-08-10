@@ -144,15 +144,14 @@ RLS: users read/write **own row only** (`auth.uid() = user_id`).
 
 Product snapshots and Beranda return-loop timing (`seenProducts`, `lastBerandaAt`) stay **client-only** for now — not in this table.
 
-## LARISgpt A/B (`migrations/20260716140000_gpt_chats.sql`)
+## LARISgpt chat (`migrations/20260716140000_gpt_chats.sql`)
 
-Chat sessions for variant B (`/gpt/`): `gpt_chats`, `gpt_messages`, RPC `gpt_new_chat` (3 new chats/day, WIB midnight). Analysis queries: **[docs/AB_TEST.sql](../docs/AB_TEST.sql)**.
+Chat sessions for the app: `gpt_chats`, `gpt_messages`, RPC `gpt_new_chat` (3 new chats/day, WIB midnight). The `gpt_`/`GptX` naming is a holdover from when this UI was the "B" arm of an A/B test — it is not a separate app anymore. There is only one site now: it lives at `https://larisid.com/`. `/gpt/` still resolves (see below) but is not the canonical address. Historical experiment analysis: **[docs/AB_TEST.sql](../docs/AB_TEST.sql)** (closed 2026-08-10, read the header before running).
 
-### Auth redirect URLs (manual — required before flip)
+### Auth redirect URLs
 
-In Supabase Dashboard → **Authentication → URL Configuration → Redirect URLs**, add:
+In Supabase Dashboard → **Authentication → URL Configuration → Redirect URLs**, keep:
 
-- `https://larisid.com/gpt/`
-- `http://localhost:8000/gpt/` (local testing)
-
-Without these, Google OAuth from `/gpt/` fails to return to B (hash-forwarder on `/` is the safety net only).
+- `https://larisid.com/` (canonical — where the app actually lives)
+- `https://larisid.com/gpt/` (legacy path, still served; keep this or OAuth breaks for anyone with a stale `/gpt/` bookmark or in-flight session)
+- `http://localhost:8000/gpt/` and `http://localhost:8000/` (local testing)

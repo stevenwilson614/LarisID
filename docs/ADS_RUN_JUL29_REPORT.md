@@ -1,5 +1,10 @@
 # Most recent ads run — Jul 29 → Aug 7 2026
 
+> **Historical.** The A/B this report analyzes closed 2026-08-10 — arm B won and
+> is now the whole product at `https://larisid.com/`; Site A was deleted. Read
+> this for what happened during the experiment window, not as current state or
+> a live comparison. See [docs/AB_TEST.sql](AB_TEST.sql) header for the closure.
+
 **The run starts Jul 29, not Aug 1.** Paid signups are zero Jul 23–28, then
 resume Jul 29 and run continuously for 10 days. Google-tagged landing traffic
 appears in `page_views` on exactly the same day.

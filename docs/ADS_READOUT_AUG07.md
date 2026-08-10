@@ -1,5 +1,10 @@
 # Site A vs Site B — Google Ads readout, Jul 17 → Aug 7 2026
 
+> **Historical.** The A/B this report analyzes closed 2026-08-10 — arm B won and
+> is now the whole product at `https://larisid.com/`; Site A was deleted. Read
+> this for what happened during the experiment window, not as current state or
+> a live comparison. See [docs/AB_TEST.sql](AB_TEST.sql) header for the closure.
+
 Cohort: users who signed up Jul 18 – Aug 6, arm resolved from their
 `signup_attribution` event, excluding staff (`X`) and `direct_gpt`.
 **A = 43 users, B = 32 users.** Attribution coverage 96.3%.

@@ -1,6 +1,11 @@
 -- ============================================================================
 -- LarisID — A/B week scorecard starting 2026-08-09 (WIB)
 --
+-- *** MOOT as of 2026-08-10: the A/B ended one day into this window. Arm B won
+-- and became the whole product at https://larisid.com/; Site A was deleted.
+-- This scorecard never got a full week of comparable data — do not "finish"
+-- the read. See docs/AB_TEST.sql header for the closure and the final record.
+--
 -- Why this date: large Site B changes + Cari Supplier public flip + tracking
 -- instrumentation gaps closed. Earlier cohorts mix admin-only supplier probe
 -- and broken B feedback inserts — do not pool them into these queries.
