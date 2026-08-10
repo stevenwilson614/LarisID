@@ -2383,8 +2383,8 @@ body.home-finder-done .home-title {
   text-align: left; margin-bottom: 48px;
 }
 
-.hl-hero { display: flex; align-items: center; gap: 48px; padding-top: 4px; }
-.hl-hero-text { flex: 1 1 420px; min-width: 0; }
+.hl-hero { display: flex; align-items: center; gap: clamp(24px, 4vw, 48px); padding-top: 8px; min-width: 0; }
+.hl-hero-text { flex: 1 1 380px; min-width: 0; }
 .hl-hero-title {
   font-size: clamp(2rem, 3.4vw, 2.7rem); font-weight: 800;
   letter-spacing: -.03em; line-height: 1.12; margin: 0 0 16px;
@@ -2408,18 +2408,32 @@ body.home-finder-done .home-title {
 .hl-hero-market-label { font-size: .76rem; color: var(--muted); margin: 0 0 10px; }
 .hl-hero-markets { justify-content: flex-start; margin: 0; }
 
-.hl-hero-art { position: relative; flex: 1 1 420px; min-width: 0; display: flex; justify-content: center; align-items: center; }
-.hl-hero-art img { width: 100%; max-width: 480px; height: auto; display: block; }
+/* Grid keeps bird + stat chips inside the panel (no absolute overflow / clipped “Tinggi”). */
+.hl-hero-art {
+  flex: 1 1 420px; min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(132px, 158px);
+  align-items: center;
+  gap: clamp(10px, 1.6vw, 18px);
+}
+.hl-hero-art img {
+  width: 100%; max-width: 440px; height: auto;
+  max-height: min(52vh, 460px);
+  object-fit: contain; object-position: center top;
+  display: block; justify-self: center;
+}
+.hl-hero-chips {
+  display: flex; flex-direction: column; gap: 10px; min-width: 0;
+}
 .hl-hero-chip {
-  position: absolute; display: flex; flex-direction: column; gap: 4px;
-  padding: 10px 14px; background: #fff; min-width: 128px;
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 10px 12px; background: #fff; width: 100%;
+  box-sizing: border-box; border-radius: 14px;
   box-shadow: 0 10px 30px rgba(0,0,0,.09);
 }
-.hl-hero-chip--1 { top: 2%; right: -4%; }
-.hl-hero-chip--2 { top: 30%; right: -10%; }
-.hl-hero-chip--3 { top: 54%; right: -8%; }
-.hl-hero-chip--4 { top: 78%; right: -2%; }
-@media (max-width: 1080px) { .hl-hero-art .hl-hero-chip { display: none; } }
+.hl-hero-chip .stat-lbl { font-size: .66rem; }
+.hl-hero-chip .stat-val { font-size: .84rem; line-height: 1.2; white-space: normal; }
+.hl-hero-chip .stat-val small { font-size: .65rem; }
 
 .hl-stats { display: grid; grid-template-columns: repeat(4, 1fr); background: #1A1A1A; border-radius: 18px; overflow: hidden; }
 .hl-stat { display: flex; align-items: center; gap: 12px; padding: 20px 22px; color: #fff; border-left: 1px solid rgba(255,255,255,.08); }
@@ -2430,37 +2444,104 @@ body.home-finder-done .home-title {
 
 .hl-steps-head { font-size: .82rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; margin: 0 0 22px; color: var(--ink); }
 .hl-steps-head span { color: var(--accent); }
-.hl-steps { display: flex; align-items: stretch; gap: 4px; }
-.hl-step { flex: 1 1 0; min-width: 0; border: 1px solid var(--line); border-radius: 16px; padding: 16px; background: #fff; }
-.hl-step-num {
-  width: 26px; height: 26px; border-radius: 999px; background: var(--merah-tint); color: var(--accent);
-  display: grid; place-items: center; font-size: .78rem; font-weight: 800; margin-bottom: 10px;
+.hl-steps {
+  display: flex; align-items: stretch; gap: 6px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity; padding-bottom: 6px;
 }
-.hl-step-title { font-size: .92rem; font-weight: 750; margin-bottom: 4px; }
-.hl-step-desc { font-size: .74rem; color: var(--muted); line-height: 1.45; }
-.hl-step-arrow { display: flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 18px; color: var(--line); font-size: 1rem; }
+.hl-step {
+  flex: 1 0 168px; min-width: 168px;
+  border: 1px solid var(--line); border-radius: 16px;
+  padding: 14px; background: #fff; display: flex; flex-direction: column; gap: 0;
+  box-shadow: 0 1px 0 rgba(0,0,0,.02);
+  scroll-snap-align: start;
+}
+.hl-step-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.hl-step-num {
+  width: 26px; height: 26px; border-radius: 999px; background: var(--accent); color: #fff;
+  display: grid; place-items: center; font-size: .78rem; font-weight: 800; flex-shrink: 0;
+}
+.hl-step-icon {
+  width: 28px; height: 28px; color: var(--accent);
+  display: grid; place-items: center; flex-shrink: 0;
+}
+.hl-step-icon svg { width: 22px; height: 22px; stroke: currentColor; fill: none; }
+.hl-step-title { font-size: .9rem; font-weight: 750; margin-bottom: 4px; line-height: 1.25; }
+.hl-step-desc { font-size: .72rem; color: var(--muted); line-height: 1.45; margin: 0 0 12px; flex: 1 1 auto; }
+.hl-step-arrow { display: flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 16px; color: var(--accent); font-size: .95rem; opacity: .85; }
+.hl-step-preview {
+  margin-top: auto; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--bg); padding: 10px; min-height: 88px;
+}
+.hl-sp-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.hl-sp-row:last-child { margin-bottom: 0; }
+.hl-sp-thumb {
+  width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
+  background: linear-gradient(135deg, #f3e8e8, #e8eef8);
+}
+.hl-sp-meta { min-width: 0; flex: 1; }
+.hl-sp-name { font-size: .62rem; font-weight: 650; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hl-sp-sub { font-size: .58rem; color: var(--muted); }
+.hl-sp-val { font-size: .62rem; font-weight: 750; color: var(--ink); white-space: nowrap; }
+.hl-sp-head { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
+.hl-sp-label { font-size: .62rem; font-weight: 700; color: var(--ink); }
+.hl-sp-delta { font-size: .7rem; font-weight: 800; color: var(--green); }
+.hl-sp-spark {
+  height: 36px; border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(34,197,94,.12), transparent 70%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 36' preserveAspectRatio='none'><path d='M0 28 C16 26 22 18 36 20 C50 22 54 10 70 12 C86 14 96 6 120 4' fill='none' stroke='%2322c55e' stroke-width='2.4' stroke-linecap='round'/></svg>")
+    center bottom / 100% 100% no-repeat;
+}
+.hl-sp-person { display: flex; align-items: center; gap: 8px; }
+.hl-sp-avatar {
+  width: 28px; height: 28px; border-radius: 999px; flex-shrink: 0;
+  background: linear-gradient(145deg, #f0c4a8, #c9846a);
+}
+.hl-sp-avatars { display: flex; margin-top: 8px; }
+.hl-sp-avatars span {
+  width: 18px; height: 18px; border-radius: 999px; border: 1.5px solid #fff;
+  margin-left: -6px; background: #d9d4cf;
+}
+.hl-sp-avatars span:first-child { margin-left: 0; background: #f0c4a8; }
+.hl-sp-avatars span:nth-child(2) { background: #c4b5a5; }
+.hl-sp-avatars span:nth-child(3) { background: #a8c4d4; }
+.hl-sp-avatars span:nth-child(4) { background: #d4a8b8; }
+.hl-sp-stars { color: #EAB308; font-size: .7rem; letter-spacing: .04em; line-height: 1; margin-top: 4px; }
+.hl-sp-score { font-size: 1.05rem; font-weight: 800; letter-spacing: -.02em; }
 
 .hl-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 .hl-card {
   position: relative; display: flex; flex-direction: column; justify-content: flex-end;
-  min-height: 210px; padding: 18px; border-radius: 18px; border: none;
-  background-size: cover; background-position: center; cursor: pointer;
+  min-height: 280px; padding: 10px 12px 10px; border-radius: 18px; border: none;
+  background-size: cover; background-position: center 20%; cursor: pointer;
   text-align: left; overflow: hidden; color: #fff;
 }
-.hl-card-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,0,0,.72) 100%); }
-.hl-card-body { position: relative; z-index: 1; display: block; }
-.hl-card-title { display: block; font-size: .95rem; font-weight: 750; line-height: 1.25; }
-.hl-card-sub { display: block; font-size: .74rem; color: rgba(255,255,255,.78); margin-top: 4px; }
+.hl-card-shade {
+  position: absolute; inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0,0,0,0) 48%,
+    rgba(37,99,235,.28) 72%,
+    rgba(20,55,140,.92) 100%
+  );
+}
+.hl-card-body { position: relative; z-index: 1; display: block; margin-top: auto; }
+.hl-card-title { display: block; font-size: .9rem; font-weight: 750; line-height: 1.25; }
+.hl-card-sub { display: block; font-size: .72rem; color: rgba(255,255,255,.86); margin-top: 3px; }
 .hl-card-arrow {
-  position: relative; z-index: 1; align-self: flex-end; margin-top: 12px;
-  width: 30px; height: 30px; border-radius: 999px; background: rgba(255,255,255,.16);
-  display: grid; place-items: center; font-size: .9rem;
+  position: relative; z-index: 1; align-self: flex-start; margin-top: 8px;
+  width: 28px; height: 28px; border-radius: 999px; background: rgba(255,255,255,.95); color: #111;
+  display: grid; place-items: center; font-size: .85rem;
 }
 
-.hl-ai { background: var(--merah-tint); border-radius: 22px; padding: 32px; }
-.hl-ai-top { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
-.hl-ai-art { flex: 0 0 auto; }
-.hl-ai-art img { width: 150px; height: auto; display: block; }
+.hl-ai { background: var(--merah-tint); border-radius: 22px; padding: 28px 32px; overflow: hidden; }
+.hl-ai-top { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+.hl-ai-art { flex: 0 1 auto; min-width: 0; }
+.hl-ai-art img {
+  width: clamp(240px, 34vw, 360px); max-width: 100%;
+  height: auto; display: block;
+}
 .hl-ai-body { flex: 1 1 300px; min-width: 0; }
 .hl-ai-kicker { font-size: .74rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--accent); margin: 0 0 8px; }
 .hl-ai-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.2; margin: 0 0 10px; }
@@ -2503,20 +2584,34 @@ body.home-finder-done .home-title {
   .hl-hero-ctas { justify-content: center; }
   .hl-hero-markets { justify-content: center; }
   .hl-hero-market-label { text-align: center; }
-  .hl-hero-art img { max-width: 300px; }
-  .hl-hero-art .hl-hero-chip { display: none; }
+  .hl-hero-art {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+  .hl-hero-art img { max-width: 280px; max-height: min(46vh, 360px); }
+  .hl-hero-chips {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
   .hl-stats { grid-template-columns: repeat(2, 1fr); }
   .hl-stat { border-left: none; border-top: 1px solid rgba(255,255,255,.08); padding: 16px; }
   .hl-stat:nth-child(1), .hl-stat:nth-child(2) { border-top: none; }
-  .hl-steps { flex-direction: column; }
-  .hl-step-arrow { transform: rotate(90deg); height: 18px; }
+  .hl-step { max-width: none; flex-basis: min(220px, 72vw); }
   .hl-cards { grid-template-columns: repeat(2, 1fr); }
+  .hl-card { min-height: 230px; }
   .hl-ai { padding: 22px; }
   .hl-ai-top { flex-direction: column; text-align: center; }
+  .hl-ai-art img { width: min(300px, 78vw); margin: 0 auto; }
   .hl-ai-sub { margin-left: auto; margin-right: auto; }
   .hl-ai-chat { width: 100%; }
   .hl-ai-howto { grid-template-columns: repeat(2, 1fr); }
   .hl-cta-band { flex-direction: column; text-align: center; }
+}
+@media (max-width: 520px) {
+  .hl-cards { grid-template-columns: 1fr; }
+  .hl-hero-chips { grid-template-columns: 1fr 1fr; }
 }
 
 /* Answer card (trending) */
@@ -3746,7 +3841,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
     <div class="sidebar-foot">
       <button type="button" class="side-btn" id="btn-community">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-        Usulan Fitur
+        Ajukan Fitur
       </button>
       <button type="button" class="side-btn" id="btn-harga">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M17 8c0-2-2-3.5-5-3.5S7 6 7 8s2 3 5 3.5 5 1.5 5 3.5-2 3.5-5 3.5"/></svg>
@@ -3903,21 +3998,23 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                   </div>
                   <div class="hl-hero-art">
                     <img src="/images/brand/mascot-hero.webp" width="1100" height="912" alt="Maskot Laris membawa produk yang siap dijual di Shopee" fetchpriority="high" decoding="async">
-                    <div class="stat-tile hl-hero-chip hl-hero-chip--1">
-                      <span class="stat-lbl">Revenue Estimasi</span>
-                      <span class="stat-val" style="color:var(--accent)">Rp 280jt <small style="font-weight:600;color:var(--muted)">/bulan</small></span>
-                    </div>
-                    <div class="stat-tile hl-hero-chip hl-hero-chip--2">
-                      <span class="stat-lbl">Permintaan</span>
-                      <span class="stat-val" style="color:var(--green)">Tinggi</span>
-                    </div>
-                    <div class="stat-tile hl-hero-chip hl-hero-chip--3">
-                      <span class="stat-lbl">Kompetisi</span>
-                      <span class="stat-val" style="color:var(--amber)">Sedang</span>
-                    </div>
-                    <div class="stat-tile hl-hero-chip hl-hero-chip--4">
-                      <span class="stat-lbl">Ease of Entry</span>
-                      <span class="stat-val">4.2 <small style="font-weight:600;color:var(--muted)">/5</small></span>
+                    <div class="hl-hero-chips" aria-hidden="true">
+                      <div class="stat-tile hl-hero-chip">
+                        <span class="stat-lbl">Revenue Estimasi</span>
+                        <span class="stat-val" style="color:var(--accent)">Rp 280jt <small style="font-weight:600;color:var(--muted)">/bulan</small></span>
+                      </div>
+                      <div class="stat-tile hl-hero-chip">
+                        <span class="stat-lbl">Permintaan</span>
+                        <span class="stat-val" style="color:var(--green)">Tinggi</span>
+                      </div>
+                      <div class="stat-tile hl-hero-chip">
+                        <span class="stat-lbl">Kompetisi</span>
+                        <span class="stat-val" style="color:var(--amber)">Sedang</span>
+                      </div>
+                      <div class="stat-tile hl-hero-chip">
+                        <span class="stat-lbl">Ease of Entry</span>
+                        <span class="stat-val">4.2 <small style="font-weight:600;color:var(--muted)">/5</small></span>
+                      </div>
                     </div>
                   </div>
                 </section>
@@ -3945,33 +4042,111 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                   <h2 class="hl-steps-head">Semua yang kamu butuhkan, dalam <span>satu platform.</span></h2>
                   <div class="hl-steps">
                     <div class="hl-step">
-                      <div class="hl-step-num">1</div>
+                      <div class="hl-step-top">
+                        <div class="hl-step-num">1</div>
+                        <div class="hl-step-icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                        </div>
+                      </div>
                       <div class="hl-step-title">Cari Produk</div>
                       <p class="hl-step-desc">Temukan produk &amp; kategori dengan demand tinggi berdasarkan data penjualan marketplace.</p>
+                      <div class="hl-step-preview" aria-hidden="true">
+                        <div class="hl-sp-row">
+                          <span class="hl-sp-thumb"></span>
+                          <div class="hl-sp-meta"><div class="hl-sp-name">Kipas Angin Mini USB</div><div class="hl-sp-sub">★ 4.8 / 5</div></div>
+                          <span class="hl-sp-val">Rp308jt</span>
+                        </div>
+                        <div class="hl-sp-row">
+                          <span class="hl-sp-thumb"></span>
+                          <div class="hl-sp-meta"><div class="hl-sp-name">Rak Dapur Stainless</div><div class="hl-sp-sub">★ 4.7 / 5</div></div>
+                          <span class="hl-sp-val">Rp186jt</span>
+                        </div>
+                        <div class="hl-sp-row">
+                          <span class="hl-sp-thumb"></span>
+                          <div class="hl-sp-meta"><div class="hl-sp-name">Vacuum Bottle 1L</div><div class="hl-sp-sub">★ 4.9 / 5</div></div>
+                          <span class="hl-sp-val">Rp142jt</span>
+                        </div>
+                      </div>
                     </div>
                     <div class="hl-step-arrow" aria-hidden="true">→</div>
                     <div class="hl-step">
-                      <div class="hl-step-num">2</div>
+                      <div class="hl-step-top">
+                        <div class="hl-step-num">2</div>
+                        <div class="hl-step-icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg>
+                        </div>
+                      </div>
                       <div class="hl-step-title">Pantau Produk</div>
                       <p class="hl-step-desc">Pantau performa produk dari waktu ke waktu. Dapatkan notifikasi saat ada perubahan penting.</p>
+                      <div class="hl-step-preview" aria-hidden="true">
+                        <div class="hl-sp-head">
+                          <span class="hl-sp-label">Penjualan</span>
+                          <span class="hl-sp-delta">+24%</span>
+                        </div>
+                        <div class="hl-sp-sub" style="margin-bottom:6px">7 hari terakhir</div>
+                        <div class="hl-sp-spark"></div>
+                      </div>
                     </div>
                     <div class="hl-step-arrow" aria-hidden="true">→</div>
                     <div class="hl-step">
-                      <div class="hl-step-num">3</div>
+                      <div class="hl-step-top">
+                        <div class="hl-step-num">3</div>
+                        <div class="hl-step-icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05"/><path d="M12 22.08V12"/></svg>
+                        </div>
+                      </div>
                       <div class="hl-step-title">Cari Supplier</div>
                       <p class="hl-step-desc">Temukan supplier terpercaya dengan harga kompetitif untuk memulai jualan.</p>
+                      <div class="hl-step-preview" aria-hidden="true">
+                        <div class="hl-sp-person">
+                          <span class="hl-sp-avatar"></span>
+                          <div class="hl-sp-meta">
+                            <div class="hl-sp-name">Supplier Terpercaya</div>
+                            <div class="hl-sp-sub">Jakarta · MOQ rendah</div>
+                          </div>
+                        </div>
+                        <div class="hl-sp-avatars"><span></span><span></span><span></span><span></span></div>
+                      </div>
                     </div>
                     <div class="hl-step-arrow" aria-hidden="true">→</div>
                     <div class="hl-step">
-                      <div class="hl-step-num">4</div>
+                      <div class="hl-step-top">
+                        <div class="hl-step-num">4</div>
+                        <div class="hl-step-icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="4"/><circle cx="16" cy="14" r="4"/><path d="M10 6V3"/><path d="M6.5 7.5 4.5 5.5"/><path d="M6.5 12.5 4.5 14.5"/></svg>
+                        </div>
+                      </div>
                       <div class="hl-step-title">Pantau Kompetitor</div>
                       <p class="hl-step-desc">Lihat strategi kompetitor, produk terlaris mereka, dan perubahan harga.</p>
+                      <div class="hl-step-preview" aria-hidden="true">
+                        <div class="hl-sp-person">
+                          <span class="hl-sp-avatar"></span>
+                          <div class="hl-sp-meta">
+                            <div class="hl-sp-name">Toko Sukses</div>
+                            <div class="hl-sp-sub">Top Competitor</div>
+                          </div>
+                        </div>
+                        <div class="hl-sp-row" style="margin-top:8px;margin-bottom:0">
+                          <div class="hl-sp-meta"><div class="hl-sp-sub">12 Produk Terlaris</div></div>
+                          <span class="hl-sp-val">Rp 95.000</span>
+                        </div>
+                      </div>
                     </div>
                     <div class="hl-step-arrow" aria-hidden="true">→</div>
                     <div class="hl-step">
-                      <div class="hl-step-num">5</div>
+                      <div class="hl-step-top">
+                        <div class="hl-step-num">5</div>
+                        <div class="hl-step-icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg>
+                        </div>
+                      </div>
                       <div class="hl-step-title">Ambil Keputusan</div>
                       <p class="hl-step-desc">Semua data yang kamu butuhkan untuk memilih produk terbaik &amp; mulai jualan dengan percaya diri.</p>
+                      <div class="hl-step-preview" aria-hidden="true">
+                        <div class="hl-sp-label">Ease of Entry</div>
+                        <div class="hl-sp-score">4.2 <small style="font-weight:600;color:var(--muted);font-size:.72rem">/ 5</small></div>
+                        <div class="hl-sp-stars">★★★★★</div>
+                      </div>
                     </div>
                   </div>
                 </section>
@@ -4738,7 +4913,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script defer src="/js/gpt-photo-analyze.js?v=20260808a"></script>
 <script defer src="/js/gpt-referral.js?v=20260808a"></script>
 <script defer src="/js/gpt-profile.js?v=20260808c"></script>
-<script defer src="/js/gpt-community-board.js?v=20260808d"></script>
+<script defer src="/js/gpt-community-board.js?v=20260810a"></script>
 <script src="/js/gpt-app.js?v=20260810a" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>

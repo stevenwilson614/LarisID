@@ -395,37 +395,63 @@
         font-family: inherit;
         max-width: 920px;
       }
-      .msb-banner {
-        display: flex; align-items: center; justify-content: space-between; gap: 16px;
-        background: linear-gradient(90deg, #fff7f8 0%, #fff1f2 55%, #ffe8ec 100%);
-        border: 1px solid #FDE2E4;
-        border-radius: 16px;
-        padding: 18px 20px 18px 22px;
-        margin-bottom: 22px;
-        overflow: hidden;
+      /* Top hero: title+CTA left, Garuda right. Waist hangs into the white
+         panel below so the card edge cuts the torso for a 3D pop. */
+      .msb-hero {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px 20px;
+        margin: 0 0 0;
         position: relative;
+        z-index: 0;
       }
-      .msb-banner-copy { flex: 1; min-width: 0; z-index: 1; }
-      .msb-banner-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
-      .msb-beta {
-        display: inline-flex; align-items: center; justify-content: center;
-        padding: 3px 10px; border-radius: 999px;
-        border: 1.5px solid var(--msb-red); color: var(--msb-red);
-        background: #fff; font-size: 11px; font-weight: 800; letter-spacing: .06em;
+      .msb-hero-text {
+        flex: 1 1 auto;
+        min-width: 0;
+        align-self: center;
+        padding: 8px 0 22px;
       }
-      .msb-banner-title { margin: 0; font-size: 1rem; font-weight: 750; color: var(--msb-ink); }
-      .msb-banner-sub { margin: 0; font-size: .875rem; line-height: 1.45; color: #374151; max-width: 46rem; }
-      .msb-banner-art {
-        flex: 0 0 auto; width: min(220px, 34vw); height: 92px;
-        background: url('/images/masukan-banner-illust.png') right center / contain no-repeat;
+      .msb-hero-text h2 {
+        margin: 0 0 8px;
+        font-size: clamp(1.7rem, 3vw, 2.15rem);
+        font-weight: 800;
+        letter-spacing: -.03em;
+        color: #0f172a;
+        line-height: 1.15;
+      }
+      .msb-hero-text p {
+        margin: 0 0 16px;
+        color: var(--msb-muted);
+        font-size: .95rem;
+        line-height: 1.5;
+        max-width: 42ch;
+      }
+      .msb-hero-mascot {
+        flex: 0 0 auto;
+        display: block;
+        align-self: flex-end;
+        margin: 0 -6px -42px 0;
+        line-height: 0;
         pointer-events: none;
+        user-select: none;
+        position: relative;
+        z-index: 0;
       }
-      .msb-head { margin-bottom: 16px; }
-      .msb-head h2 {
-        margin: 0 0 6px; font-size: 1.75rem; font-weight: 800;
-        letter-spacing: -.03em; color: #0f172a;
+      .msb-hero-mascot img {
+        display: block;
+        width: 280px;
+        height: auto;
       }
-      .msb-head p { margin: 0; color: var(--msb-muted); font-size: .95rem; line-height: 1.45; }
+      .msb-panel {
+        position: relative;
+        z-index: 1;
+        background: #fff;
+        border: 1px solid var(--msb-line);
+        border-radius: 22px;
+        padding: 18px 20px 22px;
+        box-shadow: 0 1px 2px rgba(0,0,0,.03);
+      }
       .msb-toolbar {
         display: flex; align-items: center; justify-content: space-between; gap: 12px;
         flex-wrap: wrap; margin-bottom: 14px;
@@ -442,7 +468,7 @@
       .msb-btn-primary {
         display: inline-flex; align-items: center; gap: 6px;
         background: var(--msb-red); color: #fff; border: none;
-        padding: 9px 16px; border-radius: 999px; font-size: .875rem; font-weight: 700;
+        padding: 10px 18px; border-radius: 999px; font-size: .9rem; font-weight: 700;
         cursor: pointer; white-space: nowrap;
       }
       .msb-btn-primary:hover { filter: brightness(.96); }
@@ -561,7 +587,7 @@
       .msb-cta {
         display: flex; align-items: center; justify-content: space-between; gap: 16px;
         margin-top: 18px; padding: 16px 18px;
-        background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 14px;
+        background: #fff; border: 1px solid #E5E7EB; border-radius: 14px;
         flex-wrap: wrap;
       }
       .msb-cta-left {
@@ -580,10 +606,13 @@
       }
       .msb-btn-outline:hover { background: var(--msb-red-soft); }
       @media (max-width: 700px) {
-        .msb-banner { padding: 14px; }
-        .msb-banner-art { width: 120px; height: 72px; }
-        .msb-banner-title { font-size: .92rem; }
-        .msb-head h2 { font-size: 1.4rem; }
+        .msb-hero { flex-direction: column; align-items: stretch; text-align: center; gap: 6px; }
+        .msb-hero-text { align-self: stretch; padding: 4px 0 0; }
+        .msb-hero-text p { margin-left: auto; margin-right: auto; }
+        .msb-hero-text .msb-btn-primary { margin: 0 auto; }
+        .msb-hero-mascot { align-self: center; margin: 0 0 -28px; order: -1; }
+        .msb-hero-mascot img { width: 200px; }
+        .msb-panel { padding: 14px 14px 18px; border-radius: 18px; }
         .msb-card { grid-template-columns: 58px 1fr; padding: 12px 10px; }
         .msb-status { font-size: .68rem; padding: 3px 8px; }
         .msb-cta { padding: 14px; }
@@ -596,65 +625,61 @@
     _opts = options;
     _container = container;
 
-    if (container.dataset.communityBoardMounted === 'msb-v2') {
+    if (container.dataset.communityBoardMounted === 'msb-v3') {
       // Already built — just refresh the list instead of losing an
       // in-progress form by rebuilding the DOM from scratch.
       _listEl = container.querySelector('#msb-list');
       fetchPosts();
       return;
     }
-    container.dataset.communityBoardMounted = 'msb-v2';
+    container.dataset.communityBoardMounted = 'msb-v3';
     injectStyles();
 
     container.innerHTML = `
       <div id="msb">
-        <div class="msb-banner">
-          <div class="msb-banner-copy">
-            <div class="msb-banner-row">
-              <span class="msb-beta">BETA</span>
-              <p class="msb-banner-title">LarisID masih dalam tahap Beta</p>
+        <header class="msb-hero">
+          <div class="msb-hero-text">
+            <h2>Ajukan Fitur</h2>
+            <p>Usulkan fitur atau laporkan keluhan — dibaca dan bisa disukai/dikomentari user lain.</p>
+            <button type="button" class="msb-btn-primary" id="msb-open-form">${svgPlus()} Ajukan Ide Baru</button>
+          </div>
+          <div class="msb-hero-mascot" aria-hidden="true">
+            <img src="/images/brand/mascot-fitur.webp" width="280" height="235" alt="" loading="lazy" decoding="async">
+          </div>
+        </header>
+
+        <div class="msb-panel">
+          <div class="msb-toolbar">
+            <div class="msb-filters" role="tablist" aria-label="Filter usulan">
+              <button type="button" class="msb-filter is-active" data-kind="all">Semua</button>
+              <button type="button" class="msb-filter" data-kind="feature">Fitur</button>
+              <button type="button" class="msb-filter" data-kind="complaint">Keluhan</button>
             </div>
-            <p class="msb-banner-sub">Masukan kamu sangat berarti! Bantu kami membuat LarisID jadi lebih baik untuk semua seller Indonesia.</p>
           </div>
-          <div class="msb-banner-art" role="img" aria-label="Ilustrasi roket dan bendera Indonesia"></div>
-        </div>
 
-        <div class="msb-head">
-          <h2>Usulan Fitur</h2>
-          <p>Usulkan fitur atau laporkan keluhan — dibaca dan bisa disukai/dikomentari user lain.</p>
-        </div>
-
-        <div class="msb-toolbar">
-          <div class="msb-filters" role="tablist" aria-label="Filter usulan">
-            <button type="button" class="msb-filter is-active" data-kind="all">Semua</button>
-            <button type="button" class="msb-filter" data-kind="feature">Fitur</button>
-            <button type="button" class="msb-filter" data-kind="complaint">Keluhan</button>
+          <div class="msb-form" id="msb-form-panel" hidden>
+            <select id="msb-kind">
+              <option value="feature">Fitur</option>
+              <option value="complaint">Keluhan</option>
+            </select>
+            <input id="msb-title" type="text" placeholder="Judul singkat" maxlength="120" required>
+            <textarea id="msb-body" placeholder="Jelaskan singkat apa yang kamu butuhkan…" maxlength="4000" required></textarea>
+            <div class="msb-form-actions">
+              <button type="button" class="msb-btn-ghost" id="msb-cancel">Batal</button>
+              <button type="button" class="msb-btn-primary" id="msb-submit">Kirim</button>
+            </div>
           </div>
-          <button type="button" class="msb-btn-primary" id="msb-open-form">${svgPlus()} Ajukan Masukan</button>
-        </div>
 
-        <div class="msb-form" id="msb-form-panel" hidden>
-          <select id="msb-kind">
-            <option value="feature">Fitur</option>
-            <option value="complaint">Keluhan</option>
-          </select>
-          <input id="msb-title" type="text" placeholder="Judul singkat" maxlength="120" required>
-          <textarea id="msb-body" placeholder="Jelaskan singkat apa yang kamu butuhkan…" maxlength="4000" required></textarea>
-          <div class="msb-form-actions">
-            <button type="button" class="msb-btn-ghost" id="msb-cancel">Batal</button>
-            <button type="button" class="msb-btn-primary" id="msb-submit">Kirim</button>
-          </div>
+          <div class="msb-loading" id="msb-loading" hidden>Memuat…</div>
+          <div class="msb-list" id="msb-list"></div>
         </div>
-
-        <div class="msb-loading" id="msb-loading" hidden>Memuat…</div>
-        <div class="msb-list" id="msb-list"></div>
 
         <div class="msb-cta">
           <div class="msb-cta-left">
             <div class="msb-cta-ico">${svgBulb()}</div>
             <p class="msb-cta-text">Punya ide atau menemukan hal yang mengganggu? Sampaikan masukanmu, komunitas akan mendukung dan tim LarisID akan meninjaunya.</p>
           </div>
-          <button type="button" class="msb-btn-outline" id="msb-cta-open">${svgPlus()} Ajukan Masukan Sekarang</button>
+          <button type="button" class="msb-btn-outline" id="msb-cta-open">${svgPlus()} Ajukan Ide Baru</button>
         </div>
       </div>
     `;
