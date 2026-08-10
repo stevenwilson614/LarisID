@@ -5372,8 +5372,9 @@ function _mlsAiMedian(arr) {
 }
 
 function _toMonthly(r) {
-  // Prefer the stored scale-aware omset estimate (real delta or cohort-imputed);
-  // fall back to the crude lifetime/6 heuristic only when it's missing.
+  // Prefer the current nowcast, then the day-of-scrape estimate, then the crude
+  // lifetime/6 heuristic.
+  if (r.nowcast_omset_monthly != null && r.nowcast_omset_monthly >= 0) return r.nowcast_omset_monthly;
   if (r.est_omset_monthly != null && r.est_omset_monthly >= 0) return r.est_omset_monthly;
   return (r.price || 0) * (r.total_sold || 0) / 6;
 }
@@ -9226,6 +9227,14 @@ function _dscCorrectedUnitDelta(listing) {
 
 function _dscOmset(listing) {
   const price = listing.price || 0;
+  // The velocity nowcast (product_velocity, joined into listings_deduped) comes
+  // FIRST. It blends every observation the product has, recency-weighted, and
+  // decays toward its peer cohort as the product goes stale — so unlike the
+  // client-derived delta below it does not present a two-month-old measurement
+  // as this month's revenue. It is populated for every product, never NULL.
+  if (listing.nowcast_omset_monthly != null && listing.nowcast_omset_monthly >= 0) {
+    return listing.nowcast_omset_monthly;
+  }
   const delta = _dscCorrectedUnitDelta(listing);
   if (delta != null) {
     return price * Math.max(0, delta) * 4;  // ~4 weeks in a month (real per-item delta)
@@ -9396,7 +9405,7 @@ async function _dscEnsureBrowsePool(min = 60) {
     // category/panel filters are active and can fail the same way they did.
     const { data } = await _supabase
       .from('listings_deduped')
-      .select('item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews,est_sold,sold_tier,est_omset_monthly,omset_confidence')
+      .select('item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews,est_sold,sold_tier,est_omset_monthly,omset_confidence,nowcast_omset_monthly,nowcast_velocity_daily,nowcast_confidence,nowcast_method')
       .gt('total_sold', 0)
       .order('total_sold', { ascending: false })
       .limit(Math.max(min, 60));
@@ -9471,7 +9480,7 @@ function _dscApplySearchFilter(q, query) {
 }
 
 function _dscBuildListingsQuery(offset, filters, opts = {}) {
-  const FIELDS = 'item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews,est_sold,sold_tier,est_omset_monthly,omset_confidence';
+  const FIELDS = 'item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews,est_sold,sold_tier,est_omset_monthly,omset_confidence,nowcast_omset_monthly,nowcast_velocity_daily,nowcast_confidence,nowcast_method';
   const rangeFrom = opts.rangeFrom != null ? opts.rangeFrom : offset;
   const rangeTo   = opts.rangeTo   != null ? opts.rangeTo   : offset + DSC_PAGE_SIZE - 1;
   let q = _supabase

@@ -4453,7 +4453,7 @@ async function fetchSidePeers(product) {
   if (!_supabase || !kw) return [];
   try {
     const { data } = await _supabase.from('listings_deduped')
-      .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date')
+      .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
       .gt('total_sold', 0)
       .ilike('keyword', `%${kw.slice(0, 40)}%`)
       .order('total_sold', { ascending: false })
@@ -5296,7 +5296,7 @@ async function fetchListingsCityCat(locations, cats, limit = 80) {
   if (!_supabase || !locations.length) return [];
   try {
     let q = _supabase.from('listings_deduped')
-      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date')
+      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
       .in('location', locations)
       .order('total_sold', { ascending: false })
       .limit(limit);
@@ -5709,7 +5709,7 @@ async function handleModalIntent(chat, text) {
   let rows = [];
   try {
     const { data } = await _supabase.from('listings_deduped')
-      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date')
+      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
       .gte('price', 1000).lte('price', budget)
       .gt('total_sold', 100)
       .order('total_sold', { ascending: false })
@@ -6934,7 +6934,17 @@ function fmtOmset(n) {
 // omset for listings_deduped rows that carry no real rate, without polluting the
 // row's own sold_per_day (which feeds sorting/scoring/"sold/hari").
 function soldPerDayEst(p) {
-  // Prefer the stored scale-aware velocity (refresh_omset_estimates) when present.
+  // The velocity nowcast (product_velocity, joined into listings_deduped) comes
+  // first: it blends every observation the product has, recency-weighted, and
+  // decays toward its peer cohort as the product goes stale, so it does not
+  // present a two-month-old measurement as today's rate. Populated for every
+  // product, never NULL. `>= 0` not `> 0` — a genuine zero is ground truth for
+  // a product that has never sold, and must not fall through to a guess.
+  const nv = Number(p.nowcast_velocity_daily);
+  if (Number.isFinite(nv) && nv >= 0 && p.nowcast_velocity_daily != null) {
+    return Math.min(nv, DD_MAX_SOLD_PER_DAY);
+  }
+  // Day-of-scrape estimate (refresh_omset_estimates) when the nowcast is absent.
   const ev = Number(p.est_velocity_daily);
   if (Number.isFinite(ev) && ev > 0) return Math.min(ev, DD_MAX_SOLD_PER_DAY);
   const spd = Number(p.sold_per_day);
@@ -6955,6 +6965,9 @@ function soldPerDayEst(p) {
 }
 
 function estOmsetBulan(p) {
+  // Nowcast first, for the same reason as soldPerDayEst.
+  const no = Number(p.nowcast_omset_monthly);
+  if (Number.isFinite(no) && no >= 0 && p.nowcast_omset_monthly != null) return no;
   // Prefer the stored monthly omset estimate when present (real delta or cohort).
   const eo = Number(p.est_omset_monthly);
   if (Number.isFinite(eo) && eo >= 0 && (p.est_omset_monthly != null)) return eo;
@@ -7042,7 +7055,7 @@ async function resolveProduct(item_id, shop_id, btn) {
   if (_supabase && item_id != null && shop_id != null) {
     try {
       const { data } = await _supabase.from('listings_deduped')
-        .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date')
+        .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
         .eq('item_id', item_id)
         .eq('shop_id', shop_id)
         .maybeSingle();
@@ -8011,6 +8024,65 @@ function ddWeeklySeries(history) {
   // Hide mid-April first-scrape baseline noise; chart starts Monday of week containing 27 Apr 2026 (WIB).
   const fromTs = mondayOfWeek(new Date(Date.UTC(2026, 3, 27, 4, 0, 0))).getTime();
   return out.filter(w => w.ts >= fromTs);
+}
+
+/* ── Server-backed weekly series ─────────────────────────────────────────────
+   product_daily_series returns one honest point per day for the whole window:
+   measured days from real deltas, days after the last scrape from the
+   recency-weighted nowcast decaying toward the product's peer cohort, days
+   before the first from the cohort prior. Bucketing that into weeks gives the
+   same shape ddWeeklySeries produces, minus its two blind spots:
+
+     * `if (d <= 0) continue` drops every zero-delta interval, so a product
+       that stopped selling charts nothing rather than charting a flat zero;
+     * nothing is emitted after the last scrape, so a product last seen three
+       weeks ago has an empty recent chart no matter how much history it has.
+
+   Returns null on any failure so the caller falls back to the client path.
+   Rollback: set localStorage 'larisid_server_series' to '0'.                 */
+async function ddServerWeeklySeries(product, days = 119) {
+  try {
+    if (localStorage.getItem('larisid_server_series') === '0') return null;
+  } catch (_) { /* private mode: proceed */ }
+  if (!_supabase || !product || product.item_id == null || product.shop_id == null) return null;
+  const to = new Date();
+  const from = new Date(to.getTime() - days * 864e5);
+  const iso = d => d.toISOString().slice(0, 10);
+  let rows;
+  try {
+    const r = await _supabase.rpc('product_daily_series', {
+      p_item_id: product.item_id,
+      p_shop_id: product.shop_id,
+      p_from: iso(from),
+      p_to: iso(to),
+    });
+    if (r.error || !Array.isArray(r.data) || !r.data.length) return null;
+    rows = r.data;
+  } catch (_) {
+    return null;
+  }
+  const weeks = new Map();
+  for (const row of rows) {
+    const dt = new Date(String(row.d) + 'T12:00:00');
+    if (isNaN(dt)) continue;
+    const ts = mondayOfWeek(dt).getTime();
+    const w = weeks.get(ts) || { units: 0, omset: 0, days: 0 };
+    w.units += Number(row.units) || 0;
+    w.omset += Number(row.omset) || 0;
+    w.days += 1;
+    weeks.set(ts, w);
+  }
+  // Same x-axis floor the client path uses, so the two are interchangeable.
+  const fromTs = mondayOfWeek(new Date(Date.UTC(2026, 3, 27, 4, 0, 0))).getTime();
+  let out = [...weeks.entries()].sort((a, b) => a[0] - b[0])
+    .filter(([ts]) => ts >= fromTs)
+    .map(([ts, w]) => ({ ts, units: Math.round(w.units), omset: Math.round(w.omset), items: 1, days: w.days }));
+  // The window ends mid-week, so the last bucket holds 1-2 days and reads as a
+  // collapse rather than a partial week: 21 units against the prior week's 150.
+  // The client path drops the same bucket for the same reason.
+  while (out.length > 1 && out[out.length - 1].days < 3.5) out.pop();
+  out.forEach(w => { delete w.days; });
+  return out.length ? out : null;
 }
 
 /** Roll weekly market points into calendar-month averages for chart display. */
@@ -9201,7 +9273,7 @@ async function openDeepDive(product, ddOpts = {}) {
         // listings_deduped: trgm-indexed, deduped, and carries listing_date
         // (shop-age proxy) since migration 20260717120000.
         const { data } = await _supabase.from('listings_deduped')
-          .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date')
+          .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
           .gt('total_sold', 0)
           .ilike('keyword', `%${kw.slice(0, 40)}%`)
           .order('total_sold', { ascending: false })
@@ -9347,7 +9419,8 @@ async function openDeepDive(product, ddOpts = {}) {
   funnelStep(_gptDiveSeen++ === 0 ? 'first_dive' : 'second_dive');
 
   const stats = ddStats(peers);
-  const weekly = ddWeeklySeries(history);
+  // Server series first; the client path stays as the fallback while this rolls out.
+  const weekly = (await ddServerWeeklySeries(product)) || ddWeeklySeries(history);
   const series = ddMonthlySeries(weekly);
   const scoreInfo = ddScore(product, stats, niche);
   const share = ddShareData(peers);
@@ -10889,7 +10962,7 @@ async function fetchPeersForCompare(product) {
   if (!_supabase || !kw) return { peers, niche, stats: ddStats([]), score: ddScore(product || {}, ddStats([]), niche) };
   try {
     const { data } = await _supabase.from('listings_deduped')
-      .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date')
+      .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
       .gt('total_sold', 0)
       .ilike('keyword', `%${kw.slice(0, 40)}%`)
       .order('total_sold', { ascending: false })

@@ -144,4 +144,11 @@ $restore$;
 
 commit;
 
+-- A freshly created matview has no statistics, so the planner mis-plans against
+-- it and even an indexed anon query blows the 3s role timeout. Measured: the
+-- same top-N query went from a timeout to 48ms after this.
+analyze public.listings_deduped;
+analyze public.mv_product_types;
+analyze public.mv_shops;
+
 notify pgrst, 'reload schema';
