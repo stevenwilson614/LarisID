@@ -12808,7 +12808,9 @@ async function ddRenderTren() {
     if (_trenGridEl)  _trenGridEl.style.display  = '';
 
     const { weeks, dbRows, isEstimated, isPeerEstimated } = trend;
-    const weeksFilled = larisTrendAnchorMondayWindow(weeks, {
+    // The server series already covers every day of the requested window, so
+    // anchoring to 4 Mondays and back-filling empty weeks would only re-mangle it.
+    const weeksFilled = trend.serverSeries ? weeks : larisTrendAnchorMondayWindow(weeks, {
       mondayOf: ddTrendMondayOf, wKey: ddTrendWKey, wLabel: ddTrendWLabel,
     });
     const gapEstimated = weeksFilled.some(w => w.gapEstimated);
@@ -15214,9 +15216,122 @@ function ddTrendBuildWeeklyRows(dbRows, corrDeltas, fallbackPrice, opts = {}) {
   while (weeks.length > 1 && weeks[0].units <= 0) weeks.shift();
   return weeks;
 }
+/* ── Server-side daily series ────────────────────────────────────────────────
+   `product_daily_series` returns one point per day for ANY window, for every
+   product, always: days inside an observed interval carry the measured rate,
+   days after the last scrape carry the recency-weighted nowcast decaying toward
+   the product's peer cohort, days before the first scrape carry the cohort
+   prior. That is the honest version of what the client code below does by hand
+   in five layers — one of which (ddTrendFillZeroDeltas) floors every empty gap
+   at 1 unit, so a genuinely dead product can never chart a zero.
+
+   Rollback: set localStorage 'larisid_server_series' to '0' to fall back to the
+   client path. Remove both the flag and the client path once this is proven. */
+const DD_SERIES_DEFAULT_DAYS = 30;
+
+function ddServerSeriesEnabled() {
+  try { return localStorage.getItem('larisid_server_series') !== '0'; }
+  catch (_) { return true; }
+}
+
+async function ddFetchDailySeries(listing, days = DD_SERIES_DEFAULT_DAYS) {
+  if (!_supabase || !listing?.item_id) return null;
+  const to = new Date();
+  const from = new Date(to.getTime() - (Math.max(7, days) - 1) * 86400000);
+  const iso = d => d.toISOString().slice(0, 10);
+  try {
+    const { data, error } = await _supabase.rpc('product_daily_series', {
+      p_item_id: listing.item_id,
+      p_shop_id: listing.shop_id,
+      p_from: iso(from),
+      p_to: iso(to),
+    });
+    if (error || !Array.isArray(data) || !data.length) return null;
+    return data;
+  } catch (_) {
+    return null;
+  }
+}
+
+/** Bucket the server's per-day rows into ISO weeks. No gap filling needed —
+    the server guarantees a row for every day in the window. */
+function ddTrendWeeksFromDailySeries(rows) {
+  const weekMap = new Map();
+  for (const r of rows) {
+    const date = new Date(String(r.d) + 'T12:00:00');
+    if (isNaN(date)) continue;
+    const key = ddTrendWKey(date);
+    if (!weekMap.has(key)) {
+      weekMap.set(key, {
+        label: ddTrendWLabel(date), units: 0, omset: 0, days: 0,
+        firstDate: ddTrendMondayOf(date),
+      });
+    }
+    const wk = weekMap.get(key);
+    wk.units += Number(r.units) || 0;
+    wk.omset += Number(r.omset) || 0;
+    wk.days  += 1;
+  }
+  // A short week here is a real window edge, never missing data, so scaling it
+  // to a 7-day equivalent keeps the last bar comparable to the rest.
+  return [...weekMap.values()]
+    .sort((a, b) => a.firstDate - b.firstDate)
+    .map(w => {
+      const scale = w.days > 0 && w.days < 7 ? 7 / w.days : 1;
+      return {
+        label: w.label,
+        units: Math.round(w.units * scale),
+        omset: Math.round(w.omset * scale),
+        firstDate: w.firstDate,
+      };
+    });
+}
+
+/** Server-backed equivalent of ddTrendComputeWeekly. Returns the same shape so
+    callers need only skip larisTrendAnchorMondayWindow (see serverSeries). */
+async function ddTrendComputeWeeklyServer(listing, opts = {}) {
+  const rows = await ddFetchDailySeries(listing, opts.days || DD_SERIES_DEFAULT_DAYS);
+  if (!rows) return null;
+  const weeks = ddTrendWeeksFromDailySeries(rows);
+  if (!weeks.length) return null;
+
+  // dbRows still comes from product_trend_history: the UI reports how many real
+  // scrape sessions back the chart, which the daily series deliberately hides.
+  const dbRows = await ddTrendFetchScrapeRows(listing, { since: opts.since || null, limit: opts.limit || 80 });
+  const totalUnitsRaw = weeks.reduce((s, w) => s + (w.units || 0), 0);
+  const modelled = rows.filter(r => r.source === 'forecast' || r.source === 'prior').length;
+
+  return {
+    ok: true,
+    serverSeries: true,
+    dailyRows: rows,
+    dbRows: dbRows || [],
+    weeks,
+    totalUnitsRaw,
+    isEstimated: modelled > 0,
+    isPeerEstimated: modelled >= rows.length,
+    peerWeeklyRate: 0,
+    peerWeeklyRates: [],
+    peerCount: 0,
+    peerSoldMin: 0,
+    peerSoldMax: 0,
+    trendCeilingNote: null,
+    mult: null,
+    atCeiling: false,
+  };
+}
+
 async function ddTrendComputeWeekly(listing, opts = {}) {
   const { since = null, limit = 80, minRows = 2, peerRowsOverride = null, cohortByListing = null } = opts;
   if (!listing?.item_id) return null;
+
+  // Prefer the server series. It cannot come back empty for a real product, so
+  // a null here means the RPC is missing or errored — fall through to the old
+  // client path rather than showing nothing.
+  if (ddServerSeriesEnabled() && !cohortByListing) {
+    const srv = await ddTrendComputeWeeklyServer(listing, opts);
+    if (srv) return srv;
+  }
 
   let dbRows = cohortByListing
     ? ddTrendDedupeRows(cohortByListing)
@@ -15532,7 +15647,8 @@ async function ddLoadTrendHistory(listing) {
     }
 
     // A5: anchor to current Monday + previous 3; incomplete weeks inherit prior scrape avg.
-    let weeklyRowsFilled = larisTrendAnchorMondayWindow(weeklyRows, {
+    // Skipped on the server path — that series already spans the whole window.
+    let weeklyRowsFilled = trend?.serverSeries ? weeklyRows : larisTrendAnchorMondayWindow(weeklyRows, {
       mondayOf: ddTrendMondayOf, wKey: ddTrendWKey, wLabel: ddTrendWLabel,
     });
     if (weeklyRowsFilled.some(w => w.gapEstimated)) isEstimated = true;
