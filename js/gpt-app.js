@@ -11846,6 +11846,12 @@ function wireUi() {
     }
   });
 
+  $('home-prompts')?.addEventListener('click', e => {
+    const btn = e.target.closest('[data-home-prompt]');
+    if (!btn) return;
+    submitFromHome(btn.dataset.homePrompt);
+  });
+
   $('btn-set-lokasi')?.addEventListener('click', () => {
     closeSidebar();
     openPrefsDrawer('sidebar');

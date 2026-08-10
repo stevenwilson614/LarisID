@@ -2216,6 +2216,23 @@ body.home-finder-done .home-title {
   padding: 7px 10px; line-height: 1.35; margin-top: auto;
 }
 .home-foot { margin-top: 44px; font-size: .7rem; color: var(--muted); }
+.home-prompts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; max-width: 720px; margin: 14px auto 0; }
+.home-prompt {
+  display: flex; align-items: center; gap: 10px; text-align: left;
+  padding: 12px 13px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg);
+  font-size: .74rem; line-height: 1.35; color: var(--ink-soft);
+  transition: background .12s, border-color .12s;
+}
+.home-prompt:hover { background: var(--bg-user); border-color: #d4d4d4; }
+.home-prompt-ico {
+  flex-shrink: 0; width: 30px; height: 30px; border-radius: 10px;
+  display: grid; place-items: center;
+}
+.home-prompt-ico svg { width: 16px; height: 16px; }
+.home-prompt-ico[data-tone="red"] { background: var(--merah-tint); color: var(--accent); }
+.home-prompt-ico[data-tone="green"] { background: var(--green-bg); color: var(--green); }
+.home-prompt-ico[data-tone="tan"] { background: #F7EEDC; color: var(--accent-2); }
+.home-prompt-ico[data-tone="black"] { background: #EFEFEF; color: #1a1a1a; }
 /* Link cluster back into the content estate (/riset/, /panduan/, ...). Those
    pages all link here, so this closes the loop — keep it crawlable on mobile
    too, since Google indexes mobile-first. */
@@ -2360,7 +2377,7 @@ body.home-finder-done .home-title {
   /* The mobile landing is a tuned one-screen column with a docked composer, so
      the footer cluster is desktop-only. The same links live in .side-links,
      which is only transform-hidden — mobile-first indexing still sees them. */
-  .home-foot, .home-links { display: none; }
+  .home-foot, .home-links, .home-prompts { display: none; }
 
   /* 3 across on mobile, not 2 — .dir-grid is included so the Produk directory
      matches the finder/trending result grids rather than looking sparser. */
@@ -2522,9 +2539,22 @@ body.home-finder-done .home-title {
   background: linear-gradient(
     180deg,
     rgba(0,0,0,0) 48%,
-    rgba(37,99,235,.28) 72%,
-    rgba(20,55,140,.92) 100%
+    rgba(0,0,0,.3) 72%,
+    rgba(0,0,0,.88) 100%
   );
+}
+/* Each card's shade tints toward its own photo's dominant color instead of a flat blue. */
+.hl-card[data-hl-card="produk"] .hl-card-shade {
+  background: linear-gradient(180deg, rgba(0,0,0,0) 48%, rgba(181,32,42,.32) 72%, rgba(74,14,19,.92) 100%);
+}
+.hl-card[data-hl-card="tracker"] .hl-card-shade {
+  background: linear-gradient(180deg, rgba(0,0,0,0) 48%, rgba(22,163,74,.3) 72%, rgba(9,64,32,.92) 100%);
+}
+.hl-card[data-hl-card="supplier"] .hl-card-shade {
+  background: linear-gradient(180deg, rgba(0,0,0,0) 48%, rgba(201,151,75,.32) 72%, rgba(79,55,21,.92) 100%);
+}
+.hl-card[data-hl-card="kompetitor"] .hl-card-shade {
+  background: linear-gradient(180deg, rgba(0,0,0,0) 48%, rgba(0,0,0,.4) 72%, rgba(0,0,0,.94) 100%);
 }
 .hl-card-body { position: relative; z-index: 1; display: block; margin-top: auto; }
 .hl-card-title { display: block; font-size: .9rem; font-weight: 750; line-height: 1.25; }
@@ -4354,6 +4384,32 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                 </div>
               </div>
             </form>
+            <div class="home-prompts" id="home-prompts" aria-label="Contoh pertanyaan">
+              <button type="button" class="home-prompt" data-home-prompt="Produk apa yang bagus dijual untuk perlengkapan mendaki?">
+                <span class="home-prompt-ico" data-tone="red" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 20 6.5-11L13 16l3-4 6 8Z"/><path d="M9.5 20 13 16"/></svg>
+                </span>
+                <span class="home-prompt-txt">Produk apa yang bagus dijual untuk perlengkapan mendaki?</span>
+              </button>
+              <button type="button" class="home-prompt" data-home-prompt="Jenis senter apa yang lagi laris di Shopee?">
+                <span class="home-prompt-ico" data-tone="green" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6l1 4-2 2v11a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V8L8 6Z"/><path d="M9 11h6"/></svg>
+                </span>
+                <span class="home-prompt-txt">Jenis senter apa yang lagi laris di Shopee?</span>
+              </button>
+              <button type="button" class="home-prompt" data-home-prompt="Produk bayi apa yang demand-nya tinggi tapi persaingannya rendah?">
+                <span class="home-prompt-ico" data-tone="tan" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5"/><path d="M9.5 13.5 7 16a2.5 2.5 0 0 0 3.5 3.5"/><circle cx="12" cy="9" r="1.3" fill="currentColor" stroke="none"/></svg>
+                </span>
+                <span class="home-prompt-txt">Produk bayi apa yang demand-nya tinggi tapi persaingannya rendah?</span>
+              </button>
+              <button type="button" class="home-prompt" data-home-prompt="Peralatan dapur apa yang paling menguntungkan saat ini?">
+                <span class="home-prompt-ico" data-tone="black" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16v3a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5Z"/><path d="M4 12a8 2.2 0 0 1 16 0"/><path d="M18 8c1.5 0 3-1 3-2.5"/></svg>
+                </span>
+                <span class="home-prompt-txt">Peralatan dapur apa yang paling menguntungkan saat ini?</span>
+              </button>
+            </div>
             <div class="home-foot">Data dari Shopee via LarisID — jawaban dari data asli, bukan tebakan AI.</div>
             <nav class="home-links" aria-label="Jelajahi LarisID">
               <a href="/riset/">Riset pasar</a>
