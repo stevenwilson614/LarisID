@@ -1921,7 +1921,7 @@ function formatIdDate(iso) {
 function setView(name) {
   const leaving = state.view;
   state.view = name;
-  ['home', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'tentang', 'admin', 'tracker', 'community'].forEach(v => {
+  ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'tentang', 'admin', 'tracker', 'community'].forEach(v => {
     const el = $(`view-${v}`);
     if (el) el.classList.toggle('active', v === name);
     document.body.classList.toggle(`view-${v}`, v === name);
@@ -1940,7 +1940,7 @@ function setView(name) {
   // .composer-dock display rule) — everywhere else now hides the bar
   // entirely rather than just clearing its chips, so this list stops
   // mattering for those views, but chips are still irrelevant on them either way.
-  if (name === 'home' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker' || name === 'community') setComposerChips(null);
+  if (name === 'home' || name === 'landing' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker' || name === 'community') setComposerChips(null);
   ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-faq', 'btn-tentang', 'btn-admin', 'btn-tracker', 'btn-community'].forEach(id => {
     const el = $(id);
     if (!el) return;
@@ -3074,12 +3074,25 @@ function renderHome() {
   renderChatList();
   wireHomeFinder();
   updateHomeFinderVisibility();
-  renderHomeLandingExamples();
 
   if (!renderHome._seen) {
     renderHome._seen = true;
     void logUserEvent('gpt_landing_view', { ui: 'gpt' });
     clarityEvt('gpt_landing_view', {});
+  }
+}
+
+/** Marketing landing (view-landing) — reached only via the logo (goHome).
+ * Separate surface from Ask Laris (renderHome/view-home): the sidebar "Ask
+ * Laris" entry and every other renderHome() caller are untouched by this. */
+function renderLanding() {
+  setView('landing');
+  renderHomeLandingExamples();
+
+  if (!renderLanding._seen) {
+    renderLanding._seen = true;
+    void logUserEvent('gpt_marketing_landing_view', { ui: 'gpt' });
+    clarityEvt('gpt_marketing_landing_view', {});
   }
 }
 
@@ -11447,7 +11460,7 @@ function renderAdminSampleBanner() {
 function goHome(e) {
   if (e) e.preventDefault();
   closeSidebar();
-  renderHome();
+  renderLanding();
 }
 
 function fmtAdminDate(iso) {
@@ -11716,19 +11729,17 @@ function wireUi() {
   $('chat-search-clear')?.addEventListener('click', () => closeChatSearch());
   $('btn-ask-laris')?.addEventListener('click', () => { openAskLaris(); });
 
-  // ── Home landing (marketing) CTA wiring — the section is first-run only
-  // (hidden via CSS once body.home-finder-done is set) but the buttons are
-  // static markup, so bind once here rather than re-binding on every
-  // renderHome() call. */
-  const hlScrollToComposer = () => {
-    $('hero-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    setTimeout(() => $('hero-input')?.focus(), 320);
+  // ── Landing page (marketing, view-landing) CTA wiring — bound once here
+  // since the buttons are static markup, not re-rendered per view switch.
+  const hlGoToAskLaris = () => {
+    openAskLaris();
+    setTimeout(() => $('hero-input')?.focus(), 200);
   };
   document.querySelectorAll('[data-hl-start]').forEach(btn => {
     btn.addEventListener('click', () => {
       void logUserEvent('gpt_landing_cta_click', { ui: 'gpt', cta: 'start' });
       clarityEvt('gpt_landing_cta_click', { cta: 'start' });
-      hlScrollToComposer();
+      hlGoToAskLaris();
     });
   });
   document.querySelectorAll('[data-hl-howto]').forEach(btn => {
@@ -11744,7 +11755,7 @@ function wireUi() {
       if (card === 'produk') { $('btn-produk')?.click(); return; }
       if (card === 'tracker') { $('btn-tracker')?.click(); return; }
       if (card === 'supplier') { $('btn-supplier')?.click(); return; }
-      hlScrollToComposer(); // 'kompetitor' has no dedicated view yet — send them into Ask Laris
+      hlGoToAskLaris(); // 'kompetitor' has no dedicated view yet — send them into Ask Laris
     });
   });
 
