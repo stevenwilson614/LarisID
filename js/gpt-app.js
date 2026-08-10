@@ -778,6 +778,26 @@ function renderAskLarisChips() {
   });
 }
 
+/** "Contoh pertanyaan lainnya" list on the home-landing Ask Laris teaser —
+ * sourced from the same ASK_LARIS_PROMPTS the composer chips use, so the
+ * marketing copy can't drift from what the product actually does. */
+function renderHomeLandingExamples() {
+  const wrap = $('hl-ai-examples-list');
+  if (!wrap) return;
+  wrap.innerHTML = ASK_LARIS_PROMPTS.map(c =>
+    `<button type="button" class="hl-ai-example" data-hl-example="${esc(c.id)}">${esc(c.label)}</button>`
+  ).join('');
+  wrap.querySelectorAll('[data-hl-example]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cfg = ASK_LARIS_PROMPTS.find(c => c.id === btn.getAttribute('data-hl-example'));
+      if (!cfg) return;
+      void logUserEvent('gpt_chip_click', { ui: 'gpt', chip: cfg.id, surface: 'home_landing' });
+      clarityEvt('gpt_chip_click', { chip: cfg.id });
+      void cfg.run();
+    });
+  });
+}
+
 /** Sidebar "Ask Laris" entry — same landing as clicking the logo. */
 function openAskLaris() {
   abortAssistantStream();
@@ -3054,6 +3074,7 @@ function renderHome() {
   renderChatList();
   wireHomeFinder();
   updateHomeFinderVisibility();
+  renderHomeLandingExamples();
 
   if (!renderHome._seen) {
     renderHome._seen = true;
@@ -11694,6 +11715,39 @@ function wireUi() {
   });
   $('chat-search-clear')?.addEventListener('click', () => closeChatSearch());
   $('btn-ask-laris')?.addEventListener('click', () => { openAskLaris(); });
+
+  // ── Home landing (marketing) CTA wiring — the section is first-run only
+  // (hidden via CSS once body.home-finder-done is set) but the buttons are
+  // static markup, so bind once here rather than re-binding on every
+  // renderHome() call. */
+  const hlScrollToComposer = () => {
+    $('hero-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => $('hero-input')?.focus(), 320);
+  };
+  document.querySelectorAll('[data-hl-start]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      void logUserEvent('gpt_landing_cta_click', { ui: 'gpt', cta: 'start' });
+      clarityEvt('gpt_landing_cta_click', { cta: 'start' });
+      hlScrollToComposer();
+    });
+  });
+  document.querySelectorAll('[data-hl-howto]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelector('.hl-steps-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+  document.querySelectorAll('[data-hl-card]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const card = btn.getAttribute('data-hl-card');
+      void logUserEvent('gpt_landing_card_click', { ui: 'gpt', card });
+      clarityEvt('gpt_landing_card_click', { card });
+      if (card === 'produk') { $('btn-produk')?.click(); return; }
+      if (card === 'tracker') { $('btn-tracker')?.click(); return; }
+      if (card === 'supplier') { $('btn-supplier')?.click(); return; }
+      hlScrollToComposer(); // 'kompetitor' has no dedicated view yet — send them into Ask Laris
+    });
+  });
+
   $('btn-produk')?.addEventListener('click', () => {
     state.comparePick = null;
     updateDirCompareBanner();

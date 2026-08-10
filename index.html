@@ -2331,6 +2331,185 @@ body.home-finder-done .home-title {
   .prod-stat-val { font-size: .68rem; }
 }
 
+/* ══ Home landing (marketing) — first-run only ══════════════════════════
+   Shown until the user engages (sends a message, finishes onboarding, or
+   opens a deep dive); see hasEngagedBeyondFinder()/updateHomeFinderVisibility
+   in gpt-app.js. Once body.home-finder-done is set, this whole block hides
+   and the compact title+markets pair below (#home-title-compact /
+   #home-markets-compact) takes over — same elements/behavior view-home
+   already had before this redesign. */
+#home-title-compact, #home-markets-compact { display: none; }
+body.home-finder-done #home-title-compact { display: block; }
+body.home-finder-done #home-markets-compact { display: flex; }
+body.home-finder-done #home-landing { display: none; }
+
+.home-landing {
+  width: 100%; display: flex; flex-direction: column; gap: 56px;
+  text-align: left; margin-bottom: 48px;
+}
+
+.hl-hero { display: flex; align-items: center; gap: 48px; padding-top: 4px; }
+.hl-hero-text { flex: 1 1 420px; min-width: 0; }
+.hl-hero-title {
+  font-size: clamp(2rem, 3.4vw, 2.7rem); font-weight: 800;
+  letter-spacing: -.03em; line-height: 1.12; margin: 0 0 16px;
+}
+.hl-hero-title em {
+  font-style: normal; background: var(--grad-accent);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.hl-hero-sub { font-size: 1rem; color: var(--muted); line-height: 1.6; max-width: 46ch; margin: 0 0 26px; }
+.hl-hero-ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 26px; }
+.hl-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 13px 22px; border-radius: 999px; border: none;
+  font: inherit; font-size: .92rem; font-weight: 700; letter-spacing: -.01em;
+  cursor: pointer; transition: opacity .12s, background .12s;
+}
+.hl-btn-primary { background: var(--grad-accent); color: #fff; }
+.hl-btn-primary:hover { opacity: .92; }
+.hl-btn-secondary { background: #fff; border: 1px solid var(--line); color: var(--ink); }
+.hl-btn-secondary:hover { background: var(--bg-hover); }
+.hl-hero-market-label { font-size: .76rem; color: var(--muted); margin: 0 0 10px; }
+.hl-hero-markets { justify-content: flex-start; margin: 0; }
+
+.hl-hero-art { position: relative; flex: 1 1 420px; min-width: 0; display: flex; justify-content: center; align-items: center; }
+.hl-hero-art img { width: 100%; max-width: 480px; height: auto; display: block; }
+.hl-hero-chip {
+  position: absolute; display: flex; flex-direction: column; gap: 4px;
+  padding: 10px 14px; background: #fff; min-width: 128px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.09);
+}
+.hl-hero-chip--1 { top: 2%; right: -4%; }
+.hl-hero-chip--2 { top: 30%; right: -10%; }
+.hl-hero-chip--3 { top: 54%; right: -8%; }
+.hl-hero-chip--4 { top: 78%; right: -2%; }
+@media (max-width: 1080px) { .hl-hero-art .hl-hero-chip { display: none; } }
+
+.hl-stats { display: grid; grid-template-columns: repeat(4, 1fr); background: #1A1A1A; border-radius: 18px; overflow: hidden; }
+.hl-stat { display: flex; align-items: center; gap: 12px; padding: 20px 22px; color: #fff; border-left: 1px solid rgba(255,255,255,.08); }
+.hl-stat:first-child { border-left: none; }
+.hl-stat svg { flex-shrink: 0; stroke: var(--accent-2); }
+.hl-stat-num { font-size: 1.15rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.2; }
+.hl-stat-label { font-size: .72rem; color: rgba(255,255,255,.6); margin-top: 2px; }
+
+.hl-steps-head { font-size: .82rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; margin: 0 0 22px; color: var(--ink); }
+.hl-steps-head span { color: var(--accent); }
+.hl-steps { display: flex; align-items: stretch; gap: 4px; }
+.hl-step { flex: 1 1 0; min-width: 0; border: 1px solid var(--line); border-radius: 16px; padding: 16px; background: #fff; }
+.hl-step-num {
+  width: 26px; height: 26px; border-radius: 999px; background: var(--merah-tint); color: var(--accent);
+  display: grid; place-items: center; font-size: .78rem; font-weight: 800; margin-bottom: 10px;
+}
+.hl-step-title { font-size: .92rem; font-weight: 750; margin-bottom: 4px; }
+.hl-step-desc { font-size: .74rem; color: var(--muted); line-height: 1.45; }
+.hl-step-arrow { display: flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 18px; color: var(--line); font-size: 1rem; }
+
+.hl-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.hl-card {
+  position: relative; display: flex; flex-direction: column; justify-content: flex-end;
+  min-height: 210px; padding: 18px; border-radius: 18px; border: none;
+  background-size: cover; background-position: center; cursor: pointer;
+  text-align: left; overflow: hidden; color: #fff;
+}
+.hl-card-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,0,0,.72) 100%); }
+.hl-card-body { position: relative; z-index: 1; display: block; }
+.hl-card-title { display: block; font-size: .95rem; font-weight: 750; line-height: 1.25; }
+.hl-card-sub { display: block; font-size: .74rem; color: rgba(255,255,255,.78); margin-top: 4px; }
+.hl-card-arrow {
+  position: relative; z-index: 1; align-self: flex-end; margin-top: 12px;
+  width: 30px; height: 30px; border-radius: 999px; background: rgba(255,255,255,.16);
+  display: grid; place-items: center; font-size: .9rem;
+}
+
+.hl-ai { background: var(--merah-tint); border-radius: 22px; padding: 32px; }
+.hl-ai-top { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+.hl-ai-art { flex: 0 0 auto; }
+.hl-ai-art img { width: 150px; height: auto; display: block; }
+.hl-ai-body { flex: 1 1 300px; min-width: 0; }
+.hl-ai-kicker { font-size: .74rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--accent); margin: 0 0 8px; }
+.hl-ai-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.2; margin: 0 0 10px; }
+.hl-ai-title em { font-style: normal; color: var(--accent); }
+.hl-ai-sub { font-size: .86rem; color: var(--ink-soft); line-height: 1.5; max-width: 42ch; margin: 0 0 16px; }
+.hl-ai-cta { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; padding: 0; color: var(--accent); font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer; }
+.hl-ai-chat { flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.hl-ai-bubble { max-width: 88%; padding: 10px 14px; border-radius: 14px; font-size: .78rem; line-height: 1.4; background: #fff; color: var(--ink); }
+.hl-ai-bubble--user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+.hl-ai-bubble--assistant { align-self: flex-start; border-bottom-left-radius: 4px; }
+.hl-ai-howto { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 28px; padding-top: 24px; border-top: 1px solid rgba(181,32,42,.14); }
+.hl-howto-item { display: flex; align-items: flex-start; gap: 10px; }
+.hl-howto-item svg { flex-shrink: 0; stroke: var(--accent); margin-top: 1px; }
+.hl-howto-item b { display: block; font-size: .84rem; font-weight: 750; margin-bottom: 2px; }
+.hl-howto-item span { display: block; font-size: .72rem; color: var(--muted); line-height: 1.4; }
+.hl-ai-examples { margin-top: 22px; }
+.hl-ai-examples-head { font-size: .76rem; color: var(--muted); margin: 0 0 10px; }
+.hl-ai-examples-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.hl-ai-example {
+  padding: 9px 14px; border-radius: 999px; border: 1px solid var(--line); background: #fff;
+  font: inherit; font-size: .78rem; font-weight: 600; color: var(--ink); cursor: pointer;
+  transition: border-color .12s, background .12s;
+}
+.hl-ai-example:hover { border-color: var(--accent); background: var(--merah-tint); }
+
+.hl-cta-band {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+  background: #1A1A1A; border-radius: 20px; padding: 26px 30px; color: #fff;
+}
+.hl-cta-band-text b { font-size: 1.15rem; font-weight: 800; line-height: 1.3; display: block; }
+.hl-cta-band-text b span { color: var(--accent-2); }
+.hl-cta-band-text p { font-size: .8rem; color: rgba(255,255,255,.6); margin: 8px 0 0; }
+.hl-cta-band .hl-btn-primary { flex-shrink: 0; }
+
+@media (max-width: 860px) {
+  .home-landing { gap: 40px; margin-bottom: 32px; }
+  .hl-hero { flex-direction: column; gap: 28px; text-align: center; }
+  .hl-hero-text, .hl-hero-art { flex: none; width: 100%; }
+  .hl-hero-sub { margin-left: auto; margin-right: auto; }
+  .hl-hero-ctas { justify-content: center; }
+  .hl-hero-markets { justify-content: center; }
+  .hl-hero-market-label { text-align: center; }
+  .hl-hero-art img { max-width: 300px; }
+  .hl-hero-art .hl-hero-chip { display: none; }
+  .hl-stats { grid-template-columns: repeat(2, 1fr); }
+  .hl-stat { border-left: none; border-top: 1px solid rgba(255,255,255,.08); padding: 16px; }
+  .hl-stat:nth-child(1), .hl-stat:nth-child(2) { border-top: none; }
+  .hl-steps { flex-direction: column; }
+  .hl-step-arrow { transform: rotate(90deg); height: 18px; }
+  .hl-cards { grid-template-columns: repeat(2, 1fr); }
+  .hl-ai { padding: 22px; }
+  .hl-ai-top { flex-direction: column; text-align: center; }
+  .hl-ai-sub { margin-left: auto; margin-right: auto; }
+  .hl-ai-chat { width: 100%; }
+  .hl-ai-howto { grid-template-columns: repeat(2, 1fr); }
+  .hl-cta-band { flex-direction: column; text-align: center; }
+
+  /* First-time visitors get the normal scrolling marketing landing above;
+     the fixed single-screen docked-composer layout a few rules up (this
+     same media query, above) is only appropriate once the marketing
+     content is gone for good (body.home-finder-done) — restore normal
+     document flow for everyone else. Higher specificity than the
+     unconditional rules above (extra :not() class) wins without !important. */
+  body.view-home:not(.home-finder-done) .panel {
+    overflow-y: auto; overflow-x: hidden; display: block;
+  }
+  body.view-home:not(.home-finder-done) .panel-inner,
+  body.view-home:not(.home-finder-done) #view-home.active,
+  body.view-home:not(.home-finder-done) .home-hero {
+    display: block; height: auto; max-height: none; min-height: 0;
+    position: static; overflow: visible; padding: 0;
+  }
+  body.view-home:not(.home-finder-done) .home-scroll {
+    position: static; inset: auto; overflow: visible; padding-bottom: 0;
+    display: block; width: 100%;
+  }
+  body.view-home:not(.home-finder-done) .home-composer {
+    position: static; box-shadow: none; padding: 20px 0 8px; background: none;
+  }
+  body.view-home:not(.home-finder-done) .home-composer .composer-under { display: flex; }
+  body.view-home:not(.home-finder-done) .home-foot,
+  body.view-home:not(.home-finder-done) .home-links { display: block; }
+}
+
 /* Answer card (trending) */
 .ans-card {
   border: 1px solid var(--line); border-radius: 20px;
@@ -3679,8 +3858,213 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
         <div class="view" id="view-home">
           <div class="home-hero">
             <div class="home-scroll">
-              <h1 class="home-title">Apa yang kamu <br>mau <em>jual</em> hari ini?</h1>
-              <ul class="home-markets" aria-label="Marketplace yang didukung">
+              <!-- First-run marketing landing. Hidden once the user has
+                   engaged (see body.home-finder-done) so returning visitors
+                   get the compact title+composer below instead of the full
+                   pitch every time. -->
+              <div class="home-landing" id="home-landing">
+                <section class="hl-hero">
+                  <div class="hl-hero-text">
+                    <h1 class="hl-hero-title">Cari produk. Analisis data. <em>Jual lebih cerdas.</em></h1>
+                    <p class="hl-hero-sub">Laris membantumu menemukan produk yang layak dijual di Shopee dan TikTok Shop berdasarkan data penjualan nyata. Bukan ikut tren, tapi menang di pasar.</p>
+                    <div class="hl-hero-ctas">
+                      <button type="button" class="hl-btn hl-btn-primary" data-hl-start>
+                        Mulai Cari Produk
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                      </button>
+                      <button type="button" class="hl-btn hl-btn-secondary" data-hl-howto>Lihat cara kerja Laris</button>
+                    </div>
+                    <p class="hl-hero-market-label">Data dari marketplace:</p>
+                    <ul class="home-markets hl-hero-markets" aria-label="Marketplace yang didukung">
+                      <li title="Shopee" aria-label="Shopee">
+                        <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#EE4D2D"/><path d="M11.4 12.3a4.6 4.6 0 0 1 9.2 0" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M8.8 12h14.4l-1 11.2a1.6 1.6 0 0 1-1.6 1.45H11.4a1.6 1.6 0 0 1-1.6-1.45z" fill="#fff"/><path d="M16 15.8c-1.5 0-2.55.85-2.55 2.05 0 2.45 4.35 1.6 4.35 3.45 0 .85-.85 1.3-1.85 1.3-1 0-1.75-.4-2.2-1" fill="none" stroke="#EE4D2D" stroke-width="1.2" stroke-linecap="round"/></svg>
+                      </li>
+                      <li title="Tokopedia" aria-label="Tokopedia">
+                        <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#42B549"/><circle cx="12.6" cy="14" r="3.9" fill="#fff"/><circle cx="19.4" cy="14" r="3.9" fill="#fff"/><circle cx="12.6" cy="14" r="1.7" fill="#42B549"/><circle cx="19.4" cy="14" r="1.7" fill="#42B549"/><path d="M14.3 19.4h3.4L16 21.6z" fill="#fff"/></svg>
+                      </li>
+                      <li title="TikTok Shop" aria-label="TikTok Shop">
+                        <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#010101"/><path d="M19.3 7.4c.34 2.06 1.66 3.4 3.62 3.6v2.55c-1.18 0-2.36-.4-3.42-1.04v5.55a5.36 5.36 0 1 1-5.36-5.36c.3 0 .58.02.86.07v2.66a2.8 2.8 0 1 0 1.96 2.67V7.4z" fill="#25F4EE" transform="translate(-0.9,-0.6)"/><path d="M19.3 7.4c.34 2.06 1.66 3.4 3.62 3.6v2.55c-1.18 0-2.36-.4-3.42-1.04v5.55a5.36 5.36 0 1 1-5.36-5.36c.3 0 .58.02.86.07v2.66a2.8 2.8 0 1 0 1.96 2.67V7.4z" fill="#FE2C55" transform="translate(0.9,0.6)"/><path d="M19.3 7.4c.34 2.06 1.66 3.4 3.62 3.6v2.55c-1.18 0-2.36-.4-3.42-1.04v5.55a5.36 5.36 0 1 1-5.36-5.36c.3 0 .58.02.86.07v2.66a2.8 2.8 0 1 0 1.96 2.67V7.4z" fill="#fff"/></svg>
+                      </li>
+                      <li title="Lazada" aria-label="Lazada">
+                        <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><defs><linearGradient id="lzdg-home2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF0F64"/><stop offset=".55" stop-color="#FF6A00"/><stop offset="1" stop-color="#2A1A8A"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="#0E1466"/><path d="M16 23.5s-6.2-3.6-6.2-8.1A3.55 3.55 0 0 1 16 12.6a3.55 3.55 0 0 1 6.2 2.8c0 4.5-6.2 8.1-6.2 8.1z" fill="url(#lzdg-home2)"/></svg>
+                      </li>
+                      <li title="Blibli" aria-label="Blibli">
+                        <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0072BC"/><path d="M11.4 12.3a4.6 4.6 0 0 1 9.2 0" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M8.8 12h14.4l-1 11.2a1.6 1.6 0 0 1-1.6 1.45H11.4a1.6 1.6 0 0 1-1.6-1.45z" fill="#fff"/><circle cx="16" cy="18.4" r="2.2" fill="#0072BC"/></svg>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="hl-hero-art">
+                    <img src="/images/brand/mascot-hero.webp" width="1100" height="912" alt="Maskot Laris membawa produk yang siap dijual di Shopee" fetchpriority="high" decoding="async">
+                    <div class="stat-tile hl-hero-chip hl-hero-chip--1">
+                      <span class="stat-lbl">Revenue Estimasi</span>
+                      <span class="stat-val" style="color:var(--accent)">Rp 280jt <small style="font-weight:600;color:var(--muted)">/bulan</small></span>
+                    </div>
+                    <div class="stat-tile hl-hero-chip hl-hero-chip--2">
+                      <span class="stat-lbl">Permintaan</span>
+                      <span class="stat-val" style="color:var(--green)">Tinggi</span>
+                    </div>
+                    <div class="stat-tile hl-hero-chip hl-hero-chip--3">
+                      <span class="stat-lbl">Kompetisi</span>
+                      <span class="stat-val" style="color:var(--amber)">Sedang</span>
+                    </div>
+                    <div class="stat-tile hl-hero-chip hl-hero-chip--4">
+                      <span class="stat-lbl">Ease of Entry</span>
+                      <span class="stat-val">4.2 <small style="font-weight:600;color:var(--muted)">/5</small></span>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="hl-stats" aria-label="Statistik LarisID">
+                  <div class="hl-stat">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                    <div><div class="hl-stat-num">526K+</div><div class="hl-stat-label">Produk dianalisis</div></div>
+                  </div>
+                  <div class="hl-stat">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    <div><div class="hl-stat-num">Rp 14,6T+</div><div class="hl-stat-label">Estimasi omset/bulan</div></div>
+                  </div>
+                  <div class="hl-stat">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><path d="M8 7V5a2 2 0 0 0-4 0v2"/></svg>
+                    <div><div class="hl-stat-num">155K+</div><div class="hl-stat-label">Toko dibandingkan</div></div>
+                  </div>
+                  <div class="hl-stat">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".6" fill="currentColor"/></svg>
+                    <div><div class="hl-stat-num">85</div><div class="hl-stat-label">Kategori dicakup</div></div>
+                  </div>
+                </section>
+
+                <section class="hl-steps-section">
+                  <h2 class="hl-steps-head">Semua yang kamu butuhkan, dalam <span>satu platform.</span></h2>
+                  <div class="hl-steps">
+                    <div class="hl-step">
+                      <div class="hl-step-num">1</div>
+                      <div class="hl-step-title">Cari Produk</div>
+                      <p class="hl-step-desc">Temukan produk &amp; kategori dengan demand tinggi berdasarkan data penjualan marketplace.</p>
+                    </div>
+                    <div class="hl-step-arrow" aria-hidden="true">→</div>
+                    <div class="hl-step">
+                      <div class="hl-step-num">2</div>
+                      <div class="hl-step-title">Pantau Produk</div>
+                      <p class="hl-step-desc">Pantau performa produk dari waktu ke waktu. Dapatkan notifikasi saat ada perubahan penting.</p>
+                    </div>
+                    <div class="hl-step-arrow" aria-hidden="true">→</div>
+                    <div class="hl-step">
+                      <div class="hl-step-num">3</div>
+                      <div class="hl-step-title">Cari Supplier</div>
+                      <p class="hl-step-desc">Temukan supplier terpercaya dengan harga kompetitif untuk memulai jualan.</p>
+                    </div>
+                    <div class="hl-step-arrow" aria-hidden="true">→</div>
+                    <div class="hl-step">
+                      <div class="hl-step-num">4</div>
+                      <div class="hl-step-title">Pantau Kompetitor</div>
+                      <p class="hl-step-desc">Lihat strategi kompetitor, produk terlaris mereka, dan perubahan harga.</p>
+                    </div>
+                    <div class="hl-step-arrow" aria-hidden="true">→</div>
+                    <div class="hl-step">
+                      <div class="hl-step-num">5</div>
+                      <div class="hl-step-title">Ambil Keputusan</div>
+                      <p class="hl-step-desc">Semua data yang kamu butuhkan untuk memilih produk terbaik &amp; mulai jualan dengan percaya diri.</p>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="hl-cards" aria-label="Fitur utama Laris">
+                  <button type="button" class="hl-card" data-hl-card="produk" style="background-image:url('/images/brand/mascot-card-search.webp')">
+                    <span class="hl-card-shade"></span>
+                    <span class="hl-card-body">
+                      <span class="hl-card-title">Temukan Produk yang Layak Dijual</span>
+                      <span class="hl-card-sub">Bukan cuma produk yang laku.</span>
+                    </span>
+                    <span class="hl-card-arrow" aria-hidden="true">→</span>
+                  </button>
+                  <button type="button" class="hl-card" data-hl-card="tracker" style="background-image:url('/images/brand/mascot-card-monitor.webp')">
+                    <span class="hl-card-shade"></span>
+                    <span class="hl-card-body">
+                      <span class="hl-card-title">Pantau &amp; Dapatkan Notifikasi</span>
+                      <span class="hl-card-sub">Jangan sampai ketinggalan peluang.</span>
+                    </span>
+                    <span class="hl-card-arrow" aria-hidden="true">→</span>
+                  </button>
+                  <button type="button" class="hl-card" data-hl-card="supplier" style="background-image:url('/images/brand/mascot-card-supplier.webp')">
+                    <span class="hl-card-shade"></span>
+                    <span class="hl-card-body">
+                      <span class="hl-card-title">Cari Supplier Terbaik</span>
+                      <span class="hl-card-sub">Harga bersaing. Kualitas terjaga.</span>
+                    </span>
+                    <span class="hl-card-arrow" aria-hidden="true">→</span>
+                  </button>
+                  <button type="button" class="hl-card" data-hl-card="kompetitor" style="background-image:url('/images/brand/mascot-card-competitor.webp')">
+                    <span class="hl-card-shade"></span>
+                    <span class="hl-card-body">
+                      <span class="hl-card-title">Kenali Kompetitor</span>
+                      <span class="hl-card-sub">Selalu selangkah lebih maju.</span>
+                    </span>
+                    <span class="hl-card-arrow" aria-hidden="true">→</span>
+                  </button>
+                </section>
+
+                <section class="hl-ai">
+                  <div class="hl-ai-top">
+                    <div class="hl-ai-art">
+                      <img src="/images/brand/mascot-ai.webp" width="900" height="600" alt="Maskot Laris memakai headset, siap menjawab pertanyaan lewat Ask Laris" loading="lazy" decoding="async">
+                    </div>
+                    <div class="hl-ai-body">
+                      <p class="hl-ai-kicker">Bingung mulai dari mana?</p>
+                      <h2 class="hl-ai-title">Tanya Laris AI.<br>Jawabannya <em>pakai data</em>.</h2>
+                      <p class="hl-ai-sub">AI Laris terhubung langsung dengan data marketplace untuk memberikan rekomendasi terbaik untukmu.</p>
+                      <button type="button" class="hl-ai-cta" data-hl-start>
+                        Coba Ask Laris sekarang
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                      </button>
+                    </div>
+                    <div class="hl-ai-chat" aria-hidden="true">
+                      <div class="hl-ai-bubble hl-ai-bubble--user">Saya punya modal Rp5 juta. Cari 5 produk yang cocok untuk saya.</div>
+                      <div class="hl-ai-bubble hl-ai-bubble--assistant">Berikut 5 produk rekomendasi untuk modal Rp5 juta berdasarkan data penjualan terbaru.</div>
+                      <div class="hl-ai-bubble hl-ai-bubble--user">Bandingkan kompetisi produk rak dapur stainless vs rak kayu.</div>
+                    </div>
+                  </div>
+                  <div class="hl-ai-howto">
+                    <div class="hl-howto-item">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                      <div><b>Cari</b><span>Telusuri ribuan produk di berbagai marketplace.</span></div>
+                    </div>
+                    <div class="hl-howto-item">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-4 4"/></svg>
+                      <div><b>Analisis</b><span>Lihat demand, revenue, kompetisi &amp; peluang.</span></div>
+                    </div>
+                    <div class="hl-howto-item">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21 12 16l-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                      <div><b>Pilih</b><span>Temukan produk terbaik untuk kamu coba.</span></div>
+                    </div>
+                    <div class="hl-howto-item">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><path d="M8 7V5a2 2 0 0 0-4 0v2"/></svg>
+                      <div><b>Source</b><span>Cari supplier &amp; mulai jualan dengan percaya diri.</span></div>
+                    </div>
+                  </div>
+                  <div class="hl-ai-examples">
+                    <p class="hl-ai-examples-head">Contoh pertanyaan lainnya:</p>
+                    <div class="hl-ai-examples-list" id="hl-ai-examples-list"><!-- populated from ASK_LARIS_PROMPTS by JS --></div>
+                  </div>
+                </section>
+
+                <div class="hl-cta-band">
+                  <div class="hl-cta-band-text">
+                    <b>Jangan cuma ikut tren.<br><span>Cari peluangnya.</span></b>
+                    <p>Data marketplace Indonesia, dibuat untuk seller Indonesia.</p>
+                  </div>
+                  <button type="button" class="hl-btn hl-btn-primary" data-hl-start>
+                    Mulai Cari Produk
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Compact returning-visitor header — shown once body.home-finder-done
+                   is set (see updateHomeFinderVisibility). Kept as its own
+                   markup rather than reused from .hl-hero-title above so the
+                   two states can be styled and toggled independently. -->
+              <h1 class="home-title" id="home-title-compact">Apa yang kamu <br>mau <em>jual</em> hari ini?</h1>
+              <ul class="home-markets" id="home-markets-compact" aria-label="Marketplace yang didukung">
                 <li title="Shopee" aria-label="Shopee">
                   <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#EE4D2D"/><path d="M11.4 12.3a4.6 4.6 0 0 1 9.2 0" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M8.8 12h14.4l-1 11.2a1.6 1.6 0 0 1-1.6 1.45H11.4a1.6 1.6 0 0 1-1.6-1.45z" fill="#fff"/><path d="M16 15.8c-1.5 0-2.55.85-2.55 2.05 0 2.45 4.35 1.6 4.35 3.45 0 .85-.85 1.3-1.85 1.3-1 0-1.75-.4-2.2-1" fill="none" stroke="#EE4D2D" stroke-width="1.2" stroke-linecap="round"/></svg>
                 </li>
