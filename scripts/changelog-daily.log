@@ -1,6 +1,0 @@
-Not logged in · Please run /login
-SessionEnd hook [node "${CLAUDE_PLUGIN_ROOT}/hooks/session-end-cleanup.mjs"] failed: /bin/sh: node: command not found
-
-Not logged in · Please run /login
-SessionEnd hook [node "${CLAUDE_PLUGIN_ROOT}/hooks/session-end-cleanup.mjs"] failed: /bin/sh: node: command not found
-

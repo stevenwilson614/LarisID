@@ -1,33 +1,32 @@
-.DS_Store
-.env
-.env.local
-.env.*
+
 !.env.example
-supabase/.env
-supabase/.env.local
-supabase/.temp/
-
-node_modules/
-dist/
-.astro/
-
-# Programmatic SEO build cache (raw rows fetched by scripts/fetch-seo-raw.sh)
-scripts/_seo_raw/
-
 # IndexNow key helper (the public <key>.txt at root is committed; this copy is just for scripts)
+# Programmatic SEO build cache (raw rows fetched by scripts/fetch-seo-raw.sh)
+# Stale pre-cutover bundle backups (Jul 24) — never commit
+# local-only test harnesses (never deployed)
+*.harness.html
+*.pre-cutover.bak
+.DS_Store
+.aider*
+.astro/
+.claude/worktrees/
+.email-preview/
+.env
+.env.*
+.env.local
 .indexnow-key
 .preview-onboarding.html
 .venv-img/
 .venv-story/
-scroll-story-prototype.html
-redesign-preview.html
-redesign-preview-2.html
 _site/
-
-# local-only test harnesses (never deployed)
-*.harness.html
-.aider*
-.email-preview/
-
-# Stale pre-cutover bundle backups (Jul 24) — never commit
-*.pre-cutover.bak
+dist/
+node_modules/
+redesign-preview-2.html
+redesign-preview.html
+scripts/_seo_raw/
+scripts/changelog-daily.log
+scroll-story-prototype.html
+shopee_acct614.db
+supabase/.env
+supabase/.env.local
+supabase/.temp/
