@@ -151,6 +151,18 @@
     var v = call('fmtRp', n);
     return v == null ? 'Rp' + Math.round(n || 0) : v;
   }
+  // Compact currency ("Rp 8,5 jt" instead of "Rp 8.500.000") — used wherever
+  // space is tight (stat boxes, cards). Falls back to a hand-rolled version
+  // of the same host formatter if the adapter doesn't expose fmtRpShort.
+  function fmtRpShort(n) {
+    var v = call('fmtRpShort', n);
+    if (v != null) return v;
+    n = Number(n) || 0;
+    if (n >= 1e9) return 'Rp ' + (n / 1e9).toFixed(1).replace('.0', '') + ' M';
+    if (n >= 1e6) return 'Rp ' + (n / 1e6).toFixed(n >= 1e8 ? 0 : 1).replace('.0', '') + ' jt';
+    if (n >= 1e3) return 'Rp ' + Math.round(n / 1e3) + 'rb';
+    return fmtRp(n);
+  }
   function fmtDate(iso) {
     var v = call('fmtDate', iso);
     if (v != null) return v;
@@ -299,15 +311,16 @@
     if (!p) return null;                 // no baseline -> no percentage
     return ((c - p) / Math.abs(p)) * 100;
   }
-  function deltaHtml(cur, prev, enough, opts) {
-    opts = opts || {};
+  function deltaHtml(cur, prev, enough) {
     if (!enough) return '<span class="ltk-d ltk-d--new">Baru</span>';
     var pct = pctChange(cur, prev);
     if (pct === null) return '<span class="ltk-d ltk-d--flat">—</span>';
     var r = Math.round(pct * 10) / 10;
     if (Math.abs(r) < 0.05) return '<span class="ltk-d ltk-d--flat">' + arrowSvg(0) + ' 0%</span>';
-    // Lower is better for price: a falling average price is not a red flag.
-    var good = opts.inverse ? r < 0 : r > 0;
+    // + is always green, - is always red, regardless of metric (Steven's
+    // explicit call — a falling price used to render green as "good", but
+    // that read as a mislabeled minus sign more than an economic judgment).
+    var good = r > 0;
     return '<span class="ltk-d ' + (good ? 'ltk-d--up' : 'ltk-d--down') + '">' +
       arrowSvg(r) + ' ' + Math.abs(r).toFixed(Math.abs(r) < 10 ? 1 : 0) + '%</span>';
   }
@@ -331,26 +344,60 @@
     return (Number(r.n_days) || 0) >= MIN_DAYS_FOR_TREND;
   }
 
+  /* Real scrape dates — not array index — decide horizontal spacing, so two
+     scrapes a week apart stretch out instead of sitting flush against two
+     scraped a day apart. `series` can span any window (7 days or 90); this
+     works the same either way since it maps calendar time, not point count.
+     Returns null (caller draws nothing) if there's nothing to plot. */
+  function seriesXY(series, metricKey, w, h, pad) {
+    var pts = (series || []).map(function (p) {
+      return { t: Date.parse(p.d), v: Number(p[metricKey || 'omset']) || 0 };
+    }).filter(function (p) { return !isNaN(p.t); });
+    if (pts.length < 2) return null;
+    var minT = pts[0].t, maxT = pts[0].t;
+    pts.forEach(function (p) { if (p.t < minT) minT = p.t; if (p.t > maxT) maxT = p.t; });
+    var spanT = (maxT - minT) || 1;
+    var vals = pts.map(function (p) { return p.v; });
+    var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+    var span = (max - min) || 1;
+    return pts.map(function (p) {
+      return [
+        pad + ((p.t - minT) / spanT) * (w - pad * 2),
+        h - pad - ((p.v - min) / span) * (h - pad * 2),
+      ];
+    });
+  }
+
+  // Smooth curve through the REAL points via quadratic Bezier segments joined
+  // at each pair's midpoint — no invented values, just a nicer line than raw
+  // point-to-point segments (which look especially harsh/linear with only a
+  // few scrape dates). 2 points is still a straight line; math can't curve
+  // through 2 points without inventing a 3rd, and that would be fabricating
+  // data.
+  function tracePath(ctx, xy) {
+    ctx.beginPath();
+    ctx.moveTo(xy[0][0], xy[0][1]);
+    if (xy.length === 2) { ctx.lineTo(xy[1][0], xy[1][1]); return; }
+    for (var i = 1; i < xy.length - 1; i++) {
+      var mx = (xy[i][0] + xy[i + 1][0]) / 2, my = (xy[i][1] + xy[i + 1][1]) / 2;
+      ctx.quadraticCurveTo(xy[i][0], xy[i][1], mx, my);
+    }
+    var n = xy.length;
+    ctx.quadraticCurveTo(xy[n - 2][0], xy[n - 2][1], xy[n - 1][0], xy[n - 1][1]);
+  }
+
   /* Sparkline as raw canvas — the same choice the Deep Dive competitor table
      makes. Chart.js for a 60x22 line would be a 200KB dependency per row. */
   function drawSpark(cv, series, up, metricKey) {
     if (!cv || !cv.getContext) return;
-    var pts = (series || []).map(function (p) { return Number(p[metricKey || 'omset']) || 0; });
-    if (pts.length < 2) return;
     var dpr = global.devicePixelRatio || 1;
     var w = cv.clientWidth || 68, h = cv.clientHeight || 24;
     cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
     var ctx = cv.getContext('2d');
     ctx.scale(dpr, dpr);
-    var min = Math.min.apply(null, pts), max = Math.max.apply(null, pts);
-    var span = (max - min) || 1;
-    var pad = 3;
-    ctx.beginPath();
-    pts.forEach(function (v, i) {
-      var x = pad + (i / (pts.length - 1)) * (w - pad * 2);
-      var y = h - pad - ((v - min) / span) * (h - pad * 2);
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    });
+    var xy = seriesXY(series, metricKey, w, h, 3);
+    if (!xy) return;
+    tracePath(ctx, xy);
     ctx.strokeStyle = up ? '#16A34A' : '#DC2626';
     ctx.lineWidth = 1.6;
     ctx.lineJoin = 'round';
@@ -367,12 +414,12 @@
     });
   }
 
-  // The 3 metrics every stat block can show a trend for — omset/units up is
-  // good (green), avg_price up is bad (red, mirrors deltaHtml's `inverse`).
+  // The 3 metrics every stat block can show a trend for. Compact currency
+  // for omset/harga — the boxes are small, a full "Rp 62.000.000" doesn't fit.
   var STAT_METRICS = [
-    { key: 'omset', label: 'Omset', fmt: function (r) { return fmtRp(r.omset || 0); }, inverse: false },
-    { key: 'units', label: 'Unit', fmt: function (r) { return fmtUnits(r.units || 0); }, inverse: false },
-    { key: 'avg_price', label: 'Harga', fmt: function (r) { return fmtRp(r.avg_price || 0); }, inverse: true },
+    { key: 'omset', label: 'Omset', fmt: function (r) { return fmtRpShort(r.omset || 0); } },
+    { key: 'units', label: 'Unit', fmt: function (r) { return fmtUnits(r.units || 0); } },
+    { key: 'avg_price', label: 'Harga', fmt: function (r) { return fmtRpShort(r.avg_price || 0); } },
   ];
 
   // Bordered stat box: label, value, delta, and its own mini trend line —
@@ -384,7 +431,7 @@
     return '<div class="ltk-mstat">' +
       '<span class="ltk-mstat-lbl">' + esc(m.label) + '</span>' +
       '<span class="ltk-mstat-val">' + esc(m.fmt(r)) + '</span>' +
-      deltaHtml(r[m.key], r[m.key + '_prev'], trend, { inverse: m.inverse }) +
+      deltaHtml(r[m.key], r[m.key + '_prev'], trend) +
       (trend
         ? '<canvas class="ltk-mstat-spark" data-ltk-mspark="' + attr(rowKeyStr) + '|' + attr(m.key) +
           '" width="' + cw + '" height="' + ch + '"></canvas>'
@@ -400,9 +447,8 @@
       var row = (S.rollup.rows || []).filter(function (r) { return rowKey(r) === key; })[0];
       if (!row) return;
       var cur = Number(row[metricKey]) || 0, prev = Number(row[metricKey + '_prev']) || 0;
-      var risen = cur >= prev;
-      var favorable = metricKey === 'avg_price' ? !risen : risen;
-      drawSpark(cv, row.series, favorable, metricKey);
+      // Same rule as deltaHtml: up is always green, down is always red.
+      drawSpark(cv, row.series, cur >= prev, metricKey);
     });
   }
 
@@ -1197,7 +1243,7 @@
           deltaHtml(r.n_sellers, r.n_sellers_prev, trend) + '</td>'
         : '<td class="ltk-num"><b>' + esc(fmtAge(r.oldest_listing_date)) + '</b></td>') +
       '<td class="ltk-num"><b>' + esc(fmtRp(r.avg_price || 0)) + '</b>' +
-        deltaHtml(r.avg_price, r.avg_price_prev, trend, { inverse: true }) + '</td>' +
+        deltaHtml(r.avg_price, r.avg_price_prev, trend) + '</td>' +
       '<td class="ltk-num"><b>' + esc(fmtRating(r.avg_rating)) + '</b>' +
         deltaHtml(r.avg_rating, r.avg_rating_prev, trend) + '</td>' +
       '<td class="ltk-sparkcell">' +
@@ -1286,7 +1332,7 @@
     ];
     if (isKw) fields.push(['Toko Aktif', fmtUnits(r.n_sellers || 0), deltaHtml(r.n_sellers, r.n_sellers_prev, trend)]);
     else fields.push(['Usia Toko', fmtAge(r.oldest_listing_date), '']);
-    fields.push(['Rata-rata Harga', fmtRp(r.avg_price || 0), deltaHtml(r.avg_price, r.avg_price_prev, trend, { inverse: true })]);
+    fields.push(['Rata-rata Harga', fmtRp(r.avg_price || 0), deltaHtml(r.avg_price, r.avg_price_prev, trend)]);
     fields.push(['Rating', fmtRating(r.avg_rating), deltaHtml(r.avg_rating, r.avg_rating_prev, trend)]);
     // Matches the non-kebab columns: name + metrics + tren (toko Aktif / Usia swap 1:1).
     var colspan = 8;
@@ -1495,32 +1541,25 @@
   // labels so the line means something without hovering.
   function drawDetailChart(cv, series, metricKey) {
     if (!cv || !cv.getContext) return;
-    var pts = (series || []).map(function (p) { return Number(p[metricKey || 'omset']) || 0; });
-    if (pts.length < 2) return;
     var dpr = global.devicePixelRatio || 1;
     var w = cv.clientWidth || 280, h = cv.clientHeight || 120;
     cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
     var ctx = cv.getContext('2d');
     ctx.scale(dpr, dpr);
-    var min = Math.min.apply(null, pts), max = Math.max.apply(null, pts);
-    var span = (max - min) || 1;
     var pad = 8;
-    var up = pts[pts.length - 1] >= pts[0];
+    var xy = seriesXY(series, metricKey, w, h, pad);
+    if (!xy) return;
+    var up = xy[xy.length - 1][1] <= xy[0][1]; // smaller y = higher on canvas = higher value
     var color = up ? '#16A34A' : '#DC2626';
-    var xy = pts.map(function (v, i) {
-      return [pad + (i / (pts.length - 1)) * (w - pad * 2), h - pad - ((v - min) / span) * (h - pad * 2)];
-    });
-    // Soft fill under the line
-    ctx.beginPath();
-    ctx.moveTo(xy[0][0], h - pad);
-    xy.forEach(function (p) { ctx.lineTo(p[0], p[1]); });
+    // Soft fill under the curve
+    tracePath(ctx, xy);
     ctx.lineTo(xy[xy.length - 1][0], h - pad);
+    ctx.lineTo(xy[0][0], h - pad);
     ctx.closePath();
     ctx.fillStyle = up ? 'rgba(22,163,74,.08)' : 'rgba(220,38,38,.08)';
     ctx.fill();
     // Line
-    ctx.beginPath();
-    xy.forEach(function (p, i) { if (i === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]); });
+    tracePath(ctx, xy);
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
@@ -1573,6 +1612,7 @@
     var isKw = S.detailScope !== 'store';
     var trend = rowHasTrend(row);
     var metric = S.detailMetric || 'omset';
+    var activeStat = STAT_METRICS.filter(function (m) { return m.key === metric; })[0] || STAT_METRICS[0];
     p.innerHTML =
       '<div class="ltk-detail">' +
         '<button type="button" class="ltk-detail-back" data-ltk-detail-back>' +
@@ -1595,6 +1635,10 @@
         '</div>' +
         '<div class="ltk-detail-chart-wrap">' +
           '<div class="ltk-detail-chart-head">' +
+            '<div class="ltk-chart-value">' +
+              '<span class="ltk-chart-value-num">' + esc(activeStat.fmt(row)) + '</span>' +
+              deltaHtml(row[metric], row[metric + '_prev'], trend) +
+            '</div>' +
             '<div class="ltk-chart-toggles" role="tablist" aria-label="Metrik tren">' +
               CHART_TOGGLES.map(function (t) {
                 return '<button type="button" role="tab" class="ltk-chart-toggle' + (metric === t.key ? ' is-active' : '') +

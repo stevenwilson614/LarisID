@@ -685,7 +685,10 @@
 .ltk-card-stats {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px;
 }
-.ltk-mstat { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ltk-mstat {
+  display: flex; flex-direction: column; gap: 3px; min-width: 0;
+  border: 1px solid #E5E7EB; border-radius: 10px; padding: 8px 10px;
+}
 .ltk-mstat-lbl {
   font-size: .62rem; font-weight: 700; color: #9CA3AF; text-transform: uppercase;
   letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -737,7 +740,12 @@
 .ltk-detail-chart-wrap {
   border: 1px solid #E5E7EB; border-radius: var(--ltk-r); padding: 16px; margin-bottom: 16px;
 }
-.ltk-detail-chart-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.ltk-detail-chart-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 12px; margin-bottom: 10px; flex-wrap: wrap;
+}
+.ltk-chart-value { display: flex; align-items: center; gap: 8px; }
+.ltk-chart-value-num { font-size: 1.15rem; font-weight: 800; color: #1A1A1A; }
 .ltk-chart-toggles {
   display: flex; gap: 4px; background: #F3F4F6; border-radius: 999px; padding: 3px; width: fit-content;
 }
