@@ -798,6 +798,49 @@ function renderHomeLandingExamples() {
   });
 }
 
+// Ask Laris AI landing demo (Bandung/fashion example) — real listings
+// (item_id/shop_id/product_name/image_url/price/total_sold/rating/store_name
+// all pulled from the live DB), hardcoded since this is a one-time scripted
+// demo, not a live query — see initLandingAiDemo().
+const LP_AI_DEMO_QUESTION = 'Saya tinggal di Bandung mau jual fashion';
+const LP_AI_DEMO_ANSWER = 'Kebanyakan toko di kategori Fashion Wanita jual sekitar Rp6 juta/bulan. Berikut beberapa produk yang sedang laris:';
+const LP_AI_DEMO_PRODUCTS = [
+  { item_id: 23556740749, shop_id: 1076839816, product_name: 'KKTOP - Jaket Olahraga Anti UV Wanita Baju Olahraga UPF100+ Breathable Outdoor Cepat Kering (J001)', image_url: 'https://cf.shopee.co.id/file/id-11134207-822wp-mmr1603rhp1i19', price: 118423, total_sold: 200000, rating: 4.9, store_name: 'KKTOP Official Store', category: 'Fashion' },
+  { item_id: 2869284259, shop_id: 92166242, product_name: 'KAOS SLIMFIT WANITA POLOS ONECK COTTON COMBED 30S - BAJU KAOS LENGAN PENDEK SLIM FIT', image_url: 'https://cf.shopee.co.id/file/id-11134207-7rbk8-m9l3qoheobh984', price: 32000, total_sold: 100000, rating: 4.91, store_name: 'PT NET PERSADA INDONESIA', category: 'Fashion' },
+  { item_id: 22900976851, shop_id: 790124701, product_name: 'WiZi Jaket Airism Anti UV Baju Olahraga Wanita Airy Jaket Pelindung Matahari Wanita UPF50+ (MT02)', image_url: 'https://cf.shopee.co.id/file/id-11134207-7r991-lw822qdb7x9ac1', price: 108304, total_sold: 100000, rating: 4.93, store_name: 'Wizi Official Shop', category: 'Fashion' },
+  { item_id: 798272479, shop_id: 39074473, product_name: 'Bajubaja Basic Tshirt A Perfect Fit 100% Cotton Combat 24s Lembut, Adem dan Nyerap Keringat', image_url: 'https://cf.shopee.co.id/file/id-11134207-7ra0k-mcagprzmta7271', price: 63899, total_sold: 90000, rating: 4.87, store_name: 'Bajubaja Official', category: 'Fashion' },
+  { item_id: 13650047760, shop_id: 591177922, product_name: '[ GROSIR ] Kaos Polos Cotton Combed 24s Lengan Pendek / Pakaian Pria Oneck / Baju Pria / UNISEX / BASIC TEE / Atasan', image_url: 'https://cf.shopee.co.id/file/id-11134207-7r98o-lkm2oxux8e8l91', price: 34900, total_sold: 70000, rating: 4.85, store_name: 'KAOS POLOS ORLANDO', category: 'Fashion' },
+  { item_id: 4240578095, shop_id: 34297519, product_name: 'Kaos Polos Atasan Pria Wanita Oblong Pendek Soft TC24s M-XXL Premium S M L XL 2XL 2L', image_url: 'https://cf.shopee.co.id/file/id-11134207-7rbka-m6tyq5qoahvt4e', price: 23000, total_sold: 70000, rating: 4.8, store_name: 'GudangKaosP0l0s', category: 'Fashion' },
+];
+
+let _lpAiDemoRan = false;
+function initLandingAiDemo() {
+  const section = $('hl-ai-demo');
+  const qEl = $('hl-ai-demo-q');
+  const aEl = $('hl-ai-demo-a');
+  const cardsEl = $('hl-ai-demo-cards');
+  if (!section || !qEl || !aEl || !cardsEl || typeof IntersectionObserver !== 'function') return;
+  const io = new IntersectionObserver((entries) => {
+    if (_lpAiDemoRan || !entries.some(e => e.isIntersecting)) return;
+    _lpAiDemoRan = true;
+    io.disconnect();
+    void (async () => {
+      await _typeTextNode(qEl, LP_AI_DEMO_QUESTION, _streamGen, 26, () => {});
+      await _sleep(400);
+      aEl.hidden = false;
+      await _typeTextNode(aEl, LP_AI_DEMO_ANSWER, _streamGen, 40, () => {});
+      await _sleep(250);
+      const products = LP_AI_DEMO_PRODUCTS.map(p => asListingProduct({
+        ...p, nowcast_omset_monthly: Math.round((p.price * p.total_sold) / 6),
+      }));
+      cardsEl.hidden = false;
+      cardsEl.innerHTML = `<div class="card-grid">${products.map((p, i) => productCardHtml(p, i)).join('')}</div>`;
+      requestAnimationFrame(() => cardsEl.classList.add('is-shown'));
+    })();
+  }, { threshold: 0.35 });
+  io.observe(section);
+}
+
 /** Sidebar "Ask Laris" entry — same landing as clicking the logo. */
 function openAskLaris() {
   abortAssistantStream();
@@ -12150,6 +12193,7 @@ async function boot() {
   // default arm anywhere.
 
   wireUi();
+  initLandingAiDemo();
   document.getElementById('gpt-limit-close')?.addEventListener('click', gptLimitClose);
   document.getElementById('gpt-limit-spin')?.addEventListener('click', () => { gptLimitClose(); spinShow(); });
   document.getElementById('gpt-limit-feedback')?.addEventListener('click', gptOpenFeedbackForBonus);

@@ -2703,6 +2703,15 @@ body.home-finder-done .home-title {
 .hl-ai-bubble { max-width: 88%; padding: 10px 14px; border-radius: 14px; font-size: .78rem; line-height: 1.4; background: #fff; color: var(--ink); }
 .hl-ai-bubble--user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
 .hl-ai-bubble--assistant { align-self: flex-start; border-bottom-left-radius: 4px; }
+/* Ask Laris AI demo — typed question/answer (see initLandingAiDemo) followed
+   by real product cards, reusing .card-grid/.prod-card so they read exactly
+   like real search results instead of a separate visual language. */
+.hl-ai-demo-cards {
+  margin-top: 18px; opacity: 0; transition: opacity .5s var(--ease, ease);
+}
+.hl-ai-demo-cards.is-shown { opacity: 1; }
+.hl-ai-demo-cards .card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 0; }
+@media (max-width: 760px) { .hl-ai-demo-cards .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .hl-ai-howto { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 28px; padding-top: 24px; border-top: 1px solid rgba(181,32,42,.14); }
 .hl-howto-item { display: flex; align-items: flex-start; gap: 10px; }
 .hl-howto-item svg { flex-shrink: 0; stroke: var(--accent); margin-top: 1px; }
@@ -4356,12 +4365,12 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                       </button>
                     </div>
-                    <div class="hl-ai-chat" aria-hidden="true">
-                      <div class="hl-ai-bubble hl-ai-bubble--user">Saya punya modal Rp5 juta. Cari 5 produk yang cocok untuk saya.</div>
-                      <div class="hl-ai-bubble hl-ai-bubble--assistant">Berikut 5 produk rekomendasi untuk modal Rp5 juta berdasarkan data penjualan terbaru.</div>
-                      <div class="hl-ai-bubble hl-ai-bubble--user">Bandingkan kompetisi produk rak dapur stainless vs rak kayu.</div>
+                    <div class="hl-ai-chat" aria-hidden="true" id="hl-ai-demo">
+                      <div class="hl-ai-bubble hl-ai-bubble--user" id="hl-ai-demo-q"></div>
+                      <div class="hl-ai-bubble hl-ai-bubble--assistant" id="hl-ai-demo-a" hidden></div>
                     </div>
                   </div>
+                  <div class="hl-ai-demo-cards" id="hl-ai-demo-cards" hidden></div>
                   <div class="hl-ai-howto">
                     <div class="hl-howto-item">
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
@@ -5099,7 +5108,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script defer src="/js/gpt-community-board.js?v=20260811a"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260810a"></script>
 <script defer src="/js/laris-mascot.js?v=20260810a"></script>
-<script src="/js/gpt-app.js?v=20260811d" defer></script>
+<script src="/js/gpt-app.js?v=20260811e" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>
 </html>
