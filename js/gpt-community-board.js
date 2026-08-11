@@ -7,6 +7,7 @@
   let _activeKind = 'all'; // all | feature | complaint
   let _posts = [];
   let _expandedPostIds = new Set();
+  let _expandedBodyIds = new Set();
   let _commentsCache = {};
 
   const STATUS_META = {
@@ -172,6 +173,21 @@
     renderCommentsForPost(postId);
   }
 
+  // Independent of toggleComments — a long usulan body shouldn't force the
+  // comment thread open just to read the rest of it.
+  function toggleBody(postId) {
+    const post = _posts.find((p) => p.id === postId);
+    const card = _listEl && _listEl.querySelector(`.msb-card[data-post-id="${postId}"]`);
+    if (!post || !card) return;
+    if (_expandedBodyIds.has(postId)) _expandedBodyIds.delete(postId);
+    else _expandedBodyIds.add(postId);
+    const nowExpanded = _expandedBodyIds.has(postId);
+    const bodyEl = card.querySelector('.msb-body');
+    const toggleBtn = card.querySelector('.msb-body-toggle');
+    if (bodyEl) bodyEl.innerHTML = bodyHtml(truncateBody(post.body || '', nowExpanded));
+    if (toggleBtn) toggleBtn.textContent = nowExpanded ? 'Sembunyikan' : 'Baca selengkapnya';
+  }
+
   function toggleComments(postId) {
     const section = _listEl && _listEl.querySelector(`[data-comments-for="${postId}"]`);
     if (!section) return;
@@ -282,7 +298,10 @@
       card.className = 'msb-card';
       card.dataset.postId = post.id;
       const isExpanded = _expandedPostIds.has(post.id);
-      const bodyText = truncateBody(post.body || '', isExpanded);
+      const rawBody = post.body || '';
+      const bodyExpanded = _expandedBodyIds.has(post.id);
+      const bodyText = truncateBody(rawBody, bodyExpanded);
+      const needsBodyToggle = rawBody.length > 220;
       const commentLabel = `${post.comment_count || 0} komentar`;
       card.innerHTML = `
         <button type="button" class="msb-vote ${post.liked_by_me ? 'is-liked' : ''}" data-action="like" data-post-id="${post.id}" aria-label="Dukung usulan">
@@ -304,6 +323,7 @@
             <span class="msb-date">${formatDate(post.created_at)}</span>
           </div>
           <p class="msb-body">${bodyHtml(bodyText)}</p>
+          ${needsBodyToggle ? `<button type="button" class="msb-body-toggle" data-action="toggle-body" data-post-id="${post.id}">${bodyExpanded ? 'Sembunyikan' : 'Baca selengkapnya'}</button>` : ''}
           <div class="msb-card-foot">
             ${kindChipHtml(post.kind)}
             <button type="button" class="msb-comments-count" data-action="toggle-comments" data-post-id="${post.id}">
@@ -551,6 +571,12 @@
         margin: 8px 0 0; font-size: .9rem; line-height: 1.5; color: #4B5563;
         white-space: pre-wrap;
       }
+      .msb-body-toggle {
+        display: inline-block; margin: 4px 0 0; padding: 0;
+        background: none; border: none; cursor: pointer;
+        font-size: .82rem; font-weight: 700; color: var(--msb-red);
+      }
+      .msb-body-toggle:hover { text-decoration: underline; }
       .msb-card-foot {
         display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px;
       }
@@ -610,7 +636,7 @@
         .msb-hero-text { align-self: stretch; padding: 4px 0 0; }
         .msb-hero-text p { margin-left: auto; margin-right: auto; }
         .msb-hero-text .msb-btn-primary { margin: 0 auto; }
-        .msb-hero-mascot { align-self: center; margin: 0 0 -28px; order: -1; }
+        .msb-hero-mascot { align-self: center; margin: 0 0 4px; order: -1; }
         .msb-hero-mascot img { width: 200px; }
         .msb-panel { padding: 14px 14px 18px; border-radius: 18px; }
         .msb-card { grid-template-columns: 58px 1fr; padding: 12px 10px; }
@@ -706,6 +732,9 @@
       } else if (action === 'like') {
         e.preventDefault();
         await toggleLike(postId);
+      } else if (action === 'toggle-body') {
+        e.preventDefault();
+        toggleBody(postId);
       } else if (action === 'toggle-comments') {
         e.preventDefault();
         toggleComments(postId);

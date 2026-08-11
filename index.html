@@ -1437,18 +1437,18 @@ body.view-community .panel-inner {
   background: #fff;
 }
 @media (max-width: 760px) {
+  /* Keep the title budged up against the Garuda instead of stacking it
+     above/below — shrink the mascot and let the text column narrow to
+     make room, same split layout as desktop just smaller. */
   .meta-hero--split {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 8px;
+    align-items: flex-end;
+    gap: 8px 12px;
   }
-  .meta-hero-text { align-self: stretch; padding-bottom: 0; }
-  .meta-hero-lead { margin: 0 auto; }
-  .meta-hero-mascot { margin: 4px 0 -2px; }
-  .meta-hero-mascot img { width: 200px; }
-  .meta-hero-mascot--harga img { width: 220px; }
-  .meta-hero-mascot--tentang img { width: 214px; }
+  .meta-hero-text { align-self: center; padding-bottom: 4px; }
+  .meta-hero-mascot { margin: 0 -6px -18px 0; }
+  .meta-hero-mascot img { width: 126px; }
+  .meta-hero-mascot--harga img { width: 144px; }
+  .meta-hero-mascot--tentang img { width: 140px; }
 }
 .meta-kicker {
   margin: 0 0 6px;
@@ -5007,7 +5007,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script defer src="/js/gpt-photo-analyze.js?v=20260808a"></script>
 <script defer src="/js/gpt-referral.js?v=20260808a"></script>
 <script defer src="/js/gpt-profile.js?v=20260808c"></script>
-<script defer src="/js/gpt-community-board.js?v=20260810a"></script>
+<script defer src="/js/gpt-community-board.js?v=20260811a"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260810a"></script>
 <script defer src="/js/laris-mascot.js?v=20260810a"></script>
 <script src="/js/gpt-app.js?v=20260810a" defer></script>
