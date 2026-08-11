@@ -6684,11 +6684,15 @@ async function _deepseekPlan(query) {
       + 'Given a shopper search text, reply with ONLY strict minified JSON, no prose: '
       + '{"queries":["short keywords for the SAME product niche — prefer specific Indonesian marketplace '
       + 'terms first, then English equivalents and common misspellings, max 8"],'
-      + '"exclude":["lowercase words that would pull in UNRELATED products sharing a token, max 10"]}. '
+      + '"exclude":["lowercase words that would pull in UNRELATED products sharing a token, max 10"],'
+      + '"brand":"the corrected/canonical spelling of a real product brand the shopper named or clearly '
+      + 'meant (fix obvious typos, e.g. \'Valentina\'→\'Valentino\'), or null if no brand is named or implied"}. '
       + 'Rules: (1) Expand English product nouns into Indonesian seller keywords for THAT niche — '
       + 'e.g. "dresses" → "gaun","dress wanita","baju pesta","gaun pesta"; "tumbler" → "tumbler","botol minum"; '
       + '"serum" → "serum wajah","skincare serum". (2) Prefer specific product terms over broad category '
-      + 'labels like "fashion","pakaian","kecantikan". (3) Never invent product names, brands, prices or descriptions.';
+      + 'labels like "fashion","pakaian","kecantikan". (3) Never invent product names, brands, prices or '
+      + 'descriptions — "brand" may only correct/normalize a name already present in the search text, never '
+      + 'introduce one that isn\'t there.';
     const res = await fetch(`${SUPA_URL}/functions/v1/claude-proxy`, {
       method: 'POST',
       headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json' },
@@ -6709,7 +6713,12 @@ async function _deepseekPlan(query) {
     const parsed = JSON.parse(m[0]);
     const clean = (arr, n) => Array.isArray(arr)
       ? arr.map(s => String(s || '').trim()).filter(Boolean).slice(0, n) : [];
-    return { queries: clean(parsed.queries, 8), exclude: clean(parsed.exclude, 10).map(s => s.toLowerCase()) };
+    const brand = String(parsed.brand || '').trim();
+    return {
+      queries: clean(parsed.queries, 8),
+      exclude: clean(parsed.exclude, 10).map(s => s.toLowerCase()),
+      brand: brand && brand.toLowerCase() !== 'null' ? brand : null,
+    };
   } catch (_) { return null; }
 }
 
@@ -6718,17 +6727,18 @@ async function _deepseekPlan(query) {
 async function planSearch(text) {
   const cleaned = String(text || '').replace(/\s+/g, ' ').trim();
   const key = cleaned.toLowerCase();
-  if (!key) return { queries: [], exclude: [], category: null };
+  if (!key) return { queries: [], exclude: [], category: null, brand: null };
   const cached = _synCacheGet(key);
   if (cached) return cached;
   const seed = _staticPlan(cleaned);
   const ai = await _deepseekPlan(cleaned);
-  if (!ai) return seed;
+  if (!ai) return { ...seed, brand: null };
   const uniq = (arr, n) => Array.from(new Set(arr.filter(Boolean))).slice(0, n);
   const plan = {
     queries: uniq([...ai.queries, ...seed.queries], 10),
     exclude: uniq([...ai.exclude, ...seed.exclude], 12),
     category: seed.category,
+    brand: ai.brand || null,
   };
   _synCacheSet(key, plan);
   return plan;
@@ -6757,13 +6767,20 @@ async function searchProductsForQuery(text, locations = [], limit = 12) {
   const phrase = lower;
 
   // Smart, multilingual query plan (curated craft map + DeepSeek, cached).
+  // plan.brand is a corrected/canonical brand name DeepSeek recognized in the
+  // text (e.g. "Valentina" -> "Valentino"), never an invented one — see the
+  // "never invent" rule in _deepseekPlan's system prompt.
   const plan = await planSearch(cleaned);
   const planQueries = (plan.queries || []).filter(Boolean);
   const exclude = plan.exclude || [];
+  const brand = plan.brand || null;
   const synonyms = _planSynonymTerms(terms, planQueries);
   const opts = { synonyms, exclude };
 
   // Fetch the original phrase + every planned query in PARALLEL, merge + dedupe.
+  // The corrected brand (if any) runs as its own query too, right after the
+  // raw phrase — a typo like "Valentina" often won't trigram-match anything,
+  // but the corrected "Valentino" can find real listings the raw text misses.
   const pool = [];
   const seenQ = new Set();
   const runQ = async (q) => {
@@ -6772,7 +6789,7 @@ async function searchProductsForQuery(text, locations = [], limit = 12) {
     seenQ.add(qq.toLowerCase());
     return searchListings(qq, locations, Math.max(limit * 2, 40));
   };
-  const queries = [cleaned, ...planQueries].slice(0, 9);
+  const queries = [cleaned, ...(brand ? [brand] : []), ...planQueries].slice(0, 9);
   const results = await Promise.all(queries.map(runQ));
   for (const r of results) mergePool(pool, r);
 
@@ -6793,14 +6810,28 @@ async function searchProductsForQuery(text, locations = [], limit = 12) {
     ranked = filterRelevantHits(adjacent, terms, phrase, opts);
     if (!ranked.length) ranked = adjacent.slice();
     if (!ranked.length) {
-      return { products: [], mode: 'clarify', domain, terms };
+      return { products: [], mode: 'clarify', domain, terms, brand };
+    }
+  }
+
+  // Last-resort rescue: typo-tolerant keyword match (same fuzzy pool used by
+  // the Produk-page autosuggest) against the niche/type terms, dropping any
+  // brand token that clearly didn't survive to a real listing.
+  if (!ranked.length) {
+    const fuzzyBase = brand ? cleaned.replace(new RegExp(_rbNormStr(brand), 'i'), ' ') : cleaned;
+    const fuzzyHits = await _rbFuzzyMatch(fuzzyBase, 4);
+    if (fuzzyHits.length) {
+      const extra = await Promise.all(fuzzyHits.map(h => runQ(h.keyword)));
+      for (const r of extra) mergePool(pool, r);
+      ranked = filterRelevantHits(pool, terms, phrase, opts);
+      if (!ranked.length) ranked = pool.slice(0, limit);
     }
   }
 
   if (ranked.length) {
-    return { products: mergePool([], ranked).slice(0, limit), mode: 'ok', domain, terms };
+    return { products: mergePool([], ranked).slice(0, limit), mode: 'ok', domain, terms, brand };
   }
-  return { products: [], mode: 'clarify', domain, terms };
+  return { products: [], mode: 'clarify', domain, terms, brand };
 }
 
 function searchClarifyHtml(text, domain) {
@@ -6816,10 +6847,29 @@ function searchClarifyHtml(text, domain) {
   const ask = domain?.id === 'food'
     ? 'Maksud kamu yang mana?'
     : 'Coba salah satu arah ini, atau ketik kata kunci lain:';
-  return `<p>${lead}</p><p>${ask}</p>
+  return `<p>${lead}</p>
+    <p class="dd-sub">Kami catat pencarian ini untuk pertimbangan scrape berikutnya.</p>
+    <p>${ask}</p>
     <div class="chips" style="margin-top:10px">${suggestions.map(s =>
       `<button type="button" class="chip" data-suggest-q="${esc(s.q)}">${esc(s.label)}</button>`
     ).join('')}</div>`;
+}
+
+// Best-effort telemetry for the true "belum ketemu" dead end — see
+// supabase/migrations/20260811130000_uncovered_searches.sql. Never blocks or
+// throws into the reply path; a missed log beats a broken search reply.
+async function logUncoveredSearch(rawText, opts = {}) {
+  if (!_supabase) return;
+  const query_raw = String(rawText || '').trim().slice(0, 200);
+  if (query_raw.length < 2) return;
+  try {
+    await _supabase.from('uncovered_searches').insert({
+      query_raw,
+      brand: opts.brand || null,
+      category: opts.category || null,
+      user_id: currentUser?.id || null,
+    });
+  } catch (_) { /* best-effort only */ }
 }
 
 function bindSearchSuggests(root) {
@@ -6873,7 +6923,21 @@ async function replyWithPasarTypes(chat, text, types, opts = {}) {
   const lead = en
     ? `${types.length} market${types.length > 1 ? 's' : ''} matching \u201c${esc(opts.label || text)}\u201d${placeLabel ? ` around <strong>${esc(placeLabel)}</strong>` : ''} \u2014 each card is a whole market, not one listing:`
     : `${types.length} pasar yang cocok dengan \u201c${esc(opts.label || text)}\u201d${placeLabel ? ` di sekitar <strong>${esc(placeLabel)}</strong>` : ''} \u2014 tiap kartu itu satu pasar, bukan satu listing:`;
-  const html = `<p>${lead}</p><div class="card-grid">${types.map((t, i) => typeCardHtml(t, i, i)).join('')}</div>`;
+  // When the query named a brand (DeepSeek-corrected) but none of the markets
+  // we're about to show actually carry it, say so explicitly instead of
+  // silently substituting the closest product type \u2014 this is the
+  // brand-vs-type breakdown the "belum ketemu untuk brand X" reports asked for.
+  let brandNote = '';
+  if (opts.brand) {
+    const bNorm = _rbNormStr(opts.brand);
+    const brandSeen = types.some(t => _rbNormStr(`${t.keyword || ''} ${t.rep_product_name || ''}`).includes(bNorm));
+    if (!brandSeen) {
+      brandNote = en
+        ? `<p>We don't have data for the brand <strong>${esc(opts.brand)}</strong> \u2014 showing the closest matching product type instead:</p>`
+        : `<p>Brand <strong>${esc(opts.brand)}</strong> belum ada di data kami \u2014 menampilkan tipe produk yang paling mirip:</p>`;
+    }
+  }
+  const html = `${brandNote}<p>${lead}</p><div class="card-grid">${types.map((t, i) => typeCardHtml(t, i, i)).join('')}</div>`;
   if (loading) await revealAssistant(loading, html);
   else await appendAssistantStream(html);
   pushMessage(chat, 'assistant', {
@@ -10432,7 +10496,7 @@ async function handleComposerSubmit(text) {
     const result = await searchProductsForQuery(cleaned, locations, 24);
     const widened = await typesForListings(result.products, place.city || '', 12);
     if (widened.length && await replyWithPasarTypes(chat, text, widened, {
-      loading, label: cleaned, placeLabel,
+      loading, label: cleaned, placeLabel, brand: result.brand,
     })) return;
 
     state.recommendations = [];
@@ -10452,6 +10516,7 @@ async function handleComposerSubmit(text) {
       bumpAnonSearch();
     }
     const html = searchClarifyHtml(text, result.domain);
+    void logUncoveredSearch(text, { brand: result.brand, category: result.domain?.id || null });
     if (loading) await revealAssistant(loading, html);
     else await appendAssistantStream(html);
     pushMessage(chat, 'assistant', {
