@@ -7615,24 +7615,30 @@ function gptTrackerAdapter() {
       } catch (_) {}
       try { openDirectory(); } catch (_) {}
     },
-    // "Performa per Toko" on the tracker's product detail screen — top
-    // stores selling this keyword, from the same breakout matview the Deep
-    // Dive Kompetitor tab's "Patokan Pemenang" card already reads.
-    async getKeywordSuppliers(keyword) {
+    // "Performa per Toko" on the tracker's product detail screen — per
+    // Steven's direction this is really the top individual listings for
+    // this keyword, labeled by the store each one belongs to (not a
+    // per-store aggregate, which mv_supplier_leaderboard could show but
+    // with no history to compute a real % change from). mv_trending has
+    // both total_sold for ranking and delta_7d/delta_prev_7d for a real,
+    // non-fabricated change — same matview fetchTrending() already reads.
+    async getKeywordTopListings(keyword) {
       if (!keyword || !_supabase) return [];
       try {
-        const { data } = await _supabase.from('mv_supplier_leaderboard')
-          .select('shop_id,store_name,location,niche_sold,avg_price,avg_rating,rnk')
-          .eq('keyword', keyword).order('rnk', { ascending: true }).limit(5);
+        const { data } = await _supabase.from('mv_trending')
+          .select('item_id,shop_id,store_name,product_name,image_url,price,total_sold,delta_7d,delta_prev_7d')
+          .eq('keyword', keyword).order('total_sold', { ascending: false }).limit(5);
         return data || [];
       } catch (_) { return []; }
     },
-    // "Produk Teratas" on the tracker's store detail screen.
-    async getStoreTopProducts(shopId) {
+    // "Produk Teratas" on the tracker's store detail screen — same shape,
+    // filtered by shop instead of keyword, so detailPeersHtml can render
+    // both scopes with one renderer.
+    async getStoreTopListings(shopId) {
       if (shopId == null || !_supabase) return [];
       try {
-        const { data } = await _supabase.from('listings_latest')
-          .select('item_id,product_name,price,total_sold,image_url')
+        const { data } = await _supabase.from('mv_trending')
+          .select('item_id,shop_id,store_name,product_name,image_url,price,total_sold,delta_7d,delta_prev_7d')
           .eq('shop_id', shopId).order('total_sold', { ascending: false }).limit(5);
         return data || [];
       } catch (_) { return []; }

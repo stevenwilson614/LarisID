@@ -84,6 +84,7 @@
     detailScope: 'keyword',           // scope the detail screen was opened from
     detailPeers: [],                  // suppliers (product) or top products (store)
     detailPeersLoading: false,
+    detailMetric: 'omset',            // which chart the toggle row is showing
   };
 
   // Uncommitted setup draft. Nothing here is persisted or sent until commit.
@@ -1467,12 +1468,13 @@
     S.detailScope = S.tab;
     S.detailPeers = [];
     S.detailPeersLoading = true;
+    S.detailMetric = 'omset';
     showScreen('detail');
     renderDetail();
     var isKw = S.detailScope !== 'store';
     var fetchPeers = isKw
-      ? callP('getKeywordSuppliers', row.keyword)
-      : callP('getStoreTopProducts', row.shop_id);
+      ? callP('getKeywordTopListings', row.keyword)
+      : callP('getStoreTopListings', row.shop_id);
     fetchPeers.then(function (rows) {
       if (S.detailKey !== key) return; // user already navigated away
       S.detailPeers = rows || [];
@@ -1491,9 +1493,9 @@
   // Bigger sibling of drawSpark for the detail screen's single-metric chart —
   // same raw-canvas approach (no charting lib for one line), plus min/max
   // labels so the line means something without hovering.
-  function drawDetailChart(cv, series) {
+  function drawDetailChart(cv, series, metricKey) {
     if (!cv || !cv.getContext) return;
-    var pts = (series || []).map(function (p) { return Number(p.omset) || 0; });
+    var pts = (series || []).map(function (p) { return Number(p[metricKey || 'omset']) || 0; });
     if (pts.length < 2) return;
     var dpr = global.devicePixelRatio || 1;
     var w = cv.clientWidth || 280, h = cv.clientHeight || 120;
@@ -1526,6 +1528,12 @@
     ctx.stroke();
   }
 
+  // Shared row-list for both scopes — mv_trending returns the same shape
+  // (item_id, shop_id, store_name, product_name, image_url, price,
+  // delta_7d, delta_prev_7d) either way, only the label swaps: the product
+  // detail screen names the store selling each top listing (per Steven's
+  // direction — "Performa per Toko" is really the top listings for this
+  // keyword, labeled by store), the store detail screen names the product.
   function detailPeersHtml(isKw) {
     if (S.detailPeersLoading) return '<p class="ltk-detail-peers-note">Memuat…</p>';
     var rows = S.detailPeers || [];
@@ -1533,24 +1541,28 @@
       return '<p class="ltk-detail-peers-note">' +
         (isKw ? 'Belum ada data toko untuk produk ini.' : 'Belum ada data produk untuk toko ini.') + '</p>';
     }
-    if (isKw) {
-      return '<table class="ltk-detail-peers-table">' +
-        '<thead><tr><th>Toko</th><th>Unit Terjual</th><th>Harga Rata-rata</th></tr></thead>' +
-        '<tbody>' + rows.map(function (s) {
-          return '<tr><td>' + esc(s.store_name || ('Toko ' + s.shop_id)) +
-            (s.location ? '<span class="ltk-detail-peers-sub">' + esc(s.location) + '</span>' : '') + '</td>' +
-            '<td>' + esc(fmtUnits(s.niche_sold || 0)) + '</td>' +
-            '<td>' + esc(fmtRp(s.avg_price || 0)) + '</td></tr>';
-        }).join('') + '</tbody></table>';
-    }
     return '<table class="ltk-detail-peers-table">' +
-      '<thead><tr><th>Produk</th><th>Unit Terjual</th><th>Harga</th></tr></thead>' +
-      '<tbody>' + rows.map(function (p) {
-        return '<tr><td>' + esc(p.product_name || '—') + '</td>' +
-          '<td>' + esc(fmtUnits(p.total_sold || 0)) + '</td>' +
-          '<td>' + esc(fmtRp(p.price || 0)) + '</td></tr>';
+      '<thead><tr><th>' + (isKw ? 'Toko' : 'Produk') + '</th><th>Omset (Estimasi 30 Hari)</th><th>Perubahan</th></tr></thead>' +
+      '<tbody>' + rows.map(function (r) {
+        var label = isKw ? (r.store_name || ('Toko ' + r.shop_id)) : (r.product_name || '—');
+        var enough = r.delta_prev_7d != null;
+        var estOmset = Math.round((Number(r.price) || 0) * (Number(r.delta_7d) || 0) * 30 / 7);
+        return '<tr>' +
+          '<td class="ltk-detail-peers-row">' +
+            imgOr(r.image_url || '', 'ltk-detail-peers-img') +
+            '<span>' + esc(label) + '</span>' +
+          '</td>' +
+          '<td>' + esc(fmtRp(Math.max(0, estOmset))) + '</td>' +
+          '<td>' + deltaHtml(r.delta_7d, r.delta_prev_7d, enough) + '</td>' +
+        '</tr>';
       }).join('') + '</tbody></table>';
   }
+
+  var CHART_TOGGLES = [
+    { key: 'omset', label: 'Omset' },
+    { key: 'units', label: 'Unit Terjual' },
+    { key: 'avg_price', label: 'Harga' },
+  ];
 
   function renderDetail() {
     var p = pane('detail');
@@ -1560,11 +1572,7 @@
     if (!row) { p.innerHTML = ''; return; }
     var isKw = S.detailScope !== 'store';
     var trend = rowHasTrend(row);
-    var stats = [
-      ['Omset', fmtRp(row.omset || 0), deltaHtml(row.omset, row.omset_prev, trend)],
-      ['Unit Terjual', fmtUnits(row.units || 0), deltaHtml(row.units, row.units_prev, trend)],
-      ['Harga Rata-rata', fmtRp(row.avg_price || 0), deltaHtml(row.avg_price, row.avg_price_prev, trend, { inverse: true })],
-    ];
+    var metric = S.detailMetric || 'omset';
     p.innerHTML =
       '<div class="ltk-detail">' +
         '<button type="button" class="ltk-detail-back" data-ltk-detail-back>' +
@@ -1583,16 +1591,18 @@
           '</div>' +
         '</div>' +
         '<div class="ltk-detail-stats">' +
-          stats.map(function (s) {
-            return '<div class="ltk-detail-stat">' +
-              '<span class="ltk-detail-stat-lbl">' + esc(s[0]) + '</span>' +
-              '<span class="ltk-detail-stat-val">' + esc(s[1]) + '</span>' +
-              s[2] +
-            '</div>';
-          }).join('') +
+          STAT_METRICS.map(function (m) { return metricStatBlockHtml(key, m, row, trend, 90, 28); }).join('') +
         '</div>' +
         '<div class="ltk-detail-chart-wrap">' +
-          '<div class="ltk-detail-chart-title">Tren Omset</div>' +
+          '<div class="ltk-detail-chart-head">' +
+            '<div class="ltk-chart-toggles" role="tablist" aria-label="Metrik tren">' +
+              CHART_TOGGLES.map(function (t) {
+                return '<button type="button" role="tab" class="ltk-chart-toggle' + (metric === t.key ? ' is-active' : '') +
+                  '" aria-selected="' + (metric === t.key) + '" data-ltk-chartmetric="' + attr(t.key) + '">' +
+                  esc(t.label) + '</button>';
+              }).join('') +
+            '</div>' +
+          '</div>' +
           (trend
             ? '<canvas class="ltk-detail-chart" data-ltk-detailchart width="600" height="160"></canvas>'
             : '<p class="ltk-detail-peers-note">Perlu minimal 2 hari data untuk menampilkan tren.</p>') +
@@ -1604,7 +1614,8 @@
         '</div>' +
       '</div>';
     var cv = $('[data-ltk-detailchart]');
-    if (cv) drawDetailChart(cv, row.series);
+    if (cv) drawDetailChart(cv, row.series, metric);
+    paintMetricSparks();
   }
 
   /* ── discover fall-through (used by the collecting screen) ───────────────
@@ -2275,6 +2286,13 @@
 
     var detailBack = t.closest && t.closest('[data-ltk-detail-back]');
     if (detailBack) { closeDetailScreen(); return; }
+
+    var chartMetric = t.closest && t.closest('[data-ltk-chartmetric]');
+    if (chartMetric) {
+      S.detailMetric = chartMetric.getAttribute('data-ltk-chartmetric');
+      renderDetail();
+      return;
+    }
 
     // Any other click inside the tracker closes an open row menu.
     if (S.openRow && !(t.closest && t.closest('.ltk-menu'))) {
