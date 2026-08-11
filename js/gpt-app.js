@@ -917,6 +917,46 @@ const CAT_CHIP_ICONS = {
   'Taman': '<path d="M12 21V11"/><path d="M12 11c-3-4-7-4-7-1s4 4 7 1z"/><path d="M12 11c3-4 7-4 7-1s-4 4-7 1z"/>',
   'Tanaman': '<path d="M12 21v-8"/><path d="M12 13c-4-1-6-4-5-7 4 0 6 3 5 7z"/><path d="M12 13c4-1 6-4 5-7-4 0-6 3-5 7z"/><path d="M8 21h8"/>',
 };
+
+// The DB's canonical taxonomy (public.category_map, 18 buckets — see
+// supabase/migrations/20260728130000_category_canonical.sql) is coarser and
+// named differently from NU_ONB_CATS above (an older, finer-grained list used
+// only for onboarding prefs) — e.g. NU_ONB_CATS has 'Olahraga' as its own
+// entry, the DB only ever has 'Olahraga & Outdoor'. Anything that filters
+// product_types_v.category_canonical (like the Produk category rail) MUST
+// use these exact strings, or the .eq() matches zero rows and silently falls
+// back to an unfiltered global pool — that mismatch is what caused "clicked
+// Olahraga, got Fashion" results. Hardcoded (not loaded from
+// loadCanonicalCats()) so the rail can render instantly with no DB round
+// trip; sort order mirrors category_map.sort_order.
+const DIR_CANON_CATS = [
+  'Rumah & Dekorasi', 'Dapur', 'Kamar Mandi', 'Fashion', 'Sepatu, Tas & Aksesoris',
+  'Kecantikan & Perawatan', 'Kesehatan', 'Ibu, Bayi & Anak', 'Elektronik & Listrik',
+  'HP, Komputer & Gaming', 'Motor & Mobil', 'Olahraga & Outdoor', 'Hewan Peliharaan',
+  'Taman, Tanaman & Perkakas', 'Sekolah, Kantor & Usaha', 'Hobi, Kerajinan & Pesta',
+  'Makanan & Minuman', 'Perlengkapan Ibadah',
+];
+const CANON_CAT_ICONS = {
+  'Rumah & Dekorasi': CAT_CHIP_ICONS['Rumah'],
+  'Dapur': CAT_CHIP_ICONS['Dapur'],
+  'Kamar Mandi': CAT_CHIP_ICONS['Kamar Mandi'],
+  'Fashion': CAT_CHIP_ICONS['Fashion'],
+  'Sepatu, Tas & Aksesoris': '<path d="M6 8h12l1 12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
+  'Kecantikan & Perawatan': CAT_CHIP_ICONS['Kecantikan'],
+  'Kesehatan': CAT_CHIP_ICONS['Kesehatan'],
+  'Ibu, Bayi & Anak': CAT_CHIP_ICONS['Bayi & Anak'],
+  'Elektronik & Listrik': CAT_CHIP_ICONS['Elektronik'],
+  'HP, Komputer & Gaming': CAT_CHIP_ICONS['HP & Gadget'],
+  'Motor & Mobil': CAT_CHIP_ICONS['Motor & Mobil'],
+  'Olahraga & Outdoor': CAT_CHIP_ICONS['Olahraga'],
+  'Hewan Peliharaan': CAT_CHIP_ICONS['Hewan Peliharaan'],
+  'Taman, Tanaman & Perkakas': CAT_CHIP_ICONS['Tanaman'],
+  'Sekolah, Kantor & Usaha': CAT_CHIP_ICONS['Alat Tulis'],
+  'Hobi, Kerajinan & Pesta': CAT_CHIP_ICONS['Hobi & Kerajinan'],
+  'Makanan & Minuman': '<path d="M3 8h14v6a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5V8z"/><path d="M17 9h2a2 2 0 0 1 0 4h-2"/><path d="M7 3c0 1-1 1-1 2s1 1 1 2"/><path d="M11 3c0 1-1 1-1 2s1 1 1 2"/>',
+  'Perlengkapan Ibadah': '<path d="M12 2l2 3h-4l2-3z"/><path d="M6 22V12a6 6 0 0 1 12 0v10"/><path d="M3 22h18"/><path d="M9 22v-5a3 3 0 0 1 6 0v5"/>',
+};
+
 function catChipIcon(name, size = 15) {
   const paths = CAT_CHIP_ICONS[name];
   if (!paths) return '';
@@ -5390,6 +5430,24 @@ async function fetchNaikDaunGlobal(limit = 60) {
     .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,age_days,sold_per_day')
     .order('sold_per_day', { ascending: false }).limit(limit);
   return data || [];
+}
+
+// ── Instant Produk-page open: a small pre-warmed assortment so the default
+// directory view never has to sit on a bare "Memuat…" state. Warmed once at
+// boot() (fire-and-forget) so it's usually ready before the user ever opens
+// Produk; renderDirectory() falls back to the old loading text if it isn't.
+let _dirInstantPool = [];
+let _dirInstantPoolPromise = null;
+function warmDirInstantPool() {
+  if (_dirInstantPool.length || _dirInstantPoolPromise) return _dirInstantPoolPromise;
+  _dirInstantPoolPromise = (async () => {
+    try {
+      const pool = await fetchNaikDaunGlobal(60);
+      const types = await typesForListings(pool, '', 12);
+      if (types.length) _dirInstantPool = types;
+    } catch (_) { /* falls back to the normal loading path */ }
+  })();
+  return _dirInstantPoolPromise;
 }
 
 // ── Trending (mv_trending: real WoW sold deltas from listings history) ───
@@ -11169,6 +11227,30 @@ function applyDirCatUi() {
   void renderSubcats(primaryDirCat());
 }
 
+// Always-visible category icon rail — pure client-side markup (NU_ONB_CATS +
+// CAT_CHIP_ICONS), no network dependency, so it renders before any data
+// fetch resolves. Click toggles that category as the sole directory filter.
+function renderDirCatRail() {
+  const rail = $('dir-cat-rail');
+  if (!rail) return;
+  const active = primaryDirCat();
+  rail.innerHTML = DIR_CANON_CATS.map(cat => {
+    const icon = CANON_CAT_ICONS[cat] || '';
+    const sel = cat === active;
+    return `<button type="button" class="dir-cat-pill${sel ? ' selected' : ''}" data-dir-cat="${esc(cat)}">
+      <span class="dir-cat-pill-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${icon}</svg></span>
+      <span class="dir-cat-pill-label">${esc(cat)}</span>
+    </button>`;
+  }).join('');
+  rail.querySelectorAll('[data-dir-cat]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cat = btn.getAttribute('data-dir-cat');
+      const already = cat === primaryDirCat();
+      void applyDirectoryCategory(already ? '' : cat);
+    });
+  });
+}
+
 // Build the sub-group chip row for the selected category (hidden when the
 // category has no sub-groups). Selecting one narrows the grid by keyword.
 async function renderSubcats(cat) {
@@ -11299,7 +11381,7 @@ async function renderDirectory() {
   const grid = $('dir-grid');
   const pager = $('dir-pager');
   if (!grid) return;
-  grid.innerHTML = '<p class="dd-sub">Memuat…</p>';
+  renderDirCatRail();
 
   const cats = state.dirCats || [];
   const cities = state.dirCities || [];
@@ -11308,6 +11390,16 @@ async function renderDirectory() {
   // client-side keyword substring test. Only applied when exactly one category
   // is selected.
   const sub = primaryDirCat() ? (state.dirSub || null) : null;
+  // Plain default view (no search/category/subgroup) is the one that used to
+  // open on a bare "Memuat…" — show the pre-warmed assortment instead while
+  // the real, filtered fetch below resolves and replaces it. Any filtered
+  // request keeps the old loading text since it has nothing instant to show.
+  if (!q && !cats.length && !sub && _dirInstantPool.length) {
+    grid.innerHTML = _dirInstantPool.map((t, i) => typeCardHtml(t, i, i)).join('');
+    bindTypeCards(grid);
+  } else {
+    grid.innerHTML = '<p class="dd-sub">Memuat…</p>';
+  }
   let types;
   if (q) {
     types = await searchProductTypes(q, cities, 60);
@@ -11924,6 +12016,9 @@ async function boot() {
 
   if (typeof ensureSupabase === 'function') await ensureSupabase();
   await initSupabase();
+  // Fire-and-forget: warms the Produk page's instant-open assortment so it's
+  // usually ready before the user ever clicks Produk (see warmDirInstantPool).
+  void warmDirInstantPool();
   // Recovery links must be claimed before consumeOAuthHash() clears the stash.
   try { handleRecoveryHash(); } catch (_) {}
   try { await consumeOAuthHash(); } catch (_) {}

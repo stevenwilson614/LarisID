@@ -1228,6 +1228,39 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 }
 .dir-subcat-card.selected .dir-subcat-label { color: var(--ink); font-weight: 700; }
 
+/* Instant, no-network category rail — renders synchronously so the Produk
+   page never opens on a bare "Memuat…" state; see renderDirCatRail(). */
+.dir-cat-rail {
+  display: flex; gap: 8px; margin: 0 0 16px;
+  overflow-x: auto; padding: 2px 2px 6px;
+  scrollbar-width: thin;
+}
+.dir-cat-pill {
+  flex: 0 0 auto;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  width: 62px; padding: 0; border: none; background: none; cursor: pointer;
+  font: inherit; text-align: center;
+}
+.dir-cat-pill-ico {
+  width: 46px; height: 46px; border-radius: 14px;
+  border: 1.5px solid var(--line); background: var(--bg-user);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-soft);
+  transition: border-color .12s, box-shadow .12s, color .12s;
+}
+.dir-cat-pill-ico svg { width: 22px; height: 22px; }
+.dir-cat-pill:hover .dir-cat-pill-ico,
+.dir-cat-pill.selected .dir-cat-pill-ico {
+  border-color: var(--accent, #B5202A); color: var(--accent, #B5202A);
+  box-shadow: 0 0 0 2px rgba(181,32,42,.12);
+}
+.dir-cat-pill-label {
+  font-size: .64rem; font-weight: 550; color: var(--ink-soft);
+  line-height: 1.2; max-width: 100%;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.dir-cat-pill.selected .dir-cat-pill-label { color: var(--ink); font-weight: 700; }
+
 .dir-filter-host {
   position: relative;
   margin: 0 0 14px;
@@ -4523,6 +4556,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
           </div>
           <div class="dir-compare-banner" id="dir-compare-banner" hidden></div>
           <div id="dir-filters-range"></div>
+          <div class="dir-cat-rail" id="dir-cat-rail" aria-label="Kategori"></div>
           <div class="dir-subcats" id="dir-subcats" hidden></div>
           <p class="dir-note" id="dir-note" hidden>Disesuaikan dari profil kamu</p>
           <div class="dir-grid" id="dir-grid"></div>
@@ -5055,7 +5089,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script defer src="/js/gpt-community-board.js?v=20260811a"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260810a"></script>
 <script defer src="/js/laris-mascot.js?v=20260810a"></script>
-<script src="/js/gpt-app.js?v=20260810a" defer></script>
+<script src="/js/gpt-app.js?v=20260811a" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>
 </html>
