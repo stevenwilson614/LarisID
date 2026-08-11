@@ -1634,13 +1634,22 @@
 
   function paint() {
     renderStrip();
-    if (!S.configured) { renderSetup(); showScreen('setup'); return; }
+    if (!S.configured) { S.detailKey = null; renderSetup(); showScreen('setup'); return; }
     // The rollup table can stand on its own the moment there is any history —
     // rows without enough snapshots simply say so in place of a percentage.
     if (!S.hasHistory && !(S.rollup.rows || []).length) {
-      renderCollecting(); showScreen('collecting'); return;
+      S.detailKey = null; renderCollecting(); showScreen('collecting'); return;
     }
-    renderRollup(); showScreen('rollup');
+    renderRollup();
+    // A refresh that lands while the user is reading a detail screen must not
+    // yank them back to the list — repaint the detail in place with the fresh
+    // row instead. Only bail out to the rollup if that row is gone (dropped,
+    // or the scope changed underneath it).
+    if (S.detailKey && S.detailScope === S.tab && findRollupRow(S.detailKey)) {
+      renderDetail(); showScreen('detail'); return;
+    }
+    S.detailKey = null;
+    showScreen('rollup');
   }
 
   /* ── data ───────────────────────────────────────────────────────────── */
@@ -2106,6 +2115,7 @@
     if (next === S.tab) return;
     S.tab = next;
     S.openRow = null;
+    S.detailKey = null;   // the open detail belongs to the scope we just left
     lsWrite({ tab: next });
     call('track', 'tracker_tab', { site: opts.site, tab: next });
     renderScopeTabs();
@@ -2507,6 +2517,10 @@
     o = o || {};
     if (!mount(opts && opts.hostId ? opts : o)) return Promise.resolve(null);
     if (o.tab) setTabQuiet(o.tab);
+    // Entering the section always lands on the list, never on whatever detail
+    // screen was open when the user last navigated away (paint() would
+    // otherwise restore it).
+    S.detailKey = null;
     return refresh({ touch: o.touch !== false, force: true });
   }
 

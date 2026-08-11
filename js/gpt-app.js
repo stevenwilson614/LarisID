@@ -835,6 +835,11 @@ function initLandingAiDemo() {
       }));
       cardsEl.hidden = false;
       cardsEl.innerHTML = `<div class="card-grid">${products.map((p, i) => productCardHtml(p, i)).join('')}</div>`;
+      // productCardHtml renders <button>s — without binding they'd look
+      // clickable and do nothing. These are real listings, so clicking one
+      // opens its actual Deep Dive, same as anywhere else in the app.
+      bindProductCards(cardsEl);
+      void hydrateProdCardsIn(cardsEl);
       requestAnimationFrame(() => cardsEl.classList.add('is-shown'));
     })();
   }, { threshold: 0.35 });
@@ -2014,6 +2019,7 @@ const MASCOT_ALIVE = true;
 // left untouched (state-only pushState) — this is a single-page app with no
 // per-view routes, so there's nothing meaningful to put in the address bar.
 let _navigatingFromHistory = false;
+let _historyPrimed = false;
 
 function setView(name) {
   const leaving = state.view;
@@ -2069,7 +2075,7 @@ function setView(name) {
     scrollPanelToTop();
     void logUserEvent('view_open', { ui: 'gpt', view: name });
   }
-  if (name !== leaving && !_navigatingFromHistory) {
+  if ((name !== leaving || !_historyPrimed) && !_navigatingFromHistory) {
     const histState = { view: name };
     // Deep dive needs the product back, not just the view name — carry enough
     // to look it up again via findProduct() on the way back in.
@@ -2077,7 +2083,16 @@ function setView(name) {
       histState.item_id = state.deepdiveProduct.item_id;
       histState.shop_id = state.deepdiveProduct.shop_id;
     }
-    try { history.pushState(histState, '', location.href); } catch (_) {}
+    try {
+      // The FIRST view boot() settles on replaces the entry rather than
+      // stacking on top of it, so back from the entry screen exits the site
+      // like it always did. Seeding a baseline before boot picked a view
+      // instead left a phantom entry for state.view's 'chat' default, and
+      // back from the landing dropped into an empty chat thread.
+      if (_historyPrimed) history.pushState(histState, '', location.href);
+      else history.replaceState(histState, '', location.href);
+      _historyPrimed = true;
+    } catch (_) {}
   }
 }
 
@@ -12180,10 +12195,6 @@ function wireUi() {
 
 async function boot() {
   loadLocalState();
-  // Baseline history entry so the very first in-app view switch has
-  // something sane to fall back past instead of exiting the site — see the
-  // History API integration above setView().
-  try { history.replaceState({ view: state.view }, '', location.href); } catch (_) {}
   recomputeLearnedCategories();
   // Merdeka decorations — self-gates to August WIB, no-ops the rest of the year.
   try { window.LarisMerdeka?.mount({ site: 'b', navSelector: '.main-top' }); } catch (_) {}
