@@ -240,15 +240,25 @@
     if (CAT_ICON_ALIAS[slug]) return CAT_ICON_ALIAS[slug];
     return slug;
   }
-  function catIconHtml(cat, size) {
+  // `cls` is the caller's own icon class. It MUST be passed rather than
+  // string-replaced out of the result afterwards: the class name appears
+  // twice (the span, and the onerror fallback), and String.replace with a
+  // string pattern only swaps the first one — so callers that replaced it
+  // kept a hardcoded 'ltk-cat-ico ltk-cat-ico--letter' in their fallback,
+  // and `.ltk-cat-ico` has no CSS anywhere. The letter then rendered bare,
+  // with no tile, background or centering. Hits any category whose art is
+  // missing, which is 11 of the 18 canonical buckets (their slugs, e.g.
+  // 'olahraga-dan-outdoor', match neither CAT_ICON_KNOWN nor CAT_ICON_ALIAS).
+  function catIconHtml(cat, size, cls) {
     var px = size || 40;
+    var klass = cls || 'ltk-cat-ico';
     var slug = resolveCatSlug(cat);
     var letter = esc(String(cat || '?').charAt(0).toUpperCase());
     // Art exists for the 19 shipped slugs; aliases cover the DB long-tail.
     // Degrade to a tinted letter rather than a blank tile.
-    return '<span class="ltk-cat-ico" style="width:' + px + 'px;height:' + px + 'px">' +
+    return '<span class="' + klass + '" style="width:' + px + 'px;height:' + px + 'px">' +
       '<img src="/images/onboarding/categories/' + attr(slug) + '.png" alt="" width="' + px + '" height="' + px + '" loading="lazy" ' +
-      'onerror="this.parentNode.className=\'ltk-cat-ico ltk-cat-ico--letter\';' +
+      'onerror="this.parentNode.className=\'' + klass + ' ' + klass + '--letter\';' +
       'this.parentNode.style.width=\'' + px + 'px\';this.parentNode.style.height=\'' + px + 'px\';' +
       'this.parentNode.textContent=\'' + letter + '\';">' +
       '</span>';
@@ -458,7 +468,7 @@
     var h = '';
     S.keywords.forEach(function (k) {
       h += '<button type="button" class="ltk-chip" data-ltk-kw="' + attr(k.keyword) + '">' +
-             catIconHtml(k.category, 18).replace('ltk-cat-ico', 'ltk-chip-ico') +
+             catIconHtml(k.category, 18, 'ltk-chip-ico') +
              '<span class="ltk-chip-lbl">' + esc(k.keyword) + '</span></button>';
     });
     S.stores.forEach(function (st) {
@@ -656,7 +666,7 @@
 
     var rows = draft.picked.map(function (k) {
       return '<li class="ltk-pvrow">' +
-        catIconHtml(k.category, 30).replace('ltk-cat-ico', 'ltk-pv-ico') +
+        catIconHtml(k.category, 30, 'ltk-pv-ico') +
         '<span class="ltk-pvname">' + esc(k.keyword) + '</span>' +
         '<span class="ltk-pvchips">' + chips + extra + '</span>' +
         '</li>';
@@ -710,7 +720,7 @@
       var thumb = k.image_url
         ? '<img class="ltk-slot-ico" src="' + attr(k.image_url) + '" alt="" loading="lazy" decoding="async" ' +
           'referrerpolicy="no-referrer" onerror="this.remove()">'
-        : catIconHtml(k.category, 26).replace('ltk-cat-ico', 'ltk-slot-ico');
+        : catIconHtml(k.category, 26, 'ltk-slot-ico');
       slots += '<li class="ltk-slot ltk-slot--filled' + (err ? ' ltk-slot--err' : '') + '">' +
         thumb +
         '<span class="ltk-slot-body"><span class="ltk-slot-kw">' + esc(k.keyword) +
@@ -770,7 +780,7 @@
         '</span>';
     }
     return '<span class="ltk-pick-slot-media ltk-pick-slot-media--cat">' +
-      catIconHtml(k && k.category, 56).replace('ltk-cat-ico', 'ltk-pick-slot-ico') +
+      catIconHtml(k && k.category, 56, 'ltk-pick-slot-ico') +
       '</span>';
   }
 
@@ -1280,7 +1290,7 @@
         'p.appendChild(i);">' +
         '</span>';
     }
-    return catIconHtml(cat, 81).replace('ltk-cat-ico', 'ltk-row-ico');
+    return catIconHtml(cat, 81, 'ltk-row-ico');
   }
 
   // Mobile card — replaces the sideways-scrolling table below the 720px

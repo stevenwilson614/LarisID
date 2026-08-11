@@ -544,6 +544,18 @@
 .ltk-row-ico--letter {
   font-size: 1.15rem; font-weight: 800; color: #6B7280; background: #F3F4F6;
 }
+/* Missing-art fallback for the icon classes that are otherwise styled as the
+   <img> itself — catIconHtml() swaps the element to a letter-bearing span, so
+   without these the letter renders with no tile behind it. */
+.ltk-chip-ico--letter,
+.ltk-slot-ico--letter,
+.ltk-pick-slot-ico--letter {
+  display: grid; place-items: center; background: #F3F4F6;
+  font-weight: 800; color: #6B7280; line-height: 1;
+}
+.ltk-chip-ico--letter { font-size: .6rem; }
+.ltk-slot-ico--letter { font-size: .72rem; }
+.ltk-pick-slot-ico--letter { font-size: 1rem; }
 .ltk-rowhead-txt { min-width: 0; }
 .ltk-rowhead-name {
   display: block; font-size: .84rem; font-weight: 700; color: #1A1A1A;
