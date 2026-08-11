@@ -19,6 +19,22 @@
 
   const closeSVG = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
   const cameraSVG = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>';
+  const chevSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
+  const lockSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+  const ROW_ICONS = {
+    name: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>',
+    whatsapp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l1.5-4.5A8 8 0 1 1 8 20L3 21z"/><path d="M8.5 9.5c0 3 2 5 5 5"/></svg>',
+    email: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
+    shopee: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l1 12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
+    bio: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="14" y2="17"/></svg>',
+  };
+  function rowHtml(icoKey, label, inputHtml) {
+    return '<div class="gpt-row">' +
+      '<span class="gpt-row-ico">' + ROW_ICONS[icoKey] + '</span>' +
+      '<span class="gpt-row-body"><span class="gpt-row-label">' + label + '</span>' + inputHtml + '</span>' +
+      '<span class="gpt-row-chev">' + chevSVG + '</span>' +
+    '</div>';
+  }
 
   /* ---------- helpers ---------- */
 
@@ -51,18 +67,28 @@
   #gpt-profile-modal {
     position: fixed; top:0; left:0; width:100%; height:100%;
     background: rgba(0,0,0,0.4);
-    display: flex; align-items: center; justify-content: center; z-index:9999;
+    display: flex; align-items: flex-end; justify-content: center; z-index:9999;
   }
+  @media (min-width: 560px) { #gpt-profile-modal { align-items: center; } }
   .gpt-card {
-    background: #fff; border-radius: 8px; padding: 24px; max-width: 480px;
-    width: 90%; max-height: 90vh; overflow-y: auto; position: relative;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    background: #fff; border-radius: 20px 20px 0 0; padding: 10px 22px 26px;
+    max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative;
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.15);
+    animation: gptSheetUp .22s ease;
   }
+  @media (min-width: 560px) { .gpt-card { border-radius: 20px; } }
+  @keyframes gptSheetUp { from { transform: translateY(28px); opacity: .5; } to { transform: none; opacity: 1; } }
+  .gpt-sheet-handle { width: 36px; height: 4px; border-radius: 999px; background: #E5E7EB; margin: 6px auto 12px; }
+  @media (min-width: 560px) { .gpt-sheet-handle { display: none; } }
+  .gpt-sheet-head { padding: 2px 34px 18px 0; }
+  .gpt-sheet-title { font-size: 21px; font-weight: 800; margin: 0 0 4px; color: #111; letter-spacing: -.01em; }
+  .gpt-sheet-sub { font-size: 13px; color: #6B7280; margin: 0; line-height: 1.4; }
   .gpt-close {
-    position: absolute; top: 12px; right: 12px;
-    background: none; border: none; cursor: pointer; padding: 4px; line-height: 0;
+    position: absolute; top: 14px; right: 14px;
+    width: 30px; height: 30px; border-radius: 50%; background: #F3F4F6;
+    border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center;
   }
-  .gpt-close svg { display: block; color: #555; }
+  .gpt-close svg { display: block; color: #374151; width: 18px; height: 18px; }
   .gpt-field { margin-bottom: 16px; }
   .gpt-field label {
     display: block; margin-bottom: 4px; font-weight: 600; font-size: 14px;
@@ -88,13 +114,49 @@
   .gpt-avatar-fallback {
     font-size: 24px; font-weight: 700; color: #555; display: flex;
   }
+  /* Bottom-sheet edit form: profile picture + camera badge, then icon-circle
+     rows (label + editable value + decorative chevron) instead of stacked
+     label/input pairs. */
+  .gpt-sheet-avatar-wrap { position: relative; width: 96px; height: 96px; margin: 4px auto 22px; }
+  .gpt-sheet-avatar-wrap .gpt-avatar-wrap { width: 96px; height: 96px; margin: 0; }
+  .gpt-avatar-camera-badge {
+    position: absolute; right: -2px; bottom: -2px; width: 32px; height: 32px; border-radius: 50%;
+    background: #fff; border: 1px solid #E5E7EB; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,.12); color: #374151;
+  }
+  .gpt-avatar-camera-badge svg { width: 16px; height: 16px; }
+  .gpt-rows { margin: 4px 0 4px; }
+  .gpt-row { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid #F3F4F6; }
+  .gpt-row:last-child { border-bottom: 0; }
+  .gpt-row-ico {
+    flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
+    background: #F3F4F6; color: #4B5563; display: flex; align-items: center; justify-content: center;
+  }
+  .gpt-row-ico svg { width: 18px; height: 18px; }
+  .gpt-row-body { flex: 1; min-width: 0; }
+  .gpt-row-label { font-size: 14px; font-weight: 700; color: #111; margin: 0 0 2px; }
+  .gpt-row-input {
+    display: block; width: 100%; border: 0; padding: 0; margin: 0; background: none;
+    font: inherit; font-size: 13px; color: #6B7280; resize: none;
+  }
+  .gpt-row-input:focus { outline: none; color: #111; }
+  .gpt-row-input::placeholder { color: #9CA3AF; }
+  .gpt-row-chev { flex-shrink: 0; color: #D1D5DB; }
+  .gpt-row-chev svg { display: block; width: 18px; height: 18px; }
+  .gpt-disclaimer {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    margin-top: 14px; font-size: 11.5px; color: #9CA3AF; text-align: center; line-height: 1.4;
+  }
+  .gpt-disclaimer svg { flex-shrink: 0; width: 13px; height: 13px; }
   .gpt-actions { text-align: right; margin-top: 16px; }
   .gpt-btn {
-    background: #1a73e8; color: #fff; border: none; padding: 8px 20px;
-    border-radius: 6px; cursor: pointer; font-size: 14px;
+    background: #111; color: #fff; border: none; padding: 15px 20px;
+    border-radius: 14px; cursor: pointer; font-size: 15px; font-weight: 700;
+    width: 100%;
   }
-  .gpt-btn:hover { background: #1558b0; }
-  .gpt-status { margin-top: 8px; font-size: 13px; min-height: 20px; }
+  .gpt-btn:hover { background: #000; }
+  .gpt-status { margin-top: 8px; font-size: 13px; min-height: 20px; text-align: center; }
   .gpt-status.error { color: #c62828; }
   .gpt-status.success { color: #2e7d32; }
   .gpt-status.info { color: #555; }
@@ -299,24 +361,30 @@
 
   function renderForm() {
     const formHTML = modalHTML(
+      '<div class="gpt-sheet-handle"></div>' +
       `<button class="gpt-close js-close-btn">${closeSVG}</button>` +
-      '<div style="text-align:center">' +
+      '<div class="gpt-sheet-head">' +
+        '<h2 class="gpt-sheet-title">Edit Profil</h2>' +
+        '<p class="gpt-sheet-sub">Kelola informasi yang akan ditampilkan di LarisID.</p>' +
+      '</div>' +
+      '<div class="gpt-sheet-avatar-wrap">' +
         '<div class="gpt-avatar-wrap">' +
           '<img class="gpt-avatar-img js-avatar-img" alt="" />' +
           '<div class="gpt-avatar-fallback js-avatar-fallback"></div>' +
         '</div>' +
-      '</div>' +
-      `<div class="gpt-field">` +
-        `<label for="gpt-file-input" class="gpt-file-btn">${cameraSVG} Unggah foto</label>` +
+        `<label for="gpt-file-input" class="gpt-avatar-camera-badge">${cameraSVG.replace('width="24" height="24"', '')}</label>` +
         '<input type="file" id="gpt-file-input" accept="image/*" class="js-file-input" hidden />' +
       '</div>' +
-      '<div class="gpt-field"><label>Nama tampilan</label><input type="text" class="js-display-name" maxlength="80" /></div>' +
-      '<div class="gpt-field"><label>WhatsApp (publik)</label><input type="text" class="js-whatsapp" maxlength="32" /></div>' +
-      '<div class="gpt-field"><label>Email (publik)</label><input type="email" class="js-email" maxlength="120" /></div>' +
-      '<div class="gpt-field"><label>Toko Shopee (URL)</label><input type="url" class="js-shopee" maxlength="200" /></div>' +
-      '<div class="gpt-field"><label>Bio</label><textarea class="js-bio" rows="3"></textarea></div>' +
-      '<div class="gpt-actions"><button type="button" class="gpt-btn js-save-btn">Simpan</button></div>' +
+      '<div class="gpt-rows">' +
+        rowHtml('name', 'Nama tampilan', '<input type="text" class="gpt-row-input js-display-name" maxlength="80" placeholder="Nama kamu">') +
+        rowHtml('whatsapp', 'WhatsApp (publik)', '<input type="text" class="gpt-row-input js-whatsapp" maxlength="32" placeholder="+62…">') +
+        rowHtml('email', 'Email (publik)', '<input type="email" class="gpt-row-input js-email" maxlength="120" placeholder="email@contoh.com">') +
+        rowHtml('shopee', 'Toko Shopee (URL)', '<input type="url" class="gpt-row-input js-shopee" maxlength="200" placeholder="Belum ditambahkan">') +
+        rowHtml('bio', 'Bio', '<textarea class="gpt-row-input js-bio" rows="2" maxlength="280" placeholder="Ceritakan sedikit tentang kamu"></textarea>') +
+      '</div>' +
+      '<div class="gpt-actions"><button type="button" class="gpt-btn js-save-btn">Simpan Perubahan</button></div>' +
       '<div class="gpt-status js-status"></div>' +
+      `<p class="gpt-disclaimer">${lockSVG}Informasi Anda aman dan hanya digunakan sesuai pengaturan profil.</p>` +
       '<div class="gpt-inbox" id="gpt-inbox-root"><div class="gpt-inbox-title">Pesan masuk</div><div class="gpt-inbox-empty">Memuat…</div></div>' +
       (onSignOut ? '<div class="gpt-signout"><button type="button" class="js-signout-btn">Keluar dari akun</button></div>' : '')
     );
