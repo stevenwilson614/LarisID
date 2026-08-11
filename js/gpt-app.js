@@ -7497,6 +7497,44 @@ function gptTrackerAdapter() {
       try { openDeepDive(row); } catch (_) { showToast('Gagal membuka produk'); }
     },
     openDiscovery() { try { openDirectory(); } catch (_) {} },
+    // Was previously wired to the kebab menu's "Buka Deep Dive" via
+    // openDiscovery(), which ignored the passed key entirely and just opened
+    // the generic product directory — never that specific product. Resolves
+    // a representative listing for the keyword via product_types_v (the
+    // same source the directory/search cards already use) and opens the
+    // real Deep Dive for it.
+    async openKeywordDeepDive(keyword) {
+      if (!keyword || !_supabase) { try { openDirectory(); } catch (_) {} return; }
+      try {
+        const { data } = await _supabase.from('product_types_v')
+          .select(PTYPE_COLS).eq('city', 'ALL').eq('keyword', keyword).limit(1);
+        const t = data && data[0];
+        if (t) { void openDeepDive(typeRepProduct(t)); return; }
+      } catch (_) {}
+      try { openDirectory(); } catch (_) {}
+    },
+    // "Performa per Toko" on the tracker's product detail screen — top
+    // stores selling this keyword, from the same breakout matview the Deep
+    // Dive Kompetitor tab's "Patokan Pemenang" card already reads.
+    async getKeywordSuppliers(keyword) {
+      if (!keyword || !_supabase) return [];
+      try {
+        const { data } = await _supabase.from('mv_supplier_leaderboard')
+          .select('shop_id,store_name,location,niche_sold,avg_price,avg_rating,rnk')
+          .eq('keyword', keyword).order('rnk', { ascending: true }).limit(5);
+        return data || [];
+      } catch (_) { return []; }
+    },
+    // "Produk Teratas" on the tracker's store detail screen.
+    async getStoreTopProducts(shopId) {
+      if (shopId == null || !_supabase) return [];
+      try {
+        const { data } = await _supabase.from('listings_latest')
+          .select('item_id,product_name,price,total_sold,image_url')
+          .eq('shop_id', shopId).order('total_sold', { ascending: false }).limit(5);
+        return data || [];
+      } catch (_) { return []; }
+    },
     openTrackerView() { openTrackerView(); },
     openHowCalculated() { setView('faq'); },
 

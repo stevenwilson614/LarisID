@@ -46,6 +46,8 @@
   flex-shrink: 0; width: 36px; height: 36px; border-radius: 11px;
   display: grid; place-items: center; background: #FEE2E2; color: #B5202A;
 }
+.ltk-head-ico--mascot { background: #FFF5F5; }
+.ltk-head-ico--mascot img { width: 20px; height: 20px; display: block; }
 .ltk-title { font-size: 1.05rem; font-weight: 800; margin: 0 0 2px; letter-spacing: -.01em; }
 .ltk-sub { font-size: .78rem; color: #6B7280; margin: 0; line-height: 1.45; }
 .ltk-head-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
@@ -643,6 +645,94 @@
 .ltk-empty h3 { font-size: .95rem; font-weight: 800; margin: 0 0 6px; }
 .ltk-empty p { font-size: .78rem; color: #6B7280; margin: 0 0 16px; line-height: 1.5; }
 
+/* ── Mobile cards (below 720px — see the responsive block for the swap
+   with .ltk-tablewrap) ──────────────────────────────────────────────────
+   Rendered in the DOM alongside the table year-round; CSS shows exactly
+   one of the two per viewport width, so nothing here needs its own
+   data fetch or resize listener. */
+.ltk-cards { display: none; flex-direction: column; }
+.ltk-card {
+  border-bottom: 1px solid #F3F4F6; padding: 14px var(--ltk-pad);
+}
+.ltk-card:last-child { border-bottom: 0; }
+.ltk-card-top {
+  display: flex; align-items: center; gap: 12px; position: relative; cursor: pointer;
+}
+.ltk-card-top .ltk-row-ico { width: 52px; height: 52px; border-radius: 12px; }
+.ltk-card-head { min-width: 0; flex: 1; }
+.ltk-card-name {
+  display: block; font-size: .86rem; font-weight: 700; color: #1A1A1A;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ltk-card-meta { display: block; font-size: .7rem; color: #9CA3AF; margin-top: 2px; }
+.ltk-card-top .ltk-kebab { flex-shrink: 0; }
+.ltk-menu--card { top: 34px; right: 0; }
+.ltk-card-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr) auto; align-items: center;
+  gap: 10px; margin-top: 12px;
+}
+.ltk-card-stat { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ltk-card-stat-lbl {
+  font-size: .62rem; font-weight: 700; color: #9CA3AF; text-transform: uppercase;
+  letter-spacing: .03em; white-space: nowrap;
+}
+.ltk-card-stat-val { font-size: .82rem; font-weight: 700; color: #1A1A1A; }
+.ltk-card-spark { flex-shrink: 0; }
+.ltk-spark--card { width: 74px; height: 28px; }
+.ltk-card-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin-top: 12px;
+}
+.ltk-card-updated { font-size: .68rem; color: #9CA3AF; }
+.ltk-card-detail-btn {
+  font: inherit; font-size: .74rem; font-weight: 700; color: #B5202A;
+  background: #FEF2F2; border: 0; border-radius: 999px; padding: 7px 14px; cursor: pointer;
+}
+.ltk-card-detail-btn:hover { background: #FEE2E2; }
+
+/* ── "Lihat Detail" screen ────────────────────────────────────────────── */
+.ltk-detail { padding: 4px 0; }
+.ltk-detail-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  font: inherit; font-size: .78rem; font-weight: 700; color: #6B7280;
+  background: none; border: 0; padding: 0 0 16px; cursor: pointer;
+}
+.ltk-detail-back:hover { color: #1A1A1A; }
+.ltk-detail-head { display: flex; align-items: center; gap: 14px; }
+.ltk-detail-head .ltk-row-ico { width: 64px; height: 64px; border-radius: 14px; }
+.ltk-detail-head-txt { min-width: 0; }
+.ltk-detail-name { font-size: 1.05rem; font-weight: 800; margin: 0; letter-spacing: -.01em; }
+.ltk-detail-meta { font-size: .78rem; color: #6B7280; margin: 4px 0 0; }
+.ltk-detail-stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;
+  margin: 20px 0; border: 1px solid #E5E7EB; border-radius: var(--ltk-r); padding: 16px;
+}
+.ltk-detail-stat { display: flex; flex-direction: column; gap: 5px; }
+.ltk-detail-stat-lbl {
+  font-size: .66rem; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: .03em;
+}
+.ltk-detail-stat-val { font-size: 1.1rem; font-weight: 800; color: #1A1A1A; }
+.ltk-detail-chart-wrap {
+  border: 1px solid #E5E7EB; border-radius: var(--ltk-r); padding: 16px; margin-bottom: 16px;
+}
+.ltk-detail-chart-title {
+  font-size: .78rem; font-weight: 700; color: #374151; margin-bottom: 10px;
+}
+.ltk-detail-chart { width: 100%; height: 120px; display: block; }
+.ltk-detail-peers {
+  border: 1px solid #E5E7EB; border-radius: var(--ltk-r); padding: 16px; margin-top: 16px;
+}
+.ltk-detail-peers-title { font-size: .8rem; font-weight: 800; margin-bottom: 10px; }
+.ltk-detail-peers-note { font-size: .78rem; color: #9CA3AF; margin: 0; }
+.ltk-detail-peers-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+.ltk-detail-peers-table th {
+  text-align: left; font-size: .64rem; font-weight: 700; color: #9CA3AF;
+  text-transform: uppercase; letter-spacing: .03em; padding: 0 8px 8px 0;
+}
+.ltk-detail-peers-table th:not(:first-child), .ltk-detail-peers-table td:not(:first-child) { text-align: right; }
+.ltk-detail-peers-table td { padding: 8px 8px 8px 0; border-top: 1px solid #F3F4F6; font-weight: 600; color: #1A1A1A; }
+.ltk-detail-peers-sub { display: block; font-size: .68rem; font-weight: 500; color: #9CA3AF; }
+
 /* ── Scope tabs (Keyword | Toko) ───────────────────────────────────────── */
 .ltk-scopetabs {
   display: flex; gap: 4px; margin-bottom: 14px;
@@ -794,31 +884,19 @@
   .ltk-title { font-size: 1.15rem; }
 }
 @media (max-width: 720px) {
-  /* The table stays a table and scrolls sideways — stacking each row into a
-     card destroys the column-scanning the layout exists for. The name column
-     is pinned so the scroll never loses track of which row you are reading. */
-  .ltk-rowhead {
-    position: sticky; left: 0; z-index: 2; background: #fff;
-    box-shadow: 1px 0 0 #F3F4F6; min-width: 168px;
-  }
-  .ltk-row:hover .ltk-rowhead { background: #FAFAFA; }
-  .ltk-table thead th.ltk-th-name {
-    position: sticky; left: 0; z-index: 3; background: #fff;
-  }
-  .ltk-rowhead-name { max-width: 128px; }
-  .ltk-panel-head { gap: 8px; }
+  /* Cards replace the sideways-scrolling table below this width — simpler
+     to scan on a narrow screen than column-scrolling, per user feedback.
+     Desktop/tablet keep the table (.ltk-cards stays display:none there). */
+  .ltk-tablewrap { display: none; }
+  .ltk-cards { display: flex; }
   .ltk-statstrip { grid-template-columns: repeat(auto-fit, minmax(144px, 1fr)); }
   .ltk-stat-val { font-size: 1rem; }
-  /* Keep the mobile bump proportional to the larger base (~81 → ~91). */
-  .ltk-row-ico { width: 91px; height: 91px; border-radius: 16px; }
-  /* The detail row's <td> still spans every (wide) numeric column via
-     colspan, same as the table itself — pin it to the scroll origin like the
-     name column above, and cap the inner grid to the viewport, so expanding
-     a row never itself requires a sideways scroll to read. */
-  .ltk-row-detail td {
-    position: sticky; left: 0; z-index: 1; background: #fff;
-    width: calc(100vw - 2 * var(--ltk-pad)); box-sizing: border-box;
-  }
+  /* Secondary controls (chipbar, day-range + sort selects) add clutter above
+     the fold on a small screen without earning their space — drop them here;
+     "Pengaturan Pantauan" still reaches the same add/remove/sort surface. */
+  .ltk-chipbar { display: none; }
+  .ltk-winsel, .ltk-panel-head .ltk-sr { display: none; }
+  .ltk-panel-head { gap: 8px; }
 }
 @media (max-width: 420px) {
   .ltk-baseline-stats { font-size: .68rem; }

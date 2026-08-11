@@ -78,6 +78,12 @@
     openRow: null,                    // keyword/shop_id whose kebab menu is open
     openDetail: null,                 // keyword/shop_id whose row is expanded (mobile-friendly recap)
     lastRefreshAt: 0,
+    // "Lihat Detail" screen — a dedicated, simpler view (stats + chart +
+    // change history + who's selling it) separate from the row-expand recap.
+    detailKey: null,                  // keyword/shop_id currently open, or null
+    detailScope: 'keyword',           // scope the detail screen was opened from
+    detailPeers: [],                  // suppliers (product) or top products (store)
+    detailPeersLoading: false,
   };
 
   // Uncommitted setup draft. Nothing here is persisted or sent until commit.
@@ -359,11 +365,8 @@
       '<div data-ltk-strip></div>' +
       '<header class="ltk-head">' +
         '<div class="ltk-head-main">' +
-          '<span class="ltk-head-ico" aria-hidden="true">' +
-            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-            'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
-            '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>' +
-            '<path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' +
+          '<span class="ltk-head-ico ltk-head-ico--mascot" aria-hidden="true">' +
+            '<img src="/images/brand/appicon-bird.png" alt="" width="20" height="20" loading="lazy">' +
           '</span>' +
           '<div><h2 class="ltk-title">Pantauan</h2>' +
           '<p class="ltk-sub" data-ltk-sub></p></div>' +
@@ -375,13 +378,14 @@
       '<section class="ltk-screen" data-ltk-screen="setup"></section>' +
       '<section class="ltk-screen" data-ltk-screen="collecting"></section>' +
       '<section class="ltk-screen" data-ltk-screen="rollup"></section>' +
+      '<section class="ltk-screen" data-ltk-screen="detail"></section>' +
       '<section class="ltk-screen" data-ltk-screen="error"></section>';
   }
 
   function renderScopeTabs() {
     var bar = $('[data-ltk-scopetabs]');
     if (!bar) return;
-    if (!S.configured || S.screen === 'setup') { bar.innerHTML = ''; return; }
+    if (!S.configured || S.screen === 'setup' || S.screen === 'detail') { bar.innerHTML = ''; return; }
     var tabs = [
       { id: 'keyword', label: 'Produk', n: S.keywords.length },
       { id: 'store',   label: 'Toko',   n: S.stores.length },
@@ -450,7 +454,7 @@
   function renderChipbar() {
     var bar = $('[data-ltk-chipbar]');
     if (!bar) return;
-    if (!S.configured || S.screen === 'setup') { bar.innerHTML = ''; return; }
+    if (!S.configured || S.screen === 'setup' || S.screen === 'detail') { bar.innerHTML = ''; return; }
     var h = '';
     S.keywords.forEach(function (k) {
       h += '<button type="button" class="ltk-chip" data-ltk-kw="' + attr(k.keyword) + '">' +
@@ -1279,6 +1283,63 @@
     return catIconHtml(cat, 81).replace('ltk-cat-ico', 'ltk-row-ico');
   }
 
+  // Mobile card — replaces the sideways-scrolling table below the 720px
+  // breakpoint (see the CSS media query). Rendered alongside the table (not
+  // instead of), same rows, so nothing here needs its own data fetch; CSS
+  // shows exactly one of the two per viewport width.
+  function cardHtml(r) {
+    var key = rowKey(r);
+    var trend = rowHasTrend(r);
+    var isKw = S.tab !== 'store';
+    var metaLine = isKw
+      ? (trend ? fmtUnits(r.n_sellers || 0) + ' toko aktif' : 'Mengumpulkan data')
+      : (r.oldest_listing_date ? 'Toko sejak ' + fmtAge(r.oldest_listing_date) : 'Mengumpulkan data');
+    var stats = [
+      ['Omset', fmtRp(r.omset || 0), deltaHtml(r.omset, r.omset_prev, trend)],
+      ['Unit Terjual', fmtUnits(r.units || 0), deltaHtml(r.units, r.units_prev, trend)],
+      ['Harga Rata-rata', fmtRp(r.avg_price || 0), deltaHtml(r.avg_price, r.avg_price_prev, trend, { inverse: true })],
+    ];
+    var updated = S.asOf ? 'Diperbarui ' + fmtDate(S.asOf) : 'Menunggu data pertama';
+    return '<article class="ltk-card">' +
+      '<div class="ltk-card-top" data-ltk-lihatdetail="' + attr(key) + '">' +
+        (isKw ? rowIconHtml(r) : storeAvatar(r)) +
+        '<div class="ltk-card-head">' +
+          '<span class="ltk-card-name">' + esc(rowLabel(r)) + '</span>' +
+          '<span class="ltk-card-meta">' + esc(metaLine) + '</span>' +
+        '</div>' +
+        '<button type="button" class="ltk-kebab" data-ltk-menu="' + attr(key) + '" ' +
+          'aria-label="Aksi untuk ' + attr(rowLabel(r)) + '" aria-expanded="' + (S.openRow === key) + '">' +
+          '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+          '<circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg>' +
+        '</button>' +
+        (S.openRow === key
+          ? '<div class="ltk-menu ltk-menu--card" role="menu">' +
+              '<button type="button" role="menuitem" data-ltk-act="setup">Ubah pantauan</button>' +
+              '<button type="button" role="menuitem" class="ltk-menu-danger" data-ltk-drop="' + attr(key) + '">Hapus</button>' +
+            '</div>'
+          : '') +
+      '</div>' +
+      '<div class="ltk-card-stats">' +
+        stats.map(function (s) {
+          return '<div class="ltk-card-stat">' +
+            '<span class="ltk-card-stat-lbl">' + esc(s[0]) + '</span>' +
+            '<span class="ltk-card-stat-val">' + esc(s[1]) + '</span>' +
+            s[2] +
+          '</div>';
+        }).join('') +
+        '<div class="ltk-card-spark">' +
+          (trend
+            ? '<canvas class="ltk-spark ltk-spark--card" data-ltk-spark="' + attr(key) + '" width="90" height="30"></canvas>'
+            : '<span class="ltk-spark-empty">Belum ada tren</span>') +
+        '</div>' +
+      '</div>' +
+      '<div class="ltk-card-foot">' +
+        '<span class="ltk-card-updated">' + esc(updated) + '</span>' +
+        '<button type="button" class="ltk-card-detail-btn" data-ltk-lihatdetail="' + attr(key) + '">Lihat Detail</button>' +
+      '</div>' +
+    '</article>';
+  }
+
   function renderRollup() {
     var p = pane('rollup');
     if (!p) return;
@@ -1327,6 +1388,7 @@
             '<thead>' + head + '</thead>' +
             '<tbody>' + rows.map(rowHtml).join('') + '</tbody>' +
           '</table></div>' +
+          '<div class="ltk-cards">' + rows.map(cardHtml).join('') + '</div>' +
           '<button type="button" class="ltk-addrow" data-ltk-act="setup">' +
             '<span aria-hidden="true">+</span> Tambah Pantauan Baru' +
             (free ? '<em>' + free + ' slot kosong</em>' : '') +
@@ -1335,6 +1397,165 @@
       '</div>';
 
     paintSparks();
+  }
+
+  /* ── "Lihat Detail" screen ─────────────────────────────────────────────
+     A dedicated, simpler view than Deep Dive: stat row + one chart + change
+     history (all already computed for the rollup row, no extra fetch) plus
+     who's selling it — the one piece that needs its own data, fetched via
+     the adapter so this module still never touches _supabase directly. */
+
+  function findRollupRow(key) {
+    var rows = (S.rollup && S.rollup.rows) || [];
+    for (var i = 0; i < rows.length; i++) if (rowKey(rows[i]) === key) return rows[i];
+    return null;
+  }
+
+  function openDetailScreen(key) {
+    var row = findRollupRow(key);
+    if (!row) { call('toast', 'Data tidak ditemukan.'); return; }
+    S.detailKey = key;
+    S.detailScope = S.tab;
+    S.detailPeers = [];
+    S.detailPeersLoading = true;
+    showScreen('detail');
+    renderDetail();
+    var isKw = S.detailScope !== 'store';
+    var fetchPeers = isKw
+      ? callP('getKeywordSuppliers', row.keyword)
+      : callP('getStoreTopProducts', row.shop_id);
+    fetchPeers.then(function (rows) {
+      if (S.detailKey !== key) return; // user already navigated away
+      S.detailPeers = rows || [];
+      S.detailPeersLoading = false;
+      renderDetail();
+    });
+    call('track', 'tracker_detail_open', { site: opts.site, scope: S.detailScope, key: key });
+  }
+
+  function closeDetailScreen() {
+    S.detailKey = null;
+    showScreen('rollup');
+    renderRollup();
+  }
+
+  // Bigger sibling of drawSpark for the detail screen's single-metric chart —
+  // same raw-canvas approach (no charting lib for one line), plus min/max
+  // labels so the line means something without hovering.
+  function drawDetailChart(cv, series) {
+    if (!cv || !cv.getContext) return;
+    var pts = (series || []).map(function (p) { return Number(p.omset) || 0; });
+    if (pts.length < 2) return;
+    var dpr = global.devicePixelRatio || 1;
+    var w = cv.clientWidth || 280, h = cv.clientHeight || 120;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    var ctx = cv.getContext('2d');
+    ctx.scale(dpr, dpr);
+    var min = Math.min.apply(null, pts), max = Math.max.apply(null, pts);
+    var span = (max - min) || 1;
+    var pad = 8;
+    var up = pts[pts.length - 1] >= pts[0];
+    var color = up ? '#16A34A' : '#DC2626';
+    var xy = pts.map(function (v, i) {
+      return [pad + (i / (pts.length - 1)) * (w - pad * 2), h - pad - ((v - min) / span) * (h - pad * 2)];
+    });
+    // Soft fill under the line
+    ctx.beginPath();
+    ctx.moveTo(xy[0][0], h - pad);
+    xy.forEach(function (p) { ctx.lineTo(p[0], p[1]); });
+    ctx.lineTo(xy[xy.length - 1][0], h - pad);
+    ctx.closePath();
+    ctx.fillStyle = up ? 'rgba(22,163,74,.08)' : 'rgba(220,38,38,.08)';
+    ctx.fill();
+    // Line
+    ctx.beginPath();
+    xy.forEach(function (p, i) { if (i === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]); });
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+
+  function detailPeersHtml(isKw) {
+    if (S.detailPeersLoading) return '<p class="ltk-detail-peers-note">Memuat…</p>';
+    var rows = S.detailPeers || [];
+    if (!rows.length) {
+      return '<p class="ltk-detail-peers-note">' +
+        (isKw ? 'Belum ada data toko untuk produk ini.' : 'Belum ada data produk untuk toko ini.') + '</p>';
+    }
+    if (isKw) {
+      return '<table class="ltk-detail-peers-table">' +
+        '<thead><tr><th>Toko</th><th>Unit Terjual</th><th>Harga Rata-rata</th></tr></thead>' +
+        '<tbody>' + rows.map(function (s) {
+          return '<tr><td>' + esc(s.store_name || ('Toko ' + s.shop_id)) +
+            (s.location ? '<span class="ltk-detail-peers-sub">' + esc(s.location) + '</span>' : '') + '</td>' +
+            '<td>' + esc(fmtUnits(s.niche_sold || 0)) + '</td>' +
+            '<td>' + esc(fmtRp(s.avg_price || 0)) + '</td></tr>';
+        }).join('') + '</tbody></table>';
+    }
+    return '<table class="ltk-detail-peers-table">' +
+      '<thead><tr><th>Produk</th><th>Unit Terjual</th><th>Harga</th></tr></thead>' +
+      '<tbody>' + rows.map(function (p) {
+        return '<tr><td>' + esc(p.product_name || '—') + '</td>' +
+          '<td>' + esc(fmtUnits(p.total_sold || 0)) + '</td>' +
+          '<td>' + esc(fmtRp(p.price || 0)) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  function renderDetail() {
+    var p = pane('detail');
+    if (!p) return;
+    var key = S.detailKey;
+    var row = key ? findRollupRow(key) : null;
+    if (!row) { p.innerHTML = ''; return; }
+    var isKw = S.detailScope !== 'store';
+    var trend = rowHasTrend(row);
+    var stats = [
+      ['Omset', fmtRp(row.omset || 0), deltaHtml(row.omset, row.omset_prev, trend)],
+      ['Unit Terjual', fmtUnits(row.units || 0), deltaHtml(row.units, row.units_prev, trend)],
+      ['Harga Rata-rata', fmtRp(row.avg_price || 0), deltaHtml(row.avg_price, row.avg_price_prev, trend, { inverse: true })],
+    ];
+    p.innerHTML =
+      '<div class="ltk-detail">' +
+        '<button type="button" class="ltk-detail-back" data-ltk-detail-back>' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+          'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>' +
+          'Kembali ke Pantauan</button>' +
+        '<div class="ltk-detail-head">' +
+          (isKw ? rowIconHtml(row) : storeAvatar(row)) +
+          '<div class="ltk-detail-head-txt">' +
+            '<h3 class="ltk-detail-name">' + esc(rowLabel(row)) + '</h3>' +
+            '<p class="ltk-detail-meta">' +
+              (isKw
+                ? (trend ? esc(fmtUnits(row.n_sellers || 0)) + ' toko aktif · ' + esc(fmtUnits(row.n_listings || 0)) + ' SKU aktif' : 'Mengumpulkan data')
+                : (row.oldest_listing_date ? 'Dipantau sejak toko berjualan ' + esc(fmtAge(row.oldest_listing_date)) : 'Mengumpulkan data')) +
+            '</p>' +
+          '</div>' +
+        '</div>' +
+        '<div class="ltk-detail-stats">' +
+          stats.map(function (s) {
+            return '<div class="ltk-detail-stat">' +
+              '<span class="ltk-detail-stat-lbl">' + esc(s[0]) + '</span>' +
+              '<span class="ltk-detail-stat-val">' + esc(s[1]) + '</span>' +
+              s[2] +
+            '</div>';
+          }).join('') +
+        '</div>' +
+        '<div class="ltk-detail-chart-wrap">' +
+          '<div class="ltk-detail-chart-title">Tren Omset</div>' +
+          (trend
+            ? '<canvas class="ltk-detail-chart" data-ltk-detailchart width="600" height="160"></canvas>'
+            : '<p class="ltk-detail-peers-note">Perlu minimal 2 hari data untuk menampilkan tren.</p>') +
+        '</div>' +
+        changeHistoryHtml(row, isKw) +
+        '<div class="ltk-detail-peers">' +
+          '<div class="ltk-detail-peers-title">' + (isKw ? 'Performa per Toko' : 'Produk Teratas') + '</div>' +
+          detailPeersHtml(isKw) +
+        '</div>' +
+      '</div>';
+    var cv = $('[data-ltk-detailchart]');
+    if (cv) drawDetailChart(cv, row.series);
   }
 
   /* ── discover fall-through (used by the collecting screen) ───────────────
@@ -1970,7 +2191,7 @@
     var dive = t.closest && t.closest('[data-ltk-dive]');
     if (dive) {
       S.openRow = null;
-      call('openDiscovery', dive.getAttribute('data-ltk-dive'));
+      call('openKeywordDeepDive', dive.getAttribute('data-ltk-dive'));
       return;
     }
 
@@ -1984,6 +2205,16 @@
       renderRollup();
       return;
     }
+
+    var lihatdetail = t.closest && t.closest('[data-ltk-lihatdetail]');
+    if (lihatdetail) {
+      S.openRow = null;
+      openDetailScreen(lihatdetail.getAttribute('data-ltk-lihatdetail'));
+      return;
+    }
+
+    var detailBack = t.closest && t.closest('[data-ltk-detail-back]');
+    if (detailBack) { closeDetailScreen(); return; }
 
     // Any other click inside the tracker closes an open row menu.
     if (S.openRow && !(t.closest && t.closest('.ltk-menu'))) {
