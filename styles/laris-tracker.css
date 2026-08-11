@@ -756,7 +756,19 @@
 }
 .ltk-chart-toggle:hover { color: #374151; }
 .ltk-chart-toggle.is-active { background: #fff; color: #1A1A1A; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-.ltk-detail-chart { width: 100%; height: 120px; display: block; }
+.ltk-detail-chart-canvaswrap { position: relative; }
+.ltk-detail-chart { width: 100%; height: 120px; display: block; cursor: crosshair; }
+.ltk-detail-chart-labels {
+  position: relative; height: 16px; margin-top: 4px;
+}
+.ltk-chart-tick {
+  position: absolute; top: 0; transform: translateX(-50%);
+  font-size: .64rem; font-weight: 600; color: #9CA3AF; white-space: nowrap;
+}
+.ltk-chart-tick--first { transform: translateX(0); }
+.ltk-chart-tick--last { transform: translateX(-100%); }
+.ltk-chart-scrub-date { font-size: .78rem; font-weight: 600; color: #6B7280; }
+.ltk-chart-scrub-date em { font-style: normal; color: #9CA3AF; }
 .ltk-detail-peers {
   border: 1px solid #E5E7EB; border-radius: var(--ltk-r); padding: 16px; margin-top: 16px;
 }

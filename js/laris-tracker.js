@@ -352,11 +352,23 @@
      scraped a day apart. `series` can span any window (7 days or 90); this
      works the same either way since it maps calendar time, not point count.
      Returns null (caller draws nothing) if there's nothing to plot. */
-  function seriesXY(series, metricKey, w, h, pad) {
+  // Raw {t (epoch ms), v (metric value), d (date string), isCur} points,
+  // sorted chronologically. `is_cur` (added when get_tracker_rollup widened
+  // `series` to include the previous window too, see migration
+  // 20260811160000) marks which points are "now" vs history; defaults true
+  // for older cached rows that predate that column.
+  function seriesPoints(series, metricKey) {
     var pts = (series || []).map(function (p) {
-      return { t: Date.parse(p.d), v: Number(p[metricKey || 'omset']) || 0 };
+      return { t: Date.parse(p.d), v: Number(p[metricKey || 'omset']) || 0, d: p.d, isCur: p.is_cur !== false };
     }).filter(function (p) { return !isNaN(p.t); });
-    if (pts.length < 2) return null;
+    pts.sort(function (a, b) { return a.t - b.t; });
+    return pts.length >= 2 ? pts : null;
+  }
+
+  // Project real points onto a w×h canvas padded by `pad`. x reflects real
+  // calendar time (not point index); y is scaled to the point set's own
+  // min/max.
+  function projectXY(pts, w, h, pad) {
     var minT = pts[0].t, maxT = pts[0].t;
     pts.forEach(function (p) { if (p.t < minT) minT = p.t; if (p.t > maxT) maxT = p.t; });
     var spanT = (maxT - minT) || 1;
@@ -369,6 +381,11 @@
         h - pad - ((p.v - min) / span) * (h - pad * 2),
       ];
     });
+  }
+
+  function seriesXY(series, metricKey, w, h, pad) {
+    var pts = seriesPoints(series, metricKey);
+    return pts ? projectXY(pts, w, h, pad) : null;
   }
 
   // Smooth curve through the REAL points via quadratic Bezier segments joined
@@ -1542,24 +1559,24 @@
   // Bigger sibling of drawSpark for the detail screen's single-metric chart —
   // same raw-canvas approach (no charting lib for one line), plus min/max
   // labels so the line means something without hovering.
-  function drawDetailChart(cv, series, metricKey) {
-    if (!cv || !cv.getContext) return;
-    var dpr = global.devicePixelRatio || 1;
-    var w = cv.clientWidth || 280, h = cv.clientHeight || 120;
-    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
-    var ctx = cv.getContext('2d');
-    ctx.scale(dpr, dpr);
-    var pad = 8;
-    var xy = seriesXY(series, metricKey, w, h, pad);
-    if (!xy) return;
-    var up = xy[xy.length - 1][1] <= xy[0][1]; // smaller y = higher on canvas = higher value
-    var color = up ? '#16A34A' : '#DC2626';
+  /* ── Detail chart: date-axis labels + drag/hover-to-scrub ────────────────
+     One module-level `_dc` holds the currently-mounted chart's state, since
+     the canvas is torn down and recreated on every renderDetail() call —
+     scrub handlers close over `_dc`, not over stale DOM/closures from a
+     previous mount. */
+  var _dc = null;
+
+  function paintDetailChartFrame(hi) {
+    if (!_dc) return;
+    var ctx = _dc.ctx, xy = _dc.xy, w = _dc.w, h = _dc.h, pad = _dc.pad;
+    ctx.clearRect(0, 0, w, h);
+    var color = _dc.up ? '#16A34A' : '#DC2626';
     // Soft fill under the curve
     tracePath(ctx, xy);
     ctx.lineTo(xy[xy.length - 1][0], h - pad);
     ctx.lineTo(xy[0][0], h - pad);
     ctx.closePath();
-    ctx.fillStyle = up ? 'rgba(22,163,74,.08)' : 'rgba(220,38,38,.08)';
+    ctx.fillStyle = _dc.up ? 'rgba(22,163,74,.08)' : 'rgba(220,38,38,.08)';
     ctx.fill();
     // Line
     tracePath(ctx, xy);
@@ -1568,6 +1585,120 @@
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.stroke();
+    // Crosshair — the scrubbed point, or the latest point by default.
+    var idx = hi != null ? hi : xy.length - 1;
+    var p = xy[idx];
+    ctx.beginPath();
+    ctx.setLineDash([3, 3]);
+    ctx.moveTo(p[0], 2);
+    ctx.lineTo(p[0], h - pad);
+    ctx.strokeStyle = 'rgba(107,114,128,.45)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.arc(p[0], p[1], 4, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#fff';
+    ctx.stroke();
+  }
+
+  function updateChartHeaderForIndex(idx) {
+    if (!_dc || !_dc.valEl) return;
+    if (idx == null) {
+      _dc.valEl.textContent = _dc.normalValueText;
+      if (_dc.subEl) _dc.subEl.innerHTML = _dc.normalSubHtml;
+      return;
+    }
+    var pt = _dc.pts[idx];
+    var fakeRow = {}; fakeRow[_dc.metricKey] = pt.v;
+    _dc.valEl.textContent = _dc.activeStat.fmt(fakeRow);
+    if (_dc.subEl) {
+      _dc.subEl.innerHTML = '<span class="ltk-chart-scrub-date">' +
+        esc(fmtDayShort(pt.d)) + (pt.isCur ? '' : ' <em>(sebelum window ini)</em>') + '</span>';
+    }
+  }
+
+  function nearestIndexForX(px) {
+    var xy = _dc.xy, best = 0, bestDist = Infinity;
+    for (var i = 0; i < xy.length; i++) {
+      var d = Math.abs(xy[i][0] - px);
+      if (d < bestDist) { bestDist = d; best = i; }
+    }
+    return best;
+  }
+
+  // Pointer Events cover mouse + touch + pen with one listener set. Desktop
+  // gets hover-to-scrub (no click needed, matches a stock chart); touch only
+  // scrubs while actually dragging, so a normal page-scroll swipe isn't
+  // hijacked. setPointerCapture keeps move events firing on the canvas even
+  // if the finger drifts past its edge mid-drag.
+  function bindDetailChartScrub(cv) {
+    var dragging = false;
+    function idxFromEvent(e) {
+      var rect = cv.getBoundingClientRect();
+      return nearestIndexForX(e.clientX - rect.left);
+    }
+    function show(e) { var idx = idxFromEvent(e); paintDetailChartFrame(idx); updateChartHeaderForIndex(idx); }
+    function reset() { paintDetailChartFrame(null); updateChartHeaderForIndex(null); }
+    cv.addEventListener('pointerdown', function (e) {
+      dragging = true;
+      try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+      show(e);
+    });
+    cv.addEventListener('pointermove', function (e) {
+      if (dragging || e.pointerType === 'mouse') show(e);
+    });
+    cv.addEventListener('pointerup', function () { dragging = false; reset(); });
+    cv.addEventListener('pointercancel', function () { dragging = false; reset(); });
+    cv.addEventListener('pointerleave', function () { if (!dragging) reset(); });
+  }
+
+  // Axis ticks land every real 14 days (not every 14th point — scrape gaps
+  // are irregular), always including the latest point so the axis never ends
+  // mid-gap. Positioned by the same time-fraction math as the plotted points.
+  function renderChartDateLabels(container, minT, maxT, w, pad) {
+    if (!container) return;
+    var DAY = 86400000, STEP = 14 * DAY;
+    var ticks = [];
+    for (var t = minT; t < maxT; t += STEP) ticks.push(t);
+    // The last tick is always maxT so the axis never ends mid-gap — drop the
+    // regular tick right before it if that would crowd two labels together.
+    if (ticks.length && (maxT - ticks[ticks.length - 1]) < STEP / 2) ticks.pop();
+    ticks.push(maxT);
+    var spanT = (maxT - minT) || 1;
+    container.innerHTML = ticks.map(function (t, i) {
+      var pct = ((pad + ((t - minT) / spanT) * (w - pad * 2)) / w) * 100;
+      var cls = i === 0 ? ' ltk-chart-tick--first' : (i === ticks.length - 1 ? ' ltk-chart-tick--last' : '');
+      return '<span class="ltk-chart-tick' + cls + '" style="left:' + pct.toFixed(2) + '%">' +
+        esc(fmtDayShort(new Date(t).toISOString())) + '</span>';
+    }).join('');
+  }
+
+  function mountDetailChart(cv, labelsEl, row, metricKey, activeStat, header) {
+    _dc = null;
+    if (!cv || !cv.getContext) return;
+    var pts = seriesPoints(row.series, metricKey);
+    if (!pts) return;
+    var dpr = global.devicePixelRatio || 1;
+    var w = cv.clientWidth || 280, h = cv.clientHeight || 120;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    var ctx = cv.getContext('2d');
+    ctx.scale(dpr, dpr);
+    var pad = 8;
+    var xy = projectXY(pts, w, h, pad);
+    _dc = {
+      ctx: ctx, cv: cv, xy: xy, pts: pts, w: w, h: h, pad: pad, metricKey: metricKey,
+      activeStat: activeStat, up: xy[xy.length - 1][1] <= xy[0][1], // smaller y = higher value
+      valEl: header.valEl, subEl: header.subEl,
+      normalValueText: header.normalValueText, normalSubHtml: header.normalSubHtml,
+    };
+    paintDetailChartFrame(null);
+    cv.style.touchAction = 'none';
+    bindDetailChartScrub(cv);
+    renderChartDateLabels(labelsEl, pts[0].t, pts[pts.length - 1].t, w, pad);
   }
 
   // Shared row-list for both scopes — mv_trending returns the same shape
@@ -1639,8 +1770,8 @@
         '<div class="ltk-detail-chart-wrap">' +
           '<div class="ltk-detail-chart-head">' +
             '<div class="ltk-chart-value">' +
-              '<span class="ltk-chart-value-num">' + esc(activeStat.fmt(row)) + '</span>' +
-              deltaHtml(row[metric], row[metric + '_prev'], trend) +
+              '<span class="ltk-chart-value-num" data-ltk-chart-valnum>' + esc(activeStat.fmt(row)) + '</span>' +
+              '<span data-ltk-chart-valsub>' + deltaHtml(row[metric], row[metric + '_prev'], trend) + '</span>' +
             '</div>' +
             '<div class="ltk-chart-toggles" role="tablist" aria-label="Metrik tren">' +
               CHART_TOGGLES.map(function (t) {
@@ -1651,7 +1782,10 @@
             '</div>' +
           '</div>' +
           (trend
-            ? '<canvas class="ltk-detail-chart" data-ltk-detailchart width="600" height="160"></canvas>'
+            ? '<div class="ltk-detail-chart-canvaswrap">' +
+                '<canvas class="ltk-detail-chart" data-ltk-detailchart width="600" height="160"></canvas>' +
+              '</div>' +
+              '<div class="ltk-detail-chart-labels" data-ltk-chart-labels></div>'
             : '<p class="ltk-detail-peers-note">Perlu minimal 2 hari data untuk menampilkan tren.</p>') +
         '</div>' +
         changeHistoryHtml(row, isKw) +
@@ -1661,7 +1795,14 @@
         '</div>' +
       '</div>';
     var cv = $('[data-ltk-detailchart]');
-    if (cv) drawDetailChart(cv, row.series, metric);
+    if (cv) {
+      mountDetailChart(cv, $('[data-ltk-chart-labels]'), row, metric, activeStat, {
+        valEl: $('[data-ltk-chart-valnum]'),
+        subEl: $('[data-ltk-chart-valsub]'),
+        normalValueText: activeStat.fmt(row),
+        normalSubHtml: deltaHtml(row[metric], row[metric + '_prev'], trend),
+      });
+    }
     paintMetricSparks();
   }
 
