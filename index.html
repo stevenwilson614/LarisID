@@ -1991,7 +1991,12 @@ body.view-community .panel-inner {
     position: fixed; top: 0; left: 0; bottom: 0;
     transform: translateX(-105%);
   }
-  .sidebar.open { transform: none; box-shadow: 8px 0 32px rgba(0,0,0,.1); }
+  /* .results-bar (the sticky Produk search strip) shares z-index:20 with
+     .sidebar and comes later in the DOM, so at equal z-index it always
+     painted on top of the open drawer regardless of .sidebar.open — bump
+     the open drawer + its backdrop above it while open. */
+  .sidebar.open { transform: none; box-shadow: 8px 0 32px rgba(0,0,0,.1); z-index: 30; }
+  .backdrop.open { z-index: 25; }
   .menu-btn { display: grid; }
   .topbar-mobile-brand { display: flex; }
   #beta-badge-mobile { display: inline-flex; }
