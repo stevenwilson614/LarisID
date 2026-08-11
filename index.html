@@ -2611,7 +2611,9 @@ body.home-finder-done .home-title {
 .hl-sp-thumb {
   width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
   background: linear-gradient(135deg, #f3e8e8, #e8eef8);
+  overflow: hidden; display: block;
 }
+.hl-sp-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .hl-sp-meta { min-width: 0; flex: 1; }
 .hl-sp-name { font-size: .62rem; font-weight: 650; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hl-sp-sub { font-size: .58rem; color: var(--muted); }
@@ -2630,12 +2632,15 @@ body.home-finder-done .home-title {
 .hl-sp-avatar {
   width: 28px; height: 28px; border-radius: 999px; flex-shrink: 0;
   background: linear-gradient(145deg, #f0c4a8, #c9846a);
+  overflow: hidden; display: block;
 }
+.hl-sp-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .hl-sp-avatars { display: flex; margin-top: 8px; }
 .hl-sp-avatars span {
   width: 18px; height: 18px; border-radius: 999px; border: 1.5px solid #fff;
-  margin-left: -6px; background: #d9d4cf;
+  margin-left: -6px; background: #d9d4cf; overflow: hidden; display: block;
 }
+.hl-sp-avatars span img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .hl-sp-avatars span:first-child { margin-left: 0; background: #f0c4a8; }
 .hl-sp-avatars span:nth-child(2) { background: #c4b5a5; }
 .hl-sp-avatars span:nth-child(3) { background: #a8c4d4; }
@@ -4198,17 +4203,17 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                       <p class="hl-step-desc">Temukan produk &amp; kategori dengan demand tinggi berdasarkan data penjualan marketplace.</p>
                       <div class="hl-step-preview" aria-hidden="true">
                         <div class="hl-sp-row">
-                          <span class="hl-sp-thumb"></span>
+                          <span class="hl-sp-thumb"><img src="https://cf.shopee.co.id/file/id-11134207-7rash-m2um3tlqc6mpe9" alt="" loading="lazy"></span>
                           <div class="hl-sp-meta"><div class="hl-sp-name">Kipas Angin Mini USB</div><div class="hl-sp-sub">★ 4.8 / 5</div></div>
                           <span class="hl-sp-val">Rp308jt</span>
                         </div>
                         <div class="hl-sp-row">
-                          <span class="hl-sp-thumb"></span>
+                          <span class="hl-sp-thumb"><img src="https://cf.shopee.co.id/file/0a43ce2f3a6cd4ccdd5b72e95105fc4f" alt="" loading="lazy"></span>
                           <div class="hl-sp-meta"><div class="hl-sp-name">Rak Dapur Stainless</div><div class="hl-sp-sub">★ 4.7 / 5</div></div>
                           <span class="hl-sp-val">Rp186jt</span>
                         </div>
                         <div class="hl-sp-row">
-                          <span class="hl-sp-thumb"></span>
+                          <span class="hl-sp-thumb"><img src="https://cf.shopee.co.id/file/id-11134207-822wo-mpgbooky4oowce" alt="" loading="lazy"></span>
                           <div class="hl-sp-meta"><div class="hl-sp-name">Vacuum Bottle 1L</div><div class="hl-sp-sub">★ 4.9 / 5</div></div>
                           <span class="hl-sp-val">Rp142jt</span>
                         </div>
@@ -4245,13 +4250,18 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                       <p class="hl-step-desc">Temukan supplier terpercaya dengan harga kompetitif untuk memulai jualan.</p>
                       <div class="hl-step-preview" aria-hidden="true">
                         <div class="hl-sp-person">
-                          <span class="hl-sp-avatar"></span>
+                          <span class="hl-sp-avatar"><img src="https://cf.shopee.co.id/file/id-11134201-82252-ml4gfi34c8w01c" alt="" loading="lazy"></span>
                           <div class="hl-sp-meta">
                             <div class="hl-sp-name">Supplier Terpercaya</div>
                             <div class="hl-sp-sub">Jakarta · MOQ rendah</div>
                           </div>
                         </div>
-                        <div class="hl-sp-avatars"><span></span><span></span><span></span><span></span></div>
+                        <div class="hl-sp-avatars">
+                          <span><img src="https://cf.shopee.co.id/file/id-11134207-7r98r-lubwq0r37hfq54" alt="" loading="lazy"></span>
+                          <span><img src="https://cf.shopee.co.id/file/id-11134207-7ra0q-mboqo0zioaok90" alt="" loading="lazy"></span>
+                          <span><img src="https://cf.shopee.co.id/file/id-11134207-7r98v-lqpx8k21i1pa5c" alt="" loading="lazy"></span>
+                          <span><img src="https://cf.shopee.co.id/file/id-11134207-822wr-mpokl1ryfi8dfb" alt="" loading="lazy"></span>
+                        </div>
                       </div>
                     </div>
                     <div class="hl-step-arrow" aria-hidden="true">→</div>
@@ -4266,7 +4276,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                       <p class="hl-step-desc">Lihat strategi kompetitor, produk terlaris mereka, dan perubahan harga.</p>
                       <div class="hl-step-preview" aria-hidden="true">
                         <div class="hl-sp-person">
-                          <span class="hl-sp-avatar"></span>
+                          <span class="hl-sp-avatar"><img src="https://cf.shopee.co.id/file/f94cb89dd401fa179b2ab931cfa12850" alt="" loading="lazy"></span>
                           <div class="hl-sp-meta">
                             <div class="hl-sp-name">Toko Sukses</div>
                             <div class="hl-sp-sub">Top Competitor</div>
