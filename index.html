@@ -2414,8 +2414,48 @@ body.home-finder-done .home-title {
   .home-composer .composer-under { display: none; }
   /* The mobile landing is a tuned one-screen column with a docked composer, so
      the footer cluster is desktop-only. The same links live in .side-links,
-     which is only transform-hidden — mobile-first indexing still sees them. */
+     which is only transform-hidden — mobile-first indexing still sees them.
+     Prompt chips are hidden here too while the finder wizard is still active
+     (they'd overlap its steps) — body.home-finder-done below re-enables them
+     once the wizard is skipped/done, the common case. */
   .home-foot, .home-links, .home-prompts { display: none; }
+
+  /* Once the multi-step finder wizard is skipped/done (the common case —
+     most visitors never see the wizard), there's nothing tall enough to need
+     its own scroll region: let the composer and prompt chips flow in the
+     centered column instead of being split into a docked-bottom bar with the
+     chips hidden. The wizard-in-progress state keeps the docked/scrolling
+     layout above untouched — that form can genuinely overflow a short screen. */
+  body.home-finder-done.view-home .panel { overflow-y: auto; }
+  body.home-finder-done .home-hero {
+    position: static;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    min-height: 100%;
+    padding: 16px 0;
+  }
+  body.home-finder-done .home-scroll {
+    position: static;
+    inset: auto;
+    overflow: visible;
+    padding-bottom: 0;
+  }
+  body.home-finder-done .home-composer {
+    position: static;
+    box-shadow: none;
+    margin: 8px 0 0;
+  }
+  body.home-finder-done .home-prompts {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    width: 100%;
+    max-width: 100%;
+    margin: 16px 0 0;
+  }
+  body.home-finder-done .home-prompt { padding: 10px; font-size: .78rem; }
+  body.home-finder-done .home-prompt-txt { font-size: .74rem; line-height: 1.3; }
 
   /* 3 across on mobile, not 2 — .dir-grid is included so the Produk directory
      matches the finder/trending result grids rather than looking sparser. */
