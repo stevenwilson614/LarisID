@@ -662,11 +662,11 @@
    Rendered in the DOM alongside the table year-round; CSS shows exactly
    one of the two per viewport width, so nothing here needs its own
    data fetch or resize listener. */
-.ltk-cards { display: none; flex-direction: column; }
+.ltk-cards { display: none; flex-direction: column; gap: 12px; }
 .ltk-card {
-  border-bottom: 1px solid #F3F4F6; padding: 14px var(--ltk-pad);
+  border: 1px solid #E5E7EB; border-radius: var(--ltk-r); padding: 14px var(--ltk-pad);
+  background: #fff;
 }
-.ltk-card:last-child { border-bottom: 0; }
 .ltk-card-top {
   display: flex; align-items: center; gap: 12px; position: relative; cursor: pointer;
 }
@@ -676,31 +676,44 @@
   display: block; font-size: .86rem; font-weight: 700; color: #1A1A1A;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.ltk-card-meta { display: block; font-size: .7rem; color: #9CA3AF; margin-top: 2px; }
+.ltk-card-meta {
+  display: block; font-size: .7rem; color: #9CA3AF; margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .ltk-card-top .ltk-kebab { flex-shrink: 0; }
 .ltk-menu--card { top: 34px; right: 0; }
 .ltk-card-stats {
-  display: grid; grid-template-columns: repeat(3, 1fr) auto; align-items: center;
-  gap: 10px; margin-top: 12px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px;
 }
-.ltk-card-stat { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.ltk-card-stat-lbl {
+.ltk-mstat { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ltk-mstat-lbl {
   font-size: .62rem; font-weight: 700; color: #9CA3AF; text-transform: uppercase;
-  letter-spacing: .03em; white-space: nowrap;
+  letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.ltk-card-stat-val { font-size: .82rem; font-weight: 700; color: #1A1A1A; }
-.ltk-card-spark { flex-shrink: 0; }
-.ltk-spark--card { width: 74px; height: 28px; }
-.ltk-card-foot {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 10px; margin-top: 12px;
-}
-.ltk-card-updated { font-size: .68rem; color: #9CA3AF; }
+.ltk-mstat-val { font-size: .82rem; font-weight: 700; color: #1A1A1A; }
+.ltk-mstat-spark { width: 100%; max-width: 60px; height: 20px; display: block; margin-top: 2px; }
+.ltk-card-foot { display: flex; justify-content: flex-end; margin-top: 12px; }
 .ltk-card-detail-btn {
+  display: inline-flex; align-items: center; gap: 4px;
   font: inherit; font-size: .74rem; font-weight: 700; color: #B5202A;
   background: #FEF2F2; border: 0; border-radius: 999px; padding: 7px 14px; cursor: pointer;
 }
 .ltk-card-detail-btn:hover { background: #FEE2E2; }
+
+/* Mobile-only dashed "add" tile, appended after the mapped cards inside
+   .ltk-cards — the desktop table keeps the plain .ltk-addrow strip below. */
+.ltk-add-tile {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: 4px; width: 100%; border: 1.5px dashed #E5E7EB; border-radius: var(--ltk-r);
+  background: transparent; padding: 22px 14px; cursor: pointer; font: inherit;
+}
+.ltk-add-tile:hover { border-color: #B5202A; background: #FFFBFB; }
+.ltk-add-tile-plus {
+  font-size: 1.5rem; font-weight: 700; color: #B5202A; line-height: 1;
+}
+.ltk-add-tile-head { font-size: .82rem; font-weight: 700; color: #1A1A1A; }
+.ltk-add-tile-sub { font-size: .7rem; color: #9CA3AF; }
+.ltk-add-tile-cta { display: flex; width: 100%; margin-top: 10px; justify-content: center; }
 
 /* ── "Lihat Detail" screen ────────────────────────────────────────────── */
 .ltk-detail { padding: 4px 0; }
@@ -901,6 +914,8 @@
      Desktop/tablet keep the table (.ltk-cards stays display:none there). */
   .ltk-tablewrap { display: none; }
   .ltk-cards { display: flex; }
+  /* The dashed .ltk-add-tile inside .ltk-cards replaces this plain strip. */
+  .ltk-addrow { display: none; }
   .ltk-statstrip { grid-template-columns: repeat(auto-fit, minmax(144px, 1fr)); }
   .ltk-stat-val { font-size: 1rem; }
   /* Secondary controls (chipbar, day-range + sort selects) add clutter above

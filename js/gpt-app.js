@@ -7733,11 +7733,11 @@ function gptTrackerAdapter() {
     async getKeywordBaseline(keywords) {
       if (!_supabase || !keywords || !keywords.length) return [];
       const { data } = await _supabase.from('product_types_v')
-        .select('keyword,n_sellers,price_median,rep_product_name,rep_image_url')
+        .select('keyword,n_sellers,price_median,rep_product_name,rep_image_url,rep_store_name')
         .eq('city', 'ALL').in('keyword', keywords).limit(20);
       return (data || []).map(r => ({
         keyword: r.keyword, n_sellers: r.n_sellers, price_median: r.price_median,
-        top_name: r.rep_product_name, top_image: r.rep_image_url,
+        top_name: r.rep_product_name, top_image: r.rep_image_url, top_store: r.rep_store_name,
       }));
     },
     async getShopLogoCache(shopIds) {

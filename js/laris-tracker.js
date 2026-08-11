@@ -332,9 +332,9 @@
 
   /* Sparkline as raw canvas — the same choice the Deep Dive competitor table
      makes. Chart.js for a 60x22 line would be a 200KB dependency per row. */
-  function drawSpark(cv, series, up) {
+  function drawSpark(cv, series, up, metricKey) {
     if (!cv || !cv.getContext) return;
-    var pts = (series || []).map(function (p) { return Number(p.omset) || 0; });
+    var pts = (series || []).map(function (p) { return Number(p[metricKey || 'omset']) || 0; });
     if (pts.length < 2) return;
     var dpr = global.devicePixelRatio || 1;
     var w = cv.clientWidth || 68, h = cv.clientHeight || 24;
@@ -363,6 +363,45 @@
       var row = (S.rollup.rows || []).filter(function (r) { return rowKey(r) === key; })[0];
       if (!row) return;
       drawSpark(cv, row.series, (Number(row.omset) || 0) >= (Number(row.omset_prev) || 0));
+    });
+  }
+
+  // The 3 metrics every stat block can show a trend for — omset/units up is
+  // good (green), avg_price up is bad (red, mirrors deltaHtml's `inverse`).
+  var STAT_METRICS = [
+    { key: 'omset', label: 'Omset', fmt: function (r) { return fmtRp(r.omset || 0); }, inverse: false },
+    { key: 'units', label: 'Unit', fmt: function (r) { return fmtUnits(r.units || 0); }, inverse: false },
+    { key: 'avg_price', label: 'Harga', fmt: function (r) { return fmtRp(r.avg_price || 0); }, inverse: true },
+  ];
+
+  // Bordered stat box: label, value, delta, and its own mini trend line —
+  // shared by the mobile card (cardHtml) and the Lihat Detail top row
+  // (renderDetail), which differ only in canvas size. `rowKeyStr` lets
+  // paintMetricSparks resolve the row again at paint time without storing
+  // per-canvas closures.
+  function metricStatBlockHtml(rowKeyStr, m, r, trend, cw, ch) {
+    return '<div class="ltk-mstat">' +
+      '<span class="ltk-mstat-lbl">' + esc(m.label) + '</span>' +
+      '<span class="ltk-mstat-val">' + esc(m.fmt(r)) + '</span>' +
+      deltaHtml(r[m.key], r[m.key + '_prev'], trend, { inverse: m.inverse }) +
+      (trend
+        ? '<canvas class="ltk-mstat-spark" data-ltk-mspark="' + attr(rowKeyStr) + '|' + attr(m.key) +
+          '" width="' + cw + '" height="' + ch + '"></canvas>'
+        : '') +
+      '</div>';
+  }
+
+  function paintMetricSparks() {
+    if (!host) return;
+    host.querySelectorAll('[data-ltk-mspark]').forEach(function (cv) {
+      var parts = cv.getAttribute('data-ltk-mspark').split('|');
+      var key = parts[0], metricKey = parts[1];
+      var row = (S.rollup.rows || []).filter(function (r) { return rowKey(r) === key; })[0];
+      if (!row) return;
+      var cur = Number(row[metricKey]) || 0, prev = Number(row[metricKey + '_prev']) || 0;
+      var risen = cur >= prev;
+      var favorable = metricKey === 'avg_price' ? !risen : risen;
+      drawSpark(cv, row.series, favorable, metricKey);
     });
   }
 
@@ -1301,21 +1340,20 @@
     var key = rowKey(r);
     var trend = rowHasTrend(r);
     var isKw = S.tab !== 'store';
-    var metaLine = isKw
-      ? (trend ? fmtUnits(r.n_sellers || 0) + ' toko aktif' : 'Mengumpulkan data')
+    // Line 1: who's selling it (product cards) or how long they've sold
+    // (store cards, no store-of-store concept). Falls back to the toko-count
+    // when we have no rep store name yet, never leaving the line blank.
+    var line1 = isKw
+      ? (r.store_name || (trend ? fmtUnits(r.n_sellers || 0) + ' toko aktif' : 'Mengumpulkan data'))
       : (r.oldest_listing_date ? 'Toko sejak ' + fmtAge(r.oldest_listing_date) : 'Mengumpulkan data');
-    var stats = [
-      ['Omset', fmtRp(r.omset || 0), deltaHtml(r.omset, r.omset_prev, trend)],
-      ['Unit Terjual', fmtUnits(r.units || 0), deltaHtml(r.units, r.units_prev, trend)],
-      ['Harga Rata-rata', fmtRp(r.avg_price || 0), deltaHtml(r.avg_price, r.avg_price_prev, trend, { inverse: true })],
-    ];
-    var updated = S.asOf ? 'Diperbarui ' + fmtDate(S.asOf) : 'Menunggu data pertama';
+    var line2 = 'SKU Aktif: ' + fmtUnits(r.n_listings || 0);
     return '<article class="ltk-card">' +
       '<div class="ltk-card-top" data-ltk-lihatdetail="' + attr(key) + '">' +
         (isKw ? rowIconHtml(r) : storeAvatar(r)) +
         '<div class="ltk-card-head">' +
           '<span class="ltk-card-name">' + esc(rowLabel(r)) + '</span>' +
-          '<span class="ltk-card-meta">' + esc(metaLine) + '</span>' +
+          '<span class="ltk-card-meta">' + esc(line1) + '</span>' +
+          '<span class="ltk-card-meta">' + esc(line2) + '</span>' +
         '</div>' +
         '<button type="button" class="ltk-kebab" data-ltk-menu="' + attr(key) + '" ' +
           'aria-label="Aksi untuk ' + attr(rowLabel(r)) + '" aria-expanded="' + (S.openRow === key) + '">' +
@@ -1330,22 +1368,13 @@
           : '') +
       '</div>' +
       '<div class="ltk-card-stats">' +
-        stats.map(function (s) {
-          return '<div class="ltk-card-stat">' +
-            '<span class="ltk-card-stat-lbl">' + esc(s[0]) + '</span>' +
-            '<span class="ltk-card-stat-val">' + esc(s[1]) + '</span>' +
-            s[2] +
-          '</div>';
-        }).join('') +
-        '<div class="ltk-card-spark">' +
-          (trend
-            ? '<canvas class="ltk-spark ltk-spark--card" data-ltk-spark="' + attr(key) + '" width="90" height="30"></canvas>'
-            : '<span class="ltk-spark-empty">Belum ada tren</span>') +
-        '</div>' +
+        STAT_METRICS.map(function (m) { return metricStatBlockHtml(key, m, r, trend, 60, 20); }).join('') +
       '</div>' +
       '<div class="ltk-card-foot">' +
-        '<span class="ltk-card-updated">' + esc(updated) + '</span>' +
-        '<button type="button" class="ltk-card-detail-btn" data-ltk-lihatdetail="' + attr(key) + '">Lihat Detail</button>' +
+        '<button type="button" class="ltk-card-detail-btn" data-ltk-lihatdetail="' + attr(key) + '">Lihat Detail' +
+          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" ' +
+          'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>' +
+        '</button>' +
       '</div>' +
     '</article>';
   }
@@ -1398,7 +1427,16 @@
             '<thead>' + head + '</thead>' +
             '<tbody>' + rows.map(rowHtml).join('') + '</tbody>' +
           '</table></div>' +
-          '<div class="ltk-cards">' + rows.map(cardHtml).join('') + '</div>' +
+          '<div class="ltk-cards">' + rows.map(cardHtml).join('') +
+            '<button type="button" class="ltk-add-tile" data-ltk-act="setup">' +
+              '<span class="ltk-add-tile-plus" aria-hidden="true">+</span>' +
+              '<span class="ltk-add-tile-head">Tambah ' + (isKw ? 'Produk' : 'Toko') + ' untuk Dipantau</span>' +
+              '<span class="ltk-add-tile-sub">' + (free ? free + ' slot kosong' : 'Kelola pantauan kamu') + '</span>' +
+            '</button>' +
+            '<button type="button" class="ltk-btn ltk-btn--primary ltk-add-tile-cta" data-ltk-act="setup">' +
+              'Tambah ' + (isKw ? 'Produk' : 'Toko') +
+            '</button>' +
+          '</div>' +
           '<button type="button" class="ltk-addrow" data-ltk-act="setup">' +
             '<span aria-hidden="true">+</span> Tambah Pantauan Baru' +
             (free ? '<em>' + free + ' slot kosong</em>' : '') +
@@ -1407,6 +1445,7 @@
       '</div>';
 
     paintSparks();
+    paintMetricSparks();
   }
 
   /* ── "Lihat Detail" screen ─────────────────────────────────────────────
@@ -1774,11 +1813,12 @@
     return callP('getKeywordBaseline', kws).then(function (list) {
       var byKw = {};
       (list || []).forEach(function (b) {
-        if (b && b.keyword) byKw[String(b.keyword).toLowerCase()] = b.top_image || '';
+        if (b && b.keyword) byKw[String(b.keyword).toLowerCase()] = b;
       });
       rows.forEach(function (r) {
-        var img = byKw[String(r.keyword || '').toLowerCase()];
-        if (img) r.image_url = img;
+        var b = byKw[String(r.keyword || '').toLowerCase()];
+        if (b && b.top_image) r.image_url = b.top_image;
+        if (b && b.top_store) r.store_name = b.top_store;
       });
       return null;
     }).catch(function () { return null; });
