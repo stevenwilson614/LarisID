@@ -814,22 +814,62 @@ const LP_AI_DEMO_PRODUCTS = [
 ];
 
 let _lpAiDemoRan = false;
+// Dedicated typewriter for the landing demo — _typeTextNode's cancel check
+// (`gen !== _streamGen`) reads the app-wide streaming counter, which any
+// real chat activity elsewhere bumps. Sharing it here meant an unrelated
+// stream starting mid-sequence would silently truncate this scripted demo.
+function _lpTypeText(node, fullText, cps) {
+  return new Promise((resolve) => {
+    const text = String(fullText || '');
+    if (!node || !text) { resolve(); return; }
+    let i = 0;
+    const step = () => {
+      const n = Math.min(3, text.length - i);
+      i += n;
+      node.textContent = text.slice(0, i);
+      if (i >= text.length) { resolve(); return; }
+      const lastCh = text[i - 1];
+      const pause = /[.!?]/.test(lastCh) ? 6 : /[,;:]/.test(lastCh) ? 3 : 1;
+      setTimeout(step, (1000 / cps) * n * pause);
+    };
+    step();
+  });
+}
 function initLandingAiDemo() {
   const section = $('hl-ai-demo');
   const qEl = $('hl-ai-demo-q');
   const aEl = $('hl-ai-demo-a');
+  const loadingEl = $('hl-ai-demo-loading');
   const cardsEl = $('hl-ai-demo-cards');
+  const composerEl = $('hl-ai-demo-composer');
+  const inputEl = $('hl-ai-demo-input');
   if (!section || !qEl || !aEl || !cardsEl || typeof IntersectionObserver !== 'function') return;
+
+  // The composer is real from the moment it's visible in the DOM — wiring it
+  // doesn't depend on the scripted sequence below having run yet.
+  composerEl?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const t = (inputEl?.value || '').trim();
+    if (!t) return;
+    inputEl.value = '';
+    void logUserEvent('gpt_landing_ai_demo_ask', { ui: 'gpt' });
+    submitFromHome(t);
+  });
+
   const io = new IntersectionObserver((entries) => {
     if (_lpAiDemoRan || !entries.some(e => e.isIntersecting)) return;
     _lpAiDemoRan = true;
     io.disconnect();
     void (async () => {
-      await _typeTextNode(qEl, LP_AI_DEMO_QUESTION, _streamGen, 26, () => {});
+      await _lpTypeText(qEl, LP_AI_DEMO_QUESTION, 26);
       await _sleep(400);
       aEl.hidden = false;
-      await _typeTextNode(aEl, LP_AI_DEMO_ANSWER, _streamGen, 40, () => {});
-      await _sleep(250);
+      await _lpTypeText(aEl, LP_AI_DEMO_ANSWER, 40);
+      // Beat before results land — long enough to actually read the answer,
+      // not just a network-latency filler.
+      if (loadingEl) loadingEl.hidden = false;
+      await _sleep(1500);
+      if (loadingEl) loadingEl.hidden = true;
       const products = LP_AI_DEMO_PRODUCTS.map(p => asListingProduct({
         ...p, nowcast_omset_monthly: Math.round((p.price * p.total_sold) / 6),
       }));
@@ -841,6 +881,10 @@ function initLandingAiDemo() {
       bindProductCards(cardsEl);
       void hydrateProdCardsIn(cardsEl);
       requestAnimationFrame(() => cardsEl.classList.add('is-shown'));
+      if (composerEl) {
+        composerEl.hidden = false;
+        requestAnimationFrame(() => composerEl.classList.add('is-shown'));
+      }
     })();
   }, { threshold: 0.35 });
   io.observe(section);
