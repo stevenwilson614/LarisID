@@ -40,10 +40,13 @@
   var WATCHDOG_PAINT_MS = 2500;       // never leave the user on a spinner past this
   var WATCHDOG_ABORT_MS = 8000;       // never leave the user on a dead screen at all
   var SEED_TARGET = 3;                // pre-fill 3 of 5; the 2 empty slots are the hook
-  // Shopee scrape days are sparse and irregular — a 7‑day window routinely
-  // contains zero scrapes for a perfectly active market, which would hide all
-  // history. 30 days gives the UI a more representative view.
-  var DEFAULT_DAYS = 30;
+  // Shopee scrape days are sparse and irregular — 30 days can still land as
+  // few as 1-2 scrapes for a real, active keyword (confirmed 2026-08-11: a
+  // 15-day gap between two scrapes left only 2 points in a 30-day window,
+  // rendering as a flat straight line with nothing to curve through). 90
+  // days reliably surfaces enough real history for a trend to read as a
+  // trend instead of two dots.
+  var DEFAULT_DAYS = 90;
   var WIB_OFFSET_MIN = 7 * 60;        // Asia/Jakarta, no DST
   var SCRAPE_HOUR_WIB = 7;            // morning run lands ~07:00 WIB
   var MIN_DAYS_FOR_TREND = 2;         // below this: "Baru", no sparkline, no %
