@@ -769,6 +769,14 @@
 .ltk-chart-tick--last { transform: translateX(-100%); }
 .ltk-chart-scrub-date { font-size: .78rem; font-weight: 600; color: #6B7280; }
 .ltk-chart-scrub-date em { font-style: normal; color: #9CA3AF; }
+.ltk-chart-legend {
+  display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px;
+  font-size: .68rem; color: #9CA3AF;
+}
+.ltk-chart-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.ltk-chart-legend-item i { width: 16px; height: 0; flex-shrink: 0; }
+.ltk-chart-legend-solid { border-top: 2px solid #9CA3AF; }
+.ltk-chart-legend-dash { border-top: 2px dashed #9CA3AF; }
 .ltk-detail-peers {
   border: 1px solid #E5E7EB; border-radius: var(--ltk-r); padding: 16px; margin-top: 16px;
 }

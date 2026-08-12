@@ -7559,6 +7559,13 @@ function upsertDeepDiveChatMessage(chat, product, scoreInfo, stats) {
 
 let _trkAdapterB = null;
 
+/** Local YYYY-MM-DD for `n` days ago. Both series RPCs clamp p_to to
+ *  current_date server-side, so a timezone-edge day either way is harmless. */
+function _isoDaysAgo(n) {
+  const d = new Date(Date.now() - (Number(n) || 0) * 86400000);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
 function gptTrackerAdapter() {
   if (_trkAdapterB) return _trkAdapterB;
   const rpc = async (name, params) => {
@@ -7640,6 +7647,38 @@ function gptTrackerAdapter() {
         const { data } = await _supabase.from('mv_trending')
           .select('item_id,shop_id,store_name,product_name,image_url,price,total_sold,delta_7d,delta_prev_7d')
           .eq('shop_id', shopId).order('total_sold', { ascending: false }).limit(5);
+        return data || [];
+      } catch (_) { return []; }
+    },
+    // Dense daily series for the tracker's charts and stat blocks.
+    //
+    // get_tracker_rollup only ever returns the raw scrape buckets, which are
+    // sparse (a keyword can have 2 buckets in 90 days) and — because a
+    // bucket's span can overlap the previous bucket's span — double-count
+    // when summed, which is what made the headline Omset/Unit figures look
+    // arbitrary. keyword_daily_series/store_daily_series resolve both: they
+    // de-overlap (one interval wins per day) and fill every remaining day
+    // from the velocity nowcast, tagging each day `measured` / `forecast` /
+    // `prior` so the UI can stay honest about which is which. ~25-40ms each.
+    async getKeywordSeries(keyword, days) {
+      if (!keyword || !_supabase) return [];
+      try {
+        const { data, error } = await _supabase.rpc('keyword_daily_series', {
+          p_keyword: String(keyword).trim().toLowerCase(),
+          p_from: _isoDaysAgo(days), p_to: _isoDaysAgo(0),
+        });
+        if (error) throw error;
+        return data || [];
+      } catch (_) { return []; }
+    },
+    async getStoreSeries(shopId, days) {
+      if (shopId == null || !_supabase) return [];
+      try {
+        const { data, error } = await _supabase.rpc('store_daily_series', {
+          p_shop_id: Number(shopId),
+          p_from: _isoDaysAgo(days), p_to: _isoDaysAgo(0),
+        });
+        if (error) throw error;
         return data || [];
       } catch (_) { return []; }
     },
@@ -11874,18 +11913,22 @@ function renderAdminUsers(users) {
   const body = $('admin-users-body');
   if (!body) return;
   if (!users.length) {
-    body.innerHTML = '<tr><td colspan="6" class="dd-sub">Belum ada user.</td></tr>';
+    body.innerHTML = '<tr><td colspan="8" class="dd-sub">Belum ada user.</td></tr>';
     return;
   }
   body.innerHTML = users.slice(0, 80).map((u, i) => {
     const loc = u.region || u.city || '—';
     const cats = (u.categories || []).slice(0, 2).join(', ') || '—';
     const name = u.display_name || u.email || 'User';
+    const tracked = u.tracked_count ?? 0;
+    const deepdives = u.deepdive_count ?? 0;
     return `<tr>
       <td><strong>${esc(name)}</strong></td>
       <td class="dd-sub">${esc(u.email || '')}</td>
       <td>${esc(loc)}</td>
       <td class="dd-sub">${esc(cats)}</td>
+      <td style="font-weight:700;text-align:center">${tracked}</td>
+      <td style="font-weight:700;text-align:center">${deepdives}</td>
       <td class="dd-sub">${fmtAdminDate(u.created_at)}</td>
       <td><button type="button" class="admin-sample-btn" data-sample-idx="${i}">Sample view</button></td>
     </tr>`;
@@ -11902,11 +11945,11 @@ function renderAdminUsers(users) {
 async function loadAdminDirectory() {
   if (!isPlatformAdmin() || !_supabase) {
     const body = $('admin-users-body');
-    if (body) body.innerHTML = '<tr><td colspan="6" class="dd-sub">Login sebagai admin dulu.</td></tr>';
+    if (body) body.innerHTML = '<tr><td colspan="8" class="dd-sub">Login sebagai admin dulu.</td></tr>';
     return;
   }
   const body = $('admin-users-body');
-  if (body) body.innerHTML = '<tr><td colspan="6" class="dd-sub">Memuat…</td></tr>';
+  if (body) body.innerHTML = '<tr><td colspan="8" class="dd-sub">Memuat…</td></tr>';
   try {
     const { data, error } = await _supabase.rpc('admin_user_directory');
     if (error) throw error;
@@ -11915,7 +11958,7 @@ async function loadAdminDirectory() {
     renderAdminLocations(_adminUsers);
     renderAdminUsers(_adminUsers);
   } catch (e) {
-    if (body) body.innerHTML = `<tr><td colspan="6" class="dd-sub">${esc(e.message || 'Gagal memuat.')}</td></tr>`;
+    if (body) body.innerHTML = `<tr><td colspan="8" class="dd-sub">${esc(e.message || 'Gagal memuat.')}</td></tr>`;
   }
 }
 

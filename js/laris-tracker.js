@@ -28,10 +28,11 @@
  * renderRollup() against get_tracker_rollup(days, scope) — the columns differ
  * but the layout, sorting and sparklines are shared.
  *
- * HONESTY RULE: a row whose window holds fewer than 2 snapshots gets "Baru"
- * instead of a percentage and no sparkline. Most tracked keywords are in that
- * state until the daily_custom scrape set has covered them for a week or two,
- * and inventing a trend line there would be inventing data.
+ * HONESTY RULE: stats and charts prefer keyword_daily_series / store_daily_series
+ * (one de-overlapped day per calendar day, with forecast fill from the velocity
+ * nowcast) so a keyword with two scrapes in 90 days still gets a real curve.
+ * Raw scrape buckets from get_tracker_rollup are the fallback only. "Baru"
+ * prints when even the dense series has no non-zero movement.
  */
 (function (global) {
   'use strict';
@@ -343,8 +344,31 @@
   function rowLabel(r) {
     return S.tab === 'store' ? (r.store_name || ('Toko ' + r.shop_id)) : (r.keyword || '—');
   }
+  // A row can show a trend once the dense series has real movement in it —
+  // which is nearly always, since keyword_daily_series fills every day from
+  // the velocity nowcast. The raw-bucket count is only the fallback for rows
+  // whose series fetch failed or hasn't landed yet.
   function rowHasTrend(r) {
+    if (r && r.dseries && r.dseries.length >= 2) return !!r.has_dense;
     return (Number(r.n_days) || 0) >= MIN_DAYS_FOR_TREND;
+  }
+  // Charts read the dense series when it's there, the raw buckets otherwise.
+  // Dense series is fetched at 2× the window so prev/cur % share one array —
+  // for the line we clip to that same 2× span so the right half is "now"
+  // and the left half is the period the badge compares against.
+  function rowSeries(r) {
+    var s = (r && r.dseries && r.dseries.length >= 2) ? r.dseries : ((r && r.series) || []);
+    if (!(r && r.dseries && r.dseries.length >= 2 && r.window_days_effective)) return s;
+    var win = Number(r.window_days_effective) || 0;
+    if (win < 1) return s;
+    var lastT = Date.parse(s[s.length - 1].d);
+    if (isNaN(lastT)) return s;
+    var cut = lastT - win * 2 * 86400000;
+    var sliced = s.filter(function (p) {
+      var t = Date.parse(p.d);
+      return !isNaN(t) && t > cut;
+    });
+    return sliced.length >= 2 ? sliced : s;
   }
 
   /* Real scrape dates — not array index — decide horizontal spacing, so two
@@ -359,7 +383,13 @@
   // for older cached rows that predate that column.
   function seriesPoints(series, metricKey) {
     var pts = (series || []).map(function (p) {
-      return { t: Date.parse(p.d), v: Number(p[metricKey || 'omset']) || 0, d: p.d, isCur: p.is_cur !== false };
+      return {
+        t: Date.parse(p.d), v: Number(p[metricKey || 'omset']) || 0, d: p.d,
+        isCur: p.is_cur !== false,
+        // Dense-series days past the last real scrape are model output, not
+        // measurement — the chart draws them dashed and labels them.
+        forecast: p.source === 'forecast',
+      };
     }).filter(function (p) { return !isNaN(p.t); });
     pts.sort(function (a, b) { return a.t - b.t; });
     return pts.length >= 2 ? pts : null;
@@ -430,7 +460,7 @@
       var key = cv.getAttribute('data-ltk-spark');
       var row = (S.rollup.rows || []).filter(function (r) { return rowKey(r) === key; })[0];
       if (!row) return;
-      drawSpark(cv, row.series, (Number(row.omset) || 0) >= (Number(row.omset_prev) || 0));
+      drawSpark(cv, rowSeries(row), (Number(row.omset) || 0) >= (Number(row.omset_prev) || 0));
     });
   }
 
@@ -468,7 +498,7 @@
       if (!row) return;
       var cur = Number(row[metricKey]) || 0, prev = Number(row[metricKey + '_prev']) || 0;
       // Same rule as deltaHtml: up is always green, down is always red.
-      drawSpark(cv, row.series, cur >= prev, metricKey);
+      drawSpark(cv, rowSeries(row), cur >= prev, metricKey);
     });
   }
 
@@ -1578,13 +1608,25 @@
     ctx.closePath();
     ctx.fillStyle = _dc.up ? 'rgba(22,163,74,.08)' : 'rgba(220,38,38,.08)';
     ctx.fill();
-    // Line
-    tracePath(ctx, xy);
+    // Line — measured stretch solid, forecast tail dashed, so a modelled
+    // number is never presented with the same authority as a measured one.
+    var fc = _dc.firstForecast;
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
-    ctx.stroke();
+    if (fc > 0 && fc < xy.length) {
+      tracePath(ctx, xy.slice(0, fc + 1));
+      ctx.stroke();
+      ctx.save();
+      ctx.setLineDash([4, 4]);
+      tracePath(ctx, xy.slice(fc));
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      tracePath(ctx, xy);
+      ctx.stroke();
+    }
     // Crosshair — the scrubbed point, or the latest point by default.
     var idx = hi != null ? hi : xy.length - 1;
     var p = xy[idx];
@@ -1617,7 +1659,7 @@
     _dc.valEl.textContent = _dc.activeStat.fmt(fakeRow);
     if (_dc.subEl) {
       _dc.subEl.innerHTML = '<span class="ltk-chart-scrub-date">' +
-        esc(fmtDayShort(pt.d)) + (pt.isCur ? '' : ' <em>(sebelum window ini)</em>') + '</span>';
+        esc(fmtDayShort(pt.d)) + (pt.forecast ? ' <em>(perkiraan)</em>' : '') + '</span>';
     }
   }
 
@@ -1680,7 +1722,7 @@
   function mountDetailChart(cv, labelsEl, row, metricKey, activeStat, header) {
     _dc = null;
     if (!cv || !cv.getContext) return;
-    var pts = seriesPoints(row.series, metricKey);
+    var pts = seriesPoints(rowSeries(row), metricKey);
     if (!pts) return;
     var dpr = global.devicePixelRatio || 1;
     var w = cv.clientWidth || 280, h = cv.clientHeight || 120;
@@ -1689,9 +1731,14 @@
     ctx.scale(dpr, dpr);
     var pad = 8;
     var xy = projectXY(pts, w, h, pad);
+    var firstForecast = -1;
+    for (var i = 0; i < pts.length; i++) {
+      if (pts[i].forecast) { firstForecast = i; break; }
+    }
     _dc = {
       ctx: ctx, cv: cv, xy: xy, pts: pts, w: w, h: h, pad: pad, metricKey: metricKey,
       activeStat: activeStat, up: xy[xy.length - 1][1] <= xy[0][1], // smaller y = higher value
+      firstForecast: firstForecast,
       valEl: header.valEl, subEl: header.subEl,
       normalValueText: header.normalValueText, normalSubHtml: header.normalSubHtml,
     };
@@ -1785,7 +1832,14 @@
             ? '<div class="ltk-detail-chart-canvaswrap">' +
                 '<canvas class="ltk-detail-chart" data-ltk-detailchart width="600" height="160"></canvas>' +
               '</div>' +
-              '<div class="ltk-detail-chart-labels" data-ltk-chart-labels></div>'
+              '<div class="ltk-detail-chart-labels" data-ltk-chart-labels></div>' +
+              (row.n_forecast
+                ? '<div class="ltk-chart-legend">' +
+                    '<span class="ltk-chart-legend-item"><i class="ltk-chart-legend-solid"></i>Data terukur</span>' +
+                    '<span class="ltk-chart-legend-item"><i class="ltk-chart-legend-dash"></i>Perkiraan (' +
+                      esc(String(row.n_forecast)) + ' hari terakhir, dari model LarisID)</span>' +
+                  '</div>'
+                : '')
             : '<p class="ltk-detail-peers-note">Perlu minimal 2 hari data untuk menampilkan tren.</p>') +
         '</div>' +
         changeHistoryHtml(row, isKw) +
@@ -2090,11 +2144,148 @@
     }).catch(function () { return null; });
   }
 
+  /* ── Dense daily series ──────────────────────────────────────────────────
+     get_tracker_rollup returns the raw scrape buckets, which are sparse and
+     — because consecutive buckets' spans can overlap — double-count when
+     summed. keyword_daily_series/store_daily_series fix both server-side:
+     one interval wins per day, and every remaining day is filled from the
+     velocity nowcast, tagged 'measured' | 'forecast' | 'prior'.
+
+     Every stat the tracker shows is then derived from that ONE array, so the
+     headline number, the % badge and the line can never disagree — and a
+     keyword with two scrapes in 90 days still gets a full, honest curve
+     instead of "Baru". */
+
+  // Fetch 2x the window so the previous period (what the % compares against)
+  // comes from the same series. mv_shop_daily only holds 120 days, so the
+  // store scope can't usefully ask for more than that.
+  function seriesSpanDays() {
+    var want = (Number(S.windowDays) || DEFAULT_DAYS) * 2;
+    return S.tab === 'store' ? Math.min(want, 120) : Math.min(want, 180);
+  }
+
+  // Normalise onto the metric keys the charts already use (avg_price, not
+  // price) so drawSpark/drawDetailChart need no special-casing.
+  function normaliseSeries(rows) {
+    var out = (rows || []).map(function (p) {
+      return {
+        d: p.d,
+        units: Number(p.units) || 0,
+        omset: Number(p.omset) || 0,
+        avg_price: Number(p.price) || 0,
+        source: p.source || 'prior',
+      };
+    }).filter(function (p) { return p.d; });
+    // 'prior' only ever precedes the first real scrape, where the RPC holds
+    // the long-run average flat. Plotting that stretch would draw a long
+    // straight line that reads as "sales were steady then", which is not what
+    // it means — start the chart at the first measurement instead.
+    var firstReal = 0;
+    while (firstReal < out.length && out[firstReal].source === 'prior') firstReal++;
+    return (firstReal > 0 && out.length - firstReal >= 2) ? out.slice(firstReal) : out;
+  }
+
+  // Window sums over the dense series. `days` back from the newest point is
+  // "current"; the `days` before that is "previous".
+  function deriveFromSeries(r) {
+    var s = r.dseries || [];
+    if (s.length < 2) return;
+    var firstT = Date.parse(s[0].d);
+    var lastT = Date.parse(s[s.length - 1].d);
+    // Both halves must be the same length or the % is meaningless. The store
+    // scope can't always supply 2x the window (mv_shop_daily holds 120 days),
+    // so fall back to half of whatever the series actually covers.
+    var spanDays = Math.max(1, Math.round((lastT - firstT) / 86400000));
+    var win = Math.min(Number(S.windowDays) || DEFAULT_DAYS, Math.floor(spanDays / 2));
+    if (win < 1) return;
+    r.window_days_effective = win;
+    var cur0 = lastT - win * 86400000;
+    var prev0 = cur0 - win * 86400000;
+    var cur = { omset: 0, units: 0 }, prev = { omset: 0, units: 0 };
+    var lastPrice = 0, prevPrice = 0;
+    s.forEach(function (p) {
+      var t = Date.parse(p.d);
+      if (isNaN(t)) return;
+      if (t > cur0) {
+        cur.omset += p.omset; cur.units += p.units;
+        if (p.avg_price) lastPrice = p.avg_price;
+      } else if (t > prev0) {
+        prev.omset += p.omset; prev.units += p.units;
+        if (p.avg_price) prevPrice = p.avg_price;
+      }
+    });
+    r.omset = Math.round(cur.omset);
+    r.units = Math.round(cur.units);
+    r.omset_prev = Math.round(prev.omset);
+    r.units_prev = Math.round(prev.units);
+    if (lastPrice) r.avg_price = lastPrice;
+    if (prevPrice) r.avg_price_prev = prevPrice;
+    // A series is only a real trend if something actually moved in it —
+    // an all-zero curve is "no data", not "flat sales".
+    r.has_dense = s.some(function (p) { return p.omset > 0 || p.units > 0; });
+    r.n_forecast = s.filter(function (p) { return p.source === 'forecast'; }).length;
+    // n_days drives the "Aktif · N hari data" meta — count measured days in
+    // the effective window, not raw scrape buckets (which can be 1–2 forever).
+    var measuredInWin = 0;
+    s.forEach(function (p) {
+      var t = Date.parse(p.d);
+      if (!isNaN(t) && t > cur0 && p.source === 'measured') measuredInWin++;
+    });
+    if (measuredInWin > 0) r.n_days = measuredInWin;
+    else if (r.has_dense) r.n_days = Math.max(r.n_days || 0, win);
+  }
+
+  // Keep the strip totals in lockstep with the per-row numbers we just
+  // overwrote from the dense series — otherwise the header can disagree
+  // with every cell underneath it.
+  function recomputeTotalsFromRows() {
+    var rows = (S.rollup && S.rollup.rows) || [];
+    if (!rows.length) return;
+    var t = Object.assign({}, S.rollup.totals || {});
+    var units = 0, omset = 0, unitsPrev = 0, omsetPrev = 0;
+    var priceSum = 0, priceN = 0, pricePrevSum = 0, pricePrevN = 0;
+    rows.forEach(function (r) {
+      units += Number(r.units) || 0;
+      omset += Number(r.omset) || 0;
+      unitsPrev += Number(r.units_prev) || 0;
+      omsetPrev += Number(r.omset_prev) || 0;
+      if (Number(r.avg_price) > 0) { priceSum += Number(r.avg_price); priceN++; }
+      if (Number(r.avg_price_prev) > 0) { pricePrevSum += Number(r.avg_price_prev); pricePrevN++; }
+    });
+    t.tracked = rows.length;
+    t.units = Math.round(units);
+    t.omset = Math.round(omset);
+    t.units_prev = Math.round(unitsPrev);
+    t.omset_prev = Math.round(omsetPrev);
+    if (priceN) t.avg_price = Math.round(priceSum / priceN);
+    if (pricePrevN) t.avg_price_prev = Math.round(pricePrevSum / pricePrevN);
+    S.rollup.totals = t;
+  }
+
+  function loadDenseSeries() {
+    var rows = (S.rollup && S.rollup.rows) || [];
+    if (!rows.length) return Promise.resolve(null);
+    var isKw = S.tab !== 'store';
+    var days = seriesSpanDays();
+    return Promise.all(rows.map(function (r) {
+      var p = isKw
+        ? callP('getKeywordSeries', r.keyword, days)
+        : callP('getStoreSeries', r.shop_id, days);
+      return p.then(function (list) {
+        r.dseries = normaliseSeries(list);
+        deriveFromSeries(r);
+      }).catch(function (e) { warn('dense series failed', e); });
+    })).then(function () {
+      if (rows.some(function (r) { return r.has_dense; })) recomputeTotalsFromRows();
+      return null;
+    });
+  }
+
   function enrichRollupRows() {
-    if (S.tab === 'store') {
-      return Promise.all([loadStoreLogos(), loadStoreAges()]).then(function () { return null; });
-    }
-    return loadRowImages();
+    var base = S.tab === 'store'
+      ? Promise.all([loadStoreLogos(), loadStoreAges()])
+      : loadRowImages();
+    return Promise.resolve(base).then(loadDenseSeries).then(function () { return null; });
   }
 
   // How many products the seed shop actually runs. Fetched only when the Toko
@@ -2172,8 +2363,17 @@
           // A resumed tracker has provably nothing in a 7-day window (pause is
           // 14 days), so route it back to collecting.
           if (S.resumed) S.hasHistory = false;
-          if (!S.hasHistory) return loadBaseline().then(loadFallback);
-          return enrichRollupRows();
+          // Even when the raw scrape buckets are thin, the dense series can
+          // usually still produce a real curve for these keywords — so try it
+          // first and only fall through to the "collecting" screen (baseline
+          // + other people's movers, which reads as unrelated noise next to
+          // the product you just added) if it genuinely comes back empty.
+          return enrichRollupRows().then(function () {
+            var anyDense = (S.rollup.rows || []).some(function (r) { return r.has_dense; });
+            if (anyDense) { S.hasHistory = true; return null; }
+            if (!S.hasHistory) return loadBaseline().then(loadFallback);
+            return null;
+          });
         });
       })
       .then(function () {

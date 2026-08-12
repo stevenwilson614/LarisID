@@ -4359,9 +4359,9 @@ function adminRenderUserDirectory(rows) {
     el.innerHTML = '<div class="cohort-muted">Tidak ada user yang cocok.</div>';
     return;
   }
-  el.innerHTML = `<table style="width:100%;font-size:.72rem;border-collapse:collapse;min-width:860px;">
+  el.innerHTML = `<table style="width:100%;font-size:.72rem;border-collapse:collapse;min-width:980px;">
     <thead><tr style="text-align:left;color:#9CA3AF;border-bottom:1px solid #F3F4F6;">
-      <th style="padding:7px 4px;">User</th><th>Lokasi</th><th>Status Penjual</th><th>Kategori</th><th>Tipe</th><th>Daftar</th><th>Terakhir Aktif</th><th></th>
+      <th style="padding:7px 4px;">User</th><th>Lokasi</th><th>Status Penjual</th><th>Kategori</th><th>Tracked</th><th>Deep Dive</th><th>Tipe</th><th>Daftar</th><th>Terakhir Aktif</th><th></th>
     </tr></thead>
     <tbody>${rows.map(r => {
       const role = r.app_role || 'independent';
@@ -4370,11 +4370,15 @@ function adminRenderUserDirectory(rows) {
       const cats = (r.categories || []).slice(0, 2).join(', ') + ((r.categories || []).length > 2 ? '…' : '');
       const uid = r.user_id || '';
       const cohortRole = role === 'student' || role === 'leader';
+      const tracked = r.tracked_count ?? 0;
+      const deepdives = r.deepdive_count ?? 0;
       return `<tr style="border-bottom:1px solid #F9FAFB;">
         <td style="padding:8px 4px;cursor:pointer;" onclick="adminOpenUserDrawer('${_cohortEsc(uid)}')"><strong>${_cohortEsc(r.display_name || r.email || 'User')}</strong><br><span class="cohort-muted">${_cohortEsc(r.email || '')}</span></td>
         <td>${_cohortEsc(location)}</td>
         <td>${adminSellerLabel(r.seller_status)}</td>
         <td class="cohort-muted" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_cohortEsc(cats || '—')}</td>
+        <td style="font-weight:700;text-align:center;">${tracked}</td>
+        <td style="font-weight:700;text-align:center;">${deepdives}</td>
         <td><span style="color:${roleColor};font-weight:800;">${_cohortEsc(adminRoleLabel(role))}</span></td>
         <td class="cohort-muted">${r.created_at ? _cohortEsc(r.created_at.slice(0, 10)) : '—'}</td>
         <td class="cohort-muted">${r.last_activity_at ? _cohortEsc(r.last_activity_at.slice(0, 16).replace('T', ' ')) : '—'}</td>
@@ -4409,6 +4413,7 @@ function adminOpenUserDrawer(userId) {
   const cats = (r.categories || []).length ? r.categories.join(', ') : '—';
   const onboard = r.onboarding_completed ? 'Selesai' : 'Belum / dilewati';
   const deepdives = r.deepdive_count ?? 0;
+  const tracked = r.tracked_count ?? 0;
   const lastDiscover = r.last_discover_at ? r.last_discover_at.slice(0, 16).replace('T', ' ') : '—';
   const role = r.app_role || 'independent';
   const isCohort = role === 'student' || role === 'leader';
@@ -4431,7 +4436,11 @@ function adminOpenUserDrawer(userId) {
         <div style="font-weight:700;margin-top:4px;">${onboard}</div>
       </div>
       <div style="background:#F9FAFB;border-radius:8px;padding:10px;">
-        <div style="font-size:.58rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;">Deep Dive</div>
+        <div style="font-size:.58rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;">Tracked</div>
+        <div style="font-weight:700;margin-top:4px;">${tracked}</div>
+      </div>
+      <div style="background:#F9FAFB;border-radius:8px;padding:10px;">
+        <div style="font-size:.58rem;color:#9CA3AF;font-weight:600;text-transform:uppercase;">Deep Dive (lifetime)</div>
         <div style="font-weight:700;margin-top:4px;">${deepdives}×</div>
       </div>
     </div>
@@ -16099,6 +16108,37 @@ function trkAdapter() {
     // shipped — it reads listing_deltas, which the daily scrape never refreshes.
     getRollup(days, scope)      { return rpc('get_tracker_rollup', { p_days: days, p_scope: scope || 'keyword' }); },
     getDeltas(days)             { return rpc('get_tracker_deltas', { p_days: days }); },
+    // Dense daily series — same RPCs Site B uses. De-overlaps sparse scrape
+    // buckets and fills gaps from the velocity nowcast so pantauan charts
+    // and omset/unit headlines never disagree.
+    async getKeywordSeries(keyword, days) {
+      if (!keyword || !_supabase) return [];
+      try {
+        const to = new Date();
+        const from = new Date(to.getTime() - (Number(days) || 14) * 86400000);
+        const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+        const { data, error } = await _supabase.rpc('keyword_daily_series', {
+          p_keyword: String(keyword).trim().toLowerCase(),
+          p_from: iso(from), p_to: iso(to),
+        });
+        if (error) throw error;
+        return data || [];
+      } catch (_) { return []; }
+    },
+    async getStoreSeries(shopId, days) {
+      if (shopId == null || !_supabase) return [];
+      try {
+        const to = new Date();
+        const from = new Date(to.getTime() - (Number(days) || 14) * 86400000);
+        const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+        const { data, error } = await _supabase.rpc('store_daily_series', {
+          p_shop_id: Number(shopId),
+          p_from: iso(from), p_to: iso(to),
+        });
+        if (error) throw error;
+        return data || [];
+      } catch (_) { return []; }
+    },
     touchViewed()               { return rpc('touch_tracker_viewed'); },
     addKeyword(kw, cat)         { return rpc('add_tracked_keyword', { p_keyword: kw, p_category: cat || '' }); },
     addStore(shopId, name)      { return rpc('add_tracked_store', { p_shop_id: shopId, p_store_name: name || '' }); },
