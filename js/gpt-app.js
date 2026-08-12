@@ -7662,18 +7662,67 @@ function gptTrackerAdapter() {
         return data || [];
       } catch (_) { return []; }
     },
+    // Per-listing chart series. product_daily_series densifies each scrape
+    // interval into a constant daily rate — so a listing with 1–2 scrapes
+    // draws a perfectly flat line even when sold actually moved. Build the
+    // series from scrape snapshots instead (same source Deep Dive uses):
+    // one point per scrape day, units = sold since previous scrape.
     async getProductSeries(listing, days) {
       if (!listing || listing.item_id == null || listing.shop_id == null || !_supabase) return [];
+      const since = _isoDaysAgo(days);
+      let rows = [];
       try {
-        const { data, error } = await _supabase.rpc('product_daily_series', {
+        const { data, error } = await _supabase.rpc('product_trend_history', {
           p_item_id: listing.item_id,
           p_shop_id: listing.shop_id,
-          p_from: _isoDaysAgo(days),
-          p_to: _isoDaysAgo(0),
+          p_limit: 80,
         });
-        if (error) throw error;
-        return data || [];
-      } catch (_) { return []; }
+        if (!error && data?.length) rows = data;
+      } catch (_) { /* fall through */ }
+      if (!rows.length) {
+        try {
+          const { data } = await _supabase.from('listings')
+            .select('scraped_at,total_sold,price,units_sold,units_source')
+            .eq('item_id', listing.item_id)
+            .eq('shop_id', listing.shop_id)
+            .gte('scraped_at', since + 'T00:00:00')
+            .order('scraped_at', { ascending: true })
+            .limit(80);
+          rows = data || [];
+        } catch (_) { return []; }
+      }
+      // One row per calendar day (latest scrape wins), oldest → newest.
+      const byDay = new Map();
+      for (const r of rows) {
+        const d = String(r.scraped_at || '').slice(0, 10);
+        if (!d || d < since) continue;
+        byDay.set(d, r);
+      }
+      const daysAsc = [...byDay.keys()].sort();
+      if (daysAsc.length < 2) return [];
+      const out = [];
+      for (let i = 0; i < daysAsc.length; i++) {
+        const d = daysAsc[i];
+        const cur = byDay.get(d);
+        const prev = i > 0 ? byDay.get(daysAsc[i - 1]) : null;
+        let units = 0;
+        if (prev) {
+          if (cur.units_sold != null && cur.units_source === 'measured') {
+            units = Math.max(0, Number(cur.units_sold) || 0);
+          } else {
+            units = Math.max(0, (Number(cur.total_sold) || 0) - (Number(prev.total_sold) || 0));
+          }
+        }
+        const price = Number(cur.price) || 0;
+        out.push({
+          d,
+          units,
+          omset: Math.round(units * price),
+          price,
+          source: 'measured',
+        });
+      }
+      return out;
     },
     // Dense daily series for the tracker's charts and stat blocks.
     //

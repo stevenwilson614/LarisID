@@ -16166,21 +16166,66 @@ function trkAdapter() {
         return data || [];
       } catch (_) { return []; }
     },
+    // Per-listing chart series from scrape snapshots (not densified daily
+    // rates — those stay flat between scrapes and look like "no data").
     async getProductSeries(listing, days) {
       if (!listing || listing.item_id == null || listing.shop_id == null || !_supabase) return [];
+      const span = Number(days) || 14;
+      const from = new Date(Date.now() - span * 86400000);
+      const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+      const since = iso(from);
+      let rows = [];
       try {
-        const to = new Date();
-        const from = new Date(to.getTime() - (Number(days) || 14) * 86400000);
-        const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-        const { data, error } = await _supabase.rpc('product_daily_series', {
+        const { data, error } = await _supabase.rpc('product_trend_history', {
           p_item_id: listing.item_id,
           p_shop_id: listing.shop_id,
-          p_from: iso(from),
-          p_to: iso(to),
+          p_limit: 80,
         });
-        if (error) throw error;
-        return data || [];
-      } catch (_) { return []; }
+        if (!error && data?.length) rows = data;
+      } catch (_) { /* fall through */ }
+      if (!rows.length) {
+        try {
+          const { data } = await _supabase.from('listings')
+            .select('scraped_at,total_sold,price,units_sold,units_source')
+            .eq('item_id', listing.item_id)
+            .eq('shop_id', listing.shop_id)
+            .gte('scraped_at', since + 'T00:00:00')
+            .order('scraped_at', { ascending: true })
+            .limit(80);
+          rows = data || [];
+        } catch (_) { return []; }
+      }
+      const byDay = new Map();
+      for (const r of rows) {
+        const d = String(r.scraped_at || '').slice(0, 10);
+        if (!d || d < since) continue;
+        byDay.set(d, r);
+      }
+      const daysAsc = [...byDay.keys()].sort();
+      if (daysAsc.length < 2) return [];
+      const out = [];
+      for (let i = 0; i < daysAsc.length; i++) {
+        const d = daysAsc[i];
+        const cur = byDay.get(d);
+        const prev = i > 0 ? byDay.get(daysAsc[i - 1]) : null;
+        let units = 0;
+        if (prev) {
+          if (cur.units_sold != null && cur.units_source === 'measured') {
+            units = Math.max(0, Number(cur.units_sold) || 0);
+          } else {
+            units = Math.max(0, (Number(cur.total_sold) || 0) - (Number(prev.total_sold) || 0));
+          }
+        }
+        const price = Number(cur.price) || 0;
+        out.push({
+          d,
+          units,
+          omset: Math.round(units * price),
+          price,
+          source: 'measured',
+        });
+      }
+      return out;
     },
     touchViewed()               { return rpc('touch_tracker_viewed'); },
     addKeyword(kw, cat)         { return rpc('add_tracked_keyword', { p_keyword: kw, p_category: cat || '' }); },

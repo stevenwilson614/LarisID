@@ -1569,10 +1569,12 @@
 
   function activeDetailRow(base) {
     if (!S.detailListingKey || S.detailListingLoading) return base;
+    // undefined = not fetched yet; [] = fetched but no usable scrape history
+    if (!Object.prototype.hasOwnProperty.call(S.detailListingSeries, S.detailListingKey)) return base;
     var series = S.detailListingSeries[S.detailListingKey];
     var listing = findDetailPeer(S.detailListingKey);
-    if (!listing || !series) return base;
-    return buildListingViewRow(listing, series);
+    if (!listing) return base;
+    return buildListingViewRow(listing, series || []);
   }
 
   function selectDetailListing(key) {
@@ -1878,8 +1880,16 @@
                 '<span class="ltk-chart-legend-item"><i class="ltk-chart-legend-dash"></i>Perkiraan (' +
                   esc(String(row.n_forecast)) + ' hari terakhir, dari model LarisID)</span>' +
               '</div>'
-            : '')
-        : '<p class="ltk-detail-peers-note">Perlu minimal 2 hari data untuk menampilkan tren.</p>');
+            : (S.detailListingKey
+              ? '<div class="ltk-chart-legend">' +
+                  '<span class="ltk-chart-legend-item">Titik = tiap scrape harian untuk listing ini</span>' +
+                '</div>'
+              : ''))
+        : '<p class="ltk-detail-peers-note">' +
+            (S.detailListingKey
+              ? 'Listing ini belum punya cukup riwayat scrape (butuh minimal 2 kali) untuk menampilkan tren.'
+              : 'Perlu minimal 2 hari data untuk menampilkan tren.') +
+          '</p>');
     p.innerHTML =
       '<div class="ltk-detail">' +
         '<button type="button" class="ltk-detail-back" data-ltk-detail-back>' +
