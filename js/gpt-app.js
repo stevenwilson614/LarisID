@@ -158,6 +158,15 @@ const COMPOSER_EXAMPLES = [
 let _admSample = null; // admin sample view: { mode: 'user'|'new', label }
 let _onboardingBackup = null;
 let _adminUsers = [];
+let _adminStats = null;
+let _adminKpis = null;
+let _adminUserPage = 1;
+let _adminPageSize = 10;
+let _adminMapRange = 'all';
+let _adminMapZoom = 1;
+let _admDonutChart = null;
+let _adminCatsExpanded = false;
+let _adminUiBound = false;
 
 function _lidIsNewSignup(user) {
   if (!user) return false;
@@ -11863,102 +11872,517 @@ function goHome(e) {
 
 function fmtAdminDate(iso) {
   if (!iso) return '—';
-  try { return String(iso).slice(0, 10); } catch (_) { return '—'; }
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return String(iso).slice(0, 10);
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch (_) { return '—'; }
 }
 
-function renderAdminLocations(users) {
-  const el = $('admin-locations');
-  if (!el) return;
-  const counts = {};
-  let withLoc = 0;
-  (users || []).forEach(u => {
-    const loc = (u.region || u.city || '').trim();
-    if (!loc) return;
-    withLoc++;
-    counts[loc] = (counts[loc] || 0) + 1;
+function admFmtNum(n) {
+  if (n == null || Number.isNaN(Number(n))) return '—';
+  return Number(n).toLocaleString('id-ID');
+}
+
+function admDayKey(v) {
+  const s = String(v || '');
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const d = v instanceof Date ? v : new Date(v);
+  if (Number.isNaN(d.getTime())) return s.slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function admLastDays(n) {
+  const out = [];
+  const now = new Date();
+  now.setHours(12, 0, 0, 0);
+  for (let i = n - 1; i >= 0; i--) {
+    out.push(admDayKey(new Date(now.getTime() - i * 864e5)));
+  }
+  return out;
+}
+
+function admSeriesFromDaily(rows, valueKey, days) {
+  const map = {};
+  (rows || []).forEach(r => {
+    const k = admDayKey(r.day || r.date);
+    map[k] = Number(r[valueKey] != null ? r[valueKey] : r.n) || 0;
   });
-  const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  return days.map(d => map[d] || 0);
+}
+
+function admSparkline(values, color) {
+  const w = 140, h = 28;
+  if (!values || !values.length) {
+    return `<svg class="adm-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"></svg>`;
+  }
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const span = max - min || 1;
+  const pts = values.map((v, i) => {
+    const x = values.length === 1 ? w / 2 : (i / (values.length - 1)) * w;
+    const y = h - 3 - ((v - min) / span) * (h - 6);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  return `<svg class="adm-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" points="${pts}"/></svg>`;
+}
+
+const ADM_CAT_COLORS = {
+  'Olahraga': '#B5202A', 'Kecantikan': '#F472B6', 'Rumah': '#F97316',
+  'Fashion': '#EAB308', 'Elektronik': '#22C55E', 'Dapur': '#FB923C',
+  'Bayi & Anak': '#A78BFA', 'HP & Gadget': '#38BDF8', 'Kamar Mandi': '#2DD4BF',
+  'Kesehatan': '#34D399', 'Motor & Mobil': '#64748B', 'Hewan Peliharaan': '#C084FC',
+  'Hobi & Kerajinan': '#F59E0B', 'Keamanan': '#78716C', 'Outdoor & Camping': '#84CC16',
+  'Sepeda': '#06B6D4', 'Taman': '#65A30D', 'Tanaman': '#16A34A', 'Alat Tulis': '#94A3B8',
+};
+const ADM_CAT_FALLBACK = ['#6366F1', '#EC4899', '#14B8A6', '#F43F5E', '#8B5CF6', '#0EA5E9'];
+const ADM_LAINNYA = '#9CA3AF';
+const ADM_AV_COLORS = ['#B5202A', '#EA580C', '#16A34A', '#2563EB', '#7C3AED', '#DB2777', '#0F766E'];
+
+function admCatColor(name) {
+  if (!name) return ADM_LAINNYA;
+  if (ADM_CAT_COLORS[name]) return ADM_CAT_COLORS[name];
+  let h = 0;
+  const s = String(name);
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return ADM_CAT_FALLBACK[h % ADM_CAT_FALLBACK.length];
+}
+
+function admInitials(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function admAvColor(name) {
+  let h = 0;
+  const s = String(name || '');
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return ADM_AV_COLORS[h % ADM_AV_COLORS.length];
+}
+
+function admSellerStatus(u) {
+  const s = u && u.seller_status;
+  if (s === 'first_time' || s === 'baru') return 'first_time';
+  if (s === 'existing' || s === 'berpengalaman') return 'existing';
+  return '';
+}
+
+function admWithinDays(iso, days) {
+  if (!iso) return false;
+  const t = Date.parse(iso);
+  return Number.isFinite(t) && (Date.now() - t) < days * 864e5;
+}
+
+function renderAdminKpis(users) {
+  const days = admLastDays(14);
+  const signupsTotal = (users || []).length;
+  const signups7 = (users || []).filter(u => admWithinDays(u.created_at, 7)).length;
+  const signupDaily = days.map(d => (users || []).filter(u => u.created_at && admDayKey(u.created_at) === d).length);
+
+  const s = _adminStats || {};
+  const k = _adminKpis || {};
+  const viewsTotal = s.landing_views_total;
+  const views7 = s.landing_views_7d;
+  const viewsDaily = admSeriesFromDaily(s.landing_views_daily, 'views', days);
+
+  const trackedTotal = k.tracked_total != null
+    ? k.tracked_total
+    : (users || []).reduce((n, u) => n + (Number(u.tracked_count) || 0), 0);
+  const tracked7 = k.tracked_7d != null ? k.tracked_7d : 0;
+  const trackedDaily = admSeriesFromDaily(k.tracked_daily, 'n', days);
+
+  const divesTotal = k.deepdives_total != null
+    ? k.deepdives_total
+    : (users || []).reduce((n, u) => n + (Number(u.deepdive_count) || 0), 0);
+  const dives7 = k.deepdives_7d != null ? k.deepdives_7d : 0;
+  const divesDaily = admSeriesFromDaily(k.deepdives_daily, 'n', days);
+
+  const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+  const spark = (id, series, color) => { const el = $(id); if (el) el.innerHTML = admSparkline(series, color); };
+  const sub = (n) => `+${admFmtNum(n)} dalam 7 hari terakhir`;
+
+  set('adm-kpi-signups', admFmtNum(signupsTotal));
+  set('adm-kpi-signups-sub', sub(signups7));
+  spark('adm-kpi-signups-spark', signupDaily, '#B5202A');
+
+  set('adm-kpi-views', admFmtNum(viewsTotal));
+  set('adm-kpi-views-sub', viewsTotal == null ? 'Data tampilan belum tersedia' : sub(views7 || 0));
+  spark('adm-kpi-views-spark', viewsDaily, '#EA580C');
+
+  set('adm-kpi-tracked', admFmtNum(trackedTotal));
+  set('adm-kpi-tracked-sub', sub(tracked7));
+  spark('adm-kpi-tracked-spark', trackedDaily, '#16A34A');
+
+  set('adm-kpi-dives', admFmtNum(divesTotal));
+  set('adm-kpi-dives-sub', sub(dives7));
+  spark('adm-kpi-dives-spark', divesDaily, '#7C3AED');
+}
+
+function admCategoryCounts(users) {
+  const counts = {};
+  (users || []).forEach(u => {
+    (u.categories || []).forEach(c => {
+      const name = String(c || '').trim();
+      if (!name) return;
+      counts[name] = (counts[name] || 0) + 1;
+    });
+  });
+  return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+}
+
+function admDonutSlices(ranked) {
+  const total = ranked.reduce((n, [, v]) => n + v, 0) || 1;
+  const top = ranked.slice(0, 5);
+  const rest = ranked.slice(5);
+  const restN = rest.reduce((n, [, v]) => n + v, 0);
+  const slices = top.map(([name, n]) => ({ name, n, pct: Math.round(n / total * 100), color: admCatColor(name) }));
+  if (restN) slices.push({ name: 'Lainnya', n: restN, pct: Math.round(restN / total * 100), color: ADM_LAINNYA, rest });
+  return { slices, total, ranked };
+}
+
+async function renderAdminCategories(users) {
+  const legend = $('adm-cat-legend');
+  const moreBtn = $('adm-cat-more');
+  const ranked = admCategoryCounts(users);
+  if (!legend) return;
   if (!ranked.length) {
-    el.textContent = 'Belum ada data lokasi onboarding.';
+    legend.innerHTML = '<span class="dd-sub">Belum ada kategori onboarding.</span>';
+    if (moreBtn) moreBtn.hidden = true;
+    if (_admDonutChart) { try { _admDonutChart.destroy(); } catch (_) {} _admDonutChart = null; }
     return;
   }
-  const max = ranked[0][1] || 1;
-  el.innerHTML = `<p class="dd-sub" style="margin-bottom:10px">${withLoc} dari ${users.length} punya lokasi</p>` +
-    ranked.slice(0, 12).map(([city, n]) => `
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-        <span style="flex:0 0 110px;font-size:.78rem;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(city)}</span>
-        <div style="flex:1;height:6px;background:#eee;border-radius:99px;overflow:hidden">
-          <div style="height:100%;width:${Math.round(n / max * 100)}%;background:var(--ink)"></div>
-        </div>
-        <span style="font-size:.75rem;font-weight:700;min-width:24px;text-align:right">${n}</span>
-      </div>`).join('');
+  const { slices } = admDonutSlices(ranked);
+  const shown = _adminCatsExpanded ? ranked : slices;
+  legend.innerHTML = shown.map(item => {
+    const name = item.name || item[0];
+    const n = item.n != null ? item.n : item[1];
+    const total = ranked.reduce((s, [, v]) => s + v, 0) || 1;
+    const pct = item.pct != null ? item.pct : Math.round(n / total * 100);
+    const color = item.color || admCatColor(name);
+    return `<div class="adm-leg-row"><span class="adm-leg-dot" style="background:${color}"></span><span class="adm-leg-name">${esc(name)}</span><span class="adm-leg-pct">${pct}%</span></div>`;
+  }).join('');
+  if (moreBtn) {
+    moreBtn.hidden = ranked.length <= 5;
+    moreBtn.textContent = _adminCatsExpanded ? 'Sembunyikan kategori ↑' : 'Lihat semua kategori →';
+  }
+
+  await larisEnsureChart();
+  const canvas = $('adm-cat-canvas');
+  if (!canvas || typeof Chart === 'undefined') return;
+  if (_admDonutChart) { try { _admDonutChart.destroy(); } catch (_) {} _admDonutChart = null; }
+  _admDonutChart = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: slices.map(s => s.name),
+      datasets: [{
+        data: slices.map(s => s.n),
+        backgroundColor: slices.map(s => s.color),
+        borderWidth: 2,
+        borderColor: '#fff',
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '62%',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.raw}` } } },
+    },
+  });
 }
 
-function renderAdminStats(users) {
-  const el = $('admin-stats');
-  if (!el) return;
-  const total = users.length;
-  const withOnb = users.filter(u => u.onboarding_completed || (u.region || u.city)).length;
-  const last7 = users.filter(u => {
-    if (!u.created_at) return false;
-    return Date.now() - Date.parse(u.created_at) < 7 * 864e5;
-  }).length;
-  el.innerHTML = `
-    <div class="dd-metric"><div class="val">${total}</div><div class="lbl">Total signup</div></div>
-    <div class="dd-metric"><div class="val">${last7}</div><div class="lbl">7 hari terakhir</div></div>
-    <div class="dd-metric"><div class="val">${withOnb}</div><div class="lbl">Punya onboarding</div></div>`;
+function admMapFill(n) {
+  if (n >= 31) return '#7F1D1D';
+  if (n >= 21) return '#B5202A';
+  if (n >= 11) return '#EF4444';
+  if (n >= 6) return '#F87171';
+  return '#FECACA';
 }
 
-function renderAdminUsers(users) {
+function renderAdminMap(users) {
+  const svg = $('adm-map-svg');
+  const map = window.LarisAdminMap;
+  if (!svg || !map) return;
+  const cutoff = _adminMapRange === '30' ? Date.now() - 30 * 864e5 : 0;
+  const counts = {};
+  (users || []).forEach(u => {
+    if (cutoff && (!u.created_at || new Date(u.created_at).getTime() < cutoff)) return;
+    const raw = (u.region || u.city || '').trim();
+    if (!raw) return;
+    const canon = map.canonical(raw) || raw;
+    counts[canon] = (counts[canon] || 0) + 1;
+  });
+  const pinned = Object.entries(counts)
+    .map(([city, n]) => {
+      const coords = map.CITY_COORDS[city];
+      if (!coords) return null;
+      const [x, y] = map.project(coords[0], coords[1]);
+      return { city, n, x, y };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.n - a.n);
+
+  const vbW = 800 / _adminMapZoom;
+  const vbH = 306 / _adminMapZoom;
+  const vbX = (800 - vbW) / 2;
+  const vbY = (306 - vbH) / 2;
+  svg.setAttribute('viewBox', `${vbX.toFixed(1)} ${vbY.toFixed(1)} ${vbW.toFixed(1)} ${vbH.toFixed(1)}`);
+
+  const bubbles = pinned.map((p, i) => {
+    const r = Math.max(7, Math.round(4 * Math.sqrt(p.n) + 4));
+    const lw = Math.max(52, p.city.length * 5.2 + 22);
+    const lx = p.x + r + 4 > 800 - lw ? p.x - r - 4 - lw : p.x + r + 4;
+    const label = i < 8
+      ? `<g>
+          <rect x="${lx.toFixed(1)}" y="${(p.y - 9).toFixed(1)}" width="${lw}" height="16" rx="4" fill="#fff" stroke="#E8E8E8"/>
+          <text x="${(lx + 4).toFixed(1)}" y="${(p.y + 2.5).toFixed(1)}" font-size="9" font-weight="700" fill="#1A1A1A" font-family="Plus Jakarta Sans, system-ui, sans-serif">${esc(p.city)} ${p.n}</text>
+        </g>`
+      : '';
+    return `<g>
+      <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}" fill="${admMapFill(p.n)}" fill-opacity=".85" stroke="#B5202A" stroke-width="1">
+        <title>${esc(p.city)}: ${p.n} pendaftar</title>
+      </circle>
+      ${label}
+    </g>`;
+  }).join('');
+
+  svg.innerHTML = `<path d="${map.OUTLINE}" fill="#EEF2F6" stroke="#D1D5DB" stroke-width="1"/>` + bubbles;
+}
+
+function adminFilteredUsers() {
+  const q = ($('adm-users-search')?.value || '').trim().toLowerCase();
+  const tipe = $('adm-filter-tipe')?.value || 'all';
+  const cat = $('adm-filter-cat')?.value || '';
+  return (_adminUsers || []).filter(u => {
+    if (tipe !== 'all' && admSellerStatus(u) !== tipe) return false;
+    if (cat && !(u.categories || []).includes(cat)) return false;
+    if (!q) return true;
+    const hay = [u.display_name, u.email, u.region, u.city].join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+}
+
+function admPagerPages(page, pages) {
+  if (pages <= 7) return Array.from({ length: pages }, (_, i) => i + 1);
+  const set = new Set([1, pages, page - 1, page, page + 1]);
+  return [...set].filter(n => n >= 1 && n <= pages).sort((a, b) => a - b);
+}
+
+function renderAdminPager(filteredLen) {
+  const info = $('adm-pager-info');
+  const btns = $('adm-pager-btns');
+  const pages = Math.max(1, Math.ceil(filteredLen / _adminPageSize));
+  if (_adminUserPage > pages) _adminUserPage = pages;
+  const start = filteredLen ? (_adminUserPage - 1) * _adminPageSize + 1 : 0;
+  const end = Math.min(filteredLen, _adminUserPage * _adminPageSize);
+  if (info) info.textContent = `Menampilkan ${start}–${end} dari ${filteredLen} pengguna`;
+  if (!btns) return;
+  const nums = admPagerPages(_adminUserPage, pages);
+  let html = '';
+  nums.forEach((n, i) => {
+    if (i && n - nums[i - 1] > 1) html += '<span class="adm-page" style="pointer-events:none">…</span>';
+    html += `<button type="button" class="adm-page${n === _adminUserPage ? ' active' : ''}" data-adm-page="${n}">${n}</button>`;
+  });
+  btns.innerHTML = html;
+}
+
+function renderAdminUsers() {
   const body = $('admin-users-body');
   if (!body) return;
-  if (!users.length) {
-    body.innerHTML = '<tr><td colspan="8" class="dd-sub">Belum ada user.</td></tr>';
+  const rows = adminFilteredUsers();
+  renderAdminPager(rows.length);
+  const start = (_adminUserPage - 1) * _adminPageSize;
+  const slice = rows.slice(start, start + _adminPageSize);
+  if (!slice.length) {
+    body.innerHTML = '<tr><td colspan="7" class="dd-sub">Tidak ada pengguna yang cocok.</td></tr>';
     return;
   }
-  body.innerHTML = users.slice(0, 80).map((u, i) => {
-    const loc = u.region || u.city || '—';
-    const cats = (u.categories || []).slice(0, 2).join(', ') || '—';
+  body.innerHTML = slice.map((u, i) => {
     const name = u.display_name || u.email || 'User';
-    const tracked = u.tracked_count ?? 0;
-    const deepdives = u.deepdive_count ?? 0;
+    const loc = u.region || u.city || '—';
+    const status = admSellerStatus(u);
+    const tipe = status === 'first_time'
+      ? '<span class="adm-pill baru">Baru</span>'
+      : status === 'existing'
+        ? '<span class="adm-pill experienced">Experienced</span>'
+        : '<span class="adm-pill unknown">—</span>';
+    const cats = (u.categories || []).slice(0, 2).map(c => {
+      const color = admCatColor(c);
+      return `<span class="adm-cat-pill" style="background:${color}22;color:${color}">${esc(c)}</span>`;
+    }).join('') || '<span class="dd-sub">—</span>';
+    const idx = start + i;
     return `<tr>
-      <td><strong>${esc(name)}</strong></td>
-      <td class="dd-sub">${esc(u.email || '')}</td>
+      <td><div class="adm-name"><span class="adm-av" style="background:${admAvColor(name)}">${esc(admInitials(name))}</span>${esc(name)}</div></td>
+      <td class="adm-email">${esc(u.email || '')}</td>
       <td>${esc(loc)}</td>
-      <td class="dd-sub">${esc(cats)}</td>
-      <td style="font-weight:700;text-align:center">${tracked}</td>
-      <td style="font-weight:700;text-align:center">${deepdives}</td>
+      <td>${tipe}</td>
+      <td><div class="adm-cat-pills">${cats}</div></td>
       <td class="dd-sub">${fmtAdminDate(u.created_at)}</td>
-      <td><button type="button" class="admin-sample-btn" data-sample-idx="${i}">Sample view</button></td>
+      <td class="adm-td-aksi">
+        <button type="button" class="adm-dots" data-adm-menu="${idx}" aria-label="Aksi">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
+        </button>
+        <div class="adm-menu" hidden>
+          <button type="button" data-sample-idx="${idx}">Sample view</button>
+          <button type="button" data-copy-email="${esc(u.email || '')}">Salin email</button>
+        </div>
+      </td>
     </tr>`;
   }).join('');
-  body.querySelectorAll('[data-sample-idx]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const idx = Number(btn.getAttribute('data-sample-idx'));
-      const row = users[idx];
+}
+
+function admFillCatFilter(users) {
+  const sel = $('adm-filter-cat');
+  if (!sel) return;
+  const prev = sel.value;
+  const cats = admCategoryCounts(users).map(([n]) => n);
+  sel.innerHTML = '<option value="">Semua kategori</option>' +
+    cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  if (cats.includes(prev)) sel.value = prev;
+}
+
+function adminExportUsers() {
+  const rows = adminFilteredUsers();
+  const header = ['Nama', 'Email', 'Lokasi', 'Tipe', 'Kategori', 'Bergabung'];
+  const lines = [header.join(',')].concat(rows.map(u => {
+    const tipe = admSellerStatus(u) === 'existing' ? 'Experienced' : admSellerStatus(u) === 'first_time' ? 'Baru' : '';
+    const cells = [
+      u.display_name || '',
+      u.email || '',
+      u.region || u.city || '',
+      tipe,
+      (u.categories || []).join('; '),
+      u.created_at ? String(u.created_at).slice(0, 10) : '',
+    ].map(v => `"${String(v).replace(/"/g, '""')}"`);
+    return cells.join(',');
+  }));
+  const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'laris-pengguna.csv';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function adminCloseMenus(except) {
+  document.querySelectorAll('#view-admin .adm-menu').forEach(el => {
+    if (el !== except) el.hidden = true;
+  });
+}
+
+function adminBindUi() {
+  if (_adminUiBound) return;
+  _adminUiBound = true;
+  const root = $('view-admin');
+  if (!root) return;
+  $('adm-users-search')?.addEventListener('input', () => { _adminUserPage = 1; renderAdminUsers(); });
+  $('adm-filter-tipe')?.addEventListener('change', () => { _adminUserPage = 1; renderAdminUsers(); });
+  $('adm-filter-cat')?.addEventListener('change', () => { _adminUserPage = 1; renderAdminUsers(); });
+  $('adm-users-filter-btn')?.addEventListener('click', e => {
+    e.stopPropagation();
+    const pop = $('adm-users-filter-pop');
+    if (pop) pop.hidden = !pop.hidden;
+  });
+  $('adm-users-export')?.addEventListener('click', () => adminExportUsers());
+  $('adm-page-size')?.addEventListener('change', e => {
+    _adminPageSize = Number(e.target.value) || 10;
+    _adminUserPage = 1;
+    renderAdminUsers();
+  });
+  $('adm-map-range')?.addEventListener('change', e => {
+    _adminMapRange = e.target.value === '30' ? '30' : 'all';
+    renderAdminMap(_adminUsers);
+  });
+  $('adm-map-zoom-in')?.addEventListener('click', () => {
+    _adminMapZoom = Math.min(2.4, _adminMapZoom + 0.3);
+    renderAdminMap(_adminUsers);
+  });
+  $('adm-map-zoom-out')?.addEventListener('click', () => {
+    _adminMapZoom = Math.max(1, _adminMapZoom - 0.3);
+    renderAdminMap(_adminUsers);
+  });
+  $('adm-cat-more')?.addEventListener('click', () => {
+    _adminCatsExpanded = !_adminCatsExpanded;
+    void renderAdminCategories(_adminUsers);
+  });
+  $('adm-pager-btns')?.addEventListener('click', e => {
+    const btn = e.target.closest('[data-adm-page]');
+    if (!btn) return;
+    _adminUserPage = Number(btn.getAttribute('data-adm-page')) || 1;
+    renderAdminUsers();
+  });
+  root.addEventListener('click', e => {
+    const dots = e.target.closest('[data-adm-menu]');
+    if (dots) {
+      e.stopPropagation();
+      const menu = dots.parentElement?.querySelector('.adm-menu');
+      const open = menu && menu.hidden;
+      adminCloseMenus(menu);
+      if (menu) menu.hidden = !open;
+      return;
+    }
+    const sample = e.target.closest('[data-sample-idx]');
+    if (sample) {
+      const idx = Number(sample.getAttribute('data-sample-idx'));
+      const row = adminFilteredUsers()[idx];
       if (row) adminSampleAsUser(row);
-    });
+      return;
+    }
+    const copy = e.target.closest('[data-copy-email]');
+    if (copy) {
+      const email = copy.getAttribute('data-copy-email') || '';
+      if (email && navigator.clipboard) {
+        navigator.clipboard.writeText(email).then(() => showToast('Email disalin.')).catch(() => {});
+      }
+      adminCloseMenus();
+    }
+  });
+  document.addEventListener('click', e => {
+    if (!root.contains(e.target)) {
+      adminCloseMenus();
+      const pop = $('adm-users-filter-pop');
+      if (pop) pop.hidden = true;
+      return;
+    }
+    if (!e.target.closest('.adm-td-aksi')) adminCloseMenus();
+    if (!e.target.closest('.adm-filter-wrap')) {
+      const pop = $('adm-users-filter-pop');
+      if (pop) pop.hidden = true;
+    }
   });
 }
 
 async function loadAdminDirectory() {
+  adminBindUi();
   if (!isPlatformAdmin() || !_supabase) {
     const body = $('admin-users-body');
-    if (body) body.innerHTML = '<tr><td colspan="8" class="dd-sub">Login sebagai admin dulu.</td></tr>';
+    if (body) body.innerHTML = '<tr><td colspan="7" class="dd-sub">Login sebagai admin dulu.</td></tr>';
     return;
   }
   const body = $('admin-users-body');
-  if (body) body.innerHTML = '<tr><td colspan="8" class="dd-sub">Memuat…</td></tr>';
+  if (body) body.innerHTML = '<tr><td colspan="7" class="dd-sub">Memuat…</td></tr>';
   try {
-    const { data, error } = await _supabase.rpc('admin_user_directory');
-    if (error) throw error;
-    _adminUsers = data || [];
-    renderAdminStats(_adminUsers);
-    renderAdminLocations(_adminUsers);
-    renderAdminUsers(_adminUsers);
+    const [dirRes, statsRes, kpiRes] = await Promise.all([
+      _supabase.rpc('admin_user_directory'),
+      _supabase.rpc('admin_stats').catch(() => ({ data: null, error: true })),
+      _supabase.rpc('admin_dashboard_kpis').catch(() => ({ data: null, error: true })),
+    ]);
+    if (dirRes.error) throw dirRes.error;
+    _adminUsers = dirRes.data || [];
+    _adminStats = (!statsRes.error && statsRes.data) ? statsRes.data : null;
+    _adminKpis = (!kpiRes.error && kpiRes.data) ? kpiRes.data : null;
+    _adminUserPage = 1;
+    renderAdminKpis(_adminUsers);
+    void renderAdminCategories(_adminUsers);
+    renderAdminMap(_adminUsers);
+    admFillCatFilter(_adminUsers);
+    renderAdminUsers();
   } catch (e) {
-    if (body) body.innerHTML = `<tr><td colspan="8" class="dd-sub">${esc(e.message || 'Gagal memuat.')}</td></tr>`;
+    if (body) body.innerHTML = `<tr><td colspan="7" class="dd-sub">${esc(e.message || 'Gagal memuat.')}</td></tr>`;
   }
 }
 
@@ -12190,7 +12614,6 @@ function wireUi() {
   $('changelog-close')?.addEventListener('click', () => closeChangelog());
   $('changelog-modal')?.addEventListener('click', e => { if (e.target.id === 'changelog-modal') closeChangelog(); });
   $('btn-admin')?.addEventListener('click', () => openAdminView());
-  $('admin-refresh')?.addEventListener('click', () => void loadAdminDirectory());
   $('admin-sample-new')?.addEventListener('click', () => adminSampleNewUser());
   $('admin-sample-exit')?.addEventListener('click', () => adminExitSample());
   $('sample-strip-exit')?.addEventListener('click', () => adminExitSample());

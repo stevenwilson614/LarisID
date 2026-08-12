@@ -1776,26 +1776,184 @@ body.view-community .panel-inner {
   .meta-feats { grid-template-columns: 1fr; }
 }
 
-/* Admin */
+/* Admin dashboard */
 .admin-banner {
-  background: var(--bg-user); border: 1px solid var(--line);
+  background: #fff; border: 1px solid #E8E8E8;
   border-radius: 12px; padding: 10px 14px; margin-bottom: 14px;
   font-size: .84rem; font-weight: 550;
 }
-.admin-table-wrap { overflow-x: auto; }
-.admin-table {
-  width: 100%; border-collapse: collapse; font-size: .78rem;
+.adm-dash { padding-bottom: 24px; }
+.adm-dash-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; margin-bottom: 18px; flex-wrap: wrap;
 }
+.adm-dash-head h2 {
+  margin: 0 0 4px; font-size: 1.45rem; font-weight: 750; letter-spacing: -.03em; color: #1A1A1A;
+}
+.adm-dash-head .dd-sub { margin: 0; font-size: .875rem; color: #8A8A8A; }
+.adm-dash-head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.adm-card {
+  background: #fff; border: 1px solid #E8E8E8; border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+.adm-kpis {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px;
+}
+.adm-kpi {
+  padding: 16px 16px 12px; display: flex; flex-direction: column; min-width: 0;
+}
+.adm-kpi-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.adm-kpi-lbl { font-size: .72rem; font-weight: 600; color: #8A8A8A; }
+.adm-kpi-ico {
+  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0;
+}
+.adm-kpi-ico svg { width: 16px; height: 16px; }
+.adm-kpi-val { font-size: 1.7rem; font-weight: 750; letter-spacing: -.03em; color: #1A1A1A; margin: 8px 0 2px; line-height: 1.1; }
+.adm-kpi-sub { font-size: .72rem; color: #9A9A9A; font-weight: 550; }
+.adm-kpi-spark { margin-top: 10px; height: 28px; }
+.adm-kpi-spark svg { width: 100%; height: 28px; display: block; }
+.adm-kpi--signups .adm-kpi-ico { background: #F9EAE4; color: #B5202A; }
+.adm-kpi--views .adm-kpi-ico { background: #FFF4E5; color: #EA580C; }
+.adm-kpi--tracked .adm-kpi-ico { background: #ECFDF3; color: #16A34A; }
+.adm-kpi--dives .adm-kpi-ico { background: #F3E8FF; color: #7C3AED; }
+.adm-mid {
+  display: grid; grid-template-columns: minmax(280px, .42fr) minmax(0, 1fr); gap: 12px; margin-bottom: 14px;
+}
+.adm-card-pad { padding: 16px 18px 14px; }
+.adm-card-title {
+  margin: 0 0 12px; font-size: .95rem; font-weight: 700; color: #1A1A1A;
+}
+.adm-cat-body { display: flex; align-items: center; gap: 16px; min-height: 180px; }
+.adm-cat-chart { position: relative; width: 160px; height: 160px; flex-shrink: 0; }
+.adm-cat-chart canvas { display: block; width: 100% !important; height: 100% !important; }
+.adm-cat-legend { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.adm-leg-row { display: flex; align-items: center; gap: 8px; font-size: .78rem; color: #374151; }
+.adm-leg-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.adm-leg-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 550; }
+.adm-leg-pct { font-weight: 700; color: #1A1A1A; }
+.adm-cat-more {
+  margin-top: 12px; font-size: .78rem; font-weight: 650; color: #B5202A;
+  background: none; border: none; padding: 0; cursor: pointer;
+}
+.adm-cat-more:hover { text-decoration: underline; }
+.adm-map-card { position: relative; min-height: 280px; }
+.adm-map-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px;
+}
+.adm-map-head .adm-card-title { margin: 0; }
+.adm-map-select {
+  font: inherit; font-size: .72rem; font-weight: 600; color: #4B5563;
+  border: 1px solid #E8E8E8; border-radius: 8px; padding: 6px 10px; background: #fff;
+}
+.adm-map-stage { position: relative; }
+.adm-map-svg { width: 100%; height: auto; display: block; max-height: 280px; }
+.adm-map-zoom {
+  position: absolute; top: 4px; right: 4px; display: flex; flex-direction: column;
+  border: 1px solid #E8E8E8; border-radius: 8px; overflow: hidden; background: #fff;
+}
+.adm-map-zoom button {
+  width: 28px; height: 26px; display: grid; place-items: center; font-size: 1rem; font-weight: 600; color: #4B5563;
+}
+.adm-map-zoom button:hover { background: #F6F6F7; }
+.adm-map-zoom button + button { border-top: 1px solid #E8E8E8; }
+.adm-map-legend {
+  display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: .68rem; color: #9CA3AF;
+}
+.adm-map-scale { display: flex; height: 8px; width: 88px; border-radius: 99px; overflow: hidden; }
+.adm-map-scale span { flex: 1; }
+.adm-users-card { padding: 16px 18px 12px; margin-bottom: 14px; }
+.adm-users-toolbar {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;
+}
+.adm-users-toolbar h3 { margin: 0 auto 0 0; font-size: .95rem; font-weight: 700; }
+.adm-search {
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid #E8E8E8; border-radius: 10px; padding: 0 10px; background: #fff; min-width: 220px; flex: 1; max-width: 280px;
+}
+.adm-search svg { flex-shrink: 0; color: #9CA3AF; }
+.adm-search input {
+  border: none; outline: none; background: transparent; width: 100%;
+  font: inherit; font-size: .8rem; padding: 8px 0; color: #1A1A1A;
+}
+.adm-tb-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid #E8E8E8; border-radius: 10px; padding: 8px 12px;
+  font-size: .78rem; font-weight: 650; color: #374151; background: #fff; white-space: nowrap;
+}
+.adm-tb-btn:hover { background: #F6F6F7; }
+.adm-filter-wrap { position: relative; }
+.adm-filter-pop {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 20;
+  background: #fff; border: 1px solid #E8E8E8; border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.1); padding: 12px; min-width: 220px;
+}
+.adm-filter-pop[hidden] { display: none; }
+.adm-filter-pop label { display: block; font-size: .68rem; font-weight: 700; color: #9CA3AF; margin: 0 0 4px; text-transform: uppercase; letter-spacing: .04em; }
+.adm-filter-pop select {
+  width: 100%; font: inherit; font-size: .8rem; border: 1px solid #E8E8E8; border-radius: 8px; padding: 6px 8px; margin-bottom: 10px;
+}
+.admin-table-wrap { overflow-x: auto; }
+.admin-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
 .admin-table th {
-  text-align: left; font-weight: 650; color: var(--muted);
-  padding: 8px 10px; border-bottom: 1px solid var(--line);
-  white-space: nowrap;
+  text-align: left; font-weight: 650; color: #9CA3AF;
+  padding: 8px 10px; border-bottom: 1px solid #EFEFEF; white-space: nowrap;
 }
 .admin-table td {
-  padding: 10px; border-bottom: 1px solid var(--line);
-  vertical-align: top; color: var(--ink);
+  padding: 10px; border-bottom: 1px solid #F3F3F3; vertical-align: middle; color: #1A1A1A;
 }
-.admin-table tr:hover td { background: #fafafa; }
+.admin-table tr:hover td { background: #FAFAFA; }
+.adm-name { display: flex; align-items: center; gap: 10px; font-weight: 650; }
+.adm-av {
+  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+  font-size: .68rem; font-weight: 750; color: #fff; flex-shrink: 0;
+}
+.adm-email { color: #6B7280; }
+.adm-pill {
+  display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px;
+  font-size: .68rem; font-weight: 700; white-space: nowrap;
+}
+.adm-pill.baru { background: #ECFDF3; color: #15803D; }
+.adm-pill.experienced { background: #EFF6FF; color: #1D4ED8; }
+.adm-pill.unknown { background: #F3F4F6; color: #6B7280; }
+.adm-cat-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+.adm-cat-pill {
+  display: inline-flex; padding: 3px 8px; border-radius: 999px;
+  font-size: .66rem; font-weight: 700; white-space: nowrap;
+}
+.adm-td-aksi { position: relative; text-align: right; width: 40px; }
+.adm-dots {
+  width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: #9CA3AF;
+}
+.adm-dots:hover { background: #F3F4F6; color: #1A1A1A; }
+.adm-menu {
+  position: absolute; right: 0; top: 32px; z-index: 15;
+  background: #fff; border: 1px solid #E8E8E8; border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0,0,0,.1); min-width: 160px; padding: 4px; text-align: left;
+}
+.adm-menu[hidden] { display: none; }
+.adm-menu button {
+  display: block; width: 100%; text-align: left; padding: 8px 10px; border-radius: 8px;
+  font-size: .78rem; font-weight: 600; color: #1A1A1A;
+}
+.adm-menu button:hover { background: #F6F6F7; }
+.adm-pager {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 4px 4px; flex-wrap: wrap;
+}
+.adm-pager-info { font-size: .75rem; color: #9CA3AF; }
+.adm-pager-btns { display: flex; align-items: center; gap: 4px; }
+.adm-page {
+  min-width: 30px; height: 30px; padding: 0 8px; border-radius: 8px;
+  font-size: .75rem; font-weight: 650; color: #4B5563;
+}
+.adm-page:hover { background: #F3F4F6; }
+.adm-page.active { background: #B5202A; color: #fff; }
+.adm-page-size {
+  font: inherit; font-size: .75rem; font-weight: 650; color: #4B5563;
+  border: 1px solid #E8E8E8; border-radius: 8px; padding: 4px 8px; background: #fff;
+}
+.adm-winback-wrap { padding: 16px 18px; }
+.adm-winback-wrap h3 { margin: 0 0 10px; font-size: .95rem; font-weight: 700; }
 .admin-sample-btn {
   padding: 6px 10px; border-radius: 999px; font-size: .72rem; font-weight: 600;
   border: 1px solid var(--line); white-space: nowrap;
@@ -1811,6 +1969,14 @@ body.view-community .panel-inner {
   border-radius: 999px; padding: 4px 10px; font-size: .72rem; font-weight: 600;
 }
 .sample-strip button:hover { background: #fff; color: #111; }
+@media (max-width: 980px) {
+  .adm-kpis { grid-template-columns: repeat(2, 1fr); }
+  .adm-mid { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .adm-kpis { grid-template-columns: 1fr; }
+  .adm-search { max-width: none; }
+}
 
 /* Composer — floating pill like Gemini */
 .composer-dock {
@@ -2061,6 +2227,8 @@ body.view-home .panel-inner,
 body.view-landing .panel-inner,
 body.view-deepdive .panel-inner,
 body.thread-wide .panel-inner { max-width: 1080px; }
+body.view-admin .panel { background: #F6F6F7; padding-top: 18px; padding-bottom: 40px; }
+body.view-admin .panel-inner { max-width: 1180px; }
 
 /* The tracker is a data table, not prose. The 720px reading measure that suits
    a chat thread squeezes the rollup columns into a narrow strip with the
@@ -4849,46 +5017,160 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
           <div id="community-board-root"></div>
         </div>
         <div class="view" id="view-admin">
-          <div class="dir-head">
-            <h2>Admin · LARISgpt</h2>
-            <p class="dd-sub">Signups, lokasi onboarding, dan sample view seperti user.</p>
-          </div>
-          <div id="admin-sample-banner" class="admin-banner" hidden></div>
-          <div class="admin-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
-            <button type="button" class="btn-ghost" id="admin-refresh" style="margin:0">Refresh data</button>
-            <button type="button" class="btn-ghost" id="admin-sample-new" style="margin:0">Sample sebagai user baru</button>
-            <button type="button" class="btn-ghost" id="admin-sample-exit" style="margin:0;display:none">Keluar sample</button>
-          </div>
-          <div class="dd-metrics" id="admin-stats" style="margin-top:0"></div>
-          <div class="dd-section" style="border-top:none;padding-top:0">
-            <h3>Lokasi (onboarding region)</h3>
-            <div id="admin-locations" class="dd-sub">Memuat…</div>
-          </div>
-          <div class="dd-section">
-            <h3>Signups terbaru</h3>
-            <div class="admin-table-wrap">
-              <table class="admin-table" id="admin-users-table">
-                <thead>
-                  <tr>
-                    <th>Nama</th>
-                    <th>Email</th>
-                    <th>Lokasi</th>
-                    <th>Kategori</th>
-                    <th>Tracked</th>
-                    <th>Deep Dive</th>
-                    <th>Daftar</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody id="admin-users-body">
-                  <tr><td colspan="8" class="dd-sub">Memuat…</td></tr>
-                </tbody>
-              </table>
+          <div class="adm-dash">
+            <div class="adm-dash-head">
+              <div>
+                <h2>Dashboard Admin</h2>
+                <p class="dd-sub">Ringkasan keseluruhan aktivitas Laris</p>
+              </div>
+              <div class="adm-dash-head-actions">
+                <button type="button" class="btn-ghost" id="admin-sample-new" style="margin:0">Sample sebagai user baru</button>
+                <button type="button" class="btn-ghost" id="admin-sample-exit" style="margin:0;display:none">Keluar sample</button>
+              </div>
             </div>
-          </div>
-          <div class="dd-section">
-            <h3>Win-back</h3>
-            <div id="adm-winback-card"></div>
+            <div id="admin-sample-banner" class="admin-banner" hidden></div>
+
+            <div class="adm-kpis" id="admin-stats">
+              <article class="adm-card adm-kpi adm-kpi--signups">
+                <div class="adm-kpi-top">
+                  <span class="adm-kpi-lbl">Total Sign Ups</span>
+                  <span class="adm-kpi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+                </div>
+                <div class="adm-kpi-val" id="adm-kpi-signups">—</div>
+                <div class="adm-kpi-sub" id="adm-kpi-signups-sub">Memuat…</div>
+                <div class="adm-kpi-spark" id="adm-kpi-signups-spark"></div>
+              </article>
+              <article class="adm-card adm-kpi adm-kpi--views">
+                <div class="adm-kpi-top">
+                  <span class="adm-kpi-lbl">Total Landing Page Views</span>
+                  <span class="adm-kpi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span>
+                </div>
+                <div class="adm-kpi-val" id="adm-kpi-views">—</div>
+                <div class="adm-kpi-sub" id="adm-kpi-views-sub">Memuat…</div>
+                <div class="adm-kpi-spark" id="adm-kpi-views-spark"></div>
+              </article>
+              <article class="adm-card adm-kpi adm-kpi--tracked">
+                <div class="adm-kpi-top">
+                  <span class="adm-kpi-lbl">Produk yang Dilacak</span>
+                  <span class="adm-kpi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05"/><path d="M12 22.08V12"/></svg></span>
+                </div>
+                <div class="adm-kpi-val" id="adm-kpi-tracked">—</div>
+                <div class="adm-kpi-sub" id="adm-kpi-tracked-sub">Memuat…</div>
+                <div class="adm-kpi-spark" id="adm-kpi-tracked-spark"></div>
+              </article>
+              <article class="adm-card adm-kpi adm-kpi--dives">
+                <div class="adm-kpi-top">
+                  <span class="adm-kpi-lbl">Total Deep Dives</span>
+                  <span class="adm-kpi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
+                </div>
+                <div class="adm-kpi-val" id="adm-kpi-dives">—</div>
+                <div class="adm-kpi-sub" id="adm-kpi-dives-sub">Memuat…</div>
+                <div class="adm-kpi-spark" id="adm-kpi-dives-spark"></div>
+              </article>
+            </div>
+
+            <div class="adm-mid">
+              <section class="adm-card adm-card-pad adm-cat-card">
+                <h3 class="adm-card-title">Kategori Populer</h3>
+                <div class="adm-cat-body">
+                  <div class="adm-cat-chart"><canvas id="adm-cat-canvas"></canvas></div>
+                  <div class="adm-cat-legend" id="adm-cat-legend"></div>
+                </div>
+                <button type="button" class="adm-cat-more" id="adm-cat-more">Lihat semua kategori →</button>
+              </section>
+              <section class="adm-card adm-card-pad adm-map-card">
+                <div class="adm-map-head">
+                  <h3 class="adm-card-title">Sebaran Sign Ups per Lokasi</h3>
+                  <select class="adm-map-select" id="adm-map-range" aria-label="Filter peta">
+                    <option value="all">Tampilkan berdasarkan Semua Sign Ups</option>
+                    <option value="30">30 hari terakhir</option>
+                  </select>
+                </div>
+                <div class="adm-map-stage">
+                  <svg class="adm-map-svg" id="adm-map-svg" viewBox="0 0 800 306" role="img" aria-label="Peta sebaran sign up Indonesia"></svg>
+                  <div class="adm-map-zoom">
+                    <button type="button" id="adm-map-zoom-in" aria-label="Perbesar">+</button>
+                    <button type="button" id="adm-map-zoom-out" aria-label="Perkecil">−</button>
+                  </div>
+                </div>
+                <div class="adm-map-legend">
+                  <span>Jumlah sign ups</span>
+                  <div class="adm-map-scale" aria-hidden="true">
+                    <span style="background:#FECACA"></span>
+                    <span style="background:#F87171"></span>
+                    <span style="background:#EF4444"></span>
+                    <span style="background:#B5202A"></span>
+                    <span style="background:#7F1D1D"></span>
+                  </div>
+                  <span>1–5</span>
+                  <span>31+</span>
+                </div>
+              </section>
+            </div>
+
+            <section class="adm-card adm-users-card">
+              <div class="adm-users-toolbar">
+                <h3>Daftar Pengguna</h3>
+                <label class="adm-search">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                  <input type="search" id="adm-users-search" placeholder="Cari nama atau email..." autocomplete="off">
+                </label>
+                <div class="adm-filter-wrap">
+                  <button type="button" class="adm-tb-btn" id="adm-users-filter-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+                    Filter
+                  </button>
+                  <div class="adm-filter-pop" id="adm-users-filter-pop" hidden>
+                    <label for="adm-filter-tipe">Tipe pengguna</label>
+                    <select id="adm-filter-tipe">
+                      <option value="all">Semua</option>
+                      <option value="first_time">Baru</option>
+                      <option value="existing">Experienced</option>
+                    </select>
+                    <label for="adm-filter-cat">Kategori</label>
+                    <select id="adm-filter-cat">
+                      <option value="">Semua kategori</option>
+                    </select>
+                  </div>
+                </div>
+                <button type="button" class="adm-tb-btn" id="adm-users-export">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+                  Export
+                </button>
+              </div>
+              <div class="admin-table-wrap">
+                <table class="admin-table" id="admin-users-table">
+                  <thead>
+                    <tr>
+                      <th>Nama</th>
+                      <th>Email</th>
+                      <th>Lokasi</th>
+                      <th>Tipe Pengguna</th>
+                      <th>Kategori yang Diminati</th>
+                      <th>Bergabung</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-users-body">
+                    <tr><td colspan="7" class="dd-sub">Memuat…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="adm-pager">
+                <div class="adm-pager-info" id="adm-pager-info">Menampilkan 0 dari 0 pengguna</div>
+                <div class="adm-pager-btns" id="adm-pager-btns"></div>
+                <select class="adm-page-size" id="adm-page-size" aria-label="Baris per halaman">
+                  <option value="10" selected>10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                </select>
+              </div>
+            </section>
+
+            <section class="adm-card adm-winback-wrap">
+              <h3>Win-back</h3>
+              <div id="adm-winback-card"></div>
+            </section>
           </div>
         </div>
       </div>
@@ -5155,7 +5437,8 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script defer src="/js/gpt-community-board.js?v=20260811a"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260810a"></script>
 <script defer src="/js/laris-mascot.js?v=20260810a"></script>
-<script src="/js/gpt-app.js?v=20260812a" defer></script>
+<script src="/js/admin-map.js?v=20260812a" defer></script>
+<script src="/js/gpt-app.js?v=20260812b" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>
 </html>
