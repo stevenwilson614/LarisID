@@ -15143,14 +15143,14 @@ function ddTrendComputeDeltas(dbRows, listing, opts = {}) {
   }
   const corrDeltas = [];
   for (let i = 0; i < dbRows.length - 1; i++) {
-    // Server-measured units win outright. product_trend_history() carries
-    // units_sold from listing_deltas, where both scrape readings were exact and
-    // the delta is a COUNT, not a model output — 120,175 products have that.
-    // Everything below this line is the client re-deriving units from bucketed
-    // readings, which is only needed when the server has no measurement.
+    // Server units_sold wins for both measured scrapes and review-based
+    // estimates (bucketed Shopee totals often stay flat while reviews move).
+    // Client re-derivation below is only for rows that predate that column.
     const srvUnits = dbRows[i + 1]?.units_sold;
-    if (srvUnits != null && dbRows[i + 1]?.units_source === 'measured') {
-      corrDeltas.push(Math.max(0, srvUnits));
+    if (srvUnits != null) {
+      const src = dbRows[i + 1]?.units_source;
+      if (src === 'estimated') isEstimated = true;
+      corrDeltas.push(Math.max(0, Number(srvUnits) || 0));
       continue;
     }
     const s0raw = dbRows[i].total_sold ?? 0, s1raw = dbRows[i + 1].total_sold ?? 0;
@@ -16166,14 +16166,27 @@ function trkAdapter() {
         return data || [];
       } catch (_) { return []; }
     },
-    // Per-listing chart series from scrape snapshots (not densified daily
-    // rates — those stay flat between scrapes and look like "no data").
+    // Prefer product_daily_series (server already folds review-based estimates
+    // into daily units). Fall back to scrape snapshots with units_sold.
     async getProductSeries(listing, days) {
       if (!listing || listing.item_id == null || listing.shop_id == null || !_supabase) return [];
       const span = Number(days) || 14;
-      const from = new Date(Date.now() - span * 86400000);
+      const to = new Date();
+      const from = new Date(to.getTime() - span * 86400000);
       const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
       const since = iso(from);
+      try {
+        const { data, error } = await _supabase.rpc('product_daily_series', {
+          p_item_id: listing.item_id,
+          p_shop_id: listing.shop_id,
+          p_from: since,
+          p_to: iso(to),
+        });
+        if (!error && Array.isArray(data) && data.length >= 2) {
+          const real = data.filter(p => p.source === 'measured' || p.source === 'estimated');
+          if (real.some(p => Number(p.units) > 0)) return data;
+        }
+      } catch (_) { /* fall through */ }
       let rows = [];
       try {
         const { data, error } = await _supabase.rpc('product_trend_history', {
@@ -16186,7 +16199,7 @@ function trkAdapter() {
       if (!rows.length) {
         try {
           const { data } = await _supabase.from('listings')
-            .select('scraped_at,total_sold,price,units_sold,units_source')
+            .select('scraped_at,total_sold,price,reviews,units_sold,units_source')
             .eq('item_id', listing.item_id)
             .eq('shop_id', listing.shop_id)
             .gte('scraped_at', since + 'T00:00:00')
@@ -16209,23 +16222,22 @@ function trkAdapter() {
         const cur = byDay.get(d);
         const prev = i > 0 ? byDay.get(daysAsc[i - 1]) : null;
         let units = 0;
+        let src = 'measured';
         if (prev) {
           if (cur.units_sold != null) {
-            // Prefer server units_sold for both measured scrapes and
-            // review-based estimates (bucketed Shopee totals often stay flat).
             units = Math.max(0, Number(cur.units_sold) || 0);
+            src = cur.units_source === 'estimated' ? 'estimated' : 'measured';
           } else {
-            units = Math.max(0, (Number(cur.total_sold) || 0) - (Number(prev.total_sold) || 0));
+            const raw = Math.max(0, (Number(cur.total_sold) || 0) - (Number(prev.total_sold) || 0));
+            const revDelta = Math.max(0, (Number(cur.reviews) || 0) - (Number(prev.reviews) || 0));
+            const reviewEst = Math.round(revDelta * 3.2);
+            if (raw === 0 && reviewEst > 0) { units = reviewEst; src = 'estimated'; }
+            else if (raw > 0 && reviewEst > 0 && raw > reviewEst * 5) { units = reviewEst; src = 'estimated'; }
+            else units = raw;
           }
         }
         const price = Number(cur.price) || 0;
-        out.push({
-          d,
-          units,
-          omset: Math.round(units * price),
-          price,
-          source: 'measured',
-        });
+        out.push({ d, units, omset: Math.round(units * price), price, source: src });
       }
       return out;
     },

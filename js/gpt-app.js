@@ -7667,14 +7667,23 @@ function gptTrackerAdapter() {
         return data || [];
       } catch (_) { return []; }
     },
-    // Per-listing chart series. product_daily_series densifies each scrape
-    // interval into a constant daily rate — so a listing with 1–2 scrapes
-    // draws a perfectly flat line even when sold actually moved. Build the
-    // series from scrape snapshots instead (same source Deep Dive uses):
-    // one point per scrape day, units = sold since previous scrape.
+    // Prefer product_daily_series (server already folds review-based estimates
+    // into daily units). Fall back to scrape snapshots with units_sold.
     async getProductSeries(listing, days) {
       if (!listing || listing.item_id == null || listing.shop_id == null || !_supabase) return [];
       const since = _isoDaysAgo(days);
+      try {
+        const { data, error } = await _supabase.rpc('product_daily_series', {
+          p_item_id: listing.item_id,
+          p_shop_id: listing.shop_id,
+          p_from: since,
+          p_to: _isoDaysAgo(0),
+        });
+        if (!error && Array.isArray(data) && data.length >= 2) {
+          const real = data.filter(p => p.source === 'measured' || p.source === 'estimated');
+          if (real.some(p => Number(p.units) > 0)) return data;
+        }
+      } catch (_) { /* fall through */ }
       let rows = [];
       try {
         const { data, error } = await _supabase.rpc('product_trend_history', {
@@ -7687,7 +7696,7 @@ function gptTrackerAdapter() {
       if (!rows.length) {
         try {
           const { data } = await _supabase.from('listings')
-            .select('scraped_at,total_sold,price,units_sold,units_source')
+            .select('scraped_at,total_sold,price,reviews,units_sold,units_source')
             .eq('item_id', listing.item_id)
             .eq('shop_id', listing.shop_id)
             .gte('scraped_at', since + 'T00:00:00')
@@ -7696,7 +7705,6 @@ function gptTrackerAdapter() {
           rows = data || [];
         } catch (_) { return []; }
       }
-      // One row per calendar day (latest scrape wins), oldest → newest.
       const byDay = new Map();
       for (const r of rows) {
         const d = String(r.scraped_at || '').slice(0, 10);
@@ -7711,26 +7719,26 @@ function gptTrackerAdapter() {
         const cur = byDay.get(d);
         const prev = i > 0 ? byDay.get(daysAsc[i - 1]) : null;
         let units = 0;
+        let src = 'measured';
         if (prev) {
           if (cur.units_sold != null) {
-            // Prefer server units_sold for both measured scrapes and
-            // review-based estimates (bucketed Shopee totals often stay flat).
             units = Math.max(0, Number(cur.units_sold) || 0);
+            src = cur.units_source === 'estimated' ? 'estimated' : 'measured';
           } else {
-            units = Math.max(0, (Number(cur.total_sold) || 0) - (Number(prev.total_sold) || 0));
+            const raw = Math.max(0, (Number(cur.total_sold) || 0) - (Number(prev.total_sold) || 0));
+            const revDelta = Math.max(0, (Number(cur.reviews) || 0) - (Number(prev.reviews) || 0));
+            const reviewEst = Math.round(revDelta * 3.2);
+            if (raw === 0 && reviewEst > 0) { units = reviewEst; src = 'estimated'; }
+            else if (raw > 0 && reviewEst > 0 && raw > reviewEst * 5) { units = reviewEst; src = 'estimated'; }
+            else units = raw;
           }
         }
         const price = Number(cur.price) || 0;
-        out.push({
-          d,
-          units,
-          omset: Math.round(units * price),
-          price,
-          source: 'measured',
-        });
+        out.push({ d, units, omset: Math.round(units * price), price, source: src });
       }
       return out;
     },
+
     // Dense daily series for the tracker's charts and stat blocks.
     //
     // get_tracker_rollup only ever returns the raw scrape buckets, which are

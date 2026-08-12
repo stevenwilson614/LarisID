@@ -360,6 +360,8 @@
   // Dense series is fetched at 2× the window so prev/cur % share one array —
   // for the line we clip to that same 2× span so the right half is "now"
   // and the left half is the period the badge compares against.
+  // `estimated` days (review-based bucket fill) are real signal — same as
+  // measured — and must not be stripped like `prior`.
   function rowSeries(r) {
     var s = (r && r.dseries && r.dseries.length >= 2) ? r.dseries : ((r && r.series) || []);
     if (!(r && r.dseries && r.dseries.length >= 2 && r.window_days_effective)) return s;
@@ -393,6 +395,7 @@
         // Dense-series days past the last real scrape are model output, not
         // measurement — the chart draws them dashed and labels them.
         forecast: p.source === 'forecast',
+        estimated: p.source === 'estimated',
       };
     }).filter(function (p) { return !isNaN(p.t); });
     pts.sort(function (a, b) { return a.t - b.t; });
@@ -1867,6 +1870,7 @@
     var trend = rowHasTrend(row);
     var metric = S.detailMetric || 'omset';
     var activeStat = STAT_METRICS.filter(function (m) { return m.key === metric; })[0] || STAT_METRICS[0];
+    var nEst = (row.dseries || []).filter(function (p) { return p.source === 'estimated'; }).length;
     var chartBody = loadingListing
       ? '<p class="ltk-detail-peers-note">Memuat tren listing…</p>'
       : (trend
@@ -1874,17 +1878,14 @@
             '<canvas class="ltk-detail-chart" data-ltk-detailchart width="600" height="160"></canvas>' +
           '</div>' +
           '<div class="ltk-detail-chart-labels" data-ltk-chart-labels></div>' +
-          (row.n_forecast
-            ? '<div class="ltk-chart-legend">' +
-                '<span class="ltk-chart-legend-item"><i class="ltk-chart-legend-solid"></i>Data terukur</span>' +
-                '<span class="ltk-chart-legend-item"><i class="ltk-chart-legend-dash"></i>Perkiraan (' +
-                  esc(String(row.n_forecast)) + ' hari terakhir, dari model LarisID)</span>' +
-              '</div>'
-            : (S.detailListingKey
-              ? '<div class="ltk-chart-legend">' +
-                  '<span class="ltk-chart-legend-item">Titik = tiap scrape harian untuk listing ini</span>' +
-                '</div>'
-              : ''))
+          '<div class="ltk-chart-legend">' +
+            '<span class="ltk-chart-legend-item"><i class="ltk-chart-legend-solid"></i>Data terukur' +
+              (nEst ? ' / estimasi ulasan' : '') + '</span>' +
+            (row.n_forecast
+              ? '<span class="ltk-chart-legend-item"><i class="ltk-chart-legend-dash"></i>Perkiraan (' +
+                  esc(String(row.n_forecast)) + ' hari terakhir, dari model LarisID)</span>'
+              : '') +
+          '</div>'
         : '<p class="ltk-detail-peers-note">' +
             (S.detailListingKey
               ? 'Listing ini belum punya cukup riwayat scrape (butuh minimal 2 kali) untuk menampilkan tren.'
@@ -2311,14 +2312,17 @@
     if (prevPrice) r.avg_price_prev = prevPrice;
     // A series is only a real trend if something actually moved in it —
     // an all-zero curve is "no data", not "flat sales".
-    r.has_dense = s.some(function (p) { return p.omset > 0 || p.units > 0; });
+    r.has_dense = s.some(function (p) {
+      return (p.source === 'measured' || p.source === 'estimated' || !p.source)
+        && (p.omset > 0 || p.units > 0);
+    });
     r.n_forecast = s.filter(function (p) { return p.source === 'forecast'; }).length;
-    // n_days drives the "Aktif · N hari data" meta — count measured days in
-    // the effective window, not raw scrape buckets (which can be 1–2 forever).
+    // n_days drives the "Aktif · N hari data" meta — count measured/estimated
+    // days in the effective window, not raw scrape buckets.
     var measuredInWin = 0;
     s.forEach(function (p) {
       var t = Date.parse(p.d);
-      if (!isNaN(t) && t > cur0 && p.source === 'measured') measuredInWin++;
+      if (!isNaN(t) && t > cur0 && (p.source === 'measured' || p.source === 'estimated')) measuredInWin++;
     });
     if (measuredInWin > 0) r.n_days = measuredInWin;
     else if (r.has_dense) r.n_days = Math.max(r.n_days || 0, win);
