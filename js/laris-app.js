@@ -16139,6 +16139,49 @@ function trkAdapter() {
         return data || [];
       } catch (_) { return []; }
     },
+    async getKeywordTopListings(keyword) {
+      if (!keyword || !_supabase) return [];
+      const cols = 'item_id,shop_id,store_name,product_name,image_url,price,total_sold';
+      const kw = String(keyword).trim();
+      try {
+        let q = await _supabase.from('listings_deduped')
+          .select(cols).eq('keyword', kw.toLowerCase())
+          .order('total_sold', { ascending: false }).limit(30);
+        if ((!q.data || !q.data.length) && kw !== kw.toLowerCase()) {
+          q = await _supabase.from('listings_deduped')
+            .select(cols).eq('keyword', kw)
+            .order('total_sold', { ascending: false }).limit(30);
+        }
+        return q.data || [];
+      } catch (_) { return []; }
+    },
+    async getStoreTopListings(shopId) {
+      if (shopId == null || !_supabase) return [];
+      try {
+        const { data } = await _supabase.from('listings_deduped')
+          .select('item_id,shop_id,store_name,product_name,image_url,price,total_sold')
+          .eq('shop_id', shopId)
+          .order('total_sold', { ascending: false })
+          .limit(30);
+        return data || [];
+      } catch (_) { return []; }
+    },
+    async getProductSeries(listing, days) {
+      if (!listing || listing.item_id == null || listing.shop_id == null || !_supabase) return [];
+      try {
+        const to = new Date();
+        const from = new Date(to.getTime() - (Number(days) || 14) * 86400000);
+        const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+        const { data, error } = await _supabase.rpc('product_daily_series', {
+          p_item_id: listing.item_id,
+          p_shop_id: listing.shop_id,
+          p_from: iso(from),
+          p_to: iso(to),
+        });
+        if (error) throw error;
+        return data || [];
+      } catch (_) { return []; }
+    },
     touchViewed()               { return rpc('touch_tracker_viewed'); },
     addKeyword(kw, cat)         { return rpc('add_tracked_keyword', { p_keyword: kw, p_category: cat || '' }); },
     addStore(shopId, name)      { return rpc('add_tracked_store', { p_shop_id: shopId, p_store_name: name || '' }); },

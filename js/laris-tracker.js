@@ -82,13 +82,17 @@
     openRow: null,                    // keyword/shop_id whose kebab menu is open
     openDetail: null,                 // keyword/shop_id whose row is expanded (mobile-friendly recap)
     lastRefreshAt: 0,
-    // "Lihat Detail" screen — a dedicated, simpler view (stats + chart +
-    // change history + who's selling it) separate from the row-expand recap.
+    // "Lihat Detail" screen — stats + chart + listing picker (Semua vs
+    // one Shopee listing). Separate from the unused table-row expand recap.
     detailKey: null,                  // keyword/shop_id currently open, or null
     detailScope: 'keyword',           // scope the detail screen was opened from
-    detailPeers: [],                  // suppliers (product) or top products (store)
+    detailPeers: [],                  // top listings for this keyword/shop
     detailPeersLoading: false,
     detailMetric: 'omset',            // which chart the toggle row is showing
+    detailListingKey: null,           // null = Semua; else item_id__shop_id
+    detailListingSeries: {},          // cache of product_daily_series by listing key
+    detailListingLoading: false,
+    detailViewRow: null,              // derived row currently driving stats/chart
   };
 
   // Uncommitted setup draft. Nothing here is persisted or sent until commit.
@@ -494,7 +498,9 @@
     host.querySelectorAll('[data-ltk-mspark]').forEach(function (cv) {
       var parts = cv.getAttribute('data-ltk-mspark').split('|');
       var key = parts[0], metricKey = parts[1];
-      var row = (S.rollup.rows || []).filter(function (r) { return rowKey(r) === key; })[0];
+      var row = key === '__detail__'
+        ? S.detailViewRow
+        : (S.rollup.rows || []).filter(function (r) { return rowKey(r) === key; })[0];
       if (!row) return;
       var cur = Number(row[metricKey]) || 0, prev = Number(row[metricKey + '_prev']) || 0;
       // Same rule as deltaHtml: up is always green, down is always red.
@@ -599,25 +605,7 @@
 
   function renderChipbar() {
     var bar = $('[data-ltk-chipbar]');
-    if (!bar) return;
-    if (!S.configured || S.screen === 'setup' || S.screen === 'detail') { bar.innerHTML = ''; return; }
-    var h = '';
-    S.keywords.forEach(function (k) {
-      h += '<button type="button" class="ltk-chip" data-ltk-kw="' + attr(k.keyword) + '">' +
-             catIconHtml(k.category, 18, 'ltk-chip-ico') +
-             '<span class="ltk-chip-lbl">' + esc(k.keyword) + '</span></button>';
-    });
-    S.stores.forEach(function (st) {
-      h += '<button type="button" class="ltk-chip ltk-chip--store" data-ltk-store="' + attr(st.shop_id) + '">' +
-             '<span class="ltk-chip-lbl">' + esc(st.store_name || ('Toko ' + st.shop_id)) + '</span></button>';
-    });
-    var free = Math.max(0, S.keywordLimit - S.keywords.length);
-    if (free > 0) {
-      // Quiet on purpose. A badge or a red dot turns a gentle pull into day-2 noise.
-      h += '<button type="button" class="ltk-chip ltk-chip--add" data-ltk-act="setup">' +
-             '+ ' + free + ' slot kosong</button>';
-    }
-    bar.innerHTML = h;
+    if (bar) bar.innerHTML = '';
   }
 
   function renderStrip() {
@@ -1527,11 +1515,8 @@
           '<div class="ltk-cards">' + rows.map(cardHtml).join('') +
             '<button type="button" class="ltk-add-tile" data-ltk-act="setup">' +
               '<span class="ltk-add-tile-plus" aria-hidden="true">+</span>' +
-              '<span class="ltk-add-tile-head">Tambah ' + (isKw ? 'Produk' : 'Toko') + ' untuk Dipantau</span>' +
-              '<span class="ltk-add-tile-sub">' + (free ? free + ' slot kosong' : 'Kelola pantauan kamu') + '</span>' +
-            '</button>' +
-            '<button type="button" class="ltk-btn ltk-btn--primary ltk-add-tile-cta" data-ltk-act="setup">' +
-              'Tambah ' + (isKw ? 'Produk' : 'Toko') +
+              '<span class="ltk-add-tile-head">Tambah ' + (isKw ? 'Produk' : 'Toko') + '</span>' +
+              (free ? '<span class="ltk-add-tile-sub">' + free + ' slot kosong</span>' : '') +
             '</button>' +
           '</div>' +
           '<button type="button" class="ltk-addrow" data-ltk-act="setup">' +
@@ -1546,15 +1531,83 @@
   }
 
   /* ── "Lihat Detail" screen ─────────────────────────────────────────────
-     A dedicated, simpler view than Deep Dive: stat row + one chart + change
-     history (all already computed for the rollup row, no extra fetch) plus
-     who's selling it — the one piece that needs its own data, fetched via
-     the adapter so this module still never touches _supabase directly. */
+     Stat row + one chart, driven by either the keyword/store aggregate
+     (Semua) or one listing's product_daily_series. Listings are fetched
+     via the adapter so this module still never touches _supabase. */
 
   function findRollupRow(key) {
     var rows = (S.rollup && S.rollup.rows) || [];
     for (var i = 0; i < rows.length; i++) if (rowKey(rows[i]) === key) return rows[i];
     return null;
+  }
+
+  function listingPeerKey(r) {
+    return String(r.item_id) + '__' + String(r.shop_id);
+  }
+
+  function findDetailPeer(key) {
+    var rows = S.detailPeers || [];
+    for (var i = 0; i < rows.length; i++) {
+      if (listingPeerKey(rows[i]) === key) return rows[i];
+    }
+    return null;
+  }
+
+  function buildListingViewRow(listing, seriesRows) {
+    var r = {
+      keyword: listing.product_name || '',
+      item_id: listing.item_id,
+      shop_id: listing.shop_id,
+      store_name: listing.store_name,
+      product_name: listing.product_name,
+      image_url: listing.image_url,
+      dseries: normaliseSeries(seriesRows),
+    };
+    deriveFromSeries(r);
+    return r;
+  }
+
+  function activeDetailRow(base) {
+    if (!S.detailListingKey || S.detailListingLoading) return base;
+    var series = S.detailListingSeries[S.detailListingKey];
+    var listing = findDetailPeer(S.detailListingKey);
+    if (!listing || !series) return base;
+    return buildListingViewRow(listing, series);
+  }
+
+  function selectDetailListing(key) {
+    S.detailListingKey = key || null;
+    if (!S.detailListingKey) {
+      S.detailListingLoading = false;
+      renderDetail();
+      return;
+    }
+    if (S.detailListingSeries[S.detailListingKey]) {
+      S.detailListingLoading = false;
+      renderDetail();
+      return;
+    }
+    var listing = findDetailPeer(S.detailListingKey);
+    if (!listing) {
+      S.detailListingKey = null;
+      S.detailListingLoading = false;
+      renderDetail();
+      return;
+    }
+    S.detailListingLoading = true;
+    renderDetail();
+    var want = S.detailListingKey;
+    callP('getProductSeries', listing, seriesSpanDays()).then(function (rows) {
+      if (S.detailListingKey !== want) return;
+      S.detailListingSeries[want] = rows || [];
+      S.detailListingLoading = false;
+      renderDetail();
+    }, function () {
+      if (S.detailListingKey !== want) return;
+      S.detailListingSeries[want] = [];
+      S.detailListingLoading = false;
+      renderDetail();
+    });
   }
 
   function openDetailScreen(key) {
@@ -1565,6 +1618,10 @@
     S.detailPeers = [];
     S.detailPeersLoading = true;
     S.detailMetric = 'omset';
+    S.detailListingKey = null;
+    S.detailListingSeries = {};
+    S.detailListingLoading = false;
+    S.detailViewRow = null;
     showScreen('detail');
     renderDetail();
     var isKw = S.detailScope !== 'store';
@@ -1582,6 +1639,8 @@
 
   function closeDetailScreen() {
     S.detailKey = null;
+    S.detailListingKey = null;
+    S.detailViewRow = null;
     showScreen('rollup');
     renderRollup();
   }
@@ -1748,34 +1807,40 @@
     renderChartDateLabels(labelsEl, pts[0].t, pts[pts.length - 1].t, w, pad);
   }
 
-  // Shared row-list for both scopes — mv_trending returns the same shape
-  // (item_id, shop_id, store_name, product_name, image_url, price,
-  // delta_7d, delta_prev_7d) either way, only the label swaps: the product
-  // detail screen names the store selling each top listing (per Steven's
-  // direction — "Performa per Toko" is really the top listings for this
-  // keyword, labeled by store), the store detail screen names the product.
-  function detailPeersHtml(isKw) {
-    if (S.detailPeersLoading) return '<p class="ltk-detail-peers-note">Memuat…</p>';
+  // Scrollable listing picker: Semua (keyword/store aggregate) plus the
+  // top 30 individual Shopee listings. Selecting a row drives the chart
+  // and the three stat boxes above.
+  function listingPickerHtml(isKw) {
     var rows = S.detailPeers || [];
-    if (!rows.length) {
-      return '<p class="ltk-detail-peers-note">' +
-        (isKw ? 'Belum ada data toko untuk produk ini.' : 'Belum ada data produk untuk toko ini.') + '</p>';
+    var n = rows.length;
+    var allActive = !S.detailListingKey;
+    var h = '<div class="ltk-listings-scroll" role="listbox" aria-label="Pilih listing">';
+    h += '<button type="button" class="ltk-listing-row' + (allActive ? ' is-active' : '') +
+      '" role="option" aria-selected="' + allActive + '" data-ltk-listing="">' +
+      '<span class="ltk-listing-txt">' +
+        '<span class="ltk-listing-all">Semua</span>' +
+        '<span class="ltk-listing-meta">' +
+          (S.detailPeersLoading ? 'Memuat…' : (n ? n + ' listing' : 'Agregat pasar')) +
+        '</span></span></button>';
+    if (S.detailPeersLoading && !n) {
+      h += '</div>';
+      return h;
     }
-    return '<table class="ltk-detail-peers-table">' +
-      '<thead><tr><th>' + (isKw ? 'Toko' : 'Produk') + '</th><th>Omset (Estimasi 30 Hari)</th><th>Perubahan</th></tr></thead>' +
-      '<tbody>' + rows.map(function (r) {
-        var label = isKw ? (r.store_name || ('Toko ' + r.shop_id)) : (r.product_name || '—');
-        var enough = r.delta_prev_7d != null;
-        var estOmset = Math.round((Number(r.price) || 0) * (Number(r.delta_7d) || 0) * 30 / 7);
-        return '<tr>' +
-          '<td class="ltk-detail-peers-row">' +
-            imgOr(r.image_url || '', 'ltk-detail-peers-img') +
-            '<span>' + esc(label) + '</span>' +
-          '</td>' +
-          '<td>' + esc(fmtRp(Math.max(0, estOmset))) + '</td>' +
-          '<td>' + deltaHtml(r.delta_7d, r.delta_prev_7d, enough) + '</td>' +
-        '</tr>';
-      }).join('') + '</tbody></table>';
+    rows.forEach(function (r) {
+      var lk = listingPeerKey(r);
+      var active = S.detailListingKey === lk;
+      var line1 = isKw ? (r.store_name || ('Toko ' + r.shop_id)) : (r.product_name || '—');
+      var line2 = isKw ? (r.product_name || '') : (r.store_name || '');
+      h += '<button type="button" class="ltk-listing-row' + (active ? ' is-active' : '') +
+        '" role="option" aria-selected="' + active + '" data-ltk-listing="' + attr(lk) + '">' +
+        imgOr(r.image_url || '', 'ltk-listing-img') +
+        '<span class="ltk-listing-txt">' +
+          '<span class="ltk-listing-name">' + esc(line1) + '</span>' +
+          (line2 ? '<span class="ltk-listing-sub">' + esc(line2) + '</span>' : '') +
+        '</span></button>';
+    });
+    h += '</div>';
+    return h;
   }
 
   var CHART_TOGGLES = [
@@ -1788,12 +1853,33 @@
     var p = pane('detail');
     if (!p) return;
     var key = S.detailKey;
-    var row = key ? findRollupRow(key) : null;
-    if (!row) { p.innerHTML = ''; return; }
+    var base = key ? findRollupRow(key) : null;
+    if (!base) { p.innerHTML = ''; return; }
+    var prevScroll = 0;
+    var prevList = p.querySelector('.ltk-listings-scroll');
+    if (prevList) prevScroll = prevList.scrollTop;
+    var loadingListing = !!(S.detailListingKey && S.detailListingLoading);
+    var row = activeDetailRow(base);
+    S.detailViewRow = row;
     var isKw = S.detailScope !== 'store';
     var trend = rowHasTrend(row);
     var metric = S.detailMetric || 'omset';
     var activeStat = STAT_METRICS.filter(function (m) { return m.key === metric; })[0] || STAT_METRICS[0];
+    var chartBody = loadingListing
+      ? '<p class="ltk-detail-peers-note">Memuat tren listing…</p>'
+      : (trend
+        ? '<div class="ltk-detail-chart-canvaswrap">' +
+            '<canvas class="ltk-detail-chart" data-ltk-detailchart width="600" height="160"></canvas>' +
+          '</div>' +
+          '<div class="ltk-detail-chart-labels" data-ltk-chart-labels></div>' +
+          (row.n_forecast
+            ? '<div class="ltk-chart-legend">' +
+                '<span class="ltk-chart-legend-item"><i class="ltk-chart-legend-solid"></i>Data terukur</span>' +
+                '<span class="ltk-chart-legend-item"><i class="ltk-chart-legend-dash"></i>Perkiraan (' +
+                  esc(String(row.n_forecast)) + ' hari terakhir, dari model LarisID)</span>' +
+              '</div>'
+            : '')
+        : '<p class="ltk-detail-peers-note">Perlu minimal 2 hari data untuk menampilkan tren.</p>');
     p.innerHTML =
       '<div class="ltk-detail">' +
         '<button type="button" class="ltk-detail-back" data-ltk-detail-back>' +
@@ -1801,24 +1887,28 @@
           'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>' +
           'Kembali ke Pantauan</button>' +
         '<div class="ltk-detail-head">' +
-          (isKw ? rowIconHtml(row) : storeAvatar(row)) +
+          (isKw ? rowIconHtml(base) : storeAvatar(base)) +
           '<div class="ltk-detail-head-txt">' +
-            '<h3 class="ltk-detail-name">' + esc(rowLabel(row)) + '</h3>' +
+            '<h3 class="ltk-detail-name">' + esc(rowLabel(base)) + '</h3>' +
             '<p class="ltk-detail-meta">' +
               (isKw
-                ? (trend ? esc(fmtUnits(row.n_sellers || 0)) + ' toko aktif · ' + esc(fmtUnits(row.n_listings || 0)) + ' SKU aktif' : 'Mengumpulkan data')
-                : (row.oldest_listing_date ? 'Dipantau sejak toko berjualan ' + esc(fmtAge(row.oldest_listing_date)) : 'Mengumpulkan data')) +
+                ? (rowHasTrend(base) ? esc(fmtUnits(base.n_sellers || 0)) + ' toko aktif · ' + esc(fmtUnits(base.n_listings || 0)) + ' SKU aktif' : 'Mengumpulkan data')
+                : (base.oldest_listing_date ? 'Dipantau sejak toko berjualan ' + esc(fmtAge(base.oldest_listing_date)) : 'Mengumpulkan data')) +
             '</p>' +
           '</div>' +
         '</div>' +
         '<div class="ltk-detail-stats">' +
-          STAT_METRICS.map(function (m) { return metricStatBlockHtml(key, m, row, trend, 90, 28); }).join('') +
+          STAT_METRICS.map(function (m) {
+            return metricStatBlockHtml('__detail__', m, row, trend, 90, 28);
+          }).join('') +
         '</div>' +
         '<div class="ltk-detail-chart-wrap">' +
           '<div class="ltk-detail-chart-head">' +
             '<div class="ltk-chart-value">' +
-              '<span class="ltk-chart-value-num" data-ltk-chart-valnum>' + esc(activeStat.fmt(row)) + '</span>' +
-              '<span data-ltk-chart-valsub>' + deltaHtml(row[metric], row[metric + '_prev'], trend) + '</span>' +
+              '<span class="ltk-chart-value-num" data-ltk-chart-valnum>' +
+                (loadingListing ? '…' : esc(activeStat.fmt(row))) + '</span>' +
+              '<span data-ltk-chart-valsub>' +
+                (loadingListing ? '' : deltaHtml(row[metric], row[metric + '_prev'], trend)) + '</span>' +
             '</div>' +
             '<div class="ltk-chart-toggles" role="tablist" aria-label="Metrik tren">' +
               CHART_TOGGLES.map(function (t) {
@@ -1828,28 +1918,17 @@
               }).join('') +
             '</div>' +
           '</div>' +
-          (trend
-            ? '<div class="ltk-detail-chart-canvaswrap">' +
-                '<canvas class="ltk-detail-chart" data-ltk-detailchart width="600" height="160"></canvas>' +
-              '</div>' +
-              '<div class="ltk-detail-chart-labels" data-ltk-chart-labels></div>' +
-              (row.n_forecast
-                ? '<div class="ltk-chart-legend">' +
-                    '<span class="ltk-chart-legend-item"><i class="ltk-chart-legend-solid"></i>Data terukur</span>' +
-                    '<span class="ltk-chart-legend-item"><i class="ltk-chart-legend-dash"></i>Perkiraan (' +
-                      esc(String(row.n_forecast)) + ' hari terakhir, dari model LarisID)</span>' +
-                  '</div>'
-                : '')
-            : '<p class="ltk-detail-peers-note">Perlu minimal 2 hari data untuk menampilkan tren.</p>') +
+          chartBody +
         '</div>' +
-        changeHistoryHtml(row, isKw) +
-        '<div class="ltk-detail-peers">' +
-          '<div class="ltk-detail-peers-title">' + (isKw ? 'Performa per Toko' : 'Produk Teratas') + '</div>' +
-          detailPeersHtml(isKw) +
+        '<div class="ltk-listings">' +
+          '<div class="ltk-listings-title">Listing</div>' +
+          listingPickerHtml(isKw) +
         '</div>' +
       '</div>';
+    var nextList = p.querySelector('.ltk-listings-scroll');
+    if (nextList && prevScroll) nextList.scrollTop = prevScroll;
     var cv = $('[data-ltk-detailchart]');
-    if (cv) {
+    if (cv && !loadingListing) {
       mountDetailChart(cv, $('[data-ltk-chart-labels]'), row, metric, activeStat, {
         valEl: $('[data-ltk-chart-valnum]'),
         subEl: $('[data-ltk-chart-valsub]'),
@@ -2679,6 +2758,12 @@
     if (chartMetric) {
       S.detailMetric = chartMetric.getAttribute('data-ltk-chartmetric');
       renderDetail();
+      return;
+    }
+
+    var listingPick = t.closest && t.closest('[data-ltk-listing]');
+    if (listingPick) {
+      selectDetailListing(listingPick.getAttribute('data-ltk-listing') || null);
       return;
     }
 

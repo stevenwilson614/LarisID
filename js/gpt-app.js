@@ -7631,31 +7631,46 @@ function gptTrackerAdapter() {
       } catch (_) {}
       try { openDirectory(); } catch (_) {}
     },
-    // "Performa per Toko" on the tracker's product detail screen — per
-    // Steven's direction this is really the top individual listings for
-    // this keyword, labeled by the store each one belongs to (not a
-    // per-store aggregate, which mv_supplier_leaderboard could show but
-    // with no history to compute a real % change from). mv_trending has
-    // both total_sold for ranking and delta_7d/delta_prev_7d for a real,
-    // non-fabricated change — same matview fetchTrending() already reads.
+    // Top listings for the detail picker (Semua vs one SKU). listings_deduped
+    // is the current unique snapshot per (item_id, shop_id) — not mv_trending,
+    // which is a global movers slice and used to cap this at 5.
     async getKeywordTopListings(keyword) {
       if (!keyword || !_supabase) return [];
+      const cols = 'item_id,shop_id,store_name,product_name,image_url,price,total_sold';
+      const kw = String(keyword).trim();
       try {
-        const { data } = await _supabase.from('mv_trending')
-          .select('item_id,shop_id,store_name,product_name,image_url,price,total_sold,delta_7d,delta_prev_7d')
-          .eq('keyword', keyword).order('total_sold', { ascending: false }).limit(5);
-        return data || [];
+        let q = await _supabase.from('listings_deduped')
+          .select(cols).eq('keyword', kw.toLowerCase())
+          .order('total_sold', { ascending: false }).limit(30);
+        if ((!q.data || !q.data.length) && kw !== kw.toLowerCase()) {
+          q = await _supabase.from('listings_deduped')
+            .select(cols).eq('keyword', kw)
+            .order('total_sold', { ascending: false }).limit(30);
+        }
+        return q.data || [];
       } catch (_) { return []; }
     },
-    // "Produk Teratas" on the tracker's store detail screen — same shape,
-    // filtered by shop instead of keyword, so detailPeersHtml can render
-    // both scopes with one renderer.
     async getStoreTopListings(shopId) {
       if (shopId == null || !_supabase) return [];
       try {
-        const { data } = await _supabase.from('mv_trending')
-          .select('item_id,shop_id,store_name,product_name,image_url,price,total_sold,delta_7d,delta_prev_7d')
-          .eq('shop_id', shopId).order('total_sold', { ascending: false }).limit(5);
+        const { data } = await _supabase.from('listings_deduped')
+          .select('item_id,shop_id,store_name,product_name,image_url,price,total_sold')
+          .eq('shop_id', shopId)
+          .order('total_sold', { ascending: false })
+          .limit(30);
+        return data || [];
+      } catch (_) { return []; }
+    },
+    async getProductSeries(listing, days) {
+      if (!listing || listing.item_id == null || listing.shop_id == null || !_supabase) return [];
+      try {
+        const { data, error } = await _supabase.rpc('product_daily_series', {
+          p_item_id: listing.item_id,
+          p_shop_id: listing.shop_id,
+          p_from: _isoDaysAgo(days),
+          p_to: _isoDaysAgo(0),
+        });
+        if (error) throw error;
         return data || [];
       } catch (_) { return []; }
     },
@@ -12194,6 +12209,9 @@ function renderAdminUsers() {
   const body = $('admin-users-body');
   if (!body) return;
   const rows = adminFilteredUsers();
+  // #region agent log
+  fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2a188f'},body:JSON.stringify({sessionId:'2a188f',runId:'pre-fix',hypothesisId:'E',location:'gpt-app.js:renderAdminUsers',message:'renderAdminUsers filter',data:{rawLen:(_adminUsers||[]).length,filteredLen:rows.length,q:($('adm-users-search')?.value||'').slice(0,40),tipe:$('adm-filter-tipe')?.value||null,cat:$('adm-filter-cat')?.value||null,page:_adminUserPage,pageSize:_adminPageSize,isArr:Array.isArray(_adminUsers)},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   renderAdminPager(rows.length);
   const start = (_adminUserPage - 1) * _adminPageSize;
   const slice = rows.slice(start, start + _adminPageSize);
@@ -12358,6 +12376,9 @@ function adminBindUi() {
 
 async function loadAdminDirectory() {
   adminBindUi();
+  // #region agent log
+  fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2a188f'},body:JSON.stringify({sessionId:'2a188f',runId:'pre-fix',hypothesisId:'A',location:'gpt-app.js:loadAdminDirectory:entry',message:'loadAdminDirectory entry',data:{isAdmin:!!isPlatformAdmin(),hasSupabase:!!_supabase,hasUser:!!currentUser,hasBody:!!$('admin-users-body')},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   if (!isPlatformAdmin() || !_supabase) {
     const body = $('admin-users-body');
     if (body) body.innerHTML = '<tr><td colspan="7" class="dd-sub">Login sebagai admin dulu.</td></tr>';
@@ -12366,22 +12387,43 @@ async function loadAdminDirectory() {
   const body = $('admin-users-body');
   if (body) body.innerHTML = '<tr><td colspan="7" class="dd-sub">Memuat…</td></tr>';
   try {
+    const t0 = Date.now();
     const [dirRes, statsRes, kpiRes] = await Promise.all([
-      _supabase.rpc('admin_user_directory'),
-      _supabase.rpc('admin_stats').catch(() => ({ data: null, error: true })),
-      _supabase.rpc('admin_dashboard_kpis').catch(() => ({ data: null, error: true })),
+      _supabase.rpc('admin_user_directory').then(r => ({ ...r, _ms: Date.now() - t0, _rpc: 'dir' })).catch(e => ({ data: null, error: e, _ms: Date.now() - t0, _rpc: 'dir' })),
+      _supabase.rpc('admin_stats').then(r => ({ ...r, _ms: Date.now() - t0, _rpc: 'stats' })).catch(e => ({ data: null, error: e, _ms: Date.now() - t0, _rpc: 'stats' })),
+      _supabase.rpc('admin_dashboard_kpis').then(r => ({ ...r, _ms: Date.now() - t0, _rpc: 'kpis' })).catch(e => ({ data: null, error: e, _ms: Date.now() - t0, _rpc: 'kpis' })),
     ]);
+    const dirErr = dirRes.error && (dirRes.error.message || String(dirRes.error));
+    const statsErr = statsRes.error && (statsRes.error.message || String(statsRes.error));
+    const kpiErr = kpiRes.error && (kpiRes.error.message || String(kpiRes.error));
+    const dirIsArr = Array.isArray(dirRes.data);
+    // #region agent log
+    fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2a188f'},body:JSON.stringify({sessionId:'2a188f',runId:'pre-fix',hypothesisId:'B',location:'gpt-app.js:loadAdminDirectory:rpc',message:'admin RPCs settled',data:{dirMs:dirRes._ms,statsMs:statsRes._ms,kpiMs:kpiRes._ms,dirErr:dirErr||null,statsErr:statsErr||null,kpiErr:kpiErr||null,dirIsArr,dirLen:dirIsArr?dirRes.data.length:null,dirType:typeof dirRes.data,statsHasData:!!statsRes.data,kpiHasData:!!kpiRes.data},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     if (dirRes.error) throw dirRes.error;
     _adminUsers = dirRes.data || [];
     _adminStats = (!statsRes.error && statsRes.data) ? statsRes.data : null;
     _adminKpis = (!kpiRes.error && kpiRes.data) ? kpiRes.data : null;
     _adminUserPage = 1;
-    renderAdminKpis(_adminUsers);
-    void renderAdminCategories(_adminUsers);
-    renderAdminMap(_adminUsers);
-    admFillCatFilter(_adminUsers);
-    renderAdminUsers();
+    try {
+      renderAdminKpis(_adminUsers);
+      void renderAdminCategories(_adminUsers);
+      renderAdminMap(_adminUsers);
+      admFillCatFilter(_adminUsers);
+      renderAdminUsers();
+      // #region agent log
+      fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2a188f'},body:JSON.stringify({sessionId:'2a188f',runId:'pre-fix',hypothesisId:'D',location:'gpt-app.js:loadAdminDirectory:rendered',message:'render path finished',data:{usersLen:(_adminUsers||[]).length,bodyText:($('admin-users-body')?.innerText||'').slice(0,80)},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+    } catch (renderErr) {
+      // #region agent log
+      fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2a188f'},body:JSON.stringify({sessionId:'2a188f',runId:'pre-fix',hypothesisId:'D',location:'gpt-app.js:loadAdminDirectory:renderErr',message:'render path threw',data:{err:String(renderErr&&renderErr.message||renderErr),usersLen:(_adminUsers||[]).length},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      throw renderErr;
+    }
   } catch (e) {
+    // #region agent log
+    fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2a188f'},body:JSON.stringify({sessionId:'2a188f',runId:'pre-fix',hypothesisId:'C',location:'gpt-app.js:loadAdminDirectory:catch',message:'loadAdminDirectory catch',data:{err:String(e&&e.message||e)},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     if (body) body.innerHTML = `<tr><td colspan="7" class="dd-sub">${esc(e.message || 'Gagal memuat.')}</td></tr>`;
   }
 }

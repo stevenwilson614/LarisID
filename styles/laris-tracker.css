@@ -101,8 +101,8 @@
 }
 .ltk-strip-x:hover { opacity: 1; }
 
-/* ── Chipbar (persistent "what am I tracking") ─────────────────────────── */
-.ltk-chipbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+/* ── Chipbar (hidden — cards already name each product/toko) ──────────── */
+.ltk-chipbar { display: none; }
 .ltk-chip {
   display: inline-flex; align-items: center; gap: 6px;
   font: inherit; font-size: .74rem; font-weight: 600; cursor: pointer;
@@ -657,12 +657,14 @@
 .ltk-empty h3 { font-size: .95rem; font-weight: 800; margin: 0 0 6px; }
 .ltk-empty p { font-size: .78rem; color: #6B7280; margin: 0 0 16px; line-height: 1.5; }
 
-/* ── Mobile cards (below 720px — see the responsive block for the swap
-   with .ltk-tablewrap) ──────────────────────────────────────────────────
-   Rendered in the DOM alongside the table year-round; CSS shows exactly
-   one of the two per viewport width, so nothing here needs its own
-   data fetch or resize listener. */
-.ltk-cards { display: none; flex-direction: column; gap: 12px; }
+/* ── Product / store cards (all viewports) ──────────────────────────────
+   Desktop used to keep a dense table; both now share this stacked card
+   list so omset / harga / unit read the same way on a wide screen. The
+   table markup is still rendered (hidden) so row-expand JS can stay. */
+.ltk-tablewrap { display: none; }
+.ltk-addrow { display: none; }
+.ltk-chipbar { display: none; }
+.ltk-cards { display: flex; flex-direction: column; gap: 12px; }
 .ltk-card {
   border: 1px solid #E5E7EB; border-radius: var(--ltk-r); padding: 14px var(--ltk-pad);
   background: #fff;
@@ -703,20 +705,20 @@
 }
 .ltk-card-detail-btn:hover { background: #FEE2E2; }
 
-/* Mobile-only dashed "add" tile, appended after the mapped cards inside
-   .ltk-cards — the desktop table keeps the plain .ltk-addrow strip below. */
 .ltk-add-tile {
-  display: flex; flex-direction: column; align-items: center; text-align: center;
-  gap: 4px; width: 100%; border: 1.5px dashed #E5E7EB; border-radius: var(--ltk-r);
-  background: transparent; padding: 22px 14px; cursor: pointer; font: inherit;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 6px; width: 100%; min-height: 112px;
+  border: 1.5px dashed #D1D5DB; border-radius: var(--ltk-r);
+  background: transparent; padding: 28px 14px; cursor: pointer; font: inherit;
 }
 .ltk-add-tile:hover { border-color: #B5202A; background: #FFFBFB; }
 .ltk-add-tile-plus {
-  font-size: 1.5rem; font-weight: 700; color: #B5202A; line-height: 1;
+  font-size: 2.5rem; font-weight: 700; color: #9CA3AF; line-height: 1;
 }
-.ltk-add-tile-head { font-size: .82rem; font-weight: 700; color: #1A1A1A; }
+.ltk-add-tile:hover .ltk-add-tile-plus { color: #B5202A; }
+.ltk-add-tile-head { font-size: .82rem; font-weight: 700; color: #6B7280; }
 .ltk-add-tile-sub { font-size: .7rem; color: #9CA3AF; }
-.ltk-add-tile-cta { display: flex; width: 100%; margin-top: 10px; justify-content: center; }
+.ltk-add-tile-cta { display: none; }
 
 /* ── "Lihat Detail" screen ────────────────────────────────────────────── */
 .ltk-detail { padding: 4px 0; }
@@ -792,6 +794,41 @@
 .ltk-detail-peers-row { display: flex; align-items: center; gap: 8px; }
 .ltk-detail-peers-img {
   width: 32px; height: 32px; border-radius: 8px; object-fit: cover; background: #F3F4F6; flex-shrink: 0;
+}
+
+/* ── Detail listing picker (replaces Riwayat Perubahan) ───────────────── */
+.ltk-listings {
+  border: 1px solid #E5E7EB; border-radius: var(--ltk-r);
+  padding: 12px 0 0; margin-top: 16px;
+}
+.ltk-listings-title { font-size: .8rem; font-weight: 800; padding: 0 16px 10px; }
+.ltk-listings-scroll {
+  max-height: 280px; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  border-top: 1px solid #F3F4F6;
+}
+.ltk-listing-row {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  text-align: left; font: inherit; background: transparent; border: 0;
+  border-bottom: 1px solid #F9FAFB; padding: 10px 16px; cursor: pointer;
+}
+.ltk-listing-row:last-child { border-bottom: 0; }
+.ltk-listing-row:hover { background: #FAFAFA; }
+.ltk-listing-row.is-active { background: #FEF2F2; }
+.ltk-listing-row.is-active .ltk-listing-name,
+.ltk-listing-row.is-active .ltk-listing-all { color: #B5202A; }
+.ltk-listing-img {
+  width: 36px; height: 36px; border-radius: 8px; object-fit: cover;
+  background: #F3F4F6; flex-shrink: 0;
+}
+.ltk-listing-txt { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.ltk-listing-all { font-size: .78rem; font-weight: 800; color: #1A1A1A; }
+.ltk-listing-name {
+  display: block; font-size: .78rem; font-weight: 700; color: #1A1A1A;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ltk-listing-sub, .ltk-listing-meta {
+  display: block; font-size: .68rem; color: #9CA3AF;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 /* ── Scope tabs (Keyword | Toko) ───────────────────────────────────────── */
@@ -945,19 +982,10 @@
   .ltk-title { font-size: 1.15rem; }
 }
 @media (max-width: 720px) {
-  /* Cards replace the sideways-scrolling table below this width — simpler
-     to scan on a narrow screen than column-scrolling, per user feedback.
-     Desktop/tablet keep the table (.ltk-cards stays display:none there). */
-  .ltk-tablewrap { display: none; }
-  .ltk-cards { display: flex; }
-  /* The dashed .ltk-add-tile inside .ltk-cards replaces this plain strip. */
-  .ltk-addrow { display: none; }
   .ltk-statstrip { grid-template-columns: repeat(auto-fit, minmax(144px, 1fr)); }
   .ltk-stat-val { font-size: 1rem; }
-  /* Secondary controls (chipbar, day-range + sort selects) add clutter above
-     the fold on a small screen without earning their space — drop them here;
+  /* Day-range + sort selects add clutter above the fold on a small screen;
      "Pengaturan Pantauan" still reaches the same add/remove/sort surface. */
-  .ltk-chipbar { display: none; }
   .ltk-winsel, .ltk-panel-head .ltk-sr { display: none; }
   .ltk-panel-head { gap: 8px; }
 }
