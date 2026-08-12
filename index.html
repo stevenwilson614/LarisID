@@ -2283,7 +2283,23 @@ body.view-chat .panel { padding-bottom: calc(var(--composer-h) + 28px); }
 }
 .home-sub { font-size: 1.02rem; color: var(--muted); margin: 0 0 22px; }
 body.home-finder-done .home-markets { margin-bottom: 28px; }
-.home-composer { width: 100%; max-width: 640px; }
+.home-composer { width: 100%; max-width: 640px; position: relative; }
+/* Ask Laris Garuda — perched on the composer after the finder is done. */
+.home-ask-mascot {
+  display: none;
+  width: clamp(4.5rem, 11vw + 1.5rem, 8.25rem);
+  margin: 0 18px -10px auto;
+  line-height: 0;
+  pointer-events: none;
+  position: relative;
+  z-index: 2;
+}
+body.home-finder-done.view-home .home-ask-mascot { display: block; }
+.home-ask-mascot img {
+  width: 100%; height: auto; display: block;
+  object-fit: contain; object-position: bottom center;
+}
+body.home-finder-done .home-markets { margin-bottom: 10px; }
 .home-finder {
   width: 100%; max-width: 560px; text-align: left;
   margin: 0 0 22px; padding: 4px 8px 0;
@@ -4704,6 +4720,9 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
             </div>
 
             <form class="home-composer" id="hero-form">
+              <div class="home-ask-mascot" data-mascot="ask" aria-hidden="true">
+                <img src="/images/brand/mascot-ask.webp" width="682" height="1024" alt="" decoding="async">
+              </div>
               <div class="composer">
                 <textarea id="hero-input" rows="1" placeholder="Cari produk atau tanya apa saja..."></textarea>
                 <button type="submit" class="composer-send" aria-label="Kirim">
@@ -5428,10 +5447,10 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script defer src="/js/gpt-referral.js?v=20260808a"></script>
 <script defer src="/js/gpt-profile.js?v=20260811a"></script>
 <script defer src="/js/gpt-community-board.js?v=20260811a"></script>
-<script defer src="/js/laris-mascot-rigs.js?v=20260810a"></script>
-<script defer src="/js/laris-mascot.js?v=20260810a"></script>
+<script defer src="/js/laris-mascot-rigs.js?v=20260812a"></script>
+<script defer src="/js/laris-mascot.js?v=20260812a"></script>
 <script src="/js/admin-map.js?v=20260812a" defer></script>
-<script src="/js/gpt-app.js?v=20260812h" defer></script>
+<script src="/js/gpt-app.js?v=20260812i" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>
 </html>

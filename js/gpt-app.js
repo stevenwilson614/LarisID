@@ -3380,6 +3380,11 @@ function updateHomeFinderVisibility() {
   // The finder is a first-run affordance. Once the user has completed
   // onboarding, sent a message, or opened a deep dive, the composer
   // becomes the primary entry point — the finder stays hidden for good.
+  // The Ask Laris Garuda only mounts once home-finder-done reveals it;
+  // init/refresh here so the rig can measure a visible host.
+  if (MASCOT_ALIVE && window.LarisMascot) {
+    try { window.LarisMascot.init(); window.LarisMascot.refresh(); } catch (_) {}
+  }
 }
 
 function resolveRegionFromGeo(city, regionName) {
@@ -12537,7 +12542,8 @@ async function loadAdminDirectory() {
   }
   const body = $('admin-users-body');
   if (body) body.innerHTML = '<tr><td colspan="7" class="dd-sub">Memuat…</td></tr>';
-  const wrap = (p) => p.catch(e => ({ data: null, error: e }));
+  // rpc() returns a thenable builder, not a Promise — wrap so .catch works.
+  const wrap = (p) => Promise.resolve(p).catch(e => ({ data: null, error: e }));
   try {
     const dirRes = await wrap(_supabase.rpc('admin_user_directory'));
     if (dirRes.error) throw dirRes.error;
