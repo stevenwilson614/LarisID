@@ -1845,17 +1845,13 @@ body.view-community .panel-inner {
   font: inherit; font-size: .72rem; font-weight: 600; color: #4B5563;
   border: 1px solid #E8E8E8; border-radius: 8px; padding: 6px 10px; background: #fff;
 }
-.adm-map-stage { position: relative; }
+.adm-map-stage {
+  position: relative; overflow: hidden; border-radius: 10px;
+  touch-action: none; cursor: grab; user-select: none; background: #FAFBFC;
+}
+.adm-map-stage.is-panning { cursor: grabbing; }
 .adm-map-svg { width: 100%; height: auto; display: block; max-height: 280px; }
-.adm-map-zoom {
-  position: absolute; top: 4px; right: 4px; display: flex; flex-direction: column;
-  border: 1px solid #E8E8E8; border-radius: 8px; overflow: hidden; background: #fff;
-}
-.adm-map-zoom button {
-  width: 28px; height: 26px; display: grid; place-items: center; font-size: 1rem; font-weight: 600; color: #4B5563;
-}
-.adm-map-zoom button:hover { background: #F6F6F7; }
-.adm-map-zoom button + button { border-top: 1px solid #E8E8E8; }
+.adm-map-hint { margin: 6px 0 0; font-size: .68rem; color: #9CA3AF; }
 .adm-map-legend {
   display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: .68rem; color: #9CA3AF;
 }
@@ -5022,7 +5018,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
               <div>
                 <h2>Dashboard Admin</h2>
                 <p class="dd-sub">Ringkasan keseluruhan aktivitas Laris</p>
-                <p class="dd-sub" id="adm-dbg" style="margin-top:6px;color:#B5202A;font-weight:650"></p>
               </div>
               <div class="adm-dash-head-actions">
                 <button type="button" class="btn-ghost" id="admin-sample-new" style="margin:0">Sample sebagai user baru</button>
@@ -5038,7 +5033,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                   <span class="adm-kpi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
                 </div>
                 <div class="adm-kpi-val" id="adm-kpi-signups">—</div>
-                <div class="adm-kpi-sub" id="adm-kpi-signups-sub">Memuat…</div>
+                <div class="adm-kpi-sub" id="adm-kpi-signups-sub">Semua waktu</div>
                 <div class="adm-kpi-spark" id="adm-kpi-signups-spark"></div>
               </article>
               <article class="adm-card adm-kpi adm-kpi--views">
@@ -5047,7 +5042,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                   <span class="adm-kpi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span>
                 </div>
                 <div class="adm-kpi-val" id="adm-kpi-views">—</div>
-                <div class="adm-kpi-sub" id="adm-kpi-views-sub">Memuat…</div>
+                <div class="adm-kpi-sub" id="adm-kpi-views-sub">Semua waktu</div>
                 <div class="adm-kpi-spark" id="adm-kpi-views-spark"></div>
               </article>
               <article class="adm-card adm-kpi adm-kpi--tracked">
@@ -5056,7 +5051,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                   <span class="adm-kpi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05"/><path d="M12 22.08V12"/></svg></span>
                 </div>
                 <div class="adm-kpi-val" id="adm-kpi-tracked">—</div>
-                <div class="adm-kpi-sub" id="adm-kpi-tracked-sub">Memuat…</div>
+                <div class="adm-kpi-sub" id="adm-kpi-tracked-sub">Semua waktu</div>
                 <div class="adm-kpi-spark" id="adm-kpi-tracked-spark"></div>
               </article>
               <article class="adm-card adm-kpi adm-kpi--dives">
@@ -5065,7 +5060,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                   <span class="adm-kpi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
                 </div>
                 <div class="adm-kpi-val" id="adm-kpi-dives">—</div>
-                <div class="adm-kpi-sub" id="adm-kpi-dives-sub">Memuat…</div>
+                <div class="adm-kpi-sub" id="adm-kpi-dives-sub">Semua waktu</div>
                 <div class="adm-kpi-spark" id="adm-kpi-dives-spark"></div>
               </article>
             </div>
@@ -5089,11 +5084,8 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                 </div>
                 <div class="adm-map-stage">
                   <svg class="adm-map-svg" id="adm-map-svg" viewBox="0 0 800 306" role="img" aria-label="Peta sebaran sign up Indonesia"></svg>
-                  <div class="adm-map-zoom">
-                    <button type="button" id="adm-map-zoom-in" aria-label="Perbesar">+</button>
-                    <button type="button" id="adm-map-zoom-out" aria-label="Perkecil">−</button>
-                  </div>
                 </div>
+                <p class="adm-map-hint">Scroll atau cubit untuk zoom · seret untuk geser</p>
                 <div class="adm-map-legend">
                   <span>Jumlah sign ups</span>
                   <div class="adm-map-scale" aria-hidden="true">
@@ -5439,7 +5431,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script defer src="/js/laris-mascot-rigs.js?v=20260810a"></script>
 <script defer src="/js/laris-mascot.js?v=20260810a"></script>
 <script src="/js/admin-map.js?v=20260812a" defer></script>
-<script src="/js/gpt-app.js?v=20260812f" defer></script>
+<script src="/js/gpt-app.js?v=20260812g" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>
 </html>

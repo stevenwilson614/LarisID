@@ -164,6 +164,7 @@ let _adminUserPage = 1;
 let _adminPageSize = 10;
 let _adminMapRange = 'all';
 let _adminMapZoom = 1;
+let _adminMapPan = { x: 0, y: 0 };
 let _admDonutChart = null;
 let _adminCatsExpanded = false;
 let _adminUiBound = false;
@@ -11987,54 +11988,43 @@ function admSellerStatus(u) {
   return '';
 }
 
-function admWithinDays(iso, days) {
-  if (!iso) return false;
-  const t = Date.parse(iso);
-  return Number.isFinite(t) && (Date.now() - t) < days * 864e5;
-}
-
 function renderAdminKpis(users) {
   const days = admLastDays(14);
   const signupsTotal = (users || []).length;
-  const signups7 = (users || []).filter(u => admWithinDays(u.created_at, 7)).length;
   const signupDaily = days.map(d => (users || []).filter(u => u.created_at && admDayKey(u.created_at) === d).length);
 
   const s = _adminStats || {};
   const k = _adminKpis || {};
   const viewsTotal = s.landing_views_total;
-  const views7 = s.landing_views_7d;
   const viewsDaily = admSeriesFromDaily(s.landing_views_daily, 'views', days);
 
   const trackedTotal = k.tracked_total != null
     ? k.tracked_total
     : (users || []).reduce((n, u) => n + (Number(u.tracked_count) || 0), 0);
-  const tracked7 = k.tracked_7d != null ? k.tracked_7d : 0;
   const trackedDaily = admSeriesFromDaily(k.tracked_daily, 'n', days);
 
   const divesTotal = k.deepdives_total != null
     ? k.deepdives_total
     : (users || []).reduce((n, u) => n + (Number(u.deepdive_count) || 0), 0);
-  const dives7 = k.deepdives_7d != null ? k.deepdives_7d : 0;
   const divesDaily = admSeriesFromDaily(k.deepdives_daily, 'n', days);
 
   const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
   const spark = (id, series, color) => { const el = $(id); if (el) el.innerHTML = admSparkline(series, color); };
-  const sub = (n) => `+${admFmtNum(n)} dalam 7 hari terakhir`;
 
   set('adm-kpi-signups', admFmtNum(signupsTotal));
-  set('adm-kpi-signups-sub', sub(signups7));
+  set('adm-kpi-signups-sub', 'Semua waktu');
   spark('adm-kpi-signups-spark', signupDaily, '#B5202A');
 
   set('adm-kpi-views', admFmtNum(viewsTotal));
-  set('adm-kpi-views-sub', viewsTotal == null ? 'Data tampilan belum tersedia' : sub(views7 || 0));
+  set('adm-kpi-views-sub', viewsTotal == null ? 'Data tampilan belum tersedia' : 'Semua waktu');
   spark('adm-kpi-views-spark', viewsDaily, '#EA580C');
 
   set('adm-kpi-tracked', admFmtNum(trackedTotal));
-  set('adm-kpi-tracked-sub', sub(tracked7));
+  set('adm-kpi-tracked-sub', 'Semua waktu');
   spark('adm-kpi-tracked-spark', trackedDaily, '#16A34A');
 
   set('adm-kpi-dives', admFmtNum(divesTotal));
-  set('adm-kpi-dives-sub', sub(dives7));
+  set('adm-kpi-dives-sub', 'Semua waktu');
   spark('adm-kpi-dives-spark', divesDaily, '#7C3AED');
 }
 
@@ -12118,6 +12108,131 @@ function admMapFill(n) {
   return '#FECACA';
 }
 
+const ADM_MAP_VB = { w: 800, h: 306 };
+const ADM_MAP_ZOOM_MIN = 1;
+const ADM_MAP_ZOOM_MAX = 8;
+
+function admMapClientToVb(svg, clientX, clientY) {
+  const rect = svg.getBoundingClientRect();
+  const w = rect.width || 1;
+  const h = rect.height || 1;
+  return {
+    x: (clientX - rect.left) / w * ADM_MAP_VB.w,
+    y: (clientY - rect.top) / h * ADM_MAP_VB.h,
+  };
+}
+
+function admMapClampPan() {
+  const k = _adminMapZoom;
+  const minX = ADM_MAP_VB.w * (1 - k);
+  const minY = ADM_MAP_VB.h * (1 - k);
+  _adminMapPan.x = Math.min(0, Math.max(minX, _adminMapPan.x));
+  _adminMapPan.y = Math.min(0, Math.max(minY, _adminMapPan.y));
+}
+
+function admMapApplyView() {
+  const svg = $('adm-map-svg');
+  if (!svg) return;
+  const k = _adminMapZoom;
+  const world = svg.querySelector('#adm-map-world');
+  if (world) {
+    world.setAttribute('transform', `translate(${_adminMapPan.x} ${_adminMapPan.y}) scale(${k})`);
+  }
+  svg.querySelectorAll('.adm-map-pin').forEach(g => {
+    const x = Number(g.getAttribute('data-x')) || 0;
+    const y = Number(g.getAttribute('data-y')) || 0;
+    g.setAttribute('transform', `translate(${x} ${y}) scale(${1 / k})`);
+  });
+}
+
+function admMapZoomAt(svg, clientX, clientY, nextK) {
+  const k = _adminMapZoom;
+  const k2 = Math.min(ADM_MAP_ZOOM_MAX, Math.max(ADM_MAP_ZOOM_MIN, nextK));
+  if (k2 === k) return;
+  const p = admMapClientToVb(svg, clientX, clientY);
+  _adminMapPan.x = p.x - (p.x - _adminMapPan.x) * (k2 / k);
+  _adminMapPan.y = p.y - (p.y - _adminMapPan.y) * (k2 / k);
+  _adminMapZoom = k2;
+  admMapClampPan();
+  admMapApplyView();
+}
+
+function admBindMapPanZoom() {
+  const stage = document.querySelector('#view-admin .adm-map-stage');
+  const svg = $('adm-map-svg');
+  if (!stage || !svg || stage.dataset.panZoomBound) return;
+  stage.dataset.panZoomBound = '1';
+
+  let dragging = false;
+  let last = null;
+  let pointers = new Map();
+  let pinch = null;
+
+  const pointerPos = (e) => ({ id: e.pointerId, x: e.clientX, y: e.clientY });
+
+  stage.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+    admMapZoomAt(svg, e.clientX, e.clientY, _adminMapZoom * factor);
+  }, { passive: false });
+
+  stage.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+    admMapZoomAt(svg, e.clientX, e.clientY, _adminMapZoom * (e.shiftKey ? 1 / 1.6 : 1.6));
+  });
+
+  stage.addEventListener('pointerdown', (e) => {
+    if (e.button != null && e.button !== 0) return;
+    stage.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId, pointerPos(e));
+    if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      pinch = {
+        dist: Math.hypot(a.x - b.x, a.y - b.y) || 1,
+        zoom: _adminMapZoom,
+        pan: { x: _adminMapPan.x, y: _adminMapPan.y },
+      };
+      dragging = false;
+      return;
+    }
+    dragging = true;
+    last = { x: e.clientX, y: e.clientY };
+    stage.classList.add('is-panning');
+  });
+
+  stage.addEventListener('pointermove', (e) => {
+    if (pointers.has(e.pointerId)) pointers.set(e.pointerId, pointerPos(e));
+    if (pinch && pointers.size >= 2) {
+      const [a, b] = [...pointers.values()];
+      const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+      _adminMapPan = { x: pinch.pan.x, y: pinch.pan.y };
+      _adminMapZoom = pinch.zoom;
+      admMapZoomAt(svg, (a.x + b.x) / 2, (a.y + b.y) / 2, pinch.zoom * (dist / pinch.dist));
+      return;
+    }
+    if (!dragging || !last) return;
+    const rect = svg.getBoundingClientRect();
+    _adminMapPan.x += (e.clientX - last.x) / (rect.width || 1) * ADM_MAP_VB.w;
+    _adminMapPan.y += (e.clientY - last.y) / (rect.height || 1) * ADM_MAP_VB.h;
+    last = { x: e.clientX, y: e.clientY };
+    admMapClampPan();
+    admMapApplyView();
+  });
+
+  const endPointer = (e) => {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) pinch = null;
+    if (pointers.size === 0) {
+      dragging = false;
+      last = null;
+      stage.classList.remove('is-panning');
+    }
+  };
+  stage.addEventListener('pointerup', endPointer);
+  stage.addEventListener('pointercancel', endPointer);
+  stage.addEventListener('lostpointercapture', endPointer);
+}
+
 function renderAdminMap(users) {
   const svg = $('adm-map-svg');
   const map = window.LarisAdminMap;
@@ -12141,31 +12256,31 @@ function renderAdminMap(users) {
     .filter(Boolean)
     .sort((a, b) => b.n - a.n);
 
-  const vbW = 800 / _adminMapZoom;
-  const vbH = 306 / _adminMapZoom;
-  const vbX = (800 - vbW) / 2;
-  const vbY = (306 - vbH) / 2;
-  svg.setAttribute('viewBox', `${vbX.toFixed(1)} ${vbY.toFixed(1)} ${vbW.toFixed(1)} ${vbH.toFixed(1)}`);
+  svg.setAttribute('viewBox', `0 0 ${ADM_MAP_VB.w} ${ADM_MAP_VB.h}`);
 
   const bubbles = pinned.map((p, i) => {
     const r = Math.max(7, Math.round(4 * Math.sqrt(p.n) + 4));
     const lw = Math.max(52, p.city.length * 5.2 + 22);
-    const lx = p.x + r + 4 > 800 - lw ? p.x - r - 4 - lw : p.x + r + 4;
+    const lx = p.x + r + 4 > ADM_MAP_VB.w - lw ? -(r + 4 + lw) : r + 4;
     const label = i < 8
       ? `<g>
-          <rect x="${lx.toFixed(1)}" y="${(p.y - 9).toFixed(1)}" width="${lw}" height="16" rx="4" fill="#fff" stroke="#E8E8E8"/>
-          <text x="${(lx + 4).toFixed(1)}" y="${(p.y + 2.5).toFixed(1)}" font-size="9" font-weight="700" fill="#1A1A1A" font-family="Plus Jakarta Sans, system-ui, sans-serif">${esc(p.city)} ${p.n}</text>
+          <rect x="${lx.toFixed(1)}" y="-9" width="${lw}" height="16" rx="4" fill="#fff" stroke="#E8E8E8"/>
+          <text x="${(lx + 4).toFixed(1)}" y="2.5" font-size="9" font-weight="700" fill="#1A1A1A" font-family="Plus Jakarta Sans, system-ui, sans-serif">${esc(p.city)} ${p.n}</text>
         </g>`
       : '';
-    return `<g>
-      <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}" fill="${admMapFill(p.n)}" fill-opacity=".85" stroke="#B5202A" stroke-width="1">
+    return `<g class="adm-map-pin" data-x="${p.x.toFixed(1)}" data-y="${p.y.toFixed(1)}">
+      <circle cx="0" cy="0" r="${r}" fill="${admMapFill(p.n)}" fill-opacity=".85" stroke="#B5202A" stroke-width="1">
         <title>${esc(p.city)}: ${p.n} pendaftar</title>
       </circle>
       ${label}
     </g>`;
   }).join('');
 
-  svg.innerHTML = `<path d="${map.OUTLINE}" fill="#EEF2F6" stroke="#D1D5DB" stroke-width="1"/>` + bubbles;
+  svg.innerHTML = `<g id="adm-map-world">
+    <path d="${map.OUTLINE}" fill="#EEF2F6" stroke="#D1D5DB" stroke-width="1" vector-effect="non-scaling-stroke"/>
+    ${bubbles}
+  </g>`;
+  admMapApplyView();
 }
 
 function adminFilteredUsers() {
@@ -12209,9 +12324,6 @@ function renderAdminUsers() {
   const body = $('admin-users-body');
   if (!body) return;
   const rows = adminFilteredUsers();
-  // #region agent log
-  fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2a188f'},body:JSON.stringify({sessionId:'2a188f',runId:'pre-fix',hypothesisId:'E',location:'gpt-app.js:renderAdminUsers',message:'renderAdminUsers filter',data:{rawLen:(_adminUsers||[]).length,filteredLen:rows.length,q:($('adm-users-search')?.value||'').slice(0,40),tipe:$('adm-filter-tipe')?.value||null,cat:$('adm-filter-cat')?.value||null,page:_adminUserPage,pageSize:_adminPageSize,isArr:Array.isArray(_adminUsers)},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   renderAdminPager(rows.length);
   const start = (_adminUserPage - 1) * _adminPageSize;
   const slice = rows.slice(start, start + _adminPageSize);
@@ -12315,14 +12427,7 @@ function adminBindUi() {
     _adminMapRange = e.target.value === '30' ? '30' : 'all';
     renderAdminMap(_adminUsers);
   });
-  $('adm-map-zoom-in')?.addEventListener('click', () => {
-    _adminMapZoom = Math.min(2.4, _adminMapZoom + 0.3);
-    renderAdminMap(_adminUsers);
-  });
-  $('adm-map-zoom-out')?.addEventListener('click', () => {
-    _adminMapZoom = Math.max(1, _adminMapZoom - 0.3);
-    renderAdminMap(_adminUsers);
-  });
+  admBindMapPanZoom();
   $('adm-cat-more')?.addEventListener('click', () => {
     _adminCatsExpanded = !_adminCatsExpanded;
     void renderAdminCategories(_adminUsers);
@@ -12374,24 +12479,8 @@ function adminBindUi() {
   });
 }
 
-function admDbg(payload) {
-  const el = $('adm-dbg');
-  const data = Object.assign({ origin: typeof location !== 'undefined' ? location.origin : '' }, payload && payload.data || {});
-  if (el && payload && payload.message) {
-    const line = [payload.message, data.dirLen != null ? 'dir=' + data.dirLen : '', data.len != null ? 'len=' + data.len : '', data.dirErr ? 'dirErr=' + data.dirErr : '', data.err ? 'err=' + data.err : '', data.statsErr ? 'statsErr=' + data.statsErr : '', data.kpiErr ? 'kpiErr=' + data.kpiErr : ''].filter(Boolean).join(' · ');
-    const prev = (el.getAttribute('data-log') || '').split('\n').filter(Boolean);
-    prev.push(line);
-    el.setAttribute('data-log', prev.slice(-6).join('\n'));
-    el.textContent = prev.slice(-6).join(' | ');
-  }
-  // #region agent log
-  fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2a188f'},body:JSON.stringify(Object.assign({sessionId:'2a188f',timestamp:Date.now()}, payload, {data}))}).catch(()=>{});
-  // #endregion
-}
-
 async function loadAdminDirectory() {
   adminBindUi();
-  admDbg({runId:'post-fix',hypothesisId:'A',location:'gpt-app.js:loadAdminDirectory:entry',message:'loadAdminDirectory entry',data:{isAdmin:!!isPlatformAdmin(),hasSupabase:!!_supabase,hasUser:!!currentUser,hasBody:!!$('admin-users-body')}});
   if (!isPlatformAdmin() || !_supabase) {
     const body = $('admin-users-body');
     if (body) body.innerHTML = '<tr><td colspan="7" class="dd-sub">Login sebagai admin dulu.</td></tr>';
@@ -12399,41 +12488,25 @@ async function loadAdminDirectory() {
   }
   const body = $('admin-users-body');
   if (body) body.innerHTML = '<tr><td colspan="7" class="dd-sub">Memuat…</td></tr>';
-  const t0 = Date.now();
-  const wrap = (name, p) => p.then(r => {
-    const err = r && r.error && (r.error.message || String(r.error));
-    admDbg({runId:'post-fix',hypothesisId:'B',location:'gpt-app.js:loadAdminDirectory:'+name,message:'rpc '+name,data:{rpc:name,ms:Date.now()-t0,err:err||null,isArr:Array.isArray(r&&r.data),len:Array.isArray(r&&r.data)?r.data.length:null,hasData:!!(r&&r.data)}});
-    return r;
-  }).catch(e => {
-    admDbg({runId:'post-fix',hypothesisId:'C',location:'gpt-app.js:loadAdminDirectory:'+name+':catch',message:'rpc '+name+' rejected',data:{rpc:name,ms:Date.now()-t0,err:String(e&&e.message||e)}});
-    return { data: null, error: e };
-  });
+  const wrap = (p) => p.catch(e => ({ data: null, error: e }));
   try {
-    const dirRes = await wrap('dir', _supabase.rpc('admin_user_directory'));
-    const dirErr = dirRes.error && (dirRes.error.message || String(dirRes.error));
+    const dirRes = await wrap(_supabase.rpc('admin_user_directory'));
     if (dirRes.error) throw dirRes.error;
     _adminUsers = Array.isArray(dirRes.data) ? dirRes.data : [];
     _adminUserPage = 1;
-    try {
-      renderAdminMap(_adminUsers);
-      admFillCatFilter(_adminUsers);
-      renderAdminUsers();
-      void renderAdminCategories(_adminUsers);
-      admDbg({runId:'post-fix',hypothesisId:'D',location:'gpt-app.js:loadAdminDirectory:rendered',message:'users rendered',data:{dirLen:_adminUsers.length,bodyText:($('admin-users-body')?.innerText||'').slice(0,80)}});
-    } catch (renderErr) {
-      admDbg({runId:'post-fix',hypothesisId:'D',location:'gpt-app.js:loadAdminDirectory:renderErr',message:'render threw',data:{err:String(renderErr&&renderErr.message||renderErr),dirLen:_adminUsers.length}});
-      throw renderErr;
-    }
+    renderAdminMap(_adminUsers);
+    admFillCatFilter(_adminUsers);
+    renderAdminUsers();
+    renderAdminKpis(_adminUsers);
+    void renderAdminCategories(_adminUsers);
     const [statsRes, kpiRes] = await Promise.all([
-      wrap('stats', _supabase.rpc('admin_stats')),
-      wrap('kpis', _supabase.rpc('admin_dashboard_kpis')),
+      wrap(_supabase.rpc('admin_stats')),
+      wrap(_supabase.rpc('admin_dashboard_kpis')),
     ]);
     _adminStats = (!statsRes.error && statsRes.data) ? statsRes.data : null;
     _adminKpis = (!kpiRes.error && kpiRes.data) ? kpiRes.data : null;
     renderAdminKpis(_adminUsers);
-    admDbg({runId:'post-fix',hypothesisId:'C',location:'gpt-app.js:loadAdminDirectory:kpis',message:'kpis applied',data:{statsErr:statsRes.error&&(statsRes.error.message||String(statsRes.error))||null,kpiErr:kpiRes.error&&(kpiRes.error.message||String(kpiRes.error))||null,statsHasData:!!_adminStats,kpiHasData:!!_adminKpis,dirLen:_adminUsers.length}});
   } catch (e) {
-    admDbg({runId:'post-fix',hypothesisId:'C',location:'gpt-app.js:loadAdminDirectory:catch',message:'loadAdminDirectory catch',data:{err:String(e&&e.message||e)}});
     if (body) body.innerHTML = `<tr><td colspan="7" class="dd-sub">${esc(e.message || 'Gagal memuat.')}</td></tr>`;
   }
 }
