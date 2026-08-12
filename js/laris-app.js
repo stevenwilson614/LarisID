@@ -16210,7 +16210,9 @@ function trkAdapter() {
         const prev = i > 0 ? byDay.get(daysAsc[i - 1]) : null;
         let units = 0;
         if (prev) {
-          if (cur.units_sold != null && cur.units_source === 'measured') {
+          if (cur.units_sold != null) {
+            // Prefer server units_sold for both measured scrapes and
+            // review-based estimates (bucketed Shopee totals often stay flat).
             units = Math.max(0, Number(cur.units_sold) || 0);
           } else {
             units = Math.max(0, (Number(cur.total_sold) || 0) - (Number(prev.total_sold) || 0));
