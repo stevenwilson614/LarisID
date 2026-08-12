@@ -12374,11 +12374,24 @@ function adminBindUi() {
   });
 }
 
+function admDbg(payload) {
+  const el = $('adm-dbg');
+  const data = Object.assign({ origin: typeof location !== 'undefined' ? location.origin : '' }, payload && payload.data || {});
+  if (el && payload && payload.message) {
+    const line = [payload.message, data.dirLen != null ? 'dir=' + data.dirLen : '', data.len != null ? 'len=' + data.len : '', data.dirErr ? 'dirErr=' + data.dirErr : '', data.err ? 'err=' + data.err : '', data.statsErr ? 'statsErr=' + data.statsErr : '', data.kpiErr ? 'kpiErr=' + data.kpiErr : ''].filter(Boolean).join(' · ');
+    const prev = (el.getAttribute('data-log') || '').split('\n').filter(Boolean);
+    prev.push(line);
+    el.setAttribute('data-log', prev.slice(-6).join('\n'));
+    el.textContent = prev.slice(-6).join(' | ');
+  }
+  // #region agent log
+  fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2a188f'},body:JSON.stringify(Object.assign({sessionId:'2a188f',timestamp:Date.now()}, payload, {data}))}).catch(()=>{});
+  // #endregion
+}
+
 async function loadAdminDirectory() {
   adminBindUi();
-  // #region agent log
-  fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2a188f'},body:JSON.stringify({sessionId:'2a188f',runId:'pre-fix',hypothesisId:'A',location:'gpt-app.js:loadAdminDirectory:entry',message:'loadAdminDirectory entry',data:{isAdmin:!!isPlatformAdmin(),hasSupabase:!!_supabase,hasUser:!!currentUser,hasBody:!!$('admin-users-body')},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
+  admDbg({runId:'post-fix',hypothesisId:'A',location:'gpt-app.js:loadAdminDirectory:entry',message:'loadAdminDirectory entry',data:{isAdmin:!!isPlatformAdmin(),hasSupabase:!!_supabase,hasUser:!!currentUser,hasBody:!!$('admin-users-body')}});
   if (!isPlatformAdmin() || !_supabase) {
     const body = $('admin-users-body');
     if (body) body.innerHTML = '<tr><td colspan="7" class="dd-sub">Login sebagai admin dulu.</td></tr>';
@@ -12386,44 +12399,41 @@ async function loadAdminDirectory() {
   }
   const body = $('admin-users-body');
   if (body) body.innerHTML = '<tr><td colspan="7" class="dd-sub">Memuat…</td></tr>';
+  const t0 = Date.now();
+  const wrap = (name, p) => p.then(r => {
+    const err = r && r.error && (r.error.message || String(r.error));
+    admDbg({runId:'post-fix',hypothesisId:'B',location:'gpt-app.js:loadAdminDirectory:'+name,message:'rpc '+name,data:{rpc:name,ms:Date.now()-t0,err:err||null,isArr:Array.isArray(r&&r.data),len:Array.isArray(r&&r.data)?r.data.length:null,hasData:!!(r&&r.data)}});
+    return r;
+  }).catch(e => {
+    admDbg({runId:'post-fix',hypothesisId:'C',location:'gpt-app.js:loadAdminDirectory:'+name+':catch',message:'rpc '+name+' rejected',data:{rpc:name,ms:Date.now()-t0,err:String(e&&e.message||e)}});
+    return { data: null, error: e };
+  });
   try {
-    const t0 = Date.now();
-    const [dirRes, statsRes, kpiRes] = await Promise.all([
-      _supabase.rpc('admin_user_directory').then(r => ({ ...r, _ms: Date.now() - t0, _rpc: 'dir' })).catch(e => ({ data: null, error: e, _ms: Date.now() - t0, _rpc: 'dir' })),
-      _supabase.rpc('admin_stats').then(r => ({ ...r, _ms: Date.now() - t0, _rpc: 'stats' })).catch(e => ({ data: null, error: e, _ms: Date.now() - t0, _rpc: 'stats' })),
-      _supabase.rpc('admin_dashboard_kpis').then(r => ({ ...r, _ms: Date.now() - t0, _rpc: 'kpis' })).catch(e => ({ data: null, error: e, _ms: Date.now() - t0, _rpc: 'kpis' })),
-    ]);
+    const dirRes = await wrap('dir', _supabase.rpc('admin_user_directory'));
     const dirErr = dirRes.error && (dirRes.error.message || String(dirRes.error));
-    const statsErr = statsRes.error && (statsRes.error.message || String(statsRes.error));
-    const kpiErr = kpiRes.error && (kpiRes.error.message || String(kpiRes.error));
-    const dirIsArr = Array.isArray(dirRes.data);
-    // #region agent log
-    fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2a188f'},body:JSON.stringify({sessionId:'2a188f',runId:'pre-fix',hypothesisId:'B',location:'gpt-app.js:loadAdminDirectory:rpc',message:'admin RPCs settled',data:{dirMs:dirRes._ms,statsMs:statsRes._ms,kpiMs:kpiRes._ms,dirErr:dirErr||null,statsErr:statsErr||null,kpiErr:kpiErr||null,dirIsArr,dirLen:dirIsArr?dirRes.data.length:null,dirType:typeof dirRes.data,statsHasData:!!statsRes.data,kpiHasData:!!kpiRes.data},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     if (dirRes.error) throw dirRes.error;
-    _adminUsers = dirRes.data || [];
-    _adminStats = (!statsRes.error && statsRes.data) ? statsRes.data : null;
-    _adminKpis = (!kpiRes.error && kpiRes.data) ? kpiRes.data : null;
+    _adminUsers = Array.isArray(dirRes.data) ? dirRes.data : [];
     _adminUserPage = 1;
     try {
-      renderAdminKpis(_adminUsers);
-      void renderAdminCategories(_adminUsers);
       renderAdminMap(_adminUsers);
       admFillCatFilter(_adminUsers);
       renderAdminUsers();
-      // #region agent log
-      fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2a188f'},body:JSON.stringify({sessionId:'2a188f',runId:'pre-fix',hypothesisId:'D',location:'gpt-app.js:loadAdminDirectory:rendered',message:'render path finished',data:{usersLen:(_adminUsers||[]).length,bodyText:($('admin-users-body')?.innerText||'').slice(0,80)},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
+      void renderAdminCategories(_adminUsers);
+      admDbg({runId:'post-fix',hypothesisId:'D',location:'gpt-app.js:loadAdminDirectory:rendered',message:'users rendered',data:{dirLen:_adminUsers.length,bodyText:($('admin-users-body')?.innerText||'').slice(0,80)}});
     } catch (renderErr) {
-      // #region agent log
-      fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2a188f'},body:JSON.stringify({sessionId:'2a188f',runId:'pre-fix',hypothesisId:'D',location:'gpt-app.js:loadAdminDirectory:renderErr',message:'render path threw',data:{err:String(renderErr&&renderErr.message||renderErr),usersLen:(_adminUsers||[]).length},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
+      admDbg({runId:'post-fix',hypothesisId:'D',location:'gpt-app.js:loadAdminDirectory:renderErr',message:'render threw',data:{err:String(renderErr&&renderErr.message||renderErr),dirLen:_adminUsers.length}});
       throw renderErr;
     }
+    const [statsRes, kpiRes] = await Promise.all([
+      wrap('stats', _supabase.rpc('admin_stats')),
+      wrap('kpis', _supabase.rpc('admin_dashboard_kpis')),
+    ]);
+    _adminStats = (!statsRes.error && statsRes.data) ? statsRes.data : null;
+    _adminKpis = (!kpiRes.error && kpiRes.data) ? kpiRes.data : null;
+    renderAdminKpis(_adminUsers);
+    admDbg({runId:'post-fix',hypothesisId:'C',location:'gpt-app.js:loadAdminDirectory:kpis',message:'kpis applied',data:{statsErr:statsRes.error&&(statsRes.error.message||String(statsRes.error))||null,kpiErr:kpiRes.error&&(kpiRes.error.message||String(kpiRes.error))||null,statsHasData:!!_adminStats,kpiHasData:!!_adminKpis,dirLen:_adminUsers.length}});
   } catch (e) {
-    // #region agent log
-    fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2a188f'},body:JSON.stringify({sessionId:'2a188f',runId:'pre-fix',hypothesisId:'C',location:'gpt-app.js:loadAdminDirectory:catch',message:'loadAdminDirectory catch',data:{err:String(e&&e.message||e)},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
+    admDbg({runId:'post-fix',hypothesisId:'C',location:'gpt-app.js:loadAdminDirectory:catch',message:'loadAdminDirectory catch',data:{err:String(e&&e.message||e)}});
     if (body) body.innerHTML = `<tr><td colspan="7" class="dd-sub">${esc(e.message || 'Gagal memuat.')}</td></tr>`;
   }
 }
