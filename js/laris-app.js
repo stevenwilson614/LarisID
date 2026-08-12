@@ -9289,13 +9289,15 @@ function _dscTrendDelta(listing) {
   return _dscCorrectedUnitDelta(listing);
 }
 
-// Listing trend as % change vs previous scrape (null if no prev data)
+// Listing trend as % change vs previous scrape (null if no prev data).
+// Numerator is the same estimate used on cards (listing_deltas / review model),
+// not raw total_sold — bucketed Shopee totals stay flat while units still move.
 function _dscListingTrendPct(listing) {
   const key  = `${listing.item_id}_${listing.shop_id}`;
-  const prev = _dscPrevMap[key];
-  const prevSold = _dscPrevSoldNum(prev);
+  const d = _dscDeltaMap[key];
+  const prevSold = (d && d.sold_prev != null) ? Number(d.sold_prev) : _dscPrevSoldNum(_dscPrevMap[key]);
   if (prevSold == null || prevSold === 0) return null;
-  const delta = _dscCorrectedUnitDelta(listing);
+  const delta = _dscTrendDelta(listing);
   if (delta == null) return null;
   return Math.round(delta / prevSold * 100);
 }
@@ -10232,16 +10234,17 @@ async function dscLoadTrendData() {
     }
 
     // Keyword trend % from the same rows — real paired products, rather than
-    // whatever happened to land in a 3,000-row sample of one day.
-    const kwPrev = {}, kwCurr = {};
+    // whatever happened to land in a 3,000-row sample of one day. Use
+    // estimated_sold_delta (review×mult when buckets freeze), not raw sold_curr.
+    const kwPrev = {}, kwEst = {};
     for (const r of rows) {
       if (!r.keyword) continue;
       kwPrev[r.keyword] = (kwPrev[r.keyword] || 0) + (r.sold_prev || 0);
-      kwCurr[r.keyword] = (kwCurr[r.keyword] || 0) + (r.sold_curr || 0);
+      kwEst[r.keyword] = (kwEst[r.keyword] || 0) + (Number(r.estimated_sold_delta) || 0);
     }
     for (const kw of Object.keys(kwPrev)) {
-      const prev = kwPrev[kw], curr = kwCurr[kw];
-      _dscKwTrendMap[kw] = prev > 0 ? Math.round((curr - prev) / prev * 100) : null;
+      const prev = kwPrev[kw];
+      _dscKwTrendMap[kw] = prev > 0 ? Math.round((kwEst[kw] || 0) / prev * 100) : null;
     }
 
     // Re-render table and cards now that trend data is available
