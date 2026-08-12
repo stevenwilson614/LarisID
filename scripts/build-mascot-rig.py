@@ -64,6 +64,22 @@ POSES = {
             {"id": "l", "outer": (549, 192, 17, 18), "clip_beak": True},
         ],
     },
+    # Ask Laris composer perch — full-body streetwear Garuda with glasses.
+    # No wing patch (hands in pocket). Lids only: irises behind the frames
+    # smear at the ~100px display size, so we skip iris travel.
+    "ask": {
+        "src": "images/brand/mascot-ask.webp",
+        "patches": [
+            {"name": "torso", "ellipse": (335, 470, 125, 110), "feather": 36,
+             "origin": (335, 560)},
+            {"name": "head",  "ellipse": (340, 200, 155, 140), "feather": 40},
+        ],
+        "pivot": (335, 320),
+        "eyes": [
+            {"id": "l", "outer": (300, 215, 26, 22)},
+            {"id": "r", "outer": (375, 215, 26, 22)},
+        ],
+    },
 }
 
 
@@ -151,7 +167,15 @@ def sample_feather_tone(img, outer):
 
 def build_pose(name, cfg, debug=False):
     src_path = os.path.join(ROOT, cfg["src"])
-    img = Image.open(src_path).convert("RGB")
+    raw = Image.open(src_path)
+    # Transparent sources (Ask Laris perch) are composited onto white so the
+    # feathered patches match the hero pipeline. The page still serves the
+    # RGBA original as the static <img>.
+    if raw.mode == "RGBA":
+        img = Image.new("RGB", raw.size, (255, 255, 255))
+        img.paste(raw, mask=raw.split()[-1])
+    else:
+        img = raw.convert("RGB")
     W, H = img.size
     manifest = {
         "w": W, "h": H, "layers": {},

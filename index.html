@@ -2282,7 +2282,6 @@ body.view-chat .panel { padding-bottom: calc(var(--composer-h) + 28px); }
   box-shadow: 0 1px 2px rgba(28, 25, 23, .08);
 }
 .home-sub { font-size: 1.02rem; color: var(--muted); margin: 0 0 22px; }
-body.home-finder-done .home-markets { margin-bottom: 28px; }
 .home-composer { width: 100%; max-width: 640px; position: relative; }
 /* Ask Laris Garuda — perched on the composer after the finder is done. */
 .home-ask-mascot {
@@ -2299,6 +2298,7 @@ body.home-finder-done.view-home .home-ask-mascot { display: block; }
   width: 100%; height: auto; display: block;
   object-fit: contain; object-position: bottom center;
 }
+/* Tighter gap above the mascot so the column does not get too tall. */
 body.home-finder-done .home-markets { margin-bottom: 10px; }
 .home-finder {
   width: 100%; max-width: 560px; text-align: left;
@@ -2606,7 +2606,7 @@ body.home-finder-done .home-title {
     margin: 0 0 12px;
   }
   body.home-finder-done .home-markets {
-    margin: 0 0 20px;
+    margin: 0 0 10px;
   }
   .finder-cta {
     margin-top: 4px;
@@ -5450,7 +5450,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script defer src="/js/laris-mascot-rigs.js?v=20260812a"></script>
 <script defer src="/js/laris-mascot.js?v=20260812a"></script>
 <script src="/js/admin-map.js?v=20260812a" defer></script>
-<script src="/js/gpt-app.js?v=20260812i" defer></script>
+<script src="/js/gpt-app.js?v=20260812j" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>
 </html>
