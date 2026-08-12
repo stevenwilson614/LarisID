@@ -2294,8 +2294,11 @@ body.view-chat .panel { padding-bottom: calc(var(--composer-h) + 28px); }
   z-index: 2;
 }
 body.home-finder-done.view-home .home-ask-mascot { display: block; }
-.home-ask-mascot img {
+.home-ask-mascot img,
+.home-ask-mascot picture {
   width: 100%; height: auto; display: block;
+}
+.home-ask-mascot img {
   object-fit: contain; object-position: bottom center;
 }
 /* Tighter gap above the mascot so the column does not get too tall. */
@@ -4721,7 +4724,10 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 
             <form class="home-composer" id="hero-form">
               <div class="home-ask-mascot" data-mascot="ask" aria-hidden="true">
-                <img src="/images/brand/mascot-ask.webp?v=20260812a" width="682" height="1024" alt="" decoding="async">
+                <picture>
+                  <source srcset="/images/brand/mascot-ask.webp?v=20260812b" type="image/webp">
+                  <img src="/images/brand/mascot-ask.png?v=20260812b" width="682" height="1024" alt="" decoding="async">
+                </picture>
               </div>
               <div class="composer">
                 <textarea id="hero-input" rows="1" placeholder="Cari produk atau tanya apa saja..."></textarea>
