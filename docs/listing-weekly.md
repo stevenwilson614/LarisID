@@ -8,7 +8,35 @@ Canonical SQL: `~/shopee_scraper/listing_weekly.sql`.
 Read surface: [supabase/migrations/20260813140000_listing_weekly.sql](../supabase/migrations/20260813140000_listing_weekly.sql).
 
 `weekly_snapshots` froze on 2026-06-08. **Do not revive it.** `js/laris-app.js`
-already says so.
+already says so. `backfill_snapshots.py` / `fix_snapshots.py` are leftover
+tools; `sync_laris_data.sh` no longer writes that table.
+
+## Apply (Contabo, once)
+
+Git push is not enough. The functions live on the self-host DB, not GitHub Pages.
+
+```bash
+cd ~/shopee_scraper
+git pull
+ssh -i "${LARISID_SSH_KEY:-$HOME/.ssh/larisid_hetzner}" \
+    -o ConnectTimeout=20 root@84.247.147.205 \
+    "docker exec -i supabase-db psql -U postgres -v ON_ERROR_STOP=1" \
+    < listing_weekly.sql
+ssh -i "${LARISID_SSH_KEY:-$HOME/.ssh/larisid_hetzner}" \
+    -o ConnectTimeout=20 root@84.247.147.205 \
+    "docker exec -i supabase-db psql -U postgres -v ON_ERROR_STOP=1" \
+    < velocity_model.sql   # peer_only_male / last2_male columns; needed before --fit
+bash refresh_listing_weekly.sh   # fill this week + next week
+```
+
+Do **not** use `supabase db push --linked` for this: the linked CLI project is
+cloud `bzmvlraziqevqdyotvgy`; the app reads `https://api.larisid.com`. The
+LarisID migration `20260813140000_listing_weekly.sql` is the same read surface
+for the repo; applying `listing_weekly.sql` over SSH is what the site uses.
+
+The static JS ships via GitHub Pages on push to `main`. Until the SQL above
+lands, Deep Dive charts fall back to the old last-2-weeks average (still labelled
+perkiraan).
 
 ## One estimator, three windows
 

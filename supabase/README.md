@@ -21,6 +21,13 @@ set -a && source supabase/.env.local && set +a
 supabase db push --linked --yes
 ```
 
+**Scraper velocity / weekly snapshot DDL is not this path.** `listing_weekly`,
+`product_velocity`, and `refresh_listing_weekly()` live on the Contabo self-host
+(`https://api.larisid.com`). Apply `~/shopee_scraper/listing_weekly.sql` over
+SSH+psql — see [docs/listing-weekly.md](../docs/listing-weekly.md). The linked
+CLI project (`bzmvlraziqevqdyotvgy`) is cloud; pushing this migration there
+does not feed the site.
+
 Agents: read `SUPABASE_ACCESS_TOKEN` from `supabase/.env.local` if present; do not print or commit the value.
 
 Alternative without a PAT: use the database password from Project Settings → Database:
