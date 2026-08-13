@@ -2,7 +2,7 @@
 
 **Status:** shipped on branch `feat/journey-funnel` (merge to `main` when ready).
 
-This doc is for engineers and AI agents changing the **logged-in dashboard** (`index.html` SPA). Read **[MISSION.md](../MISSION.md)** first — copy must stay honest; we hide complexity for beginners, we do not remove features or fabricate metrics.
+This doc is for engineers and AI agents changing the **logged-in dashboard** (`index.html` SPA). Read **[MISSION.md](../MISSION.md)** first — copy must stay honest; we hide complexity for beginners, we do not remove features or fabricate metrics. Deep Dive next-week points come from `listing_weekly` and must stay labelled perkiraan — see [listing-weekly.md](./listing-weekly.md).
 
 **QA checklist:** [journey-funnel-test.md](./journey-funnel-test.md)
 

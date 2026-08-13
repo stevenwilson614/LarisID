@@ -22,6 +22,12 @@ Before changing badge thresholds, the weekly measurement window, the growth-perc
 
 Our scrapes land **12-17 days apart**, not weekly. Weekly units are span-normalised to a 7-day rate in `mv_keyword_weekly`; never present a raw two-snapshot delta as "minggu ini". Re-tune with `node scripts/weekly-badge-calibrate.mjs` (read-only) and record the change in that doc.
 
+## Weekly snapshot + next-week forecast
+
+Before changing card omset, Deep Dive trend forecasts, or the post-scrape refresh order, read **[docs/listing-weekly.md](./docs/listing-weekly.md)**.
+
+One estimator (`product_velocity` / `velocity_at`): cards show `price * v_hat * 30`; weekly rows are the 7-day sum. Label `measured` as terukur and everything else as perkiraan. Do **not** revive `weekly_snapshots` (frozen 2026-06-08) or reconstruct omset as `price * delta * 4`.
+
 ## SEO, static pages & AI discoverability
 
 Before changing titles, competitor comparisons, pricing copy on the public site, or `llms.txt`, read **[docs/seo.md](./docs/seo.md)**.

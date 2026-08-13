@@ -9238,20 +9238,18 @@ function _dscOmset(listing) {
   const price = listing.price || 0;
   // The velocity nowcast (product_velocity, joined into listings_deduped) comes
   // FIRST. It blends every observation the product has, recency-weighted, and
-  // decays toward its peer cohort as the product goes stale — so unlike the
-  // client-derived delta below it does not present a two-month-old measurement
-  // as this month's revenue. It is populated for every product, never NULL.
+  // decays toward its peer cohort as the product goes stale, so a two-month-old
+  // measurement is not presented as this month's revenue. It is populated for
+  // every product, never NULL.
   if (listing.nowcast_omset_monthly != null && listing.nowcast_omset_monthly >= 0) {
     return listing.nowcast_omset_monthly;
-  }
-  const delta = _dscCorrectedUnitDelta(listing);
-  if (delta != null) {
-    return price * Math.max(0, delta) * 4;  // ~4 weeks in a month (real per-item delta)
   }
   // Server-side scale-aware cohort estimate (est_omset_monthly). Stored per row by
   // refresh_omset_estimates: real delta where available, else category×scale peer
   // median. This is the primary path for first-scrape products (no client prev row)
   // and supersedes the scale-blind client peer fetch + the lifetime/6 fallback below.
+  // Do not reconstruct monthly omset as price * delta * 4 — that disagrees with
+  // the published formula (price * v_now * 30) and ignores span normalisation.
   if (listing.est_omset_monthly != null && listing.est_omset_monthly >= 0) {
     return listing.est_omset_monthly;
   }
@@ -12798,6 +12796,57 @@ const LARIS_SCRAPE_START = '2026-04-09';
 let _trenData      = null;
 let _trenMainChart = null;
 
+function listingWeekStartISO(d = new Date()) {
+  const s = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(d);
+  const [y, m, day] = s.split('-').map(Number);
+  const utc = Date.UTC(y, m - 1, day);
+  const dow = new Date(utc).getUTCDay();
+  const offset = dow === 0 ? 6 : dow - 1;
+  return new Date(utc - offset * 864e5).toISOString().slice(0, 10);
+}
+
+function listingNextWeekStartISO(d = new Date()) {
+  return new Date(Date.parse(listingWeekStartISO(d) + 'T00:00:00Z') + 7 * 864e5)
+    .toISOString().slice(0, 10);
+}
+
+async function fetchListingWeeklyRow(itemId, shopId, weekStart) {
+  if (!_supabase || itemId == null || shopId == null || !weekStart) return null;
+  try {
+    const { data, error } = await _supabase.rpc('listing_weekly_for', {
+      p_item_id: itemId, p_shop_id: shopId, p_weeks: 4,
+    });
+    if (error || !Array.isArray(data)) return null;
+    return data.find(r => String(r.week_start || '').slice(0, 10) === weekStart) || null;
+  } catch (_) { return null; }
+}
+
+async function fetchKeywordWeeklyRow(keyword, weekStart) {
+  if (!_supabase || !keyword || !weekStart) return null;
+  try {
+    const { data, error } = await _supabase.rpc('keyword_weekly_for', {
+      p_keyword: String(keyword).trim(), p_weeks: 4,
+    });
+    if (error || !Array.isArray(data)) return null;
+    return data.find(r => String(r.week_start || '').slice(0, 10) === weekStart) || null;
+  } catch (_) { return null; }
+}
+
+function weeklyForecastPair(nW, labelsLen, lastUnits, lastOmset, serverRow, fallbackUnits, fallbackOmset) {
+  const fUnitW = new Array(labelsLen).fill(null);
+  const fOmsetW = new Array(labelsLen).fill(null);
+  if (nW > 0) {
+    fUnitW[nW - 1] = lastUnits;
+    fOmsetW[nW - 1] = lastOmset;
+    const fromServer = serverRow && (serverRow.units_wk != null || serverRow.omset_wk != null);
+    fUnitW[nW] = fromServer ? Math.round(Number(serverRow.units_wk) || 0) : fallbackUnits;
+    fOmsetW[nW] = fromServer ? Math.round(Number(serverRow.omset_wk) || 0) : fallbackOmset;
+  }
+  return { fUnitW, fOmsetW };
+}
+
 async function ddRenderTren() {
   const listing = _ddKwListing || _ddCurrentP?._listing;
   if (!listing) return;
@@ -12920,16 +12969,15 @@ function trenRender() {
   const chartOmsetData = rows.map(r => r.omset);
   const nW = rows.length;
   const slice2 = rows.slice(-2);
-  const fcUnit = Math.round(slice2.reduce((s, w) => s + w.units, 0) / slice2.length);
-  const fcOmset = Math.round(slice2.reduce((s, w) => s + w.omset, 0) / slice2.length);
+  const fcUnitFb = Math.round(slice2.reduce((s, w) => s + w.units, 0) / slice2.length);
+  const fcOmsetFb = Math.round(slice2.reduce((s, w) => s + w.omset, 0) / slice2.length);
   const nextWeek = new Date(rows[nW - 1].firstDate.getTime() + 7 * 86400000);
   labels.push(`${nextWeek.getDate()} ${_MO[nextWeek.getMonth()]} ▶`);
-  const fUnitW = new Array(labels.length).fill(null);
-  const fOmsetW = new Array(labels.length).fill(null);
-  fUnitW[nW - 1] = rows[nW - 1].units;
-  fOmsetW[nW - 1] = rows[nW - 1].omset;
-  fUnitW[nW] = fcUnit;
-  fOmsetW[nW] = fcOmset;
+  const listing = _trenData.listing;
+  const serverFc = await fetchListingWeeklyRow(listing?.item_id, listing?.shop_id, listingNextWeekStartISO());
+  const { fUnitW, fOmsetW } = weeklyForecastPair(
+    nW, labels.length, rows[nW - 1].units, rows[nW - 1].omset,
+    serverFc, fcUnitFb, fcOmsetFb);
 
   const grad = canvas.getContext('2d').createLinearGradient(0, 0, 0, 200);
   grad.addColorStop(0, 'rgba(181,32,42,0.18)');
@@ -12969,7 +13017,7 @@ function trenRender() {
           borderDash: isEst ? [3, 3] : [],
         },
         {
-          label: 'Forecast Omset',
+          label: 'Perkiraan Omset',
           data: fOmsetW,
           borderColor: '#10B981',
           backgroundColor: 'transparent',
@@ -12984,7 +13032,7 @@ function trenRender() {
           pointStyle: 'triangle',
         },
         {
-          label: 'Forecast Unit',
+          label: 'Perkiraan Unit',
           data: fUnitW,
           borderColor: '#10B981',
           backgroundColor: 'transparent',
@@ -13012,8 +13060,8 @@ function trenRender() {
             label(ctx) {
               const v = ctx.parsed.y;
               if (v == null) return '';
-              const isFc = ctx.dataset.label?.startsWith('Forecast');
-              const prefix = isFc ? ' Prediksi' : '';
+              const isFc = ctx.dataset.label?.startsWith('Perkiraan');
+              const prefix = isFc ? ' Perkiraan' : '';
               if (ctx.dataset.yAxisID === 'y') return `${prefix} Omset: Rp ${Math.round(v).toLocaleString('id-ID')}${isEst ? ' (est.)' : ''}`;
               return `${prefix} Unit: ${Math.round(v).toLocaleString('id-ID')}${isEst ? ' (est.)' : ''}`;
             },
@@ -13408,21 +13456,20 @@ function apRenderDemand(loading) {
   const chartUnitData  = weeklyRowsFilled.map(w => w.units ?? 0);
   const nW = weeklyRowsFilled.length;
   const slice2 = weeklyRowsFilled.slice(-2);
-  const fcUnit  = slice2.length ? Math.round(slice2.reduce((s, w) => s + w.units, 0) / slice2.length) : 0;
-  const fcOmset = slice2.length ? Math.round(slice2.reduce((s, w) => s + w.omset, 0) / slice2.length) : 0;
+  const fcUnitFb  = slice2.length ? Math.round(slice2.reduce((s, w) => s + w.units, 0) / slice2.length) : 0;
+  const fcOmsetFb = slice2.length ? Math.round(slice2.reduce((s, w) => s + w.omset, 0) / slice2.length) : 0;
   const lastWeek = weeklyRowsFilled[nW - 1];
   const nextWeek = lastWeek?.firstDate
     ? new Date(lastWeek.firstDate.getTime() + 7 * 86400000)
     : new Date();
   labels.push(_apWLabel(nextWeek) + ' ▶');
-  const fUnitW  = new Array(labels.length).fill(null);
-  const fOmsetW = new Array(labels.length).fill(null);
-  if (nW > 0) {
-    fUnitW[nW - 1]  = weeklyRowsFilled[nW - 1].units;
-    fOmsetW[nW - 1] = weeklyRowsFilled[nW - 1].omset;
-    fUnitW[nW]  = fcUnit;
-    fOmsetW[nW] = fcOmset;
-  }
+  const kw = _ddKwListing?.keyword || _ddCurrentP?._listing?.keyword || _ddCurrentP?.keyword;
+  const serverFc = await fetchKeywordWeeklyRow(kw, listingNextWeekStartISO());
+  const { fUnitW, fOmsetW } = weeklyForecastPair(
+    nW, labels.length,
+    nW > 0 ? weeklyRowsFilled[nW - 1].units : null,
+    nW > 0 ? weeklyRowsFilled[nW - 1].omset : null,
+    serverFc, fcUnitFb, fcOmsetFb);
 
   const grad = canvas.getContext('2d').createLinearGradient(0, 0, 0, 200);
   grad.addColorStop(0, 'rgba(181,32,42,0.18)');
@@ -13462,7 +13509,7 @@ function apRenderDemand(loading) {
           spanGaps: false,
         },
         {
-          label: 'Forecast Omset',
+          label: 'Perkiraan Omset',
           data: fOmsetW,
           borderColor: '#10B981',
           backgroundColor: 'transparent',
@@ -13476,7 +13523,7 @@ function apRenderDemand(loading) {
           pointStyle: 'triangle',
         },
         {
-          label: 'Forecast Unit',
+          label: 'Perkiraan Unit',
           data: fUnitW,
           borderColor: '#10B981',
           backgroundColor: 'transparent',
@@ -13501,8 +13548,8 @@ function apRenderDemand(loading) {
             label(ctx) {
               const v = ctx.parsed.y;
               if (v == null) return '';
-              const isFc = ctx.dataset.label?.startsWith('Forecast');
-              const prefix = isFc ? ' Prediksi' : '';
+              const isFc = ctx.dataset.label?.startsWith('Perkiraan');
+              const prefix = isFc ? ' Perkiraan' : '';
               if (ctx.dataset.yAxisID === 'y') return `${prefix} Omset: Rp ${Math.round(v).toLocaleString('id-ID')}`;
               return `${prefix} Unit: ${Math.round(v).toLocaleString('id-ID')}`;
             },
@@ -13529,7 +13576,7 @@ function apRenderDemand(loading) {
   if (noteEl) {
     const estNote = isEst ? ' · sebagian unit diestimasi dari ulasan (bucket Shopee 10rb+)' : '';
     const nList = meta?.listingCount ? `${meta.listingCount} listing` : 'semua listing';
-    noteEl.textContent = `4 minggu terakhir + prediksi 1 minggu · ${nList} di keyword · forecast = rata-rata 2 minggu terakhir${estNote}`;
+    noteEl.textContent = `4 minggu terakhir + prediksi 1 minggu · ${nList} di keyword · perkiraan = model kecepatan LarisID (bukan rata-rata 2 minggu)${estNote}`;
   }
   })();
 }
@@ -15572,8 +15619,9 @@ async function ddEstimateTrendFromPeers(listing, peerRowsOverride) {
 
 // Fetches up to 20 scrape points, interpolates deltas day-by-day between consecutive
 // scrapes, and buckets into ISO calendar weeks. Shows weekly units + weekly omset so
-// even sparse scrapes produce a smooth weekly view, plus a forecast point for next
-// Monday (avg of last 2 weeks). IMPORTANT: the real (red/blue) series arrays must
+// even sparse scrapes produce a smooth weekly view, plus a perkiraan point for next
+// Monday from listing_weekly (velocity_at), not avg-of-last-2-weeks. IMPORTANT: the
+// real (red/blue) series arrays must
 // stay SHORTER than the labels array — never push a trailing null onto them to
 // "reach" the forecast index. A past incident had the forecast bleed through and
 // render in the real series' color, making a future date look like already-
@@ -15640,17 +15688,17 @@ async function ddLoadTrendHistory(listing) {
       const snapLabels = [...snapRowsDisplay.map(r => r.label), `${nextMon.getDate()} ${DD_TREND_MO[nextMon.getMonth()]} ▶`];
       const snapUnits = snapRowsDisplay.map(r => r.units);
       const snapOmset = snapRowsDisplay.map(r => r.omset);
-      const fcSnapUnits = new Array(snapLabels.length).fill(null);
-      const fcSnapOmset = new Array(snapLabels.length).fill(null);
-      fcSnapUnits[snapRowsDisplay.length - 1] = snapRowsDisplay[snapRowsDisplay.length - 1].units;
-      fcSnapOmset[snapRowsDisplay.length - 1] = snapRowsDisplay[snapRowsDisplay.length - 1].omset;
-      fcSnapUnits[snapRowsDisplay.length] = avgUnits;
-      fcSnapOmset[snapRowsDisplay.length] = avgOmset;
+      const serverFcSnap = await fetchListingWeeklyRow(listing.item_id, listing.shop_id, listingNextWeekStartISO());
+      const { fUnitW: fcSnapUnits, fOmsetW: fcSnapOmset } = weeklyForecastPair(
+        snapRowsDisplay.length, snapLabels.length,
+        snapRowsDisplay[snapRowsDisplay.length - 1].units,
+        snapRowsDisplay[snapRowsDisplay.length - 1].omset,
+        serverFcSnap, avgUnits, avgOmset);
       const snapDatasets = [
         { label:'Omset (snapshot)', data:snapOmset, borderColor:'#B5202A', backgroundColor:'rgba(181,32,42,.06)', borderWidth:2.5, fill:true, tension:0.3, pointRadius:5, pointBackgroundColor:'#B5202A', yAxisID:'y', borderDash:[4,4], spanGaps:false },
         { label:'Unit Terjual', data:snapUnits, borderColor:'#4F46E5', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:4, pointBackgroundColor:'#4F46E5', yAxisID:'y2', borderDash:[4,4], spanGaps:false },
-        { label:'Prediksi Omset', data:fcSnapOmset, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:6, pointBackgroundColor:'#10B981', yAxisID:'y', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
-        { label:'Prediksi Unit', data:fcSnapUnits, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:6, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
+        { label:'Perkiraan Omset', data:fcSnapOmset, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:6, pointBackgroundColor:'#10B981', yAxisID:'y', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
+        { label:'Perkiraan Unit', data:fcSnapUnits, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:6, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
       ];
       const snapExtras = { nodataMsg: bucketMsg };
       const _snapLastScrape = dbRows.length ? dbRows[dbRows.length - 1].scraped_at : null;
@@ -15676,22 +15724,21 @@ async function ddLoadTrendHistory(listing) {
     const chartOmsetData = weeklyRowsFilled.map(w => w.omset);
     const nW = weeklyRowsFilled.length;
     const slice2 = weeklyRowsFilled.slice(-2);
-    const fcUnit = Math.round(slice2.reduce((s, w) => s + w.units, 0) / slice2.length);
-    const fcOmset = Math.round(slice2.reduce((s, w) => s + w.omset, 0) / slice2.length);
+    const fcUnitFb = Math.round(slice2.reduce((s, w) => s + w.units, 0) / slice2.length);
+    const fcOmsetFb = Math.round(slice2.reduce((s, w) => s + w.omset, 0) / slice2.length);
     const nextWeek = new Date(weeklyRowsFilled[nW - 1].firstDate.getTime() + 7 * 86400000);
     labels.push(ddTrendWLabel(nextWeek) + ' ▶');
-    const fUnitW = new Array(labels.length).fill(null);
-    const fOmsetW = new Array(labels.length).fill(null);
-    fUnitW[nW - 1] = weeklyRowsFilled[nW - 1].units;
-    fOmsetW[nW - 1] = weeklyRowsFilled[nW - 1].omset;
-    fUnitW[nW] = fcUnit;
-    fOmsetW[nW] = fcOmset;
+    const serverFc = await fetchListingWeeklyRow(listing.item_id, listing.shop_id, listingNextWeekStartISO());
+    const { fUnitW, fOmsetW } = weeklyForecastPair(
+      nW, labels.length,
+      weeklyRowsFilled[nW - 1].units, weeklyRowsFilled[nW - 1].omset,
+      serverFc, fcUnitFb, fcOmsetFb);
 
     const trendDatasets = [
       { label: isEstimated ? 'Omset Est./Minggu' : 'Omset/Minggu', data:chartOmsetData, borderColor:'#B5202A', backgroundColor:'rgba(181,32,42,.06)', borderWidth:2.5, fill:true, tension:0.3, pointRadius:4, pointBackgroundColor:'#B5202A', yAxisID:'y', spanGaps:false, borderDash: isEstimated ? [3,3] : [] },
       { label: isEstimated ? 'Unit Est./Minggu' : 'Unit/Minggu', data:chartUnitData, borderColor:'#4F46E5', backgroundColor:'transparent', borderWidth:2, fill:false, tension:0.3, pointRadius:3, pointBackgroundColor:'#4F46E5', yAxisID:'y2', spanGaps:false, borderDash: isEstimated ? [3,3] : [] },
-      { label:'Forecast Omset', data:fOmsetW, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
-      { label:'Forecast Unit', data:fUnitW, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
+      { label:'Perkiraan Omset', data:fOmsetW, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
+      { label:'Perkiraan Unit', data:fUnitW, borderColor:'#10B981', backgroundColor:'transparent', borderWidth:2, fill:false, tension:0.3, pointRadius:5, pointBackgroundColor:'#10B981', yAxisID:'y2', borderDash:[5,4], spanGaps:false, pointStyle:'triangle' },
     ];
     const totalUnits = weeklyRowsFilled.reduce((s, w) => s + w.units, 0);
     const totalOmset = weeklyRowsFilled.reduce((s, w) => s + w.omset, 0);

@@ -73,6 +73,11 @@ top 2 and leave them in omset order — the real #1 often sat in slot 2.
 
 A slow category legitimately shows zero badges. That is the honest outcome.
 
+This badge is **not** the durable weekly snapshot in
+[listing-weekly.md](./listing-weekly.md) (`listing_weekly` / `keyword_weekly`).
+That table is the product-level this-week / next-week forecast. Do not merge
+them, and do not revive `weekly_snapshots` (frozen 2026-06-08).
+
 ## The green line
 
 `↑ X% minggu ini`, using the same definition as `trendGrowthPct()`: growth

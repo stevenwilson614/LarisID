@@ -8907,6 +8907,47 @@ function ddMonthlySeries(weekly) {
     }));
 }
 
+/** WIB Monday of the calendar week containing `d`, as YYYY-MM-DD. */
+function listingWeekStartISO(d = new Date()) {
+  const s = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(d);
+  const [y, m, day] = s.split('-').map(Number);
+  const utc = Date.UTC(y, m - 1, day);
+  const dow = new Date(utc).getUTCDay();
+  const offset = dow === 0 ? 6 : dow - 1;
+  return new Date(utc - offset * 864e5).toISOString().slice(0, 10);
+}
+
+function listingNextWeekStartISO(d = new Date()) {
+  return new Date(Date.parse(listingWeekStartISO(d) + 'T00:00:00Z') + 7 * 864e5)
+    .toISOString().slice(0, 10);
+}
+
+/** Next-week snapshot from listing_weekly / keyword_weekly. Null if the
+ *  table is not yet applied or the product has no row. */
+async function fetchWeeklySnapshot({ item_id, shop_id, keyword, weekStart }) {
+  if (!_supabase || !weekStart) return null;
+  const match = row => String(row.week_start || '').slice(0, 10) === weekStart;
+  try {
+    if (item_id != null && shop_id != null) {
+      const { data, error } = await _supabase.rpc('listing_weekly_for', {
+        p_item_id: item_id, p_shop_id: shop_id, p_weeks: 4,
+      });
+      if (error || !Array.isArray(data)) return null;
+      return data.find(match) || null;
+    }
+    if (keyword) {
+      const { data, error } = await _supabase.rpc('keyword_weekly_for', {
+        p_keyword: String(keyword).trim(), p_weeks: 4,
+      });
+      if (error || !Array.isArray(data)) return null;
+      return data.find(match) || null;
+    }
+  } catch (_) { /* table/RPC not applied yet */ }
+  return null;
+}
+
 function ddShareData(peers) {
   const byShop = new Map();
   for (const p of peers) {
@@ -10292,10 +10333,10 @@ async function openDeepDive(product, ddOpts = {}) {
              <div class="chart-legend" style="flex-direction:row;gap:14px">
                <span class="row"><span class="swatch" style="background:#B5202A"></span>Omset / bln (Rp)</span>
                <span class="row"><span class="swatch" style="background:#2563EB"></span>Unit / bln</span>
-               <span class="row"><span class="swatch" style="background:#16A34A"></span>Forecast</span>
+               <span class="row"><span class="swatch" style="background:#16A34A"></span>Perkiraan</span>
              </div>`
           : `<p class="dd-sub">Belum cukup riwayat scrape untuk tren bulanan keyword ini — butuh beberapa gelombang panel. Bagian lain tetap dari data asli.</p>`}
-        <p class="ddr-caption">Estimasi bulanan pasar keyword “${esc(kw || '—')}” (rata-rata minggu dalam setiap bulan, dari selisih scrape berurutan; snapshot pertama = baseline, bukan omset)${hasTrend ? ' · tampilan dari 27 Apr 2026' : ''} ${history.length ? `· ${new Set(history.map(r => String(r.item_id))).size} listing` : ''} · scrape terakhir ${esc(fmtAnchorDate(lastScrape))}.</p>
+        <p class="ddr-caption">Estimasi bulanan pasar keyword “${esc(kw || '—')}” (rata-rata minggu dalam setiap bulan, dari selisih scrape berurutan; snapshot pertama = baseline, bukan omset)${hasTrend ? ' · tampilan dari 27 Apr 2026' : ''} ${history.length ? `· ${new Set(history.map(r => String(r.item_id))).size} listing` : ''} · scrape terakhir ${esc(fmtAnchorDate(lastScrape))}. Garis hijau = perkiraan minggu depan (model kecepatan LarisID), bukan data terukur.</p>
       </div>
       <div class="ddr-card" data-dd-sec="pangsa">
         <h3>Distribusi Pangsa Pasar</h3>
@@ -10412,7 +10453,15 @@ async function openDeepDive(product, ddOpts = {}) {
 
   // Charts + sparklines (Chart.js lazy; sparklines are raw canvas).
   await larisEnsureChart();
-  if (hasTrend) ddRenderTrendChart(series);
+  if (hasTrend) {
+    const nextWeek = listingNextWeekStartISO();
+    const fcSnap = product._ptype
+      ? await fetchWeeklySnapshot({ keyword: kw, weekStart: nextWeek })
+      : await fetchWeeklySnapshot({
+          item_id: product.item_id, shop_id: product.shop_id, weekStart: nextWeek,
+        });
+    ddRenderTrendChart(series, fcSnap);
+  }
   if (share.shops.length >= 4) {
     makeChart('ddr-share-canvas', {
       type: 'doughnut',
@@ -10487,9 +10536,10 @@ function mondayOfWeek(d = new Date()) {
 }
 
 // Monthly market trend from scrape history (weekly series rolled into months).
-// Real series stays SHORTER than the labels — only Forecast touches the future
-// month. Never draws a synthetic curve.
-function ddRenderTrendChart(series) {
+// Real series stays SHORTER than the labels — only Perkiraan touches the future
+// month. Next-month point is the server next-week snapshot scaled ×30/7
+// (same velocity as the card). last-2-weeks avg is fallback only.
+function ddRenderTrendChart(series, forecastSnap) {
   if (typeof Chart === 'undefined' || series.length < 2) return;
   const fmtMo = ts => new Date(ts).toLocaleDateString('id-ID', { month: 'short', year: '2-digit', timeZone: 'UTC' });
   const labels = series.map(w => fmtMo(w.ts));
@@ -10498,7 +10548,11 @@ function ddRenderTrendChart(series) {
   const omset = series.map(w => w.omset);
   const units = series.map(w => w.units);
   const last2 = arr => Math.round((arr[arr.length - 1] + (arr[arr.length - 2] ?? arr[arr.length - 1])) / 2);
-  const forecast = Array(series.length - 1).fill(null).concat([omset[omset.length - 1], last2(omset)]);
+  const hasServer = forecastSnap && (forecastSnap.omset_wk != null || forecastSnap.units_wk != null);
+  const fcOmset = hasServer
+    ? Math.round((Number(forecastSnap.omset_wk) || 0) * 30 / 7)
+    : last2(omset);
+  const forecast = Array(series.length - 1).fill(null).concat([omset[omset.length - 1], fcOmset]);
   makeChart('ddr-trend-canvas', {
     type: 'line',
     data: {
@@ -10506,7 +10560,7 @@ function ddRenderTrendChart(series) {
       datasets: [
         { label: 'Omset / bln (Rp)', data: omset, borderColor: '#B5202A', backgroundColor: 'rgba(181,32,42,.06)', borderWidth: 2, fill: true, tension: .35, yAxisID: 'y', pointRadius: 3 },
         { label: 'Unit / bln', data: units, borderColor: '#2563EB', borderWidth: 2, tension: .35, yAxisID: 'y2', pointRadius: 3 },
-        { label: 'Forecast', data: forecast, borderColor: '#16A34A', borderDash: [5, 5], borderWidth: 2, tension: .35, yAxisID: 'y', pointRadius: 3 },
+        { label: 'Perkiraan', data: forecast, borderColor: '#16A34A', borderDash: [5, 5], borderWidth: 2, tension: .35, yAxisID: 'y', pointRadius: 3 },
       ],
     },
     options: {
