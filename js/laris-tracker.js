@@ -1014,7 +1014,7 @@
     draft.pickerBusy = true;
     renderSetup();
     callP('getCategoryKeywords', cat, 24).then(function (rows) {
-      if (draft.pickerQ) return; // a search started while this was in flight
+      if (!draft.pickerOpen || draft.pickerQ) return; // closed, or a search started
       draft.pickerBusy = false;
       draft.pickerRows = rows || [];
       renderSetup();
@@ -1028,7 +1028,7 @@
     draft.pickerBusy = true;
     renderSetup();
     callP('searchKeywords', { q: query, limit: 24 }).then(function (rows) {
-      if (draft.pickerQ !== query) return; // superseded by a newer keystroke
+      if (!draft.pickerOpen || draft.pickerQ !== query) return; // closed or superseded
       draft.pickerBusy = false;
       draft.pickerRows = rows || [];
       renderSetup();
@@ -2679,9 +2679,47 @@
     }).catch(function () { call('toast', 'Gagal menghapus. Coba lagi.'); });
   }
 
+  function typeaheadIsOpen() {
+    return !!(draft.pickerOpen || draft.sug.slot !== -1);
+  }
+
+  function eventInsideTypeahead(t) {
+    if (!t || !t.closest) return false;
+    if (draft.pickerOpen && (t.closest('.ltk-picker-panel') || t.closest('[data-ltk-picker-open]'))) return true;
+    if (draft.sug.kind === 'keyword' && draft.sug.slot >= 0) {
+      if (t.closest('.ltk-slot--type.is-open')) return true;
+      // Category is a live filter on the open keyword typeahead — keep it open.
+      if (t.closest('[data-ltk-catsel]') || t.closest('.ltk-catsel')) return true;
+    }
+    if (draft.sug.kind === 'store' && draft.sug.slot === -2 && t.closest('.ltk-storefind')) return true;
+    return false;
+  }
+
+  // Same as Escape: drop the live keyword/toko/picker search without committing.
+  function closeTypeahead() {
+    if (!typeaheadIsOpen()) return false;
+    if (timers.typeahead) { clearTimeout(timers.typeahead); timers.typeahead = 0; }
+    if (timers.storeSearch) { clearTimeout(timers.storeSearch); timers.storeSearch = 0; }
+    if (timers.pickerSearch) { clearTimeout(timers.pickerSearch); timers.pickerSearch = 0; }
+    draft.pickerOpen = false;
+    draft.pickerQ = '';
+    draft.pickerRows = [];
+    draft.pickerBusy = false;
+    draft.sug = {
+      slot: -1, q: '', rows: [], busy: false,
+      kind: draft.sug.kind === 'store' ? 'store' : 'keyword'
+    };
+    if (S.screen === 'setup') renderSetup();
+    return true;
+  }
+
   function onClick(e) {
-    if (!host || !host.contains(e.target)) return;
     var t = e.target;
+    // Snapshot before closeTypeahead() re-renders — a detached node is no longer
+    // host.contains(), but Lanjut / Tutup / etc. still need to fire.
+    var insideHost = !!(host && host.contains(t));
+    if (typeaheadIsOpen() && !eventInsideTypeahead(t)) closeTypeahead();
+    if (!insideHost) return;
 
     var addkw = t.closest && t.closest('[data-ltk-addkw]');
     if (addkw) {
@@ -2932,6 +2970,11 @@
   function onKeydown(e) {
     if (!host || !host.contains(e.target)) return;
     var el = e.target;
+    if (e.key === 'Escape' && typeaheadIsOpen()) {
+      e.preventDefault();
+      closeTypeahead();
+      return;
+    }
     if (el.hasAttribute && el.hasAttribute('data-ltk-rowkey') && (e.key === 'Enter' || e.key === ' ')) {
       e.preventDefault();
       var rk = el.getAttribute('data-ltk-rowkey');
@@ -2948,11 +2991,6 @@
       var top = draft.sug.rows[0];
       if (top) pickSuggestion(top.keyword, top.category);
       else pickSuggestion(el.value, draft.cat);
-      return;
-    }
-    if (e.key === 'Escape') {
-      draft.sug = { slot: -1, q: '', rows: [], busy: false, kind: 'keyword' };
-      renderSetup();
     }
   }
 
