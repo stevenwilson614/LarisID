@@ -11505,18 +11505,9 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
         return q;
       };
       let { data, error } = await build();
-      const retried = ptypeWeeklyMissing(error);
-      if (retried) ({ data, error } = await build());
-      // #region agent log
-      fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ed5ec2'},body:JSON.stringify({sessionId:'ed5ec2',hypothesisId:'H2',location:'gpt-app.js:searchProductTypes:term',message:'ptype term query',data:{text:raw,needle,n:(data||[]).length,err:error&&String(error.code||'')+' '+String(error.message||'').slice(0,120),retried,hasWeekly:_ptypeHasWeekly,sample:(data||[]).map(r=>r.keyword).slice(0,5)},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
+      if (ptypeWeeklyMissing(error)) ({ data } = await build());
       return data || [];
-    } catch (e) {
-      // #region agent log
-      fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ed5ec2'},body:JSON.stringify({sessionId:'ed5ec2',hypothesisId:'H2',location:'gpt-app.js:searchProductTypes:catch',message:'ptype term threw',data:{text:raw,err:String(e&&e.message||e).slice(0,160),hasWeekly:_ptypeHasWeekly},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-      return [];
-    }
+    } catch (_) { return []; }
   }));
   runs.forEach(rows => rows.forEach(r => {
     if (!r?.keyword || seen.has(r.keyword)) return;
@@ -11568,9 +11559,6 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
     }
   }
   if (ranked.length) await attachTypeQuartiles(ranked);
-  // #region agent log
-  fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ed5ec2'},body:JSON.stringify({sessionId:'ed5ec2',hypothesisId:'H2',location:'gpt-app.js:searchProductTypes:out',message:'ptype ranked result',data:{text:raw,terms,hitN:hits.length,rankedN:ranked.length,top:(ranked||[]).slice(0,8).map(r=>({kw:r.keyword,sc:r._score,cat:r.category_canonical||r.category}))},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   return ranked;
 }
 
@@ -12240,14 +12228,10 @@ async function renderDirectory() {
   let types;
   if (q) {
     types = await searchProductTypes(q, cities, 60);
-    const beforeCat = (types || []).length;
     // Text search must ignore category/subgroup chips. Soccer shoes live in
     // "Sepatu, Tas & Aksesoris", so "sepatu bola" + Olahraga/Fashion selected
     // used to hard-filter to 0 and show "Belum ketemu pasar". Same rule as
     // dscFetchPage (Discover listings).
-    // #region agent log
-    fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ed5ec2'},body:JSON.stringify({sessionId:'ed5ec2',runId:'post-fix',hypothesisId:'H3',location:'gpt-app.js:renderDirectory',message:'directory search filter',data:{q,cats,sub,cities,beforeCat,afterCat:(types||[]).length,ignoredCat:!!(cats.length||sub),sample:(types||[]).map(t=>t.keyword).slice(0,8)},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
   } else {
     types = await fetchProductTypes(cities, cats, 1000, sub);
     // mv missing/empty (e.g. refresh failed): lift the listing pool back up to
