@@ -463,6 +463,7 @@ const ICONS = {
   box: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linejoin="round"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>',
   trendUp: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>',
   arrowUp: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
+  rocket: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c3.2 2.4 4.8 5.8 4.8 9.4L12 16.2 7.2 11.9c0-3.6 1.6-7 4.8-9.4z"/><circle cx="12" cy="9.3" r="1.7"/><path d="M7.2 11.9 4.7 14a1 1 0 0 0-.33.95l.5 2.6 2.6-1.35M16.8 11.9l2.5 2.1a1 1 0 0 1 .33.95l-.5 2.6-2.6-1.35"/><path d="M10 18.4c0 1.5.75 2.7 2 3.6 1.25-.9 2-2.1 2-3.6"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
   spark: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/></svg>',
   users: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14.5c2.6.3 4 2.2 4 4.5"/></svg>',
@@ -586,6 +587,7 @@ async function hydrateProdCardsIn(root) {
 // ── Composer chip sets ───────────────────────────────────────────────────
 const HOME_CHIPS = [
   { id: 'trending', label: 'Produk Trending', icon: 'flame', prompt: 'Produk apa yang lagi trending minggu ini?' },
+  { id: 'terlaris_minggu', label: 'Terlaris Minggu Ini', icon: 'rocket', prompt: 'Apa yang terlaris minggu ini?' },
   { id: 'bandingkan', label: 'Bandingkan Produk', icon: 'scale', prompt: 'Bandingkan 2 produk' },
   { id: 'profit', label: 'Hitung Profit', icon: 'calc', prompt: 'Hitung estimasi profit' },
   { id: 'modal500', label: 'Modal Rp500rb', icon: 'wallet', prompt: 'Cari produk modal Rp500rb' },
@@ -600,6 +602,7 @@ const HOME_PROMPT_CARDS = [
   { icon: 'box', t: 'Modal terbatas', d: 'Cari produk sesuai modal kamu', q: 'Cari produk modal 500 ribu' },
 ];
 const TRENDING_CHIPS = [
+  { id: 'terlaris_minggu', label: 'Terlaris minggu ini', icon: 'rocket', prompt: 'Apa yang terlaris minggu ini?' },
   { id: 'bandingkan', label: 'Bandingkan 2 produk', icon: 'scale', prompt: 'Bandingkan 2 produk' },
   { id: 'modal', label: 'Cari produk modal < 500rb', icon: 'wallet', prompt: 'Cari produk modal Rp500rb' },
   { id: 'lowcomp', label: 'Produk dengan kompetisi rendah', icon: 'target', prompt: 'Produk dengan kompetisi rendah' },
@@ -3948,6 +3951,7 @@ async function runResultsBarSearch(q) {
     ui: 'gpt', how: 'results_bar', query,
     results_count: Array.isArray(state.dirTypes) ? state.dirTypes.length : null,
   });
+  gptLogSearchHistory(query, 'results_bar');
   funnelStep('first_search', { source: 'results_bar' });
 }
 
@@ -5926,6 +5930,13 @@ function bindTrendingCards(root) {
 
 // ── Intent routing (chips + free text → data-backed answers) ─────────────
 function detectIntent(lower) {
+  // Before the category-discovery bail-out below: "apa yang terlaris di camping
+  // minggu ini" is a category-level ask, so that early return would swallow it
+  // and answer with a generic category showcase instead of the weekly winners.
+  // Bare "terlaris" is deliberately NOT matched — that still means all-time.
+  if (/terlaris.{0,24}(minggu|pekan) ini|(minggu|pekan) ini.{0,24}terlaris|paling laris.{0,24}(minggu|pekan)|terlaris (minggu|pekan)|(terlaris|best.?sell\w*|top.?sell\w*).{0,24}this week|this week.{0,24}(terlaris|best.?sell\w*|top.?sell\w*)/.test(lower)) {
+    return 'terlaris_minggu';
+  }
   // Broad category discovery (“fashion trending”) should not be swallowed by
   // the global trending chip — specific nouns (“dresses”) still fall through.
   if (detectCategoryFromText(lower) && isProductDiscoveryAsk(lower)
@@ -6010,6 +6021,7 @@ async function handleIntent(intent, text) {
   clarityEvt('gpt_intent', { intent });
 
   if (intent === 'trending') return handleTrendingIntent(chat);
+  if (intent === 'terlaris_minggu') return handleTerlarisMingguIntent(chat, text);
   if (intent === 'modal') return handleModalIntent(chat, text);
   if (intent === 'lowcomp') return handleLowcompIntent(chat);
   if (intent === 'profit') return handleProfitIntent(chat, text);
@@ -6048,6 +6060,87 @@ async function handleTrendingIntent(chat) {
   setComposerChips(TRENDING_CHIPS, 'trending');
   void logUserEvent('discover_view', { ui: 'gpt', kind: 'trending' });
   clarityEvt('gpt_trending_view', {});
+}
+
+/**
+ * Markets ranked by this week's sales, optionally inside one canonical bucket.
+ *
+ * Ordering and filtering happen server-side on purpose. Pulling the category
+ * first and ranking client-side would re-create the mv_trending problem: a
+ * quiet bucket's winners sit far below any global cut-off.
+ */
+async function fetchTerlarisMinggu(cat, limit = 9) {
+  if (!_supabase || !_ptypeHasWeekly) return [];
+  try {
+    let q = _supabase.from('product_types_v')
+      .select(ptypeCols())
+      .eq('city', 'ALL')
+      .gte('n_listings', 3)
+      .gte('wk_units', TERLARIS_MIN_UNITS)
+      .gte('wk_items', TERLARIS_MIN_ITEMS)
+      .order('wk_units', { ascending: false, nullsFirst: false })
+      .limit(limit);
+    if (cat) q = q.eq('category_canonical', cat);
+    const { data, error } = await q;
+    if (ptypeWeeklyMissing(error)) return [];
+    if (error) throw error;
+    // pct is the one part of the floor SQL cannot express (it needs wk_base).
+    const rows = (data || []).filter(t => { const w = weeklyStats(t); return w && w.pct > 0; });
+    await attachTypeQuartiles(rows);
+    return rows;
+  } catch (e) {
+    console.warn('[terlarisMinggu]', e?.message || e);
+    return [];
+  }
+}
+
+async function handleTerlarisMingguIntent(chat, text) {
+  if (!(await ensureSearchAllowed())) return;
+  await loadCanonicalCats();
+  // "camping" resolves to the raw bucket 'Outdoor & Camping', which is not a
+  // category_canonical value — filtering on it matches zero rows.
+  const cat = toCanonicalCat(detectCategoryFromText(String(text).toLowerCase()) || '');
+  const inCat = cat ? ` di <strong>${esc(cat)}</strong>` : '';
+  const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Menghitung penjualan minggu ini${cat ? ` di ${esc(cat)}` : ''}…</p>`);
+  const types = await fetchTerlarisMinggu(cat, 9);
+  const gate = await ensureIntentChat(chat, `Terlaris minggu ini${cat ? ` — ${cat}` : ''}`, { kind: 'terlaris_minggu', cat });
+  if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
+
+  let html;
+  let ndTypes = [];
+  if (types.length) {
+    const w = weeklyStats(types[0]);
+    // Say what was actually measured. Our scrapes land ~12-17 days apart, so
+    // claiming a clean Mon-Sun week here would be a fabricated delta.
+    const window = w && w.spanDays > 0
+      ? ` — dihitung dari perubahan terjual dalam ${w.spanDays} hari terakhir (sampai ${esc(fmtAnchorDate(w.anchor))}), disetarakan ke 7 hari`
+      : '';
+    registerTypes(types);
+    html = `<p>${types.length} pasar dengan penjualan tertinggi minggu ini${inCat}${window}:</p>`
+      + `<div class="card-grid">${marketCardsHtml(types)}</div>`;
+  } else {
+    // No padding with unqualified markets — offer the slower signal instead.
+    const nd = mergePool([], await fetchNaikDaunGlobal(60));
+    ndTypes = await typesForListings(nd, '', 6);
+    registerTypes(ndTypes);
+    const why = cat
+      ? `Belum ada pasar${inCat} yang penjualannya cukup terukur minggu ini — scrape terakhir untuk kategori ini belum punya dua titik data yang cukup rapat.`
+      : 'Belum ada pasar dengan penjualan mingguan yang cukup terukur saat ini.';
+    html = ndTypes.length
+      ? `<p>${why} Ini pasar yang lagi naik daun dalam rentang lebih panjang:</p><div class="card-grid">${marketCardsHtml(ndTypes)}</div>`
+      : `<p>${why}</p>`;
+  }
+  await revealAssistant(loading, html);
+  pushMessage(chat, 'assistant', {
+    text: 'Terlaris minggu ini',
+    kind: 'terlaris_minggu',
+    cat,
+    types: (types.length ? types : ndTypes).map(t => t.keyword),
+  }, html);
+  bindTypeCards();
+  void hydrateProdCardsIn();
+  setComposerChips(TRENDING_CHIPS, 'trending');
+  void logUserEvent('discover_view', { ui: 'gpt', kind: 'terlaris_minggu', cat: cat || '', count: types.length });
 }
 
 async function handleModalIntent(chat, text) {
@@ -7223,7 +7316,7 @@ async function replyWithPasarTypes(chat, text, types, opts = {}) {
         : `<p>Brand <strong>${esc(opts.brand)}</strong> belum ada di data kami \u2014 menampilkan tipe produk yang paling mirip:</p>`;
     }
   }
-  const html = `${brandNote}<p>${lead}</p><div class="card-grid">${types.map((t, i) => typeCardHtml(t, i, i)).join('')}</div>`;
+  const html = `${brandNote}<p>${lead}</p><div class="card-grid">${marketCardsHtml(types)}</div>`;
   if (loading) await revealAssistant(loading, html);
   else await appendAssistantStream(html);
   pushMessage(chat, 'assistant', {
@@ -7703,6 +7796,76 @@ function upsertDeepDiveChatMessage(chat, product, scoreInfo, stats) {
 
 let _trkAdapterB = null;
 
+const GPT_SEARCH_HISTORY_KEY = 'larisid_search_history_v1';
+const GPT_SEARCH_HISTORY_MAX = 50;
+let _gptLastLoggedSearch = '';
+
+function gptLogSearchHistory(keyword, source) {
+  const kw = String(keyword || '').trim().slice(0, 120);
+  if (!kw) return;
+  const norm = kw.toLowerCase();
+  if (norm === _gptLastLoggedSearch) return;
+  _gptLastLoggedSearch = norm;
+  try {
+    let arr = [];
+    try { arr = JSON.parse(localStorage.getItem(GPT_SEARCH_HISTORY_KEY) || '[]'); } catch (_) {}
+    if (!Array.isArray(arr)) arr = [];
+    arr = arr.filter(e => !(e && String(e.keyword || '').toLowerCase() === norm));
+    arr.unshift({ keyword: kw, item_id: null, source: source || 'search', created_at: new Date().toISOString() });
+    if (arr.length > GPT_SEARCH_HISTORY_MAX) arr = arr.slice(0, GPT_SEARCH_HISTORY_MAX);
+    localStorage.setItem(GPT_SEARCH_HISTORY_KEY, JSON.stringify(arr));
+  } catch (_) {}
+  if (_supabase && currentUser) {
+    try {
+      _supabase.from('user_search_history').insert({
+        user_id: currentUser.id,
+        keyword: kw,
+        source: source || 'search',
+      }).then(() => {}, () => {});
+    } catch (_) {}
+  }
+}
+
+async function gptRecentSearchKeywords(limit) {
+  const out = [];
+  const seen = new Set();
+  const push = (kw) => {
+    const k = String(kw || '').toLowerCase().trim();
+    if (!k || k.length < 2 || seen.has(k)) return;
+    seen.add(k);
+    out.push(k);
+  };
+  try {
+    const raw = localStorage.getItem(GPT_SEARCH_HISTORY_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(arr)) arr.forEach(e => push(e && e.keyword));
+  } catch (_) {}
+  if (_supabase && currentUser) {
+    try {
+      const { data } = await _supabase.from('user_search_history')
+        .select('keyword,created_at')
+        .eq('user_id', currentUser.id)
+        .not('keyword', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(40);
+      (data || []).forEach(r => push(r.keyword));
+    } catch (_) {}
+    try {
+      const { data } = await _supabase.from('activity_events')
+        .select('event_type,metadata,created_at')
+        .eq('user_id', currentUser.id)
+        .eq('event_type', 'search_query')
+        .order('created_at', { ascending: false })
+        .limit(40);
+      (data || []).forEach(r => {
+        const m = r.metadata || {};
+        push(m.query || m.keyword || m.q);
+      });
+    } catch (_) {}
+  }
+  return out.slice(0, limit || 12);
+}
+
 /** Local YYYY-MM-DD for `n` days ago. Both series RPCs clamp p_to to
  *  current_date server-side, so a timezone-edge day either way is harmless. */
 function _isoDaysAgo(n) {
@@ -7760,7 +7923,7 @@ function gptTrackerAdapter() {
       if (!keyword || !_supabase) { try { openDirectory(); } catch (_) {} return; }
       try {
         const { data } = await _supabase.from('product_types_v')
-          .select(PTYPE_COLS).eq('city', 'ALL').eq('keyword', keyword).limit(1);
+          .select(ptypeCols()).eq('city', 'ALL').eq('keyword', keyword).limit(1);
         const t = data && data[0];
         if (t) { void openDeepDive(typeRepProduct(t)); return; }
       } catch (_) {}
@@ -7993,13 +8156,30 @@ function gptTrackerAdapter() {
       const { data } = await q;
       return data || [];
     },
+    async getRecentSearchKeywords(limit) {
+      return gptRecentSearchKeywords(limit || 12);
+    },
+    async getPopularKeywords(o) {
+      if (!_supabase) return [];
+      const lim = (o && o.limit) || 12;
+      let q = _supabase.from('product_types_v')
+        .select('keyword,category,category_canonical,n_sellers,price_median,n_listings,rep_image_url,total_sold_sum')
+        .eq('city', 'ALL')
+        .gte('n_listings', 3)
+        .order('omset_top15', { ascending: false, nullsFirst: false })
+        .limit(lim);
+      if (o && o.category) q = q.eq('category_canonical', o.category);
+      const { data } = await q;
+      return data || [];
+    },
     async getKeywordBaseline(keywords) {
       if (!_supabase || !keywords || !keywords.length) return [];
       const { data } = await _supabase.from('product_types_v')
-        .select('keyword,n_sellers,price_median,rep_product_name,rep_image_url,rep_store_name')
+        .select('keyword,category,category_canonical,n_sellers,price_median,rep_product_name,rep_image_url,rep_store_name')
         .eq('city', 'ALL').in('keyword', keywords).limit(20);
       return (data || []).map(r => ({
-        keyword: r.keyword, n_sellers: r.n_sellers, price_median: r.price_median,
+        keyword: r.keyword, category: r.category || '', category_canonical: r.category_canonical || '',
+        n_sellers: r.n_sellers, price_median: r.price_median,
         top_name: r.rep_product_name, top_image: r.rep_image_url, top_store: r.rep_store_name,
       }));
     },
@@ -11196,6 +11376,29 @@ const _ptypeCache = Object.create(null);
 
 const PTYPE_COLS = 'keyword,city,category,category_canonical,subgroup,n_listings,n_sellers,price_min,price_median,price_max,avg_sold,total_sold_sum,omset_top15,sold_top3_share,images,rep_item_id,rep_shop_id,rep_product_name,rep_store_name,rep_price,rep_total_sold,rep_reviews,rep_rating,rep_location,rep_image_url,rep_url,rep_listing_date,trend_delta_30d,breakout_rate,niche_new_items,median_winner_price,median_winner_reviews';
 
+// product_types_v only gained the wk_* columns in migration 20260813120000.
+// PostgREST rejects the WHOLE query for one unknown column, so asking for them
+// against a database that has not been migrated yet would blank the directory
+// rather than just drop the badge. Stay optimistic, and if the first real query
+// comes back with "column does not exist", fall back for the rest of the
+// session. Static deploys and DB migrations do not land atomically here.
+const PTYPE_WEEKLY_COLS = 'wk_units,wk_base,wk_items,wk_span_days,wk_anchor_at';
+let _ptypeHasWeekly = true;
+
+function ptypeCols() {
+  return _ptypeHasWeekly ? `${PTYPE_COLS},${PTYPE_WEEKLY_COLS}` : PTYPE_COLS;
+}
+
+/** True once, for the error that means "this DB predates the weekly matview". */
+function ptypeWeeklyMissing(error) {
+  if (!_ptypeHasWeekly || !error) return false;
+  const s = `${error.code || ''} ${error.message || ''}`;
+  if (!/42703/.test(s) && !/wk_units|wk_base|wk_items|wk_span_days|wk_anchor_at/.test(s)) return false;
+  console.warn('[ptype] weekly columns missing — Terlaris Minggu Ini disabled until the DB is migrated');
+  _ptypeHasWeekly = false;
+  return true;
+}
+
 async function fetchProductTypes(cities, cats, limit = 1000, sub = null) {
   if (!_supabase) return [];
   const cityList = Array.isArray(cities) ? cities.filter(Boolean) : (cities ? [cities] : []);
@@ -11206,17 +11409,22 @@ async function fetchProductTypes(cities, cats, limit = 1000, sub = null) {
   const key = `${cityKey}|${catKey}|${sub || ''}`;
   if (_ptypeCache[key]) return _ptypeCache[key];
   try {
-    let q = _supabase.from('product_types_v')
-      .select(PTYPE_COLS)
-      .gte('n_listings', 3)
-      .order('omset_top15', { ascending: false, nullsFirst: false })
-      .limit(buckets.length > 1 ? Math.min(limit * buckets.length, 3000) : limit);
-    if (buckets.length === 1) q = q.eq('city', buckets[0]);
-    else q = q.in('city', buckets);
-    if (catList.length === 1) q = q.eq('category_canonical', catList[0]);
-    else if (catList.length > 1) q = q.in('category_canonical', catList);
-    if (sub && catList.length === 1) q = q.eq('subgroup', sub);
-    const { data, error } = await q;
+    const build = () => {
+      let q = _supabase.from('product_types_v')
+        .select(ptypeCols())
+        .gte('n_listings', 3)
+        .order('omset_top15', { ascending: false, nullsFirst: false })
+        .limit(buckets.length > 1 ? Math.min(limit * buckets.length, 3000) : limit);
+      if (buckets.length === 1) q = q.eq('city', buckets[0]);
+      else q = q.in('city', buckets);
+      if (catList.length === 1) q = q.eq('category_canonical', catList[0]);
+      else if (catList.length > 1) q = q.in('category_canonical', catList);
+      if (sub && catList.length === 1) q = q.eq('subgroup', sub);
+      return q;
+    };
+    let { data, error } = await build();
+    // This is the query that settles _ptypeHasWeekly for every other caller.
+    if (ptypeWeeklyMissing(error)) ({ data, error } = await build());
     if (error) throw error;
     let rows = data || [];
     // Multi-city OR: collapse to one card per keyword (keep largest market).
@@ -11249,14 +11457,15 @@ async function fetchProductTypes(cities, cats, limit = 1000, sub = null) {
  * Reuses planSearch() so the EN/ID synonym expansion built for listing search
  * applies here too ("cross stitch" -> kristik) rather than being duplicated.
  */
-async function searchProductTypes(text, cities, limit = 12) {
+async function searchProductTypes(text, cities, limit = 12, opts) {
   if (!_supabase) return [];
   const raw = String(text || '').trim();
   if (raw.length < 2) return [];
+  if (!(opts && opts.skipLog)) gptLogSearchHistory(raw, 'ask_laris');
   const clauses = _splitSearchIntents(raw);
   if (clauses.length >= 2) {
     const per = Math.max(4, Math.ceil(limit / clauses.length) + 2);
-    const groups = await Promise.all(clauses.map(c => searchProductTypes(c, cities, per)));
+    const groups = await Promise.all(clauses.map(c => searchProductTypes(c, cities, per, { skipLog: true })));
     const seen = new Set();
     const out = [];
     for (const rows of groups) {
@@ -11284,17 +11493,30 @@ async function searchProductTypes(text, cities, limit = 12) {
     try {
       const needle = _sanitizeSearchToken(t).slice(0, 40);
       if (!needle) return [];
-      let q = _supabase.from('product_types_v')
-        .select(PTYPE_COLS)
-        .gte('n_listings', 3)
-        .ilike('keyword', `%${needle}%`)
-        .order('omset_top15', { ascending: false, nullsFirst: false })
-        .limit(limit * 2);
-      if (buckets.length === 1) q = q.eq('city', buckets[0]);
-      else q = q.in('city', buckets);
-      const { data } = await q;
+      const build = () => {
+        let q = _supabase.from('product_types_v')
+          .select(ptypeCols())
+          .gte('n_listings', 3)
+          .ilike('keyword', `%${needle}%`)
+          .order('omset_top15', { ascending: false, nullsFirst: false })
+          .limit(limit * 2);
+        if (buckets.length === 1) q = q.eq('city', buckets[0]);
+        else q = q.in('city', buckets);
+        return q;
+      };
+      let { data, error } = await build();
+      const retried = ptypeWeeklyMissing(error);
+      if (retried) ({ data, error } = await build());
+      // #region agent log
+      fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ed5ec2'},body:JSON.stringify({sessionId:'ed5ec2',hypothesisId:'H2',location:'gpt-app.js:searchProductTypes:term',message:'ptype term query',data:{text:raw,needle,n:(data||[]).length,err:error&&String(error.code||'')+' '+String(error.message||'').slice(0,120),retried,hasWeekly:_ptypeHasWeekly,sample:(data||[]).map(r=>r.keyword).slice(0,5)},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       return data || [];
-    } catch (_) { return []; }
+    } catch (e) {
+      // #region agent log
+      fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ed5ec2'},body:JSON.stringify({sessionId:'ed5ec2',hypothesisId:'H2',location:'gpt-app.js:searchProductTypes:catch',message:'ptype term threw',data:{text:raw,err:String(e&&e.message||e).slice(0,160),hasWeekly:_ptypeHasWeekly},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      return [];
+    }
   }));
   runs.forEach(rows => rows.forEach(r => {
     if (!r?.keyword || seen.has(r.keyword)) return;
@@ -11335,7 +11557,7 @@ async function searchProductTypes(text, cities, limit = 12) {
     if (fuzzyKws.length) {
       try {
         let fq = _supabase.from('product_types_v')
-          .select(PTYPE_COLS)
+          .select(ptypeCols())
           .gte('n_listings', 3)
           .in('keyword', fuzzyKws);
         if (buckets.length === 1) fq = fq.eq('city', buckets[0]);
@@ -11346,6 +11568,9 @@ async function searchProductTypes(text, cities, limit = 12) {
     }
   }
   if (ranked.length) await attachTypeQuartiles(ranked);
+  // #region agent log
+  fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ed5ec2'},body:JSON.stringify({sessionId:'ed5ec2',hypothesisId:'H2',location:'gpt-app.js:searchProductTypes:out',message:'ptype ranked result',data:{text:raw,terms,hitN:hits.length,rankedN:ranked.length,top:(ranked||[]).slice(0,8).map(r=>({kw:r.keyword,sc:r._score,cat:r.category_canonical||r.category}))},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   return ranked;
 }
 
@@ -11404,6 +11629,94 @@ function typeRepProduct(t) {
   return p;
 }
 
+// ── "Terlaris Minggu Ini" badge ────────────────────────────────────────────
+// Floor a card must clear before it can ever be badged. Ranking is relative to
+// whatever is on screen, so this only exists to stop a market with no weekly
+// movement from being crowned. Re-tune with scripts/weekly-badge-calibrate.mjs
+// and record the change in docs/terlaris-minggu.md.
+const TERLARIS_MIN_UNITS = 25;   // 7-day-equivalent units for the whole market
+const TERLARIS_MIN_ITEMS = 2;    // listings that actually moved, so one Shopee
+                                 // display-bucket glitch cannot mint a badge
+
+/**
+ * Weekly reading for a market card, from mv_keyword_weekly via product_types_v.
+ *
+ * Returns null when there is no row for the keyword. That means "we never got a
+ * usable snapshot pair", which must never render as "0 terjual minggu ini".
+ */
+function weeklyStats(t) {
+  if (!t || t.wk_units == null) return null;
+  const units = Number(t.wk_units) || 0;
+  const base = Number(t.wk_base) || 0;
+  return {
+    units,
+    base,
+    // Same definition as trendGrowthPct(): growth against the cumulative
+    // baseline, NOT against last week. The tooltip has to say so.
+    pct: base >= 50 ? Math.round(units / base * 100) : (units > 0 ? Infinity : null),
+    items: Number(t.wk_items) || 0,
+    spanDays: Number(t.wk_span_days) || 0,
+    anchor: t.wk_anchor_at || null,
+  };
+}
+
+/**
+ * Pick which of these cards get the badge.
+ *
+ * Relative to the rendered set, so "terlaris minggu ini" always means "of what
+ * you are looking at". Call it on the exact array about to be mapped to HTML —
+ * badging the full result set and then paginating would scatter badges onto
+ * pages that do not contain the actual winner.
+ */
+function markTerlarisMinggu(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  const eligible = [];
+  list.forEach(t => {
+    if (!t) return;
+    t._terlaris = null;
+    const w = weeklyStats(t);
+    if (!w) return;
+    if (w.units < TERLARIS_MIN_UNITS || w.items < TERLARIS_MIN_ITEMS) return;
+    if (!(w.pct > 0)) return; // null (no baseline) and 0 are both out
+    eligible.push([t, w]);
+  });
+  if (!eligible.length) return list;
+  const rank = w => (w.pct === Infinity ? Number.MAX_SAFE_INTEGER : w.pct);
+  eligible.sort((a, b) => (b[1].units - a[1].units) || (rank(b[1]) - rank(a[1])));
+  eligible.slice(0, list.length >= 12 ? 2 : 1).forEach(([t, w]) => { t._terlaris = w; });
+  return list;
+}
+
+/**
+ * Spell out exactly what the green percentage measured.
+ *
+ * Two things are easy to misread and both are stated: the window is not a
+ * calendar week (our scrapes land ~12-17 days apart, so units are normalised to
+ * a 7-day rate), and the percentage is growth over lifetime sales rather than
+ * versus last week. MISSION.md forbids dressing either of those up.
+ */
+function terlarisTooltip(w) {
+  const units = Math.round(w.units).toLocaleString('id-ID');
+  const span = w.spanDays > 0 ? `${w.spanDays} hari terakhir` : 'rentang scrape terakhir';
+  const base = w.base.toLocaleString('id-ID');
+  return `Sekitar ${units} unit terjual per minggu — dihitung dari ${span} `
+    + `(sampai ${fmtAnchorDate(w.anchor)}) lalu disetarakan ke 7 hari. `
+    + `Persentase = kenaikan terhadap ${base} unit yang sudah terjual sebelumnya, `
+    + 'bukan perbandingan dengan minggu lalu: jadwal scrape kami belum harian.';
+}
+
+function terlarisBadgeHtml() {
+  return `<span class="tlr-badge">${ico('rocket', 12)}`
+    + '<span class="tlr-badge-txt"><span>Terlaris</span><span>Minggu Ini</span></span></span>';
+}
+
+function terlarisWowHtml(w) {
+  if (!w || w.pct == null) return '';
+  const val = w.pct === Infinity ? 'Baru' : `${w.pct}%`;
+  return `<span class="prod-card-wow" title="${esc(terlarisTooltip(w))}">`
+    + `${ico('arrowUp', 10)} ${val} minggu ini</span>`;
+}
+
 function typeCardHtml(t, absIdx, animIdx) {
   const imgs = (t.images || []).filter(Boolean);
   const mainImg = imgs[0] || t.rep_image_url || '';
@@ -11418,7 +11731,9 @@ function typeCardHtml(t, absIdx, animIdx) {
   const viewsHtml = vk
     ? `<span class="prod-card-views" hidden data-view-key="${esc(vk)}" title="Orang yang melihat produk ini di Laris tahun ini">${ico('eye', 11)}<span data-view-num>${viewers.toLocaleString('id-ID')}</span></span>`
     : '';
-  return `<button type="button" class="prod-card ptype-card" data-ptype="${absIdx}" data-ptype-kw="${esc(t.keyword || '')}" style="animation-delay:${(animIdx % 3) * 0.06}s">
+  const tlr = t._terlaris || null;
+  return `<button type="button" class="prod-card ptype-card${tlr ? ' prod-card--terlaris' : ''}" data-ptype="${absIdx}" data-ptype-kw="${esc(t.keyword || '')}" style="animation-delay:${(animIdx % 3) * 0.06}s">
+    ${tlr ? terlarisBadgeHtml() : ''}
     ${mainImg ? `<img src="${esc(mainImg)}" alt="" loading="lazy">` : '<div class="prod-card-ph"></div>'}
     <div class="prod-card-body">
       <div class="prod-card-name-row">
@@ -11429,6 +11744,7 @@ function typeCardHtml(t, absIdx, animIdx) {
         <div class="prod-stat">
           <span class="prod-stat-lbl">Omset/bulan</span>
           <span class="prod-stat-val">${omsetVal}</span>
+          ${tlr ? terlarisWowHtml(tlr) : ''}
         </div>
       </div>
     </div>
@@ -11465,7 +11781,7 @@ async function typesForListings(rows, city, limit = 12) {
   if (missing.length) {
     try {
       const { data } = await _supabase.from('product_types_v')
-        .select(PTYPE_COLS)
+        .select(ptypeCols())
         .eq('city', city || 'ALL')
         .in('keyword', missing.slice(0, 80))
         .gte('n_listings', 3);
@@ -11484,7 +11800,7 @@ async function typesForListings(rows, city, limit = 12) {
 
 /** Market grid markup, so call sites read the same as the old productCardsHtml. */
 function marketCardsHtml(types) {
-  return (types || []).map((t, i) => typeCardHtml(t, i, i)).join('');
+  return markTerlarisMinggu(types || []).map((t, i) => typeCardHtml(t, i, i)).join('');
 }
 
 function bindTypeCards(root) {
@@ -11509,6 +11825,7 @@ function sortTypeRows(rows, mode, hasQuery) {
   if (mode === 'termurah') out.sort((a, b) => (Number(a.price_median) || 0) - (Number(b.price_median) || 0));
   else if (mode === 'termahal') out.sort((a, b) => (Number(b.price_median) || 0) - (Number(a.price_median) || 0));
   else if (mode === 'naik_daun') out.sort((a, b) => (Number(b.trend_delta_30d) || 0) - (Number(a.trend_delta_30d) || 0));
+  else if (mode === 'terlaris_minggu') out.sort((a, b) => (Number(b.wk_units) || 0) - (Number(a.wk_units) || 0));
   else if (mode === 'sesuai' && hasQuery) return out; // already relevance-sorted by searchProductTypes()
   else out.sort((a, b) => (Number(b.omset_top15) || 0) - (Number(a.omset_top15) || 0)); // sesuai (no query) / terlaris fallback
   return out;
@@ -11915,7 +12232,7 @@ async function renderDirectory() {
   // the real, filtered fetch below resolves and replaces it. Any filtered
   // request keeps the old loading text since it has nothing instant to show.
   if (!q && !cats.length && !sub && _dirInstantPool.length) {
-    grid.innerHTML = _dirInstantPool.map((t, i) => typeCardHtml(t, i, i)).join('');
+    grid.innerHTML = marketCardsHtml(_dirInstantPool);
     bindTypeCards(grid);
   } else {
     grid.innerHTML = garudaLoadingHtml('Memuat…');
@@ -11923,12 +12240,14 @@ async function renderDirectory() {
   let types;
   if (q) {
     types = await searchProductTypes(q, cities, 60);
-    // Category filter still applies client-side when searching.
-    if (cats.length) {
-      const set = new Set(cats);
-      types = types.filter(t => set.has(t.category_canonical) || set.has(t.category));
-    }
-    if (sub) types = types.filter(t => t.subgroup === sub);
+    const beforeCat = (types || []).length;
+    // Text search must ignore category/subgroup chips. Soccer shoes live in
+    // "Sepatu, Tas & Aksesoris", so "sepatu bola" + Olahraga/Fashion selected
+    // used to hard-filter to 0 and show "Belum ketemu pasar". Same rule as
+    // dscFetchPage (Discover listings).
+    // #region agent log
+    fetch('http://127.0.0.1:7246/ingest/58a9a9f8-5316-40c5-8db6-cdc6fd14990e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ed5ec2'},body:JSON.stringify({sessionId:'ed5ec2',runId:'post-fix',hypothesisId:'H3',location:'gpt-app.js:renderDirectory',message:'directory search filter',data:{q,cats,sub,cities,beforeCat,afterCat:(types||[]).length,ignoredCat:!!(cats.length||sub),sample:(types||[]).map(t=>t.keyword).slice(0,8)},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
   } else {
     types = await fetchProductTypes(cities, cats, 1000, sub);
     // mv missing/empty (e.g. refresh failed): lift the listing pool back up to
@@ -11955,6 +12274,9 @@ async function renderDirectory() {
   const emptyMsg = q
     ? `<p class="dd-sub">Belum ketemu pasar untuk "<strong>${esc(q)}</strong>". Coba kata kunci lain.</p>`
     : '<p class="dd-sub">Tidak ada tipe produk untuk filter ini.</p>';
+  // Badge the page being drawn, not the whole result set — otherwise page 4
+  // shows a "terlaris" card that is nowhere near the top of the list.
+  markTerlarisMinggu(slice);
   grid.innerHTML = slice.map((t, i) => typeCardHtml(t, start + i, i)).join('') || emptyMsg;
   bindTypeCards(grid);
   scrollPanelToTop();

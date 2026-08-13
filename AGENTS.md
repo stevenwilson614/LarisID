@@ -16,6 +16,12 @@ The logged-in product UI lives in **`index.html`** (not Astro routes). Before ch
 
 **Do not** reintroduce a blocking popup for onboarding; keep the 3-step flow in Discover. **Do not** fabricate price/sales deltas in return strips. Leaders and platform admins bypass journey gating.
 
+## "Terlaris Minggu Ini" badge
+
+Before changing badge thresholds, the weekly measurement window, the growth-percentage definition, or the `terlaris_minggu` composer intent, read **[docs/terlaris-minggu.md](./docs/terlaris-minggu.md)**.
+
+Our scrapes land **12-17 days apart**, not weekly. Weekly units are span-normalised to a 7-day rate in `mv_keyword_weekly`; never present a raw two-snapshot delta as "minggu ini". Re-tune with `node scripts/weekly-badge-calibrate.mjs` (read-only) and record the change in that doc.
+
 ## SEO, static pages & AI discoverability
 
 Before changing titles, competitor comparisons, pricing copy on the public site, or `llms.txt`, read **[docs/seo.md](./docs/seo.md)**.

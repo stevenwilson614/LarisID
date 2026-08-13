@@ -38,6 +38,7 @@
 
   var SORT_OPTIONS = [
     ['sesuai', 'Paling Sesuai'],
+    ['terlaris_minggu', 'Terlaris Minggu Ini'],
     ['termahal', 'Harga Tertinggi'],
     ['termurah', 'Harga Terendah'],
   ];

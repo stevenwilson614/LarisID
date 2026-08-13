@@ -1081,12 +1081,9 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .prod-card--terlaris::after { animation: none; opacity: .8; }
 }
-/* No nowrap: a four-digit percentage on a 178px two-column card would spill
-   past the gold border rather than clip. Wrapping is the graceful failure. */
 .prod-card-wow {
   display: inline-flex; align-items: center; gap: 3px; margin-top: 3px;
-  max-width: 100%;
-  color: var(--green); font-weight: 750; font-size: .68rem; line-height: 1.25;
+  color: var(--green); font-weight: 750; font-size: .68rem; white-space: nowrap;
 }
 .prod-card-wow svg { stroke: var(--green); flex-shrink: 0; }
 
@@ -5677,7 +5674,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script defer src="/js/laris-mascot-rigs.js?v=20260812a"></script>
 <script defer src="/js/laris-mascot.js?v=20260812a"></script>
 <script src="/js/admin-map.js?v=20260812a" defer></script>
-<script src="/js/gpt-app.js?v=20260813c" defer></script>
+<script src="/js/gpt-app.js?v=20260813d" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>
 </html>
