@@ -1081,9 +1081,12 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .prod-card--terlaris::after { animation: none; opacity: .8; }
 }
+/* No nowrap: a four-digit percentage on a 178px two-column card would spill
+   past the gold border rather than clip. Wrapping is the graceful failure. */
 .prod-card-wow {
   display: inline-flex; align-items: center; gap: 3px; margin-top: 3px;
-  color: var(--green); font-weight: 750; font-size: .68rem; white-space: nowrap;
+  max-width: 100%;
+  color: var(--green); font-weight: 750; font-size: .68rem; line-height: 1.25;
 }
 .prod-card-wow svg { stroke: var(--green); flex-shrink: 0; }
 
@@ -2428,9 +2431,8 @@ body.view-chat .panel { padding-bottom: calc(var(--composer-h) + 28px); }
   -webkit-background-clip: text; background-clip: text;
   color: transparent;
 }
-/* Ask Laris: title + market icons stay centered over the composer.
-   Garuda hangs in the left column of a 3-col grid whose right column
-   matches the mascot width, so the copy’s center doesn’t shift. */
+/* Ask Laris: 2-line title + icons stay centered over the composer.
+   Garuda is out of flow to the left, so it never wraps the heading. */
 .home-ask-stage {
   display: flex;
   flex-direction: column;
@@ -2439,7 +2441,6 @@ body.view-chat .panel { padding-bottom: calc(var(--composer-h) + 28px); }
 }
 .home-ask-intro {
   --ask-mascot-h: clamp(200px, 26vw, 280px);
-  --ask-mascot-w: calc(var(--ask-mascot-h) * 682 / 1024);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2449,36 +2450,36 @@ body.view-chat .panel { padding-bottom: calc(var(--composer-h) + 28px); }
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 0;
   text-align: center;
 }
 .home-ask-mascot {
   display: none;
   height: var(--ask-mascot-h);
-  width: 100%;
-  max-width: var(--ask-mascot-w);
+  width: auto;
   margin: 0;
   line-height: 0;
   pointer-events: none;
-  position: relative;
+  position: absolute;
+  right: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 0;
 }
 body.home-finder-done.view-home .home-ask-intro {
-  display: grid;
-  grid-template-columns: minmax(0, var(--ask-mascot-w)) auto minmax(0, var(--ask-mascot-w));
-  justify-content: center;
-  align-items: center;
-  column-gap: 12px;
-  width: 100%;
-  max-width: 640px;
   margin: 0 0 6px;
+}
+body.home-finder-done.view-home .home-ask-copy {
+  position: relative;
+  width: max-content;
+}
+body.home-finder-done.view-home .home-title {
+  white-space: nowrap;
 }
 body.home-finder-done.view-home .home-ask-mascot { display: block; }
 .home-ask-mascot img,
 .home-ask-mascot picture {
   height: 100%; width: auto; display: block;
-  max-width: 100%;
-  margin: 0 auto;
+  max-width: none;
 }
 .home-ask-mascot img {
   object-fit: contain; object-position: center bottom;
@@ -2763,19 +2764,21 @@ body.home-finder-done .home-hero {
   /* The space before this <br> in the markup is deliberate: hiding the break
      here would otherwise render "kamumau" as one word. */
   .home-title br { display: none; }
-  /* Ask Laris: keep the 2-line title centered; shrink Garuda so the
-     equal side-columns still fit beside it. */
+  /* Ask Laris: force the <br> split only — never a 3rd line. */
   body.home-finder-done.view-home .home-title {
-    font-size: clamp(1.25rem, 5.2vw, 1.65rem);
+    font-size: clamp(1.3rem, 6vw, 1.85rem);
     line-height: 1.18;
     text-align: center;
     margin: 0 0 10px;
+    white-space: nowrap;
   }
   body.home-finder-done.view-home .home-title br { display: inline; }
   body.home-finder-done.view-home .home-ask-intro {
     --ask-mascot-h: clamp(96px, 28vw, 132px);
-    column-gap: 8px;
     margin: 0 0 4px;
+  }
+  body.home-finder-done.view-home .home-ask-mascot {
+    right: calc(100% + 6px);
   }
   .home-markets {
     gap: 8px;
@@ -4854,13 +4857,13 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
             <div class="home-scroll">
               <div class="home-ask-stage">
               <div class="home-ask-intro">
+                <div class="home-ask-copy">
                 <div class="home-ask-mascot" data-mascot="ask" aria-hidden="true">
                   <picture>
                     <source srcset="/images/brand/mascot-ask.webp?v=20260812c" type="image/webp">
                     <img src="/images/brand/mascot-ask.png?v=20260812c" width="682" height="1024" alt="" decoding="async">
                   </picture>
                 </div>
-                <div class="home-ask-copy">
                 <h1 class="home-title">Apa yang kamu <br>mau <em>jual</em> hari ini?</h1>
               <ul class="home-markets" aria-label="Marketplace yang didukung">
                 <li title="Shopee" aria-label="Shopee">
