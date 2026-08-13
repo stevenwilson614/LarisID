@@ -14371,7 +14371,6 @@ const ECOM_LOGO = {
   blibli:    `<svg viewBox="0 0 32 32" width="26" height="26" style="display:block;flex-shrink:0"><rect width="32" height="32" rx="8" fill="#0072BC"/><path d="M11.4 12.3a4.6 4.6 0 0 1 9.2 0" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M8.8 12h14.4l-1 11.2a1.6 1.6 0 0 1-1.6 1.45H11.4a1.6 1.6 0 0 1-1.6-1.45z" fill="#fff"/><circle cx="16" cy="18.4" r="2.2" fill="#0072BC"/></svg>`,
 };
 const ECOM_ICON_Q = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2" style="display:block"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
-const ECOM_ICON_TROPHY = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>`;
 // per platform: comm = komisi/biaya kategori per tier, program = biaya program
 // (gratis ongkir dll), admin = biaya admin tetap, flat = biaya per pesanan (Rp).
 const PLATFORM_FEES = {
@@ -14432,11 +14431,9 @@ function ddRenderFeeStrip(p){
   const order = Object.keys(PLATFORM_FEES)
     .map(plat => ({ plat, fee: platformFeePerProduct(plat, cat, price) }))
     .sort((a, b) => price > 0 ? a.fee.totalRp - b.fee.totalRp : a.fee.pctOnly - b.fee.pctOnly);
-  const minVal = order.length ? (price > 0 ? order[0].fee.totalRp : order[0].fee.pctOnly) : 0;
   const items = order.map(o => {
     const f = PLATFORM_FEES[o.plat];
-    const best = price > 0 ? o.fee.totalRp === minVal : o.fee.pctOnly === minVal;
-    return `<button type="button" class="dd-mp-item${best ? ' best' : ''}" onclick="ddSwitchTab('biaya')" title="Lihat rincian biaya ${f.label}">
+    return `<button type="button" class="dd-mp-item" onclick="ddSwitchTab('biaya')" title="Lihat rincian biaya ${f.label}">
       <span class="dd-mp-brand">${f.logo}<span class="dd-mp-name">${f.label}</span></span>
       <span class="dd-mp-pct">${ecomFmtPct(o.fee.pctOnly)}</span>
     </button>`;
@@ -14456,7 +14453,6 @@ function ddRenderFees(){
     const fa = platformFeePerProduct(a, cat, price), fb = platformFeePerProduct(b, cat, price);
     return price > 0 ? fa.totalRp - fb.totalRp : fa.pctOnly - fb.pctOnly;
   });
-  const best = order[0];
   const cards = order.map(plat => {
     const f = PLATFORM_FEES[plat];
     const d = platformFeeDetail(plat, cat, vol);
@@ -14465,10 +14461,9 @@ function ddRenderFees(){
         <div style="text-align:right;white-space:nowrap;">${r.pct != null ? `<div style="font-size:.72rem;font-weight:700;color:#374151;">${ecomFmtPct(r.pct)}</div>` : ''}${price > 0 ? `<div style="font-size:.6rem;color:#9CA3AF;">${ecomFmtRp(r.rpPer)}/produk</div>` : ''}</div>
       </div>`).join('');
     const noteHtml = d.note ? `<div style="font-size:.62rem;color:#9CA3AF;margin-top:8px;font-style:italic;">${d.note}</div>` : '';
-    const badge = plat === best ? `<span class="dd-mp-badge" style="position:static;margin-left:6px;">${ECOM_ICON_TROPHY} Terbaik</span>` : '';
     return `<div class="dd-card" style="padding:16px;">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">
-        <div class="dd-mp-brand">${f.logo}<span class="dd-mp-name">${f.label}</span>${badge}</div>
+        <div class="dd-mp-brand">${f.logo}<span class="dd-mp-name">${f.label}</span></div>
         <div style="text-align:right;"><div style="font-size:1.05rem;font-weight:800;color:#B5202A;line-height:1;">${ecomFmtPct(d.pctOnly)}</div><div style="font-size:.56rem;color:#9CA3AF;margin-top:2px;">komisi + program</div></div>
       </div>
       ${rowsHtml}

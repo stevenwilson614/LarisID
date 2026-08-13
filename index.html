@@ -2334,6 +2334,10 @@ body.home-finder-done .home-markets { margin-bottom: 10px; }
 body.home-finder-done .home-finder,
 body.home-finder-done .finder-atau,
 body.home-finder-done .home-sub { display: none !important; }
+/* Landing: 4 questions + submit only. Composer stays on Ask Laris. */
+body.view-home:not(.home-finder-done) .home-composer,
+body.view-home:not(.home-finder-done) .finder-atau,
+body.view-home:not(.home-finder-done) .home-prompts { display: none !important; }
 body.home-finder-done .home-hero {
   justify-content: center;
   min-height: min(62vh, 560px);
@@ -2570,6 +2574,10 @@ body.home-finder-done .home-hero {
     width: auto;
     box-sizing: border-box;
   }
+  /* No docked composer on the 4-question landing — use the full screen. */
+  body.view-home:not(.home-finder-done) .home-scroll {
+    inset: 12px 14px max(12px, env(safe-area-inset-bottom));
+  }
   .home-title {
     font-size: clamp(1.2rem, 5.4vw, 1.5rem);
     margin: 4px 0 12px;
@@ -2579,6 +2587,30 @@ body.home-finder-done .home-hero {
   /* The space before this <br> in the markup is deliberate: hiding the break
      here would otherwise render "kamumau" as one word. */
   .home-title br { display: none; }
+  /* Ask Laris: 2 full-width lines + standing Garuda on the left. */
+  body.home-finder-done.view-home .home-title-row {
+    max-width: none;
+    width: 100%;
+    text-align: left;
+    align-items: flex-end;
+    justify-content: flex-start;
+    gap: 10px;
+    margin: 0 0 12px;
+  }
+  body.home-finder-done.view-home .home-title {
+    font-size: clamp(1.45rem, 6.5vw, 1.85rem);
+    line-height: 1.18;
+    text-align: left;
+    margin: 0;
+  }
+  body.home-finder-done.view-home .home-title br { display: inline; }
+  body.home-finder-done.view-home .home-ask-mascot {
+    height: calc(clamp(1.45rem, 6.5vw, 1.85rem) * 2.36);
+    align-self: flex-end;
+  }
+  body.home-finder-done.view-home .home-ask-mascot img {
+    object-position: left bottom;
+  }
   .home-markets {
     gap: 8px;
     margin: 0 0 16px;
@@ -3900,6 +3932,7 @@ body.calc-resizing .calc-resize::before { background: var(--accent); }
   display: none; align-items: center; justify-content: center;
   width: 100%; padding: 9px 0 5px; flex-shrink: 0;
   background: transparent; border: none; cursor: grab;
+  touch-action: none;
 }
 .sheet-grab span {
   width: 42px; height: 5px; border-radius: 999px; background: var(--line);
@@ -5241,7 +5274,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 
   <aside class="calc-panel" id="calc-panel" aria-hidden="true" aria-label="Panel samping">
     <div class="calc-resize" id="calc-resize" role="separator" aria-orientation="vertical" title="Geser untuk ubah lebar"></div>
-    <button type="button" class="sheet-grab" id="sheet-grab" aria-label="Kecilkan atau besarkan panel"><span></span></button>
+    <div class="sheet-grab" id="sheet-grab" role="button" tabindex="0" aria-label="Kecilkan atau besarkan panel"><span></span></div>
     <div class="calc-head">
       <div class="calc-head-txt">
         <div class="side-tabs" role="tablist" aria-label="Mode panel">

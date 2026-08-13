@@ -1259,7 +1259,7 @@ const state = {
   activeChatId: null,
   recommendations: [],
   deepdiveProduct: null,
-  pendingDeepdive: null, // product clicked behind the login gate; opened after sign-in
+  pendingDeepdive: null, // { item_id, shop_id } clicked behind the login gate; opened after sign-in
   pendingCompare: null, // { a, b } clicked behind login gate; opened after sign-in
   pendingFinder: null,  // landing finder answers given before signup; re-run after
   pendingTracker: null, // in-progress tracker wizard draft behind the login gate; resumed after sign-in
@@ -2426,14 +2426,43 @@ async function commitChatRename(chat, title) {
   clarityEvt('gpt_chat_rename', {});
 }
 
+function stashPendingDeepdive(product) {
+  if (!product) return;
+  const item_id = product.item_id ?? null;
+  const shop_id = product.shop_id ?? null;
+  if (item_id == null && shop_id == null) {
+    state.pendingDeepdive = product;
+  } else {
+    state.pendingDeepdive = { item_id, shop_id };
+  }
+  saveLocalState();
+}
+
+async function hydratePendingDeepdive(pending) {
+  if (!pending) return null;
+  const item_id = pending.item_id;
+  const shop_id = pending.shop_id;
+  if (item_id != null && shop_id != null) {
+    const resolved = await resolveProduct(item_id, shop_id);
+    if (resolved) return resolved;
+  }
+  if (pending.product_name || pending.keyword) return asListingProduct(pending);
+  return pending;
+}
+
 // ── Auth modal ───────────────────────────────────────────────────────────
 function openAuthModal(mode, source) {
   _authMode = mode || 'signup';
   _gateSource = source || '';
-  // Carry the landing answers across the signup round trip (incl. the OAuth
-  // page reload) so the user lands on their products, not back at the start.
   try {
-    if (!currentUser && finderIsComplete()) {
+    if (!currentUser && !state.pendingDeepdive && state.deepdiveProduct) {
+      stashPendingDeepdive(state.deepdiveProduct);
+    }
+  } catch (_) {}
+  // Carry landing answers across signup only when the user actually changed
+  // them — defaults would otherwise resume Ask Laris instead of a deep dive.
+  try {
+    if (!currentUser && finderHasCustomAnswers()) {
       state.pendingFinder = { ...(_finder || {}) };
       saveLocalState();
     }
@@ -2781,12 +2810,13 @@ async function _authOnSignIn(session) {
     state.pendingCompare = null;
     state.pendingDeepdive = null;
     saveLocalState();
-    void openProductCompare(pair.a, pair.b);
+    await openProductCompare(pair.a, pair.b);
   } else if (state.pendingDeepdive) {
-    const p = state.pendingDeepdive;
+    const pending = state.pendingDeepdive;
     state.pendingDeepdive = null;
     saveLocalState();
-    void openDeepDive(p);
+    const p = await hydratePendingDeepdive(pending);
+    if (p) await openDeepDive(p);
   } else if (state.pendingTracker) {
     const pt = state.pendingTracker;
     state.pendingTracker = null;
@@ -3340,6 +3370,18 @@ function finderIsComplete() {
   return !!(_finder && _finder.city && _finder.categories && _finder.categories.length && _finder.budget && _finder.experience);
 }
 
+/** True when the user changed at least one finder field from the built-in defaults. */
+function finderHasCustomAnswers() {
+  if (!finderIsComplete()) return false;
+  const cats = Array.isArray(_finder.categories) ? _finder.categories : [];
+  const city = String(_finder.city || '').trim();
+  if (city && city !== FINDER_DEFAULT_CITY) return true;
+  if (cats.length !== 1 || cats[0] !== FINDER_DEFAULT_CAT) return true;
+  if (_finder.budget && _finder.budget !== '1jt_10jt') return true;
+  if (_finder.experience && _finder.experience !== 'first_time') return true;
+  return false;
+}
+
 function syncFinderToOnboarding() {
   if (!finderIsComplete()) return;
   const o = state.onboarding;
@@ -3376,7 +3418,7 @@ function updateHomeFinderVisibility() {
   const finder = $('home-finder');
   if (finder) finder.hidden = !show;
   const atau = document.querySelector('#view-home .finder-atau');
-  if (atau) atau.hidden = !show;
+  if (atau) atau.hidden = true;
   // The finder is a first-run affordance. Once the user has completed
   // onboarding, sent a message, or opened a deep dive, the composer
   // becomes the primary entry point — the finder stays hidden for good.
@@ -4606,10 +4648,18 @@ function setCalcWidth(px) {
   return w;
 }
 
+function _sheetVh() {
+  return (window.visualViewport && window.visualViewport.height) || window.innerHeight || 1;
+}
+
 function setSheetHeight(pct) {
-  // pct = fraction of viewport height (0.15–0.95). Default open is 0.80.
-  const p = Math.max(0.15, Math.min(0.95, Number(pct) || 0.8));
-  document.documentElement.style.setProperty('--sheet-h', `${Math.round(p * 1000) / 10}dvh`);
+  // pct = fraction of visual viewport (0.15–~0.98). Default open is 0.80.
+  // Height is painted in px so drag math and CSS stay on the same unit
+  // (dvh vs innerHeight diverge on iOS chrome).
+  const vh = _sheetVh();
+  const maxPct = Math.min(0.98, Math.max(0.5, (vh - 8) / vh));
+  const p = Math.max(0.15, Math.min(maxPct, Number(pct) || 0.8));
+  document.documentElement.style.setProperty('--sheet-h', `${Math.round(p * vh)}px`);
   return p;
 }
 
@@ -5045,10 +5095,12 @@ function openSidePanel(mode, opts = {}) {
   panel.setAttribute('aria-hidden', 'false');
   setSideModeUi(next);
   // Mobile sheet: explicit opens always expand; boot restore honors last state.
-  if (opts.via === 'restore' && window.innerWidth <= 860 && loadSidePrefs().collapsed) {
+  const sheetMode = window.matchMedia('(max-width: 860px)').matches;
+  if (opts.via === 'restore' && sheetMode && loadSidePrefs().collapsed) {
     panel.classList.add('sheet-collapsed');
   } else {
     panel.classList.remove('sheet-collapsed');
+    if (sheetMode) setSheetHeight(loadSidePrefs().sheetPct || 0.8);
   }
 
   if (next === 'ai') fillAiContent(opts);
@@ -5103,11 +5155,11 @@ function wireCalcPanel() {
   $('serupa-rail')?.addEventListener('click', () => openSerupaPanel({ via: 'rail' }));
   $('calc-close')?.addEventListener('click', closeCalcPanel);
 
-  // Mobile bottom-sheet grab: drag to resize height; <10% viewport auto-collapses.
-  // Tap (tiny movement) still toggles collapse. Swipe-down-when-collapsed closes.
+  // Mobile bottom-sheet grab: pointer-drag to resize height; <10% viewport auto-collapses.
+  // Tap (tiny movement) still toggles collapse.
   const grab = $('sheet-grab');
   if (grab) {
-    const isSheet = () => window.innerWidth <= 860;
+    const isSheet = () => window.matchMedia('(max-width: 860px)').matches;
     const setCollapsed = (on) => {
       $('calc-panel')?.classList.toggle('sheet-collapsed', on);
       saveSidePrefs({ collapsed: on });
@@ -5115,13 +5167,12 @@ function wireCalcPanel() {
     if (prefs.sheetPct) setSheetHeight(prefs.sheetPct);
     else setSheetHeight(0.8);
 
-    let drag = null; // { startY, startH, moved }
-    const clientY = (e) => (e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY);
-    const onMove = (e) => {
-      if (!drag || !isSheet()) return;
-      const dy = clientY(e) - drag.startY;
+    let drag = null; // { pointerId, startY, startH, moved, lastPct }
+    const onPointerMove = (e) => {
+      if (!drag || e.pointerId !== drag.pointerId || !isSheet()) return;
+      const dy = e.clientY - drag.startY;
       if (Math.abs(dy) > 4) drag.moved = true;
-      const vh = window.innerHeight || 1;
+      const vh = _sheetVh();
       const nextH = drag.startH - dy; // drag up → taller
       const pct = nextH / vh;
       if (pct < 0.10) {
@@ -5129,52 +5180,61 @@ function wireCalcPanel() {
         return;
       }
       setCollapsed(false);
-      setSheetHeight(pct);
+      drag.lastPct = setSheetHeight(pct);
       if (e.cancelable) e.preventDefault();
     };
-    const onUp = () => {
-      if (!drag) return;
+    const onPointerUp = (e) => {
+      if (!drag || e.pointerId !== drag.pointerId) return;
       const moved = drag.moved;
+      const lastPct = drag.lastPct;
       const collapsed = $('calc-panel')?.classList.contains('sheet-collapsed');
       drag = null;
       document.body.classList.remove('sheet-resizing');
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-      window.removeEventListener('touchmove', onMove);
-      window.removeEventListener('touchend', onUp);
+      try { grab.releasePointerCapture(e.pointerId); } catch (_) {}
       if (!moved) {
-        // Tap: toggle collapse
         setCollapsed(!collapsed);
         return;
       }
       if (collapsed) return;
-      const panel = $('calc-panel');
-      const h = panel?.getBoundingClientRect().height || 0;
-      const pct = h / (window.innerHeight || 1);
-      if (pct < 0.10) setCollapsed(true);
-      else saveSidePrefs({ sheetPct: setSheetHeight(pct), collapsed: false });
+      if (lastPct != null) saveSidePrefs({ sheetPct: lastPct, collapsed: false });
+      else {
+        const pct = ($('calc-panel')?.getBoundingClientRect().height || 0) / _sheetVh();
+        if (pct < 0.10) setCollapsed(true);
+        else saveSidePrefs({ sheetPct: setSheetHeight(pct), collapsed: false });
+      }
     };
-    const onDown = (e) => {
+    const onPointerDown = (e) => {
       if (!isSheet()) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
       const panel = $('calc-panel');
       if (!panel) return;
-      // If collapsed, a downward flick after expand-path still handled in onUp tap;
-      // start measuring from current (collapsed) height so drag-up expands.
+      if (e.cancelable) e.preventDefault();
+      try { grab.setPointerCapture(e.pointerId); } catch (_) {}
+      const vh = _sheetVh();
       drag = {
-        startY: clientY(e),
+        pointerId: e.pointerId,
+        startY: e.clientY,
         startH: panel.classList.contains('sheet-collapsed')
-          ? Math.round(window.innerHeight * (loadSidePrefs().sheetPct || 0.8))
+          ? Math.round(vh * (loadSidePrefs().sheetPct || 0.8))
           : panel.getBoundingClientRect().height,
         moved: false,
+        lastPct: null,
       };
       document.body.classList.add('sheet-resizing');
-      window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup', onUp);
-      window.addEventListener('touchmove', onMove, { passive: false });
-      window.addEventListener('touchend', onUp);
     };
-    grab.addEventListener('mousedown', onDown);
-    grab.addEventListener('touchstart', onDown, { passive: true });
+    grab.addEventListener('pointerdown', onPointerDown);
+    grab.addEventListener('pointermove', onPointerMove);
+    grab.addEventListener('pointerup', onPointerUp);
+    grab.addEventListener('pointercancel', onPointerUp);
+
+    const refreshSheetFromPrefs = () => {
+      if (!isSheet() || document.body.classList.contains('sheet-resizing')) return;
+      if (!document.body.classList.contains('calc-open')) return;
+      if ($('calc-panel')?.classList.contains('sheet-collapsed')) return;
+      setSheetHeight(loadSidePrefs().sheetPct || 0.8);
+    };
+    window.visualViewport?.addEventListener('resize', refreshSheetFromPrefs);
+    window.visualViewport?.addEventListener('scroll', refreshSheetFromPrefs);
   }
   document.querySelectorAll('.side-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -6658,6 +6718,19 @@ function _sanitizeSearchToken(q) {
   return String(q || '').replace(/[,()%]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+/** Split multi-intent queries ("kemeja denim, jeans pria") into independent clauses. */
+function _splitSearchIntents(text) {
+  const raw = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!raw) return [];
+  const parts = raw.split(/\s*(?:,|&|\bdan\b|\batau\b)\s*/i)
+    .map(s => s.trim())
+    .filter(s => s.length >= 2)
+    .filter(s => _searchTerms(s).length >= 1 || s.replace(/[^\p{L}\p{N}]+/gu, '').length >= 3)
+    .slice(0, 4);
+  if (parts.length < 2) return [raw];
+  return parts;
+}
+
 function expandSearchTerms(terms) {
   const out = [];
   const seen = new Set();
@@ -6917,6 +6990,33 @@ function _planSynonymTerms(terms, planQueries) {
 /** Plan (DeepSeek + static) → broad parallel fetch → rank against expanded terms. */
 async function searchProductsForQuery(text, locations = [], limit = 12) {
   const raw = String(text || '').replace(/\s+/g, ' ').trim();
+  const clauses = _splitSearchIntents(raw);
+  if (clauses.length >= 2) {
+    const per = Math.max(6, Math.ceil(limit / clauses.length) + 2);
+    const results = await Promise.all(clauses.map(c => searchProductsForQuery(c, locations, per)));
+    const seen = new Set();
+    const products = [];
+    for (const r of results) {
+      for (const p of (r.products || [])) {
+        const key = `${p.item_id || ''}|${p.shop_id || ''}|${p.product_name || ''}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        products.push(p);
+        if (products.length >= limit) break;
+      }
+      if (products.length >= limit) break;
+    }
+    if (products.length) {
+      return { products, mode: 'ok', domain: null, terms: _searchTerms(raw), brand: null };
+    }
+    return {
+      products: [],
+      mode: 'clarify',
+      domain: detectSearchDomain(raw.toLowerCase()),
+      terms: _searchTerms(raw),
+      brand: null,
+    };
+  }
   const cleaned = cleanDiscoveryQuery(raw) || raw;
   const lower = cleaned.toLowerCase();
   const terms = _searchTerms(cleaned);
@@ -8933,7 +9033,6 @@ const ECOM_LOGO = {
   lazada:    `<svg viewBox="0 0 32 32" width="26" height="26" style="display:block;flex-shrink:0"><defs><linearGradient id="lzdg-b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF0F64"/><stop offset=".55" stop-color="#FF6A00"/><stop offset="1" stop-color="#2A1A8A"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="#0E1466"/><path d="M16 23.5s-6.2-3.6-6.2-8.1A3.55 3.55 0 0 1 16 12.6a3.55 3.55 0 0 1 6.2 2.8c0 4.5-6.2 8.1-6.2 8.1z" fill="url(#lzdg-b)"/></svg>`,
   blibli:    `<svg viewBox="0 0 32 32" width="26" height="26" style="display:block;flex-shrink:0"><rect width="32" height="32" rx="8" fill="#0072BC"/><path d="M11.4 12.3a4.6 4.6 0 0 1 9.2 0" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M8.8 12h14.4l-1 11.2a1.6 1.6 0 0 1-1.6 1.45H11.4a1.6 1.6 0 0 1-1.6-1.45z" fill="#fff"/><circle cx="16" cy="18.4" r="2.2" fill="#0072BC"/></svg>`,
 };
-const ECOM_ICON_TROPHY = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>`;
 const PLATFORM_FEES = {
   shopee:    { label:'Shopee',      logo:ECOM_LOGO.shopee,    comm:{A:10,  B:8.5, C:6.5, D:5,    E:2.5},  program:4.0, flat:1250, src:'seller.shopee.co.id' },
   tiktok:    { label:'TikTok Shop', logo:ECOM_LOGO.tiktok,    comm:{A:6,   B:5,   C:4,   D:3,    E:2.5},  program:2.0, flat:1250, src:'seller-id.tokopedia.com' },
@@ -9017,11 +9116,9 @@ function ddFeeStripHtml(product) {
   const order = Object.keys(PLATFORM_FEES)
     .map(plat => ({ plat, fee: platformFeePerProduct(plat, cat, price) }))
     .sort((a, b) => price > 0 ? a.fee.totalRp - b.fee.totalRp : a.fee.pctOnly - b.fee.pctOnly);
-  const minVal = order.length ? (price > 0 ? order[0].fee.totalRp : order[0].fee.pctOnly) : 0;
   const items = order.map(o => {
     const f = PLATFORM_FEES[o.plat];
-    const best = price > 0 ? o.fee.totalRp === minVal : o.fee.pctOnly === minVal;
-    return `<button type="button" class="ddr-mp-item${best ? ' best' : ''}" data-ddr-tool="biaya" title="Lihat rincian biaya ${esc(f.label)}">
+    return `<button type="button" class="ddr-mp-item" data-ddr-tool="biaya" title="Lihat rincian biaya ${esc(f.label)}">
       <span class="ddr-mp-brand">${f.logo}<span class="ddr-mp-name">${esc(f.label)}</span></span>
       <span class="ddr-mp-pct">${ecomFmtPct(o.fee.pctOnly)}</span>
     </button>`;
@@ -9039,7 +9136,6 @@ function ddFeesSectionHtml(product) {
     const fa = platformFeePerProduct(a, cat, price), fb = platformFeePerProduct(b, cat, price);
     return price > 0 ? fa.totalRp - fb.totalRp : fa.pctOnly - fb.pctOnly;
   });
-  const best = order[0];
   const cards = order.map(plat => {
     const f = PLATFORM_FEES[plat];
     const d = platformFeeDetail(plat, cat, vol);
@@ -9048,10 +9144,9 @@ function ddFeesSectionHtml(product) {
         <div class="ddr-fee-row-amt">${r.pct != null ? `<div class="ddr-fee-row-pct">${ecomFmtPct(r.pct)}</div>` : ''}${price > 0 ? `<div class="ddr-fee-row-rp">${ecomFmtRp(r.rpPer)}/produk</div>` : ''}</div>
       </div>`).join('');
     const noteHtml = d.note ? `<div class="ddr-fee-note">${esc(d.note)}</div>` : '';
-    const badge = plat === best ? `<span class="ddr-mp-badge">${ECOM_ICON_TROPHY} Terbaik</span>` : '';
     return `<div class="ddr-card ddr-fee-card">
       <div class="ddr-fee-card-head">
-        <div class="ddr-mp-brand">${f.logo}<span class="ddr-mp-name">${esc(f.label)}</span>${badge}</div>
+        <div class="ddr-mp-brand">${f.logo}<span class="ddr-mp-name">${esc(f.label)}</span></div>
         <div class="ddr-fee-card-total"><div class="ddr-fee-card-pct">${ecomFmtPct(d.pctOnly)}</div><div class="ddr-fee-card-sub">komisi + program</div></div>
       </div>
       ${rowsHtml}
@@ -9719,8 +9814,7 @@ async function openDeepDive(product, ddOpts = {}) {
     if (id && seen && seen !== id) {
       // Remember the clicked product (survives the OAuth reload) so signup lands
       // the user on the deep dive they asked for, not back at the start.
-      state.pendingDeepdive = product;
-      saveLocalState();
+      stashPendingDeepdive(product);
       openAuthModal('signup', 'gpt_gate_deepdive');
       return;
     }
@@ -11130,6 +11224,22 @@ async function searchProductTypes(text, cities, limit = 12) {
   if (!_supabase) return [];
   const raw = String(text || '').trim();
   if (raw.length < 2) return [];
+  const clauses = _splitSearchIntents(raw);
+  if (clauses.length >= 2) {
+    const per = Math.max(4, Math.ceil(limit / clauses.length) + 2);
+    const groups = await Promise.all(clauses.map(c => searchProductTypes(c, cities, per)));
+    const seen = new Set();
+    const out = [];
+    for (const rows of groups) {
+      for (const r of rows || []) {
+        if (!r?.keyword || seen.has(r.keyword)) continue;
+        seen.add(r.keyword);
+        out.push(r);
+        if (out.length >= limit) return out;
+      }
+    }
+    return out;
+  }
   let terms = [raw];
   try {
     const plan = await planSearch(raw);
@@ -11143,10 +11253,12 @@ async function searchProductTypes(text, cities, limit = 12) {
   const hits = [];
   const runs = await Promise.all(terms.map(async t => {
     try {
+      const needle = _sanitizeSearchToken(t).slice(0, 40);
+      if (!needle) return [];
       let q = _supabase.from('product_types_v')
         .select(PTYPE_COLS)
         .gte('n_listings', 3)
-        .ilike('keyword', `%${t.slice(0, 40)}%`)
+        .ilike('keyword', `%${needle}%`)
         .order('omset_top15', { ascending: false, nullsFirst: false })
         .limit(limit * 2);
       if (buckets.length === 1) q = q.eq('city', buckets[0]);
@@ -12933,7 +13045,10 @@ async function boot() {
   void refreshGptUsage();
 
   // Landing is the default surface; onboarding never auto-starts.
-  if (!_offerActive) {
+  // Don't overwrite a deep dive that _authOnSignIn just resumed.
+  const pendingResume = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker);
+  const alreadyDeepdive = state.view === 'deepdive' && !!state.deepdiveProduct;
+  if (!_offerActive && !pendingResume && !alreadyDeepdive) {
     if (state.activeChatId && activeChat()) {
       setView('chat');
       renderChatThread();
