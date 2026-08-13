@@ -3314,9 +3314,25 @@ body.home-finder-done .home-hero {
   box-shadow: 0 1px 2px rgba(16, 24, 40, .04);
 }
 .ddr-media {
+  position: relative;
   display: flex; flex-direction: row; align-items: flex-end;
   gap: 10px; flex-shrink: 0; min-width: 0;
 }
+.ddr-back {
+  position: absolute;
+  top: 10px; left: 10px; z-index: 4;
+  width: 36px; height: 36px; padding: 0; margin: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; border-radius: 50%;
+  background: rgba(255,255,255,.94);
+  color: var(--hitam, #1A1A1A);
+  box-shadow: 0 1px 4px rgba(16, 24, 40, .18);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.ddr-back:hover { background: #fff; }
+.ddr-back:focus-visible { outline: 2px solid var(--accent, #B5202A); outline-offset: 2px; }
+.ddr-back svg { display: block; }
 .ddr-media > img, .ddr-media > .ph {
   width: 160px; height: 160px; border-radius: 16px; object-fit: cover;
   background: var(--bg-user); flex-shrink: 0; display: block;
@@ -3382,6 +3398,11 @@ body.home-finder-done .home-hero {
     flex-direction: column;
     align-items: stretch;
     gap: 0;
+  }
+  body.view-deepdive .ddr-back {
+    top: 12px; left: 12px;
+    width: 40px; height: 40px;
+    background: rgba(255,255,255,.96);
   }
   body.view-deepdive .ddr-gallery {
     width: 100%; max-width: none;
@@ -5674,7 +5695,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script defer src="/js/laris-mascot-rigs.js?v=20260812a"></script>
 <script defer src="/js/laris-mascot.js?v=20260812a"></script>
 <script src="/js/admin-map.js?v=20260812a" defer></script>
-<script src="/js/gpt-app.js?v=20260813f" defer></script>
+<script src="/js/gpt-app.js?v=20260813g" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>
 </html>

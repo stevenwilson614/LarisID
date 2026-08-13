@@ -463,6 +463,7 @@ const ICONS = {
   box: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linejoin="round"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>',
   trendUp: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>',
   arrowUp: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
+  arrowLeft: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>',
   rocket: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c3.2 2.4 4.8 5.8 4.8 9.4L12 16.2 7.2 11.9c0-3.6 1.6-7 4.8-9.4z"/><circle cx="12" cy="9.3" r="1.7"/><path d="M7.2 11.9 4.7 14a1 1 0 0 0-.33.95l.5 2.6 2.6-1.35M16.8 11.9l2.5 2.1a1 1 0 0 1 .33.95l-.5 2.6-2.6-1.35"/><path d="M10 18.4c0 1.5.75 2.7 2 3.6 1.25-.9 2-2.1 2-3.6"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
   spark: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/></svg>',
@@ -10259,6 +10260,7 @@ async function openDeepDive(product, ddOpts = {}) {
   root.innerHTML = `
     <div class="ddr-header" data-dd-sec="skor">
       <div class="ddr-media">
+        <button type="button" class="ddr-back" id="ddr-back" aria-label="Kembali ke daftar produk" title="Kembali ke daftar produk">${ico('arrowLeft', 18)}</button>
         ${ddHeaderMediaHtml(product, peers)}
         <span class="ddr-views" hidden data-view-key="${esc(viewCountKey(product.item_id, product.shop_id))}" title="Orang yang melihat produk ini di Laris tahun ini">${ico('eye', 13)}<span class="ddr-views-num" data-view-num-self>${viewersYtd.toLocaleString('id-ID')}</span><span class="ddr-views-lbl">sedang melihat</span></span>
       </div>
@@ -10357,6 +10359,12 @@ async function openDeepDive(product, ddOpts = {}) {
     <div class="ddr-bottom-space" aria-hidden="true"></div>
   `;
 
+  $('ddr-back')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    void logUserEvent('deepdive_back', { ui: 'gpt', via: 'back_arrow', keyword: kw || '' });
+    void openDirectory();
+  });
   $('ddr-fees-reveal-btn')?.addEventListener('click', () => {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'biaya', via: 'click', keyword: kw || '' });
     revealDdrFees(product);
