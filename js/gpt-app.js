@@ -1399,6 +1399,35 @@ function fmtSold(n) {
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
+
+const GARUDA_LOAD_POSES = [
+  { id: 'binocs', src: '/images/brand/mascot-load-binocs.webp', w: 496, h: 641 },
+  { id: 'magnify', src: '/images/brand/mascot-load-magnify.webp', w: 483, h: 558 },
+];
+
+function garudaLoadingHtml(label) {
+  const pose = GARUDA_LOAD_POSES[Math.random() < 0.5 ? 0 : 1];
+  const text = label || 'Memuat…';
+  return `<div class="gl-load gl-load--${pose.id}" role="status" aria-label="${esc(text)}">` +
+    `<div class="gl-load-stage">` +
+      `<div class="gl-load-breathe">` +
+        `<img class="gl-load-img" src="${pose.src}" alt="" width="${pose.w}" height="${pose.h}" decoding="async">` +
+        `<span class="gl-load-tool" aria-hidden="true"><img src="${pose.src}" alt="" width="${pose.w}" height="${pose.h}" decoding="async"></span>` +
+        `<span class="gl-load-lid" aria-hidden="true"></span>` +
+      `</div>` +
+    `</div>` +
+    `<p class="gl-load-label">${esc(text)}</p>` +
+  `</div>`;
+}
+
+function preloadGarudaLoaders() {
+  GARUDA_LOAD_POSES.forEach((p) => {
+    const im = new Image();
+    im.decoding = 'async';
+    im.src = p.src;
+  });
+}
+
 // Minimal safe markdown → HTML for AI replies. Escapes everything first, then
 // only re-introduces tags we generate ourselves (no raw HTML passthrough).
 function mdToHtml(raw) {
@@ -9833,7 +9862,7 @@ async function openDeepDive(product, ddOpts = {}) {
   dwellStart(product.category);
   const root = $('deepdive-root');
   if (!root) return;
-  root.innerHTML = `<p class="dd-sub">Memuat data Deep Dive…</p>`;
+  root.innerHTML = garudaLoadingHtml('Memuat data Deep Dive…');
   scrollPanelToTop();
 
   const kw = product.keyword || '';
@@ -11889,7 +11918,7 @@ async function renderDirectory() {
     grid.innerHTML = _dirInstantPool.map((t, i) => typeCardHtml(t, i, i)).join('');
     bindTypeCards(grid);
   } else {
-    grid.innerHTML = '<p class="dd-sub">Memuat…</p>';
+    grid.innerHTML = garudaLoadingHtml('Memuat…');
   }
   let types;
   if (q) {
@@ -11957,7 +11986,7 @@ async function renderDirectoryListings() {
   const grid = $('dir-grid');
   const pager = $('dir-pager');
   if (!grid) return;
-  grid.innerHTML = '<p class="dd-sub">Memuat…</p>';
+  grid.innerHTML = garudaLoadingHtml('Memuat…');
 
   const cats = state.dirCats || [];
   const cities = state.dirCities || [];
@@ -13039,6 +13068,8 @@ async function boot() {
   // Fire-and-forget: warms the Produk page's instant-open assortment so it's
   // usually ready before the user ever clicks Produk (see warmDirInstantPool).
   void warmDirInstantPool();
+  const idle = window.larisIdle || ((fn) => setTimeout(fn, 800));
+  idle(preloadGarudaLoaders, 1500);
   // Recovery links must be claimed before consumeOAuthHash() clears the stash.
   try { handleRecoveryHash(); } catch (_) {}
   try { await consumeOAuthHash(); } catch (_) {}

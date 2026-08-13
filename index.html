@@ -1105,6 +1105,101 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 .dd-head { margin-bottom: 20px; }
 .dd-title { font-size: 1.35rem; font-weight: 650; margin: 0 0 6px; line-height: 1.3; letter-spacing: -.02em; }
 .dd-sub { font-size: .875rem; color: var(--muted); margin: 0; line-height: 1.5; }
+
+/* Garuda loading poses — directory + deep dive. Motion is short and small
+   so it reads during a ~1s fetch. .gl-load spans the directory grid. */
+.gl-load {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 16px 36px;
+  min-height: 220px;
+  text-align: center;
+}
+.gl-load-stage {
+  position: relative;
+  width: 168px;
+  line-height: 0;
+}
+.gl-load--magnify .gl-load-stage { width: 188px; }
+.gl-load-breathe { position: relative; animation: gl-breathe 1.2s ease-in-out infinite; }
+.gl-load--binocs .gl-load-stage { animation: gl-scan 1.4s ease-in-out infinite; }
+.gl-load-img,
+.gl-load-tool img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.gl-load-tool {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.gl-load--binocs .gl-load-tool {
+  animation: gl-tool-scan 1.35s ease-in-out infinite;
+}
+.gl-load--binocs .gl-load-tool img {
+  clip-path: ellipse(32% 12% at 52% 23%);
+}
+.gl-load--magnify .gl-load-tool {
+  animation: gl-tool-inspect 1.15s ease-in-out infinite;
+}
+.gl-load--magnify .gl-load-tool img {
+  clip-path: ellipse(24% 22% at 60% 34%);
+}
+.gl-load-lid { display: none; }
+.gl-load--magnify .gl-load-lid {
+  display: block;
+  position: absolute;
+  left: 48%;
+  top: 25%;
+  width: 24%;
+  height: 16%;
+  border-radius: 50%;
+  background: #efe8dc;
+  transform: scaleY(0);
+  transform-origin: 50% 40%;
+  animation: gl-blink 2.1s ease-in-out infinite;
+  pointer-events: none;
+}
+.gl-load-label {
+  margin: 10px 0 0;
+  font-size: .8rem;
+  font-weight: 550;
+  color: var(--muted);
+}
+@keyframes gl-breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-2px) scale(1.015); }
+}
+@keyframes gl-scan {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2.4deg); }
+}
+@keyframes gl-tool-scan {
+  0%, 100% { transform: translateX(-3px); }
+  50% { transform: translateX(3px); }
+}
+@keyframes gl-tool-inspect {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(3px, -2px); }
+}
+@keyframes gl-blink {
+  0%, 78%, 100% { transform: scaleY(0); }
+  86% { transform: scaleY(1); }
+  92% { transform: scaleY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gl-load-breathe,
+  .gl-load--binocs .gl-load-stage,
+  .gl-load-tool,
+  .gl-load--magnify .gl-load-lid {
+    animation: none;
+  }
+}
 .dd-metrics {
   display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
   margin: 18px 0;
@@ -5508,7 +5603,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script defer src="/js/laris-mascot-rigs.js?v=20260812a"></script>
 <script defer src="/js/laris-mascot.js?v=20260812a"></script>
 <script src="/js/admin-map.js?v=20260812a" defer></script>
-<script src="/js/gpt-app.js?v=20260812m" defer></script>
+<script src="/js/gpt-app.js?v=20260813a" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>
 </html>
