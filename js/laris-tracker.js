@@ -103,7 +103,7 @@
     metrics: [],             // display selection, seeded from S.metrics
     seed: null,              // {keyword, category, shop_id, store_name, item_id}
     seedShopSkus: null,      // SKU count for the seed shop, fetched lazily
-    sug: { slot: -1, q: '', rows: [], busy: false, kind: 'keyword' },
+    sug: { slot: -1, q: '', rows: [], busy: false, kind: 'keyword', fromHistory: false },
     // Toko step's "browse by category" list — separate from `cat` (the
     // keyword step's own category filter) since the two steps browse
     // independently.
@@ -116,16 +116,18 @@
     draft.cat = null; draft.picked = []; draft.stores = []; draft.busy = false;
     draft.errors = {}; draft.step = 0; draft.seed = null; draft.seedShopSkus = null;
     draft.metrics = (S.metrics || []).slice();
-    draft.sug = { slot: -1, q: '', rows: [], busy: false, kind: 'keyword' };
+    draft.sug = { slot: -1, q: '', rows: [], busy: false, kind: 'keyword', fromHistory: false };
     draft.storeCat = null; draft.storeCatRows = []; draft.storeCatBusy = false;
     draft.pickerOpen = false; draft.pickerQ = ''; draft.pickerRows = []; draft.pickerBusy = false;
     _pickedImgTried = {};
     _pickedImgBusy = false;
     _pickedImgGen++;
+    _defaultSugCache = {};
   }
 
   var inflight = null;
   var timers = { paint: 0, abort: 0, storeSearch: 0, typeahead: 0, pickerSearch: 0 };
+  var _defaultSugCache = {};
 
   /* ── utils ──────────────────────────────────────────────────────────── */
 
@@ -650,15 +652,20 @@
     var sug = draft.sug;
     if (sug.slot !== idx) return '';
     if (sug.busy) return '<div class="ltk-sug"><div class="ltk-sug-note">Mencari…</div></div>';
-    if (!sug.q || sug.q.length < 1) {
-      return '<div class="ltk-sug"><div class="ltk-sug-note">Ketik minimal 1 huruf' +
-        (draft.cat ? ' — difilter ke ' + esc(draft.cat) : '') + '.</div></div>';
-    }
+    var browsing = !sug.q || !String(sug.q).trim();
     if (!sug.rows.length) {
-      return '<div class="ltk-sug"><div class="ltk-sug-note">Tidak ada yang cocok dengan "' +
-        esc(sug.q) + '". Tekan Enter untuk pantau apa adanya.</div></div>';
+      return '<div class="ltk-sug"><div class="ltk-sug-note">' +
+        (browsing
+          ? ('Ketik keyword' + (draft.cat ? ' — difilter ke ' + esc(draft.cat) : '') + '.')
+          : ('Tidak ada yang cocok dengan "' + esc(sug.q) + '". Tekan Enter untuk pantau apa adanya.')) +
+        '</div></div>';
     }
-    return '<div class="ltk-sug ltk-sug--cards" role="listbox">' +
+    var hint = browsing
+      ? '<div class="ltk-sug-hint">' +
+          (sug.fromHistory ? 'Dari pencarian kamu' : 'Saran buat kamu') +
+          ' — ketik untuk menyaring</div>'
+      : '';
+    return '<div class="ltk-sug ltk-sug--cards" role="listbox">' + hint +
       '<div class="ltk-sug-grid">' + sug.rows.map(function (r) {
         var meta = [];
         if (r.n_sellers) meta.push(fmtUnits(r.n_sellers) + ' penjual');
@@ -863,7 +870,7 @@
         '<span class="ltk-slot-plus" aria-hidden="true">+</span>' +
         '<div class="ltk-slot-typewrap">' +
           '<input type="text" class="ltk-input ltk-slot-input" data-ltk-slot="' + idx + '" ' +
-          'placeholder="Ketik keyword — mis. rak dinding kayu" autocomplete="off" ' +
+          'placeholder="' + (open ? 'Ketik untuk menyaring…' : 'Ketik keyword — mis. rak dinding kayu') + '" autocomplete="off" ' +
           'aria-label="Cari keyword untuk slot ' + (idx + 1) + '"' +
           (open ? ' value="' + attr(draft.sug.q) + '"' : '') + '>' +
           slotSuggestHtml(idx) +
@@ -874,7 +881,7 @@
         '<h3>Apa yang mau kamu pantau?</h3>' +
         '<p>' + (draft.seed
           ? 'Kami sudah masukkan produk yang barusan kamu buka. Tambah lagi kalau mau — maksimal ' + S.keywordLimit + '.'
-          : 'Ketik keyword yang kamu incar — kami tunjukkan yang cocok beserta jumlah penjualnya.') + '</p>' +
+          : 'Klik + untuk pilih dari pencarian kamu, atau ketik keyword baru.') + '</p>' +
       '</div>' +
       '<div class="ltk-slotsec">' +
         '<div class="ltk-slotsec-head"><span>Keyword kamu</span>' + catSelect +
@@ -1010,13 +1017,12 @@
 
   function loadPickerDefault() {
     var cat = (draft.seed && draft.seed.category) || '';
-    if (!cat) { draft.pickerRows = []; renderSetup(); return; }
     draft.pickerBusy = true;
     renderSetup();
-    callP('getCategoryKeywords', cat, 24).then(function (rows) {
-      if (!draft.pickerOpen || draft.pickerQ) return; // closed, or a search started
+    suggestFromHistory(cat, 24).then(function (pack) {
+      if (!draft.pickerOpen || draft.pickerQ) return;
       draft.pickerBusy = false;
-      draft.pickerRows = rows || [];
+      draft.pickerRows = (pack && pack.rows) || [];
       renderSetup();
     });
   }
@@ -2568,8 +2574,10 @@
      slots — that was the old grid's job and it made the picker feel decided-for. */
   function pickCategory(cat) {
     draft.cat = cat || null;
-    if (draft.sug.kind === 'keyword' && draft.sug.slot >= 0 && draft.sug.q) {
-      runKeywordSuggest(draft.sug.q);
+    _defaultSugCache = {};
+    if (draft.sug.kind === 'keyword' && draft.sug.slot >= 0) {
+      if (draft.sug.q) runKeywordSuggest(draft.sug.q);
+      else loadDefaultKeywordSuggest();
     } else {
       renderSetup();
     }
@@ -2592,21 +2600,166 @@
     });
   }
 
+  function keywordRowKey(r) {
+    return String(r && r.keyword || '').toLowerCase();
+  }
+
+  function rowMatchesCat(r, cat) {
+    if (!cat) return true;
+    var c = String(r.category_canonical || r.category || '');
+    return !c || c === cat;
+  }
+
+  function filterPickedKeywordRows(rows) {
+    return (rows || []).filter(function (r) {
+      var k = keywordRowKey(r);
+      if (!k) return false;
+      return !draft.picked.some(function (x) {
+        return String(x.keyword).toLowerCase() === k;
+      });
+    });
+  }
+
+  function mergeKeywordRows(base, extra, limit) {
+    var out = (base || []).slice();
+    var seen = {};
+    out.forEach(function (r) { seen[keywordRowKey(r)] = 1; });
+    (extra || []).forEach(function (r) {
+      if (out.length >= limit) return;
+      var k = keywordRowKey(r);
+      if (!k || seen[k]) return;
+      seen[k] = 1;
+      out.push(r);
+    });
+    return out.slice(0, limit);
+  }
+
+  // Recents first, then related to the latest search, then onboarding /
+  // category popular, then global popular — so "+" is never an empty field.
+  function suggestFromHistory(cat, limit) {
+    limit = limit || 8;
+    var fromHistory = false;
+    return callP('getRecentSearchKeywords', 12).then(function (recent) {
+      recent = (recent || []).map(function (k) { return String(k || '').trim(); }).filter(Boolean);
+      fromHistory = recent.length > 0;
+      var start = Promise.resolve([]);
+      if (recent.length) {
+        start = callP('getKeywordBaseline', recent.slice(0, 16)).then(function (base) {
+          var by = {};
+          (base || []).forEach(function (r) {
+            if (!r || !r.keyword) return;
+            by[String(r.keyword).toLowerCase()] = {
+              keyword: r.keyword,
+              category: r.category || '',
+              category_canonical: r.category_canonical || '',
+              n_sellers: r.n_sellers,
+              price_median: r.price_median,
+              rep_image_url: r.top_image || r.rep_image_url || '',
+              image_url: r.top_image || r.rep_image_url || '',
+            };
+          });
+          var ordered = [];
+          recent.forEach(function (kw) {
+            var hit = by[kw.toLowerCase()];
+            if (hit && rowMatchesCat(hit, cat)) ordered.push(hit);
+          });
+          return ordered;
+        });
+      }
+      return start.then(function (rows) {
+        if (rows.length >= limit || !recent[0]) return rows;
+        return callP('searchKeywords', { q: recent[0], category: cat || null, limit: limit }).then(function (related) {
+          return mergeKeywordRows(rows, related, limit);
+        });
+      });
+    }).then(function (rows) {
+      rows = rows || [];
+      if (rows.length >= limit) return { rows: rows.slice(0, limit), fromHistory: fromHistory };
+      return callP('getSeedCandidates').then(function (seed) {
+        var cats = cat ? [cat] : ((seed && seed.categories) || []);
+        return cats.slice(0, 3).reduce(function (p, c) {
+          return p.then(function (acc) {
+            if (acc.length >= limit) return acc;
+            return callP('getCategoryKeywords', c, Math.max(8, limit)).then(function (list) {
+              return mergeKeywordRows(acc, list, limit);
+            });
+          });
+        }, Promise.resolve(rows));
+      }).then(function (filled) {
+        if (filled.length >= limit) return { rows: filled.slice(0, limit), fromHistory: fromHistory };
+        return callP('getPopularKeywords', { category: cat || null, limit: limit + 8 }).then(function (pop) {
+          if (pop && pop.length) return { rows: mergeKeywordRows(filled, pop, limit), fromHistory: fromHistory };
+          var moreCats = cat ? [] : (S.categories || []).slice(0, 3);
+          return moreCats.reduce(function (p, c) {
+            return p.then(function (acc) {
+              if (acc.length >= limit) return acc;
+              return callP('getCategoryKeywords', c, 8).then(function (list) {
+                return mergeKeywordRows(acc, list, limit);
+              });
+            });
+          }, Promise.resolve(filled)).then(function (acc) {
+            return { rows: acc.slice(0, limit), fromHistory: fromHistory };
+          });
+        });
+      });
+    }).catch(function () {
+      return { rows: [], fromHistory: false };
+    });
+  }
+
+  function loadDefaultKeywordSuggest() {
+    draft.sug.q = '';
+    draft.sug.fromHistory = false;
+    draft.sug.busy = true;
+    renderSetup();
+    var slotAtStart = draft.sug.slot;
+    var cat = draft.cat;
+    var cacheKey = String(cat || '');
+    if (_defaultSugCache[cacheKey]) {
+      draft.sug.rows = filterPickedKeywordRows(_defaultSugCache[cacheKey].rows);
+      draft.sug.fromHistory = !!_defaultSugCache[cacheKey].fromHistory;
+      draft.sug.busy = false;
+      renderSetup();
+      return;
+    }
+    suggestFromHistory(cat, 8).then(function (pack) {
+      if (draft.sug.slot !== slotAtStart || draft.sug.q) return;
+      var rows = (pack && pack.rows) || [];
+      _defaultSugCache[cacheKey] = { rows: rows, fromHistory: !!(pack && pack.fromHistory) };
+      draft.sug.rows = filterPickedKeywordRows(rows);
+      draft.sug.fromHistory = !!_defaultSugCache[cacheKey].fromHistory;
+      draft.sug.busy = false;
+      renderSetup();
+    }).catch(function () {
+      if (draft.sug.slot !== slotAtStart || draft.sug.q) return;
+      draft.sug.rows = []; draft.sug.busy = false; draft.sug.fromHistory = false;
+      renderSetup();
+    });
+  }
+
+  function openKeywordSlot(slot) {
+    if (draft.sug.kind === 'keyword' && draft.sug.slot === slot) return;
+    draft.sug.kind = 'keyword';
+    draft.sug.slot = slot;
+    var el = host && host.querySelector('[data-ltk-slot="' + slot + '"]');
+    var q = el ? String(el.value || '') : '';
+    draft.sug.q = q;
+    if (String(q).trim()) runKeywordSuggest(q);
+    else loadDefaultKeywordSuggest();
+  }
+
   function runKeywordSuggest(q) {
     var query = String(q || '').trim();
     draft.sug.q = query;
-    if (!query) { draft.sug.rows = []; draft.sug.busy = false; renderSetup(); return; }
+    draft.sug.fromHistory = false;
+    if (!query) { loadDefaultKeywordSuggest(); return; }
     draft.sug.busy = true;
     renderSetup();
     var slotAtStart = draft.sug.slot;
     callP('searchKeywords', { q: query, category: draft.cat, limit: 8 }).then(function (rows) {
       // A slower response for an older query must not overwrite a newer one.
       if (draft.sug.slot !== slotAtStart || draft.sug.q !== query) return;
-      draft.sug.rows = (rows || []).filter(function (r) {
-        return !draft.picked.some(function (x) {
-          return String(x.keyword).toLowerCase() === String(r.keyword).toLowerCase();
-        });
-      });
+      draft.sug.rows = filterPickedKeywordRows(rows);
       draft.sug.busy = false;
       renderSetup();
     }).catch(function () {
@@ -2627,7 +2780,7 @@
       image_url: hit.rep_image_url || hit.image_url || hit.top_image || '',
       meta: hit.n_sellers ? hit.n_sellers + ' penjual' : '',
     });
-    draft.sug = { slot: -1, q: '', rows: [], busy: false, kind: 'keyword' };
+    draft.sug = { slot: -1, q: '', rows: [], busy: false, kind: 'keyword', fromHistory: false };
     renderSetup();
   }
 
@@ -2687,7 +2840,8 @@
     if (!t || !t.closest) return false;
     if (draft.pickerOpen && (t.closest('.ltk-picker-panel') || t.closest('[data-ltk-picker-open]'))) return true;
     if (draft.sug.kind === 'keyword' && draft.sug.slot >= 0) {
-      if (t.closest('.ltk-slot--type.is-open')) return true;
+      // Any empty slot (including another "+") is still the add-product search.
+      if (t.closest('.ltk-slot--type')) return true;
       // Category is a live filter on the open keyword typeahead — keep it open.
       if (t.closest('[data-ltk-catsel]') || t.closest('.ltk-catsel')) return true;
     }
@@ -2706,7 +2860,7 @@
     draft.pickerRows = [];
     draft.pickerBusy = false;
     draft.sug = {
-      slot: -1, q: '', rows: [], busy: false,
+      slot: -1, q: '', rows: [], busy: false, fromHistory: false,
       kind: draft.sug.kind === 'store' ? 'store' : 'keyword'
     };
     if (S.screen === 'setup') renderSetup();
@@ -2760,6 +2914,19 @@
 
     var tab = t.closest && t.closest('[data-ltk-tab]');
     if (tab) { setTab(tab.getAttribute('data-ltk-tab')); return; }
+
+    var plusSlot = t.closest && t.closest('.ltk-slot--type');
+    if (plusSlot && !(t.closest && t.closest('[data-ltk-sugpick]'))) {
+      var plusInp = plusSlot.querySelector('[data-ltk-slot]');
+      if (plusInp) {
+        var plusIdx = parseInt(plusInp.getAttribute('data-ltk-slot'), 10);
+        if (!isNaN(plusIdx)) {
+          if (draft.sug.slot !== plusIdx) openKeywordSlot(plusIdx);
+          else if (typeof plusInp.focus === 'function') plusInp.focus();
+          return;
+        }
+      }
+    }
 
     var sug = t.closest && t.closest('[data-ltk-sugpick]');
     if (sug) {
@@ -2881,7 +3048,11 @@
       case 'setup':
         draft.picked = S.keywords.map(function (k) { return { keyword: k.keyword, category: k.category }; });
         draft.stores = S.stores.map(function (s) { return { shop_id: s.shop_id, store_name: s.store_name }; });
-        loadCategories().then(function () { renderSetup(); showScreen('setup'); });
+        loadCategories().then(function () {
+          renderSetup();
+          showScreen('setup');
+          if (draft.picked.length < S.keywordLimit) openKeywordSlot(draft.picked.length);
+        });
         break;
       case 'commit': commit(); break;
       case 'cancel-setup':
@@ -2916,6 +3087,14 @@
       case 'strip-close': lsWrite({ resumedAckAt: Date.now() }); S.resumed = false; renderStrip(); break;
       case 'how': call('openHowCalculated'); break;
     }
+  }
+
+  function onFocusIn(e) {
+    if (!host || !host.contains(e.target)) return;
+    var el = e.target;
+    if (!el.hasAttribute || !el.hasAttribute('data-ltk-slot')) return;
+    var slot = parseInt(el.getAttribute('data-ltk-slot'), 10);
+    if (!isNaN(slot)) openKeywordSlot(slot);
   }
 
   function onInput(e) {
@@ -3096,6 +3275,7 @@
     if (!bound) {
       global.document.addEventListener('click', onClick, true);
       global.document.addEventListener('input', onInput, true);
+      global.document.addEventListener('focusin', onFocusIn, true);
       // <select> fires `change` everywhere and `input` only in newer engines —
       // bind both so the window/sort/category pickers work on older Safari.
       global.document.addEventListener('change', onInput, true);
@@ -3132,6 +3312,7 @@
     if (bound) {
       global.document.removeEventListener('click', onClick, true);
       global.document.removeEventListener('input', onInput, true);
+      global.document.removeEventListener('focusin', onFocusIn, true);
       global.document.removeEventListener('change', onInput, true);
       global.document.removeEventListener('keydown', onKeydown, true);
       bound = false;
@@ -3173,7 +3354,13 @@
         }
         call('track', 'tracker_setup_seeded', { site: opts.site, keyword: seed.keyword });
       }
-      loadCategories().then(function () { renderSetup(); showScreen('setup'); });
+      loadCategories().then(function () {
+        renderSetup();
+        showScreen('setup');
+        if (!draft.seed && draft.picked.length < S.keywordLimit) {
+          openKeywordSlot(draft.picked.length);
+        }
+      });
     },
     // Restores a wizard draft stashed by commit()'s requireAuth branch — the
     // host calls this after sign-in completes, from its own pendingTracker

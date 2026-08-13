@@ -858,8 +858,10 @@
 /* ── Typeahead suggestions ─────────────────────────────────────────────── */
 .ltk-slot--type {
   align-items: stretch; padding: 0; border-style: dashed; background: #fff;
+  cursor: pointer;
 }
 .ltk-slot--type .ltk-slot-plus { align-self: center; margin-left: 14px; }
+.ltk-sug-hint { font-size: .68rem; color: #9CA3AF; padding: 2px 4px 8px; line-height: 1.4; }
 .ltk-slot-typewrap { position: relative; flex: 1; min-width: 0; }
 .ltk-slot-input {
   width: 100%; border: 0; background: transparent; padding: 14px 14px 14px 10px;
