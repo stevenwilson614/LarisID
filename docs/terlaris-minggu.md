@@ -60,14 +60,16 @@ A card can never be badged unless **all** of these hold. Constants live in
 
 ## The ranking
 
-Relative to **the rendered set** — the current category chip, city filter,
+Relative to the **filtered set** — the current category chip, city filter,
 search result, or composer answer. `markTerlarisMinggu()` sorts eligible rows by
-`wk_units` desc (tie-break `pct` desc) and badges the top **1**, or top **2**
-when the grid holds 12 or more cards.
+`wk_units` desc (tie-break `pct` desc) and badges **exactly one** winner, then
+pins that card to index 0. Everyone else keeps their incoming order (usually
+omset).
 
-Call it on the exact array about to be mapped to HTML. Badging a full result set
-and then paginating would scatter badges onto pages that do not contain the
-actual winner — `renderDirectory()` badges the page slice for this reason.
+The directory calls this on the full filtered list **before** pagination, so
+page 1 always opens on the category winner. Chat grids go through
+`marketCardsHtml()`, which does the same pin. A 60-card page used to badge the
+top 2 and leave them in omset order — the real #1 often sat in slot 2.
 
 A slow category legitimately shows zero badges. That is the honest outcome.
 

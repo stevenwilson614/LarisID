@@ -11649,19 +11649,22 @@ function weeklyStats(t) {
 }
 
 /**
- * Pick which of these cards get the badge.
+ * Pick which of these cards get the badge, then pin the winner to the front.
  *
- * Relative to the rendered set, so "terlaris minggu ini" always means "of what
- * you are looking at". Call it on the exact array about to be mapped to HTML —
- * badging the full result set and then paginating would scatter badges onto
- * pages that do not contain the actual winner.
+ * Relative to the set passed in (category, search, or composer answer), so
+ * "terlaris minggu ini" always means "of what you are looking at". One winner
+ * only — the mockup is a single hero, and a 60-card directory page would
+ * otherwise leave the real #1 sitting in slot 2 behind a runner-up.
+ *
+ * Returns a new array: winner first, everyone else in their incoming order.
+ * Call it on the full filtered list BEFORE pagination so page 1 leads with
+ * the category winner rather than the weekly best of that omset slice.
  */
 function markTerlarisMinggu(rows) {
-  const list = Array.isArray(rows) ? rows : [];
+  const list = Array.isArray(rows) ? rows.filter(Boolean) : [];
+  list.forEach(t => { t._terlaris = null; });
   const eligible = [];
   list.forEach(t => {
-    if (!t) return;
-    t._terlaris = null;
     const w = weeklyStats(t);
     if (!w) return;
     if (w.units < TERLARIS_MIN_UNITS || w.items < TERLARIS_MIN_ITEMS) return;
@@ -11671,8 +11674,9 @@ function markTerlarisMinggu(rows) {
   if (!eligible.length) return list;
   const rank = w => (w.pct === Infinity ? Number.MAX_SAFE_INTEGER : w.pct);
   eligible.sort((a, b) => (b[1].units - a[1].units) || (rank(b[1]) - rank(a[1])));
-  eligible.slice(0, list.length >= 12 ? 2 : 1).forEach(([t, w]) => { t._terlaris = w; });
-  return list;
+  const [winner, stats] = eligible[0];
+  winner._terlaris = stats;
+  return [winner, ...list.filter(t => t !== winner)];
 }
 
 /**
@@ -12246,6 +12250,9 @@ async function renderDirectory() {
     }
   }
   types = sortTypeRows(types, state.dirSort || 'sesuai', !!q);
+  // Pin the category's weekly winner to index 0 before pagination — otherwise
+  // omset sort leaves the gold card in slot 2 (or off page 1 entirely).
+  types = markTerlarisMinggu(types);
   state.dirTypes = types;
   registerTypes(types);
 
@@ -12258,9 +12265,6 @@ async function renderDirectory() {
   const emptyMsg = q
     ? `<p class="dd-sub">Belum ketemu pasar untuk "<strong>${esc(q)}</strong>". Coba kata kunci lain.</p>`
     : '<p class="dd-sub">Tidak ada tipe produk untuk filter ini.</p>';
-  // Badge the page being drawn, not the whole result set — otherwise page 4
-  // shows a "terlaris" card that is nowhere near the top of the list.
-  markTerlarisMinggu(slice);
   grid.innerHTML = slice.map((t, i) => typeCardHtml(t, start + i, i)).join('') || emptyMsg;
   bindTypeCards(grid);
   scrollPanelToTop();
