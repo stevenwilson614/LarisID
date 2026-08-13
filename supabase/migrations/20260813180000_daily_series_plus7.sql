@@ -1,0 +1,9 @@
+-- product/keyword/store_daily_series: allow p_to through current_date + 7
+-- so Tracker / Deep Dive can request a 1-week forecast tail.
+--
+-- Canonical function bodies: ~/shopee_scraper/product_daily_series.sql
+-- Apply on Contabo via SSH (same as listing_weekly). Do NOT
+-- `supabase db push --linked` — the linked CLI project is cloud
+-- bzmvlraziqevqdyotvgy; the app reads https://api.larisid.com.
+--
+--   ssh ... docker exec -i supabase-db psql ... < product_daily_series.sql

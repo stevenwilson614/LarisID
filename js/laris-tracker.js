@@ -51,6 +51,7 @@
   var WIB_OFFSET_MIN = 7 * 60;        // Asia/Jakarta, no DST
   var SCRAPE_HOUR_WIB = 7;            // morning run lands ~07:00 WIB
   var MIN_DAYS_FOR_TREND = 2;         // below this: "Baru", no sparkline, no %
+  var TREND_HISTORY_WEEKS = 6;        // detail chart: last 6 WIB weeks + 1 forecast
   var TYPEAHEAD_MS = 280;
 
   var host = null;
@@ -91,6 +92,7 @@
     detailMetric: 'omset',            // which chart the toggle row is showing
     detailListingKey: null,           // null = Semua; else item_id__shop_id
     detailListingSeries: {},          // cache of product_daily_series by listing key
+    detailListingWeekly: {},          // listing_weekly rows by listing key
     detailListingLoading: false,
     detailViewRow: null,              // derived row currently driving stats/chart
   };
@@ -306,6 +308,113 @@
     var mons = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
     return dt.getDate() + ' ' + mons[dt.getMonth()];
   }
+
+  function wibTodayISO() {
+    return new Date(Date.now() + WIB_OFFSET_MIN * 60000).toISOString().slice(0, 10);
+  }
+  function addDaysISO(iso, days) {
+    return new Date(Date.parse(String(iso).slice(0, 10) + 'T00:00:00Z') + days * 864e5)
+      .toISOString().slice(0, 10);
+  }
+  function wibMondayISO(iso) {
+    var parts = String(iso).slice(0, 10).split('-').map(Number);
+    if (parts.length < 3 || !parts[0]) return String(iso).slice(0, 10);
+    var utc = Date.UTC(parts[0], parts[1] - 1, parts[2]);
+    var dow = new Date(utc).getUTCDay();
+    var offset = dow === 0 ? 6 : dow - 1;
+    return new Date(utc - offset * 864e5).toISOString().slice(0, 10);
+  }
+  function weeklySnap(rows, weekStart) {
+    return (rows || []).find(function (r) {
+      return String(r.week_start || '').slice(0, 10) === weekStart;
+    }) || null;
+  }
+  /** Last 6 WIB weeks through today + 1 next-week perkiraan, for the detail chart. */
+  function weeklyDetailSeries(daily, weeklyRows) {
+    var today = wibTodayISO();
+    var thisMon = wibMondayISO(today);
+    var nextMon = addDaysISO(thisMon, 7);
+    var byMon = {};
+    (daily || []).forEach(function (p) {
+      var d = String(p.d || '').slice(0, 10);
+      if (!d || d > today) return;
+      var mon = wibMondayISO(d);
+      if (!byMon[mon]) {
+        byMon[mon] = { d: mon, units: 0, omset: 0, avg_price: 0, n: 0, source: 'measured' };
+      }
+      byMon[mon].units += Number(p.units) || 0;
+      byMon[mon].omset += Number(p.omset) || 0;
+      if (p.avg_price) byMon[mon].avg_price = p.avg_price;
+      byMon[mon].n += 1;
+      if (p.source === 'forecast') byMon[mon].source = 'forecast';
+    });
+    var thisRow = weeklySnap(weeklyRows, thisMon);
+    if (thisRow && (thisRow.units_wk != null || thisRow.omset_wk != null)) {
+      byMon[thisMon] = {
+        d: thisMon,
+        units: Math.round(Number(thisRow.units_wk) || 0),
+        omset: Math.round(Number(thisRow.omset_wk) || 0),
+        avg_price: (byMon[thisMon] && byMon[thisMon].avg_price) || 0,
+        n: 7,
+        source: thisRow.source === 'measured' ? 'measured' : 'forecast',
+      };
+    } else if (byMon[thisMon] && byMon[thisMon].n > 0 && byMon[thisMon].n < 7) {
+      var scale = 7 / byMon[thisMon].n;
+      byMon[thisMon].units = Math.round(byMon[thisMon].units * scale);
+      byMon[thisMon].omset = Math.round(byMon[thisMon].omset * scale);
+      byMon[thisMon].source = 'forecast';
+    }
+    var pts = [];
+    for (var i = TREND_HISTORY_WEEKS - 1; i >= 0; i--) {
+      var mon = addDaysISO(thisMon, -i * 7);
+      pts.push(byMon[mon] || { d: mon, units: 0, omset: 0, avg_price: 0, source: 'measured' });
+    }
+    var nextRow = weeklySnap(weeklyRows, nextMon);
+    var next;
+    if (nextRow && (nextRow.units_wk != null || nextRow.omset_wk != null)) {
+      next = {
+        d: nextMon,
+        units: Math.round(Number(nextRow.units_wk) || 0),
+        omset: Math.round(Number(nextRow.omset_wk) || 0),
+        avg_price: 0,
+        source: 'forecast',
+      };
+    } else {
+      var futU = 0, futO = 0, futN = 0, lastP = 0;
+      var nextEnd = addDaysISO(nextMon, 7);
+      (daily || []).forEach(function (p) {
+        var d = String(p.d || '').slice(0, 10);
+        if (d >= nextMon && d < nextEnd) {
+          futU += Number(p.units) || 0;
+          futO += Number(p.omset) || 0;
+          futN++;
+          if (p.avg_price) lastP = p.avg_price;
+        }
+      });
+      if (futN > 0) {
+        var sc = futN < 7 ? 7 / futN : 1;
+        next = {
+          d: nextMon,
+          units: Math.round(futU * sc),
+          omset: Math.round(futO * sc),
+          avg_price: lastP,
+          source: 'forecast',
+        };
+      } else {
+        var a = pts[pts.length - 1] || { units: 0, omset: 0 };
+        var b = pts[pts.length - 2] || a;
+        next = {
+          d: nextMon,
+          units: Math.round(((Number(a.units) || 0) + (Number(b.units) || 0)) / 2),
+          omset: Math.round(((Number(a.omset) || 0) + (Number(b.omset) || 0)) / 2),
+          avg_price: a.avg_price || 0,
+          source: 'forecast',
+        };
+      }
+    }
+    pts.push(next);
+    return pts;
+  }
   function imgOr(src, cls) {
     if (!src) return '<div class="' + cls + '"></div>';
     return '<img class="' + cls + '" src="' + attr(src) + '" alt="" loading="lazy">';
@@ -371,10 +480,12 @@
     if (win < 1) return s;
     var lastT = Date.parse(s[s.length - 1].d);
     if (isNaN(lastT)) return s;
+    var todayT = Date.parse(wibTodayISO() + 'T12:00:00');
+    if (!isNaN(todayT) && lastT > todayT) lastT = todayT;
     var cut = lastT - win * 2 * 86400000;
     var sliced = s.filter(function (p) {
       var t = Date.parse(p.d);
-      return !isNaN(t) && t > cut;
+      return !isNaN(t) && t > cut && t <= lastT;
     });
     return sliced.length >= 2 ? sliced : s;
   }
@@ -1562,7 +1673,7 @@
     return null;
   }
 
-  function buildListingViewRow(listing, seriesRows) {
+  function buildListingViewRow(listing, seriesRows, weeklyRows) {
     var r = {
       keyword: listing.product_name || '',
       item_id: listing.item_id,
@@ -1571,6 +1682,7 @@
       product_name: listing.product_name,
       image_url: listing.image_url,
       dseries: normaliseSeries(seriesRows),
+      weeklyRows: weeklyRows || [],
     };
     deriveFromSeries(r);
     return r;
@@ -1583,7 +1695,7 @@
     var series = S.detailListingSeries[S.detailListingKey];
     var listing = findDetailPeer(S.detailListingKey);
     if (!listing) return base;
-    return buildListingViewRow(listing, series || []);
+    return buildListingViewRow(listing, series || [], S.detailListingWeekly[S.detailListingKey] || []);
   }
 
   function selectDetailListing(key) {
@@ -1608,14 +1720,19 @@
     S.detailListingLoading = true;
     renderDetail();
     var want = S.detailListingKey;
-    callP('getProductSeries', listing, seriesSpanDays()).then(function (rows) {
+    Promise.all([
+      callP('getProductSeries', listing, seriesSpanDays()),
+      callP('getListingWeekly', listing.item_id, listing.shop_id),
+    ]).then(function (pair) {
       if (S.detailListingKey !== want) return;
-      S.detailListingSeries[want] = rows || [];
+      S.detailListingSeries[want] = pair[0] || [];
+      S.detailListingWeekly[want] = pair[1] || [];
       S.detailListingLoading = false;
       renderDetail();
     }, function () {
       if (S.detailListingKey !== want) return;
       S.detailListingSeries[want] = [];
+      S.detailListingWeekly[want] = [];
       S.detailListingLoading = false;
       renderDetail();
     });
@@ -1631,6 +1748,7 @@
     S.detailMetric = 'omset';
     S.detailListingKey = null;
     S.detailListingSeries = {};
+    S.detailListingWeekly = {};
     S.detailListingLoading = false;
     S.detailViewRow = null;
     showScreen('detail');
@@ -1768,12 +1886,9 @@
     cv.addEventListener('pointerleave', function () { if (!dragging) reset(); });
   }
 
-  // Axis ticks land every real 14 days (not every 14th point — scrape gaps
-  // are irregular), always including the latest point so the axis never ends
-  // mid-gap. Positioned by the same time-fraction math as the plotted points.
-  function renderChartDateLabels(container, minT, maxT, w, pad) {
+  function renderChartDateLabels(container, minT, maxT, w, pad, stepDays) {
     if (!container) return;
-    var DAY = 86400000, STEP = 14 * DAY;
+    var DAY = 86400000, STEP = (stepDays || 7) * DAY;
     var ticks = [];
     for (var t = minT; t < maxT; t += STEP) ticks.push(t);
     // The last tick is always maxT so the axis never ends mid-gap — drop the
@@ -1792,7 +1907,8 @@
   function mountDetailChart(cv, labelsEl, row, metricKey, activeStat, header) {
     _dc = null;
     if (!cv || !cv.getContext) return;
-    var pts = seriesPoints(rowSeries(row), metricKey);
+    var daily = (row && row.dseries && row.dseries.length >= 2) ? row.dseries : rowSeries(row);
+    var pts = seriesPoints(weeklyDetailSeries(daily, row.weeklyRows), metricKey);
     if (!pts) return;
     var dpr = global.devicePixelRatio || 1;
     var w = cv.clientWidth || 280, h = cv.clientHeight || 120;
@@ -1815,7 +1931,7 @@
     paintDetailChartFrame(null);
     cv.style.touchAction = 'none';
     bindDetailChartScrub(cv);
-    renderChartDateLabels(labelsEl, pts[0].t, pts[pts.length - 1].t, w, pad);
+    renderChartDateLabels(labelsEl, pts[0].t, pts[pts.length - 1].t, w, pad, 7);
   }
 
   // Scrollable listing picker: Semua (keyword/store aggregate) plus the
@@ -1887,10 +2003,7 @@
           '<div class="ltk-chart-legend">' +
             '<span class="ltk-chart-legend-item"><i class="ltk-chart-legend-solid"></i>Data terukur' +
               (nEst ? ' / estimasi ulasan' : '') + '</span>' +
-            (row.n_forecast
-              ? '<span class="ltk-chart-legend-item"><i class="ltk-chart-legend-dash"></i>Perkiraan (' +
-                  esc(String(row.n_forecast)) + ' hari terakhir, dari model LarisID)</span>'
-              : '') +
+            '<span class="ltk-chart-legend-item"><i class="ltk-chart-legend-dash"></i>Perkiraan (minggu ini jika belum terukur, + 1 minggu ke depan)</span>' +
           '</div>'
         : '<p class="ltk-detail-peers-note">' +
             (S.detailListingKey
@@ -2288,6 +2401,9 @@
     if (s.length < 2) return;
     var firstT = Date.parse(s[0].d);
     var lastT = Date.parse(s[s.length - 1].d);
+    // Future forecast days (p_to = today+7) must not inflate the 7/30/60/90 badge.
+    var todayT = Date.parse(wibTodayISO() + 'T12:00:00');
+    if (!isNaN(todayT) && lastT > todayT) lastT = todayT;
     // Both halves must be the same length or the % is meaningless. The store
     // scope can't always supply 2x the window (mv_shop_daily holds 120 days),
     // so fall back to half of whatever the series actually covers.
@@ -2301,7 +2417,7 @@
     var lastPrice = 0, prevPrice = 0;
     s.forEach(function (p) {
       var t = Date.parse(p.d);
-      if (isNaN(t)) return;
+      if (isNaN(t) || t > lastT) return;
       if (t > cur0) {
         cur.omset += p.omset; cur.units += p.units;
         if (p.avg_price) lastPrice = p.avg_price;
@@ -2319,16 +2435,22 @@
     // A series is only a real trend if something actually moved in it —
     // an all-zero curve is "no data", not "flat sales".
     r.has_dense = s.some(function (p) {
+      var t = Date.parse(p.d);
+      if (!isNaN(t) && t > lastT) return false;
       return (p.source === 'measured' || p.source === 'estimated' || !p.source)
         && (p.omset > 0 || p.units > 0);
     });
-    r.n_forecast = s.filter(function (p) { return p.source === 'forecast'; }).length;
+    r.n_forecast = s.filter(function (p) {
+      if (p.source !== 'forecast') return false;
+      var t = Date.parse(p.d);
+      return !isNaN(t) && t <= lastT;
+    }).length;
     // n_days drives the "Aktif · N hari data" meta — count measured/estimated
     // days in the effective window, not raw scrape buckets.
     var measuredInWin = 0;
     s.forEach(function (p) {
       var t = Date.parse(p.d);
-      if (!isNaN(t) && t > cur0 && (p.source === 'measured' || p.source === 'estimated')) measuredInWin++;
+      if (!isNaN(t) && t > cur0 && t <= lastT && (p.source === 'measured' || p.source === 'estimated')) measuredInWin++;
     });
     if (measuredInWin > 0) r.n_days = measuredInWin;
     else if (r.has_dense) r.n_days = Math.max(r.n_days || 0, win);
@@ -2370,8 +2492,12 @@
       var p = isKw
         ? callP('getKeywordSeries', r.keyword, days)
         : callP('getStoreSeries', r.shop_id, days);
-      return p.then(function (list) {
-        r.dseries = normaliseSeries(list);
+      var w = isKw
+        ? callP('getKeywordWeekly', r.keyword)
+        : Promise.resolve(null);
+      return Promise.all([p, w]).then(function (pair) {
+        r.dseries = normaliseSeries(pair[0]);
+        r.weeklyRows = pair[1] || [];
         deriveFromSeries(r);
       }).catch(function (e) { warn('dense series failed', e); });
     })).then(function () {

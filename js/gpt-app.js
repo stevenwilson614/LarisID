@@ -7867,8 +7867,8 @@ async function gptRecentSearchKeywords(limit) {
   return out.slice(0, limit || 12);
 }
 
-/** Local YYYY-MM-DD for `n` days ago. Both series RPCs clamp p_to to
- *  current_date server-side, so a timezone-edge day either way is harmless. */
+/** Local YYYY-MM-DD for `n` days ago (negative n = days ahead). Series RPCs
+ *  clamp p_to to current_date+7 so a 1-week forecast tail can be requested. */
 function _isoDaysAgo(n) {
   const d = new Date(Date.now() - (Number(n) || 0) * 86400000);
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -7970,7 +7970,7 @@ function gptTrackerAdapter() {
           p_item_id: listing.item_id,
           p_shop_id: listing.shop_id,
           p_from: since,
-          p_to: _isoDaysAgo(0),
+          p_to: _isoDaysAgo(-7),
         });
         if (!error && Array.isArray(data) && data.length >= 2) {
           const real = data.filter(p => p.source === 'measured' || p.source === 'estimated');
@@ -8047,7 +8047,7 @@ function gptTrackerAdapter() {
       try {
         const { data, error } = await _supabase.rpc('keyword_daily_series', {
           p_keyword: String(keyword).trim().toLowerCase(),
-          p_from: _isoDaysAgo(days), p_to: _isoDaysAgo(0),
+          p_from: _isoDaysAgo(days), p_to: _isoDaysAgo(-7),
         });
         if (error) throw error;
         return data || [];
@@ -8058,7 +8058,27 @@ function gptTrackerAdapter() {
       try {
         const { data, error } = await _supabase.rpc('store_daily_series', {
           p_shop_id: Number(shopId),
-          p_from: _isoDaysAgo(days), p_to: _isoDaysAgo(0),
+          p_from: _isoDaysAgo(days), p_to: _isoDaysAgo(-7),
+        });
+        if (error) throw error;
+        return data || [];
+      } catch (_) { return []; }
+    },
+    async getListingWeekly(itemId, shopId) {
+      if (itemId == null || shopId == null || !_supabase) return [];
+      try {
+        const { data, error } = await _supabase.rpc('listing_weekly_for', {
+          p_item_id: itemId, p_shop_id: shopId, p_weeks: 8,
+        });
+        if (error) throw error;
+        return data || [];
+      } catch (_) { return []; }
+    },
+    async getKeywordWeekly(keyword) {
+      if (!keyword || !_supabase) return [];
+      try {
+        const { data, error } = await _supabase.rpc('keyword_weekly_for', {
+          p_keyword: String(keyword).trim(), p_weeks: 8,
         });
         if (error) throw error;
         return data || [];
@@ -8813,10 +8833,18 @@ function ddWeeklySeries(history) {
   }
   let out = [...weeks.entries()].sort((a, b) => a[0] - b[0])
     .map(([ts, w]) => ({ ts, units: Math.round(w.units), omset: Math.round(w.omset), items: w.items.size }));
-  // Trailing week with <3.5 days of observation undercounts — drop it.
-  // Keep a lone week (e.g. first-interval credited to ending scrape) so 2-scrape
-  // series are not wiped when the second scrape falls early in its Monday week.
-  if (out.length > 1 && maxT - out[out.length - 1].ts < 3.5 * 864e5) out = out.slice(0, -1);
+  // Trailing week is usually mid-week (today). Scale to a 7-day rate so it
+  // does not read as a crash; listing_weekly overlay replaces it when present.
+  if (out.length && maxT - out[out.length - 1].ts < 6.5 * 864e5) {
+    const last = out[out.length - 1];
+    const days = Math.max(1, (maxT - last.ts) / 864e5);
+    if (days < 7) {
+      const scale = 7 / days;
+      last.units = Math.round(last.units * scale);
+      last.omset = Math.round(last.omset * scale);
+      last.perkiraan = true;
+    }
+  }
   // Hide mid-April first-scrape baseline noise; chart starts Monday of week containing 27 Apr 2026 (WIB).
   const fromTs = mondayOfWeek(new Date(Date.UTC(2026, 3, 27, 4, 0, 0))).getTime();
   return out.filter(w => w.ts >= fromTs);
@@ -8872,39 +8900,17 @@ async function ddServerWeeklySeries(product, days = 119) {
   const fromTs = mondayOfWeek(new Date(Date.UTC(2026, 3, 27, 4, 0, 0))).getTime();
   let out = [...weeks.entries()].sort((a, b) => a[0] - b[0])
     .filter(([ts]) => ts >= fromTs)
-    .map(([ts, w]) => ({ ts, units: Math.round(w.units), omset: Math.round(w.omset), items: 1, days: w.days }));
-  // The window ends mid-week, so the last bucket holds 1-2 days and reads as a
-  // collapse rather than a partial week: 21 units against the prior week's 150.
-  // The client path drops the same bucket for the same reason.
-  while (out.length > 1 && out[out.length - 1].days < 3.5) out.pop();
-  out.forEach(w => { delete w.days; });
+    .map(([ts, w]) => {
+      const scale = w.days > 0 && w.days < 7 ? 7 / w.days : 1;
+      return {
+        ts,
+        units: Math.round(w.units * scale),
+        omset: Math.round(w.omset * scale),
+        items: 1,
+        perkiraan: scale > 1,
+      };
+    });
   return out.length ? out : null;
-}
-
-/** Roll weekly market points into calendar-month averages for chart display. */
-function ddMonthlySeries(weekly) {
-  const byMo = new Map();
-  for (const w of weekly || []) {
-    const d = new Date(w.ts);
-    const key = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
-    const cur = byMo.get(key) || { ts: key, units: 0, omset: 0, items: 0, n: 0 };
-    cur.units += Number(w.units) || 0;
-    cur.omset += Number(w.omset) || 0;
-    cur.items = Math.max(cur.items, Number(w.items) || 0);
-    cur.n += 1;
-    byMo.set(key, cur);
-  }
-  return [...byMo.values()]
-    .sort((a, b) => a.ts - b.ts)
-    .map(m => ({
-      ts: m.ts,
-      // Average weekly rate within the month, scaled to a ~4.3-week month so
-      // bars stay comparable when a month only has 1–2 observed weeks.
-      units: Math.round((m.units / Math.max(1, m.n)) * Math.min(4.3, Math.max(1, m.n))),
-      omset: Math.round((m.omset / Math.max(1, m.n)) * Math.min(4.3, Math.max(1, m.n))),
-      items: m.items,
-      weeks: m.n,
-    }));
 }
 
 /** WIB Monday of the calendar week containing `d`, as YYYY-MM-DD. */
@@ -8924,28 +8930,70 @@ function listingNextWeekStartISO(d = new Date()) {
     .toISOString().slice(0, 10);
 }
 
-/** Next-week snapshot from listing_weekly / keyword_weekly. Null if the
- *  table is not yet applied or the product has no row. */
-async function fetchWeeklySnapshot({ item_id, shop_id, keyword, weekStart }) {
-  if (!_supabase || !weekStart) return null;
-  const match = row => String(row.week_start || '').slice(0, 10) === weekStart;
+const DD_TREND_HISTORY_WEEKS = 6;
+
+/** Last 6 WIB Mondays through this week (zeros if a Monday has no bucket). */
+function ddLast6Weeks(weekly) {
+  const thisMon = Date.parse(listingWeekStartISO() + 'T00:00:00Z');
+  const byTs = new Map((weekly || []).map(w => [w.ts, w]));
+  const out = [];
+  for (let i = DD_TREND_HISTORY_WEEKS - 1; i >= 0; i--) {
+    const ts = thisMon - i * 7 * 864e5;
+    const hit = byTs.get(ts);
+    out.push(hit ? { ...hit, ts } : { ts, units: 0, omset: 0, items: 0 });
+  }
+  return out;
+}
+
+/** Prefer listing_weekly / keyword_weekly this-week row (already a 7-day rate). */
+function ddOverlayThisWeek(weekly, snap) {
+  if (!snap || (snap.units_wk == null && snap.omset_wk == null)) return weekly || [];
+  const ts = Date.parse(listingWeekStartISO() + 'T00:00:00Z');
+  const row = {
+    ts,
+    units: Math.round(Number(snap.units_wk) || 0),
+    omset: Math.round(Number(snap.omset_wk) || 0),
+    items: 1,
+    perkiraan: String(snap.source || '') !== 'measured',
+  };
+  const out = (weekly || []).slice();
+  const i = out.findIndex(w => w.ts === ts);
+  if (i >= 0) out[i] = { ...out[i], ...row };
+  else out.push(row);
+  return out.sort((a, b) => a.ts - b.ts);
+}
+
+function weeklyRowFor(rows, weekStart) {
+  return (rows || []).find(r => String(r.week_start || '').slice(0, 10) === weekStart) || null;
+}
+
+/** This-week + next-week rows from listing_weekly / keyword_weekly. */
+async function fetchWeeklyRows({ item_id, shop_id, keyword, weeks = 8 } = {}) {
+  if (!_supabase) return [];
   try {
     if (item_id != null && shop_id != null) {
       const { data, error } = await _supabase.rpc('listing_weekly_for', {
-        p_item_id: item_id, p_shop_id: shop_id, p_weeks: 4,
+        p_item_id: item_id, p_shop_id: shop_id, p_weeks: weeks,
       });
-      if (error || !Array.isArray(data)) return null;
-      return data.find(match) || null;
+      if (error || !Array.isArray(data)) return [];
+      return data;
     }
     if (keyword) {
       const { data, error } = await _supabase.rpc('keyword_weekly_for', {
-        p_keyword: String(keyword).trim(), p_weeks: 4,
+        p_keyword: String(keyword).trim(), p_weeks: weeks,
       });
-      if (error || !Array.isArray(data)) return null;
-      return data.find(match) || null;
+      if (error || !Array.isArray(data)) return [];
+      return data;
     }
   } catch (_) { /* table/RPC not applied yet */ }
-  return null;
+  return [];
+}
+
+/** Snapshot for one week_start. Null if the table is not yet applied. */
+async function fetchWeeklySnapshot({ item_id, shop_id, keyword, weekStart }) {
+  if (!weekStart) return null;
+  const rows = await fetchWeeklyRows({ item_id, shop_id, keyword });
+  return weeklyRowFor(rows, weekStart);
 }
 
 function ddShareData(peers) {
@@ -10251,8 +10299,14 @@ async function openDeepDive(product, ddOpts = {}) {
 
   const stats = ddStats(peers);
   // Server series first; the client path stays as the fallback while this rolls out.
-  const weekly = (await ddServerWeeklySeries(product)) || ddWeeklySeries(history);
-  const series = ddMonthlySeries(weekly);
+  const weeklyAll = (await ddServerWeeklySeries(product)) || ddWeeklySeries(history);
+  const weekKey = product._ptype
+    ? { keyword: kw }
+    : { item_id: product.item_id, shop_id: product.shop_id };
+  const weeklySnaps = await fetchWeeklyRows(weekKey);
+  const thisSnap = weeklyRowFor(weeklySnaps, listingWeekStartISO());
+  const fcSnap = weeklyRowFor(weeklySnaps, listingNextWeekStartISO());
+  const series = ddLast6Weeks(ddOverlayThisWeek(weeklyAll, thisSnap));
   const scoreInfo = ddScore(product, stats, niche);
   const share = ddShareData(peers);
   const age = ddShopAgeBuckets(peers);
@@ -10283,7 +10337,8 @@ async function openDeepDive(product, ddOpts = {}) {
   if (chat) upsertDeepDiveChatMessage(chat, product, scoreInfo, stats);
 
   const lastScrape = history.length ? history[history.length - 1].scraped_at : null;
-  const hasTrend = series.length >= 2;
+  const hasTrend = series.filter(w => (w.units || w.omset)).length >= 2
+    || (weeklyAll || []).length >= 2;
   const bandLo = stats.p25, bandHi = stats.p75;
   const segLeft = stats.max > stats.min ? Math.round((bandLo - stats.min) / (stats.max - stats.min) * 100) : 0;
   const segWidth = stats.max > stats.min ? Math.max(4, Math.round((bandHi - bandLo) / (stats.max - stats.min) * 100)) : 100;
@@ -10331,12 +10386,12 @@ async function openDeepDive(product, ddOpts = {}) {
         ${hasTrend
           ? `<div class="ddr-chart-wrap"><canvas id="ddr-trend-canvas"></canvas></div>
              <div class="chart-legend" style="flex-direction:row;gap:14px">
-               <span class="row"><span class="swatch" style="background:#B5202A"></span>Omset / bln (Rp)</span>
-               <span class="row"><span class="swatch" style="background:#2563EB"></span>Unit / bln</span>
+               <span class="row"><span class="swatch" style="background:#B5202A"></span>Omset / minggu (Rp)</span>
+               <span class="row"><span class="swatch" style="background:#2563EB"></span>Unit / minggu</span>
                <span class="row"><span class="swatch" style="background:#16A34A"></span>Perkiraan</span>
              </div>`
-          : `<p class="dd-sub">Belum cukup riwayat scrape untuk tren bulanan keyword ini — butuh beberapa gelombang panel. Bagian lain tetap dari data asli.</p>`}
-        <p class="ddr-caption">Estimasi bulanan pasar keyword “${esc(kw || '—')}” (rata-rata minggu dalam setiap bulan, dari selisih scrape berurutan; snapshot pertama = baseline, bukan omset)${hasTrend ? ' · tampilan dari 27 Apr 2026' : ''} ${history.length ? `· ${new Set(history.map(r => String(r.item_id))).size} listing` : ''} · scrape terakhir ${esc(fmtAnchorDate(lastScrape))}. Garis hijau = perkiraan minggu depan (model kecepatan LarisID), bukan data terukur.</p>
+          : `<p class="dd-sub">Belum cukup riwayat scrape untuk tren mingguan keyword ini — butuh beberapa gelombang panel. Bagian lain tetap dari data asli.</p>`}
+        <p class="ddr-caption">Omset dan unit per minggu (Senin WIB) untuk keyword “${esc(kw || '—')}” — 6 minggu terakhir sampai hari ini, dari selisih scrape berurutan; snapshot pertama = baseline, bukan omset${hasTrend ? ' · tampilan dari 27 Apr 2026' : ''} ${history.length ? `· ${new Set(history.map(r => String(r.item_id))).size} listing` : ''} · scrape terakhir ${esc(fmtAnchorDate(lastScrape))}. Garis hijau = perkiraan minggu depan (model kecepatan LarisID), bukan data terukur. Minggu berjalan ditandai perkiraan sampai scrape menutup pekan.</p>
       </div>
       <div class="ddr-card" data-dd-sec="pangsa">
         <h3>Distribusi Pangsa Pasar</h3>
@@ -10454,12 +10509,6 @@ async function openDeepDive(product, ddOpts = {}) {
   // Charts + sparklines (Chart.js lazy; sparklines are raw canvas).
   await larisEnsureChart();
   if (hasTrend) {
-    const nextWeek = listingNextWeekStartISO();
-    const fcSnap = product._ptype
-      ? await fetchWeeklySnapshot({ keyword: kw, weekStart: nextWeek })
-      : await fetchWeeklySnapshot({
-          item_id: product.item_id, shop_id: product.shop_id, weekStart: nextWeek,
-        });
     ddRenderTrendChart(series, fcSnap);
   }
   if (share.shops.length >= 4) {
@@ -10535,22 +10584,24 @@ function mondayOfWeek(d = new Date()) {
   return mon;
 }
 
-// Monthly market trend from scrape history (weekly series rolled into months).
+// Weekly market trend: last 6 WIB weeks through today + 1 next-week perkiraan.
 // Real series stays SHORTER than the labels — only Perkiraan touches the future
-// month. Next-month point is the server next-week snapshot scaled ×30/7
-// (same velocity as the card). last-2-weeks avg is fallback only.
+// Monday. Next-week point is listing_weekly.omset_wk (weekly grain, not ×30/7).
+// last-2-weeks avg is fallback only.
 function ddRenderTrendChart(series, forecastSnap) {
   if (typeof Chart === 'undefined' || series.length < 2) return;
-  const fmtMo = ts => new Date(ts).toLocaleDateString('id-ID', { month: 'short', year: '2-digit', timeZone: 'UTC' });
-  const labels = series.map(w => fmtMo(w.ts));
-  const last = new Date(series[series.length - 1].ts);
-  labels.push(fmtMo(Date.UTC(last.getUTCFullYear(), last.getUTCMonth() + 1, 1)));
+  const fmtWk = ts => new Date(ts).toLocaleDateString('id-ID', {
+    day: 'numeric', month: 'short', timeZone: 'UTC',
+  });
+  const labels = series.map(w => fmtWk(w.ts));
+  const last = series[series.length - 1].ts;
+  labels.push(fmtWk(last + 7 * 864e5) + ' ▶');
   const omset = series.map(w => w.omset);
   const units = series.map(w => w.units);
   const last2 = arr => Math.round((arr[arr.length - 1] + (arr[arr.length - 2] ?? arr[arr.length - 1])) / 2);
   const hasServer = forecastSnap && (forecastSnap.omset_wk != null || forecastSnap.units_wk != null);
   const fcOmset = hasServer
-    ? Math.round((Number(forecastSnap.omset_wk) || 0) * 30 / 7)
+    ? Math.round(Number(forecastSnap.omset_wk) || 0)
     : last2(omset);
   const forecast = Array(series.length - 1).fill(null).concat([omset[omset.length - 1], fcOmset]);
   makeChart('ddr-trend-canvas', {
@@ -10558,8 +10609,8 @@ function ddRenderTrendChart(series, forecastSnap) {
     data: {
       labels,
       datasets: [
-        { label: 'Omset / bln (Rp)', data: omset, borderColor: '#B5202A', backgroundColor: 'rgba(181,32,42,.06)', borderWidth: 2, fill: true, tension: .35, yAxisID: 'y', pointRadius: 3 },
-        { label: 'Unit / bln', data: units, borderColor: '#2563EB', borderWidth: 2, tension: .35, yAxisID: 'y2', pointRadius: 3 },
+        { label: 'Omset / minggu (Rp)', data: omset, borderColor: '#B5202A', backgroundColor: 'rgba(181,32,42,.06)', borderWidth: 2, fill: true, tension: .35, yAxisID: 'y', pointRadius: 3 },
+        { label: 'Unit / minggu', data: units, borderColor: '#2563EB', borderWidth: 2, tension: .35, yAxisID: 'y2', pointRadius: 3 },
         { label: 'Perkiraan', data: forecast, borderColor: '#16A34A', borderDash: [5, 5], borderWidth: 2, tension: .35, yAxisID: 'y', pointRadius: 3 },
       ],
     },

@@ -26,6 +26,10 @@ ssh -i "${LARISID_SSH_KEY:-$HOME/.ssh/larisid_hetzner}" \
     -o ConnectTimeout=20 root@84.247.147.205 \
     "docker exec -i supabase-db psql -U postgres -v ON_ERROR_STOP=1" \
     < velocity_model.sql   # peer_only_male / last2_male columns; needed before --fit
+ssh -i "${LARISID_SSH_KEY:-$HOME/.ssh/larisid_hetzner}" \
+    -o ConnectTimeout=20 root@84.247.147.205 \
+    "docker exec -i supabase-db psql -U postgres -v ON_ERROR_STOP=1" \
+    < product_daily_series.sql   # p_to clamp = current_date + 7 (forecast tail)
 bash refresh_listing_weekly.sh   # fill this week + next week
 ```
 
@@ -99,16 +103,25 @@ closed-form decay (`W(t') = W(t)·exp(−Δ/τ)`) revises this week and next wee
 - `nowcast` / `forecast` / `peer` → **perkiraan**, dashed/dimmed, with confidence.
   A week with no scrape shows a labelled estimate — never "0 terjual", and never
   an unlabelled number.
-- UI sequence: last measured window (terukur) → this week (nowcast, perkiraan) →
-  next week (forecast, perkiraan).
-- Tracker charts already draw this from `product_daily_series` source tags
-  (`js/laris-tracker.js`). Deep Dive now reads `listing_weekly_for` /
-  `keyword_weekly_for` instead of averaging the last two client-side weeks.
+- UI sequence: last 6 WIB weeks through today (this week = nowcast, perkiraan
+  unless `source=measured`) → next week (forecast, perkiraan). Chart labels
+  are week starts (`10 Agu`), not calendar months (`Agu 26`).
+- Deep Dive tren graphs (Ask Laris `#ddr-trend-canvas`, dashboard
+  `#tren-main-chart` / `#ap-demand-chart` / `#dd-chart-trend`) plot weekly
+  `omset_wk` / `units_wk`. They overlay this week and next week from
+  `listing_weekly_for` / `keyword_weekly_for`. Card omset stays monthly (`×30`).
+- Tracker **detail** chart is the same 6+1 weekly grain. Tracker **badges**
+  and sparklines stay on the selected 7/30/60/90 **daily** window so the %
+  and the headline still share one series. `product_daily_series` /
+  `keyword_daily_series` / `store_daily_series` clamp `p_to` at
+  `current_date + 7` so the store tab can fill next week when there is no
+  `store_weekly` table.
 
 ## What not to do
 
 - Do not revive `weekly_snapshots`.
 - Do not bring back `price * delta * 4` on cards (`js/laris-app.js` `_dscOmset`).
-- Do not treat the Deep Dive last-2-weeks average as source of truth.
+- Do not roll Deep Dive tren charts into calendar months (`Agu 26` was month+year).
+- Do not scale weekly forecast points `×30/7` on the tren graph — that grain is weekly.
 - Do not forecast keyword weeks from a keyword-level peer cohort — there isn't
   one; sum the listing rows.

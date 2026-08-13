@@ -12812,26 +12812,73 @@ function listingNextWeekStartISO(d = new Date()) {
     .toISOString().slice(0, 10);
 }
 
-async function fetchListingWeeklyRow(itemId, shopId, weekStart) {
-  if (!_supabase || itemId == null || shopId == null || !weekStart) return null;
+async function fetchListingWeeklyRows(itemId, shopId, weeks = 8) {
+  if (!_supabase || itemId == null || shopId == null) return [];
   try {
     const { data, error } = await _supabase.rpc('listing_weekly_for', {
-      p_item_id: itemId, p_shop_id: shopId, p_weeks: 4,
+      p_item_id: itemId, p_shop_id: shopId, p_weeks: weeks,
     });
-    if (error || !Array.isArray(data)) return null;
-    return data.find(r => String(r.week_start || '').slice(0, 10) === weekStart) || null;
-  } catch (_) { return null; }
+    if (error || !Array.isArray(data)) return [];
+    return data;
+  } catch (_) { return []; }
+}
+
+async function fetchListingWeeklyRow(itemId, shopId, weekStart) {
+  if (!weekStart) return null;
+  const rows = await fetchListingWeeklyRows(itemId, shopId);
+  return rows.find(r => String(r.week_start || '').slice(0, 10) === weekStart) || null;
+}
+
+async function fetchKeywordWeeklyRows(keyword, weeks = 8) {
+  if (!_supabase || !keyword) return [];
+  try {
+    const { data, error } = await _supabase.rpc('keyword_weekly_for', {
+      p_keyword: String(keyword).trim(), p_weeks: weeks,
+    });
+    if (error || !Array.isArray(data)) return [];
+    return data;
+  } catch (_) { return []; }
 }
 
 async function fetchKeywordWeeklyRow(keyword, weekStart) {
-  if (!_supabase || !keyword || !weekStart) return null;
-  try {
-    const { data, error } = await _supabase.rpc('keyword_weekly_for', {
-      p_keyword: String(keyword).trim(), p_weeks: 4,
-    });
-    if (error || !Array.isArray(data)) return null;
-    return data.find(r => String(r.week_start || '').slice(0, 10) === weekStart) || null;
-  } catch (_) { return null; }
+  if (!weekStart) return null;
+  const rows = await fetchKeywordWeeklyRows(keyword);
+  return rows.find(r => String(r.week_start || '').slice(0, 10) === weekStart) || null;
+}
+
+const TREND_HISTORY_WEEKS = 6;
+
+/** Prefer listing_weekly / keyword_weekly this-week row (already a 7-day rate). */
+function overlayWeeklyThisWeek(weeks, serverRow, { mondayOf, wKey, wLabel }) {
+  if (!serverRow || (serverRow.units_wk == null && serverRow.omset_wk == null)) {
+    return weeks || [];
+  }
+  const thisMon = mondayOf(new Date());
+  const patched = {
+    label: wLabel(thisMon),
+    units: Math.round(Number(serverRow.units_wk) || 0),
+    omset: Math.round(Number(serverRow.omset_wk) || 0),
+    firstDate: thisMon,
+    perkiraan: String(serverRow.source || '') !== 'measured',
+  };
+  const key = wKey(thisMon);
+  const out = (weeks || []).map(w => wKey(w.firstDate) === key ? { ...w, ...patched } : w);
+  if (!out.some(w => wKey(w.firstDate) === key)) out.push(patched);
+  return out.sort((a, b) => a.firstDate - b.firstDate);
+}
+
+function sliceTrendHistoryWeeks(weeks, mondayOf, n = TREND_HISTORY_WEEKS) {
+  const winEnd = mondayOf(new Date());
+  const from = winEnd.getTime() - (n - 1) * 7 * 86400000;
+  const until = winEnd.getTime() + 12 * 3600000;
+  return (weeks || []).filter(w => {
+    const t = w.firstDate instanceof Date ? w.firstDate.getTime() : Date.parse(w.firstDate);
+    return t >= from - 12 * 3600000 && t <= until;
+  });
+}
+
+function weeklyRowFor(rows, weekStart) {
+  return (rows || []).find(r => String(r.week_start || '').slice(0, 10) === weekStart) || null;
 }
 
 function weeklyForecastPair(nW, labelsLen, lastUnits, lastOmset, serverRow, fallbackUnits, fallbackOmset) {
@@ -12878,11 +12925,16 @@ async function ddRenderTren() {
     if (_trenGridEl)  _trenGridEl.style.display  = '';
 
     const { weeks, dbRows, isEstimated, isPeerEstimated } = trend;
-    // The server series already covers every day of the requested window, so
-    // anchoring to 4 Mondays and back-filling empty weeks would only re-mangle it.
-    const weeksFilled = trend.serverSeries ? weeks : larisTrendAnchorMondayWindow(weeks, {
+    const weeksAnchored = trend.serverSeries ? weeks : larisTrendAnchorMondayWindow(weeks, {
       mondayOf: ddTrendMondayOf, wKey: ddTrendWKey, wLabel: ddTrendWLabel,
     });
+    const thisSnap = await fetchListingWeeklyRow(listing.item_id, listing.shop_id, listingWeekStartISO());
+    const weeksFilled = sliceTrendHistoryWeeks(
+      overlayWeeklyThisWeek(weeksAnchored, thisSnap, {
+        mondayOf: ddTrendMondayOf, wKey: ddTrendWKey, wLabel: ddTrendWLabel,
+      }),
+      ddTrendMondayOf,
+    );
     const gapEstimated = weeksFilled.some(w => w.gapEstimated);
     _trenData = {
       weeks: weeksFilled, listing, category: listing.category || 'Umum',
@@ -12916,7 +12968,7 @@ async function ddRenderTren() {
 
     const estNote = isPeerEstimated ? ' · estimasi peer' : isEstimated ? ' · sebagian diestimasi dari ulasan' : '';
     const subEl = document.getElementById('tren-chart-subtitle');
-    if (subEl) subEl.textContent = `${nW} minggu scrape · sejak 9 Apr 2026${estNote}`;
+    if (subEl) subEl.textContent = `${nW} minggu terakhir + 1 minggu perkiraan${estNote}`;
 
     if (insEl) {
       const peakWeek = maxW.label;
@@ -13389,7 +13441,7 @@ function ddRenderAnalisa() {
   document.getElementById('ap-s5b').textContent  = 'Potensi ' + d.potensiLabel.toLowerCase();
 
   const sub = document.getElementById('ap-demand-subtitle');
-  if (sub) sub.textContent = 'Memuat 4 minggu terakhir + prediksi semua toko di keyword…';
+  if (sub) sub.textContent = 'Memuat 6 minggu terakhir + prediksi semua toko di keyword…';
 
   apRenderDemand(true);
   apRenderCompDonut();
@@ -13411,7 +13463,7 @@ function ddRenderAnalisa() {
       sub.textContent = nW
         ? (demand.meta.snapshot
             ? `Ukuran pasar per minggu (kumulatif) · ${demand.meta.listingCount || 0} listing di keyword`
-            : `4 minggu terakhir + prediksi · agregat ${demand.meta.listingCount || 0} listing di keyword`)
+            : `6 minggu terakhir + prediksi · agregat ${demand.meta.listingCount || 0} listing di keyword`)
         : 'Belum cukup data scrape mingguan untuk keyword ini';
     }
     apRenderDemand();
@@ -13444,10 +13496,19 @@ function apRenderDemand(loading) {
     return;
   }
 
-  // A5/A7: anchor to the current Monday (this + previous 3); gap weeks use prior scrape avg.
-  const weeklyRowsFilled = larisTrendAnchorMondayWindow(weekly, {
+  // A5/A7: anchor to the current Monday (this + previous 5); gap weeks use prior scrape avg.
+  const weeklyAnchored = larisTrendAnchorMondayWindow(weekly, {
     mondayOf: _apMondayOf, wKey: _apWKey, wLabel: _apWLabel,
   });
+  const kw = _ddKwListing?.keyword || _ddCurrentP?._listing?.keyword || _ddCurrentP?.keyword;
+  const weeklySnaps = await fetchKeywordWeeklyRows(kw);
+  const thisSnap = weeklyRowFor(weeklySnaps, listingWeekStartISO());
+  const weeklyRowsFilled = sliceTrendHistoryWeeks(
+    overlayWeeklyThisWeek(weeklyAnchored, thisSnap, {
+      mondayOf: _apMondayOf, wKey: _apWKey, wLabel: _apWLabel,
+    }),
+    _apMondayOf,
+  );
   if (weeklyRowsFilled.some(w => w.gapEstimated)) isEst = true;
   const labels = weeklyRowsFilled.map(w => w.label);
   // Real series arrays stay SHORTER than `labels` (no trailing null) so the
@@ -13463,8 +13524,7 @@ function apRenderDemand(loading) {
     ? new Date(lastWeek.firstDate.getTime() + 7 * 86400000)
     : new Date();
   labels.push(_apWLabel(nextWeek) + ' ▶');
-  const kw = _ddKwListing?.keyword || _ddCurrentP?._listing?.keyword || _ddCurrentP?.keyword;
-  const serverFc = await fetchKeywordWeeklyRow(kw, listingNextWeekStartISO());
+  const serverFc = weeklyRowFor(weeklySnaps, listingNextWeekStartISO());
   const { fUnitW, fOmsetW } = weeklyForecastPair(
     nW, labels.length,
     nW > 0 ? weeklyRowsFilled[nW - 1].units : null,
@@ -13576,7 +13636,7 @@ function apRenderDemand(loading) {
   if (noteEl) {
     const estNote = isEst ? ' · sebagian unit diestimasi dari ulasan (bucket Shopee 10rb+)' : '';
     const nList = meta?.listingCount ? `${meta.listingCount} listing` : 'semua listing';
-    noteEl.textContent = `4 minggu terakhir + prediksi 1 minggu · ${nList} di keyword · perkiraan = model kecepatan LarisID (bukan rata-rata 2 minggu)${estNote}`;
+    noteEl.textContent = `6 minggu terakhir + prediksi 1 minggu · ${nList} di keyword · perkiraan = model kecepatan LarisID (bukan rata-rata 2 minggu)${estNote}`;
   }
   })();
 }
@@ -15060,10 +15120,10 @@ function larisTrendFillZeroWeeks(weeks, fallbackRows = []) {
   }
   return out;
 }
-/** Anchor to current Monday + previous 3; gap weeks inherit avg of recent scrape weeks. */
+/** Anchor to current Monday + previous 5; gap weeks inherit avg of recent scrape weeks. */
 function larisTrendAnchorMondayWindow(weeklyRows, { mondayOf, wKey, wLabel }) {
   const winEnd = mondayOf(new Date());
-  const winMondays = [3, 2, 1, 0].map(i => new Date(winEnd.getTime() - i * 7 * 86400000));
+  const winMondays = [5, 4, 3, 2, 1, 0].map(i => new Date(winEnd.getTime() - i * 7 * 86400000));
   const byWk = new Map((weeklyRows || []).map(w => [wKey(w.firstDate), w]));
   const anchored = winMondays.map(m => {
     const hit = byWk.get(wKey(m));
@@ -15071,7 +15131,7 @@ function larisTrendAnchorMondayWindow(weeklyRows, { mondayOf, wKey, wLabel }) {
                : { label: wLabel(m), units: 0, omset: 0, firstDate: m };
   });
   const useAnchored = anchored.some(w => byWk.has(wKey(w.firstDate)));
-  const base = useAnchored ? anchored : (weeklyRows || []).slice(-4);
+  const base = useAnchored ? anchored : (weeklyRows || []).slice(-TREND_HISTORY_WEEKS);
   return larisTrendFillZeroWeeks(base, weeklyRows);
 }
 function ddTrendListingWeeklyRate(rows, category) {
@@ -15290,7 +15350,7 @@ function ddTrendBuildWeeklyRows(dbRows, corrDeltas, fallbackPrice, opts = {}) {
 
    Rollback: set localStorage 'larisid_server_series' to '0' to fall back to the
    client path. Remove both the flag and the client path once this is proven. */
-const DD_SERIES_DEFAULT_DAYS = 30;
+const DD_SERIES_DEFAULT_DAYS = 49;
 
 function ddServerSeriesEnabled() {
   try { return localStorage.getItem('larisid_server_series') !== '0'; }
@@ -15677,7 +15737,7 @@ async function ddLoadTrendHistory(listing) {
         (weeklyRows.length > 0
           ? 'Data tidak berubah antar scrape — produk kemungkinan di bucket Shopee (mis. 5rb+). Tren akan muncul saat total terjual atau ulasan berubah secara signifikan.'
           : 'Baru 1 sesi scrape tersedia — nilai menunjukkan total kumulatif. Prediksi berdasarkan rata-rata pasar.');
-      const snapRowsDisplay = larisTrendFillZeroWeeks(snapRows.slice(-4), snapRows);
+      const snapRowsDisplay = larisTrendFillZeroWeeks(snapRows.slice(-TREND_HISTORY_WEEKS), snapRows);
       // Real series arrays stay SHORTER than `snapLabels` (no trailing null) so the
       // red/blue "actual" lines have nothing to plot at the forecast index — only the
       // separate green dashed "Prediksi" series may touch the future label.
@@ -15710,11 +15770,19 @@ async function ddLoadTrendHistory(listing) {
       return;
     }
 
-    // A5: anchor to current Monday + previous 3; incomplete weeks inherit prior scrape avg.
-    // Skipped on the server path — that series already spans the whole window.
+    // A5: anchor to current Monday + previous 5; incomplete weeks inherit prior scrape avg.
+    // Server path already spans the window — still overlay this week + slice last 6.
+    const weeklySnaps = await fetchListingWeeklyRows(listing.item_id, listing.shop_id);
+    const thisSnap = weeklyRowFor(weeklySnaps, listingWeekStartISO());
     let weeklyRowsFilled = trend?.serverSeries ? weeklyRows : larisTrendAnchorMondayWindow(weeklyRows, {
       mondayOf: ddTrendMondayOf, wKey: ddTrendWKey, wLabel: ddTrendWLabel,
     });
+    weeklyRowsFilled = sliceTrendHistoryWeeks(
+      overlayWeeklyThisWeek(weeklyRowsFilled, thisSnap, {
+        mondayOf: ddTrendMondayOf, wKey: ddTrendWKey, wLabel: ddTrendWLabel,
+      }),
+      ddTrendMondayOf,
+    );
     if (weeklyRowsFilled.some(w => w.gapEstimated)) isEstimated = true;
     const labels = weeklyRowsFilled.map(w => w.label);
     // Real series arrays stay SHORTER than `labels` (no trailing null) so the
@@ -15728,7 +15796,7 @@ async function ddLoadTrendHistory(listing) {
     const fcOmsetFb = Math.round(slice2.reduce((s, w) => s + w.omset, 0) / slice2.length);
     const nextWeek = new Date(weeklyRowsFilled[nW - 1].firstDate.getTime() + 7 * 86400000);
     labels.push(ddTrendWLabel(nextWeek) + ' ▶');
-    const serverFc = await fetchListingWeeklyRow(listing.item_id, listing.shop_id, listingNextWeekStartISO());
+    const serverFc = weeklyRowFor(weeklySnaps, listingNextWeekStartISO());
     const { fUnitW, fOmsetW } = weeklyForecastPair(
       nW, labels.length,
       weeklyRowsFilled[nW - 1].units, weeklyRowsFilled[nW - 1].omset,
@@ -16164,7 +16232,7 @@ function trkAdapter() {
         const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
         const { data, error } = await _supabase.rpc('keyword_daily_series', {
           p_keyword: String(keyword).trim().toLowerCase(),
-          p_from: iso(from), p_to: iso(to),
+          p_from: iso(from), p_to: iso(new Date(to.getTime() + 7 * 86400000)),
         });
         if (error) throw error;
         return data || [];
@@ -16178,7 +16246,7 @@ function trkAdapter() {
         const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
         const { data, error } = await _supabase.rpc('store_daily_series', {
           p_shop_id: Number(shopId),
-          p_from: iso(from), p_to: iso(to),
+          p_from: iso(from), p_to: iso(new Date(to.getTime() + 7 * 86400000)),
         });
         if (error) throw error;
         return data || [];
@@ -16225,7 +16293,7 @@ function trkAdapter() {
           p_item_id: listing.item_id,
           p_shop_id: listing.shop_id,
           p_from: since,
-          p_to: iso(to),
+          p_to: iso(new Date(to.getTime() + 7 * 86400000)),
         });
         if (!error && Array.isArray(data) && data.length >= 2) {
           const real = data.filter(p => p.source === 'measured' || p.source === 'estimated');
@@ -16285,6 +16353,26 @@ function trkAdapter() {
         out.push({ d, units, omset: Math.round(units * price), price, source: src });
       }
       return out;
+    },
+    async getListingWeekly(itemId, shopId) {
+      if (itemId == null || shopId == null || !_supabase) return [];
+      try {
+        const { data, error } = await _supabase.rpc('listing_weekly_for', {
+          p_item_id: itemId, p_shop_id: shopId, p_weeks: 8,
+        });
+        if (error) throw error;
+        return data || [];
+      } catch (_) { return []; }
+    },
+    async getKeywordWeekly(keyword) {
+      if (!keyword || !_supabase) return [];
+      try {
+        const { data, error } = await _supabase.rpc('keyword_weekly_for', {
+          p_keyword: String(keyword).trim(), p_weeks: 8,
+        });
+        if (error) throw error;
+        return data || [];
+      } catch (_) { return []; }
     },
     touchViewed()               { return rpc('touch_tracker_viewed'); },
     addKeyword(kw, cat)         { return rpc('add_tracked_keyword', { p_keyword: kw, p_category: cat || '' }); },
