@@ -12869,12 +12869,14 @@ function overlayWeeklyThisWeek(weeks, serverRow, { mondayOf, wKey, wLabel }) {
 
 function sliceTrendHistoryWeeks(weeks, mondayOf, n = TREND_HISTORY_WEEKS) {
   const winEnd = mondayOf(new Date());
-  const from = winEnd.getTime() - (n - 1) * 7 * 86400000;
-  const until = winEnd.getTime() + 12 * 3600000;
-  return (weeks || []).filter(w => {
-    const t = w.firstDate instanceof Date ? w.firstDate.getTime() : Date.parse(w.firstDate);
-    return t >= from - 12 * 3600000 && t <= until;
-  });
+  return (weeks || [])
+    .filter(w => (w.units ?? 0) > 0 || (w.omset ?? 0) > 0)
+    .filter(w => {
+      const t = w.firstDate instanceof Date ? w.firstDate.getTime() : Date.parse(w.firstDate);
+      return t <= winEnd.getTime() + 12 * 3600000;
+    })
+    .sort((a, b) => a.firstDate - b.firstDate)
+    .slice(-n);
 }
 
 function weeklyRowFor(rows, weekStart) {
@@ -12925,16 +12927,19 @@ async function ddRenderTren() {
     if (_trenGridEl)  _trenGridEl.style.display  = '';
 
     const { weeks, dbRows, isEstimated, isPeerEstimated } = trend;
-    const weeksAnchored = trend.serverSeries ? weeks : larisTrendAnchorMondayWindow(weeks, {
-      mondayOf: ddTrendMondayOf, wKey: ddTrendWKey, wLabel: ddTrendWLabel,
-    });
-    const thisSnap = await fetchListingWeeklyRow(listing.item_id, listing.shop_id, listingWeekStartISO());
+    // Do not overlay this week from listing_weekly (different estimator → spike)
+    // and do not fill empty Mondays with a copied average (fake plateau).
     const weeksFilled = sliceTrendHistoryWeeks(
-      overlayWeeklyThisWeek(weeksAnchored, thisSnap, {
-        mondayOf: ddTrendMondayOf, wKey: ddTrendWKey, wLabel: ddTrendWLabel,
-      }),
+      trend.serverSeries ? weeks : (weeks || []),
       ddTrendMondayOf,
     );
+    if (!weeksFilled.length) {
+      const emptyEl = document.getElementById('tren-empty-state');
+      const gridEl  = document.getElementById('tren-content-grid');
+      if (emptyEl) emptyEl.style.display = '';
+      if (gridEl)  gridEl.style.display  = 'none';
+      return;
+    }
     const gapEstimated = weeksFilled.some(w => w.gapEstimated);
     _trenData = {
       weeks: weeksFilled, listing, category: listing.category || 'Umum',
@@ -13023,8 +13028,9 @@ function trenRender() {
   const slice2 = rows.slice(-2);
   const fcUnitFb = Math.round(slice2.reduce((s, w) => s + w.units, 0) / slice2.length);
   const fcOmsetFb = Math.round(slice2.reduce((s, w) => s + w.omset, 0) / slice2.length);
-  const nextWeek = new Date(rows[nW - 1].firstDate.getTime() + 7 * 86400000);
-  labels.push(`${nextWeek.getDate()} ${_MO[nextWeek.getMonth()]} ▶`);
+  const nextIso = listingNextWeekStartISO();
+  const nextWeek = new Date(Date.parse(nextIso + 'T00:00:00Z'));
+  labels.push(`${nextWeek.getUTCDate()} ${_MO[nextWeek.getUTCMonth()]} ▶`);
   const listing = _trenData.listing;
   const serverFc = await fetchListingWeeklyRow(listing?.item_id, listing?.shop_id, listingNextWeekStartISO());
   const { fUnitW, fOmsetW } = weeklyForecastPair(
@@ -13496,19 +13502,15 @@ function apRenderDemand(loading) {
     return;
   }
 
-  // A5/A7: anchor to the current Monday (this + previous 5); gap weeks use prior scrape avg.
-  const weeklyAnchored = larisTrendAnchorMondayWindow(weekly, {
-    mondayOf: _apMondayOf, wKey: _apWKey, wLabel: _apWLabel,
-  });
+  // Last 6 WIB weeks; empty Mondays stay absent (no copied-average plateau).
+  const weeklyRowsFilled = sliceTrendHistoryWeeks(weekly, _apMondayOf);
+  if (!weeklyRowsFilled.length) {
+    const noteEl = document.getElementById('ap-demand-note');
+    if (noteEl) noteEl.textContent = 'Belum ada selisih data antar scrape mingguan. Grafik muncul setelah ≥2 panel scrape dengan perubahan terjual/ulasan.';
+    return;
+  }
   const kw = _ddKwListing?.keyword || _ddCurrentP?._listing?.keyword || _ddCurrentP?.keyword;
   const weeklySnaps = await fetchKeywordWeeklyRows(kw);
-  const thisSnap = weeklyRowFor(weeklySnaps, listingWeekStartISO());
-  const weeklyRowsFilled = sliceTrendHistoryWeeks(
-    overlayWeeklyThisWeek(weeklyAnchored, thisSnap, {
-      mondayOf: _apMondayOf, wKey: _apWKey, wLabel: _apWLabel,
-    }),
-    _apMondayOf,
-  );
   if (weeklyRowsFilled.some(w => w.gapEstimated)) isEst = true;
   const labels = weeklyRowsFilled.map(w => w.label);
   // Real series arrays stay SHORTER than `labels` (no trailing null) so the
@@ -13519,10 +13521,8 @@ function apRenderDemand(loading) {
   const slice2 = weeklyRowsFilled.slice(-2);
   const fcUnitFb  = slice2.length ? Math.round(slice2.reduce((s, w) => s + w.units, 0) / slice2.length) : 0;
   const fcOmsetFb = slice2.length ? Math.round(slice2.reduce((s, w) => s + w.omset, 0) / slice2.length) : 0;
-  const lastWeek = weeklyRowsFilled[nW - 1];
-  const nextWeek = lastWeek?.firstDate
-    ? new Date(lastWeek.firstDate.getTime() + 7 * 86400000)
-    : new Date();
+  const nextIso = listingNextWeekStartISO();
+  const nextWeek = new Date(Date.parse(nextIso + 'T00:00:00Z'));
   labels.push(_apWLabel(nextWeek) + ' ▶');
   const serverFc = weeklyRowFor(weeklySnaps, listingNextWeekStartISO());
   const { fUnitW, fOmsetW } = weeklyForecastPair(
@@ -15350,7 +15350,7 @@ function ddTrendBuildWeeklyRows(dbRows, corrDeltas, fallbackPrice, opts = {}) {
 
    Rollback: set localStorage 'larisid_server_series' to '0' to fall back to the
    client path. Remove both the flag and the client path once this is proven. */
-const DD_SERIES_DEFAULT_DAYS = 49;
+const DD_SERIES_DEFAULT_DAYS = 119;
 
 function ddServerSeriesEnabled() {
   try { return localStorage.getItem('larisid_server_series') !== '0'; }
@@ -15381,6 +15381,7 @@ async function ddFetchDailySeries(listing, days = DD_SERIES_DEFAULT_DAYS) {
 function ddTrendWeeksFromDailySeries(rows) {
   const weekMap = new Map();
   for (const r of rows) {
+    if (r.source === 'prior') continue;
     const date = new Date(String(r.d) + 'T12:00:00');
     if (isNaN(date)) continue;
     const key = ddTrendWKey(date);
@@ -15422,7 +15423,8 @@ async function ddTrendComputeWeeklyServer(listing, opts = {}) {
   // scrape sessions back the chart, which the daily series deliberately hides.
   const dbRows = await ddTrendFetchScrapeRows(listing, { since: opts.since || null, limit: opts.limit || 80 });
   const totalUnitsRaw = weeks.reduce((s, w) => s + (w.units || 0), 0);
-  const modelled = rows.filter(r => r.source === 'forecast' || r.source === 'prior').length;
+  const modelled = rows.filter(r => r.source === 'forecast').length;
+  const priorOnly = rows.length > 0 && rows.every(r => r.source === 'prior');
 
   return {
     ok: true,
@@ -15432,7 +15434,7 @@ async function ddTrendComputeWeeklyServer(listing, opts = {}) {
     weeks,
     totalUnitsRaw,
     isEstimated: modelled > 0,
-    isPeerEstimated: modelled >= rows.length,
+    isPeerEstimated: priorOnly,
     peerWeeklyRate: 0,
     peerWeeklyRates: [],
     peerCount: 0,
@@ -15770,19 +15772,17 @@ async function ddLoadTrendHistory(listing) {
       return;
     }
 
-    // A5: anchor to current Monday + previous 5; incomplete weeks inherit prior scrape avg.
-    // Server path already spans the window — still overlay this week + slice last 6.
+    // Last 6 weeks from scrape-interval series. listing_weekly is next-week
+    // forecast only — overlaying it onto this week mixed two estimators.
     const weeklySnaps = await fetchListingWeeklyRows(listing.item_id, listing.shop_id);
-    const thisSnap = weeklyRowFor(weeklySnaps, listingWeekStartISO());
-    let weeklyRowsFilled = trend?.serverSeries ? weeklyRows : larisTrendAnchorMondayWindow(weeklyRows, {
-      mondayOf: ddTrendMondayOf, wKey: ddTrendWKey, wLabel: ddTrendWLabel,
-    });
-    weeklyRowsFilled = sliceTrendHistoryWeeks(
-      overlayWeeklyThisWeek(weeklyRowsFilled, thisSnap, {
-        mondayOf: ddTrendMondayOf, wKey: ddTrendWKey, wLabel: ddTrendWLabel,
-      }),
+    let weeklyRowsFilled = sliceTrendHistoryWeeks(
+      trend?.serverSeries ? weeklyRows : (weeklyRows || []),
       ddTrendMondayOf,
     );
+    if (!weeklyRowsFilled.length) {
+      _noDataMsg('Belum cukup data scrape untuk menampilkan tren.<br>Data akan muncul setelah 2+ scrape.');
+      return;
+    }
     if (weeklyRowsFilled.some(w => w.gapEstimated)) isEstimated = true;
     const labels = weeklyRowsFilled.map(w => w.label);
     // Real series arrays stay SHORTER than `labels` (no trailing null) so the
@@ -15794,7 +15794,8 @@ async function ddLoadTrendHistory(listing) {
     const slice2 = weeklyRowsFilled.slice(-2);
     const fcUnitFb = Math.round(slice2.reduce((s, w) => s + w.units, 0) / slice2.length);
     const fcOmsetFb = Math.round(slice2.reduce((s, w) => s + w.omset, 0) / slice2.length);
-    const nextWeek = new Date(weeklyRowsFilled[nW - 1].firstDate.getTime() + 7 * 86400000);
+    const nextIso = listingNextWeekStartISO();
+    const nextWeek = new Date(Date.parse(nextIso + 'T00:00:00Z'));
     labels.push(ddTrendWLabel(nextWeek) + ' ▶');
     const serverFc = weeklyRowFor(weeklySnaps, listingNextWeekStartISO());
     const { fUnitW, fOmsetW } = weeklyForecastPair(

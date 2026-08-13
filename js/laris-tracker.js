@@ -336,6 +336,7 @@
     var nextMon = addDaysISO(thisMon, 7);
     var byMon = {};
     (daily || []).forEach(function (p) {
+      if (p.source === 'prior') return;
       var d = String(p.d || '').slice(0, 10);
       if (!d || d > today) return;
       var mon = wibMondayISO(d);
@@ -348,27 +349,16 @@
       byMon[mon].n += 1;
       if (p.source === 'forecast') byMon[mon].source = 'forecast';
     });
-    var thisRow = weeklySnap(weeklyRows, thisMon);
-    if (thisRow && (thisRow.units_wk != null || thisRow.omset_wk != null)) {
-      byMon[thisMon] = {
-        d: thisMon,
-        units: Math.round(Number(thisRow.units_wk) || 0),
-        omset: Math.round(Number(thisRow.omset_wk) || 0),
-        avg_price: (byMon[thisMon] && byMon[thisMon].avg_price) || 0,
-        n: 7,
-        source: thisRow.source === 'measured' ? 'measured' : 'forecast',
-      };
-    } else if (byMon[thisMon] && byMon[thisMon].n > 0 && byMon[thisMon].n < 7) {
+    if (byMon[thisMon] && byMon[thisMon].n > 0 && byMon[thisMon].n < 7) {
       var scale = 7 / byMon[thisMon].n;
       byMon[thisMon].units = Math.round(byMon[thisMon].units * scale);
       byMon[thisMon].omset = Math.round(byMon[thisMon].omset * scale);
       byMon[thisMon].source = 'forecast';
     }
-    var pts = [];
-    for (var i = TREND_HISTORY_WEEKS - 1; i >= 0; i--) {
-      var mon = addDaysISO(thisMon, -i * 7);
-      pts.push(byMon[mon] || { d: mon, units: 0, omset: 0, avg_price: 0, source: 'measured' });
-    }
+    var mondays = Object.keys(byMon).sort().filter(function (mon) {
+      return mon <= thisMon;
+    });
+    var pts = mondays.slice(-TREND_HISTORY_WEEKS).map(function (mon) { return byMon[mon]; });
     var nextRow = weeklySnap(weeklyRows, nextMon);
     var next;
     if (nextRow && (nextRow.units_wk != null || nextRow.omset_wk != null)) {

@@ -8868,18 +8868,29 @@ async function ddServerWeeklySeries(product, days = 119) {
   try {
     if (localStorage.getItem('larisid_server_series') === '0') return null;
   } catch (_) { /* private mode: proceed */ }
-  if (!_supabase || !product || product.item_id == null || product.shop_id == null) return null;
+  if (!_supabase || !product) return null;
   const to = new Date();
   const from = new Date(to.getTime() - days * 864e5);
   const iso = d => d.toISOString().slice(0, 10);
   let rows;
   try {
-    const r = await _supabase.rpc('product_daily_series', {
-      p_item_id: product.item_id,
-      p_shop_id: product.shop_id,
-      p_from: iso(from),
-      p_to: iso(to),
-    });
+    let r;
+    if (product._ptype && product.keyword) {
+      r = await _supabase.rpc('keyword_daily_series', {
+        p_keyword: String(product.keyword).trim().toLowerCase(),
+        p_from: iso(from),
+        p_to: iso(to),
+      });
+    } else if (product.item_id != null && product.shop_id != null) {
+      r = await _supabase.rpc('product_daily_series', {
+        p_item_id: product.item_id,
+        p_shop_id: product.shop_id,
+        p_from: iso(from),
+        p_to: iso(to),
+      });
+    } else {
+      return null;
+    }
     if (r.error || !Array.isArray(r.data) || !r.data.length) return null;
     rows = r.data;
   } catch (_) {
@@ -8887,6 +8898,10 @@ async function ddServerWeeklySeries(product, days = 119) {
   }
   const weeks = new Map();
   for (const row of rows) {
+    // `prior` is a constant peer/long-run rate for days before the first scrape.
+    // Including it in the last-6-weeks window draws a fake plateau. Skip it;
+    // measured/estimated intervals and post-scrape forecast stay.
+    if (row.source === 'prior') continue;
     const dt = new Date(String(row.d) + 'T12:00:00');
     if (isNaN(dt)) continue;
     const ts = mondayOfWeek(dt).getTime();
@@ -8932,17 +8947,16 @@ function listingNextWeekStartISO(d = new Date()) {
 
 const DD_TREND_HISTORY_WEEKS = 6;
 
-/** Last 6 WIB Mondays through this week (zeros if a Monday has no bucket). */
+/** Last 6 scrape-backed weeks through this Monday. Empty calendar weeks are
+ *  omitted so a 35-day scrape gap does not draw as a copied-average plateau. */
 function ddLast6Weeks(weekly) {
   const thisMon = Date.parse(listingWeekStartISO() + 'T00:00:00Z');
-  const byTs = new Map((weekly || []).map(w => [w.ts, w]));
-  const out = [];
-  for (let i = DD_TREND_HISTORY_WEEKS - 1; i >= 0; i--) {
-    const ts = thisMon - i * 7 * 864e5;
-    const hit = byTs.get(ts);
-    out.push(hit ? { ...hit, ts } : { ts, units: 0, omset: 0, items: 0 });
-  }
-  return out;
+  return (weekly || [])
+    .filter(w => (Number(w.units) || 0) > 0 || (Number(w.omset) || 0) > 0)
+    .filter(w => w.ts <= thisMon + 12 * 3600 * 1000)
+    .sort((a, b) => a.ts - b.ts)
+    .slice(-DD_TREND_HISTORY_WEEKS)
+    .map(w => ({ ...w }));
 }
 
 /** Prefer listing_weekly / keyword_weekly this-week row (already a 7-day rate). */
@@ -10304,9 +10318,11 @@ async function openDeepDive(product, ddOpts = {}) {
     ? { keyword: kw }
     : { item_id: product.item_id, shop_id: product.shop_id };
   const weeklySnaps = await fetchWeeklyRows(weekKey);
-  const thisSnap = weeklyRowFor(weeklySnaps, listingWeekStartISO());
   const fcSnap = weeklyRowFor(weeklySnaps, listingNextWeekStartISO());
-  const series = ddLast6Weeks(ddOverlayThisWeek(weeklyAll, thisSnap));
+  // Do not overlay this week from listing_weekly/keyword_weekly — that table
+  // is a different estimator (nowcast/peer) and replaced scrape-interval weeks
+  // with a one-week spike. Partial this week is already scaled 7/days above.
+  const series = ddLast6Weeks(weeklyAll);
   const scoreInfo = ddScore(product, stats, niche);
   const share = ddShareData(peers);
   const age = ddShopAgeBuckets(peers);
@@ -10594,8 +10610,7 @@ function ddRenderTrendChart(series, forecastSnap) {
     day: 'numeric', month: 'short', timeZone: 'UTC',
   });
   const labels = series.map(w => fmtWk(w.ts));
-  const last = series[series.length - 1].ts;
-  labels.push(fmtWk(last + 7 * 864e5) + ' ▶');
+  labels.push(fmtWk(Date.parse(listingNextWeekStartISO() + 'T00:00:00Z')) + ' ▶');
   const omset = series.map(w => w.omset);
   const units = series.map(w => w.units);
   const last2 = arr => Math.round((arr[arr.length - 1] + (arr[arr.length - 2] ?? arr[arr.length - 1])) / 2);
@@ -10609,9 +10624,9 @@ function ddRenderTrendChart(series, forecastSnap) {
     data: {
       labels,
       datasets: [
-        { label: 'Omset / minggu (Rp)', data: omset, borderColor: '#B5202A', backgroundColor: 'rgba(181,32,42,.06)', borderWidth: 2, fill: true, tension: .35, yAxisID: 'y', pointRadius: 3 },
-        { label: 'Unit / minggu', data: units, borderColor: '#2563EB', borderWidth: 2, tension: .35, yAxisID: 'y2', pointRadius: 3 },
-        { label: 'Perkiraan', data: forecast, borderColor: '#16A34A', borderDash: [5, 5], borderWidth: 2, tension: .35, yAxisID: 'y', pointRadius: 3 },
+        { label: 'Omset / minggu (Rp)', data: omset, borderColor: '#B5202A', backgroundColor: 'rgba(181,32,42,.06)', borderWidth: 2, fill: true, tension: .35, yAxisID: 'y', pointRadius: 3, spanGaps: true },
+        { label: 'Unit / minggu', data: units, borderColor: '#2563EB', borderWidth: 2, tension: .35, yAxisID: 'y2', pointRadius: 3, spanGaps: true },
+        { label: 'Perkiraan', data: forecast, borderColor: '#16A34A', borderDash: [5, 5], borderWidth: 2, tension: .35, yAxisID: 'y', pointRadius: 3, spanGaps: true },
       ],
     },
     options: {

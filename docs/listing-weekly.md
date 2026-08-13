@@ -108,8 +108,11 @@ closed-form decay (`W(t') = W(t)·exp(−Δ/τ)`) revises this week and next wee
   are week starts (`10 Agu`), not calendar months (`Agu 26`).
 - Deep Dive tren graphs (Ask Laris `#ddr-trend-canvas`, dashboard
   `#tren-main-chart` / `#ap-demand-chart` / `#dd-chart-trend`) plot weekly
-  `omset_wk` / `units_wk`. They overlay this week and next week from
-  `listing_weekly_for` / `keyword_weekly_for`. Card omset stays monthly (`×30`).
+  scrape-interval rates. They take the last 6 **non-empty** weeks (skipping
+  `prior` peer-fill and empty Mondays) so a long scrape gap does not draw as a
+  flat copied line. `listing_weekly` / `keyword_weekly` is **next week only**
+  — overlaying it onto this week mixed two estimators and caused a spike.
+  Partial this week is scaled `7/days`. Card omset stays monthly (`×30`).
 - Tracker **detail** chart is the same 6+1 weekly grain. Tracker **badges**
   and sparklines stay on the selected 7/30/60/90 **daily** window so the %
   and the headline still share one series. `product_daily_series` /
