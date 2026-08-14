@@ -1218,6 +1218,31 @@ const PROVINCE_CITIES = {
 // Landing finder defaults / quick chips
 const FINDER_DEFAULT_CITY = 'Bandung';
 const FINDER_DEFAULT_CAT = 'Olahraga';
+const FINDER_PASAR_LIMIT = 60;
+// NU_ONB_CATS (finder chips) → category_map canonical. Used when the live
+// category_map fetch has not landed yet so Hobi & Kerajinan never queries
+// product_types_v.category_canonical with the legacy string.
+const NU_ONB_TO_CANON = {
+  'Alat Tulis': 'Sekolah, Kantor & Usaha',
+  'Bayi & Anak': 'Ibu, Bayi & Anak',
+  'Dapur': 'Dapur',
+  'Elektronik': 'Elektronik & Listrik',
+  'Fashion': 'Fashion',
+  'Hewan Peliharaan': 'Hewan Peliharaan',
+  'Hobi & Kerajinan': 'Hobi, Kerajinan & Pesta',
+  'HP & Gadget': 'HP, Komputer & Gaming',
+  'Kamar Mandi': 'Kamar Mandi',
+  'Keamanan': 'Elektronik & Listrik',
+  'Kecantikan': 'Kecantikan & Perawatan',
+  'Kesehatan': 'Kesehatan',
+  'Motor & Mobil': 'Motor & Mobil',
+  'Olahraga': 'Olahraga & Outdoor',
+  'Outdoor & Camping': 'Olahraga & Outdoor',
+  'Rumah': 'Rumah & Dekorasi',
+  'Sepeda': 'Olahraga & Outdoor',
+  'Taman': 'Taman, Tanaman & Perkakas',
+  'Tanaman': 'Taman, Tanaman & Perkakas',
+};
 const FINDER_BUDGETS = [
   { id: 'lt1jt', label: '<1jt', min: 0, max: 1000000 },
   { id: '1jt_10jt', label: '1jt – 10jt', min: 1000000, max: 10000000 },
@@ -4178,6 +4203,109 @@ function priceInBudget(p, bud) {
   return true;
 }
 
+function typeMedianInBudget(t, bud) {
+  if (!bud) return true;
+  const price = Number(t?.price_median) || 0;
+  if (!(price > 0)) return false;
+  if (bud.max != null && Number.isFinite(bud.max) && price > bud.max) return false;
+  if (bud.min != null && price < bud.min) return false;
+  return true;
+}
+
+function rankTypesByBudget(rows, bud) {
+  if (!bud) return (rows || []).slice();
+  const inBand = [];
+  const near = [];
+  for (const t of rows || []) {
+    (typeMedianInBudget(t, bud) ? inBand : near).push(t);
+  }
+  return inBand.concat(near);
+}
+
+async function resolveCanonCats(rawCats) {
+  await loadCanonicalCats();
+  const out = [];
+  const seen = new Set();
+  const list = Array.isArray(rawCats) ? rawCats : (rawCats ? [rawCats] : []);
+  for (const c of list) {
+    const canon = toCanonicalCat(c);
+    if (canon && !seen.has(canon)) { seen.add(canon); out.push(canon); }
+  }
+  return out;
+}
+
+function knownCityBucket(city) {
+  const c = String(city || '').trim();
+  if (!c) return '';
+  if (NU_ONB_LOCATIONS.includes(c)) return c;
+  return resolveNearestCityBucket(c).bucket || '';
+}
+
+/**
+ * Category browse: city markets first, then national fill in the same
+ * canonical bucket(s). Budget is a soft rank (median in-band first), not a cut.
+ */
+async function fetchCategoryPasarTypes(rawCats, city, { limit = FINDER_PASAR_LIMIT, budgetId } = {}) {
+  const canonCats = await resolveCanonCats(rawCats);
+  if (!canonCats.length) return { local: [], national: [], types: [], canonCats: [], cityBucket: '' };
+  const bucket = knownCityBucket(city);
+  const fillLimit = Math.max(limit * 3, 200);
+  const [localRaw, allRaw] = await Promise.all([
+    bucket ? fetchProductTypes([bucket], canonCats, limit) : Promise.resolve([]),
+    fetchProductTypes(['ALL'], canonCats, fillLimit),
+  ]);
+  const seen = new Set();
+  const local = [];
+  for (const t of localRaw || []) {
+    if (!t?.keyword || seen.has(t.keyword)) continue;
+    seen.add(t.keyword);
+    local.push(t);
+  }
+  const national = [];
+  for (const t of allRaw || []) {
+    if (!t?.keyword || seen.has(t.keyword)) continue;
+    seen.add(t.keyword);
+    national.push(t);
+  }
+  const bud = budgetId ? finderBudgetCfg(budgetId) : null;
+  const rankedLocal = rankTypesByBudget(local, bud);
+  const rankedNational = rankTypesByBudget(national, bud);
+  const types = rankedLocal.concat(rankedNational).slice(0, limit);
+  const localKws = new Set(rankedLocal.map(t => t.keyword));
+  const packed = {
+    local: types.filter(t => localKws.has(t.keyword)),
+    national: types.filter(t => !localKws.has(t.keyword)),
+    types,
+    canonCats,
+    cityBucket: bucket,
+  };
+  registerTypes(types);
+  return packed;
+}
+
+function finderPasarHtml({ types, local, national, catLabel, city, bud }) {
+  if (!types.length) {
+    return `<p>Belum ketemu pasar yang cocok. Coba ganti kategori atau kota, atau ketik pencarian di bawah.</p>`;
+  }
+  const budBit = bud?.label ? ` (modal ${esc(bud.label)})` : '';
+  let lead;
+  if (local.length && national.length) {
+    lead = `<p>${types.length} pasar untuk <strong>${esc(catLabel)}</strong> — yang di <strong>${esc(city)}</strong> dulu, lalu pasar nasional di kategori yang sama${budBit}. Klik kartu untuk Deep Dive.</p>`;
+  } else if (local.length) {
+    lead = `<p>${types.length} pasar untuk <strong>${esc(catLabel)}</strong> di sekitar <strong>${esc(city)}</strong>${budBit}. Klik kartu untuk Deep Dive pasar.</p>`;
+  } else {
+    lead = `<p>${types.length} pasar nasional untuk <strong>${esc(catLabel)}</strong>${budBit}${city ? `. Dipilih untuk minat di <strong>${esc(city)}</strong>, ranking-nya nasional` : ''}. Klik kartu untuk Deep Dive pasar.</p>`;
+  }
+  if (local.length && national.length) {
+    return lead
+      + `<p class="dd-sub" style="margin-top:12px;">Di ${esc(city)}</p>`
+      + `<div class="card-grid">${marketCardsHtml(local)}</div>`
+      + `<p class="dd-sub" style="margin-top:18px;">Pasar nasional di kategori ini</p>`
+      + `<div class="card-grid">${marketCardsHtml(national)}</div>`;
+  }
+  return `${lead}<div class="card-grid">${marketCardsHtml(types)}</div>`;
+}
+
 async function collectFinderProducts({ city, categories, budgetId, limit = 60 }) {
   const locs = expandCityLocations(city);
   const cats = Array.isArray(categories) ? categories.filter(Boolean) : (categories ? [categories] : []);
@@ -4251,20 +4379,34 @@ async function runFinderSearch() {
     // is now the visible record of what was searched.
     const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari produk yang cocok…</p>`);
 
-    const rows = await collectFinderProducts({
-      city: _finder.city,
-      categories: _finder.categories,
+    let packed = await fetchCategoryPasarTypes(_finder.categories, _finder.city || '', {
+      limit: FINDER_PASAR_LIMIT,
       budgetId: _finder.budget,
-      limit: 60,
     });
-    const products = rows.map(asListingProduct);
-    const types = await typesForListings(products, _finder.city || '', 12);
+    // Last resort: listing lift if the type query returned nothing (empty
+    // canonical map / mv miss). typesForListings now fills from city ALL.
+    if (!packed.types.length) {
+      const rows = await collectFinderProducts({
+        city: _finder.city,
+        categories: _finder.categories,
+        budgetId: _finder.budget,
+        limit: FINDER_PASAR_LIMIT,
+      });
+      const lifted = await typesForListings(rows.map(asListingProduct), _finder.city || '', FINDER_PASAR_LIMIT);
+      packed = { local: [], national: lifted, types: lifted, canonCats: packed.canonCats, cityBucket: packed.cityBucket };
+    }
+    const types = packed.types;
+    registerTypes(types);
     state.recommendations = [];
 
-    const html = types.length
-      ? `<p>${types.length} pasar untuk <strong>${esc(catLabel)}</strong> di sekitar <strong>${esc(_finder.city)}</strong> (modal ${esc(bud.label)}). Klik kartu untuk Deep Dive pasar.</p>
-         <div class="card-grid">${marketCardsHtml(types)}</div>`
-      : `<p>Belum ketemu pasar yang cocok. Coba ganti kategori atau kota, atau ketik pencarian di bawah.</p>`;
+    const html = finderPasarHtml({
+      types,
+      local: packed.local,
+      national: packed.national,
+      catLabel,
+      city: _finder.city,
+      bud,
+    });
     await revealAssistant(loading, html, { instant: true });
     bindTypeCards($('chat-thread'));
     scrollPanelToTop();
@@ -4274,7 +4416,7 @@ async function runFinderSearch() {
       categories: catLabel,
       budget: _finder.budget,
       experience: _finder.experience,
-      count: products.length,
+      count: types.length,
     });
     clarityEvt('gpt_finder_search', { categories: catLabel });
     funnelStep('first_search', { source: 'finder' });
@@ -6567,6 +6709,7 @@ const CAT_ALIASES = [
   { cat: 'Outdoor & Camping', terms: ['outdoor', 'camping', 'tenda', 'cooler bag'] },
   { cat: 'Motor & Mobil', terms: ['motor', 'mobil', 'otomotif', 'aksesoris mobil'] },
   { cat: 'Hewan Peliharaan', terms: ['hewan', 'peliharaan', 'pakan', 'makanan kucing', 'makanan anjing', 'makanan hewan', 'pet food'] },
+  { cat: 'Hobi & Kerajinan', terms: ['hobi', 'hobby', 'kerajinan', 'craft', 'crafts'] },
 ];
 
 // Synonyms used to widen a miss before we give up and ask clarifying questions.
@@ -6721,7 +6864,7 @@ const CAT_BROAD_ALIASES = {
   'Outdoor & Camping': ['outdoor', 'camping'],
   'Motor & Mobil': ['motor', 'mobil', 'otomotif'],
   'Hewan Peliharaan': ['hewan', 'peliharaan', 'pet'],
-  'Hobi & Kerajinan': ['hobi', 'kerajinan'],
+  'Hobi & Kerajinan': ['hobi', 'hobby', 'kerajinan', 'craft', 'crafts'],
   'Kamar Mandi': ['kamar mandi'],
   'Keamanan': ['keamanan'],
   'Sepeda': ['sepeda'],
@@ -7332,21 +7475,26 @@ async function replyWithPasarTypes(chat, text, types, opts = {}) {
 async function replyWithCategoryProducts(chat, text, cat) {
   if (!(await ensureSearchAllowed())) return;
   const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari produk ${esc(cat)} dari data LarisID…</p>`);
-  // Pasar first — "tanaman artificial" should answer with the markets it
-  // matches, not 12 near-identical listings from 12 different shops.
   const place0 = parsePlaceFromQuery(text);
-  const q0 = cleanDiscoveryQuery(place0.cleaned || text) || (place0.cleaned || text);
-  const typeHits = await searchProductTypes(q0, place0.city || '', 12);
-  if (await replyWithPasarTypes(chat, text, typeHits, {
-    loading, label: q0, placeLabel: place0.label || place0.city || '',
-  })) return;
-  // Nothing matched the query by name — answer with the markets behind this
-  // category's top listings rather than the listings themselves.
-  const showcase = await fetchCategoryShowcase(cat, 24);
-  const types = await typesForListings(showcase, place0.city || '', 12);
-  if (types.length && await replyWithPasarTypes(chat, text, types, {
-    loading, label: cat, placeLabel: place0.label || place0.city || '',
-  })) return;
+  if (isCategoryLevelAsk(text.toLowerCase(), cat)) {
+    const packed = await fetchCategoryPasarTypes([cat], place0.city || state.onboarding.city || '', {
+      limit: FINDER_PASAR_LIMIT,
+    });
+    if (packed.types.length && await replyWithPasarTypes(chat, text, packed.types, {
+      loading, label: cat, placeLabel: place0.label || place0.city || '',
+    })) return;
+  } else {
+    const q0 = cleanDiscoveryQuery(place0.cleaned || text) || (place0.cleaned || text);
+    const typeHits = await searchProductTypes(q0, place0.city || '', 12);
+    if (await replyWithPasarTypes(chat, text, typeHits, {
+      loading, label: q0, placeLabel: place0.label || place0.city || '',
+    })) return;
+    const showcase = await fetchCategoryShowcase(cat, 24);
+    const types = await typesForListings(showcase, place0.city || '', FINDER_PASAR_LIMIT);
+    if (types.length && await replyWithPasarTypes(chat, text, types, {
+      loading, label: cat, placeLabel: place0.label || place0.city || '',
+    })) return;
+  }
 
   const gate = await ensureIntentChat(chat, text.slice(0, 60), { kind: 'category_search', category: cat, q: text });
   if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
@@ -8520,19 +8668,25 @@ async function openChat(id) {
       // chat.context.category(ies): old persisted chats saved a single string
       // under `category`; newer ones may carry `categories` (array). Accept
       // either so history from before the multi-select finder still rehydrates.
-      const rows = await collectFinderProducts({
-        city: chat.context.city,
-        categories: chat.context.categories || (chat.context.category ? [chat.context.category] : []),
-        budgetId: chat.context.budget || '1jt_10jt',
-        limit: 60,
-      });
-      const products = rows.map(asListingProduct);
-      const types = await typesForListings(products, chat.context.city || '', 12);
+      const packed = await fetchCategoryPasarTypes(
+        chat.context.categories || (chat.context.category ? [chat.context.category] : []),
+        chat.context.city || '',
+        { limit: FINDER_PASAR_LIMIT, budgetId: chat.context.budget || '1jt_10jt' },
+      );
+      const types = packed.types;
+      registerTypes(types);
       state.recommendations = [];
       const bud = finderBudgetCfg(chat.context.budget || '1jt_10jt');
-      const html = types.length
-        ? `<p>${types.length} pasar untuk <strong>${esc(chat.context.category)}</strong> di sekitar <strong>${esc(chat.context.city)}</strong> (modal ${esc(bud.label)}).</p>
-           <div class="card-grid">${marketCardsHtml(types)}</div>`
+      const catLabel = (chat.context.categories || []).join(', ') || chat.context.category || '';
+      const html = packed.types.length
+        ? finderPasarHtml({
+            types,
+            local: packed.local,
+            national: packed.national,
+            catLabel,
+            city: chat.context.city,
+            bud,
+          })
         : `<p>Riwayat ini tidak punya hasil tersimpan. Coba jalankan ulang pencarian dari pertanyaan awal.</p>`;
       setView('chat');
       const thread = $('chat-thread');
@@ -11197,18 +11351,13 @@ async function handleComposerSubmit(text) {
     const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Mencari di data…</p>`);
     const catFallback = detectCategoryFromText(text.toLowerCase());
     if (catFallback && isCategoryLevelAsk(text.toLowerCase(), catFallback)) {
-      // Pasar first here too: this inline branch fires for queries that map to
-      // a category ("tanaman artificial" -> Tanaman) and would otherwise show
-      // 12 individual listings instead of the markets behind them.
+      // Whole-category ask ("hobby", "fashion") must browse the canonical
+      // bucket — ilike %hobby% on keyword never fills the catalog.
       const place1 = parsePlaceFromQuery(text);
-      const q1 = cleanDiscoveryQuery(place1.cleaned || text) || (place1.cleaned || text);
-      const catTypes = await searchProductTypes(q1, place1.city || '', 12);
-      if (await replyWithPasarTypes(chat, text, catTypes, {
-        loading, label: q1, placeLabel: place1.label || place1.city || '',
-      })) return;
-      const showcase = await fetchCategoryShowcase(catFallback, 24);
-      const showTypes = await typesForListings(showcase, place1.city || '', 12);
-      if (showTypes.length && await replyWithPasarTypes(chat, text, showTypes, {
+      const packed = await fetchCategoryPasarTypes([catFallback], place1.city || state.onboarding.city || '', {
+        limit: FINDER_PASAR_LIMIT,
+      });
+      if (packed.types.length && await replyWithPasarTypes(chat, text, packed.types, {
         loading, label: catFallback, placeLabel: place1.label || place1.city || '',
       })) return;
 
@@ -11473,8 +11622,8 @@ async function subgroupKeywords(cat, sub) {
 function toCanonicalCat(raw) {
   const c = String(raw || '').trim();
   if (!c) return null;
-  if (CANON_CATS.includes(c)) return c;
-  return CAT_CANON_MAP[c] || null;
+  if (CANON_CATS.includes(c) || DIR_CANON_CATS.includes(c)) return c;
+  return CAT_CANON_MAP[c] || NU_ONB_TO_CANON[c] || null;
 }
 
 /** Sub-groups that actually have products in this canonical bucket. */
@@ -11885,9 +12034,9 @@ function registerTypes(rows) {
  * Every top-level surface on B answers with markets now, and the ranking work
  * (naik daun, budget, daily recs, showcase) is all done on the listing side.
  * This lifts a ranked listing list to the market level while preserving that
- * ordering. Keywords with no market row are DROPPED rather than falling back to
- * a single listing — dropping is what keeps individual products at the
- * Kompetitor level, which is the whole point of the change.
+ * ordering. Keywords with no city-specific market row fall back to the
+ * national (ALL) row rather than disappearing. Still no listing fallback —
+ * individual products stay at the Kompetitor level.
  */
 async function typesForListings(rows, city, limit = 12) {
   const kws = [];
@@ -11896,19 +12045,31 @@ async function typesForListings(rows, city, limit = 12) {
     if (k && !kws.includes(k)) kws.push(k);
   });
   if (!kws.length || !_supabase) return [];
+  const cityKey = city || 'ALL';
   const missing = kws.filter(k => !_ptypeByKeyword.has(k));
   let fetched = [];
   if (missing.length) {
     try {
       const { data } = await _supabase.from('product_types_v')
         .select(ptypeCols())
-        .eq('city', city || 'ALL')
+        .eq('city', cityKey)
         .in('keyword', missing.slice(0, 80))
         .gte('n_listings', 3);
       fetched = data || [];
     } catch (e) { console.warn('[typesForListings]', e?.message || e); }
   }
   registerTypes(fetched);
+  const stillMissing = kws.filter(k => !_ptypeByKeyword.has(k));
+  if (stillMissing.length && cityKey !== 'ALL') {
+    try {
+      const { data } = await _supabase.from('product_types_v')
+        .select(ptypeCols())
+        .eq('city', 'ALL')
+        .in('keyword', stillMissing.slice(0, 80))
+        .gte('n_listings', 3);
+      registerTypes(data || []);
+    } catch (e) { console.warn('[typesForListings ALL]', e?.message || e); }
+  }
   const out = [];
   kws.forEach(k => {
     const t = _ptypeByKeyword.get(k);
