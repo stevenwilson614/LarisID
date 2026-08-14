@@ -9575,6 +9575,13 @@ const DSC_SEARCH_SYNONYMS = {
   silang: ['tusuk silang', 'kristik', 'setik silang'],
   benang: ['benang sulam', 'benang dmc', 'benang rajut'],
   dmc: ['benang sulam', 'benang dmc', 'embroidery floss', 'cross stitch'],
+  // Beads / bracelets — English + the galang→gelang typo must reach ID keywords
+  beads: ['manik', 'gelang manik', 'manik-manik'],
+  bead: ['manik', 'gelang manik'],
+  bracelet: ['gelang', 'gelang manik'],
+  manik: ['gelang manik', 'manik-manik'],
+  gelang: ['bracelet'],
+  galang: ['gelang'],
 };
 const DSC_PHRASE_SYNONYMS = {
   'cross stitch': ['kristik', 'kruissteek', 'kruistik', 'sulam', 'benang sulam', 'pola kristik', 'tusuk silang', 'strimin', 'embroidery'],
@@ -9591,6 +9598,10 @@ const DSC_PHRASE_SYNONYMS = {
   'baju pesta': ['gaun', 'gaun pesta', 'dress', 'dress wanita'],
   'gaun pesta': ['baju pesta', 'gaun', 'dress', 'dress wanita'],
   'maxi dress': ['gaun', 'dress', 'dress wanita', 'gaun panjang'],
+  'beads bracelet': ['gelang manik', 'manik', 'manik-manik', 'gelang', 'kalung manik'],
+  'bead bracelet': ['gelang manik', 'manik', 'manik-manik', 'gelang', 'kalung manik'],
+  'gelang manik': ['manik', 'manik-manik', 'gelang', 'kalung manik'],
+  'galang manik': ['gelang manik', 'manik', 'gelang', 'kalung manik'],
 };
 
 function _dscTerms(text) {

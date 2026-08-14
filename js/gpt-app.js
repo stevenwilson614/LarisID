@@ -3633,12 +3633,36 @@ async function _rbFuzzyMatch(raw, limit = 12) {
   if (!pool.length) return [];
   const qTokens = _rbNormStr(raw).split(/\s+/).filter(Boolean);
   if (!qTokens.length) return [];
-  const hits = [];
-  for (const row of pool) {
-    const hay = _rbNormStr(row.keyword || '');
-    if (!hay) continue;
-    if (qTokens.every(t => _rbTokenMatch(t, hay))) hits.push(row);
-    if (hits.length >= limit * 3) break;
+  const collect = (pred) => {
+    const hits = [];
+    for (const row of pool) {
+      const hay = _rbNormStr(row.keyword || '');
+      if (!hay) continue;
+      if (pred(hay)) hits.push(row);
+      if (hits.length >= limit * 3) break;
+    }
+    return hits;
+  };
+  let hits = collect(hay => qTokens.every(t => _rbTokenMatch(t, hay)));
+  // AND-all-tokens misses related types ("galang manik" when no keyword
+  // contains both). Fall back to the rarest/longest token with the same
+  // typo tolerance so `manik` still surfaces bead crafts.
+  if (!hits.length && qTokens.length >= 2) {
+    let bestTok = qTokens[0];
+    let bestCount = Infinity;
+    for (const t of qTokens) {
+      if (t.length < 4) continue;
+      let n = 0;
+      for (const row of pool) {
+        const hay = _rbNormStr(row.keyword || '');
+        if (hay && _rbTokenMatch(t, hay)) n++;
+      }
+      if (n < bestCount || (n === bestCount && t.length > bestTok.length)) {
+        bestCount = n;
+        bestTok = t;
+      }
+    }
+    hits = collect(hay => _rbTokenMatch(bestTok, hay));
   }
   return hits.slice(0, limit);
 }
@@ -6745,6 +6769,13 @@ const SEARCH_SYNONYMS = {
   silang: ['tusuk silang', 'kristik', 'setik silang'],
   benang: ['benang sulam', 'benang dmc', 'benang rajut'],
   dmc: ['benang sulam', 'benang dmc', 'embroidery floss', 'cross stitch'],
+  // Beads / bracelets — English + the galang→gelang typo must reach ID keywords
+  beads: ['manik', 'gelang manik', 'manik-manik'],
+  bead: ['manik', 'gelang manik'],
+  bracelet: ['gelang', 'gelang manik'],
+  manik: ['gelang manik', 'manik-manik'],
+  gelang: ['bracelet'],
+  galang: ['gelang'],
 };
 
 // Multi-word phrase → craft cluster. Single-token expansion can't express
@@ -6764,6 +6795,10 @@ const PHRASE_SYNONYMS = {
   'baju pesta': ['gaun', 'gaun pesta', 'dress', 'dress wanita'],
   'gaun pesta': ['baju pesta', 'gaun', 'dress', 'dress wanita'],
   'maxi dress': ['gaun', 'dress', 'dress wanita', 'gaun panjang'],
+  'beads bracelet': ['gelang manik', 'manik', 'manik-manik', 'gelang', 'kalung manik'],
+  'bead bracelet': ['gelang manik', 'manik', 'manik-manik', 'gelang', 'kalung manik'],
+  'gelang manik': ['manik', 'manik-manik', 'gelang', 'kalung manik'],
+  'galang manik': ['gelang manik', 'manik', 'gelang', 'kalung manik'],
 };
 
 // When the catalog has nothing like the ask, suggest the nearest sellable niches.
@@ -11759,8 +11794,15 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
   try {
     const plan = await planSearch(raw);
     const extra = (plan?.queries || []).filter(Boolean);
-    terms = [...new Set([raw, ...extra])].slice(0, 6);
-  } catch (_) {}
+    const tokens = _searchTerms(raw);
+    // Phrase + planned ID needles + each query token. Tokens last so
+    // Indonesian expansions survive the cap. "gelang manik" must ILIKE
+    // `manik` and `gelang` on their own — the contiguous phrase misses
+    // related types like `kalung manik`.
+    terms = [...new Set([raw, ...extra, ...tokens])].slice(0, 8);
+  } catch (_) {
+    terms = [...new Set([raw, ..._searchTerms(raw)])].slice(0, 8);
+  }
 
   const cityList = Array.isArray(cities) ? cities.filter(Boolean) : (cities ? [cities] : []);
   const buckets = cityList.length ? cityList : ['ALL'];
@@ -11773,9 +11815,15 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
       const build = () => {
         let q = _supabase.from('product_types_v')
           .select(ptypeCols())
-          .gte('n_listings', 3)
-          .ilike('keyword', `%${needle}%`)
-          .order('omset_top15', { ascending: false, nullsFirst: false })
+          .gte('n_listings', 3);
+        // Single tokens: word-prefix / space-prefix (same as autosuggest),
+        // so "gelang" does not pull "pergelangan". Phrases stay substring.
+        if (!needle.includes(' ')) {
+          q = q.or(`keyword.ilike.${needle}%,keyword.ilike.% ${needle}%`);
+        } else {
+          q = q.ilike('keyword', `%${needle}%`);
+        }
+        q = q.order('omset_top15', { ascending: false, nullsFirst: false })
           .limit(limit * 2);
         if (buckets.length === 1) q = q.eq('city', buckets[0]);
         else q = q.in('city', buckets);
@@ -11799,6 +11847,17 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
     terms.flatMap(t => String(t).toLowerCase().split(/\s+/).filter(x => x.length > 2))
   )];
   const qTokens = q.split(/\s+/).filter(t => t.length > 2);
+  const kwHasTerm = (kw, term) => {
+    const t = String(term || '').toLowerCase().trim();
+    if (!t || t.length < 3) return false;
+    if (t.includes(' ')) return kw === t || kw.includes(t);
+    if (kw === t) return true;
+    return kw.split(/[\s/-]+/).some(w => w === t);
+  };
+  const tokenOverlap = (kw, toks) => toks.filter(t => {
+    if (kwHasTerm(kw, t)) return true;
+    return (SEARCH_SYNONYMS[t] || []).some(s => kwHasTerm(kw, s));
+  }).length;
   hits.forEach(h => {
     const kw = String(h.keyword || '').toLowerCase();
     let score = 0;
@@ -11806,11 +11865,15 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
     terms.forEach(t => {
       const tl = String(t).toLowerCase();
       if (kw === tl) score += 90;
-      else if (kw.includes(tl) || tl.includes(kw)) score += 45;
+      else if (kwHasTerm(kw, tl) || (tl.includes(' ') && (kw.includes(tl) || tl.includes(kw)))) score += 45;
     });
     if (kw.includes(q)) score += 40;
-    planTokens.forEach(t => { if (kw.includes(t)) score += 12; });
-    qTokens.forEach(t => { if (kw.includes(t)) score += 10; });
+    planTokens.forEach(t => { if (kwHasTerm(kw, t)) score += 12; });
+    qTokens.forEach(t => { if (kwHasTerm(kw, t)) score += 10; });
+    // Multi-token overlap so "gelang manik" / "kalung manik" beat generic "gelang".
+    const overlap = tokenOverlap(kw, qTokens);
+    score += overlap * 28;
+    if (qTokens.length >= 2 && overlap >= 2) score += 50;
     score += Math.min(10, Math.log10(Number(h.omset_top15) || 1));
     h._score = score;
   });
