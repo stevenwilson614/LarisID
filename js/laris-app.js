@@ -5395,6 +5395,7 @@ async function _mlsFetchKeywordMarket(keyword) {
     .from('listings_deduped')
     .select('product_name, store_name, image_url, price, total_sold, reviews, location, item_id, shop_id, keyword, url, est_omset_monthly')
     .eq('keyword', keyword)
+    .eq('is_offtopic', false)
     .order('total_sold', { ascending: false })
     .limit(300);
   const seen = new Map();
@@ -9416,8 +9417,9 @@ async function _dscEnsureBrowsePool(min = 60) {
       .from('listings_deduped')
       .select('item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews,est_sold,sold_tier,est_omset_monthly,omset_confidence,nowcast_omset_monthly,nowcast_velocity_daily,nowcast_confidence,nowcast_method')
       .gt('total_sold', 0)
+      .eq('is_offtopic', false)
       .order('total_sold', { ascending: false })
-      .limit(Math.max(min, 60));
+      .limit(Math.max(min, 60) * 2);
     if (gen !== _dscBrowsePoolGen) return false;
     _dscMergeBrowsePool(_dscDedupeFreshest(data || []));
     return _dscBrowsePool.length > 0;
@@ -9496,6 +9498,7 @@ function _dscBuildListingsQuery(offset, filters, opts = {}) {
     .from('listings_deduped')
     .select(FIELDS)
     .gt('total_sold', 0)
+    .eq('is_offtopic', false)
     .order('total_sold', { ascending: false })
     .range(rangeFrom, rangeTo);
   // A single `.eq('category', ...)` hits the (category, total_sold DESC) composite
@@ -16001,7 +16004,8 @@ function lspAdapter() {
       const { data, error } = await _supabase
         .from('listings_deduped')
         .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date')
-        .ilike('keyword', `%${String(keyword).slice(0, 40)}%`)
+        .ilike('keyword', keyword)
+        .eq('is_offtopic', false)
         .gt('total_sold', 0)
         .order('total_sold', { ascending: false })
         .limit(60);
@@ -16271,10 +16275,12 @@ function trkAdapter() {
       try {
         let q = await _supabase.from('listings_deduped')
           .select(cols).eq('keyword', kw.toLowerCase())
+          .eq('is_offtopic', false)
           .order('total_sold', { ascending: false }).limit(30);
         if ((!q.data || !q.data.length) && kw !== kw.toLowerCase()) {
           q = await _supabase.from('listings_deduped')
             .select(cols).eq('keyword', kw)
+            .eq('is_offtopic', false)
             .order('total_sold', { ascending: false }).limit(30);
         }
         return q.data || [];
@@ -16286,9 +16292,15 @@ function trkAdapter() {
         const { data } = await _supabase.from('listings_deduped')
           .select('item_id,shop_id,store_name,product_name,image_url,price,total_sold')
           .eq('shop_id', shopId)
+          .eq('is_offtopic', false)
           .order('total_sold', { ascending: false })
-          .limit(30);
-        return data || [];
+          .limit(60);
+        const seen = new Map();
+        for (const r of (data || [])) {
+          const k = `${r.item_id}_${r.shop_id}`;
+          if (!seen.has(k)) seen.set(k, r);
+        }
+        return [...seen.values()];
       } catch (_) { return []; }
     },
     // Prefer product_daily_series (server already folds review-based estimates

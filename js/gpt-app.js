@@ -4952,7 +4952,8 @@ async function fetchSidePeers(product) {
     const { data } = await _supabase.from('listings_deduped')
       .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
       .gt('total_sold', 0)
-      .ilike('keyword', `%${kw.slice(0, 40)}%`)
+      .ilike('keyword', kw)
+      .eq('is_offtopic', false)
       .order('total_sold', { ascending: false })
       .limit(60);
     return data || [];
@@ -5805,12 +5806,13 @@ async function fetchListingsCityCat(locations, cats, limit = 80) {
     let q = _supabase.from('listings_deduped')
       .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
       .in('location', locations)
+      .eq('is_offtopic', false)
       .order('total_sold', { ascending: false })
-      .limit(limit);
+      .limit(limit * 2);
     if (cats.length) q = q.in('category', cats);
     const { data, error } = await q;
     if (error) throw error;
-    return (data || []).map(asListingProduct);
+    return mergePool([], data || []).map(asListingProduct);
   } catch (_) { return []; }
 }
 
@@ -6326,8 +6328,9 @@ async function handleModalIntent(chat, text) {
       .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
       .gte('price', 1000).lte('price', budget)
       .gt('total_sold', 100)
+      .eq('is_offtopic', false)
       .order('total_sold', { ascending: false })
-      .limit(30);
+      .limit(60);
     rows = (data || []).map(asListingProduct);
   } catch (_) {}
   const gate = await ensureIntentChat(chat, `Modal ${fmtRp(budget)}`, { kind: 'modal', budget });
@@ -7793,6 +7796,8 @@ async function resolveProduct(item_id, shop_id, btn) {
         .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
         .eq('item_id', item_id)
         .eq('shop_id', shop_id)
+        .order('scraped_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
       if (data) {
         const prod = asListingProduct(data);
@@ -8114,8 +8119,7 @@ function gptTrackerAdapter() {
       try { openDirectory(); } catch (_) {}
     },
     // Top listings for the detail picker (Semua vs one SKU). listings_deduped
-    // is the current unique snapshot per (item_id, shop_id) — not mv_trending,
-    // which is a global movers slice and used to cap this at 5.
+    // is one row per (item_id, shop_id, keyword); offtopic ads are filtered.
     async getKeywordTopListings(keyword) {
       if (!keyword || !_supabase) return [];
       const cols = 'item_id,shop_id,store_name,product_name,image_url,price,total_sold';
@@ -8123,10 +8127,12 @@ function gptTrackerAdapter() {
       try {
         let q = await _supabase.from('listings_deduped')
           .select(cols).eq('keyword', kw.toLowerCase())
+          .eq('is_offtopic', false)
           .order('total_sold', { ascending: false }).limit(30);
         if ((!q.data || !q.data.length) && kw !== kw.toLowerCase()) {
           q = await _supabase.from('listings_deduped')
             .select(cols).eq('keyword', kw)
+            .eq('is_offtopic', false)
             .order('total_sold', { ascending: false }).limit(30);
         }
         return q.data || [];
@@ -8138,9 +8144,10 @@ function gptTrackerAdapter() {
         const { data } = await _supabase.from('listings_deduped')
           .select('item_id,shop_id,store_name,product_name,image_url,price,total_sold')
           .eq('shop_id', shopId)
+          .eq('is_offtopic', false)
           .order('total_sold', { ascending: false })
-          .limit(30);
-        return data || [];
+          .limit(60);
+        return mergePool([], data || []);
       } catch (_) { return []; }
     },
     // Prefer product_daily_series (server already folds review-based estimates
@@ -9253,11 +9260,11 @@ function ddKeywordRows(peers) {
 /**
  * Expand keyword variety for the side panel.
  *
- * `listings_deduped` keeps one row per (item_id, shop_id) — the latest scrape —
- * so peer samples for a market almost always share a single keyword field even
- * when those same products were historically scraped under dozens of related
- * queries. Pull distinct (item_id, keyword) pairs from raw `listings` so the
- * Keyword panel lists every keyword those ~60 products actually appear under.
+ * `listings_deduped` is one row per (item_id, shop_id, keyword) — offtopic ads
+ * are filtered from peer samples — but a given product may still have been
+ * scraped under related queries. Pull distinct (item_id, keyword) pairs from
+ * raw `listings` so the Keyword panel lists every keyword those ~60 products
+ * actually appear under.
  */
 async function fetchPeerKeywordRows(peers) {
   const fallback = ddKeywordRows(peers);
@@ -10357,7 +10364,8 @@ async function openDeepDive(product, ddOpts = {}) {
         const { data } = await _supabase.from('listings_deduped')
           .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
           .gt('total_sold', 0)
-          .ilike('keyword', `%${kw.slice(0, 40)}%`)
+          .ilike('keyword', kw)
+          .eq('is_offtopic', false)
           .order('total_sold', { ascending: false })
           .limit(60);
         peers = data || [];
@@ -12253,7 +12261,8 @@ async function fetchPeersForCompare(product) {
     const { data } = await _supabase.from('listings_deduped')
       .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
       .gt('total_sold', 0)
-      .ilike('keyword', `%${kw.slice(0, 40)}%`)
+      .ilike('keyword', kw)
+      .eq('is_offtopic', false)
       .order('total_sold', { ascending: false })
       .limit(60);
     peers = data || [];
