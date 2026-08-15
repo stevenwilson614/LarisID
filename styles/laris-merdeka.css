@@ -115,3 +115,199 @@
   opacity: 0.8;
 }
 
+/* ---- 4. HUT RI promo modal ---------------------------------------- */
+.mdk-promo {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(26, 26, 26, .48);
+  box-sizing: border-box;
+}
+
+.mdk-promo-card {
+  position: relative;
+  width: min(440px, 100%);
+  max-height: min(92vh, 760px);
+  overflow: hidden;
+  background: #fff;
+  border-radius: 20px;
+  padding: 22px 22px 18px;
+  box-shadow: 0 18px 50px rgba(26, 26, 26, .22);
+  box-sizing: border-box;
+}
+
+.mdk-promo-bunting {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 12px;
+  pointer-events: none;
+  background-repeat: repeat-x;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='12' viewBox='0 0 40 12'%3E%3Cpolygon points='0,0 20,0 10,12' fill='%23B5202A'/%3E%3Cpolygon points='20,0 40,0 30,12' fill='%23fff' stroke='%23D1CEC5' stroke-width='0.6'/%3E%3C/svg%3E");
+}
+
+.mdk-promo-close {
+  position: absolute;
+  top: 16px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #6B7280;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  z-index: 2;
+}
+
+.mdk-promo-close:hover,
+.mdk-promo-close:focus {
+  background: #F5EFE0;
+  color: #1A1A1A;
+}
+
+.mdk-promo-logo {
+  display: block;
+  height: 32px;
+  width: auto;
+  margin: 14px auto 8px;
+}
+
+.mdk-promo-kicker {
+  margin: 0;
+  text-align: center;
+  font-family: 'Protest Revolution', 'Plus Jakarta Sans', sans-serif;
+  font-size: 1.35rem;
+  color: #B5202A;
+  letter-spacing: .02em;
+}
+
+.mdk-promo-title {
+  margin: -4px 0 8px;
+  text-align: center;
+  font-family: 'Protest Revolution', 'Plus Jakarta Sans', sans-serif;
+  font-size: clamp(1.8rem, 6vw, 2.35rem);
+  font-weight: 400;
+  color: #B5202A;
+  letter-spacing: .01em;
+  transform: rotate(-2.4deg);
+  text-shadow: 1px 1px 0 #F9EAE4;
+}
+
+.mdk-promo-lead {
+  margin: 0 0 12px;
+  text-align: center;
+  font-size: .92rem;
+  line-height: 1.5;
+  color: #3F3F3F;
+}
+
+.mdk-promo-offer {
+  background: #B5202A;
+  color: #fff;
+  border-radius: 12px;
+  padding: 14px 14px 16px;
+  text-align: center;
+  margin: 0 0 12px;
+}
+
+.mdk-promo-when {
+  margin: 0 0 10px;
+  font-size: .82rem;
+  line-height: 1.45;
+}
+
+.mdk-promo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 7px 16px;
+  border-radius: 8px;
+  background: #C9974B;
+  color: #1A1A1A;
+  font-weight: 800;
+  letter-spacing: .06em;
+  font-size: .95rem;
+}
+
+.mdk-promo-inf {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.mdk-promo-feat {
+  margin: 0;
+  font-size: 1.02rem;
+}
+
+.mdk-promo-feat strong {
+  color: #F5E6B8;
+  font-weight: 800;
+}
+
+.mdk-promo-foot {
+  margin: 0 0 12px;
+  font-size: .82rem;
+  line-height: 1.45;
+  color: #4B4B4B;
+}
+
+.mdk-promo-cta {
+  position: relative;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  padding: 13px 16px;
+  background: #B5202A;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  font-size: .95rem;
+  cursor: pointer;
+}
+
+.mdk-promo-cta:hover,
+.mdk-promo-cta:focus {
+  background: #8E191F;
+}
+
+.mdk-promo-mascot {
+  position: absolute;
+  left: -8px;
+  bottom: 70px;
+  width: 128px;
+  height: auto;
+  pointer-events: none;
+  z-index: 1;
+  filter: drop-shadow(0 6px 10px rgba(26, 26, 26, .18));
+}
+
+@media (max-width: 420px) {
+  .mdk-promo-card {
+    padding: 20px 16px 16px;
+  }
+  .mdk-promo-mascot {
+    width: 104px;
+    bottom: 68px;
+  }
+  .mdk-promo-foot {
+    font-size: .78rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mdk-promo-title {
+    transform: none;
+  }
+}
+

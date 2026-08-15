@@ -1583,6 +1583,19 @@ let _gptUsage = {
 };
 let _usageTicker = null;
 
+function merdekaUnlimitedNow() {
+  try { return !!(window.LarisMerdeka && window.LarisMerdeka.isUnlimited && window.LarisMerdeka.isUnlimited()); }
+  catch (_) { return false; }
+}
+
+function merdekaEndsAt() {
+  try {
+    const d = window.LarisMerdeka && window.LarisMerdeka.endsAt && window.LarisMerdeka.endsAt();
+    if (d instanceof Date && !Number.isNaN(d.getTime())) return d;
+  } catch (_) {}
+  return null;
+}
+
 function anonSearchDay() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
@@ -1612,6 +1625,8 @@ function noteGptUsage(data) {
   // trusting that flag here would show an infinity pill the server then refuses.
   const onPass = !!data.pass_expires_at;
   if (onPass) _gptUsage.passUntil = data.pass_expires_at;
+  if (data.merdeka) _gptUsage.merdeka = true;
+  else if (data.merdeka === false) _gptUsage.merdeka = false;
   if (data.unlimited && !onPass) {
     _gptUsage.unlimited = true;
   } else if (data.unlimited === false || onPass) {
@@ -1923,9 +1938,13 @@ function renderGptUsage() {
 
   if (unlimited) {
     numText = '∞';
-    title = 'Akses tanpa batas';
-    popTitle = 'Akses tanpa batas';
-    popSub = 'Akun admin/leader tidak dibatasi jatah harian.';
+    title = _gptUsage.merdeka || merdekaUnlimitedNow()
+      ? 'Deep Dive Search tanpa batas sampai 17 Agustus 23.59 WIB'
+      : 'Akses tanpa batas';
+    popTitle = title;
+    popSub = _gptUsage.merdeka || merdekaUnlimitedNow()
+      ? 'Jatah 10 per hari dilonggarkan untuk HUT RI ke-81. Poin AI tetap ada batasnya.'
+      : 'Akun admin/leader tidak dibatasi jatah harian.';
     tone = 'inf';
     dashOffset = 0;
   } else {
@@ -2085,13 +2104,23 @@ function wireUsagePill() {
 
 async function refreshGptUsage() {
   const resetAt = wibMidnightReset();
+  if (merdekaUnlimitedNow()) {
+    noteGptUsage({
+      used: 0,
+      limit: GPT_DAILY_LIMIT,
+      reset_at: merdekaEndsAt() || resetAt,
+      unlimited: true,
+      merdeka: true,
+    });
+    return;
+  }
   if (!currentUser || !_supabase) {
     const used = getAnonSearches().count || 0;
-    noteGptUsage({ used, limit: GPT_DAILY_LIMIT, reset_at: resetAt, unlimited: false });
+    noteGptUsage({ used, limit: GPT_DAILY_LIMIT, reset_at: resetAt, unlimited: false, merdeka: false });
     return;
   }
   if (isPlatformAdmin()) {
-    noteGptUsage({ used: 0, limit: GPT_DAILY_LIMIT, reset_at: resetAt, unlimited: true });
+    noteGptUsage({ used: 0, limit: GPT_DAILY_LIMIT, reset_at: resetAt, unlimited: true, merdeka: false });
     return;
   }
   try {
@@ -2107,6 +2136,7 @@ async function refreshGptUsage() {
       limit: GPT_DAILY_LIMIT,
       reset_at: resetAt,
       unlimited: false,
+      merdeka: false,
     });
   } catch (_) {
     noteGptUsage({
@@ -2114,6 +2144,7 @@ async function refreshGptUsage() {
       limit: GPT_DAILY_LIMIT,
       reset_at: resetAt,
       unlimited: false,
+      merdeka: false,
     });
   }
 }
@@ -8625,6 +8656,7 @@ function bindDeepDiveCards(root) {
 }
 
 async function ensureSearchAllowed() {
+  if (merdekaUnlimitedNow()) return true;
   if (currentUser && _supabase) {
     // Limit enforced when creating chat via RPC
     return true;
