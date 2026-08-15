@@ -60,7 +60,7 @@ Offtopic rows on the new grain (price/sold gated like `mv_product_types`): **8,4
 | `pupuk npk` | Pupuk NPK Mutiara (was La Roche Posay) |
 | `alat pemeras jeruk manual` | Stainless juicer (was a bra) |
 | `meteran jahit gulung` | Mini tape measure (was Indomie) |
-| `helm full face murah` | Still wrong — see limitations |
+| `helm full face murah` | Bogo Helm (Face Care dropped by AI layer, 2026-08-15) |
 
 ## `mv_shops` vs `_pre_cleanup_shops`
 
@@ -79,10 +79,27 @@ The old matview was a stale one-row-per-item snapshot. Rebuilding from current `
 
 Snapshot tables `_pre_cleanup_shops` and `_pre_cleanup_types` are left on the DB for further eyeballing.
 
+## AI cover/gallery filter (2026-08-15)
+
+Token rules still miss shared-token leftovers (Face Care under `helm full face murah`). A one-shot DeepSeek pass now flags the **cover + 5 gallery listings** per type (`city='ALL'`).
+
+| | |
+|---|---|
+| Table | `kw_ai_reject` — PK `(keyword, item_id, shop_id)`, separate from `is_offtopic` |
+| Script | `scripts/classify-type-covers.mjs` (ssh+psql dump, DeepSeek `deepseek-v4-pro`, upsert) |
+| Apply | Migrations `20260815120000` (table) and `20260815130000` (matview demotes `rejected` out of cover/`images[1:5]`) on `api.larisid.com` |
+| Scope | Cover + gallery only. Membership, `price_min`/`median`/`max`, and Deep Dive peers are unchanged |
+| Volume | 4,753 types, 23,765 candidate rows, **934 rejects** across 455 types |
+
+`helm full face murah` cover is now **Bogo Helm** (Mama’s Choice Face Care rejected). `lensa kamera hp clip` cover stays Mipanda; chest-strap mounts are out of the gallery. `price_max` on that type is still Rp 9.75M (Sony A6400 kit was not in the top 5).
+
+Re-run: `node scripts/classify-type-covers.mjs` (skips types whose 5 ids are already flagged; `--force` to redo; `--dry-run` hits the two known keywords only). Audit JSONL is gitignored under `tmp/`.
+
 ## Known limitations (not fixed)
 
 - **`is_ad` only from 2026-07-01.** Pre-July injected ads carry `is_ad = 0`. Rule A misses them; Rule B still demotes `kw_hits = 0` covers when `rel_share >= 0.15`.
 - **~33 remaining `kw_hits = 0` covers** are English-keyword / Indonesian-name false positives. Their covers are in fact correct.
-- **Shared generic tokens go the other way.** `helm full face murah` demotes the bra (`kw_hits = 0`) but then picks Mama’s Choice “Face Care” (`kw_hits = 1` from “face”) over the actual helmet. Fixing that needs a synonym/translation layer, out of scope.
-- **On-topic-looking ads remain.** The Sony A6400 kit under `lensa kamera hp clip` contains “lensa”, so it stays and inflates `price_max`.
+- **On-topic-looking ads remain in membership.** The Sony A6400 kit under `lensa kamera hp clip` contains “lensa”, so it stays and inflates `price_max`. This pass does not classify members below the gallery.
+- **AI over-rejects some top-5 sets.** ~20 types had all 5 gallery rows rejected (too-strict “must match every adjective”). Cover then falls through to the next unclassified member — sometimes worse (`setting powder baking` → food baking powder). Flags are reversible; delete rows from `kw_ai_reject` and refresh `mv_product_types`.
+- **Not a post-scrape job.** Re-run only when cover `item_id`s change.
 - Product *types* are not mis-bucketed (`listings.category` is scraper-assigned per keyword). No change to `category_map` or the 18 canonical buckets.

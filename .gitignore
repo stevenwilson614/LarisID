@@ -30,6 +30,7 @@ shopee_acct614.db
 supabase/.env
 supabase/.env.local
 supabase/.temp/
+tmp/
 
 # Region-overlay dumps from scripts/build-mascot-rig.py --debug (never ship)
 images/brand/rig/_debug-*.png
