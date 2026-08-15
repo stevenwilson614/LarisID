@@ -66,8 +66,7 @@ Use this before merging changes to onboarding, Discover defaults, journey tiers,
 ## Migrations
 
 ```bash
-# From repo root, with supabase/.env.local loaded
-supabase db push
+bash scripts/apply-selfhost.sh supabase/migrations/<file>.sql
 ```
 
 - [ ] `user_onboarding_prefs.seller_status`

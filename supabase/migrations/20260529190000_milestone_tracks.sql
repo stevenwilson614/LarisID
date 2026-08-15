@@ -1,7 +1,7 @@
 -- Skill-tracked milestones: soft-skill vs business-skill tracks for cohort education.
 -- Adds track/description/due_at to milestones, lets mentors complete milestones on
 -- behalf of students, and seeds a starter curriculum for the Ocean Blue cohort.
--- Apply in Supabase SQL Editor or: supabase db push
+-- Already applied. New SQL: bash scripts/apply-selfhost.sh (docs/self-host.md). Do not supabase db push.
 
 -- ── Columns ────────────────────────────────────────────────────
 alter table public.milestones

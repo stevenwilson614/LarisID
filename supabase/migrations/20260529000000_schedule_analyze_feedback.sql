@@ -1,3 +1,6 @@
+-- HISTORICAL — already applied. Live pg_cron is on Contabo (kong:8000).
+-- DO NOT RE-RUN. See docs/self-host.md and larisid-infra/cron/recreate_cron_jobs.sql.
+
 -- Enable required extensions
 create extension if not exists pg_cron with schema extensions;
 create extension if not exists pg_net with schema extensions;
@@ -14,8 +17,8 @@ select cron.schedule(
   '0 1,4,7,10,13 * * *',
   $$
   select net.http_post(
-    url     := 'https://bzmvlraziqevqdyotvgy.supabase.co/functions/v1/analyze-feedback',
-    headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6bXZscmF6aXFldnFkeW90dmd5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDQwNTUyNSwiZXhwIjoyMDg5OTgxNTI1fQ.YygDyd0FIRvsUQ0xI2K15311-9DvXDDmdqD96cU_4QE"}'::jsonb,
+    url     := 'http://kong:8000/functions/v1/analyze-feedback',
+    headers := '{"Content-Type": "application/json", "Authorization": "Bearer REDACTED_SEE_INFRA_ENV"}'::jsonb,
     body    := '{"batch": true}'::jsonb
   )
   $$

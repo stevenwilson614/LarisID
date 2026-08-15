@@ -33,10 +33,10 @@ ssh -i "${LARISID_SSH_KEY:-$HOME/.ssh/larisid_hetzner}" \
 bash refresh_listing_weekly.sh   # fill this week + next week
 ```
 
-Do **not** use `supabase db push --linked` for this: the linked CLI project is
-cloud `bzmvlraziqevqdyotvgy`; the app reads `https://api.larisid.com`. The
-LarisID migration `20260813140000_listing_weekly.sql` is the same read surface
-for the repo; applying `listing_weekly.sql` over SSH is what the site uses.
+Do **not** use `supabase db push`. Live Postgres is Contabo (`api.larisid.com`).
+See [self-host.md](./self-host.md). The LarisID file
+`20260813140000_listing_weekly.sql` is the same read surface in this repo;
+applying `listing_weekly.sql` over SSH is what the site uses.
 
 The static JS ships via GitHub Pages on push to `main`. Until the SQL above
 lands, Deep Dive charts fall back to the old last-2-weeks average (still labelled

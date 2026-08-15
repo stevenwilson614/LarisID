@@ -3,7 +3,6 @@
 --
 -- Canonical function bodies: ~/shopee_scraper/product_daily_series.sql
 -- Apply on Contabo via SSH (same as listing_weekly). Do NOT
--- `supabase db push --linked` — the linked CLI project is cloud
--- bzmvlraziqevqdyotvgy; the app reads https://api.larisid.com.
+-- `supabase db push`. Live API is https://api.larisid.com (docs/self-host.md).
 --
 --   ssh ... docker exec -i supabase-db psql ... < product_daily_series.sql

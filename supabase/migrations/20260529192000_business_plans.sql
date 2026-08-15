@@ -1,6 +1,6 @@
 -- Rencana Bisnis: a lightweight one-page business plan per student. The artifact
 -- that makes mentor coaching concrete and ties to the business-skill track.
--- Apply in Supabase SQL Editor or: supabase db push
+-- Already applied. New SQL: bash scripts/apply-selfhost.sh (docs/self-host.md). Do not supabase db push.
 
 create table if not exists public.business_plans (
   user_id       uuid primary key references auth.users (id) on delete cascade,

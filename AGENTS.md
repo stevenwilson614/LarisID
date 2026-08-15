@@ -12,7 +12,7 @@ The logged-in product UI lives in **`index.html`** (not Astro routes). Before ch
 
 1. Read **[docs/journey-funnel.md](./docs/journey-funnel.md)** — tiers, key functions, localStorage + Supabase tables.
 2. Run through **[docs/journey-funnel-test.md](./docs/journey-funnel-test.md)** for regressions.
-3. Apply related migrations via `supabase db push` (`user_onboarding_prefs.seller_status`, `user_journey_stats`) — see [supabase/README.md](./supabase/README.md).
+3. Apply related migrations **on Contabo** with `bash scripts/apply-selfhost.sh supabase/migrations/…` — see [docs/self-host.md](./docs/self-host.md). Never `supabase db push --linked`.
 
 **Do not** reintroduce a blocking popup for onboarding; keep the 3-step flow in Discover. **Do not** fabricate price/sales deltas in return strips. Leaders and platform admins bypass journey gating.
 
@@ -36,9 +36,17 @@ Before changing titles, competitor comparisons, pricing copy on the public site,
 - Competitor names (Datapinter, Tokpee, Shoptik) and prices must stay **factual** per `docs/pricing-research.md`; update `llms.txt` and `sitemap.xml` when facts change.
 - New top-level static dirs must be added to `.github/workflows/deploy-pages.yml`.
 
-## Supabase CLI
+## Live database (Contabo)
 
-For `supabase db push` and other CLI commands, load credentials from **`supabase/.env.local`** (`SUPABASE_ACCESS_TOKEN`). See **`supabase/README.md`**. Never commit tokens or paste them into tracked files.
+The app uses **`https://api.larisid.com`**, not Supabase Cloud. Schema and edge
+functions live on the Contabo VPS. **Never** `supabase db push --linked` or a
+cloud `SUPABASE_ACCESS_TOKEN` — the old project `bzmvlraziqevqdyotvgy` is gone.
+
+- SQL: `bash scripts/apply-selfhost.sh supabase/migrations/<file>.sql`
+- Edge function: `bash scripts/deploy-function-selfhost.sh <slug>`
+- Full notes: **[docs/self-host.md](./docs/self-host.md)** and [supabase/README.md](./supabase/README.md)
+
+Never commit tokens, `.env`, or SSH private keys. Never paste service-role JWTs into tracked SQL.
 
 ## Shopee scraper (separate repo)
 

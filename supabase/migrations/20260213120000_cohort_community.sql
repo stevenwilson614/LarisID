@@ -1,5 +1,5 @@
 -- Cohort community MVP: tables, RLS, join_cohort RPC
--- Apply in Supabase SQL Editor or: supabase db push
+-- Already applied. New SQL: bash scripts/apply-selfhost.sh (docs/self-host.md). Do not supabase db push.
 
 -- ── Tables ─────────────────────────────────────────────────────
 

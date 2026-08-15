@@ -1,6 +1,6 @@
 -- First-login onboarding picker: per-user category + budget preferences,
 -- and cohort-less personal funnel events in activity_events.
--- Applied to live project bzmvlraziqevqdyotvgy on 2026-06-11 via MCP.
+-- Applied 2026-06-11 (then-cloud). Live DB is Contabo — docs/self-host.md.
 
 create table if not exists public.user_onboarding_prefs (
   user_id uuid primary key references auth.users(id) on delete cascade,

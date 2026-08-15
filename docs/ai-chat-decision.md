@@ -31,7 +31,7 @@ There are **two** AI code paths in `index.html`, but only **one** is actually wi
 
 ## Usage findings from data
 
-Live Supabase project `bzmvlraziqevqdyotvgy` (https://bzmvlraziqevqdyotvgy.supabase.co). Relevant tables: `activity_events`, `credit_events`, `ai_usage`, `user_credits`.
+Snapshot from 2026-05-30 against the then-cloud project (now gone). Live DB is Contabo `https://api.larisid.com`. Relevant tables: `activity_events`, `credit_events`, `ai_usage`, `user_credits`.
 
 | Signal | Number |
 |---|---|

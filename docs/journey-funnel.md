@@ -136,11 +136,10 @@ Logged via `journeyLog()` → `logUserEvent` with `journey_tier` metadata:
 
 ## Database migrations
 
-Apply from repo root (credentials in `supabase/.env.local`):
+Apply on Contabo (not cloud). See [self-host.md](./self-host.md):
 
 ```bash
-set -a && source supabase/.env.local && set +a
-supabase db push --linked --yes
+bash scripts/apply-selfhost.sh supabase/migrations/<file>.sql
 ```
 
 | Migration | Purpose |

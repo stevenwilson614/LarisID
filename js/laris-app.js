@@ -4975,6 +4975,8 @@ let _ddDwellLogged = false;
 
 function _supaAccessTokenSync() {
   try {
+    // Leftover cloud SDK storage key (Site A, retired). Live sessions are not
+    // under this name; gpt-app.js strips all sb-*-auth-token keys.
     const raw = localStorage.getItem('sb-bzmvlraziqevqdyotvgy-auth-token');
     if (!raw) return null;
     const j = JSON.parse(raw);

@@ -46,15 +46,17 @@ LarisID is a **static site** — *not* an Astro or Next build, despite the `Lari
 
 If the generated pages outgrow the `.mjs` string-template approach, the natural next step is to adopt **Astro for those pages only**: convert the `build-*.mjs` generators into Astro page templates sharing one `BaseLayout` (head/SEO/nav/footer/JSON-LD), and add `@astrojs/sitemap` + `@astrojs/image` for automatic sitemaps and responsive WebP/AVIF. Leave `index.html` and the SPA untouched. This reintroduces a build step (and `node_modules`) — intentionally deferred.
 
-## Supabase
+## Database (Contabo self-host)
 
-From repo root with the [Supabase CLI](https://supabase.com/docs/guides/cli):
+Live API: **`https://api.larisid.com`**. Do **not** `supabase db push` — the cloud
+project is gone. Apply SQL and functions on the VPS:
 
 ```bash
-supabase db push
+bash scripts/apply-selfhost.sh supabase/migrations/<file>.sql
+bash scripts/deploy-function-selfhost.sh <slug>
 ```
 
-See [supabase/README.md](./supabase/README.md) for cohort setup, invites, and migrations.
+See **[docs/self-host.md](./docs/self-host.md)** and [supabase/README.md](./supabase/README.md).
 
 ## Brand & copy
 

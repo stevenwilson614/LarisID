@@ -1,6 +1,6 @@
 -- Private mentor notes on students, so co-mentors (soft-skill + business-skill)
 -- can coordinate on each student. Visible only to a cohort's mentor.
--- Apply in Supabase SQL Editor or: supabase db push
+-- Already applied. New SQL: bash scripts/apply-selfhost.sh (docs/self-host.md). Do not supabase db push.
 
 create table if not exists public.cohort_student_notes (
   id uuid primary key default gen_random_uuid(),

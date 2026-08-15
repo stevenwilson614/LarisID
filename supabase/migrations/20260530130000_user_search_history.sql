@@ -2,7 +2,7 @@
 -- can surface recommendations that follow their interests (battery packs today,
 -- shirts tomorrow) instead of the same global top-5 every day.
 -- Privacy: a user can only read/write their OWN history (RLS below).
--- Apply in Supabase SQL Editor or: supabase db push
+-- Already applied. New SQL: bash scripts/apply-selfhost.sh (docs/self-host.md). Do not supabase db push.
 
 create table if not exists public.user_search_history (
   id         bigint generated always as identity primary key,

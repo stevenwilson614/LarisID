@@ -1,43 +1,25 @@
-# Supabase migrations (LarisID)
+# Database migrations (LarisID)
 
-Linked project ref: `bzmvlraziqevqdyotvgy` (see `supabase/.temp/linked-project.json` after `supabase link`).
-
-**Scraper ingest:** see [`docs/SCRAPER_TODO.md`](../docs/SCRAPER_TODO.md) for `total_sold` Shopee display-bucket handling before the next bulk scrape.
-
-## CLI auth (agents & developers)
-
-**Never commit personal access tokens** to `README`, `AGENTS.md`, or git. Store the PAT in **`supabase/.env.local`** (gitignored):
+**Live backend is Contabo**, not Supabase Cloud. API: `https://api.larisid.com`.
+How to apply SQL and edge functions: **[docs/self-host.md](../docs/self-host.md)**.
 
 ```bash
-cp supabase/.env.example supabase/.env.local
-# Edit supabase/.env.local — set SUPABASE_ACCESS_TOKEN from:
-# https://supabase.com/dashboard/account/tokens
+bash scripts/apply-selfhost.sh supabase/migrations/<file>.sql
+bash scripts/deploy-function-selfhost.sh <slug>
 ```
 
-Push migrations from the repo root:
+Do **not** `supabase db push --linked`. The old cloud ref `bzmvlraziqevqdyotvgy`
+was migrated off and removed. `supabase/.temp/linked-project.json` is a leftover
+and must not be used.
 
-```bash
-set -a && source supabase/.env.local && set +a
-supabase db push --linked --yes
-```
+**Scraper ingest:** [`docs/SCRAPER_TODO.md`](../docs/SCRAPER_TODO.md). Velocity /
+weekly snapshot DDL is applied the same SSH+psql way from `~/shopee_scraper` —
+see [docs/listing-weekly.md](../docs/listing-weekly.md).
 
-**Scraper velocity / weekly snapshot DDL is not this path.** `listing_weekly`,
-`product_velocity`, and `refresh_listing_weekly()` live on the Contabo self-host
-(`https://api.larisid.com`). Apply `~/shopee_scraper/listing_weekly.sql` over
-SSH+psql — see [docs/listing-weekly.md](../docs/listing-weekly.md). The linked
-CLI project (`bzmvlraziqevqdyotvgy`) is cloud; pushing this migration there
-does not feed the site.
+One-off SQL: Studio at `https://api.larisid.com` (basic auth from the infra
+`.env`) or `ssh` + `docker exec -it supabase-db psql -U postgres`.
 
-Agents: read `SUPABASE_ACCESS_TOKEN` from `supabase/.env.local` if present; do not print or commit the value.
-
-Alternative without a PAT: use the database password from Project Settings → Database:
-
-```bash
-export SUPABASE_DB_PASSWORD='your-db-password'
-supabase db push --linked --yes
-```
-
-Apply cohort community tables and policies in the Supabase SQL Editor, or with the Supabase CLI as above:
+Apply cohort community tables the same way (`bash scripts/apply-selfhost.sh …`):
 
 ## Cohort MVP (`migrations/20260213120000_cohort_community.sql`)
 
@@ -49,7 +31,7 @@ Creates:
 - `join_cohort(p_invite text)` — students join with invite code
 - `cohort_leaderboard(p_cohort uuid, p_days int)` — aggregated points for the leaderboard UI
 
-### Seed a demo cohort (SQL Editor)
+### Seed a demo cohort (psql on Contabo)
 
 Replace `YOUR_AUTH_USER_UUID` with your user id from **Authentication → Users**.
 
@@ -113,7 +95,8 @@ Cohort leader:  stevenfwilson1@gmail.com
 Student:        olivia.melia.park@gmail.com
 ```
 
-After those users exist in **Authentication**, run `supabase/seed_admin_and_leader.sql` in the SQL Editor or apply the migrations so Ocean Blue gets the leader/student assignments.
+After those users exist in GoTrue (`auth.users` on Contabo), apply
+`supabase/seed_admin_and_leader.sql` with `bash scripts/apply-selfhost.sh` so Ocean Blue gets the leader/student assignments.
 
 ### Invite links for signup (no extra SQL)
 
@@ -157,7 +140,8 @@ Chat sessions for the app: `gpt_chats`, `gpt_messages`, RPC `gpt_new_chat` (3 ne
 
 ### Auth redirect URLs
 
-In Supabase Dashboard → **Authentication → URL Configuration → Redirect URLs**, keep:
+On the self-host box, keep these in `ADDITIONAL_REDIRECT_URLS` / GoTrue env
+(`larisid-infra/docker/.env`), not the old cloud Dashboard:
 
 - `https://larisid.com/` (canonical — where the app actually lives)
 - `https://larisid.com/gpt/` (legacy path, still served; keep this or OAuth breaks for anyone with a stale `/gpt/` bookmark or in-flight session)

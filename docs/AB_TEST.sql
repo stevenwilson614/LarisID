@@ -11,8 +11,8 @@
 -- WHERE TO RUN (updated 2026-07-31): the live DB is SELF-HOSTED on Contabo —
 --   ssh -i ~/.ssh/larisid_hetzner root@84.247.147.205 \
 --     'docker exec -i supabase-db psql -U postgres' < docs/AB_TEST.sql
--- The old cloud project bzmvlraziqevqdyotvgy is a frozen rollback copy (scrape
--- data stops Jul 7) — running these there gives stale, wrong answers.
+-- The old cloud project bzmvlraziqevqdyotvgy was migrated to Contabo and
+-- removed. Running against *.supabase.co will fail or return nothing useful.
 --
 -- BEFORE FLIP / WEEK-0 CHECKLIST (manual):
 --   1. Supabase → Authentication → URL Configuration → Redirect URLs:

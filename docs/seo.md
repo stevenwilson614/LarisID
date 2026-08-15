@@ -72,7 +72,7 @@ Spec/history: `docs/landing-analytics.md`
 ## Programmatic SEO — `/riset/` (the growth multiplier)
 
 Per-keyword market-overview pages built from **real Shopee listing data** in the scraper DB
-(`bzmvlraziqevqdyotvgy`). Each page targets a long-tail buyer-intent query
+(live DB `https://api.larisid.com` on Contabo). Each page targets a long-tail buyer-intent query
 (e.g. "botol minum aesthetic 1 liter") and shows median/range price, listing & store counts,
 average rating, estimated units sold, top products by review count, price distribution, and
 seller-region breakdown — plus an honest "what this means for you" read and FAQ.
@@ -83,7 +83,7 @@ seller-region breakdown — plus an honest "what this means for you" read and FA
   labelled as such on every page (links to `/cara-kerja/`).
 - No hype ("dijamin laku"), no fake scarcity. State competition honestly.
 
-**Data inputs (both committed, both produced by SQL via the Supabase MCP — no curl needed):**
+**Data inputs (both committed, both produced by SQL on Contabo via SSH+psql — see [self-host.md](./self-host.md)):**
 - `scripts/seo-keywords.json` — headline stats per keyword. **Append-only**: array index maps to
   page order; never reorder. Rating on appended rows is **review-weighted** avg (honest, ~4.x).
 - `scripts/seo-detail.json` — per-keyword detail keyed by keyword string (top-8 products, top-6

@@ -1,6 +1,10 @@
 -- ============================================================================
 -- LarisID — Video launch funnel & live-watch queries
--- Run in Supabase SQL editor (project bzmvlraziqevqdyotvgy) or via MCP.
+-- Run on Contabo (live DB), NOT cloud:
+--   bash scripts/apply-selfhost.sh is for DDL; for these SELECTs:
+--   ssh -i ~/.ssh/larisid_hetzner root@84.247.147.205 \
+--     'docker exec -i supabase-db psql -U postgres' < docs/LAUNCH_FUNNEL.sql
+-- See docs/self-host.md. The old cloud project is gone.
 -- Source of truth for "signed up" = auth.users.created_at (100% accurate, no
 -- client-side event drop). All times normalized to Asia/Jakarta (WIB).
 --

@@ -1,0 +1,17 @@
+---
+description: Live backend is Contabo, never cloud Supabase
+alwaysApply: true
+---
+
+# Live backend (Contabo)
+
+The product API is **`https://api.larisid.com`** on Contabo (`root@84.247.147.205`).
+The old cloud project `bzmvlraziqevqdyotvgy` is **gone**.
+
+**Never** `supabase db push`, `supabase db push --linked`, cloud PATs (`sbp_…`),
+or the Supabase Dashboard / MCP against that old ref. They do not update the
+site and will fail or write to the wrong project.
+
+Apply SQL: `bash scripts/apply-selfhost.sh path/to.sql`
+Deploy a function: `bash scripts/deploy-function-selfhost.sh <slug>`
+Details: [docs/self-host.md](docs/self-host.md)
