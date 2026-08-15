@@ -1005,8 +1005,17 @@
    no design tokens — the two host apps disagree on token names. */
 .ltk-notify { display: flex; flex-direction: column; gap: 12px; }
 .ltk-notify--wiz { margin-top: 18px; padding-top: 18px; border-top: 1px solid #E5E7EB; }
+.ltk-notify .ltk-mcard-ico--logo {
+  background: transparent; width: 32px; height: 32px;
+}
+.ltk-notify .ltk-mcard-ico--logo svg { width: 28px; height: 28px; }
+.ltk-notify .ltk-mcard.is-on .ltk-mcard-ico--logo { background: transparent; color: inherit; }
 .ltk-notify-wa { display: flex; flex-direction: column; gap: 6px; }
-.ltk-notify-wa > span { font-size: .72rem; font-weight: 600; color: #6B7280; }
+.ltk-notify-wa > span {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: .72rem; font-weight: 600; color: #6B7280;
+}
+.ltk-notify-wa > span svg { width: 16px; height: 16px; flex-shrink: 0; }
 .ltk-notify-wa input {
   font: inherit; font-size: .85rem; color: #1A1A1A;
   background: #fff; border: 1.5px solid #E5E7EB; border-radius: var(--ltk-r);
