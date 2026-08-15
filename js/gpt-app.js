@@ -2221,6 +2221,7 @@ window.addEventListener('popstate', (e) => {
       else setView('directory');
     } else {
       setView(st.view);
+      if (st.view === 'home') updateHomeFinderVisibility();
       if (st.view === 'chat' && state.activeChatId && activeChat()) renderChatThread();
     }
   } finally {
@@ -4390,6 +4391,7 @@ async function runFinderSearch() {
     saveFinderState();
     syncDirectoryFromOnboarding();
     renderSidebarLocCard();
+    updateHomeFinderVisibility();
 
     const bud = finderBudgetCfg(_finder.budget);
     const catLabel = _finder.categories.join(', ');
