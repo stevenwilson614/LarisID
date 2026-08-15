@@ -163,6 +163,11 @@
   .gpt-signout { text-align: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid #eee; }
   .gpt-signout button { background: none; border: none; color: #c62828; font-size: 13px; cursor: pointer; padding: 4px; }
   .gpt-pv-name { font-size: 18px; font-weight: 700; color: #111; margin-top: 4px; }
+  .gpt-pv-role {
+    display: inline-flex; align-items: center; margin-left: 6px; vertical-align: middle;
+    padding: 2px 8px; border-radius: 999px; background: #B5202A; color: #fff;
+    font-size: 11px; font-weight: 800; letter-spacing: .02em;
+  }
   .gpt-pv-city { font-size: 13px; color: #6B7280; margin-top: 2px; }
   .gpt-pv-bio { font-size: 14px; color: #374151; line-height: 1.5; margin: 16px 0 0; }
   .gpt-pv-shopee { display: inline-block; margin-top: 10px; font-size: 13px; color: #1a73e8; text-decoration: none; }
@@ -447,6 +452,7 @@
 
   function renderPublicProfile(row, viewerId) {
     const name = esc(row.display_name || row.first_name || 'Pengguna LarisID');
+    const role = row.is_admin ? ' <span class="gpt-pv-role">Admin</span>' : '';
     const cityLine = row.city ? `<div class="gpt-pv-city">${esc(row.city)}</div>` : '';
     const bioLine = row.bio ? `<p class="gpt-pv-bio">${esc(row.bio)}</p>` : '';
     const shopeeLine = row.shopee_store_url
@@ -457,7 +463,7 @@
       `<button class="gpt-close js-close-btn">${closeSVG}</button>` +
       '<div style="text-align:center">' +
         `<div class="gpt-avatar-wrap">${publicAvatarHtml(row)}</div>` +
-        `<div class="gpt-pv-name">${name}</div>` +
+        `<div class="gpt-pv-name">${name}${role}</div>` +
         cityLine +
       '</div>' +
       bioLine + shopeeLine +

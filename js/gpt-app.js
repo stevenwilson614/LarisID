@@ -2273,9 +2273,23 @@ async function loadCurrentAccess() {
   _accessState = { loaded: true, isAdmin };
   const btn = $('btn-admin');
   if (btn) btn.style.display = isAdmin ? '' : 'none';
+  const un = $('user-name');
+  if (un && un.textContent) {
+    setHeaderName(un.textContent.replace(/\s*\(Admin\)\s*$/, ''));
+  }
 }
 
 let _accountHeadshotUrl = null;
+
+function accountLabel(shortName) {
+  const short = String(shortName || 'Akun').split(' ')[0] || 'Akun';
+  return isPlatformAdmin() ? `${short} (Admin)` : short;
+}
+
+function setHeaderName(shortName) {
+  const un = $('user-name');
+  if (un) un.textContent = accountLabel(shortName);
+}
 
 function setHeaderAvatar(shortName) {
   const av = $('user-av');
@@ -2306,8 +2320,7 @@ async function refreshAccountHeadshot() {
     const name = data?.display_name || data?.first_name ||
       currentUser.user_metadata?.full_name || currentUser.email || 'Akun';
     const short = String(name).split(' ')[0] || 'Akun';
-    const un = $('user-name');
-    if (un) un.textContent = short;
+    setHeaderName(short);
     setHeaderAvatar(short);
   } catch (_) {
     // Keep letter fallback; profile photo is nice-to-have.
@@ -2322,8 +2335,7 @@ function updateAccountUI() {
     if (userH) userH.hidden = false;
     const name = currentUser.user_metadata?.full_name || currentUser.email || 'Akun';
     const short = name.split(' ')[0] || 'Akun';
-    const un = $('user-name');
-    if (un) un.textContent = short;
+    setHeaderName(short);
     setHeaderAvatar(short);
     void refreshAccountHeadshot();
   } else {
@@ -8475,8 +8487,7 @@ function openUserProfile(userId) {
         const name = row?.display_name || row?.first_name ||
           currentUser.user_metadata?.full_name || currentUser.email || 'Akun';
         const short = String(name).split(' ')[0] || 'Akun';
-        const un = $('user-name');
-        if (un) un.textContent = short;
+        setHeaderName(short);
         setHeaderAvatar(short);
       },
     },

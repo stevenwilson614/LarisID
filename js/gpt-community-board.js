@@ -105,12 +105,18 @@
     return `<span class="msb-avatar msb-avatar--letter" style="width:${px}px;height:${px}px;background:${avatarTone(name)}">${letter}</span>`;
   }
 
+  function adminBadgeHtml(row) {
+    if (!row.author_is_admin) return '';
+    return `<span class="msb-role" title="Founder LarisID">Admin</span>`;
+  }
+
   function authorTagHtml(row) {
     const name = _opts.esc(authorDisplayName(row));
+    const badge = adminBadgeHtml(row);
     if (!row.author_id) {
-      return `<span class="msb-author">${avatarHtml(row, 22)}<span class="msb-author-name">${name}</span></span>`;
+      return `<span class="msb-author">${avatarHtml(row, 22)}<span class="msb-author-name">${name}</span>${badge}</span>`;
     }
-    return `<button type="button" class="msb-author" data-action="open-profile" data-user-id="${_opts.esc(row.author_id)}">${avatarHtml(row, 22)}<span class="msb-author-name">${name}</span></button>`;
+    return `<button type="button" class="msb-author" data-action="open-profile" data-user-id="${_opts.esc(row.author_id)}">${avatarHtml(row, 22)}<span class="msb-author-name">${name}</span>${badge}</button>`;
   }
 
   function statusBadgeHtml(status) {
@@ -217,7 +223,7 @@
     }
     const { data, error } = await _opts.supabase
       .from('feature_request_comments')
-      .select('id, author_id, author_first_name, author_city, author_headshot_url, body, created_at')
+      .select('id, author_id, author_first_name, author_city, author_headshot_url, author_is_admin, body, created_at')
       .eq('request_id', postId)
       .order('created_at', { ascending: true });
     if (error) return;
@@ -296,7 +302,7 @@
         request_id: postId,
         body: body.trim(),
       })
-      .select('id, author_id, author_first_name, author_city, author_headshot_url, body, created_at')
+      .select('id, author_id, author_first_name, author_city, author_headshot_url, author_is_admin, body, created_at')
       .single();
     if (error) {
       _opts.toast('Gagal mengirim komentar. Coba lagi.');
@@ -782,6 +788,12 @@
         font: inherit; color: #374151; font-weight: 650;
       }
       button.msb-author:hover .msb-author-name { text-decoration: underline; }
+      .msb-role {
+        display: inline-flex; align-items: center;
+        margin-left: 2px; padding: 1px 7px; border-radius: 999px;
+        background: #B5202A; color: #fff; font-size: .65rem; font-weight: 800;
+        letter-spacing: .02em; line-height: 1.4;
+      }
       .msb-avatar {
         border-radius: 50%; object-fit: cover; flex-shrink: 0; width: 22px; height: 22px;
         background: #E5E7EB;
@@ -887,14 +899,14 @@
     _opts = options;
     _container = container;
 
-    if (container.dataset.communityBoardMounted === 'msb-v4') {
+    if (container.dataset.communityBoardMounted === 'msb-v5') {
       // Already built — just refresh the list instead of losing an
       // in-progress form by rebuilding the DOM from scratch.
       _listEl = container.querySelector('#msb-list');
       fetchPosts();
       return;
     }
-    container.dataset.communityBoardMounted = 'msb-v4';
+    container.dataset.communityBoardMounted = 'msb-v5';
     injectStyles();
 
     container.innerHTML = `
