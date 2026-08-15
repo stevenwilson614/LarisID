@@ -527,7 +527,11 @@ function logProductView(product) {
  *  must never be walled. log_deepdive_open always inserts and always returns ok. */
 function logDeepDiveOpen(product) {
   try {
-    if (!_supabase || !product) return;
+    // No `!currentUser` guard — counting anonymous dives is the whole point.
+    // _admSample IS excluded, matching logUserEvent: an admin previewing the
+    // site as someone else is inspecting, not using it, and this account
+    // already accounts for a large share of all deep-dive events.
+    if (!_supabase || !product || _admSample) return;
     _supabase.rpc('log_deepdive_open', {
       p_item_id:    product.item_id != null ? String(product.item_id) : null,
       p_shop_id:    product.shop_id != null ? String(product.shop_id) : null,
