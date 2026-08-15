@@ -14,17 +14,14 @@
     open: {
       label: 'Baru',
       cls: 'baru',
-      empty: 'Belum ada usulan. Jadi yang pertama!',
     },
     considering: {
-      label: 'Sedang dipertimbangkan',
+      label: 'Dikerjakan',
       cls: 'considering',
-      empty: 'Belum ada usulan dengan status ini.',
     },
     done: {
-      label: 'Ditinjau',
+      label: 'Selesai',
       cls: 'reviewed',
-      empty: 'Belum ada usulan yang ditinjau.',
     },
   };
 
@@ -121,6 +118,55 @@
     return `<span class="msb-status msb-status--${meta.cls}">${svgSparkle()} ${_opts.esc(meta.label)}</span>`;
   }
 
+  function isOwn(authorId) {
+    return !!authorId && authorId === _opts.currentUserId;
+  }
+
+  function isAdmin() {
+    return typeof _opts.isAdmin === 'function' ? !!_opts.isAdmin() : !!_opts.isAdmin;
+  }
+
+  function canManage(authorId) {
+    return isOwn(authorId) || isAdmin();
+  }
+
+  function statusControlHtml(post) {
+    if (!isAdmin()) return statusBadgeHtml(post.status);
+    const current = STATUS_META[post.status] ? post.status : 'open';
+    const meta = STATUS_META[current];
+    const opts = Object.keys(STATUS_META)
+      .map((key) => {
+        const m = STATUS_META[key];
+        return `<option value="${key}" ${key === current ? 'selected' : ''}>${_opts.esc(m.label)}</option>`;
+      })
+      .join('');
+    return `<label class="msb-status-wrap">
+      <select class="msb-status-select msb-status--${meta.cls}" data-action="set-status" data-post-id="${post.id}" aria-label="Ubah status">
+        ${opts}
+      </select>
+    </label>`;
+  }
+
+  function postMenuHtml(post) {
+    if (!canManage(post.author_id)) {
+      return `<button type="button" class="msb-more" aria-hidden="true" tabindex="-1">${svgDots()}</button>`;
+    }
+    return `<div class="msb-menu">
+      <button type="button" class="msb-more" data-action="toggle-menu" data-post-id="${post.id}" aria-label="Opsi">${svgDots()}</button>
+      <div class="msb-menu-pop" hidden>
+        <button type="button" data-action="edit-post" data-post-id="${post.id}">Edit</button>
+        <button type="button" class="msb-menu-danger" data-action="delete-post" data-post-id="${post.id}">Hapus</button>
+      </div>
+    </div>`;
+  }
+
+  function notifyAuthor(payload) {
+    if (!_opts.supabase || typeof _opts.supabase.functions?.invoke !== 'function') return;
+    _opts.supabase.functions.invoke('notify-feature-board', { body: payload })
+      .then(({ error }) => { if (error) console.warn('notify-feature-board:', error.message); })
+      .catch(() => {});
+  }
+
   function kindChipHtml(kind) {
     const label = kind === 'complaint' ? 'Keluhan' : 'Fitur';
     const cls = kind === 'complaint' ? 'complaint' : 'feature';
@@ -153,7 +199,13 @@
     if (!list) return;
     list.innerHTML = comments
       .map((c) => {
-        return `<div class="msb-comment">${authorTagHtml(c)}<span class="msb-comment-body">${_opts.esc(c.body)}</span><span class="msb-comment-date">${formatDate(c.created_at)}</span></div>`;
+        const manage = canManage(c.author_id)
+          ? `<span class="msb-comment-actions">
+              <button type="button" data-action="edit-comment" data-post-id="${postId}" data-comment-id="${c.id}">Edit</button>
+              <button type="button" data-action="delete-comment" data-post-id="${postId}" data-comment-id="${c.id}">Hapus</button>
+            </span>`
+          : '';
+        return `<div class="msb-comment" data-comment-id="${c.id}">${authorTagHtml(c)}<span class="msb-comment-body">${_opts.esc(c.body)}</span><span class="msb-comment-date">${formatDate(c.created_at)}</span>${manage}</div>`;
       })
       .join('');
   }
@@ -258,7 +310,147 @@
     if (post) {
       post.comment_count = (post.comment_count || 0) + 1;
       updateCommentCountDisplay(postId, post.comment_count);
+      if (post.author_id !== _opts.currentUserId) {
+        notifyAuthor({ kind: 'comment', request_id: postId, comment_id: data.id });
+      }
     }
+  }
+
+  async function setPostStatus(postId, status) {
+    if (!STATUS_META[status]) return;
+    const post = _posts.find((p) => p.id === postId);
+    const prev = post && post.status;
+    if (post) post.status = status;
+    const { error } = await _opts.supabase
+      .from('feature_requests')
+      .update({ status })
+      .eq('id', postId);
+    if (error) {
+      if (post) post.status = prev;
+      _opts.toast('Gagal mengubah status.');
+      if (typeof _opts.onError === 'function') _opts.onError(error);
+      renderPosts();
+      return;
+    }
+    renderPosts();
+    if (status === 'done' && post && post.author_id !== _opts.currentUserId) {
+      notifyAuthor({ kind: 'resolved', request_id: postId });
+    }
+  }
+
+  async function deletePost(postId) {
+    if (!confirm('Hapus usulan ini? Komentar ikut terhapus.')) return;
+    const { error } = await _opts.supabase.from('feature_requests').delete().eq('id', postId);
+    if (error) {
+      _opts.toast('Gagal menghapus.');
+      if (typeof _opts.onError === 'function') _opts.onError(error);
+      return;
+    }
+    _posts = _posts.filter((p) => p.id !== postId);
+    delete _commentsCache[postId];
+    renderPosts();
+  }
+
+  async function savePostEdit(postId, title, body) {
+    const t = (title || '').trim();
+    const b = (body || '').trim();
+    if (!t || !b) {
+      _opts.toast('Judul dan deskripsi harus diisi.');
+      return;
+    }
+    const { error } = await _opts.supabase
+      .from('feature_requests')
+      .update({ title: t, body: b })
+      .eq('id', postId);
+    if (error) {
+      _opts.toast('Gagal menyimpan.');
+      if (typeof _opts.onError === 'function') _opts.onError(error);
+      return;
+    }
+    const post = _posts.find((p) => p.id === postId);
+    if (post) {
+      post.title = t;
+      post.body = b;
+    }
+    renderPosts();
+  }
+
+  function startPostEdit(postId) {
+    const post = _posts.find((p) => p.id === postId);
+    const card = _listEl && _listEl.querySelector(`.msb-card[data-post-id="${postId}"]`);
+    if (!post || !card) return;
+    const main = card.querySelector('.msb-card-main');
+    if (!main) return;
+    const titleEl = main.querySelector('.msb-title');
+    const bodyEl = main.querySelector('.msb-body');
+    if (!titleEl || !bodyEl) return;
+    titleEl.outerHTML = `<input class="msb-edit-title" data-edit-title="${postId}" value="${_opts.esc(post.title)}" maxlength="120">`;
+    bodyEl.outerHTML = `<textarea class="msb-edit-body" data-edit-body="${postId}" maxlength="4000">${_opts.esc(post.body || '')}</textarea>
+      <div class="msb-edit-actions">
+        <button type="button" class="msb-btn-ghost" data-action="cancel-edit-post" data-post-id="${postId}">Batal</button>
+        <button type="button" class="msb-btn-primary" data-action="save-post" data-post-id="${postId}">Simpan</button>
+      </div>`;
+    const toggle = main.querySelector('.msb-body-toggle');
+    if (toggle) toggle.remove();
+  }
+
+  async function deleteComment(postId, commentId) {
+    if (!confirm('Hapus komentar ini?')) return;
+    const { error } = await _opts.supabase.from('feature_request_comments').delete().eq('id', commentId);
+    if (error) {
+      _opts.toast('Gagal menghapus komentar.');
+      if (typeof _opts.onError === 'function') _opts.onError(error);
+      return;
+    }
+    _commentsCache[postId] = (_commentsCache[postId] || []).filter((c) => c.id !== commentId);
+    renderCommentsForPost(postId);
+    const post = _posts.find((p) => p.id === postId);
+    if (post) {
+      post.comment_count = Math.max(0, (post.comment_count || 0) - 1);
+      updateCommentCountDisplay(postId, post.comment_count);
+    }
+  }
+
+  async function saveCommentEdit(postId, commentId, body) {
+    const b = (body || '').trim();
+    if (!b) {
+      _opts.toast('Komentar tidak boleh kosong.');
+      return;
+    }
+    const { error } = await _opts.supabase
+      .from('feature_request_comments')
+      .update({ body: b })
+      .eq('id', commentId);
+    if (error) {
+      _opts.toast('Gagal menyimpan komentar.');
+      if (typeof _opts.onError === 'function') _opts.onError(error);
+      return;
+    }
+    const comments = _commentsCache[postId] || [];
+    const row = comments.find((c) => c.id === commentId);
+    if (row) row.body = b;
+    renderCommentsForPost(postId);
+  }
+
+  function startCommentEdit(postId, commentId) {
+    const el = _listEl && _listEl.querySelector(`.msb-comment[data-comment-id="${commentId}"]`);
+    const comments = _commentsCache[postId] || [];
+    const row = comments.find((c) => c.id === commentId);
+    if (!el || !row) return;
+    const bodyEl = el.querySelector('.msb-comment-body');
+    if (!bodyEl) return;
+    bodyEl.outerHTML = `<span class="msb-comment-edit">
+      <input type="text" class="msb-comment-edit-input" value="${_opts.esc(row.body)}" maxlength="2000" data-comment-id="${commentId}">
+      <button type="button" data-action="save-comment" data-post-id="${postId}" data-comment-id="${commentId}">Simpan</button>
+      <button type="button" data-action="cancel-edit-comment" data-post-id="${postId}">Batal</button>
+    </span>`;
+    el.querySelector('.msb-comment-edit-input')?.focus();
+  }
+
+  function closeMenus(except) {
+    _listEl && _listEl.querySelectorAll('.msb-menu-pop').forEach((pop) => {
+      if (pop !== except) pop.hidden = true;
+    });
   }
 
   async function fetchPosts() {
@@ -313,8 +505,8 @@
           <div class="msb-card-top">
             <h3 class="msb-title">${_opts.esc(post.title)}</h3>
             <div class="msb-card-aside">
-              ${statusBadgeHtml(post.status)}
-              <button type="button" class="msb-more" aria-label="Opsi" tabindex="-1">${svgDots()}</button>
+              ${statusControlHtml(post)}
+              ${postMenuHtml(post)}
             </div>
           </div>
           <div class="msb-meta">
@@ -544,10 +736,42 @@
       .msb-status--baru { background: #DBEAFE; color: #1D4ED8; }
       .msb-status--considering { background: #FFEDD5; color: #C2410C; }
       .msb-status--reviewed { background: #D1FAE5; color: #047857; }
+      .msb-status-wrap { display: inline-flex; }
+      .msb-status-select {
+        appearance: none; -webkit-appearance: none;
+        border: none; border-radius: 999px; font-size: .72rem; font-weight: 700;
+        padding: 4px 22px 4px 10px; cursor: pointer; font-family: inherit;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat; background-position: right 6px center;
+      }
+      .msb-status-select.msb-status--baru { background-color: #DBEAFE; color: #1D4ED8; }
+      .msb-status-select.msb-status--considering { background-color: #FFEDD5; color: #C2410C; }
+      .msb-status-select.msb-status--reviewed { background-color: #D1FAE5; color: #047857; }
+      .msb-menu { position: relative; }
       .msb-more {
-        border: none; background: none; color: #9CA3AF; cursor: default; padding: 2px;
+        border: none; background: none; color: #9CA3AF; cursor: pointer; padding: 2px;
         line-height: 0;
       }
+      .msb-more:hover { color: #374151; }
+      .msb-menu-pop {
+        position: absolute; right: 0; top: 100%; z-index: 5;
+        background: #fff; border: 1px solid var(--msb-line); border-radius: 10px;
+        box-shadow: 0 8px 20px rgba(0,0,0,.08); min-width: 120px; padding: 4px;
+      }
+      .msb-menu-pop button {
+        display: block; width: 100%; text-align: left; border: none; background: none;
+        padding: 7px 10px; border-radius: 8px; cursor: pointer; font: inherit; font-size: .82rem;
+        font-weight: 600; color: #374151;
+      }
+      .msb-menu-pop button:hover { background: #F3F4F6; }
+      .msb-menu-danger { color: #B91C1C !important; }
+      .msb-edit-title, .msb-edit-body {
+        width: 100%; border: 1px solid #D1D5DB; border-radius: 10px;
+        padding: 8px 10px; font: inherit; margin: 0 0 8px;
+      }
+      .msb-edit-title { font-weight: 750; font-size: 1.02rem; }
+      .msb-edit-body { min-height: 90px; resize: vertical; }
+      .msb-edit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 8px; }
       .msb-meta {
         display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
         margin-top: 8px; font-size: .8rem; color: var(--msb-muted);
@@ -602,6 +826,18 @@
       }
       .msb-comment-body { flex: 1 1 50%; }
       .msb-comment-date { color: #9CA3AF; font-size: .75rem; }
+      .msb-comment-actions { display: inline-flex; gap: 8px; }
+      .msb-comment-actions button {
+        border: none; background: none; padding: 0; cursor: pointer;
+        font-size: .75rem; font-weight: 700; color: var(--msb-red);
+      }
+      .msb-comment-edit { display: flex; flex: 1 1 100%; gap: 6px; align-items: center; }
+      .msb-comment-edit-input {
+        flex: 1; border: 1px solid #D1D5DB; border-radius: 999px; padding: 6px 10px; font-size: .82rem;
+      }
+      .msb-comment-edit button {
+        border: none; background: none; cursor: pointer; font-weight: 700; font-size: .75rem; color: var(--msb-red);
+      }
       .msb-comment-form { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
       .msb-comment-input {
         flex: 1; border: 1px solid #D1D5DB; border-radius: 999px;
@@ -651,14 +887,14 @@
     _opts = options;
     _container = container;
 
-    if (container.dataset.communityBoardMounted === 'msb-v3') {
+    if (container.dataset.communityBoardMounted === 'msb-v4') {
       // Already built — just refresh the list instead of losing an
       // in-progress form by rebuilding the DOM from scratch.
       _listEl = container.querySelector('#msb-list');
       fetchPosts();
       return;
     }
-    container.dataset.communityBoardMounted = 'msb-v3';
+    container.dataset.communityBoardMounted = 'msb-v4';
     injectStyles();
 
     container.innerHTML = `
@@ -721,10 +957,22 @@
     container.querySelector('#msb-submit')?.addEventListener('click', submitPost);
 
     _listEl.addEventListener('click', async (e) => {
+      const menuBtn = e.target.closest('[data-action="toggle-menu"]');
+      if (menuBtn) {
+        e.preventDefault();
+        const pop = menuBtn.parentElement && menuBtn.parentElement.querySelector('.msb-menu-pop');
+        if (!pop) return;
+        const willOpen = pop.hidden;
+        closeMenus(pop);
+        pop.hidden = !willOpen;
+        return;
+      }
+      if (!e.target.closest('.msb-menu')) closeMenus();
       const actionEl = e.target.closest('[data-action]');
       if (!actionEl) return;
       const action = actionEl.dataset.action;
       const postId = actionEl.dataset.postId;
+      const commentId = actionEl.dataset.commentId;
       if (action === 'open-profile') {
         e.preventDefault();
         const userId = actionEl.dataset.userId;
@@ -748,7 +996,42 @@
             input.value = '';
           }
         }
+      } else if (action === 'edit-post') {
+        e.preventDefault();
+        closeMenus();
+        startPostEdit(postId);
+      } else if (action === 'delete-post') {
+        e.preventDefault();
+        closeMenus();
+        await deletePost(postId);
+      } else if (action === 'save-post') {
+        e.preventDefault();
+        const title = _listEl.querySelector(`[data-edit-title="${postId}"]`)?.value;
+        const body = _listEl.querySelector(`[data-edit-body="${postId}"]`)?.value;
+        await savePostEdit(postId, title, body);
+      } else if (action === 'cancel-edit-post') {
+        e.preventDefault();
+        renderPosts();
+      } else if (action === 'edit-comment') {
+        e.preventDefault();
+        startCommentEdit(postId, commentId);
+      } else if (action === 'delete-comment') {
+        e.preventDefault();
+        await deleteComment(postId, commentId);
+      } else if (action === 'save-comment') {
+        e.preventDefault();
+        const input = _listEl.querySelector(`.msb-comment-edit-input[data-comment-id="${commentId}"]`);
+        await saveCommentEdit(postId, commentId, input && input.value);
+      } else if (action === 'cancel-edit-comment') {
+        e.preventDefault();
+        renderCommentsForPost(postId);
       }
+    });
+
+    _listEl.addEventListener('change', async (e) => {
+      const sel = e.target.closest('[data-action="set-status"]');
+      if (!sel) return;
+      await setPostStatus(sel.dataset.postId, sel.value);
     });
 
     _listEl.addEventListener('keydown', async (e) => {

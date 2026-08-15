@@ -8492,6 +8492,7 @@ function openCommunityBoard() {
     supabase: _supabase,
     esc,
     currentUserId: currentUser.id,
+    isAdmin: isPlatformAdmin,
     toast: showToast,
     onError: (err) => { try { console.warn('[community-board]', err); } catch (_) {} },
     onOpenProfile: (userId) => { openUserProfile(userId); },
