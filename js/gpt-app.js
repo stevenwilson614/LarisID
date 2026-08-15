@@ -531,13 +531,26 @@ function logDeepDiveOpen(product) {
     // _admSample IS excluded, matching logUserEvent: an admin previewing the
     // site as someone else is inspecting, not using it, and this account
     // already accounts for a large share of all deep-dive events.
-    if (!_supabase || !product || _admSample) return;
-    _supabase.rpc('log_deepdive_open', {
-      p_item_id:    product.item_id != null ? String(product.item_id) : null,
-      p_shop_id:    product.shop_id != null ? String(product.shop_id) : null,
-      p_keyword:    product.keyword || null,
-      p_visitor_id: _lidVisitorId(),
-      p_source:     'app',
+    if (!product || _admSample) return;
+    // initSupabase() deletes the SDK's sb-*-auth-token and keeps the session
+    // in laris_auth_v1. _supabase.rpc() would then send the anon key, so
+    // auth.uid() came back null even for a signed-in dive. Send that token
+    // explicitly — anon key when signed out, user JWT when signed in.
+    const token = _authLoad()?.access_token || SUPA_KEY;
+    fetch(`${SUPA_URL}/rest/v1/rpc/log_deepdive_open`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPA_KEY,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        p_item_id:    product.item_id != null ? String(product.item_id) : null,
+        p_shop_id:    product.shop_id != null ? String(product.shop_id) : null,
+        p_keyword:    product.keyword || null,
+        p_visitor_id: _lidVisitorId(),
+        p_source:     'app',
+      }),
     }).then(() => {}, () => {});
   } catch (_) {}
 }
