@@ -18,6 +18,10 @@ function escapeHtml(s: string) {
     .replace(/"/g, '&quot;')
 }
 
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms))
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: CORS })
@@ -62,10 +66,6 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: CORS })
     }
 
-    if (post.author_id === user.id) {
-      return new Response(JSON.stringify({ ok: true, skipped: 'self' }), { headers: CORS })
-    }
-
     let commentBody = ''
     let commenterName = ''
 
@@ -103,52 +103,86 @@ serve(async (req) => {
       commenterName = comment.author_first_name || 'Seseorang'
     }
 
-    const { data: userRes } = await db.auth.admin.getUserById(post.author_id)
-    const to = userRes?.user?.email
-    if (!to) {
-      return new Response(JSON.stringify({ ok: true, skipped: 'no_email' }), { headers: CORS })
-    }
+    const watcherIds = new Set<string>()
+    watcherIds.add(post.author_id)
+    const [{ data: likes }, { data: comments }] = await Promise.all([
+      db.from('feature_request_likes').select('user_id').eq('request_id', requestId),
+      db.from('feature_request_comments').select('author_id').eq('request_id', requestId),
+    ])
+    for (const row of likes || []) if (row.user_id) watcherIds.add(row.user_id)
+    for (const row of comments || []) if (row.author_id) watcherIds.add(row.author_id)
+    watcherIds.delete(user.id)
 
     const RESEND_KEY = Deno.env.get('RESEND_API_KEY')
     if (!RESEND_KEY) {
       return new Response(JSON.stringify({ error: 'RESEND_API_KEY missing' }), { status: 500, headers: CORS })
     }
 
-    const title = escapeHtml(post.title || 'usulanmu')
-    const subject = kind === 'resolved'
-      ? `Usulanmu sudah selesai: ${post.title}`
-      : `Komentar baru pada usulanmu: ${post.title}`
-    const html = kind === 'resolved'
-      ? `
-        <div style="font-family:system-ui,-apple-system,sans-serif;max-width:520px;line-height:1.6;color:#1A1F3C">
-          <p>Halo,</p>
-          <p>Usulanmu di LarisID sudah ditandai <strong>selesai</strong>:</p>
-          <p style="font-size:16px;font-weight:700;margin:12px 0">${title}</p>
-          <p><a href="${SITE}" style="display:inline-block;padding:10px 18px;background:#B5202A;color:#fff;text-decoration:none;border-radius:8px">Buka Ajukan Fitur</a></p>
-          <p style="color:#6B7280;font-size:13px">Steven · LarisID</p>
-        </div>`
-      : `
-        <div style="font-family:system-ui,-apple-system,sans-serif;max-width:520px;line-height:1.6;color:#1A1F3C">
-          <p>Halo,</p>
-          <p><strong>${escapeHtml(commenterName)}</strong> mengomentari usulanmu:</p>
-          <p style="font-size:16px;font-weight:700;margin:12px 0">${title}</p>
-          <div style="padding:14px;background:#F9FAFB;border-left:3px solid #B5202A;border-radius:4px">
-            <p style="margin:0;white-space:pre-wrap">${escapeHtml(commentBody)}</p>
-          </div>
-          <p style="margin-top:16px"><a href="${SITE}" style="display:inline-block;padding:10px 18px;background:#B5202A;color:#fff;text-decoration:none;border-radius:8px">Buka Ajukan Fitur</a></p>
-          <p style="color:#6B7280;font-size:13px">Steven · LarisID</p>
-        </div>`
+    const titlePlain = post.title || 'usulan'
+    const title = escapeHtml(titlePlain)
+    const recipients: { id: string; email: string }[] = []
+    for (const id of watcherIds) {
+      const { data: userRes } = await db.auth.admin.getUserById(id)
+      const email = userRes?.user?.email
+      if (email) recipients.push({ id, email })
+    }
+    if (!recipients.length) {
+      return new Response(JSON.stringify({ ok: true, skipped: 'no_recipients' }), { headers: CORS })
+    }
 
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${RESEND_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
-    })
-    const resend = await res.json()
-    return new Response(JSON.stringify({ ok: res.ok, resend }), {
+    let sent = 0
+    let failed = 0
+    for (const rec of recipients) {
+      const isAuthor = rec.id === post.author_id
+      const subject = kind === 'resolved'
+        ? (isAuthor ? `Usulanmu sudah selesai: ${titlePlain}` : `Usulan yang kamu ikuti sudah selesai: ${titlePlain}`)
+        : (isAuthor ? `Komentar baru pada usulanmu: ${titlePlain}` : `Komentar baru pada usulan yang kamu ikuti: ${titlePlain}`)
+      const leadResolved = isAuthor
+        ? 'Usulanmu di LarisID sudah ditandai <strong>selesai</strong>:'
+        : 'Usulan yang kamu dukung atau komentari sudah ditandai <strong>selesai</strong>:'
+      const leadComment = isAuthor
+        ? `<strong>${escapeHtml(commenterName)}</strong> mengomentari usulanmu:`
+        : `<strong>${escapeHtml(commenterName)}</strong> mengomentari usulan yang kamu ikuti:`
+      const html = kind === 'resolved'
+        ? `
+          <div style="font-family:system-ui,-apple-system,sans-serif;max-width:520px;line-height:1.6;color:#1A1F3C">
+            <p>Halo,</p>
+            <p>${leadResolved}</p>
+            <p style="font-size:16px;font-weight:700;margin:12px 0">${title}</p>
+            <p><a href="${SITE}" style="display:inline-block;padding:10px 18px;background:#B5202A;color:#fff;text-decoration:none;border-radius:8px">Buka Ajukan Fitur</a></p>
+            <p style="color:#6B7280;font-size:13px">Steven · LarisID</p>
+          </div>`
+        : `
+          <div style="font-family:system-ui,-apple-system,sans-serif;max-width:520px;line-height:1.6;color:#1A1F3C">
+            <p>Halo,</p>
+            <p>${leadComment}</p>
+            <p style="font-size:16px;font-weight:700;margin:12px 0">${title}</p>
+            <div style="padding:14px;background:#F9FAFB;border-left:3px solid #B5202A;border-radius:4px">
+              <p style="margin:0;white-space:pre-wrap">${escapeHtml(commentBody)}</p>
+            </div>
+            <p style="margin-top:16px"><a href="${SITE}" style="display:inline-block;padding:10px 18px;background:#B5202A;color:#fff;text-decoration:none;border-radius:8px">Buka Ajukan Fitur</a></p>
+            <p style="color:#6B7280;font-size:13px">Steven · LarisID</p>
+          </div>`
+
+      try {
+        const res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${RESEND_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ from: FROM_EMAIL, to: rec.email, subject, html }),
+        })
+        if (!res.ok) throw new Error(`resend ${res.status}: ${await res.text()}`)
+        sent++
+      } catch (e) {
+        failed++
+        console.error(`notify-feature-board: send failed for ${rec.id}: ${e}`)
+      }
+      if (recipients.length > 1) await sleep(600)
+    }
+
+    return new Response(JSON.stringify({ ok: failed === 0, sent, failed }), {
       status: 200,
       headers: { ...CORS, 'Content-Type': 'application/json' },
     })

@@ -316,10 +316,8 @@
     if (post) {
       post.comment_count = (post.comment_count || 0) + 1;
       updateCommentCountDisplay(postId, post.comment_count);
-      if (post.author_id !== _opts.currentUserId) {
-        notifyAuthor({ kind: 'comment', request_id: postId, comment_id: data.id });
-      }
     }
+    notifyAuthor({ kind: 'comment', request_id: postId, comment_id: data.id });
   }
 
   async function setPostStatus(postId, status) {
@@ -339,7 +337,7 @@
       return;
     }
     renderPosts();
-    if (status === 'done' && post && post.author_id !== _opts.currentUserId) {
+    if (status === 'done' && prev !== 'done') {
       notifyAuthor({ kind: 'resolved', request_id: postId });
     }
   }
