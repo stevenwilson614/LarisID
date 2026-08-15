@@ -196,7 +196,7 @@
 <link rel="preload" href="/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/fonts/laris-fonts.css">
 <link rel="stylesheet" href="/styles/daily-spin-wheel.css?v=20260730g">
-<link rel="stylesheet" href="/styles/laris-tracker.css?v=20260813a">
+<link rel="stylesheet" href="/styles/laris-tracker.css?v=20260815a">
 <link rel="stylesheet" href="/styles/laris-merdeka.css?v=20260808e">
 
 <style>
@@ -1956,7 +1956,7 @@ body.view-community .panel-inner {
   box-shadow: 0 1px 2px rgba(0,0,0,.04);
 }
 .adm-kpis {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px;
 }
 .adm-kpi {
   padding: 16px 16px 12px; display: flex; flex-direction: column; min-width: 0;
@@ -1973,8 +1973,12 @@ body.view-community .panel-inner {
 .adm-kpi-spark svg { width: 100%; height: 28px; display: block; }
 .adm-kpi--signups .adm-kpi-ico { background: #F9EAE4; color: #B5202A; }
 .adm-kpi--views .adm-kpi-ico { background: #FFF4E5; color: #EA580C; }
-.adm-kpi--tracked .adm-kpi-ico { background: #ECFDF3; color: #16A34A; }
+.adm-kpi--keywords .adm-kpi-ico { background: #ECFDF3; color: #16A34A; }
+.adm-kpi--stores .adm-kpi-ico { background: #E0F7FA; color: #0891B2; }
 .adm-kpi--dives .adm-kpi-ico { background: #F3E8FF; color: #7C3AED; }
+/* Archive tile: greyed so a permanently flat line reads as "closed", not broken. */
+.adm-kpi--tracked .adm-kpi-ico { background: #F3F4F6; color: #9CA3AF; }
+.adm-kpi--tracked .adm-kpi-val { color: #6B7280; }
 .adm-mid {
   display: grid; grid-template-columns: minmax(280px, .42fr) minmax(0, 1fr); gap: 12px; margin-bottom: 14px;
 }
@@ -5309,9 +5313,27 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                 <div class="adm-kpi-sub" id="adm-kpi-views-sub">Semua waktu</div>
                 <div class="adm-kpi-spark" id="adm-kpi-views-spark"></div>
               </article>
+              <article class="adm-card adm-kpi adm-kpi--keywords">
+                <div class="adm-kpi-top">
+                  <span class="adm-kpi-lbl">Keyword Dipantau</span>
+                  <span class="adm-kpi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41 11 3.82V3H3v8h.82l9.59 9.59a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.83z"/><circle cx="7" cy="7" r="1.4"/></svg></span>
+                </div>
+                <div class="adm-kpi-val" id="adm-kpi-keywords">—</div>
+                <div class="adm-kpi-sub" id="adm-kpi-keywords-sub">Semua waktu</div>
+                <div class="adm-kpi-spark" id="adm-kpi-keywords-spark"></div>
+              </article>
+              <article class="adm-card adm-kpi adm-kpi--stores">
+                <div class="adm-kpi-top">
+                  <span class="adm-kpi-lbl">Toko Dipantau</span>
+                  <span class="adm-kpi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9.5 4.5 4h15L21 9.5"/><path d="M3 9.5a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v8h14v-8"/><path d="M9.5 20v-4.5h5V20"/></svg></span>
+                </div>
+                <div class="adm-kpi-val" id="adm-kpi-stores">—</div>
+                <div class="adm-kpi-sub" id="adm-kpi-stores-sub">Semua waktu</div>
+                <div class="adm-kpi-spark" id="adm-kpi-stores-spark"></div>
+              </article>
               <article class="adm-card adm-kpi adm-kpi--tracked">
                 <div class="adm-kpi-top">
-                  <span class="adm-kpi-lbl">Produk yang Dilacak</span>
+                  <span class="adm-kpi-lbl">Produk Dilacak (arsip)</span>
                   <span class="adm-kpi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05"/><path d="M12 22.08V12"/></svg></span>
                 </div>
                 <div class="adm-kpi-val" id="adm-kpi-tracked">—</div>
@@ -5685,7 +5707,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 
 <script src="/js/laris-merdeka.js?v=20260808e" defer></script>
 <script src="/js/daily-spin-wheel.js?v=20260730g" defer></script>
-<script src="/js/laris-tracker.js?v=20260813b" defer></script>
+<script src="/js/laris-tracker.js?v=20260815a" defer></script>
 <script src="/js/changelog.js?v=20260808n" defer></script>
 <script defer src="/js/gpt-dir-filters.js?v=20260808d"></script>
 <script defer src="/js/gpt-photo-analyze.js?v=20260808a"></script>
@@ -5695,7 +5717,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script defer src="/js/laris-mascot-rigs.js?v=20260812a"></script>
 <script defer src="/js/laris-mascot.js?v=20260812a"></script>
 <script src="/js/admin-map.js?v=20260812a" defer></script>
-<script src="/js/gpt-app.js?v=20260815a" defer></script>
+<script src="/js/gpt-app.js?v=20260815b" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>
 </html>

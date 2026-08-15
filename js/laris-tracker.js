@@ -72,6 +72,12 @@
     storeLimit: 3,
     metrics: ['units', 'omset', 'sku', 'toko'],   // display selection
     allMetrics: ['units', 'omset', 'sku', 'toko', 'harga', 'rating'],
+    notifyChannels: [],               // 'email' | 'whatsapp'; empty = no alerts
+    notifyWa: '',                     // E.164, prefilled from the profile
+    notifyAsked: false,               // has the user answered the question yet
+    notifySaving: false,
+    notifySaved: false,
+    notifyMsg: '',
     windowDays: DEFAULT_DAYS,
     asOf: null,
     hasHistory: false,
@@ -103,6 +109,9 @@
     cat: null, picked: [], stores: [], busy: false, errors: {},
     step: 0,                 // 0 keyword · 1 metrik · 2 toko · 3 selesai
     metrics: [],             // display selection, seeded from S.metrics
+    notifyChannels: [],      // seeded from S.notifyChannels, saved on commit
+    notifyWa: '',
+    notifyMsg: '',
     seed: null,              // {keyword, category, shop_id, store_name, item_id}
     seedShopSkus: null,      // SKU count for the seed shop, fetched lazily
     sug: { slot: -1, q: '', rows: [], busy: false, kind: 'keyword', fromHistory: false },
@@ -118,6 +127,9 @@
     draft.cat = null; draft.picked = []; draft.stores = []; draft.busy = false;
     draft.errors = {}; draft.step = 0; draft.seed = null; draft.seedShopSkus = null;
     draft.metrics = (S.metrics || []).slice();
+    draft.notifyChannels = (S.notifyChannels || []).slice();
+    draft.notifyWa = S.notifyWa || '';
+    draft.notifyMsg = '';
     draft.sug = { slot: -1, q: '', rows: [], busy: false, kind: 'keyword', fromHistory: false };
     draft.storeCat = null; draft.storeCatRows = []; draft.storeCatBusy = false;
     draft.pickerOpen = false; draft.pickerQ = ''; draft.pickerRows = []; draft.pickerBusy = false;
@@ -837,11 +849,100 @@
     users: '<circle cx="9" cy="8" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><path d="M16 5.5a3.2 3.2 0 010 5.6M18 20a6.4 6.4 0 00-2.2-4.8"/>',
     box:   '<path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
     tag:   '<path d="M20.6 13.4L12 22l-9-9V3h10l7.6 7.6a2 2 0 010 2.8z"/><circle cx="7.5" cy="7.5" r="1.3"/>',
+    bell:  '<path d="M18 8a6 6 0 10-12 0c0 6-2 7-2 7h16s-2-1-2-7"/><path d="M13.7 20a2 2 0 01-3.4 0"/>',
+    mail:  '<rect x="2.5" y="4.5" width="19" height="15" rx="2"/><path d="M3 6l9 6.5L21 6"/>',
+    wa:    '<path d="M3.5 20.5l1.3-4.4A8 8 0 1120 12a8 8 0 01-11.6 7.1z"/><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.6-2-1-.9 1a5.4 5.4 0 01-2-2l1-.9-1-2z"/>',
   };
   function svgIco(icon) {
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
       'stroke-linecap="round" stroke-linejoin="round">' + (PROMISE_ICONS[icon] || '') + '</svg>';
   }
+  /* ── notification channels ────────────────────────────────────────────
+     Asked once, per user (not per keyword) — the same placement as the
+     metric picker, and stored alongside it on user_tracker_state.
+     WhatsApp needs a number: a channel we cannot deliver on looks enabled
+     and silently drops every message, which is worse than not offering it. */
+  var NOTIFY_CHANNELS = [
+    { key: 'email',    icon: 'mail', label: 'Email',    sub: 'Ringkasan ke inbox kamu' },
+    { key: 'whatsapp', icon: 'wa',   label: 'WhatsApp', sub: 'Pesan singkat saat ada perubahan' },
+  ];
+
+  function notifyCardsHtml(channels, wa, o) {
+    o = o || {};
+    var cards = NOTIFY_CHANNELS.map(function (c) {
+      var on = channels.indexOf(c.key) >= 0;
+      return '<button type="button" class="ltk-mcard' + (on ? ' is-on' : '') + '" ' +
+        'data-ltk-notifych="' + attr(c.key) + '" aria-pressed="' + on + '">' +
+        '<span class="ltk-mcard-ico">' + svgIco(c.icon) + '</span>' +
+        '<span class="ltk-mcard-txt"><b>' + esc(c.label) + '</b><span>' + esc(c.sub) + '</span></span>' +
+        '<span class="ltk-mcard-tick" aria-hidden="true">&#10003;</span>' +
+        '</button>';
+    }).join('');
+    var waOn = channels.indexOf('whatsapp') >= 0;
+    return '<div class="ltk-mgrid">' + cards + '</div>' +
+      (waOn
+        ? '<label class="ltk-notify-wa">' +
+            '<span>Nomor WhatsApp</span>' +
+            '<input type="tel" inputmode="tel" placeholder="0812xxxxxxxx" ' +
+              'data-ltk-notifywa value="' + attr(wa || '') + '">' +
+          '</label>'
+        : '') +
+      (o.msg ? '<p class="ltk-tips ltk-tips--warn">' + esc(o.msg) + '</p>' : '');
+  }
+
+  // Rollup version: its own card at the foot of the page, saved explicitly.
+  function notifyBlockHtml() {
+    return '<div class="ltk-panel ltk-notify" data-ltk-notify>' +
+        '<div class="ltk-stephead">' +
+          '<h3>Mau dikabari lewat mana?</h3>' +
+          '<p>Kami kabari kamu setiap ada perubahan berarti di pasar yang kamu pantau. ' +
+          'Pilih satu atau dua-duanya — bisa diubah kapan saja.</p>' +
+        '</div>' +
+        notifyCardsHtml(S.notifyChannels || [], S.notifyWa, { msg: S.notifyMsg }) +
+        '<button type="button" class="ltk-btn ltk-btn--primary ltk-notify-save" ' +
+          'data-ltk-act="notify-save"' + (S.notifySaving ? ' disabled' : '') + '>' +
+          (S.notifySaving ? 'Menyimpan…' : 'Simpan pilihan') +
+        '</button>' +
+        (S.notifySaved ? '<span class="ltk-notify-ok">Tersimpan</span>' : '') +
+      '</div>';
+  }
+
+  function renderNotifyBlock() {
+    // Re-render only this block, never the whole rollup: a full repaint would
+    // steal focus from the phone field mid-typing.
+    var el = host && host.querySelector('[data-ltk-notify]');
+    if (!el) return;
+    var tmp = global.document.createElement('div');
+    tmp.innerHTML = notifyBlockHtml();
+    if (tmp.firstChild) el.parentNode.replaceChild(tmp.firstChild, el);
+  }
+
+  function saveNotifyPrefs() {
+    if (S.notifySaving) return;
+    if (call('requireAuth') === false) return;
+    S.notifySaving = true; S.notifyMsg = ''; S.notifySaved = false;
+    renderNotifyBlock();
+    callP('setNotifyPrefs', (S.notifyChannels || []).slice(), S.notifyWa || '')
+      .then(function (r) {
+        S.notifySaving = false;
+        if (r && r.ok === false && r.error === 'wa_number_required') {
+          S.notifyMsg = 'Masukkan nomor WhatsApp yang valid dulu.';
+        } else {
+          S.notifySaved = true;
+          if (r && r.notify_wa_number) S.notifyWa = r.notify_wa_number;
+          call('track', 'tracker_notify_prefs', {
+            site: opts.site, channels: (S.notifyChannels || []).join(','),
+          });
+        }
+        renderNotifyBlock();
+      })
+      .catch(function () {
+        S.notifySaving = false;
+        S.notifyMsg = 'Gagal menyimpan. Coba lagi.';
+        renderNotifyBlock();
+      });
+  }
+
   function promiseItem(icon, title, sub) {
     return '<li class="ltk-promise-item">' +
       '<span class="ltk-promise-ico">' + svgIco(icon) + '</span>' +
@@ -1249,7 +1350,15 @@
         }).join('') +
       '</ul>' +
       '<p class="ltk-promise-foot">Kami scrape keyword kamu tiap pagi dan bandingkan dengan hari ' +
-      'sebelumnya. Update pertama <b>' + esc(nextUpdateLabel()) + '</b>.</p>';
+      'sebelumnya. Update pertama <b>' + esc(nextUpdateLabel()) + '</b>.</p>' +
+      '<div class="ltk-notify ltk-notify--wiz">' +
+        '<div class="ltk-stephead">' +
+          '<h3>Mau dikabari lewat mana?</h3>' +
+          '<p>Setiap ada perubahan berarti, kami kabari kamu. Pilih satu, dua-duanya, ' +
+          'atau lewati kalau mau cek sendiri.</p>' +
+        '</div>' +
+        notifyCardsHtml(draft.notifyChannels, draft.notifyWa, { msg: draft.notifyMsg }) +
+      '</div>';
   }
 
   function wizFootHtml() {
@@ -1634,6 +1743,7 @@
             (free ? '<em>' + free + ' slot kosong</em>' : '') +
           '</button>' +
         '</div>' +
+        notifyBlockHtml() +
       '</div>';
 
     paintSparks();
@@ -2556,6 +2666,11 @@
           S.storeLimit = tr.store_limit || 3;
           if (tr.metrics && tr.metrics.length) S.metrics = tr.metrics;
           if (tr.all_metrics && tr.all_metrics.length) S.allMetrics = tr.all_metrics;
+          S.notifyChannels = tr.notify_channels || [];
+          // notify_wa_number falls back to the profile number server-side, so
+          // a user who gave one at signup sees it prefilled rather than blank.
+          S.notifyWa = tr.notify_wa_number || '';
+          S.notifyAsked = !!tr.notify_asked;
           S.paused = !!tr.paused && !S.resumed;
           S.configured = (S.keywords.length + S.stores.length) > 0;
         }
@@ -2664,6 +2779,20 @@
       if (picked.join('|') === (S.metrics || []).join('|')) return null;  // unchanged
       return callP('setMetrics', picked).then(function (r) {
         if (r && r.metrics) S.metrics = r.metrics;
+      }).catch(function () { /* keep the previous selection */ });
+    });
+    // Notification channels, same reasoning as metrics: a failure here must
+    // not cost the user the keywords they just committed. An empty selection
+    // is a real answer ("don't notify me"), so it is saved too.
+    chain = chain.then(function () {
+      var chans = (draft.notifyChannels || []).slice();
+      if (chans.join('|') === (S.notifyChannels || []).join('|')
+          && (draft.notifyWa || '') === (S.notifyWa || '')) return null;
+      return callP('setNotifyPrefs', chans, draft.notifyWa || '').then(function (r) {
+        if (r && r.ok === false) return null;   // wa_number_required — surfaced on the rollup
+        S.notifyChannels = (r && r.notify_channels) || chans;
+        if (r && r.notify_wa_number) S.notifyWa = r.notify_wa_number;
+        S.notifyAsked = true;
       }).catch(function () { /* keep the previous selection */ });
     });
 
@@ -3155,6 +3284,21 @@
       return;
     }
 
+    // Notification channel toggle. Lives on both the wizard's last step (into
+    // `draft`, saved by commit) and the rollup footer (into `S`, saved by its
+    // own button), so it writes to whichever is on screen.
+    var nch = t.closest && t.closest('[data-ltk-notifych]');
+    if (nch) {
+      var ck = nch.getAttribute('data-ltk-notifych');
+      var inWizard = S.screen === 'setup';
+      var list = inWizard ? draft.notifyChannels : S.notifyChannels;
+      var ci = list.indexOf(ck);
+      if (ci >= 0) list.splice(ci, 1); else list.push(ck);
+      if (inWizard) { draft.notifyMsg = ''; renderSetup(); }
+      else { S.notifyMsg = ''; S.notifySaved = false; renderNotifyBlock(); }
+      return;
+    }
+
     var chipKw = t.closest && t.closest('[data-ltk-kw]');
     if (chipKw) { call('openDiscovery', chipKw.getAttribute('data-ltk-kw')); return; }
 
@@ -3171,6 +3315,7 @@
         });
         break;
       case 'commit': commit(); break;
+      case 'notify-save': saveNotifyPrefs(); break;
       case 'cancel-setup':
         // Discard the draft, don't commit — get back to whatever screen
         // reflects what's actually saved (refresh() already knows: rollup if
@@ -3232,6 +3377,13 @@
       draft.sug.q = v;              // keep in sync so the re-render restores it
       if (timers.typeahead) clearTimeout(timers.typeahead);
       timers.typeahead = setTimeout(function () { runKeywordSuggest(v); }, TYPEAHEAD_MS);
+      return;
+    }
+    // No re-render here on purpose — repainting the block on every keystroke
+    // would move the caret. The value is read back out on save.
+    if (el.hasAttribute('data-ltk-notifywa')) {
+      if (S.screen === 'setup') draft.notifyWa = el.value;
+      else S.notifyWa = el.value;
       return;
     }
     if (el.hasAttribute('data-ltk-sort')) {

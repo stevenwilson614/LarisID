@@ -1,5 +1,16 @@
 // Weekly digest email — "what moved on your tracked products this week".
-// Audience: users with tracked products (alert_prefs.email !== false).
+//
+// SUPERSEDED for new users by tracker-change-notify. This function's audience
+// comes from user_tracked_products, whose write path went away with Site A at
+// the 2026-08-10 cutover: the table took its last row on 2026-08-08 and cannot
+// take another, so this reaches a fixed, shrinking set of legacy users (34 as
+// of 2026-08-15) and can never reach a new one.
+//
+// It is kept running because those users still have real products with real
+// history worth reporting. Anyone who picks a channel on the Pantauan page is
+// EXCLUDED here and served by tracker-change-notify instead, so nobody gets
+// both. When the legacy audience decays to zero, delete this function.
+//
 // Invoked weekly by pg_cron job `weekly-digest` with the service-role bearer,
 // same pattern as daily-feedback-report. Sends via Resend (RESEND_API_KEY).
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
@@ -45,9 +56,21 @@ serve(async (req) => {
     .select('user_id,item_id,shop_id,product_name,keyword,price,alert_prefs')
   if (trkErr) return new Response(JSON.stringify({ error: trkErr.message }), { status: 500 })
 
+  // Users who answered the notification question on the Pantauan page are
+  // served by tracker-change-notify; sending both would double-mail them.
+  const { data: optedIn } = await db
+    .from('user_tracker_state')
+    .select('user_id,notify_channels')
+  const migrated = new Set(
+    (optedIn || [])
+      .filter(r => Array.isArray(r.notify_channels) && r.notify_channels.length > 0)
+      .map(r => r.user_id)
+  )
+
   const byUser: Record<string, any[]> = {}
   for (const t of tracked || []) {
     if (t.alert_prefs && t.alert_prefs.email === false) continue
+    if (migrated.has(t.user_id)) continue
     ;(byUser[t.user_id] = byUser[t.user_id] || []).push(t)
   }
   const userIds = Object.keys(byUser)

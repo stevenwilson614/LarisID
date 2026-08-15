@@ -516,6 +516,28 @@ function logProductView(product) {
   } catch (_) {}
 }
 
+/** Record a deep-dive open. Every open, including anonymous ones and repeat
+ *  opens of the same product — unlike logProductView there is no per-day
+ *  dedupe, because the question this answers is "how often is the analysis
+ *  used", not "how many people saw this listing".
+ *
+ *  Why not activity_events: logUserEvent() early-returns without a signed-in
+ *  user, so it has never counted a single anonymous dive. Why not use_dive:
+ *  that is a quota RPC that refuses past the daily cap, and viewing a product
+ *  must never be walled. log_deepdive_open always inserts and always returns ok. */
+function logDeepDiveOpen(product) {
+  try {
+    if (!_supabase || !product) return;
+    _supabase.rpc('log_deepdive_open', {
+      p_item_id:    product.item_id != null ? String(product.item_id) : null,
+      p_shop_id:    product.shop_id != null ? String(product.shop_id) : null,
+      p_keyword:    product.keyword || null,
+      p_visitor_id: _lidVisitorId(),
+      p_source:     'app',
+    }).then(() => {}, () => {});
+  } catch (_) {}
+}
+
 function viewersYtdCached(itemId, shopId) {
   const k = viewCountKey(itemId, shopId);
   return _viewCountsYtdCache.has(k) ? (_viewCountsYtdCache.get(k) || 0) : 0;
@@ -8293,16 +8315,22 @@ function gptTrackerAdapter() {
 
     getTracking()          { return rpc('get_my_tracking'); },
     // Reads mv_keyword_daily / mv_shop_daily, which aggregate `listings`
-    // directly. get_tracker_deltas is kept only for clients cached before this
-    // shipped — it reads listing_deltas, which the daily scrape never refreshes.
+    // directly. (get_tracker_deltas is gone: nothing called it, and it read
+    // listing_deltas, which the daily scrape never refreshes.)
     getRollup(days, scope) { return rpc('get_tracker_rollup', { p_days: days, p_scope: scope || 'keyword' }); },
-    getDeltas(days)        { return rpc('get_tracker_deltas', { p_days: days }); },
     touchViewed()          { return rpc('touch_tracker_viewed'); },
     addKeyword(kw, cat)    { return rpc('add_tracked_keyword', { p_keyword: kw, p_category: cat || '' }); },
     addStore(id, name)     { return rpc('add_tracked_store', { p_shop_id: id, p_store_name: name || '' }); },
     getStoresByCategory(cat) { return rpc('find_shops_by_category', { p_category: cat, p_limit: 30 }); },
     removeKeyword(id)      { return rpc('remove_tracked_keyword', { p_id: id }); },
     setMetrics(list)       { return rpc('set_tracker_metrics', { p_metrics: list }); },
+    // Returns { ok:false, error:'wa_number_required' } when whatsapp is picked
+    // without a reachable number — the module surfaces that inline.
+    setNotifyPrefs(channels, waNumber) {
+      return rpc('set_tracker_notify_prefs', {
+        p_channels: channels || [], p_wa_number: waNumber || null,
+      });
+    },
     async getStoreInfo(shopId) {
       if (!_supabase || shopId == null) return null;
       const { count } = await _supabase.from('listings_latest')
@@ -8328,15 +8356,13 @@ function gptTrackerAdapter() {
         .order('omset_top15', { ascending: false }).limit(limit || 24);
       return data || [];
     },
+    // fromTracked used to be seeded from user_tracked_products. That table has
+    // been read-only since the 2026-08-10 cutover removed its write path, so it
+    // could only ever suggest a pre-cutover user's stale products. Seeds now
+    // come from onboarding categories alone.
     async getSeedCandidates() {
       const out = { fromTracked: [], categories: [] };
       if (!_supabase || !currentUser) return out;
-      try {
-        const { data } = await _supabase.from('user_tracked_products')
-          .select('keyword,category').eq('user_id', currentUser.id)
-          .order('tracked_at', { ascending: false }).limit(20);
-        (data || []).forEach(r => { if (r.keyword) out.fromTracked.push({ keyword: r.keyword, category: r.category || '' }); });
-      } catch (_) {}
       try {
         const { data } = await _supabase.from('user_onboarding_prefs')
           .select('categories').eq('user_id', currentUser.id).maybeSingle();
@@ -10346,6 +10372,13 @@ async function openDeepDive(product, ddOpts = {}) {
       try { localStorage.setItem(ANON_DD_KEY, id); } catch (_) {}
     }
   }
+  // Count the open. Placed here — past the anon gate, before any of the async
+  // work below — because this is the earliest point at which the dive is
+  // definitely happening, and every one of openDeepDive's callers funnels
+  // through it. Deliberately NOT logUserEvent: that drops anonymous users, and
+  // anon dives are real traffic (they get one free by design). The RPC never
+  // refuses, so this can never wall a view.
+  void logDeepDiveOpen(product);
   if (state.pendingDeepdive) { state.pendingDeepdive = null; saveLocalState(); }
   if (!state.everOpenedDeepdive) { state.everOpenedDeepdive = true; saveLocalState(); }
   rememberProducts([product]);
@@ -12888,10 +12921,18 @@ function renderAdminKpis(users) {
   const viewsTotal = s.landing_views_total;
   const viewsDaily = admSeriesFromDaily(s.landing_views_daily, 'views', days);
 
+  // Archive: user_tracked_products lost its write path at the 2026-08-10
+  // cutover and has been frozen since 2026-08-08. Kept for history; the live
+  // tracking model is keywords + toko below.
   const trackedTotal = k.tracked_total != null
     ? k.tracked_total
     : (users || []).reduce((n, u) => n + (Number(u.tracked_count) || 0), 0);
   const trackedDaily = admSeriesFromDaily(k.tracked_daily, 'n', days);
+
+  const keywordsTotal = k.keywords_total;
+  const keywordsDaily = admSeriesFromDaily(k.keywords_daily, 'n', days);
+  const storesTotal = k.stores_total;
+  const storesDaily = admSeriesFromDaily(k.stores_daily, 'n', days);
 
   const divesTotal = k.deepdives_total != null
     ? k.deepdives_total
@@ -12909,12 +12950,20 @@ function renderAdminKpis(users) {
   set('adm-kpi-views-sub', viewsTotal == null ? 'Data tampilan belum tersedia' : 'Semua waktu');
   spark('adm-kpi-views-spark', viewsDaily, '#EA580C');
 
+  set('adm-kpi-keywords', admFmtNum(keywordsTotal));
+  set('adm-kpi-keywords-sub', keywordsTotal == null ? 'Belum tersedia' : 'Semua waktu');
+  spark('adm-kpi-keywords-spark', keywordsDaily, '#16A34A');
+
+  set('adm-kpi-stores', admFmtNum(storesTotal));
+  set('adm-kpi-stores-sub', storesTotal == null ? 'Belum tersedia' : 'Semua waktu');
+  spark('adm-kpi-stores-spark', storesDaily, '#0891B2');
+
   set('adm-kpi-tracked', admFmtNum(trackedTotal));
-  set('adm-kpi-tracked-sub', 'Semua waktu');
-  spark('adm-kpi-tracked-spark', trackedDaily, '#16A34A');
+  set('adm-kpi-tracked-sub', 'Beku sejak 10 Agu');
+  spark('adm-kpi-tracked-spark', trackedDaily, '#9CA3AF');
 
   set('adm-kpi-dives', admFmtNum(divesTotal));
-  set('adm-kpi-dives-sub', 'Semua waktu');
+  set('adm-kpi-dives-sub', 'Semua waktu, termasuk anonim');
   spark('adm-kpi-dives-spark', divesDaily, '#7C3AED');
 }
 

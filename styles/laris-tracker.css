@@ -999,6 +999,23 @@
   .ltk-catsel .ltk-select { width: 100%; }
 }
 
+/* ── notification channels ─────────────────────────────────────────────
+   Reuses .ltk-mgrid/.ltk-mcard wholesale; only the phone field, the save
+   button and the wizard variant need anything of their own. Literal colors,
+   no design tokens — the two host apps disagree on token names. */
+.ltk-notify { display: flex; flex-direction: column; gap: 12px; }
+.ltk-notify--wiz { margin-top: 18px; padding-top: 18px; border-top: 1px solid #E5E7EB; }
+.ltk-notify-wa { display: flex; flex-direction: column; gap: 6px; }
+.ltk-notify-wa > span { font-size: .72rem; font-weight: 600; color: #6B7280; }
+.ltk-notify-wa input {
+  font: inherit; font-size: .85rem; color: #1A1A1A;
+  background: #fff; border: 1.5px solid #E5E7EB; border-radius: var(--ltk-r);
+  padding: 10px 12px; width: 100%; transition: border-color .15s ease;
+}
+.ltk-notify-wa input:focus { outline: none; border-color: #B5202A; }
+.ltk-notify-save { align-self: flex-start; }
+.ltk-notify-ok { font-size: .72rem; font-weight: 600; color: #1A7A46; }
+
 @media (prefers-reduced-motion: reduce) {
   .ltk-root *,
   .ltk-root *::before,
