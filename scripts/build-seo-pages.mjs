@@ -352,6 +352,7 @@ ${regionRows}
       <li><strong>Persaingan ${comp.word}.</strong> ${esc(comp.note)}</li>
       <li><strong>Posisi harga.</strong> Harga median ${rp(kw.medPrice)} adalah titik aman untuk uji pasar. Termurah (${rp(kw.minPrice)}) sering berarti margin tipis atau kualitas seadanya; di atas ${rp(kw.p90Price)} pembelinya lebih selektif.</li>
       <li><strong>Konsentrasi.</strong> Sekitar ${Math.round(d.concentration * 100)}% estimasi penjualan (pada sampel) terkumpul di 8 produk teratas \u2014 ${d.concentration > 0.5 ? 'pasar dikuasai sedikit pemain besar, jadi butuh sudut pembeda yang kuat.' : 'penjualan cukup menyebar, peluang masuk masih terbuka.'}</li>
+      <li><strong>Mau jual di mana.</strong> Produk ini bisa kamu jual di Shopee, TikTok Shop, Tokopedia, Lazada, atau Blibli \u2014 komisi tiap marketplace berbeda per kategori. Hitung dana bersih yang kamu terima lebih dulu di <a href="/kalkulator/">kalkulator gratis LarisID</a>.</li>
       <li><strong>Langkah berikut.</strong> Buka produk spesifik di LarisID untuk lihat tren penjualan mingguan, Viability Score, dan benchmark kompetitor \u2014 gratis.</li>
     </ul>
 
@@ -426,7 +427,7 @@ ${GTAG}
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Riset Pasar Produk Shopee \u2014 Harga, Penjualan &amp; Tren | LarisID</title>
-<meta name="description" content="Riset pasar gratis berbasis data nyata untuk ${entries.length} keyword produk terlaris di Shopee: harga median, jumlah listing, rating, dan estimasi penjualan. Dari LarisID.">
+<meta name="description" content="Riset pasar gratis berbasis data nyata untuk ${entries.length} keyword produk terlaris di Shopee: harga median, jumlah listing, rating, dan estimasi penjualan. Dari LarisID — riset produk untuk seller Shopee, TikTok Shop, Tokopedia, Lazada &amp; Blibli.">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="${url}">
 <meta property="og:title" content="Riset Pasar Produk Shopee \u2014 LarisID">
@@ -459,7 +460,7 @@ ${JSON.stringify(ld, null, 2)}
 </header>
 <main class="wide">
   <h1>Riset Pasar Produk Shopee</h1>
-  <p class="lead">Data harga, rating, dan penjualan nyata untuk ${entries.length} keyword produk populer di Shopee Indonesia. Gratis \u2014 supaya kamu riset dulu sebelum kulakan.</p>
+  <p class="lead">Data harga, rating, dan penjualan nyata untuk ${entries.length} keyword produk populer di Shopee Indonesia. Gratis \u2014 supaya kamu riset dulu sebelum kulakan, mau jualan di Shopee, TikTok Shop, Tokopedia, Lazada, maupun Blibli.</p>
   <p class="updated">Snapshot data: ${SNAPSHOT_HUMAN} \u00b7 estimasi total ${kfmt(totalSold)}+ unit terjual pada produk yang dipantau \u00b7 <a href="/cara-kerja/">metodologi</a></p>
 
   <div class="summary-box">
@@ -520,6 +521,8 @@ function buildSitemap(entries) {
     { loc: `${SITE}/perbandingan/aplikasi-cek-produk-terlaris-shopee/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
     { loc: `${SITE}/perbandingan/riset-produk-shopee-gratis-vs-berbayar/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
     { loc: `${SITE}/perbandingan/alternatif-datapinter-gratis/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
+    { loc: `${SITE}/perbandingan/larisid-vs-kalodata/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
+    { loc: `${SITE}/perbandingan/alternatif-kalodata-gratis/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
     { loc: `${SITE}/harga/`, freq: 'monthly', pri: '0.85', mod: '2026-05-30' },
     { loc: `${SITE}/tentang/`, freq: 'monthly', pri: '0.8', mod: '2026-05-30' },
     { loc: `${SITE}/cara-kerja/`, freq: 'monthly', pri: '0.8', mod: '2026-05-30' },

@@ -186,8 +186,8 @@ function hubPage(guides) {
 ${GTAG}
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Panduan Riset & Bisnis Shopee untuk Seller Indonesia | LarisID</title>
-<meta name="description" content="Panduan praktis & jujur untuk seller Shopee: cara riset produk, menghitung margin/HPP, dan menganalisis kompetitor. Gratis dari LarisID.">
+<title>Panduan Riset &amp; Bisnis Marketplace untuk Seller Indonesia | LarisID</title>
+<meta name="description" content="Panduan praktis &amp; jujur untuk seller Shopee, TikTok Shop, Tokopedia, Lazada &amp; Blibli: cara riset produk, menghitung margin/HPP, dan menganalisis kompetitor. Gratis dari LarisID.">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="${url}">
 <meta property="og:title" content="Panduan Riset & Bisnis Shopee \u2014 LarisID">
@@ -217,8 +217,8 @@ ${JSON.stringify(ld, null, 2)}
   ${nav('/panduan/')}
 </header>
 <main class="wide">
-  <h1>Panduan Riset & Bisnis Shopee</h1>
-  <p class="lead">Panduan praktis dan jujur untuk seller Indonesia \u2014 dari riset produk sampai hitung untung. Dipadukan dengan <a href="/riset/">data pasar nyata</a> supaya keputusanmu berbasis angka, bukan feeling.</p>
+  <h1>Panduan Riset &amp; Bisnis Marketplace</h1>
+  <p class="lead">Panduan praktis dan jujur untuk seller Indonesia di Shopee, TikTok Shop, Tokopedia, Lazada, dan Blibli \u2014 dari riset produk sampai hitung untung. Dipadukan dengan <a href="/riset/">data pasar nyata</a> supaya keputusanmu berbasis angka, bukan feeling.</p>
   <div class="riset-grid">
 ${cards}
   </div>

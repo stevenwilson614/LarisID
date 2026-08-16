@@ -40,6 +40,30 @@ Everything from §2 onward predates this decision. Read it as *why we once consi
 | **Shoper** (shoper.id) | Subscription | Not published ("Coba Gratis", WhatsApp for price) | Fixed sub | Chrome extension: hidden data (upload time, product age), price/age analysis, competitor "similar products" graphs | Free trial |
 | **Shopdora** (shopdora.com) | Subscription (intl.) | **$29,9/mo ≈ Rp 478.000/mo** (Standard) | Fixed sub | 13+ features, 9+ markets incl. Indonesia: product research, keyword mining, price tracking, traffic analysis, AI listing gen. Advanced/Pro = contact sales. | Yes (limited) |
 | **Zhixia / ShopeeData** | Subscription (intl.) | Not published in IDR | Fixed sub | Big-data product selection, analytics plugin | Limited |
+| **Kalodata** (kalodata.com) ⭐ *TikTok Shop, not Shopee* | Subscription (intl., USD) | **Starter ~$49,99/mo ≈ Rp 800.000** · **Professional ~$109,99/mo ≈ Rp 1.760.000** | Fixed sub (monthly or annual) | TikTok Shop analytics: GMV by shop/product/category, creator & affiliate performance, video and livestream data. The market-share leader for TikTok Shop, and the most expensive tool on this list. | **No free plan** — limited-time trial only |
+
+#### Kalodata detail (added 16 Aug 2026)
+
+| Plan | Monthly | Annual | Limits |
+|---|---|---|---|
+| Starter | $49,99 | $499 | 50 searches/day, 10 tracked shops/creators, 100 detail views/day, 90d history |
+| Professional | $109,99 | $1.099 | 250 searches/day, 500 tracked, 500 detail views/day, 180d history, 1 sub-account |
+| Enterprise | ~$229–599 *(estimated)* | ~$2.299–5.999 *(estimated)* | Unlimited; 12+ months history; API |
+
+IDR figures converted at ~Rp 16.000/USD, consistent with the rest of this table.
+
+> **⚠️ Source caveat — verify before quoting.** `kalodata.com/pricing` returns **HTTP 403** to
+> automated fetches, so these figures come from third-party pricing reviews
+> ([SimpTok](https://simptok.com/how-much-is-kalodata/),
+> [tipsonblogging](https://tipsonblogging.com/2025/05/kalodata-pricing/)) and search results, not
+> from the vendor page. Confirm manually on kalodata.com before treating any number as current.
+> Per the repo rule, all published copy must hedge these as public estimates with the date.
+
+**Positioning note:** Kalodata is **not** a Shopee tool and is not a like-for-like LarisID rival the
+way Datapinter is. It owns TikTok Shop GMV/creator analytics — data LarisID does not have. The
+honest comparison is the cost gap plus the overlap in *choosing what to sell* and *computing
+margin after TikTok Shop commission*, which the LarisID fee calculator does cover. Keep the
+"if you need TikTok creator/video GMV analytics, use Kalodata" concession in all copy.
 
 ### Takeaways (market intel — still valid)
 - The **closest competitor is Datapinter at ~Rp 299.000/mo** with a feature set comparable to LarisID. This **validates the brand tagline "Kompetitor bayar 300rb/bulan"** — it is accurate against the most direct, feature-equivalent rival. Tokpee (~Rp 50rb/mo) is a relatively basic Chrome extension with narrower scope, so it is *not* the right comparison point.
@@ -123,5 +147,8 @@ The original check cleared a *paid* token model against MISSION. Under the **cur
 - [Shopdora Review 2026 — selleraihub](https://selleraihub.com/shopdora-review-shopee-sellers/)
 - [Unlocking opportunities in Indonesia — Antom](https://knowledge.antom.com/unlocking-opportunities-in-indonesia-southeast-asias-largest-digital-payments-market)
 - [Impact of Subscription Models on Consumer Spending in Indonesia — Snapcart](https://snapcart.global/the-impact-of-subscription-models-on-consumer-spending-habits-in-indonesia/)
+- [Kalodata pricing (2026): every plan & cost — SimpTok](https://simptok.com/how-much-is-kalodata/) *(added Aug 2026)*
+- [Kalodata pricing plans 2026 — tipsonblogging](https://tipsonblogging.com/2025/05/kalodata-pricing/) *(added Aug 2026)*
+- [Kalodata review 2026 — WinningHunter](https://winninghunter.com/insights/kalodata-review/) *(added Aug 2026)*
 </content>
 </invoke>

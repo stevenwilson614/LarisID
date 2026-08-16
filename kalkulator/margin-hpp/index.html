@@ -199,7 +199,7 @@
     box.classList.toggle('good', l>=0); box.classList.toggle('calc-total', true);
     if(l<0){box.className='calc-total';note.textContent='Harga jual di bawah modal — kamu rugi Rp '+Math.abs(l).toLocaleString('id-ID')+' per unit.';}
     else{note.textContent='';}
-    if(fx>0 && l>0){bepRow.hidden=false; var u=Math.ceil(fx/l); bep.textContent=u.toLocaleString('id-ID')+' unit/bln ('+f(u*p)+' omset)';}
+    if(fx>0 && l>0){bepRow.hidden=false; var u=Math.ceil(fx/l); bep.textContent=u.toLocaleString('id-ID')+' unit/bln ('+f(u*p)+' omzet)';}
     else{bepRow.hidden=true;}
   }
   [hpp,harga,fixed].forEach(function(el){el.addEventListener('input',calc);});

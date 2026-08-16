@@ -167,8 +167,8 @@ function hubPage(tools) {
         { '@type': 'ListItem', position: 1, name: 'Beranda', item: `${SITE}/` },
         { '@type': 'ListItem', position: 2, name: 'Kalkulator', item: url },
       ] },
-      { '@type': 'CollectionPage', name: 'Kalkulator Gratis untuk Seller Shopee — LarisID', url,
-        description: jt('Kalkulator gratis untuk seller Shopee Indonesia: hitung margin & HPP, dan biaya admin Shopee, langsung di browser.') },
+      { '@type': 'CollectionPage', name: 'Kalkulator Gratis untuk Seller Marketplace Indonesia — LarisID', url,
+        description: jt('Kalkulator gratis untuk seller Shopee, TikTok Shop, Tokopedia, Lazada & Blibli: hitung margin & HPP, dan biaya admin per marketplace, langsung di browser.') },
       { '@type': 'ItemList', itemListElement: tools.map((t, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE}/kalkulator/${t.slug}/`, name: jt(t.h1) })) },
     ],
   };
@@ -178,12 +178,12 @@ function hubPage(tools) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kalkulator Gratis untuk Seller Shopee | LarisID</title>
-<meta name="description" content="Kumpulan kalkulator gratis untuk seller Shopee Indonesia: hitung margin & HPP dan biaya admin Shopee — langsung di browser, tanpa login.">
+<title>Kalkulator Gratis Seller Shopee, TikTok Shop, Tokopedia, Lazada &amp; Blibli | LarisID</title>
+<meta name="description" content="Kumpulan kalkulator gratis untuk seller Indonesia: hitung margin &amp; HPP dan biaya admin per marketplace — Shopee, TikTok Shop, Tokopedia, Lazada, Blibli. Langsung di browser, tanpa login.">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="${url}">
-<meta property="og:title" content="Kalkulator Gratis untuk Seller Shopee — LarisID">
-<meta property="og:description" content="Hitung margin, HPP, dan biaya admin Shopee gratis di browser.">
+<meta property="og:title" content="Kalkulator Gratis untuk Seller Marketplace Indonesia — LarisID">
+<meta property="og:description" content="Hitung margin, HPP, dan biaya admin Shopee, TikTok Shop, Tokopedia, Lazada &amp; Blibli gratis di browser.">
 <meta property="og:url" content="${url}">
 <meta property="og:type" content="website">
 <meta property="og:image" content="${OG_IMAGE}">
@@ -209,8 +209,8 @@ ${JSON.stringify(ld, null, 2)}
   ${nav()}
 </header>
 <main class="wide">
-  <h1>Kalkulator Gratis untuk Seller Shopee</h1>
-  <p class="lead">Alat hitung cepat untuk seller Indonesia — pastikan "laku" berarti "untung". Jalan di browser, tanpa login. Padukan dengan <a href="/riset/">data pasar nyata</a> supaya keputusanmu berbasis angka.</p>
+  <h1>Kalkulator Gratis untuk Seller Marketplace Indonesia</h1>
+  <p class="lead">Alat hitung cepat untuk seller Shopee, TikTok Shop, Tokopedia, Lazada, dan Blibli — pastikan "laku" berarti "untung". Jalan di browser, tanpa login. Padukan dengan <a href="/riset/">data pasar nyata</a> supaya keputusanmu berbasis angka.</p>
   <div class="riset-grid">
 ${cards}
   </div>

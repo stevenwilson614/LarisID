@@ -294,6 +294,7 @@ ${catRows}
       <li><strong>Kepadatan penjual ${dens.word}.</strong> ${esc(dens.note)}</li>
       <li><strong>Keunggulan lokasi.</strong> Jualan dari ${esc(short)} berarti kamu menang ongkir dan kecepatan kirim untuk pembeli sekitarmu — filter "dikirim dari" adalah senjata gratis.</li>
       <li><strong>Ikut arus atau ambil celah.</strong> Kategori kuat kotamu (${esc(catNames)}) biasanya berarti akses supplier lokal lebih mudah; kategori yang belum ramai bisa jadi celah kalau permintaan nasionalnya ada.</li>
+      <li><strong>Mau jual di mana.</strong> Keunggulan ongkir dari ${esc(short)} berlaku di semua marketplace — Shopee, TikTok Shop, Tokopedia, Lazada, maupun Blibli. Komisinya berbeda-beda per kategori, jadi hitung dana bersihmu dulu di <a href="/kalkulator/">kalkulator gratis LarisID</a>.</li>
       <li><strong>Langkah berikut.</strong> Buka produk spesifik di LarisID untuk lihat tren penjualan, Viability Score, dan benchmark kompetitor — gratis.</li>
     </ul>
 
@@ -395,7 +396,7 @@ ${JSON.stringify(ld, null, 2)}
 </header>
 <main class="wide">
   <h1>Produk Paling Laris per Kota</h1>
-  <p class="lead">Apa yang benar-benar laku dijual penjual Shopee di kotamu — data nyata dari ${num(totalSellers)} penjual aktif di ${cities.length} kota dan kabupaten di Pulau Jawa.</p>
+  <p class="lead">Apa yang benar-benar laku dijual penjual Shopee di kotamu — data nyata dari ${num(totalSellers)} penjual aktif di ${cities.length} kota dan kabupaten di Pulau Jawa. Pakai untuk memilih produk, mau kamu jual di Shopee, TikTok Shop, Tokopedia, Lazada, maupun Blibli.</p>
   <p class="updated">Snapshot data: ${SNAPSHOT_HUMAN} · <a href="/cara-kerja/">metodologi</a></p>
 
   <div class="summary-box">

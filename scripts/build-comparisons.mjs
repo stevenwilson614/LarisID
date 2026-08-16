@@ -19,8 +19,8 @@ const ROOT = path.resolve(__dirname, '..');
 const OUT = path.join(ROOT, 'perbandingan');
 const SITE = 'https://larisid.com';
 const OG_IMAGE = `${SITE}/images/Banner.jpg`;
-const UPDATED = '2026-07-20';
-const UPDATED_HUMAN = '20 Juli 2026';
+const UPDATED = '2026-08-16';
+const UPDATED_HUMAN = '16 Agustus 2026';
 
 function esc(s) {
   return String(s == null ? '' : s)
@@ -104,7 +104,7 @@ const COMPETITORS = [
     rows: [
       ['Harga', 'Rp 0 \u2014 100% gratis (3 deep dive/hari, reset tiap hari; +3/hari via ekstensi)', '~Rp 299.000/bulan (langganan)'],
       ['Model', 'Kredit, tanpa langganan wajib', 'Langganan bulanan'],
-      ['Marketplace', 'Shopee (Indonesia)', 'Riset marketplace lengkap'],
+      ['Marketplace', 'Shopee, TikTok Shop, Tokopedia, Lazada & Blibli', 'Riset marketplace lengkap'],
       ['Viability Score', 'Ya (0\u2013100)', 'Skor/metric sendiri'],
       ['Deep Dive per produk', 'Ya (tren, kompetitor, keyword)', 'Ya'],
       ['AI kontekstual', 'Ya (terikat produk/keyword)', 'Bervariasi'],
@@ -126,15 +126,16 @@ const COMPETITORS = [
     rows: [
       ['Harga', 'Rp 0 \u2014 100% gratis', '~Rp 50.000/bulan (paket tahunan)'],
       ['Bentuk', 'Platform web + ekstensi', 'Ekstensi Chrome'],
-      ['Marketplace', 'Shopee (Indonesia)', 'Shopee + Tokopedia'],
+      ['Marketplace', 'Shopee, TikTok Shop, Tokopedia, Lazada & Blibli', 'Shopee + Tokopedia'],
       ['Kedalaman analisis', 'Deep Dive + Viability Score per produk', 'Riset cepat + ekspor Excel'],
+      ['Kalkulator komisi & margin', 'Ya \u2014 5 marketplace, tarif per kategori', 'Tidak/terbatas'],
       ['AI kontekstual', 'Ya', 'Tidak/terbatas'],
-      ['Cocok untuk', 'Analisis mendalam satu produk', 'Riset ringan lintas marketplace + ekspor data'],
+      ['Cocok untuk', 'Analisis mendalam satu produk lintas marketplace', 'Riset ringan + ekspor data'],
     ],
-    verdict: 'Butuh ekstensi ringan untuk mengintip data sambil browsing Shopee/Tokopedia dan ekspor Excel? Tokpee praktis. Butuh analisis lebih dalam per produk (tren, Viability Score, AI) tanpa biaya? LarisID lebih cocok \u2014 dan keduanya bisa dipakai berdampingan.',
+    verdict: 'Butuh ekstensi ringan untuk mengintip data sambil browsing dan ekspor Excel? Tokpee praktis. Butuh analisis lebih dalam per produk (tren, Viability Score, AI) plus hitungan komisi di lima marketplace tanpa biaya? LarisID lebih cocok \u2014 dan keduanya bisa dipakai berdampingan.',
     faqs: [
-      { q: 'Tokpee atau LarisID untuk pemula?', a: 'Untuk analisis mendalam satu produk (skor kelayakan, tren, AI) tanpa biaya, LarisID lebih cocok untuk pemula. Tokpee unggul untuk riset cepat lintas Shopee + Tokopedia dan ekspor Excel.' },
-      { q: 'Apakah LarisID mendukung Tokopedia?', a: 'Saat ini LarisID fokus pada Shopee (Indonesia). Jika kebutuhan utamamu mencakup Tokopedia, Tokpee bisa melengkapi.' },
+      { q: 'Tokpee atau LarisID untuk pemula?', a: 'Untuk analisis mendalam satu produk (skor kelayakan, tren, AI) tanpa biaya, LarisID lebih cocok untuk pemula. Tokpee unggul untuk riset cepat sambil browsing dan ekspor Excel.' },
+      { q: 'Marketplace apa saja yang didukung LarisID?', a: 'LarisID dipakai seller di Shopee, TikTok Shop, Tokopedia, Lazada, dan Blibli \u2014 termasuk kalkulator komisi dan margin dengan tarif per kategori untuk kelima marketplace tersebut.' },
     ],
   },
   {
@@ -147,7 +148,7 @@ const COMPETITORS = [
     rows: [
       ['Harga', 'Rp 0 \u2014 100% gratis & transparan di /harga/', 'Tidak dipublikasikan (sering promo)'],
       ['Transparansi', 'Penuh (batas harian jelas)', 'Terbatas'],
-      ['Marketplace', 'Shopee (Indonesia)', 'Shopee'],
+      ['Marketplace', 'Shopee, TikTok Shop, Tokopedia, Lazada & Blibli', 'Shopee'],
       ['Viability Score', 'Ya (0\u2013100)', 'Bervariasi'],
       ['Deep Dive + AI', 'Ya', 'Bervariasi'],
       ['Cocok untuk', 'Yang mau gratis & transparan', 'Yang sudah pakai ekosistem Shoptik'],
@@ -156,6 +157,32 @@ const COMPETITORS = [
     faqs: [
       { q: 'Berapa harga Shoptik?', a: 'Shoptik tidak mempublikasikan harga secara transparan dan sering menampilkan promo diskon. Sebagai pembanding, LarisID 100% gratis dengan batas harian yang jelas di halaman harga.' },
       { q: 'Apakah LarisID benar-benar gratis?', a: 'Ya. Setiap hari kamu dapat 3 deep dive gratis (sekali buka = akses penuh produk itu selama 7 hari) plus jatah AI harian, reset tiap tengah malam \u2014 tanpa langganan atau biaya tersembunyi. Jatah bisa ditambah gratis lewat ekstensi dan referral.' },
+    ],
+  },
+  {
+    slug: 'larisid-vs-kalodata',
+    name: 'Kalodata',
+    title: 'LarisID vs Kalodata: Perbandingan Jujur untuk Seller TikTok Shop (2026)',
+    desc: 'Perbandingan LarisID vs Kalodata: riset produk gratis untuk Shopee, TikTok Shop, Tokopedia, Lazada & Blibli vs analitik GMV TikTok Shop berlangganan ~$49,99-109,99/bulan. Kapan pilih masing-masing.',
+    h1: 'LarisID vs Kalodata',
+    lead: 'Kalodata adalah alat analitik TikTok Shop paling banyak dipakai \u2014 dan paling mahal. LarisID gratis dan membantumu memilih produk serta menghitung margin di lima marketplace. Keduanya menjawab pertanyaan yang berbeda; ini perbandingan jujurnya.',
+    rows: [
+      ['Harga', 'Rp 0 \u2014 100% gratis (3 riset produk baru/hari, reset tiap hari)', '~$49,99/bulan (Starter) sampai ~$109,99/bulan (Professional), sekitar Rp 800.000-1.760.000'],
+      ['Paket gratis', 'Ya \u2014 permanen, tanpa kartu kredit', 'Tidak ada paket gratis permanen (hanya trial terbatas)'],
+      ['Marketplace', 'Shopee, TikTok Shop, Tokopedia, Lazada & Blibli', 'TikTok Shop'],
+      ['Pertanyaan yang dijawab', 'Produk apa yang layak dijual, di harga berapa, seberapa ketat pesaingnya', 'Berapa GMV sebuah toko/produk/kreator di TikTok Shop'],
+      ['Analitik kreator, video & live', 'Tidak', 'Ya \u2014 ini keunggulan utama Kalodata'],
+      ['Kalkulator komisi & margin', 'Ya \u2014 5 marketplace, tarif komisi per kategori', 'Tidak'],
+      ['Skor kelayakan produk', 'Ya (0-100)', 'Tidak \u2014 fokus pada metrik GMV mentah'],
+      ['Bahasa & antarmuka', 'Bahasa Indonesia, berbasis chat, ramah pemula', 'Dashboard analis, ditagih dalam USD'],
+      ['Cocok untuk', 'Seller yang sedang memilih produk dan menghitung untung', 'Seller & agency TikTok Shop yang butuh data GMV dan kreator'],
+    ],
+    verdict: 'Kalau pertanyaanmu "produk apa yang sebaiknya saya jual, dan apakah masih untung setelah komisi?", LarisID menjawabnya gratis \u2014 untuk Shopee, TikTok Shop, Tokopedia, Lazada, maupun Blibli. Kalau pertanyaanmu "kreator dan video mana yang menghasilkan GMV terbesar di TikTok Shop?", itu wilayah Kalodata dan tidak ada gunanya berpura-pura sebaliknya. Banyak seller memakai LarisID untuk memilih produk dan menghitung margin, lalu menambah Kalodata kalau sudah serius menggarap jalur kreator.',
+    faqs: [
+      { q: 'Apakah ada alternatif Kalodata yang gratis?', a: 'Tergantung kebutuhanmu. Untuk memilih produk yang layak dijual dan menghitung margin setelah komisi TikTok Shop, LarisID melakukannya 100% gratis. Untuk analitik GMV per toko, kreator, dan video di TikTok Shop, belum ada pengganti gratis yang setara dengan Kalodata.' },
+      { q: 'Apa kelebihan Kalodata dibanding LarisID?', a: 'Kalodata punya data GMV TikTok Shop yang tidak dimiliki LarisID: omzet per toko dan per produk di TikTok Shop, performa kreator afiliasi, serta pembedahan video dan live. Kalau strategimu bertumpu pada kreator dan konten TikTok, Kalodata adalah alat yang tepat.' },
+      { q: 'Apakah LarisID bisa dipakai untuk jualan di TikTok Shop?', a: 'Ya. LarisID membantumu memilih produk berdasarkan permintaan nyata dan menghitung untung dengan kalkulator komisi yang mencakup TikTok Shop, Shopee, Tokopedia, Lazada, dan Blibli \u2014 tarif per kategori, jadi kamu tahu sisa dana bersih sebelum kulakan.' },
+      { q: 'Berapa harga Kalodata per bulan?', a: 'Perkiraan publik: paket Starter sekitar $49,99/bulan dan Professional sekitar $109,99/bulan (kira-kira Rp 800.000 dan Rp 1.760.000), tanpa paket gratis permanen. Harga ditagih dalam USD dan bisa berubah \u2014 verifikasi di situs resmi Kalodata.' },
     ],
   },
 ];
@@ -207,7 +234,8 @@ ${compTable(c.rows).replace('{NAME}', esc(c.name))}
     <h2>Kenapa banyak seller memilih LarisID</h2>
     <ul>
       <li><strong>Gratis bermakna.</strong> 3 deep dive/hari + jatah AI harian, bisa ditambah gratis lewat ekstensi &amp; referral, tanpa kartu kredit.</li>
-      <li><strong>Data nyata.</strong> Harga, rating, dan ulasan dari listing Shopee asli; "terjual" ditandai sebagai estimasi.</li>
+      <li><strong>Data nyata.</strong> Harga, rating, dan ulasan dari listing asli; "terjual" ditandai sebagai estimasi.</li>
+      <li><strong>Lima marketplace.</strong> Kalkulator komisi &amp; margin untuk Shopee, TikTok Shop, Tokopedia, Lazada, dan Blibli dengan tarif per kategori.</li>
       <li><strong>Riset pasar terbuka.</strong> Lihat <a href="/riset/">ratusan halaman riset keyword</a> tanpa perlu daftar.</li>
       <li><strong>Jujur.</strong> Kami tidak menjanjikan "dijamin laku" \u2014 skor untuk mengurangi risiko, bukan menghapusnya.</li>
     </ul>
@@ -236,7 +264,7 @@ function listiclePage() {
   const title = 'Alat Riset Produk Shopee Terbaik 2026 (Perbandingan Jujur)';
   const desc = 'Daftar dan perbandingan alat riset produk Shopee terbaik 2026: LarisID, Datapinter, Tokpee, Shoptik \u2014 harga, kelebihan, kekurangan, dan untuk siapa.';
   const tools = [
-    { name: 'LarisID', price: 'Rp 0 (100% gratis)', best: 'Pemula & seller hemat budget yang butuh riset mendalam', pro: 'Gratis bermakna, Viability Score, Deep Dive, AI kontekstual, data nyata', con: 'Fokus Shopee (belum Tokopedia)', href: '/' },
+    { name: 'LarisID', price: 'Rp 0 (100% gratis)', best: 'Pemula & seller hemat budget yang butuh riset mendalam', pro: 'Gratis bermakna, Viability Score, Deep Dive, AI kontekstual, kalkulator komisi 5 marketplace, data nyata', con: 'Belum punya analitik kreator & video TikTok Shop', href: '/' },
     { name: 'Datapinter', price: '~Rp 299.000/bulan', best: 'Seller skala besar yang ingin paket langganan all-in', pro: 'Cakupan riset marketplace luas', con: 'Langganan relatif mahal untuk pemula', href: '/perbandingan/larisid-vs-datapinter/' },
     { name: 'Tokpee', price: '~Rp 50.000/bulan (tahunan)', best: 'Riset cepat lintas Shopee + Tokopedia + ekspor Excel', pro: 'Ekstensi ringan, multi-marketplace, ekspor data', con: 'Analisis per produk kurang dalam', href: '/perbandingan/larisid-vs-tokpee/' },
     { name: 'Shoptik', price: 'Tidak dipublikasikan', best: 'Yang sudah memakai ekosistem Shoptik', pro: 'Fitur riset Shopee', con: 'Harga kurang transparan (sering promo)', href: '/perbandingan/larisid-vs-shoptik/' },
@@ -286,6 +314,9 @@ ${tools.map((t) => `          <tr><td><strong>${esc(t.name)}</strong></td><td>${
       </table>
     </div>
     <p class="disclaimer">Angka harga kompetitor bisa berubah \u2014 verifikasi di situs resmi masing-masing. Harga LarisID 100% gratis, detail di <a href="/harga/">/harga/</a>.</p>
+
+    <h2>Kalau jualanmu di TikTok Shop</h2>
+    <p>Empat alat di atas fokus pada riset produk Shopee. Untuk analitik <strong>TikTok Shop</strong> \u2014 GMV per toko dan produk, performa kreator afiliasi, data video dan live \u2014 pemain terbesarnya adalah <strong>Kalodata</strong> (~$49,99\u2013109,99/bulan, tanpa paket gratis). LarisID sendiri mencakup pemilihan produk dan kalkulator komisi untuk TikTok Shop secara gratis, tapi tidak menyediakan data kreator. Rinciannya di <a href="/perbandingan/larisid-vs-kalodata/">LarisID vs Kalodata</a> dan <a href="/perbandingan/alternatif-kalodata-gratis/">alternatif Kalodata gratis</a>.</p>
 
     <div class="cta-row">
       <a class="btn-primary" href="/">Mulai riset gratis di LarisID</a>
@@ -433,14 +464,14 @@ const ANGLE_PAGES = [
           <tr><td>Data listing Shopee nyata</td><td>Ya</td><td>Ya</td></tr>
           <tr><td>Skor kelayakan &amp; Deep Dive</td><td>Ya</td><td>Sebagian</td></tr>
           <tr><td>AI kontekstual</td><td>Ya</td><td>Terbatas</td></tr>
-          <tr><td>Cakupan marketplace luas</td><td>Fokus Shopee</td><td>Lebih luas</td></tr>
+          <tr><td>Cakupan marketplace</td><td>Shopee, TikTok Shop, Tokopedia, Lazada &amp; Blibli</td><td>Lebih luas</td></tr>
         </tbody>
       </table>
     </div>
     <p class="disclaimer">Harga Datapinter adalah perkiraan publik per ${UPDATED_HUMAN} dan bisa berubah — verifikasi di situs resmi mereka.</p>
 
     <h2>Kapan Datapinter tetap lebih cocok</h2>
-    <p>Kalau kamu sudah nyaman membayar langganan dan butuh paket riset marketplace all-in dengan cakupan lebih luas dari Shopee saja, Datapinter masuk akal. Untuk sebagian besar pemula yang fokus Shopee dan ingin memutuskan produk tanpa komitmen bulanan, alternatif gratis sudah cukup.</p>
+    <p>Kalau kamu sudah nyaman membayar langganan dan butuh paket riset marketplace all-in dengan cakupan lebih luas, Datapinter masuk akal. Untuk sebagian besar pemula yang ingin memutuskan produk tanpa komitmen bulanan &mdash; entah jualannya di Shopee, TikTok Shop, Tokopedia, Lazada, atau Blibli &mdash; alternatif gratis sudah cukup.</p>
 
     <h2>Baca lebih lanjut</h2>
     <p>Perbandingan fitur-ke-fitur lengkap ada di <a href="/perbandingan/larisid-vs-datapinter/">LarisID vs Datapinter</a>, dan daftar semua opsi di <a href="/perbandingan/alat-riset-produk-shopee-terbaik/">alat riset produk Shopee terbaik</a>.</p>`,
@@ -448,6 +479,66 @@ const ANGLE_PAGES = [
       { q: 'Apa alternatif Datapinter yang gratis?', a: 'LarisID. Ia menyediakan riset produk Shopee yang sebanding — data listing nyata, tren, analisis kompetitor, dan skor kelayakan — secara 100% gratis, tanpa langganan ~Rp 299.000/bulan.' },
       { q: 'Apakah alternatif gratis sebagus Datapinter?', a: 'Untuk riset produk Shopee (harga, permintaan, persaingan, kelayakan), LarisID mencakup kebutuhan inti secara gratis. Datapinter tetap unggul jika kamu butuh cakupan marketplace yang lebih luas dari Shopee dan paket langganan all-in.' },
       { q: 'Kenapa LarisID gratis sementara Datapinter berbayar?', a: 'LarisID menjalankan misi akses untuk semua seller: tier gratis yang bermakna dengan batas harian yang jujur, bukan jebakan berbayar. "Terjual" tetap ditandai sebagai estimasi dan tidak ada janji "dijamin laku".' },
+    ],
+  },
+  {
+    slug: 'alternatif-kalodata-gratis',
+    title: 'Alternatif Kalodata Gratis untuk Riset Produk TikTok Shop (2026)',
+    desc: 'Cari alternatif Kalodata yang gratis? Ini yang bisa dan tidak bisa digantikan tanpa biaya — LarisID gratis untuk memilih produk dan menghitung margin TikTok Shop, plus kapan Kalodata tetap sepadan.',
+    h1: 'Alternatif Kalodata Gratis',
+    lead: 'Kalodata berlangganan sekitar $49,99-109,99 per bulan (kira-kira Rp 800.000-1.760.000) dan tidak punya paket gratis. Sebelum membayar, pahami dulu bagian mana yang benar-benar bisa kamu gantikan gratis — dan bagian mana yang tidak.',
+    body: `    <p>Kalodata adalah alat analitik <strong>TikTok Shop</strong> dengan pangsa pasar terbesar: omzet (GMV) per toko dan per produk, performa kreator afiliasi, serta pembedahan video dan live. Paket Starter sekitar <strong>$49,99/bulan</strong> dan Professional sekitar <strong>$109,99/bulan</strong>, tanpa paket gratis permanen.</p>
+
+    <p>Jawaban jujurnya: <strong>tidak semua bagian Kalodata punya pengganti gratis.</strong> Mari pisahkan dua kebutuhan yang sering tercampur.</p>
+
+    <h2>Yang BISA kamu dapat gratis</h2>
+    <p>Kalau yang kamu butuhkan adalah <em>memutuskan produk apa yang layak dijual dan apakah masih untung</em>, itu bisa gratis sepenuhnya di <a href="/">LarisID</a>:</p>
+    <ul>
+      <li><strong>Permintaan produk nyata</strong> — harga median, rentang harga, jumlah ulasan dan toko pesaing per keyword.</li>
+      <li><strong>Skor kelayakan 0-100</strong> dan analisa mendalam per produk (tren, kompetitor, keyword).</li>
+      <li><strong>Kalkulator komisi &amp; margin untuk 5 marketplace</strong> — Shopee, TikTok Shop, Tokopedia, Lazada, Blibli — dengan tarif komisi per kategori, jadi kamu tahu dana bersih yang diterima sebelum kulakan.</li>
+      <li><strong>Ratusan halaman <a href="/riset/">riset pasar per keyword</a></strong>, terbuka tanpa login.</li>
+    </ul>
+    <p>Semuanya Rp 0, tanpa kartu kredit dan tanpa langganan.</p>
+
+    <h2>Yang TIDAK ada gantinya gratis</h2>
+    <ul>
+      <li><strong>GMV per toko dan produk di TikTok Shop.</strong> Angka omzet TikTok Shop per toko tidak tersedia gratis di mana pun.</li>
+      <li><strong>Performa kreator afiliasi.</strong> Kreator mana yang menjual paling banyak, dengan komisi berapa.</li>
+      <li><strong>Analitik video &amp; live.</strong> Video atau sesi live mana yang menghasilkan penjualan.</li>
+    </ul>
+    <p>Kalau strategimu bertumpu pada jalur kreator dan konten TikTok, <strong>Kalodata memang sepadan</strong> dan tidak ada alat gratis yang menyamainya. Kami lebih memilih mengatakannya terus terang daripada menjual harapan.</p>
+
+    <h2>Perbandingan singkat</h2>
+    <div class="compare-wrap">
+      <table class="compare">
+        <thead><tr><th>Kebutuhan</th><th>LarisID (gratis)</th><th>Kalodata (berbayar)</th></tr></thead>
+        <tbody>
+          <tr><td>Memilih produk yang layak dijual</td><td class="yes">Ya</td><td>Sebagian</td></tr>
+          <tr><td>Hitung margin setelah komisi TikTok Shop</td><td class="yes">Ya</td><td>Tidak</td></tr>
+          <tr><td>Skor kelayakan produk</td><td class="yes">Ya (0-100)</td><td>Tidak</td></tr>
+          <tr><td>GMV toko &amp; produk TikTok Shop</td><td>Tidak</td><td class="yes">Ya</td></tr>
+          <tr><td>Data kreator, video &amp; live</td><td>Tidak</td><td class="yes">Ya</td></tr>
+          <tr><td>Harga</td><td><strong>Rp 0</strong></td><td>~$49,99-109,99/bulan</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="disclaimer">Harga Kalodata adalah perkiraan publik per ${UPDATED_HUMAN}, ditagih dalam USD dan bisa berubah — verifikasi di situs resmi mereka.</p>
+
+    <h2>Cara mulai gratis hari ini</h2>
+    <ol>
+      <li>Buka <a href="/">LarisID</a> dan tulis rencana jualanmu dengan bahasa biasa.</li>
+      <li>Bandingkan kandidat produk lewat harga median, jumlah ulasan, dan jumlah pesaing.</li>
+      <li>Hitung untungnya di kalkulator komisi untuk marketplace yang kamu pakai.</li>
+      <li>Kalau nanti kamu serius menggarap kreator TikTok, baru pertimbangkan Kalodata.</li>
+    </ol>
+
+    <h2>Baca lebih lanjut</h2>
+    <p>Perbandingan fitur-ke-fitur lengkap ada di <a href="/perbandingan/larisid-vs-kalodata/">LarisID vs Kalodata</a>.</p>`,
+    faqs: [
+      { q: 'Apa alternatif Kalodata yang gratis?', a: 'Untuk memilih produk yang layak dijual dan menghitung margin setelah komisi TikTok Shop, LarisID melakukannya 100% gratis. Untuk data GMV toko, kreator, dan video TikTok Shop, belum ada alternatif gratis yang setara dengan Kalodata.' },
+      { q: 'Apakah Kalodata punya versi gratis?', a: 'Tidak ada paket gratis permanen — hanya trial terbatas. Paket berbayarnya diperkirakan mulai sekitar $49,99/bulan untuk Starter dan $109,99/bulan untuk Professional. Verifikasi harga terbaru di situs resmi Kalodata.' },
+      { q: 'Apakah saya tetap butuh Kalodata kalau sudah pakai LarisID?', a: 'Kalau kamu menjual lewat kreator afiliasi dan konten TikTok, ya — Kalodata memberi data GMV dan kreator yang tidak dimiliki LarisID. Kalau kamu masih pada tahap memilih produk dan memastikan margin, LarisID gratis sudah menutup kebutuhan itu.' },
     ],
   },
 ];
