@@ -1468,6 +1468,19 @@ function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
 
+/**
+ * Shopee serves the original upload at /file/<hash> — typically 1024x1024 and
+ * 250-450KB (some over 1MB). Every grid card, table row and thumb strip we draw
+ * is at most ~160 CSS px, so the `_tn.webp` variant (320px WebP, ~20KB) is the
+ * right pixel size at 2x DPR and cuts a 60-card search grid from ~11MB to <1MB.
+ * Only the full-bleed deep-dive carousel should keep the original.
+ * Non-Shopee or already-suffixed URLs pass through untouched.
+ */
+function imgThumb(url) {
+  const u = String(url || '');
+  return /^https:\/\/cf\.shopee\.co\.id\/file\/[\w-]+$/.test(u) ? u + '_tn.webp' : u;
+}
+
 const GARUDA_LOAD_POSES = [
   { id: 'binocs', src: '/images/brand/mascot-load-binocs.webp', w: 496, h: 641 },
   { id: 'magnify', src: '/images/brand/mascot-load-magnify.webp', w: 483, h: 558 },
@@ -6066,7 +6079,7 @@ function trendingRowHtml(r, i) {
   const key = `${esc(r.item_id)}|${esc(r.shop_id)}`;
   return `<tr data-titem="${key}" tabindex="0" role="button" aria-label="Lihat analisa ${(r.product_name || 'produk').slice(0, 40)}">
     <td class="tr-rank">${i + 1}</td>
-    <td><div class="tr-prod">${r.image_url ? `<img src="${esc(r.image_url)}" alt="" loading="lazy">` : '<span class="ph"></span>'}<div><div class="tr-prod-name">${esc((r.product_name || '').slice(0, 60))}</div><div class="tr-prod-cat">${esc(r.category || '')}</div></div></div></td>
+    <td><div class="tr-prod">${r.image_url ? `<img src="${esc(imgThumb(r.image_url))}" alt="" loading="lazy" decoding="async">` : '<span class="ph"></span>'}<div><div class="tr-prod-name">${esc((r.product_name || '').slice(0, 60))}</div><div class="tr-prod-cat">${esc(r.category || '')}</div></div></div></td>
     <td>${pctHtml(r._pct)}</td>
     <td><span class="pct-up">${ico('arrowUp', 11)} ${fmtSold(r._delta)}</span></td>
     <td>${fmtRp(r.price)}</td>
@@ -7913,7 +7926,7 @@ function productCardHtml(p, i, omsetRange) {
     ? `${fmtRpShort(lo)} – ${fmtRpShort(hi)}`
     : (omset ? fmtOmset(omset) : '—');
   return `<button type="button" class="prod-card" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} style="animation-delay:${i * 0.06}s">
-    ${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : '<div class="prod-card-ph"></div>'}
+    ${img ? `<img src="${esc(imgThumb(img))}" alt="" loading="lazy" decoding="async" width="320" height="320">` : '<div class="prod-card-ph"></div>'}
     <div class="prod-card-body">
       <div class="prod-card-name-row">
         <div class="prod-card-name">${esc(name)}</div>
@@ -8001,7 +8014,7 @@ function deepDiveChatCardHtml(product, scoreInfo, stats) {
   const komp = stats?.komp || '—';
   return `<div class="dd-chat-card" data-dd-card="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''}>
     <div class="dd-chat-card-top">
-      ${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : '<span class="dd-chat-card-ph"></span>'}
+      ${img ? `<img src="${esc(imgThumb(img))}" alt="" loading="lazy" decoding="async">` : '<span class="dd-chat-card-ph"></span>'}
       <div class="dd-chat-card-main">
         <div class="dd-chat-card-eyebrow">Deep Dive</div>
         <div class="dd-chat-card-name">${esc(name)}</div>
@@ -9459,7 +9472,7 @@ function ddHeaderMediaHtml(product, peers) {
     </div>
     <div class="ddr-gallery-thumbs" role="tablist" aria-label="Pilih foto" style="grid-template-columns:repeat(${Math.min(imgs.length, 5)},1fr)">
       ${imgs.slice(0, 5).map((u, i) => `<button type="button" class="ddr-gallery-thumb${i === 0 ? ' on' : ''}" data-ddr-dot="${i}" data-ddr-src="${esc(u)}" aria-label="Foto ${i + 1}" aria-selected="${i === 0 ? 'true' : 'false'}">
-        <img src="${esc(u)}" alt="" loading="lazy" draggable="false">
+        <img src="${esc(imgThumb(u))}" alt="" loading="lazy" decoding="async" draggable="false">
       </button>`).join('')}
     </div>
   </div>`;
@@ -10008,7 +10021,7 @@ function ddKompetitorTableHtml(share, opts = {}) {
     // Whole row is clickable — users tap the tok name, not just the tiny "Lihat" button.
     return `<tr class="komp-click-row"${i >= 5 ? ' data-komp-extra hidden' : ''} data-kshop="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} role="link" tabindex="0" aria-label="Buka Deep Dive ${esc((s.name || 'kompetitor').slice(0, 40))}">
       <td class="tr-rank">${i + 1}</td>
-      <td><div class="tr-prod" style="min-width:140px"><span class="comp-av">${s.img ? `<img src="${esc(s.img)}" alt="" loading="lazy">` : esc((s.name || 'T').charAt(0).toUpperCase())}</span><div class="tr-prod-name">${esc((s.name || 'Toko').slice(0, 28))}</div></div></td>
+      <td><div class="tr-prod" style="min-width:140px"><span class="comp-av">${s.img ? `<img src="${esc(imgThumb(s.img))}" alt="" loading="lazy" decoding="async">` : esc((s.name || 'T').charAt(0).toUpperCase())}</span><div class="tr-prod-name">${esc((s.name || 'Toko').slice(0, 28))}</div></div></td>
       <td>${omsetMo ? fmtRpShort(omsetMo) : '—'}</td>
       <td>${s.share}%</td>
       <td><span class="komp-open-hint">Deep Dive →</span></td>
@@ -12174,7 +12187,7 @@ function typeCardHtml(t, absIdx, animIdx) {
   const tlr = t._terlaris || null;
   return `<button type="button" class="prod-card ptype-card${tlr ? ' prod-card--terlaris' : ''}" data-ptype="${absIdx}" data-ptype-kw="${esc(t.keyword || '')}" style="animation-delay:${(animIdx % 3) * 0.06}s">
     ${tlr ? terlarisBadgeHtml() : ''}
-    ${mainImg ? `<img src="${esc(mainImg)}" alt="" loading="lazy">` : '<div class="prod-card-ph"></div>'}
+    ${mainImg ? `<img src="${esc(imgThumb(mainImg))}" alt="" loading="lazy" decoding="async" width="320" height="320">` : '<div class="prod-card-ph"></div>'}
     <div class="prod-card-body">
       <div class="prod-card-name-row">
         <div class="prod-card-name">${esc(typeTitle(t.keyword))}</div>
@@ -12393,7 +12406,7 @@ function productCompareSideHtml(p, meta, label) {
   return `
     <div class="cmp2-side">
       <div class="cmp2-label">${esc(label)}</div>
-      ${p.image_url ? `<img class="cmp2-img" src="${esc(p.image_url)}" alt="">` : '<div class="cmp2-img ph"></div>'}
+      ${p.image_url ? `<img class="cmp2-img" src="${esc(imgThumb(p.image_url))}" alt="" decoding="async">` : '<div class="cmp2-img ph"></div>'}
       <h3 class="cmp2-name">${esc(p.product_name || p.keyword || 'Produk')}</h3>
       <p class="cmp2-store dd-sub">${esc(p.store_name || '—')}</p>
       ${score ? `<div class="cmp2-score"><span class="badge ${score.cls}">${score.label}</span><strong>${score.score}</strong><span>/100</span></div>` : ''}
@@ -14043,8 +14056,7 @@ function _supTint(id) {
  * file is ~40 KB; `_tn.webp` is the CDN thumbnail (~3 KB) for a 44px tile.
  */
 function _supThumb(url) {
-  const u = String(url || '');
-  return /^https:\/\/cf\.shopee\.co\.id\/file\/[\w-]+$/.test(u) ? u + '_tn.webp' : u;
+  return imgThumb(url);
 }
 
 /**
