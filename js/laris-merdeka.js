@@ -198,22 +198,70 @@
         '<p class="mdk-promo-kicker">Semangat</p>' +
         '<h2 id="mdk-promo-title" class="mdk-promo-title">KEMERDEKAAN!</h2>' +
         '<p class="mdk-promo-lead">Rayakan HUT RI ke-81 bersama Laris. Jelajahi peluang produk sebanyak-banyaknya.</p>' +
-        '<img class="mdk-promo-mascot" src="/images/brand/mascot-merdeka.webp" width="220" height="330" alt="" decoding="async">' +
-        '<div class="mdk-promo-offer">' +
-          '<p class="mdk-promo-when">Mulai <strong>Minggu, 16 Agustus 08.00</strong> WIB sampai ' +
-            '<strong>Senin, 17 Agustus 23.59</strong> WIB</p>' +
-          '<p class="mdk-promo-badge"><span class="mdk-promo-inf">∞</span> TANPA BATAS</p>' +
-          '<p class="mdk-promo-feat">Deep Dive Search <strong>unlimited</strong></p>' +
+        '<div class="mdk-promo-mid">' +
+          '<img class="mdk-promo-mascot" src="/images/brand/mascot-merdeka.webp" width="220" height="330" alt="" decoding="async">' +
+          '<div class="mdk-promo-copy">' +
+            '<div class="mdk-promo-offer">' +
+              '<p class="mdk-promo-when">Mulai <strong>Minggu, 16 Agustus 08.00</strong> WIB sampai ' +
+                '<strong>Senin, 17 Agustus 23.59</strong> WIB</p>' +
+              '<p class="mdk-promo-badge"><span class="mdk-promo-inf">∞</span> TANPA BATAS</p>' +
+              '<p class="mdk-promo-feat">Deep Dive Search <strong>unlimited</strong></p>' +
+            '</div>' +
+            '<p class="mdk-promo-foot">Manfaatkan momen ini untuk menemukan produk yang tepat. Setelah Senin malam, jatah 10 per hari kembali seperti biasa.</p>' +
+          '</div>' +
         '</div>' +
-        '<p class="mdk-promo-foot">Manfaatkan momen ini untuk menemukan produk yang tepat. Setelah Senin malam, jatah 10 per hari kembali seperti biasa.</p>' +
         '<button type="button" class="mdk-promo-cta">Siap, cari produk terbaik!</button>' +
       '</div>';
 
-    function dismiss() {
-      try { localStorage.setItem(LS_PROMO, '1'); } catch (e) {}
+    function pillVisible(el) {
+      if (!el) return false;
+      var r = el.getBoundingClientRect();
+      return r.width > 8 && r.height > 8 && r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth;
+    }
+
+    function findUsagePill() {
+      var header = document.querySelector('.usage-pill--header');
+      if (pillVisible(header)) return header;
+      var pills = document.querySelectorAll('[data-usage-pill]');
+      var i;
+      for (i = 0; i < pills.length; i++) {
+        if (pillVisible(pills[i])) return pills[i];
+      }
+      return pills[0] || null;
+    }
+
+    function finishDismiss() {
       wrap.remove();
       state.promoEl = null;
       document.removeEventListener('keydown', onKey);
+    }
+
+    function dismiss() {
+      try { localStorage.setItem(LS_PROMO, '1'); } catch (e) {}
+      document.removeEventListener('keydown', onKey);
+      var card = wrap.querySelector('.mdk-promo-card');
+      var pill = findUsagePill();
+      var reduce = false;
+      try {
+        reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      } catch (e) {}
+      if (reduce || !card || !pill) {
+        finishDismiss();
+        return;
+      }
+      var cr = card.getBoundingClientRect();
+      var pr = pill.getBoundingClientRect();
+      var tx = (pr.left + pr.width / 2) - (cr.left + cr.width / 2);
+      var ty = (pr.top + pr.height / 2) - (cr.top + cr.height / 2);
+      var scale = Math.max(0.06, Math.min(pr.width / cr.width, pr.height / cr.height));
+      wrap.classList.add('mdk-promo--absorb');
+      void card.offsetWidth;
+      card.style.transform = 'translate(' + Math.round(tx) + 'px, ' + Math.round(ty) + 'px) scale(' + scale + ')';
+      try { pill.classList.add('usage-pill--glow'); } catch (e) {}
+      window.setTimeout(function () {
+        try { pill.classList.remove('usage-pill--glow'); } catch (e) {}
+        finishDismiss();
+      }, 520);
     }
 
     function onCta() {
