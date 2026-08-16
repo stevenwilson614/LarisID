@@ -2435,9 +2435,12 @@ async function pendingCohortJoinIfAny() {
   }
 }
 
-async function _authOnSignIn(session) {
+async function _authOnSignIn(session, opts) {
   currentUser = session.user || _decodeJwtUser(session.access_token);
   if (!currentUser) { _clearSessionRestoring(); return; }
+  if (!(opts && opts.fromRestore)) {
+    try { window.LarisMerdeka && window.LarisMerdeka.showPromo(true); } catch (_) {}
+  }
   if (!session.user) {
     session.user = currentUser;
     _authSave(session);
@@ -2553,6 +2556,7 @@ function dismissLogoutChrome() {
 
 function _authOnSignOut() {
   currentUser = null;
+  try { window.LarisMerdeka && window.LarisMerdeka.resetPromo(); } catch (_) {}
   _accessState = { loaded: false, role: 'independent', isAdmin: false, isLeader: false };
   _authClear();
   _clearSessionRestoring();
@@ -2587,12 +2591,12 @@ function initSupabase() {
   if (stored?.access_token) {
     const tokenFresh = stored.expires_at && stored.expires_at > Date.now() + 30000;
     if (tokenFresh) {
-      void _authOnSignIn(stored).catch(() => { _authClear(); _clearSessionRestoring(); });
+      void _authOnSignIn(stored, { fromRestore: true }).catch(() => { _authClear(); _clearSessionRestoring(); });
     } else if (stored.refresh_token) {
       _authRefresh(stored.refresh_token).then(s => {
         if (!s) { _authClear(); _clearSessionRestoring(); return; }
         _authSave(s);
-        void _authOnSignIn(s).catch(() => { _authClear(); _clearSessionRestoring(); });
+        void _authOnSignIn(s, { fromRestore: true }).catch(() => { _authClear(); _clearSessionRestoring(); });
       });
     } else {
       _authClear();

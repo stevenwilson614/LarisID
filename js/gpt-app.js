@@ -2862,9 +2862,12 @@ async function consumeOAuthHash() {
   }
 }
 
-async function _authOnSignIn(session) {
+async function _authOnSignIn(session, opts) {
   currentUser = session.user || _decodeJwtUser(session.access_token);
   if (!currentUser) { _clearSessionRestoring(); return; }
+  if (!(opts && opts.fromRestore)) {
+    try { window.LarisMerdeka && window.LarisMerdeka.showPromo(true); } catch (_) {}
+  }
   if (!session.user) { session.user = currentUser; _authSave(session); }
 
   let isNewSignup = false;
@@ -3017,11 +3020,11 @@ async function initSupabase() {
   if (stored?.access_token) {
     const tokenFresh = stored.expires_at && stored.expires_at > Date.now() + 30000;
     if (tokenFresh) {
-      await _authOnSignIn(stored).catch(() => { _authClear(); _clearSessionRestoring(); });
+      await _authOnSignIn(stored, { fromRestore: true }).catch(() => { _authClear(); _clearSessionRestoring(); });
     } else if (stored.refresh_token) {
       const s = await _authRefresh(stored.refresh_token);
       if (!s) { _authClear(); _clearSessionRestoring(); }
-      else { _authSave(s); await _authOnSignIn(s).catch(() => { _authClear(); _clearSessionRestoring(); }); }
+      else { _authSave(s); await _authOnSignIn(s, { fromRestore: true }).catch(() => { _authClear(); _clearSessionRestoring(); }); }
     } else {
       _authClear();
       _clearSessionRestoring();
@@ -3048,6 +3051,7 @@ async function initSupabase() {
 
 async function signOut() {
   try { if (_supabase) await _supabase.auth.signOut(); } catch (_) {}
+  try { window.LarisMerdeka && window.LarisMerdeka.resetPromo(); } catch (_) {}
   _authClear();
   currentUser = null;
   updateAccountUI();

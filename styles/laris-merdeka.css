@@ -210,10 +210,12 @@
 }
 
 .mdk-promo-offer {
+  position: relative;
+  z-index: 2;
   background: #B5202A;
   color: #fff;
   border-radius: 12px;
-  padding: 14px 14px 16px;
+  padding: 14px 14px 16px 118px;
   text-align: center;
   margin: 0 0 12px;
 }
@@ -254,7 +256,10 @@
 }
 
 .mdk-promo-foot {
+  position: relative;
+  z-index: 2;
   margin: 0 0 12px;
+  padding-left: 118px;
   font-size: .82rem;
   line-height: 1.45;
   color: #4B4B4B;
@@ -288,7 +293,7 @@
   width: 128px;
   height: auto;
   pointer-events: none;
-  z-index: 1;
+  z-index: 0;
   filter: drop-shadow(0 6px 10px rgba(26, 26, 26, .18));
 }
 
@@ -297,10 +302,19 @@
     padding: 20px 16px 16px;
   }
   .mdk-promo-mascot {
-    width: 104px;
-    bottom: 68px;
+    position: relative;
+    left: auto;
+    bottom: auto;
+    display: block;
+    width: 96px;
+    margin: 0 auto 10px;
+    z-index: 0;
+  }
+  .mdk-promo-offer {
+    padding: 14px 14px 16px;
   }
   .mdk-promo-foot {
+    padding-left: 0;
     font-size: .78rem;
   }
 }

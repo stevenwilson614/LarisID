@@ -198,6 +198,7 @@
         '<p class="mdk-promo-kicker">Semangat</p>' +
         '<h2 id="mdk-promo-title" class="mdk-promo-title">KEMERDEKAAN!</h2>' +
         '<p class="mdk-promo-lead">Rayakan HUT RI ke-81 bersama Laris. Jelajahi peluang produk sebanyak-banyaknya.</p>' +
+        '<img class="mdk-promo-mascot" src="/images/brand/mascot-merdeka.webp" width="220" height="330" alt="" decoding="async">' +
         '<div class="mdk-promo-offer">' +
           '<p class="mdk-promo-when">Mulai <strong>Minggu, 16 Agustus 08.00</strong> WIB sampai ' +
             '<strong>Senin, 17 Agustus 23.59</strong> WIB</p>' +
@@ -206,7 +207,6 @@
         '</div>' +
         '<p class="mdk-promo-foot">Manfaatkan momen ini untuk menemukan produk yang tepat. Setelah Senin malam, jatah 10 per hari kembali seperti biasa.</p>' +
         '<button type="button" class="mdk-promo-cta">Siap, cari produk terbaik!</button>' +
-        '<img class="mdk-promo-mascot" src="/images/brand/mascot-merdeka.webp" width="220" height="330" alt="" decoding="async">' +
       '</div>';
 
     function dismiss() {
@@ -241,6 +241,17 @@
 
   function lsReadPromo() {
     try { return localStorage.getItem(LS_PROMO); } catch (e) { return null; }
+  }
+
+  function resetPromoDismiss() {
+    try { localStorage.removeItem(LS_PROMO); } catch (e) {}
+  }
+
+  function showPromo(force) {
+    if (force) resetPromoDismiss();
+    if (state.promoEl && document.getElementById('mdk-promo')) return state.promoEl;
+    try { state.promoEl = insertPromoModal(); } catch (e) { return null; }
+    return state.promoEl;
   }
 
   /* ── resize handling ─────────────────────────────────────────────── */
@@ -333,6 +344,8 @@
     unmount: unmount,
     isActive: isActive,
     isUnlimited: isUnlimitedWindow,
+    showPromo: showPromo,
+    resetPromo: resetPromoDismiss,
     endsAt: function () { return new Date(UNLIMITED_END_MS); },
   };
 })(typeof window !== 'undefined' ? window : this);
