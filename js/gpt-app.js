@@ -1340,6 +1340,7 @@ const state = {
   dirCats: [],     // multi-select category_canonical filter (empty = all)
   dirCities: [],   // multi-select city filter (empty = ALL / nasional)
   dirSearch: '',   // sticky Produk search query (filters the directory grid)
+  dirNearby: false, // current dirTypes came from listing-title nearby lift
   dirSub: null,    // selected sub-group within a single selected category
   dirSort: 'sesuai',
   dirRangeFilters: null,
@@ -4165,6 +4166,7 @@ async function runResultsBarSearch(q) {
   void logUserEvent('search_query', {
     ui: 'gpt', how: 'results_bar', query,
     results_count: Array.isArray(state.dirTypes) ? state.dirTypes.length : null,
+    nearby: !!state.dirNearby,
   });
   gptLogSearchHistory(query, 'results_bar');
   funnelStep('first_search', { source: 'results_bar' });
@@ -7643,9 +7645,17 @@ async function replyWithPasarTypes(chat, text, types, opts = {}) {
   registerTypes(types);
   const placeLabel = opts.placeLabel || '';
   const en = detectReplyLanguage(text) === 'en';
-  const lead = en
-    ? `${types.length} market${types.length > 1 ? 's' : ''} matching \u201c${esc(opts.label || text)}\u201d${placeLabel ? ` around <strong>${esc(placeLabel)}</strong>` : ''} \u2014 each card is a whole market, not one listing:`
-    : `${types.length} pasar yang cocok dengan \u201c${esc(opts.label || text)}\u201d${placeLabel ? ` di sekitar <strong>${esc(placeLabel)}</strong>` : ''} \u2014 tiap kartu itu satu pasar, bukan satu listing:`;
+  const qLabel = esc(opts.label || text);
+  let lead;
+  if (opts.nearby) {
+    lead = en
+      ? `No market for \u201c${qLabel}\u201d${placeLabel ? ` around <strong>${esc(placeLabel)}</strong>` : ''}. These nearby markets have similar products:`
+      : `Belum ketemu pasar untuk \u201c${qLabel}\u201d${placeLabel ? ` di sekitar <strong>${esc(placeLabel)}</strong>` : ''}. Ini pasar terdekat yang punya produk mirip:`;
+  } else {
+    lead = en
+      ? `${types.length} market${types.length > 1 ? 's' : ''} matching \u201c${qLabel}\u201d${placeLabel ? ` around <strong>${esc(placeLabel)}</strong>` : ''} \u2014 each card is a whole market, not one listing:`
+      : `${types.length} pasar yang cocok dengan \u201c${qLabel}\u201d${placeLabel ? ` di sekitar <strong>${esc(placeLabel)}</strong>` : ''} \u2014 tiap kartu itu satu pasar, bukan satu listing:`;
+  }
   // When the query named a brand (DeepSeek-corrected) but none of the markets
   // we're about to show actually carry it, say so explicitly instead of
   // silently substituting the closest product type \u2014 this is the
@@ -7668,7 +7678,9 @@ async function replyWithPasarTypes(chat, text, types, opts = {}) {
   }, html);
   bindTypeCards();
   void hydrateProdCardsIn();
-  void logUserEvent('discover_view', { ui: 'gpt', q: text, count: types.length, level: 'pasar' });
+  void logUserEvent('discover_view', {
+    ui: 'gpt', q: text, count: types.length, level: 'pasar', nearby: opts.nearby ? 1 : 0,
+  });
   return true;
 }
 
@@ -11839,7 +11851,6 @@ async function handleComposerSubmit(text) {
       return;
     }
     const place = parsePlaceFromQuery(text);
-    const locations = place.locations || [];
     const cleaned = cleanDiscoveryQuery(place.cleaned || text) || (place.cleaned || text);
     const placeLabel = place.label || place.city || '';
 
@@ -11847,15 +11858,12 @@ async function handleComposerSubmit(text) {
     const types = await searchProductTypes(cleaned, place.city || '', 12);
     if (await replyWithPasarTypes(chat, text, types, { loading, label: cleaned, placeLabel })) return;
 
-    // No market matched by name. Widen instead of dropping to listings: run the
-    // listing search (which already applies the multilingual query plan) and
-    // lift whatever it finds back up to the markets those listings belong to.
-    // A single listing is never the answer to a top-level search — individual
-    // products live one level down, in a market's Kompetitor table.
-    const result = await searchProductsForQuery(cleaned, locations, 24);
-    const widened = await typesForListings(result.products, place.city || '', 12);
+    // No market matched by name. Lift listing-title hits to nearby markets
+    // (same helper as the Produk search bar). Do not run DeepSeek extras as
+    // standalone keyword searches — that dumps adjacent pasar as if they matched.
+    const widened = await searchNearbyProductTypes(cleaned, place.city || '', 12);
     if (widened.length && await replyWithPasarTypes(chat, text, widened, {
-      loading, label: cleaned, placeLabel, brand: result.brand,
+      loading, label: cleaned, placeLabel, nearby: true,
     })) return;
 
     // Dead-end rescue: both the pasar search and the listing-widening found
@@ -11885,8 +11893,9 @@ async function handleComposerSubmit(text) {
     } else if (!currentUser) {
       bumpAnonSearch();
     }
-    const html = searchClarifyHtml(text, result.domain);
-    void logUncoveredSearch(text, { brand: result.brand, category: result.domain?.id || null });
+    const domain = detectSearchDomain(cleaned.toLowerCase());
+    const html = searchClarifyHtml(text, domain);
+    void logUncoveredSearch(text, { category: domain?.id || null });
     if (loading) await revealAssistant(loading, html);
     else await appendAssistantStream(html);
     pushMessage(chat, 'assistant', {
@@ -11900,7 +11909,7 @@ async function handleComposerSubmit(text) {
       q: text,
       count: 0,
       clarify: 1,
-      domain: result.domain?.id || '',
+      domain: domain?.id || '',
     });
     return;
   }
@@ -13116,7 +13125,10 @@ async function typesForListings(rows, city, limit = 12) {
 
 /** Market grid markup, so call sites read the same as the old productCardsHtml. */
 function marketCardsHtml(types) {
-  return markTerlarisMinggu(types || []).map((t, i) => typeCardHtml(t, i, i)).join('');
+  const list = types || [];
+  // Nearby fallback is "pasar terdekat", not the query's weekly winner.
+  const pinned = list.some(t => t._nearby) ? list : markTerlarisMinggu(list);
+  return pinned.map((t, i) => typeCardHtml(t, i, i)).join('');
 }
 
 function bindTypeCards(root) {
@@ -13464,10 +13476,13 @@ async function renderSubcats(cat) {
 // Rebuild the Kota options from the active Provinsi (all cities when none).
 /** Heading reflects active Produk search / category / user's home city. */
 /** Small caption under #dir-heading: "Menampilkan {shown} dari {total} produk". */
-function updateDirCount(total, shown) {
+function updateDirCount(total, shown, nearby) {
   const el = $('dir-count');
   if (!el) return;
-  el.textContent = total ? `Menampilkan ${shown} dari ${total} produk` : '';
+  if (!total) { el.textContent = ''; return; }
+  el.textContent = nearby
+    ? `Menampilkan ${shown} dari ${total} pasar terdekat`
+    : `Menampilkan ${shown} dari ${total} produk`;
 }
 
 function updateDirHeading() {
@@ -13555,12 +13570,17 @@ async function renderDirectory() {
     grid.innerHTML = garudaLoadingHtml('Memuat…');
   }
   let types;
+  let nearby = false;
   if (q) {
     types = await searchProductTypes(q, cities, 60);
     // Text search must ignore category/subgroup chips. Soccer shoes live in
     // "Sepatu, Tas & Aksesoris", so "sepatu bola" + Olahraga/Fashion selected
     // used to hard-filter to 0 and show "Belum ketemu pasar". Same rule as
     // dscFetchPage (Discover listings).
+    if (!types.length) {
+      types = await searchNearbyProductTypes(q, cities, 60);
+      nearby = !!types.length;
+    }
   } else {
     types = await fetchProductTypes(cities, cats, 1000, sub);
     // mv missing/empty (e.g. refresh failed): lift the listing pool back up to
@@ -13577,8 +13597,10 @@ async function renderDirectory() {
   types = sortTypeRows(types, state.dirSort || 'sesuai', !!q);
   // Pin the category's weekly winner to index 0 before pagination — otherwise
   // omset sort leaves the gold card in slot 2 (or off page 1 entirely).
-  types = markTerlarisMinggu(types);
+  // Nearby cards are "pasar terdekat", not this query's weekly winner.
+  if (!nearby) types = markTerlarisMinggu(types);
   state.dirTypes = types;
+  state.dirNearby = nearby;
   registerTypes(types);
 
   if (state.dirPage > 1 && !currentUser) {
@@ -13590,11 +13612,18 @@ async function renderDirectory() {
   const emptyMsg = q
     ? `<p class="dd-sub">Belum ketemu pasar untuk "<strong>${esc(q)}</strong>". Coba kata kunci lain.</p>`
     : '<p class="dd-sub">Tidak ada tipe produk untuk filter ini.</p>';
-  grid.innerHTML = slice.map((t, i) => typeCardHtml(t, start + i, i)).join('') || emptyMsg;
+  const nearbyLead = nearby
+    ? `<p class="dd-sub dir-nearby-lead">Belum ketemu pasar untuk "<strong>${esc(q)}</strong>". Ini pasar terdekat yang punya produk mirip:</p>`
+    : '';
+  const cards = slice.map((t, i) => typeCardHtml(t, start + i, i)).join('');
+  grid.innerHTML = cards ? (nearbyLead + cards) : emptyMsg;
   bindTypeCards(grid);
   scrollPanelToTop();
   renderDirPager(pager, types.length);
-  updateDirCount(types.length, slice.length);
+  updateDirCount(types.length, slice.length, nearby);
+  if (q && !types.length) {
+    void logUncoveredSearch(q, { category: detectSearchDomain(q.toLowerCase())?.id || null });
+  }
 }
 
 // Shared pager for both directory modes (types + legacy listings).
