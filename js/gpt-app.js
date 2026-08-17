@@ -11314,51 +11314,155 @@ function _gptPocketStats(rows) {
   ].filter(Boolean).join('\n');
 }
 
-async function _mlsAIRaw(system, messages) {
-  const session = _supabase ? (await _supabase.auth.getSession()).data?.session : null;
-  if (!session) return 'Login untuk pakai fitur AI.';
-  const res = await fetch(`${SUPA_URL}/functions/v1/claude-proxy`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 700, system, messages }),
-  });
-  // Not a user cap any more (AI is unlimited) — a 429 here is the upstream
-  // provider rate-limiting us, which the proxy forwards verbatim.
-  if (res.status === 429) return 'AI sedang ramai. Coba lagi sebentar.';
-  if (!res.ok) return 'AI sedang sibuk. Coba lagi sebentar.';
-  const d = await res.json().catch(() => ({}));
-  return d?.content?.[0]?.text || d?.text || d?.message || 'Tidak ada jawaban.';
+// ── AI transport ─────────────────────────────────────────────────────────
+// Both entry points resolve to the same block shape:
+//   { text, thinking, toolUses: [{ id, name, input }], stopReason }
+// Text-only callers read `.text`. Anything driving the tool loop needs
+// toolUses + stopReason, which is why these are no longer plain strings.
+const AI_MAX_TOKENS = 1200;         // simple lookups
+const AI_MAX_TOKENS_DEEP = 3000;    // judgment answers / any turn with thinking
+
+function _aiReply(text, extra = {}) {
+  return { text: text || '', thinking: '', toolUses: [], stopReason: null, ...extra };
+}
+
+function _aiBody(system, messages, opts = {}, stream = false) {
+  const body = {
+    model: 'claude-haiku-4-5-20251001', // proxy rewrites this to deepseek-v4-pro
+    max_tokens: opts.maxTokens || (opts.thinking ? AI_MAX_TOKENS_DEEP : AI_MAX_TOKENS),
+    system,
+    messages,
+  };
+  if (stream) body.stream = true;
+  if (opts.tools?.length) body.tools = opts.tools;
+  if (opts.toolChoice) body.tool_choice = opts.toolChoice;
+  if (opts.thinking) body.thinking = { type: 'enabled' };
+  return body;
 }
 
 /**
- * Streaming variant. Calls onDelta(textChunk) as tokens arrive and resolves with
- * the full reply. Falls back to the non-streaming call on any failure, so a
- * proxy or network that cannot stream still produces an answer.
+ * Apply one Anthropic-style SSE event to the accumulating stream state.
+ * Top-level and pure (state in, callbacks out) so it can be exercised against a
+ * captured upstream stream without a browser.
+ *
+ * st: { full, thinking, stopReason, blocks }  — blocks is index -> block
  */
-async function _mlsAIStream(system, messages, onDelta, signal) {
+function _aiApplySseEvent(ev, st, cbs = {}) {
+  const type = ev?.type;
+  if (type === 'content_block_start') {
+    const cb = ev.content_block || {};
+    st.blocks[ev.index] = { type: cb.type, name: cb.name, id: cb.id, json: '' };
+    if (cb.type === 'tool_use') cbs.onToolStart?.(cb.name);
+    return st;
+  }
+  if (type === 'content_block_delta') {
+    const d = ev.delta || {};
+    // Legacy shape (bare delta.text) kept as a fallback: a proxy that emits
+    // undecorated deltas must keep working.
+    if (d.type === 'text_delta' || (!d.type && d.text)) {
+      const piece = d.text || '';
+      if (piece) { st.full += piece; cbs.onText?.(piece, st.full); }
+    } else if (d.type === 'thinking_delta') {
+      const piece = d.thinking || '';
+      if (piece) { st.thinking += piece; cbs.onThinking?.(piece, st.thinking); }
+    } else if (d.type === 'input_json_delta') {
+      const b = st.blocks[ev.index];
+      if (b) b.json += d.partial_json || '';
+    }
+    // signature_delta is deliberately ignored: DeepSeek accepts the tool round
+    // trip without the thinking block replayed, so we never need the signature.
+    return st;
+  }
+  if (type === 'message_delta' && ev.delta?.stop_reason) st.stopReason = ev.delta.stop_reason;
+  return st;
+}
+
+/** Collect finished tool_use blocks out of stream state. */
+function _aiToolUsesFrom(blocks) {
+  return Object.values(blocks)
+    .filter(b => b.type === 'tool_use' && b.id)
+    .map(b => {
+      let input = {};
+      // Never let a truncated/garbled arg blob throw into the reply path.
+      try { input = b.json ? JSON.parse(b.json) : {}; } catch (_) { input = {}; }
+      return { id: b.id, name: b.name, input };
+    });
+}
+
+/** Non-streaming call. Also the fallback whenever streaming is unavailable. */
+async function _mlsAIPost(system, messages, opts = {}) {
   const session = _supabase ? (await _supabase.auth.getSession()).data?.session : null;
-  if (!session) return 'Login untuk pakai fitur AI.';
+  if (!session) return _aiReply('Login untuk pakai fitur AI.');
   let res;
   try {
     res = await fetch(`${SUPA_URL}/functions/v1/claude-proxy`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 700, system, messages, stream: true }),
-      signal,
+      body: JSON.stringify(_aiBody(system, messages, opts, false)),
+      signal: opts.signal,
     });
   } catch (e) {
-    if (e?.name === 'AbortError') return '';
-    return _mlsAIRaw(system, messages);
+    if (e?.name === 'AbortError') return _aiReply('');
+    return _aiReply('AI sedang sibuk. Coba lagi sebentar.');
   }
   // Not a user cap any more (AI is unlimited) — a 429 here is the upstream
   // provider rate-limiting us, which the proxy forwards verbatim.
-  if (res.status === 429) return 'AI sedang ramai. Coba lagi sebentar.';
-  if (!res.ok || !res.body) return _mlsAIRaw(system, messages);
+  if (res.status === 429) return _aiReply('AI sedang ramai. Coba lagi sebentar.');
+  if (!res.ok) return _aiReply('AI sedang sibuk. Coba lagi sebentar.');
+  const d = await res.json().catch(() => ({}));
+  const blocks = Array.isArray(d?.content) ? d.content : [];
+  const text = blocks.filter(b => b?.type === 'text').map(b => b.text || '').join('')
+    || d?.text || d?.message || '';
+  return {
+    text,
+    thinking: blocks.filter(b => b?.type === 'thinking').map(b => b.thinking || '').join(''),
+    toolUses: blocks.filter(b => b?.type === 'tool_use')
+      .map(b => ({ id: b.id, name: b.name, input: b.input || {} })),
+    stopReason: d?.stop_reason || null,
+  };
+}
+
+/** Legacy string-returning shim — the photo analyzer takes a plain string. */
+async function _mlsAIRaw(system, messages, opts = {}) {
+  const r = await _mlsAIPost(system, messages, opts);
+  return r.text || 'Tidak ada jawaban.';
+}
+
+/**
+ * Streaming variant. onDelta(piece, full) fires as answer text arrives;
+ * onThinking(piece, full) as reasoning arrives; onToolStart(name) when the model
+ * begins requesting a tool. Falls back to the non-streaming call on any failure,
+ * so a proxy or network that cannot stream still produces an answer.
+ */
+async function _mlsAIStream(system, messages, onDelta, signal, opts = {}) {
+  const session = _supabase ? (await _supabase.auth.getSession()).data?.session : null;
+  if (!session) return _aiReply('Login untuk pakai fitur AI.');
+  const post = () => _mlsAIPost(system, messages, { ...opts, signal });
+  let res;
+  try {
+    res = await fetch(`${SUPA_URL}/functions/v1/claude-proxy`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(_aiBody(system, messages, opts, true)),
+      signal,
+    });
+  } catch (e) {
+    if (e?.name === 'AbortError') return _aiReply('');
+    return post();
+  }
+  if (res.status === 429) return _aiReply('AI sedang ramai. Coba lagi sebentar.');
+  if (!res.ok || !res.body) return post();
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buf = '';
-  let full = '';
+  const st = { full: '', thinking: '', stopReason: null, blocks: Object.create(null) };
+  const handle = (ev) => _aiApplySseEvent(ev, st, {
+    onText: onDelta,
+    onThinking: opts.onThinking,
+    onToolStart: opts.onToolStart,
+  });
+
   try {
     for (;;) {
       const { done, value } = await reader.read();
@@ -11372,19 +11476,21 @@ async function _mlsAIStream(system, messages, onDelta, signal) {
           if (!line.startsWith('data:')) continue;
           const raw = line.slice(5).trim();
           if (!raw || raw === '[DONE]') continue;
-          try {
-            const ev = JSON.parse(raw);
-            const piece = ev?.delta?.text || (ev?.type === 'content_block_delta' ? ev?.delta?.text : '') || '';
-            if (piece) { full += piece; onDelta?.(piece, full); }
-          } catch (_) { /* keep-alive or partial frame */ }
+          try { handle(JSON.parse(raw)); } catch (_) { /* keep-alive or partial frame */ }
         }
       }
     }
   } catch (e) {
-    if (e?.name === 'AbortError') return full;
-    if (!full) return _mlsAIRaw(system, messages);
+    if (e?.name !== 'AbortError' && !st.full) return post();
+    // Aborted, or died after partial text: keep whatever already arrived.
   }
-  return full || 'Tidak ada jawaban.';
+
+  return {
+    text: st.full,
+    thinking: st.thinking,
+    toolUses: _aiToolUsesFrom(st.blocks),
+    stopReason: st.stopReason,
+  };
 }
 
 // ── Cross-chat memory ────────────────────────────────────────────────────
@@ -11810,8 +11916,8 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
     const reply = await _mlsAIStream(system, messages, (_piece, full) => {
       acc = full;
       paint();
-    }, _streamAbort.signal);
-    acc = reply || acc;
+    }, _streamAbort.signal, opts);
+    acc = reply.text || acc;
     if (bubble) bubble.innerHTML = mdToHtml(acc) || `<p>${esc(acc)}</p>`;
     return acc;
   } finally {
