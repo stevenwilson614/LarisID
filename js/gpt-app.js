@@ -11014,6 +11014,84 @@ async function _useAi(action) {
   } catch (_) { return false; }
 }
 
+/**
+ * Market-level Skor 0-100, delegated to the directory's own scorer so the
+ * number the AI quotes is byte-identical to the one the UI shows. Load order is
+ * safe: gpt-dir-filters.js and gpt-app.js are both `defer`, which executes in
+ * document order.
+ */
+function _skorOf(row) {
+  try { return window.LarisGptDirFilters?.skorOf?.(row) ?? null; } catch (_) { return null; }
+}
+
+/**
+ * Shared capability contract for every AI surface (product chat, category
+ * evaluation, market agent). Extracted so the three prompt builders cannot
+ * drift apart on what the data does and does not contain.
+ *
+ * The load-bearing part is the 4-part pattern: before this existed the model
+ * answered "which high-skor items are imported from China?" by telling the
+ * user to go look at the Skor Produk themselves. There IS no origin column —
+ * so the only good answer is a partial one, and the model has to be told
+ * explicitly that reasoning past a missing field is required, not optional.
+ */
+function aiCapabilityContract() {
+  return `
+YANG DATA LARISID PUNYA:
+- Per listing: nama produk, nama toko, harga, harga coret, total terjual, estimasi
+  terjual, kategori, keyword/pasar, lokasi seller (WILAYAH INDONESIA saja), rating,
+  jumlah ulasan, tanggal listing, wishlist, status iklan, peringkat pencarian,
+  estimasi omset per bulan.
+- Per pasar (product type): jumlah seller, jumlah listing, harga min/median/max,
+  omset top-15 seller per bulan, pangsa 3 teratas, tren 30 hari, breakout_rate,
+  jumlah produk baru, dan Skor Pasar 0-100.
+
+YANG DATA LARISID TIDAK PUNYA — sebut jujur kalau ditanya, JANGAN mengarang:
+- Negara asal / status impor / produsen. Tidak ada satu pun kolom asal barang.
+- Modal, HPP, harga supplier, margin, dan profit sebenarnya.
+- Ongkir, berat, dimensi.
+- Stok real-time, retur, komplain, biaya iklan, ROAS, konversi.
+- Demografi pembeli, status Shopee Mall / Star Seller, data per varian.
+- Isi foto produk dan kontak supplier.
+
+CARA MENJAWAB KALAU DATANYA CUMA SEBAGIAN (WAJIB, 4 bagian, urut):
+1. JAWAB DULU dari data yang ADA — angka konkret, nama pasar/produk konkret.
+   Jangan pernah membuka dengan "aku tidak punya data itu".
+2. SATU KALIMAT saja menyebut field mana yang tidak ada. Contoh: "Kolom negara
+   asal memang tidak ada di data kami."
+3. LALU BERNALAR dari pengetahuan pasar umum, diberi label jelas ("dari pola pasar
+   Shopee pada umumnya, bukan dari data kami"), dan hubungkan ke proksi yang MEMANG
+   ada di data.
+4. TUTUP dengan satu langkah konkret berikutnya yang bisa user lakukan.
+Bagian 3 itu WAJIB, bukan opsional. Menolak bernalar karena datanya tidak lengkap
+= jawaban gagal. Menyuruh user "cek sendiri" atau "cari sendiri" juga = jawaban gagal.
+
+PROKSI "IMPOR" DI DATA INI (pakai ini, jangan mengaku buta):
+- Lokasi seller di hub impor/grosir: Kab. Tangerang, Jakarta Barat, Jakarta Utara,
+  Tangerang, Jakarta Pusat — konsentrasi importir/reseller terbesar di data.
+- Harga jauh di bawah median pasar sementara total terjual tinggi.
+- Judul menyebut "impor"/"import" (~1,1% dari 864 ribu listing) atau "china"/"cina"/
+  "tiongkok" (~0,4%). Cakupannya kecil — perlakukan sebagai sinyal lemah, bukan sensus.
+Selalu sebut ini PROKSI, bukan bukti asal barang.
+
+SKOR (0-100):
+- Skor Produk dihitung dari: peluang breakout (dari harga & breakout_rate niche),
+  tingkat kompetisi (pangsa 3 teratas), total penjualan pasar, dan banyaknya
+  pembanding. Naik kalau kompetisi rendah, peluang breakout tinggi, dan pasarnya
+  cukup ramai.
+- Skor Pasar dihitung dari: omset top-15, breakout_rate, tren 30 hari, jumlah produk
+  baru (ideal sekitar 20), dikurangi penalti kalau seller lebih dari 15 dan kalau
+  pangsa 3 teratas besar.
+- Kalau user tanya "kenapa skornya segitu" atau "gimana biar lebih tinggi", jawab
+  dari komponen di atas dengan angka pasarnya.`;
+}
+
+/** Length rule shared by every AI surface. Short for lookups, full for judgment. */
+function aiLengthRule(langLabel) {
+  return `- Panjang jawaban mengikuti pertanyaan. Pertanyaan sederhana (harga, berapa, apa itu): 2-4 kalimat. Pertanyaan penilaian, perbandingan, "kenapa", atau yang datanya cuma sebagian: jawab lengkap dengan pola 4 bagian di atas — boleh 2-4 paragraf pendek atau bullet. Jangan memotong bagian 3 (penalaran) demi ringkas.
+- Markdown ringan boleh: **tebal untuk angka/kesimpulan kunci**, bullet pendek (- item), heading ## kalau perlu. Tanpa emoji. Selalu tetap dalam ${langLabel}.`;
+}
+
 function buildProductSystemPrompt(p, question, peers) {
   const niche = p._niche || _dd?.niche;
   const rows = (peers || []).slice().sort((a, b) => (Number(b.total_sold) || 0) - (Number(a.total_sold) || 0));
@@ -11026,6 +11104,20 @@ function buildProductSystemPrompt(p, question, peers) {
   const specStats = _gptBuildSpecStats(rows, question);
   const pocketStats = _gptPocketStats(rows);
   const n = rows.length;
+  // The Skor Produk the UI shows was never in this prompt. Asked "which items
+  // have a high skor", the model had no skor at all and pointing back at the UI
+  // was its only honest move. Recomputed here from the same peers via the same
+  // ddScore() the report uses, so the number it quotes matches the report.
+  const skorStats = n ? ddStats(rows) : null;
+  const scoreInfo = skorStats ? ddScore(p, skorStats, niche) : null;
+  const rp = (v) => `Rp ${Math.round(Number(v) || 0).toLocaleString('id-ID')}`;
+  const skorBlock = scoreInfo ? `
+SKOR PRODUK INI: ${scoreInfo.score}/100 — "${scoreInfo.label}". Komponennya:
+- Peluang breakout: ${scoreInfo.odds.pct}% (${scoreInfo.odds.tier}; dihitung dari ${scoreInfo.odds.src})
+- Kompetisi: ${skorStats.komp} (3 seller teratas menguasai ${Math.round(skorStats.top3Share * 100)}% penjualan)
+- Harga pasar: median ${rp(skorStats.median)}, p25 ${rp(skorStats.p25)}, p75 ${rp(skorStats.p75)}
+- Total terjual sepasar: ${(skorStats.totalSold || 0).toLocaleString('id-ID')} dari ${skorStats.n} pembanding
+` : '';
   const lang = detectReplyLanguage(question);
   const langLabel = replyLanguageLabel(lang);
   const voice = lang === 'en'
@@ -11041,9 +11133,9 @@ PENTING:
 - Jangan arahkan ke "tanya toko" sebagai jawaban utama kalau data pasar sudah bisa menjawab. Boleh sebut konfirmasi ke toko hanya sebagai catatan sekunder.
 - Kalau user tanya cara buka/masuk link toko, link Shopee, kunjungi toko, atau "gimana masuk link toko": JELASKAN bahwa link toko & produk ada di Deep Dive produk ini — buka Deep Dive, lalu pakai tombol/link ke Shopee atau nama toko di halaman analisa. Jangan bilang kamu tidak bisa bantu, dan jangan suruh user "cari di LarisID" secara umum tanpa menyebut Deep Dive.
 - Kalau user minta alternatif / produk lain / kategori lain (bahan lain, daerah lain, "how about…", "bagaimana kalau…", "dresses", "show me tumbler"): sistem UI seharusnya sudah mencari di database. JANGAN mengarang daftar produk. JANGAN bertanya apakah mereka sudah jadi penjual Shopee / onboarding. JANGAN bilang "one moment", "sebentar", "I'll look that up", atau "aku cari dulu" seolah pencarian masih jalan — itu membuat chat macet. Kalau pertanyaan masih tentang PRODUK YANG DILIHAT, jawab dari data di bawah. Kalau jelas minta produk lain dan belum ada hasil di UI, jawab singkat: sebutkan kata kunci produk/kategori yang ingin dicari (satu kalimat), tanpa janji pencarian palsu.
-- Knowledge umum OK hanya sebagai pelengkap singkat, dan label jelas kalau bukan dari data.
 - Jangan bilang kamu "melihat" produk — kamu membaca data.
-- Keep answers short and direct. Simple questions: 2–5 plain sentences. Longer answers may use light markdown: **bold for key numbers/conclusions**, short bullet lists (- item), and ## headings only when needed. No emoji. Always stay in ${langLabel}.
+${aiLengthRule(langLabel)}
+${aiCapabilityContract()}
 
 DATA PRODUK YANG DILIHAT:
 - Nama: ${p.product_name || '—'}
@@ -11056,7 +11148,7 @@ DATA PRODUK YANG DILIHAT:
 - Lokasi: ${p.location || '—'}
 - Toko: ${p.store_name || '—'}
 ${niche ? `- Niche breakout_rate: ${niche.breakout_rate}%, new_items: ${niche.new_items}, breakouts: ${niche.breakouts}` : ''}
-
+${skorBlock}
 DATA PASAR — keyword "${p.keyword || '—'}" (${n} listing kompetitor/sejenis di LarisID):
 ${pocketStats}
 ${specStats}
@@ -11080,10 +11172,17 @@ async function ensurePeerRowsForAi(product) {
   const kw = product.keyword;
   if (!kw || !_supabase) return [];
   try {
+    // listings_deduped, NOT listings: the raw table holds one row per scrape
+    // snapshot per ad/organic slot, so a plain 80-row fetch returned ~29
+    // distinct products repeated ~2.8x. Every share the prompt computes
+    // (_gptBuildSpecStats, _gptPocketStats, TOP 10) was weighted by how often
+    // an item happened to be scraped rather than by its place in the market.
+    // is_offtopic is mandatory on every listings_deduped read.
     const { data } = await _supabase
-      .from('listings')
+      .from('listings_deduped')
       .select('product_name,store_name,price,total_sold,reviews,rating,location,item_id,shop_id,keyword')
       .eq('keyword', kw)
+      .eq('is_offtopic', false)
       .order('total_sold', { ascending: false })
       .limit(80);
     return data || [];
@@ -11630,7 +11729,8 @@ function buildCategoryEvalSystemPrompt(category, types, question) {
   const stats = rows.map((t, i) => {
     const omset = Math.round(Number(t.omset_top15) || 0).toLocaleString('id-ID');
     const trend = Number(t.trend_delta_30d) || 0;
-    return `${i + 1}. ${t.keyword} — ${t.n_sellers ?? '?'} seller, omset top15/bln ~Rp${omset}, breakout_rate ${t.breakout_rate ?? '?'}%, tren 30hr ${trend >= 0 ? '+' : ''}${trend}%`;
+    const skor = _skorOf(t);
+    return `${i + 1}. ${t.keyword} — skor ${skor ?? '?'}/100, ${t.n_sellers ?? '?'} seller, omset top15/bln ~Rp${omset}, breakout_rate ${t.breakout_rate ?? '?'}%, tren 30hr ${trend >= 0 ? '+' : ''}${trend}%`;
   }).join('\n');
   const lang = detectReplyLanguage(question);
   const langLabel = replyLanguageLabel(lang);
@@ -11646,7 +11746,8 @@ PENTING:
 - Kalau data menunjukkan banyak seller + omset tinggi merata, itu artinya kompetisi tinggi/jenuh, bukan otomatis "bagus". Sebutkan sub-pasar mana yang jenuh vs mana yang masih punya breakout_rate/tren naik tinggi dengan seller lebih sedikit (peluang lebih baik untuk pemula).
 - Beri kesimpulan jujur dan spesifik: sub-kategori/niche mana yang lebih layak dicoba, dan mana yang sebaiknya dihindari karena terlalu ramai.
 - Kalau data di bawah kosong atau terlalu tipis untuk disimpulkan, katakan itu terus terang — jangan menebak.
-- Jawaban singkat: 3-6 kalimat atau bullet list singkat. Tanpa emoji.
+${aiLengthRule(langLabel)}
+${aiCapabilityContract()}
 
 DATA PASAR — kategori "${category}" (${rows.length} sub-pasar):
 ${stats || 'Belum ada data pasar yang cukup untuk kategori ini.'}`;
