@@ -974,7 +974,9 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 .prod-card:hover { background: #fafafa; }
 .prod-card img,
 .prod-card-ph {
-  width: 100%; aspect-ratio: 1; object-fit: cover; background: #f0f0f0; display: block;
+  /* height:auto must override the HTML height=320 CLS hint, or aspect-ratio
+     is ignored and cards render ~160×320. */
+  width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; background: #f0f0f0; display: block;
 }
 .prod-card-name-row {
   display: flex; align-items: flex-start; gap: 6px; justify-content: space-between;
