@@ -834,6 +834,23 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 .msg-bubble pre { background: #F5F2EF; border: 1px solid #E3DED9; border-radius: 8px; padding: 10px 12px; overflow-x: auto; margin: 8px 0; }
 .msg-bubble pre code { background: none; padding: 0; font-size: .82rem; }
 .msg-bubble a { color: #8E191F; text-decoration: underline; }
+/* Comparison tables in AI answers. The wrapper scrolls, so a wide table never
+   makes the whole chat scroll sideways on mobile. */
+.md-table-wrap { overflow-x: auto; margin: 10px 0; -webkit-overflow-scrolling: touch; }
+.md-table { border-collapse: collapse; font-size: .84rem; min-width: 100%; }
+.md-table th, .md-table td { border: 1px solid #E3DED9; padding: 6px 10px; text-align: left; white-space: nowrap; }
+.md-table th { background: #F5F2EF; font-weight: 600; }
+.md-table tr:nth-child(even) td { background: #FAF8F6; }
+/* Collapsed reasoning trace above an AI answer. Closed by default: the trace is
+   long and often English, so it is available but never in the way. */
+.ai-think { margin: 0 0 10px; border-left: 2px solid #E3DED9; padding-left: 10px; }
+.ai-think > summary { cursor: pointer; font-size: .78rem; color: #8A8178; list-style: none; user-select: none; }
+.ai-think > summary::-webkit-details-marker { display: none; }
+.ai-think > summary::before { content: '▸ '; }
+.ai-think[open] > summary::before { content: '▾ '; }
+.ai-think > summary:hover { color: #5C5751; }
+.ai-think > div { font-size: .82rem; color: #7A736C; margin-top: 6px; max-height: 260px; overflow-y: auto; }
+.ai-think > div p { margin: 4px 0; }
 .msg.assistant .msg-bubble {
   background: transparent;
   border: none;
@@ -5717,7 +5734,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script defer src="/js/laris-mascot-rigs.js?v=20260812a"></script>
 <script defer src="/js/laris-mascot.js?v=20260812a"></script>
 <script src="/js/admin-map.js?v=20260812a" defer></script>
-<script src="/js/gpt-app.js?v=20260817b" defer></script>
+<script src="/js/gpt-app.js?v=20260817c" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>
 </html>

@@ -1527,10 +1527,36 @@ function mdToHtml(raw) {
   let fence = [];
   let list = null;   // 'ul' | 'ol' currently open
   let para = [];
+  let table = null;  // { head: [...], rows: [[...]] } currently open
   const flushPara = () => { if (para.length) { out.push(`<p>${inline(para.join('<br>'))}</p>`); para = []; } };
   const flushList = () => { if (list) { out.push(`</${list}>`); list = null; } };
-  for (const rawLine of text.split('\n')) {
+  // Tables scroll inside their own container: a wide comparison must never make
+  // the whole chat scroll sideways on mobile.
+  const flushTable = () => {
+    if (!table) return;
+    const th = table.head.map(c => `<th>${inline(c)}</th>`).join('');
+    const tb = table.rows.map(r => `<tr>${r.map(c => `<td>${inline(c)}</td>`).join('')}</tr>`).join('');
+    out.push(`<div class="md-table-wrap"><table class="md-table"><thead><tr>${th}</tr></thead><tbody>${tb}</tbody></table></div>`);
+    table = null;
+  };
+  const cells = (line) => line.replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+  const lines = text.split('\n');
+  for (let li = 0; li < lines.length; li++) {
+    const rawLine = lines[li];
     const line = esc(rawLine.trim());
+    // Tables: a header row followed by a |---|---| separator. Anything else
+    // containing pipes stays ordinary text.
+    if (!inFence && table && /^\|.*\|$/.test(line)) { table.rows.push(cells(line)); continue; }
+    if (!inFence && !table && /^\|.*\|$/.test(line)) {
+      const sep = esc((lines[li + 1] || '').trim());
+      if (/^\|[\s:|-]+\|$/.test(sep) && sep.includes('-')) {
+        flushPara(); flushList();
+        table = { head: cells(line), rows: [] };
+        li++;                       // consume the separator row
+        continue;
+      }
+    }
+    if (table) flushTable();
     // Fenced code blocks — emitted verbatim, never inline-formatted.
     if (/^```/.test(line)) {
       if (inFence) { out.push(`<pre><code>${fence.join('\n')}</code></pre>`); fence = []; inFence = false; }
@@ -1548,7 +1574,7 @@ function mdToHtml(raw) {
     flushList(); para.push(line);
   }
   if (inFence && fence.length) out.push(`<pre><code>${fence.join('\n')}</code></pre>`);
-  flushPara(); flushList();
+  flushPara(); flushList(); flushTable();
   return out.join('');
 }
 function wibMidnightReset() {
@@ -11086,6 +11112,27 @@ SKOR (0-100):
   dari komponen di atas dengan angka pasarnya.`;
 }
 
+/**
+ * Only included on surfaces that actually pass tools. The last two sentences are
+ * the direct fix for the reported bug: the model used to answer market questions
+ * by telling the user to go look at the Skor Produk and search around.
+ */
+function aiToolsInstruction() {
+  return `
+ALAT DATA: kamu punya alat untuk membaca data LarisID sendiri (cari_pasar,
+pasar_kategori, detail_pasar, cari_listing, filter_listing, produk_dibuka).
+- Kalau pertanyaan butuh data yang belum ada di prompt ini, PANGGIL ALAT dulu.
+- JANGAN menyuruh user "cek sendiri", "cari sendiri", "lihat di halaman Produk",
+  atau "buka Skor Produk" untuk sesuatu yang bisa kamu ambil sendiri lewat alat.
+  Itu jawaban gagal.
+- Boleh panggil beberapa alat sekaligus dalam satu putaran. Maksimal 3 putaran;
+  sesudah itu jawab dengan data yang sudah terkumpul.
+- filter_listing itu alat untuk MENGUJI dugaan (misal judul mengandung "impor",
+  atau seller dari kota hub impor). Pakai untuk mengecek proksi, bukan menebak.
+- Kalau alat mengembalikan nol baris, katakan terus terang dan coba sudut lain —
+  jangan mengarang isinya.`;
+}
+
 /** Length rule shared by every AI surface. Short for lookups, full for judgment. */
 function aiLengthRule(langLabel) {
   return `- Panjang jawaban mengikuti pertanyaan. Pertanyaan sederhana (harga, berapa, apa itu): 2-4 kalimat. Pertanyaan penilaian, perbandingan, "kenapa", atau yang datanya cuma sebagian: jawab lengkap dengan pola 4 bagian di atas — boleh 2-4 paragraf pendek atau bullet. Jangan memotong bagian 3 (penalaran) demi ringkas.
@@ -11136,6 +11183,7 @@ PENTING:
 - Jangan bilang kamu "melihat" produk — kamu membaca data.
 ${aiLengthRule(langLabel)}
 ${aiCapabilityContract()}
+${aiToolsInstruction()}
 
 DATA PRODUK YANG DILIHAT:
 - Nama: ${p.product_name || '—'}
@@ -11820,7 +11868,13 @@ async function askProductAi(chat, product, text, opts = {}) {
   // …and the turn carries the recent thread, so follow-ups make sense. Every
   // turn used to be a single message with no history at all.
   const history = chatHistoryForAi(chat, text);
-  const reply = await streamAssistantReply(loading, system, history, { root });
+  const reply = await streamAssistantReply(loading, system, history, {
+    root,
+    tools: AI_TOOLS,
+    thinking: wantsDeepReasoning(text),
+  });
+  // Thinking is deliberately NOT persisted: chatHistoryForAi would replay it as
+  // a visible assistant turn, and renderChatThread would show it on reload.
   pushMessage(chat, 'assistant', { text: reply }, mdToHtml(reply) || `<p>${esc(reply)}</p>`);
   void logUserEvent('gpt_ai_reply', { ui: 'gpt', keyword: product.keyword, via: root ? 'side_panel' : 'composer' });
   clarityEvt('gpt_ai_reply', {});
@@ -11876,6 +11930,309 @@ async function handleAskLarisEvaluate(chat, text, category, loading) {
   clarityEvt('gpt_ai_reply', {});
 }
 
+// ── AI tools ─────────────────────────────────────────────────────────────
+// The model can read LarisID's data itself instead of telling the user to go
+// look it up. Every tool wraps a function that already exists and is already
+// debugged — searchProductTypes alone carries EN->ID synonym expansion,
+// multi-clause splitting, the word-prefix ILIKE that stops "gelang" matching
+// "pergelangan", and a migration-skew fallback. Reimplementing any of that
+// server-side would reintroduce every one of those bugs.
+//
+// The loop runs in the browser, so queries execute as the logged-in user under
+// RLS and the model never authors SQL — tools are named functions with typed
+// args.
+
+const AI_TOOL_MAX_TURNS = 4;   // = 3 tool rounds, then a forced prose turn
+// 8, not 6: in testing the model fanned out 6 detail_pasar calls in a single
+// round, which exhausted a 6-budget and left it apologising about the limit.
+const AI_TOOL_MAX_CALLS = 8;
+const AI_TOOL_TIMEOUT_MS = 8000;
+
+// Questions that deserve reasoning rather than a lookup. Extended thinking costs
+// latency before the first token, so simple asks stay fast.
+const AI_DEEP_MARKERS = /\b(kenapa|mengapa|why|bandingkan|banding|compare|mana yang|yang mana|which|sebaiknya|should i|worth|bedanya|beda|risiko|risk|strategi|strategy|untung|rugi|prospek|peluang|jelaskan|explain|analisa|analisis|analyze|skor|score|impor|import|paling bagus|terbaik|best)\b/i;
+
+function wantsDeepReasoning(text) {
+  const s = String(text || '').toLowerCase().trim();
+  if (s.length < 25) return false;
+  if (isEvaluativeAsk(s)) return true;
+  if (AI_DEEP_MARKERS.test(s)) return true;
+  if ((s.match(/\?/g) || []).length >= 2) return true;   // multi-part ask
+  return s.length >= 60 && _searchTerms(s).length >= 5;
+}
+
+/** Compact one product_types_v row for the model. ~55 tokens. */
+function _aiPackType(t) {
+  const num = (v) => (v == null || v === '' ? null : Number(v));
+  return {
+    pasar: t.keyword,
+    kategori: t.category_canonical || t.category || null,
+    skor: _skorOf(t),
+    seller: num(t.n_sellers),
+    listing: num(t.n_listings),
+    harga_med: Math.round(num(t.price_median) || 0),
+    harga_p25: t.price_p25 ? Math.round(t.price_p25) : null,
+    harga_p75: t.price_p75 ? Math.round(t.price_p75) : null,
+    omset_top15_jt: Math.round((num(t.omset_top15) || 0) / 1e6),
+    tren_30h: num(t.trend_delta_30d) || 0,
+    breakout_pct: num(t.breakout_rate),
+    top3_share_pct: Math.round(num(t.sold_top3_share) || 0),
+    produk_baru: num(t.niche_new_items),
+  };
+}
+
+function _aiPackListing(r) {
+  return {
+    nama: (r.product_name || '').slice(0, 70),
+    toko: r.store_name || null,
+    harga: Math.round(Number(r.price) || 0),
+    terjual: Number(r.total_sold) || 0,
+    lokasi: r.location || null,
+    rating: r.rating ?? null,
+    ulasan: r.reviews ?? null,
+    pasar: r.keyword || null,
+  };
+}
+
+/** Top-N histogram of a field — how the model reaches "sellers cluster in X". */
+function _aiHistogram(rows, field, top = 8) {
+  const counts = new Map();
+  for (const r of rows || []) {
+    const k = r[field];
+    if (!k) continue;
+    counts.set(k, (counts.get(k) || 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1]).slice(0, top)
+    .map(([lokasi, n]) => ({ lokasi, n }));
+}
+
+const AI_TOOLS = [
+  {
+    name: 'cari_pasar',
+    description: 'Cari PASAR (product type / keyword) di data LarisID dari teks bebas. Alat utama — hampir semua pertanyaan pasar mulai dari sini. Sudah termasuk ekspansi sinonim EN ke ID ("dresses" jadi "gaun"). Tiap baris membawa skor 0-100.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Kata kunci produk, BUKAN kalimat pertanyaan. Contoh: "gaun pesta", "tumbler stainless".' },
+        kota: { type: 'string', description: 'Kota seller (opsional). Kosongkan untuk nasional.' },
+        limit: { type: 'integer', minimum: 1, maximum: 20, default: 12 },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'pasar_kategori',
+    // enum built from the constant, never a literal, so the two cannot drift
+    description: 'Ambil daftar pasar dalam satu kategori kanonik. Pakai kalau user menyebut kategori luas (fashion, dapur, kecantikan) dan bukan produk spesifik. Diurut dari omset terbesar; skor 0-100 ikut di tiap baris.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        kategori: { type: 'string', enum: DIR_CANON_CATS.slice() },
+        kota: { type: 'string' },
+        limit: { type: 'integer', minimum: 1, maximum: 25, default: 15 },
+      },
+      required: ['kategori'],
+    },
+  },
+  {
+    name: 'detail_pasar',
+    description: 'Detail satu pasar: agregat lengkap, skor, 10 seller teratas, dan SEBARAN LOKASI SELLER. Pakai setelah cari_pasar untuk menjawab siapa yang menang, dari mana sellernya, berapa harganya.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        pasar: { type: 'string', description: 'Nilai `pasar` persis seperti yang dikembalikan cari_pasar.' },
+        kota: { type: 'string' },
+      },
+      required: ['pasar'],
+    },
+  },
+  {
+    name: 'cari_listing',
+    description: 'Cari LISTING individual (satu produk dari satu toko). Pakai hanya kalau user menanyakan item/brand tertentu, bukan pasar. Hasil juga membawa pasar tempat listing itu berada.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string' },
+        lokasi: { type: 'array', items: { type: 'string' }, description: 'Filter lokasi seller (kota/kabupaten Indonesia).' },
+        limit: { type: 'integer', minimum: 1, maximum: 30, default: 15 },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'filter_listing',
+    description: 'Ambil listing dengan filter terstruktur. Pakai untuk MENGUJI HIPOTESIS di data — misal listing yang judulnya menyebut "impor", listing dari kota hub impor, atau listing yang harganya jauh di bawah median pasar. Wajib isi minimal satu filter.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        pasar: { type: 'string', description: 'Batasi ke satu keyword/pasar.' },
+        judul_mengandung: {
+          type: 'array', items: { type: 'string' }, maxItems: 4,
+          description: 'Kata dalam nama produk (OR). Contoh: ["impor","import","china"].',
+        },
+        lokasi: { type: 'array', items: { type: 'string' }, maxItems: 8 },
+        harga_min: { type: 'integer' },
+        harga_max: { type: 'integer' },
+        min_terjual: { type: 'integer' },
+        urut: { type: 'string', enum: ['terjual', 'termurah', 'termahal'], default: 'terjual' },
+        limit: { type: 'integer', minimum: 1, maximum: 40, default: 25 },
+      },
+    },
+  },
+  {
+    name: 'produk_dibuka',
+    description: 'Data produk yang sedang dibuka user di Deep Dive, lengkap dengan Skor Produk /100 dan komponennya. Panggil kalau user bilang "ini", "produk ini", atau menanyakan skor.',
+    input_schema: { type: 'object', properties: {} },
+  },
+];
+
+async function _aiToolCariPasar({ query, kota, limit }) {
+  const rows = await searchProductTypes(String(query || ''), kota || '', Math.min(limit || 12, 20), { skipLog: true });
+  if (!rows?.length) return { n: 0, pasar: [], hint: 'Tidak ketemu. Coba kata kunci produk yang lebih umum, atau pasar_kategori.' };
+  registerTypes(rows);
+  return { n: rows.length, pasar: rows.slice(0, 15).map(_aiPackType) };
+}
+
+async function _aiToolPasarKategori({ kategori, kota, limit }) {
+  // Routes through resolveCanonCats, so even a legacy/hallucinated category name
+  // maps via NU_ONB_TO_CANON instead of silently returning zero rows.
+  const packed = await fetchCategoryPasarTypes([kategori], kota || '', { limit: Math.min(limit || 15, 25) });
+  const rows = packed?.types || [];
+  if (!rows.length) return { n: 0, pasar: [], hint: 'Kategori tidak ketemu; coba cari_pasar dengan kata kunci produk.' };
+  return { n: rows.length, kota_bucket: packed.cityBucket || 'ALL', pasar: rows.slice(0, 15).map(_aiPackType) };
+}
+
+async function _aiToolDetailPasar({ pasar, kota }) {
+  if (!_supabase || !pasar) return { error: 'pasar wajib diisi' };
+  const fetchRow = async (city) => {
+    // .limit(1), not .maybeSingle(): product_types_v has one row per (keyword,
+    // city), so an unqualified single() can see more than one row.
+    const { data } = await _supabase.from('product_types_v').select(ptypeCols())
+      .eq('keyword', pasar).eq('city', city).limit(1);
+    return data?.[0] || null;
+  };
+  let row = await fetchRow(knownCityBucket(kota) || 'ALL');
+  if (!row && kota) row = await fetchRow('ALL');
+  if (!row) return { error: 'pasar tidak ketemu', hint: 'Pakai nilai `pasar` persis dari cari_pasar.' };
+  try { await attachTypeQuartiles([row]); } catch (_) { /* quartiles are optional */ }
+  const { data: rows } = await _supabase.from('listings_deduped')
+    .select('product_name,store_name,price,total_sold,reviews,rating,location,keyword')
+    .eq('keyword', pasar)
+    .eq('is_offtopic', false)          // mandatory on every listings_deduped read
+    .order('total_sold', { ascending: false })
+    .limit(40);
+  const list = rows || [];
+  return {
+    ..._aiPackType(row),
+    top_seller: list.slice(0, 10).map(_aiPackListing),
+    lokasi_seller: _aiHistogram(list, 'location'),
+    n_sampel_lokasi: list.length,
+  };
+}
+
+async function _aiToolCariListing({ query, lokasi, limit }) {
+  const hits = await searchListings(String(query || ''), Array.isArray(lokasi) ? lokasi : [], Math.min(limit || 15, 30));
+  if (!hits?.length) return { n: 0, listing: [], pasar_terkait: [], hint: 'Tidak ketemu listing. Coba cari_pasar.' };
+  // Lift back up to markets too: a single listing is never the whole answer.
+  let types = [];
+  try { types = await typesForListings(hits, '', 8); } catch (_) {}
+  return {
+    n: hits.length,
+    listing: hits.slice(0, 15).map(_aiPackListing),
+    pasar_terkait: types.map(_aiPackType),
+  };
+}
+
+async function _aiToolFilterListing(a = {}) {
+  if (!_supabase) return { error: 'db tidak siap' };
+  const titles = Array.isArray(a.judul_mengandung) ? a.judul_mengandung.filter(Boolean).slice(0, 4) : [];
+  const locs = Array.isArray(a.lokasi) ? a.lokasi.filter(Boolean).slice(0, 8) : [];
+  const hasFilter = a.pasar || titles.length || locs.length
+    || a.harga_min != null || a.harga_max != null || a.min_terjual != null;
+  // A bare call is a full scan of an 864k-row matview.
+  if (!hasFilter) return { error: 'minimal satu filter wajib diisi' };
+
+  let q = _supabase.from('listings_deduped')
+    .select('product_name,store_name,price,total_sold,reviews,rating,location,keyword')
+    .eq('is_offtopic', false);
+  if (a.pasar) q = q.eq('keyword', a.pasar);
+  if (locs.length) q = q.in('location', locs);
+  if (a.harga_min != null) q = q.gte('price', Number(a.harga_min) || 0);
+  if (a.harga_max != null) q = q.lte('price', Number(a.harga_max) || 0);
+  if (a.min_terjual != null) q = q.gte('total_sold', Number(a.min_terjual) || 0);
+  if (titles.length) {
+    // _sanitizeSearchToken matters: a raw ',' or '.' breaks PostgREST .or().
+    const ors = titles.map(t => `product_name.ilike.%${_sanitizeSearchToken(t)}%`).join(',');
+    if (ors) q = q.or(ors);
+  }
+  const urut = a.urut || 'terjual';
+  q = q.order(urut === 'terjual' ? 'total_sold' : 'price', { ascending: urut === 'termurah' })
+    .limit(Math.min(a.limit || 25, 40));
+
+  const { data, error } = await q;
+  if (error) return { error: 'query gagal', detail: String(error.message || '').slice(0, 120) };
+  const rows = data || [];
+  if (!rows.length) return { n: 0, listing: [], hint: 'Nol baris cocok. Longgarkan filternya.' };
+  const prices = rows.map(r => Number(r.price) || 0).filter(Boolean).sort((x, y) => x - y);
+  return {
+    n: rows.length,
+    ringkasan: {
+      harga_median: prices.length ? Math.round(prices[Math.floor(prices.length / 2)]) : 0,
+      terjual_total: rows.reduce((s, r) => s + (Number(r.total_sold) || 0), 0),
+      lokasi_teratas: _aiHistogram(rows, 'location'),
+    },
+    listing: rows.slice(0, 25).map(_aiPackListing),
+  };
+}
+
+function _aiToolProdukDibuka() {
+  if (!_dd?.product) return { error: 'tidak ada produk terbuka' };
+  const { product, stats, niche } = _dd;
+  const s = ddScore(product, stats, niche);
+  return {
+    produk: _aiPackListing(product),
+    kategori: product.category || null,
+    skor: s.score,
+    label: s.label,
+    breakout_pct: s.odds.pct,
+    breakout_tier: s.odds.tier,
+    breakout_sumber: s.odds.src,
+    kompetisi: stats.komp,
+    top3_share_pct: Math.round((stats.top3Share || 0) * 100),
+    harga_median_pasar: Math.round(stats.median || 0),
+    harga_p25: Math.round(stats.p25 || 0),
+    harga_p75: Math.round(stats.p75 || 0),
+    n_pembanding: stats.n,
+  };
+}
+
+const AI_TOOL_IMPL = {
+  cari_pasar: _aiToolCariPasar,
+  pasar_kategori: _aiToolPasarKategori,
+  detail_pasar: _aiToolDetailPasar,
+  cari_listing: _aiToolCariListing,
+  filter_listing: _aiToolFilterListing,
+  produk_dibuka: _aiToolProdukDibuka,
+};
+
+/** Run one tool with a hard timeout. Never rejects — the loop must survive. */
+async function _aiRunTool(name, input) {
+  const impl = AI_TOOL_IMPL[name];
+  if (!impl) return { error: `tool tidak dikenal: ${name}` };
+  let timer;
+  try {
+    return await Promise.race([
+      Promise.resolve(impl(input || {})),
+      new Promise((res) => { timer = setTimeout(() => res({ error: 'timeout' }), AI_TOOL_TIMEOUT_MS); }),
+    ]);
+  } catch (e) {
+    return { error: 'tool gagal', detail: String(e?.message || e).slice(0, 120) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Trailing window of the current thread, as Anthropic-style turns. */
 function chatHistoryForAi(chat, latestText) {
   const msgs = (chat?.messages || [])
@@ -11894,36 +12251,130 @@ function chatHistoryForAi(chat, latestText) {
   return [...msgs, { role: 'user', content: latestText }];
 }
 
-/** Stream a reply into an existing bubble, with a working Stop button. */
+const AI_TOOL_STATUS = {
+  cari_pasar: 'Mencari pasar…',
+  pasar_kategori: 'Membuka kategori…',
+  detail_pasar: 'Membaca detail pasar…',
+  cari_listing: 'Mencari listing…',
+  filter_listing: 'Menyaring listing…',
+  produk_dibuka: 'Membaca produk ini…',
+};
+
+/**
+ * Stream a reply into an existing bubble, with a working Stop button.
+ *
+ * When opts.tools is set this runs the agent loop: the model may ask for data,
+ * we execute the tool in the browser (as the logged-in user, under RLS), hand
+ * the result back, and let it continue. Capped at AI_TOOL_MAX_TURNS model turns
+ * and AI_TOOL_MAX_CALLS executions; the last turn is forced to prose with
+ * tool_choice none so the loop can never end without an answer.
+ */
 async function streamAssistantReply(loading, system, messages, opts = {}) {
   const bubble = loading?.querySelector?.('.msg-bubble') || loading;
   const root = opts.root || null;
   let acc = '';
+  let thinkAcc = '';
   let painting = false;
+  const scroll = () => { if (root) root.scrollTop = root.scrollHeight; else scrollChatToBottom(); };
   const paint = () => {
     if (painting || !bubble) return;
     painting = true;
     requestAnimationFrame(() => {
       painting = false;
-      bubble.innerHTML = mdToHtml(acc) || `<p>${esc(acc)}</p>`;
-      if (root) root.scrollTop = root.scrollHeight;
-      else scrollChatToBottom();
+      bubble.innerHTML = _aiBubbleHtml(acc, thinkAcc);
+      scroll();
     });
   };
+  const status = (msg) => {
+    if (!bubble || acc) return;   // real text always wins over a status line
+    bubble.innerHTML = `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">${esc(msg)}</p>`;
+    scroll();
+  };
+
   _streamAbort = new AbortController();
+  const signal = _streamAbort.signal;
   setComposerStopping(true);
   try {
-    const reply = await _mlsAIStream(system, messages, (_piece, full) => {
-      acc = full;
-      paint();
-    }, _streamAbort.signal, opts);
-    acc = reply.text || acc;
-    if (bubble) bubble.innerHTML = mdToHtml(acc) || `<p>${esc(acc)}</p>`;
+    const useTools = Array.isArray(opts.tools) && opts.tools.length > 0;
+    const turns = messages.slice();
+    let calls = 0;
+
+    for (let turn = 0; turn < (useTools ? AI_TOOL_MAX_TURNS : 1); turn++) {
+      const lastTurn = turn === AI_TOOL_MAX_TURNS - 1 || calls >= AI_TOOL_MAX_CALLS;
+      const stepOpts = {
+        ...opts,
+        // Reasoning pays most when synthesising tool results, so thinking is
+        // forced on for every turn after the first tool round.
+        thinking: opts.thinking || turn > 0,
+        onThinking: (_p, full) => { thinkAcc = full; if (!acc) status('Menimbang data…'); },
+        onToolStart: (name) => status(AI_TOOL_STATUS[name] || 'Mengambil data…'),
+        ...(useTools && lastTurn ? { toolChoice: { type: 'none' } } : {}),
+      };
+
+      const reply = await _mlsAIStream(system, turns, (_piece, full) => {
+        acc = full;
+        paint();
+      }, signal, stepOpts);
+
+      if (reply.text) acc = reply.text;
+      if (reply.thinking) thinkAcc = reply.thinking;
+      if (signal.aborted) break;
+
+      const wants = useTools && !lastTurn ? (reply.toolUses || []) : [];
+      if (!wants.length) break;
+
+      // Replay the assistant turn, minus thinking: DeepSeek accepts the tool
+      // round trip without it, so we never have to carry a block signature.
+      const assistantBlocks = [];
+      if (reply.text) assistantBlocks.push({ type: 'text', text: reply.text });
+      for (const t of wants) assistantBlocks.push({ type: 'tool_use', id: t.id, name: t.name, input: t.input });
+      turns.push({ role: 'assistant', content: assistantBlocks });
+
+      // Identical calls inside one turn are answered once.
+      const seen = new Map();
+      const results = await Promise.all(wants.map(async (t) => {
+        if (calls >= AI_TOOL_MAX_CALLS) {
+          return { id: t.id, out: { error: 'tool_budget_exhausted', hint: 'Jawab dengan data yang sudah ada.' } };
+        }
+        calls++;
+        const key = `${t.name}:${JSON.stringify(t.input || {})}`;
+        if (!seen.has(key)) seen.set(key, _aiRunTool(t.name, t.input));
+        return { id: t.id, out: await seen.get(key) };
+      }));
+
+      // An abort during a slow query must not fire another model call.
+      if (signal.aborted) break;
+
+      turns.push({
+        role: 'user',
+        content: results.map(r => ({
+          type: 'tool_result',
+          tool_use_id: r.id,
+          content: JSON.stringify(r.out ?? {}),
+        })),
+      });
+      acc = '';   // the next turn re-streams the real answer
+    }
+
+    if (bubble) bubble.innerHTML = _aiBubbleHtml(acc, thinkAcc);
     return acc;
   } finally {
     setComposerStopping(false);
     _streamAbort = null;
   }
+}
+
+/**
+ * Answer plus a collapsed reasoning disclosure. Raw thinking is never streamed
+ * into the bubble — DeepSeek traces are long and often English, which an
+ * Indonesian user reads as a bug — and it is never persisted (see the callers,
+ * which push reply text only).
+ */
+function _aiBubbleHtml(text, thinking) {
+  const body = mdToHtml(text) || (text ? `<p>${esc(text)}</p>` : '');
+  if (!thinking || !text) return body || `<p>${esc(text || '')}</p>`;
+  return `<details class="ai-think"><summary>Proses berpikir</summary>`
+    + `<div>${mdToHtml(thinking) || `<p>${esc(thinking)}</p>`}</div></details>${body}`;
 }
 
 // ── Directory ────────────────────────────────────────────────────────────
