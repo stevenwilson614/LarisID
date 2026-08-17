@@ -11691,6 +11691,31 @@ async function handleComposerSubmit(text) {
     return;
   }
 
+  // Analytical market question with no product open. Sits AFTER the evaluate
+  // branch (which owns "is X a good category?") and BEFORE the showcase branch,
+  // so a bare "fashion" still gets cards — isAnalyticalAsk vetoes bare product
+  // queries — while "which fashion markets score high and are imported from
+  // china?" gets reasoned over the data instead of becoming a keyword search.
+  if (AI_AGENT_ROUTER && !inProductCtx && isAnalyticalAsk(lower)) {
+    setView('chat');
+    let chat = activeChat();
+    if (!chat) {
+      chat = { localId: 'local_' + Date.now(), title: text.slice(0, 40), context: {}, messages: [], created_at: Date.now() };
+      state.chats.unshift(chat);
+      state.activeChatId = chat.localId;
+      renderChatList();
+    }
+    appendBubble('user', `<p>${esc(text)}</p>`);
+    pushMessage(chat, 'user', text);
+    void logUserEvent('gpt_message_sent', { ui: 'gpt' });
+    clarityEvt('gpt_message_sent', {});
+    void logUserEvent('gpt_intent', { ui: 'gpt', intent: 'market_agent', via: 'router', analytical: 1 });
+    clarityEvt('gpt_intent', { intent: 'market_agent' });
+    const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Menganalisis data pasar…</p>`);
+    await runMarketAgent(chat, text, loading);
+    return;
+  }
+
   if (!inProductCtx && catAsk && isCategoryLevelAsk(lower, catAsk)
       && (isProductDiscoveryAsk(lower) || isBareProductQuery(lower))) {
     setView('chat');
@@ -11717,6 +11742,14 @@ async function handleComposerSubmit(text) {
   // Bandingkan with explicit “A vs B” is also allowed in product context.
   const intent = detectIntent(lower);
   if (intent && (!inProductCtx || intent === 'profit' || intent === 'bandingkan')) {
+    // `analytical` measures the cost of the hard veto in isAnalyticalAsk: a long
+    // reasoning question that merely CONTAINS an intent keyword ("pasar mana
+    // yang paling bagus buat modal 500rb dan gimana strateginya?") is claimed by
+    // the card flow. That is deliberate for now — those flows work — but this
+    // tells us how often it happens before anyone loosens the veto.
+    void logUserEvent('gpt_intent', {
+      ui: 'gpt', intent, via: 'chip', analytical: wantsDeepReasoning(lower) ? 1 : 0,
+    });
     await handleIntent(intent, text);
     return;
   }
@@ -11805,6 +11838,17 @@ async function handleComposerSubmit(text) {
     if (widened.length && await replyWithPasarTypes(chat, text, widened, {
       loading, label: cleaned, placeLabel, brand: result.brand,
     })) return;
+
+    // Dead-end rescue: both the pasar search and the listing-widening found
+    // nothing, so this used to end at a clarification card. If the question was
+    // analytical, let the agent try instead — nothing is being taken away from
+    // a path that already failed.
+    if (AI_AGENT_ROUTER && currentUser && isAnalyticalAsk(text.toLowerCase())) {
+      void logUserEvent('gpt_intent', { ui: 'gpt', intent: 'market_agent', via: 'clarify_rescue', analytical: 1 });
+      clarityEvt('gpt_intent', { intent: 'market_agent' });
+      await runMarketAgent(chat, text, loading);
+      return;
+    }
 
     state.recommendations = [];
     if (currentUser && _supabase && !chat.id) {
@@ -11912,19 +11956,80 @@ PENTING:
 - Kalau data di bawah kosong atau terlalu tipis untuk disimpulkan, katakan itu terus terang — jangan menebak.
 ${aiLengthRule(langLabel)}
 ${aiCapabilityContract()}
+${aiToolsInstruction()}
 
 DATA PASAR — kategori "${category}" (${rows.length} sub-pasar):
 ${stats || 'Belum ada data pasar yang cukup untuk kategori ini.'}`;
 }
 
+/**
+ * Market-level agent prompt. Deliberately carries NO pre-fetched market data —
+ * fetching what it needs is the entire point, and guessing wrong up front is
+ * what made the old path answer with a clarification card instead of an answer.
+ */
+function buildMarketAgentSystemPrompt(question) {
+  const lang = detectReplyLanguage(question);
+  const langLabel = replyLanguageLabel(lang);
+  const voice = lang === 'en'
+    ? 'Reply in clear English (informal professional "you").'
+    : 'Jawab dalam Bahasa Indonesia informal ("kamu").';
+  const city = state.onboarding?.city || '';
+  const cats = (state.onboarding?.categories || []).filter(Boolean).slice(0, 5);
+  const who = (city || cats.length)
+    ? `\nKONTEKS USER: ${[city ? `kota ${city}` : '', cats.length ? `minat kategori ${cats.join(', ')}` : ''].filter(Boolean).join(', ')}. Pakai kalau relevan, jangan dipaksakan.`
+    : '';
+
+  return `You are LarisID's product research assistant (LARISgpt). ${voice}
+LANGUAGE: Write ONLY in ${langLabel}. If the user mixed languages, use the language that is most prevalent in their message.
+User bertanya soal PASAR secara umum — belum membuka satu produk tertentu.
+PENTING:
+- Angka penjualan/harga/omset/skor HARUS dari alat data. Jangan mengarang statistik pasar.
+- Mulai dengan memanggil alat. Jangan menjawab "aku butuh info lebih dulu" tanpa memanggil alat.
+- Sebut nama pasar dan angkanya secara konkret, jangan generik.
+- Banyak seller + omset tinggi merata artinya pasar jenuh, bukan otomatis "bagus".
+- Jangan bilang kamu "melihat" produk — kamu membaca data.
+${aiLengthRule(langLabel)}
+${aiCapabilityContract()}
+${aiToolsInstruction()}${who}`;
+}
+
+/**
+ * A market-level question answered by the agent instead of a search card.
+ *
+ * Persists via ensureChatPersisted (which never walls) rather than
+ * ensureIntentChat: an analytical question must not burn one of the user's 3
+ * daily product searches.
+ */
+async function runMarketAgent(chat, text, loading) {
+  await ensureChatPersisted(chat, text.slice(0, 60), { kind: 'market_agent', q: text });
+  if (!(await _useAi('mls_chat'))) { loading?.remove?.(); return; }
+  const system = buildMarketAgentSystemPrompt(text) + memoryPromptBlock();
+  const history = chatHistoryForAi(chat, text);
+  const reply = await streamAssistantReply(loading, system, history, {
+    tools: AI_TOOLS,
+    thinking: true,   // this path only ever gets analytical asks
+  });
+  pushMessage(chat, 'assistant', { text: reply }, mdToHtml(reply) || `<p>${esc(reply)}</p>`);
+  void logUserEvent('gpt_ai_reply', { ui: 'gpt', via: 'market_agent' });
+  clarityEvt('gpt_ai_reply', {});
+  extractFactsFromText(text).forEach(([k, v]) => { void rememberFact(k, v, 'chat'); });
+}
+
 /** Ask Laris' "should I sell X category" turn — category-level, not one product. */
 async function handleAskLarisEvaluate(chat, text, category, loading) {
   if (!(await _useAi('mls_chat'))) { loading?.remove?.(); return; }
-  const showcase = await fetchCategoryShowcase(category, 40);
-  const types = await typesForListings(showcase, '', 15);
+  // fetchCategoryPasarTypes, not fetchCategoryShowcase: the showcase path
+  // filters listings_deduped.category (the 85 raw scrape strings) while this
+  // routes through resolveCanonCats to category_canonical, which is the
+  // vocabulary product_types_v actually uses.
+  const packed = await fetchCategoryPasarTypes([category], '', { limit: 15 });
+  const types = packed?.types || [];
   const system = buildCategoryEvalSystemPrompt(category, types, text) + memoryPromptBlock();
   const history = chatHistoryForAi(chat, text);
-  const reply = await streamAssistantReply(loading, system, history);
+  const reply = await streamAssistantReply(loading, system, history, {
+    tools: AI_TOOLS,
+    thinking: true,   // this path is judgment by definition
+  });
   pushMessage(chat, 'assistant', { text: reply }, mdToHtml(reply) || `<p>${esc(reply)}</p>`);
   void logUserEvent('gpt_ai_reply', { ui: 'gpt', keyword: category, via: 'ask_laris_evaluate' });
   clarityEvt('gpt_ai_reply', {});
@@ -11959,6 +12064,25 @@ function wantsDeepReasoning(text) {
   if (AI_DEEP_MARKERS.test(s)) return true;
   if ((s.match(/\?/g) || []).length >= 2) return true;   // multi-part ask
   return s.length >= 60 && _searchTerms(s).length >= 5;
+}
+
+// Kill switch for the agent routing below. Flip to false to restore exactly the
+// pre-agent behaviour (analytical questions go back to being keyword searches).
+const AI_AGENT_ROUTER = true;
+
+/**
+ * A question that wants reasoning over the data, rather than a grid of cards.
+ * The three vetoes come FIRST and are absolute — chips, bare product nouns and
+ * "recommend me something" all have working non-AI paths that must keep
+ * priority. Without them this would swallow the whole search experience.
+ */
+function isAnalyticalAsk(lower) {
+  const s = String(lower || '');
+  if (detectIntent(s)) return false;                                  // chips own these
+  if (isBareProductQuery(s)) return false;                            // "dresses" is a search
+  if (/tunjukkan|rekomendasi|jual apa|produk apa|cocok buat|mulai jual/.test(s)) return false;
+  if (/^produk lain$|tampilkan produk lain|^rekomendasi baru$/.test(s)) return false;
+  return wantsDeepReasoning(s);
 }
 
 /** Compact one product_types_v row for the model. ~55 tokens. */
