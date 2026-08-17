@@ -11001,17 +11001,17 @@ function replyLanguageLabel(code) {
   return code === 'en' ? 'English' : 'Bahasa Indonesia';
 }
 
+/**
+ * AI is unlimited as of the 20260817120000 migration, so this is now only two
+ * things: the login gate, and an analytics ping (the RPC still writes
+ * daily_usage + usage_events). Deliberately FAILS OPEN — the old version
+ * returned false on any transient RPC error, which silently killed the reply
+ * with no message at all.
+ */
 async function _useAi(action) {
   if (!_supabase || !currentUser) { openAuthModal('signup', 'gpt_gate_ai'); return false; }
-  try {
-    const { data, error } = await _supabase.rpc('use_ai', { p_action: action });
-    if (error) throw error;
-    if (data && data.allowed === false) {
-      showToast(`Batas AI harian tercapai — reset dalam ${formatCountdown(wibMidnightReset())}`);
-      return false;
-    }
-    return true;
-  } catch (_) { return false; }
+  try { await _supabase.rpc('use_ai', { p_action: action }); } catch (_) { /* analytics only */ }
+  return true;
 }
 
 /**
@@ -11322,7 +11322,9 @@ async function _mlsAIRaw(system, messages) {
     headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 700, system, messages }),
   });
-  if (res.status === 429) return 'Batas AI harian (server) tercapai. Coba lagi setelah reset tengah malam WIB.';
+  // Not a user cap any more (AI is unlimited) — a 429 here is the upstream
+  // provider rate-limiting us, which the proxy forwards verbatim.
+  if (res.status === 429) return 'AI sedang ramai. Coba lagi sebentar.';
   if (!res.ok) return 'AI sedang sibuk. Coba lagi sebentar.';
   const d = await res.json().catch(() => ({}));
   return d?.content?.[0]?.text || d?.text || d?.message || 'Tidak ada jawaban.';
@@ -11348,7 +11350,9 @@ async function _mlsAIStream(system, messages, onDelta, signal) {
     if (e?.name === 'AbortError') return '';
     return _mlsAIRaw(system, messages);
   }
-  if (res.status === 429) return 'Batas AI harian (server) tercapai. Coba lagi setelah reset tengah malam WIB.';
+  // Not a user cap any more (AI is unlimited) — a 429 here is the upstream
+  // provider rate-limiting us, which the proxy forwards verbatim.
+  if (res.status === 429) return 'AI sedang ramai. Coba lagi sebentar.';
   if (!res.ok || !res.body) return _mlsAIRaw(system, messages);
 
   const reader = res.body.getReader();
