@@ -6,7 +6,6 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const MAX_CALLS_PER_DAY = 10;
 const DEFAULT_MODEL = 'deepseek-v4-pro';
 // DeepSeek Anthropic-compatible Messages API (same response shape clients already parse).
 const DEEPSEEK_MESSAGES_URL = 'https://api.deepseek.com/anthropic/v1/messages';
@@ -33,7 +32,7 @@ serve(async (req) => {
     // Parse the body first — the lightweight `search_plan` query-planner route is
     // intentionally open (anon + logged-in), so we branch on purpose before auth.
     const body = await req.json();
-    const { messages, model, system, purpose } = body;
+    const { messages, model, system, purpose, tools, tool_choice, thinking } = body;
     // Opt-in SSE relay. Callers that do not ask for it keep the exact
     // JSON response shape they parse today.
     const wantStream = body.stream === true && purpose !== 'search_plan';
@@ -46,6 +45,18 @@ serve(async (req) => {
     }
 
     const isSearchPlan = purpose === 'search_plan';
+    const hasTools = Array.isArray(tools) && tools.length > 0;
+    const wantThinking = !!thinking && thinking.type === 'enabled';
+
+    // search_plan is deliberately unauthenticated (see the auth block below).
+    // Without this an anonymous caller could drive an arbitrarily expensive
+    // multi-turn tool agent, or extended thinking, entirely for free.
+    if (isSearchPlan && (hasTools || tool_choice || wantThinking)) {
+      return new Response(JSON.stringify({ error: 'tools_not_allowed_on_search_plan' }), {
+        status: 400,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -77,8 +88,9 @@ serve(async (req) => {
     }
 
     const today = new Date().toISOString().slice(0, 10);
-    // NOTE: the daily AI cap (MAX_CALLS_PER_DAY) is disabled for now — unlimited
-    // DeepSeek. Successful calls are still logged to ai_usage below for analytics.
+    // There is no daily AI cap: it was removed here, and in the use_ai RPC by
+    // migration 20260817120000. Successful authenticated calls are still logged
+    // to ai_usage below for analytics.
 
     const apiKey = Deno.env.get('DEEPSEEK_API_KEY') || Deno.env.get('ANTHROPIC_API_KEY');
     if (!apiKey) {
@@ -88,8 +100,10 @@ serve(async (req) => {
       });
     }
 
-    // Forward to DeepSeek (Anthropic-compatible). Thinking off so content[0].text
-    // is always the reply Site A/B already expect.
+    // Forward to DeepSeek (Anthropic-compatible). Tools, tool_choice and
+    // thinking are opt-in pass-throughs: a caller that sends none of them gets
+    // byte-identical behaviour to before, so old cached clients are unaffected.
+    // budget_tokens is ignored upstream but is part of the schema shape.
     const upstream = await fetch(DEEPSEEK_MESSAGES_URL, {
       method: 'POST',
       headers: {
@@ -103,11 +117,13 @@ serve(async (req) => {
         // (unauthenticated) hit on that open route stays cheap.
         max_tokens: isSearchPlan
           ? Math.min(Number.isFinite(maxTokens) && maxTokens > 0 ? maxTokens : 300, 400)
-          : (Number.isFinite(maxTokens) && maxTokens > 0 ? Math.min(maxTokens, 4096) : 700),
+          : (Number.isFinite(maxTokens) && maxTokens > 0 ? Math.min(maxTokens, 4096) : 1600),
         system: system ?? '',
-        thinking: { type: 'disabled' },
+        thinking: wantThinking ? { type: 'enabled', budget_tokens: 2048 } : { type: 'disabled' },
         stream: wantStream,
         messages,
+        ...(hasTools ? { tools } : {}),
+        ...(tool_choice ? { tool_choice } : {}),
       }),
     });
 
@@ -148,7 +164,10 @@ serve(async (req) => {
     }
 
     // Normalize: prefer first text block (skip any residual thinking blocks).
-    if (Array.isArray(result?.content)) {
+    // NEVER do this on a tool turn — the caller replays that content verbatim as
+    // an assistant turn, and hoisting text ahead of a thinking/tool_use block
+    // produces an ordering the API rejects.
+    if (!hasTools && Array.isArray(result?.content)) {
       const textBlock = result.content.find((b: { type?: string }) => b?.type === 'text')
         || result.content.find((b: { text?: string }) => typeof b?.text === 'string');
       if (textBlock && result.content[0] !== textBlock) {
