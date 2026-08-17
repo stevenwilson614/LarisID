@@ -810,7 +810,7 @@ async function askLarisRecommend(freeText) {
 const ASK_LARIS_PROMPTS = [
   { id: 'al_terlaris', label: 'Produk terlaris kotaku', run: () => askLarisRecommend('') },
   { id: 'al_modal', label: 'Modal 500rb, jualan apa?', run: () => askLarisRecommend('Modal 500rb, mau mulai jualan apa?') },
-  { id: 'al_evaluasi', label: 'Apakah jualan sepatu bagus?', run: () => handleComposerSubmit('Apakah jualan sepatu ide bagus?') },
+  { id: 'al_evaluasi', label: 'Apakah jualan sepatu bagus?', run: () => submitFromHome('Apakah jualan sepatu ide bagus?') },
 ];
 
 function renderAskLarisChips() {
@@ -3220,11 +3220,45 @@ function resolveChatProduct(chat) {
   return null;
 }
 
+function resetChatThread() {
+  const thread = $('chat-thread');
+  if (thread) thread.innerHTML = '';
+}
+
 function beginFreshChat() {
   state.activeChatId = null;
   state.deepdiveProduct = null;
+  resetChatThread();
   saveLocalState();
   renderChatList();
+}
+
+/** New local thread. Always wipes #chat-thread so leftover finder /
+ *  recommendation cards cannot sit above the first turn. */
+function startBlankLocalChat(title, context = {}) {
+  resetChatThread();
+  const chat = {
+    localId: 'local_' + Date.now(),
+    title: String(title || 'Chat').slice(0, 40),
+    context,
+    messages: [],
+    created_at: Date.now(),
+  };
+  state.chats.unshift(chat);
+  state.activeChatId = chat.localId;
+  saveLocalState();
+  renderChatList();
+  return chat;
+}
+
+function ensureComposerChat(title) {
+  return activeChat() || startBlankLocalChat(title);
+}
+
+function chatIsResultsThread(chat) {
+  const kind = chat?.context?.kind;
+  return kind === 'recommendation' || kind === 'finder'
+    || kind === 'search' || kind === 'category_search';
 }
 
 function scrollPanelToTop() {
@@ -3484,16 +3518,18 @@ function renderChatThread() {
 let _offerActive = false; // post-sign-in onboarding offer currently on screen
 
 function submitFromHome(text) {
+  // Home / landing composers are a new search, not a follow-up — never
+  // resume whatever thread is still sitting in #chat-thread.
+  beginFreshChat();
   setView('chat');
   void handleComposerSubmit(text);
 }
 
 function renderHome() {
   _offerActive = false;
+  abortAssistantStream();
+  beginFreshChat();
   setView('home');
-  state.activeChatId = null;
-  saveLocalState();
-  renderChatList();
   wireHomeFinder();
   updateHomeFinderVisibility();
 
@@ -3774,7 +3810,7 @@ async function _rbFuzzyMatch(raw, limit = 12) {
   // contains both). Fall back to the rarest/longest token with the same
   // typo tolerance so `manik` still surfaces bead crafts.
   if (!hits.length && qTokens.length >= 2) {
-    let bestTok = qTokens[0];
+    let bestTok = null;
     let bestCount = Infinity;
     for (const t of qTokens) {
       if (t.length < 4) continue;
@@ -3783,12 +3819,15 @@ async function _rbFuzzyMatch(raw, limit = 12) {
         const hay = _rbNormStr(row.keyword || '');
         if (hay && _rbTokenMatch(t, hay)) n++;
       }
-      if (n < bestCount || (n === bestCount && t.length > bestTok.length)) {
+      // Skip tokens that hit nothing — otherwise a missing word like
+      // "penghitam" (0) beats "kasar" (1) and the fallback returns [].
+      if (n === 0) continue;
+      if (n < bestCount || (n === bestCount && t.length > (bestTok ? bestTok.length : 0))) {
         bestCount = n;
         bestTok = t;
       }
     }
-    hits = collect(hay => _rbTokenMatch(bestTok, hay));
+    if (bestTok) hits = collect(hay => _rbTokenMatch(bestTok, hay));
   }
   return hits.slice(0, limit);
 }
@@ -6297,18 +6336,14 @@ function parseBudget(text) {
 async function handleIntent(intent, text) {
   abortAssistantStream();
   setView('chat');
-  // Market intents never belong inside a product Deep Dive thread.
+  // Market intents never belong inside a product Deep Dive thread or a
+  // leftover finder/recommendation results page.
   let chat = activeChat();
-  if (chat?.context?.product || chat?.context?.kind === 'product') {
+  if (chat?.context?.product || chat?.context?.kind === 'product' || chatIsResultsThread(chat)) {
     beginFreshChat();
     chat = null;
   }
-  if (!chat) {
-    chat = { localId: 'local_' + Date.now(), title: text.slice(0, 40), context: {}, messages: [], created_at: Date.now() };
-    state.chats.unshift(chat);
-    state.activeChatId = chat.localId;
-    renderChatList();
-  }
+  chat = ensureComposerChat(text);
   appendBubble('user', `<p>${esc(text)}</p>`);
   pushMessage(chat, 'user', text);
   void logUserEvent('gpt_message_sent', { ui: 'gpt' });
@@ -11622,6 +11657,7 @@ async function handleComposerSubmit(text) {
 
   const productCtx = state.deepdiveProduct || activeChat()?.context?.product || null;
   const inProductCtx = state.view === 'deepdive' || !!activeChat()?.context?.product || !!activeChat()?.context?.keyword;
+  const inResultsThread = chatIsResultsThread(activeChat());
 
   // Product-context “bandingkan …”: if the message NAMES the other product
   // (“dibanding kalau jual tas ransel”), find it and open the compare
@@ -11646,9 +11682,10 @@ async function handleComposerSubmit(text) {
     }
   }
 
-  // Topic change inside a product chat: market-level / new-search asks leave
-  // this Deep Dive thread so each product stays organized in its own chat.
-  if (inProductCtx) {
+  // Topic change inside a product chat OR a results-only thread (finder /
+  // recommendations): market-level / new-search asks leave that page so the
+  // new query is its own chat, not a turn under leftover product cards.
+  if (inProductCtx || inResultsThread) {
     const route = detectTopicChange(lower);
     if (route) {
       void logUserEvent('gpt_intent', { ui: 'gpt', intent: 'topic_change', kind: route.kind, city: route.city || '' });
@@ -11672,14 +11709,9 @@ async function handleComposerSubmit(text) {
   // "Is [category] a good idea?" (Ask Laris' reasoning prompt) wants a
   // judgment call, not a card grid — intercept before the showcase branch.
   if (!inProductCtx && catAsk && isEvaluativeAsk(lower)) {
+    if (inResultsThread) beginFreshChat();
     setView('chat');
-    let chat = activeChat();
-    if (!chat) {
-      chat = { localId: 'local_' + Date.now(), title: text.slice(0, 40), context: {}, messages: [], created_at: Date.now() };
-      state.chats.unshift(chat);
-      state.activeChatId = chat.localId;
-      renderChatList();
-    }
+    const chat = ensureComposerChat(text);
     appendBubble('user', `<p>${esc(text)}</p>`);
     pushMessage(chat, 'user', text);
     void logUserEvent('gpt_message_sent', { ui: 'gpt' });
@@ -11697,14 +11729,9 @@ async function handleComposerSubmit(text) {
   // queries — while "which fashion markets score high and are imported from
   // china?" gets reasoned over the data instead of becoming a keyword search.
   if (AI_AGENT_ROUTER && !inProductCtx && isAnalyticalAsk(lower)) {
+    if (inResultsThread) beginFreshChat();
     setView('chat');
-    let chat = activeChat();
-    if (!chat) {
-      chat = { localId: 'local_' + Date.now(), title: text.slice(0, 40), context: {}, messages: [], created_at: Date.now() };
-      state.chats.unshift(chat);
-      state.activeChatId = chat.localId;
-      renderChatList();
-    }
+    const chat = ensureComposerChat(text);
     appendBubble('user', `<p>${esc(text)}</p>`);
     pushMessage(chat, 'user', text);
     void logUserEvent('gpt_message_sent', { ui: 'gpt' });
@@ -11718,14 +11745,9 @@ async function handleComposerSubmit(text) {
 
   if (!inProductCtx && catAsk && isCategoryLevelAsk(lower, catAsk)
       && (isProductDiscoveryAsk(lower) || isBareProductQuery(lower))) {
+    if (inResultsThread) beginFreshChat();
     setView('chat');
-    let chat = activeChat();
-    if (!chat) {
-      chat = { localId: 'local_' + Date.now(), title: text.slice(0, 40), context: {}, messages: [], created_at: Date.now() };
-      state.chats.unshift(chat);
-      state.activeChatId = chat.localId;
-      renderChatList();
-    }
+    const chat = ensureComposerChat(text);
     appendBubble('user', `<p>${esc(text)}</p>`);
     pushMessage(chat, 'user', text);
     void logUserEvent('gpt_message_sent', { ui: 'gpt' });
@@ -11774,10 +11796,7 @@ async function handleComposerSubmit(text) {
   let chat = activeChat();
   if (!chat) {
     // Treat as starting a search-oriented chat without consuming search if just AI on empty — create local thread
-    chat = { localId: 'local_' + Date.now(), title: text.slice(0, 40), context: {}, messages: [], created_at: Date.now() };
-    state.chats.unshift(chat);
-    state.activeChatId = chat.localId;
-    renderChatList();
+    chat = startBlankLocalChat(text);
   }
 
   // Rebuild thread when leaving DD so the Deep Dive chat card is visible
@@ -12702,11 +12721,10 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
     const plan = await planSearch(raw);
     const extra = (plan?.queries || []).filter(Boolean);
     const tokens = _searchTerms(raw);
-    // Phrase + planned ID needles + each query token. Tokens last so
-    // Indonesian expansions survive the cap. "gelang manik" must ILIKE
-    // `manik` and `gelang` on their own — the contiguous phrase misses
-    // related types like `kalung manik`.
-    terms = [...new Set([raw, ...extra, ...tokens])].slice(0, 8);
+    // Phrase + original tokens first so a long AI plan cannot drop
+    // "penghitam" / "kasar". Extras fill the remaining slots. Tokens still
+    // ILIKE on their own so "gelang manik" reaches `kalung manik`.
+    terms = [...new Set([raw, ...tokens, ...extra])].slice(0, 8);
   } catch (_) {
     terms = [...new Set([raw, ..._searchTerms(raw)])].slice(0, 8);
   }
@@ -12807,6 +12825,53 @@ async function searchProductTypes(text, cities, limit = 12, opts) {
   }
   if (ranked.length) await attachTypeQuartiles(ranked);
   return ranked;
+}
+
+/**
+ * Nearby markets for a query that missed every scrape keyword.
+ *
+ * Search listing titles (not keywords), keep rows whose title overlaps the
+ * original tokens, then lift host keywords that at least two such listings
+ * share. Callers must label the result as nearby — these are not exact matches.
+ * Does not run DeepSeek extras as standalone searches (that dumps adjacent
+ * markets like "semir ban" as if they were the query).
+ */
+async function searchNearbyProductTypes(text, cities, limit = 12) {
+  if (!_supabase) return [];
+  const raw = String(text || '').trim();
+  if (raw.length < 2) return [];
+  const terms = _searchTerms(raw);
+  if (!terms.length) return [];
+  const bigrams = [];
+  for (let i = 0; i < terms.length - 1; i++) bigrams.push(`${terms[i]} ${terms[i + 1]}`);
+  const queries = [...new Set([raw, ...bigrams])].slice(0, 4);
+  const pool = [];
+  const groups = await Promise.all(queries.map(q => searchListings(q, [], 40)));
+  groups.forEach(rows => mergePool(pool, rows));
+  const need = Math.min(2, terms.length);
+  const titleHits = pool.filter(p => {
+    const hay = String(p.product_name || '').toLowerCase();
+    if (!hay) return false;
+    return terms.filter(t => hay.includes(t)).length >= need;
+  });
+  const byKw = new Map();
+  titleHits.forEach(p => {
+    const k = String(p.keyword || '').trim();
+    if (!k) return;
+    let g = byKw.get(k);
+    if (!g) { g = { listings: [], sold: 0 }; byKw.set(k, g); }
+    g.listings.push(p);
+    g.sold += Number(p.total_sold) || 0;
+  });
+  const ranked = [...byKw.entries()]
+    .filter(([, g]) => g.listings.length >= 2)
+    .sort((a, b) => (b[1].listings.length - a[1].listings.length)
+      || (b[1].sold - a[1].sold));
+  if (!ranked.length) return [];
+  const cityList = Array.isArray(cities) ? cities.filter(Boolean) : (cities ? [cities] : []);
+  const cityKey = cityList.length === 1 ? cityList[0] : '';
+  const types = await typesForListings(ranked.map(([, g]) => g.listings[0]), cityKey, limit);
+  return (types || []).map(t => ({ ...t, _nearby: true }));
 }
 
 /** Attach Q1/Q3 price band + omset P60–P100 from listings_deduped (RPC) onto type rows. */
