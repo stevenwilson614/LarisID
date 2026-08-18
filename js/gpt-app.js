@@ -2710,7 +2710,10 @@ function _authErrMsg(msg) {
     'User already registered': 'Email sudah terdaftar. Coba login.',
     'Password should be at least 6 characters': 'Password minimal 6 karakter.',
   };
-  return map[msg] || msg;
+  if (map[msg]) return map[msg];
+  const raw = String(msg || '');
+  if (/InvalidWorker|entrypoint|worker boot/i.test(raw)) return 'Daftar gagal. Coba lagi.';
+  return raw;
 }
 
 async function submitAuth() {

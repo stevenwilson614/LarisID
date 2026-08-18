@@ -75,7 +75,7 @@
     if (w.__larisAppLoaded || w.__larisAppLoading) return;
     w.__larisAppLoading = true;
     var s = document.createElement('script');
-    s.src = '/js/laris-app.js?v=20260816a';
+    s.src = '/js/laris-app.js?v=20260818b';
     s.defer = true;
     s.onload = function () { w.__larisAppLoaded = true; };
     document.body.appendChild(s);

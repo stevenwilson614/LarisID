@@ -2741,7 +2741,10 @@ function _authErrMsg(msg) {
     'Password should be at least 6 characters': 'Password minimal 6 karakter.',
     'Unable to validate email address: invalid format': 'Format email tidak valid.',
   };
-  return map[msg] || msg;
+  if (map[msg]) return map[msg];
+  const raw = String(msg || '');
+  if (/InvalidWorker|entrypoint|worker boot/i.test(raw)) return 'Daftar gagal. Coba lagi.';
+  return raw;
 }
 
 async function submitAuth() {
