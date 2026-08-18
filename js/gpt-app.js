@@ -3503,6 +3503,7 @@ function renderChatThread() {
     bindTrackerCards(thread);
     bindTrendingCards(thread);
     bindGptKalc(thread);
+    bindSearchSuggests(thread);
     updateThreadWide();
     // Product threads: land on the Deep Dive card. Search threads: top of results.
     const product = resolveChatProduct(chat);
@@ -6894,7 +6895,7 @@ const SEARCH_STOPWORDS = new Set(['cari','carikan','tolong','coba','tunjukkan','
 // hit the product tables instead of refusing inside a Deep Dive AI turn.
 const CAT_ALIASES = [
   { cat: 'Kecantikan', terms: ['skincare', 'skin care', 'kecantikan', 'beauty', 'makeup', 'kosmetik', 'serum', 'moisturizer', 'facial', 'sunscreen'] },
-  { cat: 'Fashion', terms: ['fashion', 'baju', 'pakaian', 'kaos', 'celana', 'dress', 'dresses', 'hijab', 'sepatu', 'sandal', 'tas wanita', 'jaket'] },
+    { cat: 'Fashion', terms: ['fashion', 'pashion', 'fasion', 'baju', 'pakaian', 'kaos', 'celana', 'dress', 'dresses', 'hijab', 'sepatu', 'sandal', 'tas wanita', 'jaket'] },
   { cat: 'Dapur', terms: ['dapur', 'kitchen', 'masak', 'memasak', 'peralatan dapur', 'peralatan masak', 'wadah makanan', 'penyimpanan makanan'] },
   { cat: 'Elektronik', terms: ['elektronik', 'gadget', 'charger', 'earphone', 'headset'] },
   { cat: 'HP & Gadget', terms: ['hp', 'handphone', 'smartphone', 'aksesoris hp'] },
@@ -11202,7 +11203,10 @@ pasar_kategori, detail_pasar, cari_listing, filter_listing, produk_dibuka).
 - Boleh panggil beberapa alat sekaligus dalam satu putaran. Maksimal 3 putaran;
   sesudah itu jawab dengan data yang sudah terkumpul.
 - filter_listing itu alat untuk MENGUJI dugaan (misal judul mengandung "impor",
-  atau seller dari kota hub impor). Pakai untuk mengecek proksi, bukan menebak.
+  seller dari kota hub impor, listing baru lewat umur_hari_max, atau omset_min).
+  Pakai untuk mengecek proksi DAN filter umur/omset yang user sebut, bukan menebak.
+- listing_date dan omset_bln (plus omset_label terukur/perkiraan) ikut di hasil listing.
+  Jangan bilang kolom tanggal listing tidak ada.
 - Kalau alat mengembalikan nol baris, katakan terus terang dan coba sudut lain —
   jangan mengarang isinya.`;
 }
@@ -11683,6 +11687,20 @@ function extractFactsFromText(text) {
   return out;
 }
 
+function _gptMem() {
+  return (typeof window !== 'undefined' && window.LarisGptMemory) || {};
+}
+
+function applyResearchFromText(chat, text) {
+  if (!chat) return;
+  const mem = _gptMem();
+  if (!chat.context) chat.context = {};
+  const parsed = mem.parseResearchConstraints?.(text) || {};
+  chat.context.research = mem.mergeResearchConstraints?.(chat.context.research, parsed) || parsed;
+  if (parsed.category) chat.context.categoryOverride = parsed.category;
+  saveLocalState();
+}
+
 async function handleComposerSubmit(text) {
   text = (text || '').trim();
   if (!text) return;
@@ -11692,6 +11710,43 @@ async function handleComposerSubmit(text) {
   if (/tampilkan produk lain/.test(lower) || /^produk lain$/.test(lower) || /^rekomendasi baru$/.test(lower)) {
     await openMoreProductsDirectory();
     return;
+  }
+
+  const mem = _gptMem();
+  const liveChat = activeChat();
+  if (liveChat && mem.chatIsConversationalThread?.(liveChat)) {
+    if (mem.isDeclineReply?.(lower) && liveChat.context?.pendingOffer) {
+      liveChat.context.pendingOffer = null;
+      saveLocalState();
+      setView('chat');
+      appendBubble('user', `<p>${esc(text)}</p>`);
+      pushMessage(liveChat, 'user', text);
+      const html = '<p>Oke — ketik produk atau kategori yang mau dicari.</p>';
+      await appendAssistantStream(html);
+      pushMessage(liveChat, 'assistant', { text: 'Oke' }, html);
+      return;
+    }
+    if (mem.isAffirmativeReply?.(lower) || mem.isConstraintRefinement?.(lower)) {
+      const sendText = mem.isAffirmativeReply?.(lower)
+        ? mem.resolveAffirmativePrompt(text, liveChat.context?.pendingOffer)
+        : text;
+      applyResearchFromText(liveChat, text);
+      void logUserEvent('gpt_intent', {
+        ui: 'gpt', intent: 'followup',
+        kind: mem.isAffirmativeReply?.(lower) ? 'affirm' : 'refine',
+      });
+      setView('chat');
+      appendBubble('user', `<p>${esc(text)}</p>`);
+      pushMessage(liveChat, 'user', text);
+      const product = liveChat.context?.product || state.deepdiveProduct;
+      if (product && liveChat.context?.kind === 'product') {
+        await askProductAi(liveChat, product, sendText);
+      } else {
+        const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Melanjutkan…</p>`);
+        await runMarketAgent(liveChat, sendText, loading);
+      }
+      return;
+    }
   }
 
   const productCtx = state.deepdiveProduct || activeChat()?.context?.product || null;
@@ -11972,9 +12027,10 @@ async function askProductAi(chat, product, text, opts = {}) {
     tools: AI_TOOLS,
     thinking: wantsDeepReasoning(text),
   });
+  const replyText = _aiReplyText(reply);
   // Thinking is deliberately NOT persisted: chatHistoryForAi would replay it as
   // a visible assistant turn, and renderChatThread would show it on reload.
-  pushMessage(chat, 'assistant', { text: reply }, mdToHtml(reply) || `<p>${esc(reply)}</p>`);
+  pushMessage(chat, 'assistant', { text: replyText }, mdToHtml(replyText) || `<p>${esc(replyText)}</p>`);
   void logUserEvent('gpt_ai_reply', { ui: 'gpt', keyword: product.keyword, via: root ? 'side_panel' : 'composer' });
   clarityEvt('gpt_ai_reply', {});
   // Learn from what the user said, after the reply so it never delays it.
@@ -12022,17 +12078,30 @@ ${stats || 'Belum ada data pasar yang cukup untuk kategori ini.'}`;
  * fetching what it needs is the entire point, and guessing wrong up front is
  * what made the old path answer with a clarification card instead of an answer.
  */
-function buildMarketAgentSystemPrompt(question) {
+function buildMarketAgentSystemPrompt(question, chat) {
   const lang = detectReplyLanguage(question);
   const langLabel = replyLanguageLabel(lang);
   const voice = lang === 'en'
     ? 'Reply in clear English (informal professional "you").'
     : 'Jawab dalam Bahasa Indonesia informal ("kamu").';
   const city = state.onboarding?.city || '';
-  const cats = (state.onboarding?.categories || []).filter(Boolean).slice(0, 5);
-  const who = (city || cats.length)
-    ? `\nKONTEKS USER: ${[city ? `kota ${city}` : '', cats.length ? `minat kategori ${cats.join(', ')}` : ''].filter(Boolean).join(', ')}. Pakai kalau relevan, jangan dipaksakan.`
-    : '';
+  const onboardCats = (state.onboarding?.categories || []).filter(Boolean).slice(0, 5);
+  const research = chat?.context?.research || {};
+  const namedCat = research.category
+    || chat?.context?.categoryOverride
+    || detectCategoryFromText(String(question || '').toLowerCase());
+  const hasFilters = !!(research.omset_min || research.max_age_days);
+  let who = '';
+  if (namedCat) {
+    who = `\nKONTEKS THREAD: kategori ${namedCat}. Cari HANYA di kategori ini. Jangan memfilter ke minat onboarding lain.`;
+  } else if (hasFilters) {
+    const hint = onboardCats.length ? onboardCats.join(', ') : 'onboarding';
+    who = `\nKONTEKS THREAD: user belum menyebut kategori. Cari LINTAS kategori. JANGAN memanggil pasar_kategori dengan minat onboarding (${hint}). Kalau kategori tidak jelas, tanya SATU kali — jangan diam-diam memilih Olahraga atau kategori minat.`;
+  } else if (city || onboardCats.length) {
+    const cat = onboardCats[0] || '';
+    who = `\nKONTEKS USER: ${[city ? `kota ${city}` : '', onboardCats.length ? `minat onboarding ${onboardCats.join(', ')}` : ''].filter(Boolean).join(', ')}. Ini HINT, bukan filter. Kalau pertanyaan tidak menyebut kategori, cari lintas kategori ATAU tanya satu kali. JANGAN diam-diam memfilter ke minat onboarding. Kalau kamu memakai minat onboarding, kalimat pertama jawaban HARUS: "Aku pakai minat ${cat || 'itu'}-mu — bilang kategori lain kalau mau diganti."`;
+  }
+  const thread = _gptMem().researchPromptBlock?.(research) || '';
 
   return `You are LarisID's product research assistant (LARISgpt). ${voice}
 LANGUAGE: Write ONLY in ${langLabel}. If the user mixed languages, use the language that is most prevalent in their message.
@@ -12043,9 +12112,13 @@ PENTING:
 - Sebut nama pasar dan angkanya secara konkret, jangan generik.
 - Banyak seller + omset tinggi merata artinya pasar jenuh, bukan otomatis "bagus".
 - Jangan bilang kamu "melihat" produk — kamu membaca data.
+- Jangan tulis daftar nama listing sebagai bullet. Kartu pasar akan tampil otomatis di bawah jawaban — itu yang diklik user.
+- Omset listing dari alat: label "terukur" = diukur, "perkiraan" = estimasi. Jangan menyamakan keduanya.
+- Follow-up pendek ("mau", "iya", "untuk fashion") mengacu ke pertanyaan/tawaran TERAKHIR di thread, bukan kata kunci produk baru.
+- Putaran alat pertama harus membawa filter user (umur listing, omset min, kategori yang disebut). Jangan buang satu putaran untuk pasar_kategori dari minat onboarding.
 ${aiLengthRule(langLabel)}
 ${aiCapabilityContract()}
-${aiToolsInstruction()}${who}`;
+${aiToolsInstruction()}${who}${thread}`;
 }
 
 /**
@@ -12056,15 +12129,24 @@ ${aiToolsInstruction()}${who}`;
  * daily product searches.
  */
 async function runMarketAgent(chat, text, loading) {
-  await ensureChatPersisted(chat, text.slice(0, 60), { kind: 'market_agent', q: text });
+  if (!chat.context) chat.context = {};
+  chat.context.kind = 'market_agent';
+  chat.context.q = chat.context.q || text;
+  applyResearchFromText(chat, text);
+  await ensureChatPersisted(chat, text.slice(0, 60), {
+    kind: 'market_agent',
+    q: chat.context.q,
+    research: chat.context.research || null,
+    categoryOverride: chat.context.categoryOverride || null,
+  });
   if (!(await _useAi('mls_chat'))) { loading?.remove?.(); return; }
-  const system = buildMarketAgentSystemPrompt(text) + memoryPromptBlock();
+  const system = buildMarketAgentSystemPrompt(text, chat) + memoryPromptBlock();
   const history = chatHistoryForAi(chat, text);
   const reply = await streamAssistantReply(loading, system, history, {
     tools: AI_TOOLS,
-    thinking: true,   // this path only ever gets analytical asks
+    thinking: true,   // first turn only — streamAssistantReply drops it after
   });
-  pushMessage(chat, 'assistant', { text: reply }, mdToHtml(reply) || `<p>${esc(reply)}</p>`);
+  await paintAgentMarketReply(chat, loading, reply);
   void logUserEvent('gpt_ai_reply', { ui: 'gpt', via: 'market_agent' });
   clarityEvt('gpt_ai_reply', {});
   extractFactsFromText(text).forEach(([k, v]) => { void rememberFact(k, v, 'chat'); });
@@ -12073,6 +12155,12 @@ async function runMarketAgent(chat, text, loading) {
 /** Ask Laris' "should I sell X category" turn — category-level, not one product. */
 async function handleAskLarisEvaluate(chat, text, category, loading) {
   if (!(await _useAi('mls_chat'))) { loading?.remove?.(); return; }
+  applyResearchFromText(chat, text);
+  if (category) {
+    if (!chat.context) chat.context = {};
+    chat.context.categoryOverride = category;
+    chat.context.research = _gptMem().mergeResearchConstraints?.(chat.context.research, { category }) || { category };
+  }
   // fetchCategoryPasarTypes, not fetchCategoryShowcase: the showcase path
   // filters listings_deduped.category (the 85 raw scrape strings) while this
   // routes through resolveCanonCats to category_canonical, which is the
@@ -12085,9 +12173,63 @@ async function handleAskLarisEvaluate(chat, text, category, loading) {
     tools: AI_TOOLS,
     thinking: true,   // this path is judgment by definition
   });
-  pushMessage(chat, 'assistant', { text: reply }, mdToHtml(reply) || `<p>${esc(reply)}</p>`);
+  await paintAgentMarketReply(chat, loading, reply, types);
   void logUserEvent('gpt_ai_reply', { ui: 'gpt', keyword: category, via: 'ask_laris_evaluate' });
   clarityEvt('gpt_ai_reply', {});
+}
+
+function _aiReplyText(reply) {
+  return typeof reply === 'string' ? reply : String(reply?.text || '');
+}
+
+function pendingOfferChipsHtml(offer) {
+  if (!offer?.prompt) return '';
+  const yes = offer.yesLabel || 'Ya, lanjut';
+  const no = offer.noLabel || 'Tidak, cari yang lain';
+  return `<div class="chips" style="margin-top:10px">`
+    + `<button type="button" class="chip" data-suggest-q="${esc(offer.prompt)}">${esc(yes)}</button>`
+    + `<button type="button" class="chip" data-suggest-q="Tidak, cari yang lain">${esc(no)}</button>`
+    + `</div>`;
+}
+
+async function resolvePasarTypes(keys) {
+  const uniq = [...new Set((keys || []).filter(Boolean))].slice(0, 12);
+  if (!uniq.length) return [];
+  const have = uniq.map(k => _ptypeByKeyword.get(k)).filter(Boolean);
+  if (have.length >= Math.min(3, uniq.length)) return have.slice(0, 8);
+  try {
+    return await typesForListings(uniq.map(k => ({ keyword: k })), '', 8);
+  } catch (_) {
+    return have.slice(0, 8);
+  }
+}
+
+async function paintAgentMarketReply(chat, loading, replyObj, fallbackTypes) {
+  const text = _aiReplyText(replyObj);
+  const thinking = typeof replyObj === 'object' ? (replyObj.thinking || '') : '';
+  const keys = typeof replyObj === 'object' ? (replyObj.pasarKeys || []) : [];
+  let types = await resolvePasarTypes(keys);
+  if (!types.length && fallbackTypes?.length) {
+    registerTypes(fallbackTypes);
+    types = fallbackTypes.slice(0, 8);
+  }
+  const offer = _gptMem().extractPendingOffer?.(text) || null;
+  if (!chat.context) chat.context = {};
+  chat.context.pendingOffer = offer;
+  let html = _aiBubbleHtml(text, thinking);
+  if (offer) html += pendingOfferChipsHtml(offer);
+  if (types.length) html += `<div class="card-grid">${marketCardsHtml(types)}</div>`;
+  const bubble = loading?.querySelector?.('.msg-bubble') || loading;
+  if (bubble) bubble.innerHTML = html;
+  bindTypeCards(loading);
+  bindSearchSuggests(loading);
+  void hydrateProdCardsIn();
+  pushMessage(chat, 'assistant', {
+    text,
+    q: chat.context?.q || '',
+    types: types.map(t => t.keyword),
+  }, html);
+  saveLocalState();
 }
 
 // ── AI tools ─────────────────────────────────────────────────────────────
@@ -12161,6 +12303,7 @@ function _aiPackType(t) {
 }
 
 function _aiPackListing(r) {
+  const extra = _gptMem().packListingFields?.(r) || {};
   return {
     nama: (r.product_name || '').slice(0, 70),
     toko: r.store_name || null,
@@ -12170,6 +12313,10 @@ function _aiPackListing(r) {
     rating: r.rating ?? null,
     ulasan: r.reviews ?? null,
     pasar: r.keyword || null,
+    listing_date: extra.listing_date || r.listing_date || null,
+    umur_hari: extra.umur_hari ?? null,
+    omset_bln: extra.omset_bln ?? null,
+    omset_label: extra.omset_label || null,
   };
 }
 
@@ -12241,7 +12388,7 @@ const AI_TOOLS = [
   },
   {
     name: 'filter_listing',
-    description: 'Ambil listing dengan filter terstruktur. Pakai untuk MENGUJI HIPOTESIS di data — misal listing yang judulnya menyebut "impor", listing dari kota hub impor, atau listing yang harganya jauh di bawah median pasar. Wajib isi minimal satu filter.',
+    description: 'Ambil listing dengan filter terstruktur. Pakai untuk MENGUJI HIPOTESIS dan untuk filter umur listing (umur_hari_max) / omset_min yang user sebut. Wajib isi minimal satu filter.',
     input_schema: {
       type: 'object',
       properties: {
@@ -12254,6 +12401,14 @@ const AI_TOOLS = [
         harga_min: { type: 'integer' },
         harga_max: { type: 'integer' },
         min_terjual: { type: 'integer' },
+        umur_hari_max: {
+          type: 'integer', minimum: 1, maximum: 730,
+          description: 'Listing tidak lebih tua dari N hari (dari listing_date). 3 bulan ≈ 90.',
+        },
+        omset_min: {
+          type: 'integer',
+          description: 'Omset per bulan minimal (nowcast_omset_monthly, rupiah). 300 juta = 300000000. Label terukur/perkiraan ikut di tiap baris.',
+        },
         urut: { type: 'string', enum: ['terjual', 'termurah', 'termahal'], default: 'terjual' },
         limit: { type: 'integer', minimum: 1, maximum: 40, default: 25 },
       },
@@ -12279,6 +12434,7 @@ async function _aiToolPasarKategori({ kategori, kota, limit }) {
   const packed = await fetchCategoryPasarTypes([kategori], kota || '', { limit: Math.min(limit || 15, 25) });
   const rows = packed?.types || [];
   if (!rows.length) return { n: 0, pasar: [], hint: 'Kategori tidak ketemu; coba cari_pasar dengan kata kunci produk.' };
+  registerTypes(rows);
   return { n: rows.length, kota_bucket: packed.cityBucket || 'ALL', pasar: rows.slice(0, 15).map(_aiPackType) };
 }
 
@@ -12294,9 +12450,10 @@ async function _aiToolDetailPasar({ pasar, kota }) {
   let row = await fetchRow(knownCityBucket(kota) || 'ALL');
   if (!row && kota) row = await fetchRow('ALL');
   if (!row) return { error: 'pasar tidak ketemu', hint: 'Pakai nilai `pasar` persis dari cari_pasar.' };
+  registerTypes([row]);
   try { await attachTypeQuartiles([row]); } catch (_) { /* quartiles are optional */ }
   const { data: rows } = await _supabase.from('listings_deduped')
-    .select('product_name,store_name,price,total_sold,reviews,rating,location,keyword')
+    .select('product_name,store_name,price,total_sold,reviews,rating,location,keyword,listing_date,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
     .eq('keyword', pasar)
     .eq('is_offtopic', false)          // mandatory on every listings_deduped read
     .order('total_sold', { ascending: false })
@@ -12328,18 +12485,25 @@ async function _aiToolFilterListing(a = {}) {
   const titles = Array.isArray(a.judul_mengandung) ? a.judul_mengandung.filter(Boolean).slice(0, 4) : [];
   const locs = Array.isArray(a.lokasi) ? a.lokasi.filter(Boolean).slice(0, 8) : [];
   const hasFilter = a.pasar || titles.length || locs.length
-    || a.harga_min != null || a.harga_max != null || a.min_terjual != null;
+    || a.harga_min != null || a.harga_max != null || a.min_terjual != null
+    || a.umur_hari_max != null || a.omset_min != null;
   // A bare call is a full scan of an 864k-row matview.
   if (!hasFilter) return { error: 'minimal satu filter wajib diisi' };
 
   let q = _supabase.from('listings_deduped')
-    .select('product_name,store_name,price,total_sold,reviews,rating,location,keyword')
+    .select('product_name,store_name,price,total_sold,reviews,rating,location,keyword,listing_date,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
     .eq('is_offtopic', false);
   if (a.pasar) q = q.eq('keyword', a.pasar);
   if (locs.length) q = q.in('location', locs);
   if (a.harga_min != null) q = q.gte('price', Number(a.harga_min) || 0);
   if (a.harga_max != null) q = q.lte('price', Number(a.harga_max) || 0);
   if (a.min_terjual != null) q = q.gte('total_sold', Number(a.min_terjual) || 0);
+  if (a.omset_min != null) q = q.gte('nowcast_omset_monthly', Number(a.omset_min) || 0);
+  if (a.umur_hari_max != null) {
+    const days = Math.min(Math.max(Number(a.umur_hari_max) || 0, 1), 730);
+    const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+    q = q.gte('listing_date', since);
+  }
   if (titles.length) {
     // _sanitizeSearchToken matters: a raw ',' or '.' breaks PostgREST .or().
     const ors = titles.map(t => `product_name.ilike.%${_sanitizeSearchToken(t)}%`).join(',');
@@ -12414,12 +12578,14 @@ async function _aiRunTool(name, input) {
 
 /** Trailing window of the current thread, as Anthropic-style turns. */
 function chatHistoryForAi(chat, latestText) {
+  const mem = _gptMem();
   const msgs = (chat?.messages || [])
     .filter(m => (m.role === 'user' || m.role === 'assistant'))
     .slice(-12)
     .map(m => {
-      const c = m.content;
-      const t = typeof c === 'string' ? c : (c?.text || '');
+      const t = mem.serializeMessageForAi
+        ? mem.serializeMessageForAi(m.content)
+        : (typeof m.content === 'string' ? m.content : (m.content?.text || ''));
       return t ? { role: m.role, content: String(t).slice(0, 4000) } : null;
     })
     .filter(Boolean);
@@ -12455,6 +12621,7 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
   let thinkAcc = '';
   let painting = false;
   const scroll = () => { if (root) root.scrollTop = root.scrollHeight; else scrollChatToBottom(); };
+  let lastStatus = '';
   const paint = () => {
     if (painting || !bubble) return;
     painting = true;
@@ -12466,6 +12633,8 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
   };
   const status = (msg) => {
     if (!bubble || acc) return;   // real text always wins over a status line
+    if (msg === lastStatus) return;
+    lastStatus = msg;
     bubble.innerHTML = `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">${esc(msg)}</p>`;
     scroll();
   };
@@ -12473,6 +12642,8 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
   _streamAbort = new AbortController();
   const signal = _streamAbort.signal;
   setComposerStopping(true);
+  const pasarKeys = [];
+  let showedThinking = false;
   try {
     const useTools = Array.isArray(opts.tools) && opts.tools.length > 0;
     const turns = messages.slice();
@@ -12482,10 +12653,14 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
       const lastTurn = turn === AI_TOOL_MAX_TURNS - 1 || calls >= AI_TOOL_MAX_CALLS;
       const stepOpts = {
         ...opts,
-        // Reasoning pays most when synthesising tool results, so thinking is
-        // forced on for every turn after the first tool round.
-        thinking: opts.thinking || turn > 0,
-        onThinking: (_p, full) => { thinkAcc = full; if (!acc) status('Menimbang data…'); },
+        thinking: !!(opts.thinking && turn === 0),
+        onThinking: (_p, full) => {
+          thinkAcc = full;
+          if (!acc && !showedThinking) {
+            showedThinking = true;
+            status('Menyusun jawaban…');
+          }
+        },
         onToolStart: (name) => status(AI_TOOL_STATUS[name] || 'Mengambil data…'),
         ...(useTools && lastTurn ? { toolChoice: { type: 'none' } } : {}),
       };
@@ -12518,7 +12693,12 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
         calls++;
         const key = `${t.name}:${JSON.stringify(t.input || {})}`;
         if (!seen.has(key)) seen.set(key, _aiRunTool(t.name, t.input));
-        return { id: t.id, out: await seen.get(key) };
+        const out = await seen.get(key);
+        const mem = _gptMem();
+        (mem.extractPasarKeysFromToolOut?.(out) || []).forEach((k) => {
+          if (k && !pasarKeys.includes(k)) pasarKeys.push(k);
+        });
+        return { id: t.id, out };
       }));
 
       // An abort during a slow query must not fire another model call.
@@ -12536,7 +12716,7 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
     }
 
     if (bubble) bubble.innerHTML = _aiBubbleHtml(acc, thinkAcc);
-    return acc;
+    return { text: acc, thinking: thinkAcc, pasarKeys };
   } finally {
     setComposerStopping(false);
     _streamAbort = null;
