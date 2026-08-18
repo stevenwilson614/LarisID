@@ -1332,7 +1332,8 @@ const state = {
   pendingFinder: null,  // landing finder answers given before signup; re-run after
   pendingTracker: null, // in-progress tracker wizard draft behind the login gate; resumed after sign-in
   everOpenedDeepdive: false,
-  comparePick: null, // { source, selected[] } — directory pick mode, max 3 listings
+  comparePick: null, // { source, selected[], chatId? } — directory pick mode, max 3 listings
+  compareReturnChatId: null, // compare riwayat to reopen after a Deep Dive from it
   // Survives recommendation wipes so chat product cards can reopen Deep Dive.
   productByKey: Object.create(null),
 
@@ -2243,7 +2244,7 @@ const MASCOT_ALIVE = true;
 let _navigatingFromHistory = false;
 let _historyPrimed = false;
 
-function setView(name) {
+function setView(name, opts = {}) {
   const leaving = state.view;
   state.view = name;
   ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'tentang', 'admin', 'tracker', 'community'].forEach(v => {
@@ -2297,11 +2298,11 @@ function setView(name) {
     scrollPanelToTop();
     void logUserEvent('view_open', { ui: 'gpt', view: name });
   }
-  if ((name !== leaving || !_historyPrimed) && !_navigatingFromHistory) {
-    const histState = { view: name };
+  if ((name !== leaving || !_historyPrimed || opts.forceHistory) && !_navigatingFromHistory) {
+    const histState = { view: name, ...(opts.hist || {}) };
     // Deep dive needs the product back, not just the view name — carry enough
     // to look it up again via findProduct() on the way back in.
-    if (name === 'deepdive' && state.deepdiveProduct) {
+    if (name === 'deepdive' && state.deepdiveProduct && !histState.compare && histState.item_id == null) {
       histState.item_id = state.deepdiveProduct.item_id;
       histState.shop_id = state.deepdiveProduct.shop_id;
     }
@@ -2325,9 +2326,16 @@ window.addEventListener('popstate', (e) => {
   if (!st || !HISTORY_VIEWS.includes(st.view)) return;
   _navigatingFromHistory = true;
   try {
-    if (st.view === 'deepdive' && st.item_id != null) {
+    if (st.compare) {
+      const chat = state.chats.find(c => (c.id || c.localId) === st.chatId) || activeChat();
+      if (chat) state.activeChatId = chat.id || chat.localId;
+      const products = resolveCompareProducts(chat);
+      if (products.length >= 2) void openProductCompare(products, { resume: true });
+      else setView('directory');
+    } else if (st.view === 'deepdive' && st.item_id != null) {
+      if (st.fromCompare) state.compareReturnChatId = st.fromCompare;
       const found = findProduct(st.item_id, st.shop_id);
-      if (found) void openDeepDive(found);
+      if (found) void openDeepDive(found, st.fromCompare ? { fromCompare: true } : {});
       else setView('directory');
     } else {
       setView(st.view);
@@ -3000,7 +3008,7 @@ async function _authOnSignIn(session, opts) {
     const products = Array.isArray(pending.products)
       ? pending.products
       : [pending.a, pending.b].filter(Boolean);
-    if (products.length >= 2) await openProductCompare(products);
+    if (products.length >= 2) await openProductCompare(products, { resume: true, chatId: pending.chatId || null });
   } else if (state.pendingDeepdive) {
     const pending = state.pendingDeepdive;
     state.pendingDeepdive = null;
@@ -3266,6 +3274,83 @@ function chatIsResultsThread(chat) {
   const kind = chat?.context?.kind;
   return kind === 'recommendation' || kind === 'finder'
     || kind === 'search' || kind === 'category_search';
+}
+
+function chatIsCompare(chat) {
+  return chat?.context?.kind === 'compare';
+}
+
+function compareTitle(products) {
+  const names = (products || []).map(p => (p.product_name || p.keyword || 'Produk').slice(0, 22));
+  return `Bandingkan: ${names.join(' vs ')}`.slice(0, 60);
+}
+
+function resolveCompareProducts(chat) {
+  const raw = chat?.context?.compareProducts;
+  if (!Array.isArray(raw)) return [];
+  return raw.map(p => asListingProduct(p)).filter(p => p?.item_id != null).slice(0, 3);
+}
+
+function compareChatKey(chat) {
+  return chat ? (chat.id || chat.localId) : null;
+}
+
+async function persistCompareChat(chat) {
+  saveLocalState();
+  renderChatList();
+  if (!currentUser || !chat?.id || !_supabase) return;
+  try {
+    await _supabase.from('gpt_chats').update({
+      title: chat.title,
+      context: {
+        kind: 'compare',
+        compareProducts: (chat.context?.compareProducts || []).map(productSnapshot).filter(Boolean),
+      },
+    }).eq('id', chat.id);
+  } catch (_) {}
+}
+
+async function ensureCompareChat(products, opts = {}) {
+  const snaps = products.map(productSnapshot).filter(Boolean);
+  const title = compareTitle(products);
+  const ctx = { kind: 'compare', compareProducts: snaps };
+  rememberProducts(products);
+
+  let chat = null;
+  if (opts.chatId) {
+    chat = state.chats.find(c => (c.id || c.localId) === opts.chatId) || null;
+  }
+  if (!chat && chatIsCompare(activeChat())) chat = activeChat();
+
+  if (chat) {
+    chat.context = { ...(chat.context || {}), ...ctx };
+    chat.title = title;
+    state.activeChatId = compareChatKey(chat);
+    await persistCompareChat(chat);
+    return chat;
+  }
+
+  if (currentUser && _supabase) {
+    try {
+      const { data } = await _supabase.rpc('gpt_new_chat', { p_title: title, p_context: ctx });
+      if (data) noteGptUsage(data);
+      if (data?.chat) {
+        chat = {
+          id: data.chat.id,
+          title,
+          context: { ...(data.chat.context || {}), ...ctx },
+          messages: [],
+          created_at: Date.now(),
+        };
+        state.chats.unshift(chat);
+        state.activeChatId = chat.id;
+        saveLocalState();
+        renderChatList();
+        return chat;
+      }
+    } catch (_) {}
+  }
+  return startBlankLocalChat(title, ctx);
 }
 
 function scrollPanelToTop() {
@@ -6348,7 +6433,7 @@ async function handleIntent(intent, text) {
   // Market intents never belong inside a product Deep Dive thread or a
   // leftover finder/recommendation results page.
   let chat = activeChat();
-  if (chat?.context?.product || chat?.context?.kind === 'product' || chatIsResultsThread(chat)) {
+  if (chat?.context?.product || chat?.context?.kind === 'product' || chatIsCompare(chat) || chatIsResultsThread(chat)) {
     beginFreshChat();
     chat = null;
   }
@@ -7931,6 +8016,7 @@ function seedProductsFromChat(chat) {
   if (!chat) return;
   if (chat.context?.product) rememberProducts([chat.context.product]);
   if (Array.isArray(chat.context?.peers)) rememberProducts(chat.context.peers);
+  if (Array.isArray(chat.context?.compareProducts)) rememberProducts(chat.context.compareProducts);
   for (const m of chat.messages || []) {
     if (Array.isArray(m.content?.products)) rememberProducts(m.content.products);
   }
@@ -7947,6 +8033,10 @@ function findProduct(item_id, shop_id) {
   if (fromRec) return fromRec;
   const fromDir = state.dirRows.find(match);
   if (fromDir) return fromDir;
+  if (Array.isArray(chat?.context?.compareProducts)) {
+    const hit = chat.context.compareProducts.find(match);
+    if (hit) return hit;
+  }
   if (Array.isArray(chat?.context?.peers)) {
     const peer = chat.context.peers.find(match);
     if (peer) return peer;
@@ -8937,6 +9027,14 @@ async function openChat(id) {
       scrollPanelToTop();
       return;
     } catch (_) {}
+  }
+
+  if (chatIsCompare(chat)) {
+    const products = resolveCompareProducts(chat);
+    if (products.length >= 2) {
+      await openProductCompare(products, { resume: true, chatId: compareChatKey(chat) });
+      return;
+    }
   }
 
   // Product Deep Dive threads reopen on the analysis — chat scrolls are behind it.
@@ -10550,7 +10648,16 @@ async function openDeepDive(product, ddOpts = {}) {
   if (!state.everOpenedDeepdive) { state.everOpenedDeepdive = true; saveLocalState(); }
   rememberProducts([product]);
   state.deepdiveProduct = product;
-  setView('deepdive');
+  if (!ddOpts.fromCompare) state.compareReturnChatId = null;
+  else if (!state.compareReturnChatId) state.compareReturnChatId = compareChatKey(activeChat());
+  setView('deepdive', ddOpts.fromCompare && state.compareReturnChatId ? {
+    forceHistory: true,
+    hist: {
+      item_id: product.item_id,
+      shop_id: product.shop_id,
+      fromCompare: state.compareReturnChatId,
+    },
+  } : {});
   scrollPanelToTop();
   noteCategoryOpen(product.category);
   dwellStart(product.category);
@@ -10783,7 +10890,7 @@ async function openDeepDive(product, ddOpts = {}) {
   root.innerHTML = `
     <div class="ddr-header" data-dd-sec="skor">
       <div class="ddr-media">
-        <button type="button" class="ddr-back" id="ddr-back" aria-label="Kembali ke daftar produk" title="Kembali ke daftar produk">${ico('arrowLeft', 18)}</button>
+        <button type="button" class="ddr-back" id="ddr-back" aria-label="Kembali" title="Kembali">${ico('arrowLeft', 18)}</button>
         ${ddHeaderMediaHtml(product, peers)}
         <span class="ddr-views" hidden data-view-key="${esc(viewCountKey(product.item_id, product.shop_id))}" title="Orang yang melihat produk ini di Laris tahun ini">${ico('eye', 13)}<span class="ddr-views-num" data-view-num-self>${viewersYtd.toLocaleString('id-ID')}</span><span class="ddr-views-lbl">sedang melihat</span></span>
       </div>
@@ -10886,6 +10993,16 @@ async function openDeepDive(product, ddOpts = {}) {
     e.preventDefault();
     e.stopPropagation();
     void logUserEvent('deepdive_back', { ui: 'gpt', via: 'back_arrow', keyword: kw || '' });
+    const compareId = state.compareReturnChatId;
+    const compareChat = compareId
+      ? state.chats.find(c => (c.id || c.localId) === compareId)
+      : null;
+    const compared = resolveCompareProducts(compareChat);
+    if (compared.length >= 2) {
+      state.activeChatId = compareId;
+      void openProductCompare(compared, { resume: true, chatId: compareId });
+      return;
+    }
     void openDirectory();
   });
   $('ddr-fees-reveal-btn')?.addEventListener('click', () => {
@@ -13593,23 +13710,41 @@ function toggleComparePickProduct(p) {
 }
 
 function cancelComparePick() {
-  const src = state.comparePick?.source;
+  const pick = state.comparePick;
+  const src = pick?.source;
+  const chatId = pick?.chatId;
   state.comparePick = null;
   updateDirCompareBanner();
+  const chat = chatId ? state.chats.find(c => (c.id || c.localId) === chatId) : null;
+  const compared = resolveCompareProducts(chat);
+  if (compared.length >= 2) {
+    state.activeChatId = chatId;
+    void openProductCompare(compared, { resume: true, chatId });
+    return;
+  }
   if (src) void openDeepDive(src);
-  else setView('chat');
+  else setView('directory');
 }
 
-async function startComparePick(source) {
-  if (!source) {
+async function startComparePick(source, selected, chatId) {
+  const sel = Array.isArray(selected) && selected.length
+    ? selected.slice(0, 3)
+    : (source ? [source] : []);
+  if (!sel.length) {
     showToast('Buka produk dulu untuk membandingkan');
     return;
   }
-  state.comparePick = { source, selected: [source] };
+  const existingChatId = chatId
+    || (chatIsCompare(activeChat()) ? compareChatKey(activeChat()) : null);
+  state.comparePick = {
+    source: source || sel[0],
+    selected: sel,
+    chatId: existingChatId,
+  };
   state.dirPage = 1;
-  const match = matchDirCatFromProduct(source);
+  const match = matchDirCatFromProduct(state.comparePick.source);
   if (match) state.dirCats = [toCanonicalCat(match) || match].filter(Boolean);
-  void logUserEvent('gpt_compare_pick', { ui: 'gpt', keyword: source.keyword || '', item_id: source.item_id });
+  void logUserEvent('gpt_compare_pick', { ui: 'gpt', keyword: state.comparePick.source?.keyword || '', item_id: state.comparePick.source?.item_id });
   clarityEvt('gpt_compare_pick', {});
   await openDirectory();
   updateDirCompareBanner();
@@ -13708,41 +13843,38 @@ function compareSideLabel(p, i, source) {
   return `Produk ${i + 1}`;
 }
 
-async function openProductCompare(aOrList, b) {
-  const products = (Array.isArray(aOrList) ? aOrList : [aOrList, b]).filter(Boolean).slice(0, 3);
+async function openProductCompare(aOrList, b, maybeOpts) {
+  const opts = Array.isArray(aOrList)
+    ? ((b && typeof b === 'object' && b.item_id == null) ? b : {})
+    : (maybeOpts || {});
+  const products = (Array.isArray(aOrList) ? aOrList : [aOrList, b])
+    .filter(p => p && p.item_id != null)
+    .slice(0, 3);
   if (products.length < 2) return;
   if (!currentUser) {
-    state.pendingCompare = { products };
+    state.pendingCompare = { products, chatId: opts.chatId || state.comparePick?.chatId || null };
     saveLocalState();
     openAuthModal('signup', 'gpt_gate_compare');
     return;
   }
   if (state.pendingCompare) { state.pendingCompare = null; saveLocalState(); }
   const source = state.comparePick?.source || null;
+  const pickChatId = opts.chatId || state.comparePick?.chatId || null;
+  const chat = await ensureCompareChat(products, { resume: !!opts.resume, chatId: pickChatId });
+  const chatId = compareChatKey(chat);
+  state.compareReturnChatId = chatId;
   state.comparePick = null;
   updateDirCompareBanner();
   state.deepdiveProduct = products[0];
-  setView('deepdive');
+  setView('deepdive', {
+    forceHistory: true,
+    hist: { compare: true, chatId },
+  });
   const root = $('deepdive-root');
   if (!root) return;
   root.innerHTML = `<p class="dd-sub">Menyiapkan perbandingan…</p>`;
 
   const metas = await Promise.all(products.map(p => fetchPeersForCompare(p)));
-
-  let chat = activeChat();
-  if (chat) {
-    const others = products.slice(1).map(p => ({ item_id: p.item_id, shop_id: p.shop_id }));
-    chat.context = {
-      ...(chat.context || {}),
-      product: products[0],
-      keyword: products[0].keyword || chat.context?.keyword,
-      compareWith: others[0] || null,
-    };
-    const names = products.map(p => (p.product_name || p.keyword || 'Produk').slice(0, 22));
-    chat.title = `Bandingkan: ${names.join(' vs ')}`;
-    saveLocalState();
-    renderChatList();
-  }
 
   void logUserEvent('gpt_product_compare', {
     ui: 'gpt',
@@ -13774,10 +13906,10 @@ async function openProductCompare(aOrList, b) {
   root.innerHTML = `
     <div class="dd-head" style="margin-bottom:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
       <button type="button" class="btn-ghost" id="cmp2-back" style="margin:0">Kembali</button>
-      <button type="button" class="btn-ghost" id="cmp2-again" style="margin:0">Bandingkan produk lain</button>
+      <button type="button" class="btn-ghost" id="cmp2-again" style="margin:0">Ubah produk</button>
     </div>
     <h2 class="dd-title" style="margin-bottom:4px">Perbandingan produk</h2>
-    <p class="dd-sub" style="margin-bottom:16px">Angka dari data Shopee via LarisID — bukan tebakan AI.</p>
+    <p class="dd-sub" style="margin-bottom:16px">Angka dari data Shopee via LarisID — bukan tebakan AI. Tersimpan di riwayat — klik chat-nya untuk buka lagi.</p>
     <div class="cmp2-scroll" style="--cmp-n:${n}">
       <div class="cmp2-heads">
         ${products.map((p, i) => productCompareSideHtml(p, metas[i], compareSideLabel(p, i, source))).join('')}
@@ -13789,14 +13921,19 @@ async function openProductCompare(aOrList, b) {
   `;
 
   $('cmp2-back')?.addEventListener('click', () => {
-    void openDeepDive(source || products[0]);
+    state.compareReturnChatId = null;
+    void openDirectory();
   });
-  $('cmp2-again')?.addEventListener('click', () => void startComparePick(source || products[0]));
+  $('cmp2-again')?.addEventListener('click', () => {
+    void startComparePick(source || products[0], products, chatId);
+  });
   root.querySelectorAll('[data-cmp-open]').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.getAttribute('data-cmp-open');
       const p = products.find(x => prodKey(x) === key);
-      if (p) void openDeepDive(p);
+      if (!p) return;
+      state.compareReturnChatId = chatId;
+      void openDeepDive(p, { fromCompare: true });
     });
   });
   setComposerChips(ddComposerChips(products[0]), 'compare');
@@ -15046,6 +15183,7 @@ function wireUi() {
 
   $('btn-produk')?.addEventListener('click', () => {
     state.comparePick = null;
+    state.compareReturnChatId = null;
     updateDirCompareBanner();
     void openDirectory();
   });
