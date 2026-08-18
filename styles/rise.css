@@ -192,6 +192,10 @@
   background-size:calc(54px - 34px * var(--p,0)) calc(54px - 34px * var(--p,0));
   opacity:calc(.1 + .26 * var(--p,0))}
 .rz-move .rz-wrap{position:relative}
+/* Sits between the headline and the counting scale, so it pulls the headline's
+   bottom margin back in to keep the two reading as one statement. */
+.rz-move-lead{margin:calc(-1 * clamp(18px,4vw,30px)) 0 0;max-width:36ch;
+  font-size:clamp(1.05rem,4.2vw,1.25rem);color:var(--ink-mute)}
 .rz-scale{position:relative;height:clamp(84px,24vw,160px);margin:clamp(24px,6vw,44px) 0}
 .rz-scale-n{position:absolute;left:0;top:0;font-size:clamp(3.4rem,19vw,8rem);font-weight:800;
   letter-spacing:-.05em;line-height:1;color:var(--merah);font-variant-numeric:tabular-nums;
