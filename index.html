@@ -978,6 +978,17 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
      is ignored and cards render ~160×320. */
   width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; background: #f0f0f0; display: block;
 }
+.prod-card-img { position: relative; display: block; overflow: hidden; }
+.prod-card-img img { width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; display: block; }
+.prod-card-img-caption {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 12px 8px 6px;
+  background: linear-gradient(transparent, rgba(28, 22, 18, .78));
+  color: #fff;
+  font-size: .62rem; font-weight: 750; line-height: 1.2;
+  text-align: left;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
 .prod-card-name-row {
   display: flex; align-items: flex-start; gap: 6px; justify-content: space-between;
 }
@@ -1003,6 +1014,18 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
   font-size: .8125rem; font-weight: 600; line-height: 1.35;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   min-height: 2.7em;
+}
+.prod-card-name--split {
+  display: flex; flex-direction: column; gap: 1px;
+  -webkit-line-clamp: unset; overflow: visible; min-height: 0;
+}
+.prod-card-stem {
+  font-size: .68rem; font-weight: 550; color: var(--muted); line-height: 1.25;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.prod-card-distinct {
+  font-size: inherit; font-weight: 750; line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .prod-card-loc {
   font-size: .68rem; color: var(--muted); margin-top: 4px;
@@ -1060,7 +1083,8 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
   box-shadow: 0 0 0 2px var(--emas), 0 6px 26px rgba(201, 151, 75, .30);
 }
 .prod-card--terlaris > img,
-.prod-card--terlaris > .prod-card-ph { border-radius: 15px 15px 0 0; }
+.prod-card--terlaris > .prod-card-img,
+.prod-card--terlaris > .prod-card-ph { border-radius: 15px 15px 0 0; overflow: hidden; }
 .tlr-badge {
   position: absolute; top: -8px; left: -6px; z-index: 3;
   display: inline-flex; align-items: center; gap: 5px;
@@ -2920,6 +2944,10 @@ body.home-finder-done .home-hero {
   .prod-card { border-radius: 12px; }
   .prod-card-body { padding: 9px; }
   .prod-card-name { font-size: .68rem; min-height: 2.4em; }
+  .prod-card-name--split { min-height: 0; }
+  .prod-card-stem { font-size: .54rem; }
+  .prod-card-distinct { font-size: .68rem; }
+  .prod-card-img-caption { font-size: .52rem; padding: 10px 5px 4px; }
   .prod-card-loc { font-size: .62rem; }
   .prod-card-stats { gap: 6px; margin-top: 8px; padding-top: 8px; }
   /* --slim is what the JS-generated cards actually use (see the base rule
@@ -5748,7 +5776,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script defer src="/js/laris-mascot-rigs.js?v=20260812a"></script>
 <script defer src="/js/laris-mascot.js?v=20260812a"></script>
 <script src="/js/admin-map.js?v=20260812a" defer></script>
-<script src="/js/gpt-app.js?v=20260818b" defer></script>
+<script src="/js/gpt-app.js?v=20260818c" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>
 </html>

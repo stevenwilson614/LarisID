@@ -12913,6 +12913,89 @@ function typeTitle(kw) {
   return String(kw || '').replace(/\b\w/g, c => c.toUpperCase());
 }
 
+function typeKwTokens(kw) {
+  return String(kw || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+}
+
+/**
+ * Split a market keyword so nearby cards stay distinguishable on a 3-col
+ * phone grid. Titles are clamp-2 at ~11px, so "sepatu sneakers wanita
+ * premium" and "...kekinian" both collapse to "Sepatu Sneakers…".
+ *
+ * Sibling-aware first: shared prefix of ≥2 tokens becomes the muted stem,
+ * remainder is the bold line (Premium / Kekinian). Else 4+ token keywords
+ * keep the last two words as the distinct line so a singleton still shows
+ * the adjectives. Never invents labels — only words already in the keyword.
+ */
+function splitTypeTitle(keyword, siblingKeywords) {
+  const tokens = typeKwTokens(keyword);
+  if (!tokens.length) return { stem: null, distinct: null, title: typeTitle(keyword) };
+  const family = (siblingKeywords || [])
+    .map(typeKwTokens)
+    .filter(t => t.length >= 2 && t[0] === tokens[0] && tokens[1] && t[1] === tokens[1]);
+  if (family.length >= 2) {
+    let i = 0;
+    while (i < tokens.length && family.every(t => t[i] && t[i] === tokens[i])) i++;
+    if (i >= 2 && i < tokens.length) {
+      return {
+        stem: typeTitle(tokens.slice(0, i).join(' ')),
+        distinct: typeTitle(tokens.slice(i).join(' ')),
+        title: typeTitle(keyword),
+      };
+    }
+  }
+  if (tokens.length >= 4) {
+    return {
+      stem: typeTitle(tokens.slice(0, -2).join(' ')),
+      distinct: typeTitle(tokens.slice(-2).join(' ')),
+      title: typeTitle(keyword),
+    };
+  }
+  return { stem: null, distinct: null, title: typeTitle(keyword) };
+}
+
+function typeNameHtml(parts) {
+  if (parts.stem && parts.distinct) {
+    return `<div class="prod-card-name prod-card-name--split">`
+      + `<span class="prod-card-stem">${esc(parts.stem)}</span>`
+      + `<span class="prod-card-distinct">${esc(parts.distinct)}</span>`
+      + `</div>`;
+  }
+  return `<div class="prod-card-name">${esc(parts.title)}</div>`;
+}
+
+/** Thumb vs full Shopee URLs are the same photo. */
+function typeCoverKey(url) {
+  return String(url || '').replace(/_tn\.webp$/i, '').split('?')[0];
+}
+
+function typeCoverCandidates(t) {
+  const out = [];
+  const push = u => { if (u && !out.includes(u)) out.push(u); };
+  // Prefer the representative listing — images[] can include off-keyword scrapes.
+  push(t && t.rep_image_url);
+  ((t && t.images) || []).forEach(push);
+  return out;
+}
+
+/**
+ * First unused photo from this keyword's own covers. Mutates `usedImgs`.
+ * collided=true means every candidate was already on this grid — keep the
+ * honest top listing and let the caller overlay the distinct word.
+ */
+function pickTypeCover(t, usedImgs) {
+  const candidates = typeCoverCandidates(t);
+  const used = usedImgs || new Set();
+  const unused = candidates.find(u => !used.has(typeCoverKey(u)));
+  if (unused) {
+    used.add(typeCoverKey(unused));
+    return { url: unused, collided: false };
+  }
+  const chosen = candidates[0] || '';
+  if (chosen) used.add(typeCoverKey(chosen));
+  return { url: chosen, collided: !!chosen };
+}
+
 function typeNiche(t) {
   if (t.breakout_rate == null) return null;
   return {
@@ -13033,9 +13116,9 @@ function terlarisWowHtml(w) {
     + `${ico('arrowUp', 10)} ${val} minggu ini</span>`;
 }
 
-function typeCardHtml(t, absIdx, animIdx) {
-  const imgs = (t.images || []).filter(Boolean);
-  const mainImg = imgs[0] || t.rep_image_url || '';
+function typeCardHtml(t, absIdx, animIdx, siblings, usedImgs) {
+  const parts = splitTypeTitle(t.keyword, siblings);
+  const cover = pickTypeCover(t, usedImgs);
   const lo = Number(t.omset_p60) || 0;
   const hi = Number(t.omset_p100) || 0;
   const omsetVal = (lo > 0 && hi > 0)
@@ -13048,12 +13131,18 @@ function typeCardHtml(t, absIdx, animIdx) {
     ? `<span class="prod-card-views" hidden data-view-key="${esc(vk)}" title="Orang yang melihat produk ini di Laris tahun ini">${ico('eye', 11)}<span data-view-num>${viewers.toLocaleString('id-ID')}</span></span>`
     : '';
   const tlr = t._terlaris || null;
+  const overlay = (cover.collided && parts.distinct)
+    ? `<span class="prod-card-img-caption">${esc(parts.distinct)}</span>`
+    : '';
+  const imgBlock = cover.url
+    ? `<div class="prod-card-img"><img src="${esc(imgThumb(cover.url))}" alt="" loading="lazy" decoding="async" width="320" height="320">${overlay}</div>`
+    : '<div class="prod-card-ph"></div>';
   return `<button type="button" class="prod-card ptype-card${tlr ? ' prod-card--terlaris' : ''}" data-ptype="${absIdx}" data-ptype-kw="${esc(t.keyword || '')}" style="animation-delay:${(animIdx % 3) * 0.06}s">
     ${tlr ? terlarisBadgeHtml() : ''}
-    ${mainImg ? `<img src="${esc(imgThumb(mainImg))}" alt="" loading="lazy" decoding="async" width="320" height="320">` : '<div class="prod-card-ph"></div>'}
+    ${imgBlock}
     <div class="prod-card-body">
       <div class="prod-card-name-row">
-        <div class="prod-card-name">${esc(typeTitle(t.keyword))}</div>
+        ${typeNameHtml(parts)}
         ${viewsHtml}
       </div>
       <div class="prod-card-stats prod-card-stats--slim">
@@ -13131,7 +13220,9 @@ function marketCardsHtml(types) {
   const list = types || [];
   // Nearby fallback is "pasar terdekat", not the query's weekly winner.
   const pinned = list.some(t => t._nearby) ? list : markTerlarisMinggu(list);
-  return pinned.map((t, i) => typeCardHtml(t, i, i)).join('');
+  const siblings = pinned.map(t => t.keyword);
+  const usedImgs = new Set();
+  return pinned.map((t, i) => typeCardHtml(t, i, i, siblings, usedImgs)).join('');
 }
 
 function bindTypeCards(root) {
@@ -13618,7 +13709,9 @@ async function renderDirectory() {
   const nearbyLead = nearby
     ? `<p class="dd-sub dir-nearby-lead">Belum ketemu pasar untuk "<strong>${esc(q)}</strong>". Ini pasar terdekat yang punya produk mirip:</p>`
     : '';
-  const cards = slice.map((t, i) => typeCardHtml(t, start + i, i)).join('');
+  const siblings = slice.map(t => t.keyword);
+  const usedImgs = new Set();
+  const cards = slice.map((t, i) => typeCardHtml(t, start + i, i, siblings, usedImgs)).join('');
   grid.innerHTML = cards ? (nearbyLead + cards) : emptyMsg;
   bindTypeCards(grid);
   scrollPanelToTop();

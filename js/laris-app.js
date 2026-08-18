@@ -10536,17 +10536,75 @@ async function dscFetchTypes(filters = {}) {
 }
 
 /** Card for one market. Mirrors Site B: omset, median, Q1-Q3 price band. */
-function dscTypeCardHtml(t) {
-  const title = String(t.keyword || '').replace(/\b\w/g, c => c.toUpperCase());
+function _dscTypeTitle(kw) {
+  return String(kw || '').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function _dscKwTokens(kw) {
+  return String(kw || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+}
+
+function _dscSplitTypeTitle(keyword, siblingKeywords) {
+  const tokens = _dscKwTokens(keyword);
+  if (!tokens.length) return { stem: null, distinct: null, title: _dscTypeTitle(keyword) };
+  const family = (siblingKeywords || [])
+    .map(_dscKwTokens)
+    .filter(t => t.length >= 2 && t[0] === tokens[0] && tokens[1] && t[1] === tokens[1]);
+  if (family.length >= 2) {
+    let i = 0;
+    while (i < tokens.length && family.every(t => t[i] && t[i] === tokens[i])) i++;
+    if (i >= 2 && i < tokens.length) {
+      return {
+        stem: _dscTypeTitle(tokens.slice(0, i).join(' ')),
+        distinct: _dscTypeTitle(tokens.slice(i).join(' ')),
+        title: _dscTypeTitle(keyword),
+      };
+    }
+  }
+  if (tokens.length >= 4) {
+    return {
+      stem: _dscTypeTitle(tokens.slice(0, -2).join(' ')),
+      distinct: _dscTypeTitle(tokens.slice(-2).join(' ')),
+      title: _dscTypeTitle(keyword),
+    };
+  }
+  return { stem: null, distinct: null, title: _dscTypeTitle(keyword) };
+}
+
+function _dscCoverKey(url) {
+  return String(url || '').replace(/_tn\.webp$/i, '').split('?')[0];
+}
+
+function _dscPickTypeCover(t, usedImgs) {
+  const candidates = [];
+  const push = u => { if (u && !candidates.includes(u)) candidates.push(u); };
   // Prefer rep_image_url first — images[] can include off-keyword scrapes
   // (reported: gasoline tiles on stop-kontak markets). Durable fix is matview rebuild.
-  const imgs = [];
-  if (t.rep_image_url) imgs.push(t.rep_image_url);
-  (t.images || []).forEach(u => { if (u && !imgs.includes(u)) imgs.push(u); });
-  const img = imgs[0];
-  const imgHtml = img
-    ? `<img src="${img}" alt="" loading="lazy" onerror="this.parentElement.innerHTML=wIcon('box',36,'#9CA3AF')">`
+  push(t && t.rep_image_url);
+  ((t && t.images) || []).forEach(push);
+  const used = usedImgs || new Set();
+  const unused = candidates.find(u => !used.has(_dscCoverKey(u)));
+  if (unused) {
+    used.add(_dscCoverKey(unused));
+    return { url: unused, collided: false };
+  }
+  const chosen = candidates[0] || '';
+  if (chosen) used.add(_dscCoverKey(chosen));
+  return { url: chosen, collided: !!chosen };
+}
+
+function dscTypeCardHtml(t, siblings, usedImgs) {
+  const parts = _dscSplitTypeTitle(t.keyword, siblings);
+  const cover = _dscPickTypeCover(t, usedImgs);
+  const overlay = (cover.collided && parts.distinct)
+    ? `<span class="prod-card-img-caption">${_dscEscAttr(parts.distinct)}</span>`
+    : '';
+  const imgHtml = cover.url
+    ? `<img src="${cover.url}" alt="" loading="lazy" onerror="this.parentElement.innerHTML=wIcon('box',36,'#9CA3AF')">${overlay}`
     : wIcon('box', 36, '#9CA3AF');
+  const nameHtml = (parts.stem && parts.distinct)
+    ? `<div class="dsc-card-name prod-card-name--split"><span class="prod-card-stem">${_dscEscAttr(parts.stem)}</span><span class="prod-card-distinct">${_dscEscAttr(parts.distinct)}</span></div>`
+    : `<div class="dsc-card-name">${_dscEscAttr(parts.title).slice(0, 70)}</div>`;
   // fmtShort is the site's money formatter (it already prefixes Rp) — a market's
   // omset runs to billions, so the full number is unreadable on a card.
   const rp = v => fmtShort(Number(v) || 0);
@@ -10558,7 +10616,7 @@ function dscTypeCardHtml(t) {
   return `<div class="dsc-card dsc-card-pasar" onclick="dscOpenTypeDeepDive('${kwAttr}')">
     <div class="dsc-card-img" style="position:relative;">${imgHtml}</div>
     <div class="dsc-card-body">
-      <div class="dsc-card-name">${_dscEscAttr(title).slice(0, 70)}</div>
+      ${nameHtml}
       <div class="dsc-card-store">${Number(t.n_sellers || 0).toLocaleString('id-ID')} penjual &middot; ${Number(t.n_listings || 0).toLocaleString('id-ID')} listing</div>
       <div style="margin-top:8px;">
         <div class="dsc-card-price">${t.omset_top15 ? rp(t.omset_top15) + '/bln' : '—'}</div>
@@ -11308,7 +11366,9 @@ function dscRenderTable() {
       const tPage = Math.min(_dscPage, tPages);
       const tStart = (tPage - 1) * perPage;
       const tSlice = _dscTypeRows.slice(tStart, tStart + perPage);
-      cardGrid.innerHTML = filterNoMatchBanner + tSlice.map(dscTypeCardHtml).join('');
+      const tSiblings = tSlice.map(r => r.keyword);
+      const tUsedImgs = new Set();
+      cardGrid.innerHTML = filterNoMatchBanner + tSlice.map(t => dscTypeCardHtml(t, tSiblings, tUsedImgs)).join('');
     } else if (!slice.length) {
       if (_dscLoading || (!_dscLoaded && !_dscBrowsePool.length)) {
         cardGrid.innerHTML = loadingHtml;
