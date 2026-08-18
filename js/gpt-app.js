@@ -1328,11 +1328,11 @@ const state = {
   recommendations: [],
   deepdiveProduct: null,
   pendingDeepdive: null, // { item_id, shop_id } clicked behind the login gate; opened after sign-in
-  pendingCompare: null, // { a, b } clicked behind login gate; opened after sign-in
+  pendingCompare: null, // { products: [...] } (legacy { a, b }) behind login gate
   pendingFinder: null,  // landing finder answers given before signup; re-run after
   pendingTracker: null, // in-progress tracker wizard draft behind the login gate; resumed after sign-in
   everOpenedDeepdive: false,
-  comparePick: null, // { source } — directory is in “pick a product to compare” mode
+  comparePick: null, // { source, selected[] } — directory pick mode, max 3 listings
   // Survives recommendation wipes so chat product cards can reopen Deep Dive.
   productByKey: Object.create(null),
 
@@ -2993,11 +2993,14 @@ async function _authOnSignIn(session, opts) {
   // Continue where the login gate interrupted: open the product they clicked.
   const hadPending = !!(state.pendingDeepdive || state.pendingCompare || state.pendingTracker);
   if (state.pendingCompare) {
-    const pair = state.pendingCompare;
+    const pending = state.pendingCompare;
     state.pendingCompare = null;
     state.pendingDeepdive = null;
     saveLocalState();
-    await openProductCompare(pair.a, pair.b);
+    const products = Array.isArray(pending.products)
+      ? pending.products
+      : [pending.a, pending.b].filter(Boolean);
+    if (products.length >= 2) await openProductCompare(products);
   } else if (state.pendingDeepdive) {
     const pending = state.pendingDeepdive;
     state.pendingDeepdive = null;
@@ -8001,7 +8004,17 @@ function productCardHtml(p, i, omsetRange) {
   const omsetVal = (lo > 0 && hi > 0)
     ? `${fmtRpShort(lo)} – ${fmtRpShort(hi)}`
     : (omset ? fmtOmset(omset) : '—');
-  return `<button type="button" class="prod-card" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} style="animation-delay:${i * 0.06}s">
+  const picking = !!(state.comparePick && state.view === 'directory');
+  const picked = picking && (state.comparePick.selected || []).some(x => prodKey(x) === key);
+  const tag = picking ? 'div' : 'button';
+  const pickAttrs = picking
+    ? ` role="button" tabindex="0" aria-pressed="${picked ? 'true' : 'false'}"`
+    : ' type="button"';
+  const check = picking
+    ? `<span class="prod-card-check" aria-hidden="true">${ico('check', 12)}</span>`
+    : '';
+  return `<${tag} class="prod-card${picking ? ' prod-card--pick' : ''}${picked ? ' is-picked' : ''}" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''}${pickAttrs} style="animation-delay:${i * 0.06}s">
+    ${check}
     ${img ? `<img src="${esc(imgThumb(img))}" alt="" loading="lazy" decoding="async" width="320" height="320">` : '<div class="prod-card-ph"></div>'}
     <div class="prod-card-body">
       <div class="prod-card-name-row">
@@ -8015,7 +8028,7 @@ function productCardHtml(p, i, omsetRange) {
         </div>
       </div>
     </div>
-  </button>`;
+  </${tag}>`;
 }
 
 /** Render a product card grid; omset shown as peer P60–P100 when enough rows. */
@@ -8039,7 +8052,7 @@ function bindProductCards(root) {
   (root || document).querySelectorAll('[data-prod]').forEach(btn => {
     if (btn.dataset.boundProd) return;
     btn.dataset.boundProd = '1';
-    btn.addEventListener('click', () => {
+    const onPick = () => {
       const key = btn.getAttribute('data-prod');
       const [item_id, shop_id] = key.split('|');
       void (async () => {
@@ -8048,20 +8061,22 @@ function bindProductCards(root) {
           showToast('Produk tidak ditemukan — coba cari lagi');
           return;
         }
-        if (state.comparePick?.source) {
-          const src = state.comparePick.source;
-          if (prodKey(src) === prodKey(p)) {
-            showToast('Pilih produk lain — bukan yang sedang dibuka');
-            return;
-          }
-          state.comparePick = null;
-          updateDirCompareBanner();
-          void openProductCompare(src, p);
+        if (state.comparePick && state.view === 'directory') {
+          toggleComparePickProduct(p);
           return;
         }
         void openDeepDive(p);
       })();
-    });
+    };
+    btn.addEventListener('click', onPick);
+    if (btn.classList.contains('prod-card--pick')) {
+      btn.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onPick();
+        }
+      });
+    }
   });
   (root || document).querySelectorAll('#btn-more-products').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -9956,6 +9971,10 @@ function ddAksiCepatHtml(product) {
         <span class="ddr-aksi-ico">${ico('eye', 18)}</span>
         <span class="ddr-aksi-txt">Pantau Produk Ini</span>
       </button>
+      <button type="button" class="ddr-aksi-btn" data-ddr-aksi="compare">
+        <span class="ddr-aksi-ico">${ico('scale', 18)}</span>
+        <span class="ddr-aksi-txt">Bandingkan</span>
+      </button>
     </div>
   </div>`;
 }
@@ -10076,6 +10095,11 @@ function wireDdrAksiCepat(root, product, peers) {
           item_id: product?.item_id ?? null,
           image_url: product?.image_url || '',
         });
+        return;
+      }
+      if (aksi === 'compare') {
+        void logUserEvent('deepdive_section', { ui: 'gpt', section: 'compare_cta', via: 'aksi_cepat', keyword: product?.keyword || '' });
+        void startComparePick(product);
         return;
       }
     });
@@ -13280,23 +13304,112 @@ function matchDirCatFromProduct(product) {
 function updateDirCompareBanner() {
   const banner = $('dir-compare-banner');
   if (!banner) return;
-  const src = state.comparePick?.source;
-  if (!src) {
+  const pick = state.comparePick;
+  if (!pick) {
     banner.hidden = true;
     banner.innerHTML = '';
+    updateDirCompareBar();
     return;
   }
-  const name = (src.product_name || src.keyword || 'produk ini').slice(0, 72);
   banner.hidden = false;
   banner.innerHTML = `
     <div class="dir-compare-inner">
       <div class="dir-compare-text">
         <strong>Mode bandingkan</strong>
-        <span>Pilih produk di bawah untuk dibandingin dengan <em>${esc(name)}</em></span>
+        <span>Pilih hingga 3 produk, lalu ketuk Bandingkan. Ganti kategori atau cari untuk menambah.</span>
       </div>
       <button type="button" class="btn-ghost" id="dir-compare-cancel" style="margin:0">Batal</button>
     </div>`;
   $('dir-compare-cancel')?.addEventListener('click', () => cancelComparePick());
+  updateDirCompareBar();
+}
+
+function updateDirCompareBar() {
+  const bar = $('dir-compare-bar');
+  const slots = $('dir-compare-bar-slots');
+  const hint = $('dir-compare-bar-hint');
+  const go = $('dir-compare-go');
+  const pick = state.comparePick;
+  document.body.classList.toggle('dir-compare-picking', !!pick);
+  if (!bar) return;
+  if (!pick) {
+    bar.hidden = true;
+    if (slots) slots.innerHTML = '';
+    return;
+  }
+  bar.hidden = false;
+  const selected = Array.isArray(pick.selected) ? pick.selected : [];
+  if (slots) {
+    let html = '';
+    for (let i = 0; i < 3; i++) {
+      const p = selected[i];
+      if (p) {
+        const img = p.image_url
+          ? `<img src="${esc(imgThumb(p.image_url))}" alt="">`
+          : '';
+        html += `<div class="dir-cmp-slot">
+          ${img}
+          <button type="button" class="dir-cmp-slot-rm" data-cmp-rm="${esc(prodKey(p))}" title="Hapus" aria-label="Hapus dari perbandingan">×</button>
+        </div>`;
+      } else {
+        html += `<div class="dir-cmp-slot"></div>`;
+      }
+    }
+    slots.innerHTML = html;
+    slots.querySelectorAll('[data-cmp-rm]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const key = btn.getAttribute('data-cmp-rm');
+        const p = selected.find(x => prodKey(x) === key);
+        if (p) toggleComparePickProduct(p);
+      });
+    });
+  }
+  if (hint) {
+    if (selected.length === 0) hint.textContent = 'Pilih hingga 3 produk';
+    else if (selected.length === 1) hint.textContent = '1 dipilih — tambah 1 lagi';
+    else hint.textContent = `${selected.length} produk dipilih`;
+  }
+  if (go) {
+    go.disabled = selected.length < 2;
+    if (!go.dataset.boundCmpGo) {
+      go.dataset.boundCmpGo = '1';
+      go.addEventListener('click', () => {
+        const list = state.comparePick?.selected || [];
+        if (list.length < 2) return;
+        void openProductCompare(list);
+      });
+    }
+  }
+}
+
+function refreshComparePickCards() {
+  const keys = new Set((state.comparePick?.selected || []).map(prodKey));
+  document.querySelectorAll('.prod-card--pick').forEach(el => {
+    const on = keys.has(el.getAttribute('data-prod'));
+    el.classList.toggle('is-picked', on);
+    el.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+}
+
+function toggleComparePickProduct(p) {
+  const pick = state.comparePick;
+  if (!pick || !p) return;
+  if (!Array.isArray(pick.selected)) pick.selected = [];
+  const i = pick.selected.findIndex(x => prodKey(x) === prodKey(p));
+  if (i >= 0) {
+    pick.selected.splice(i, 1);
+  } else {
+    if (pick.selected.length >= 3) {
+      showToast('Maksimal 3 produk untuk dibandingkan');
+      return;
+    }
+    pick.selected.push(p);
+    rememberProducts([p]);
+  }
+  refreshComparePickCards();
+  updateDirCompareBar();
 }
 
 function cancelComparePick() {
@@ -13312,7 +13425,7 @@ async function startComparePick(source) {
     showToast('Buka produk dulu untuk membandingkan');
     return;
   }
-  state.comparePick = { source };
+  state.comparePick = { source, selected: [source] };
   state.dirPage = 1;
   const match = matchDirCatFromProduct(source);
   if (match) state.dirCats = [toCanonicalCat(match) || match].filter(Boolean);
@@ -13349,16 +13462,21 @@ async function fetchPeersForCompare(product) {
   return { peers, niche, stats, score: ddScore(product, stats, niche) };
 }
 
-function compareCellBetter(kind, va, vb) {
-  const a = Number(va) || 0;
-  const b = Number(vb) || 0;
-  if (a === b) return '';
-  if (kind === 'lower') return a < b ? 'cmp-win' : '';
-  return a > b ? 'cmp-win' : '';
+function compareCellWin(kind, values, i) {
+  const nums = values.map(v => Number(v) || 0);
+  const n = nums[i];
+  if (kind === 'lower') {
+    const positives = nums.filter(x => x > 0);
+    if (!positives.length) return '';
+    const best = Math.min(...positives);
+    return n > 0 && n === best ? 'cmp-win' : '';
+  }
+  const best = Math.max(...nums);
+  if (best <= 0) return '';
+  return n === best ? 'cmp-win' : '';
 }
 
 function productCompareSideHtml(p, meta, label) {
-  const omset = estOmsetBulan(p);
   const score = meta?.score;
   return `
     <div class="cmp2-side">
@@ -13371,72 +13489,108 @@ function productCompareSideHtml(p, meta, label) {
     </div>`;
 }
 
-function productCompareRowsHtml(a, b, metaA, metaB) {
+function productCompareRowsHtml(products, metas) {
+  const cell = (text, win) => `<div class="cmp2-cell ${win || ''}" role="cell">${esc(text)}</div>`;
+  const row = (lbl, items, kind) => {
+    const raws = items.map(it => it.raw);
+    return `<div class="cmp2-row" role="row">
+      <div class="cmp2-cell cmp2-metric" role="cell">${esc(lbl)}</div>
+      ${items.map((it, i) => cell(it.text, kind ? compareCellWin(kind, raws, i) : '')).join('')}
+    </div>`;
+  };
   const rows = [
-    { lbl: 'Harga', va: fmtRp(a.price), vb: fmtRp(b.price), ca: compareCellBetter('lower', a.price, b.price), cb: compareCellBetter('lower', b.price, a.price) },
-    { lbl: 'Terjual', va: fmtSold(a.total_sold), vb: fmtSold(b.total_sold), ca: compareCellBetter('higher', a.total_sold, b.total_sold), cb: compareCellBetter('higher', b.total_sold, a.total_sold) },
-    { lbl: 'Est. omset / bulan', va: estOmsetBulan(a) ? fmtOmset(estOmsetBulan(a)) : '—', vb: estOmsetBulan(b) ? fmtOmset(estOmsetBulan(b)) : '—', ca: compareCellBetter('higher', estOmsetBulan(a), estOmsetBulan(b)), cb: compareCellBetter('higher', estOmsetBulan(b), estOmsetBulan(a)) },
-    { lbl: 'Rating', va: a.rating != null ? String(a.rating) : '—', vb: b.rating != null ? String(b.rating) : '—', ca: compareCellBetter('higher', a.rating, b.rating), cb: compareCellBetter('higher', b.rating, a.rating) },
-    { lbl: 'Ulasan', va: fmtSold(a.reviews || 0), vb: fmtSold(b.reviews || 0), ca: compareCellBetter('higher', a.reviews, b.reviews), cb: compareCellBetter('higher', b.reviews, a.reviews) },
-    { lbl: 'Lokasi', va: a.location || '—', vb: b.location || '—' },
-    { lbl: 'Keyword', va: a.keyword || '—', vb: b.keyword || '—' },
-    { lbl: 'Kategori', va: a.category || '—', vb: b.category || '—' },
-    { lbl: 'Skor peluang', va: metaA?.score ? String(metaA.score.score) : '—', vb: metaB?.score ? String(metaB.score.score) : '—', ca: compareCellBetter('higher', metaA?.score?.score, metaB?.score?.score), cb: compareCellBetter('higher', metaB?.score?.score, metaA?.score?.score) },
-    { lbl: 'Kompetisi niche', va: metaA?.stats?.komp || '—', vb: metaB?.stats?.komp || '—' },
-    { lbl: 'Peer di keyword', va: metaA?.stats?.n != null ? String(metaA.stats.n) : '—', vb: metaB?.stats?.n != null ? String(metaB.stats.n) : '—' },
+    row('Harga', products.map(p => ({ text: fmtRp(p.price), raw: p.price })), 'lower'),
+    row('Terjual', products.map(p => ({ text: fmtSold(p.total_sold), raw: p.total_sold })), 'higher'),
+    row('Est. omset / bulan', products.map(p => {
+      const o = estOmsetBulan(p);
+      return { text: o ? fmtOmset(o) : '—', raw: o };
+    }), 'higher'),
+    row('Rating', products.map(p => ({ text: p.rating != null ? String(p.rating) : '—', raw: p.rating })), 'higher'),
+    row('Ulasan', products.map(p => ({ text: fmtSold(p.reviews || 0), raw: p.reviews })), 'higher'),
+    row('Lokasi', products.map(p => ({ text: p.location || '—', raw: 0 }))),
+    row('Keyword', products.map(p => ({ text: p.keyword || '—', raw: 0 }))),
+    row('Kategori', products.map(p => ({ text: p.category || '—', raw: 0 }))),
+    row('Skor peluang', products.map((p, i) => ({
+      text: metas[i]?.score ? String(metas[i].score.score) : '—',
+      raw: metas[i]?.score?.score,
+    })), 'higher'),
+    row('Kompetisi niche', products.map((p, i) => ({ text: metas[i]?.stats?.komp || '—', raw: 0 }))),
+    row('Peer di keyword', products.map((p, i) => ({
+      text: metas[i]?.stats?.n != null ? String(metas[i].stats.n) : '—',
+      raw: metas[i]?.stats?.n,
+    })), 'higher'),
   ];
-  return `<div class="cmp2-table" role="table">
-    ${rows.map(r => `
-      <div class="cmp2-row" role="row">
-        <div class="cmp2-cell cmp2-metric" role="cell">${esc(r.lbl)}</div>
-        <div class="cmp2-cell ${r.ca || ''}" role="cell">${esc(r.va)}</div>
-        <div class="cmp2-cell ${r.cb || ''}" role="cell">${esc(r.vb)}</div>
-      </div>`).join('')}
-  </div>`;
+  return `<div class="cmp2-table" role="table">${rows.join('')}</div>`;
 }
 
-async function openProductCompare(a, b) {
+function compareSideLabel(p, i, source) {
+  if (source && prodKey(p) === prodKey(source)) return 'Produk saat ini';
+  return `Produk ${i + 1}`;
+}
+
+async function openProductCompare(aOrList, b) {
+  const products = (Array.isArray(aOrList) ? aOrList : [aOrList, b]).filter(Boolean).slice(0, 3);
+  if (products.length < 2) return;
   if (!currentUser) {
-    state.pendingCompare = { a, b };
+    state.pendingCompare = { products };
     saveLocalState();
     openAuthModal('signup', 'gpt_gate_compare');
     return;
   }
   if (state.pendingCompare) { state.pendingCompare = null; saveLocalState(); }
+  const source = state.comparePick?.source || null;
   state.comparePick = null;
   updateDirCompareBanner();
-  state.deepdiveProduct = a;
+  state.deepdiveProduct = products[0];
   setView('deepdive');
   const root = $('deepdive-root');
   if (!root) return;
   root.innerHTML = `<p class="dd-sub">Menyiapkan perbandingan…</p>`;
 
-  const [metaA, metaB] = await Promise.all([fetchPeersForCompare(a), fetchPeersForCompare(b)]);
+  const metas = await Promise.all(products.map(p => fetchPeersForCompare(p)));
 
   let chat = activeChat();
   if (chat) {
-    chat.context = { ...(chat.context || {}), product: a, keyword: a.keyword || chat.context?.keyword, compareWith: { item_id: b.item_id, shop_id: b.shop_id } };
-    chat.title = `Bandingkan: ${(a.product_name || a.keyword || 'A').slice(0, 28)} vs ${(b.product_name || b.keyword || 'B').slice(0, 28)}`;
+    const others = products.slice(1).map(p => ({ item_id: p.item_id, shop_id: p.shop_id }));
+    chat.context = {
+      ...(chat.context || {}),
+      product: products[0],
+      keyword: products[0].keyword || chat.context?.keyword,
+      compareWith: others[0] || null,
+    };
+    const names = products.map(p => (p.product_name || p.keyword || 'Produk').slice(0, 22));
+    chat.title = `Bandingkan: ${names.join(' vs ')}`;
     saveLocalState();
     renderChatList();
   }
 
   void logUserEvent('gpt_product_compare', {
     ui: 'gpt',
-    a_item: a.item_id, b_item: b.item_id,
-    a_kw: a.keyword || '', b_kw: b.keyword || '',
+    n: products.length,
+    a_item: products[0]?.item_id,
+    b_item: products[1]?.item_id,
+    c_item: products[2]?.item_id || null,
+    a_kw: products[0]?.keyword || '',
+    b_kw: products[1]?.keyword || '',
   });
-  clarityEvt('gpt_product_compare', {});
+  clarityEvt('gpt_product_compare', { n: products.length });
 
-  const scoreA = metaA.score?.score || 0;
-  const scoreB = metaB.score?.score || 0;
+  const scores = metas.map(m => Number(m?.score?.score) || 0);
+  const best = Math.max(...scores);
+  const winners = products.filter((_, i) => scores[i] === best && best > 0);
   let verdict = '';
-  if (scoreA || scoreB) {
-    if (scoreA === scoreB) verdict = 'Skor peluang keduanya mirip — lihat harga, terjual, dan kompetisi niche di tabel.';
-    else if (scoreA > scoreB) verdict = `Dari sinyal data (harga peer, kompetisi, velocity), <strong>${esc((a.product_name || 'Produk kiri').slice(0, 40))}</strong> unggul tipis di skor peluang.`;
-    else verdict = `Dari sinyal data (harga peer, kompetisi, velocity), <strong>${esc((b.product_name || 'Produk kanan').slice(0, 40))}</strong> unggul tipis di skor peluang.`;
+  if (best > 0) {
+    if (winners.length > 1) {
+      verdict = products.length === 2
+        ? 'Skor peluang keduanya mirip — lihat harga, terjual, dan kompetisi niche di tabel.'
+        : 'Skor peluang beberapa produk mirip — lihat harga, terjual, dan kompetisi niche di tabel.';
+    } else {
+      const name = (winners[0].product_name || 'Produk ini').slice(0, 40);
+      verdict = `Dari sinyal data (harga peer, kompetisi, velocity), <strong>${esc(name)}</strong> unggul tipis di skor peluang.`;
+    }
   }
 
+  const n = products.length;
   root.innerHTML = `
     <div class="dd-head" style="margin-bottom:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
       <button type="button" class="btn-ghost" id="cmp2-back" style="margin:0">Kembali</button>
@@ -13444,27 +13598,28 @@ async function openProductCompare(a, b) {
     </div>
     <h2 class="dd-title" style="margin-bottom:4px">Perbandingan produk</h2>
     <p class="dd-sub" style="margin-bottom:16px">Angka dari data Shopee via LarisID — bukan tebakan AI.</p>
-    <div class="cmp2-heads">
-      ${productCompareSideHtml(a, metaA, 'Produk saat ini')}
-      ${productCompareSideHtml(b, metaB, 'Dipilih')}
+    <div class="cmp2-scroll" style="--cmp-n:${n}">
+      <div class="cmp2-heads">
+        ${products.map((p, i) => productCompareSideHtml(p, metas[i], compareSideLabel(p, i, source))).join('')}
+      </div>
+      ${productCompareRowsHtml(products, metas)}
     </div>
-    ${productCompareRowsHtml(a, b, metaA, metaB)}
     ${verdict ? `<p class="cmp2-verdict">${verdict}</p>` : ''}
     <p class="ddr-caption" style="margin-top:14px">Skor peluang memakai peer keyword masing-masing produk (kompetisi top 3, volume pasar, velocity). Klik Deep Dive untuk analisis lengkap satu produk.</p>
   `;
 
   $('cmp2-back')?.addEventListener('click', () => {
-    void openDeepDive(a);
+    void openDeepDive(source || products[0]);
   });
-  $('cmp2-again')?.addEventListener('click', () => void startComparePick(a));
+  $('cmp2-again')?.addEventListener('click', () => void startComparePick(source || products[0]));
   root.querySelectorAll('[data-cmp-open]').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.getAttribute('data-cmp-open');
-      const p = prodKey(a) === key ? a : b;
-      void openDeepDive(p);
+      const p = products.find(x => prodKey(x) === key);
+      if (p) void openDeepDive(p);
     });
   });
-  setComposerChips(ddComposerChips(a), 'compare');
+  setComposerChips(ddComposerChips(products[0]), 'compare');
 }
 
 async function openMoreProductsDirectory() {
@@ -13640,7 +13795,10 @@ async function openDirectory() {
 
 async function renderDirectory() {
   // Compare-pick needs a specific LISTING (not a type) — keep the old grid there.
-  if (state.comparePick) return renderDirectoryListings();
+  if (state.comparePick) {
+    renderDirCatRail();
+    return renderDirectoryListings();
+  }
   const grid = $('dir-grid');
   const pager = $('dir-pager');
   if (!grid) return;
@@ -13752,9 +13910,19 @@ async function renderDirectoryListings() {
   const cities = state.dirCities || [];
   const oneCat = primaryDirCat();
   const sub = oneCat ? (state.dirSub || null) : null;
+  const q = (state.dirSearch || '').trim();
   const poolLimit = sub ? 400 : 200;  // widen pool so narrow sub-groups still fill a page
   let rows = [];
-  if (cities.length) {
+  if (q) {
+    rows = await searchListings(q, cities, 80);
+    if (cats.length) {
+      const filtered = rows.filter(r => catMatches(r.category, cats) || cats.some(cat => {
+        const c = String(cat || '').toLowerCase();
+        return (r.category || '').toLowerCase().includes(c.slice(0, 5));
+      }));
+      if (filtered.length) rows = filtered;
+    }
+  } else if (cities.length) {
     const pools = await Promise.all(cities.map(c =>
       fetchListingsCityCat(expandCityLocations(c), cats, poolLimit)
     ));
@@ -13774,7 +13942,7 @@ async function renderDirectoryListings() {
       }));
     }
   }
-  if (sub && oneCat) {
+  if (!q && sub && oneCat) {
     // Legacy fallback grid: dirSub is a subgroup NAME now, so resolve the
     // keywords in it rather than substring-testing the old match[] array.
     const kws = await subgroupKeywords(oneCat, sub);
@@ -13790,10 +13958,14 @@ async function renderDirectoryListings() {
   }
   const start = (state.dirPage - 1) * PAGE_SIZE;
   const slice = rows.slice(start, start + PAGE_SIZE);
-  grid.innerHTML = productCardsHtml(slice) || '<p class="dd-sub">Tidak ada produk untuk filter ini.</p>';
+  const emptyMsg = q
+    ? `<p class="dd-sub">Belum ketemu produk untuk "<strong>${esc(q)}</strong>". Coba kata kunci lain.</p>`
+    : '<p class="dd-sub">Tidak ada produk untuk filter ini.</p>';
+  grid.innerHTML = productCardsHtml(slice) || emptyMsg;
   bindProductCards(grid);
   scrollPanelToTop();
   renderDirPager(pager, rows.length);
+  updateDirCount(rows.length, slice.length, false);
 }
 
 // The "Tampilan klasik" opt-out lived here until 2026-08-10. Site A is gone,
