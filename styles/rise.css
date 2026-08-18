@@ -263,13 +263,13 @@
   -webkit-mask-image:var(--m);mask-image:var(--m);
   -webkit-mask-size:contain;mask-size:contain;
   -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
-  -webkit-mask-position:center;mask-position:center}
+  -webkit-mask-position:top left;mask-position:top left}
 .rz-static .rz-mean[data-mean="r"]{--m:url(/images/rise/letters/r.webp)}
 .rz-static .rz-mean[data-mean="i"]{--m:url(/images/rise/letters/i.webp)}
 .rz-static .rz-mean[data-mean="s"]{--m:url(/images/rise/letters/s.webp)}
 .rz-static .rz-mean[data-mean="e"]{--m:url(/images/rise/letters/e.webp)}
 @supports not ((-webkit-mask-image:url(#a)) or (mask-image:url(#a))){
   .rz-static .rz-slot{background-color:transparent;background-image:var(--m);
-    background-size:contain;background-repeat:no-repeat;background-position:center}
+    background-size:contain;background-repeat:no-repeat;background-position:top left}
   .rz-static .rz-mean h3 span{display:inline}
 }

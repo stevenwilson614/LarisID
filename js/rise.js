@@ -135,15 +135,20 @@
       var slot = $('.rz-slot', sect).getBoundingClientRect();
       var kc = Math.min(slot.width / UNIT.widest, slot.height / UNIT.tallest);
 
+      var CROP_PAD = 6;      /* build-rise-letters.py's PAD, same on every glyph crop */
       var col = {};
       $$('.rz-slot', sect).forEach(function (sl, n) {
         var key = ACR[n], r = sl.getBoundingClientRect(), g;
         for (var i = 0; i < glyphs.length; i++) {
           if (glyphs[i].key === key && glyphs[i].grp === 'rise') { g = glyphs[i]; break; }
         }
+        /* Top-align to the slot, not centered: the heading beside it starts at
+           the slot's top edge, so the glyph's ink should start there too. The
+           crop's own transparent margin is subtracted so the visible stroke —
+           not the crop edge — is what lines up. */
         col[key] = {
           x: r.left - lb.left + (r.width - g.w * kc) / 2,
-          y: r.top - lb.top + (r.height - g.h * kc) / 2
+          y: r.top - lb.top - CROP_PAD * kc
         };
       });
 

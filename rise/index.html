@@ -62,7 +62,13 @@ p{margin:0}
 .rz-nav.is-stuck{border-bottom-color:var(--hairline)}
 .rz-brand{display:flex;align-items:center;gap:9px;text-decoration:none;min-height:44px}
 .rz-brand img{height:24px;width:auto}
-.rz-brand-rise{height:28px;width:auto}
+/* ".rz-brand img" (class+type) outranks the single-class ".rz-brand-rise" rule
+   below, so the height here must be scoped to win, or it silently loses to 24px.
+   The RISE emblem's canvas also includes the low-hanging arrow tail below the
+   letters, so its own visual centre sits well below the letters themselves;
+   centering the two images by box height leaves RISE looking too high — the
+   translateY nudges it down so the LETTERFORMS, not the canvas, line up. */
+.rz-brand img.rz-brand-rise{height:28px;width:auto;transform:translateY(5px)}
 .rz-navbtn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;
   min-width:44px;border:0;background:none;padding:0 4px;cursor:pointer;color:var(--ink)}
 .rz-navbtn svg{display:block}
@@ -110,7 +116,7 @@ p{margin:0}
   .rz-navbtn{display:none}
 }
 </style>
-<link rel="stylesheet" href="/styles/rise.css?v=20260818o">
+<link rel="stylesheet" href="/styles/rise.css?v=20260818r">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -408,6 +414,6 @@ p{margin:0}
   </svg>
 </a>
 
-<script src="/js/rise.js?v=20260818o" defer></script>
+<script src="/js/rise.js?v=20260818r" defer></script>
 </body>
 </html>
