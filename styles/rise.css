@@ -228,9 +228,8 @@
 .rz-end{text-align:center}
 .rz-end-h em{font-style:normal;color:var(--emas)}
 .rz-end-mark{margin:clamp(40px,9vw,68px) 0}
-.rz-end-mark img{margin:0 auto clamp(14px,3vw,20px)}
-.rz-end-name{font-family:var(--font);font-size:clamp(1.1rem,4.6vw,1.5rem);font-weight:800;
-  letter-spacing:.16em;margin:0 0 10px}
+.rz-end-logo{width:clamp(200px,58vw,300px);height:auto;
+  margin:0 auto clamp(16px,3.5vw,24px)}
 .rz-end-tag{font-size:clamp(.95rem,3.6vw,1rem);color:rgba(245,239,224,.6);margin:0;line-height:1.6}
 .rz-btn--lg{min-height:60px;padding:0 34px;font-size:1.05rem}
 .rz-end-soon{font-size:.95rem;color:rgba(245,239,224,.5);margin:16px 0 0}
