@@ -335,6 +335,73 @@ function ddKotaLabel(product, peers) {
   return (top && top[0]) || String(product?.location || '').trim() || '—';
 }
 
+/** How wide the keyword market is — shops / listings / monthly units. */
+function ddMarketScope(product, peers) {
+  const t = product?._ptype || null;
+  const list = Array.isArray(peers) ? peers : [];
+  const peerShops = new Set(list.map(p => String(p.shop_id || '')).filter(Boolean)).size;
+  const nSellers = Number(t?.n_sellers) || peerShops || 0;
+  const nListings = Number(t?.n_listings) || list.length || 0;
+  let soldBln = 0;
+  const wk = Number(t?.wk_units);
+  if (wk > 0) {
+    soldBln = Math.round(wk * 30 / 7);
+  } else {
+    const fromPeers = list.reduce((s, p) => {
+      const v = Number(p.nowcast_velocity_daily) || Number(p.sold_per_day) || 0;
+      return s + (v > 0 ? v * 30 : 0);
+    }, 0);
+    if (fromPeers > 0) soldBln = Math.round(fromPeers);
+  }
+  return { nSellers, nListings, soldBln, isPasar: !!t };
+}
+
+function ddMarketNoteHtml(product, peers) {
+  const { nSellers, nListings, soldBln, isPasar } = ddMarketScope(product, peers);
+  if (!(nSellers > 0)) return '';
+  const nTxt = nSellers.toLocaleString('id-ID');
+  const fromType = Number(product?._ptype?.n_sellers) > 0;
+  const title = isPasar ? 'Ini adalah data tingkat pasar' : 'Konteks pasar keyword ini';
+  const body = (isPasar && fromType)
+    ? `Data ini merupakan gabungan dari ${nTxt} toko aktif yang menjual produk ini di Shopee.`
+    : `Dari listing yang terpantau, ada ${nTxt} toko aktif yang menjual produk serupa di Shopee.`;
+  const stats = [];
+  stats.push({
+    ico: 'store',
+    val: nSellers.toLocaleString('id-ID'),
+    lbl: 'Toko Aktif',
+  });
+  if (nListings > 0) {
+    stats.push({
+      ico: 'cart',
+      val: nListings.toLocaleString('id-ID'),
+      lbl: 'Total Listing',
+    });
+  }
+  if (soldBln > 0) {
+    stats.push({
+      ico: 'bag',
+      val: fmtIdCompact(soldBln),
+      lbl: 'Total Terjual/bln',
+      title: 'Perkiraan unit per bulan dari laju mingguan terukur (×30 hari).',
+    });
+  }
+  return `<aside class="ddr-market-note" aria-label="${esc(title)}">
+    <div class="ddr-market-note-head">
+      <span class="ddr-market-note-ico" aria-hidden="true">${ico('flame', 16)}</span>
+      <strong>${esc(title)}</strong>
+    </div>
+    <p>${esc(body)}</p>
+    <div class="ddr-market-stats">
+      ${stats.map(s => `<div class="ddr-market-stat"${s.title ? ` title="${esc(s.title)}"` : ''}>
+        <span class="ddr-market-stat-ico" aria-hidden="true">${ico(s.ico, 15)}</span>
+        <span class="ddr-market-stat-val">${esc(s.val)}</span>
+        <span class="ddr-market-stat-lbl">${esc(s.lbl)}</span>
+      </div>`).join('')}
+    </div>
+  </aside>`;
+}
+
 function _authSave(session) {
   try {
     localStorage.setItem(_AUTH_SK, JSON.stringify({
@@ -469,6 +536,8 @@ const ICONS = {
   spark: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/></svg>',
   users: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14.5c2.6.3 4 2.2 4 4.5"/></svg>',
   store: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linejoin="round"><path d="M4 9l1-5h14l1 5M4 9v11h16V9M4 9h16M9 20v-6h6v6"/></svg>',
+  cart: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M3 4h2l2.1 11.2a1.8 1.8 0 0 0 1.8 1.5h8.7a1.8 1.8 0 0 0 1.8-1.5L21.5 8H7"/></svg>',
+  bag: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1.1 12.2a1.6 1.6 0 0 1-1.6 1.5H8.7a1.6 1.6 0 0 1-1.6-1.5L6 8z"/><path d="M9 8V6.2A3 3 0 0 1 15 6.2V8"/></svg>',
   pin: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 21s-7-5.4-7-11a7 7 0 1 1 14 0c0 5.6-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
   tag: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linejoin="round"><path d="M3 12V3h9l9 9-9 9-9-9z"/><circle cx="8" cy="8" r="1.5"/></svg>',
   bulb: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 1 3.5 10.9c-.8.6-1.5 1.2-1.5 2.1h-4c0-.9-.7-1.5-1.5-2.1A6 6 0 0 1 12 3z"/></svg>',
@@ -1465,6 +1534,18 @@ function fmtSold(n) {
   if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace('.0', '') + 'jt';
   if (n >= 1e3) return Math.round(n / 1e3) + 'rb';
   return String(n);
+}
+/** Compact Indonesian count for hero stats: 8900 → "8,9 rb", 2430 → "2.430". */
+function fmtIdCompact(n, { fullBelow = 1000 } = {}) {
+  n = Number(n) || 0;
+  if (n < fullBelow) return Math.round(n).toLocaleString('id-ID');
+  if (n >= 1e6) {
+    const v = n / 1e6;
+    return (v >= 10 ? v.toFixed(0) : v.toFixed(1).replace('.', ',')).replace(/,0$/, '') + ' jt';
+  }
+  const v = n / 1e3;
+  const s = v >= 100 ? String(Math.round(v)) : v.toFixed(1).replace('.', ',').replace(/,0$/, '');
+  return s + ' rb';
 }
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -10217,17 +10298,28 @@ function ddKompetitorTableHtml(share, opts = {}) {
     const snap = productSnapshot(asListingProduct(sample));
     const encoded = snap ? encodeURIComponent(JSON.stringify(snap)) : '';
     const omsetMo = Math.round(s.sold / 6) * Math.round(s.omset / Math.max(1, s.sold)); // ≈ sold/6 × avg price
+    const reviews = Number(sample.reviews) || 0;
+    const sold = Number(s.sold) || 0;
+    const avgPrice = sold > 0 ? Math.round(s.omset / sold) : (Number(sample.price) || 0);
+    const weeklyUnits = Number(sample.nowcast_velocity_daily) > 0
+      ? Math.max(1, Math.round(Number(sample.nowcast_velocity_daily) * 7))
+      : Math.max(0, Math.round(sold / 6 / 4));
+    const weeklyTrend = weeklyUnits > 0 ? `${fmtSold(weeklyUnits)}/minggu` : '—';
     // Whole row is clickable — users tap the tok name, not just the tiny "Lihat" button.
     return `<tr class="komp-click-row"${i >= 5 ? ' data-komp-extra hidden' : ''} data-kshop="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} role="link" tabindex="0" aria-label="Buka Deep Dive ${esc((s.name || 'kompetitor').slice(0, 40))}">
       <td class="tr-rank">${i + 1}</td>
       <td><div class="tr-prod" style="min-width:140px"><span class="comp-av">${s.img ? `<img src="${esc(imgThumb(s.img))}" alt="" loading="lazy" decoding="async">` : esc((s.name || 'T').charAt(0).toUpperCase())}</span><div class="tr-prod-name">${esc((s.name || 'Toko').slice(0, 28))}</div></div></td>
       <td>${omsetMo ? fmtRpShort(omsetMo) : '—'}</td>
+      <td>${reviews ? fmtSold(reviews) : '0'}</td>
+      <td>${sold ? fmtSold(sold) : '0'}</td>
+      <td>${avgPrice ? fmtRp(avgPrice) : '—'}</td>
+      <td>${weeklyTrend}</td>
       <td>${s.share}%</td>
       <td><span class="komp-open-hint">Deep Dive →</span></td>
     </tr>`;
   }).join('');
   return `<div class="ddr-table-wrap"><table class="ddr-table ddr-komp-table">
-    <thead><tr><th>#</th><th>Toko</th><th>Omset / Bln (est.)</th><th>Market Share</th><th></th></tr></thead>
+    <thead><tr><th>#</th><th>Toko</th><th>Omset / Bln (est.)</th><th>Review</th><th>Unit Jual</th><th>Harga</th><th>Tren Mingguan</th><th>Market Share</th><th></th></tr></thead>
     <tbody>${rows}</tbody></table></div>
     ${share.shops.length > 5 ? `<button type="button" class="ans-cta" id="${esc(moreId)}">Lihat Semua ${Math.min(15, share.shops.length)} Kompetitor</button>` : ''}`;
 }
@@ -10874,6 +10966,14 @@ async function openDeepDive(product, ddOpts = {}) {
   const segLeft = stats.max > stats.min ? Math.round((bandLo - stats.min) / (stats.max - stats.min) * 100) : 0;
   const segWidth = stats.max > stats.min ? Math.max(4, Math.round((bandHi - bandLo) / (stats.max - stats.min) * 100)) : 100;
   const agePct = k => age.total ? Math.round(age[k] / age.total * 100) : 0;
+  const isDesktopDeepDive = window.innerWidth > 860;
+  const kompCardHtml = `<div class="ddr-card" data-dd-sec="kompetitor" style="margin-bottom:12px">
+      <div class="ddr-sec-head">
+        <h3>Top Kompetitor</h3>
+        <button type="button" class="ddr-panel-link" id="ddr-komp-panel">Lihat di panel</button>
+      </div>
+      ${ddKompetitorTableHtml(share)}
+    </div>`;
 
   // Record this view (anon included) BEFORE reading the count back, so the
   // viewer sees a number that includes themselves.
@@ -10898,6 +10998,7 @@ async function openDeepDive(product, ddOpts = {}) {
           <span class="badge ${scoreInfo.cls}">${scoreInfo.label}</span>
         </div>
         <p class="ddr-cat">${esc(ddKotaLabel(product, peers))}</p>
+        ${ddMarketNoteHtml(product, peers)}
       </div>
       <div class="ddr-score-stack">
         <div class="ddr-score ${scoreInfo.cls}">
@@ -10910,6 +11011,7 @@ async function openDeepDive(product, ddOpts = {}) {
     ${ddToolPillsHtml(product)}
     ${ddFeeStripHtml(product)}
     ${ddTilesHtml(product, stats, peers, series, scoreInfo, history)}
+    ${isDesktopDeepDive ? kompCardHtml : ''}
     ${ddAksiCepatHtml(product)}
     <div class="ddr-hscroll ddr-hscroll--graphs">
       <div class="ddr-card" data-dd-sec="tren">
@@ -10971,13 +11073,7 @@ async function openDeepDive(product, ddOpts = {}) {
       </div>
     </div>
     ${ddInsightSectionHtml(product, stats, share, series, scoreInfo, age, peers)}
-    <div class="ddr-card" data-dd-sec="kompetitor" style="margin-bottom:12px">
-      <div class="ddr-sec-head">
-        <h3>Top Kompetitor</h3>
-        <button type="button" class="ddr-panel-link" id="ddr-komp-panel">Lihat di panel</button>
-      </div>
-      ${ddKompetitorTableHtml(share)}
-    </div>
+    ${isDesktopDeepDive ? '' : kompCardHtml}
     ${ddFeesCollapsedHtml()}
     <div class="ddr-bottom-space" aria-hidden="true"></div>
   `;
