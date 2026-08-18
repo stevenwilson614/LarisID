@@ -10492,8 +10492,6 @@ async function openDistChartLightbox() {
   const payload = _dd?.distChart;
   const lb = $('dd-chart-lightbox');
   if (!lb || !payload?.points?.length) return;
-  const cap = $('dd-chart-lightbox-cap');
-  if (cap) cap.textContent = payload.caption || '';
   lb.hidden = false;
   document.body.style.overflow = 'hidden';
   await larisEnsureChart();
@@ -10870,7 +10868,6 @@ async function openDeepDive(product, ddOpts = {}) {
   // reaches it (DD itself is a separate view, not part of the message list).
   if (chat) upsertDeepDiveChatMessage(chat, product, scoreInfo, stats);
 
-  const lastScrape = history.length ? history[history.length - 1].scraped_at : null;
   const hasTrend = series.filter(w => (w.units || w.omset)).length >= 2
     || (weeklyAll || []).length >= 2;
   const bandLo = stats.p25, bandHi = stats.p75;
@@ -10925,7 +10922,6 @@ async function openDeepDive(product, ddOpts = {}) {
                <span class="row"><span class="swatch" style="background:#16A34A"></span>Perkiraan</span>
              </div>`
           : `<p class="dd-sub">Belum cukup riwayat scrape untuk tren mingguan keyword ini — butuh beberapa gelombang panel. Bagian lain tetap dari data asli.</p>`}
-        <p class="ddr-caption">Omset dan unit per minggu (Senin WIB) untuk keyword “${esc(kw || '—')}” — 6 minggu terakhir sampai hari ini, dari selisih scrape berurutan; snapshot pertama = baseline, bukan omset${hasTrend ? ' · tampilan dari 27 Apr 2026' : ''} ${history.length ? `· ${new Set(history.map(r => String(r.item_id))).size} listing` : ''} · scrape terakhir ${esc(fmtAnchorDate(lastScrape))}. Garis hijau = perkiraan minggu depan (model kecepatan LarisID), bukan data terukur. Minggu berjalan ditandai perkiraan sampai scrape menutup pekan.</p>
       </div>
       <div class="ddr-card" data-dd-sec="pangsa">
         <h3>Distribusi Pangsa Pasar</h3>
@@ -10936,8 +10932,7 @@ async function openDeepDive(product, ddOpts = {}) {
             <span class="row"><span class="swatch" style="background:#2563EB"></span>Peringkat 4–10 · ${Math.round(share.mid / share.total * 100)}%</span>
             <span class="row"><span class="swatch" style="background:#93c5fd"></span>Peringkat 11–30 · ${Math.round(share.tail / share.total * 100)}%</span>
             <span class="row"><span class="swatch" style="background:#e5e7eb"></span>Lainnya · ${Math.round(share.rest / share.total * 100)}%</span>
-          </div>
-          <p class="ddr-caption">${share.top3 / share.total <= 0.5 ? 'Pasar tidak didominasi satu toko — masih ada ruang untuk bersaing.' : 'Pasar cukup terkonsentrasi di toko-toko teratas.'}</p>`
+          </div>`
           : '<p class="dd-sub">Belum cukup data toko untuk memetakan pangsa pasar.</p>'}
       </div>
       <div class="ddr-card" data-dd-sec="usia_toko">
@@ -10948,8 +10943,7 @@ async function openDeepDive(product, ddOpts = {}) {
             <span class="row"><span class="swatch" style="background:#2563EB"></span>0 – 2 th · ${agePct('young')}%</span>
             <span class="row"><span class="swatch" style="background:#93c5fd"></span>2 – 5 th · ${agePct('mid')}%</span>
             <span class="row"><span class="swatch" style="background:#dbeafe"></span>&gt; 5 th · ${agePct('old')}%</span>
-          </div>
-          <p class="ddr-caption">${agePct('young') + agePct('mid') >= 50 ? `${agePct('young') + agePct('mid')}% toko di keyword ini berusia di bawah 5 tahun — tanda pasar masih terbuka.` : 'Mayoritas toko sudah lama — pasar matang.'} Usia = proxy dari listing tertua yang terpantau.</p>`
+          </div>`
           : '<p class="dd-sub">Belum cukup data tanggal listing untuk memetakan usia toko.</p>'}
       </div>
     </div>
@@ -10972,8 +10966,7 @@ async function openDeepDive(product, ddOpts = {}) {
           </button>` : ''}
         </div>
         ${stats.n >= 6 ? `
-          <div class="ddr-chart-wrap sm"><canvas id="ddr-dist-canvas"></canvas></div>
-          <p class="ddr-caption">Setiap thumbnail = listing (harga × terjual). Zona merah muda = rentang ${fmtRpShort(bandLo)} – ${fmtRpShort(bandHi)} tempat sebagian besar penjualan terjadi.</p>`
+          <div class="ddr-chart-wrap sm"><canvas id="ddr-dist-canvas"></canvas></div>`
           : '<p class="dd-sub">Belum cukup listing untuk memetakan distribusi harga.</p>'}
       </div>
     </div>
@@ -11101,9 +11094,8 @@ async function openDeepDive(product, ddOpts = {}) {
         label: p.store_name || p.product_name || '',
         image_url: p.image_url || null,
       }));
-    const distCaption = `Setiap thumbnail = listing (harga × terjual). Zona merah muda = rentang ${fmtRpShort(bandLo)} – ${fmtRpShort(bandHi)} tempat sebagian besar penjualan terjadi.`;
     if (_dd) {
-      _dd.distChart = { points: distPoints, bandLo, bandHi, caption: distCaption };
+      _dd.distChart = { points: distPoints, bandLo, bandHi };
     }
     const distChart = makeChart('ddr-dist-canvas', ddDistChartConfig(distPoints, bandLo, bandHi, { imgRadius: 11 }));
     ddPrimeDistImages(distChart, distPoints);
