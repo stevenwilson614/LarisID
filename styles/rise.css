@@ -72,8 +72,8 @@
   background-color:var(--krem);
   -webkit-mask-image:var(--m);mask-image:var(--m);
   -webkit-mask-size:100% 100%;mask-size:100% 100%;
-  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
-  transition:background-color .5s ease}
+  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+.rz-ltr[data-ltr="arrow"]{--m:url(/images/rise/letters/arrow.webp)}
 .rz-ltr[data-ltr="l"]{--m:url(/images/rise/letters/l.webp)}
 .rz-ltr[data-ltr="a"]{--m:url(/images/rise/letters/a.webp)}
 .rz-ltr[data-ltr="r"]{--m:url(/images/rise/letters/r.webp)}
@@ -99,7 +99,9 @@
   transform:translateY(14px);
   transition:opacity .6s cubic-bezier(.22,.68,.24,1),transform .6s cubic-bezier(.22,.68,.24,1)}
 .rz-mean.is-on{opacity:1;transform:none}
-.rz-slot{flex:0 0 auto;width:clamp(46px,13vw,84px);height:clamp(56px,15vw,104px);display:block}
+/* The new letterforms are wider than tall, so the slot follows that aspect —
+   a tall slot leaves the glyph floating in dead space. */
+.rz-slot{flex:0 0 auto;width:clamp(58px,16vw,96px);height:clamp(50px,13vw,84px);display:block}
 .rz-mean h3{font-size:clamp(.98rem,4vw,1.3rem);font-weight:800;letter-spacing:.02em;
   margin:0 0 4px;color:var(--emas)}
 .rz-mean h3 span{display:none}

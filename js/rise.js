@@ -101,11 +101,24 @@
     io.observe(wrap);
   }
 
-  /* ---- 4. LARIS -> RISE --------------------------------------------------- */
-  /* LARIS already contains R-I-S. L and A fall away, R I S hold their place,
-     E arrives — then the four stack into the acronym beside their meanings. */
-  var GAPU = 12;          /* letter gap, in source-artwork units */
-  var WORD = 'larise';
+  /* ---- 4. LARIS + RISE -> LARISE -> the acronym --------------------------- */
+  /* LARIS and RISE share R-I-S. The two words start apart and slide together
+     until those letters coincide, which spells LARISE without adding anything.
+     The LARIS copies of R, I and S fade as they arrive, then L and A drop away
+     and the remaining RISE transposes into the vertical acronym. */
+  /* Artwork-space extents, from geometry.json. The composition is centred on the
+     letter block, but the arrow reaches further right and lower than the letters
+     do — so the fit is measured as the largest extent from that centre, not the
+     bounding-box width, or the arrowhead clips off screen. */
+  var UNIT = {
+    cx: 442.5, cy: 81.5,       /* centre of the LARISE letter block */
+    halfW: 507.5,              /* cx -> arrowhead (the far edge) */
+    halfH: 141.5,              /* cy -> bottom of the arrow sweep */
+    letters: 897,              /* letter block width, for the separated state */
+    tallest: 167,              /* tallest single glyph */
+    widest: 190                /* widest single glyph */
+  };
+  var SEP = 250;               /* how far each word starts from its final place */
   var ACR = 'rise';
 
   function initRise() {
@@ -116,12 +129,16 @@
     var phx = $('#rz-phx');
     if (!sect || !stage || !layer) return null;
 
-    var letters = {};
-    $$('.rz-ltr', layer).forEach(function (el) {
-      letters[el.getAttribute('data-ltr')] = {
+    var glyphs = $$('.rz-ltr', layer).map(function (el) {
+      var cs = el.style;
+      return {
         el: el,
-        sw: parseFloat(el.style.getPropertyValue('--sw')),
-        sh: parseFloat(el.style.getPropertyValue('--sh'))
+        key: el.getAttribute('data-ltr'),
+        grp: el.getAttribute('data-grp') || 'mark',
+        x: parseFloat(cs.getPropertyValue('--gx')),
+        y: parseFloat(cs.getPropertyValue('--gy')),
+        w: parseFloat(cs.getPropertyValue('--gw')),
+        h: parseFloat(cs.getPropertyValue('--gh'))
       };
     });
     var means = $$('.rz-mean', sect);
@@ -132,124 +149,92 @@
       return null;
     }
 
-    var L = null;   /* measured layout */
+    var L = null;
 
     function measure() {
       var lb = layer.getBoundingClientRect();
       if (!lb.width || !lb.height) return;
 
-      /* One scale for both word phases so R, I and S never resize mid-flight. */
-      var unitsLaris = 0, i;
-      for (i = 0; i < 5; i++) unitsLaris += letters[WORD[i]].sw;
-      unitsLaris += GAPU * 4;
-      var maxSH = 0;
-      for (var k in letters) maxSH = Math.max(maxSH, letters[k].sh);
-      var kWord = Math.min(lb.width * 0.86 / unitsLaris, lb.height * 0.34 / maxSH);
+      /* Merged scale fits the wordmark plus its arrow; the separated state is
+         wider, so it starts smaller and the merge reads as a zoom in. */
+      var k1 = Math.min(lb.width * 0.90 / (UNIT.halfW * 2),
+                        lb.height * 0.46 / (UNIT.halfH * 2));
+      var k0 = lb.width * 0.90 / (UNIT.letters + SEP * 2);
+      if (k0 > k1) k0 = k1;
 
       var slot = $('.rz-slot', sect).getBoundingClientRect();
-      var kCol = Math.min(slot.width / 116, slot.height / maxSH);
-
-      /* Bottom-align every glyph: they share a baseline in the source alphabet. */
-      var baseY = (lb.height + maxSH * kWord) / 2;
-
-      function row(keys) {
-        var w = 0, n;
-        for (n = 0; n < keys.length; n++) w += letters[keys[n]].sw * kWord;
-        w += GAPU * kWord * (keys.length - 1);
-        var x = (lb.width - w) / 2, out = {};
-        for (n = 0; n < keys.length; n++) {
-          out[keys[n]] = x;
-          x += letters[keys[n]].sw * kWord + GAPU * kWord;
-        }
-        return out;
-      }
+      var kc = Math.min(slot.width / UNIT.widest, slot.height / UNIT.tallest);
 
       var col = {};
-      $$('.rz-slot', sect).forEach(function (s, n) {
-        var key = ACR[n];
-        var r = s.getBoundingClientRect();
+      $$('.rz-slot', sect).forEach(function (sl, n) {
+        var key = ACR[n], r = sl.getBoundingClientRect(), g;
+        for (var i = 0; i < glyphs.length; i++) {
+          if (glyphs[i].key === key && glyphs[i].grp === 'rise') { g = glyphs[i]; break; }
+        }
         col[key] = {
-          x: r.left - lb.left + (r.width - letters[key].sw * kCol) / 2,
-          y: r.top - lb.top + (r.height - letters[key].sh * kCol) / 2
+          x: r.left - lb.left + (r.width - g.w * kc) / 2,
+          y: r.top - lb.top + (r.height - g.h * kc) / 2
         };
       });
 
-      L = {
-        w: lb.width, h: lb.height, kWord: kWord, baseY: baseY,
-        laris: row('laris'.split('')), rise: row(ACR.split('')), col: col,
-        s: kCol / kWord
-      };
+      L = { w: lb.width, h: lb.height, k0: k0, k1: k1, col: col, cs: kc / k1,
+            cx: lb.width / 2, cy: lb.height / 2 };
 
-      for (var key in letters) {
-        var o = letters[key];
-        o.el.style.width = (o.sw * kWord) + 'px';
-        o.el.style.height = (o.sh * kWord) + 'px';
-      }
-
-      /* Park the caption just under the letter band. The band's baseline is
-         known exactly here, so it can't drift onto the letters at any size. */
+      glyphs.forEach(function (g) {
+        g.el.style.width = (g.w * k1) + 'px';
+        g.el.style.height = (g.h * k1) + 'px';
+      });
       if (cap) {
-        cap.style.top = Math.round(
-          lb.top - stage.getBoundingClientRect().top + baseY + Math.max(26, lb.height * 0.06)
-        ) + 'px';
+        cap.style.top = Math.round(lb.top - stage.getBoundingClientRect().top +
+          L.cy + UNIT.halfH * k1 + Math.max(26, lb.height * 0.06)) + 'px';
       }
     }
 
     function apply(p) {
       if (!L) return;
-      var d = easeInOut(seg(p, 0.54, 0.76));           /* word -> column */
-      var gold = p > 0.46;
+      var enter = easeOut(seg(p, 0, 0.12));
+      var m = easeInOut(seg(p, 0.14, 0.44));          /* words converge */
+      var k = lerp(L.k0, L.k1, m);
+      var base = k / L.k1;
+      /* Dissolve LARIS's R I S across the approach, not after it, so the words
+         read as merging rather than colliding while they overlap. */
+      var dupe = 1 - easeInOut(seg(p, 0.18, 0.42));
+      var laOut = 1 - easeInOut(seg(p, 0.58, 0.70));  /* L and A drop away */
+      var arrow = Math.min(easeOut(seg(p, 0.42, 0.58)), 1 - seg(p, 0.58, 0.68));
+      var d = easeInOut(seg(p, 0.58, 0.80));          /* RISE -> column */
 
-      'laris'.split('').forEach(function (key, i) {
-        var o = letters[key];
-        var enter = easeOut(seg(p, i * 0.018, 0.15 + i * 0.018));
-        var restY = L.baseY - o.sh * L.kWord;
-        var x, y, s = 1, op = enter;
+      glyphs.forEach(function (g) {
+        var off = g.grp === 'laris' ? -SEP * (1 - m)
+                : g.grp === 'rise' ? SEP * (1 - m) : 0;
+        var x = L.cx + (g.x + off - UNIT.cx) * k;
+        var y = L.cy + (g.y - UNIT.cy) * k;
+        var sc = base, op = enter;
 
-        if (key === 'l' || key === 'a') {
-          var out = easeInOut(seg(p, 0.20, 0.34));
-          x = L.laris[key];
-          y = restY + (1 - enter) * 30 - out * L.h * 0.34;
-          op = enter * (1 - out);
+        if (g.key === 'arrow') {
+          op = arrow;
+        } else if (g.grp === 'laris') {
+          op = enter * (g.key === 'l' || g.key === 'a' ? laOut : dupe);
         } else {
-          var m = easeInOut(seg(p, 0.20, 0.42));
-          x = lerp(L.laris[key], L.rise[key], m);
-          y = restY + (1 - enter) * 30;
-          x = lerp(x, L.col[key].x, d);
-          y = lerp(y, L.col[key].y, d);
-          s = lerp(1, L.s, d);
+          var c = L.col[g.key];
+          x = lerp(x, c.x, d);
+          y = lerp(y, c.y, d);
+          sc = lerp(base, L.cs, d);
         }
-        o.el.style.transform = 'translate3d(' + x.toFixed(2) + 'px,' + y.toFixed(2) + 'px,0) scale(' + s.toFixed(4) + ')';
-        o.el.style.opacity = op.toFixed(3);
-        o.el.classList.toggle('is-gold', gold && key !== 'l' && key !== 'a');
+        g.el.style.transform = 'translate3d(' + x.toFixed(2) + 'px,' + y.toFixed(2) +
+          'px,0) scale(' + sc.toFixed(4) + ')';
+        g.el.style.opacity = op.toFixed(3);
       });
 
-      /* E is not in LARIS — it flies in from the right once R I S have settled. */
-      var e = letters.e;
-      var ein = easeOut(seg(p, 0.38, 0.54));
-      var ex = lerp(L.w + e.sw * L.kWord, L.rise.e, ein);
-      var ey = L.baseY - e.sh * L.kWord;
-      ex = lerp(ex, L.col.e.x, d);
-      ey = lerp(ey, L.col.e.y, d);
-      e.el.style.transform = 'translate3d(' + ex.toFixed(2) + 'px,' + ey.toFixed(2) + 'px,0) scale(' + lerp(1, L.s, d).toFixed(4) + ')';
-      e.el.style.opacity = ein.toFixed(3);
-      e.el.classList.toggle('is-gold', gold);
+      if (cap) cap.style.opacity = Math.min(seg(p, 0.40, 0.48), 1 - seg(p, 0.56, 0.64)).toFixed(3);
+      if (phx) phx.style.opacity = (easeOut(seg(p, 0.02, 0.14)) * (1 - seg(p, 0.52, 0.64))).toFixed(3);
 
-      if (cap) cap.style.opacity = Math.min(seg(p, 0.28, 0.37), 1 - seg(p, 0.54, 0.63)).toFixed(3);
-      if (phx) phx.style.opacity = (easeOut(seg(p, 0.02, 0.14)) * (1 - seg(p, 0.50, 0.62))).toFixed(3);
-
-      means.forEach(function (m, i) {
-        m.classList.toggle('is-on', p > 0.74 + i * 0.05);
-      });
+      means.forEach(function (mm, i) { mm.classList.toggle('is-on', p > 0.80 + i * 0.045); });
     }
 
-    /* will-change only while the sequence can actually be seen. */
     if (HAS_IO) {
       var vio = new IntersectionObserver(function (entries) {
         var on = entries[0].isIntersecting;
-        $$('.rz-ltr', layer).forEach(function (el) {
-          el.style.willChange = on ? 'transform,opacity' : '';
-        });
+        glyphs.forEach(function (g) { g.el.style.willChange = on ? 'transform,opacity' : ''; });
       }, { rootMargin: '20% 0px' });
       vio.observe(sect);
     }
