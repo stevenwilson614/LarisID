@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080" role="img" aria-label="MENTOR_IMAGE_PLACEHOLDER">
+<defs>
+<pattern id="h3" width="26" height="26" patternUnits="userSpaceOnUse" patternTransform="rotate(-38)">
+<line x1="0" y1="0" x2="0" y2="26" stroke="#B5202A" stroke-opacity=".07" stroke-width="7"/>
+</pattern>
+</defs>
+<rect width="1080" height="1080" fill="#F2E7DA"/>
+<rect width="1080" height="1080" fill="url(#h3)"/>
+<path d="M173 756 L324 367" stroke="#B5202A" stroke-opacity="0.16" stroke-width="38" stroke-linecap="round" fill="none"/>
+<path d="M313 734 L464 313" stroke="#B5202A" stroke-opacity="0.12" stroke-width="38" stroke-linecap="round" fill="none"/>
+<path d="M454 713 L605 259" stroke="#B5202A" stroke-opacity="0.08" stroke-width="38" stroke-linecap="round" fill="none"/>
+<rect x="14" y="14" width="1052" height="1052" fill="none" stroke="#B5202A" stroke-opacity=".28" stroke-width="2"/>
+<text x="540.0" y="553.608" text-anchor="middle" font-family="'Plus Jakarta Sans',system-ui,sans-serif" font-size="39" font-weight="700" letter-spacing="4.3" fill="#B5202A" fill-opacity=".85">MENTOR_IMAGE_PLACEHOLDER</text>
+<text x="540.0" y="621.648" text-anchor="middle" font-family="'Plus Jakarta Sans',system-ui,sans-serif" font-size="24" font-weight="600" letter-spacing="3.5" fill="#1A1A1A" fill-opacity=".38">1080 &#215; 1080</text>
+</svg>

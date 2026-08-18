@@ -1,0 +1,295 @@
+/* LARIS RISE — /rise/ landing page.
+   Scheme: MERAH-EMAS (docs/BRAND_V2_PHOENIX.md §3.1). One scheme, no mixing.
+   Tokens + above-the-fold rules are inlined in rise/index.html; this file covers
+   everything below the hero. Mobile-first throughout. */
+
+/* ---- shared section furniture -------------------------------------------- */
+.rz-sect{padding:var(--sect) 0;position:relative}
+.rz-sect--putih{background:var(--putih)}
+.rz-sect--gelap{background:var(--hitam);color:var(--krem)}
+.rz-sect--gelap .rz-kicker{color:var(--emas)}
+.rz-narrow{max-width:760px}
+.rz-h2{font-size:var(--h2);margin:0 0 clamp(28px,6vw,48px);text-wrap:balance}
+.rz-display{font-size:var(--display);margin:0 0 clamp(30px,6vw,48px);text-wrap:balance}
+.rz-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ---- reveal primitive ----------------------------------------------------- */
+[data-reveal]{opacity:0;transform:translateY(22px);
+  transition:opacity .72s cubic-bezier(.22,.68,.24,1) var(--d,0s),
+             transform .72s cubic-bezier(.22,.68,.24,1) var(--d,0s)}
+[data-reveal].is-in{opacity:1;transform:none}
+
+/* ---- nav sheet ------------------------------------------------------------ */
+.rz-sheet{position:fixed;inset:56px 0 auto;z-index:55;background:var(--krem);
+  border-bottom:1px solid var(--hairline);padding:8px var(--pad) 20px;
+  box-shadow:0 18px 40px -24px rgba(26,26,26,.5)}
+.rz-sheet[hidden]{display:none}
+.rz-sheet nav{display:flex;flex-direction:column}
+.rz-sheet a{display:flex;align-items:center;min-height:56px;text-decoration:none;
+  font-size:1.05rem;font-weight:700;border-bottom:1px solid var(--hairline)}
+.rz-sheet a:last-child{border-bottom:0}
+.rz-sheet-cta{color:var(--merah)}
+@media(min-width:860px){.rz-sheet{display:none}}
+
+/* ---- 02 kesempatan -------------------------------------------------------- */
+.rz-nots{list-style:none;margin:0 0 clamp(48px,10vw,84px);padding:0;max-width:26ch}
+.rz-nots li{font-size:clamp(1.15rem,4.8vw,1.5rem);font-weight:600;line-height:1.45;
+  color:var(--ink-mute);padding:12px 0;border-bottom:1px solid var(--hairline)}
+.rz-nots li:last-child{border-bottom:0;color:var(--ink)}
+.rz-nots strong{font-weight:800}
+
+.rz-eq{display:flex;flex-direction:column;align-items:flex-start;gap:14px}
+.rz-eq-item{display:flex;align-items:baseline;gap:14px}
+.rz-eq-n{font-size:.78rem;font-weight:700;letter-spacing:.14em;color:var(--merah);
+  font-variant-numeric:tabular-nums}
+.rz-eq-item b{font-size:clamp(1.5rem,7vw,2.4rem);font-weight:800;letter-spacing:-.03em;
+  line-height:1.1}
+.rz-eq-plus{font-size:1.1rem;font-weight:700;color:var(--merah);padding-left:34px}
+.rz-eq-rule{width:100%;max-width:280px;padding-left:34px}
+.rz-eq-rule i{display:block;height:2px;background:var(--merah);transform-origin:left;
+  transform:scaleX(0);transition:transform .8s cubic-bezier(.22,.68,.24,1) var(--d,0s)}
+.rz-eq-rule.is-in i{transform:scaleX(1)}
+.rz-eq-out b{display:inline-block;font-size:clamp(1.6rem,7.4vw,2.8rem);font-weight:800;
+  letter-spacing:-.03em;line-height:1.1;background:var(--merah);color:#fff;padding:6px 16px 9px}
+
+/* ---- 03 LARIS -> RISE ----------------------------------------------------- */
+.rz-rise{background:var(--hitam);color:var(--krem);height:340vh;position:relative}
+.rz-stage{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden;
+  display:flex;align-items:center}
+.rz-stage-inner{position:relative;width:100%;max-width:var(--wrap);margin:0 auto;
+  padding:0 var(--pad)}
+/* Stage chrome sits clear of the sticky nav above and the letter band below. */
+.rz-rise-kicker{position:absolute;top:clamp(80px,11vh,110px);left:0;right:0;text-align:center;
+  color:var(--emas);margin:0}
+.rz-phx{position:absolute;left:50%;top:clamp(108px,15vh,150px);
+  width:clamp(44px,11vw,68px);height:auto;transform:translateX(-50%);opacity:0;will-change:opacity}
+
+/* Floating brush letters. Sized in px by JS; painted through the alpha mask so a
+   single asset serves both the cream and gold states. */
+.rz-letters{position:absolute;inset:0;pointer-events:none}
+.rz-ltr{position:absolute;left:0;top:0;transform-origin:0 0;display:block;
+  background-color:var(--krem);
+  -webkit-mask-image:var(--m);mask-image:var(--m);
+  -webkit-mask-size:100% 100%;mask-size:100% 100%;
+  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+  transition:background-color .5s ease}
+.rz-ltr[data-ltr="l"]{--m:url(/images/rise/letters/l.webp)}
+.rz-ltr[data-ltr="a"]{--m:url(/images/rise/letters/a.webp)}
+.rz-ltr[data-ltr="r"]{--m:url(/images/rise/letters/r.webp)}
+.rz-ltr[data-ltr="i"]{--m:url(/images/rise/letters/i.webp)}
+.rz-ltr[data-ltr="s"]{--m:url(/images/rise/letters/s.webp)}
+.rz-ltr[data-ltr="e"]{--m:url(/images/rise/letters/e.webp)}
+.rz-ltr.is-gold{background-color:var(--emas)}
+/* Without mask support the letter would be an invisible box — show the artwork
+   itself instead, which is the cream lockup the brand already ships. */
+@supports not ((-webkit-mask-image:url(#a)) or (mask-image:url(#a))){
+  .rz-ltr{background-color:transparent;background-image:var(--m);
+    background-size:100% 100%;background-repeat:no-repeat}
+}
+
+.rz-cap{position:absolute;left:var(--pad);right:var(--pad);
+  top:calc(50% + clamp(52px,7.5vh,92px));/* JS refines this from the letter baseline */
+  text-align:center;margin:0;opacity:0;
+  font-size:clamp(.95rem,3.6vw,1.05rem);color:rgba(245,239,224,.66);will-change:opacity}
+
+.rz-means{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;
+  gap:clamp(14px,3.2vh,26px)}
+.rz-mean{display:flex;align-items:center;gap:clamp(16px,4.5vw,32px);opacity:0;
+  transform:translateY(14px);
+  transition:opacity .6s cubic-bezier(.22,.68,.24,1),transform .6s cubic-bezier(.22,.68,.24,1)}
+.rz-mean.is-on{opacity:1;transform:none}
+.rz-slot{flex:0 0 auto;width:clamp(46px,13vw,84px);height:clamp(56px,15vw,104px);display:block}
+.rz-mean h3{font-size:clamp(.98rem,4vw,1.3rem);font-weight:800;letter-spacing:.02em;
+  margin:0 0 4px;color:var(--emas)}
+.rz-mean h3 span{display:none}
+.rz-mean b{display:block;font-size:clamp(1rem,4.2vw,1.35rem);font-weight:800;
+  letter-spacing:-.02em;line-height:1.25;margin-bottom:4px}
+.rz-mean p{font-size:clamp(.95rem,3.5vw,1.02rem);line-height:1.55;color:rgba(245,239,224,.62);
+  margin:0;max-width:46ch}
+
+/* ---- 04 teknologi + orang -------------------------------------------------- */
+.rz-duo{display:flex;flex-direction:column;gap:0}
+.rz-duo-card{background:var(--putih);border:1px solid var(--hairline);padding:clamp(24px,6vw,40px)}
+.rz-duo-card--alt{background:var(--hitam);color:var(--krem);border-color:var(--hitam)}
+.rz-duo-tag{font-size:.78rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--merah);margin:0 0 10px}
+.rz-duo-card--alt .rz-duo-tag{color:var(--emas)}
+.rz-duo-h{font-size:clamp(1.35rem,5.6vw,2rem);font-weight:800;letter-spacing:-.03em;
+  margin:0 0 14px;line-height:1.05}
+.rz-duo-card p{font-size:clamp(1rem,4vw,1.08rem);color:var(--ink-mute);max-width:46ch}
+.rz-duo-card--alt p{color:rgba(245,239,224,.68)}
+.rz-duo-card figure{margin:clamp(22px,5vw,32px) 0 0}
+.rz-duo-card figure img{width:100%;max-height:min(46vh,380px);object-fit:contain}
+.rz-duo-card--alt figure img{opacity:.9}
+.rz-duo-join{display:flex;justify-content:center;padding:22px 0}
+.rz-duo-join i{display:block;width:2px;height:clamp(38px,9vw,64px);background:var(--merah)}
+@media(min-width:860px){
+  .rz-duo{display:grid;grid-template-columns:1fr auto 1fr;align-items:stretch;gap:0}
+  .rz-duo-join{padding:0 24px;align-items:center}
+  .rz-duo-join i{width:clamp(40px,5vw,72px);height:2px}
+  .rz-duo-card figure img{max-height:340px;width:auto;margin:0 auto}
+}
+
+/* ---- 05 perjalanan -------------------------------------------------------- */
+.rz-rail{list-style:none;margin:0;padding:0;position:relative}
+.rz-rail::before{content:"";position:absolute;left:6px;top:8px;bottom:8px;width:2px;
+  background:var(--hairline)}
+/* The lit rail is drawn by scaling a second line to the section's scroll progress. */
+.rz-rail::after{content:"";position:absolute;left:6px;top:8px;bottom:8px;width:2px;
+  background:var(--merah);transform-origin:top;transform:scaleY(var(--p,0))}
+.rz-rail li{position:relative;padding:0 0 clamp(30px,7vw,46px) clamp(30px,8vw,54px)}
+.rz-rail li:last-child{padding-bottom:0}
+.rz-rail li::before{content:"";position:absolute;left:0;top:9px;width:14px;height:14px;
+  border-radius:50%;background:var(--putih);border:2px solid var(--merah)}
+.rz-rail-n{display:block;font-size:.78rem;font-weight:700;letter-spacing:.16em;
+  color:var(--merah);font-variant-numeric:tabular-nums;margin-bottom:2px}
+.rz-rail h3{font-size:clamp(1.3rem,5.6vw,1.9rem);font-weight:800;letter-spacing:-.03em;
+  margin:0 0 6px}
+.rz-rail p{font-size:clamp(.96rem,3.9vw,1.05rem);color:var(--ink-mute);max-width:44ch}
+@media(min-width:860px){
+  /* True alternating ladder: every stage gets its own row, so the section reads
+     as a sequence rather than a two-column list. */
+  .rz-rail{--rail-gap:clamp(40px,6vw,80px);
+    display:grid;grid-template-columns:1fr 1fr;column-gap:var(--rail-gap)}
+  .rz-rail::before,.rz-rail::after{left:50%;margin-left:-1px}
+  .rz-rail li{grid-column:2;padding:0 0 clamp(30px,4vw,50px) clamp(30px,4vw,54px)}
+  .rz-rail li:nth-child(odd){grid-column:1;text-align:right;
+    padding-left:0;padding-right:clamp(30px,4vw,54px)}
+  .rz-rail li:nth-child(1){grid-row:1} .rz-rail li:nth-child(2){grid-row:2}
+  .rz-rail li:nth-child(3){grid-row:3} .rz-rail li:nth-child(4){grid-row:4}
+  .rz-rail li:nth-child(5){grid-row:5} .rz-rail li:nth-child(6){grid-row:6}
+  .rz-rail li:nth-child(7){grid-row:7} .rz-rail li:nth-child(8){grid-row:8}
+  /* Sit the marker on the rail itself — it is half the column gap away. */
+  .rz-rail li:nth-child(odd)::before{left:auto;right:calc(-1 * var(--rail-gap) / 2 - 7px)}
+  .rz-rail li:nth-child(even)::before{left:calc(-1 * var(--rail-gap) / 2 - 7px)}
+  .rz-rail li:nth-child(odd) p{margin-left:auto}
+}
+
+/* ---- 06 tujuan ------------------------------------------------------------ */
+.rz-say{margin:0 0 clamp(24px,5vw,40px);text-wrap:balance}
+.rz-say--sm{font-size:clamp(1.15rem,4.6vw,1.6rem);font-weight:600;line-height:1.4;
+  color:rgba(245,239,224,.62)}
+.rz-say--lg{font-size:clamp(1.7rem,7vw,3rem);font-weight:800;letter-spacing:-.03em;
+  line-height:1.12}
+.rz-say--lg em{font-style:normal;color:var(--emas)}
+.rz-chant{list-style:none;margin:clamp(40px,9vw,72px) 0 0;padding:0}
+.rz-chant li{font-size:clamp(1.5rem,7.6vw,2.8rem);font-weight:800;letter-spacing:-.03em;
+  line-height:1.15;padding:10px 0;border-bottom:1px solid rgba(245,239,224,.16)}
+.rz-chant li:last-child{border-bottom:0;color:var(--emas)}
+
+/* ---- 07 2 / 20 ------------------------------------------------------------ */
+.rz-goal{display:flex;flex-direction:column;gap:clamp(30px,7vw,52px)}
+.rz-dots{display:grid;grid-template-columns:repeat(5,1fr);gap:clamp(10px,3.2vw,18px);
+  max-width:340px}
+.rz-dot{aspect-ratio:1;border-radius:50%;background:var(--hitam);opacity:0;
+  transform:scale(.4);
+  transition:opacity .4s ease var(--d,0s),transform .5s cubic-bezier(.3,1.5,.5,1) var(--d,0s),
+             background-color .4s ease}
+.rz-dot.is-in{opacity:1;transform:none}
+.rz-dot.is-hit{background:var(--merah);box-shadow:0 0 0 4px var(--merah-tint)}
+.rz-goal-big{margin:0;font-size:clamp(3.4rem,17vw,7rem);font-weight:800;letter-spacing:-.05em;
+  line-height:.9;display:flex;align-items:baseline;gap:.06em}
+.rz-goal-big b{font-weight:800}
+.rz-goal-big b:first-child{color:var(--merah)}
+.rz-goal-big i{font-style:normal;color:var(--hairline);font-weight:400}
+.rz-goal-pct{margin:6px 0 20px;font-size:clamp(1.2rem,5vw,1.7rem);font-weight:800;
+  letter-spacing:-.02em;color:var(--merah);font-variant-numeric:tabular-nums}
+.rz-goal-txt p{color:var(--ink-mute);max-width:44ch}
+.rz-goal-txt strong{color:var(--ink);font-weight:800}
+.rz-goal-note{margin-top:16px;padding-top:16px;border-top:1px solid var(--hairline);
+  font-size:clamp(.95rem,3.6vw,1rem)}
+@media(min-width:860px){
+  .rz-goal{flex-direction:row;align-items:center;gap:clamp(48px,7vw,96px)}
+  .rz-dots{flex:0 0 auto;width:340px}
+}
+
+/* ---- 08 gerakan ----------------------------------------------------------- */
+.rz-move{overflow:hidden}
+.rz-move-field{position:absolute;inset:0;pointer-events:none;
+  background-image:radial-gradient(circle,var(--merah) 1.7px,transparent 1.8px);
+  background-size:calc(54px - 34px * var(--p,0)) calc(54px - 34px * var(--p,0));
+  opacity:calc(.1 + .26 * var(--p,0))}
+.rz-move .rz-wrap{position:relative}
+.rz-scale{position:relative;height:clamp(84px,24vw,160px);margin:clamp(24px,6vw,44px) 0}
+.rz-scale-n{position:absolute;left:0;top:0;font-size:clamp(3.4rem,19vw,8rem);font-weight:800;
+  letter-spacing:-.05em;line-height:1;color:var(--merah);font-variant-numeric:tabular-nums;
+  opacity:0;transform:translateY(16px) scale(.94);
+  transition:opacity .45s ease,transform .45s cubic-bezier(.22,.68,.24,1)}
+.rz-scale-n.is-on{opacity:1;transform:none}
+.rz-chain{list-style:none;margin:0 0 clamp(40px,9vw,72px);padding:0;max-width:34ch}
+.rz-chain li{font-size:clamp(1.05rem,4.4vw,1.3rem);font-weight:600;color:var(--ink-mute);
+  padding:9px 0 9px 26px;position:relative}
+.rz-chain li::before{content:"";position:absolute;left:0;top:calc(9px + .85em);width:7px;height:7px;
+  border-radius:50%;background:var(--merah);transform:translateY(-50%)}
+.rz-move-say{color:var(--ink);margin:0}
+
+/* ---- 09 CTA + footer ------------------------------------------------------ */
+.rz-end{text-align:center}
+.rz-end-h em{font-style:normal;color:var(--emas)}
+.rz-end-mark{margin:clamp(40px,9vw,68px) 0}
+.rz-end-mark img{margin:0 auto clamp(14px,3vw,20px)}
+.rz-end-name{font-family:var(--font);font-size:clamp(1.1rem,4.6vw,1.5rem);font-weight:800;
+  letter-spacing:.16em;margin:0 0 10px}
+.rz-end-tag{font-size:clamp(.95rem,3.6vw,1rem);color:rgba(245,239,224,.6);margin:0;line-height:1.6}
+.rz-btn--lg{min-height:60px;padding:0 34px;font-size:1.05rem}
+.rz-end-soon{font-size:.95rem;color:rgba(245,239,224,.5);margin:16px 0 0}
+.rz-foot{background:var(--hitam);color:rgba(245,239,224,.6);
+  padding:0 0 calc(clamp(28px,7vw,44px) + env(safe-area-inset-bottom,0px));
+  border-top:1px solid rgba(245,239,224,.12);font-size:.95rem}
+.rz-foot .rz-wrap{padding-top:clamp(28px,7vw,44px)}
+.rz-foot-logo{display:inline-block;margin-bottom:16px;filter:brightness(0) invert(1);opacity:.65}
+.rz-foot p{max-width:52ch;margin:0 0 14px;line-height:1.6}
+.rz-foot a{color:var(--krem)}
+.rz-foot-links{display:flex;gap:20px;flex-wrap:wrap}
+.rz-foot-links a{text-decoration:none;font-weight:600}
+.rz-foot-links a:hover{color:var(--emas)}
+
+/* ---- sticky mobile CTA ----------------------------------------------------- */
+.rz-sticky{position:fixed;left:var(--pad);right:var(--pad);z-index:50;
+  bottom:calc(14px + env(safe-area-inset-bottom,0px));
+  display:flex;align-items:center;justify-content:center;gap:10px;min-height:54px;
+  border-radius:8px;background:var(--merah);color:#fff;font-weight:700;text-decoration:none;
+  box-shadow:0 14px 30px -12px rgba(26,26,26,.6);
+  transform:translateY(calc(100% + 24px));opacity:0;pointer-events:none;
+  transition:transform .38s cubic-bezier(.22,.68,.24,1),opacity .38s ease}
+.rz-sticky.is-on{transform:none;opacity:1;pointer-events:auto}
+@media(min-width:860px){.rz-sticky{display:none}}
+
+/* ---- reduced motion -------------------------------------------------------- */
+/* Everything resolves to its finished state and no scroll work is scheduled.
+   The pinned section collapses to normal flow with each letter sitting in its
+   own slot, so the acronym still reads as designed. */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
+    transition-duration:.001ms!important;scroll-behavior:auto!important}
+  .rz-hero h1 .w,.rz-lead,.rz-stats,.rz-cta{opacity:1;transform:none}
+}
+.rz-static{height:auto}
+/* The stage is a flex centring box while pinned; in static mode its chrome must
+   stack above the content instead of becoming flex siblings of it. */
+.rz-static .rz-stage{position:static;height:auto;display:block;overflow:visible;
+  padding:var(--sect) 0}
+.rz-static .rz-letters{display:none}
+.rz-static .rz-rise-kicker,
+.rz-static .rz-phx,
+.rz-static .rz-cap{position:static;max-width:var(--wrap);margin-inline:auto;
+  padding-inline:var(--pad);text-align:left}
+.rz-static .rz-rise-kicker{margin-bottom:14px}
+.rz-static .rz-phx{transform:none;opacity:1;margin-bottom:clamp(18px,4vw,28px)}
+.rz-static .rz-cap{opacity:1;margin-bottom:clamp(26px,6vw,44px)}
+.rz-static .rz-mean{opacity:1;transform:none}
+.rz-static .rz-slot{background-color:var(--emas);
+  -webkit-mask-image:var(--m);mask-image:var(--m);
+  -webkit-mask-size:contain;mask-size:contain;
+  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+  -webkit-mask-position:center;mask-position:center}
+.rz-static .rz-mean[data-mean="r"]{--m:url(/images/rise/letters/r.webp)}
+.rz-static .rz-mean[data-mean="i"]{--m:url(/images/rise/letters/i.webp)}
+.rz-static .rz-mean[data-mean="s"]{--m:url(/images/rise/letters/s.webp)}
+.rz-static .rz-mean[data-mean="e"]{--m:url(/images/rise/letters/e.webp)}
+@supports not ((-webkit-mask-image:url(#a)) or (mask-image:url(#a))){
+  .rz-static .rz-slot{background-color:transparent;background-image:var(--m);
+    background-size:contain;background-repeat:no-repeat;background-position:center}
+  .rz-static .rz-mean h3 span{display:inline}
+}

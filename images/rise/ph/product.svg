@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1800" width="900" height="1800" role="img" aria-label="LARIS_PRODUCT_SCREENSHOT_PLACEHOLDER">
+<defs>
+<pattern id="h2" width="26" height="26" patternUnits="userSpaceOnUse" patternTransform="rotate(-38)">
+<line x1="0" y1="0" x2="0" y2="26" stroke="#B5202A" stroke-opacity=".07" stroke-width="7"/>
+</pattern>
+</defs>
+<rect width="900" height="1800" fill="#F2E7DA"/>
+<rect width="900" height="1800" fill="url(#h2)"/>
+<path d="M144 1260 L270 612" stroke="#B5202A" stroke-opacity="0.16" stroke-width="32" stroke-linecap="round" fill="none"/>
+<path d="M261 1224 L387 522" stroke="#B5202A" stroke-opacity="0.12" stroke-width="32" stroke-linecap="round" fill="none"/>
+<path d="M378 1188 L504 432" stroke="#B5202A" stroke-opacity="0.08" stroke-width="32" stroke-linecap="round" fill="none"/>
+<rect x="14" y="14" width="872" height="1772" fill="none" stroke="#B5202A" stroke-opacity=".28" stroke-width="2"/>
+<text x="450.0" y="911.34" text-anchor="middle" font-family="'Plus Jakarta Sans',system-ui,sans-serif" font-size="32" font-weight="700" letter-spacing="3.6" fill="#B5202A" fill-opacity=".85">LARIS_PRODUCT_SCREENSHOT_PLACEHOLDER</text>
+<text x="450.0" y="968.04" text-anchor="middle" font-family="'Plus Jakarta Sans',system-ui,sans-serif" font-size="20" font-weight="600" letter-spacing="2.9" fill="#1A1A1A" fill-opacity=".38">900 &#215; 1800</text>
+</svg>

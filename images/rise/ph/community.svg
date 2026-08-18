@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000" role="img" aria-label="COMMUNITY_IMAGE_PLACEHOLDER">
+<defs>
+<pattern id="h4" width="26" height="26" patternUnits="userSpaceOnUse" patternTransform="rotate(-38)">
+<line x1="0" y1="0" x2="0" y2="26" stroke="#B5202A" stroke-opacity=".07" stroke-width="7"/>
+</pattern>
+</defs>
+<rect width="1600" height="1000" fill="#F2E7DA"/>
+<rect width="1600" height="1000" fill="url(#h4)"/>
+<path d="M256 700 L480 340" stroke="#B5202A" stroke-opacity="0.16" stroke-width="56" stroke-linecap="round" fill="none"/>
+<path d="M464 680 L688 290" stroke="#B5202A" stroke-opacity="0.12" stroke-width="56" stroke-linecap="round" fill="none"/>
+<path d="M672 660 L896 240" stroke="#B5202A" stroke-opacity="0.08" stroke-width="56" stroke-linecap="round" fill="none"/>
+<rect x="14" y="14" width="1572" height="972" fill="none" stroke="#B5202A" stroke-opacity=".28" stroke-width="2"/>
+<text x="800.0" y="512.6" text-anchor="middle" font-family="'Plus Jakarta Sans',system-ui,sans-serif" font-size="36" font-weight="700" letter-spacing="4.0" fill="#B5202A" fill-opacity=".85">COMMUNITY_IMAGE_PLACEHOLDER</text>
+<text x="800.0" y="575.6" text-anchor="middle" font-family="'Plus Jakarta Sans',system-ui,sans-serif" font-size="22" font-weight="600" letter-spacing="3.2" fill="#1A1A1A" fill-opacity=".38">1600 &#215; 1000</text>
+</svg>

@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-862519971"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'AW-862519971');
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>LARIS RISE — Program Wirausaha 2 Bulan untuk Anak Muda Indonesia</title>
+<meta name="description" content="LARIS RISE adalah program wirausaha dua bulan: 20 peserta, 8 sesi mentoring online. Mulai dari nol, bangun penghasilan, layani sekitarmu, dan bantu orang lain bangkit.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://larisid.com/rise/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="LARIS RISE — Mulai dari nol. Bangkit bersama.">
+<meta property="og:description" content="Program wirausaha dua bulan untuk anak muda Indonesia. 20 peserta, 8 sesi mentoring, satu kesempatan nyata untuk mencoba.">
+<meta property="og:url" content="https://larisid.com/rise/">
+<meta property="og:locale" content="id_ID">
+<meta name="theme-color" content="#F5EFE0">
+<link rel="icon" type="image/png" href="/images/brand/appicon-red.png">
+<link rel="preload" as="font" type="font/woff2" href="/fonts/plus-jakarta-sans-latin.woff2" crossorigin>
+<link rel="stylesheet" href="/fonts/laris-fonts.css">
+<style>
+/* Critical above-the-fold styles — the rest lives in /styles/rise.css */
+:root{
+  --merah:#B5202A;--merah-dark:#8E191F;--merah-tint:#F9EAE4;
+  --emas:#C9974B;--hitam:#1A1A1A;--krem:#F5EFE0;--putih:#FFFDF8;
+  --ink:#1A1A1A;--ink-mute:#5C5751;--hairline:rgba(26,26,26,.14);
+  --font:'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,sans-serif;
+  --pad:clamp(20px,5.5vw,40px);
+  --sect:clamp(76px,17vw,140px);
+  --wrap:1120px;
+  --display:clamp(1.75rem,8.9vw,6rem);
+  --h2:clamp(1.9rem,7.4vw,3.4rem);
+  --body:clamp(1.0625rem,4.2vw,1.1875rem);
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--krem);color:var(--ink);font-family:var(--font);
+  font-size:var(--body);line-height:1.7;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{max-width:100%;height:auto;display:block}
+a{color:inherit}
+h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.03em;line-height:1}
+p{margin:0}
+.rz-wrap{max-width:var(--wrap);margin:0 auto;padding-inline:var(--pad)}
+.rz-kicker{font-size:.78rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--merah);margin:0 0 18px}
+.rz-skip{position:absolute;left:-9999px}
+.rz-skip:focus{left:var(--pad);top:12px;z-index:100;background:var(--hitam);color:var(--krem);
+  padding:12px 18px;border-radius:8px}
+
+/* Nav */
+.rz-nav{position:sticky;top:0;z-index:60;display:flex;align-items:center;justify-content:space-between;
+  gap:16px;padding:14px var(--pad);background:rgba(245,239,224,.88);
+  -webkit-backdrop-filter:saturate(1.4) blur(12px);backdrop-filter:saturate(1.4) blur(12px);
+  border-bottom:1px solid transparent;transition:border-color .3s}
+.rz-nav.is-stuck{border-bottom-color:var(--hairline)}
+.rz-brand{display:flex;align-items:center;gap:9px;text-decoration:none;min-height:44px}
+.rz-brand img{height:24px;width:auto}
+.rz-brand b{font-weight:800;font-size:1rem;letter-spacing:.02em;color:var(--merah)}
+.rz-navbtn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;
+  min-width:44px;border:0;background:none;padding:0 4px;cursor:pointer;color:var(--ink)}
+.rz-navbtn svg{display:block}
+.rz-navlinks{display:none}
+
+/* Hero */
+.rz-hero{padding:clamp(28px,7vw,64px) 0 var(--sect);position:relative;overflow:hidden}
+/* The hero headline lives in a half-width column on desktop, so it caps lower
+   than the full-bleed section displays — otherwise the two-line break breaks. */
+.rz-hero h1{font-size:clamp(1.75rem,8.9vw,3.4rem);margin:0 0 22px;text-wrap:balance}
+.rz-hero h1 .w{display:inline-block;opacity:0;transform:translateY(.42em);
+  animation:rzWord .82s cubic-bezier(.22,.68,.24,1) both;animation-delay:var(--d,0s)}
+.rz-hero h1 .em{color:var(--merah)}
+@keyframes rzWord{to{opacity:1;transform:none}}
+.rz-lead{max-width:38ch;color:var(--ink-mute);margin:0 0 32px;
+  opacity:0;animation:rzWord .8s ease .55s both}
+.rz-stats{display:flex;flex-wrap:wrap;gap:18px 32px;margin:0 0 34px;padding:0;list-style:none;
+  opacity:0;animation:rzWord .8s ease .72s both}
+.rz-stats b{display:block;font-size:clamp(1.9rem,7vw,2.6rem);font-weight:800;letter-spacing:-.04em;
+  line-height:1;margin-bottom:5px;font-variant-numeric:tabular-nums}
+.rz-stats span{display:block;font-size:.78rem;font-weight:700;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-mute);max-width:9ch;line-height:1.3}
+.rz-cta{display:flex;flex-wrap:wrap;align-items:center;gap:14px 22px;
+  opacity:0;animation:rzWord .8s ease .86s both}
+.rz-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  min-height:54px;padding:0 28px;border-radius:8px;background:var(--merah);color:#fff;
+  font-weight:700;font-size:1rem;text-decoration:none;border:0;cursor:pointer;
+  transition:background .2s,transform .2s}
+.rz-btn:hover{background:var(--merah-dark)}
+.rz-btn:active{transform:translateY(1px)}
+.rz-btn--ghost{background:none;color:var(--ink);border:1.5px solid var(--hairline)}
+.rz-btn--ghost:hover{background:rgba(26,26,26,.05)}
+.rz-link{display:inline-flex;align-items:center;gap:7px;min-height:44px;font-weight:700;
+  font-size:.95rem;color:var(--ink);text-decoration:none;border-bottom:1.5px solid var(--merah)}
+.rz-hero-fig{margin:clamp(34px,8vw,56px) 0 0;position:relative}
+.rz-hero-fig img{width:100%;border-radius:2px}
+@media(min-width:860px){
+  .rz-hero .rz-wrap{display:grid;grid-template-columns:1.12fr .88fr;gap:clamp(40px,5vw,72px);
+    align-items:center}
+  .rz-hero-fig{margin:0}
+  .rz-navlinks{display:flex;align-items:center;gap:26px}
+  .rz-navlinks a{font-size:.86rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    text-decoration:none;color:var(--ink-mute)}
+  .rz-navlinks a:hover{color:var(--merah)}
+  .rz-navbtn{display:none}
+}
+</style>
+<link rel="stylesheet" href="/styles/rise.css?v=20260818g">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "EducationalOccupationalProgram",
+  "name": "LARIS RISE",
+  "url": "https://larisid.com/rise/",
+  "description": "Program wirausaha dua bulan untuk anak muda Indonesia. 20 peserta, 8 sesi mentoring online: menemukan peluang, memilih produk, membuka toko online, memasarkan, melayani pelanggan, dan mengelola keuangan usaha.",
+  "provider": {
+    "@type": "Organization",
+    "name": "LarisID",
+    "url": "https://larisid.com/",
+    "logo": "https://larisid.com/images/brand/appicon-red.png"
+  },
+  "educationalProgramMode": "online",
+  "timeToComplete": "P2M",
+  "maximumEnrollment": 20,
+  "inLanguage": "id",
+  "occupationalCategory": "Wirausaha e-commerce"
+}
+</script>
+</head>
+<body id="top">
+<a class="rz-skip" href="#rz-main">Lompat ke konten</a>
+
+<header class="rz-nav" id="rz-nav">
+  <a class="rz-brand" href="#top" aria-label="LARIS RISE — ke atas">
+    <img src="/images/brand/logo-horizontal-red.png" alt="Laris" width="96" height="24">
+    <b>RISE</b>
+  </a>
+  <nav class="rz-navlinks" aria-label="Navigasi utama">
+    <a href="#kesempatan">Tentang</a>
+    <a href="#rise">Rise</a>
+    <a href="#perjalanan">Program</a>
+    <a href="#dampak">Dampak</a>
+    <a href="#daftar">Daftar</a>
+  </nav>
+  <button class="rz-navbtn" id="rz-navbtn" aria-expanded="false" aria-controls="rz-sheet" aria-label="Buka menu">
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+      <path d="M4 8h18M4 13h18M4 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </button>
+</header>
+
+<div class="rz-sheet" id="rz-sheet" hidden>
+  <nav aria-label="Menu">
+    <a href="#kesempatan">Tentang</a>
+    <a href="#rise">Rise</a>
+    <a href="#perjalanan">Program</a>
+    <a href="#dampak">Dampak</a>
+    <a href="#daftar" class="rz-sheet-cta">Daftar Laris Rise</a>
+  </nav>
+</div>
+
+<main id="rz-main">
+
+<!-- 01 — HERO ------------------------------------------------------------ -->
+<section class="rz-hero" aria-labelledby="rz-h1">
+  <div class="rz-wrap">
+    <div>
+      <p class="rz-kicker">Program wirausaha · 2 bulan</p>
+      <h1 id="rz-h1">
+        <span class="w" style="--d:.05s">MULAI</span> <span class="w" style="--d:.13s">DARI</span>
+        <span class="w em" style="--d:.21s">NOL.</span><br>
+        <span class="w" style="--d:.33s">BANGKIT</span> <span class="w em" style="--d:.41s">BERSAMA.</span>
+      </h1>
+      <p class="rz-lead">LARIS RISE adalah program wirausaha dua bulan yang membantu anak muda Indonesia mengambil langkah pertama yang nyata — membangun penghasilan, menciptakan nilai, dan membuka jalan buat orang lain.</p>
+      <ul class="rz-stats">
+        <li><b data-count="20">20</b><span>Peserta</span></li>
+        <li><b data-count="8">8</b><span>Sesi mentoring</span></li>
+        <li><b data-count="2">2</b><span>Bulan</span></li>
+      </ul>
+      <div class="rz-cta">
+        <a class="rz-btn" href="#daftar">Daftar Laris Rise</a>
+        <a class="rz-link" href="#kesempatan">Pelajari dulu
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path d="M7 2v10M3 8.5 7 12.5l4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+    <figure class="rz-hero-fig">
+      <img src="/images/rise/ph/hero.svg" data-rise-slot="HERO_IMAGE_PLACEHOLDER"
+           width="1080" height="1350" alt="" fetchpriority="high" decoding="async">
+    </figure>
+  </div>
+</section>
+
+<!-- 02 — KESEMPATAN ------------------------------------------------------ -->
+<section class="rz-sect rz-sect--putih" id="kesempatan" aria-labelledby="rz-h-kes">
+  <div class="rz-wrap">
+    <h2 class="rz-display" id="rz-h-kes" data-reveal>KAMU NGGAK PERLU TAHU SEMUANYA DULU.</h2>
+    <ul class="rz-nots">
+      <li data-reveal style="--d:.06s">Kamu nggak perlu bisnis besar.</li>
+      <li data-reveal style="--d:.14s">Kamu nggak perlu pengalaman bertahun-tahun.</li>
+      <li data-reveal style="--d:.22s">Kamu nggak perlu modal besar.</li>
+      <li data-reveal style="--d:.30s"><strong>Kamu cuma perlu satu kesempatan untuk mencoba.</strong></li>
+    </ul>
+
+    <div class="rz-eq" role="group" aria-label="Satu ide, satu HP, dan kemauan belajar menjadi usaha yang nyata">
+      <div class="rz-eq-item" data-reveal><span class="rz-eq-n">01</span><b>Satu ide</b></div>
+      <div class="rz-eq-plus" data-reveal style="--d:.08s" aria-hidden="true">+</div>
+      <div class="rz-eq-item" data-reveal style="--d:.16s"><span class="rz-eq-n">02</span><b>Satu HP</b></div>
+      <div class="rz-eq-plus" data-reveal style="--d:.24s" aria-hidden="true">+</div>
+      <div class="rz-eq-item" data-reveal style="--d:.32s"><span class="rz-eq-n">03</span><b>Kemauan belajar</b></div>
+      <div class="rz-eq-rule" data-reveal style="--d:.42s" aria-hidden="true"><i></i></div>
+      <div class="rz-eq-out" data-reveal style="--d:.54s"><b>USAHA YANG NYATA</b></div>
+    </div>
+  </div>
+</section>
+
+<!-- 03 — LARIS → RISE ---------------------------------------------------- -->
+<section class="rz-rise" id="rise" data-progress="rise" aria-labelledby="rz-h-rise">
+  <div class="rz-stage" id="rz-stage">
+    <!-- Chrome is positioned against the stage (the viewport-sized sticky box), not
+         against the content-height inner box, so it can't drift onto the letters. -->
+    <p class="rz-kicker rz-rise-kicker">Laris → Rise</p>
+    <img class="rz-phx" id="rz-phx" src="/images/brand/logo-icon-light.png" alt="" width="72" height="72" decoding="async">
+    <p class="rz-cap" id="rz-cap">R · I · S · E sudah ada di dalam namanya.</p>
+
+    <div class="rz-stage-inner">
+      <h2 class="rz-sr" id="rz-h-rise">Apa arti RISE</h2>
+
+      <div class="rz-letters" id="rz-letters" aria-hidden="true">
+        <span class="rz-ltr" data-ltr="l" style="--sw:101;--sh:134"></span>
+        <span class="rz-ltr" data-ltr="a" style="--sw:107;--sh:141"></span>
+        <span class="rz-ltr" data-ltr="r" style="--sw:101;--sh:135"></span>
+        <span class="rz-ltr" data-ltr="i" style="--sw:64;--sh:127"></span>
+        <span class="rz-ltr" data-ltr="s" style="--sw:116;--sh:132"></span>
+        <span class="rz-ltr" data-ltr="e" style="--sw:108;--sh:130"></span>
+      </div>
+
+      <ol class="rz-means" id="rz-means">
+        <li class="rz-mean" data-mean="r">
+          <i class="rz-slot" aria-hidden="true"></i>
+          <div><h3><span>R — </span>RISE</h3>
+            <b>Berani mulai dari nol.</b>
+            <p>Berani ambil langkah pertama, belajar dari kesalahan, dan terus jalan.</p></div>
+        </li>
+        <li class="rz-mean" data-mean="i">
+          <i class="rz-slot" aria-hidden="true"></i>
+          <div><h3><span>I — </span>INCOME</h3>
+            <b>Belajar menghasilkan.</b>
+            <p>Bangun penghasilan dari usaha nyata, mulai dari modal kecil dan kerja keras.</p></div>
+        </li>
+        <li class="rz-mean" data-mean="s">
+          <i class="rz-slot" aria-hidden="true"></i>
+          <div><h3><span>S — </span>SERVE</h3>
+            <b>Ciptakan nilai untuk orang lain.</b>
+            <p>Bantu produk lokal menjangkau pasar yang lebih luas, dan penuhi kebutuhan sekitarmu.</p></div>
+        </li>
+        <li class="rz-mean" data-mean="e">
+          <i class="rz-slot" aria-hidden="true"></i>
+          <div><h3><span>E — </span>EMPOWER</h3>
+            <b>Bantu orang lain tumbuh.</b>
+            <p>Setelah kamu berhasil, ajak anak muda lain ambil langkah pertamanya.</p></div>
+        </li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- 04 — LARIS + LARIS RISE ---------------------------------------------- -->
+<section class="rz-sect" id="teknologi" aria-labelledby="rz-h-tek">
+  <div class="rz-wrap">
+    <p class="rz-kicker" data-reveal>Teknologi + orang</p>
+    <h2 class="rz-h2" id="rz-h-tek" data-reveal>TEKNOLOGINYA. LALU ORANGNYA.</h2>
+
+    <div class="rz-duo">
+      <article class="rz-duo-card" data-reveal>
+        <p class="rz-duo-tag">Laris</p>
+        <h3 class="rz-duo-h">TEKNOLOGINYA</h3>
+        <p>Peserta tidak cuma belajar teori. Mereka memakai platform Laris untuk melihat peluang e-commerce yang nyata dan menemukan produk yang bisa mereka jual.</p>
+        <figure><img src="/images/rise/ph/product.svg" data-rise-slot="LARIS_PRODUCT_SCREENSHOT_PLACEHOLDER"
+          width="900" height="1800" alt="" loading="lazy" decoding="async"></figure>
+      </article>
+
+      <div class="rz-duo-join" aria-hidden="true"><i></i></div>
+
+      <article class="rz-duo-card rz-duo-card--alt" data-reveal style="--d:.12s">
+        <p class="rz-duo-tag">Laris Rise</p>
+        <h3 class="rz-duo-h">ORANG, PENDIDIKAN, GERAKAN</h3>
+        <p>Teknologi membuka peluangnya. Program ini yang memberi ilmu, mentor, tanggung jawab, dan teman seperjalanan supaya peluang itu benar-benar dikerjakan.</p>
+        <figure><img src="/images/rise/ph/community.svg" data-rise-slot="COMMUNITY_IMAGE_PLACEHOLDER"
+          width="1600" height="1000" alt="" loading="lazy" decoding="async"></figure>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- 05 — PERJALANAN ------------------------------------------------------ -->
+<section class="rz-sect rz-sect--putih" id="perjalanan" data-progress="rail" aria-labelledby="rz-h-jrn">
+  <div class="rz-wrap">
+    <p class="rz-kicker" data-reveal>Perjalanan</p>
+    <h2 class="rz-h2" id="rz-h-jrn" data-reveal>8 MINGGU.<br>SATU KESEMPATAN NYATA.</h2>
+
+    <ol class="rz-rail">
+      <li data-reveal><span class="rz-rail-n">01</span><h3>MULAI</h3><p>Pola pikir wirausaha dan kesiapan memulai dari nol.</p></li>
+      <li data-reveal><span class="rz-rail-n">02</span><h3>TEMUKAN</h3><p>Membaca peluang di pasar — bukan menebak-nebak.</p></li>
+      <li data-reveal><span class="rz-rail-n">03</span><h3>PILIH</h3><p>Memilih produk dan melakukan riset pasar dengan data.</p></li>
+      <li data-reveal><span class="rz-rail-n">04</span><h3>BANGUN</h3><p>Membuka dan menata toko online sampai siap jualan.</p></li>
+      <li data-reveal><span class="rz-rail-n">05</span><h3>JUAL</h3><p>Pemasaran dan mendapatkan pembeli pertama.</p></li>
+      <li data-reveal><span class="rz-rail-n">06</span><h3>LAYANI</h3><p>Melayani pelanggan dan menciptakan nilai yang terasa.</p></li>
+      <li data-reveal><span class="rz-rail-n">07</span><h3>KELOLA</h3><p>Mengatur keuangan dan operasional usaha kecil.</p></li>
+      <li data-reveal><span class="rz-rail-n">08</span><h3>BANGKIT</h3><p>Refleksi, langkah lanjut, dan membantu yang lain memulai.</p></li>
+    </ol>
+  </div>
+</section>
+
+<!-- 06 — TUJUAN YANG LEBIH BESAR ----------------------------------------- -->
+<section class="rz-sect rz-sect--gelap" id="tujuan" aria-labelledby="rz-h-tuj">
+  <div class="rz-wrap rz-narrow">
+    <h2 class="rz-sr" id="rz-h-tuj">Tujuan yang lebih besar</h2>
+    <p class="rz-say rz-say--sm" data-reveal>Kami tidak berharap setiap peserta langsung jadi pengusaha sukses.</p>
+    <p class="rz-say rz-say--lg" data-reveal style="--d:.12s">Kami ingin memberi mereka kesempatan nyata <em>pertama</em> untuk mencoba.</p>
+    <ul class="rz-chant">
+      <li data-reveal style="--d:.05s">MULAI DARI NOL.</li>
+      <li data-reveal style="--d:.20s">BANGUN PENGHASILAN.</li>
+      <li data-reveal style="--d:.35s">LAYANI SEKITARMU.</li>
+      <li data-reveal style="--d:.50s">BANTU ORANG LAIN BANGKIT.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 07 — 2 / 20 ---------------------------------------------------------- -->
+<section class="rz-sect" id="dampak" aria-labelledby="rz-h-dmp">
+  <div class="rz-wrap">
+    <p class="rz-kicker" data-reveal>Target awal kami</p>
+    <h2 class="rz-sr" id="rz-h-dmp">Target awal kami: 2 dari 20</h2>
+    <div class="rz-goal">
+      <div class="rz-dots" id="rz-dots" aria-hidden="true"></div>
+      <div class="rz-goal-txt">
+        <p class="rz-goal-big" data-reveal><b>2</b><i>/</i><b>20</b></p>
+        <p class="rz-goal-pct" data-reveal style="--d:.1s"><b data-count="10">10</b>%</p>
+        <p data-reveal style="--d:.18s">Setidaknya <strong>2 dari 20 peserta</strong> mencapai penghasilan bersih setara UMR daerahnya, dari usaha yang mereka bangun sendiri.</p>
+        <p class="rz-goal-note" data-reveal style="--d:.26s">Ini target yang kami bebankan pada diri kami sendiri — bukan janji kepada peserta, dan bukan ukuran nilai siapa pun. Setiap orang yang berani mulai sudah bergerak.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 08 — GERAKAN --------------------------------------------------------- -->
+<section class="rz-sect rz-sect--putih rz-move" id="gerakan" data-progress="move" aria-labelledby="rz-h-grk">
+  <div class="rz-move-field" aria-hidden="true"></div>
+  <div class="rz-wrap rz-narrow">
+    <p class="rz-kicker" data-reveal>Gerakan</p>
+    <h2 class="rz-h2" id="rz-h-grk" data-reveal>INI TIDAK BERHENTI DI 20 ORANG.</h2>
+
+    <div class="rz-scale" id="rz-scale" aria-label="Dua puluh menjadi empat puluh, menjadi seratus, menjadi seribu">
+      <span class="rz-scale-n is-on">20</span>
+      <span class="rz-scale-n">40</span>
+      <span class="rz-scale-n">100</span>
+      <span class="rz-scale-n">1.000</span>
+    </div>
+
+    <ul class="rz-chain">
+      <li data-reveal>Satu orang belajar.</li>
+      <li data-reveal style="--d:.1s">Satu orang berhasil.</li>
+      <li data-reveal style="--d:.2s">Satu orang mengajari yang lain.</li>
+      <li data-reveal style="--d:.3s">Satu orang membuka kesempatan baru.</li>
+    </ul>
+
+    <p class="rz-say rz-say--lg rz-move-say" data-reveal>SATU ORANG YANG BANGKIT BISA MEMBUAT ORANG LAIN IKUT BANGKIT.</p>
+  </div>
+</section>
+
+<!-- 09 — CTA ------------------------------------------------------------- -->
+<section class="rz-sect rz-sect--gelap rz-end" id="daftar" aria-labelledby="rz-h-end">
+  <div class="rz-wrap rz-narrow">
+    <h2 class="rz-display rz-end-h" id="rz-h-end" data-reveal>SEMUA ORANG MULAI DARI SUATU TITIK.<br><em>KAMU MULAI DARI MANA?</em></h2>
+
+    <div class="rz-end-mark" data-reveal style="--d:.14s">
+      <img src="/images/brand/logo-icon-light.png" alt="" width="52" height="52" loading="lazy" decoding="async">
+      <p class="rz-end-name">LARIS RISE</p>
+      <p class="rz-end-tag">Dari nol. Bangun penghasilan. Layani sesama.<br>Bangkitkan generasi berikutnya.</p>
+    </div>
+
+    <div class="rz-end-cta" data-reveal style="--d:.24s">
+      <!-- TODO: swap href for the live application link when the form is ready. -->
+      <a class="rz-btn rz-btn--lg" id="rz-apply" href="#daftar">Daftar Laris Rise</a>
+      <p class="rz-end-soon">Pendaftaran dibuka segera. Tautan pendaftaran akan dipasang di sini.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="rz-foot">
+  <div class="rz-wrap">
+    <a href="https://larisid.com/" class="rz-foot-logo">
+      <img src="/images/brand/logo-horizontal-red.png" alt="LarisID" width="112" height="28" loading="lazy" decoding="async">
+    </a>
+    <p>LARIS RISE adalah program pendidikan wirausaha dari <a href="https://larisid.com/">LarisID</a> — platform riset produk e-commerce untuk penjual Indonesia.</p>
+    <p class="rz-foot-links">
+      <a href="https://larisid.com/tentang/">Tentang</a>
+      <a href="https://larisid.com/panduan/">Panduan</a>
+      <a href="https://larisid.com/privacy/">Privasi</a>
+    </p>
+  </div>
+</footer>
+
+<a class="rz-sticky" id="rz-sticky" href="#daftar" aria-hidden="true" tabindex="-1">
+  Daftar Laris Rise
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</a>
+
+<script src="/js/rise.js?v=20260818g" defer></script>
+</body>
+</html>
