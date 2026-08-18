@@ -74,6 +74,11 @@
   -webkit-mask-size:100% 100%;mask-size:100% 100%;
   -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
 .rz-ltr[data-ltr="arrow"]{--m:url(/images/rise/letters/arrow.webp)}
+.rz-ltr[data-ltr="brush-l"]{--m:url(/images/rise/letters/brush-l.webp)}
+.rz-ltr[data-ltr="brush-a"]{--m:url(/images/rise/letters/brush-a.webp)}
+.rz-ltr[data-ltr="brush-r"]{--m:url(/images/rise/letters/brush-r.webp)}
+.rz-ltr[data-ltr="brush-i"]{--m:url(/images/rise/letters/brush-i.webp)}
+.rz-ltr[data-ltr="brush-s"]{--m:url(/images/rise/letters/brush-s.webp)}
 .rz-ltr[data-ltr="l"]{--m:url(/images/rise/letters/l.webp)}
 .rz-ltr[data-ltr="a"]{--m:url(/images/rise/letters/a.webp)}
 .rz-ltr[data-ltr="r"]{--m:url(/images/rise/letters/r.webp)}
@@ -95,7 +100,7 @@
 
 .rz-means{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;
   gap:clamp(14px,3.2vh,26px)}
-.rz-mean{display:flex;align-items:center;gap:clamp(16px,4.5vw,32px);opacity:0;
+.rz-mean{display:flex;align-items:flex-start;gap:clamp(16px,4.5vw,32px);opacity:0;
   transform:translateY(14px);
   transition:opacity .6s cubic-bezier(.22,.68,.24,1),transform .6s cubic-bezier(.22,.68,.24,1)}
 .rz-mean.is-on{opacity:1;transform:none}
@@ -180,33 +185,7 @@
   line-height:1.15;padding:10px 0;border-bottom:1px solid rgba(245,239,224,.16)}
 .rz-chant li:last-child{border-bottom:0;color:var(--emas)}
 
-/* ---- 07 2 / 20 ------------------------------------------------------------ */
-.rz-goal{display:flex;flex-direction:column;gap:clamp(30px,7vw,52px)}
-.rz-dots{display:grid;grid-template-columns:repeat(5,1fr);gap:clamp(10px,3.2vw,18px);
-  max-width:340px}
-.rz-dot{aspect-ratio:1;border-radius:50%;background:var(--hitam);opacity:0;
-  transform:scale(.4);
-  transition:opacity .4s ease var(--d,0s),transform .5s cubic-bezier(.3,1.5,.5,1) var(--d,0s),
-             background-color .4s ease}
-.rz-dot.is-in{opacity:1;transform:none}
-.rz-dot.is-hit{background:var(--merah);box-shadow:0 0 0 4px var(--merah-tint)}
-.rz-goal-big{margin:0;font-size:clamp(3.4rem,17vw,7rem);font-weight:800;letter-spacing:-.05em;
-  line-height:.9;display:flex;align-items:baseline;gap:.06em}
-.rz-goal-big b{font-weight:800}
-.rz-goal-big b:first-child{color:var(--merah)}
-.rz-goal-big i{font-style:normal;color:var(--hairline);font-weight:400}
-.rz-goal-pct{margin:6px 0 20px;font-size:clamp(1.2rem,5vw,1.7rem);font-weight:800;
-  letter-spacing:-.02em;color:var(--merah);font-variant-numeric:tabular-nums}
-.rz-goal-txt p{color:var(--ink-mute);max-width:44ch}
-.rz-goal-txt strong{color:var(--ink);font-weight:800}
-.rz-goal-note{margin-top:16px;padding-top:16px;border-top:1px solid var(--hairline);
-  font-size:clamp(.95rem,3.6vw,1rem)}
-@media(min-width:860px){
-  .rz-goal{flex-direction:row;align-items:center;gap:clamp(48px,7vw,96px)}
-  .rz-dots{flex:0 0 auto;width:340px}
-}
-
-/* ---- 08 gerakan ----------------------------------------------------------- */
+/* ---- 07 gerakan ----------------------------------------------------------- */
 .rz-move{overflow:hidden}
 .rz-move-field{position:absolute;inset:0;pointer-events:none;
   background-image:radial-gradient(circle,var(--merah) 1.7px,transparent 1.8px);
@@ -226,7 +205,7 @@
   border-radius:50%;background:var(--merah);transform:translateY(-50%)}
 .rz-move-say{color:var(--ink);margin:0}
 
-/* ---- 09 CTA + footer ------------------------------------------------------ */
+/* ---- 08 CTA + footer ------------------------------------------------------ */
 .rz-end{text-align:center}
 .rz-end-h em{font-style:normal;color:var(--emas)}
 .rz-end-mark{margin:clamp(40px,9vw,68px) 0}

@@ -69,39 +69,7 @@
     els.forEach(function (el) { io.observe(el); });
   }
 
-  /* ---- 3. the 20 dots ----------------------------------------------------- */
-  var HIT = [6, 12];   /* the two highlighted of twenty */
-
-  function initDots() {
-    var wrap = $('#rz-dots');
-    if (!wrap) return;
-    var frag = document.createDocumentFragment();
-    for (var i = 0; i < 20; i++) {
-      var d = document.createElement('span');
-      d.className = 'rz-dot';
-      d.style.setProperty('--d', (i * 0.045).toFixed(3) + 's');
-      frag.appendChild(d);
-    }
-    wrap.appendChild(frag);
-    var dots = $$('.rz-dot', wrap);
-
-    function land() {
-      dots.forEach(function (d) { d.classList.add('is-in'); });
-      HIT.forEach(function (n, k) {
-        if (REDUCED) { dots[n].classList.add('is-hit'); return; }
-        setTimeout(function () { dots[n].classList.add('is-hit'); }, 1150 + k * 260);
-      });
-    }
-    if (REDUCED || !HAS_IO) { land(); return; }
-    var io = new IntersectionObserver(function (entries) {
-      if (!entries[0].isIntersecting) return;
-      land();
-      io.disconnect();
-    }, { threshold: 0.35 });
-    io.observe(wrap);
-  }
-
-  /* ---- 4. LARIS + RISE -> LARISE -> the acronym --------------------------- */
+  /* ---- 3. LARIS + RISE -> LARISE -> the acronym --------------------------- */
   /* LARIS and RISE share R-I-S. The two words start apart and slide together
      until those letters coincide, which spells LARISE without adding anything.
      The LARIS copies of R, I and S fade as they arrive, then L and A drop away
@@ -110,15 +78,16 @@
      letter block, but the arrow reaches further right and lower than the letters
      do — so the fit is measured as the largest extent from that centre, not the
      bounding-box width, or the arrowhead clips off screen. */
+  /* Emitted by scripts/build-rise-letters.py as geometry.json "_composition";
+     copy the printed values here if the artwork or spacing ever changes. */
   var UNIT = {
-    cx: 442.5, cy: 81.5,       /* centre of the LARISE letter block */
-    halfW: 507.5,              /* cx -> arrowhead (the far edge) */
-    halfH: 141.5,              /* cy -> bottom of the arrow sweep */
-    letters: 897,              /* letter block width, for the separated state */
-    tallest: 167,              /* tallest single glyph */
-    widest: 190                /* widest single glyph */
+    cx: 511, cy: 90.5,         /* centre of the merged brush-LA + RISE composition */
+    halfW: 439,                /* cx -> arrowhead (the far edge) */
+    halfH: 132.5,              /* cy -> bottom of the arrow sweep */
+    tallest: 146,              /* tallest emblem glyph, for the acronym column */
+    widest: 190                /* widest emblem glyph */
   };
-  var SEP = 250;               /* how far each word starts from its final place */
+  var SEP = 250;               /* apart-state offset; script reports minSep 226 */
   var ACR = 'rise';
 
   function initRise() {
@@ -135,6 +104,7 @@
         el: el,
         key: el.getAttribute('data-ltr'),
         grp: el.getAttribute('data-grp') || 'mark',
+        keep: el.hasAttribute('data-keep'),
         x: parseFloat(cs.getPropertyValue('--gx')),
         y: parseFloat(cs.getPropertyValue('--gy')),
         w: parseFloat(cs.getPropertyValue('--gw')),
@@ -159,7 +129,7 @@
          wider, so it starts smaller and the merge reads as a zoom in. */
       var k1 = Math.min(lb.width * 0.90 / (UNIT.halfW * 2),
                         lb.height * 0.46 / (UNIT.halfH * 2));
-      var k0 = lb.width * 0.90 / (UNIT.letters + SEP * 2);
+      var k0 = lb.width * 0.90 / (UNIT.halfW * 2 + SEP * 2);
       if (k0 > k1) k0 = k1;
 
       var slot = $('.rz-slot', sect).getBoundingClientRect();
@@ -213,7 +183,7 @@
         if (g.key === 'arrow') {
           op = arrow;
         } else if (g.grp === 'laris') {
-          op = enter * (g.key === 'l' || g.key === 'a' ? laOut : dupe);
+          op = enter * (g.keep ? laOut : dupe);
         } else {
           var c = L.col[g.key];
           x = lerp(x, c.x, d);
@@ -250,7 +220,7 @@
     return { measure: measure, update: function () { apply(progress()); } };
   }
 
-  /* ---- 5. generic scroll progress ---------------------------------------- */
+  /* ---- 4. generic scroll progress ---------------------------------------- */
   function initProgress() {
     var els = $$('[data-progress]').filter(function (el) { return el.id !== 'rise'; });
     if (!els.length) return [];
@@ -294,7 +264,7 @@
     io.observe(wrap);
   }
 
-  /* ---- 6. nav + sticky CTA ------------------------------------------------ */
+  /* ---- 5. nav + sticky CTA ------------------------------------------------ */
   function initNav() {
     var nav = $('#rz-nav'), btn = $('#rz-navbtn'), sheet = $('#rz-sheet');
     if (nav) {
@@ -352,7 +322,6 @@
     initNav();
     initReveal();
     initCounts();
-    initDots();
     initScale();
     initSticky();
 

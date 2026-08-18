@@ -62,7 +62,7 @@ p{margin:0}
 .rz-nav.is-stuck{border-bottom-color:var(--hairline)}
 .rz-brand{display:flex;align-items:center;gap:9px;text-decoration:none;min-height:44px}
 .rz-brand img{height:24px;width:auto}
-.rz-brand b{font-weight:800;font-size:1rem;letter-spacing:.02em;color:var(--merah)}
+.rz-brand-rise{height:28px;width:auto}
 .rz-navbtn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;
   min-width:44px;border:0;background:none;padding:0 4px;cursor:pointer;color:var(--ink)}
 .rz-navbtn svg{display:block}
@@ -110,7 +110,7 @@ p{margin:0}
   .rz-navbtn{display:none}
 }
 </style>
-<link rel="stylesheet" href="/styles/rise.css?v=20260818m">
+<link rel="stylesheet" href="/styles/rise.css?v=20260818o">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -139,13 +139,13 @@ p{margin:0}
 <header class="rz-nav" id="rz-nav">
   <a class="rz-brand" href="#top" aria-label="LARIS RISE — ke atas">
     <img src="/images/brand/logo-horizontal-red.png" alt="Laris" width="96" height="24">
-    <b>RISE</b>
+    <img class="rz-brand-rise" src="/images/rise/brand/rise-red.webp" alt="Rise"
+         width="76" height="28">
   </a>
   <nav class="rz-navlinks" aria-label="Navigasi utama">
     <a href="#kesempatan">Tentang</a>
     <a href="#rise">Rise</a>
     <a href="#perjalanan">Program</a>
-    <a href="#dampak">Dampak</a>
     <a href="#daftar">Daftar</a>
   </nav>
   <button class="rz-navbtn" id="rz-navbtn" aria-expanded="false" aria-controls="rz-sheet" aria-label="Buka menu">
@@ -160,7 +160,6 @@ p{margin:0}
     <a href="#kesempatan">Tentang</a>
     <a href="#rise">Rise</a>
     <a href="#perjalanan">Program</a>
-    <a href="#dampak">Dampak</a>
     <a href="#daftar" class="rz-sheet-cta">Daftar Laris Rise</a>
   </nav>
 </div>
@@ -234,15 +233,15 @@ p{margin:0}
     <div class="rz-stage-inner">
       <h2 class="rz-sr" id="rz-h-rise">Apa arti RISE</h2>
 
-      <!-- LARIS and RISE share R-I-S, so the two words are drawn separately and
-           slid together until the shared letters coincide, forming LARISE.
-           Geometry is the artwork's own, so the logo's kerning is exact. -->
+      <!-- Two different marks meeting: the original brush LARIS and the new RISE
+           emblem. LARIS keeps its own R I S so it reads as a whole word while
+           apart; those dissolve under the emblem as the two slide together. -->
       <div class="rz-letters" id="rz-letters" aria-hidden="true">
-        <span class="rz-ltr" data-ltr="l" data-grp="laris" style="--gx:-6;--gy:2;--gw:167;--gh:167"></span>
-        <span class="rz-ltr" data-ltr="a" data-grp="laris" style="--gx:143;--gy:2;--gw:190;--gh:150"></span>
-        <span class="rz-ltr" data-ltr="r" data-grp="laris" style="--gx:332;--gy:1;--gw:188;--gh:146"></span>
-        <span class="rz-ltr" data-ltr="i" data-grp="laris" style="--gx:495;--gy:2;--gw:112;--gh:143"></span>
-        <span class="rz-ltr" data-ltr="s" data-grp="laris" style="--gx:563;--gy:-2;--gw:190;--gh:146"></span>
+        <span class="rz-ltr" data-ltr="brush-l" data-grp="laris" data-keep="1" style="--gx:50;--gy:-32;--gw:127;--gh:172"></span>
+        <span class="rz-ltr" data-ltr="brush-a" data-grp="laris" data-keep="1" style="--gx:209;--gy:-42;--gw:135;--gh:182"></span>
+        <span class="rz-ltr" data-ltr="brush-r" data-grp="laris" style="--gx:332;--gy:-48;--gw:141;--gh:188"></span>
+        <span class="rz-ltr" data-ltr="brush-i" data-grp="laris" style="--gx:483;--gy:-37;--gw:90;--gh:177"></span>
+        <span class="rz-ltr" data-ltr="brush-s" data-grp="laris" style="--gx:583;--gy:-44;--gw:161;--gh:184"></span>
         <span class="rz-ltr is-gold" data-ltr="r" data-grp="rise" style="--gx:332;--gy:1;--gw:188;--gh:146"></span>
         <span class="rz-ltr is-gold" data-ltr="i" data-grp="rise" style="--gx:495;--gy:2;--gw:112;--gh:143"></span>
         <span class="rz-ltr is-gold" data-ltr="s" data-grp="rise" style="--gx:563;--gy:-2;--gw:190;--gh:146"></span>
@@ -342,24 +341,7 @@ p{margin:0}
   </div>
 </section>
 
-<!-- 07 — 2 / 20 ---------------------------------------------------------- -->
-<section class="rz-sect" id="dampak" aria-labelledby="rz-h-dmp">
-  <div class="rz-wrap">
-    <p class="rz-kicker" data-reveal>Target awal kami</p>
-    <h2 class="rz-sr" id="rz-h-dmp">Target awal kami: 2 dari 20</h2>
-    <div class="rz-goal">
-      <div class="rz-dots" id="rz-dots" aria-hidden="true"></div>
-      <div class="rz-goal-txt">
-        <p class="rz-goal-big" data-reveal><b>2</b><i>/</i><b>20</b></p>
-        <p class="rz-goal-pct" data-reveal style="--d:.1s"><b data-count="10">10</b>%</p>
-        <p data-reveal style="--d:.18s">Setidaknya <strong>2 dari 20 peserta</strong> mencapai penghasilan bersih setara UMR daerahnya, dari usaha yang mereka bangun sendiri.</p>
-        <p class="rz-goal-note" data-reveal style="--d:.26s">Ini target yang kami bebankan pada diri kami sendiri — bukan janji kepada peserta, dan bukan ukuran nilai siapa pun. Setiap orang yang berani mulai sudah bergerak.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- 08 — GERAKAN --------------------------------------------------------- -->
+<!-- 07 — GERAKAN --------------------------------------------------------- -->
 <section class="rz-sect rz-sect--putih rz-move" id="gerakan" data-progress="move" aria-labelledby="rz-h-grk">
   <div class="rz-move-field" aria-hidden="true"></div>
   <div class="rz-wrap rz-narrow">
@@ -384,7 +366,7 @@ p{margin:0}
   </div>
 </section>
 
-<!-- 09 — CTA ------------------------------------------------------------- -->
+<!-- 08 — CTA ------------------------------------------------------------- -->
 <section class="rz-sect rz-sect--gelap rz-end" id="daftar" aria-labelledby="rz-h-end">
   <div class="rz-wrap rz-narrow">
     <h2 class="rz-display rz-end-h" id="rz-h-end" data-reveal>SEMUA ORANG MULAI DARI SUATU TITIK.<br><em>KAMU MULAI DARI MANA?</em></h2>
@@ -426,6 +408,6 @@ p{margin:0}
   </svg>
 </a>
 
-<script src="/js/rise.js?v=20260818m" defer></script>
+<script src="/js/rise.js?v=20260818o" defer></script>
 </body>
 </html>
