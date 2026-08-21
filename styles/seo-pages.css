@@ -427,38 +427,34 @@ main.wide.harga-free {
   text-transform: uppercase;
   color: var(--meta-muted);
 }
-.cmp-tool-name {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: .78rem;
-  font-weight: 800;
-  letter-spacing: .02em;
-  color: var(--meta-ink);
-  text-transform: uppercase;
+/* Each vendor's own wordmark, self-hosted in images/competitors/. */
+.cmp-tool-logo {
+  display: block;
+  /* Sized per logo via the width/height attributes: aspect ratios run 2.3:1
+     (Shoptik) to 5.7:1 (Kalodata), so a single height makes them look uneven. */
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  margin: 0 auto 9px;
+  object-fit: contain;
 }
-.cmp-mark {
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  font-size: .68rem;
-  font-weight: 800;
-  text-transform: none;
-}
+/* One headline number per column, one short line under it. Anything more
+   detailed belongs in the footnote — header cells have ~112px to work with. */
 .cmp-price {
   display: block;
-  margin-top: 6px;
-  font-size: .78rem;
+  font-size: .88rem;
   font-weight: 800;
   color: var(--meta-ink);
+  line-height: 1.25;
 }
+/* The number itself must never break mid-value ("Rp / 113.999"); the unit and
+   the sub-line may wrap. Short enough not to set a table min-width floor. */
+.cmp-price b, .cmp-table tbody td > strong { white-space: nowrap; font-weight: 800; }
+.cmp-price i, .cmp-table tbody td > i { white-space: nowrap; }
 .cmp-price i {
   font-style: normal;
   font-weight: 600;
-  font-size: .7rem;
+  font-size: .72rem;
   color: var(--meta-muted);
   margin-left: 2px;
 }
@@ -468,8 +464,16 @@ main.wide.harga-free {
   font-size: .68rem;
   font-weight: 500;
   color: var(--meta-muted);
-  margin-top: 2px;
+  margin-top: 3px;
   line-height: 1.35;
+}
+/* Bottom Harga row mirrors the header: number bold, unit muted. */
+.cmp-table tbody td > i {
+  font-style: normal;
+  font-weight: 600;
+  font-size: .72rem;
+  color: var(--meta-muted);
+  margin-left: 2px;
 }
 /* LarisID column: tinted, outlined, and pinned visually while scrolling */
 .cmp-table .is-laris { background: #FFF7F7; }
@@ -480,7 +484,7 @@ main.wide.harga-free {
 }
 .cmp-table thead th.is-laris { border-top: 2px solid var(--meta-red); }
 .cmp-table tbody tr:last-child td.is-laris { border-bottom: 2px solid var(--meta-red); }
-.cmp-laris-logo { height: 17px; width: auto; display: block; margin: 0 auto; }
+.cmp-laris-logo { height: 18px; width: auto; display: block; margin: 0 auto; }
 .cmp-laris-free {
   display: inline-block;
   margin-top: 7px;

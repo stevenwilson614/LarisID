@@ -1944,38 +1944,34 @@ body.view-harga .panel-inner { max-width: 1180px; }
   text-transform: uppercase;
   color: var(--meta-muted);
 }
-.cmp-tool-name {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: .78rem;
-  font-weight: 800;
-  letter-spacing: .02em;
-  color: var(--meta-ink);
-  text-transform: uppercase;
+/* Each vendor's own wordmark, self-hosted in images/competitors/. */
+.cmp-tool-logo {
+  display: block;
+  /* Sized per logo via the width/height attributes: aspect ratios run 2.3:1
+     (Shoptik) to 5.7:1 (Kalodata), so a single height makes them look uneven. */
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  margin: 0 auto 9px;
+  object-fit: contain;
 }
-.cmp-mark {
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  font-size: .68rem;
-  font-weight: 800;
-  text-transform: none;
-}
+/* One headline number per column, one short line under it. Anything more
+   detailed belongs in the footnote — header cells have ~112px to work with. */
 .cmp-price {
   display: block;
-  margin-top: 6px;
-  font-size: .78rem;
+  font-size: .88rem;
   font-weight: 800;
   color: var(--meta-ink);
+  line-height: 1.25;
 }
+/* The number itself must never break mid-value ("Rp / 113.999"); the unit and
+   the sub-line may wrap. Short enough not to set a table min-width floor. */
+.cmp-price b, .cmp-table tbody td > strong { white-space: nowrap; font-weight: 800; }
+.cmp-price i, .cmp-table tbody td > i { white-space: nowrap; }
 .cmp-price i {
   font-style: normal;
   font-weight: 600;
-  font-size: .7rem;
+  font-size: .72rem;
   color: var(--meta-muted);
   margin-left: 2px;
 }
@@ -1985,8 +1981,16 @@ body.view-harga .panel-inner { max-width: 1180px; }
   font-size: .68rem;
   font-weight: 500;
   color: var(--meta-muted);
-  margin-top: 2px;
+  margin-top: 3px;
   line-height: 1.35;
+}
+/* Bottom Harga row mirrors the header: number bold, unit muted. */
+.cmp-table tbody td > i {
+  font-style: normal;
+  font-weight: 600;
+  font-size: .72rem;
+  color: var(--meta-muted);
+  margin-left: 2px;
 }
 /* LarisID column: tinted, outlined, and pinned visually while scrolling */
 .cmp-table .is-laris { background: #FFF7F7; }
@@ -1997,7 +2001,7 @@ body.view-harga .panel-inner { max-width: 1180px; }
 }
 .cmp-table thead th.is-laris { border-top: 2px solid var(--meta-red); }
 .cmp-table tbody tr:last-child td.is-laris { border-bottom: 2px solid var(--meta-red); }
-.cmp-laris-logo { height: 17px; width: auto; display: block; margin: 0 auto; }
+.cmp-laris-logo { height: 18px; width: auto; display: block; margin: 0 auto; }
 .cmp-laris-free {
   display: inline-block;
   margin-top: 7px;
@@ -5594,20 +5598,20 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                         <span class="cmp-laris-free">100% GRATIS</span>
                       </th>
                       <th scope="col">
-                        <span class="cmp-tool-name"><span class="cmp-mark" style="background:#16A34A" aria-hidden="true">T</span>Tokpee</span>
-                        <span class="cmp-price">Rp 113.999<i>/bulan</i><em>atau Rp 455.999/tahun (≈Rp 37.999/bln)</em></span>
+                        <img class="cmp-tool-logo" src="/images/competitors/tokpee.webp" alt="Tokpee" width="70" height="20" style="height:20px" loading="lazy" decoding="async">
+                        <span class="cmp-price"><b>Rp 113.999</b><i>/bulan</i><em>atau Rp 455.999/tahun</em></span>
                       </th>
                       <th scope="col">
-                        <span class="cmp-tool-name"><span class="cmp-mark" style="background:#2563EB" aria-hidden="true">D</span>DataPinter</span>
-                        <span class="cmp-price">Mulai Rp 99.000<i>/bulan</i><em>Rp 82.500/bln bila dibayar tahunan · sampai Rp 2.999.000/bln</em></span>
+                        <img class="cmp-tool-logo" src="/images/competitors/datapinter.webp" alt="DataPinter" width="82" height="19" style="height:19px" loading="lazy" decoding="async">
+                        <span class="cmp-price"><b>Mulai Rp 99.000</b><i>/bulan</i><em>Paket Dasar Rp 299.000/bulan</em></span>
                       </th>
                       <th scope="col">
-                        <span class="cmp-tool-name"><span class="cmp-mark" style="background:#111827" aria-hidden="true">K</span>Kalodata</span>
-                        <span class="cmp-price">$45,90 &ndash; $99,90<i>/bulan</i><em>≈Rp 734rb – Rp 1,6jt · ditagih tahunan dalam USD</em></span>
+                        <img class="cmp-tool-logo" src="/images/competitors/kalodata.svg" alt="Kalodata" width="91" height="16" style="height:16px" loading="lazy" decoding="async">
+                        <span class="cmp-price"><b>$45,90 &ndash; $99,90</b><i>/bulan</i><em>≈ Rp 734rb &ndash; Rp 1,6jt</em></span>
                       </th>
                       <th scope="col">
-                        <span class="cmp-tool-name"><span class="cmp-mark" style="background:#0EA5E9" aria-hidden="true">S</span>Shoptik</span>
-                        <span class="cmp-price">Rp 537.000<i>/tahun</i><em>≈Rp 44.750/bln · harga promo dari Rp 994.000</em></span>
+                        <img class="cmp-tool-logo" src="/images/competitors/shoptik.webp" alt="Shoptik" width="51" height="22" style="height:22px" loading="lazy" decoding="async">
+                        <span class="cmp-price"><b>Rp 537.000</b><i>/tahun</i><em>≈ Rp 44.750/bulan</em></span>
                       </th>
                     </tr>
                   </thead>
@@ -5687,10 +5691,10 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                     <tr>
                       <th scope="row">Harga</th>
                       <td class="is-laris"><span class="cmp-yes"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.2 12.4l2.6 2.6 5-5.4"/></svg>Rp 0 selamanya</span></td>
-                      <td><strong>Rp 113.999<i>/bulan</i></strong></td>
-                      <td><strong>Mulai Rp 99.000<i>/bulan</i></strong></td>
-                      <td><strong>$45,90 &ndash; $99,90<i>/bulan</i></strong></td>
-                      <td><strong>Rp 537.000<i>/tahun</i></strong></td>
+                      <td><strong>Rp 113.999</strong><i>/bulan</i></td>
+                      <td><strong>Mulai Rp 99.000</strong><i>/bulan</i></td>
+                      <td><strong>$45,90 &ndash; $99,90</strong><i>/bulan</i></td>
+                      <td><strong>Rp 537.000</strong><i>/tahun</i></td>
                     </tr>
                     <tr>
                       <th scope="row">Kunjungi website</th>
@@ -5703,7 +5707,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                   </tbody>
                 </table>
               </div>
-              <p class="cmp-foot">Harga dan fitur kompetitor adalah data publik yang kami cek pada <strong>21 Agustus 2026</strong> &mdash; bisa berubah, verifikasi di situs resmi mereka. Angka Kalodata berasal dari sumber pihak ketiga karena halaman harganya tidak bisa diakses publik. Kami menuliskan juga hal yang belum kami punya: LarisID belum bisa ekspor data ke Excel, datanya diperbarui harian (bukan real-time), dan tidak punya analitik kreator TikTok Shop seperti Kalodata. <a href="/perbandingan/">Perbandingan selengkapnya</a>.</p>
+              <p class="cmp-foot">Harga dicek langsung di situs masing-masing pada <strong>21 Agustus 2026</strong> dan bisa berubah &mdash; verifikasi di sana. Yang kami tampilkan adalah harga termurah tiap alat: DataPinter naik sampai Rp 2.999.000/bulan (Rp 82.500&ndash;Rp 2.499.200/bulan bila dibayar tahunan) dan punya paket gratis dengan data terbatas; harga Kalodata adalah tarif tahunan yang ditagih dalam USD (~$49,99&ndash;$109,99 bila bulanan) dan berasal dari sumber pihak ketiga karena halaman harganya tidak bisa diakses publik; harga Shoptik adalah promo 50% dari Rp 994.000. Logo dan nama masing-masing alat adalah merek dagang pemiliknya, dipakai di sini hanya untuk perbandingan. Kami juga menuliskan yang belum kami punya: LarisID belum bisa ekspor data ke Excel, datanya diperbarui harian (bukan real-time), dan tidak punya analitik kreator TikTok Shop seperti Kalodata. <a href="/perbandingan/">Perbandingan selengkapnya</a>.</p>
             </section>
 
             <div class="fh-rules">
