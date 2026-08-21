@@ -346,7 +346,7 @@ ${c.kota ? '' : '    <p>Kami belum tahu kotamu, jadi ini angka nasional. Set kot
       const subject = c.nama ? `Akses penuhmu habis besok, ${c.nama}` : 'Akses penuhmu habis besok'
       const text = `${greet(c.nama)}
 
-Akses riset tanpa batasmu habis besok. Setelah itu kamu balik ke paket Free: 10 Deep Dive per hari - tetap cukup buat riset santai, dan tetap nggak bayar.
+Akses riset tanpa batasmu habis besok. Setelah itu kamu balik ke jatah biasa: 10 Deep Dive per hari - tetap cukup buat riset santai, dan LarisID tetap gratis, selamanya.
 
 Satu hal yang saya sarankan kamu lakukan sebelum habis: set up Pantauan Harian. Pilih sampai 40 keyword dan 20 toko yang mau kamu ikuti. Kami scrape tiap pagi dan kamu tinggal buka untuk lihat apa yang bergerak - ini nggak makan jatah harianmu.
 
@@ -361,7 +361,7 @@ Kalau nggak dibuka 2 minggu, pantauannya otomatis dijeda biar hemat - keyword da
 Berhenti terima email: ${c.linkUnsub}`
 
       const html = shell(`    <p>${esc(greet(c.nama))}</p>
-    <p>Akses riset tanpa batasmu habis besok. Setelah itu kamu balik ke paket Free: 10 Deep Dive per hari &mdash; tetap cukup buat riset santai, dan tetap nggak bayar.</p>
+    <p>Akses riset tanpa batasmu habis besok. Setelah itu kamu balik ke jatah biasa: 10 Deep Dive per hari &mdash; tetap cukup buat riset santai, dan LarisID tetap gratis, selamanya.</p>
     <p>Satu hal yang saya sarankan kamu lakukan sebelum habis: <strong>set up Pantauan Harian.</strong> Pilih sampai 40 keyword dan 20 toko yang mau kamu ikuti. Kami scrape tiap pagi dan kamu tinggal buka untuk lihat apa yang bergerak &mdash; ini nggak makan jatah harianmu.</p>
     <p>Setup-nya satu ketukan: pilih kategori, kami isikan keyword yang paling ramai di sana.</p>
 ${ctaHtml('Atur pantauan', c.linkPantau)}

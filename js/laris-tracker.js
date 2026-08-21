@@ -70,7 +70,8 @@
     stores: [],
     // Fallbacks only — get_my_tracking() is the authority and overwrites both.
     // Kept in step with public.tracking_keyword_limit() / tracking_store_limit()
-    // so there is no flash of the old cap before the RPC lands.
+    // so there is no flash of the old cap before the RPC lands. These are the
+    // caps for every account — LarisID has no paid tier (MISSION.md, /harga/).
     keywordLimit: 40,
     storeLimit: 20,
     metrics: ['units', 'omset', 'sku', 'toko'],   // display selection
@@ -126,7 +127,7 @@
     // stepKeywordPickerHtml(). Only ever used when `seed` is set.
     pickerOpen: false, pickerQ: '', pickerRows: [], pickerBusy: false,
     // How many keyword slots the wizard is currently showing. The real cap
-    // (S.keywordLimit) is 40 during the Beta, and rendering 40 empty boxes at
+    // (S.keywordLimit) is 40 for everyone, and rendering 40 empty boxes at
     // a first-time seller is a wall, not an invitation. Start small and grow
     // on demand; the `X / limit` counter still shows the true ceiling.
     slotsShown: 0,

@@ -1706,9 +1706,12 @@ let _gptUsage = {
 };
 let _usageTicker = null;
 
-// Beta = Laris Pro for everyone: no daily search cap for signed-in accounts, so
+// While the Beta is on there is no daily search cap for signed-in accounts, so
 // the usage ring renders the same ∞ admins already get. Mirrors
 // public._beta_unlimited() in the database — flip BOTH to end the Beta.
+// This lifts a USAGE CAP, nothing more. LarisID is free for everyone either
+// way (see MISSION.md and /harga/) — there is no paid plan to unlock, and
+// ending the Beta only restores the 10/day meter, it never starts charging.
 // Signed-out visitors are deliberately excluded (see refreshGptUsage): the
 // 10/day anon meter is the reason to register, and gpt_chats needs auth anyway.
 const BETA_UNLIMITED = true;
@@ -1991,9 +1994,9 @@ function renderGptUsage() {
     // Beta is checked before merdeka: while it is on it is the reason almost
     // every account sees ∞, and it is the one the seller can act on.
     if (_gptUsage.beta || betaUnlimitedNow()) {
-      title = 'Deep Dive tanpa batas selama Beta';
+      title = 'Pencarian tanpa batas selama Beta';
       popTitle = title;
-      popSub = 'Semua fitur Laris Pro terbuka gratis selama masa Beta.';
+      popSub = 'Selama masa Beta jatah harian tidak dibatasi. LarisID gratis selamanya, tanpa paket berbayar.';
     } else if (_gptUsage.merdeka || merdekaUnlimitedNow()) {
       title = 'Deep Dive Search tanpa batas sampai 17 Agustus 23.59 WIB';
       popTitle = title;

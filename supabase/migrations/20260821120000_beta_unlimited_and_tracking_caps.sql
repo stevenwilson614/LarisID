@@ -1,5 +1,18 @@
 -- ============================================================================
--- Beta = Pro for everyone
+-- Beta: no daily search cap
+--
+-- HISTORICAL NOTE (added 21 Aug 2026, same day): this migration was written for
+-- a three-tier /harga/ page (Free / Laris Pro Rp149.000 / Laris Business
+-- Rp399.000) that was RETRACTED hours later as a MISSION.md §3 violation.
+-- LarisID is 100% free for everyone, forever; there are no paid plans. The SQL
+-- below is still correct and still live -- it only ever lifted a USAGE CAP and
+-- raised tracking slots for EVERY account, which is exactly what a free product
+-- wants. Read every "Pro" below as "the limits every account now gets".
+-- The live comment on _beta_unlimited() still carries the old wording; it is
+-- cosmetic and deliberately left alone rather than re-running an applied
+-- migration. Do not reintroduce tiers here or anywhere else.
+--
+-- Original header follows.
 --
 -- The /harga/ page now sells three tiers (Free / Laris Pro / Laris Business)
 -- and promises that every Pro feature is free during the Beta. This migration

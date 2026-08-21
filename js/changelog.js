@@ -12,10 +12,18 @@
 window.LARIS_CHANGELOG = [
   {
     date: '2026-08-21',
-    title: 'Beta: semua fitur Laris Pro gratis, Deep Dive tanpa batas',
+    title: 'LarisID tetap 100% gratis \u2014 paket berbayar dibatalkan',
     items: [
       {
-        text: 'Selama masa Beta, setiap akun yang sudah masuk dapat semua fitur Laris Pro tanpa biaya \u2014 Deep Dive tidak lagi dibatasi 10 per hari. Tidak perlu kartu kredit.',
+        text: 'Pagi ini halaman Harga sempat menampilkan tiga paket berlangganan (Free, Laris Pro Rp149.000, Laris Business Rp399.000). Itu keliru dan sudah kami tarik di hari yang sama. LarisID gratis untuk semua pengguna dan akan tetap begitu \u2014 tidak ada paket berbayar, tidak ada fitur yang dikunci supaya kamu terpaksa bayar.',
+        tech: 'Kartu paket di #view-harga dan /harga/ diganti hero \u201c100% GRATIS\u201d plus tabel perbandingan kompetitor; JSON-LD kembali ke satu Offer price 0; salinan harga di llms.txt, llms-full.txt, /perbandingan/, /cara-kerja/ dan template email win-back ikut dibersihkan. Tidak ada perubahan database \u2014 batas pemakaian memang sudah sama untuk semua akun.',
+      },
+      {
+        text: 'Halaman Harga sekarang membandingkan LarisID dengan Tokpee, DataPinter, Kalodata, dan Shoptik \u2014 termasuk hal yang belum kami punya: ekspor Excel, data real-time, dan analitik kreator TikTok Shop.',
+        tech: 'Tabel 14 baris dengan harga yang dicek langsung di situs masing-masing pada 21 Agustus 2026 (Kalodata dari sumber pihak ketiga karena halaman harganya login-only). Kolom pertama sticky, tabel scroll horizontal di mobile.',
+      },
+      {
+        text: 'Selama masa Beta, setiap akun yang sudah masuk bisa mencari tanpa batas harian. Tidak perlu kartu kredit.',
         tech: 'Helper _beta_unlimited() di Postgres masuk ke jalur privileged gpt_new_chat DAN policy RLS gpt_chats_insert_capped; get_my_usage mengembalikan unlimited:true + beta:true, jadi ring jatah menampilkan simbol tanpa batas. Pengunjung yang belum masuk tetap dibatasi 10/hari sebagai pendorong daftar.',
       },
       {
@@ -23,12 +31,8 @@ window.LARIS_CHANGELOG = [
         tech: 'tracking_keyword_limit() 5 -> 40 dan tracking_store_limit() 3 -> 20; get_my_tracking dan trigger enforce_tracking_limits keduanya membaca fungsi itu, jadi payload API dan penjagaan tulis ikut naik bersamaan. Wizard menampilkan 6 slot dan bertambah sesuai permintaan, bukan 40 kotak kosong.',
       },
       {
-        text: 'Roda hadiah harian dihapus. Dengan Deep Dive tanpa batas selama Beta, tidak ada lagi batas yang perlu ditebus.',
+        text: 'Roda hadiah harian dihapus. Dengan pencarian tanpa batas selama Beta, tidak ada lagi batas yang perlu ditebus.',
         tech: 'daily-spin-wheel.js/.css dihapus beserta seluruh call site di gpt-app.js; RPC spin_daily_bonus dan kolom daily_usage.spun_at sengaja dibiarkan agar data historis tetap utuh.',
-      },
-      {
-        text: 'Halaman Harga sekarang menampilkan tiga paket: Free (selalu gratis), Laris Pro, dan Laris Business yang segera hadir.',
-        tech: 'Tiga kartu paket di #view-harga dan di halaman statis /harga/, dengan JSON-LD tiga Offer; salinan harga di llms.txt, perbandingan, dan template email ikut diselaraskan.',
       },
     ],
   },

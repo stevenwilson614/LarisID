@@ -2720,7 +2720,7 @@ function renderAuthModal() {
   el = document.getElementById('auth-tabs-wrap'); if(el) el.style.display = m==='reset'?'none':'';
   if(m !== 'reset') _authTabSwitch('email');
   el = document.getElementById('auth-title');      if(el) el.textContent = m==='reset'?'Reset Password':m==='signup'?'Buat Akun Gratis':'Masuk ke LarisID';
-  el = document.getElementById('auth-subtitle');   if(el) el.textContent = m==='reset'?'Masukkan email kamu dan kami kirim link reset.':m==='signup'?'Paling cepat: lanjutkan dengan Google. Semua fitur Pro gratis selama Beta.':'Login untuk melihat produk trending & simpan favorit kamu';
+  el = document.getElementById('auth-subtitle');   if(el) el.textContent = m==='reset'?'Masukkan email kamu dan kami kirim link reset.':m==='signup'?'Paling cepat: lanjutkan dengan Google. LarisID 100% gratis, selamanya.':'Login untuk melihat produk trending & simpan favorit kamu';
   el = document.getElementById('auth-submit-btn'); if(el) el.textContent = m==='reset'?'Kirim Link Reset':m==='signup'?'Daftar dengan Email':'Masuk';
   el = document.getElementById('auth-toggle-text');if(el) el.innerHTML = m==='reset'?'<a onclick="_authMode=\'login\';renderAuthModal()">Kembali ke Login</a>':m==='signup'?'Sudah punya akun? <a onclick="_authMode=\'login\';renderAuthModal()">Masuk</a>':'Belum punya akun? <a onclick="_authMode=\'signup\';renderAuthModal()">Daftar</a>';
   el = document.getElementById('auth-name-wrap');  if(el) el.style.display = m==='signup'?'':'none';
@@ -23629,7 +23629,7 @@ const DASHBOARD_TOUR_STEPS = [
   {
     sel: '#dash-nav-credits',
     title: 'Pahami Jatah Harianmu',
-    body: 'Selama Beta, Deep Dive tidak dibatasi untuk akun yang sudah masuk. Setelah Beta, paket Free memberi 10 Deep Dive per hari (sekali buka = akses 7 hari). Tambah jatah Free lewat Extension atau ajak teman.',
+    body: 'Selama Beta, Deep Dive tidak dibatasi untuk akun yang sudah masuk. Di luar Beta jatahnya 10 Deep Dive per hari (sekali buka = akses 7 hari) \u2014 LarisID tetap gratis selamanya. Tambah jatah lewat Extension atau ajak teman.',
     pos: 'right',
     onNext: () => switchDashView('credits'),
   },

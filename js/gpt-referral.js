@@ -60,7 +60,7 @@
     var total = data ? data.total : 0;
     var bonusActive = data ? data.bonus_active : 0;
     var shareLink = baseUrl + '?ref=' + encodeURIComponent(code);
-    var waText = 'Aku pakai LarisID buat riset produk Shopee — lagi gratis semua fiturnya selama Beta. Daftar lewat link aku ya: ' + shareLink;
+    var waText = 'Aku pakai LarisID buat riset produk Shopee — 100% gratis, semua fiturnya. Daftar lewat link aku ya: ' + shareLink;
     var encodedWa = encodeURIComponent(waText);
     var waUrl = 'https://wa.me/?text=' + encodedWa;
     var subject = encodeURIComponent('Coba LarisID — riset produk Shopee gratis');
@@ -103,7 +103,7 @@
   }
 
   function renderFallback(container, baseUrl) {
-    var waText = 'Aku pakai LarisID buat riset produk Shopee — lagi gratis semua fiturnya selama Beta. Daftar lewat link aku ya: ' + baseUrl;
+    var waText = 'Aku pakai LarisID buat riset produk Shopee — 100% gratis, semua fiturnya. Daftar lewat link aku ya: ' + baseUrl;
     var encodedWa = encodeURIComponent(waText);
     var waUrl = 'https://wa.me/?text=' + encodedWa;
     var subject = encodeURIComponent('Coba LarisID — riset produk Shopee gratis');

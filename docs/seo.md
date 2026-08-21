@@ -47,30 +47,44 @@ Landing FAQ + JSON-LD include competitor questions. Footer/nav link to static SE
 
 ## Competitor positioning (use honestly — MISSION §3)
 
-From `docs/pricing-research.md` (verify periodically):
+All figures below were read off each vendor's own pricing page on **21 Aug 2026** (Kalodata
+excepted — its pricing page is login-walled, so it stays a third-party estimate). Re-verify before
+quoting; `docs/pricing-research.md` §1 has the sources.
 
-| Tool | ~Price | Notes |
+| Tool | Price | Notes |
 |------|--------|--------|
-| **Datapinter** | ~Rp 299.000/mo | Closest feature-equivalent; subscription |
-| **Tokpee** | ~Rp 50.000/mo (annual) | Chrome extension; Shopee + Tokopedia; narrower |
-| **Shoptik** | Not published | Shopee research; promo-heavy |
-| **LarisID** | Free Rp 0 forever; Pro Rp 149.000/mo (**Rp 0 during Beta**); Business Rp 399.000/mo, coming | Freemium. Free plan: 10 Deep Dives/day, 5 products & 3 stores tracked. Every Pro feature is open free while the Beta runs. |
+| **LarisID** | **Rp 0, forever** | 100% free for everyone. No paid plan, no tier, no card. A 10-new-searches/day quota (uncapped during the Beta), 40 products & 20 stores tracked. |
+| **Datapinter** | Rp 99.000–Rp 2.999.000/mo billed monthly (Dasar Rp 299.000/mo); Rp 82.500–Rp 2.499.200/mo billed annually | Closest feature-equivalent. Has a limited free tier. Wins on Excel export + Tokopedia listing data. |
+| **Tokpee** | Rp 113.999/mo, or Rp 455.999/yr (≈Rp 37.999/mo) | Chrome extension; Shopee + Tokopedia; Excel export; narrower. No permanent free plan. |
+| **Shoptik** | Rp 537.000/yr (≈Rp 44.750/mo) — a standing 50% promo off Rp 994.000 | Shopee ID + MY; Chrome/Kiwi extension; unlimited export. No free plan. |
+| **Kalodata** | ~$45,90–$99,90/mo billed annually (~$49,99–$109,99 monthly) | TikTok Shop, **not** Shopee. Wins on creator/video/live GMV — keep that concession. |
 
-Tagline “kompetitor bayar 300rb/bulan” is accurate vs **Datapinter**, not Tokpee.
+Tagline “kompetitor bayar 300rb/bulan” is accurate vs **Datapinter's Dasar tier**, not Tokpee.
 
-Do **not** trash competitors; state trade-offs. Current public model is **freemium, free during
-the Beta**: a permanent Rp 0 Free plan, Laris Pro at Rp 149.000/mo that costs Rp 0 while the Beta
-runs, and Laris Business at Rp 399.000/mo still to come (matches `llms.txt` + homepage schema).
-Say so consistently, and never claim "100% gratis selamanya" — only the Free plan is forever.
-When the Beta ends or pricing moves, update `llms.txt`, `llms-full.txt`, homepage JSON-LD,
-`/harga/`, `perbandingan/index.html`, `scripts/build-comparisons.mjs`, and this doc **together** —
+Do **not** trash competitors; state trade-offs. **LarisID is 100% free, forever — there are no
+paid plans.** This is a MISSION.md commitment (§3: no paywalls that trap users), not a promotion:
+a freemium three-tier page shipped on 21 Aug 2026 and was retracted the same day. Do not
+reintroduce prices, tiers, "Pro", "Business", or "gratis selama Beta" framing anywhere.
+
+Copy must also carry what LarisID does **not** have — no Excel/CSV export, data refreshes daily
+rather than real-time, no Tokopedia listing data, no TikTok creator analytics. Those honest rows
+are what make the comparison credible.
+
+When competitor pricing moves, update `llms.txt`, `llms-full.txt`, homepage JSON-LD, `/harga/`,
+`perbandingan/index.html`, `scripts/build-comparisons.mjs`, and this doc **together** —
 inconsistent prices across pages confuse both search and AI.
 
 ## Messaging rules
 
-- **Free plan (permanent):** Rp 0 forever — 10 Deep Dives/day, track 5 products & 3 stores, limited competitor analysis & Ask Laris AI. Finder / Discover, Produk directory, and `/riset/` stay open.
-- **During Beta:** every Laris Pro feature is open free to signed-in accounts (unlimited Deep Dive, track 40 products & 20 stores). Say "gratis selama Beta", never "100% gratis selamanya".
-- **More depth after Beta** (unlimited Deep Dive, higher tracking caps) comes from Laris Pro (Rp 149.000/mo) or Free-plan bonuses (Chrome extension +3/day, referrals +1/day up to +5) — never gate honesty or basic viability truth behind paywall
+- **Price:** Rp 0, forever, for everyone. Say "100% gratis" / "gratis selamanya". Never write
+  "paket Free", "Laris Pro", "Laris Business", or "gratis selama Beta" — those imply a paid tier
+  exists.
+- **Daily quota:** 10 new searches/day, reset midnight WIB, uncapped while the Beta runs. Frame it
+  as a server-cost guard, never as an upgrade prompt — there is nothing to upgrade to. Raise it for
+  free: Chrome extension +3/day permanent, referrals +1/day up to +5, product feedback +3 that day.
+- **Never gate** honesty, viability scores, sales estimates, or thin-data warnings — MISSION §3.
+- **Everything else is free too:** 40 products & 20 stores tracked, Produk directory, `/riset/`,
+  `/kota/`, and re-opening any product or thread (which never costs quota).
 - Avoid unverifiable social proof (e.g. fake member counts)
 
 ## Analytics (landing)
