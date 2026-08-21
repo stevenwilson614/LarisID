@@ -246,27 +246,66 @@
     });
   }
 
-  /* The movement count steps on entry rather than on scroll: the section is
-     shorter than a phone viewport, so there is no scroll range to spend. */
+  /* Movement count: a fast timed cascade for dwellers, plus scroll progress so
+     a quick desktop scroll cannot pass the scale before 1.000 is on. */
   function initScale() {
     var wrap = $('#rz-scale');
-    if (!wrap) return;
+    if (!wrap) return null;
     var steps = $$('.rz-scale-n', wrap);
-    if (!steps.length) return;
+    if (!steps.length) return null;
+    var section = wrap.closest('.rz-move') || wrap;
+    var current = -1;
+    var started = false;
+    var stepMs = 340;
 
     function show(i) {
+      i = clamp(i, 0, steps.length - 1);
+      if (i === current) return;
+      current = i;
       steps.forEach(function (n, k) { n.classList.toggle('is-on', k === i); });
     }
-    if (REDUCED || !HAS_IO) { show(steps.length - 1); return; }
+    if (REDUCED || !HAS_IO) { show(steps.length - 1); return null; }
+
+    show(0);
+
+    function startTimed() {
+      if (started) return;
+      started = true;
+      steps.forEach(function (_, i) {
+        if (!i) return;
+        setTimeout(function () {
+          if (i > current) show(i);
+        }, i * stepMs);
+      });
+    }
 
     var io = new IntersectionObserver(function (entries) {
       if (!entries[0].isIntersecting) return;
-      io.disconnect();
-      steps.forEach(function (_, i) {
-        if (i) setTimeout(function () { show(i); }, i * 620);
-      });
-    }, { threshold: 0.4 });
+      startTimed();
+    }, { threshold: 0.2 });
     io.observe(wrap);
+
+    return {
+      measure: function () {},
+      update: function () {
+        var vh = window.innerHeight || document.documentElement.clientHeight;
+        var r = section.getBoundingClientRect();
+        var p = clamp((vh * 0.78 - r.top) / Math.max(r.height, 1), 0, 1);
+        if (p > 0.04) startTimed();
+
+        /* Front-load steps so the last ~40% of the section holds on 1.000. */
+        var idx = 0;
+        if (p >= 0.18) idx = 1;
+        if (p >= 0.36) idx = 2;
+        if (p >= 0.55) idx = 3;
+        if (idx > current) show(idx);
+
+        var sr = wrap.getBoundingClientRect();
+        if (sr.top < vh * 0.28 || sr.bottom < vh * 0.42) {
+          show(steps.length - 1);
+        }
+      }
+    };
   }
 
   /* ---- 5. nav + sticky CTA ------------------------------------------------ */
@@ -327,12 +366,13 @@
     initNav();
     initReveal();
     initCounts();
-    initScale();
     initSticky();
 
     var scenes = initProgress();
     var rise = initRise();
     if (rise) scenes.push(rise);
+    var scale = initScale();
+    if (scale) scenes.push(scale);
     if (!scenes.length || REDUCED) return;
 
     var ticking = false;
