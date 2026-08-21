@@ -237,3 +237,113 @@ table.compare .note { font-size: .75rem; color: var(--tm); display: block; margi
   padding: 2px 9px; margin-bottom: 8px;
 }
 .cat-head { font-size: 1rem; font-weight: 800; color: var(--navy); margin: 22px 0 4px; }
+
+/* Pricing tiers (/harga/) */
+.tier-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 14px;
+  margin: 20px 0 8px;
+}
+.tier {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px 20px 18px;
+  background: #fff;
+}
+.tier--pro { border: 2px solid var(--orange); box-shadow: 0 8px 24px rgba(181, 32, 42, .10); }
+.tier--soon { background: #FAFAFA; }
+.tier-badge {
+  align-self: flex-start;
+  display: inline-block;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: #EFF6F1;
+  color: #3F7A55;
+  font-size: .66rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+.tier--pro .tier-badge { background: #FFF1F1; color: var(--orange); }
+.tier--soon .tier-badge { background: #F0F0F0; color: var(--tm); }
+.tier-name {
+  margin: 12px 0 6px;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  line-height: 1.15;
+  color: var(--navy);
+}
+.tier-name .accent { color: var(--orange); }
+.tier--free .tier-name { font-style: italic; }
+.tier--soon .tier-name { color: #8A8A8A; }
+.tier-sub { margin: 0 0 14px; font-size: .82rem; line-height: 1.5; color: var(--tm); }
+.tier-was { margin: 0 0 2px; font-size: .88rem; font-weight: 600; color: #9CA3AF; text-decoration: line-through; }
+.tier-price {
+  margin: 0;
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: -.04em;
+  line-height: 1.05;
+  color: var(--navy);
+}
+.tier--pro .tier-price { color: var(--orange); }
+.tier--soon .tier-price { color: #8A8A8A; font-size: 1.5rem; }
+.tier-price span { font-size: .85rem; font-weight: 600; letter-spacing: 0; color: var(--tm); margin-left: 4px; }
+.tier-note {
+  align-self: flex-start;
+  margin: 10px 0 0;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #FFF1F1;
+  color: var(--orange);
+  font-size: .72rem;
+  font-weight: 700;
+}
+.tier--soon .tier-note { background: #F0F0F0; color: var(--tm); }
+.tier-feats {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid #F0F0F0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.tier-feats li {
+  margin: 0;
+  padding-left: 20px;
+  position: relative;
+  font-size: .82rem;
+  line-height: 1.45;
+  color: #374151;
+}
+.tier-feats li::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: .46em;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: #3F7A55;
+}
+.tier--pro .tier-feats li::before { background: var(--orange); }
+.tier--soon .tier-feats li { color: #8A8A8A; }
+.tier--soon .tier-feats li::before { background: #C4C4C4; }
+.tier-foot {
+  margin: 16px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid #F0F0F0;
+  font-size: .75rem;
+  line-height: 1.45;
+  text-align: center;
+  color: var(--tm);
+}
+.tier-feats + .tier-foot { margin-top: auto; }
+@media (max-width: 720px) {
+  .tier-grid { grid-template-columns: 1fr; }
+}
