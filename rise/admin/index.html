@@ -11,10 +11,11 @@
 <link rel="preload" as="font" type="font/woff2" href="/fonts/plus-jakarta-sans-latin.woff2" crossorigin>
 <link rel="stylesheet" href="/fonts/laris-fonts.css">
 <style>
-/* Same token block as the rest of the rz- system. */
+/* MERAH–EMAS tokens + Rise chrome (nav/footer). Same scheme as /rise/ and /rise/daftar/. */
 :root{
   --merah:#B5202A;--merah-dark:#8E191F;--merah-tint:#F9EAE4;
   --emas:#C9974B;--hitam:#1A1A1A;--krem:#F5EFE0;--putih:#FFFDF8;
+  --hijau:#1E6B3C;--hijau-tint:#E8F5EC;
   --ink:#1A1A1A;--ink-mute:#5C5751;--hairline:rgba(26,26,26,.14);
   --font:'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,sans-serif;
   --pad:clamp(16px,4vw,32px);
@@ -23,7 +24,8 @@
 *,*::before,*::after{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--krem);color:var(--ink);font-family:var(--font);
-  font-size:1rem;line-height:1.6;-webkit-font-smoothing:antialiased}
+  font-size:1rem;line-height:1.6;-webkit-font-smoothing:antialiased;min-height:100dvh;
+  display:flex;flex-direction:column}
 img{max-width:100%;height:auto;display:block}
 a{color:inherit}
 h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.03em;line-height:1.15}
@@ -39,21 +41,56 @@ p{margin:0}
 .rz-btn:active{transform:translateY(1px)}
 .rz-btn--ghost{background:none;color:var(--ink);border:1.5px solid var(--hairline)}
 .rz-btn--ghost:hover{background:rgba(26,26,26,.05)}
+
+.rz-nav{position:sticky;top:0;z-index:60;display:flex;align-items:center;justify-content:space-between;
+  gap:16px;padding:14px var(--pad);background:rgba(245,239,224,.92);
+  -webkit-backdrop-filter:saturate(1.4) blur(12px);backdrop-filter:saturate(1.4) blur(12px);
+  border-bottom:1px solid var(--hairline)}
+.rz-brand{display:flex;align-items:center;text-decoration:none;min-height:44px}
+.rz-brand img{height:33px;width:auto}
+.rz-nav-meta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end}
+.rz-nav-badge{font-size:.68rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--emas);padding:6px 10px;border:1px solid rgba(201,151,75,.45);border-radius:6px}
+.rz-nav-link{font-size:.82rem;font-weight:700;letter-spacing:.04em;text-decoration:none;
+  color:var(--ink-mute);min-height:44px;display:inline-flex;align-items:center}
+.rz-nav-link:hover{color:var(--merah)}
+
+.rz-foot{margin-top:auto;background:var(--hitam);color:rgba(245,239,224,.6);
+  padding:0 0 calc(clamp(24px,6vw,36px) + env(safe-area-inset-bottom,0px));
+  border-top:1px solid rgba(245,239,224,.12);font-size:.9rem}
+.rz-foot .rz-wrap{padding-top:clamp(24px,6vw,36px)}
+.rz-foot-logo{display:inline-block;margin-bottom:12px;filter:brightness(0) invert(1);opacity:.65}
+.rz-foot p{max-width:52ch;margin:0 0 12px;line-height:1.55}
+.rz-foot a{color:var(--krem);text-decoration:none;font-weight:600}
+.rz-foot a:hover{color:var(--emas)}
+.rz-foot-links{display:flex;gap:18px;flex-wrap:wrap}
 </style>
-<link rel="stylesheet" href="/styles/rise-form.css?v=20260821a">
+<link rel="stylesheet" href="/styles/rise-form.css?v=20260821b">
 </head>
 <body>
+
+<header class="rz-nav" id="rz-nav">
+  <a class="rz-brand" href="/rise/" aria-label="LARISE — ke halaman program">
+    <img src="/images/rise/brand/larise-red.webp" alt="LARISE" width="152" height="33">
+  </a>
+  <div class="rz-nav-meta">
+    <span class="rz-nav-badge">Reviewer</span>
+    <a class="rz-nav-link" href="/rise/">Program</a>
+    <a class="rz-nav-link" href="/rise/daftar/">Formulir</a>
+  </div>
+</header>
 
 <main class="rza-shell">
   <div class="rz-wrap">
 
     <!-- Signed out / not a reviewer. Both server-enforced; this is only chrome. -->
     <section class="rza-gate" id="rza-gate" hidden>
-      <p class="rz-kicker">LARIS RISE</p>
+      <img class="rza-gate-mark" src="/images/rise/brand/larise-red.webp" alt="" width="140" height="30" decoding="async">
+      <p class="rz-kicker">LARIS RISE · INTERNAL</p>
       <h1 id="rza-gate-h">REVIEW PENDAFTAR</h1>
       <p id="rza-gate-p">Masuk dengan akun Google kamu untuk melihat pendaftar LaRise.</p>
       <button class="rz-btn" id="rza-signin" type="button">Masuk dengan Google</button>
-      <p style="margin-top:18px"><button class="rza-linkbtn" id="rza-signout-gate" type="button" hidden>Keluar dan ganti akun</button></p>
+      <p class="rza-gate-out"><button class="rza-linkbtn" id="rza-signout-gate" type="button" hidden>Keluar dan ganti akun</button></p>
     </section>
 
     <!-- Board -->
@@ -62,6 +99,7 @@ p{margin:0}
         <div>
           <p class="rz-kicker">LaRise Batch 1</p>
           <h1>Review pendaftar</h1>
+          <p class="rza-sub">20 kursi · papan status &amp; daftar cepat</p>
         </div>
         <p class="rza-who">
           <span id="rza-email"></span>
@@ -94,11 +132,25 @@ p{margin:0}
   </div>
 </main>
 
+<footer class="rz-foot">
+  <div class="rz-wrap">
+    <a href="https://larisid.com/" class="rz-foot-logo">
+      <img src="/images/brand/logo-horizontal-red.png" alt="LarisID" width="112" height="28" loading="lazy" decoding="async">
+    </a>
+    <p>Alat internal LARIS RISE — program dari <a href="https://larisid.com/">LarisID</a>.</p>
+    <p class="rz-foot-links">
+      <a href="/rise/">Program</a>
+      <a href="/privacy/">Privasi</a>
+    </p>
+  </div>
+</footer>
+
 <!-- Detail drawer -->
 <div class="rza-scrim" id="rza-scrim" hidden></div>
 <aside class="rza-drawer" id="rza-drawer" aria-labelledby="rza-dr-name" hidden>
   <div class="rza-dr-h">
     <div>
+      <p class="rz-kicker">Detail pendaftar</p>
       <h2 id="rza-dr-name">—</h2>
       <p class="rza-who" id="rza-dr-sub"></p>
     </div>
@@ -123,6 +175,6 @@ p{margin:0}
 <div class="rza-toast" id="rza-toast" role="status" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
-<script src="/js/rise-admin.js?v=20260821a" defer></script>
+<script src="/js/rise-admin.js?v=20260821b" defer></script>
 </body>
 </html>
