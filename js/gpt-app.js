@@ -166,6 +166,7 @@ let _adminMapRange = 'all';
 let _adminMapZoom = 1;
 let _adminMapPan = { x: 0, y: 0 };
 let _admDonutChart = null;
+let _admTrendChart = null;
 let _adminCatsExpanded = false;
 let _adminUiBound = false;
 
@@ -14586,6 +14587,165 @@ function renderAdminKpis(users) {
   spark('adm-kpi-dives-spark', divesDaily, '#7C3AED');
 }
 
+// ── Monthly trend: landing page views vs sign ups ────────────────────────────
+// Both series come from admin_stats(): signups_monthly (auth.users) and
+// landing_views_monthly (public.page_views), bucketed in Asia/Jakarta.
+// page_views only started collecting real traffic on 2026-07-20; the rows
+// before that are seed data with a hard gap through 19 Jul, so that stretch of
+// the views line is drawn dashed and called out under the chart.
+// Views are blue here rather than the orange of their KPI tile: against the
+// brand red of sign ups, orange is the one pairing that collapses both at this
+// line weight and under red-green colour blindness.
+const ADM_PV_TRACKING_START = '2026-07';
+
+function admMonthKey(v) {
+  return String(v || '').slice(0, 7); // YYYY-MM from a date / timestamptz
+}
+
+/** Continuous YYYY-MM keys spanning both series, so gap months stay on the axis. */
+function admMonthSpan(...series) {
+  const keys = series
+    .flat()
+    .map(r => admMonthKey(r && r.month))
+    .filter(k => /^\d{4}-\d{2}$/.test(k))
+    .sort();
+  if (!keys.length) return [];
+  const out = [];
+  let [y, m] = keys[0].split('-').map(Number);
+  const [ye, me] = keys[keys.length - 1].split('-').map(Number);
+  while (y < ye || (y === ye && m <= me)) {
+    out.push(`${y}-${String(m).padStart(2, '0')}`);
+    if (++m > 12) { m = 1; y++; }
+  }
+  return out;
+}
+
+function admMonthLabel(key) {
+  const names = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+  const [y, m] = String(key).split('-');
+  return `${names[Number(m) - 1] || m} ${String(y).slice(2)}`;
+}
+
+function renderAdminTrend() {
+  const stage = $('adm-trend-stage');
+  const empty = $('adm-trend-empty');
+  const note = $('adm-trend-note');
+  if (!stage) return;
+
+  const s = _adminStats || {};
+  const signups = s.signups_monthly || [];
+  const views = s.landing_views_monthly || [];
+  const months = admMonthSpan(signups, views);
+
+  if (!months.length) {
+    stage.hidden = true;
+    if (note) note.hidden = true;
+    if (empty) empty.hidden = false;
+    if (_admTrendChart) { try { _admTrendChart.destroy(); } catch (_) {} _admTrendChart = null; }
+    return;
+  }
+  stage.hidden = false;
+  if (empty) empty.hidden = true;
+
+  const byMonth = (rows, key) => {
+    const map = {};
+    (rows || []).forEach(r => { map[admMonthKey(r.month)] = Number(r[key]) || 0; });
+    return months.map(m => map[m] || 0);
+  };
+  const viewData = byMonth(views, 'views');
+  const signupData = byMonth(signups, 'signups');
+
+  // Index of the first month with trustworthy landing-view tracking.
+  const firstReal = months.findIndex(m => m >= ADM_PV_TRACKING_START);
+  const seedUntil = firstReal > 0 ? firstReal : 0;
+  if (note) {
+    if (seedUntil > 0) {
+      note.hidden = false;
+      note.textContent = 'Garis putus-putus: landing page views sebelum 20 Jul 2026 berasal dari data awal yang tidak lengkap — jangan dibandingkan langsung dengan bulan setelahnya.';
+    } else {
+      note.hidden = true;
+    }
+  }
+
+  larisEnsureChart().then(() => {
+    const canvas = $('adm-trend-canvas');
+    if (!canvas || typeof Chart === 'undefined') return;
+    if (_admTrendChart) { try { _admTrendChart.destroy(); } catch (_) {} _admTrendChart = null; }
+    _admTrendChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: months.map(admMonthLabel),
+        datasets: [
+          {
+            label: 'Landing page views',
+            data: viewData,
+            yAxisID: 'yViews',
+            borderColor: '#2563EB',
+            backgroundColor: 'rgba(37,99,235,.08)',
+            pointBackgroundColor: '#2563EB',
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            borderWidth: 2,
+            tension: .3,
+            fill: true,
+            segment: {
+              borderDash: ctx => (ctx.p0DataIndex < seedUntil ? [5, 4] : undefined),
+            },
+          },
+          {
+            label: 'Sign ups',
+            data: signupData,
+            yAxisID: 'ySignups',
+            borderColor: '#B5202A',
+            backgroundColor: 'rgba(181,32,42,.08)',
+            pointBackgroundColor: '#B5202A',
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            borderWidth: 2,
+            tension: .3,
+            fill: false,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { boxWidth: 10, usePointStyle: true, pointStyle: 'circle', font: { size: 11 } },
+          },
+          tooltip: {
+            callbacks: {
+              label: ctx => `${ctx.dataset.label}: ${admFmtNum(ctx.parsed.y)}`,
+              afterLabel: ctx => (ctx.datasetIndex === 0 && ctx.dataIndex < seedUntil ? 'data awal, tidak lengkap' : undefined),
+            },
+          },
+        },
+        scales: {
+          yViews: {
+            type: 'linear', position: 'left', beginAtZero: true,
+            title: { display: true, text: 'Landing page views', color: '#2563EB', font: { size: 10, weight: '600' } },
+            ticks: { precision: 0, color: '#9CA3AF', font: { size: 10 } },
+            grid: { color: 'rgba(0,0,0,.05)' },
+          },
+          ySignups: {
+            type: 'linear', position: 'right', beginAtZero: true,
+            title: { display: true, text: 'Sign ups', color: '#B5202A', font: { size: 10, weight: '600' } },
+            ticks: { precision: 0, color: '#9CA3AF', font: { size: 10 } },
+            grid: { drawOnChartArea: false },
+          },
+          x: {
+            ticks: { color: '#9CA3AF', font: { size: 10 }, maxRotation: 0, autoSkipPadding: 12 },
+            grid: { display: false },
+          },
+        },
+      },
+    });
+  });
+}
+
 function admCategoryCounts(users) {
   const counts = {};
   (users || []).forEach(u => {
@@ -15065,6 +15225,7 @@ async function loadAdminDirectory() {
     _adminStats = (!statsRes.error && statsRes.data) ? statsRes.data : null;
     _adminKpis = (!kpiRes.error && kpiRes.data) ? kpiRes.data : null;
     renderAdminKpis(_adminUsers);
+    renderAdminTrend();
   } catch (e) {
     if (body) body.innerHTML = `<tr><td colspan="7" class="dd-sub">${esc(e.message || 'Gagal memuat.')}</td></tr>`;
   }

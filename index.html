@@ -2112,6 +2112,15 @@ body.view-community .panel-inner {
 /* Archive tile: greyed so a permanently flat line reads as "closed", not broken. */
 .adm-kpi--tracked .adm-kpi-ico { background: #F3F4F6; color: #9CA3AF; }
 .adm-kpi--tracked .adm-kpi-val { color: #6B7280; }
+.adm-trend-card { padding: 16px 18px 14px; margin-bottom: 14px; }
+.adm-trend-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.adm-trend-head .adm-card-title { margin: 0; }
+.adm-trend-sub { margin: 0; font-size: .72rem; color: #9CA3AF; font-weight: 550; }
+.adm-trend-stage { position: relative; height: 260px; margin-top: 12px; }
+.adm-trend-stage canvas { display: block; width: 100% !important; height: 100% !important; }
+.adm-trend-note { margin: 8px 0 0; font-size: .68rem; color: #9CA3AF; }
+.adm-trend-stage[hidden], .adm-trend-note[hidden], .adm-trend-empty[hidden] { display: none; }
+.adm-trend-empty { padding: 28px 0; text-align: center; }
 .adm-mid {
   display: grid; grid-template-columns: minmax(280px, .42fr) minmax(0, 1fr); gap: 12px; margin-bottom: 14px;
 }
@@ -5578,6 +5587,18 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
               </article>
             </div>
 
+            <section class="adm-card adm-trend-card">
+              <div class="adm-trend-head">
+                <h3 class="adm-card-title">Landing Page Views vs Sign Ups</h3>
+                <p class="adm-trend-sub">Per bulan &middot; sumbu kiri = landing page views &middot; sumbu kanan = sign ups</p>
+              </div>
+              <div class="adm-trend-stage" id="adm-trend-stage">
+                <canvas id="adm-trend-canvas" aria-label="Grafik bulanan landing page views dan sign ups"></canvas>
+              </div>
+              <p class="adm-trend-note" id="adm-trend-note" hidden></p>
+              <div class="adm-trend-empty dd-sub" id="adm-trend-empty" hidden>Belum ada data bulanan.</div>
+            </section>
+
             <div class="adm-mid">
               <section class="adm-card adm-card-pad adm-cat-card">
                 <h3 class="adm-card-title">Kategori Populer</h3>
@@ -5945,7 +5966,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script defer src="/js/laris-mascot.js?v=20260812a"></script>
 <script src="/js/admin-map.js?v=20260812a" defer></script>
 <script defer src="/js/gpt-chat-memory.js?v=20260818a"></script>
-<script src="/js/gpt-app.js?v=20260818f" defer></script>
+<script src="/js/gpt-app.js?v=20260821a" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>
 </html>
