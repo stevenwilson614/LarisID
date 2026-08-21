@@ -13,13 +13,6 @@
   font-display: block;
   src: url('../fonts/plus-jakarta-sans-latin.woff2') format('woff2');
 }
-@font-face {
-  font-family: 'Protest Revolution';
-  font-style: normal;
-  font-weight: 400;
-  font-display: block;
-  src: url('../fonts/protest-revolution-latin.woff2') format('woff2');
-}
 :root {
   --merah: #B5202A;
   --merah-dark: #8E191F;
@@ -29,16 +22,15 @@
   --putih: #FFFDF8;
   --ink-mute: #5C5751;
   --font: 'Plus Jakarta Sans', system-ui, sans-serif;
-  --display: 'Protest Revolution', 'Plus Jakarta Sans', sans-serif;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
   width: 1080px;
   height: 1350px;
   overflow: hidden;
-  background: var(--hitam);
-  color: var(--krem);
+  background: #111;
   font-family: var(--font);
+  color: var(--hitam);
   -webkit-font-smoothing: antialiased;
 }
 #artboard {
@@ -46,319 +38,396 @@ html, body {
   height: 1350px;
   display: flex;
   flex-direction: column;
-  background: var(--hitam);
+  background: var(--krem);
 }
+svg { display: block; }
 
-.top {
-  padding: 26px 44px 16px;
-  background:
-    radial-gradient(90% 120% at 100% 0%, rgba(181, 32, 42, .45), transparent 58%),
-    linear-gradient(180deg, #2a1214 0%, var(--hitam) 100%);
+.hero {
+  position: relative;
+  height: 468px;
+  flex-shrink: 0;
+  overflow: hidden;
+  color: #fff;
 }
-.brand-row {
+.hero img {
+  position: absolute;
+  inset: 0;
+  width: 1080px;
+  height: 468px;
+  object-fit: cover;
+  object-position: 58% 38%;
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(10,8,8,.88) 0%, rgba(10,8,8,.72) 42%, rgba(10,8,8,.18) 68%, rgba(10,8,8,.08) 100%);
+  z-index: 1;
+}
+.hero-inner {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  padding: 28px 40px 30px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
+  flex-direction: column;
 }
-.brand-row img {
-  height: 46px;
+.hero-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.hero-top img {
+  position: static;
   width: auto;
-  display: block;
+  height: 48px;
+  object-fit: contain;
 }
 .stamp {
-  width: 86px;
-  height: 86px;
+  width: 92px;
+  height: 92px;
   border-radius: 50%;
   background: var(--merah);
-  color: var(--krem);
+  border: 5px solid var(--hitam);
+  box-shadow: 0 0 0 3px var(--emas);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   transform: rotate(-8deg);
-  box-shadow: 0 0 0 5px var(--hitam), 0 0 0 7px var(--emas);
-  flex-shrink: 0;
 }
 .stamp small {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: .18em;
   text-transform: uppercase;
 }
 .stamp b {
-  font-family: var(--display);
-  font-size: 30px;
-  line-height: .9;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .02em;
 }
-.kicker-row {
-  display: flex;
-  align-items: baseline;
-  gap: 14px;
-  margin-bottom: 8px;
-}
-.dibuka {
-  font-family: var(--display);
-  font-size: 34px;
-  letter-spacing: .06em;
-  color: var(--emas);
-}
-.open {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: .16em;
+.kicker {
+  margin-top: 28px;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: .18em;
   text-transform: uppercase;
-  color: var(--krem);
-  opacity: .82;
+  color: rgba(255,255,255,.88);
 }
 h1 {
-  font-size: 44px;
+  margin-top: 8px;
+  font-size: 48px;
   font-weight: 800;
-  letter-spacing: -.04em;
+  letter-spacing: -.035em;
   line-height: .95;
+  max-width: 14ch;
 }
-h1 .em { color: #ffd6b0; }
-.about {
+h1 .em { color: var(--emas); }
+.lead {
   margin-top: 12px;
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 600;
-  line-height: 1.28;
-  color: rgba(245, 239, 224, .9);
-  max-width: 38ch;
+  line-height: 1.3;
+  max-width: 28ch;
+  color: rgba(255,255,255,.92);
+}
+.note {
+  margin-top: auto;
+  align-self: flex-start;
+  max-width: 34ch;
+  background: rgba(0,0,0,.62);
+  padding: 12px 16px;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
-.photo {
-  position: relative;
-  z-index: 2;
-  width: 1080px;
-  height: 340px;
-  margin: 0 0 -28px;
-  overflow: hidden;
+.features {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  background: var(--merah);
+  color: #fff;
+  padding: 16px 18px 14px;
   flex-shrink: 0;
 }
-.photo img {
-  width: 1080px;
-  height: 340px;
-  object-fit: cover;
-  object-position: 48% 32%;
-  display: block;
+.feat {
+  padding: 4px 12px;
+  text-align: center;
 }
-.photo::after {
-  content: "";
-  position: absolute;
-  inset: auto 0 0;
-  height: 72px;
-  background: linear-gradient(180deg, transparent, var(--merah));
-  pointer-events: none;
+.feat + .feat { border-left: 1px solid rgba(255,255,255,.22); }
+.feat svg { margin: 0 auto 8px; }
+.feat b {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  color: var(--emas);
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+.feat span {
+  display: block;
+  margin-top: 4px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: rgba(255,255,255,.92);
 }
 
-.bottom {
-  flex: 1;
-  background: var(--merah);
-  padding: 36px 36px 0;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-.cols {
+.mid {
+  padding: 16px 22px 14px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
-  margin-bottom: 14px;
+  background: #ebe4d4;
+  flex: 1;
+  min-height: 0;
 }
 .box {
   background: var(--krem);
-  color: var(--hitam);
-  padding: 16px 18px 14px;
+  padding: 14px 16px 12px;
 }
-.box h2 {
-  font-size: 16px;
-  font-weight: 800;
-  letter-spacing: .14em;
-  text-transform: uppercase;
+.box-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
   color: var(--merah);
-  margin-bottom: 10px;
-}
-.box ul {
-  list-style: none;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
 }
 .box li {
-  font-size: 22px;
+  list-style: none;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 20px;
   font-weight: 650;
   line-height: 1.28;
-  padding: 5px 0 5px 22px;
-  position: relative;
+  padding: 6px 0;
 }
-.box li + li {
-  border-top: 1px solid rgba(26, 26, 26, .1);
-}
-.box li::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 13px;
-  width: 10px;
-  height: 10px;
-  background: var(--merah);
+.box li + li { border-top: 1px solid rgba(26,26,26,.08); }
+.check {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
 }
 
 .stats {
-  display: flex;
-  gap: 10px;
-  list-style: none;
-  margin-bottom: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  background: var(--merah);
+  color: #fff;
+  padding: 14px 10px;
+  flex-shrink: 0;
 }
-.stats li {
-  flex: 1;
-  background: rgba(255, 253, 248, .14);
-  border: 1.5px solid rgba(245, 239, 224, .28);
-  padding: 8px 8px 7px;
+.stat {
   text-align: center;
+  padding: 0 10px;
 }
-.stats b {
+.stat + .stat { border-left: 1px solid rgba(255,255,255,.28); }
+.stat svg { margin: 0 auto 6px; }
+.stat b {
   display: block;
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 800;
-  letter-spacing: -.04em;
+  letter-spacing: -.03em;
   line-height: 1;
-  color: var(--krem);
-  font-variant-numeric: tabular-nums;
 }
-.stats span {
+.stat small {
   display: block;
-  margin-top: 3px;
+  margin-top: 2px;
   font-size: 13px;
-  font-weight: 700;
-  letter-spacing: .1em;
+  font-weight: 800;
+  letter-spacing: .12em;
   text-transform: uppercase;
-  color: rgba(245, 239, 224, .8);
+  color: var(--emas);
 }
-.row-cta {
+.stat span {
+  display: block;
+  margin-top: 4px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: rgba(255,255,255,.92);
+}
+
+.end {
+  display: grid;
+  grid-template-columns: 1.15fr .85fr;
+  gap: 12px;
+  padding: 12px 18px;
+  background: var(--krem);
+  flex-shrink: 0;
+}
+.date, .cta {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 12px;
+  gap: 12px;
+  min-height: 72px;
+  padding: 10px 14px;
 }
 .date {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--krem);
-  flex: 1;
-}
-.date em {
-  font-style: normal;
-  color: #ffd6b0;
+  background: #fff;
 }
 .cta {
+  background: var(--merah);
+  color: #fff;
+}
+.date b, .cta b {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  line-height: 1.2;
+}
+.date span {
+  display: block;
+  margin-top: 3px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink-mute);
+  line-height: 1.25;
+}
+.cta b { font-size: 20px; text-transform: uppercase; }
+
+.partners {
   display: flex;
   align-items: center;
-  justify-content: center;
-  min-height: 52px;
-  padding: 0 22px;
-  background: var(--krem);
-  color: var(--merah-dark);
-  font-size: 22px;
-  font-weight: 800;
-  border-radius: 8px;
-  white-space: nowrap;
-}
-.partners {
-  margin-top: auto;
-  background: var(--krem);
-  margin-left: -36px;
-  margin-right: -36px;
-  padding: 12px 36px 14px;
+  gap: 18px;
+  padding: 10px 22px 12px;
+  background: #fff;
+  flex-shrink: 0;
 }
 .partners p {
   font-size: 13px;
-  font-weight: 700;
-  letter-spacing: .2em;
+  font-weight: 800;
+  letter-spacing: .18em;
   text-transform: uppercase;
   color: var(--ink-mute);
-  margin-bottom: 8px;
 }
-.partner-row {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-}
-.partner-row img {
-  height: 38px;
-  width: auto;
-  display: block;
-}
-.partner-row .div {
+.partners img { height: 36px; width: auto; display: block; }
+.partners .div {
   width: 1px;
   height: 26px;
-  background: rgba(26, 26, 26, .18);
+  background: rgba(26,26,26,.16);
 }
 </style>
 </head>
 <body>
 <div id="artboard">
-  <header class="top">
-    <div class="brand-row">
-      <img src="../images/rise/brand/larise-light.webp" alt="LARISE" width="210" height="46">
-      <div class="stamp" aria-label="Batch 1">
-        <small>Batch</small>
-        <b>1</b>
-      </div>
-    </div>
-    <div class="kicker-row">
-      <p class="dibuka">DIBUKA</p>
-      <p class="open">Open recruitment · program wirausaha</p>
-    </div>
-    <h1>MULAI DARI <span class="em">NOL.</span> BANGKIT <span class="em">BERSAMA.</span></h1>
-    <p class="about">Program wirausaha online 2 bulan untuk generasi muda. Tidak perlu pengalaman jualan — satu HP dan kemauan belajar cukup untuk mulai.</p>
-  </header>
 
-  <figure class="photo">
-    <img src="../images/rise/photos/community.webp"
-         alt="Lima generasi muda mengemas pesanan bersama sambil melihat satu ponsel"
-         width="1080" height="340">
-  </figure>
-
-  <footer class="bottom">
-    <div class="cols">
-      <section class="box">
-        <h2>Yang kamu pelajari</h2>
-        <ul>
-          <li>Pola pikir wirausaha dari nol</li>
-          <li>Riset produk dari data, bukan ikut-ikutan</li>
-          <li>Buka toko online sampai siap jualan</li>
-          <li>Pemasaran sampai pembeli pertama</li>
-          <li>Layani pesanan &amp; kelola keuangan</li>
-        </ul>
-      </section>
-      <section class="box">
-        <h2>Yang kamu dapatkan</h2>
-        <ul>
-          <li>16 sesi mentoring online (2× seminggu)</li>
-          <li>Praktek langsung, bukan cuma teori</li>
-          <li>Pakai platform LarisID untuk cari produk</li>
-          <li>Mentor + 19 teman seperjalanan</li>
-          <li>Satu kesempatan mencoba usaha nyata</li>
-        </ul>
-      </section>
+<header class="hero">
+  <img src="../images/rise/photos/poster-students.jpg" alt="Tiga generasi muda belajar jualan online di gudang paket" width="1024" height="745">
+  <div class="hero-inner">
+    <div class="hero-top">
+      <img src="../images/rise/brand/larise-light.webp" alt="LARISE" width="220" height="48">
+      <div class="stamp"><small>Batch</small><b>1</b></div>
     </div>
-    <ul class="stats">
-      <li><b>20</b><span>Peserta</span></li>
-      <li><b>16</b><span>Sesi</span></li>
-      <li><b>2</b><span>Bulan</span></li>
+    <p class="kicker">Open recruitment · program wirausaha</p>
+    <h1>BELAJAR.<br>JUALAN ONLINE.<br><span class="em">BANGKIT BERSAMA.</span></h1>
+    <p class="lead">Program wirausaha online 2 bulan untuk generasi muda.</p>
+    <p class="note">Tidak perlu pengalaman jualan — satu HP dan kemauan belajar cukup untuk mulai.</p>
+  </div>
+</header>
+
+<section class="features">
+  <div class="feat">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true"><path d="M7 19c5-1 9-5 11-11 2 6 4 9 7 11-4 1-8 3-11 8-2-5-4-7-7-8Z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></svg>
+    <b>Peluang nyata</b>
+    <span>Bangun masa depanmu</span>
+  </div>
+  <div class="feat">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true"><path d="M5 7h2l2.2 9.2a2 2 0 0 0 2 1.6h8.3a2 2 0 0 0 2-1.5L23 10H9" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="22" r="1.6" fill="#fff"/><circle cx="19.5" cy="22" r="1.6" fill="#fff"/></svg>
+    <b>Jualan online</b>
+    <span>Dari nol sampai siap jualan</span>
+  </div>
+  <div class="feat">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true"><path d="M5 22V12h4v10H5Zm7 0V6h4v16h-4Zm7 0v-7h4v7h-4Z" fill="#fff"/></svg>
+    <b>Bangun penghasilan</b>
+    <span>Belajar menjadi produktif</span>
+  </div>
+  <div class="feat">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="3" stroke="#fff" stroke-width="1.8"/><circle cx="18.5" cy="10.5" r="2.4" stroke="#fff" stroke-width="1.8"/><path d="M5 21c.6-3.2 2.8-5 5-5s4.4 1.8 5 5M16 21c.4-2.2 1.8-3.4 3.4-3.4 1.7 0 3.1 1.2 3.6 3.4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <b>Komunitas &amp; mentor</b>
+    <span>19 teman seperjalanan</span>
+  </div>
+</section>
+
+<section class="mid">
+  <article class="box">
+    <p class="box-h">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true"><path d="M4 5.5h6.5A2.5 2.5 0 0 1 13 8v10.5H6.5A2.5 2.5 0 0 1 4 16V5.5Z" stroke="currentColor" stroke-width="1.7"/><path d="M13 8h4.5A2.5 2.5 0 0 1 20 10.5V18a2.5 2.5 0 0 1-2.5 2.5H13V8Z" stroke="currentColor" stroke-width="1.7"/></svg>
+      Yang kamu pelajari
+    </p>
+    <ul>
+      <li><svg class="check" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="9" fill="#B5202A"/><path d="M5 9.2 7.6 12l5.4-6" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Pola pikir wirausaha dari nol</li>
+      <li><svg class="check" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="9" fill="#B5202A"/><path d="M5 9.2 7.6 12l5.4-6" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Riset produk dari data, bukan ikut-ikutan</li>
+      <li><svg class="check" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="9" fill="#B5202A"/><path d="M5 9.2 7.6 12l5.4-6" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Buka toko online sampai siap jualan</li>
+      <li><svg class="check" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="9" fill="#B5202A"/><path d="M5 9.2 7.6 12l5.4-6" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Pemasaran sampai pembeli pertama</li>
+      <li><svg class="check" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="9" fill="#B5202A"/><path d="M5 9.2 7.6 12l5.4-6" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Layani pesanan &amp; kelola keuangan</li>
     </ul>
-    <div class="row-cta">
-      <p class="date">2 September – 28 Oktober 2026</p>
-      <p class="cta">Balas chat ini untuk daftar</p>
+  </article>
+  <article class="box">
+    <p class="box-h">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true"><circle cx="11" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M4.5 18c.8-3.4 3.3-5.2 6.5-5.2S16.7 14.6 17.5 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      Yang kamu dapatkan
+    </p>
+    <ul>
+      <li><svg class="check" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="9" fill="#B5202A"/><path d="M5 9.2 7.6 12l5.4-6" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>16 sesi mentoring online (2× seminggu)</li>
+      <li><svg class="check" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="9" fill="#B5202A"/><path d="M5 9.2 7.6 12l5.4-6" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Praktek langsung, bukan cuma teori</li>
+      <li><svg class="check" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="9" fill="#B5202A"/><path d="M5 9.2 7.6 12l5.4-6" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Pakai platform LarisID untuk cari produk</li>
+      <li><svg class="check" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="9" fill="#B5202A"/><path d="M5 9.2 7.6 12l5.4-6" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Mentor + 19 teman seperjalanan</li>
+      <li><svg class="check" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="9" fill="#B5202A"/><path d="M5 9.2 7.6 12l5.4-6" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Satu kesempatan mencoba usaha nyata</li>
+    </ul>
+  </article>
+</section>
+
+<section class="stats">
+  <div class="stat">
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="3" stroke="#fff" stroke-width="1.7"/><circle cx="17.5" cy="9.5" r="2.3" stroke="#fff" stroke-width="1.7"/><path d="M4.2 20c.6-3 2.7-4.7 4.8-4.7s4.2 1.7 4.8 4.7M16 20c.4-2 1.7-3.2 3.2-3.2S22 18 22.4 20" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/></svg>
+    <b>20</b><small>Peserta</small>
+    <span>Kelas terbatas &amp; interaktif</span>
+  </div>
+  <div class="stat">
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><rect x="4" y="6" width="18" height="16" rx="2" stroke="#fff" stroke-width="1.7"/><path d="M8 4v4M18 4v4M4 11h18" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/></svg>
+    <b>16</b><small>Sesi</small>
+    <span>Mentoring online terjadwal</span>
+  </div>
+  <div class="stat">
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><circle cx="13" cy="13" r="8.5" stroke="#fff" stroke-width="1.7"/><path d="M13 8.5V13l3.5 2.2" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <b>2</b><small>Bulan</small>
+    <span>Pendampingan terstruktur</span>
+  </div>
+</section>
+
+<section class="end">
+  <div class="date">
+    <svg width="34" height="34" viewBox="0 0 34 34" fill="none" aria-hidden="true"><rect x="5" y="8" width="24" height="21" rx="3" stroke="#B5202A" stroke-width="2"/><path d="M11 5v6M23 5v6M5 15h24" stroke="#B5202A" stroke-width="2" stroke-linecap="round"/></svg>
+    <div>
+      <b>2 September – 28 Oktober 2026</b>
+      <span>Satu kesempatan berharga untuk mencoba.</span>
     </div>
-    <div class="partners">
-      <p>Mitra</p>
-      <div class="partner-row">
-        <img src="../images/brand/logo-horizontal-red.png" alt="LarisID" width="152" height="38">
-        <span class="div" aria-hidden="true"></span>
-        <img src="../images/rise/partners/delima-international.png" alt="Delima International" width="125" height="38">
-      </div>
-    </div>
-  </footer>
+  </div>
+  <div class="cta">
+    <svg width="34" height="34" viewBox="0 0 34 34" fill="none" aria-hidden="true"><circle cx="17" cy="17" r="15" fill="#fff"/><path d="M10 24.5 11.2 20A8 8 0 1 1 17 25a8 8 0 0 1-3.4-.7L10 24.5Z" fill="#B5202A"/></svg>
+    <b>Balas chat ini untuk daftar</b>
+  </div>
+</section>
+
+<footer class="partners">
+  <p>Mitra</p>
+  <img src="../images/rise/brand/larise-red.webp" alt="LARISE" width="164" height="36">
+  <span class="div" aria-hidden="true"></span>
+  <img src="../images/rise/partners/delima-international.png" alt="Delima International Indonesia" width="118" height="36">
+</footer>
+
 </div>
 </body>
 </html>
