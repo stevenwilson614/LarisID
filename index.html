@@ -1920,13 +1920,21 @@ body.view-harga .panel-inner { max-width: 1180px; }
 }
 .cmp-table th, .cmp-table td { overflow-wrap: break-word; }
 .cmp-table thead th:first-child { width: 172px; }
+/* The 2px red outline on this column pushes its content down by exactly that
+   much, so trim its top padding to keep the logo and price level with the rest. */
+.cmp-table thead th.is-laris { width: 152px; padding-top: 2px; }
 .cmp-table th, .cmp-table td {
   padding: 10px 9px;
   text-align: center;
   vertical-align: middle;
   border-bottom: 1px solid #F1F1F1;
 }
-.cmp-table thead th { vertical-align: bottom; padding-bottom: 14px; }
+/* Top-aligned so the logo slot — and therefore the headline number under it —
+   starts at the same y in every column. Bottom-aligning made columns with a
+   two-line sub-note ride ~30px higher than the rest. */
+.cmp-table thead th { vertical-align: top; padding-top: 4px; padding-bottom: 14px; }
+/* Reserve two lines of sub-note so the header's lower edge stays even too. */
+.cmp-price em { min-height: 2.7em; }
 .cmp-table th:first-child, .cmp-table td:first-child {
   position: sticky;
   left: 0;
@@ -1945,52 +1953,64 @@ body.view-harga .panel-inner { max-width: 1180px; }
   color: var(--meta-muted);
 }
 /* Each vendor's own wordmark, self-hosted in images/competitors/. */
-.cmp-tool-logo {
+/* Fixed-height slot: every logo is centred on the SAME horizontal line even
+   though their own heights differ (16px Kalodata to 22px Shoptik). */
+.cmp-logo-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  margin-bottom: 10px;
+}
+.cmp-tool-logo, .cmp-laris-logo {
   display: block;
   /* Sized per logo via the width/height attributes: aspect ratios run 2.3:1
      (Shoptik) to 5.7:1 (Kalodata), so a single height makes them look uneven. */
   width: auto;
-  height: auto;
   max-width: 100%;
-  margin: 0 auto 9px;
+  margin: 0;
   object-fit: contain;
 }
 /* One headline number per column, one short line under it. Anything more
    detailed belongs in the footnote — header cells have ~112px to work with. */
 .cmp-price {
   display: block;
-  font-size: .88rem;
-  font-weight: 800;
+  font-size: .82rem;
   color: var(--meta-ink);
   line-height: 1.25;
 }
-/* The number itself must never break mid-value ("Rp / 113.999"); the unit and
-   the sub-line may wrap. Short enough not to set a table min-width floor. */
-.cmp-price b, .cmp-table tbody td > strong { white-space: nowrap; font-weight: 800; }
-.cmp-price i, .cmp-table tbody td > i { white-space: nowrap; }
-.cmp-price i {
-  font-style: normal;
-  font-weight: 600;
-  font-size: .72rem;
-  color: var(--meta-muted);
-  margin-left: 2px;
+/* The headline number is its own block and never wraps, so it sits at an
+   identical height in all five columns. The sub-line below may wrap freely. */
+.cmp-price b {
+  display: block;
+  font-weight: 800;
+  white-space: nowrap;
 }
 .cmp-price em {
   display: block;
   font-style: normal;
-  font-size: .68rem;
+  font-size: .66rem;
   font-weight: 500;
   color: var(--meta-muted);
-  margin-top: 3px;
+  margin-top: 4px;
   line-height: 1.35;
 }
-/* Bottom Harga row mirrors the header: number bold, unit muted. */
-.cmp-table tbody td > i {
+/* Bottom Harga row mirrors the header: number on line 1, unit on line 2. */
+.cmp-cost strong {
+  display: block;
+  font-weight: 800;
+  font-size: .82rem;
+  white-space: nowrap;
+  color: var(--meta-ink);
+}
+.cmp-cost i {
+  display: block;
   font-style: normal;
   font-weight: 600;
-  font-size: .72rem;
+  font-size: .66rem;
   color: var(--meta-muted);
-  margin-left: 2px;
+  margin-top: 2px;
+  white-space: nowrap;
 }
 /* LarisID column: tinted, outlined, and pinned visually while scrolling */
 .cmp-table .is-laris { background: #FFF7F7; }
@@ -2001,7 +2021,6 @@ body.view-harga .panel-inner { max-width: 1180px; }
 }
 .cmp-table thead th.is-laris { border-top: 2px solid var(--meta-red); }
 .cmp-table tbody tr:last-child td.is-laris { border-bottom: 2px solid var(--meta-red); }
-.cmp-laris-logo { height: 18px; width: auto; display: block; margin: 0 auto; }
 .cmp-laris-free {
   display: inline-block;
   margin-top: 7px;
@@ -2013,17 +2032,23 @@ body.view-harga .panel-inner { max-width: 1180px; }
   font-weight: 800;
   letter-spacing: .03em;
 }
-.cmp-yes, .cmp-no, .cmp-part {
-  display: inline-flex;
+.cmp-yes, .cmp-no, .cmp-part, .cmp-na {
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
-  font-size: .76rem;
+  font-size: .75rem;
   font-weight: 650;
+  line-height: 1.3;
+  /* Labels are sized to fit their column; nowrap guarantees every cell in a row
+     is exactly one line, so the tick marks land on one level line. */
+  white-space: nowrap;
 }
+.cmp-yes svg, .cmp-no svg, .cmp-part svg { flex-shrink: 0; }
 .cmp-yes { color: #15803D; }
 .cmp-no { color: #B42318; }
 .cmp-part { color: #B45309; }
-.cmp-na { color: #9CA3AF; font-size: .72rem; }
+.cmp-na { color: #9CA3AF; font-weight: 500; }
 .cmp-visit {
   display: inline-flex;
   align-items: center;
@@ -5594,24 +5619,34 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                     <tr>
                       <th scope="col">Fitur</th>
                       <th scope="col" class="is-laris">
-                        <img class="cmp-laris-logo" src="/images/brand/logo-horizontal-red.png" alt="Laris" width="88" height="17">
-                        <span class="cmp-laris-free">100% GRATIS</span>
+                        <span class="cmp-logo-slot">
+                          <img class="cmp-laris-logo" src="/images/brand/logo-horizontal-red.png" alt="Laris" width="88" height="18">
+                        </span>
+                        <span class="cmp-price"><b class="cmp-laris-free">100% GRATIS</b></span>
                       </th>
                       <th scope="col">
-                        <img class="cmp-tool-logo" src="/images/competitors/tokpee.webp" alt="Tokpee" width="70" height="20" style="height:20px" loading="lazy" decoding="async">
-                        <span class="cmp-price"><b>Rp 113.999</b><i>/bulan</i><em>atau Rp 455.999/tahun</em></span>
+                        <span class="cmp-logo-slot">
+                          <img class="cmp-tool-logo" src="/images/competitors/tokpee.webp" alt="Tokpee" width="70" height="20" style="height:20px" loading="lazy" decoding="async">
+                        </span>
+                        <span class="cmp-price"><b>Rp 113.999</b><em>per bulan &middot; atau Rp 455.999/tahun</em></span>
                       </th>
                       <th scope="col">
-                        <img class="cmp-tool-logo" src="/images/competitors/datapinter.webp" alt="DataPinter" width="82" height="19" style="height:19px" loading="lazy" decoding="async">
-                        <span class="cmp-price"><b>Mulai Rp 99.000</b><i>/bulan</i><em>Paket Dasar Rp 299.000/bulan</em></span>
+                        <span class="cmp-logo-slot">
+                          <img class="cmp-tool-logo" src="/images/competitors/datapinter.webp" alt="DataPinter" width="82" height="19" style="height:19px" loading="lazy" decoding="async">
+                        </span>
+                        <span class="cmp-price"><b>Mulai Rp 99.000</b><em>per bulan &middot; Dasar Rp 299.000/bln</em></span>
                       </th>
                       <th scope="col">
-                        <img class="cmp-tool-logo" src="/images/competitors/kalodata.svg" alt="Kalodata" width="91" height="16" style="height:16px" loading="lazy" decoding="async">
-                        <span class="cmp-price"><b>$45,90 &ndash; $99,90</b><i>/bulan</i><em>≈ Rp 734rb &ndash; Rp 1,6jt</em></span>
+                        <span class="cmp-logo-slot">
+                          <img class="cmp-tool-logo" src="/images/competitors/kalodata.svg" alt="Kalodata" width="91" height="16" style="height:16px" loading="lazy" decoding="async">
+                        </span>
+                        <span class="cmp-price"><b>$45,90&ndash;$99,90</b><em>per bulan &middot; ditagih tahunan</em></span>
                       </th>
                       <th scope="col">
-                        <img class="cmp-tool-logo" src="/images/competitors/shoptik.webp" alt="Shoptik" width="51" height="22" style="height:22px" loading="lazy" decoding="async">
-                        <span class="cmp-price"><b>Rp 537.000</b><i>/tahun</i><em>≈ Rp 44.750/bulan</em></span>
+                        <span class="cmp-logo-slot">
+                          <img class="cmp-tool-logo" src="/images/competitors/shoptik.webp" alt="Shoptik" width="51" height="22" style="height:22px" loading="lazy" decoding="async">
+                        </span>
+                        <span class="cmp-price"><b>Rp 537.000</b><em>per tahun &middot; ≈ Rp 44.750/bulan</em></span>
                       </th>
                     </tr>
                   </thead>
@@ -5621,7 +5656,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                       <td class="is-laris"><span class="cmp-yes"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.2 12.4l2.6 2.6 5-5.4"/></svg>Ya</span></td>
                       <td><span class="cmp-yes"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.2 12.4l2.6 2.6 5-5.4"/></svg>Ya</span></td>
                       <td><span class="cmp-yes"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.2 12.4l2.6 2.6 5-5.4"/></svg>Ya</span></td>
-                      <td><span class="cmp-no"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6"/><path d="M15 9l-6 6"/></svg>TikTok Shop saja</span></td>
+                      <td><span class="cmp-no"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6"/><path d="M15 9l-6 6"/></svg>Hanya TikTok</span></td>
                       <td><span class="cmp-yes"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.2 12.4l2.6 2.6 5-5.4"/></svg>Ya</span></td>
                     </tr>
                     <tr>
@@ -5690,11 +5725,11 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                     </tr>
                     <tr>
                       <th scope="row">Harga</th>
-                      <td class="is-laris"><span class="cmp-yes"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.2 12.4l2.6 2.6 5-5.4"/></svg>Rp 0 selamanya</span></td>
-                      <td><strong>Rp 113.999</strong><i>/bulan</i></td>
-                      <td><strong>Mulai Rp 99.000</strong><i>/bulan</i></td>
-                      <td><strong>$45,90 &ndash; $99,90</strong><i>/bulan</i></td>
-                      <td><strong>Rp 537.000</strong><i>/tahun</i></td>
+                      <td class="is-laris cmp-cost"><strong>Rp 0</strong><i>selamanya</i></td>
+                      <td class="cmp-cost"><strong>Rp 113.999</strong><i>per bulan</i></td>
+                      <td class="cmp-cost"><strong>Mulai Rp 99.000</strong><i>per bulan</i></td>
+                      <td class="cmp-cost"><strong>$45,90&ndash;$99,90</strong><i>per bulan</i></td>
+                      <td class="cmp-cost"><strong>Rp 537.000</strong><i>per tahun</i></td>
                     </tr>
                     <tr>
                       <th scope="row">Kunjungi website</th>
