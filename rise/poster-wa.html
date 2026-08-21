@@ -50,9 +50,7 @@ html, body {
 }
 
 .top {
-  position: relative;
-  z-index: 1;
-  padding: 32px 48px 22px;
+  padding: 26px 44px 16px;
   background:
     radial-gradient(90% 120% at 100% 0%, rgba(181, 32, 42, .45), transparent 58%),
     linear-gradient(180deg, #2a1214 0%, var(--hitam) 100%);
@@ -61,16 +59,16 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 22px;
+  margin-bottom: 12px;
 }
 .brand-row img {
-  height: 52px;
+  height: 46px;
   width: auto;
   display: block;
 }
 .stamp {
-  width: 104px;
-  height: 104px;
+  width: 86px;
+  height: 86px;
   border-radius: 50%;
   background: var(--merah);
   color: var(--krem);
@@ -79,74 +77,77 @@ html, body {
   align-items: center;
   justify-content: center;
   transform: rotate(-8deg);
-  box-shadow: 0 0 0 6px var(--hitam), 0 0 0 8px var(--emas);
+  box-shadow: 0 0 0 5px var(--hitam), 0 0 0 7px var(--emas);
   flex-shrink: 0;
 }
 .stamp small {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: .2em;
+  letter-spacing: .18em;
   text-transform: uppercase;
 }
 .stamp b {
   font-family: var(--display);
-  font-size: 34px;
+  font-size: 30px;
   line-height: .9;
-  letter-spacing: .04em;
+}
+.kicker-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 8px;
 }
 .dibuka {
   font-family: var(--display);
-  font-size: 42px;
-  letter-spacing: .08em;
+  font-size: 34px;
+  letter-spacing: .06em;
   color: var(--emas);
-  margin-bottom: 6px;
 }
 .open {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
-  letter-spacing: .22em;
+  letter-spacing: .16em;
   text-transform: uppercase;
   color: var(--krem);
   opacity: .82;
-  margin-bottom: 16px;
 }
 h1 {
-  font-size: 54px;
+  font-size: 44px;
   font-weight: 800;
   letter-spacing: -.04em;
   line-height: .95;
 }
 h1 .em { color: #ffd6b0; }
-.lead {
-  margin-top: 14px;
-  font-size: 26px;
+.about {
+  margin-top: 12px;
+  font-size: 24px;
   font-weight: 600;
-  line-height: 1.3;
-  color: rgba(245, 239, 224, .82);
-  max-width: 28ch;
+  line-height: 1.28;
+  color: rgba(245, 239, 224, .9);
+  max-width: 38ch;
 }
 
 .photo {
   position: relative;
   z-index: 2;
   width: 1080px;
-  height: 560px;
-  margin: 0 0 -36px;
+  height: 340px;
+  margin: 0 0 -28px;
   overflow: hidden;
   flex-shrink: 0;
 }
 .photo img {
   width: 1080px;
-  height: 560px;
+  height: 340px;
   object-fit: cover;
-  object-position: 48% 38%;
+  object-position: 48% 32%;
   display: block;
 }
 .photo::after {
   content: "";
   position: absolute;
   inset: auto 0 0;
-  height: 90px;
+  height: 72px;
   background: linear-gradient(180deg, transparent, var(--merah));
   pointer-events: none;
 }
@@ -154,27 +155,69 @@ h1 .em { color: #ffd6b0; }
 .bottom {
   flex: 1;
   background: var(--merah);
-  padding: 48px 48px 0;
+  padding: 36px 36px 0;
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
+.cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.box {
+  background: var(--krem);
+  color: var(--hitam);
+  padding: 16px 18px 14px;
+}
+.box h2 {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--merah);
+  margin-bottom: 10px;
+}
+.box ul {
+  list-style: none;
+}
+.box li {
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1.28;
+  padding: 5px 0 5px 22px;
+  position: relative;
+}
+.box li + li {
+  border-top: 1px solid rgba(26, 26, 26, .1);
+}
+.box li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 13px;
+  width: 10px;
+  height: 10px;
+  background: var(--merah);
+}
+
 .stats {
   display: flex;
-  gap: 14px;
+  gap: 10px;
   list-style: none;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 .stats li {
   flex: 1;
   background: rgba(255, 253, 248, .14);
   border: 1.5px solid rgba(245, 239, 224, .28);
-  padding: 14px 12px 12px;
+  padding: 8px 8px 7px;
   text-align: center;
 }
 .stats b {
   display: block;
-  font-size: 44px;
+  font-size: 30px;
   font-weight: 800;
   letter-spacing: -.04em;
   line-height: 1;
@@ -183,19 +226,24 @@ h1 .em { color: #ffd6b0; }
 }
 .stats span {
   display: block;
-  margin-top: 6px;
-  font-size: 16px;
+  margin-top: 3px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: .14em;
+  letter-spacing: .1em;
   text-transform: uppercase;
   color: rgba(245, 239, 224, .8);
 }
+.row-cta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
 .date {
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 700;
-  text-align: center;
-  margin-bottom: 16px;
   color: var(--krem);
+  flex: 1;
 }
 .date em {
   font-style: normal;
@@ -205,42 +253,43 @@ h1 .em { color: #ffd6b0; }
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 64px;
+  min-height: 52px;
+  padding: 0 22px;
   background: var(--krem);
   color: var(--merah-dark);
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 800;
-  letter-spacing: -.01em;
   border-radius: 8px;
+  white-space: nowrap;
 }
 .partners {
   margin-top: auto;
   background: var(--krem);
-  margin-left: -48px;
-  margin-right: -48px;
-  padding: 16px 48px 18px;
+  margin-left: -36px;
+  margin-right: -36px;
+  padding: 12px 36px 14px;
 }
 .partners p {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: .2em;
   text-transform: uppercase;
   color: var(--ink-mute);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .partner-row {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 22px;
 }
 .partner-row img {
-  height: 42px;
+  height: 38px;
   width: auto;
   display: block;
 }
 .partner-row .div {
   width: 1px;
-  height: 28px;
+  height: 26px;
   background: rgba(26, 26, 26, .18);
 }
 </style>
@@ -249,38 +298,65 @@ h1 .em { color: #ffd6b0; }
 <div id="artboard">
   <header class="top">
     <div class="brand-row">
-      <img src="../images/rise/brand/larise-light.webp" alt="LARISE" width="238" height="52">
+      <img src="../images/rise/brand/larise-light.webp" alt="LARISE" width="210" height="46">
       <div class="stamp" aria-label="Batch 1">
         <small>Batch</small>
         <b>1</b>
       </div>
     </div>
-    <p class="dibuka">DIBUKA</p>
-    <p class="open">Open recruitment · program wirausaha</p>
-    <h1>MULAI DARI <span class="em">NOL.</span><br>BANGKIT <span class="em">BERSAMA.</span></h1>
-    <p class="lead">2 bulan online. Mentor, praktek, teman seperjalanan.</p>
+    <div class="kicker-row">
+      <p class="dibuka">DIBUKA</p>
+      <p class="open">Open recruitment · program wirausaha</p>
+    </div>
+    <h1>MULAI DARI <span class="em">NOL.</span> BANGKIT <span class="em">BERSAMA.</span></h1>
+    <p class="about">Program wirausaha online 2 bulan untuk generasi muda. Tidak perlu pengalaman jualan — satu HP dan kemauan belajar cukup untuk mulai.</p>
   </header>
 
   <figure class="photo">
     <img src="../images/rise/photos/community.webp"
          alt="Lima generasi muda mengemas pesanan bersama sambil melihat satu ponsel"
-         width="1080" height="560">
+         width="1080" height="340">
   </figure>
 
   <footer class="bottom">
+    <div class="cols">
+      <section class="box">
+        <h2>Yang kamu pelajari</h2>
+        <ul>
+          <li>Pola pikir wirausaha dari nol</li>
+          <li>Riset produk dari data, bukan ikut-ikutan</li>
+          <li>Buka toko online sampai siap jualan</li>
+          <li>Pemasaran sampai pembeli pertama</li>
+          <li>Layani pesanan &amp; kelola keuangan</li>
+        </ul>
+      </section>
+      <section class="box">
+        <h2>Yang kamu dapatkan</h2>
+        <ul>
+          <li>16 sesi mentoring online (2× seminggu)</li>
+          <li>Praktek langsung, bukan cuma teori</li>
+          <li>Pakai platform LarisID untuk cari produk</li>
+          <li>Mentor + 19 teman seperjalanan</li>
+          <li>Satu kesempatan mencoba usaha nyata</li>
+        </ul>
+      </section>
+    </div>
     <ul class="stats">
       <li><b>20</b><span>Peserta</span></li>
       <li><b>16</b><span>Sesi</span></li>
       <li><b>2</b><span>Bulan</span></li>
+      <li><b>2 Sep</b><span>Mulai 2026</span></li>
     </ul>
-    <p class="date">Mulai <em>2 September 2026</em></p>
-    <p class="cta">Balas chat ini untuk daftar</p>
+    <div class="row-cta">
+      <p class="date">2 September – 28 Oktober 2026</p>
+      <p class="cta">Balas chat ini untuk daftar</p>
+    </div>
     <div class="partners">
       <p>Mitra</p>
       <div class="partner-row">
-        <img src="../images/brand/logo-horizontal-red.png" alt="LarisID" width="168" height="42">
+        <img src="../images/brand/logo-horizontal-red.png" alt="LarisID" width="152" height="38">
         <span class="div" aria-hidden="true"></span>
-        <img src="../images/rise/partners/delima-international.png" alt="Delima International" width="138" height="42">
+        <img src="../images/rise/partners/delima-international.png" alt="Delima International" width="125" height="38">
       </div>
     </div>
   </footer>

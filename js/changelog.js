@@ -20,7 +20,7 @@ window.LARIS_CHANGELOG = [
       },
       {
         text: 'Halaman Harga sekarang membandingkan LarisID dengan Tokpee, DataPinter, Kalodata, dan Shoptik \u2014 termasuk hal yang belum kami punya: ekspor Excel, data real-time, dan analitik kreator TikTok Shop.',
-        tech: 'Tabel 14 baris dengan harga yang dicek langsung di situs masing-masing pada 21 Agustus 2026 (Kalodata dari sumber pihak ketiga karena halaman harganya login-only). Kolom pertama sticky, tabel scroll horizontal di mobile.',
+        tech: 'Tabel 9 baris fitur dengan harga yang dicek langsung di situs masing-masing pada 21 Agustus 2026 (Kalodata dari sumber pihak ketiga karena halaman harganya login-only). Kolom pertama sticky, tabel scroll horizontal di mobile.',
       },
       {
         text: 'Selama masa Beta, setiap akun yang sudah masuk bisa mencari tanpa batas harian. Tidak perlu kartu kredit.',
