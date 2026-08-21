@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Review Pendaftar — LARIS RISE</title>
+<!-- Internal tool. Never indexed, never in sitemap.xml. -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#F5EFE0">
+<link rel="icon" type="image/png" href="/images/brand/appicon-red.png">
+<link rel="preload" as="font" type="font/woff2" href="/fonts/plus-jakarta-sans-latin.woff2" crossorigin>
+<link rel="stylesheet" href="/fonts/laris-fonts.css">
+<style>
+/* Same token block as the rest of the rz- system. */
+:root{
+  --merah:#B5202A;--merah-dark:#8E191F;--merah-tint:#F9EAE4;
+  --emas:#C9974B;--hitam:#1A1A1A;--krem:#F5EFE0;--putih:#FFFDF8;
+  --ink:#1A1A1A;--ink-mute:#5C5751;--hairline:rgba(26,26,26,.14);
+  --font:'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,sans-serif;
+  --pad:clamp(16px,4vw,32px);
+  --wrap:1360px;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--krem);color:var(--ink);font-family:var(--font);
+  font-size:1rem;line-height:1.6;-webkit-font-smoothing:antialiased}
+img{max-width:100%;height:auto;display:block}
+a{color:inherit}
+h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.03em;line-height:1.15}
+p{margin:0}
+.rz-wrap{max-width:var(--wrap);margin:0 auto;padding-inline:var(--pad)}
+.rz-kicker{font-size:.74rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--merah);margin:0 0 10px}
+.rz-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  min-height:52px;padding:0 26px;border-radius:8px;background:var(--merah);color:#fff;
+  font-weight:700;font-size:1rem;text-decoration:none;border:0;cursor:pointer;
+  transition:background .2s,transform .2s}
+.rz-btn:hover{background:var(--merah-dark)}
+.rz-btn:active{transform:translateY(1px)}
+.rz-btn--ghost{background:none;color:var(--ink);border:1.5px solid var(--hairline)}
+.rz-btn--ghost:hover{background:rgba(26,26,26,.05)}
+</style>
+<link rel="stylesheet" href="/styles/rise-form.css?v=20260821a">
+</head>
+<body>
+
+<main class="rza-shell">
+  <div class="rz-wrap">
+
+    <!-- Signed out / not a reviewer. Both server-enforced; this is only chrome. -->
+    <section class="rza-gate" id="rza-gate" hidden>
+      <p class="rz-kicker">LARIS RISE</p>
+      <h1 id="rza-gate-h">REVIEW PENDAFTAR</h1>
+      <p id="rza-gate-p">Masuk dengan akun Google kamu untuk melihat pendaftar LaRise.</p>
+      <button class="rz-btn" id="rza-signin" type="button">Masuk dengan Google</button>
+      <p style="margin-top:18px"><button class="rza-linkbtn" id="rza-signout-gate" type="button" hidden>Keluar dan ganti akun</button></p>
+    </section>
+
+    <!-- Board -->
+    <section id="rza-app" hidden>
+      <div class="rza-top">
+        <div>
+          <p class="rz-kicker">LaRise Batch 1</p>
+          <h1>Review pendaftar</h1>
+        </div>
+        <p class="rza-who">
+          <span id="rza-email"></span>
+          <button type="button" id="rza-signout">Keluar</button>
+        </p>
+      </div>
+
+      <div class="rza-tabs" role="tablist" aria-label="Tampilan">
+        <button class="rza-tab is-active" type="button" data-view="papan" role="tab" aria-selected="true">Papan</button>
+        <button class="rza-tab" type="button" data-view="daftar" role="tab" aria-selected="false">Daftar</button>
+      </div>
+
+      <div id="rza-board" class="rza-board"></div>
+
+      <div id="rza-listview" hidden>
+        <div class="rza-listwrap">
+          <table class="rza-list">
+            <thead>
+              <tr>
+                <th>Nama</th><th>WhatsApp</th><th>Kota</th>
+                <th>Jam/minggu</th><th>Skor</th><th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="rza-listbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<!-- Detail drawer -->
+<div class="rza-scrim" id="rza-scrim" hidden></div>
+<aside class="rza-drawer" id="rza-drawer" aria-labelledby="rza-dr-name" hidden>
+  <div class="rza-dr-h">
+    <div>
+      <h2 id="rza-dr-name">—</h2>
+      <p class="rza-who" id="rza-dr-sub"></p>
+    </div>
+    <button class="rza-dr-close" id="rza-dr-close" type="button" aria-label="Tutup">&times;</button>
+  </div>
+  <div class="rza-dr-b" id="rza-dr-body"></div>
+</aside>
+
+<!-- Notify confirmation. Nothing is ever sent without a click in here. -->
+<div class="rza-modal" id="rza-modal" role="dialog" aria-modal="true" aria-labelledby="rza-modal-h">
+  <div class="rza-modal-box">
+    <h3 id="rza-modal-h">Beri tahu kandidat ini?</h3>
+    <p id="rza-modal-p"></p>
+    <p class="rza-warn" id="rza-modal-warn" hidden></p>
+    <div class="rza-modal-acts">
+      <button class="rz-btn rz-btn--ghost" type="button" id="rza-modal-no">Nanti saja</button>
+      <button class="rz-btn" type="button" id="rza-modal-yes">Ya, kirim sekarang</button>
+    </div>
+  </div>
+</div>
+
+<div class="rza-toast" id="rza-toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
+<script src="/js/rise-admin.js?v=20260821a" defer></script>
+</body>
+</html>
