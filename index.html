@@ -197,6 +197,7 @@
 <link rel="stylesheet" href="/fonts/laris-fonts.css">
 <link rel="stylesheet" href="/styles/laris-tracker.css?v=20260821a">
 <link rel="stylesheet" href="/styles/laris-merdeka.css?v=20260816b">
+<link rel="stylesheet" href="/styles/cohort.css?v=20260821a">
 
 <style>
 :root {
@@ -2564,6 +2565,7 @@ body.view-deepdive .panel-inner,
 body.thread-wide .panel-inner { max-width: 1080px; }
 body.view-admin .panel { background: #F6F6F7; padding-top: 18px; padding-bottom: 40px; }
 body.view-admin .panel-inner { max-width: 1180px; }
+body.view-cohort .panel { background: #F5EFE0; padding-top: 18px; padding-bottom: 40px; }
 
 /* The tracker is a data table, not prose. The 720px reading measure that suits
    a chat thread squeezes the rollup columns into a narrow strip with the
@@ -4699,6 +4701,10 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
       Pantauan
     </button>
+    <button type="button" class="side-btn" id="btn-cohort" title="Kohort LarisRise">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Kohort
+    </button>
     <button type="button" class="side-btn" id="btn-supplier" style="display:none">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><path d="M8 7V5a2 2 0 0 0-4 0v2"/></svg>
       Cari Supplier
@@ -5576,6 +5582,143 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
         <div class="view" id="view-community">
           <div id="community-board-root"></div>
         </div>
+        <div class="view" id="view-cohort">
+          <div class="cohort-wrap">
+            <div id="cohort-status" class="cohort-muted" style="margin-bottom:10px;"></div>
+            <div id="cohort-student-wrap">
+              <div id="cohort-student-subtabs" class="cohort-subtabs" style="display:none;">
+                <button type="button" class="cohort-subtab active" data-cstab="ringkasan">Ringkasan</button>
+                <button type="button" class="cohort-subtab" data-cstab="feed">Feed</button>
+                <button type="button" class="cohort-subtab" data-cstab="rankings">Rankings</button>
+                <button type="button" class="cohort-subtab" data-cstab="chat">Chat</button>
+                <button type="button" class="cohort-subtab" data-cstab="jadwal">Jadwal</button>
+              </div>
+              <div id="cohort-student-panel-ringkasan">
+                <div class="cohort-grid">
+                  <div class="cohort-card">
+                    <h3>Kohort kamu</h3>
+                    <div id="cohort-student-info" class="cohort-muted">Memuat…</div>
+                    <div style="margin-top:12px;">
+                      <a id="cohort-wa-link" href="#" target="_blank" rel="noopener" class="cohort-btn" style="display:none;text-decoration:none;text-align:center;">Grup WhatsApp</a>
+                    </div>
+                  </div>
+                  <div class="cohort-card" id="cohort-toko-saya">
+                    <h3>Toko Saya</h3>
+                    <p class="cohort-muted">Memuat…</p>
+                  </div>
+                  <div class="cohort-card">
+                    <h3>Milestone</h3>
+                    <ul id="cohort-milestone-list" class="cohort-list"></ul>
+                  </div>
+                  <div class="cohort-card">
+                    <h3>Pengumuman mentor</h3>
+                    <ul id="cohort-announce-list" class="cohort-list"></ul>
+                  </div>
+                </div>
+                <div id="cohort-join-card" class="cohort-card" style="margin-top:14px;">
+                  <h3>Gabung kohort</h3>
+                  <p class="cohort-muted" style="margin-bottom:10px;">Masukkan kode undangan dari mentor kamu.</p>
+                  <input type="text" id="cohort-invite-input" class="cohort-input" placeholder="Kode undangan" autocomplete="off">
+                  <button type="button" class="cohort-btn" id="cohort-join-btn">Gabung</button>
+                  <div id="cohort-join-status" class="cohort-muted" style="margin-top:8px;"></div>
+                </div>
+              </div>
+              <div id="cohort-student-panel-feed" style="display:none;">
+                <div class="cohort-card">
+                  <h3>Feed komunitas</h3>
+                  <p class="cohort-muted" style="margin-bottom:10px;">Hanya anggota kohort yang melihat ini — bukan papan masukan publik.</p>
+                  <select id="cohort-post-kind" class="cohort-select">
+                    <option value="general">Umum</option>
+                    <option value="win">Menang</option>
+                    <option value="question">Pertanyaan</option>
+                    <option value="product_share">Produk</option>
+                  </select>
+                  <textarea id="cohort-post-body" class="cohort-input" rows="3" placeholder="Tulis ke feed kohort…"></textarea>
+                  <button type="button" class="cohort-btn" id="cohort-post-send">Kirim</button>
+                  <div id="cohort-feed-list" style="margin-top:16px;"></div>
+                </div>
+              </div>
+              <div id="cohort-student-panel-rankings" style="display:none;">
+                <div class="cohort-card">
+                  <h3>Papan peringkat <span class="cohort-terukur">terukur</span></h3>
+                  <div id="cohort-rank-chips" class="cohort-subtabs">
+                    <button type="button" class="cohort-subtab" data-board="aktivitas">Aktivitas</button>
+                    <button type="button" class="cohort-subtab active" data-board="produk">Produk</button>
+                    <button type="button" class="cohort-subtab" data-board="terjual">Terjual</button>
+                    <button type="button" class="cohort-subtab" data-board="ulasan">Ulasan</button>
+                    <button type="button" class="cohort-subtab" data-board="konsistensi">Konsistensi</button>
+                  </div>
+                  <p id="cohort-rankings-summary" class="cohort-muted"></p>
+                  <div id="cohort-rankings-board"></div>
+                </div>
+              </div>
+              <div id="cohort-student-panel-chat" style="display:none;">
+                <div class="cohort-card">
+                  <h3>Chat</h3>
+                  <p class="cohort-muted" style="margin-bottom:10px;">Obrolan kelas tetap di WhatsApp — tidak diduplikasi di sini.</p>
+                  <a id="cohort-chat-wa" class="cohort-btn" href="#" target="_blank" rel="noopener" style="display:none;text-decoration:none;">Buka grup WhatsApp</a>
+                  <p id="cohort-chat-wa-missing" class="cohort-muted" style="display:none;">Mentor belum memasang tautan grup.</p>
+                </div>
+              </div>
+              <div id="cohort-student-panel-jadwal" style="display:none;">
+                <div class="cohort-card">
+                  <h3>Jadwal sesi</h3>
+                  <div id="cohort-student-jadwal"></div>
+                </div>
+              </div>
+            </div>
+
+            <div id="cohort-mentor-wrap" style="display:none;margin-top:22px;">
+              <div id="cohort-mentor-subtabs" class="cohort-subtabs">
+                <button type="button" class="cohort-subtab active" data-cmtab="overview">Ringkasan</button>
+                <button type="button" class="cohort-subtab" data-cmtab="students">Siswa</button>
+                <button type="button" class="cohort-subtab" data-cmtab="report">Laporan</button>
+                <button type="button" class="cohort-subtab" data-cmtab="jadwal">Jadwal &amp; hadir</button>
+              </div>
+              <div id="cohort-mentor-panel-overview">
+                <div class="cohort-grid">
+                  <div class="cohort-card">
+                    <h3>Mentor</h3>
+                    <div id="cohort-mentor-summary" class="cohort-muted">—</div>
+                  </div>
+                  <div class="cohort-card">
+                    <h3>Pengumuman baru</h3>
+                    <input type="text" id="cohort-ann-title" class="cohort-input" placeholder="Judul">
+                    <textarea id="cohort-ann-body" class="cohort-input" rows="2" placeholder="Isi pengumuman"></textarea>
+                    <label class="cohort-muted" style="display:flex;gap:8px;align-items:center;margin:6px 0 10px;">
+                      <input type="checkbox" id="cohort-ann-wa" checked> Kirim juga ke WhatsApp siswa
+                    </label>
+                    <button type="button" class="cohort-btn" id="cohort-ann-send">Kirim</button>
+                    <div id="cohort-ann-status" class="cohort-muted" style="margin-top:8px;"></div>
+                  </div>
+                </div>
+              </div>
+              <div id="cohort-mentor-panel-students" style="display:none;">
+                <div class="cohort-help" id="cohort-perlu-bantuan" style="display:none;"></div>
+                <div class="cohort-card">
+                  <h3>Direktori &amp; kesehatan toko</h3>
+                  <p class="cohort-muted" style="margin-bottom:10px;">Loloskan toko supaya masuk papan (Day-0). Kecualikan jika bukan toko siswa.</p>
+                  <div id="cohort-roster-table"></div>
+                </div>
+              </div>
+              <div id="cohort-mentor-panel-report" style="display:none;">
+                <div class="cohort-card">
+                  <h3>Wins digest</h3>
+                  <p class="cohort-muted" style="margin-bottom:10px;">Satu ketuk merayakan di feed kohort saja — tidak ke papan masukan publik.</p>
+                  <div id="cohort-wins-digest"></div>
+                </div>
+              </div>
+              <div id="cohort-mentor-panel-jadwal" style="display:none;">
+                <div class="cohort-card">
+                  <h3>Absensi sesi</h3>
+                  <p class="cohort-muted" style="margin-bottom:10px;">Tandai Hadir / Izin / Absen setelah kelas. Zoom tidak dilacak otomatis.</p>
+                  <button type="button" class="cohort-btn secondary" id="cohort-wa-remind">Ingatkan sesi via WhatsApp</button>
+                  <div id="cohort-mentor-jadwal" style="margin-top:12px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="view" id="view-admin">
           <div class="adm-dash">
             <div class="adm-dash-head">
@@ -5752,6 +5895,12 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                   <option value="50">50</option>
                 </select>
               </div>
+            </section>
+
+            <section class="adm-card adm-winback-wrap">
+              <h3>LarisRise ops</h3>
+              <p class="dd-sub" style="margin:0 0 10px;">Crawl toko siswa, antrian verifikasi, dan flag anti-gaming. Bukan aktivitas kohort publik.</p>
+              <div id="adm-rise-ops" class="cohort-muted">Memuat…</div>
             </section>
 
             <section class="adm-card adm-winback-wrap">
@@ -6016,13 +6165,14 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script defer src="/js/gpt-dir-filters.js?v=20260808d"></script>
 <script defer src="/js/gpt-photo-analyze.js?v=20260808a"></script>
 <script defer src="/js/gpt-referral.js?v=20260808a"></script>
-<script defer src="/js/gpt-profile.js?v=20260815a"></script>
+<script defer src="/js/gpt-profile.js?v=20260821a"></script>
 <script defer src="/js/gpt-community-board.js?v=20260815c"></script>
+<script defer src="/js/laris-cohort.js?v=20260821a"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260812a"></script>
 <script defer src="/js/laris-mascot.js?v=20260812a"></script>
 <script src="/js/admin-map.js?v=20260812a" defer></script>
 <script defer src="/js/gpt-chat-memory.js?v=20260818a"></script>
-<script src="/js/gpt-app.js?v=20260821b" defer></script>
+<script src="/js/gpt-app.js?v=20260821c" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>
 </html>

@@ -1,0 +1,103 @@
+/* Kohort / LarisRise — sits on the current SPA (#view-cohort). */
+.view-cohort .panel { background: #F5EFE0; }
+#view-cohort { padding: 8px 0 40px; }
+.cohort-wrap { max-width: 920px; margin: 0 auto; padding: 0 16px; }
+.cohort-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 800px) { .cohort-grid { grid-template-columns: 1fr; } }
+.cohort-card {
+  background: #fff; border: 1px solid rgba(26,26,26,.12); border-radius: 12px;
+  padding: 16px 18px;
+}
+.cohort-card h3 {
+  font-size: .88rem; font-weight: 800; margin: 0 0 10px; letter-spacing: -.02em;
+}
+.cohort-muted { font-size: .72rem; color: #6B7280; line-height: 1.5; }
+.cohort-list { margin: 0; padding: 0; list-style: none; font-size: .78rem; color: #374151; }
+.cohort-list li {
+  padding: 8px 0; border-bottom: 1px solid #F3F4F6;
+  display: flex; justify-content: space-between; gap: 8px;
+}
+.cohort-input, .cohort-select {
+  width: 100%; border: 1.5px solid #E5E7EB; border-radius: 8px;
+  padding: 9px 12px; font-size: .82rem; font-family: inherit;
+  margin-bottom: 8px; box-sizing: border-box; background: #fff;
+}
+.cohort-btn {
+  padding: 9px 16px; border-radius: 8px; border: none;
+  background: #B5202A; color: #fff; font-size: .78rem; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+.cohort-btn.secondary { background: #F3F4F6; color: #374151; }
+.cohort-btn:disabled { opacity: .45; cursor: default; }
+.cohort-subtabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 14px; }
+.cohort-subtab {
+  padding: 7px 14px; border-radius: 999px; border: 1.5px solid #E5E7EB;
+  background: #fff; color: #374151; font-size: .72rem; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+.cohort-subtab.active { background: #B5202A; border-color: #B5202A; color: #fff; }
+.cohort-stat-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0 8px;
+}
+@media (max-width: 560px) { .cohort-stat-row { grid-template-columns: 1fr 1fr; } }
+.cohort-stat {
+  background: #F9FAFB; border-radius: 8px; padding: 10px; text-align: center;
+}
+.cohort-stat b {
+  display: block; font-size: 1.25rem; font-weight: 900; letter-spacing: -.03em;
+}
+.cohort-stat span {
+  font-size: .58rem; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: #9CA3AF;
+}
+.cohort-terukur {
+  display: inline-block; font-size: .58rem; font-weight: 800; letter-spacing: .04em;
+  text-transform: uppercase; color: #1A7A46; background: #ECFDF5;
+  border-radius: 4px; padding: 2px 6px; margin-left: 6px;
+}
+.cohort-rank-row {
+  display: flex; justify-content: space-between; gap: 10px; align-items: center;
+  padding: 8px 0; border-bottom: 1px solid #F3F4F6; font-size: .8rem;
+}
+.cohort-rank-row.is-me { background: #F9EAE4; margin: 0 -8px; padding: 8px; border-radius: 8px; border: none; }
+.cohort-feed-card {
+  border: 1px solid #F3F4F6; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px;
+}
+.cohort-feed-kind { font-size: .62rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #B5202A; margin-bottom: 4px; }
+.cohort-feed-body { font-size: .82rem; line-height: 1.5; }
+.cohort-feed-meta { font-size: .65rem; color: #9CA3AF; margin-top: 6px; }
+.cohort-help {
+  background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 10px;
+  padding: 12px 14px; margin-bottom: 14px;
+}
+.cohort-help h3 { margin: 0 0 8px; color: #9A3412; }
+.cohort-pill {
+  font-size: .58rem; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+  display: inline-block;
+}
+.cohort-table { width: 100%; border-collapse: collapse; font-size: .75rem; }
+.cohort-table th {
+  text-align: left; font-size: .62rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; color: #6B7280; padding: 8px 8px; border-bottom: 2px solid #F3F4F6;
+}
+.cohort-table td { padding: 8px; border-bottom: 1px solid #F3F4F6; vertical-align: middle; }
+.cohort-attend { display: flex; gap: 4px; }
+.cohort-attend button {
+  font-size: .6rem; font-weight: 700; padding: 4px 8px; border-radius: 6px;
+  border: 1px solid #E5E7EB; background: #fff; cursor: pointer; font-family: inherit;
+}
+.cohort-attend button.on-hadir { background: #ECFDF5; border-color: #A7F3D0; color: #047857; }
+.cohort-attend button.on-izin { background: #EFF6FF; border-color: #BFDBFE; color: #1D4ED8; }
+.cohort-attend button.on-absen { background: #FEF2F2; border-color: #FECACA; color: #B91C1C; }
+.cohort-dupe-row { display: flex; align-items: center; gap: 8px; font-size: .72rem; padding: 6px 0; }
+.cohort-badge-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: .68rem; font-weight: 700; background: #F9EAE4; color: #8E191F;
+  border-radius: 999px; padding: 3px 8px; margin: 2px;
+}
+.cohort-badge-chip.verified::after {
+  content: 'dari toko'; font-size: .52rem; font-weight: 800; letter-spacing: .04em;
+  text-transform: uppercase; color: #1A7A46; margin-left: 4px;
+}
+.cohort-empty { font-size: .78rem; color: #9CA3AF; padding: 12px 0; }
+#btn-cohort { display: none; }

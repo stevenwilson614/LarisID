@@ -179,6 +179,13 @@
   }
   .gpt-pv-city { font-size: 13px; color: #6B7280; margin-top: 2px; }
   .gpt-pv-bio { font-size: 14px; color: #374151; line-height: 1.5; margin: 16px 0 0; }
+  .gpt-pv-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; justify-content: center; }
+  .gpt-pv-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 12px; font-weight: 700; background: #F9EAE4; color: #8E191F;
+    border-radius: 999px; padding: 4px 10px;
+  }
+  .gpt-pv-badge-v { font-size: 9px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #1A7A46; }
   .gpt-pv-shopee { display: inline-block; margin-top: 10px; font-size: 13px; color: #1a73e8; text-decoration: none; }
   .gpt-pv-shopee:hover { text-decoration: underline; }
   .gpt-stores { margin: 8px 0 4px; padding: 14px 0 4px; border-top: 1px solid #F3F4F6; }
@@ -467,6 +474,21 @@
     return '';
   }
 
+  const VERIFIED_BADGE_KEYS = {
+    first_listing: 1, first_sale_verified: 1, first_review: 1,
+    lima_produk: 1, sepuluh_terjual: 1, dua_toko: 1,
+  };
+
+  function publicBadgesHtml(row) {
+    const badges = Array.isArray(row.badges) ? row.badges : [];
+    if (!badges.length) return '';
+    return '<div class="gpt-pv-badges">' + badges.map((b) => {
+      const verified = VERIFIED_BADGE_KEYS[b.key]
+        ? '<span class="gpt-pv-badge-v">dari toko</span>' : '';
+      return '<span class="gpt-pv-badge">' + esc(b.title || b.key) + verified + '</span>';
+    }).join('') + '</div>';
+  }
+
   /* ---------- inbox (basic: flat list, no threads/reply-in-place) ---------- */
 
   async function loadInbox() {
@@ -594,6 +616,7 @@
     const cityLine = row.city ? `<div class="gpt-pv-city">${esc(row.city)}</div>` : '';
     const bioLine = row.bio ? `<p class="gpt-pv-bio">${esc(row.bio)}</p>` : '';
     const storesLine = publicStoresHtml(row);
+    const badgesLine = publicBadgesHtml(row);
     const canMessage = viewerId && viewerId !== row.user_id;
     const html = modalHTML(
       `<button class="gpt-close js-close-btn">${closeSVG}</button>` +
@@ -602,7 +625,7 @@
         `<div class="gpt-pv-name">${name}${role}</div>` +
         cityLine +
       '</div>' +
-      bioLine + storesLine +
+      bioLine + storesLine + badgesLine +
       (canMessage
         ? '<div class="gpt-pv-msg" id="gpt-pv-msg-block">' +
             '<button type="button" class="gpt-btn js-msg-toggle" style="width:100%">Kirim Pesan</button>' +

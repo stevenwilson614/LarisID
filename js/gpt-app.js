@@ -2238,7 +2238,7 @@ let _historyPrimed = false;
 function setView(name, opts = {}) {
   const leaving = state.view;
   state.view = name;
-  ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'tentang', 'admin', 'tracker', 'community'].forEach(v => {
+  ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'tentang', 'admin', 'tracker', 'community', 'cohort'].forEach(v => {
     const el = $(`view-${v}`);
     if (el) el.classList.toggle('active', v === name);
     document.body.classList.toggle(`view-${v}`, v === name);
@@ -2257,8 +2257,8 @@ function setView(name, opts = {}) {
   // .composer-dock display rule) — everywhere else now hides the bar
   // entirely rather than just clearing its chips, so this list stops
   // mattering for those views, but chips are still irrelevant on them either way.
-  if (name === 'home' || name === 'landing' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker' || name === 'community') setComposerChips(null);
-  ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-faq', 'btn-tentang', 'btn-admin', 'btn-tracker', 'btn-community'].forEach(id => {
+  if (name === 'home' || name === 'landing' || name === 'directory' || name === 'harga' || name === 'admin' || name === 'tracker' || name === 'community' || name === 'cohort') setComposerChips(null);
+  ['btn-ask-laris', 'btn-produk', 'btn-harga', 'btn-faq', 'btn-tentang', 'btn-admin', 'btn-tracker', 'btn-community', 'btn-cohort'].forEach(id => {
     const el = $(id);
     if (!el) return;
     el.classList.toggle('active',
@@ -2269,7 +2269,8 @@ function setView(name, opts = {}) {
       (id === 'btn-tentang' && name === 'tentang') ||
       (id === 'btn-admin' && name === 'admin') ||
       (id === 'btn-tracker' && name === 'tracker') ||
-      (id === 'btn-community' && name === 'community'));
+      (id === 'btn-community' && name === 'community') ||
+      (id === 'btn-cohort' && name === 'cohort'));
   });
   if (leaving === 'tracker' && name !== 'tracker' && window.LarisTracker) {
     try { window.LarisTracker.close(); } catch (_) {}
@@ -2310,7 +2311,7 @@ function setView(name, opts = {}) {
   }
 }
 
-const HISTORY_VIEWS = ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'tentang', 'admin', 'tracker', 'community'];
+const HISTORY_VIEWS = ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'tentang', 'admin', 'tracker', 'community', 'cohort'];
 
 window.addEventListener('popstate', (e) => {
   const st = e.state;
@@ -2382,6 +2383,7 @@ async function loadCurrentAccess() {
   _accessState = { loaded: true, isAdmin };
   const btn = $('btn-admin');
   if (btn) btn.style.display = isAdmin ? '' : 'none';
+  try { void refreshCohortNav(); } catch (_) {}
   const un = $('user-name');
   if (un && un.textContent) {
     setHeaderName(un.textContent.replace(/\s*\(Admin\)\s*$/, ''));
@@ -2454,6 +2456,7 @@ function updateAccountUI() {
   }
   const btn = $('btn-admin');
   if (btn) btn.style.display = isPlatformAdmin() ? '' : 'none';
+  try { void refreshCohortNav(); } catch (_) {}
   try { supplierSyncNavVisibility(); } catch (_) {}
   renderChatList();
   renderAdminSampleBanner();
@@ -8756,6 +8759,40 @@ function openUserProfile(userId) {
       },
     },
   });
+}
+
+function mountLarisCohort() {
+  if (!window.LarisCohort) return;
+  window.LarisCohort.mount({
+    getSupabase: () => _supabase,
+    getUser: () => currentUser,
+    esc,
+    toast: showToast,
+    isAdmin: isPlatformAdmin,
+    openProfile: openUserProfile,
+  });
+}
+
+async function refreshCohortNav() {
+  mountLarisCohort();
+  const btn = $('btn-cohort');
+  if (!window.LarisCohort) {
+    if (btn) btn.style.display = 'none';
+    return;
+  }
+  try {
+    const show = await window.LarisCohort.initMembership();
+    if (btn) btn.style.display = show ? '' : 'none';
+  } catch (_) {
+    if (btn) btn.style.display = 'none';
+  }
+}
+
+function openCohortView() {
+  if (!currentUser) { openAuthModal('login', 'gpt_gate_cohort'); return; }
+  mountLarisCohort();
+  setView('cohort');
+  if (window.LarisCohort) void window.LarisCohort.open();
 }
 
 function openCommunityBoard() {
@@ -15164,6 +15201,7 @@ function openAdminView() {
   setView('admin');
   void loadAdminDirectory();
   gptMountWinback();
+  try { if (window.LarisCohort) void window.LarisCohort.renderOps(); } catch (_) {}
 }
 
 function adminSampleAsUser(row) {
@@ -15357,6 +15395,7 @@ function wireUi() {
     closeSidebar();
     openSidePanel('supplier', { via: 'sidebar' });
   });
+  $('btn-cohort')?.addEventListener('click', () => { openCohortView(); });
   $('btn-community')?.addEventListener('click', () => { openCommunityBoard(); });
   $('btn-harga')?.addEventListener('click', () => setView('harga'));
   $('btn-faq')?.addEventListener('click', () => setView('faq'));
@@ -15488,6 +15527,7 @@ async function boot() {
 
   if (typeof ensureSupabase === 'function') await ensureSupabase();
   await initSupabase();
+  try { mountLarisCohort(); void refreshCohortNav(); } catch (_) {}
   // Fire-and-forget: warms the Produk page's instant-open assortment so it's
   // usually ready before the user ever clicks Produk (see warmDirInstantPool).
   void warmDirInstantPool();
