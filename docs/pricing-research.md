@@ -2,13 +2,17 @@
 
 > **⚠️ SUPERSEDED — historical document. Do NOT act on the paid-pricing recommendations below.**
 >
-> This report was written in **May 2026** when LarisID still had paid credit packs. As of **June 2026, LarisID is 100% free.** All paid packs (Starter/Growth), the per-credit price, and the `crBuy()` purchase stub were **removed**; free monthly credits were raised from **5 to 20/month** (earn-only model). See commit `68dea63` ("Make LarisID 100% free…") and `supabase/migrations/20260605120000_monthly_credits_20_no_payment.sql`.
+> This report was written in **May 2026** when LarisID still had paid credit packs. In **June 2026** all paid packs (Starter/Growth), the per-credit price, and the `crBuy()` purchase stub were **removed** in favour of a 100%-free, earn-only model — commit `68dea63` and `supabase/migrations/20260605120000_monthly_credits_20_no_payment.sql`.
 >
-> The original paid-pack analysis (§§2–5 below) is kept **for historical reference only** and is **no longer the recommendation**. The genuinely still-useful part of this document is the **competitor market intelligence in §1** — that remains accurate and worth keeping. See **§A. Current model (June 2026)** immediately below for what's actually live.
+> **As of August 2026 the model is freemium again, and §A below is also out of date.** Live pricing is three tiers: **Free** (Rp 0 forever — 10 Deep Dives/day, 5 products & 3 stores tracked), **Laris Pro** (Rp 149.000/month, currently **Rp 0 for everyone during the Beta** — unlimited Deep Dive, 40 products & 20 stores), and **Laris Business** (Rp 399.000/month, coming after the Beta). The Beta switch is `public._beta_unlimited()` plus `BETA_UNLIMITED` in `js/gpt-app.js`. Source of truth for the numbers is `/harga/`; see `supabase/migrations/20260821120000_beta_unlimited_and_tracking_caps.sql`.
+>
+> Note that this reversal does **not** revive the recommendations in §§2–5: the shipped model is a monthly subscription with a permanent free tier, not the credit/token packs analysed below.
+>
+> The original paid-pack analysis (§§2–5 below) is kept **for historical reference only** and is **no longer the recommendation**. The genuinely still-useful part of this document is the **competitor market intelligence in §1** — that remains accurate and worth keeping. **§A. Current model (June 2026)** below is likewise historical now; see `/harga/` for what is actually live.
 
 *Research report. No application code changed by this report. Read [MISSION.md](../MISSION.md) before acting on any of this.*
 
-*Original date: May 2026. Author: research pass (Claude). Superseded: June 2026.*
+*Original date: May 2026. Author: research pass (Claude). Superseded: June 2026; superseded again August 2026 (Beta freemium).*
 
 ---
 

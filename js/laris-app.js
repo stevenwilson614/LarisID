@@ -2720,7 +2720,7 @@ function renderAuthModal() {
   el = document.getElementById('auth-tabs-wrap'); if(el) el.style.display = m==='reset'?'none':'';
   if(m !== 'reset') _authTabSwitch('email');
   el = document.getElementById('auth-title');      if(el) el.textContent = m==='reset'?'Reset Password':m==='signup'?'Buat Akun Gratis':'Masuk ke LarisID';
-  el = document.getElementById('auth-subtitle');   if(el) el.textContent = m==='reset'?'Masukkan email kamu dan kami kirim link reset.':m==='signup'?'Paling cepat: lanjutkan dengan Google. Gratis 3 deep dive tiap hari.':'Login untuk melihat produk trending & simpan favorit kamu';
+  el = document.getElementById('auth-subtitle');   if(el) el.textContent = m==='reset'?'Masukkan email kamu dan kami kirim link reset.':m==='signup'?'Paling cepat: lanjutkan dengan Google. Semua fitur Pro gratis selama Beta.':'Login untuk melihat produk trending & simpan favorit kamu';
   el = document.getElementById('auth-submit-btn'); if(el) el.textContent = m==='reset'?'Kirim Link Reset':m==='signup'?'Daftar dengan Email':'Masuk';
   el = document.getElementById('auth-toggle-text');if(el) el.innerHTML = m==='reset'?'<a onclick="_authMode=\'login\';renderAuthModal()">Kembali ke Login</a>':m==='signup'?'Sudah punya akun? <a onclick="_authMode=\'login\';renderAuthModal()">Masuk</a>':'Belum punya akun? <a onclick="_authMode=\'signup\';renderAuthModal()">Daftar</a>';
   el = document.getElementById('auth-name-wrap');  if(el) el.style.display = m==='signup'?'':'none';
@@ -4953,12 +4953,12 @@ function crCopyRefLink() {
   if (btn) { const t = btn.textContent; btn.textContent = 'Tersalin!'; setTimeout(() => { btn.textContent = t; }, 1500); }
 }
 function crShareRefWA() {
-  const msg = `Aku pakai LarisID buat riset produk Shopee — 100% gratis. Daftar lewat link aku ya: ${crRefUrl()}`;
+  const msg = `Aku pakai LarisID buat riset produk Shopee — lagi gratis semua fiturnya selama Beta. Daftar lewat link aku ya: ${crRefUrl()}`;
   window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener');
 }
 function crShareRefEmail() {
   const subj = 'Coba LarisID — riset produk Shopee gratis';
-  const body = `Hai! Aku pakai LarisID buat riset produk Shopee, 100% gratis. Daftar lewat link aku ya:\n\n${crRefUrl()}`;
+  const body = `Hai! Aku pakai LarisID buat riset produk Shopee, lagi gratis semua fiturnya selama Beta. Daftar lewat link aku ya:\n\n${crRefUrl()}`;
   window.location.href = `mailto:?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
 }
 
@@ -5107,7 +5107,7 @@ async function _refMaybeGoodDiveNudge() {
 function _refDiveShareWA() {
   document.getElementById('ref-dive-nudge')?.remove();
   void logUserEvent('referral_nudge_share', { trigger: 'good_deepdive', channel: 'wa' });
-  const msg = `Aku lagi riset produk jualan di LarisID — datanya asli Shopee dan 100% gratis. Daftar lewat link aku ya: ${crRefUrl()}`;
+  const msg = `Aku lagi riset produk jualan di LarisID — datanya asli Shopee dan lagi gratis semua fiturnya selama Beta. Daftar lewat link aku ya: ${crRefUrl()}`;
   window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener');
 }
 
@@ -23629,7 +23629,7 @@ const DASHBOARD_TOUR_STEPS = [
   {
     sel: '#dash-nav-credits',
     title: 'Pahami Jatah Harianmu',
-    body: 'Setiap hari kamu dapat 3 deep dive dan 5 poin AI, gratis. Satu deep dive membuka semua data produk itu selama 7 hari. Tambah jatah lewat Extension atau ajak teman.',
+    body: 'Selama Beta, Deep Dive tidak dibatasi untuk akun yang sudah masuk. Setelah Beta, paket Free memberi 10 Deep Dive per hari (sekali buka = akses 7 hari). Tambah jatah Free lewat Extension atau ajak teman.',
     pos: 'right',
     onNext: () => switchDashView('credits'),
   },

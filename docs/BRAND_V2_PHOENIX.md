@@ -218,10 +218,10 @@ sheet artwork or gold PJS caps — not Protest Revolution.
 
 | Line | Context |
 |------|---------|
-| "Riset Produk Shopee. 100% Gratis." | functional tagline — SEO, ads (kept from v1) |
+| "Riset Produk Shopee. Gratis Selama Beta." | functional tagline — SEO, ads (v1 said "100% Gratis"; retired Aug 2026 when the three-tier pricing shipped) |
 | "Dari penjual, untuk penjual." | THE brand tagline (on the sheet, locked) |
 | "Data bukan cuma milik yang punya modal." | posters, campaign |
-| "Kompetitor bayar 300rb/bulan. Kita? Gratis." | comparison |
+| "Kompetitor bayar 300rb/bulan. Kita? Setengahnya — dan gratis selama Beta." | comparison |
 | "Tahu produk mana yang laris sebelum modal keluar." | educational (kept from v1) |
 
 Manifesto (canonical, for a future /manifesto page and campaign posters — pair with

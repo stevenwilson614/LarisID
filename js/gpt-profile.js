@@ -16,6 +16,15 @@
   let statusEl = null;
   let onSignOut = null;
   let onProfileChanged = null;
+  let storeLinks = [];
+
+  const STORE_PLATFORMS = {
+    shopee: 'Shopee',
+    tokopedia: 'Tokopedia',
+    tiktok_shop: 'TikTok Shop',
+    lazada: 'Lazada',
+    blibli: 'Blibli',
+  };
 
   const closeSVG = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
   const cameraSVG = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>';
@@ -172,6 +181,23 @@
   .gpt-pv-bio { font-size: 14px; color: #374151; line-height: 1.5; margin: 16px 0 0; }
   .gpt-pv-shopee { display: inline-block; margin-top: 10px; font-size: 13px; color: #1a73e8; text-decoration: none; }
   .gpt-pv-shopee:hover { text-decoration: underline; }
+  .gpt-stores { margin: 8px 0 4px; padding: 14px 0 4px; border-top: 1px solid #F3F4F6; }
+  .gpt-stores-h { font-size: 14px; font-weight: 700; color: #111; margin: 0 0 4px; }
+  .gpt-stores-sub { font-size: 12px; color: #9CA3AF; margin: 0 0 10px; line-height: 1.4; }
+  .gpt-store-list { display: flex; flex-direction: column; gap: 8px; margin: 0 0 10px; }
+  .gpt-store-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: #F9FAFB; border-radius: 10px; }
+  .gpt-store-plat { flex-shrink: 0; font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #B5202A; background: #F9EAE4; padding: 3px 7px; border-radius: 999px; }
+  .gpt-store-url { flex: 1; min-width: 0; font-size: 12px; color: #374151; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gpt-store-url:hover { text-decoration: underline; }
+  .gpt-store-del { flex-shrink: 0; border: 0; background: none; color: #9CA3AF; font-size: 12px; font-weight: 700; cursor: pointer; padding: 4px; }
+  .gpt-store-del:hover { color: #C0392B; }
+  .gpt-store-empty { font-size: 12px; color: #9CA3AF; margin: 0 0 10px; }
+  .gpt-store-add { display: flex; gap: 8px; }
+  .gpt-store-add input { flex: 1; min-width: 0; padding: 8px 12px; border: 1px solid #E5E7EB; border-radius: 8px; font-size: 13px; }
+  .gpt-store-add input:focus { outline: none; border-color: #111; }
+  .gpt-store-add button { flex-shrink: 0; border: 0; background: #111; color: #fff; border-radius: 8px; padding: 8px 12px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .gpt-pv-stores { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
+  .gpt-pv-store { font-size: 12px; font-weight: 700; color: #B5202A; text-decoration: none; background: #F9EAE4; padding: 5px 10px; border-radius: 999px; }
   .gpt-pv-msg { margin-top: 20px; }
   .gpt-pv-msg-form { margin-top: 10px; }
   .gpt-pv-msg-form textarea { width: 100%; box-sizing: border-box; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; resize: vertical; font: inherit; }
@@ -273,7 +299,6 @@
     const display_name = root.querySelector('.js-display-name').value.trim();
     const public_whatsapp = root.querySelector('.js-whatsapp').value.trim();
     const public_email = root.querySelector('.js-email').value.trim();
-    const public_shopee_url = root.querySelector('.js-shopee').value.trim();
     const bio = root.querySelector('.js-bio').value.trim();
 
     const payload = {
@@ -281,7 +306,6 @@
       display_name: display_name || null,
       public_whatsapp: public_whatsapp || null,
       public_email: public_email || null,
-      public_shopee_url: public_shopee_url || null,
       bio: bio || null,
       is_public: true,
       headshot_url: currentRow.headshot_url || null,
@@ -331,6 +355,116 @@
       const closeBtn = getRoot().querySelector('.js-close-btn');
       if (closeBtn) closeBtn.addEventListener('click', close);
     }
+  }
+
+  function rpcErrorMessage(err) {
+    const raw = (err && (err.message || err.details || err.hint)) || '';
+    return raw.replace(/^.*error:\s*/i, '').replace(/\s+$/, '') || 'Terjadi kesalahan. Coba lagi.';
+  }
+
+  async function loadStores() {
+    storeLinks = [];
+    if (!supabase || !userId) return;
+    try {
+      const { data, error } = await supabase
+        .from('student_account')
+        .select('id,platform,handle,url')
+        .eq('student_id', userId)
+        .eq('kind', 'shop')
+        .eq('active', true)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      storeLinks = data || [];
+    } catch (err) {
+      storeLinks = [];
+    }
+    renderStoreList();
+  }
+
+  function renderStoreList() {
+    const root = getRoot();
+    const list = root.querySelector('#gpt-store-list');
+    const empty = root.querySelector('#gpt-store-empty');
+    if (!list) return;
+    if (!storeLinks.length) {
+      list.innerHTML = '';
+      if (empty) empty.style.display = 'block';
+      return;
+    }
+    if (empty) empty.style.display = 'none';
+    list.innerHTML = storeLinks.map((s) => {
+      const label = STORE_PLATFORMS[s.platform] || s.platform;
+      const href = esc(s.url || '');
+      const shown = esc(s.handle || s.url || '');
+      return '<div class="gpt-store-item">' +
+        '<span class="gpt-store-plat">' + esc(label) + '</span>' +
+        '<a class="gpt-store-url" href="' + href + '" target="_blank" rel="noopener noreferrer">' + shown + '</a>' +
+        '<button type="button" class="gpt-store-del js-store-del" data-id="' + esc(s.id) + '">Hapus</button>' +
+        '</div>';
+    }).join('');
+    list.querySelectorAll('.js-store-del').forEach((btn) => {
+      btn.addEventListener('click', () => { void unlinkStore(btn.getAttribute('data-id')); });
+    });
+  }
+
+  async function linkStore() {
+    const root = getRoot();
+    const input = root.querySelector('.js-store-url');
+    const url = (input && input.value || '').trim();
+    if (!url) { showStatus('Tempel tautan tokomu dulu.', 'error'); return; }
+    showStatus('Menyimpan toko...', 'info');
+    try {
+      const { error } = await supabase.rpc('ssis_link_shop', { p_url: url });
+      if (error) throw error;
+      if (input) input.value = '';
+      showStatus('Toko tersimpan.', 'success');
+      if (toast) toast('Toko tersimpan.');
+      await loadStores();
+    } catch (err) {
+      showStatus(rpcErrorMessage(err), 'error');
+    }
+  }
+
+  async function unlinkStore(id) {
+    if (!id) return;
+    showStatus('Menghapus toko...', 'info');
+    try {
+      const { error } = await supabase.rpc('ssis_unlink_shop', { p_id: id });
+      if (error) throw error;
+      showStatus('Toko dihapus.', 'success');
+      await loadStores();
+    } catch (err) {
+      showStatus(rpcErrorMessage(err), 'error');
+    }
+  }
+
+  function storesEditorHtml() {
+    return '<div class="gpt-stores">' +
+      '<p class="gpt-stores-h">Toko marketplace</p>' +
+      '<p class="gpt-stores-sub">Tempel tautan toko Shopee, Tokopedia, TikTok Shop, Lazada, atau Blibli. Boleh lebih dari satu — ini yang dipakai program LARISE untuk mengikuti tokomu.</p>' +
+      '<div id="gpt-store-list" class="gpt-store-list"></div>' +
+      '<p id="gpt-store-empty" class="gpt-store-empty">Belum ada toko. Tempel tautannya di bawah.</p>' +
+      '<div class="gpt-store-add">' +
+        '<input type="url" class="js-store-url" maxlength="400" placeholder="https://shopee.co.id/namatoko" enterkeyhint="done">' +
+        '<button type="button" class="js-store-add">Tambah</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function publicStoresHtml(row) {
+    const links = Array.isArray(row.store_links) ? row.store_links : [];
+    if (links.length) {
+      return '<div class="gpt-pv-stores">' + links.map((s) => {
+        const label = STORE_PLATFORMS[s.platform] || s.platform;
+        return '<a class="gpt-pv-store" href="' + esc(s.url || '#') + '" target="_blank" rel="noopener noreferrer">' +
+          esc(label) + (s.handle ? ' · ' + esc(s.handle) : '') + '</a>';
+      }).join('') + '</div>';
+    }
+    if (row.shopee_store_url) {
+      return '<a class="gpt-pv-shopee" href="' + esc(row.shopee_store_url) + '" target="_blank" rel="noopener noreferrer">' +
+        esc(row.shopee_store_name || 'Toko Shopee') + '</a>';
+    }
+    return '';
   }
 
   /* ---------- inbox (basic: flat list, no threads/reply-in-place) ---------- */
@@ -384,9 +518,9 @@
         rowHtml('name', 'Nama tampilan', '<input type="text" class="gpt-row-input js-display-name" maxlength="80" placeholder="Nama kamu">') +
         rowHtml('whatsapp', 'WhatsApp (publik)', '<input type="text" class="gpt-row-input js-whatsapp" maxlength="32" placeholder="+62…">') +
         rowHtml('email', 'Email (publik)', '<input type="email" class="gpt-row-input js-email" maxlength="120" placeholder="email@contoh.com">') +
-        rowHtml('shopee', 'Toko Shopee (URL)', '<input type="url" class="gpt-row-input js-shopee" maxlength="200" placeholder="Belum ditambahkan">') +
         rowHtml('bio', 'Bio', '<textarea class="gpt-row-input js-bio" rows="2" maxlength="280" placeholder="Ceritakan sedikit tentang kamu"></textarea>') +
       '</div>' +
+      storesEditorHtml() +
       '<div class="gpt-actions"><button type="button" class="gpt-btn js-save-btn">Simpan Perubahan</button></div>' +
       '<div class="gpt-status js-status"></div>' +
       `<p class="gpt-disclaimer">${lockSVG}Informasi Anda aman dan hanya digunakan sesuai pengaturan profil.</p>` +
@@ -406,7 +540,6 @@
 
     root.querySelector('.js-display-name').value = currentRow.display_name || '';
     root.querySelector('.js-whatsapp').value = currentRow.public_whatsapp || '';
-    root.querySelector('.js-shopee').value = currentRow.public_shopee_url || '';
 
     let emailValue = currentRow.public_email;
     if (!emailValue && userEmail) emailValue = userEmail;
@@ -432,6 +565,11 @@
     setupUpload(fileInput);
 
     loadInbox();
+    void loadStores();
+    root.querySelector('.js-store-add')?.addEventListener('click', () => { void linkStore(); });
+    root.querySelector('.js-store-url')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); void linkStore(); }
+    });
 
     root.querySelector('.js-save-btn').addEventListener('click', saveProfile);
     const signOutBtn = root.querySelector('.js-signout-btn');
@@ -455,9 +593,7 @@
     const role = row.is_admin ? ' <span class="gpt-pv-role">Admin</span>' : '';
     const cityLine = row.city ? `<div class="gpt-pv-city">${esc(row.city)}</div>` : '';
     const bioLine = row.bio ? `<p class="gpt-pv-bio">${esc(row.bio)}</p>` : '';
-    const shopeeLine = row.shopee_store_url
-      ? `<a class="gpt-pv-shopee" href="${esc(row.shopee_store_url)}" target="_blank" rel="noopener noreferrer">${esc(row.shopee_store_name || 'Toko Shopee')}</a>`
-      : '';
+    const storesLine = publicStoresHtml(row);
     const canMessage = viewerId && viewerId !== row.user_id;
     const html = modalHTML(
       `<button class="gpt-close js-close-btn">${closeSVG}</button>` +
@@ -466,7 +602,7 @@
         `<div class="gpt-pv-name">${name}${role}</div>` +
         cityLine +
       '</div>' +
-      bioLine + shopeeLine +
+      bioLine + storesLine +
       (canMessage
         ? '<div class="gpt-pv-msg" id="gpt-pv-msg-block">' +
             '<button type="button" class="gpt-btn js-msg-toggle" style="width:100%">Kirim Pesan</button>' +

@@ -80,7 +80,7 @@ Lead with the breakout insight, not a generic "we miss you."
 > Pemenang rata-rata punya ~64 ulasan; yang gagal sering berhenti di 1.
 >
 > Di LarisID kamu bisa lihat angka ini per produk sebelum mulai jualan —
-> termasuk "1 dari sekian" peluang per kategori. Gratis, tanpa langganan.
+> termasuk "1 dari sekian" peluang per kategori. Gratis selama Beta, tanpa kartu kredit.
 >
 > Cek peluang di kategorimu: https://larisid.com
 >

@@ -1,7 +1,7 @@
 {
   "name": "LarisID — Riset Produk Shopee",
   "short_name": "LarisID",
-  "description": "Riset produk Shopee 100% gratis untuk seller Indonesia: tanya mau jualan apa, dapat jawaban dari data listing nyata.",
+  "description": "Riset produk Shopee untuk seller Indonesia: tanya mau jualan apa, dapat jawaban dari data listing nyata. Gratis selama Beta; paket Free selalu gratis.",
   "lang": "id",
   "start_url": "/",
   "scope": "/",

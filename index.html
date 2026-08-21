@@ -195,8 +195,7 @@
 <script src="/js/perf-loader.js?v=20260818b"></script>
 <link rel="preload" href="/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/fonts/laris-fonts.css">
-<link rel="stylesheet" href="/styles/daily-spin-wheel.css?v=20260730g">
-<link rel="stylesheet" href="/styles/laris-tracker.css?v=20260815b">
+<link rel="stylesheet" href="/styles/laris-tracker.css?v=20260821a">
 <link rel="stylesheet" href="/styles/laris-merdeka.css?v=20260816b">
 
 <style>
@@ -719,31 +718,6 @@ body.view-directory .panel {
 @keyframes usageGlowPulse {
   0%, 100% { box-shadow: 0 0 0 2px rgba(181,32,42,.12), 0 0 10px rgba(181,32,42,.2); }
   50% { box-shadow: 0 0 0 4px rgba(181,32,42,.22), 0 0 22px rgba(181,32,42,.45); }
-}
-.usage-spin-tip {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 8px);
-  transform: translateX(-50%) translateY(4px);
-  min-width: 220px;
-  max-width: min(320px, 70vw);
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: #1A1A1A;
-  color: #fff;
-  font-size: .72rem;
-  font-weight: 650;
-  line-height: 1.35;
-  box-shadow: 0 10px 28px rgba(0,0,0,.22);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .2s, transform .2s;
-  z-index: 40;
-  text-align: center;
-}
-.usage-spin-tip--show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
 }
 .usage-meta { display: none; }
 .usage-wrap {
@@ -5931,8 +5905,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </div>
 
-<div id="daily-spin-root" class="dsw-overlay" style="display:none;" aria-hidden="true"></div>
-
 <!-- Daily wall. Arm A shows the same earn options at its limit modal; keeping the
      two arms' earn mechanics identical is what makes the A/B contrast readable. -->
 <div class="modal-overlay" id="gpt-limit-modal">
@@ -5941,7 +5913,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
     <p class="nudge-sub" id="gpt-limit-sub">Jatah baru tersedia besok.</p>
     <div class="nudge-actions" style="flex-direction:column;">
       <a class="btn-primary" id="gpt-limit-ext" href="https://chromewebstore.google.com/detail/ldgcjbnecfnpbgenechgfbdagecnloae" target="_blank" rel="noopener" style="text-decoration:none;text-align:center;">Pasang Extension Chrome · tambah 3 per hari</a>
-      <button type="button" class="btn-ghost" id="gpt-limit-spin" style="width:100%;display:none;">Putar roda hadiah · bisa dapat tambahan</button>
       <div id="gpt-limit-referral" style="display:none;"></div>
       <button type="button" class="btn-ghost" id="gpt-limit-feedback" style="width:100%;">Kasih masukan ke Steven · +3 hari ini</button>
       <button type="button" class="btn-ghost" id="gpt-limit-close" style="width:100%;">Tutup</button>
@@ -6040,9 +6011,8 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 </aside>
 
 <script src="/js/laris-merdeka.js?v=20260816b" defer></script>
-<script src="/js/daily-spin-wheel.js?v=20260730g" defer></script>
-<script src="/js/laris-tracker.js?v=20260815b" defer></script>
-<script src="/js/changelog.js?v=20260808n" defer></script>
+<script src="/js/laris-tracker.js?v=20260821a" defer></script>
+<script src="/js/changelog.js?v=20260821a" defer></script>
 <script defer src="/js/gpt-dir-filters.js?v=20260808d"></script>
 <script defer src="/js/gpt-photo-analyze.js?v=20260808a"></script>
 <script defer src="/js/gpt-referral.js?v=20260808a"></script>
@@ -6052,7 +6022,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script defer src="/js/laris-mascot.js?v=20260812a"></script>
 <script src="/js/admin-map.js?v=20260812a" defer></script>
 <script defer src="/js/gpt-chat-memory.js?v=20260818a"></script>
-<script src="/js/gpt-app.js?v=20260821a" defer></script>
+<script src="/js/gpt-app.js?v=20260821b" defer></script>
 <script defer src="/js/winback-admin.js?v=20260808a"></script>
 </body>
 </html>

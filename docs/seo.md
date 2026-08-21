@@ -45,19 +45,23 @@ From `docs/pricing-research.md` (verify periodically):
 | **Datapinter** | ~Rp 299.000/mo | Closest feature-equivalent; subscription |
 | **Tokpee** | ~Rp 50.000/mo (annual) | Chrome extension; Shopee + Tokopedia; narrower |
 | **Shoptik** | Not published | Shopee research; promo-heavy |
-| **LarisID** | Rp 0 (100% gratis) | 20 free credits/mo + earn more free via extension; no subscription, no packs |
+| **LarisID** | Free Rp 0 forever; Pro Rp 149.000/mo (**Rp 0 during Beta**); Business Rp 399.000/mo, coming | Freemium. Free plan: 10 Deep Dives/day, 5 products & 3 stores tracked. Every Pro feature is open free while the Beta runs. |
 
 Tagline “kompetitor bayar 300rb/bulan” is accurate vs **Datapinter**, not Tokpee.
 
-Do **not** trash competitors; state trade-offs. Current public model is **100% gratis** (matches
-`llms.txt` + homepage schema): say so consistently. If pricing ever changes back to paid packs,
-update `llms.txt`, homepage JSON-LD, `/harga/`, and this doc **together** — inconsistent prices
-across pages confuse both search and AI.
+Do **not** trash competitors; state trade-offs. Current public model is **freemium, free during
+the Beta**: a permanent Rp 0 Free plan, Laris Pro at Rp 149.000/mo that costs Rp 0 while the Beta
+runs, and Laris Business at Rp 399.000/mo still to come (matches `llms.txt` + homepage schema).
+Say so consistently, and never claim "100% gratis selamanya" — only the Free plan is forever.
+When the Beta ends or pricing moves, update `llms.txt`, `llms-full.txt`, homepage JSON-LD,
+`/harga/`, `perbandingan/index.html`, `scripts/build-comparisons.mjs`, and this doc **together** —
+inconsistent prices across pages confuse both search and AI.
 
 ## Messaging rules
 
-- **Free tier (the whole product):** 20 credits/month, Finder, 7-day history, community, extension earn-credits
-- **More depth** (historical data, more Deep Dive / AI) comes from **earning more free credits** (extension), not paying — never gate honesty or basic viability truth
+- **Free plan (permanent):** Rp 0 forever — 10 Deep Dives/day, track 5 products & 3 stores, limited competitor analysis & Ask Laris AI. Finder / Discover, Produk directory, and `/riset/` stay open.
+- **During Beta:** every Laris Pro feature is open free to signed-in accounts (unlimited Deep Dive, track 40 products & 20 stores). Say "gratis selama Beta", never "100% gratis selamanya".
+- **More depth after Beta** (unlimited Deep Dive, higher tracking caps) comes from Laris Pro (Rp 149.000/mo) or Free-plan bonuses (Chrome extension +3/day, referrals +1/day up to +5) — never gate honesty or basic viability truth behind paywall
 - Avoid unverifiable social proof (e.g. fake member counts)
 
 ## Analytics (landing)

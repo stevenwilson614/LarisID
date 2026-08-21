@@ -196,7 +196,7 @@ Tiga hal berubah total sejak itu:
 Satu kartu = satu pasar: berapa penjual di dalamnya, omset per bulan, harga median, dan rentang harganya. Bukan lagi 30 listing yang isinya mirip semua.
 
 2. Pantauan Harian.
-Pilih sampai 5 keyword dan 3 toko. Kami scrape keyword kamu setiap pagi, jadi tiap hari kamu bisa lihat produk mana yang benar-benar bergerak.
+Pilih sampai 40 keyword dan 20 toko. Kami scrape keyword kamu setiap pagi, jadi tiap hari kamu bisa lihat produk mana yang benar-benar bergerak.
 
 3. Kategori dan kota dirapikan.
 Dari 84 nama kategori acak jadi 18 kategori bersih. Kotamu bisa diketik bebas - kalau kotamu belum ada datanya, kami pakai kota terdekat dan bilang kota mana yang dipakai.
@@ -220,7 +220,7 @@ Berhenti terima email: ${c.linkUnsub}`
     <p><strong>1. Cari produk sekarang menampilkan PASAR, bukan listing.</strong><br>
     Satu kartu = satu pasar: berapa penjual di dalamnya, omset per bulan, harga median, dan rentang harganya. Bukan lagi 30 listing yang isinya mirip semua.</p>
     <p><strong>2. Pantauan Harian.</strong><br>
-    Pilih sampai 5 keyword dan 3 toko. Kami scrape keyword kamu setiap pagi, jadi tiap hari kamu bisa lihat produk mana yang benar-benar bergerak.</p>
+    Pilih sampai 40 keyword dan 20 toko. Kami scrape keyword kamu setiap pagi, jadi tiap hari kamu bisa lihat produk mana yang benar-benar bergerak.</p>
     <p><strong>3. Kategori dan kota dirapikan.</strong><br>
     Dari 84 nama kategori acak jadi 18 kategori bersih. Kotamu bisa diketik bebas &mdash; kalau kotamu belum ada datanya, kami pakai kota terdekat dan bilang kota mana yang dipakai.</p>
     <p>Data terakhir masuk ${esc(c.tanggalData)}.</p>
@@ -346,9 +346,9 @@ ${c.kota ? '' : '    <p>Kami belum tahu kotamu, jadi ini angka nasional. Set kot
       const subject = c.nama ? `Akses penuhmu habis besok, ${c.nama}` : 'Akses penuhmu habis besok'
       const text = `${greet(c.nama)}
 
-Akses riset tanpa batasmu habis besok. Setelah itu kamu balik ke gratis 3 riset per hari - tetap cukup buat riset santai, dan tetap nggak bayar.
+Akses riset tanpa batasmu habis besok. Setelah itu kamu balik ke paket Free: 10 Deep Dive per hari - tetap cukup buat riset santai, dan tetap nggak bayar.
 
-Satu hal yang saya sarankan kamu lakukan sebelum habis: set up Pantauan Harian. Pilih sampai 5 keyword dan 3 toko yang mau kamu ikuti. Kami scrape tiap pagi dan kamu tinggal buka untuk lihat apa yang bergerak - ini nggak makan jatah harianmu.
+Satu hal yang saya sarankan kamu lakukan sebelum habis: set up Pantauan Harian. Pilih sampai 40 keyword dan 20 toko yang mau kamu ikuti. Kami scrape tiap pagi dan kamu tinggal buka untuk lihat apa yang bergerak - ini nggak makan jatah harianmu.
 
 Setup-nya satu ketukan: pilih kategori, kami isikan keyword yang paling ramai di sana.
 
@@ -361,8 +361,8 @@ Kalau nggak dibuka 2 minggu, pantauannya otomatis dijeda biar hemat - keyword da
 Berhenti terima email: ${c.linkUnsub}`
 
       const html = shell(`    <p>${esc(greet(c.nama))}</p>
-    <p>Akses riset tanpa batasmu habis besok. Setelah itu kamu balik ke gratis 3 riset per hari &mdash; tetap cukup buat riset santai, dan tetap nggak bayar.</p>
-    <p>Satu hal yang saya sarankan kamu lakukan sebelum habis: <strong>set up Pantauan Harian.</strong> Pilih sampai 5 keyword dan 3 toko yang mau kamu ikuti. Kami scrape tiap pagi dan kamu tinggal buka untuk lihat apa yang bergerak &mdash; ini nggak makan jatah harianmu.</p>
+    <p>Akses riset tanpa batasmu habis besok. Setelah itu kamu balik ke paket Free: 10 Deep Dive per hari &mdash; tetap cukup buat riset santai, dan tetap nggak bayar.</p>
+    <p>Satu hal yang saya sarankan kamu lakukan sebelum habis: <strong>set up Pantauan Harian.</strong> Pilih sampai 40 keyword dan 20 toko yang mau kamu ikuti. Kami scrape tiap pagi dan kamu tinggal buka untuk lihat apa yang bergerak &mdash; ini nggak makan jatah harianmu.</p>
     <p>Setup-nya satu ketukan: pilih kategori, kami isikan keyword yang paling ramai di sana.</p>
 ${ctaHtml('Atur pantauan', c.linkPantau)}
     <p>Kalau nggak dibuka 2 minggu, pantauannya otomatis dijeda biar hemat &mdash; keyword dan datamu tetap tersimpan dan jalan lagi begitu kamu buka.</p>

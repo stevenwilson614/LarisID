@@ -1706,6 +1706,14 @@ let _gptUsage = {
 };
 let _usageTicker = null;
 
+// Beta = Laris Pro for everyone: no daily search cap for signed-in accounts, so
+// the usage ring renders the same ∞ admins already get. Mirrors
+// public._beta_unlimited() in the database — flip BOTH to end the Beta.
+// Signed-out visitors are deliberately excluded (see refreshGptUsage): the
+// 10/day anon meter is the reason to register, and gpt_chats needs auth anyway.
+const BETA_UNLIMITED = true;
+function betaUnlimitedNow() { return BETA_UNLIMITED; }
+
 function merdekaUnlimitedNow() {
   try { return !!(window.LarisMerdeka && window.LarisMerdeka.isUnlimited && window.LarisMerdeka.isUnlimited()); }
   catch (_) { return false; }
@@ -1750,6 +1758,8 @@ function noteGptUsage(data) {
   if (onPass) _gptUsage.passUntil = data.pass_expires_at;
   if (data.merdeka) _gptUsage.merdeka = true;
   else if (data.merdeka === false) _gptUsage.merdeka = false;
+  if (data.beta) _gptUsage.beta = true;
+  else if (data.beta === false) _gptUsage.beta = false;
   if (data.unlimited && !onPass) {
     _gptUsage.unlimited = true;
   } else if (data.unlimited === false || onPass) {
@@ -1757,7 +1767,6 @@ function noteGptUsage(data) {
   }
   if (data.used != null) _gptUsage.used = Math.max(0, Number(data.used) || 0);
   if (data.limit != null) _gptUsage.limit = Math.max(1, Number(data.limit) || GPT_DAILY_LIMIT);
-  if (data.can_spin != null) _gptUsage.canSpin = data.can_spin;
   if (data.can_claim_feedback != null) _gptUsage.canClaimFeedback = data.can_claim_feedback;
   if (data.reset_at) {
     const t = data.reset_at instanceof Date ? data.reset_at : new Date(data.reset_at);
@@ -1766,97 +1775,17 @@ function noteGptUsage(data) {
   if (!_gptUsage.resetAt) _gptUsage.resetAt = wibMidnightReset();
   if (isPlatformAdmin()) _gptUsage.unlimited = true;
   renderGptUsage();
-  spinMaybeOffer();
 }
 
-// ── Daily spin (prize wheel) ──────────────────────────────────────────────
-// Offered after the 2nd search of the day, before the wall — research found the
-// limit is the LAST thing several users ever saw, so meeting them once already
-// blocked is too late. The bonus is shared with arm A: spin_daily_bonus() writes
-// daily_usage.bonus_dives, which raises both the dive cap and _gpt_chat_limit().
-let _spinOffered = false;
-const _spinPreviewAwards = [0, 1, 2, 5];
-function _spinPreviewPickAward() {
-  return _spinPreviewAwards[Math.floor(Math.random() * _spinPreviewAwards.length)];
-}
-
-function spinShow() {
-  const api = window.LarisDailySpin;
-  if (!api || typeof api.open !== 'function') return;
-  api.open({
-    hostId: 'daily-spin-root',
-    onSpin: async () => {
-      if (!_supabase) throw new Error('no_supabase');
-      const { data, error } = await _supabase.rpc('spin_daily_bonus');
-      if (error) throw error;
-      if (data && data.allowed === false) {
-        // Privileged/unlimited users still need a way to preview wheel visuals.
-        if (data.reason === 'unlimited' && (_gptUsage.unlimited || isPlatformAdmin())) {
-          return { allowed: true, award: _spinPreviewPickAward(), preview: true };
-        }
-        noteGptUsage({ can_spin: false });
-      }
-      return data;
-    },
-    onAwarded: (data) => {
-      if (data?.preview) {
-        void logUserEvent('spin_preview', { ui: 'gpt', award: data.award, source: 'unlimited' });
-        clarityEvt('spin_preview', { award: String(data.award) });
-        return;
-      }
-      const award = Number(data.award) || 0;
-      noteGptUsage({
-        can_spin: false,
-        limit: (_gptUsage.limit || GPT_DAILY_LIMIT) + award,
-      });
-      void logUserEvent('spin_awarded', { ui: 'gpt', award: data.award });
-      clarityEvt('spin_awarded', { award: String(data.award) });
-      try { gptUsageCelebrateSpin(award); } catch (_) {}
-    },
-    onCta: () => {
-      try {
-        const input = document.getElementById('composer-input');
-        input?.focus?.();
-      } catch (_) {}
-    },
-    onClose: () => {},
-  });
-  const root = document.getElementById('daily-spin-root');
-  if (root) root.setAttribute('aria-hidden', 'false');
-  void logUserEvent('spin_shown', { ui: 'gpt', used: _gptUsage.used });
-  clarityEvt('spin_shown', {});
-}
-
-function spinClose() {
-  try { window.LarisDailySpin?.close?.(); } catch (_) {}
-  const root = document.getElementById('daily-spin-root');
-  if (root) root.setAttribute('aria-hidden', 'true');
-}
-
-// Parity with arm A: the wheel is relief at the wall, not a mid-session popup.
-// The old `used === 2` trigger interrupted people who were not blocked (16 users
-// shown, 9 walled, 5 took a prize) and with the cap at 10 it would fire at 20%
-// usage. Only gptLimitHit() offers the wheel now. Kept as a no-op so existing
-// call sites stay valid.
-function spinMaybeOffer() { /* intentionally empty — wheel is offered at the wall only */ }
-
-function spinCanOffer() {
-  return !!(currentUser && !_gptUsage.unlimited && _gptUsage.canSpin !== false);
-}
-
-// gpt_new_chat returns used/limit but not the earned-bonus flags, so seed them
-// once from get_my_usage — otherwise a reload at used===2 re-offers a spin the
-// server will only reject as already_spun.
+// gpt_new_chat returns used/limit but not can_claim_feedback, so seed that flag
+// once from get_my_usage — otherwise a reload re-offers a feedback bonus the
+// server will only reject as already claimed.
 async function gptSeedUsageFlags() {
   if (!_supabase || !currentUser) return;
   try {
     const { data, error } = await _supabase.rpc('get_my_usage');
     if (!error && data) noteGptUsage(data);
   } catch (_) {}
-}
-
-async function spinDo() {
-  try { document.getElementById('dsw-hub')?.click(); } catch (_) {}
 }
 
 // ── Journey stats parity with arm A ───────────────────────────────────────
@@ -1917,10 +1846,8 @@ function gptLimitHit(opts = {}) {
     const reset = opts.resetAt || _gptUsage.resetAt || wibMidnightReset();
     sub.textContent = `Jatah baru tersedia dalam ${formatCountdown(reset)}.`;
   }
-  // Wheel first (instant), feedback second (asks for work). Both only here, at
-  // the wall — see spinMaybeOffer for why the proactive trigger was removed.
-  const spinBtn = document.getElementById('gpt-limit-spin');
-  if (spinBtn) spinBtn.style.display = spinCanOffer() ? '' : 'none';
+  // Feedback-for-bonus is the only relief offered here now; the prize wheel was
+  // removed when the Beta lifted the cap it existed to soften.
   const fbBtn = document.getElementById('gpt-limit-feedback');
   if (fbBtn) fbBtn.style.display = _gptUsage.canClaimFeedback === false ? 'none' : '';
   const refHost = document.getElementById('gpt-limit-referral');
@@ -2061,13 +1988,21 @@ function renderGptUsage() {
 
   if (unlimited) {
     numText = '∞';
-    title = _gptUsage.merdeka || merdekaUnlimitedNow()
-      ? 'Deep Dive Search tanpa batas sampai 17 Agustus 23.59 WIB'
-      : 'Akses tanpa batas';
-    popTitle = title;
-    popSub = _gptUsage.merdeka || merdekaUnlimitedNow()
-      ? 'Jatah 10 per hari dilonggarkan untuk HUT RI ke-81. Poin AI tetap ada batasnya.'
-      : 'Akun admin/leader tidak dibatasi jatah harian.';
+    // Beta is checked before merdeka: while it is on it is the reason almost
+    // every account sees ∞, and it is the one the seller can act on.
+    if (_gptUsage.beta || betaUnlimitedNow()) {
+      title = 'Deep Dive tanpa batas selama Beta';
+      popTitle = title;
+      popSub = 'Semua fitur Laris Pro terbuka gratis selama masa Beta.';
+    } else if (_gptUsage.merdeka || merdekaUnlimitedNow()) {
+      title = 'Deep Dive Search tanpa batas sampai 17 Agustus 23.59 WIB';
+      popTitle = title;
+      popSub = 'Jatah 10 per hari dilonggarkan untuk HUT RI ke-81. Poin AI tetap ada batasnya.';
+    } else {
+      title = 'Akses tanpa batas';
+      popTitle = title;
+      popSub = 'Akun admin/leader tidak dibatasi jatah harian.';
+    }
     tone = 'inf';
     dashOffset = 0;
   } else {
@@ -2109,41 +2044,6 @@ function renderGptUsage() {
       renderGptUsage();
     }, 60000);
   }
-}
-
-/** After a spin award: glow the ring, expand a short explainer, then collapse. */
-function gptUsageCelebrateSpin(award) {
-  const n = Number(award) || 0;
-  if (n <= 0) return;
-  renderGptUsage();
-  const pills = document.querySelectorAll('[data-usage-pill]');
-  pills.forEach(pill => {
-    pill.classList.add('usage-pill--glow');
-    const scope = pill.closest('[data-usage-wrap]') || pill.parentElement;
-    let tip = scope && scope.querySelector('.usage-spin-tip');
-    if (!tip && scope) {
-      tip = document.createElement('div');
-      tip.className = 'usage-spin-tip';
-      tip.setAttribute('role', 'status');
-      scope.appendChild(tip);
-    }
-    if (tip) {
-      tip.hidden = false;
-      tip.textContent = `Kamu dapat +${n} pencarian hari ini — ada batas harian.`;
-      tip.classList.add('usage-spin-tip--show');
-    }
-    try { pill.setAttribute('aria-expanded', 'true'); } catch (_) {}
-  });
-  setTimeout(() => {
-    document.querySelectorAll('[data-usage-pill]').forEach(pill => {
-      pill.classList.remove('usage-pill--glow');
-      try { pill.setAttribute('aria-expanded', 'false'); } catch (_) {}
-    });
-    document.querySelectorAll('.usage-spin-tip').forEach(tip => {
-      tip.classList.remove('usage-spin-tip--show');
-      tip.hidden = true;
-    });
-  }, 5500);
 }
 
 function setUsagePopOpen(pill, open) {
@@ -2239,11 +2139,20 @@ async function refreshGptUsage() {
   }
   if (!currentUser || !_supabase) {
     const used = getAnonSearches().count || 0;
-    noteGptUsage({ used, limit: GPT_DAILY_LIMIT, reset_at: resetAt, unlimited: false, merdeka: false });
+    noteGptUsage({ used, limit: GPT_DAILY_LIMIT, reset_at: resetAt, unlimited: false, merdeka: false, beta: false });
+    return;
+  }
+  // Beta sits AFTER the anon branch on purpose — unlike merdeka above, which
+  // ran first and so lifted the cap for signed-out visitors too. Signed-out
+  // users keep counting down from 10 and keep hitting the sign-in wall.
+  // It also has to live here rather than only in get_my_usage: this function
+  // runs from five call sites and would otherwise reset unlimited to false.
+  if (betaUnlimitedNow()) {
+    noteGptUsage({ used: 0, limit: GPT_DAILY_LIMIT, reset_at: resetAt, unlimited: true, merdeka: false, beta: true });
     return;
   }
   if (isPlatformAdmin()) {
-    noteGptUsage({ used: 0, limit: GPT_DAILY_LIMIT, reset_at: resetAt, unlimited: true, merdeka: false });
+    noteGptUsage({ used: 0, limit: GPT_DAILY_LIMIT, reset_at: resetAt, unlimited: true, merdeka: false, beta: false });
     return;
   }
   try {
@@ -3178,7 +3087,7 @@ async function initSupabase() {
   }
   // Log this visit (anonymous-friendly) for the admin landing-view metrics.
   _lidLogPageView();
-  // Seed can_spin / can_claim_feedback once the session has actually landed.
+  // Seed can_claim_feedback once the session has actually landed.
   void gptSeedUsageFlags();
   // funnelNoteActiveDay() is NOT called here: at boot the session is still
   // restoring, so currentUser is null and the event was silently dropped.
@@ -15568,7 +15477,6 @@ async function boot() {
   wireUi();
   initLandingAiDemo();
   document.getElementById('gpt-limit-close')?.addEventListener('click', gptLimitClose);
-  document.getElementById('gpt-limit-spin')?.addEventListener('click', () => { gptLimitClose(); spinShow(); });
   document.getElementById('gpt-limit-feedback')?.addEventListener('click', gptOpenFeedbackForBonus);
   document.getElementById('faq-feedback-cta')?.addEventListener('click', gptOpenFeedback);
   document.getElementById('gpt-limit-ext')?.addEventListener('click', gptLimitClose);

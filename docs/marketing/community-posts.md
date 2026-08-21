@@ -89,7 +89,8 @@ self-promo occasional. The "sebut kategori di komen" hook drives real replies.
 **Variant A — share tool (santai):**
 
 > Buat temen-temen yang lagi riset produk sebelum jualan: aku ikut bikin alat riset Shopee yang
-> **100% gratis** (tanpa langganan, tanpa kartu kredit). Bisa lihat estimasi penjualan, rentang
+> lagi **gratis semua fiturnya selama Beta** (tanpa kartu kredit), dan paket gratisnya tetap ada
+> setelah Beta. Bisa lihat estimasi penjualan, rentang
 > harga, rating kompetitor, sampai skor kelayakan produk.
 >
 > Jujur ya: angka **"terjual" itu estimasi**, bukan data resmi Shopee — jadi buat baca tren. Tapi

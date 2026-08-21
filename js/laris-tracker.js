@@ -2,7 +2,7 @@
  * laris-tracker.js — custom keyword + store tracking, shared by Site A
  * (laris-app) and Site B (gpt-app).
  *
- * Same split as daily-spin-wheel.js: this module owns every pixel and all screen
+ * Same split the daily-spin wheel used: this module owns every pixel and all screen
  * state; the host supplies an adapter with data callbacks and app-local services.
  * It never touches _supabase, currentUser, or any other app global — Site B is
  * IIFE-scoped and could not expose them anyway, so the boundary is enforced by
@@ -68,8 +68,11 @@
     resumed: false,
     keywords: [],
     stores: [],
-    keywordLimit: 5,
-    storeLimit: 3,
+    // Fallbacks only — get_my_tracking() is the authority and overwrites both.
+    // Kept in step with public.tracking_keyword_limit() / tracking_store_limit()
+    // so there is no flash of the old cap before the RPC lands.
+    keywordLimit: 40,
+    storeLimit: 20,
     metrics: ['units', 'omset', 'sku', 'toko'],   // display selection
     allMetrics: ['units', 'omset', 'sku', 'toko', 'harga', 'rating'],
     notifyChannels: [],               // 'email' | 'whatsapp'; empty = no alerts
@@ -122,6 +125,11 @@
     // Card-grid picker for the seeded (from a Deep Dive) keyword step — see
     // stepKeywordPickerHtml(). Only ever used when `seed` is set.
     pickerOpen: false, pickerQ: '', pickerRows: [], pickerBusy: false,
+    // How many keyword slots the wizard is currently showing. The real cap
+    // (S.keywordLimit) is 40 during the Beta, and rendering 40 empty boxes at
+    // a first-time seller is a wall, not an invitation. Start small and grow
+    // on demand; the `X / limit` counter still shows the true ceiling.
+    slotsShown: 0,
   };
   function resetDraft() {
     draft.cat = null; draft.picked = []; draft.stores = []; draft.busy = false;
@@ -133,6 +141,7 @@
     draft.sug = { slot: -1, q: '', rows: [], busy: false, kind: 'keyword', fromHistory: false };
     draft.storeCat = null; draft.storeCatRows = []; draft.storeCatBusy = false;
     draft.pickerOpen = false; draft.pickerQ = ''; draft.pickerRows = []; draft.pickerBusy = false;
+    draft.slotsShown = 0;
     _pickedImgTried = {};
     _pickedImgBusy = false;
     _pickedImgGen++;
@@ -1049,7 +1058,7 @@
     // already care about thinks in "products like this", not raw keyword text.
     // Editing an existing configuration (no seed) keeps the typeahead as-is.
     if (draft.seed) return stepKeywordPickerHtml();
-    var freeK = Math.max(0, S.keywordLimit - draft.picked.length);
+    var freeK = Math.max(0, kwSlotsShown() - draft.picked.length);
     var catSelect =
       '<label class="ltk-sr ltk-catsel">Kategori' +
         '<select class="ltk-select" data-ltk-catsel>' +
@@ -1102,6 +1111,7 @@
           '<span class="ltk-count">' + draft.picked.length + ' / ' + S.keywordLimit + '</span>' +
         '</div>' +
         '<ul class="ltk-slots">' + slots + '</ul>' +
+        kwMoreSlotsHtml() +
       '</div>' +
       '<p class="ltk-tips"><b>Tips:</b> keyword spesifik memberi hasil lebih akurat. ' +
       '"alat latihan tangan adjustable" lebih baik daripada "alat fitness".</p>';
@@ -1137,7 +1147,8 @@
     // glyph (seed arrived without image_url, or baseline hasn't resolved yet).
     loadPickedImages();
     var slots = [];
-    for (var i = 0; i < S.keywordLimit; i++) {
+    var shown = kwSlotsShown();
+    for (var i = 0; i < shown; i++) {
       var k = draft.picked[i];
       if (k) {
         var err = draft.errors[k.keyword];
@@ -1172,6 +1183,7 @@
           '<span class="ltk-count">' + draft.picked.length + ' / ' + S.keywordLimit + '</span>' +
         '</div>' +
         '<div class="ltk-pick-grid">' + slots.join('') + '</div>' +
+        kwMoreSlotsHtml() +
       '</div>' +
       pickerPanelHtml();
   }
@@ -1392,6 +1404,24 @@
         : '<button type="button" class="ltk-btn ltk-btn--primary" data-ltk-act="step-next"' +
           (blocked ? ' disabled' : '') + '>' + nextLabel + ' &rarr;</button>') +
       '</div>';
+  }
+
+  // Keyword slots the wizard renders right now: never more than the real cap,
+  // never fewer than one empty box past what is already picked, and at least
+  // KW_SLOTS_MIN so the step does not look empty. Grows via the "tambah lagi"
+  // control below.
+  var KW_SLOTS_MIN = 6;
+  var KW_SLOTS_STEP = 6;
+  function kwSlotsShown() {
+    return Math.min(
+      S.keywordLimit,
+      Math.max(KW_SLOTS_MIN, draft.picked.length + 1, draft.slotsShown || 0)
+    );
+  }
+  function kwMoreSlotsHtml() {
+    if (kwSlotsShown() >= S.keywordLimit) return '';
+    return '<button type="button" class="ltk-addrow" data-ltk-more-slots="1">' +
+      'Tambah slot lagi — kamu bisa pantau sampai ' + S.keywordLimit + '</button>';
   }
 
   function renderSetup() {
@@ -2674,8 +2704,8 @@
         if (tr) {
           S.keywords = tr.keywords || [];
           S.stores = tr.stores || [];
-          S.keywordLimit = tr.keyword_limit || 5;
-          S.storeLimit = tr.store_limit || 3;
+          S.keywordLimit = tr.keyword_limit || 40;
+          S.storeLimit = tr.store_limit || 20;
           if (tr.metrics && tr.metrics.length) S.metrics = tr.metrics;
           if (tr.all_metrics && tr.all_metrics.length) S.allMetrics = tr.all_metrics;
           S.notifyChannels = tr.notify_channels || [];
@@ -3171,6 +3201,13 @@
 
     var tab = t.closest && t.closest('[data-ltk-tab]');
     if (tab) { setTab(tab.getAttribute('data-ltk-tab')); return; }
+
+    var moreSlots = t.closest && t.closest('[data-ltk-more-slots]');
+    if (moreSlots) {
+      draft.slotsShown = Math.min(S.keywordLimit, kwSlotsShown() + KW_SLOTS_STEP);
+      renderSetup();
+      return;
+    }
 
     var plusSlot = t.closest && t.closest('.ltk-slot--type');
     if (plusSlot && !(t.closest && t.closest('[data-ltk-sugpick]'))) {

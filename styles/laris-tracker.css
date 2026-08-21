@@ -1,7 +1,7 @@
 /* =============================================================================
    laris-tracker.css — shared by Site A (laris-app) and Site B (gpt-app).
 
-   Same contract as daily-spin-wheel.css: every selector is namespaced .ltk-*,
+   Same contract the daily-spin wheel used: every selector is namespaced .ltk-*,
    there is NO :root block, and NO app design token is referenced. The two host
    apps disagree on both the names and the values of their tokens
    (A: --orange:#B5202A --border:#E5E7EB --r:12px
