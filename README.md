@@ -18,7 +18,7 @@ It defines **what we are building, why, how, who is involved, and what we will n
 | Shared static styles | `styles/seo-pages.css` |
 | Privacy policy | `privacy/` |
 | Supabase (DB, auth, edge functions) | `supabase/` — see [supabase/README.md](./supabase/README.md) |
-| Deploy | GitHub Actions → GitHub Pages (`larisid.com`) |
+| Deploy | Contabo Caddy (`larisid.com`) + Cloudflare Pages (`larisid.pages.dev`) — `bash scripts/deploy-static.sh` |
 | Sitemap | `sitemap.xml` (submit in Search Console) |
 
 ### Local docs (`docs/`)
@@ -38,7 +38,7 @@ LarisID is a **static site** — *not* an Astro or Next build, despite the `Lari
 
 - **App + landing:** `index.html` + `js/laris-app.js` (Supabase auth/data, dashboard). `js/lp-scroll-story.js` drives the GSAP scroll animation; `js/perf-loader.js` lazy-loads Supabase/Chart.js on demand.
 - **Generated content pages:** `/riset/`, `/perbandingan/`, `/panduan/` are produced by `scripts/build-seo-pages.mjs`, `build-comparisons.mjs`, and `build-guides.mjs` from the data in `scripts/seo-*.json`. **Edit the generators, not the generated HTML.**
-- **Deploy:** `.github/workflows/deploy-pages.yml` copies static files to GitHub Pages (`larisid.com`) and pings IndexNow. No build step — add any new root file (e.g. `manifest.webmanifest`) to the `cp` line or it won't ship.
+- **Deploy:** GitHub Pages is **retired**. Ship with `bash scripts/deploy-static.sh` (Contabo serves `larisid.com`; Cloudflare Pages mirrors at `larisid.pages.dev`). Keep `scripts/assemble-site.sh` in sync when adding top-level static dirs. CI workflow: `.github/workflows/deploy-pages.yml` (needs Cloudflare + Contabo secrets once GitHub Actions is available again).
 - **Images:** keep web assets as **WebP** (convert with Pillow / `cwebp`). Only files referenced by `index.html`, the generators, or CSS belong in `images/` — everything else is dead weight that ships on every deploy.
 - **Not committed / regenerable:** `node_modules/`, `dist/`, `.astro/`, `.venv-*/` are git-ignored build/tooling cruft — safe to delete locally.
 

@@ -13,7 +13,7 @@ tools; `sync_laris_data.sh` no longer writes that table.
 
 ## Apply (Contabo, once)
 
-Git push is not enough. The functions live on the self-host DB, not GitHub Pages.
+Git push is not enough. The functions live on the self-host DB, not the static hosts.
 
 ```bash
 cd ~/shopee_scraper
@@ -38,7 +38,7 @@ See [self-host.md](./self-host.md). The LarisID file
 `20260813140000_listing_weekly.sql` is the same read surface in this repo;
 applying `listing_weekly.sql` over SSH is what the site uses.
 
-The static JS ships via GitHub Pages on push to `main`. Until the SQL above
+The static JS ships via Contabo + Cloudflare Pages (`bash scripts/deploy-static.sh`). Until the SQL above
 lands, Deep Dive charts fall back to the old last-2-weeks average (still labelled
 perkiraan).
 

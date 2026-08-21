@@ -1,58 +1,55 @@
-# Deploy static site (index.html + images + CNAME) to GitHub Pages on every push to main.
-# Repo settings → Pages → Build and deployment → Source: **GitHub Actions** (required once).
+# Deploy static site to Contabo + Cloudflare Pages on every push to main.
+# GitHub Pages is retired (ToS / commercial SaaS). Live domain DNS points at Contabo;
+# Cloudflare Pages is the CDN mirror at larisid.pages.dev.
+#
+# Requires repo secrets (when GitHub account is restored):
+#   CLOUDFLARE_API_TOKEN  — Pages edit permission
+#   CLOUDFLARE_ACCOUNT_ID — 721a30ed6330104bd87c64e6024b240f
+#   CONTABO_SSH_KEY       — private key for root@84.247.147.205
+#
+# Until Actions can run, deploy from a laptop:
+#   bash scripts/deploy-static.sh
 
-name: Deploy GitHub Pages
+name: Deploy static site
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
 concurrency:
-  group: pages
+  group: static-deploy
   cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Assemble site
-        run: |
-          mkdir -p _site
-          cp index.html CNAME robots.txt sitemap.xml manifest.webmanifest llms.txt llms-full.txt BingSiteAuth.xml 55677968d982482614b7ad24398e836c.txt _site/
-          cp -r images styles js fonts privacy perbandingan harga tentang cara-kerja riset panduan kota kalkulator rise _site/
-          # The A/B ended 2026-08-10: the app moved from /gpt/ to /. Serve the
-          # same page at /gpt/ rather than redirecting — a browser still holding
-          # the cached old root would bounce / -> /gpt/ -> / forever against a
-          # redirect. Nothing here navigates back to /, so no loop can form, and
-          # OAuth returns that were already in flight to /gpt/ still resolve.
-          # Replace with a real redirect stub once caches have turned over.
-          mkdir -p _site/gpt && cp index.html _site/gpt/index.html
+        run: bash scripts/assemble-site.sh _site
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
         with:
-          path: _site
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy _site --project-name=larisid --branch=main
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Sync to Contabo (larisid.com)
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 84.247.147.205
+          username: root
+          key: ${{ secrets.CONTABO_SSH_KEY }}
+          source: "_site/*"
+          target: /root/larisid-infra/docker/volumes/www/larisid
+          strip_components: 1
+          overwrite: true
+          rm: true
 
-      # Tell Bing (IndexNow) about every URL in the sitemap as soon as we deploy.
       - name: Ping IndexNow (Bing)
         run: |
           KEY=55677968d982482614b7ad24398e836c

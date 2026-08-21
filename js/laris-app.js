@@ -21401,7 +21401,7 @@ function closeShareModal(e) {
 }
 
 function doShare(type) {
-  const url = 'https://stevenwilson614.github.io/LarisID/';
+  const url = 'https://larisid.com/';
   const name  = _shareProductName;
   const score = _shareProductScore;
   const revRange = (_shareRevLo && _shareRevHi) ? _shareRevLo + ' \u2013 ' + _shareRevHi + '/mo' : '';
@@ -21485,7 +21485,7 @@ function shareProduct() {
   const score = document.getElementById('d-score') ? document.getElementById('d-score').textContent.trim() : '';
   const revLo = document.getElementById('d-rev-lo') ? document.getElementById('d-rev-lo').textContent.trim() : '';
   const revHi = document.getElementById('d-rev-hi') ? document.getElementById('d-rev-hi').textContent.trim() : '';
-  const url = 'https://stevenwilson614.github.io/LarisID/';
+  const url = 'https://larisid.com/';
   let text = '\uD83D\uDED7 *Cek peluang produk ini di LarisID!*\n\n';
   if (name) text += '\uD83D\uDCE6 ' + name + '\n';
   if (score) text += '\u2B50 Viability Score: ' + score + '/10\n';

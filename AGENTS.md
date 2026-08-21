@@ -34,7 +34,7 @@ Before changing titles, competitor comparisons, pricing copy on the public site,
 
 - Static crawlable pages live at `perbandingan/`, `harga/`, `tentang/`, `cara-kerja/` (not inside the SPA).
 - Competitor names (Datapinter, Tokpee, Shoptik) and prices must stay **factual** per `docs/pricing-research.md`; update `llms.txt` and `sitemap.xml` when facts change.
-- New top-level static dirs must be added to `.github/workflows/deploy-pages.yml`.
+- New top-level static dirs must be added to `scripts/assemble-site.sh` (and redeployed with `bash scripts/deploy-static.sh`).
 
 ## Live database (Contabo)
 

@@ -6,9 +6,18 @@
 
 Rank for Indonesian **Shopee / e-commerce product research** queries and give AI models a **single, honest source of truth** about LarisID vs **Datapinter**, **Tokpee**, and **Shoptik** (mission, price, features).
 
-## Site architecture (static GitHub Pages)
+## Site architecture (static Contabo + Cloudflare Pages)
 
-The public site is **not** a multi-route Astro app in production. It is assembled in CI from the repo root:
+The public site is **not** a multi-route Astro app in production. It is assembled
+into `_site/` and shipped to:
+
+| Host | Role |
+|------|------|
+| Contabo Caddy (`84.247.147.205`) | Live `https://larisid.com` (DNS A for `@` / `www`) |
+| Cloudflare Pages project `larisid` | Mirror `https://larisid.pages.dev` |
+| Contabo `api.larisid.com` | Backend only — scrapers and the SPA talk here |
+
+GitHub Pages is **retired** (not allowed for commercial SaaS).
 
 | Path | Role |
 |------|------|
@@ -24,7 +33,7 @@ The public site is **not** a multi-route Astro app in production. It is assemble
 | `sitemap.xml` | Submit in Google Search Console |
 | `robots.txt` | Allows all; links sitemap + llms.txt |
 
-Deploy: `.github/workflows/deploy-pages.yml` copies the paths above into `_site/` on push to `main`.
+Deploy: `bash scripts/deploy-static.sh` (or CI `.github/workflows/deploy-pages.yml` when Actions is available). Keep `scripts/assemble-site.sh` in sync when adding top-level static dirs.
 
 ## Homepage SEO (`index.html` `<head>`)
 
@@ -191,7 +200,7 @@ in `build-seo-pages.mjs` writing `riset/<slug>/og.png`, then point `og:image` at
 1. Update **all** of: relevant static page, `llms.txt`, AND `llms-full.txt` if facts change
    (prices, credits, competitor public pricing, page counts).
 2. Bump `lastmod` in `sitemap.xml` for changed URLs (the builder does this for generated pages).
-3. Keep `deploy-pages.yml` `cp` list in sync if adding new top-level static dirs/files
+3. Keep `scripts/assemble-site.sh` in sync if adding new top-level static dirs/files
    (already includes `riset panduan` dirs and `llms-full.txt`).
 4. Re-read `MISSION.md` before comparison copy. Never invent competitor prices or `sameAs` URLs.
 5. Generators: `build-seo-pages.mjs` (riset + sitemap), `build-guides.mjs` (/panduan/),
@@ -207,9 +216,9 @@ in `build-seo-pages.mjs` writing `riset/<slug>/og.png`, then point `og:image` at
 
 ## Post-deploy checklist
 
-1. Push to `main` → GitHub Pages deploy (IndexNow ping fires automatically for all sitemap URLs)
+1. Run `bash scripts/deploy-static.sh` (Contabo + Cloudflare Pages; IndexNow from CI when Actions runs)
 2. Verify: `/riset/`, `/panduan/`, `/perbandingan/alat-riset-produk-shopee-terbaik/`,
-   `/llms.txt`, `/llms-full.txt`
+   `/llms.txt`, `/llms-full.txt` on **https://larisid.com**
 3. Google Search Console → submit `sitemap.xml` (now 447 URLs)
 4. Bing Webmaster → confirm sitemap; spot-check a few `/riset/` pages in URL Inspection
 5. Request indexing for the new `/panduan/` and `/perbandingan/` hub pages

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Assemble the same static tree GitHub Pages / Cloudflare / Contabo serve.
+# Assemble the static tree Contabo + Cloudflare Pages serve.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${1:-$ROOT/_site}"
