@@ -11,6 +11,20 @@
 // A plain string is still accepted and renders with no tech line.
 window.LARIS_CHANGELOG = [
   {
+    date: '2026-08-22',
+    title: 'Halaman Harga sekarang kebaca di HP',
+    items: [
+      {
+        text: 'Tabel perbandingan di HP tadinya cuma menampilkan nama fitur plus separuh kolom kompetitor — praktis tidak bisa dibandingkan. Sekarang tabelnya melebar sampai tepi layar dan kolomnya dirampingkan, jadi LarisID plus dua kompetitor kelihatan sekaligus, sisanya tinggal digeser.',
+        tech: 'Blok @media (max-width: 640px) baru di styles/seo-pages.css dan di CSS inline index.html. Tabel full-bleed keluar dari padding article/meta-card (yang memakan 132px dari 375px), kolom label 172px -> 96px, kolom alat -> 84px, min-width 516px. Kolom kompetitor yang terlihat: 0,62 -> 3,3 di /harga/ dan 2,8 di aplikasi. Catatan penagihan per kolom disembunyikan di HP karena isinya sudah ada di catatan kaki; header turun dari ~200px ke 73px.',
+      },
+      {
+        text: 'Bagian atas halaman Harga juga dirapikan untuk HP: judul dapat lebar penuh, maskot pindah ke bawah teks dan jadi lebih besar, dan empat kotak fitur berubah jadi baris ringkas dengan ikon di kiri.',
+        tech: '.fh-hero jadi flex-direction: column di bawah 640px (sebelumnya tetap row, jadi maskot menghimpit judul sampai tinggal 197px dari 327px). Maskot 118px -> 200px. .fh-feat jadi flex row dengan ikon 38px; judul dan sub dibungkus .fh-feat-txt supaya menumpuk, bukan berjajar.',
+      },
+    ],
+  },
+  {
     date: '2026-08-21',
     title: 'LarisID tetap 100% gratis \u2014 paket berbayar dibatalkan',
     items: [

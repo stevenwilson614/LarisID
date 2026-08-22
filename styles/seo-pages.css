@@ -348,15 +348,19 @@ main.wide.harga-free {
   border-right: 1px solid #F0F0F0;
 }
 .fh-feat:last-child { border-right: none; }
+/* Scoped to .fh-feat-txt on purpose: a bare `.fh-feat span` also matched the
+   icon wrapper and, being more specific than .fh-feat-ico, quietly overrode its
+   red with the muted grey. */
 .fh-feat-ico { color: var(--meta-red); display: block; margin-bottom: 9px; }
-.fh-feat b {
+.fh-feat-txt { display: block; min-width: 0; }
+.fh-feat-txt b {
   display: block;
   font-size: .84rem;
   font-weight: 750;
   color: var(--meta-ink);
   line-height: 1.3;
 }
-.fh-feat span {
+.fh-feat-txt > span {
   display: block;
   font-size: .76rem;
   color: var(--meta-muted);
@@ -597,9 +601,100 @@ main.wide.harga-free {
   .cmp-hint { display: block; }
   .cmp-table th:first-child, .cmp-table td:first-child { min-width: 152px; }
 }
-@media (max-width: 460px) {
-  .fh-hero-mascot img { width: 118px; }
+/* ── Phones ────────────────────────────────────────────────────────────────
+   Two things break below ~640px and both are about width, not type size:
+   the hero stays a flex row so the mascot squeezes the headline, and the
+   nested page padding (main 24 + article 26 + .cmp 14, each side) eats 132px
+   of a 375px screen before the table draws a single cell. That left the
+   sticky 172px label column plus 0.62 of ONE competitor column visible —
+   under the ~2 legible columns NN/G's mobile-tables research calls the floor
+   for wordy entries. All scoped to phones; desktop is untouched.
+   ────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Hero stacks: copy gets the full column, mascot sits under it and grows. */
+  .fh-hero { flex-direction: column; align-items: stretch; gap: 0; }
+  .fh-hero-text { width: 100%; }
+  .fh-hero-mascot {
+    min-width: 0;
+    width: 100%;
+    justify-content: center;
+    margin-top: 14px;
+  }
+  .fh-hero-mascot img { width: 200px; }
+  .fh-h1 { font-size: 2rem; line-height: 1.12; }
+  .fh-lead { max-width: none; }
+
+  /* Feature boxes become compact rows: icon tile left, text stacked beside it.
+     Deliberately no chevron — these are facts, not destinations. */
   .fh-feats { grid-template-columns: 1fr; }
-  .fh-feat { border-right: none; border-bottom: 1px solid #F0F0F0; }
+  .fh-feat {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 14px;
+    border-right: none;
+    border-bottom: 1px solid #F0F0F0;
+  }
   .fh-feat:last-child { border-bottom: none; }
+  .fh-feat-ico {
+    flex: 0 0 auto;
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    background: #FFF1F1;
+    display: grid;
+    place-items: center;
+    margin: 0;
+  }
+
+  /* Comparison table goes edge-to-edge to win back the nested padding. Only the
+     table is full-bleed; the heading and footnote keep their own inset. */
+  main.wide.harga-free > article {
+    padding-left: 0;
+    padding-right: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+  .cmp {
+    padding: 18px 0 14px;
+    border-radius: 0;
+    margin-left: -24px;
+    margin-right: -24px;
+  }
+  .cmp-head, .cmp-foot { padding-left: 16px; padding-right: 16px; }
+  .cmp-wrap { padding: 0 12px; }
+
+  /* 96px label + 5 x 84px. Do NOT set min-width:0 — with table-layout:fixed the
+     columns then collapse to ~42px and every label becomes unreadable. */
+  .cmp-table { min-width: 516px; font-size: .7rem; }
+  .cmp-table thead th:first-child { width: 96px; }
+  .cmp-table thead th.is-laris { width: 84px; }
+  .cmp-table th:first-child, .cmp-table td:first-child { min-width: 96px; }
+  .cmp-table th, .cmp-table td { padding: 8px 5px; }
+
+  /* Nothing fits on one line at 84px, so the desktop nowrap that guarantees
+     dead-level rows is released here. Cells stay centred, so rows still read
+     as level even where one wraps further than its neighbour. */
+  .cmp-yes, .cmp-no, .cmp-part, .cmp-na {
+    font-size: .66rem;
+    white-space: normal;
+    gap: 3px;
+    line-height: 1.25;
+  }
+  .cmp-price { font-size: .68rem; }
+  .cmp-price b { white-space: normal; }
+  /* The per-column billing note is what made the header ~200px tall, and every
+     word of it is repeated in the footnote below the table. */
+  .cmp-price em { display: none; }
+  .cmp-cost strong { white-space: normal; font-size: .68rem; }
+  .cmp-cost i { font-size: .6rem; }
+
+  /* Trimmings, each sized so it stops clipping its 84px column. */
+  .cmp-laris-free { font-size: .52rem; padding: 3px 6px; letter-spacing: 0; }
+  .cmp-logo-slot { height: 20px; margin-bottom: 7px; }
+  /* Clamp to the column, not a fixed px — object-fit:contain on the base rule
+     keeps the aspect ratio, so a wide wordmark letterboxes instead of squashing. */
+  .cmp-tool-logo, .cmp-laris-logo { max-width: 100%; }
+  .cmp-visit { font-size: .62rem; padding: 6px 6px; gap: 3px; border-radius: 8px; }
+  .cmp-visit svg { width: 10px; height: 10px; }
 }
