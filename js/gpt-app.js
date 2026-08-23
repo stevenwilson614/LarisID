@@ -469,9 +469,86 @@ function _funnelIsDup(eventType, metadata) {
   } catch (_) { return false; }
 }
 
+// ── client_events: the event stream that includes anonymous visitors ────────
+// activity_events only ever held signed-in rows, because logUserEvent() below
+// early-returns without a user. That made ~88% of a typical week invisible.
+// Every event now ALSO goes to public.client_events through an anon-executable
+// RPC (same pattern as log_deepdive_open), carrying the visitor id, the tab
+// session id, and a monotonic seq so a visit is an ordered path.
+//
+// Batched on purpose: one request per event at 8x the volume is needless load.
+// fetch(keepalive) rather than sendBeacon because PostgREST needs the apikey
+// header and sendBeacon cannot set one.
+const _CE_SEQ_KEY = '_lid_evt_seq';
+const _CE_MAX_BATCH = 10;
+const _CE_FLUSH_MS = 15000;
+let _ceQueue = [];
+let _ceTimer = null;
+
+function _ceNextSeq() {
+  try {
+    const n = (parseInt(sessionStorage.getItem(_CE_SEQ_KEY) || '0', 10) || 0) + 1;
+    sessionStorage.setItem(_CE_SEQ_KEY, String(n));
+    return n;
+  } catch (_) { return null; }
+}
+
+function _ceFlush(useKeepalive) {
+  if (!_ceQueue.length) return;
+  const events = _ceQueue.splice(0, 60);
+  if (_ceTimer) { clearTimeout(_ceTimer); _ceTimer = null; }
+  let vid = null, sid = null;
+  try {
+    vid = _lidVisitorId();
+    sid = sessionStorage.getItem('_lid_sid') || null;
+  } catch (_) {}
+  if (!vid) return;
+  // Anon key when signed out, user JWT when signed in — same reason as
+  // logDeepDiveOpen: initSupabase() moves the session out of the SDK's store,
+  // so auth.uid() would be null on a signed-in dive without this.
+  const token = _authLoad()?.access_token || SUPA_KEY;
+  try {
+    fetch(`${SUPA_URL}/rest/v1/rpc/log_client_events`, {
+      method: 'POST',
+      keepalive: !!useKeepalive,
+      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_visitor_id: vid, p_session_id: sid, p_events: events }),
+    }).then(() => {}, () => {});
+  } catch (_) {}
+}
+
+function logClientEvent(eventType, props) {
+  // _admSample excluded to match logUserEvent: an admin previewing the site as
+  // someone else is inspecting it, not using it.
+  if (_admSample) return;
+  try {
+    _ceQueue.push({
+      seq: _ceNextSeq(),
+      event: String(eventType || '').slice(0, 64),
+      props: props && typeof props === 'object' ? props : {},
+    });
+  } catch (_) { return; }
+  if (_ceQueue.length >= _CE_MAX_BATCH) { _ceFlush(false); return; }
+  if (!_ceTimer) _ceTimer = setTimeout(() => _ceFlush(false), _CE_FLUSH_MS);
+}
+
+// A visit that ends is a visit whose tail must still be recorded — pagehide and
+// the hidden transition are the only reliable end-of-visit signals on mobile.
+try {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') _ceFlush(true);
+  });
+  window.addEventListener('pagehide', () => _ceFlush(true));
+} catch (_) {}
+
 async function logUserEvent(eventType, metadata) {
-  if (!_supabase || !currentUser || _admSample) return;
+  if (_admSample) return;
   if (_funnelIsDup(eventType, metadata)) return;
+  // Always, signed in or not. This is the line that ends the 88% blind spot.
+  logClientEvent(eventType, _lidAbStamp(metadata));
+  // activity_events keeps its exact previous contract so every existing admin
+  // query, matview and dashboard is untouched: signed-in rows only.
+  if (!_supabase || !currentUser) return;
   try {
     await _supabase.from('activity_events').insert({
       user_id: currentUser.id,
@@ -2654,8 +2731,22 @@ function openAuthModal(mode, source) {
     }
   } catch (_) {}
   try { sessionStorage.setItem(_LID_SIGNUP_CTA_KEY, source || 'gpt'); } catch (_) {}
+  // These two used to fire together here, which made "cta_signup_click" mean
+  // "the wall appeared" — the 16-23 Aug readout mis-read it as a click and
+  // reported a CTA conversion rate that was really gate-shown -> signup.
+  // gpt_gate_shown = the modal appeared, for any reason.
+  // cta_signup_click = a person actually clicked a signup CTA, which is only
+  // true when the modal was NOT opened by a gpt_gate_* wall.
+  // NOTE: Clarity's "Signup funnel (CTA to signup)" is built on
+  // cta_signup_click, so its numbers change meaning from this deploy on — the
+  // series before and after this line are not comparable.
+  const _gateIsWall = /^gpt_gate_/.test(_gateSource || '');
   clarityEvt('gpt_gate_shown', { source: _gateSource });
-  clarityEvt('cta_signup_click', { source: _gateSource });
+  void logUserEvent('gpt_gate_shown', { ui: 'gpt', source: _gateSource || '(none)', wall: _gateIsWall });
+  if (!_gateIsWall) {
+    clarityEvt('cta_signup_click', { source: _gateSource });
+    void logUserEvent('cta_signup_click', { ui: 'gpt', source: _gateSource || '(none)' });
+  }
   renderAuthModal();
   $('auth-overlay')?.classList.add('open');
 }
