@@ -10,6 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ANALYTICS } from './lib/analytics-head.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -20,16 +21,6 @@ const AUTHOR = 'Steven Wilson';
 
 // Google Ads tag — lives on the section hub pages (parity with the committed
 // hubs; injected here so regenerating the hub does not strip conversion tracking).
-const GTAG = `<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=AW-862519971"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'AW-862519971');
-</script>`;
-
 function esc(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -101,6 +92,7 @@ ${g.faqs.map((f) => `    <div class="faq-item">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+${ANALYTICS}
 <title>${esc(g.title)}</title>
 <meta name="description" content="${esc(g.desc)}">
 <meta name="robots" content="index, follow">
@@ -183,9 +175,9 @@ function hubPage(guides) {
   return `<!DOCTYPE html>
 <html lang="id">
 <head>
-${GTAG}
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+${ANALYTICS}
 <title>Panduan Riset &amp; Bisnis Marketplace untuk Seller Indonesia | LarisID</title>
 <meta name="description" content="Panduan praktis &amp; jujur untuk seller Shopee, TikTok Shop, Tokopedia, Lazada &amp; Blibli: cara riset produk, menghitung margin/HPP, dan menganalisis kompetitor. Gratis dari LarisID.">
 <meta name="robots" content="index, follow">

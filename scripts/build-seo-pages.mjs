@@ -27,6 +27,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ANALYTICS } from './lib/analytics-head.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -45,16 +46,6 @@ const OG_IMAGE = `${SITE}/images/Banner.jpg`;
 
 // Google Ads tag — lives on the /riset/ hub (parity with the committed hub; kept
 // here so regenerating the hub does not strip conversion tracking). Leaf pages stay gtag-free.
-const GTAG = `<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=AW-862519971"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'AW-862519971');
-</script>`;
-
 const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'seo-keywords.json'), 'utf8'));
 const KEYWORDS = data.keywords;
 // Per-keyword detail (top products, regions, price buckets, store counts) precomputed
@@ -265,6 +256,7 @@ ${related.map((r) => `      <a class="riset-card" href="/riset/${slugify(r.keywo
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+${ANALYTICS}
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(desc)}">
 <meta name="robots" content="index, follow">
@@ -423,9 +415,9 @@ ${items.map((e) => `    <a class="riset-card" href="/riset/${slugify(e.keyword)}
   return `<!DOCTYPE html>
 <html lang="id">
 <head>
-${GTAG}
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+${ANALYTICS}
 <title>Riset Pasar Produk Shopee \u2014 Harga, Penjualan &amp; Tren | LarisID</title>
 <meta name="description" content="Riset pasar gratis berbasis data nyata untuk ${entries.length} keyword produk terlaris di Shopee: harga median, jumlah listing, rating, dan estimasi penjualan. Dari LarisID — riset produk untuk seller Shopee, TikTok Shop, Tokopedia, Lazada &amp; Blibli.">
 <meta name="robots" content="index, follow">
@@ -513,7 +505,7 @@ function buildSitemap(entries) {
     { loc: `${SITE}/kalkulator/`, freq: 'monthly', pri: '0.8', mod: CONTENT_2026_07 },
     { loc: `${SITE}/kalkulator/margin-hpp/`, freq: 'monthly', pri: '0.75', mod: CONTENT_2026_07 },
     { loc: `${SITE}/kalkulator/biaya-shopee/`, freq: 'monthly', pri: '0.75', mod: CONTENT_2026_07 },
-    { loc: `${SITE}/perbandingan/`, freq: 'monthly', pri: '0.9', mod: '2026-05-30' },
+    { loc: `${SITE}/perbandingan/`, freq: 'monthly', pri: '0.9', mod: '2026-08-21' },
     { loc: `${SITE}/perbandingan/alat-riset-produk-shopee-terbaik/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
     { loc: `${SITE}/perbandingan/larisid-vs-datapinter/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
     { loc: `${SITE}/perbandingan/larisid-vs-tokpee/`, freq: 'monthly', pri: '0.75', mod: SNAPSHOT },
@@ -523,10 +515,11 @@ function buildSitemap(entries) {
     { loc: `${SITE}/perbandingan/alternatif-datapinter-gratis/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
     { loc: `${SITE}/perbandingan/larisid-vs-kalodata/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
     { loc: `${SITE}/perbandingan/alternatif-kalodata-gratis/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
-    { loc: `${SITE}/harga/`, freq: 'monthly', pri: '0.85', mod: '2026-05-30' },
+    { loc: `${SITE}/harga/`, freq: 'monthly', pri: '0.85', mod: '2026-08-21' },
     { loc: `${SITE}/tentang/`, freq: 'monthly', pri: '0.8', mod: '2026-05-30' },
     { loc: `${SITE}/rise/`, freq: 'monthly', pri: '0.8', mod: '2026-08-18' },
-    { loc: `${SITE}/cara-kerja/`, freq: 'monthly', pri: '0.8', mod: '2026-05-30' },
+    { loc: `${SITE}/rise/daftar/`, freq: 'monthly', pri: '0.7', mod: '2026-08-21' },
+    { loc: `${SITE}/cara-kerja/`, freq: 'monthly', pri: '0.8', mod: '2026-08-21' },
     { loc: `${SITE}/privacy/`, freq: 'yearly', pri: '0.3', mod: '2026-05-25' },
   ];
   const all = [

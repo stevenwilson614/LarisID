@@ -25,6 +25,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ANALYTICS } from './lib/analytics-head.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -214,6 +215,7 @@ ${related.map((r) => `      <a class="riset-card" href="/kota/${slugify(r.loc)}/
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+${ANALYTICS}
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(desc)}">
 <meta name="robots" content="index, follow">
@@ -362,6 +364,7 @@ ${items.map((c) => `    <a class="riset-card" href="/kota/${slugify(c.loc)}/"><s
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+${ANALYTICS}
 <title>Produk Paling Laris per Kota di Jawa — Data Penjual Shopee | LarisID</title>
 <meta name="description" content="Produk terlaris, harga median, dan kategori terkuat penjual Shopee di ${cities.length} kota dan kabupaten di Pulau Jawa — dari ${num(totalSellers)} penjual aktif yang dipantau LarisID. Gratis.">
 <meta name="robots" content="index, follow">
