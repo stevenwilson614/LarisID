@@ -2792,6 +2792,7 @@ function renderAuthModal() {
       gpt_gate_ai: 'Login untuk tanya AI tentang produk (butuh sesi aman).',
       gpt_gate_directory: 'Login untuk lihat lebih banyak produk & filter kategori.',
       gpt_gate_history: 'Login untuk cari & simpan riwayat chat.',
+      gpt_gate_track: 'Daftar gratis, lalu kami kabari kalau produk ini berubah.',
     };
     sub.textContent = reset
       ? 'Masukkan email kamu. Kami kirim link untuk mengatur password baru.'
