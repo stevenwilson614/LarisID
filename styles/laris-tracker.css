@@ -796,15 +796,60 @@
   width: 32px; height: 32px; border-radius: 8px; object-fit: cover; background: #F3F4F6; flex-shrink: 0;
 }
 
-/* ── Detail listing picker (replaces Riwayat Perubahan) ───────────────── */
+/* ── Detail listing picker (Top Kompetitor layout, weekly numbers) ───── */
 .ltk-listings {
   border: 1px solid #E5E7EB; border-radius: var(--ltk-r);
-  padding: 12px 0 0; margin-top: 16px;
+  padding: 12px 0 12px; margin-top: 16px;
 }
-.ltk-listings-title { font-size: .8rem; font-weight: 800; padding: 0 16px 10px; }
-.ltk-listings-scroll {
-  max-height: 280px; overflow-y: auto; -webkit-overflow-scrolling: touch;
-  border-top: 1px solid #F3F4F6;
+.ltk-listings-title {
+  font-size: .8rem; font-weight: 800; padding: 0 16px 10px;
+}
+.ltk-table-wrap {
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  border-top: 1px solid #F3F4F6; max-height: 360px; overflow-y: auto;
+}
+.ltk-table {
+  width: 100%; border-collapse: collapse; font-size: .76rem; min-width: 520px;
+}
+.ltk-table th {
+  text-align: left; color: #1A1A1A; font-weight: 800;
+  padding: 6px 8px; border-bottom: 1px solid #E5E7EB;
+  white-space: nowrap; font-size: .64rem; text-transform: uppercase; letter-spacing: .03em;
+  position: sticky; top: 0; background: #fff; z-index: 1;
+}
+.ltk-table td {
+  padding: 9px 8px; border-bottom: 1px solid #F3F4F6; vertical-align: middle;
+}
+.ltk-table tr:last-child td { border-bottom: none; }
+.ltk-komp-row {
+  cursor: pointer; transition: background .12s;
+}
+.ltk-komp-row:hover td,
+.ltk-komp-row:focus-visible td { background: #FAFAFA; }
+.ltk-komp-row.is-active td { background: #FEF2F2; }
+.ltk-komp-row.is-active .ltk-tr-prod-name { color: #B5202A; }
+.ltk-tr-rank { font-weight: 700; color: #9CA3AF; font-size: .72rem; width: 28px; }
+.ltk-tr-prod { display: flex; align-items: center; gap: 9px; min-width: 140px; }
+.ltk-tr-prod-name {
+  font-weight: 600; line-height: 1.3; font-size: .72rem;
+  display: flex; flex-direction: column; gap: 1px; min-width: 0;
+}
+.ltk-tr-prod-sub {
+  font-size: .64rem; font-weight: 500; color: #9CA3AF;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
+}
+.ltk-comp-av {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: #F3F4F6; display: grid; place-items: center;
+  font-size: .64rem; font-weight: 700; color: #6B7280;
+  overflow: hidden; flex-shrink: 0;
+}
+.ltk-comp-av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ltk-komp-all-note {
+  font-size: .68rem; color: #9CA3AF; font-weight: 500;
+}
+.ltk-komp-more {
+  margin: 10px 16px 0; width: calc(100% - 32px);
 }
 .ltk-listing-row {
   display: flex; align-items: center; gap: 10px; width: 100%;

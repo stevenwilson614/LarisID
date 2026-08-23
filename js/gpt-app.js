@@ -8537,7 +8537,7 @@ function gptTrackerAdapter() {
     // is one row per (item_id, shop_id, keyword); offtopic ads are filtered.
     async getKeywordTopListings(keyword) {
       if (!keyword || !_supabase) return [];
-      const cols = 'item_id,shop_id,store_name,product_name,image_url,price,total_sold';
+      const cols = 'item_id,shop_id,store_name,product_name,image_url,price,total_sold,reviews';
       const kw = String(keyword).trim();
       try {
         let q = await _supabase.from('listings_deduped')
@@ -8557,12 +8557,32 @@ function gptTrackerAdapter() {
       if (shopId == null || !_supabase) return [];
       try {
         const { data } = await _supabase.from('listings_deduped')
-          .select('item_id,shop_id,store_name,product_name,image_url,price,total_sold')
+          .select('item_id,shop_id,store_name,product_name,image_url,price,total_sold,reviews')
           .eq('shop_id', shopId)
           .eq('is_offtopic', false)
           .order('total_sold', { ascending: false })
           .limit(60);
         return mergePool([], data || []);
+      } catch (_) { return []; }
+    },
+    // Batch listing_weekly for the tracker Kompetitor-style table (this week +
+    // prior weeks so the picker can show WoW %). item_id IN is enough; the
+    // client matches (item_id, shop_id) pairs.
+    async getListingsWeeklyBatch(listings) {
+      if (!_supabase || !listings || !listings.length) return [];
+      const ids = [...new Set(listings.map(l => l.item_id).filter(id => id != null))];
+      if (!ids.length) return [];
+      try {
+        const since = new Date();
+        since.setUTCDate(since.getUTCDate() - 28);
+        const sinceISO = since.toISOString().slice(0, 10);
+        const { data, error } = await _supabase.from('listing_weekly')
+          .select('item_id,shop_id,week_start,units_wk,omset_wk,price,source')
+          .in('item_id', ids)
+          .gte('week_start', sinceISO)
+          .order('week_start', { ascending: false });
+        if (error) throw error;
+        return data || [];
       } catch (_) { return []; }
     },
     // Prefer product_daily_series (server already folds review-based estimates

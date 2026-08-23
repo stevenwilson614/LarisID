@@ -1879,6 +1879,75 @@
     return null;
   }
 
+  // Attach this-week / prior-week units+omset from listing_weekly so the
+  // Kompetitor-style picker can show numbers + WoW % (not lifetime share).
+  function attachWeeklyToPeers(peers, weeklyRows) {
+    var thisMon = wibMondayISO(wibTodayISO());
+    var prevMon = addDaysISO(thisMon, -7);
+    var prev2Mon = addDaysISO(thisMon, -14);
+    var byKey = {};
+    (weeklyRows || []).forEach(function (w) {
+      var k = String(w.item_id) + '__' + String(w.shop_id);
+      if (!byKey[k]) byKey[k] = {};
+      byKey[k][String(w.week_start || '').slice(0, 10)] = w;
+    });
+    (peers || []).forEach(function (p) {
+      var weeks = byKey[listingPeerKey(p)] || {};
+      var cur = weeks[thisMon];
+      var prev = weeks[prevMon];
+      // Partial/empty this week → fall back to last completed week vs the one before.
+      if ((!cur || (Number(cur.units_wk) || 0) <= 0) && prev) {
+        cur = prev;
+        prev = weeks[prev2Mon] || null;
+      }
+      p._wk_units = cur != null ? Math.round(Number(cur.units_wk) || 0) : null;
+      p._wk_omset = cur != null ? Math.round(Number(cur.omset_wk) || 0) : null;
+      p._wk_units_prev = prev != null ? Math.round(Number(prev.units_wk) || 0) : null;
+      p._wk_omset_prev = prev != null ? Math.round(Number(prev.omset_wk) || 0) : null;
+    });
+    return peers || [];
+  }
+
+  function loadDetailPeers(key, row) {
+    var isKw = S.detailScope !== 'store';
+    var fetchPeers = isKw
+      ? callP('getKeywordTopListings', row.keyword)
+      : callP('getStoreTopListings', row.shop_id);
+    return fetchPeers.then(function (rows) {
+      if (S.detailKey !== key) return;
+      var peers = rows || [];
+      if (!peers.length) {
+        S.detailPeers = [];
+        S.detailPeersLoading = false;
+        renderDetail();
+        return;
+      }
+      return callP('getListingsWeeklyBatch', peers).then(function (weekly) {
+        if (S.detailKey !== key) return;
+        var enriched = attachWeeklyToPeers(peers, weekly || []);
+        enriched.sort(function (a, b) {
+          var ao = a._wk_omset != null ? a._wk_omset : -1;
+          var bo = b._wk_omset != null ? b._wk_omset : -1;
+          if (bo !== ao) return bo - ao;
+          return (Number(b.total_sold) || 0) - (Number(a.total_sold) || 0);
+        });
+        S.detailPeers = enriched;
+        S.detailPeersLoading = false;
+        renderDetail();
+      }, function () {
+        if (S.detailKey !== key) return;
+        S.detailPeers = peers;
+        S.detailPeersLoading = false;
+        renderDetail();
+      });
+    }, function () {
+      if (S.detailKey !== key) return;
+      S.detailPeers = [];
+      S.detailPeersLoading = false;
+      renderDetail();
+    });
+  }
+
   function buildListingViewRow(listing, seriesRows, weeklyRows) {
     var r = {
       keyword: listing.product_name || '',
@@ -1959,16 +2028,7 @@
     S.detailViewRow = null;
     showScreen('detail');
     renderDetail();
-    var isKw = S.detailScope !== 'store';
-    var fetchPeers = isKw
-      ? callP('getKeywordTopListings', row.keyword)
-      : callP('getStoreTopListings', row.shop_id);
-    fetchPeers.then(function (rows) {
-      if (S.detailKey !== key) return; // user already navigated away
-      S.detailPeers = rows || [];
-      S.detailPeersLoading = false;
-      renderDetail();
-    });
+    loadDetailPeers(key, row);
     call('track', 'tracker_detail_open', { site: opts.site, scope: S.detailScope, key: key });
   }
 
@@ -2199,39 +2259,77 @@
     renderChartDateLabels(labelsEl, pts[0].t, pts[pts.length - 1].t, w, pad, 7);
   }
 
-  // Scrollable listing picker: Semua (keyword/store aggregate) plus the
-  // top 30 individual Shopee listings. Selecting a row drives the chart
-  // and the three stat boxes above.
+  // Scrollable listing picker styled like Deep Dive "Top Kompetitor", but
+  // columns are weekly numbers + WoW % (tracker job) instead of lifetime share.
   function listingPickerHtml(isKw) {
     var rows = S.detailPeers || [];
     var n = rows.length;
     var allActive = !S.detailListingKey;
-    var h = '<div class="ltk-listings-scroll" role="listbox" aria-label="Pilih listing">';
-    h += '<button type="button" class="ltk-listing-row' + (allActive ? ' is-active' : '') +
-      '" role="option" aria-selected="' + allActive + '" data-ltk-listing="">' +
-      '<span class="ltk-listing-txt">' +
-        '<span class="ltk-listing-all">Semua</span>' +
-        '<span class="ltk-listing-meta">' +
-          (S.detailPeersLoading ? 'Memuat…' : (n ? n + ' listing' : 'Agregat pasar')) +
-        '</span></span></button>';
     if (S.detailPeersLoading && !n) {
-      h += '</div>';
-      return h;
+      return '<p class="ltk-detail-peers-note">Memuat listing…</p>';
     }
-    rows.forEach(function (r) {
+    var h = '<div class="ltk-table-wrap"><table class="ltk-table ltk-komp-table">' +
+      '<thead><tr>' +
+        '<th>#</th><th>' + (isKw ? 'Toko' : 'Produk') + '</th>' +
+        '<th>Omset / minggu</th><th>Review</th><th>Unit / minggu</th>' +
+        '<th>Harga</th><th>Δ minggu lalu</th>' +
+      '</tr></thead><tbody>';
+
+    h += '<tr class="ltk-komp-row' + (allActive ? ' is-active' : '') +
+      '" role="button" tabindex="0" data-ltk-listing="" aria-selected="' + allActive + '">' +
+      '<td class="ltk-tr-rank">—</td>' +
+      '<td><div class="ltk-tr-prod"><span class="ltk-comp-av">Σ</span>' +
+        '<div class="ltk-tr-prod-name">Semua' +
+          '<span class="ltk-tr-prod-sub">' +
+            (n ? n + ' listing' : 'Agregat pasar') +
+          '</span></div></div></td>' +
+      '<td colspan="5" class="ltk-komp-all-note">Agregat keyword / toko — ketuk listing di bawah untuk fokus</td>' +
+      '</tr>';
+
+    rows.forEach(function (r, i) {
       var lk = listingPeerKey(r);
       var active = S.detailListingKey === lk;
-      var line1 = isKw ? (r.store_name || ('Toko ' + r.shop_id)) : (r.product_name || '—');
-      var line2 = isKw ? (r.product_name || '') : (r.store_name || '');
-      h += '<button type="button" class="ltk-listing-row' + (active ? ' is-active' : '') +
-        '" role="option" aria-selected="' + active + '" data-ltk-listing="' + attr(lk) + '">' +
-        imgOr(r.image_url || '', 'ltk-listing-img') +
-        '<span class="ltk-listing-txt">' +
-          '<span class="ltk-listing-name">' + esc(line1) + '</span>' +
-          (line2 ? '<span class="ltk-listing-sub">' + esc(line2) + '</span>' : '') +
-        '</span></button>';
+      var name = isKw
+        ? (r.store_name || ('Toko ' + r.shop_id) || 'Toko')
+        : (r.product_name || '—');
+      var sub = isKw ? (r.product_name || '') : (r.store_name || '');
+      var av = r.image_url
+        ? '<img src="' + attr(r.image_url) + '" alt="" loading="lazy">'
+        : esc(String(name).charAt(0).toUpperCase() || 'T');
+      var unitsWk = r._wk_units;
+      var omsetWk = r._wk_omset;
+      var hasWk = unitsWk != null || omsetWk != null;
+      var deltaCell;
+      if (!hasWk) {
+        deltaCell = '<span class="ltk-d ltk-d--flat">—</span>';
+      } else if (r._wk_units_prev == null || Number(r._wk_units_prev) === 0) {
+        deltaCell = (unitsWk || 0) > 0
+          ? '<span class="ltk-d ltk-d--new">Baru</span>'
+          : '<span class="ltk-d ltk-d--flat">—</span>';
+      } else {
+        deltaCell = deltaHtml(unitsWk, r._wk_units_prev, true);
+      }
+      h += '<tr class="ltk-komp-row' + (active ? ' is-active' : '') +
+        (i >= 5 ? ' ltk-komp-extra" hidden' : '"') +
+        ' role="button" tabindex="0" data-ltk-listing="' + attr(lk) + '" aria-selected="' + active + '">' +
+        '<td class="ltk-tr-rank">' + (i + 1) + '</td>' +
+        '<td><div class="ltk-tr-prod"><span class="ltk-comp-av">' + av + '</span>' +
+          '<div class="ltk-tr-prod-name">' + esc(String(name).slice(0, 28)) +
+            (sub ? '<span class="ltk-tr-prod-sub">' + esc(String(sub).slice(0, 40)) + '</span>' : '') +
+          '</div></div></td>' +
+        '<td>' + (omsetWk != null && omsetWk > 0 ? esc(fmtRpShort(omsetWk)) : '—') + '</td>' +
+        '<td>' + esc(fmtUnits(r.reviews || 0)) + '</td>' +
+        '<td>' + (unitsWk != null ? esc(fmtUnits(unitsWk)) : '—') + '</td>' +
+        '<td>' + (r.price ? esc(fmtRp(r.price)) : '—') + '</td>' +
+        '<td>' + deltaCell + '</td>' +
+        '</tr>';
     });
-    h += '</div>';
+
+    h += '</tbody></table></div>';
+    if (n > 5) {
+      h += '<button type="button" class="ltk-btn ltk-btn--ghost ltk-komp-more" data-ltk-komp-more>' +
+        'Lihat Semua ' + Math.min(30, n) + ' Listing</button>';
+    }
     return h;
   }
 
@@ -2248,7 +2346,7 @@
     var base = key ? findRollupRow(key) : null;
     if (!base) { p.innerHTML = ''; return; }
     var prevScroll = 0;
-    var prevList = p.querySelector('.ltk-listings-scroll');
+    var prevList = p.querySelector('.ltk-table-wrap');
     if (prevList) prevScroll = prevList.scrollTop;
     var loadingListing = !!(S.detailListingKey && S.detailListingLoading);
     var row = activeDetailRow(base);
@@ -2316,11 +2414,11 @@
           chartBody +
         '</div>' +
         '<div class="ltk-listings">' +
-          '<div class="ltk-listings-title">Listing</div>' +
+          '<div class="ltk-listings-title">Top Listing</div>' +
           listingPickerHtml(isKw) +
         '</div>' +
       '</div>';
-    var nextList = p.querySelector('.ltk-listings-scroll');
+    var nextList = p.querySelector('.ltk-table-wrap');
     if (nextList && prevScroll) nextList.scrollTop = prevScroll;
     var cv = $('[data-ltk-detailchart]');
     if (cv && !loadingListing) {
@@ -3400,6 +3498,16 @@
     var listingPick = t.closest && t.closest('[data-ltk-listing]');
     if (listingPick) {
       selectDetailListing(listingPick.getAttribute('data-ltk-listing') || null);
+      return;
+    }
+
+    var kompMore = t.closest && t.closest('[data-ltk-komp-more]');
+    if (kompMore) {
+      var wrap = kompMore.closest('.ltk-listings');
+      if (wrap) {
+        wrap.querySelectorAll('.ltk-komp-extra').forEach(function (tr) { tr.hidden = false; });
+      }
+      kompMore.remove();
       return;
     }
 
