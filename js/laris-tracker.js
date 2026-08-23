@@ -527,22 +527,85 @@
     return pts.length >= 2 ? pts : null;
   }
 
-  // Project real points onto a w×h canvas padded by `pad`. x reflects real
-  // calendar time (not point index); y is scaled to the point set's own
-  // min/max.
-  function projectXY(pts, w, h, pad) {
+  // Normalize pad: number → equal inset, or {l,r,t,b}. Optional yMin/yMax let
+  // the detail chart snap the scale to nice axis ticks (like Deep Dive Chart.js).
+  function resolvePad(pad) {
+    if (pad && typeof pad === 'object') {
+      return {
+        l: pad.l != null ? pad.l : (pad.x || 0),
+        r: pad.r != null ? pad.r : (pad.x || 0),
+        t: pad.t != null ? pad.t : (pad.y || 0),
+        b: pad.b != null ? pad.b : (pad.y || 0),
+      };
+    }
+    var n = Number(pad) || 0;
+    return { l: n, r: n, t: n, b: n };
+  }
+
+  // Project real points onto a w×h canvas. x reflects real calendar time (not
+  // point index); y is scaled to the point set's own min/max (or yMin/yMax).
+  function projectXY(pts, w, h, pad, yMin, yMax) {
+    var P = resolvePad(pad);
     var minT = pts[0].t, maxT = pts[0].t;
     pts.forEach(function (p) { if (p.t < minT) minT = p.t; if (p.t > maxT) maxT = p.t; });
     var spanT = (maxT - minT) || 1;
     var vals = pts.map(function (p) { return p.v; });
-    var min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+    var min = yMin != null ? yMin : Math.min.apply(null, vals);
+    var max = yMax != null ? yMax : Math.max.apply(null, vals);
     var span = (max - min) || 1;
+    var plotW = Math.max(1, w - P.l - P.r);
+    var plotH = Math.max(1, h - P.t - P.b);
     return pts.map(function (p) {
       return [
-        pad + ((p.t - minT) / spanT) * (w - pad * 2),
-        h - pad - ((p.v - min) / span) * (h - pad * 2),
+        P.l + ((p.t - minT) / spanT) * plotW,
+        P.t + plotH - ((p.v - min) / span) * plotH,
       ];
     });
+  }
+
+  // Nice round ticks for the detail Y-axis (≈ Deep Dive Chart.js maxTicksLimit).
+  function niceAxis(min, max, targetCount) {
+    targetCount = targetCount || 5;
+    if (!(isFinite(min) && isFinite(max))) { min = 0; max = 1; }
+    if (min === max) {
+      var bump = Math.abs(min) * 0.1 || 1;
+      min -= bump;
+      max += bump;
+    }
+    if (min > 0 && min / max > 0.6) {
+      // Keep a bit of headroom below so a flat-high series isn't glued to the floor.
+      min = min * 0.85;
+    } else if (min > 0) {
+      min = 0;
+    }
+    var span = max - min;
+    var raw = span / Math.max(2, targetCount - 1);
+    var mag = Math.pow(10, Math.floor(Math.log10(raw || 1)));
+    var norm = raw / mag;
+    var step = norm >= 5 ? 5 * mag : norm >= 2 ? 2 * mag : mag;
+    var niceMin = Math.floor(min / step) * step;
+    var niceMax = Math.ceil(max / step) * step;
+    if (niceMax === niceMin) niceMax = niceMin + step;
+    var ticks = [];
+    for (var v = niceMin; v <= niceMax + step * 1e-9; v += step) {
+      ticks.push(Math.round(v * 1e6) / 1e6);
+    }
+    return { min: niceMin, max: niceMax, ticks: ticks };
+  }
+
+  // Axis labels match Deep Dive trend chart: jt / rb / plain units.
+  function fmtChartTick(v, metricKey) {
+    v = Number(v) || 0;
+    if (metricKey === 'units') {
+      return Math.abs(v) >= 1000
+        ? Math.round(v).toLocaleString('id-ID')
+        : String(Math.round(v));
+    }
+    var abs = Math.abs(v);
+    if (abs >= 1e9) return (v / 1e9).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (abs >= 1e6) return Math.round(v / 1e6) + 'jt';
+    if (abs >= 1e3) return Math.round(v / 1e3) + 'rb';
+    return String(Math.round(v));
   }
 
   function seriesXY(series, metricKey, w, h, pad) {
@@ -1918,8 +1981,9 @@
   }
 
   // Bigger sibling of drawSpark for the detail screen's single-metric chart —
-  // same raw-canvas approach (no charting lib for one line), plus min/max
-  // labels so the line means something without hovering.
+  // same raw-canvas approach (no charting lib for one line). Draws a Y-axis
+  // scale + point markers so weekly values are readable without scrubbing,
+  // matching the Deep Dive trend chart's clarity.
   /* ── Detail chart: date-axis labels + drag/hover-to-scrub ────────────────
      One module-level `_dc` holds the currently-mounted chart's state, since
      the canvas is torn down and recreated on every renderDetail() call —
@@ -1929,13 +1993,42 @@
 
   function paintDetailChartFrame(hi) {
     if (!_dc) return;
-    var ctx = _dc.ctx, xy = _dc.xy, w = _dc.w, h = _dc.h, pad = _dc.pad;
-    ctx.clearRect(0, 0, w, h);
+    var ctx = _dc.ctx, xy = _dc.xy, w = _dc.w, h = _dc.h;
+    var P = _dc.pad;
     var color = _dc.up ? '#16A34A' : '#DC2626';
-    // Soft fill under the curve
+    var plotL = P.l, plotR = w - P.r, plotT = P.t, plotB = h - P.b;
+    ctx.clearRect(0, 0, w, h);
+
+    // Horizontal grid + Y-axis labels (Deep Dive clarity: every scale is readable).
+    var axis = _dc.axis;
+    if (axis && axis.ticks && axis.ticks.length) {
+      var spanY = (axis.max - axis.min) || 1;
+      var plotH = Math.max(1, plotB - plotT);
+      ctx.font = '600 10px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      for (var ti = 0; ti < axis.ticks.length; ti++) {
+        var tv = axis.ticks[ti];
+        var gy = plotT + plotH - ((tv - axis.min) / spanY) * plotH;
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(229,231,235,.95)';
+        ctx.lineWidth = 1;
+        ctx.moveTo(plotL, gy);
+        ctx.lineTo(plotR, gy);
+        ctx.stroke();
+        ctx.fillStyle = '#9CA3AF';
+        ctx.fillText(fmtChartTick(tv, _dc.metricKey), plotL - 6, gy);
+      }
+    }
+
+    // Soft fill under the curve (clip to plot area)
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(plotL, plotT, plotR - plotL, plotB - plotT);
+    ctx.clip();
     tracePath(ctx, xy);
-    ctx.lineTo(xy[xy.length - 1][0], h - pad);
-    ctx.lineTo(xy[0][0], h - pad);
+    ctx.lineTo(xy[xy.length - 1][0], plotB);
+    ctx.lineTo(xy[0][0], plotB);
     ctx.closePath();
     ctx.fillStyle = _dc.up ? 'rgba(22,163,74,.08)' : 'rgba(220,38,38,.08)';
     ctx.fill();
@@ -1958,19 +2051,33 @@
       tracePath(ctx, xy);
       ctx.stroke();
     }
+    ctx.restore();
+
+    // Mark every weekly point (Deep Dive pointRadius) — forecast points keep
+    // the same radius so the dashed tail stays readable.
+    for (var mi = 0; mi < xy.length; mi++) {
+      ctx.beginPath();
+      ctx.arc(xy[mi][0], xy[mi][1], 3, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.lineWidth = 1.25;
+      ctx.strokeStyle = '#fff';
+      ctx.stroke();
+    }
+
     // Crosshair — the scrubbed point, or the latest point by default.
     var idx = hi != null ? hi : xy.length - 1;
     var p = xy[idx];
     ctx.beginPath();
     ctx.setLineDash([3, 3]);
-    ctx.moveTo(p[0], 2);
-    ctx.lineTo(p[0], h - pad);
+    ctx.moveTo(p[0], plotT);
+    ctx.lineTo(p[0], plotB);
     ctx.strokeStyle = 'rgba(107,114,128,.45)';
     ctx.lineWidth = 1;
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.beginPath();
-    ctx.arc(p[0], p[1], 4, 0, Math.PI * 2);
+    ctx.arc(p[0], p[1], 5, 0, Math.PI * 2);
     ctx.fillStyle = color;
     ctx.fill();
     ctx.lineWidth = 1.5;
@@ -2031,6 +2138,7 @@
 
   function renderChartDateLabels(container, minT, maxT, w, pad, stepDays) {
     if (!container) return;
+    var P = resolvePad(pad);
     var DAY = 86400000, STEP = (stepDays || 7) * DAY;
     var ticks = [];
     for (var t = minT; t < maxT; t += STEP) ticks.push(t);
@@ -2039,11 +2147,16 @@
     if (ticks.length && (maxT - ticks[ticks.length - 1]) < STEP / 2) ticks.pop();
     ticks.push(maxT);
     var spanT = (maxT - minT) || 1;
+    var plotW = Math.max(1, w - P.l - P.r);
     container.innerHTML = ticks.map(function (t, i) {
-      var pct = ((pad + ((t - minT) / spanT) * (w - pad * 2)) / w) * 100;
-      var cls = i === 0 ? ' ltk-chart-tick--first' : (i === ticks.length - 1 ? ' ltk-chart-tick--last' : '');
+      var pct = ((P.l + ((t - minT) / spanT) * plotW) / w) * 100;
+      var isLast = i === ticks.length - 1;
+      var cls = i === 0 ? ' ltk-chart-tick--first' : (isLast ? ' ltk-chart-tick--last' : '');
+      var label = fmtDayShort(new Date(t).toISOString());
+      // Mirror Deep Dive's "next week ▶" cue on the forecast Monday.
+      if (isLast) label += ' ▸';
       return '<span class="ltk-chart-tick' + cls + '" style="left:' + pct.toFixed(2) + '%">' +
-        esc(fmtDayShort(new Date(t).toISOString())) + '</span>';
+        esc(label) + '</span>';
     }).join('');
   }
 
@@ -2054,18 +2167,27 @@
     var pts = seriesPoints(weeklyDetailSeries(daily, row.weeklyRows), metricKey);
     if (!pts) return;
     var dpr = global.devicePixelRatio || 1;
-    var w = cv.clientWidth || 280, h = cv.clientHeight || 120;
+    var w = cv.clientWidth || 280, h = cv.clientHeight || 160;
     cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
     var ctx = cv.getContext('2d');
     ctx.scale(dpr, dpr);
-    var pad = 8;
-    var xy = projectXY(pts, w, h, pad);
+    // Left pad sized to the longest Y tick so labels never clip; top/bottom
+    // keep points clear of the plot edge like Deep Dive's Chart.js padding.
+    var vals = pts.map(function (p) { return p.v; });
+    var axis = niceAxis(Math.min.apply(null, vals), Math.max.apply(null, vals), 5);
+    var tickW = 0;
+    for (var ti = 0; ti < axis.ticks.length; ti++) {
+      tickW = Math.max(tickW, fmtChartTick(axis.ticks[ti], metricKey).length);
+    }
+    var pad = { l: Math.max(36, Math.min(56, tickW * 7 + 10)), r: 10, t: 10, b: 8 };
+    var xy = projectXY(pts, w, h, pad, axis.min, axis.max);
     var firstForecast = -1;
     for (var i = 0; i < pts.length; i++) {
       if (pts[i].forecast) { firstForecast = i; break; }
     }
     _dc = {
-      ctx: ctx, cv: cv, xy: xy, pts: pts, w: w, h: h, pad: pad, metricKey: metricKey,
+      ctx: ctx, cv: cv, xy: xy, pts: pts, w: w, h: h, pad: pad, axis: axis,
+      metricKey: metricKey,
       activeStat: activeStat, up: xy[xy.length - 1][1] <= xy[0][1], // smaller y = higher value
       firstForecast: firstForecast,
       valEl: header.valEl, subEl: header.subEl,
@@ -2140,7 +2262,7 @@
       ? '<p class="ltk-detail-peers-note">Memuat tren listing…</p>'
       : (trend
         ? '<div class="ltk-detail-chart-canvaswrap">' +
-            '<canvas class="ltk-detail-chart" data-ltk-detailchart width="600" height="160"></canvas>' +
+            '<canvas class="ltk-detail-chart" data-ltk-detailchart width="600" height="180"></canvas>' +
           '</div>' +
           '<div class="ltk-detail-chart-labels" data-ltk-chart-labels></div>' +
           '<div class="ltk-chart-legend">' +

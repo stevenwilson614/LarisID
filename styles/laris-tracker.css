@@ -759,9 +759,9 @@
 .ltk-chart-toggle:hover { color: #374151; }
 .ltk-chart-toggle.is-active { background: #fff; color: #1A1A1A; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
 .ltk-detail-chart-canvaswrap { position: relative; }
-.ltk-detail-chart { width: 100%; height: 120px; display: block; cursor: crosshair; }
+.ltk-detail-chart { width: 100%; height: 180px; display: block; cursor: crosshair; }
 .ltk-detail-chart-labels {
-  position: relative; height: 16px; margin-top: 4px;
+  position: relative; height: 18px; margin-top: 6px;
 }
 .ltk-chart-tick {
   position: absolute; top: 0; transform: translateX(-50%);
