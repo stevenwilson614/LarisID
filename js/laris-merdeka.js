@@ -194,7 +194,7 @@
           'stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>' +
         '</button>' +
         '<div class="mdk-promo-bunting" aria-hidden="true"></div>' +
-        '<img class="mdk-promo-logo" src="/images/brand/logo-horizontal-red.png" width="132" height="36" alt="Laris">' +
+        '<img class="mdk-promo-logo" src="/images/brand/logo-horizontal-red.webp" width="132" height="36" alt="Laris">' +
         '<p class="mdk-promo-kicker">Semangat</p>' +
         '<h2 id="mdk-promo-title" class="mdk-promo-title">KEMERDEKAAN!</h2>' +
         '<p class="mdk-promo-lead">Rayakan HUT RI ke-81 bersama Laris. Jelajahi peluang produk sebanyak-banyaknya.</p>' +

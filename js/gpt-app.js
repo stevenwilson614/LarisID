@@ -1478,6 +1478,7 @@ const state = {
   pendingCompare: null, // { products: [...] } (legacy { a, b }) behind login gate
   pendingFinder: null,  // landing finder answers given before signup; re-run after
   pendingTracker: null, // in-progress tracker wizard draft behind the login gate; resumed after sign-in
+  pendingTrackKeyword: null, // one-tap "Kabari Kalau Berubah" caught by the signup gate; added after sign-in
   everOpenedDeepdive: false,
   comparePick: null, // { source, selected[], chatId? } — directory pick mode, max 3 listings
   compareReturnChatId: null, // compare riwayat to reopen after a Deep Dive from it
@@ -1512,6 +1513,7 @@ function loadLocalState() {
     if (raw.pendingCompare) state.pendingCompare = raw.pendingCompare;
     if (raw.pendingFinder) state.pendingFinder = raw.pendingFinder;
     if (raw.pendingTracker) state.pendingTracker = raw.pendingTracker;
+    if (raw.pendingTrackKeyword) state.pendingTrackKeyword = raw.pendingTrackKeyword;
     if (raw.everOpenedDeepdive != null) state.everOpenedDeepdive = !!raw.everOpenedDeepdive;
     if (raw.affinity && typeof raw.affinity === 'object') state.affinity = raw.affinity;
     if (!Array.isArray(state.onboarding.learnedCategories)) state.onboarding.learnedCategories = [];
@@ -1528,6 +1530,7 @@ function saveLocalState() {
       pendingCompare: state.pendingCompare || null,
       pendingFinder: state.pendingFinder || null,
       pendingTracker: state.pendingTracker || null,
+      pendingTrackKeyword: state.pendingTrackKeyword || null,
       everOpenedDeepdive: state.everOpenedDeepdive || false,
       affinity: state.affinity || {},
       ts: Date.now(),
@@ -2747,12 +2750,30 @@ function openAuthModal(mode, source) {
     clarityEvt('cta_signup_click', { source: _gateSource });
     void logUserEvent('cta_signup_click', { ui: 'gpt', source: _gateSource || '(none)' });
   }
+  _authEmailOpen = false;
   renderAuthModal();
   $('auth-overlay')?.classList.add('open');
 }
 function closeAuthModal() {
   $('auth-overlay')?.classList.remove('open');
 }
+// Signup collapses the email path behind a link so Google reads as THE way in;
+// login and reset keep it open, because the handful of email accounts must not
+// be stranded behind an extra click on the way back to their own data.
+let _authEmailOpen = false;
+function _applyAuthEmailCollapse(signup) {
+  const block = $('auth-email-block');
+  const toggle = $('auth-email-toggle');
+  const sep = $('auth-sep');
+  const collapsible = signup && !_authEmailOpen;
+  if (block) block.style.display = collapsible ? 'none' : '';
+  if (toggle) {
+    toggle.style.display = signup && !_authEmailOpen ? '' : 'none';
+    toggle.textContent = 'Pakai email saja';
+  }
+  if (sep) sep.style.display = signup && !_authEmailOpen ? '' : 'none';
+}
+
 function renderAuthModal() {
   const signup = _authMode === 'signup';
   const reset = _authMode === 'reset';
@@ -2795,6 +2816,13 @@ function renderAuthModal() {
     _authMode = 'reset';
     renderAuthModal();
   });
+  _applyAuthEmailCollapse(signup);
+  $('auth-email-toggle')?.addEventListener('click', () => {
+    _authEmailOpen = true;
+    void logUserEvent('auth_email_expand', { ui: 'gpt', source: _gateSource || '(none)' });
+    _applyAuthEmailCollapse(signup);
+    $('auth-email')?.focus();
+  }, { once: true });
   const err = $('auth-error');
   if (err) { err.style.display = 'none'; err.textContent = ''; }
 }
@@ -3107,7 +3135,16 @@ async function _authOnSignIn(session, opts) {
     const pt = state.pendingTracker;
     state.pendingTracker = null;
     saveLocalState();
-    openTrackerView(null, pt);
+    void openTrackerView(null, pt);
+  }
+
+  // A one-tap "Kabari Kalau Berubah" that hit the signup gate finishes itself
+  // here, so the tap survives the Google round-trip 19 of 21 signups take.
+  if (state.pendingTrackKeyword) {
+    const ptk = state.pendingTrackKeyword;
+    state.pendingTrackKeyword = null;
+    saveLocalState();
+    void quickTrackKeyword({ keyword: ptk.keyword, category: ptk.category });
   }
 
   // Someone who answered the landing questions and then signed up should land
@@ -8802,11 +8839,105 @@ function gptTrackerAdapter() {
   return _trkAdapterB;
 }
 
-function openTrackerView(seed, resumeDraft) {
+/** One-tap keyword tracking straight from a Deep Dive.
+ *
+ *  The old path opened the setup wizard with the keyword pre-filled. Aksi
+ *  Cepat was opened 72 times in the week of 16-23 Aug 2026 by 21 users and
+ *  this button was clicked twice, by one person: the offer was a chore, and
+ *  the tap led to more chores. This does the whole thing in one call and
+ *  leaves "Atur" in the toast for anyone who wants the full panel.
+ *
+ *  add_tracked_keyword is exactly what the wizard's commit() calls, so nothing
+ *  is skipped except the screens. Deliberately does NOT load laris-tracker.js.
+ */
+async function quickTrackKeyword(product) {
+  const kw = String(product?.keyword || '').trim();
+  if (!kw) { showToast('Produk ini belum punya keyword untuk dipantau'); return; }
+  if (!currentUser) {
+    // Same stash-and-resume contract the wizard uses, so the keyword survives
+    // the Google round-trip that 19 of 21 signups take.
+    try { state.pendingTrackKeyword = { keyword: kw, category: product?.category || product?.category_canonical || '' }; saveLocalState(); } catch (_) {}
+    openAuthModal('signup', 'gpt_gate_track');
+    return;
+  }
+  try {
+    const res = await _supabase.rpc('add_tracked_keyword', {
+      p_keyword: kw,
+      p_category: product?.category || product?.category_canonical || '',
+    });
+    if (res?.error) throw res.error;
+    const data = res?.data;
+    // The RPC reports its own refusals (limit reached, duplicate) rather than
+    // throwing, so a false ok must not be reported to the user as success.
+    if (data && data.ok === false) {
+      const msg = {
+        limit_reached:     'Daftar pantauan sudah penuh. Buka Pantauan untuk mengatur.',
+        already_tracked:   `"${kw}" sudah kamu pantau.`,
+        keyword_too_short: 'Keyword ini terlalu pendek untuk dipantau.',
+      }[data.error] || 'Tidak bisa menambah pantauan sekarang.';
+      showToast(msg);
+      void logUserEvent('quick_track_refused', { ui: 'gpt', keyword: kw, reason: data.error || 'unknown' });
+      return;
+    }
+    void logUserEvent('quick_track_added', { ui: 'gpt', keyword: kw, via: 'aksi_cepat' });
+
+    // The button says "Kabari Kalau Berubah", and user_tracker_state.notify_channels
+    // defaults to '{}' — so without this the promise on the button would simply
+    // be false and the daily tracker-change-notify job would have nobody to
+    // write to. Turned on ONLY when the user has never set a preference; an
+    // explicit earlier choice (including deliberately choosing none) is never
+    // overridden. The toast says plainly what was switched on.
+    let emailOn = false;
+    try {
+      const cur = await _supabase.rpc('get_my_tracking');
+      const ch = cur?.data?.notify_channels;
+      if (Array.isArray(ch) && ch.length === 0) {
+        const set = await _supabase.rpc('set_tracker_notify_prefs', { p_channels: ['email'], p_wa_number: null });
+        emailOn = !set?.error && set?.data?.ok !== false;
+        if (emailOn) void logUserEvent('quick_track_notify_on', { ui: 'gpt', channel: 'email' });
+      }
+    } catch (_) {}
+
+    showToast(emailOn
+      ? `Siap — kami email kamu kalau "${kw}" berubah`
+      : `Siap — "${kw}" masuk pantauan harian kamu`);
+  } catch (_) {
+    showToast('Gagal menyimpan pantauan. Coba lagi.');
+  }
+}
+
+// laris-tracker.js is no longer in the eager <script> list — it is the single
+// largest bundle a normal visitor never touched. Everything that needs
+// window.LarisTracker goes through here first.
+let _trkLoadPromise = null;
+function ensureTracker() {
+  if (window.LarisTracker) return Promise.resolve(window.LarisTracker);
+  if (!_trkLoadPromise) {
+    // Its stylesheet left the critical path with it. Injected first so the
+    // panel never paints unstyled once the module mounts.
+    try {
+      if (!document.getElementById('ltk-css')) {
+        const l = document.createElement('link');
+        l.id = 'ltk-css'; l.rel = 'stylesheet';
+        l.href = '/styles/laris-tracker.css?v=20260821a';
+        document.head.appendChild(l);
+      }
+    } catch (_) {}
+    _trkLoadPromise = (typeof larisLoadScript === 'function'
+      ? larisLoadScript('/js/laris-tracker.js?v=20260823a')
+      : Promise.reject(new Error('no loader')))
+      .then(() => window.LarisTracker || null)
+      .catch(() => { _trkLoadPromise = null; return null; });
+  }
+  return _trkLoadPromise;
+}
+
+async function openTrackerView(seed, resumeDraft) {
   setView('tracker');
   // Parity with Site A trkOpen(): view_open fires from setView; this marks the
   // pantauan entry specifically so A/B tracker_tab rates stay comparable.
   try { void logUserEvent('tracker_tab', { tab: 'keyword', ui: 'gpt' }); } catch (_) {}
+  await ensureTracker();
   if (!window.LarisTracker) return;
   window.LarisTracker.mount({ hostId: 'laris-tracker-root', site: 'b', adapter: gptTrackerAdapter() });
   const p = window.LarisTracker.open({ touch: true });
@@ -10190,7 +10321,7 @@ function ddAksiCepatHtml(product) {
       </button>
       <button type="button" class="ddr-aksi-btn" data-ddr-aksi="track">
         <span class="ddr-aksi-ico">${ico('eye', 18)}</span>
-        <span class="ddr-aksi-txt">Pantau Produk Ini</span>
+        <span class="ddr-aksi-txt">Kabari Kalau Berubah</span>
       </button>
       <button type="button" class="ddr-aksi-btn" data-ddr-aksi="compare">
         <span class="ddr-aksi-ico">${ico('scale', 18)}</span>
@@ -10308,14 +10439,7 @@ function wireDdrAksiCepat(root, product, peers) {
       }
       if (aksi === 'track') {
         void logUserEvent('deepdive_section', { ui: 'gpt', section: 'track_cta', via: 'aksi_cepat', keyword: product?.keyword || '' });
-        openTrackerView({
-          keyword: product?.keyword || '',
-          category: product?.category || product?.category_canonical || '',
-          shop_id: product?.shop_id ?? null,
-          store_name: product?.store_name || '',
-          item_id: product?.item_id ?? null,
-          image_url: product?.image_url || '',
-        });
+        void quickTrackKeyword(product);
         return;
       }
       if (aksi === 'compare') {
@@ -14994,7 +15118,18 @@ function admBindMapPanZoom() {
 function renderAdminMap(users) {
   const svg = $('adm-map-svg');
   const map = window.LarisAdminMap;
-  if (!svg || !map) return;
+  // Admin-only bundle, no longer in the eager <script> list. Fetch it once and
+  // re-enter; every visitor used to pay for this on first load.
+  if (!map) {
+    if (svg && typeof larisLoadScript === 'function' && !_admMapLoading) {
+      _admMapLoading = true;
+      larisLoadScript('/js/admin-map.js?v=20260812a')
+        .then(() => { _admMapLoading = false; renderAdminMap(users); },
+              () => { _admMapLoading = false; });
+    }
+    return;
+  }
+  if (!svg) return;
   const cutoff = _adminMapRange === '30' ? Date.now() - 30 * 864e5 : 0;
   const counts = {};
   (users || []).forEach(u => {
@@ -15271,10 +15406,23 @@ async function loadAdminDirectory() {
   }
 }
 
+let _admMapLoading = false;
+let _admWinbackLoading = false;
+
 function gptMountWinback() {
   try {
     const el = $('adm-winback-card');
-    if (!el || !window.WinbackAdmin) return;
+    if (!el) return;
+    // Same story as admin-map: fetched on demand rather than by every visitor.
+    if (!window.WinbackAdmin) {
+      if (typeof larisLoadScript === 'function' && !_admWinbackLoading) {
+        _admWinbackLoading = true;
+        larisLoadScript('/js/winback-admin.js?v=20260808a')
+          .then(() => { _admWinbackLoading = false; gptMountWinback(); },
+                () => { _admWinbackLoading = false; });
+      }
+      return;
+    }
     window.WinbackAdmin.mount(el, {
       supabase: _supabase,
       isAdmin: isPlatformAdmin,

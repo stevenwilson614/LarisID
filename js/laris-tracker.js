@@ -646,7 +646,7 @@
       '<header class="ltk-head">' +
         '<div class="ltk-head-main">' +
           '<span class="ltk-head-ico ltk-head-ico--mascot" aria-hidden="true">' +
-            '<img src="/images/brand/appicon-bird.png" alt="" width="20" height="20" loading="lazy">' +
+            '<img src="/images/brand/appicon-bird-48.png" alt="" width="20" height="20" loading="lazy">' +
           '</span>' +
           '<div><h2 class="ltk-title">Pantauan</h2>' +
           '<p class="ltk-sub" data-ltk-sub></p></div>' +

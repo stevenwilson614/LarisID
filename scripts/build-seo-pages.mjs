@@ -287,7 +287,7 @@ ${JSON.stringify(ld, null, 2)}
 </head>
 <body>
 <header class="site-header">
-  <a class="logo" href="/"><img src="/images/brand/logo-horizontal-light.png" alt="Laris" style="height:28px;width:auto;display:block;"></a>
+  <a class="logo" href="/"><img src="/images/brand/logo-horizontal-light.webp" alt="Laris" style="height:28px;width:auto;display:block;"></a>
   ${navHtml()}
 </header>
 <main class="wide">
@@ -447,7 +447,7 @@ ${JSON.stringify(ld, null, 2)}
 </head>
 <body>
 <header class="site-header">
-  <a class="logo" href="/"><img src="/images/brand/logo-horizontal-light.png" alt="Laris" style="height:28px;width:auto;display:block;"></a>
+  <a class="logo" href="/"><img src="/images/brand/logo-horizontal-light.webp" alt="Laris" style="height:28px;width:auto;display:block;"></a>
   ${navHtml()}
 </header>
 <main class="wide">
