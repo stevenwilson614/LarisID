@@ -61,12 +61,6 @@
     var el = form.querySelector('input[name="' + name + '"]:checked');
     return el ? el.value : '';
   }
-  function checks(name) {
-    var els = form.querySelectorAll('input[name="' + name + '"]:checked');
-    var out = [];
-    for (var i = 0; i < els.length; i++) out.push(els[i].value);
-    return out;
-  }
 
   /* Indonesian numbers arrive as 08…, 8…, +628… or 628…. Postgres normalises
    * for real; this only decides whether the field looks plausible. */
@@ -92,8 +86,6 @@
 
     if (!radio('perangkat')) bad.push('perangkat');
     if (!radio('pengalaman_jualan')) bad.push('pengalaman_jualan');
-    if (checks('hari_tersedia').length < 3) bad.push('hari_tersedia');
-    if (!radio('jam_per_minggu')) bad.push('jam_per_minggu');
     if (!val('alasan')) bad.push('alasan');
     if (!val('target_3bulan')) bad.push('target_3bulan');
     if (!radio('gate_komitmen')) bad.push('gate_komitmen');
@@ -157,8 +149,8 @@
       perangkat: radio('perangkat'),
       pengalaman_jualan: radio('pengalaman_jualan'),
       ide_produk: val('ide_produk'),
-      hari_tersedia: checks('hari_tersedia'),
-      jam_per_minggu: radio('jam_per_minggu'),
+      hari_tersedia: [],
+      jam_per_minggu: '',
       alasan: val('alasan'),
       target_3bulan: val('target_3bulan'),
       gate_komitmen: radio('gate_komitmen') === 'true',

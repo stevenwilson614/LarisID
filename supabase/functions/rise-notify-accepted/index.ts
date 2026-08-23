@@ -41,9 +41,9 @@ function emailHtml(nama: string, unsubUrl: string): string {
         LARIS RISE. Kami membaca jawaban kamu satu per satu, dan kami senang kamu ikut.
       </p>
       <p style="font-size:14px;line-height:1.65;margin:0 0 14px;">
-        Program dimulai <strong>${MULAI}</strong> dan berjalan 2× seminggu sampai 28 Oktober 2026,
-        seluruhnya online. Detail jadwal dan tautan sesi pertama kami kirim lewat WhatsApp
-        beberapa hari sebelum mulai.
+        Program dimulai <strong>${MULAI}</strong> dan berjalan 1× seminggu (Rabu 16:00–18:00 WITA)
+        sampai 28 Oktober 2026, seluruhnya online — total 8 sesi. Detail jadwal dan tautan
+        sesi pertama kami kirim lewat WhatsApp beberapa hari sebelum mulai.
       </p>
       <p style="font-size:14px;line-height:1.65;margin:0 0 18px;">
         Satu hal yang kami minta: hadir sejak sesi pertama. Materinya bertahap, dan yang
@@ -65,7 +65,7 @@ function waText(nama: string): string {
 
 Selamat — kamu diterima di *LARIS RISE Batch 1*. Dari semua yang mendaftar, kamu termasuk 20 peserta yang terpilih.
 
-Program mulai *${MULAI}*, 2x seminggu sampai 28 Oktober, semuanya online. Detail jadwal dan link sesi pertama kami kirim di sini beberapa hari sebelum mulai.
+Program mulai *${MULAI}*, 1x seminggu (Rabu 16:00–18:00 WITA) sampai 28 Oktober — total 8 sesi, semuanya online. Detail jadwal dan link sesi pertama kami kirim di sini beberapa hari sebelum mulai.
 
 Satu permintaan: usahakan hadir sejak sesi pertama, karena materinya bertahap.
 
