@@ -2786,6 +2786,8 @@ function renderAuthModal() {
   const btn = $('auth-submit-btn');
   const toggle = $('auth-toggle-text');
   if (title) title.textContent = reset ? 'Reset Password' : signup ? 'Buat Akun Gratis' : 'Masuk ke LarisID';
+  const mascot = $('auth-mascot');
+  if (mascot) mascot.style.display = signup ? 'block' : 'none';
   if (sub) {
     const map = {
       gpt_gate_deepdive: 'Kamu sudah lihat 1 analisa gratis. Daftar gratis untuk buka analisa produk lain sepuasnya.',
