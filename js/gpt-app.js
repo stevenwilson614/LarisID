@@ -10672,7 +10672,7 @@ function drawKompSparks(root, history) {
     const weeks = rows.length
       ? ddWeeklySeries(rows.filter(r => String(r.shop_id) === sid))
       : [];
-    drawSpark(cv, weeks.slice(-4).map(w => w.omset), 76, 34);
+    drawSpark(cv, weeks.slice(-4).map(w => w.omset), 88, 40);
   });
 }
 
@@ -12666,7 +12666,7 @@ async function handleComposerSubmit(text, opts = {}) {
       const gate = await ensureIntentChat(chat, text.slice(0, 60), { kind: 'category_search', category: catFallback, q: text });
       if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
       state.recommendations = [];
-      const html = `<p>Belum ketemu pasar di kategori <strong>${esc(catFallback)}</strong>. Coba kata kunci lain atau buka Produk.</p>`;
+      const html = `<p>Belum ketemu pasar di kategori <strong>${esc(catFallback)}</strong>. Coba kata kunci lain atau buka Cari Produk.</p>`;
       if (loading) await revealAssistant(loading, html);
       else await appendAssistantStream(html);
       pushMessage(chat, 'assistant', {
