@@ -2,6 +2,20 @@
 
 _Research note. Author: AI research agent. Date: 2026-05-30. No application code was changed._
 
+> **SUPERSEDED — kept for the reasoning, not the facts.** Everything below describes the
+> May 2026 build and is no longer true of the product:
+>
+> - **AI is unlimited.** The credit model is dead (retired Jul 2026) and the daily AI cap was
+>   removed by migration `20260817120000`. The live `use_ai` RPC always returns
+>   `allowed: true, unlimited: true, ai_limit: null` — it only records usage. `claude-proxy`
+>   enforces no per-day cap either. There is no `MLS_AI_PER_CREDIT`, no `spend_credit` on the
+>   AI path, and no "10 requests/day" in the edge function.
+> - **The recommendation was reversed.** LarisID is now chat-first: `js/gpt-app.js` is the live
+>   bundle, Ask Laris is a full multi-turn thread, and the AI is a tool-using agent that reads
+>   the database itself. The `index.html` line numbers cited below are long gone.
+> - The only daily quota that still exists is on **starting a new product search**
+>   (`gpt_new_chat`), not on asking questions.
+
 **Product question:** "AI chat bot — do we need one, or is the AI assistance inside 'Mulai Berjualan' enough? Do people tend to ask a chat questions during a session?"
 
 **Short answer:** Cut the standalone chatbot. It is currently orphaned dead code, and the data shows users barely touch even the working AI surface. The contextual quick-ask inside Mulai Berjualan is the right amount of AI for now.

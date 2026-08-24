@@ -79,7 +79,11 @@ inconsistent prices across pages confuse both search and AI.
 - **Price:** Rp 0, forever, for everyone. Say "100% gratis" / "gratis selamanya". Never write
   "paket Free", "Laris Pro", "Laris Business", or "gratis selama Beta" — those imply a paid tier
   exists.
-- **Daily quota:** 10 new searches/day, reset midnight WIB, uncapped while the Beta runs. Frame it
+- **AI is unlimited.** Never write a cap, quota, or point cost for Ask Laris / Tanya AI — asking
+  questions has been uncapped since migration `20260817120000` and never touches the search
+  quota. The old "5 poin AI/hari" and "10 prompts = 1 credit" models are both dead.
+- **Daily quota:** 10 new searches/day, reset midnight WIB, uncapped while the Beta runs. It
+  applies ONLY to starting a new product search. Frame it
   as a server-cost guard, never as an upgrade prompt — there is nothing to upgrade to. Raise it for
   free: Chrome extension +3/day permanent, referrals +1/day up to +5, product feedback +3 that day.
 - **Never gate** honesty, viability scores, sales estimates, or thin-data warnings — MISSION §3.

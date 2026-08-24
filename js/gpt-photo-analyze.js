@@ -261,7 +261,8 @@
           spendQuota()
             .then(ok => {
               if (!ok) {
-                showError('Jatah AI harian sudah habis.');
+                // _useAi() only fails when nobody is signed in; AI itself is uncapped.
+                showError('Masuk dulu untuk pakai analisa foto.');
                 fileInput.value = '';
                 return;
               }

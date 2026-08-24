@@ -18,7 +18,7 @@
 
 ---
 
-## A. Current model (June 2026) — what is actually live
+## A. The June 2026 model — HISTORICAL, not what is live
 
 LarisID charges **nothing**. There is no paid tier, no credit pack, no per-credit price, and no payment flow anywhere in the product.
 
@@ -26,10 +26,14 @@ LarisID charges **nothing**. There is no paid tier, no credit pack, no per-credi
 - **20 free credits / month** (raised from 5), granted on the user's signup anniversary, expiring 30 days after grant. New users also start with a **balance default of 20**. See `grant_due_monthly_credits()` in the migration above.
 - **Earn-only top-up.** Beyond the monthly grant, the only way to get more credits is the **earn-more loop**: 10 product searches via the Chrome Extension → 1 credit, repeatable up to 10/day (`search_completions`). This is now the *sole* path to extra depth — there is no cash alternative, by design.
 - **Spend model unchanged.** 1 credit = 1 Deep Dive, OR 1 month of Tracker, OR 10 AI questions (`MLS_AI_PER_CREDIT = 10`).
+  **DEAD.** Credits were retired entirely by the July 2026 daily-limits pivot, and the AI cap that
+  replaced them was removed by migration `20260817120000`. **Asking the AI is unlimited and costs
+  nothing** — `use_ai` returns `unlimited: true, ai_limit: null` and only records usage.
 - **Unlimited cohort unchanged.** Admins + the primary-mentor cohort bypass all gates (`_isUnlimited()`).
 - **Brand promise:** "100% gratis" / "Kompetitor bayar 300rb/bulan. LarisID? Gratis." — now literally true, not aspirational. The Datapinter ~Rp 299.000/mo anchor (§1) is what makes that tagline accurate.
 
 Everything from §2 onward predates this decision. Read it as *why we once considered charging*, not as a plan.
+And read §A itself as *what June 2026 looked like* — credits are gone, AI is uncapped, and `/harga/` is the source of truth.
 
 ---
 

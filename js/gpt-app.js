@@ -2203,7 +2203,7 @@ function renderGptUsage() {
     } else if (_gptUsage.merdeka || merdekaUnlimitedNow()) {
       title = 'Deep Dive Search tanpa batas sampai 17 Agustus 23.59 WIB';
       popTitle = title;
-      popSub = 'Jatah 10 per hari dilonggarkan untuk HUT RI ke-81. Poin AI tetap ada batasnya.';
+      popSub = 'Jatah 10 per hari dilonggarkan untuk HUT RI ke-81. Tanya AI tidak pernah dibatasi.';
     } else {
       title = 'Akses tanpa batas';
       popTitle = title;
