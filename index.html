@@ -1980,27 +1980,43 @@ body.view-directory.dir-compare-picking .panel { padding-bottom: 110px; }
   align-items: stretch;
 }
 .dir-home-meledak {
-  padding: 20px 20px 16px;
+  padding: 14px 16px 12px;
   border-radius: 20px;
   background: #F5EFE0;
 }
-.dir-home-meledak .dir-home-title { margin-bottom: 4px; }
-.dir-home-meledak .dir-home-sub { margin-bottom: 12px; color: #6B5E50; }
+.dir-home-meledak .dir-home-title { margin-bottom: 2px; font-size: 1rem; }
+.dir-home-meledak .dir-home-sub { margin-bottom: 8px; color: #6B5E50; font-size: .74rem; }
 .dir-home-cta {
   display: inline-flex; align-items: center; gap: 6px;
-  margin: 0 0 14px; padding: 8px 14px;
+  margin: 0 0 10px; padding: 7px 12px;
   border-radius: 999px; border: none;
   background: #1A1A1A; color: #fff;
-  font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer;
+  font: inherit; font-size: .74rem; font-weight: 700; cursor: pointer;
 }
 .dir-home-cta:hover { background: #2A2A2A; }
 .dir-home-cta svg { stroke: currentColor; }
 .dir-home-meledak-grid {
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
 }
 .dir-home-meledak-grid .prod-card { width: 100%; overflow: visible; }
 .dir-home-meledak-grid .prod-card > .prod-card-img,
-.dir-home-meledak-grid .prod-card > .prod-card-ph { border-radius: 15px 15px 0 0; overflow: hidden; }
+.dir-home-meledak-grid .prod-card > .prod-card-ph { border-radius: 12px 12px 0 0; overflow: hidden; }
+/* Half-height cards: square thumbs dominate this panel — crop to ~1:2. */
+.dir-home-meledak-grid .prod-card img,
+.dir-home-meledak-grid .prod-card-ph,
+.dir-home-meledak-grid .prod-card-img img {
+  aspect-ratio: 2 / 1;
+}
+.dir-home-meledak-grid .prod-card-body { padding: 8px 9px 9px; }
+.dir-home-meledak-grid .prod-card-name { font-size: .72rem; min-height: 0; -webkit-line-clamp: 1; }
+.dir-home-meledak-grid .prod-card-stem { font-size: .58rem; }
+.dir-home-meledak-grid .prod-card-distinct { font-size: .72rem; }
+.dir-home-meledak-grid .prod-card-price { margin-top: 3px; font-size: .78rem; }
+.dir-home-meledak-grid .prod-card-stats,
+.dir-home-meledak-grid .prod-card-stats--slim { margin-top: 4px; padding-top: 4px; }
+.dir-home-meledak-grid .prod-card-wk { font-size: .62rem; }
+.dir-home-meledak-grid .dir-home-badge { top: 6px; left: 6px; padding: 2px 6px; font-size: .52rem; }
+.dir-home-meledak-grid .prod-card-img-caption { font-size: .52rem; padding: 8px 6px 4px; }
 
 .dir-home-cari {
   position: relative;
@@ -2039,7 +2055,7 @@ body.view-directory.dir-compare-picking .panel { padding-bottom: 110px; }
 }
 @media (max-width: 560px) {
   .dir-home-rail .prod-card { flex-basis: 148px; width: 148px; }
-  .dir-home-meledak { padding: 16px 14px 12px; }
+  .dir-home-meledak { padding: 12px 12px 10px; }
 }
 
 .dir-filter-host {
@@ -7104,6 +7120,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/gpt-app.js?v=20260824o" defer></script>
+<script src="/js/gpt-app.js?v=20260824p" defer></script>
 </body>
 </html>
