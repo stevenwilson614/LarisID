@@ -2644,6 +2644,12 @@ async function refreshAccountHeadshot() {
   }
 }
 
+function syncHargaVisitCta() {
+  const cta = $('harga-daftar-cta');
+  if (!cta) return;
+  cta.hidden = !!currentUser;
+}
+
 function updateAccountUI() {
   const authH = $('auth-header');
   const userH = $('user-header');
@@ -2662,6 +2668,7 @@ function updateAccountUI() {
   }
   const btn = $('btn-admin');
   if (btn) btn.style.display = isPlatformAdmin() ? '' : 'none';
+  syncHargaVisitCta();
   try { void refreshCohortNav(); } catch (_) {}
   try { supplierSyncNavVisibility(); } catch (_) {}
   renderChatList();
@@ -16363,6 +16370,10 @@ function wireUi() {
   $('sample-strip-exit')?.addEventListener('click', () => adminExitSample());
   $('btn-login')?.addEventListener('click', () => openAuthModal('login', 'gpt_header_login'));
   $('btn-signup')?.addEventListener('click', () => openAuthModal('signup', 'gpt_header_signup'));
+  $('harga-daftar-cta')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openAuthModal('signup', 'harga_cta');
+  });
   $('btn-user')?.addEventListener('click', () => {
     if (!currentUser) return;
     if (window.GptProfile) {
