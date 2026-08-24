@@ -10646,7 +10646,7 @@ function ddKompetitorTableHtml(share, opts = {}) {
     // nothing here carries a product snapshot or a role="link".
     return `<tr${i >= 5 ? ' data-komp-extra hidden' : ''}>
       <td class="tr-rank">${i + 1}</td>
-      <td><div class="tr-prod" style="min-width:170px"><span class="comp-av">${s.img ? `<img src="${esc(imgThumb(s.img))}" alt="" loading="lazy" decoding="async">` : esc((s.name || 'T').charAt(0).toUpperCase())}</span><div class="tr-prod-name">${esc((s.name || 'Toko').slice(0, 28))}</div></div></td>
+      <td><div class="tr-prod"><span class="comp-av">${s.img ? `<img src="${esc(imgThumb(s.img))}" alt="" loading="lazy" decoding="async">` : esc((s.name || 'T').charAt(0).toUpperCase())}</span><div class="tr-prod-name">${esc((s.name || 'Toko').slice(0, 28))}</div></div></td>
       <td>${omsetMo ? fmtRpShort(omsetMo) : '—'}</td>
       <td>${reviews ? fmtSold(reviews) : '0'}</td>
       <td>${sold ? fmtSold(sold) : '0'}</td>
