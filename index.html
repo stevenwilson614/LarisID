@@ -430,7 +430,7 @@ html.session-restoring body::after {
   display: flex;
   align-items: center;
   gap: 10px;
-  max-width: 972px; /* ~10% shorter than previous 1080px */
+  max-width: 1080px; /* matches .panel-inner on the directory */
   margin: 0 auto;
 }
 .results-bar-kategori {
@@ -1520,6 +1520,266 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 }
 
 /* Directory */
+/* ── Cari Produk header carousel (js/gpt-dir-hero.js) ───────────────
+   Each slide paints a photo layer over a per-slide gradient, so a missing
+   file in /images/dir-hero/ degrades to the gradient instead of a broken
+   image and the art can be dropped in later with no code change. */
+.dir-hero {
+  position: relative;
+  margin: 0 0 20px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #1A1A1A;
+  isolation: isolate;
+}
+.dir-hero[hidden] { display: none !important; }
+.dir-hero-viewport { overflow: hidden; touch-action: pan-y; }
+.dir-hero-track {
+  display: flex;
+  align-items: stretch;
+  transition: transform .48s cubic-bezier(.22,.61,.36,1);
+  will-change: transform;
+}
+.dir-hero-track.is-dragging { transition: none; }
+.dh-slide {
+  position: relative;
+  flex: 0 0 100%;
+  min-width: 100%;
+  height: clamp(272px, 25vw, 340px);
+  overflow: hidden;
+}
+.dh-photo {
+  position: absolute; inset: 0;
+  background-size: cover;
+  background-position: 72% center;
+  background-repeat: no-repeat;
+}
+.dh-scrim { position: absolute; inset: 0; }
+.dh-body {
+  position: relative; z-index: 2;
+  height: 100%;
+  display: flex; align-items: center; gap: 22px;
+  padding: 24px 30px;
+}
+.dh-text { flex: 0 1 44%; min-width: 0; }
+.dh-aside { flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: flex-end; height: 100%; }
+.dh-slide--insight .dh-text { flex: 0 1 34%; }
+
+/* Per-slide grounds. The gradient is the fallback the photo sits on top of. */
+.dh-slide--camping { background: linear-gradient(118deg, #101B0E 0%, #2B3A21 52%, #7A6533 100%); }
+.dh-slide--camping .dh-scrim {
+  background: linear-gradient(90deg, rgba(6,10,5,.90) 0%, rgba(6,10,5,.66) 34%, rgba(6,10,5,.10) 64%, rgba(6,10,5,.42) 100%);
+}
+.dh-slide--rumah { background: linear-gradient(112deg, #F6E4D6 0%, #FCF3E9 46%, #F1DAC8 100%); }
+.dh-slide--rumah .dh-scrim {
+  background: linear-gradient(90deg, rgba(255,247,240,.95) 0%, rgba(255,247,240,.74) 38%, rgba(255,247,240,0) 64%);
+}
+.dh-slide--insight {
+  background:
+    radial-gradient(120% 120% at 78% 30%, rgba(120,86,255,.34) 0%, rgba(10,14,32,0) 58%),
+    radial-gradient(90% 90% at 96% 88%, rgba(40,190,220,.22) 0%, rgba(10,14,32,0) 60%),
+    linear-gradient(118deg, #090D1F 0%, #131A3C 55%, #080B18 100%);
+}
+.dh-slide--insight .dh-scrim {
+  background: linear-gradient(90deg, rgba(6,9,20,.90) 0%, rgba(6,9,20,.66) 32%, rgba(6,9,20,.18) 62%, rgba(6,9,20,.34) 100%);
+}
+
+/* Text block */
+.dh-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin: 0 0 12px; padding: 5px 11px;
+  border-radius: 999px;
+  font-size: .64rem; font-weight: 750; letter-spacing: .07em; text-transform: uppercase;
+  background: rgba(255,255,255,.16); color: #fff;
+  border: 1px solid rgba(255,255,255,.24);
+  backdrop-filter: blur(6px);
+}
+.dh-badge--solid { background: var(--accent, #B5202A); border-color: transparent; }
+.dh-slide--rumah .dh-badge { background: #fff; color: var(--accent, #B5202A); border-color: rgba(181,32,42,.2); }
+.dh-title {
+  margin: 0 0 10px;
+  font-size: clamp(1.45rem, 3vw, 2.3rem);
+  font-weight: 800; line-height: 1.08; letter-spacing: -.03em;
+  color: #fff;
+}
+.dh-title em { font-style: normal; color: var(--gold, #C9974B); }
+.dh-slide--rumah .dh-title { color: #1A1A1A; }
+.dh-slide--rumah .dh-title em { color: var(--accent, #B5202A); }
+.dh-sub {
+  margin: 0 0 16px; max-width: 34ch;
+  font-size: .84rem; line-height: 1.5; color: rgba(255,255,255,.82);
+}
+.dh-slide--rumah .dh-sub { color: #5A4A3F; }
+.dh-cta {
+  display: inline-flex; align-items: center; gap: 7px;
+  margin: 0; padding: 10px 18px;
+  border-radius: 999px; border: 1px solid transparent;
+  background: #fff; color: #1A1A1A;
+  font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer;
+  transition: transform .14s var(--ease), box-shadow .14s;
+}
+.dh-cta:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0,0,0,.22); }
+.dh-slide--rumah .dh-cta { color: var(--accent, #B5202A); border-color: rgba(181,32,42,.28); }
+.dh-slide--insight .dh-cta { background: var(--accent, #B5202A); color: #fff; }
+
+/* Shared overlay card */
+.dh-card {
+  width: 100%; max-width: 420px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(16,18,16,.52);
+  backdrop-filter: blur(14px);
+}
+.dh-card-title {
+  margin: 0 0 11px;
+  font-size: .8rem; font-weight: 700; color: #fff; letter-spacing: -.01em;
+}
+.dh-rounds { display: flex; gap: 10px; }
+.dh-round {
+  flex: 1 1 0; aspect-ratio: 1; max-width: 74px;
+  border-radius: 999px; overflow: hidden;
+  background: #F1EFEA;
+  display: block;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.18), inset 0 0 0 1px rgba(0,0,0,.08);
+}
+.dh-round img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dh-thumb-ph { display: block; width: 100%; height: 100%; background: #E9E6E0; }
+.dh-card-foot {
+  display: flex; align-items: center; gap: 6px;
+  margin: 12px 0 0; padding-top: 11px;
+  border-top: 1px solid rgba(255,255,255,.14);
+  font-size: .72rem; color: rgba(255,255,255,.9);
+}
+.dh-card-foot b { color: #8FE3A2; font-weight: 700; }
+.dh-card-foot svg { color: #7BD88F; flex-shrink: 0; }
+
+/* Slide 2 — category tiles */
+.dh-tiles {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  width: 100%; max-width: 600px; height: 100%; max-height: 214px;
+}
+.dh-tile {
+  position: relative; display: block; padding: 0; border: none; cursor: pointer;
+  border-radius: 16px; overflow: hidden; font: inherit;
+  background: #EEE8E0;
+  transition: transform .16s var(--ease), box-shadow .16s;
+}
+.dh-tile:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(90,60,40,.22); }
+.dh-tile--sage  { background: #DCE5D5; }
+.dh-tile--blush { background: #F6DFE0; }
+.dh-tile--sky   { background: #D8E6F0; }
+.dh-tile--sand  { background: #EEE1CE; }
+.dh-tile-img { position: absolute; inset: 0; display: block; }
+.dh-tile-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* The onboarding cut-out fallback sits on a white plate, not true alpha —
+   multiply drops that plate into the tile's pastel ground instead of leaving
+   a floating white rectangle. Generated art is full-bleed and skips this. */
+.dh-tile-img img.is-cutout {
+  object-fit: contain; padding: 26% 10% 12%;
+  mix-blend-mode: multiply;
+}
+.dh-tile-label {
+  position: absolute; left: 8px; top: 8px; right: 8px;
+  padding: 5px 9px; border-radius: 999px;
+  background: rgba(255,255,255,.92);
+  font-size: .68rem; font-weight: 700; color: #1A1A1A;
+  text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Slide 3 — insight panel */
+.dh-ins { display: flex; gap: 12px; width: 100%; max-width: 640px; }
+.dh-ins-main, .dh-ins-side {
+  padding: 13px 15px; border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(10,14,32,.56);
+  backdrop-filter: blur(14px);
+}
+.dh-ins-main { flex: 1 1 58%; min-width: 0; }
+.dh-ins-side { flex: 1 1 42%; min-width: 0; }
+.dh-ins-label { margin: 0; font-size: .64rem; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: rgba(255,255,255,.6); }
+.dh-ins-big { margin: 2px 0 10px; font-size: 1.5rem; font-weight: 800; letter-spacing: -.03em; color: #fff; }
+.dh-bars { list-style: none; margin: 0 0 11px; padding: 0; display: grid; gap: 5px; }
+.dh-bar { display: grid; grid-template-columns: 6.6rem 1fr 2.7rem; align-items: center; gap: 7px; }
+.dh-bar-name { font-size: .6rem; color: rgba(255,255,255,.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dh-bar-track { height: 5px; border-radius: 999px; background: rgba(255,255,255,.12); overflow: hidden; }
+.dh-bar-track i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #6C7BFF, #46D8E6); }
+.dh-bar-val { font-size: .6rem; font-weight: 700; color: rgba(255,255,255,.86); text-align: right; }
+.dh-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.12); }
+.dh-stat { min-width: 0; }
+.dh-stat-k { display: block; font-size: .58rem; color: rgba(255,255,255,.58); line-height: 1.25; }
+.dh-stat-v { display: block; margin-top: 2px; font-size: .84rem; font-weight: 750; color: #fff; letter-spacing: -.02em; }
+.dh-ranks { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.dh-rank { display: grid; grid-template-columns: .9rem 1fr auto; align-items: center; gap: 7px; }
+.dh-rank-n { font-size: .62rem; color: rgba(255,255,255,.45); }
+.dh-rank-body { min-width: 0; }
+.dh-rank-name { display: block; font-size: .64rem; color: rgba(255,255,255,.86); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dh-rank-track { display: block; margin-top: 3px; height: 3px; border-radius: 999px; background: rgba(255,255,255,.12); overflow: hidden; }
+.dh-rank-track i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #46D8E6, #6C7BFF); }
+.dh-rank-pct { font-size: .62rem; font-weight: 700; color: #7BD88F; }
+.dh-ins-note { margin: 9px 0 0; font-size: .57rem; color: rgba(255,255,255,.62); }
+
+/* Chrome */
+.dir-hero-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 3;
+  width: 36px; height: 36px; padding: 0;
+  display: grid; place-items: center;
+  border-radius: 999px; border: 1px solid rgba(0,0,0,.06);
+  background: rgba(255,255,255,.9); color: #1A1A1A;
+  cursor: pointer; opacity: 0; transition: opacity .16s, background .16s;
+  box-shadow: 0 4px 14px rgba(0,0,0,.18);
+}
+.dir-hero-arrow--prev { left: 12px; }
+.dir-hero-arrow--next { right: 12px; }
+.dir-hero:hover .dir-hero-arrow,
+.dir-hero-arrow:focus-visible { opacity: 1; }
+.dir-hero-arrow:hover { background: #fff; }
+.dir-hero-dots {
+  position: absolute; left: 30px; bottom: 16px; z-index: 3;
+  display: flex; gap: 6px;
+}
+.dir-hero-dot {
+  width: 7px; height: 7px; padding: 0; border: none; cursor: pointer;
+  border-radius: 999px; background: rgba(255,255,255,.42);
+  transition: width .18s var(--ease), background .18s;
+}
+.dir-hero-dot.on { width: 20px; background: #fff; }
+.dir-hero[data-dh-active="rumah"] .dir-hero-dot { background: rgba(26,26,26,.28); }
+.dir-hero[data-dh-active="rumah"] .dir-hero-dot.on { background: var(--accent, #B5202A); }
+
+@media (max-width: 900px) {
+  .dh-text { flex: 0 1 50%; }
+  .dh-slide--insight .dh-text { flex: 0 1 42%; }
+  .dh-ins-side { display: none; }
+}
+@media (max-width: 760px) {
+  .dir-hero { border-radius: 16px; }
+  .dh-slide { height: auto; min-height: 320px; }
+  .dh-photo { background-position: 60% center; }
+  .dh-slide--camping .dh-scrim,
+  .dh-slide--insight .dh-scrim { background: linear-gradient(180deg, rgba(6,9,16,.80) 0%, rgba(6,9,16,.62) 46%, rgba(6,9,16,.86) 100%); }
+  .dh-slide--rumah .dh-scrim { background: linear-gradient(180deg, rgba(255,247,240,.92) 0%, rgba(255,247,240,.7) 48%, rgba(255,247,240,.9) 100%); }
+  .dh-body { flex-direction: column; align-items: stretch; justify-content: center; gap: 14px; padding: 18px 16px 34px; }
+  .dh-text, .dh-slide--insight .dh-text { flex: none; }
+  .dh-sub { max-width: none; margin-bottom: 12px; font-size: .78rem; }
+  .dh-aside { flex: none; height: auto; justify-content: stretch; }
+  .dh-card, .dh-tiles, .dh-ins { max-width: none; }
+  .dh-tiles { max-height: none; gap: 7px; }
+  .dh-tile { aspect-ratio: 1; }
+  /* 4 tiles across ~335px leaves ~76px each — the label moves under the
+     cut-out and shrinks so "Kecantikan" stops truncating to "Kec…". */
+  .dh-tile-label { top: auto; bottom: 5px; left: 4px; right: 4px; padding: 3px 5px; font-size: .55rem; text-align: center; }
+  .dh-tile-img img.is-cutout { padding: 14% 10% 32%; }
+  .dh-ins-main { flex: 1 1 100%; }
+  .dh-bars { display: none; }
+  .dir-hero-arrow { display: none; }
+  .dir-hero-dots { left: 0; right: 0; justify-content: center; bottom: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dir-hero-track { transition: none; }
+  .dh-cta:hover, .dh-tile:hover { transform: none; }
+}
+
 .dir-head { margin-bottom: 16px; }
 .dir-head h2 { margin: 0 0 6px; font-size: 1.35rem; font-weight: 650; letter-spacing: -.02em; }
 .dir-count { margin: 0; font-size: .78rem; color: var(--muted, #888); }
@@ -2948,6 +3208,7 @@ body.view-harga .panel-inner { max-width: 1180px; }
 body.view-home .panel-inner,
 body.view-landing .panel-inner,
 body.view-deepdive .panel-inner,
+body.view-directory .panel-inner,
 body.thread-wide .panel-inner { max-width: 1080px; }
 body.view-admin .panel { background: #F6F6F7; padding-top: 18px; padding-bottom: 40px; }
 body.view-admin .panel-inner { max-width: 1180px; }
@@ -5733,6 +5994,10 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
           <div id="laris-tracker-root" class="ltk-root" data-site="b"></div>
         </div>
         <div class="view" id="view-directory">
+          <!-- Header carousel. Rendered by js/gpt-dir-hero.js and shown only in
+               the default browse state (no search, no category, no subgroup) —
+               once you filter, results start at the top. -->
+          <div class="dir-hero" id="dir-hero" hidden></div>
           <div class="dir-head">
             <h2 id="dir-heading">Tipe Produk</h2>
             <p class="dir-count" id="dir-count"></p>
@@ -6688,6 +6953,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script src="/js/laris-merdeka.js?v=20260816b" defer></script>
 <script src="/js/changelog.js?v=20260822a" defer></script>
 <script defer src="/js/gpt-dir-filters.js?v=20260808d"></script>
+<script defer src="/js/gpt-dir-hero.js?v=20260824a"></script>
 <script defer src="/js/gpt-photo-analyze.js?v=20260824a"></script>
 <script defer src="/js/gpt-referral.js?v=20260821a"></script>
 <script defer src="/js/gpt-profile.js?v=20260821a"></script>
@@ -6702,6 +6968,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/gpt-app.js?v=20260824d" defer></script>
+<script src="/js/gpt-app.js?v=20260824e" defer></script>
 </body>
 </html>

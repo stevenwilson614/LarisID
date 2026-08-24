@@ -9100,12 +9100,12 @@ function ensureTracker() {
       if (!document.getElementById('ltk-css')) {
         const l = document.createElement('link');
         l.id = 'ltk-css'; l.rel = 'stylesheet';
-        l.href = '/styles/laris-tracker.css?v=20260821a';
+        l.href = '/styles/laris-tracker.css?v=20260824a';
         document.head.appendChild(l);
       }
     } catch (_) {}
     _trkLoadPromise = (typeof larisLoadScript === 'function'
-      ? larisLoadScript('/js/laris-tracker.js?v=20260823a')
+      ? larisLoadScript('/js/laris-tracker.js?v=20260824a')
       : Promise.reject(new Error('no loader')))
       .then(() => window.LarisTracker || null)
       .catch(() => { _trkLoadPromise = null; return null; });
@@ -15429,7 +15429,10 @@ function syncDirHero() {
     supabase: _supabase,
     imgThumb,
     onCategory: (cat, sub) => { void applyDirectoryCategory(cat, sub); },
-    onKategoriMenu: () => { $('results-bar-kategori')?.click(); },
+    // Deferred: the results-bar has a document-level outside-click closer, and
+    // the hero CTA's own click is still bubbling — opening the mega-menu inline
+    // would have it closed again by the same click.
+    onKategoriMenu: () => { setTimeout(() => $('results-bar-kategori')?.click(), 0); },
     onTracker: () => { $('btn-tracker')?.click(); },
     onEvent: (name, meta) => { void logUserEvent(name, { ui: 'gpt', ...(meta || {}) }); },
   });
