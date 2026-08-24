@@ -2444,7 +2444,7 @@ let _historyPrimed = false;
 function setView(name, opts = {}) {
   const leaving = state.view;
   state.view = name;
-  ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'tentang', 'admin', 'tracker', 'community', 'cohort'].forEach(v => {
+  ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'cohort'].forEach(v => {
     const el = $(`view-${v}`);
     if (el) el.classList.toggle('active', v === name);
     document.body.classList.toggle(`view-${v}`, v === name);
@@ -2472,7 +2472,8 @@ function setView(name, opts = {}) {
       (id === 'btn-produk' && name === 'directory') ||
       (id === 'btn-harga' && name === 'harga') ||
       (id === 'btn-faq' && name === 'faq') ||
-      (id === 'btn-tentang' && name === 'tentang') ||
+      // Tentang shares the marketing landing with the logo.
+      (id === 'btn-tentang' && name === 'landing') ||
       (id === 'btn-admin' && name === 'admin') ||
       (id === 'btn-tracker' && name === 'tracker') ||
       (id === 'btn-community' && name === 'community') ||
@@ -9815,11 +9816,16 @@ async function ddServerWeeklySeries(product, days = 119, opts = {}) {
   } catch (_) {
     return null;
   }
+  const out = ddDailyRowsToWeeks(rows);
+  return out.length ? out : null;
+}
+
+/** Bucket product/keyword/store daily series into Monday weeks.
+ *  Skips `prior` (pre-scrape plateau). Partial weeks scale to a 7-day rate. */
+function ddDailyRowsToWeeks(rows) {
+  if (!rows || !rows.length) return [];
   const weeks = new Map();
   for (const row of rows) {
-    // `prior` is a constant peer/long-run rate for days before the first scrape.
-    // Including it in the last-6-weeks window draws a fake plateau. Skip it;
-    // measured/estimated intervals and post-scrape forecast stay.
     if (row.source === 'prior') continue;
     const dt = new Date(String(row.d) + 'T12:00:00');
     if (isNaN(dt)) continue;
@@ -9830,9 +9836,8 @@ async function ddServerWeeklySeries(product, days = 119, opts = {}) {
     w.days += 1;
     weeks.set(ts, w);
   }
-  // Same x-axis floor the client path uses, so the two are interchangeable.
   const fromTs = mondayOfWeek(new Date(Date.UTC(2026, 3, 27, 4, 0, 0))).getTime();
-  let out = [...weeks.entries()].sort((a, b) => a[0] - b[0])
+  return [...weeks.entries()].sort((a, b) => a[0] - b[0])
     .filter(([ts]) => ts >= fromTs)
     .map(([ts, w]) => {
       const scale = w.days > 0 && w.days < 7 ? 7 / w.days : 1;
@@ -9844,7 +9849,28 @@ async function ddServerWeeklySeries(product, days = 119, opts = {}) {
         perkiraan: scale > 1,
       };
     });
-  return out.length ? out : null;
+}
+
+async function ddServerStoreWeeklySeries(shopId, days = 119) {
+  try {
+    if (localStorage.getItem('larisid_server_series') === '0') return null;
+  } catch (_) { /* private mode: proceed */ }
+  if (!_supabase || shopId == null) return null;
+  const to = new Date();
+  const from = new Date(to.getTime() - days * 864e5);
+  const iso = d => d.toISOString().slice(0, 10);
+  try {
+    const r = await _supabase.rpc('store_daily_series', {
+      p_shop_id: Number(shopId),
+      p_from: iso(from),
+      p_to: iso(to),
+    });
+    if (r.error || !Array.isArray(r.data) || !r.data.length) return null;
+    const out = ddDailyRowsToWeeks(r.data);
+    return out.length ? out : null;
+  } catch (_) {
+    return null;
+  }
 }
 
 /** WIB Monday of the calendar week containing `d`, as YYYY-MM-DD. */
@@ -10452,10 +10478,6 @@ function ddHeroChartHtml(hasTrend) {
     <div class="ddr-trend-head">
       <h3>Tren Pasar</h3>
       <div class="ddr-trend-toggles">
-        <div class="ddr-seg" id="ddr-trend-metric" role="group" aria-label="Pilih metrik">
-          <button type="button" class="ddr-seg-btn is-on" data-dd-metric="omset">Omset</button>
-          <button type="button" class="ddr-seg-btn" data-dd-metric="unit">Unit Terjual</button>
-        </div>
         <div class="ddr-seg" id="ddr-trend-view" role="group" aria-label="Pilih tampilan">
           <button type="button" class="ddr-seg-btn is-on" data-dd-view="pasar">Pasar</button>
           <button type="button" class="ddr-seg-btn" data-dd-view="top10">Top 10 Toko</button>
@@ -11277,10 +11299,10 @@ async function openDeepDive(product, ddOpts = {}) {
 
   const hasTrend = series.filter(w => (w.units || w.omset)).length >= 2
     || (weeklyAll || []).length >= 2;
-  // Trend-chart state: the pasar series plus the ten per-store lines, both
-  // keyword-scoped. Toggling re-reads this — nothing is refetched.
-  const topShops = ddTopShopWeeklySeries(share, history);
-  _dd.trend = { series, fcSnap, topShops, metric: 'omset', view: 'pasar' };
+  // Trend-chart state: pasar dual-axis series plus top-10 store lines.
+  // Toggling re-reads this — nothing is refetched.
+  const topShops = hasTrend ? await ddTopShopWeeklySeries(share, history) : [];
+  _dd.trend = { series, fcSnap, topShops, view: 'pasar' };
   const bandLo = stats.p25, bandHi = stats.p75;
   const segLeft = stats.max > stats.min ? Math.round((bandLo - stats.min) / (stats.max - stats.min) * 100) : 0;
   const segWidth = stats.max > stats.min ? Math.max(4, Math.round((bandHi - bandLo) / (stats.max - stats.min) * 100)) : 100;
@@ -11525,29 +11547,30 @@ function mondayOfWeek(d = new Date()) {
   return mon;
 }
 
-/* ── Trend chart: one canvas, two toggles ────────────────────────────────
-   metric = omset | unit   ·   view = pasar | top10
-   `top10` is always omset (ten stores on one Rp axis), so the metric switch is
-   disabled there rather than silently ignored. State lives on `_dd.trend` so a
-   toggle re-draws without refetching anything. */
+/* ── Trend chart: Pasar (unit + omset overlay) | Top 10 Toko ────────────
+   State lives on `_dd.trend` so a toggle re-draws without refetching. */
 
 const DD_SHOP_COLORS = [
   '#B5202A', '#2563EB', '#16A34A', '#D97706', '#7C3AED',
   '#0891B2', '#DB2777', '#65A30D', '#EA580C', '#4F46E5',
 ];
 
-/** Per-shop weekly omset for the top 10 stores, cut from the keyword history
- *  already in memory — same trick the keyword sparklines use, no extra query.
- *  Stores with fewer than two weeks are dropped: a single point draws nothing
- *  useful and a flat line would invent a trend that was never measured. */
-function ddTopShopWeeklySeries(share, history) {
+/** Per-shop weekly omset for the top 10 stores. Prefer store_daily_series
+ *  (measured + nowcast/forecast) so a shop with one scrape interval still
+ *  gets a multi-week line; fall back to keyword scrape history. */
+async function ddTopShopWeeklySeries(share, history) {
+  const shops = (share?.shops || []).slice(0, 10);
   const rows = history || [];
-  if (!rows.length) return [];
-  return (share?.shops || []).slice(0, 10).map((sh, i) => {
+  const results = await Promise.all(shops.map(async (sh, i) => {
     const sid = sh?.sample?.shop_id != null ? String(sh.sample.shop_id) : '';
     if (!sid) return null;
-    const weeks = ddLast6Weeks(ddWeeklySeries(rows.filter(r => String(r.shop_id) === sid)));
-    if (weeks.length < 2) return null;
+    const server = await ddServerStoreWeeklySeries(sid);
+    const fallback = rows.length
+      ? ddWeeklySeries(rows.filter(r => String(r.shop_id) === sid))
+      : [];
+    let weeks = ddLast6Weeks(server || []);
+    if (!weeks.length) weeks = ddLast6Weeks(fallback);
+    if (!weeks.length) return null;
     return {
       shopId: sid,
       name: sh.name || 'Toko',
@@ -11555,7 +11578,8 @@ function ddTopShopWeeklySeries(share, history) {
       color: DD_SHOP_COLORS[i % DD_SHOP_COLORS.length],
       weeks,
     };
-  }).filter(Boolean);
+  }));
+  return results.filter(Boolean);
 }
 
 const _ddRpTick = v => v >= 1e9 ? (v / 1e9).toFixed(1) + 'M'
@@ -11580,12 +11604,13 @@ function ddTrendLegendHtml() {
         <span class="comp-av">${sh.img
           ? `<img src="${esc(imgThumb(sh.img))}" alt="" loading="lazy" decoding="async">`
           : esc((sh.name || 'T').charAt(0).toUpperCase())}</span>
-        <span class="dot" style="background:${sh.color}"></span>
         <span class="nm">${esc((sh.name || 'Toko').slice(0, 18))}</span>
-      </button>`).join('')}</div>`;
+        <span class="dot" style="background:${sh.color}"></span>
+      </button>`).join('')}</div>
+      <span class="dd-sub ddr-legend-note">Perkiraan mengisi minggu tanpa scrape.</span>`;
   }
-  const isOmset = t.metric !== 'unit';
-  return `<span class="row"><span class="swatch" style="background:${isOmset ? '#B5202A' : '#2563EB'}"></span>${isOmset ? 'Omset / minggu (Rp)' : 'Unit / minggu'}</span>
+  return `<span class="row"><span class="swatch" style="background:#B5202A"></span>Omset / minggu (Rp)</span>
+    <span class="row"><span class="swatch" style="background:#2563EB"></span>Unit / minggu</span>
     <span class="row"><span class="swatch" style="background:#16A34A"></span>Perkiraan</span>`;
 }
 
@@ -11599,7 +11624,11 @@ function ddRenderTrendChart() {
 
   if (t.view === 'top10') {
     const shops = t.topShops || [];
-    if (!shops.length) return;
+    if (!shops.length) {
+      const prev = _charts.get('ddr-trend-canvas');
+      if (prev) { try { prev.destroy(); } catch (_) {} _charts.delete('ddr-trend-canvas'); }
+      return;
+    }
     // Union of every week any of the ten was seen in, so the lines share an x-axis.
     const tsAll = [...new Set(shops.flatMap(sh => sh.weeks.map(w => w.ts)))].sort((a, b) => a - b);
     makeChart('ddr-trend-canvas', {
@@ -11622,7 +11651,7 @@ function ddRenderTrendChart() {
           legend: { display: false },
           tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtRpShort(c.parsed.y)}` } },
         },
-        scales: { y: { ticks: { callback: _ddRpTick, maxTicksLimit: 6 } } },
+        scales: { y: { ticks: { callback: _ddRpTick, maxTicksLimit: 6 }, min: 0 } },
       },
     });
     return;
@@ -11630,31 +11659,54 @@ function ddRenderTrendChart() {
 
   const series = t.series || [];
   if (series.length < 2) return;
-  const isOmset = t.metric !== 'unit';
   const labels = series.map(w => _ddFmtWk(w.ts));
   labels.push(_ddFmtWk(Date.parse(listingNextWeekStartISO() + 'T00:00:00Z')) + ' ▶');
-  const vals = series.map(w => (isOmset ? w.omset : w.units));
+  const units = series.map(w => w.units);
+  const omsets = series.map(w => w.omset);
+  const nW = series.length;
   const last2 = arr => Math.round((arr[arr.length - 1] + (arr[arr.length - 2] ?? arr[arr.length - 1])) / 2);
-  const snapRaw = t.fcSnap ? t.fcSnap[isOmset ? 'omset_wk' : 'units_wk'] : null;
-  const fc = (snapRaw != null && Number.isFinite(Number(snapRaw)))
-    ? Math.round(Number(snapRaw))
-    : last2(vals);
-  const forecast = Array(series.length - 1).fill(null).concat([vals[vals.length - 1], fc]);
-  const color = isOmset ? '#B5202A' : '#2563EB';
+  const snap = t.fcSnap;
+  const fromServer = snap && (snap.units_wk != null || snap.omset_wk != null);
+  const fUnitW = new Array(labels.length).fill(null);
+  const fOmsetW = new Array(labels.length).fill(null);
+  fUnitW[nW - 1] = units[nW - 1];
+  fOmsetW[nW - 1] = omsets[nW - 1];
+  fUnitW[nW] = fromServer ? Math.round(Number(snap.units_wk) || 0) : last2(units);
+  fOmsetW[nW] = fromServer ? Math.round(Number(snap.omset_wk) || 0) : last2(omsets);
   makeChart('ddr-trend-canvas', {
     type: 'line',
     data: {
       labels,
       datasets: [
         {
-          label: isOmset ? 'Omset / minggu (Rp)' : 'Unit / minggu',
-          data: vals, borderColor: color,
-          backgroundColor: isOmset ? 'rgba(181,32,42,.06)' : 'rgba(37,99,235,.06)',
-          borderWidth: 2, fill: true, tension: .35, pointRadius: 3, spanGaps: true,
+          label: 'Omset / minggu (Rp)',
+          data: omsets,
+          borderColor: '#B5202A',
+          backgroundColor: 'rgba(181,32,42,.06)',
+          borderWidth: 2, fill: true, tension: .35, pointRadius: 3,
+          spanGaps: true, yAxisID: 'y',
         },
         {
-          label: 'Perkiraan', data: forecast, borderColor: '#16A34A',
-          borderDash: [5, 5], borderWidth: 2, tension: .35, pointRadius: 3, spanGaps: true,
+          label: 'Unit / minggu',
+          data: units,
+          borderColor: '#2563EB',
+          backgroundColor: 'transparent',
+          borderWidth: 2, fill: false, tension: .35, pointRadius: 3,
+          spanGaps: true, yAxisID: 'y2',
+        },
+        {
+          label: 'Perkiraan Omset',
+          data: fOmsetW,
+          borderColor: '#16A34A',
+          borderDash: [5, 5], borderWidth: 2, tension: .35, pointRadius: 3,
+          spanGaps: true, yAxisID: 'y',
+        },
+        {
+          label: 'Perkiraan Unit',
+          data: fUnitW,
+          borderColor: '#16A34A',
+          borderDash: [5, 5], borderWidth: 2, tension: .35, pointRadius: 3,
+          spanGaps: true, yAxisID: 'y2',
         },
       ],
     },
@@ -11663,13 +11715,29 @@ function ddRenderTrendChart() {
       plugins: {
         legend: { display: false },
         tooltip: {
+          mode: 'index',
+          intersect: false,
           callbacks: {
-            label: c => `${c.dataset.label}: ${isOmset ? fmtRpShort(c.parsed.y) : fmtSold(c.parsed.y)}`,
+            label: c => {
+              if (c.parsed.y == null) return '';
+              const isFc = (c.dataset.label || '').startsWith('Perkiraan');
+              const prefix = isFc ? 'Perkiraan ' : '';
+              if (c.dataset.yAxisID === 'y') return `${prefix}Omset: ${fmtRpShort(c.parsed.y)}`;
+              return `${prefix}Unit: ${fmtSold(c.parsed.y)}`;
+            },
           },
         },
       },
       scales: {
-        y: { ticks: { callback: isOmset ? _ddRpTick : (v => v), maxTicksLimit: 6 } },
+        y: {
+          display: true, position: 'left', min: 0,
+          ticks: { callback: _ddRpTick, maxTicksLimit: 6 },
+        },
+        y2: {
+          display: true, position: 'right', min: 0,
+          grid: { drawOnChartArea: false },
+          ticks: { maxTicksLimit: 6 },
+        },
       },
     },
   });
@@ -11683,44 +11751,23 @@ function wireDdrTrendToggles(root) {
   const paint = () => {
     const t = _dd?.trend;
     if (!t) return;
-    // Top 10 always charts omset, so the disabled switch must read "Omset"
-    // rather than keep claiming a metric the chart is not showing. t.metric is
-    // left alone so switching back to Pasar restores the user's choice.
-    const shownMetric = t.view === 'top10' ? 'omset' : t.metric;
-    card.querySelectorAll('[data-dd-metric]').forEach(b => {
-      b.classList.toggle('is-on', b.getAttribute('data-dd-metric') === shownMetric);
-    });
     card.querySelectorAll('[data-dd-view]').forEach(b => {
       b.classList.toggle('is-on', b.getAttribute('data-dd-view') === t.view);
     });
-    const metricGroup = card.querySelector('#ddr-trend-metric');
-    if (metricGroup) {
-      const off = t.view === 'top10';
-      metricGroup.classList.toggle('is-disabled', off);
-      metricGroup.setAttribute('aria-disabled', off ? 'true' : 'false');
-      metricGroup.querySelectorAll('button').forEach(b => { b.disabled = off; });
-    }
     if (legend) legend.innerHTML = ddTrendLegendHtml();
     ddRenderTrendChart();
   };
 
   card.addEventListener('click', (e) => {
-    const btn = e.target.closest?.('[data-dd-metric],[data-dd-view]');
-    if (!btn || !card.contains(btn) || btn.disabled) return;
+    const btn = e.target.closest?.('[data-dd-view]');
+    if (!btn || !card.contains(btn)) return;
     const t = _dd?.trend;
     if (!t) return;
-    const m = btn.getAttribute('data-dd-metric');
     const v = btn.getAttribute('data-dd-view');
-    if (m) {
-      if (t.view === 'top10' || t.metric === m) return;
-      t.metric = m;
-    }
-    if (v) {
-      if (t.view === v) return;
-      t.view = v;
-    }
+    if (!v || t.view === v) return;
+    t.view = v;
     void logUserEvent('deepdive_section', {
-      ui: 'gpt', section: 'tren_toggle', metric: t.metric, view: t.view,
+      ui: 'gpt', section: 'tren_toggle', view: t.view,
     });
     paint();
   });
@@ -16531,7 +16578,7 @@ function wireUi() {
   $('btn-community')?.addEventListener('click', () => { openCommunityBoard(); });
   $('btn-harga')?.addEventListener('click', () => setView('harga'));
   $('btn-faq')?.addEventListener('click', () => setView('faq'));
-  $('btn-tentang')?.addEventListener('click', () => setView('tentang'));
+  $('btn-tentang')?.addEventListener('click', goHome);
   // The Beta badge was decoration; it now opens the changelog on both the
   // desktop sidebar and the mobile topbar.
   document.querySelectorAll('.brand-beta').forEach(el => {
