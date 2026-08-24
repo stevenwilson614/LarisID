@@ -15437,6 +15437,23 @@ function isDirHomeBrowse() {
     && (!(state.dirCats || []).length || state.dirCatsFromOnboarding);
 }
 
+/* Nav re-entry (Cari Produk tab) always lands on the default home. Deep Dive
+ * back must NOT call this — it reopens the filtered/simple grid the user left. */
+function resetDirectoryToHome() {
+  state.dirCats = [];
+  state.dirSub = null;
+  state.dirSearch = '';
+  state.dirPage = 1;
+  state.dirSort = 'sesuai';
+  state.dirCatsFromOnboarding = false;
+  state.dirNearby = false;
+  const searchInp = $('results-bar-input');
+  if (searchInp) searchInp.value = '';
+  const host = $('dir-filters-range');
+  try { host?._dirApi?.setValue?.('sesuai'); } catch (_) {}
+  try { host?._dirApi?.setCategories?.([]); } catch (_) {}
+}
+
 let _dirHomePool = null;
 let _dirHomePoolPromise = null;
 function loadDirHomePool() {
@@ -16860,6 +16877,9 @@ function wireUi() {
     state.comparePick = null;
     state.compareReturnChatId = null;
     updateDirCompareBanner();
+    // Leaving another view (or Deep Dive via the tab) → default home.
+    // Deep Dive's back arrow skips this and keeps the prior browse state.
+    resetDirectoryToHome();
     void openDirectory();
   });
   $('btn-tracker')?.addEventListener('click', () => { openTrackerView(); });
