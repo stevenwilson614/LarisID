@@ -1554,6 +1554,9 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
   background-position: 72% center;
   background-repeat: no-repeat;
 }
+/* The source photo puts the mountain range in the upper half — bias the crop
+   up so the peaks stay in frame instead of being cropped for the campsite. */
+.dh-slide--camping .dh-photo { background-position: 76% 22%; }
 .dh-scrim { position: absolute; inset: 0; }
 .dh-body {
   position: relative; z-index: 2;
@@ -1637,8 +1640,8 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 }
 .dh-rounds { display: flex; gap: 10px; }
 .dh-round {
-  flex: 1 1 0; aspect-ratio: 1; max-width: 74px;
-  border-radius: 999px; overflow: hidden;
+  flex: 1 1 0; aspect-ratio: 1; max-width: 86px;
+  border-radius: 20px; overflow: hidden;
   background: #F1EFEA;
   display: block;
   box-shadow: 0 0 0 2px rgba(255,255,255,.18), inset 0 0 0 1px rgba(0,0,0,.08);
@@ -1656,12 +1659,13 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 
 /* Slide 2 — category tiles */
 .dh-tiles {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
-  width: 100%; max-width: 600px; height: 100%; max-height: 214px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+  width: 100%; max-width: 700px;
 }
 .dh-tile {
   position: relative; display: block; padding: 0; border: none; cursor: pointer;
-  border-radius: 16px; overflow: hidden; font: inherit;
+  border-radius: 18px; overflow: hidden; font: inherit;
+  aspect-ratio: 1;
   background: #EEE8E0;
   transition: transform .16s var(--ease), box-shadow .16s;
 }
@@ -1756,6 +1760,7 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
   .dir-hero { border-radius: 16px; }
   .dh-slide { height: auto; min-height: 320px; }
   .dh-photo { background-position: 60% center; }
+  .dh-slide--camping .dh-photo { background-position: 66% 18%; }
   .dh-slide--camping .dh-scrim,
   .dh-slide--insight .dh-scrim { background: linear-gradient(180deg, rgba(6,9,16,.80) 0%, rgba(6,9,16,.62) 46%, rgba(6,9,16,.86) 100%); }
   .dh-slide--rumah .dh-scrim { background: linear-gradient(180deg, rgba(255,247,240,.92) 0%, rgba(255,247,240,.7) 48%, rgba(255,247,240,.9) 100%); }
