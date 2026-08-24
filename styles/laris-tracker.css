@@ -678,19 +678,22 @@
 }
 .ltk-menu--card { top: 30px; right: 0; }
 
-/* ── One row: image+name, numbers, chart, button ──────────────────────────
-   The shape the sparkline card had before the chart replaced the sparklines
-   — image and identity on the left, the three measured numbers next, the
-   weekly trend, then the way into the full detail screen. Stacks below the
-   width that shape needs (see the @container block at the bottom).         */
+/* ── Card row: identity (image+name+numbers) | chart | button ─────────────
+   Numbers always sit under the image and name. Wide cards put that column
+   beside a capped-width chart; narrow cards stack the same pieces. */
 .ltk-card-row {
   display: flex; flex-direction: column; gap: 14px;
+}
+.ltk-card-ident {
+  display: flex; flex-direction: column; gap: 12px; min-width: 0;
 }
 .ltk-card-top {
   display: flex; align-items: center; gap: 12px; min-width: 0; cursor: pointer;
   padding-right: 30px;   /* clears the absolute kebab in stacked layout */
 }
-.ltk-card-top .ltk-row-ico { width: 52px; height: 52px; border-radius: 12px; flex-shrink: 0; }
+.ltk-card-top .ltk-row-ico {
+  width: 56px; height: 72px; border-radius: 12px; flex-shrink: 0;
+}
 .ltk-card-head { min-width: 0; flex: 1; }
 .ltk-card-name {
   display: block; font-size: .86rem; font-weight: 700; color: #1A1A1A;
@@ -755,18 +758,20 @@
 /* Fallback for browsers without container queries: same stacked layout at
    every width, which is exactly what the rules above already produce. */
 @supports (container-type: inline-size) {
-  /* Fixed widths for identity/numbers/button, chart takes what's left — measured
-     against the mounted chart width in the harness, not guessed, down to the
-     660px floor this switches on. Below that the chart drops under ~200px,
-     which is where a weekly line with two axes stops being legible. */
-  @container (min-width: 660px) {
-    .ltk-card-row { flex-direction: row; align-items: center; gap: 10px; }
-    .ltk-card-top { flex: 0 0 168px; padding-right: 0; }
+  /* Identity column (image + name + stacked numbers) stays fixed; chart grows
+     but caps so it stays a bit shorter than the full leftover width. */
+  @container (min-width: 560px) {
+    .ltk-card-row { flex-direction: row; align-items: center; gap: 14px; }
+    .ltk-card-ident { flex: 0 0 200px; }
+    .ltk-card-top { padding-right: 0; }
+    .ltk-card-top .ltk-row-ico { width: 60px; height: 80px; border-radius: 14px; }
     .ltk-card-stats {
-      flex: 0 0 126px; display: flex; flex-direction: column; gap: 10px;
+      display: flex; flex-direction: column; gap: 10px;
     }
     .ltk-card-stats-foot { display: none; }   /* the meta line already IDs the row; no room to repeat it */
-    .ltk-card-chart { flex: 1 1 auto; padding: 10px 12px 8px; }
+    .ltk-card-chart {
+      flex: 1 1 auto; max-width: 420px; padding: 10px 12px 8px;
+    }
     .ltk-card-chart-canvas { height: 140px; }
     .ltk-card-detail-btn { flex: 0 0 auto; align-self: center; white-space: nowrap; padding: 8px 14px; }
   }

@@ -1803,11 +1803,8 @@
     '</div>';
   }
 
-  // Single row at container widths that fit it: image+name, numbers, chart,
-  // button, left to right — the shape Steven asked for, matching how the old
-  // sparkline card read before the chart replaced the sparklines. Below that
-  // width (.ltk-card-row switches via @container, see the CSS) the same four
-  // pieces stack instead of squeezing.
+  // Identity column (taller image + name + numbers underneath) sits left of a
+  // shorter chart; below the @container breakpoint the same pieces stack.
   function cardHtml(r) {
     var key = rowKey(r);
     var trend = rowHasTrend(r);
@@ -1828,14 +1825,16 @@
         (S.openRow === key ? rowMenuHtml(key, isKw, 'card') : '') +
       '</div>' +
       '<div class="ltk-card-row">' +
-        '<div class="ltk-card-top" data-ltk-lihatdetail="' + attr(key) + '">' +
-          (isKw ? rowIconHtml(r) : storeAvatar(r)) +
-          '<div class="ltk-card-head">' +
-            '<span class="ltk-card-name">' + esc(rowLabel(r)) + '</span>' +
-            '<span class="ltk-card-meta">' + esc(line1) + '</span>' +
+        '<div class="ltk-card-ident">' +
+          '<div class="ltk-card-top" data-ltk-lihatdetail="' + attr(key) + '">' +
+            (isKw ? rowIconHtml(r) : storeAvatar(r)) +
+            '<div class="ltk-card-head">' +
+              '<span class="ltk-card-name">' + esc(rowLabel(r)) + '</span>' +
+              '<span class="ltk-card-meta">' + esc(line1) + '</span>' +
+            '</div>' +
           '</div>' +
+          cardStatsHtml(key, r, trend, isKw) +
         '</div>' +
-        cardStatsHtml(key, r, trend, isKw) +
         cardChartHtml(key, trend) +
         '<button type="button" class="ltk-card-detail-btn" data-ltk-lihatdetail="' + attr(key) + '">Lihat Detail' +
           '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" ' +
