@@ -8080,7 +8080,7 @@ async function replyWithCategoryProducts(chat, text, cat) {
   const gate = await ensureIntentChat(chat, text.slice(0, 60), { kind: 'category_search', category: cat, q: text });
   if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
   state.recommendations = [];
-  const html = `<p>Belum ketemu pasar di kategori <strong>${esc(cat)}</strong>. Coba kata kunci lain atau buka Produk.</p>`;
+  const html = `<p>Belum ketemu pasar di kategori <strong>${esc(cat)}</strong>. Coba kata kunci lain atau buka Cari Produk.</p>`;
   await revealAssistant(loading, html);
   pushMessage(chat, 'assistant', {
     text: 'Hasil kategori', q: text, category: cat, products: [],
@@ -9370,7 +9370,7 @@ async function startRecommendationChat(fromOnboarding) {
   const cards = recTypes.length
     ? `<div class="card-grid">${marketCardsHtml(recTypes)}</div>
        <button type="button" class="btn-ghost" id="btn-more-products">Cari yang lain?</button>`
-    : `<p>Belum ketemu pasar yang cocok. Coba Chat Baru atau buka <strong>Produk</strong> di sidebar.</p>`;
+    : `<p>Belum ketemu pasar yang cocok. Coba Chat Baru atau buka <strong>Cari Produk</strong> di sidebar.</p>`;
 
   const html = `<p>${frame}</p><p>Ini <strong>${recTypes.length || recLimit} pasar</strong> dari data LarisID buat kamu cek:</p>${cards}`;
   const thread2 = $('chat-thread');

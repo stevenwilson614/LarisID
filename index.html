@@ -4529,22 +4529,43 @@ body.home-finder-done .home-hero {
 }
 .ddr-table td { padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 .ddr-table tr:last-child td { border-bottom: none; }
-/* Rows are inert — the store link is the only affordance. Doubling the row
-   height buys a thumbnail you can actually recognise a shop from. */
-.ddr-komp-table td { padding: 16px 8px; }
-.ddr-komp-table .comp-av { width: 52px; height: 52px; border-radius: 10px; font-size: 1rem; }
-.ddr-komp-table .tr-prod { gap: 10px; }
+/* Rows are inert — the store link is the only affordance. Large product
+   thumbs dominate the row; numeric cells match hero omset weight. */
+.ddr-komp-table { font-size: .95rem; }
+.ddr-komp-table td {
+  padding: 10px 8px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  color: var(--ink);
+}
+.ddr-komp-table .tr-rank {
+  font-size: .95rem;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+.ddr-komp-table .comp-av {
+  width: 72px; height: 72px; border-radius: 12px; font-size: 1.15rem;
+}
+.ddr-komp-table .tr-prod { gap: 12px; min-width: 200px; align-items: center; }
+.ddr-komp-table .tr-prod-name {
+  font-size: .95rem;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  line-height: 1.25;
+  -webkit-line-clamp: 2;
+}
 .komp-store-link {
   display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
-  font-size: .72rem; font-weight: 650; color: var(--accent, #B5202A);
-  text-decoration: none; border-radius: 8px; padding: 5px 9px;
+  font-size: .78rem; font-weight: 750; color: var(--accent, #B5202A);
+  letter-spacing: 0;
+  text-decoration: none; border-radius: 8px; padding: 6px 10px;
   border: 1px solid rgba(181, 32, 42, .28);
   transition: background .12s, border-color .12s;
 }
 .komp-store-link:hover { background: var(--red-bg, #FEF2F2); border-color: var(--accent, #B5202A); }
 .komp-store-link svg { width: 12px; height: 12px; flex-shrink: 0; }
 .spark { width: 52px; height: 20px; display: block; }
-.ddr-komp-table .spark-komp { width: 76px; height: 34px; }
+.ddr-komp-table .spark-komp { width: 88px; height: 40px; }
 .badge-comp-tinggi { background: var(--red-bg); color: var(--accent); }
 .badge-comp-sedang { background: var(--amber-bg); color: var(--amber); }
 .badge-comp-rendah { background: var(--green-bg); color: var(--green); }
@@ -5139,13 +5160,13 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
       <img class="brand-lockup" src="/images/brand/logo-horizontal-red.webp" alt="LARIS" height="36">
       <span class="brand-beta">Beta</span>
     </a>
+    <button type="button" class="side-btn" id="btn-produk" title="Cari Produk">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ic-a" d="M12 2.6 20.8 7 12 11.4 3.2 7z"/><path class="ic-a" d="M3.2 7v10L12 21.4V11.4"/><path class="ic-a" d="M20.8 7v10L12 21.4"/><path class="ic-a" d="m8.4 7.9 5.8-2.9"/><path class="ic-a" d="m11.83 4.65 2.37.35-1.14 2.11"/></svg>
+      Cari Produk
+    </button>
     <button type="button" class="side-btn" id="btn-ask-laris" title="Ask Laris">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ic-a" d="M17.8 4H6.2A2.2 2.2 0 0 0 4 6.2v8.6A2.2 2.2 0 0 0 6.2 17H7v3.2a.5.5 0 0 0 .85.36L11.4 17h6.4A2.2 2.2 0 0 0 20 14.8V6.2A2.2 2.2 0 0 0 17.8 4Z"/><path class="ic-a" stroke-width="1.5" d="M12 6.7c.44 2.5 1.16 3.22 3.66 3.66-2.5.44-3.22 1.16-3.66 3.66-.44-2.5-1.16-3.22-3.66-3.66 2.5-.44 3.22-1.16 3.66-3.66Z"/></svg>
       Ask Laris
-    </button>
-    <button type="button" class="side-btn" id="btn-produk">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="ic-a" d="M12 2.6 20.8 7 12 11.4 3.2 7z"/><path class="ic-a" d="M3.2 7v10L12 21.4V11.4"/><path class="ic-a" d="M20.8 7v10L12 21.4"/><path class="ic-a" d="m8.4 7.9 5.8-2.9"/><path class="ic-a" d="m11.83 4.65 2.37.35-1.14 2.11"/></svg>
-      Produk
     </button>
     <!-- Primary daily destination, so it sits with the action buttons rather
          than in .sidebar-foot with the meta pages (Harga/FAQ/Tentang). -->
