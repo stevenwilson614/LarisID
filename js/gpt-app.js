@@ -608,6 +608,7 @@ const ICONS = {
   box: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linejoin="round"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>',
   trendUp: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>',
   arrowUp: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
+  arrowDown: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>',
   arrowLeft: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>',
   rocket: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c3.2 2.4 4.8 5.8 4.8 9.4L12 16.2 7.2 11.9c0-3.6 1.6-7 4.8-9.4z"/><circle cx="12" cy="9.3" r="1.7"/><path d="M7.2 11.9 4.7 14a1 1 0 0 0-.33.95l.5 2.6 2.6-1.35M16.8 11.9l2.5 2.1a1 1 0 0 1 .33.95l-.5 2.6-2.6-1.35"/><path d="M10 18.4c0 1.5.75 2.7 2 3.6 1.25-.9 2-2.1 2-3.6"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
@@ -769,6 +770,125 @@ async function hydrateProdCardsIn(root) {
   if (!pairs.length) return;
   await fetchProductViewCountsYtd(pairs);
   patchViewCountBadges(scope);
+  await hydrateProdTrendIn(scope);
+}
+
+const _prodDeltaMap = Object.create(null);
+const PROD_DELTA_BATCH = 200;
+
+function _prodNextDay(day) {
+  const d = new Date(day + 'T12:00:00');
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+async function _prodLatestDeltaDay() {
+  if (!_supabase) return null;
+  try {
+    const { data } = await _supabase.from('listing_deltas')
+      .select('scraped_at').order('scraped_at', { ascending: false }).limit(1);
+    return data?.[0]?.scraped_at ? String(data[0].scraped_at).slice(0, 10) : null;
+  } catch (_) { return null; }
+}
+
+function prodListingTrendPct(p) {
+  if (!p) return null;
+  if (p.delta_7d != null && p.total_sold != null) {
+    return trendGrowthPct(p, 'delta_7d');
+  }
+  const key = prodKey(p);
+  const d = _prodDeltaMap[key];
+  if (!d) return null;
+  const prev = d.sold_prev;
+  if (prev == null || prev === 0) return null;
+  const delta = d.est;
+  if (delta == null) return null;
+  if (prev < 50 && delta > 0) return Infinity;
+  return Math.round(delta / prev * 100);
+}
+
+function prodListingTrendTooltip(p) {
+  const key = prodKey(p);
+  const d = _prodDeltaMap[key];
+  if (d?.sold_prev != null) {
+    const span = d.prev_scraped_at && d.scraped_at
+      ? `${Math.max(1, Math.round((Date.parse(d.scraped_at) - Date.parse(d.prev_scraped_at)) / 86400000))} hari terakhir`
+      : 'rentang scrape terakhir';
+    return `Persentase kenaikan terhadap ${Number(d.sold_prev).toLocaleString('id-ID')} unit `
+      + `yang sudah terjual sebelumnya (${span}), bukan perbandingan dengan minggu lalu.`;
+  }
+  return 'Kenaikan penjualan periode ini dibanding total terjual sebelumnya, bukan vs minggu lalu.';
+}
+
+function cardWowPctHtml(pct, tooltip) {
+  if (pct == null) return '';
+  const tip = tooltip ? ` title="${esc(tooltip)}"` : '';
+  if (pct === Infinity) {
+    return `<span class="prod-card-wow"${tip}>Baru</span>`;
+  }
+  if (pct > 0) {
+    return `<span class="prod-card-wow"${tip}>${ico('arrowUp', 10)} ${pct}% minggu ini</span>`;
+  }
+  if (pct < 0) {
+    return `<span class="prod-card-wow prod-card-wow--down"${tip}>${ico('arrowDown', 10)} ${pct}% minggu ini</span>`;
+  }
+  return `<span class="prod-card-wow prod-card-wow--flat"${tip}>0% minggu ini</span>`;
+}
+
+function prodCardWowHtml(p) {
+  const pct = prodListingTrendPct(p);
+  const tip = pct != null && p.delta_7d == null ? prodListingTrendTooltip(p) : (
+    'Kenaikan penjualan periode ini dibanding total terjual sebelumnya, bukan vs minggu lalu.'
+  );
+  return cardWowPctHtml(pct, tip);
+}
+
+async function hydrateProdTrendIn(scope) {
+  if (!_supabase || !scope) return;
+  const needFetch = [];
+  const seen = new Set();
+  scope.querySelectorAll('[data-prod-wow]').forEach(el => {
+    const key = el.getAttribute('data-prod-wow');
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    const cached = state.productByKey[key];
+    if (cached && prodListingTrendPct(cached) != null) return;
+    if (_prodDeltaMap[key]) return;
+    const [item_id, shop_id] = key.split('|');
+    if (item_id && shop_id) needFetch.push({ item_id, shop_id, key });
+  });
+  if (needFetch.length) {
+    const day = await _prodLatestDeltaDay();
+    if (day) {
+      const ids = [...new Set(needFetch.map(p => p.item_id))];
+      for (let i = 0; i < ids.length; i += PROD_DELTA_BATCH) {
+        const chunk = ids.slice(i, i + PROD_DELTA_BATCH);
+        try {
+          const { data, error } = await _supabase.from('listing_deltas')
+            .select('item_id,shop_id,sold_prev,estimated_sold_delta,prev_scraped_at,scraped_at')
+            .in('item_id', chunk)
+            .gte('scraped_at', `${day}T00:00:00`)
+            .lt('scraped_at', `${_prodNextDay(day)}T00:00:00`);
+          if (error || !data?.length) continue;
+          for (const r of data) {
+            const key = `${r.item_id}|${r.shop_id}`;
+            _prodDeltaMap[key] = {
+              est: r.estimated_sold_delta,
+              sold_prev: r.sold_prev,
+              scraped_at: r.scraped_at,
+              prev_scraped_at: r.prev_scraped_at,
+            };
+          }
+        } catch (_) {}
+      }
+    }
+  }
+  scope.querySelectorAll('[data-prod-wow]').forEach(el => {
+    const key = el.getAttribute('data-prod-wow');
+    const [item_id, shop_id] = key.split('|');
+    const cached = state.productByKey[key] || { item_id, shop_id };
+    el.innerHTML = prodCardWowHtml(cached);
+  });
 }
 
 // ── Composer chip sets ───────────────────────────────────────────────────
@@ -4884,9 +5004,9 @@ function syncDirectoryFromOnboarding() {
   // City is not a UI filter anymore — the grid always shows national (ALL)
   // markets. Prefer the user's city only for soft personalization (heading/note).
   if (o.categories?.length) {
-    state.dirCats = o.categories
-      .map(c => toCanonicalCat(c) || c)
-      .filter(Boolean);
+    state.dirCats = [...new Set(
+      o.categories.map(c => toCanonicalCat(c) || c).filter(Boolean)
+    )];
   }
 }
 
@@ -6169,6 +6289,15 @@ function catMatches(cat, cats) {
     const c0 = c.split(/[\s&/]+/)[0];
     return w0 && c0 && (c0 === w0 || c.includes(w0));
   });
+}
+
+/** Listing rows carry raw scrape categories ("Sepeda", "Olahraga"); directory
+ *  filters use canonical buckets ("Olahraga & Outdoor"). */
+function listingMatchesDirCats(listingCat, cats) {
+  if (!cats?.length) return true;
+  const raw = String(listingCat || '').trim();
+  const canon = toCanonicalCat(raw) || raw;
+  return catMatches(canon, cats) || catMatches(raw, cats);
 }
 
 // True when a listing belongs to a category sub-group — matches its scrape
@@ -8248,6 +8377,7 @@ function productCardHtml(p, i, omsetRange) {
         <div class="prod-stat">
           <span class="prod-stat-lbl">Omset/bulan</span>
           <span class="prod-stat-val">${omsetVal}</span>
+          <span class="prod-card-wow-wrap" data-prod-wow="${esc(key)}">${prodCardWowHtml(p)}</span>
         </div>
       </div>
     </div>
@@ -13712,9 +13842,7 @@ function terlarisBadgeHtml() {
 
 function terlarisWowHtml(w) {
   if (!w || w.pct == null) return '';
-  const val = w.pct === Infinity ? 'Baru' : `${w.pct}%`;
-  return `<span class="prod-card-wow" title="${esc(terlarisTooltip(w))}">`
-    + `${ico('arrowUp', 10)} ${val} minggu ini</span>`;
+  return cardWowPctHtml(w.pct === Infinity ? Infinity : w.pct, terlarisTooltip(w));
 }
 
 function typeCardHtml(t, absIdx, animIdx, siblings, usedImgs) {
@@ -13732,6 +13860,7 @@ function typeCardHtml(t, absIdx, animIdx, siblings, usedImgs) {
     ? `<span class="prod-card-views" hidden data-view-key="${esc(vk)}" title="Orang yang melihat produk ini di Laris tahun ini">${ico('eye', 11)}<span data-view-num>${viewers.toLocaleString('id-ID')}</span></span>`
     : '';
   const tlr = t._terlaris || null;
+  const wk = tlr || weeklyStats(t);
   const overlay = (cover.collided && parts.distinct)
     ? `<span class="prod-card-img-caption">${esc(parts.distinct)}</span>`
     : '';
@@ -13750,7 +13879,7 @@ function typeCardHtml(t, absIdx, animIdx, siblings, usedImgs) {
         <div class="prod-stat">
           <span class="prod-stat-lbl">Omset/bulan</span>
           <span class="prod-stat-val">${omsetVal}</span>
-          ${tlr ? terlarisWowHtml(tlr) : ''}
+          ${wk ? terlarisWowHtml(wk) : ''}
         </div>
       </div>
     </div>
@@ -14312,7 +14441,12 @@ async function renderSubcats(cat) {
     btn.addEventListener('click', () => {
       state.dirSub = btn.getAttribute('data-dsub') || null;
       state.dirPage = 1;
+      // Subgroup is a browse filter — an old results-bar query must not override it.
+      state.dirSearch = '';
+      const searchInp = $('results-bar-input');
+      if (searchInp) searchInp.value = '';
       wrap.querySelectorAll('.dir-subcat-card').forEach(c => c.classList.toggle('selected', c === btn));
+      updateDirHeading();
       void logUserEvent('dir_filter', { ui: 'gpt', kind: 'subgroup', value: state.dirSub || '' });
       void renderDirectory();
     });
@@ -14420,7 +14554,10 @@ async function renderDirectory() {
   }
   let types;
   let nearby = false;
-  if (q) {
+  // A sub-group chip (Sepeda, Camping, …) is a browse filter on product_types_v.
+  // If a stale results-bar query is still set, it used to win and could blank the
+  // grid even though the subgroup has plenty of rows in the DB.
+  if (q && !sub) {
     types = await searchProductTypes(q, cities, 60);
     // Text search must ignore category/subgroup chips. Soccer shoes live in
     // "Sepatu, Tas & Aksesoris", so "sepatu bola" + Olahraga/Fashion selected
@@ -14510,13 +14647,10 @@ async function renderDirectoryListings() {
   const q = (state.dirSearch || '').trim();
   const poolLimit = sub ? 400 : 200;  // widen pool so narrow sub-groups still fill a page
   let rows = [];
-  if (q) {
+  if (q && !sub) {
     rows = await searchListings(q, cities, 80);
     if (cats.length) {
-      const filtered = rows.filter(r => catMatches(r.category, cats) || cats.some(cat => {
-        const c = String(cat || '').toLowerCase();
-        return (r.category || '').toLowerCase().includes(c.slice(0, 5));
-      }));
+      const filtered = rows.filter(r => listingMatchesDirCats(r.category, cats));
       if (filtered.length) rows = filtered;
     }
   } else if (cities.length) {
@@ -14532,14 +14666,9 @@ async function renderDirectoryListings() {
     });
   } else {
     rows = mergePool([], await fetchNaikDaunGlobal(poolLimit));
-    if (cats.length) {
-      rows = rows.filter(r => catMatches(r.category, cats) || cats.some(cat => {
-        const c = String(cat || '').toLowerCase();
-        return (r.category || '').toLowerCase().includes(c.slice(0, 5));
-      }));
-    }
+    if (cats.length) rows = rows.filter(r => listingMatchesDirCats(r.category, cats));
   }
-  if (!q && sub && oneCat) {
+  if (sub && oneCat) {
     // Legacy fallback grid: dirSub is a subgroup NAME now, so resolve the
     // keywords in it rather than substring-testing the old match[] array.
     const kws = await subgroupKeywords(oneCat, sub);
@@ -14555,7 +14684,7 @@ async function renderDirectoryListings() {
   }
   const start = (state.dirPage - 1) * PAGE_SIZE;
   const slice = rows.slice(start, start + PAGE_SIZE);
-  const emptyMsg = q
+  const emptyMsg = (q && !sub)
     ? `<p class="dd-sub">Belum ketemu produk untuk "<strong>${esc(q)}</strong>". Coba kata kunci lain.</p>`
     : '<p class="dd-sub">Tidak ada produk untuk filter ini.</p>';
   grid.innerHTML = productCardsHtml(slice) || emptyMsg;
