@@ -516,7 +516,6 @@ function buildSitemap(entries) {
     { loc: `${SITE}/perbandingan/larisid-vs-kalodata/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
     { loc: `${SITE}/perbandingan/alternatif-kalodata-gratis/`, freq: 'monthly', pri: '0.8', mod: SNAPSHOT },
     { loc: `${SITE}/harga/`, freq: 'monthly', pri: '0.85', mod: '2026-08-21' },
-    { loc: `${SITE}/tentang/`, freq: 'monthly', pri: '0.8', mod: '2026-05-30' },
     { loc: `${SITE}/rise/`, freq: 'monthly', pri: '0.8', mod: '2026-08-18' },
     { loc: `${SITE}/rise/daftar/`, freq: 'monthly', pri: '0.7', mod: '2026-08-21' },
     { loc: `${SITE}/cara-kerja/`, freq: 'monthly', pri: '0.8', mod: '2026-08-21' },

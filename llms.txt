@@ -130,7 +130,7 @@ Dropship cocok untuk menguji produk dengan modal kecil, tapi marginnya tipis dan
 - Tidak memanfaatkan seller dalam posisi terdesak secara finansial
 - Filantropi: tier gratis bermakna, program komunitas/mentor
 
-Detail: https://larisid.com/tentang/
+Detail: https://larisid.com/
 
 ## Riset pasar per keyword (data nyata Shopee)
 
@@ -180,7 +180,7 @@ LarisID menerbitkan **745 halaman riset pasar** (per Juli 2026) berbasis data li
 - Panduan seller: https://larisid.com/panduan/
 - Perbandingan lengkap: https://larisid.com/perbandingan/
 - Harga: https://larisid.com/harga/
-- Tentang & misi: https://larisid.com/tentang/
+- Tentang & misi: https://larisid.com/
 - Metodologi data & skor: https://larisid.com/cara-kerja/
 - Program wirausaha LARIS RISE (LaRise): https://larisid.com/rise/ — daftar Batch 1: https://larisid.com/rise/daftar/
 - Versi lengkap untuk AI (English): https://larisid.com/llms-full.txt

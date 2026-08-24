@@ -73,7 +73,7 @@ function articlePage(g) {
         dateModified: g.dateModified,
         image: OG_IMAGE,
         mainEntityOfPage: url,
-        author: { '@type': 'Person', name: AUTHOR, url: `${SITE}/tentang/` },
+        author: { '@type': 'Person', name: AUTHOR, url: `${SITE}/` },
         publisher: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/`, logo: { '@type': 'ImageObject', url: `${SITE}/images/brand/appicon-red.png` } },
       },
       ...faqLd,

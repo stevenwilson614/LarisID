@@ -25,7 +25,6 @@ GitHub Pages is **retired** (not allowed for commercial SaaS).
 | `privacy/` | Privacy policy |
 | `perbandingan/` | Competitor comparison (SEO + FAQPage schema) |
 | `harga/` | Pricing & credit model |
-| `tentang/` | Mission, team, principles |
 | `cara-kerja/` | Data methodology, Viability Score, AI limits |
 | `riset/` | **Programmatic SEO** — per-keyword Shopee market pages + hub (generated; see below) |
 | `styles/seo-pages.css` | Shared CSS for static SEO pages |

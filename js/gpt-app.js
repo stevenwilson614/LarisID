@@ -2518,11 +2518,15 @@ function setView(name, opts = {}) {
   }
 }
 
-const HISTORY_VIEWS = ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'tentang', 'admin', 'tracker', 'community', 'cohort'];
+const HISTORY_VIEWS = ['home', 'landing', 'chat', 'deepdive', 'directory', 'harga', 'faq', 'admin', 'tracker', 'community', 'cohort'];
+// Old sessions may still have { view: 'tentang' } in history — map to landing.
+const HISTORY_VIEW_ALIASES = { tentang: 'landing' };
 
 window.addEventListener('popstate', (e) => {
   const st = e.state;
-  if (!st || !HISTORY_VIEWS.includes(st.view)) return;
+  if (!st) return;
+  const view = HISTORY_VIEW_ALIASES[st.view] || st.view;
+  if (!HISTORY_VIEWS.includes(view)) return;
   _navigatingFromHistory = true;
   try {
     if (st.compare) {
@@ -2531,15 +2535,17 @@ window.addEventListener('popstate', (e) => {
       const products = resolveCompareProducts(chat);
       if (products.length >= 2) void openProductCompare(products, { resume: true });
       else setView('directory');
-    } else if (st.view === 'deepdive' && st.item_id != null) {
+    } else if (view === 'deepdive' && st.item_id != null) {
       if (st.fromCompare) state.compareReturnChatId = st.fromCompare;
       const found = findProduct(st.item_id, st.shop_id);
       if (found) void openDeepDive(found, st.fromCompare ? { fromCompare: true } : {});
       else setView('directory');
+    } else if (view === 'landing') {
+      renderLanding();
     } else {
-      setView(st.view);
-      if (st.view === 'home') updateHomeFinderVisibility();
-      if (st.view === 'chat' && state.activeChatId && activeChat()) renderChatThread();
+      setView(view);
+      if (view === 'home') updateHomeFinderVisibility();
+      if (view === 'chat' && state.activeChatId && activeChat()) renderChatThread();
     }
   } finally {
     setTimeout(() => { _navigatingFromHistory = false; }, 0);
@@ -3896,9 +3902,10 @@ function renderHome() {
   }
 }
 
-/** Marketing landing (view-landing) — reached only via the logo (goHome).
- * Separate surface from Ask Laris (renderHome/view-home): the sidebar "Ask
- * Laris" entry and every other renderHome() caller are untouched by this. */
+/** Marketing landing (view-landing) — reached via the logo (goHome) and
+ * the sidebar Tentang button. Separate surface from Ask Laris
+ * (renderHome/view-home): the sidebar "Ask Laris" entry and every other
+ * renderHome() caller are untouched by this. */
 function renderLanding() {
   setView('landing');
   renderHomeLandingExamples();

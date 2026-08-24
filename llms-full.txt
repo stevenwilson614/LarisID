@@ -242,7 +242,7 @@ median price, strongest categories, and an honest local read. Price/rating/revie
 - Honest data; no AI certainty or income promises
 - Do not exploit financially desperate sellers
 - Philanthropy: a meaningful free tier, community/mentor programs
-- Details: https://larisid.com/tentang/
+- Details: https://larisid.com/
 
 ## Honest limitations
 
@@ -258,7 +258,7 @@ median price, strongest categories, and an honest local read. Price/rating/revie
 - Guides: https://larisid.com/panduan/
 - Comparisons: https://larisid.com/perbandingan/
 - Pricing: https://larisid.com/harga/
-- About & mission: https://larisid.com/tentang/
+- About & mission: https://larisid.com/
 - Methodology & scoring: https://larisid.com/cara-kerja/
 - LARIS RISE (LaRise) entrepreneurship program: https://larisid.com/rise/ — apply Batch 1: https://larisid.com/rise/daftar/
 - Indonesian summary for AI: https://larisid.com/llms.txt

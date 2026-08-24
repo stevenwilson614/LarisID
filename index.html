@@ -74,7 +74,7 @@
       "founder": {
         "@type": "Person",
         "name": "Steven Wilson",
-        "url": "https://larisid.com/tentang/"
+        "url": "https://larisid.com/"
       },
       "contactPoint": {
         "@type": "ContactPoint",
@@ -1757,10 +1757,9 @@ body.view-directory.dir-compare-picking .panel { padding-bottom: 110px; }
 @media (min-width: 1000px) { .dir-grid { grid-template-columns: repeat(4, 1fr); } }
 .dir-pager { margin-top: 18px; display: flex; gap: 10px; align-items: center; }
 
-/* ── Meta pages: Harga / FAQ / Tentang ───────────────────────────── */
+/* ── Meta pages: Harga / FAQ ─────────────────────────────────────── */
 body.view-harga .panel,
 body.view-faq .panel,
-body.view-tentang .panel,
 body.view-community .panel {
   background: #F3F3F3;
   padding-top: 16px;
@@ -1768,7 +1767,6 @@ body.view-community .panel {
 }
 body.view-harga .panel-inner,
 body.view-faq .panel-inner,
-body.view-tentang .panel-inner,
 body.view-community .panel-inner {
   max-width: 920px;
 }
@@ -1870,14 +1868,12 @@ body.view-harga .panel-inner { max-width: 1180px; }
   height: auto;
 }
 .meta-hero-mascot--harga img { width: 304px; } /* 2× prior 152 */
-.meta-hero-mascot--tentang img { width: 296px; } /* 2× prior 148 */
 /* Opaque content sits on top of the bird's waist for the clean 3D cut. */
 .meta-harga .fh-feats,
 .meta-harga .cmp,
 .meta-harga .meta-trust,
 .meta-faq .meta-faq-list,
-.meta-faq .meta-faq-cta,
-.meta-tentang .meta-body {
+.meta-faq .meta-faq-cta {
   position: relative;
   z-index: 1;
   background: #fff;
@@ -1895,7 +1891,6 @@ body.view-harga .panel-inner { max-width: 1180px; }
   .meta-hero-mascot img { width: 126px; }
   .meta-hero-mascot--harga img { width: 144px; }
   .meta-hero-mascot--harga.fh-stage { min-width: 0; }
-  .meta-hero-mascot--tentang img { width: 140px; }
 }
 .meta-kicker {
   margin: 0 0 6px;
@@ -2276,73 +2271,6 @@ body.view-harga .panel-inner { max-width: 1180px; }
   display: block;
 }
 
-/* Tentang body */
-.meta-body {
-  max-width: 640px;
-  margin: 0 auto;
-}
-.meta-body > p {
-  margin: 0 0 18px;
-  font-size: .95rem;
-  line-height: 1.7;
-  color: #374151;
-}
-.meta-points {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin: 8px 0 22px;
-}
-.meta-point {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-}
-.meta-point-ico {
-  flex-shrink: 0;
-  width: 42px;
-  height: 42px;
-  border-radius: 999px;
-  background: var(--meta-red-soft);
-  color: var(--meta-red);
-  display: grid;
-  place-items: center;
-}
-.meta-point p {
-  margin: 0;
-  font-size: .92rem;
-  line-height: 1.65;
-  color: #374151;
-}
-.meta-point strong { color: var(--meta-ink); font-weight: 750; }
-.meta-callout {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 16px 18px;
-  border-radius: 16px;
-  background: var(--meta-red-soft);
-  border: 1px solid rgba(181, 32, 42, .12);
-}
-.meta-callout-ico {
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  background: #fff;
-  color: var(--meta-red);
-  display: grid;
-  place-items: center;
-  box-shadow: 0 0 0 1px rgba(181, 32, 42, .08);
-}
-.meta-callout p {
-  margin: 0;
-  font-size: .9rem;
-  line-height: 1.55;
-  color: #3F3F46;
-}
-.meta-callout strong { color: var(--meta-ink); font-weight: 750; }
-
 /* FAQ accordion */
 .meta-faq-list {
   max-width: 640px;
@@ -2452,8 +2380,8 @@ body.view-harga .panel-inner { max-width: 1180px; }
    nested padding (panel 20 + meta-card 18 + .cmp 14, each side) left the sticky
    172px label column plus 0.62 of ONE competitor column visible — under the ~2
    legible columns NN/G's mobile-tables research calls the floor for wordy
-   entries. Hero rules are scoped to .meta-harga so the Tentang and FAQ heroes
-   keep their side-by-side mascot.
+   entries. Hero rules are scoped to .meta-harga so the FAQ hero
+   keeps its side-by-side mascot.
    ────────────────────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   /* Hero stacks: copy gets the full column, mascot sits under it and grows. */
@@ -3549,7 +3477,7 @@ body.home-finder-done .home-hero {
   .prod-stat-val { font-size: .68rem; }
 }
 
-/* ══ Landing page (marketing) — view-landing, reached via the logo only ══ */
+/* ══ Landing page (marketing) — view-landing, via logo + Tentang ══ */
 .home-landing {
   width: 100%; display: flex; flex-direction: column; gap: 56px;
   text-align: left; margin-bottom: 48px;
@@ -5185,7 +5113,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
       Ask Laris
     </button>
     <!-- Primary daily destination, so it sits with the action buttons rather
-         than in .sidebar-foot with the meta pages (Harga/FAQ/Tentang). -->
+         than in .sidebar-foot with the meta pages (Harga/FAQ). -->
     <button type="button" class="side-btn" id="btn-tracker" title="Pantauan Harian">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.08 9.06A8.6 8.6 0 1 1 14.94 3.92"/><path d="M16.7 10.29A5 5 0 1 1 13.71 7.3"/><circle class="ic-f" cx="12" cy="12" r="1.5"/><circle class="ic-a" cx="18.7" cy="5.3" r="1.7"/></svg>
       Pantauan
@@ -5236,9 +5164,10 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
       </button>
       <!-- Jelajahi: the static content estate (/riset/, /panduan/, ...). Those
            pages all link back to this app, so this closes the internal-link
-           loop. Only pages with no in-app equivalent are listed here — Harga,
-           FAQ and Tentang are views above. Lives in the sidebar (hidden by
-           transform, not display) so it stays crawlable on mobile. -->
+           loop. Only pages with no in-app equivalent are listed here — Harga
+           and FAQ are views above; Tentang opens the marketing landing (same
+           as the logo). Lives in the sidebar (hidden by transform, not
+           display) so it stays crawlable on mobile. -->
       <nav class="side-links" aria-label="Jelajahi LarisID">
         <a href="/riset/">Riset pasar</a>
         <a href="/panduan/">Panduan seller</a>
@@ -5334,11 +5263,11 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 
     <div class="panel" id="panel">
       <div class="panel-inner">
-        <!-- Marketing landing — reached only via the logo (goHome/#btn-home,
-             #btn-home-mobile). Deliberately separate from #view-home (Ask
-             Laris), which stays the original hero+finder+composer surface
-             reached from the sidebar "Ask Laris" button and every other
-             renderHome() caller. -->
+        <!-- Marketing landing — reached via the logo (goHome/#btn-home,
+             #btn-home-mobile) and the sidebar Tentang button. Deliberately
+             separate from #view-home (Ask Laris), which stays the original
+             hero+finder+composer surface reached from the sidebar "Ask Laris"
+             button and every other renderHome() caller. -->
         <div class="view" id="view-landing">
           <div class="home-landing" id="home-landing">
             <section class="hl-hero">
@@ -5790,7 +5719,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
               <a href="/kalkulator/">Kalkulator</a>
               <a href="/harga/">Harga</a>
               <a href="/cara-kerja/">Cara kerja</a>
-              <a href="/tentang/">Tentang</a>
               <a href="/privacy/">Privasi</a>
             </nav>
           </div>
@@ -6169,51 +6097,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
           </article>
         </div>
 
-        <div class="view" id="view-tentang">
-          <article class="meta-card meta-tentang">
-            <header class="meta-hero meta-hero--split">
-              <div class="meta-hero-text">
-                <p class="meta-kicker">Tentang</p>
-                <h2 class="meta-title">Dibuat untuk seller Indonesia,<br><span class="accent">oleh orang Indonesia</span>.</h2>
-              </div>
-              <div class="meta-hero-mascot meta-hero-mascot--tentang" aria-hidden="true">
-                <img src="/images/brand/mascot-ai.webp" width="296" height="197" alt="" loading="lazy" decoding="async">
-              </div>
-            </header>
-
-            <div class="meta-body">
-              <p>Halo, namaku Steven. Saya asli Amerika, tinggal di Indonesia, dan saya bikin LarisID karena riset produk di sini kebanyakan cuma tebak-tebakan &mdash; atau bayar mahal ke alat yang harganya ratusan ribu per bulan.</p>
-
-              <div class="meta-points">
-                <div class="meta-point">
-                  <div class="meta-point-ico" aria-hidden="true">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-                  </div>
-                  <p><strong>Yang saya percaya sederhana:</strong> seller kecil pantas dapat data yang sama bagusnya dengan seller besar.</p>
-                </div>
-                <div class="meta-point">
-                  <div class="meta-point-ico" aria-hidden="true">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8V3"/><path d="M8 8V5.5"/><path d="M16 8V5.5"/><path d="M3 12h18"/></svg>
-                  </div>
-                  <p><strong>Makanya LarisID gratis,</strong> dan akan tetap gratis. Tidak ada fitur yang sengaja dikunci supaya kamu terpaksa bayar.</p>
-                </div>
-                <div class="meta-point">
-                  <div class="meta-point-ico" aria-hidden="true">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19V8"/></svg>
-                  </div>
-                  <p><strong>LarisID masih Beta.</strong> Artinya ada yang belum sempurna, data belum lengkap untuk semua kota, dan beberapa angka masih estimasi. Kalau ada yang aneh atau ada yang kamu butuh, bilang saja &mdash; masukan dari seller yang menentukan apa yang saya kerjakan berikutnya.</p>
-                </div>
-              </div>
-
-              <div class="meta-callout">
-                <div class="meta-callout-ico" aria-hidden="true">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-6.2-3.8-8.7-7.4C1.4 11 2.1 7.6 5 6.2c1.8-.9 4-.4 5.2 1.1C11.4 5.8 13.6 5.3 15.4 6.2c2.9 1.4 3.6 4.8 1.7 7.4C18.2 17.2 12 21 12 21z"/></svg>
-                </div>
-                <p><strong>Terima kasih sudah jadi bagian dari perjalanan ini.</strong> Mari bangun alat riset produk terbaik untuk seller Indonesia, dari seller Indonesia.</p>
-              </div>
-            </div>
-          </article>
-        </div>
         <div class="view" id="view-community">
           <div id="community-board-root"></div>
         </div>
