@@ -94,6 +94,11 @@ Tier is computed client-side in `userJourneyTier()` (also synced to `user_journe
 
 ---
 
+
+### Pantauan nudge (first Deep Dive)
+
+After a user opens their **first** Deep Dive, wait **3 seconds**, then pulse the sidebar **Pantauan** icon (`#btn-tracker`) until they click it. Click opens the LarisTracker setup wizard seeded with that product (keyword + shop) so they can choose whether to track and which metrics (including units). Closing the wizard or declining is fine — the pulse stops; nothing is saved until they commit. One-tap “Kabari Kalau Berubah” also clears the pulse. State: `localStorage` key `lid_pantau_nudge_v1`. Code: `schedulePantauNavPulse` / `consumePantauNudgeSeed` in `js/gpt-app.js`.
+
 ## Progressive UI by surface
 
 ### Discover

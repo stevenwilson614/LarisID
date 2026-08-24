@@ -9042,6 +9042,92 @@ function gptTrackerAdapter() {
   return _trkAdapterB;
 }
 
+/** After the first Deep Dive, nudge the Pantauan nav icon.
+ *
+ *  Waits 3s, then pulses #btn-tracker until they click it. Click opens the
+ *  tracker setup wizard seeded with that Deep Dive product so they can choose
+ *  whether to track and which metrics (including units). Closing / saying no
+ *  in the wizard is fine — we only stop the pulse; nothing is saved until they
+ *  commit the wizard.
+ */
+const PANTAU_NUDGE_KEY = 'lid_pantau_nudge_v1';
+let _pantauNudgeTimer = null;
+
+function pantauNudgeLoad() {
+  try { return JSON.parse(localStorage.getItem(PANTAU_NUDGE_KEY) || 'null') || { phase: 'none' }; }
+  catch { return { phase: 'none' }; }
+}
+
+function pantauNudgeSave(st) {
+  try { localStorage.setItem(PANTAU_NUDGE_KEY, JSON.stringify(st)); } catch (_) {}
+}
+
+function pantauNudgeSeedFromProduct(product) {
+  const keyword = String(product?.keyword || '').trim();
+  if (!keyword) return null;
+  return {
+    keyword,
+    category: product.category || product.category_canonical || '',
+    shop_id: product.shop_id ?? null,
+    store_name: product.store_name || '',
+    item_id: product.item_id ?? null,
+    image_url: product.image_url || '',
+  };
+}
+
+function pantauNudgeSetPulse(on) {
+  const btn = document.getElementById('btn-tracker');
+  if (btn) btn.classList.toggle('is-pantau-pulse', !!on);
+}
+
+function pantauNudgeClear() {
+  if (_pantauNudgeTimer) { clearTimeout(_pantauNudgeTimer); _pantauNudgeTimer = null; }
+  pantauNudgeSave({ phase: 'done' });
+  pantauNudgeSetPulse(false);
+}
+
+function pantauNudgeStartPulse() {
+  const st = pantauNudgeLoad();
+  if (st.phase !== 'armed' && st.phase !== 'pulsing') return;
+  pantauNudgeSave({ ...st, phase: 'pulsing' });
+  pantauNudgeSetPulse(true);
+  try { void logUserEvent('pantau_nudge_pulse', { ui: 'gpt', keyword: st.seed?.keyword || null }); } catch (_) {}
+}
+
+function schedulePantauNavPulse(product) {
+  const st = pantauNudgeLoad();
+  if (st.phase === 'done') return;
+  if (st.phase === 'pulsing') { pantauNudgeSetPulse(true); return; }
+  if (st.phase === 'armed') {
+    // Timer already running from this session or a prior one — resume remaining wait.
+    if (_pantauNudgeTimer) return;
+    const waited = Date.now() - (st.armedAt || Date.now());
+    const left = Math.max(0, 3000 - waited);
+    _pantauNudgeTimer = setTimeout(() => { _pantauNudgeTimer = null; pantauNudgeStartPulse(); }, left);
+    return;
+  }
+  const seed = pantauNudgeSeedFromProduct(product);
+  if (!seed) return;
+  pantauNudgeSave({ phase: 'armed', seed, armedAt: Date.now() });
+  if (_pantauNudgeTimer) clearTimeout(_pantauNudgeTimer);
+  _pantauNudgeTimer = setTimeout(() => { _pantauNudgeTimer = null; pantauNudgeStartPulse(); }, 3000);
+}
+
+function resumePantauNavPulse() {
+  const st = pantauNudgeLoad();
+  if (st.phase === 'pulsing') pantauNudgeSetPulse(true);
+  else if (st.phase === 'armed') schedulePantauNavPulse(st.seed || {});
+}
+
+/** If a first-dive Pantauan nudge is active, stop pulsing and return its seed. */
+function consumePantauNudgeSeed() {
+  const st = pantauNudgeLoad();
+  if (st.phase !== 'pulsing' && st.phase !== 'armed') return null;
+  const seed = st.seed && st.seed.keyword ? st.seed : null;
+  pantauNudgeClear();
+  return seed;
+}
+
 /** One-tap keyword tracking straight from a Deep Dive.
  *
  *  The old path opened the setup wizard with the keyword pre-filled. Aksi
@@ -9101,6 +9187,8 @@ async function quickTrackKeyword(product) {
       }
     } catch (_) {}
 
+    // One-tap track already did the job — no need to keep pulsing Pantauan.
+    pantauNudgeClear();
     showToast(emailOn
       ? `Siap — kami email kamu kalau "${kw}" berubah`
       : `Siap — "${kw}" masuk pantauan harian kamu`);
@@ -9136,10 +9224,20 @@ function ensureTracker() {
 }
 
 async function openTrackerView(seed, resumeDraft) {
+  // First-dive Pantauan pulse: clicking the nav icon (or any tracker entry)
+  // while the nudge is active opens the seeded setup wizard and stops the pulse.
+  // Cancel/close in the wizard is fine — nothing is saved until they commit.
+  if (!seed || !seed.keyword) {
+    const nudged = consumePantauNudgeSeed();
+    if (nudged) seed = nudged;
+  } else {
+    const st = pantauNudgeLoad();
+    if (st.phase === 'pulsing' || st.phase === 'armed') pantauNudgeClear();
+  }
   setView('tracker');
   // Parity with Site A trkOpen(): view_open fires from setView; this marks the
   // pantauan entry specifically so A/B tracker_tab rates stay comparable.
-  try { void logUserEvent('tracker_tab', { tab: 'keyword', ui: 'gpt' }); } catch (_) {}
+  try { void logUserEvent('tracker_tab', { tab: 'keyword', ui: 'gpt', seeded: !!(seed && seed.keyword) }); } catch (_) {}
   await ensureTracker();
   if (!window.LarisTracker) return;
   window.LarisTracker.mount({ hostId: 'laris-tracker-root', site: 'b', adapter: gptTrackerAdapter() });
@@ -11103,7 +11201,9 @@ async function openDeepDive(product, ddOpts = {}) {
   // refuses, so this can never wall a view.
   void logDeepDiveOpen(product);
   if (state.pendingDeepdive) { state.pendingDeepdive = null; saveLocalState(); }
+  const isFirstDeepDive = !state.everOpenedDeepdive;
   if (!state.everOpenedDeepdive) { state.everOpenedDeepdive = true; saveLocalState(); }
+  if (isFirstDeepDive) schedulePantauNavPulse(product);
   rememberProducts([product]);
   state.deepdiveProduct = product;
   if (!ddOpts.fromCompare) state.compareReturnChatId = null;
@@ -17017,6 +17117,7 @@ async function boot() {
   // default arm anywhere.
 
   wireUi();
+  resumePantauNavPulse();
   initLandingAiDemo();
   document.getElementById('gpt-limit-close')?.addEventListener('click', gptLimitClose);
   document.getElementById('gpt-limit-feedback')?.addEventListener('click', gptOpenFeedbackForBonus);

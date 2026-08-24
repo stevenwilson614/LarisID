@@ -300,6 +300,20 @@ html.session-restoring body::after {
 }
 .side-btn:hover { background: var(--bg-hover); }
 .side-btn.active { background: #fff; box-shadow: 0 0 0 1px var(--line); }
+
+/* First-dive Pantauan nudge: pulse until they open Pantauan (stops on click). */
+@keyframes pantauNavPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(181, 32, 42, 0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(181, 32, 42, 0); }
+}
+.side-btn.is-pantau-pulse {
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--line);
+  animation: pantauNavPulse 1.4s var(--ease) infinite;
+  color: var(--accent);
+}
+.side-btn.is-pantau-pulse svg { color: var(--accent); }
+
 .side-btn svg,
 .side-loc-card svg { flex-shrink: 0; color: var(--ink-soft); stroke: currentColor; }
 /* Two-tone sidebar icons: charcoal body + one brand-red accent element.
@@ -7120,6 +7134,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/gpt-app.js?v=20260824p" defer></script>
+<script src="/js/gpt-app.js?v=20260824q" defer></script>
 </body>
 </html>

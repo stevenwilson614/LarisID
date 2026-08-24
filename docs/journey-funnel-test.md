@@ -57,6 +57,16 @@ Use this before merging changes to onboarding, Discover defaults, journey tiers,
 - [ ] `deepdive_open`
 - [ ] `journey_return_strip` (returning users)
 
+
+## Pantauan nudge (first Deep Dive)
+
+- [ ] First Deep Dive: after ~3s, Pantauan sidebar icon pulses
+- [ ] Pulse continues if you leave Deep Dive / refresh (until click)
+- [ ] Click Pantauan → opens setup wizard with that product seeded
+- [ ] Closing wizard / declining does not force-add the product
+- [ ] Pulse stops after click; does not return on later Deep Dives
+- [ ] “Kabari Kalau Berubah” one-tap also clears the pulse
+
 ## Regression
 
 - [ ] Cohort / leader dashboards unchanged
