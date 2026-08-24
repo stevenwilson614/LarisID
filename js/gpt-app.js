@@ -1371,6 +1371,26 @@ const CANON_CAT_ICONS = {
   'Makanan & Minuman': '<path d="M3 8h14v6a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5V8z"/><path d="M17 9h2a2 2 0 0 1 0 4h-2"/><path d="M7 3c0 1-1 1-1 2s1 1 1 2"/><path d="M11 3c0 1-1 1-1 2s1 1 1 2"/>',
   'Perlengkapan Ibadah': '<path d="M12 2l2 3h-4l2-3z"/><path d="M6 22V12a6 6 0 0 1 12 0v10"/><path d="M3 22h18"/><path d="M9 22v-5a3 3 0 0 1 6 0v5"/>',
 };
+const DIR_CAT_PHOTO = {
+  'Rumah & Dekorasi': 'rumah-dekorasi',
+  'Dapur': 'dapur',
+  'Kamar Mandi': 'kamar-mandi',
+  'Fashion': 'fashion',
+  'Sepatu, Tas & Aksesoris': 'sepatu-tas-aksesoris',
+  'Kecantikan & Perawatan': 'kecantikan-perawatan',
+  'Kesehatan': 'kesehatan',
+  'Ibu, Bayi & Anak': 'ibu-bayi-anak',
+  'Elektronik & Listrik': 'elektronik-listrik',
+  'HP, Komputer & Gaming': 'hp-komputer-gaming',
+  'Motor & Mobil': 'motor-mobil',
+  'Olahraga & Outdoor': 'olahraga-outdoor',
+  'Hewan Peliharaan': 'hewan-peliharaan',
+  'Taman, Tanaman & Perkakas': 'taman-tanaman-perkakas',
+  'Sekolah, Kantor & Usaha': 'sekolah-kantor-usaha',
+  'Hobi, Kerajinan & Pesta': 'hobi-kerajinan-pesta',
+  'Makanan & Minuman': 'makanan-minuman',
+  'Perlengkapan Ibadah': 'perlengkapan-ibadah',
+};
 
 function catChipIcon(name, size = 15) {
   const paths = CAT_CHIP_ICONS[name];
@@ -15298,19 +15318,27 @@ function applyDirCatUi() {
   void renderSubcats(primaryDirCat());
 }
 
-// Always-visible category icon rail — pure client-side markup (NU_ONB_CATS +
-// CAT_CHIP_ICONS), no network dependency, so it renders before any data
-// fetch resolves. Click toggles that category as the sole directory filter.
+// Always-visible category photo rail — client-side markup (DIR_CANON_CATS +
+// CANON_CAT_ICONS + DIR_CAT_PHOTO), no network dependency, so it renders
+// before any data fetch resolves. Click toggles that category as the sole
+// directory filter.
 function renderDirCatRail() {
   const rail = $('dir-cat-rail');
   if (!rail) return;
   const active = primaryDirCat();
   rail.innerHTML = DIR_CANON_CATS.map(cat => {
     const icon = CANON_CAT_ICONS[cat] || '';
+    const slug = DIR_CAT_PHOTO[cat] || '';
     const sel = cat === active;
+    const src = slug ? `/images/dir-cats/${slug}.webp` : '';
     return `<button type="button" class="dir-cat-pill${sel ? ' selected' : ''}" data-dir-cat="${esc(cat)}">
-      <span class="dir-cat-pill-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${icon}</svg></span>
-      <span class="dir-cat-pill-label">${esc(cat)}</span>
+      <span class="dir-cat-pill-media">
+        ${src ? `<img src="${src}" alt="" loading="lazy" />` : ''}
+        <span class="dir-cat-pill-badge">
+          <span class="dir-cat-pill-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${icon}</svg></span>
+          <span class="dir-cat-pill-label">${esc(cat)}</span>
+        </span>
+      </span>
     </button>`;
   }).join('');
   rail.querySelectorAll('[data-dir-cat]').forEach(btn => {

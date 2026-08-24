@@ -1883,38 +1883,62 @@ body.view-directory.dir-compare-picking .panel { padding-bottom: 110px; }
 }
 .dir-subcat-card.selected .dir-subcat-label { color: var(--ink); font-weight: 700; }
 
-/* Instant, no-network category rail — renders synchronously so the Produk
-   page never opens on a bare "Memuat…" state; see renderDirCatRail(). */
+/* Instant, no-network category photo rail — renders synchronously so the
+   Produk page never opens on a bare "Memuat…" state; see renderDirCatRail(). */
 .dir-cat-rail {
-  display: flex; gap: 8px; margin: 0 0 16px;
-  overflow-x: auto; padding: 2px 2px 6px;
+  display: flex; gap: 10px; margin: 0 0 16px;
+  overflow-x: auto; padding: 2px 2px 8px;
   scrollbar-width: thin;
 }
 .dir-cat-pill {
   flex: 0 0 auto;
-  display: flex; flex-direction: column; align-items: center; gap: 5px;
-  width: 62px; padding: 0; border: none; background: none; cursor: pointer;
-  font: inherit; text-align: center;
+  width: 148px; padding: 0; border: none; background: none; cursor: pointer;
+  font: inherit; text-align: left;
+}
+.dir-cat-pill-media {
+  position: relative; display: block;
+  width: 148px; height: 88px;
+  border-radius: 14px; overflow: hidden;
+  background: #EEE8E0;
+  transition: box-shadow .12s, transform .12s;
+}
+.dir-cat-pill-media img {
+  width: 100%; height: 100%; object-fit: cover; object-position: center;
+  display: block;
+}
+.dir-cat-pill-media::after {
+  content: ""; position: absolute; inset: auto 0 0 0; height: 58%;
+  background: linear-gradient(to top, rgba(18,14,10,.58), transparent);
+  pointer-events: none;
+}
+.dir-cat-pill-badge {
+  position: absolute; left: 7px; right: 7px; bottom: 7px; z-index: 1;
+  display: flex; align-items: center; gap: 7px;
 }
 .dir-cat-pill-ico {
-  width: 46px; height: 46px; border-radius: 14px;
-  border: 1.5px solid var(--line); background: var(--bg-user);
+  flex: 0 0 auto;
+  width: 28px; height: 28px; border-radius: 999px;
+  background: #fff;
   display: flex; align-items: center; justify-content: center;
-  color: var(--ink-soft);
-  transition: border-color .12s, box-shadow .12s, color .12s;
+  color: #1A1A1A;
 }
-.dir-cat-pill-ico svg { width: 22px; height: 22px; }
-.dir-cat-pill:hover .dir-cat-pill-ico,
-.dir-cat-pill.selected .dir-cat-pill-ico {
-  border-color: var(--accent, #B5202A); color: var(--accent, #B5202A);
-  box-shadow: 0 0 0 2px rgba(181,32,42,.12);
-}
+.dir-cat-pill-ico svg { width: 15px; height: 15px; }
 .dir-cat-pill-label {
-  font-size: .64rem; font-weight: 550; color: var(--ink-soft);
-  line-height: 1.2; max-width: 100%;
+  min-width: 0;
+  font-size: .68rem; font-weight: 650; color: #fff;
+  line-height: 1.2;
+  text-shadow: 0 1px 2px rgba(0,0,0,.35);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.dir-cat-pill.selected .dir-cat-pill-label { color: var(--ink); font-weight: 700; }
+.dir-cat-pill:hover .dir-cat-pill-media {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(90,60,40,.18);
+}
+.dir-cat-pill.selected .dir-cat-pill-media {
+  box-shadow: 0 0 0 2px var(--accent, #B5202A), 0 0 0 4px rgba(181,32,42,.14);
+}
+.dir-cat-pill.selected .dir-cat-pill-ico { color: var(--accent, #B5202A); }
+.dir-cat-pill.selected .dir-cat-pill-label { font-weight: 700; }
 
 .dir-filter-host {
   position: relative;
@@ -6973,6 +6997,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/gpt-app.js?v=20260824f" defer></script>
+<script src="/js/gpt-app.js?v=20260824g" defer></script>
 </body>
 </html>
