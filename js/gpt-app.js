@@ -4506,6 +4506,9 @@ function wireResultsBar() {
 /** Free-text search from the Produk sticky bar — stays on the directory grid. */
 async function runResultsBarSearch(q) {
   const query = String(q || '').trim();
+  // Last action wins: typing a search overrides any category/subgroup browse state.
+  state.dirCats = [];
+  state.dirSub = null;
   state.dirSearch = query;
   state.dirPage = 1;
   closeResultsBarMega();
@@ -5515,8 +5518,11 @@ function fillCalcContent(opts = {}) {
   bindGptKalc(body);
 }
 
-function wireKompPanelBody(body, peers) {
-  wireKompClicks(body, peers);
+function wireKompPanelBody(body, peers, product) {
+  // _dd.history is keyword-scoped; only reuse it when the panel is on that keyword.
+  const sameKw = _dd?.product?.keyword && product?.keyword
+    && String(_dd.product.keyword).trim().toLowerCase() === String(product.keyword).trim().toLowerCase();
+  wireKompClicks(body, peers, { history: sameKw ? _dd.history : null });
 }
 
 async function fillKompContent(opts = {}) {
@@ -5545,7 +5551,7 @@ async function fillKompContent(opts = {}) {
     <p class="side-komp-lead">Toko kompetitor di keyword “${esc(kw)}” — urut estimasi omset.</p>
     ${ddKompetitorTableHtml(share, { moreId: 'side-komp-more' })}
   `;
-  wireKompPanelBody(body, peers || []);
+  wireKompPanelBody(body, peers || [], product);
 }
 
 async function fillKeywordContent(opts = {}) {
@@ -9537,6 +9543,7 @@ function ddStats(peers) {
   return {
     prices, n,
     median: n ? prices[Math.floor(n / 2)] : 0,
+    mean: n ? Math.round(prices.reduce((a, b) => a + b, 0) / n) : 0,
     p25: pick(0.25), p75: pick(0.75),
     p35: pick(0.35), p65: pick(0.65),
     min: n ? prices[0] : 0, max: n ? prices[n - 1] : 0,
@@ -9776,7 +9783,7 @@ function ddWeeklySeries(history) {
 
    Returns null on any failure so the caller falls back to the client path.
    Rollback: set localStorage 'larisid_server_series' to '0'.                 */
-async function ddServerWeeklySeries(product, days = 119) {
+async function ddServerWeeklySeries(product, days = 119, opts = {}) {
   try {
     if (localStorage.getItem('larisid_server_series') === '0') return null;
   } catch (_) { /* private mode: proceed */ }
@@ -9787,7 +9794,7 @@ async function ddServerWeeklySeries(product, days = 119) {
   let rows;
   try {
     let r;
-    if (product._ptype && product.keyword) {
+    if ((opts.forceKeyword || product._ptype) && product.keyword) {
       r = await _supabase.rpc('keyword_daily_series', {
         p_keyword: String(product.keyword).trim().toLowerCase(),
         p_from: iso(from),
@@ -10225,20 +10232,6 @@ function ddOmsetSummary(product, peers) {
   return { lo, hi, median, single };
 }
 
-function ddOmsetHeroHtml(product, peers) {
-  const { lo, hi, median, single } = ddOmsetSummary(product, peers);
-  let valHtml = '—';
-  if (lo > 0 && hi > 0) {
-    valHtml = `<span class="lo">${fmtOmsetHeroAmt(lo)}</span><span class="dash" aria-hidden="true"></span><span class="med">${fmtOmsetHeroAmt(median)}</span><span class="dash" aria-hidden="true"></span><span class="hi">${fmtOmsetHeroAmt(hi)}</span>`;
-  } else if (single > 0) {
-    valHtml = `<span class="med">${fmtOmsetHeroAmt(single)}</span>`;
-  }
-  return `<div class="ddr-omset-hero">
-    <div class="lbl">Omset / Bulan</div>
-    <div class="val">${valHtml}</div>
-  </div>`;
-}
-
 // ── E-commerce platform fee estimates (mirrored from Site A) ───────────────
 // Researched Juni 2025. Perkiraan untuk penjual non-Star/reguler dengan
 // program gratis ongkir aktif — tarif berubah & bergantung kategori spesifik.
@@ -10418,54 +10411,66 @@ function revealDdrFees(product) {
   el.outerHTML = ddFeesSectionHtml(product);
 }
 
-function ddAiRecLabel(scoreInfo) {
-  const s = Number(scoreInfo?.score) || 0;
-  if (s >= 70) return { title: 'Peluang Kuat', sub: 'Skor tinggi — layak diprioritaskan untuk uji jual' };
-  if (s >= 45) return { title: 'Layak Diuji', sub: scoreInfo?.odds?.hint || 'Peluang sedang — uji dengan stok kecil dulu' };
-  return { title: 'Berisiko', sub: scoreInfo?.odds?.hint || 'Skor rendah — cek kompetisi & harga sebelum masuk' };
+/* ── Hero row: pasar numbers (left) + the trend chart (right) ─────────────
+   Replaced the five-tile strip. Three of those tiles were derived labels, not
+   data — "Rekomendasi AI" was a threshold on the score and "Confidence" a
+   hand-tuned heuristic. What is left is measured: market omset, market units,
+   market average price. All three are keyword-level, matching the chart beside
+   them and the Kompetitor / Pangsa cards below. */
+
+function ddHeroNumsHtml(stats, peers) {
+  const list = peers || [];
+  const n = list.length;
+  const shopN = new Set(list.map(p => String(p.shop_id))).size;
+  const omsetMo = list.reduce((sum, p) => sum + (Number(estOmsetBulan(p)) || 0), 0);
+  const unitsMo = Math.round(list.reduce((sum, p) => sum + (Number(soldPerDayEst(p)) || 0), 0) * 30);
+  const avgPrice = Number(stats?.mean) || 0;
+  const band = (Number(stats?.p25) > 0 && Number(stats?.p75) > 0)
+    ? `${fmtRpShort(stats.p25)} – ${fmtRpShort(stats.p75)}`
+    : 'Belum cukup data harga';
+  const num = (lbl, val, sub) => `<div class="ddr-hero-num">
+      <div class="lbl">${esc(lbl)}</div>
+      <div class="val">${val}</div>
+      <div class="sub">${esc(sub)}</div>
+    </div>`;
+  return `<div class="ddr-hero-nums">
+    ${num('Omset / Bulan', omsetMo > 0 ? fmtOmsetHeroAmt(omsetMo) : '—', 'Total pasar')}
+    ${num('Unit Terjual / Bulan', unitsMo > 0 ? fmtSold(unitsMo) : '—', 'Total pasar')}
+    ${num('Harga Rata-rata', avgPrice > 0 ? fmtRp(avgPrice) : '—', band)}
+    <p class="ddr-hero-foot">${n ? `Dari ${n} listing di ${shopN} toko pada keyword ini.` : 'Belum cukup data pasar untuk keyword ini.'}</p>
+  </div>`;
 }
 
-function ddConfidencePct(product, peers, history) {
-  const spd = Number(product?.sold_per_day);
-  const hasSpd = Number.isFinite(spd) && spd > 0;
-  const histN = (history || []).length;
-  const peerN = (peers || []).length;
-  const pct = Math.max(1, Math.min(99, Math.round(
-    35 + Math.min(40, peerN) + (histN >= 2 ? 15 : 0) + (hasSpd ? 10 : 0)
-  )));
-  const label = pct >= 70 ? 'Tinggi' : pct >= 45 ? 'Sedang' : 'Rendah';
-  return { pct, label };
+function ddHeroChartHtml(hasTrend) {
+  if (!hasTrend) {
+    return `<div class="ddr-card ddr-hero-chart" data-dd-sec="tren">
+      <h3>Tren Pasar</h3>
+      <p class="dd-sub">Belum cukup riwayat scrape untuk tren mingguan keyword ini — butuh beberapa gelombang panel. Bagian lain tetap dari data asli.</p>
+    </div>`;
+  }
+  return `<div class="ddr-card ddr-hero-chart" data-dd-sec="tren">
+    <div class="ddr-trend-head">
+      <h3>Tren Pasar</h3>
+      <div class="ddr-trend-toggles">
+        <div class="ddr-seg" id="ddr-trend-metric" role="group" aria-label="Pilih metrik">
+          <button type="button" class="ddr-seg-btn is-on" data-dd-metric="omset">Omset</button>
+          <button type="button" class="ddr-seg-btn" data-dd-metric="unit">Unit Terjual</button>
+        </div>
+        <div class="ddr-seg" id="ddr-trend-view" role="group" aria-label="Pilih tampilan">
+          <button type="button" class="ddr-seg-btn is-on" data-dd-view="pasar">Pasar</button>
+          <button type="button" class="ddr-seg-btn" data-dd-view="top10">Top 10 Toko</button>
+        </div>
+      </div>
+    </div>
+    <div class="ddr-chart-wrap"><canvas id="ddr-trend-canvas"></canvas></div>
+    <div class="chart-legend ddr-trend-legend" id="ddr-trend-legend"></div>
+  </div>`;
 }
 
-function ddTilesHtml(product, stats, peers, series, scoreInfo, history) {
-  const shopN = new Set((peers || []).map(p => String(p.shop_id))).size;
-  const omset = ddOmsetSummary(product, peers);
-  const omsetVal = omset.median > 0
-    ? fmtRpShort(omset.median)
-    : omset.single > 0 ? fmtRpShort(omset.single) : '—';
-  const omsetSub = omset.median > 0
-    ? 'Median pasar'
-    : omset.single > 0 ? 'Estimasi listing ini' : 'Belum cukup data omset peer';
-  const ai = ddAiRecLabel(scoreInfo || {});
-  const conf = ddConfidencePct(product, peers, history);
-  const priceLo = Number(stats.p35) || Number(stats.p25) || 0;
-  const priceHi = Number(stats.p65) || Number(stats.p75) || 0;
-  const priceVal = priceLo > 0 && priceHi > 0
-    ? `${fmtRp(priceLo)} – ${fmtRp(priceHi)}`
-    : '—';
-  const priceSub = priceLo > 0 ? 'Zona masuk pasar aktif' : 'Belum cukup data harga';
-  const kompVal = stats.komp
-    ? `${esc(stats.komp)}${shopN ? ` (~${shopN} toko)` : ''}`
-    : (shopN ? `~${shopN} toko` : '—');
-  const kompSub = stats.komp === 'Rendah' ? 'Ruang masuk masih terbuka'
-    : stats.komp === 'Tinggi' ? 'Pasar padat — bedakan listing'
-    : 'Kompetisi menengah';
-  return `<div class="ddr-hscroll ddr-hscroll--tiles" data-dd-sec="quick_stats">
-    <div class="ddr-tile ddr-tile--ai"><span class="ico">${ico('spark', 14)}</span><div class="lbl">Rekomendasi AI</div><div class="val">${esc(ai.title)}</div><div class="sub">${esc(ai.sub)}</div></div>
-    <div class="ddr-tile"><span class="ico" style="background:var(--green-bg);color:var(--green)">${ico('wallet', 14)}</span><div class="lbl">Estimasi Omset / Bulan</div><div class="val">${omsetVal}</div><div class="sub">${esc(omsetSub)}</div></div>
-    <div class="ddr-tile"><span class="ico" style="background:var(--amber-bg);color:var(--amber)">${ico('users', 14)}</span><div class="lbl">Kompetisi</div><div class="val">${kompVal}</div><div class="sub">${esc(kompSub)}</div></div>
-    <div class="ddr-tile"><span class="ico" style="background:var(--violet-bg);color:var(--violet)">${ico('shield', 14)}</span><div class="lbl">Confidence</div><div class="val">${conf.pct}% ${esc(conf.label)}</div><div class="sub">Kekuatan sinyal dari peer &amp; riwayat scrape</div></div>
-    <div class="ddr-tile"><span class="ico" style="background:var(--blue-bg);color:var(--blue)">${ico('tag', 14)}</span><div class="lbl">Rekomendasi Harga</div><div class="val">${priceVal}</div><div class="sub">${esc(priceSub)}</div></div>
+function ddHeroRowHtml(product, stats, peers, hasTrend) {
+  return `<div class="ddr-hero-row" data-dd-sec="quick_stats">
+    ${ddHeroNumsHtml(stats, peers)}
+    ${ddHeroChartHtml(hasTrend)}
   </div>`;
 }
 
@@ -10618,90 +10623,70 @@ function wireDdrAksiCepat(root, product, peers) {
   });
 }
 
+const KOMP_LINK_ICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-8.5 8.5"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>';
+
+/** Shopee shop page. `shop_id` is the same id Shopee puts in a listing URL
+ *  (`…-i.<shop_id>.<item_id>`), so /shop/<shop_id> is that seller's storefront. */
+function shopeeStoreUrl(shopId) {
+  return `https://shopee.co.id/shop/${encodeURIComponent(String(shopId))}`;
+}
+
 function ddKompetitorTableHtml(share, opts = {}) {
   if (!share.shops.length) return '<p class="dd-sub">Kompetitor belum tersedia untuk keyword ini.</p>';
   const moreId = opts.moreId || 'ddr-komp-more';
   const rows = share.shops.slice(0, 15).map((s, i) => {
     const sample = s.sample || {};
-    const iid = sample.item_id;
     const sid = sample.shop_id;
-    if (iid == null || sid == null) return '';
-    const key = `${iid}|${sid}`;
-    const snap = productSnapshot(asListingProduct(sample));
-    const encoded = snap ? encodeURIComponent(JSON.stringify(snap)) : '';
+    if (sid == null) return '';
     const omsetMo = Math.round(s.sold / 6) * Math.round(s.omset / Math.max(1, s.sold)); // ≈ sold/6 × avg price
     const reviews = Number(sample.reviews) || 0;
     const sold = Number(s.sold) || 0;
     const avgPrice = sold > 0 ? Math.round(s.omset / sold) : (Number(sample.price) || 0);
-    const weeklyUnits = Number(sample.nowcast_velocity_daily) > 0
-      ? Math.max(1, Math.round(Number(sample.nowcast_velocity_daily) * 7))
-      : Math.max(0, Math.round(sold / 6 / 4));
-    const weeklyTrend = weeklyUnits > 0 ? `${fmtSold(weeklyUnits)}/minggu` : '—';
-    // Whole row is clickable — users tap the tok name, not just the tiny "Lihat" button.
-    return `<tr class="komp-click-row"${i >= 5 ? ' data-komp-extra hidden' : ''} data-kshop="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} role="link" tabindex="0" aria-label="Buka Deep Dive ${esc((s.name || 'kompetitor').slice(0, 40))}">
+    // Rows are inert now — the only affordance is the outbound store link, so
+    // nothing here carries a product snapshot or a role="link".
+    return `<tr${i >= 5 ? ' data-komp-extra hidden' : ''}>
       <td class="tr-rank">${i + 1}</td>
-      <td><div class="tr-prod" style="min-width:140px"><span class="comp-av">${s.img ? `<img src="${esc(imgThumb(s.img))}" alt="" loading="lazy" decoding="async">` : esc((s.name || 'T').charAt(0).toUpperCase())}</span><div class="tr-prod-name">${esc((s.name || 'Toko').slice(0, 28))}</div></div></td>
+      <td><div class="tr-prod" style="min-width:170px"><span class="comp-av">${s.img ? `<img src="${esc(imgThumb(s.img))}" alt="" loading="lazy" decoding="async">` : esc((s.name || 'T').charAt(0).toUpperCase())}</span><div class="tr-prod-name">${esc((s.name || 'Toko').slice(0, 28))}</div></div></td>
       <td>${omsetMo ? fmtRpShort(omsetMo) : '—'}</td>
       <td>${reviews ? fmtSold(reviews) : '0'}</td>
       <td>${sold ? fmtSold(sold) : '0'}</td>
       <td>${avgPrice ? fmtRp(avgPrice) : '—'}</td>
-      <td>${weeklyTrend}</td>
+      <td><canvas class="spark spark-komp" data-shop-spark="${esc(String(sid))}" aria-label="Tren omset 4 minggu terakhir"></canvas></td>
       <td>${s.share}%</td>
-      <td><span class="komp-open-hint">Deep Dive →</span></td>
+      <td><a class="komp-store-link" href="${esc(shopeeStoreUrl(sid))}" target="_blank" rel="noopener noreferrer">Buka Toko ${KOMP_LINK_ICO}</a></td>
     </tr>`;
   }).join('');
   return `<div class="ddr-table-wrap"><table class="ddr-table ddr-komp-table">
-    <thead><tr><th>#</th><th>Toko</th><th>Omset / Bln (est.)</th><th>Review</th><th>Unit Jual</th><th>Harga</th><th>Tren Mingguan</th><th>Market Share</th><th></th></tr></thead>
+    <thead><tr><th>#</th><th>Toko</th><th>Omset / Bln (est.)</th><th>Review</th><th>Unit Jual</th><th>Harga</th><th>Tren 4 Minggu</th><th>Market Share</th><th></th></tr></thead>
     <tbody>${rows}</tbody></table></div>
     ${share.shops.length > 5 ? `<button type="button" class="ans-cta" id="${esc(moreId)}">Lihat Semua ${Math.min(15, share.shops.length)} Kompetitor</button>` : ''}`;
 }
 
-function openKompetitorDeepDive(el, peers) {
-  const hit = el?.closest?.('[data-kshop]');
-  if (!hit) return false;
-  const encoded = hit.getAttribute('data-product');
-  if (encoded) {
-    try {
-      const p = JSON.parse(decodeURIComponent(encoded));
-      if (p?.item_id != null && p?.shop_id != null) {
-        void openDeepDive(asListingProduct(p), { keepChat: true });
-        return true;
-      }
-    } catch (_) {}
-  }
-  const [iid, sid] = (hit.getAttribute('data-kshop') || '').split('|');
-  if (!iid || !sid) return false;
-  const p = (peers || []).find(x => String(x.item_id) === iid && String(x.shop_id) === sid);
-  if (!p) return false;
-  void openDeepDive(asListingProduct(p), { keepChat: true });
-  return true;
+/** 4-week omset sparkline per competitor row, cut from the keyword history.
+ *  Without history (side panel on a different product) every canvas draws the
+ *  flat grey baseline rather than sitting blank. */
+function drawKompSparks(root, history) {
+  const rows = history || [];
+  root?.querySelectorAll('canvas[data-shop-spark]').forEach(cv => {
+    const sid = cv.getAttribute('data-shop-spark') || '';
+    const weeks = rows.length
+      ? ddWeeklySeries(rows.filter(r => String(r.shop_id) === sid))
+      : [];
+    drawSpark(cv, weeks.slice(-4).map(w => w.omset), 76, 34);
+  });
 }
 
-function wireKompClicks(root, peers) {
+function wireKompClicks(root, peers, opts = {}) {
   if (!root) return;
   const more = root.querySelector('#ddr-komp-more, #side-komp-more');
   more?.addEventListener('click', (e) => {
     e.stopPropagation();
     root.querySelectorAll('[data-komp-extra]').forEach(tr => { tr.hidden = false; });
     more.remove();
+    // The rows that were hidden have zero-size canvases until they are shown.
+    drawKompSparks(root, opts.history);
   });
-  root.querySelectorAll('.ddr-komp-table').forEach(table => {
-    if (table.dataset.kompWired === '1') return;
-    table.dataset.kompWired = '1';
-    table.addEventListener('click', (e) => {
-      const hit = e.target.closest?.('[data-kshop]');
-      if (!hit || !table.contains(hit)) return;
-      e.preventDefault();
-      openKompetitorDeepDive(hit, peers);
-    });
-    table.addEventListener('keydown', (e) => {
-      if (e.key !== 'Enter' && e.key !== ' ') return;
-      const hit = e.target.closest?.('tr[data-kshop]');
-      if (!hit || !table.contains(hit)) return;
-      e.preventDefault();
-      openKompetitorDeepDive(hit, peers);
-    });
-  });
+  drawKompSparks(root, opts.history);
 }
 
 function ddKeywordTableHtml(kwRows, sampleN) {
@@ -10731,10 +10716,10 @@ function ddStrategyHtml(product, stats, niche, kwRows) {
   return `<ol class="ddr-steps">${steps.map((s, i) => `<li><span class="step-num">${i + 1}</span><span>${esc(s)}</span></li>`).join('')}</ol>`;
 }
 
-function drawSpark(canvas, values) {
+function drawSpark(canvas, values, wPx = 52, hPx = 20) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
-  const w = canvas.width = 52, h = canvas.height = 20;
+  const w = canvas.width = wPx, h = canvas.height = hPx;
   ctx.clearRect(0, 0, w, h);
   if (!values || values.length < 2) {
     ctx.strokeStyle = '#d4d4d4';
@@ -10969,7 +10954,7 @@ function runDdrTool(tool, product, peers, via) {
       if (p) void openDeepDive(p);
       return;
     }
-    scrollDdrTo('.ddr-hscroll--graphs') || scrollDdrTo('[data-dd-sec="tren"]');
+    scrollDdrTo('.ddr-hscroll--graphs2') || scrollDdrTo('[data-dd-sec="tren"]');
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'analisa', via: via || 'click', keyword: p?.keyword || '' });
     return;
   }
@@ -11253,11 +11238,9 @@ async function openDeepDive(product, ddOpts = {}) {
 
   const stats = ddStats(peers);
   // Server series first; the client path stays as the fallback while this rolls out.
-  const weeklyAll = (await ddServerWeeklySeries(product)) || ddWeeklySeries(history);
-  const weekKey = product._ptype
-    ? { keyword: kw }
-    : { item_id: product.item_id, shop_id: product.shop_id };
-  const weeklySnaps = await fetchWeeklyRows(weekKey);
+  const weeklyAll = (await ddServerWeeklySeries(product, 119, { forceKeyword: true }))
+    || ddWeeklySeries(history);
+  const weeklySnaps = await fetchWeeklyRows({ keyword: kw });
   const fcSnap = weeklyRowFor(weeklySnaps, listingNextWeekStartISO());
   // Do not overlay this week from listing_weekly/keyword_weekly — that table
   // is a different estimator (nowcast/peer) and replaced scrape-interval weeks
@@ -11294,6 +11277,10 @@ async function openDeepDive(product, ddOpts = {}) {
 
   const hasTrend = series.filter(w => (w.units || w.omset)).length >= 2
     || (weeklyAll || []).length >= 2;
+  // Trend-chart state: the pasar series plus the ten per-store lines, both
+  // keyword-scoped. Toggling re-reads this — nothing is refetched.
+  const topShops = ddTopShopWeeklySeries(share, history);
+  _dd.trend = { series, fcSnap, topShops, metric: 'omset', view: 'pasar' };
   const bandLo = stats.p25, bandHi = stats.p75;
   const segLeft = stats.max > stats.min ? Math.round((bandLo - stats.min) / (stats.max - stats.min) * 100) : 0;
   const segWidth = stats.max > stats.min ? Math.max(4, Math.round((bandHi - bandLo) / (stats.max - stats.min) * 100)) : 100;
@@ -11342,21 +11329,10 @@ async function openDeepDive(product, ddOpts = {}) {
     </div>
     ${ddToolPillsHtml(product)}
     ${ddFeeStripHtml(product)}
-    ${ddTilesHtml(product, stats, peers, series, scoreInfo, history)}
+    ${ddHeroRowHtml(product, stats, peers, hasTrend)}
     ${isDesktopDeepDive ? kompCardHtml : ''}
     ${ddAksiCepatHtml(product)}
-    <div class="ddr-hscroll ddr-hscroll--graphs">
-      <div class="ddr-card" data-dd-sec="tren">
-        <h3>Tren Omset &amp; Unit Terjual</h3>
-        ${hasTrend
-          ? `<div class="ddr-chart-wrap"><canvas id="ddr-trend-canvas"></canvas></div>
-             <div class="chart-legend" style="flex-direction:row;gap:14px">
-               <span class="row"><span class="swatch" style="background:#B5202A"></span>Omset / minggu (Rp)</span>
-               <span class="row"><span class="swatch" style="background:#2563EB"></span>Unit / minggu</span>
-               <span class="row"><span class="swatch" style="background:#16A34A"></span>Perkiraan</span>
-             </div>`
-          : `<p class="dd-sub">Belum cukup riwayat scrape untuk tren mingguan keyword ini — butuh beberapa gelombang panel. Bagian lain tetap dari data asli.</p>`}
-      </div>
+    <div class="ddr-hscroll ddr-hscroll--graphs2">
       <div class="ddr-card" data-dd-sec="pangsa">
         <h3>Distribusi Pangsa Pasar</h3>
         ${share.shops.length >= 4 ? `
@@ -11434,7 +11410,8 @@ async function openDeepDive(product, ddOpts = {}) {
     void logUserEvent('deepdive_section', { ui: 'gpt', section: 'kompetitor_panel', via: 'click', keyword: kw || '' });
     openKompPanel({ product, peers, via: 'deepdive' });
   });
-  wireKompClicks(root, peers);
+  wireKompClicks(root, peers, { history });
+  wireDdrTrendToggles(root);
   bindDdrCarousel(root);
   wireDdrToolPills(root, product, peers);
   wireDdrAksiCepat(root, product, peers);
@@ -11474,7 +11451,7 @@ async function openDeepDive(product, ddOpts = {}) {
   // Charts + sparklines (Chart.js lazy; sparklines are raw canvas).
   await larisEnsureChart();
   if (hasTrend) {
-    ddRenderTrendChart(series, fcSnap);
+    ddRenderTrendChart();
   }
   if (share.shops.length >= 4) {
     makeChart('ddr-share-canvas', {
@@ -11548,44 +11525,222 @@ function mondayOfWeek(d = new Date()) {
   return mon;
 }
 
+/* ── Trend chart: one canvas, two toggles ────────────────────────────────
+   metric = omset | unit   ·   view = pasar | top10
+   `top10` is always omset (ten stores on one Rp axis), so the metric switch is
+   disabled there rather than silently ignored. State lives on `_dd.trend` so a
+   toggle re-draws without refetching anything. */
+
+const DD_SHOP_COLORS = [
+  '#B5202A', '#2563EB', '#16A34A', '#D97706', '#7C3AED',
+  '#0891B2', '#DB2777', '#65A30D', '#EA580C', '#4F46E5',
+];
+
+/** Per-shop weekly omset for the top 10 stores, cut from the keyword history
+ *  already in memory — same trick the keyword sparklines use, no extra query.
+ *  Stores with fewer than two weeks are dropped: a single point draws nothing
+ *  useful and a flat line would invent a trend that was never measured. */
+function ddTopShopWeeklySeries(share, history) {
+  const rows = history || [];
+  if (!rows.length) return [];
+  return (share?.shops || []).slice(0, 10).map((sh, i) => {
+    const sid = sh?.sample?.shop_id != null ? String(sh.sample.shop_id) : '';
+    if (!sid) return null;
+    const weeks = ddLast6Weeks(ddWeeklySeries(rows.filter(r => String(r.shop_id) === sid)));
+    if (weeks.length < 2) return null;
+    return {
+      shopId: sid,
+      name: sh.name || 'Toko',
+      img: sh.img || '',
+      color: DD_SHOP_COLORS[i % DD_SHOP_COLORS.length],
+      weeks,
+    };
+  }).filter(Boolean);
+}
+
+const _ddRpTick = v => v >= 1e9 ? (v / 1e9).toFixed(1) + 'M'
+  : v >= 1e6 ? Math.round(v / 1e6) + 'jt'
+  : v >= 1e3 ? Math.round(v / 1e3) + 'rb'
+  : v;
+
+const _ddFmtWk = ts => new Date(ts).toLocaleDateString('id-ID', {
+  day: 'numeric', month: 'short', timeZone: 'UTC',
+});
+
+function ddTrendLegendHtml() {
+  const t = _dd?.trend;
+  if (!t) return '';
+  if (t.view === 'top10') {
+    const shops = t.topShops || [];
+    if (!shops.length) {
+      return '<span class="dd-sub">Belum cukup riwayat per toko untuk menggambar 10 garis.</span>';
+    }
+    return `<div class="ddr-legend-shops">${shops.map((sh, i) => `
+      <button type="button" class="ddr-legend-shop" data-shop-idx="${i}" aria-pressed="true" title="${esc(sh.name)}">
+        <span class="comp-av">${sh.img
+          ? `<img src="${esc(imgThumb(sh.img))}" alt="" loading="lazy" decoding="async">`
+          : esc((sh.name || 'T').charAt(0).toUpperCase())}</span>
+        <span class="dot" style="background:${sh.color}"></span>
+        <span class="nm">${esc((sh.name || 'Toko').slice(0, 18))}</span>
+      </button>`).join('')}</div>`;
+  }
+  const isOmset = t.metric !== 'unit';
+  return `<span class="row"><span class="swatch" style="background:${isOmset ? '#B5202A' : '#2563EB'}"></span>${isOmset ? 'Omset / minggu (Rp)' : 'Unit / minggu'}</span>
+    <span class="row"><span class="swatch" style="background:#16A34A"></span>Perkiraan</span>`;
+}
+
 // Weekly market trend: last 6 WIB weeks through today + 1 next-week perkiraan.
 // Real series stays SHORTER than the labels — only Perkiraan touches the future
-// Monday. Next-week point is listing_weekly.omset_wk (weekly grain, not ×30/7).
-// last-2-weeks avg is fallback only.
-function ddRenderTrendChart(series, forecastSnap) {
-  if (typeof Chart === 'undefined' || series.length < 2) return;
-  const fmtWk = ts => new Date(ts).toLocaleDateString('id-ID', {
-    day: 'numeric', month: 'short', timeZone: 'UTC',
-  });
-  const labels = series.map(w => fmtWk(w.ts));
-  labels.push(fmtWk(Date.parse(listingNextWeekStartISO() + 'T00:00:00Z')) + ' ▶');
-  const omset = series.map(w => w.omset);
-  const units = series.map(w => w.units);
+// Monday. Next-week point is listing_weekly.omset_wk / units_wk (weekly grain,
+// not ×30/7). last-2-weeks avg is fallback only.
+function ddRenderTrendChart() {
+  const t = _dd?.trend;
+  if (typeof Chart === 'undefined' || !t) return;
+
+  if (t.view === 'top10') {
+    const shops = t.topShops || [];
+    if (!shops.length) return;
+    // Union of every week any of the ten was seen in, so the lines share an x-axis.
+    const tsAll = [...new Set(shops.flatMap(sh => sh.weeks.map(w => w.ts)))].sort((a, b) => a - b);
+    makeChart('ddr-trend-canvas', {
+      type: 'line',
+      data: {
+        labels: tsAll.map(_ddFmtWk),
+        datasets: shops.map(sh => {
+          const by = new Map(sh.weeks.map(w => [w.ts, w.omset]));
+          return {
+            label: sh.name,
+            data: tsAll.map(ts => (by.has(ts) ? by.get(ts) : null)),
+            borderColor: sh.color, backgroundColor: sh.color,
+            borderWidth: 2, tension: .35, pointRadius: 2, fill: false, spanGaps: true,
+          };
+        }),
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtRpShort(c.parsed.y)}` } },
+        },
+        scales: { y: { ticks: { callback: _ddRpTick, maxTicksLimit: 6 } } },
+      },
+    });
+    return;
+  }
+
+  const series = t.series || [];
+  if (series.length < 2) return;
+  const isOmset = t.metric !== 'unit';
+  const labels = series.map(w => _ddFmtWk(w.ts));
+  labels.push(_ddFmtWk(Date.parse(listingNextWeekStartISO() + 'T00:00:00Z')) + ' ▶');
+  const vals = series.map(w => (isOmset ? w.omset : w.units));
   const last2 = arr => Math.round((arr[arr.length - 1] + (arr[arr.length - 2] ?? arr[arr.length - 1])) / 2);
-  const hasServer = forecastSnap && (forecastSnap.omset_wk != null || forecastSnap.units_wk != null);
-  const fcOmset = hasServer
-    ? Math.round(Number(forecastSnap.omset_wk) || 0)
-    : last2(omset);
-  const forecast = Array(series.length - 1).fill(null).concat([omset[omset.length - 1], fcOmset]);
+  const snapRaw = t.fcSnap ? t.fcSnap[isOmset ? 'omset_wk' : 'units_wk'] : null;
+  const fc = (snapRaw != null && Number.isFinite(Number(snapRaw)))
+    ? Math.round(Number(snapRaw))
+    : last2(vals);
+  const forecast = Array(series.length - 1).fill(null).concat([vals[vals.length - 1], fc]);
+  const color = isOmset ? '#B5202A' : '#2563EB';
   makeChart('ddr-trend-canvas', {
     type: 'line',
     data: {
       labels,
       datasets: [
-        { label: 'Omset / minggu (Rp)', data: omset, borderColor: '#B5202A', backgroundColor: 'rgba(181,32,42,.06)', borderWidth: 2, fill: true, tension: .35, yAxisID: 'y', pointRadius: 3, spanGaps: true },
-        { label: 'Unit / minggu', data: units, borderColor: '#2563EB', borderWidth: 2, tension: .35, yAxisID: 'y2', pointRadius: 3, spanGaps: true },
-        { label: 'Perkiraan', data: forecast, borderColor: '#16A34A', borderDash: [5, 5], borderWidth: 2, tension: .35, yAxisID: 'y', pointRadius: 3, spanGaps: true },
+        {
+          label: isOmset ? 'Omset / minggu (Rp)' : 'Unit / minggu',
+          data: vals, borderColor: color,
+          backgroundColor: isOmset ? 'rgba(181,32,42,.06)' : 'rgba(37,99,235,.06)',
+          borderWidth: 2, fill: true, tension: .35, pointRadius: 3, spanGaps: true,
+        },
+        {
+          label: 'Perkiraan', data: forecast, borderColor: '#16A34A',
+          borderDash: [5, 5], borderWidth: 2, tension: .35, pointRadius: 3, spanGaps: true,
+        },
       ],
     },
     options: {
       maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: c => `${c.dataset.label}: ${isOmset ? fmtRpShort(c.parsed.y) : fmtSold(c.parsed.y)}`,
+          },
+        },
+      },
       scales: {
-        y: { position: 'left', ticks: { callback: v => v >= 1e9 ? (v / 1e9).toFixed(1) + 'M' : v >= 1e6 ? Math.round(v / 1e6) + 'jt' : v >= 1e3 ? Math.round(v / 1e3) + 'rb' : v, maxTicksLimit: 6 } },
-        y2: { position: 'right', grid: { drawOnChartArea: false }, ticks: { maxTicksLimit: 5 } },
+        y: { ticks: { callback: isOmset ? _ddRpTick : (v => v), maxTicksLimit: 6 } },
       },
     },
   });
+}
+
+function wireDdrTrendToggles(root) {
+  const card = root?.querySelector('[data-dd-sec="tren"]');
+  if (!card) return;
+  const legend = card.querySelector('#ddr-trend-legend');
+
+  const paint = () => {
+    const t = _dd?.trend;
+    if (!t) return;
+    // Top 10 always charts omset, so the disabled switch must read "Omset"
+    // rather than keep claiming a metric the chart is not showing. t.metric is
+    // left alone so switching back to Pasar restores the user's choice.
+    const shownMetric = t.view === 'top10' ? 'omset' : t.metric;
+    card.querySelectorAll('[data-dd-metric]').forEach(b => {
+      b.classList.toggle('is-on', b.getAttribute('data-dd-metric') === shownMetric);
+    });
+    card.querySelectorAll('[data-dd-view]').forEach(b => {
+      b.classList.toggle('is-on', b.getAttribute('data-dd-view') === t.view);
+    });
+    const metricGroup = card.querySelector('#ddr-trend-metric');
+    if (metricGroup) {
+      const off = t.view === 'top10';
+      metricGroup.classList.toggle('is-disabled', off);
+      metricGroup.setAttribute('aria-disabled', off ? 'true' : 'false');
+      metricGroup.querySelectorAll('button').forEach(b => { b.disabled = off; });
+    }
+    if (legend) legend.innerHTML = ddTrendLegendHtml();
+    ddRenderTrendChart();
+  };
+
+  card.addEventListener('click', (e) => {
+    const btn = e.target.closest?.('[data-dd-metric],[data-dd-view]');
+    if (!btn || !card.contains(btn) || btn.disabled) return;
+    const t = _dd?.trend;
+    if (!t) return;
+    const m = btn.getAttribute('data-dd-metric');
+    const v = btn.getAttribute('data-dd-view');
+    if (m) {
+      if (t.view === 'top10' || t.metric === m) return;
+      t.metric = m;
+    }
+    if (v) {
+      if (t.view === v) return;
+      t.view = v;
+    }
+    void logUserEvent('deepdive_section', {
+      ui: 'gpt', section: 'tren_toggle', metric: t.metric, view: t.view,
+    });
+    paint();
+  });
+
+  legend?.addEventListener('click', (e) => {
+    const b = e.target.closest?.('[data-shop-idx]');
+    if (!b || !legend.contains(b)) return;
+    const idx = Number(b.getAttribute('data-shop-idx'));
+    const chart = _charts.get('ddr-trend-canvas');
+    if (!chart || !Number.isFinite(idx)) return;
+    const wasVisible = chart.isDatasetVisible(idx);
+    chart.setDatasetVisibility(idx, !wasVisible);
+    chart.update();
+    b.setAttribute('aria-pressed', String(!wasVisible));
+    b.classList.toggle('is-off', wasVisible);
+  });
+
+  // Chart.js may still be loading here (wiring runs before larisEnsureChart);
+  // ddRenderTrendChart no-ops until it lands and openDeepDive draws it then.
+  paint();
 }
 
 // ── AI ask ───────────────────────────────────────────────────────────────
@@ -13305,6 +13460,25 @@ const AI_TOOL_LABEL = {
 };
 
 /**
+ * DeepSeek sometimes dumps its DSML tool-call serialization into the text /
+ * thinking stream even though the same calls already arrived as structured
+ * tool_use blocks (which we execute). Those tags must never reach the bubble —
+ * they are the raw `<|DSML|tool_calls>…` blob the user circled under the plan.
+ */
+function _aiStripToolMarkup(text) {
+  let s = String(text || '');
+  // Closed block(s). Allow optional spaces around the pipes — some traces
+  // render `<|DSML|…>` with gaps that a strict match would miss.
+  s = s.replace(/<\|\s*DSML\s*\|\s*tool_calls\s*>[\s\S]*?<\/\|\s*DSML\s*\|\s*tool_calls\s*>/gi, '');
+  // Half-streamed opener with no closer yet: drop from here to the end so the
+  // tags never paint mid-flight (same idea as an open <rencana>).
+  s = s.replace(/<\|\s*DSML\s*\|\s*tool_calls\s*>[\s\S]*$/gi, '');
+  // Stray invoke / parameter tags left after a partial scrub.
+  s = s.replace(/<\/?\|\s*DSML\s*\|[^>]*>/gi, '');
+  return s.trim();
+}
+
+/**
  * Lift the model's <rencana> block out of a possibly half-streamed reply.
  *
  * The plan is not styled prose — it becomes the step list, so it has to leave
@@ -13328,7 +13502,7 @@ function _aiSplitPlan(text) {
     s = s.slice(0, o) + s.slice(c + 10);
     if (!plan.length) plan = found;
   }
-  return { plan, rest: s.trim(), open };
+  return { plan, rest: _aiStripToolMarkup(s), open };
 }
 
 function _aiPlanLines(body) {
@@ -13377,7 +13551,7 @@ function createAgentRun(bubble, opts = {}) {
   }
 
   function thinking(text) {
-    const t = String(text || '').trim();
+    const t = _aiStripToolMarkup(text);
     if (!t) return;
     if (!thinkEl) {
       thinkEl = document.createElement('details');
@@ -13816,10 +13990,11 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
  * which push reply text only).
  */
 function _aiBubbleHtml(text, thinking) {
+  const cleanThink = _aiStripToolMarkup(thinking);
   const body = mdToHtml(text) || (text ? `<p>${esc(text)}</p>` : '');
-  if (!thinking || !text) return body || `<p>${esc(text || '')}</p>`;
+  if (!cleanThink || !text) return body || `<p>${esc(text || '')}</p>`;
   return `<details class="ai-think"><summary>Proses berpikir</summary>`
-    + `<div>${mdToHtml(thinking) || `<p>${esc(thinking)}</p>`}</div></details>${body}`;
+    + `<div>${mdToHtml(cleanThink) || `<p>${esc(cleanThink)}</p>`}</div></details>${body}`;
 }
 
 // ── Directory ────────────────────────────────────────────────────────────

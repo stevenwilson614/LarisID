@@ -4297,69 +4297,76 @@ body.home-finder-done .home-hero {
 .ddr-score.badge-sedang .lbl { color: #B45309; }
 .ddr-score.badge-tinggi .lbl { color: #15803D; }
 .ddr-score .num span { color: inherit; opacity: .55; }
-.ddr-omset-hero {
-  border: 1px solid var(--line); border-radius: 14px;
-  padding: 14px 16px; background: #fff; min-width: 0;
-  text-align: center;
+/* ── Deep-dive hero row: pasar numbers (left) + trend chart (right) ────── */
+.ddr-hero-row { display: grid; gap: 12px; margin-bottom: 12px; align-items: stretch; }
+@media (min-width: 880px) {
+  .ddr-hero-row { grid-template-columns: minmax(0, 32fr) minmax(0, 68fr); }
 }
-.ddr-omset-hero .lbl { font-size: .66rem; color: var(--muted); font-weight: 650; }
-.ddr-omset-hero .val {
-  margin-top: 6px; font-size: 1rem; font-weight: 650;
-  letter-spacing: -.04em; line-height: 1.2; color: var(--ink);
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
-  gap: 0 16px;
-}
-.ddr-omset-hero .val .lo,
-.ddr-omset-hero .val .hi {
-  color: var(--ink-soft); font-weight: 650;
-  display: inline-flex; align-items: baseline; gap: 0;
-}
-.ddr-omset-hero .val .med {
-  font-size: 1.72rem; font-weight: 800; color: var(--accent);
-  letter-spacing: -.05em;
-  display: inline-flex; align-items: baseline; gap: 0;
-}
-.ddr-omset-hero .val .rp {
-  font-size: .62em; font-weight: 650; margin-right: 1px;
-  letter-spacing: 0; opacity: .85;
-}
-.ddr-omset-hero .val .amt { letter-spacing: -.06em; }
-.ddr-omset-hero .val .dash {
-  width: 1.5px; height: 1.15em; align-self: center; flex-shrink: 0;
-  background: #cfcfcf; border-radius: 1px;
-}
-.ddr-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 12px 0; }
-@media (min-width: 880px) { .ddr-tiles { grid-template-columns: repeat(5, 1fr); } }
-.ddr-tile {
-  border: 1px solid var(--line); border-radius: 16px; padding: 14px;
-  min-width: 0; background: #fff;
+.ddr-hero-nums {
+  border: 1px solid var(--line); border-radius: 16px; background: #fff;
   box-shadow: 0 1px 2px rgba(16, 24, 40, .03);
+  padding: 16px; min-width: 0;
+  display: flex; flex-direction: column; gap: 16px; justify-content: center;
 }
-.ddr-tile .ico { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; margin-bottom: 10px; }
-.ddr-tile .ico svg { width: 14px; height: 14px; }
-.ddr-tile .lbl {
+.ddr-hero-num { min-width: 0; }
+.ddr-hero-num .lbl {
   font-size: .62rem; color: var(--muted); font-weight: 700;
   text-transform: uppercase; letter-spacing: .03em;
 }
-.ddr-tile .val {
-  font-size: .98rem; font-weight: 750; letter-spacing: -.01em; margin-top: 4px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink);
+.ddr-hero-num .val {
+  margin-top: 3px; font-size: 1.7rem; font-weight: 800;
+  letter-spacing: -.045em; line-height: 1.15; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.ddr-tile .sub { font-size: .64rem; color: var(--muted); margin-top: 4px; line-height: 1.35; }
-/* The AI tile is the one that should pop — the other four stay flat white so
-   the eye lands on the recommendation first. */
-.ddr-tile--ai {
-  background: linear-gradient(150deg, #F5F3FF 0%, #EDE9FE 100%);
-  border-color: #DDD6FE;
+.ddr-hero-num .val .rp {
+  font-size: .58em; font-weight: 650; margin-right: 2px;
+  letter-spacing: 0; opacity: .8;
 }
-.ddr-tile--ai .lbl { color: #6D28D9; }
-.ddr-tile--ai .val { color: var(--violet, #7C3AED); }
-.ddr-tile--ai .sub { color: #7C6BA8; }
-.ddr-tile--ai .ico {
-  background: var(--violet, #7C3AED);
-  color: #fff;
-  box-shadow: 0 2px 6px rgba(124, 58, 237, .28);
+.ddr-hero-num .val .amt { letter-spacing: -.06em; }
+.ddr-hero-num .sub { font-size: .66rem; color: var(--muted); margin-top: 3px; line-height: 1.35; }
+.ddr-hero-foot {
+  margin: 0; padding-top: 12px; border-top: 1px solid var(--line);
+  font-size: .64rem; color: var(--muted); line-height: 1.45;
 }
+.ddr-hero-chart { display: flex; flex-direction: column; }
+.ddr-hero-chart .ddr-chart-wrap { flex: 1; min-height: 200px; }
+.ddr-trend-head {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
+}
+.ddr-trend-head h3 { margin: 0; }
+.ddr-trend-toggles { display: flex; flex-wrap: wrap; gap: 8px; }
+.ddr-seg {
+  display: inline-flex; padding: 2px; gap: 2px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--bg-user);
+}
+.ddr-seg.is-disabled { opacity: .45; }
+.ddr-seg-btn {
+  border: 0; background: transparent; cursor: pointer; font-family: inherit;
+  padding: 5px 12px; border-radius: 999px; color: var(--ink-soft);
+  font-size: .7rem; font-weight: 650; white-space: nowrap;
+  transition: background .12s, color .12s, box-shadow .12s;
+}
+.ddr-seg-btn:hover:not(:disabled) { color: var(--ink); }
+.ddr-seg-btn.is-on {
+  background: #fff; color: var(--ink);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, .1);
+}
+.ddr-seg-btn:disabled { cursor: default; }
+.ddr-trend-legend { flex-direction: row; flex-wrap: wrap; gap: 6px 14px; }
+.ddr-legend-shops { display: flex; flex-wrap: wrap; gap: 6px 10px; width: 100%; }
+.ddr-legend-shop {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--line); border-radius: 999px; background: #fff;
+  padding: 3px 10px 3px 3px; cursor: pointer; font-family: inherit;
+  font-size: .68rem; color: var(--ink); max-width: 100%;
+  transition: opacity .12s, border-color .12s;
+}
+.ddr-legend-shop:hover { border-color: rgba(181, 32, 42, .35); }
+.ddr-legend-shop.is-off { opacity: .38; }
+.ddr-legend-shop .comp-av { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; }
+.ddr-legend-shop .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.ddr-legend-shop .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ddr-aksi { margin: 0 0 14px; }
 .ddr-aksi-label {
   font-size: .68rem; font-weight: 750; color: var(--muted);
@@ -4452,10 +4459,9 @@ body.home-finder-done .home-hero {
 @media (min-width: 880px) { .ddr-2col { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); } }
 .ddr-hscroll { display: grid; gap: 12px; margin-bottom: 12px; }
 @media (min-width: 880px) {
-  .ddr-hscroll--graphs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ddr-hscroll--graphs2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ddr-hscroll--price { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ddr-hscroll--text { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .ddr-hscroll--tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 @media (max-width: 879px) {
   .ddr-hscroll {
@@ -4472,27 +4478,12 @@ body.home-finder-done .home-hero {
     flex: 0 0 min(85vw, 340px);
     scroll-snap-align: start;
   }
-  .ddr-hscroll--tiles {
-    scroll-snap-type: none;
-  }
-  .ddr-hscroll--tiles > .ddr-tile {
-    flex: 0 0 148px;
-    width: 148px;
-    aspect-ratio: 1;
-    scroll-snap-align: none;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    box-sizing: border-box;
-  }
-  .ddr-hscroll--tiles > .ddr-tile .sub {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
   .ddr-score-stack { width: 100%; }
-  .ddr-omset-hero .val .med { font-size: 1.85rem; }
+  .ddr-hero-nums { flex-direction: row; gap: 10px; flex-wrap: wrap; }
+  .ddr-hero-nums > .ddr-hero-num { flex: 1 1 30%; min-width: 96px; }
+  .ddr-hero-num .val { font-size: 1.28rem; }
+  .ddr-hero-foot { flex: 1 1 100%; padding-top: 8px; }
+  .ddr-hero-chart .ddr-chart-wrap { height: 200px; }
 }
 .ddr-card {
   border: 1px solid var(--line); border-radius: 16px; padding: 16px; min-width: 0;
@@ -4526,6 +4517,7 @@ body.home-finder-done .home-hero {
 .chart-legend .swatch { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
 .ddr-table-wrap { overflow-x: auto; }
 .ddr-table { width: 100%; border-collapse: collapse; font-size: .76rem; min-width: 420px; }
+.ddr-komp-table { min-width: 620px; }
 .ddr-table th {
   text-align: left; color: var(--muted); font-weight: 700;
   padding: 6px 8px; border-bottom: 1px solid var(--line);
@@ -4537,20 +4529,22 @@ body.home-finder-done .home-hero {
 }
 .ddr-table td { padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 .ddr-table tr:last-child td { border-bottom: none; }
-.ddr-komp-table tbody tr.komp-click-row {
-  cursor: pointer;
-  transition: background .12s;
-}
-.ddr-komp-table tbody tr.komp-click-row:hover td,
-.ddr-komp-table tbody tr.komp-click-row:focus-visible td {
-  background: #fafafa;
-}
-.ddr-komp-table tbody tr.komp-click-row:active td { background: #f3f3f3; }
-.komp-open-hint {
+/* Rows are inert — the store link is the only affordance. Doubling the row
+   height buys a thumbnail you can actually recognise a shop from. */
+.ddr-komp-table td { padding: 16px 8px; }
+.ddr-komp-table .comp-av { width: 52px; height: 52px; border-radius: 10px; font-size: 1rem; }
+.ddr-komp-table .tr-prod { gap: 10px; }
+.komp-store-link {
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
   font-size: .72rem; font-weight: 650; color: var(--accent, #B5202A);
-  white-space: nowrap;
+  text-decoration: none; border-radius: 8px; padding: 5px 9px;
+  border: 1px solid rgba(181, 32, 42, .28);
+  transition: background .12s, border-color .12s;
 }
+.komp-store-link:hover { background: var(--red-bg, #FEF2F2); border-color: var(--accent, #B5202A); }
+.komp-store-link svg { width: 12px; height: 12px; flex-shrink: 0; }
 .spark { width: 52px; height: 20px; display: block; }
+.ddr-komp-table .spark-komp { width: 76px; height: 34px; }
 .badge-comp-tinggi { background: var(--red-bg); color: var(--accent); }
 .badge-comp-sedang { background: var(--amber-bg); color: var(--amber); }
 .badge-comp-rendah { background: var(--green-bg); color: var(--green); }
@@ -6788,6 +6782,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/gpt-app.js?v=20260824c" defer></script>
+<script src="/js/gpt-app.js?v=20260824d" defer></script>
 </body>
 </html>
