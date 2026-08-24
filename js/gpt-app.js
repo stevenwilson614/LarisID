@@ -4080,6 +4080,9 @@ async function applyDirectoryCategory(cat, sub) {
   state.dirSub = nextCat ? nextSub : null;
   state.dirSearch = '';
   state.dirPage = 1;
+  // An explicit pick (rail, mega-menu, hero CTA) — not the onboarding
+  // auto-filter below — so the hero should stay hidden after this one.
+  state.dirCatsFromOnboarding = false;
   const searchInp = $('results-bar-input');
   if (searchInp) searchInp.value = '';
   const host = $('dir-filters-range');
@@ -4519,6 +4522,7 @@ async function runResultsBarSearch(q) {
   state.dirSub = null;
   state.dirSearch = query;
   state.dirPage = 1;
+  state.dirCatsFromOnboarding = false;
   closeResultsBarMega();
   if (state.view !== 'directory') {
     state.comparePick = null;
@@ -5028,6 +5032,10 @@ function syncDirectoryFromOnboarding() {
     state.dirCats = [...new Set(
       o.categories.map(c => toCanonicalCat(c) || c).filter(Boolean)
     )];
+    // This filter came from the user's profile, not a click — the hero should
+    // still show on top of it. syncDirHero() reads this flag alongside
+    // dirCats, since an empty-dirCats check alone can't tell the two apart.
+    state.dirCatsFromOnboarding = true;
   }
 }
 
@@ -15418,8 +15426,11 @@ function syncDirHero() {
   if (!host) return;
   const show = !state.comparePick
     && !(state.dirSearch || '').trim()
-    && !(state.dirCats || []).length
-    && !state.dirSub;
+    && !state.dirSub
+    // A category from the onboarding auto-filter (syncDirectoryFromOnboarding)
+    // still counts as "default state" — only an explicit rail/mega-menu/hero
+    // click (applyDirectoryCategory clears the flag) should hide the hero.
+    && (!(state.dirCats || []).length || state.dirCatsFromOnboarding);
   host.hidden = !show;
   if (!show || !window.LarisGptDirHero) return;
   // Every navigation is handed back here rather than reimplemented in the
