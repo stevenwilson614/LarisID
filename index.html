@@ -1852,37 +1852,7 @@ body.view-directory.dir-compare-picking .panel { padding-bottom: 110px; }
 @media (max-width: 860px) {
   .dir-compare-bar { left: 12px; right: 12px; bottom: 12px; }
 }
-.dir-subcats {
-  display: flex; gap: 14px; margin: 0 0 18px;
-  overflow-x: auto; padding: 2px 2px 6px;
-  scrollbar-width: thin;
-}
-.dir-subcat-card {
-  flex: 0 0 auto; width: 156px;
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  padding: 0; border: none; background: none; cursor: pointer;
-  font: inherit; text-align: center;
-}
-.dir-subcat-thumb {
-  width: 144px; height: 144px; border-radius: 20px;
-  border: 1.5px solid var(--line); background: var(--bg-user);
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden; transition: border-color .12s, box-shadow .12s;
-}
-.dir-subcat-thumb img { width: 100%; height: 100%; object-fit: cover; }
-.dir-subcat-icon { display: flex; color: var(--muted, #888); }
-.dir-subcat-card:hover .dir-subcat-thumb,
-.dir-subcat-card.selected .dir-subcat-thumb {
-  border-color: var(--accent, #B5202A);
-  box-shadow: 0 0 0 2px rgba(181,32,42,.12);
-}
-.dir-subcat-label {
-  font-size: .72rem; font-weight: 550; color: var(--ink-soft);
-  line-height: 1.25;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
-.dir-subcat-card.selected .dir-subcat-label { color: var(--ink); font-weight: 700; }
-
+.dir-subcats { display: none !important; }
 /* Instant, no-network category photo rail — renders synchronously so the
    Produk page never opens on a bare "Memuat…" state; see renderDirCatRail(). */
 .dir-cat-rail {
@@ -7134,6 +7104,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/gpt-app.js?v=20260824h" defer></script>
+<script src="/js/gpt-app.js?v=20260824i" defer></script>
 </body>
 </html>

@@ -15352,63 +15352,11 @@ function renderDirCatRail() {
 
 // Build the sub-group chip row for the selected category (hidden when the
 // category has no sub-groups). Selecting one narrows the grid by keyword.
-async function renderSubcats(cat) {
+async function renderSubcats() {
   const wrap = $('dir-subcats');
   if (!wrap) return;
-  if (!cat) { wrap.hidden = true; wrap.innerHTML = ''; return; }
-  // Sub-groups come from keyword_subgroup, which only ever contains groups that
-  // have products behind them — so a card can no longer outlive its products.
-  const groups = await loadSubgroups(cat);
-  if (!groups.length) { wrap.hidden = true; wrap.innerHTML = ''; return; }
-  wrap.hidden = false;
-  const sel = state.dirSub || null;
-
-  // Representative thumbnail per subgroup, derived from the (cache-backed)
-  // category fetch — highest-omset row per subgroup. Falls back to a line icon.
-  const imgBySubgroup = Object.create(null);
-  try {
-    const rows = await fetchProductTypes([], [cat], 1000, null);
-    rows.forEach(r => {
-      const sg = r.subgroup;
-      if (!sg) return;
-      const img = (r.images || [])[0] || r.rep_image_url || '';
-      if (!img) return;
-      const prevOmset = imgBySubgroup[sg] ? imgBySubgroup[sg]._omset : -1;
-      const curOmset = Number(r.omset_top15) || 0;
-      if (curOmset > prevOmset) imgBySubgroup[sg] = { url: img, _omset: curOmset };
-    });
-  } catch (_) {}
-
-  const fallbackIcon = catChipIcon(cat, 44);
-  const subCard = (label, dsub, selected) => {
-    const img = imgBySubgroup[label];
-    const thumb = img
-      ? `<img src="${esc(img.url)}" alt="" loading="lazy">`
-      : `<span class="dir-subcat-icon">${fallbackIcon}</span>`;
-    return `<button type="button" class="dir-subcat-card${selected ? ' selected' : ''}" data-dsub="${esc(dsub)}">` +
-      `<span class="dir-subcat-thumb">${thumb}</span>` +
-      `<span class="dir-subcat-label">${esc(label)}</span>` +
-    `</button>`;
-  };
-
-  wrap.innerHTML =
-    subCard(`Semua ${cat}`, '', !sel) +
-    groups.map(g => subCard(g, g, g === sel)).join('');
-
-  wrap.querySelectorAll('[data-dsub]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      state.dirSub = btn.getAttribute('data-dsub') || null;
-      state.dirPage = 1;
-      // Subgroup is a browse filter — an old results-bar query must not override it.
-      state.dirSearch = '';
-      const searchInp = $('results-bar-input');
-      if (searchInp) searchInp.value = '';
-      wrap.querySelectorAll('.dir-subcat-card').forEach(c => c.classList.toggle('selected', c === btn));
-      updateDirHeading();
-      void logUserEvent('dir_filter', { ui: 'gpt', kind: 'subgroup', value: state.dirSub || '' });
-      void renderDirectory();
-    });
-  });
+  wrap.hidden = true;
+  wrap.innerHTML = '';
 }
 
 // Rebuild the Kota options from the active Provinsi (all cities when none).
