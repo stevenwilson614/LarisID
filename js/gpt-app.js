@@ -611,6 +611,7 @@ const ICONS = {
   arrowDown: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>',
   arrowLeft: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>',
   rocket: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c3.2 2.4 4.8 5.8 4.8 9.4L12 16.2 7.2 11.9c0-3.6 1.6-7 4.8-9.4z"/><circle cx="12" cy="9.3" r="1.7"/><path d="M7.2 11.9 4.7 14a1 1 0 0 0-.33.95l.5 2.6 2.6-1.35M16.8 11.9l2.5 2.1a1 1 0 0 1 .33.95l-.5 2.6-2.6-1.35"/><path d="M10 18.4c0 1.5.75 2.7 2 3.6 1.25-.9 2-2.1 2-3.6"/></svg>',
+  chevron: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
   spark: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/></svg>',
   users: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14.5c2.6.3 4 2.2 4 4.5"/></svg>',
@@ -1054,7 +1055,9 @@ function setComposerChips(list, surface) {
     btn.addEventListener('click', () => {
       void logUserEvent('gpt_chip_click', { ui: 'gpt', chip: btn.getAttribute('data-cchip'), surface: surface || state.view });
       clarityEvt('gpt_chip_click', { chip: btn.getAttribute('data-cchip') });
-      void handleComposerSubmit(btn.getAttribute('data-prompt'));
+      // via:'chip' keeps the seven intent chips on their purpose-built cards.
+      // The same words TYPED go through the agent instead.
+      void handleComposerSubmit(btn.getAttribute('data-prompt'), { via: 'chip' });
     });
   });
 }
@@ -3636,10 +3639,10 @@ function scrollToContentStart(el) {
 function contentLooksLikeResults(htmlOrEl) {
   if (!htmlOrEl) return false;
   if (typeof htmlOrEl === 'string') {
-    return /card-grid|prod-card|ans-panel|trending-card|ans-table|deepdive-card|gpt-kalc/.test(htmlOrEl);
+    return /card-grid|prod-card|ans-panel|trending-card|ans-table|deepdive-card|gpt-kalc|agent-run/.test(htmlOrEl);
   }
   return !!htmlOrEl.querySelector?.(
-    '.card-grid, .prod-card, .ans-panel, .trending-card, .ans-table-wrap, .gpt-kalc'
+    '.card-grid, .prod-card, .ans-panel, .trending-card, .ans-table-wrap, .gpt-kalc, .agent-run'
   );
 }
 
@@ -11738,6 +11741,38 @@ pasar_kategori, detail_pasar, cari_listing, filter_listing, produk_dibuka).
   jangan mengarang isinya.`;
 }
 
+/**
+ * The visible plan.
+ *
+ * The run panel renders these steps as a checklist and ticks them off as the
+ * tool rounds land, so the user watches the research happen instead of staring
+ * at one pulsing line. The block is lifted out of the prose by _aiSplitPlan and
+ * never printed as text — which is why the delimiters have to be exact.
+ */
+function aiPlanInstruction() {
+  return `
+RENCANA (WAJIB, paling awal, sebelum memanggil alat apa pun):
+Tulis SATU blok persis seperti ini, tanpa kalimat pembuka:
+<rencana>
+1. Langkah pertama
+2. Langkah kedua
+3. Langkah ketiga
+</rencana>
+- 3 sampai 4 langkah. Setiap langkah maksimal 9 kata, kata kerja di depan.
+- Langkah terakhir SELALU menyimpulkan/menjawab pertanyaan user.
+- Sesudah blok itu langsung panggil alat pada putaran yang sama.
+- Tulis blok <rencana> SEKALI saja per jawaban. Jangan mengulanginya.
+- Di antara putaran alat, boleh satu kalimat pendek soal apa yang barusan
+  ketemu dan apa yang diambil berikutnya.
+
+TERLARIS MINGGU INI (kalau pertanyaannya soal produk atau pasar):
+- Field terjual_minggu = unit terjual disetarakan per 7 hari; listing_gerak_minggu
+  = berapa listing yang benar-benar bergerak. Kalau keduanya ada, TUTUP jawaban
+  dengan menyebut satu pasar/produk yang paling laku minggu ini plus angkanya.
+- terjual_minggu null artinya belum ada pasangan snapshot yang bisa dipakai —
+  bilang belum terukur. JANGAN menulisnya sebagai "0 terjual".`;
+}
+
 /** Length rule shared by every AI surface. Short for lookups, full for judgment. */
 function aiLengthRule(langLabel) {
   return `- Panjang jawaban mengikuti pertanyaan. Pertanyaan sederhana (harga, berapa, apa itu): 2-4 kalimat. Pertanyaan penilaian, perbandingan, "kenapa", atau yang datanya cuma sebagian: jawab lengkap dengan pola 4 bagian di atas — boleh 2-4 paragraf pendek atau bullet. Jangan memotong bagian 3 (penalaran) demi ringkas.
@@ -11788,7 +11823,7 @@ PENTING:
 - Jangan bilang kamu "melihat" produk — kamu membaca data.
 ${aiLengthRule(langLabel)}
 ${aiCapabilityContract()}
-${aiToolsInstruction()}
+${aiToolsInstruction()}${aiPlanInstruction()}
 
 DATA PRODUK YANG DILIHAT:
 - Nama: ${p.product_name || '—'}
@@ -12005,7 +12040,7 @@ function _aiApplySseEvent(ev, st, cbs = {}) {
   if (type === 'content_block_start') {
     const cb = ev.content_block || {};
     st.blocks[ev.index] = { type: cb.type, name: cb.name, id: cb.id, json: '' };
-    if (cb.type === 'tool_use') cbs.onToolStart?.(cb.name);
+    if (cb.type === 'tool_use') cbs.onToolStart?.(cb.name, cb.id);
     return st;
   }
   if (type === 'content_block_delta') {
@@ -12228,7 +12263,7 @@ function applyResearchFromText(chat, text) {
   saveLocalState();
 }
 
-async function handleComposerSubmit(text) {
+async function handleComposerSubmit(text, opts = {}) {
   text = (text || '').trim();
   if (!text) return;
   abortAssistantStream();
@@ -12317,7 +12352,7 @@ async function handleComposerSubmit(text) {
         showToast(`Produk dari seller sekitar ${route.city}`);
       } else {
         setView('chat');
-        await handleComposerSubmit(text);
+        await handleComposerSubmit(text, opts);
       }
       return;
     }
@@ -12344,12 +12379,17 @@ async function handleComposerSubmit(text) {
     return;
   }
 
-  // Analytical market question with no product open. Sits AFTER the evaluate
-  // branch (which owns "is X a good category?") and BEFORE the showcase branch,
-  // so a bare "fashion" still gets cards — isAnalyticalAsk vetoes bare product
-  // queries — while "which fashion markets score high and are imported from
-  // china?" gets reasoned over the data instead of becoming a keyword search.
-  if (AI_AGENT_ROUTER && !inProductCtx && isAnalyticalAsk(lower)) {
+  // Market question with no product open. Sits AFTER the evaluate branch (which
+  // owns "is X a good category?") and BEFORE the showcase branch.
+  //
+  // Typed free text runs through the agent so the work is visible — the plan,
+  // the tool steps and the data behind the answer. A CLICKED chip keeps its
+  // purpose-built card (profit calculator, A-vs-B panels, terlaris grid): those
+  // are hand-built answers the agent cannot reproduce. Logged-out visitors keep
+  // the old card path because runMarketAgent is behind a login gate.
+  const analytical = isAnalyticalAsk(lower);
+  const agentAll = AI_AGENT_ALL && !!currentUser && opts.via !== 'chip';
+  if (AI_AGENT_ROUTER && !inProductCtx && (analytical || agentAll)) {
     if (inResultsThread) beginFreshChat();
     setView('chat');
     const chat = ensureComposerChat(text);
@@ -12357,10 +12397,24 @@ async function handleComposerSubmit(text) {
     pushMessage(chat, 'user', text);
     void logUserEvent('gpt_message_sent', { ui: 'gpt' });
     clarityEvt('gpt_message_sent', {});
-    void logUserEvent('gpt_intent', { ui: 'gpt', intent: 'market_agent', via: 'router', analytical: 1 });
+    void logUserEvent('gpt_intent', {
+      ui: 'gpt', intent: 'market_agent',
+      via: analytical ? 'router' : 'router_all',
+      analytical: analytical ? 1 : 0,
+    });
     clarityEvt('gpt_intent', { intent: 'market_agent' });
-    const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Menganalisis data pasar…</p>`);
-    await runMarketAgent(chat, text, loading);
+    // Round one is almost always cari_pasar on exactly this text — start it now
+    // rather than after the model's first turn.
+    // Prefetched national, keyed national: cari_pasar's kota is optional and the
+    // model usually omits it. A call that DOES name a city must not be served
+    // country-wide rows, so it misses the cache and runs its own query.
+    const pf = parsePlaceFromQuery(text);
+    const cleaned = cleanDiscoveryQuery(pf.cleaned || text) || (pf.cleaned || text);
+    aiPrefetchPasar(cleaned, '', [text, pf.cleaned || text]);
+    const loading = appendBubble('assistant', `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Menyusun rencana…</p>`);
+    // What used to be a keyword search still spends a daily search; an
+    // analytical question still does not.
+    await runMarketAgent(chat, text, loading, { countsAsSearch: !analytical });
     return;
   }
 
@@ -12557,7 +12611,10 @@ async function askProductAi(chat, product, text, opts = {}) {
   const replyText = _aiReplyText(reply);
   // Thinking is deliberately NOT persisted: chatHistoryForAi would replay it as
   // a visible assistant turn, and renderChatThread would show it on reload.
-  pushMessage(chat, 'assistant', { text: replyText }, mdToHtml(replyText) || `<p>${esc(replyText)}</p>`);
+  // staticHtml() is the settled run panel with the trace already stripped.
+  const runHtml = (typeof reply === 'object' && reply.run?.staticHtml?.()) || '';
+  pushMessage(chat, 'assistant', { text: replyText },
+    runHtml + (mdToHtml(replyText) || `<p>${esc(replyText)}</p>`));
   void logUserEvent('gpt_ai_reply', { ui: 'gpt', keyword: product.keyword, via: root ? 'side_panel' : 'composer' });
   clarityEvt('gpt_ai_reply', {});
   // Learn from what the user said, after the reply so it never delays it.
@@ -12594,7 +12651,7 @@ PENTING:
 - Kalau data di bawah kosong atau terlalu tipis untuk disimpulkan, katakan itu terus terang — jangan menebak.
 ${aiLengthRule(langLabel)}
 ${aiCapabilityContract()}
-${aiToolsInstruction()}
+${aiToolsInstruction()}${aiPlanInstruction()}
 
 DATA PASAR — kategori "${category}" (${rows.length} sub-pasar):
 ${stats || 'Belum ada data pasar yang cukup untuk kategori ini.'}`;
@@ -12639,33 +12696,46 @@ PENTING:
 - Sebut nama pasar dan angkanya secara konkret, jangan generik.
 - Banyak seller + omset tinggi merata artinya pasar jenuh, bukan otomatis "bagus".
 - Jangan bilang kamu "melihat" produk — kamu membaca data.
-- Jangan tulis daftar nama listing sebagai bullet. Kartu pasar akan tampil otomatis di bawah jawaban — itu yang diklik user.
+- Jangan tulis daftar nama listing sebagai bullet. Hasil setiap alat sudah tampil sebagai tabel yang bisa diklik di panel langkah, dan kartu pasar muncul di bawah jawaban — itu yang diklik user. Tugasmu menyimpulkan, bukan mengetik ulang daftarnya.
 - Omset listing dari alat: label "terukur" = diukur, "perkiraan" = estimasi. Jangan menyamakan keduanya.
 - Follow-up pendek ("mau", "iya", "untuk fashion") mengacu ke pertanyaan/tawaran TERAKHIR di thread, bukan kata kunci produk baru.
 - Putaran alat pertama harus membawa filter user (umur listing, omset min, kategori yang disebut). Jangan buang satu putaran untuk pasar_kategori dari minat onboarding.
 ${aiLengthRule(langLabel)}
 ${aiCapabilityContract()}
-${aiToolsInstruction()}${who}${thread}`;
+${aiToolsInstruction()}${aiPlanInstruction()}${who}${thread}`;
 }
 
 /**
  * A market-level question answered by the agent instead of a search card.
  *
- * Persists via ensureChatPersisted (which never walls) rather than
- * ensureIntentChat: an analytical question must not burn one of the user's 3
- * daily product searches.
+ * An analytical question persists via ensureChatPersisted, which never walls —
+ * reasoning over data must not burn one of the user's 3 daily product searches.
+ * A question that WOULD have been a keyword search passes countsAsSearch and
+ * goes through ensureIntentChat instead, so routing every prompt through the
+ * agent does not quietly retire the gpt_new_chat cap.
  */
-async function runMarketAgent(chat, text, loading) {
+async function runMarketAgent(chat, text, loading, opts = {}) {
   if (!chat.context) chat.context = {};
   chat.context.kind = 'market_agent';
   chat.context.q = chat.context.q || text;
   applyResearchFromText(chat, text);
-  await ensureChatPersisted(chat, text.slice(0, 60), {
+  const ctx = {
     kind: 'market_agent',
     q: chat.context.q,
     research: chat.context.research || null,
     categoryOverride: chat.context.categoryOverride || null,
-  });
+  };
+  // A question that used to be a keyword search still spends one of the daily
+  // searches. Analytical asks keep going through ensureChatPersisted, which
+  // never walls — moving all searches onto this path must not quietly retire
+  // the gpt_new_chat cap.
+  if (opts.countsAsSearch) {
+    if (!(await ensureSearchAllowed())) { loading?.remove?.(); return; }
+    const gate = await ensureIntentChat(chat, text.slice(0, 60), ctx);
+    if (!gate.ok) { limitReply(loading, gate.resetAt); return; }
+  } else {
+    await ensureChatPersisted(chat, text.slice(0, 60), ctx);
+  }
   if (!(await _useAi('mls_chat'))) { loading?.remove?.(); return; }
   const system = buildMarketAgentSystemPrompt(text, chat) + memoryPromptBlock();
   const history = chatHistoryForAi(chat, text);
@@ -12743,14 +12813,35 @@ async function paintAgentMarketReply(chat, loading, replyObj, fallbackTypes) {
   const offer = _gptMem().extractPendingOffer?.(text) || null;
   if (!chat.context) chat.context = {};
   chat.context.pendingOffer = offer;
-  let html = _aiBubbleHtml(text, thinking);
-  if (offer) html += pendingOfferChipsHtml(offer);
-  if (types.length) html += `<div class="card-grid">${marketCardsHtml(types)}</div>`;
+  // Markets already drawn inside a tool step do not get a second card below the
+  // answer — the run panel showed them being found.
+  const run = (typeof replyObj === 'object' && replyObj.run) || null;
+  const shownInRun = new Set();
+  if (run?.el) {
+    run.el.querySelectorAll('[data-ptype-kw]').forEach(el => {
+      const kw = el.getAttribute('data-ptype-kw');
+      if (kw) shownInRun.add(kw);
+    });
+  }
+  const fresh = types.filter(t => !shownInRun.has(t.keyword));
+
+  let tail = '';
+  if (offer) tail += pendingOfferChipsHtml(offer);
+  if (fresh.length) tail += `<div class="card-grid">${marketCardsHtml(fresh)}</div>`;
+
   const bubble = loading?.querySelector?.('.msg-bubble') || loading;
-  if (bubble) bubble.innerHTML = html;
+  // The run panel is live DOM built node by node — writing bubble.innerHTML here
+  // would erase the whole visible plan. Only the answer region and the tail move.
+  const answerEl = run?.answerEl || bubble;
+  const answerHtml = _aiBubbleHtml(text, run ? '' : thinking);
+  if (answerEl) answerEl.innerHTML = answerHtml + tail;
+  else if (bubble) bubble.innerHTML = answerHtml + tail;
   bindTypeCards(loading);
   bindSearchSuggests(loading);
   void hydrateProdCardsIn();
+  // Persisted copy: the settled run (no spinners, no reasoning trace) plus the
+  // answer, so a reload replays what the user ended up looking at.
+  const html = (run?.staticHtml?.() || '') + answerHtml + tail;
   pushMessage(chat, 'assistant', {
     text,
     q: chat.context?.q || '',
@@ -12794,6 +12885,50 @@ function wantsDeepReasoning(text) {
 // pre-agent behaviour (analytical questions go back to being keyword searches).
 const AI_AGENT_ROUTER = true;
 
+// Every typed prompt runs through the agent, so a bare "botol minum" gets the
+// same visible plan-and-steps treatment as an analytical question instead of a
+// silent card grid. Gated on currentUser at each call site: runMarketAgent goes
+// through _useAi(), which is a login gate, and walling the composer for
+// logged-out visitors would both cost signups and break MISSION.md's free tier.
+const AI_AGENT_ALL = true;
+
+// The agent's first round is nearly always cari_pasar on what the user typed.
+// Firing that query the moment routing decides, instead of after the model's
+// first turn, is what keeps a plain search from feeling slower than it was.
+const AI_PREFETCH_TTL_MS = 60000;
+const _aiPrefetch = new Map();
+
+function aiPrefetchKey(query, kota) {
+  return `${String(query || '').trim().toLowerCase()}|${String(kota || '').trim().toLowerCase()}`;
+}
+
+/**
+ * `aliases` all point at ONE query. The router knows the cleaned form ("botol
+ * minum"), but the model may call cari_pasar with the raw text it was given —
+ * registering both keys against the same promise is what makes the cache
+ * actually hit, without issuing a second query.
+ */
+function aiPrefetchPasar(query, kota, aliases = []) {
+  const q = String(query || '').trim();
+  if (!q) return;
+  const keys = [q, ...aliases].map(k => aiPrefetchKey(k, kota));
+  const fresh = _aiPrefetch.get(keys[0]);
+  if (fresh && Date.now() - fresh.at < AI_PREFETCH_TTL_MS) return;
+  // Never awaited and never rejects: a failed prefetch just means the tool pays
+  // for its own query, exactly as before.
+  const rows = searchProductTypes(q, kota || '', 12, { skipLog: true }).catch(() => null);
+  const entry = { at: Date.now(), rows };
+  new Set(keys).forEach(k => _aiPrefetch.set(k, entry));
+  while (_aiPrefetch.size > 12) _aiPrefetch.delete(_aiPrefetch.keys().next().value);
+}
+
+/** Left in the map on purpose: a later round asking the same thing reuses it. */
+async function aiPrefetchGet(query, kota) {
+  const hit = _aiPrefetch.get(aiPrefetchKey(query, kota));
+  if (!hit || Date.now() - hit.at > AI_PREFETCH_TTL_MS) return null;
+  try { return await hit.rows; } catch (_) { return null; }
+}
+
 /**
  * A question that wants reasoning over the data, rather than a grid of cards.
  * The three vetoes come FIRST and are absolute — chips, bare product nouns and
@@ -12826,6 +12961,10 @@ function _aiPackType(t) {
     breakout_pct: num(t.breakout_rate),
     top3_share_pct: Math.round(num(t.sold_top3_share) || 0),
     produk_baru: num(t.niche_new_items),
+    // Weekly movement drives the "terlaris minggu ini" verdict. Null (not zero)
+    // when there is no usable snapshot pair — see weeklyStats().
+    terjual_minggu: num(t.wk_units),
+    listing_gerak_minggu: num(t.wk_items),
   };
 }
 
@@ -12949,10 +13088,18 @@ const AI_TOOLS = [
 ];
 
 async function _aiToolCariPasar({ query, kota, limit }) {
-  const rows = await searchProductTypes(String(query || ''), kota || '', Math.min(limit || 12, 20), { skipLog: true });
+  const want = Math.min(limit || 12, 20);
+  // The prefetch always fetched 12; a larger ask has to go to the DB itself
+  // rather than being quietly short-changed.
+  const rows = (want <= 12 ? await aiPrefetchGet(query, kota) : null)
+    || await searchProductTypes(String(query || ''), kota || '', want, { skipLog: true });
   if (!rows?.length) return { n: 0, pasar: [], hint: 'Tidak ketemu. Coba kata kunci produk yang lebih umum, atau pasar_kategori.' };
   registerTypes(rows);
-  return { n: rows.length, pasar: rows.slice(0, 15).map(_aiPackType) };
+  return {
+    n: rows.length,
+    pasar: rows.slice(0, 15).map(_aiPackType),
+    __view: { kind: 'pasar', n: rows.length, rows: rows.slice(0, 8) },
+  };
 }
 
 async function _aiToolPasarKategori({ kategori, kota, limit }) {
@@ -12962,7 +13109,12 @@ async function _aiToolPasarKategori({ kategori, kota, limit }) {
   const rows = packed?.types || [];
   if (!rows.length) return { n: 0, pasar: [], hint: 'Kategori tidak ketemu; coba cari_pasar dengan kata kunci produk.' };
   registerTypes(rows);
-  return { n: rows.length, kota_bucket: packed.cityBucket || 'ALL', pasar: rows.slice(0, 15).map(_aiPackType) };
+  return {
+    n: rows.length,
+    kota_bucket: packed.cityBucket || 'ALL',
+    pasar: rows.slice(0, 15).map(_aiPackType),
+    __view: { kind: 'pasar', n: rows.length, rows: rows.slice(0, 8) },
+  };
 }
 
 async function _aiToolDetailPasar({ pasar, kota }) {
@@ -12980,17 +13132,21 @@ async function _aiToolDetailPasar({ pasar, kota }) {
   registerTypes([row]);
   try { await attachTypeQuartiles([row]); } catch (_) { /* quartiles are optional */ }
   const { data: rows } = await _supabase.from('listings_deduped')
-    .select('product_name,store_name,price,total_sold,reviews,rating,location,keyword,listing_date,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
+    // item_id/shop_id/image_url/url are for the rendered step only — _aiPackListing
+    // still strips them, so the model payload is unchanged.
+    .select('item_id,shop_id,image_url,url,product_name,store_name,price,total_sold,reviews,rating,location,keyword,listing_date,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
     .eq('keyword', pasar)
     .eq('is_offtopic', false)          // mandatory on every listings_deduped read
     .order('total_sold', { ascending: false })
     .limit(40);
   const list = rows || [];
+  const lokasi = _aiHistogram(list, 'location');
   return {
     ..._aiPackType(row),
     top_seller: list.slice(0, 10).map(_aiPackListing),
-    lokasi_seller: _aiHistogram(list, 'location'),
+    lokasi_seller: lokasi,
     n_sampel_lokasi: list.length,
+    __view: { kind: 'detail', type: row, sellers: list.slice(0, 5), lokasi },
   };
 }
 
@@ -13004,6 +13160,7 @@ async function _aiToolCariListing({ query, lokasi, limit }) {
     n: hits.length,
     listing: hits.slice(0, 15).map(_aiPackListing),
     pasar_terkait: types.map(_aiPackType),
+    __view: { kind: 'listing', n: hits.length, rows: hits.slice(0, 8) },
   };
 }
 
@@ -13018,7 +13175,9 @@ async function _aiToolFilterListing(a = {}) {
   if (!hasFilter) return { error: 'minimal satu filter wajib diisi' };
 
   let q = _supabase.from('listings_deduped')
-    .select('product_name,store_name,price,total_sold,reviews,rating,location,keyword,listing_date,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
+    // item_id/shop_id/image_url/url feed the rendered step only; _aiPackListing
+    // still strips them out of the model payload.
+    .select('item_id,shop_id,image_url,url,product_name,store_name,price,total_sold,reviews,rating,location,keyword,listing_date,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
     .eq('is_offtopic', false);
   if (a.pasar) q = q.eq('keyword', a.pasar);
   if (locs.length) q = q.in('location', locs);
@@ -13045,14 +13204,16 @@ async function _aiToolFilterListing(a = {}) {
   const rows = data || [];
   if (!rows.length) return { n: 0, listing: [], hint: 'Nol baris cocok. Longgarkan filternya.' };
   const prices = rows.map(r => Number(r.price) || 0).filter(Boolean).sort((x, y) => x - y);
+  const ringkasan = {
+    harga_median: prices.length ? Math.round(prices[Math.floor(prices.length / 2)]) : 0,
+    terjual_total: rows.reduce((s, r) => s + (Number(r.total_sold) || 0), 0),
+    lokasi_teratas: _aiHistogram(rows, 'location'),
+  };
   return {
     n: rows.length,
-    ringkasan: {
-      harga_median: prices.length ? Math.round(prices[Math.floor(prices.length / 2)]) : 0,
-      terjual_total: rows.reduce((s, r) => s + (Number(r.total_sold) || 0), 0),
-      lokasi_teratas: _aiHistogram(rows, 'location'),
-    },
+    ringkasan,
     listing: rows.slice(0, 25).map(_aiPackListing),
+    __view: { kind: 'listing', n: rows.length, rows: rows.slice(0, 8), ringkasan },
   };
 }
 
@@ -13060,7 +13221,7 @@ function _aiToolProdukDibuka() {
   if (!_dd?.product) return { error: 'tidak ada produk terbuka' };
   const { product, stats, niche } = _dd;
   const s = ddScore(product, stats, niche);
-  return {
+  const out = {
     produk: _aiPackListing(product),
     kategori: product.category || null,
     skor: s.score,
@@ -13075,6 +13236,7 @@ function _aiToolProdukDibuka() {
     harga_p75: Math.round(stats.p75 || 0),
     n_pembanding: stats.n,
   };
+  return { ...out, __view: { kind: 'produk', data: out } };
 }
 
 const AI_TOOL_IMPL = {
@@ -13123,14 +13285,355 @@ function chatHistoryForAi(chat, latestText) {
   return [...msgs, { role: 'user', content: latestText }];
 }
 
-const AI_TOOL_STATUS = {
-  cari_pasar: 'Mencari pasar…',
-  pasar_kategori: 'Membuka kategori…',
-  detail_pasar: 'Membaca detail pasar…',
-  cari_listing: 'Mencari listing…',
-  filter_listing: 'Menyaring listing…',
-  produk_dibuka: 'Membaca produk ini…',
+// ── Agent run: plan, visible steps, rendered tool results ────────────────
+// Short label for the pill on a tool row, and the wording of a synthesized
+// plan step when the model skipped its own <rencana> block.
+const AI_TOOL_LABEL = {
+  cari_pasar: 'Cari pasar',
+  pasar_kategori: 'Buka kategori',
+  detail_pasar: 'Baca detail pasar',
+  cari_listing: 'Cari listing',
+  filter_listing: 'Saring listing',
+  produk_dibuka: 'Baca produk yang dibuka',
 };
+
+/**
+ * Lift the model's <rencana> block out of a possibly half-streamed reply.
+ *
+ * The plan is not styled prose — it becomes the step list, so it has to leave
+ * the answer text entirely or the raw tags print. This runs on every delta,
+ * which is why `open` exists: it means the opening tag has arrived but the
+ * closing one has not, and the caller shows a placeholder for that beat rather
+ * than streaming "<rencana>" into the bubble. A second block (the model
+ * occasionally restates it) is dropped from the prose but never replaces the
+ * first, so the rendered steps cannot renumber mid-answer.
+ */
+function _aiSplitPlan(text) {
+  let s = String(text || '');
+  let plan = [];
+  let open = false;
+  for (let guard = 0; guard < 4; guard++) {
+    const o = s.indexOf('<rencana>');
+    if (o < 0) break;
+    const c = s.indexOf('</rencana>', o);
+    if (c < 0) { s = s.slice(0, o); open = true; break; }
+    const found = _aiPlanLines(s.slice(o + 9, c));
+    s = s.slice(0, o) + s.slice(c + 10);
+    if (!plan.length) plan = found;
+  }
+  return { plan, rest: s.trim(), open };
+}
+
+function _aiPlanLines(body) {
+  return String(body || '').split('\n')
+    .map(l => l.replace(/^\s*\d{1,2}\s*[.)\-]\s*/, '').replace(/^\s*[-•*]\s*/, '').trim())
+    .filter(Boolean)
+    .slice(0, 6);
+}
+
+/**
+ * The visible agent run.
+ *
+ * streamAssistantReply used to own one slot: paint() overwrote the whole bubble
+ * every animation frame, so a status line was the most progress UI that could
+ * survive, and anything the user could open (a details, a collapsed step) was
+ * rebuilt and re-collapsed 60 times a second. This owns the bubble instead and
+ * mutates its own nodes, leaving exactly one region — .agent-answer — for the
+ * repaint. Everything else persists across the whole run.
+ */
+function createAgentRun(bubble, opts = {}) {
+  const scroll = typeof opts.scroll === 'function' ? opts.scroll : () => {};
+  const run = document.createElement('div');
+  run.className = 'agent-run' + (opts.compact ? ' agent-run--compact' : '');
+  run.setAttribute('data-agent-run', '1');
+  const answer = document.createElement('div');
+  answer.className = 'agent-answer';
+  if (bubble) {
+    bubble.innerHTML = '';
+    bubble.appendChild(run);
+    bubble.appendChild(answer);
+  }
+
+  let thinkEl = null;
+  let thinkBody = null;
+  let planEl = null;
+  let steps = [];
+  let cur = -1;
+  const toolOuts = new Map();
+
+  function setState(i, s) {
+    const st = steps[i];
+    if (!st || st.li.getAttribute('data-state') === 'done') return;
+    st.li.setAttribute('data-state', s);
+    if (s === 'done') st.li.removeAttribute('data-open');
+    else st.li.setAttribute('data-open', '1');
+  }
+
+  function thinking(text) {
+    const t = String(text || '').trim();
+    if (!t) return;
+    if (!thinkEl) {
+      thinkEl = document.createElement('details');
+      thinkEl.className = 'ai-think agent-think';
+      thinkEl.open = true;
+      thinkEl.innerHTML = '<summary>Proses berpikir</summary><div></div>';
+      thinkBody = thinkEl.querySelector('div');
+      run.insertBefore(thinkEl, run.firstChild);
+    }
+    // textContent, not mdToHtml: a raw trace is not markdown we authored, and
+    // it is replaced on every delta.
+    thinkBody.textContent = t;
+    thinkBody.scrollTop = thinkBody.scrollHeight;
+    scroll();
+  }
+
+  function plan(list) {
+    const items = (list || []).filter(Boolean);
+    if (!items.length) return;
+    if (planEl && steps.length === items.length) {
+      items.forEach((t, i) => { steps[i].label.textContent = t; });
+      return;
+    }
+    if (planEl) planEl.remove();
+    steps = [];
+    planEl = document.createElement('ol');
+    planEl.className = 'agent-plan';
+    items.forEach((t, i) => {
+      const li = document.createElement('li');
+      li.className = 'agent-step';
+      li.setAttribute('data-state', 'pending');
+      li.innerHTML = '<button type="button" class="agent-step-head">'
+        + `<span class="agent-step-mark"><i class="agent-step-spin"></i>${ico('check', 13)}</span>`
+        + '<span class="agent-step-label"></span>'
+        + `<span class="agent-step-count">${i + 1}/${items.length}</span>`
+        + `<span class="agent-step-chev">${ico('chevron', 14)}</span>`
+        + '</button><div class="agent-step-body"></div>';
+      const label = li.querySelector('.agent-step-label');
+      label.textContent = t;
+      planEl.appendChild(li);
+      steps.push({ li, label, body: li.querySelector('.agent-step-body') });
+    });
+    run.appendChild(planEl);
+    // A tool block can start streaming before the plan has rendered. Those rows
+    // land at run level; move them into the first step now that it exists.
+    const orphans = run.querySelectorAll(':scope > .agent-tool, :scope > .agent-note');
+    orphans.forEach(el => steps[0].body.appendChild(el));
+    if (thinkEl) thinkEl.open = false;
+    scroll();
+  }
+
+  /** Tool round k drives step k; the forced-prose turn drives the last one. */
+  function beginStep(i) {
+    if (!steps.length) return;
+    const idx = Math.min(Math.max(Number(i) || 0, 0), steps.length - 1);
+    for (let k = 0; k <= idx; k++) if (k !== idx) setState(k, 'done');
+    if (cur >= 0 && cur !== idx) setState(cur, 'done');
+    cur = idx;
+    setState(idx, 'running');
+    scroll();
+  }
+
+  function note(md) {
+    const text = String(md || '').trim();
+    if (!text) return;
+    const host = (steps[cur] && steps[cur].body) || run;
+    let el = host.querySelector(':scope > .agent-note');
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'agent-note';
+      host.insertBefore(el, host.firstChild);
+    }
+    el.innerHTML = mdToHtml(text) || `<p>${esc(text)}</p>`;
+    scroll();
+  }
+
+  function toolStart(id, name) {
+    const host = (steps[cur] && steps[cur].body) || run;
+    const wrap = document.createElement('div');
+    wrap.className = 'agent-tool';
+    wrap.setAttribute('data-tool', name);
+    wrap.innerHTML = `<span class="agent-tool-pill">${ico('search', 12)}`
+      + `<span>${esc(AI_TOOL_LABEL[name] || name)}</span></span>`
+      + '<div class="agent-tool-out"><span class="agent-tool-wait">Mengambil data…</span></div>';
+    host.appendChild(wrap);
+    if (id) toolOuts.set(id, wrap.querySelector('.agent-tool-out'));
+    scroll();
+  }
+
+  function toolDone(id, name, view) {
+    const out = toolOuts.get(id);
+    if (!out) return;
+    out.innerHTML = agentToolViewHtml(name, view);
+    // Rows carry the same data-ptype / data-prod hooks the card grids use, so
+    // the existing binders make the shown work clickable for free.
+    bindTypeCards(out);
+    bindProductCards(out);
+    scroll();
+  }
+
+  function finish() {
+    steps.forEach((_, i) => setState(i, 'done'));
+    run.setAttribute('data-done', '1');
+  }
+
+  /**
+   * What gets persisted: the same run with every step settled, minus the
+   * reasoning trace — thinking is never stored (chatHistoryForAi would replay
+   * it as a visible assistant turn).
+   */
+  function staticHtml() {
+    if (!steps.length && !run.querySelector('.agent-tool')) return '';
+    const clone = run.cloneNode(true);
+    clone.querySelectorAll('.agent-think').forEach(el => el.remove());
+    clone.querySelectorAll('[data-open]').forEach(el => el.removeAttribute('data-open'));
+    clone.querySelectorAll('.agent-step').forEach(el => el.setAttribute('data-state', 'done'));
+    clone.setAttribute('data-done', '1');
+    return clone.outerHTML;
+  }
+
+  return {
+    el: run, answerEl: answer, hasPlan: () => steps.length > 0,
+    thinking, plan, beginStep, note, toolStart, toolDone, finish, staticHtml,
+  };
+}
+
+// Delegated so a run restored from gpt_messages toggles too — persisted HTML
+// carries no listeners.
+document.addEventListener('click', (e) => {
+  const head = e.target?.closest?.('.agent-step-head');
+  if (!head) return;
+  const li = head.closest('.agent-step');
+  if (!li) return;
+  if (li.hasAttribute('data-open')) li.removeAttribute('data-open');
+  else li.setAttribute('data-open', '1');
+});
+
+/** Render one tool's result. Never throws — a bad shape degrades to a line. */
+function agentToolViewHtml(name, view) {
+  try {
+    if (view && view.kind === 'pasar') return _agentPasarViewHtml(view);
+    if (view && view.kind === 'detail') return _agentDetailViewHtml(view);
+    if (view && view.kind === 'listing') return _agentListingViewHtml(view);
+    if (view && view.kind === 'produk') return _agentProdukViewHtml(view);
+  } catch (_) { /* fall through to the empty line */ }
+  const hint = (view && view.hint) || 'Tidak ada baris yang cocok.';
+  return `<span class="agent-tool-empty">${esc(hint)}</span>`;
+}
+
+/** trend_delta_30d as a signed percentage with a direction class. */
+function _agentTrendHtml(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n === 0) return '<span class="agent-flat">—</span>';
+  const cls = n > 0 ? 'agent-up' : 'agent-down';
+  return `<span class="${cls}">${n > 0 ? '+' : ''}${Math.round(n)}%</span>`;
+}
+
+/** Rp value, or an em dash — a missing column must not read as "Rp 0". */
+function _agentRp(v) {
+  const n = Number(v);
+  return n > 0 ? esc(fmtRpShort(n)) : '—';
+}
+
+function _agentNum(v) {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? esc(fmtIdCompact(n)) : '—';
+}
+
+function _agentPasarViewHtml(view) {
+  const rows = markTerlarisMinggu((view.rows || []).slice(0, 8));
+  if (!rows.length) return `<span class="agent-tool-empty">${esc(view.hint || 'Tidak ada pasar yang cocok.')}</span>`;
+  registerTypes(rows);
+  const body = rows.map((t) => {
+    const skor = _skorOf(t);
+    // Not terlarisBadgeHtml(): that one is position:absolute and built to hang
+    // off a card with position:relative, so in a table cell it escapes to the
+    // top of the page. Same meaning, inline.
+    const badge = t._terlaris
+      ? `<span class="agent-tlr">${ico('rocket', 11)}<span>Terlaris minggu ini</span></span>`
+      : '';
+    return '<tr>'
+      + `<td class="agent-c-name"><button type="button" class="agent-rowbtn" data-ptype="-1" data-ptype-kw="${esc(t.keyword)}">${esc(t.keyword)}</button>${badge}</td>`
+      + `<td>${_agentRp(t.omset_top15)}</td>`
+      + `<td>${_agentTrendHtml(t.trend_delta_30d)}</td>`
+      + `<td>${skor == null ? '—' : Math.round(skor)}</td>`
+      + `<td>${_agentNum(t.n_sellers)}</td>`
+      + '</tr>';
+  }).join('');
+  const cap = view.n && view.n > rows.length ? `<div class="agent-tool-more">${esc(fmtIdCompact(view.n))} pasar ditemukan, ${rows.length} teratas ditampilkan.</div>` : '';
+  return '<div class="agent-tbl-wrap"><table class="agent-tbl">'
+    + '<thead><tr><th>Pasar</th><th>Omset/bln</th><th>Tren 30h</th><th>Skor</th><th>Seller</th></tr></thead>'
+    + `<tbody>${body}</tbody></table></div>${cap}`;
+}
+
+function _agentListingRowHtml(r) {
+  // Same data-prod / data-product contract as productCardHtml, so bindProductCards
+  // and resolveProduct work on these rows without a second code path.
+  const p = asListingProduct(r);
+  rememberProducts([p]);
+  const snap = productSnapshot(p);
+  const encoded = snap ? encodeURIComponent(JSON.stringify(snap)) : '';
+  const img = imgThumb(p.image_url || '');
+  const thumb = img
+    ? `<img class="agent-thumb" src="${esc(img)}" alt="" loading="lazy" decoding="async" width="40" height="40">`
+    : '<span class="agent-thumb agent-thumb--blank"></span>';
+  const meta = [p.store_name, p.location].filter(Boolean).map(esc).join(' · ');
+  return `<button type="button" class="agent-listing" data-prod="${esc(prodKey(p))}"`
+    + `${encoded ? ` data-product="${encoded}"` : ''}>`
+    + thumb
+    + `<span class="agent-listing-main"><span class="agent-listing-name">${esc((p.product_name || '').slice(0, 80))}</span>`
+    + `<span class="agent-listing-meta">${meta}</span></span>`
+    + `<span class="agent-listing-num"><b>${esc(fmtRpShort(Number(p.price) || 0))}</b>`
+    + `<span>${esc(fmtSold(Number(p.total_sold) || 0))} terjual</span></span></button>`;
+}
+
+function _agentListingViewHtml(view) {
+  const rows = (view.rows || []).slice(0, 8);
+  if (!rows.length) return `<span class="agent-tool-empty">${esc(view.hint || 'Tidak ada listing yang cocok.')}</span>`;
+  const r = view.ringkasan || null;
+  const sum = r
+    ? `<div class="agent-tool-sum">Median ${esc(fmtRpShort(r.harga_median))} · ${esc(fmtSold(r.terjual_total))} terjual total`
+      + `${r.lokasi_teratas && r.lokasi_teratas[0] ? ` · terbanyak dari ${esc(r.lokasi_teratas[0].lokasi)}` : ''}</div>`
+    : '';
+  const cap = view.n && view.n > rows.length ? `<div class="agent-tool-more">${esc(fmtIdCompact(view.n))} listing cocok, ${rows.length} teratas ditampilkan.</div>` : '';
+  return `${sum}<div class="agent-listings">${rows.map(_agentListingRowHtml).join('')}</div>${cap}`;
+}
+
+function _agentStatHtml(label, value) {
+  return `<span class="agent-stat"><b>${value}</b><span>${esc(label)}</span></span>`;
+}
+
+function _agentDetailViewHtml(view) {
+  const t = view.type || {};
+  registerTypes([t]);
+  const w = weeklyStats(t);
+  const stats = [
+    _agentStatHtml('Omset/bln', _agentRp(t.omset_top15)),
+    _agentStatHtml('Harga median', _agentRp(t.price_median)),
+    _agentStatHtml('Seller', _agentNum(t.n_sellers)),
+    _agentStatHtml('Tren 30h', _agentTrendHtml(t.trend_delta_30d)),
+    // weeklyStats returns null when there is no usable snapshot pair — that must
+    // never render as "0 terjual minggu ini".
+    ...(w ? [_agentStatHtml('Terjual/minggu', esc(fmtSold(w.units)))] : []),
+  ].join('');
+  const chips = (view.lokasi || []).slice(0, 6)
+    .map(h => `<span class="agent-chip">${esc(h.lokasi)} <b>${esc(String(h.n))}</b></span>`).join('');
+  const sellers = (view.sellers || []).slice(0, 5).map(_agentListingRowHtml).join('');
+  return `<div class="agent-stats">${stats}</div>`
+    + (chips ? `<div class="agent-chips-lbl">Lokasi seller</div><div class="agent-chips">${chips}</div>` : '')
+    + (sellers ? `<div class="agent-chips-lbl">Top seller</div><div class="agent-listings">${sellers}</div>` : '');
+}
+
+function _agentProdukViewHtml(view) {
+  const d = view.data || {};
+  const stats = [
+    _agentStatHtml('Skor Produk', esc(String(d.skor ?? '—'))),
+    _agentStatHtml('Peluang breakout', d.breakout_pct == null ? '—' : `${Math.round(d.breakout_pct)}%`),
+    _agentStatHtml('Kompetisi', esc(String(d.kompetisi ?? '—'))),
+    _agentStatHtml('Harga median pasar', _agentRp(d.harga_median_pasar)),
+    _agentStatHtml('Pembanding', _agentNum(d.n_pembanding)),
+  ].join('');
+  return `<div class="agent-stats">${stats}</div>`;
+}
 
 /**
  * Stream a reply into an existing bubble, with a working Stop button.
@@ -13148,29 +13651,46 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
   let thinkAcc = '';
   let painting = false;
   const scroll = () => { if (root) root.scrollTop = root.scrollHeight; else scrollChatToBottom(); };
-  let lastStatus = '';
+  const run = createAgentRun(bubble, { scroll, compact: !!root });
+  let planShown = false;
+  let curTurn = 0;
+
+  /**
+   * One repaint, one target. The run view owns everything above .agent-answer
+   * and mutates it by node, so a step the user opened stays open and a rendered
+   * tool table is not rebuilt 60 times a second.
+   */
+  // Synchronous, because a tool_use block can start in the same tick as the
+  // delta that closed the plan — waiting for the repaint's rAF would put the
+  // first tool row outside the step list.
+  const flushPlan = () => {
+    if (planShown) return;
+    const split = _aiSplitPlan(acc);
+    if (!split.plan.length) return;
+    planShown = true;
+    run.plan(split.plan);
+    run.beginStep(curTurn);
+  };
+
   const paint = () => {
-    if (painting || !bubble) return;
+    if (painting || !run.answerEl) return;
     painting = true;
     requestAnimationFrame(() => {
       painting = false;
-      bubble.innerHTML = _aiBubbleHtml(acc, thinkAcc);
+      flushPlan();
+      const split = _aiSplitPlan(acc);
+      // While the block is still streaming, show the beat rather than raw tags.
+      run.answerEl.innerHTML = split.rest
+        ? (mdToHtml(split.rest) || `<p>${esc(split.rest)}</p>`)
+        : (split.open ? '<p class="agent-wait">Menyusun rencana…</p>' : '');
       scroll();
     });
-  };
-  const status = (msg) => {
-    if (!bubble || acc) return;   // real text always wins over a status line
-    if (msg === lastStatus) return;
-    lastStatus = msg;
-    bubble.innerHTML = `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">${esc(msg)}</p>`;
-    scroll();
   };
 
   _streamAbort = new AbortController();
   const signal = _streamAbort.signal;
   setComposerStopping(true);
   const pasarKeys = [];
-  let showedThinking = false;
   try {
     const useTools = Array.isArray(opts.tools) && opts.tools.length > 0;
     const turns = messages.slice();
@@ -13178,17 +13698,13 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
 
     for (let turn = 0; turn < (useTools ? AI_TOOL_MAX_TURNS : 1); turn++) {
       const lastTurn = turn === AI_TOOL_MAX_TURNS - 1 || calls >= AI_TOOL_MAX_CALLS;
+      curTurn = turn;
+      if (useTools) run.beginStep(turn);
       const stepOpts = {
         ...opts,
         thinking: !!(opts.thinking && turn === 0),
-        onThinking: (_p, full) => {
-          thinkAcc = full;
-          if (!acc && !showedThinking) {
-            showedThinking = true;
-            status('Menyusun jawaban…');
-          }
-        },
-        onToolStart: (name) => status(AI_TOOL_STATUS[name] || 'Mengambil data…'),
+        onThinking: (_p, full) => { thinkAcc = full; run.thinking(full); },
+        onToolStart: (name, id) => { flushPlan(); run.toolStart(id, name); },
         ...(useTools && lastTurn ? { toolChoice: { type: 'none' } } : {}),
       };
 
@@ -13201,8 +13717,31 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
       if (reply.thinking) thinkAcc = reply.thinking;
       if (signal.aborted) break;
 
+      const split = _aiSplitPlan(acc);
       const wants = useTools && !lastTurn ? (reply.toolUses || []) : [];
+
+      // The model skipped its own <rencana>. Synthesize one from the calls it
+      // actually made, so the run is never a blank panel.
+      if (useTools && !planShown) {
+        const steps = split.plan.length
+          ? split.plan
+          : (wants.length
+            ? [...wants.map(t => AI_TOOL_LABEL[t.name] || t.name), 'Simpulkan jawaban']
+            : []);
+        if (steps.length) {
+          planShown = true;
+          run.plan(steps);
+          run.beginStep(turn);
+        }
+      }
       if (!wants.length) break;
+
+      // Prose that came alongside the tool calls is this round's narration.
+      // acc clears here, not after the tools: a rAF still queued from the last
+      // delta would otherwise repaint the answer with text we just moved.
+      if (split.rest) run.note(split.rest);
+      acc = '';
+      if (run.answerEl) run.answerEl.innerHTML = '';
 
       // Replay the assistant turn, minus thinking: DeepSeek accepts the tool
       // round trip without it, so we never have to carry a block signature.
@@ -13215,12 +13754,18 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
       const seen = new Map();
       const results = await Promise.all(wants.map(async (t) => {
         if (calls >= AI_TOOL_MAX_CALLS) {
-          return { id: t.id, out: { error: 'tool_budget_exhausted', hint: 'Jawab dengan data yang sudah ada.' } };
+          const out = { error: 'tool_budget_exhausted', hint: 'Jawab dengan data yang sudah ada.' };
+          run.toolDone(t.id, t.name, null);
+          return { id: t.id, out };
         }
         calls++;
         const key = `${t.name}:${JSON.stringify(t.input || {})}`;
         if (!seen.has(key)) seen.set(key, _aiRunTool(t.name, t.input));
-        const out = await seen.get(key);
+        const raw = await seen.get(key);
+        // __view carries un-packed rows (images, item ids) for the rendered step
+        // and must never reach the model — strip it before the tool_result.
+        const { __view: view, ...out } = (raw && typeof raw === 'object') ? raw : {};
+        run.toolDone(t.id, t.name, view || null);
         const mem = _gptMem();
         (mem.extractPasarKeysFromToolOut?.(out) || []).forEach((k) => {
           if (k && !pasarKeys.includes(k)) pasarKeys.push(k);
@@ -13239,11 +13784,18 @@ async function streamAssistantReply(loading, system, messages, opts = {}) {
           content: JSON.stringify(r.out ?? {}),
         })),
       });
-      acc = '';   // the next turn re-streams the real answer
     }
 
-    if (bubble) bubble.innerHTML = _aiBubbleHtml(acc, thinkAcc);
-    return { text: acc, thinking: thinkAcc, pasarKeys };
+    const final = _aiSplitPlan(acc);
+    run.finish();
+    if (run.answerEl) {
+      run.answerEl.innerHTML = final.rest
+        ? (mdToHtml(final.rest) || `<p>${esc(final.rest)}</p>`)
+        : '';
+    }
+    scroll();
+    // Callers persist and replay `text`, so the plan block must be gone from it.
+    return { text: final.rest, thinking: thinkAcc, pasarKeys, run };
   } finally {
     setComposerStopping(false);
     _streamAbort = null;
