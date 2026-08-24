@@ -1803,8 +1803,9 @@
     '</div>';
   }
 
-  // Identity column (taller image + name + numbers underneath) sits left of a
-  // shorter chart; below the @container breakpoint the same pieces stack.
+  // Identity column (taller image + name + omset/harga/unit in one row) sits
+  // left of a flexing chart with Lihat Detail pinned right; below the
+  // @container breakpoint the same pieces stack.
   function cardHtml(r) {
     var key = rowKey(r);
     var trend = rowHasTrend(r);

@@ -679,8 +679,9 @@
 .ltk-menu--card { top: 30px; right: 0; }
 
 /* ── Card row: identity (image+name+numbers) | chart | button ─────────────
-   Numbers always sit under the image and name. Wide cards put that column
-   beside a capped-width chart; narrow cards stack the same pieces. */
+   Numbers sit under the image and name in one omset/harga/unit row. Wide
+   cards put that column beside a flexing chart with Lihat Detail pinned
+   right; narrow cards stack the same pieces. */
 .ltk-card-row {
   display: flex; flex-direction: column; gap: 14px;
 }
@@ -758,22 +759,28 @@
 /* Fallback for browsers without container queries: same stacked layout at
    every width, which is exactly what the rules above already produce. */
 @supports (container-type: inline-size) {
-  /* Identity column (image + name + stacked numbers) stays fixed; chart grows
-     but caps so it stays a bit shorter than the full leftover width. */
+  /* Identity stays fixed with omset/harga/unit in one row; chart flexes to
+     fill the gap; Lihat Detail stays pinned to the right edge. */
   @container (min-width: 560px) {
     .ltk-card-row { flex-direction: row; align-items: center; gap: 14px; }
-    .ltk-card-ident { flex: 0 0 200px; }
+    .ltk-card-ident { flex: 0 0 248px; }
     .ltk-card-top { padding-right: 0; }
     .ltk-card-top .ltk-row-ico { width: 60px; height: 80px; border-radius: 14px; }
     .ltk-card-stats {
-      display: flex; flex-direction: column; gap: 10px;
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px;
+    }
+    .ltk-card-stats .ltk-mstat-val {
+      font-size: clamp(.82rem, 1.4vw, 1.05rem);
     }
     .ltk-card-stats-foot { display: none; }   /* the meta line already IDs the row; no room to repeat it */
     .ltk-card-chart {
-      flex: 1 1 auto; max-width: 420px; padding: 10px 12px 8px;
+      flex: 1 1 0; min-width: 0; padding: 10px 12px 8px;
     }
     .ltk-card-chart-canvas { height: 140px; }
-    .ltk-card-detail-btn { flex: 0 0 auto; align-self: center; white-space: nowrap; padding: 8px 14px; }
+    .ltk-card-detail-btn {
+      flex: 0 0 auto; align-self: center; margin-left: auto;
+      white-space: nowrap; padding: 8px 14px;
+    }
   }
 }
 
