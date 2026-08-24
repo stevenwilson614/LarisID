@@ -11598,6 +11598,89 @@ const _ddFmtWk = ts => new Date(ts).toLocaleDateString('id-ID', {
   day: 'numeric', month: 'short', timeZone: 'UTC',
 });
 
+const DD_BREAK_LO = 0.78;
+const DD_BREAK_HI = 0.86;
+
+function _ddPctile(sorted, p) {
+  if (!sorted.length) return 0;
+  const i = (sorted.length - 1) * p;
+  const lo = Math.floor(i);
+  const hi = Math.ceil(i);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] * (hi - i) + sorted[hi] * (i - lo);
+}
+
+/** Piecewise Y-axis when one toko is ≥2.5× the pack. Null = keep linear. */
+function ddTop10Break(shops) {
+  const maxima = (shops || []).map(sh =>
+    Math.max(0, ...((sh.weeks || []).map(w => Number(w.omset) || 0)))
+  ).filter(v => v > 0);
+  if (maxima.length < 2) return null;
+  const sorted = maxima.slice().sort((a, b) => a - b);
+  const topMax = sorted[sorted.length - 1];
+  const rest = sorted.slice(0, -1);
+  const packMax = _ddPctile(rest, 0.75) || rest[rest.length - 1] || 0;
+  if (!packMax || topMax < packMax * 2.5) return null;
+  const breakLow = packMax * 1.15;
+  const breakHigh = topMax * 0.92;
+  const axisMax = topMax * 1.05;
+  if (!(breakHigh > breakLow)) return null;
+  return { breakLow, breakHigh, axisMax };
+}
+
+function ddBrokenMap(v, br) {
+  if (v == null || !Number.isFinite(v)) return null;
+  if (v <= br.breakLow) return (v / Math.max(br.breakLow, 1)) * DD_BREAK_LO;
+  if (v >= br.breakHigh) {
+    const span = Math.max(br.axisMax - br.breakHigh, 1);
+    return DD_BREAK_HI + Math.min(1, Math.max(0, v - br.breakHigh) / span) * (1 - DD_BREAK_HI);
+  }
+  return null;
+}
+
+function ddBrokenUnmap(d, br) {
+  if (d <= DD_BREAK_LO) return (d / DD_BREAK_LO) * br.breakLow;
+  if (d >= DD_BREAK_HI) {
+    return br.breakHigh + ((d - DD_BREAK_HI) / (1 - DD_BREAK_HI)) * (br.axisMax - br.breakHigh);
+  }
+  return null;
+}
+
+const ddBrokenAxisPlugin = {
+  id: 'ddBrokenAxis',
+  afterDraw(chart) {
+    const br = chart.options?.plugins?.ddBrokenAxis || chart.options?._ddBreak;
+    if (!br) return;
+    const yScale = chart.scales?.y;
+    if (!yScale) return;
+    const yLo = yScale.getPixelForValue(DD_BREAK_LO);
+    const yHi = yScale.getPixelForValue(DD_BREAK_HI);
+    const top = Math.min(yLo, yHi);
+    const bot = Math.max(yLo, yHi);
+    const area = chart.chartArea;
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(area.left, top, area.right - area.left, Math.max(2, bot - top));
+    const mid = (top + bot) / 2;
+    const x = yScale.left;
+    ctx.strokeStyle = '#9CA3AF';
+    ctx.lineWidth = 1.4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x - 7, mid - 5);
+    ctx.lineTo(x + 5, mid + 1);
+    ctx.lineTo(x - 7, mid + 7);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x - 1, mid - 7);
+    ctx.lineTo(x + 11, mid - 1);
+    ctx.lineTo(x - 1, mid + 5);
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+
 function ddTrendLegendHtml() {
   const t = _dd?.trend;
   if (!t) return '';
@@ -11606,6 +11689,7 @@ function ddTrendLegendHtml() {
     if (!shops.length) {
       return '<span class="dd-sub">Belum cukup riwayat per toko untuk menggambar 10 garis.</span>';
     }
+    const broken = !!ddTop10Break(shops);
     return `<div class="ddr-legend-shops">${shops.map((sh, i) => `
       <button type="button" class="ddr-legend-shop" data-shop-idx="${i}" aria-pressed="true" title="${esc(sh.name)}">
         <span class="comp-av">${sh.img
@@ -11614,7 +11698,7 @@ function ddTrendLegendHtml() {
         <span class="nm">${esc((sh.name || 'Toko').slice(0, 18))}</span>
         <span class="dot" style="background:${sh.color}"></span>
       </button>`).join('')}</div>
-      <span class="dd-sub ddr-legend-note">Perkiraan mengisi minggu tanpa scrape.</span>`;
+      <span class="dd-sub ddr-legend-note">Perkiraan mengisi minggu tanpa scrape.${broken ? ' Skala terputus — toko outlier di pita atas.' : ''}</span>`;
   }
   return `<span class="row"><span class="swatch" style="background:#B5202A"></span>Omset / minggu (Rp)</span>
     <span class="row"><span class="swatch" style="background:#2563EB"></span>Unit / minggu</span>
@@ -11638,6 +11722,7 @@ function ddRenderTrendChart() {
     }
     // Union of every week any of the ten was seen in, so the lines share an x-axis.
     const tsAll = [...new Set(shops.flatMap(sh => sh.weeks.map(w => w.ts)))].sort((a, b) => a - b);
+    const br = ddTop10Break(shops);
     makeChart('ddr-trend-canvas', {
       type: 'line',
       data: {
@@ -11646,19 +11731,68 @@ function ddRenderTrendChart() {
           const by = new Map(sh.weeks.map(w => [w.ts, w.omset]));
           return {
             label: sh.name,
-            data: tsAll.map(ts => (by.has(ts) ? by.get(ts) : null)),
+            data: tsAll.map(ts => {
+              if (!by.has(ts)) return null;
+              const omset = by.get(ts);
+              if (!br) return omset;
+              const y = ddBrokenMap(omset, br);
+              return y == null ? null : { y, omset };
+            }),
             borderColor: sh.color, backgroundColor: sh.color,
-            borderWidth: 2, tension: .35, pointRadius: 2, fill: false, spanGaps: true,
+            borderWidth: 2, tension: .35, pointRadius: 2, fill: false,
+            spanGaps: !br,
+            segment: br ? {
+              borderColor: ctx => {
+                const a = ctx.p0.parsed?.y;
+                const b = ctx.p1.parsed?.y;
+                if (a == null || b == null) return 'transparent';
+                if (Math.min(a, b) <= DD_BREAK_LO && Math.max(a, b) >= DD_BREAK_HI) return 'transparent';
+                return sh.color;
+              },
+            } : undefined,
           };
         }),
       },
+      plugins: br ? [ddBrokenAxisPlugin] : [],
       options: {
         maintainAspectRatio: false,
+        _ddBreak: br || null,
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: c => `${c.dataset.label}: ${fmtRpShort(c.parsed.y)}` } },
+          ddBrokenAxis: br || false,
+          tooltip: {
+            callbacks: {
+              label: c => {
+                const raw = (c.raw && typeof c.raw === 'object' && c.raw.omset != null)
+                  ? c.raw.omset
+                  : c.parsed.y;
+                return `${c.dataset.label}: ${fmtRpShort(raw)}`;
+              },
+            },
+          },
         },
-        scales: { y: { ticks: { callback: _ddRpTick, maxTicksLimit: 6 }, min: 0 } },
+        scales: {
+          y: {
+            min: 0,
+            max: br ? 1 : undefined,
+            ticks: {
+              maxTicksLimit: 6,
+              callback: function (v) {
+                if (br) {
+                  if (v > DD_BREAK_LO && v < DD_BREAK_HI) return '';
+                  const real = ddBrokenUnmap(v, br);
+                  if (real == null) return '';
+                  return _ddRpTick(real);
+                }
+                return _ddRpTick(v);
+              },
+            },
+            afterBuildTicks: br ? (axis) => {
+              axis.ticks = [0, 0.26, 0.52, DD_BREAK_LO, DD_BREAK_HI, 0.93, 1]
+                .map(value => ({ value }));
+            } : undefined,
+          },
+        },
       },
     });
     return;
@@ -15274,6 +15408,33 @@ function updateDirHeading() {
   h.textContent = userCity ? `Yang Laku di ${userCity}` : 'Tipe Produk';
 }
 
+/* Header carousel — default browse state only. Hidden the moment a search,
+ * category or subgroup is active so results start at the top, and while
+ * compare-picking (that flow needs the grid immediately). Rendered once by
+ * js/gpt-dir-hero.js and only toggled after that, so autoplay position and
+ * already-fetched thumbnails survive a filter round-trip. */
+function syncDirHero() {
+  const host = $('dir-hero');
+  if (!host) return;
+  const show = !state.comparePick
+    && !(state.dirSearch || '').trim()
+    && !(state.dirCats || []).length
+    && !state.dirSub;
+  host.hidden = !show;
+  if (!show || !window.LarisGptDirHero) return;
+  // Every navigation is handed back here rather than reimplemented in the
+  // hero: applyDirectoryCategory already resets search/page, syncs the filter
+  // host, closes the mega-menu and logs dir_filter.
+  window.LarisGptDirHero.render(host, {
+    supabase: _supabase,
+    imgThumb,
+    onCategory: (cat, sub) => { void applyDirectoryCategory(cat, sub); },
+    onKategoriMenu: () => { $('results-bar-kategori')?.click(); },
+    onTracker: () => { $('btn-tracker')?.click(); },
+    onEvent: (name, meta) => { void logUserEvent(name, { ui: 'gpt', ...(meta || {}) }); },
+  });
+}
+
 async function openDirectory() {
   setView('directory');
   _dirApplyDefaultsOnce();
@@ -15313,6 +15474,7 @@ async function openDirectory() {
 }
 
 async function renderDirectory() {
+  syncDirHero();
   // Compare-pick needs a specific LISTING (not a type) — keep the old grid there.
   if (state.comparePick) {
     renderDirCatRail();
