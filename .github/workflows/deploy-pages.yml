@@ -2,13 +2,10 @@
 # GitHub Pages is retired (ToS / commercial SaaS). Live domain DNS points at Contabo;
 # Cloudflare Pages is the CDN mirror at larisid.pages.dev.
 #
-# Requires repo secrets (when GitHub account is restored):
-#   CLOUDFLARE_API_TOKEN  — Pages edit permission
-#   CLOUDFLARE_ACCOUNT_ID — 721a30ed6330104bd87c64e6024b240f
-#   CONTABO_SSH_KEY       — private key for root@84.247.147.205
+# Repo secrets (set 2026-08-24): CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID,
+# CONTABO_SSH_KEY (private key for root@84.247.147.205).
 #
-# Until Actions can run, deploy from a laptop:
-#   bash scripts/deploy-static.sh
+# Manual fallback: bash scripts/deploy-static.sh
 
 name: Deploy static site
 
@@ -39,16 +36,16 @@ jobs:
           command: pages deploy _site --project-name=larisid --branch=main
 
       - name: Sync to Contabo (larisid.com)
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: 84.247.147.205
-          username: root
-          key: ${{ secrets.CONTABO_SSH_KEY }}
-          source: "_site/*"
-          target: /root/larisid-infra/docker/volumes/www/larisid
-          strip_components: 1
-          overwrite: true
-          rm: true
+        # rsync --delete updates files in place (same directory inode) so the
+        # Caddy container's bind mount stays live. scp-action's `rm: true`
+        # deletes+recreates the target dir instead, which orphans the mount
+        # and 404s the site until the container is restarted — don't use it.
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.CONTABO_SSH_KEY }}" > ~/.ssh/contabo_key
+          chmod 600 ~/.ssh/contabo_key
+          rsync -az --delete -e "ssh -i ~/.ssh/contabo_key -o StrictHostKeyChecking=no" \
+            _site/ root@84.247.147.205:/root/larisid-infra/docker/volumes/www/larisid/
 
       - name: Ping IndexNow (Bing)
         run: |
