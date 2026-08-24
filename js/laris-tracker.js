@@ -1803,19 +1803,31 @@
     '</div>';
   }
 
+  // Single row at container widths that fit it: image+name, numbers, chart,
+  // button, left to right — the shape Steven asked for, matching how the old
+  // sparkline card read before the chart replaced the sparklines. Below that
+  // width (.ltk-card-row switches via @container, see the CSS) the same four
+  // pieces stack instead of squeezing.
   function cardHtml(r) {
     var key = rowKey(r);
     var trend = rowHasTrend(r);
     var isKw = S.tab !== 'store';
-    // Line 1: who's selling it (product cards) or how long they've sold
-    // (store cards, no store-of-store concept). Falls back to the toko-count
-    // when we have no rep store name yet, never leaving the line blank. The
-    // SKU count that used to sit on line 2 is now the stats column's foot.
+    // Who's selling it (product cards) or how long they've sold (store cards,
+    // no store-of-store concept). Falls back to the toko-count when there's no
+    // rep store name yet, never leaving the line blank.
     var line1 = isKw
       ? (r.store_name || (trend ? fmtUnits(r.n_sellers || 0) + ' toko aktif' : 'Mengumpulkan data'))
       : (r.oldest_listing_date ? 'Toko sejak ' + fmtAge(r.oldest_listing_date) : 'Mengumpulkan data');
     return '<article class="ltk-card">' +
-      '<div class="ltk-card-head-row">' +
+      '<div class="ltk-card-kebabwrap">' +
+        '<button type="button" class="ltk-kebab" data-ltk-menu="' + attr(key) + '" ' +
+          'aria-label="Aksi untuk ' + attr(rowLabel(r)) + '" aria-expanded="' + (S.openRow === key) + '">' +
+          '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+          '<circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg>' +
+        '</button>' +
+        (S.openRow === key ? rowMenuHtml(key, isKw, 'card') : '') +
+      '</div>' +
+      '<div class="ltk-card-row">' +
         '<div class="ltk-card-top" data-ltk-lihatdetail="' + attr(key) + '">' +
           (isKw ? rowIconHtml(r) : storeAvatar(r)) +
           '<div class="ltk-card-head">' +
@@ -1823,20 +1835,8 @@
             '<span class="ltk-card-meta">' + esc(line1) + '</span>' +
           '</div>' +
         '</div>' +
-        '<div class="ltk-card-kebabwrap">' +
-          '<button type="button" class="ltk-kebab" data-ltk-menu="' + attr(key) + '" ' +
-            'aria-label="Aksi untuk ' + attr(rowLabel(r)) + '" aria-expanded="' + (S.openRow === key) + '">' +
-            '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
-            '<circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg>' +
-          '</button>' +
-          (S.openRow === key ? rowMenuHtml(key, isKw, 'card') : '') +
-        '</div>' +
-      '</div>' +
-      '<div class="ltk-card-body">' +
         cardStatsHtml(key, r, trend, isKw) +
         cardChartHtml(key, trend) +
-      '</div>' +
-      '<div class="ltk-card-foot">' +
         '<button type="button" class="ltk-card-detail-btn" data-ltk-lihatdetail="' + attr(key) + '">Lihat Detail' +
           '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" ' +
           'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>' +
