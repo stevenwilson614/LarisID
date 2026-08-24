@@ -667,17 +667,18 @@
     { key: 'avg_price', label: 'Harga', fmt: function (r) { return fmtRpShort(r.avg_price || 0); } },
   ];
 
-  // Bordered stat box: label, value, delta, and its own mini trend line —
-  // shared by the mobile card (cardHtml) and the Lihat Detail top row
-  // (renderDetail), which differ only in canvas size. `rowKeyStr` lets
-  // paintMetricSparks resolve the row again at paint time without storing
-  // per-canvas closures.
+  // Stat box: label, value, delta, and — when `cw` is non-zero — its own mini
+  // trend line. Shared by the row card (cardHtml) and the Lihat Detail top row
+  // (renderDetail). The card passes cw = 0: it draws the full weekly chart
+  // beside these numbers, which makes a 60x20 sparkline per stat pure noise.
+  // `rowKeyStr` lets paintMetricSparks resolve the row again at paint time
+  // without storing per-canvas closures.
   function metricStatBlockHtml(rowKeyStr, m, r, trend, cw, ch) {
     return '<div class="ltk-mstat">' +
       '<span class="ltk-mstat-lbl">' + esc(m.label) + '</span>' +
       '<span class="ltk-mstat-val">' + esc(m.fmt(r)) + '</span>' +
       deltaHtml(r[m.key], r[m.key + '_prev'], trend) +
-      (trend
+      (trend && cw
         ? '<canvas class="ltk-mstat-spark" data-ltk-mspark="' + attr(rowKeyStr) + '|' + attr(m.key) +
           '" width="' + cw + '" height="' + ch + '"></canvas>'
         : '') +
@@ -752,6 +753,9 @@
     renderHead();
     renderScopeTabs();
     renderChipbar();
+    // Cards rendered while the pane was hidden had no width to size a canvas
+    // from, so sweep again now that this screen is the visible one.
+    if (name === 'rollup') { _layoutRetries = 0; scheduleSweep(0); }
   }
 
   function renderHead() {
@@ -1634,13 +1638,7 @@
           '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
           '<circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg>' +
         '</button>' +
-        (S.openRow === key
-          ? '<div class="ltk-menu" role="menu">' +
-              '<button type="button" role="menuitem" data-ltk-act="setup">Ubah pantauan</button>' +
-              (isKw ? '<button type="button" role="menuitem" data-ltk-dive="' + attr(key) + '">Buka Deep Dive</button>' : '') +
-              '<button type="button" role="menuitem" class="ltk-menu-danger" data-ltk-drop="' + attr(key) + '">Hapus</button>' +
-            '</div>'
-          : '') +
+        (S.openRow === key ? rowMenuHtml(key, isKw, 'row') : '') +
       '</td></tr>' +
       (expanded ? rowDetailHtml(r, isKw) : '');
   }
@@ -1742,43 +1740,101 @@
     return catIconHtml(cat, 81, 'ltk-row-ico');
   }
 
-  // Mobile card — replaces the sideways-scrolling table below the 720px
-  // breakpoint (see the CSS media query). Rendered alongside the table (not
-  // instead of), same rows, so nothing here needs its own data fetch; CSS
-  // shows exactly one of the two per viewport width.
+  /* ── Row card ────────────────────────────────────────────────────────────
+     The only visible row surface (the table above it is display:none). Laid
+     out like the Deep Dive hero row: who it is on top, then measured numbers
+     on the left and one interactive weekly chart on the right, then the way
+     into the full detail screen. Everything it draws comes from data
+     loadDenseSeries() already fetched for the rollup — no extra round trips. */
+
+  // One source for the kebab menu markup — rendered inline by rowHtml/cardHtml
+  // and re-injected in place by syncOpenMenus() when the menu is toggled.
+  function rowMenuHtml(key, isKw, variant) {
+    return '<div class="ltk-menu' + (variant === 'card' ? ' ltk-menu--card' : '') + '" role="menu">' +
+      '<button type="button" role="menuitem" data-ltk-act="setup">Ubah pantauan</button>' +
+      (isKw ? '<button type="button" role="menuitem" data-ltk-dive="' + attr(key) + '">Buka Deep Dive</button>' : '') +
+      '<button type="button" role="menuitem" class="ltk-menu-danger" data-ltk-drop="' + attr(key) + '">Hapus</button>' +
+    '</div>';
+  }
+
+  // Deep Dive's hero numbers, tracker edition: the three measured metrics over
+  // the selected window, each with its window-over-window delta (the same
+  // comparison the window selector at the top of the panel describes).
+  function cardStatsHtml(key, r, trend, isKw) {
+    var skus = Number(r.n_listings) || 0;
+    var foot = isKw
+      ? fmtUnits(skus) + ' SKU aktif di ' + fmtUnits(r.n_sellers || 0) + ' toko'
+      : fmtUnits(skus) + ' SKU aktif';
+    return '<div class="ltk-card-stats">' +
+      STAT_METRICS.map(function (m) {
+        return metricStatBlockHtml(key, m, r, trend, 0, 0);
+      }).join('') +
+      (skus ? '<p class="ltk-card-stats-foot">' + esc(foot) + '</p>' : '') +
+    '</div>';
+  }
+
+  // Canvas is mounted lazily (mountCardCharts) — the markup only reserves it.
+  // Note the chart block sits OUTSIDE [data-ltk-lihatdetail]: scrubbing a week
+  // must never navigate away from the list.
+  function cardChartHtml(key, trend) {
+    if (!trend) {
+      return '<div class="ltk-card-chart ltk-card-chart--empty">' +
+        '<p class="ltk-detail-peers-note">Perlu minimal 2 hari data untuk menampilkan tren.</p>' +
+      '</div>';
+    }
+    return '<div class="ltk-card-chart">' +
+      '<div class="ltk-cchart-head">' +
+        '<span class="ltk-cchart-read">' +
+          '<b class="ltk-cchart-om" data-ltk-cread="om">—</b><span>omset</span>' +
+          '<b class="ltk-cchart-un" data-ltk-cread="un">—</b><span>unit</span>' +
+        '</span>' +
+        '<span class="ltk-chart-scrub-date" data-ltk-cread="date"></span>' +
+      '</div>' +
+      '<div class="ltk-detail-chart-canvaswrap">' +
+        '<canvas class="ltk-card-chart-canvas" data-ltk-cardchart="' + attr(key) + '" ' +
+          'width="600" height="200" aria-hidden="true"></canvas>' +
+      '</div>' +
+      '<div class="ltk-detail-chart-labels" data-ltk-chart-labels></div>' +
+      '<div class="ltk-chart-legend">' +
+        '<span class="ltk-chart-legend-item"><i class="ltk-lg-om"></i>Omset / minggu (Rp)</span>' +
+        '<span class="ltk-chart-legend-item"><i class="ltk-lg-un"></i>Unit / minggu</span>' +
+        '<span class="ltk-chart-legend-item"><i class="ltk-lg-fc"></i>Perkiraan</span>' +
+      '</div>' +
+    '</div>';
+  }
+
   function cardHtml(r) {
     var key = rowKey(r);
     var trend = rowHasTrend(r);
     var isKw = S.tab !== 'store';
     // Line 1: who's selling it (product cards) or how long they've sold
     // (store cards, no store-of-store concept). Falls back to the toko-count
-    // when we have no rep store name yet, never leaving the line blank.
+    // when we have no rep store name yet, never leaving the line blank. The
+    // SKU count that used to sit on line 2 is now the stats column's foot.
     var line1 = isKw
       ? (r.store_name || (trend ? fmtUnits(r.n_sellers || 0) + ' toko aktif' : 'Mengumpulkan data'))
       : (r.oldest_listing_date ? 'Toko sejak ' + fmtAge(r.oldest_listing_date) : 'Mengumpulkan data');
-    var line2 = 'SKU Aktif: ' + fmtUnits(r.n_listings || 0);
     return '<article class="ltk-card">' +
-      '<div class="ltk-card-top" data-ltk-lihatdetail="' + attr(key) + '">' +
-        (isKw ? rowIconHtml(r) : storeAvatar(r)) +
-        '<div class="ltk-card-head">' +
-          '<span class="ltk-card-name">' + esc(rowLabel(r)) + '</span>' +
-          '<span class="ltk-card-meta">' + esc(line1) + '</span>' +
-          '<span class="ltk-card-meta">' + esc(line2) + '</span>' +
+      '<div class="ltk-card-head-row">' +
+        '<div class="ltk-card-top" data-ltk-lihatdetail="' + attr(key) + '">' +
+          (isKw ? rowIconHtml(r) : storeAvatar(r)) +
+          '<div class="ltk-card-head">' +
+            '<span class="ltk-card-name">' + esc(rowLabel(r)) + '</span>' +
+            '<span class="ltk-card-meta">' + esc(line1) + '</span>' +
+          '</div>' +
         '</div>' +
-        '<button type="button" class="ltk-kebab" data-ltk-menu="' + attr(key) + '" ' +
-          'aria-label="Aksi untuk ' + attr(rowLabel(r)) + '" aria-expanded="' + (S.openRow === key) + '">' +
-          '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
-          '<circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg>' +
-        '</button>' +
-        (S.openRow === key
-          ? '<div class="ltk-menu ltk-menu--card" role="menu">' +
-              '<button type="button" role="menuitem" data-ltk-act="setup">Ubah pantauan</button>' +
-              '<button type="button" role="menuitem" class="ltk-menu-danger" data-ltk-drop="' + attr(key) + '">Hapus</button>' +
-            '</div>'
-          : '') +
+        '<div class="ltk-card-kebabwrap">' +
+          '<button type="button" class="ltk-kebab" data-ltk-menu="' + attr(key) + '" ' +
+            'aria-label="Aksi untuk ' + attr(rowLabel(r)) + '" aria-expanded="' + (S.openRow === key) + '">' +
+            '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+            '<circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg>' +
+          '</button>' +
+          (S.openRow === key ? rowMenuHtml(key, isKw, 'card') : '') +
+        '</div>' +
       '</div>' +
-      '<div class="ltk-card-stats">' +
-        STAT_METRICS.map(function (m) { return metricStatBlockHtml(key, m, r, trend, 60, 20); }).join('') +
+      '<div class="ltk-card-body">' +
+        cardStatsHtml(key, r, trend, isKw) +
+        cardChartHtml(key, trend) +
       '</div>' +
       '<div class="ltk-card-foot">' +
         '<button type="button" class="ltk-card-detail-btn" data-ltk-lihatdetail="' + attr(key) + '">Lihat Detail' +
@@ -1787,6 +1843,133 @@
         '</button>' +
       '</div>' +
     '</article>';
+  }
+
+  /* The keyword cap is 40, and mounting forty canvases in one paint is a jank
+     machine — so the first EAGER_CHARTS rows mount immediately and the rest
+     wait until their card is near the viewport.
+
+     The lazy half is a throttled scroll sweep, not an IntersectionObserver:
+     observer callbacks, rAF and even scroll events are all delivered off the
+     rendering lifecycle, which a page that isn't painting can withhold
+     indefinitely — and the failure mode there is a card stuck showing an empty
+     chart box. The eager head means that starvation can never cost a normal
+     account (a handful of tracked rows) anything at all. */
+  var EAGER_CHARTS = 8;
+  var _chartSweep = null;
+  var _sweepTimer = 0;
+  var _layoutRetries = 0;
+
+  function mountCardChart(cv) {
+    cv._ltkTried = true;
+    var key = cv.getAttribute('data-ltk-cardchart');
+    var row = findRollupRow(key);
+    if (!row) return;
+    var card = cv.closest ? cv.closest('.ltk-card') : null;
+    if (!card) return;
+    var dc = mountTrendChart(cv, {
+      mode: 'dual',
+      row: row,
+      labelsEl: card.querySelector('[data-ltk-chart-labels]'),
+      header: {
+        omEl: card.querySelector('[data-ltk-cread="om"]'),
+        unEl: card.querySelector('[data-ltk-cread="un"]'),
+        dateEl: card.querySelector('[data-ltk-cread="date"]'),
+      },
+    });
+    // rowHasTrend() can pass on raw scrape buckets while the weekly series
+    // still has fewer than two plottable points. Say so rather than leaving a
+    // blank canvas and a "—" readout sitting there.
+    if (!dc) chartUnavailable(card.querySelector('.ltk-card-chart'));
+  }
+
+  function chartUnavailable(wrap) {
+    if (!wrap) return;
+    wrap.className = 'ltk-card-chart ltk-card-chart--empty';
+    wrap.innerHTML = '<p class="ltk-detail-peers-note">Belum cukup riwayat mingguan untuk menggambar tren.</p>';
+  }
+
+  // setTimeout, not requestAnimationFrame: rAF is starved whenever the page
+  // isn't producing frames (background tab, offscreen host), and a chart that
+  // only mounts on the next frame would then never mount at all.
+  function scheduleSweep(delay) {
+    if (_sweepTimer) return;
+    _sweepTimer = global.setTimeout(function () {
+      _sweepTimer = 0;
+      sweepCardCharts();
+    }, delay || 16);
+  }
+
+  function sweepCardCharts() {
+    var p = pane('rollup');
+    var canvases = p ? p.querySelectorAll('[data-ltk-cardchart]') : [];
+    var vh = global.innerHeight || 800;
+    var pending = 0, unlaid = 0;
+    canvases.forEach(function (cv, idx) {
+      if (cv._ltkTried) return;
+      // Zero width means the pane has not been laid out yet — the host renders
+      // the view before showing it. Sizing a canvas off a 0px box leaves a
+      // stretched, blurry chart, so defer and come back.
+      if (!cv.clientWidth) { pending++; unlaid++; return; }
+      var r = cv.getBoundingClientRect();
+      if (idx < EAGER_CHARTS || (r.bottom > -400 && r.top < vh + 400)) mountCardChart(cv);
+      else pending++;
+    });
+    // Bounded, because a rollup left hidden behind the detail screen would
+    // otherwise retry forever.
+    if (unlaid && _layoutRetries < 5) { _layoutRetries++; scheduleSweep(120); return; }
+    if (!pending) detachChartSweep();
+  }
+
+  function attachChartSweep() {
+    if (_chartSweep) return;
+    _chartSweep = function () { scheduleSweep(16); };
+    // Capture phase: in Site B the tracker sits inside the app's own scrolling
+    // container, so the scroll event never reaches window in the bubble phase.
+    global.addEventListener('scroll', _chartSweep, true);
+    global.addEventListener('resize', _chartSweep);
+  }
+
+  function detachChartSweep() {
+    if (_sweepTimer) { global.clearTimeout(_sweepTimer); _sweepTimer = 0; }
+    if (!_chartSweep) return;
+    global.removeEventListener('scroll', _chartSweep, true);
+    global.removeEventListener('resize', _chartSweep);
+    _chartSweep = null;
+  }
+
+  function mountCardCharts(root) {
+    if (!root || !root.querySelectorAll('[data-ltk-cardchart]').length) {
+      detachChartSweep();
+      return;
+    }
+    // Every render replaces the canvases; drop the charts that went with the
+    // old ones so the resize handler isn't walking detached nodes forever.
+    _charts = _charts.filter(function (d) { return d.cv && d.cv.isConnected; });
+    _layoutRetries = 0;
+    attachChartSweep();
+    sweepCardCharts();
+  }
+
+  /* Toggling a kebab used to re-render the whole rollup — which now means
+     tearing down and re-mounting every chart on the screen. Patch the open
+     menu in place instead. */
+  function syncOpenMenus() {
+    var p = pane('rollup');
+    if (!p) return;
+    var isKw = S.tab !== 'store';
+    p.querySelectorAll('.ltk-menu').forEach(function (m) { m.remove(); });
+    p.querySelectorAll('[data-ltk-menu]').forEach(function (btn) {
+      var key = btn.getAttribute('data-ltk-menu');
+      var open = key === S.openRow;
+      btn.setAttribute('aria-expanded', String(open));
+      if (!open) return;
+      // The table above the cards is display:none — no point building a menu
+      // nobody can reach into it.
+      if (btn.closest && btn.closest('.ltk-tablewrap')) return;
+      var card = btn.closest && btn.closest('.ltk-card');
+      btn.insertAdjacentHTML('afterend', rowMenuHtml(key, isKw, card ? 'card' : 'row'));
+    });
   }
 
   function renderRollup() {
@@ -1854,6 +2037,7 @@
 
     paintSparks();
     paintMetricSparks();
+    mountCardCharts(p);
   }
 
   /* ── "Lihat Detail" screen ─────────────────────────────────────────────
@@ -2040,129 +2224,197 @@
     renderRollup();
   }
 
-  // Bigger sibling of drawSpark for the detail screen's single-metric chart —
-  // same raw-canvas approach (no charting lib for one line). Draws a Y-axis
-  // scale + point markers so weekly values are readable without scrubbing,
-  // matching the Deep Dive trend chart's clarity.
-  /* ── Detail chart: date-axis labels + drag/hover-to-scrub ────────────────
-     One module-level `_dc` holds the currently-mounted chart's state, since
-     the canvas is torn down and recreated on every renderDetail() call —
-     scrub handlers close over `_dc`, not over stale DOM/closures from a
-     previous mount. */
-  var _dc = null;
+  /* ── Trend chart engine ─────────────────────────────────────────────────
+     Raw canvas, two modes:
 
-  function paintDetailChartFrame(hi) {
-    if (!_dc) return;
-    var ctx = _dc.ctx, xy = _dc.xy, w = _dc.w, h = _dc.h;
-    var P = _dc.pad;
-    var color = _dc.up ? '#16A34A' : '#DC2626';
+       'single'  one metric on one Y axis — the "Lihat Detail" screen's chart,
+                 line coloured green/red by direction.
+       'dual'    omset on the left axis (filled) + unit on the right, with a
+                 dashed green Perkiraan tail — the Deep Dive "Tren Pasar /
+                 Pasar" view, drawn once per rollup row.
+
+     STATE IS PER CANVAS (`cv._ltkChart`), never a module singleton. The rollup
+     screen mounts one of these per tracked row (up to 40), and a shared state
+     object would make scrubbing one row repaint another row's crosshair.
+
+     No charting lib: Chart.js for one line was already the wrong trade on the
+     detail screen; for forty of them it isn't a trade at all.                */
+
+  var CHART_C = {
+    om: '#B5202A', omFill: 'rgba(181,32,42,.07)',
+    un: '#2563EB',
+    fc: '#16A34A',
+    up: '#16A34A', upFill: 'rgba(22,163,74,.08)',
+    down: '#DC2626', downFill: 'rgba(220,38,38,.08)',
+  };
+
+  // Every live chart, so a resize can redraw them at the new width — the canvas
+  // is sized from clientWidth at mount, so it would otherwise stretch and blur.
+  var _charts = [];
+  var _chartResizeBound = false;
+
+  function axisFor(pts) {
+    var vals = pts.map(function (p) { return p.v; });
+    return niceAxis(Math.min.apply(null, vals), Math.max.apply(null, vals), 5);
+  }
+
+  // Widest tick label, in characters — decides how much gutter the axis needs.
+  function tickChars(axis, metricKey) {
+    var n = 0;
+    for (var i = 0; i < axis.ticks.length; i++) {
+      n = Math.max(n, fmtChartTick(axis.ticks[i], metricKey).length);
+    }
+    return n;
+  }
+
+  function firstForecastIdx(pts) {
+    for (var i = 0; i < pts.length; i++) if (pts[i].forecast) return i;
+    return -1;
+  }
+
+  function paintChartFrame(dc, hi) {
+    if (!dc) return;
+    var ctx = dc.ctx, w = dc.w, h = dc.h, P = dc.pad;
     var plotL = P.l, plotR = w - P.r, plotT = P.t, plotB = h - P.b;
+    var plotH = Math.max(1, plotB - plotT);
     ctx.clearRect(0, 0, w, h);
 
-    // Horizontal grid + Y-axis labels (Deep Dive clarity: every scale is readable).
-    var axis = _dc.axis;
-    if (axis && axis.ticks && axis.ticks.length) {
+    // Grid + axis labels. The left axis owns the gridlines; a right-hand axis
+    // (dual mode's unit scale) prints labels only — two grids at two scales
+    // draw a lattice, which is what Chart.js's drawOnChartArea:false avoids.
+    ctx.font = '600 10px system-ui, -apple-system, sans-serif';
+    ctx.textBaseline = 'middle';
+    dc.series.forEach(function (s) {
+      var axis = s.axis;
+      if (!axis || !axis.ticks || !axis.ticks.length) return;
       var spanY = (axis.max - axis.min) || 1;
-      var plotH = Math.max(1, plotB - plotT);
-      ctx.font = '600 10px system-ui, -apple-system, sans-serif';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
+      var left = s.side !== 'r';
       for (var ti = 0; ti < axis.ticks.length; ti++) {
         var tv = axis.ticks[ti];
         var gy = plotT + plotH - ((tv - axis.min) / spanY) * plotH;
-        ctx.beginPath();
-        ctx.strokeStyle = 'rgba(229,231,235,.95)';
-        ctx.lineWidth = 1;
-        ctx.moveTo(plotL, gy);
-        ctx.lineTo(plotR, gy);
-        ctx.stroke();
-        ctx.fillStyle = '#9CA3AF';
-        ctx.fillText(fmtChartTick(tv, _dc.metricKey), plotL - 6, gy);
+        if (left) {
+          ctx.beginPath();
+          ctx.strokeStyle = 'rgba(229,231,235,.95)';
+          ctx.lineWidth = 1;
+          ctx.moveTo(plotL, gy);
+          ctx.lineTo(plotR, gy);
+          ctx.stroke();
+        }
+        // Right-hand ticks take the series colour so it is obvious which line
+        // they scale — the two axes carry different units.
+        ctx.fillStyle = left ? '#9CA3AF' : s.color;
+        ctx.textAlign = left ? 'right' : 'left';
+        ctx.fillText(fmtChartTick(tv, s.key), left ? plotL - 6 : plotR + 6, gy);
       }
-    }
+    });
 
-    // Soft fill under the curve (clip to plot area)
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(plotL, plotT, plotR - plotL, plotB - plotT);
-    ctx.clip();
-    tracePath(ctx, xy);
-    ctx.lineTo(xy[xy.length - 1][0], plotB);
-    ctx.lineTo(xy[0][0], plotB);
-    ctx.closePath();
-    ctx.fillStyle = _dc.up ? 'rgba(22,163,74,.08)' : 'rgba(220,38,38,.08)';
-    ctx.fill();
-    // Line — measured stretch solid, forecast tail dashed, so a modelled
-    // number is never presented with the same authority as a measured one.
-    var fc = _dc.firstForecast;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
-    if (fc > 0 && fc < xy.length) {
-      tracePath(ctx, xy.slice(0, fc + 1));
-      ctx.stroke();
+    var fc = dc.firstForecast;
+    dc.series.forEach(function (s) {
+      var xy = s.xy;
       ctx.save();
-      ctx.setLineDash([4, 4]);
-      tracePath(ctx, xy.slice(fc));
-      ctx.stroke();
-      ctx.restore();
-    } else {
-      tracePath(ctx, xy);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    // Mark every weekly point (Deep Dive pointRadius) — forecast points keep
-    // the same radius so the dashed tail stays readable.
-    for (var mi = 0; mi < xy.length; mi++) {
       ctx.beginPath();
-      ctx.arc(xy[mi][0], xy[mi][1], 3, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.fill();
-      ctx.lineWidth = 1.25;
-      ctx.strokeStyle = '#fff';
-      ctx.stroke();
-    }
+      ctx.rect(plotL, plotT, plotR - plotL, plotB - plotT);
+      ctx.clip();
+      if (s.fill) {
+        tracePath(ctx, xy);
+        ctx.lineTo(xy[xy.length - 1][0], plotB);
+        ctx.lineTo(xy[0][0], plotB);
+        ctx.closePath();
+        ctx.fillStyle = s.fill;
+        ctx.fill();
+      }
+      // Measured stretch solid, forecast tail dashed, so a modelled number is
+      // never presented with the same authority as a measured one.
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      if (fc > 0 && fc < xy.length) {
+        tracePath(ctx, xy.slice(0, fc + 1));
+        ctx.stroke();
+        ctx.save();
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = s.dashColor || s.color;
+        tracePath(ctx, xy.slice(fc));
+        ctx.stroke();
+        ctx.restore();
+      } else {
+        tracePath(ctx, xy);
+        ctx.stroke();
+      }
+      ctx.restore();
 
-    // Crosshair — the scrubbed point, or the latest point by default.
-    var idx = hi != null ? hi : xy.length - 1;
-    var p = xy[idx];
+      // Mark every weekly point — forecast points keep the same radius so the
+      // dashed tail stays readable.
+      for (var mi = 0; mi < xy.length; mi++) {
+        ctx.beginPath();
+        ctx.arc(xy[mi][0], xy[mi][1], 3, 0, Math.PI * 2);
+        ctx.fillStyle = (fc >= 0 && mi >= fc && s.dashColor) ? s.dashColor : s.color;
+        ctx.fill();
+        ctx.lineWidth = 1.25;
+        ctx.strokeStyle = '#fff';
+        ctx.stroke();
+      }
+    });
+
+    // Crosshair — the scrubbed week, or the default readout week otherwise.
+    var idx = hi != null ? hi : dc.defaultIdx;
+    var lead = dc.series[0].xy[idx];
+    if (!lead) return;
     ctx.beginPath();
     ctx.setLineDash([3, 3]);
-    ctx.moveTo(p[0], plotT);
-    ctx.lineTo(p[0], plotB);
+    ctx.moveTo(lead[0], plotT);
+    ctx.lineTo(lead[0], plotB);
     ctx.strokeStyle = 'rgba(107,114,128,.45)';
     ctx.lineWidth = 1;
     ctx.stroke();
     ctx.setLineDash([]);
-    ctx.beginPath();
-    ctx.arc(p[0], p[1], 5, 0, Math.PI * 2);
-    ctx.fillStyle = color;
-    ctx.fill();
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = '#fff';
-    ctx.stroke();
+    dc.series.forEach(function (s) {
+      var p = s.xy[idx];
+      if (!p) return;
+      ctx.beginPath();
+      ctx.arc(p[0], p[1], 5, 0, Math.PI * 2);
+      ctx.fillStyle = s.color;
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#fff';
+      ctx.stroke();
+    });
   }
 
-  function updateChartHeaderForIndex(idx) {
-    if (!_dc || !_dc.valEl) return;
-    if (idx == null) {
-      _dc.valEl.textContent = _dc.normalValueText;
-      if (_dc.subEl) _dc.subEl.innerHTML = _dc.normalSubHtml;
+  function updateChartHeader(dc, idx) {
+    var H = dc.header || {};
+    if (dc.mode === 'dual') {
+      var i = idx == null ? dc.defaultIdx : idx;
+      var om = dc.byKey.omset ? dc.byKey.omset.pts[i] : null;
+      var un = dc.byKey.units ? dc.byKey.units.pts[i] : null;
+      var ref = om || un;
+      if (!ref) return;
+      if (H.omEl) H.omEl.textContent = fmtRpShort(om ? om.v : 0);
+      if (H.unEl) H.unEl.textContent = fmtUnits(un ? un.v : 0);
+      if (H.dateEl) {
+        H.dateEl.innerHTML = esc(fmtDayShort(ref.d)) +
+          (ref.forecast ? ' <em>(perkiraan)</em>' : '');
+      }
       return;
     }
-    var pt = _dc.pts[idx];
-    var fakeRow = {}; fakeRow[_dc.metricKey] = pt.v;
-    _dc.valEl.textContent = _dc.activeStat.fmt(fakeRow);
-    if (_dc.subEl) {
-      _dc.subEl.innerHTML = '<span class="ltk-chart-scrub-date">' +
+    if (!H.valEl) return;
+    if (idx == null) {
+      H.valEl.textContent = H.normalValueText;
+      if (H.subEl) H.subEl.innerHTML = H.normalSubHtml;
+      return;
+    }
+    var pt = dc.series[0].pts[idx];
+    var fakeRow = {}; fakeRow[dc.series[0].key] = pt.v;
+    H.valEl.textContent = dc.activeStat.fmt(fakeRow);
+    if (H.subEl) {
+      H.subEl.innerHTML = '<span class="ltk-chart-scrub-date">' +
         esc(fmtDayShort(pt.d)) + (pt.forecast ? ' <em>(perkiraan)</em>' : '') + '</span>';
     }
   }
 
-  function nearestIndexForX(px) {
-    var xy = _dc.xy, best = 0, bestDist = Infinity;
+  function nearestIndexForX(dc, px) {
+    var xy = dc.series[0].xy, best = 0, bestDist = Infinity;
     for (var i = 0; i < xy.length; i++) {
       var d = Math.abs(xy[i][0] - px);
       if (d < bestDist) { bestDist = d; best = i; }
@@ -2175,14 +2427,34 @@
   // scrubs while actually dragging, so a normal page-scroll swipe isn't
   // hijacked. setPointerCapture keeps move events firing on the canvas even
   // if the finger drifts past its edge mid-drag.
-  function bindDetailChartScrub(cv) {
+  //
+  // Handlers read `cv._ltkChart` at event time rather than closing over one
+  // chart, so a resize re-mount does not need to rebind (and must not: the
+  // listeners are attached once per canvas, guarded by _ltkScrubBound).
+  function bindChartScrub(cv) {
+    if (cv._ltkScrubBound) return;
+    cv._ltkScrubBound = true;
     var dragging = false;
     function idxFromEvent(e) {
+      var dc = cv._ltkChart;
+      if (!dc) return null;
       var rect = cv.getBoundingClientRect();
-      return nearestIndexForX(e.clientX - rect.left);
+      return nearestIndexForX(dc, e.clientX - rect.left);
     }
-    function show(e) { var idx = idxFromEvent(e); paintDetailChartFrame(idx); updateChartHeaderForIndex(idx); }
-    function reset() { paintDetailChartFrame(null); updateChartHeaderForIndex(null); }
+    function show(e) {
+      var dc = cv._ltkChart;
+      if (!dc) return;
+      var idx = idxFromEvent(e);
+      if (idx == null) return;
+      paintChartFrame(dc, idx);
+      updateChartHeader(dc, idx);
+    }
+    function reset() {
+      var dc = cv._ltkChart;
+      if (!dc) return;
+      paintChartFrame(dc, null);
+      updateChartHeader(dc, null);
+    }
     cv.addEventListener('pointerdown', function (e) {
       dragging = true;
       try { cv.setPointerCapture(e.pointerId); } catch (_) {}
@@ -2194,6 +2466,24 @@
     cv.addEventListener('pointerup', function () { dragging = false; reset(); });
     cv.addEventListener('pointercancel', function () { dragging = false; reset(); });
     cv.addEventListener('pointerleave', function () { if (!dragging) reset(); });
+    // Belt to the placement's braces: the chart block is rendered outside
+    // [data-ltk-lihatdetail] precisely so a scrub cannot read as "open this
+    // row", and this keeps a stray bubble-phase host handler out of it too.
+    cv.addEventListener('click', function (e) { e.stopPropagation(); });
+  }
+
+  function bindChartResize() {
+    if (_chartResizeBound) return;
+    _chartResizeBound = true;
+    var t = 0;
+    global.addEventListener('resize', function () {
+      clearTimeout(t);
+      t = setTimeout(function () {
+        _charts.slice().forEach(function (dc) {
+          if (dc.cv && dc.cv.isConnected) mountTrendChart(dc.cv, dc.opts);
+        });
+      }, 180);
+    });
   }
 
   function renderChartDateLabels(container, minT, maxT, w, pad, stepDays) {
@@ -2220,43 +2510,97 @@
     }).join('');
   }
 
-  function mountDetailChart(cv, labelsEl, row, metricKey, activeStat, header) {
-    _dc = null;
-    if (!cv || !cv.getContext) return;
-    var daily = (row && row.dseries && row.dseries.length >= 2) ? row.dseries : rowSeries(row);
-    var pts = seriesPoints(weeklyDetailSeries(daily, row.weeklyRows), metricKey);
-    if (!pts) return;
+  /* Mount (or re-mount) a chart on `cv`.
+       o.row        rollup row / listing view row — supplies dseries + weeklyRows
+       o.mode       'dual' (omset + unit) | 'single'
+       o.metricKey  single mode only
+       o.activeStat single mode only — formats the scrub readout
+       o.labelsEl   date-axis strip
+       o.header     dual: {omEl, unEl, dateEl}
+                    single: {valEl, subEl, normalValueText, normalSubHtml}
+     Returns the chart state, or null when there is nothing plottable — the
+     caller is expected to have rendered the "belum cukup data" note instead. */
+  function mountTrendChart(cv, o) {
+    if (!cv || !cv.getContext) return null;
+    o = o || {};
+    var row = o.row;
+    if (!row) return null;
+    var mode = o.mode === 'dual' ? 'dual' : 'single';
+    var daily = (row.dseries && row.dseries.length >= 2) ? row.dseries : rowSeries(row);
+    var weekly = weeklyDetailSeries(daily, row.weeklyRows);
+    var defs = mode === 'dual'
+      ? [{ key: 'omset', side: 'l', color: CHART_C.om, fill: CHART_C.omFill, dashColor: CHART_C.fc },
+         { key: 'units', side: 'r', color: CHART_C.un, fill: null, dashColor: CHART_C.fc }]
+      : [{ key: o.metricKey || 'omset', side: 'l' }];
+
+    var i;
+    for (i = 0; i < defs.length; i++) {
+      var pts = seriesPoints(weekly, defs[i].key);
+      if (!pts) return null;
+      defs[i].pts = pts;
+      defs[i].axis = axisFor(pts);
+    }
+
+    // Left pad sized to the longest Y tick so labels never clip; the right pad
+    // does the same for dual mode's unit axis. Top/bottom keep points clear of
+    // the plot edge, like Deep Dive's Chart.js padding.
+    var padL = Math.max(36, Math.min(56, tickChars(defs[0].axis, defs[0].key) * 7 + 10));
+    var padR = defs[1]
+      ? Math.max(30, Math.min(52, tickChars(defs[1].axis, defs[1].key) * 7 + 10))
+      : 10;
+    var pad = { l: padL, r: padR, t: 10, b: 8 };
+
     var dpr = global.devicePixelRatio || 1;
     var w = cv.clientWidth || 280, h = cv.clientHeight || 160;
     cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
     var ctx = cv.getContext('2d');
     ctx.scale(dpr, dpr);
-    // Left pad sized to the longest Y tick so labels never clip; top/bottom
-    // keep points clear of the plot edge like Deep Dive's Chart.js padding.
-    var vals = pts.map(function (p) { return p.v; });
-    var axis = niceAxis(Math.min.apply(null, vals), Math.max.apply(null, vals), 5);
-    var tickW = 0;
-    for (var ti = 0; ti < axis.ticks.length; ti++) {
-      tickW = Math.max(tickW, fmtChartTick(axis.ticks[ti], metricKey).length);
+
+    var byKey = {};
+    for (i = 0; i < defs.length; i++) {
+      defs[i].xy = projectXY(defs[i].pts, w, h, pad, defs[i].axis.min, defs[i].axis.max);
+      byKey[defs[i].key] = defs[i];
     }
-    var pad = { l: Math.max(36, Math.min(56, tickW * 7 + 10)), r: 10, t: 10, b: 8 };
-    var xy = projectXY(pts, w, h, pad, axis.min, axis.max);
-    var firstForecast = -1;
-    for (var i = 0; i < pts.length; i++) {
-      if (pts[i].forecast) { firstForecast = i; break; }
+    if (mode === 'single') {
+      var xy0 = defs[0].xy;
+      var up = xy0[xy0.length - 1][1] <= xy0[0][1];   // smaller y = higher value
+      defs[0].color = up ? CHART_C.up : CHART_C.down;
+      defs[0].fill = up ? CHART_C.upFill : CHART_C.downFill;
+      defs[0].dashColor = defs[0].color;
     }
-    _dc = {
-      ctx: ctx, cv: cv, xy: xy, pts: pts, w: w, h: h, pad: pad, axis: axis,
-      metricKey: metricKey,
-      activeStat: activeStat, up: xy[xy.length - 1][1] <= xy[0][1], // smaller y = higher value
-      firstForecast: firstForecast,
-      valEl: header.valEl, subEl: header.subEl,
-      normalValueText: header.normalValueText, normalSubHtml: header.normalSubHtml,
+
+    var lead = defs[0].pts;
+    var fcIdx = firstForecastIdx(lead);
+    // Default readout is THIS week, not the next-Monday point weeklyDetailSeries
+    // always appends — a card's headline should be where the market is now.
+    // When that week is modelled the readout says so, so nothing is overstated.
+    var defIdx = Math.max(0, lead.length - 2);
+
+    var dc = {
+      cv: cv, ctx: ctx, w: w, h: h, pad: pad, mode: mode,
+      series: defs, byKey: byKey,
+      firstForecast: fcIdx,
+      defaultIdx: defIdx,
+      activeStat: o.activeStat,
+      header: o.header || {},
+      opts: o,
     };
-    paintDetailChartFrame(null);
+    cv._ltkChart = dc;
+    _charts = _charts.filter(function (d) {
+      return d.cv !== cv && d.cv && d.cv.isConnected;
+    });
+    _charts.push(dc);
+
+    paintChartFrame(dc, null);
+    updateChartHeader(dc, null);
     cv.style.touchAction = 'none';
-    bindDetailChartScrub(cv);
-    renderChartDateLabels(labelsEl, pts[0].t, pts[pts.length - 1].t, w, pad, 7);
+    bindChartScrub(cv);
+    bindChartResize();
+    // A narrow card can't fit a label per week without the last two colliding —
+    // fortnightly ticks read cleanly at any width the card takes.
+    renderChartDateLabels(o.labelsEl, lead[0].t, lead[lead.length - 1].t, w, pad,
+      w < 380 ? 21 : (w < 560 ? 14 : 7));
+    return dc;
   }
 
   // Scrollable listing picker styled like Deep Dive "Top Kompetitor", but
@@ -2420,14 +2764,31 @@
       '</div>';
     var nextList = p.querySelector('.ltk-table-wrap');
     if (nextList && prevScroll) nextList.scrollTop = prevScroll;
-    var cv = $('[data-ltk-detailchart]');
+    // Scoped to this pane, not host-wide: the rollup screen is still in the DOM
+    // (hidden) and every one of its cards carries a [data-ltk-chart-labels] of
+    // its own, so a host-level $() would hand back the wrong element.
+    var cv = p.querySelector('[data-ltk-detailchart]');
     if (cv && !loadingListing) {
-      mountDetailChart(cv, $('[data-ltk-chart-labels]'), row, metric, activeStat, {
-        valEl: $('[data-ltk-chart-valnum]'),
-        subEl: $('[data-ltk-chart-valsub]'),
-        normalValueText: activeStat.fmt(row),
-        normalSubHtml: deltaHtml(row[metric], row[metric + '_prev'], trend),
+      var dcd = mountTrendChart(cv, {
+        mode: 'single',
+        row: row,
+        metricKey: metric,
+        activeStat: activeStat,
+        labelsEl: p.querySelector('[data-ltk-chart-labels]'),
+        header: {
+          valEl: p.querySelector('[data-ltk-chart-valnum]'),
+          subEl: p.querySelector('[data-ltk-chart-valsub]'),
+          normalValueText: activeStat.fmt(row),
+          normalSubHtml: deltaHtml(row[metric], row[metric + '_prev'], trend),
+        },
       });
+      if (!dcd) {
+        var wrap = p.querySelector('.ltk-detail-chart-canvaswrap');
+        if (wrap) {
+          wrap.outerHTML = '<p class="ltk-detail-peers-note">' +
+            'Belum cukup riwayat mingguan untuk menggambar tren.</p>';
+        }
+      }
     }
     paintMetricSparks();
   }
@@ -3453,7 +3814,7 @@
     if (kebab) {
       var mk = kebab.getAttribute('data-ltk-menu');
       S.openRow = (S.openRow === mk) ? null : mk;
-      renderRollup();
+      syncOpenMenus();
       return;
     }
 
@@ -3514,7 +3875,7 @@
     // Any other click inside the tracker closes an open row menu.
     if (S.openRow && !(t.closest && t.closest('.ltk-menu'))) {
       S.openRow = null;
-      renderRollup();
+      syncOpenMenus();
     }
 
     var pickerOpenBtn = t.closest && t.closest('[data-ltk-picker-open]');
@@ -3865,6 +4226,8 @@
       global.document.removeEventListener('keydown', onKeydown, true);
       bound = false;
     }
+    detachChartSweep();
+    _charts = [];
     if (host) host.innerHTML = '';
     host = null; mounted = false;
   }
