@@ -148,7 +148,7 @@ const ANON_LIMIT_KEY = '_lid_gpt_anon_searches_v2';
 const ANON_DD_KEY = '_lid_gpt_anon_deepdive_v2'; // first product an anon user viewed free
 try { localStorage.removeItem('_lid_gpt_anon_searches_v1'); } catch (_) {}
 try { localStorage.removeItem('_lid_gpt_anon_deepdive_v1'); } catch (_) {} // reset stale 1-free gate
-const PAGE_SIZE = 60;
+const PAGE_SIZE = 30;
 const COMPOSER_EXAMPLES = [
   'Cari produk kayu dari Semarang',
   '3 produk yang cocok buat aku',
@@ -5046,17 +5046,11 @@ function renderSidebarLocCard() {
 function syncDirectoryFromOnboarding() {
   const o = state.onboarding || {};
   if (o.step !== 'done') return;
-  // City is not a UI filter anymore — the grid always shows national (ALL)
-  // markets. Prefer the user's city only for soft personalization (heading/note).
-  if (o.categories?.length) {
-    state.dirCats = [...new Set(
-      o.categories.map(c => toCanonicalCat(c) || c).filter(Boolean)
-    )];
-    // This filter came from the user's profile, not a click — the hero should
-    // still show on top of it. syncDirHero() reads this flag alongside
-    // dirCats, since an empty-dirCats check alone can't tell the two apart.
-    state.dirCatsFromOnboarding = true;
-  }
+  // City and minat stay on Discover / Ask Laris / the heading. Cari Produk
+  // default home is unfiltered — copying onboarding cats into dirCats used to
+  // select "Olahraga & Outdoor" (FINDER_DEFAULT_CAT maps there) and fetch
+  // only that bucket under the hero. An explicit rail / mega / hero click
+  // is what sets dirCats.
 }
 
 // ── Lokasi & kategori side drawer (does not interrupt the open chat) ──────
@@ -14790,12 +14784,23 @@ function terlarisBadgeHtml() {
     + '<span class="tlr-badge-txt"><span>Terlaris</span><span>Minggu Ini</span></span></span>';
 }
 
+function homeMeledakBadgeHtml() {
+  return `<span class="dir-home-badge dir-home-badge--meledak">${ico('flame', 11)} Meledak</span>`;
+}
+
+function homeWowHtml(w) {
+  if (!w || w.pct == null) return '';
+  const tip = ` title="${esc(terlarisTooltip(w))}"`;
+  if (w.pct === Infinity) return `<span class="prod-card-wow"${tip}>Baru</span>`;
+  return `<span class="prod-card-wow"${tip}>${ico('arrowUp', 10)} ${w.pct}%</span>`;
+}
+
 function terlarisWowHtml(w) {
   if (!w || w.pct == null) return '';
   return cardWowPctHtml(w.pct === Infinity ? Infinity : w.pct, terlarisTooltip(w));
 }
 
-function typeCardHtml(t, absIdx, animIdx, siblings, usedImgs) {
+function typeCardHtml(t, absIdx, animIdx, siblings, usedImgs, variant) {
   const parts = splitTypeTitle(t.keyword, siblings);
   const cover = pickTypeCover(t, usedImgs);
   const lo = Number(t.omset_p60) || 0;
@@ -14809,7 +14814,9 @@ function typeCardHtml(t, absIdx, animIdx, siblings, usedImgs) {
   const viewsHtml = vk
     ? `<span class="prod-card-views" hidden data-view-key="${esc(vk)}" title="Orang yang melihat produk ini di Laris tahun ini">${ico('eye', 11)}<span data-view-num>${viewers.toLocaleString('id-ID')}</span></span>`
     : '';
-  const tlr = t._terlaris || null;
+  const isTrend = variant === 'trend';
+  const isMeledak = variant === 'meledak';
+  const tlr = (isTrend || isMeledak) ? null : (t._terlaris || null);
   const wk = tlr || weeklyStats(t);
   const overlay = (cover.collided && parts.distinct)
     ? `<span class="prod-card-img-caption">${esc(parts.distinct)}</span>`
@@ -14817,8 +14824,18 @@ function typeCardHtml(t, absIdx, animIdx, siblings, usedImgs) {
   const imgBlock = cover.url
     ? `<div class="prod-card-img"><img src="${esc(imgThumb(cover.url))}" alt="" loading="lazy" decoding="async" width="320" height="320">${overlay}</div>`
     : '<div class="prod-card-ph"></div>';
-  return `<button type="button" class="prod-card ptype-card${tlr ? ' prod-card--terlaris' : ''}" data-ptype="${absIdx}" data-ptype-kw="${esc(t.keyword || '')}" style="animation-delay:${(animIdx % 3) * 0.06}s">
-    ${tlr ? terlarisBadgeHtml() : ''}
+  const extraClass = isTrend ? ' prod-card--terlaris'
+    : isMeledak ? ' prod-card--home-meledak'
+    : (tlr ? ' prod-card--terlaris' : '');
+  const badge = isTrend ? terlarisBadgeHtml()
+    : isMeledak ? homeMeledakBadgeHtml()
+    : (tlr ? terlarisBadgeHtml() : '');
+  const wow = wk ? ((isTrend || isMeledak) ? homeWowHtml(wk) : terlarisWowHtml(wk)) : '';
+  const soldLine = ((isTrend || isMeledak) && wk)
+    ? `<span class="prod-card-wk" title="${esc(terlarisTooltip(wk))}">~${Math.round(wk.units).toLocaleString('id-ID')} terjual</span>`
+    : '';
+  return `<button type="button" class="prod-card ptype-card${extraClass}" data-ptype="${absIdx}" data-ptype-kw="${esc(t.keyword || '')}" style="animation-delay:${(animIdx % 3) * 0.06}s">
+    ${badge}
     ${imgBlock}
     <div class="prod-card-body">
       <div class="prod-card-name-row">
@@ -14829,7 +14846,8 @@ function typeCardHtml(t, absIdx, animIdx, siblings, usedImgs) {
         <div class="prod-stat">
           <span class="prod-stat-lbl">Omset/bulan</span>
           <span class="prod-stat-val">${omsetVal}</span>
-          ${wk ? terlarisWowHtml(wk) : ''}
+          ${wow}
+          ${soldLine}
         </div>
       </div>
     </div>
@@ -14928,6 +14946,14 @@ function sortTypeRows(rows, mode, hasQuery) {
   else if (mode === 'termahal') out.sort((a, b) => (Number(b.price_median) || 0) - (Number(a.price_median) || 0));
   else if (mode === 'naik_daun') out.sort((a, b) => (Number(b.trend_delta_30d) || 0) - (Number(a.trend_delta_30d) || 0));
   else if (mode === 'terlaris_minggu') out.sort((a, b) => (Number(b.wk_units) || 0) - (Number(a.wk_units) || 0));
+  else if (mode === 'meledak') {
+    const rank = (t) => {
+      const w = weeklyStats(t);
+      if (!w || w.pct == null) return -1;
+      return w.pct === Infinity ? Number.MAX_SAFE_INTEGER : w.pct;
+    };
+    out.sort((a, b) => (rank(b) - rank(a)) || ((Number(b.wk_units) || 0) - (Number(a.wk_units) || 0)));
+  }
   else if (mode === 'sesuai' && hasQuery) return out; // already relevance-sorted by searchProductTypes()
   else out.sort((a, b) => (Number(b.omset_top15) || 0) - (Number(a.omset_top15) || 0)); // sesuai (no query) / terlaris fallback
   return out;
@@ -15352,6 +15378,8 @@ function renderDirCatRail() {
 
 // Build the sub-group chip row for the selected category (hidden when the
 // category has no sub-groups). Selecting one narrows the grid by keyword.
+// Subgroup chips used to sit under the photo rail; the mega-menu still
+// owns subgroup picks. Keep the host empty so it cannot flash back.
 async function renderSubcats() {
   const wrap = $('dir-subcats');
   if (!wrap) return;
@@ -15379,6 +15407,13 @@ function updateDirHeading() {
     h.textContent = `Hasil: ${q}`;
     return;
   }
+  // Default home (hero + kategori + curated rows) demotes this to the label
+  // above the 30-card grid. Onboarding's auto-category still counts as home.
+  if (isDirHomeBrowse()) {
+    const userCity = state.onboarding?.city || '';
+    h.textContent = userCity ? `Yang Laku di ${userCity}` : 'Semua Pasar';
+    return;
+  }
   const cat = primaryDirCat();
   if (cat && state.dirSub) {
     h.textContent = `${cat} · ${state.dirSub}`;
@@ -15392,6 +15427,116 @@ function updateDirHeading() {
   h.textContent = userCity ? `Yang Laku di ${userCity}` : 'Tipe Produk';
 }
 
+/* Default Cari Produk browse: no search, no explicit category/subgroup, not
+ * compare-picking. Onboarding's auto-filter still counts — same gate the hero
+ * has used since 96055c82, so the curated rows don't vanish on first login. */
+function isDirHomeBrowse() {
+  return !state.comparePick
+    && !(state.dirSearch || '').trim()
+    && !state.dirSub
+    && (!(state.dirCats || []).length || state.dirCatsFromOnboarding);
+}
+
+let _dirHomePool = null;
+let _dirHomePoolPromise = null;
+function loadDirHomePool() {
+  if (_dirHomePool) return Promise.resolve(_dirHomePool);
+  if (_dirHomePoolPromise) return _dirHomePoolPromise;
+  _dirHomePoolPromise = fetchTerlarisMinggu(null, 80).then(rows => {
+    _dirHomePool = rows || [];
+    return _dirHomePool;
+  }).catch(() => {
+    _dirHomePoolPromise = null;
+    return [];
+  });
+  return _dirHomePoolPromise;
+}
+
+function pickDirHomeRows(pool) {
+  const list = Array.isArray(pool) ? pool : [];
+  const trending = list.slice(0, 10);
+  const trendKws = new Set(trending.map(t => t.keyword));
+  const pctRank = (t) => {
+    const w = weeklyStats(t);
+    if (!w || w.pct == null) return -1;
+    return w.pct === Infinity ? Number.MAX_SAFE_INTEGER : w.pct;
+  };
+  const byPct = list.slice().sort((a, b) =>
+    (pctRank(b) - pctRank(a)) || ((Number(b.wk_units) || 0) - (Number(a.wk_units) || 0)));
+  const meledak = [];
+  const have = new Set();
+  byPct.forEach(t => {
+    if (meledak.length >= 3) return;
+    if (trendKws.has(t.keyword)) return;
+    meledak.push(t);
+    have.add(t.keyword);
+  });
+  if (meledak.length < 3) {
+    byPct.forEach(t => {
+      if (meledak.length >= 3 || have.has(t.keyword)) return;
+      meledak.push(t);
+      have.add(t.keyword);
+    });
+  }
+  return { trending, meledak };
+}
+
+function homeCardsHtml(rows, variant) {
+  const list = rows || [];
+  const siblings = list.map(t => t.keyword);
+  const usedImgs = new Set();
+  return list.map((t, i) => typeCardHtml(t, i, i, siblings, usedImgs, variant)).join('');
+}
+
+function applyDirHomeSort(mode) {
+  state.dirSort = mode;
+  state.dirPage = 1;
+  state._dirSkipScroll = true;
+  try { $('dir-filters-range')?._dirApi?.setValue?.(mode); } catch (_) {}
+  void logUserEvent('dir_filter', { ui: 'gpt', kind: 'sort', value: mode, surface: 'dir_home' });
+  void renderDirectory().then(() => {
+    $('dir-head')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
+
+async function syncDirHome() {
+  const trend = $('dir-home-trending');
+  const feat = $('dir-home-feature');
+  const show = isDirHomeBrowse();
+  const hasLib = !!(window.LarisGptDirHome && window.LarisGptDirHome.render);
+  if (!trend || !feat) return;
+  if (!show || !hasLib) {
+    trend.hidden = true;
+    feat.hidden = true;
+    return;
+  }
+  trend.hidden = false;
+  feat.hidden = false;
+  const homeApi = {
+    trendingHost: trend,
+    featureHost: feat,
+    bindCards: bindTypeCards,
+    onMeledak: () => applyDirHomeSort('meledak'),
+    onPencarian: () => applyDirHomeSort('terlaris_minggu'),
+    onEvent: (name, meta) => { void logUserEvent(name, { ui: 'gpt', ...(meta || {}) }); },
+  };
+  window.LarisGptDirHome.render({ ...homeApi, trendHtml: '', meledakHtml: '', ready: false });
+  const pool = await loadDirHomePool();
+  if (!isDirHomeBrowse()) {
+    trend.hidden = true;
+    feat.hidden = true;
+    return;
+  }
+  const { trending, meledak } = pickDirHomeRows(pool);
+  registerTypes(trending.concat(meledak));
+  window.LarisGptDirHome.render({
+    ...homeApi,
+    trendHtml: homeCardsHtml(trending, 'trend'),
+    meledakHtml: homeCardsHtml(meledak, 'meledak'),
+    ready: true,
+  });
+}
+
 /* Header carousel — default browse state only. Hidden the moment a search,
  * category or subgroup is active so results start at the top, and while
  * compare-picking (that flow needs the grid immediately). Rendered once by
@@ -15400,13 +15545,7 @@ function updateDirHeading() {
 function syncDirHero() {
   const host = $('dir-hero');
   if (!host) return;
-  const show = !state.comparePick
-    && !(state.dirSearch || '').trim()
-    && !state.dirSub
-    // A category from the onboarding auto-filter (syncDirectoryFromOnboarding)
-    // still counts as "default state" — only an explicit rail/mega-menu/hero
-    // click (applyDirectoryCategory clears the flag) should hide the hero.
-    && (!(state.dirCats || []).length || state.dirCatsFromOnboarding);
+  const show = isDirHomeBrowse();
   host.hidden = !show;
   if (!show || !window.LarisGptDirHero) return;
   // Every navigation is handed back here rather than reimplemented in the
@@ -15465,6 +15604,7 @@ async function openDirectory() {
 
 async function renderDirectory() {
   syncDirHero();
+  void syncDirHome();
   // Compare-pick needs a specific LISTING (not a type) — keep the old grid there.
   if (state.comparePick) {
     renderDirCatRail();
@@ -15546,7 +15686,8 @@ async function renderDirectory() {
   const cards = slice.map((t, i) => typeCardHtml(t, start + i, i, siblings, usedImgs)).join('');
   grid.innerHTML = cards ? (nearbyLead + cards) : emptyMsg;
   bindTypeCards(grid);
-  scrollPanelToTop();
+  if (state._dirSkipScroll) state._dirSkipScroll = false;
+  else scrollPanelToTop();
   renderDirPager(pager, types.length);
   updateDirCount(types.length, slice.length, nearby);
   if (q && !types.length) {

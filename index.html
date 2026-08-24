@@ -1545,7 +1545,7 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
   position: relative;
   flex: 0 0 100%;
   min-width: 100%;
-  height: clamp(272px, 25vw, 340px);
+  height: clamp(200px, 18vw, 248px);
   overflow: hidden;
 }
 .dh-photo {
@@ -1758,7 +1758,7 @@ button.brand-beta { cursor: pointer; font-family: inherit; }
 }
 @media (max-width: 760px) {
   .dir-hero { border-radius: 16px; }
-  .dh-slide { height: auto; min-height: 320px; }
+  .dh-slide { height: auto; min-height: 220px; }
   .dh-photo { background-position: 60% center; }
   .dh-slide--camping .dh-photo { background-position: 66% 18%; }
   .dh-slide--camping .dh-scrim,
@@ -1932,7 +1932,8 @@ body.view-directory.dir-compare-picking .panel { padding-bottom: 110px; }
 .dir-home-rail {
   display: flex; gap: 12px;
   overflow-x: auto; overflow-y: visible;
-  padding: 10px 2px 14px;
+  padding: 16px 10px 20px;
+  min-height: 220px;
   scroll-snap-type: x mandatory;
   scrollbar-width: thin;
 }
@@ -1965,7 +1966,6 @@ body.view-directory.dir-compare-picking .panel { padding-bottom: 110px; }
 .dir-home-badge--meledak {
   background: linear-gradient(96deg, #C2410C 0%, var(--accent, #B5202A) 100%);
 }
-.prod-card--home-hot,
 .prod-card--home-meledak { overflow: visible; }
 .prod-card-wk {
   display: block; margin-top: 2px;
@@ -7089,7 +7089,7 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <script src="/js/changelog.js?v=20260822a" defer></script>
 <script defer src="/js/gpt-dir-filters.js?v=20260824a"></script>
 <script defer src="/js/gpt-dir-hero.js?v=20260824a"></script>
-<script defer src="/js/gpt-dir-home.js?v=20260824a"></script>
+<script defer src="/js/gpt-dir-home.js?v=20260824d"></script>
 <script defer src="/js/gpt-photo-analyze.js?v=20260824a"></script>
 <script defer src="/js/gpt-referral.js?v=20260821a"></script>
 <script defer src="/js/gpt-profile.js?v=20260821a"></script>
@@ -7104,6 +7104,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/gpt-app.js?v=20260824i" defer></script>
+<script src="/js/gpt-app.js?v=20260824o" defer></script>
 </body>
 </html>
