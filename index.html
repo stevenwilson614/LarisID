@@ -1897,7 +1897,7 @@ body.view-directory.dir-compare-picking .panel { padding-bottom: 110px; }
 }
 .dir-cat-pill-media {
   position: relative; display: block;
-  width: 148px; height: 88px;
+  width: 148px; height: 128px;
   border-radius: 14px; overflow: hidden;
   background: #EEE8E0;
   transition: box-shadow .12s, transform .12s;
@@ -1939,6 +1939,138 @@ body.view-directory.dir-compare-picking .panel { padding-bottom: 110px; }
 }
 .dir-cat-pill.selected .dir-cat-pill-ico { color: var(--accent, #B5202A); }
 .dir-cat-pill.selected .dir-cat-pill-label { font-weight: 700; }
+
+/* ── Cari Produk default-home sections (js/gpt-dir-home.js) ──────────
+   Live under the kategori rail on empty browse only. Hidden the moment a
+   search / category / subgroup is on, same gate as #dir-hero. */
+.dir-home-trending[hidden],
+.dir-home-feature[hidden] { display: none !important; }
+.dir-home-hd {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  margin: 4px 0 2px;
+}
+.dir-home-title {
+  margin: 0;
+  font-size: 1.12rem; font-weight: 750; letter-spacing: -.02em; color: var(--ink);
+}
+.dir-home-sub {
+  margin: 0 0 12px;
+  font-size: .8rem; color: var(--muted); line-height: 1.4;
+}
+.dir-home-trending { position: relative; margin: 4px 0 26px; }
+.dir-home-rail-wrap { position: relative; }
+.dir-home-rail {
+  display: flex; gap: 12px;
+  overflow-x: auto; overflow-y: visible;
+  padding: 10px 2px 14px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+}
+.dir-home-rail .prod-card {
+  flex: 0 0 172px;
+  width: 172px;
+  scroll-snap-align: start;
+  overflow: visible;
+}
+.dir-home-rail .prod-card > .prod-card-img,
+.dir-home-rail .prod-card > .prod-card-ph { border-radius: 15px 15px 0 0; overflow: hidden; }
+.dir-home-nav {
+  position: absolute; top: 42%; right: 4px; z-index: 2;
+  width: 34px; height: 34px; padding: 0;
+  display: grid; place-items: center;
+  border-radius: 999px; border: 1px solid var(--line);
+  background: #fff; color: var(--ink);
+  box-shadow: 0 4px 14px rgba(0,0,0,.12);
+  cursor: pointer;
+}
+.dir-home-nav:hover { background: #fff; }
+.dir-home-badge {
+  position: absolute; top: 8px; left: 8px; z-index: 3;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 999px;
+  background: var(--accent, #B5202A); color: #fff;
+  font-size: .58rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+}
+.dir-home-badge svg { stroke: #fff; flex-shrink: 0; }
+.dir-home-badge--meledak {
+  background: linear-gradient(96deg, #C2410C 0%, var(--accent, #B5202A) 100%);
+}
+.prod-card--home-hot,
+.prod-card--home-meledak { overflow: visible; }
+.prod-card-wk {
+  display: block; margin-top: 2px;
+  font-size: .68rem; font-weight: 650; color: var(--ink-soft);
+}
+
+.dir-home-feature {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(220px, .7fr);
+  gap: 16px;
+  margin: 0 0 28px;
+  align-items: stretch;
+}
+.dir-home-meledak {
+  padding: 20px 20px 16px;
+  border-radius: 20px;
+  background: #F5EFE0;
+}
+.dir-home-meledak .dir-home-title { margin-bottom: 4px; }
+.dir-home-meledak .dir-home-sub { margin-bottom: 12px; color: #6B5E50; }
+.dir-home-cta {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin: 0 0 14px; padding: 8px 14px;
+  border-radius: 999px; border: none;
+  background: #1A1A1A; color: #fff;
+  font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer;
+}
+.dir-home-cta:hover { background: #2A2A2A; }
+.dir-home-cta svg { stroke: currentColor; }
+.dir-home-meledak-grid {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
+}
+.dir-home-meledak-grid .prod-card { width: 100%; overflow: visible; }
+.dir-home-meledak-grid .prod-card > .prod-card-img,
+.dir-home-meledak-grid .prod-card > .prod-card-ph { border-radius: 15px 15px 0 0; overflow: hidden; }
+
+.dir-home-cari {
+  position: relative;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 22px 22px 20px;
+  border-radius: 20px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 80% at 88% 0%, rgba(201,151,75,.35) 0%, transparent 58%),
+    linear-gradient(160deg, #8E191F 0%, #B5202A 48%, #1A1A1A 100%);
+  color: #fff;
+  min-height: 220px;
+}
+.dir-home-cari-art {
+  position: absolute; top: 18px; right: 16px;
+  width: 88px; height: 88px;
+  color: rgba(255,255,255,.88);
+  pointer-events: none;
+}
+.dir-home-cari-art svg { width: 100%; height: 100%; display: block; }
+.dir-home-cari .dir-home-title { color: #fff; font-size: 1.2rem; }
+.dir-home-cari .dir-home-sub {
+  margin: 8px 0 16px; max-width: 22ch;
+  color: rgba(255,255,255,.82); font-size: .8rem;
+}
+.dir-home-cta--light {
+  background: #fff; color: #1A1A1A; align-self: flex-start;
+}
+.dir-home-cta--light:hover { background: #F5EFE0; }
+
+@media (max-width: 860px) {
+  .dir-home-feature { grid-template-columns: 1fr; }
+  .dir-home-cari { min-height: 180px; }
+  .dir-home-meledak-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .dir-home-nav { display: none; }
+}
+@media (max-width: 560px) {
+  .dir-home-rail .prod-card { flex-basis: 148px; width: 148px; }
+  .dir-home-meledak { padding: 16px 14px 12px; }
+}
 
 .dir-filter-host {
   position: relative;
@@ -6027,14 +6159,18 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
                the default browse state (no search, no category, no subgroup) —
                once you filter, results start at the top. -->
           <div class="dir-hero" id="dir-hero" hidden></div>
+          <div class="dir-cat-rail" id="dir-cat-rail" aria-label="Kategori"></div>
+          <div class="dir-subcats" id="dir-subcats" hidden></div>
+          <!-- Default-browse only. js/gpt-dir-home.js fills these; hidden on
+               search / category / subgroup so results start at the rail. -->
+          <div class="dir-home-trending" id="dir-home-trending" hidden></div>
+          <div class="dir-home-feature" id="dir-home-feature" hidden></div>
           <div class="dir-head">
             <h2 id="dir-heading">Tipe Produk</h2>
             <p class="dir-count" id="dir-count"></p>
           </div>
           <div class="dir-compare-banner" id="dir-compare-banner" hidden></div>
           <div id="dir-filters-range"></div>
-          <div class="dir-cat-rail" id="dir-cat-rail" aria-label="Kategori"></div>
-          <div class="dir-subcats" id="dir-subcats" hidden></div>
           <p class="dir-note" id="dir-note" hidden>Disesuaikan dari profil kamu</p>
           <div class="dir-grid" id="dir-grid"></div>
           <div class="dir-pager" id="dir-pager"></div>
@@ -6981,8 +7117,9 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 
 <script src="/js/laris-merdeka.js?v=20260816b" defer></script>
 <script src="/js/changelog.js?v=20260822a" defer></script>
-<script defer src="/js/gpt-dir-filters.js?v=20260808d"></script>
+<script defer src="/js/gpt-dir-filters.js?v=20260824a"></script>
 <script defer src="/js/gpt-dir-hero.js?v=20260824a"></script>
+<script defer src="/js/gpt-dir-home.js?v=20260824a"></script>
 <script defer src="/js/gpt-photo-analyze.js?v=20260824a"></script>
 <script defer src="/js/gpt-referral.js?v=20260821a"></script>
 <script defer src="/js/gpt-profile.js?v=20260821a"></script>
@@ -6997,6 +7134,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/gpt-app.js?v=20260824g" defer></script>
+<script src="/js/gpt-app.js?v=20260824h" defer></script>
 </body>
 </html>
