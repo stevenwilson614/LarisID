@@ -3144,6 +3144,140 @@ body.view-harga .panel-inner { max-width: 1180px; }
 .nudge-actions { display: flex; gap: 10px; }
 .nudge-actions .btn-primary { flex: 1; }
 
+/* ── Deep Dive → Pantauan promo (#ddtrack-promo) ──────────────────────────
+   Two-column interstitial. Left = what Pantauan does; right = a card for the
+   product the user has open plus the CTA. Collapses to one column at 860px,
+   where the right column comes FIRST so the CTA is reachable without
+   scrolling on a phone. */
+.modal-overlay.ddtp-overlay { background: rgba(26,26,26,.28); padding: 16px; }
+/* Reserve a corridor between the sidebar and the modal so the arrow has
+   somewhere to go. Without this an 860px modal centred at 1440px leaves ~290px
+   on the left and the 288px sidebar fills all of it — the arrow would have a
+   negative gap and hide itself on the most common laptop widths. Centring
+   happens inside the remaining box, so the modal still reads as balanced. */
+@media (min-width: 1000px) {
+  .modal-overlay.ddtp-overlay { padding-left: 380px; padding-right: 20px; }
+}
+/* The sidebar is a flex item with z-index:20, so it makes its own stacking
+   context and #btn-tracker cannot rise above the scrim on its own. Lifting the
+   whole sidebar keeps the arrow's target crisp — and clickable: tapping
+   Pantauan goes there and closes the popup via the setView teardown. */
+body.ddtp-open .sidebar { z-index: 101; }
+/* Mark the arrow's target. Same white-pill treatment as .is-pantau-pulse (which
+   may or may not be running — the nav pulse only fires on a first dive), so the
+   item the arrow points at always reads as the thing to click. */
+body.ddtp-open #btn-tracker {
+  background-color: #fff; color: var(--accent);
+  box-shadow: 0 0 0 1.5px var(--accent), 0 6px 18px rgba(181,32,42,.16);
+}
+body.ddtp-open #btn-tracker svg,
+body.ddtp-open #btn-tracker svg .ic-a,
+body.ddtp-open #btn-tracker svg .ic-f { color: var(--accent); stroke: var(--accent); }
+body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
+.ddtp-arrow {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 2; overflow: visible;
+}
+.ddtp-arrow-path {
+  stroke-dasharray: 900; stroke-dashoffset: 900;
+  animation: ddtpDraw .75s var(--ease) .18s forwards;
+}
+@keyframes ddtpDraw { to { stroke-dashoffset: 0; } }
+
+.modal.ddtp-modal {
+  max-width: 860px; background: #FDF9F2;
+  padding: 26px 28px; border-radius: 24px;
+  max-height: 88vh; overflow-y: auto;
+}
+.ddtp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: start; }
+.ddtp-logo { display: block; height: 30px; width: auto; margin-bottom: 18px; }
+.modal.ddtp-modal h2 {
+  margin: 0 0 12px; font-size: 1.72rem; line-height: 1.16;
+  font-weight: 800; letter-spacing: -.03em; color: var(--ink);
+}
+.ddtp-hl { color: var(--accent); }
+.ddtp-flame { display: inline-block; vertical-align: -4px; margin-left: 6px; color: var(--accent); }
+.ddtp-sub { margin: 0 0 20px; font-size: .9rem; line-height: 1.6; color: var(--ink-soft); }
+.ddtp-feats { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.ddtp-feats li { display: flex; gap: 12px; align-items: flex-start; }
+.ddtp-feat-ico {
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: 10px;
+  display: grid; place-items: center;
+  background: var(--merah-tint); color: var(--accent);
+}
+.ddtp-feats strong {
+  display: block; font-size: .875rem; font-weight: 650;
+  color: var(--ink); margin-bottom: 2px;
+}
+.ddtp-feats li > span:last-child { font-size: .8rem; line-height: 1.5; color: var(--muted); }
+
+.ddtp-right { display: grid; gap: 12px; }
+.ddtp-card, .ddtp-changes {
+  background: #fff; border: 1px solid var(--line);
+  border-radius: 16px; padding: 14px;
+}
+.ddtp-card-top { display: flex; gap: 12px; align-items: flex-start; }
+.ddtp-card-img {
+  width: 52px; height: 52px; flex-shrink: 0;
+  border-radius: 10px; object-fit: cover; background: var(--bg-user);
+}
+.ddtp-card-img--empty { background: var(--bg-user); }
+.ddtp-card-meta { min-width: 0; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.ddtp-card-name {
+  font-size: .875rem; font-weight: 650; line-height: 1.35; color: var(--ink);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; word-break: break-word;
+}
+.ddtp-card-figs { display: flex; align-items: baseline; gap: 14px; margin: 12px 0 4px; flex-wrap: wrap; }
+.ddtp-fig { font-size: .82rem; color: var(--ink-soft); }
+.ddtp-fig--price { font-size: 1.28rem; font-weight: 800; letter-spacing: -.02em; color: var(--accent); }
+.ddtp-fig-lbl { color: var(--muted); }
+.ddtp-fig strong { font-size: 1rem; font-weight: 750; color: var(--ink); }
+.ddtp-spark { position: relative; margin-top: 4px; }
+.ddtp-spark-svg { display: block; width: 100%; height: 84px; }
+.ddtp-spark-pill {
+  position: absolute; top: 0; right: 6px;
+  background: var(--accent); color: #fff;
+  font-size: .66rem; font-weight: 650; letter-spacing: .01em;
+  padding: 3px 8px; border-radius: 999px; white-space: nowrap;
+}
+
+.ddtp-changes { display: grid; gap: 8px; }
+.ddtp-changes-lbl {
+  font-size: .64rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--muted);
+}
+.ddtp-chg { display: flex; gap: 10px; align-items: center; }
+.ddtp-chg-ico { flex-shrink: 0; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; }
+.ddtp-chg-ico--up   { background: var(--green-bg); color: var(--green); }
+.ddtp-chg-ico--down { background: var(--red-bg); color: var(--accent); }
+.ddtp-chg-ico--info { background: var(--blue-bg); color: var(--blue); }
+.ddtp-chg-body { flex: 1; min-width: 0; font-size: .74rem; line-height: 1.45; color: var(--muted); }
+.ddtp-chg-body strong { display: block; font-size: .8rem; font-weight: 650; color: var(--ink); }
+.ddtp-chg-when {
+  flex-shrink: 0; text-align: right; font-size: .68rem; color: var(--muted); line-height: 1.35;
+}
+.ddtp-chg-when em { display: block; font-style: normal; }
+
+.btn-primary.ddtp-cta {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; margin-top: 0; padding: 15px 18px; border-radius: 14px;
+  font-size: 1rem; font-weight: 700;
+  background-color: var(--accent);
+  box-shadow: 0 8px 22px rgba(181,32,42,.22);
+}
+
+@media (max-width: 860px) {
+  .modal.ddtp-modal { padding: 56px 18px 22px; border-radius: 18px; }
+  .ddtp-grid { grid-template-columns: 1fr; gap: 22px; }
+  /* CTA and product card above the fold; the explainer reads underneath. */
+  .ddtp-right { order: 1; }
+  .ddtp-left { order: 2; }
+  .ddtp-logo { display: none; }
+  .modal.ddtp-modal h2 { font-size: 1.32rem; }
+  .ddtp-arrow { display: none; }
+}
+
 /* Auth modal */
 .modal-overlay {
   display: none; position: fixed; inset: 0; z-index: 100;
@@ -7010,6 +7144,72 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </div>
 
+<!-- Deep Dive → Pantauan promo. Fires 5s into a Deep Dive, once per dive, and
+     retires for good once the user tracks anything (js/gpt-app.js, ddtp*).
+     The product card and the arrow are filled in by JS; everything else is
+     static so the popup paints instantly. -->
+<div class="modal-overlay ddtp-overlay" id="ddtrack-promo">
+  <svg class="ddtp-arrow" id="ddtp-arrow" aria-hidden="true" focusable="false"></svg>
+  <div class="modal ddtp-modal" role="dialog" aria-modal="true" aria-labelledby="ddtp-title">
+    <button type="button" class="modal-close" id="ddtp-close" aria-label="Tutup">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <div class="ddtp-grid">
+      <div class="ddtp-left">
+        <img class="ddtp-logo" src="/images/brand/logo-horizontal-red.webp" alt="LARIS" height="30">
+        <h2 id="ddtp-title">Jangan Lewatkan Perubahan yang <span class="ddtp-hl">Bisa Bikin Kamu Ketinggalan!</span><span class="ddtp-flame" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c4.4 0 7-2.8 7-6.5 0-2.5-1.4-4.6-3-6.5-.6 1.2-1.4 2-2.5 2.5C13.9 9 13 5.5 9.5 2c.3 3-.5 4.6-2 6.5C6 10.4 5 12.3 5 15.5 5 19.2 7.6 22 12 22z"/></svg></span></h2>
+        <p class="ddtp-sub">Pantau pergerakan pasar produk ini tiap hari, dan selalu jadi selangkah di depan kompetitor.</p>
+        <ul class="ddtp-feats">
+          <li>
+            <span class="ddtp-feat-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span>
+            <span><strong>Update Pasar Harian</strong>Lihat perubahan unit terjual, harga, dan omset tiap hari.</span>
+          </li>
+          <li>
+            <span class="ddtp-feat-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.2"/></svg></span>
+            <span><strong>Deteksi Peluang</strong>Tangkap pergeseran pasar lebih cepat sebelum kompetitor.</span>
+          </li>
+          <li>
+            <span class="ddtp-feat-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.2l3.3 2"/></svg></span>
+            <span><strong>Riwayat Perubahan</strong>Lihat grafik lengkap pergerakannya dari waktu ke waktu.</span>
+          </li>
+          <li>
+            <span class="ddtp-feat-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8.5a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16s-2-1.5-2-6.5z"/><path d="M13.7 19a2 2 0 0 1-3.4 0"/></svg></span>
+            <span><strong>Hemat Waktu</strong>Kami cek tiap hari dan kabari kamu, tanpa perlu buka manual.</span>
+          </li>
+        </ul>
+      </div>
+      <div class="ddtp-right">
+        <div class="ddtp-card" id="ddtp-card"></div>
+        <!-- Static illustration of the three things tracker-change-notify
+             actually alerts on: units ±20%, average price ±5%, seller count.
+             Labelled "Contoh" so it is never read as this product's data. -->
+        <div class="ddtp-changes">
+          <div class="ddtp-changes-lbl">Contoh notifikasi</div>
+          <div class="ddtp-chg">
+            <span class="ddtp-chg-ico ddtp-chg-ico--up"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg></span>
+            <span class="ddtp-chg-body"><strong>Unit terjual naik</strong>Dari 1.240 jadi 1.580 unit</span>
+            <span class="ddtp-chg-when">Hari ini<em>08:45</em></span>
+          </div>
+          <div class="ddtp-chg">
+            <span class="ddtp-chg-ico ddtp-chg-ico--down"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></span>
+            <span class="ddtp-chg-body"><strong>Harga rata-rata turun</strong>Dari Rp259rb jadi Rp249rb</span>
+            <span class="ddtp-chg-when">Kemarin<em>14:20</em></span>
+          </div>
+          <div class="ddtp-chg">
+            <span class="ddtp-chg-ico ddtp-chg-ico--info"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14.5c2.6.3 4 2.2 4 4.5"/></svg></span>
+            <span class="ddtp-chg-body"><strong>Toko penjual bertambah</strong>Dari 38 jadi 44 toko</span>
+            <span class="ddtp-chg-when">2 hari lalu<em>09:15</em></span>
+          </div>
+        </div>
+        <button type="button" class="btn-primary ddtp-cta" id="ddtp-cta">
+          Mulai Pantau Sekarang
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Daily wall. Arm A shows the same earn options at its limit modal; keeping the
      two arms' earn mechanics identical is what makes the A/B contrast readable. -->
 <div class="modal-overlay" id="gpt-limit-modal">
@@ -7134,6 +7334,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/gpt-app.js?v=20260824q" defer></script>
+<script src="/js/gpt-app.js?v=20260825a" defer></script>
 </body>
 </html>

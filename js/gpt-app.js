@@ -627,6 +627,9 @@ const ICONS = {
   rocket: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>',
   bookmark: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>',
   shield: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.2l3.3 2"/></svg>',
+  bell: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8.5a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16s-2-1.5-2-6.5z"/><path d="M13.7 19a2 2 0 0 1-3.4 0"/></svg>',
+  arrowUpRight: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>',
 };
 function ico(name, size = 16) {
   const svg = ICONS[name] || ICONS.spark;
@@ -2472,6 +2475,7 @@ function setView(name, opts = {}) {
   if (leaving === 'deepdive' && name !== 'deepdive') {
     dwellStop();
     destroyAllCharts();
+    ddtpCancel();
     // A product is only "in context" while its deep dive (or its chat) is
     // open — a stale deepdiveProduct must not hijack later searches into
     // the product-AI path.
@@ -8894,8 +8898,20 @@ function gptTrackerAdapter() {
     // listing_deltas, which the daily scrape never refreshes.)
     getRollup(days, scope) { return rpc('get_tracker_rollup', { p_days: days, p_scope: scope || 'keyword' }); },
     touchViewed()          { return rpc('touch_tracker_viewed'); },
-    addKeyword(kw, cat)    { return rpc('add_tracked_keyword', { p_keyword: kw, p_category: cat || '' }); },
-    addStore(id, name)     { return rpc('add_tracked_store', { p_shop_id: id, p_store_name: name || '' }); },
+    // These two are the wizard's only commit routes, so retiring the Deep Dive
+    // promo here covers the full-panel flow the same way quickTrackKeyword
+    // covers the one-tap one. The RPCs report refusals as { ok: false } rather
+    // than throwing, so a refused add must not count as a conversion.
+    async addKeyword(kw, cat) {
+      const d = await rpc('add_tracked_keyword', { p_keyword: kw, p_category: cat || '' });
+      if (!d || d.ok !== false) ddtpRetire();
+      return d;
+    },
+    async addStore(id, name) {
+      const d = await rpc('add_tracked_store', { p_shop_id: id, p_store_name: name || '' });
+      if (!d || d.ok !== false) ddtpRetire();
+      return d;
+    },
     getStoresByCategory(cat) { return rpc('find_shops_by_category', { p_category: cat, p_limit: 30 }); },
     removeKeyword(id)      { return rpc('remove_tracked_keyword', { p_id: id }); },
     setMetrics(list)       { return rpc('set_tracker_metrics', { p_metrics: list }); },
@@ -9128,6 +9144,223 @@ function consumePantauNudgeSeed() {
   return seed;
 }
 
+/** Deep Dive → Pantauan promo interstitial.
+ *
+ *  The nav pulse above is a whisper: it fires once ever and most people never
+ *  notice it. This is the loud version — 5s into a Deep Dive, a modal that
+ *  says what Pantauan actually does, carrying a card for the product the user
+ *  is looking at right now so it never reads as a generic house ad.
+ *
+ *  It shows once per Deep Dive and RETIRES PERMANENTLY the moment the user
+ *  tracks anything (see ddtpRetire callers). That self-limit is the whole
+ *  reason it is allowed to repeat at all: someone who has converted never sees
+ *  it again, so it cannot become the treadmill MISSION.md §3 forbids.
+ */
+const DDTP_KEY = 'lid_ddtrack_promo_v1';
+const DDTP_DELAY = 5000;
+let _ddtpTimer = null;
+let _ddtpProduct = null;   // product the open popup is describing
+let _ddtpHasTracked = null; // per-page-load cache; only ever caches a `true`
+
+function ddtpIsRetired() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(DDTP_KEY) || 'null');
+    // Keyed on uid: a shared device must not stay silenced for the next person.
+    return !!(raw && raw.done && currentUser && raw.uid === currentUser.id);
+  } catch { return false; }
+}
+
+function ddtpRetire() {
+  if (!currentUser) return;
+  _ddtpHasTracked = true;
+  try { localStorage.setItem(DDTP_KEY, JSON.stringify({ uid: currentUser.id, done: true })); } catch (_) {}
+}
+
+/** Does this user track anything yet? get_my_tracking() is the authority.
+ *  Only a `true` is cached — while the answer is still false we re-ask, so a
+ *  keyword added in another tab stops the popup on the next dive. A converted
+ *  user costs exactly one RPC per page load and then none. */
+async function ddtpUserHasTracked() {
+  if (_ddtpHasTracked === true) return true;
+  if (!_supabase || !currentUser) return false;
+  try {
+    const { data, error } = await _supabase.rpc('get_my_tracking');
+    if (error) throw error;
+    const n = (data?.keywords?.length || 0) + (data?.stores?.length || 0);
+    if (n > 0) { _ddtpHasTracked = true; return true; }
+    _ddtpHasTracked = false;
+    return false;
+  } catch (_) {
+    // Fail open: a popup is cheaper than a swallowed error, and the retire
+    // flag below still stops it for anyone who has actually converted.
+    return false;
+  }
+}
+
+function scheduleDdTrackPromo(product) {
+  if (_ddtpTimer) { clearTimeout(_ddtpTimer); _ddtpTimer = null; }
+  if (!currentUser) return;                        // signed-in only
+  if (ddtpIsRetired()) return;
+  if (!String(product?.keyword || '').trim()) return; // nothing to seed the wizard with
+  _ddtpTimer = setTimeout(() => { _ddtpTimer = null; void ddtpFire(product); }, DDTP_DELAY);
+}
+
+async function ddtpFire(product) {
+  // 5s is long enough to have moved on — re-check everything at fire time.
+  if (!currentUser) return;
+  if (state.view !== 'deepdive') return;
+  if (String(state.deepdiveProduct?.item_id ?? '') !== String(product?.item_id ?? '')) return;
+  // Never stack on the auth modal, the profile nudge, or anything else open.
+  if (document.querySelector('.modal-overlay.open')) return;
+  if (ddtpIsRetired()) return;
+  if (await ddtpUserHasTracked()) { ddtpRetire(); return; }
+  // The awaits above can outlast the view — check once more before painting.
+  if (state.view !== 'deepdive' || document.querySelector('.modal-overlay.open')) return;
+
+  const overlay = $('ddtrack-promo');
+  if (!overlay) return;
+  _ddtpProduct = product;
+  ddtpRender(product);
+  overlay.classList.add('open');
+  document.body.classList.add('ddtp-open');
+  ddtpDrawArrow();
+  window.addEventListener('resize', ddtpDrawArrow);
+  void logUserEvent('ddtrack_promo', { ui: 'gpt', action: 'shown', keyword: product.keyword || null });
+  clarityEvt('ddtrack_promo', { action: 'shown' });
+}
+
+/** Everything product-specific comes from memory — `_dd` is already populated
+ *  by the Deep Dive render, so this fetches nothing. */
+function ddtpRender(product) {
+  const host = $('ddtp-card');
+  if (!host) return;
+  const kw = product.keyword || '';
+  const name = product._ptype ? typeTitle(kw) : (product.product_name || kw || 'Produk');
+  let badge = null;
+  try {
+    if (_dd && _dd.stats) badge = ddScore(_dd.product || product, _dd.stats, _dd.niche);
+  } catch (_) {}
+  const price = Number(product.price) || 0;
+  const sold = Number(product.total_sold) || 0;
+  // Short "25 Agu" for the chart pill. NOT formatIdDate(): that wants a bare
+  // YYYY-MM-DD (it appends 'T00:00:00'), and it renders the month in full,
+  // which overflows a pill this size.
+  let today = '';
+  try { today = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short' }).format(new Date()); } catch (_) {}
+  const img = product.image_url ? imgThumb(product.image_url) : '';
+
+  host.innerHTML = `
+    <div class="ddtp-card-top">
+      ${img ? `<img class="ddtp-card-img" src="${esc(img)}" alt="" loading="eager" decoding="async">` : '<div class="ddtp-card-img ddtp-card-img--empty"></div>'}
+      <div class="ddtp-card-meta">
+        <div class="ddtp-card-name">${esc(name)}</div>
+        ${badge ? `<span class="badge ${badge.cls}">${esc(badge.label)}</span>` : ''}
+      </div>
+    </div>
+    <div class="ddtp-card-figs">
+      ${price > 0 ? `<span class="ddtp-fig ddtp-fig--price">${esc(fmtRpShort(price))}</span>` : ''}
+      ${sold > 0 ? `<span class="ddtp-fig"><span class="ddtp-fig-lbl">terjual</span> <strong>${esc(fmtSold(sold))}</strong></span>` : ''}
+    </div>
+    <div class="ddtp-spark">
+      ${DDTP_SPARK_SVG}
+      <span class="ddtp-spark-pill">${esc(today)}</span>
+    </div>`;
+
+  // A dead image_url would otherwise paint the browser's broken-image glyph in
+  // the middle of the card. Fall back to the empty tile, which keeps the box.
+  const imgEl = host.querySelector('.ddtp-card-img');
+  if (imgEl) imgEl.addEventListener('error', () => {
+    imgEl.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+    imgEl.classList.add('ddtp-card-img--empty');
+  }, { once: true });
+}
+
+/* Decorative only: solid history + dashed forecast, the shape of the real Tren
+   chart. Static by design — the popup illustrates the feature, it does not
+   report this product's numbers (the "Contoh" label in the markup says so). */
+const DDTP_SPARK_SVG = `<svg class="ddtp-spark-svg" viewBox="0 0 320 92" preserveAspectRatio="none" aria-hidden="true">
+  <g stroke="#EADFCF" stroke-width="1"><line x1="0" y1="22" x2="320" y2="22"/><line x1="0" y1="46" x2="320" y2="46"/><line x1="0" y1="70" x2="320" y2="70"/></g>
+  <line x1="222" y1="4" x2="222" y2="88" stroke="#D9C7AE" stroke-width="1" stroke-dasharray="3 3"/>
+  <polyline fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="12,58 47,54 82,60 117,68 152,40 187,26 222,44"/>
+  <polyline fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="5 5" points="222,44 257,38 292,30"/>
+  <polyline fill="none" stroke="#B5202A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="12,74 47,70 82,72 117,78 152,66 187,60 222,56"/>
+  <polyline fill="none" stroke="#16A34A" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="5 5" points="222,56 257,54 292,54"/>
+  <g fill="#2563EB"><circle cx="12" cy="58" r="3"/><circle cx="47" cy="54" r="3"/><circle cx="82" cy="60" r="3"/><circle cx="117" cy="68" r="3"/><circle cx="152" cy="40" r="3"/><circle cx="187" cy="26" r="3"/><circle cx="292" cy="30" r="3"/></g>
+  <g fill="#B5202A"><circle cx="12" cy="74" r="3"/><circle cx="47" cy="70" r="3"/><circle cx="82" cy="72" r="3"/><circle cx="117" cy="78" r="3"/><circle cx="152" cy="66" r="3"/><circle cx="187" cy="60" r="3"/></g>
+  <g fill="#16A34A"><circle cx="257" cy="54" r="3"/><circle cx="292" cy="54" r="3"/></g>
+</svg>`;
+
+/** The hand-drawn arrow from the Pantauan nav item to the modal.
+ *
+ *  Measured rather than hard-coded because the sidebar and the modal both move
+ *  with viewport width. Below 860px the sidebar is translateX(-105%) off-screen
+ *  (see the media query in index.html), so there is nothing to point at and the
+ *  arrow hides itself instead of drawing into empty space. */
+function ddtpDrawArrow() {
+  const svg = $('ddtp-arrow');
+  if (!svg) return;
+  const overlay = $('ddtrack-promo');
+  if (!overlay || !overlay.classList.contains('open')) return;
+  const nav = $('btn-tracker');
+  const modal = overlay.querySelector('.ddtp-modal');
+  const hide = () => { svg.innerHTML = ''; svg.style.display = 'none'; };
+  // Same signal the stylesheet uses to hide .ddtp-arrow. window.innerWidth can
+  // disagree with the media query (it did in the preview pane), and a disagreement
+  // here means drawing an arrow to a sidebar that CSS has moved off-screen.
+  if (!nav || !modal) return hide();
+  try { if (window.matchMedia('(max-width: 860px)').matches) return hide(); } catch (_) {}
+
+  const n = nav.getBoundingClientRect();
+  const m = modal.getBoundingClientRect();
+  if (!n.width || n.right <= 0) return hide();          // drawer closed / off-screen
+  const x1 = n.right + 8;
+  const y1 = n.top + n.height / 2;
+  const x2 = m.left - 14;
+  const y2 = m.top + Math.min(140, m.height * 0.28);
+  if (x2 - x1 < 40) return hide();                       // no room for a curve
+
+  // Control points pulled down-and-right give the mockup's low sweep.
+  const dx = x2 - x1;
+  const c1x = x1 + dx * 0.45, c1y = y1 + 8;
+  const c2x = x1 + dx * 0.55, c2y = y2 + 66;
+
+  svg.style.display = '';
+  svg.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
+  svg.innerHTML = `
+    <defs>
+      <marker id="ddtp-arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M0 0 10 5 0 10 2.6 5Z" fill="var(--accent)"></path>
+      </marker>
+    </defs>
+    <path class="ddtp-arrow-path" d="M${x1} ${y1} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${x2} ${y2}"
+          fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"
+          marker-end="url(#ddtp-arrowhead)"></path>`;
+}
+
+function ddtpClose(reason) {
+  const overlay = $('ddtrack-promo');
+  if (!overlay || !overlay.classList.contains('open')) return;
+  overlay.classList.remove('open');
+  document.body.classList.remove('ddtp-open');
+  window.removeEventListener('resize', ddtpDrawArrow);
+  _ddtpProduct = null;
+  void logUserEvent('ddtrack_promo', { ui: 'gpt', action: reason || 'dismiss' });
+  clarityEvt('ddtrack_promo', { action: reason || 'dismiss' });
+}
+
+/** Cancel a pending fire and close an open popup. Called when the Deep Dive
+ *  is left, which also covers the CTA (it navigates to the tracker view). */
+function ddtpCancel() {
+  if (_ddtpTimer) { clearTimeout(_ddtpTimer); _ddtpTimer = null; }
+  const overlay = $('ddtrack-promo');
+  if (overlay?.classList.contains('open')) {
+    overlay.classList.remove('open');
+    document.body.classList.remove('ddtp-open');
+    window.removeEventListener('resize', ddtpDrawArrow);
+    _ddtpProduct = null;
+  }
+}
+
 /** One-tap keyword tracking straight from a Deep Dive.
  *
  *  The old path opened the setup wizard with the keyword pre-filled. Aksi
@@ -9187,8 +9420,10 @@ async function quickTrackKeyword(product) {
       }
     } catch (_) {}
 
-    // One-tap track already did the job — no need to keep pulsing Pantauan.
+    // One-tap track already did the job — no need to keep pulsing Pantauan,
+    // and the Deep Dive promo has nothing left to sell them.
     pantauNudgeClear();
+    ddtpRetire();
     showToast(emailOn
       ? `Siap — kami email kamu kalau "${kw}" berubah`
       : `Siap — "${kw}" masuk pantauan harian kamu`);
@@ -11204,6 +11439,8 @@ async function openDeepDive(product, ddOpts = {}) {
   const isFirstDeepDive = !state.everOpenedDeepdive;
   if (!state.everOpenedDeepdive) { state.everOpenedDeepdive = true; saveLocalState(); }
   if (isFirstDeepDive) schedulePantauNavPulse(product);
+  // Fires 5s in, every dive, until they track something (then retires for good).
+  scheduleDdTrackPromo(product);
   rememberProducts([product]);
   state.deepdiveProduct = product;
   if (!ddOpts.fromCompare) state.compareReturnChatId = null;
@@ -16900,6 +17137,26 @@ function wireUi() {
   });
   $('profile-nudge')?.addEventListener('click', (e) => {
     if (e.target === e.currentTarget) closeProfileNudge();
+  });
+
+  // Deep Dive → Pantauan promo.
+  $('ddtp-cta')?.addEventListener('click', () => {
+    const product = _ddtpProduct;
+    ddtpClose('accept');
+    ddtpRetire();
+    // Same seed shape openTrackerView already expects, so Pantauan opens with
+    // the setup wizard pre-filled from the product they were just reading.
+    const seed = product ? pantauNudgeSeedFromProduct(product) : null;
+    pantauNudgeClear();
+    void openTrackerView(seed || undefined);
+  });
+  $('ddtp-close')?.addEventListener('click', () => ddtpClose('dismiss'));
+  $('ddtrack-promo')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) ddtpClose('backdrop');
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if ($('ddtrack-promo')?.classList.contains('open')) ddtpClose('esc');
   });
 
   // Pinned product bar tools (Analisa / Kalkulator / Kompetitor / Serupa).
