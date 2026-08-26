@@ -226,7 +226,7 @@ Cannot be closed from secondary sources + anonymous HTTP:
 4. Confirm no public affiliate **count** field
 5. How often open-campaign rates actually move (snapshot cadence)
 
-A read-only CDP capture (no pipeline) is the next research step. Partial capture done 26 Aug 2026 — see §11.
+A read-only CDP capture (no pipeline) is the next research step. Partial capture done 26 Aug 2026 — see §11–§12.
 
 ---
 
@@ -262,5 +262,24 @@ No collectors, migrations, or UI until Path B and live-hub discovery are accepte
 **What the cream would show in Deep Dive today if we shipped this:** “Tidak sedang live (terukur dari PDP/shop).” Not “12 live rooms” and not a komisi %.
 
 **Still blocked for Kalodata-style heat:** click into the public live *feed* (not host studio) to capture the list/recommend XHR; use an **affiliate** login for rates; sample bags at peak evening hours.
+
+---
+
+
+## 12. One-SKU test — Maybelline Superstay Matte Ink (26 Aug 2026, ~11:00 WIB)
+
+**Product:** Maybelline Superstay Matte Ink (Shopee Beauty Awards listing)  
+**IDs:** `item_id=1835009883` `shop_id=62582411` (~8.5M sold; official store `maybellineindonesia`)  
+**Method:** same CDP probe as §11 (`acct614` / 9224, Network only). Chrome on 9224 exited after each run; started in the same command as the probe (two probe attempts). Raw dumps in `/tmp/larisid_live_aff_spike/` (not git).
+
+| Check | Result |
+|---|---|
+| PDP live flags | **Partial.** Logged-in `get_pc` returned **90309999** (captcha / anti-crawler) on both attempts; no `is_live_streaming_price` / `session_info` body captured. |
+| Shop “is live now” | **No.** `get_shop_base_v2` → `tab_meta.live_tab.show_live_tab = false`. |
+| Public session list / bag | **No.** `/pc` still `webapi/v1/session` err **3000101** (this account as host). No public `session_id`s, so `more_items` not reached. Bag hit: **no**. |
+| Komisi | **No.** Affiliate Center *did* fire JSON this time (`/api/v3/gql`, `/api/v3/user/*`, `/api/v3/affiliates/*`). GQL was `checkAffiliateHasOngoingPartnership` (null), not `productOffer`. Profile/status **30003**; live host `is_affiliate=false`. No commission fields. |
+| Viewer-feed XHR | **Still missing.** Extra pass (same probe `--only-extra`): `https://shopee.co.id/live` → `pages/is_short_url/?path=live` with empty url, then mall chrome — **no** `/webapi/` or `/api/v1/session` list. Homepage `campaign_modules` had no live module. |
+
+**Would show in Deep Dive today:** shop not live (terukur from `show_live_tab`). Not room count, not komisi %. Viewer discovery still blocked.
 
 ---
