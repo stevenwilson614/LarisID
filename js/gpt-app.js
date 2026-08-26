@@ -17534,6 +17534,7 @@ async function boot() {
   document.getElementById('gpt-limit-close')?.addEventListener('click', gptLimitClose);
   document.getElementById('gpt-limit-feedback')?.addEventListener('click', gptOpenFeedbackForBonus);
   document.getElementById('faq-feedback-cta')?.addEventListener('click', gptOpenFeedback);
+  document.getElementById('msg-steven-fab')?.addEventListener('click', gptOpenFeedback);
   document.getElementById('gpt-limit-ext')?.addEventListener('click', gptLimitClose);
   document.getElementById('gpt-fb-submit')?.addEventListener('click', () => { void gptSubmitFeedback(); });
   document.getElementById('gpt-fb-close')?.addEventListener('click', gptFeedbackClose);

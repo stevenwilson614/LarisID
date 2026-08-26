@@ -5739,6 +5739,59 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   body.calc-open .calc-panel { animation: none; }
   .side-rail { transition: none; }
 }
+
+/* Always-on "Pesan Steven" — sits clear of composer / compare bar; under sheets & modals */
+.msg-steven-fab {
+  position: fixed;
+  right: max(14px, env(safe-area-inset-right, 0px));
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 13px 9px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: .76rem;
+  font-weight: 650;
+  letter-spacing: -.01em;
+  line-height: 1;
+  box-shadow: 0 4px 16px rgba(16, 24, 40, .11);
+  cursor: pointer;
+  transition: transform .15s var(--ease), box-shadow .15s, background .12s, opacity .15s;
+}
+.msg-steven-fab:hover {
+  background: var(--bg-user);
+  box-shadow: 0 6px 20px rgba(16, 24, 40, .15);
+  transform: translateY(-1px);
+}
+.msg-steven-fab:focus-visible {
+  outline: 2px solid var(--accent, #B5202A);
+  outline-offset: 2px;
+}
+.msg-steven-fab svg {
+  width: 15px; height: 15px;
+  color: var(--accent, #B5202A);
+  flex-shrink: 0;
+}
+body.view-chat .msg-steven-fab {
+  bottom: calc(var(--composer-h) + 12px + env(safe-area-inset-bottom, 0px));
+}
+body.view-directory.dir-compare-picking .msg-steven-fab {
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}
+body:has(#gpt-feedback-modal.open) .msg-steven-fab,
+body:has(.modal-overlay.open) .msg-steven-fab {
+  opacity: 0;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .msg-steven-fab { transition: none; }
+  .msg-steven-fab:hover { transform: none; }
+}
 </style>
 </head>
 <body>
@@ -7392,6 +7445,11 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   </div>
 </div>
 
+<button type="button" class="msg-steven-fab" id="msg-steven-fab" title="Pesan ke Steven" aria-label="Pesan ke Steven">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  <span class="msg-steven-fab-label">Pesan Steven</span>
+</button>
+
 <div class="modal-overlay" id="gpt-feedback-modal">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="gpt-fb-title">
     <h3 id="gpt-fb-title" class="nudge-title">Pesan ke Steven</h3>
@@ -7469,6 +7527,6 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/gpt-app.js?v=20260826a" defer></script>
+<script src="/js/gpt-app.js?v=20260826b" defer></script>
 </body>
 </html>
