@@ -2476,6 +2476,7 @@ function setView(name, opts = {}) {
     dwellStop();
     destroyAllCharts();
     ddtpCancel();
+    sddvCancel();
     // A product is only "in context" while its deep dive (or its chat) is
     // open — a stale deepdiveProduct must not hijack later searches into
     // the product-AI path.
@@ -9361,6 +9362,139 @@ function ddtpCancel() {
   }
 }
 
+/* ── First Deep Dive: Steven founder video ────────────────────────────────
+ *  Once per browser (anon and signed-in share the same localStorage flag).
+ *  Opens 2s after the first Deep Dive that has not already seen it. Non-
+ *  skippable until `ended`; remaining time is the YouTube-ad countdown.
+ *  Marked seen on open so a refresh mid-play never replays. */
+const SDDV_KEY = 'lid_steven_dd_video_v1';
+const SDDV_DELAY = 2000;
+const SDDV_SRC = '/images/onboarding/steven-deepdive.mp4';
+let _sddvTimer = null;
+let _sddvEnded = false;
+let _sddvBound = false;
+
+function sddvIsSeen() {
+  try { return localStorage.getItem(SDDV_KEY) === '1'; } catch { return false; }
+}
+
+function sddvMarkSeen() {
+  try { localStorage.setItem(SDDV_KEY, '1'); } catch (_) {}
+}
+
+function sddvPrefetch() {
+  const v = $('sddv-video');
+  if (!v || v.getAttribute('src')) return;
+  v.src = SDDV_SRC;
+  v.preload = 'auto';
+  try { v.load(); } catch (_) {}
+}
+
+/** Returns true if the video is pending or already open, so DDTP must wait. */
+function scheduleStevenDdVideo() {
+  if (_sddvTimer) { clearTimeout(_sddvTimer); _sddvTimer = null; }
+  if ($('steven-dd-video')?.classList.contains('open')) return true;
+  if (sddvIsSeen()) return false;
+  sddvPrefetch();
+  _sddvTimer = setTimeout(() => {
+    _sddvTimer = null;
+    sddvFire();
+  }, SDDV_DELAY);
+  return true;
+}
+
+function sddvFire() {
+  if (sddvIsSeen()) return;
+  if (state.view !== 'deepdive') return;
+  if (document.querySelector('.modal-overlay.open')) return;
+  const overlay = $('steven-dd-video');
+  const video = $('sddv-video');
+  if (!overlay || !video) return;
+  sddvPrefetch();
+  sddvMarkSeen();
+  _sddvEnded = false;
+  sddvBind(video);
+  overlay.classList.add('open');
+  overlay.classList.remove('sddv-done');
+  document.body.classList.add('sddv-open');
+  sddvUpdateTimer(video);
+  sddvTryPlay(video);
+  void logUserEvent('steven_dd_video', { ui: 'gpt', action: 'show' });
+  clarityEvt('steven_dd_video', { action: 'show' });
+}
+
+function sddvTryPlay(video) {
+  video.muted = false;
+  try { video.currentTime = 0; } catch (_) {}
+  const p = video.play();
+  if (p && typeof p.then === 'function') {
+    p.then(() => sddvSetMutedUi(false)).catch(() => {
+      video.muted = true;
+      sddvSetMutedUi(true);
+      video.play().catch(() => {});
+    });
+  }
+}
+
+function sddvSetMutedUi(muted) {
+  const btn = $('sddv-unmute');
+  if (!btn) return;
+  btn.hidden = !muted;
+}
+
+function sddvFmtRemain(sec) {
+  const s = Math.max(0, Math.ceil(sec));
+  const m = Math.floor(s / 60);
+  return m + ':' + String(s % 60).padStart(2, '0');
+}
+
+function sddvUpdateTimer(video) {
+  const el = $('sddv-timer');
+  if (!el) return;
+  const dur = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 36;
+  el.textContent = sddvFmtRemain(dur - (video.currentTime || 0));
+}
+
+function sddvBind(video) {
+  if (_sddvBound) return;
+  _sddvBound = true;
+  video.addEventListener('timeupdate', () => sddvUpdateTimer(video));
+  video.addEventListener('loadedmetadata', () => sddvUpdateTimer(video));
+  video.addEventListener('ended', sddvOnEnded);
+}
+
+function sddvOnEnded() {
+  _sddvEnded = true;
+  $('steven-dd-video')?.classList.add('sddv-done');
+  const timer = $('sddv-timer');
+  if (timer) timer.textContent = '0:00';
+  void logUserEvent('steven_dd_video', { ui: 'gpt', action: 'complete' });
+  clarityEvt('steven_dd_video', { action: 'complete' });
+}
+
+function sddvClose(reason) {
+  if (!_sddvEnded) return;
+  const overlay = $('steven-dd-video');
+  if (!overlay || !overlay.classList.contains('open')) return;
+  overlay.classList.remove('open', 'sddv-done');
+  document.body.classList.remove('sddv-open');
+  const video = $('sddv-video');
+  if (video) { try { video.pause(); } catch (_) {} }
+  void logUserEvent('steven_dd_video', { ui: 'gpt', action: reason || 'close' });
+  clarityEvt('steven_dd_video', { action: reason || 'close' });
+}
+
+function sddvCancel() {
+  if (_sddvTimer) { clearTimeout(_sddvTimer); _sddvTimer = null; }
+  const overlay = $('steven-dd-video');
+  const video = $('sddv-video');
+  if (overlay?.classList.contains('open')) {
+    overlay.classList.remove('open', 'sddv-done');
+    document.body.classList.remove('sddv-open');
+    if (video) { try { video.pause(); } catch (_) {} }
+  }
+}
+
 /** One-tap keyword tracking straight from a Deep Dive.
  *
  *  The old path opened the setup wizard with the keyword pre-filled. Aksi
@@ -11439,8 +11573,12 @@ async function openDeepDive(product, ddOpts = {}) {
   const isFirstDeepDive = !state.everOpenedDeepdive;
   if (!state.everOpenedDeepdive) { state.everOpenedDeepdive = true; saveLocalState(); }
   if (isFirstDeepDive) schedulePantauNavPulse(product);
-  // Fires 5s in, every dive, until they track something (then retires for good).
-  scheduleDdTrackPromo(product);
+  // Founder video is once-per-browser and stacks above the Pantauan promo.
+  // Skip DDTP on the dive that plays the video so the two never overlap.
+  if (!scheduleStevenDdVideo()) {
+    // Fires 5s in, every dive, until they track something (then retires for good).
+    scheduleDdTrackPromo(product);
+  }
   rememberProducts([product]);
   state.deepdiveProduct = product;
   if (!ddOpts.fromCompare) state.compareReturnChatId = null;
@@ -17156,7 +17294,24 @@ function wireUi() {
   });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
+    if ($('steven-dd-video')?.classList.contains('open')) {
+      if (_sddvEnded) sddvClose('esc');
+      return;
+    }
     if ($('ddtrack-promo')?.classList.contains('open')) ddtpClose('esc');
+  });
+
+  $('sddv-close')?.addEventListener('click', () => sddvClose('close'));
+  $('sddv-unmute')?.addEventListener('click', () => {
+    const video = $('sddv-video');
+    if (!video) return;
+    video.muted = false;
+    sddvSetMutedUi(false);
+    if (video.paused && !_sddvEnded) video.play().catch(() => {});
+  });
+  $('steven-dd-video')?.addEventListener('click', (e) => {
+    if (e.target !== e.currentTarget) return;
+    if (_sddvEnded) sddvClose('backdrop');
   });
 
   // Pinned product bar tools (Analisa / Kalkulator / Kompetitor / Serupa).
