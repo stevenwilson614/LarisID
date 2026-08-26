@@ -226,7 +226,7 @@ Cannot be closed from secondary sources + anonymous HTTP:
 4. Confirm no public affiliate **count** field
 5. How often open-campaign rates actually move (snapshot cadence)
 
-A read-only CDP capture (no pipeline) is the next research step.
+A read-only CDP capture (no pipeline) is the next research step. Partial capture done 26 Aug 2026 — see §11.
 
 ---
 
@@ -235,10 +235,32 @@ A read-only CDP capture (no pipeline) is the next research step.
 | Bet | Call | Condition |
 |---|---|---|
 | Live session metadata + bag items, given a session id | **Go** | Consumer API + third-party proof |
-| Market-wide live discovery | **Conditional** | Needs hub XHR capture |
-| Commission rates without Open API | **Conditional** | Logged-in Aff Center intercept |
+| Market-wide live discovery | **Conditional** | `/pc` does **not** list other rooms; `webapi/v1/session` is *your* host session |
+| Commission rates without Open API | **Conditional** | Logged-in **affiliate** account (buyer scrape profile is not enough) |
 | Exact affiliate headcount per SKU | **No** | No public field found |
 | Live GMV as terukur | **No** | Partner metrics only; proxy = perkiraan |
 | Ship UI / Kalodata comparison rewrite | **No until data** | Honesty |
 
 No collectors, migrations, or UI until Path B and live-hub discovery are accepted operationally and legally.
+
+---
+
+## 11. One-SKU test — Originote Hyalucera (26 Aug 2026, ~10:40 WIB)
+
+**Product:** The Originote Hyalucera Moisturizer Gel 50ml  
+**IDs:** `item_id=10492590941` `shop_id=710619388` (~2.1M sold in our listings)  
+**Method:** logged-in Chrome CDP (`acct614` / port 9224), Network domain only. Anonymous `get_pc` was **403 / 90309999**. Repeat: `bash chrome.sh 9224` then `/usr/bin/python3 scripts/probe_live_affiliate_one_sku.py` in the scraper repo. Raw dumps stay in `/tmp/larisid_live_aff_spike/` (not git).
+
+| Hypothesis | Result |
+|---|---|
+| Logged-in PDP has live flags | **Yes.** `item.is_live_streaming_price = null`. `shop_detailed.session_info` / `session_infos` = null. |
+| Shop “is live now” | **No, and we can see that.** `get_shop_tab` → `live_tab.show_live_tab = false`. Username `theoriginoteofficial`. |
+| Public live room list from `live.shopee.co.id/pc` | **Not this URL.** Bare `/` 404s (`notFound` chunk). `/pc` calls `webapi/v1/session` for **this account as host** (`err_code 3000101`, `pc_streaming_ban_end_time: 0`) plus auth/host_info. No catalog of other rooms, no `session_id` list. |
+| Cream in someone’s live bag right now | **Not proven.** Morning sample, shop not live, no public session ids to page `more_items`. |
+| Komisi XTRA on this SKU | **Not from this profile.** `affiliate.shopee.co.id` loaded the SPA; **zero** offer/GraphQL JSON. Scrape login is a buyer, not an approved affiliate. PDP has **no** commission/affiliate fields. |
+
+**What the cream would show in Deep Dive today if we shipped this:** “Tidak sedang live (terukur dari PDP/shop).” Not “12 live rooms” and not a komisi %.
+
+**Still blocked for Kalodata-style heat:** click into the public live *feed* (not host studio) to capture the list/recommend XHR; use an **affiliate** login for rates; sample bags at peak evening hours.
+
+---
