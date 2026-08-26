@@ -17373,6 +17373,61 @@ function wireUi() {
       document.querySelector('.hl-steps-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   });
+
+  // ── Founder video lightbox (landing). The square on .hlfv-stage is only the
+  // poster image; the 6 MB clip is attached on first open so it never costs a
+  // landing page load. Native controls stay on — unlike the Deep Dive gate
+  // (sddv*), this watch is voluntary and scrubbable.
+  const HLFV_SRC = '/images/onboarding/steven-deepdive.mp4';
+  const hlfvOpen = () => {
+    const overlay = $('hl-founder-video');
+    const video = $('hlfv-video');
+    if (!overlay || !video) return;
+    if (!video.getAttribute('src')) {
+      video.src = HLFV_SRC;
+      video.preload = 'auto';
+    }
+    overlay.classList.add('open');
+    // Opened by a real click, so sound is allowed; fall back to muted if the
+    // browser refuses anyway.
+    video.muted = false;
+    const played = video.play();
+    if (played && typeof played.then === 'function') {
+      played.catch(() => {
+        video.muted = true;
+        video.play().catch(() => {});
+      });
+    }
+    void logUserEvent('gpt_landing_founder_video', { ui: 'gpt', action: 'open' });
+    clarityEvt('gpt_landing_founder_video', { action: 'open' });
+  };
+  const hlfvClose = () => {
+    const overlay = $('hl-founder-video');
+    if (!overlay?.classList.contains('open')) return;
+    overlay.classList.remove('open');
+    const video = $('hlfv-video');
+    if (video) {
+      video.pause();
+      try { video.currentTime = 0; } catch (_) {}
+    }
+  };
+  document.querySelectorAll('[data-hl-founder-video]').forEach(btn => {
+    btn.addEventListener('click', hlfvOpen);
+  });
+  $('hlfv-close')?.addEventListener('click', hlfvClose);
+  $('hl-founder-video')?.addEventListener('click', e => {
+    if (e.target.id === 'hl-founder-video') hlfvClose();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') hlfvClose();
+  });
+  document.querySelectorAll('[data-hl-social]').forEach(el => {
+    el.addEventListener('click', () => {
+      const platform = el.getAttribute('data-hl-social');
+      void logUserEvent('gpt_landing_social_click', { ui: 'gpt', platform });
+      clarityEvt('gpt_landing_social_click', { platform });
+    });
+  });
   document.querySelectorAll('[data-hl-card]').forEach(btn => {
     btn.addEventListener('click', () => {
       const card = btn.getAttribute('data-hl-card');

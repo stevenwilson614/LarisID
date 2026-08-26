@@ -4204,6 +4204,148 @@ body.home-finder-done .home-hero {
 .hl-stat-num { font-size: 1.15rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.2; }
 .hl-stat-label { font-size: .72rem; color: rgba(255,255,255,.6); margin-top: 2px; }
 
+/* ── Founder band: video + socials, sits under .hl-stats ──────────────────
+   The square is a poster <img>, never a <video>: the 6 MB clip is only
+   fetched when the lightbox (#hl-founder-video) opens. */
+.hl-founder {
+  display: grid;
+  grid-template-columns: minmax(0, 258px) minmax(0, 1fr) minmax(0, 396px);
+  gap: clamp(18px, 2.4vw, 30px);
+  align-items: center;
+  background: #FBF6EA;
+  border: 1px solid rgba(201,151,75,.22);
+  border-radius: 20px;
+  padding: clamp(16px, 2.2vw, 24px);
+}
+
+.hlfv-stage {
+  position: relative; display: block; width: 100%;
+  aspect-ratio: 1 / 1;
+  margin: 0; padding: 0; border: 0;
+  border-radius: 16px; overflow: hidden;
+  background-color: #111; color: #fff; font: inherit;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(0,0,0,.16);
+}
+/* 9:16 poster centre-cropped to a square. 55% keeps both the face and the
+   burnt-in "Kenapa data ini gratis?" caption inside the window. */
+.hlfv-shot {
+  display: block; width: 100%; height: 100%;
+  object-fit: cover; object-position: 50% 55%;
+  transition: transform .45s var(--ease);
+}
+.hlfv-stage:hover .hlfv-shot { transform: scale(1.05); }
+.hlfv-play {
+  position: absolute; inset: 0; margin: auto;
+  width: 60px; height: 60px; border-radius: 50%;
+  background-color: rgba(255,255,255,.94);
+  color: var(--accent);
+  display: grid; place-items: center;
+  box-shadow: 0 6px 22px rgba(0,0,0,.3);
+  transition: transform .25s var(--ease);
+}
+.hlfv-stage:hover .hlfv-play { transform: scale(1.09); }
+.hlfv-who {
+  position: absolute; top: 10px; left: 10px;
+  display: flex; flex-direction: column; line-height: 1.3; text-align: left;
+  background-color: rgba(0,0,0,.6);
+  border-radius: 10px; padding: 6px 10px;
+}
+.hlfv-who b { font-size: .76rem; font-weight: 700; }
+.hlfv-who span { font-size: .64rem; color: rgba(255,255,255,.74); }
+.hlfv-dur {
+  position: absolute; top: 12px; right: 10px;
+  background-color: rgba(0,0,0,.68);
+  font-size: .68rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  padding: 3px 7px; border-radius: 5px;
+}
+
+.hl-founder-say { min-width: 0; }
+.hl-founder-eyebrow {
+  font-size: .66rem; font-weight: 800; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--accent); margin: 0 0 10px;
+}
+.hl-founder-title {
+  font-size: clamp(1.1rem, 1.7vw, 1.46rem); font-weight: 800;
+  letter-spacing: -.02em; line-height: 1.28; margin: 0; color: var(--ink);
+}
+.hl-founder-title em { font-style: normal; color: var(--accent); }
+.hl-founder-body {
+  font-size: .82rem; line-height: 1.62; color: var(--ink-soft);
+  margin: 12px 0 0; max-width: 44ch;
+}
+.hl-founder-sign {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 16px; padding-top: 14px;
+  border-top: 1px solid rgba(201,151,75,.3);
+}
+.hl-founder-sign img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.hl-founder-sign b { display: block; font-size: .82rem; font-weight: 750; line-height: 1.25; }
+.hl-founder-sign span { display: block; font-size: .69rem; color: var(--muted); }
+
+.hl-founder-socials { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; min-width: 0; }
+.hlso {
+  display: flex; flex-direction: column; gap: 10px; min-width: 0;
+  background-color: #fff; border: 1px solid var(--line);
+  border-radius: 14px; padding: 12px;
+}
+.hlso-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.hlso-head svg { flex-shrink: 0; }
+.hlso-id { min-width: 0; flex: 1 1 auto; }
+.hlso-id b { display: block; font-size: .77rem; font-weight: 750; line-height: 1.2; }
+.hlso-id span { display: block; font-size: .66rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hlso-count { flex-shrink: 0; text-align: right; }
+.hlso-count b { display: block; font-size: .79rem; font-weight: 800; letter-spacing: -.01em; line-height: 1.2; }
+.hlso-count small { display: block; font-size: .58rem; color: var(--muted); }
+.hlso-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.hlso-tile {
+  position: relative; display: block; overflow: hidden;
+  border-radius: 7px; aspect-ratio: 3 / 4; background-color: var(--bg-hover);
+}
+.hlso-tile img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .35s var(--ease); }
+.hlso-tile:hover img { transform: scale(1.08); }
+.hlso-views {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: center; gap: 3px;
+  padding: 14px 5px 4px;
+  font-size: .57rem; font-weight: 700; color: #fff;
+  background: linear-gradient(to top, rgba(0,0,0,.78), rgba(0,0,0,0));
+}
+.hlso-views svg { width: 9px; height: 9px; flex-shrink: 0; }
+.hlso-more {
+  display: flex; align-items: center; gap: 5px; margin-top: auto;
+  font-size: .71rem; font-weight: 700; color: var(--accent); text-decoration: none;
+}
+.hlso-more:hover { text-decoration: underline; }
+
+/* Founder video lightbox. Sized off the viewport so a 9:16 clip never
+   overflows; .modal.hlfv-modal (two classes) beats the generic .modal
+   max-width:400px regardless of source order. */
+.modal-overlay.hlfv-overlay { background: rgba(10,10,10,.86); z-index: 130; padding: 16px; }
+.modal.hlfv-modal {
+  width: min(92vw, 380px, calc(84dvh * 720 / 1068));
+  max-width: none;
+  padding: 0; border-radius: 18px;
+  background: transparent; box-shadow: none;
+}
+/* steven-deepdive.mp4 is a 720x1280 file whose picture is only 720x1068 —
+   it ships with ~106px of black baked in top and bottom (the poster too).
+   Boxing to the picture ratio and covering clips exactly those bars, so the
+   clip fills the frame without re-encoding the shared asset. */
+.hlfv-modal video {
+  display: block; width: 100%; aspect-ratio: 720 / 1068;
+  object-fit: cover;
+  border-radius: 18px; background-color: #000;
+  box-shadow: 0 24px 64px rgba(0,0,0,.5);
+}
+.hlfv-close {
+  position: absolute; top: 10px; right: 10px;
+  width: 34px; height: 34px; border-radius: 50%; border: 0;
+  background-color: rgba(0,0,0,.6); color: #fff;
+  display: grid; place-items: center; cursor: pointer;
+}
+.hlfv-close:hover { background-color: rgba(0,0,0,.85); }
+
 .hl-steps-head { font-size: .82rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; margin: 0 0 22px; color: var(--ink); }
 .hl-steps-head span { color: var(--accent); }
 .hl-steps {
@@ -4400,6 +4542,13 @@ body.home-finder-done .home-hero {
 .hl-cta-band-text p { font-size: .8rem; color: rgba(255,255,255,.6); margin: 8px 0 0; }
 .hl-cta-band .hl-btn-primary { flex-shrink: 0; }
 
+/* Three columns only pay off once the panel can give the copy ~45 characters,
+   which needs roughly a 1400px viewport next to the 288px sidebar. Below that,
+   drop the socials onto their own full-width row instead of crushing the copy. */
+@media (max-width: 1399px) {
+  .hl-founder { grid-template-columns: minmax(0, 240px) minmax(0, 1fr); }
+  .hl-founder-socials { grid-column: 1 / -1; }
+}
 @media (max-width: 860px) {
   .home-landing { gap: 40px; margin-bottom: 32px; }
   .hl-hero { flex-direction: column; gap: 28px; text-align: center; }
@@ -4432,10 +4581,16 @@ body.home-finder-done .home-hero {
   .hl-ai-chat { width: 100%; }
   .hl-ai-howto { grid-template-columns: repeat(2, 1fr); }
   .hl-cta-band { flex-direction: column; text-align: center; }
+  .hl-founder { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  .hlfv-stage { max-width: min(300px, 68vw); margin: 0 auto; }
+  .hl-founder-say { text-align: center; }
+  .hl-founder-body { margin-left: auto; margin-right: auto; }
+  .hl-founder-sign { justify-content: center; }
 }
 @media (max-width: 520px) {
   .hl-cards { grid-template-columns: 1fr; }
   .hl-hero-chips { grid-template-columns: 1fr 1fr; }
+  .hl-founder-socials { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* Answer card (trending) */
@@ -6057,6 +6212,122 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                   </div>
                 </section>
 
+                <!-- Founder band. The square is the video poster centre-cropped to 1:1;
+                     clicking it opens #hl-founder-video with the full 9:16 clip. Social
+                     grids are self-hosted thumbnails (images/social/) — Instagram and
+                     TikTok CDN URLs are signed and expire, so they cannot be hotlinked.
+                     Counts were read from the live profiles on 26 Aug 2026; they are
+                     static and need a hand edit to refresh. -->
+                <section class="hl-founder" aria-labelledby="hl-founder-h">
+                  <button type="button" class="hlfv-stage" data-hl-founder-video
+                          aria-label="Putar video: kenapa data Laris gratis (35 detik)">
+                    <img class="hlfv-shot" src="/images/onboarding/steven-deepdive-poster.jpg"
+                         width="720" height="1280" loading="lazy" decoding="async"
+                         alt="Steven Wilson menjelaskan kenapa data Laris gratis">
+                    <span class="hlfv-who"><b>Steven Wilson</b><span>Founder, Laris</span></span>
+                    <span class="hlfv-dur" aria-hidden="true">0:35</span>
+                    <span class="hlfv-play" aria-hidden="true">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.2v13.6L19 12z"/></svg>
+                    </span>
+                  </button>
+
+                  <div class="hl-founder-say">
+                    <p class="hl-founder-eyebrow">Dibangun dari pengalaman nyata</p>
+                    <h2 class="hl-founder-title" id="hl-founder-h">Saya bangun <em>Laris</em> untuk bantu seller ambil keputusan lebih cerdas.</h2>
+                    <p class="hl-founder-body">Saya orang Amerika yang sudah tiga tahun tinggal di Bandung. Tiap hari saya lihat seller Indonesia diminta bayar ratusan ribu sebulan untuk data yang sebenarnya sudah terbuka. Jadi saya bangun sendiri — dan saya gratiskan.</p>
+                    <div class="hl-founder-sign">
+                      <img src="/images/steven-avatar.webp" width="38" height="38" alt="" loading="lazy" decoding="async">
+                      <div><b>Steven Wilson</b><span>Founder, Laris</span></div>
+                    </div>
+                  </div>
+
+                  <div class="hl-founder-socials">
+                    <div class="hlso">
+                      <div class="hlso-head">
+                        <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><defs><linearGradient id="ig-founder-g" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#FEDA75"/><stop offset=".28" stop-color="#FA7E1E"/><stop offset=".55" stop-color="#D62976"/><stop offset=".78" stop-color="#962FBF"/><stop offset="1" stop-color="#4F5BD5"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#ig-founder-g)"/><rect x="8.6" y="8.6" width="14.8" height="14.8" rx="4.6" fill="none" stroke="#fff" stroke-width="1.9"/><circle cx="16" cy="16" r="3.85" fill="none" stroke="#fff" stroke-width="1.9"/><circle cx="20.7" cy="11.3" r="1.15" fill="#fff"/></svg>
+                        <div class="hlso-id"><b>Instagram</b><span>@bule_barat1</span></div>
+                        <div class="hlso-count"><b>58,8rb</b><small>pengikut</small></div>
+                      </div>
+                      <div class="hlso-grid">
+                      <a class="hlso-tile" href="https://www.instagram.com/p/DPBhxtxkyiC/" target="_blank" rel="noopener noreferrer"
+                         data-hl-social="instagram" aria-label="Buka video di Instagram — 1,5 juta tayangan">
+                        <img src="/images/social/ig-1.webp" width="300" height="400" alt="" loading="lazy" decoding="async">
+                        <span class="hlso-views"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>1,5jt</span>
+                      </a>
+                      <a class="hlso-tile" href="https://www.instagram.com/p/C_zyGu1Os7y/" target="_blank" rel="noopener noreferrer"
+                         data-hl-social="instagram" aria-label="Buka video di Instagram — 428 ribu tayangan">
+                        <img src="/images/social/ig-2.webp" width="300" height="400" alt="" loading="lazy" decoding="async">
+                        <span class="hlso-views"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>428rb</span>
+                      </a>
+                      <a class="hlso-tile" href="https://www.instagram.com/p/DZbd_kkxyIp/" target="_blank" rel="noopener noreferrer"
+                         data-hl-social="instagram" aria-label="Buka video di Instagram — 41,4 ribu tayangan">
+                        <img src="/images/social/ig-3.webp" width="300" height="400" alt="" loading="lazy" decoding="async">
+                        <span class="hlso-views"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>41,4rb</span>
+                      </a>
+                      <a class="hlso-tile" href="https://www.instagram.com/p/DcV-l7ANTjL/" target="_blank" rel="noopener noreferrer"
+                         data-hl-social="instagram" aria-label="Buka video di Instagram — 26,4 ribu tayangan">
+                        <img src="/images/social/ig-4.webp" width="300" height="400" alt="" loading="lazy" decoding="async">
+                        <span class="hlso-views"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>26,4rb</span>
+                      </a>
+                      <a class="hlso-tile" href="https://www.instagram.com/p/DbvaGD1PGJ9/" target="_blank" rel="noopener noreferrer"
+                         data-hl-social="instagram" aria-label="Buka video di Instagram — 21,6 ribu tayangan">
+                        <img src="/images/social/ig-5.webp" width="300" height="400" alt="" loading="lazy" decoding="async">
+                        <span class="hlso-views"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>21,6rb</span>
+                      </a>
+                      <a class="hlso-tile" href="https://www.instagram.com/p/DbdJYSpuIZJ/" target="_blank" rel="noopener noreferrer"
+                         data-hl-social="instagram" aria-label="Buka video di Instagram — 6 ribu tayangan">
+                        <img src="/images/social/ig-6.webp" width="300" height="400" alt="" loading="lazy" decoding="async">
+                        <span class="hlso-views"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>6rb</span>
+                      </a>
+                      </div>
+                      <a class="hlso-more" href="https://www.instagram.com/bule_barat1/" target="_blank"
+                         rel="noopener noreferrer" data-hl-social="instagram">Lihat Instagram <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+                    </div>
+
+                    <div class="hlso">
+                      <div class="hlso-head">
+                        <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#010101"/><path d="M19.3 7.4c.34 2.06 1.66 3.4 3.62 3.6v2.55c-1.18 0-2.36-.4-3.42-1.04v5.55a5.36 5.36 0 1 1-5.36-5.36c.3 0 .58.02.86.07v2.66a2.8 2.8 0 1 0 1.96 2.67V7.4z" fill="#25F4EE" transform="translate(-0.9,-0.6)"/><path d="M19.3 7.4c.34 2.06 1.66 3.4 3.62 3.6v2.55c-1.18 0-2.36-.4-3.42-1.04v5.55a5.36 5.36 0 1 1-5.36-5.36c.3 0 .58.02.86.07v2.66a2.8 2.8 0 1 0 1.96 2.67V7.4z" fill="#FE2C55" transform="translate(0.9,0.6)"/><path d="M19.3 7.4c.34 2.06 1.66 3.4 3.62 3.6v2.55c-1.18 0-2.36-.4-3.42-1.04v5.55a5.36 5.36 0 1 1-5.36-5.36c.3 0 .58.02.86.07v2.66a2.8 2.8 0 1 0 1.96 2.67V7.4z" fill="#fff"/></svg>
+                        <div class="hlso-id"><b>TikTok</b><span>@bule_barat</span></div>
+                        <div class="hlso-count"><b>52,8rb</b><small>pengikut</small></div>
+                      </div>
+                      <div class="hlso-grid">
+                      <a class="hlso-tile" href="https://www.tiktok.com/@bule_barat/video/7394755018949152016" target="_blank" rel="noopener noreferrer"
+                         data-hl-social="tiktok" aria-label="Buka video di Tiktok — 7,5 juta tayangan">
+                        <img src="/images/social/tt-1.webp" width="300" height="400" alt="" loading="lazy" decoding="async">
+                        <span class="hlso-views"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>7,5jt</span>
+                      </a>
+                      <a class="hlso-tile" href="https://www.tiktok.com/@bule_barat/video/7353900412434435344" target="_blank" rel="noopener noreferrer"
+                         data-hl-social="tiktok" aria-label="Buka video di Tiktok — 1,2 juta tayangan">
+                        <img src="/images/social/tt-2.webp" width="300" height="400" alt="" loading="lazy" decoding="async">
+                        <span class="hlso-views"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>1,2jt</span>
+                      </a>
+                      <a class="hlso-tile" href="https://www.tiktok.com/@bule_barat/video/7674607212525915413" target="_blank" rel="noopener noreferrer"
+                         data-hl-social="tiktok" aria-label="Buka video di Tiktok — 327 ribu tayangan">
+                        <img src="/images/social/tt-3.webp" width="300" height="400" alt="" loading="lazy" decoding="async">
+                        <span class="hlso-views"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>327rb</span>
+                      </a>
+                      <a class="hlso-tile" href="https://www.tiktok.com/@bule_barat/video/7664604683633216789" target="_blank" rel="noopener noreferrer"
+                         data-hl-social="tiktok" aria-label="Buka video di Tiktok — 179 ribu tayangan">
+                        <img src="/images/social/tt-4.webp" width="300" height="400" alt="" loading="lazy" decoding="async">
+                        <span class="hlso-views"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>179rb</span>
+                      </a>
+                      <a class="hlso-tile" href="https://www.tiktok.com/@bule_barat/video/7675745796284796180" target="_blank" rel="noopener noreferrer"
+                         data-hl-social="tiktok" aria-label="Buka video di Tiktok — 90,3 ribu tayangan">
+                        <img src="/images/social/tt-5.webp" width="300" height="400" alt="" loading="lazy" decoding="async">
+                        <span class="hlso-views"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>90,3rb</span>
+                      </a>
+                      <a class="hlso-tile" href="https://www.tiktok.com/@bule_barat/video/7671300456219561237" target="_blank" rel="noopener noreferrer"
+                         data-hl-social="tiktok" aria-label="Buka video di Tiktok — 59 ribu tayangan">
+                        <img src="/images/social/tt-6.webp" width="300" height="400" alt="" loading="lazy" decoding="async">
+                        <span class="hlso-views"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>59rb</span>
+                      </a>
+                      </div>
+                      <a class="hlso-more" href="https://www.tiktok.com/@bule_barat" target="_blank"
+                         rel="noopener noreferrer" data-hl-social="tiktok">Lihat TikTok <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+                    </div>
+                  </div>
+                </section>
+
                 <section class="hl-steps-section">
                   <h2 class="hl-steps-head">Semua yang kamu butuhkan, dalam <span>satu platform.</span></h2>
                   <div class="hl-steps">
@@ -7398,6 +7669,25 @@ body:has(.modal-overlay.open) .msg-steven-fab {
   </div>
 </div>
 
+<!-- Founder video lightbox (landing). Opened by .hlfv-stage; js/gpt-app.js
+     (hlfv*) attaches the src on first open so the 6 MB clip never loads
+     with the page. Voluntary watch, so native controls stay on. -->
+<div class="modal-overlay hlfv-overlay" id="hl-founder-video">
+  <div class="modal hlfv-modal" role="dialog" aria-modal="true" aria-label="Video dari Steven Wilson">
+    <video id="hlfv-video"
+           playsinline
+           webkit-playsinline
+           controls
+           preload="none"
+           poster="/images/onboarding/steven-deepdive-poster.jpg"
+           controlslist="nodownload"
+           aria-label="Kenapa data Laris gratis"></video>
+    <button type="button" class="hlfv-close" id="hlfv-close" aria-label="Tutup video">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+</div>
+
 <!-- Daily wall. Arm A shows the same earn options at its limit modal; keeping the
      two arms' earn mechanics identical is what makes the A/B contrast readable. -->
 <div class="modal-overlay" id="gpt-limit-modal">
@@ -7527,6 +7817,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/gpt-app.js?v=20260826b" defer></script>
+<script src="/js/gpt-app.js?v=20260826c" defer></script>
 </body>
 </html>
