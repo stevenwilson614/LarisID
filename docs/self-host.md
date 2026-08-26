@@ -69,6 +69,12 @@ On the box the container is `supabase-edge-functions`. Cron jobs call
 (see `larisid-infra/cron/recreate_cron_jobs.sql`). Do not paste cloud JWTs
 into new cron SQL.
 
+`rise-crawl-watchdog` (LARISE shop crawl coverage, 14:00 WIB) is scheduled with:
+
+```bash
+bash scripts/schedule-rise-crawl-watchdog.sh
+```
+
 ## Studio / one-off SQL
 
 https://api.larisid.com (basic auth from `larisid-infra/docker/.env`), or

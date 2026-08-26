@@ -143,6 +143,18 @@
     if (tab === 'jadwal') void renderJadwal(c.id, true);
   }
 
+  function boardStatusLabel(st) {
+    if (st === 'included') return 'terverifikasi';
+    if (st === 'excluded') return 'dikecualikan';
+    if (st === 'needs_review') return 'perlu review';
+    return 'menunggu verifikasi';
+  }
+
+  function fmtDay(d) {
+    if (!d) return '';
+    return String(d).slice(0, 10);
+  }
+
   async function renderTokoSaya(cid) {
     const root = $('cohort-toko-saya');
     if (!root) return;
@@ -151,11 +163,38 @@
       const stats = await rpc('cohort_my_shop_stats', { p_cohort: cid }) || {};
       const shops = stats.shops || [];
       const sensor = stats.sensor || 'dark';
+      const snapDays = Number(stats.snapshot_days || 0);
+      const lastCrawl = fmtDay(stats.last_snapshot_at || stats.sensor_day);
       const sensorLbl = sensor === 'ok' ? 'Crawl terakhir oke' : sensor === 'degraded' ? 'Crawl sebagian' : 'Belum ada data toko hari ini';
       const sensorTone = sensor === 'ok' ? '#1A7A46' : '#B45309';
-      let shopHtml = shops.length
-        ? shops.map(s => `<div class="cohort-muted">${esc(s.platform)} · ${esc(s.handle || s.url || '')} · ${esc(s.board_status || 'pending')}</div>`).join('')
-        : '<p class="cohort-muted">Belum ada toko tertaut. Buka profil → tautkan URL Shopee/Tokopedia.</p>';
+
+      let shopHtml;
+      if (!shops.length) {
+        shopHtml = '<p class="cohort-muted">Belum ada toko tertaut. Tempel URL toko Shopee di bawah — angka terukur mulai setelah crawl harian.</p>';
+      } else {
+        shopHtml = shops.map(s => {
+          const shown = s.handle || s.url || '';
+          const href = s.url ? ` href="${esc(s.url)}" target="_blank" rel="noopener"` : '';
+          return `<div class="cohort-shop-row">
+            <span>${esc(s.platform)} · ${s.url ? `<a${href}>${esc(shown)}</a>` : esc(shown)} · ${esc(boardStatusLabel(s.board_status))}</span>
+            <button type="button" class="cohort-btn secondary cohort-shop-del" data-id="${esc(s.id)}" style="padding:4px 8px;">Hapus</button>
+          </div>`;
+        }).join('');
+      }
+
+      let noteHtml = '';
+      if (!shops.length) {
+        noteHtml = '<p class="cohort-note warn">Minggu 1: tautkan satu toko Shopee. Platform lain boleh, tapi yang diukur crawl-nya baru Shopee.</p>';
+      } else if (!(stats.shopee > 0)) {
+        noteHtml = '<p class="cohort-note warn">Toko tertaut belum Shopee — crawl katalog baru jalan untuk Shopee. Tambah tautan shopee.co.id.</p>';
+      } else if (snapDays === 0) {
+        noteHtml = '<p class="cohort-note">Toko terhubung — angka terukur mulai setelah crawl harian (biasanya besok pagi).</p>';
+      } else if (snapDays === 1) {
+        noteHtml = '<p class="cohort-note">Toko terhubung — angka terukur mulai besok. Crawl pertama adalah baseline (belum ada perubahan terjual/ulasan).</p>';
+      } else if (!(stats.terjual > 0) && !(stats.ulasan > 0)) {
+        noteHtml = '<p class="cohort-note">Belum ada perubahan terjual/ulasan sejak pengukuran terakhir — normal untuk toko baru.</p>';
+      }
+
       const dupes = stats.possible_dupes || [];
       let dupeHtml = '';
       if (dupes.length >= 2) {
@@ -165,12 +204,13 @@
           <button type="button" class="cohort-btn secondary" style="margin-top:8px;" id="cohort-group-btn">Gabungkan sebagai 1 produk</button>
         </div>`;
       }
+
       root.innerHTML = `
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <h3 style="margin:0;">Toko Saya</h3>
           <span class="cohort-terukur">terukur</span>
         </div>
-        <p class="cohort-muted" style="color:${sensorTone};margin:6px 0 0;">${esc(sensorLbl)}${stats.sensor_day ? ' · ' + esc(stats.sensor_day) : ''}</p>
+        <p class="cohort-muted" style="color:${sensorTone};margin:6px 0 0;">${esc(sensorLbl)}${lastCrawl ? ' · ' + esc(lastCrawl) : ''}</p>
         <div class="cohort-stat-row">
           <div class="cohort-stat"><b>${stats.toko || 0}</b><span>Toko</span></div>
           <div class="cohort-stat"><b>${stats.produk || 0}</b><span>Produk</span></div>
@@ -179,11 +219,53 @@
         </div>
         <p class="cohort-muted" style="margin:0 0 8px;">Listing aktif: ${stats.listings || 0} (salinan lintas platform). Minggu ini: kemajuan dari toko, bukan estimasi.</p>
         ${shopHtml}
+        ${noteHtml}
+        <div class="cohort-shop-add">
+          <input type="url" id="cohort-shop-url" class="cohort-input" maxlength="400" placeholder="https://shopee.co.id/namatoko" enterkeyhint="done">
+          <button type="button" class="cohort-btn" id="cohort-shop-add">Tautkan</button>
+        </div>
+        <p id="cohort-shop-status" class="cohort-muted" style="margin:6px 0 0;"></p>
         ${dupeHtml}`;
       const gbtn = $('cohort-group-btn');
       if (gbtn) gbtn.addEventListener('click', () => void groupChecked(cid));
+      const addBtn = $('cohort-shop-add');
+      if (addBtn) addBtn.addEventListener('click', () => void linkShop(cid));
+      const urlInp = $('cohort-shop-url');
+      if (urlInp) urlInp.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') { ev.preventDefault(); void linkShop(cid); }
+      });
+      root.querySelectorAll('.cohort-shop-del').forEach(b => {
+        b.addEventListener('click', () => void unlinkShop(cid, b.getAttribute('data-id')));
+      });
     } catch (e) {
       root.innerHTML = `<p class="cohort-muted">${esc(e.message || 'Gagal memuat toko.')}</p>`;
+    }
+  }
+
+  async function linkShop(cid) {
+    const inp = $('cohort-shop-url');
+    const st = $('cohort-shop-status');
+    const url = (inp && inp.value || '').trim();
+    if (!url) { if (st) st.textContent = 'Tempel tautan toko Shopee dulu.'; return; }
+    if (st) st.textContent = 'Menyimpan…';
+    try {
+      await rpc('ssis_link_shop', { p_url: url });
+      if (inp) inp.value = '';
+      toast('Toko tertaut.');
+      await renderTokoSaya(cid);
+    } catch (e) {
+      if (st) st.textContent = e.message || 'Gagal menautkan.';
+    }
+  }
+
+  async function unlinkShop(cid, id) {
+    if (!id) return;
+    try {
+      await rpc('ssis_unlink_shop', { p_id: id });
+      toast('Toko dihapus.');
+      await renderTokoSaya(cid);
+    } catch (e) {
+      toast(e.message || 'Gagal menghapus.');
     }
   }
 
@@ -405,15 +487,16 @@
       }
       if (!table) return;
       table.innerHTML = `<div style="overflow:auto;"><table class="cohort-table">
-        <thead><tr><th>Nama</th><th>Toko</th><th>Produk</th><th>Sensor</th><th>Hadir</th><th>Flag</th><th></th></tr></thead>
+        <thead><tr><th>Nama</th><th>Toko</th><th>Produk</th><th>Crawl</th><th>Hadir</th><th>Flag</th><th></th></tr></thead>
         <tbody>${rows.map(r => `<tr>
           <td style="font-weight:600;cursor:pointer;" data-open="${esc(r.user_id)}">${esc(r.display_name)}</td>
-          <td>${r.toko || 0}</td><td>${r.produk || 0}</td>
-          <td>${esc(r.sensor || '—')}</td>
+          <td>${r.toko || 0}${r.pending ? ` <span class="cohort-pill" style="background:#FEF3C7;color:#92400E;">${r.pending} pending</span>` : ''}</td>
+          <td>${r.produk || 0}</td>
+          <td>${esc(r.sensor || '—')}${r.last_crawl_day ? `<div class="cohort-muted">${esc(fmtDay(r.last_crawl_day))}</div>` : ''}</td>
           <td>${r.hadir || 0} / absen ${r.absen || 0}</td>
           <td>${r.flag ? `<span class="cohort-pill" style="background:#FEF3C7;color:#92400E;">${esc(r.flag)}</span>` : '—'}</td>
           <td style="white-space:nowrap;">
-            <button type="button" class="cohort-btn secondary" data-inc="${esc(r.user_id)}" style="padding:4px 8px;">Loloskan toko</button>
+            <button type="button" class="cohort-btn secondary" data-inc="${esc(r.user_id)}" style="padding:4px 8px;">Verifikasi</button>
             <button type="button" class="cohort-btn secondary" data-exc="${esc(r.user_id)}" style="padding:4px 8px;">Kecualikan</button>
           </td>
         </tr>`).join('')}</tbody></table></div>`;
@@ -433,7 +516,7 @@
       for (const s of (shops || [])) {
         await rpc('ssis_set_shop_board_status', { p_id: s.id, p_status: status });
       }
-      toast(status === 'included' ? 'Toko masuk papan.' : 'Toko dikecualikan dari papan.');
+      toast(status === 'included' ? 'Toko terverifikasi (masuk papan).' : 'Toko dikecualikan dari papan.');
       if (state.mentorCohort) await renderRoster(state.mentorCohort.id);
     } catch (e) {
       toast(e.message || 'Gagal mengubah status toko.');
@@ -517,12 +600,17 @@
     if (!root || !isAdmin()) return;
     try {
       const o = await rpc('ssis_ops_overview') || {};
+      const cov = o.crawl_coverage || {};
+      const covLine = cov.linked_shopee
+        ? `Crawl hari ini: ${cov.ok_today || 0}/${cov.linked_shopee} toko Shopee (${cov.pct != null ? cov.pct + '%' : '—'}).`
+        : 'Belum ada toko Shopee tertaut.';
       root.innerHTML = `<div class="cohort-stat-row">
         <div class="cohort-stat"><b>${o.active_shops || 0}</b><span>Toko aktif</span></div>
         <div class="cohort-stat"><b>${o.pending_shops || 0}</b><span>Menunggu verifikasi</span></div>
         <div class="cohort-stat"><b>${o.needs_review || 0}</b><span>Perlu review</span></div>
         <div class="cohort-stat"><b>${o.failed_raw || 0}</b><span>Parse gagal</span></div>
       </div>
+      <p class="cohort-muted">${esc(covLine)}</p>
       <p class="cohort-muted">Sensor 2 hari: ${esc(JSON.stringify(o.sensor || []))}</p>`;
     } catch (e) {
       root.innerHTML = `<p class="cohort-muted">${esc(e.message || 'Gagal memuat ops.')}</p>`;

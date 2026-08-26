@@ -71,10 +71,17 @@
   padding: 12px 14px; margin-bottom: 14px;
 }
 .cohort-help h3 { margin: 0 0 8px; color: #9A3412; }
-.cohort-pill {
-  font-size: .58rem; font-weight: 700; padding: 2px 8px; border-radius: 20px;
-  display: inline-block;
+.cohort-shop-row {
+  display: flex; justify-content: space-between; gap: 8px; align-items: center;
+  font-size: .75rem; padding: 6px 0; border-bottom: 1px solid #F3F4F6;
 }
+.cohort-shop-add { display: flex; gap: 8px; margin-top: 10px; }
+.cohort-shop-add .cohort-input { margin-bottom: 0; flex: 1; }
+.cohort-note {
+  margin: 8px 0 0; padding: 8px 10px; border-radius: 8px;
+  background: #F0FDF4; color: #166534; font-size: .72rem; line-height: 1.45;
+}
+.cohort-note.warn { background: #FFF7ED; color: #9A3412; }
 .cohort-table { width: 100%; border-collapse: collapse; font-size: .75rem; }
 .cohort-table th {
   text-align: left; font-size: .62rem; font-weight: 700; text-transform: uppercase;
