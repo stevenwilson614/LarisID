@@ -1005,6 +1005,37 @@
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
 }
 .ltk-sug-note { font-size: .72rem; color: #9CA3AF; padding: 9px 10px; line-height: 1.45; }
+.ltk-sug-unknown {
+  margin-top: 8px; padding: 12px 12px 11px; border-radius: 10px;
+  background: #FFFBEB; border: 1px solid #FDE68A;
+}
+.ltk-sug-unknown-title {
+  margin: 0 0 4px; font-size: .78rem; font-weight: 800; color: #92400E; line-height: 1.35;
+}
+.ltk-sug-unknown-body {
+  margin: 0 0 10px; font-size: .72rem; color: #A16207; line-height: 1.5;
+}
+.ltk-sug-unknown-btn { width: 100%; justify-content: center; }
+.ltk-slot--newkw { border-color: #FCD34D; background: #FFFBEB; }
+.ltk-seedtag--new { background: #FEF3C7; color: #92400E; }
+.ltk-promise-foot--warn {
+  margin-top: 10px; padding: 10px 12px; border-radius: 10px;
+  background: #FFFBEB; border: 1px solid #FDE68A; color: #92400E;
+}
+.ltk-collect-unknown {
+  margin: 0 0 16px; padding: 14px 14px 12px; border-radius: 12px;
+  background: #FFFBEB; border: 1px solid #FDE68A;
+}
+.ltk-collect-unknown-title {
+  margin: 0 0 4px; font-size: .84rem; font-weight: 800; color: #92400E;
+}
+.ltk-collect-unknown-body {
+  margin: 0 0 8px; font-size: .76rem; color: #A16207; line-height: 1.5;
+}
+.ltk-collect-unknown-list {
+  margin: 0; padding: 0 0 0 1.1rem; font-size: .76rem; color: #92400E; font-weight: 700;
+  display: flex; flex-direction: column; gap: 2px;
+}
 .ltk-sug-opt {
   display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
   font: inherit; text-align: left; background: transparent; border: 0;

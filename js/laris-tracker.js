@@ -838,23 +838,74 @@
      Three slots arrive pre-filled from seedDraft(); the remaining slots are
      typeahead inputs, so typing one letter is enough to get somewhere. */
 
+  function kwNorm(s) {
+    return String(s || '').trim().toLowerCase();
+  }
+
+  /** True when product_types_v / rollup already has this exact keyword. */
+  function keywordKnownInCorpus(kw) {
+    var n = kwNorm(kw);
+    if (!n) return true;
+    if ((S.baseline || []).some(function (b) { return kwNorm(b.keyword) === n; })) return true;
+    var row = (S.rollup.rows || []).filter(function (r) { return kwNorm(r.keyword) === n; })[0];
+    if (row && ((Number(row.n_days) || 0) > 0 || (Number(row.n_sellers) || 0) > 0 || row.has_dense)) {
+      return true;
+    }
+    return false;
+  }
+
+  function sugHasExact(q, rows) {
+    var n = kwNorm(q);
+    return !!(n && (rows || []).some(function (r) { return kwNorm(r.keyword) === n; }));
+  }
+
+  /** CTA when the typed keyword is not in our scrape/corpus list yet. */
+  function unknownKeywordCtaHtml(q, via) {
+    var qSafe = String(q || '').trim();
+    if (qSafe.length < 2) return '';
+    var pickAttr = via === 'picker'
+      ? ('data-ltk-picker-pick="' + attr(qSafe) + '" data-ltk-picker-cat="' + attr(draft.cat || '') + '"')
+      : ('data-ltk-sugpick="' + attr(qSafe) + '" data-ltk-sugcat="' + attr(draft.cat || '') + '"');
+    return '<div class="ltk-sug-unknown">' +
+      '<p class="ltk-sug-unknown-title">Kami belum punya keyword &ldquo;' + esc(qSafe) + '&rdquo; di daftar scrape.</p>' +
+      '<p class="ltk-sug-unknown-body">Mau kami track? Kami mulai scrape tiap pagi. Tren butuh minimal 2 hari data — update pertama <b>' +
+        esc(nextUpdateLabel()) + '</b>.</p>' +
+      '<button type="button" class="ltk-btn ltk-btn--primary ltk-sug-unknown-btn" ' + pickAttr +
+        ' data-ltk-unknown="1">Ya, pantau keyword ini</button>' +
+    '</div>';
+  }
+
+  function thinTrendNoteHtml(kw, isListing) {
+    if (isListing) {
+      return 'Listing ini belum punya cukup riwayat scrape (butuh minimal 2 kali) untuk menampilkan tren.';
+    }
+    if (kw && !keywordKnownInCorpus(kw)) {
+      return 'Kami belum punya keyword &ldquo;' + esc(kw) + '&rdquo; di daftar scrape sebelumnya. ' +
+        'Karena kamu memantau, kami mulai scrape tiap pagi — tren butuh minimal 2 hari data. Update pertama ' +
+        esc(nextUpdateLabel()) + '.';
+    }
+    return 'Perlu minimal 2 hari data untuk menampilkan tren.';
+  }
+
   function slotSuggestHtml(idx) {
     var sug = draft.sug;
     if (sug.slot !== idx) return '';
     if (sug.busy) return '<div class="ltk-sug"><div class="ltk-sug-note">Mencari…</div></div>';
     var browsing = !sug.q || !String(sug.q).trim();
     if (!sug.rows.length) {
-      return '<div class="ltk-sug"><div class="ltk-sug-note">' +
-        (browsing
-          ? ('Ketik keyword' + (draft.cat ? ' — difilter ke ' + esc(draft.cat) : '') + '.')
-          : ('Tidak ada yang cocok dengan "' + esc(sug.q) + '". Tekan Enter untuk pantau apa adanya.')) +
-        '</div></div>';
+      if (browsing) {
+        return '<div class="ltk-sug"><div class="ltk-sug-note">' +
+          ('Ketik keyword' + (draft.cat ? ' — difilter ke ' + esc(draft.cat) : '') + '.') +
+          '</div></div>';
+      }
+      return '<div class="ltk-sug">' + unknownKeywordCtaHtml(sug.q, 'sug') + '</div>';
     }
     var hint = browsing
       ? '<div class="ltk-sug-hint">' +
           (sug.fromHistory ? 'Dari pencarian kamu' : 'Saran buat kamu') +
           ' — ketik untuk menyaring</div>'
       : '';
+    var exact = browsing || sugHasExact(sug.q, sug.rows);
     return '<div class="ltk-sug ltk-sug--cards" role="listbox">' + hint +
       '<div class="ltk-sug-grid">' + sug.rows.map(function (r) {
         var meta = [];
@@ -866,7 +917,9 @@
           '<span class="ltk-sug-kw">' + esc(r.keyword) + '</span>' +
           (meta.length ? '<span class="ltk-sug-meta">' + esc(meta.join(' · ')) + '</span>' : '') +
           '</button>';
-      }).join('') + '</div></div>';
+      }).join('') + '</div>' +
+      (!exact ? unknownKeywordCtaHtml(sug.q, 'sug') : '') +
+      '</div>';
   }
 
   function storeCatSelectHtml() {
@@ -1146,10 +1199,13 @@
         ? '<img class="ltk-slot-ico" src="' + attr(k.image_url) + '" alt="" loading="lazy" decoding="async" ' +
           'referrerpolicy="no-referrer" onerror="this.remove()">'
         : catIconHtml(k.category, 26, 'ltk-slot-ico');
-      slots += '<li class="ltk-slot ltk-slot--filled' + (err ? ' ltk-slot--err' : '') + '">' +
+      slots += '<li class="ltk-slot ltk-slot--filled' + (err ? ' ltk-slot--err' : '') +
+        (k.known === false ? ' ltk-slot--newkw' : '') + '">' +
         thumb +
         '<span class="ltk-slot-body"><span class="ltk-slot-kw">' + esc(k.keyword) +
-          (seeded ? '<span class="ltk-seedtag">dari produk yang kamu buka</span>' : '') + '</span>' +
+          (seeded ? '<span class="ltk-seedtag">dari produk yang kamu buka</span>' : '') +
+          (k.known === false ? '<span class="ltk-seedtag ltk-seedtag--new">belum di daftar scrape</span>' : '') +
+          '</span>' +
         '<span class="ltk-slot-meta">' + esc(err || k.meta || k.category || 'Dipantau tiap pagi') + '</span></span>' +
         '<button type="button" class="ltk-slot-x" data-ltk-rm="' + attr(k.keyword) + '" ' +
         'aria-label="Hapus ' + attr(k.keyword) + '">&times;</button></li>';
@@ -1276,11 +1332,15 @@
     var visible = (draft.pickerRows || []).filter(function (r) {
       return !already[String(r.keyword).toLowerCase()];
     });
+    var exact = !draft.pickerQ || sugHasExact(draft.pickerQ, visible);
     var body = draft.pickerBusy
       ? '<p class="ltk-sug-note">Mencari…</p>'
       : (visible.length
-          ? '<div class="ltk-disc-grid">' + visible.map(pickerCardHtml).join('') + '</div>'
-          : '<p class="ltk-sug-note">' + (draft.pickerQ ? 'Tidak ketemu "' + esc(draft.pickerQ) + '".' : 'Belum ada pasar untuk ditampilkan.') + '</p>');
+          ? ('<div class="ltk-disc-grid">' + visible.map(pickerCardHtml).join('') + '</div>' +
+              (!exact ? unknownKeywordCtaHtml(draft.pickerQ, 'picker') : ''))
+          : (draft.pickerQ
+              ? unknownKeywordCtaHtml(draft.pickerQ, 'picker')
+              : '<p class="ltk-sug-note">Belum ada pasar untuk ditampilkan.</p>'));
     return '<div class="ltk-picker-panel">' +
       '<div class="ltk-picker-head">' +
         '<input type="text" class="ltk-input" data-ltk-picker-input ' +
@@ -1335,19 +1395,27 @@
     });
   }
 
-  function pickFromPicker(kw, cat) {
+  function pickFromPicker(kw, cat, pickOpts) {
+    pickOpts = pickOpts || {};
     var norm = String(kw || '').trim().toLowerCase();
     if (!norm || draft.picked.length >= S.keywordLimit) return;
     if (draft.picked.some(function (k) { return String(k.keyword).toLowerCase() === norm; })) return;
     var hit = (draft.pickerRows || []).filter(function (r) {
       return String(r.keyword || '').toLowerCase() === norm;
     })[0] || {};
+    var known = pickOpts.known != null ? !!pickOpts.known : !!hit.keyword;
     draft.picked.push({
       keyword: String(kw).trim(),
       category: cat || hit.category || '',
       image_url: hit.rep_image_url || hit.image_url || hit.top_image || '',
-      meta: hit.n_sellers ? (fmtUnits(hit.n_sellers) + ' penjual') : '',
+      known: known,
+      meta: known
+        ? (hit.n_sellers ? (fmtUnits(hit.n_sellers) + ' penjual') : '')
+        : 'Belum di daftar scrape — kami mulai track dari sekarang',
     });
+    if (!known) {
+      try { call('track', 'tracker_keyword_unknown_add', { site: opts.site, keyword: String(kw).trim(), via: 'picker' }); } catch (_) {}
+    }
     if (draft.picked.length >= S.keywordLimit) closePicker();
     else renderSetup();
   }
@@ -1429,6 +1497,15 @@
   }
 
   function stepSelesaiHtml() {
+    var unknownKws = draft.picked.filter(function (k) { return k && k.known === false; });
+    var unknownNote = unknownKws.length
+      ? '<p class="ltk-promise-foot ltk-promise-foot--warn"><b>Catatan:</b> ' +
+        (unknownKws.length === 1
+          ? ('Keyword &ldquo;' + esc(unknownKws[0].keyword) + '&rdquo; belum ada di daftar scrape kami.')
+          : (unknownKws.length + ' keyword belum ada di daftar scrape kami.')) +
+        ' Kami mulai scrape tiap pagi karena kamu memantau — tren butuh minimal 2 hari data. Update pertama <b>' +
+        esc(nextUpdateLabel()) + '</b>.</p>'
+      : '';
     return '<div class="ltk-stephead">' +
         '<h3>Siap dipantau</h3>' +
         '<p>Mulai besok pagi kamu akan lihat apa yang berubah dari hari ke hari.</p>' +
@@ -1443,6 +1520,7 @@
       '</ul>' +
       '<p class="ltk-promise-foot">Kami scrape keyword kamu tiap pagi dan bandingkan dengan hari ' +
       'sebelumnya. Update pertama <b>' + esc(nextUpdateLabel()) + '</b>.</p>' +
+      unknownNote +
       '<div class="ltk-notify ltk-notify--wiz">' +
         '<div class="ltk-stephead">' +
           '<h3>Mau dikabari lewat mana?</h3>' +
@@ -1534,6 +1612,11 @@
     var p = pane('collecting');
     if (!p) return;
     var n = S.keywords.length;
+    var knownNorm = {};
+    (S.baseline || []).forEach(function (b) {
+      if (b && b.keyword) knownNorm[kwNorm(b.keyword)] = 1;
+    });
+    var unknownKws = S.keywords.filter(function (k) { return k && !knownNorm[kwNorm(k.keyword)]; });
     var rows = (S.baseline || []).map(function (b) {
       return '<li class="ltk-baseline-row">' +
         imgOr(b.top_image, 'ltk-baseline-img') +
@@ -1547,6 +1630,29 @@
         '</div></li>';
     }).join('');
 
+    var unknownBlock = unknownKws.length
+      ? '<div class="ltk-collect-unknown">' +
+          '<p class="ltk-collect-unknown-title">' +
+            (unknownKws.length === n
+              ? 'Keyword kamu belum ada di daftar scrape kami'
+              : (unknownKws.length + ' keyword belum ada di daftar scrape kami')) +
+          '</p>' +
+          '<p class="ltk-collect-unknown-body">Itulah kenapa chart belum muncul. Kami mulai scrape tiap pagi karena kamu memantau — tren butuh minimal 2 hari data. Update pertama <b>' +
+            esc(nextUpdateLabel()) + '</b>.</p>' +
+          '<ul class="ltk-collect-unknown-list">' +
+            unknownKws.map(function (k) {
+              return '<li>&ldquo;' + esc(k.keyword) + '&rdquo;</li>';
+            }).join('') +
+          '</ul>' +
+        '</div>'
+      : '';
+
+    var heroBody = unknownKws.length === n && n > 0
+      ? ('Keyword yang kamu pantau belum ada di database scrape kami. Kami mulai kumpulkan data sejak kamu menambahkannya — update pertama <b>' +
+          esc(nextUpdateLabel()) + '</b>.')
+      : ('Kami mulai kumpulkan data untuk ' + n + ' keyword kamu. Update pertama masuk <b>' +
+          esc(nextUpdateLabel()) + '</b>.');
+
     p.innerHTML =
       '<div class="ltk-collect">' +
         '<div class="ltk-collect-hero">' +
@@ -1556,9 +1662,9 @@
             '<path d="M7 17a5 5 0 0110 0"/><path d="M3 21h18"/></svg>' +
           '</span>' +
           '<div><h3>Pantauan kamu sudah aktif</h3>' +
-          '<p>Kami mulai kumpulkan data untuk ' + n + ' keyword kamu. ' +
-          'Update pertama masuk <b>' + esc(nextUpdateLabel()) + '</b>.</p></div>' +
+          '<p>' + heroBody + '</p></div>' +
         '</div>' +
+        unknownBlock +
         (rows ?
           '<div class="ltk-baseline">' +
             '<div class="ltk-baseline-head"><span>Kondisi keyword kamu hari ini</span>' +
@@ -1616,7 +1722,13 @@
       '<td class="ltk-sparkcell">' +
         (trend
           ? '<canvas class="ltk-spark" data-ltk-spark="' + attr(key) + '" width="68" height="24"></canvas>'
-          : '<span class="ltk-spark-empty" title="Perlu minimal 2 hari data">Belum ada tren</span>') +
+          : '<span class="ltk-spark-empty" title="' +
+            (isKw && !keywordKnownInCorpus(rowLabel(r))
+              ? 'Belum di daftar scrape — menunggu data pertama'
+              : 'Perlu minimal 2 hari data') +
+            '">' +
+            (isKw && !keywordKnownInCorpus(rowLabel(r)) ? 'Belum di scrape' : 'Belum ada tren') +
+            '</span>') +
       '</td>';
 
     var expanded = S.openDetail === key;
@@ -1627,7 +1739,11 @@
         '<span class="ltk-rowhead-txt">' +
           '<span class="ltk-rowhead-name">' + esc(rowLabel(r)) + '</span>' +
           '<span class="ltk-rowhead-meta">' +
-            (trend ? 'Aktif · ' + r.n_days + ' hari data' : 'Mengumpulkan data') +
+            (trend
+              ? 'Aktif · ' + r.n_days + ' hari data'
+              : (isKw && !keywordKnownInCorpus(rowLabel(r))
+                  ? 'Belum di daftar scrape — menunggu data'
+                  : 'Mengumpulkan data')) +
           '</span>' +
         '</span>' +
         '<svg class="ltk-rowhead-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>' +
@@ -1779,7 +1895,7 @@
   function cardChartHtml(key, trend) {
     if (!trend) {
       return '<div class="ltk-card-chart ltk-card-chart--empty">' +
-        '<p class="ltk-detail-peers-note">Perlu minimal 2 hari data untuk menampilkan tren.</p>' +
+        '<p class="ltk-detail-peers-note">' + thinTrendNoteHtml(key, false) + '</p>' +
       '</div>';
     }
     return '<div class="ltk-card-chart">' +
@@ -2713,9 +2829,7 @@
             '<span class="ltk-chart-legend-item"><i class="ltk-chart-legend-dash"></i>Perkiraan (minggu ini jika belum terukur, + 1 minggu ke depan)</span>' +
           '</div>'
         : '<p class="ltk-detail-peers-note">' +
-            (S.detailListingKey
-              ? 'Listing ini belum punya cukup riwayat scrape (butuh minimal 2 kali) untuk menampilkan tren.'
-              : 'Perlu minimal 2 hari data untuk menampilkan tren.') +
+            thinTrendNoteHtml(isKw ? rowLabel(base) : null, !!S.detailListingKey) +
           '</p>');
     p.innerHTML =
       '<div class="ltk-detail">' +
@@ -2729,7 +2843,11 @@
             '<h3 class="ltk-detail-name">' + esc(rowLabel(base)) + '</h3>' +
             '<p class="ltk-detail-meta">' +
               (isKw
-                ? (rowHasTrend(base) ? esc(fmtUnits(base.n_sellers || 0)) + ' toko aktif · ' + esc(fmtUnits(base.n_listings || 0)) + ' SKU aktif' : 'Mengumpulkan data')
+                ? (rowHasTrend(base)
+                    ? esc(fmtUnits(base.n_sellers || 0)) + ' toko aktif · ' + esc(fmtUnits(base.n_listings || 0)) + ' SKU aktif'
+                    : (keywordKnownInCorpus(rowLabel(base))
+                        ? 'Mengumpulkan data'
+                        : 'Belum di daftar scrape — menunggu scrape pertama'))
                 : (base.oldest_listing_date ? 'Dipantau sejak toko berjualan ' + esc(fmtAge(base.oldest_listing_date)) : 'Mengumpulkan data')) +
             '</p>' +
           '</div>' +
@@ -3637,18 +3755,26 @@
     });
   }
 
-  function pickSuggestion(kw, cat) {
+  function pickSuggestion(kw, cat, pickOpts) {
+    pickOpts = pickOpts || {};
     var name = String(kw || '').trim();
     if (name.length < 2) { call('toast', 'Keyword minimal 2 karakter.'); return; }
     if (draft.picked.length >= S.keywordLimit) { call('toast', 'Slot keyword sudah penuh.'); return; }
     if (draft.picked.some(function (x) { return x.keyword.toLowerCase() === name.toLowerCase(); })) return;
-    var hit = draft.sug.rows.filter(function (r) { return r.keyword === name; })[0] || {};
+    var hit = draft.sug.rows.filter(function (r) { return kwNorm(r.keyword) === kwNorm(name); })[0] || {};
+    var known = pickOpts.known != null ? !!pickOpts.known : !!hit.keyword;
     draft.picked.push({
       keyword: name,
       category: cat || hit.category || draft.cat || '',
       image_url: hit.rep_image_url || hit.image_url || hit.top_image || '',
-      meta: hit.n_sellers ? hit.n_sellers + ' penjual' : '',
+      known: known,
+      meta: known
+        ? (hit.n_sellers ? hit.n_sellers + ' penjual' : '')
+        : 'Belum di daftar scrape — kami mulai track dari sekarang',
     });
+    if (!known) {
+      try { call('track', 'tracker_keyword_unknown_add', { site: opts.site, keyword: name }); } catch (_) {}
+    }
     draft.sug = { slot: -1, q: '', rows: [], busy: false, kind: 'keyword', fromHistory: false };
     renderSetup();
   }
@@ -3806,7 +3932,11 @@
 
     var sug = t.closest && t.closest('[data-ltk-sugpick]');
     if (sug) {
-      pickSuggestion(sug.getAttribute('data-ltk-sugpick'), sug.getAttribute('data-ltk-sugcat'));
+      pickSuggestion(
+        sug.getAttribute('data-ltk-sugpick'),
+        sug.getAttribute('data-ltk-sugcat'),
+        { known: sug.getAttribute('data-ltk-unknown') !== '1' }
+      );
       return;
     }
 
@@ -3886,7 +4016,11 @@
 
     var pickerPick = t.closest && t.closest('[data-ltk-picker-pick]');
     if (pickerPick) {
-      pickFromPicker(pickerPick.getAttribute('data-ltk-picker-pick'), pickerPick.getAttribute('data-ltk-picker-cat'));
+      pickFromPicker(
+        pickerPick.getAttribute('data-ltk-picker-pick'),
+        pickerPick.getAttribute('data-ltk-picker-cat'),
+        { known: pickerPick.getAttribute('data-ltk-unknown') !== '1' }
+      );
       return;
     }
 
@@ -4076,9 +4210,20 @@
       // Enter takes the top suggestion, or the raw text when nothing matched —
       // a long-tail keyword the panel has never scraped is still trackable.
       e.preventDefault();
-      var top = draft.sug.rows[0];
-      if (top) pickSuggestion(top.keyword, top.category);
-      else pickSuggestion(el.value, draft.cat);
+      // Exact match in suggestions wins; otherwise typed text that's not in
+      // corpus becomes an explicit "track new keyword" pick (not the top fuzzy hit).
+      var typed = String(el.value || '').trim();
+      var exact = draft.sug.rows.filter(function (r) {
+        return kwNorm(r.keyword) === kwNorm(typed);
+      })[0];
+      if (exact) pickSuggestion(exact.keyword, exact.category, { known: true });
+      else if (typed.length >= 2 && !sugHasExact(typed, draft.sug.rows)) {
+        pickSuggestion(typed, draft.cat, { known: false });
+      } else if (draft.sug.rows[0]) {
+        pickSuggestion(draft.sug.rows[0].keyword, draft.sug.rows[0].category, { known: true });
+      } else {
+        pickSuggestion(typed, draft.cat, { known: false });
+      }
     }
   }
 
@@ -4134,6 +4279,14 @@
         'Belum ada keyword yang dipantau.</span></div>';
     }
     if (!s.hasHistory) {
+      var unknownN = (S.keywords || []).filter(function (k) {
+        return k && !keywordKnownInCorpus(k.keyword);
+      }).length;
+      if (unknownN && unknownN === s.keywordCount) {
+        return '<div class="ltk-summary"><span class="ltk-summary-empty">' +
+          'Keyword kamu belum ada di daftar scrape kami — kami mulai track sejak kamu menambahkannya. Update pertama ' +
+          esc(s.nextUpdateLabel) + '.</span></div>';
+      }
       return '<div class="ltk-summary"><span class="ltk-summary-empty">' +
         'Mengumpulkan data untuk ' + s.keywordCount + ' keyword kamu. Update pertama ' +
         esc(s.nextUpdateLabel) + '.</span></div>';
