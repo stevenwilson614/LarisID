@@ -58,3 +58,7 @@ Canonical docs and dual-laptop agent rules live in the private scraper repo — 
 - Dual-host day5: `docs/DUAL_LAPTOP.md` (A = batches 1–17, B = 18–34)
 
 After scraper code/doc changes: commit + push that repo; on the other laptop run `git pull` before scraping. Do not run Chrome CDP scrapes on the Contabo VPS by default.
+
+## Shopee Live + Affiliate data
+
+Not collected. Feasibility only: **[docs/live-affiliate-research.md](./docs/live-affiliate-research.md)** (scraper spike: `~/shopee_scraper/docs/LIVE_AFFILIATE_SPIKE.md`). Do not ship affiliate headcounts or live GMV as terukur. Do not start collectors or schema until that brief’s go/no-go and legal/ops gates are accepted.
