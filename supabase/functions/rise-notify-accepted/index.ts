@@ -22,7 +22,7 @@ const RESEND_KEY = Deno.env.get('RESEND_API_KEY')
 const FONNTE_TOKEN = Deno.env.get('FONNTE_API_TOKEN')
 const SITE = 'https://larisid.com'
 
-const MULAI = '2 September 2026'
+const MULAI = '1 September 2026'
 
 function escapeHtml(s: string) {
   return String(s || '')
