@@ -275,7 +275,7 @@
       '<div class="rza-dr-sect">' +
         '<dt style="font-size:.74rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:9px">Komitmen</dt>' +
         '<ul class="rza-gates">' +
-          gate('Bisa ikut 8 sesi Rabu 16:00–18:00 WITA (1 Sep – 28 Okt 2026)', r.gate_komitmen) +
+          gate('Bisa ikut 8 sesi Selasa 16:00–18:00 WITA (1 Sep – 28 Okt 2026)', r.gate_komitmen) +
           gate('Bisa hadir sesi pembukaan 1 September', r.gate_pembukaan) +
           gate('Paham hanya 20 yang dipilih', r.gate_paham_seleksi) +
         '</ul>' +
