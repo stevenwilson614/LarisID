@@ -8894,9 +8894,8 @@ function gptTrackerAdapter() {
     openHowCalculated() { setView('faq'); },
 
     getTracking()          { return rpc('get_my_tracking'); },
-    // Reads mv_keyword_daily / mv_shop_daily, which aggregate `listings`
-    // directly. (get_tracker_deltas is gone: nothing called it, and it read
-    // listing_deltas, which the daily scrape never refreshes.)
+    // Reads mv_keyword_daily / mv_shop_daily, tiled from listing_deltas
+    // (refresh_listing_deltas after each scrape day).
     getRollup(days, scope) { return rpc('get_tracker_rollup', { p_days: days, p_scope: scope || 'keyword' }); },
     touchViewed()          { return rpc('touch_tracker_viewed'); },
     // These two are the wizard's only commit routes, so retiring the Deep Dive
@@ -9584,7 +9583,7 @@ function ensureTracker() {
       }
     } catch (_) {}
     _trkLoadPromise = (typeof larisLoadScript === 'function'
-      ? larisLoadScript('/js/laris-tracker.js?v=20260829b')
+      ? larisLoadScript('/js/laris-tracker.js?v=20260829c')
       : Promise.reject(new Error('no loader')))
       .then(() => window.LarisTracker || null)
       .catch(() => { _trkLoadPromise = null; return null; });
@@ -10358,6 +10357,7 @@ function ddDailyRowsToWeeks(rows) {
       const scale = w.days > 0 && w.days < 7 ? 7 / w.days : 1;
       return {
         ts,
+        d: new Date(ts).toISOString().slice(0, 10),
         units: Math.round(w.units * scale),
         omset: Math.round(w.omset * scale),
         items: 1,
@@ -10369,10 +10369,14 @@ function ddDailyRowsToWeeks(rows) {
 /** The next-Monday bucket from a series produced by ddDailyRowsToWeeks.
  *  ddLast6Weeks cuts everything past this Monday, so the forecast point is
  *  pulled from the full list — same estimator, same population, same units as
- *  the solid weeks. Reading it from keyword_weekly instead drew it ~4x high. */
+ *  the solid weeks. Reading it from keyword_weekly instead drew it ~4x high.
+ *  Match on the week-start ISO, not a 12-hour epoch window — Monday 00:00 UTC
+ *  and a local-midnight ts disagree by more than 12h at |offset| >= 13. */
 function ddNextWeekPoint(weekly) {
-  const nextMon = Date.parse(listingNextWeekStartISO() + 'T00:00:00Z');
-  return (weekly || []).find(w => Math.abs(w.ts - nextMon) < 12 * 3600 * 1000) || null;
+  const nextMon = listingNextWeekStartISO();
+  return (weekly || []).find(w =>
+    (w.d || new Date(w.ts).toISOString().slice(0, 10)) === nextMon
+  ) || null;
 }
 
 async function ddServerStoreWeeklySeries(shopId, days = 119) {

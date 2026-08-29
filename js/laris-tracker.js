@@ -348,19 +348,23 @@
     var offset = dow === 0 ? 6 : dow - 1;
     return new Date(utc - offset * 864e5).toISOString().slice(0, 10);
   }
-  /** Every WIB week in the series through today, oldest first. A still-partial
-      current week is scaled to a full 7-day rate and marked forecast.
-      ONE bucketing, shared by the detail chart and the card's weekly stat, so
-      the headline number and the line it sits beside can never disagree. */
+  /** Every WIB week in the series through this week, oldest first.
+      This week keeps the RPC's own forecast remainder (days after today that
+      still sit in this Monday week) so the number is actual-to-date plus the
+      same estimator the next-week point uses — not a 7/n blow-up of Monday
+      alone. The 7/n scale is only a guard when the tail did not arrive.
+      ONE bucketing, shared by the detail chart and the card's weekly stat. */
   function weeklyBuckets(daily) {
     var today = wibTodayISO();
     var thisMon = wibMondayISO(today);
+    var thisEnd = addDaysISO(thisMon, 7);
     var byMon = {};
     (daily || []).forEach(function (p) {
       if (p.source === 'prior') return;
       var d = String(p.d || '').slice(0, 10);
-      if (!d || d > today) return;
+      if (!d || d >= thisEnd) return;
       var mon = wibMondayISO(d);
+      if (mon > thisMon) return;
       if (!byMon[mon]) {
         byMon[mon] = { d: mon, units: 0, omset: 0, avg_price: 0, n: 0, source: 'measured' };
       }
@@ -652,13 +656,22 @@
     ctx.lineCap = 'round';
     ctx.stroke();
   }
+  // Spark color follows the 60-day window the line actually draws, not the
+  // week-over-week badge — a rising two-month curve must not turn red just
+  // because this week dipped.
+  function seriesDirectionUp(series, metricKey) {
+    var pts = seriesPoints(series, metricKey);
+    if (!pts || pts.length < 2) return true;
+    return pts[pts.length - 1].v >= pts[0].v;
+  }
   function paintSparks() {
     if (!host) return;
     host.querySelectorAll('[data-ltk-spark]').forEach(function (cv) {
       var key = cv.getAttribute('data-ltk-spark');
       var row = (S.rollup.rows || []).filter(function (r) { return rowKey(r) === key; })[0];
       if (!row) return;
-      drawSpark(cv, rowSeries(row), (Number(row.omset) || 0) >= (Number(row.omset_prev) || 0));
+      var s = rowSeries(row);
+      drawSpark(cv, s, seriesDirectionUp(s, 'omset'));
     });
   }
 
@@ -677,10 +690,10 @@
   // `rowKeyStr` lets paintMetricSparks resolve the row again at paint time
   // without storing per-canvas closures.
   function metricStatBlockHtml(rowKeyStr, m, r, trend, cw, ch) {
-    // The week is still running, so the figure is a 7/n projection of the days
-    // measured so far — say so rather than present it as a closed total.
+    // The week is still running, so the figure includes a modelled remainder
+    // (or a 7/n guard if the forecast tail did not arrive).
     var partial = m.flow && r.week_partial
-      ? ' title="Minggu berjalan — diproyeksikan dari hari yang sudah terukur"'
+      ? ' title="Minggu berjalan — termasuk perkiraan sisa hari"'
       : '';
     return '<div class="ltk-mstat"' + partial + '>' +
       '<span class="ltk-mstat-lbl">' + esc(m.label) + '</span>' +
@@ -702,9 +715,11 @@
         ? S.detailViewRow
         : (S.rollup.rows || []).filter(function (r) { return rowKey(r) === key; })[0];
       if (!row) return;
-      var cur = Number(row[metricKey]) || 0, prev = Number(row[metricKey + '_prev']) || 0;
-      // Same rule as deltaHtml: up is always green, down is always red.
-      drawSpark(cv, rowSeries(row), cur >= prev, metricKey);
+      var s = rowSeries(row);
+      var up = metricKey === 'avg_price'
+        ? (Number(row[metricKey]) || 0) >= (Number(row[metricKey + '_prev']) || 0)
+        : seriesDirectionUp(s, metricKey);
+      drawSpark(cv, s, up, metricKey);
     });
   }
 
@@ -1097,7 +1112,7 @@
      tracked keyword regardless. Ticking one later shows its full history
      immediately, which is why nothing here warns about "starting to collect". */
   var METRICS = [
-    { key: 'units',  icon: 'cart',  label: 'Units Terjual',   sub: 'Jumlah unit terjual per hari' },
+    { key: 'units',  icon: 'cart',  label: 'Units Terjual',   sub: 'Jumlah unit terjual per minggu' },
     { key: 'omset',  icon: 'trend', label: 'Omset (Rp)',      sub: 'Total pendapatan per minggu' },
     { key: 'sku',    icon: 'box',   label: 'SKU / Produk',    sub: 'Jumlah SKU aktif' },
     { key: 'toko',   icon: 'users', label: 'Toko Aktif',      sub: 'Jumlah toko penjual' },
@@ -1872,9 +1887,8 @@
     '</div>';
   }
 
-  // Deep Dive's hero numbers, tracker edition: the three measured metrics over
-  // the selected window, each with its window-over-window delta (the same
-  // comparison the window selector at the top of the panel describes).
+  // Hero numbers on the card: this WIB week vs last week for omset/units,
+  // latest vs earlier level for price. The chart beside them is the same week.
   function cardStatsHtml(key, r, trend, isKw) {
     var skus = Number(r.n_listings) || 0;
     var foot = isKw
@@ -2179,10 +2193,11 @@
 
   // Attach this-week / prior-week units+omset from listing_weekly so the
   // Kompetitor-style picker can show numbers + WoW % (not lifetime share).
+  // Missing this week stays empty — do not silently show last week as if it
+  // were now (that mixed periods under a chart whose last point is this week).
   function attachWeeklyToPeers(peers, weeklyRows) {
     var thisMon = wibMondayISO(wibTodayISO());
     var prevMon = addDaysISO(thisMon, -7);
-    var prev2Mon = addDaysISO(thisMon, -14);
     var byKey = {};
     (weeklyRows || []).forEach(function (w) {
       var k = String(w.item_id) + '__' + String(w.shop_id);
@@ -2193,11 +2208,6 @@
       var weeks = byKey[listingPeerKey(p)] || {};
       var cur = weeks[thisMon];
       var prev = weeks[prevMon];
-      // Partial/empty this week → fall back to last completed week vs the one before.
-      if ((!cur || (Number(cur.units_wk) || 0) <= 0) && prev) {
-        cur = prev;
-        prev = weeks[prev2Mon] || null;
-      }
       p._wk_units = cur != null ? Math.round(Number(cur.units_wk) || 0) : null;
       p._wk_omset = cur != null ? Math.round(Number(cur.omset_wk) || 0) : null;
       p._wk_units_prev = prev != null ? Math.round(Number(prev.units_wk) || 0) : null;
@@ -3234,6 +3244,21 @@
     return (firstReal > 0 && out.length - firstReal >= 2) ? out.slice(firstReal) : out;
   }
 
+  // Write this-week / last-week onto the row BEFORE any early return. An empty
+  // or 1-point series (RPC timeout, adapter catch returning []) must zero the
+  // rollup's 60-day totals so they cannot sit under "Omset minggu ini".
+  function applyWeeklyStats(r, s) {
+    var wk = weeklyBuckets(s);
+    var curW = wk[wk.length - 1];
+    var prevW = wk.length >= 2 ? wk[wk.length - 2] : null;
+    r.omset = curW ? Math.round(curW.omset) : 0;
+    r.units = curW ? Math.round(curW.units) : 0;
+    r.omset_prev = prevW ? Math.round(prevW.omset) : 0;
+    r.units_prev = prevW ? Math.round(prevW.units) : 0;
+    r.week_start = curW ? curW.d : null;
+    r.week_partial = !!(curW && curW.source === 'forecast');
+  }
+
   // Omset and units on every surface are THIS WIB WEEK vs last week — the same
   // two buckets the chart draws as its final solid points, from the same
   // weeklyBuckets() call, so the headline and the line beside it cannot
@@ -3244,22 +3269,8 @@
   // 557j. Price stays a level, not a flow: latest average vs the earlier one.
   function deriveFromSeries(r) {
     var s = r.dseries || [];
+    applyWeeklyStats(r, s);
     if (s.length < 2) return;
-
-    // Set the weekly stat FIRST and unconditionally. Everything below can bail
-    // out on a short series, and bailing must never leave the DB rollup's
-    // 60-day total sitting under an "Omset minggu ini" label.
-    var wk = weeklyBuckets(s);
-    var curW = wk[wk.length - 1];
-    var prevW = wk.length >= 2 ? wk[wk.length - 2] : null;
-    r.omset = curW ? Math.round(curW.omset) : 0;
-    r.units = curW ? Math.round(curW.units) : 0;
-    r.omset_prev = prevW ? Math.round(prevW.omset) : 0;
-    r.units_prev = prevW ? Math.round(prevW.units) : 0;
-    r.week_start = curW ? curW.d : null;
-    // A still-running week is a 7/n projection, not a finished total — the
-    // stat box carries that in its tooltip, the chart already dashes it.
-    r.week_partial = !!(curW && curW.source === 'forecast');
 
     var firstT = Date.parse(s[0].d);
     var lastT = Date.parse(s[s.length - 1].d);
@@ -3354,9 +3365,12 @@
         r.dseries = normaliseSeries(pair[0]);
         r.weeklyRows = pair[1] || [];
         deriveFromSeries(r);
-      }).catch(function (e) { warn('dense series failed', e); });
+      }).catch(function (e) {
+        warn('dense series failed', e);
+        applyWeeklyStats(r, []);
+      });
     })).then(function () {
-      if (rows.some(function (r) { return r.has_dense; })) recomputeTotalsFromRows();
+      recomputeTotalsFromRows();
       return null;
     });
   }
