@@ -108,3 +108,29 @@
 }
 .cohort-empty { font-size: .78rem; color: #9CA3AF; padding: 12px 0; }
 #btn-cohort { display: none; }
+
+/* ── Rencana Jualan (cohort tab) ──────────────────────────────────────────── */
+/* The agent run itself is rendered by createAgentRun in compact mode, so this
+   only styles the input form and the thread container it streams into. */
+.rjl-form { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
+@media (max-width: 700px) { .rjl-form { grid-template-columns: 1fr; } }
+.rjl-field { display: block; }
+.rjl-field > span {
+  display: block; font-size: .62rem; font-weight: 800; letter-spacing: .05em;
+  text-transform: uppercase; color: #9CA3AF; margin-bottom: 5px;
+}
+.rjl-field > span em { font-style: normal; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.rjl-field input {
+  width: 100%; border: 1.5px solid #E5E7EB; border-radius: 8px;
+  padding: 9px 12px; font-size: .82rem; font-family: inherit;
+  box-sizing: border-box; background: #fff;
+}
+.rjl-field input:focus { outline: none; border-color: #B5202A; }
+.rjl-actions { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.rjl-note { font-size: .68rem; color: #9CA3AF; line-height: 1.5; margin: 10px 0 0; }
+/* The run panel brings its own chrome; the thread is just a scroll host so a
+   long plan cannot push the form off screen on a phone. */
+.rjl-thread { margin-top: 14px; max-height: 70vh; overflow-y: auto; }
+.rjl-thread .msg { margin: 0; }
+.rjl-thread .msg-role { display: none; }
+.rjl-thread .msg-bubble { background: transparent; padding: 0; }

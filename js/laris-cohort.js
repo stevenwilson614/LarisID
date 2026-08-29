@@ -8,6 +8,10 @@
   let toast = function () {};
   let isAdmin = function () { return false; };
   let openProfile = function () {};
+  // Injected by gpt-app's mountLarisCohort. The AI machinery lives there; this
+  // module only owns the tab, the form and the follow-up offer.
+  let runRencana = null;
+  let trackKeyword = null;
 
   const VERIFIED_BADGES = {
     first_listing: 1, first_sale_verified: 1, first_review: 1,
@@ -111,16 +115,141 @@
     }
   }
 
+  /* ── Rencana Jualan ──────────────────────────────────────────────────────
+   *
+   * Bound once, lazily, the first time the tab is opened -- render() runs on
+   * every tab switch and every roster refresh, so binding there would stack a
+   * fresh click handler on the button each time and fire one run per stacked
+   * listener.
+   */
+  let rencanaBound = false;
+  let rencanaBusy = false;
+  let rencanaPasar = '';
+
+  function mountRencana() {
+    if (rencanaBound) return;
+    rencanaBound = true;
+    const go = $('rjl-go');
+    const track = $('rjl-track');
+    if (go) go.addEventListener('click', function () { void runRencanaFlow(); });
+    if (track) track.addEventListener('click', function () { void trackRencanaPasar(); });
+    // Enter anywhere in the form submits, the way a one-field form should.
+    ['rjl-produk', 'rjl-kota', 'rjl-modal'].forEach(function (id) {
+      const el = $(id);
+      if (el) el.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); void runRencanaFlow(); }
+      });
+    });
+  }
+
+  /** "Rp 15.000" / "15,000" / "15rb" -> 15000. Returns 0 when unreadable. */
+  function parseModal(raw) {
+    let t = String(raw == null ? '' : raw).toLowerCase().trim();
+    if (!t) return 0;
+    const rb = /(\d+(?:[.,]\d+)?)\s*(rb|ribu|k)\b/.exec(t);
+    if (rb) return Math.round(parseFloat(rb[1].replace(',', '.')) * 1000);
+    const jt = /(\d+(?:[.,]\d+)?)\s*(jt|juta)\b/.exec(t);
+    if (jt) return Math.round(parseFloat(jt[1].replace(',', '.')) * 1e6);
+    const digits = t.replace(/[^0-9]/g, '');
+    return digits ? parseInt(digits, 10) : 0;
+  }
+
+  async function runRencanaFlow() {
+    if (rencanaBusy) return;
+    const status = $('rjl-status');
+    const thread = $('cohort-rencana-thread');
+    const after = $('cohort-rencana-after');
+    const produk = (($('rjl-produk') || {}).value || '').trim();
+    if (!produk) {
+      if (status) status.textContent = 'Sebut dulu produk yang mau kamu jual.';
+      return;
+    }
+    if (typeof runRencana !== 'function') {
+      if (status) status.textContent = 'Fitur ini belum siap di halaman ini. Muat ulang halaman.';
+      return;
+    }
+    rencanaBusy = true;
+    rencanaPasar = '';
+    const go = $('rjl-go');
+    if (go) go.disabled = true;
+    if (status) status.textContent = 'Membaca data pasar…';
+    if (after) after.style.display = 'none';
+    // A second run replaces the first rather than stacking under it: two plans
+    // for two different products in one scroll is how a student loses the thread.
+    if (thread) { thread.innerHTML = ''; thread.style.display = ''; }
+
+    try {
+      const res = await runRencana({
+        produk: produk,
+        kota: (($('rjl-kota') || {}).value || '').trim(),
+        modal: parseModal(($('rjl-modal') || {}).value),
+      }, { root: thread });
+      if (status) status.textContent = '';
+      // res is null when the AI gate declined (logged out, or _useAi refused).
+      // The bubble already said so, so this must not overwrite it with success.
+      if (res && res.pasar) {
+        rencanaPasar = res.pasar;
+        const copy = $('rjl-after-copy');
+        if (copy) {
+          copy.textContent = 'Simpan "' + rencanaPasar + '" di pantauan supaya kamu '
+            + 'dikabari saat harga, jumlah penjual, atau penjualan di pasar ini bergerak. '
+            + 'Kami akan mulai memeriksa pasar ini setiap hari.';
+        }
+        if (after) after.style.display = '';
+        const ts = $('rjl-track-status');
+        if (ts) ts.textContent = '';
+        const tb = $('rjl-track');
+        if (tb) tb.disabled = false;
+      }
+    } catch (e) {
+      if (status) status.textContent = (e && e.message) || 'Gagal menyusun rencana.';
+    } finally {
+      rencanaBusy = false;
+      if (go) go.disabled = false;
+    }
+  }
+
+  async function trackRencanaPasar() {
+    const ts = $('rjl-track-status');
+    if (!rencanaPasar) { if (ts) ts.textContent = 'Belum ada pasar untuk dipantau.'; return; }
+    if (typeof trackKeyword !== 'function') {
+      if (ts) ts.textContent = 'Buka halaman Pantauan untuk menambahkannya.';
+      return;
+    }
+    const btn = $('rjl-track');
+    if (btn) btn.disabled = true;
+    if (ts) ts.textContent = 'Menyimpan…';
+    try {
+      // add_tracked_keyword reports refusals as { ok:false, error } instead of
+      // throwing, so a refused add must not be reported back as success.
+      const d = await trackKeyword(rencanaPasar, '');
+      if (d && d.ok === false) {
+        if (ts) ts.textContent = ({
+          limit_reached: 'Daftar pantauan sudah penuh. Buka Pantauan untuk mengatur.',
+          already_tracked: '"' + rencanaPasar + '" sudah kamu pantau.',
+          keyword_too_short: 'Keyword ini terlalu pendek untuk dipantau.',
+        })[d.error] || 'Tidak bisa menambah pantauan sekarang.';
+        if (btn) btn.disabled = false;
+        return;
+      }
+      if (ts) ts.textContent = 'Tersimpan. Pasar ini masuk antrean scrape harian.';
+    } catch (e) {
+      if (ts) ts.textContent = (e && e.message) || 'Gagal menyimpan.';
+      if (btn) btn.disabled = false;
+    }
+  }
+
   function switchStudentTab(tab) {
     state.studentTab = tab;
     document.querySelectorAll('#cohort-student-subtabs .cohort-subtab').forEach(b => {
       b.classList.toggle('active', b.dataset.cstab === tab);
     });
-    ['ringkasan', 'feed', 'rankings', 'chat', 'jadwal'].forEach(t => {
+    ['ringkasan', 'rencana', 'feed', 'rankings', 'chat', 'jadwal'].forEach(t => {
       const el = $('cohort-student-panel-' + t);
       if (el) el.style.display = t === tab ? '' : 'none';
     });
     const cid = state.studentCohortId;
+    if (tab === 'rencana') mountRencana();
     if (tab === 'feed' && cid) void renderFeed(cid);
     if (tab === 'rankings' && cid) void renderRankings(cid);
     if (tab === 'jadwal' && cid) void renderJadwal(cid, false);
@@ -703,6 +832,8 @@
       if (opts.toast) toast = opts.toast;
       if (opts.isAdmin) isAdmin = opts.isAdmin;
       if (opts.openProfile) openProfile = opts.openProfile;
+      if (opts.runRencana) runRencana = opts.runRencana;
+      if (opts.trackKeyword) trackKeyword = opts.trackKeyword;
     },
   };
 })(window);

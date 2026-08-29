@@ -204,7 +204,7 @@
 <link rel="preload" href="/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/fonts/laris-fonts.css">
 <link rel="stylesheet" href="/styles/laris-merdeka.css?v=20260816b">
-<link rel="stylesheet" href="/styles/cohort.css?v=20260821a">
+<link rel="stylesheet" href="/styles/cohort.css?v=20260830a">
 
 <style>
 :root {
@@ -7100,10 +7100,61 @@ body:has(.modal-overlay.open) .msg-steven-fab {
             <div id="cohort-student-wrap">
               <div id="cohort-student-subtabs" class="cohort-subtabs" style="display:none;">
                 <button type="button" class="cohort-subtab active" data-cstab="ringkasan">Ringkasan</button>
+                <button type="button" class="cohort-subtab" data-cstab="rencana">Rencana Jualan</button>
                 <button type="button" class="cohort-subtab" data-cstab="feed">Feed</button>
                 <button type="button" class="cohort-subtab" data-cstab="rankings">Rankings</button>
                 <button type="button" class="cohort-subtab" data-cstab="chat">Chat</button>
                 <button type="button" class="cohort-subtab" data-cstab="jadwal">Jadwal</button>
+              </div>
+              <!-- Rencana Jualan. The student names a product; LARISgpt returns a
+                   starting plan grounded in what other NEW shops in that market did,
+                   then offers to put the market under daily watch. The run itself is
+                   the standard agent panel, rendered into #cohort-rencana-thread via
+                   the same appendBubble({root}) path the Tanya AI side panel uses. -->
+              <div id="cohort-student-panel-rencana" style="display:none;">
+                <div class="cohort-card">
+                  <h3>Mau jual apa?</h3>
+                  <div class="cohort-muted" style="margin-bottom:12px;">
+                    Sebut produknya. Laris akan baca data toko-toko baru di pasar itu —
+                    harga mereka, judul yang laku, dan apa yang membedakan yang jalan
+                    dari yang mandek.
+                  </div>
+                  <div class="rjl-form">
+                    <label class="rjl-field">
+                      <span>Produk</span>
+                      <input id="rjl-produk" type="text" autocomplete="off"
+                             placeholder="contoh: kacang mete" maxlength="60">
+                    </label>
+                    <label class="rjl-field">
+                      <span>Kotamu <em>(opsional)</em></span>
+                      <input id="rjl-kota" type="text" autocomplete="off"
+                             placeholder="contoh: Bau-Bau" maxlength="40">
+                    </label>
+                    <label class="rjl-field">
+                      <span>Modal per unit <em>(opsional)</em></span>
+                      <input id="rjl-modal" type="text" inputmode="numeric"
+                             placeholder="contoh: 15000" maxlength="12">
+                    </label>
+                  </div>
+                  <div class="rjl-actions">
+                    <button type="button" id="rjl-go" class="cohort-btn">Susun rencana</button>
+                    <span id="rjl-status" class="cohort-muted"></span>
+                  </div>
+                  <p class="rjl-note">
+                    Modal dipakai untuk mengecek saran harga tidak jatuh di bawah harga
+                    pokokmu. Kalau dikosongkan, Laris akan bilang bagian mana yang belum
+                    bisa dicek.
+                  </p>
+                </div>
+                <div id="cohort-rencana-thread" class="cohort-card rjl-thread" style="display:none;"></div>
+                <div id="cohort-rencana-after" class="cohort-card" style="display:none;">
+                  <h3>Pantau pasar ini</h3>
+                  <div class="cohort-muted" id="rjl-after-copy"></div>
+                  <div class="rjl-actions" style="margin-top:10px;">
+                    <button type="button" id="rjl-track" class="cohort-btn">Pantau pasar ini</button>
+                    <span id="rjl-track-status" class="cohort-muted"></span>
+                  </div>
+                </div>
               </div>
               <div id="cohort-student-panel-ringkasan">
                 <div class="cohort-grid">
@@ -7807,7 +7858,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <script defer src="/js/gpt-referral.js?v=20260821a"></script>
 <script defer src="/js/gpt-profile.js?v=20260821a"></script>
 <script defer src="/js/gpt-community-board.js?v=20260815c"></script>
-<script defer src="/js/laris-cohort.js?v=20260821a"></script>
+<script defer src="/js/laris-cohort.js?v=20260830a"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260812a"></script>
 <script defer src="/js/laris-mascot.js?v=20260812a"></script>
 <script defer src="/js/gpt-chat-memory.js?v=20260818a"></script>
@@ -7817,6 +7868,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/gpt-app.js?v=20260829a" defer></script>
+<script src="/js/gpt-app.js?v=20260830a" defer></script>
 </body>
 </html>

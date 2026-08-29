@@ -9665,6 +9665,16 @@ function mountLarisCohort() {
     toast: showToast,
     isAdmin: isPlatformAdmin,
     openProfile: openUserProfile,
+    // Rencana Jualan: the cohort module owns the tab and the form, the AI
+    // machinery stays here. trackKeyword goes through the same RPC the tracker
+    // wizard and quickTrackKeyword use, so enrolment in the daily scrape lane
+    // (add_tracked_keyword -> scrape_enrol_tracked) applies to it too.
+    runRencana: (input, opts) => runRencanaJualan(input, opts),
+    trackKeyword: async (kw, cat) => {
+      const res = await _supabase.rpc('add_tracked_keyword', { p_keyword: kw, p_category: cat || '' });
+      if (res?.error) throw res.error;
+      return res?.data;
+    },
   });
 }
 
@@ -12549,7 +12559,8 @@ SKOR (0-100):
 function aiToolsInstruction() {
   return `
 ALAT DATA: kamu punya alat untuk membaca data LarisID sendiri (cari_pasar,
-pasar_kategori, detail_pasar, cari_listing, filter_listing, produk_dibuka).
+pasar_kategori, detail_pasar, cari_listing, filter_listing, produk_dibuka,
+pemain_baru, pola_toko_baru, judul_menang).
 - Kalau pertanyaan butuh data yang belum ada di prompt ini, PANGGIL ALAT dulu.
 - JANGAN menyuruh user "cek sendiri", "cari sendiri", "lihat di halaman Produk",
   atau "buka Skor Produk" untuk sesuatu yang bisa kamu ambil sendiri lewat alat.
@@ -12562,7 +12573,27 @@ pasar_kategori, detail_pasar, cari_listing, filter_listing, produk_dibuka).
 - listing_date dan omset_bln (plus omset_label terukur/perkiraan) ikut di hasil listing.
   Jangan bilang kolom tanggal listing tidak ada.
 - Kalau alat mengembalikan nol baris, katakan terus terang dan coba sudut lain —
-  jangan mengarang isinya.`;
+  jangan mengarang isinya.
+
+TIGA ALAT TOKO BARU (pemain_baru, pola_toko_baru, judul_menang) — aturan pakainya
+mengikat, karena ketiganya gampang dibaca terlalu percaya diri:
+- pemain_baru: kalau field level = "kategori", angkanya BUKAN dari pasar itu
+  sendiri melainkan rata-rata kategorinya. Sebut itu di jawaban. Jangan pernah
+  menyajikannya seolah-olah itu angka pasar tersebut.
+- Umur toko adalah perkiraan MINIMUM (dihitung dari listing tertua yang kami
+  scrape), bukan tanggal toko dibuka. Tulis "kira-kira", jangan tanggal pasti.
+- pola_toko_baru: semua perbandingan di dalamnya sudah dikelompokkan per
+  obs_bucket supaya adil. JANGAN menjumlahkan atau merata-ratakan lintas bucket.
+- Harga yang bergerak BERKORELASI dengan hasil, bukan terbukti menyebabkannya.
+  Kalau menyarankan ubah harga, selalu pasangkan dengan cek margin. Jangan
+  pernah menyuruh user memotong harga tanpa tahu modalnya.
+- Panjang judul TIDAK membedakan listing laris dan sepi di data kami. Jangan
+  menyarankan judul panjang/pendek seolah-olah itu temuan data.
+- judul_menang: itu selisih porsi kata, bukan resep. Sarankan sebagai "kata yang
+  dipakai listing yang laku di pasar ini", bukan "pakai ini biar laku".
+- Kami TIDAK punya deskripsi produk kompetitor dalam jumlah berarti. Kalau
+  menyusun deskripsi, katakan sekali bahwa itu susunanmu dari pola judul dan
+  konteks pasar, bukan contekan dari deskripsi toko lain.`;
 }
 
 /**
@@ -13603,6 +13634,142 @@ function _aiReplyText(reply) {
   return typeof reply === 'string' ? reply : String(reply?.text || '');
 }
 
+/* ── Rencana Jualan ─────────────────────────────────────────────────────────
+ *
+ * A cohort student names what they want to sell and gets a starting plan:
+ * price band, titles, description, keywords, and the traits that separate new
+ * shops that get somewhere from new shops that stall.
+ *
+ * The whole thing is the existing agent with a different system prompt and a
+ * fixed opening move. It runs inside the cohort panel via the same
+ * appendBubble({root}) + streamAssistantReply({root}) pair the Tanya AI side
+ * panel uses, so the visible plan/step panel comes along for free.
+ */
+
+/**
+ * The modal (cost per unit) is the reason this prompt exists in its own right
+ * rather than as a chip on the market agent. Every pricing suggestion in the
+ * new-shop data points downward, and a beginner told "new shops here sell at
+ * Rp 21.000" with no cost anchor will price below their own cost and call it
+ * research. When modal is known the prompt is required to refuse a price under
+ * it; when it is not, it is required to ask rather than guess.
+ */
+function buildRencanaSystemPrompt(input) {
+  const produk = String(input?.produk || '').trim();
+  const kota = String(input?.kota || '').trim();
+  const modal = Number(input?.modal) || 0;
+  const rp = (v) => `Rp ${Math.round(Number(v) || 0).toLocaleString('id-ID')}`;
+
+  const modalBlock = modal > 0
+    ? `MODAL USER: ${rp(modal)} per unit (harga pokok, sudah dia sebut).
+- Setiap harga yang kamu sarankan WAJIB di atas angka ini. Kalau harga pasar
+  toko baru ternyata di bawah modalnya, KATAKAN TERUS TERANG bahwa di harga
+  pasar sekarang dia rugi, dan bahas pilihannya (turunkan modal, ganti ukuran/
+  kemasan, atau pilih pasar lain) — jangan tetap menyarankan harga rugi.`
+    : `MODAL USER: belum disebut.
+- Sebutkan sekali bahwa saran harga di bawah belum memperhitungkan modalnya,
+  dan minta dia sebut harga pokok per unit supaya bisa dicek. Jangan mengarang
+  angka modal.`;
+
+  const kotaBlock = kota
+    ? `KOTA USER: ${kota}. Kolom lokasi di data kami adalah lokasi PENJUAL, bukan
+pembeli — jadi pakai ini untuk membahas ongkir dan di mana pesaing menumpuk,
+JANGAN mengklaim tahu di mana pembelinya berada.`
+    : `KOTA USER: belum disebut. Boleh tanya sekali di akhir kalau relevan.`;
+
+  return `You are LARISgpt, pendamping riset untuk peserta kelas jualan LarisID.
+Jawab dalam Bahasa Indonesia informal ("kamu"). Tanpa emoji.
+
+TUGAS: user ini PENJUAL BARU yang mau mulai jual "${produk}". Susun rencana
+awal yang bisa dia kerjakan minggu ini, seluruhnya dari data LarisID.
+
+${kotaBlock}
+
+${modalBlock}
+
+URUTAN ALAT (ikuti, jangan dilewat):
+1. cari_pasar dengan "${produk}" untuk menemukan pasar yang tepat.
+2. pemain_baru pada pasar itu — ini inti jawabannya: harga toko baru vs toko lama.
+3. judul_menang pada pasar yang sama — untuk judul dan keyword.
+4. pola_toko_baru pada kategorinya — untuk bagian "apa yang membedakan".
+Kalau salah satu kosong, bilang bagian mana yang tidak terukur; jangan diisi tebakan.
+
+BENTUK JAWABAN — pakai heading persis ini, urut, tanpa tambahan:
+## Pasar
+Satu paragraf: pasar mana yang kamu pilih dan kenapa, dengan angkanya.
+## Harga mulai
+Rentang harga yang masuk akal untuk toko baru, dengan alasannya dari pemain_baru.
+Sebut selisihnya terhadap toko lama. Sertakan cek modal sesuai aturan di atas.
+## Judul
+Tepat 3 opsi judul, satu baris masing-masing, memakai kata yang benar-benar
+muncul di listing laris pasar ini (dari judul_menang).
+## Deskripsi
+Draf deskripsi 4-6 kalimat. Awali dengan satu kalimat jujur bahwa ini susunanmu
+dari pola judul dan konteks pasar — kami tidak punya deskripsi toko lain.
+## Keyword
+6-10 keyword, dipisah koma, dari kata pembeda + variasi wajar.
+## Yang membedakan toko baru yang berhasil
+2-3 poin dari pola_toko_baru, dengan angkanya, DAN batasannya (korelasi, bukan sebab).
+## Langkah minggu ini
+3-4 langkah konkret yang bisa dia kerjakan dalam 7 hari.
+
+ATURAN KEJUJURAN (mengikat):
+- Jangan menjanjikan hasil. Tidak ada "dijamin laku", tidak ada proyeksi omset
+  yang tidak keluar dari alat.
+- Kalau pemain_baru mengembalikan level "kategori", katakan di bagian Harga
+  bahwa angkanya rata-rata kategori karena pasar ini masih sepi toko baru.
+- Umur toko itu perkiraan minimum, bukan tanggal berdiri.
+- Jangan menyuruh potong harga tanpa cek modal.
+
+${aiCapabilityContract()}
+${aiToolsInstruction()}${aiPlanInstruction()}`;
+}
+
+/**
+ * Run one Rencana Jualan turn into `root` (a container inside the cohort panel).
+ *
+ * Deliberately NOT routed through ensureIntentChat: this is a cohort exercise,
+ * not a keyword search, so it must not consume the gpt_new_chat 3/day cap. It
+ * still goes through _useAi(), which since the unlimited migration is a login
+ * gate plus an analytics ping and fails open.
+ */
+async function runRencanaJualan(input, opts = {}) {
+  const root = opts.root || null;
+  const produk = String(input?.produk || '').trim();
+  if (!produk) return null;
+  if (!currentUser) { openAuthModal('login', 'gpt_gate_rencana'); return null; }
+  if (!(await _useAi('rencana_jualan'))) return null;
+
+  const loading = appendBubble(
+    'assistant',
+    `<p style="opacity:.7;animation:pulseSoft 1.2s infinite">Menyusun rencana untuk "${esc(produk)}"…</p>`,
+    root ? { root } : {},
+  );
+
+  // Same trick the market agent uses: fire the first query at routing time so
+  // the opening cari_pasar is usually already resolved when the model asks.
+  aiPrefetchPasar(produk, input?.kota || '', []);
+
+  const system = buildRencanaSystemPrompt(input) + memoryPromptBlock();
+  const ask = [`Saya mau mulai jual ${produk}.`,
+    input?.kota ? `Saya di ${input.kota}.` : '',
+    Number(input?.modal) > 0 ? `Modal saya Rp ${Math.round(input.modal).toLocaleString('id-ID')} per unit.` : '',
+  ].filter(Boolean).join(' ');
+
+  const reply = await streamAssistantReply(loading, system, [{ role: 'user', content: ask }], {
+    root,
+    tools: AI_TOOLS,
+    thinking: true,
+  });
+  const text = _aiReplyText(reply);
+  void logUserEvent('rencana_jualan_run', { ui: 'gpt', keyword: produk, kota: input?.kota || '' });
+  clarityEvt('rencana_jualan_run', {});
+  // The market the model actually settled on, so the follow-up track offer is
+  // for that keyword and not the raw words the student typed.
+  const pasar = (typeof reply === 'object' && reply.pasarKeys?.[0]) || produk;
+  return { text, pasar, html: (typeof reply === 'object' && reply.run?.staticHtml?.()) || '' };
+}
+
 function pendingOfferChipsHtml(offer) {
   if (!offer?.prompt) return '';
   const yes = offer.yesLabel || 'Ya, lanjut';
@@ -13909,6 +14076,44 @@ const AI_TOOLS = [
     description: 'Data produk yang sedang dibuka user di Deep Dive, lengkap dengan Skor Produk /100 dan komponennya. Panggil kalau user bilang "ini", "produk ini", atau menanyakan skor.',
     input_schema: { type: 'object', properties: {} },
   },
+  // ── Rencana Jualan trio ────────────────────────────────────────────────────
+  // These three are RPCs, not PostgREST reads: each aggregates over millions of
+  // rows. None of them touches auth.uid(), so the detached-session trap that
+  // makes _supabase.rpc() send the anon key is irrelevant to them.
+  {
+    name: 'pemain_baru',
+    description: 'Apa yang dilakukan TOKO BARU di satu pasar: harga mereka vs toko lama, berapa persen tembus 10 dan 100 unit, dan dari kota mana mereka. Alat utama untuk pertanyaan "saya baru mulai, harus jual di harga berapa". Selalu cek field `level`: kalau "kategori", angkanya rata-rata kategori karena pasar ini terlalu sepi toko baru — katakan itu ke user.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        pasar: { type: 'string', description: 'Nilai `pasar` persis seperti yang dikembalikan cari_pasar.' },
+        kota: { type: 'string', description: 'Kota user (opsional). Dipakai sebagai konteks, bukan filter.' },
+      },
+      required: ['pasar'],
+    },
+  },
+  {
+    name: 'pola_toko_baru',
+    description: 'Studi lintas pasar: apa yang membedakan listing toko baru yang tembus 100 unit dari yang mandek, plus berapa hari 1 → 10 → 100 unit. Pakai untuk menjawab "apa yang bikin toko baru berhasil". WAJIB baca field `catatan` dan sampaikan batasannya — semua angka di sini korelasi, bukan sebab-akibat.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        kategori: { type: 'string', enum: DIR_CANON_CATS.slice(), description: 'Kosongkan untuk gabungan semua kategori.' },
+      },
+    },
+  },
+  {
+    name: 'judul_menang',
+    description: 'Kata-kata yang membedakan JUDUL listing yang laku (>=10 terjual) dari yang sepi, di satu pasar. Pakai sebelum menyarankan judul, deskripsi, atau keyword — supaya sarannya dari pasar ini, bukan dari tebakan. Field `lift` = selisih porsi kata di listing laris dikurangi di listing sepi.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        pasar: { type: 'string', description: 'Nilai `pasar` persis seperti yang dikembalikan cari_pasar.' },
+        limit: { type: 'integer', minimum: 5, maximum: 30, default: 15 },
+      },
+      required: ['pasar'],
+    },
+  },
 ];
 
 async function _aiToolCariPasar({ query, kota, limit }) {
@@ -14063,6 +14268,52 @@ function _aiToolProdukDibuka() {
   return { ...out, __view: { kind: 'produk', data: out } };
 }
 
+/**
+ * Shared RPC caller for the three playbook tools.
+ *
+ * These go through _supabase.rpc() rather than the explicit-token fetch used by
+ * add_tracked_keyword and friends, and that is deliberate: none of them reads
+ * auth.uid(), so the anon key the SDK sends is exactly the right credential.
+ * They are granted to anon+authenticated on purpose — market analytics, no PII.
+ */
+async function _aiPlaybookRpc(fn, args) {
+  if (!_supabase) return { error: 'db tidak siap' };
+  const { data, error } = await _supabase.rpc(fn, args);
+  if (error) return { error: 'query gagal', detail: String(error.message || '').slice(0, 120) };
+  if (!data) return { error: 'tidak ada data' };
+  return data;
+}
+
+async function _aiToolPemainBaru({ pasar, kota }) {
+  if (!pasar) return { error: 'pasar wajib diisi' };
+  const d = await _aiPlaybookRpc('pemain_baru_pasar', {
+    p_keyword: String(pasar), p_kota: String(kota || ''),
+  });
+  if (d.error) return d;
+  // level:'kategori' means the numbers are the category's, not this market's.
+  // Surfacing it in __view too keeps the rendered step honest even if the model
+  // forgets to repeat catatan_level in its prose.
+  return { ...d, __view: { kind: 'pemain_baru', data: d } };
+}
+
+async function _aiToolPolaTokoBaru({ kategori }) {
+  // resolveCanonCats, not the raw argument: a legacy or hallucinated category
+  // name maps through NU_ONB_TO_CANON instead of silently matching zero rows.
+  const canon = kategori ? ((await resolveCanonCats([kategori]))[0] || kategori) : null;
+  const d = await _aiPlaybookRpc('pola_toko_baru', { p_kategori: canon });
+  if (d.error) return d;
+  return { ...d, __view: { kind: 'pola_baru', data: d } };
+}
+
+async function _aiToolJudulMenang({ pasar, limit }) {
+  if (!pasar) return { error: 'pasar wajib diisi' };
+  const d = await _aiPlaybookRpc('judul_menang', {
+    p_keyword: String(pasar), p_limit: Math.min(Math.max(limit || 15, 5), 30),
+  });
+  if (d.error) return d;
+  return { ...d, __view: { kind: 'judul', data: d } };
+}
+
 const AI_TOOL_IMPL = {
   cari_pasar: _aiToolCariPasar,
   pasar_kategori: _aiToolPasarKategori,
@@ -14070,6 +14321,9 @@ const AI_TOOL_IMPL = {
   cari_listing: _aiToolCariListing,
   filter_listing: _aiToolFilterListing,
   produk_dibuka: _aiToolProdukDibuka,
+  pemain_baru: _aiToolPemainBaru,
+  pola_toko_baru: _aiToolPolaTokoBaru,
+  judul_menang: _aiToolJudulMenang,
 };
 
 /** Run one tool with a hard timeout. Never rejects — the loop must survive. */
@@ -14119,6 +14373,9 @@ const AI_TOOL_LABEL = {
   cari_listing: 'Cari listing',
   filter_listing: 'Saring listing',
   produk_dibuka: 'Baca produk yang dibuka',
+  pemain_baru: 'Cek pemain baru di pasar',
+  pola_toko_baru: 'Pelajari pola toko baru',
+  judul_menang: 'Bandingkan judul yang laku',
 };
 
 /**

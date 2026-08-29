@@ -49,6 +49,18 @@ function pct(cur: number, prev: number): number | null {
 
 type Change = { label: string; detail: string; dir: 'up' | 'down' | 'flat' }
 
+/** A competitor whose price moved AND whose units moved, in the same window. */
+type Move = {
+  produk: string; toko: string; harga_sebelum: number; harga_sekarang: number
+  turun_pct: number; diskon_naik_pp: number; lonjakan_unit: number
+}
+
+// Deliberately conservative on top of what mv_competitor_moves already filters:
+// the matview is the "is this a real move" test, this is the "is it worth
+// interrupting someone for" test. A 12-unit bump on a rival listing is not.
+const MIN_MOVE_UNITS = 25
+const MAX_MOVES_PER_MARKET = 3
+
 /** Threshold the current-vs-previous pairs the rollup already returns. */
 function changesFor(row: any): Change[] {
   const out: Change[] = []
@@ -89,7 +101,56 @@ function changesFor(row: any): Change[] {
   return out
 }
 
-function emailHtml(blocks: { name: string; changes: Change[] }[], unsubUrl: string): string {
+/**
+ * The competitor line, and the sentence that keeps it honest.
+ *
+ * We observed a price move and a unit move on the same listing in the same
+ * window. We did NOT observe that one caused the other -- the seller may have
+ * discounted because demand was already rising, or both may follow a campaign
+ * we cannot see. So the copy reports, and then hands the decision back with the
+ * margin question attached. It must never read as "they cut, so cut".
+ */
+/** Units are counted, not estimated, so they print in full. fmtShort would
+ *  round 1.450 unit down to "1rb", which reads as a smaller move than it was. */
+function units(n: number): string {
+  return Math.round(Number(n) || 0).toLocaleString('id-ID')
+}
+
+function movesHtml(moves: Move[]): string {
+  if (!moves.length) return ''
+  const rows = moves.map(m => {
+    const what = m.turun_pct >= 5
+      ? `turun ${m.turun_pct}% (Rp ${fmtShort(m.harga_sebelum)} → Rp ${fmtShort(m.harga_sekarang)})`
+      : `diskon diperdalam ${m.diskon_naik_pp} poin`
+    return `<div style="font-size:12.5px;color:#6B7280;margin-top:4px;">
+              <strong style="color:#1A1A1A;">${m.toko}</strong> — ${what},
+              dan terjualnya naik ${units(m.lonjakan_unit)} unit di periode yang sama.
+            </div>`
+  }).join('')
+  return `<div style="margin-top:6px;padding:10px 12px;background:#FFF7ED;border-radius:8px;">
+            <div style="font-size:12px;font-weight:700;color:#9A3412;">Pesaing bergerak</div>
+            ${rows}
+            <div style="font-size:11.5px;color:#9CA3AF;margin-top:7px;line-height:1.5;">
+              Kami melihat harga turun dan penjualan naik di periode yang sama pada listing
+              yang sama. Kami tidak bisa memastikan yang satu menyebabkan yang lain.
+              Sebelum ikut turun harga, cek dulu harga pokokmu — ikut perang harga di bawah
+              modal akan merugikanmu, bukan mereka.
+            </div>
+          </div>`
+}
+
+function movesText(moves: Move[]): string {
+  if (!moves.length) return ''
+  const rows = moves.map(m => {
+    const what = m.turun_pct >= 5
+      ? `turun ${m.turun_pct}%`
+      : `diskon +${m.diskon_naik_pp} poin`
+    return `  - ${m.toko}: ${what}, terjual +${units(m.lonjakan_unit)} unit`
+  }).join('\n')
+  return `\n  Pesaing bergerak:\n${rows}\n  (Kami lihat keduanya terjadi bersamaan, bukan bukti sebab-akibat. Cek modalmu dulu sebelum ikut turun harga.)`
+}
+
+function emailHtml(blocks: { name: string; changes: Change[]; moves: Move[] }[], unsubUrl: string): string {
   const rows = blocks.map(b =>
     `<div style="padding:11px 0;border-bottom:1px solid #eee;">
        <div style="font-size:13.5px;font-weight:700;">${b.name}</div>
@@ -99,6 +160,7 @@ function emailHtml(blocks: { name: string; changes: Change[] }[], unsubUrl: stri
                    <strong style="color:${color};">${c.label}</strong> — ${c.detail}
                  </div>`
        }).join('')}
+       ${movesHtml(b.moves)}
      </div>`).join('')
 
   return `
@@ -112,9 +174,9 @@ function emailHtml(blocks: { name: string; changes: Change[] }[], unsubUrl: stri
     </div>`
 }
 
-function waText(blocks: { name: string; changes: Change[] }[]): string {
+function waText(blocks: { name: string; changes: Change[]; moves: Move[] }[]): string {
   const lines = blocks.slice(0, 3).map(b =>
-    `*${b.name}*\n` + b.changes.map(c => `• ${c.label} — ${c.detail}`).join('\n')
+    `*${b.name}*\n` + b.changes.map(c => `• ${c.label} — ${c.detail}`).join('\n') + movesText(b.moves)
   )
   return `Ada perubahan di pasar yang kamu pantau (${WINDOW_DAYS} hari terakhir):\n\n`
     + lines.join('\n\n')
@@ -167,7 +229,7 @@ serve(async (req) => {
   for (const u of audience) {
     try {
       const channels: string[] = u.notify_channels || []
-      const blocks: { name: string; changes: Change[] }[] = []
+      const blocks: { name: string; changes: Change[]; moves: Move[] }[] = []
 
       for (const scope of ['keyword', 'store'] as const) {
         if (scope === 'keyword' && !u.n_keywords) continue
@@ -180,10 +242,26 @@ serve(async (req) => {
           // absence of data, not a change. Alerting on it would be noise.
           if (!row.n_days) continue
           const changes = changesFor(row)
-          if (!changes.length) continue
+
+          // Competitor moves are per-market, so only the keyword scope has them.
+          // A rival discounting is worth saying even when the market aggregate
+          // did not shift enough to clear the rollup thresholds — that is often
+          // exactly the week a seller most wants to know.
+          let moves: Move[] = []
+          if (scope === 'keyword' && row.keyword) {
+            const { data: mv } = await db.rpc('competitor_moves_for_keyword', {
+              p_keyword: row.keyword, p_limit: MAX_MOVES_PER_MARKET,
+            })
+            moves = ((mv || []) as Move[])
+              .filter(m => Number(m.lonjakan_unit || 0) >= MIN_MOVE_UNITS)
+              .slice(0, MAX_MOVES_PER_MARKET)
+          }
+
+          if (!changes.length && !moves.length) continue
           blocks.push({
             name: scope === 'keyword' ? row.keyword : (row.store_name || `Toko ${row.shop_id}`),
             changes,
+            moves,
           })
         }
       }
