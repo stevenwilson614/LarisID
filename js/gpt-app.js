@@ -9584,7 +9584,7 @@ function ensureTracker() {
       }
     } catch (_) {}
     _trkLoadPromise = (typeof larisLoadScript === 'function'
-      ? larisLoadScript('/js/laris-tracker.js?v=20260824c')
+      ? larisLoadScript('/js/laris-tracker.js?v=20260829a')
       : Promise.reject(new Error('no loader')))
       .then(() => window.LarisTracker || null)
       .catch(() => { _trkLoadPromise = null; return null; });
@@ -10288,6 +10288,10 @@ async function ddServerWeeklySeries(product, days = 119, opts = {}) {
   const to = new Date();
   const from = new Date(to.getTime() - days * 864e5);
   const iso = d => d.toISOString().slice(0, 10);
+  // Reach past today so the series carries its own forecast tail. The next-week
+  // point must come from THIS estimator, not from keyword_weekly — see the note
+  // on ddNextWeekPoint. The RPCs clamp at current_date + 7 themselves.
+  const toFc = iso(new Date(to.getTime() + 7 * 864e5));
   let rows;
   try {
     let r;
@@ -10295,14 +10299,14 @@ async function ddServerWeeklySeries(product, days = 119, opts = {}) {
       r = await _supabase.rpc('keyword_daily_series', {
         p_keyword: String(product.keyword).trim().toLowerCase(),
         p_from: iso(from),
-        p_to: iso(to),
+        p_to: toFc,
       });
     } else if (product.item_id != null && product.shop_id != null) {
       r = await _supabase.rpc('product_daily_series', {
         p_item_id: product.item_id,
         p_shop_id: product.shop_id,
         p_from: iso(from),
-        p_to: iso(to),
+        p_to: toFc,
       });
     } else {
       return null;
@@ -10317,7 +10321,11 @@ async function ddServerWeeklySeries(product, days = 119, opts = {}) {
 }
 
 /** Bucket product/keyword/store daily series into Monday weeks.
- *  Skips `prior` (pre-scrape plateau). Partial weeks scale to a 7-day rate. */
+ *  Skips `prior` (pre-scrape plateau). Partial weeks scale to a 7-day rate.
+ *  A week carrying any modelled day is flagged `perkiraan` even when it is
+ *  full — since the series now runs to today+7 the current week fills up with
+ *  forecast days instead of coming back short, and `scale > 1` alone would
+ *  quietly stop marking it. */
 function ddDailyRowsToWeeks(rows) {
   if (!rows || !rows.length) return [];
   const weeks = new Map();
@@ -10326,10 +10334,11 @@ function ddDailyRowsToWeeks(rows) {
     const dt = new Date(String(row.d) + 'T12:00:00');
     if (isNaN(dt)) continue;
     const ts = mondayOfWeek(dt).getTime();
-    const w = weeks.get(ts) || { units: 0, omset: 0, days: 0 };
+    const w = weeks.get(ts) || { units: 0, omset: 0, days: 0, fc: false };
     w.units += Number(row.units) || 0;
     w.omset += Number(row.omset) || 0;
     w.days += 1;
+    if (row.source === 'forecast') w.fc = true;
     weeks.set(ts, w);
   }
   const fromTs = mondayOfWeek(new Date(Date.UTC(2026, 3, 27, 4, 0, 0))).getTime();
@@ -10342,9 +10351,18 @@ function ddDailyRowsToWeeks(rows) {
         units: Math.round(w.units * scale),
         omset: Math.round(w.omset * scale),
         items: 1,
-        perkiraan: scale > 1,
+        perkiraan: scale > 1 || w.fc,
       };
     });
+}
+
+/** The next-Monday bucket from a series produced by ddDailyRowsToWeeks.
+ *  ddLast6Weeks cuts everything past this Monday, so the forecast point is
+ *  pulled from the full list — same estimator, same population, same units as
+ *  the solid weeks. Reading it from keyword_weekly instead drew it ~4x high. */
+function ddNextWeekPoint(weekly) {
+  const nextMon = Date.parse(listingNextWeekStartISO() + 'T00:00:00Z');
+  return (weekly || []).find(w => Math.abs(w.ts - nextMon) < 12 * 3600 * 1000) || null;
 }
 
 async function ddServerStoreWeeklySeries(shopId, days = 119) {
@@ -10400,56 +10418,12 @@ function ddLast6Weeks(weekly) {
     .map(w => ({ ...w }));
 }
 
-/** Prefer listing_weekly / keyword_weekly this-week row (already a 7-day rate). */
-function ddOverlayThisWeek(weekly, snap) {
-  if (!snap || (snap.units_wk == null && snap.omset_wk == null)) return weekly || [];
-  const ts = Date.parse(listingWeekStartISO() + 'T00:00:00Z');
-  const row = {
-    ts,
-    units: Math.round(Number(snap.units_wk) || 0),
-    omset: Math.round(Number(snap.omset_wk) || 0),
-    items: 1,
-    perkiraan: String(snap.source || '') !== 'measured',
-  };
-  const out = (weekly || []).slice();
-  const i = out.findIndex(w => w.ts === ts);
-  if (i >= 0) out[i] = { ...out[i], ...row };
-  else out.push(row);
-  return out.sort((a, b) => a.ts - b.ts);
-}
-
-function weeklyRowFor(rows, weekStart) {
-  return (rows || []).find(r => String(r.week_start || '').slice(0, 10) === weekStart) || null;
-}
-
-/** This-week + next-week rows from listing_weekly / keyword_weekly. */
-async function fetchWeeklyRows({ item_id, shop_id, keyword, weeks = 8 } = {}) {
-  if (!_supabase) return [];
-  try {
-    if (item_id != null && shop_id != null) {
-      const { data, error } = await _supabase.rpc('listing_weekly_for', {
-        p_item_id: item_id, p_shop_id: shop_id, p_weeks: weeks,
-      });
-      if (error || !Array.isArray(data)) return [];
-      return data;
-    }
-    if (keyword) {
-      const { data, error } = await _supabase.rpc('keyword_weekly_for', {
-        p_keyword: String(keyword).trim(), p_weeks: weeks,
-      });
-      if (error || !Array.isArray(data)) return [];
-      return data;
-    }
-  } catch (_) { /* table/RPC not applied yet */ }
-  return [];
-}
-
-/** Snapshot for one week_start. Null if the table is not yet applied. */
-async function fetchWeeklySnapshot({ item_id, shop_id, keyword, weekStart }) {
-  if (!weekStart) return null;
-  const rows = await fetchWeeklyRows({ item_id, shop_id, keyword });
-  return weeklyRowFor(rows, weekStart);
-}
+// Deep Dive reads nothing from listing_weekly / keyword_weekly any more. The
+// helpers that did (ddOverlayThisWeek, weeklyRowFor, fetchWeeklyRows,
+// fetchWeeklySnapshot) are gone: that table is a per-listing nowcast/peer
+// estimator over a different population than keyword_daily_series, and every
+// point spliced from it landed several times above the weeks beside it.
+// The tracker's competitor table still uses it, per listing, where it belongs.
 
 function ddShareData(peers) {
   const byShop = new Map();
@@ -11766,12 +11740,13 @@ async function openDeepDive(product, ddOpts = {}) {
   // Server series first; the client path stays as the fallback while this rolls out.
   const weeklyAll = (await ddServerWeeklySeries(product, 119, { forceKeyword: true }))
     || ddWeeklySeries(history);
-  const weeklySnaps = await fetchWeeklyRows({ keyword: kw });
-  const fcSnap = weeklyRowFor(weeklySnaps, listingNextWeekStartISO());
-  // Do not overlay this week from listing_weekly/keyword_weekly — that table
-  // is a different estimator (nowcast/peer) and replaced scrape-interval weeks
-  // with a one-week spike. Partial this week is already scaled 7/days above.
+  // Nothing on this chart comes from listing_weekly/keyword_weekly — that table
+  // is a different estimator (nowcast/peer) over a different population, and it
+  // drew a one-week spike wherever it was spliced in. It was pulled off the
+  // this-week point earlier; the next-week forecast now comes off the same
+  // series too, via ddNextWeekPoint.
   const series = ddLast6Weeks(weeklyAll);
+  const fcWeek = ddNextWeekPoint(weeklyAll);
   const scoreInfo = ddScore(product, stats, niche);
   const share = ddShareData(peers);
   const age = ddShopAgeBuckets(peers);
@@ -11806,7 +11781,7 @@ async function openDeepDive(product, ddOpts = {}) {
   // Trend-chart state: pasar dual-axis series plus top-10 store lines.
   // Toggling re-reads this — nothing is refetched.
   const topShops = hasTrend ? await ddTopShopWeeklySeries(share, history) : [];
-  _dd.trend = { series, fcSnap, topShops, view: 'pasar' };
+  _dd.trend = { series, fcWeek, topShops, view: 'pasar' };
   const bandLo = stats.p25, bandHi = stats.p75;
   const segLeft = stats.max > stats.min ? Math.round((bandLo - stats.min) / (stats.max - stats.min) * 100) : 0;
   const segWidth = stats.max > stats.min ? Math.max(4, Math.round((bandHi - bandLo) / (stats.max - stats.min) * 100)) : 100;
@@ -12303,14 +12278,16 @@ function ddRenderTrendChart() {
   const omsets = series.map(w => w.omset);
   const nW = series.length;
   const last2 = arr => Math.round((arr[arr.length - 1] + (arr[arr.length - 2] ?? arr[arr.length - 1])) / 2);
-  const snap = t.fcSnap;
-  const fromServer = snap && (snap.units_wk != null || snap.omset_wk != null);
+  // Same series as the solid line, so the dashed tail leaves it continuously.
+  // last2() is the guard for the client-side fallback series, which has no
+  // future weeks.
+  const fc = t.fcWeek;
   const fUnitW = new Array(labels.length).fill(null);
   const fOmsetW = new Array(labels.length).fill(null);
   fUnitW[nW - 1] = units[nW - 1];
   fOmsetW[nW - 1] = omsets[nW - 1];
-  fUnitW[nW] = fromServer ? Math.round(Number(snap.units_wk) || 0) : last2(units);
-  fOmsetW[nW] = fromServer ? Math.round(Number(snap.omset_wk) || 0) : last2(omsets);
+  fUnitW[nW] = fc ? Math.round(Number(fc.units) || 0) : last2(units);
+  fOmsetW[nW] = fc ? Math.round(Number(fc.omset) || 0) : last2(omsets);
   makeChart('ddr-trend-canvas', {
     type: 'line',
     data: {

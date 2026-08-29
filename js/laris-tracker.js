@@ -346,13 +346,8 @@
     var offset = dow === 0 ? 6 : dow - 1;
     return new Date(utc - offset * 864e5).toISOString().slice(0, 10);
   }
-  function weeklySnap(rows, weekStart) {
-    return (rows || []).find(function (r) {
-      return String(r.week_start || '').slice(0, 10) === weekStart;
-    }) || null;
-  }
   /** Last 6 WIB weeks through today + 1 next-week perkiraan, for the detail chart. */
-  function weeklyDetailSeries(daily, weeklyRows) {
+  function weeklyDetailSeries(daily) {
     var today = wibTodayISO();
     var thisMon = wibMondayISO(today);
     var nextMon = addDaysISO(thisMon, 7);
@@ -381,48 +376,46 @@
       return mon <= thisMon;
     });
     var pts = mondays.slice(-TREND_HISTORY_WEEKS).map(function (mon) { return byMon[mon]; });
-    var nextRow = weeklySnap(weeklyRows, nextMon);
+    // Next week comes from THIS SAME series, never from keyword_weekly. That
+    // table is a different estimator over a different population (per-listing
+    // nowcast/peer fill across a 45-day keyword association vs. this keyword's
+    // own scrape deltas), so splicing it on drew the forecast ~4x above the
+    // measured weeks beside it. Deep Dive hit the same wall and reverted its
+    // this-week overlay for the same reason; this is the other half of that.
+    // The RPC already returns forecast days through current_date + 7, and
+    // nextMon is always <= that, so futN >= 1 whenever there is any history.
+    var futU = 0, futO = 0, futN = 0, lastP = 0;
+    var nextEnd = addDaysISO(nextMon, 7);
+    (daily || []).forEach(function (p) {
+      var d = String(p.d || '').slice(0, 10);
+      if (d >= nextMon && d < nextEnd) {
+        futU += Number(p.units) || 0;
+        futO += Number(p.omset) || 0;
+        futN++;
+        if (p.avg_price) lastP = p.avg_price;
+      }
+    });
     var next;
-    if (nextRow && (nextRow.units_wk != null || nextRow.omset_wk != null)) {
+    if (futN > 0) {
+      var sc = futN < 7 ? 7 / futN : 1;
       next = {
         d: nextMon,
-        units: Math.round(Number(nextRow.units_wk) || 0),
-        omset: Math.round(Number(nextRow.omset_wk) || 0),
-        avg_price: 0,
+        units: Math.round(futU * sc),
+        omset: Math.round(futO * sc),
+        avg_price: lastP,
         source: 'forecast',
       };
     } else {
-      var futU = 0, futO = 0, futN = 0, lastP = 0;
-      var nextEnd = addDaysISO(nextMon, 7);
-      (daily || []).forEach(function (p) {
-        var d = String(p.d || '').slice(0, 10);
-        if (d >= nextMon && d < nextEnd) {
-          futU += Number(p.units) || 0;
-          futO += Number(p.omset) || 0;
-          futN++;
-          if (p.avg_price) lastP = p.avg_price;
-        }
-      });
-      if (futN > 0) {
-        var sc = futN < 7 ? 7 / futN : 1;
-        next = {
-          d: nextMon,
-          units: Math.round(futU * sc),
-          omset: Math.round(futO * sc),
-          avg_price: lastP,
-          source: 'forecast',
-        };
-      } else {
-        var a = pts[pts.length - 1] || { units: 0, omset: 0 };
-        var b = pts[pts.length - 2] || a;
-        next = {
-          d: nextMon,
-          units: Math.round(((Number(a.units) || 0) + (Number(b.units) || 0)) / 2),
-          omset: Math.round(((Number(a.omset) || 0) + (Number(b.omset) || 0)) / 2),
-          avg_price: a.avg_price || 0,
-          source: 'forecast',
-        };
-      }
+      // Guard only — reachable only if the series carries no future days at all.
+      var a = pts[pts.length - 1] || { units: 0, omset: 0 };
+      var b = pts[pts.length - 2] || a;
+      next = {
+        d: nextMon,
+        units: Math.round(((Number(a.units) || 0) + (Number(b.units) || 0)) / 2),
+        omset: Math.round(((Number(a.omset) || 0) + (Number(b.omset) || 0)) / 2),
+        avg_price: a.avg_price || 0,
+        source: 'forecast',
+      };
     }
     pts.push(next);
     return pts;
@@ -2643,7 +2636,7 @@
     if (!row) return null;
     var mode = o.mode === 'dual' ? 'dual' : 'single';
     var daily = (row.dseries && row.dseries.length >= 2) ? row.dseries : rowSeries(row);
-    var weekly = weeklyDetailSeries(daily, row.weeklyRows);
+    var weekly = weeklyDetailSeries(daily);
     var defs = mode === 'dual'
       ? [{ key: 'omset', side: 'l', color: CHART_C.om, fill: CHART_C.omFill, dashColor: CHART_C.fc },
          { key: 'units', side: 'r', color: CHART_C.un, fill: null, dashColor: CHART_C.fc }]
