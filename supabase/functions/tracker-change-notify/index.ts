@@ -226,6 +226,25 @@ serve(async (req) => {
   const errors: string[] = []
   const plan: any[] = []
 
+  // Competitor moves are a property of the MARKET, not of the user, and a cohort
+  // is 20 students choosing from a small pool of markets. Without this the job
+  // makes one RPC per tracked keyword per user -- 20 students x 40 keywords is
+  // 800 sequential round trips in a single invocation. Cached per run, and the
+  // job is short-lived so there is nothing to invalidate.
+  const movesCache = new Map<string, Move[]>()
+  async function movesFor(keyword: string): Promise<Move[]> {
+    const hit = movesCache.get(keyword)
+    if (hit) return hit
+    const { data: mv } = await db.rpc('competitor_moves_for_keyword', {
+      p_keyword: keyword, p_limit: MAX_MOVES_PER_MARKET,
+    })
+    const out = ((mv || []) as Move[])
+      .filter(m => Number(m.lonjakan_unit || 0) >= MIN_MOVE_UNITS)
+      .slice(0, MAX_MOVES_PER_MARKET)
+    movesCache.set(keyword, out)
+    return out
+  }
+
   for (const u of audience) {
     try {
       const channels: string[] = u.notify_channels || []
@@ -247,15 +266,9 @@ serve(async (req) => {
           // A rival discounting is worth saying even when the market aggregate
           // did not shift enough to clear the rollup thresholds — that is often
           // exactly the week a seller most wants to know.
-          let moves: Move[] = []
-          if (scope === 'keyword' && row.keyword) {
-            const { data: mv } = await db.rpc('competitor_moves_for_keyword', {
-              p_keyword: row.keyword, p_limit: MAX_MOVES_PER_MARKET,
-            })
-            moves = ((mv || []) as Move[])
-              .filter(m => Number(m.lonjakan_unit || 0) >= MIN_MOVE_UNITS)
-              .slice(0, MAX_MOVES_PER_MARKET)
-          }
+          const moves: Move[] = (scope === 'keyword' && row.keyword)
+            ? await movesFor(row.keyword)
+            : []
 
           if (!changes.length && !moves.length) continue
           blocks.push({
