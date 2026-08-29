@@ -517,7 +517,6 @@
 .ltk-select:hover { border-color: #D1D5DB; }
 /* Label text is for screen readers; the select already says what it does. */
 .ltk-sr { display: inline-flex; font-size: 0; }
-.ltk-winsel { display: inline-flex; }
 
 .ltk-tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .ltk-table { width: 100%; border-collapse: collapse; font-size: .76rem; }
@@ -710,7 +709,13 @@
 }
 .ltk-mstat-lbl {
   font-size: .62rem; font-weight: 700; color: #9CA3AF; text-transform: uppercase;
-  letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  letter-spacing: .03em; overflow: hidden;
+  /* Labels now carry their own period ("OMSET MINGGU INI"), which does not fit
+     on one line in a 3-up grid. Wrap to exactly two lines and reserve both, so
+     a 1-line label ("HARGA RATA-RATA" at wide widths) does not push its value
+     up out of line with the two beside it. */
+  white-space: normal; line-height: 1.15; min-height: 2.3em;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
 }
 .ltk-mstat-val { font-size: .82rem; font-weight: 700; color: #1A1A1A; }
 .ltk-mstat-spark { width: 100%; max-width: 60px; height: 20px; display: block; margin-top: 2px; }
@@ -1141,9 +1146,10 @@
 @media (max-width: 720px) {
   .ltk-statstrip { grid-template-columns: repeat(auto-fit, minmax(144px, 1fr)); }
   .ltk-stat-val { font-size: 1rem; }
-  /* Day-range + sort selects add clutter above the fold on a small screen;
-     "Pengaturan Pantauan" still reaches the same add/remove/sort surface. */
-  .ltk-winsel, .ltk-panel-head .ltk-sr { display: none; }
+  /* The sort select adds clutter above the fold on a small screen;
+     "Pengaturan Pantauan" still reaches the same add/remove/sort surface.
+     (The day-range select is gone entirely — the window is fixed at 60d.) */
+  .ltk-panel-head .ltk-sr { display: none; }
   .ltk-panel-head { gap: 8px; }
 }
 @media (max-width: 420px) {

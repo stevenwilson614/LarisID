@@ -41,17 +41,19 @@
   var WATCHDOG_PAINT_MS = 2500;       // never leave the user on a spinner past this
   var WATCHDOG_ABORT_MS = 8000;       // never leave the user on a dead screen at all
   var SEED_TARGET = 3;                // pre-fill 3 of 5; the 2 empty slots are the hook
-  // Shopee scrape days are sparse and irregular — 30 days can still land as
-  // few as 1-2 scrapes for a real, active keyword (confirmed 2026-08-11: a
-  // 15-day gap between two scrapes left only 2 points in a 30-day window,
-  // rendering as a flat straight line with nothing to curve through). 90
-  // days reliably surfaces enough real history for a trend to read as a
-  // trend instead of two dots.
-  var DEFAULT_DAYS = 90;
+  // ONE fixed window, no user control. Shopee scrape days are sparse and
+  // irregular — 30 days can still land as few as 1-2 scrapes for a real,
+  // active keyword (confirmed 2026-08-11: a 15-day gap between two scrapes
+  // left only 2 points in a 30-day window, rendering as a flat straight line
+  // with nothing to curve through). 60 days reliably surfaces enough real
+  // history for a trend to read as a trend instead of two dots, and every
+  // number on screen is quoted against it so nothing needs re-labelling when
+  // a selector moves. S.windowDays exists only so summary() can report it.
+  var DEFAULT_DAYS = 60;
   var WIB_OFFSET_MIN = 7 * 60;        // Asia/Jakarta, no DST
   var SCRAPE_HOUR_WIB = 7;            // morning run lands ~07:00 WIB
   var MIN_DAYS_FOR_TREND = 2;         // below this: "Baru", no sparkline, no %
-  var TREND_HISTORY_WEEKS = 6;        // detail chart: last 6 WIB weeks + 1 forecast
+  var TREND_HISTORY_WEEKS = 8;        // 8 WIB weeks (56d) + 1 forecast = the 60-day graph
   var TYPEAHEAD_MS = 280;
 
   var host = null;
@@ -346,11 +348,13 @@
     var offset = dow === 0 ? 6 : dow - 1;
     return new Date(utc - offset * 864e5).toISOString().slice(0, 10);
   }
-  /** Last 6 WIB weeks through today + 1 next-week perkiraan, for the detail chart. */
-  function weeklyDetailSeries(daily) {
+  /** Every WIB week in the series through today, oldest first. A still-partial
+      current week is scaled to a full 7-day rate and marked forecast.
+      ONE bucketing, shared by the detail chart and the card's weekly stat, so
+      the headline number and the line it sits beside can never disagree. */
+  function weeklyBuckets(daily) {
     var today = wibTodayISO();
     var thisMon = wibMondayISO(today);
-    var nextMon = addDaysISO(thisMon, 7);
     var byMon = {};
     (daily || []).forEach(function (p) {
       if (p.source === 'prior') return;
@@ -372,10 +376,15 @@
       byMon[thisMon].omset = Math.round(byMon[thisMon].omset * scale);
       byMon[thisMon].source = 'forecast';
     }
-    var mondays = Object.keys(byMon).sort().filter(function (mon) {
+    return Object.keys(byMon).sort().filter(function (mon) {
       return mon <= thisMon;
-    });
-    var pts = mondays.slice(-TREND_HISTORY_WEEKS).map(function (mon) { return byMon[mon]; });
+    }).map(function (mon) { return byMon[mon]; });
+  }
+
+  /** Last TREND_HISTORY_WEEKS weeks + 1 next-week perkiraan, for the charts. */
+  function weeklyDetailSeries(daily) {
+    var nextMon = addDaysISO(wibMondayISO(wibTodayISO()), 7);
+    var pts = weeklyBuckets(daily).slice(-TREND_HISTORY_WEEKS);
     // Next week comes from THIS SAME series, never from keyword_weekly. That
     // table is a different estimator over a different population (per-listing
     // nowcast/peer fill across a 45-day keyword association vs. this keyword's
@@ -475,7 +484,8 @@
   // Charts read the dense series when it's there, the raw buckets otherwise.
   // Dense series is fetched at 2× the window so prev/cur % share one array —
   // for the line we clip to that same 2× span so the right half is "now"
-  // and the left half is the period the badge compares against.
+  // over the fixed 60-day window (the badge is week-over-week and needs no
+  // second half).
   // `estimated` days (review-based bucket fill) are real signal — same as
   // measured — and must not be stripped like `prior`.
   function rowSeries(r) {
@@ -487,7 +497,7 @@
     if (isNaN(lastT)) return s;
     var todayT = Date.parse(wibTodayISO() + 'T12:00:00');
     if (!isNaN(todayT) && lastT > todayT) lastT = todayT;
-    var cut = lastT - win * 2 * 86400000;
+    var cut = lastT - win * 86400000;   // the standard 60-day view
     var sliced = s.filter(function (p) {
       var t = Date.parse(p.d);
       return !isNaN(t) && t > cut && t <= lastT;
@@ -655,8 +665,8 @@
   // The 3 metrics every stat block can show a trend for. Compact currency
   // for omset/harga — the boxes are small, a full "Rp 62.000.000" doesn't fit.
   var STAT_METRICS = [
-    { key: 'omset', label: 'Omset', fmt: function (r) { return fmtRpShort(r.omset || 0); } },
-    { key: 'units', label: 'Unit', fmt: function (r) { return fmtUnits(r.units || 0); } },
+    { key: 'omset', label: 'Omset minggu ini', flow: true, fmt: function (r) { return fmtRpShort(r.omset || 0); } },
+    { key: 'units', label: 'Unit minggu ini', flow: true, fmt: function (r) { return fmtUnits(r.units || 0); } },
     { key: 'avg_price', label: 'Harga', fmt: function (r) { return fmtRpShort(r.avg_price || 0); } },
   ];
 
@@ -667,7 +677,12 @@
   // `rowKeyStr` lets paintMetricSparks resolve the row again at paint time
   // without storing per-canvas closures.
   function metricStatBlockHtml(rowKeyStr, m, r, trend, cw, ch) {
-    return '<div class="ltk-mstat">' +
+    // The week is still running, so the figure is a 7/n projection of the days
+    // measured so far — say so rather than present it as a closed total.
+    var partial = m.flow && r.week_partial
+      ? ' title="Minggu berjalan — diproyeksikan dari hari yang sudah terukur"'
+      : '';
+    return '<div class="ltk-mstat"' + partial + '>' +
       '<span class="ltk-mstat-lbl">' + esc(m.label) + '</span>' +
       '<span class="ltk-mstat-val">' + esc(m.fmt(r)) + '</span>' +
       deltaHtml(r[m.key], r[m.key + '_prev'], trend) +
@@ -780,15 +795,6 @@
             'Pengaturan Pantauan</button>'
         : '';
     }
-  }
-
-  function winSelectHtml() {
-    return '<label class="ltk-sr">Rentang waktu' +
-      '<select class="ltk-select" data-ltk-winsel>' +
-      [7, 30, 60, 90].map(function (d) {
-        return '<option value="' + d + '"' + (S.windowDays === d ? ' selected' : '') + '>' +
-          d + ' Hari Terakhir</option>';
-      }).join('') + '</select></label>';
   }
 
   function renderChipbar() {
@@ -1092,7 +1098,7 @@
      immediately, which is why nothing here warns about "starting to collect". */
   var METRICS = [
     { key: 'units',  icon: 'cart',  label: 'Units Terjual',   sub: 'Jumlah unit terjual per hari' },
-    { key: 'omset',  icon: 'trend', label: 'Omset (Rp)',      sub: 'Total pendapatan per hari' },
+    { key: 'omset',  icon: 'trend', label: 'Omset (Rp)',      sub: 'Total pendapatan per minggu' },
     { key: 'sku',    icon: 'box',   label: 'SKU / Produk',    sub: 'Jumlah SKU aktif' },
     { key: 'toko',   icon: 'users', label: 'Toko Aktif',      sub: 'Jumlah toko penjual' },
     { key: 'harga',  icon: 'tag',   label: 'Harga Rata-rata', sub: 'Rata-rata harga jual' },
@@ -1796,8 +1802,8 @@
   function rowDetailHtml(r, isKw) {
     var trend = rowHasTrend(r);
     var fields = [
-      ['Unit Terjual', fmtUnits(r.units || 0), deltaHtml(r.units, r.units_prev, trend)],
-      ['Omset (Rp)', fmtRp(r.omset || 0), deltaHtml(r.omset, r.omset_prev, trend)],
+      ['Unit minggu ini', fmtUnits(r.units || 0), deltaHtml(r.units, r.units_prev, trend)],
+      ['Omset minggu ini', fmtRp(r.omset || 0), deltaHtml(r.omset, r.omset_prev, trend)],
       ['SKU Aktif', fmtUnits(r.n_listings || 0), deltaHtml(r.n_listings, r.n_listings_prev, trend)],
     ];
     if (isKw) fields.push(['Toko Aktif', fmtUnits(r.n_sellers || 0), deltaHtml(r.n_sellers, r.n_sellers_prev, trend)]);
@@ -2103,7 +2109,7 @@
 
     var head = '<tr>' +
       '<th class="ltk-th-name">' + (isKw ? 'Produk' : 'Toko') + '</th>' +
-      '<th>Unit Terjual</th><th>Omset (Rp)</th><th>SKU Aktif</th>' +
+      '<th>Unit minggu ini</th><th>Omset minggu ini</th><th>SKU Aktif</th>' +
       (isKw ? '<th>Toko Aktif</th>' : '<th>Usia Toko</th>') +
       '<th>Rata-rata Harga</th><th>Rating</th><th>Tren</th><th></th></tr>';
 
@@ -2113,10 +2119,9 @@
           '<div class="ltk-panel-head">' +
             '<div class="ltk-panel-title">Ringkasan ' + (isKw ? 'Produk' : 'Toko') +
               ' Dipantau <span class="ltk-count-pill">' + rows.length + '</span></div>' +
-            '<div class="ltk-winsel">' + winSelectHtml() + '</div>' +
             '<label class="ltk-sr">Urutkan' +
               '<select class="ltk-select" data-ltk-sort>' +
-              [['omset', 'Omset'], ['units', 'Unit Terjual'], ['sku', 'SKU Aktif']]
+              [['omset', 'Omset minggu ini'], ['units', 'Unit minggu ini'], ['sku', 'SKU Aktif']]
                 .concat(isKw ? [['toko', 'Toko Aktif']] : [])
                 .concat([['harga', 'Harga'], ['nama', 'Nama']])
                 .map(function (o) {
@@ -3229,42 +3234,57 @@
     return (firstReal > 0 && out.length - firstReal >= 2) ? out.slice(firstReal) : out;
   }
 
-  // Window sums over the dense series. `days` back from the newest point is
-  // "current"; the `days` before that is "previous".
+  // Omset and units on every surface are THIS WIB WEEK vs last week — the same
+  // two buckets the chart draws as its final solid points, from the same
+  // weeklyBuckets() call, so the headline and the line beside it cannot
+  // disagree. They used to be `win`-day window totals, which read as a weekly
+  // figure next to a weekly chart and were not one: because `win` collapses to
+  // half the series span, a keyword with 36 days of history showed an 18-day
+  // total under a selector that said 90, printing 1.1m beside a chart point of
+  // 557j. Price stays a level, not a flow: latest average vs the earlier one.
   function deriveFromSeries(r) {
     var s = r.dseries || [];
     if (s.length < 2) return;
+
+    // Set the weekly stat FIRST and unconditionally. Everything below can bail
+    // out on a short series, and bailing must never leave the DB rollup's
+    // 60-day total sitting under an "Omset minggu ini" label.
+    var wk = weeklyBuckets(s);
+    var curW = wk[wk.length - 1];
+    var prevW = wk.length >= 2 ? wk[wk.length - 2] : null;
+    r.omset = curW ? Math.round(curW.omset) : 0;
+    r.units = curW ? Math.round(curW.units) : 0;
+    r.omset_prev = prevW ? Math.round(prevW.omset) : 0;
+    r.units_prev = prevW ? Math.round(prevW.units) : 0;
+    r.week_start = curW ? curW.d : null;
+    // A still-running week is a 7/n projection, not a finished total — the
+    // stat box carries that in its tooltip, the chart already dashes it.
+    r.week_partial = !!(curW && curW.source === 'forecast');
+
     var firstT = Date.parse(s[0].d);
     var lastT = Date.parse(s[s.length - 1].d);
-    // Future forecast days (p_to = today+7) must not inflate the 7/30/60/90 badge.
+    // Future forecast days (p_to = today+7) must not inflate the window maths.
     var todayT = Date.parse(wibTodayISO() + 'T12:00:00');
     if (!isNaN(todayT) && lastT > todayT) lastT = todayT;
-    // Both halves must be the same length or the % is meaningless. The store
-    // scope can't always supply 2x the window (mv_shop_daily holds 120 days),
-    // so fall back to half of whatever the series actually covers.
+    // `win` no longer drives any headline — it sizes the sparkline and the
+    // "N hari data" meta only. Halved against the span so a short series still
+    // yields a sane slice.
     var spanDays = Math.max(1, Math.round((lastT - firstT) / 86400000));
     var win = Math.min(Number(S.windowDays) || DEFAULT_DAYS, Math.floor(spanDays / 2));
     if (win < 1) return;
     r.window_days_effective = win;
     var cur0 = lastT - win * 86400000;
     var prev0 = cur0 - win * 86400000;
-    var cur = { omset: 0, units: 0 }, prev = { omset: 0, units: 0 };
     var lastPrice = 0, prevPrice = 0;
     s.forEach(function (p) {
       var t = Date.parse(p.d);
       if (isNaN(t) || t > lastT) return;
       if (t > cur0) {
-        cur.omset += p.omset; cur.units += p.units;
         if (p.avg_price) lastPrice = p.avg_price;
       } else if (t > prev0) {
-        prev.omset += p.omset; prev.units += p.units;
         if (p.avg_price) prevPrice = p.avg_price;
       }
     });
-    r.omset = Math.round(cur.omset);
-    r.units = Math.round(cur.units);
-    r.omset_prev = Math.round(prev.omset);
-    r.units_prev = Math.round(prev.units);
     if (lastPrice) r.avg_price = lastPrice;
     if (prevPrice) r.avg_price_prev = prevPrice;
     // A series is only a real trend if something actually moved in it —
@@ -3368,7 +3388,6 @@
 
   function refresh(o) {
     o = o || {};
-    if (o.days) S.windowDays = o.days;
     if (inflight && !o.force) return inflight;
 
     var gen = ++refresh._gen;
@@ -4160,13 +4179,6 @@
       renderRollup();
       return;
     }
-    if (el.hasAttribute('data-ltk-winsel')) {
-      var d = parseInt(el.value, 10) || DEFAULT_DAYS;
-      lsWrite({ days: d });
-      renderSkeleton();
-      refresh({ days: d, force: true });
-      return;
-    }
     if (el.hasAttribute('data-ltk-catsel')) {
       pickCategory(el.value || null);
       return;
@@ -4289,7 +4301,7 @@
         s.rowCount + ' keyword dipantau — belum cukup hari data untuk hitung tren.</span></div>';
     }
     return '<div class="ltk-summary">' +
-      '<div class="ltk-summary-line">Omset ' + s.windowDays + ' hari terakhir · ' +
+      '<div class="ltk-summary-line">Omset minggu ini · ' +
         esc(fmtRp(s.totalOmset)) + '</div>' +
       '<div class="ltk-summary-top">' +
         '<div class="ltk-summary-main"><div class="ltk-summary-name">' +
@@ -4323,7 +4335,7 @@
     if (mounted && host === el) return true;
     host = el;
     var ui = lsRead();
-    S.windowDays = ui.days || o.defaultDays || DEFAULT_DAYS;
+    S.windowDays = DEFAULT_DAYS;   // fixed; ui.days is deliberately ignored
     S.sort = ui.sort || S.sort;
     S.tab = (o.tab === 'store' || ui.tab === 'store') ? 'store' : 'keyword';
     buildShell();
