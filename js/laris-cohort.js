@@ -910,16 +910,29 @@
     open,
     renderOps,
     hasAccess: function () { return !!(state.studentCohortId || state.mentorCohort || isAdmin()); },
+    /** The cohort this account is genuinely a student in, or null. Student mode
+     *  prefers it: a real membership needs no preview, so the screen is the
+     *  student's own rows rather than a stand-in. */
+    myStudentCohort: function () {
+      const c = state.studentCohortId && state.cohortMap[state.studentCohortId];
+      if (!c) return null;
+      return { id: c.id, name: c.name || 'Kohort' };
+    },
     /** Cohorts this account may preview, for the Admin dashboard picker. */
     listCohorts: async function () {
       if (!Object.keys(state.cohortMap).length) await initMembership();
       return previewCohorts().map(c => ({ id: c.id, name: c.name || 'Kohort' }));
     },
     /** Open the cohort view straight into the student preview. Same path as
-     *  open(), except previewCid survives — open() deliberately clears it. */
-    previewAs: async function (cid) {
+     *  open(), except previewCid survives — open() deliberately clears it.
+     *  `row` seeds cohortMap for a cohort initMembership cannot see: student
+     *  mode masks isAdmin(), which is what drops the all-cohorts query, so the
+     *  caller resolves the cohort first and hands it over or the bar would read
+     *  "Kohort" with no name. */
+    previewAs: async function (cid, row) {
       bind();
       await initMembership();
+      if (cid && row && !state.cohortMap[cid]) state.cohortMap[cid] = row;
       state.previewCid = cid || null;
       state.studentTab = 'ringkasan';
       await render();

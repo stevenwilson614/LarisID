@@ -156,6 +156,9 @@ const COMPOSER_EXAMPLES = [
   'Produk modal 500rb yang laris',
 ];
 let _admSample = null; // admin sample view: { mode: 'user'|'new', label }
+// Admin browsing the whole app as a mahasiswa: { cohortId, cohortName, preview }.
+// In memory only, like _admSample — a reload lands back on the real admin view.
+let _studentMode = null;
 let _onboardingBackup = null;
 let _adminUsers = [];
 let _adminStats = null;
@@ -518,9 +521,9 @@ function _ceFlush(useKeepalive) {
 }
 
 function logClientEvent(eventType, props) {
-  // _admSample excluded to match logUserEvent: an admin previewing the site as
-  // someone else is inspecting it, not using it.
-  if (_admSample) return;
+  // Excluded to match logUserEvent: an admin previewing the site as someone else
+  // is inspecting it, not using it. Covers student mode as well as sample mode.
+  if (adminIsPreviewing()) return;
   try {
     _ceQueue.push({
       seq: _ceNextSeq(),
@@ -542,7 +545,7 @@ try {
 } catch (_) {}
 
 async function logUserEvent(eventType, metadata) {
-  if (_admSample) return;
+  if (adminIsPreviewing()) return;
   if (_funnelIsDup(eventType, metadata)) return;
   // Always, signed in or not. This is the line that ends the 88% blind spot.
   logClientEvent(eventType, _lidAbStamp(metadata));
@@ -683,7 +686,7 @@ function logDeepDiveOpen(product) {
     // _admSample IS excluded, matching logUserEvent: an admin previewing the
     // site as someone else is inspecting, not using it, and this account
     // already accounts for a large share of all deep-dive events.
-    if (!product || _admSample) return;
+    if (!product || adminIsPreviewing()) return;
     // initSupabase() deletes the SDK's sb-*-auth-token and keeps the session
     // in laris_auth_v1. _supabase.rpc() would then send the anon key, so
     // auth.uid() came back null even for a signed-in dive. Send that token
@@ -2589,9 +2592,27 @@ function closeSidebar() {
 const PLATFORM_ADMIN_EMAILS = ['stevenwilson614@gmail.com'];
 let _accessState = { loaded: false, isAdmin: false };
 
-function isPlatformAdmin() {
+/** The account's REAL platform role. Never masked — use this for the student-mode
+ *  toggle itself, and for anything that must not be spoofed. */
+function isPlatformAdminRaw() {
   const email = String(currentUser?.email || '').toLowerCase();
   return !!(currentUser && (_accessState.isAdmin || PLATFORM_ADMIN_EMAILS.includes(email)));
+}
+
+/** The role the UI renders. Student mode masks it, and that single lever is what
+ *  turns the WHOLE screen into a student's: every admin gate in this file reads
+ *  through here, so the admin nav, the unlimited quota and the "(Admin)" suffix
+ *  all close at once instead of being hidden one by one. Server-side RLS is
+ *  untouched — this is a view of the product, not a downgrade of the account. */
+function isPlatformAdmin() {
+  return !_studentMode && isPlatformAdminRaw();
+}
+
+/** True while an admin is looking at the product as somebody else. Analytics stay
+ *  out of the funnel in BOTH modes: this account is already ~34% of all deep-dive
+ *  events, and a browse-as-student session is inspection, not usage. */
+function adminIsPreviewing() {
+  return !!(_admSample || _studentMode);
 }
 
 // ── "Cari Supplier" validation probe — LAUNCH GATE (arm B) ────────────────────
@@ -2621,6 +2642,7 @@ async function loadCurrentAccess() {
   _accessState = { loaded: true, isAdmin };
   const btn = $('btn-admin');
   if (btn) btn.style.display = isAdmin ? '' : 'none';
+  syncStudentModeUi();
   try { void refreshCohortNav(); } catch (_) {}
   const un = $('user-name');
   if (un && un.textContent) {
@@ -2683,6 +2705,7 @@ function syncHargaVisitCta() {
 }
 
 function updateAccountUI() {
+  syncStudentModeUi();
   const authH = $('auth-header');
   const userH = $('user-header');
   if (currentUser) {
@@ -3408,7 +3431,7 @@ async function signOut() {
 
 // ── Persist onboarding ───────────────────────────────────────────────────
 async function persistOnboardingPrefs() {
-  if (!currentUser || !_supabase || _admSample) return;
+  if (!currentUser || !_supabase || adminIsPreviewing()) return;
   const o = state.onboarding;
   if (!o.city && !o.categories.length) return;
   const bud = o.budget ? finderBudgetCfg(o.budget) : null;
@@ -9397,7 +9420,8 @@ function scheduleStevenDdVideo() {
   // interstitial aimed at a first-time seller; on an admin account it just
   // blocks every Deep Dive opened while checking the product, and Steven does
   // not need to be introduced to himself. Returning false lets DDTP run now.
-  if (isPlatformAdmin()) return false;
+  // Raw role on purpose: student mode must not bring the interstitial back.
+  if (isPlatformAdminRaw()) return false;
   if (sddvIsSeen()) return false;
   sddvPrefetch();
   _sddvTimer = setTimeout(() => {
@@ -9411,7 +9435,7 @@ function sddvFire() {
   if (sddvIsSeen()) return;
   // Re-checked here, not only in the scheduler: sign-in can land between the
   // 2s schedule and the fire.
-  if (isPlatformAdmin()) return;
+  if (isPlatformAdminRaw()) return;
   if (state.view !== 'deepdive') return;
   if (document.querySelector('.modal-overlay.open')) return;
   const overlay = $('steven-dd-video');
@@ -16554,21 +16578,26 @@ function renderAdminSampleBanner() {
   const exitBtn = $('admin-sample-exit');
   const strip = $('sample-strip');
   const stripText = $('sample-strip-text');
+  const stripExit = $('sample-strip-exit');
   if (exitBtn) exitBtn.style.display = _admSample ? '' : 'none';
   if (strip) {
-    if (_admSample) {
+    if (_studentMode || _admSample) {
       strip.hidden = false;
       strip.classList.add('open');
       if (stripText) {
-        stripText.textContent = _admSample.mode === 'new'
-          ? 'Sample: user baru (onboarding tidak disimpan)'
-          : `Sample: ${_admSample.label || 'user'}`;
+        stripText.textContent = _studentMode
+          ? `Mode mahasiswa${_studentMode.cohortName ? ' · ' + _studentMode.cohortName : ''} — seluruh tampilan seperti yang dilihat siswa. Statistik tidak dicatat.`
+          : _admSample.mode === 'new'
+            ? 'Sample: user baru (onboarding tidak disimpan)'
+            : `Sample: ${_admSample.label || 'user'}`;
       }
+      if (stripExit) stripExit.textContent = _studentMode ? 'Keluar mode mahasiswa' : 'Keluar sample';
     } else {
       strip.hidden = true;
       strip.classList.remove('open');
     }
   }
+  syncStudentModeUi();
   if (!banner) return;
   if (!_admSample) {
     banner.hidden = true;
@@ -16579,6 +16608,91 @@ function renderAdminSampleBanner() {
   banner.textContent = _admSample.mode === 'new'
     ? 'Mode sample: user baru (onboarding tidak disimpan ke akunmu).'
     : `Mode sample: ${_admSample.label || 'user'} — rekomendasi mengikuti lokasi/kategori mereka.`;
+}
+
+/* ── Mode mahasiswa ───────────────────────────────────────────────────────
+ *
+ * One switch in the header. On, isPlatformAdmin() reads false everywhere, so
+ * the admin nav, the unlimited quota, the "(Admin)" suffix and the cohort
+ * module's mentor wrap all close together and the screen is a student's — not
+ * a student panel inside an admin shell. The strip at the top of .main is the
+ * way back, and it is never gated on the mask.
+ */
+function syncStudentModeUi() {
+  const btn = $('btn-student-mode');
+  if (!btn) return;
+  const allowed = isPlatformAdminRaw();
+  btn.hidden = !allowed;
+  if (!allowed) return;
+  btn.classList.toggle('is-on', !!_studentMode);
+  btn.setAttribute('aria-pressed', _studentMode ? 'true' : 'false');
+  const lbl = $('btn-student-mode-label');
+  if (lbl) lbl.textContent = _studentMode ? 'Keluar mode mahasiswa' : 'Mode mahasiswa';
+  btn.title = _studentMode
+    ? 'Kembali ke tampilan admin'
+    : 'Lihat seluruh aplikasi seperti mahasiswa di kohort';
+}
+
+async function toggleStudentMode() {
+  if (!isPlatformAdminRaw()) return;
+  if (_studentMode) await exitStudentMode();
+  else await enterStudentMode();
+}
+
+async function enterStudentMode() {
+  if (!isPlatformAdminRaw() || _studentMode) return;
+  // Resolve the cohort BEFORE the mask goes up: listCohorts() only sees every
+  // cohort while isAdmin() is still true, and a moment later it will not be.
+  let own = null;
+  let any = null;
+  try {
+    mountLarisCohort();
+    if (window.LarisCohort) {
+      await window.LarisCohort.initMembership();
+      const list = await window.LarisCohort.listCohorts();
+      any = (list && list[0]) || null;
+      own = window.LarisCohort.myStudentCohort();
+    }
+  } catch (_) {}
+  // A real student membership is the honest case and needs no preview at all.
+  // Otherwise fall back to previewing a cohort so the tab is not just a join card.
+  const picked = own || any;
+  _studentMode = {
+    cohortId: picked ? picked.id : null,
+    cohortName: picked ? picked.name : '',
+    preview: !own && !!any,
+  };
+  renderAdminSampleBanner();
+  updateAccountUI();
+  const admBtn = $('btn-admin');
+  if (admBtn) admBtn.style.display = 'none';
+  void refreshGptUsage();
+  setView('cohort');
+  try {
+    if (_studentMode.preview) {
+      await window.LarisCohort.previewAs(_studentMode.cohortId, picked);
+    } else {
+      await window.LarisCohort.open();
+    }
+  } catch (_) {}
+  void refreshCohortNav();
+  showToast(picked
+    ? `Mode mahasiswa: ${picked.name}`
+    : 'Mode mahasiswa — akun ini belum di kohort mana pun.');
+}
+
+async function exitStudentMode() {
+  if (!_studentMode) return;
+  _studentMode = null;
+  renderAdminSampleBanner();
+  updateAccountUI();
+  const admBtn = $('btn-admin');
+  if (admBtn) admBtn.style.display = isPlatformAdmin() ? '' : 'none';
+  void refreshGptUsage();
+  void refreshCohortNav();
+  showToast('Kembali ke tampilan admin.');
+  if (isPlatformAdmin()) openAdminView();
+  else goHome();
 }
 
 function goHome(e) {
@@ -17776,7 +17890,11 @@ function wireUi() {
   $('adm-cohort-preview-go')?.addEventListener('click', () => void openAdminCohortPreview());
   $('admin-sample-new')?.addEventListener('click', () => adminSampleNewUser());
   $('admin-sample-exit')?.addEventListener('click', () => adminExitSample());
-  $('sample-strip-exit')?.addEventListener('click', () => adminExitSample());
+  $('sample-strip-exit')?.addEventListener('click', () => {
+    if (_studentMode) void exitStudentMode();
+    else adminExitSample();
+  });
+  $('btn-student-mode')?.addEventListener('click', () => void toggleStudentMode());
   $('btn-login')?.addEventListener('click', () => openAuthModal('login', 'gpt_header_login'));
   $('btn-signup')?.addEventListener('click', () => openAuthModal('signup', 'gpt_header_signup'));
   $('harga-daftar-cta')?.addEventListener('click', (e) => {

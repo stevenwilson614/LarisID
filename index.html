@@ -5902,6 +5902,24 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   .side-rail { transition: none; }
 }
 
+/* "Mode mahasiswa" switch — admin only, sits beside the account button. */
+.btn-studentmode {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line);
+  background: #fff; color: var(--ink); font-size: .74rem; font-weight: 650;
+  font-family: inherit; cursor: pointer;
+}
+.btn-studentmode[hidden] { display: none; }
+.btn-studentmode:hover { border-color: var(--ink); }
+.btn-studentmode-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: #C7CBD1; flex: 0 0 auto;
+}
+.btn-studentmode.is-on { background: #111; border-color: #111; color: #fff; }
+.btn-studentmode.is-on .btn-studentmode-dot { background: #4ADE80; }
+@media (max-width: 720px) {
+  .btn-studentmode { padding: 6px 9px; }
+  .btn-studentmode #btn-student-mode-label { display: none; }
+}
 /* Always-on "Pesan Steven" — sits clear of composer / compare bar; under sheets & modals */
 .msg-steven-fab {
   position: fixed;
@@ -6092,6 +6110,10 @@ body:has(.modal-overlay.open) .msg-steven-fab {
             <p class="usage-pop-sub">Batas harian reset dalam —.</p>
           </div>
         </div>
+        <button type="button" class="btn-studentmode" id="btn-student-mode" hidden aria-pressed="false" title="Lihat seluruh aplikasi seperti mahasiswa di kohort">
+          <span class="btn-studentmode-dot" aria-hidden="true"></span>
+          <span id="btn-student-mode-label">Mode mahasiswa</span>
+        </button>
         <button type="button" class="btn-user" id="btn-user" title="Profil & akun">
           <span class="btn-user-av" id="user-av">?</span>
           <span id="user-name">Akun</span>
@@ -7879,7 +7901,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <script defer src="/js/gpt-referral.js?v=20260821a"></script>
 <script defer src="/js/gpt-profile.js?v=20260821a"></script>
 <script defer src="/js/gpt-community-board.js?v=20260815c"></script>
-<script defer src="/js/laris-cohort.js?v=20260831b"></script>
+<script defer src="/js/laris-cohort.js?v=20260831c"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260812a"></script>
 <script defer src="/js/laris-mascot.js?v=20260812a"></script>
 <script defer src="/js/gpt-chat-memory.js?v=20260818a"></script>
@@ -7889,6 +7911,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/gpt-app.js?v=20260831b" defer></script>
+<script src="/js/gpt-app.js?v=20260831c" defer></script>
 </body>
 </html>
