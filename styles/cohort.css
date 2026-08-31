@@ -1,135 +1,233 @@
-/* Kohort / LarisRise — sits on the current SPA (#view-cohort). */
-.view-cohort .panel { background: #F5EFE0; }
+/* Kohort / LarisRise (#view-cohort).
+ *
+ * Styled on the site's CURRENT system, not the pre-Phoenix page it was ported
+ * from. Every recipe here is lifted from something already shipping: cards and
+ * tables from the admin dashboard (.adm-card / .adm-kpi / .admin-table), pills
+ * and buttons from the shared .chip / .btn-primary / .btn-ghost, and semantic
+ * colours from the :root tokens in index.html (--green, --amber, --blue,
+ * --merah-tint). Nothing invents a new colour.
+ *
+ * Two things carried the old look more than anything else and are gone:
+ * the cream #F5EFE0 page ground (the pre-Phoenix background — the app is white
+ * or #F6F6F7 everywhere else), and red #B5202A on primary buttons and active
+ * tabs. Site-wide, the filled state is INK: .btn-primary and .chip.selected are
+ * both var(--ink). Red survives only where the site still uses it — as an
+ * accent on small text and tints, never as a large fill.
+ */
+
 #view-cohort { padding: 8px 0 40px; }
-.cohort-wrap { max-width: 920px; margin: 0 auto; padding: 0 16px; }
-.cohort-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.cohort-wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+.cohort-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 800px) { .cohort-grid { grid-template-columns: 1fr; } }
+
+/* ── Cards: the .adm-card recipe ──────────────────────────────────────────── */
 .cohort-card {
-  background: #fff; border: 1px solid rgba(26,26,26,.12); border-radius: 12px;
-  padding: 16px 18px;
+  background: #fff; border: 1px solid #E8E8E8; border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  padding: 16px 18px 14px;
 }
 .cohort-card h3 {
-  font-size: .88rem; font-weight: 800; margin: 0 0 10px; letter-spacing: -.02em;
+  margin: 0 0 12px; font-size: .95rem; font-weight: 700;
+  letter-spacing: -.02em; color: #1A1A1A;
 }
-.cohort-muted { font-size: .72rem; color: #6B7280; line-height: 1.5; }
-.cohort-list { margin: 0; padding: 0; list-style: none; font-size: .78rem; color: #374151; }
+.cohort-muted { font-size: .78rem; color: #8A8A8A; font-weight: 550; line-height: 1.55; }
+.cohort-empty { font-size: .82rem; color: #9CA3AF; padding: 14px 0; }
+
+.cohort-list { margin: 0; padding: 0; list-style: none; font-size: .82rem; color: #1A1A1A; }
 .cohort-list li {
-  padding: 8px 0; border-bottom: 1px solid #F3F4F6;
+  padding: 10px 0; border-bottom: 1px solid #F3F3F3;
   display: flex; justify-content: space-between; gap: 8px;
 }
+.cohort-list li:last-child { border-bottom: none; }
+
+/* ── Controls: .chip / .btn-primary / .btn-ghost ──────────────────────────── */
 .cohort-input, .cohort-select {
-  width: 100%; border: 1.5px solid #E5E7EB; border-radius: 8px;
-  padding: 9px 12px; font-size: .82rem; font-family: inherit;
+  width: 100%; border: 1px solid #E8E8E8; border-radius: 10px;
+  padding: 10px 12px; font-size: .8125rem; font-family: inherit; color: var(--ink);
   margin-bottom: 8px; box-sizing: border-box; background: #fff;
+  transition: border-color .12s;
 }
+.cohort-input:focus, .cohort-select:focus { outline: none; border-color: var(--ink-soft); }
+.cohort-input::placeholder { color: #B4B4B4; }
+
 .cohort-btn {
-  padding: 9px 16px; border-radius: 8px; border: none;
-  background: #B5202A; color: #fff; font-size: .78rem; font-weight: 700;
-  cursor: pointer; font-family: inherit;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 18px; border-radius: 999px; border: 1px solid var(--ink);
+  background-color: var(--ink); color: #fff;
+  font-size: .8125rem; font-weight: 600; font-family: inherit;
+  cursor: pointer; white-space: nowrap; transition: opacity .12s;
 }
-.cohort-btn.secondary { background: #F3F4F6; color: #374151; }
-.cohort-btn:disabled { opacity: .45; cursor: default; }
-.cohort-subtabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 14px; }
+.cohort-btn:hover { opacity: .88; }
+.cohort-btn.secondary {
+  background-color: #fff; border-color: var(--line); color: var(--ink-soft); font-weight: 500;
+}
+.cohort-btn.secondary:hover { background-color: var(--bg-user); color: var(--ink); opacity: 1; }
+.cohort-btn:disabled { opacity: .35; cursor: not-allowed; }
+/* Table/row-level actions. A size variant, so the pill geometry stays intact. */
+.cohort-btn.sm { padding: 5px 12px; font-size: .72rem; }
+
+.cohort-subtabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 16px; }
 .cohort-subtab {
-  padding: 7px 14px; border-radius: 999px; border: 1.5px solid #E5E7EB;
-  background: #fff; color: #374151; font-size: .72rem; font-weight: 700;
+  padding: 8px 16px; border-radius: 999px;
+  background-color: var(--bg); border: 1px solid var(--line);
+  font-size: .8125rem; font-weight: 500; color: var(--ink);
   cursor: pointer; font-family: inherit;
+  transition: background-color .12s, border-color .12s;
 }
-.cohort-subtab.active { background: #B5202A; border-color: #B5202A; color: #fff; }
+.cohort-subtab:hover { background-color: var(--bg-user); border-color: #d4d4d4; }
+.cohort-subtab.active {
+  background-color: var(--ink); border-color: var(--ink); color: #fff;
+}
+
+/* ── Stat tiles: the .adm-kpi recipe, sentence-case labels like the rest ───── */
 .cohort-stat-row {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0 8px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 12px 0 10px;
 }
 @media (max-width: 560px) { .cohort-stat-row { grid-template-columns: 1fr 1fr; } }
 .cohort-stat {
-  background: #F9FAFB; border-radius: 8px; padding: 10px; text-align: center;
+  background: #FAFAFA; border: 1px solid #F0F0F0; border-radius: 12px;
+  padding: 12px 10px; text-align: center;
 }
 .cohort-stat b {
-  display: block; font-size: 1.25rem; font-weight: 900; letter-spacing: -.03em;
+  display: block; font-size: 1.45rem; font-weight: 750;
+  letter-spacing: -.03em; color: #1A1A1A; line-height: 1.15;
 }
 .cohort-stat span {
-  font-size: .58rem; font-weight: 700; letter-spacing: .06em;
-  text-transform: uppercase; color: #9CA3AF;
+  display: block; margin-top: 2px;
+  font-size: .72rem; font-weight: 600; color: #8A8A8A;
 }
-.cohort-terukur {
-  display: inline-block; font-size: .58rem; font-weight: 800; letter-spacing: .04em;
-  text-transform: uppercase; color: #1A7A46; background: #ECFDF5;
-  border-radius: 4px; padding: 2px 6px; margin-left: 6px;
+
+/* ── Pills: the .adm-pill recipe ──────────────────────────────────────────── */
+.cohort-pill, .cohort-terukur {
+  display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px;
+  font-size: .68rem; font-weight: 700; white-space: nowrap;
 }
-.cohort-rank-row {
-  display: flex; justify-content: space-between; gap: 10px; align-items: center;
-  padding: 8px 0; border-bottom: 1px solid #F3F4F6; font-size: .8rem;
-}
-.cohort-rank-row.is-me { background: #F9EAE4; margin: 0 -8px; padding: 8px; border-radius: 8px; border: none; }
-.cohort-feed-card {
-  border: 1px solid #F3F4F6; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px;
-}
-.cohort-feed-kind { font-size: .62rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #B5202A; margin-bottom: 4px; }
-.cohort-feed-body { font-size: .82rem; line-height: 1.5; }
-.cohort-feed-meta { font-size: .65rem; color: #9CA3AF; margin-top: 6px; }
-.cohort-help {
-  background: #FFF7ED; border: 1px solid #FED7AA; border-radius: 10px;
-  padding: 12px 14px; margin-bottom: 14px;
-}
-.cohort-help h3 { margin: 0 0 8px; color: #9A3412; }
-.cohort-shop-row {
-  display: flex; justify-content: space-between; gap: 8px; align-items: center;
-  font-size: .75rem; padding: 6px 0; border-bottom: 1px solid #F3F4F6;
-}
-.cohort-shop-add { display: flex; gap: 8px; margin-top: 10px; }
-.cohort-shop-add .cohort-input { margin-bottom: 0; flex: 1; }
-.cohort-note {
-  margin: 8px 0 0; padding: 8px 10px; border-radius: 8px;
-  background: #F0FDF4; color: #166534; font-size: .72rem; line-height: 1.45;
-}
-.cohort-note.warn { background: #FFF7ED; color: #9A3412; }
-.cohort-table { width: 100%; border-collapse: collapse; font-size: .75rem; }
-.cohort-table th {
-  text-align: left; font-size: .62rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .04em; color: #6B7280; padding: 8px 8px; border-bottom: 2px solid #F3F4F6;
-}
-.cohort-table td { padding: 8px; border-bottom: 1px solid #F3F4F6; vertical-align: middle; }
-.cohort-attend { display: flex; gap: 4px; }
-.cohort-attend button {
-  font-size: .6rem; font-weight: 700; padding: 4px 8px; border-radius: 6px;
-  border: 1px solid #E5E7EB; background: #fff; cursor: pointer; font-family: inherit;
-}
-.cohort-attend button.on-hadir { background: #ECFDF5; border-color: #A7F3D0; color: #047857; }
-.cohort-attend button.on-izin { background: #EFF6FF; border-color: #BFDBFE; color: #1D4ED8; }
-.cohort-attend button.on-absen { background: #FEF2F2; border-color: #FECACA; color: #B91C1C; }
-.cohort-dupe-row { display: flex; align-items: center; gap: 8px; font-size: .72rem; padding: 6px 0; }
+.cohort-terukur { background: var(--green-bg); color: #15803D; margin-left: 6px; }
+.cohort-pill.warn { background: var(--amber-bg); color: #B45309; }
+.cohort-pill.info { background: var(--blue-bg); color: #1D4ED8; }
+.cohort-pill.mute { background: #F3F4F6; color: #6B7280; }
+.cohort-pill.ok   { background: var(--green-bg); color: #15803D; }
+
+/* Crawl freshness line under the Toko Saya heading. */
+.cohort-sensor { margin: 6px 0 0; font-size: .78rem; font-weight: 600; }
+.cohort-sensor.ok   { color: #15803D; }
+.cohort-sensor.warn { color: #B45309; }
+
 .cohort-badge-chip {
   display: inline-flex; align-items: center; gap: 4px;
-  font-size: .68rem; font-weight: 700; background: #F9EAE4; color: #8E191F;
-  border-radius: 999px; padding: 3px 8px; margin: 2px;
+  font-size: .72rem; font-weight: 650; background: var(--merah-tint); color: #8E191F;
+  border-radius: 999px; padding: 4px 10px; margin: 2px;
 }
 .cohort-badge-chip.verified::after {
-  content: 'dari toko'; font-size: .52rem; font-weight: 800; letter-spacing: .04em;
-  text-transform: uppercase; color: #1A7A46; margin-left: 4px;
+  content: 'dari toko'; font-size: .58rem; font-weight: 700;
+  color: #15803D; margin-left: 4px;
 }
-.cohort-empty { font-size: .78rem; color: #9CA3AF; padding: 12px 0; }
+
+/* ── Rankings ─────────────────────────────────────────────────────────────── */
+.cohort-rank-row {
+  display: flex; justify-content: space-between; gap: 10px; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid #F3F3F3; font-size: .82rem; color: #1A1A1A;
+}
+.cohort-rank-row:last-child { border-bottom: none; }
+.cohort-rank-row.is-me {
+  background: var(--merah-tint); margin: 0 -10px; padding: 10px;
+  border-radius: 10px; border: none; font-weight: 650;
+}
+
+/* ── Feed ─────────────────────────────────────────────────────────────────── */
+.cohort-feed-card {
+  border: 1px solid #EFEFEF; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px;
+  background: #fff;
+}
+.cohort-feed-kind {
+  display: inline-flex; padding: 3px 9px; border-radius: 999px; margin-bottom: 8px;
+  background: var(--merah-tint); color: var(--accent);
+  font-size: .68rem; font-weight: 700;
+}
+.cohort-feed-body { font-size: .875rem; line-height: 1.6; color: #1A1A1A; }
+.cohort-feed-meta { font-size: .72rem; color: #9CA3AF; font-weight: 550; margin-top: 8px; }
+
+/* ── Notices ──────────────────────────────────────────────────────────────── */
+.cohort-note {
+  margin: 10px 0 0; padding: 10px 12px; border-radius: 10px;
+  background: var(--green-bg); color: #15803D; font-size: .78rem; line-height: 1.55;
+}
+.cohort-note.warn { background: var(--amber-bg); color: #B45309; }
+.cohort-help {
+  background: var(--amber-bg); border: 1px solid #FDE9C8; border-radius: 12px;
+  padding: 14px 16px; margin-bottom: 14px;
+}
+.cohort-help h3 { margin: 0 0 8px; color: #B45309; }
+.cohort-help-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 0; border-bottom: 1px solid #FDE9C8; font-size: .8125rem;
+}
+.cohort-help-row:last-child { border-bottom: none; }
+
+/* Wins digest row (mentor Laporan tab). */
+.cohort-win-row {
+  display: flex; justify-content: space-between; gap: 10px; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid #F3F3F3; font-size: .8125rem;
+}
+.cohort-win-row:last-child { border-bottom: none; }
+
+/* ── Toko Saya ────────────────────────────────────────────────────────────── */
+.cohort-shop-row {
+  display: flex; justify-content: space-between; gap: 10px; align-items: center;
+  font-size: .8125rem; padding: 10px 0; border-bottom: 1px solid #F3F3F3;
+}
+.cohort-shop-add { display: flex; gap: 8px; margin-top: 12px; }
+.cohort-shop-add .cohort-input { margin-bottom: 0; flex: 1; }
+.cohort-dupe-row {
+  display: flex; align-items: center; gap: 8px; font-size: .8125rem; padding: 8px 0;
+}
+.cohort-dupes { margin-top: 14px; padding-top: 12px; border-top: 1px solid #F0F0F0; }
+
+/* ── Tables: the .admin-table recipe ──────────────────────────────────────── */
+.cohort-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+.cohort-table th {
+  text-align: left; font-weight: 650; color: #9CA3AF; white-space: nowrap;
+  padding: 8px 10px; border-bottom: 1px solid #EFEFEF;
+}
+.cohort-table td {
+  padding: 10px; border-bottom: 1px solid #F3F3F3; vertical-align: middle; color: #1A1A1A;
+}
+.cohort-table tr:hover td { background: #FAFAFA; }
+.cohort-attend { display: flex; gap: 4px; }
+.cohort-attend button {
+  font-size: .68rem; font-weight: 650; padding: 5px 10px; border-radius: 8px;
+  border: 1px solid #E8E8E8; background: #fff; color: #374151;
+  cursor: pointer; font-family: inherit;
+}
+.cohort-attend button:hover { background: #F6F6F7; }
+.cohort-attend button.on-hadir { background: var(--green-bg); border-color: #BBF7D0; color: #15803D; }
+.cohort-attend button.on-izin  { background: var(--blue-bg);  border-color: #BFDBFE; color: #1D4ED8; }
+.cohort-attend button.on-absen { background: var(--red-bg);   border-color: #FECACA; color: #B91C1C; }
+
 /* #btn-cohort is hidden by an inline style in index.html, NOT here: an ID rule
    beats .side-btn, so laris-cohort.js clearing the inline style left the button
    invisible for every cohort member. Same pattern as #btn-supplier. */
 
-/* ── Rencana Jualan (cohort tab) ──────────────────────────────────────────── */
+/* ── Rencana Jualan ───────────────────────────────────────────────────────── */
 /* The agent run itself is rendered by createAgentRun in compact mode, so this
    only styles the input form and the thread container it streams into. */
 .rjl-form { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
 @media (max-width: 700px) { .rjl-form { grid-template-columns: 1fr; } }
 .rjl-field { display: block; }
+/* Uppercase micro-label matches .adm-filter-pop label, the site's form-label idiom. */
 .rjl-field > span {
-  display: block; font-size: .62rem; font-weight: 800; letter-spacing: .05em;
-  text-transform: uppercase; color: #9CA3AF; margin-bottom: 5px;
+  display: block; font-size: .68rem; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: #9CA3AF; margin-bottom: 6px;
 }
 .rjl-field > span em { font-style: normal; font-weight: 600; text-transform: none; letter-spacing: 0; }
 .rjl-field input {
-  width: 100%; border: 1.5px solid #E5E7EB; border-radius: 8px;
-  padding: 9px 12px; font-size: .82rem; font-family: inherit;
-  box-sizing: border-box; background: #fff;
+  width: 100%; border: 1px solid #E8E8E8; border-radius: 10px;
+  padding: 10px 12px; font-size: .8125rem; font-family: inherit; color: var(--ink);
+  box-sizing: border-box; background: #fff; transition: border-color .12s;
 }
-.rjl-field input:focus { outline: none; border-color: #B5202A; }
-.rjl-actions { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
-.rjl-note { font-size: .68rem; color: #9CA3AF; line-height: 1.5; margin: 10px 0 0; }
+.rjl-field input:focus { outline: none; border-color: var(--ink-soft); }
+.rjl-actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.rjl-note { font-size: .72rem; color: #9CA3AF; font-weight: 550; line-height: 1.55; margin: 12px 0 0; }
 /* The run panel brings its own chrome; the thread is just a scroll host so a
    long plan cannot push the form off screen on a phone. */
 .rjl-thread { margin-top: 14px; max-height: 70vh; overflow-y: auto; }
@@ -137,12 +235,13 @@
 .rjl-thread .msg-role { display: none; }
 .rjl-thread .msg-bubble { background: transparent; padding: 0; }
 
-/* "Lihat sebagai siswa" — the strip that says the screen below is a preview. */
+/* ── "Lihat sebagai siswa" preview strip ──────────────────────────────────── */
 .cohort-preview-bar {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; flex-wrap: wrap; margin-bottom: 14px;
-  background: #FFF7ED; border: 1.5px solid #FDBA74; border-radius: 10px;
-  padding: 10px 14px; font-size: .78rem; color: #9A3412;
+  background: var(--amber-bg); border: 1px solid #FDE9C8; border-radius: 12px;
+  padding: 12px 16px; font-size: .8125rem; color: #B45309;
 }
-.cohort-preview-bar .cohort-muted { color: #9A3412; opacity: .85; margin-top: 3px; }
+.cohort-preview-bar strong { font-weight: 700; }
+.cohort-preview-bar .cohort-muted { color: #B45309; opacity: .8; margin-top: 3px; }
 .cohort-preview-bar button { flex: 0 0 auto; }

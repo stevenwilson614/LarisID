@@ -307,7 +307,7 @@
       const snapDays = Number(stats.snapshot_days || 0);
       const lastCrawl = fmtDay(stats.last_snapshot_at || stats.sensor_day);
       const sensorLbl = sensor === 'ok' ? 'Crawl terakhir oke' : sensor === 'degraded' ? 'Crawl sebagian' : 'Belum ada data toko hari ini';
-      const sensorTone = sensor === 'ok' ? '#1A7A46' : '#B45309';
+      const sensorTone = sensor === 'ok' ? 'ok' : 'warn';
 
       let shopHtml;
       if (!shops.length) {
@@ -318,7 +318,7 @@
           const href = s.url ? ` href="${esc(s.url)}" target="_blank" rel="noopener"` : '';
           return `<div class="cohort-shop-row">
             <span>${esc(s.platform)} · ${s.url ? `<a${href}>${esc(shown)}</a>` : esc(shown)} · ${esc(boardStatusLabel(s.board_status))}</span>
-            <button type="button" class="cohort-btn secondary cohort-shop-del" data-id="${esc(s.id)}" style="padding:4px 8px;">Hapus</button>
+            <button type="button" class="cohort-btn secondary sm cohort-shop-del" data-id="${esc(s.id)}">Hapus</button>
           </div>`;
         }).join('');
       }
@@ -339,7 +339,7 @@
       const dupes = stats.possible_dupes || [];
       let dupeHtml = '';
       if (dupes.length >= 2) {
-        dupeHtml = `<div style="margin-top:12px;padding-top:10px;border-top:1px dashed #E5E7EB;">
+        dupeHtml = `<div class="cohort-dupes">
           <div class="cohort-muted" style="margin-bottom:6px;">Punya duplikat? Produk yang sama di dua toko dihitung <strong>1 produk, 2 toko</strong>.</div>
           ${dupes.map(d => `<label class="cohort-dupe-row"><input type="checkbox" class="cohort-dupe-chk" value="${esc(d.id)}"> ${esc(d.platform)} — ${esc(d.title || '')}</label>`).join('')}
           <button type="button" class="cohort-btn secondary" style="margin-top:8px;" id="cohort-group-btn">Gabungkan sebagai 1 produk</button>
@@ -351,7 +351,7 @@
           <h3 style="margin:0;">Toko Saya</h3>
           <span class="cohort-terukur">terukur</span>
         </div>
-        <p class="cohort-muted" style="color:${sensorTone};margin:6px 0 0;">${esc(sensorLbl)}${lastCrawl ? ' · ' + esc(lastCrawl) : ''}</p>
+        <p class="cohort-sensor ${sensorTone}">${esc(sensorLbl)}${lastCrawl ? ' · ' + esc(lastCrawl) : ''}</p>
         <div class="cohort-stat-row">
           <div class="cohort-stat"><b>${stats.toko || 0}</b><span>Toko</span></div>
           <div class="cohort-stat"><b>${stats.produk || 0}</b><span>Produk</span></div>
@@ -433,7 +433,9 @@
     const { data: done } = await client.from('user_milestone_progress').select('milestone_id').eq('user_id', u.id);
     const doneSet = new Set((done || []).map(d => d.milestone_id));
     if (!(ms || []).length) { ul.innerHTML = '<li class="cohort-muted">Belum ada milestone.</li>'; return; }
-    ul.innerHTML = ms.map(m => `<li><span>${esc(m.title)}</span><span style="font-weight:700;color:${doneSet.has(m.id) ? '#059669' : '#9CA3AF'}">${doneSet.has(m.id) ? 'Selesai ✓' : ''}</span></li>`).join('');
+    ul.innerHTML = ms.map(m => `<li><span>${esc(m.title)}</span>${
+      doneSet.has(m.id) ? '<span class="cohort-pill ok">Selesai</span>' : ''
+    }</li>`).join('');
   }
 
   async function renderAnnouncements(cid) {
@@ -620,8 +622,8 @@
         help.style.display = need.length ? '' : 'none';
         if (need.length) {
           help.innerHTML = `<h3>Perlu bantuan</h3>${need.map(r =>
-            `<div style="padding:6px 0;border-bottom:1px solid #FED7AA;font-size:.78rem;"><strong>${esc(r.display_name)}</strong> — ${esc(r.help_reason || '')}
-              <button type="button" class="cohort-btn secondary" style="margin-left:8px;padding:4px 8px;" data-open="${esc(r.user_id)}">Profil</button>
+            `<div class="cohort-help-row"><strong>${esc(r.display_name)}</strong> — ${esc(r.help_reason || '')}
+              <button type="button" class="cohort-btn secondary sm" data-open="${esc(r.user_id)}">Profil</button>
             </div>`).join('')}`;
           help.querySelectorAll('[data-open]').forEach(b => b.addEventListener('click', () => openProfile(b.getAttribute('data-open'))));
         }
@@ -631,14 +633,14 @@
         <thead><tr><th>Nama</th><th>Toko</th><th>Produk</th><th>Crawl</th><th>Hadir</th><th>Flag</th><th></th></tr></thead>
         <tbody>${rows.map(r => `<tr>
           <td style="font-weight:600;cursor:pointer;" data-open="${esc(r.user_id)}">${esc(r.display_name)}</td>
-          <td>${r.toko || 0}${r.pending ? ` <span class="cohort-pill" style="background:#FEF3C7;color:#92400E;">${r.pending} pending</span>` : ''}</td>
+          <td>${r.toko || 0}${r.pending ? ` <span class="cohort-pill warn">${r.pending} pending</span>` : ''}</td>
           <td>${r.produk || 0}</td>
           <td>${esc(r.sensor || '—')}${r.last_crawl_day ? `<div class="cohort-muted">${esc(fmtDay(r.last_crawl_day))}</div>` : ''}</td>
           <td>${r.hadir || 0} / absen ${r.absen || 0}</td>
-          <td>${r.flag ? `<span class="cohort-pill" style="background:#FEF3C7;color:#92400E;">${esc(r.flag)}</span>` : '—'}</td>
+          <td>${r.flag ? `<span class="cohort-pill warn">${esc(r.flag)}</span>` : '—'}</td>
           <td style="white-space:nowrap;">
-            <button type="button" class="cohort-btn secondary" data-inc="${esc(r.user_id)}" style="padding:4px 8px;">Verifikasi</button>
-            <button type="button" class="cohort-btn secondary" data-exc="${esc(r.user_id)}" style="padding:4px 8px;">Kecualikan</button>
+            <button type="button" class="cohort-btn secondary sm" data-inc="${esc(r.user_id)}">Verifikasi</button>
+            <button type="button" class="cohort-btn secondary sm" data-exc="${esc(r.user_id)}">Kecualikan</button>
           </td>
         </tr>`).join('')}</tbody></table></div>`;
       table.querySelectorAll('[data-open]').forEach(b => b.addEventListener('click', () => openProfile(b.getAttribute('data-open'))));
@@ -670,7 +672,7 @@
     try {
       const rows = await rpc('cohort_wins_digest', { p_cohort: cid, p_days: 14 }) || [];
       if (!rows.length) { root.innerHTML = '<p class="cohort-muted">Belum ada lencana terverifikasi minggu ini.</p>'; return; }
-      root.innerHTML = rows.map(r => `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #F3F4F6;font-size:.78rem;">
+      root.innerHTML = rows.map(r => `<div class="cohort-win-row">
         <div><strong>${esc(r.display_name)}</strong> · ${esc(r.title)}
           <div class="cohort-muted">${esc((r.awarded_at || '').slice(0, 10))}</div></div>
         <button type="button" class="cohort-btn secondary" data-cel="${esc(r.user_id)}" data-key="${esc(r.key)}">Rayakan di feed</button>
