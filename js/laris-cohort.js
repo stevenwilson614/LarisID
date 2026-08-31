@@ -920,6 +920,30 @@
       if (!c) return null;
       return { id: c.id, name: c.name || 'Kohort' };
     },
+    /** The cohort this account genuinely leads, or null. Read AFTER the admin
+     *  mask is up: unmasked, initMembership fills mentorCohort with the first of
+     *  ALL cohorts, which says nothing about who actually mentors it. */
+    myMentorCohort: function () {
+      const c = state.mentorCohort;
+      if (!c) return null;
+      return { id: c.id, name: c.name || 'Kohort' };
+    },
+    /** Stand in as the mentor of a cohort this account does not actually lead —
+     *  the fallback for an admin who mentors nothing, so "Mode mentor" shows a
+     *  real roster instead of an empty panel. Expects open() to have just run,
+     *  so it does not re-query membership. */
+    mentorAs: async function (cid, row) {
+      bind();
+      if (!Object.keys(state.cohortMap).length) await initMembership();
+      if (cid && row && !state.cohortMap[cid]) state.cohortMap[cid] = row;
+      const c = cid && state.cohortMap[cid];
+      if (!c) return false;
+      state.previewCid = null;
+      state.mentorCohort = c;
+      state.mentorTab = 'overview';
+      await render();
+      return true;
+    },
     /** Cohorts this account may preview, for the Admin dashboard picker. */
     listCohorts: async function () {
       if (!Object.keys(state.cohortMap).length) await initMembership();

@@ -156,9 +156,10 @@ const COMPOSER_EXAMPLES = [
   'Produk modal 500rb yang laris',
 ];
 let _admSample = null; // admin sample view: { mode: 'user'|'new', label }
-// Admin browsing the whole app as a mahasiswa: { cohortId, cohortName, preview }.
+// Admin browsing the whole app in someone else's role:
+// { role: 'mahasiswa'|'mentor', cohortId, cohortName, stand_in }.
 // In memory only, like _admSample — a reload lands back on the real admin view.
-let _studentMode = null;
+let _viewAs = null;
 let _onboardingBackup = null;
 let _adminUsers = [];
 let _adminStats = null;
@@ -2605,14 +2606,14 @@ function isPlatformAdminRaw() {
  *  all close at once instead of being hidden one by one. Server-side RLS is
  *  untouched — this is a view of the product, not a downgrade of the account. */
 function isPlatformAdmin() {
-  return !_studentMode && isPlatformAdminRaw();
+  return !_viewAs && isPlatformAdminRaw();
 }
 
 /** True while an admin is looking at the product as somebody else. Analytics stay
  *  out of the funnel in BOTH modes: this account is already ~34% of all deep-dive
  *  events, and a browse-as-student session is inspection, not usage. */
 function adminIsPreviewing() {
-  return !!(_admSample || _studentMode);
+  return !!(_admSample || _viewAs);
 }
 
 // ── "Cari Supplier" validation probe — LAUNCH GATE (arm B) ────────────────────
@@ -2642,7 +2643,7 @@ async function loadCurrentAccess() {
   _accessState = { loaded: true, isAdmin };
   const btn = $('btn-admin');
   if (btn) btn.style.display = isAdmin ? '' : 'none';
-  syncStudentModeUi();
+  syncViewAsUi();
   // Signing in mid-session lands here rather than in boot, so the cohort home
   // is offered on that path too. Both are no-ops once _bootLandingView is spent.
   try { void refreshCohortNav().then(routeCohortHome, () => {}); } catch (_) {}
@@ -2707,7 +2708,7 @@ function syncHargaVisitCta() {
 }
 
 function updateAccountUI() {
-  syncStudentModeUi();
+  syncViewAsUi();
   const authH = $('auth-header');
   const userH = $('user-header');
   if (currentUser) {
@@ -16659,23 +16660,27 @@ function renderAdminSampleBanner() {
   const stripExit = $('sample-strip-exit');
   if (exitBtn) exitBtn.style.display = _admSample ? '' : 'none';
   if (strip) {
-    if (_studentMode || _admSample) {
+    if (_viewAs || _admSample) {
       strip.hidden = false;
       strip.classList.add('open');
       if (stripText) {
-        stripText.textContent = _studentMode
-          ? `Mode mahasiswa${_studentMode.cohortName ? ' · ' + _studentMode.cohortName : ''} — seluruh tampilan seperti yang dilihat siswa. Statistik tidak dicatat.`
+        stripText.textContent = _viewAs
+          ? `${viewAsLabel(_viewAs.role)}${_viewAs.cohortName ? ' · ' + _viewAs.cohortName : ''} — ${
+              _viewAs.role === 'mentor'
+                ? 'seluruh tampilan seperti yang dilihat mentor'
+                : 'seluruh tampilan seperti yang dilihat siswa'
+            }${_viewAs.stand_in ? ' (kamu bukan ' + (_viewAs.role === 'mentor' ? 'mentor' : 'anggota') + ' kohort ini)' : ''}. Statistik tidak dicatat.`
           : _admSample.mode === 'new'
             ? 'Sample: user baru (onboarding tidak disimpan)'
             : `Sample: ${_admSample.label || 'user'}`;
       }
-      if (stripExit) stripExit.textContent = _studentMode ? 'Keluar mode mahasiswa' : 'Keluar sample';
+      if (stripExit) stripExit.textContent = _viewAs ? 'Keluar' : 'Keluar sample';
     } else {
       strip.hidden = true;
       strip.classList.remove('open');
     }
   }
-  syncStudentModeUi();
+  syncViewAsUi();
   if (!banner) return;
   if (!_admSample) {
     banner.hidden = true;
@@ -16688,85 +16693,131 @@ function renderAdminSampleBanner() {
     : `Mode sample: ${_admSample.label || 'user'} — rekomendasi mengikuti lokasi/kategori mereka.`;
 }
 
-/* ── Mode mahasiswa ───────────────────────────────────────────────────────
+/* ── Lihat sebagai (mahasiswa / mentor) ───────────────────────────────────
  *
- * One switch in the header. On, isPlatformAdmin() reads false everywhere, so
- * the admin nav, the unlimited quota, the "(Admin)" suffix and the cohort
- * module's mentor wrap all close together and the screen is a student's — not
- * a student panel inside an admin shell. The strip at the top of .main is the
- * way back, and it is never gated on the mask.
+ * One control in the header. Whichever role is picked, isPlatformAdmin() reads
+ * false, so the admin nav, the unlimited quota, the "(Admin)" suffix and every
+ * other admin gate close together and the screen is that role's — not their
+ * panel inside an admin shell. A mentor is not a platform admin either, which
+ * is why mentor mode masks exactly the same way.
+ *
+ * The two roles resolve their cohort differently, because the honest answer
+ * differs: a mahasiswa's is their real membership, a mentor's is the cohort
+ * they actually lead. Where the account has neither, the mode stands in for one
+ * so the panel is not empty — and the strip says so rather than letting the
+ * screen imply a membership that is not there.
+ *
+ * The strip at the top of .main is the way back and is never gated on the mask.
  */
-function syncStudentModeUi() {
-  const btn = $('btn-student-mode');
-  if (!btn) return;
+function viewAsLabel(role) {
+  return role === 'mentor' ? 'Mode mentor' : 'Mode mahasiswa';
+}
+
+function syncViewAsUi() {
+  const wrap = $('viewas');
+  const btn = $('btn-viewas');
+  if (!wrap || !btn) return;
   const allowed = isPlatformAdminRaw();
-  btn.hidden = !allowed;
-  if (!allowed) return;
-  btn.classList.toggle('is-on', !!_studentMode);
-  btn.setAttribute('aria-pressed', _studentMode ? 'true' : 'false');
-  const lbl = $('btn-student-mode-label');
-  if (lbl) lbl.textContent = _studentMode ? 'Keluar mode mahasiswa' : 'Mode mahasiswa';
-  btn.title = _studentMode
+  wrap.hidden = !allowed;
+  if (!allowed) { closeViewAsMenu(); return; }
+  btn.classList.toggle('is-on', !!_viewAs);
+  btn.setAttribute('aria-pressed', _viewAs ? 'true' : 'false');
+  const lbl = $('btn-viewas-label');
+  if (lbl) lbl.textContent = _viewAs ? viewAsLabel(_viewAs.role) : 'Lihat sebagai';
+  btn.title = _viewAs
     ? 'Kembali ke tampilan admin'
-    : 'Lihat seluruh aplikasi seperti mahasiswa di kohort';
+    : 'Lihat seluruh aplikasi sebagai mahasiswa atau mentor';
+  if (_viewAs) closeViewAsMenu();
 }
 
-async function toggleStudentMode() {
+function closeViewAsMenu() {
+  const pop = $('viewas-pop');
+  const btn = $('btn-viewas');
+  if (pop) pop.hidden = true;
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+function toggleViewAsMenu() {
   if (!isPlatformAdminRaw()) return;
-  if (_studentMode) await exitStudentMode();
-  else await enterStudentMode();
+  // Active is a plain toggle: one click back to admin. The menu only exists to
+  // choose which role to enter.
+  if (_viewAs) { void exitViewAs(); return; }
+  const pop = $('viewas-pop');
+  const btn = $('btn-viewas');
+  if (!pop || !btn) return;
+  const open = pop.hidden;
+  pop.hidden = !open;
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
 
-async function enterStudentMode() {
-  if (!isPlatformAdminRaw() || _studentMode) return;
-  // Resolve the cohort BEFORE the mask goes up: listCohorts() only sees every
-  // cohort while isAdmin() is still true, and a moment later it will not be.
+async function enterViewAs(role) {
+  if (!isPlatformAdminRaw() || _viewAs) return;
+  closeViewAsMenu();
+  // Resolve candidates BEFORE the mask goes up: listCohorts() sees every cohort
+  // only while isAdmin() is still true, and a moment later it will not.
+  let list = [];
   let own = null;
-  let any = null;
   try {
     mountLarisCohort();
     if (window.LarisCohort) {
       await window.LarisCohort.initMembership();
-      const list = await window.LarisCohort.listCohorts();
-      any = (list && list[0]) || null;
+      list = (await window.LarisCohort.listCohorts()) || [];
       own = window.LarisCohort.myStudentCohort();
     }
   } catch (_) {}
-  // A real student membership is the honest case and needs no preview at all.
-  // Otherwise fall back to previewing a cohort so the tab is not just a join card.
-  const picked = own || any;
-  _studentMode = {
-    cohortId: picked ? picked.id : null,
-    cohortName: picked ? picked.name : '',
-    preview: !own && !!any,
-  };
-  renderAdminSampleBanner();
-  updateAccountUI();
-  const admBtn = $('btn-admin');
-  if (admBtn) admBtn.style.display = 'none';
-  void refreshGptUsage();
+
+  _viewAs = { role, cohortId: null, cohortName: '', stand_in: false };
+  applyViewAsChrome();
   setView('cohort');
+
+  let picked = null;
+  let standIn = false;
   try {
-    if (_studentMode.preview) {
-      await window.LarisCohort.previewAs(_studentMode.cohortId, picked);
+    // open() re-reads membership under the mask, so what comes back now is what
+    // this account genuinely is rather than what an admin can see.
+    await window.LarisCohort.open();
+    if (role === 'mentor') {
+      picked = window.LarisCohort.myMentorCohort();
+      if (!picked) {
+        // Prefer the cohort the account is at least a member of: an arbitrary
+        // first cohort is usually the empty demo one, which reads as broken.
+        picked = (own && list.find(c => c.id === own.id)) || list[0] || null;
+        standIn = !!picked;
+        if (picked) await window.LarisCohort.mentorAs(picked.id, picked);
+      }
     } else {
-      await window.LarisCohort.open();
+      picked = own;
+      if (!picked) {
+        picked = list[0] || null;
+        standIn = !!picked;
+        if (picked) await window.LarisCohort.previewAs(picked.id, picked);
+      }
     }
   } catch (_) {}
+
+  _viewAs.cohortId = picked ? picked.id : null;
+  _viewAs.cohortName = picked ? picked.name : '';
+  _viewAs.stand_in = standIn;
+  renderAdminSampleBanner();
   void refreshCohortNav();
   showToast(picked
-    ? `Mode mahasiswa: ${picked.name}`
-    : 'Mode mahasiswa — akun ini belum di kohort mana pun.');
+    ? `${viewAsLabel(role)}: ${picked.name}`
+    : `${viewAsLabel(role)} — belum ada kohort untuk ditampilkan.`);
 }
 
-async function exitStudentMode() {
-  if (!_studentMode) return;
-  _studentMode = null;
+/** Everything the mask has to repaint by hand, in both directions. */
+function applyViewAsChrome() {
   renderAdminSampleBanner();
   updateAccountUI();
   const admBtn = $('btn-admin');
   if (admBtn) admBtn.style.display = isPlatformAdmin() ? '' : 'none';
   void refreshGptUsage();
+}
+
+async function exitViewAs() {
+  if (!_viewAs) return;
+  _viewAs = null;
+  applyViewAsChrome();
   void refreshCohortNav();
   showToast('Kembali ke tampilan admin.');
   if (isPlatformAdmin()) openAdminView();
@@ -17969,10 +18020,18 @@ function wireUi() {
   $('admin-sample-new')?.addEventListener('click', () => adminSampleNewUser());
   $('admin-sample-exit')?.addEventListener('click', () => adminExitSample());
   $('sample-strip-exit')?.addEventListener('click', () => {
-    if (_studentMode) void exitStudentMode();
+    if (_viewAs) void exitViewAs();
     else adminExitSample();
   });
-  $('btn-student-mode')?.addEventListener('click', () => void toggleStudentMode());
+  $('btn-viewas')?.addEventListener('click', (e) => { e.stopPropagation(); toggleViewAsMenu(); });
+  document.querySelectorAll('#viewas-pop .viewas-opt').forEach((b) => {
+    b.addEventListener('click', () => void enterViewAs(b.dataset.role));
+  });
+  // A menu that only closes on its own trigger is a menu users get stuck in.
+  document.addEventListener('click', (e) => {
+    if (!$('viewas')?.contains(e.target)) closeViewAsMenu();
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeViewAsMenu(); });
   $('btn-login')?.addEventListener('click', () => openAuthModal('login', 'gpt_header_login'));
   $('btn-signup')?.addEventListener('click', () => openAuthModal('signup', 'gpt_header_signup'));
   $('harga-daftar-cta')?.addEventListener('click', (e) => {

@@ -5919,8 +5919,27 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
 .btn-studentmode.is-on .btn-studentmode-dot { background: #4ADE80; }
 @media (max-width: 720px) {
   .btn-studentmode { padding: 6px 9px; }
-  .btn-studentmode #btn-student-mode-label { display: none; }
+  .btn-studentmode #btn-viewas-label { display: none; }
 }
+/* Role menu. Same chrome as .adm-filter-pop, the site's existing popover. */
+.viewas { position: relative; display: inline-flex; }
+.viewas[hidden] { display: none; }
+.viewas-pop {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 40;
+  background: #fff; border: 1px solid #E8E8E8; border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.1); padding: 8px; min-width: 190px;
+}
+.viewas-pop[hidden] { display: none; }
+.viewas-pop-lbl {
+  margin: 4px 8px 8px; font-size: .68rem; font-weight: 700; color: #9CA3AF;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.viewas-opt {
+  display: block; width: 100%; text-align: left;
+  padding: 8px 10px; border-radius: 8px; border: none; background: none;
+  font-size: .8125rem; font-weight: 600; color: var(--ink); font-family: inherit;
+}
+.viewas-opt:hover { background: #F6F6F7; }
 /* Always-on "Pesan Steven" — sits clear of composer / compare bar; under sheets & modals */
 .msg-steven-fab {
   position: fixed;
@@ -6111,10 +6130,17 @@ body:has(.modal-overlay.open) .msg-steven-fab {
             <p class="usage-pop-sub">Batas harian reset dalam —.</p>
           </div>
         </div>
-        <button type="button" class="btn-studentmode" id="btn-student-mode" hidden aria-pressed="false" title="Lihat seluruh aplikasi seperti mahasiswa di kohort">
-          <span class="btn-studentmode-dot" aria-hidden="true"></span>
-          <span id="btn-student-mode-label">Mode mahasiswa</span>
-        </button>
+        <div class="viewas" id="viewas" hidden>
+          <button type="button" class="btn-studentmode" id="btn-viewas" aria-pressed="false" aria-haspopup="true" aria-expanded="false" title="Lihat seluruh aplikasi sebagai mahasiswa atau mentor">
+            <span class="btn-studentmode-dot" aria-hidden="true"></span>
+            <span id="btn-viewas-label">Lihat sebagai</span>
+          </button>
+          <div class="viewas-pop" id="viewas-pop" hidden>
+            <p class="viewas-pop-lbl">Lihat aplikasi sebagai</p>
+            <button type="button" class="viewas-opt" data-role="mahasiswa">Mahasiswa</button>
+            <button type="button" class="viewas-opt" data-role="mentor">Mentor</button>
+          </div>
+        </div>
         <button type="button" class="btn-user" id="btn-user" title="Profil & akun">
           <span class="btn-user-av" id="user-av">?</span>
           <span id="user-name">Akun</span>
@@ -7902,7 +7928,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <script defer src="/js/gpt-referral.js?v=20260821a"></script>
 <script defer src="/js/gpt-profile.js?v=20260821a"></script>
 <script defer src="/js/gpt-community-board.js?v=20260815c"></script>
-<script defer src="/js/laris-cohort.js?v=20260831d"></script>
+<script defer src="/js/laris-cohort.js?v=20260831e"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260812a"></script>
 <script defer src="/js/laris-mascot.js?v=20260812a"></script>
 <script defer src="/js/gpt-chat-memory.js?v=20260818a"></script>
@@ -7912,6 +7938,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/gpt-app.js?v=20260831d" defer></script>
+<script src="/js/gpt-app.js?v=20260831e" defer></script>
 </body>
 </html>
