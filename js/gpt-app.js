@@ -5705,7 +5705,7 @@ async function fillSerupaContent(opts = {}) {
     return;
   }
   body.innerHTML = `
-    <p class="side-komp-lead">${items.length} produk serupa di keyword “${esc(kw)}” — urut terjual. Klik untuk Deep Dive.</p>
+    <p class="side-komp-lead">${items.length} produk serupa di keyword “${esc(kw)}” — urut terjual. Klik untuk jadikan acuan di pasar ini.</p>
     <div class="card-grid side-serupa-grid">${productCardsHtml(items)}</div>
   `;
   bindProductCards(body);
