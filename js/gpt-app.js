@@ -5790,11 +5790,12 @@ function fillAiContent(opts = {}) {
       </button>
     </form>
     <p class="side-ai-disclaimer">AI dapat membuat kesalahan. Angka di panel ini dari data scrape asli — verifikasi sebelum ambil keputusan.</p>
-    ${product._ptype ? '' : '<div class="side-ai-photo" id="side-ai-photo"></div>'}
+    ${(!product._ptype || product._fromListing) ? '<div class="side-ai-photo" id="side-ai-photo"></div>' : ''}
   `;
 
-  // Photo analysis only makes sense for a specific product, not a pasar/type
-  // row (there's no one photo to represent an aggregate market).
+  // Photo analysis needs one concrete photo. A market opened from a type card
+  // has none — it is an aggregate. A market opened by clicking a listing does:
+  // the listing the user clicked (_fromListing), which is the one on screen.
   const photoHost = $('side-ai-photo');
   if (photoHost && window.GptPhotoAnalyze) {
     window.GptPhotoAnalyze.mount(photoHost, {
@@ -9615,7 +9616,7 @@ function ensureTracker() {
       }
     } catch (_) {}
     _trkLoadPromise = (typeof larisLoadScript === 'function'
-      ? larisLoadScript('/js/laris-tracker.js?v=20260829c')
+      ? larisLoadScript('/js/laris-tracker.js?v=20260831a')
       : Promise.reject(new Error('no loader')))
       .then(() => window.LarisTracker || null)
       .catch(() => { _trkLoadPromise = null; return null; });
@@ -11618,6 +11619,26 @@ async function openDeepDive(product, ddOpts = {}) {
   if (!root) return;
   root.innerHTML = garudaLoadingHtml('Memuat data Deep Dive…');
   scrollPanelToTop();
+
+  // There is no listing-level report any more. A click on one product opens the
+  // MARKET that product sells in — with the product itself still on the page:
+  // its photo leads the gallery, its price drives the fee strip, its item/shop
+  // ids stay the thread's identity. One listing's numbers were the most
+  // confident thing on the old page and the least reliable; the market is what
+  // LarisID actually measures.
+  //
+  // Placed here rather than at each call site because every entry point —
+  // product cards, tracker rows, compare, the agent's listing rows, a restored
+  // history entry — funnels through openDeepDive.
+  if (!product._ptype) {
+    const t = await pasarTypeForProduct(product);
+    if (t) {
+      // _fromListing: this market was entered from one specific listing, which
+      // is what keeps photo analysis (a per-listing tool) mounted below.
+      product = { ...product, _ptype: t, _fromListing: true, _niche: product._niche || typeNiche(t) };
+      state.deepdiveProduct = product;
+    }
+  }
 
   const kw = product.keyword || '';
   const cacheKey = ddCacheKey(product);
@@ -15448,6 +15469,34 @@ function typeNiche(t) {
 
 // The type's top listing anchors the existing Deep Dive (which already
 // computes peers/price band/share/trend at keyword level = the whole type).
+/**
+ * The market a listing belongs to.
+ *
+ * Every dive is a pasar dive now (see openDeepDive), so this is what turns a
+ * clicked listing into the market it sells in: the product_types_v row for its
+ * keyword, city row first and the national row as fallback — typesForListings
+ * already does both, plus the quartile attach and the session cache.
+ *
+ * Returns null when the keyword has no market row at all (fewer than 3
+ * listings). That is the one case that still shows a listing-level report:
+ * inventing a market out of a keyword we have not measured would be worse than
+ * showing the little we do have.
+ */
+async function pasarTypeForProduct(product) {
+  const kw = String(product?.keyword || '').trim();
+  if (!kw) return null;
+  const known = _ptypeByKeyword.get(kw);
+  if (known) return known;
+  try {
+    const city = (state.dirCities && state.dirCities[0]) || 'ALL';
+    const types = await typesForListings([{ keyword: kw }], city, 1);
+    return types[0] || null;
+  } catch (e) {
+    console.warn('[pasarTypeForProduct]', e?.message || e);
+    return null;
+  }
+}
+
 function typeRepProduct(t) {
   const p = asListingProduct({
     item_id: t.rep_item_id, shop_id: t.rep_shop_id,

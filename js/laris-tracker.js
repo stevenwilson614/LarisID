@@ -620,22 +620,29 @@
     return pts ? projectXY(pts, w, h, pad) : null;
   }
 
-  // Smooth curve through the REAL points via quadratic Bezier segments joined
-  // at each pair's midpoint — no invented values, just a nicer line than raw
-  // point-to-point segments (which look especially harsh/linear with only a
-  // few scrape dates). 2 points is still a straight line; math can't curve
-  // through 2 points without inventing a 3rd, and that would be fabricating
-  // data.
+  // Smooth curve that passes through every real point (Catmull–Rom → cubic
+  // Bézier). The old midpoint-quadratic shortcut looked nicer in isolation but
+  // missed the weekly dots we draw on top, which read as a bug.
   function tracePath(ctx, xy) {
+    var n = xy.length;
+    if (n < 2) return;
     ctx.beginPath();
     ctx.moveTo(xy[0][0], xy[0][1]);
-    if (xy.length === 2) { ctx.lineTo(xy[1][0], xy[1][1]); return; }
-    for (var i = 1; i < xy.length - 1; i++) {
-      var mx = (xy[i][0] + xy[i + 1][0]) / 2, my = (xy[i][1] + xy[i + 1][1]) / 2;
-      ctx.quadraticCurveTo(xy[i][0], xy[i][1], mx, my);
+    if (n === 2) {
+      ctx.lineTo(xy[1][0], xy[1][1]);
+      return;
     }
-    var n = xy.length;
-    ctx.quadraticCurveTo(xy[n - 2][0], xy[n - 2][1], xy[n - 1][0], xy[n - 1][1]);
+    for (var i = 0; i < n - 1; i++) {
+      var p0 = xy[i > 0 ? i - 1 : 0];
+      var p1 = xy[i];
+      var p2 = xy[i + 1];
+      var p3 = xy[i + 2 < n ? i + 2 : n - 1];
+      var cp1x = p1[0] + (p2[0] - p0[0]) / 6;
+      var cp1y = p1[1] + (p2[1] - p0[1]) / 6;
+      var cp2x = p2[0] - (p3[0] - p1[0]) / 6;
+      var cp2y = p2[1] - (p3[1] - p1[1]) / 6;
+      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2[0], p2[1]);
+    }
   }
 
   /* Sparkline as raw canvas — the same choice the Deep Dive competitor table
