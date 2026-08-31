@@ -5921,6 +5921,21 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   .btn-studentmode { padding: 6px 9px; }
   .btn-studentmode #btn-viewas-label { display: none; }
 }
+/* Mentor shell. A mentor is not researching products, so the seller tools, the
+   chat history and the location card all leave; the rail becomes the three
+   mentor destinations. !important is needed on the hides because gpt-app and
+   laris-cohort write inline display on several of these; .mentor-nav needs none
+   because nothing toggles it individually. */
+.mentor-nav { display: none; }
+body.mentor-shell .mentor-nav { display: flex; }
+body.mentor-shell #btn-produk,
+body.mentor-shell #btn-ask-laris,
+body.mentor-shell #btn-tracker,
+body.mentor-shell #btn-supplier,
+body.mentor-shell #btn-cohort,
+body.mentor-shell #btn-set-lokasi,
+body.mentor-shell .sidebar > .side-section { display: none !important; }
+
 /* Role menu. Same chrome as .adm-filter-pop, the site's existing popover. */
 .viewas { position: relative; display: inline-flex; }
 .viewas[hidden] { display: none; }
@@ -6036,6 +6051,18 @@ body:has(.modal-overlay.open) .msg-steven-fab {
     <button type="button" class="side-btn" id="btn-cohort" title="Kohort LarisRise" style="display:none">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8.6" cy="7.4" r="3.2"/><path d="M2.6 20.4v-1.2a4.8 4.8 0 0 1 4.8-4.8h2.4a4.8 4.8 0 0 1 4.8 4.8v1.2"/><path class="ic-a" d="M16.6 11.2 19.2 8.6l2.6 2.6"/><path class="ic-a" d="M19.2 9v6.4"/></svg>
       Kohort
+    </button>
+    <button type="button" class="side-btn mentor-nav" id="btn-mentor-dash">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect class="ic-a" x="3" y="3" width="7.4" height="7.4" rx="1.6"/><rect x="13.6" y="3" width="7.4" height="7.4" rx="1.6"/><rect x="3" y="13.6" width="7.4" height="7.4" rx="1.6"/><rect class="ic-a" x="13.6" y="13.6" width="7.4" height="7.4" rx="1.6"/></svg>
+      Dashboard
+    </button>
+    <button type="button" class="side-btn mentor-nav" id="btn-mentor-siswa">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="7.6" r="3.3"/><path d="M2.8 20.2v-1.3a4.9 4.9 0 0 1 4.9-4.9h2.6a4.9 4.9 0 0 1 4.9 4.9v1.3"/><path class="ic-a" d="M17.2 4.6a3.3 3.3 0 0 1 0 6.2"/><path class="ic-a" d="M18.4 14.2a4.9 4.9 0 0 1 2.8 4.4v1.6"/></svg>
+      Siswa
+    </button>
+    <button type="button" class="side-btn mentor-nav" id="btn-mentor-jadwal">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.2" y="4.8" width="17.6" height="16" rx="2.4"/><path d="M3.2 9.6h17.6"/><path d="M8 3.2v3.2M16 3.2v3.2"/><path class="ic-a" d="M12 12.8v4.8M9.6 15.2h4.8"/></svg>
+      Jadwal
     </button>
     <button type="button" class="side-btn" id="btn-supplier" style="display:none">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.6 9.2a2.35 2.35 0 0 0 4.7 0 2.35 2.35 0 0 0 4.7 0 2.35 2.35 0 0 0 4.7 0 2.35 2.35 0 0 0 4.7 0V6.6A2.2 2.2 0 0 0 19.2 4.4H4.8A2.2 2.2 0 0 0 2.6 6.6Z"/><path d="M4.6 11.4v9.2h6.6"/><path d="M19.4 11.4v1.8"/><path d="M7.8 20.6v-4.8h3.4v4.8"/><circle class="ic-a" cx="16.5" cy="16.5" r="3.5"/><path class="ic-a" d="m19.1 19.1 2.5 2.5"/></svg>
@@ -7295,15 +7322,15 @@ body:has(.modal-overlay.open) .msg-steven-fab {
               <div id="cohort-mentor-subtabs" class="cohort-subtabs">
                 <button type="button" class="cohort-subtab active" data-cmtab="overview">Ringkasan</button>
                 <button type="button" class="cohort-subtab" data-cmtab="students">Siswa</button>
-                <button type="button" class="cohort-subtab" data-cmtab="report">Laporan</button>
                 <button type="button" class="cohort-subtab" data-cmtab="jadwal">Jadwal &amp; hadir</button>
               </div>
               <div id="cohort-mentor-panel-overview">
+                <div class="cohort-card" style="margin-bottom:12px;">
+                  <h3>Ringkasan kohort</h3>
+                  <div id="cohort-mentor-summary" class="cohort-muted">—</div>
+                  <div id="cohort-mentor-stats"></div>
+                </div>
                 <div class="cohort-grid">
-                  <div class="cohort-card">
-                    <h3>Mentor</h3>
-                    <div id="cohort-mentor-summary" class="cohort-muted">—</div>
-                  </div>
                   <div class="cohort-card">
                     <h3>Pengumuman baru</h3>
                     <input type="text" id="cohort-ann-title" class="cohort-input" placeholder="Judul">
@@ -7320,6 +7347,11 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                     <select id="cohort-preview-select" class="cohort-select"></select>
                     <button type="button" class="cohort-btn" id="cohort-preview-go">Buka tampilan siswa</button>
                   </div>
+                  <div class="cohort-card">
+                    <h3>Wins digest</h3>
+                    <p class="cohort-muted" style="margin-bottom:10px;">Satu ketuk merayakan di feed kohort saja — tidak ke papan masukan publik.</p>
+                    <div id="cohort-wins-digest"></div>
+                  </div>
                 </div>
               </div>
               <div id="cohort-mentor-panel-students" style="display:none;">
@@ -7330,14 +7362,20 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                   <div id="cohort-roster-table"></div>
                 </div>
               </div>
-              <div id="cohort-mentor-panel-report" style="display:none;">
-                <div class="cohort-card">
-                  <h3>Wins digest</h3>
-                  <p class="cohort-muted" style="margin-bottom:10px;">Satu ketuk merayakan di feed kohort saja — tidak ke papan masukan publik.</p>
-                  <div id="cohort-wins-digest"></div>
-                </div>
-              </div>
               <div id="cohort-mentor-panel-jadwal" style="display:none;">
+                <div class="cohort-card" style="margin-bottom:12px;">
+                  <h3>Tambah sesi</h3>
+                  <div class="rjl-form">
+                    <label class="rjl-field"><span>Judul</span><input type="text" id="cses-title" maxlength="120" placeholder="Sesi 3 — Ongkir &amp; margin"></label>
+                    <label class="rjl-field"><span>Tanggal</span><input type="date" id="cses-date"></label>
+                    <label class="rjl-field"><span>Jam mulai</span><input type="time" id="cses-time"></label>
+                  </div>
+                  <input type="url" id="cses-url" class="cohort-input" style="margin-top:10px;" maxlength="400" placeholder="Tautan Zoom / Meet (opsional)">
+                  <div class="rjl-actions">
+                    <button type="button" class="cohort-btn" id="cses-add">Tambah sesi</button>
+                    <span id="cses-status" class="cohort-muted"></span>
+                  </div>
+                </div>
                 <div class="cohort-card">
                   <h3>Absensi sesi</h3>
                   <p class="cohort-muted" style="margin-bottom:10px;">Tandai Hadir / Izin / Absen setelah kelas. Zoom tidak dilacak otomatis.</p>
@@ -7928,7 +7966,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <script defer src="/js/gpt-referral.js?v=20260821a"></script>
 <script defer src="/js/gpt-profile.js?v=20260821a"></script>
 <script defer src="/js/gpt-community-board.js?v=20260815c"></script>
-<script defer src="/js/laris-cohort.js?v=20260831e"></script>
+<script defer src="/js/laris-cohort.js?v=20260831f"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260812a"></script>
 <script defer src="/js/laris-mascot.js?v=20260812a"></script>
 <script defer src="/js/gpt-chat-memory.js?v=20260818a"></script>
@@ -7938,6 +7976,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/gpt-app.js?v=20260831e" defer></script>
+<script src="/js/gpt-app.js?v=20260831f" defer></script>
 </body>
 </html>

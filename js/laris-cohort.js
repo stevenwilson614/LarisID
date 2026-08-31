@@ -31,6 +31,10 @@
     // While it is set the student view renders for that cohort and the mentor
     // wrap is hidden, so the preview is the student's screen, not a superset.
     previewCid: null,
+    // Mentor shell: the student half of the view is not rendered at all, rather
+    // than rendered and hidden — a mentor has no Toko Saya, and four queries for
+    // a wrap nobody can see is just latency.
+    mentorOnly: false,
   };
 
   function supabase() { return sb && sb(); }
@@ -273,15 +277,44 @@
     document.querySelectorAll('#cohort-mentor-subtabs .cohort-subtab').forEach(b => {
       b.classList.toggle('active', b.dataset.cmtab === tab);
     });
-    ['overview', 'students', 'report', 'jadwal'].forEach(t => {
+    // In the mentor shell the sidebar IS the tab row, so it carries the state.
+    const navId = { overview: 'btn-mentor-dash', students: 'btn-mentor-siswa', jadwal: 'btn-mentor-jadwal' };
+    Object.keys(navId).forEach(t => {
+      const b = $(navId[t]);
+      if (b) b.classList.toggle('active', t === tab);
+    });
+    ['overview', 'students', 'jadwal'].forEach(t => {
       const el = $('cohort-mentor-panel-' + t);
       if (el) el.style.display = t === tab ? '' : 'none';
     });
     const c = state.mentorCohort;
     if (!c) return;
+    if (tab === 'overview') { void renderMentorDash(c.id); void renderWins(c.id); }
     if (tab === 'students') void renderRoster(c.id);
-    if (tab === 'report') void renderWins(c.id);
     if (tab === 'jadwal') void renderJadwal(c.id, true);
+  }
+
+  /* The dashboard's "general" numbers. Derived from cohort_roster_health, the
+   * same call the Siswa table makes, so this adds no new query shape and cannot
+   * disagree with the roster it summarises. */
+  async function renderMentorDash(cid) {
+    const root = $('cohort-mentor-stats');
+    if (!root) return;
+    try {
+      const rows = await rpc('cohort_roster_health', { p_cohort: cid }) || [];
+      const siswa = rows.length;
+      const withShop = rows.filter(r => (r.toko || 0) > 0).length;
+      const pending = rows.reduce((n, r) => n + (r.pending || 0), 0);
+      const needHelp = rows.filter(r => r.help_rank && r.help_rank < 99).length;
+      root.innerHTML = `<div class="cohort-stat-row">
+        <div class="cohort-stat"><b>${siswa}</b><span>Siswa</span></div>
+        <div class="cohort-stat"><b>${withShop}</b><span>Sudah ada toko</span></div>
+        <div class="cohort-stat"><b>${pending}</b><span>Menunggu verifikasi</span></div>
+        <div class="cohort-stat"><b>${needHelp}</b><span>Perlu bantuan</span></div>
+      </div>`;
+    } catch (e) {
+      root.innerHTML = `<p class="cohort-muted">${esc(e.message || 'Gagal memuat ringkasan.')}</p>`;
+    }
   }
 
   function boardStatusLabel(st) {
@@ -578,6 +611,39 @@
     }
   }
 
+  /* Mentors schedule from here. Straight insert, not an RPC: the cs_insert policy
+   * already gates on can_manage_cohort(cohort_id), so a non-mentor is refused by
+   * the database rather than by a check in this file. */
+  async function addSession() {
+    const c = state.mentorCohort;
+    const st = $('cses-status');
+    const title = ($('cses-title') && $('cses-title').value || '').trim();
+    const date = ($('cses-date') && $('cses-date').value || '').trim();
+    const time = ($('cses-time') && $('cses-time').value || '').trim();
+    const url = ($('cses-url') && $('cses-url').value || '').trim();
+    if (!c) { if (st) st.textContent = 'Belum ada kohort.'; return; }
+    if (!title || !date) { if (st) st.textContent = 'Isi judul dan tanggal dulu.'; return; }
+    if (st) st.textContent = 'Menyimpan…';
+    try {
+      const { error } = await supabase().from('cohort_sessions').insert({
+        cohort_id: c.id,
+        title,
+        session_date: date,
+        start_time: time || null,
+        meet_url: url || null,
+      });
+      if (error) throw error;
+      ['cses-title', 'cses-date', 'cses-time', 'cses-url'].forEach(id => {
+        const el = $(id); if (el) el.value = '';
+      });
+      if (st) st.textContent = 'Sesi ditambahkan.';
+      toast('Sesi ditambahkan.');
+      await renderJadwal(c.id, true);
+    } catch (e) {
+      if (st) st.textContent = (e && e.message) || 'Gagal menambah sesi.';
+    }
+  }
+
   async function openRoll(sessionId) {
     const box = $('cohort-roll-' + sessionId);
     if (!box) return;
@@ -836,6 +902,27 @@
     const c = cid && state.cohortMap[cid];
 
     renderPreviewBar();
+    if (state.mentorOnly) {
+      if (stu) stu.style.display = 'none';
+      if (sub) sub.style.display = 'none';
+      if (men) men.style.display = '';
+      // The sidebar rail replaces the subtab row in this shell.
+      const msub = $('cohort-mentor-subtabs');
+      if (msub) msub.style.display = 'none';
+      const sum = $('cohort-mentor-summary');
+      if (sum && state.mentorCohort) {
+        sum.innerHTML = `<strong>${esc(state.mentorCohort.name || 'Kohort')}</strong>`;
+      }
+      // The student-preview card is an admin affordance and a trap here: it calls
+      // previewAs, which clears mentorOnly and would leave the mentor rail standing
+      // over a student screen. Exit to the admin view to use it.
+      const pcard = $('cohort-preview-card');
+      if (pcard) pcard.style.display = 'none';
+      switchMentorTab(state.mentorTab === 'report' ? 'overview' : state.mentorTab);
+      return;
+    }
+    const msub = $('cohort-mentor-subtabs');
+    if (msub) msub.style.display = '';
     if (stu) stu.style.display = '';
     // Preview hides the mentor wrap entirely — a student never sees it, so
     // leaving it on screen would make the preview a lie.
@@ -894,6 +981,7 @@
     });
     $('cohort-preview-go')?.addEventListener('click', () => void enterPreview());
     $('cohort-preview-exit')?.addEventListener('click', () => void exitPreview());
+    $('cses-add')?.addEventListener('click', () => void addSession());
     $('cohort-post-send')?.addEventListener('click', () => void submitPost());
     $('cohort-ann-send')?.addEventListener('click', () => void postAnnouncement());
   }
@@ -904,6 +992,7 @@
     // A stale preview from a previous visit would hide the mentor panel with no
     // obvious cause, so every fresh open lands on the real view.
     state.previewCid = null;
+    state.mentorOnly = false;
     await render();
   }
 
@@ -941,9 +1030,12 @@
       state.previewCid = null;
       state.mentorCohort = c;
       state.mentorTab = 'overview';
+      state.mentorOnly = true;
       await render();
       return true;
     },
+    /** Sidebar rail entry point for the mentor shell. */
+    mentorTab: function (tab) { switchMentorTab(tab); },
     /** Cohorts this account may preview, for the Admin dashboard picker. */
     listCohorts: async function () {
       if (!Object.keys(state.cohortMap).length) await initMembership();
@@ -957,6 +1049,7 @@
      *  "Kohort" with no name. */
     previewAs: async function (cid, row) {
       bind();
+      state.mentorOnly = false;
       await initMembership();
       if (cid && row && !state.cohortMap[cid]) state.cohortMap[cid] = row;
       state.previewCid = cid || null;

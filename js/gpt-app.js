@@ -16783,8 +16783,10 @@ async function enterViewAs(role) {
         // first cohort is usually the empty demo one, which reads as broken.
         picked = (own && list.find(c => c.id === own.id)) || list[0] || null;
         standIn = !!picked;
-        if (picked) await window.LarisCohort.mentorAs(picked.id, picked);
       }
+      // One path for both: mentorAs also turns on the mentor-only shell, which a
+      // genuine mentor needs just as much as a stand-in.
+      if (picked) await window.LarisCohort.mentorAs(picked.id, picked);
     } else {
       picked = own;
       if (!picked) {
@@ -16807,6 +16809,9 @@ async function enterViewAs(role) {
 
 /** Everything the mask has to repaint by hand, in both directions. */
 function applyViewAsChrome() {
+  // The mentor rail replaces the seller tools, the chat history and the location
+  // card. One body class drives all of it; see the .mentor-shell block.
+  document.body.classList.toggle('mentor-shell', _viewAs?.role === 'mentor');
   renderAdminSampleBanner();
   updateAccountUI();
   const admBtn = $('btn-admin');
@@ -18016,6 +18021,9 @@ function wireUi() {
   $('changelog-close')?.addEventListener('click', () => closeChangelog());
   $('changelog-modal')?.addEventListener('click', e => { if (e.target.id === 'changelog-modal') closeChangelog(); });
   $('btn-admin')?.addEventListener('click', () => openAdminView());
+  $('btn-mentor-dash')?.addEventListener('click', () => window.LarisCohort?.mentorTab('overview'));
+  $('btn-mentor-siswa')?.addEventListener('click', () => window.LarisCohort?.mentorTab('students'));
+  $('btn-mentor-jadwal')?.addEventListener('click', () => window.LarisCohort?.mentorTab('jadwal'));
   $('adm-cohort-preview-go')?.addEventListener('click', () => void openAdminCohortPreview());
   $('admin-sample-new')?.addEventListener('click', () => adminSampleNewUser());
   $('admin-sample-exit')?.addEventListener('click', () => adminExitSample());
