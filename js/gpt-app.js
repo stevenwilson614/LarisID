@@ -18021,9 +18021,15 @@ function wireUi() {
   $('changelog-close')?.addEventListener('click', () => closeChangelog());
   $('changelog-modal')?.addEventListener('click', e => { if (e.target.id === 'changelog-modal') closeChangelog(); });
   $('btn-admin')?.addEventListener('click', () => openAdminView());
-  $('btn-mentor-dash')?.addEventListener('click', () => window.LarisCohort?.mentorTab('overview'));
-  $('btn-mentor-siswa')?.addEventListener('click', () => window.LarisCohort?.mentorTab('students'));
-  $('btn-mentor-jadwal')?.addEventListener('click', () => window.LarisCohort?.mentorTab('jadwal'));
+  function openMentorRail(tab) {
+    mountLarisCohort();
+    if (state.view !== 'cohort') setView('cohort');
+    else closeSidebar();
+    window.LarisCohort?.mentorTab(tab);
+  }
+  $('btn-mentor-dash')?.addEventListener('click', () => openMentorRail('overview'));
+  $('btn-mentor-siswa')?.addEventListener('click', () => openMentorRail('students'));
+  $('btn-mentor-jadwal')?.addEventListener('click', () => openMentorRail('jadwal'));
   $('adm-cohort-preview-go')?.addEventListener('click', () => void openAdminCohortPreview());
   $('admin-sample-new')?.addEventListener('click', () => adminSampleNewUser());
   $('admin-sample-exit')?.addEventListener('click', () => adminExitSample());

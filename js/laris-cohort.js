@@ -18,6 +18,15 @@
     lima_produk: 1, sepuluh_terjual: 1, dua_toko: 1,
   };
 
+  const RISE_COHORT = 'batch-1';
+  const RISE_STATUS = [
+    { key: 'diterima',         label: 'Diterima', cls: 'ok' },
+    { key: 'baru',             label: 'Baru', cls: 'info' },
+    { key: 'mungkin',          label: 'Mungkin', cls: 'warn' },
+    { key: 'batch_berikutnya', label: 'Batch berikutnya', cls: 'mute' },
+    { key: 'ditolak',          label: 'Ditolak', cls: 'mute' },
+  ];
+
   const state = {
     studentCohortId: null,
     mentorCohort: null,
@@ -27,6 +36,9 @@
     mentorTab: 'overview',
     rankBoard: 'produk',
     ready: false,
+    riseApps: [],
+    riseFilter: 'all',
+    riseOpenId: null,
     // Set by "Lihat sebagai siswa": the cohort a mentor/admin is previewing.
     // While it is set the student view renders for that cohort and the mentor
     // wrap is hidden, so the preview is the student's screen, not a superset.
@@ -288,10 +300,163 @@
       if (el) el.style.display = t === tab ? '' : 'none';
     });
     const c = state.mentorCohort;
+    if (tab === 'students') void renderRiseStudents();
     if (!c) return;
     if (tab === 'overview') { void renderMentorDash(c.id); void renderWins(c.id); }
     if (tab === 'students') void renderRoster(c.id);
     if (tab === 'jadwal') void renderJadwal(c.id, true);
+  }
+
+  function riseStatusMeta(key) {
+    return RISE_STATUS.find(s => s.key === key) || { key: key, label: key || '—', cls: 'mute' };
+  }
+
+  function fmtWa(wa) {
+    const d = String(wa || '');
+    return d.indexOf('62') === 0 ? '+' + d : d;
+  }
+
+  function waHref(wa) {
+    return 'https://wa.me/' + String(wa || '').replace(/[^0-9]/g, '');
+  }
+
+  function riseInitials(name) {
+    const parts = String(name || '').trim().split(/\s+/).slice(0, 2);
+    return parts.map(p => (p.charAt(0) || '').toUpperCase()).join('') || '?';
+  }
+
+  async function renderRiseStudents() {
+    const host = $('cohort-rise-list');
+    const countEl = $('cohort-rise-count');
+    const filters = $('cohort-rise-filters');
+    if (!host) return;
+    host.innerHTML = '<p class="cohort-muted">Memuat pendaftar LaRISE…</p>';
+    try {
+      const rows = await rpc('rise_applications_list', { p_cohort: RISE_COHORT }) || [];
+      state.riseApps = Array.isArray(rows) ? rows : [];
+    } catch (e) {
+      state.riseApps = [];
+      host.innerHTML = `<p class="cohort-muted">${esc(e.message || 'Gagal memuat pendaftar LaRISE.')}</p>`;
+      if (countEl) countEl.textContent = '';
+      return;
+    }
+    const n = state.riseApps.length;
+    if (countEl) {
+      countEl.textContent = n
+        ? n + ' pendaftar · Batch 1'
+        : 'Belum ada yang daftar';
+    }
+    if (filters) {
+      const chips = [{ key: 'all', label: 'Semua' }].concat(RISE_STATUS.map(s => ({ key: s.key, label: s.label })));
+      filters.innerHTML = chips.map(s => {
+        const k = s.key === 'all' ? n : state.riseApps.filter(r => r.status === s.key).length;
+        const on = state.riseFilter === s.key ? ' active' : '';
+        return `<button type="button" class="cohort-subtab${on}" data-rise-filter="${esc(s.key)}">${esc(s.label)} <span class="cohort-chip-n">${k}</span></button>`;
+      }).join('');
+      filters.querySelectorAll('[data-rise-filter]').forEach(b => {
+        b.addEventListener('click', () => {
+          state.riseFilter = b.getAttribute('data-rise-filter') || 'all';
+          paintRiseStudents();
+          filters.querySelectorAll('.cohort-subtab').forEach(x => {
+            x.classList.toggle('active', x.getAttribute('data-rise-filter') === state.riseFilter);
+          });
+        });
+      });
+    }
+    paintRiseStudents();
+    if (state.riseOpenId) openRiseStudent(state.riseOpenId);
+  }
+
+  function paintRiseStudents() {
+    const host = $('cohort-rise-list');
+    if (!host) return;
+    const filter = state.riseFilter || 'all';
+    const rows = state.riseApps.filter(r => filter === 'all' || r.status === filter);
+    if (!state.riseApps.length) {
+      host.innerHTML = '<p class="cohort-empty">Belum ada yang mengisi formulir LaRISE. Pendaftar dari <a href="/rise/daftar/" target="_blank" rel="noopener">larisid.com/rise/daftar</a> muncul di sini.</p>';
+      return;
+    }
+    if (!rows.length) {
+      host.innerHTML = '<p class="cohort-empty">Tidak ada pendaftar di status ini.</p>';
+      return;
+    }
+    host.innerHTML = rows.map(r => {
+      const st = riseStatusMeta(r.status);
+      const meta = [r.kota, r.kampus, r.jam_per_minggu ? r.jam_per_minggu + ' jam/mgg' : '']
+        .filter(Boolean).join(' · ');
+      return `<button type="button" class="cohort-siswa-row" data-rise-open="${esc(r.id)}">
+        <span class="cohort-siswa-av" aria-hidden="true">${esc(riseInitials(r.nama))}</span>
+        <span class="cohort-siswa-body">
+          <strong>${esc(r.nama)}</strong>
+          <span class="cohort-muted">${esc(meta || '—')}</span>
+        </span>
+        <span class="cohort-pill ${st.cls}">${esc(st.label)}</span>
+      </button>`;
+    }).join('');
+    host.querySelectorAll('[data-rise-open]').forEach(b => {
+      b.addEventListener('click', () => openRiseStudent(b.getAttribute('data-rise-open')));
+    });
+  }
+
+  function riseQa(label, value) {
+    const empty = value == null || value === '' || (Array.isArray(value) && !value.length);
+    const shown = empty ? 'Tidak diisi' : (Array.isArray(value) ? value.join(', ') : String(value));
+    return `<div class="cohort-siswa-qa"><dt>${esc(label)}</dt><dd${empty ? ' class="is-empty"' : ''}>${esc(shown)}</dd></div>`;
+  }
+
+  function openRiseStudent(id) {
+    const ov = $('mentor-siswa-overlay');
+    const nameEl = $('mentor-siswa-name');
+    const subEl = $('mentor-siswa-sub');
+    const body = $('mentor-siswa-body');
+    if (!ov || !body) return;
+    const r = state.riseApps.find(x => x.id === id);
+    if (!r) return;
+    state.riseOpenId = id;
+    const st = riseStatusMeta(r.status);
+    if (nameEl) nameEl.textContent = r.nama || 'Pendaftar';
+    if (subEl) {
+      const wa = r.whatsapp
+        ? `<a href="${esc(waHref(r.whatsapp))}" target="_blank" rel="noopener">${esc(fmtWa(r.whatsapp))}</a>`
+        : '';
+      const em = r.email ? `<a href="mailto:${esc(r.email)}">${esc(r.email)}</a>` : '';
+      subEl.innerHTML = [wa, em].filter(Boolean).join(' · ')
+        + ` <span class="cohort-pill ${st.cls}">${esc(st.label)}</span>`;
+    }
+    const onboarded = r.user_id
+      ? `<button type="button" class="cohort-btn secondary sm" data-rise-profile="${esc(r.user_id)}">Profil LarisID</button>`
+      : '<p class="cohort-muted">Belum punya akun LarisID — baru isi formulir program.</p>';
+    body.innerHTML =
+      `<div class="cohort-siswa-grid">
+        ${riseQa('Kota', r.kota)}
+        ${riseQa('Kampus', r.kampus)}
+        ${riseQa('Jurusan', r.jurusan)}
+        ${riseQa('Semester', r.semester)}
+        ${riseQa('Perangkat', r.perangkat)}
+        ${riseQa('Jam per minggu', r.jam_per_minggu)}
+      </div>
+      ${riseQa('Pengalaman jualan', r.pengalaman_jualan)}
+      ${riseQa('Ide produk', r.ide_produk)}
+      ${riseQa('Hari tersedia', r.hari_tersedia)}
+      ${riseQa('Kenapa ingin ikut LaRISE', r.alasan)}
+      ${riseQa('Target 3 bulan', r.target_3bulan)}
+      <div class="cohort-siswa-acts">
+        ${r.whatsapp ? `<a class="cohort-btn" href="${esc(waHref(r.whatsapp))}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
+        ${onboarded}
+      </div>`;
+    body.querySelectorAll('[data-rise-profile]').forEach(b => {
+      b.addEventListener('click', () => openProfile(b.getAttribute('data-rise-profile')));
+    });
+    ov.classList.add('open');
+    ov.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeRiseStudent() {
+    const ov = $('mentor-siswa-overlay');
+    state.riseOpenId = null;
+    if (!ov) return;
+    ov.classList.remove('open');
+    ov.setAttribute('aria-hidden', 'true');
   }
 
   /* The dashboard's "general" numbers. Derived from cohort_roster_health, the
@@ -984,6 +1149,13 @@
     $('cses-add')?.addEventListener('click', () => void addSession());
     $('cohort-post-send')?.addEventListener('click', () => void submitPost());
     $('cohort-ann-send')?.addEventListener('click', () => void postAnnouncement());
+    $('mentor-siswa-close')?.addEventListener('click', closeRiseStudent);
+    $('mentor-siswa-overlay')?.addEventListener('click', (e) => {
+      if (e.target && e.target.id === 'mentor-siswa-overlay') closeRiseStudent();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && state.riseOpenId) closeRiseStudent();
+    });
   }
 
   async function open() {
@@ -1035,7 +1207,7 @@
       return true;
     },
     /** Sidebar rail entry point for the mentor shell. */
-    mentorTab: function (tab) { switchMentorTab(tab); },
+    mentorTab: function (tab) { bind(); switchMentorTab(tab); },
     /** Cohorts this account may preview, for the Admin dashboard picker. */
     listCohorts: async function () {
       if (!Object.keys(state.cohortMap).length) await initMembership();

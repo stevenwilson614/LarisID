@@ -204,7 +204,7 @@
 <link rel="preload" href="/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/fonts/laris-fonts.css">
 <link rel="stylesheet" href="/styles/laris-merdeka.css?v=20260816b">
-<link rel="stylesheet" href="/styles/cohort.css?v=20260831c">
+<link rel="stylesheet" href="/styles/cohort.css?v=20260831d">
 
 <style>
 :root {
@@ -7356,6 +7356,13 @@ body:has(.modal-overlay.open) .msg-steven-fab {
               </div>
               <div id="cohort-mentor-panel-students" style="display:none;">
                 <div class="cohort-help" id="cohort-perlu-bantuan" style="display:none;"></div>
+                <div class="cohort-card" style="margin-bottom:12px;">
+                  <h3>Pendaftar LaRISE</h3>
+                  <p class="cohort-muted" style="margin-bottom:6px;">Mahasiswa yang sudah mengisi formulir program. Ketuk nama untuk membuka profil.</p>
+                  <p class="cohort-muted" id="cohort-rise-count" style="margin-bottom:10px;"></p>
+                  <div id="cohort-rise-filters" class="cohort-subtabs" role="tablist" aria-label="Status pendaftar"></div>
+                  <div id="cohort-rise-list"></div>
+                </div>
                 <div class="cohort-card">
                   <h3>Direktori &amp; kesehatan toko</h3>
                   <p class="cohort-muted" style="margin-bottom:10px;">Verifikasi toko siswa (Day-0) sebelum Jumat supaya masuk papan. Kecualikan jika bukan toko siswa. Jangan malu-malui toko yang masih sepi.</p>
@@ -7899,6 +7906,18 @@ body:has(.modal-overlay.open) .msg-steven-fab {
   <span class="msg-steven-fab-label">Pesan Steven</span>
 </button>
 
+<div class="modal-overlay" id="mentor-siswa-overlay" role="dialog" aria-modal="true" aria-labelledby="mentor-siswa-name" aria-hidden="true">
+  <div class="modal mentor-siswa-modal">
+    <button type="button" class="modal-close" id="mentor-siswa-close" aria-label="Tutup">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <p class="cohort-muted" style="margin:0 0 4px;font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">LaRISE · pendaftar</p>
+    <h2 id="mentor-siswa-name" style="margin:0 0 6px;font-size:1.2rem;font-weight:750;letter-spacing:-.02em;">—</h2>
+    <p id="mentor-siswa-sub" class="cohort-muted" style="margin:0 0 16px;"></p>
+    <div id="mentor-siswa-body"></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="gpt-feedback-modal">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="gpt-fb-title">
     <h3 id="gpt-fb-title" class="nudge-title">Pesan ke Steven</h3>
@@ -7966,7 +7985,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <script defer src="/js/gpt-referral.js?v=20260821a"></script>
 <script defer src="/js/gpt-profile.js?v=20260821a"></script>
 <script defer src="/js/gpt-community-board.js?v=20260815c"></script>
-<script defer src="/js/laris-cohort.js?v=20260831f"></script>
+<script defer src="/js/laris-cohort.js?v=20260831g"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260812a"></script>
 <script defer src="/js/laris-mascot.js?v=20260812a"></script>
 <script defer src="/js/gpt-chat-memory.js?v=20260818a"></script>
@@ -7976,6 +7995,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/gpt-app.js?v=20260831f" defer></script>
+<script src="/js/gpt-app.js?v=20260831g" defer></script>
 </body>
 </html>

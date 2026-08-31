@@ -235,6 +235,46 @@
 .rjl-thread .msg-role { display: none; }
 .rjl-thread .msg-bubble { background: transparent; padding: 0; }
 
+/* ── Mentor Siswa: LaRISE pendaftar list + popup ─────────────────────────── */
+.cohort-chip-n {
+  display: inline-block; min-width: 1.1em; margin-left: 4px;
+  font-size: .68rem; font-weight: 700; opacity: .7;
+}
+.cohort-siswa-row {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  text-align: left; padding: 12px 4px; border: 0; border-bottom: 1px solid #F3F3F3;
+  background: none; cursor: pointer; font-family: inherit; color: inherit;
+}
+.cohort-siswa-row:last-child { border-bottom: none; }
+.cohort-siswa-row:hover { background: #FAFAFA; }
+.cohort-siswa-av {
+  flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%;
+  background: #F3F4F6; color: #374151; font-size: .72rem; font-weight: 750;
+  display: flex; align-items: center; justify-content: center;
+}
+.cohort-siswa-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cohort-siswa-body strong {
+  font-size: .875rem; font-weight: 700; color: #1A1A1A;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+#mentor-siswa-overlay .modal {
+  max-width: 520px; max-height: min(88vh, 720px); overflow-y: auto;
+  padding: 28px 24px 22px;
+}
+.cohort-siswa-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin-bottom: 12px;
+}
+@media (max-width: 520px) { .cohort-siswa-grid { grid-template-columns: 1fr; } }
+.cohort-siswa-qa { margin: 0 0 12px; }
+.cohort-siswa-qa dt {
+  font-size: .68rem; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: #9CA3AF; margin-bottom: 3px;
+}
+.cohort-siswa-qa dd { margin: 0; font-size: .84rem; line-height: 1.5; color: #1A1A1A; white-space: pre-wrap; }
+.cohort-siswa-qa dd.is-empty { color: #9CA3AF; font-weight: 550; }
+.cohort-siswa-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; padding-top: 12px; border-top: 1px solid #F3F3F3; }
+.cohort-siswa-acts a { text-decoration: none; }
+
 /* ── "Lihat sebagai siswa" preview strip ──────────────────────────────────── */
 .cohort-preview-bar {
   display: flex; align-items: center; justify-content: space-between;
