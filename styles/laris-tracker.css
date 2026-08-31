@@ -140,9 +140,18 @@
   display: grid; place-items: center; cursor: pointer;
 }
 .ltk-setup-close:hover { background: #F3F4F6; color: #374151; }
-.ltk-step { display: flex; align-items: center; gap: 9px; min-width: 0; position: relative; }
+.ltk-step { display: flex; align-items: flex-start; gap: 9px; min-width: 0; position: relative; }
+/* Bridge from this step's circle center back across the grid gap to the previous circle. */
 .ltk-step + .ltk-step::before {
-  content: ''; position: absolute; left: -8px; top: 50%; width: 8px; height: 1px; background: #E5E7EB;
+  content: '';
+  position: absolute;
+  top: 13px;
+  left: 13px;
+  width: calc(100% + 8px);
+  height: 1px;
+  background: #E5E7EB;
+  transform: translateX(-100%) translateY(-50%);
+  pointer-events: none;
 }
 .ltk-step-n {
   flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%;
@@ -257,6 +266,7 @@
   .ltk-step-txt span { display: none; }
   .ltk-step-txt b { font-size: .68rem; }
   .ltk-step { gap: 6px; }
+  .ltk-step + .ltk-step::before { width: calc(100% + 4px); }
 }
 
 /* ── What daily tracking actually gives you ────────────────────────────── */

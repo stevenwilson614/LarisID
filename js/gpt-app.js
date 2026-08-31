@@ -14473,12 +14473,24 @@ function createAgentRun(bubble, opts = {}) {
   let cur = -1;
   const toolOuts = new Map();
 
+  /** Did this step actually show something — a tool table, a note? */
+  function stepHasOutput(st) {
+    return !!(st && st.body && st.body.querySelector('.agent-tool, .agent-note'));
+  }
+
+  /**
+   * A finished step that fetched data STAYS OPEN. Collapsing it the moment the
+   * next step starts hides the listing/pasar tables, which are the evidence the
+   * answer rests on — the panel exists to show the work, not to file it away.
+   * A step that rendered nothing (typically the closing "simpulkan" beat) still
+   * collapses, so the run does not grow empty rows.
+   */
   function setState(i, s) {
     const st = steps[i];
     if (!st || st.li.getAttribute('data-state') === 'done') return;
     st.li.setAttribute('data-state', s);
-    if (s === 'done') st.li.removeAttribute('data-open');
-    else st.li.setAttribute('data-open', '1');
+    if (s !== 'done' || stepHasOutput(st)) st.li.setAttribute('data-open', '1');
+    else st.li.removeAttribute('data-open');
   }
 
   function thinking(text) {
@@ -14598,7 +14610,14 @@ function createAgentRun(bubble, opts = {}) {
     const clone = run.cloneNode(true);
     clone.querySelectorAll('.agent-think').forEach(el => el.remove());
     clone.querySelectorAll('[data-open]').forEach(el => el.removeAttribute('data-open'));
-    clone.querySelectorAll('.agent-step').forEach(el => el.setAttribute('data-state', 'done'));
+    // Same rule as the live run: a replayed chat must show the same open tables
+    // the user saw, not a stack of collapsed rows.
+    clone.querySelectorAll('.agent-step').forEach((el) => {
+      el.setAttribute('data-state', 'done');
+      if (el.querySelector('.agent-step-body .agent-tool, .agent-step-body .agent-note')) {
+        el.setAttribute('data-open', '1');
+      }
+    });
     clone.setAttribute('data-done', '1');
     return clone.outerHTML;
   }
