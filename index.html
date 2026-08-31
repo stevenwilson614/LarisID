@@ -204,7 +204,7 @@
 <link rel="preload" href="/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/fonts/laris-fonts.css">
 <link rel="stylesheet" href="/styles/laris-merdeka.css?v=20260816b">
-<link rel="stylesheet" href="/styles/cohort.css?v=20260830a">
+<link rel="stylesheet" href="/styles/cohort.css?v=20260831a">
 
 <style>
 :root {
@@ -7097,6 +7097,10 @@ body:has(.modal-overlay.open) .msg-steven-fab {
         <div class="view" id="view-cohort">
           <div class="cohort-wrap">
             <div id="cohort-status" class="cohort-muted" style="margin-bottom:10px;"></div>
+            <div id="cohort-preview-bar" class="cohort-preview-bar" style="display:none;">
+              <div id="cohort-preview-bar-text"></div>
+              <button type="button" class="cohort-btn secondary" id="cohort-preview-exit">Keluar pratinjau</button>
+            </div>
             <div id="cohort-student-wrap">
               <div id="cohort-student-subtabs" class="cohort-subtabs" style="display:none;">
                 <button type="button" class="cohort-subtab active" data-cstab="ringkasan">Ringkasan</button>
@@ -7253,6 +7257,12 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                     </label>
                     <button type="button" class="cohort-btn" id="cohort-ann-send">Kirim</button>
                     <div id="cohort-ann-status" class="cohort-muted" style="margin-top:8px;"></div>
+                  </div>
+                  <div class="cohort-card" id="cohort-preview-card" style="display:none;">
+                    <h3>Lihat sebagai siswa</h3>
+                    <p class="cohort-muted" style="margin-bottom:10px;">Buka layar siswa untuk kohort ini — termasuk kartu <strong>Toko Saya</strong>, tempat siswa menempel URL toko Shopee mereka. Panel mentor disembunyikan supaya yang kamu lihat persis layar mereka. Angka yang tampil tetap data akunmu sendiri.</p>
+                    <select id="cohort-preview-select" class="cohort-select"></select>
+                    <button type="button" class="cohort-btn" id="cohort-preview-go">Buka tampilan siswa</button>
                   </div>
                 </div>
               </div>
@@ -7858,7 +7868,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <script defer src="/js/gpt-referral.js?v=20260821a"></script>
 <script defer src="/js/gpt-profile.js?v=20260821a"></script>
 <script defer src="/js/gpt-community-board.js?v=20260815c"></script>
-<script defer src="/js/laris-cohort.js?v=20260830a"></script>
+<script defer src="/js/laris-cohort.js?v=20260831a"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260812a"></script>
 <script defer src="/js/laris-mascot.js?v=20260812a"></script>
 <script defer src="/js/gpt-chat-memory.js?v=20260818a"></script>

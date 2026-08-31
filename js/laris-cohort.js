@@ -27,6 +27,10 @@
     mentorTab: 'overview',
     rankBoard: 'produk',
     ready: false,
+    // Set by "Lihat sebagai siswa": the cohort a mentor/admin is previewing.
+    // While it is set the student view renders for that cohort and the mentor
+    // wrap is hidden, so the preview is the student's screen, not a superset.
+    previewCid: null,
   };
 
   function supabase() { return sb && sb(); }
@@ -34,8 +38,16 @@
 
   function $(id) { return document.getElementById(id); }
 
+  /** The cohort the student view is currently rendering. */
+  function studentCid() {
+    return state.previewCid || state.studentCohortId;
+  }
+
+  /** True where a mentor gets mentor-shaped output. Preview drops it on purpose:
+   *  the rankings board shows mentors everyone and students only the top 10 plus
+   *  themselves, so leaving this true would show the wrong board in the preview. */
   function canMentor() {
-    return !!(state.mentorCohort || isAdmin());
+    return !state.previewCid && !!(state.mentorCohort || isAdmin());
   }
 
   async function rpc(name, args) {
@@ -248,7 +260,7 @@
       const el = $('cohort-student-panel-' + t);
       if (el) el.style.display = t === tab ? '' : 'none';
     });
-    const cid = state.studentCohortId;
+    const cid = studentCid();
     if (tab === 'rencana') mountRencana();
     if (tab === 'feed' && cid) void renderFeed(cid);
     if (tab === 'rankings' && cid) void renderRankings(cid);
@@ -458,7 +470,7 @@
   }
 
   async function submitPost() {
-    const cid = state.studentCohortId || (state.mentorCohort && state.mentorCohort.id);
+    const cid = studentCid() || (state.mentorCohort && state.mentorCohort.id);
     const bodyEl = $('cohort-post-body');
     const kindEl = $('cohort-post-kind');
     const body = (bodyEl && bodyEl.value || '').trim();
@@ -746,6 +758,70 @@
     }
   }
 
+  /* ── "Lihat sebagai siswa" ────────────────────────────────────────────────
+   *
+   * A mentor/admin opens the student screen for a chosen cohort. Nothing is
+   * impersonated: every RPC behind the student view is keyed on auth.uid(), so
+   * Toko Saya and Milestone show the VIEWER's own rows. What the preview
+   * faithfully reproduces is the shape of the screen — which cards exist, which
+   * copy renders at zero shops, and the student-shaped rankings board — which is
+   * the part that is otherwise impossible to check from an admin account.
+   * The bar says so out loud rather than letting the numbers be misread.
+   */
+  function previewCohorts() {
+    return Object.keys(state.cohortMap)
+      .map(id => state.cohortMap[id])
+      .filter(Boolean)
+      .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+  }
+
+  function renderPreviewPicker() {
+    const card = $('cohort-preview-card');
+    const sel = $('cohort-preview-select');
+    if (!card || !sel) return;
+    const list = previewCohorts();
+    card.style.display = list.length ? '' : 'none';
+    const keep = sel.value;
+    sel.innerHTML = list.map(c =>
+      `<option value="${esc(c.id)}">${esc(c.name || 'Kohort')}</option>`).join('');
+    if (keep && list.some(c => c.id === keep)) sel.value = keep;
+    else if (state.studentCohortId && list.some(c => c.id === state.studentCohortId)) {
+      sel.value = state.studentCohortId;
+    }
+  }
+
+  function renderPreviewBar() {
+    const bar = $('cohort-preview-bar');
+    const txt = $('cohort-preview-bar-text');
+    if (!bar) return;
+    if (!state.previewCid) { bar.style.display = 'none'; return; }
+    const c = state.cohortMap[state.previewCid];
+    bar.style.display = '';
+    if (txt) {
+      txt.innerHTML = `<strong>Pratinjau siswa · ${esc(c && c.name || 'Kohort')}</strong>`
+        + '<span class="cohort-muted" style="display:block;">Panel mentor disembunyikan. '
+        + 'Angka di Toko Saya dan Milestone tetap milik akunmu sendiri — menautkan '
+        + 'URL toko di sini menautkannya ke akunmu, bukan ke siswa mana pun.</span>';
+    }
+  }
+
+  async function enterPreview() {
+    const sel = $('cohort-preview-select');
+    const cid = sel && sel.value;
+    if (!cid) { toast('Pilih kohort dulu.'); return; }
+    state.previewCid = cid;
+    state.studentTab = 'ringkasan';
+    await render();
+    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) { window.scrollTo(0, 0); }
+  }
+
+  async function exitPreview() {
+    if (!state.previewCid) return;
+    state.previewCid = null;
+    state.studentTab = 'ringkasan';
+    await render();
+  }
+
   async function render() {
     const stu = $('cohort-student-wrap');
     const men = $('cohort-mentor-wrap');
@@ -753,11 +829,15 @@
     const info = $('cohort-student-info');
     const sub = $('cohort-student-subtabs');
     const wa = $('cohort-wa-link');
-    const cid = state.studentCohortId;
+    const preview = !!state.previewCid;
+    const cid = studentCid();
     const c = cid && state.cohortMap[cid];
 
+    renderPreviewBar();
     if (stu) stu.style.display = '';
-    if (men) men.style.display = (state.mentorCohort || isAdmin()) ? '' : 'none';
+    // Preview hides the mentor wrap entirely — a student never sees it, so
+    // leaving it on screen would make the preview a lie.
+    if (men) men.style.display = (!preview && (state.mentorCohort || isAdmin())) ? '' : 'none';
     if (sub) sub.style.display = cid ? 'flex' : 'none';
     if (joinCard) joinCard.style.display = cid ? 'none' : '';
 
@@ -783,13 +863,14 @@
     }
     if (miss) miss.style.display = cid && !url ? '' : 'none';
 
-    if (state.mentorCohort) {
+    if (state.mentorCohort && !preview) {
       const sum = $('cohort-mentor-summary');
       if (sum) sum.innerHTML = `<strong>${esc(state.mentorCohort.name || 'Kohort')}</strong>`;
       await renderRoster(state.mentorCohort.id);
     }
+    if (!preview) renderPreviewPicker();
     switchStudentTab(state.studentTab);
-    if (state.mentorCohort || isAdmin()) switchMentorTab(state.mentorTab);
+    if (!preview && (state.mentorCohort || isAdmin())) switchMentorTab(state.mentorTab);
   }
 
   function bind() {
@@ -805,10 +886,12 @@
     document.querySelectorAll('#cohort-rank-chips .cohort-subtab').forEach(b => {
       b.addEventListener('click', () => {
         state.rankBoard = b.dataset.board;
-        const cid = state.studentCohortId || (state.mentorCohort && state.mentorCohort.id);
+        const cid = studentCid() || (state.mentorCohort && state.mentorCohort.id);
         if (cid) void renderRankings(cid);
       });
     });
+    $('cohort-preview-go')?.addEventListener('click', () => void enterPreview());
+    $('cohort-preview-exit')?.addEventListener('click', () => void exitPreview());
     $('cohort-post-send')?.addEventListener('click', () => void submitPost());
     $('cohort-ann-send')?.addEventListener('click', () => void postAnnouncement());
   }
@@ -816,6 +899,9 @@
   async function open() {
     bind();
     await initMembership();
+    // A stale preview from a previous visit would hide the mentor panel with no
+    // obvious cause, so every fresh open lands on the real view.
+    state.previewCid = null;
     await render();
   }
 
