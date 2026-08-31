@@ -9586,7 +9586,7 @@ function ensureTracker() {
       if (!document.getElementById('ltk-css')) {
         const l = document.createElement('link');
         l.id = 'ltk-css'; l.rel = 'stylesheet';
-        l.href = '/styles/laris-tracker.css?v=20260829b';
+        l.href = '/styles/laris-tracker.css?v=20260831a';
         document.head.appendChild(l);
       }
     } catch (_) {}
