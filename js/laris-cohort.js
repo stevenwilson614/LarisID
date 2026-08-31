@@ -910,6 +910,21 @@
     open,
     renderOps,
     hasAccess: function () { return !!(state.studentCohortId || state.mentorCohort || isAdmin()); },
+    /** Cohorts this account may preview, for the Admin dashboard picker. */
+    listCohorts: async function () {
+      if (!Object.keys(state.cohortMap).length) await initMembership();
+      return previewCohorts().map(c => ({ id: c.id, name: c.name || 'Kohort' }));
+    },
+    /** Open the cohort view straight into the student preview. Same path as
+     *  open(), except previewCid survives — open() deliberately clears it. */
+    previewAs: async function (cid) {
+      bind();
+      await initMembership();
+      state.previewCid = cid || null;
+      state.studentTab = 'ringkasan';
+      await render();
+      return !!state.previewCid;
+    },
     mount: function (opts) {
       opts = opts || {};
       sb = opts.getSupabase;

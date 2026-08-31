@@ -3082,6 +3082,13 @@ body.view-harga .panel-inner { max-width: 1180px; }
   border: 1px solid var(--line); white-space: nowrap;
 }
 .admin-sample-btn:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
+/* Cohort student preview, in the admin dashboard head next to the sample buttons. */
+.adm-cohort-preview { display: inline-flex; gap: 6px; align-items: center; }
+.adm-cohort-preview-sel {
+  border: 1px solid var(--line); border-radius: 999px; background: #fff;
+  padding: 6px 10px; font-size: .74rem; font-family: inherit; font-weight: 600;
+  color: var(--ink); max-width: 190px;
+}
 .sample-strip {
   display: none; align-items: center; justify-content: space-between; gap: 12px;
   padding: 8px 16px; background: #111; color: #fff; font-size: .78rem; font-weight: 550;
@@ -7302,6 +7309,10 @@ body:has(.modal-overlay.open) .msg-steven-fab {
               <div class="adm-dash-head-actions">
                 <button type="button" class="btn-ghost" id="admin-sample-new" style="margin:0">Sample sebagai user baru</button>
                 <button type="button" class="btn-ghost" id="admin-sample-exit" style="margin:0;display:none">Keluar sample</button>
+                <span class="adm-cohort-preview" id="adm-cohort-preview" style="display:none;">
+                  <select id="adm-cohort-preview-select" class="adm-cohort-preview-sel" aria-label="Kohort untuk pratinjau siswa"></select>
+                  <button type="button" class="btn-ghost" id="adm-cohort-preview-go" style="margin:0">Lihat sebagai siswa</button>
+                </span>
               </div>
             </div>
             <div id="admin-sample-banner" class="admin-banner" hidden></div>
@@ -7868,7 +7879,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <script defer src="/js/gpt-referral.js?v=20260821a"></script>
 <script defer src="/js/gpt-profile.js?v=20260821a"></script>
 <script defer src="/js/gpt-community-board.js?v=20260815c"></script>
-<script defer src="/js/laris-cohort.js?v=20260831a"></script>
+<script defer src="/js/laris-cohort.js?v=20260831b"></script>
 <script defer src="/js/laris-mascot-rigs.js?v=20260812a"></script>
 <script defer src="/js/laris-mascot.js?v=20260812a"></script>
 <script defer src="/js/gpt-chat-memory.js?v=20260818a"></script>
@@ -7878,6 +7889,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/gpt-app.js?v=20260830c" defer></script>
+<script src="/js/gpt-app.js?v=20260831a" defer></script>
 </body>
 </html>

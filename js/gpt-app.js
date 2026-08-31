@@ -9393,6 +9393,11 @@ function sddvPrefetch() {
 function scheduleStevenDdVideo() {
   if (_sddvTimer) { clearTimeout(_sddvTimer); _sddvTimer = null; }
   if ($('steven-dd-video')?.classList.contains('open')) return true;
+  // Admins never get the mandatory founder video. It is a "wajib ditonton"
+  // interstitial aimed at a first-time seller; on an admin account it just
+  // blocks every Deep Dive opened while checking the product, and Steven does
+  // not need to be introduced to himself. Returning false lets DDTP run now.
+  if (isPlatformAdmin()) return false;
   if (sddvIsSeen()) return false;
   sddvPrefetch();
   _sddvTimer = setTimeout(() => {
@@ -9404,6 +9409,9 @@ function scheduleStevenDdVideo() {
 
 function sddvFire() {
   if (sddvIsSeen()) return;
+  // Re-checked here, not only in the scheduler: sign-in can land between the
+  // 2s schedule and the fire.
+  if (isPlatformAdmin()) return;
   if (state.view !== 'deepdive') return;
   if (document.querySelector('.modal-overlay.open')) return;
   const overlay = $('steven-dd-video');
@@ -17411,6 +17419,40 @@ function openAdminView() {
   void loadAdminDirectory();
   gptMountWinback();
   try { if (window.LarisCohort) void window.LarisCohort.renderOps(); } catch (_) {}
+  void fillAdminCohortPreview();
+}
+
+/** Fill the dashboard's cohort picker. Hidden when the account leads no cohort,
+ *  so a non-cohort admin does not get a dead control. */
+async function fillAdminCohortPreview() {
+  const wrap = $('adm-cohort-preview');
+  const sel = $('adm-cohort-preview-select');
+  if (!wrap || !sel) return;
+  let list = [];
+  try {
+    mountLarisCohort();
+    list = (window.LarisCohort && await window.LarisCohort.listCohorts()) || [];
+  } catch (_) { list = []; }
+  wrap.style.display = list.length ? '' : 'none';
+  const keep = sel.value;
+  sel.innerHTML = list.map(c =>
+    `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+  if (keep && list.some(c => c.id === keep)) sel.value = keep;
+}
+
+/** Jump from the dashboard into the cohort view already in student preview. */
+async function openAdminCohortPreview() {
+  if (!isPlatformAdmin()) return;
+  const sel = $('adm-cohort-preview-select');
+  const cid = sel && sel.value;
+  if (!cid) { showToast('Belum ada kohort untuk dipratinjau.'); return; }
+  mountLarisCohort();
+  setView('cohort');
+  try {
+    await window.LarisCohort.previewAs(cid);
+  } catch (e) {
+    showToast((e && e.message) || 'Gagal membuka pratinjau.');
+  }
 }
 
 function adminSampleAsUser(row) {
@@ -17712,6 +17754,7 @@ function wireUi() {
   $('changelog-close')?.addEventListener('click', () => closeChangelog());
   $('changelog-modal')?.addEventListener('click', e => { if (e.target.id === 'changelog-modal') closeChangelog(); });
   $('btn-admin')?.addEventListener('click', () => openAdminView());
+  $('adm-cohort-preview-go')?.addEventListener('click', () => void openAdminCohortPreview());
   $('admin-sample-new')?.addEventListener('click', () => adminSampleNewUser());
   $('admin-sample-exit')?.addEventListener('click', () => adminExitSample());
   $('sample-strip-exit')?.addEventListener('click', () => adminExitSample());
