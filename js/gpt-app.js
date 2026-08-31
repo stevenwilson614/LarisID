@@ -2643,7 +2643,9 @@ async function loadCurrentAccess() {
   const btn = $('btn-admin');
   if (btn) btn.style.display = isAdmin ? '' : 'none';
   syncStudentModeUi();
-  try { void refreshCohortNav(); } catch (_) {}
+  // Signing in mid-session lands here rather than in boot, so the cohort home
+  // is offered on that path too. Both are no-ops once _bootLandingView is spent.
+  try { void refreshCohortNav().then(routeCohortHome, () => {}); } catch (_) {}
   const un = $('user-name');
   if (un && un.textContent) {
     setHeaderName(un.textContent.replace(/\s*\(Admin\)\s*$/, ''));
@@ -9708,6 +9710,33 @@ function mountLarisCohort() {
       return res?.data;
     },
   });
+}
+
+/* ── Cohort home ──────────────────────────────────────────────────────────
+ *
+ * For a mahasiswa the cohort IS the product, so it is their landing surface.
+ * This does not run inside boot's view choice: refreshCohortNav is deliberately
+ * fire-and-forget there, and awaiting membership before first paint would cost
+ * every visitor a round trip to answer a question that only matters to cohort
+ * members. So boot paints home, and this replaces it once membership resolves —
+ * but only if the user has not already navigated, or it would yank the screen
+ * out from under them.
+ */
+let _bootLandingView = null;
+let _bootCohortNav = null;
+
+async function routeCohortHome() {
+  if (!_bootLandingView || !currentUser) return;
+  try {
+    await _bootCohortNav;
+    // Students only. A mentor or an admin is not a mahasiswa, and sending them
+    // here every load would take the admin dashboard away from its owner.
+    const mine = window.LarisCohort && window.LarisCohort.myStudentCohort();
+    if (!mine) return;
+    if (state.view !== _bootLandingView) return;
+    _bootLandingView = null;
+    openCohortView();
+  } catch (_) {}
 }
 
 async function refreshCohortNav() {
@@ -18066,7 +18095,9 @@ async function boot() {
 
   if (typeof ensureSupabase === 'function') await ensureSupabase();
   await initSupabase();
-  try { mountLarisCohort(); void refreshCohortNav(); } catch (_) {}
+  // Keep the promise: routeCohortHome needs the answer, and calling
+  // refreshCohortNav a second time would just re-run the membership query.
+  try { mountLarisCohort(); _bootCohortNav = refreshCohortNav(); } catch (_) {}
   // Fire-and-forget: warms the Produk page's instant-open assortment so it's
   // usually ready before the user ever clicks Produk (see warmDirInstantPool).
   void warmDirInstantPool();
@@ -18087,10 +18118,13 @@ async function boot() {
       renderChatThread();
     } else {
       renderHome();
+      // Only an untouched default landing may be replaced by the cohort home.
+      _bootLandingView = state.view;
     }
   }
   renderChatList();
   renderSidebarLocCard();
+  void routeCohortHome();
 }
 
 

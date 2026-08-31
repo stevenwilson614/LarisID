@@ -107,7 +107,9 @@
   text-transform: uppercase; color: #1A7A46; margin-left: 4px;
 }
 .cohort-empty { font-size: .78rem; color: #9CA3AF; padding: 12px 0; }
-#btn-cohort { display: none; }
+/* #btn-cohort is hidden by an inline style in index.html, NOT here: an ID rule
+   beats .side-btn, so laris-cohort.js clearing the inline style left the button
+   invisible for every cohort member. Same pattern as #btn-supplier. */
 
 /* ── Rencana Jualan (cohort tab) ──────────────────────────────────────────── */
 /* The agent run itself is rendered by createAgentRun in compact mode, so this
