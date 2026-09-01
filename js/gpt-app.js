@@ -7671,6 +7671,26 @@ function isEvaluativeAsk(lower) {
     || /jual.*(bagus (ga|gak|nggak|tidak)|worth it (ga|gak|nggak))\b/.test(s);
 }
 
+/**
+ * "so what should I sell?" — an open ask for a DIRECTION, with no product and
+ * no category named.
+ *
+ * It reads as a follow-up but it is not a refinement: whatever category the
+ * thread was carrying is exactly what the user is asking us to reconsider. That
+ * is why applyResearchFromText steps that category down to a hint here —
+ * "aku di Bau-Bau, aku harus jual apa?" used to inherit Olahraga and search
+ * that instead of the city.
+ */
+function isOpenSellAsk(lower) {
+  const s = String(lower || '');
+  if (/(produk|jualan|barang|usaha|bisnis)\s+apa\b/.test(s)) return true;
+  if (/\b(jual|jualan|berjualan)\s+apa\b/.test(s)) return true;
+  if (/apa yang (bagus|laris|laku|cocok|harus)(\s+(saya|aku|gue|gua))?(\s+(di)?jual)?/.test(s)) return true;
+  if (/\b(harus|sebaiknya|mending|enaknya)\s+(saya|aku|gue|gua)?\s*jual(an)?\b/.test(s)) return true;
+  if (/\bwhat\s+(should|can|could)\s+i\s+sell\b|\bwhat\s+to\s+sell\b/.test(s)) return true;
+  return false;
+}
+
 function _searchTerms(text) {
   return String(text || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/)
     .filter(w => w.length >= 3 && !SEARCH_STOPWORDS.has(w));
@@ -12948,8 +12968,8 @@ SKOR (0-100):
 function aiToolsInstruction() {
   return `
 ALAT DATA: kamu punya alat untuk membaca data LarisID sendiri (cari_pasar,
-pasar_kategori, detail_pasar, cari_listing, filter_listing, produk_dibuka,
-pemain_baru, pola_toko_baru, judul_menang).
+pasar_kota, pasar_kategori, detail_pasar, cari_listing, filter_listing,
+produk_dibuka, pemain_baru, pola_toko_baru, judul_menang).
 - Kalau pertanyaan butuh data yang belum ada di prompt ini, PANGGIL ALAT dulu.
 - JANGAN menyuruh user "cek sendiri", "cari sendiri", "lihat di halaman Produk",
   atau "buka Skor Produk" untuk sesuatu yang bisa kamu ambil sendiri lewat alat.
@@ -12963,6 +12983,16 @@ pemain_baru, pola_toko_baru, judul_menang).
   Jangan bilang kolom tanggal listing tidak ada.
 - Kalau alat mengembalikan nol baris, katakan terus terang dan coba sudut lain —
   jangan mengarang isinya.
+- pasar_kota: begitu user menyebut kotanya, itu alat pertamamu — bukan kategori
+  minatnya. Alat ini membaca apa yang benar-benar dikirim DARI kota itu.
+  Aturannya mengikat: (a) catatan yang ikut di hasilnya WAJIB kamu sampaikan
+  isinya kalau jumlah tokonya kecil — sebut angka tokonya, jangan menyulapnya
+  jadi "pasar di kotamu"; (b) lokasi di data kami adalah lokasi PENJUAL, bukan
+  pembeli, jadi jangan mengklaim tahu apa yang dibeli orang di sana; (c) nol
+  toko berarti sapuan kami belum menjangkau kota itu, BUKAN bahwa tidak ada
+  penjual di sana — katakan begitu, lalu lanjutkan dengan pasar nasional;
+  (d) kategori_raw dari alat ini bukan kategori kanonik pasar_kategori —
+  jangan disuapkan ke sana.
 
 TIGA ALAT TOKO BARU (pemain_baru, pola_toko_baru, judul_menang) — aturan pakainya
 mengikat, karena ketiganya gampang dibaca terlalu percaya diri:
@@ -13503,7 +13533,22 @@ function applyResearchFromText(chat, text) {
   if (!chat.context) chat.context = {};
   const parsed = mem.parseResearchConstraints?.(text) || {};
   chat.context.research = mem.mergeResearchConstraints?.(chat.context.research, parsed) || parsed;
-  if (parsed.category) chat.context.categoryOverride = parsed.category;
+  if (parsed.category) {
+    chat.context.categoryOverride = parsed.category;
+    chat.context.categoryHint = null;
+  } else if (isOpenSellAsk(String(text || '').toLowerCase())) {
+    // An open "so what should I sell" REOPENS the direction — the category the
+    // thread was carrying is the very thing the user is asking us to
+    // reconsider. It steps down to a ranking hint instead of scoping the next
+    // search, and the step-down is durable: the refinement that follows should
+    // narrow whatever this turn finds, not snap back to the old category.
+    const held = chat.context.research?.category || chat.context.categoryOverride || '';
+    if (held) {
+      chat.context.categoryHint = held;
+      if (chat.context.research) delete chat.context.research.category;
+      chat.context.categoryOverride = null;
+    }
+  }
   saveLocalState();
 }
 
@@ -13912,22 +13957,33 @@ function buildMarketAgentSystemPrompt(question, chat) {
   const voice = lang === 'en'
     ? 'Reply in clear English (informal professional "you").'
     : 'Jawab dalam Bahasa Indonesia informal ("kamu").';
+  const lower = String(question || '').toLowerCase();
   const city = state.onboarding?.city || '';
   const onboardCats = (state.onboarding?.categories || []).filter(Boolean).slice(0, 5);
   const research = chat?.context?.research || {};
-  const namedCat = research.category
-    || chat?.context?.categoryOverride
-    || detectCategoryFromText(String(question || '').toLowerCase());
-  const hasFilters = !!(research.omset_min || research.max_age_days);
+  // A category named in THIS message scopes the search, and so does one the
+  // thread is already carrying — but applyResearchFromText has already released
+  // the thread's category into categoryHint if this turn was an open "so what
+  // should I sell". That release is the fix: the interest was DEFINING the
+  // search ("aku di Bau-Bau, jual apa?" -> searched Olahraga) when its only job
+  // is to help rank whatever the question itself turns up.
+  const askedCat = detectCategoryFromText(lower);
+  const namedCat = askedCat || research.category || chat?.context?.categoryOverride || null;
+  const hints = [...new Set([chat?.context?.categoryHint || '', ...onboardCats].filter(Boolean))];
+  const lead = hints[0] || '';
   let who = '';
   if (namedCat) {
     who = `\nKONTEKS THREAD: kategori ${namedCat}. Cari HANYA di kategori ini. Jangan memfilter ke minat onboarding lain.`;
-  } else if (hasFilters) {
-    const hint = onboardCats.length ? onboardCats.join(', ') : 'onboarding';
-    who = `\nKONTEKS THREAD: user belum menyebut kategori. Cari LINTAS kategori. JANGAN memanggil pasar_kategori dengan minat onboarding (${hint}). Kalau kategori tidak jelas, tanya SATU kali — jangan diam-diam memilih Olahraga atau kategori minat.`;
-  } else if (city || onboardCats.length) {
-    const cat = onboardCats[0] || '';
-    who = `\nKONTEKS USER: ${[city ? `kota ${city}` : '', onboardCats.length ? `minat onboarding ${onboardCats.join(', ')}` : ''].filter(Boolean).join(', ')}. Ini HINT, bukan filter. Kalau pertanyaan tidak menyebut kategori, cari lintas kategori ATAU tanya satu kali. JANGAN diam-diam memfilter ke minat onboarding. Kalau kamu memakai minat onboarding, kalimat pertama jawaban HARUS: "Aku pakai minat ${cat || 'itu'}-mu — bilang kategori lain kalau mau diganti."`;
+  } else {
+    who = `\nKONTEKS USER — HINT, BUKAN FILTER:
+- kota dari onboarding: ${city || 'belum disebut'}
+- minat: ${hints.length ? hints.join(', ') : 'belum ada'}
+ATURAN MINAT (mengikat):
+- Minat itu untuk MENCOCOKKAN dan MENGURUTKAN apa yang kamu temukan, BUKAN untuk menentukan apa yang dicari. Jangan memanggil pasar_kategori hanya karena minat ini ada.
+- Kalau user menyebut kota — kota mana pun, sekecil apa pun — panggil pasar_kota untuk kota itu DULU. Baru sesudah itu tandai mana temuan yang kebetulan cocok dengan minatnya. Kalau tidak ada yang cocok, laporkan apa yang benar-benar dijual dari sana; jangan menggantinya dengan minatnya.
+- Kalau user tidak menyebut kota tapi kota di atas ada, boleh pakai pasar_kota untuk kota itu — tapi katakan sekali bahwa kamu memakai kota dari profilnya.
+- Kalau tidak ada kota sama sekali dan kategori tetap tidak jelas, cari LINTAS kategori atau tanya SATU kali. Jangan diam-diam memilih ${lead || 'kategori minat'}.
+- Kalau pada akhirnya kamu memakai minat itu sebagai penyaring, kalimat pertama jawaban HARUS: "Aku pakai minat ${lead || 'itu'}-mu — bilang kategori lain kalau mau diganti."`;
   }
   const thread = _gptMem().researchPromptBlock?.(research) || '';
 
@@ -13944,6 +14000,7 @@ PENTING:
 - Omset listing dari alat: label "terukur" = diukur, "perkiraan" = estimasi. Jangan menyamakan keduanya.
 - Follow-up pendek ("mau", "iya", "untuk fashion") mengacu ke pertanyaan/tawaran TERAKHIR di thread, bukan kata kunci produk baru.
 - Putaran alat pertama harus membawa filter user (umur listing, omset min, kategori yang disebut). Jangan buang satu putaran untuk pasar_kategori dari minat onboarding.
+- Kalau user menyebut kotanya, putaran pertama WAJIB memuat pasar_kota untuk kota itu.
 ${aiLengthRule(langLabel)}
 ${aiCapabilityContract()}
 ${aiToolsInstruction()}${aiPlanInstruction()}${who}${thread}`;
@@ -13968,6 +14025,7 @@ async function runMarketAgent(chat, text, loading, opts = {}) {
     q: chat.context.q,
     research: chat.context.research || null,
     categoryOverride: chat.context.categoryOverride || null,
+    categoryHint: chat.context.categoryHint || null,
   };
   // A question that used to be a keyword search still spends one of the daily
   // searches. Analytical asks keep going through ensureChatPersisted, which
@@ -14394,6 +14452,18 @@ const AI_TOOLS = [
     },
   },
   {
+    name: 'pasar_kota',
+    description: 'Apa yang BENAR-BENAR dijual toko di satu kota: pasar teratas, kategori, dan daftar tokonya, dihitung dari lokasi SELLER. Pakai SETIAP KALI user menyebut kotanya dan bertanya mau jual apa — mulai dari sini, bukan dari kategori minatnya. Hasilnya membawa `catatan` soal cakupan data yang WAJIB kamu sampaikan.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        kota: { type: 'string', description: 'Nama kota/kabupaten apa adanya seperti ditulis user. Ejaan bebas: "bau bau", "Bau-Bau", "Kab. Bandung" sama saja.' },
+        limit: { type: 'integer', minimum: 3, maximum: 25, default: 12 },
+      },
+      required: ['kota'],
+    },
+  },
+  {
     name: 'pasar_kategori',
     // enum built from the constant, never a literal, so the two cannot drift
     description: 'Ambil daftar pasar dalam satu kategori kanonik. Pakai kalau user menyebut kategori luas (fashion, dapur, kecantikan) dan bukan produk spesifik. Diurut dari omset terbesar; skor 0-100 ikut di tiap baris.',
@@ -14532,6 +14602,53 @@ async function _aiToolPasarKategori({ kategori, kota, limit }) {
     kota_bucket: packed.cityBucket || 'ALL',
     pasar: rows.slice(0, 15).map(_aiPackType),
     __view: { kind: 'pasar', n: rows.length, rows: rows.slice(0, 8) },
+  };
+}
+
+/**
+ * What a city's shops actually sell.
+ *
+ * The onboarding interest used to answer "aku di Bau-Bau, jual apa?" because
+ * nothing here could read a city — the agent reached for the only filter it
+ * had. This is the missing read, so the interest can go back to being a way to
+ * rank what the city turns up rather than the thing that defines the search.
+ *
+ * The RPC returns the city's own numbers; the national product_types_v rows are
+ * fetched here for the same keywords so each row carries a Skor and stays
+ * clickable through the ordinary _ptypeByKeyword contract.
+ */
+async function _aiToolPasarKota({ kota, limit }) {
+  const d = await _aiPlaybookRpc('pasar_kota', {
+    p_kota: String(kota || ''),
+    p_limit: Math.min(Math.max(limit || 12, 3), 25),
+  });
+  if (d.error) return d;
+  const kws = (d.pasar || []).map(p => p.pasar).filter(Boolean);
+  let types = [];
+  if (kws.length && _supabase) {
+    try {
+      const { data } = await _supabase.from('product_types_v').select(ptypeCols())
+        .in('keyword', kws).eq('city', 'ALL');
+      types = data || [];
+    } catch (_) { /* the city's own numbers stand without the national ones */ }
+  }
+  registerTypes(types);
+  const byKw = new Map(types.map(t => [t.keyword, t]));
+  const pasar = (d.pasar || []).map((p) => {
+    const t = byKw.get(p.pasar);
+    return t ? { ...p, nasional: _aiPackType(t) } : p;
+  });
+  return {
+    ...d,
+    pasar,
+    __view: {
+      kind: 'kota',
+      kota: d.kota,
+      kota_cocok: d.kota_cocok || [],
+      n_toko: d.n_toko, n_item: d.n_item, n_pasar: d.n_pasar,
+      rows: pasar.slice(0, 8),
+      toko: (d.toko || []).slice(0, 5),
+    },
   };
 }
 
@@ -14705,6 +14822,7 @@ async function _aiToolJudulMenang({ pasar, limit }) {
 
 const AI_TOOL_IMPL = {
   cari_pasar: _aiToolCariPasar,
+  pasar_kota: _aiToolPasarKota,
   pasar_kategori: _aiToolPasarKategori,
   detail_pasar: _aiToolDetailPasar,
   cari_listing: _aiToolCariListing,
@@ -14757,6 +14875,7 @@ function chatHistoryForAi(chat, latestText) {
 // plan step when the model skipped its own <rencana> block.
 const AI_TOOL_LABEL = {
   cari_pasar: 'Cari pasar',
+  pasar_kota: 'Baca pasar di kotamu',
   pasar_kategori: 'Buka kategori',
   detail_pasar: 'Baca detail pasar',
   cari_listing: 'Cari listing',
@@ -15020,6 +15139,7 @@ document.addEventListener('click', (e) => {
 function agentToolViewHtml(name, view) {
   try {
     if (view && view.kind === 'pasar') return _agentPasarViewHtml(view);
+    if (view && view.kind === 'kota') return _agentKotaViewHtml(view);
     if (view && view.kind === 'detail') return _agentDetailViewHtml(view);
     if (view && view.kind === 'listing') return _agentListingViewHtml(view);
     if (view && view.kind === 'produk') return _agentProdukViewHtml(view);
@@ -15070,6 +15190,36 @@ function _agentPasarViewHtml(view) {
   const cap = view.n && view.n > rows.length ? `<div class="agent-tool-more">${esc(fmtIdCompact(view.n))} pasar ditemukan, ${rows.length} teratas ditampilkan.</div>` : '';
   return '<div class="agent-tbl-wrap"><table class="agent-tbl">'
     + '<thead><tr><th>Pasar</th><th>Omset/bln</th><th>Tren 30h</th><th>Skor</th><th>Seller</th></tr></thead>'
+    + `<tbody>${body}</tbody></table></div>${cap}`;
+}
+
+/**
+ * pasar_kota's step: the CITY's own numbers, not the national ones.
+ *
+ * Deliberately not _agentPasarViewHtml with the national rows swapped in —
+ * showing national omset under a "di kotamu" heading is exactly the confusion
+ * the tool exists to end. Rows still carry data-ptype-kw, so the market opens
+ * on click like any other.
+ */
+function _agentKotaViewHtml(view) {
+  const rows = (view.rows || []).slice(0, 8);
+  const where = (view.kota_cocok || []).filter(Boolean).join(', ') || view.kota || 'kota itu';
+  if (!rows.length) {
+    return `<span class="agent-tool-empty">Belum ada seller dari ${esc(where)} di data kami — sapuan kami nasional per kata kunci, jadi ini soal cakupan, bukan bukti pasarnya kosong.</span>`;
+  }
+  const body = rows.map((p) => '<tr>'
+    + `<td class="agent-c-name"><button type="button" class="agent-rowbtn" data-ptype="-1" data-ptype-kw="${esc(p.pasar || '')}">${esc(p.pasar || '')}</button></td>`
+    + `<td>${_agentNum(p.n_toko)}</td>`
+    + `<td>${_agentNum(p.n_item)}</td>`
+    + `<td>${_agentNum(p.terjual_total)}</td>`
+    + `<td>${_agentRp(p.harga_median)}</td>`
+    + '</tr>').join('');
+  const shops = (view.toko || []).map(t => t && t.toko).filter(Boolean).slice(0, 5);
+  const cap = `<div class="agent-tool-more">${esc(where)}: ${_agentNum(view.n_toko)} toko, ${_agentNum(view.n_item)} item, ${_agentNum(view.n_pasar)} pasar terekam.`
+    + (shops.length ? ` Toko: ${esc(shops.join(', '))}.` : '')
+    + '</div>';
+  return '<div class="agent-tbl-wrap"><table class="agent-tbl">'
+    + '<thead><tr><th>Pasar</th><th>Toko di sini</th><th>Item</th><th>Terjual</th><th>Harga med.</th></tr></thead>'
     + `<tbody>${body}</tbody></table></div>${cap}`;
 }
 
