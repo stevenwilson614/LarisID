@@ -771,6 +771,21 @@
 }
 .ltk-card-detail-btn:hover { background: #FEE2E2; }
 
+/* Mobile: competitor pulse lines beside Lihat Detail */
+.ltk-card-foot {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 12px; min-width: 0;
+}
+.ltk-card-pulse {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px;
+}
+.ltk-card-pulse-row {
+  display: block; font-size: .68rem; color: #4B5563; line-height: 1.35;
+}
+.ltk-card-pulse-row b { color: #1A1A1A; font-weight: 800; }
+.ltk-card-pulse-row--wait,
+.ltk-card-pulse-muted { color: #9CA3AF; font-style: normal; }
+
 /* Fallback for browsers without container queries: same stacked layout at
    every width, which is exactly what the rules above already produce. */
 @supports (container-type: inline-size) {
@@ -792,8 +807,14 @@
       flex: 1 1 0; min-width: 0; padding: 10px 12px 8px;
     }
     .ltk-card-chart-canvas { height: 140px; }
+    .ltk-card-foot {
+      flex: 0 0 168px; align-self: center; margin-left: auto;
+      flex-direction: column; align-items: stretch; gap: 8px;
+    }
+    .ltk-card-pulse { gap: 3px; }
+    .ltk-card-pulse-row { font-size: .62rem; }
     .ltk-card-detail-btn {
-      flex: 0 0 auto; align-self: center; margin-left: auto;
+      align-self: stretch; justify-content: center;
       white-space: nowrap; padding: 8px 14px;
     }
   }

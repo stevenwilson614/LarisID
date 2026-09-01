@@ -5267,6 +5267,10 @@ body.home-finder-done .home-hero {
 .check-list li { display: flex; gap: 9px; }
 .check-list li svg { flex-shrink: 0; width: 15px; height: 15px; stroke: var(--green); margin-top: 2px; }
 .ddr-chart-wrap { position: relative; height: 230px; }
+.ddr-chart-empty {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  text-align: center; padding: 0 16px; margin: 0; pointer-events: none;
+}
 .ddr-chart-wrap.sm { height: 168px; }
 .ddr-caption { font-size: .7rem; color: var(--muted); margin-top: 10px; line-height: 1.45; }
 .range-big { font-size: 1.35rem; font-weight: 800; letter-spacing: -.02em; margin: 2px 0 12px; }
@@ -8003,6 +8007,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/gpt-app.js?v=20260901c" defer></script>
+<script src="/js/gpt-app.js?v=20260901d" defer></script>
 </body>
 </html>

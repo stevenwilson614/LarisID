@@ -10240,6 +10240,7 @@ async function dscLoadTrendData() {
         confidence: r.confidence,
         sold_prev:  r.sold_prev,
         scraped_at: r.scraped_at,
+        prev_scraped_at: r.prev_scraped_at,
       };
       // Keep _dscPrevMap populated: ddTrendComputeWeekly and _dscListingTrendPct
       // both read it, and the deep-dive chart falls back to it when an item has
@@ -11231,10 +11232,49 @@ function _dscTrendHtml(delta) {
   return `<span style="color:#9CA3AF;font-size:.8rem;">0</span>`;
 }
 
+function _dscListingTrendTooltip(p) {
+  const key = `${p.item_id}_${p.shop_id}`;
+  const d = _dscDeltaMap[key];
+  if (!d) {
+    return 'Kenaikan penjualan periode ini dibanding total terjual sebelumnya, bukan perbandingan dengan minggu lalu.';
+  }
+  const span = d.prev_scraped_at && d.scraped_at
+    ? `${Math.max(1, Math.round((Date.parse(d.scraped_at) - Date.parse(d.prev_scraped_at)) / 86400000))} hari terakhir`
+    : 'rentang scrape terakhir';
+  const prev = d.sold_prev != null ? Number(d.sold_prev).toLocaleString('id-ID') : '—';
+  return `Persentase kenaikan terhadap ${prev} unit yang sudah terjual sebelumnya (${span}), bukan perbandingan dengan minggu lalu.`;
+}
+
+function _dscCardWowPct(p) {
+  const delta = _dscTrendDelta(p);
+  if (delta == null) return null;
+  const key = `${p.item_id}_${p.shop_id}`;
+  const d = _dscDeltaMap[key];
+  const prevSold = (d && d.sold_prev != null) ? Number(d.sold_prev) : _dscPrevSoldNum(_dscPrevMap[key]);
+  if (prevSold == null || prevSold === 0) return null;
+  if (prevSold < 50 && delta > 0) return Infinity;
+  return Math.round(delta / prevSold * 100);
+}
+
+function _dscCardWowHtml(p) {
+  const pct = _dscCardWowPct(p);
+  if (pct == null) return '';
+  const tip = String(_dscListingTrendTooltip(p)).replace(/"/g, '&quot;');
+  if (pct === Infinity) {
+    return `<span class="prod-card-wow" title="${tip}">Baru</span>`;
+  }
+  if (pct > 0) {
+    return `<span class="prod-card-wow" title="${tip}">${wIcon('trending-up', 10, 'currentColor')} ${pct}% minggu ini</span>`;
+  }
+  if (pct < 0) {
+    return `<span class="prod-card-wow prod-card-wow--down" title="${tip}"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M6 2V10M6 10L2 6M6 10L10 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> ${pct}% minggu ini</span>`;
+  }
+  return `<span class="prod-card-wow prod-card-wow--flat" title="${tip}">0% minggu ini</span>`;
+}
+
 function dscCardHtml(p, kwMap) {
   const beginner = isJourneyBeginner() && !journeyBypassGating();
   const omset = _dscOmset(p);
-  const delta = _dscTrendDelta(p);
   const _fmtRp = v => 'Rp' + Math.round(v).toLocaleString('id-ID');
   const imgHtml = p.image_url
     ? `<img src="${p.image_url}" alt="" loading="lazy" onerror="this.parentElement.innerHTML=wIcon('box',36,'#9CA3AF')">`
@@ -11244,6 +11284,7 @@ function dscCardHtml(p, kwMap) {
   const ls = calcListingScore(p, peers, _dscListingTrendPct(p), _dscKwTrendMap[p.keyword] ?? null);
   const lslbl = listingScoreLabel(ls.total);
   const viewsBadge = dscViewBadgeHtml(p.item_id, p.shop_id);
+  const wow = _dscCardWowHtml(p);
   if (beginner) {
     return `<div class="dsc-card" onclick="dscOpenDeepDive('${key}')">
       <div class="dsc-card-img" style="position:relative;">${imgHtml}
@@ -11256,6 +11297,7 @@ function dscCardHtml(p, kwMap) {
         </div>
         <div class="dsc-card-price" style="margin-top:8px;">${_fmtRp(p.price || 0)}</div>
       </div>
+      ${wow ? `<div class="dsc-card-footer">${wow}</div>` : ''}
     </div>`;
   }
   return `<div class="dsc-card" onclick="dscOpenDeepDive('${key}')">
@@ -11273,7 +11315,7 @@ function dscCardHtml(p, kwMap) {
         <div style="font-size:.74rem;color:#6B7280;margin-top:1px;">${omset > 0 ? _fmtRp(omset) + '/bln' : '—'}</div>
       </div>
     </div>
-    ${delta !== null ? `<div class="dsc-card-footer" style="padding:6px 10px;">${_dscTrendHtml(delta)}</div>` : ''}
+    ${wow ? `<div class="dsc-card-footer">${wow}</div>` : ''}
   </div>`;
 }
 
@@ -16301,9 +16343,8 @@ function trkAdapter() {
 
     // ── data ──────────────────────────────────────────────────────────────
     getTracking()               { return rpc('get_my_tracking'); },
-    // Reads mv_keyword_daily / mv_shop_daily, which aggregate `listings`
-    // directly. get_tracker_deltas is kept only for clients cached before this
-    // shipped — it reads listing_deltas, which the daily scrape never refreshes.
+    // Reads mv_keyword_daily / mv_shop_daily, tiled from listing_deltas
+    // (refresh_listing_deltas after each scrape day).
     getRollup(days, scope)      { return rpc('get_tracker_rollup', { p_days: days, p_scope: scope || 'keyword' }); },
     getDeltas(days)             { return rpc('get_tracker_deltas', { p_days: days }); },
     // Dense daily series — same RPCs Site B uses. De-overlaps sparse scrape
@@ -16389,6 +16430,87 @@ function trkAdapter() {
         if (error) throw error;
         return data || [];
       } catch (_) { return []; }
+    },
+    /** Price + title moves among top competitors — tracker card pulse rows. */
+    async getCompetitorPulse(scope, entityId) {
+      if (!_supabase || !entityId) return null;
+      const isKw = scope === 'keyword';
+      const listings = isKw
+        ? await this.getKeywordTopListings(entityId)
+        : await this.getStoreTopListings(entityId);
+      if (!listings.length) return null;
+
+      const wibMon = (() => {
+        const s = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit',
+        }).format(new Date());
+        const [y, m, day] = s.split('-').map(Number);
+        const utc = Date.UTC(y, m - 1, day);
+        const dow = new Date(utc).getUTCDay();
+        const off = dow === 0 ? 6 : dow - 1;
+        return new Date(utc - off * 864e5).toISOString().slice(0, 10);
+      })();
+      const prevMon = new Date(Date.parse(wibMon + 'T00:00:00Z') - 7 * 864e5)
+        .toISOString().slice(0, 10);
+
+      const weekly = await this.getListingsWeeklyBatch(listings);
+      const priceShops = new Set();
+      const priceListings = new Set();
+      const byKey = {};
+      (weekly || []).forEach(w => {
+        const k = `${w.item_id}|${w.shop_id}`;
+        if (!byKey[k]) byKey[k] = {};
+        byKey[k][String(w.week_start || '').slice(0, 10)] = w;
+      });
+      Object.keys(byKey).forEach(k => {
+        const cur = byKey[k][wibMon];
+        const prev = byKey[k][prevMon];
+        if (!cur || !prev) return;
+        const p0 = Number(prev.price) || 0;
+        const p1 = Number(cur.price) || 0;
+        if (p0 <= 0 || p1 <= 0) return;
+        if (Math.abs(p1 - p0) < Math.max(100, p0 * 0.005)) return;
+        priceListings.add(k);
+        priceShops.add(k.split('|')[1]);
+      });
+
+      const normTitle = s => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      const titleChanges = new Set();
+      try {
+        const since = new Date(Date.now() - 60 * 864e5).toISOString();
+        let q = _supabase.from('listings')
+          .select('item_id,shop_id,product_name,scraped_at')
+          .gte('scraped_at', since)
+          .order('scraped_at', { ascending: false })
+          .limit(2500);
+        q = isKw
+          ? q.eq('keyword', String(entityId).trim().toLowerCase())
+          : q.eq('shop_id', Number(entityId));
+        const { data: hist } = await q;
+        const byItem = new Map();
+        for (const r of (hist || [])) {
+          const k = `${r.item_id}|${r.shop_id}`;
+          if (!byItem.has(k)) byItem.set(k, []);
+          const arr = byItem.get(k);
+          const day = String(r.scraped_at || '').slice(0, 10);
+          if (!day) continue;
+          if (!arr.length || arr[arr.length - 1].day !== day) {
+            arr.push({ day, name: normTitle(r.product_name) });
+          }
+        }
+        byItem.forEach((snaps, k) => {
+          if (snaps.length < 2) return;
+          if (snaps[0].name && snaps[1].name && snaps[0].name !== snaps[1].name) {
+            titleChanges.add(k);
+          }
+        });
+      } catch (_) { /* title pulse is optional */ }
+
+      return {
+        priceShops: priceShops.size,
+        priceListings: priceListings.size,
+        titleChanges: titleChanges.size,
+      };
     },
     // Prefer product_daily_series (server already folds review-based estimates
     // into daily units). Fall back to scrape snapshots with units_sold.

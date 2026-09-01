@@ -8926,6 +8926,87 @@ function gptTrackerAdapter() {
         return data || [];
       } catch (_) { return []; }
     },
+    /** Price + title moves among top competitors — tracker card pulse rows. */
+    async getCompetitorPulse(scope, entityId) {
+      if (!_supabase || !entityId) return null;
+      const isKw = scope === 'keyword';
+      const listings = isKw
+        ? await this.getKeywordTopListings(entityId)
+        : await this.getStoreTopListings(entityId);
+      if (!listings.length) return null;
+
+      const wibMon = (() => {
+        const s = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit',
+        }).format(new Date());
+        const [y, m, day] = s.split('-').map(Number);
+        const utc = Date.UTC(y, m - 1, day);
+        const dow = new Date(utc).getUTCDay();
+        const off = dow === 0 ? 6 : dow - 1;
+        return new Date(utc - off * 864e5).toISOString().slice(0, 10);
+      })();
+      const prevMon = new Date(Date.parse(wibMon + 'T00:00:00Z') - 7 * 864e5)
+        .toISOString().slice(0, 10);
+
+      const weekly = await this.getListingsWeeklyBatch(listings);
+      const priceShops = new Set();
+      const priceListings = new Set();
+      const byKey = {};
+      (weekly || []).forEach(w => {
+        const k = `${w.item_id}|${w.shop_id}`;
+        if (!byKey[k]) byKey[k] = {};
+        byKey[k][String(w.week_start || '').slice(0, 10)] = w;
+      });
+      Object.keys(byKey).forEach(k => {
+        const cur = byKey[k][wibMon];
+        const prev = byKey[k][prevMon];
+        if (!cur || !prev) return;
+        const p0 = Number(prev.price) || 0;
+        const p1 = Number(cur.price) || 0;
+        if (p0 <= 0 || p1 <= 0) return;
+        if (Math.abs(p1 - p0) < Math.max(100, p0 * 0.005)) return;
+        priceListings.add(k);
+        priceShops.add(k.split('|')[1]);
+      });
+
+      const normTitle = s => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      const titleChanges = new Set();
+      try {
+        const since = new Date(Date.now() - 60 * 864e5).toISOString();
+        let q = _supabase.from('listings')
+          .select('item_id,shop_id,product_name,scraped_at')
+          .gte('scraped_at', since)
+          .order('scraped_at', { ascending: false })
+          .limit(2500);
+        q = isKw
+          ? q.eq('keyword', String(entityId).trim().toLowerCase())
+          : q.eq('shop_id', Number(entityId));
+        const { data: hist } = await q;
+        const byItem = new Map();
+        for (const r of (hist || [])) {
+          const k = `${r.item_id}|${r.shop_id}`;
+          if (!byItem.has(k)) byItem.set(k, []);
+          const arr = byItem.get(k);
+          const day = String(r.scraped_at || '').slice(0, 10);
+          if (!day) continue;
+          if (!arr.length || arr[arr.length - 1].day !== day) {
+            arr.push({ day, name: normTitle(r.product_name) });
+          }
+        }
+        byItem.forEach((snaps, k) => {
+          if (snaps.length < 2) return;
+          if (snaps[0].name && snaps[1].name && snaps[0].name !== snaps[1].name) {
+            titleChanges.add(k);
+          }
+        });
+      } catch (_) { /* title pulse is optional */ }
+
+      return {
+        priceShops: priceShops.size,
+        priceListings: priceListings.size,
+        titleChanges: titleChanges.size,
+      };
+    },
     // Prefer product_daily_series (server already folds review-based estimates
     // into daily units). Fall back to scrape snapshots with units_sold.
     async getProductSeries(listing, days) {
@@ -9747,12 +9828,12 @@ function ensureTracker() {
       if (!document.getElementById('ltk-css')) {
         const l = document.createElement('link');
         l.id = 'ltk-css'; l.rel = 'stylesheet';
-        l.href = '/styles/laris-tracker.css?v=20260831a';
+        l.href = '/styles/laris-tracker.css?v=20260901f';
         document.head.appendChild(l);
       }
     } catch (_) {}
     _trkLoadPromise = (typeof larisLoadScript === 'function'
-      ? larisLoadScript('/js/laris-tracker.js?v=20260831a')
+      ? larisLoadScript('/js/laris-tracker.js?v=20260901f')
       : Promise.reject(new Error('no loader')))
       .then(() => window.LarisTracker || null)
       .catch(() => { _trkLoadPromise = null; return null; });
@@ -10583,11 +10664,12 @@ async function ddServerStoreWeeklySeries(shopId, days = 119) {
   const to = new Date();
   const from = new Date(to.getTime() - days * 864e5);
   const iso = d => d.toISOString().slice(0, 10);
+  const toFc = iso(new Date(to.getTime() + 7 * 864e5));
   try {
     const r = await _supabase.rpc('store_daily_series', {
       p_shop_id: Number(shopId),
       p_from: iso(from),
-      p_to: iso(to),
+      p_to: toFc,
     });
     if (r.error || !Array.isArray(r.data) || !r.data.length) return null;
     const out = ddDailyRowsToWeeks(r.data);
@@ -10623,6 +10705,23 @@ function ddLast6Weeks(weekly) {
   return (weekly || [])
     .filter(w => (Number(w.units) || 0) > 0 || (Number(w.omset) || 0) > 0)
     .filter(w => w.ts <= thisMon + 12 * 3600 * 1000)
+    .sort((a, b) => a.ts - b.ts)
+    .slice(-DD_TREND_HISTORY_WEEKS)
+    .map(w => ({ ...w }));
+}
+
+/** WIB Monday key — aligns shop scrape weeks with Pasar / server buckets. */
+function ddWeekStartKey(ts) {
+  return listingWeekStartISO(new Date(ts));
+}
+
+/** Per-shop trend cut: ddLast6Weeks first, else last non-empty scrape weeks
+ *  (same pool competitor sparklines use when server series is thin). */
+function ddShopWeeksForTrend(weekly) {
+  const cut = ddLast6Weeks(weekly);
+  if (cut.length) return cut;
+  return (weekly || [])
+    .filter(w => (Number(w.units) || 0) > 0 || (Number(w.omset) || 0) > 0)
     .sort((a, b) => a.ts - b.ts)
     .slice(-DD_TREND_HISTORY_WEEKS)
     .map(w => ({ ...w }));
@@ -12278,8 +12377,10 @@ async function ddTopShopWeeklySeries(share, history) {
     const fallback = rows.length
       ? ddWeeklySeries(rows.filter(r => String(r.shop_id) === sid))
       : [];
-    let weeks = ddLast6Weeks(server || []);
-    if (!weeks.length) weeks = ddLast6Weeks(fallback);
+    const serverWeeks = ddShopWeeksForTrend(server || []);
+    const fallbackWeeks = ddShopWeeksForTrend(fallback);
+    let weeks = serverWeeks.length >= fallbackWeeks.length ? serverWeeks : fallbackWeeks;
+    if (!weeks.length) weeks = serverWeeks.length ? serverWeeks : fallbackWeeks;
     if (!weeks.length) return null;
     return {
       shopId: sid,
@@ -12408,6 +12509,21 @@ function ddTrendLegendHtml() {
     <span class="row"><span class="swatch" style="background:#16A34A"></span>Perkiraan</span>`;
 }
 
+function ddTrendChartEmptyNote(show, text) {
+  const wrap = document.getElementById('ddr-trend-canvas')?.closest('.ddr-chart-wrap');
+  if (!wrap) return;
+  let el = wrap.querySelector('.ddr-chart-empty');
+  if (show) {
+    if (!el) {
+      el = document.createElement('p');
+      el.className = 'ddr-chart-empty dd-sub';
+      wrap.appendChild(el);
+    }
+    el.textContent = text || '';
+    el.hidden = false;
+  } else if (el) el.hidden = true;
+}
+
 // Weekly market trend: last 6 WIB weeks through today + 1 next-week perkiraan.
 // Real series stays SHORTER than the labels — only Perkiraan touches the future
 // Monday. Next-week point is listing_weekly.omset_wk / units_wk (weekly grain,
@@ -12419,6 +12535,7 @@ function ddRenderTrendChart() {
   if (t.view === 'top10') {
     const shops = t.topShops || [];
     if (!shops.length) {
+      ddTrendChartEmptyNote(true, 'Belum cukup riwayat per toko untuk menggambar 10 garis.');
       // Keep a chart instance alive — manual destroy() left the canvas unusable
       // for the next Pasar redraw ("Canvas is already in use").
       makeChart('ddr-trend-canvas', {
@@ -12432,8 +12549,31 @@ function ddRenderTrendChart() {
       });
       return;
     }
-    // Union of every week any of the ten was seen in, so the lines share an x-axis.
-    const tsAll = [...new Set(shops.flatMap(sh => sh.weeks.map(w => w.ts)))].sort((a, b) => a - b);
+    ddTrendChartEmptyNote(false);
+    // Share Pasar's x-axis when we have it — shop scrape weeks often land on
+    // a different epoch Monday than keyword_daily_series buckets.
+    const pasarSeries = (t.series && t.series.length >= 2 ? t.series : null)
+      || (_dd?.series && _dd.series.length >= 2 ? _dd.series : null);
+    const tsAll = pasarSeries
+      ? pasarSeries.map(w => w.ts)
+      : [...new Set(shops.flatMap(sh => sh.weeks.map(w => w.ts)))].sort((a, b) => a - b);
+    const hasPlottableOmset = shops.some(sh => {
+      const by = new Map(sh.weeks.map(w => [ddWeekStartKey(w.ts), Number(w.omset) || 0]));
+      return tsAll.some(ts => (by.get(ddWeekStartKey(ts)) || 0) > 0);
+    });
+    if (!hasPlottableOmset) {
+      ddTrendChartEmptyNote(true, 'Belum cukup riwayat per toko untuk menggambar 10 garis.');
+      makeChart('ddr-trend-canvas', {
+        type: 'line',
+        data: { labels: tsAll.map(_ddFmtWk), datasets: [{ data: tsAll.map(() => null), borderWidth: 0, pointRadius: 0 }] },
+        options: {
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          scales: { x: { display: true }, y: { display: true, min: 0 } },
+        },
+      });
+      return;
+    }
     let br = ddTop10Break(shops);
     if (br) {
       const hasPlottable = shops.some(sh => (sh.weeks || []).some(w => {
@@ -12447,12 +12587,14 @@ function ddRenderTrendChart() {
       data: {
         labels: tsAll.map(_ddFmtWk),
         datasets: shops.map(sh => {
-          const by = new Map(sh.weeks.map(w => [w.ts, w.omset]));
+          const by = new Map(sh.weeks.map(w => [ddWeekStartKey(w.ts), w.omset]));
           return {
             label: sh.name,
+            parsing: br ? { yAxisKey: 'y' } : undefined,
             data: tsAll.map(ts => {
-              if (!by.has(ts)) return null;
-              const omset = by.get(ts);
+              const key = ddWeekStartKey(ts);
+              if (!by.has(key)) return null;
+              const omset = by.get(key);
               if (!br) return omset;
               const y = ddBrokenMap(omset, br);
               return y == null ? null : { y, omset };
@@ -12491,6 +12633,7 @@ function ddRenderTrendChart() {
           },
         },
         scales: {
+          x: { display: true, ticks: { maxTicksLimit: 8, maxRotation: 0 } },
           y: {
             min: 0,
             max: br ? 1 : undefined,
@@ -12516,6 +12659,8 @@ function ddRenderTrendChart() {
     });
     return;
   }
+
+  ddTrendChartEmptyNote(false);
 
   const series = (t.series && t.series.length >= 2 ? t.series : null)
     || (_dd?.series && _dd.series.length >= 2 ? _dd.series : null)
@@ -12623,13 +12768,17 @@ function wireDdrTrendToggles(root) {
     requestAnimationFrame(ddResizeTrendChart);
   };
 
-  card.addEventListener('click', (e) => {
+  card.addEventListener('click', async (e) => {
     const btn = e.target.closest?.('[data-dd-view]');
     if (!btn || !card.contains(btn)) return;
     const t = _dd?.trend;
     if (!t) return;
     const v = btn.getAttribute('data-dd-view');
     if (!v || t.view === v) return;
+    if (v === 'top10' && !t.topShops?.length && (_dd?.history?.length || _dd?.peers?.length)) {
+      const share = ddShareData(_dd.peers || []);
+      t.topShops = await ddTopShopWeeklySeries(share, _dd.history || []);
+    }
     t.view = v;
     void logUserEvent('deepdive_section', {
       ui: 'gpt', section: 'tren_toggle', view: t.view,

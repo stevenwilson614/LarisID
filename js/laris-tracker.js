@@ -88,6 +88,7 @@
     asOf: null,
     hasHistory: false,
     rollup: { rows: [], totals: {}, scope: 'keyword' },
+    cardPulse: {},                    // rowKey -> { priceShops, priceListings, titleChanges }
     sort: 'omset',                    // omset | units | sku | toko | harga | nama
     baseline: [],
     fallback: [],                     // discover cards on the collecting screen
@@ -166,14 +167,14 @@
   function attr(s) { return esc(s).replace(/"/g, '&quot;'); }
   function call(name, a, b) {
     try {
-      if (adapter && typeof adapter[name] === 'function') return adapter[name](a, b);
+      if (adapter && typeof adapter[name] === 'function') return adapter[name].call(adapter, a, b);
     } catch (e) { warn(name + ' threw', e); }
     return undefined;
   }
   function callP(name, a, b) {
     try {
       if (!adapter || typeof adapter[name] !== 'function') return Promise.resolve(null);
-      return Promise.resolve(adapter[name](a, b));
+      return Promise.resolve(adapter[name].call(adapter, a, b));
     } catch (e) { warn(name + ' threw', e); return Promise.resolve(null); }
   }
   function warn() {
@@ -1939,6 +1940,98 @@
     '</div>';
   }
 
+  // Up to three competitor pulse lines beside Lihat Detail (mobile cards).
+  function buildPulseLines(pulse, r, isKw) {
+    var lines = [];
+    var trend = rowHasTrend(r);
+    if (pulse) {
+      if (isKw && pulse.priceShops > 0) {
+        lines.push('<b>' + esc(fmtUnits(pulse.priceShops)) + '</b> toko ubah harga minggu ini');
+      } else if (!isKw && pulse.priceListings > 0) {
+        lines.push('<b>' + esc(fmtUnits(pulse.priceListings)) + '</b> listing ubah harga minggu ini');
+      }
+      if (pulse.titleChanges > 0) {
+        lines.push('<b>' + esc(fmtUnits(pulse.titleChanges)) + '</b> listing ubah judul');
+      }
+    }
+    var dSell = (Number(r.n_sellers) || 0) - (Number(r.n_sellers_prev) || 0);
+    var dSku = (Number(r.n_listings) || 0) - (Number(r.n_listings_prev) || 0);
+    if (lines.length < 3 && isKw && dSell > 0) {
+      lines.push('<b>' + esc(fmtUnits(dSell)) + '</b> toko baru masuk');
+    } else if (lines.length < 3 && isKw && dSell < 0) {
+      lines.push('<b>' + esc(fmtUnits(Math.abs(dSell))) + '</b> toko keluar');
+    } else if (lines.length < 3 && !isKw && dSku > 0) {
+      lines.push('<b>' + esc(fmtUnits(dSku)) + '</b> SKU baru masuk');
+    } else if (lines.length < 3 && !isKw && dSku < 0) {
+      lines.push('<b>' + esc(fmtUnits(Math.abs(dSku))) + '</b> SKU keluar');
+    }
+    if (lines.length < 3 && trend) {
+      var pct = pctChange(r.omset, r.omset_prev);
+      if (pct != null && Math.abs(pct) >= 5) {
+        lines.push('Omset pasar ' + (pct > 0 ? 'naik' : 'turun') +
+          ' <b>' + esc(Math.abs(Math.round(pct)).toString()) + '%</b> WoW');
+      }
+    }
+    if (!lines.length) {
+      lines.push('<span class="ltk-card-pulse-muted">Belum ada perubahan kompetitor terpantau minggu ini</span>');
+    }
+    return lines.slice(0, 3);
+  }
+
+  function cardPulseInnerHtml(key, r, isKw) {
+    var pulseMap = S.cardPulse || {};
+    if (!(key in pulseMap)) {
+      return '<span class="ltk-card-pulse-row ltk-card-pulse-row--wait">Memuat sinyal kompetitor…</span>';
+    }
+    return buildPulseLines(pulseMap[key], r, isKw).map(function (ln) {
+      return '<span class="ltk-card-pulse-row">' + ln + '</span>';
+    }).join('');
+  }
+
+  function cardPulseHtml(key, r, isKw) {
+    return '<div class="ltk-card-pulse" data-ltk-pulse="' + attr(key) + '">' +
+      cardPulseInnerHtml(key, r, isKw) +
+    '</div>';
+  }
+
+  function patchCardPulses() {
+    var p = pane('rollup');
+    if (!p) return;
+    var isKw = S.tab !== 'store';
+    p.querySelectorAll('[data-ltk-pulse]').forEach(function (el) {
+      var key = el.getAttribute('data-ltk-pulse') || '';
+      var row = findRollupRow(key);
+      if (!row) return;
+      el.innerHTML = cardPulseInnerHtml(key, row, isKw);
+    });
+  }
+
+  function loadCardPulses() {
+    var rows = (S.rollup && S.rollup.rows) || [];
+    S.cardPulse = {};
+    if (!rows.length) return Promise.resolve(null);
+    if (!adapter || typeof adapter.getCompetitorPulse !== 'function') {
+      rows.forEach(function (r) { S.cardPulse[rowKey(r)] = null; });
+      patchCardPulses();
+      return Promise.resolve(null);
+    }
+    var isKw = S.tab !== 'store';
+    rows.forEach(function (r) { S.cardPulse[rowKey(r)] = undefined; });
+    return Promise.all(rows.map(function (r) {
+      var key = rowKey(r);
+      var scope = isKw ? 'keyword' : 'store';
+      var id = isKw ? r.keyword : r.shop_id;
+      return callP('getCompetitorPulse', scope, id).then(function (p) {
+        S.cardPulse[key] = p || null;
+      }).catch(function () {
+        S.cardPulse[key] = null;
+      });
+    })).then(function () {
+      patchCardPulses();
+      return null;
+    });
+  }
+
   // Identity column (taller image + name + omset/harga/unit in one row) sits
   // left of a flexing chart with Lihat Detail pinned right; below the
   // @container breakpoint the same pieces stack.
@@ -1973,10 +2066,13 @@
           cardStatsHtml(key, r, trend, isKw) +
         '</div>' +
         cardChartHtml(key, trend) +
-        '<button type="button" class="ltk-card-detail-btn" data-ltk-lihatdetail="' + attr(key) + '">Lihat Detail' +
-          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" ' +
-          'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>' +
-        '</button>' +
+        '<div class="ltk-card-foot">' +
+          cardPulseHtml(key, r, isKw) +
+          '<button type="button" class="ltk-card-detail-btn" data-ltk-lihatdetail="' + attr(key) + '">Lihat Detail' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" ' +
+            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>' +
+          '</button>' +
+        '</div>' +
       '</div>' +
     '</article>';
   }
@@ -3386,7 +3482,7 @@
     var base = S.tab === 'store'
       ? Promise.all([loadStoreLogos(), loadStoreAges()])
       : loadRowImages();
-    return Promise.resolve(base).then(loadDenseSeries).then(function () { return null; });
+    return Promise.resolve(base).then(loadDenseSeries).then(loadCardPulses).then(function () { return null; });
   }
 
   // How many products the seed shop actually runs. Fetched only when the Toko
