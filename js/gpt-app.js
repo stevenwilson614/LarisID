@@ -1232,11 +1232,24 @@ let _ddObserver = null;
 function makeChart(canvasId, cfg) {
   const el = $(canvasId);
   if (!el || typeof Chart === 'undefined') return null;
-  const prev = _charts.get(canvasId);
+  let prev = _charts.get(canvasId);
+  if (!prev && typeof Chart.getChart === 'function') prev = Chart.getChart(el);
   if (prev) { try { prev.destroy(); } catch (_) {} }
-  const c = new Chart(el, cfg);
-  _charts.set(canvasId, c);
-  return c;
+  _charts.delete(canvasId);
+  try {
+    const c = new Chart(el, cfg);
+    _charts.set(canvasId, c);
+    return c;
+  } catch (err) {
+    console.error('[makeChart]', canvasId, err);
+    return null;
+  }
+}
+function ddResizeTrendChart() {
+  const el = $('ddr-trend-canvas');
+  if (!el || typeof Chart === 'undefined') return;
+  const ch = _charts.get('ddr-trend-canvas') || Chart.getChart(el);
+  try { ch?.resize(); } catch (_) {}
 }
 function destroyAllCharts() {
   closeDistChartLightbox();
@@ -5434,8 +5447,88 @@ function setCalcWidth(px) {
   return w;
 }
 
+let _sheetSavedHeightPx = 0;
+
 function _sheetVh() {
   return (window.visualViewport && window.visualViewport.height) || window.innerHeight || 1;
+}
+
+function _sheetPanelFocused() {
+  const panel = $('calc-panel');
+  if (!panel) return false;
+  const active = document.activeElement;
+  return !!(active && panel.contains(active) && active.matches?.('input, select, textarea'));
+}
+
+function _sheetKeyboardInset() {
+  const vv = window.visualViewport;
+  const layoutH = window.innerHeight || 0;
+  if (!vv || !layoutH) return 0;
+  return Math.max(0, Math.round(layoutH - vv.height - vv.offsetTop));
+}
+
+function _resetSheetKeyboardStyles() {
+  _sheetSavedHeightPx = 0;
+  const panel = $('calc-panel');
+  if (panel) {
+    panel.style.bottom = '';
+    panel.style.height = '';
+  }
+  document.body.classList.remove('sheet-keyboard-open');
+}
+
+function _syncSheetForKeyboard() {
+  if (!window.matchMedia('(max-width: 860px)').matches) return;
+  if (!document.body.classList.contains('calc-open')) return;
+  const panel = $('calc-panel');
+  if (!panel || panel.classList.contains('sheet-collapsed')) return;
+
+  const vv = window.visualViewport;
+  const layoutH = window.innerHeight || 0;
+  if (!vv || !layoutH) return;
+
+  const kbInset = _sheetKeyboardInset();
+  const keyboardOpen = kbInset > 60 || _sheetPanelFocused();
+
+  if (!keyboardOpen) {
+    if (document.body.classList.contains('sheet-keyboard-open')) {
+      _resetSheetKeyboardStyles();
+      if (!document.body.classList.contains('sheet-resizing')) {
+        setSheetHeight(loadSidePrefs().sheetPct || 0.8);
+      }
+    }
+    return;
+  }
+
+  if (!_sheetSavedHeightPx) {
+    _sheetSavedHeightPx = panel.getBoundingClientRect().height
+      || parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sheet-h'), 10)
+      || Math.round(layoutH * (loadSidePrefs().sheetPct || 0.8));
+  }
+
+  const visibleH = vv.height;
+  const targetH = Math.max(160, Math.min(_sheetSavedHeightPx, visibleH - 8));
+  panel.style.bottom = kbInset + 'px';
+  panel.style.height = targetH + 'px';
+  document.documentElement.style.setProperty('--sheet-h', targetH + 'px');
+  document.body.classList.add('sheet-keyboard-open');
+}
+
+function _scrollSheetInputIntoView(el) {
+  const body = el?.closest?.('.calc-body');
+  if (!body || !el) return;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const pad = 20;
+      const bRect = body.getBoundingClientRect();
+      const eRect = el.getBoundingClientRect();
+      if (eRect.bottom > bRect.bottom - pad) {
+        body.scrollTop += eRect.bottom - bRect.bottom + pad;
+      } else if (eRect.top < bRect.top + pad) {
+        body.scrollTop -= bRect.top + pad - eRect.top;
+      }
+    });
+  });
 }
 
 function setSheetHeight(pct) {
@@ -5920,6 +6013,7 @@ function openSerupaPanel(opts = {}) { openSidePanel('serupa', opts); }
 function openKeywordPanel(opts = {}) { openSidePanel('keyword', opts); }
 
 function closeCalcPanel() {
+  _resetSheetKeyboardStyles();
   document.body.classList.remove('calc-open');
   $('calc-panel')?.setAttribute('aria-hidden', 'true');
   $('ai-rail')?.setAttribute('aria-expanded', 'false');
@@ -6018,15 +6112,54 @@ function wireCalcPanel() {
     grab.addEventListener('pointerup', onPointerUp);
     grab.addEventListener('pointercancel', onPointerUp);
 
-    const refreshSheetFromPrefs = () => {
+    const refreshSheetLayout = () => {
       if (!isSheet() || document.body.classList.contains('sheet-resizing')) return;
       if (!document.body.classList.contains('calc-open')) return;
       if ($('calc-panel')?.classList.contains('sheet-collapsed')) return;
+      if (_sheetKeyboardInset() > 60 || _sheetPanelFocused()) {
+        _syncSheetForKeyboard();
+        return;
+      }
       setSheetHeight(loadSidePrefs().sheetPct || 0.8);
     };
-    window.visualViewport?.addEventListener('resize', refreshSheetFromPrefs);
-    window.visualViewport?.addEventListener('scroll', refreshSheetFromPrefs);
+    window.visualViewport?.addEventListener('resize', refreshSheetLayout);
+    window.visualViewport?.addEventListener('scroll', refreshSheetLayout);
   }
+
+  const calcPanel = $('calc-panel');
+  if (calcPanel) {
+    calcPanel.addEventListener('focusin', (e) => {
+      const t = e.target;
+      if (!t.matches?.('input, select, textarea')) return;
+      const sync = () => {
+        _syncSheetForKeyboard();
+        _scrollSheetInputIntoView(t);
+      };
+      sync();
+      // iOS keyboard animates in ~300ms — re-sync once it settles.
+      setTimeout(sync, 320);
+    });
+    calcPanel.addEventListener('focusout', () => {
+      setTimeout(() => {
+        _syncSheetForKeyboard();
+        const active = document.activeElement;
+        if (calcPanel.contains(active) && active.matches?.('input, select, textarea')) {
+          _scrollSheetInputIntoView(active);
+        }
+      }, 120);
+    });
+  }
+
+  if (!wireCalcPanel._vvBound && window.visualViewport) {
+    wireCalcPanel._vvBound = true;
+    const onVvChange = () => {
+      if (!document.body.classList.contains('calc-open')) return;
+      if (_sheetKeyboardInset() > 60 || _sheetPanelFocused()) _syncSheetForKeyboard();
+    };
+    window.visualViewport.addEventListener('resize', onVvChange);
+    window.visualViewport.addEventListener('scroll', onVvChange);
+  }
+
   document.querySelectorAll('.side-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       const mode = tab.getAttribute('data-side-mode');
@@ -12050,6 +12183,7 @@ async function openDeepDive(product, ddOpts = {}) {
   await larisEnsureChart();
   if (hasTrend) {
     ddRenderTrendChart();
+    requestAnimationFrame(ddResizeTrendChart);
   }
   if (share.shops.length >= 4) {
     makeChart('ddr-share-canvas', {
@@ -12285,13 +12419,29 @@ function ddRenderTrendChart() {
   if (t.view === 'top10') {
     const shops = t.topShops || [];
     if (!shops.length) {
-      const prev = _charts.get('ddr-trend-canvas');
-      if (prev) { try { prev.destroy(); } catch (_) {} _charts.delete('ddr-trend-canvas'); }
+      // Keep a chart instance alive — manual destroy() left the canvas unusable
+      // for the next Pasar redraw ("Canvas is already in use").
+      makeChart('ddr-trend-canvas', {
+        type: 'line',
+        data: { labels: [''], datasets: [{ data: [null], borderWidth: 0, pointRadius: 0 }] },
+        options: {
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          scales: { x: { display: false }, y: { display: false } },
+        },
+      });
       return;
     }
     // Union of every week any of the ten was seen in, so the lines share an x-axis.
     const tsAll = [...new Set(shops.flatMap(sh => sh.weeks.map(w => w.ts)))].sort((a, b) => a - b);
-    const br = ddTop10Break(shops);
+    let br = ddTop10Break(shops);
+    if (br) {
+      const hasPlottable = shops.some(sh => (sh.weeks || []).some(w => {
+        const omset = Number(w.omset) || 0;
+        return omset > 0 && ddBrokenMap(omset, br) != null;
+      }));
+      if (!hasPlottable) br = null;
+    }
     makeChart('ddr-trend-canvas', {
       type: 'line',
       data: {
@@ -12367,7 +12517,9 @@ function ddRenderTrendChart() {
     return;
   }
 
-  const series = t.series || [];
+  const series = (t.series && t.series.length >= 2 ? t.series : null)
+    || (_dd?.series && _dd.series.length >= 2 ? _dd.series : null)
+    || [];
   if (series.length < 2) return;
   const labels = series.map(w => _ddFmtWk(w.ts));
   labels.push(_ddFmtWk(Date.parse(listingNextWeekStartISO() + 'T00:00:00Z')) + ' ▶');
@@ -12468,6 +12620,7 @@ function wireDdrTrendToggles(root) {
     });
     if (legend) legend.innerHTML = ddTrendLegendHtml();
     ddRenderTrendChart();
+    requestAnimationFrame(ddResizeTrendChart);
   };
 
   card.addEventListener('click', (e) => {

@@ -11,7 +11,7 @@
   gtag('config', 'AW-862519971');
 </script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=overlays-content">
 <title>LarisID — Riset Produk Shopee, Tokopedia &amp; TikTok Shop untuk Seller Indonesia</title>
 <meta name="description" content="Riset produk 100% gratis untuk seller Indonesia di Shopee, TikTok Shop, Tokopedia, Lazada &amp; Blibli: tanya mau jualan apa, dapat jawaban dari data listing asli — produk yang lagi naik, harga pasar, kompetitor, dan hitungan komisi tiap marketplace. Tanpa langganan.">
 <meta name="robots" content="index, follow, max-image-preview:large">
@@ -5701,7 +5701,7 @@ body.calc-resizing .calc-resize::before { background: var(--accent); }
   }
   @container (max-width: 380px) {
     .calc-body .gpt-kalc-rp input,
-    .calc-body .gpt-kalc-field select { font-size: .78rem; padding: 7px 8px; }
+    .calc-body .gpt-kalc-field select { padding: 7px 8px; }
     .calc-body .gpt-kalc-rp input { padding-left: 26px; }
     .calc-body .gpt-kalc-rp span { left: 8px; font-size: .68rem; }
   }
@@ -5888,8 +5888,16 @@ body.calc-resizing { cursor: col-resize; user-select: none; }
   }
   body.calc-open .calc-panel { animation: sheetIn .22s var(--ease); }
   body.sheet-resizing .calc-panel { transition: none; }
+  body.sheet-keyboard-open .calc-panel { transition: none; }
   body.sheet-resizing { cursor: ns-resize; user-select: none; }
   .sheet-grab { display: flex; touch-action: none; }
+  /* 16px minimum — smaller inputs trigger iOS zoom-on-focus. */
+  .calc-panel input,
+  .calc-panel select,
+  .calc-panel textarea {
+    font-size: 16px !important;
+    touch-action: manipulation;
+  }
   .calc-panel.sheet-collapsed { height: 96px; }
   .calc-panel.sheet-collapsed .calc-body,
   .calc-panel.sheet-collapsed .calc-context { display: none !important; }
@@ -7995,6 +8003,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/gpt-app.js?v=20260831g" defer></script>
+<script src="/js/gpt-app.js?v=20260901c" defer></script>
 </body>
 </html>
