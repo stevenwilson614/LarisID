@@ -79,6 +79,8 @@ listings push
   → refresh_omset_estimates(day)
   → refresh_velocity (cohorts + products)
   → refresh_listing_weekly(day)     ← this file
+  → backfill_listing_weekly_estimates(10)
+  → refresh mv_listing_momentum + mv_listing_week_positions
   → refresh_breakout_matviews()
 ```
 
@@ -100,7 +102,9 @@ closed-form decay (`W(t') = W(t)·exp(−Δ/τ)`) revises this week and next wee
 ## Honesty
 
 - `source=measured` → **terukur**, solid line, plain number.
-- `nowcast` / `forecast` / `peer` → **perkiraan**, dashed/dimmed, with confidence.
+- `nowcast` / `forecast` / `peer` / `estimated` → **perkiraan**, dashed/dimmed, with confidence.
+  `estimated` is a backfilled missed week (`backfill_listing_weekly_estimates`), used by
+  [Peta Peluang](./peta-peluang.md) Jejak Waktu so every WIB Monday has a row.
   A week with no scrape shows a labelled estimate — never "0 terjual", and never
   an unlabelled number.
 - UI sequence: last 6 WIB weeks through today (this week = nowcast, perkiraan

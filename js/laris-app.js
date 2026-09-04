@@ -9058,6 +9058,7 @@ let _dscDeltaMap    = {};   // "itemId_shopId" -> server-computed delta {est,con
 let _dscKwTrendMap  = {};   // keyword -> pct change in total keyword sold vs prev scrape
 let _dscCompMap     = {};   // keyword -> "Rendah"|"Sedang"|"Tinggi"
 let _dscFiltered    = [];
+let _dscZoneKeys    = null;
 let _dscMatchCount  = 0;   // matches before fallback padding (for scrape panel)
 let _dscSearchNoMatch = false;
 let _dscFilterNoMatch = false; // active filters matched 0 rows → fallback shown
@@ -9424,7 +9425,7 @@ async function _dscEnsureBrowsePool(min = 60) {
     // category/panel filters are active and can fail the same way they did.
     const { data } = await _supabase
       .from('listings_deduped')
-      .select('item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews,est_sold,sold_tier,est_omset_monthly,omset_confidence,nowcast_omset_monthly,nowcast_velocity_daily,nowcast_confidence,nowcast_method')
+      .select('item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews,listing_date,est_sold,sold_tier,est_omset_monthly,omset_confidence,nowcast_omset_monthly,nowcast_velocity_daily,nowcast_confidence,nowcast_method,is_ad')
       .gt('total_sold', 0)
       .eq('is_offtopic', false)
       .order('total_sold', { ascending: false })
@@ -9500,7 +9501,7 @@ function _dscApplySearchFilter(q, query) {
 }
 
 function _dscBuildListingsQuery(offset, filters, opts = {}) {
-  const FIELDS = 'item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews,est_sold,sold_tier,est_omset_monthly,omset_confidence,nowcast_omset_monthly,nowcast_velocity_daily,nowcast_confidence,nowcast_method';
+  const FIELDS = 'item_id,shop_id,product_name,store_name,price,total_sold,category,image_url,url,scraped_at,keyword,location,rating,reviews,listing_date,est_sold,sold_tier,est_omset_monthly,omset_confidence,nowcast_omset_monthly,nowcast_velocity_daily,nowcast_confidence,nowcast_method,is_ad';
   const rangeFrom = opts.rangeFrom != null ? opts.rangeFrom : offset;
   const rangeTo   = opts.rangeTo   != null ? opts.rangeTo   : offset + DSC_PAGE_SIZE - 1;
   let q = _supabase
@@ -11191,6 +11192,10 @@ function dscApplyFilters(resetPage = true, shouldScrollTop = true) {
   _dscSearchNoMatch = !!(q && list.length === 0);
   _dscFilterNoMatch = false;
 
+  if (_dscZoneKeys && _dscZoneKeys.size) {
+    list = list.filter(p => _dscZoneKeys.has(String(p.item_id) + '|' + String(p.shop_id)));
+  }
+
   if (_dscSearchNoMatch) {
     list = _dscFallbackCatalog();
     if (!list.length) void _dscEnsureBrowsePool(60).then(ok => { if (ok) dscApplyFilters(false); });
@@ -11302,7 +11307,7 @@ function dscCardHtml(p, kwMap) {
   }
   return `<div class="dsc-card" onclick="dscOpenDeepDive('${key}')">
     <div class="dsc-card-img" style="position:relative;">${imgHtml}
-      <div style="position:absolute;top:6px;left:6px;background:${lslbl.clr};color:#fff;border-radius:8px;padding:3px 9px;font-size:.82rem;font-weight:800;line-height:1.4;box-shadow:0 1px 4px rgba(0,0,0,.22);">${ls.total}</div>
+      <div style="position:absolute;top:6px;left:6px;background:${lslbl.clr};color:#fff;border-radius:8px;padding:3px 9px;font-size:.82rem;font-weight:800;line-height:1.4;box-shadow:0 1px 4px rgba(0,0,0,.22);display:flex;align-items:center;gap:4px;">${(window.PetaPeluang && PetaPeluang.sidikJariHtml) ? PetaPeluang.sidikJariHtml(ls) : ''}${ls.total}</div>
     </div>
     <div class="dsc-card-body">
       <div class="dsc-card-name-row">
@@ -11459,10 +11464,12 @@ function dscRenderTable() {
         const key    = `${p.item_id}__${p.shop_id}`;
         const ls     = calcListingScore(p, _dscKwMap[p.keyword||'__'], _dscListingTrendPct(p), _dscKwTrendMap[p.keyword]??null);
         const lslbl  = listingScoreLabel(ls.total);
-        const scoreBadge = `<span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;">
+        const scoreBadge = `<span style="display:inline-flex;align-items:center;gap:6px;">
+          ${(window.PetaPeluang && PetaPeluang.sidikJariHtml) ? PetaPeluang.sidikJariHtml(ls) : ''}
+          <span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;">
           <span style="background:${lslbl.clr};color:#fff;padding:2px 8px;border-radius:8px;font-size:.72rem;font-weight:800;">${ls.total}</span>
           <span style="font-size:.55rem;color:#9CA3AF;">/${ls.larisScore} mkt</span>
-        </span>`;
+        </span></span>`;
         return `<tr style="cursor:pointer" onclick="dscOpenDeepDive('${key}')">
           <td>
             <div class="dsc-prod-cell">
@@ -11533,6 +11540,46 @@ function dscRenderTable() {
   else if (beginner) setTimeout(() => dscHighlightStarterCard(), 0);
   dscUpdateScrapeRequestPanel();
   dscSyncEmptyPick();
+  dscMountPeta(searchActive ? cappedList : [], _dscQ);
+}
+
+function dscMountPeta(listings, query) {
+  if (!window.PetaPeluang) return;
+  const grid = document.getElementById('dsc-card-grid');
+  if (!grid || !grid.parentNode) return;
+  let host = document.getElementById('disc-peta');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'disc-peta';
+    grid.parentNode.insertBefore(host, grid);
+  }
+  if (!query || !listings.length) {
+    if (host._petaCtl) { host._petaCtl.destroy(); host._petaCtl = null; }
+    host.innerHTML = '';
+    return;
+  }
+  PetaPeluang.mount(host, listings, {
+    query: query,
+    supabase: typeof _supabase !== 'undefined' ? _supabase : null,
+    calcScore: function (listing) {
+      const peers = listings.filter(function (x) { return x.keyword && x.keyword === listing.keyword; });
+      return calcListingScore(listing, peers.length > 5 ? peers : listings, _dscListingTrendPct(listing), _dscKwTrendMap[listing.keyword] || null);
+    },
+    onDotOpen: function (listing) {
+      dscOpenDeepDive(listing.item_id + '__' + listing.shop_id);
+    },
+    onHighlight: function (listing) {
+      document.querySelectorAll('#dsc-card-grid .peta-hl').forEach(function (el) { el.classList.remove('peta-hl'); });
+      if (!listing) return;
+      const key = listing.item_id + '__' + listing.shop_id;
+      const node = document.querySelector('#dsc-card-grid [onclick*="' + key + '"]');
+      if (node) node.classList.add('peta-hl');
+    },
+    onZoneFilter: function (zoneId, filtered) {
+      _dscZoneKeys = (!zoneId || !filtered) ? null : new Set(filtered.map(function (p) { return String(p.item_id) + '|' + String(p.shop_id); }));
+      dscApplyFilters(false, false);
+    }
+  });
 }
 
 function dscSetView(mode) {

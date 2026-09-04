@@ -5629,7 +5629,7 @@ async function fetchSidePeers(product) {
   if (!_supabase || !kw) return [];
   try {
     const { data } = await _supabase.from('listings_deduped')
-      .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
+      .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method,is_ad')
       .gt('total_sold', 0)
       .ilike('keyword', kw)
       .eq('is_offtopic', false)
@@ -6532,11 +6532,112 @@ function asListingProduct(r) {
   };
 }
 
+let _listingHasIsAd = true;
+function listingCoreSelect() {
+  const core = 'item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,url,keyword,category,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method';
+  return _listingHasIsAd ? `${core},is_ad` : core;
+}
+function listingIsAdMissing(error) {
+  if (!_listingHasIsAd || !error) return false;
+  const s = `${error.code || ''} ${error.message || ''}`;
+  if (!/42703/.test(s) && !/\bis_ad\b/.test(s)) return false;
+  console.warn('[peta] is_ad missing — dashed ad rings disabled');
+  _listingHasIsAd = false;
+  return true;
+}
+
+function petaScoreFor(listing, listings) {
+  if (!window.PetaPeluang || typeof PetaPeluang.calcListingScore !== 'function') return null;
+  const peers = (listings || []).filter(x => x.keyword && x.keyword === listing.keyword);
+  return PetaPeluang.calcListingScore(listing, peers.length > 5 ? peers : listings);
+}
+
+async function fetchPetaListings(q, types) {
+  if (!_supabase) return [];
+  const kws = [...new Set((types || []).map(t => t.keyword).filter(Boolean))].slice(0, 24);
+  const build = () => {
+    let query = _supabase.from('listings_deduped')
+      .select(listingCoreSelect())
+      .gt('total_sold', 0)
+      .eq('is_offtopic', false)
+      .order('nowcast_omset_monthly', { ascending: false, nullsFirst: false })
+      .limit(120);
+    if (kws.length === 1) query = query.eq('keyword', kws[0]);
+    else if (kws.length) query = query.in('keyword', kws);
+    else if (q) query = query.ilike('product_name', `%${String(q).slice(0, 40)}%`);
+    return query;
+  };
+  try {
+    let { data, error } = await build();
+    if (listingIsAdMissing(error)) ({ data, error } = await build());
+    if (error) throw error;
+    const seen = new Set();
+    const out = [];
+    for (const r of (data || [])) {
+      const k = `${r.item_id}|${r.shop_id}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(asListingProduct(r));
+    }
+    return out;
+  } catch (_) {
+    try {
+      return (await searchListings(q || (kws[0] || ''), [], 80)).map(asListingProduct);
+    } catch (e) { return []; }
+  }
+}
+
+function petaHostOpts(query, listings, hostEl) {
+  return {
+    query: query || '',
+    supabase: _supabase,
+    calcScore: (listing) => petaScoreFor(listing, listings),
+    onDotOpen: (listing) => { void openDeepDive(listing); },
+    onHighlight: (listing) => {
+      const root = hostEl.closest('.peta-dir-layout') || hostEl.parentElement || document;
+      root.querySelectorAll('.peta-hl').forEach(el => el.classList.remove('peta-hl'));
+      if (!listing) return;
+      const k = prodKey(listing);
+      let node = null;
+      try { node = root.querySelector(`[data-prod="${CSS.escape(k)}"]`); }
+      catch (_) { node = root.querySelector(`[data-prod="${k}"]`); }
+      if (node) node.classList.add('peta-hl');
+    },
+    onZoneFilter: (zoneId, filtered) => {
+      const layout = hostEl.closest('.peta-dir-layout');
+      const grid = layout ? $('dir-grid') : hostEl.parentElement?.querySelector('.card-grid');
+      if (!grid) return;
+      if (!zoneId) {
+        if (layout) {
+          state._petaZone = null;
+          void renderDirectory();
+        } else if (hostEl._petaOrigGrid) {
+          grid.innerHTML = hostEl._petaOrigGrid;
+          bindTypeCards(grid);
+          bindProductCards(grid);
+          void hydrateProdCardsIn(grid);
+        }
+        return;
+      }
+      state._petaZone = zoneId;
+      grid.innerHTML = productCardsHtml(filtered || []);
+      bindProductCards(grid);
+      void hydrateProdCardsIn(grid);
+    },
+  };
+}
+
+function mountPeta(hostEl, query, listings) {
+  if (!hostEl || !window.PetaPeluang) return;
+  rememberProducts(listings || []);
+  PetaPeluang.mount(hostEl, listings || [], petaHostOpts(query, listings || [], hostEl));
+}
+
 async function fetchListingsCityCat(locations, cats, limit = 80) {
   if (!_supabase || !locations.length) return [];
   try {
     let q = _supabase.from('listings_deduped')
-      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
+      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method,is_ad')
       .in('location', locations)
       .eq('is_offtopic', false)
       .order('total_sold', { ascending: false })
@@ -7053,7 +7154,7 @@ async function handleModalIntent(chat, text) {
   let rows = [];
   try {
     const { data } = await _supabase.from('listings_deduped')
-      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
+      .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method,is_ad')
       .gte('price', 1000).lte('price', budget)
       .gt('total_sold', 100)
       .eq('is_offtopic', false)
@@ -8254,7 +8355,8 @@ async function replyWithPasarTypes(chat, text, types, opts = {}) {
         : `<p>Brand <strong>${esc(opts.brand)}</strong> belum ada di data kami \u2014 menampilkan tipe produk yang paling mirip:</p>`;
     }
   }
-  const html = `${brandNote}<p>${lead}</p><div class="card-grid">${marketCardsHtml(types)}</div>`;
+  const petaId = 'peta-' + Date.now();
+  const html = `${brandNote}<p>${lead}</p><div class="peta-host" id="${petaId}"></div><div class="card-grid">${marketCardsHtml(types)}</div>`;
   if (loading) await revealAssistant(loading, html);
   else await appendAssistantStream(html);
   pushMessage(chat, 'assistant', {
@@ -8262,6 +8364,14 @@ async function replyWithPasarTypes(chat, text, types, opts = {}) {
   }, html);
   bindTypeCards();
   void hydrateProdCardsIn();
+  void (async () => {
+    const host = document.getElementById(petaId);
+    if (!host) return;
+    const grid = host.parentElement?.querySelector('.card-grid');
+    if (grid) host._petaOrigGrid = grid.innerHTML;
+    const listings = await fetchPetaListings(text, types);
+    mountPeta(host, opts.label || text, listings);
+  })();
   void logUserEvent('discover_view', {
     ui: 'gpt', q: text, count: types.length, level: 'pasar', nearby: opts.nearby ? 1 : 0,
   });
@@ -8493,6 +8603,11 @@ function productSnapshot(p) {
     age_days: p.age_days,
     listing_date: p.listing_date || null,
     delta_7d: p.delta_7d != null ? p.delta_7d : null,
+    nowcast_velocity_daily: p.nowcast_velocity_daily,
+    nowcast_omset_monthly: p.nowcast_omset_monthly,
+    nowcast_confidence: p.nowcast_confidence,
+    nowcast_method: p.nowcast_method,
+    is_ad: p.is_ad,
   };
 }
 
@@ -8556,7 +8671,7 @@ async function resolveProduct(item_id, shop_id, btn) {
   if (_supabase && item_id != null && shop_id != null) {
     try {
       const { data } = await _supabase.from('listings_deduped')
-        .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
+        .select('item_id,shop_id,store_name,product_name,category,keyword,price,total_sold,reviews,rating,location,image_url,url,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method,is_ad')
         .eq('item_id', item_id)
         .eq('shop_id', shop_id)
         .order('scraped_at', { ascending: false })
@@ -8572,7 +8687,7 @@ async function resolveProduct(item_id, shop_id, btn) {
   return null;
 }
 
-function productCardHtml(p, i, omsetRange) {
+function productCardHtml(p, i, omsetRange, score) {
   rememberProducts([p]);
   const img = p.image_url || '';
   const name = p.product_name || p.keyword || 'Produk';
@@ -8596,6 +8711,9 @@ function productCardHtml(p, i, omsetRange) {
   const check = picking
     ? `<span class="prod-card-check" aria-hidden="true">${ico('check', 12)}</span>`
     : '';
+  const glyph = (score && window.PetaPeluang)
+    ? `<div class="prod-card-sidik">${PetaPeluang.sidikJariHtml(score)}<span class="prod-stat-val" style="font-size:.68rem">${score.total}</span></div>`
+    : '';
   return `<${tag} class="prod-card${picking ? ' prod-card--pick' : ''}${picked ? ' is-picked' : ''}" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''}${pickAttrs} style="animation-delay:${i * 0.06}s">
     ${check}
     ${img ? `<img src="${esc(imgThumb(img))}" alt="" loading="lazy" decoding="async" width="320" height="320">` : '<div class="prod-card-ph"></div>'}
@@ -8610,6 +8728,7 @@ function productCardHtml(p, i, omsetRange) {
           <span class="prod-stat-val">${omsetVal}</span>
           <span class="prod-card-wow-wrap" data-prod-wow="${esc(key)}">${prodCardWowHtml(p)}</span>
         </div>
+        ${glyph}
       </div>
     </div>
   </${tag}>`;
@@ -8625,7 +8744,7 @@ function productCardsHtml(products) {
     const p100 = omsets[omsets.length - 1];
     range = { p60, p100 };
   }
-  return list.map((p, i) => productCardHtml(p, i, range)).join('');
+  return list.map((p, i) => productCardHtml(p, i, range, petaScoreFor(p, list))).join('');
 }
 
 function prodKey(p) {
@@ -11939,7 +12058,7 @@ async function openDeepDive(product, ddOpts = {}) {
         // listings_deduped: trgm-indexed, deduped, and carries listing_date
         // (shop-age proxy) since migration 20260717120000.
         const { data } = await _supabase.from('listings_deduped')
-          .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
+          .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method,is_ad')
           .gt('total_sold', 0)
           .ilike('keyword', kw)
           .eq('is_offtopic', false)
@@ -16437,7 +16556,7 @@ async function fetchPeersForCompare(product) {
   if (!_supabase || !kw) return { peers, niche, stats: ddStats([]), score: ddScore(product || {}, ddStats([]), niche) };
   try {
     const { data } = await _supabase.from('listings_deduped')
-      .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method')
+      .select('item_id,shop_id,product_name,store_name,price,total_sold,reviews,rating,location,image_url,keyword,category,listing_date,nowcast_velocity_daily,nowcast_omset_monthly,nowcast_confidence,nowcast_method,is_ad')
       .gt('total_sold', 0)
       .ilike('keyword', kw)
       .eq('is_offtopic', false)
@@ -16930,6 +17049,10 @@ async function renderDirectory() {
   const cats = state.dirCats || [];
   const cities = state.dirCities || [];
   const q = (state.dirSearch || '').trim();
+  if (state._petaQuery !== q) {
+    state._petaZone = null;
+    state._petaQuery = q;
+  }
   // Subgroup is filtered server-side against keyword_subgroup now, not by a
   // client-side keyword substring test. Only applied when exactly one category
   // is selected.
@@ -16941,7 +17064,7 @@ async function renderDirectory() {
   if (!q && !cats.length && !sub && _dirInstantPool.length) {
     grid.innerHTML = marketCardsHtml(_dirInstantPool);
     bindTypeCards(grid);
-  } else {
+  } else if (!(state._petaZone && q)) {
     grid.innerHTML = garudaLoadingHtml('Memuat…');
   }
   let types;
@@ -16996,8 +17119,12 @@ async function renderDirectory() {
   const siblings = slice.map(t => t.keyword);
   const usedImgs = new Set();
   const cards = slice.map((t, i) => typeCardHtml(t, start + i, i, siblings, usedImgs)).join('');
-  grid.innerHTML = cards ? (nearbyLead + cards) : emptyMsg;
-  bindTypeCards(grid);
+  if (state._petaZone && state._petaListings && state._petaListings.length) {
+    /* zone filter is applied by the map callback; don't clobber listing cards on pager */
+  } else {
+    grid.innerHTML = cards ? (nearbyLead + cards) : emptyMsg;
+    bindTypeCards(grid);
+  }
   if (state._dirSkipScroll) state._dirSkipScroll = false;
   else scrollPanelToTop();
   renderDirPager(pager, types.length);
@@ -17005,6 +17132,20 @@ async function renderDirectory() {
   if (q && !types.length) {
     void logUncoveredSearch(q, { category: detectSearchDomain(q.toLowerCase())?.id || null });
   }
+  void (async () => {
+    const host = $('dir-peta');
+    if (!host) return;
+    if (!q) {
+      if (host._petaCtl) { host._petaCtl.destroy(); host._petaCtl = null; }
+      host.innerHTML = '';
+      $('dir-peta-layout')?.classList.remove('has-peta');
+      state._petaListings = [];
+      return;
+    }
+    const listings = await fetchPetaListings(q, types);
+    state._petaListings = listings;
+    mountPeta(host, q, listings);
+  })();
 }
 
 // Shared pager for both directory modes (types + legacy listings).
@@ -17085,6 +17226,11 @@ async function renderDirectoryListings() {
   scrollPanelToTop();
   renderDirPager(pager, rows.length);
   updateDirCount(rows.length, slice.length, false);
+  void (async () => {
+    const host = $('dir-peta');
+    if (!host || !(q && !sub)) return;
+    mountPeta(host, q, rows.slice(0, 120));
+  })();
 }
 
 // The "Tampilan klasik" opt-out lived here until 2026-08-10. Site A is gone,
