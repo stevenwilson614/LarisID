@@ -11,6 +11,16 @@
 // A plain string is still accepted and renders with no tech line.
 window.LARIS_CHANGELOG = [
   {
+    date: '2026-09-05',
+    title: 'Cari Produk sekarang per produk, bukan kartu pasar',
+    items: [
+      {
+        text: 'Hasil Cari Produk menampilkan daftar produk (foto, harga, omset, unit, ulasan, usia toko) dengan Peta Peluang di atas. Deep Dive tetap per listing. Bandingkan pasar hanya lewat chat kalau kamu tanya.',
+        tech: 'Directory + chat results use listingRowsHtml; Bandingkan Pasar retired from #dir-peta / renderDirectory; Peta Peluang mounts with list:false. One-time #product-rows-notice for returning users (lid_product_rows_notice_v1).',
+      },
+    ],
+  },
+  {
     date: '2026-08-22',
     title: 'Halaman Harga sekarang kebaca di HP',
     items: [

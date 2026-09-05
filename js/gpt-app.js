@@ -2170,9 +2170,16 @@ function closeWaCapture() {
   $('wa-capture')?.classList.remove('open');
 }
 
-function _waCaptureContinue() {
+function skipWaCapture() {
+  try { sessionStorage.setItem(_LID_WA_CAPTURE_SKIP_KEY, '1'); } catch (_) {}
+  closeWaCapture();
+  void logUserEvent('wa_capture', { ui: 'gpt', action: 'later' });
   if (_waCaptureThenOnboarding) offerOnboardingAfterSignin();
   else scheduleProductRowsNotice({ fromRestore: false, isNewSignup: false });
+}
+
+function _waCaptureContinue() {
+  if (_waCaptureThenOnboarding) offerOnboardingAfterSignin();
 }
 
 async function maybeOfferWaCapture(opts) {
@@ -2630,6 +2637,66 @@ function closeChangelog() {
   if (!modal) return;
   modal.classList.remove('open');
   modal.hidden = true;
+}
+
+// One-time notice: Cari Produk switched from pasar cards to listing rows.
+// Returning / existing users only — not brand-new signups, not a blocking
+// onboarding gate. Dismiss once; never re-show.
+const PRODUCT_ROWS_NOTICE_KEY = 'lid_product_rows_notice_v1';
+let _productRowsNoticeTimer = 0;
+
+function productRowsNoticeSeen() {
+  try { return localStorage.getItem(PRODUCT_ROWS_NOTICE_KEY) === '1'; } catch (_) { return true; }
+}
+
+function markProductRowsNoticeSeen() {
+  try { localStorage.setItem(PRODUCT_ROWS_NOTICE_KEY, '1'); } catch (_) {}
+}
+
+function closeProductRowsNotice(action) {
+  const overlay = $('product-rows-notice');
+  if (!overlay) return;
+  overlay.classList.remove('open');
+  overlay.hidden = true;
+  markProductRowsNoticeSeen();
+  void logUserEvent('product_rows_notice', { ui: 'gpt', action: action || 'dismiss' });
+}
+
+function openProductRowsNotice() {
+  if (productRowsNoticeSeen() || !currentUser) return;
+  if (document.querySelector('.modal-overlay.open')) return;
+  const overlay = $('product-rows-notice');
+  if (!overlay) return;
+  overlay.hidden = false;
+  overlay.classList.add('open');
+  markProductRowsNoticeSeen();
+  void logUserEvent('product_rows_notice', { ui: 'gpt', action: 'shown' });
+  clarityEvt('product_rows_notice', { action: 'shown' });
+}
+
+function scheduleProductRowsNotice(opts = {}) {
+  if (!currentUser || productRowsNoticeSeen()) return;
+  // Brand-new accounts never saw pasar cards — skip the "we changed" copy.
+  if (opts.isNewSignup || _lidIsNewSignup(currentUser)) return;
+  const returning = !!(opts.fromRestore)
+    || state.onboarding.step === 'done'
+    || finderIsComplete()
+    || ((_gptJourney.loaded ? _gptJourney.deepdiveCount : 0) > 0)
+    || !!state.everOpenedDeepdive;
+  if (!returning) return;
+
+  clearTimeout(_productRowsNoticeTimer);
+  const tryOpen = (attempt) => {
+    _productRowsNoticeTimer = setTimeout(() => {
+      if (!currentUser || productRowsNoticeSeen()) return;
+      if (document.querySelector('.modal-overlay.open')) {
+        if (attempt < 3) tryOpen(attempt + 1);
+        return;
+      }
+      openProductRowsNotice();
+    }, attempt === 0 ? 1400 : 2200);
+  };
+  tryOpen(0);
 }
 
 function formatIdDate(iso) {
@@ -3703,6 +3770,12 @@ async function _authOnSignIn(session, opts) {
   } else if (needsOnboarding) {
     offerOnboardingAfterSignin();
   }
+
+  // Returning users: one-time "pasar → produk" notice (skippable, not onboarding).
+  scheduleProductRowsNotice({
+    fromRestore: !!(opts && opts.fromRestore),
+    isNewSignup,
+  });
 }
 
 /** Re-run the landing finder search the user set up before signing in. */
@@ -19299,8 +19372,23 @@ function wireUi() {
     if (e.key === 'Enter') { e.preventDefault(); void submitWaCapture(); }
   });
 
+  $('product-rows-notice-go')?.addEventListener('click', () => {
+    closeProductRowsNotice('go_directory');
+    setView('directory');
+  });
+  $('product-rows-notice-close')?.addEventListener('click', () => {
+    closeProductRowsNotice('close');
+  });
+  $('product-rows-notice')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeProductRowsNotice('backdrop');
+  });
+
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
+    if ($('product-rows-notice')?.classList.contains('open')) {
+      closeProductRowsNotice('esc');
+      return;
+    }
     if ($('steven-dd-video')?.classList.contains('open')) {
       if (_sddvEnded) sddvClose('esc');
     }

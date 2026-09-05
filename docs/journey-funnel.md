@@ -27,6 +27,7 @@ Onboarding is in-page on Beranda (`state.onboarding`: city → category → expe
 | Session-one Deep Dive | `runFinderSearch` auto-open of the first listing row while `deepdive_count === 0`; Cari Produk first row click (`dir_first_click_deepdive`); `#home-first-dd` card | skip reasons logged as `finder_auto_deepdive_skipped` |
 | End-of-dive alert | `#ddr-alert` | email / WhatsApp one-tap → track + `set_tracker_notify_prefs`. Mid-dive `ddtp*` promo is retired. |
 | Pantauan nav pulse | `lid_pantau_nudge_v1`, `schedulePantauNavPulse` | first Deep Dive pulse |
+| Pasar → produk notice | `#product-rows-notice`, `lid_product_rows_notice_v1` | one-time dismissible for returning (not new) signed-in users; not onboarding |
 | Scrape-cycle digest | `scrape-digest` edge function | every Deep Dive user, one email per measured scrape landing; WA only if opted in |
 | Langkah minggu ini | `#home-langkah` + `user_weekly_steps` | first_time sellers on Beranda after onboarding |
 

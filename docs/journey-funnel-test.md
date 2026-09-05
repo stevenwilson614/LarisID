@@ -13,7 +13,7 @@ Use this before changing Beranda, onboarding, Cari Produk, Deep Dive, or Pantaua
 7. Email / WhatsApp on that card tracks the keyword, sets notify prefs, and writes `user_profiles.wa_number` when a number is entered.
 8. First Deep Dive: Pantauan pulse/nudge still appears; tracking a keyword stops it forever for that user.
 9. `first_time` sellers with onboarding done see `#home-langkah` (3–4 checkable steps). Checking a step persists. "Buka analisis" opens that keyword's Deep Dive.
-10. Return visit: no fabricated price/sales deltas. Omset chips say terukur or perkiraan.
+10. Return visit: no fabricated price/sales deltas. Omset chips say terukur or perkiraan. Existing users who have not dismissed it may see one-time `#product-rows-notice` (pasar → produk); new signups must not. Dismiss persists via `lid_product_rows_notice_v1`.
 11. Leaders / platform admins are not gated.
 12. Mobile: finder, Deep Dive, alert card, and Langkah usable at 390px width.
 
