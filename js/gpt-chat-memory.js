@@ -222,7 +222,8 @@
 
   function omsetLabel(row) {
     const src = String(row?.nowcast_method || row?.nowcast_confidence || row?.source || '').toLowerCase();
-    return src === 'measured' ? 'terukur' : 'perkiraan';
+    if (src === 'latest' || src === 'blend' || src === 'measured') return 'terukur';
+    return 'perkiraan';
   }
 
   function packListingFields(r, nowMs) {

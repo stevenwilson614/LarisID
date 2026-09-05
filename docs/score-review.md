@@ -1,5 +1,8 @@
 # Viability Score Review — Are we throwing away good products under 70?
 
+> **Historical.** Score functions now live in `js/gpt-app.js` (not `dist/scripts/app.js` or `laris-app.js`). The size-vs-growth finding still stands.
+
+
 *Research only. No application code changed. Author: AI research pass, 2026-05-30.*
 *Binding context: [MISSION.md](../MISSION.md) — no ranking people into "losers," protect the party with less power (the seller).*
 

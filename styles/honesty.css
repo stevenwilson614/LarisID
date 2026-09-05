@@ -1,0 +1,26 @@
+/* Audit remediation: label every omset figure terukur vs perkiraan (MISSION §3). */
+.omset-chip {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: .58rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  line-height: 1.4;
+  width: fit-content;
+  cursor: help;
+}
+.omset-chip--terukur {
+  color: #1A7A46;
+  background: #EAF7F0;
+}
+.omset-chip--perkiraan {
+  color: #9A3412;
+  background: #FFF7ED;
+}
+.agent-stat .omset-chip,
+.agent-tbl .omset-chip {
+  margin-left: 4px;
+  vertical-align: middle;
+}

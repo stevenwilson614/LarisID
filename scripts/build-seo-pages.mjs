@@ -519,7 +519,8 @@ function buildSitemap(entries) {
     { loc: `${SITE}/rise/`, freq: 'monthly', pri: '0.8', mod: '2026-08-18' },
     { loc: `${SITE}/rise/daftar/`, freq: 'monthly', pri: '0.7', mod: '2026-08-21' },
     { loc: `${SITE}/cara-kerja/`, freq: 'monthly', pri: '0.8', mod: '2026-08-21' },
-    { loc: `${SITE}/privacy/`, freq: 'yearly', pri: '0.3', mod: '2026-08-23' },
+    { loc: `${SITE}/tentang/`, freq: 'monthly', pri: '0.7', mod: '2026-09-05' },
+    { loc: `${SITE}/privacy/`, freq: 'yearly', pri: '0.3', mod: '2026-09-05' },
   ];
   const all = [
     ...staticUrls,

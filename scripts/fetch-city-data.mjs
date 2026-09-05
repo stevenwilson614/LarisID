@@ -19,7 +19,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SUPA_URL = 'https://bzmvlraziqevqdyotvgy.supabase.co';
+const SUPA_URL = process.env.LARISID_API_URL || 'https://api.larisid.com';
 const SUPA_KEY = 'sb_publishable_KDSWIJJLckser1e1hk7bbA_yMChRPog'; // public anon key
 
 const res = await fetch(

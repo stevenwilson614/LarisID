@@ -8,13 +8,13 @@ For UI and marketing copy, follow **[docs/BRAND_V2_PHOENIX.md](./docs/BRAND_V2_P
 
 ## Dashboard SPA: onboarding & journey funnel
 
-The logged-in product UI lives in **`index.html`** (not Astro routes). Before changing first-login flow, Discover defaults, Deep Dive beginner mode, Beranda lobby, nav gating, or return-loop copy:
+The logged-in product UI lives in **`index.html` + `js/gpt-app.js`** (not Astro routes, not `laris-app.js`). Before changing first-login flow, Cari Produk / Deep Dive, Beranda, nav gating, or return-loop copy:
 
-1. Read **[docs/journey-funnel.md](./docs/journey-funnel.md)** — tiers, key functions, localStorage + Supabase tables.
+1. Read **[docs/journey-funnel.md](./docs/journey-funnel.md)** — live `state.onboarding` steps, `#home-finder`, `#prefs-drawer`, Pantauan nudge, `user_journey_stats`.
 2. Run through **[docs/journey-funnel-test.md](./docs/journey-funnel-test.md)** for regressions.
 3. Apply related migrations **on Contabo** with `bash scripts/apply-selfhost.sh supabase/migrations/…` — see [docs/self-host.md](./docs/self-host.md). Never `supabase db push --linked`.
 
-**Do not** reintroduce a blocking popup for onboarding; keep the 3-step flow in Discover. **Do not** fabricate price/sales deltas in return strips. Leaders and platform admins bypass journey gating.
+**Do not** reintroduce a blocking popup for onboarding. **Do not** fabricate price/sales deltas in return strips. Leaders and platform admins bypass journey gating.
 
 ## "Terlaris Minggu Ini" badge
 

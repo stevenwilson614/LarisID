@@ -1,5 +1,8 @@
 # Landing Page Analytics — Scroll Depth & CTA Tracking
 
+> **Historical.** Written before chat-first cutover. Live analytics are Clarity + `log_client_events` in `js/gpt-app.js`. Paid CTAs described below were retracted.
+
+
 **Question (product owner):** "Can we track a user's activity on the landing page? Are users scrolling way down before signing up, or simply clicking the primary CTA (`multi` / 'Mulai Gratis')?"
 
 **Short answer:** With today's stack we can answer this **qualitatively** (Clarity heatmaps + recordings show roughly how far people scroll and where they click), but we **cannot** answer it **quantitatively** — there is no scroll-depth funnel and no CTA-click event. To get hard numbers ("X% reach 75% scroll before signup", "Y% of signups click the hero CTA vs the pricing CTA") we need to add custom events. Spec below.

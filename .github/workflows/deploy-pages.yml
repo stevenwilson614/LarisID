@@ -28,6 +28,9 @@ jobs:
       - name: Assemble site
         run: bash scripts/assemble-site.sh _site
 
+      - name: Static checks
+        run: bash scripts/ci-static-checks.sh
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:

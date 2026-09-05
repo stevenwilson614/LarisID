@@ -117,11 +117,11 @@ Adds `seller_status` to `public.user_onboarding_prefs`:
 - `first_time` — user is new to selling
 - `existing` — user already sells elsewhere
 
-Written by the in-page Discover onboarding (step 3). See **[docs/journey-funnel.md](../docs/journey-funnel.md)**.
+Written by the in-page Beranda finder in `js/gpt-app.js` (`state.onboarding`). See **[docs/journey-funnel.md](../docs/journey-funnel.md)**.
 
 ## User journey stats (`migrations/20260611170000_user_journey_stats.sql`)
 
-Lightweight funnel counters synced from the client (`larisid_journey_v1` in localStorage):
+Lightweight funnel counters synced from `js/gpt-app.js` (`user_journey_stats.deepdive_count`):
 
 | Column | Purpose |
 |--------|---------|

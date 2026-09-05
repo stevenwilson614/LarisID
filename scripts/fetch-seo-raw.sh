@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-URL='https://bzmvlraziqevqdyotvgy.supabase.co/rest/v1/listings'
+URL='https://api.larisid.com/rest/v1/listings'
 KEY='sb_publishable_KDSWIJJLckser1e1hk7bbA_yMChRPog'
 SEL='item_id,product_name,store_name,price,est_sold,rating,reviews,location,scraped_at'
 RAW='scripts/_seo_raw'

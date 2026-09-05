@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Sweep trend pipeline — uses curl (node fetch DNS fails in some sandboxes)
 set -euo pipefail
-SUPA_URL='https://bzmvlraziqevqdyotvgy.supabase.co/rest/v1'
+SUPA_URL='https://api.larisid.com/rest/v1'
 SUPA_KEY='sb_publishable_KDSWIJJLckser1e1hk7bbA_yMChRPog'
 HDR=(-H "apikey: $SUPA_KEY" -H "Authorization: Bearer $SUPA_KEY")
 
 node - <<'NODE'
 const { execSync } = require('child_process');
-const SUPA_URL = 'https://bzmvlraziqevqdyotvgy.supabase.co/rest/v1';
+const SUPA_URL = 'https://api.larisid.com/rest/v1';
 const SUPA_KEY = 'sb_publishable_KDSWIJJLckser1e1hk7bbA_yMChRPog';
 function fetchJson(path) {
   const cmd = `curl -s "${SUPA_URL}/${path}" -H "apikey: ${SUPA_KEY}" -H "Authorization: Bearer ${SUPA_KEY}"`;

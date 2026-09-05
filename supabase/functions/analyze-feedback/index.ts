@@ -63,9 +63,22 @@ const AI_MODEL = 'deepseek-v4-pro'
 const DEEPSEEK_MESSAGES_URL = 'https://api.deepseek.com/anthropic/v1/messages'
 
 // ── Main handler ─────────────────────────────────────────────────────────────
+function jwtRole(req: Request): string {
+  const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '')
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    return payload.role || ''
+  } catch {
+    return ''
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: CORS })
+  }
+  if (jwtRole(req) !== 'service_role') {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: CORS })
   }
 
   try {

@@ -31,6 +31,8 @@ supabase/.env
 supabase/.env.local
 supabase/.temp/
 tmp/
+.cursor/debug-*.log
+google-ads-assets/
 
 # Region-overlay dumps from scripts/build-mascot-rig.py --debug (never ship)
 images/brand/rig/_debug-*.png

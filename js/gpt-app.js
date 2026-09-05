@@ -521,6 +521,25 @@ function _ceFlush(useKeepalive) {
   } catch (_) {}
 }
 
+(function installJsErrorCapture() {
+  if (window.__lidJsErr) return;
+  window.__lidJsErr = true;
+  const seen = new Set();
+  function report(kind, msg, extra) {
+    const key = String(msg || '').slice(0, 180);
+    if (!key || seen.has(key) || seen.size > 12) return;
+    seen.add(key);
+    logClientEvent('js_error', { kind, message: key, ...(extra || {}) });
+  }
+  window.addEventListener('error', (ev) => {
+    report('onerror', ev.message || ev.error, { source: ev.filename, line: ev.lineno });
+  });
+  window.addEventListener('unhandledrejection', (ev) => {
+    const reason = ev.reason;
+    report('unhandledrejection', reason && reason.message ? reason.message : reason);
+  });
+})();
+
 function logClientEvent(eventType, props) {
   // Excluded to match logUserEvent: an admin previewing the site as someone else
   // is inspecting it, not using it. Covers student mode as well as sample mode.
@@ -2281,7 +2300,7 @@ function renderGptUsage() {
     if (popSubEl) popSubEl.textContent = popSub;
   });
 
-  if (!_usageTicker) {
+  if (!_usageTicker && !betaUnlimitedNow()) {
     _usageTicker = setInterval(() => {
       if (_gptUsage.resetAt && _gptUsage.resetAt.getTime() <= Date.now()) {
         void refreshGptUsage();
@@ -8485,13 +8504,14 @@ async function pickRecommendations(limit = 3) {
     if (out.length >= want) break;
   }
 
-  for (const p of out) {
-    if (!p.keyword || !_supabase) continue;
+  const recKws = [...new Set(out.map(p => p.keyword).filter(Boolean))];
+  if (recKws.length && _supabase) {
     try {
       const { data } = await _supabase.from('mv_niche_breakout')
         .select('keyword,breakout_rate,new_items,breakouts')
-        .eq('keyword', p.keyword).maybeSingle();
-      p._niche = data || null;
+        .in('keyword', recKws);
+      const byKw = new Map((data || []).map(r => [r.keyword, r]));
+      for (const p of out) p._niche = byKw.get(p.keyword) || null;
     } catch (_) {}
   }
   return out;
@@ -8552,6 +8572,29 @@ function estOmsetBulan(p) {
   const spd = soldPerDayEst(p);
   if (price > 0 && spd > 0) return Math.round(price * spd * 30);
   return 0;
+}
+
+/** Card omset is terukur only for latest/blend (docs/listing-weekly.md). Aggregates stay perkiraan. */
+function omsetHonesty(p, opts) {
+  if (opts && opts.aggregate) {
+    return {
+      label: 'perkiraan',
+      tip: 'Angka agregat pasar (bukan satu listing). Perkiraan dari model kecepatan LarisID, bukan angka resmi Shopee.',
+    };
+  }
+  const method = String(p && p.nowcast_method || '').toLowerCase();
+  const terukur = method === 'latest' || method === 'blend';
+  return {
+    label: terukur ? 'terukur' : 'perkiraan',
+    tip: terukur
+      ? 'Laju penjualan baru diukur dari scrape terbaru, lalu dikalikan 30 hari. Bukan jaminan penjualanmu.'
+      : 'Perkiraan dari model kecepatan LarisID — bukan angka resmi Shopee. Scrapes kami 12–17 hari sekali.',
+  };
+}
+
+function omsetChipHtml(p, opts) {
+  const h = omsetHonesty(p, opts);
+  return `<span class="omset-chip omset-chip--${h.label}" title="${esc(h.tip)}">${h.label}</span>`;
 }
 
 function productSnapshot(p) {
@@ -8697,6 +8740,7 @@ function productCardHtml(p, i, omsetRange, score) {
         <div class="prod-stat">
           <span class="prod-stat-lbl">Omset/bulan</span>
           <span class="prod-stat-val">${omsetVal}</span>
+          ${omsetChipHtml(p, { aggregate: lo > 0 && hi > 0 })}
           <span class="prod-card-wow-wrap" data-prod-wow="${esc(key)}">${prodCardWowHtml(p)}</span>
         </div>
         ${glyph}
@@ -9903,13 +9947,21 @@ async function quickTrackKeyword(product) {
     // explicit earlier choice (including deliberately choosing none) is never
     // overridden. The toast says plainly what was switched on.
     let emailOn = false;
+    let wa = '';
     try {
       const cur = await _supabase.rpc('get_my_tracking');
       const ch = cur?.data?.notify_channels;
       if (Array.isArray(ch) && ch.length === 0) {
-        const set = await _supabase.rpc('set_tracker_notify_prefs', { p_channels: ['email'], p_wa_number: null });
+        wa = (currentUser?.user_metadata?.public_whatsapp
+          || currentUser?.user_metadata?.whatsapp
+          || '').toString().trim();
+        const channels = wa ? ['whatsapp'] : ['email'];
+        const set = await _supabase.rpc('set_tracker_notify_prefs', {
+          p_channels: channels,
+          p_wa_number: wa || null,
+        });
         emailOn = !set?.error && set?.data?.ok !== false;
-        if (emailOn) void logUserEvent('quick_track_notify_on', { ui: 'gpt', channel: 'email' });
+        if (emailOn) void logUserEvent('quick_track_notify_on', { ui: 'gpt', channel: channels[0] });
       }
     } catch (_) {}
 
@@ -9918,7 +9970,9 @@ async function quickTrackKeyword(product) {
     pantauNudgeClear();
     ddtpRetire();
     showToast(emailOn
-      ? `Siap — kami email kamu kalau "${kw}" berubah`
+      ? (wa
+        ? `Siap — kami kabari di WhatsApp kalau "${kw}" berubah`
+        : `Siap — kami email kamu kalau "${kw}" berubah`)
       : `Siap — "${kw}" masuk pantauan harian kamu`);
   } catch (_) {
     showToast('Gagal menyimpan pantauan. Coba lagi.');
@@ -15271,7 +15325,7 @@ function _agentPasarViewHtml(view) {
       : '';
     return '<tr>'
       + `<td class="agent-c-name"><button type="button" class="agent-rowbtn" data-ptype="-1" data-ptype-kw="${esc(t.keyword)}">${esc(t.keyword)}</button>${badge}</td>`
-      + `<td>${_agentRp(t.omset_top15)}</td>`
+      + `<td>${_agentRp(t.omset_top15)}${omsetChipHtml(t, { aggregate: true })}</td>`
       + `<td>${_agentTrendHtml(t.trend_delta_30d)}</td>`
       + `<td>${skor == null ? '—' : Math.round(skor)}</td>`
       + `<td>${_agentNum(t.n_sellers)}</td>`
@@ -15355,7 +15409,7 @@ function _agentDetailViewHtml(view) {
   registerTypes([t]);
   const w = weeklyStats(t);
   const stats = [
-    _agentStatHtml('Omset/bln', _agentRp(t.omset_top15)),
+    _agentStatHtml('Omset/bln', _agentRp(t.omset_top15) + omsetChipHtml(t, { aggregate: true })),
     _agentStatHtml('Harga median', _agentRp(t.price_median)),
     _agentStatHtml('Seller', _agentNum(t.n_sellers)),
     _agentStatHtml('Tren 30h', _agentTrendHtml(t.trend_delta_30d)),
@@ -16231,6 +16285,7 @@ function typeCardHtml(t, absIdx, animIdx, siblings, usedImgs, variant) {
         <div class="prod-stat">
           <span class="prod-stat-lbl">Omset/bulan</span>
           <span class="prod-stat-val">${omsetVal}</span>
+          ${omsetChipHtml(t, { aggregate: true })}
           ${wow}
           ${soldLine}
         </div>

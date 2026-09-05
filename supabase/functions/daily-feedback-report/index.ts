@@ -23,7 +23,20 @@ const ACTION_LABEL: Record<string, string> = {
   'note-only':  'Note Only',
 }
 
-serve(async () => {
+function jwtRole(req: Request): string {
+  const token = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '')
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    return payload.role || ''
+  } catch {
+    return ''
+  }
+}
+
+serve(async (req) => {
+  if (jwtRole(req) !== 'service_role') {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 })
+  }
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,

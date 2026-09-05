@@ -76,19 +76,21 @@ serve(async (req) => {
   const userIds = Object.keys(byUser)
   if (!userIds.length) return new Response(JSON.stringify({ sent: 0, reason: 'no tracked products' }))
 
-  // 2. one listings query for all tracked items, last 8 days
+  // 2. last two listing_weekly rows per tracked item (never raw total_sold deltas —
+  // scrapes land 12–17 days apart; terlaris-minggu.md / listing-weekly.md forbid
+  // presenting a two-snapshot delta as "minggu ini").
   const allIds = [...new Set((tracked || []).map(t => t.item_id).filter(Boolean))].slice(0, 200)
-  const since = new Date(Date.now() - 8 * 864e5).toISOString()
-  const { data: rows } = await db
-    .from('listings')
-    .select('item_id,shop_id,product_name,price,total_sold,scraped_at')
+  const { data: weekRows } = await db
+    .from('listing_weekly')
+    .select('item_id,shop_id,week_start,units_wk,omset_wk,price,source')
     .in('item_id', allIds)
-    .gte('scraped_at', since)
-    .order('scraped_at', { ascending: true })
+    .order('week_start', { ascending: false })
+    .limit(800)
   const byItem: Record<string, any[]> = {}
-  for (const r of rows || []) {
+  for (const r of weekRows || []) {
     const k = `${r.item_id}_${r.shop_id}`
-    ;(byItem[k] = byItem[k] || []).push(r)
+    const arr = (byItem[k] = byItem[k] || [])
+    if (arr.length < 2) arr.push(r)
   }
 
   // 3. this week's risers (shared across all emails)
@@ -101,7 +103,7 @@ serve(async (req) => {
   const riserHtml = (risers && risers.length)
     ? `<h3 style="margin:22px 0 8px;font-size:15px;">Lagi naik daun minggu ini</h3>` + risers.map(r =>
         `<div style="padding:7px 0;border-bottom:1px solid #eee;font-size:13px;">${r.product_name || r.keyword}
-         <span style="color:#6B7280;">— Rp ${fmtShort(r.price)} · ~${fmtShort(r.sold_per_day)}/hari</span></div>`).join('')
+         <span style="color:#6B7280;">— Rp ${fmtShort(r.price)} · ~${fmtShort(r.sold_per_day)}/hari (perkiraan)</span></div>`).join('')
     : ''
 
   // 4. compose + send per user
@@ -116,28 +118,34 @@ serve(async (req) => {
 
       const items = byUser[uid].map(t => {
         const pts = byItem[`${t.item_id}_${t.shop_id}`] || []
-        if (pts.length < 2) return null
-        const first = pts[0], last = pts[pts.length - 1]
-        const soldDelta = Math.max(0, (last.total_sold || 0) - (first.total_sold || 0))
-        const priceDelta = (last.price || 0) - (first.price || 0)
-        return { name: t.product_name || t.keyword || 'Produk', soldDelta, priceDelta, price: last.price || 0 }
+        const cur = pts[0]
+        if (!cur) return null
+        const prev = pts[1]
+        const units = Number(cur.units_wk) || 0
+        const label = String(cur.source || '') === 'measured' ? 'terukur' : 'perkiraan'
+        const priceDelta = prev ? (Number(cur.price) || 0) - (Number(prev.price) || 0) : 0
+        return {
+          name: t.product_name || t.keyword || 'Produk',
+          units,
+          label,
+          weekStart: cur.week_start,
+          priceDelta,
+        }
       }).filter(Boolean) as any[]
 
       if (!items.length) continue // nothing to report — do not send empty email
-      items.sort((a, b) => b.soldDelta - a.soldDelta)
+      items.sort((a, b) => b.units - a.units)
 
       const rowsHtml = items.slice(0, 8).map(it => {
-        const bits = []
-        if (it.soldDelta > 0) bits.push(`<strong style="color:#1A7A46;">terjual +${fmtShort(it.soldDelta)}</strong>`)
+        const bits = [`~${fmtShort(it.units)} unit/minggu <span style="color:#6B7280;">(${it.label})</span>`]
         if (Math.abs(it.priceDelta) >= 500) bits.push(`harga ${it.priceDelta > 0 ? 'naik' : 'turun'} Rp ${fmtShort(Math.abs(it.priceDelta))}`)
-        if (!bits.length) bits.push('<span style="color:#6B7280;">stabil minggu ini</span>')
         return `<div style="padding:9px 0;border-bottom:1px solid #eee;font-size:13.5px;">${it.name}<br>${bits.join(' · ')}</div>`
       }).join('')
 
       const html = `
         <div style="font-family:system-ui,-apple-system,sans-serif;max-width:520px;margin:0 auto;color:#1A1A1A;">
           <h2 style="font-size:17px;margin:18px 0 4px;">Minggu ini di produk yang kamu lacak</h2>
-          <p style="font-size:13px;color:#6B7280;margin:0 0 14px;">Ringkasan 7 hari terakhir dari data listing Shopee.</p>
+          <p style="font-size:13px;color:#6B7280;margin:0 0 14px;">Angka unit/minggu dari listing_weekly (disetarakan 7 hari). Terukur = diukur dari scrape; selain itu perkiraan. Bukan selisih dua snapshot mentah.</p>
           ${rowsHtml}
           ${riserHtml}
           <p style="margin:22px 0;"><a href="${SITE}" style="background:#B5202A;color:#fff;text-decoration:none;font-weight:700;font-size:13.5px;padding:11px 20px;border-radius:8px;display:inline-block;">Buka LarisID</a></p>

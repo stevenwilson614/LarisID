@@ -755,7 +755,9 @@
       root.innerHTML = '<p class="cohort-muted">Belum ada sesi di kalender.</p>';
       return;
     }
-    root.innerHTML = sessions.map(s => {
+    const api = 'https://api.larisid.com/functions/v1/cohort-calendar-ics';
+    const cal = `<p class="cohort-muted" style="margin-bottom:10px;"><a href="webcal://${api.replace(/^https?:\/\//, '')}?cohort=${encodeURIComponent(cid)}">Tambah ke Google Calendar</a></p>`;
+    root.innerHTML = cal + sessions.map(s => {
       const meet = s.meet_url ? `<a href="${esc(s.meet_url)}" target="_blank" rel="noopener">Buka Zoom</a>` : '';
       const roll = asMentor
         ? `<button type="button" class="cohort-btn secondary" data-sid="${esc(s.id)}" data-act="roll">Hadir</button>`

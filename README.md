@@ -36,7 +36,7 @@ It defines **what we are building, why, how, who is involved, and what we will n
 
 LarisID is a **static site** — *not* an Astro or Next build, despite the `LarisID-astro` directory name (a vestige of an abandoned Astro migration). There is no `package.json`, bundler, or framework runtime: pages are plain HTML and the app is vanilla JS.
 
-- **App + landing:** `index.html` + `js/laris-app.js` (Supabase auth/data, dashboard). `js/lp-scroll-story.js` drives the GSAP scroll animation; `js/perf-loader.js` lazy-loads Supabase/Chart.js on demand.
+- **App + landing:** `index.html` + `js/gpt-app.js` (chat-first SPA). `js/laris-app.js` is a retired dashboard and is not loaded. `js/perf-loader.js` lazy-loads Supabase/Chart.js and the tracker.
 - **Generated content pages:** `/riset/`, `/perbandingan/`, `/panduan/` are produced by `scripts/build-seo-pages.mjs`, `build-comparisons.mjs`, and `build-guides.mjs` from the data in `scripts/seo-*.json`. **Edit the generators, not the generated HTML.**
 - **Deploy:** GitHub Pages is **retired**. Ship with `bash scripts/deploy-static.sh` (Contabo serves `larisid.com`; Cloudflare Pages mirrors at `larisid.pages.dev`). Keep `scripts/assemble-site.sh` in sync when adding top-level static dirs. CI workflow: `.github/workflows/deploy-pages.yml` (needs Cloudflare + Contabo secrets once GitHub Actions is available again).
 - **Images:** keep web assets as **WebP** (convert with Pillow / `cwebp`). Only files referenced by `index.html`, the generators, or CSS belong in `images/` — everything else is dead weight that ships on every deploy.

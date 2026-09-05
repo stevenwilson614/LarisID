@@ -25,7 +25,31 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const FROM_EMAIL = Deno.env.get('RESEND_FROM_EMAIL') || 'LarisID <steven@larisid.com>'
 const SITE = 'https://larisid.com'
+const PUBLIC_API = Deno.env.get('PUBLIC_API_URL') || 'https://api.larisid.com'
 const WINDOW_DAYS = 7
+
+function base64urlEncode(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf)
+  let binary = ''
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+async function hmacSign(data: string, secret: string): Promise<ArrayBuffer> {
+  const enc = new TextEncoder()
+  const key = await crypto.subtle.importKey(
+    'raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+  )
+  return await crypto.subtle.sign('HMAC', key, enc.encode(data))
+}
+
+async function unsubToken(email: string): Promise<string> {
+  const secret = Deno.env.get('WINBACK_UNSUB_SECRET')
+  if (!secret) throw new Error('WINBACK_UNSUB_SECRET is not set')
+  const emailB64 = base64urlEncode(new TextEncoder().encode(email).buffer)
+  const sigB64 = base64urlEncode(await hmacSign(email, secret))
+  return `${emailB64}.${sigB64}`
+}
 
 // What counts as "a change worth interrupting someone for". Tuned to be quiet:
 // a tracker that pings on noise gets muted, and then it never works again.
@@ -303,7 +327,7 @@ serve(async (req) => {
         let detail = ''
         if (channel === 'email') {
           if (!RESEND_KEY) { errors.push(`${u.user_id}: RESEND_API_KEY missing`); continue }
-          const unsubUrl = `${SITE}/functions/v1/email-unsubscribe?e=${encodeURIComponent(u.email)}`
+          const unsubUrl = `${PUBLIC_API}/functions/v1/email-unsubscribe?t=${encodeURIComponent(await unsubToken(u.email))}`
           const res = await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_KEY}` },

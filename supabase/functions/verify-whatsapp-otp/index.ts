@@ -50,7 +50,7 @@ serve(async (req) => {
     // Fetch the most recent valid, unused, unexpired OTP row for this phone
     const { data: rows, error: fetchErr } = await supabase
       .from('whatsapp_otps')
-      .select('id, otp_hash, salt, expires_at')
+      .select('id, otp_hash, salt, expires_at, attempts')
       .eq('phone', phone)
       .eq('used', false)
       .gt('expires_at', new Date().toISOString())
@@ -67,9 +67,18 @@ serve(async (req) => {
     }
 
     const row = rows[0]
+    if ((Number(row.attempts) || 0) >= 5) {
+      await supabase.from('whatsapp_otps').update({ used: true }).eq('id', row.id)
+      return new Response(
+        JSON.stringify({ error: 'Terlalu banyak percobaan. Minta kode baru.' }),
+        { status: 429, headers: { ...CORS, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const expectedHash = await sha256Hex(otpInput + row.salt)
 
     if (expectedHash !== row.otp_hash) {
+      await supabase.from('whatsapp_otps').update({ attempts: (Number(row.attempts) || 0) + 1 }).eq('id', row.id)
       return new Response(
         JSON.stringify({ error: 'Kode OTP salah. Periksa pesan WhatsApp kamu.' }),
         { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } }

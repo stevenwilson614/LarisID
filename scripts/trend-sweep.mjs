@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /** Sweep trend pipeline for zero/negative/flat weeks across multi-scrape products. */
-const SUPA_URL = 'https://bzmvlraziqevqdyotvgy.supabase.co';
+const SUPA_URL = process.env.LARISID_API_URL || 'https://api.larisid.com';
 const SUPA_KEY = 'sb_publishable_KDSWIJJLckser1e1hk7bbA_yMChRPog';
 const HDR = { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` };
 

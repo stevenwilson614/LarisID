@@ -10,6 +10,7 @@ _Research note. Author: AI research agent. Date: 2026-05-30. No application code
 >   `allowed: true, unlimited: true, ai_limit: null` — it only records usage. `claude-proxy`
 >   enforces no per-day cap either. There is no `MLS_AI_PER_CREDIT`, no `spend_credit` on the
 >   AI path, and no "10 requests/day" in the edge function.
+> - **Vendor:** Ask Laris calls **DeepSeek** (`deepseek-v4-pro`) via `claude-proxy`. The function name is historical.
 > - **The recommendation was reversed.** LarisID is now chat-first: `js/gpt-app.js` is the live
 >   bundle, Ask Laris is a full multi-turn thread, and the AI is a tool-using agent that reads
 >   the database itself. The `index.html` line numbers cited below are long gone.

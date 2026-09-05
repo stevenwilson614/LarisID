@@ -69,6 +69,14 @@ On the box the container is `supabase-edge-functions`. Cron jobs call
 (see `larisid-infra/cron/recreate_cron_jobs.sql`). Do not paste cloud JWTs
 into new cron SQL.
 
+The infra repo now holds the live function set plus `cron/recreate_cron_jobs.sql` for all
+pg_cron jobs. Hobby apps (kitchen/amplop) still share this Postgres — see
+[hobby-apps-inventory.md](./hobby-apps-inventory.md). Do not `git pull` on the VPS until
+those functions are committed there.
+
+Nightly backups: confirm `pg_dump` on the box before dropping `_zz_drop_*` quarantine
+tables. Restore: `gunzip -c dump.sql.gz | docker exec -i supabase-db psql -U postgres`.
+
 `rise-crawl-watchdog` (LARISE shop crawl coverage, 14:00 WIB) is scheduled with:
 
 ```bash
