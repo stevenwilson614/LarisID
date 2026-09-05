@@ -19,6 +19,8 @@ Onboarding is in-page on Beranda (`state.onboarding`: city → category → expe
 | Area | Where | Notes |
 |------|--------|--------|
 | Onboarding | `state.onboarding` in `js/gpt-app.js` | steps `idle` → city/category/experience → `done`; persisted with chat state |
+| WhatsApp on signup | `#auth-wa-panel` | Primary path on `#auth-overlay.auth-is-signup`. Google is secondary. |
+| Google WA capture | `#wa-capture` | Skippable prompt after Google sign-in if `user_profiles.wa_number` is empty. Not onboarding; not shown on session restore. |
 | Beranda finder | `#home-finder` | first-run 4-step, not a popup |
 | Prefs | `#prefs-drawer` | city / category / experience after first run |
 | Deep Dive count | `user_journey_stats.deepdive_count` | written from gpt-app |

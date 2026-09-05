@@ -3432,10 +3432,14 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
   background: #fff;
 }
 .auth-google:hover { background: var(--bg-user); }
-/* 19 of the 21 signups in the week of 16-23 Aug 2026 came through Google and
-   only 2 through email, but the email form sat below this as an equal path
-   with the primary-styled button. Google now carries the visual weight. */
-.auth-google { border-width: 2px; border-color: var(--ink); box-shadow: 0 1px 0 rgba(0,0,0,.04); }
+/* WhatsApp is the main signup path. Google stays visible but secondary. */
+.auth-is-signup .auth-google {
+  border-width: 1px; border-color: var(--line); box-shadow: none;
+  font-weight: 550; padding: 10px; margin-bottom: 8px;
+}
+.auth-is-login .auth-google {
+  border-width: 1px; border-color: var(--line);
+}
 .auth-sep {
   display: flex; align-items: center; gap: 10px;
   margin: 2px 0 12px; font-size: .74rem; color: var(--muted); font-weight: 600;
@@ -3459,6 +3463,18 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
   pointer-events: none;
 }
 .auth-wa-input input { padding-left: 40px; }
+.auth-is-signup #auth-wa-panel { margin-bottom: 4px; }
+.auth-is-signup .field label.auth-wa-label {
+  font-size: .85rem; font-weight: 650; color: var(--ink); margin-bottom: 8px;
+}
+.auth-is-signup .auth-wa-input input {
+  padding: 16px 16px 16px 48px; font-size: 1.05rem; border-radius: 14px;
+}
+.auth-is-signup .auth-wa-input .auth-wa-logo { width: 22px; height: 22px; left: 14px; }
+.auth-is-signup #wa-send-btn {
+  margin-top: 10px; padding: 16px 20px; font-size: 1.05rem; font-weight: 700;
+}
+.auth-is-signup #wa-send-btn::before { width: 22px; height: 22px; }
 #wa-send-btn::before {
   content: "";
   width: 18px; height: 18px; flex-shrink: 0;
@@ -3466,6 +3482,9 @@ body.ddtp-open #btn-tracker svg .ic-f { fill: var(--accent); stroke: none; }
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z'/%3E%3C/svg%3E") center / contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z'/%3E%3C/svg%3E") center / contain no-repeat;
 }
+#wa-capture .nudge-title .auth-wa-label { display: flex; align-items: center; gap: 8px; }
+#wa-capture .field { margin: 4px 0 8px; }
+#wa-capture .nudge-actions { margin-top: 4px; }
 .auth-wa-hint { font-size: .78rem; color: var(--muted); margin: 0 0 10px; line-height: 1.4; }
 .auth-wa-resend { text-align: center; margin: 10px 0 0; font-size: .78rem; }
 .auth-wa-resend a { color: var(--accent); font-weight: 600; cursor: pointer; }
@@ -7141,7 +7160,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                         <span class="cmp-logo-slot">
                           <img class="cmp-tool-logo" src="/images/competitors/kalodata.svg" alt="Kalodata" width="91" height="16" style="height:16px" loading="lazy" decoding="async">
                         </span>
-                        <span class="cmp-price"><b>~$45,90–$99,90</b><em>per bulan (tahunan) &middot; Starter/Professional</em></span>
+                        <span class="cmp-price"><b>Rp 325.000</b><em>per bulan</em></span>
                       </th>
                       <th scope="col">
                         <span class="cmp-logo-slot">
@@ -7229,7 +7248,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                       <td class="is-laris cmp-cost"><strong>Rp 0</strong><i>selamanya</i></td>
                       <td class="cmp-cost"><strong>Rp 113.999</strong><i>per bulan</i></td>
                       <td class="cmp-cost"><strong>Mulai Rp 99.000</strong><i>per bulan</i></td>
-                      <td class="cmp-cost"><strong>~$45,90–$99,90</strong><i>per bulan bila tahunan</i></td>
+                      <td class="cmp-cost"><strong>Rp 325.000</strong><i>per bulan</i></td>
                       <td class="cmp-cost"><strong>Rp 537.000</strong><i>per tahun</i></td>
                     </tr>
                     <tr>
@@ -7243,7 +7262,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                   </tbody>
                 </table>
               </div>
-              <p class="cmp-foot">Harga dicek pada <strong>21 Agustus 2026</strong> dan bisa berubah &mdash; verifikasi di sana. Yang kami tampilkan adalah harga termurah tiap alat: DataPinter naik sampai Rp 2.999.000/bulan (Rp 82.500&ndash;Rp 2.499.200/bulan bila dibayar tahunan) dan punya paket gratis dengan data terbatas; Kalodata Starter ~$45,90/bulan dan Professional ~$99,90/bulan bila ditagih tahunan (~$49,99 / ~$109,99 bila bulanan) &mdash; halaman harga Kalodata login-walled, jadi angka ini perkiraan publik; harga Shoptik adalah promo 50% dari Rp 994.000. Logo dan nama masing-masing alat adalah merek dagang pemiliknya, dipakai di sini hanya untuk perbandingan. Kami juga menuliskan yang belum kami punya: LarisID belum bisa ekspor data ke Excel, datanya diperbarui harian (bukan real-time), dan tidak punya analitik kreator TikTok Shop seperti Kalodata. <a href="/perbandingan/">Perbandingan selengkapnya</a>.</p>
+              <p class="cmp-foot">Harga dicek pada <strong>5 September 2026</strong> (Kalodata) dan <strong>21 Agustus 2026</strong> (alat lain) dan bisa berubah &mdash; verifikasi di sana. Yang kami tampilkan adalah harga termurah tiap alat: DataPinter naik sampai Rp 2.999.000/bulan (Rp 82.500&ndash;Rp 2.499.200/bulan bila dibayar tahunan) dan punya paket gratis dengan data terbatas; Kalodata sekitar Rp 325.000/bulan, tanpa paket gratis permanen; harga Shoptik adalah promo 50% dari Rp 994.000. Logo dan nama masing-masing alat adalah merek dagang pemiliknya, dipakai di sini hanya untuk perbandingan. Kami juga menuliskan yang belum kami punya: LarisID belum bisa ekspor data ke Excel, datanya diperbarui harian (bukan real-time), dan tidak punya analitik kreator TikTok Shop seperti Kalodata. <a href="/perbandingan/">Perbandingan selengkapnya</a>.</p>
             </section>
 
             <div class="fh-rules">
@@ -7873,12 +7892,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
     <img class="auth-mascot" id="auth-mascot" data-src="/images/brand/mascot-daftar.webp" width="320" height="217" alt="" decoding="async">
     <h2 id="auth-title">Masuk ke LarisID</h2>
     <p class="sub" id="auth-subtitle">Login untuk membuka Deep Dive &amp; tanya AI.</p>
-    <button type="button" class="auth-google" id="auth-google-btn">
-      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 12 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-      Lanjutkan dengan Google
-    </button>
-    <div class="auth-err" id="auth-error"></div>
-    <div class="auth-sep" id="auth-sep-wa">atau</div>
     <div id="auth-wa-panel">
       <div id="wa-step-phone">
         <div class="field">
@@ -7905,6 +7918,12 @@ body:has(.modal-overlay.open) .msg-steven-fab {
         <p class="auth-wa-resend"><a id="wa-resend-link">Kirim ulang kode</a></p>
       </div>
     </div>
+    <div class="auth-sep" id="auth-sep-wa">atau</div>
+    <button type="button" class="auth-google" id="auth-google-btn">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 12 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Lanjutkan dengan Google
+    </button>
+    <div class="auth-err" id="auth-error"></div>
     <div class="auth-sep" id="auth-sep">atau</div>
     <button type="button" class="auth-email-toggle" id="auth-email-toggle">Pakai email saja</button>
     <div id="auth-email-block">
@@ -7962,6 +7981,30 @@ body:has(.modal-overlay.open) .msg-steven-fab {
     <div class="nudge-actions">
       <button type="button" class="btn-primary" id="profile-nudge-go">Isi sekarang</button>
       <button type="button" class="btn-ghost" id="profile-nudge-later">Nanti dulu</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="wa-capture">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="wa-capture-title">
+    <h3 id="wa-capture-title" class="nudge-title">
+      <span class="auth-wa-label">
+        <svg class="auth-wa-logo" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="#25D366" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        Simpan nomor WhatsApp
+      </span>
+    </h3>
+    <p class="nudge-sub">Biar kami bisa kabari di WhatsApp kalau pasar yang kamu pantau berubah — biasanya tiap ~2 minggu. Nomornya cuma untuk itu, tidak dibagikan.</p>
+    <div class="field">
+      <label class="auth-wa-label" for="wa-capture-input">WhatsApp</label>
+      <div class="auth-wa-input">
+        <svg class="auth-wa-logo" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#25D366" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        <input id="wa-capture-input" type="tel" inputmode="tel" autocomplete="tel" placeholder="0812 3456 7890" maxlength="20">
+      </div>
+    </div>
+    <div class="auth-err" id="wa-capture-error"></div>
+    <div class="nudge-actions">
+      <button type="button" class="btn-primary" id="wa-capture-save">Simpan nomor</button>
+      <button type="button" class="btn-ghost" id="wa-capture-later">Nanti dulu</button>
     </div>
   </div>
 </div>
@@ -8160,6 +8203,6 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      larisLoadScript() when the admin view actually renders. -->
 <script src="/js/peta-peluang.js?v=20260905c" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
-<script src="/js/gpt-app.js?v=20260905h" defer></script>
+<script src="/js/gpt-app.js?v=20260905i" defer></script>
 </body>
 </html>

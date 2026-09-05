@@ -2121,6 +2121,110 @@ async function saveProfileWaNumber(wa) {
   } catch (_) {}
 }
 
+const _LID_WA_CAPTURE_SKIP_KEY = '_lid_wa_capture_skip_v1';
+let _waCaptureThenOnboarding = false;
+
+function _waNormalisePhone(raw) {
+  const s = String(raw || '').replace(/[\s\-().]/g, '');
+  if (/^\+62\d{8,13}$/.test(s)) return s;
+  if (/^628\d{7,12}$/.test(s)) return '+' + s;
+  if (/^08\d{7,12}$/.test(s)) return '+62' + s.slice(1);
+  if (/^8\d{7,12}$/.test(s)) return '+62' + s;
+  return null;
+}
+
+function _isGoogleUser(user) {
+  const u = user || currentUser;
+  if (!u) return false;
+  if (/@wa\.larisid\.com$/i.test(String(u.email || ''))) return false;
+  const provider = String(u.app_metadata?.provider || '').toLowerCase();
+  if (provider === 'google') return true;
+  const ids = u.identities;
+  return Array.isArray(ids) && ids.some((i) => String(i.provider || '').toLowerCase() === 'google');
+}
+
+function _waCaptureSkipped(userId) {
+  try { return !!(JSON.parse(localStorage.getItem(_LID_WA_CAPTURE_SKIP_KEY) || '{}')[userId]); } catch (_) { return false; }
+}
+function _waCaptureMarkSkip(userId) {
+  try {
+    const m = JSON.parse(localStorage.getItem(_LID_WA_CAPTURE_SKIP_KEY) || '{}');
+    m[userId] = 1;
+    localStorage.setItem(_LID_WA_CAPTURE_SKIP_KEY, JSON.stringify(m));
+  } catch (_) {}
+}
+
+function openWaCapture() {
+  const overlay = $('wa-capture');
+  if (!overlay) return;
+  const err = $('wa-capture-error');
+  if (err) { err.textContent = ''; err.style.display = 'none'; }
+  const input = $('wa-capture-input');
+  if (input) input.value = '';
+  overlay.classList.add('open');
+  setTimeout(() => input?.focus(), 80);
+  void logUserEvent('wa_capture_shown', { ui: 'gpt' });
+}
+
+function closeWaCapture() {
+  $('wa-capture')?.classList.remove('open');
+}
+
+function _waCaptureContinue() {
+  if (_waCaptureThenOnboarding) offerOnboardingAfterSignin();
+}
+
+async function maybeOfferWaCapture(opts) {
+  _waCaptureThenOnboarding = !!(opts && opts.thenOnboarding);
+  if (adminIsPreviewing() || isPlatformAdminRaw()) {
+    _waCaptureContinue();
+    return;
+  }
+  if (!_isGoogleUser() || !currentUser) {
+    _waCaptureContinue();
+    return;
+  }
+  if (_waCaptureSkipped(currentUser.id)) {
+    _waCaptureContinue();
+    return;
+  }
+  const wa = await loadProfileWaNumber();
+  if (wa) {
+    _waCaptureContinue();
+    return;
+  }
+  openWaCapture();
+}
+
+async function submitWaCapture() {
+  const err = $('wa-capture-error');
+  const btn = $('wa-capture-save');
+  const phone = _waNormalisePhone($('wa-capture-input')?.value || '');
+  const showErr = (msg) => { if (!err) return; err.textContent = msg; err.style.display = 'block'; };
+  if (!phone) {
+    showErr('Masukkan nomor WhatsApp yang valid. Contoh: 08123456789');
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    await saveProfileWaNumber(phone);
+    void logUserEvent('wa_capture_saved', { ui: 'gpt' });
+    closeWaCapture();
+    _waCaptureContinue();
+  } catch (_) {
+    showErr('Gagal menyimpan. Coba lagi.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Simpan nomor'; }
+  }
+}
+
+function skipWaCapture() {
+  if (currentUser) _waCaptureMarkSkip(currentUser.id);
+  void logUserEvent('wa_capture_later', { ui: 'gpt' });
+  closeWaCapture();
+  _waCaptureContinue();
+}
+
 async function gptJourneyNoteDeepDive() {
   if (!_supabase || !currentUser) return;
   await gptJourneyLoad();
@@ -3025,9 +3129,9 @@ function openAuthModal(mode, source) {
 function closeAuthModal() {
   $('auth-overlay')?.classList.remove('open');
 }
-// Signup collapses email behind a link so Google + WhatsApp read as the way in.
-// Login keeps email open so existing email accounts are not stranded. Reset is
-// email-only (password recovery), so the WhatsApp panel hides.
+// Signup puts WhatsApp first and collapses email behind a link. Google stays
+// visible as a secondary path. Login keeps email open so existing email
+// accounts are not stranded. Reset is email-only, so the WhatsApp panel hides.
 let _authEmailOpen = false;
 function _applyAuthEmailCollapse(signup) {
   const reset = _authMode === 'reset';
@@ -3058,6 +3162,8 @@ function renderAuthModal() {
   const googleBtn = $('auth-google-btn');
   const btn = $('auth-submit-btn');
   const toggle = $('auth-toggle-text');
+  $('auth-overlay')?.classList.toggle('auth-is-signup', signup);
+  $('auth-overlay')?.classList.toggle('auth-is-login', !signup && !reset);
   if (title) title.textContent = reset ? 'Reset Password' : signup ? 'Buat Akun Gratis' : 'Masuk ke LarisID';
   const mascot = $('auth-mascot');
   if (mascot) {
@@ -3075,7 +3181,7 @@ function renderAuthModal() {
     };
     sub.textContent = reset
       ? 'Masukkan email kamu. Kami kirim link untuk mengatur password baru.'
-      : map[_gateSource] || (signup ? 'Gratis. Selamanya. Tidak pernah berbayar.' : 'Login untuk lanjut riset produk.');
+      : map[_gateSource] || (signup ? 'Gratis. Selamanya. Paling gampang daftar pakai WhatsApp.' : 'Login untuk lanjut riset produk.');
   }
   if (nameWrap) nameWrap.style.display = signup ? '' : 'none';
   // Reset only needs the email field — no password, no Google button.
@@ -3584,9 +3690,16 @@ async function _authOnSignIn(session, opts) {
   // resumed finder search; the "Set lokasi" sidebar card is the anytime entry.
   // finderIsComplete() matters as well as step: the questions may have been
   // answered without the CTA ever being pressed.
-  if (!hadPending && !resumedFinder && state.onboarding.step !== 'done' && !finderIsComplete()) {
+  // Google users without a WhatsApp number get #wa-capture first (also
+  // skippable). That is not onboarding and must not run on session restore.
+  const needsOnboarding = !hadPending && !resumedFinder && state.onboarding.step !== 'done' && !finderIsComplete();
+  if (needsOnboarding) {
     state.onboarding.promptedPostSignin = true;
     saveLocalState();
+  }
+  if (!hadPending && !resumedFinder && !(opts && opts.fromRestore)) {
+    void maybeOfferWaCapture({ thenOnboarding: needsOnboarding });
+  } else if (needsOnboarding) {
     offerOnboardingAfterSignin();
   }
 }
@@ -19196,6 +19309,14 @@ function wireUi() {
   });
   $('profile-nudge')?.addEventListener('click', (e) => {
     if (e.target === e.currentTarget) closeProfileNudge();
+  });
+  $('wa-capture-save')?.addEventListener('click', () => void submitWaCapture());
+  $('wa-capture-later')?.addEventListener('click', skipWaCapture);
+  $('wa-capture')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) skipWaCapture();
+  });
+  $('wa-capture-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); void submitWaCapture(); }
   });
 
   document.addEventListener('keydown', (e) => {
