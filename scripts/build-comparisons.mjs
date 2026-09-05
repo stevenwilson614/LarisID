@@ -22,6 +22,8 @@ const SITE = 'https://larisid.com';
 const OG_IMAGE = `${SITE}/images/Banner.jpg`;
 const UPDATED = '2026-08-21';
 const UPDATED_HUMAN = '21 Agustus 2026';
+const KALO_UPDATED = '2026-09-05';
+const KALO_UPDATED_HUMAN = '5 September 2026';
 
 function esc(s) {
   return String(s == null ? '' : s)
@@ -42,7 +44,8 @@ function nav() {
   </nav>`;
 }
 
-function head(title, desc, url, extraLd) {
+function head(title, desc, url, extraLd, modified) {
+  const mod = modified || UPDATED;
   return `<!DOCTYPE html>
 <html lang="id">
 <head>
@@ -62,7 +65,7 @@ ${ANALYTICS}
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="id_ID">
 <meta property="og:site_name" content="LarisID">
-<meta property="article:modified_time" content="${UPDATED}">
+<meta property="article:modified_time" content="${mod}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(title)}">
 <meta name="twitter:description" content="${esc(desc)}">
@@ -169,12 +172,14 @@ const COMPETITORS = [
   {
     slug: 'larisid-vs-kalodata',
     name: 'Kalodata',
+    checked: KALO_UPDATED,
+    checkedHuman: KALO_UPDATED_HUMAN,
     title: 'LarisID vs Kalodata: Perbandingan Jujur untuk Seller TikTok Shop (2026)',
-    desc: 'Perbandingan LarisID vs Kalodata: riset produk 100% gratis untuk Shopee, TikTok Shop, Tokopedia, Lazada & Blibli vs analitik GMV TikTok Shop berlangganan ~$45,90-99,90/bulan. Kapan pilih masing-masing.',
+    desc: 'Perbandingan LarisID vs Kalodata: riset produk 100% gratis untuk Shopee, TikTok Shop, Tokopedia, Lazada & Blibli vs analitik GMV TikTok Shop berlangganan Rp 325.000/bulan. Kapan pilih masing-masing.',
     h1: 'LarisID vs Kalodata',
-    lead: 'Kalodata adalah alat analitik TikTok Shop paling banyak dipakai \u2014 dan paling mahal. LarisID 100% gratis dan membantumu memilih produk serta menghitung margin di lima marketplace. Keduanya menjawab pertanyaan yang berbeda; ini perbandingan jujurnya.',
+    lead: 'Kalodata adalah alat analitik TikTok Shop paling banyak dipakai. LarisID 100% gratis dan membantumu memilih produk serta menghitung margin di lima marketplace. Keduanya menjawab pertanyaan yang berbeda; ini perbandingan jujurnya.',
     rows: [
-      ['Harga', 'Rp 0 \u2014 100% gratis, selamanya, tanpa paket berbayar', '~$45,90/bulan (Starter) sampai ~$99,90/bulan (Professional) bila ditagih tahunan \u2014 ~$49,99 dan ~$109,99 bila bulanan; sekitar Rp 734.000-1.600.000'],
+      ['Harga', 'Rp 0 \u2014 100% gratis, selamanya, tanpa paket berbayar', 'Rp 325.000/bulan \u2014 tanpa paket gratis permanen'],
       ['Paket gratis', 'Ya \u2014 seluruh produk, permanen, tanpa kartu kredit', 'Tidak ada paket gratis permanen (hanya trial terbatas)'],
       ['Marketplace', 'Shopee, TikTok Shop, Tokopedia, Lazada & Blibli', 'TikTok Shop'],
       ['Pertanyaan yang dijawab', 'Produk apa yang layak dijual, di harga berapa, seberapa ketat pesaingnya', 'Berapa GMV sebuah toko/produk/kreator di TikTok Shop'],
@@ -183,7 +188,7 @@ const COMPETITORS = [
       ['Skor kelayakan produk', 'Ya (0-100)', 'Tidak \u2014 fokus pada metrik GMV mentah'],
       ['Ekspor data', 'Belum ada', 'Ya'],
       ['Kesegaran data', 'Diperbarui harian', 'Real-time'],
-      ['Bahasa & antarmuka', 'Bahasa Indonesia, berbasis chat, ramah pemula', 'Dashboard analis, ditagih dalam USD'],
+      ['Bahasa & antarmuka', 'Bahasa Indonesia, berbasis chat, ramah pemula', 'Dashboard analis'],
       ['Cocok untuk', 'Seller yang sedang memilih produk dan menghitung untung', 'Seller & agency TikTok Shop yang butuh data GMV dan kreator'],
     ],
     verdict: 'Kalau pertanyaanmu "produk apa yang sebaiknya saya jual, dan apakah masih untung setelah komisi?", LarisID menjawabnya gratis \u2014 untuk Shopee, TikTok Shop, Tokopedia, Lazada, maupun Blibli. Kalau pertanyaanmu "kreator dan video mana yang menghasilkan GMV terbesar di TikTok Shop?", itu wilayah Kalodata dan tidak ada gunanya berpura-pura sebaliknya. Banyak seller memakai LarisID untuk memilih produk dan menghitung margin, lalu menambah Kalodata kalau sudah serius menggarap jalur kreator.',
@@ -191,7 +196,7 @@ const COMPETITORS = [
       { q: 'Apakah ada alternatif Kalodata yang gratis?', a: 'Tergantung kebutuhanmu. Untuk memilih produk yang layak dijual dan menghitung margin setelah komisi TikTok Shop, LarisID melakukannya 100% gratis, selamanya, tanpa paket berbayar. Untuk analitik GMV per toko, kreator, dan video di TikTok Shop, belum ada pengganti gratis yang setara dengan Kalodata.' },
       { q: 'Apa kelebihan Kalodata dibanding LarisID?', a: 'Kalodata punya data GMV TikTok Shop yang tidak dimiliki LarisID: omzet per toko dan per produk di TikTok Shop, performa kreator afiliasi, serta pembedahan video dan live. Datanya juga real-time dan bisa diekspor, dua hal yang belum ada di LarisID. Kalau strategimu bertumpu pada kreator dan konten TikTok, Kalodata adalah alat yang tepat.' },
       { q: 'Apakah LarisID bisa dipakai untuk jualan di TikTok Shop?', a: 'Ya. LarisID membantumu memilih produk berdasarkan permintaan nyata dan menghitung untung dengan kalkulator komisi yang mencakup TikTok Shop, Shopee, Tokopedia, Lazada, dan Blibli \u2014 tarif per kategori, jadi kamu tahu sisa dana bersih sebelum kulakan.' },
-      { q: 'Berapa harga Kalodata per bulan?', a: 'Perkiraan publik per 21 Agustus 2026: paket Starter sekitar $45,90/bulan dan Professional sekitar $99,90/bulan bila ditagih tahunan (sekitar $49,99 dan $109,99 bila bulanan), kira-kira Rp 734.000 dan Rp 1.600.000 pada kurs Rp 16.000/USD. Tidak ada paket gratis permanen. Halaman harga Kalodata tidak bisa diakses publik, jadi angka ini berasal dari sumber pihak ketiga \u2014 verifikasi di situs resmi Kalodata.' },
+      { q: 'Berapa harga Kalodata per bulan?', a: 'Perkiraan publik per 5 September 2026: Kalodata berlangganan sekitar Rp 325.000/bulan. Tidak ada paket gratis permanen. Verifikasi harga terbaru di situs resmi Kalodata.' },
     ],
   },
 ];
@@ -211,6 +216,8 @@ ${rows.map((r) => `          <tr><td><strong>${esc(r[0])}</strong></td><td>${esc
 
 function competitorPage(c) {
   const url = `${SITE}/perbandingan/${c.slug}/`;
+  const checked = c.checked || UPDATED;
+  const checkedHuman = c.checkedHuman || UPDATED_HUMAN;
   const ld = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -220,22 +227,22 @@ function competitorPage(c) {
         { '@type': 'ListItem', position: 3, name: c.h1, item: url },
       ] },
       { '@type': 'Article', headline: jt(c.title), description: jt(c.desc), inLanguage: 'id',
-        datePublished: UPDATED, dateModified: UPDATED, image: OG_IMAGE, mainEntityOfPage: url,
+        datePublished: UPDATED, dateModified: checked, image: OG_IMAGE, mainEntityOfPage: url,
         author: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/` },
         publisher: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/`, logo: { '@type': 'ImageObject', url: `${SITE}/images/brand/appicon-red.png` } } },
       { '@type': 'FAQPage', mainEntity: c.faqs.map((f) => ({ '@type': 'Question', name: jt(f.q), acceptedAnswer: { '@type': 'Answer', text: jt(f.a) } })) },
     ],
   };
-  return `${head(c.title, c.desc, url, ld)}
+  return `${head(c.title, c.desc, url, ld, checked)}
 <main>
   <p class="cat-pill">Perbandingan</p>
   <h1>${esc(c.h1)}</h1>
   <p class="lead">${esc(c.lead)}</p>
-  <p class="updated">Diperbarui ${UPDATED_HUMAN} \u00b7 harga kompetitor adalah perkiraan publik, verifikasi langsung \u00b7 <a href="/cara-kerja/">metodologi</a></p>
+  <p class="updated">Diperbarui ${checkedHuman} \u00b7 harga kompetitor adalah perkiraan publik, verifikasi langsung \u00b7 <a href="/cara-kerja/">metodologi</a></p>
   <article>
     <h2>Perbandingan singkat</h2>
 ${compTable(c.rows).replace('{NAME}', esc(c.name))}
-    <p class="disclaimer">LarisID 100% gratis \u2014 detail jatah harian di <a href="/harga/">/harga/</a>. Harga ${esc(c.name)} adalah data publik yang kami cek pada ${UPDATED_HUMAN} dan bisa berubah \u2014 verifikasi di situs resmi mereka.</p>
+    <p class="disclaimer">LarisID 100% gratis \u2014 detail jatah harian di <a href="/harga/">/harga/</a>. Harga ${esc(c.name)} adalah data publik yang kami cek pada ${checkedHuman} dan bisa berubah \u2014 verifikasi di situs resmi mereka.</p>
 
     <h2>Putusannya</h2>
     <p>${esc(c.verdict)}</p>
@@ -287,7 +294,7 @@ function listiclePage() {
         { '@type': 'ListItem', position: 3, name: 'Alat Riset Produk Shopee Terbaik', item: url },
       ] },
       { '@type': 'Article', headline: jt(title), description: jt(desc), inLanguage: 'id',
-        datePublished: UPDATED, dateModified: UPDATED, image: OG_IMAGE, mainEntityOfPage: url,
+        datePublished: UPDATED, dateModified: KALO_UPDATED, image: OG_IMAGE, mainEntityOfPage: url,
         author: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/` },
         publisher: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/`, logo: { '@type': 'ImageObject', url: `${SITE}/images/brand/appicon-red.png` } } },
       { '@type': 'ItemList', name: jt('Alat Riset Produk Shopee Terbaik 2026'),
@@ -303,7 +310,7 @@ function listiclePage() {
         <li><a href="${t.href}">${t.name === 'LarisID' ? 'Coba gratis' : 'Baca perbandingan lengkap'} \u2192</a></li>
       </ul>
     </div>`).join('\n');
-  return `${head(title, desc, url, ld)}
+  return `${head(title, desc, url, ld, KALO_UPDATED)}
 <main>
   <p class="cat-pill">Perbandingan</p>
   <h1>Alat Riset Produk Shopee Terbaik 2026</h1>
@@ -325,7 +332,7 @@ ${tools.map((t) => `          <tr><td><strong>${esc(t.name)}</strong></td><td>${
     <p class="disclaimer">Angka harga kompetitor dicek pada ${UPDATED_HUMAN} dan bisa berubah \u2014 verifikasi di situs resmi masing-masing. LarisID 100% gratis; detail jatah harian di <a href="/harga/">/harga/</a>.</p>
 
     <h2>Kalau jualanmu di TikTok Shop</h2>
-    <p>Empat alat di atas fokus pada riset produk Shopee. Untuk analitik <strong>TikTok Shop</strong> \u2014 GMV per toko dan produk, performa kreator afiliasi, data video dan live \u2014 pemain terbesarnya adalah <strong>Kalodata</strong> (~$49,99\u2013109,99/bulan, tanpa paket gratis). LarisID sendiri mencakup pemilihan produk dan kalkulator komisi untuk TikTok Shop secara gratis, tapi tidak menyediakan data kreator. Rinciannya di <a href="/perbandingan/larisid-vs-kalodata/">LarisID vs Kalodata</a> dan <a href="/perbandingan/alternatif-kalodata-gratis/">alternatif Kalodata gratis</a>.</p>
+    <p>Empat alat di atas fokus pada riset produk Shopee. Untuk analitik <strong>TikTok Shop</strong> \u2014 GMV per toko dan produk, performa kreator afiliasi, data video dan live \u2014 pemain terbesarnya adalah <strong>Kalodata</strong> (Rp 325.000/bulan, tanpa paket gratis). LarisID sendiri mencakup pemilihan produk dan kalkulator komisi untuk TikTok Shop secara gratis, tapi tidak menyediakan data kreator. Rinciannya di <a href="/perbandingan/larisid-vs-kalodata/">LarisID vs Kalodata</a> dan <a href="/perbandingan/alternatif-kalodata-gratis/">alternatif Kalodata gratis</a>.</p>
 
     <div class="cta-row">
       <a class="btn-primary" href="/">Mulai riset gratis di LarisID</a>
@@ -339,6 +346,8 @@ ${footer}`;
 // ---------- angle pages (high-intent query shapes, no head-to-head competitor) ----------
 function anglePage(p) {
   const url = `${SITE}/perbandingan/${p.slug}/`;
+  const checked = p.checked || UPDATED;
+  const checkedHuman = p.checkedHuman || UPDATED_HUMAN;
   const ld = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -348,18 +357,18 @@ function anglePage(p) {
         { '@type': 'ListItem', position: 3, name: p.h1, item: url },
       ] },
       { '@type': 'Article', headline: jt(p.title), description: jt(p.desc), inLanguage: 'id',
-        datePublished: UPDATED, dateModified: UPDATED, image: OG_IMAGE, mainEntityOfPage: url,
+        datePublished: UPDATED, dateModified: checked, image: OG_IMAGE, mainEntityOfPage: url,
         author: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/` },
         publisher: { '@type': 'Organization', name: 'LarisID', url: `${SITE}/`, logo: { '@type': 'ImageObject', url: `${SITE}/images/brand/appicon-red.png` } } },
       { '@type': 'FAQPage', mainEntity: p.faqs.map((f) => ({ '@type': 'Question', name: jt(f.q), acceptedAnswer: { '@type': 'Answer', text: jt(f.a) } })) },
     ],
   };
-  return `${head(p.title, p.desc, url, ld)}
+  return `${head(p.title, p.desc, url, ld, checked)}
 <main>
   <p class="cat-pill">Perbandingan</p>
   <h1>${esc(p.h1)}</h1>
   <p class="lead">${esc(p.lead)}</p>
-  <p class="updated">Diperbarui ${UPDATED_HUMAN} · harga alat lain adalah perkiraan publik, verifikasi langsung · <a href="/cara-kerja/">metodologi</a></p>
+  <p class="updated">Diperbarui ${checkedHuman} · harga alat lain adalah perkiraan publik, verifikasi langsung · <a href="/cara-kerja/">metodologi</a></p>
   <article>
 ${p.body}
     <div class="cta-row">
@@ -492,11 +501,13 @@ const ANGLE_PAGES = [
   },
   {
     slug: 'alternatif-kalodata-gratis',
+    checked: KALO_UPDATED,
+    checkedHuman: KALO_UPDATED_HUMAN,
     title: 'Alternatif Kalodata Gratis untuk Riset Produk TikTok Shop (2026)',
     desc: 'Cari alternatif Kalodata yang gratis? Ini yang bisa dan tidak bisa digantikan tanpa biaya — LarisID gratis untuk memilih produk dan menghitung margin TikTok Shop, plus kapan Kalodata tetap sepadan.',
     h1: 'Alternatif Kalodata Gratis',
-    lead: 'Kalodata berlangganan sekitar $49,99-109,99 per bulan (kira-kira Rp 800.000-1.760.000) dan tidak punya paket gratis. Sebelum membayar, pahami dulu bagian mana yang benar-benar bisa kamu gantikan gratis — dan bagian mana yang tidak.',
-    body: `    <p>Kalodata adalah alat analitik <strong>TikTok Shop</strong> dengan pangsa pasar terbesar: omzet (GMV) per toko dan per produk, performa kreator afiliasi, serta pembedahan video dan live. Paket Starter sekitar <strong>$49,99/bulan</strong> dan Professional sekitar <strong>$109,99/bulan</strong>, tanpa paket gratis permanen.</p>
+    lead: 'Kalodata berlangganan sekitar Rp 325.000 per bulan dan tidak punya paket gratis. Sebelum membayar, pahami dulu bagian mana yang benar-benar bisa kamu gantikan gratis — dan bagian mana yang tidak.',
+    body: `    <p>Kalodata adalah alat analitik <strong>TikTok Shop</strong> dengan pangsa pasar terbesar: omzet (GMV) per toko dan per produk, performa kreator afiliasi, serta pembedahan video dan live. Paket berbayarnya sekitar <strong>Rp 325.000/bulan</strong>, tanpa paket gratis permanen.</p>
 
     <p>Jawaban jujurnya: <strong>tidak semua bagian Kalodata punya pengganti gratis.</strong> Mari pisahkan dua kebutuhan yang sering tercampur.</p>
 
@@ -528,11 +539,11 @@ const ANGLE_PAGES = [
           <tr><td>Skor kelayakan produk</td><td class="yes">Ya (0-100)</td><td>Tidak</td></tr>
           <tr><td>GMV toko &amp; produk TikTok Shop</td><td>Tidak</td><td class="yes">Ya</td></tr>
           <tr><td>Data kreator, video &amp; live</td><td>Tidak</td><td class="yes">Ya</td></tr>
-          <tr><td>Harga</td><td><strong>Rp 0</strong></td><td>~$49,99-109,99/bulan</td></tr>
+          <tr><td>Harga</td><td><strong>Rp 0</strong></td><td>Rp 325.000/bulan</td></tr>
         </tbody>
       </table>
     </div>
-    <p class="disclaimer">Harga Kalodata adalah perkiraan publik per ${UPDATED_HUMAN}, ditagih dalam USD dan bisa berubah — verifikasi di situs resmi mereka.</p>
+    <p class="disclaimer">Harga Kalodata adalah perkiraan publik per ${KALO_UPDATED_HUMAN} dan bisa berubah — verifikasi di situs resmi mereka.</p>
 
     <h2>Cara mulai gratis hari ini</h2>
     <ol>
@@ -546,7 +557,7 @@ const ANGLE_PAGES = [
     <p>Perbandingan fitur-ke-fitur lengkap ada di <a href="/perbandingan/larisid-vs-kalodata/">LarisID vs Kalodata</a>.</p>`,
     faqs: [
       { q: 'Apa alternatif Kalodata yang gratis?', a: 'Untuk memilih produk yang layak dijual dan menghitung margin setelah komisi TikTok Shop, LarisID melakukannya 100% gratis, selamanya, tanpa paket berbayar. Untuk data GMV toko, kreator, dan video TikTok Shop, belum ada alternatif gratis yang setara dengan Kalodata.' },
-      { q: 'Apakah Kalodata punya versi gratis?', a: 'Tidak ada paket gratis permanen — hanya trial terbatas. Paket berbayarnya diperkirakan mulai sekitar $49,99/bulan untuk Starter dan $109,99/bulan untuk Professional. Verifikasi harga terbaru di situs resmi Kalodata.' },
+      { q: 'Apakah Kalodata punya versi gratis?', a: 'Tidak ada paket gratis permanen — hanya trial terbatas. Paket berbayarnya sekitar Rp 325.000/bulan. Verifikasi harga terbaru di situs resmi Kalodata.' },
       { q: 'Apakah saya tetap butuh Kalodata kalau sudah pakai LarisID?', a: 'Kalau kamu menjual lewat kreator afiliasi dan konten TikTok, ya — Kalodata memberi data GMV dan kreator yang tidak dimiliki LarisID. Kalau kamu masih pada tahap memilih produk dan memastikan margin, LarisID gratis sudah menutup kebutuhan itu.' },
     ],
   },

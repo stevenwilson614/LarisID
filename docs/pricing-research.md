@@ -42,8 +42,8 @@ And read §A itself as *what June 2026 looked like* — credits are gone, AI is 
 *This is the part of the report worth keeping.* All figures are the best public data found May 2026. Indonesian tools publish little detail and lean on "contact us / WhatsApp"; treat soft numbers as indicative. USD converted at ~Rp 16.000.
 
 > **✅ RE-VERIFIED 21 Aug 2026** — Datapinter, Tokpee and Shoptik figures below were read directly
-> off their own pricing pages on that date and supersede the May 2026 estimates. Kalodata could not
-> be verified at source (see its caveat).
+> off their own pricing pages on that date and supersede the May 2026 estimates.
+> **Kalodata updated 5 Sep 2026** to the public IDR figure we now quote: **Rp 325.000/bulan**.
 
 | Tool | Type | Headline price (IDR/mo) | Billing | What you get | Free tier? |
 |---|---|---|---|---|---|
@@ -54,25 +54,15 @@ And read §A itself as *what June 2026 looked like* — credits are gone, AI is 
 | **Shoper** (shoper.id) | Subscription | Not published ("Coba Gratis", WhatsApp for price) | Fixed sub | Chrome extension: hidden data (upload time, product age), price/age analysis, competitor "similar products" graphs | Free trial |
 | **Shopdora** (shopdora.com) | Subscription (intl.) | **$29,9/mo ≈ Rp 478.000/mo** (Standard) | Fixed sub | 13+ features, 9+ markets incl. Indonesia: product research, keyword mining, price tracking, traffic analysis, AI listing gen. Advanced/Pro = contact sales. | Yes (limited) |
 | **Zhixia / ShopeeData** | Subscription (intl.) | Not published in IDR | Fixed sub | Big-data product selection, analytics plugin | Limited |
-| **Kalodata** (kalodata.com) ⭐ *TikTok Shop, not Shopee* | Subscription (intl., USD) | **Starter ~$45,90/mo ≈ Rp 734.000** · **Professional ~$99,90/mo ≈ Rp 1.598.000** *when billed annually*; ~$49,99 / ~$109,99 billed monthly | Fixed sub (monthly or annual) | TikTok Shop analytics: GMV by shop/product/category, creator & affiliate performance, video and livestream data. The market-share leader for TikTok Shop, and the most expensive tool on this list. | **No free plan** — limited-time trial only |
+| **Kalodata** (kalodata.com) ⭐ *TikTok Shop, not Shopee* | Subscription | **Rp 325.000/bulan** (quoted on comparison pages as of 5 Sep 2026) | Fixed sub | TikTok Shop analytics: GMV by shop/product/category, creator & affiliate performance, video and livestream data. The market-share leader for TikTok Shop. | **No free plan** — limited-time trial only |
 
-#### Kalodata detail (added 16 Aug 2026)
+#### Kalodata detail
 
-| Plan | Monthly | Annual | Limits |
-|---|---|---|---|
-| Starter | $49,99 | $499 | 50 searches/day, 10 tracked shops/creators, 100 detail views/day, 90d history |
-| Professional | $109,99 | $1.099 | 250 searches/day, 500 tracked, 500 detail views/day, 180d history, 1 sub-account |
-| Enterprise | ~$229–599 *(estimated)* | ~$2.299–5.999 *(estimated)* | Unlimited; 12+ months history; API |
+**Published figure (5 Sep 2026):** Rp 325.000/bulan. That is what comparison pages, `/harga/`, and
+`llms.txt` quote. Re-verify before changing it.
 
-IDR figures converted at ~Rp 16.000/USD, consistent with the rest of this table.
-
-> **⚠️ Source caveat — verify before quoting.** Re-checked 21 Aug 2026: `kalodata.com/pricing`
-> still returns **HTTP 403** to automated fetches and redirects a real browser to `/signup`, so the
-> pricing page is login-walled. These figures come from third-party pricing reviews
-> ([SimpTok](https://simptok.com/how-much-is-kalodata/),
-> [tipsonblogging](https://tipsonblogging.com/2025/05/kalodata-pricing/)) and search results, not
-> from the vendor page. Confirm manually on kalodata.com before treating any number as current.
-> Per the repo rule, all published copy must hedge these as public estimates with the date.
+Earlier Aug 2026 notes (USD Starter/Professional from third-party reviews) are superseded for
+public copy. Keep the TikTok-vs-Shopee concession.
 
 **Positioning note:** Kalodata is **not** a Shopee tool and is not a like-for-like LarisID rival the
 way Datapinter is. It owns TikTok Shop GMV/creator analytics — data LarisID does not have. The

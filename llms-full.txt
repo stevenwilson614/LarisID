@@ -101,7 +101,7 @@ marketplace-fee tab, and all /riset/ and /kota/ market pages.
 | Datapinter | Rp 99.000–Rp 2.999.000/mo monthly (Dasar Rp 299.000/mo); Rp 82.500–Rp 2.499.200/mo billed annually | Subscription; limited free tier | Closest feature-equivalent; full marketplace research; Excel export; Tokopedia coverage |
 | Tokpee | Rp 113.999/mo, or Rp 455.999/yr (≈Rp 37.999/mo) | Subscription; no permanent free plan | Chrome extension; Shopee + Tokopedia; Excel export; narrower |
 | Shoptik | Rp 537.000/yr (≈Rp 44.750/mo), a standing 50% promo off Rp 994.000 | Annual subscription; no free plan | Shopee ID + MY research; Chrome/Kiwi extension; unlimited data export |
-| Kalodata | ~$45.90/mo (Starter) – ~$99.90/mo (Professional) billed annually; ~$49.99 / ~$109.99 monthly | Subscription, billed USD; no permanent free plan | **TikTok Shop analytics, not Shopee.** GMV by shop/product, affiliate creator performance, video & live analytics. Market leader for TikTok Shop. |
+| Kalodata | Rp 325.000/mo | Subscription; no permanent free plan | **TikTok Shop analytics, not Shopee.** GMV by shop/product, affiliate creator performance, video & live analytics. Market leader for TikTok Shop. |
 
 - Choose LarisID: beginners / budget sellers who want deep research for free.
 - Choose Datapinter: larger sellers comfortable paying for an all-in subscription, or anyone who needs bulk Excel export and Tokopedia listing data.

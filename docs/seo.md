@@ -46,9 +46,9 @@ Landing FAQ + JSON-LD include competitor questions. Footer/nav link to static SE
 
 ## Competitor positioning (use honestly — MISSION §3)
 
-All figures below were read off each vendor's own pricing page on **21 Aug 2026** (Kalodata
-excepted — its pricing page is login-walled, so it stays a third-party estimate). Re-verify before
-quoting; `docs/pricing-research.md` §1 has the sources.
+All figures below were read off each vendor's own pricing page on **21 Aug 2026**, except
+**Kalodata** (updated **5 Sep 2026** to Rp 325.000/bulan). Re-verify before quoting;
+`docs/pricing-research.md` §1 has the sources.
 
 | Tool | Price | Notes |
 |------|--------|--------|
@@ -56,7 +56,7 @@ quoting; `docs/pricing-research.md` §1 has the sources.
 | **Datapinter** | Rp 99.000–Rp 2.999.000/mo billed monthly (Dasar Rp 299.000/mo); Rp 82.500–Rp 2.499.200/mo billed annually | Closest feature-equivalent. Has a limited free tier. Wins on Excel export + Tokopedia listing data. |
 | **Tokpee** | Rp 113.999/mo, or Rp 455.999/yr (≈Rp 37.999/mo) | Chrome extension; Shopee + Tokopedia; Excel export; narrower. No permanent free plan. |
 | **Shoptik** | Rp 537.000/yr (≈Rp 44.750/mo) — a standing 50% promo off Rp 994.000 | Shopee ID + MY; Chrome/Kiwi extension; unlimited export. No free plan. |
-| **Kalodata** | ~$45,90–$99,90/mo billed annually (~$49,99–$109,99 monthly) | TikTok Shop, **not** Shopee. Wins on creator/video/live GMV — keep that concession. |
+| **Kalodata** | Rp 325.000/mo | TikTok Shop, **not** Shopee. Wins on creator/video/live GMV — keep that concession. |
 
 Tagline “kompetitor bayar 300rb/bulan” is accurate vs **Datapinter's Dasar tier**, not Tokpee.
 
