@@ -98,9 +98,14 @@ serve(async (req) => {
       }),
     })
 
-    if (!fonnteRes.ok) {
-      const body = await fonnteRes.text()
-      console.error('Fonnte error:', fonnteRes.status, body)
+    const fonnteText = await fonnteRes.text()
+    let fonnteJson: { status?: boolean; Status?: boolean; reason?: string } = {}
+    try { fonnteJson = JSON.parse(fonnteText) } catch { /* non-JSON provider body */ }
+    const fonnteStatus = fonnteJson.status ?? fonnteJson.Status
+    // Fonnte returns HTTP 200 + {status:false} when the WhatsApp device is
+    // disconnected. Treating that as success showed the OTP screen with no code.
+    if (!fonnteRes.ok || fonnteStatus !== true) {
+      console.error('Fonnte error:', fonnteRes.status, fonnteText)
       // Do not count failed provider deliveries toward rate limits.
       await supabase
         .from('whatsapp_otps')
@@ -108,8 +113,12 @@ serve(async (req) => {
         .eq('phone', phone)
         .eq('otp_hash', otpHash)
         .eq('used', false)
+      const reason = String(fonnteJson.reason || '').toLowerCase()
+      const msg = reason.includes('disconnect')
+        ? 'WhatsApp lagi gangguan. Pakai Google atau email dulu, atau coba lagi nanti.'
+        : 'Gagal mengirim OTP ke WhatsApp. Periksa nomor kamu.'
       return new Response(
-        JSON.stringify({ error: 'Gagal mengirim OTP ke WhatsApp. Periksa nomor kamu.' }),
+        JSON.stringify({ error: msg }),
         { status: 502, headers: { ...CORS, 'Content-Type': 'application/json' } }
       )
     }
