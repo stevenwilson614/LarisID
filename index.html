@@ -204,7 +204,7 @@
 <link rel="preload" href="/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/fonts/laris-fonts.css">
 <link rel="stylesheet" href="/styles/peta-peluang.css?v=20260905a">
-<link rel="stylesheet" href="/styles/pasar-compare.css?v=20260905a">
+<link rel="stylesheet" href="/styles/pasar-compare.css?v=20260905b">
 <link rel="stylesheet" href="/styles/honesty.css?v=20260905a">
 <link rel="stylesheet" href="/styles/laris-merdeka.css?v=20260816b">
 <link rel="stylesheet" href="/styles/cohort.css?v=20260831d">
@@ -6771,6 +6771,10 @@ body:has(.modal-overlay.open) .msg-steven-fab {
                 </div>
               </div>
             </form>
+              <div id="home-retention" class="home-retention" hidden>
+                <div id="home-first-dd" class="home-ret-card" hidden></div>
+                <div id="home-langkah" class="home-ret-card" hidden></div>
+              </div>
               </div>
             </div>
             <div class="home-prompts" id="home-prompts" aria-label="Contoh pertanyaan">
@@ -7786,11 +7790,9 @@ body:has(.modal-overlay.open) .msg-steven-fab {
   </div>
 </div>
 
-<!-- Deep Dive → Pantauan promo. Fires 5s into a Deep Dive, once per dive, and
-     retires for good once the user tracks anything (js/gpt-app.js, ddtp*).
-     The product card and the arrow are filled in by JS; everything else is
-     static so the popup paints instantly. -->
-<div class="modal-overlay ddtp-overlay" id="ddtrack-promo">
+<!-- Deep Dive → Pantauan promo retired 2026-09-05: end-of-dive #ddr-alert
+     card replaced the mid-dive modal. -->
+<!-- First Deep Dive: founder video. Once per browser, 2s after openDeepDive.
   <svg class="ddtp-arrow" id="ddtp-arrow" aria-hidden="true" focusable="false"></svg>
   <div class="modal ddtp-modal" role="dialog" aria-modal="true" aria-labelledby="ddtp-title">
     <button type="button" class="modal-close" id="ddtp-close" aria-label="Tutup">
@@ -8042,7 +8044,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
 <script src="/js/peta-peluang.js?v=20260905a" defer></script>
-<script src="/js/pasar-compare.js?v=20260905a" defer></script>
+<script src="/js/pasar-compare.js?v=20260905b" defer></script>
 <script src="/js/gpt-app.js?v=20260905e" defer></script>
 </body>
 </html>

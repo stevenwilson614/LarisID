@@ -22,6 +22,7 @@
 
   var MAX_ROWS = 20;
   var VISIBLE_ROWS = 10; // rows past this sit behind "Tampilkan semua"
+  var petaClipUid = 0;
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -61,6 +62,27 @@
     if (n == null) return '—';
     var r = Math.round(n);
     return (signed && r > 0 ? '+' : '') + r + '%';
+  }
+  // Same Shopee thumb suffix as gpt-app imgThumb — 40px rows and ~24px bubbles
+  // do not need the 1024px original.
+  function imgThumb(url) {
+    var u = String(url || '');
+    return /^https:\/\/cf\.shopee\.co\.id\/file\/[\w-]+$/.test(u) ? u + '_tn.webp' : u;
+  }
+  // First photo of the pasar: images[0] (highest-sold listing that survived
+  // AI-reject / relevance filters), then the representative listing.
+  function pasarImage(t) {
+    if (!t) return '';
+    var imgs = t.images;
+    if (typeof imgs === 'string') {
+      try { imgs = JSON.parse(imgs); } catch (_) { imgs = null; }
+    }
+    if (Array.isArray(imgs) && imgs[0]) return imgs[0];
+    return t.rep_image_url || '';
+  }
+  function petaRadius(s) {
+    // Floor high enough that a product photo is still readable as a bubble.
+    return s.baruThin ? 11 : 10 + 12 * clamp((s.nbPct || 0) / 50, 0, 1);
   }
 
   /* ---------------------------------------------------------------- score */
@@ -163,12 +185,17 @@
       '<span class="pc-tren ' + (up ? 'is-up' : 'is-flat') + '" title="Unit minggu ini dibanding total terjual sebelumnya (perkiraan)">' +
         (up ? '↗ ' : '→ ') + fmtPct(s.pct, true) + '</span>';
     var cat = t.category_canonical || t.category || '';
+    var img = pasarImage(t);
+    var thumb = img
+      ? '<img class="pc-thumb" src="' + esc(imgThumb(img)) + '" alt="" loading="lazy" decoding="async" width="40" height="40">'
+      : '<span class="pc-thumb pc-thumb--ph" aria-hidden="true"></span>';
 
     return '<li class="pc-row' + (idx === 0 ? ' is-lead' : '') + (idx >= VISIBLE_ROWS ? ' pc-row--more' : '') + '" data-pc-kw="' + esc(t.keyword) + '">' +
       '<button type="button" class="pc-row-btn" aria-label="Buka pasar ' + esc(t.keyword) + '">' +
         '<span class="pc-rank">' + (idx + 1) + '</span>' +
-        '<span class="pc-name"><span class="pc-kw">' + esc(t.keyword) + '</span>' +
-          (cat ? '<span class="pc-cat">' + esc(cat) + '</span>' : '') + '</span>' +
+        '<span class="pc-name">' + thumb +
+          '<span class="pc-name-text"><span class="pc-kw">' + esc(t.keyword) + '</span>' +
+          (cat ? '<span class="pc-cat">' + esc(cat) + '</span>' : '') + '</span></span>' +
         '<span class="pc-score">' +
           '<span class="pc-score-n">' + s.total + '</span>' +
           '<span class="pc-bar" aria-hidden="true"><i style="width:' + s.total + '%"></i></span>' +
@@ -258,22 +285,62 @@
     }
     // Draw quiet dots first so labelled ones sit on top.
     var ordered = pts.slice().sort(function (a, b) { return (labelled[a.type.keyword] ? 1 : 0) - (labelled[b.type.keyword] ? 1 : 0); });
-    ordered.forEach(function (r) {
+    var clipPrefix = 'pcclip' + (++petaClipUid);
+    html += '<defs>';
+    ordered.forEach(function (r, i) {
       var s = r.score;
-      var rad = s.baruThin ? 7 : 6 + 12 * clamp((s.nbPct || 0) / 50, 0, 1);
+      var rad = petaRadius(s);
+      var cx = X(s.reviews), cy = Y(s.units);
+      html += '<clipPath id="' + clipPrefix + '-' + i + '"><circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="' + rad.toFixed(1) + '"/></clipPath>';
+    });
+    html += '</defs>';
+    ordered.forEach(function (r, i) {
+      var s = r.score;
+      var rad = petaRadius(s);
       var cx = X(s.reviews), cy = Y(s.units);
       var v = verdictOf(s.total).key;
       var isLabelled = !!labelled[r.type.keyword];
       var lp = isLabelled ? labelPos(cx, cy, rad, r.type.keyword) : { x: cx + rad + 4, y: cy + 4, anchor: 'start' };
-      html += '<g class="pc-peta-dot pc-peta-dot--' + v + (s.baruThin ? ' is-thin' : '') + (isLabelled ? '' : ' is-quiet') + '" data-pc-kw="' + esc(r.type.keyword) + '" tabindex="0" role="button">' +
+      var img = pasarImage(r.type);
+      html += '<g class="pc-peta-dot pc-peta-dot--' + v + (s.baruThin ? ' is-thin' : '') + (isLabelled ? '' : ' is-quiet') + (img ? ' has-img' : '') + '" data-pc-kw="' + esc(r.type.keyword) + '"' +
+        (img ? ' data-pc-img="' + esc(imgThumb(img)) + '" data-pc-clip="' + clipPrefix + '-' + i + '"' : '') +
+        ' tabindex="0" role="button">' +
         '<title>' + esc(r.type.keyword) + ' · skor ' + s.total + ' · toko baru laku ' + (s.baruThin ? 'data tipis' : fmtPct(s.nbPct)) + '</title>' +
-        '<circle cx="' + cx + '" cy="' + cy + '" r="' + rad.toFixed(1) + '"/>' +
+        '<circle class="pc-peta-fill" cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="' + rad.toFixed(1) + '"/>' +
+        '<circle class="pc-peta-ring" cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="' + rad.toFixed(1) + '"/>' +
         '<text x="' + lp.x.toFixed(1) + '" y="' + lp.y.toFixed(1) + '" text-anchor="' + lp.anchor + '">' + esc(r.type.keyword) + '</text>' +
       '</g>';
     });
     html += '</svg>';
-    html += '<p class="pc-peta-legend">Ukuran bulatan = persen toko baru yang laku. Bulatan bergaris = data toko baru tipis. Skala log.</p>';
+    html += '<p class="pc-peta-legend">Foto = listing terlaris di pasar itu. Ukuran bulatan = persen toko baru yang laku. Bulatan bergaris = data toko baru tipis. Skala log.</p>';
     return html;
+  }
+
+  // HTML's innerHTML parser turns SVG <image> into HTML <img>, which does not
+  // paint inside <svg>. Attach real SVG images after the markup is in the DOM.
+  function hydratePetaImages(host) {
+    var svg = host && host.querySelector('.pc-peta-svg');
+    if (!svg) return;
+    svg.querySelectorAll('.pc-peta-dot[data-pc-img]').forEach(function (g) {
+      var url = g.getAttribute('data-pc-img');
+      var fill = g.querySelector('.pc-peta-fill');
+      if (!url || !fill) return;
+      var cx = Number(fill.getAttribute('cx'));
+      var cy = Number(fill.getAttribute('cy'));
+      var rad = Number(fill.getAttribute('r'));
+      if (!isFinite(cx) || !isFinite(cy) || !isFinite(rad)) return;
+      var img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+      img.setAttribute('href', url);
+      img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', url);
+      img.setAttribute('x', (cx - rad).toFixed(1));
+      img.setAttribute('y', (cy - rad).toFixed(1));
+      img.setAttribute('width', (rad * 2).toFixed(1));
+      img.setAttribute('height', (rad * 2).toFixed(1));
+      img.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+      var clip = g.getAttribute('data-pc-clip');
+      if (clip) img.setAttribute('clip-path', 'url(#' + clip + ')');
+      fill.after(img);
+    });
   }
 
   function shellHtml(opts, bodyHtml, petaHtml, n) {
@@ -300,7 +367,7 @@
 
   function skeletonHtml(title) {
     var rows = '';
-    for (var i = 0; i < 5; i++) rows += '<li class="pc-row pc-row--sk"><span class="pc-sk pc-sk--rank"></span><span class="pc-sk pc-sk--name"></span><span class="pc-sk pc-sk--bar"></span><span class="pc-sk pc-sk--cells"></span></li>';
+    for (var i = 0; i < 5; i++) rows += '<li class="pc-row pc-row--sk"><span class="pc-sk pc-sk--rank"></span><span class="pc-sk-name"><span class="pc-sk pc-sk--thumb"></span><span class="pc-sk pc-sk--name"></span></span><span class="pc-sk pc-sk--bar"></span><span class="pc-sk pc-sk--cells"></span></li>';
     return '<div class="pc-head"><div class="pc-titles"><h3 class="pc-title">' + esc(title || 'Mana yang paling mudah dimulai?') + '</h3><p class="pc-sub">Menghitung skor tiap pasar…</p></div></div>' +
       '<ol class="pc-rows">' + rows + '</ol>';
   }
@@ -373,6 +440,7 @@
     var peta = petaSvg(rows);
     host.classList.remove('is-expanded');
     host.innerHTML = shellHtml(opts, body, peta, rows.length);
+    hydratePetaImages(host);
 
     var byKw = {};
     rows.forEach(function (r) { byKw[r.type.keyword] = r.type; });

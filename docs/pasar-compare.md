@@ -41,6 +41,7 @@ read of `mv_new_seller_market` (already `grant select … to anon, authenticated
 
 | Cell | Column | Notes |
 |---|---|---|
+| Foto | `images[0]` → `rep_image_url` | Cover of the pasar (highest-sold listing that survived AI-reject / relevance). Same photo is the Peta bubble. |
 | Laku / minggu | `wk_units` (+ `wk_base` for the growth %) | span-normalised 7-day units from `mv_keyword_weekly`; fallback shows `omset_top15` as “omset/bln top-15” |
 | Tembok ulasan | `median_winner_reviews` | median reviews of listings with `total_sold >= 100` (`mv_niche_breakout`) |
 | Toko baru laku | `mv_new_seller_market` `segment='toko_baru'` → `pct_reached_10`, `n_listings` | share of new-shop (≤180 d) listings that reached 10 units. `n_listings < 5` = “tipis”, neutral score |
@@ -76,7 +77,9 @@ volume with thin moats), Dapur 50–83, “sepatu” 35–79.
 ## Peta tab
 
 SVG, x = tembok ulasan (log), y = laku/minggu (log), radius = toko baru laku %
-(dashed ring when thin), fill = verdict. Upper-left quadrant (below the
+(dashed ring when thin). Each bubble is the pasar’s first listing photo
+(`images[0]`, else `rep_image_url`); verdict colour is the ring. The same photo
+sits on the Daftar row next to the keyword. Upper-left quadrant (below the
 geometric-mean review moat, above the geometric-mean demand) is tinted and
 labelled “Ramai, tembok rendah — cocok pemula”. Top 8 by score are always
 labelled; the rest label on hover/focus. Labels use a greedy right/left/above/
