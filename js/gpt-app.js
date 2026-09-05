@@ -11687,7 +11687,7 @@ function ddLast6Weeks(weekly) {
     .map(w => ({ ...w }));
 }
 
-/** WIB Monday key — aligns shop scrape weeks with Pasar / server buckets. */
+/** WIB Monday key — aligns shop scrape weeks with product / server buckets. */
 function ddWeekStartKey(ts) {
   return listingWeekStartISO(new Date(ts));
 }
@@ -12225,16 +12225,16 @@ function ddHeroNumsHtml(product, peers) {
 function ddHeroChartHtml(hasTrend) {
   if (!hasTrend) {
     return `<div class="ddr-card ddr-hero-chart" data-dd-sec="tren">
-      <h3>Tren Pasar</h3>
-      <p class="dd-sub">Belum cukup riwayat scrape untuk tren mingguan keyword ini — butuh beberapa gelombang panel. Bagian lain tetap dari data asli.</p>
+      <h3>Tren Produk</h3>
+      <p class="dd-sub">Belum cukup riwayat scrape untuk tren omset listing ini — butuh beberapa gelombang panel. Bagian lain tetap dari data asli.</p>
     </div>`;
   }
   return `<div class="ddr-card ddr-hero-chart" data-dd-sec="tren">
     <div class="ddr-trend-head">
-      <h3>Tren Pasar</h3>
+      <h3>Tren Produk</h3>
       <div class="ddr-trend-toggles">
         <div class="ddr-seg" id="ddr-trend-view" role="group" aria-label="Pilih tampilan">
-          <button type="button" class="ddr-seg-btn is-on" data-dd-view="pasar">Pasar</button>
+          <button type="button" class="ddr-seg-btn is-on" data-dd-view="produk">Produk</button>
           <button type="button" class="ddr-seg-btn" data-dd-view="top10">Top 10 Toko</button>
         </div>
       </div>
@@ -13092,19 +13092,19 @@ async function openDeepDive(product, ddOpts = {}) {
   funnelStep(_gptDiveSeen++ === 0 ? 'first_dive' : 'second_dive');
 
   const stats = ddStats(peers);
-  // Server series first; the client path stays as the fallback while this rolls out.
-  const weeklyAll = (await ddServerWeeklySeries(product, 119, { forceKeyword: true }))
-    || ddWeeklySeries(history);
-  const productWeekly = await ddServerWeeklySeries(product, 119);
-  const productSeries = (productWeekly && productWeekly.filter(w => w.units || w.omset).length >= 2)
-    ? ddLast6Weeks(productWeekly) : [];
+  // Listing omset only — keyword/market series used to be the hero chart.
+  // Client path stays as fallback when product_daily_series is thin.
+  const productHistory = (history || []).filter(r =>
+    String(r.item_id) === String(product.item_id)
+    && String(r.shop_id) === String(product.shop_id));
+  const productWeekly = (await ddServerWeeklySeries(product, 119))
+    || ddWeeklySeries(productHistory);
+  const series = ddLast6Weeks(productWeekly);
   // Nothing on this chart comes from listing_weekly/keyword_weekly — that table
   // is a different estimator (nowcast/peer) over a different population, and it
-  // drew a one-week spike wherever it was spliced in. It was pulled off the
-  // this-week point earlier; the next-week forecast now comes off the same
-  // series too, via ddNextWeekPoint.
-  const series = ddLast6Weeks(weeklyAll);
-  const fcWeek = ddNextWeekPoint(weeklyAll);
+  // drew a one-week spike wherever it was spliced in. Next-week forecast comes
+  // off the same product series, via ddNextWeekPoint.
+  const fcWeek = ddNextWeekPoint(productWeekly);
   const scoreInfo = ddScore(product, stats, niche);
   const share = ddShareData(peers);
   const age = ddShopAgeBuckets(peers);
@@ -13134,12 +13134,11 @@ async function openDeepDive(product, ddOpts = {}) {
   // reaches it (DD itself is a separate view, not part of the message list).
   if (chat) upsertDeepDiveChatMessage(chat, product, scoreInfo, stats);
 
-  const hasTrend = series.filter(w => (w.units || w.omset)).length >= 2
-    || (weeklyAll || []).length >= 2;
-  // Trend-chart state: pasar dual-axis series plus top-10 store lines.
+  const hasTrend = series.filter(w => (w.units || w.omset)).length >= 2;
+  // Trend-chart state: this listing's weekly omset plus top-10 store lines.
   // Toggling re-reads this — nothing is refetched.
   const topShops = hasTrend ? await ddTopShopWeeklySeries(share, history) : [];
-  _dd.trend = { series, fcWeek, topShops, view: 'pasar', productSeries };
+  _dd.trend = { series, fcWeek, topShops, view: 'produk' };
   const bandLo = stats.p25, bandHi = stats.p75;
   const segLeft = stats.max > stats.min ? Math.round((bandLo - stats.min) / (stats.max - stats.min) * 100) : 0;
   const segWidth = stats.max > stats.min ? Math.max(4, Math.round((bandHi - bandLo) / (stats.max - stats.min) * 100)) : 100;
@@ -13388,7 +13387,7 @@ function mondayOfWeek(d = new Date()) {
   return mon;
 }
 
-/* ── Trend chart: Pasar (unit + omset overlay) | Top 10 Toko ────────────
+/* ── Trend chart: Produk (listing omset) | Top 10 Toko ────────────
    State lives on `_dd.trend` so a toggle re-draws without refetching. */
 
 const DD_SHOP_COLORS = [
@@ -13536,11 +13535,8 @@ function ddTrendLegendHtml() {
       </button>`).join('')}</div>
       <span class="dd-sub ddr-legend-note">Perkiraan mengisi minggu tanpa scrape.${broken ? ' Skala terputus — toko outlier di pita atas.' : ''}</span>`;
   }
-  const hasProd = (t.productSeries || []).filter(w => w.units || w.omset).length >= 2;
   return `<span class="row"><span class="swatch" style="background:#B5202A"></span>Omset / minggu (Rp)</span>
-    <span class="row"><span class="swatch" style="background:#2563EB"></span>Unit / minggu</span>
-    <span class="row"><span class="swatch" style="background:#16A34A"></span>Perkiraan</span>
-    ${hasProd ? '<span class="row"><span class="swatch" style="background:#0F172A"></span>Produk ini</span>' : ''}`;
+    <span class="row"><span class="swatch" style="background:#16A34A"></span>Perkiraan</span>`;
 }
 
 function ddTrendChartEmptyNote(show, text) {
@@ -13558,10 +13554,10 @@ function ddTrendChartEmptyNote(show, text) {
   } else if (el) el.hidden = true;
 }
 
-// Weekly market trend: last 6 WIB weeks through today + 1 next-week perkiraan.
+// Weekly product omset: last 6 WIB weeks through today + 1 next-week perkiraan.
 // Real series stays SHORTER than the labels — only Perkiraan touches the future
-// Monday. Next-week point is listing_weekly.omset_wk / units_wk (weekly grain,
-// not ×30/7). last-2-weeks avg is fallback only.
+// Monday. Next-week point is the same product_daily_series grain (not ×30/7).
+// last-2-weeks avg is fallback only.
 function ddRenderTrendChart() {
   const t = _dd?.trend;
   if (typeof Chart === 'undefined' || !t) return;
@@ -13571,7 +13567,7 @@ function ddRenderTrendChart() {
     if (!shops.length) {
       ddTrendChartEmptyNote(true, 'Belum cukup riwayat per toko untuk menggambar 10 garis.');
       // Keep a chart instance alive — manual destroy() left the canvas unusable
-      // for the next Pasar redraw ("Canvas is already in use").
+      // for the next Produk redraw ("Canvas is already in use").
       makeChart('ddr-trend-canvas', {
         type: 'line',
         data: { labels: [''], datasets: [{ data: [null], borderWidth: 0, pointRadius: 0 }] },
@@ -13584,8 +13580,8 @@ function ddRenderTrendChart() {
       return;
     }
     ddTrendChartEmptyNote(false);
-    // Share Pasar's x-axis when we have it — shop scrape weeks often land on
-    // a different epoch Monday than keyword_daily_series buckets.
+    // Share the product chart's x-axis when we have it — shop scrape weeks
+    // often land on a different epoch Monday than product_daily_series buckets.
     const pasarSeries = (t.series && t.series.length >= 2 ? t.series : null)
       || (_dd?.series && _dd.series.length >= 2 ? _dd.series : null);
     const tsAll = pasarSeries
@@ -13707,7 +13703,6 @@ function ddRenderTrendChart() {
   if (series.length < 2) return;
   const labels = series.map(w => _ddFmtWk(w.ts));
   labels.push(_ddFmtWk(Date.parse(listingNextWeekStartISO() + 'T00:00:00Z')) + ' ▶');
-  const units = series.map(w => w.units);
   const omsets = series.map(w => w.omset);
   const nW = series.length;
   const last2 = arr => Math.round((arr[arr.length - 1] + (arr[arr.length - 2] ?? arr[arr.length - 1])) / 2);
@@ -13715,11 +13710,8 @@ function ddRenderTrendChart() {
   // last2() is the guard for the client-side fallback series, which has no
   // future weeks.
   const fc = t.fcWeek;
-  const fUnitW = new Array(labels.length).fill(null);
   const fOmsetW = new Array(labels.length).fill(null);
-  fUnitW[nW - 1] = units[nW - 1];
   fOmsetW[nW - 1] = omsets[nW - 1];
-  fUnitW[nW] = fc ? Math.round(Number(fc.units) || 0) : last2(units);
   fOmsetW[nW] = fc ? Math.round(Number(fc.omset) || 0) : last2(omsets);
   makeChart('ddr-trend-canvas', {
     type: 'line',
@@ -13732,46 +13724,15 @@ function ddRenderTrendChart() {
           borderColor: '#B5202A',
           backgroundColor: 'rgba(181,32,42,.06)',
           borderWidth: 2, fill: true, tension: .35, pointRadius: 3,
-          spanGaps: true, yAxisID: 'y',
-        },
-        {
-          label: 'Unit / minggu',
-          data: units,
-          borderColor: '#2563EB',
-          backgroundColor: 'transparent',
-          borderWidth: 2, fill: false, tension: .35, pointRadius: 3,
-          spanGaps: true, yAxisID: 'y2',
+          spanGaps: true,
         },
         {
           label: 'Perkiraan Omset',
           data: fOmsetW,
           borderColor: '#16A34A',
           borderDash: [5, 5], borderWidth: 2, tension: .35, pointRadius: 3,
-          spanGaps: true, yAxisID: 'y',
+          spanGaps: true,
         },
-        {
-          label: 'Perkiraan Unit',
-          data: fUnitW,
-          borderColor: '#16A34A',
-          borderDash: [5, 5], borderWidth: 2, tension: .35, pointRadius: 3,
-          spanGaps: true, yAxisID: 'y2',
-        },
-        ...((() => {
-          const prodByTs = new Map((t.productSeries || []).map(w => [w.ts, w]));
-          const prodOmset = series.map(w => prodByTs.has(w.ts) ? (prodByTs.get(w.ts).omset || 0) : null);
-          if (prodOmset.filter(v => v != null).length < 2) return [];
-          return [{
-            label: 'Produk ini (omset / minggu)',
-            data: prodOmset,
-            borderColor: '#0F172A',
-            borderDash: [4, 4],
-            borderWidth: 2,
-            tension: .35,
-            pointRadius: 3,
-            spanGaps: true,
-            yAxisID: 'y',
-          }];
-        })()),
       ],
     },
     options: {
@@ -13785,9 +13746,7 @@ function ddRenderTrendChart() {
             label: c => {
               if (c.parsed.y == null) return '';
               const isFc = (c.dataset.label || '').startsWith('Perkiraan');
-              const prefix = isFc ? 'Perkiraan ' : '';
-              if (c.dataset.yAxisID === 'y') return `${prefix}Omset: ${fmtRpShort(c.parsed.y)}`;
-              return `${prefix}Unit: ${fmtSold(c.parsed.y)}`;
+              return `${isFc ? 'Perkiraan ' : ''}Omset: ${fmtRpShort(c.parsed.y)}`;
             },
           },
         },
@@ -13796,11 +13755,6 @@ function ddRenderTrendChart() {
         y: {
           display: true, position: 'left', min: 0,
           ticks: { callback: _ddRpTick, maxTicksLimit: 6 },
-        },
-        y2: {
-          display: true, position: 'right', min: 0,
-          grid: { drawOnChartArea: false },
-          ticks: { maxTicksLimit: 6 },
         },
       },
     },

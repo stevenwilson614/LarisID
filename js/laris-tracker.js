@@ -2457,8 +2457,8 @@
        'single'  one metric on one Y axis — the "Lihat Detail" screen's chart,
                  line coloured green/red by direction.
        'dual'    omset on the left axis (filled) + unit on the right, with a
-                 dashed green Perkiraan tail — the Deep Dive "Tren Pasar /
-                 Pasar" view, drawn once per rollup row.
+                 dashed green Perkiraan tail — the Deep Dive "Tren Produk"
+                 omset view, drawn once per rollup row.
 
      STATE IS PER CANVAS (`cv._ltkChart`), never a module singleton. The rollup
      screen mounts one of these per tracked row (up to 40), and a shared state

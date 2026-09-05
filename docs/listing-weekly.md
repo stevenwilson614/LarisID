@@ -118,9 +118,10 @@ closed-form decay (`W(t') = W(t)·exp(−Δ/τ)`) revises this week and next wee
   `#tren-main-chart` / `#ap-demand-chart` / `#dd-chart-trend`) plot weekly
   scrape-interval rates. They take the last 6 **non-empty** weeks (skipping
   `prior` peer-fill and empty Mondays) so a long scrape gap does not draw as a
-  flat copied line. The keyword series is labelled **Tren pasar**; a dashed
-  **Produk ini** line comes from `product_daily_series` (same weekly grain)
-  when that RPC returns ≥2 points. `listing_weekly` / `keyword_weekly` is
+  flat copied line. The Deep Dive hero chart is **Tren produk**: this listing's
+  weekly omset from `product_daily_series` (same weekly grain), plus a dashed
+  next-week perkiraan. It is not the keyword/market series. Top 10 Toko stays
+  a toggle on the same card. `listing_weekly` / `keyword_weekly` is
   **next week only** — overlaying it onto this week mixed two estimators and
   caused a spike. Partial this week is scaled `7/days`. Card / row omset stays
   monthly (`×30`).
