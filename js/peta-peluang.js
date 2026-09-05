@@ -1,15 +1,9 @@
 /* Peta Peluang — listing scatter + synced product list.
  *
- * Audit (2026-09-05, live "kursi lipat camping"):
- * Unclear in 5s — map plotted listings while the pane beside it was pasar
- * cards (different set/grain). Dots stacked on the Y=0 edge. Three equal
- * mode chips, on-canvas zone labels, paragraph legend. Momentum colour was
- * noise (mostly grey) and clashed with brand MERAH. hidden=flex leak showed
- * the Jejak scrubber in Peluang.
- * Cut from default — momentum colour, ad rings, ▲/▼, pin markers, on-canvas
- * zone labels, 3 chips, sepi chip, LS_MODE.
- * Keep — log X (laku/minggu), Y (baru/lama), size=omset, terukur/perkiraan,
- * zone assignment, Jejak+Langit behind Lainnya, Sidik Jari, peta_batch.
+ * Default Peluang: top 20 by weekly omset % (peta_batch frames), circular
+ * product photos, X = kenaikan omset/minggu (linear). Y = baru/lama.
+ * Jejak/Langit stay on units encodings behind Lainnya, same 20 listings.
+ * Table under the map is the full filtered list — not the same set as the dots.
  */
 (function (w) {
   'use strict';
@@ -17,11 +11,15 @@
   var LS_COLLAPSE = 'larisid_peta_collapsed';
   var SS_BATCH = 'larisid_peta_batch_missing';
   var MIN_POINTS = 8;
-  var PAD = { t: 22, r: 14, b: 34, l: 14 };
+  var TOP_N = 20;
+  var OMSET_PREV_FLOOR = 50000;
+  var REAL_SRC = { measured: 1, estimated: 1, nowcast: 1 };
+  var PAD = { t: 28, r: 18, b: 36, l: 16 };
   var WIDE_PX = 760;
   var LIST_CAP = 12;
   var DOT = '#B5202A';
   var EMAS = '#C9974B';
+  var PHOTO_CACHE = {};
 
   var ZONE = {
     baru_laku:   { id: 'baru_laku',   label: 'Baru tapi Laku',     cara: 'Masih baru, tapi udah laku. Kalau banyak titik di sini, pemula masih bisa masuk. Contek harga & fotonya.' },
@@ -42,6 +40,98 @@
   function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
   function keyOf(p) { return String(p.item_id) + '|' + String(p.shop_id); }
   function num(v) { var n = Number(v); return Number.isFinite(n) ? n : null; }
+  function weekKey(w) {
+    var s = String(w == null ? '' : w);
+    return s.length >= 10 ? s.slice(0, 10) : s;
+  }
+  function thumbUrl(url) {
+    var u = String(url || '');
+    return /^https:\/\/cf\.shopee\.co\.id\/file\/[\w-]+$/.test(u) ? u + '_tn.webp' : u;
+  }
+  function emptyTrend(pending) {
+    return { wkPct: null, wkPctRaw: null, moPct: null, terukur: false, belum: true, pending: !!pending };
+  }
+  function windowOmset(frames, weekList) {
+    var sum = 0, n = 0, measured = true, real = false;
+    (weekList || []).forEach(function (w) {
+      var fr = frames[weekKey(w)];
+      if (!fr) return;
+      var o = Number(fr.omset_wk);
+      if (!Number.isFinite(o)) return;
+      sum += o;
+      n++;
+      if (REAL_SRC[fr.source]) real = true;
+      if (fr.source !== 'measured') measured = false;
+    });
+    if (!n) return null;
+    return { avg: sum / n, sum: sum, n: n, measured: measured, real: real };
+  }
+  function omsetTrendFrom(frames, weeks) {
+    if (!weeks || weeks.length < 4) return emptyTrend(false);
+    var n = weeks.length;
+    var four = weeks.slice(n - 4);
+    var present4 = 0;
+    var hasReal = false;
+    four.forEach(function (w) {
+      var fr = frames[weekKey(w)];
+      if (!fr) return;
+      present4++;
+      if (REAL_SRC[fr.source]) hasReal = true;
+    });
+    var cur = windowOmset(frames, [weeks[n - 1], weeks[n - 2]]);
+    var prev = windowOmset(frames, [weeks[n - 3], weeks[n - 4]]);
+    if (present4 < 4 || !cur || !prev || prev.avg < OMSET_PREV_FLOOR || !hasReal) {
+      return emptyTrend(false);
+    }
+    var wkPctRaw = (cur.avg - prev.avg) / Math.max(prev.avg, 1) * 100;
+    var moPct = null;
+    if (n >= 8) {
+      var moCur = windowOmset(frames, weeks.slice(n - 4));
+      var moPrev = windowOmset(frames, weeks.slice(n - 8, n - 4));
+      if (moCur && moPrev && moPrev.sum >= OMSET_PREV_FLOOR) {
+        moPct = clamp((moCur.sum - moPrev.sum) / Math.max(moPrev.sum, 1) * 100, -100, 300);
+      }
+    }
+    return {
+      wkPct: clamp(wkPctRaw, -100, 300),
+      wkPctRaw: wkPctRaw,
+      moPct: moPct,
+      terukur: !!(cur.measured && prev.measured),
+      belum: false,
+      pending: false
+    };
+  }
+  function getPhoto(url, onReady) {
+    if (!url) return null;
+    var hit = PHOTO_CACHE[url];
+    if (hit) return hit;
+    var img = new Image();
+    img.decoding = 'async';
+    img.onload = function () { if (onReady) onReady(img); };
+    img.onerror = function () { img._fail = true; };
+    img.src = url;
+    PHOTO_CACHE[url] = img;
+    return img;
+  }
+  function photoReady(img) {
+    return !!(img && !img._fail && img.complete && img.naturalWidth);
+  }
+  function drawPhotoCircle(ctx, img, x, y, r) {
+    var iw = img.naturalWidth || img.width;
+    var ih = img.naturalHeight || img.height;
+    if (!iw || !ih) return false;
+    var side = Math.min(iw, ih);
+    var sx = (iw - side) / 2;
+    var sy = (ih - side) / 2;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(img, sx, sy, side, side, x - r, y - r, r * 2, r * 2);
+    ctx.restore();
+    return true;
+  }
   function reduced() {
     try { return !!(w.matchMedia && w.matchMedia('(prefers-reduced-motion: reduce)').matches); }
     catch (_) { return false; }
@@ -220,7 +310,7 @@
     (batch && batch.positions || []).forEach(function (p) {
       var k = p.item_id + '|' + p.shop_id;
       if (!posMap[k]) posMap[k] = {};
-      posMap[k][p.week_start] = p;
+      posMap[k][weekKey(p.week_start)] = p;
     });
     var points = [];
     (listings || []).forEach(function (listing) {
@@ -249,24 +339,33 @@
       var method = listing.nowcast_method;
       var terukur = method === 'latest' || method === 'blend';
       var k = keyOf(listing);
+      var tr = listing._petaTrend || null;
+      var omsetPct = (tr && !tr.belum && tr.wkPctRaw != null) ? tr.wkPctRaw
+        : (tr && !tr.belum && tr.wkPct != null) ? tr.wkPct : null;
       points.push({
         listing: listing, key: k, xUnits: xUnits, yNew: yNew, isBaru: baru,
         sizeOmset: omset, terukur: terukur && !xEstimated && !omsetEst,
         xEstimated: xEstimated, isAd: listing.is_ad === 1 || listing.is_ad === '1' || listing.is_ad === true,
         momentum: momMap[k] || { momentum_class: 'belum' },
         frames: posMap[k] || {},
+        omsetPct: omsetPct,
+        trend: tr,
+        photo: null,
         score: null
       });
     });
     return points;
   }
 
-  function assignZones(points) {
+  function assignZones(points, usePct) {
     if (!points.length) return { medianX: 0, yCut: 0.5 };
-    var xs = points.map(function (p) { return p.xUnits; });
+    var xs = points.map(function (p) {
+      return usePct && p.omsetPct != null ? p.omsetPct : p.xUnits;
+    });
     var medianX = median(xs);
     points.forEach(function (p) {
-      p.ramai = p.xUnits >= medianX;
+      var x = usePct && p.omsetPct != null ? p.omsetPct : p.xUnits;
+      p.ramai = x >= medianX;
       p.zone = zoneId(p.isBaru, p.ramai);
     });
     return { medianX: medianX, yCut: 0.5 };
@@ -295,23 +394,46 @@
     return yCut;
   }
 
-  function layoutPoints(points, wdt, hgt) {
+  function layoutPoints(points, wdt, hgt, kind) {
+    var usePct = kind === 'pct';
+    var photo = kind === 'pct' || kind === 'photo';
+    var xs = points.map(function (p) {
+      return usePct && p.omsetPct != null ? p.omsetPct : p.xUnits;
+    });
     var p98 = pctile(points.map(function (p) { return p.xUnits; }), 0.98) || 1;
+    var xMin = 0, xMax = p98;
+    if (usePct) {
+      xMin = Math.min(pctile(xs, 0.02), 0, -20);
+      xMax = Math.max(pctile(xs, 0.95), 50);
+      if (xMax <= xMin) { xMin = xMin - 10; xMax = xMax + 10; }
+    }
     var p95om = pctile(points.map(function (p) { return p.sizeOmset; }), 0.95) || 1;
     var phone = isPhone();
     var innerW = Math.max(40, wdt - PAD.l - PAD.r);
     var innerH = Math.max(40, hgt - PAD.t - PAD.b);
     var yCut = rankY(points);
     points.forEach(function (p) {
-      var pinned = p.xUnits > p98;
-      var xv = Math.log10((pinned ? p98 : p.xUnits) + 1) / Math.log10(p98 + 1);
-      p.px = PAD.l + xv * innerW;
+      var xv;
+      if (usePct && p.omsetPct != null) {
+        xv = (p.omsetPct - xMin) / (xMax - xMin);
+        p.pinned = false;
+      } else {
+        var pinned = p.xUnits > p98;
+        xv = Math.log10((pinned ? p98 : p.xUnits) + 1) / Math.log10(p98 + 1);
+        p.pinned = pinned;
+      }
+      p.px = PAD.l + clamp(xv, 0, 1) * innerW;
       p.py = PAD.t + (1 - (p.yRank != null ? p.yRank : p.yNew)) * innerH;
-      p.pinned = pinned;
-      var r = 4 + 12 * Math.sqrt((p.sizeOmset || 0) / p95om);
-      p.r = clamp(r, phone ? 4 : 5, phone ? 14 : 18);
+      var r;
+      if (photo) {
+        r = 16 + 12 * Math.sqrt((p.sizeOmset || 0) / p95om);
+        p.r = clamp(r, phone ? 14 : 16, phone ? 24 : 28);
+      } else {
+        r = 4 + 12 * Math.sqrt((p.sizeOmset || 0) / p95om);
+        p.r = clamp(r, phone ? 4 : 5, phone ? 14 : 18);
+      }
     });
-    return { p98: p98, innerW: innerW, innerH: innerH, yCut: yCut };
+    return { p98: p98, innerW: innerW, innerH: innerH, yCut: yCut, kind: usePct ? 'pct' : 'units', xMin: xMin, xMax: xMax };
   }
 
   function starGlyph(ctx, x, y, r) {
@@ -438,13 +560,13 @@
       +         '<canvas class="peta-canvas"></canvas>'
       +         '<div class="peta-axis-baru">Masih baru ↑</div>'
       +         '<div class="peta-axis-lama">Sudah lama ↓</div>'
-      +         '<div class="peta-axis-laku">Laku per minggu →</div>'
+      +         '<div class="peta-axis-laku">Kenaikan omset/minggu →</div>'
       +         '<div class="peta-thin" hidden data-peta-thin></div>'
       +         '<div class="peta-sheet" hidden></div>'
       +       '</div>'
       +       '<div class="peta-zones" data-peta-zones></div>'
       +       '<p class="peta-zone-cara" data-peta-cara hidden></p>'
-      +       '<p class="peta-legend">Pekat = terukur · Pudar = perkiraan · Besar = omset/bulan</p>'
+      +       '<p class="peta-legend">Foto = produk · Pekat = terukur · Pudar = perkiraan · Besar = omset/bulan</p>'
       +     '</div>'
       +     (showList
         ? ('<div class="peta-list">'
@@ -463,8 +585,8 @@
       +   '<button type="button" class="peta-fs-btn" hidden data-peta-fs>Buka layar penuh</button>'
       +   '<details class="peta-cara"><summary>Cara baca</summary>'
       +     '<ol>'
-      +       '<li>Makin ke kanan, makin laku minggu ini. Pekat = terukur, pudar = perkiraan.</li>'
-      +       '<li>Makin ke atas, makin baru. Daftar di samping (atau di bawah) adalah produk yang sama — ketuk zona untuk saring.</li>'
+      +       '<li>Makin ke kanan, makin besar kenaikan omset mingguan (2 minggu vs 2 minggu sebelumnya, disetarakan ke 7 hari — bukan vs kalender minggu lalu). Pekat = terukur, pudar = perkiraan.</li>'
+      +       '<li>Makin ke atas, makin baru. Foto = produk, besar = omset/bulan. Peta hanya 20 yang paling naik; daftar di bawah tetap semua hasil. Ketuk zona untuk saring.</li>'
       +     '</ol>'
       +   '</details>'
       + '</div>'
@@ -514,6 +636,7 @@
     this._inView = true;
     this._frozenZones = null;
     this._layout = null;
+    this._usePct = false;
     this.renderShell();
     this.rebuild();
     this.fetchBatch();
@@ -704,7 +827,13 @@
     if (leg) {
       if (langit) leg.textContent = 'Terang = laku per minggu · Berkelip = naik · Merah redup = turun · Garis = produk serupa';
       else if (jejak) leg.textContent = 'Jejak 8 minggu · Pekat = terukur · Pudar = perkiraan';
-      else leg.textContent = 'Pekat = terukur · Pudar = perkiraan · Besar = omset/bulan';
+      else leg.textContent = 'Foto = produk · Pekat = terukur · Pudar = perkiraan · Besar = omset/bulan';
+    }
+    var axis = this.el.querySelector('.peta-axis-laku');
+    if (axis) {
+      axis.textContent = (this.mode === 'peluang' && this._usePct)
+        ? 'Kenaikan omset/minggu →'
+        : 'Laku per minggu →';
     }
   };
 
@@ -725,7 +854,43 @@
     return null;
   };
 
+  PetaController.prototype.stampTrends = function () {
+    var weeks = (this.batch && this.batch.weeks) || [];
+    var posMap = {};
+    (this.batch && this.batch.positions || []).forEach(function (p) {
+      var k = String(p.item_id) + '|' + String(p.shop_id);
+      if (!posMap[k]) posMap[k] = {};
+      posMap[k][weekKey(p.week_start)] = p;
+    });
+    var status = this.batchStatus;
+    (this.listings || []).forEach(function (listing) {
+      if (status === 'pending') {
+        listing._petaTrend = emptyTrend(true);
+        return;
+      }
+      if (status !== 'ok' || !weeks.length) {
+        listing._petaTrend = emptyTrend(false);
+        return;
+      }
+      listing._petaTrend = omsetTrendFrom(posMap[keyOf(listing)] || {}, weeks);
+    });
+    if (typeof this.opts.onTrend === 'function' && !this._trendLock) {
+      this._trendLock = true;
+      try { this.opts.onTrend(); } catch (_) {}
+      this._trendLock = false;
+    }
+  };
+
+  PetaController.prototype.preloadPhotos = function () {
+    var self = this;
+    this.points.forEach(function (p) {
+      var url = thumbUrl(p.listing.image_url || '');
+      p.photo = getPhoto(url, function () { self.draw(); });
+    });
+  };
+
   PetaController.prototype.rebuild = function () {
+    this.stampTrends();
     var prepared = petaPrepare(this.listings, this.batch);
     var calc = this.opts.calcScore;
     if (calc) {
@@ -734,15 +899,25 @@
       });
     }
     var usable = prepared.filter(function (p) { return p.xUnits != null && p.xUnits >= 0; });
-    usable.sort(function (a, b) { return b.xUnits - a.xUnits; });
-    this.thin = usable.length > 0 && usable.length < MIN_POINTS;
-    this.points = usable;
-    this._zones = assignZones(usable);
+    var ranked;
+    this._usePct = this.mode === 'peluang' && this.batchStatus === 'ok'
+      && usable.some(function (p) { return p.omsetPct != null; });
+    if (this._usePct) {
+      ranked = usable.filter(function (p) { return p.omsetPct != null; })
+        .sort(function (a, b) { return b.omsetPct - a.omsetPct; })
+        .slice(0, TOP_N);
+    } else {
+      ranked = usable.slice().sort(function (a, b) { return b.sizeOmset - a.sizeOmset; }).slice(0, TOP_N);
+    }
+    this.thin = ranked.length > 0 && ranked.length < MIN_POINTS;
+    this.points = ranked;
+    this._zones = assignZones(ranked, this._usePct);
     if (this.mode === 'jejak' && this.batch && this.batch.weeks) {
       this.frame = (this.batch.weeks.length || 8) - 1;
       var scr = this.el.querySelector('[data-peta-scrub]');
       if (scr) { scr.max = String(this.batch.weeks.length - 1); scr.value = String(this.frame); }
     }
+    this.preloadPhotos();
     this.updateChrome();
     this.renderList();
     this.draw();
@@ -761,7 +936,12 @@
       var ageNote = n
         ? (baruN === 0 ? ' · Semua produk di sini sudah lama' : (baruN === n ? ' · Semua produk di sini masih baru' : ''))
         : '';
-      sub.textContent = (n ? n + ' produk' : 'Belum ada produk') + ' · data '
+      var lead = !n
+        ? 'Belum ada produk'
+        : (this._usePct
+          ? (n + ' produk dengan kenaikan omset mingguan tertinggi')
+          : (n + ' produk'));
+      sub.textContent = lead + ' · data '
         + (lastScrape ? fmtDay(lastScrape) : 'mingguan')
         + ', disetarakan ke 7 hari'
         + (this.mode === 'langit' ? ' · Mode eksplorasi' : '')
@@ -949,7 +1129,7 @@
     var week = this.batch.weeks[this.frame];
     if (!this._frozenZones) this._frozenZones = { medianX: this._zones.medianX };
     return this.points.map(function (p) {
-      var fr = p.frames[week];
+      var fr = p.frames[weekKey(week)];
       if (!fr) return null;
       var listing = p.listing;
       var age = ageDays(listing, week);
@@ -973,7 +1153,8 @@
     var langit = this.mode === 'langit';
     var pts = this.mode === 'jejak' ? this.activePoints() : this.points;
     var medX = (this.mode === 'jejak' && this._frozenZones) ? this._frozenZones.medianX : this._zones.medianX;
-    this._layout = layoutPoints(pts, sz.w, sz.h);
+    var layKind = (this.mode === 'peluang' && this._usePct) ? 'pct' : (this.mode === 'peluang' ? 'photo' : 'units');
+    this._layout = layoutPoints(pts, sz.w, sz.h, layKind);
     this._layout.medX = medX;
     if (this.mode === 'jejak') this.drawTrails(ctx, sz, medX);
     this.drawGrid(ctx, sz, medX);
@@ -997,7 +1178,12 @@
     var lay = this._layout;
     if (!lay) return;
     var p98 = lay.p98 || 1;
-    var xMid = PAD.l + (Math.log10(medX + 1) / Math.log10(p98 + 1)) * lay.innerW;
+    var xMid;
+    if (lay.kind === 'pct' && lay.xMax != null && lay.xMax !== lay.xMin) {
+      xMid = PAD.l + ((medX - lay.xMin) / (lay.xMax - lay.xMin)) * lay.innerW;
+    } else {
+      xMid = PAD.l + (Math.log10(medX + 1) / Math.log10(p98 + 1)) * lay.innerW;
+    }
     var yCut = lay.yCut;
     ctx.save();
     if (this.zoneFilter && ZONE[this.zoneFilter] && yCut != null) {
@@ -1024,18 +1210,27 @@
   };
 
   PetaController.prototype.drawTicks = function (ctx, sz, p98, lay) {
-    var ticks = [1, 10, 100, 1000];
     ctx.save();
     ctx.fillStyle = this.mode === 'langit' ? 'rgba(245,239,224,.45)' : '#6B7280';
     ctx.font = '600 10px "Plus Jakarta Sans", system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ticks.forEach(function (t) {
-      if (t > p98 * 1.15) return;
-      var xv = Math.log10(t + 1) / Math.log10(p98 + 1);
-      var x = PAD.l + xv * lay.innerW;
-      var label = t >= 1000 ? (t / 1000) + 'rb' : String(t);
-      ctx.fillText(label, x, sz.h - 10);
-    });
+    if (lay && lay.kind === 'pct') {
+      var ticks = [-20, 0, 50, 100, 200];
+      ticks.forEach(function (t) {
+        if (t < lay.xMin - 1 || t > lay.xMax + 1) return;
+        var xv = (t - lay.xMin) / (lay.xMax - lay.xMin);
+        var x = PAD.l + xv * lay.innerW;
+        ctx.fillText((t > 0 ? '+' : '') + t + '%', x, sz.h - 10);
+      });
+    } else {
+      [1, 10, 100, 1000].forEach(function (t) {
+        if (t > p98 * 1.15) return;
+        var xv = Math.log10(t + 1) / Math.log10(p98 + 1);
+        var x = PAD.l + xv * lay.innerW;
+        var label = t >= 1000 ? (t / 1000) + 'rb' : String(t);
+        ctx.fillText(label, x, sz.h - 10);
+      });
+    }
     ctx.restore();
   };
 
@@ -1069,19 +1264,35 @@
         ctx.stroke();
       }
     } else if (simple) {
-      ctx.beginPath();
-      ctx.arc(p.px, p.py, p.r, 0, Math.PI * 2);
-      if (p.terukur) {
-        ctx.globalAlpha = alpha * 0.85;
-        ctx.fillStyle = DOT;
-        ctx.fill();
+      var painted = photoReady(p.photo) && drawPhotoCircle(ctx, p.photo, p.px, p.py, p.r);
+      if (!painted) {
+        ctx.beginPath();
+        ctx.arc(p.px, p.py, p.r, 0, Math.PI * 2);
+        if (p.terukur) {
+          ctx.globalAlpha = alpha * 0.85;
+          ctx.fillStyle = DOT;
+          ctx.fill();
+        } else {
+          ctx.globalAlpha = alpha * 0.3;
+          ctx.fillStyle = DOT;
+          ctx.fill();
+          ctx.globalAlpha = alpha;
+          ctx.strokeStyle = DOT;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
       } else {
-        ctx.globalAlpha = alpha * 0.3;
-        ctx.fillStyle = DOT;
-        ctx.fill();
-        ctx.globalAlpha = alpha;
+        if (!p.terukur) {
+          ctx.beginPath();
+          ctx.arc(p.px, p.py, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(245,239,224,.42)';
+          ctx.fill();
+        }
+        ctx.beginPath();
+        ctx.arc(p.px, p.py, p.r, 0, Math.PI * 2);
         ctx.strokeStyle = DOT;
-        ctx.lineWidth = 1;
+        ctx.globalAlpha = alpha * (p.terukur ? 0.9 : 0.45);
+        ctx.lineWidth = p.terukur ? 2 : 1.25;
         ctx.stroke();
       }
     } else {
@@ -1135,7 +1346,7 @@
     this.points.forEach(function (p) {
       var path = [];
       for (var i = from; i <= k; i++) {
-        var fr = p.frames[weeks[i]];
+        var fr = p.frames[weekKey(weeks[i])];
         if (!fr) continue;
         path.push(Object.assign({}, p, {
           xUnits: Number(fr.units_wk) || 0,
@@ -1165,14 +1376,14 @@
     var k = this.frame;
     var k0 = Math.max(0, k - 3);
     var ranked = this.points.map(function (p) {
-      var a = p.frames[weeks[k0]], b = p.frames[weeks[k]];
+      var a = p.frames[weekKey(weeks[k0])], b = p.frames[weekKey(weeks[k])];
       if (!a || !b) return null;
       return { p: p, d: Math.abs((Number(b.units_wk) || 0) - (Number(a.units_wk) || 0)) };
     }).filter(Boolean).sort(function (a, b) { return b.d - a.d; }).slice(0, 8);
     ranked.forEach(function (row) {
       var p = row.p;
-      var a = Object.assign({}, p, { xUnits: Number(p.frames[weeks[k0]].units_wk) || 0, yNew: p.yNew });
-      var b = Object.assign({}, p, { xUnits: Number(p.frames[weeks[k]].units_wk) || 0, yNew: p.yNew });
+      var a = Object.assign({}, p, { xUnits: Number(p.frames[weekKey(weeks[k0])].units_wk) || 0, yNew: p.yNew });
+      var b = Object.assign({}, p, { xUnits: Number(p.frames[weekKey(weeks[k])].units_wk) || 0, yNew: p.yNew });
       layoutPoints([a, b], sz.w, sz.h);
       ctx.save();
       ctx.strokeStyle = MOM_CLR[(p.momentum && p.momentum.momentum_class) || 'belum'];
@@ -1274,7 +1485,11 @@
       + '<div class="peta-sheet-rows">'
       + (z ? esc(z.label) + '<br>' : '')
       + 'Harga ' + fmtRp(L.price || 0) + '<br>'
-      + '~' + units.toLocaleString('id-ID') + ' terjual/minggu (' + tag + ')<br>'
+      + (function () {
+          var shown = (p.trend && p.trend.wkPct != null) ? p.trend.wkPct : p.omsetPct;
+          if (shown == null) return '~' + units.toLocaleString('id-ID') + ' terjual/minggu (' + tag + ')<br>';
+          return 'kenaikan omset/minggu ' + (shown > 0 ? '+' : '') + Math.round(shown) + '% (' + tag + ')<br>';
+        })()
       + 'omset/bulan ' + fmtRp(p.sizeOmset) + '<br>'
       + 'umur ' + umur + ' · ' + (L.reviews || 0) + ' ulasan<br>'
       + 'iklan: ' + (p.isAd ? 'ya' : 'tidak') + '<br>'
@@ -1314,7 +1529,7 @@
     var rows = [];
     if (prev) {
       this.points.forEach(function (p) {
-        var a = p.frames[prev], b = p.frames[week];
+        var a = p.frames[weekKey(prev)], b = p.frames[weekKey(week)];
         if (!a || !b) return;
         var za = zoneId(isBaruRule(a.reviews, ageDays(p.listing, prev)), a.units_wk >= this._zones.medianX);
         var zb = zoneId(isBaruRule(b.reviews, ageDays(p.listing, week)), b.units_wk >= this._zones.medianX);
@@ -1397,13 +1612,12 @@
     var sb = this.opts.supabase;
     if (!sb || !this.listings.length) {
       this.batchStatus = 'missing';
-      this.renderList();
+      this.rebuild();
       return;
     }
     if (sessionStorage.getItem(SS_BATCH) === '1') {
       this.batchStatus = 'missing';
-      this.syncModeChrome();
-      this.renderList();
+      this.rebuild();
       return;
     }
     this.batchStatus = 'pending';
@@ -1416,8 +1630,7 @@
       try { sessionStorage.setItem(SS_BATCH, '1'); } catch (_) {}
       self.batch = null;
       self.batchStatus = 'missing';
-      self.syncModeChrome();
-      self.renderList();
+      self.rebuild();
     }
     sb.rpc('peta_batch', { p_keys: keys, p_weeks: 8 }).then(function (res) {
       clearTimeout(t);

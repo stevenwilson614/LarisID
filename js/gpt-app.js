@@ -5578,7 +5578,7 @@ async function runFinderSearch() {
       const peta = block.querySelector('.peta-host');
       if (peta && window.PetaPeluang) {
         PetaPeluang.skeleton(peta, catLabel);
-        mountPeta(peta, catLabel, packedHtml.pool.listings.slice(0, 200), listingPetaExtra(block));
+        mountPeta(peta, catLabel, packedHtml.pool.listings.slice(0, 200), listingPetaExtra(block, packedHtml.pool.listings));
       }
     }
     scrollPanelToTop();
@@ -9098,7 +9098,7 @@ async function replyWithPasarTypes(chat, text, types, opts = {}) {
       PetaPeluang.skeleton(host, opts.label || text);
     }
     const listings = pool.listings.length ? pool.listings : await fetchPetaListings(text, types);
-    mountPeta(host, opts.label || text, listings.slice(0, 200), listingPetaExtra(block || host.parentElement));
+    mountPeta(host, opts.label || text, listings.slice(0, 200), listingPetaExtra(block || host.parentElement, listings));
   })();
   void logUserEvent('discover_view', {
     ui: 'gpt', q: text, count: types.length, level: 'pasar', nearby: opts.nearby ? 1 : 0,
@@ -9500,6 +9500,36 @@ function productCardsHtml(products) {
   return list.map((p, i) => productCardHtml(p, i, range, petaScoreFor(p, list))).join('');
 }
 
+function fmtTrendPct(n) {
+  const v = Math.round(Number(n) || 0);
+  return (v > 0 ? '+' : '') + v + '%';
+}
+
+function listingTrendTitle(t) {
+  if (!t || t.pending) return 'Menghitung kenaikan omset…';
+  if (t.belum || t.wkPct == null) {
+    return 'Belum cukup data mingguan (butuh 4 minggu, omset sebelumnya tidak terlalu kecil).';
+  }
+  return 'Kenaikan omset dari rata-rata 2 minggu terakhir vs 2 minggu sebelumnya, disetarakan ke 7 hari — bukan vs kalender minggu lalu. '
+    + (t.terukur ? 'terukur' : 'perkiraan')
+    + '. /bln = 4 minggu vs 4 minggu sebelumnya.';
+}
+
+function listingTrendInnerHtml(p) {
+  const t = p && p._petaTrend;
+  if (!t || t.pending) return '<span class="lrow-trend-pending">…</span>';
+  if (t.belum || t.wkPct == null) return '—';
+  const wkCls = t.wkPct > 0 ? 'is-up' : t.wkPct < 0 ? 'is-down' : 'is-flat';
+  const mo = t.moPct == null ? '—' : fmtTrendPct(t.moPct);
+  const moCls = t.moPct == null ? '' : (t.moPct > 0 ? 'is-up' : t.moPct < 0 ? 'is-down' : 'is-flat');
+  return `<span class="lrow-trend-wk ${wkCls}">${fmtTrendPct(t.wkPct)} <small>/mgg</small></span>`
+    + `<span class="lrow-trend-mo ${moCls}">${mo} <small>/bln</small></span>`;
+}
+
+function listingTrendCellHtml(p) {
+  return `<td class="lrow-trend" title="${esc(listingTrendTitle(p && p._petaTrend))}">${listingTrendInnerHtml(p)}</td>`;
+}
+
 function listingRowHtml(p, opts = {}) {
   rememberProducts([p]);
   const key = prodKey(p);
@@ -9527,7 +9557,7 @@ function listingRowHtml(p, opts = {}) {
     : '';
   const ph = '<div class="lrow-img lrow-img--ph" hidden></div>';
   const thumb = img
-    ? `<img class="lrow-img" src="${esc(imgThumb(img))}" alt="" loading="lazy" decoding="async" width="56" height="56" onerror="this.onerror=null;this.hidden=true;var n=this.nextElementSibling;if(n)n.hidden=false">${ph}`
+    ? `<img class="lrow-img" src="${esc(imgThumb(img))}" alt="" loading="lazy" decoding="async" width="84" height="84" onerror="this.onerror=null;this.hidden=true;var n=this.nextElementSibling;if(n)n.hidden=false">${ph}`
     : '<div class="lrow-img lrow-img--ph"></div>';
   return `<tr class="${cls}" data-prod="${esc(key)}"${encoded ? ` data-product="${encoded}"` : ''} tabindex="0" role="button" aria-pressed="${picked ? 'true' : 'false'}">
     ${check}
@@ -9540,6 +9570,7 @@ function listingRowHtml(p, opts = {}) {
     </td>
     <td class="lrow-num">${price ? fmtRp(price) : '—'}</td>
     <td class="lrow-num">${omset ? fmtOmset(omset) : '—'}${omsetChipHtml(p)}</td>
+    ${listingTrendCellHtml(p)}
     <td class="lrow-num">${sold ? fmtSold(sold) : '0'}</td>
     <td class="lrow-num lrow-wide">${reviews ? fmtSold(reviews) : '0'}</td>
     <td class="lrow-num lrow-wide" title="${esc(usia.title)}">${esc(usia.text)}</td>
@@ -9562,6 +9593,7 @@ function listingRowsHtml(list, opts = {}) {
         <th>Produk</th>
         ${th('termurah', 'Harga')}
         ${th('omset', 'Omset')}
+        ${th('trending', 'Trending')}
         ${th('terlaris', 'Unit jual')}
         ${th('review', 'Review')}
         ${th('terbaru', 'Usia')}
@@ -9654,9 +9686,21 @@ function bindListingRows(root, extra = {}) {
   });
 }
 
-function listingPetaExtra(tableRoot) {
+function refreshLrowTrendCells(root, listings) {
+  const map = new Map((listings || []).map(p => [prodKey(p), p]));
+  (root || document).querySelectorAll('.lrow').forEach(tr => {
+    const p = map.get(tr.getAttribute('data-prod'));
+    const cell = tr.querySelector('.lrow-trend');
+    if (!cell || !p) return;
+    cell.title = listingTrendTitle(p._petaTrend);
+    cell.innerHTML = listingTrendInnerHtml(p);
+  });
+}
+
+function listingPetaExtra(tableRoot, listings) {
   return {
     list: false,
+    onTrend: () => { refreshLrowTrendCells(tableRoot, listings); },
     onHighlight: (listing) => {
       if (!tableRoot) return;
       const key = listing ? prodKey(listing) : '';
@@ -9700,7 +9744,7 @@ function bindListingBlock(root, pool, opts = {}) {
     if (peta) {
       let pts = pool.listings || [];
       if (chipKw) pts = pts.filter(r => (r.keyword || '') === chipKw);
-      mountPeta(peta, opts.query || '', pts.slice(0, 200), listingPetaExtra(block));
+      mountPeta(peta, opts.query || '', pts.slice(0, 200), listingPetaExtra(block, pool.listings));
     }
   };
   block.querySelectorAll('[data-lrow-kw]').forEach(btn => {
@@ -9741,7 +9785,7 @@ async function revealListingPool(loading, chat, leadHtml, pool, meta) {
     const host = document.getElementById(petaId);
     if (host && window.PetaPeluang) {
       PetaPeluang.skeleton(host, meta.query || '');
-      mountPeta(host, meta.query || '', (pool.listings || []).slice(0, 200), listingPetaExtra(block));
+      mountPeta(host, meta.query || '', (pool.listings || []).slice(0, 200), listingPetaExtra(block, pool.listings));
     }
   }
   return pool;
@@ -17269,6 +17313,13 @@ function sortDirRows(rows, mode) {
   else if (mode === 'review') out.sort((a, b) => (Number(b.reviews) || 0) - (Number(a.reviews) || 0));
   else if (mode === 'terbaru') out.sort((a, b) => age(a) - age(b));
   else if (mode === 'terlaris') out.sort((a, b) => (Number(b.total_sold) || 0) - (Number(a.total_sold) || 0));
+  else if (mode === 'trending') {
+    const pct = p => {
+      const t = p && p._petaTrend;
+      return (t && !t.belum && t.wkPct != null) ? t.wkPct : -1e12;
+    };
+    out.sort((a, b) => pct(b) - pct(a));
+  }
   else out.sort((a, b) => (Number(estOmsetBulan(b)) || 0) - (Number(estOmsetBulan(a)) || 0)); // omset default
   return out;
 }
@@ -17829,51 +17880,11 @@ function applyDirHomeSort(mode) {
 async function syncDirHome() {
   const trend = $('dir-home-trending');
   const feat = $('dir-home-feature');
-  if (feat) feat.hidden = true;
-  if (!trend) return;
-  const show = isDirHomeBrowse();
-  const hasLib = !!(window.LarisGptDirHome && window.LarisGptDirHome.render);
-  if (!show || !hasLib) {
+  if (trend) {
     trend.hidden = true;
-    if (feat) feat.hidden = true;
-    return;
+    trend.innerHTML = '';
   }
-  trend.hidden = false;
-  const homeApi = {
-    trendingHost: trend,
-    featureHost: document.createElement('div'),
-    bindCards: null,
-    onMeledak: () => {},
-    onPencarian: () => {},
-    onEvent: (name, meta) => { void logUserEvent(name, { ui: 'gpt', ...(meta || {}) }); },
-  };
-  window.LarisGptDirHome.render({ ...homeApi, trendHtml: '', meledakHtml: '', ready: false });
-  const pool = await loadDirHomePool();
-  if (!isDirHomeBrowse()) {
-    trend.hidden = true;
-    return;
-  }
-  const { trending } = pickDirHomeRows(pool);
-  registerTypes(trending);
-  window.LarisGptDirHome.render({
-    ...homeApi,
-    trendHtml: (trending || []).map(t =>
-      `<button type="button" class="lrow-chip${state.dirChipKw === t.keyword ? ' is-on' : ''}" data-home-kw="${esc(t.keyword)}">${esc(t.keyword)}</button>`
-    ).join(''),
-    meledakHtml: '',
-    ready: true,
-  });
   if (feat) feat.hidden = true;
-  trend.querySelectorAll('[data-home-kw]').forEach(btn => {
-    if (btn.dataset.boundHomeKw) return;
-    btn.dataset.boundHomeKw = '1';
-    btn.addEventListener('click', () => {
-      state.dirChipKw = btn.getAttribute('data-home-kw') || '';
-      state.dirPage = 1;
-      state.dirZoneKeys = null;
-      paintDirectoryTable({ remountPeta: true });
-    });
-  });
 }
 
 /* Header carousel — default browse state only. Hidden the moment a search,
@@ -17943,9 +17954,19 @@ async function openDirectory() {
 
 let _dirRenderSeq = 0;
 
+function dirPetaQuery() {
+  const q = (state.dirSearch || '').trim();
+  if (q) return q;
+  const cat = primaryDirCat();
+  if (cat) return cat;
+  const city = state.onboarding?.city || '';
+  return city ? `Yang Laku di ${city}` : '';
+}
+
 function dirPetaExtra() {
   return {
     list: false,
+    onTrend: () => { paintDirectoryTable({ remountPeta: false }); },
     onHighlight: (listing) => {
       const grid = $('dir-grid');
       if (!grid) return;
@@ -17958,7 +17979,7 @@ function dirPetaExtra() {
     },
     onZoneFilter: (_id, list) => {
       state.dirZoneKeys = list ? new Set(list.map(prodKey)) : null;
-      paintDirectoryTable();
+      paintDirectoryTable({ remountPeta: false });
     },
   };
 }
@@ -17966,7 +17987,7 @@ function dirPetaExtra() {
 function mountDirPeta() {
   const host = $('dir-peta');
   if (!host || !window.PetaPeluang) return;
-  const q = (state.dirSearch || '').trim() || primaryDirCat() || 'Peta Peluang';
+  const q = dirPetaQuery();
   const chip = state.dirChipKw || '';
   let pts = state.dirPoolListings || [];
   if (chip) pts = pts.filter(r => (r.keyword || '') === chip);
@@ -18062,7 +18083,7 @@ async function renderDirectory() {
   const petaHost = $('dir-peta');
   if (petaHost && window.PetaPeluang && typeof PetaPeluang.skeleton === 'function') {
     petaHost.hidden = false;
-    PetaPeluang.skeleton(petaHost, q || primaryDirCat() || 'Peta Peluang');
+    PetaPeluang.skeleton(petaHost, q || dirPetaQuery());
   }
 
   const pool = await resolveListingPool({ q, cats, sub, home });

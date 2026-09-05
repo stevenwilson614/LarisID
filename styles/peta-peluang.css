@@ -1,6 +1,6 @@
 /* Peta Peluang — map + synced listing list.
- * Default view: Peluang only. Jejak/Langit behind Lainnya.
- * Dots: position + size + terukur/perkiraan. List is the legend.
+ * Default view: Peluang only — top 20 photo markers on weekly omset %.
+ * Jejak/Langit behind Lainnya. Table under the map is the full list.
  */
 .peta-root {
   --peta-ink: #1A1A1A;
@@ -9,7 +9,7 @@
   --peta-krem: #F5EFE0;
   --peta-merah: #B5202A;
   --peta-emas: #C9974B;
-  --peta-h: min(62vw, 360px);
+  --peta-h: min(68vw, 400px);
   --peta-naik: #16A34A;
   --peta-turun: #DC2626;
   --peta-stabil: #64748B;

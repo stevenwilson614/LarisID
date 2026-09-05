@@ -203,7 +203,7 @@
 <link rel="dns-prefetch" href="https://static.cloudflareinsights.com">
 <link rel="preload" href="/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/fonts/laris-fonts.css">
-<link rel="stylesheet" href="/styles/peta-peluang.css?v=20260905a">
+<link rel="stylesheet" href="/styles/peta-peluang.css?v=20260905b">
 <link rel="stylesheet" href="/styles/pasar-compare.css?v=20260905b">
 <link rel="stylesheet" href="/styles/honesty.css?v=20260905a">
 <link rel="stylesheet" href="/styles/laris-merdeka.css?v=20260816b">
@@ -5539,6 +5539,27 @@ body.home-finder-done .home-hero {
 .lrow-wrap--compact .lrow-table { min-width: 0; }
 .lrow-wrap--compact .lrow-wide { display: none; }
 .lrow-wrap--compact .lrow-meta { display: block; }
+.lrow-wrap--compact .lrow-trend { display: none; }
+.lrow-trend { white-space: nowrap; line-height: 1.25; font-weight: 800; }
+.lrow-trend-wk, .lrow-trend-mo { display: block; }
+.lrow-trend .is-up { color: #16A34A; }
+.lrow-trend .is-down { color: #DC2626; }
+.lrow-trend .is-flat, .lrow-trend-pending { color: var(--ink-soft); }
+.lrow-trend small { font-weight: 700; font-size: .68em; color: var(--muted); }
+#dir-grid .lrow-table { font-size: .95rem; min-width: 860px; }
+#dir-grid .lrow-table thead th {
+  font-size: .72rem; font-weight: 800; padding: 10px 12px;
+}
+#dir-grid .lrow-table td { padding: 14px 12px; }
+#dir-grid .lrow-name { font-weight: 800; font-size: 1.02rem; }
+#dir-grid .lrow-toko { font-weight: 700; font-size: .82rem; }
+#dir-grid .lrow-num { font-weight: 700; }
+#dir-grid .lrow-img,
+#dir-grid .lrow-img--ph { width: 84px; height: 84px; border-radius: 14px; }
+@media (max-width: 559px) {
+  #dir-grid .lrow-img, #dir-grid .lrow-img--ph { width: 66px; height: 66px; }
+  #dir-grid .lrow-table { font-size: .88rem; min-width: 640px; }
+}
 .badge-comp-tinggi { background: var(--red-bg); color: var(--accent); }
 .badge-comp-sedang { background: var(--amber-bg); color: var(--amber); }
 .badge-comp-rendah { background: var(--green-bg); color: var(--green); }
@@ -8201,8 +8222,8 @@ body:has(.modal-overlay.open) .msg-steven-fab {
 <!-- admin-map.js and winback-admin.js used to load here for every visitor.
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
-<script src="/js/peta-peluang.js?v=20260905c" defer></script>
+<script src="/js/peta-peluang.js?v=20260905d" defer></script>
 <script src="/js/pasar-compare.js?v=20260905b" defer></script>
-<script src="/js/gpt-app.js?v=20260905i" defer></script>
+<script src="/js/gpt-app.js?v=20260905j" defer></script>
 </body>
 </html>
