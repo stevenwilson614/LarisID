@@ -12889,30 +12889,33 @@ function ddRenderTrendChart() {
       }));
       if (!hasPlottable) br = null;
     }
+    const labels = tsAll.map(_ddFmtWk);
     makeChart('ddr-trend-canvas', {
       type: 'line',
       data: {
-        labels: tsAll.map(_ddFmtWk),
+        labels,
         datasets: shops.map(sh => {
           const by = new Map(sh.weeks.map(w => [ddWeekStartKey(w.ts), w.omset]));
+          const omsets = [];
+          const data = tsAll.map(ts => {
+            const key = ddWeekStartKey(ts);
+            if (!by.has(key)) { omsets.push(null); return null; }
+            const omset = by.get(key);
+            omsets.push(omset);
+            if (!br) return omset;
+            return ddBrokenMap(omset, br);
+          });
           return {
             label: sh.name,
-            parsing: br ? { yAxisKey: 'y' } : undefined,
-            data: tsAll.map(ts => {
-              const key = ddWeekStartKey(ts);
-              if (!by.has(key)) return null;
-              const omset = by.get(key);
-              if (!br) return omset;
-              const y = ddBrokenMap(omset, br);
-              return y == null ? null : { y, omset };
-            }),
+            data,
+            omsets,
             borderColor: sh.color, backgroundColor: sh.color,
             borderWidth: 2, tension: .35, pointRadius: 2, fill: false,
             spanGaps: !br,
             segment: br ? {
               borderColor: ctx => {
-                const a = ctx.p0.parsed?.y;
-                const b = ctx.p1.parsed?.y;
+                const a = ctx.p0.parsed?.y ?? ctx.p0.raw;
+                const b = ctx.p1.parsed?.y ?? ctx.p1.raw;
                 if (a == null || b == null) return 'transparent';
                 if (Math.min(a, b) <= DD_BREAK_LO && Math.max(a, b) >= DD_BREAK_HI) return 'transparent';
                 return sh.color;
@@ -12931,9 +12934,11 @@ function ddRenderTrendChart() {
           tooltip: {
             callbacks: {
               label: c => {
-                const raw = (c.raw && typeof c.raw === 'object' && c.raw.omset != null)
-                  ? c.raw.omset
+                const omsets = c.dataset.omsets;
+                const raw = (omsets && c.dataIndex != null && omsets[c.dataIndex] != null)
+                  ? omsets[c.dataIndex]
                   : c.parsed.y;
+                if (raw == null) return '';
                 return `${c.dataset.label}: ${fmtRpShort(raw)}`;
               },
             },
