@@ -11560,6 +11560,7 @@ function dscMountPeta(listings, query) {
   }
   PetaPeluang.mount(host, listings, {
     query: query,
+    list: false,
     supabase: typeof _supabase !== 'undefined' ? _supabase : null,
     calcScore: function (listing) {
       const peers = listings.filter(function (x) { return x.keyword && x.keyword === listing.keyword; });

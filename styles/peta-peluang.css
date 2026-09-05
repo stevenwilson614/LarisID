@@ -1,4 +1,7 @@
-/* Peta Peluang — product map above search results */
+/* Peta Peluang — map + synced listing list.
+ * Default view: Peluang only. Jejak/Langit behind Lainnya.
+ * Dots: position + size + terukur/perkiraan. List is the legend.
+ */
 .peta-root {
   --peta-ink: #1A1A1A;
   --peta-muted: #6B7280;
@@ -6,6 +9,7 @@
   --peta-krem: #F5EFE0;
   --peta-merah: #B5202A;
   --peta-emas: #C9974B;
+  --peta-h: min(62vw, 360px);
   --peta-naik: #16A34A;
   --peta-turun: #DC2626;
   --peta-stabil: #64748B;
@@ -15,14 +19,16 @@
   background: #fff;
   border: 1px solid var(--peta-line);
   border-radius: 16px;
-  margin: 0 0 14px;
-  overflow: hidden;
+  margin: 0 0 16px;
 }
+.peta-root[hidden],
+.peta-root [hidden] { display: none !important; }
 .peta-root.is-langit {
   background: #0B1020;
   color: #F5EFE0;
   border-color: #1C2640;
 }
+.peta-root.is-wide { --peta-h: min(62vh, 640px); }
 .peta-head {
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 10px; padding: 12px 14px 8px;
@@ -31,85 +37,143 @@
 .peta-title { font-size: .92rem; font-weight: 800; letter-spacing: -.02em; margin: 0; }
 .peta-sub { font-size: .72rem; color: var(--peta-muted); margin: 3px 0 0; line-height: 1.35; }
 .peta-root.is-langit .peta-sub { color: #C4B8A8; }
-.peta-chevron {
-  flex: none; width: 32px; height: 32px; border: 0; background: transparent;
-  color: inherit; cursor: pointer; border-radius: 8px;
+.peta-head-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+.peta-chevron, .peta-back {
+  border: 0; background: transparent; color: inherit; cursor: pointer;
+  border-radius: 8px; font-size: .78rem; font-weight: 700;
 }
-.peta-chevron:hover { background: rgba(0,0,0,.06); }
-.peta-root.is-langit .peta-chevron:hover { background: rgba(255,255,255,.08); }
+.peta-chevron { width: 32px; height: 32px; }
+.peta-back { padding: 6px 8px; }
+.peta-chevron:hover, .peta-back:hover { background: rgba(0,0,0,.06); }
+.peta-root.is-langit .peta-chevron:hover,
+.peta-root.is-langit .peta-back:hover { background: rgba(255,255,255,.08); }
+.peta-lainnya { position: relative; }
+.peta-lainnya summary {
+  list-style: none; cursor: pointer; font-size: .72rem; font-weight: 700;
+  padding: 5px 11px; border: 1px solid var(--peta-line); border-radius: 999px;
+  background: #fff; color: var(--peta-ink);
+}
+.peta-lainnya summary::-webkit-details-marker { display: none; }
+.peta-lainnya-menu {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 4;
+  background: #fff; border: 1px solid var(--peta-line); border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12); min-width: 160px; padding: 4px;
+}
+.peta-lainnya-menu button {
+  display: block; width: 100%; text-align: left; border: 0; background: transparent;
+  padding: 8px 10px; font-size: .78rem; font-weight: 700; cursor: pointer; border-radius: 8px;
+}
+.peta-lainnya-menu button:hover { background: var(--peta-krem); }
+.peta-lainnya-menu button:disabled { opacity: .4; cursor: not-allowed; }
+.peta-root.is-langit .peta-lainnya summary,
+.peta-root.is-langit .peta-lainnya-menu { background: #151b2e; color: #F5EFE0; border-color: #27355C; }
 .peta-collapsed-line {
   display: none; padding: 0 14px 12px; font-size: .78rem; color: var(--peta-muted);
 }
 .peta-root.is-collapsed .peta-collapsed-line { display: block; }
 .peta-root.is-collapsed .peta-body { display: none; }
-.peta-chips {
-  display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 10px;
-}
-.peta-chip {
-  border: 1px solid var(--peta-line); background: #fff; color: var(--peta-ink);
-  border-radius: 999px; padding: 5px 11px; font-size: .72rem; font-weight: 700;
-  cursor: pointer;
-}
-.peta-chip.is-on { background: var(--peta-ink); color: #fff; border-color: var(--peta-ink); }
-.peta-chip:disabled { opacity: .4; cursor: not-allowed; }
-.peta-root.is-langit .peta-chip { background: #151b2e; color: #F5EFE0; border-color: #27355C; }
-.peta-root.is-langit .peta-chip.is-on { background: var(--peta-emas); color: #1A1A1A; border-color: var(--peta-emas); }
-.peta-stage { position: relative; padding: 0 10px 8px; }
+
+.peta-grid { display: flex; flex-direction: column; }
+.peta-map { min-width: 0; padding: 0 10px 8px; }
 .peta-canvas-wrap {
   position: relative; width: 100%;
-  height: min(45vh, calc(100vw - 32px));
-  max-height: 420px;
+  height: var(--peta-h);
   border-radius: 12px; background: var(--peta-krem);
 }
 .peta-root.is-langit .peta-canvas-wrap { background: #070b16; }
 .peta-canvas { display: block; width: 100%; height: 100%; cursor: pointer; }
-.peta-axis-x, .peta-axis-y {
-  position: absolute; font-size: .62rem; font-weight: 700; color: var(--peta-muted);
-  pointer-events: none; letter-spacing: .01em;
+.peta-axis-baru, .peta-axis-lama, .peta-axis-laku {
+  position: absolute; font-size: .72rem; font-weight: 700; color: var(--peta-muted);
+  pointer-events: none; letter-spacing: .01em; line-height: 1.2;
 }
-.peta-axis-x { bottom: 4px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
-.peta-axis-y { top: 10px; left: 8px; writing-mode: vertical-rl; transform: rotate(180deg); }
-.peta-root.is-langit .peta-axis-x, .peta-root.is-langit .peta-axis-y { color: rgba(245,239,224,.45); }
-.peta-zone-lab {
-  position: absolute; font-size: .62rem; font-weight: 800; padding: 3px 7px;
-  border-radius: 6px; background: rgba(255,255,255,.82); cursor: pointer;
-  border: 1px solid transparent; color: var(--peta-ink); max-width: 42%;
-  line-height: 1.25;
+.peta-axis-baru { top: 8px; left: 10px; }
+.peta-axis-lama { bottom: 28px; left: 10px; }
+.peta-axis-laku { bottom: 8px; right: 10px; }
+.peta-root.is-langit .peta-axis-baru,
+.peta-root.is-langit .peta-axis-lama,
+.peta-root.is-langit .peta-axis-laku { color: rgba(245,239,224,.55); }
+.peta-thin {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  padding: 24px; text-align: center; font-size: .82rem; line-height: 1.45;
+  color: var(--peta-muted); background: rgba(245,239,224,.72); border-radius: 12px;
 }
-.peta-zone-lab.is-on { border-color: var(--peta-ink); background: #fff; }
-.peta-zone-tl { top: 8px; left: 28px; }
-.peta-zone-tr { top: 8px; right: 8px; text-align: right; }
-.peta-zone-bl { bottom: 22px; left: 28px; }
-.peta-zone-br { bottom: 22px; right: 8px; text-align: right; }
-.peta-root.is-langit .peta-zone-lab {
-  background: rgba(11,16,32,.55); color: rgba(245,239,224,.55); border-color: transparent;
+
+.peta-zones {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px;
 }
-.peta-root.is-langit .peta-zone-lab.is-on { color: #F5EFE0; border-color: var(--peta-emas); }
-.peta-legend, .peta-summary, .peta-jejak-cap {
-  padding: 0 14px; font-size: .68rem; color: var(--peta-muted); line-height: 1.4;
+.peta-zone {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  border: 1px solid var(--peta-line); background: #fff; color: var(--peta-ink);
+  border-radius: 8px; padding: 7px 9px; font-size: .72rem; font-weight: 700;
+  cursor: pointer; text-align: left;
 }
-.peta-legend { padding-bottom: 4px; }
-.peta-summary { font-weight: 600; color: var(--peta-ink); padding-bottom: 8px; }
-.peta-root.is-langit .peta-summary { color: #F5EFE0; }
-.peta-root.is-langit .peta-legend, .peta-root.is-langit .peta-jejak-cap { color: #C4B8A8; }
-.peta-sepi-chip {
-  display: inline-flex; margin: 0 14px 8px; border: 1px dashed var(--peta-line);
-  border-radius: 999px; padding: 4px 10px; font-size: .68rem; font-weight: 700;
-  background: transparent; cursor: pointer; color: var(--peta-muted);
+.peta-zone.is-on { border-color: var(--peta-ink); background: var(--peta-krem); }
+.peta-zone-n { font-variant-numeric: tabular-nums; color: var(--peta-muted); }
+.peta-zone-cara {
+  margin: 6px 0 0; font-size: .72rem; line-height: 1.4; color: var(--peta-muted);
+}
+.peta-legend { margin: 6px 0 0; font-size: .68rem; color: var(--peta-muted); line-height: 1.4; }
+.peta-root.is-langit .peta-zone { background: #151b2e; color: #F5EFE0; border-color: #27355C; }
+.peta-root.is-langit .peta-zone.is-on { border-color: var(--peta-emas); }
+.peta-root.is-langit .peta-legend, .peta-root.is-langit .peta-zone-cara,
+.peta-root.is-langit .peta-jejak-cap { color: #C4B8A8; }
+
+.peta-list { min-width: 0; display: flex; flex-direction: column; padding: 0 10px 8px; }
+.peta-list-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-size: .72rem; font-weight: 700; padding: 4px 2px 8px; color: var(--peta-muted);
+}
+.peta-clear {
+  width: 28px; height: 28px; border: 0; background: transparent; cursor: pointer;
+  font-size: 1.1rem; color: var(--peta-ink); border-radius: 8px;
+}
+.peta-rows { display: flex; flex-direction: column; gap: 6px; }
+.peta-row {
+  display: flex; align-items: flex-start; gap: 10px; width: 100%;
+  text-align: left; border: 1px solid var(--peta-line); background: #fff;
+  border-radius: 12px; padding: 8px; cursor: pointer; font: inherit; color: inherit;
+}
+.peta-row:hover, .peta-row.is-hl { background: #Faf8f4; border-color: #D6D0C8; }
+.peta-row.is-sel { outline: 2px solid var(--peta-emas); outline-offset: 1px; border-color: var(--peta-emas); }
+.peta-row-img, .peta-row-ph {
+  width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex: none;
+  background: #F0EBE3;
+}
+.peta-row-body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.peta-row-name {
+  font-size: .8rem; font-weight: 800; line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.peta-row-shop { font-size: .68rem; color: var(--peta-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.peta-row-meta { font-size: .68rem; font-weight: 600; color: var(--peta-ink); }
+.peta-row-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 2px; }
+.peta-mom { font-size: .64rem; font-weight: 700; }
+.peta-mom-naik { color: var(--peta-naik); }
+.peta-mom-turun { color: var(--peta-turun); }
+.peta-mom-stabil, .peta-mom-belum { color: var(--peta-muted); }
+.peta-tag {
+  font-size: .6rem; font-weight: 700; padding: 1px 6px; border-radius: 999px;
+  background: #F3F0EA; color: var(--peta-muted);
+}
+.peta-tag-ad { background: #F9EAE4; color: var(--peta-merah); }
+.peta-row-sidik { display: inline-flex; align-items: center; gap: 3px; }
+.peta-row-score { font-size: .64rem; font-weight: 800; }
+.peta-more {
+  margin-top: 8px; width: 100%; border: 1px solid var(--peta-line); background: #fff;
+  border-radius: 10px; padding: 9px 12px; font-size: .78rem; font-weight: 800; cursor: pointer;
 }
 .peta-cara { padding: 0 14px 12px; }
 .peta-cara summary {
   cursor: pointer; font-size: .72rem; font-weight: 700; color: var(--peta-muted);
 }
 .peta-cara ol { margin: 6px 0 0; padding-left: 18px; font-size: .72rem; line-height: 1.45; color: var(--peta-muted); }
-.peta-empty { padding: 28px 18px; text-align: center; font-size: .82rem; color: var(--peta-muted); line-height: 1.45; }
 .peta-sheet {
   position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 3;
   background: #fff; border-radius: 12px; padding: 12px 14px;
   box-shadow: 0 8px 28px rgba(0,0,0,.16); border: 1px solid var(--peta-line);
 }
 .peta-root.is-langit .peta-sheet { background: #151b2e; border-color: #27355C; color: #F5EFE0; }
-.peta-sheet-name { font-size: .86rem; font-weight: 800; margin: 0 0 2px; }
+.peta-sheet-name { font-size: .86rem; font-weight: 800; margin: 0 0 2px; padding-right: 22px; }
 .peta-sheet-shop { font-size: .72rem; color: var(--peta-muted); margin: 0 0 8px; }
 .peta-sheet-rows { font-size: .72rem; line-height: 1.45; margin: 0 0 10px; }
 .peta-sheet-btn {
@@ -120,6 +184,7 @@
   position: absolute; top: 6px; right: 8px; border: 0; background: transparent;
   font-size: 1.1rem; cursor: pointer; color: var(--peta-muted);
 }
+.peta-jejak-cap { padding: 0 14px; font-size: .68rem; color: var(--peta-muted); line-height: 1.4; }
 .peta-jejak-ctrl { display: flex; align-items: center; gap: 8px; padding: 6px 14px 10px; }
 .peta-jejak-ctrl input[type="range"] { flex: 1; }
 .peta-play {
@@ -140,7 +205,10 @@
 .peta-fs-overlay {
   position: fixed; inset: 0; z-index: 80; background: #0B1020; display: flex; flex-direction: column;
 }
-.peta-fs-overlay .peta-canvas-wrap { flex: 1; max-height: none; height: auto; border-radius: 0; }
+.peta-fs-overlay .peta-canvas-wrap { flex: 1; height: auto; border-radius: 0; }
+.peta-pasar-label, .dir-pasar-head {
+  font-size: .86rem; font-weight: 800; margin: 8px 0 10px; color: #1A1A1A;
+}
 .prod-card-sidik { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
 .prod-card-stats--slim { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; }
 .peta-sidik {
@@ -150,24 +218,46 @@
 .peta-sidik svg { display: block; }
 .peta-sidik-hint { font-size: .52rem; color: #1E6B3C; font-weight: 700; }
 .prod-card.peta-hl, .dsc-card.peta-hl {
-  outline: 2px solid var(--peta-emas); outline-offset: 2px;
+  outline: 2px solid var(--peta-emas, #C9974B); outline-offset: 2px;
 }
-.peta-dir-layout.has-peta {
-  display: block;
+
+.peta-shimmer {
+  background: linear-gradient(90deg, #F0EBE3 0%, #F8F4EC 50%, #F0EBE3 100%);
+  background-size: 200% 100%;
+  animation: peta-shimmer 1.2s ease-in-out infinite;
 }
+.peta-root.is-skel .peta-row {
+  height: 64px; border: 0; pointer-events: none;
+}
+@keyframes peta-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
 @media (min-width: 900px) {
-  .peta-canvas-wrap { height: min(560px, 55vh); max-height: 560px; }
   .peta-sheet { left: auto; right: 12px; bottom: auto; top: 12px; width: 280px; }
-  .peta-dir-layout.has-peta {
-    display: grid;
-    grid-template-columns: minmax(280px, 42%) 1fr;
-    gap: 16px;
-    align-items: start;
-  }
-  .peta-dir-layout.has-peta .peta-root {
-    position: sticky; top: 8px;
-  }
 }
+.peta-root.is-wide .peta-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 52%) 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 0 10px 8px;
+}
+.peta-root.is-wide .peta-map,
+.peta-root.is-wide .peta-list { padding: 0; }
+.peta-root.is-wide .peta-map { position: sticky; top: 8px; }
+.peta-root.is-wide .peta-list {
+  height: calc(var(--peta-h) + 148px);
+  overflow: hidden;
+}
+.peta-root.is-wide .peta-rows { overflow: auto; flex: 1; min-height: 0; }
+.peta-root.no-list .peta-grid { display: block; }
+.peta-host .peta-root:not(.is-wide) .peta-rows {
+  max-height: calc(6 * 78px);
+  overflow: auto;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .peta-root * { animation: none !important; transition: none !important; }
 }

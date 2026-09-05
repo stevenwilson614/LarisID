@@ -6587,50 +6587,20 @@ async function fetchPetaListings(q, types) {
   }
 }
 
-function petaHostOpts(query, listings, hostEl) {
+function petaHostOpts(query, listings, extra) {
   return {
     query: query || '',
     supabase: _supabase,
     calcScore: (listing) => petaScoreFor(listing, listings),
     onDotOpen: (listing) => { void openDeepDive(listing); },
-    onHighlight: (listing) => {
-      const root = hostEl.closest('.peta-dir-layout') || hostEl.parentElement || document;
-      root.querySelectorAll('.peta-hl').forEach(el => el.classList.remove('peta-hl'));
-      if (!listing) return;
-      const k = prodKey(listing);
-      let node = null;
-      try { node = root.querySelector(`[data-prod="${CSS.escape(k)}"]`); }
-      catch (_) { node = root.querySelector(`[data-prod="${k}"]`); }
-      if (node) node.classList.add('peta-hl');
-    },
-    onZoneFilter: (zoneId, filtered) => {
-      const layout = hostEl.closest('.peta-dir-layout');
-      const grid = layout ? $('dir-grid') : hostEl.parentElement?.querySelector('.card-grid');
-      if (!grid) return;
-      if (!zoneId) {
-        if (layout) {
-          state._petaZone = null;
-          void renderDirectory();
-        } else if (hostEl._petaOrigGrid) {
-          grid.innerHTML = hostEl._petaOrigGrid;
-          bindTypeCards(grid);
-          bindProductCards(grid);
-          void hydrateProdCardsIn(grid);
-        }
-        return;
-      }
-      state._petaZone = zoneId;
-      grid.innerHTML = productCardsHtml(filtered || []);
-      bindProductCards(grid);
-      void hydrateProdCardsIn(grid);
-    },
+    ...(extra || {}),
   };
 }
 
-function mountPeta(hostEl, query, listings) {
+function mountPeta(hostEl, query, listings, extra) {
   if (!hostEl || !window.PetaPeluang) return;
   rememberProducts(listings || []);
-  PetaPeluang.mount(hostEl, listings || [], petaHostOpts(query, listings || [], hostEl));
+  PetaPeluang.mount(hostEl, listings || [], petaHostOpts(query, listings || [], extra));
 }
 
 async function fetchListingsCityCat(locations, cats, limit = 80) {
@@ -8356,7 +8326,7 @@ async function replyWithPasarTypes(chat, text, types, opts = {}) {
     }
   }
   const petaId = 'peta-' + Date.now();
-  const html = `${brandNote}<p>${lead}</p><div class="peta-host" id="${petaId}"></div><div class="card-grid">${marketCardsHtml(types)}</div>`;
+  const html = `${brandNote}<p>${lead}</p><div class="peta-host" id="${petaId}"></div><p class="peta-pasar-label">Pasar terkait</p><div class="card-grid">${marketCardsHtml(types)}</div>`;
   if (loading) await revealAssistant(loading, html);
   else await appendAssistantStream(html);
   pushMessage(chat, 'assistant', {
@@ -8367,8 +8337,9 @@ async function replyWithPasarTypes(chat, text, types, opts = {}) {
   void (async () => {
     const host = document.getElementById(petaId);
     if (!host) return;
-    const grid = host.parentElement?.querySelector('.card-grid');
-    if (grid) host._petaOrigGrid = grid.innerHTML;
+    if (window.PetaPeluang && typeof PetaPeluang.skeleton === 'function') {
+      PetaPeluang.skeleton(host, opts.label || text);
+    }
     const listings = await fetchPetaListings(text, types);
     mountPeta(host, opts.label || text, listings);
   })();
@@ -17050,7 +17021,6 @@ async function renderDirectory() {
   const cities = state.dirCities || [];
   const q = (state.dirSearch || '').trim();
   if (state._petaQuery !== q) {
-    state._petaZone = null;
     state._petaQuery = q;
   }
   // Subgroup is filtered server-side against keyword_subgroup now, not by a
@@ -17064,7 +17034,7 @@ async function renderDirectory() {
   if (!q && !cats.length && !sub && _dirInstantPool.length) {
     grid.innerHTML = marketCardsHtml(_dirInstantPool);
     bindTypeCards(grid);
-  } else if (!(state._petaZone && q)) {
+  } else {
     grid.innerHTML = garudaLoadingHtml('Memuat…');
   }
   let types;
@@ -17119,12 +17089,8 @@ async function renderDirectory() {
   const siblings = slice.map(t => t.keyword);
   const usedImgs = new Set();
   const cards = slice.map((t, i) => typeCardHtml(t, start + i, i, siblings, usedImgs)).join('');
-  if (state._petaZone && state._petaListings && state._petaListings.length) {
-    /* zone filter is applied by the map callback; don't clobber listing cards on pager */
-  } else {
-    grid.innerHTML = cards ? (nearbyLead + cards) : emptyMsg;
-    bindTypeCards(grid);
-  }
+  grid.innerHTML = cards ? (nearbyLead + cards) : emptyMsg;
+  bindTypeCards(grid);
   if (state._dirSkipScroll) state._dirSkipScroll = false;
   else scrollPanelToTop();
   renderDirPager(pager, types.length);
@@ -17134,13 +17100,18 @@ async function renderDirectory() {
   }
   void (async () => {
     const host = $('dir-peta');
+    const pasarHead = $('dir-pasar-head');
     if (!host) return;
     if (!q) {
       if (host._petaCtl) { host._petaCtl.destroy(); host._petaCtl = null; }
       host.innerHTML = '';
-      $('dir-peta-layout')?.classList.remove('has-peta');
+      if (pasarHead) pasarHead.hidden = true;
       state._petaListings = [];
       return;
+    }
+    if (pasarHead) pasarHead.hidden = false;
+    if (window.PetaPeluang && typeof PetaPeluang.skeleton === 'function' && !host._petaCtl) {
+      PetaPeluang.skeleton(host, q);
     }
     const listings = await fetchPetaListings(q, types);
     state._petaListings = listings;
@@ -17228,8 +17199,10 @@ async function renderDirectoryListings() {
   updateDirCount(rows.length, slice.length, false);
   void (async () => {
     const host = $('dir-peta');
+    const pasarHead = $('dir-pasar-head');
     if (!host || !(q && !sub)) return;
-    mountPeta(host, q, rows.slice(0, 120));
+    if (pasarHead) pasarHead.hidden = true;
+    mountPeta(host, q, rows.slice(0, 120), { list: false });
   })();
 }
 

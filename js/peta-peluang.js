@@ -1,13 +1,27 @@
-/* Peta Peluang — listing scatter above product search. No chart library. */
+/* Peta Peluang — listing scatter + synced product list.
+ *
+ * Audit (2026-09-05, live "kursi lipat camping"):
+ * Unclear in 5s — map plotted listings while the pane beside it was pasar
+ * cards (different set/grain). Dots stacked on the Y=0 edge. Three equal
+ * mode chips, on-canvas zone labels, paragraph legend. Momentum colour was
+ * noise (mostly grey) and clashed with brand MERAH. hidden=flex leak showed
+ * the Jejak scrubber in Peluang.
+ * Cut from default — momentum colour, ad rings, ▲/▼, pin markers, on-canvas
+ * zone labels, 3 chips, sepi chip, LS_MODE.
+ * Keep — log X (laku/minggu), Y (baru/lama), size=omset, terukur/perkiraan,
+ * zone assignment, Jejak+Langit behind Lainnya, Sidik Jari, peta_batch.
+ */
 (function (w) {
   'use strict';
 
   var LS_COLLAPSE = 'larisid_peta_collapsed';
-  var LS_MODE = 'larisid_peta_mode';
   var SS_BATCH = 'larisid_peta_batch_missing';
   var MIN_POINTS = 8;
-  var MAX_DRAW = 80;
-  var PAD = { t: 28, r: 18, b: 28, l: 36 };
+  var PAD = { t: 22, r: 14, b: 34, l: 14 };
+  var WIDE_PX = 760;
+  var LIST_CAP = 12;
+  var DOT = '#B5202A';
+  var EMAS = '#C9974B';
 
   var ZONE = {
     baru_laku:   { id: 'baru_laku',   label: 'Baru tapi Laku',     cara: 'Masih baru, tapi udah laku. Kalau banyak titik di sini, pemula masih bisa masuk. Contek harga & fotonya.' },
@@ -15,6 +29,7 @@
     baru_belum:  { id: 'baru_belum',  label: 'Baru, Belum Jalan',  cara: 'Baru masuk, belum laku. Bukan berarti gagal, cek dulu harga atau fotonya yang kalah.' },
     mulai_sepi:  { id: 'mulai_sepi',  label: 'Mulai Sepi',         cara: 'Udah lama tapi pelan. Pasarnya mungkin geser, lihat Jejak Waktu.' }
   };
+  var ZONE_ORDER = ['baru_belum', 'baru_laku', 'mulai_sepi', 'pemain_lama'];
   var MOM_CLR = { naik: '#16A34A', stabil: '#64748B', turun: '#DC2626', belum: '#9CA3AF' };
   var ID_MON = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
   var STOP = { dan:1, dengan:1, untuk:1, murah:1, cod:1, promo:1, terlaris:1, original:1, gratis:1, ongkir:1, bisa:1, ready:1, stok:1, pcs:1, set:1 };
@@ -32,6 +47,10 @@
     catch (_) { return false; }
   }
   function isPhone() { return (w.innerWidth || 800) <= 640; }
+  function finePointer() {
+    try { return !!(w.matchMedia && w.matchMedia('(pointer:fine)').matches); }
+    catch (_) { return false; }
+  }
   function pctile(arr, p) {
     if (!arr.length) return 0;
     var s = arr.slice().sort(function (a, b) { return a - b; });
@@ -81,14 +100,23 @@
     if (baru && !ramai) return 'baru_belum';
     return 'mulai_sepi';
   }
-  function momWord(m) {
-    if (!m || m.momentum_class === 'belum') return 'belum cukup data';
+  function momWord(m, pending) {
+    if (!m || m.momentum_class === 'belum') {
+      if (pending === 'pending') return '…';
+      return '—';
+    }
     var pct = Math.round(Number(m.momentum_pct) || 0);
     var core = m.momentum_class === 'naik' ? ('naik +' + pct + '%')
       : m.momentum_class === 'turun' ? ('turun ' + pct + '%')
       : 'stabil';
     var terukur = m.cur_source === 'measured' && m.prev_source === 'measured';
     return terukur ? core : core + ' (perkiraan)';
+  }
+  function momMark(m) {
+    if (!m || m.momentum_class === 'belum') return '';
+    if (m.momentum_class === 'naik') return '▲ ';
+    if (m.momentum_class === 'turun') return '▼ ';
+    return '';
   }
 
   function calcLarisScore(listing, peers, kwTrendPct) {
@@ -237,37 +265,53 @@
     if (!points.length) return { medianX: 0, yCut: 0.5 };
     var xs = points.map(function (p) { return p.xUnits; });
     var medianX = median(xs);
-    var baruYs = points.filter(function (p) { return p.isBaru; }).map(function (p) { return p.yNew; });
-    var lamaYs = points.filter(function (p) { return !p.isBaru; }).map(function (p) { return p.yNew; });
-    var yCut = 0.5;
-    if (baruYs.length && lamaYs.length) {
-      var minBaru = Math.min.apply(null, baruYs);
-      var maxLama = Math.max.apply(null, lamaYs);
-      yCut = (minBaru + maxLama) / 2;
-    } else if (baruYs.length) yCut = Math.min.apply(null, baruYs);
     points.forEach(function (p) {
       p.ramai = p.xUnits >= medianX;
       p.zone = zoneId(p.isBaru, p.ramai);
     });
-    return { medianX: medianX, yCut: yCut };
+    return { medianX: medianX, yCut: 0.5 };
   }
 
-  function layoutPoints(points, wdt, hgt, medianX) {
+  function rankY(points) {
+    var ranked = points.slice().sort(function (a, b) {
+      if (a.yNew !== b.yNew) return a.yNew - b.yNew;
+      var ra = Number(a.listing.reviews || a.listing.review_count) || 0;
+      var rb = Number(b.listing.reviews || b.listing.review_count) || 0;
+      if (ra !== rb) return rb - ra;
+      return (ageDays(b.listing) || 0) - (ageDays(a.listing) || 0);
+    });
+    var n = ranked.length;
+    ranked.forEach(function (p, i) {
+      p.yRank = n <= 1 ? 0.5 : i / (n - 1);
+    });
+    var baru = ranked.filter(function (p) { return p.isBaru; });
+    var lama = ranked.filter(function (p) { return !p.isBaru; });
+    var yCut = null;
+    if (baru.length && lama.length) {
+      var minBaru = Math.min.apply(null, baru.map(function (p) { return p.yRank; }));
+      var maxLama = Math.max.apply(null, lama.map(function (p) { return p.yRank; }));
+      yCut = (minBaru + maxLama) / 2;
+    }
+    return yCut;
+  }
+
+  function layoutPoints(points, wdt, hgt) {
     var p98 = pctile(points.map(function (p) { return p.xUnits; }), 0.98) || 1;
     var p95om = pctile(points.map(function (p) { return p.sizeOmset; }), 0.95) || 1;
     var phone = isPhone();
     var innerW = Math.max(40, wdt - PAD.l - PAD.r);
     var innerH = Math.max(40, hgt - PAD.t - PAD.b);
+    var yCut = rankY(points);
     points.forEach(function (p) {
       var pinned = p.xUnits > p98;
       var xv = Math.log10((pinned ? p98 : p.xUnits) + 1) / Math.log10(p98 + 1);
       p.px = PAD.l + xv * innerW;
-      p.py = PAD.t + (1 - p.yNew) * innerH;
+      p.py = PAD.t + (1 - (p.yRank != null ? p.yRank : p.yNew)) * innerH;
       p.pinned = pinned;
       var r = 4 + 12 * Math.sqrt((p.sizeOmset || 0) / p95om);
-      p.r = clamp(r, phone ? 4 : 5, phone ? 16 : 22);
+      p.r = clamp(r, phone ? 4 : 5, phone ? 14 : 18);
     });
-    return { p98: p98, innerW: innerW, innerH: innerH };
+    return { p98: p98, innerW: innerW, innerH: innerH, yCut: yCut };
   }
 
   function starGlyph(ctx, x, y, r) {
@@ -367,95 +411,49 @@
     return out;
   }
 
-  function PetaController(el, listings, opts) {
-    this.el = el;
-    this.opts = opts || {};
-    this.listings = listings || [];
-    this.batch = null;
-    this.points = [];
-    this.hidden = [];
-    this.mode = 'peluang';
-    try { this.mode = localStorage.getItem(LS_MODE) || 'peluang'; } catch (_) {}
-    if (this.mode !== 'jejak' && this.mode !== 'langit') this.mode = 'peluang';
-    this.collapsed = false;
-    try { this.collapsed = localStorage.getItem(LS_COLLAPSE) === '1'; } catch (_) {}
-    this.zoneFilter = null;
-    this.hover = null;
-    this.sheet = null;
-    this.frame = 0;
-    this.playing = false;
-    this.raf = 0;
-    this.t0 = 0;
-    this._ro = null;
-    this._io = null;
-    this._inView = true;
-    this._frozenZones = null;
-    this.renderShell();
-    this.rebuild();
-    this.fetchBatch();
-  }
-
-  PetaController.prototype.destroy = function () {
-    this.playing = false;
-    if (this.raf) cancelAnimationFrame(this.raf);
-    if (this._ro) try { this._ro.disconnect(); } catch (_) {}
-    if (this._io) try { this._io.disconnect(); } catch (_) {}
-    this.el.innerHTML = '';
-  };
-
-  PetaController.prototype.update = function (listings) {
-    this.listings = listings || [];
-    this.rebuild();
-    this.fetchBatch();
-  };
-
-  PetaController.prototype.setMode = function (mode) {
-    if (mode === 'jejak' && !this.batch) return;
-    this.mode = mode;
-    try { localStorage.setItem(LS_MODE, mode); } catch (_) {}
-    this.playing = false;
-    this.sheet = null;
-    this.renderShell();
-    this.rebuild();
-    this.draw();
-    this.ensureRaf();
-  };
-
-  PetaController.prototype.renderShell = function () {
-    var q = this.opts.query || '';
-    var n = this.listings.length;
-    var langit = this.mode === 'langit';
-    this.el.innerHTML =
-      '<div class="peta-root' + (langit ? ' is-langit' : '') + (this.collapsed ? ' is-collapsed' : '') + '">'
+  function shellHtml(q, showList, langit, collapsed) {
+    return '<div class="peta-root' + (langit ? ' is-langit' : '') + (collapsed ? ' is-collapsed' : '') + (showList ? '' : ' no-list') + '">'
       + '<div class="peta-head">'
       +   '<div class="peta-titles">'
       +     '<h3 class="peta-title">Peta Peluang' + (q ? ': ' + esc(q) : '') + '</h3>'
       +     '<p class="peta-sub" data-peta-sub></p>'
       +   '</div>'
-      +   '<button type="button" class="peta-chevron" data-peta-collapse aria-label="Lipat peta">▾</button>'
+      +   '<div class="peta-head-actions">'
+      +     '<button type="button" class="peta-back" hidden data-peta-back>← Peluang</button>'
+      +     '<details class="peta-lainnya" data-peta-lainnya>'
+      +       '<summary>Lainnya</summary>'
+      +       '<div class="peta-lainnya-menu">'
+      +         '<button type="button" data-mode="jejak">Jejak Waktu</button>'
+      +         '<button type="button" data-mode="langit">Langit Laris</button>'
+      +       '</div>'
+      +     '</details>'
+      +     '<button type="button" class="peta-chevron" data-peta-collapse aria-label="Lipat peta">▾</button>'
+      +   '</div>'
       + '</div>'
       + '<p class="peta-collapsed-line" data-peta-collapsed></p>'
       + '<div class="peta-body">'
-      +   '<div class="peta-chips">'
-      +     '<button type="button" class="peta-chip" data-mode="peluang">Peluang</button>'
-      +     '<button type="button" class="peta-chip" data-mode="jejak">Jejak Waktu</button>'
-      +     '<button type="button" class="peta-chip" data-mode="langit">Langit</button>'
-      +   '</div>'
-      +   '<div class="peta-stage">'
-      +     '<div class="peta-canvas-wrap">'
-      +       '<canvas class="peta-canvas"></canvas>'
-      +       '<div class="peta-axis-y">Masih baru ↑ · Sudah lama ↓</div>'
-      +       '<div class="peta-axis-x">Sepi ← Laku per minggu → Ramai</div>'
-      +       '<button type="button" class="peta-zone-lab peta-zone-tl" data-zone="baru_belum">Baru, Belum Jalan</button>'
-      +       '<button type="button" class="peta-zone-lab peta-zone-tr" data-zone="baru_laku">Baru tapi Laku</button>'
-      +       '<button type="button" class="peta-zone-lab peta-zone-bl" data-zone="mulai_sepi">Mulai Sepi</button>'
-      +       '<button type="button" class="peta-zone-lab peta-zone-br" data-zone="pemain_lama">Pemain Lama</button>'
-      +       '<div class="peta-sheet" hidden></div>'
+      +   '<div class="peta-grid">'
+      +     '<div class="peta-map">'
+      +       '<div class="peta-canvas-wrap">'
+      +         '<canvas class="peta-canvas"></canvas>'
+      +         '<div class="peta-axis-baru">Masih baru ↑</div>'
+      +         '<div class="peta-axis-lama">Sudah lama ↓</div>'
+      +         '<div class="peta-axis-laku">Laku per minggu →</div>'
+      +         '<div class="peta-thin" hidden data-peta-thin></div>'
+      +         '<div class="peta-sheet" hidden></div>'
+      +       '</div>'
+      +       '<div class="peta-zones" data-peta-zones></div>'
+      +       '<p class="peta-zone-cara" data-peta-cara hidden></p>'
+      +       '<p class="peta-legend">Pekat = terukur · Pudar = perkiraan · Besar = omset/bulan</p>'
       +     '</div>'
+      +     (showList
+        ? ('<div class="peta-list">'
+          +   '<div class="peta-list-head" data-peta-lhead></div>'
+          +   '<div class="peta-rows" data-peta-rows></div>'
+          +   '<button type="button" class="peta-more" hidden data-peta-more></button>'
+          + '</div>')
+        : '')
       +   '</div>'
-      +   '<p class="peta-legend"></p>'
-      +   '<p class="peta-summary" data-peta-summary></p>'
-      +   '<button type="button" class="peta-sepi-chip" hidden data-peta-sepi></button>'
       +   '<div class="peta-jejak-cap" hidden data-peta-jcap></div>'
       +   '<div class="peta-jejak-ctrl" hidden data-peta-jctrl>'
       +     '<button type="button" class="peta-play" data-peta-play>▶</button>'
@@ -465,23 +463,109 @@
       +   '<button type="button" class="peta-fs-btn" hidden data-peta-fs>Buka layar penuh</button>'
       +   '<details class="peta-cara"><summary>Cara baca</summary>'
       +     '<ol>'
-      +       '<li>Makin ke kanan, makin laku minggu ini. Bulatan kosong = masih perkiraan.</li>'
-      +       '<li>Makin ke atas, makin baru dan sedikit ulasan.</li>'
-      +       '<li>Banyak titik di kanan-atas = pendatang bisa laku di sini. Kalau semua ngumpul di kanan-bawah, pasar dipegang pemain lama.</li>'
+      +       '<li>Makin ke kanan, makin laku minggu ini. Pekat = terukur, pudar = perkiraan.</li>'
+      +       '<li>Makin ke atas, makin baru. Daftar di samping (atau di bawah) adalah produk yang sama — ketuk zona untuk saring.</li>'
       +     '</ol>'
       +   '</details>'
       + '</div>'
-      + '<div class="peta-empty" hidden></div>'
       + '</div>';
+  }
+
+  function skeleton(el, query) {
+    if (!el) return;
+    var q = query || '';
+    el.innerHTML =
+      '<div class="peta-root is-skel">'
+      + '<div class="peta-head"><div class="peta-titles">'
+      +   '<h3 class="peta-title">Peta Peluang' + (q ? ': ' + esc(q) : '') + '</h3>'
+      +   '<p class="peta-sub">Menghitung posisi produk…</p>'
+      + '</div></div>'
+      + '<div class="peta-body"><div class="peta-grid">'
+      +   '<div class="peta-map"><div class="peta-canvas-wrap peta-shimmer"></div></div>'
+      +   '<div class="peta-list"><div class="peta-rows">'
+      +     '<div class="peta-row peta-shimmer"></div>'.repeat(6)
+      +   '</div></div>'
+      + '</div></div></div>';
+  }
+
+  function PetaController(el, listings, opts) {
+    this.el = el;
+    this.opts = opts || {};
+    this.listings = listings || [];
+    this.showList = this.opts.list !== false;
+    this.batch = null;
+    this.batchStatus = 'pending';
+    this.points = [];
+    this.mode = 'peluang';
+    this.collapsed = false;
+    try { this.collapsed = localStorage.getItem(LS_COLLAPSE) === '1'; } catch (_) {}
+    this.zoneFilter = null;
+    this.hover = null;
+    this.selected = null;
+    this.sheet = null;
+    this.frame = 0;
+    this.playing = false;
+    this.raf = 0;
+    this.t0 = 0;
+    this.listExpanded = false;
+    this._ro = null;
+    this._roRoot = null;
+    this._io = null;
+    this._inView = true;
+    this._frozenZones = null;
+    this._layout = null;
+    this.renderShell();
+    this.rebuild();
+    this.fetchBatch();
+  }
+
+  PetaController.prototype.destroy = function () {
+    this.playing = false;
+    if (this.raf) cancelAnimationFrame(this.raf);
+    if (this._ro) try { this._ro.disconnect(); } catch (_) {}
+    if (this._roRoot) try { this._roRoot.disconnect(); } catch (_) {}
+    if (this._io) try { this._io.disconnect(); } catch (_) {}
+    this.el.innerHTML = '';
+  };
+
+  PetaController.prototype.update = function (listings) {
+    this.listings = listings || [];
+    this.selected = null;
+    this.sheet = null;
+    this.hover = null;
+    this.listExpanded = false;
+    this.rebuild();
+    this.fetchBatch();
+  };
+
+  PetaController.prototype.setMode = function (mode) {
+    if (mode === 'jejak' && !this.batch) return;
+    this.mode = mode === 'jejak' || mode === 'langit' ? mode : 'peluang';
+    this.playing = false;
+    this.sheet = null;
+    this.selected = null;
+    this.renderShell();
+    this.rebuild();
+    this.draw();
+    this.ensureRaf();
+  };
+
+  PetaController.prototype.renderShell = function () {
+    var q = this.opts.query || '';
+    this.el.innerHTML = shellHtml(q, this.showList, this.mode === 'langit', this.collapsed);
     this.root = this.el.querySelector('.peta-root');
     this.canvas = this.el.querySelector('canvas');
-    this.ctx = this.canvas.getContext('2d');
+    this.ctx = this.canvas ? this.canvas.getContext('2d') : null;
     this.bindUi();
-    this.syncChips();
+    this.syncModeChrome();
+    this.syncWide();
     var self = this;
     if (typeof ResizeObserver !== 'undefined') {
       this._ro = new ResizeObserver(function () { self.draw(); });
-      this._ro.observe(this.el.querySelector('.peta-canvas-wrap'));
+      var wrap = this.el.querySelector('.peta-canvas-wrap');
+      if (wrap) this._ro.observe(wrap);
+      this._roRoot = new ResizeObserver(function () { self.syncWide(); });
+      this._roRoot.observe(this.root);
     }
     if (typeof IntersectionObserver !== 'undefined') {
       this._io = new IntersectionObserver(function (ents) {
@@ -492,32 +576,90 @@
     }
   };
 
+  PetaController.prototype.syncWide = function () {
+    if (!this.root) return;
+    var wdt = this.root.getBoundingClientRect().width;
+    var wide = wdt >= WIDE_PX;
+    if (this.root.classList.contains('is-wide') === wide) return;
+    this.root.classList.toggle('is-wide', wide);
+    this.renderList();
+    this.draw();
+  };
+
   PetaController.prototype.bindUi = function () {
     var self = this;
-    this.el.querySelector('[data-peta-collapse]').addEventListener('click', function () {
+    var col = this.el.querySelector('[data-peta-collapse]');
+    if (col) col.addEventListener('click', function () {
       self.collapsed = !self.collapsed;
       try { localStorage.setItem(LS_COLLAPSE, self.collapsed ? '1' : '0'); } catch (_) {}
       self.root.classList.toggle('is-collapsed', self.collapsed);
-      self.el.querySelector('[data-peta-collapse]').textContent = self.collapsed ? '▸' : '▾';
+      col.textContent = self.collapsed ? '▸' : '▾';
     });
+    var back = this.el.querySelector('[data-peta-back]');
+    if (back) back.addEventListener('click', function () { self.setMode('peluang'); });
     this.el.querySelectorAll('[data-mode]').forEach(function (btn) {
-      btn.addEventListener('click', function () { self.setMode(btn.getAttribute('data-mode')); });
-    });
-    this.el.querySelectorAll('[data-zone]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        var id = btn.getAttribute('data-zone');
-        self.zoneFilter = self.zoneFilter === id ? null : id;
-        self.applyZoneFilter();
+        var menu = self.el.querySelector('[data-peta-lainnya]');
+        if (menu) menu.open = false;
+        self.setMode(btn.getAttribute('data-mode'));
       });
     });
-    this.canvas.addEventListener('click', function (e) { self.onPointer(e, true); });
-    this.canvas.addEventListener('mousemove', function (e) {
-      if (!w.matchMedia || !w.matchMedia('(pointer:fine)').matches) return;
-      self.onPointer(e, false);
+    var zones = this.el.querySelector('[data-peta-zones]');
+    if (zones) zones.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-zone]');
+      if (!btn) return;
+      var id = btn.getAttribute('data-zone');
+      self.zoneFilter = self.zoneFilter === id ? null : id;
+      self.applyZoneFilter();
     });
-    this.canvas.addEventListener('mouseleave', function () {
-      self.hover = null;
-      if (self.opts.onHighlight) self.opts.onHighlight(null);
+    if (this.canvas) {
+      this.canvas.addEventListener('click', function (e) { self.onPointer(e, true); });
+      this.canvas.addEventListener('mousemove', function (e) {
+        if (!finePointer()) return;
+        self.onPointer(e, false);
+      });
+      this.canvas.addEventListener('mouseleave', function () {
+        self.hover = null;
+        self.syncRowHl();
+        if (self.opts.onHighlight) self.opts.onHighlight(null);
+        self.draw();
+      });
+    }
+    var rows = this.el.querySelector('[data-peta-rows]');
+    if (rows) {
+      rows.addEventListener('click', function (e) {
+        var row = e.target.closest('[data-k]');
+        if (!row) return;
+        self.selectKey(row.getAttribute('data-k'), true);
+      });
+      rows.addEventListener('mousemove', function (e) {
+        if (!finePointer()) return;
+        var row = e.target.closest('[data-k]');
+        if (!row) return;
+        var hit = self.pointByKey(row.getAttribute('data-k'));
+        if (self.hover && hit && self.hover.key === hit.key) return;
+        self.hover = hit;
+        self.syncRowHl();
+        if (self.opts.onHighlight) self.opts.onHighlight(hit ? hit.listing : null);
+        self.draw();
+      });
+      rows.addEventListener('mouseleave', function () {
+        self.hover = null;
+        self.syncRowHl();
+        if (self.opts.onHighlight) self.opts.onHighlight(null);
+        self.draw();
+      });
+    }
+    var more = this.el.querySelector('[data-peta-more]');
+    if (more) more.addEventListener('click', function () {
+      self.listExpanded = true;
+      self.renderList();
+    });
+    var lhead = this.el.querySelector('[data-peta-lhead]');
+    if (lhead) lhead.addEventListener('click', function (e) {
+      if (!e.target.closest('[data-peta-clear]')) return;
+      self.zoneFilter = null;
+      self.applyZoneFilter();
     });
     var scrub = this.el.querySelector('[data-peta-scrub]');
     if (scrub) scrub.addEventListener('input', function () {
@@ -535,33 +677,52 @@
     });
     var fs = this.el.querySelector('[data-peta-fs]');
     if (fs) fs.addEventListener('click', function () { self.openFullscreen(); });
-    var sepi = this.el.querySelector('[data-peta-sepi]');
-    if (sepi) sepi.addEventListener('click', function () {
-      if (self.opts.onZoneFilter) self.opts.onZoneFilter('sepi', self.hidden.map(function (p) { return p.listing; }));
-    });
   };
 
-  PetaController.prototype.syncChips = function () {
-    var self = this;
-    this.el.querySelectorAll('[data-mode]').forEach(function (btn) {
-      var m = btn.getAttribute('data-mode');
-      btn.classList.toggle('is-on', m === self.mode);
-      if (m === 'jejak') {
-        btn.disabled = !self.batch;
-        btn.title = self.batch ? '' : 'Butuh riwayat mingguan';
-      } else btn.disabled = false;
-    });
-    this.el.querySelector('[data-peta-jctrl]').hidden = this.mode !== 'jejak';
-    this.el.querySelector('[data-peta-jcap]').hidden = this.mode !== 'jejak';
-    this.el.querySelector('[data-peta-moves]').hidden = this.mode !== 'jejak';
-    this.el.querySelector('[data-peta-fs]').hidden = this.mode !== 'langit';
-    this.root.classList.toggle('is-langit', this.mode === 'langit');
-    var leg = this.el.querySelector('.peta-legend');
-    if (this.mode === 'langit') {
-      leg.textContent = 'Mode eksplorasi · Terang = laku per minggu · Berkelip = naik · Merah redup = turun · Garis = produk serupa';
-    } else {
-      leg.textContent = 'Besar = omset/bulan · Penuh = terukur · Kosong = perkiraan · Hijau naik · Merah turun · Abu belum cukup data · Garis putus = pakai iklan';
+  PetaController.prototype.syncModeChrome = function () {
+    var jejak = this.mode === 'jejak';
+    var langit = this.mode === 'langit';
+    var back = this.el.querySelector('[data-peta-back]');
+    var lain = this.el.querySelector('[data-peta-lainnya]');
+    if (back) back.hidden = this.mode === 'peluang';
+    if (lain) lain.hidden = this.mode !== 'peluang';
+    var jctrl = this.el.querySelector('[data-peta-jctrl]');
+    var jcap = this.el.querySelector('[data-peta-jcap]');
+    var moves = this.el.querySelector('[data-peta-moves]');
+    var fs = this.el.querySelector('[data-peta-fs]');
+    if (jctrl) jctrl.hidden = !jejak;
+    if (jcap) jcap.hidden = !jejak;
+    if (moves) moves.hidden = !jejak;
+    if (fs) fs.hidden = !langit;
+    if (this.root) this.root.classList.toggle('is-langit', langit);
+    var jejakBtn = this.el.querySelector('[data-mode="jejak"]');
+    if (jejakBtn) {
+      jejakBtn.disabled = !this.batch;
+      jejakBtn.title = this.batch ? '' : 'Butuh riwayat mingguan';
     }
+    var leg = this.el.querySelector('.peta-legend');
+    if (leg) {
+      if (langit) leg.textContent = 'Terang = laku per minggu · Berkelip = naik · Merah redup = turun · Garis = produk serupa';
+      else if (jejak) leg.textContent = 'Jejak 8 minggu · Pekat = terukur · Pudar = perkiraan';
+      else leg.textContent = 'Pekat = terukur · Pudar = perkiraan · Besar = omset/bulan';
+    }
+  };
+
+  PetaController.prototype.visiblePoints = function () {
+    var id = this.zoneFilter;
+    if (!id) return this.points;
+    if (id.indexOf('group:') === 0) {
+      var tok = id.slice(6);
+      return this.points.filter(function (p) { return p.group === tok; });
+    }
+    return this.points.filter(function (p) { return p.zone === id; });
+  };
+
+  PetaController.prototype.pointByKey = function (k) {
+    for (var i = 0; i < this.points.length; i++) {
+      if (this.points[i].key === k) return this.points[i];
+    }
+    return null;
   };
 
   PetaController.prototype.rebuild = function () {
@@ -572,55 +733,39 @@
         try { p.score = calc(p.listing); } catch (_) { p.score = null; }
       });
     }
-    this._allPrepared = prepared;
     var usable = prepared.filter(function (p) { return p.xUnits != null && p.xUnits >= 0; });
-    var empty = this.el.querySelector('.peta-empty');
-    var body = this.el.querySelector('.peta-body');
-    if (usable.length < MIN_POINTS) {
-      if (body) body.hidden = true;
-      empty.hidden = false;
-      empty.textContent = 'Belum cukup data buat peta ini. Butuh minimal 8 produk yang penjualannya terukur. Coba kata kunci yang lebih umum, atau lihat daftar produk di bawah.';
-      this.points = [];
-      this.hidden = [];
-      this.el.closest('.peta-dir-layout') && this.el.closest('.peta-dir-layout').classList.remove('has-peta');
-      return;
-    }
-    empty.hidden = true;
-    if (body) body.hidden = false;
-    this.el.closest('.peta-dir-layout') && this.el.closest('.peta-dir-layout').classList.add('has-peta');
-    this._zones = assignZones(usable);
     usable.sort(function (a, b) { return b.xUnits - a.xUnits; });
-    this.hidden = usable.length > MAX_DRAW ? usable.slice(MAX_DRAW) : [];
-    this.points = usable.slice(0, MAX_DRAW);
+    this.thin = usable.length > 0 && usable.length < MIN_POINTS;
+    this.points = usable;
+    this._zones = assignZones(usable);
     if (this.mode === 'jejak' && this.batch && this.batch.weeks) {
       this.frame = (this.batch.weeks.length || 8) - 1;
       var scr = this.el.querySelector('[data-peta-scrub]');
       if (scr) { scr.max = String(this.batch.weeks.length - 1); scr.value = String(this.frame); }
     }
     this.updateChrome();
+    this.renderList();
     this.draw();
     this.ensureRaf();
   };
 
   PetaController.prototype.updateChrome = function () {
-    var n = this.points.length + this.hidden.length;
+    var n = this.points.length;
     var scrapes = (this.batch && this.batch.scrapes) || [];
     var lastScrape = scrapes.length ? scrapes[scrapes.length - 1] : null;
+    var counts = { baru_laku: 0, pemain_lama: 0, baru_belum: 0, mulai_sepi: 0 };
+    this.points.forEach(function (p) { counts[p.zone] = (counts[p.zone] || 0) + 1; });
+    var baruN = counts.baru_laku + counts.baru_belum;
     var sub = this.el.querySelector('[data-peta-sub]');
     if (sub) {
-      sub.textContent = n + ' produk · data ' + (lastScrape ? fmtDay(lastScrape) : 'mingguan')
+      var ageNote = n
+        ? (baruN === 0 ? ' · Semua produk di sini sudah lama' : (baruN === n ? ' · Semua produk di sini masih baru' : ''))
+        : '';
+      sub.textContent = (n ? n + ' produk' : 'Belum ada produk') + ' · data '
+        + (lastScrape ? fmtDay(lastScrape) : 'mingguan')
         + ', disetarakan ke 7 hari'
-        + (this.mode === 'langit' ? ' · Mode eksplorasi' : '');
-    }
-    var counts = { baru_laku: 0, pemain_lama: 0, baru_belum: 0, mulai_sepi: 0 };
-    this.points.concat(this.hidden).forEach(function (p) { counts[p.zone] = (counts[p.zone] || 0) + 1; });
-    var sum = this.el.querySelector('[data-peta-summary]');
-    var ads = this.points.filter(function (p) { return p.isAd; }).length;
-    var top10 = this.points.slice().sort(function (a, b) { return b.xUnits - a.xUnits; }).slice(0, 10);
-    var adTop = top10.filter(function (p) { return p.isAd; }).length;
-    if (sum) {
-      sum.textContent = counts.baru_laku + ' dari ' + n + ' produk masih baru tapi sudah laku.'
-        + (top10.length ? ' ' + adTop + ' dari ' + top10.length + ' terlaris pakai iklan.' : '');
+        + (this.mode === 'langit' ? ' · Mode eksplorasi' : '')
+        + ageNote;
     }
     var col = this.el.querySelector('[data-peta-collapsed]');
     if (col) {
@@ -628,35 +773,155 @@
         + counts.pemain_lama + ' pemain lama · '
         + (counts.baru_belum + counts.mulai_sepi) + ' lainnya';
     }
-    var sepi = this.el.querySelector('[data-peta-sepi]');
-    if (sepi) {
-      if (this.hidden.length) {
-        sepi.hidden = false;
-        sepi.textContent = '+' + this.hidden.length + ' produk sepi (di bawah median)';
-      } else sepi.hidden = true;
+    var thin = this.el.querySelector('[data-peta-thin]');
+    if (thin) {
+      if (!n) {
+        thin.hidden = false;
+        thin.textContent = 'Belum ada produk yang bisa dipetakan untuk pencarian ini.';
+      } else if (this.thin) {
+        thin.hidden = false;
+        thin.textContent = 'Peta butuh minimal 8 produk terukur — ini baru ' + n + '. Daftarnya tetap bisa dibaca.';
+      } else {
+        thin.hidden = true;
+      }
     }
-    this.syncChips();
+    this.renderZones(counts);
+    this.syncModeChrome();
     this.applyZoneFilter(true);
     if (this.mode === 'jejak') this.updateJejakChrome();
   };
 
-  PetaController.prototype.applyZoneFilter = function (silent) {
+  PetaController.prototype.renderZones = function (counts) {
+    var box = this.el.querySelector('[data-peta-zones]');
+    if (!box) return;
     var self = this;
-    this.el.querySelectorAll('[data-zone]').forEach(function (btn) {
-      btn.classList.toggle('is-on', btn.getAttribute('data-zone') === self.zoneFilter);
-    });
-    if (silent) return;
-    var id = this.zoneFilter;
-    var list = null;
-    if (id && id.indexOf('group:') === 0) {
-      var tok = id.slice(6);
-      list = this.points.filter(function (p) { return p.group === tok; }).map(function (p) { return p.listing; });
-    } else if (id === 'sepi') {
-      list = this.hidden.map(function (p) { return p.listing; });
-    } else if (id) {
-      list = this.points.concat(this.hidden).filter(function (p) { return p.zone === id; }).map(function (p) { return p.listing; });
+    box.innerHTML = ZONE_ORDER.map(function (id) {
+      var z = ZONE[id];
+      var on = self.zoneFilter === id ? ' is-on' : '';
+      return '<button type="button" class="peta-zone' + on + '" data-zone="' + id + '">'
+        + '<span class="peta-zone-name">' + esc(z.label) + '</span>'
+        + '<span class="peta-zone-n">' + (counts[id] || 0) + '</span>'
+        + '</button>';
+    }).join('');
+    var cara = this.el.querySelector('[data-peta-cara]');
+    if (cara) {
+      if (this.zoneFilter && ZONE[this.zoneFilter]) {
+        cara.hidden = false;
+        cara.textContent = ZONE[this.zoneFilter].cara;
+      } else {
+        cara.hidden = true;
+        cara.textContent = '';
+      }
     }
-    if (this.opts.onZoneFilter) this.opts.onZoneFilter(id, list);
+  };
+
+  PetaController.prototype.applyZoneFilter = function (silent) {
+    var counts = { baru_laku: 0, pemain_lama: 0, baru_belum: 0, mulai_sepi: 0 };
+    this.points.forEach(function (p) { counts[p.zone] = (counts[p.zone] || 0) + 1; });
+    this.renderZones(counts);
+    if (!silent) {
+      var id = this.zoneFilter;
+      var list = null;
+      if (id && id.indexOf('group:') === 0) {
+        var tok = id.slice(6);
+        list = this.points.filter(function (p) { return p.group === tok; }).map(function (p) { return p.listing; });
+      } else if (id) {
+        list = this.points.filter(function (p) { return p.zone === id; }).map(function (p) { return p.listing; });
+      }
+      if (this.opts.onZoneFilter) this.opts.onZoneFilter(id, list);
+      this.renderList();
+      this.draw();
+    }
+  };
+
+  PetaController.prototype.renderList = function () {
+    var box = this.el.querySelector('[data-peta-rows]');
+    if (!box || !this.showList) return;
+    var rows = this.visiblePoints();
+    var wide = this.root && this.root.classList.contains('is-wide');
+    var cap = (!wide && !this.listExpanded) ? LIST_CAP : rows.length;
+    var shown = rows.slice(0, cap);
+    var pending = this.batchStatus;
+    box.innerHTML = shown.map(function (p) {
+      var L = p.listing;
+      var img = L.image_url || '';
+      var name = L.product_name || L.keyword || 'Produk';
+      var shop = L.store_name || '';
+      var units = Math.round(p.xUnits).toLocaleString('id-ID');
+      var z = ZONE[p.zone];
+      var cls = (p.momentum && p.momentum.momentum_class) || 'belum';
+      var mom = momMark(p.momentum) + momWord(p.momentum, pending);
+      var sidik = p.score ? sidikJariHtml(p.score) : '';
+      return '<button type="button" class="peta-row" data-k="' + esc(p.key) + '">'
+        + (img
+          ? '<img class="peta-row-img" src="' + esc(img) + '" alt="" loading="lazy" decoding="async" width="48" height="48">'
+          : '<span class="peta-row-ph" aria-hidden="true"></span>')
+        + '<span class="peta-row-body">'
+        +   '<span class="peta-row-name">' + esc(name) + '</span>'
+        +   (shop ? '<span class="peta-row-shop">' + esc(shop) + '</span>' : '')
+        +   '<span class="peta-row-meta">~' + units + '/mgg · ' + esc(fmtRp(p.sizeOmset))
+        +     (z ? ' · ' + esc(z.label) : '') + '</span>'
+        +   '<span class="peta-row-tags">'
+        +     '<span class="peta-mom peta-mom-' + esc(cls) + '">' + esc(mom) + '</span>'
+        +     '<span class="peta-tag">' + (p.terukur ? 'terukur' : 'perkiraan') + '</span>'
+        +     (p.isAd ? '<span class="peta-tag peta-tag-ad">iklan</span>' : '')
+        +     (p.score ? '<span class="peta-row-sidik">' + sidik + '<span class="peta-row-score">' + p.score.total + '</span></span>' : '')
+        +   '</span>'
+        + '</span>'
+        + '</button>';
+    }).join('');
+    var head = this.el.querySelector('[data-peta-lhead]');
+    if (head) {
+      var zlab = this.zoneFilter && ZONE[this.zoneFilter] ? ZONE[this.zoneFilter].label : '';
+      head.innerHTML = '<span>' + rows.length + ' produk'
+        + (zlab ? ' · ' + esc(zlab) : '') + '</span>'
+        + (this.zoneFilter
+          ? '<button type="button" class="peta-clear" data-peta-clear aria-label="Hapus filter zona">×</button>'
+          : '');
+    }
+    var more = this.el.querySelector('[data-peta-more]');
+    if (more) {
+      if (!wide && !this.listExpanded && rows.length > LIST_CAP) {
+        more.hidden = false;
+        more.textContent = 'Lihat semua ' + rows.length + ' produk';
+      } else {
+        more.hidden = true;
+      }
+    }
+    this.syncRowHl();
+  };
+
+  PetaController.prototype.syncRowHl = function () {
+    var box = this.el.querySelector('[data-peta-rows]');
+    if (!box) return;
+    var hk = this.hover ? this.hover.key : '';
+    var sk = this.selected ? this.selected.key : '';
+    var scrolled = false;
+    box.querySelectorAll('[data-k]').forEach(function (el) {
+      var k = el.getAttribute('data-k');
+      el.classList.toggle('is-hl', k === hk && k !== sk);
+      el.classList.toggle('is-sel', k === sk);
+      if (!scrolled && (k === sk || (!sk && k === hk))) {
+        el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        scrolled = true;
+      }
+    });
+  };
+
+  PetaController.prototype.selectKey = function (k, open) {
+    var hit = this.pointByKey(k);
+    this.selected = hit;
+    this.hover = hit;
+    if (open && hit && this.opts.onDotOpen) {
+      this.sheet = null;
+      this.renderSheet();
+      this.opts.onDotOpen(hit.listing);
+    } else {
+      this.sheet = hit;
+      this.renderSheet();
+    }
+    this.syncRowHl();
+    if (this.opts.onHighlight) this.opts.onHighlight(hit ? hit.listing : null);
     this.draw();
   };
 
@@ -676,36 +941,34 @@
   PetaController.prototype.activePoints = function () {
     if (this.mode !== 'jejak' || !this.batch || !this.batch.weeks) return this.points;
     var week = this.batch.weeks[this.frame];
-    var weeks = this.batch.weeks;
-    var self = this;
-    if (!this._frozenZones) this._frozenZones = { medianX: this._zones.medianX, yCut: this._zones.yCut };
+    if (!this._frozenZones) this._frozenZones = { medianX: this._zones.medianX };
     return this.points.map(function (p) {
       var fr = p.frames[week];
       if (!fr) return null;
       var listing = p.listing;
       var age = ageDays(listing, week);
-      var y = yNewFrom(fr.reviews, age, listing);
-      var x = Number(fr.units_wk) || 0;
-      var c = Object.assign({}, p, {
-        xUnits: x, yNew: y,
+      return Object.assign({}, p, {
+        xUnits: Number(fr.units_wk) || 0,
+        yNew: yNewFrom(fr.reviews, age, listing),
         sizeOmset: (Number(fr.omset_wk) || 0) * 4.3,
         terukur: fr.source === 'measured',
         frameSource: fr.source
       });
-      return c;
     }).filter(Boolean);
   };
 
   PetaController.prototype.draw = function () {
-    if (!this.canvas || !this.points.length) return;
+    if (!this.canvas || !this.ctx) return;
     var sz = this.sizeCanvas();
     if (!sz.w) return;
     var ctx = this.ctx;
-    var langit = this.mode === 'langit';
     ctx.clearRect(0, 0, sz.w, sz.h);
+    if (!this.points.length || this.thin) return;
+    var langit = this.mode === 'langit';
     var pts = this.mode === 'jejak' ? this.activePoints() : this.points;
     var medX = (this.mode === 'jejak' && this._frozenZones) ? this._frozenZones.medianX : this._zones.medianX;
-    layoutPoints(pts, sz.w, sz.h, medX);
+    this._layout = layoutPoints(pts, sz.w, sz.h);
+    this._layout.medX = medX;
     if (this.mode === 'jejak') this.drawTrails(ctx, sz, medX);
     this.drawGrid(ctx, sz, medX);
     if (langit) this.drawConstellations(ctx, pts);
@@ -715,28 +978,65 @@
       var fade = false;
       if (dim && dim.indexOf('group:') === 0) fade = p.group !== dim.slice(6);
       else if (dim) fade = p.zone !== dim;
-      this.drawDot(ctx, p, fade ? 0.3 : 1, langit, t);
+      this.drawDot(ctx, p, fade ? 0.25 : 1, langit, t);
     }, this);
+    var focus = this.selected || this.hover;
+    if (this.hover && this.selected && this.hover.key !== this.selected.key) {
+      this.drawFocus(ctx, this.hover, sz, false);
+    }
+    if (focus) this.drawFocus(ctx, this.selected || this.hover, sz, !!this.selected);
   };
 
   PetaController.prototype.drawGrid = function (ctx, sz, medX) {
-    var p98 = pctile(this.points.map(function (p) { return p.xUnits; }), 0.98) || 1;
-    var xMid = PAD.l + (Math.log10(medX + 1) / Math.log10(p98 + 1)) * Math.max(40, sz.w - PAD.l - PAD.r);
-    var yCut = this._zones.yCut;
-    var yMid = PAD.t + (1 - yCut) * Math.max(40, sz.h - PAD.t - PAD.b);
+    var lay = this._layout;
+    if (!lay) return;
+    var p98 = lay.p98 || 1;
+    var xMid = PAD.l + (Math.log10(medX + 1) / Math.log10(p98 + 1)) * lay.innerW;
+    var yCut = lay.yCut;
     ctx.save();
+    if (this.zoneFilter && ZONE[this.zoneFilter] && yCut != null) {
+      var yMidZ = PAD.t + (1 - yCut) * lay.innerH;
+      var z = this.zoneFilter;
+      var x0 = z === 'baru_belum' || z === 'mulai_sepi' ? PAD.l : xMid;
+      var x1 = z === 'baru_belum' || z === 'mulai_sepi' ? xMid : sz.w - PAD.r;
+      var y0 = z === 'baru_belum' || z === 'baru_laku' ? PAD.t : yMidZ;
+      var y1 = z === 'baru_belum' || z === 'baru_laku' ? yMidZ : sz.h - PAD.b;
+      ctx.fillStyle = this.mode === 'langit' ? 'rgba(201,151,75,.08)' : 'rgba(201,151,75,.10)';
+      ctx.fillRect(x0, y0, Math.max(0, x1 - x0), Math.max(0, y1 - y0));
+    }
     ctx.strokeStyle = this.mode === 'langit' ? 'rgba(245,239,224,.12)' : 'rgba(26,26,26,.12)';
     ctx.setLineDash([4, 4]);
     ctx.beginPath();
     ctx.moveTo(xMid, PAD.t); ctx.lineTo(xMid, sz.h - PAD.b);
-    ctx.moveTo(PAD.l, yMid); ctx.lineTo(sz.w - PAD.r, yMid);
+    if (yCut != null) {
+      var yMid = PAD.t + (1 - yCut) * lay.innerH;
+      ctx.moveTo(PAD.l, yMid); ctx.lineTo(sz.w - PAD.r, yMid);
+    }
     ctx.stroke();
+    ctx.restore();
+    this.drawTicks(ctx, sz, p98, lay);
+  };
+
+  PetaController.prototype.drawTicks = function (ctx, sz, p98, lay) {
+    var ticks = [1, 10, 100, 1000];
+    ctx.save();
+    ctx.fillStyle = this.mode === 'langit' ? 'rgba(245,239,224,.45)' : '#6B7280';
+    ctx.font = '600 10px "Plus Jakarta Sans", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ticks.forEach(function (t) {
+      if (t > p98 * 1.15) return;
+      var xv = Math.log10(t + 1) / Math.log10(p98 + 1);
+      var x = PAD.l + xv * lay.innerW;
+      var label = t >= 1000 ? (t / 1000) + 'rb' : String(t);
+      ctx.fillText(label, x, sz.h - 10);
+    });
     ctx.restore();
   };
 
   PetaController.prototype.drawDot = function (ctx, p, alpha, langit, t) {
     var cls = (p.momentum && p.momentum.momentum_class) || 'belum';
     var col = MOM_CLR[cls] || MOM_CLR.belum;
+    var simple = this.mode === 'peluang';
     ctx.save();
     ctx.globalAlpha = alpha;
     if (langit) {
@@ -758,8 +1058,24 @@
       if (ad != null && ad < 90 && p.xUnits >= med) {
         ctx.beginPath();
         ctx.arc(p.px, p.py, p.r + 5, 0, Math.PI * 2);
-        ctx.strokeStyle = '#C9974B';
+        ctx.strokeStyle = EMAS;
         ctx.lineWidth = 1.4;
+        ctx.stroke();
+      }
+    } else if (simple) {
+      ctx.beginPath();
+      ctx.arc(p.px, p.py, p.r, 0, Math.PI * 2);
+      if (p.terukur) {
+        ctx.globalAlpha = alpha * 0.85;
+        ctx.fillStyle = DOT;
+        ctx.fill();
+      } else {
+        ctx.globalAlpha = alpha * 0.3;
+        ctx.fillStyle = DOT;
+        ctx.fill();
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = DOT;
+        ctx.lineWidth = 1;
         ctx.stroke();
       }
     } else {
@@ -767,27 +1083,41 @@
       ctx.arc(p.px, p.py, p.r, 0, Math.PI * 2);
       if (p.terukur) { ctx.fillStyle = col; ctx.fill(); }
       else { ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.fillStyle = 'transparent'; ctx.stroke(); }
-      if (p.r >= 8 && (cls === 'naik' || cls === 'turun')) {
-        ctx.fillStyle = col;
-        ctx.font = '700 9px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(cls === 'naik' ? '▲' : '▼', p.px, p.py - p.r - 2);
-      }
     }
-    if (p.isAd) {
-      ctx.beginPath();
-      ctx.arc(p.px, p.py, p.r + 3, 0, Math.PI * 2);
-      ctx.setLineDash([3, 2]);
-      ctx.strokeStyle = col;
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-    if (p.pinned) {
-      ctx.fillStyle = col;
-      ctx.font = '700 10px sans-serif';
-      ctx.fillText('>', p.px + p.r + 2, p.py + 3);
-    }
+    ctx.restore();
+  };
+
+  PetaController.prototype.drawFocus = function (ctx, p, sz, selected) {
+    if (!p || p.px == null) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(p.px, p.py, p.r + 4, 0, Math.PI * 2);
+    ctx.strokeStyle = EMAS;
+    ctx.lineWidth = selected ? 3 : 2;
+    ctx.stroke();
+    var raw = String(p.listing.product_name || p.listing.keyword || '');
+    var name = raw.length > 28 ? raw.slice(0, 27) + '…' : raw;
+    if (!name) { ctx.restore(); return; }
+    ctx.font = '700 11px "Plus Jakarta Sans", system-ui, sans-serif';
+    var tw = ctx.measureText(name).width;
+    var pw = tw + 14;
+    var ph = 20;
+    var px = clamp(p.px - pw / 2, 4, sz.w - pw - 4);
+    var py = p.py - p.r - 10 - ph;
+    if (py < 4) py = p.py + p.r + 10;
+    if (py + ph > sz.h - 4) py = clamp(p.py - p.r - 10 - ph, 4, sz.h - ph - 4);
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = 'rgba(26,26,26,.12)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(px, py, pw, ph, 8);
+    else ctx.rect(px, py, pw, ph);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#1A1A1A';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(name, px + 7, py + ph / 2);
     ctx.restore();
   };
 
@@ -796,21 +1126,19 @@
     var weeks = this.batch.weeks;
     var k = this.frame;
     var from = Math.max(0, k - 2);
-    var self = this;
     this.points.forEach(function (p) {
       var path = [];
       for (var i = from; i <= k; i++) {
         var fr = p.frames[weeks[i]];
         if (!fr) continue;
-        var clone = Object.assign({}, p, {
+        path.push(Object.assign({}, p, {
           xUnits: Number(fr.units_wk) || 0,
           yNew: yNewFrom(fr.reviews, ageDays(p.listing, weeks[i]), p.listing),
           sizeOmset: p.sizeOmset
-        });
-        path.push(clone);
+        }));
       }
       if (path.length < 2) return;
-      layoutPoints(path, sz.w, sz.h, medX);
+      layoutPoints(path, sz.w, sz.h);
       ctx.save();
       var col = MOM_CLR[(p.momentum && p.momentum.momentum_class) || 'belum'];
       ctx.strokeStyle = col;
@@ -839,7 +1167,7 @@
       var p = row.p;
       var a = Object.assign({}, p, { xUnits: Number(p.frames[weeks[k0]].units_wk) || 0, yNew: p.yNew });
       var b = Object.assign({}, p, { xUnits: Number(p.frames[weeks[k]].units_wk) || 0, yNew: p.yNew });
-      layoutPoints([a, b], sz.w, sz.h, medX);
+      layoutPoints([a, b], sz.w, sz.h);
       ctx.save();
       ctx.strokeStyle = MOM_CLR[(p.momentum && p.momentum.momentum_class) || 'belum'];
       ctx.globalAlpha = 0.55;
@@ -904,12 +1232,20 @@
       return;
     }
     if (click) {
-      this.sheet = hit || null;
-      this.renderSheet();
+      this.selectKey(hit ? hit.key : null, false);
+      if (!hit) {
+        this.selected = null;
+        this.sheet = null;
+        this.renderSheet();
+        this.syncRowHl();
+        this.draw();
+      }
       return;
     }
     this.hover = hit;
+    this.syncRowHl();
     if (this.opts.onHighlight) this.opts.onHighlight(hit ? hit.listing : null);
+    this.draw();
   };
 
   PetaController.prototype.renderSheet = function () {
@@ -923,24 +1259,31 @@
     var ad = ageDays(L);
     var umur = ad != null ? (ad < 45 ? ad + ' hari' : Math.round(ad / 30) + ' bulan') : '—';
     var score = p.score;
+    var z = ZONE[p.zone];
     box.hidden = false;
     box.innerHTML =
       '<button type="button" class="peta-sheet-x" data-close>×</button>'
       + '<p class="peta-sheet-name">' + esc((L.product_name || '').slice(0, 80)) + '</p>'
       + '<p class="peta-sheet-shop">' + esc(L.store_name || '') + '</p>'
       + '<div class="peta-sheet-rows">'
+      + (z ? esc(z.label) + '<br>' : '')
       + 'Harga ' + fmtRp(L.price || 0) + '<br>'
       + '~' + units.toLocaleString('id-ID') + ' terjual/minggu (' + tag + ')<br>'
       + 'omset/bulan ' + fmtRp(p.sizeOmset) + '<br>'
       + 'umur ' + umur + ' · ' + (L.reviews || 0) + ' ulasan<br>'
       + 'iklan: ' + (p.isAd ? 'ya' : 'tidak') + '<br>'
-      + 'momentum: ' + esc(momWord(p.momentum)) + '<br>'
+      + 'momentum: ' + esc(momWord(p.momentum, this.batchStatus)) + '<br>'
       + (score ? ('skor ' + score.total + ' ' + sidikJariHtml(score)) : '')
       + '</div>'
       + '<button type="button" class="peta-sheet-btn" data-open>Buka produk</button>';
     var self = this;
     box.querySelector('[data-close]').addEventListener('click', function (ev) {
-      ev.stopPropagation(); self.sheet = null; box.hidden = true;
+      ev.stopPropagation();
+      self.sheet = null;
+      self.selected = null;
+      box.hidden = true;
+      self.syncRowHl();
+      self.draw();
     });
     box.querySelector('[data-open]').addEventListener('click', function (ev) {
       ev.stopPropagation();
@@ -953,12 +1296,13 @@
     var week = this.batch.weeks[this.frame];
     var pts = this.activePoints();
     var nM = pts.filter(function (p) { return p.frameSource === 'measured'; }).length;
-    var tag = pts.length && (nM / pts.length) >= 0.5 ? 'terukur' : 'perkiraan';
     var cap = this.el.querySelector('[data-peta-jcap]');
     var scrapes = (this.batch.scrapes || []).map(fmtDay).join(', ');
-    cap.hidden = false;
-    cap.innerHTML = 'Minggu ' + fmtDay(week) + ' · ' + nM + ' dari ' + pts.length + ' titik terukur'
-      + '<br>Scrape: ' + (scrapes || '—') + ' · minggu tanpa scrape = perkiraan';
+    if (cap) {
+      cap.hidden = false;
+      cap.innerHTML = 'Minggu ' + fmtDay(week) + ' · ' + nM + ' dari ' + pts.length + ' titik terukur'
+        + '<br>Scrape: ' + (scrapes || '—') + ' · minggu tanpa scrape = perkiraan';
+    }
     var weeks = this.batch.weeks;
     var prev = this.frame > 0 ? weeks[this.frame - 1] : null;
     var rows = [];
@@ -976,6 +1320,7 @@
     rows.sort(function (a, b) { return b.u - a.u; });
     rows = rows.slice(0, 8);
     var box = this.el.querySelector('[data-peta-moves]');
+    if (!box) return;
     box.hidden = !rows.length;
     if (!rows.length) return;
     var self = this;
@@ -986,8 +1331,7 @@
     }).join('');
     box.querySelectorAll('[data-k]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        var hit = self.points.filter(function (p) { return p.key === btn.getAttribute('data-k'); })[0];
-        if (hit && self.opts.onDotOpen) self.opts.onDotOpen(hit.listing);
+        self.selectKey(btn.getAttribute('data-k'), true);
       });
     });
   };
@@ -1032,8 +1376,9 @@
     host.style.flex = '1';
     overlay.appendChild(host);
     document.body.appendChild(overlay);
-    var ctl = new PetaController(host, this.listings, this.opts);
+    var ctl = new PetaController(host, this.listings, Object.assign({}, this.opts, { list: false }));
     ctl.batch = this.batch;
+    ctl.batchStatus = this.batchStatus;
     ctl.setMode('langit');
     overlay.querySelector('button').addEventListener('click', function () {
       ctl.destroy();
@@ -1044,11 +1389,18 @@
   PetaController.prototype.fetchBatch = function () {
     var self = this;
     var sb = this.opts.supabase;
-    if (!sb || !this.listings.length) return;
-    if (sessionStorage.getItem(SS_BATCH) === '1') {
-      this.syncChips();
+    if (!sb || !this.listings.length) {
+      this.batchStatus = 'missing';
+      this.renderList();
       return;
     }
+    if (sessionStorage.getItem(SS_BATCH) === '1') {
+      this.batchStatus = 'missing';
+      this.syncModeChrome();
+      this.renderList();
+      return;
+    }
+    this.batchStatus = 'pending';
     var keys = this.listings.slice(0, 200).map(function (p) {
       return { item_id: p.item_id, shop_id: p.shop_id };
     });
@@ -1057,17 +1409,15 @@
       clearTimeout(t);
       try { sessionStorage.setItem(SS_BATCH, '1'); } catch (_) {}
       self.batch = null;
-      self.syncChips();
+      self.batchStatus = 'missing';
+      self.syncModeChrome();
+      self.renderList();
     }
     sb.rpc('peta_batch', { p_keys: keys, p_weeks: 8 }).then(function (res) {
       clearTimeout(t);
-      if (res.error) {
-        var s = String(res.error.code || '') + ' ' + String(res.error.message || '');
-        if (/42883|404|PGRST|does not exist|peta_batch/i.test(s)) fail();
-        else fail();
-        return;
-      }
+      if (res.error) { fail(); return; }
       self.batch = res.data || null;
+      self.batchStatus = self.batch ? 'ok' : 'missing';
       self.rebuild();
     }, fail);
   };
@@ -1076,6 +1426,7 @@
     if (!containerEl) return null;
     if (containerEl._petaCtl) {
       containerEl._petaCtl.opts = opts || containerEl._petaCtl.opts;
+      containerEl._petaCtl.showList = (containerEl._petaCtl.opts.list !== false);
       containerEl._petaCtl.update(listings);
       return containerEl._petaCtl;
     }
@@ -1090,6 +1441,7 @@
 
   w.PetaPeluang = {
     mount: mount,
+    skeleton: skeleton,
     calcListingScore: calcListingScore,
     calcLarisScore: calcLarisScore,
     sidikJariHtml: sidikJariHtml,
