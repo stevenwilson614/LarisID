@@ -17099,15 +17099,53 @@ function applyDirHomeSort(mode) {
   });
 }
 
+/* Bandingkan Pasar (js/pasar-compare.js) — ranked board over a set of
+ * product_types_v rows. Shared by the directory home (trending pool), a
+ * category / subgroup page and a search result. Row click = the same Deep Dive
+ * a type card opens. Spec: docs/pasar-compare.md. */
+function pasarCompareOpts(title, subtitle, surface) {
+  return {
+    title,
+    subtitle,
+    supabase: _supabase,
+    limit: 20,
+    onOpen: (t) => {
+      const p = typeRepProduct(t);
+      rememberProducts([p]);
+      void logUserEvent('ptype_open', { ui: 'gpt', keyword: t.keyword, city: 'ALL', surface });
+      void openDeepDive(p);
+    },
+    onEvent: (name, meta) => { void logUserEvent(name, { ui: 'gpt', surface, ...(meta || {}) }); },
+  };
+}
+
+function mountPasarCompare(host, types, title, subtitle, surface) {
+  if (!host) return;
+  if (!window.PasarCompare || typeof PasarCompare.mount !== 'function') {
+    host.innerHTML = '';
+    host.hidden = true;
+    return;
+  }
+  void PasarCompare.mount(host, types, pasarCompareOpts(title, subtitle, surface));
+}
+
+function clearPasarCompare(host) {
+  if (!host) return;
+  if (window.PasarCompare && typeof PasarCompare.clear === 'function') PasarCompare.clear(host);
+  else { host.innerHTML = ''; host.hidden = true; }
+}
+
 async function syncDirHome() {
   const trend = $('dir-home-trending');
   const feat = $('dir-home-feature');
+  const compare = $('dir-home-compare');
   const show = isDirHomeBrowse();
   const hasLib = !!(window.LarisGptDirHome && window.LarisGptDirHome.render);
   if (!trend || !feat) return;
   if (!show || !hasLib) {
     trend.hidden = true;
     feat.hidden = true;
+    clearPasarCompare(compare);
     return;
   }
   trend.hidden = false;
@@ -17121,10 +17159,14 @@ async function syncDirHome() {
     onEvent: (name, meta) => { void logUserEvent(name, { ui: 'gpt', ...(meta || {}) }); },
   };
   window.LarisGptDirHome.render({ ...homeApi, trendHtml: '', meledakHtml: '', ready: false });
+  if (compare && window.PasarCompare && !compare.querySelector('[data-pc-board]')) {
+    PasarCompare.skeleton(compare, 'Mana yang paling mudah dimulai?');
+  }
   const pool = await loadDirHomePool();
   if (!isDirHomeBrowse()) {
     trend.hidden = true;
     feat.hidden = true;
+    clearPasarCompare(compare);
     return;
   }
   const { trending, meledak } = pickDirHomeRows(pool);
@@ -17135,6 +17177,18 @@ async function syncDirHome() {
     meledakHtml: homeCardsHtml(meledak, 'meledak'),
     ready: true,
   });
+  // All trending pasars (the pool the rail draws from), capped at 20, ranked
+  // by Skor Mudah Masuk — the rail says what is selling, this says where a new
+  // seller can realistically start.
+  const comparePool = (pool || []).slice(0, 20);
+  registerTypes(comparePool);
+  mountPasarCompare(
+    compare,
+    comparePool,
+    'Mana yang paling mudah dimulai?',
+    `Pasar trending minggu ini diurutkan dari yang paling mudah dimasuki penjual baru. Bukan yang paling ramai — yang paling masuk akal untuk memulai.`,
+    'dir_home',
+  );
 }
 
 /* Header carousel — default browse state only. Hidden the moment a search,
@@ -17234,6 +17288,11 @@ async function renderDirectory() {
     bindTypeCards(grid);
   } else {
     grid.innerHTML = garudaLoadingHtml('Memuat…');
+    const petaHost = $('dir-peta');
+    if (petaHost && window.PasarCompare && typeof PasarCompare.skeleton === 'function') {
+      if (petaHost._petaCtl) { petaHost._petaCtl.destroy(); petaHost._petaCtl = null; }
+      PasarCompare.skeleton(petaHost, 'Mana yang paling mudah dimulai?');
+    }
   }
   let types;
   let nearby = false;
@@ -17296,25 +17355,41 @@ async function renderDirectory() {
   if (q && !types.length) {
     void logUncoveredSearch(q, { category: detectSearchDomain(q.toLowerCase())?.id || null });
   }
-  void (async () => {
+  // Bandingkan Pasar replaces the listing scatter (Peta Peluang) here. It
+  // compares the top 20 pasars of whatever the grid shows — a category, a
+  // subgroup or a search — so the reader sees where to start before the cards.
+  // Home has its own board under Trending Sekarang (syncDirHome).
+  {
     const host = $('dir-peta');
     const pasarHead = $('dir-pasar-head');
-    if (!host) return;
-    if (!q) {
+    // Two renders can overlap (home fetch still in flight when a search lands).
+    // Only the render that still matches the live state may touch the board.
+    const stale = (state.dirSearch || '').trim() !== q
+      || (state.dirCats || []).join('|') !== cats.join('|')
+      || (primaryDirCat() ? (state.dirSub || null) : null) !== sub;
+    if (host && !stale) {
       if (host._petaCtl) { host._petaCtl.destroy(); host._petaCtl = null; }
-      host.innerHTML = '';
-      if (pasarHead) pasarHead.hidden = true;
-      state._petaListings = [];
-      return;
+      const scoped = !!(q || cats.length || sub);
+      if (!scoped) {
+        clearPasarCompare(host);
+        if (pasarHead) pasarHead.hidden = true;
+      } else {
+        if (pasarHead) pasarHead.hidden = !q;
+        const primaryCat = primaryDirCat();
+        const scopeLabel = q
+          ? `“${q}”`
+          : (sub ? `${sub}` : (primaryCat || (cats.length ? cats.join(', ') : 'pasar ini')));
+        const title = q
+          ? `Mana yang paling mudah dimulai untuk ${scopeLabel}?`
+          : `Mana yang paling mudah dimulai di ${scopeLabel}?`;
+        const subtitle = nearby
+          ? `Pasar terdekat yang punya produk mirip, diurutkan dari yang paling mudah dimasuki penjual baru.`
+          : `Sampai 20 pasar teratas diurutkan dari yang paling mudah dimasuki penjual baru — bukan yang paling ramai.`;
+        mountPasarCompare(host, types.slice(0, 20), title, subtitle, q ? 'dir_search' : 'dir_category');
+      }
     }
-    if (pasarHead) pasarHead.hidden = false;
-    if (window.PetaPeluang && typeof PetaPeluang.skeleton === 'function' && !host._petaCtl) {
-      PetaPeluang.skeleton(host, q);
-    }
-    const listings = await fetchPetaListings(q, types);
-    state._petaListings = listings;
-    mountPeta(host, q, listings);
-  })();
+    state._petaListings = [];
+  }
 }
 
 // Shared pager for both directory modes (types + legacy listings).
@@ -17400,6 +17475,10 @@ async function renderDirectoryListings() {
     const pasarHead = $('dir-pasar-head');
     if (!host || !(q && !sub)) return;
     if (pasarHead) pasarHead.hidden = true;
+    // Compare-pick is a listing grid, so the listing scatter still applies
+    // here; drop any Bandingkan Pasar chrome left from the type view first.
+    clearPasarCompare(host);
+    host.hidden = false;
     mountPeta(host, q, rows.slice(0, 120), { list: false });
   })();
 }

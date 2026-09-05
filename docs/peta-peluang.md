@@ -11,9 +11,12 @@ is the **same set**. Spec: `.cursor/plans/peta_peluang_map+list_layout_4bb51931.
 - SQL: [`supabase/migrations/20260904120000_peta_peluang.sql`](../supabase/migrations/20260904120000_peta_peluang.sql)
 - Weekly backfill: `~/shopee_scraper/listing_weekly.sql` (`backfill_listing_weekly_estimates`)
 - Hosts:
-  - Cari Produk directory (`#dir-peta`) — **primary**. Map + listing list; pasar cards sit below under “Pasar terkait”.
-  - Chat search (`.peta-host`) — same block, stacked in the 720px bubble.
-  - SPA Discover (`#disc-peta`) and compare-pick — `list: false` (those grids are already listings).
+  - Chat search (`.peta-host`) — **primary**. Map + listing list, stacked in the 720px bubble.
+  - Compare-pick in the directory (`#dir-peta`, `renderDirectoryListings`) — `list: false`.
+  - SPA Discover (`#disc-peta`) — `list: false` (that grid is already listings).
+  - **Not** the directory type view any more: since 2026-09-05 `#dir-peta` shows
+    Bandingkan Pasar (a pasar-level ranked board) for category / subgroup /
+    search — see [pasar-compare.md](./pasar-compare.md).
 
 `PetaPeluang.skeleton(el, query)` paints chrome before `peta_batch` / listing fetch returns.
 

@@ -16,6 +16,8 @@ The logged-in product UI lives in **`index.html` + `js/gpt-app.js`** (not Astro 
 
 **Do not** reintroduce a blocking popup for onboarding. **Do not** fabricate price/sales deltas in return strips. Leaders and platform admins bypass journey gating.
 
+Cari Produk shows **Bandingkan Pasar** (`js/pasar-compare.js`) under Trending Sekarang and above the cards for a category / search. Before changing Skor Mudah Masuk weights, verdict copy, or which set is compared, read **[docs/pasar-compare.md](./docs/pasar-compare.md)**. Never add a hard filter on that score.
+
 ## "Terlaris Minggu Ini" badge
 
 Before changing badge thresholds, the weekly measurement window, the growth-percentage definition, or the `terlaris_minggu` composer intent, read **[docs/terlaris-minggu.md](./docs/terlaris-minggu.md)**.

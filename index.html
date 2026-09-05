@@ -204,6 +204,7 @@
 <link rel="preload" href="/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/fonts/laris-fonts.css">
 <link rel="stylesheet" href="/styles/peta-peluang.css?v=20260905a">
+<link rel="stylesheet" href="/styles/pasar-compare.css?v=20260905a">
 <link rel="stylesheet" href="/styles/honesty.css?v=20260905a">
 <link rel="stylesheet" href="/styles/laris-merdeka.css?v=20260816b">
 <link rel="stylesheet" href="/styles/cohort.css?v=20260831d">
@@ -6830,6 +6831,9 @@ body:has(.modal-overlay.open) .msg-steven-fab {
           <!-- Default-browse only. js/gpt-dir-home.js fills these; hidden on
                search / category / subgroup so results start at the rail. -->
           <div class="dir-home-trending" id="dir-home-trending" hidden></div>
+          <!-- Bandingkan Pasar: ranked board over the trending pool
+               (js/pasar-compare.js, docs/pasar-compare.md). Home only. -->
+          <div class="dir-home-compare" id="dir-home-compare" hidden></div>
           <div class="dir-home-feature" id="dir-home-feature" hidden></div>
           <div class="dir-head">
             <h2 id="dir-heading">Tipe Produk</h2>
@@ -8038,6 +8042,7 @@ body:has(.modal-overlay.open) .msg-steven-fab {
      Both are admin-only; gpt-app.js now pulls them on demand via
      larisLoadScript() when the admin view actually renders. -->
 <script src="/js/peta-peluang.js?v=20260905a" defer></script>
-<script src="/js/gpt-app.js?v=20260905c" defer></script>
+<script src="/js/pasar-compare.js?v=20260905a" defer></script>
+<script src="/js/gpt-app.js?v=20260905d" defer></script>
 </body>
 </html>
